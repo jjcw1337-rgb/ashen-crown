@@ -274,7 +274,8 @@ const QUALITY_NAMES := ["Low", "Medium", "High", "Ultra"]
 ## Graphics presets. Integrated laptop GPUs are the usual trouble: volumetric fog and SSIL are
 ## kept to High and above, and the whole game also runs on the OpenGL renderer (Safe Mode).
 func apply_quality(q: int) -> void:
-	quality = clampi(q, 0, 3)
+	# Browsers (WebGL) can't allocate the High/Ultra shadow maps; the 3D view goes blank.
+	quality = clampi(q, 0, max_quality())
 	q = quality
 	var forward := is_forward()
 	env.ssao_enabled = q >= 1 and forward
@@ -318,6 +319,9 @@ func apply_quality(q: int) -> void:
 		sun.directional_shadow_max_distance = 90.0 if q >= 3 else 70.0
 	for g in get_tree().get_nodes_in_group("grass"):
 		(g as MultiMeshInstance3D).visibility_range_end = [32.0, 45.0, 60.0, 95.0][q]
+
+func max_quality() -> int:
+	return 1 if OS.has_feature("web") else 3
 
 func is_forward() -> bool:
 	return RenderingServer.get_rendering_device() != null

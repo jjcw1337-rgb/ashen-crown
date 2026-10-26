@@ -1128,7 +1128,7 @@ func _build_pause() -> void:
 	vb.add_child(resume)
 	gfx_btn = Button.new()
 	gfx_btn.pressed.connect(func():
-		game.set_quality((game.quality + 1) % 4)
+		game.set_quality((game.quality + 1) % (game.max_quality() + 1))
 		_update_gfx_btn()
 		message("Grass and fern density changes when you next enter an area", Color(0.7, 0.8, 1.0)))
 	vb.add_child(gfx_btn)
