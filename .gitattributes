@@ -1,0 +1,9 @@
+# One developer is on Windows, one on Linux: store text with LF line endings so the same
+# file never shows up as "changed" just because it was saved on the other system.
+* text=auto eol=lf
+*.bat text eol=crlf
+# Binary assets
+*.ogv binary
+*.png binary
+*.wav binary
+*.ogg binary

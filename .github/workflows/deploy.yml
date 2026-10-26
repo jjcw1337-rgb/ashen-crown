@@ -1,6 +1,6 @@
 # Every push to main exports the game with Godot 4.3 and publishes:
 #   - the browser version at this repository's GitHub Pages address
-#   - Windows and Mac downloads (AshenCrown-Windows.zip, AshenCrown-Mac.zip) on that same page
+#   - Windows, Linux and Mac downloads (AshenCrown-Windows.zip, -Linux.zip, -Mac.zip) on that same page
 name: Build and publish
 
 on:
@@ -50,13 +50,28 @@ jobs:
           apt-get update -qq && apt-get install -y -qq zip > /dev/null
           cd build/win && zip -q -r ../web/AshenCrown-Windows.zip .
 
+      - name: Export Linux version
+        run: |
+          mkdir -p build/linux
+          godot --headless --export-release "Linux" build/linux/AshenCrown.x86_64
+          chmod +x build/linux/AshenCrown.x86_64
+          cp README.md build/linux/
+          cd build/linux && zip -q -r ../web/AshenCrown-Linux.zip .
+
       - name: Export Mac version
         run: |
           mkdir -p build/mac
           godot --headless --export-release "macOS" build/web/AshenCrown-Mac.zip
 
       - name: Check the exports exist
-        run: ls -la build/web && test -s build/web/index.wasm && test -s build/web/AshenCrown-Windows.zip && test -s build/web/AshenCrown-Mac.zip
+        run: |
+          ls -la build/web build/win build/linux
+          test -s build/web/index.wasm
+          test -s build/web/AshenCrown-Windows.zip
+          test -s build/web/AshenCrown-Linux.zip
+          test -s build/web/AshenCrown-Mac.zip
+          # the intro video must be inside the desktop builds (it is left out of the browser one)
+          test $(stat -c %s build/win/AshenCrown.exe) -gt 100000000
 
       - uses: actions/upload-pages-artifact@v3
         with:

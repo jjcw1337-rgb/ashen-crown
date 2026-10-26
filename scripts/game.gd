@@ -94,8 +94,64 @@ func _ready() -> void:
 		playing = true
 		await load_zone(0, shot_zone, shot_spawn if shot_spawn != "" else "start")
 		return
+	await _play_intro()
 	await load_zone(0, "town", "start")
 	ui.show_title(FileAccess.file_exists(SAVE_PATH))
+
+# ---------------------------------------------------------------- intro
+const INTRO_PATH := "res://assets/intro.ogv"
+var _intro_playing := false
+var _intro_skip := false
+
+## The trailer plays full screen when the game opens; any key or click skips it.
+## Left out of the browser build (too big a download for a test page) and headless runs.
+func _play_intro() -> void:
+	if OS.has_feature("web") or DisplayServer.get_name() == "headless" or not ResourceLoader.exists(INTRO_PATH):
+		return
+	var layer := CanvasLayer.new()
+	layer.layer = 100
+	add_child(layer)
+	var bg := ColorRect.new()
+	bg.color = Color.BLACK
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(bg)
+	var box := AspectRatioContainer.new()
+	box.ratio = 16.0 / 9.0
+	box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(box)
+	var vp := VideoStreamPlayer.new()
+	vp.stream = load(INTRO_PATH)
+	vp.expand = true
+	vp.volume = 1.0 if sound_on else 0.0
+	box.add_child(vp)
+	var hint := Label.new()
+	hint.text = "Press any key to skip"
+	hint.add_theme_font_size_override("font_size", 16)
+	hint.add_theme_color_override("font_color", Color(0.85, 0.75, 0.6, 0.0))
+	hint.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	hint.offset_left = -260
+	hint.offset_top = -50
+	hint.offset_right = -28
+	hint.offset_bottom = -20
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	layer.add_child(hint)
+	_intro_skip = false
+	_intro_playing = true
+	vp.play()
+	var t := 0.0
+	while vp.is_playing() and not _intro_skip:
+		await get_tree().process_frame
+		t += get_process_delta_time()
+		hint.add_theme_color_override("font_color", Color(0.85, 0.75, 0.6, clampf((t - 1.5) * 0.8, 0.0, 0.55)))
+	_intro_playing = false
+	vp.stop()
+	# a short fade from black into the title screen
+	var tw := create_tween()
+	tw.tween_property(bg, "color:a", 0.0, 0.6)
+	box.queue_free()
+	hint.queue_free()
+	await tw.finished
+	layer.queue_free()
 
 func _on_level(l: int) -> void:
 	ui.big_message("Level %d" % l)
@@ -1299,6 +1355,10 @@ func _unhandled_input(ev: InputEvent) -> void:
 				ui.minimap.set_big(not ui.minimap.big)
 
 func _input(ev: InputEvent) -> void:
+	if _intro_playing and ((ev is InputEventKey and ev.pressed and not ev.echo) or (ev is InputEventMouseButton and ev.pressed)):
+		_intro_skip = true
+		get_viewport().set_input_as_handled()
+		return
 	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed:
 		lmb_held = false
 
