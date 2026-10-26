@@ -40,6 +40,17 @@ enter their GitHub username, and they accept the e-mail invite.
 
 The first open takes a minute while Godot builds its cache (`.godot/`, never committed).
 
+## Using Claude on it
+
+`CLAUDE.md` at the top of the repository tells Claude how the project works (commands, tests,
+code map, gotchas). Either way works:
+
+- **Claude Code on Linux/Windows:** clone the repo, open a terminal in it and run `claude`.
+- **Claude on claude.ai:** connect GitHub (Settings → Connectors) with an account that has
+  access to this repository, then ask Claude to work on `jjcw1337-rgb/ashen-crown`.
+
+Claude can push to `main` like anyone else, so the same rule applies: run the tests first.
+
 ## Everyday workflow
 
 1. **Pull first** (GitHub Desktop: **Fetch origin → Pull**; Linux: `git pull`) so you start from
