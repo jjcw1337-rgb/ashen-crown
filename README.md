@@ -5,7 +5,7 @@ Every model, texture, sound and piece of music is generated in code. There are n
 
 ## Play
 
-**In a browser (quick test build):** https://jjcw1337-rgb.github.io/ashen-crown/ is a lighter version: lower graphics, no grass blades, no intro and no co-op. Downloads for the full game are at that same address: `AshenCrown-Windows.zip`, `AshenCrown-Linux.zip`, `AshenCrown-Mac.zip`.
+**In a browser (quick test build):** https://jjcw1337-rgb.github.io/ashen-crown/ is a lighter version: graphics up to Medium, no intro and no co-op. Downloads for the full game are at that same address: `AshenCrown-Windows.zip`, `AshenCrown-Linux.zip`, `AshenCrown-Mac.zip`.
 
 The game opens with the trailer; press any key to skip it.
 
@@ -33,7 +33,13 @@ Windows SmartScreen may warn that the app is unrecognised (it isn't code-signed)
   - *Shadow Step* (R): melt into shadow and re-form at the cursor. The shade left behind implodes.
   - *Spectral Host* (F): three spirits circle you for 12 seconds, darting out to strike enemies.
 
-Your class is saved with your character, and co-op partners see it.
+- **Demon**: a horned, winged fiend in obsidian plate with ember-edged horns, spikes, claws and wings.
+  - *Hellfire Claw* (Q): three burning rakes that set enemies alight.
+  - *Summon Demon* (E): a demon climbs out of a burning sigil to fight beside you, up to 3 at once (a fourth replaces the oldest). They follow you between areas.
+  - *Underworld Phase* (R): for 6 seconds you walk in the Underworld. The act turns bone-and-violet with soul-light veins and crimson rune rings, monsters glow and can't see or hurt you, and you move faster. When you return, the rift erupts around you.
+  - *Blood Pact* (F): pay 20% of your life for +40% damage for you and your demons for 12 seconds.
+
+Every class has four skills on Q E R F, unlocking at levels 1, 3, 6 and 10. Your class is saved with your character, and co-op partners see it.
 
 ## Co-op (two to four players on the same home network)
 

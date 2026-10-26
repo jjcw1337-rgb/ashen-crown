@@ -18,6 +18,8 @@ static func ensure_globals() -> void:
 	RenderingServer.global_shader_parameter_add("snow_amt", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
 	# 0 = normal, 1 = everything scorched and burning (A3)
 	RenderingServer.global_shader_parameter_add("ash_amt", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
+	# 0 = normal, 1 = the Demon has phased into the Underworld
+	RenderingServer.global_shader_parameter_add("under_amt", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
 
 static func detail_normal() -> Texture2D:
 	if _detail == null:
@@ -307,6 +309,8 @@ uniform float wet = 0.0;
 uniform float ripples = 0.0;
 global uniform float snow_amt;
 global uniform float ash_amt;
+global uniform float under_amt;
+global uniform vec3 player_pos;
 varying vec3 wpos;
 varying vec3 wnorm;
 varying vec4 vcol;
@@ -434,6 +438,22 @@ void fragment(){
 		float g = step(0.988, hash21(gc)) * cover * (1.0 - trod);
 		float tw = 0.5 + 0.5 * sin(TIME * 2.5 + hash21(gc + 3.1) * 60.0);
 		EMISSION = vec3(0.85, 0.92, 1.0) * g * tw * 0.9;
+	}
+	if (under_amt > 0.0) {
+		// the Underworld: bone-pale ground, veins of violet soul-light that crawl slowly,
+		// and rings of crimson runes rippling outward from the Demon
+		vec3 bone = mix(vec3(0.07, 0.05, 0.09), vec3(0.2, 0.16, 0.24), n3) * (0.8 + n4 * 0.3);
+		ALBEDO = mix(ALBEDO, bone * 1.6, under_amt * 0.55);
+		float vv = abs(fbm(p * 0.21 + vec2(TIME * 0.04, -TIME * 0.025)) - 0.5);
+		float vein = (1.0 - smoothstep(0.0, 0.018, vv)) * (0.6 + 0.4 * sin(TIME * 2.0 + p.x * 0.3));
+		vec2 dp = wpos.xz - player_pos.xz;
+		float d = length(dp);
+		float wave = fract(d * 0.18 - TIME * 0.35);
+		float ringl = smoothstep(0.0, 0.03, wave) * (1.0 - smoothstep(0.03, 0.08, wave));
+		float ang = atan(dp.y, dp.x);
+		float runes = step(0.5, fract(ang * 9.549 + floor(d * 0.18 - TIME * 0.35) * 0.37));
+		float fade = 1.0 - smoothstep(6.0, 16.0, d);
+		EMISSION += (vec3(0.55, 0.22, 1.0) * vein * 1.3 + vec3(1.0, 0.08, 0.16) * ringl * runes * 1.6 * fade) * under_amt;
 	}
 	float e = 0.05;
 	float sc = 1.8;

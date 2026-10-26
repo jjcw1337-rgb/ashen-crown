@@ -153,6 +153,81 @@ func _play_intro() -> void:
 	await tw.finished
 	layer.queue_free()
 
+# ---------------------------------------------------------------- the Underworld (Demon: Phase)
+## While the Demon is phased, the act is seen from the Underworld: the same place and the same
+## monsters, but drained to bone and violet, the ground veined with soul-light and crimson rune
+## rings, souls rising everywhere. Unlike A3 nothing is burning: it is cold, dead and luminous.
+var underworld := 0.0
+var _under_target := 0.0
+var _under_layer: CanvasLayer
+var _under_rect: ColorRect
+var _soul_field: GPUParticles3D
+var _env_saved := {}
+
+func set_underworld(on: bool) -> void:
+	_under_target = 1.0 if on else 0.0
+
+func _end_underworld_now() -> void:
+	if hero and hero.phased:
+		hero.phased = false
+		hero.phase_t = 0.0
+	if underworld > 0.0 or _under_target > 0.0:
+		_under_target = 0.0
+		underworld = 0.0
+		_apply_underworld()
+	if _soul_field and is_instance_valid(_soul_field):
+		_soul_field.queue_free()
+	_soul_field = null
+
+func _update_underworld(delta: float) -> void:
+	if underworld == _under_target and underworld == 0.0:
+		return
+	underworld = move_toward(underworld, _under_target, delta * 2.2)
+	_apply_underworld()
+
+func _apply_underworld() -> void:
+	var u := underworld
+	if _under_layer == null:
+		_under_layer = CanvasLayer.new()
+		_under_layer.layer = 0
+		add_child(_under_layer)
+		_under_rect = ColorRect.new()
+		_under_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_under_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var sm := ShaderMaterial.new()
+		var sh := Shader.new()
+		sh.code = DemonFx.UNDERWORLD_SHADER
+		sm.shader = sh
+		_under_rect.material = sm
+		_under_layer.add_child(_under_rect)
+	_under_rect.visible = u > 0.001
+	(_under_rect.material as ShaderMaterial).set_shader_parameter("amt", u)
+	RenderingServer.global_shader_parameter_set("under_amt", u)
+	if world != null:
+		var lit := u > 0.3
+		for e in world.enemies_root.get_children():
+			if e is Enemy:
+				e.set_soul_lit(lit)
+	if u > 0.001 and _env_saved.is_empty():
+		_env_saved = {"sat": env.adjustment_saturation, "con": env.adjustment_contrast, "fog": env.fog_light_color,
+			"fogd": env.fog_density, "exp": env.tonemap_exposure, "amb": env.ambient_light_energy}
+	if not _env_saved.is_empty():
+		env.adjustment_saturation = lerpf(_env_saved["sat"], 0.7, u)
+		env.adjustment_contrast = lerpf(_env_saved["con"], 1.18, u)
+		env.fog_light_color = (_env_saved["fog"] as Color).lerp(Color(0.16, 0.05, 0.24), u)
+		env.fog_density = lerpf(_env_saved["fogd"], _env_saved["fogd"] * 1.5 + 0.004, u)
+		env.tonemap_exposure = lerpf(_env_saved["exp"], _env_saved["exp"] * 1.1, u)
+		env.ambient_light_energy = lerpf(_env_saved["amb"], _env_saved["amb"] * 0.7, u)
+		if u <= 0.0:
+			_env_saved = {}
+	if world != null:
+		if u > 0.001 and (_soul_field == null or not is_instance_valid(_soul_field)):
+			_soul_field = DemonFx.soul_field()
+			world.fx_root.add_child(_soul_field)
+		if _soul_field and is_instance_valid(_soul_field):
+			_soul_field.emitting = u > 0.4
+			_soul_field.global_position = hero.global_position
+
 func _on_level(l: int) -> void:
 	ui.big_message("Level %d" % l)
 	ui.message("+5 stat points  (press C)", Color(1, 0.85, 0.4))
@@ -644,6 +719,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	world.name = "World"
 	add_child(world)
 	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair"].find(zone) * 7)
+	_end_underworld_now()
 	_zone_env(zone)
 	apply_quality(quality)
 	await _capture_map(zone)
@@ -1455,6 +1531,7 @@ func _process(delta: float) -> void:
 		var sh := Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake * shake * 0.35
 		cam.position = CAM_OFFSET * zoom + sh
 		RenderingServer.global_shader_parameter_set("player_pos", hero.global_position)
+	_update_underworld(real_dt)
 	for l in get_tree().get_nodes_in_group("flicker"):
 		var lt := l as OmniLight3D
 		var b: float = lt.get_meta("base", 1.0)

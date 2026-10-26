@@ -1515,10 +1515,10 @@ func _build_class_picker() -> void:
 	vb.anchor_right = 0.5
 	vb.anchor_top = 0.5
 	vb.anchor_bottom = 0.5
-	vb.offset_left = -470
-	vb.offset_right = 470
-	vb.offset_top = -230
-	vb.offset_bottom = 230
+	vb.offset_left = -610
+	vb.offset_right = 610
+	vb.offset_top = -250
+	vb.offset_bottom = 250
 	vb.add_theme_constant_override("separation", 18)
 	class_panel.add_child(vb)
 	var t := _label("Choose your path", 40, GOLD, true)
@@ -1528,8 +1528,8 @@ func _build_class_picker() -> void:
 	row.add_theme_constant_override("separation", 26)
 	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vb.add_child(row)
-	var accents := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0)}
-	for c in ["knight", "wraith"]:
+	var accents := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1)}
+	for c in ["knight", "wraith", "demon"]:
 		var d: Dictionary = Data.CLASSES[c]
 		var card := PanelContainer.new()
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1552,7 +1552,7 @@ func _build_class_picker() -> void:
 			gl.add_child(g)
 		var ds := _label(d["desc"], 15, Color(0.84, 0.8, 0.74))
 		ds.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		ds.custom_minimum_size = Vector2(380, 0)
+		ds.custom_minimum_size = Vector2(330, 0)
 		cv.add_child(ds)
 		var names := []
 		for sk in Data.skills_for(c):
@@ -1834,6 +1834,8 @@ class SkillGlyph extends Control:
 		var c := size * 0.5
 		var col := Color(1.0, 0.8, 0.4) if not dim else Color(0.4, 0.35, 0.3)
 		var wcol := Color(0.45, 0.88, 1.0) if not dim else Color(0.3, 0.35, 0.4)
+		var dcol := Color(1.0, 0.45, 0.1) if not dim else Color(0.4, 0.3, 0.28)
+		var dhot := Color(1.0, 0.85, 0.4) if not dim else Color(0.45, 0.38, 0.32)
 		match id:
 			"cleave":
 				draw_arc(c + Vector2(0, 8), 16, PI * 1.1, PI * 1.9, 16, col, 4.0, true)
@@ -1870,6 +1872,37 @@ class SkillGlyph extends Control:
 					var a := 0.25 + k * 0.35
 					draw_circle(c + o + Vector2(0, -8), 4.0, Color(wcol.r, wcol.g, wcol.b, a))
 					draw_colored_polygon(PackedVector2Array([c + o + Vector2(-5, -3), c + o + Vector2(5, -3), c + o + Vector2(7, 14), c + o + Vector2(-7, 14)]), Color(wcol.r, wcol.g, wcol.b, a))
+			"hellclaw":
+				# three raking claw marks with burning tips
+				for k in 3:
+					var o := Vector2((k - 1) * 9, 0)
+					draw_arc(c + o + Vector2(14, -2), 18, PI * 0.72, PI * 1.12, 10, dcol, 3.5, true)
+					draw_circle(c + o + Vector2(-3, -12), 2.2, dhot)
+			"summon":
+				# a burning sigil with a horned head rising out of it
+				draw_arc(c + Vector2(0, 9), 15, 0, TAU, 28, dcol, 2.0, true)
+				for k in 5:
+					var a0 := -PI * 0.5 + TAU * k / 5.0
+					var a1 := -PI * 0.5 + TAU * (k + 2) / 5.0
+					draw_line(c + Vector2(0, 9) + Vector2(cos(a0), sin(a0) * 0.45) * 15, c + Vector2(0, 9) + Vector2(cos(a1), sin(a1) * 0.45) * 15, dcol, 1.3, true)
+				draw_circle(c + Vector2(0, -4), 7, Color(0.25, 0.04, 0.03) if not dim else Color(0.2, 0.17, 0.15))
+				draw_polyline(PackedVector2Array([c + Vector2(-5, -8), c + Vector2(-11, -18), c + Vector2(-7, -9)]), dhot, 2.0, true)
+				draw_polyline(PackedVector2Array([c + Vector2(5, -8), c + Vector2(11, -18), c + Vector2(7, -9)]), dhot, 2.0, true)
+				draw_circle(c + Vector2(-3, -5), 1.4, dhot)
+				draw_circle(c + Vector2(3, -5), 1.4, dhot)
+			"phase":
+				# a rift: a violet tear with a figure stepping through
+				var vio := Color(0.65, 0.45, 1.0) if not dim else Color(0.32, 0.3, 0.38)
+				draw_colored_polygon(PackedVector2Array([c + Vector2(0, -18), c + Vector2(8, -4), c + Vector2(4, 4), c + Vector2(9, 18), c + Vector2(-2, 6), c + Vector2(-8, 16), c + Vector2(-5, -2), c + Vector2(-9, -10)]), Color(vio.r, vio.g, vio.b, 0.35))
+				draw_polyline(PackedVector2Array([c + Vector2(0, -18), c + Vector2(8, -4), c + Vector2(4, 4), c + Vector2(9, 18)]), vio, 2.0, true)
+				draw_polyline(PackedVector2Array([c + Vector2(0, -18), c + Vector2(-9, -10), c + Vector2(-5, -2), c + Vector2(-8, 16)]), vio, 2.0, true)
+				draw_circle(c + Vector2(0, -6), 3.0, dcol)
+				draw_line(c + Vector2(0, -3), c + Vector2(0, 8), dcol, 3.0, true)
+			"pact":
+				# a dripping blood drop over a burning star
+				draw_colored_polygon(PackedVector2Array([c + Vector2(0, -17), c + Vector2(9, 0), c + Vector2(7, 8), c + Vector2(0, 12), c + Vector2(-7, 8), c + Vector2(-9, 0)]), Color(0.85, 0.05, 0.08) if not dim else Color(0.35, 0.25, 0.25))
+				draw_circle(c + Vector2(-3, 2), 2.5, Color(1, 0.6, 0.6, 0.6))
+				draw_arc(c, 18, PI * 0.15, PI * 0.85, 12, dcol, 2.0, true)
 			"host":
 				# three spirits circling
 				draw_arc(c, 13, 0, TAU, 32, Color(wcol.r, wcol.g, wcol.b, 0.4), 1.5, true)

@@ -68,6 +68,9 @@ var cls := "knight"          # "knight" or "wraith" (Data.CLASSES)
 var cds := {}
 var spirits: Array = []      # Wraith's Spectral Host: [{node, phase, state, t, target, from}]
 var spirit_t := 0.0
+var minions: Array = []      # Demon's summoned demons (DemonMinion), oldest first
+var phased := false          # Demon: walking in the Underworld, unseen and untouchable
+var phase_t := 0.0
 var buff_t := 0.0
 var heal_pool := 0.0
 var mana_pool := 0.0
@@ -120,11 +123,19 @@ func _init() -> void:
 func is_wraith() -> bool:
 	return cls == "wraith"
 
+func is_demon() -> bool:
+	return cls == "demon"
+
 func skill_list() -> Array:
 	return Data.skills_for(cls)
 
 func _build_rig() -> void:
-	rig = Wraith.build(wraith_gear()) if is_wraith() else Knight.build(Knight.default_gear())
+	if is_wraith():
+		rig = Wraith.build(wraith_gear())
+	elif is_demon():
+		rig = Demon.build(demon_gear())
+	else:
+		rig = Knight.build(Knight.default_gear())
 	rig.set_meta("pers", "hero")
 	add_child(rig)
 	J = rig.get_meta("j")
@@ -142,6 +153,8 @@ func set_class(c: String) -> void:
 		return
 	cls = c
 	_clear_spirits()
+	dismiss_minions()
+	end_phase(false)
 	if rig != null:
 		rig.queue_free()
 		rig = null
@@ -161,12 +174,26 @@ func _tint_aura() -> void:
 	if is_wraith():
 		g2.set_color(0, Color(0.45, 0.9, 1.0, 0.9))
 		g2.set_color(1, Color(0.55, 0.35, 1.0, 0.0))
+	elif is_demon():
+		g2.set_color(0, Color(1.0, 0.3, 0.1, 0.9))
+		g2.set_color(1, Color(0.7, 0.02, 0.05, 0.0))
 	else:
 		g2.set_color(0, Color(1.0, 0.8, 0.3, 0.9))
 		g2.set_color(1, Color(1.0, 0.5, 0.1, 0.0))
 	var gt := GradientTexture1D.new()
 	gt.gradient = g2
 	(aura.process_material as ParticleProcessMaterial).color_ramp = gt
+
+func demon_gear() -> Dictionary:
+	var g := Demon.default_gear()
+	var a = equipment.get("armor")
+	if a != null:
+		var p := Models.palette(a)
+		if int(a.get("rarity", 0)) == 3 and p["glow"] != null:
+			g["edge"] = p["glow"]
+		elif int(a.get("ench", 0)) >= 5:
+			g["edge"] = Color(1.0, 0.62, 0.15)
+	return g
 
 func wraith_gear() -> Dictionary:
 	var g := Wraith.default_gear()
@@ -250,11 +277,13 @@ func new_character() -> void:
 		cds[k] = 0.0
 	buff_t = 0.0
 	_clear_spirits()
+	dismiss_minions()
+	end_phase(false)
 	equipment = {}
 	for s in Items.EQUIP_SLOTS:
 		equipment[s] = null
-	equipment["weapon"] = Items.make("short_sword")
-	if not is_wraith():
+	equipment["weapon"] = Items.make("hand_axe" if is_demon() else "short_sword")
+	if cls == "knight":
 		equipment["shield"] = Items.make("buckler")
 	equipment["armor"] = Items.make("quilted")
 	belt = [Items.potion("hp_potion"), Items.potion("hp_potion"), Items.potion("mp_potion"), null]
@@ -353,7 +382,7 @@ func refresh_gear() -> void:
 		shield_rest = shield_node.transform
 		gear_nodes.append(shield_node)
 	var h = equipment.get("helm")
-	if h != null and not is_wraith():
+	if h != null and cls == "knight":
 		var hm := Models.item_model(h)
 		(J["head"] as Node3D).add_child(hm)
 		hm.position = Vector3(0, 0.092, 0.006)
@@ -361,6 +390,8 @@ func refresh_gear() -> void:
 		gear_nodes.append(hm)
 	if is_wraith():
 		Wraith.rebuild_body(rig, wraith_gear())
+	elif is_demon():
+		Demon.rebuild_body(rig, demon_gear())
 	else:
 		Knight.rebuild_body(rig, knight_gear())
 	var am = equipment.get("amulet")
@@ -515,6 +546,17 @@ func use_skill(id: String, aim: Vector3) -> bool:
 		"host":
 			_start_attack("cast", "host")
 			atk_dur = 0.65
+		"hellclaw":
+			_start_attack("side", "hellclaw")
+		"summon":
+			_start_attack("cast", "summon")
+			atk_dur = 0.55
+		"phase":
+			_phase_start()
+		"pact":
+			life = maxf(1.0, life - max_life * 0.2)
+			_start_attack("cast", "pact")
+			atk_dur = 0.6
 	return true
 
 func drink(slot: int) -> void:
@@ -541,13 +583,15 @@ func _start_attack(style: String, skill := "") -> void:
 	atk_skill = skill
 	atk_t = 0.0
 	atk_dur = 0.62 / aspd
-	if skill == "cleave" or skill == "reap":
+	if skill == "cleave" or skill == "reap" or skill == "hellclaw":
 		atk_dur = 0.7 / aspd
 	impact_done = false
 	trail_pts.clear()
 	trail_col = Color(1.0, 0.85, 0.5) if skill == "cleave" else Color(0.85, 0.9, 1.0)
 	if is_wraith():
 		trail_col = WraithFx.SPIRIT if skill != "reap" else WraithFx.PALE
+	elif is_demon():
+		trail_col = DemonFx.EMBER
 	var w = equipment.get("weapon")
 	if w != null and w.get("rarity", 0) == 3 and Models.palette(w)["glow"] != null:
 		trail_col = Models.palette(w)["glow"]
@@ -589,7 +633,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 		if game.net.is_host:
 			game.net.hit_player(peer_id, dmg, from, kind, element)
 		return
-	if game.test_immortal:
+	if game.test_immortal or phased:
 		return
 	var to_src := from - global_position
 	to_src.y = 0
@@ -632,6 +676,8 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	if life <= 0.0:
 		life = 0.0
 		dead = true
+		end_phase(false)
+		dismiss_minions()
 		dead_t = 0.0
 		atk_t = -1.0
 		Sfx.play("death")
@@ -650,6 +696,10 @@ func _process(delta: float) -> void:
 		cds[k] = maxf(0.0, cds[k] - delta)
 	buff_t = maxf(0.0, buff_t - delta)
 	_update_spirits(delta)
+	if phased:
+		phase_t -= delta
+		if phase_t <= 0.0:
+			end_phase(true)
 	aura.emitting = buff_t > 0.0
 	hit_t = maxf(0.0, hit_t - delta * 4.0)
 	block_flash = maxf(0.0, block_flash - delta)
@@ -699,6 +749,8 @@ func _process(delta: float) -> void:
 	var speed := 4.8 * (1.0 + frw / 100.0)
 	if running:
 		speed *= 1.6
+	if phased:
+		speed *= 1.4
 	if block_amt > 0.5:
 		speed *= 0.42
 	if atk_t >= 0.0:
@@ -797,6 +849,9 @@ func _process(delta: float) -> void:
 
 ## The Wraith floats a hand's breadth off the ground, bobbing slowly and leaning into motion.
 func _hover() -> void:
+	if is_demon():
+		Demon.animate(rig, anim_time, move_amt)
+		return
 	if not is_wraith() or dead:
 		return
 	rig.position.y = 0.2 + sin(anim_time * 2.1) * 0.05
@@ -1011,7 +1066,93 @@ func _impact() -> void:
 				n.global_position = global_position + Vector3(0, 1.4, 0)
 				spirits.append({"node": n, "phase": TAU * i / 3.0, "state": "orbit", "t": 0.3 * i, "target": null, "from": Vector3.ZERO})
 			spirit_t = 12.0
+		"hellclaw":
+			var yaw2 := rig.global_rotation.y
+			DemonFx.claw(game.world.fx_root, global_position, yaw2, 3.0)
+			var hit := false
+			for e in game.enemies_near(global_position, 3.3):
+				var to2: Vector3 = e.global_position - global_position
+				to2.y = 0
+				if to2.length() < 0.5 or fwd.dot(to2.normalized()) > cos(deg_to_rad(75.0)):
+					var r := roll_damage(1.4)
+					var dealt: float = e.take_damage(r["phys"], r["fire"] + r["phys"] * 0.35, global_position, 0.5, r["crit"])
+					if ls > 0.0:
+						life = minf(max_life, life + dealt * ls / 100.0)
+					DemonFx.ignite(game.world.fx_root, e)
+					hit = true
+			Sfx.play("hit" if hit else "swing", 0.0, 0.75)
+			game.add_shake(0.15 if hit else 0.05)
+		"summon":
+			_summon_minion()
+		"pact":
+			buff_t = 12.0
+			DemonFx.pact(game.world.fx_root, global_position)
+			Sfx.play("cry", 0.0, 0.7)
+			game.add_shake(0.3)
+			for m in minions:
+				if is_instance_valid(m):
+					m.empowered = 12.0
+					DemonFx.pact(game.world.fx_root, m.global_position)
 	stats_changed.emit()
+
+# ---------------------------------------------------------------- demon skills
+## Summon Demon: a demon climbs out of a sigil in front of you. Up to three; a fourth
+## replaces the oldest.
+func _summon_minion() -> void:
+	minions = minions.filter(func(m): return is_instance_valid(m))
+	var slot := 0
+	if minions.size() >= 3:
+		var old = minions.pop_front()
+		slot = old.slot
+		old.dismiss()
+	else:
+		var used := minions.map(func(m): return m.slot)
+		while slot in used:
+			slot += 1
+	var fwd := -rig.global_transform.basis.z
+	var pos: Vector3 = game.world.move(global_position, fwd * 1.8)
+	pos.y = game.world.height_at(pos.x, pos.z)
+	DemonFx.summon_circle(game.world.fx_root, pos)
+	Sfx.play("summon", 0.0, 0.8)
+	game.add_shake(0.2)
+	var m := DemonMinion.new()
+	m.name = "Minion%d" % slot
+	game.add_child(m)
+	m.setup(self, game, slot)
+	m.global_position = pos
+	m.rig.rotation.y = rig.rotation.y
+	minions.append(m)
+
+func dismiss_minions() -> void:
+	for m in minions:
+		if is_instance_valid(m):
+			m.dismiss()
+	minions.clear()
+
+## Underworld Phase: six seconds unseen and untouchable, moving faster; the rift erupts on return.
+func _phase_start() -> void:
+	phased = true
+	phase_t = 6.0
+	game.set_underworld(true)
+	DemonFx.phase_tear(game.world.fx_root, global_position)
+	Sfx.play("portal", 0.0, 0.7)
+	game.add_shake(0.2)
+
+func end_phase(erupt := true) -> void:
+	if not phased:
+		return
+	phased = false
+	phase_t = 0.0
+	if game and game.world:
+		game.set_underworld(false)
+		if erupt and not dead:
+			DemonFx.eruption(game.world.fx_root, global_position, 4.0)
+			Sfx.play("nova", 0.0, 0.8)
+			game.add_shake(0.4)
+			for e in game.enemies_near(global_position, 4.0):
+				_hit_enemy(e, 2.0, 2.0)
+				if not e.dead:
+					e.stun(0.8)
 
 # ---------------------------------------------------------------- wraith skills
 ## Shadow Step: dissolve, slide through the shadows to the aim point (stopping at walls), re-form.

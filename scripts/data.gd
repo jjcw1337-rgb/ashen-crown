@@ -231,6 +231,10 @@ const SKILLS := [
 	{"id": "wail", "cls": "wraith", "name": "Banshee Wail", "key": "E", "lvl": 3, "mana": 14, "cd": 3.0, "desc": "A scream that tears outward 7 metres: hurls enemies back, freezes them in terror and damages them."},
 	{"id": "shade", "cls": "wraith", "name": "Shadow Step", "key": "R", "lvl": 6, "mana": 10, "cd": 4.0, "desc": "Melt into shadow and re-form at the cursor, striking everything around you. The shade you leave behind implodes."},
 	{"id": "host", "cls": "wraith", "name": "Spectral Host", "key": "F", "lvl": 10, "mana": 20, "cd": 18.0, "desc": "Three spirits circle you for 12 seconds, darting out to strike nearby enemies. +40% damage while they last."},
+	{"id": "hellclaw", "cls": "demon", "name": "Hellfire Claw", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "desc": "Three burning rakes tear across the front for 140% weapon damage plus fire, setting enemies alight."},
+	{"id": "summon", "cls": "demon", "name": "Summon Demon", "key": "E", "lvl": 3, "mana": 18, "cd": 1.5, "desc": "A demon claws its way up out of a burning sigil to fight beside you. Up to 3 at once; a fourth replaces the oldest."},
+	{"id": "phase", "cls": "demon", "name": "Underworld Phase", "key": "R", "lvl": 6, "mana": 15, "cd": 12.0, "desc": "Slip into the Underworld for 6 seconds: monsters cannot see or hurt you and you move faster. When you return, the rift erupts around you."},
+	{"id": "pact", "cls": "demon", "name": "Blood Pact", "key": "F", "lvl": 10, "mana": 0, "cd": 20.0, "desc": "Pay 20% of your life: you and your demons deal +40% damage for 12 seconds, and your demons are healed, faster and fiercer."},
 ]
 
 ## Playable classes. Base attributes at level 1.
@@ -239,6 +243,8 @@ const CLASSES := {
 		"desc": "A crusader in steel. Sword and shield, heavy blows, holy fire and a rallying cry."},
 	"wraith": {"name": "Wraith", "str": 15, "dex": 22, "vit": 18, "ene": 28,
 		"desc": "A hooded spirit that never touches the ground. Reaps souls to heal, screams enemies into terror, steps through shadow and calls a host of spirits."},
+	"demon": {"name": "Demon", "str": 24, "dex": 14, "vit": 24, "ene": 18,
+		"desc": "A horned, winged fiend in obsidian plate. Claws with hellfire, summons up to three demons and slips into the Underworld to walk unseen."},
 }
 
 static func skills_for(cls: String) -> Array:

@@ -126,9 +126,25 @@ func _set_flash(v: float) -> void:
 	flash_mat.albedo_color = Color(1, 0.95, 0.9, v * 0.6)
 	if champion:
 		return
+	var rest: Material = soul_mat() if _soul_lit else null
 	for m in meshes:
 		if is_instance_valid(m):
-			(m as MeshInstance3D).material_overlay = flash_mat if v > 0.01 else null
+			(m as MeshInstance3D).material_overlay = flash_mat if v > 0.01 else rest
+
+## Seen from the Underworld (Demon's Phase) every monster burns with a crimson soul-outline.
+static var _soul_mat: Material
+var _soul_lit := false
+
+static func soul_mat() -> Material:
+	if _soul_mat == null:
+		_soul_mat = Mats.glow(Color(1.0, 0.15, 0.25), 1.6, 0.0, 1.0)
+	return _soul_mat
+
+func set_soul_lit(on: bool) -> void:
+	if on == _soul_lit or champion:
+		return
+	_soul_lit = on
+	_set_flash(0.0)
 
 func stun(t: float) -> void:
 	if remote:
@@ -294,7 +310,8 @@ func _process(delta: float) -> void:
 		knock = knock.lerp(Vector3.ZERO, clampf(delta * 8.0, 0.0, 1.0))
 	cooldown = maxf(0.0, cooldown - delta)
 	var vel := Vector3.ZERO
-	var hero_dead: bool = hero.dead
+	# a Demon phased into the Underworld cannot be seen
+	var hero_dead: bool = hero.dead or hero.get("phased") == true
 	if stun_t > 0.0:
 		stun_t -= delta
 	elif atk_t >= 0.0:

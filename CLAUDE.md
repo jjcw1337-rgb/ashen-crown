@@ -27,7 +27,7 @@ godot --path .                                    # play
 godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
-`playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
+`playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
 `det_test`, `mp_test` (co-op: run one copy with `-- host` and one with `-- join`).
 Screenshots need a display: `xvfb-run -a godot --rendering-driver opengl3 --path . -- --shot out.png --zone town`
 (other flags in `game.gd` `_ready`: `--zone town|wild|lair`, `--run 0|1|2`, `--god`, `--fight`).
@@ -43,6 +43,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `world.gd` | Zone builder: terrain, roads, buildings, trees/grass (MultiMesh chunks), spawns, `burn_points` |
 | `hero.gd`, `knight.gd`, `knight_rig.gd`, `anim.gd` | Player: class (`cls`, `set_class`), stats (`recalc`), combat, skills, gear visuals, animation, co-op puppet mode |
 | `wraith.gd`, `wraith_fx.gd` | Wraith class: body mesh + spectral shader on the knight skeleton; skill effects |
+| `demon.gd`, `demon_fx.gd`, `demon_minion.gd` | Demon class: knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader; skill effects and the Underworld screen grade; summoned demons (simple ally AI) |
 | `enemy.gd`, `projectile.gd` | Monsters/AI and missiles (host-authoritative in co-op) |
 | `ground_item.gd`, `inter.gd` | Loot on the ground; interactables (chests, shrines, waypoints, portals, NPCs) |
 | `items.gd` | Item rolls, `empower` (A2/A3 multipliers), enchanting, tooltips |
@@ -56,11 +57,13 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 - **Typed GDScript**: inference from Variant is treated as an error. Write `var x: Type = ...`.
 - **Co-op**: every peer must run the same build; RPC ids depend on each script's RPC set.
 - **Browser build (WebGL)** is a test build only and is fragile:
-  - keep graphics capped (`max_quality()` returns Medium on web);
-  - no grass blades on web (`_scatter_grass` returns early) and no intro video (excluded in the Web preset);
+  - it is exported with **Godot 4.5.1** in CI (the desktop builds use 4.3): Godot 4.3's WebGL renderer
+    blanks the whole 3D view in busy scenes (many objects near lights). Keep code working in both versions:
+    e.g. `get_meta(key, null)` errors in 4.5, so check `has_meta` first;
+  - keep graphics capped (`max_quality()` returns Medium on web); no intro video (excluded in the Web preset);
   - don't mute audio buses (`AudioServer.set_bus_mute`): it throws in Godot 4.3's web audio and aborts startup. Use `Sfx.set_muted`;
-  - known open issue: Cairnfell Moor's 3D view goes blank in the browser with ~15+ monsters in the zone. Desktop builds are fine.
 - **Adding a class**: add it to `Data.CLASSES`, give it four `SKILLS` entries with its `cls`, build its look the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep working), handle its skill ids in `Hero.use_skill` / `_impact`, and add glyphs in `ui.gd` `SkillGlyph`.
+- **Underworld** (Demon's Phase): `game.set_underworld()` blends a screen-space grade (`DemonFx.UNDERWORLD_SHADER`), the `under_amt` global (terrain veins and rune rings in `mats.gd`), environment tweaks, rising souls and crimson monster outlines (`Enemy.set_soul_lit`). Monsters ignore a phased hero (`hero.phased`).
 - `UNLOCK_ALL_ACTS` in `game.gd` is a testing switch (also enables the F8 testing panel: `test_immortal`, `test_onehit` in `game.gd`); turn off for real playthroughs.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file).
