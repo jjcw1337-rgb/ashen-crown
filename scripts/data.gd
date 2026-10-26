@@ -223,11 +223,30 @@ const RARITY_COLOR := [Color(0.92, 0.92, 0.92), Color(0.45, 0.55, 1.0), Color(1.
 const RARITY_NAME := ["Normal", "Magic", "Rare", "Unique"]
 
 const SKILLS := [
-	{"id": "cleave", "name": "Cleave", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "desc": "A wide arcing blow that hits every enemy in front of you for 160% weapon damage."},
-	{"id": "nova", "name": "Holy Nova", "key": "E", "lvl": 3, "mana": 14, "cd": 2.5, "desc": "A ring of holy fire bursts outward, burning enemies within 7 metres."},
-	{"id": "charge", "name": "Charge", "key": "R", "lvl": 6, "mana": 10, "cd": 4.0, "desc": "Dash toward the cursor, smashing through enemies and knocking them back."},
-	{"id": "cry", "name": "Battle Cry", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "desc": "Rally yourself: +40% damage and +50% defense for 12 seconds. Stuns nearby foes."},
+	{"id": "cleave", "cls": "knight", "name": "Cleave", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "desc": "A wide arcing blow that hits every enemy in front of you for 160% weapon damage."},
+	{"id": "nova", "cls": "knight", "name": "Holy Nova", "key": "E", "lvl": 3, "mana": 14, "cd": 2.5, "desc": "A ring of holy fire bursts outward, burning enemies within 7 metres."},
+	{"id": "charge", "cls": "knight", "name": "Charge", "key": "R", "lvl": 6, "mana": 10, "cd": 4.0, "desc": "Dash toward the cursor, smashing through enemies and knocking them back."},
+	{"id": "cry", "cls": "knight", "name": "Battle Cry", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "desc": "Rally yourself: +40% damage and +50% defense for 12 seconds. Stuns nearby foes."},
+	{"id": "reap", "cls": "wraith", "name": "Soul Reap", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "desc": "A spectral scythe sweeps in front of you for 150% weapon damage. Each soul it cuts flies back and heals you."},
+	{"id": "wail", "cls": "wraith", "name": "Banshee Wail", "key": "E", "lvl": 3, "mana": 14, "cd": 3.0, "desc": "A scream that tears outward 7 metres: hurls enemies back, freezes them in terror and damages them."},
+	{"id": "shade", "cls": "wraith", "name": "Shadow Step", "key": "R", "lvl": 6, "mana": 10, "cd": 4.0, "desc": "Melt into shadow and re-form at the cursor, striking everything around you. The shade you leave behind implodes."},
+	{"id": "host", "cls": "wraith", "name": "Spectral Host", "key": "F", "lvl": 10, "mana": 20, "cd": 18.0, "desc": "Three spirits circle you for 12 seconds, darting out to strike nearby enemies. +40% damage while they last."},
 ]
+
+## Playable classes. Base attributes at level 1.
+const CLASSES := {
+	"knight": {"name": "Knight", "str": 20, "dex": 15, "vit": 25, "ene": 10,
+		"desc": "A crusader in steel. Sword and shield, heavy blows, holy fire and a rallying cry."},
+	"wraith": {"name": "Wraith", "str": 15, "dex": 22, "vit": 18, "ene": 28,
+		"desc": "A hooded spirit that never touches the ground. Reaps souls to heal, screams enemies into terror, steps through shadow and calls a host of spirits."},
+}
+
+static func skills_for(cls: String) -> Array:
+	var out := []
+	for s in SKILLS:
+		if s["cls"] == cls:
+			out.append(s)
+	return out
 
 static func xp_for_level(lvl: int) -> int:
 	return int(round(120.0 * pow(float(lvl), 1.75) + 60.0 * lvl))

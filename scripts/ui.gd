@@ -26,6 +26,8 @@ var level_medal: HudBar.Medallion
 var action_bar: Control
 var bar_style := "A"
 var skill_slots: Array = []
+var skill_hb: HBoxContainer
+var class_panel: Control
 var belt_slots: Array = []
 var target_box: PanelContainer
 var target_name: Label
@@ -479,8 +481,9 @@ func _build_hud() -> void:
 	hb.add_theme_constant_override("separation", 6)
 	hb.alignment = BoxContainer.ALIGNMENT_CENTER
 	vb.add_child(hb)
+	skill_hb = hb
 	for i in 4:
-		var sk: Dictionary = Data.SKILLS[i]
+		var sk: Dictionary = Data.skills_for(hero.cls if hero else "knight")[i]
 		var s := _skill_slot(sk)
 		hb.add_child(s)
 		skill_slots.append(s)
@@ -591,6 +594,20 @@ func _keycap(k: String) -> PanelContainer:
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	cap.add_child(l)
 	return cap
+
+## Swap the four skill buttons for the current class's skills.
+func refresh_skill_slots() -> void:
+	if skill_hb == null or skill_slots.size() < 4:
+		return
+	var sks: Array = hero.skill_list()
+	for i in 4:
+		var old: Panel = skill_slots[i]
+		var s := _skill_slot(sks[i])
+		skill_hb.add_child(s)
+		skill_hb.move_child(s, old.get_index())
+		old.queue_free()
+		skill_slots[i] = s
+	tooltip.visible = false
 
 func _skill_slot(sk: Dictionary) -> Panel:
 	var p := Panel.new()
@@ -1251,7 +1268,7 @@ func _build_title() -> void:
 	var ng := Button.new()
 	ng.text = "New Game"
 	ng.custom_minimum_size = Vector2(0, 46)
-	ng.pressed.connect(func(): game.start_game(false))
+	ng.pressed.connect(func(): class_panel.visible = true)
 	vb.add_child(ng)
 	var coop := HBoxContainer.new()
 	coop.add_theme_constant_override("separation", 12)
@@ -1273,6 +1290,7 @@ func _build_title() -> void:
 	q.custom_minimum_size = Vector2(0, 46)
 	q.pressed.connect(func(): get_tree().quit())
 	vb.add_child(q)
+	_build_class_picker()
 	if OS.has_feature("web"):
 		# browsers can't use the LAN co-op networking, and there's nothing to quit to
 		coop.visible = false
@@ -1482,8 +1500,87 @@ func _enchant_burst(p: Control) -> void:
 		tw.tween_property(sp, "modulate:a", 0.0, 0.5).set_delay(0.15)
 		tw.chain().tween_callback(sp.queue_free)
 
+## New Game: choose Knight or Wraith.
+func _build_class_picker() -> void:
+	class_panel = Control.new()
+	class_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	class_panel.visible = false
+	title_panel.add_child(class_panel)
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0.01, 0.01, 0.015, 0.95)
+	class_panel.add_child(dim)
+	var vb := VBoxContainer.new()
+	vb.anchor_left = 0.5
+	vb.anchor_right = 0.5
+	vb.anchor_top = 0.5
+	vb.anchor_bottom = 0.5
+	vb.offset_left = -470
+	vb.offset_right = 470
+	vb.offset_top = -230
+	vb.offset_bottom = 230
+	vb.add_theme_constant_override("separation", 18)
+	class_panel.add_child(vb)
+	var t := _label("Choose your path", 40, GOLD, true)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(t)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 26)
+	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vb.add_child(row)
+	var accents := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0)}
+	for c in ["knight", "wraith"]:
+		var d: Dictionary = Data.CLASSES[c]
+		var card := PanelContainer.new()
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.add_theme_stylebox_override("panel", _box(Color(0.06, 0.05, 0.05, 0.96), accents[c], 2, 8, 10))
+		row.add_child(card)
+		var cv := VBoxContainer.new()
+		cv.add_theme_constant_override("separation", 10)
+		card.add_child(cv)
+		var nm := _label(d["name"], 30, accents[c], true)
+		nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cv.add_child(nm)
+		var gl := HBoxContainer.new()
+		gl.alignment = BoxContainer.ALIGNMENT_CENTER
+		gl.add_theme_constant_override("separation", 6)
+		cv.add_child(gl)
+		for sk in Data.skills_for(c):
+			var g := SkillGlyph.new()
+			g.id = sk["id"]
+			g.custom_minimum_size = Vector2(48, 48)
+			gl.add_child(g)
+		var ds := _label(d["desc"], 15, Color(0.84, 0.8, 0.74))
+		ds.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ds.custom_minimum_size = Vector2(380, 0)
+		cv.add_child(ds)
+		var names := []
+		for sk in Data.skills_for(c):
+			names.append(sk["name"])
+		var sl := _label("  ·  ".join(names), 13, Color(0.6, 0.7, 0.85))
+		sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		cv.add_child(sl)
+		var at := _label("Str %d   Dex %d   Vit %d   Energy %d" % [d["str"], d["dex"], d["vit"], d["ene"]], 13, Color(0.7, 0.66, 0.58))
+		cv.add_child(at)
+		var go := Button.new()
+		go.text = "Play as " + d["name"]
+		go.custom_minimum_size = Vector2(0, 48)
+		var cls_id: String = c
+		go.pressed.connect(func():
+			class_panel.visible = false
+			game.start_game(false, cls_id))
+		cv.add_child(go)
+	var back := Button.new()
+	back.text = "Back"
+	back.custom_minimum_size = Vector2(160, 40)
+	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	back.pressed.connect(func(): class_panel.visible = false)
+	vb.add_child(back)
+
 func show_title(has_save: bool) -> void:
 	title_panel.visible = true
+	if class_panel:
+		class_panel.visible = false
 	(title_panel.find_child("continue", true, false) as Button).disabled = not has_save
 	_set_hud(false)
 
@@ -1539,7 +1636,7 @@ func _build_victory() -> void:
 	vb.add_child(s)
 	var a2 := Button.new()
 	a2.name = "a2btn"
-	a2.text = "Begin A2: start over at the camp with your knight"
+	a2.text = "Begin A2: start over at the camp with your hero"
 	a2.custom_minimum_size = Vector2(0, 50)
 	a2.pressed.connect(func(): game.start_a2())
 	vb.add_child(a2)
@@ -1557,7 +1654,7 @@ func _build_victory() -> void:
 func show_victory(diff: int) -> void:
 	(victory_panel.find_child("vtitle", true, false) as Label).text = ["Act I", "A2", "A3"][clampi(diff, 0, 2)] + " Complete"
 	(victory_panel.find_child("vsub", true, false) as Label).text = "The Ashen King crumbles to cinders. His crown rolls across the throne room floor." if diff >= 2 else "The Hollow Matron is destroyed and the crypt falls silent."
-	(victory_panel.find_child("a2btn", true, false) as Button).text = ["Begin A2", "Begin A3", "Play A3 again"][clampi(diff, 0, 2)] + ": start over at the camp with your knight"
+	(victory_panel.find_child("a2btn", true, false) as Button).text = ["Begin A2", "Begin A3", "Play A3 again"][clampi(diff, 0, 2)] + ": start over at the camp with your hero"
 	(victory_panel.find_child("a2note", true, false) as Label).text = "In A3 the Ashen King replaces the Matron. Monsters are 400 times stronger than Act I, loot 25 times, and the King always drops his sword." if diff >= 1 else "Monsters have 20 times the life, damage and armor. Every item they drop is 5 times stronger."
 	victory_panel.visible = true
 
@@ -1692,8 +1789,9 @@ func _process(delta: float) -> void:
 		(mana_orb.material as ShaderMaterial).set_shader_parameter("fill", hero.mana / hero.max_mana)
 		life_lbl.text = "Life  %d / %d" % [int(hero.life), int(hero.max_life)]
 		mana_lbl.text = "Mana  %d / %d" % [int(hero.mana), int(hero.max_mana)]
+		var sks: Array = hero.skill_list()
 		for i in 4:
-			var sk: Dictionary = Data.SKILLS[i]
+			var sk: Dictionary = sks[i]
 			var s: Panel = skill_slots[i]
 			var cd: ColorRect = s.get_node("cd")
 			var locked: bool = hero.level < sk["lvl"]
@@ -1735,6 +1833,7 @@ class SkillGlyph extends Control:
 	func _draw() -> void:
 		var c := size * 0.5
 		var col := Color(1.0, 0.8, 0.4) if not dim else Color(0.4, 0.35, 0.3)
+		var wcol := Color(0.45, 0.88, 1.0) if not dim else Color(0.3, 0.35, 0.4)
 		match id:
 			"cleave":
 				draw_arc(c + Vector2(0, 8), 16, PI * 1.1, PI * 1.9, 16, col, 4.0, true)
@@ -1750,6 +1849,36 @@ class SkillGlyph extends Control:
 			"cry":
 				draw_colored_polygon(PackedVector2Array([c + Vector2(-14, -6), c + Vector2(-4, -6), c + Vector2(8, -14), c + Vector2(8, 14), c + Vector2(-4, 6), c + Vector2(-14, 6)]), col)
 				draw_arc(c + Vector2(8, 0), 10, -0.8, 0.8, 8, col, 2.0, true)
+			"reap":
+				# a scythe: long haft and a sweeping crescent blade
+				draw_line(c + Vector2(-12, 16), c + Vector2(8, -14), wcol, 3.0, true)
+				draw_arc(c + Vector2(-2, -10), 15, PI * 1.05, PI * 1.95, 18, wcol, 4.0, true)
+				draw_arc(c + Vector2(-2, -10), 11, PI * 1.15, PI * 1.85, 14, wcol.lightened(0.4), 1.5, true)
+			"wail":
+				# a screaming hooded face with rings of sound
+				draw_arc(c + Vector2(0, -2), 9, PI, TAU, 14, wcol, 3.0, true)
+				draw_circle(c + Vector2(-4, -3), 1.8, wcol)
+				draw_circle(c + Vector2(4, -3), 1.8, wcol)
+				draw_arc(c + Vector2(0, 4), 3.5, 0, TAU, 12, wcol, 2.0, true)
+				for r in [14, 19]:
+					draw_arc(c, r, -0.6, 0.6, 8, wcol, 1.5, true)
+					draw_arc(c, r, PI - 0.6, PI + 0.6, 8, wcol, 1.5, true)
+			"shade":
+				# a fading silhouette streaking towards a bright one
+				for k in 3:
+					var o := Vector2(-12 + k * 9, 0)
+					var a := 0.25 + k * 0.35
+					draw_circle(c + o + Vector2(0, -8), 4.0, Color(wcol.r, wcol.g, wcol.b, a))
+					draw_colored_polygon(PackedVector2Array([c + o + Vector2(-5, -3), c + o + Vector2(5, -3), c + o + Vector2(7, 14), c + o + Vector2(-7, 14)]), Color(wcol.r, wcol.g, wcol.b, a))
+			"host":
+				# three spirits circling
+				draw_arc(c, 13, 0, TAU, 32, Color(wcol.r, wcol.g, wcol.b, 0.4), 1.5, true)
+				var t0 := Time.get_ticks_msec() / 900.0
+				for k in 3:
+					var ang := t0 + TAU * k / 3.0
+					var p := c + Vector2(cos(ang), sin(ang)) * 13
+					draw_circle(p, 4.5, wcol)
+					draw_circle(p, 2.0, Color(1, 1, 1, 0.9))
 	func _process(_d: float) -> void:
 		queue_redraw()
 

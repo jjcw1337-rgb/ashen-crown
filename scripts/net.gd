@@ -125,7 +125,7 @@ func local_ips() -> Array:
 	return out
 
 func _on_connected() -> void:
-	rpc_id(1, "sv_hello", my_name, game.hero.equipment, game.hero.level)
+	rpc_id(1, "sv_hello", my_name, game.hero.net_gear(), game.hero.level)
 
 func _on_connect_failed() -> void:
 	shutdown()
@@ -254,7 +254,7 @@ func pl_state(p: PackedFloat32Array) -> void:
 
 func send_gear() -> void:
 	if active:
-		rpc("pl_gear", game.hero.equipment)
+		rpc("pl_gear", game.hero.net_gear())
 
 @rpc("any_peer", "call_remote", "reliable")
 func pl_gear(gear: Dictionary) -> void:
@@ -268,9 +268,9 @@ func sv_hello(nm: String, gear: Dictionary, _lvl: int) -> void:
 	if not is_host:
 		return
 	var pid := multiplayer.get_remote_sender_id()
-	var roster := [[1, my_name, game.hero.equipment]]
+	var roster := [[1, my_name, game.hero.net_gear()]]
 	for op in players:
-		roster.append([op, players[op]["name"], players[op]["hero"].equipment])
+		roster.append([op, players[op]["name"], players[op]["hero"].net_gear()])
 		rpc_id(op, "cl_player_join", pid, nm, gear)
 	_add_player(pid, nm, gear)
 	rpc_id(pid, "cl_welcome", game.cur_act, game.cur_zone, game.hero.global_position, game.tp_link, game.boss_killed, roster, game.difficulty)

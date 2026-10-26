@@ -789,13 +789,14 @@ func enemies_near(p: Vector3, r: float) -> Array:
 	return out
 
 # ---------------------------------------------------------------- start / save
-func start_game(cont: bool) -> void:
+func start_game(cont: bool, cls := "knight") -> void:
 	Sfx.play("click")
 	ui.hide_title()
 	playing = true
 	if cont and load_game():
 		await load_zone(cur_act, "town", "start")
 	else:
+		hero.set_class(cls)
 		hero.new_character()
 		difficulty = 0
 		max_run = 0
@@ -806,7 +807,7 @@ func start_game(cont: bool) -> void:
 		if UNLOCK_ALL_ACTS:
 			max_run = 2
 		await load_zone(0, "town", "start")
-		ui.open_dialog(Data.VENDORS[0]["elder"], "Welcome to Greywatch, crusader. Since the Hollow Matron rose in the old crypt, the dead walk Cairnfell Moor and the Fallen raid our roads. Trade with our folk, then head out through the north gate. End her, and the moor may yet heal.", [["I will", func(): pass]])
+		ui.open_dialog(Data.VENDORS[0]["elder"], "Welcome to Greywatch, %s. Since the Hollow Matron rose in the old crypt, the dead walk Cairnfell Moor and the Fallen raid our roads. Trade with our folk, then head out through the north gate. End her, and the moor may yet heal." % ("restless one" if hero.is_wraith() else "crusader"), [["I will", func(): pass]])
 	ui.refresh()
 
 ## Co-op from the title screen. Your saved knight is used if you have one.
@@ -1329,13 +1330,13 @@ func _unhandled_input(ev: InputEvent) -> void:
 			KEY_1, KEY_2, KEY_3, KEY_4:
 				hero.drink(ev.keycode - KEY_1)
 			KEY_Q:
-				cast_skill("cleave")
+				cast_slot(0)
 			KEY_E:
-				cast_skill("nova")
+				cast_slot(1)
 			KEY_R:
-				cast_skill("charge")
+				cast_slot(2)
 			KEY_F:
-				cast_skill("cry")
+				cast_slot(3)
 			KEY_F3:
 				ui.show_fps = not ui.show_fps
 			KEY_F2:
@@ -1358,6 +1359,9 @@ func _input(ev: InputEvent) -> void:
 		return
 	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed:
 		lmb_held = false
+
+func cast_slot(i: int) -> void:
+	cast_skill(hero.skill_list()[i]["id"])
 
 func cast_skill(id: String) -> void:
 	if not playing or hero.dead:

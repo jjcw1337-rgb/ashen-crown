@@ -64,7 +64,10 @@ var blocking := false
 var block_amt := 0.0
 var block_flash := 0.0
 var hit_t := 0.0
-var cds := {"cleave": 0.0, "nova": 0.0, "charge": 0.0, "cry": 0.0}
+var cls := "knight"          # "knight" or "wraith" (Data.CLASSES)
+var cds := {}
+var spirits: Array = []      # Wraith's Spectral Host: [{node, phase, state, t, target, from}]
+var spirit_t := 0.0
 var buff_t := 0.0
 var heal_pool := 0.0
 var mana_pool := 0.0
@@ -111,15 +114,77 @@ var _net_last_t := 0.0
 func _init() -> void:
 	inventory.resize(40)
 	stash.resize(60)
+	for s in Data.SKILLS:
+		cds[s["id"]] = 0.0
+
+func is_wraith() -> bool:
+	return cls == "wraith"
+
+func skill_list() -> Array:
+	return Data.skills_for(cls)
+
+func _build_rig() -> void:
+	rig = Wraith.build(wraith_gear()) if is_wraith() else Knight.build(Knight.default_gear())
+	rig.set_meta("pers", "hero")
+	add_child(rig)
+	J = rig.get_meta("j")
+	if breath != null and is_instance_valid(breath):
+		breath.queue_free()
+	breath = game.weather.make_breath()
+	(J["head"] as Node3D).add_child(breath)
+	breath.position = Vector3(0, 0.02, -0.16)
+
+## Switch the character between Knight and Wraith: new body, skills and spirit colours.
+func set_class(c: String) -> void:
+	if not Data.CLASSES.has(c):
+		c = "knight"
+	if c == cls and rig != null:
+		return
+	cls = c
+	_clear_spirits()
+	if rig != null:
+		rig.queue_free()
+		rig = null
+	weapon_node = null
+	shield_node = null
+	gear_nodes.clear()
+	_build_rig()
+	_tint_aura()
+	refresh_gear()
+	if not puppet and game and game.ui:
+		game.ui.refresh_skill_slots()
+
+func _tint_aura() -> void:
+	if aura == null:
+		return
+	var g2 := Gradient.new()
+	if is_wraith():
+		g2.set_color(0, Color(0.45, 0.9, 1.0, 0.9))
+		g2.set_color(1, Color(0.55, 0.35, 1.0, 0.0))
+	else:
+		g2.set_color(0, Color(1.0, 0.8, 0.3, 0.9))
+		g2.set_color(1, Color(1.0, 0.5, 0.1, 0.0))
+	var gt := GradientTexture1D.new()
+	gt.gradient = g2
+	(aura.process_material as ParticleProcessMaterial).color_ramp = gt
+
+func wraith_gear() -> Dictionary:
+	var g := Wraith.default_gear()
+	var a = equipment.get("armor") if equipment is Dictionary else null
+	if a != null:
+		var p := Models.palette(a)
+		if int(a.get("rarity", 0)) == 3 and p["glow"] != null:
+			g["spirit"] = p["glow"]
+			g["trim"] = (p["glow"] as Color).lightened(0.2)
+		elif int(a.get("ench", 0)) >= 5:
+			g["spirit"] = Color(0.55, 0.45, 1.0)
+	return g
 
 func setup(g: Node) -> void:
 	game = g
 	if not puppet:
 		add_to_group("hero")
-	rig = Knight.build(Knight.default_gear())
-	rig.set_meta("pers", "hero")
-	add_child(rig)
-	J = rig.get_meta("j")
+	_build_rig()
 	light = OmniLight3D.new()
 	light.light_color = Color(1.0, 0.85, 0.65)
 	light.light_energy = 0.9
@@ -140,9 +205,6 @@ func setup(g: Node) -> void:
 	trail.material_override = tm
 	trail.top_level = true
 	add_child(trail)
-	breath = game.weather.make_breath()
-	(J["head"] as Node3D).add_child(breath)
-	breath.position = Vector3(0, 0.02, -0.16)
 	aura = GPUParticles3D.new()
 	aura.amount = 30
 	aura.lifetime = 1.2
@@ -170,13 +232,30 @@ func setup(g: Node) -> void:
 	q.material = Mats.particle_mat(true, Color(2, 2, 2))
 	aura.draw_pass_1 = q
 	add_child(aura)
+	_tint_aura()
 
 func new_character() -> void:
+	var c: Dictionary = Data.CLASSES[cls]
+	level = 1
+	xp = 0
+	str_ = c["str"]
+	dex = c["dex"]
+	vit = c["vit"]
+	ene = c["ene"]
+	stat_points = 0
+	gold = 120
+	inventory = []
+	inventory.resize(40)
+	for k in cds.keys():
+		cds[k] = 0.0
+	buff_t = 0.0
+	_clear_spirits()
 	equipment = {}
 	for s in Items.EQUIP_SLOTS:
 		equipment[s] = null
 	equipment["weapon"] = Items.make("short_sword")
-	equipment["shield"] = Items.make("buckler")
+	if not is_wraith():
+		equipment["shield"] = Items.make("buckler")
 	equipment["armor"] = Items.make("quilted")
 	belt = [Items.potion("hp_potion"), Items.potion("hp_potion"), Items.potion("mp_potion"), null]
 	belt[0]["count"] = 4
@@ -274,13 +353,16 @@ func refresh_gear() -> void:
 		shield_rest = shield_node.transform
 		gear_nodes.append(shield_node)
 	var h = equipment.get("helm")
-	if h != null:
+	if h != null and not is_wraith():
 		var hm := Models.item_model(h)
 		(J["head"] as Node3D).add_child(hm)
 		hm.position = Vector3(0, 0.092, 0.006)
 		hm.scale = Vector3(1.04, 1.04, 1.04)
 		gear_nodes.append(hm)
-	Knight.rebuild_body(rig, knight_gear())
+	if is_wraith():
+		Wraith.rebuild_body(rig, wraith_gear())
+	else:
+		Knight.rebuild_body(rig, knight_gear())
 	var am = equipment.get("amulet")
 	if am != null:
 		var an := Models.amulet(Models.palette(am))
@@ -291,6 +373,12 @@ func refresh_gear() -> void:
 		gear_nodes.append(an)
 	if not puppet and game and game.net and game.net.active:
 		game.net.send_gear()
+
+## Equipment plus the class, for co-op partners.
+func net_gear() -> Dictionary:
+	var g: Dictionary = equipment.duplicate()
+	g["_cls"] = cls
+	return g
 
 ## Describes the equipped armour so the skinned body can be rebuilt to match.
 func knight_gear() -> Dictionary:
@@ -379,7 +467,7 @@ func use_skill(id: String, aim: Vector3) -> bool:
 	if atk_t >= 0.0 and atk_skill != "":
 		return false
 	var sk: Dictionary = {}
-	for s in Data.SKILLS:
+	for s in skill_list():
 		if s["id"] == id:
 			sk = s
 	if sk.is_empty() or level < sk["lvl"]:
@@ -417,6 +505,16 @@ func use_skill(id: String, aim: Vector3) -> bool:
 		"cry":
 			_start_attack("cast", "cry")
 			atk_dur = 0.6
+		"reap":
+			_start_attack("side", "reap")
+		"wail":
+			_start_attack("cast", "wail")
+			atk_dur = 0.5
+		"shade":
+			_shadow_step(aim)
+		"host":
+			_start_attack("cast", "host")
+			atk_dur = 0.65
 	return true
 
 func drink(slot: int) -> void:
@@ -443,11 +541,13 @@ func _start_attack(style: String, skill := "") -> void:
 	atk_skill = skill
 	atk_t = 0.0
 	atk_dur = 0.62 / aspd
-	if skill == "cleave":
+	if skill == "cleave" or skill == "reap":
 		atk_dur = 0.7 / aspd
 	impact_done = false
 	trail_pts.clear()
 	trail_col = Color(1.0, 0.85, 0.5) if skill == "cleave" else Color(0.85, 0.9, 1.0)
+	if is_wraith():
+		trail_col = WraithFx.SPIRIT if skill != "reap" else WraithFx.PALE
 	var w = equipment.get("weapon")
 	if w != null and w.get("rarity", 0) == 3 and Models.palette(w)["glow"] != null:
 		trail_col = Models.palette(w)["glow"]
@@ -549,6 +649,7 @@ func _process(delta: float) -> void:
 	for k in cds.keys():
 		cds[k] = maxf(0.0, cds[k] - delta)
 	buff_t = maxf(0.0, buff_t - delta)
+	_update_spirits(delta)
 	aura.emitting = buff_t > 0.0
 	hit_t = maxf(0.0, hit_t - delta * 4.0)
 	block_flash = maxf(0.0, block_flash - delta)
@@ -689,14 +790,22 @@ func _process(delta: float) -> void:
 		st["move"] = 1.0
 	Anim.pose(rig, st)
 	last_pose = st
+	_hover()
 	_breathe(delta)
 	_apply_shield_pose()
 	_update_trail(atk_t >= 0.0 or charge_t >= 0.0)
 
+## The Wraith floats a hand's breadth off the ground, bobbing slowly and leaning into motion.
+func _hover() -> void:
+	if not is_wraith() or dead:
+		return
+	rig.position.y = 0.2 + sin(anim_time * 2.1) * 0.05
+	rig.rotation.x = -move_amt * 0.12
+
 # ---------------------------------------------------------------- winter
 ## A footprint each time a foot comes down in the snow.
 func _snow_step() -> void:
-	if not game.weather.snowing:
+	if not game.weather.snowing or is_wraith():
 		return
 	var st := int(floor(phase / PI))
 	if st != _last_step:
@@ -705,7 +814,7 @@ func _snow_step() -> void:
 
 ## Frosty breath every couple of seconds (faster while sprinting).
 func _breathe(delta: float) -> void:
-	if not game.weather.snowing or dead:
+	if not game.weather.snowing or dead or is_wraith():
 		return
 	_breath_t -= delta
 	if _breath_t <= 0.0:
@@ -715,6 +824,10 @@ func _breathe(delta: float) -> void:
 # ---------------------------------------------------------------- co-op puppet
 func apply_net_gear(gear: Dictionary) -> void:
 	equipment = gear.duplicate(true)
+	var c: String = str(equipment.get("_cls", "knight"))
+	equipment.erase("_cls")
+	if c != cls:
+		set_class(c)
 	for s in Items.EQUIP_SLOTS:
 		if not equipment.has(s):
 			equipment[s] = null
@@ -774,6 +887,7 @@ func _puppet_process(delta: float) -> void:
 	block_amt = st.get("block", 0.0)
 	atk_t = 0.0 if st.get("atk", -1.0) >= 0.0 else -1.0
 	Anim.pose(rig, st)
+	_hover()
 	_apply_shield_pose()
 	_update_trail(atk_t >= 0.0)
 
@@ -860,7 +974,161 @@ func _impact() -> void:
 			game.add_shake(0.3)
 			for e in game.enemies_near(global_position, 6.0):
 				e.stun(2.0)
+		"reap":
+			var yaw := rig.global_rotation.y
+			WraithFx.reap(game.world.fx_root, global_position, yaw, 3.3)
+			var any := false
+			for e in game.enemies_near(global_position, 3.6):
+				var to: Vector3 = e.global_position - global_position
+				to.y = 0
+				if to.length() < 0.5 or fwd.dot(to.normalized()) > cos(deg_to_rad(80.0)):
+					_hit_enemy(e, 1.5, 0.6)
+					any = true
+					WraithFx.soul_wisp(game.world.fx_root, e.global_position + Vector3(0, 1.0 * e.height, 0), self, func():
+						if not dead:
+							life = minf(max_life, life + max_life * 0.025)
+							stats_changed.emit())
+			Sfx.play("hit" if any else "swing", -1.0, 0.7)
+			game.add_shake(0.12)
+		"wail":
+			var nd := 16.0 + level * 4.5 + (dmg_min + dmg_max) * 0.35
+			WraithFx.wail(game.world.fx_root, global_position, 7.0)
+			Sfx.play("nova", 0.0, 0.62)
+			Sfx.play("cry", -4.0, 1.5)
+			game.add_shake(0.4)
+			for e in game.enemies_near(global_position, 7.0):
+				e.take_damage(nd * (1.4 if buff_t > 0.0 else 1.0), 0.0, global_position, 2.2, false)
+				if not e.dead:
+					e.stun(1.6)
+		"host":
+			buff_t = 12.0
+			WraithFx.summon(game.world.fx_root, global_position)
+			Sfx.play("summon", 0.0, 1.3)
+			game.add_shake(0.25)
+			_clear_spirits()
+			for i in 3:
+				var n := WraithFx.spirit_node(game.world.fx_root)
+				n.global_position = global_position + Vector3(0, 1.4, 0)
+				spirits.append({"node": n, "phase": TAU * i / 3.0, "state": "orbit", "t": 0.3 * i, "target": null, "from": Vector3.ZERO})
+			spirit_t = 12.0
 	stats_changed.emit()
+
+# ---------------------------------------------------------------- wraith skills
+## Shadow Step: dissolve, slide through the shadows to the aim point (stopping at walls), re-form.
+func _shadow_step(aim: Vector3) -> void:
+	var start := global_position
+	var d := aim - start
+	d.y = 0
+	var dist := minf(d.length(), 9.0)
+	if dist < 0.5:
+		dist = 4.0
+		d = -rig.global_transform.basis.z
+	var dir := d.normalized()
+	var p := start
+	var step := 0.4
+	var travelled := 0.0
+	while travelled < dist:
+		var np: Vector3 = game.world.move(p, dir * minf(step, dist - travelled))
+		var moved := np - p
+		moved.y = 0
+		if moved.length() < step * 0.3:
+			break
+		p = np
+		travelled += moved.length()
+	p.y = game.world.height_at(p.x, p.z)
+	var root: Node3D = game.world.fx_root
+	WraithFx.shade_depart(root, start)
+	Sfx.play("portal", -2.0, 1.4)
+	global_position = p
+	path = PackedVector3Array()
+	moving = false
+	target = null
+	_face(dir)
+	WraithFx.shade_arrive(root, p)
+	game.add_shake(0.2)
+	for e in game.enemies_near(p, 2.4):
+		_hit_enemy(e, 1.2, 1.0)
+		if not e.dead:
+			e.stun(0.7)
+	# the shade left behind collapses a moment later
+	get_tree().create_timer(0.45, false).timeout.connect(func():
+		if not is_instance_valid(self) or game.world == null:
+			return
+		WraithFx.shade_implode(game.world.fx_root, start)
+		Sfx.play("hit", -3.0, 0.6)
+		for e in game.enemies_near(start, 2.6):
+			_hit_enemy(e, 0.9, 0.8))
+	# a quick cast pose so the re-forming reads on screen
+	_start_attack("cast", "")
+	atk_dur = 0.35
+	impact_done = true
+
+func _clear_spirits() -> void:
+	for s in spirits:
+		if is_instance_valid(s["node"]):
+			var n: Node3D = s["node"]
+			if game and game.world:
+				WraithFx.spirit_hit(game.world.fx_root, n.global_position)
+			n.queue_free()
+	spirits.clear()
+	spirit_t = 0.0
+
+## Spectral Host: the spirits orbit, then dart at the nearest foe and fly back.
+func _update_spirits(delta: float) -> void:
+	if spirits.is_empty():
+		return
+	spirit_t -= delta
+	if spirit_t <= 0.0 or dead:
+		_clear_spirits()
+		return
+	var centre := global_position + Vector3(0, 1.35, 0)
+	for s in spirits:
+		var n: Node3D = s["node"]
+		if not is_instance_valid(n):
+			continue
+		s["phase"] += delta * 2.6
+		var orbit: Vector3 = centre + Vector3(cos(s["phase"]) * 1.15, sin(s["phase"] * 2.0) * 0.18, sin(s["phase"]) * 1.15)
+		match s["state"]:
+			"orbit":
+				n.global_position = n.global_position.lerp(orbit, clampf(delta * 10.0, 0.0, 1.0))
+				s["t"] -= delta
+				if s["t"] <= 0.0:
+					var best = null
+					var bd := 7.5
+					for e in game.enemies_near(global_position, 7.5):
+						var dd: float = e.global_position.distance_to(global_position)
+						if dd < bd:
+							bd = dd
+							best = e
+					if best != null:
+						s["state"] = "dart"
+						s["target"] = best
+						s["from"] = n.global_position
+						s["t"] = 0.0
+					else:
+						s["t"] = 0.3
+			"dart":
+				var tg = s["target"]
+				if not is_instance_valid(tg) or tg.dead:
+					s["state"] = "back"
+					s["t"] = 0.0
+					continue
+				s["t"] += delta / 0.28
+				var to: Vector3 = tg.global_position + Vector3(0, 1.0 * tg.height, 0)
+				var mid: Vector3 = (s["from"] as Vector3).lerp(to, 0.5) + Vector3(0, 1.2, 0)
+				var k: float = clampf(s["t"], 0.0, 1.0)
+				n.global_position = (s["from"] as Vector3).lerp(mid, k).lerp(mid.lerp(to, k), k)
+				if k >= 1.0:
+					_hit_enemy(tg, 0.55, 0.3)
+					WraithFx.spirit_hit(game.world.fx_root, to)
+					Sfx.play("hit", -6.0, 1.6)
+					s["state"] = "back"
+					s["t"] = 0.0
+			"back":
+				n.global_position = n.global_position.lerp(orbit, clampf(delta * 7.0, 0.0, 1.0))
+				if n.global_position.distance_to(orbit) < 0.25:
+					s["state"] = "orbit"
+					s["t"] = randf_range(0.7, 1.1)
 
 func _update_charge(delta: float) -> void:
 	charge_t += delta
@@ -990,10 +1258,11 @@ func unequip(slot: String) -> void:
 	game.ui.message("Inventory is full", Color(1, 0.4, 0.3))
 
 func to_save() -> Dictionary:
-	return {"level": level, "xp": xp, "str": str_, "dex": dex, "vit": vit, "ene": ene, "points": stat_points, "gold": gold,
+	return {"cls": cls, "level": level, "xp": xp, "str": str_, "dex": dex, "vit": vit, "ene": ene, "points": stat_points, "gold": gold,
 		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash}
 
 func from_save(d: Dictionary) -> void:
+	set_class(str(d.get("cls", "knight")))
 	level = int(d.get("level", 1))
 	xp = int(d.get("xp", 0))
 	str_ = int(d.get("str", 20))

@@ -22,6 +22,19 @@ Windows SmartScreen may warn that the app is unrecognised (it isn't code-signed)
 
 **From source:** install [Godot 4.3](https://godotengine.org/download/archive/4.3-stable/), open `project.godot`, press F5.
 
+## Classes
+
+**New Game** lets you choose:
+
+- **Knight**: sword and shield. *Cleave* (Q), *Holy Nova* (E), *Charge* (R), *Battle Cry* (F).
+- **Wraith**: a hooded spirit that floats above the ground, trailing mist.
+  - *Soul Reap* (Q): a spectral scythe arc. Every soul it cuts flies back and heals you.
+  - *Banshee Wail* (E): a scream that hurls enemies back and freezes them in terror.
+  - *Shadow Step* (R): melt into shadow and re-form at the cursor. The shade left behind implodes.
+  - *Spectral Host* (F): three spirits circle you for 12 seconds, darting out to strike enemies.
+
+Your class is saved with your character, and co-op partners see it.
+
 ## Co-op (two to four players on the same home network)
 
 1. On the first computer, pick **Host Co-op Game** on the title screen.

@@ -37,6 +37,8 @@ func _run() -> void:
 func _host() -> void:
 	await g.start_host()
 	await idle()
+	if OS.get_cmdline_user_args().has("wraith"):
+		g.hero.set_class("wraith")   # also re-sends gear + class to the partner
 	g.ui.close_all()
 	print("[H1] hosting=", g.net.active and g.net.is_host, " zone=", g.cur_zone)
 	var t0 := Time.get_ticks_msec()
@@ -107,7 +109,7 @@ func _join() -> void:
 	g.ui.close_all()
 	var host_p = g.net.puppets()[0] if g.net.puppets().size() > 0 else null
 	await secs(1.0)
-	print("[C1] joined=", g.net.is_client(), " zone=", g.cur_zone, " host knight visible=", host_p != null and host_p.visible)
+	print("[C1] joined=", g.net.is_client(), " zone=", g.cur_zone, " host visible=", host_p != null and host_p.visible, " host class=", host_p.cls if host_p else "-")
 	t0 = Time.get_ticks_msec()
 	while (g.cur_zone != "wild" or g.net.loading or g._busy) and Time.get_ticks_msec() - t0 < 30000:
 		await wait(5)
