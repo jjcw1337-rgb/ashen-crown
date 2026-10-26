@@ -133,3 +133,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). In short: open `project.godot` in Godot 
 
 - **F2** or **Esc → Sound**: turn all sound on or off (remembered between sessions).
 - **F3**: FPS counter.
+- **F8** or **Esc → Testing: equip best gear** (only while `UNLOCK_ALL_ACTS` is on): level 30, A3-strength best-in-slot gear with +10 enchants, a full belt and 1,000,000 gold.

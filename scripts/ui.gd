@@ -1143,6 +1143,11 @@ func _build_pause() -> void:
 		update_sound_btn())
 	vb.add_child(sound_btn)
 	update_sound_btn()
+	if game.UNLOCK_ALL_ACTS:
+		var kit := Button.new()
+		kit.text = "Testing: equip best gear (F8)"
+		kit.pressed.connect(func(): game.give_test_gear())
+		vb.add_child(kit)
 	var fps := Button.new()
 	fps.text = "Toggle FPS counter (F3)"
 	fps.pressed.connect(func(): show_fps = not show_fps)

@@ -789,6 +789,14 @@ func on_net_failed(msg: String) -> void:
 		if hero.dead:
 			hero.respawn(hero.global_position)
 
+## Testing only (while UNLOCK_ALL_ACTS is on): A3-strength best-in-slot gear, +10 enchants,
+## level 30 with points spent, a full belt and plenty of gold. F8 or the pause menu.
+func give_test_gear() -> void:
+	hero.test_kit()
+	ui.message("Testing gear equipped: A3 best-in-slot, +10 enchants, level 30", Color(1.0, 0.8, 0.35))
+	Sfx.play("levelup")
+	save_game()
+
 func save_game() -> void:
 	_store_progress()
 	var d := {"hero": hero.to_save(), "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed, "difficulty": difficulty,
@@ -1281,6 +1289,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 				set_sound(not sound_on)
 				ui.message("Sound " + ("on" if sound_on else "off"), Color(0.8, 0.85, 1.0))
 				ui.update_sound_btn()
+			KEY_F8:
+				if UNLOCK_ALL_ACTS:
+					give_test_gear()
 			KEY_M:
 				ui.minimap.visible = not ui.minimap.visible
 			KEY_TAB:
