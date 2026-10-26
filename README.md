@@ -8,6 +8,8 @@ Every model, texture, sound and piece of music is generated in code. There are n
 **In a browser:** open this repository's GitHub Pages address (shown under **Settings → Pages**). It's a lighter version: lower graphics, no grass blades and no co-op.
 
 
+**Mac:** download `AshenCrown-Mac.zip` from the game's GitHub Pages address, unzip it and move **Ashen Crown** to Applications. It isn't notarized by Apple, so the first time macOS will refuse to open it: go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway**. (Or in Terminal: `xattr -dr com.apple.quarantine "/Applications/Ashen Crown.app"`.)
+
 **Windows:** unzip `AshenCrown-Windows.zip` and run `AshenCrown.exe`.
 
 Windows SmartScreen may warn that the app is unrecognised (it isn't code-signed). Choose **More info → Run anyway**.
