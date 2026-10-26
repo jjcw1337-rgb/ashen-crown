@@ -76,6 +76,7 @@ var gfx_info: Label
 var pause_panel: PanelContainer
 var gfx_btn: Button
 var title_panel: Control
+var sound_btn: Button
 var join_panel: PanelContainer
 var join_list: VBoxContainer
 var join_ip: LineEdit
@@ -1110,8 +1111,8 @@ func _build_pause() -> void:
 	pause_panel.anchor_bottom = 0.5
 	pause_panel.offset_left = -170
 	pause_panel.offset_right = 170
-	pause_panel.offset_top = -200
-	pause_panel.offset_bottom = 200
+	pause_panel.offset_top = -250
+	pause_panel.offset_bottom = 250
 	pause_panel.visible = false
 	pause_panel.process_mode = Node.PROCESS_MODE_ALWAYS
 	root.add_child(pause_panel)
@@ -1136,6 +1137,17 @@ func _build_pause() -> void:
 	gfx_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(gfx_info)
 	_update_gfx_btn()
+	sound_btn = Button.new()
+	sound_btn.pressed.connect(func():
+		game.set_sound(not game.sound_on)
+		update_sound_btn())
+	vb.add_child(sound_btn)
+	update_sound_btn()
+	if game.UNLOCK_ALL_ACTS:
+		var kit := Button.new()
+		kit.text = "Testing: equip best gear (F8)"
+		kit.pressed.connect(func(): game.give_test_gear())
+		vb.add_child(kit)
 	var fps := Button.new()
 	fps.text = "Toggle FPS counter (F3)"
 	fps.pressed.connect(func(): show_fps = not show_fps)
@@ -1146,6 +1158,10 @@ func _build_pause() -> void:
 		game.save_game()
 		get_tree().quit())
 	vb.add_child(save)
+
+func update_sound_btn() -> void:
+	if sound_btn:
+		sound_btn.text = "Sound: " + ("On" if game.sound_on else "Off") + "  (F2)"
 
 func _update_gfx_btn() -> void:
 	gfx_btn.text = "Graphics: " + ["Low", "Medium", "High", "Ultra"][game.quality]

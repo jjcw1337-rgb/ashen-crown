@@ -128,3 +128,9 @@ V-sync is on, so the game runs at your monitor's refresh rate (60+ fps on a mid-
 ## Building on it
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). In short: open `project.godot` in Godot 4.3, change things, push to `main`, and the online version and the Windows download rebuild themselves in a few minutes.
+
+## Settings and testing keys
+
+- **F2** or **Esc → Sound**: turn all sound on or off (remembered between sessions).
+- **F3**: FPS counter.
+- **F8** or **Esc → Testing: equip best gear** (only while `UNLOCK_ALL_ACTS` is on): level 30, A3-strength best-in-slot gear with +10 enchants, a full belt and 1,000,000 gold.

@@ -68,6 +68,7 @@ func _ready() -> void:
 		if args[i] == "--run" and i + 1 < args.size():
 			difficulty = int(args[i + 1])
 	quality = _initial_quality()
+	set_sound(bool(_load_setting("audio", "sound_on", true)))
 	_setup_env()
 	weather = Weather.new()
 	weather.name = "Weather"
@@ -323,9 +324,28 @@ func is_forward() -> bool:
 
 func set_quality(q: int) -> void:
 	apply_quality(q)
+	_save_setting("graphics", "quality", quality)
+
+## Settings live together in one file, so load it before writing one value back.
+func _save_setting(section: String, key: String, value: Variant) -> void:
 	var cf := ConfigFile.new()
-	cf.set_value("graphics", "quality", quality)
+	cf.load(SETTINGS_PATH)
+	cf.set_value(section, key, value)
 	cf.save(SETTINGS_PATH)
+
+func _load_setting(section: String, key: String, default: Variant) -> Variant:
+	var cf := ConfigFile.new()
+	if cf.load(SETTINGS_PATH) == OK:
+		return cf.get_value(section, key, default)
+	return default
+
+# ---------------------------------------------------------------- sound
+var sound_on := true
+
+func set_sound(on: bool) -> void:
+	sound_on = on
+	AudioServer.set_bus_mute(AudioServer.get_bus_index("Master"), not on)
+	_save_setting("audio", "sound_on", on)
 
 ## Saved setting if there is one, otherwise High on a dedicated graphics card and Medium on
 ## integrated laptop graphics.
@@ -764,6 +784,14 @@ func on_net_failed(msg: String) -> void:
 		await load_zone(cur_act, "town", "start")
 		if hero.dead:
 			hero.respawn(hero.global_position)
+
+## Testing only (while UNLOCK_ALL_ACTS is on): A3-strength best-in-slot gear, +10 enchants,
+## level 30 with points spent, a full belt and plenty of gold. F8 or the pause menu.
+func give_test_gear() -> void:
+	hero.test_kit()
+	ui.message("Testing gear equipped: A3 best-in-slot, +10 enchants, level 30", Color(1.0, 0.8, 0.35))
+	Sfx.play("levelup")
+	save_game()
 
 func save_game() -> void:
 	_store_progress()
@@ -1253,6 +1281,13 @@ func _unhandled_input(ev: InputEvent) -> void:
 				cast_skill("cry")
 			KEY_F3:
 				ui.show_fps = not ui.show_fps
+			KEY_F2:
+				set_sound(not sound_on)
+				ui.message("Sound " + ("on" if sound_on else "off"), Color(0.8, 0.85, 1.0))
+				ui.update_sound_btn()
+			KEY_F8:
+				if UNLOCK_ALL_ACTS:
+					give_test_gear()
 			KEY_M:
 				ui.minimap.visible = not ui.minimap.visible
 			KEY_TAB:
