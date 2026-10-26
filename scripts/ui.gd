@@ -77,6 +77,7 @@ var pause_panel: PanelContainer
 var gfx_btn: Button
 var title_panel: Control
 var sound_btn: Button
+var test_panel: PanelContainer
 var join_panel: PanelContainer
 var join_list: VBoxContainer
 var join_ip: LineEdit
@@ -123,6 +124,7 @@ func setup(g: Node) -> void:
 	_build_waypoints()
 	_build_dialog()
 	_build_pause()
+	_build_test_panel()
 	_build_tooltip()
 	_build_title()
 	_build_join()
@@ -1145,8 +1147,10 @@ func _build_pause() -> void:
 	update_sound_btn()
 	if game.UNLOCK_ALL_ACTS:
 		var kit := Button.new()
-		kit.text = "Testing: equip best gear (F8)"
-		kit.pressed.connect(func(): game.give_test_gear())
+		kit.text = "Testing panel (F8)"
+		kit.pressed.connect(func():
+			game.toggle_pause()
+			toggle(test_panel))
 		vb.add_child(kit)
 	var fps := Button.new()
 	fps.text = "Toggle FPS counter (F3)"
@@ -1158,6 +1162,38 @@ func _build_pause() -> void:
 		game.save_game()
 		get_tree().quit())
 	vb.add_child(save)
+
+## F8 testing panel: two switches, nothing else in the game changes.
+func _build_test_panel() -> void:
+	test_panel = PanelContainer.new()
+	test_panel.anchor_left = 0.0
+	test_panel.anchor_top = 0.0
+	test_panel.offset_left = 20
+	test_panel.offset_top = 60
+	test_panel.offset_right = 290
+	test_panel.offset_bottom = 230
+	test_panel.visible = false
+	test_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	root.add_child(test_panel)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 10)
+	test_panel.add_child(vb)
+	vb.add_child(_label("Testing", 22, GOLD, true))
+	var imm := CheckButton.new()
+	imm.text = "Immortal (take no damage)"
+	imm.button_pressed = game.test_immortal
+	imm.toggled.connect(func(on: bool):
+		game.test_immortal = on
+		message("Immortal " + ("ON" if on else "off"), Color(0.6, 1.0, 0.6) if on else Color(0.8, 0.8, 0.8)))
+	vb.add_child(imm)
+	var one := CheckButton.new()
+	one.text = "One-hit kill"
+	one.button_pressed = game.test_onehit
+	one.toggled.connect(func(on: bool):
+		game.test_onehit = on
+		message("One-hit kill " + ("ON" if on else "off"), Color(1.0, 0.7, 0.4) if on else Color(0.8, 0.8, 0.8)))
+	vb.add_child(one)
+	vb.add_child(_label("F8 or Esc to close. Not saved.", 13, Color(0.7, 0.66, 0.58)))
 
 func update_sound_btn() -> void:
 	if sound_btn:
@@ -1544,7 +1580,7 @@ func toggle(panel: Control) -> void:
 
 func close_all() -> bool:
 	var any := false
-	for p in [inv_panel, char_panel, shop_panel, stash_panel, wp_panel, dialog_panel, ench_panel]:
+	for p in [inv_panel, char_panel, shop_panel, stash_panel, wp_panel, dialog_panel, ench_panel, test_panel]:
 		if p.visible:
 			p.visible = false
 			any = true

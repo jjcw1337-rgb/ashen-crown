@@ -845,13 +845,10 @@ func on_net_failed(msg: String) -> void:
 		if hero.dead:
 			hero.respawn(hero.global_position)
 
-## Testing only (while UNLOCK_ALL_ACTS is on): A3-strength best-in-slot gear, +10 enchants,
-## level 30 with points spent, a full belt and plenty of gold. F8 or the pause menu.
-func give_test_gear() -> void:
-	hero.test_kit()
-	ui.message("Testing gear equipped: A3 best-in-slot, +10 enchants, level 30", Color(1.0, 0.8, 0.35))
-	Sfx.play("levelup")
-	save_game()
+## Testing switches (F8 panel, only while UNLOCK_ALL_ACTS is on). They change nothing else
+## and are never saved.
+var test_immortal := false
+var test_onehit := false
 
 func save_game() -> void:
 	_store_progress()
@@ -1347,7 +1344,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 				ui.update_sound_btn()
 			KEY_F8:
 				if UNLOCK_ALL_ACTS:
-					give_test_gear()
+					ui.toggle(ui.test_panel)
 			KEY_M:
 				ui.minimap.visible = not ui.minimap.visible
 			KEY_TAB:

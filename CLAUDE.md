@@ -27,7 +27,7 @@ godot --path .                                    # play
 godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
-`playtest`, `unlock_test`, `kit_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
+`playtest`, `unlock_test`, `test_panel_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
 `det_test`, `mp_test` (co-op: run one copy with `-- host` and one with `-- join`).
 Screenshots need a display: `xvfb-run -a godot --rendering-driver opengl3 --path . -- --shot out.png --zone town`
 (other flags in `game.gd` `_ready`: `--zone town|wild|lair`, `--run 0|1|2`, `--god`, `--fight`).
@@ -41,7 +41,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `game.gd` | Root node: boot, intro, zones/travel, camera, graphics presets, settings, save/load, acts and difficulty runs (`difficulty` 0/1/2 = Act I/A2/A3), input |
 | `data.gd` | **Tuning**: monsters, item bases, affixes, uniques, skills, acts, vendors |
 | `world.gd` | Zone builder: terrain, roads, buildings, trees/grass (MultiMesh chunks), spawns, `burn_points` |
-| `hero.gd`, `knight.gd`, `knight_rig.gd`, `anim.gd` | Player: stats (`recalc`), combat, skills, gear visuals, animation, co-op puppet mode, `test_kit` |
+| `hero.gd`, `knight.gd`, `knight_rig.gd`, `anim.gd` | Player: stats (`recalc`), combat, skills, gear visuals, animation, co-op puppet mode |
 | `enemy.gd`, `projectile.gd` | Monsters/AI and missiles (host-authoritative in co-op) |
 | `ground_item.gd`, `inter.gd` | Loot on the ground; interactables (chests, shrines, waypoints, portals, NPCs) |
 | `items.gd` | Item rolls, `empower` (A2/A3 multipliers), enchanting, tooltips |
@@ -59,7 +59,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   - no grass blades on web (`_scatter_grass` returns early) and no intro video (excluded in the Web preset);
   - don't mute audio buses (`AudioServer.set_bus_mute`): it throws in Godot 4.3's web audio and aborts startup. Use `Sfx.set_muted`;
   - known open issue: Cairnfell Moor's 3D view goes blank in the browser with ~15+ monsters in the zone. Desktop builds are fine.
-- `UNLOCK_ALL_ACTS` in `game.gd` is a testing switch (also enables F8 gear); turn off for real playthroughs.
+- `UNLOCK_ALL_ACTS` in `game.gd` is a testing switch (also enables the F8 testing panel: `test_immortal`, `test_onehit` in `game.gd`); turn off for real playthroughs.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file).
 - CI is `.github/workflows/deploy.yml` (container `barichello/godot-ci:4.3`). If it fails, the

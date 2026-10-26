@@ -489,6 +489,8 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 		if game.net.is_host:
 			game.net.hit_player(peer_id, dmg, from, kind, element)
 		return
+	if game.test_immortal:
+		return
 	var to_src := from - global_position
 	to_src.y = 0
 	var fwd := -rig.global_transform.basis.z
@@ -950,56 +952,6 @@ func add_to_inventory(it: Dictionary) -> bool:
 			stats_changed.emit()
 			return true
 	return false
-
-## Testing kit: the strongest gear the game can drop (A3, x25), every enchantable piece at +10.
-func test_kit() -> void:
-	const P := 25.0
-	var kit := {
-		"weapon": Items.make_unique("dawnbreaker"), "shield": Items.make_unique("sunwarden"),
-		"helm": Items.make_unique("ashen_king"), "armor": _perfect_rare("ornate_plate", "Doom Carapace"),
-		"gloves": _perfect_rare("gauntlets", "Grim Grip"), "boots": Items.make_unique("stormstride"),
-		"belt": _perfect_rare("war_belt", "Blood Cord"), "amulet": Items.make_unique("mire_heart"),
-		"ring1": Items.make_unique("ninth_sun"), "ring2": Items.make_unique("ninth_sun"),
-	}
-	for s in kit.keys():
-		var it: Dictionary = Items.empower(kit[s], P)
-		if s in Items.ENCHANT_SLOTS:
-			it["ench"] = Items.ENCHANT_MAX
-		equipment[s] = it
-	# spares to swap in: the Ashen King's sword and an axe
-	for uid in ["cinderbrand", "skullsplitter"]:
-		var spare := Items.empower(Items.make_unique(uid), P)
-		if not inventory.any(func(x): return x != null and x.get("unique", "") == uid):
-			add_to_inventory(spare)
-	if level < 30:
-		var gained := 30 - level
-		level = 30
-		xp = 0
-		str_ += gained * 2
-		dex += gained
-		vit += gained * 2
-	gold = maxi(gold, 1000000)
-	belt = [Items.potion("rejuv"), Items.potion("rejuv"), Items.potion("hp_potion"), Items.potion("mp_potion")]
-	for b in belt:
-		b["count"] = 20
-	recalc()
-	life = max_life
-	mana = max_mana
-	stamina = max_stamina
-	refresh_gear()
-	stats_changed.emit()
-
-## A rare with every affix its slot can have, each at its top roll for item level 30.
-func _perfect_rare(base: String, nm: String) -> Dictionary:
-	var it := Items.make(base, 2, 30)
-	var slot := Items.slot_class(base)
-	for stat in Data.AFFIX_SLOTS.get(slot, []):
-		for a in Data.AFFIXES:
-			if a[0] == stat:
-				it["affixes"].append([stat, int(round(a[3] + a[4] * 30))])
-	it["name"] = nm
-	it["req"] = 24
-	return it
 
 func equip_from_inventory(idx: int) -> void:
 	var it = inventory[idx]
