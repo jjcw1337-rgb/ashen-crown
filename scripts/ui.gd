@@ -310,7 +310,7 @@ func _set_slot(p: Panel, it) -> void:
 	sb.bg_color = [Color(0.04, 0.04, 0.04, 0.9), Color(0.03, 0.04, 0.1, 0.9), Color(0.09, 0.08, 0.02, 0.9), Color(0.09, 0.06, 0.03, 0.9)][r]
 	sb.border_color = Color(0.25, 0.2, 0.13) if r == 0 else (Data.RARITY_COLOR[r] as Color).darkened(0.35)
 	var tex := icons.get_icon(it, func(t):
-		if is_instance_valid(p) and p.get_meta("item", null) == it:
+		if is_instance_valid(p) and (p.get_meta("item") if p.has_meta("item") else null) == it:
 			tr.texture = t)
 	tr.texture = tex
 
@@ -320,7 +320,7 @@ func _hover(p: Control, on: bool, mode: String) -> void:
 			tooltip.visible = false
 			tip_owner = null
 		return
-	var it = p.get_meta("item", null)
+	var it = (p.get_meta("item") if p.has_meta("item") else null)
 	if it == null:
 		tooltip.visible = false
 		return

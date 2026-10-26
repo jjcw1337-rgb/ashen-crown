@@ -350,9 +350,8 @@ func apply_quality(q: int) -> void:
 	get_viewport().msaa_3d = Viewport.MSAA_8X if q >= 3 else (Viewport.MSAA_4X if q >= 2 else Viewport.MSAA_2X)
 	get_viewport().screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
 	if OS.has_feature("web"):
-		# multisampling in WebGL leaves the 3D view blank in some browsers; use FXAA instead
+		# no multisampling or FXAA in the browser's WebGL renderer
 		get_viewport().msaa_3d = Viewport.MSAA_DISABLED
-		get_viewport().screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
 	# Ultra: real bounce light, finer shadows and effects, no simplifying of distant meshes
 	var ultra := q >= 3 and forward
 	env.sdfgi_enabled = ultra

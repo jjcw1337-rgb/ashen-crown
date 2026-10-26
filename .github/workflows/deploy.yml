@@ -1,6 +1,7 @@
-# Every push to main exports the game with Godot 4.3 and publishes:
-#   - the browser version at this repository's GitHub Pages address
-#   - Windows, Linux and Mac downloads (AshenCrown-Windows.zip, -Linux.zip, -Mac.zip) on that same page
+# Every push to main builds the game and publishes, at this repository's GitHub Pages address:
+#   - the browser test version (exported with Godot 4.5.1: Godot 4.3's WebGL renderer blanks the
+#     3D view in busy scenes, a bug fixed in later versions)
+#   - Windows, Linux and Mac downloads (AshenCrown-Windows.zip, -Linux.zip, -Mac.zip), Godot 4.3
 name: Build and publish
 
 on:
@@ -17,11 +18,8 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
-env:
-  GODOT_VERSION: "4.3"
-
 jobs:
-  build:
+  desktop:
     runs-on: ubuntu-latest
     container:
       image: barichello/godot-ci:4.3
@@ -31,7 +29,58 @@ jobs:
       - name: Install export templates
         run: |
           mkdir -p ~/.local/share/godot/export_templates
-          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mv /root/.local/share/godot/export_templates/4.3.stable ~/.local/share/godot/export_templates/4.3.stable
+
+      - name: Import project
+        run: godot --headless --editor --quit || true
+
+      - name: Export Windows version
+        run: |
+          mkdir -p build/win build/out
+          godot --headless --export-release "Windows Desktop" build/win/AshenCrown.exe
+          cp README.md build/win/
+          printf 'start "" "%%~dp0AshenCrown.exe" --rendering-method gl_compatibility --rendering-driver opengl3\r\n' > "build/win/Ashen Crown (Safe Mode).bat"
+          apt-get update -qq && apt-get install -y -qq zip > /dev/null
+          cd build/win && zip -q -r ../out/AshenCrown-Windows.zip .
+
+      - name: Export Linux version
+        run: |
+          mkdir -p build/linux
+          godot --headless --export-release "Linux" build/linux/AshenCrown.x86_64
+          chmod +x build/linux/AshenCrown.x86_64
+          cp README.md build/linux/
+          cd build/linux && zip -q -r ../out/AshenCrown-Linux.zip .
+
+      - name: Export Mac version
+        run: godot --headless --export-release "macOS" build/out/AshenCrown-Mac.zip
+
+      - name: Check the exports
+        run: |
+          ls -la build/out build/win build/linux
+          test -s build/out/AshenCrown-Windows.zip
+          test -s build/out/AshenCrown-Linux.zip
+          test -s build/out/AshenCrown-Mac.zip
+          # the intro video must be inside the desktop builds (it is left out of the browser one)
+          test $(stat -c %s build/win/AshenCrown.exe) -gt 100000000
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop
+          path: build/out
+          retention-days: 2
+
+  web:
+    needs: desktop
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.5.1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install export templates
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates
+          mv /root/.local/share/godot/export_templates/4.5.1.stable ~/.local/share/godot/export_templates/4.5.1.stable
 
       - name: Import project
         run: godot --headless --editor --quit || true
@@ -40,45 +89,24 @@ jobs:
         run: |
           mkdir -p build/web
           godot --headless --export-release "Web" build/web/index.html
-
-      - name: Export Windows version
-        run: |
-          mkdir -p build/win
-          godot --headless --export-release "Windows Desktop" build/win/AshenCrown.exe
-          cp README.md build/win/
-          printf 'start "" "%%~dp0AshenCrown.exe" --rendering-method gl_compatibility --rendering-driver opengl3\r\n' > "build/win/Ashen Crown (Safe Mode).bat"
-          apt-get update -qq && apt-get install -y -qq zip > /dev/null
-          cd build/win && zip -q -r ../web/AshenCrown-Windows.zip .
-
-      - name: Export Linux version
-        run: |
-          mkdir -p build/linux
-          godot --headless --export-release "Linux" build/linux/AshenCrown.x86_64
-          chmod +x build/linux/AshenCrown.x86_64
-          cp README.md build/linux/
-          cd build/linux && zip -q -r ../web/AshenCrown-Linux.zip .
-
-      - name: Export Mac version
-        run: |
-          mkdir -p build/mac
-          godot --headless --export-release "macOS" build/web/AshenCrown-Mac.zip
-
-      - name: Check the exports exist
-        run: |
-          ls -la build/web build/win build/linux
           test -s build/web/index.wasm
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: desktop
+          path: build/web
+
+      - name: Check the site
+        run: |
+          ls -la build/web
           test -s build/web/AshenCrown-Windows.zip
-          test -s build/web/AshenCrown-Linux.zip
-          test -s build/web/AshenCrown-Mac.zip
-          # the intro video must be inside the desktop builds (it is left out of the browser one)
-          test $(stat -c %s build/win/AshenCrown.exe) -gt 100000000
 
       - uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
 
   deploy:
-    needs: build
+    needs: web
     runs-on: ubuntu-latest
     environment:
       name: github-pages

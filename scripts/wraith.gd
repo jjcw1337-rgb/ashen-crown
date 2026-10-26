@@ -34,9 +34,8 @@ static func rebuild_body(root: Node3D, gear: Dictionary) -> void:
 	mi.material_override = material(gear)
 	skel.add_child(mi)
 	mi.skeleton = NodePath("..")
-	var eyes = root.get_meta("eyes", null)
-	if eyes != null:
-		for e in eyes:
+	if root.has_meta("eyes"):
+		for e in root.get_meta("eyes"):
 			if is_instance_valid(e):
 				(e as MeshInstance3D).material_override = Mats.glow(gear["spirit"], 5.0)
 

@@ -377,10 +377,6 @@ func _build_terrain(tcol: Dictionary) -> void:
 ## Grass, wildflowers and ferns use their own random numbers so a denser graphics setting
 ## never shifts anything gameplay-related (co-op players can use different settings).
 func _scatter_grass(count: int, colors: Dictionary, height: float, outside := true) -> void:
-	# The browser build (WebGL) shows no 3D at all once the grass blades are in the scene,
-	# so it goes without them; ferns, trees and the painted ground still read as a meadow.
-	if OS.has_feature("web"):
-		return
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(bounds.size.x * 1000.0) + count
 	count = int(count * GRASS_DENSITY[clampi(detail, 0, 3)])
