@@ -344,7 +344,7 @@ var sound_on := true
 
 func set_sound(on: bool) -> void:
 	sound_on = on
-	AudioServer.set_bus_mute(AudioServer.get_bus_index("Master"), not on)
+	Sfx.set_muted(not on)
 	_save_setting("audio", "sound_on", on)
 
 ## Saved setting if there is one, otherwise High on a dedicated graphics card and Medium on

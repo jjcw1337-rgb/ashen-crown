@@ -8,6 +8,21 @@ var music: AudioStreamPlayer
 var ambience: AudioStreamPlayer
 var _next := 0
 var volume_db := 0.0
+## Sound off: nothing new starts and the music/ambience loops stop. (Muting the audio bus
+## instead crashes the browser build's audio code in Godot 4.3.)
+var muted := false
+
+func set_muted(m: bool) -> void:
+	if m == muted:
+		return
+	muted = m
+	for p in [music, ambience]:
+		if p == null or p.stream == null:
+			continue
+		if m:
+			p.stop()
+		else:
+			p.play()
 
 func _ready() -> void:
 	for i in 20:
@@ -23,7 +38,7 @@ func _ready() -> void:
 	_gen()
 
 func play(nm: String, vol := 0.0, pitch := 1.0) -> void:
-	if not streams.has(nm):
+	if muted or not streams.has(nm):
 		return
 	var p: AudioStreamPlayer = players[_next]
 	_next = (_next + 1) % players.size()
@@ -38,11 +53,13 @@ func play_music(kind: String) -> void:
 		streams[key] = _drone(kind)
 	if music.stream != streams[key]:
 		music.stream = streams[key]
-		music.play()
+		if not muted:
+			music.play()
 	var amb := "wind" if kind != "lair" else "drip"
 	if ambience.stream != streams.get(amb):
 		ambience.stream = streams.get(amb)
-		ambience.play()
+		if not muted:
+			ambience.play()
 
 func _wav(s: PackedFloat32Array, loop := false) -> AudioStreamWAV:
 	var data := PackedByteArray()
