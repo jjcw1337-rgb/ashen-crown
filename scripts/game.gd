@@ -1,0 +1,1461 @@
+extends Node3D
+## Root of the game: environment, camera, zones, input, combat glue, saving.
+
+const SAVE_PATH := "user://ashen_crown_save.json"
+const CAM_OFFSET := Vector3(0, 17.0, 16.5)
+
+var world: World
+var env: Environment
+var world_env: WorldEnvironment
+var sun: DirectionalLight3D
+var cam_pivot: Node3D
+var cam: Camera3D
+var hero: Hero
+var net: Net
+var weather: Weather
+var sky_mat: ProceduralSkyMaterial
+var ui: UI
+var vignette: ColorRect
+var loading: ColorRect
+var loading_lbl: Label
+var quality := 2
+var zoom := 1.0
+var cam_target := Vector3.ZERO
+var shake := 0.0
+var cur_act := 0
+var cur_zone := "town"
+var playing := false
+var paused := false
+var hovered = null
+var ground_pt := Vector3.ZERO
+var lmb_held := false
+var lmb_repeat := 0.0
+var exit_grace := 0.0
+var waypoints_known := ["town"]
+var boss_killed := false
+var difficulty := 0          # 0 = Act I, 1 = A2, 2 = A3: Act I again with tougher monsters and loot each time
+var max_run := 0             # highest of those reached; any of them can be picked at the camp waypoint
+## TESTING: unlock Act I, A2 and A3 at the camp waypoint from the start. Set to false to
+## go back to unlocking them by beating each final boss.
+const UNLOCK_ALL_ACTS := true
+var run_progress := {}       # per run: its waypoints and whether its boss is dead
+const A2_ENEMY := 20.0
+const A2_LOOT := 5.0
+const A2_XP := 5.0
+var tp_link := {}
+var xp_bonus_t := 0.0
+var shops := {}
+var rng := RandomNumberGenerator.new()
+var shot_path := ""
+var shot_spawn := ""
+var shot_zone := "town"
+var shot_frames := 0
+var death_t := -1.0
+var _t := 0.0
+var _busy := false
+
+func _ready() -> void:
+	rng.randomize()
+	Mats.ensure_globals()
+	var args := OS.get_cmdline_user_args()
+	for i in args.size():
+		if args[i] == "--shot" and i + 1 < args.size():
+			shot_path = args[i + 1]
+		if args[i] == "--spawn" and i + 1 < args.size():
+			shot_spawn = args[i + 1]
+		if args[i] == "--zone" and i + 1 < args.size():
+			shot_zone = args[i + 1]
+		if args[i] == "--run" and i + 1 < args.size():
+			difficulty = int(args[i + 1])
+	quality = _initial_quality()
+	_setup_env()
+	weather = Weather.new()
+	weather.name = "Weather"
+	add_child(weather)
+	_setup_camera()
+	_setup_post()
+	ui = UI.new()
+	add_child(ui)
+	ui.setup(self)
+	net = Net.new()
+	add_child(net)
+	net.setup(self)
+	hero = Hero.new()
+	hero.name = "Hero"
+	add_child(hero)
+	hero.setup(self)
+	hero.new_character()
+	hero.died.connect(_on_hero_died)
+	hero.leveled.connect(_on_level)
+	ui.bind_hero(hero)
+	if shot_path != "":
+		ui.hide_title()
+		playing = true
+		await load_zone(0, shot_zone, shot_spawn if shot_spawn != "" else "start")
+		return
+	await load_zone(0, "town", "start")
+	ui.show_title(FileAccess.file_exists(SAVE_PATH))
+
+func _on_level(l: int) -> void:
+	ui.big_message("Level %d" % l)
+	ui.message("+5 stat points  (press C)", Color(1, 0.85, 0.4))
+
+# ---------------------------------------------------------------- environment
+func _setup_env() -> void:
+	world_env = WorldEnvironment.new()
+	env = Environment.new()
+	var sky := Sky.new()
+	var sm := ProceduralSkyMaterial.new()
+	sky_mat = sm
+	sm.sky_top_color = Color(0.26, 0.3, 0.31)
+	sm.sky_horizon_color = Color(0.44, 0.47, 0.44)
+	sm.ground_bottom_color = Color(0.16, 0.18, 0.15)
+	sm.ground_horizon_color = Color(0.44, 0.47, 0.44)
+	sm.sun_angle_max = 30.0
+	sky.sky_material = sm
+	env.background_mode = Environment.BG_SKY
+	env.sky = sky
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES
+	env.tonemap_white = 6.0
+	env.fog_enabled = true
+	env.glow_enabled = true
+	env.glow_intensity = 0.7
+	env.glow_bloom = 0.06
+	env.glow_hdr_threshold = 1.1
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+	env.adjustment_enabled = true
+	world_env.environment = env
+	add_child(world_env)
+	sun = DirectionalLight3D.new()
+	sun.rotation_degrees = Vector3(-52, -38, 0)
+	sun.shadow_enabled = true
+	sun.shadow_blur = 1.5
+	sun.shadow_normal_bias = 1.6
+	sun.shadow_bias = 0.06
+	sun.directional_shadow_max_distance = 70.0
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+	add_child(sun)
+	apply_quality(quality)
+
+## A3: set the camp and the moor ablaze, with smoke columns rising beyond the trees.
+func _set_fires() -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = 99 + ["town", "wild", "lair"].find(cur_zone)
+	var lit := 0
+	for bp in world.burn_points:
+		var pos: Vector3 = bp[0]
+		var sz: float = bp[1]
+		if cur_zone == "wild" and r.randf() < 0.35:
+			continue
+		var with_light := lit < (8 if quality >= 2 else 4)
+		Props.fire(world.fx_root, pos, sz, Color(1.0, 0.45, 0.12), with_light, false, true)
+		if with_light:
+			lit += 1
+		if r.randf() < 0.45:
+			weather.make_smoke(world.fx_root, pos + Vector3(0, 1.0, 0), 0.6 + sz * 0.3)
+	var b: Rect2 = world.bounds
+	for i in 10:
+		var t := float(i) / 10.0
+		var edge := r.randi() % 4
+		var p := Vector3.ZERO
+		match edge:
+			0: p = Vector3(lerpf(b.position.x, b.end.x, r.randf()), 0, b.position.y - r.randf_range(8, 22))
+			1: p = Vector3(lerpf(b.position.x, b.end.x, r.randf()), 0, b.end.y + r.randf_range(8, 22))
+			2: p = Vector3(b.position.x - r.randf_range(8, 22), 0, lerpf(b.position.y, b.end.y, r.randf()))
+			_: p = Vector3(b.end.x + r.randf_range(8, 22), 0, lerpf(b.position.y, b.end.y, r.randf()))
+		p.y = world.height_at(p.x, p.z)
+		weather.make_smoke(world.fx_root, p, r.randf_range(1.6, 2.6))
+		Props.fire(world.fx_root, p + Vector3(0, 0.6, 0), 2.2, Color(1.0, 0.42, 0.1), false, false, false)
+
+## A2 is winter: snow over every outdoor area, falling snow, colder light.
+func is_snowy() -> bool:
+	return difficulty == 1 and cur_zone != "lair"
+
+func _zone_env(kind: String) -> void:
+	var snowy := difficulty == 1 and kind != "lair"
+	var ashen := difficulty >= 2 and kind != "lair"
+	RenderingServer.global_shader_parameter_set("snow_amt", 1.0 if snowy else 0.0)
+	RenderingServer.global_shader_parameter_set("ash_amt", 1.0 if ashen else 0.0)
+	weather.set_snow(snowy, quality)
+	weather.set_ash(ashen, quality)
+	env.glow_intensity = 0.7
+	env.glow_bloom = 0.06
+	sky_mat.sky_top_color = Color(0.26, 0.3, 0.31)
+	sky_mat.sky_horizon_color = Color(0.44, 0.47, 0.44)
+	sky_mat.ground_horizon_color = Color(0.44, 0.47, 0.44)
+	if kind == "lair":
+		env.background_mode = Environment.BG_COLOR
+		env.background_color = Color(0.0, 0.0, 0.0)
+		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		env.ambient_light_color = Color(0.32, 0.34, 0.42)
+		env.ambient_light_energy = 0.42
+		env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
+		env.tonemap_exposure = 1.25
+		env.fog_light_color = Color(0.03, 0.03, 0.04)
+		env.fog_density = 0.012
+		env.fog_height_density = 0.0
+		env.adjustment_saturation = 0.9
+		env.adjustment_contrast = 1.08
+		env.volumetric_fog_density = 0.03
+		env.volumetric_fog_albedo = Color(0.5, 0.48, 0.45)
+		env.volumetric_fog_emission = Color(0.0, 0.0, 0.0)
+		sun.visible = false
+		hero.light.light_energy = 2.2
+		hero.light.omni_range = 13.0
+	else:
+		env.background_mode = Environment.BG_SKY
+		env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+		env.ambient_light_energy = 0.55 if kind == "town" else 0.48
+		env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+		env.tonemap_exposure = 1.05
+		env.fog_light_color = Color(0.36, 0.4, 0.37)
+		env.fog_density = 0.008 if kind == "town" else 0.011
+		env.fog_sky_affect = 0.6
+		env.fog_height = 1.5
+		env.fog_height_density = 0.06 if kind == "town" else 0.09
+		env.adjustment_saturation = 0.86
+		env.adjustment_contrast = 1.06
+		env.volumetric_fog_density = 0.018 if kind == "town" else 0.024
+		env.volumetric_fog_albedo = Color(0.72, 0.78, 0.74)
+		env.volumetric_fog_emission = Color(0.03, 0.035, 0.035)
+		sun.visible = true
+		sun.light_color = Color(0.86, 0.88, 0.9)
+		sun.light_energy = 0.85 if kind == "town" else 0.75
+		hero.light.light_energy = 0.9
+		hero.light.omni_range = 10.0
+		if snowy:
+			# overcast winter: pale sky, cold light, snow bouncing light back up
+			sky_mat.sky_top_color = Color(0.5, 0.55, 0.62)
+			sky_mat.sky_horizon_color = Color(0.72, 0.75, 0.8)
+			sky_mat.ground_horizon_color = Color(0.72, 0.75, 0.8)
+			env.ambient_light_energy = 0.5
+			env.tonemap_exposure = 0.88
+			env.fog_light_color = Color(0.62, 0.67, 0.76)
+			env.fog_density = 0.0025
+			env.fog_height_density = 0.0
+			env.adjustment_saturation = 0.82
+			env.adjustment_contrast = 1.12
+			env.volumetric_fog_density = 0.004
+			env.volumetric_fog_albedo = Color(0.85, 0.88, 0.95)
+			env.volumetric_fog_emission = Color(0.0, 0.0, 0.0)
+			sun.light_color = Color(0.8, 0.86, 1.0)
+			sun.light_energy = 0.7
+			hero.light.light_energy = 1.1
+		if ashen:
+			# everything burning: smoke-red sky, a dim orange sun, embers blooming in the dark
+			sky_mat.sky_top_color = Color(0.16, 0.06, 0.04)
+			sky_mat.sky_horizon_color = Color(0.62, 0.24, 0.09)
+			sky_mat.ground_horizon_color = Color(0.4, 0.15, 0.06)
+			env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+			env.ambient_light_color = Color(0.62, 0.55, 0.5)
+			env.ambient_light_energy = 0.5
+			env.tonemap_exposure = 1.08
+			env.fog_light_color = Color(0.3, 0.2, 0.15)
+			env.fog_density = 0.004
+			env.fog_height_density = 0.02
+			env.adjustment_saturation = 0.92
+			env.adjustment_contrast = 1.12
+			env.volumetric_fog_density = 0.012
+			env.volumetric_fog_albedo = Color(0.6, 0.4, 0.3)
+			env.volumetric_fog_emission = Color(0.05, 0.012, 0.0)
+			env.glow_intensity = 1.0
+			env.glow_bloom = 0.12
+			sun.light_color = Color(1.0, 0.74, 0.55)
+			sun.light_energy = 0.6
+			hero.light.light_energy = 1.0
+			_set_fires()
+
+const SETTINGS_PATH := "user://settings.cfg"
+const QUALITY_NAMES := ["Low", "Medium", "High", "Ultra"]
+
+## Graphics presets. Integrated laptop GPUs are the usual trouble: volumetric fog and SSIL are
+## kept to High and above, and the whole game also runs on the OpenGL renderer (Safe Mode).
+func apply_quality(q: int) -> void:
+	quality = clampi(q, 0, 3)
+	q = quality
+	var forward := is_forward()
+	env.ssao_enabled = q >= 1 and forward
+	env.ssao_radius = 1.2
+	env.ssao_intensity = 2.2
+	env.ssil_enabled = q >= 2 and forward
+	env.ssil_intensity = 0.8
+	env.ssr_enabled = q >= 3 and forward
+	env.volumetric_fog_enabled = q >= 2 and forward
+	env.volumetric_fog_length = 70.0
+	env.volumetric_fog_detail_spread = 2.0
+	env.volumetric_fog_ambient_inject = 0.4
+	sun.shadow_enabled = true
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS if q >= 2 else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+	RenderingServer.directional_shadow_atlas_set_size(4096 if q >= 2 else 2048, true)
+	get_viewport().msaa_3d = Viewport.MSAA_8X if q >= 3 else (Viewport.MSAA_4X if q >= 2 else Viewport.MSAA_2X)
+	get_viewport().screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
+	if OS.has_feature("web"):
+		# multisampling in WebGL leaves the 3D view blank in some browsers; use FXAA instead
+		get_viewport().msaa_3d = Viewport.MSAA_DISABLED
+		get_viewport().screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
+	# Ultra: real bounce light, finer shadows and effects, no simplifying of distant meshes
+	var ultra := q >= 3 and forward
+	env.sdfgi_enabled = ultra
+	if ultra:
+		env.sdfgi_use_occlusion = true
+		env.sdfgi_cascades = 4
+		env.sdfgi_min_cell_size = 0.2
+		env.sdfgi_energy = 0.9
+		env.sdfgi_bounce_feedback = 0.5
+		env.ssr_max_steps = 96
+	RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_ULTRA if q >= 3 else (RenderingServer.SHADOW_QUALITY_SOFT_HIGH if q >= 2 else RenderingServer.SHADOW_QUALITY_SOFT_LOW))
+	RenderingServer.positional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH if q >= 3 else RenderingServer.SHADOW_QUALITY_SOFT_LOW)
+	if q >= 3:
+		RenderingServer.directional_shadow_atlas_set_size(8192, true)
+	RenderingServer.environment_set_ssao_quality(RenderingServer.ENV_SSAO_QUALITY_ULTRA if q >= 3 else RenderingServer.ENV_SSAO_QUALITY_MEDIUM, true, 0.5, 2, 50.0, 300.0)
+	RenderingServer.environment_set_ssil_quality(RenderingServer.ENV_SSIL_QUALITY_HIGH if q >= 3 else RenderingServer.ENV_SSIL_QUALITY_MEDIUM, true, 0.5, 4, 50.0, 300.0)
+	RenderingServer.environment_set_volumetric_fog_volume_size(160 if q >= 3 else 96, 128 if q >= 3 else 64)
+	get_viewport().mesh_lod_threshold = 0.0 if q >= 3 else 1.0
+	if sun:
+		sun.directional_shadow_max_distance = 90.0 if q >= 3 else 70.0
+	for g in get_tree().get_nodes_in_group("grass"):
+		(g as MultiMeshInstance3D).visibility_range_end = [32.0, 45.0, 60.0, 95.0][q]
+
+func is_forward() -> bool:
+	return RenderingServer.get_rendering_device() != null
+
+func set_quality(q: int) -> void:
+	apply_quality(q)
+	var cf := ConfigFile.new()
+	cf.set_value("graphics", "quality", quality)
+	cf.save(SETTINGS_PATH)
+
+## Saved setting if there is one, otherwise High on a dedicated graphics card and Medium on
+## integrated laptop graphics.
+func _initial_quality() -> int:
+	var cf := ConfigFile.new()
+	if cf.load(SETTINGS_PATH) == OK and cf.has_section_key("graphics", "quality"):
+		return int(cf.get_value("graphics", "quality"))
+	if OS.has_feature("web"):
+		return 1
+	if not is_forward():
+		return 2
+	if RenderingServer.get_video_adapter_type() != RenderingDevice.DEVICE_TYPE_DISCRETE_GPU:
+		return 1
+	# recent gaming cards get Ultra straight away
+	var gpu := RenderingServer.get_video_adapter_name().to_upper()
+	for tag in ["RTX 30", "RTX 40", "RTX 50", "RX 68", "RX 69", "RX 7", "RX 9", "ARC B"]:
+		if gpu.contains(tag):
+			return 3
+	return 2
+
+func renderer_info() -> String:
+	return "%s  ·  %s" % [RenderingServer.get_video_adapter_name(), "Vulkan" if is_forward() else "OpenGL (Safe Mode)"]
+
+# ---------------------------------------------------------------- black-screen watchdog
+## Some GPU drivers render the high-end effects as a black screen. For a few seconds after
+## each outdoor zone loads, sample the middle of the screen; if it is almost all black,
+## step the graphics setting down and remember it.
+var _watch_t := -1.0
+var _watch_next := 0.0
+var _dark_hits := 0
+
+func _start_watch() -> void:
+	if not is_forward() or cur_zone == "lair" or DisplayServer.get_name() == "headless":
+		_watch_t = -1.0
+		return
+	_watch_t = 0.0
+	_watch_next = 1.5
+	_dark_hits = 0
+
+func _watchdog(delta: float) -> void:
+	if _watch_t < 0.0 or _busy or paused or world == null:
+		return
+	_watch_t += delta
+	if _watch_t < _watch_next:
+		return
+	_watch_next += 1.0
+	if _watch_t > 12.0:
+		_watch_t = -1.0
+		return
+	if _screen_dark_fraction() > 0.92:
+		_dark_hits += 1
+	else:
+		_dark_hits = 0
+	if _dark_hits < 3:
+		return
+	if quality > 0:
+		set_quality(quality - 1)
+		ui.big_message("Display problem detected")
+		ui.message("Graphics lowered to %s for this computer" % QUALITY_NAMES[quality], Color(1, 0.85, 0.4))
+		_start_watch()
+	else:
+		_watch_t = -1.0
+		ui.big_message("Display problem detected")
+		ui.message("Please start the game with \"Ashen Crown (Safe Mode)\"", Color(1, 0.6, 0.4))
+
+func _screen_dark_fraction() -> float:
+	var img := get_viewport().get_texture().get_image()
+	if img == null or img.is_empty():
+		return 0.0
+	var w := img.get_width()
+	var h := img.get_height()
+	img = img.get_region(Rect2i(int(w * 0.3), int(h * 0.25), int(w * 0.4), int(h * 0.45)))
+	img.resize(32, 32, Image.INTERPOLATE_NEAREST)
+	var dark := 0
+	for y in 32:
+		for x in 32:
+			if img.get_pixel(x, y).get_luminance() < 0.03:
+				dark += 1
+	return dark / 1024.0
+
+func _setup_camera() -> void:
+	cam_pivot = Node3D.new()
+	add_child(cam_pivot)
+	cam = Camera3D.new()
+	cam.fov = 36.0
+	cam.near = 0.5
+	cam.far = 300.0
+	cam_pivot.add_child(cam)
+	cam.position = CAM_OFFSET
+	cam.basis = Basis.looking_at(Vector3(0, 1.0, 0) - CAM_OFFSET, Vector3.UP)
+	RenderingServer.global_shader_parameter_set("occlude_k", CAM_OFFSET.z / CAM_OFFSET.y)
+
+func _setup_post() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 1
+	add_child(layer)
+	vignette = ColorRect.new()
+	vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sm := ShaderMaterial.new()
+	var sh := Shader.new()
+	sh.code = """
+shader_type canvas_item;
+uniform float strength = 0.6;
+void fragment(){
+	vec2 uv = UV - 0.5;
+	uv.x *= 1.3;
+	float v = smoothstep(0.3, 0.85, length(uv));
+	COLOR = vec4(0.0, 0.0, 0.0, v * strength);
+}
+"""
+	sm.shader = sh
+	vignette.material = sm
+	layer.add_child(vignette)
+	var layer2 := CanvasLayer.new()
+	layer2.layer = 50
+	add_child(layer2)
+	loading = ColorRect.new()
+	loading.set_anchors_preset(Control.PRESET_FULL_RECT)
+	loading.color = Color(0, 0, 0, 1)
+	loading.mouse_filter = Control.MOUSE_FILTER_STOP
+	loading.visible = false
+	layer2.add_child(loading)
+	loading_lbl = Label.new()
+	loading_lbl.set_anchors_preset(Control.PRESET_CENTER)
+	loading_lbl.add_theme_font_size_override("font_size", 28)
+	loading_lbl.add_theme_color_override("font_color", Color(0.86, 0.72, 0.44))
+	loading_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	loading_lbl.offset_left = -400
+	loading_lbl.offset_right = 400
+	loading.add_child(loading_lbl)
+
+# ---------------------------------------------------------------- zones
+func zone_title(act: int, zone: String) -> String:
+	var a: Dictionary = Data.ACTS[act]
+	var tag: String = ["", "  ·  A2", "  ·  A3"][clampi(difficulty, 0, 2)]
+	match zone:
+		"town": return a["town"] + tag
+		"wild": return a["wild"] + tag
+		"lair": return ("Throne of the Ashen King" if difficulty >= 2 else a["lair"]) + tag
+	return ""
+
+## Each run multiplies on the last: A2 is 20x monsters / 5x loot, A3 is 400x / 25x.
+func enemy_mult() -> float:
+	return pow(A2_ENEMY, difficulty)
+
+func xp_mult() -> float:
+	return pow(A2_XP, difficulty)
+
+func loot_mult() -> float:
+	return pow(A2_LOOT, difficulty)
+
+func run_name(d: int = -1) -> String:
+	if d < 0:
+		d = difficulty
+	return ["Act I", "A2", "A3"][clampi(d, 0, 2)]
+
+func run_banner() -> void:
+	ui.big_message(run_name() + " begins")
+	if difficulty >= 2:
+		ui.message("The Ashen King has risen. Monsters are 400 times stronger than Act I; their loot is 25 times stronger.", Color(1.0, 0.45, 0.2))
+	else:
+		ui.message("Monsters are 20 times stronger. Their loot is 5 times stronger.", Color(1.0, 0.55, 0.3))
+
+func boss_kind() -> String:
+	return "ashen_king" if difficulty >= 2 else world.boss_spawn["kind"]
+
+## After the final boss falls: everyone starts over at the camp one step harder, keeping their knight.
+func start_a2() -> void:
+	if net.is_client():
+		net.request_a2()
+		return
+	_store_progress()
+	difficulty = mini(difficulty + 1, 2)
+	max_run = maxi(max_run, difficulty)
+	boss_killed = false
+	waypoints_known = ["town"]
+	run_progress.erase(str(difficulty))
+	tp_link = {}
+	ui.victory_panel.visible = false
+	ui.set_boss(null)
+	if hero.dead:
+		hero.respawn(hero.global_position)
+	hero.life = hero.max_life
+	hero.mana = hero.max_mana
+	net.next_goto_new_run = true
+	await load_zone(cur_act, "town", "start")
+	run_banner()
+
+func _store_progress() -> void:
+	run_progress[str(difficulty)] = {"waypoints": waypoints_known.duplicate(), "boss": boss_killed}
+
+func _restore_progress(d: int) -> void:
+	var p: Dictionary = run_progress.get(str(d), {})
+	waypoints_known = p.get("waypoints", ["town"]).duplicate()
+	boss_killed = p.get("boss", false)
+
+## Waypoint in camp: switch to Act I, A2 or A3 (any you have reached). Each keeps its own progress.
+func switch_run(d: int) -> void:
+	if net.is_client():
+		net.request_switch(d)
+		return
+	if d == difficulty or d > max_run or d < 0 or _busy:
+		return
+	_store_progress()
+	difficulty = d
+	_restore_progress(d)
+	tp_link = {}
+	ui.set_boss(null)
+	Sfx.play("portal")
+	await load_zone(cur_act, "town", "start")
+	run_switched_banner()
+
+func run_switched_banner() -> void:
+	ui.big_message(run_name())
+	var note := ["Monsters and loot at their normal strength.", "Monsters 20 times stronger, loot 5 times stronger.", "The Ashen King's reign: monsters 400 times stronger, loot 25 times stronger."]
+	ui.message(note[clampi(difficulty, 0, 2)], Color(1.0, 0.7, 0.4))
+
+func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
+	if _busy:
+		return
+	_busy = true
+	net.broadcast_goto(act, zone, spawn, at)
+	loading_lbl.text = "Entering %s..." % zone_title(act, zone)
+	loading.visible = true
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if world:
+		world.queue_free()
+		world = null
+		hovered = null
+		await get_tree().process_frame
+	cur_act = act
+	cur_zone = zone
+	World.detail = quality
+	world = World.new()
+	world.name = "World"
+	add_child(world)
+	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair"].find(zone) * 7)
+	_zone_env(zone)
+	apply_quality(quality)
+	await _capture_map(zone)
+	var sp: Vector3 = world.spawns.get(spawn, world.spawns["start"])
+	if at != null:
+		sp = at
+	sp.y = world.height_at(sp.x, sp.z)
+	hero.global_position = sp
+	hero.target = null
+	hero.path = PackedVector3Array()
+	hero.moving = false
+	cam_target = sp
+	cam_pivot.position = sp
+	exit_grace = 1.0
+	for es in (world.enemy_spawns if not net.is_client() else []):
+		for i in int(es["count"]):
+			var p: Vector3 = world.free_spot_near(es["pos"], 3.0)
+			var champ_name := ""
+			if es["champ"]:
+				champ_name = "%s%s the %s" % [Data.CHAMP_PREFIX[rng.randi() % Data.CHAMP_PREFIX.size()], Data.CHAMP_SUFFIX[rng.randi() % Data.CHAMP_SUFFIX.size()], Data.ENEMIES[es["kind"]]["name"]]
+			spawn_enemy(es["kind"], p, int(es["level"]), es["champ"], champ_name, int(es["pack"]))
+	if not world.boss_spawn.is_empty() and not net.is_client():
+		spawn_enemy(boss_kind(), world.boss_spawn["pos"], world.level + 1, false, "", 999)
+	if zone == "town":
+		_stock_shops()
+		if not tp_link.is_empty():
+			_make_portal(world.spawns["portal"], "back")
+	ui.set_zone(zone_title(act, zone))
+	Sfx.play_music(zone)
+	loading.visible = false
+	_busy = false
+	net.host_zone_loaded()
+	_start_watch()
+	if playing and shot_path == "":
+		save_game()
+
+## Photographs the freshly built zone from straight above for the minimap.
+func _capture_map(zone: String) -> void:
+	var b: Rect2 = world.bounds.grow(6.0)
+	if DisplayServer.get_name() == "headless":
+		ui.minimap.set_map(null, b, zone != "town")
+		return
+	var ppm := clampf(1600.0 / maxf(b.size.x, b.size.y), 3.0, 9.0)
+	var vp := SubViewport.new()
+	vp.size = Vector2i(int(b.size.x * ppm), int(b.size.y * ppm))
+	vp.own_world_3d = false
+	vp.world_3d = get_viewport().world_3d
+	vp.msaa_3d = Viewport.MSAA_DISABLED if OS.has_feature("web") else Viewport.MSAA_4X
+	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	var mc := Camera3D.new()
+	mc.projection = Camera3D.PROJECTION_ORTHOGONAL
+	mc.keep_aspect = Camera3D.KEEP_HEIGHT
+	mc.size = b.size.y
+	mc.near = 1.0
+	mc.far = 500.0
+	mc.position = Vector3(b.get_center().x, 220.0, b.get_center().y)
+	mc.basis = Basis(Vector3.RIGHT, -PI * 0.5)
+	var me := Environment.new()
+	me.background_mode = Environment.BG_COLOR
+	me.background_color = Color(0.03, 0.03, 0.03)
+	me.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	me.ambient_light_color = Color(0.62, 0.65, 0.6) if zone != "lair" else Color(0.55, 0.55, 0.6)
+	me.ambient_light_energy = 0.75 if zone != "lair" else 1.1
+	me.tonemap_mode = Environment.TONE_MAPPER_ACES
+	me.tonemap_exposure = 1.1
+	mc.environment = me
+	vp.add_child(mc)
+	var was_hero := hero.visible
+	hero.visible = false
+	var allies := net.puppets()
+	for a in allies:
+		a.visible = false
+	RenderingServer.global_shader_parameter_set("player_pos", Vector3(0, -9999, 0))
+	var grass := get_tree().get_nodes_in_group("grass")
+	for gr in grass:
+		(gr as GeometryInstance3D).visibility_range_end = 0.0
+	var old_shadow := sun.directional_shadow_max_distance
+	sun.directional_shadow_max_distance = 400.0
+	add_child(vp)
+	mc.current = true
+	for i in 3:
+		await get_tree().process_frame
+	var img := vp.get_texture().get_image()
+	vp.queue_free()
+	sun.directional_shadow_max_distance = old_shadow
+	hero.visible = was_hero
+	for a in allies:
+		if is_instance_valid(a):
+			a.visible = a.net_has
+	apply_quality(quality)
+	var tex: Texture2D = null
+	if img and not img.is_empty():
+		img.generate_mipmaps()
+		tex = ImageTexture.create_from_image(img)
+	ui.minimap.set_map(tex, b, zone != "town")
+
+func spawn_enemy(kind: String, p: Vector3, lvl: int, champ := false, champ_name := "", pack := 0, from_net := false) -> Enemy:
+	if net.is_client() and not from_net:
+		return null
+	var e := Enemy.new()
+	world.enemies_root.add_child(e)
+	e.global_position = Vector3(p.x, world.height_at(p.x, p.z), p.z)
+	e.pack_id = pack
+	e.setup(self, kind, maxi(1, lvl), champ, champ_name)
+	e.home = e.global_position
+	if net.active and net.is_host:
+		net.on_spawn(e)
+	return e
+
+## Every knight in the area: yours plus your partners'.
+func all_heroes() -> Array:
+	var out := [hero]
+	if net.active:
+		out.append_array(net.puppets())
+	return out
+
+## Monsters go after the nearest knight that is still standing.
+func target_for(e: Node3D) -> Hero:
+	if not net.active:
+		return hero
+	var best: Hero = hero
+	var bd := INF
+	for h in all_heroes():
+		if h.dead or (h.puppet and not h.net_has):
+			continue
+		var d: float = h.global_position.distance_squared_to(e.global_position)
+		if d < bd:
+			bd = d
+			best = h
+	return best
+
+func enemies_near(p: Vector3, r: float) -> Array:
+	var out := []
+	if world == null:
+		return out
+	var r2 := r * r
+	for e in world.enemies_root.get_children():
+		if e is Enemy and not e.dead:
+			var d: Vector3 = e.global_position - p
+			if d.x * d.x + d.z * d.z <= r2:
+				out.append(e)
+	return out
+
+# ---------------------------------------------------------------- start / save
+func start_game(cont: bool) -> void:
+	Sfx.play("click")
+	ui.hide_title()
+	playing = true
+	if cont and load_game():
+		await load_zone(cur_act, "town", "start")
+	else:
+		hero.new_character()
+		difficulty = 0
+		max_run = 0
+		run_progress = {}
+		waypoints_known = ["town"]
+		boss_killed = false
+		tp_link = {}
+		if UNLOCK_ALL_ACTS:
+			max_run = 2
+		await load_zone(0, "town", "start")
+		ui.open_dialog(Data.VENDORS[0]["elder"], "Welcome to Greywatch, crusader. Since the Hollow Matron rose in the old crypt, the dead walk Cairnfell Moor and the Fallen raid our roads. Trade with our folk, then head out through the north gate. End her, and the moor may yet heal.", [["I will", func(): pass]])
+	ui.refresh()
+
+## Co-op from the title screen. Your saved knight is used if you have one.
+func start_host() -> void:
+	await start_game(FileAccess.file_exists(SAVE_PATH))
+	var err := net.host()
+	if err != OK:
+		ui.big_message("Could not host")
+		ui.message("Another program may be using port %d" % Net.PORT, Color(1, 0.5, 0.4))
+	else:
+		ui.message("Hosting! Your partner can now pick Join Co-op Game", Color(0.5, 1.0, 0.5))
+
+func start_join(ip: String) -> void:
+	Sfx.play("click")
+	net.stop_listening()
+	ui.hide_title()
+	playing = true
+	if not load_game():
+		hero.new_character()
+	loading_lbl.text = "Joining game at %s..." % ip
+	loading.visible = true
+	if net.join(ip) != OK:
+		on_net_failed("Could not connect to that game.")
+		return
+	await get_tree().create_timer(8.0).timeout
+	if net.is_client() and net.players.is_empty() and loading.visible and not _busy:
+		net.shutdown()
+		on_net_failed("No answer from %s. Check the host's game is running and Windows Firewall allowed it." % ip)
+
+func on_net_failed(msg: String) -> void:
+	ui.big_message("Co-op ended")
+	ui.message(msg, Color(1, 0.6, 0.4))
+	loading.visible = false
+	if playing:
+		await load_zone(cur_act, "town", "start")
+		if hero.dead:
+			hero.respawn(hero.global_position)
+
+func save_game() -> void:
+	_store_progress()
+	var d := {"hero": hero.to_save(), "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed, "difficulty": difficulty,
+		"max_run": max_run, "runs": run_progress}
+	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(d))
+
+func load_game() -> bool:
+	if not FileAccess.file_exists(SAVE_PATH):
+		return false
+	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if f == null:
+		return false
+	var d = JSON.parse_string(f.get_as_text())
+	if typeof(d) != TYPE_DICTIONARY:
+		return false
+	hero.from_save(d.get("hero", {}))
+	cur_act = int(d.get("act", 0))
+	waypoints_known = d.get("waypoints", ["town"])
+	boss_killed = d.get("boss", false)
+	difficulty = int(d.get("difficulty", 0))
+	max_run = maxi(int(d.get("max_run", 0)), difficulty)
+	if UNLOCK_ALL_ACTS:
+		max_run = 2
+	run_progress = d.get("runs", {})
+	return true
+
+# ---------------------------------------------------------------- shops
+func _stock_shops() -> void:
+	var V: Dictionary = Data.VENDORS[cur_act]
+	var lvl := maxi(hero.level, 1) + 1
+	var r := RandomNumberGenerator.new()
+	r.randomize()
+	var smith := []
+	for i in 14:
+		var b := Items.pick_base(lvl + 2, r, "weapon" if i < 9 else "shield")
+		smith.append(Items.generate(b, lvl, 1 if r.randf() < 0.4 else 0, r))
+	var armor := []
+	for s in ["helm", "armor", "gloves", "boots", "belt", "helm", "armor", "boots", "gloves", "armor", "belt", "helm"]:
+		var b2 := Items.pick_base(lvl + 2, r, s)
+		armor.append(Items.generate(b2, lvl, 1 if r.randf() < 0.35 else 0, r))
+	var alch := [Items.potion("hp_potion"), Items.potion("mp_potion"), Items.potion("rejuv")]
+	for i in 4:
+		alch.append(Items.generate("ring" if i < 2 else "amulet", lvl, 1, r))
+	var gamble := []
+	for s in ["ring", "amulet", "weapon", "weapon", "shield", "helm", "armor", "gloves", "boots", "belt", "ring", "weapon"]:
+		var gb := Items.pick_base(lvl + 4, r, s)
+		var it := Items.make(gb, 0, lvl)
+		it["name"] = "? " + Data.BASES[gb]["name"]
+		gamble.append(it)
+	shops = {"smith": [V["smith"] + "'s Forge", smith], "armor": [V["armor"] + "'s Armory", armor], "alch": [V["alch"] + "'s Remedies", alch], "gamble": [V["gamble"] + "'s Table", gamble]}
+
+# ---------------------------------------------------------------- interaction
+func on_reach_target(t) -> void:
+	if not is_instance_valid(t):
+		return
+	if t is GroundItem:
+		_pickup(t)
+	elif t is Inter:
+		_interact(t)
+
+func _pickup(g: GroundItem) -> void:
+	if not is_instance_valid(g) or g.is_queued_for_deletion():
+		return
+	if net.is_client():
+		if not g.has_meta("pending"):
+			g.set_meta("pending", true)
+			net.request_pickup(g)
+		return
+	var it: Dictionary = g.item
+	if it["base"] == "gold":
+		var amt := int(it["count"] * (1.0 + hero.gf / 100.0))
+		hero.gold += amt
+		Sfx.play("gold")
+		Fx.number(world.fx_root, g.global_position + Vector3(0, 1, 0), "+%d gold" % amt, Color(1, 0.85, 0.4))
+		if hovered == g:
+			hovered = null
+		net.item_gone(g)
+		g.queue_free()
+		ui.refresh()
+		return
+	if hero.add_to_inventory(it):
+		Sfx.play("pickup")
+		if hovered == g:
+			hovered = null
+		net.item_gone(g)
+		g.queue_free()
+		ui.refresh()
+	else:
+		ui.message("Inventory is full", Color(1, 0.4, 0.3))
+
+## Co-op: the host handed us an item we picked up.
+func receive_item(it: Dictionary, pos: Vector3) -> void:
+	if it["base"] == "gold":
+		var amt := int(it["count"] * (1.0 + hero.gf / 100.0))
+		hero.gold += amt
+		Sfx.play("gold")
+		Fx.number(world.fx_root, pos + Vector3(0, 1, 0), "+%d gold" % amt, Color(1, 0.85, 0.4))
+	elif hero.add_to_inventory(it):
+		Sfx.play("pickup")
+	else:
+		ui.message("Inventory is full", Color(1, 0.4, 0.3))
+		net.request_drop(it, hero.global_position)
+	ui.refresh()
+
+func travel(act: int, zone: String, spawn: String, at = null, clear_tp := false) -> void:
+	if net.is_client():
+		net.request_travel(act, zone, spawn, at, clear_tp)
+		return
+	if clear_tp:
+		tp_link = {}
+	load_zone(act, zone, spawn, at)
+
+## Shrine or chest used by someone else (or a chest opened for a partner on the host).
+func use_inter_remote(t: Inter) -> void:
+	if t.kind == "shrine":
+		t.used = true
+		var orb := t.get_node_or_null("Model/orb")
+		if orb:
+			orb.visible = false
+		var l := t.get_node_or_null("Model/light")
+		if l:
+			l.visible = false
+		Fx.pillar(world.fx_root, t.global_position, Color(1, 0.9, 0.6), 1.0)
+	elif t.kind == "chest":
+		_open_chest(t)
+
+func _open_chest(t: Inter) -> void:
+	t.used = true
+	Sfx.play("equip")
+	Fx.burst(world.fx_root, t.global_position + Vector3(0, 0.8, 0), Color(1, 0.85, 0.5), 24, 3.0, 0.1, 0.8, true, -4.0)
+	if net.is_client():
+		return
+	var n := rng.randi_range(2, 4)
+	for i in n:
+		_drop_loot_roll(t.global_position, world.level, false)
+
+func _interact(t: Inter) -> void:
+	match t.kind:
+		"vendor":
+			var role: String = t.data.get("role", "")
+			if role == "elder":
+				var txt := "The crypt lies at the far end of Cairnfell Moor. Bone archers and the restless dead guard the way. Raise your shield against their arrows: a good block turns them aside."
+				if difficulty >= 2 and not boss_killed:
+					txt = "Something worse than the Matron sits on a throne of ash in the old crypt. They call him the Ashen King. His bone archers hold the moor, and he carries a blade that burns. Kill him and take it."
+				if boss_killed:
+					txt = "The Matron is gone, and the moor already feels lighter. Greywatch owes you a debt it cannot pay. Rest a while, crusader."
+				ui.open_dialog(t.label, txt, [["Farewell", func(): pass]])
+			else:
+				var sh: Array = shops.get(role, ["", []])
+				var lines := {"smith": "Need a blade, or something to stop one?", "armor": "Leather, mail or plate. All of it has seen worse than you.", "alch": "Potions for the body, trinkets for the soul.", "gamble": "Fortune favours the bold. Every piece is a mystery until you pay."}
+				var btns := [["Trade", func(): ui.open_shop(role, sh[0], sh[1])]]
+				if role == "armor":
+					btns.append(["Enchant armor", func(): ui.open_enchant(t.label)])
+				btns.append(["Leave", func(): pass])
+				ui.open_dialog(t.label, lines.get(role, ""), btns)
+			Sfx.play("click")
+		"stash":
+			ui.open_stash()
+			Sfx.play("equip")
+		"waypoint":
+			var wp_id: String = t.data.get("wp", "town")
+			if not waypoints_known.has(wp_id):
+				waypoints_known.append(wp_id)
+				ui.message("Waypoint activated", Color(0.5, 0.7, 1.0))
+				Sfx.play("portal")
+			ui.open_waypoints([
+				{"label": Data.ACTS[cur_act]["town"], "zone": "town", "known": true},
+				{"label": Data.ACTS[cur_act]["wild"], "zone": "wild", "known": waypoints_known.has("wild")},
+			], difficulty, (net.party_max_run if net.is_client() else max_run) if cur_zone == "town" else -1)
+		"portal":
+			Sfx.play("portal")
+			if t.data.get("dir", "") == "town":
+				travel(cur_act, "town", "portal")
+			else:
+				var link := tp_link
+				travel(int(link.get("act", 0)), link.get("zone", "wild"), "start", link.get("pos"), true)
+		"shrine":
+			if t.used:
+				return
+			t.used = true
+			var orb := t.get_node_or_null("Model/orb")
+			if orb:
+				orb.visible = false
+			var l := t.get_node_or_null("Model/light")
+			if l:
+				l.visible = false
+			var typ: String = t.data.get("type", "healing")
+			Sfx.play("levelup")
+			Fx.pillar(world.fx_root, t.global_position, Color(1, 0.9, 0.6), 1.0)
+			match typ:
+				"healing":
+					hero.life = hero.max_life
+					hero.mana = hero.max_mana
+					ui.message("Healing Shrine: fully restored", Color(1, 0.5, 0.4))
+				"fury":
+					hero.buff_t = 45.0
+					ui.message("Fury Shrine: +40% damage for 45 seconds", Color(1, 0.7, 0.3))
+				"armor":
+					hero.buff_t = 45.0
+					ui.message("Armor Shrine: +40% defense for 45 seconds", Color(0.5, 0.7, 1.0))
+				"experience":
+					xp_bonus_t = 90.0
+					ui.message("Experience Shrine: +50% experience for 90 seconds", Color(0.8, 0.5, 1.0))
+			if net.active:
+				net.inter_used(t)
+		"chest":
+			if t.used:
+				return
+			_open_chest(t)
+			if net.active:
+				net.inter_used(t)
+
+func travel_waypoint(dest: Dictionary) -> void:
+	Sfx.play("portal")
+	travel(cur_act, dest["zone"], "waypoint")
+
+func _make_portal(p: Vector3, dir: String) -> Inter:
+	var it := Inter.new()
+	it.kind = "portal"
+	it.label = "Town Portal" if dir == "town" else "Portal to " + zone_title(int(tp_link.get("act", 0)), tp_link.get("zone", "wild"))
+	it.radius = 1.4
+	it.data = {"dir": dir}
+	world.add_child(it)
+	it.global_position = Vector3(p.x, world.height_at(p.x, p.z), p.z)
+	var m := Fx.portal_model()
+	m.name = "Model"
+	it.add_child(m)
+	world.interactables.append(it)
+	return it
+
+func cast_town_portal() -> void:
+	if cur_zone == "town":
+		ui.message("You are already in town", Color(0.6, 0.7, 1.0))
+		return
+	if hero.dead:
+		return
+	var fwd := -hero.rig.global_transform.basis.z
+	var p := world.free_spot_near(hero.global_position + fwd * 2.0, 1.0)
+	if net.is_client():
+		net.request_portal(p)
+		return
+	open_town_portal_at(p)
+
+func open_town_portal_at(p: Vector3) -> void:
+	for it in world.interactables:
+		if is_instance_valid(it) and it.kind == "portal" and it.has_meta("dyn") and it.data.get("dir", "") == "town" and not it.has_meta("boss"):
+			world.interactables.erase(it)
+			it.queue_free()
+			break
+	tp_link = {"act": cur_act, "zone": cur_zone, "pos": p}
+	var t := _make_portal(p, "town")
+	t.set_meta("dyn", true)
+	Sfx.play("portal")
+	Fx.burst(world.fx_root, p + Vector3(0, 1.4, 0), Color(0.4, 0.6, 1.0), 40, 3.0, 0.12, 1.0, true, 0.0)
+	net.portal_created(t)
+
+# ---------------------------------------------------------------- kills & loot
+func gain_kill_xp(xp: int, lvl: int) -> void:
+	var bonus := 1.5 if xp_bonus_t > 0.0 else 1.0
+	var lvl_ratio := clampf(1.0 - (hero.level - lvl) * 0.08, 0.2, 1.3)
+	hero.add_xp(int(xp * lvl_ratio * bonus))
+
+func on_enemy_killed(e: Enemy) -> void:
+	gain_kill_xp(e.xp, e.level)
+	net.share_xp(e.xp, e.level)
+	var drops := 1
+	if e.champion:
+		drops = 3
+	if e.boss:
+		drops = 7
+	for i in drops:
+		_drop_loot_roll(e.global_position, e.level, e.boss or (e.champion and i == 0))
+	if e.def.has("boss_drop"):
+		var bu := Items.make_unique(e.def["boss_drop"])
+		if difficulty >= 1:
+			Items.empower(bu, loot_mult())
+		drop_item(bu, e.global_position)
+		ui.message("%s dropped %s!" % [e.display_name, bu["name"]], Color(0.85, 0.66, 0.38))
+	if e.boss:
+		boss_killed = true
+		ui.set_boss(null)
+		ui.big_message(e.display_name + " has fallen")
+		add_shake(0.8)
+		Fx.pillar(world.fx_root, e.global_position, Color(1.0, 0.3, 0.2), 2.0)
+		var ptl := _make_portal(world.free_spot_near(e.global_position + Vector3(0, 0, 3.5), 1.0), "town")
+		ptl.label = "Portal to " + Data.ACTS[cur_act]["town"]
+		ptl.set_meta("boss", true)
+		net.portal_created(ptl)
+		save_game()
+		await get_tree().create_timer(3.5).timeout
+		ui.show_victory(difficulty)
+		Sfx.play("levelup")
+
+## Co-op: the host's game reports the boss fell.
+func boss_down_remote(e: Enemy) -> void:
+	boss_killed = true
+	ui.set_boss(null)
+	ui.big_message(e.display_name + " has fallen")
+	add_shake(0.8)
+	Fx.pillar(world.fx_root, e.global_position, Color(1.0, 0.3, 0.2), 2.0)
+	save_game()
+	await get_tree().create_timer(3.5).timeout
+	ui.show_victory(difficulty)
+	Sfx.play("levelup")
+
+func on_boss_aggro(e: Enemy) -> void:
+	net.boss_aggro(e)
+	ui.set_boss(e)
+	ui.big_message(e.display_name)
+	Sfx.play("roar")
+	add_shake(0.5)
+
+func _drop_loot_roll(at: Vector3, lvl: int, good: bool) -> void:
+	var r := rng.randf()
+	if good or r < 0.3:
+		var it := Items.random_drop(lvl, hero.mf + (100 if good else 0), rng, good)
+		if difficulty >= 1:
+			Items.empower(it, loot_mult())
+		drop_item(it, at)
+	elif r < 0.62:
+		drop_item(Items.gold(int(rng.randf_range(4, 12) * (1.0 + lvl * 0.6))), at)
+	elif r < 0.78:
+		var pk := "hp_potion" if rng.randf() < 0.6 else ("mp_potion" if rng.randf() < 0.8 else "rejuv")
+		drop_item(Items.potion(pk), at)
+
+func drop_item(it: Dictionary, at: Vector3) -> void:
+	if net.is_client():
+		net.request_drop(it, at)
+		return
+	var g := GroundItem.new()
+	world.items_root.add_child(g)
+	var to := world.free_spot_near(at, 1.8)
+	g.setup(it, at + Vector3(0, 1.0, 0), to)
+	if net.active:
+		net.on_item_dropped(g, it, at, to)
+	if int(it.get("rarity", 0)) >= 2:
+		Sfx.play("levelup", -12.0, 1.6)
+
+# ---------------------------------------------------------------- feedback
+func add_shake(v: float) -> void:
+	shake = minf(1.0, shake + v)
+
+var _hitstop_until := 0
+func hitstop(t: float) -> void:
+	_hitstop_until = Time.get_ticks_msec() + int(t * 1000.0)
+	Engine.time_scale = 0.08
+
+func _on_hero_died() -> void:
+	death_t = 2.0
+	ui.set_boss(null)
+
+func respawn() -> void:
+	hero.gold = int(hero.gold * 0.9)
+	if net.active:
+		var ally := net.alive_ally()
+		if ally:
+			hero.respawn(world.free_spot_near(ally.global_position, 2.0))
+			ui.message("You rise beside %s" % net.players.get(ally.peer_id, {"name": "your ally"})["name"], Color(0.6, 0.8, 1.0))
+			return
+		if net.is_client():
+			hero.respawn(hero.global_position)
+			net.travel_cool = 0.0
+			net.request_travel(cur_act, "town", "start", null)
+			return
+	await load_zone(cur_act, "town", "start")
+	hero.respawn(hero.global_position)
+
+func toggle_pause() -> void:
+	paused = not paused
+	get_tree().paused = paused and not net.active
+	ui.pause_panel.visible = paused
+	Engine.time_scale = 1.0
+	lmb_held = false
+
+# ---------------------------------------------------------------- input
+func _ground_from_ray(o: Vector3, d: Vector3) -> Vector3:
+	var h := 0.0
+	var p := o
+	for i in 4:
+		if absf(d.y) < 0.0001:
+			break
+		var t := (h - o.y) / d.y
+		p = o + d * t
+		h = world.height_at(p.x, p.z)
+	return p
+
+func _drop_stale() -> void:
+	if hovered != null and (not is_instance_valid(hovered) or hovered.is_queued_for_deletion()):
+		hovered = null
+	if hero and hero.target != null and (not is_instance_valid(hero.target) or hero.target.is_queued_for_deletion()):
+		hero.target = null
+
+func _update_hover() -> void:
+	_drop_stale()
+	if world == null:
+		return
+	var mp := get_viewport().get_mouse_position()
+	var o := cam.project_ray_origin(mp)
+	var d := cam.project_ray_normal(mp)
+	ground_pt = _ground_from_ray(o, d)
+	var best = null
+	var best_d := 1e9
+	for e in world.enemies_root.get_children():
+		if not (e is Enemy) or e.dead:
+			continue
+		var c: Vector3 = e.global_position + Vector3(0, e.height * 0.95, 0)
+		var dist := (c - o).cross(d).length()
+		var rad: float = e.radius + 0.35 + (0.4 if e.boss else 0.0)
+		if dist < rad:
+			var along := (c - o).dot(d)
+			if along < best_d:
+				best_d = along
+				best = e
+	if best == null:
+		for g in world.items_root.get_children():
+			if g is GroundItem and g._toss >= 1.0:
+				var lp: Vector3 = g.global_position + Vector3(0, 0.75, 0)
+				var dist2 := (lp - o).cross(d).length()
+				var dg := Vector2(ground_pt.x - g.global_position.x, ground_pt.z - g.global_position.z).length()
+				if (dist2 < 0.35 and g.label.visible) or dg < 0.55:
+					best = g
+					break
+	if best == null:
+		for it in world.interactables:
+			if not is_instance_valid(it):
+				continue
+			var c2: Vector3 = it.global_position + Vector3(0, 1.0, 0)
+			if (c2 - o).cross(d).length() < 1.1:
+				best = it
+				break
+	if hovered != best:
+		if is_instance_valid(hovered) and hovered is GroundItem:
+			hovered.set_hover(false, Input.is_key_pressed(KEY_ALT))
+		hovered = best
+		if hovered is GroundItem:
+			hovered.set_hover(true, true)
+	if hovered is Enemy:
+		var col := Color(1, 1, 1)
+		if hovered.champion:
+			col = Color(0.45, 0.6, 1.0)
+		if hovered.boss:
+			col = Color(0.85, 0.66, 0.38)
+		ui.target_bar.visible = true
+		ui.show_target(hovered.display_name, hovered.life / hovered.max_life, col)
+	elif hovered is Inter:
+		ui.show_target(hovered.label, 1.0, Color(0.85, 0.75, 0.5))
+		ui.target_bar.visible = false
+	else:
+		ui.hide_target()
+
+func _unhandled_input(ev: InputEvent) -> void:
+	if not playing:
+		return
+	if ev is InputEventMouseButton:
+		if ev.button_index == MOUSE_BUTTON_LEFT:
+			if ev.pressed and not paused:
+				lmb_held = true
+				lmb_repeat = 0.12
+				_click_world()
+		elif ev.button_index == MOUSE_BUTTON_WHEEL_UP and ev.pressed:
+			zoom = clampf(zoom - 0.08, 0.6, 1.3)
+		elif ev.button_index == MOUSE_BUTTON_WHEEL_DOWN and ev.pressed:
+			zoom = clampf(zoom + 0.08, 0.6, 1.3)
+	if ev is InputEventKey and ev.pressed and not ev.echo:
+		match ev.keycode:
+			KEY_ESCAPE:
+				if not ui.close_all():
+					toggle_pause()
+			KEY_I, KEY_B:
+				ui.toggle(ui.inv_panel)
+			KEY_C:
+				ui.toggle(ui.char_panel)
+			KEY_T:
+				cast_town_portal()
+			KEY_1, KEY_2, KEY_3, KEY_4:
+				hero.drink(ev.keycode - KEY_1)
+			KEY_Q:
+				cast_skill("cleave")
+			KEY_E:
+				cast_skill("nova")
+			KEY_R:
+				cast_skill("charge")
+			KEY_F:
+				cast_skill("cry")
+			KEY_F3:
+				ui.show_fps = not ui.show_fps
+			KEY_M:
+				ui.minimap.visible = not ui.minimap.visible
+			KEY_TAB:
+				ui.minimap.visible = true
+				ui.minimap.set_big(not ui.minimap.big)
+
+func _input(ev: InputEvent) -> void:
+	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed:
+		lmb_held = false
+
+func cast_skill(id: String) -> void:
+	if not playing or hero.dead:
+		return
+	_update_hover()
+	var aim := ground_pt
+	if hovered is Enemy:
+		aim = hovered.global_position
+	hero.use_skill(id, aim)
+
+func _click_world() -> void:
+	_update_hover()
+	_drop_stale()
+	if hero.dead:
+		return
+	if hovered is Enemy or hovered is GroundItem or hovered is Inter:
+		hero.cmd_target(hovered)
+	else:
+		hero.cmd_move(ground_pt)
+		Fx.burst(world.fx_root, ground_pt + Vector3(0, 0.05, 0), Color(1.0, 0.85, 0.5, 0.6), 6, 1.2, 0.08, 0.35, true, 0.0, 90.0)
+
+# ---------------------------------------------------------------- loop
+func _process(delta: float) -> void:
+	_t += delta
+	var real_dt := delta / maxf(Engine.time_scale, 0.01)
+	_watchdog(real_dt)
+	if world == null:
+		return
+	xp_bonus_t = maxf(0.0, xp_bonus_t - delta)
+	exit_grace = maxf(0.0, exit_grace - delta)
+	_drop_stale()
+	if Engine.time_scale < 1.0 and Time.get_ticks_msec() > _hitstop_until:
+		Engine.time_scale = 1.0
+	if playing and not paused and not _busy:
+		_update_hover()
+		hero.blocking = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and not ui.any_panel_open()
+		hero.sprint = Input.is_key_pressed(KEY_SHIFT)
+		if Input.is_key_pressed(KEY_SPACE) and hero.can_act():
+			hero.free_attack(hovered.global_position if (hovered is Enemy) else ground_pt)
+		var wasd := Vector3.ZERO
+		if Input.is_key_pressed(KEY_W): wasd.z -= 1
+		if Input.is_key_pressed(KEY_S): wasd.z += 1
+		if Input.is_key_pressed(KEY_A): wasd.x -= 1
+		if Input.is_key_pressed(KEY_D): wasd.x += 1
+		hero.cmd_wasd(wasd)
+		if lmb_held and not hero.dead:
+			lmb_repeat -= delta
+			if lmb_repeat <= 0.0:
+				lmb_repeat = 0.12
+				if hovered is Enemy:
+					if hero.target != hovered:
+						hero.cmd_target(hovered)
+				elif hero.target == null or not (hero.target is Enemy):
+					if not (hovered is GroundItem or hovered is Inter):
+						hero.cmd_move(ground_pt, world.los(hero.global_position, ground_pt))
+		var show_all := Input.is_key_pressed(KEY_ALT)
+		for g in world.items_root.get_children():
+			if g is GroundItem and g != hovered:
+				g.set_hover(false, show_all)
+				if g.item["base"] == "gold" and g._toss >= 1.0 and not hero.dead:
+					if g.global_position.distance_to(hero.global_position) < 1.0:
+						_pickup(g)
+		if exit_grace <= 0.0 and not hero.dead:
+			for ex in world.exits:
+				var dd: Vector3 = ex["pos"] - hero.global_position
+				if Vector2(dd.x, dd.z).length() < ex["radius"]:
+					var to: String = ex["to"]
+					var spawn := "start"
+					if cur_zone == "town" and to == "wild":
+						spawn = "from_town"
+					elif cur_zone == "wild" and to == "town":
+						spawn = "from_wild"
+					elif cur_zone == "lair" and to == "wild":
+						spawn = "from_lair"
+					travel(cur_act, to, spawn)
+					break
+	if death_t > 0.0:
+		death_t -= delta
+		if death_t <= 0.0:
+			ui.death_panel.visible = true
+	if hero and world:
+		var look_ahead := Vector3.ZERO
+		if playing and not hero.dead and shot_path == "":
+			var mp := get_viewport().get_mouse_position() / get_viewport().get_visible_rect().size - Vector2(0.5, 0.5)
+			look_ahead = Vector3(mp.x, 0, mp.y) * 2.0
+		cam_target = cam_target.lerp(hero.global_position + look_ahead, clampf(real_dt * 5.0, 0.0, 1.0))
+		weather.follow(cam_target)
+		cam_pivot.position = cam_target
+		if not playing:
+			cam_pivot.position = hero.global_position + Vector3(sin(_t * 0.12) * 3.0, 0, cos(_t * 0.1) * 1.5)
+		shake = maxf(0.0, shake - real_dt * 2.2)
+		var sh := Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake * shake * 0.35
+		cam.position = CAM_OFFSET * zoom + sh
+		RenderingServer.global_shader_parameter_set("player_pos", hero.global_position)
+	for l in get_tree().get_nodes_in_group("flicker"):
+		var lt := l as OmniLight3D
+		var b: float = lt.get_meta("base", 1.0)
+		var id := float(lt.get_instance_id() % 100)
+		lt.light_energy = b * (0.85 + 0.1 * sin(_t * 9.0 + id) + 0.07 * sin(_t * 23.0 + id * 2.3))
+	if shot_path != "" and not _busy and world:
+		shot_frames += 1
+		if shot_frames == 50:
+			_shot_setup()
+		if shot_frames == (150 if OS.get_cmdline_user_args().has("--inv") else (120 if OS.get_cmdline_user_args().has("--dragtest") else (62 if OS.get_cmdline_user_args().has("--snowtest") else 90))):
+			var img := get_viewport().get_texture().get_image()
+			img.save_png(shot_path)
+			print("saved ", shot_path)
+			get_tree().quit()
+
+## For automated screenshots: stage a fight near the hero.
+func _shot_setup() -> void:
+	var args := OS.get_cmdline_user_args()
+	if args.has("--bigmap"):
+		ui.minimap.set_big(true)
+	if args.has("--inv"):
+		var r := RandomNumberGenerator.new()
+		r.seed = 5
+		hero.level = 14
+		hero.equipment["weapon"] = Items.make_unique("emberfang")
+		hero.equipment["shield"] = Items.make_unique("wardens_wall")
+		hero.equipment["helm"] = Items.generate("great_helm", 14, 2, r)
+		hero.equipment["armor"] = Items.generate("chain_mail", 14, 1, r)
+		hero.equipment["gloves"] = Items.generate("gauntlets", 14, 1, r)
+		hero.equipment["boots"] = Items.make_unique("stormstride")
+		hero.equipment["belt"] = Items.generate("war_belt", 14, 0, r)
+		hero.equipment["ring1"] = Items.make_unique("ninth_sun")
+		hero.equipment["amulet"] = Items.generate("amulet", 14, 2, r)
+		for i in 14:
+			hero.inventory[i * 2 + (i / 5)] = Items.random_drop(12, 300, r)
+		hero.recalc()
+		hero.refresh_gear()
+		ui.inv_panel.visible = true
+		ui.char_panel.visible = true
+		ui.refresh()
+		ui._hover(ui.equip_cells["weapon"], true, "equipped")
+	if args.has("--archers"):
+		zoom = 0.6
+		for i in 3:
+			var ep := world.free_spot_near(hero.global_position + Vector3(-2.0 + i * 2.0, 0, -2.6 - absf(i - 1) * 0.6), 0.5)
+			var a := spawn_enemy("skel_archer", ep, 2)
+			a.aggro = true
+	if args.has("--hudtest"):
+		hero.level = 7
+		hero.recalc()
+		hero.xp = int(Data.xp_for_level(7) * 0.42)
+		hero.stamina = hero.max_stamina * 0.62
+		hero.stamina_rest = -99.0
+		hero.cds["cleave"] = 0.6
+		ui.refresh()
+	if args.has("--dragtest"):
+		ui.toggle(ui.inv_panel)
+		hero.inventory[0] = Items.make_unique("emberfang")
+		hero.inventory[1] = Items.make_unique("ninth_sun")
+		hero.inventory[11] = Items.potion("hp_potion")
+		ui.refresh()
+		await get_tree().create_timer(2.5).timeout
+		if not args.has("--nodrag"):
+			ui.drag_hold = true
+			ui.drag_idx = 0
+			ui._start_drag(0)
+			Input.warp_mouse(Vector2(640, 470))
+		if not args.has("--nofx"):
+			ui.click_fx(ui.inv_cells[1])
+	if args.has("--snowtest"):
+		var back := Vector3(0, 0, 1)
+		for k in 14:
+			var pp := hero.global_position + back * (0.6 + k * 0.42) + Vector3(sin(k * 0.5) * 0.3, 0, 0)
+			pp.y = world.height_at(pp.x, pp.z)
+			weather.footstep(world.fx_root, pp, 0.0, 1.0 if k % 2 == 0 else -1.0)
+		hero.breath.restart()
+	if args.has("--zoomout"):
+		zoom = 1.3
+	if args.has("--enchtest"):
+		hero.equipment["helm"] = Items.generate("great_helm", 12, 1, rng)
+		hero.equipment["helm"]["ench"] = 6
+		hero.equipment["boots"] = Items.generate("greaves", 12, 0, rng)
+		hero.equipment["boots"]["ench"] = 2
+		hero.gold = 25000
+		hero.recalc()
+		hero.refresh_gear()
+		ui.open_enchant("Hedda")
+		ui._enchant("armor")
+	if args.has("--god"):
+		hero.vit = 2000000
+		hero.recalc()
+		hero.life = hero.max_life
+	if args.has("--fight"):
+		var e := enemies_near(hero.global_position, 80.0)
+		for x in e:
+			if x.boss:
+				e = [x]
+				break
+		if e.size() > 0:
+			var tgt: Enemy = e[0]
+			hero.global_position = world.free_spot_near(tgt.global_position + Vector3(0, 0, 2.2), 0.5)
+			hero.cmd_target(tgt)
+		hero.blocking = OS.get_cmdline_user_args().has("--block")

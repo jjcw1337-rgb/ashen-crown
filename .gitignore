@@ -1,0 +1,9 @@
+# Godot's import cache and editor state (rebuilt automatically when the project is opened)
+.godot/
+*.import
+# Exported builds (GitHub Actions makes these on every push)
+build/
+*.zip
+# OS clutter
+.DS_Store
+Thumbs.db

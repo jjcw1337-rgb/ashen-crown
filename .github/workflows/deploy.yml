@@ -1,0 +1,68 @@
+# Every push to main exports the game with Godot 4.3 and publishes:
+#   - the browser version at this repository's GitHub Pages address
+#   - a Windows download (AshenCrown-Windows.zip) on that same page
+name: Build and publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.3"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install export templates
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates
+          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+
+      - name: Import project
+        run: godot --headless --editor --quit || true
+
+      - name: Export browser version
+        run: |
+          mkdir -p build/web
+          godot --headless --export-release "Web" build/web/index.html
+
+      - name: Export Windows version
+        run: |
+          mkdir -p build/win
+          godot --headless --export-release "Windows Desktop" build/win/AshenCrown.exe
+          cp README.md build/win/
+          printf 'start "" "%%~dp0AshenCrown.exe" --rendering-method gl_compatibility --rendering-driver opengl3\r\n' > "build/win/Ashen Crown (Safe Mode).bat"
+          apt-get update -qq && apt-get install -y -qq zip > /dev/null
+          cd build/win && zip -q -r ../web/AshenCrown-Windows.zip .
+
+      - name: Check the exports exist
+        run: ls -la build/web && test -s build/web/index.wasm && test -s build/web/AshenCrown-Windows.zip
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

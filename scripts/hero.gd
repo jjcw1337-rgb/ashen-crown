@@ -1,0 +1,1016 @@
+class_name Hero
+extends Node3D
+## The player character: stats, equipment visuals, movement, combat, skills.
+
+signal died
+signal leveled(lvl: int)
+signal stats_changed
+
+var game: Node
+var rig: Node3D
+var J: Dictionary
+var hlook := {"skin": Color(0.8, 0.62, 0.5), "cloth": Color(0.36, 0.07, 0.05), "cloth2": Color(0.2, 0.14, 0.1),
+	"head": "human", "hair": Color(0.25, 0.15, 0.08), "beard": Color(0.25, 0.15, 0.08), "cape": Color(0.32, 0.05, 0.04)}
+
+# --- persistent state
+var level := 1
+var xp := 0
+var str_ := 20
+var dex := 15
+var vit := 25
+var ene := 10
+var stat_points := 0
+var gold := 120
+var equipment := {}
+var inventory: Array = []
+var belt: Array = [null, null, null, null]
+var stash: Array = []
+
+# --- derived
+var max_life := 100.0
+var max_mana := 30.0
+var life := 100.0
+var mana := 30.0
+var dmg_min := 1
+var dmg_max := 3
+var fire_dmg := 0
+var armor := 0
+var block_chance := 0.0
+var aspd := 1.0
+var ls := 0.0
+var res := 0
+var frw := 0
+var regen := 0.0
+var mf := 0
+var gf := 0
+var stats := {}
+
+# --- runtime
+var radius := 0.45
+var target = null            # Enemy, Inter, GroundItem or null
+var move_goal := Vector3.ZERO
+var path := PackedVector3Array()
+var moving := false
+var direct_dir := Vector3.ZERO
+var phase := 0.0
+var move_amt := 0.0
+var atk_t := -1.0
+var atk_dur := 0.6
+var atk_style := "over"
+var atk_skill := ""
+var atk_aim := Vector3.ZERO
+var impact_done := false
+var blocking := false
+var block_amt := 0.0
+var block_flash := 0.0
+var hit_t := 0.0
+var cds := {"cleave": 0.0, "nova": 0.0, "charge": 0.0, "cry": 0.0}
+var buff_t := 0.0
+var heal_pool := 0.0
+var mana_pool := 0.0
+var dead := false
+var dead_t := 0.0
+var charge_t := -1.0
+var charge_dir := Vector3.ZERO
+var charge_hit := {}
+var anim_time := 0.0
+var shield_rest := Transform3D()
+var trail: MeshInstance3D
+var trail_pts: Array = []
+var trail_col := Color(1, 1, 1)
+var aura: GPUParticles3D
+var light: OmniLight3D
+var breath: GPUParticles3D
+var _breath_t := 1.0
+var _last_step := 0
+var weapon_node: Node3D = null
+var shield_node: Node3D = null
+var gear_nodes: Array = []
+var combo := 0
+var combo_t := 0.0
+var atk_target = null
+var stamina := 100.0
+var max_stamina := 100.0
+var stamina_rest := 0.0
+var sprint := false
+var running := false
+var exhausted := false
+# co-op: a puppet is a partner's knight, driven by the poses their game sends
+var puppet := false
+var peer_id := 0
+var ally_color := Color.WHITE
+var last_pose := {}
+var net_has := false
+var net_pos := Vector3.ZERO
+var net_yaw := 0.0
+var net_phase_rate := 0.0
+var net_st := {}
+var net_buff := false
+var _net_last_t := 0.0
+
+func _init() -> void:
+	inventory.resize(40)
+	stash.resize(60)
+
+func setup(g: Node) -> void:
+	game = g
+	if not puppet:
+		add_to_group("hero")
+	rig = Knight.build(Knight.default_gear())
+	rig.set_meta("pers", "hero")
+	add_child(rig)
+	J = rig.get_meta("j")
+	light = OmniLight3D.new()
+	light.light_color = Color(1.0, 0.85, 0.65)
+	light.light_energy = 0.9
+	light.omni_range = 10.0
+	light.omni_attenuation = 1.6
+	light.position = Vector3(0, 3.2, 0.5)
+	light.shadow_enabled = false
+	add_child(light)
+	trail = MeshInstance3D.new()
+	trail.mesh = ImmediateMesh.new()
+	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var tm := StandardMaterial3D.new()
+	tm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	tm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	tm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	tm.vertex_color_use_as_albedo = true
+	tm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	trail.material_override = tm
+	trail.top_level = true
+	add_child(trail)
+	breath = game.weather.make_breath()
+	(J["head"] as Node3D).add_child(breath)
+	breath.position = Vector3(0, 0.02, -0.16)
+	aura = GPUParticles3D.new()
+	aura.amount = 30
+	aura.lifetime = 1.2
+	aura.emitting = false
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
+	pm.emission_ring_axis = Vector3.UP
+	pm.emission_ring_radius = 0.7
+	pm.emission_ring_inner_radius = 0.5
+	pm.emission_ring_height = 0.1
+	pm.direction = Vector3.UP
+	pm.spread = 10
+	pm.initial_velocity_min = 0.8
+	pm.initial_velocity_max = 1.6
+	pm.gravity = Vector3.ZERO
+	var g2 := Gradient.new()
+	g2.set_color(0, Color(1.0, 0.8, 0.3, 0.9))
+	g2.set_color(1, Color(1.0, 0.5, 0.1, 0.0))
+	var gt := GradientTexture1D.new()
+	gt.gradient = g2
+	pm.color_ramp = gt
+	aura.process_material = pm
+	var q := QuadMesh.new()
+	q.size = Vector2(0.1, 0.1)
+	q.material = Mats.particle_mat(true, Color(2, 2, 2))
+	aura.draw_pass_1 = q
+	add_child(aura)
+
+func new_character() -> void:
+	equipment = {}
+	for s in Items.EQUIP_SLOTS:
+		equipment[s] = null
+	equipment["weapon"] = Items.make("short_sword")
+	equipment["shield"] = Items.make("buckler")
+	equipment["armor"] = Items.make("quilted")
+	belt = [Items.potion("hp_potion"), Items.potion("hp_potion"), Items.potion("mp_potion"), null]
+	belt[0]["count"] = 4
+	belt[1]["count"] = 4
+	belt[2]["count"] = 3
+	recalc()
+	life = max_life
+	mana = max_mana
+	refresh_gear()
+
+# ---------------------------------------------------------------- stats
+func recalc() -> void:
+	stats = {}
+	var def_sum := 0
+	var shield_block := 0
+	for s in Items.EQUIP_SLOTS:
+		var it = equipment.get(s)
+		if it == null:
+			continue
+		var ss := Items.stat_sum(it)
+		for k in ss.keys():
+			stats[k] = stats.get(k, 0) + ss[k]
+		def_sum += Items.defense_of(it)
+		if s == "shield":
+			shield_block = it.get("block", 0)
+	var st_total: int = str_ + stats.get("str", 0)
+	var dx_total: int = dex + stats.get("dex", 0)
+	var vt_total: int = vit + stats.get("vit", 0)
+	max_life = 45.0 + vt_total * 3.0 + level * 4.0 + stats.get("life", 0)
+	max_mana = 15.0 + ene * 2.0 + level * 1.5 + stats.get("mana", 0)
+	max_stamina = 70.0 + vt_total * 0.6 + level * 2.0
+	stamina = minf(stamina, max_stamina)
+	var w = equipment.get("weapon")
+	var wd: Array = Items.damage_of(w) if w != null else [1, 3]
+	var k := 1.0 + st_total / 100.0
+	dmg_min = maxi(1, int(wd[0] * k))
+	dmg_max = maxi(dmg_min, int(wd[1] * k))
+	fire_dmg = stats.get("fire", 0)
+	var wspeed: float = Data.BASES[w["base"]].get("speed", 1.0) if w != null else 1.2
+	aspd = wspeed * (1.0 + mini(stats.get("ias", 0), 120) / 100.0 + dx_total * 0.002)  # A2/A3 gear: speed capped
+	armor = def_sum + dx_total / 4
+	block_chance = 0.0
+	if equipment.get("shield") != null:
+		block_chance = minf(60.0, shield_block + stats.get("block", 0) + dx_total * 0.1)
+	ls = mini(stats.get("ls", 0), 25)  # life steal capped at 25%
+	res = mini(75, stats.get("res", 0))
+	frw = mini(stats.get("frw", 0), 100)  # run speed capped at double
+	regen = 0.4 + stats.get("regen", 0)
+	mf = stats.get("mf", 0)
+	gf = stats.get("gf", 0)
+	life = minf(life, max_life)
+	mana = minf(mana, max_mana)
+	stats_changed.emit()
+
+func total_str() -> int: return str_ + stats.get("str", 0)
+func total_dex() -> int: return dex + stats.get("dex", 0)
+func total_vit() -> int: return vit + stats.get("vit", 0)
+
+func add_xp(v: int) -> void:
+	xp += v
+	while xp >= Data.xp_for_level(level):
+		xp -= Data.xp_for_level(level)
+		level += 1
+		stat_points += 5
+		recalc()
+		life = max_life
+		mana = max_mana
+		Fx.pillar(game.world.fx_root, global_position, Color(1.0, 0.85, 0.4))
+		Sfx.play("levelup")
+		leveled.emit(level)
+	stats_changed.emit()
+
+# ---------------------------------------------------------------- gear visuals
+func refresh_gear() -> void:
+	for n in gear_nodes:
+		if is_instance_valid(n):
+			n.queue_free()
+	gear_nodes.clear()
+	weapon_node = null
+	shield_node = null
+	var w = equipment.get("weapon")
+	if w != null:
+		weapon_node = Models.item_model(w)
+		(J["grip_r"] as Node3D).add_child(weapon_node)
+		gear_nodes.append(weapon_node)
+		if w.get("rarity", 0) == 3 and Models.palette(w)["glow"] != null:
+			var fl := Props.fire(weapon_node, Vector3(0, 0, -0.5), 0.35, Models.palette(w)["glow"], false, false, false)
+			gear_nodes.append(fl)
+	var s = equipment.get("shield")
+	if s != null:
+		shield_node = Models.item_model(s)
+		(J["mount_l"] as Node3D).add_child(shield_node)
+		shield_node.rotation_degrees = Vector3(0, 0, 0)
+		shield_node.position = Vector3(-0.03, 0, 0)
+		shield_rest = shield_node.transform
+		gear_nodes.append(shield_node)
+	var h = equipment.get("helm")
+	if h != null:
+		var hm := Models.item_model(h)
+		(J["head"] as Node3D).add_child(hm)
+		hm.position = Vector3(0, 0.092, 0.006)
+		hm.scale = Vector3(1.04, 1.04, 1.04)
+		gear_nodes.append(hm)
+	Knight.rebuild_body(rig, knight_gear())
+	var am = equipment.get("amulet")
+	if am != null:
+		var an := Models.amulet(Models.palette(am))
+		(J["torso"] as Node3D).add_child(an)
+		an.position = Vector3(0, 0.47, -0.15)
+		an.rotation_degrees = Vector3(-75, 0, 0)
+		an.scale = Vector3(1.2, 1.2, 1.2)
+		gear_nodes.append(an)
+	if not puppet and game and game.net and game.net.active:
+		game.net.send_gear()
+
+## Describes the equipped armour so the skinned body can be rebuilt to match.
+func knight_gear() -> Dictionary:
+	var g := Knight.default_gear()
+	var a = equipment.get("armor")
+	if a != null:
+		var p := Models.palette(a)
+		g["armor"] = Data.BASES[a["base"]]["kind"]
+		g["steel"] = p["metal"]
+		g["trim"] = p["trim"] if int(a.get("rarity", 0)) > 0 else Color(0.78, 0.62, 0.32)
+		g["glow"] = p["glow"]
+		if int(a.get("ench", 0)) >= 5 and p["glow"] == null:
+			g["glow"] = Color(0.4, 0.58, 1.0)
+		if int(a.get("rarity", 0)) == 3:
+			g["cloth"] = (p["metal"] as Color).darkened(0.2)
+			g["cape"] = (p["metal"] as Color).darkened(0.45)
+			g["emblem"] = p["trim"]
+	var gl = equipment.get("gloves")
+	if gl != null:
+		g["gloves"] = Data.BASES[gl["base"]]["kind"]
+	var bo = equipment.get("boots")
+	if bo != null:
+		g["boots"] = Data.BASES[bo["base"]]["kind"]
+		if int(bo.get("rarity", 0)) == 3 and a == null:
+			g["steel"] = Models.palette(bo)["metal"]
+	g["belt"] = true
+	g["coif"] = g["armor"] in ["chain", "plate", "ornate"]
+	return g
+
+# ---------------------------------------------------------------- commands
+func cmd_move(p: Vector3, direct := false) -> void:
+	if dead or charge_t >= 0.0:
+		return
+	target = null
+	_set_goal(p, direct)
+
+## Swing toward a point without needing a target (Space). Works while moving.
+func free_attack(aim: Vector3) -> void:
+	if not can_act():
+		return
+	atk_aim = aim
+	atk_target = null
+	_face(aim - global_position)
+	_start_attack(["over", "back", "thrust"][combo % 3])
+	combo += 1
+	combo_t = 0.0
+
+func _face_smooth(d: Vector3, delta: float) -> void:
+	d.y = 0
+	if d.length() > 0.01:
+		rig.rotation.y = lerp_angle(rig.rotation.y, atan2(-d.x, -d.z), clampf(delta * 14.0, 0.0, 1.0))
+
+func cmd_target(t) -> void:
+	if dead or charge_t >= 0.0:
+		return
+	target = t
+	if is_instance_valid(t):
+		_set_goal(t.global_position, false)
+
+func cmd_wasd(dir: Vector3) -> void:
+	if dead or charge_t >= 0.0:
+		return
+	direct_dir = dir
+	if dir.length() > 0.1:
+		if not (is_instance_valid(target) and target is Enemy):
+			target = null
+		path = PackedVector3Array()
+		moving = false
+
+func _set_goal(p: Vector3, direct: bool) -> void:
+	move_goal = p
+	if direct:
+		path = PackedVector3Array([p])
+	else:
+		path = game.world.find_path(global_position, p)
+		if path.is_empty():
+			path = PackedVector3Array([p])
+	moving = true
+
+func can_act() -> bool:
+	return not dead and atk_t < 0.0 and charge_t < 0.0
+
+func use_skill(id: String, aim: Vector3) -> bool:
+	if dead or charge_t >= 0.0:
+		return false
+	if atk_t >= 0.0 and atk_skill != "":
+		return false
+	var sk: Dictionary = {}
+	for s in Data.SKILLS:
+		if s["id"] == id:
+			sk = s
+	if sk.is_empty() or level < sk["lvl"]:
+		game.ui.message("Requires level %d" % sk.get("lvl", 1), Color(1, 0.4, 0.3))
+		return false
+	if cds[id] > 0.0:
+		game.ui.message("%s is recharging" % sk["name"], Color(0.8, 0.8, 0.8))
+		return false
+	if mana < sk["mana"]:
+		game.ui.message("Not enough mana", Color(0.4, 0.5, 1.0))
+		Sfx.play("deny")
+		return false
+	# cancel a basic swing so the skill fires right away
+	atk_t = -1.0
+	impact_done = true
+	mana -= sk["mana"]
+	cds[id] = sk["cd"]
+	atk_aim = aim
+	_face(aim - global_position)
+	match id:
+		"cleave":
+			_start_attack("side", "cleave")
+		"nova":
+			_start_attack("cast", "nova")
+			atk_dur = 0.55
+		"charge":
+			var d := aim - global_position
+			d.y = 0
+			charge_dir = d.normalized() if d.length() > 0.1 else -rig.global_transform.basis.z
+			charge_t = 0.0
+			charge_hit = {}
+			Sfx.play("charge")
+			path = PackedVector3Array()
+			moving = false
+		"cry":
+			_start_attack("cast", "cry")
+			atk_dur = 0.6
+	return true
+
+func drink(slot: int) -> void:
+	if dead or slot < 0 or slot > 3 or belt[slot] == null:
+		return
+	var it: Dictionary = belt[slot]
+	var b: Dictionary = Data.BASES[it["base"]]
+	if b.has("heal"):
+		heal_pool += b["heal"] * (1.0 + level * 0.06)
+	if b.has("mana"):
+		mana_pool += b["mana"] * (1.0 + level * 0.05)
+	if b.has("rejuv"):
+		life = minf(max_life, life + max_life * b["rejuv"])
+		mana = minf(max_mana, mana + max_mana * b["rejuv"])
+	it["count"] = int(it.get("count", 1)) - 1
+	if it["count"] <= 0:
+		belt[slot] = null
+	Sfx.play("potion")
+	Fx.burst(game.world.fx_root, global_position + Vector3(0, 1.2, 0), b["color"], 14, 1.5, 0.12, 0.8, true, 1.0)
+	stats_changed.emit()
+
+func _start_attack(style: String, skill := "") -> void:
+	atk_style = style
+	atk_skill = skill
+	atk_t = 0.0
+	atk_dur = 0.62 / aspd
+	if skill == "cleave":
+		atk_dur = 0.7 / aspd
+	impact_done = false
+	trail_pts.clear()
+	trail_col = Color(1.0, 0.85, 0.5) if skill == "cleave" else Color(0.85, 0.9, 1.0)
+	var w = equipment.get("weapon")
+	if w != null and w.get("rarity", 0) == 3 and Models.palette(w)["glow"] != null:
+		trail_col = Models.palette(w)["glow"]
+	Sfx.play("swing", -4.0, randf_range(0.9, 1.1))
+
+func _face(d: Vector3) -> void:
+	d.y = 0
+	if d.length() > 0.01:
+		rig.rotation.y = atan2(-d.x, -d.z)
+
+func reach() -> float:
+	return 1.7
+
+# ---------------------------------------------------------------- damage
+func roll_damage(mult: float = 1.0) -> Dictionary:
+	var d := randf_range(dmg_min, dmg_max + 1) * mult
+	if buff_t > 0.0:
+		d *= 1.4
+	var crit := randf() < 0.05 + total_dex() * 0.0015
+	if crit:
+		d *= 2.0
+	return {"phys": d, "fire": fire_dmg * mult, "crit": crit}
+
+func _hit_enemy(e, mult: float, knock: float = 0.0) -> void:
+	if not is_instance_valid(e) or e.dead:
+		return
+	var r := roll_damage(mult)
+	var dealt: float = e.take_damage(r["phys"], r["fire"], global_position, knock, r["crit"])
+	if ls > 0.0:
+		life = minf(max_life, life + dealt * ls / 100.0)
+	if r["crit"]:
+		game.hitstop(0.05)
+	game.add_shake(0.15 if not r["crit"] else 0.3)
+
+func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String = "phys") -> void:
+	if dead:
+		return
+	if puppet:
+		if game.net.is_host:
+			game.net.hit_player(peer_id, dmg, from, kind, element)
+		return
+	var to_src := from - global_position
+	to_src.y = 0
+	var fwd := -rig.global_transform.basis.z
+	var facing := fwd.dot(to_src.normalized()) > cos(deg_to_rad(80.0))
+	var has_shield: bool = equipment.get("shield") != null
+	var shield_pos := global_position + Vector3(0, 1.2, 0) + fwd * 0.5
+	if block_amt > 0.5 and facing:
+		var reduce := 0.12 if has_shield else 0.5
+		if kind == "proj":
+			reduce = 0.0 if has_shield else 0.4
+		dmg *= reduce
+		block_flash = 0.25
+		hit_t = 0.35
+		Sfx.play("block", 0.0, randf_range(0.9, 1.1))
+		Fx.sparks(game.world.fx_root, shield_pos, Color(1.0, 0.85, 0.5))
+		game.add_shake(0.12)
+		if dmg <= 0.5:
+			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.2, 0), "Blocked", Color(0.8, 0.85, 1.0))
+			return
+	elif has_shield and facing and randf() * 100.0 < block_chance:
+		block_flash = 0.35
+		Sfx.play("block", 0.0, randf_range(0.95, 1.15))
+		Fx.sparks(game.world.fx_root, shield_pos, Color(1.0, 0.85, 0.5))
+		Fx.number(game.world.fx_root, global_position + Vector3(0, 2.2, 0), "Block", Color(0.8, 0.85, 1.0))
+		return
+	if element == "phys":
+		var a := float(armor) * (1.4 if buff_t > 0.0 else 1.0)
+		dmg *= 120.0 / (120.0 + a)
+	else:
+		dmg *= 1.0 - res / 100.0
+	dmg = maxf(1.0, dmg)
+	life -= dmg
+	hit_t = 1.0
+	Sfx.play("hurt", -2.0, randf_range(0.9, 1.1))
+	Fx.blood(game.world.fx_root, global_position + Vector3(0, 1.2, 0), Color(0.6, 0.02, 0.02))
+	Fx.number(game.world.fx_root, global_position + Vector3(0, 2.2, 0), str(int(dmg)), Color(1.0, 0.3, 0.25))
+	game.add_shake(0.2)
+	game.ui.flash_damage()
+	if life <= 0.0:
+		life = 0.0
+		dead = true
+		dead_t = 0.0
+		atk_t = -1.0
+		Sfx.play("death")
+		died.emit()
+	stats_changed.emit()
+
+# ---------------------------------------------------------------- update
+func _process(delta: float) -> void:
+	if game == null or game.world == null or game._busy:
+		return
+	anim_time += delta
+	if puppet:
+		_puppet_process(delta)
+		return
+	for k in cds.keys():
+		cds[k] = maxf(0.0, cds[k] - delta)
+	buff_t = maxf(0.0, buff_t - delta)
+	aura.emitting = buff_t > 0.0
+	hit_t = maxf(0.0, hit_t - delta * 4.0)
+	block_flash = maxf(0.0, block_flash - delta)
+	if atk_t < 0.0:
+		combo_t += delta
+		if combo_t > 0.9:
+			combo = 0
+	if dead:
+		dead_t += delta
+		var f := clampf(dead_t / 0.7, 0.0, 1.0)
+		var fall := clampf((dead_t - 0.35) / 0.6, 0.0, 1.0)
+		rig.rotation.x = fall * fall * 1.42
+		rig.position.y = -fall * 0.12
+		Anim.pose(rig, {"time": anim_time, "dead": f, "hit": (1.0 - f) * 0.5})
+		_update_trail(false)
+		return
+	# regen & potions
+	if heal_pool > 0.0:
+		var h := minf(heal_pool, delta * 30.0 * (1.0 + level * 0.05))
+		heal_pool -= h
+		life = minf(max_life, life + h)
+	if mana_pool > 0.0:
+		var m := minf(mana_pool, delta * 20.0)
+		mana_pool -= m
+		mana = minf(max_mana, mana + m)
+	life = minf(max_life, life + regen * delta)
+	mana = minf(max_mana, mana + (1.0 + ene * 0.06) * delta)
+
+	var want_block := blocking and atk_t < 0.0 and charge_t < 0.0
+	block_amt = move_toward(block_amt, 1.0 if (want_block or block_flash > 0.0) else 0.0, delta * 9.0)
+	var vel := Vector3.ZERO
+	var wants_move := direct_dir.length() > 0.1 or (moving and not path.is_empty())
+	# stamina: sprint drains it, resting refills it; running dry leaves you winded
+	running = sprint and wants_move and not exhausted and block_amt < 0.5 and charge_t < 0.0
+	if running:
+		stamina = maxf(0.0, stamina - delta * 14.0)
+		stamina_rest = 0.0
+		if stamina <= 0.0:
+			exhausted = true
+			game.ui.message("Out of stamina", Color(1.0, 0.8, 0.3))
+	else:
+		stamina_rest += delta
+		if stamina_rest > 0.6:
+			stamina = minf(max_stamina, stamina + delta * (16.0 if not wants_move else 9.0))
+	if exhausted and stamina >= max_stamina * 0.3:
+		exhausted = false
+	var speed := 4.8 * (1.0 + frw / 100.0)
+	if running:
+		speed *= 1.6
+	if block_amt > 0.5:
+		speed *= 0.42
+	if atk_t >= 0.0:
+		speed *= 0.72
+
+	if charge_t >= 0.0:
+		_update_charge(delta)
+	else:
+		if atk_t >= 0.0:
+			_update_attack(delta)
+		# pursue target (an attack already in progress keeps its rhythm)
+		if target != null and (not is_instance_valid(target) or target.is_queued_for_deletion()):
+			target = null
+			moving = false
+		if target != null:
+			if not is_instance_valid(target) or (target is Enemy and target.dead):
+				target = null
+				moving = false
+			else:
+				var tp: Vector3 = target.global_position
+				var d := Vector2(tp.x - global_position.x, tp.z - global_position.z).length()
+				var need := 1.0
+				if target is Enemy:
+					need = reach() + target.radius
+				elif target is Inter:
+					need = target.radius
+				elif target is GroundItem:
+					need = 1.2
+				if d <= need:
+					if direct_dir.length() < 0.1:
+						moving = false
+						path = PackedVector3Array()
+					if target is Enemy:
+						if atk_t < 0.0:
+							_face(tp - global_position)
+							atk_target = target
+							_start_attack(["over", "back", "thrust"][combo % 3])
+							combo += 1
+							combo_t = 0.0
+							if not game.lmb_held:
+								target = null
+					elif atk_t < 0.0:
+						var t = target
+						target = null
+						game.on_reach_target(t)
+				elif direct_dir.length() < 0.1 and (path.is_empty() or move_goal.distance_to(tp) > 1.5):
+					_set_goal(tp, false)
+		if direct_dir.length() > 0.1:
+			vel = direct_dir.normalized() * speed
+		elif moving and not path.is_empty():
+			var nxt := path[0]
+			var dv := Vector3(nxt.x - global_position.x, 0, nxt.z - global_position.z)
+			if dv.length() < 0.25:
+				path.remove_at(0)
+				if path.is_empty():
+					moving = false
+			else:
+				vel = dv.normalized() * speed
+	var stride := 1.3 if running else 1.0
+	if vel.length() > 0.01:
+		var np: Vector3 = game.world.move(global_position, vel * delta)
+		var moved := (np - global_position)
+		moved.y = 0
+		global_position = np
+		if moved.length() < vel.length() * delta * 0.2 and moving:
+			moving = false
+			path = PackedVector3Array()
+		if atk_t < 0.0 and charge_t < 0.0:
+			_face(vel)
+		elif atk_t >= 0.0:
+			# keep facing the foe while stepping
+			if is_instance_valid(target) and target is Enemy:
+				_face_smooth(target.global_position - global_position, delta)
+			else:
+				_face_smooth(atk_aim - global_position, delta)
+		move_amt = move_toward(move_amt, stride, delta * 6.0)
+		phase += delta * vel.length() * 2.9 / maxf(move_amt, 0.6)
+		_snow_step()
+	else:
+		move_amt = move_toward(move_amt, 0.0, delta * 6.0)
+	if charge_t < 0.0:
+		global_position.y = game.world.height_at(global_position.x, global_position.z)
+
+	var st := {"time": anim_time, "phase": phase, "move": move_amt, "atk": (atk_t / atk_dur) if atk_t >= 0.0 else -1.0,
+		"style": atk_style, "block": block_amt if charge_t < 0.0 else 1.0, "hit": hit_t * (0.3 if block_flash > 0.0 else 1.0)}
+	if charge_t >= 0.0:
+		st["atk"] = 0.45
+		st["style"] = "thrust"
+		st["move"] = 1.0
+	Anim.pose(rig, st)
+	last_pose = st
+	_breathe(delta)
+	_apply_shield_pose()
+	_update_trail(atk_t >= 0.0 or charge_t >= 0.0)
+
+# ---------------------------------------------------------------- winter
+## A footprint each time a foot comes down in the snow.
+func _snow_step() -> void:
+	if not game.weather.snowing:
+		return
+	var st := int(floor(phase / PI))
+	if st != _last_step:
+		_last_step = st
+		game.weather.footstep(game.world.fx_root, global_position, rig.rotation.y, 1.0 if st % 2 == 0 else -1.0)
+
+## Frosty breath every couple of seconds (faster while sprinting).
+func _breathe(delta: float) -> void:
+	if not game.weather.snowing or dead:
+		return
+	_breath_t -= delta
+	if _breath_t <= 0.0:
+		_breath_t = randf_range(2.2, 3.0) * (0.55 if running or move_amt > 1.1 else 1.0)
+		breath.restart()
+
+# ---------------------------------------------------------------- co-op puppet
+func apply_net_gear(gear: Dictionary) -> void:
+	equipment = gear.duplicate(true)
+	for s in Items.EQUIP_SLOTS:
+		if not equipment.has(s):
+			equipment[s] = null
+	refresh_gear()
+
+func apply_net_state(p: PackedFloat32Array) -> void:
+	if p.size() < 15:
+		return
+	var np := Vector3(p[0], p[1], p[2])
+	var now := Time.get_ticks_msec() / 1000.0
+	var dt := clampf(now - _net_last_t, 0.02, 0.3)
+	if net_has and absf(p[4] - phase) < 6.0:
+		net_phase_rate = (p[4] - phase) / dt
+	else:
+		phase = p[4]
+	_net_last_t = now
+	if not net_has or np.distance_to(global_position) > 6.0:
+		global_position = np
+	net_pos = np
+	net_yaw = p[3]
+	net_st = {"move": p[5], "atk": p[6], "style": Net.STYLES[clampi(int(p[7]), 0, Net.STYLES.size() - 1)], "block": p[8], "hit": p[9]}
+	var was_dead := dead
+	dead = p[10] > 0.5
+	dead_t = p[11]
+	life = p[12]
+	max_life = maxf(p[13], 1.0)
+	net_buff = p[14] > 0.5
+	if was_dead and not dead:
+		rig.rotation.x = 0.0
+		rig.position.y = 0.0
+	net_has = true
+
+func _puppet_process(delta: float) -> void:
+	visible = net_has
+	if not net_has:
+		return
+	var k := clampf(delta * 14.0, 0.0, 1.0)
+	global_position = global_position.lerp(net_pos, k)
+	rig.rotation.y = lerp_angle(rig.rotation.y, net_yaw, k)
+	aura.emitting = net_buff
+	if dead:
+		var f := clampf(dead_t / 0.7, 0.0, 1.0)
+		var fall := clampf((dead_t - 0.35) / 0.6, 0.0, 1.0)
+		rig.rotation.x = fall * fall * 1.42
+		rig.position.y = -fall * 0.12
+		Anim.pose(rig, {"time": anim_time, "dead": f, "hit": (1.0 - f) * 0.5})
+		_update_trail(false)
+		return
+	phase += net_phase_rate * delta
+	if move_amt > 0.15:
+		_snow_step()
+	_breathe(delta)
+	var st := net_st.duplicate()
+	st["time"] = anim_time
+	st["phase"] = phase
+	move_amt = st.get("move", 0.0)
+	block_amt = st.get("block", 0.0)
+	atk_t = 0.0 if st.get("atk", -1.0) >= 0.0 else -1.0
+	Anim.pose(rig, st)
+	_apply_shield_pose()
+	_update_trail(atk_t >= 0.0)
+
+func _apply_shield_pose() -> void:
+	if shield_node == null or not is_instance_valid(shield_node):
+		return
+	shield_node.transform = shield_rest
+	var b := clampf(block_amt, 0.0, 1.0)
+	var run := Anim.run_factor(move_amt) * (0.0 if atk_t >= 0.0 else 1.0) * (1.0 - b)
+	if b <= 0.001 and run <= 0.001:
+		return
+	if b > 0.001:
+		var tgt := rig.global_transform * Transform3D(Basis(Vector3.UP, 0.25), Vector3(-0.12, 1.22, -0.48))
+		shield_node.global_transform = shield_node.global_transform.interpolate_with(tgt, b)
+	else:
+		# carried forward and angled out while sprinting
+		var bob := sin(phase * 2.0) * 0.025
+		var tgt2 := rig.global_transform * Transform3D(Basis(Vector3.UP, 0.55) * Basis(Vector3.RIGHT, -0.15), Vector3(-0.2, 1.2 + bob, -0.36))
+		shield_node.global_transform = shield_node.global_transform.interpolate_with(tgt2, run * 0.8)
+
+func _update_attack(delta: float) -> void:
+	atk_t += delta
+	var a := atk_t / atk_dur
+	if not impact_done and a >= Anim.impact_at(atk_style):
+		impact_done = true
+		_impact()
+	if atk_t >= atk_dur:
+		atk_t = -1.0
+		atk_skill = ""
+
+func _impact() -> void:
+	var fwd := -rig.global_transform.basis.z
+	match atk_skill:
+		"":
+			var hit_any := false
+			var tg = atk_target
+			if is_instance_valid(tg) and tg is Enemy and not tg.dead:
+				var d := Vector2(tg.global_position.x - global_position.x, tg.global_position.z - global_position.z).length()
+				if d <= reach() + tg.radius + 0.7:
+					_hit_enemy(tg, 1.0, 0.15)
+					Fx.sparks(game.world.fx_root, tg.global_position + Vector3(0, 1.1 * tg.height, 0), Color(1.0, 0.75, 0.4))
+					hit_any = true
+			if not hit_any:
+				# free swing: strike the nearest foe in a frontal arc
+				var best = null
+				var bd := 99.0
+				for e in game.enemies_near(global_position, reach() + 1.6):
+					var to: Vector3 = e.global_position - global_position
+					to.y = 0
+					var dd: float = to.length() - e.radius
+					if dd <= reach() + 0.4 and (to.length() < 0.4 or fwd.dot(to.normalized()) > cos(deg_to_rad(60.0))) and dd < bd:
+						bd = dd
+						best = e
+				if best != null:
+					_hit_enemy(best, 1.0, 0.15)
+					Fx.sparks(game.world.fx_root, best.global_position + Vector3(0, 1.1 * best.height, 0), Color(1.0, 0.75, 0.4))
+					hit_any = true
+			if hit_any:
+				Sfx.play("hit", 0.0, randf_range(0.85, 1.1))
+		"cleave":
+			var any := false
+			for e in game.enemies_near(global_position, 3.4):
+				var to: Vector3 = e.global_position - global_position
+				to.y = 0
+				if to.length() < 0.5 or fwd.dot(to.normalized()) > cos(deg_to_rad(75.0)):
+					_hit_enemy(e, 1.6, 0.5)
+					Fx.sparks(game.world.fx_root, e.global_position + Vector3(0, 1.0, 0), Color(1.0, 0.8, 0.4))
+					any = true
+			Sfx.play("hit" if any else "swing", 0.0, 0.8)
+			Fx.burst(game.world.fx_root, global_position + fwd * 1.6 + Vector3(0, 0.3, 0), Color(0.7, 0.6, 0.45, 0.6), 18, 3.0, 0.25, 0.6, false, -2.0, 70.0, Vector3.UP)
+		"nova":
+			var nd := 18.0 + level * 5.0 + (dmg_min + dmg_max) * 0.4
+			Fx.ring(game.world.fx_root, global_position, 7.0, Color(1.0, 0.75, 0.3), 0.5)
+			Fx.burst(game.world.fx_root, global_position + Vector3(0, 1, 0), Color(1.0, 0.8, 0.4), 50, 9.0, 0.15, 0.6, true, 0.0, 180.0)
+			Sfx.play("nova")
+			game.add_shake(0.35)
+			for e in game.enemies_near(global_position, 7.0):
+				var dealt: float = e.take_damage(0.0, nd * (1.4 if buff_t > 0.0 else 1.0), global_position, 1.2, false)
+		"cry":
+			buff_t = 12.0
+			Fx.ring(game.world.fx_root, global_position, 6.0, Color(1.0, 0.85, 0.4), 0.6)
+			Fx.pillar(game.world.fx_root, global_position, Color(1.0, 0.8, 0.35), 0.8)
+			Sfx.play("cry")
+			game.add_shake(0.3)
+			for e in game.enemies_near(global_position, 6.0):
+				e.stun(2.0)
+	stats_changed.emit()
+
+func _update_charge(delta: float) -> void:
+	charge_t += delta
+	var dist := 18.0 * delta
+	var np: Vector3 = game.world.move(global_position, charge_dir * dist)
+	var moved := np - global_position
+	moved.y = 0
+	global_position = np
+	_face(charge_dir)
+	phase += delta * 20.0
+	Fx.burst(game.world.fx_root, global_position + Vector3(0, 0.2, 0), Color(0.6, 0.55, 0.45, 0.5), 2, 0.8, 0.3, 0.6, false, 0.5)
+	for e in game.enemies_near(global_position, 1.6):
+		if not charge_hit.has(e.get_instance_id()):
+			charge_hit[e.get_instance_id()] = true
+			_hit_enemy(e, 1.3, 2.5)
+			e.stun(0.8)
+			Sfx.play("hit", 2.0, 0.8)
+			Fx.sparks(game.world.fx_root, e.global_position + Vector3(0, 1.0, 0))
+	if charge_t > 0.5 or moved.length() < dist * 0.3:
+		charge_t = -1.0
+		Fx.ring(game.world.fx_root, global_position, 2.5, Color(0.9, 0.8, 0.6), 0.35)
+		game.add_shake(0.25)
+
+func _update_trail(active: bool) -> void:
+	var im: ImmediateMesh = trail.mesh
+	im.clear_surfaces()
+	if active and weapon_node != null and is_instance_valid(weapon_node):
+		var wl := 0.9
+		var w = equipment.get("weapon")
+		if w != null:
+			var sh: Dictionary = Data.BASES[w["base"]].get("shape", {})
+			wl = sh.get("len", sh.get("haft", 0.7)) + 0.05
+		var base := weapon_node.global_transform * Vector3(0, 0, -0.25)
+		var tip := weapon_node.global_transform * Vector3(0, 0, -wl)
+		trail_pts.push_front([base, tip])
+		if trail_pts.size() > 12:
+			trail_pts.pop_back()
+	elif trail_pts.size() > 0:
+		trail_pts.pop_back()
+		if trail_pts.size() > 0:
+			trail_pts.pop_back()
+	if trail_pts.size() < 2:
+		return
+	im.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
+	for i in trail_pts.size():
+		var f := 1.0 - float(i) / trail_pts.size()
+		var c := Color(trail_col.r, trail_col.g, trail_col.b, f * 0.55)
+		im.surface_set_color(c)
+		im.surface_add_vertex(trail_pts[i][0])
+		im.surface_set_color(Color(c.r, c.g, c.b, f * 0.9))
+		im.surface_add_vertex(trail_pts[i][1])
+	im.surface_end()
+
+func respawn(p: Vector3) -> void:
+	dead = false
+	dead_t = 0.0
+	rig.rotation.x = 0.0
+	rig.position.y = 0.0
+	life = max_life
+	mana = max_mana
+	heal_pool = 0.0
+	target = null
+	path = PackedVector3Array()
+	moving = false
+	global_position = p
+	stats_changed.emit()
+
+# ---------------------------------------------------------------- inventory
+func add_to_inventory(it: Dictionary) -> bool:
+	if it["base"] == "gold":
+		gold += int(it["count"])
+		stats_changed.emit()
+		return true
+	if Data.BASES[it["base"]]["slot"] == "potion":
+		for i in 4:
+			if belt[i] != null and belt[i]["base"] == it["base"] and belt[i]["count"] < 5:
+				belt[i]["count"] += 1
+				stats_changed.emit()
+				return true
+		for i in 4:
+			if belt[i] == null:
+				belt[i] = it.duplicate(true)
+				belt[i]["count"] = 1
+				stats_changed.emit()
+				return true
+	for i in inventory.size():
+		if inventory[i] == null:
+			inventory[i] = it
+			stats_changed.emit()
+			return true
+	return false
+
+func equip_from_inventory(idx: int) -> void:
+	var it = inventory[idx]
+	if it == null:
+		return
+	if not Items.is_equip(it):
+		# potions: move to belt
+		inventory[idx] = null
+		if not add_to_inventory(it):
+			inventory[idx] = it
+		return
+	if int(it.get("req", 1)) > level:
+		game.ui.message("You need to be level %d" % it["req"], Color(1, 0.4, 0.3))
+		Sfx.play("deny")
+		return
+	var slot := Items.equip_slot(it, equipment)
+	var old = equipment.get(slot)
+	equipment[slot] = it
+	inventory[idx] = old
+	Sfx.play("equip")
+	recalc()
+	refresh_gear()
+
+func unequip(slot: String) -> void:
+	var it = equipment.get(slot)
+	if it == null:
+		return
+	for i in inventory.size():
+		if inventory[i] == null:
+			inventory[i] = it
+			equipment[slot] = null
+			Sfx.play("equip")
+			recalc()
+			refresh_gear()
+			return
+	game.ui.message("Inventory is full", Color(1, 0.4, 0.3))
+
+func to_save() -> Dictionary:
+	return {"level": level, "xp": xp, "str": str_, "dex": dex, "vit": vit, "ene": ene, "points": stat_points, "gold": gold,
+		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash}
+
+func from_save(d: Dictionary) -> void:
+	level = int(d.get("level", 1))
+	xp = int(d.get("xp", 0))
+	str_ = int(d.get("str", 20))
+	dex = int(d.get("dex", 15))
+	vit = int(d.get("vit", 25))
+	ene = int(d.get("ene", 10))
+	stat_points = int(d.get("points", 0))
+	gold = int(d.get("gold", 0))
+	equipment = d.get("equipment", {})
+	for s in Items.EQUIP_SLOTS:
+		if not equipment.has(s):
+			equipment[s] = null
+	inventory = d.get("inventory", [])
+	inventory.resize(40)
+	belt = d.get("belt", [null, null, null, null])
+	belt.resize(4)
+	stash = d.get("stash", [])
+	stash.resize(60)
+	recalc()
+	life = max_life
+	mana = max_mana
+	refresh_gear()
