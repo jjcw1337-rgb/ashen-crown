@@ -69,13 +69,15 @@ How it works:
 | Left-click | Move / attack / pick up / talk (hold to keep moving or attacking) |
 | WASD | Move directly (you can keep moving while attacking) |
 | Shift (hold) | Sprint. Drains the yellow stamina bar, also works mid-attack |
-| Space (hold) | Swing toward the cursor without needing a target |
+| Space (hold) | Swing the way you face without needing a target |
 | Right-click (hold) | Raise shield. Blocks most melee damage and stops arrows and fireballs from the front |
 | Q | Cleave: wide arcing blow (level 1) |
 | E | Holy Nova: ring of holy fire (level 3) |
 | R | Charge: dash through enemies (level 6) |
 | F | Battle Cry: +40% damage and defense, stuns nearby enemies (level 10) |
 | 1–4 | Drink potion from belt |
+
+Space and the skill keys fire the way your hero is facing (for every class), bending slightly onto an enemy just ahead. Shadow Step is the one skill that goes to the cursor.
 | I | Inventory |
 | C | Character sheet (spend stat points) |
 | T | Town portal |
@@ -101,19 +103,23 @@ The action bar shows your **experience** (violet, with your level and progress) 
 - **Cairnfell Moor (wilderness):**
   - A winding road past a standing-stone circle and a graveyard.
   - Shrines, chests, a waypoint and roaming packs, including blue-glowing champion packs.
-- **Crypt of the Matron (dungeon):** a chain of torch-lit tomb rooms ending in the boss chamber of **The Hollow Matron**. She has scythe slams with ground warnings, summons zombies and becomes enraged at low health.
+- **Crypt of the Matron (dungeon):** a chain of torch-lit tomb rooms ending in the boss chamber of **The Hollow Matron**. She is hollow: her heart beats inside one of the veiled **Mourners** circling her crypt, and while it does your weapons barely touch her.
+  - She tears her heart out and it arcs into a Mourner, which flares red. Then the Mourners shuffle like cups in a shell game, and the heart stays silent while they move, so keep your eyes on it. Once they settle it beats faintly: a red pulse under the veil and a heartbeat that's louder the closer you are.
+  - Kill the Mourner with the heart and it's crushed: she loses a chunk of her life, staggers and glows red, taking double damage for a few seconds before she tears it out again.
+  - Kill the wrong one and it bursts in a wail that hurts everyone nearby and raises a zombie. Area attacks hit right and wrong Mourners alike.
+  - Every cycle brings another Mourner and a faster shuffle, and she can't be brought below two thirds, then one third, of her life until her heart is crushed again. Between all that she swings her scythe and slams the ground (watch the warnings) and becomes enraged at low health.
 
 **A2:** after you defeat the Hollow Matron, the victory screen offers **Begin A2**. Everyone starts over at Greywatch Camp with their knight, gear, gold and level. Waypoints and the boss reset. In A2:
 
-- Monsters have 20 times the life, damage and armor, and give 5 times the experience.
-- Every item they drop has 5 times the stats (damage, defense and all bonuses), marked "A2 item" in its tooltip.
+- Monsters have 6 times the life and armor (the Matron 4 times) and 5 times the damage, and give 5 times the experience.
+- Every item they drop has 5 times the flat stats (damage, defense, life, attributes and other flat bonuses), marked "A2 item" in its tooltip. Percentage bonuses (enhanced damage and defense, attack speed, life steal, resist, block, magic and gold find, run speed) stay as rolled.
 
 **Winter in A2:** A2 is snowed in. The camp and the moor are buried in snow (with packed slush on the roads), trees and rooftops carry snow, the grass pokes through frosted, snow falls around you, your knight leaves footprints and his breath steams in the cold. On Ultra the snowfall is at its heaviest. The crypt stays as it is.
 
 **A3:** beating A2 offers **Begin A3**. Everyone starts over again with their knight, and it stacks on top of A2:
 
-- Monsters are 400 times stronger than Act I (20× A2) and give 25 times the experience.
-- Drops are 25 times stronger than Act I (5× A2), marked "A3 item".
+- Monsters have 24 times the life of Act I (the Ashen King 10 times) and 15 times the damage, and give 25 times the experience.
+- Drops have 25 times the flat stats of Act I, marked "A3 item".
 - The Hollow Matron is gone. Her crypt is now the **Throne of the Ashen King**, a giant crowned skeleton with a burning sword. He swings, slams, throws fireballs, casts a fire nova and raises bone archers.
 - He always drops his own unique sword, **Cinderbrand, the King's Edge**, at A3 strength. It never drops anywhere else.
 - Beating A3 offers "Play A3 again".

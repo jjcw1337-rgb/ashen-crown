@@ -70,7 +70,7 @@ func _process(delta: float) -> void:
 	life -= delta
 	global_position += vel * delta
 	var p := global_position
-	if life <= 0.0 or game.world.is_blocked(p.x, p.z) and p.y < 2.5:
+	if life <= 0.0 or game.world.solid_at(p.x, p.z) and p.y < 2.5:
 		_explode(false)
 		return
 	for hero in game.all_heroes():

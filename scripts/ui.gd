@@ -1640,7 +1640,7 @@ func _build_victory() -> void:
 	a2.custom_minimum_size = Vector2(0, 50)
 	a2.pressed.connect(func(): game.start_a2())
 	vb.add_child(a2)
-	var a2n := _label("Monsters have 20 times the life, damage and armor. Every item they drop is 5 times stronger.", 15, Color(1.0, 0.6, 0.4))
+	var a2n := _label(game.run_note(1), 15, Color(1.0, 0.6, 0.4))
 	a2n.name = "a2note"
 	a2n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	a2n.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1655,7 +1655,7 @@ func show_victory(diff: int) -> void:
 	(victory_panel.find_child("vtitle", true, false) as Label).text = ["Act I", "A2", "A3"][clampi(diff, 0, 2)] + " Complete"
 	(victory_panel.find_child("vsub", true, false) as Label).text = "The Ashen King crumbles to cinders. His crown rolls across the throne room floor." if diff >= 2 else "The Hollow Matron is destroyed and the crypt falls silent."
 	(victory_panel.find_child("a2btn", true, false) as Button).text = ["Begin A2", "Begin A3", "Play A3 again"][clampi(diff, 0, 2)] + ": start over at the camp with your hero"
-	(victory_panel.find_child("a2note", true, false) as Label).text = "In A3 the Ashen King replaces the Matron. Monsters are 400 times stronger than Act I, loot 25 times, and the King always drops his sword." if diff >= 1 else "Monsters have 20 times the life, damage and armor. Every item they drop is 5 times stronger."
+	(victory_panel.find_child("a2note", true, false) as Label).text = ("In A3 the Ashen King replaces the Matron and always drops his sword. " + game.run_note(2)) if diff >= 1 else game.run_note(1)
 	victory_panel.visible = true
 
 func _unhandled_key_input(ev: InputEvent) -> void:

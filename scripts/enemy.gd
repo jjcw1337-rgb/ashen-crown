@@ -46,6 +46,19 @@ var slam_t := 5.0
 var volley_t := 4.0
 var nova_t := 9.0
 var enraged := false
+## The Hollow Matron's heart mechanic (matron.gd); on a Mourner, the Matron it belongs to.
+var heart: Matron = null
+var heart_owner: Matron = null
+## Mourners walk to where the Matron puts them.
+var goto := Vector3.ZERO
+var goto_speed := 1.2
+## Damage taken multiplier (hollow / exposed Matron), set on every peer from fx events.
+var taken := 1.0
+var _exposed := false
+## A Mourner carrying the heart: "on" beats faintly, "hush" is silent (shuffling).
+var beat := ""
+var beat_t := 0.0
+var heart_light: OmniLight3D
 var pack_id := 0
 # co-op: on a joining player's game every monster is remote and follows the host
 var net_id := 0
@@ -66,10 +79,11 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 	boss = def.get("boss", false)
 	var lf := 1.0 + 0.3 * (lvl - 1)
 	var df := 1.0 + 0.17 * (lvl - 1)
-	var hard: float = g.enemy_mult()
+	var hard: float = g.run_mult("boss_life" if boss else "life")
+	var hit: float = g.run_mult("dmg")
 	max_life = def["life"] * lf * (2.4 if champ else 1.0) * hard
 	life = max_life
-	dmg = [def["dmg"][0] * df * (1.4 if champ else 1.0) * hard, def["dmg"][1] * df * (1.4 if champ else 1.0) * hard]
+	dmg = [def["dmg"][0] * df * (1.4 if champ else 1.0) * hit, def["dmg"][1] * df * (1.4 if champ else 1.0) * hit]
 	armor = int(def.get("armor", 0) * (1.0 + 0.1 * lvl) * hard)
 	speed = def["speed"] * (1.15 if champ else 1.0)
 	xp = int(def["xp"] * (1.0 + 0.12 * (lvl - 1)) * (3.0 if champ else 1.0) * g.xp_mult())
@@ -115,6 +129,8 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 		add_child(l)
 	rig.rotation.y = randf() * TAU
 	home = global_position
+	if def.get("heart", false):
+		heart = Matron.new(self)
 
 func _collect_meshes(n: Node) -> void:
 	if n is MeshInstance3D:
@@ -126,7 +142,7 @@ func _set_flash(v: float) -> void:
 	flash_mat.albedo_color = Color(1, 0.95, 0.9, v * 0.6)
 	if champion:
 		return
-	var rest: Material = soul_mat() if _soul_lit else (drain_mat() if _drained else null)
+	var rest: Material = soul_mat() if _soul_lit else (drain_mat() if _drained else (exposed_mat() if _exposed else null))
 	for m in meshes:
 		if is_instance_valid(m):
 			(m as MeshInstance3D).material_overlay = flash_mat if v > 0.01 else rest
@@ -151,6 +167,41 @@ func set_drained(on: bool) -> void:
 		return
 	_drained = on
 	_set_flash(0.0)
+
+## The Hollow Matron with her heart back in her chest: a red glow while she's exposed.
+static var _exposed_mat: Material
+
+static func exposed_mat() -> Material:
+	if _exposed_mat == null:
+		_exposed_mat = Mats.glow(Color(1.0, 0.12, 0.08), 0.9, 0.0, 1.0)
+	return _exposed_mat
+
+## A Mourner's hidden heart: a red pulse under the veil and a heartbeat that carries.
+func _beat(delta: float) -> void:
+	if heart_light == null:
+		heart_light = OmniLight3D.new()
+		heart_light.light_color = Color(1.0, 0.1, 0.08)
+		heart_light.light_energy = 0.0
+		heart_light.omni_range = 3.2
+		heart_light.position = Vector3(0, height * 1.15, 0)
+		add_child(heart_light)
+	if beat != "on":
+		return
+	beat_t -= delta
+	if beat_t <= 0.0:
+		beat_t = 2.2
+		_pulse(1.6)
+
+func _pulse(strength: float) -> void:
+	if heart_light == null:
+		_beat(0.0)
+	var tw := heart_light.create_tween()
+	tw.tween_property(heart_light, "light_energy", strength, 0.06)
+	tw.tween_property(heart_light, "light_energy", strength * 0.15, 0.14)
+	tw.tween_property(heart_light, "light_energy", strength * 0.75, 0.06)
+	tw.tween_property(heart_light, "light_energy", 0.0, 0.3)
+	var d: float = game.hero.global_position.distance_to(global_position)
+	Sfx.play("heartbeat", clampf(-2.0 - d * 0.9, -30.0, 0.0) + (strength - 1.6) * 2.0)
 
 ## Seen from the Underworld (Demon's Phase) every monster burns with a crimson soul-outline.
 static var _soul_mat: Material
@@ -182,8 +233,18 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 	aggro = true
 	if game.test_onehit:
 		phys = maxf(phys, life * 10.0 + 1000000.0)   # testing switch (F8): any hit kills
-	var p := phys * 100.0 / (100.0 + armor * 0.6)
+	var p := phys * 100.0 / (100.0 + armor * 0.6) * taken
+	fire *= taken
 	var total := p + fire
+	if heart != null:
+		if taken < 1.0:
+			heart.hollow_hit()
+		if not remote:
+			var capped := heart.cap(total)
+			if capped < total:
+				p *= capped / maxf(total, 0.001)
+				fire *= capped / maxf(total, 0.001)
+				total = capped
 	if remote:
 		# the host applies the real damage; show the hit straight away
 		game.net.send_enemy_hit(self, phys, fire, from, knockback, crit)
@@ -223,6 +284,10 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 	return total
 
 func _die() -> void:
+	if heart_owner != null:
+		heart_owner.on_mourner_died(self)
+	if heart != null:
+		heart.clear()
 	die_visual()
 	game.net.enemy_died(self)
 	game.on_enemy_killed(self)
@@ -296,6 +361,33 @@ func special_fx(ev: String) -> void:
 			Sfx.play("roar")
 		"boss_hit":
 			game.add_shake(0.2)
+		# the Hollow Matron (matron.gd)
+		"rip":
+			Fx.burst(game.world.fx_root, global_position + Vector3(0, height * 1.45, 0), Color(0.5, 0.02, 0.04), 30, 3.0, 0.14, 0.9, true, -2.0)
+			Sfx.play("roar", -4.0, 0.7)
+			game.add_shake(0.3)
+		"hollow":
+			taken = Matron.HOLLOW_TAKEN
+			_exposed = false
+			_set_flash(0.0)
+		"exposed":
+			taken = Matron.EXPOSED_TAKEN
+			_exposed = true
+			_set_flash(0.0)
+			Fx.ring(game.world.fx_root, global_position, 3.0, Color(1.0, 0.15, 0.1), 0.6)
+		"heart_flare":
+			beat = "hush"
+			_beat(0.0)
+			_pulse(5.0)
+			Fx.burst(game.world.fx_root, global_position + Vector3(0, height * 1.2, 0), Color(1.0, 0.1, 0.08), 24, 2.5, 0.12, 0.6, true, 0.0)
+		"heart_on":
+			beat = "on"
+			beat_t = 1.0
+		"wail":
+			Fx.ring(game.world.fx_root, global_position, 3.5, Color(0.7, 0.75, 1.0), 0.5)
+			Fx.burst(game.world.fx_root, global_position + Vector3(0, 1.0, 0), Color(0.75, 0.8, 1.0, 0.8), 36, 6.0, 0.16, 0.7, true, 0.0)
+			Sfx.play("cry", -2.0, 1.6)
+			game.add_shake(0.35)
 
 func _fx(ev: String) -> void:
 	special_fx(ev)
@@ -323,6 +415,8 @@ func _process(delta: float) -> void:
 		if dead_t > 11.0:
 			queue_free()
 		return
+	if beat != "":
+		_beat(delta)
 	if remote:
 		_remote_process(delta)
 		return
@@ -337,6 +431,8 @@ func _process(delta: float) -> void:
 		global_position = game.world.move(global_position, knock * delta * 6.0)
 		knock = knock.lerp(Vector3.ZERO, clampf(delta * 8.0, 0.0, 1.0))
 	cooldown = maxf(0.0, cooldown - delta)
+	if heart != null and aggro:
+		heart.update(delta)
 	var vel := Vector3.ZERO
 	# a Demon phased into the Underworld cannot be seen
 	var hero_dead: bool = hero.dead or hero.get("phased") == true
@@ -394,6 +490,10 @@ func _face(d: Vector3) -> void:
 
 func _think_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vector3:
 	var ai: String = def["ai"]
+	if ai == "mourner":
+		var gd := goto - global_position
+		gd.y = 0
+		return Vector3.ZERO if gd.length() < 0.15 else gd.normalized() * minf(goto_speed, gd.length() * 6.0)
 	var rng_atk: float = def["range"]
 	if boss:
 		if not enraged and life < max_life * 0.35:
@@ -482,11 +582,13 @@ func _begin_special(sp: String) -> void:
 			atk_style = "slam"
 			_begin_attack("slam")
 			_fx("slam_tele")
-		"summon", "nova", "volley":
+		"summon", "nova", "volley", "rip":
 			atk_style = "cast"
 			_begin_attack(sp)
 			if sp == "nova":
 				_fx("nova_tele")
+			elif sp == "rip":
+				_fx("rip")
 
 func _update_attack(delta: float, hero: Node3D, dist: float) -> void:
 	atk_t += delta
@@ -528,6 +630,9 @@ func _impact(hero: Node3D, dist: float) -> void:
 				var p: Vector3 = game.world.free_spot_near(global_position, 5.0)
 				game.spawn_enemy(def["summon"], p, level - 2, false, "", pack_id)
 				Fx.burst(game.world.fx_root, p + Vector3(0, 0.5, 0), Color(0.6, 0.2, 1.0), 20, 3.0, 0.2, 0.8, true, 1.0)
+		"rip":
+			if heart != null:
+				heart.launch()
 		"volley":
 			var base := hero.global_position - global_position
 			for i in 5:

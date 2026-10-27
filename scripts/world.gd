@@ -161,25 +161,14 @@ func is_blocked(x: float, z: float) -> bool:
 		return true
 	return blocked[c.y * gw + c.x] != 0
 
-func move(pos: Vector3, d: Vector3) -> Vector3:
-	var np := pos + d
-	if not is_blocked(np.x, np.z):
-		pass
-	elif not is_blocked(pos.x + d.x, pos.z):
-		np = Vector3(pos.x + d.x, pos.y, pos.z)
-	elif not is_blocked(pos.x, pos.z + d.z):
-		np = Vector3(pos.x, pos.y, pos.z + d.z)
-	else:
-		np = pos
-	np.y = height_at(np.x, np.z)
-	return np
-
-func los(a: Vector3, b: Vector3) -> bool:
+## Line of sight / straight walkability: true if a body of radius r can go from a to b
+## without touching a footprint or a wall.
+func los(a: Vector3, b: Vector3, r := 0.0) -> bool:
 	var d := Vector2(b.x - a.x, b.z - a.z)
 	var n := int(d.length() / 0.4) + 1
 	for i in range(1, n):
 		var t := float(i) / n
-		if is_blocked(a.x + d.x * t, a.z + d.y * t):
+		if solid_at(a.x + d.x * t, a.z + d.y * t, r):
 			return false
 	return true
 
@@ -195,7 +184,7 @@ func nearest_free(x: float, z: float) -> Vector2i:
 
 func find_path(a: Vector3, b: Vector3) -> PackedVector3Array:
 	var out := PackedVector3Array()
-	if los(a, b):
+	if los(a, b, BODY_R * 0.8):
 		out.append(b)
 		return out
 	var ca := nearest_free(a.x, a.z)
@@ -215,7 +204,7 @@ func find_path(a: Vector3, b: Vector3) -> PackedVector3Array:
 	while i < raw.size():
 		var far := i
 		for j in range(raw.size() - 1, i, -1):
-			if los(cur, raw[j]):
+			if los(cur, raw[j], BODY_R * 0.8):
 				far = j
 				break
 		cur = raw[far]
@@ -224,13 +213,154 @@ func find_path(a: Vector3, b: Vector3) -> PackedVector3Array:
 		i = far + 1
 	return out
 
-# ---------------------------------------------------------------- obstacle registration
+# ---------------------------------------------------------------- collision
+## One registry of solid footprints (circles and rotated boxes on the ground plane) drives
+## everything that collides:
+## - `move` slides a body (radius BODY_R) against the exact footprints, so you bump into
+##   the barrel itself, not the grid square around it;
+## - `los` / `solid_at` test the same footprints (sight, straight walks, missiles);
+## - `blocked`, a padded 1 m grid rasterized from them, is only for A* pathfinding and spawn
+##   spots.
+## Hard terrain (the map edge, dungeon rock) is `_wall_at`. Props declare their own footprint
+## (`Props.footprint`), and `solid(node)` registers it with the node's position, yaw and
+## scale, so the mesh and its collision can't drift apart. Use add_circle/add_box directly
+## only for things without a prop node (walls of stones, groups of pots).
+const BODY_R := 0.32
+const BUCKET := 4.0
+var _buckets := {}   # Vector2i -> Array of obstacle indices overlapping that 4 m square
+var rock := PackedByteArray()   # dungeons: 1 where a 1 m cell is solid rock
+
 func add_circle(p: Vector3, r: float) -> void:
 	obstacles.append([Vector2(p.x, p.z), r])
+	_bucket(obstacles.size() - 1, Vector2(p.x, p.z), r)
 
+## A rectangle of half-size `half` (x across, y along), turned by `yaw` like a node's rotation.y.
 func add_box(p: Vector3, half: Vector2, yaw: float) -> void:
-	# stored as a rotated rectangle
 	obstacles.append([Vector2(p.x, p.z), -1.0, half, yaw])
+	_bucket(obstacles.size() - 1, Vector2(p.x, p.z), half.length())
+
+## Registers a prop's own footprint (see Props.footprint) where the prop stands.
+func solid(node: Node3D) -> Node3D:
+	if not node.has_meta("footprint"):
+		push_warning("solid(): %s has no footprint" % node.name)
+		return node
+	var f: Dictionary = node.get_meta("footprint")
+	# the node's transform relative to the zone (props may sit inside an interactable)
+	var xf := Transform3D.IDENTITY
+	var n: Node = node
+	while n != null and n != self:
+		if n is Node3D:
+			xf = (n as Node3D).transform * xf
+		n = n.get_parent()
+	var c: Vector3 = xf * (f["at"] as Vector3)
+	var sc := xf.basis.get_scale().x
+	if f.has("r"):
+		add_circle(c, float(f["r"]) * sc)
+	else:
+		add_box(c, (f["half"] as Vector2) * sc, xf.basis.get_euler().y)
+	return node
+
+## Files the obstacle under every 4 m square it can touch, padded by the widest body (1 m)
+## so a query only needs the square the body's centre is in.
+func _bucket(i: int, c: Vector2, ext: float) -> void:
+	ext += 1.0
+	var b0 := Vector2i(floori((c.x - ext) / BUCKET), floori((c.y - ext) / BUCKET))
+	var b1 := Vector2i(floori((c.x + ext) / BUCKET), floori((c.y + ext) / BUCKET))
+	for by in range(b0.y, b1.y + 1):
+		for bx in range(b0.x, b1.x + 1):
+			var k := Vector2i(bx, by)
+			if not _buckets.has(k):
+				_buckets[k] = []
+			(_buckets[k] as Array).append(i)
+
+## How far a body of radius r at q must move to clear obstacle o (ZERO if it doesn't touch).
+## Pushes overshoot by a millimetre so a resolved body is clear, not exactly touching.
+func _pen(o: Array, q: Vector2, r: float) -> Vector2:
+	var c: Vector2 = o[0]
+	if o[1] > 0.0:
+		var v := q - c
+		var need: float = o[1] + r
+		var dl := v.length()
+		if dl >= need - 0.0005:
+			return Vector2.ZERO
+		return (v / dl if dl > 0.0001 else Vector2(1, 0)) * (need - dl + 0.001)
+	var half: Vector2 = o[2]
+	var yaw: float = o[3]
+	var lp := (q - c).rotated(yaw)
+	var cl := Vector2(clampf(lp.x, -half.x, half.x), clampf(lp.y, -half.y, half.y))
+	var dv := lp - cl
+	var dl := dv.length()
+	if dl >= r - 0.0005:
+		return Vector2.ZERO
+	var push: Vector2
+	if dl > 0.0001:
+		push = dv / dl * (r - dl + 0.001)
+	else:
+		# centre inside the box: out through the nearest side
+		var ox := half.x - absf(lp.x)
+		var oy := half.y - absf(lp.y)
+		push = Vector2((ox + r + 0.001) * signf(lp.x + 0.0001), 0) if ox < oy else Vector2(0, (oy + r + 0.001) * signf(lp.y + 0.0001))
+	return push.rotated(-yaw)
+
+func _near(q: Vector2) -> Array:
+	return _buckets.get(Vector2i(floori(q.x / BUCKET), floori(q.y / BUCKET)), [])
+
+## True if a body of radius r at (x, z) overlaps a footprint or a wall.
+func solid_at(x: float, z: float, r := 0.0) -> bool:
+	if _wall_at(x, z, r):
+		return true
+	var q := Vector2(x, z)
+	for i in _near(q):
+		if _pen(obstacles[i], q, r + 0.001) != Vector2.ZERO:
+			return true
+	return false
+
+## Map edge, or dungeon rock (the same cells the wall blocks are built on). Probes the
+## body's four sides.
+func _wall_at(x: float, z: float, r := 0.0) -> bool:
+	if rock.is_empty():
+		return not bounds.grow(-1.0 - r).has_point(Vector2(x, z))
+	return _rock_at(x, z) or r > 0.0 and (_rock_at(x - r, z) or _rock_at(x + r, z) or _rock_at(x, z - r) or _rock_at(x, z + r))
+
+func _rock_at(x: float, z: float) -> bool:
+	var c := _cell(x, z)
+	return c.x < 0 or c.y < 0 or c.x >= gw or c.y >= gh or rock[c.y * gw + c.x] != 0
+
+## Moves a body by d, sliding along footprints and walls. Long moves go in short steps so
+## nothing is skipped through.
+func move(pos: Vector3, d: Vector3, r := BODY_R) -> Vector3:
+	var flat := Vector2(d.x, d.z)
+	var n := maxi(1, int(ceil(flat.length() / 0.25)))
+	var step := flat / n
+	var q := Vector2(pos.x, pos.z)
+	for i in n:
+		var nq := _slide(q, step, r)
+		if nq == q:
+			break
+		q = nq
+	return Vector3(q.x, height_at(q.x, q.y), q.y)
+
+func _slide(q: Vector2, step: Vector2, r: float) -> Vector2:
+	for cand in [step, Vector2(step.x, 0), Vector2(0, step.y)]:
+		if cand == Vector2.ZERO:
+			continue
+		var p := _resolve(q + cand, r)
+		if p.x != INF and not _wall_at(p.x, p.y, r):
+			return p
+	return q
+
+## Pushes q out of any footprints it overlaps; INF if it can't be cleared (wedged).
+func _resolve(q: Vector2, r: float) -> Vector2:
+	for it in 3:
+		var hit := false
+		for i in _near(q):
+			var pv := _pen(obstacles[i], q, r)
+			if pv != Vector2.ZERO:
+				q += pv
+				hit = true
+		if not hit:
+			return q
+	return Vector2(INF, INF)
 
 func _rasterize() -> void:
 	origin = bounds.position - Vector2(2, 2)
@@ -564,16 +694,15 @@ func _build_town() -> void:
 	Models.seg(lintel, Vector3(-4.6, 3.2, 0), Vector3(4.6, 3.3, 0), 0.16, 0.16, Props.wood_dark(), 8)
 	_place(lintel, Vector3(0, 0, wy))
 	lintel.position.y = height_at(0, wy)
-	Props.tripod_torch(props_root, Vector3(-5.5, height_at(-5.5, wy + 2.0), wy + 2.0))
-	Props.tripod_torch(props_root, Vector3(5.5, height_at(5.5, wy + 2.0), wy + 2.0))
+	solid(Props.tripod_torch(props_root, Vector3(-5.5, height_at(-5.5, wy + 2.0), wy + 2.0)))
+	solid(Props.tripod_torch(props_root, Vector3(5.5, height_at(5.5, wy + 2.0), wy + 2.0)))
 	exits.append({"pos": Vector3(0, 0, wy - 3.0), "radius": 3.5, "to": "wild", "label": Data.ACTS[act]["wild"]})
 
 	# --- centre: campfire, stash, waypoint
-	var cf := Props.campfire(props_root, Vector3(0, height_at(0, 0), 0))
-	add_circle(Vector3.ZERO, 1.0)
+	var cf := solid(Props.campfire(props_root, Vector3(0, height_at(0, 0), 0)))
 	var chest := Props.stash_chest(null, Vector3.ZERO, -15.0)
 	_inter("stash", "Stash", Vector3(3.6, 0, 2.6), 1.6, chest)
-	add_box(Vector3(3.6, 0, 2.6), Vector2(0.7, 0.45), deg_to_rad(15.0))
+	solid(chest)
 	var wp := Props.waypoint(null, Vector3.ZERO)
 	_inter("waypoint", "Waypoint", Vector3(-8, 0, 6), 2.4, wp)
 	for i in 4:
@@ -582,21 +711,19 @@ func _build_town() -> void:
 	# log seats around fire
 	for i in 3:
 		var a := TAU * i / 3.0 + 0.4
-		var lg := Models.N(null, "seat")
+		var lg := Props.footprint(Models.N(null, "seat"), Vector2(0.25, 0.8))
 		Models.P(lg, Geo.cyl(0.22, 0.24, 1.6, 10), Props.wood(), Vector3(0, 0.2, 0), Vector3(90, 0, 0))
 		_place(lg, Vector3(cos(a) * 3.2, 0, sin(a) * 3.2))
 		lg.rotation.y = -a
-		add_box(Vector3(cos(a) * 3.2, 0, sin(a) * 3.2), Vector2(0.25, 0.8), a)
+		solid(lg)
 
 	# --- alchemist's camp (reference: hide tent, pottery, tripod torches)
 	var ac := Vector2(-14, -12)
-	Props.hide_tent(props_root, Vector3(ac.x, height_at(ac.x, ac.y - 1.5), ac.y - 1.5), 6.0, 3.6, 4.0, 2.6)
+	solid(Props.hide_tent(props_root, Vector3(ac.x, height_at(ac.x, ac.y - 1.5), ac.y - 1.5), 6.0, 3.6, 4.0, 2.6))
 	burn_points.append([Vector3(ac.x + 1.0, height_at(ac.x, ac.y - 1.5) + 1.6, ac.y - 1.5), 1.4])
-	add_box(Vector3(ac.x, 0, ac.y - 1.5), Vector2(2.0, 2.2), deg_to_rad(-6.0))
 	for tp in [Vector2(-6.0, 1.5), Vector2(6.5, 0.5), Vector2(-1.5, 6.0)]:
 		var tpp := Vector3(ac.x + tp.x, 0, ac.y + tp.y)
-		Props.tripod_torch(props_root, Vector3(tpp.x, height_at(tpp.x, tpp.z), tpp.z), tp.x < 0 and tp.y < 3.0)
-		add_circle(tpp, 0.35)
+		solid(Props.tripod_torch(props_root, Vector3(tpp.x, height_at(tpp.x, tpp.z), tpp.z), tp.x < 0 and tp.y < 3.0))
 	var pot_spots := [
 		Vector2(-3.6, -0.6), Vector2(-3.1, 0.1), Vector2(-4.2, 0.4), Vector2(-3.5, 1.0), Vector2(-4.6, -0.3), Vector2(-2.6, 0.9),
 		Vector2(3.0, -1.6), Vector2(3.6, -1.0), Vector2(4.3, -1.7), Vector2(3.4, -0.2), Vector2(4.8, -0.6), Vector2(2.6, -0.7), Vector2(5.2, -1.4),
@@ -610,8 +737,7 @@ func _build_town() -> void:
 	add_box(Vector3(ac.x - 3.6, 0, ac.y + 0.2), Vector2(1.2, 1.0), 0.0)
 	add_box(Vector3(ac.x + 3.8, 0, ac.y - 1.0), Vector2(1.6, 0.9), 0.0)
 	var cpos := Vector3(ac.x + 4.6, 0, ac.y + 1.4)
-	Props.cauldron(props_root, Vector3(cpos.x, height_at(cpos.x, cpos.z), cpos.z), Color(0.35, 0.9, 0.25))
-	add_circle(cpos, 0.5)
+	solid(Props.cauldron(props_root, Vector3(cpos.x, height_at(cpos.x, cpos.z), cpos.z), Color(0.35, 0.9, 0.25)))
 	# bowls of herbs / red berries, skull on a stake
 	for i in 3:
 		var bp := Vector3(ac.x + 2.2 + i * 0.6, 0, ac.y + 0.4 + (i % 2) * 0.4)
@@ -644,10 +770,8 @@ func _build_town() -> void:
 		for z in [-1.6, 1.6]:
 			add_circle(fc + Vector3(x, 0, z), 0.2)
 	_npc(V["smith"], {"skin": Color(0.7, 0.5, 0.4), "cloth": Color(0.25, 0.2, 0.17), "cloth2": Color(0.32, 0.22, 0.14), "head": "human", "hair": Color(0.1, 0.08, 0.06), "beard": Color(0.12, 0.09, 0.07), "bulk": 1.25, "belly": true}, fc + Vector3(-0.2, 0, 1.6), "smith", 0.2)
-	Props.barrel(props_root, Vector3(fc.x + 3.2, height_at(fc.x + 3.2, fc.z + 2.0), fc.z + 2.0))
-	add_circle(fc + Vector3(3.2, 0, 2.0), 0.35)
-	Props.log_pile(props_root, Vector3(fc.x - 3.8, height_at(fc.x - 3.8, fc.z), fc.z))
-	add_box(fc + Vector3(-3.8, 0, 0), Vector2(0.6, 0.8), 0.0)
+	solid(Props.barrel(props_root, Vector3(fc.x + 3.2, height_at(fc.x + 3.2, fc.z + 2.0), fc.z + 2.0)))
+	solid(Props.log_pile(props_root, Vector3(fc.x - 3.8, height_at(fc.x - 3.8, fc.z), fc.z)))
 
 	# --- armorer's stall (east, facing the fire)
 	var arm_c := Vector3(18.5, 0, 7)
@@ -672,9 +796,8 @@ func _build_town() -> void:
 	var tents := [[Vector2(-26, -4), 80.0], [Vector2(25, -22), -120.0], [Vector2(-5, -18), 15.0], [Vector2(26, 20), -150.0], [Vector2(-25, 22), 140.0]]
 	for tdef in tents:
 		var tp2: Vector2 = tdef[0]
-		Props.hide_tent(props_root, Vector3(tp2.x, height_at(tp2.x, tp2.y), tp2.y), tdef[1], rng.randf_range(2.6, 3.2), rng.randf_range(3.0, 3.6), rng.randf_range(2.0, 2.4))
+		solid(Props.hide_tent(props_root, Vector3(tp2.x, height_at(tp2.x, tp2.y), tp2.y), tdef[1], rng.randf_range(2.6, 3.2), rng.randf_range(3.0, 3.6), rng.randf_range(2.0, 2.4)))
 		burn_points.append([Vector3(tp2.x, height_at(tp2.x, tp2.y) + 1.4, tp2.y), 1.25])
-		add_circle(Vector3(tp2.x, 0, tp2.y), 2.0)
 	var clutter := [
 		["crate", Vector2(-7.5, -16)], ["crate", Vector2(-8.3, -15.2)], ["barrel", Vector2(-3, -16.5)], ["barrel", Vector2(-2.4, -15.8)],
 		["crate", Vector2(22, -18)], ["barrel", Vector2(22.6, -19)], ["logs", Vector2(-27, 3)], ["crate", Vector2(10, 18)],
@@ -684,16 +807,13 @@ func _build_town() -> void:
 		var cp: Vector2 = c[1]
 		var p3 := Vector3(cp.x, height_at(cp.x, cp.y), cp.y)
 		match c[0]:
-			"crate": Props.crate(props_root, p3, rng.randf_range(0.85, 1.15))
-			"barrel": Props.barrel(props_root, p3)
-			"logs": Props.log_pile(props_root, p3)
-		add_circle(p3, 0.55 if c[0] != "logs" else 0.9)
+			"crate": solid(Props.crate(props_root, p3, rng.randf_range(0.85, 1.15)))
+			"barrel": solid(Props.barrel(props_root, p3))
+			"logs": solid(Props.log_pile(props_root, p3))
 	for bp2 in [Vector2(-5, -33), Vector2(5, -33), Vector2(-9, 2), Vector2(9, -3)]:
-		Props.banner(props_root, Vector3(bp2.x, height_at(bp2.x, bp2.y), bp2.y), Color(0.42, 0.06, 0.05), Color(0.6, 0.5, 0.25))
-		add_circle(Vector3(bp2.x, 0, bp2.y), 0.2)
+		solid(Props.banner(props_root, Vector3(bp2.x, height_at(bp2.x, bp2.y), bp2.y), Color(0.42, 0.06, 0.05), Color(0.6, 0.5, 0.25)))
 	for tp3 in [Vector2(-6, -6), Vector2(7, -5), Vector2(5, 9), Vector2(-4, -22), Vector2(4, -20), Vector2(11, 3), Vector2(-11, 13)]:
-		Props.tripod_torch(props_root, Vector3(tp3.x, height_at(tp3.x, tp3.y), tp3.y))
-		add_circle(Vector3(tp3.x, 0, tp3.y), 0.35)
+		solid(Props.tripod_torch(props_root, Vector3(tp3.x, height_at(tp3.x, tp3.y), tp3.y)))
 
 	# --- rocks, boulders and trees
 	for i in 45:
@@ -829,7 +949,7 @@ func _chest(p: Vector3) -> void:
 	var c := Props.stash_chest(null, Vector3.ZERO, rng.randf_range(-40, 40))
 	c.scale = Vector3.ONE * 0.75
 	_inter("chest", "Chest", p, 1.4, c)
-	add_circle(p, 0.5)
+	solid(c)
 
 func _crypt_entrance(p: Vector3) -> void:
 	var g := Models.N(null, "crypt")
@@ -921,13 +1041,12 @@ func _build_wild() -> void:
 			_wall(Vector3(a3.x, 0, a3.y), Vector3(b3.x, 0, b3.y), rng.randf_range(0.6, 1.4))
 	# broken cart and camp remains
 	var c2: Vector2 = ctrl[2]
-	var cart := Models.N(null, "cart")
+	var cart := Props.footprint(Models.N(null, "cart"), Vector2(0.85, 1.35))
 	Models.P(cart, Geo.box(1.6, 0.12, 2.6), Props.wood(), Vector3(0, 0.6, 0), Vector3(0, 0, 8))
 	Models.P(cart, Geo.box(0.1, 0.5, 2.6), Props.wood(), Vector3(0.78, 0.85, 0), Vector3(0, 0, 8))
 	Models.P(cart, Geo.cyl(0.55, 0.55, 0.1, 14), Props.wood_dark(), Vector3(-0.9, 0.4, 0.8), Vector3(0, 0, 90))
 	Models.P(cart, Geo.cyl(0.55, 0.55, 0.1, 14), Props.wood_dark(), Vector3(0.6, 0.05, -1.4), Vector3(90, 30, 0))
-	_place(cart, Vector3(c2.x + 4.5, 0, c2.y + 2))
-	add_circle(Vector3(c2.x + 4.5, 0, c2.y + 2), 1.2)
+	solid(_place(cart, Vector3(c2.x + 4.5, 0, c2.y + 2)))
 
 	# vegetation
 	var dt_meshes := [Flora.dead_tree(11), Flora.dead_tree(23), Flora.dead_tree(37)]
@@ -1132,11 +1251,14 @@ func _build_lair() -> void:
 				enemy_spawns.append({"kind": kk, "pos": ep, "count": rng.randi_range(3, 5), "champ": rng.randf() < 0.15 + ri * 0.04, "pack": ri * 10 + k, "level": level + ri / 2})
 	_rasterize()
 	# everything that is not floor is solid rock
+	rock.resize(gw * gh)
+	rock.fill(0)
 	for y in gh:
 		for xx in gw:
 			var wx := origin.x + (xx + 0.5) * CELL
 			var wz := origin.y + (y + 0.5) * CELL
 			if not is_floor(wx, wz):
+				rock[y * gw + xx] = 1
 				blocked[y * gw + xx] = 1
 				astar.set_point_solid(Vector2i(xx, y), true)
 	# wall blocks along floor edges
@@ -1190,14 +1312,14 @@ func _pillar(p: Vector3, h: float) -> void:
 	add_circle(p, 0.55)
 
 func _sarcophagus(p: Vector3, yaw: float) -> void:
-	var g := Models.N(null, "sarc")
+	var g := Props.footprint(Models.N(null, "sarc"), Vector2(0.6, 1.2))
 	var sm := Props.stone_clean()
 	Models.P(g, Geo.box(1.1, 0.8, 2.3), sm, Vector3(0, 0.4, 0))
 	var lid := Models.P(g, Geo.box(1.2, 0.2, 2.4), sm, Vector3(0.15, 0.9, 0.1), Vector3(0, 8, 4))
 	Models.P(g, Geo.sph(0.12, 8), Mats.world(Color(0.75, 0.7, 0.6), Color(0.6, 0.55, 0.45), 0.7, 3.0, 0.0, Props.MOSS, true), Vector3(-0.3, 0.12, 1.4))
 	_place(g, p)
 	g.rotation_degrees.y = yaw
-	add_box(p, Vector2(0.6, 1.2), deg_to_rad(-yaw))
+	solid(g)
 
 func _bones(p: Vector3) -> void:
 	var g := Models.N(null, "bones")

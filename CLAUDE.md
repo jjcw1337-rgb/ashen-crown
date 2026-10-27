@@ -28,7 +28,10 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `mp_test` (co-op: run one copy with `-- host` and one with `-- join`).
+`det_test`, `collision_test`, `aim_test`, `matron_test`, `mp_test` (co-op: run one copy with `-- host` and one with `-- join`).
+Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
+Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
+outside their target bands. See `BALANCE.md` for the protocol.
 Screenshots need a display: `xvfb-run -a godot --rendering-driver opengl3 --path . -- --shot out.png --zone town`
 (other flags in `game.gd` `_ready`: `--zone town|wild|lair`, `--run 0|1|2`, `--god`, `--fight`).
 
@@ -46,6 +49,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `demon.gd`, `demon_fx.gd`, `demon_minion.gd` | Demon class: knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader; skill effects and the Underworld screen grade; summoned demons (simple ally AI) |
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: knight body in a long robe (`robe` gear key) + hood, horns, fel flame, floating grimoire; skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
 | `enemy.gd`, `projectile.gd` | Monsters/AI and missiles (host-authoritative in co-op) |
+| `matron.gd` | The Hollow Matron's heart mechanic: Mourners, the shell-game shuffle, hollow/exposed damage, phase floors |
 | `ground_item.gd`, `inter.gd` | Loot on the ground; interactables (chests, shrines, waypoints, portals, NPCs) |
 | `items.gd` | Item rolls, `empower` (A2/A3 multipliers), enchanting, tooltips |
 | `net.gd` | LAN co-op over ENet (UDP 24567, discovery 24568); RPC layer |
@@ -54,6 +58,16 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `weather.gd`, `fx.gd`, `sfx.gd` | Snow/ash, particles, synthesized audio (autoload `Sfx`) |
 
 ## Rules and gotchas
+
+- **Collision**: solid things are footprints (circles and rotated boxes) in `World.obstacles`. Props declare their own
+  (`Props.footprint(root, radius_or_half)`) and are registered with `world.solid(node)` after placing (it reads the node's
+  position, yaw and scale). Use `add_circle`/`add_box` only for things with no prop node. Movers call `world.move(pos, d, radius)`,
+  which slides against the exact footprints; `blocked` (a padded 1 m grid) is only for A* and spawn spots.
+- **Aiming**: Space and the skill keys fire the way the hero faces, with a light assist (`Hero.aim_ahead`). Every skill in
+  `Data.SKILLS` has `"aim"`: `"facing"` (plus `"range"`), `"self"` or `"point"` (the cursor); `Hero.skill_aim` applies it.
+  Give a new skill an `aim`.
+- **Runs** (Act I, A2, A3) are `Data.RUNS` multipliers (`Game.run_mult`). `Items.empower` scales only flat stats; percentages
+  (`Items.PCT_STATS`) stay as rolled. Re-run the balance sim after changing any of them.
 
 - **Typed GDScript**: inference from Variant is treated as an error. Write `var x: Type = ...`.
 - **Co-op**: every peer must run the same build; RPC ids depend on each script's RPC set.

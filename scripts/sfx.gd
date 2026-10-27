@@ -290,6 +290,17 @@ func _gen() -> void:
 		var hum := sin(TAU * 82.0 * t + sin(TAU * 3.0 * t) * 1.5) * 0.3 + sin(TAU * 123.0 * t) * 0.12 + sin(TAU * 246.0 * t + sin(TAU * 5.0 * t)) * 0.06
 		s[i] = (hum + (lp - lp2) * 1.6) * swell
 	streams["drain_loop"] = _wav(s, true)
+	# heartbeat: a deep lub-dub (the Hollow Matron's hidden heart)
+	s = _buf(0.7)
+	for i in s.size():
+		var t := float(i) / RATE
+		var v := 0.0
+		for k in [[0.0, 1.0, 52.0], [0.2, 0.7, 64.0]]:
+			var u: float = t - float(k[0])
+			if u >= 0.0:
+				v += sin(TAU * float(k[2]) * u * (1.0 - u * 0.6)) * exp(-u * 16.0) * float(k[1]) + sin(TAU * float(k[2]) * 3.1 * u) * exp(-u * 60.0) * 0.25 * float(k[1])
+		s[i] = v * 0.9
+	streams["heartbeat"] = _wav(s)
 
 func _drone(kind: String) -> AudioStreamWAV:
 	var sec := 16.0

@@ -28,11 +28,15 @@ const ENEMIES := {
 	"zombie": {"name": "Zombie", "rig": "humanoid", "life": 32, "dmg": [3, 7], "speed": 1.9, "range": 1.6, "xp": 13,
 		"ai": "melee", "atk": "claw", "atk_time": 1.25, "armor": 4, "radius": 0.5, "blood": Color(0.25, 0.3, 0.05),
 		"look": {"skin": Color(0.42, 0.48, 0.36), "cloth": Color(0.25, 0.23, 0.2), "cloth2": Color(0.18, 0.16, 0.14), "height": 1.0, "bulk": 1.1, "head": "human", "hair": Color(0.15, 0.15, 0.12), "eyes": Color(0.6, 1.0, 0.3)}},
+	# the Hollow Matron's veiled Mourners: one of them carries her heart (see matron.gd)
+	"mourner": {"name": "Mourner", "rig": "humanoid", "life": 16, "dmg": [0, 0], "speed": 2.0, "range": 1.0, "xp": 3, "no_loot": true,
+		"ai": "mourner", "atk": "claw", "atk_time": 1.0, "armor": 0, "radius": 0.45, "blood": Color(0.35, 0.33, 0.3),
+		"look": {"skin": Color(0.62, 0.6, 0.56), "cloth": Color(0.42, 0.4, 0.38), "cloth2": Color(0.3, 0.28, 0.27), "height": 0.95, "bulk": 0.85, "head": "hood", "robe": true}},
 	"skel_archer": {"name": "Bone Archer", "rig": "humanoid", "life": 18, "dmg": [3, 6], "speed": 3.0, "range": 11.0, "xp": 12,
 		"ai": "ranged", "atk": "bow", "atk_time": 1.3, "armor": 3, "radius": 0.45, "proj": "arrow", "skin": "archer", "blood": Color(0.85, 0.82, 0.7),
 		"look": {"skin": Color(0.85, 0.82, 0.72), "cloth": Color(0.25, 0.2, 0.15), "height": 1.0, "bulk": 0.8, "head": "skull", "thin": true, "eyes": Color(0.3, 0.7, 1.0), "weapon": "bow"}},
 	"matron": {"name": "The Hollow Matron", "rig": "humanoid", "life": 520, "dmg": [9, 16], "speed": 2.6, "range": 2.6, "xp": 420,
-		"ai": "boss", "atk": "over", "atk_time": 1.3, "armor": 10, "radius": 0.9, "boss": true, "summon": "zombie", "slam": true, "nova": "", "proj": "",
+		"ai": "boss", "atk": "over", "atk_time": 1.3, "armor": 10, "radius": 0.9, "boss": true, "summon": "", "slam": true, "nova": "", "proj": "", "heart": true,
 		"blood": Color(0.3, 0.02, 0.05),
 		"look": {"skin": Color(0.55, 0.55, 0.5), "cloth": Color(0.12, 0.1, 0.12), "cloth2": Color(0.3, 0.05, 0.06), "height": 2.0, "bulk": 1.2, "head": "hood", "eyes": Color(1.0, 0.15, 0.1), "cape": Color(0.15, 0.03, 0.04), "weapon": "scythe"}},
 
@@ -219,26 +223,36 @@ const UNIQUES := {
 		"metal": Color(0.95, 0.8, 0.45), "trim": Color(1.0, 1.0, 0.95), "glow": Color(1.0, 0.85, 0.4), "gem": Color(1.0, 0.9, 0.5)},
 }
 
+## Each run is Act I again with stronger monsters and loot (indexed by Game.difficulty).
+## Multipliers on Act I: monster life (and armor), the final boss's life, monster damage,
+## the flat stats on items they drop (Items.empower) and experience. Tuned with
+## tools/balance_sim.gd (see BALANCE.md).
+const RUNS := [
+	{"name": "Act I", "life": 1.0, "boss_life": 1.0, "dmg": 1.0, "loot": 1.0, "xp": 1.0},
+	{"name": "A2", "life": 6.0, "boss_life": 4.0, "dmg": 5.0, "loot": 5.0, "xp": 5.0},
+	{"name": "A3", "life": 24.0, "boss_life": 10.0, "dmg": 15.0, "loot": 25.0, "xp": 25.0},
+]
+
 const RARITY_COLOR := [Color(0.92, 0.92, 0.92), Color(0.45, 0.55, 1.0), Color(1.0, 0.95, 0.35), Color(0.82, 0.66, 0.38)]
 const RARITY_NAME := ["Normal", "Magic", "Rare", "Unique"]
 
 const SKILLS := [
-	{"id": "cleave", "cls": "knight", "name": "Cleave", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "desc": "A wide arcing blow that hits every enemy in front of you for 160% weapon damage."},
-	{"id": "nova", "cls": "knight", "name": "Holy Nova", "key": "E", "lvl": 3, "mana": 14, "cd": 2.5, "desc": "A ring of holy fire bursts outward, burning enemies within 7 metres."},
-	{"id": "charge", "cls": "knight", "name": "Charge", "key": "R", "lvl": 6, "mana": 10, "cd": 4.0, "desc": "Dash toward the cursor, smashing through enemies and knocking them back."},
-	{"id": "cry", "cls": "knight", "name": "Battle Cry", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "desc": "Rally yourself: +40% damage and +50% defense for 12 seconds. Stuns nearby foes."},
-	{"id": "reap", "cls": "wraith", "name": "Soul Reap", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "desc": "A spectral scythe sweeps in front of you for 150% weapon damage. Each soul it cuts flies back and heals you."},
-	{"id": "wail", "cls": "wraith", "name": "Banshee Wail", "key": "E", "lvl": 3, "mana": 14, "cd": 3.0, "desc": "A scream that tears outward 7 metres: hurls enemies back, freezes them in terror and damages them."},
-	{"id": "shade", "cls": "wraith", "name": "Shadow Step", "key": "R", "lvl": 6, "mana": 10, "cd": 4.0, "desc": "Melt into shadow and re-form at the cursor, striking everything around you. The shade you leave behind implodes."},
-	{"id": "host", "cls": "wraith", "name": "Spectral Host", "key": "F", "lvl": 10, "mana": 20, "cd": 18.0, "desc": "Three spirits circle you for 12 seconds, darting out to strike nearby enemies. +40% damage while they last."},
-	{"id": "hellclaw", "cls": "demon", "name": "Hellfire Claw", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "desc": "Three burning rakes tear across the front for 140% weapon damage plus fire, setting enemies alight."},
-	{"id": "summon", "cls": "demon", "name": "Summon Demon", "key": "E", "lvl": 3, "mana": 18, "cd": 1.5, "desc": "A demon claws its way up out of a burning sigil to fight beside you. Up to 3 at once; a fourth replaces the oldest."},
-	{"id": "phase", "cls": "demon", "name": "Underworld Phase", "key": "R", "lvl": 6, "mana": 15, "cd": 12.0, "desc": "Slip into the Underworld for 6 seconds: monsters cannot see or hurt you and you move faster. When you return, the rift erupts around you."},
-	{"id": "pact", "cls": "demon", "name": "Blood Pact", "key": "F", "lvl": 10, "mana": 0, "cd": 20.0, "desc": "Pay 20% of your life: you and your demons deal +40% damage for 12 seconds, and your demons are healed, faster and fiercer."},
-	{"id": "drain", "cls": "warlock", "name": "Drain Life", "key": "Q", "lvl": 1, "mana": 6, "cd": 0.0, "desc": "Latch a green beam onto an enemy and pull the life out of it. The beam forks to up to 3 enemies near your target and everything it drains heals you. Hold Q to keep draining (costs mana each second)."},
-	{"id": "blight", "cls": "warlock", "name": "Blight Bolt", "key": "E", "lvl": 3, "mana": 12, "cd": 1.5, "desc": "Hurl a howling skull of blight. It bursts where it lands and leaves a plague pool that rots enemies standing in it for 4 seconds."},
-	{"id": "shackles", "cls": "warlock", "name": "Soul Shackles", "key": "R", "lvl": 6, "mana": 16, "cd": 8.0, "desc": "Chains of fel fire snap out to every enemy within 7 metres, damaging them and binding them in place for 2.5 seconds."},
-	{"id": "covenant", "cls": "warlock", "name": "Fel Covenant", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "desc": "Seal a pact with what waits beyond: +40% damage for 12 seconds, and Drain Life forks to two more enemies and heals twice as much."},
+	{"id": "cleave", "cls": "knight", "name": "Cleave", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 3.5, "desc": "A wide arcing blow that hits every enemy in front of you for 160% weapon damage."},
+	{"id": "nova", "cls": "knight", "name": "Holy Nova", "key": "E", "lvl": 3, "mana": 14, "cd": 2.5, "aim": "self", "desc": "A ring of holy fire bursts outward, burning enemies within 7 metres."},
+	{"id": "charge", "cls": "knight", "name": "Charge", "key": "R", "lvl": 6, "mana": 10, "cd": 4.0, "aim": "facing", "range": 9.0, "desc": "Dash the way you face (toward the nearest enemy ahead), smashing through enemies and knocking them back."},
+	{"id": "cry", "cls": "knight", "name": "Battle Cry", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "aim": "self", "desc": "Rally yourself: +40% damage and +50% defense for 12 seconds. Stuns nearby foes."},
+	{"id": "reap", "cls": "wraith", "name": "Soul Reap", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 3.5, "desc": "A spectral scythe sweeps in front of you for 150% weapon damage. Each soul it cuts flies back and heals you."},
+	{"id": "wail", "cls": "wraith", "name": "Banshee Wail", "key": "E", "lvl": 3, "mana": 14, "cd": 3.0, "aim": "self", "desc": "A scream that tears outward 7 metres: hurls enemies back, freezes them in terror and damages them."},
+	{"id": "shade", "cls": "wraith", "name": "Shadow Step", "key": "R", "lvl": 6, "mana": 10, "cd": 4.0, "aim": "point", "desc": "Melt into shadow and re-form at the cursor, striking everything around you. The shade you leave behind implodes."},
+	{"id": "host", "cls": "wraith", "name": "Spectral Host", "key": "F", "lvl": 10, "mana": 20, "cd": 18.0, "aim": "self", "desc": "Three spirits circle you for 12 seconds, darting out to strike nearby enemies. +40% damage while they last."},
+	{"id": "hellclaw", "cls": "demon", "name": "Hellfire Claw", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 3.5, "desc": "Three burning rakes tear across the front for 140% weapon damage plus fire, setting enemies alight."},
+	{"id": "summon", "cls": "demon", "name": "Summon Demon", "key": "E", "lvl": 3, "mana": 18, "cd": 1.5, "aim": "self", "desc": "A demon claws its way up out of a burning sigil to fight beside you. Up to 3 at once; a fourth replaces the oldest."},
+	{"id": "phase", "cls": "demon", "name": "Underworld Phase", "key": "R", "lvl": 6, "mana": 15, "cd": 12.0, "aim": "self", "desc": "Slip into the Underworld for 6 seconds: monsters cannot see or hurt you and you move faster. When you return, the rift erupts around you."},
+	{"id": "pact", "cls": "demon", "name": "Blood Pact", "key": "F", "lvl": 10, "mana": 0, "cd": 20.0, "aim": "self", "desc": "Pay 20% of your life: you and your demons deal +40% damage for 12 seconds, and your demons are healed, faster and fiercer."},
+	{"id": "drain", "cls": "warlock", "name": "Drain Life", "key": "Q", "lvl": 1, "mana": 6, "cd": 0.0, "aim": "facing", "range": 11.0, "desc": "Latch a green beam onto an enemy and pull the life out of it. The beam forks to up to 3 enemies near your target and everything it drains heals you. Hold Q to keep draining (costs mana each second)."},
+	{"id": "blight", "cls": "warlock", "name": "Blight Bolt", "key": "E", "lvl": 3, "mana": 12, "cd": 1.5, "aim": "facing", "range": 15.0, "desc": "Hurl a howling skull of blight. It bursts where it lands and leaves a plague pool that rots enemies standing in it for 4 seconds."},
+	{"id": "shackles", "cls": "warlock", "name": "Soul Shackles", "key": "R", "lvl": 6, "mana": 16, "cd": 8.0, "aim": "self", "desc": "Chains of fel fire snap out to every enemy within 7 metres, damaging them and binding them in place for 2.5 seconds."},
+	{"id": "covenant", "cls": "warlock", "name": "Fel Covenant", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "aim": "self", "desc": "Seal a pact with what waits beyond: +40% damage for 12 seconds, and Drain Life forks to two more enemies and heals twice as much."},
 ]
 
 ## Playable classes. Base attributes at level 1.

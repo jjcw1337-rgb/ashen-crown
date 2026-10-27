@@ -252,6 +252,18 @@ static func fire(parent: Node3D, pos: Vector3, s: float = 1.0, col: Color = Colo
 		root.add_child(l)
 	return root
 
+## Declares what a prop blocks on the ground, in its own space: a radius, or a box half-size
+## (x across, y along local z), optionally offset. World.solid(node) registers it where the
+## prop ends up, with the node's yaw and scale.
+static func footprint(root: Node3D, shape: Variant, at := Vector3.ZERO) -> Node3D:
+	var f := {"at": at}
+	if shape is Vector2:
+		f["half"] = shape
+	else:
+		f["r"] = float(shape)
+	root.set_meta("footprint", f)
+	return root
+
 # ---------------------------------------------------------------- small props
 static func tripod_torch(parent: Node3D, pos: Vector3, shadow := false) -> Node3D:
 	var root := Models.N(parent, "torch", pos, Vector3(0, randf() * 360.0, 0))
@@ -265,7 +277,7 @@ static func tripod_torch(parent: Node3D, pos: Vector3, shadow := false) -> Node3
 		var a := TAU * i / 3.0 + 0.5
 		Models.seg(root, Vector3(cos(a) * 0.3, 1.2, sin(a) * 0.3), Vector3(cos(a + 2.1) * 0.3, 1.2, sin(a + 2.1) * 0.3), 0.012, 0.012, wm, 4)
 	fire(root, Vector3(0, 2.05, 0), 0.75, Color(1.0, 0.55, 0.22), true, shadow)
-	return root
+	return footprint(root, 0.36)
 
 static func pot(parent: Node3D, pos: Vector3, kind: int, s: float = 1.0) -> Node3D:
 	var profiles := [
@@ -290,6 +302,7 @@ static func cauldron(parent: Node3D, pos: Vector3, liquid: Color) -> Node3D:
 		Models.seg(root, Vector3(cos(a) * 0.3, 0.12, sin(a) * 0.3), Vector3(cos(a) * 0.36, -0.0, sin(a) * 0.36), 0.04, 0.03, im, 6)
 	var lm := Mats.mat(liquid, 0.1, 0.0, liquid, 1.6)
 	Models.P(root, Geo.cyl(0.35, 0.35, 0.02, 18), lm, Vector3(0, 0.56, 0))
+	footprint(root, 0.44)
 	fire(root, Vector3(0, 0.0, 0), 0.6, Color(1.0, 0.5, 0.2), false, false, false)
 	var bub := GPUParticles3D.new()
 	bub.amount = 10
@@ -332,14 +345,14 @@ static func crate(parent: Node3D, pos: Vector3, s: float = 1.0) -> Node3D:
 	for x in [-1, 1]:
 		for z in [-1, 1]:
 			Models.P(root, Geo.box(0.07 * s, 0.6 * s, 0.07 * s), dm, Vector3(x * 0.34 * s, 0.3 * s, z * 0.34 * s))
-	return root
+	return footprint(root, Vector2(0.37, 0.37) * s)
 
 static func barrel(parent: Node3D, pos: Vector3) -> Node3D:
 	var root := Models.N(parent, "barrel", pos, Vector3(0, randf() * 360.0, 0))
 	Models.P(root, Geo.lathe([Vector2(0.0, 0.0), Vector2(0.27, 0.0), Vector2(0.33, 0.4), Vector2(0.27, 0.8), Vector2(0.0, 0.8)], 16, "barrel"), wood())
 	for y in [0.1, 0.4, 0.7]:
 		Models.P(root, Geo.torus(0.28 + (0.04 if y == 0.4 else 0.0), 0.31 + (0.04 if y == 0.4 else 0.0), 18, 4), iron(), Vector3(0, y, 0))
-	return root
+	return footprint(root, 0.34)
 
 static func log_pile(parent: Node3D, pos: Vector3) -> Node3D:
 	var root := Models.N(parent, "logs", pos, Vector3(0, randf() * 360.0, 0))
@@ -349,7 +362,7 @@ static func log_pile(parent: Node3D, pos: Vector3) -> Node3D:
 		var col := i if i < 3 else (i - 3 if i < 5 else 0)
 		var x := (col - (1.0 if row == 0 else (0.5 if row == 1 else 0.0))) * 0.28
 		Models.P(root, Geo.cyl(0.13, 0.14, 1.4, 10), wm, Vector3(x, 0.13 + row * 0.24, 0), Vector3(90, 0, randf_range(-3, 3)))
-	return root
+	return footprint(root, Vector2(0.42, 0.7))
 
 static func campfire(parent: Node3D, pos: Vector3) -> Node3D:
 	var root := Models.N(parent, "campfire", pos)
@@ -364,7 +377,7 @@ static func campfire(parent: Node3D, pos: Vector3) -> Node3D:
 		Models.seg(root, Vector3(cos(a) * 0.55, 0.05, sin(a) * 0.55), Vector3(0, 0.45, 0), 0.07, 0.04, wm, 6)
 	Models.P(root, Geo.cyl(0.5, 0.5, 0.02, 12), Mats.world(Color(0.06, 0.05, 0.04), Color(0.15, 0.08, 0.04), 1.0, 2.0, 0.0, MOSS, false, 0.0, Color(1.0, 0.3, 0.05), 0.6), Vector3(0, 0.02, 0))
 	fire(root, Vector3(0, 0.2, 0), 1.6, Color(1.0, 0.52, 0.2), true, true)
-	return root
+	return footprint(root, 0.95)
 
 static func banner(parent: Node3D, pos: Vector3, col: Color, trim: Color) -> Node3D:
 	var root := Models.N(parent, "banner", pos)
@@ -376,12 +389,13 @@ static func banner(parent: Node3D, pos: Vector3, col: Color, trim: Color) -> Nod
 	cm.set_shader_parameter("trim", trim)
 	cm.set_shader_parameter("wave", 1.0)
 	Models.P(root, Geo.quad(0.65, 1.3), cm, Vector3(0.36, 2.35, 0), Vector3(0, 0, 0))
-	return root
+	return footprint(root, 0.12)
 
 # ---------------------------------------------------------------- structures
 ## Hide tent on crooked poles; door faces +Z.
 static func hide_tent(parent: Node3D, pos: Vector3, rot_y: float, w: float = 3.2, d: float = 3.6, h: float = 2.4) -> Node3D:
 	var root := Models.N(parent, "tent", pos, Vector3(0, rot_y, 0))
+	footprint(root, Vector2(w * 0.5, d * 0.5 + 0.1))
 	var wm := wood_dark()
 	var hm := Mats.world(HIDE, HIDE_D, 0.95, 0.7)
 	hm = hm.duplicate()
@@ -597,7 +611,7 @@ static func stash_chest(parent: Node3D, pos: Vector3, rot_y: float) -> Node3D:
 		Models.P(root, Geo.box(0.08, 0.67, 0.82), im, Vector3(x, 0.33, 0))
 		Models.P(root, Geo.torus(0.39, 0.43, 14, 4), im, Vector3(x, 0.65, 0), Vector3(0, 0, 90), Vector3(1, 0.55, 1))
 	Models.P(root, Geo.box(0.18, 0.22, 0.06), Mats.mat(Color(0.85, 0.65, 0.25), 0.25, 1.0), Vector3(0, 0.6, -0.42))
-	return root
+	return footprint(root, Vector2(0.68, 0.42))
 
 static func waypoint(parent: Node3D, pos: Vector3) -> Node3D:
 	var root := Models.N(parent, "waypoint", pos)

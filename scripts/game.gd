@@ -2,6 +2,8 @@ extends Node3D
 ## Root of the game: environment, camera, zones, input, combat glue, saving.
 
 const SAVE_PATH := "user://ashen_crown_save.json"
+## Headless tools (godot -s tools/x.gd) save to their own file so they never touch a player's save.
+const TEST_SAVE_PATH := "user://ashen_crown_test_save.json"
 const CAM_OFFSET := Vector3(0, 17.0, 16.5)
 
 var world: World
@@ -39,9 +41,6 @@ var max_run := 0             # highest of those reached; any of them can be pick
 ## go back to unlocking them by beating each final boss.
 const UNLOCK_ALL_ACTS := true
 var run_progress := {}       # per run: its waypoints and whether its boss is dead
-const A2_ENEMY := 20.0
-const A2_LOOT := 5.0
-const A2_XP := 5.0
 var tp_link := {}
 var xp_bonus_t := 0.0
 var shops := {}
@@ -96,7 +95,7 @@ func _ready() -> void:
 		return
 	await _play_intro()
 	await load_zone(0, "town", "start")
-	ui.show_title(FileAccess.file_exists(SAVE_PATH))
+	ui.show_title(FileAccess.file_exists(save_path()))
 
 # ---------------------------------------------------------------- intro
 const INTRO_PATH := "res://assets/intro.ogv"
@@ -320,22 +319,24 @@ func _zone_env(kind: String) -> void:
 	if kind == "lair":
 		env.background_mode = Environment.BG_COLOR
 		env.background_color = Color(0.0, 0.0, 0.0)
+		# lit enough to read the room and the monsters at the edge of the screen: a cool
+		# ambient fill under the warm torches, and a wider light around the hero
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-		env.ambient_light_color = Color(0.32, 0.34, 0.42)
-		env.ambient_light_energy = 0.42
+		env.ambient_light_color = Color(0.44, 0.45, 0.52)
+		env.ambient_light_energy = 0.95
 		env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
-		env.tonemap_exposure = 1.25
-		env.fog_light_color = Color(0.03, 0.03, 0.04)
-		env.fog_density = 0.012
+		env.tonemap_exposure = 1.45
+		env.fog_light_color = Color(0.06, 0.06, 0.07)
+		env.fog_density = 0.006
 		env.fog_height_density = 0.0
-		env.adjustment_saturation = 0.9
-		env.adjustment_contrast = 1.08
-		env.volumetric_fog_density = 0.03
+		env.adjustment_saturation = 0.92
+		env.adjustment_contrast = 1.04
+		env.volumetric_fog_density = 0.018
 		env.volumetric_fog_albedo = Color(0.5, 0.48, 0.45)
 		env.volumetric_fog_emission = Color(0.0, 0.0, 0.0)
 		sun.visible = false
-		hero.light.light_energy = 2.2
-		hero.light.omni_range = 13.0
+		hero.light.light_energy = 2.6
+		hero.light.omni_range = 17.0
 	else:
 		env.background_mode = Environment.BG_SKY
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
@@ -622,15 +623,22 @@ func zone_title(act: int, zone: String) -> String:
 		"lair": return ("Throne of the Ashen King" if difficulty >= 2 else a["lair"]) + tag
 	return ""
 
-## Each run multiplies on the last: A2 is 20x monsters / 5x loot, A3 is 400x / 25x.
-func enemy_mult() -> float:
-	return pow(A2_ENEMY, difficulty)
+## The current run's multipliers on Act I (Data.RUNS).
+func run_mult(key: String, d: int = -1) -> float:
+	return float(Data.RUNS[clampi(difficulty if d < 0 else d, 0, Data.RUNS.size() - 1)][key])
 
 func xp_mult() -> float:
-	return pow(A2_XP, difficulty)
+	return run_mult("xp")
 
 func loot_mult() -> float:
-	return pow(A2_LOOT, difficulty)
+	return run_mult("loot")
+
+## How a run compares to Act I, in words, for banners and the victory panel.
+func run_note(d: int) -> String:
+	if d <= 0:
+		return "Monsters and loot at their normal strength."
+	var x := func(v: float) -> String: return ("%d" % int(round(v))) if v >= 10.0 else ("%.1f" % v).trim_suffix(".0")
+	return "Monsters have %s times the life and %s times the damage of Act I. Every item they drop is %s times stronger." % [x.call(run_mult("life", d)), x.call(run_mult("dmg", d)), x.call(run_mult("loot", d))]
 
 func run_name(d: int = -1) -> String:
 	if d < 0:
@@ -639,10 +647,7 @@ func run_name(d: int = -1) -> String:
 
 func run_banner() -> void:
 	ui.big_message(run_name() + " begins")
-	if difficulty >= 2:
-		ui.message("The Ashen King has risen. Monsters are 400 times stronger than Act I; their loot is 25 times stronger.", Color(1.0, 0.45, 0.2))
-	else:
-		ui.message("Monsters are 20 times stronger. Their loot is 5 times stronger.", Color(1.0, 0.55, 0.3))
+	ui.message(("The Ashen King has risen. " if difficulty >= 2 else "") + run_note(difficulty), Color(1.0, 0.45, 0.2) if difficulty >= 2 else Color(1.0, 0.55, 0.3))
 
 func boss_kind() -> String:
 	return "ashen_king" if difficulty >= 2 else world.boss_spawn["kind"]
@@ -695,8 +700,7 @@ func switch_run(d: int) -> void:
 
 func run_switched_banner() -> void:
 	ui.big_message(run_name())
-	var note := ["Monsters and loot at their normal strength.", "Monsters 20 times stronger, loot 5 times stronger.", "The Ashen King's reign: monsters 400 times stronger, loot 25 times stronger."]
-	ui.message(note[clampi(difficulty, 0, 2)], Color(1.0, 0.7, 0.4))
+	ui.message(("The Ashen King's reign. " if difficulty >= 2 else "") + run_note(difficulty), Color(1.0, 0.7, 0.4))
 
 func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	if _busy:
@@ -887,7 +891,7 @@ func start_game(cont: bool, cls := "knight") -> void:
 
 ## Co-op from the title screen. Your saved knight is used if you have one.
 func start_host() -> void:
-	await start_game(FileAccess.file_exists(SAVE_PATH))
+	await start_game(FileAccess.file_exists(save_path()))
 	var err := net.host()
 	if err != OK:
 		ui.big_message("Could not host")
@@ -926,18 +930,21 @@ func on_net_failed(msg: String) -> void:
 var test_immortal := false
 var test_onehit := false
 
+func save_path() -> String:
+	return TEST_SAVE_PATH if get_tree().get_script() != null else SAVE_PATH
+
 func save_game() -> void:
 	_store_progress()
 	var d := {"hero": hero.to_save(), "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed, "difficulty": difficulty,
 		"max_run": max_run, "runs": run_progress}
-	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	var f := FileAccess.open(save_path(), FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(d))
 
 func load_game() -> bool:
-	if not FileAccess.file_exists(SAVE_PATH):
+	if not FileAccess.file_exists(save_path()):
 		return false
-	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
+	var f := FileAccess.open(save_path(), FileAccess.READ)
 	if f == null:
 		return false
 	var d = JSON.parse_string(f.get_as_text())
@@ -1193,7 +1200,7 @@ func gain_kill_xp(xp: int, lvl: int) -> void:
 func on_enemy_killed(e: Enemy) -> void:
 	gain_kill_xp(e.xp, e.level)
 	net.share_xp(e.xp, e.level)
-	var drops := 1
+	var drops := 0 if e.def.get("no_loot", false) else 1
 	if e.champion:
 		drops = 3
 	if e.boss:
@@ -1442,10 +1449,10 @@ func cast_skill(id: String) -> void:
 	if not playing or hero.dead:
 		return
 	_update_hover()
-	var aim := ground_pt
+	var cursor := ground_pt
 	if hovered is Enemy:
-		aim = hovered.global_position
-	hero.use_skill(id, aim)
+		cursor = hovered.global_position
+	hero.use_skill(id, hero.skill_aim(id, cursor))
 
 func _click_world() -> void:
 	_update_hover()
@@ -1475,7 +1482,7 @@ func _process(delta: float) -> void:
 		hero.blocking = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and not ui.any_panel_open()
 		hero.sprint = Input.is_key_pressed(KEY_SHIFT)
 		if Input.is_key_pressed(KEY_SPACE) and hero.can_act():
-			hero.free_attack(hovered.global_position if (hovered is Enemy) else ground_pt)
+			hero.free_attack(hero.aim_ahead(hero.reach() + 1.5))
 		var wasd := Vector3.ZERO
 		if Input.is_key_pressed(KEY_W): wasd.z -= 1
 		if Input.is_key_pressed(KEY_S): wasd.z += 1

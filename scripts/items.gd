@@ -128,6 +128,11 @@ static func random_drop(ilvl: int, mf: float, rng: RandomNumberGenerator, boss :
 	return generate(base, ilvl, rarity, rng)
 
 ## A2 loot: multiplies weapon damage, armour and every affix on an item.
+## Bonuses that are percentages or chances. empower leaves them as rolled: multiplying them
+## made A2/A3 items with 100%+ resist (immunity), 100%+ life steal or 25x run speed.
+const PCT_STATS := ["ed", "edef", "ias", "ls", "res", "block", "gf", "mf", "frw"]
+
+## A2/A3 loot: base damage, defense and every flat bonus times mult.
 static func empower(it: Dictionary, mult: float) -> Dictionary:
 	if it.get("base", "") in ["gold"] or Data.BASES[it["base"]]["slot"] == "potion":
 		return it
@@ -137,7 +142,7 @@ static func empower(it: Dictionary, mult: float) -> Dictionary:
 		it["def"] = int(round(it["def"] * mult))
 	var aff: Array = []
 	for a in it.get("affixes", []):
-		aff.append([a[0], int(round(float(a[1]) * mult))])
+		aff.append([a[0], a[1] if a[0] in PCT_STATS else int(round(float(a[1]) * mult))])
 	it["affixes"] = aff
 	it["power"] = mult
 	return it

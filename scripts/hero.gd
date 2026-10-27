@@ -483,6 +483,49 @@ func cmd_move(p: Vector3, direct := false) -> void:
 	target = null
 	_set_goal(p, direct)
 
+# ---------------------------------------------------------------- aiming
+## Keyboard actions (Space and the QERF skills) go where the hero is facing, for every class:
+## run with WASD, press a key, and it fires ahead. A light assist bends the shot onto the enemy
+## nearest that line, inside a cone that is wider up close. Mouse clicks still go where you
+## click. Each skill says how it aims in Data.SKILLS: "facing" (with a "range"), "point" (the
+## cursor; Shadow Step's destination) or "self" (centred on the hero, no turn).
+const AIM_CONE_NEAR := 0.8    # radians either side of facing, for melee reach
+const AIM_CONE_FAR := 0.42    # for ranged skills
+
+func facing() -> Vector3:
+	var f := -rig.global_transform.basis.z
+	f.y = 0
+	return f.normalized() if f.length() > 0.01 else Vector3.FORWARD
+
+## Where a facing-aimed action lands: the best enemy in the cone ahead, else straight ahead.
+func aim_ahead(dist: float) -> Vector3:
+	var f := facing()
+	var cone := AIM_CONE_NEAR if dist < 4.0 else AIM_CONE_FAR
+	var best = null
+	var bs := INF
+	for e in game.enemies_near(global_position, dist):
+		var d: Vector3 = e.global_position - global_position
+		d.y = 0
+		var dl := d.length()
+		var ang := f.angle_to(d / dl) if dl > 0.05 else 0.0
+		if ang > cone:
+			continue
+		var score := dl * (1.0 + 2.5 * ang)
+		if score < bs:
+			bs = score
+			best = e
+	return best.global_position if best != null else global_position + f * dist
+
+## The aim point for skill `id` given the cursor point (used only by "point" skills).
+func skill_aim(id: String, cursor: Vector3) -> Vector3:
+	for s in skill_list():
+		if s["id"] == id:
+			match String(s.get("aim", "facing")):
+				"point": return cursor
+				"self": return global_position + facing()
+				_: return aim_ahead(float(s.get("range", 3.5)))
+	return cursor
+
 ## Swing toward a point without needing a target (Space). Works while moving.
 func free_attack(aim: Vector3) -> void:
 	if not can_act():
@@ -1404,7 +1447,7 @@ func _update_bolts(delta: float) -> void:
 			continue
 		var step := 16.0 * delta
 		var p: Vector3 = n.global_position
-		var np: Vector3 = game.world.move(p, (b["dir"] as Vector3) * step)
+		var np: Vector3 = game.world.move(p, (b["dir"] as Vector3) * step, 0.15)
 		var moved := np - p
 		moved.y = 0
 		np.y = lerpf(p.y, game.world.height_at(np.x, np.z) + 1.2, clampf(delta * 6.0, 0.0, 1.0))
