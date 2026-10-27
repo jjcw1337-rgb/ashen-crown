@@ -81,7 +81,20 @@ func _initialize():
 			hm.position = Vector3(0, 0.092, 0.006)
 		rigs.append(r)
 		i += 1
-	if mode == "lineup":
+	if mode.begins_with("endgame"):
+		# Close-up of the end-game (ornate) kit alone. endgame = full body, endgame_bust = chest up.
+		for j in rigs.size():
+			rigs[j].visible = j == rigs.size() - 1
+		var hero: Node3D = rigs[rigs.size() - 1]
+		hero.position = Vector3.ZERO
+		hero.rotation_degrees.y = 200
+		if mode == "endgame_bust":
+			cam.transform = Transform3D(Basis(), Vector3(0.35, 1.75, 1.7)).looking_at(Vector3(0, 1.45, 0))
+			cam.fov = 40
+		else:
+			cam.transform = Transform3D(Basis(), Vector3(0.5, 1.3, 3.3)).looking_at(Vector3(0, 0.95, 0))
+			cam.fov = 42
+	elif mode == "lineup":
 		for j in rigs.size():
 			rigs[j].position = Vector3((j - 2) * 1.25, 0, 0)
 			rigs[j].rotation_degrees.y = 180 + (j - 2) * -8
@@ -102,7 +115,7 @@ func _initialize():
 		cam.fov = 46
 	for f in 10:
 		for j in rigs.size():
-			if mode == "lineup":
+			if mode != "action":
 				Anim.pose(rigs[j], {"time": 0.0})
 		await process_frame
 	await RenderingServer.frame_post_draw
