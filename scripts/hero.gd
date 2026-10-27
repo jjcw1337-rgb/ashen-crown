@@ -391,6 +391,25 @@ func add_xp(v: int) -> void:
 		leveled.emit(level)
 	stats_changed.emit()
 
+## Testing panel: jump straight to a level. Going up grants the usual 5 stat points per level.
+func set_level(n: int) -> void:
+	n = clampi(n, 1, 99)
+	if n == level:
+		return
+	var up := n > level
+	if up:
+		stat_points += (n - level) * 5
+	level = n
+	xp = 0
+	recalc()
+	life = max_life
+	mana = max_mana
+	if up and game.world:
+		Fx.pillar(game.world.fx_root, global_position, Color(1.0, 0.85, 0.4))
+		Sfx.play("levelup")
+	leveled.emit(level)
+	stats_changed.emit()
+
 # ---------------------------------------------------------------- gear visuals
 func refresh_gear() -> void:
 	for n in gear_nodes:
@@ -583,7 +602,7 @@ func use_skill(id: String, aim: Vector3) -> bool:
 	for s in skill_list():
 		if s["id"] == id:
 			sk = s
-	if sk.is_empty() or level < sk["lvl"]:
+	if sk.is_empty() or (level < sk["lvl"] and not game.test_allskills):
 		game.ui.message("Requires level %d" % sk.get("lvl", 1), Color(1, 0.4, 0.3))
 		return false
 	if cds[id] > 0.0:

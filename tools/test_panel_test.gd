@@ -40,5 +40,19 @@ func _run() -> void:
 	print("[T] infinite stamina: ", int(h.stamina), "/", int(h.max_stamina), " winded=", h.exhausted)
 	h.sprint = false
 	g.test_stamina = false
+	# all skills: a level-1 hero can cast the level-10 skill
+	var last: Dictionary = h.skill_list()[3]
+	h.mana = h.max_mana
+	print("[T] level-%d skill at level 1 without switch: %s" % [last["lvl"], h.use_skill(last["id"], h.global_position)])
+	g.test_allskills = true
+	h.mana = h.max_mana
+	print("[T] ... with Unlock all skills: %s" % h.use_skill(last["id"], h.global_position))
+	await create_timer(1.0).timeout
+	g.test_allskills = false
 	print("[T] unchanged: level ", lvl, "->", h.level, " dmg ", dmg, "->", [h.dmg_min, h.dmg_max])
+	var pts: int = h.stat_points
+	h.set_level(20)
+	print("[T] set level 20: level=", h.level, " stat points +", h.stat_points - pts, " life=", int(h.life), "/", int(h.max_life))
+	h.set_level(5)
+	print("[T] set level 5: level=", h.level)
 	quit()

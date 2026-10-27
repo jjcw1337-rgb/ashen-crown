@@ -936,6 +936,7 @@ func on_net_failed(msg: String) -> void:
 var test_immortal := false
 var test_onehit := false
 var test_stamina := false   # infinite stamina: sprint forever
+var test_allskills := false # every skill usable regardless of level
 
 func save_path() -> String:
 	return TEST_SAVE_PATH if get_tree().get_script() != null else SAVE_PATH

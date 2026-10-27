@@ -1184,8 +1184,8 @@ func _build_test_panel() -> void:
 	test_panel.anchor_top = 0.0
 	test_panel.offset_left = 20
 	test_panel.offset_top = 60
-	test_panel.offset_right = 290
-	test_panel.offset_bottom = 270
+	test_panel.offset_right = 330
+	test_panel.offset_bottom = 400
 	test_panel.visible = false
 	test_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	root.add_child(test_panel)
@@ -1214,7 +1214,38 @@ func _build_test_panel() -> void:
 		game.test_stamina = on
 		message("Infinite stamina " + ("ON" if on else "off"), Color(0.5, 1.0, 0.6) if on else Color(0.8, 0.8, 0.8)))
 	vb.add_child(sta)
-	vb.add_child(_label("F8 or Esc to close. Not saved.", 13, Color(0.7, 0.66, 0.58)))
+	var allsk := CheckButton.new()
+	allsk.text = "Unlock all skills"
+	allsk.button_pressed = game.test_allskills
+	allsk.toggled.connect(func(on: bool):
+		game.test_allskills = on
+		message("All skills " + ("unlocked" if on else "back to their levels"), Color(0.6, 0.8, 1.0) if on else Color(0.8, 0.8, 0.8)))
+	vb.add_child(allsk)
+	# character level: pick a number and press Set
+	var lv := HBoxContainer.new()
+	lv.add_theme_constant_override("separation", 8)
+	lv.add_child(_label("Level", 16, Color(0.86, 0.83, 0.77)))
+	var spin := SpinBox.new()
+	spin.min_value = 1
+	spin.max_value = 99
+	spin.step = 1
+	spin.custom_minimum_size = Vector2(90, 0)
+	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lv.add_child(spin)
+	var setb := Button.new()
+	setb.text = "Set"
+	setb.custom_minimum_size = Vector2(60, 0)
+	setb.pressed.connect(func():
+		spin.apply()
+		hero.set_level(int(spin.value))
+		message("Level set to %d" % hero.level, Color(1.0, 0.85, 0.4)))
+	lv.add_child(setb)
+	vb.add_child(lv)
+	test_panel.visibility_changed.connect(func():
+		if test_panel.visible and hero:
+			spin.value = hero.level)
+	vb.add_child(_label("Level changes are saved; the switches are not.", 13, Color(0.7, 0.66, 0.58)))
+	vb.add_child(_label("F8 or Esc to close.", 13, Color(0.7, 0.66, 0.58)))
 
 func update_sound_btn() -> void:
 	if sound_btn:
@@ -1812,7 +1843,7 @@ func _process(delta: float) -> void:
 			var sk: Dictionary = sks[i]
 			var s: Panel = skill_slots[i]
 			var cd: ColorRect = s.get_node("cd")
-			var locked: bool = hero.level < sk["lvl"]
+			var locked: bool = hero.level < sk["lvl"] and not game.test_allskills
 			var frac: float = 1.0 if locked else clampf(hero.cds[sk["id"]] / maxf(sk["cd"], 0.01), 0.0, 1.0)
 			cd.anchor_top = 1.0 - frac
 			cd.color = Color(0, 0, 0, 0.82) if locked else Color(0, 0, 0, 0.6)

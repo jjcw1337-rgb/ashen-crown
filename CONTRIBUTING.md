@@ -101,7 +101,7 @@ Keep it under ~90 MB (GitHub's limit per file is 100 MB).
 
 ## Testing keys
 
-- **F8** (or Esc → Testing panel): Immortal, One-hit kill and Infinite stamina switches, while `UNLOCK_ALL_ACTS` is on in `game.gd`.
+- **F8** (or Esc → Testing panel): Immortal, One-hit kill, Infinite stamina and Unlock all skills switches, plus a Level box to set the hero's level (1–99), while `UNLOCK_ALL_ACTS` is on in `game.gd`.
 - **F2**: sound on/off. **F3**: FPS counter.
 
 ## Godot's limitations (what to know)
