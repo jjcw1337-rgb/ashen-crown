@@ -44,7 +44,7 @@ static func default_gear() -> Dictionary:
 	return {"armor": "quilted", "steel": Color(0.62, 0.62, 0.64), "trim": Color(0.85, 0.66, 0.3), "glow": null,
 		"gloves": "", "boots": "", "belt": true, "cloth": Color(0.42, 0.06, 0.05), "emblem": Color(0.86, 0.82, 0.72),
 		"cape": Color(0.3, 0.05, 0.04), "leather": Color(0.3, 0.19, 0.11), "skin": Color(0.66, 0.48, 0.38),
-		"hair": Color(0.22, 0.14, 0.08), "quilt": Color(0.4, 0.34, 0.25), "coif": false}
+		"hair": Color(0.23, 0.15, 0.085), "quilt": Color(0.4, 0.34, 0.25), "coif": false, "long_hair": true}
 
 # ---------------------------------------------------------------- rig
 static func build(gear: Dictionary) -> Node3D:
@@ -104,6 +104,7 @@ static func rebuild_body(root: Node3D, gear: Dictionary) -> void:
 	mi.material_override = material(gear)
 	skel.add_child(mi)
 	mi.skeleton = NodePath("..")
+	LongHair.attach(root, gear)
 
 static func material(g: Dictionary) -> ShaderMaterial:
 	if _shader == null:
@@ -133,6 +134,8 @@ class Body:
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
 
 	func vert(p: Vector3, nrm: Vector3, uv: Vector2, uv2: Vector2, col: Color, bw: Dictionary) -> int:
+		if _cap != null:
+			_cap["verts"].append([p, nrm, uv, uv2, col, bw])
 		var keys := bw.keys()
 		keys.sort_custom(func(a, b): return bw[a] > bw[b])
 		var bones := PackedInt32Array([0, 0, 0, 0])
@@ -223,6 +226,123 @@ class Body:
 				_tri(P[i][s], P[i][s2], P[i + 1][s], a, b, c, (P[i][s] - C[i]))
 				_tri(P[i][s2], P[i + 1][s2], P[i + 1][s], b, d, c, (P[i][s2] - C[i]))
 
+
+	## A grid surface: fn(u, v) -> point, u across (wraps when closed_u), v along.
+	## uvfn(u, v, p) -> [uv, uv2]; cfn(v) -> a point inside the surface (for facing).
+	func surf(nu: int, nv: int, closed_u: bool, fn: Callable, mat: int, flags: float, emb: float, wfn: Callable, uvfn: Callable, cfn: Callable) -> void:
+		var cols := nu if closed_u else nu + 1
+		var P := []
+		for j in nv + 1:
+			var row := []
+			var v := float(j) / nv
+			for i in cols:
+				row.append(fn.call(float(i) / nu, v))
+			P.append(row)
+		var idx := []
+		for j in nv + 1:
+			var v := float(j) / nv
+			var c: Vector3 = cfn.call(v)
+			var ri := []
+			for i in cols:
+				var ip: int = (i + 1) % cols if closed_u else mini(i + 1, cols - 1)
+				var im: int = (i - 1 + cols) % cols if closed_u else maxi(i - 1, 0)
+				var du: Vector3 = P[j][ip] - P[j][im]
+				var dv: Vector3 = P[mini(j + 1, nv)][i] - P[maxi(j - 1, 0)][i]
+				var p: Vector3 = P[j][i]
+				var out := p - c
+				var nrm := du.cross(dv)
+				if nrm.length() < 1e-9:
+					nrm = out
+				nrm = nrm.normalized()
+				if nrm.dot(out) < 0.0:
+					nrm = -nrm
+				var uvs: Array = uvfn.call(float(i) / nu, v, p)
+				var col := Color((mat + 0.5) / 8.0, flags, emb, 1.0)
+				ri.append(vert(p, nrm, uvs[0], uvs[1], col, wfn.call(p, v)))
+			idx.append(ri)
+		for j in nv:
+			var c: Vector3 = cfn.call((float(j) + 0.5) / nv)
+			for i in nu:
+				var i2: int = (i + 1) % cols if closed_u else i + 1
+				_tri(P[j][i], P[j][i2], P[j + 1][i], idx[j][i], idx[j][i2], idx[j + 1][i], P[j][i] - c)
+				_tri(P[j][i2], P[j + 1][i2], P[j + 1][i], idx[j][i2], idx[j + 1][i2], idx[j + 1][i], P[j][i2] - c)
+
+	## A tube along a polyline with rounded ends. radii per point.
+	func tube(pts: Array, radii: Array, seg: int, mat: int, flags: float, emb: float, wfn: Callable) -> void:
+		var n0 := pts.size()
+		var tans := []
+		for k in n0:
+			var a: Vector3 = pts[maxi(k - 1, 0)]
+			var b2: Vector3 = pts[mini(k + 1, n0 - 1)]
+			tans.append((b2 - a).normalized())
+		# rounded caps: extra rings before the first and after the last point
+		var C := []
+		var R := []
+		var T := []
+		for ang in [80.0, 55.0, 25.0]:
+			var r0: float = radii[0]
+			var a := deg_to_rad(ang)
+			C.append(pts[0] - tans[0] * r0 * sin(a))
+			R.append(r0 * cos(a))
+			T.append(tans[0])
+		for k in n0:
+			C.append(pts[k])
+			R.append(radii[k])
+			T.append(tans[k])
+		for ang in [25.0, 55.0, 80.0]:
+			var r1: float = radii[n0 - 1]
+			var a := deg_to_rad(ang)
+			C.append(pts[n0 - 1] + tans[n0 - 1] * r1 * sin(a))
+			R.append(r1 * cos(a))
+			T.append(tans[n0 - 1])
+		var nr := C.size()
+		var ref := Vector3.UP if absf((T[0] as Vector3).dot(Vector3.UP)) < 0.9 else Vector3.RIGHT
+		var nrm0: Vector3 = (T[0] as Vector3).cross(ref).normalized()
+		var P := []
+		var idx := []
+		var along := 0.0
+		for k in nr:
+			var t: Vector3 = T[k]
+			nrm0 = (nrm0 - t * nrm0.dot(t)).normalized()
+			var bin := t.cross(nrm0)
+			if k > 0:
+				along += (C[k] - C[k - 1]).length()
+			var row := []
+			var ri := []
+			for s in seg:
+				var th := TAU * s / seg
+				var d := nrm0 * cos(th) + bin * sin(th)
+				var p: Vector3 = C[k] + d * float(R[k])
+				row.append(p)
+				var col := Color((mat + 0.5) / 8.0, flags, emb, 1.0)
+				ri.append(vert(p, d, Vector2(th * float(R[k]), along), Vector2(float(s) / seg, float(k) / (nr - 1)), col, wfn.call(p, float(k) / (nr - 1))))
+			P.append(row)
+			idx.append(ri)
+		for k in nr - 1:
+			for s in seg:
+				var s2 := (s + 1) % seg
+				_tri(P[k][s], P[k][s2], P[k + 1][s], idx[k][s], idx[k][s2], idx[k + 1][s], P[k][s] - C[k])
+				_tri(P[k][s2], P[k + 1][s2], P[k + 1][s], idx[k][s2], idx[k + 1][s2], idx[k + 1][s], P[k][s2] - C[k])
+
+	# ---- capture / replay of expensive parts (the sculpted head is the same for everyone)
+	var _cap = null
+	func capture_begin() -> void:
+		_cap = {"base": n, "pend": _pending.size(), "verts": []}
+	func capture_end() -> Dictionary:
+		var c: Dictionary = _cap
+		_cap = null
+		var out := {"verts": c["verts"], "idx": []}
+		var base: int = c["base"]
+		for k in range(c["pend"], _pending.size()):
+			out["idx"].append(int(_pending[k]) - base)
+		return out
+	func replay(data: Dictionary) -> void:
+		var base := n
+		for v in data["verts"]:
+			vert(v[0], v[1], v[2], v[3], v[4], v[5])
+		for i in data["idx"]:
+			_pending.append(int(i) + base)
+
 	var _pending := []
 	func _tri(pa: Vector3, pb: Vector3, pc: Vector3, a: int, b: int, c: int, outward: Vector3) -> void:
 		var face := (pb - pa).cross(pc - pa)
@@ -287,19 +407,42 @@ static func build_mesh(g: Dictionary) -> ArrayMesh:
 		_cape(b)
 	return b.commit()
 
+## Torso as a superellipse field: boxier chest and shoulders, sloping trapezius, chest and
+## shoulder-blade masses and a spine groove.
+const T_Y0 := 0.8
+const T_Y1 := 1.635
+const T_W := [[0.8, 0.1], [0.86, 0.15], [0.95, 0.172], [1.05, 0.163], [1.13, 0.158], [1.22, 0.17], [1.3, 0.186], [1.38, 0.2], [1.45, 0.215], [1.5, 0.222], [1.53, 0.205], [1.56, 0.16], [1.585, 0.11], [1.61, 0.075], [1.635, 0.06]]
+const T_DF := [[0.8, 0.08], [0.86, 0.108], [0.95, 0.122], [1.05, 0.118], [1.13, 0.118], [1.22, 0.126], [1.3, 0.136], [1.38, 0.138], [1.45, 0.128], [1.5, 0.112], [1.54, 0.092], [1.575, 0.07], [1.6, 0.058], [1.635, 0.054]]
+const T_DB := [[0.8, 0.085], [0.86, 0.112], [0.95, 0.126], [1.05, 0.112], [1.13, 0.108], [1.22, 0.112], [1.3, 0.118], [1.38, 0.124], [1.45, 0.124], [1.5, 0.116], [1.54, 0.1], [1.575, 0.078], [1.6, 0.062], [1.635, 0.054]]
+const T_CZ := [[0.8, 0.005], [0.95, 0.0], [1.15, -0.008], [1.3, -0.012], [1.46, -0.004], [1.55, 0.004], [1.635, 0.012]]
+
+static func torso_pt(a: float, y: float) -> Vector3:
+	var ca := cos(a)
+	var sa := sin(a)
+	var aa := absf(a)
+	var w := _prof(T_W, y)
+	var d := lerpf(_prof(T_DB, y), _prof(T_DF, y), smoothstep(-0.45, 0.45, ca))
+	# superellipse: 2 (round) at the waist and neck, squarer across chest and shoulders
+	var ex := 2.0 + 0.45 * _g(y - 1.44, 0.1) + 0.25 * _g(y - 0.95, 0.06)
+	var px := w * signf(sa) * pow(absf(sa), 2.0 / ex)
+	var pz := -d * signf(ca) * pow(absf(ca), 2.0 / ex)
+	var dir := Vector3(sa, 0.0, -ca)
+	var off := 0.0
+	off += 0.005 * _g(aa - 0.48, 0.3) * _g(y - 1.37, 0.055)
+	off += 0.007 * _g(aa - 2.55, 0.32) * _g(y - 1.4, 0.07)
+	off -= 0.006 * _g(aa - PI, 0.12) * smoothstep(1.0, 1.2, y)
+	off += 0.006 * _g(aa - 1.57, 0.5) * _g(y - 0.92, 0.05)
+	return Vector3(px, y, _prof(T_CZ, y) + pz) + dir * off
+
 static func _torso(b: Body, mat: int) -> void:
-	var rings := [
-		[0.8, 0.0, 0.005, 0.1, 0.085], [0.86, 0.0, 0.0, 0.15, 0.11], [0.95, 0.0, 0.0, 0.172, 0.123],
-		[1.05, 0.0, -0.004, 0.162, 0.116], [1.15, 0.0, -0.008, 0.16, 0.114], [1.27, 0.0, -0.012, 0.183, 0.124],
-		[1.38, 0.0, -0.012, 0.2, 0.128], [1.46, 0.0, -0.004, 0.195, 0.122], [1.53, 0.0, 0.002, 0.155, 0.108],
-		[1.58, 0.0, 0.006, 0.075, 0.068], [1.63, 0.0, 0.01, 0.052, 0.052],
-	]
 	var hips := bi("hips")
 	var torso := bi("torso")
 	var shr := bi("sh_r")
 	var shl := bi("sh_l")
 	var head := bi("head")
-	b.sweep(rings, 28, -PI * 1.5, PI * 0.5, mat, 0.0, 0.0, func(p: Vector3, _t):
+	var fn := func(u: float, v: float) -> Vector3:
+		return torso_pt((u - 0.5) * TAU, lerpf(T_Y0, T_Y1, v))
+	var wf := func(p: Vector3, _t) -> Dictionary:
 		var k := smoothstep(0.98, 1.13, p.y)
 		var w := {hips: 1.0 - k, torso: k}
 		if p.y > 1.38 and absf(p.x) > 0.12:
@@ -308,31 +451,196 @@ static func _torso(b: Body, mat: int) -> void:
 			w[torso] = k * (1.0 - s)
 		if p.y > 1.6:
 			w[head] = smoothstep(1.6, 1.64, p.y) * 0.5
-		return w)
+		return w
+	var uvf := func(u: float, v: float, _p: Vector3) -> Array:
+		var y := lerpf(T_Y0, T_Y1, v)
+		return [Vector2(u * TAU * 0.16, y - T_Y0), Vector2(u, v)]
+	var cf := func(v: float) -> Vector3:
+		return Vector3(0.0, lerpf(T_Y0, T_Y1, v), 0.0)
+	b.surf(44, 36, true, fn, mat, 0.0, 0.0, wf, uvf, cf)
+
+# ---------------------------------------------------------------- sculpted head
+# The head is a radius field around a vertical axis: a (azimuth, 0 = facing -Z/forward) and
+# t (0 = under the chin, 1 = crown). Profiles give width/front/back depth; features (nose,
+# brow, eye sockets, cheekbones, lips, chin) are added on top. Hair, beard and brows are thin
+# shells over the same field whose thickness fades below zero outside their outline, so their
+# edges sink smoothly into the skin instead of ending in a hard line.
+const HEAD_Y0 := 1.6
+const HEAD_Y1 := 1.89
+const HEAD_CZ := 0.012
+const H_W := [[0.0, 0.0], [0.03, 0.032], [0.08, 0.05], [0.18, 0.063], [0.3, 0.071], [0.42, 0.076], [0.52, 0.078], [0.62, 0.081], [0.72, 0.085], [0.82, 0.082], [0.9, 0.071], [0.95, 0.055], [0.98, 0.036], [1.0, 0.0]]
+const H_DF := [[0.0, 0.0], [0.03, 0.062], [0.07, 0.08], [0.15, 0.086], [0.24, 0.088], [0.36, 0.09], [0.46, 0.086], [0.56, 0.094], [0.66, 0.094], [0.76, 0.09], [0.86, 0.078], [0.93, 0.06], [0.97, 0.04], [0.99, 0.022], [1.0, 0.0]]
+const H_DB := [[0.0, 0.0], [0.03, 0.006], [0.08, 0.03], [0.18, 0.064], [0.3, 0.086], [0.42, 0.096], [0.55, 0.108], [0.66, 0.112], [0.76, 0.108], [0.86, 0.094], [0.93, 0.072], [0.97, 0.048], [0.99, 0.026], [1.0, 0.0]]
+const NOSE := [[0.25, 0.0], [0.29, 0.012], [0.33, 0.019], [0.37, 0.017], [0.45, 0.01], [0.53, 0.004], [0.6, 0.0]]
+const HAIRLINE := [[0.0, 0.75], [0.45, 0.735], [0.85, 0.69], [1.1, 0.63], [1.25, 0.53], [1.38, 0.5], [1.52, 0.62], [1.72, 0.63], [1.88, 0.42], [2.2, 0.24], [PI, 0.2]]
+const BEARDLINE := [[0.0, 0.272], [0.3, 0.275], [0.55, 0.31], [0.85, 0.37], [1.1, 0.43], [1.3, 0.47], [1.5, 0.47]]
+
+static func _g(x: float, s: float) -> float:
+	return exp(-x * x / (2.0 * s * s))
+
+## Catmull-Rom through [x, value] keys (clamped at the ends).
+static func _prof(keys: Array, x: float) -> float:
+	var n := keys.size()
+	if x <= keys[0][0]:
+		return keys[0][1]
+	if x >= keys[n - 1][0]:
+		return keys[n - 1][1]
+	var i := 0
+	while i < n - 2 and x > keys[i + 1][0]:
+		i += 1
+	var x0: float = keys[i][0]
+	var x1: float = keys[i + 1][0]
+	var p0: float = keys[maxi(i - 1, 0)][1]
+	var p1: float = keys[i][1]
+	var p2: float = keys[i + 1][1]
+	var p3: float = keys[mini(i + 2, n - 1)][1]
+	var t := (x - x0) / (x1 - x0)
+	var t2 := t * t
+	var t3 := t2 * t
+	return 0.5 * (2.0 * p1 + (-p0 + p2) * t + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2 + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3)
+
+## Piecewise smoothstep through keys (no overshoot; for outlines).
+static func _line(keys: Array, x: float) -> float:
+	var n := keys.size()
+	if x <= keys[0][0]:
+		return keys[0][1]
+	for i in n - 1:
+		if x <= keys[i + 1][0]:
+			var k := smoothstep(keys[i][0], keys[i + 1][0], x)
+			return lerpf(keys[i][1], keys[i + 1][1], k)
+	return keys[n - 1][1]
+
+## Skin surface of the head at azimuth a, height t.
+static func head_pt(a: float, t: float) -> Vector3:
+	var ca := cos(a)
+	var sa := sin(a)
+	var aa := absf(a)
+	var w := _prof(H_W, t)
+	var d := lerpf(_prof(H_DB, t), _prof(H_DF, t), smoothstep(-0.45, 0.45, ca))
+	var off := 0.0
+	# nose: a ridge that widens toward the tip, plus the nostril wings
+	off += _prof(NOSE, t) * _g(a, lerpf(0.12, 0.085, smoothstep(0.33, 0.5, t)))
+	off += 0.004 * _g(aa - 0.12, 0.05) * _g(t - 0.3, 0.02)
+	# eye sockets, brow ridge, cheekbones, temples
+	off -= 0.014 * _g(aa - 0.36, 0.12) * _g(t - 0.5, 0.045)
+	off += 0.007 * _g(t - 0.575, 0.03) * _g(aa - 0.3, 0.34)
+	off += 0.006 * _g(aa - 0.64, 0.18) * _g(t - 0.42, 0.06)
+	off -= 0.005 * _g(aa - 1.1, 0.25) * _g(t - 0.6, 0.06)
+	# lips and the mouth line, then a strong chin
+	off += 0.005 * _g(t - 0.207, 0.014) * _g(a, 0.17)
+	off += 0.0045 * _g(t - 0.165, 0.013) * _g(a, 0.15)
+	off -= 0.004 * _g(t - 0.186, 0.006) * _g(a, 0.21)
+	off += 0.008 * _g(t - 0.07, 0.04) * _g(a, 0.36)
+	# fuller back of the skull
+	off += 0.004 * _g(aa - PI, 0.6) * _g(t - 0.62, 0.12)
+	var r := Vector3(w * sa, 0.0, -d * ca)
+	var dir := Vector3(sa, 0.0, -ca)
+	return Vector3(0.0, HEAD_Y0 + t * (HEAD_Y1 - HEAD_Y0), HEAD_CZ) + r + dir * off
+
+static func head_nrm(a: float, t: float) -> Vector3:
+	var e := 0.004
+	var tc := clampf(t, e * 2.0, 1.0 - e * 2.0)
+	var du := head_pt(a + e, tc) - head_pt(a - e, tc)
+	var dv := head_pt(a, tc + e) - head_pt(a, tc - e)
+	var n := du.cross(dv).normalized()
+	var p := head_pt(a, tc)
+	if n.dot(p - Vector3(0, p.y, HEAD_CZ)) < 0.0:
+		n = -n
+	if t > 0.97:
+		n = n.lerp(Vector3.UP, smoothstep(0.97, 1.0, t)).normalized()
+	return n
+
+static func _hair_mask(a: float, t: float) -> float:
+	var hl := _line(HAIRLINE, absf(a))
+	return smoothstep(hl - 0.03, hl + 0.05, t)
+
+static func _beard_mask(a: float, t: float) -> float:
+	var aa := absf(a)
+	var bl := _line(BEARDLINE, aa)
+	var m := 1.0 - smoothstep(bl - 0.07, bl + 0.02, t)
+	m *= 1.0 - smoothstep(1.4, 1.55, aa)
+	# leave the lips bare
+	var lip := (1.0 - smoothstep(0.07, 0.14, aa)) * (1.0 - smoothstep(0.008, 0.016, absf(t - 0.168)))
+	return m * (1.0 - lip)
+
+static func _brow_mask(a: float, t: float) -> float:
+	var aa := absf(a)
+	var line := 0.568 + 0.018 * _g(aa - 0.38, 0.14) - 0.012 * smoothstep(0.5, 0.7, aa)
+	var m := 1.0 - smoothstep(0.006, 0.016, absf(t - line))
+	return m * smoothstep(0.06, 0.12, aa) * (1.0 - smoothstep(0.6, 0.7, aa))
+
+static var _head_cache := {}
 
 static func _neck_head(b: Body, g: Dictionary) -> void:
-	var torso := bi("torso")
 	var head := bi("head")
-	b.sweep([[1.57, 0.0, 0.008, 0.058, 0.056], [1.62, 0.0, 0.008, 0.052, 0.05], [1.67, 0.0, 0.006, 0.05, 0.05]], 14, -PI * 1.5, PI * 0.5, SKIN, 0.0, 0.0, _wy("torso", "head", 1.6, 1.66))
-	var face := [
-		[1.612, 0.0, -0.034, 0.03, 0.025], [1.63, 0.0, -0.028, 0.055, 0.05], [1.66, 0.0, -0.012, 0.072, 0.078],
-		[1.70, 0.0, 0.0, 0.08, 0.094, 0.06, 26.0], [1.73, 0.0, 0.004, 0.084, 0.099, 0.14, 40.0], [1.755, 0.0, 0.006, 0.088, 0.1, 0.05, 30.0],
-		[1.785, 0.0, 0.008, 0.092, 0.104], [1.82, 0.0, 0.01, 0.089, 0.1], [1.855, 0.0, 0.012, 0.072, 0.082],
-		[1.878, 0.0, 0.012, 0.04, 0.046], [1.888, 0.0, 0.012, 0.006, 0.006],
-	]
-	b.sweep(face, 26, -PI * 1.5, PI * 0.5, SKIN, 1.0, 1.0, _w("head"))
-	if g.get("coif", false):
-		b.sweep([[1.57, 0.0, 0.01, 0.078, 0.076], [1.62, 0.0, 0.01, 0.082, 0.082], [1.655, 0.0, 0.0, 0.088, 0.098]], 20, -PI * 1.5, PI * 0.5, CHAIN, 0.0, 0.0, _wy("torso", "head", 1.6, 1.66))
-		b.sweep([[1.655, 0.0, 0.0, 0.088, 0.098], [1.72, 0.0, 0.006, 0.094, 0.106], [1.8, 0.0, 0.01, 0.1, 0.112]], 20, -PI * 0.5 + 0.75, PI * 1.5 - 0.75, CHAIN, 0.0, 0.0, _w("head"))
-		b.sweep([[1.8, 0.0, 0.01, 0.1, 0.112], [1.85, 0.0, 0.012, 0.085, 0.095], [1.885, 0.0, 0.012, 0.05, 0.056], [1.9, 0.0, 0.012, 0.004, 0.004]], 20, -PI * 1.5, PI * 0.5, CHAIN, 0.0, 0.0, _w("head"))
+	b.sweep([[1.53, 0.0, 0.01, 0.07, 0.066], [1.57, 0.0, 0.012, 0.062, 0.062], [1.62, 0.0, 0.016, 0.057, 0.06], [1.67, 0.0, 0.02, 0.054, 0.06], [1.7, 0.0, 0.024, 0.05, 0.056]], 18, -PI * 1.5, PI * 0.5, SKIN, 0.0, 0.0, _wy("torso", "head", 1.6, 1.66))
+	var key := "coif" if g.get("coif", false) else "bare"
+	if _head_cache.has(key):
+		b.replay(_head_cache[key])
 	else:
-		# hair: covers the cranium and back of the head, leaving the face clear
-		b.sweep([[1.7, 0.0, 0.014, 0.088, 0.102], [1.76, 0.0, 0.012, 0.094, 0.108], [1.8, 0.0, 0.012, 0.098, 0.11]], 20, -PI * 0.5 + 0.95, PI * 1.5 - 0.95, HAIR, 0.0, 0.0, _w("head"))
-		b.sweep([[1.8, 0.0, 0.012, 0.098, 0.11], [1.835, 0.0, 0.012, 0.094, 0.106], [1.865, 0.0, 0.013, 0.076, 0.088], [1.888, 0.0, 0.013, 0.045, 0.05], [1.9, 0.0, 0.013, 0.004, 0.004]], 22, -PI * 1.5, PI * 0.5, HAIR, 0.0, 0.0, _w("head"))
-	# beard around the jaw
-	b.sweep([[1.598, 0.0, -0.046, 0.026, 0.024], [1.615, 0.0, -0.04, 0.05, 0.048], [1.64, 0.0, -0.026, 0.068, 0.066], [1.665, 0.0, -0.013, 0.077, 0.082], [1.685, 0.0, -0.006, 0.08, 0.088]], 18, -PI * 0.5 - 1.25, -PI * 0.5 + 1.25, HAIR, 0.0, 1.0, _w("head"))
-	# moustache
-	b.sweep([[1.672, 0.0, -0.006, 0.07, 0.096], [1.684, 0.0, -0.006, 0.072, 0.098]], 10, -PI * 0.5 - 0.42, -PI * 0.5 + 0.42, HAIR, 0.0, 1.0, _w("head"))
+		b.capture_begin()
+		_build_head(b, g.get("coif", false))
+		_head_cache[key] = b.capture_end()
+	if g.get("coif", false):
+		var s := 1.12
+		b.sweep([[1.55, 0.0, 0.012, 0.078 * s, 0.076 * s], [1.62, 0.0, 0.012, 0.082 * s, 0.082 * s], [1.655, 0.0, 0.006, 0.088 * s, 0.098 * s]], 22, -PI * 1.5, PI * 0.5, CHAIN, 0.0, 0.0, _wy("torso", "head", 1.6, 1.66))
+		b.sweep([[1.655, 0.0, 0.006, 0.088 * s, 0.098 * s], [1.72, 0.0, 0.01, 0.094 * s, 0.106 * s], [1.8, 0.0, 0.012, 0.1 * s, 0.112 * s]], 22, -PI * 0.5 + 0.75, PI * 1.5 - 0.75, CHAIN, 0.0, 0.0, _w("head"))
+		b.sweep([[1.8, 0.0, 0.012, 0.1 * s, 0.112 * s], [1.85, 0.0, 0.014, 0.085 * s, 0.095 * s], [1.885, 0.0, 0.014, 0.05 * s, 0.056 * s], [1.905, 0.0, 0.014, 0.004, 0.004]], 22, -PI * 1.5, PI * 0.5, CHAIN, 0.0, 0.0, _w("head"))
+
+static func _build_head(b: Body, coif: bool) -> void:
+	var wh := _w("head")
+	var ctr := func(v: float) -> Vector3:
+		return Vector3(0.0, HEAD_Y0 + v * (HEAD_Y1 - HEAD_Y0), HEAD_CZ)
+	var huv := func(u: float, t: float, _p: Vector3) -> Array:
+		return [Vector2(u * TAU * 0.09, (1.0 - t) * 0.3), Vector2(u, t)]
+	# skin (flags 1: the face, so the shader tints lips and cheeks from UV2)
+	var skin_fn := func(u: float, v: float) -> Vector3:
+		return head_pt((u - 0.5) * TAU, v)
+	b.surf(96, 72, true, skin_fn, SKIN, 1.0, 0.0, wh, huv, ctr)
+	# ears
+	for side in [1, -1]:
+		var ex: float = side * (_prof(H_W, 0.5) + 0.004)
+		var ear := [[-0.029, 0.0, 0.002, 0.004, 0.009], [-0.022, 0.0, 0.0, 0.008, 0.016], [-0.004, 0.0, 0.0, 0.01, 0.022], [0.017, 0.0, 0.0, 0.009, 0.02], [0.029, 0.0, 0.0, 0.004, 0.01]]
+		b.sweep(ear, 12, -PI * 1.5, PI * 0.5, SKIN, 0.0, 0.0, wh, Transform3D(Basis(Vector3.RIGHT, -0.15), Vector3(ex, 1.75, 0.026)))
+	# eyes: a white eyeball in each socket (emb 1: the shader paints the iris), with lids
+	for side in [1, -1]:
+		var a: float = side * 0.36
+		var c := head_pt(a, 0.5) + Vector3(sin(a), 0.0, -cos(a)) * -0.007
+		var r := 0.0122
+		var ball := []
+		for k in 9:
+			var ang := -PI * 0.5 + PI * k / 8.0
+			ball.append([c.y + r * sin(ang), c.x, c.z, r * cos(ang) + 0.0001, r * cos(ang) + 0.0001])
+		b.sweep(ball, 14, -PI * 1.5, PI * 0.5, SKIN, 0.0, 1.0, wh)
+	# shells: brows, beard and (unless a coif covers it) the hair
+	for side in [1, -1]:
+		var brow_fn := func(u: float, v: float) -> Vector3:
+			var a: float = side * lerpf(0.04, 0.72, u)
+			var t := lerpf(0.53, 0.62, v)
+			return head_pt(a, t) + head_nrm(a, t) * (0.0042 * _brow_mask(a, t) - 0.0015)
+		var brow_c := func(v: float) -> Vector3:
+			return ctr.call(lerpf(0.53, 0.62, v))
+		b.surf(10, 6, false, brow_fn, HAIR, 0.0, 0.0, wh, huv, brow_c)
+	var beard_fn := func(u: float, v: float) -> Vector3:
+		var a := lerpf(-1.5708, 1.5708, u)
+		var t := v * 0.5
+		var th := 0.004 + 0.006 * _g(t - 0.04, 0.08) + 0.002 * _g(t - 0.24, 0.03) * _g(a, 0.3)
+		return head_pt(a, t) + head_nrm(a, t) * (th * _beard_mask(a, t) - 0.002)
+	var beard_uv := func(u: float, v: float, _p: Vector3) -> Array:
+		return [Vector2(u * 0.3, (1.0 - v * 0.5) * 0.3), Vector2(u, v * 0.5)]
+	var beard_c := func(v: float) -> Vector3:
+		return ctr.call(v * 0.5)
+	b.surf(48, 36, false, beard_fn, HAIR, 0.0, 1.0, wh, beard_uv, beard_c)
+	if not coif:
+		var hair_fn := func(u: float, v: float) -> Vector3:
+			var a := (u - 0.5) * TAU
+			var t := lerpf(12.0 / 72.0, 1.0, v)
+			var th := 0.006 + 0.007 * smoothstep(0.72, 0.97, t) + 0.004 * _g(absf(a) - PI, 0.8) * smoothstep(0.4, 0.7, t)
+			th *= 1.0 + 0.3 * sin(a * 11.0 + t * 7.0 + sin(a * 3.0) * 2.0) * smoothstep(0.2, 0.5, t) * (1.0 - smoothstep(0.82, 0.97, t))
+			return head_pt(a, t) + head_nrm(a, t) * (th * _hair_mask(a, t) - 0.0025)
+		var hair_c := func(v: float) -> Vector3:
+			return ctr.call(lerpf(12.0 / 72.0, 1.0, v))
+		b.surf(96, 60, true, hair_fn, HAIR, 0.0, 0.0, wh, huv, hair_c)
 
 static func _leg(b: Body, side: int, g: Dictionary, mat: int, heavy: bool) -> void:
 	var leg := bi("leg_r" if side == 1 else "leg_l")
@@ -342,13 +650,13 @@ static func _leg(b: Body, side: int, g: Dictionary, mat: int, heavy: bool) -> vo
 	var thigh := []
 	for r in [[0.95, 0.09, 0.096], [0.88, 0.089, 0.095], [0.76, 0.081, 0.088], [0.62, 0.07, 0.075], [0.52, 0.061, 0.064], [0.47, 0.057, 0.059]]:
 		thigh.append([r[0], x0 - side * (0.95 - r[0]) * 0.02, 0.0, r[1], r[2]])
-	b.sweep(thigh, 16, -PI * 1.5, PI * 0.5, mat, 0.0, 0.0, func(p: Vector3, _t):
+	b.sweep(thigh, 20, -PI * 1.5, PI * 0.5, mat, 0.0, 0.0, func(p: Vector3, _t):
 		var top := smoothstep(0.86, 0.95, p.y) * 0.45
 		var low := 1.0 - smoothstep(0.46, 0.54, p.y)
 		return {hips: top, leg: (1.0 - top) * (1.0 - low * 0.5), knee: low * 0.5})
 	var xk := x0 - side * 0.0096
 	var shin := [[0.475, xk, 0.0, 0.057, 0.059], [0.41, xk, 0.009, 0.054, 0.063], [0.31, xk, 0.016, 0.056, 0.067], [0.21, xk, 0.006, 0.046, 0.051], [0.12, xk, 0.002, 0.04, 0.042], [0.08, xk, 0.0, 0.042, 0.046]]
-	b.sweep(shin, 16, -PI * 1.5, PI * 0.5, mat, 0.0, 0.0, func(p: Vector3, _t):
+	b.sweep(shin, 20, -PI * 1.5, PI * 0.5, mat, 0.0, 0.0, func(p: Vector3, _t):
 		var top := smoothstep(0.42, 0.48, p.y) * 0.5
 		return {leg: top, knee: 1.0 - top})
 	var boots: String = g.get("boots", "")
@@ -359,11 +667,11 @@ static func _leg(b: Body, side: int, g: Dictionary, mat: int, heavy: bool) -> vo
 	var shaft := [[0.34 if boots == "greaves" else 0.3, xk, 0.012, 0.06, 0.068], [0.22, xk, 0.008, 0.052, 0.058], [0.12, xk, 0.002, 0.048, 0.05], [0.06, xk, 0.0, 0.05, 0.056]]
 	if boots == "greaves":
 		shaft.push_front([0.44, xk, 0.004, 0.058, 0.062])
-	b.sweep(shaft, 16, -PI * 1.5, PI * 0.5, bmat, bflag, 0.0, _w("knee_r" if side == 1 else "knee_l"))
+	b.sweep(shaft, 20, -PI * 1.5, PI * 0.5, bmat, bflag, 0.0, _w("knee_r" if side == 1 else "knee_l"))
 	# foot, swept from heel to toe
 	var foot := [[-0.075, 0.0, 0.05, 0.02, 0.025], [-0.06, 0.0, 0.05, 0.045, 0.045], [0.0, 0.0, 0.048, 0.05, 0.048], [0.08, 0.0, 0.038, 0.052, 0.038], [0.15, 0.0, 0.03, 0.047, 0.03], [0.2, 0.0, 0.025, 0.035, 0.024], [0.215, 0.0, 0.024, 0.012, 0.01]]
 	var fx := Transform3D(Basis(Vector3.RIGHT, -PI * 0.5), Vector3(xk, 0.0, 0.0))
-	b.sweep(foot, 14, -PI * 1.5, PI * 0.5, bmat, bflag, 0.0, _w("knee_r" if side == 1 else "knee_l"), fx)
+	b.sweep(foot, 18, -PI * 1.5, PI * 0.5, bmat, bflag, 0.0, _w("knee_r" if side == 1 else "knee_l"), fx)
 	if heavy:
 		# poleyn (knee cop) and cuisse (thigh plate)
 		b.sweep([[0.55, xk, -0.01, 0.045, 0.045], [0.5, xk, -0.012, 0.066, 0.07], [0.45, xk, -0.012, 0.064, 0.068], [0.41, xk, -0.008, 0.045, 0.046]], 12, -PI * 0.5 - 1.3, -PI * 0.5 + 1.3, STEEL, 1.0, 0.0, func(p: Vector3, _t): return {leg: 0.5, knee: 0.5})
@@ -377,14 +685,14 @@ static func _arm(b: Body, side: int, g: Dictionary, mat: int, heavy: bool) -> vo
 	var hand := bi("hand_r" if side == 1 else "hand_l")
 	var torso := bi("torso")
 	var x := side * 0.235
-	var upper := [[1.575, x, 0.0, 0.012, 0.012], [1.56, x, 0.0, 0.045, 0.045], [1.535, x, 0.0, 0.066, 0.066], [1.49, x, 0.0, 0.071, 0.069], [1.41, x, 0.0, 0.068, 0.065], [1.32, x, 0.0, 0.061, 0.059], [1.24, x, 0.0, 0.053, 0.053], [1.2, x, 0.0, 0.05, 0.05]]
+	var upper := [[1.538, x - side * 0.016, 0.0, 0.016, 0.016], [1.53, x - side * 0.01, 0.0, 0.05, 0.05], [1.51, x - side * 0.004, 0.0, 0.072, 0.07], [1.48, x, 0.0, 0.078, 0.072], [1.41, x, 0.0, 0.069, 0.064], [1.34, x, -0.004, 0.063, 0.062], [1.26, x, 0.0, 0.055, 0.054], [1.2, x, 0.0, 0.05, 0.05]]
 	upper.reverse()
-	b.sweep(upper, 14, -PI * 1.5, PI * 0.5, mat, 0.0, 0.0, func(p: Vector3, _t):
+	b.sweep(upper, 20, -PI * 1.5, PI * 0.5, mat, 0.0, 0.0, func(p: Vector3, _t):
 		var top := smoothstep(1.47, 1.57, p.y) * 0.35
 		var low := 1.0 - smoothstep(1.19, 1.26, p.y)
 		return {torso: top, sh: (1.0 - top) * (1.0 - low * 0.5), el: low * 0.5})
 	var fore := [[0.955, x, 0.0, 0.034, 0.034], [0.99, x, 0.0, 0.037, 0.038], [1.06, x, 0.0, 0.048, 0.048], [1.15, x, 0.0, 0.053, 0.053], [1.215, x, 0.0, 0.051, 0.051]]
-	b.sweep(fore, 14, -PI * 1.5, PI * 0.5, mat, 0.0, 0.0, func(p: Vector3, _t):
+	b.sweep(fore, 20, -PI * 1.5, PI * 0.5, mat, 0.0, 0.0, func(p: Vector3, _t):
 		var top := smoothstep(1.18, 1.23, p.y) * 0.5
 		var low := 1.0 - smoothstep(0.95, 0.99, p.y)
 		return {sh: top, el: (1.0 - top) * (1.0 - low * 0.6), hand: low * 0.6})
@@ -397,14 +705,7 @@ static func _arm(b: Body, side: int, g: Dictionary, mat: int, heavy: bool) -> vo
 	b.sweep([[0.95, x, 0.0, 0.04, 0.042], [0.985, x, 0.0, 0.046, 0.048], [1.04 if gloves == "gauntlets" else 1.01, x, 0.0, 0.052 if gloves == "gauntlets" else 0.046, 0.054 if gloves == "gauntlets" else 0.048]], 14, -PI * 1.5, PI * 0.5, gmat, gflag, 0.0, func(p: Vector3, _t):
 		var low := 1.0 - smoothstep(0.95, 0.99, p.y)
 		return {el: 1.0 - low * 0.6, hand: low * 0.6})
-	# hand (palm faces the body: thin in X)
-	var hx := x
-	var hnd := [[0.83, hx, -0.004, 0.006, 0.01], [0.84, hx, -0.004, 0.019, 0.033], [0.865, hx, -0.002, 0.024, 0.044], [0.9, hx, 0.0, 0.026, 0.047], [0.93, hx, 0.002, 0.025, 0.043], [0.955, hx, 0.002, 0.03, 0.034]]
-	b.sweep(hnd, 14, -PI * 1.5, PI * 0.5, gmat, gflag * 0.5, 0.0, _w("hand_r" if side == 1 else "hand_l"))
-	var thumb := [[0.0, 0.0, 0.0, 0.013, 0.014], [0.03, 0.0, 0.0, 0.012, 0.012], [0.055, 0.0, 0.0, 0.009, 0.009], [0.062, 0.0, 0.0, 0.002, 0.002]]
-	var tb := Basis(Vector3.RIGHT, -PI * 0.75)
-	tb = Basis(Vector3.UP, side * 0.35) * tb
-	b.sweep(thumb, 8, -PI * 1.5, PI * 0.5, gmat, 0.0, 0.0, _w("hand_r" if side == 1 else "hand_l"), Transform3D(tb, Vector3(hx - side * 0.012, 0.925, -0.03)))
+	_hand(b, side, x, gmat, gflag, gloves == "gauntlets")
 	if heavy:
 		b.sweep([[1.45, x, 0.0, 0.068, 0.067], [1.35, x, 0.0, 0.065, 0.064], [1.26, x, 0.0, 0.058, 0.058]], 14, -PI * 1.5, PI * 0.5, STEEL, 1.0, 0.0, _w("sh_r" if side == 1 else "sh_l"))
 		b.sweep([[1.16, x, 0.0, 0.056, 0.056], [1.08, x, 0.0, 0.052, 0.052], [1.0, x, 0.0, 0.046, 0.046]], 14, -PI * 1.5, PI * 0.5, STEEL, 1.0, 0.0, _w("el_r" if side == 1 else "el_l"))
@@ -422,6 +723,40 @@ static func _arm(b: Body, side: int, g: Dictionary, mat: int, heavy: bool) -> vo
 			var rings := [[1.595 + dy, x - side * 0.01, 0.0, 0.03 * big, 0.035 * big], [1.58 + dy, x - side * 0.004, 0.0, (0.07 + rr) * big, (0.08 + rr) * big], [1.54 + dy, x + side * 0.006, 0.0, (0.088 + rr) * big, (0.098 + rr) * big], [1.47 + dy, x + side * 0.014, 0.0, (0.094 + rr) * big, (0.104 + rr) * big]]
 			rings.reverse()
 			b.sweep(rings, 16, outer - 1.95, outer + 1.95, pm, 1.0 if heavy else 0.5, 0.0, func(p: Vector3, _t): return {sh: 0.7, torso: 0.3})
+
+## Palm, four curled fingers and a thumb. The palm faces the body (thin in X), the thumb points
+## forward (-Z). Fingers bend toward the palm in a relaxed grip.
+static func _hand(b: Body, side: int, x: float, mat: int, flags: float, armored: bool) -> void:
+	var wh := _w("hand_r" if side == 1 else "hand_l")
+	var th := 1.12 if armored else 1.0
+	var palm := [[0.872, x - side * 0.002, -0.002, 0.017 * th, 0.038 * th], [0.885, x, -0.002, 0.021 * th, 0.044 * th], [0.91, x, 0.0, 0.023 * th, 0.046 * th], [0.935, x, 0.002, 0.022 * th, 0.042 * th], [0.958, x, 0.002, 0.024, 0.034]]
+	b.sweep(palm, 18, -PI * 1.5, PI * 0.5, mat, flags * 0.5, 0.0, wh)
+	# knuckle row
+	b.tube([Vector3(x - side * 0.002, 0.878, -0.036), Vector3(x - side * 0.002, 0.879, 0.03)], [0.013 * th, 0.011 * th], 10, mat, flags * 0.5, 0.0, wh)
+	var fingers := [[-0.03, 0.034, 0.025, 0.021, 0.0088], [-0.01, 0.038, 0.028, 0.022, 0.0086], [0.01, 0.036, 0.026, 0.021, 0.008], [0.028, 0.029, 0.02, 0.018, 0.0072]]
+	var bends := [0.3, 0.5, 0.35]
+	for f in fingers:
+		var p := Vector3(x - side * 0.002, 0.878, f[0])
+		var pts := [p]
+		var rad: float = f[4] * th
+		var radii := [rad]
+		var ang := 0.15
+		for k in 3:
+			ang += bends[k]
+			var dirv := Vector3(-side * sin(ang), -cos(ang), 0.0)
+			p = p + dirv * float(f[k + 1])
+			pts.append(p)
+			radii.append(rad * (0.93 - k * 0.07))
+		b.tube(pts, radii, 9, mat, flags * 0.5, 0.0, wh)
+	# thumb: from the heel of the palm, forward and across
+	var t0 := Vector3(x - side * 0.01, 0.94, -0.03)
+	var d1 := Vector3(-side * 0.25, -0.55, -0.8).normalized()
+	var d2 := Vector3(-side * 0.55, -0.7, -0.45).normalized()
+	var d3 := Vector3(-side * 0.75, -0.6, -0.1).normalized()
+	var t1 := t0 + d1 * 0.03
+	var t2 := t1 + d2 * 0.024
+	var t3 := t2 + d3 * 0.02
+	b.tube([t0, t1, t2, t3], [0.013 * th, 0.011 * th, 0.0095 * th, 0.0085 * th], 10, mat, flags * 0.5, 0.0, wh)
 
 static func _skirt(b: Body, mat: int, bottom: float) -> void:
 	var hips := bi("hips")
@@ -627,32 +962,47 @@ void fragment(){
 	} else if (id == 7) {
 		// hair and beard strands
 		float s = vn(vec2(uv.x * 160.0, uv.y * 14.0));
-		alb = hair * (0.55 + s * 0.7) * (0.85 + n1 * 0.3);
-		rough = 0.55;
+		float clump = vn(vec2(uv.x * 40.0, uv.y * 4.0));
+		alb = hair * (0.45 + s * 0.75) * (0.75 + clump * 0.45) * (0.85 + n1 * 0.3);
+		rough = 0.72;
 		h = s * 0.4;
 		bump = 0.4;
 	} else {
-		// skin, with painted face features on the head (flags 1)
+		// skin; eyeballs (emb 1) and the face (flags 1: UV2 = azimuth 0.5 front, height 0 chin..1 crown)
 		alb = skin * (0.9 + n1 * 0.16);
 		alb = mix(alb, skin * vec3(1.05, 0.82, 0.78), smoothstep(0.55, 0.8, vn(uv * 25.0)) * 0.25);
-		rough = 0.55;
-		if (flags > 0.5) {
-			for (int k = 0; k < 2; k++) {
-				float ex = 0.5 + (float(k) * 2.0 - 1.0) * 0.058;
-				vec2 d = vec2((u2.x - ex) * 2.1, u2.y - 0.51);
-				float socket = 1.0 - smoothstep(0.03, 0.06, length(d * vec2(1.0, 1.6)));
-				float white = 1.0 - smoothstep(0.016, 0.022, length(d * vec2(1.0, 2.2)));
-				float iris = 1.0 - smoothstep(0.007, 0.011, length(d));
-				alb *= 1.0 - socket * 0.35;
-				alb = mix(alb, vec3(0.85, 0.82, 0.78), white);
-				alb = mix(alb, vec3(0.12, 0.09, 0.07), iris);
-				vec2 bd = vec2((u2.x - ex) * 2.1, u2.y - 0.6 + abs(u2.x - ex) * 0.4);
-				float brow = (1.0 - smoothstep(0.0, 0.012, abs(bd.y))) * step(abs(bd.x), 0.05);
-				alb = mix(alb, hair * 0.8, brow);
-				h += socket * -0.5 + white * 0.2;
-			}
-			float lips = (1.0 - smoothstep(0.0, 0.016, abs(u2.y - 0.2))) * step(abs(u2.x - 0.5), 0.035);
-			alb = mix(alb, skin * vec3(0.8, 0.45, 0.42), lips * 0.6);
+		rough = 0.68;
+		if (emb > 0.9) {
+			// eyeball: front is UV2 (0.5, 0.5); measure in metres on the 12.5 mm ball
+			vec2 d = vec2((u2.x - 0.5) * 6.2832 * 0.0125, (u2.y - 0.5) * 0.025);
+			float rr = length(d);
+			vec3 sclera = vec3(0.86, 0.83, 0.79) * (0.9 + 0.1 * vn(uv * 300.0));
+			vec3 iris = mix(vec3(0.16, 0.1, 0.05), vec3(0.32, 0.24, 0.12), vn(vec2(atan(d.y, d.x) * 9.0, rr * 900.0)));
+			alb = sclera;
+			alb = mix(alb, iris, 1.0 - smoothstep(0.0045, 0.0052, rr));
+			alb = mix(alb, vec3(0.015), 1.0 - smoothstep(0.0018, 0.0023, rr));
+			// almond-shaped opening; outside it the ball is painted as eyelid skin
+			float ex = d.x / 0.0118;
+			float open_h = 0.0056 * (1.0 - ex * ex);
+			float lid_d = abs(d.y - 0.0004 + 0.0009 * ex) - open_h;
+			float lid = smoothstep(-0.0004, 0.0003, lid_d);
+			float lash = (1.0 - smoothstep(0.0, 0.0009, abs(lid_d))) * step(0.0, d.y);
+			alb *= 1.0 - (1.0 - smoothstep(-0.003, 0.0, lid_d)) * step(0.0, d.y) * 0.35;
+			alb = mix(alb, skin * 0.82, lid);
+			alb = mix(alb, hair * 0.4, lash * 0.85);
+			rough = mix(0.12, 0.68, lid);
+			h = lid * 0.4;
+		} else if (flags > 0.5) {
+			float fa = abs(u2.x - 0.5);
+			// lips
+			float lips = (1.0 - smoothstep(0.018, 0.03, fa)) * (1.0 - smoothstep(0.01, 0.02, abs(u2.y - 0.17)));
+			alb = mix(alb, skin * vec3(0.62, 0.3, 0.28), lips * 0.85);
+			// warmth on the cheeks and nose, darker sockets
+			float cheek = exp(-pow((fa - 0.1) / 0.035, 2.0)) * exp(-pow((u2.y - 0.4) / 0.06, 2.0));
+			float nose = exp(-pow(fa / 0.02, 2.0)) * exp(-pow((u2.y - 0.33) / 0.04, 2.0));
+			alb = mix(alb, skin * vec3(1.08, 0.72, 0.66), (cheek + nose) * 0.35);
+			float sock = exp(-pow((fa - 0.057) / 0.022, 2.0)) * exp(-pow((u2.y - 0.5) / 0.04, 2.0));
+			alb *= 1.0 - sock * 0.3;
 		}
 		BACKLIGHT = skin * 0.15;
 	}

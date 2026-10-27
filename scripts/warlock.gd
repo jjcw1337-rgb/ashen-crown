@@ -29,6 +29,7 @@ static func body_gear(g: Dictionary) -> Dictionary:
 	k["gloves"] = ""
 	k["boots"] = ""
 	k["coif"] = false
+	k["long_hair"] = false
 	return k
 
 static func build(g: Dictionary) -> Node3D:

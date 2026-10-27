@@ -13,6 +13,13 @@ var cape_side_vel: Array = [0.0, 0.0, 0.0]
 var _last_pos := Vector3.ZERO
 var _last_t := 0
 var _vel := Vector3.ZERO
+var hair_mat: ShaderMaterial    # LongHair material, when the hero has long hair
+var hair_node: Node3D
+var _hair_last := Vector3.ZERO
+var _hair_off := Vector3.ZERO
+var _hair_vel := Vector3.ZERO
+var _hair_clock := 0.0
+var fixed_dt := 0.0      # tools set this to step the springs at a fixed rate
 
 func sync() -> void:
 	if skel == null:
@@ -24,7 +31,11 @@ func sync() -> void:
 		skel.set_bone_pose_scale(i, p.scale)
 	var now := Time.get_ticks_usec()
 	var dt := clampf((now - _last_t) / 1000000.0, 0.0, 0.05)
+	if fixed_dt > 0.0:
+		dt = fixed_dt
 	_last_t = now
+	if dt > 0.0 and hair_mat != null and is_instance_valid(hair_node) and hair_node.is_inside_tree():
+		_update_hair(dt)
 	if dt <= 0.0 or cape_bones.is_empty() or not is_inside_tree():
 		return
 	var gp := global_position
@@ -52,3 +63,23 @@ func sync() -> void:
 		var b: int = cape_bones[k]
 		skel.set_bone_pose_position(b, cape_rest[k])
 		skel.set_bone_pose_rotation(b, Quaternion.from_euler(Vector3(cape_ang[k], 0.0, cape_side[k])))
+
+## Long hair: a damped spring on where the hair tips hang (below and behind the head), so the
+## hair trails behind when the hero runs, turns or swings, then settles; wind comes in head space.
+func _update_hair(dt: float) -> void:
+	var tip := hair_node.to_global(Vector3(0.0, -0.17, 0.07))
+	var v := (tip - _hair_last) / dt
+	_hair_last = tip
+	if v.length() > 30.0:
+		v = Vector3.ZERO
+	var target := -v * 0.05
+	target.y = minf(target.y, 0.01) + Vector2(v.x, v.z).length() * 0.012
+	target = target.limit_length(0.17)
+	_hair_vel += ((target - _hair_off) * 45.0 - _hair_vel * 6.0) * dt
+	_hair_off += _hair_vel * dt
+	_hair_off = _hair_off.limit_length(0.2)
+	var inv := hair_node.global_transform.basis.inverse()
+	_hair_clock += dt
+	hair_mat.set_shader_parameter("clock", _hair_clock)
+	hair_mat.set_shader_parameter("sway", inv * _hair_off)
+	hair_mat.set_shader_parameter("wind", (inv * LongHair.WIND.normalized()).normalized())

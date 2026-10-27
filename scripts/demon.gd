@@ -30,6 +30,7 @@ static func body_gear(g: Dictionary) -> Dictionary:
 	k["gloves"] = "gauntlets"
 	k["boots"] = "greaves"
 	k["coif"] = false
+	k["long_hair"] = false
 	return k
 
 static func build(g: Dictionary) -> Node3D:

@@ -127,6 +127,15 @@ func _initialize():
 			Anim.pose(rigs[j], st)
 		cam.transform = Transform3D(Basis(), Vector3(0, 1.8, 6.2)).looking_at(Vector3(0, 1.0, 0))
 		cam.fov = 46
+	# optional custom camera: -- out.png mode cam=px,py,pz,tx,ty,tz,fov[,yaw]
+	for a in args:
+		if a.begins_with("cam="):
+			var v: PackedFloat64Array = a.substr(4).split_floats(",")
+			cam.transform = Transform3D(Basis(), Vector3(v[0], v[1], v[2])).looking_at(Vector3(v[3], v[4], v[5]))
+			cam.fov = v[6]
+			if v.size() > 7:
+				for r in rigs:
+					r.rotation_degrees.y = v[7]
 	for f in 10:
 		for j in rigs.size():
 			if mode != "action":

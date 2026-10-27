@@ -16,7 +16,9 @@ static func default_gear() -> Dictionary:
 	return {"robe": Color(0.045, 0.05, 0.07), "trim": Color(0.3, 0.8, 1.0), "spirit": Color(0.35, 0.85, 1.0)}
 
 static func build(gear: Dictionary) -> Node3D:
-	var root := Knight.build(Knight.default_gear())
+	var kg := Knight.default_gear()
+	kg["long_hair"] = false
+	var root := Knight.build(kg)
 	root.set_meta("wraith", true)
 	rebuild_body(root, gear)
 	_extras(root, gear)
