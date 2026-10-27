@@ -40,6 +40,10 @@ enter their GitHub username, and they accept the e-mail invite.
 
 The first open takes a minute while Godot builds its cache (`.godot/`, never committed).
 
+**Blender** (only if you work on 3D models): use **Blender 4.5 LTS** so everyone has the same version.
+Windows/Mac: https://www.blender.org/download/ (choose 4.5 LTS). Linux: `bash tools/blender/setup_blender.sh`.
+Models go into the game as `.glb` files in `assets/models/`; keep `.blend` source files outside the project folder.
+
 ## Using Claude on it
 
 `CLAUDE.md` at the top of the repository tells Claude how the project works (commands, tests,

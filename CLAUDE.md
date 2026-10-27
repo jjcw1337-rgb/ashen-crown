@@ -17,6 +17,11 @@ Godot 4.3 **standard** (not .NET) must be on PATH as `godot`:
 wget https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
 unzip Godot_v4.3-stable_linux.x86_64.zip && sudo mv Godot_v4.3-stable_linux.x86_64 /usr/local/bin/godot
 ```
+**Blender 4.5 LTS** (for models and rigs, see "Blender assets"): `bash tools/blender/setup_blender.sh` installs it
+to `/opt` and links `blender` (checksum-verified). Claude's cloud workspace resets, so run it again in a new session;
+it needs network access to `download.blender.org`. Run scripts headless: `blender -b --python script.py -- args`
+(renders with Eevee work under `xvfb-run -a`). Export `.glb` into `assets/models/`, never `.blend`.
+
 Exporting locally also needs the 4.3 export templates (Editor → Manage Export Templates), but
 you normally don't export locally: pushing to `main` does it in CI.
 
