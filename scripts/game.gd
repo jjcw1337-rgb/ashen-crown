@@ -1339,6 +1339,38 @@ func _drop_stale() -> void:
 	if hero and hero.target != null and (not is_instance_valid(hero.target) or hero.target.is_queued_for_deletion()):
 		hero.target = null
 
+## The point on segment a-b closest to the ray (o, unit d).
+static func _ray_closest(o: Vector3, d: Vector3, a: Vector3, b: Vector3) -> Vector3:
+	var u := b - a
+	var w := a - o
+	var uu := u.dot(u)
+	var ud := u.dot(d)
+	var den := uu - ud * ud
+	if den < 1e-6:
+		return a
+	var t := clampf((ud * w.dot(d) - w.dot(u)) / den, 0.0, 1.0)
+	return a + u * t
+
+## The monster under a camera ray (nearest first): each is a capsule from its feet to the top
+## of its head, so a tall boss is clickable all over.
+func pick_enemy(o: Vector3, d: Vector3) -> Enemy:
+	var best: Enemy = null
+	var best_d := 1e9
+	for e in world.enemies_root.get_children():
+		if not (e is Enemy) or e.dead:
+			continue
+		var a: Vector3 = e.global_position + Vector3(0, 0.2, 0)
+		var b: Vector3 = e.global_position + Vector3(0, maxf(e.top() - 0.2, 0.5), 0)
+		var c := _ray_closest(o, d, a, b)
+		var dist := (c - o).cross(d).length()
+		var rad: float = e.radius + 0.3 + (0.2 if e.boss else 0.0)
+		if dist < rad:
+			var along := (c - o).dot(d)
+			if along < best_d:
+				best_d = along
+				best = e
+	return best
+
 func _update_hover() -> void:
 	_drop_stale()
 	if world == null:
@@ -1347,19 +1379,7 @@ func _update_hover() -> void:
 	var o := cam.project_ray_origin(mp)
 	var d := cam.project_ray_normal(mp)
 	ground_pt = _ground_from_ray(o, d)
-	var best = null
-	var best_d := 1e9
-	for e in world.enemies_root.get_children():
-		if not (e is Enemy) or e.dead:
-			continue
-		var c: Vector3 = e.global_position + Vector3(0, e.height * 0.95, 0)
-		var dist := (c - o).cross(d).length()
-		var rad: float = e.radius + 0.35 + (0.4 if e.boss else 0.0)
-		if dist < rad:
-			var along := (c - o).dot(d)
-			if along < best_d:
-				best_d = along
-				best = e
+	var best = pick_enemy(o, d)
 	if best == null:
 		for g in world.items_root.get_children():
 			if g is GroundItem and g._toss >= 1.0:

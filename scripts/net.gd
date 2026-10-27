@@ -7,7 +7,7 @@ extends Node
 const PORT := 24567
 const DISCO_PORT := 24568
 const MAX_CLIENTS := 3
-const STYLES := ["over", "back", "side", "thrust", "bow", "cast", "claw", "slam", "bite"]
+const STYLES := ["over", "back", "side", "thrust", "bow", "cast", "claw", "slam", "bite", "smash", "lob", "scoop", "burst", "cackle"]
 const SEND_RATE := 0.05
 const ALLY_COLORS := [Color(0.45, 0.8, 1.0), Color(0.5, 1.0, 0.5), Color(1.0, 0.6, 0.9)]
 
@@ -516,6 +516,15 @@ func share_xp(xp: int, lvl: int) -> void:
 @rpc("authority", "call_remote", "reliable")
 func cl_xp(xp: int, lvl: int) -> void:
 	game.gain_kill_xp(xp, lvl)
+
+## Host: gold straight into a partner's purse (a pile of King Grubb's gold they stepped on).
+func give_gold(pid: int, amount: int) -> void:
+	rpc_id(pid, "cl_gold", amount)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_gold(amount: int) -> void:
+	game.hero.add_to_inventory(Items.gold(amount))
+	Sfx.play("gold", 0.0, 0.9)
 
 ## Host: a monster struck a partner's knight; that player's game works out blocking.
 func hit_player(pid: int, dmg: float, from: Vector3, kind: String, element: String) -> void:

@@ -31,6 +31,13 @@ func _run() -> void:
 		if not e.boss and e.kind != "grabber":
 			e.queue_free()
 	var hd: Hoard = boss.hoard
+	# hitbox: the camera's ray through his feet, his gut and his crown all pick him
+	var cam: Camera3D = g.cam
+	var picks := []
+	for y in [0.2, 1.6, boss.top() - 0.3]:
+		var sp := cam.unproject_position(boss.global_position + Vector3(0, y, 0))
+		picks.append(g.pick_enemy(cam.project_ray_origin(sp), cam.project_ray_normal(sp)) == boss)
+	print("[H] clickable at feet, gut, crown: %s (stands %.1f m, body radius %.2f)" % [picks, boss.top(), boss.body_r()])
 	print("[H] boss %s (%s) has a hoard: %s, guards %d, tunnels %d" % [boss.kind, boss.display_name, hd != null, alive("grabber").size(), g.world.hoard_holes.size()])
 	h.global_position = g.world.free_spot_near(boss.global_position + Vector3(0, 0, 4.0), 1.0)
 	await wait(0.5)
@@ -70,10 +77,17 @@ func _run() -> void:
 	h.global_position = g.world.free_spot_near(boss.home + Vector3(0, 0, 12.0), 1.0)
 	# grabbers scoop and haul gold back; he heals
 	var hauled := false
+	var king_scooped := false
+	var moved := 0.0
+	var last: Vector3 = boss.global_position
 	for i in 120:
 		await wait(0.1)
 		if not hd.carrying.is_empty():
 			hauled = true
+		if boss.special == "scoop":
+			king_scooped = true
+		moved += boss.global_position.distance_to(last)
+		last = boss.global_position
 		if boss.life > heal_base + 1.0:
 			break
 	print("[H] a grabber hauled gold %s, the king healed %s (%.0f%% -> %.0f%%)" % [hauled, boss.life > heal_base + 1.0, heal_base / boss.max_life * 100.0, boss.life / boss.max_life * 100.0])
@@ -96,9 +110,13 @@ func _run() -> void:
 	# the scramble ends once the gold is gone
 	for i in 300:
 		await wait(0.1)
+		if boss.special == "scoop":
+			king_scooped = true
+		moved += boss.global_position.distance_to(last)
+		last = boss.global_position
 		if hd.state == "fight":
 			break
-	print("[H] scramble over: state %s piles %d" % [hd.state, hd.piles.size()])
+	print("[H] scramble over: state %s piles %d; the king waddled %.1f m to the gold and scooped some himself: %s" % [hd.state, hd.piles.size(), moved, king_scooped])
 	# skip to the last sack: he goes broke and enraged when it's gone
 	hd.sacks = 1
 	boss.life = boss.max_life * 0.2

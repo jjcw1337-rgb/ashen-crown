@@ -377,7 +377,7 @@ func _process(delta: float) -> void:
 		return
 	hit_t = maxf(0.0, hit_t - delta * 4.0)
 	if knock.length() > 0.01:
-		global_position = game.world.move(global_position, knock * delta * 6.0)
+		global_position = game.world.move(global_position, knock * delta * 6.0, body_r())
 		knock = knock.lerp(Vector3.ZERO, clampf(delta * 8.0, 0.0, 1.0))
 	cooldown = maxf(0.0, cooldown - delta)
 	if hoard != null and hoard.boss == self and aggro:
@@ -419,7 +419,7 @@ func _process(delta: float) -> void:
 	if not hero_dead and dist < radius + hero.radius:
 		vel -= to.normalized() * (radius + hero.radius - dist) * 4.0
 	if vel.length() > 0.01:
-		global_position = game.world.move(global_position, vel * delta)
+		global_position = game.world.move(global_position, vel * delta, body_r())
 		if aggro or vel.length() > 0.5:
 			if atk_t < 0.0:
 				_face(vel if not aggro or dist > 3.0 else to)
@@ -442,6 +442,15 @@ func _footstep() -> void:
 	Fx.burst(game.world.fx_root, foot + Vector3(0, 0.08, 0), Color(0.38, 0.33, 0.28, 0.6), 8, 1.2, 0.2, 0.6, false, -1.0, 70.0)
 	if game.hero.global_position.distance_to(global_position) < 7.0:
 		game.add_shake(0.06)
+
+## The radius it collides with props and walls at: a boss's real bulk (so a 3.5 m King Grubb
+## doesn't wade through pillars), everyone else the usual body size (they fit through gaps).
+func body_r() -> float:
+	return clampf(radius * 0.75, World.BODY_R, 1.1) if boss else World.BODY_R
+
+## How tall it stands, in metres (mouse picking).
+func top() -> float:
+	return height * 1.8 * (1.15 if champion else 1.0)
 
 func _face(d: Vector3) -> void:
 	d.y = 0

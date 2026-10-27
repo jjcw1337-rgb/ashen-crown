@@ -26,6 +26,7 @@ const BOMB_FUSE := 1.3
 const GUARDS := 3                    # grabbers with him from the start
 const TAKE_R := 1.1                  # step this close to a pile to take it
 const SCRAMBLE_MAX := 30.0
+const GRAB_DELAY := 1.1              # grabbers gawp at the flying gold this long before they scramble
 
 var boss: Enemy
 var sacks := 3
@@ -122,7 +123,7 @@ func _scramble() -> void:
 					h.add_to_inventory(Items.gold(int(p["amount"])))
 					Sfx.play("gold", 0.0, 0.9)
 				else:
-					g.drop_item(Items.gold(int(p["amount"])), p["pos"])
+					g.net.give_gold(h.peer_id, int(p["amount"]))
 				if shout_cd <= 0.0:
 					shout("THIEF!" if randf() < 0.5 else "That's MINE!")
 				break
@@ -154,6 +155,8 @@ func steer(e: Enemy, delta: float) -> Variant:
 	if state != "spill":
 		return null
 	if e.atk_t >= 0.0:
+		return Vector3.ZERO
+	if e != boss and t < GRAB_DELAY:
 		return Vector3.ZERO
 	if carrying.has(e):
 		return e.go_to(delta, boss.global_position, e.speed * 0.9)
