@@ -23,6 +23,12 @@ var loading_lbl: Label
 var quality := 2
 var zoom := 1.0
 var cam_target := Vector3.ZERO
+## A short cinematic look at something (a boss's entrance and death, focus_on): the camera
+## glides over and in, holds, and glides back. Play goes on meanwhile.
+var focus_node: Node3D = null
+var focus_t := 0.0
+var focus_len := 0.0
+var focus_zoom := 1.0
 var shake := 0.0
 var cur_act := 0
 var cur_zone := "town"
@@ -886,7 +892,7 @@ func start_game(cont: bool, cls := "knight") -> void:
 		if UNLOCK_ALL_ACTS:
 			max_run = 2
 		await load_zone(0, "town", "start")
-		ui.open_dialog(Data.VENDORS[0]["elder"], "Welcome to Greywatch, %s. Since the Hollow Matron rose in the old crypt, the dead walk Cairnfell Moor and the Fallen raid our roads. Trade with our folk, then head out through the north gate. End her, and the moor may yet heal." % ("restless one" if hero.is_wraith() else ("pact-bound one" if hero.is_warlock() else "crusader")), [["I will", func(): pass]])
+		ui.open_dialog(Data.VENDORS[0]["elder"], "Welcome to Greywatch, %s. Since the goblin king Grubb tunnelled into the old crypt to loot the dead, the dead walk Cairnfell Moor and the Fallen raid our roads. He sits on a mountain of stolen gold down there and calls himself king. Trade with our folk, then head out through the north gate. End him, and the moor may yet heal." % ("restless one" if hero.is_wraith() else ("pact-bound one" if hero.is_warlock() else "crusader")), [["I will", func(): pass]])
 	ui.refresh()
 
 ## Co-op from the title screen. Your saved knight is used if you have one.
@@ -1076,11 +1082,11 @@ func _interact(t: Inter) -> void:
 		"vendor":
 			var role: String = t.data.get("role", "")
 			if role == "elder":
-				var txt := "The crypt lies at the far end of Cairnfell Moor. Bone archers and the restless dead guard the way. Raise your shield against their arrows: a good block turns them aside."
+				var txt := "The crypt lies at the far end of Cairnfell Moor. Bone archers and the restless dead guard the way. Raise your shield against their arrows: a good block turns them aside. And Grubb guards his gold like his life: rip open one of his sacks and his goblins come running for it. Get to the gold before they bring it back to him."
 				if difficulty >= 2 and not boss_killed:
-					txt = "Something worse than the Matron sits on a throne of ash in the old crypt. They call him the Ashen King. His bone archers hold the moor, and he carries a blade that burns. Kill him and take it."
+					txt = "Something worse than Grubb sits on his stolen throne in the old crypt. They call him the Ashen King. His bone archers hold the moor, and he carries a blade that burns. Kill him and take it."
 				if boss_killed:
-					txt = "The Matron is gone, and the moor already feels lighter. Greywatch owes you a debt it cannot pay. Rest a while, crusader."
+					txt = "Grubb is dead and his gold is ours, and the moor already feels lighter. Greywatch owes you a debt it cannot pay. Rest a while, crusader."
 				ui.open_dialog(t.label, txt, [["Farewell", func(): pass]])
 			else:
 				var sh: Array = shops.get(role, ["", []])
@@ -1274,6 +1280,12 @@ func drop_item(it: Dictionary, at: Vector3) -> void:
 		Sfx.play("levelup", -12.0, 1.6)
 
 # ---------------------------------------------------------------- feedback
+func focus_on(n: Node3D, dur: float, z := 0.55) -> void:
+	focus_node = n
+	focus_t = 0.0
+	focus_len = dur
+	focus_zoom = z
+
 func add_shake(v: float) -> void:
 	shake = minf(1.0, shake + v)
 
@@ -1529,14 +1541,23 @@ func _process(delta: float) -> void:
 		if playing and not hero.dead and shot_path == "":
 			var mp := get_viewport().get_mouse_position() / get_viewport().get_visible_rect().size - Vector2(0.5, 0.5)
 			look_ahead = Vector3(mp.x, 0, mp.y) * 2.0
-		cam_target = cam_target.lerp(hero.global_position + look_ahead, clampf(real_dt * 5.0, 0.0, 1.0))
+		var goal: Vector3 = hero.global_position + look_ahead
+		var fw := 0.0
+		if focus_node != null:
+			focus_t += real_dt
+			if focus_t >= focus_len or not is_instance_valid(focus_node):
+				focus_node = null
+			else:
+				fw = smoothstep(0.0, 0.6, focus_t) * (1.0 - smoothstep(focus_len - 0.7, focus_len, focus_t))
+				goal = goal.lerp(focus_node.global_position + Vector3(0, 0.6, 0), fw)
+		cam_target = cam_target.lerp(goal, clampf(real_dt * 5.0, 0.0, 1.0))
 		weather.follow(cam_target)
 		cam_pivot.position = cam_target
 		if not playing:
 			cam_pivot.position = hero.global_position + Vector3(sin(_t * 0.12) * 3.0, 0, cos(_t * 0.1) * 1.5)
 		shake = maxf(0.0, shake - real_dt * 2.2)
 		var sh := Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake * shake * 0.35
-		cam.position = CAM_OFFSET * zoom + sh
+		cam.position = CAM_OFFSET * zoom * lerpf(1.0, focus_zoom, fw) + sh
 		RenderingServer.global_shader_parameter_set("player_pos", hero.global_position)
 	_update_underworld(real_dt)
 	for l in get_tree().get_nodes_in_group("flicker"):
@@ -1548,7 +1569,7 @@ func _process(delta: float) -> void:
 		shot_frames += 1
 		if shot_frames == 50:
 			_shot_setup()
-		if shot_frames == (150 if OS.get_cmdline_user_args().has("--inv") else (120 if OS.get_cmdline_user_args().has("--dragtest") else (62 if OS.get_cmdline_user_args().has("--snowtest") else 90))):
+		if shot_frames == (320 if OS.get_cmdline_user_args().has("--spill") else 150 if OS.get_cmdline_user_args().has("--inv") else (120 if OS.get_cmdline_user_args().has("--dragtest") else (62 if OS.get_cmdline_user_args().has("--snowtest") else 90))):
 			var img := get_viewport().get_texture().get_image()
 			img.save_png(shot_path)
 			print("saved ", shot_path)
@@ -1631,6 +1652,12 @@ func _shot_setup() -> void:
 		hero.vit = 2000000
 		hero.recalc()
 		hero.life = hero.max_life
+	if args.has("--spill"):
+		# King Grubb: burst his first sack
+		for x in enemies_near(hero.global_position, 80.0):
+			if x.boss and x.hoard != null:
+				x.aggro = true
+				x.life = x.max_life * 0.74
 	if args.has("--fight"):
 		var e := enemies_near(hero.global_position, 80.0)
 		for x in e:

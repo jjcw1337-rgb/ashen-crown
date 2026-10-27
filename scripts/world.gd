@@ -1143,8 +1143,10 @@ func _build_wild() -> void:
 	spawns["from_town"] = Vector3(0, 0, -6)
 	spawns["from_lair"] = Vector3(end_p.x, 0, end_p.y + 4.5)
 
-# ---------------------------------------------------------------- dungeon: Crypt of the Matron
+# ---------------------------------------------------------------- dungeon: the crypt and Grubb's Hoard
 var floor_rects: Array = []
+## Goblin tunnels in the boss vault: where King Grubb's Gold Grabbers climb out (hoard.gd).
+var hoard_holes: Array = []
 
 func is_floor(x: float, z: float) -> bool:
 	for r in floor_rects:
@@ -1199,22 +1201,7 @@ func _build_lair() -> void:
 				var a := TAU * i / 10.0
 				var pp := Vector3(c.x + cos(a) * 10.5, 0, c.y + sin(a) * 10.5)
 				_pillar(pp, 4.0)
-			var pool := Models.N(null, "pool")
-			var bm := StandardMaterial3D.new()
-			bm.albedo_color = Color(0.18, 0.0, 0.01)
-			bm.roughness = 0.05
-			bm.metallic_specular = 1.0
-			Models.P(pool, Geo.cyl(4.0, 4.0, 0.02, 32), bm, Vector3(0, 0.02, 0))
-			Models.P(pool, Geo.torus(3.9, 4.4, 40, 6), sm, Vector3(0, 0.05, 0), Vector3.ZERO, Vector3(1, 0.3, 1))
-			_place(pool, Vector3(c.x, 0, c.y + 2))
-			var altar := Models.N(null, "altar")
-			Models.P(altar, Geo.box(3.4, 1.0, 1.6), sm, Vector3(0, 0.5, 0))
-			Models.P(altar, Geo.box(3.8, 0.15, 2.0), sm, Vector3(0, 1.05, 0))
-			Models.P(altar, Geo.box(2.0, 0.3, 0.6), Mats.world(Color(0.25, 0.02, 0.02), Color(0.15, 0.01, 0.01), 0.5, 3.0, 0.0, Props.MOSS, true), Vector3(0, 1.25, 0))
-			_place(altar, Vector3(c.x, 0, r.position.y + 2.5))
-			add_box(Vector3(c.x, 0, r.position.y + 2.5), Vector2(1.9, 1.0), 0.0)
-			for k in 8:
-				_candles(Vector3(c.x - 1.5 + k * 0.43, 1.12, r.position.y + 2.5 + (0.3 if k % 2 == 0 else -0.3)), false)
+			_hoard_room(r, c)
 			for corner in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
 				var bp := Vector3(c.x + corner.x * 11.0, 0, c.y + corner.y * 11.0)
 				var br := Models.N(null, "brazier")
@@ -1301,6 +1288,92 @@ func _build_lair() -> void:
 	exits.append({"pos": Vector3(r0.get_center().x, 0, r0.end.y - 0.8), "radius": 1.8, "to": "wild", "label": Data.ACTS[act]["wild"]})
 	spawns["start"] = Vector3(r0.get_center().x, 0, r0.end.y - 5.0)
 	spawns["boss_room"] = Vector3(boss_r.get_center().x, 0, boss_r.end.y - 3)
+
+## King Grubb's vault: heaps of coins, open chests, his throne of chests, goblin tunnels.
+func _hoard_room(r: Rect2, c: Vector2) -> void:
+	var coin := Goblin.coin_mat(Goblin.GOLD, 1.0)
+	var gm := Goblin.gold_m()
+	# the throne at the north end: a heap of gold with a chair of stacked chests on it
+	var tp := Vector3(c.x, 0, r.position.y + 2.6)
+	var throne := Props.footprint(Models.N(null, "throne"), Vector2(1.9, 1.2))
+	Models.P(throne, Goblin.mound_mesh(3.0, 0.9), coin, Vector3(0, 0, 0.3))
+	var wd := Props.wood()
+	Models.P(throne, Geo.box(1.6, 0.7, 1.1), wd, Vector3(0, 0.75, 0))
+	Models.P(throne, Geo.box(1.4, 0.18, 0.9), Goblin.cloth_m(Color(0.42, 0.08, 0.36), Color(0.15, 0.02, 0.12)), Vector3(0, 1.24, -0.05))
+	Models.P(throne, Geo.box(1.7, 0.08, 1.2), gm, Vector3(0, 1.12, 0))
+	Models.P(throne, Geo.box(1.7, 1.9, 0.35), wd, Vector3(0, 1.9, 0.5))
+	Models.P(throne, Geo.box(1.8, 0.1, 0.45), gm, Vector3(0, 2.86, 0.5))
+	for sx in [-1, 1]:
+		Models.P(throne, Geo.box(0.35, 0.5, 1.0), wd, Vector3(sx * 0.95, 1.35, 0.05))
+		Models.P(throne, Geo.sph(0.14, 12), gm, Vector3(sx * 0.95, 1.68, -0.35))
+		Models.P(throne, Geo.cone(0.12, 0.5, 8), gm, Vector3(sx * 0.75, 3.1, 0.5))
+	Models.P(throne, Geo.sph(0.22, 14), Mats.glow(Color(1.0, 0.2, 0.1), 2.0), Vector3(0, 2.5, 0.31), Vector3.ZERO, Vector3(1, 1, 0.5))
+	Models.P(throne, Geo.lathe([Vector2(0.3, 0.0), Vector2(0.34, 0.0), Vector2(0.36, 0.14), Vector2(0.3, 0.14), Vector2(0.3, 0.0)], 20, "throne_crown"), gm, Vector3(0, 2.95, 0.5))
+	_place(throne, tp)
+	solid(throne)
+	var tl := OmniLight3D.new()
+	tl.light_color = Color(1.0, 0.72, 0.35)
+	tl.light_energy = 2.4
+	tl.omni_range = 9.0
+	tl.position = Vector3(0, 3.2, -1.5)
+	tl.add_to_group("flicker")
+	tl.set_meta("base", 2.4)
+	throne.add_child(tl)
+	# heaps of gold along the walls, open chests, scattered coins
+	var heaps := [Vector2(-9.5, -7.5), Vector2(9.0, -8.0), Vector2(-10.0, 4.0), Vector2(9.5, 5.5), Vector2(-5.5, 10.0), Vector2(6.0, 10.5)]
+	for i in heaps.size():
+		var hp := Vector3(c.x + heaps[i].x, 0, c.y + heaps[i].y)
+		var hr := rng.randf_range(1.6, 2.3)
+		var heap := Props.footprint(Models.N(null, "heap"), hr * 0.65)
+		Models.P(heap, Goblin.mound_mesh(hr, hr * 0.42), coin)
+		_place(heap, hp)
+		solid(heap)
+		if i % 2 == 0:
+			var hl := OmniLight3D.new()
+			hl.light_color = Color(1.0, 0.75, 0.35)
+			hl.light_energy = 1.3
+			hl.omni_range = 5.0
+			hl.position = Vector3(0, 1.6, 0)
+			heap.add_child(hl)
+	for k in 4:
+		var cp := Vector3(c.x + (-6.0 if k % 2 == 0 else 6.5) + rng.randf_range(-1, 1), 0, c.y + (-3.0 if k < 2 else 2.0) * 2.0)
+		if not is_near_obstacle(cp, 1.5):
+			_treasure_chest(cp, rng.randf_range(0, 360))
+	var cx := []
+	for k in 260:
+		var a := rng.randf() * TAU
+		var d := pow(rng.randf(), 0.6) * 12.5
+		var cpos := Vector3(c.x + cos(a) * d, 0.006, c.y + sin(a) * d)
+		cx.append(Transform3D(Basis.from_euler(Vector3(rng.randf_range(-0.25, 0.25), rng.randf() * TAU, rng.randf_range(-0.25, 0.25))), cpos))
+	Props.multimesh(props_root, Geo.cyl(0.055, 0.055, 0.012, 10), cx, false).material_override = Mats.mat(Color(1.0, 0.74, 0.3), 0.35, 0.7, Color(1.0, 0.7, 0.25), 0.35)
+	# goblin tunnels in the floor near the walls
+	hoard_holes = []
+	for hp2 in [Vector2(-12.0, -1.0), Vector2(12.0, 0.5), Vector2(-3.5, 12.0), Vector2(4.0, -11.5)]:
+		var hp3 := Vector3(c.x + hp2.x, 0, c.y + hp2.y)
+		var hole := Models.N(null, "hole")
+		Models.P(hole, Geo.cyl(0.75, 0.75, 0.02, 20), Mats.flat(Color(0.0, 0.0, 0.0)), Vector3(0, 0.015, 0))
+		Models.P(hole, Geo.torus(0.7, 1.05, 22, 6), Mats.world(Color(0.24, 0.17, 0.11), Color(0.15, 0.1, 0.07), 0.95, 2.0), Vector3(0, 0.04, 0), Vector3.ZERO, Vector3(1, 0.35, 1))
+		for pl in 3:
+			Models.P(hole, Geo.box(0.12, 0.05, 1.3), wd, Vector3(-0.4 + pl * 0.4, 0.07, 0), Vector3(0, 10 - pl * 8, 6))
+		_place(hole, hp3)
+		hoard_holes.append(hp3)
+
+## An open treasure chest, overflowing.
+func _treasure_chest(p: Vector3, yaw: float) -> void:
+	var g := Props.footprint(Models.N(null, "tchest"), Vector2(0.6, 0.42))
+	var wd := Props.wood()
+	var gm := Goblin.gold_m()
+	Models.P(g, Geo.box(1.1, 0.6, 0.75), wd, Vector3(0, 0.3, 0))
+	for x in [-0.5, 0.5]:
+		Models.P(g, Geo.box(0.07, 0.62, 0.78), gm, Vector3(x, 0.31, 0))
+	Models.P(g, Goblin.mound_mesh(0.5, 0.28), Goblin.coin_mat(Goblin.GOLD, 1.6), Vector3(0, 0.58, 0), Vector3.ZERO, Vector3(1.0, 1.0, 0.7))
+	var lid := Models.N(g, "lid", Vector3(0, 0.6, 0.37), Vector3(-110, 0, 0))
+	Models.P(lid, Geo.box(1.1, 0.12, 0.75), wd, Vector3(0, 0.06, -0.375))
+	Models.P(lid, Geo.box(1.12, 0.13, 0.08), gm, Vector3(0, 0.06, -0.72))
+	Models.P(g, Geo.sph(0.06, 10), Mats.glow(Color(0.3, 0.5, 1.0), 2.0), Vector3(0.2, 0.78, -0.1))
+	_place(g, p)
+	g.rotation_degrees.y = yaw
+	solid(g)
 
 func _pillar(p: Vector3, h: float) -> void:
 	var g := Models.N(null, "pillar")

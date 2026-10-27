@@ -3,6 +3,9 @@
 # Exported builds (GitHub Actions makes these on every push)
 build/
 *.zip
+# Godot's import files for models, and the textures it extracts from them (regenerated on import)
+assets/models/*.import
+assets/models/*_Image_*
 # Editor / OS clutter
 .DS_Store
 Thumbs.db

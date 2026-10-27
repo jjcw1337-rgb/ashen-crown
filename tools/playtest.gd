@@ -239,8 +239,8 @@ func _run() -> void:
 	var frames := 0
 	while is_instance_valid(boss) and not boss.dead and frames < 6000:
 		if h.can_act():
-			# the Hollow Matron only really hurts once her heart's Mourner is dead
-			var mark = boss.heart.priority_target() if boss.heart != null else boss
+			# King Grubb: kill the grabbers hauling his gold back to him first
+			var mark = boss.hoard.priority_target() if boss.hoard != null else boss
 			if h.target != mark:
 				h.cmd_target(mark)
 		h.life = h.max_life

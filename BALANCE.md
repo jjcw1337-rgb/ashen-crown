@@ -12,10 +12,10 @@ monsters:
 | Checkpoint | Where | Character |
 |---|---|---|
 | A1 moor | Act I wilderness packs | level reached 40% through Act I, ilvl 3 gear |
-| A1 boss | the Hollow Matron | level after clearing Act I, ilvl 6 gear |
+| A1 boss | King Grubb the Gilded | level after clearing Act I, ilvl 6 gear |
 | A2 arrive | A2 wilderness packs | same level, still in **Act I gear** (the wall you hit when you start A2) |
 | A2 moor | A2 wilderness packs | 40% through A2, the same gear at A2 strength |
-| A2 boss | the Matron in A2 | after clearing A2 |
+| A2 boss | King Grubb in A2 | after clearing A2 |
 | A3 moor / A3 boss | A3 packs / the Ashen King | likewise, A3 gear |
 
 - **Levels** come from the content: the sim loads each zone and adds up the experience a
@@ -24,8 +24,8 @@ monsters:
   A2 gear is exactly the Act I gear at A2 strength.
 - **The bot** casts its skills when they'd do something (buffs first, then area skills,
   then its attack skills), attacks the nearest foe otherwise, and drinks a potion below
-  45% life. At the Matron it goes for the Mourner with her heart, like a player who kept
-  track of it.
+  45% life. At King Grubb it kills the grabbers hauling gold back to him first (it never
+  grabs the piles itself, so it lets him heal more than a player would).
 
 Per checkpoint it records:
 - `pack_s`: seconds to wipe a pack (the 3 packs nearest the zone start, averaged)
@@ -69,7 +69,7 @@ Each run writes `build/balance/<date>.json`, `.log` and `.txt`, plus `latest.jso
 | Item bases and affixes | `Data.BASES`, `Data.AFFIXES` |
 | Which bonuses A2/A3 loot multiplies | `Items.empower`; percentages in `Items.PCT_STATS` stay as rolled |
 | Skill damage | `Hero._impact` (and `_update_drain`, `_blight_burst` and friends) |
-| The Matron's mechanic | constants at the top of `scripts/matron.gd` |
+| King Grubb's fight | constants at the top of `scripts/hoard.gd` |
 
 ## The protocol (each run)
 
@@ -102,3 +102,10 @@ Each run writes `build/balance/<date>.json`, `.log` and `.txt`, plus `latest.jso
     - The Ashen King (A3 boss) is slow for everyone but the Demon.
     - Spell damage scales mostly with level, not gear, so the Warlock falls behind in A2/A3
       boss fights.
+- **2026-10-27, King Grubb replaces the Matron.**
+  - The bot now plays the scramble like a player would: it steps out of bomb circles and walks onto
+    the nearest pile during a spill (`Hoard.move_hint`).
+  - At the Matron's 520 base life with only healing from the piles, melee bots ran out the 150 s
+    limit (knight at 28% left). He's now 360 base life, a pile you take costs him 4.5% (`STEAL`) and a
+    pile that reaches him heals 3% (`HEAL`).
+  - Result: the Act I boss takes 13–68 s depending on class, with no deaths and 0.3–1.7 life lost.

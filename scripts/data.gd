@@ -3,8 +3,8 @@ extends RefCounted
 ## Static game data: acts, monsters, item bases, affixes, uniques, vendors.
 
 const ACTS := [
-	{"name": "The Ashen Moors", "town": "Greywatch Camp", "wild": "Cairnfell Moor", "lair": "Crypt of the Matron",
-		"boss": "matron", "lvl": 1, "theme": "moor", "foes": ["fallen", "zombie", "skel_archer"]},
+	{"name": "The Ashen Moors", "town": "Greywatch Camp", "wild": "Cairnfell Moor", "lair": "Grubb's Hoard",
+		"boss": "goblin_king", "lvl": 1, "theme": "moor", "foes": ["fallen", "zombie", "skel_archer"]},
 	{"name": "The Sunscar Wastes", "town": "Lut Khemar", "wild": "Dunes of Sorrow", "lair": "Tomb of Sekhmun",
 		"boss": "sekhmun", "lvl": 8, "theme": "desert", "foes": ["raider", "mummy", "scarab"]},
 	{"name": "The Drowned Wilds", "town": "Vel Dara", "wild": "Mirewood", "lair": "Temple of Vael",
@@ -28,17 +28,17 @@ const ENEMIES := {
 	"zombie": {"name": "Zombie", "rig": "humanoid", "life": 32, "dmg": [3, 7], "speed": 1.9, "range": 1.6, "xp": 13,
 		"ai": "melee", "atk": "claw", "atk_time": 1.25, "armor": 4, "radius": 0.5, "blood": Color(0.25, 0.3, 0.05),
 		"look": {"skin": Color(0.42, 0.48, 0.36), "cloth": Color(0.25, 0.23, 0.2), "cloth2": Color(0.18, 0.16, 0.14), "height": 1.0, "bulk": 1.1, "head": "human", "hair": Color(0.15, 0.15, 0.12), "eyes": Color(0.6, 1.0, 0.3)}},
-	# the Hollow Matron's veiled Mourners: one of them carries her heart (see matron.gd)
-	"mourner": {"name": "Mourner", "rig": "humanoid", "life": 16, "dmg": [0, 0], "speed": 2.0, "range": 1.0, "xp": 3, "no_loot": true,
-		"ai": "mourner", "atk": "claw", "atk_time": 1.0, "armor": 0, "radius": 0.45, "blood": Color(0.35, 0.33, 0.3),
-		"look": {"skin": Color(0.62, 0.6, 0.56), "cloth": Color(0.42, 0.4, 0.38), "cloth2": Color(0.3, 0.28, 0.27), "height": 0.95, "bulk": 0.85, "head": "hood", "robe": true}},
+	# King Grubb's Gold Grabbers: they scoop up his spilled gold and haul it back to him (hoard.gd)
+	"grabber": {"name": "Gold Grabber", "rig": "humanoid", "model": "grabber", "life": 13, "dmg": [2, 4], "speed": 4.4, "range": 1.3, "xp": 6, "no_loot": true,
+		"ai": "melee", "atk": "thrust", "atk_time": 0.75, "armor": 2, "radius": 0.4, "blood": Color(0.4, 0.05, 0.02),
+		"look": {"height": 0.75, "eyes": Color(1.0, 0.6, 0.1)}},
 	"skel_archer": {"name": "Bone Archer", "rig": "humanoid", "life": 18, "dmg": [3, 6], "speed": 3.0, "range": 11.0, "xp": 12,
 		"ai": "ranged", "atk": "bow", "atk_time": 1.3, "armor": 3, "radius": 0.45, "proj": "arrow", "skin": "archer", "blood": Color(0.85, 0.82, 0.7),
 		"look": {"skin": Color(0.85, 0.82, 0.72), "cloth": Color(0.25, 0.2, 0.15), "height": 1.0, "bulk": 0.8, "head": "skull", "thin": true, "eyes": Color(0.3, 0.7, 1.0), "weapon": "bow"}},
-	"matron": {"name": "The Hollow Matron", "rig": "humanoid", "life": 520, "dmg": [9, 16], "speed": 2.6, "range": 2.6, "xp": 420,
-		"ai": "boss", "atk": "over", "atk_time": 1.3, "armor": 10, "radius": 0.9, "boss": true, "summon": "", "slam": true, "nova": "", "proj": "", "heart": true,
-		"blood": Color(0.3, 0.02, 0.05),
-		"look": {"skin": Color(0.55, 0.55, 0.5), "cloth": Color(0.12, 0.1, 0.12), "cloth2": Color(0.3, 0.05, 0.06), "height": 2.0, "bulk": 1.2, "head": "hood", "eyes": Color(1.0, 0.15, 0.1), "cape": Color(0.15, 0.03, 0.04), "weapon": "scythe"}},
+	"goblin_king": {"name": "King Grubb the Gilded", "rig": "humanoid", "model": "mutant", "life": 360, "dmg": [9, 16], "speed": 2.5, "range": 3.2, "xp": 420,
+		"ai": "boss", "atk": "smash", "atk_time": 1.3, "armor": 10, "radius": 1.35, "boss": true, "summon": "", "slam": true, "nova": "", "proj": "", "hoard": true,
+		"blood": Color(0.4, 0.05, 0.02),
+		"look": {"height": 2.0, "eyes": Color(1.0, 0.75, 0.15)}},
 
 	"ashen_king": {"name": "The Ashen King", "rig": "humanoid", "skin": "king", "life": 900, "dmg": [14, 24], "speed": 2.8, "range": 2.9, "xp": 900,
 		"ai": "boss", "atk": "over", "atk_time": 1.2, "armor": 18, "radius": 0.95, "boss": true, "summon": "skel_archer", "slam": true, "nova": "fire", "proj": "fireball",

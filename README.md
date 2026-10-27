@@ -103,15 +103,17 @@ The action bar shows your **experience** (violet, with your level and progress) 
 - **Cairnfell Moor (wilderness):**
   - A winding road past a standing-stone circle and a graveyard.
   - Shrines, chests, a waypoint and roaming packs, including blue-glowing champion packs.
-- **Crypt of the Matron (dungeon):** a chain of torch-lit tomb rooms ending in the boss chamber of **The Hollow Matron**. She is hollow: her heart beats inside one of the veiled **Mourners** circling her crypt, and while it does your weapons barely touch her.
-  - She tears her heart out and it arcs into a Mourner, which flares red. Then the Mourners shuffle like cups in a shell game, and the heart stays silent while they move, so keep your eyes on it. Once they settle it beats faintly: a red pulse under the veil and a heartbeat that's louder the closer you are.
-  - Kill the Mourner with the heart and it's crushed: she loses a chunk of her life, staggers and glows red, taking double damage for a few seconds before she tears it out again.
-  - Kill the wrong one and it bursts in a wail that hurts everyone nearby and raises a zombie. Area attacks hit right and wrong Mourners alike.
-  - Every cycle brings another Mourner and a faster shuffle, and she can't be brought below two thirds, then one third, of her life until her heart is crushed again. Between all that she swings her scythe and slams the ground (watch the warnings) and becomes enraged at low health.
+- **Grubb's Hoard (dungeon):** a chain of torch-lit tomb rooms that the goblin king Grubb tunnelled into to loot the dead. It ends in his vault: mountains of stolen gold, open chests, a throne of chests, and goblin tunnels in the floor. There sits **King Grubb the Gilded**, a fat, greedy goblin under a stack of stolen crowns, with three sacks of gold on his back and a vault key the size of a club. His **Gold Grabbers** stand guard.
+  - The one rule: **his gold is his life.** Every pile you take from him hurts him; every pile that reaches him heals him.
+  - He swings and slams with his key and lobs **Gilded Bombs** at you. A red circle marks where each one lands; get out before it blows.
+  - At 75%, 50% and 25% of his life (the gold notches on his health bar) one of his sacks rips open. Gold sprays across the vault in glowing piles and more Gold Grabbers climb out of the tunnels. Everyone scrambles for it: grabbers scoop a pile and haul it back to him over their heads, and he waddles from pile to pile scooping it up himself.
+  - **Step on a pile:** the gold is yours, and he shrieks and loses a chunk of life. Kill a grabber hauling gold and it drops it for you. His bombs hurt his own goblins too.
+  - King Grubb's model was generated with [Meshy](https://www.meshy.ai) from a Meshy concept image, then rigged in Blender.
+  - When the gold is gone the fight goes on. After the last sack he's broke and furious: faster, and three bombs at a time. When he dies his hoard bursts open.
 
-**A2:** after you defeat the Hollow Matron, the victory screen offers **Begin A2**. Everyone starts over at Greywatch Camp with their knight, gear, gold and level. Waypoints and the boss reset. In A2:
+**A2:** after you defeat King Grubb, the victory screen offers **Begin A2**. Everyone starts over at Greywatch Camp with their knight, gear, gold and level. Waypoints and the boss reset. In A2:
 
-- Monsters have 6 times the life and armor (the Matron 4 times) and 5 times the damage, and give 5 times the experience.
+- Monsters have 6 times the life and armor (King Grubb 4 times) and 5 times the damage, and give 5 times the experience.
 - Every item they drop has 5 times the flat stats (damage, defense, life, attributes and other flat bonuses), marked "A2 item" in its tooltip. Percentage bonuses (enhanced damage and defense, attack speed, life steal, resist, block, magic and gold find, run speed) stay as rolled.
 
 **Winter in A2:** A2 is snowed in. The camp and the moor are buried in snow (with packed slush on the roads), trees and rooftops carry snow, the grass pokes through frosted, snow falls around you, your knight leaves footprints and his breath steams in the cold. On Ultra the snowfall is at its heaviest. The crypt stays as it is.
@@ -120,7 +122,7 @@ The action bar shows your **experience** (violet, with your level and progress) 
 
 - Monsters have 24 times the life of Act I (the Ashen King 10 times) and 15 times the damage, and give 25 times the experience.
 - Drops have 25 times the flat stats of Act I, marked "A3 item".
-- The Hollow Matron is gone. Her crypt is now the **Throne of the Ashen King**, a giant crowned skeleton with a burning sword. He swings, slams, throws fireballs, casts a fire nova and raises bone archers.
+- King Grubb is gone. His vault is now the **Throne of the Ashen King**, a giant crowned skeleton with a burning sword. He swings, slams, throws fireballs, casts a fire nova and raises bone archers.
 - He always drops his own unique sword, **Cinderbrand, the King's Edge**, at A3 strength. It never drops anywhere else.
 - Beating A3 offers "Play A3 again".
 

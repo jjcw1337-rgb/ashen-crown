@@ -7,3 +7,5 @@
 *.png binary
 *.wav binary
 *.ogg binary
+*.glb binary
+*.jpg binary

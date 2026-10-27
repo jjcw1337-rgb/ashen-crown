@@ -44,12 +44,12 @@ func _initialize():
 		var hl := Models.item_model({"base":"great_helm","rarity":0})
 		(J["head"] as Node3D).add_child(hl); hl.position = Vector3(0,0.07*1.0,0)
 		x += 2.2
-		for k in ["fallen","zombie","skel_archer","matron","mummy","scarab","spider","lizardman","imp","hell_knight","doom_caster"]:
+		for k in ["fallen","zombie","skel_archer","mummy","scarab","spider","lizardman","imp","hell_knight","doom_caster"]:
 			var d: Dictionary = Data.ENEMIES[k]
 			var r: Node3D = Models.crawler(d["look"]) if d["rig"] == "crawler" else Models.humanoid(d["look"])
 			root3.add_child(r)
 			r.position = Vector3(x, 0, 0); r.rotation_degrees.y = 180
-			x += 2.2 if k != "matron" else 3.0
+			x += 2.2
 		cam.transform = Transform3D(Basis(), Vector3(6, 3.5, 9)).looking_at(Vector3(6, 1.0, 0))
 		cam.fov = 60
 	else:

@@ -21,6 +21,7 @@ func sync() -> void:
 		var p: Node3D = proxy_of[i]
 		skel.set_bone_pose_position(i, p.position)
 		skel.set_bone_pose_rotation(i, p.quaternion)
+		skel.set_bone_pose_scale(i, p.scale)
 	var now := Time.get_ticks_usec()
 	var dt := clampf((now - _last_t) / 1000000.0, 0.0, 0.05)
 	_last_t = now

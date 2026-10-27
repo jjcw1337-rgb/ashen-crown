@@ -290,17 +290,52 @@ func _gen() -> void:
 		var hum := sin(TAU * 82.0 * t + sin(TAU * 3.0 * t) * 1.5) * 0.3 + sin(TAU * 123.0 * t) * 0.12 + sin(TAU * 246.0 * t + sin(TAU * 5.0 * t)) * 0.06
 		s[i] = (hum + (lp - lp2) * 1.6) * swell
 	streams["drain_loop"] = _wav(s, true)
-	# heartbeat: a deep lub-dub (the Hollow Matron's hidden heart)
-	s = _buf(0.7)
+	# coins: a sack of gold pouring out (King Grubb's burst sacks)
+	s = _buf(1.6)
+	for k in 70:
+		var t0 := pow(rng.randf(), 1.6) * 1.3
+		var f := rng.randf_range(2200.0, 5200.0)
+		var amp := rng.randf_range(0.15, 0.4) * (1.0 - t0 / 1.6)
+		var start := int(t0 * RATE)
+		for i in range(start, mini(start + int(0.12 * RATE), s.size())):
+			var u := float(i - start) / RATE
+			s[i] += (sin(TAU * f * u) + sin(TAU * f * 1.53 * u) * 0.5) * exp(-u * 40.0) * amp
+	for i in s.size():
+		s[i] = clampf(s[i], -1.0, 1.0) * 0.6
+	streams["coins"] = _wav(s)
+	# cackle: a nasal goblin laugh, "heh-heh-heh-heh"
+	s = _buf(0.9)
+	lp = 0.0
 	for i in s.size():
 		var t := float(i) / RATE
-		var v := 0.0
-		for k in [[0.0, 1.0, 52.0], [0.2, 0.7, 64.0]]:
-			var u: float = t - float(k[0])
-			if u >= 0.0:
-				v += sin(TAU * float(k[2]) * u * (1.0 - u * 0.6)) * exp(-u * 16.0) * float(k[1]) + sin(TAU * float(k[2]) * 3.1 * u) * exp(-u * 60.0) * 0.25 * float(k[1])
-		s[i] = v * 0.9
-	streams["heartbeat"] = _wav(s)
+		var syl := fmod(t, 0.13) / 0.13
+		var k := floorf(t / 0.13)
+		var env := sin(minf(syl / 0.7, 1.0) * PI) * (1.0 - t / 0.95)
+		var f := 330.0 + k * 12.0 - syl * 70.0 + sin(t * 40.0) * 8.0
+		var saw := fmod(t * f, 1.0) * 2.0 - 1.0
+		lp += (saw + rng.randf_range(-0.35, 0.35) - lp) * 0.35
+		s[i] = (lp * 0.8 + sin(TAU * f * 3.0 * t) * 0.15) * env * 0.7
+	streams["cackle"] = _wav(s)
+	# fuse: a hissing, crackling fuse
+	s = _buf(1.2)
+	lp = 0.0
+	for i in s.size():
+		var t := float(i) / RATE
+		lp += (rng.randf_range(-1, 1) - lp) * 0.6
+		var crack := rng.randf_range(-1, 1) * (1.0 if rng.randf() < 0.004 else 0.0)
+		s[i] = (lp * 0.25 + crack * 0.8) * minf(1.0, t * 10.0) * minf(1.0, (1.2 - t) * 6.0)
+	streams["fuse"] = _wav(s)
+	# boom: a deep blast with a rattle of falling coins
+	s = _buf(1.4)
+	lp = 0.0
+	lp2 = 0.0
+	for i in s.size():
+		var t := float(i) / RATE
+		lp += (rng.randf_range(-1, 1) - lp) * (0.25 * exp(-t * 3.0) + 0.02)
+		lp2 += (lp - lp2) * 0.2
+		var thump := sin(TAU * (70.0 - t * 40.0) * t) * exp(-t * 5.0)
+		s[i] = clampf((lp2 * 2.2 + thump * 0.9) * exp(-t * 2.2), -1.0, 1.0) * 0.95
+	streams["boom"] = _wav(s)
 
 func _drone(kind: String) -> AudioStreamWAV:
 	var sec := 16.0

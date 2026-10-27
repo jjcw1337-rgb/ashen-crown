@@ -1,8 +1,9 @@
 # Ashen Crown: notes for Claude (and humans)
 
 A Diablo II-style isometric ARPG in **Godot 4.3** (GDScript, Forward+ with an OpenGL fallback).
-Everything is procedural (models, textures, sound, music); the only asset file is the intro
-video `assets/intro.ogv`. Two developers (one Windows, one Linux) push to `main`; GitHub
+Everything is procedural (models, textures, sound, music) except two asset files: the intro video
+`assets/intro.ogv` and the Act I boss, King Grubb, `assets/models/grubb_mutant.glb` (generated with Meshy,
+rigged in Blender; see "Blender assets"). Two developers (one Windows, one Linux) push to `main`; GitHub
 Actions exports Web + Windows + Linux + Mac and publishes them to GitHub Pages.
 
 - Repo: https://github.com/jjcw1337-rgb/ashen-crown
@@ -28,7 +29,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `collision_test`, `aim_test`, `matron_test`, `potion_test`, `mp_test` (co-op: run one copy with `-- host` and one with `-- join`).
+`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `mp_test` (co-op: run one copy with `-- host` and one with `-- join`).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
 outside their target bands. See `BALANCE.md` for the protocol.
@@ -49,7 +50,8 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `demon.gd`, `demon_fx.gd`, `demon_minion.gd` | Demon class: knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader; skill effects and the Underworld screen grade; summoned demons (simple ally AI) |
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: knight body in a long robe (`robe` gear key) + hood, horns, fel flame, floating grimoire; skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
 | `enemy.gd`, `projectile.gd` | Monsters/AI and missiles (host-authoritative in co-op) |
-| `matron.gd` | The Hollow Matron's heart mechanic: Mourners, the shell-game shuffle, hollow/exposed damage, phase floors |
+| `hoard.gd` | King Grubb's fight (Act I boss): Gilded Bombs, the three burst sacks, the gold scramble (piles reaching him heal him; piles a hero takes hurt him) |
+| `goblin.gd`, `sculpt.gd` | Goblin models: King Grubb is the imported mutant (`Goblin.MUTANT`: joint layout + glb, skinned onto the game's skeleton); the Gold Grabbers (and Grubb's fallback) are code-sculpted (`Sculpt` melts SDF shapes into one skinned mesh). `Goblin.after_pose` adds ears, jaw, crown wobble, belly jiggle, sacks and the goblin gaits |
 | `ground_item.gd`, `inter.gd` | Loot on the ground; interactables (chests, shrines, waypoints, portals, NPCs) |
 | `items.gd` | Item rolls, `empower` (A2/A3 multipliers), enchanting, tooltips |
 | `net.gd` | LAN co-op over ENet (UDP 24567, discovery 24568); RPC layer |
@@ -80,6 +82,26 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 - **Adding a class**: add it to `Data.CLASSES`, give it four `SKILLS` entries with its `cls`, build its look the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep working), handle its skill ids in `Hero.use_skill` / `_impact`, and add glyphs in `ui.gd` `SkillGlyph`.
 - **Underworld** (Demon's Phase): `game.set_underworld()` blends a screen-space grade (`DemonFx.UNDERWORLD_SHADER`), the `under_amt` global (terrain veins and rune rings in `mats.gd`), environment tweaks, rising souls and crimson monster outlines (`Enemy.set_soul_lit`). Monsters ignore a phased hero (`hero.phased`).
 - **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `_update_drain`, and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. Skill effects are local only (partners see the cast pose, not the beam), like every other class.
+- **King Grubb** (Act I boss, `hoard.gd`) is host-authoritative. Every visible part of the fight (piles, bombs, burst
+  sacks, shouts, a grabber's `carry_on`/`carry_off`) is an Enemy fx event string handled in `Hoard.fx`, so partners see it;
+  damage, healing and gold happen only on the host. Grabbers reach the fight through `Enemy.hoard` (`Hoard.steer`).
+- **Sculpted bodies** (`Sculpt`): a monster with `"model"` in `Data.ENEMIES` is built by `Goblin.build`. The body is one
+  skinned mesh made once per kind (about 0.5 s) and cached; each limb is its own group so it doesn't melt into the torso.
+  Its shader textures in rest space from UV/UV2 (skinned VERTEX moves). Rigid bits (teeth, claws, gold, cloth) stay
+  per-joint meshes. `knight_rig.gd` copies the joints onto the bones (position, rotation and scale).
+- **Blender assets** (King Grubb): the model was generated with Meshy (a Meshy concept image, then image-to-3D),
+  decimated to ~80k triangles and rigged by `tools/blender/grubb_mutant.py` (bones on his anatomy named like the
+  game's joints; distance weights plus fixed regions for the crowns, belly, the three gold sacks and the key). The
+  `.blend` source (with the full-detail mesh) is `~/Documents/Blender/Game Factory/sources/grubb.blend`, exports go
+  to `exports/`; never put a `.blend` inside the project (Godot 4.3 imports `.blend` files by launching Blender, which
+  hangs headless imports). The joint layout in the script must match `Goblin.MUTANT["layout"]` (Godot axes: x, z, -y).
+  `Goblin._imported` re-binds the glb's skin onto the game's skeleton by bone name, so `Anim.pose` and
+  `Goblin.after_pose` drive it; the `held` meta damps his shoulder swings (his gut and arms tear the skin otherwise).
+  Burst sacks are hidden by scaling their bones to ~0. Without the file he falls back to the code-sculpted king.
+  `tools/model_preview.gd` stages any candidate .glb in the vault for screenshots; `tools/goblin_anim.gd` renders a
+  contact sheet of his motion. `tools/blender/grubb.py` (+ `grubb_gear.py`) is the earlier fully scripted Blender
+  build, kept as a reference; its export isn't used. Godot's `.import` files and extracted textures under
+  `assets/models/` are git-ignored (regenerated on import); run `godot --headless --editor --quit` after re-exporting.
 - `UNLOCK_ALL_ACTS` in `game.gd` is a testing switch (also enables the F8 testing panel: `test_immortal`, `test_onehit` in `game.gd`); turn off for real playthroughs.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file).

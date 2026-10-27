@@ -46,19 +46,8 @@ var slam_t := 5.0
 var volley_t := 4.0
 var nova_t := 9.0
 var enraged := false
-## The Hollow Matron's heart mechanic (matron.gd); on a Mourner, the Matron it belongs to.
-var heart: Matron = null
-var heart_owner: Matron = null
-## Mourners walk to where the Matron puts them.
-var goto := Vector3.ZERO
-var goto_speed := 1.2
-## Damage taken multiplier (hollow / exposed Matron), set on every peer from fx events.
-var taken := 1.0
-var _exposed := false
-## A Mourner carrying the heart: "on" beats faintly, "hush" is silent (shuffling).
-var beat := ""
-var beat_t := 0.0
-var heart_light: OmniLight3D
+## King Grubb's fight (hoard.gd): on the king and on each of his Gold Grabbers (host side).
+var hoard: Hoard = null
 var pack_id := 0
 # co-op: on a joining player's game every monster is remote and follows the host
 var net_id := 0
@@ -93,7 +82,9 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 	atk_dur = def["atk_time"]
 	var look: Dictionary = def["look"]
 	height = look.get("height", look.get("size", 1.0))
-	if def.has("skin"):
+	if def.has("model"):
+		rig = Goblin.build(def["model"])
+	elif def.has("skin"):
 		rig = SkeletonModel.build(def["skin"])
 		if absf(height - 1.0) > 0.01:
 			rig.scale = Vector3.ONE * height
@@ -105,6 +96,7 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 		"zombie", "mummy": pers = "zombie"
 		"skel_archer": pers = "skeleton"
 		"fallen", "imp", "fetish": pers = "fallen"
+		"grabber": pers = "goblin"
 	if boss:
 		pers = "boss"
 	rig.set_meta("pers", pers)
@@ -127,10 +119,25 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 		l.omni_range = 6.0
 		l.position = Vector3(0, height * 1.7, -0.3)
 		add_child(l)
+		if def.has("model"):
+			# a boss gets lit like one: a warm key from the front and a cold rim from behind
+			var key := OmniLight3D.new()
+			key.light_color = Color(1.0, 0.78, 0.5)
+			key.light_energy = 1.6
+			key.omni_range = 5.5
+			key.position = Vector3(1.2, height * 2.2, -2.2)
+			rig.add_child(key)
+			var rim := OmniLight3D.new()
+			rim.light_color = Color(0.45, 0.6, 1.0)
+			rim.light_energy = 2.2
+			rim.omni_range = 4.5
+			rim.position = Vector3(-0.6, height * 2.0, 1.8)
+			rig.add_child(rim)
 	rig.rotation.y = randf() * TAU
 	home = global_position
-	if def.get("heart", false):
-		heart = Matron.new(self)
+	if def.get("hoard", false):
+		hoard = Hoard.new(self)
+		hoard.call_deferred("start")
 
 func _collect_meshes(n: Node) -> void:
 	if n is MeshInstance3D:
@@ -142,7 +149,7 @@ func _set_flash(v: float) -> void:
 	flash_mat.albedo_color = Color(1, 0.95, 0.9, v * 0.6)
 	if champion:
 		return
-	var rest: Material = soul_mat() if _soul_lit else (drain_mat() if _drained else (exposed_mat() if _exposed else null))
+	var rest: Material = soul_mat() if _soul_lit else (drain_mat() if _drained else null)
 	for m in meshes:
 		if is_instance_valid(m):
 			(m as MeshInstance3D).material_overlay = flash_mat if v > 0.01 else rest
@@ -167,41 +174,6 @@ func set_drained(on: bool) -> void:
 		return
 	_drained = on
 	_set_flash(0.0)
-
-## The Hollow Matron with her heart back in her chest: a red glow while she's exposed.
-static var _exposed_mat: Material
-
-static func exposed_mat() -> Material:
-	if _exposed_mat == null:
-		_exposed_mat = Mats.glow(Color(1.0, 0.12, 0.08), 0.9, 0.0, 1.0)
-	return _exposed_mat
-
-## A Mourner's hidden heart: a red pulse under the veil and a heartbeat that carries.
-func _beat(delta: float) -> void:
-	if heart_light == null:
-		heart_light = OmniLight3D.new()
-		heart_light.light_color = Color(1.0, 0.1, 0.08)
-		heart_light.light_energy = 0.0
-		heart_light.omni_range = 3.2
-		heart_light.position = Vector3(0, height * 1.15, 0)
-		add_child(heart_light)
-	if beat != "on":
-		return
-	beat_t -= delta
-	if beat_t <= 0.0:
-		beat_t = 2.2
-		_pulse(1.6)
-
-func _pulse(strength: float) -> void:
-	if heart_light == null:
-		_beat(0.0)
-	var tw := heart_light.create_tween()
-	tw.tween_property(heart_light, "light_energy", strength, 0.06)
-	tw.tween_property(heart_light, "light_energy", strength * 0.15, 0.14)
-	tw.tween_property(heart_light, "light_energy", strength * 0.75, 0.06)
-	tw.tween_property(heart_light, "light_energy", 0.0, 0.3)
-	var d: float = game.hero.global_position.distance_to(global_position)
-	Sfx.play("heartbeat", clampf(-2.0 - d * 0.9, -30.0, 0.0) + (strength - 1.6) * 2.0)
 
 ## Seen from the Underworld (Demon's Phase) every monster burns with a crimson soul-outline.
 static var _soul_mat: Material
@@ -233,18 +205,8 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 	aggro = true
 	if game.test_onehit:
 		phys = maxf(phys, life * 10.0 + 1000000.0)   # testing switch (F8): any hit kills
-	var p := phys * 100.0 / (100.0 + armor * 0.6) * taken
-	fire *= taken
+	var p := phys * 100.0 / (100.0 + armor * 0.6)
 	var total := p + fire
-	if heart != null:
-		if taken < 1.0:
-			heart.hollow_hit()
-		if not remote:
-			var capped := heart.cap(total)
-			if capped < total:
-				p *= capped / maxf(total, 0.001)
-				fire *= capped / maxf(total, 0.001)
-				total = capped
 	if remote:
 		# the host applies the real damage; show the hit straight away
 		game.net.send_enemy_hit(self, phys, fire, from, knockback, crit)
@@ -284,10 +246,11 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 	return total
 
 func _die() -> void:
-	if heart_owner != null:
-		heart_owner.on_mourner_died(self)
-	if heart != null:
-		heart.clear()
+	if hoard != null:
+		if hoard.boss == self:
+			hoard.on_death()
+		else:
+			hoard.on_grabber_died(self)
 	die_visual()
 	game.net.enemy_died(self)
 	game.on_enemy_killed(self)
@@ -333,10 +296,12 @@ func _remote_process(delta: float) -> void:
 	rig.rotation.y = lerp_angle(rig.rotation.y, net_yaw, k)
 	phase += _net_phase_rate * delta
 	Anim.pose(rig, {"time": anim_time, "phase": phase, "move": move_amt, "atk": net_atk,
-		"style": atk_style, "hit": net_hit, "zombie": kind in ["zombie", "mummy"]})
+		"style": atk_style, "hit": net_hit, "zombie": kind in ["zombie", "mummy"], "aggro": aggro})
 
 ## Visual and sound side of the special attacks, run on every player's game.
 func special_fx(ev: String) -> void:
+	if hoard != null and hoard.boss == self and hoard.fx(ev):
+		return
 	var col := Color(0.4, 1.0, 0.3) if def.get("nova", "") == "poison" else Color(1.0, 0.4, 0.1)
 	match ev:
 		"slam_tele":
@@ -361,33 +326,13 @@ func special_fx(ev: String) -> void:
 			Sfx.play("roar")
 		"boss_hit":
 			game.add_shake(0.2)
-		# the Hollow Matron (matron.gd)
-		"rip":
-			Fx.burst(game.world.fx_root, global_position + Vector3(0, height * 1.45, 0), Color(0.5, 0.02, 0.04), 30, 3.0, 0.14, 0.9, true, -2.0)
-			Sfx.play("roar", -4.0, 0.7)
-			game.add_shake(0.3)
-		"hollow":
-			taken = Matron.HOLLOW_TAKEN
-			_exposed = false
-			_set_flash(0.0)
-		"exposed":
-			taken = Matron.EXPOSED_TAKEN
-			_exposed = true
-			_set_flash(0.0)
-			Fx.ring(game.world.fx_root, global_position, 3.0, Color(1.0, 0.15, 0.1), 0.6)
-		"heart_flare":
-			beat = "hush"
-			_beat(0.0)
-			_pulse(5.0)
-			Fx.burst(game.world.fx_root, global_position + Vector3(0, height * 1.2, 0), Color(1.0, 0.1, 0.08), 24, 2.5, 0.12, 0.6, true, 0.0)
-		"heart_on":
-			beat = "on"
-			beat_t = 1.0
-		"wail":
-			Fx.ring(game.world.fx_root, global_position, 3.5, Color(0.7, 0.75, 1.0), 0.5)
-			Fx.burst(game.world.fx_root, global_position + Vector3(0, 1.0, 0), Color(0.75, 0.8, 1.0, 0.8), 36, 6.0, 0.16, 0.7, true, 0.0)
-			Sfx.play("cry", -2.0, 1.6)
-			game.add_shake(0.35)
+			var front := global_position - rig.global_transform.basis.z * (radius + 1.0)
+			Fx.burst(game.world.fx_root, front + Vector3(0, 0.15, 0), Color(0.4, 0.35, 0.3, 0.8), 22, 3.0, 0.25, 0.7, false, -3.0, 80.0)
+		# a Gold Grabber hauling a pile back to King Grubb
+		"carry_on":
+			rig.set_meta("carry", true)
+		"carry_off":
+			rig.remove_meta("carry")
 
 func _fx(ev: String) -> void:
 	special_fx(ev)
@@ -407,16 +352,20 @@ func _process(delta: float) -> void:
 		if rig.has_meta("crawler"):
 			rig.rotation.z = f * PI
 			rig.position.y = f * 0.4 * height
+		elif rig.has_meta("goblin"):
+			# knees buckle, then he topples forward onto his belly with a bounce
+			rig.rotation.x = -Anim.kf(dead_t, [[0.0, 0.0], [0.5, 0.08], [1.1, 1.3], [1.25, 1.18], [1.4, 1.28]])
+			if dead_t > 1.1 and dead_t - delta <= 1.1 and boss:
+				game.add_shake(0.5)
+				Fx.burst(game.world.fx_root, global_position - rig.global_transform.basis.z * 1.5, Color(0.4, 0.35, 0.3, 0.8), 40, 4.0, 0.3, 0.9, false, -3.0, 80.0)
 		else:
 			rig.rotation.x = f * f * 1.45
-		Anim.pose(rig, {"time": anim_time, "hit": 1.0 - f})
+		Anim.pose(rig, {"time": anim_time, "hit": 1.0 - f, "dead": minf(dead_t, 1.0)})
 		if dead_t > 8.0:
 			rig.position.y -= delta * 0.4
 		if dead_t > 11.0:
 			queue_free()
 		return
-	if beat != "":
-		_beat(delta)
 	if remote:
 		_remote_process(delta)
 		return
@@ -431,8 +380,8 @@ func _process(delta: float) -> void:
 		global_position = game.world.move(global_position, knock * delta * 6.0)
 		knock = knock.lerp(Vector3.ZERO, clampf(delta * 8.0, 0.0, 1.0))
 	cooldown = maxf(0.0, cooldown - delta)
-	if heart != null and aggro:
-		heart.update(delta)
+	if hoard != null and hoard.boss == self and aggro:
+		hoard.update(delta)
 	var vel := Vector3.ZERO
 	# a Demon phased into the Underworld cannot be seen
 	var hero_dead: bool = hero.dead or hero.get("phased") == true
@@ -475,12 +424,24 @@ func _process(delta: float) -> void:
 			if atk_t < 0.0:
 				_face(vel if not aggro or dist > 3.0 else to)
 		move_amt = move_toward(move_amt, clampf(vel.length() / maxf(speed, 0.1), 0.0, 1.0), delta * 5.0)
+		var was := phase
 		phase += delta * vel.length() * (1.6 / maxf(height, 0.5))
+		if boss and rig.has_meta("goblin") and floorf(phase / PI) != floorf(was / PI) and move_amt > 0.4:
+			_footstep()
 	else:
 		move_amt = move_toward(move_amt, 0.0, delta * 5.0)
 	global_position.y = game.world.height_at(global_position.x, global_position.z)
 	Anim.pose(rig, {"time": anim_time, "phase": phase, "move": move_amt, "atk": (atk_t / atk_dur) if atk_t >= 0.0 else -1.0,
-		"style": atk_style, "hit": hit_t, "zombie": kind in ["zombie", "mummy"]})
+		"style": atk_style, "hit": hit_t, "zombie": kind in ["zombie", "mummy"], "aggro": aggro})
+
+## A heavy boss's footfall: a puff of dust under the planted foot, and the ground shakes a
+## little if you're close.
+func _footstep() -> void:
+	var side := 1.0 if int(floorf(phase / PI)) % 2 == 0 else -1.0
+	var foot := global_position + rig.global_transform.basis.x * side * 0.35
+	Fx.burst(game.world.fx_root, foot + Vector3(0, 0.08, 0), Color(0.38, 0.33, 0.28, 0.6), 8, 1.2, 0.2, 0.6, false, -1.0, 70.0)
+	if game.hero.global_position.distance_to(global_position) < 7.0:
+		game.add_shake(0.06)
 
 func _face(d: Vector3) -> void:
 	d.y = 0
@@ -490,13 +451,13 @@ func _face(d: Vector3) -> void:
 
 func _think_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vector3:
 	var ai: String = def["ai"]
-	if ai == "mourner":
-		var gd := goto - global_position
-		gd.y = 0
-		return Vector3.ZERO if gd.length() < 0.15 else gd.normalized() * minf(goto_speed, gd.length() * 6.0)
+	if hoard != null:
+		var v: Variant = hoard.steer(self, delta)
+		if v != null:
+			return v
 	var rng_atk: float = def["range"]
 	if boss:
-		if not enraged and life < max_life * 0.35:
+		if not enraged and life < max_life * 0.35 and hoard == null:
 			enraged = true
 			speed *= 1.3
 			atk_dur *= 0.8
@@ -538,24 +499,27 @@ func _think_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vect
 		return Vector3.ZERO
 	return _chase(delta, hero, dist)
 
-func _chase(delta: float, hero: Node3D, dist: float) -> Vector3:
-	var hp: Vector3 = hero.global_position
-	if game.world.los(global_position, hp):
+func _chase(delta: float, hero: Node3D, _dist: float) -> Vector3:
+	return go_to(delta, hero.global_position, speed)
+
+## Velocity toward p at spd: straight when in sight, else along an A* path.
+func go_to(delta: float, p: Vector3, spd: float) -> Vector3:
+	if game.world.los(global_position, p):
 		path = PackedVector3Array()
-		var d := hp - global_position
+		var d := p - global_position
 		d.y = 0
-		return d.normalized() * speed
+		return Vector3.ZERO if d.length() < 0.05 else d.normalized() * spd
 	repath -= delta
 	if repath <= 0.0 or path.is_empty():
 		repath = 0.6 + randf() * 0.4
-		path = game.world.find_path(global_position, hp)
+		path = game.world.find_path(global_position, p)
 	if path.is_empty():
 		return Vector3.ZERO
 	var nxt := path[0]
 	var dv := Vector3(nxt.x - global_position.x, 0, nxt.z - global_position.z)
 	if dv.length() < 0.4:
 		path.remove_at(0)
-	return dv.normalized() * speed
+	return dv.normalized() * spd
 
 func _wander(delta: float) -> Vector3:
 	wander_t -= delta
@@ -582,18 +546,20 @@ func _begin_special(sp: String) -> void:
 			atk_style = "slam"
 			_begin_attack("slam")
 			_fx("slam_tele")
-		"summon", "nova", "volley", "rip":
+		"summon", "nova", "volley":
 			atk_style = "cast"
 			_begin_attack(sp)
 			if sp == "nova":
 				_fx("nova_tele")
-			elif sp == "rip":
-				_fx("rip")
+		# King Grubb (hoard.gd): a lobbed bomb, scooping gold, staggering, cackling
+		"bomb", "scoop", "burst", "cackle":
+			atk_style = "lob" if sp == "bomb" else sp
+			_begin_attack(sp)
 
 func _update_attack(delta: float, hero: Node3D, dist: float) -> void:
 	atk_t += delta
 	var a := atk_t / atk_dur
-	if a < Anim.impact_at(atk_style) * 0.8 and special in ["", "volley"]:
+	if a < Anim.impact_at(atk_style) * 0.8 and special in ["", "volley", "bomb"]:
 		_face(hero.global_position - global_position)
 	if not impact_done and a >= Anim.impact_at(atk_style):
 		impact_done = true
@@ -630,9 +596,10 @@ func _impact(hero: Node3D, dist: float) -> void:
 				var p: Vector3 = game.world.free_spot_near(global_position, 5.0)
 				game.spawn_enemy(def["summon"], p, level - 2, false, "", pack_id)
 				Fx.burst(game.world.fx_root, p + Vector3(0, 0.5, 0), Color(0.6, 0.2, 1.0), 20, 3.0, 0.2, 0.8, true, 1.0)
-		"rip":
-			if heart != null:
-				heart.launch()
+		"bomb":
+			hoard.throw_bomb(hero.global_position)
+		"scoop":
+			hoard.scooped(self)
 		"volley":
 			var base := hero.global_position - global_position
 			for i in 5:

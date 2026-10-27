@@ -205,8 +205,12 @@ func _checkpoint(cls: String, cp: Dictionary, lvl: int) -> Dictionary:
 				e.queue_free()
 		await process_frame
 		h.global_position = g.world.free_spot_near(boss.global_position + Vector3(0, 0, 7.0), 1.0)
-		# a player who kept track of the Hollow Matron's heart goes for its Mourner
-		var f: Dictionary = await _fight(func(): return ([boss.heart.priority_target()] if boss.heart != null else [boss]) if is_instance_valid(boss) and not boss.dead else [], BOSS_LIMIT)
+		# at King Grubb a sensible player steps out of bomb circles, grabs the spilled gold and
+		# kills the grabbers hauling gold back to him first
+		var hint := Callable()
+		if boss.hoard != null:
+			hint = func(): return boss.hoard.move_hint(h.global_position) if is_instance_valid(boss) and not boss.dead else null
+		var f: Dictionary = await _fight(func(): return ([boss.hoard.priority_target()] if boss.hoard != null else [boss]) if is_instance_valid(boss) and not boss.dead else [], BOSS_LIMIT, hint)
 		r["boss_s"] = f["t"]
 		r["boss_hurt"] = f["hurt"]
 		r["potions"] = f["potions"]
@@ -267,7 +271,7 @@ func _reset_hero() -> void:
 
 ## Fights until foes() is empty, the hero dies or the time runs out. Returns seconds taken,
 ## life lost as a share of max life (counting what potions put back), potions drunk.
-func _fight(foes: Callable, limit: float) -> Dictionary:
+func _fight(foes: Callable, limit: float, move_hint := Callable()) -> Dictionary:
 	var h = g.hero
 	_reset_hero()
 	var t := 0.0
@@ -294,6 +298,12 @@ func _fight(foes: Callable, limit: float) -> Dictionary:
 		if h.mana < 8.0 and pot_cd <= 0.0 and _drink(["mp_potion"]):
 			pots += 1
 			pot_cd = 1.0
+		if move_hint.is_valid():
+			var mp = move_hint.call()
+			if mp != null:
+				if h.can_act():
+					h.cmd_move(mp, true)
+				continue
 		_bot(fs)
 	return {"t": limit, "hurt": snappedf(hurt / h.max_life, 0.01), "potions": pots, "died": false, "timeout": true}
 

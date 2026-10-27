@@ -1627,7 +1627,7 @@ func _build_victory() -> void:
 	t.name = "vtitle"
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(t)
-	var s := _label("The Hollow Matron is destroyed and the crypt falls silent.", 19, Color(0.85, 0.82, 0.75))
+	var s := _label("King Grubb the Gilded is dead, and his hoard is yours.", 19, Color(0.85, 0.82, 0.75))
 	s.name = "vsub"
 	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(s)
@@ -1650,9 +1650,9 @@ func _build_victory() -> void:
 
 func show_victory(diff: int) -> void:
 	(victory_panel.find_child("vtitle", true, false) as Label).text = ["Act I", "A2", "A3"][clampi(diff, 0, 2)] + " Complete"
-	(victory_panel.find_child("vsub", true, false) as Label).text = "The Ashen King crumbles to cinders. His crown rolls across the throne room floor." if diff >= 2 else "The Hollow Matron is destroyed and the crypt falls silent."
+	(victory_panel.find_child("vsub", true, false) as Label).text = "The Ashen King crumbles to cinders. His crown rolls across the throne room floor." if diff >= 2 else "King Grubb the Gilded is dead, and his hoard is yours."
 	(victory_panel.find_child("a2btn", true, false) as Button).text = ["Begin A2", "Begin A3", "Play A3 again"][clampi(diff, 0, 2)] + ": start over at the camp with your hero"
-	(victory_panel.find_child("a2note", true, false) as Label).text = ("In A3 the Ashen King replaces the Matron and always drops his sword. " + game.run_note(2)) if diff >= 1 else game.run_note(1)
+	(victory_panel.find_child("a2note", true, false) as Label).text = ("In A3 the Ashen King takes Grubb's throne and always drops his sword. " + game.run_note(2)) if diff >= 1 else game.run_note(1)
 	victory_panel.visible = true
 
 func _unhandled_key_input(ev: InputEvent) -> void:
@@ -1685,10 +1685,10 @@ func close_all() -> bool:
 func any_panel_open() -> bool:
 	return inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible
 
-func message(t: String, col := Color(1, 1, 1)) -> void:
+func message(t: String, col := Color(1, 1, 1), dur := 2.5) -> void:
 	msg_lbl.text = t
 	msg_lbl.add_theme_color_override("font_color", col)
-	msg_t = 2.5
+	msg_t = dur
 
 func big_message(t: String) -> void:
 	big_lbl.text = t
@@ -1715,6 +1715,20 @@ func set_boss(e) -> void:
 	boss_bar_box.visible = e != null
 	if e:
 		boss_lbl.text = e.display_name
+	# King Grubb: a gold notch where each of his sacks bursts
+	for c in boss_bar.get_children():
+		c.queue_free()
+	if e != null and e.hoard != null:
+		for f in Hoard.SPILLS:
+			var n := ColorRect.new()
+			n.color = Color(1.0, 0.8, 0.3)
+			n.anchor_left = f
+			n.anchor_right = f
+			n.anchor_bottom = 1.0
+			n.offset_left = -1
+			n.offset_right = 2
+			n.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			boss_bar.add_child(n)
 
 func refresh() -> void:
 	if hero == null:

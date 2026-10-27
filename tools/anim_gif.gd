@@ -48,7 +48,7 @@ func _initialize():
 	var sh := Models.item_model({"base": "kite_shield", "rarity": 1})
 	(J["mount_l"] as Node3D).add_child(sh)
 	cast.append({"rig": hero, "kind": "hero"})
-	var specs := [["zombie", Vector3(-2.6, 0, -0.5)], ["fallen", Vector3(2.4, 0, -0.8)], ["skel_archer", Vector3(-1.2, 0, -2.2)], ["spider", Vector3(1.4, 0, -2.6)], ["matron", Vector3(3.6, 0, -3.2)]]
+	var specs := [["zombie", Vector3(-2.6, 0, -0.5)], ["fallen", Vector3(2.4, 0, -0.8)], ["skel_archer", Vector3(-1.2, 0, -2.2)], ["spider", Vector3(1.4, 0, -2.6)], ["skel_archer", Vector3(3.6, 0, -3.2)]]
 	for sp in specs:
 		var d: Dictionary = Data.ENEMIES[sp[0]]
 		var r: Node3D = Models.crawler(d["look"]) if d["rig"] == "crawler" else Models.humanoid(d["look"])
@@ -57,7 +57,6 @@ func _initialize():
 			"zombie": pers = "zombie"
 			"skel_archer": pers = "skeleton"
 			"fallen": pers = "fallen"
-			"matron": pers = "boss"
 		r.set_meta("pers", pers)
 		root3.add_child(r)
 		r.position = sp[1]
