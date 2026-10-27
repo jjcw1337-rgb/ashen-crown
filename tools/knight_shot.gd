@@ -81,7 +81,21 @@ func _initialize():
 			hm.position = Vector3(0, 0.092, 0.006)
 		rigs.append(r)
 		i += 1
-	if mode.begins_with("endgame"):
+	if mode.begins_with("bare"):
+		# Nothing equipped: exactly what Hero.knight_gear() gives with empty slots.
+		for j in rigs.size():
+			rigs[j].visible = false
+		var bare := Knight.build(Knight.default_gear())
+		root3.add_child(bare)
+		bare.rotation_degrees.y = 200
+		rigs = [bare]
+		if mode == "bare_bust":
+			cam.transform = Transform3D(Basis(), Vector3(0.35, 1.75, 1.7)).looking_at(Vector3(0, 1.45, 0))
+			cam.fov = 40
+		else:
+			cam.transform = Transform3D(Basis(), Vector3(0.5, 1.3, 3.3)).looking_at(Vector3(0, 0.95, 0))
+			cam.fov = 42
+	elif mode.begins_with("endgame"):
 		# Close-up of the end-game (ornate) kit alone. endgame = full body, endgame_bust = chest up.
 		for j in rigs.size():
 			rigs[j].visible = j == rigs.size() - 1
