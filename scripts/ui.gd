@@ -1500,7 +1500,7 @@ func _enchant_burst(p: Control) -> void:
 		tw.tween_property(sp, "modulate:a", 0.0, 0.5).set_delay(0.15)
 		tw.chain().tween_callback(sp.queue_free)
 
-## New Game: choose Knight or Wraith.
+## New Game: choose a class.
 func _build_class_picker() -> void:
 	class_panel = Control.new()
 	class_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1515,8 +1515,8 @@ func _build_class_picker() -> void:
 	vb.anchor_right = 0.5
 	vb.anchor_top = 0.5
 	vb.anchor_bottom = 0.5
-	vb.offset_left = -610
-	vb.offset_right = 610
+	vb.offset_left = -770
+	vb.offset_right = 770
 	vb.offset_top = -250
 	vb.offset_bottom = 250
 	vb.add_theme_constant_override("separation", 18)
@@ -1525,11 +1525,11 @@ func _build_class_picker() -> void:
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(t)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 26)
+	row.add_theme_constant_override("separation", 18)
 	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vb.add_child(row)
-	var accents := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1)}
-	for c in ["knight", "wraith", "demon"]:
+	var accents := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1), "warlock": Color(0.45, 1.0, 0.35)}
+	for c in ["knight", "wraith", "demon", "warlock"]:
 		var d: Dictionary = Data.CLASSES[c]
 		var card := PanelContainer.new()
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1552,7 +1552,7 @@ func _build_class_picker() -> void:
 			gl.add_child(g)
 		var ds := _label(d["desc"], 15, Color(0.84, 0.8, 0.74))
 		ds.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		ds.custom_minimum_size = Vector2(330, 0)
+		ds.custom_minimum_size = Vector2(300, 0)
 		cv.add_child(ds)
 		var names := []
 		for sk in Data.skills_for(c):
@@ -1836,6 +1836,8 @@ class SkillGlyph extends Control:
 		var wcol := Color(0.45, 0.88, 1.0) if not dim else Color(0.3, 0.35, 0.4)
 		var dcol := Color(1.0, 0.45, 0.1) if not dim else Color(0.4, 0.3, 0.28)
 		var dhot := Color(1.0, 0.85, 0.4) if not dim else Color(0.45, 0.38, 0.32)
+		var lcol := Color(0.45, 1.0, 0.35) if not dim else Color(0.3, 0.36, 0.3)
+		var lpale := Color(0.85, 1.0, 0.75) if not dim else Color(0.4, 0.43, 0.4)
 		match id:
 			"cleave":
 				draw_arc(c + Vector2(0, 8), 16, PI * 1.1, PI * 1.9, 16, col, 4.0, true)
@@ -1903,6 +1905,43 @@ class SkillGlyph extends Control:
 				draw_colored_polygon(PackedVector2Array([c + Vector2(0, -17), c + Vector2(9, 0), c + Vector2(7, 8), c + Vector2(0, 12), c + Vector2(-7, 8), c + Vector2(-9, 0)]), Color(0.85, 0.05, 0.08) if not dim else Color(0.35, 0.25, 0.25))
 				draw_circle(c + Vector2(-3, 2), 2.5, Color(1, 0.6, 0.6, 0.6))
 				draw_arc(c, 18, PI * 0.15, PI * 0.85, 12, dcol, 2.0, true)
+			"drain":
+				# a beam from an open hand that forks into three victims
+				var src := c + Vector2(-15, 12)
+				var hit := c + Vector2(6, -4)
+				var pts := PackedVector2Array()
+				for k in 9:
+					var u := k / 8.0
+					pts.append(src.lerp(hit, u) + Vector2(0, sin(u * TAU * 1.5) * 3.0 * sin(u * PI)))
+				draw_polyline(pts, Color(lcol.r, lcol.g, lcol.b, 0.45), 6.0, true)
+				draw_polyline(pts, lpale, 2.0, true)
+				for o in [Vector2(12, -16), Vector2(16, 2), Vector2(4, -18)]:
+					draw_line(hit, c + o, lcol, 1.5, true)
+					draw_circle(c + o, 2.5, lcol)
+				draw_circle(hit, 4.0, lpale)
+				draw_circle(src, 3.5, lcol)
+			"blight":
+				# a green skull trailing fire
+				draw_colored_polygon(PackedVector2Array([c + Vector2(-16, 14), c + Vector2(-2, -2), c + Vector2(2, 6)]), Color(lcol.r, lcol.g, lcol.b, 0.4))
+				draw_circle(c + Vector2(4, -4), 10, lcol)
+				draw_rect(Rect2(c + Vector2(-1, 4), Vector2(10, 6)), lcol)
+				draw_circle(c + Vector2(0, -5), 2.6, Color(0.02, 0.08, 0.02))
+				draw_circle(c + Vector2(8, -5), 2.6, Color(0.02, 0.08, 0.02))
+				draw_line(c + Vector2(4, 0), c + Vector2(4, 2), Color(0.02, 0.08, 0.02), 1.5)
+			"shackles":
+				# chain links radiating out to bound shapes
+				for k in 4:
+					var a := PI * 0.25 + TAU * k / 4.0
+					var dv := Vector2(cos(a), sin(a))
+					for j in 3:
+						draw_arc(c + dv * (5 + j * 5), 2.6, 0, TAU, 8, lcol, 1.5, true)
+					draw_circle(c + dv * 20, 3.0, lpale)
+				draw_circle(c, 4.0, lcol)
+			"covenant":
+				# a green flame inside a pact circle
+				draw_arc(c, 17, 0, TAU, 32, lcol, 2.0, true)
+				draw_colored_polygon(PackedVector2Array([c + Vector2(0, -15), c + Vector2(7, -2), c + Vector2(6, 8), c + Vector2(0, 12), c + Vector2(-6, 8), c + Vector2(-7, -2)]), lcol)
+				draw_colored_polygon(PackedVector2Array([c + Vector2(0, -6), c + Vector2(3, 2), c + Vector2(0, 8), c + Vector2(-3, 2)]), lpale)
 			"host":
 				# three spirits circling
 				draw_arc(c, 13, 0, TAU, 32, Color(wcol.r, wcol.g, wcol.b, 0.4), 1.5, true)

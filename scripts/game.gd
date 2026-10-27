@@ -882,7 +882,7 @@ func start_game(cont: bool, cls := "knight") -> void:
 		if UNLOCK_ALL_ACTS:
 			max_run = 2
 		await load_zone(0, "town", "start")
-		ui.open_dialog(Data.VENDORS[0]["elder"], "Welcome to Greywatch, %s. Since the Hollow Matron rose in the old crypt, the dead walk Cairnfell Moor and the Fallen raid our roads. Trade with our folk, then head out through the north gate. End her, and the moor may yet heal." % ("restless one" if hero.is_wraith() else "crusader"), [["I will", func(): pass]])
+		ui.open_dialog(Data.VENDORS[0]["elder"], "Welcome to Greywatch, %s. Since the Hollow Matron rose in the old crypt, the dead walk Cairnfell Moor and the Fallen raid our roads. Trade with our folk, then head out through the north gate. End her, and the moor may yet heal." % ("restless one" if hero.is_wraith() else ("pact-bound one" if hero.is_warlock() else "crusader")), [["I will", func(): pass]])
 	ui.refresh()
 
 ## Co-op from the title screen. Your saved knight is used if you have one.

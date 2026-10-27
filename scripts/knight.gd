@@ -279,6 +279,8 @@ static func build_mesh(g: Dictionary) -> ArrayMesh:
 			_cuirass(b, armor == "ornate")
 			_faulds(b)
 			_tabard(b, true)
+	if g.get("robe", false):
+		_robe(b)
 	if g.get("belt", true):
 		_belt(b, g)
 	if g["cape"] != null:
@@ -430,6 +432,17 @@ static func _skirt(b: Body, mat: int, bottom: float) -> void:
 		var k := 1.0 - smoothstep(bottom, 0.9, p.y)
 		var side := smoothstep(-0.06, 0.06, p.x)
 		return {hips: 1.0 - k * 0.55, lr: k * 0.55 * side, ll: k * 0.55 * (1.0 - side)})
+
+## A long robe from the waist to the ankles (the Warlock), flaring at the hem.
+static func _robe(b: Body) -> void:
+	var hips := bi("hips")
+	var lr := bi("leg_r")
+	var ll := bi("leg_l")
+	var rings := [[0.1, 0.0, 0.035, 0.29, 0.25], [0.4, 0.0, 0.025, 0.255, 0.215], [0.74, 0.0, 0.02, 0.225, 0.185], [0.9, 0.0, 0.008, 0.2, 0.15], [1.02, 0.0, 0.0, 0.185, 0.137]]
+	b.sweep(rings, 32, -PI * 1.5, PI * 0.5, CLOTH, 0.0, 0.0, func(p: Vector3, _t):
+		var k := 1.0 - smoothstep(0.1, 0.9, p.y)
+		var side := smoothstep(-0.08, 0.08, p.x)
+		return {hips: 1.0 - k * 0.6, lr: k * 0.6 * side, ll: k * 0.6 * (1.0 - side)})
 
 static func _jerkin(b: Body) -> void:
 	var rings := [[1.0, 0.0, -0.002, 0.172, 0.126], [1.1, 0.0, -0.008, 0.168, 0.122], [1.27, 0.0, -0.012, 0.19, 0.131], [1.38, 0.0, -0.012, 0.207, 0.135], [1.47, 0.0, -0.004, 0.2, 0.128], [1.53, 0.0, 0.002, 0.16, 0.114]]

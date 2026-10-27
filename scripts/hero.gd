@@ -64,13 +64,26 @@ var blocking := false
 var block_amt := 0.0
 var block_flash := 0.0
 var hit_t := 0.0
-var cls := "knight"          # "knight" or "wraith" (Data.CLASSES)
+var cls := "knight"          # "knight", "wraith", "demon" or "warlock" (Data.CLASSES)
 var cds := {}
 var spirits: Array = []      # Wraith's Spectral Host: [{node, phase, state, t, target, from}]
 var spirit_t := 0.0
 var minions: Array = []      # Demon's summoned demons (DemonMinion), oldest first
 var phased := false          # Demon: walking in the Underworld, unseen and untouchable
 var phase_t := 0.0
+var drain_t := -1.0          # Warlock: Drain Life channel time (-1 = not channelling)
+var drain_tick := 0.0
+var drain_main = null        # the enemy the beam is latched onto
+var drain_beams := {}        # enemy instance id -> WarlockFx.Beam
+var drain_light: OmniLight3D = null
+var drain_sigil: Node3D = null    # the fel sigil turning under the Warlock while channelling
+var drain_hum: AudioStreamPlayer = null
+var drain_lit := {}          # enemy instance id -> enemy shown with the green drain rim
+var drain_heal := 0.0        # healing gathered since the last "+N" number
+var drain_heal_t := 0.0
+var covenant_t := 0.0        # Warlock: Fel Covenant (Drain Life forks further and heals double)
+var bolts: Array = []        # Warlock's Blight Bolts in flight: [{node, dir, left}]
+var blights: Array = []      # plague pools on the ground: [{node, pos, t, tick}]
 var buff_t := 0.0
 var heal_pool := 0.0
 var mana_pool := 0.0
@@ -126,6 +139,9 @@ func is_wraith() -> bool:
 func is_demon() -> bool:
 	return cls == "demon"
 
+func is_warlock() -> bool:
+	return cls == "warlock"
+
 func skill_list() -> Array:
 	return Data.skills_for(cls)
 
@@ -134,6 +150,8 @@ func _build_rig() -> void:
 		rig = Wraith.build(wraith_gear())
 	elif is_demon():
 		rig = Demon.build(demon_gear())
+	elif is_warlock():
+		rig = Warlock.build(warlock_gear())
 	else:
 		rig = Knight.build(Knight.default_gear())
 	rig.set_meta("pers", "hero")
@@ -145,7 +163,7 @@ func _build_rig() -> void:
 	(J["head"] as Node3D).add_child(breath)
 	breath.position = Vector3(0, 0.02, -0.16)
 
-## Switch the character between Knight and Wraith: new body, skills and spirit colours.
+## Switch the character's class: new body, skills and spirit colours.
 func set_class(c: String) -> void:
 	if not Data.CLASSES.has(c):
 		c = "knight"
@@ -155,6 +173,7 @@ func set_class(c: String) -> void:
 	_clear_spirits()
 	dismiss_minions()
 	end_phase(false)
+	_clear_warlock()
 	if rig != null:
 		rig.queue_free()
 		rig = null
@@ -177,6 +196,9 @@ func _tint_aura() -> void:
 	elif is_demon():
 		g2.set_color(0, Color(1.0, 0.3, 0.1, 0.9))
 		g2.set_color(1, Color(0.7, 0.02, 0.05, 0.0))
+	elif is_warlock():
+		g2.set_color(0, Color(0.5, 1.0, 0.35, 0.9))
+		g2.set_color(1, Color(0.05, 0.4, 0.05, 0.0))
 	else:
 		g2.set_color(0, Color(1.0, 0.8, 0.3, 0.9))
 		g2.set_color(1, Color(1.0, 0.5, 0.1, 0.0))
@@ -193,6 +215,17 @@ func demon_gear() -> Dictionary:
 			g["edge"] = p["glow"]
 		elif int(a.get("ench", 0)) >= 5:
 			g["edge"] = Color(1.0, 0.62, 0.15)
+	return g
+
+func warlock_gear() -> Dictionary:
+	var g := Warlock.default_gear()
+	var a = equipment.get("armor") if equipment is Dictionary else null
+	if a != null:
+		var p := Models.palette(a)
+		if int(a.get("rarity", 0)) == 3 and p["glow"] != null:
+			g["fel"] = p["glow"]
+		elif int(a.get("ench", 0)) >= 5:
+			g["fel"] = Color(0.7, 1.0, 0.2)
 	return g
 
 func wraith_gear() -> Dictionary:
@@ -279,6 +312,7 @@ func new_character() -> void:
 	_clear_spirits()
 	dismiss_minions()
 	end_phase(false)
+	_clear_warlock()
 	equipment = {}
 	for s in Items.EQUIP_SLOTS:
 		equipment[s] = null
@@ -392,6 +426,8 @@ func refresh_gear() -> void:
 		Wraith.rebuild_body(rig, wraith_gear())
 	elif is_demon():
 		Demon.rebuild_body(rig, demon_gear())
+	elif is_warlock():
+		Warlock.rebuild_body(rig, warlock_gear())
 	else:
 		Knight.rebuild_body(rig, knight_gear())
 	var am = equipment.get("amulet")
@@ -443,6 +479,7 @@ func knight_gear() -> Dictionary:
 func cmd_move(p: Vector3, direct := false) -> void:
 	if dead or charge_t >= 0.0:
 		return
+	end_drain()
 	target = null
 	_set_goal(p, direct)
 
@@ -465,6 +502,7 @@ func _face_smooth(d: Vector3, delta: float) -> void:
 func cmd_target(t) -> void:
 	if dead or charge_t >= 0.0:
 		return
+	end_drain()
 	target = t
 	if is_instance_valid(t):
 		_set_goal(t.global_position, false)
@@ -474,6 +512,7 @@ func cmd_wasd(dir: Vector3) -> void:
 		return
 	direct_dir = dir
 	if dir.length() > 0.1:
+		end_drain()
 		if not (is_instance_valid(target) and target is Enemy):
 			target = null
 		path = PackedVector3Array()
@@ -490,7 +529,7 @@ func _set_goal(p: Vector3, direct: bool) -> void:
 	moving = true
 
 func can_act() -> bool:
-	return not dead and atk_t < 0.0 and charge_t < 0.0
+	return not dead and atk_t < 0.0 and charge_t < 0.0 and drain_t < 0.0
 
 func use_skill(id: String, aim: Vector3) -> bool:
 	if dead or charge_t >= 0.0:
@@ -511,7 +550,14 @@ func use_skill(id: String, aim: Vector3) -> bool:
 		game.ui.message("Not enough mana", Color(0.4, 0.5, 1.0))
 		Sfx.play("deny")
 		return false
-	# cancel a basic swing so the skill fires right away
+	var foe = null
+	if id == "drain":
+		foe = _drain_pick(aim)
+		if foe == null:
+			game.ui.message("No enemy in reach", Color(0.8, 0.8, 0.8))
+			return false
+	# cancel a basic swing (or a Drain Life channel) so the skill fires right away
+	end_drain()
 	atk_t = -1.0
 	impact_done = true
 	mana -= sk["mana"]
@@ -557,6 +603,17 @@ func use_skill(id: String, aim: Vector3) -> bool:
 			life = maxf(1.0, life - max_life * 0.2)
 			_start_attack("cast", "pact")
 			atk_dur = 0.6
+		"drain":
+			_drain_start(foe)
+		"blight":
+			_start_attack("cast", "blight")
+			atk_dur = 0.45
+		"shackles":
+			_start_attack("cast", "shackles")
+			atk_dur = 0.5
+		"covenant":
+			_start_attack("cast", "covenant")
+			atk_dur = 0.6
 	return true
 
 func drink(slot: int) -> void:
@@ -592,6 +649,8 @@ func _start_attack(style: String, skill := "") -> void:
 		trail_col = WraithFx.SPIRIT if skill != "reap" else WraithFx.PALE
 	elif is_demon():
 		trail_col = DemonFx.EMBER
+	elif is_warlock():
+		trail_col = Warlock.FEL
 	var w = equipment.get("weapon")
 	if w != null and w.get("rarity", 0) == 3 and Models.palette(w)["glow"] != null:
 		trail_col = Models.palette(w)["glow"]
@@ -678,6 +737,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 		dead = true
 		end_phase(false)
 		dismiss_minions()
+		end_drain()
 		dead_t = 0.0
 		atk_t = -1.0
 		Sfx.play("death")
@@ -695,7 +755,10 @@ func _process(delta: float) -> void:
 	for k in cds.keys():
 		cds[k] = maxf(0.0, cds[k] - delta)
 	buff_t = maxf(0.0, buff_t - delta)
+	covenant_t = maxf(0.0, covenant_t - delta)
 	_update_spirits(delta)
+	_update_bolts(delta)
+	_update_blights(delta)
 	if phased:
 		phase_t -= delta
 		if phase_t <= 0.0:
@@ -761,6 +824,8 @@ func _process(delta: float) -> void:
 	else:
 		if atk_t >= 0.0:
 			_update_attack(delta)
+		if drain_t >= 0.0:
+			_update_drain(delta)
 		# pursue target (an attack already in progress keeps its rhythm)
 		if target != null and (not is_instance_valid(target) or target.is_queued_for_deletion()):
 			target = null
@@ -840,9 +905,14 @@ func _process(delta: float) -> void:
 		st["atk"] = 0.45
 		st["style"] = "thrust"
 		st["move"] = 1.0
+	elif drain_t >= 0.0:
+		# both hands thrust out, holding the beam
+		st["atk"] = 0.6
+		st["style"] = "cast"
 	Anim.pose(rig, st)
 	last_pose = st
 	_hover()
+	_draw_drain()
 	_breathe(delta)
 	_apply_shield_pose()
 	_update_trail(atk_t >= 0.0 or charge_t >= 0.0)
@@ -851,6 +921,9 @@ func _process(delta: float) -> void:
 func _hover() -> void:
 	if is_demon():
 		Demon.animate(rig, anim_time, move_amt)
+		return
+	if is_warlock():
+		Warlock.animate(rig, anim_time, move_amt, 1.0 if covenant_t > 0.0 or (puppet and net_buff) else 0.0)
 		return
 	if not is_wraith() or dead:
 		return
@@ -1093,7 +1166,289 @@ func _impact() -> void:
 				if is_instance_valid(m):
 					m.empowered = 12.0
 					DemonFx.pact(game.world.fx_root, m.global_position)
+		"blight":
+			var dir := atk_aim - global_position
+			dir.y = 0
+			dir = dir.normalized() if dir.length() > 0.3 else fwd
+			var n := WarlockFx.bolt_node(game.world.fx_root)
+			n.global_position = global_position + Vector3(0, 1.3, 0) + dir * 0.6
+			n.look_at(n.global_position + dir, Vector3.UP)
+			bolts.append({"node": n, "dir": dir, "left": 15.0})
+			Sfx.play("fireball", -2.0, 0.7)
+		"shackles":
+			var root: Node3D = game.world.fx_root
+			WarlockFx.shackle_cast(root, global_position, 7.0)
+			Sfx.play("cry", -3.0, 0.6)
+			Sfx.play("slam", -6.0, 1.4)
+			game.add_shake(0.25)
+			for e in game.enemies_near(global_position, 7.0):
+				WarlockFx.chain(root, global_position + Vector3(0, 1.1, 0), e.global_position + Vector3(0, 0.8 * e.height, 0), 0.8)
+				_hit_enemy(e, 0.8, 0.0)
+				if not e.dead:
+					e.stun(2.5)
+					WarlockFx.shackle(e, 2.5 * (0.3 if e.boss else 1.0))
+		"covenant":
+			buff_t = 12.0
+			covenant_t = 12.0
+			WarlockFx.covenant(game.world.fx_root, global_position)
+			Sfx.play("summon", 0.0, 0.7)
+			game.add_shake(0.3)
 	stats_changed.emit()
+
+# ---------------------------------------------------------------- warlock skills
+const DRAIN_RANGE := 11.0     # how far away a beam can latch on
+const DRAIN_LEASH := 13.0     # a latched victim that gets further away than this breaks free
+const DRAIN_FORK := 5.5       # forks reach enemies this close to the main victim
+const DRAIN_MIN := 1.0        # a tap of Q still channels this long
+
+## The enemy Drain Life latches onto: the one nearest the aim point, else the nearest in reach.
+func _drain_pick(aim: Vector3):
+	var best = null
+	var bd := 3.0
+	for e in game.enemies_near(aim, 3.0):
+		var d: float = Vector2(e.global_position.x - aim.x, e.global_position.z - aim.z).length()
+		if d < bd and e.global_position.distance_to(global_position) <= DRAIN_RANGE:
+			bd = d
+			best = e
+	if best == null:
+		best = _drain_nearest(global_position, DRAIN_RANGE, null)
+	return best
+
+func _drain_nearest(p: Vector3, r: float, skip):
+	var best = null
+	var bd := r
+	for e in game.enemies_near(p, r):
+		if e == skip:
+			continue
+		var d: float = e.global_position.distance_to(p)
+		if d < bd:
+			bd = d
+			best = e
+	return best
+
+func _drain_valid(e) -> bool:
+	return e != null and is_instance_valid(e) and not e.dead and e.global_position.distance_to(global_position) <= DRAIN_LEASH
+
+## The main victim first, then the enemies the beam forks to (nearest the main victim).
+func _drain_victims() -> Array:
+	if not _drain_valid(drain_main):
+		return []
+	var mp: Vector3 = drain_main.global_position
+	var near: Array = game.enemies_near(mp, DRAIN_FORK).filter(func(e): return e != drain_main)
+	near.sort_custom(func(a, b): return a.global_position.distance_to(mp) < b.global_position.distance_to(mp))
+	var forks := 5 if covenant_t > 0.0 else 3
+	return [drain_main] + near.slice(0, forks)
+
+func _drain_start(foe) -> void:
+	drain_t = 0.0
+	drain_tick = 0.1
+	drain_main = foe
+	target = null
+	path = PackedVector3Array()
+	moving = false
+	drain_heal = 0.0
+	drain_heal_t = 0.0
+	_face(foe.global_position - global_position)
+	var root: Node3D = game.world.fx_root
+	WarlockFx.latch(root, foe.global_position + Vector3(0, 1.0 * foe.height, 0))
+	drain_sigil = WarlockFx.sigil(root, 1.25)
+	drain_sigil.global_position = global_position + Vector3(0, 0.06, 0)
+	drain_hum = Sfx.start_loop("drain_loop", -9.0)
+	Sfx.play("portal", -4.0, 0.55)
+	game.add_shake(0.08)
+
+func end_drain() -> void:
+	var was := drain_t >= 0.0
+	drain_t = -1.0
+	drain_main = null
+	for b in drain_beams.values():
+		if is_instance_valid(b):
+			b.queue_free()
+	drain_beams.clear()
+	for e in drain_lit.values():
+		if is_instance_valid(e):
+			e.set_drained(false)
+	drain_lit.clear()
+	if was and game and game.world and drain_light != null and is_instance_valid(drain_light):
+		WarlockFx.release(game.world.fx_root, drain_light.global_position)
+	if drain_light != null and is_instance_valid(drain_light):
+		drain_light.queue_free()
+	drain_light = null
+	if drain_sigil != null:
+		WarlockFx.sigil_fade(drain_sigil)
+	drain_sigil = null
+	if drain_hum != null and is_instance_valid(drain_hum):
+		drain_hum.stop()
+		drain_hum.queue_free()
+	drain_hum = null
+	_show_drain_heal()
+
+## Healing from the beam shows as one green "+N" about once a second rather than every tick.
+func _show_drain_heal() -> void:
+	if drain_heal >= 1.0 and game and game.world:
+		Fx.number(game.world.fx_root, global_position + Vector3(0, 2.3, 0), "+%d" % int(drain_heal), Color(0.45, 1.0, 0.4))
+	drain_heal = 0.0
+	drain_heal_t = 0.0
+
+## Drain Life: every 0.3 s each victim loses life and the Warlock gains some of it back.
+## If the main victim dies the beam jumps to the nearest enemy still in reach.
+func _update_drain(delta: float) -> void:
+	drain_t += delta
+	if not _drain_valid(drain_main):
+		var from: Vector3 = drain_main.global_position if drain_main != null and is_instance_valid(drain_main) else global_position
+		drain_main = _drain_nearest(from, DRAIN_FORK, null)
+		if not _drain_valid(drain_main):
+			drain_main = _drain_nearest(global_position, DRAIN_RANGE, null)
+		if drain_main == null:
+			end_drain()
+			return
+		WarlockFx.latch(game.world.fx_root, drain_main.global_position + Vector3(0, 1.0 * drain_main.height, 0))
+	if drain_t >= DRAIN_MIN and not Input.is_key_pressed(KEY_Q):
+		end_drain()
+		return
+	_face_smooth(drain_main.global_position - global_position, delta)
+	drain_tick -= delta
+	if drain_tick > 0.0:
+		return
+	drain_tick = 0.3
+	if drain_t >= DRAIN_MIN:
+		# past the first second the channel costs mana (about 6.5 a second)
+		if mana < 2.0:
+			game.ui.message("Not enough mana", Color(0.4, 0.5, 1.0))
+			end_drain()
+			return
+		mana -= 2.0
+	var root: Node3D = game.world.fx_root
+	var hand: Vector3 = (J["hand_l"] as Node3D).global_position
+	var dmg := (6.0 + level * 2.4 + (dmg_min + dmg_max) * 0.6) * 0.3 * (1.4 if buff_t > 0.0 else 1.0)
+	var heal := 0.0
+	var victims := _drain_victims()
+	for i in victims.size():
+		var e = victims[i]
+		e.dmg_tint = Color(0.55, 1.0, 0.45)
+		# the main victim is dragged a little toward the Warlock
+		var dealt: float = e.take_damage(dmg * (1.0 if i == 0 else 0.6), 0.0, global_position, -0.25 if i == 0 else 0.0, false)
+		e.dmg_tint = Color(0, 0, 0, 0)
+		heal += dealt * (0.3 if i == 0 else 0.15)
+		if not e.dead:
+			e.drain_flash(Warlock.FEL)
+		WarlockFx.siphon(root, e.global_position + Vector3(0, 1.0 * e.height, 0), hand if i == 0 else drain_main.global_position + Vector3(0, 1.0 * drain_main.height, 0))
+	if covenant_t > 0.0:
+		heal *= 2.0
+	life = minf(max_life, life + heal)
+	drain_heal += heal
+	drain_heal_t += 0.3
+	if drain_heal_t >= 0.9:
+		_show_drain_heal()
+	Sfx.play("drain", -9.0, randf_range(0.9, 1.1))
+	stats_changed.emit()
+
+## Redraws the beams each frame after the pose, so they leave the hand where it is now.
+func _draw_drain() -> void:
+	if drain_t < 0.0:
+		return
+	var victims := _drain_victims()
+	if victims.is_empty():
+		return
+	var root: Node3D = game.world.fx_root
+	var hand: Vector3 = (J["hand_l"] as Node3D).global_position + (-rig.global_transform.basis.z) * 0.08
+	var mc: Vector3 = drain_main.global_position + Vector3(0, 1.0 * drain_main.height, 0)
+	var keep := {}
+	for i in victims.size():
+		var e = victims[i]
+		var id: int = e.get_instance_id()
+		keep[id] = true
+		var b = drain_beams.get(id)
+		if b == null or not is_instance_valid(b):
+			b = WarlockFx.beam(root, 0.26 if i == 0 else 0.15)
+			drain_beams[id] = b
+			if i > 0:
+				WarlockFx.latch(root, e.global_position + Vector3(0, 1.0 * e.height, 0))
+		b.width = 0.26 if i == 0 else 0.15
+		b.caps = i == 0
+		if not drain_lit.has(id):
+			drain_lit[id] = e
+			e.set_drained(true)
+		if i == 0:
+			b.draw(hand, mc, anim_time)
+		else:
+			var ec: Vector3 = e.global_position + Vector3(0, 1.0 * e.height, 0)
+			b.arc = 0.45 + mc.distance_to(ec) * 0.12
+			b.draw(mc, ec, anim_time)
+	for id in drain_beams.keys():
+		if not keep.has(id):
+			var b = drain_beams[id]
+			if is_instance_valid(b):
+				b.queue_free()
+			drain_beams.erase(id)
+	for id in drain_lit.keys():
+		if not keep.has(id):
+			var e = drain_lit[id]
+			if is_instance_valid(e):
+				e.set_drained(false)
+			drain_lit.erase(id)
+	if drain_light == null or not is_instance_valid(drain_light):
+		drain_light = WarlockFx.hand_light(root)
+	drain_light.global_position = hand
+	drain_light.light_energy = 1.5 + 0.4 * sin(anim_time * 23.0) + 0.3 * sin(anim_time * 7.0)
+	if drain_sigil != null and is_instance_valid(drain_sigil):
+		drain_sigil.global_position = global_position + Vector3(0, 0.06, 0)
+		drain_sigil.rotation.y = anim_time * 0.9
+
+## Blight Bolt: flies straight until it hits an enemy, a wall or runs out of range.
+func _update_bolts(delta: float) -> void:
+	for b in bolts.duplicate():
+		var n = b["node"]
+		if not is_instance_valid(n):
+			bolts.erase(b)
+			continue
+		var step := 16.0 * delta
+		var p: Vector3 = n.global_position
+		var np: Vector3 = game.world.move(p, (b["dir"] as Vector3) * step)
+		var moved := np - p
+		moved.y = 0
+		np.y = lerpf(p.y, game.world.height_at(np.x, np.z) + 1.2, clampf(delta * 6.0, 0.0, 1.0))
+		n.global_position = np
+		b["left"] -= step
+		if not game.enemies_near(np, 1.0).is_empty() or b["left"] <= 0.0 or moved.length() < step * 0.4:
+			_blight_burst(np)
+			n.queue_free()
+			bolts.erase(b)
+
+func _blight_burst(p: Vector3) -> void:
+	var g := Vector3(p.x, game.world.height_at(p.x, p.z), p.z)
+	var root: Node3D = game.world.fx_root
+	WarlockFx.blight_burst(root, g, 3.0)
+	var pool := WarlockFx.blight_pool(root, g, 3.0, 4.0)
+	blights.append({"node": pool, "pos": g, "t": 4.0, "tick": 0.5})
+	Sfx.play("nova", -2.0, 0.55)
+	game.add_shake(0.18)
+	var nd := (14.0 + level * 4.0 + (dmg_min + dmg_max) * 0.35) * (1.4 if buff_t > 0.0 else 1.0)
+	for e in game.enemies_near(g, 3.0):
+		e.take_damage(nd, 0.0, g, 0.8, false)
+
+## Plague pools rot whatever stands in them every half second.
+func _update_blights(delta: float) -> void:
+	for bl in blights.duplicate():
+		bl["t"] -= delta
+		bl["tick"] -= delta
+		if bl["t"] <= 0.0 or not is_instance_valid(bl["node"]):
+			blights.erase(bl)
+			continue
+		if bl["tick"] <= 0.0:
+			bl["tick"] = 0.5
+			var nd := (4.0 + level * 1.3 + (dmg_min + dmg_max) * 0.12) * (1.4 if buff_t > 0.0 else 1.0)
+			for e in game.enemies_near(bl["pos"], 3.0):
+				e.take_damage(nd, 0.0, bl["pos"], 0.0, false)
+
+func _clear_warlock() -> void:
+	end_drain()
+	for b in bolts:
+		if is_instance_valid(b["node"]):
+			b["node"].queue_free()
+	bolts.clear()
+	blights.clear()
+	covenant_t = 0.0
 
 # ---------------------------------------------------------------- demon skills
 ## Summon Demon: a demon climbs out of a sigil in front of you. Up to three; a fourth

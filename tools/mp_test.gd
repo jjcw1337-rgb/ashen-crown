@@ -37,8 +37,9 @@ func _run() -> void:
 func _host() -> void:
 	await g.start_host()
 	await idle()
-	if OS.get_cmdline_user_args().has("wraith"):
-		g.hero.set_class("wraith")   # also re-sends gear + class to the partner
+	for c in ["wraith", "demon", "warlock"]:
+		if OS.get_cmdline_user_args().has(c):
+			g.hero.set_class(c)   # also re-sends gear + class to the partner
 	g.ui.close_all()
 	print("[H1] hosting=", g.net.active and g.net.is_host, " zone=", g.cur_zone)
 	var t0 := Time.get_ticks_msec()

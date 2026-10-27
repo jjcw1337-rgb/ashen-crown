@@ -47,6 +47,19 @@ func play(nm: String, vol := 0.0, pitch := 1.0) -> void:
 	p.pitch_scale = pitch
 	p.play()
 
+## A sound that keeps looping until the caller stops and frees the player (a channelled
+## skill). Returns null while muted.
+func start_loop(nm: String, vol := 0.0, pitch := 1.0) -> AudioStreamPlayer:
+	if muted or not streams.has(nm):
+		return null
+	var p := AudioStreamPlayer.new()
+	p.stream = streams[nm]
+	p.volume_db = vol + volume_db
+	p.pitch_scale = pitch
+	add_child(p)
+	p.play()
+	return p
+
 func play_music(kind: String) -> void:
 	var key := "music_" + kind
 	if not streams.has(key):
@@ -255,6 +268,28 @@ func _gen() -> void:
 			var t := float(j) / RATE
 			s[at + j] += sin(TAU * (1200.0 - t * 3000.0) * t) * exp(-t * 40.0) * 0.4
 	streams["drip"] = _wav(s, true)
+	# drain: a hollow, rising siphon (Drain Life)
+	s = _buf(0.4)
+	lp = 0.0
+	for i in s.size():
+		var t := float(i) / RATE
+		var f := 110.0 + t * 260.0
+		lp += (rng.randf_range(-1, 1) - lp) * 0.08
+		s[i] = (sin(TAU * f * t + sin(TAU * 7.0 * t) * 2.0) * 0.35 + lp * 0.5) * sin(t * PI / 0.4)
+	streams["drain"] = _wav(s)
+	# drain loop: a breathing, hollow hum under the beam (loops seamlessly every 2 s)
+	s = _buf(2.0)
+	lp = 0.0
+	lp2 = 0.0
+	for i in s.size():
+		var t := float(i) / RATE
+		var u := float(i) / s.size()
+		lp += (rng.randf_range(-1, 1) - lp) * 0.06
+		lp2 += (lp - lp2) * 0.06
+		var swell := 0.6 + 0.4 * sin(u * TAU * 2.0)
+		var hum := sin(TAU * 82.0 * t + sin(TAU * 3.0 * t) * 1.5) * 0.3 + sin(TAU * 123.0 * t) * 0.12 + sin(TAU * 246.0 * t + sin(TAU * 5.0 * t)) * 0.06
+		s[i] = (hum + (lp - lp2) * 1.6) * swell
+	streams["drain_loop"] = _wav(s, true)
 
 func _drone(kind: String) -> AudioStreamWAV:
 	var sec := 16.0

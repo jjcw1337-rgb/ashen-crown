@@ -39,6 +39,12 @@ Windows SmartScreen may warn that the app is unrecognised (it isn't code-signed)
   - *Underworld Phase* (R): for 6 seconds you walk in the Underworld. The act turns bone-and-violet with soul-light veins and crimson rune rings, monsters glow and can't see or hurt you, and you move faster. When you return, the rift erupts around you.
   - *Blood Pact* (F): pay 20% of your life for +40% damage for you and your demons for 12 seconds.
 
+- **Warlock**: a pale sorcerer in a long black-green robe and horned hood, fel fire in one hand and a grimoire floating at the shoulder.
+  - *Drain Life* (Q): a green beam latches onto an enemy and pulls its life out, forking to up to 3 enemies around it. Everything it drains heals you. Hold Q to keep draining (costs mana each second); if the victim dies the beam jumps to the next one. Moving breaks it.
+  - *Blight Bolt* (E): a skull of blight that bursts on impact and leaves a plague pool, rotting enemies in it for 4 seconds.
+  - *Soul Shackles* (R): chains of fel fire bind every enemy within 7 metres for 2.5 seconds.
+  - *Fel Covenant* (F): +40% damage for 12 seconds; Drain Life forks to two more enemies and heals twice as much.
+
 Every class has four skills on Q E R F, unlocking at levels 1, 3, 6 and 10. Your class is saved with your character, and co-op partners see it.
 
 ## Co-op (two to four players on the same home network)

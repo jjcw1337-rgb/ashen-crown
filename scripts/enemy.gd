@@ -126,10 +126,31 @@ func _set_flash(v: float) -> void:
 	flash_mat.albedo_color = Color(1, 0.95, 0.9, v * 0.6)
 	if champion:
 		return
-	var rest: Material = soul_mat() if _soul_lit else null
+	var rest: Material = soul_mat() if _soul_lit else (drain_mat() if _drained else null)
 	for m in meshes:
 		if is_instance_valid(m):
 			(m as MeshInstance3D).material_overlay = flash_mat if v > 0.01 else rest
+
+## A softer, coloured hit flash (Drain Life ticks), so a held beam doesn't strobe the victim white.
+func drain_flash(col: Color) -> void:
+	flash_mat.albedo_color = Color(col.r, col.g, col.b, 0.3)
+
+## Held in a Warlock's Drain Life beam: a green rim-light for as long as the beam holds on.
+static var _drain_mat: Material
+var _drained := false
+## Damage numbers in this colour, and no blood (set around a Drain Life tick). Alpha 0 = normal.
+var dmg_tint := Color(0, 0, 0, 0)
+
+static func drain_mat() -> Material:
+	if _drain_mat == null:
+		_drain_mat = Mats.glow(Color(0.25, 1.0, 0.2), 0.75, 0.0, 1.0)
+	return _drain_mat
+
+func set_drained(on: bool) -> void:
+	if on == _drained or champion:
+		return
+	_drained = on
+	_set_flash(0.0)
 
 ## Seen from the Underworld (Demon's Phase) every monster burns with a crimson soul-outline.
 static var _soul_mat: Material
@@ -171,8 +192,11 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 		var c2 := Color(1.0, 0.95, 0.8) if not crit else Color(1.0, 0.75, 0.2)
 		if fire > p:
 			c2 = Color(1.0, 0.55, 0.15)
+		if dmg_tint.a > 0.0:
+			c2 = dmg_tint
 		Fx.number(game.world.fx_root, global_position + Vector3(0, height * 1.9 + 0.3, 0), str(int(total)) + ("!" if crit else ""), c2, crit)
-		Fx.blood(game.world.fx_root, global_position + Vector3(0, height * 1.0, 0), def.get("blood", Color(0.5, 0.0, 0.0)))
+		if dmg_tint.a <= 0.0:
+			Fx.blood(game.world.fx_root, global_position + Vector3(0, height * 1.0, 0), def.get("blood", Color(0.5, 0.0, 0.0)))
 		return total
 	life -= total
 	hit_t = 1.0 if not boss else 0.3
@@ -185,8 +209,11 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 	var col := Color(1.0, 0.95, 0.8) if not crit else Color(1.0, 0.75, 0.2)
 	if fire > p:
 		col = Color(1.0, 0.55, 0.15)
+	if dmg_tint.a > 0.0:
+		col = dmg_tint
 	Fx.number(game.world.fx_root, global_position + Vector3(0, height * 1.9 + 0.3, 0), str(int(total)) + ("!" if crit else ""), col, crit)
-	Fx.blood(game.world.fx_root, global_position + Vector3(0, height * 1.0, 0), def.get("blood", Color(0.5, 0.0, 0.0)))
+	if dmg_tint.a <= 0.0:
+		Fx.blood(game.world.fx_root, global_position + Vector3(0, height * 1.0, 0), def.get("blood", Color(0.5, 0.0, 0.0)))
 	if fire > 0.0:
 		Fx.burst(game.world.fx_root, global_position + Vector3(0, height, 0), Color(1.0, 0.5, 0.1), 8, 2.0, 0.15, 0.5, true, 2.0)
 	if life <= 0.0:
@@ -205,6 +232,7 @@ func die_visual() -> void:
 	dead_t = 0.0
 	atk_t = -1.0
 	life = 0.0
+	_drained = false
 	_set_flash(0.0)
 	Sfx.play("boss_die" if boss else "die", 0.0, randf_range(0.85, 1.15))
 	Fx.splat(game.world.fx_root, global_position, def.get("blood", Color(0.4, 0, 0)), 0.6 + radius)
