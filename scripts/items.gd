@@ -204,7 +204,7 @@ static func price(it: Dictionary) -> int:
 
 static func sell_price(it: Dictionary) -> int:
 	if Data.BASES[it["base"]]["slot"] == "potion":
-		return 3
+		return 3 * int(it.get("count", 1))
 	return maxi(1, price(it) / 5)
 
 static func is_equip(it: Dictionary) -> bool:

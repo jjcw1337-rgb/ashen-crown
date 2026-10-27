@@ -28,7 +28,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `collision_test`, `aim_test`, `matron_test`, `mp_test` (co-op: run one copy with `-- host` and one with `-- join`).
+`det_test`, `collision_test`, `aim_test`, `matron_test`, `potion_test`, `mp_test` (co-op: run one copy with `-- host` and one with `-- join`).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
 outside their target bands. See `BALANCE.md` for the protocol.

@@ -1736,23 +1736,23 @@ func respawn(p: Vector3) -> void:
 	stats_changed.emit()
 
 # ---------------------------------------------------------------- inventory
+const BELT_STACK := 5
+const INV_STACK := 20
+
+## Picks up, buys or moves an item. Potions (any count) top up matching belt stacks, then
+## empty belt slots, then matching inventory stacks, then empty cells. Returns false if not
+## everything fit; a potion stack is then left holding what didn't.
 func add_to_inventory(it: Dictionary) -> bool:
 	if it["base"] == "gold":
 		gold += int(it["count"])
 		stats_changed.emit()
 		return true
 	if Data.BASES[it["base"]]["slot"] == "potion":
-		for i in 4:
-			if belt[i] != null and belt[i]["base"] == it["base"] and belt[i]["count"] < 5:
-				belt[i]["count"] += 1
-				stats_changed.emit()
-				return true
-		for i in 4:
-			if belt[i] == null:
-				belt[i] = it.duplicate(true)
-				belt[i]["count"] = 1
-				stats_changed.emit()
-				return true
+		var n := _stack_into(belt, it, BELT_STACK, int(it.get("count", 1)), true)
+		n = _stack_into(inventory, it, INV_STACK, n, false)
+		stats_changed.emit()
+		it["count"] = n
+		return n <= 0
 	for i in inventory.size():
 		if inventory[i] == null:
 			inventory[i] = it
@@ -1760,15 +1760,66 @@ func add_to_inventory(it: Dictionary) -> bool:
 			return true
 	return false
 
+## Puts up to n potions like `it` into `slots`: matching stacks first, then empty slots
+## (belt slots only fill when `fill_empty_belt`). Returns how many are left over.
+func _stack_into(slots: Array, it: Dictionary, cap: int, n: int, fill_empty_belt: bool) -> int:
+	for i in slots.size():
+		if n <= 0:
+			return 0
+		var s = slots[i]
+		if s != null and s["base"] == it["base"] and int(s.get("count", 1)) < cap:
+			var add := mini(n, cap - int(s.get("count", 1)))
+			s["count"] = int(s.get("count", 1)) + add
+			n -= add
+	for i in slots.size():
+		if n <= 0:
+			return 0
+		if slots[i] == null and (fill_empty_belt or slots != belt):
+			var s := it.duplicate(true)
+			s["count"] = mini(n, cap)
+			slots[i] = s
+			n -= int(s["count"])
+	return n
+
+## Merges loose potions in the inventory into stacks (older saves kept one per cell).
+func stack_potions() -> void:
+	for i in inventory.size():
+		var it = inventory[i]
+		if it != null and Data.BASES[it["base"]]["slot"] == "potion":
+			inventory[i] = null
+			var n := _stack_into(inventory, it, INV_STACK, int(it.get("count", 1)), false)
+			if n > 0:
+				it["count"] = n
+				inventory[i] = it
+
+## Drops inventory cell `from` onto cell `to`: potions of the same kind merge (up to a full
+## stack), anything else swaps.
+func move_in_inventory(from: int, to: int) -> void:
+	var a = inventory[from]
+	var b = inventory[to]
+	if a != null and b != null and a["base"] == b["base"] and Data.BASES[a["base"]]["slot"] == "potion":
+		var add := mini(int(a.get("count", 1)), INV_STACK - int(b.get("count", 1)))
+		b["count"] = int(b.get("count", 1)) + add
+		a["count"] = int(a.get("count", 1)) - add
+		if a["count"] <= 0:
+			inventory[from] = null
+	else:
+		inventory[from] = b
+		inventory[to] = a
+	stats_changed.emit()
+
 func equip_from_inventory(idx: int) -> void:
 	var it = inventory[idx]
 	if it == null:
 		return
 	if not Items.is_equip(it):
-		# potions: move to belt
+		# potions: as many as fit go to the belt, the rest stay here
 		inventory[idx] = null
-		if not add_to_inventory(it):
+		var n := _stack_into(belt, it, BELT_STACK, int(it.get("count", 1)), true)
+		if n > 0:
+			it["count"] = n
 			inventory[idx] = it
+		stats_changed.emit()
 		return
 	if int(it.get("req", 1)) > level:
 		game.ui.message("You need to be level %d" % it["req"], Color(1, 0.4, 0.3))
@@ -1816,6 +1867,7 @@ func from_save(d: Dictionary) -> void:
 			equipment[s] = null
 	inventory = d.get("inventory", [])
 	inventory.resize(40)
+	stack_potions()
 	belt = d.get("belt", [null, null, null, null])
 	belt.resize(4)
 	stash = d.get("stash", [])

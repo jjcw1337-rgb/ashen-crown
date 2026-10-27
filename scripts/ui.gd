@@ -764,9 +764,7 @@ func _inv_click(idx: int, ev: InputEventMouseButton) -> void:
 					break
 			refresh()
 		elif not Items.is_equip(it):
-			hero.inventory[idx] = null
-			if not hero.add_to_inventory(it):
-				hero.inventory[idx] = it
+			hero.equip_from_inventory(idx)
 			refresh()
 
 func _inv_drag_input(idx: int, ev: InputEvent) -> void:
@@ -870,8 +868,7 @@ func _finish_drag(forced: Array = []) -> void:
 		"inv":
 			var j: int = tgt[1]
 			if j != idx:
-				hero.inventory[idx] = hero.inventory[j]
-				hero.inventory[j] = it
+				hero.move_in_inventory(idx, j)
 				Sfx.play("pickup", -6.0, 1.2)
 				click_fx(inv_cells[j])
 		"equip":
