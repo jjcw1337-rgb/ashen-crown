@@ -103,7 +103,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   contact sheet of his motion. `tools/blender/grubb.py` (+ `grubb_gear.py`) is the earlier fully scripted Blender
   build, kept as a reference; its export isn't used. Godot's `.import` files and extracted textures under
   `assets/models/` are git-ignored (regenerated on import); run `godot --headless --editor --quit` after re-exporting.
-- `UNLOCK_ALL_ACTS` in `game.gd` is a testing switch (also enables the F8 testing panel: `test_immortal`, `test_onehit` in `game.gd`); turn off for real playthroughs.
+- `UNLOCK_ALL_ACTS` in `game.gd` is a testing switch (also enables the F8 testing panel: `test_immortal`, `test_onehit`, `test_stamina` in `game.gd`); turn off for real playthroughs.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file).
 - CI is `.github/workflows/deploy.yml` (container `barichello/godot-ci:4.3`). If it fails, the

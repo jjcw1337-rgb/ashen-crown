@@ -170,4 +170,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). In short: open `project.godot` in Godot 
 
 - **F2** or **Esc → Sound**: turn all sound on or off (remembered between sessions).
 - **F3**: FPS counter.
-- **F8** or **Esc → Testing panel** (only while `UNLOCK_ALL_ACTS` is on): switches for **Immortal** and **One-hit kill**. Nothing else changes and they aren't saved.
+- **F8** or **Esc → Testing panel** (only while `UNLOCK_ALL_ACTS` is on): switches for **Immortal**, **One-hit kill** and **Infinite stamina**. Nothing else changes and they aren't saved.

@@ -1185,7 +1185,7 @@ func _build_test_panel() -> void:
 	test_panel.offset_left = 20
 	test_panel.offset_top = 60
 	test_panel.offset_right = 290
-	test_panel.offset_bottom = 230
+	test_panel.offset_bottom = 270
 	test_panel.visible = false
 	test_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	root.add_child(test_panel)
@@ -1207,6 +1207,13 @@ func _build_test_panel() -> void:
 		game.test_onehit = on
 		message("One-hit kill " + ("ON" if on else "off"), Color(1.0, 0.7, 0.4) if on else Color(0.8, 0.8, 0.8)))
 	vb.add_child(one)
+	var sta := CheckButton.new()
+	sta.text = "Infinite stamina"
+	sta.button_pressed = game.test_stamina
+	sta.toggled.connect(func(on: bool):
+		game.test_stamina = on
+		message("Infinite stamina " + ("ON" if on else "off"), Color(0.5, 1.0, 0.6) if on else Color(0.8, 0.8, 0.8)))
+	vb.add_child(sta)
 	vb.add_child(_label("F8 or Esc to close. Not saved.", 13, Color(0.7, 0.66, 0.58)))
 
 func update_sound_btn() -> void:

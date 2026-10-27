@@ -850,6 +850,9 @@ func _process(delta: float) -> void:
 		stamina_rest += delta
 		if stamina_rest > 0.6:
 			stamina = minf(max_stamina, stamina + delta * (16.0 if not wants_move else 9.0))
+	if game.test_stamina:
+		stamina = max_stamina
+		exhausted = false
 	if exhausted and stamina >= max_stamina * 0.3:
 		exhausted = false
 	var speed := 4.8 * (1.0 + frw / 100.0)
