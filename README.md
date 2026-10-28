@@ -39,7 +39,7 @@ Windows SmartScreen may warn that the app is unrecognised (it isn't code-signed)
   - *Underworld Phase* (R): for 6 seconds you walk in the Underworld. The act turns bone-and-violet with soul-light veins and crimson rune rings, monsters glow and can't see or hurt you, and you move faster. When you return, the rift erupts around you.
   - *Blood Pact* (F): pay 20% of your life for +40% damage for you and your demons for 12 seconds.
 
-- **Warlock**: a gnome warlock under a towering horned hat, with fel-green eyes, a braided beard hung with silver rings and tiny skulls, runed robes and a chained spellbook, fel fire in one hand and a grimoire floating at his shoulder. (His model was generated with [Meshy](https://www.meshy.ai) from a Meshy concept image, then rigged in Blender.)
+- **Warlock**: a gnome warlock in deep purple robes under a towering horned hat, with fel-green eyes, a braided beard hung with silver rings and tiny skulls, runed robes and a chained spellbook, fel fire in one hand and a grimoire floating at his shoulder. (His model was generated with [Meshy](https://www.meshy.ai) from a Meshy concept image, then rigged in Blender.)
   - *Drain Life* (Q): a green beam latches onto an enemy and pulls its life out, forking to up to 3 enemies around it. Everything it drains heals you. Hold Q to keep draining (costs mana each second); if the victim dies the beam jumps to the next one. Moving breaks it.
   - *Blight Bolt* (E): a skull of blight that bursts on impact and leaves a plague pool, rotting enemies in it for 4 seconds.
   - *Soul Shackles* (R): chains of fel fire bind every enemy within 7 metres for 2.5 seconds.

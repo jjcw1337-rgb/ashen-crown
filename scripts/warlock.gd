@@ -18,6 +18,9 @@ const GNOME := {"glb": "res://assets/models/gnome_warlock.glb", "scale": 1.55, "
 	"leg_l": ["hips", Vector3(-0.11, 0.3, 0)], "knee_l": ["leg_l", Vector3(-0.14, 0.17, -0.01)],
 }, "aim": {"sh_r": "el_r", "el_r": "hand_r", "hand_r": "=el_r", "sh_l": "el_l", "el_l": "hand_l", "hand_l": "=el_l"}}
 
+## The gnome's robes and hat, recoloured from the model's dark green (it vanished against grass).
+const CLOAK := Color(0.36, 0.1, 0.5)
+
 const FEL := Color(0.35, 1.0, 0.3)
 const PALE := Color(0.8, 1.0, 0.7)
 const DEEP := Color(0.05, 0.35, 0.08)
@@ -125,6 +128,8 @@ static func _extras(root: Node3D, g: Dictionary) -> void:
 static func _build_gnome(g: Dictionary) -> Node3D:
 	var root := Goblin.imported_rig(GNOME["layout"], GNOME["glb"], "gnome_warlock", GNOME["aim"])
 	var J: Dictionary = root.get_meta("j")
+	var body: MeshInstance3D = root.get_node("Skeleton/Body")
+	body.material_override = cloak_mat(body.mesh.surface_get_material(0), CLOAK)
 	# weapons and shields are made at a human's size: hold them a little smaller
 	J["grip_r"] = Models.N(J["hand_r"], "grip_r", Vector3(0, -0.05, -0.01), Vector3(-28, 0, 0))
 	J["grip_l"] = Models.N(J["hand_l"], "grip_l", Vector3(0, -0.05, -0.01))
@@ -164,7 +169,7 @@ static func _build_gnome(g: Dictionary) -> Node3D:
 	hl.add_child(hlight)
 	# a soft fel glow rides with him, so the dark robes read against a dark moor
 	var aura := OmniLight3D.new()
-	aura.light_color = fel.lerp(Color(1, 1, 1), 0.35)
+	aura.light_color = Color(0.85, 0.78, 1.0)
 	aura.light_energy = 1.3
 	aura.omni_range = 2.0
 	aura.position = Vector3(0.2, 1.25, 0.45)
@@ -187,6 +192,62 @@ static func _build_gnome(g: Dictionary) -> Node3D:
 	root.set_meta("warlock_anim", {"book": book, "flame": flame, "energy": mats.map(func(m): return float(m.get_shader_parameter("energy"))), "power": 0.0,
 		"book_at": Vector3(-0.44, 0.7, 0.14)})
 	return root
+
+static var _cloak_shader: Shader
+
+## The gnome's own textures with the dark green cloth (robes, hat) turned to `col`; the bright
+## fel-green runes, skin, beard, leather and metal keep their colours.
+static func cloak_mat(src: Material, col: Color) -> Material:
+	if not (src is StandardMaterial3D):
+		return src
+	var sm := src as StandardMaterial3D
+	if _cloak_shader == null:
+		_cloak_shader = Shader.new()
+		_cloak_shader.code = CLOAK_SHADER
+	var m := ShaderMaterial.new()
+	m.shader = _cloak_shader
+	m.set_shader_parameter("albedo_tex", sm.albedo_texture)
+	m.set_shader_parameter("normal_tex", sm.normal_texture)
+	m.set_shader_parameter("orm_tex", sm.roughness_texture)
+	m.set_shader_parameter("cloak", col)
+	return m
+
+const CLOAK_SHADER := """
+shader_type spatial;
+render_mode diffuse_burley, specular_schlick_ggx;
+uniform sampler2D albedo_tex : source_color, filter_linear_mipmap;
+uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap;
+uniform sampler2D orm_tex : hint_default_white, filter_linear_mipmap;
+uniform vec3 cloak : source_color = vec3(0.36, 0.1, 0.5);
+vec3 rgb2hsv(vec3 c) {
+	vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+	vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+	vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+	float d = q.x - min(q.w, q.y);
+	return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + 1e-10)), d / (q.x + 1e-10), q.x);
+}
+vec3 hsv2rgb(vec3 c) {
+	vec3 p = abs(fract(c.xxx + vec3(1.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0);
+	return c.z * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), c.y);
+}
+void fragment() {
+	vec3 c = texture(albedo_tex, UV).rgb;
+	vec3 h = rgb2hsv(c);
+	// dark, greenish, not grey: the robes and hat (the runes are bright, so they stay fel green)
+	float green = smoothstep(0.17, 0.24, h.x) * (1.0 - smoothstep(0.5, 0.58, h.x));
+	float dark = 1.0 - smoothstep(0.16, 0.3, h.z);
+	float m = green * dark * smoothstep(0.08, 0.2, h.y);
+	vec3 t = rgb2hsv(cloak);
+	vec3 rc = hsv2rgb(vec3(t.x, clamp(h.y * 1.2, t.y * 0.8, 0.95), max(h.z * 2.6, t.z * 0.3)));
+	ALBEDO = mix(c, rc, m);
+	vec3 orm = texture(orm_tex, UV).rgb;
+	ROUGHNESS = orm.g;
+	METALLIC = orm.b;
+	NORMAL_MAP = texture(normal_tex, UV).rgb;
+	RIM = 0.35;
+	RIM_TINT = 0.6;
+}
+"""
 
 ## Green fel fire (or, with motes, a slow drift of sparks). Additive particles in world space.
 static func fel_flame(s: float, col: Color, motes := false) -> GPUParticles3D:
