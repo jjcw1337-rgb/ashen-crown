@@ -154,6 +154,7 @@ func _build_rig() -> void:
 		rig = Warlock.build(warlock_gear())
 	else:
 		rig = Knight.build(Knight.default_gear())
+		rig.set_meta("gait", "knight")    # Anim: heavy armoured run, elbows out
 	rig.set_meta("pers", "hero")
 	add_child(rig)
 	J = rig.get_meta("j")
