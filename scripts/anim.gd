@@ -351,24 +351,27 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 	elr += maxf(0.0, -(shr.x - 0.15)) * 0.35 * mm
 	head_x += absf(sin(ph)) * 0.02 * mm
 
-	# --- knight gait: a heavy, armoured run. Elbows held out from the body with the forearms
-	# bent in, short arm swing, shoulders rolling side to side, a wider stance and solid footfalls.
+	# --- knight gait: a realistic run. The arms pump straight forward and back, opposite the legs,
+	# elbows bent near a right angle and carried a little wide of the body; shoulders counter-rotate
+	# against the hips, the body leans into the run and stays steady (no side-to-side rocking).
 	if rig.has_meta("gait") and rig.get_meta("gait") == "knight" and mm > 0.02:
-		var kg := clampf(mm * 1.4, 0.0, 1.0) * (1.0 - b) * (1.0 if a < 0.0 else 0.35)
+		var kg := clampf(mm * 1.6, 0.0, 1.0) * (1.0 - b) * (1.0 if a < 0.0 else 0.35)
 		var sw := sin(ph)
-		shl.z = lerpf(shl.z, -0.62 - absf(sw) * 0.06, kg)
-		shr.z = lerpf(shr.z, 0.62 + absf(sw) * 0.06, kg)
-		shl.x = lerpf(shl.x, 0.35 + sw * 0.22 * mm, kg * (1.0 - rf * 0.5))
-		shr.x = lerpf(shr.x, 0.35 - sw * 0.22 * mm, kg * (1.0 - rf * 0.3))
-		shl.y = lerpf(shl.y, -0.25, kg)
-		shr.y = lerpf(shr.y, 0.25, kg)
-		ell = lerpf(ell, 1.15 + sw * 0.12, kg)
-		elr = lerpf(elr, 1.15 - sw * 0.12, kg)
-		tz += sw * 0.07 * kg
-		ty += sw * 0.06 * kg
-		hip_roll += sw * 0.04 * kg
-		hy -= (1.0 - absf(cos(ph))) * 0.022 * h * kg
-		tx -= 0.04 * kg
+		var amp := 0.45 + 0.25 * clampf(mm - 0.6, 0.0, 0.6) / 0.6
+		# left arm swings with the right leg (counter to its own leg), and the reverse
+		shl.x = lerpf(shl.x, 0.05 - sw * amp, kg)
+		shr.x = lerpf(shr.x, 0.05 + sw * amp, kg)
+		shl.y = lerpf(shl.y, 0.0, kg)
+		shr.y = lerpf(shr.y, 0.0, kg)
+		shl.z = lerpf(shl.z, -0.3, kg)
+		shr.z = lerpf(shr.z, 0.3, kg)
+		# elbows bend more as the arm comes forward, open a little as it drives back
+		ell = lerpf(ell, 1.2 - sw * 0.18, kg)
+		elr = lerpf(elr, 1.2 + sw * 0.18, kg)
+		ty = lerpf(ty, sw * 0.16 * clampf(mm, 0.0, 1.0), kg)
+		tz *= 1.0 - 0.8 * kg
+		hip_roll *= 1.0 - 0.5 * kg
+		tx -= 0.06 * kg
 
 	# --- dynamics: lean into speed and acceleration, bank into turns, settle with overshoot
 	var prev_m: float = D.get("pm", mm)
