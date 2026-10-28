@@ -63,18 +63,31 @@ func sync() -> void:
 		skel.set_bone_pose_position(b, cape_rest[k])
 		skel.set_bone_pose_rotation(b, Quaternion.from_euler(Vector3(cape_ang[k], 0.0, cape_side[k])))
 
-## Long hair: two springs per bone (swing back/forward and side to side). Running throws it back,
-## strafing swings it, and a slow gusting wind keeps it moving while standing.
+## Long hair: two springs per bone (swing back/forward and side to side). Running streams it back
+## behind him, every footfall bounces it, turning and strafing swing it sideways, and a slow gusting
+## wind keeps it alive while he stands. Positive x rotation swings the hair forward (the rig faces -z).
+var _hair_head_last := Vector3.ZERO
+var _hair_head_vy := 0.0
 func _sway_hair(fwd_speed: float, side_speed: float, t: float, dt: float) -> void:
+	# the head's vertical speed: a drop then a sudden stop (a footfall) kicks the hair
+	var hp: Vector3 = (proxy_of[2] as Node3D).global_position if proxy_of.has(2) else global_position
+	var vy := (hp.y - _hair_head_last.y) / dt
+	if _hair_head_last == Vector3.ZERO or absf(vy) > 20.0:
+		vy = 0.0
+	_hair_head_last = hp
+	var jolt := clampf(vy - _hair_head_vy, -2.0, 2.0)
+	_hair_head_vy = vy
+	var run := clampf(fwd_speed / 4.5, -0.4, 1.2)
 	for k in hair_bones.size():
 		var gust := (sin(t * 1.3 + k * 0.7) * 0.6 + sin(t * 2.9 + 1.7) * 0.4) * (0.5 + 0.5 * sin(t * 0.31))
-		var target := clampf(fwd_speed * 0.07, -0.15, 0.45) * (1.0 if k == 0 else 0.7) + gust * 0.05 + 0.02 * k
-		var stiff := 30.0 - k * 8.0
-		var damp := 5.0 - k * 1.2
+		var target := -run * (0.42 if k == 0 else 0.3) - gust * 0.06 * (1.0 - clampf(run, 0.0, 1.0) * 0.5)
+		var stiff := 26.0 - k * 7.0
+		var damp := 4.2 - k * 1.0
+		hair_vel[k] += jolt * (1.2 if k == 0 else 1.6) * clampf(absf(run) + 0.2, 0.0, 1.0)
 		var acc: float = (target - hair_ang[k]) * stiff - hair_vel[k] * damp
 		hair_vel[k] += acc * dt
-		hair_ang[k] += hair_vel[k] * dt
-		var st := clampf(side_speed * 0.06, -0.3, 0.3) + sin(t * 1.7 + k * 1.3) * 0.03
+		hair_ang[k] = clampf(hair_ang[k] + hair_vel[k] * dt, -0.62 if k == 0 else -0.45, 0.3)
+		var st := clampf(side_speed * 0.09, -0.35, 0.35) + sin(t * 1.7 + k * 1.3) * 0.035 + sin(t * 5.6 + k) * 0.03 * clampf(run, 0.0, 1.0)
 		var acc2: float = (st - hair_side[k]) * stiff - hair_side_vel[k] * damp
 		hair_side_vel[k] += acc2 * dt
 		hair_side[k] += hair_side_vel[k] * dt

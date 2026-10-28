@@ -20,11 +20,11 @@ sc.view_settings.view_transform = "AgX"
 cd = bpy.data.cameras.new("c"); cam = bpy.data.objects.new("c", cd); sc.collection.objects.link(cam); sc.camera = cam
 cd.lens = 50
 # the model faces +y
-V = {"front": (0, 4.2, 1.0), "side": (4.2, 0.3, 1.0), "back": (0, -4.2, 1.1), "face": (0.15, 1.1, 1.72), "34": (2.6, 3.3, 1.2)}
+V = {"front": (0, 4.2, 1.0), "side": (4.2, 0.3, 1.0), "back": (0, -4.2, 1.1), "face": (0.15, 1.1, 1.72), "34": (2.6, 3.3, 1.2), "feet": (0.55, 0.75, 0.32)}
 for v in VIEWS:
     cam.location = V[v]
-    tgt = Vector((0, 0, 1.72 if v == "face" else 0.95))
+    tgt = Vector((0, 0, 1.72 if v == "face" else (0.05 if v == "feet" else 0.95)))
     cam.rotation_euler = (tgt - Vector(V[v])).to_track_quat("-Z", "Y").to_euler()
-    sc.render.resolution_x, sc.render.resolution_y = (700, 1000) if v != "face" else (700, 700)
+    sc.render.resolution_x, sc.render.resolution_y = (700, 1000) if v not in ("face", "feet") else (700, 700)
     sc.render.filepath = f"{OUT}_{v}.png"
     bpy.ops.render.render(write_still=True)

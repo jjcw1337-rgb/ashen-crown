@@ -7,6 +7,7 @@ build/
 assets/models/*.import
 assets/models/*_Image_*
 assets/models/*_normal.jpg
+assets/models/*_basecolor.jpg
 # Editor / OS clutter
 .DS_Store
 Thumbs.db
