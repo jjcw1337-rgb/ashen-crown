@@ -1,9 +1,25 @@
 extends Node
-## Procedurally synthesised sound effects and ambient music.
+## Sound effects and ambient music. Most effects are rendered offline (tools/audio/make_sfx.py) into
+## assets/audio/sfx/<name>_<take>.wav, listed in sfx_bank.gd: each play picks one of a sound's takes
+## (never the same twice in a row) and nudges its pitch. Anything not in the bank falls back to the
+## old sounds synthesised here at start-up. play() is heard flat (the hero's own skills, UI);
+## play_at() comes from a place in the world (hits, monsters), louder near the camera and panned.
+## Buses: SFX, UI, Music, Ambience into Master, which has a limiter so big fights don't clip.
 
 const RATE := 22050
+const BANK := preload("res://scripts/sfx_bank.gd").BANK
+const BANK_DIR := "res://assets/audio/sfx/"
 var streams := {}
+## name -> [streams] for the rendered sounds
+var bank := {}
+var _last_take := {}
+## name -> [msec of the last play, plays in that burst]: a big pull can't stack 20 identical hits
+var _recent := {}
+## name -> times played (for tests: tools/sound_test.gd)
+var counts := {}
 var players: Array = []
+var players3d: Array = []
+var _next3 := 0
 var music: AudioStreamPlayer
 var ambience: AudioStreamPlayer
 var _next := 0
@@ -25,35 +41,133 @@ func set_muted(m: bool) -> void:
 			p.play()
 
 func _ready() -> void:
-	for i in 20:
+	_buses()
+	for i in 24:
 		var p := AudioStreamPlayer.new()
+		p.bus = "SFX"
 		add_child(p)
 		players.append(p)
+	for i in 28:
+		var p3 := AudioStreamPlayer3D.new()
+		p3.bus = "SFX"
+		p3.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+		p3.unit_size = 24.0          # the camera is ~24 m from the hero: full volume there
+		p3.max_distance = 75.0
+		p3.panning_strength = 0.7
+		add_child(p3)
+		players3d.append(p3)
 	music = AudioStreamPlayer.new()
 	music.volume_db = -14.0
+	music.bus = "Music"
 	add_child(music)
 	ambience = AudioStreamPlayer.new()
 	ambience.volume_db = -20.0
+	ambience.bus = "Ambience"
 	add_child(ambience)
+	for nm in BANK.keys():
+		var takes := []
+		for k in int(BANK[nm][0]):
+			var path := "%s%s_%d.wav" % [BANK_DIR, nm, k]
+			if ResourceLoader.exists(path):
+				takes.append(load(path))
+		if not takes.is_empty():
+			bank[nm] = takes
 	_gen()
+	if bank.has("drain_loop"):
+		var dl: AudioStreamWAV = bank["drain_loop"][0]
+		dl.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		dl.loop_begin = 0
+		dl.loop_end = int(dl.get_length() * dl.mix_rate)
+
+func _buses() -> void:
+	for nm in ["SFX", "UI", "Music", "Ambience"]:
+		if AudioServer.get_bus_index(nm) < 0:
+			AudioServer.add_bus()
+			var i := AudioServer.bus_count - 1
+			AudioServer.set_bus_name(i, nm)
+			AudioServer.set_bus_send(i, "Master")
+	# a limiter on the master so a big pull of hits doesn't clip (where the platform has one)
+	if ClassDB.class_exists("AudioEffectHardLimiter") and AudioServer.get_bus_effect_count(0) == 0:
+		var lim: AudioEffect = ClassDB.instantiate("AudioEffectHardLimiter")
+		lim.set("ceiling_db", -0.5)
+		AudioServer.add_bus_effect(0, lim)
+
+## One of the sound's takes (not the one played last), or the old synthesised stream.
+func _pick(nm: String) -> AudioStream:
+	if bank.has(nm):
+		var takes: Array = bank[nm]
+		var k := randi() % takes.size()
+		if takes.size() > 1 and k == _last_take.get(nm, -1):
+			k = (k + 1) % takes.size()
+		_last_take[nm] = k
+		return takes[k]
+	return streams.get(nm)
+
+## At most three of the same sound within 50 ms.
+func _allow(nm: String) -> bool:
+	var now := Time.get_ticks_msec()
+	var r: Array = _recent.get(nm, [-1000, 0])
+	if now - int(r[0]) < 50:
+		if int(r[1]) >= 3:
+			return false
+		_recent[nm] = [r[0], int(r[1]) + 1]
+	else:
+		_recent[nm] = [now, 1]
+	return true
+
+func _bus(nm: String) -> String:
+	return "UI" if BANK.has(nm) and BANK[nm][1] == "ui" else "SFX"
 
 func play(nm: String, vol := 0.0, pitch := 1.0) -> void:
-	if muted or not streams.has(nm):
+	if muted or not _allow(nm):
 		return
+	var st := _pick(nm)
+	if st == null:
+		return
+	counts[nm] = int(counts.get(nm, 0)) + 1
 	var p: AudioStreamPlayer = players[_next]
 	_next = (_next + 1) % players.size()
-	p.stream = streams[nm]
+	p.stream = st
+	p.bus = _bus(nm)
 	p.volume_db = vol + volume_db
-	p.pitch_scale = pitch
+	p.pitch_scale = pitch * (randf_range(0.97, 1.03) if bank.has(nm) else 1.0)
 	p.play()
+
+## A sound from a place in the world: louder near the camera, panned left or right of it.
+func play_at(nm: String, pos: Vector3, vol := 0.0, pitch := 1.0) -> void:
+	if muted or not _allow(nm):
+		return
+	var st := _pick(nm)
+	if st == null:
+		return
+	counts[nm] = int(counts.get(nm, 0)) + 1
+	var p: AudioStreamPlayer3D = players3d[_next3]
+	_next3 = (_next3 + 1) % players3d.size()
+	p.stream = st
+	p.global_position = pos
+	p.volume_db = vol + volume_db
+	p.pitch_scale = pitch * (randf_range(0.96, 1.04) if bank.has(nm) else 1.0)
+	p.play()
+
+## Pulls the music down for a moment under a big spell, then lets it back up.
+func duck(db := -8.0, hold := 0.6) -> void:
+	var i := AudioServer.get_bus_index("Music")
+	if i < 0:
+		return
+	AudioServer.set_bus_volume_db(i, db)
+	var tw := create_tween()
+	tw.tween_interval(hold)
+	tw.tween_method(func(v: float): AudioServer.set_bus_volume_db(i, v), db, 0.0, 1.2)
 
 ## A sound that keeps looping until the caller stops and frees the player (a channelled
 ## skill). Returns null while muted.
 func start_loop(nm: String, vol := 0.0, pitch := 1.0) -> AudioStreamPlayer:
-	if muted or not streams.has(nm):
+	var st := _pick(nm)
+	if muted or st == null:
 		return null
 	var p := AudioStreamPlayer.new()
-	p.stream = streams[nm]
+	p.bus = "SFX"
+	p.stream = st
 	p.volume_db = vol + volume_db
 	p.pitch_scale = pitch
 	add_child(p)

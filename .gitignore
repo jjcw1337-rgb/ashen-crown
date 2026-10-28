@@ -15,3 +15,4 @@ Thumbs.db
 assets/models/**/*.import
 assets/models/**/*_Image_*
 assets/models/**/*_normal.jpg
+__pycache__/

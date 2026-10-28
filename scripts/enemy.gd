@@ -227,6 +227,7 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 		Fx.number(game.world.fx_root, global_position + Vector3(0, height * 1.9 + 0.3, 0), str(int(total)) + ("!" if crit else ""), c2, crit)
 		if dmg_tint.a <= 0.0:
 			Fx.blood(game.world.fx_root, global_position + Vector3(0, height * 1.0, 0), def.get("blood", Color(0.5, 0.0, 0.0)))
+		_hit_sound(phys, knockback, crit)
 		return total
 	life -= total
 	killed_by_rival = _by_rival
@@ -245,6 +246,7 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 	Fx.number(game.world.fx_root, global_position + Vector3(0, height * 1.9 + 0.3, 0), str(int(total)) + ("!" if crit else ""), col, crit)
 	if dmg_tint.a <= 0.0:
 		Fx.blood(game.world.fx_root, global_position + Vector3(0, height * 1.0, 0), def.get("blood", Color(0.5, 0.0, 0.0)))
+	_hit_sound(phys, knockback, crit)
 	if fire > 0.0:
 		Fx.burst(game.world.fx_root, global_position + Vector3(0, height, 0), Color(1.0, 0.5, 0.1), 8, 2.0, 0.15, 0.5, true, 2.0)
 	if life <= 0.0:
@@ -272,6 +274,20 @@ func take_hit(amount: float, from: Vector3, _kind := "melee", _elem := "") -> vo
 	take_damage(amount, 0.0, from, 0.5, false)
 	_by_rival = false
 
+## What this monster is made of, for its hit and death sounds: bone (skeletons) or flesh.
+func material() -> String:
+	return def.get("material", "bone" if def.has("skin") or kind == "skel_archer" else "flesh")
+
+## A blow landing: the impact for its body (from where it stands), and a sting on a crit. Burning,
+## draining and pool ticks (no blow: no knockback, no physical damage) stay quiet.
+func _hit_sound(phys: float, knockback: float, crit: bool) -> void:
+	if dmg_tint.a > 0.0 or (knockback <= 0.0 and phys <= 0.0 and not crit):
+		return
+	var pos := global_position + Vector3(0, height, 0)
+	Sfx.play_at("impact_" + material(), pos, 0.0 if boss else -2.0)
+	if crit:
+		Sfx.play_at("crit_sting", pos, -4.0)
+
 func _die() -> void:
 	if hoard != null:
 		if hoard.boss == self:
@@ -290,7 +306,10 @@ func die_visual() -> void:
 	life = 0.0
 	_drained = false
 	_set_flash(0.0)
-	Sfx.play("boss_die" if boss else "die", 0.0, randf_range(0.85, 1.15))
+	if boss:
+		Sfx.play("boss_die", 0.0, randf_range(0.85, 1.15))
+	else:
+		Sfx.play_at("kill_" + material(), global_position + Vector3(0, height, 0), -1.0)
 	Fx.splat(game.world.fx_root, global_position, def.get("blood", Color(0.4, 0, 0)), 0.6 + radius)
 	Fx.burst(game.world.fx_root, global_position + Vector3(0, height * 0.8, 0), def.get("blood", Color(0.4, 0, 0)), 26, 4.0, 0.14, 0.8, false, -9.0)
 
@@ -306,7 +325,7 @@ func apply_net_state(x: float, z: float, yaw: float, mv: float, ph: float, atk: 
 	net_yaw = yaw
 	move_amt = mv
 	if atk >= 0.0 and net_atk < 0.0:
-		Sfx.play("growl" if boss else "swing", -8.0, randf_range(0.6, 0.8) if height > 1.4 else randf_range(0.9, 1.2))
+		_swing_sound()
 	net_atk = atk
 	atk_style = style
 	net_hit = hit
@@ -586,7 +605,14 @@ func _begin_attack(sp: String) -> void:
 	impact_done = false
 	if sp == "":
 		atk_style = def["atk"]
-	Sfx.play("growl" if boss else "swing", -8.0, randf_range(0.6, 0.8) if height > 1.4 else randf_range(0.9, 1.2))
+	_swing_sound()
+
+## A monster's swing, from where it stands: a heavy whoosh for big ones; a boss growls.
+func _swing_sound() -> void:
+	if boss:
+		Sfx.play("growl", -8.0, randf_range(0.6, 0.8))
+	else:
+		Sfx.play_at("swing_heavy" if height > 1.4 else "swing_light", global_position + Vector3(0, height, 0), -6.0, randf_range(0.9, 1.15) / maxf(height, 0.6))
 
 func _begin_special(sp: String) -> void:
 	match sp:
@@ -666,4 +692,4 @@ func _shoot(at: Vector3, pkind: String) -> void:
 	var from := global_position + Vector3(0, height * 1.35, 0) + (-rig.global_transform.basis.z) * 0.5
 	pr.launch(game, pkind, from, at + Vector3(0, 1.1, 0), _roll())
 	game.net.projectile(pkind, from, at + Vector3(0, 1.1, 0))
-	Sfx.play("bow" if pkind in ["arrow", "dart"] else "fireball", -4.0, randf_range(0.9, 1.1))
+	Sfx.play_at("bow" if pkind in ["arrow", "dart"] else "fireball", global_position, -2.0, randf_range(0.9, 1.1))

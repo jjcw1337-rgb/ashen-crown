@@ -144,4 +144,3 @@ func _strike() -> void:
 		d *= 1.6
 	target.take_damage(d, d * 0.35, global_position, 0.4, false)
 	Fx.burst(game.world.fx_root, target.global_position + Vector3(0, 1.0 * target.height, 0), Color(1.0, 0.45, 0.1), 12, 3.5, 0.08, 0.3, true, -4.0)
-	Sfx.play("hit", -7.0, randf_range(1.2, 1.4))

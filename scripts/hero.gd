@@ -661,7 +661,7 @@ func use_skill(id: String, aim: Vector3) -> bool:
 			charge_dir = d.normalized() if d.length() > 0.1 else -rig.global_transform.basis.z
 			charge_t = 0.0
 			charge_hit = {}
-			Sfx.play("charge")
+			Sfx.play("charge_dash", -2.0)
 			path = PackedVector3Array()
 			moving = false
 		"cry":
@@ -739,7 +739,46 @@ func _start_attack(style: String, skill := "") -> void:
 	var w = equipment.get("weapon")
 	if w != null and w.get("rarity", 0) == 3 and Models.palette(w)["glow"] != null:
 		trail_col = Models.palette(w)["glow"]
-	Sfx.play("swing", -4.0, randf_range(0.9, 1.1))
+	_attack_sound(skill)
+
+## The swing or wind-up as an attack starts. A cast spell's sound starts here so that its payoff
+## (the crack of Holy Nova, the scream of the Wail) lands on the animation's impact frame (~0.3 s);
+## spells with no wind-up play their sound at the impact instead (_impact).
+func _attack_sound(skill: String) -> void:
+	match skill:
+		"cleave": Sfx.play("cleave_swing", -2.0)
+		"reap": Sfx.play("reap_swing", -2.0)
+		"hellclaw": Sfx.play("hellclaw", -1.0)
+		"nova":
+			Sfx.play("holy_nova", 0.0)
+			Sfx.duck(-8.0, 1.0)
+		"wail":
+			Sfx.play("wail", 0.0)
+			Sfx.duck(-8.0, 1.0)
+		"blight": Sfx.play("blight_cast", -2.0)
+		"":
+			if atk_style != "cast":
+				Sfx.play(_swing_sound(), -3.0)
+		_:
+			pass
+
+## A light whoosh for blades and fists, a heavier one for axes, maces, hammers and the like.
+func _swing_sound() -> String:
+	var w = equipment.get("weapon")
+	if w == null:
+		return "swing_light"
+	var kind: String = Data.BASES[w["base"]].get("kind", "sword")
+	return "swing_heavy" if kind in ["axe", "mace", "hammer", "club", "star"] else "swing_light"
+
+## Hurt and death voices per body: the knight, the gnome (higher), the wraith (a hiss), the demon (a growl).
+func _voice(what: String) -> String:
+	if is_warlock():
+		return what + "_gnome"
+	if is_wraith():
+		return what + "_wraith"
+	if is_demon():
+		return what + "_demon"
+	return what + "_knight"
 
 func _face(d: Vector3) -> void:
 	d.y = 0
@@ -812,7 +851,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	dmg = maxf(1.0, dmg)
 	life -= dmg
 	hit_t = 1.0
-	Sfx.play("hurt", -2.0, randf_range(0.9, 1.1))
+	Sfx.play(_voice("hurt"), -4.0)
 	Fx.blood(game.world.fx_root, global_position + Vector3(0, 1.2, 0), Color(0.6, 0.02, 0.02))
 	Fx.number(game.world.fx_root, global_position + Vector3(0, 2.2, 0), str(int(dmg)), Color(1.0, 0.3, 0.25))
 	game.add_shake(0.2)
@@ -825,7 +864,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 		end_drain()
 		dead_t = 0.0
 		atk_t = -1.0
-		Sfx.play("death")
+		Sfx.play(_voice("death"), -2.0)
 		died.emit()
 	stats_changed.emit()
 
@@ -1164,8 +1203,6 @@ func _impact() -> void:
 					_hit_enemy(best, 1.0, 0.15)
 					Fx.sparks(game.world.fx_root, best.global_position + Vector3(0, 1.1 * best.height, 0), Color(1.0, 0.75, 0.4))
 					hit_any = true
-			if hit_any:
-				Sfx.play("hit", 0.0, randf_range(0.85, 1.1))
 		"cleave":
 			var any := false
 			for e in game.enemies_near(global_position, 3.4):
@@ -1175,13 +1212,11 @@ func _impact() -> void:
 					_hit_enemy(e, 1.6, 0.5)
 					Fx.sparks(game.world.fx_root, e.global_position + Vector3(0, 1.0, 0), Color(1.0, 0.8, 0.4))
 					any = true
-			Sfx.play("hit" if any else "swing", 0.0, 0.8)
 			Fx.burst(game.world.fx_root, global_position + fwd * 1.6 + Vector3(0, 0.3, 0), Color(0.7, 0.6, 0.45, 0.6), 18, 3.0, 0.25, 0.6, false, -2.0, 70.0, Vector3.UP)
 		"nova":
 			var nd := 18.0 + level * 5.0 + (dmg_min + dmg_max) * 0.4
 			Fx.ring(game.world.fx_root, global_position, 7.0, Color(1.0, 0.75, 0.3), 0.5)
 			Fx.burst(game.world.fx_root, global_position + Vector3(0, 1, 0), Color(1.0, 0.8, 0.4), 50, 9.0, 0.15, 0.6, true, 0.0, 180.0)
-			Sfx.play("nova")
 			game.add_shake(0.35)
 			for e in game.enemies_near(global_position, 7.0):
 				var dealt: float = e.take_damage(0.0, nd * (1.4 if buff_t > 0.0 else 1.0), global_position, 1.2, false)
@@ -1189,7 +1224,8 @@ func _impact() -> void:
 			buff_t = 12.0
 			Fx.ring(game.world.fx_root, global_position, 6.0, Color(1.0, 0.85, 0.4), 0.6)
 			Fx.pillar(game.world.fx_root, global_position, Color(1.0, 0.8, 0.35), 0.8)
-			Sfx.play("cry")
+			Sfx.play("battle_cry")
+			Sfx.duck(-8.0, 1.2)
 			game.add_shake(0.3)
 			for e in game.enemies_near(global_position, 6.0):
 				e.stun(2.0)
@@ -1205,15 +1241,13 @@ func _impact() -> void:
 					any = true
 					WraithFx.soul_wisp(game.world.fx_root, e.global_position + Vector3(0, 1.0 * e.height, 0), self, func():
 						if not dead:
+							Sfx.play("soul_return", -8.0)
 							life = minf(max_life, life + max_life * 0.025)
 							stats_changed.emit())
-			Sfx.play("hit" if any else "swing", -1.0, 0.7)
 			game.add_shake(0.12)
 		"wail":
 			var nd := 16.0 + level * 4.5 + (dmg_min + dmg_max) * 0.35
 			WraithFx.wail(game.world.fx_root, global_position, 7.0)
-			Sfx.play("nova", 0.0, 0.62)
-			Sfx.play("cry", -4.0, 1.5)
 			game.add_shake(0.4)
 			for e in game.enemies_near(global_position, 7.0):
 				e.take_damage(nd * (1.4 if buff_t > 0.0 else 1.0), 0.0, global_position, 2.2, false)
@@ -1222,7 +1256,8 @@ func _impact() -> void:
 		"host":
 			buff_t = 12.0
 			WraithFx.summon(game.world.fx_root, global_position)
-			Sfx.play("summon", 0.0, 1.3)
+			Sfx.play("host_summon")
+			Sfx.duck(-6.0, 1.0)
 			game.add_shake(0.25)
 			_clear_spirits()
 			for i in 3:
@@ -1244,14 +1279,14 @@ func _impact() -> void:
 						life = minf(max_life, life + dealt * ls / 100.0)
 					DemonFx.ignite(game.world.fx_root, e)
 					hit = true
-			Sfx.play("hit" if hit else "swing", 0.0, 0.75)
 			game.add_shake(0.15 if hit else 0.05)
 		"summon":
 			_summon_minion()
 		"pact":
 			buff_t = 12.0
 			DemonFx.pact(game.world.fx_root, global_position)
-			Sfx.play("cry", 0.0, 0.7)
+			Sfx.play("blood_pact")
+			Sfx.duck(-6.0, 1.2)
 			game.add_shake(0.3)
 			for m in minions:
 				if is_instance_valid(m):
@@ -1265,12 +1300,10 @@ func _impact() -> void:
 			n.global_position = global_position + Vector3(0, 1.3, 0) + dir * 0.6
 			n.look_at(n.global_position + dir, Vector3.UP)
 			bolts.append({"node": n, "dir": dir, "left": 15.0})
-			Sfx.play("fireball", -2.0, 0.7)
 		"shackles":
 			var root: Node3D = game.world.fx_root
 			WarlockFx.shackle_cast(root, global_position, 7.0)
-			Sfx.play("cry", -3.0, 0.6)
-			Sfx.play("slam", -6.0, 1.4)
+			Sfx.play("shackles")
 			game.add_shake(0.25)
 			for e in game.enemies_near(global_position, 7.0):
 				WarlockFx.chain(root, global_position + Vector3(0, 1.1, 0), e.global_position + Vector3(0, 0.8 * e.height, 0), 0.8)
@@ -1282,7 +1315,8 @@ func _impact() -> void:
 			buff_t = 12.0
 			covenant_t = 12.0
 			WarlockFx.covenant(game.world.fx_root, global_position)
-			Sfx.play("summon", 0.0, 0.7)
+			Sfx.play("covenant")
+			Sfx.duck(-9.0, 1.6)
 			game.add_shake(0.3)
 	stats_changed.emit()
 
@@ -1345,7 +1379,7 @@ func _drain_start(foe) -> void:
 	drain_sigil = WarlockFx.sigil(root, 1.25)
 	drain_sigil.global_position = global_position + Vector3(0, 0.06, 0)
 	drain_hum = Sfx.start_loop("drain_loop", -9.0)
-	Sfx.play("portal", -4.0, 0.55)
+	Sfx.play("drain_start", -3.0)
 	game.add_shake(0.08)
 
 func end_drain() -> void:
@@ -1431,7 +1465,7 @@ func _update_drain(delta: float) -> void:
 	drain_heal_t += 0.3
 	if drain_heal_t >= 0.9:
 		_show_drain_heal()
-	Sfx.play("drain", -9.0, randf_range(0.9, 1.1))
+	Sfx.play("drain_tick", -7.0)
 	stats_changed.emit()
 
 ## Redraws the beams each frame after the pose, so they leave the hand where it is now.
@@ -1512,7 +1546,7 @@ func _blight_burst(p: Vector3) -> void:
 	WarlockFx.blight_burst(root, g, 3.0)
 	var pool := WarlockFx.blight_pool(root, g, 3.0, 4.0)
 	blights.append({"node": pool, "pos": g, "t": 4.0, "tick": 0.5})
-	Sfx.play("nova", -2.0, 0.55)
+	Sfx.play_at("blight_burst", g, -1.0)
 	game.add_shake(0.18)
 	var nd := (14.0 + level * 4.0 + (dmg_min + dmg_max) * 0.35) * (1.4 if buff_t > 0.0 else 1.0)
 	for e in game.enemies_near(g, 3.0):
@@ -1559,7 +1593,7 @@ func _summon_minion() -> void:
 	var pos: Vector3 = game.world.move(global_position, fwd * 1.8)
 	pos.y = game.world.height_at(pos.x, pos.z)
 	DemonFx.summon_circle(game.world.fx_root, pos)
-	Sfx.play("summon", 0.0, 0.8)
+	Sfx.play("summon_demon")
 	game.add_shake(0.2)
 	var m := DemonMinion.new()
 	m.name = "Minion%d" % slot
@@ -1581,7 +1615,7 @@ func _phase_start() -> void:
 	phase_t = 6.0
 	game.set_underworld(true)
 	DemonFx.phase_tear(game.world.fx_root, global_position)
-	Sfx.play("portal", 0.0, 0.7)
+	Sfx.play("phase_in")
 	game.add_shake(0.2)
 
 func end_phase(erupt := true) -> void:
@@ -1593,7 +1627,8 @@ func end_phase(erupt := true) -> void:
 		game.set_underworld(false)
 		if erupt and not dead:
 			DemonFx.eruption(game.world.fx_root, global_position, 4.0)
-			Sfx.play("nova", 0.0, 0.8)
+			Sfx.play("phase_erupt")
+			Sfx.duck(-8.0, 1.0)
 			game.add_shake(0.4)
 			for e in game.enemies_near(global_position, 4.0):
 				_hit_enemy(e, 2.0, 2.0)
@@ -1625,7 +1660,8 @@ func _shadow_step(aim: Vector3) -> void:
 	p.y = game.world.height_at(p.x, p.z)
 	var root: Node3D = game.world.fx_root
 	WraithFx.shade_depart(root, start)
-	Sfx.play("portal", -2.0, 1.4)
+	Sfx.play_at("shade_out", start, -2.0)
+	Sfx.play("shade_in", -2.0)
 	global_position = p
 	path = PackedVector3Array()
 	moving = false
@@ -1642,7 +1678,7 @@ func _shadow_step(aim: Vector3) -> void:
 		if not is_instance_valid(self) or game.world == null:
 			return
 		WraithFx.shade_implode(game.world.fx_root, start)
-		Sfx.play("hit", -3.0, 0.6)
+		Sfx.play_at("shade_implode", start, -1.0)
 		for e in game.enemies_near(start, 2.6):
 			_hit_enemy(e, 0.9, 0.8))
 	# a quick cast pose so the re-forming reads on screen
@@ -1708,7 +1744,7 @@ func _update_spirits(delta: float) -> void:
 				if k >= 1.0:
 					_hit_enemy(tg, 0.55, 0.3)
 					WraithFx.spirit_hit(game.world.fx_root, to)
-					Sfx.play("hit", -6.0, 1.6)
+					Sfx.play_at("spirit_dart", to, -4.0)
 					s["state"] = "back"
 					s["t"] = 0.0
 			"back":
@@ -1732,7 +1768,8 @@ func _update_charge(delta: float) -> void:
 			charge_hit[e.get_instance_id()] = true
 			_hit_enemy(e, 1.3, 2.5)
 			e.stun(0.8)
-			Sfx.play("hit", 2.0, 0.8)
+			if charge_hit.size() == 1:
+				Sfx.play_at("charge_impact", e.global_position, 0.0)
 			Fx.sparks(game.world.fx_root, e.global_position + Vector3(0, 1.0, 0))
 	if charge_t > 0.5 or moved.length() < dist * 0.3:
 		charge_t = -1.0

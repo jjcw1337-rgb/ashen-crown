@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
+`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -73,7 +73,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `net.gd` | LAN co-op over ENet (UDP 24567, discovery 24568); RPC layer |
 | `ui.gd`, `hud_bar.gd`, `icon_renderer.gd` | All UI built in code |
 | `models.gd`, `skeleton.gd`, `flora.gd`, `props.gd`, `geo.gd`, `mats.gd` | Procedural meshes and shaders |
-| `weather.gd`, `fx.gd`, `sfx.gd` | Snow/ash, particles, synthesized audio (autoload `Sfx`) |
+| `weather.gd`, `fx.gd`, `sfx.gd`, `sfx_bank.gd` | Snow/ash, particles, audio (autoload `Sfx`: rendered sounds from `assets/audio/sfx/` listed in the generated `sfx_bank.gd`, with the old synthesized sounds as fallback) |
 
 ## Rules and gotchas
 
@@ -169,6 +169,16 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   the palisade, which repeats ~44 times); without the glbs simple log stand-ins are built. The camp is placed by
   rejection sampling round the courtyard (`Fort._camp`), Grubb's courtyard reuses `World._hoard_room`.
   `tools/fort_test.gd` checks it; `tools/zone_overview.gd -- out.png --fort` renders it from above.
+- **Sound**: effects are rendered offline by `tools/audio/make_sfx.py` (numpy synthesis in `tools/audio/dsp.py`; any
+  python3 with numpy, Blender's bundled python works: `/Applications/Blender.app/Contents/Resources/4.5/python/bin/python3.11`)
+  into `assets/audio/sfx/<name>_<take>.wav` (32 kHz, imported as QOA) and `scripts/sfx_bank.gd`. Each sound is a
+  function in `make_sfx.py` (layered: transient, body, tail; 1-5 takes); `--spectro dir` writes spectrograms to check
+  them by eye. `Sfx.play(name)` is heard flat (the hero's own skills, UI), `Sfx.play_at(name, pos)` is positional
+  (hits, monsters; AudioStreamPlayer3D, full volume at the camera's distance). Takes rotate, pitch is nudged, at most
+  three of one sound per 50 ms, buses SFX/UI/Music/Ambience with a limiter on Master, `Sfx.duck()` under big spells.
+  A cast spell's sound starts with the cast (`Hero._attack_sound`) so its payoff lands on the impact frame (0.3 s);
+  monster impacts, crit stings and kill sounds come from `Enemy._hit_sound`/`die_visual` by `Enemy.material()`.
+  `tools/sound_test.gd` checks every skill fires its sounds (`Sfx.counts`).
 - `UNLOCK_ALL_ACTS` in `game.gd` is a testing switch (also enables the F8 testing panel: `test_immortal`, `test_onehit`, `test_stamina`, `test_allskills` in `game.gd`, and a level setter, `Hero.set_level`); turn off for real playthroughs.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file).
