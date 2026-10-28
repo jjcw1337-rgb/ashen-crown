@@ -129,7 +129,12 @@ for s in (-1, 1):
     n = side_name[s]
     seg["sh" + n] = (S, E); seg["el" + n] = (E, Wr); seg["hand" + n] = (Wr, T)
     seg["leg" + n] = (Hp, K); seg["knee" + n] = (K, A)
-names = ["hips", "torso", "head", "sh_r", "el_r", "hand_r", "sh_l", "el_l", "hand_l", "leg_r", "knee_r", "leg_l", "knee_l", "hair1", "hair2"]
+# five hair locks (each a chain of three bones): azimuth of the lock's centre around the head
+# (0 = the face; A-pose coords, front is -y) and its name
+HAIR_LOCKS = [("hA", 1.2), ("hB", 2.1), ("hC", np.pi), ("hD", -2.1), ("hE", -1.2)]
+HAIR_Z = [1.66, 1.56, 1.46]          # heights of each lock's three joints
+hair_names = [f"{c}{k + 1}" for c, _ in HAIR_LOCKS for k in range(3)]
+names = ["hips", "torso", "head", "sh_r", "el_r", "hand_r", "sh_l", "el_l", "hand_l", "leg_r", "knee_r", "leg_l", "knee_l"] + hair_names
 idx = {n: i for i, n in enumerate(names)}
 
 def seg_dist(a, b):
@@ -160,9 +165,37 @@ take(headzone, "head")
 take(beard.astype(float), "head")
 h = hair.astype(float)
 take(h, "head")
-lower = sm(1.7 - z, 0.0, 0.08)
-take(h * lower * (1 - sm(1.5 - z, 0.0, 0.08)), "hair1")
-take(h * sm(1.5 - z, 0.0, 0.08), "hair2")
+# hanging hair: split into locks by azimuth (soft, so neighbouring locks blend) and down each lock's
+# chain by height; the scalp stays on the head
+az = np.arctan2(x, -(y - 0.01))
+mem = np.stack([np.exp(-((((az - ac) + np.pi) % (2 * np.pi) - np.pi) / 0.42) ** 2) for _, ac in HAIR_LOCKS], 1)
+mem /= np.maximum(mem.sum(1, keepdims=True), 1e-9)
+def seg_w(zz, top, bot, blend=0.025):
+    return sm(zz, bot - blend, bot + blend) * (1 - sm(zz, top - blend, top + blend))
+bands = [(9.0, HAIR_Z[0])] + [(HAIR_Z[k], HAIR_Z[k + 1] if k + 1 < 3 else -9.0) for k in range(3)]
+hw = np.stack([seg_w(z, t, b_) for t, b_ in bands], 1)          # head, bone1, bone2, bone3
+hw /= np.maximum(hw.sum(1, keepdims=True), 1e-9)
+hm = hair
+Wt[hm] = 0.0
+Wt[hm, idx["head"]] = hw[hm, 0]
+for ci, (c, _) in enumerate(HAIR_LOCKS):
+    for k in range(3):
+        Wt[hm, idx[f"{c}{k + 1}"]] = hw[hm, k + 1] * mem[hm, ci]
+Wt[hm] /= np.maximum(Wt[hm].sum(1, keepdims=True), 1e-9)
+# each lock's joints: the middle of its hair at each height
+lock_joints = {}
+for ci, (c, ac) in enumerate(HAIR_LOCKS):
+    sel_ = hm & (mem[:, ci] > 0.5)
+    pts = []
+    for zz in HAIR_Z + [HAIR_Z[-1] - 0.1]:
+        band_ = sel_ & (np.abs(z - zz) < 0.025)
+        if band_.sum() > 5:
+            pts.append(P[band_].mean(0))
+        else:
+            d = np.array([np.sin(ac), -np.cos(ac), 0.0])
+            pts.append(np.array([0, 0.01, zz]) + d * 0.1)
+    lock_joints[c] = pts
+print("hair locks", {c: int((hm & (mem[:, i] > 0.5)).sum()) for i, (c, _) in enumerate(HAIR_LOCKS)})
 
 # --- repose: arms straight down, legs straight (rotations about the joints)
 def rot_to(a, b):
@@ -203,7 +236,11 @@ for n in names:
     R, t = M[n]
     P2 += Wt[:, idx[n]][:, None] * (P @ R.T + t)
 newJ.update({"hips": np.array([0, 0, 0.95]), "torso": np.array([0, 0, 1.03]), "head": np.array([0, -0.005, 1.64]),
-             "hair1": np.array([0, 0.085, 1.68]), "hair2": np.array([0, 0.12, 1.5])})
+})
+for c, pts in lock_joints.items():
+    for k in range(3):
+        newJ[f"{c}{k + 1}"] = pts[k]
+    newJ[f"{c}tail"] = pts[3]
 
 # --- face +y (Godot -z): rotate 180 degrees about z
 flip = np.array([-1.0, -1.0, 1.0])
@@ -330,9 +367,11 @@ add_sandals()
 # --- armature
 parents = {"hips": None, "torso": "hips", "head": "torso", "sh_r": "torso", "el_r": "sh_r", "hand_r": "el_r",
            "sh_l": "torso", "el_l": "sh_l", "hand_l": "el_l", "leg_r": "hips", "knee_r": "leg_r", "leg_l": "hips", "knee_l": "leg_l",
-           "hair1": "head", "hair2": "hair1"}
-tails = {"hips": newJ["torso"], "torso": newJ["head"], "head": newJ["head"] + [0, 0, 0.2], "hair1": newJ["hair2"],
-         "hair2": newJ["hair2"] + [0, 0.02, -0.14]}
+           }
+tails = {"hips": newJ["torso"], "torso": newJ["head"], "head": newJ["head"] + [0, 0, 0.2]}
+for c, _ in HAIR_LOCKS:
+    parents[f"{c}1"] = "head"; parents[f"{c}2"] = f"{c}1"; parents[f"{c}3"] = f"{c}2"
+    tails[f"{c}1"] = newJ[f"{c}2"]; tails[f"{c}2"] = newJ[f"{c}3"]; tails[f"{c}3"] = newJ[f"{c}tail"]
 for n in ("_r", "_l"):
     tails["sh" + n] = newJ["el" + n]; tails["el" + n] = newJ["hand" + n]; tails["hand" + n] = newJ["tip" + n]
     tails["leg" + n] = newJ["knee" + n]; tails["knee" + n] = newJ["ankle" + n]

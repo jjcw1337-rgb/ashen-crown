@@ -9,6 +9,7 @@ func _run() -> void:
 	var out: String = args[0]
 	var close: bool = args.size() > 1 and args[1] == "close"
 	var side: bool = args.size() > 1 and args[1] == "side"
+	var back: bool = args.size() > 1 and args[1] == "back"
 	var root3 := Node3D.new()
 	get_root().add_child(root3)
 	var env := WorldEnvironment.new()
@@ -49,7 +50,7 @@ func _run() -> void:
 	for f in n:
 		var T := f * dt
 		var want := 0.0
-		if close or side or (T > 1.2 and T < 3.8):
+		if close or side or (T > 1.2 and T < 3.8 and not back) or (back and T > 1.5 and T < 4.0):
 			want = 4.4
 		spd = move_toward(spd, want, dt * 12.0)
 		var mv := spd / 3.8
@@ -57,8 +58,8 @@ func _run() -> void:
 		phase += dt * 9.5 * mv
 		Anim.pose(r, {"time": 2.0 + T, "phase": phase, "move": mv})
 		var c := r.position
-		var off := Vector3(1.0, 1.75, -1.3) if close else (Vector3(4.2, 1.3, -0.3) if side else Vector3(2.6, 2.1, -3.2))
-		cam.transform = Transform3D(Basis(), c + off).looking_at(c + Vector3(0, 1.45 if close else 1.05, 0))
+		var off := Vector3(1.0, 1.75, -1.3) if close else (Vector3(4.2, 1.3, -0.3) if side else (Vector3(1.3, 1.9, 1.9) if back else Vector3(2.6, 2.1, -3.2)))
+		cam.transform = Transform3D(Basis(), c + off).looking_at(c + Vector3(0, 1.45 if (close or back) else 1.05, 0))
 		await process_frame
 		await RenderingServer.frame_post_draw
 		get_root().get_texture().get_image().save_png("%s/c%03d.png" % [out, f])

@@ -14,12 +14,15 @@ var _last_pos := Vector3.ZERO
 var _last_t := 0
 var _vel := Vector3.ZERO
 var fixed_dt := 0.0         # tools set this to step the springs at a fixed rate
-var hair_bones: Array = []  # long-hair sway bones (the Meshy knight), top to bottom
+var hair_bones: Array = []  # long-hair lock bones (the Meshy knight): chains of three per lock
 var hair_rest: Array = []
-var hair_ang: Array = [0.0, 0.0]
-var hair_vel: Array = [0.0, 0.0]
-var hair_side: Array = [0.0, 0.0]
-var hair_side_vel: Array = [0.0, 0.0]
+var hair_key: Array = []    # per bone: [lock index, depth 0..2]
+var head_bone := -1
+var hair_ang: Array = []
+var hair_vel: Array = []
+var hair_side: Array = []
+var hair_side_vel: Array = []
+var _last_yaw := 0.0
 
 func sync() -> void:
 	if skel == null:
@@ -63,34 +66,60 @@ func sync() -> void:
 		skel.set_bone_pose_position(b, cape_rest[k])
 		skel.set_bone_pose_rotation(b, Quaternion.from_euler(Vector3(cape_ang[k], 0.0, cape_side[k])))
 
-## Long hair: two springs per bone (swing back/forward and side to side). Running streams it back
-## behind him, every footfall bounces it, turning and strafing swing it sideways, and a slow gusting
-## wind keeps it alive while he stands. Positive x rotation swings the hair forward (the rig faces -z).
+## Long hair, in locks: each lock is a chain of three bones, each bone its own pair of springs
+## (swing back/forward about x, side to side about z; positive x swings forward since the rig faces
+## -z). Running streams the locks back and flares the side locks out, every footfall bounces them,
+## turning swings them, and a gusting wind with per-lock timing keeps them alive when he stands.
+## The lower bones are looser, so the ends lag and overlap; back locks can't swing into his neck.
 var _hair_head_last := Vector3.ZERO
 var _hair_head_vy := 0.0
 func _sway_hair(fwd_speed: float, side_speed: float, t: float, dt: float) -> void:
-	# the head's vertical speed: a drop then a sudden stop (a footfall) kicks the hair
-	var hp: Vector3 = (proxy_of[2] as Node3D).global_position if proxy_of.has(2) else global_position
+	var n := hair_bones.size()
+	if hair_ang.size() != n:
+		hair_ang.resize(n); hair_ang.fill(0.0)
+		hair_vel.resize(n); hair_vel.fill(0.0)
+		hair_side.resize(n); hair_side.fill(0.0)
+		hair_side_vel.resize(n); hair_side_vel.fill(0.0)
+	var hp: Vector3 = skel.to_global(skel.get_bone_global_pose(head_bone).origin) if head_bone >= 0 else global_position
 	var vy := (hp.y - _hair_head_last.y) / dt
 	if _hair_head_last == Vector3.ZERO or absf(vy) > 20.0:
 		vy = 0.0
 	_hair_head_last = hp
 	var jolt := clampf(vy - _hair_head_vy, -2.0, 2.0)
 	_hair_head_vy = vy
+	var yaw := global_rotation.y
+	var yaw_v := wrapf(yaw - _last_yaw, -PI, PI) / dt
+	_last_yaw = yaw
+	if absf(yaw_v) > 30.0:
+		yaw_v = 0.0
 	var run := clampf(fwd_speed / 4.5, -0.4, 1.2)
-	for k in hair_bones.size():
-		var gust := (sin(t * 1.3 + k * 0.7) * 0.6 + sin(t * 2.9 + 1.7) * 0.4) * (0.5 + 0.5 * sin(t * 0.31))
-		var target := -run * (0.42 if k == 0 else 0.3) - gust * 0.06 * (1.0 - clampf(run, 0.0, 1.0) * 0.5)
-		var stiff := 26.0 - k * 7.0
-		var damp := 4.2 - k * 1.0
-		hair_vel[k] += jolt * (1.2 if k == 0 else 1.6) * clampf(absf(run) + 0.2, 0.0, 1.0)
-		var acc: float = (target - hair_ang[k]) * stiff - hair_vel[k] * damp
-		hair_vel[k] += acc * dt
-		hair_ang[k] = clampf(hair_ang[k] + hair_vel[k] * dt, -0.62 if k == 0 else -0.45, 0.3)
-		var st := clampf(side_speed * 0.09, -0.35, 0.35) + sin(t * 1.7 + k * 1.3) * 0.035 + sin(t * 5.6 + k) * 0.03 * clampf(run, 0.0, 1.0)
-		var acc2: float = (st - hair_side[k]) * stiff - hair_side_vel[k] * damp
-		hair_side_vel[k] += acc2 * dt
-		hair_side[k] += hair_side_vel[k] * dt
-		var b: int = hair_bones[k]
-		skel.set_bone_pose_position(b, hair_rest[k])
-		skel.set_bone_pose_rotation(b, Quaternion.from_euler(Vector3(hair_ang[k], 0.0, hair_side[k])))
+	var calm := 1.0 - clampf(run, 0.0, 1.0) * 0.5
+	for i in n:
+		var lock: int = hair_key[i][0]
+		var d: int = hair_key[i][1]
+		var rest: Vector3 = hair_rest[i]
+		var root_x: float = (hair_rest[i - d] as Vector3).x
+		var side_lock := absf(root_x) > 0.09 and (hair_rest[i - d] as Vector3).z < 0.0
+		var out_sign := signf(root_x) if absf(root_x) > 0.02 else 0.0
+		var ph := float(lock) * 1.9
+		var gust := (sin(t * 1.25 + ph) * 0.6 + sin(t * 2.7 + ph * 1.3) * 0.4) * (0.55 + 0.45 * sin(t * 0.29 + 0.7))
+		var flutter := sin(t * (3.2 + d * 1.7) + ph * 2.3 + d) * (0.012 + d * 0.012)
+		var tx := -run * (0.2 + d * 0.05) - gust * 0.035 * calm - flutter * calm
+		var stiff := 34.0 - d * 9.0
+		var damp := 4.6 - d * 1.1
+		hair_vel[i] += jolt * (0.9 + d * 0.5) * clampf(absf(run) + 0.2, 0.0, 1.0)
+		var acc: float = (tx - hair_ang[i]) * stiff - hair_vel[i] * damp
+		hair_vel[i] += acc * dt
+		var fwd_lim := 0.22 if side_lock else 0.06
+		hair_ang[i] = clampf(hair_ang[i] + hair_vel[i] * dt, -0.5, fwd_lim)
+		var tz := clampf(side_speed * 0.05 - yaw_v * 0.035, -0.25, 0.25) * (0.6 + d * 0.3)
+		tz += out_sign * clampf(run, 0.0, 1.0) * (0.06 + d * 0.03) * (1.0 if side_lock else 0.4)
+		tz += sin(t * (2.1 + d) + ph * 1.7) * (0.015 + d * 0.01) * calm
+		var acc2: float = (tz - hair_side[i]) * stiff - hair_side_vel[i] * damp
+		hair_side_vel[i] += acc2 * dt
+		hair_side[i] = clampf(hair_side[i] + hair_side_vel[i] * dt, -0.4, 0.4)
+		if out_sign != 0.0 and hair_side[i] * out_sign < -0.08:
+			hair_side[i] = -0.08 * out_sign      # never swing a lock in through the head or neck
+		var b: int = hair_bones[i]
+		skel.set_bone_pose_position(b, rest)
+		skel.set_bone_pose_rotation(b, Quaternion.from_euler(Vector3(hair_ang[i], 0.0, hair_side[i])))
