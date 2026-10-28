@@ -1,7 +1,7 @@
 extends SceneTree
 ## Preview clip of the right-click combo (swipe1 -> swipe2 -> swipe3) on the Meshy knight, chained the
 ## way Hero does it (each swipe cut at 68% into the next), with the step-in and a sword trail.
-## Needs a display (xvfb). Usage: -- outdir [bare|armored] [view: game|side|front]
+## Needs a display (xvfb). Usage: -- outdir [bare|armored] [view: game|side|front] [judgment]
 func _initialize():
 	_run()
 
@@ -67,6 +67,9 @@ func _run() -> void:
 	for k in ["swipe1", "swipe2", "swipe3"]:
 		var L: Array = H.SWIPE_LUNGE[k]
 		plan.append([k, H.SWIPE_DUR[k], 1.0 if k == "swipe3" else 0.68, L[2], [L[0], L[1]]])
+	if args.has("judgment"):    # the knight's Q instead of the combo
+		var LC: Array = H.SWIPE_LUNGE["cleave"]
+		plan = [["cleave", 0.95, 1.0, LC[2], [LC[0], LC[1]]]]
 	var seq: Array = []    # per frame: [style, a]
 	for k in 2:
 		for p in plan:
@@ -87,6 +90,10 @@ func _run() -> void:
 			var f0 := clampf((a0 - L[0]) / (L[1] - L[0]), 0.0, 1.0)
 			var f1 := clampf((a - L[0]) / (L[1] - L[0]), 0.0, 1.0)
 			r.position += fdir * (smoothstep(0.0, 1.0, f1) - smoothstep(0.0, 1.0, f0)) * float(s[2][3])
+		if st == "cleave" and prev_a < 0.5 and a >= 0.5:    # Judgment's impact effects, as in Hero._impact
+			var fw := -r.global_transform.basis.z
+			var at := r.global_position + fw * 1.25
+			Fx.holy_slam(root3, at, 2.6)
 		prev_a = a
 		prev_style = st
 		Anim.pose(r, {"time": 2.0 + f * dt, "phase": 0.0, "move": 0.0, "atk": a, "style": st if st != "" else "over"})

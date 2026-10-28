@@ -25,6 +25,7 @@ static func impact_at(style: String) -> float:
 		"swipe1": return 0.4
 		"swipe2": return 0.42
 		"swipe3": return 0.47
+		"cleave": return 0.5
 		"bow": return 0.72
 		"cast": return 0.55
 		"claw": return 0.45
@@ -272,6 +273,34 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 				shl.z += kf(a, [[0, -0.5], [0.3, -0.85], [0.62, -0.8], [0.8, -0.3], [1, 0.0]])
 				ell += kf(a, [[0, 0.3], [0.3, 0.5], [0.8, 0.3], [1, 0.0]])
 				head_x = kf(a, [[0, -0.15], [0.2, 0.15], [0.7, 0.22], [1, 0.0]])
+			"cleave":
+				# Judgment (the knight's Q): a leaping slam. He sinks into a crouch with the sword drawn back,
+				# springs up and forward with the blade raised high over his head and his back arched, then
+				# drives it down with everything as he lands, dropping into a deep lunge as the blade hits
+				# the ground in front of him; he holds the blow a moment, then rises back to the guard
+				swiping = true
+				shr.x = kf(a, [[0, 0.3], [0.18, 0.9], [0.36, 3.25], [0.44, 2.6], [0.5, 0.75], [0.72, 0.7], [1, 0.3]])
+				shr.y = kf(a, [[0, 0.0], [0.18, -0.6], [0.36, 0.1], [0.5, 0.25], [0.72, 0.2], [1, 0.0]])
+				shr.z = kf(a, [[0, 0.1], [0.18, 0.4], [0.36, 0.25], [0.5, -0.1], [1, 0.1]])
+				elr = kf(a, [[0, 0.4], [0.18, 1.2], [0.36, 1.55], [0.44, 0.9], [0.5, 0.05], [0.72, 0.1], [1, 0.4]])
+				grip_p = kf(a, [[0, 0.0], [0.18, 0.6], [0.36, 0.95], [0.44, 0.3], [0.5, -0.75], [0.72, -0.65], [1, 0.0]])
+				# the shield arm swings up with the leap and drives down beside the blow
+				shl.x += kf(a, [[0, 0.0], [0.18, -0.3], [0.36, 1.8], [0.5, 0.7], [0.72, 0.6], [1, 0.0]])
+				shl.z += kf(a, [[0, 0.0], [0.36, -0.35], [0.5, -0.2], [1, 0.0]])
+				ell += kf(a, [[0, 0.0], [0.36, 0.6], [0.5, 0.9], [1, 0.0]])
+				# crouch, spring, hang in the air, land hard and sink into the blow
+				hy += kf(a, [[0, 0.0], [0.18, -0.17], [0.26, 0.12], [0.36, 0.42], [0.44, 0.3], [0.5, -0.24], [0.56, -0.28], [0.72, -0.24], [0.88, -0.06], [1, 0.0]]) * h
+				tx += kf(a, [[0, 0.0], [0.18, -0.3], [0.36, 0.3], [0.44, 0.15], [0.5, -0.62], [0.72, -0.55], [1, 0.0]])
+				ty += kf(a, [[0, 0.0], [0.18, -0.25], [0.36, 0.0], [0.5, 0.12], [1, 0.0]])
+				hz = kf(a, [[0, 0.0], [0.18, 0.08], [0.5, -0.12], [0.72, -0.12], [1, 0.0]]) * h
+				hip_turn = kf(a, [[0, 0.0], [0.18, -0.25], [0.4, 0.0], [0.5, 0.15], [1, 0.0]])
+				# legs: crouch, push off straight, tuck in the air, land in a deep lunge (left foot forward,
+				# right knee nearly down)
+				knee_l -= kf(a, [[0, 0.0], [0.18, 1.0], [0.26, 0.15], [0.36, 1.1], [0.44, 0.7], [0.5, 1.05], [0.72, 1.0], [0.9, 0.3], [1, 0.0]])
+				knee_r -= kf(a, [[0, 0.0], [0.18, 1.0], [0.26, 0.1], [0.36, 1.25], [0.44, 0.9], [0.5, 1.4], [0.72, 1.35], [0.9, 0.35], [1, 0.0]])
+				leg_l += kf(a, [[0, 0.0], [0.18, 0.55], [0.26, 0.05], [0.36, 0.75], [0.5, 0.85], [0.72, 0.8], [0.9, 0.25], [1, 0.0]])
+				leg_r += kf(a, [[0, 0.0], [0.18, 0.45], [0.26, -0.2], [0.36, 0.5], [0.5, -0.45], [0.72, -0.4], [0.9, -0.1], [1, 0.0]])
+				head_x = kf(a, [[0, 0.0], [0.18, 0.15], [0.36, -0.25], [0.5, 0.35], [0.72, 0.3], [1, 0.0]])
 			"bow":
 				shl.x = kf(a, [[0, 0.2], [0.25, 1.55], [0.85, 1.55], [1, 0.2]])
 				shl.z = kf(a, [[0, -0.1], [0.25, 0.2], [0.85, 0.2], [1, -0.1]])

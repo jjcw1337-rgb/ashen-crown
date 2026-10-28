@@ -95,6 +95,58 @@ static func ring(root: Node3D, pos: Vector3, radius: float, col: Color, dur: flo
 	_free_later(mi, dur + 0.05)
 	flash(root, pos + Vector3(0, 1, 0), col, 3.0, dur, radius * 1.5)
 
+## Judgment (the knight's Q) striking the ground: a white explosion. A blinding core and a white
+## dome that swell and fade, shafts of light thrown out flat all round, two white shockwaves racing
+## along the ground, a spray of white-hot sparks, glowing motes that hang in the air, and dust.
+static func holy_slam(root: Node3D, pos: Vector3, radius: float) -> void:
+	var white := Color(1.0, 0.98, 0.92)
+	flash(root, pos + Vector3(0, 0.9, 0), white, 9.0, 0.4, radius * 2.6)
+	# blinding core, then the dome swelling out past it
+	for spec in [[0.1, radius * 0.22, 0.14, 6.0], [0.2, radius * 0.45, 0.24, 3.0]]:
+		var mi := MeshInstance3D.new()
+		mi.mesh = Geo.sph(1.0, 20, 0.62 if spec[3] < 4.0 else 1.0)
+		var m := Mats.glow_unique(white, spec[3], 0.0, 0.0)
+		mi.material_override = m
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(mi)
+		mi.global_position = pos
+		mi.scale = Vector3.ONE * float(spec[0])
+		var tw := mi.create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(mi, "scale", Vector3.ONE * float(spec[1]), spec[2]).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+		tw.tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 1.0, 0.0, spec[2]).set_ease(Tween.EASE_IN)
+		_free_later(mi, float(spec[2]) + 0.05)
+	# shafts of light: thin white blades thrown out flat in every direction, each its own length
+	var n := 14
+	for k in n:
+		var ray := MeshInstance3D.new()
+		ray.mesh = Geo.box(0.12, 0.03, 1.0)
+		var rm := Mats.glow_unique(white, 6.0, 0.0, 0.0)
+		ray.material_override = rm
+		ray.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var pivot := Node3D.new()
+		root.add_child(pivot)
+		pivot.global_position = pos + Vector3(0, 0.15, 0)
+		pivot.rotation = Vector3(-randf_range(0.05, 0.35), TAU * (k + randf_range(-0.3, 0.3)) / n, 0)
+		pivot.add_child(ray)
+		var L := radius * randf_range(0.7, 1.15)
+		ray.position = Vector3(0, 0, -0.05)
+		ray.scale = Vector3(1, 1, 0.05)
+		var d := randf_range(0.22, 0.32)
+		var tw2 := ray.create_tween()
+		tw2.set_parallel(true)
+		tw2.tween_property(ray, "scale", Vector3(0.5, 1, L), d).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
+		tw2.tween_property(ray, "position", Vector3(0, 0, -L * 0.55), d).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
+		tw2.tween_method(func(v: float): rm.set_shader_parameter("alpha_mul", v), 1.0, 0.0, d)
+		_free_later(pivot, d + 0.05)
+	# shockwaves along the ground: a fast tight one and a wide soft one
+	ring(root, pos, radius * 0.75, white, 0.22, 0.08)
+	ring(root, pos, radius * 1.3, Color(1.0, 0.96, 0.85), 0.45, 0.12)
+	# white-hot sparks flung out and up, slow glowing motes left hanging, pale dust
+	burst(root, pos + Vector3(0, 0.25, 0), white, 48, 9.0, 0.06, 0.45, true, -9.0, 75.0, Vector3.UP)
+	burst(root, pos + Vector3(0, 0.5, 0), Color(1.0, 1.0, 1.0, 0.9), 26, 2.2, 0.12, 1.1, true, 0.6, 90.0, Vector3.UP)
+	burst(root, pos + Vector3(0, 0.15, 0), Color(0.82, 0.8, 0.76, 0.55), 30, 4.0, 0.3, 0.8, false, -2.5, 85.0, Vector3.UP)
+
 ## A red disc that fills over `dur` seconds to warn of an incoming area attack.
 static func telegraph(root: Node3D, pos: Vector3, radius: float, dur: float, col := Color(1.0, 0.15, 0.05)) -> void:
 	var outer := MeshInstance3D.new()

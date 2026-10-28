@@ -110,7 +110,7 @@ var combo_t := 0.0
 # right-click combo: three swipes (forehand, rising backhand, spinning finisher)
 const SWIPES := ["swipe1", "swipe2", "swipe3"]
 const SWIPE_DUR := {"swipe1": 0.56, "swipe2": 0.58, "swipe3": 0.9}
-const SWIPE_LUNGE := {"swipe1": [0.22, 0.44, 0.5], "swipe2": [0.2, 0.46, 0.55], "swipe3": [0.18, 0.64, 0.5]}  # from, to, metres
+const SWIPE_LUNGE := {"swipe1": [0.22, 0.44, 0.5], "swipe2": [0.2, 0.46, 0.55], "swipe3": [0.18, 0.64, 0.5], "cleave": [0.2, 0.5, 1.9]}  # from, to, metres
 var swipe_n := 0
 var swipe_idle := 0.0
 var swipe_q := false
@@ -732,7 +732,7 @@ func use_skill(id: String, aim: Vector3) -> bool:
 	_face(aim - global_position)
 	match id:
 		"cleave":
-			_start_attack("side", "cleave")
+			_start_attack("cleave", "cleave")
 		"nova":
 			_start_attack("cast", "nova")
 			atk_dur = 0.55
@@ -808,8 +808,10 @@ func _start_attack(style: String, skill := "") -> void:
 	atk_dur = 0.62 / aspd
 	if SWIPE_DUR.has(style) and skill == "":
 		atk_dur = SWIPE_DUR[style] / aspd
-	if skill == "cleave" or skill == "reap" or skill == "hellclaw":
+	if skill == "reap" or skill == "hellclaw":
 		atk_dur = 0.7 / aspd
+	elif skill == "cleave":
+		atk_dur = 0.95 / aspd      # Judgment: crouch, leap, slam, hold the blow, rise
 	impact_done = false
 	trail_pts.clear()
 	trail_col = Color(1.0, 0.85, 0.5) if skill == "cleave" else Color(0.85, 0.9, 1.0)
@@ -1260,7 +1262,7 @@ func _update_attack(delta: float) -> void:
 	atk_t += delta
 	var a := atk_t / atk_dur
 	var swipe := atk_skill == "" and SWIPE_LUNGE.has(atk_style)
-	if swipe:
+	if swipe or (atk_skill == "cleave" and atk_style == "cleave"):
 		_swipe_lunge(a0, a)
 	if not impact_done and a >= Anim.impact_at(atk_style):
 		impact_done = true
@@ -1306,15 +1308,22 @@ func _impact() -> void:
 					Fx.sparks(game.world.fx_root, best.global_position + Vector3(0, 1.1 * best.height, 0), Color(1.0, 0.75, 0.4))
 					hit_any = true
 		"cleave":
+			# Judgment: the slam lands just ahead; everything around the blow is hit and thrown back
+			var at := global_position + fwd * 1.25
+			at.y = game.world.height_at(at.x, at.z)
 			var any := false
-			for e in game.enemies_near(global_position, 3.4):
-				var to: Vector3 = e.global_position - global_position
+			for e in game.enemies_near(at, 3.6):
+				var to: Vector3 = e.global_position - at
 				to.y = 0
-				if to.length() < 0.5 or fwd.dot(to.normalized()) > cos(deg_to_rad(75.0)):
-					_hit_enemy(e, 1.6, 0.5)
-					Fx.sparks(game.world.fx_root, e.global_position + Vector3(0, 1.0, 0), Color(1.0, 0.8, 0.4))
+				if to.length() - e.radius <= 2.6:
+					_hit_enemy(e, 1.6, 0.6)     # knocked back a little
+					if is_instance_valid(e) and not e.dead:
+						e.stun(1.0)
+					Fx.sparks(game.world.fx_root, e.global_position + Vector3(0, 1.0, 0), Color(1.0, 0.97, 0.9))
 					any = true
-			Fx.burst(game.world.fx_root, global_position + fwd * 1.6 + Vector3(0, 0.3, 0), Color(0.7, 0.6, 0.45, 0.6), 18, 3.0, 0.25, 0.6, false, -2.0, 70.0, Vector3.UP)
+			Fx.holy_slam(game.world.fx_root, at, 2.6)
+			game.add_shake(0.5 if any else 0.32)
+			game.hitstop(0.09 if any else 0.04)
 		"nova":
 			var nd := 18.0 + level * 5.0 + (dmg_min + dmg_max) * 0.4
 			Fx.ring(game.world.fx_root, global_position, 7.0, Color(1.0, 0.75, 0.3), 0.5)
