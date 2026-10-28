@@ -42,7 +42,8 @@ func _run() -> void:
 	var life0: float = h.life
 	var ok: bool = h.use_skill("drain", best.global_position)
 	await create_timer(0.5).timeout
-	print("[W] drain ok=%s channel=%s main=%s victims=%d (pack of %d) beams=%d light=%s" % [ok, h.drain_t >= 0.0, h.drain_main == best, h._drain_victims().size(), bn, h.drain_beams.size(), h.drain_light != null])
+	# main: latched onto the pack that was aimed at (the facing assist may pick any of it)
+	print("[W] drain ok=%s channel=%s main=%s victims=%d (pack of %d) beams=%d light=%s" % [ok, h.drain_t >= 0.0, h.drain_main != null and (h.drain_main == best or (h.drain_main as Node3D).global_position.distance_to(best.global_position) < 5.5), h._drain_victims().size(), bn, h.drain_beams.size(), h.drain_light != null])
 	print("[W] can_act while channelling: ", h.can_act())
 	var lit := func():
 		return g.world.get_node("Enemies").get_children().filter(func(e): return e._drained).size()

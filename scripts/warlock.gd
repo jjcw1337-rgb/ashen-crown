@@ -20,10 +20,12 @@ const GNOME := {"glb": "res://assets/models/gnome_warlock.glb", "scale": 1.55, "
 
 ## The gnome's robes and hat, recoloured from the model's dark green (it vanished against grass).
 const CLOAK := Color(0.36, 0.1, 0.5)
-## The black horns on his hat, recoloured (only above the brim, so boots and belt stay black).
-const HORNS := Color(0.75, 0.06, 0.04)
-## His glowing footprints.
-const PRINT := Color(0.35, 1.0, 0.3)
+## The black horns on his hat, recoloured fel green with a faint glow (only above the brim, so boots
+## and belt stay black); smoke curls off their tips (HORN_TIPS, in the model's space).
+const HORNS := Color(0.3, 0.9, 0.2)
+const HORN_TIPS := [Vector3(0.15, 0.99, -0.076), Vector3(-0.15, 0.99, -0.076)]
+## His pixie-dust trail.
+const DUST := Color(0.3, 1.0, 0.2)
 
 const FEL := Color(0.35, 1.0, 0.3)
 const PALE := Color(0.8, 1.0, 0.7)
@@ -195,6 +197,10 @@ static func _build_gnome(g: Dictionary) -> Node3D:
 	Models.P(book, Geo.sph(0.018, 8), sig, Vector3(0.01, 0.034, 0))
 	book.add_child(fel_flame(0.35, fel, true))
 	root.set_meta("fel_mats", mats)
+	root.set_meta("dust", _dust_trail(root))
+	var hat_at: Vector3 = GNOME["layout"]["hat"][1]
+	for tip: Vector3 in HORN_TIPS:
+		(J["hat"] as Node3D).add_child(_horn_smoke(tip - hat_at))
 	root.set_meta("warlock_anim", {"book": book, "flame": flame, "energy": mats.map(func(m): return float(m.get_shader_parameter("energy"))), "power": 0.0,
 		"book_at": Vector3(-0.44, 0.7, 0.14)})
 	return root
@@ -274,6 +280,7 @@ void fragment() {
 	vec3 th = rgb2hsv(horns);
 	col = mix(col, hsv2rgb(vec3(th.x, th.y, max(h.z * 3.5, th.z * 0.35))), horn);
 	ALBEDO = col;
+	EMISSION = hsv2rgb(vec3(th.x, th.y, 0.6)) * horn * 0.3;
 	vec3 orm = texture(orm_tex, UV).rgb;
 	ROUGHNESS = orm.g;
 	METALLIC = orm.b;
@@ -395,36 +402,110 @@ static func _gnome_sway(root: Node3D, t: float, move: float, phase := 0.0, free 
 		el.rotation = el.rotation.lerp(Vector3(0.2 + 0.15 * wave, 0.0, 0.0), hold)
 	if root.has_method("sync"):
 		root.sync()
-	_footprint(root, D, phase, move)
+	if root.has_meta("dust"):
+		var dust: GPUParticles3D = root.get_meta("dust")
+		dust.emitting = move > 0.25
+		(dust.get_child(0) as GPUParticles3D).emitting = dust.emitting
 
-## A glowing green footprint where each foot lands; it fades away by the next step or two.
-static func _footprint(root: Node3D, D: Dictionary, phase: float, move: float) -> void:
-	var step := int(floorf(phase / PI))
-	var last: int = D.get("step", step)
-	D["step"] = step
-	if step == last or move < 0.25 or not root.is_inside_tree():
-		return
-	var J: Dictionary = root.get_meta("j")
-	var knee: Node3D = J["knee_l"] if step % 2 == 0 else J["knee_r"]
-	var host := root.get_parent() as Node3D
-	var at: Vector3 = knee.global_position
-	at.y = (host.global_position.y if host != null else 0.0) + 0.015
-	var fwd := -root.global_transform.basis.z
-	fwd.y = 0.0
-	fwd = fwd.normalized()
-	var p := Node3D.new()
-	# in the world, not on the walker, so the print stays where it was left
-	var holder: Node = host.get_parent() if host != null and host.get_parent() != null else root
-	holder.add_child(p)
-	p.global_position = at + fwd * 0.04
-	p.rotation.y = atan2(-fwd.x, -fwd.z)
-	var m := Mats.glow_unique(PRINT, 2.2)
-	# a curled gnome boot: heel, sole and a pointed toe hooking to one side
-	var side := 1.0 if step % 2 == 0 else -1.0
-	for part in [[Vector3(0, 0, 0.07), 0.05, Vector3(1.0, 0.05, 1.0)], [Vector3(0, 0, -0.03), 0.06, Vector3(0.9, 0.05, 1.3)],
-			[Vector3(side * 0.03, 0, -0.13), 0.035, Vector3(0.9, 0.05, 1.4)]]:
-		var mi := Models.P(p, Geo.sph(part[1], 12), m, part[0], Vector3.ZERO, part[2])
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var tw := p.create_tween()
-	tw.tween_method(func(e: float): m.set_shader_parameter("energy", e), 2.2, 0.0, 0.9).set_ease(Tween.EASE_IN)
-	tw.tween_callback(p.queue_free)
+## A thin wisp of green-grey smoke rising off a horn tip (shed in the world, so it trails as he moves).
+static func _horn_smoke(at: Vector3) -> GPUParticles3D:
+	var p := GPUParticles3D.new()
+	p.name = "HornSmoke"
+	p.position = at
+	p.amount = 34
+	p.lifetime = 1.7
+	p.local_coords = false
+	p.visibility_aabb = AABB(Vector3(-3, -1, -3), Vector3(6, 5, 6))
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	pm.emission_sphere_radius = 0.012
+	pm.direction = Vector3(0, 1, 0)
+	pm.spread = 14.0
+	pm.initial_velocity_min = 0.1
+	pm.initial_velocity_max = 0.22
+	pm.gravity = Vector3(0, 0.12, 0)
+	pm.damping_min = 0.2
+	pm.damping_max = 0.5
+	pm.angle_min = -180.0
+	pm.angle_max = 180.0
+	pm.angular_velocity_min = -40.0
+	pm.angular_velocity_max = 40.0
+	var sc := Curve.new()
+	sc.add_point(Vector2(0.0, 0.25))
+	sc.add_point(Vector2(1.0, 1.0))
+	var sct := CurveTexture.new()
+	sct.curve = sc
+	pm.scale_curve = sct
+	var g := Gradient.new()
+	g.set_color(0, Color(0.55, 0.95, 0.45, 0.0))
+	g.add_point(0.1, Color(0.45, 0.9, 0.35, 0.75))
+	g.add_point(0.55, Color(0.4, 0.55, 0.38, 0.45))
+	g.set_color(g.get_point_count() - 1, Color(0.3, 0.36, 0.3, 0.0))
+	var gt := GradientTexture1D.new()
+	gt.gradient = g
+	pm.color_ramp = gt
+	p.process_material = pm
+	var q := QuadMesh.new()
+	q.size = Vector2(0.16, 0.16)
+	q.material = Mats.particle_mat(false)
+	p.draw_pass_1 = q
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return p
+
+## Green pixie dust that streams off him as he runs: it is shed in the world (not carried along), so it
+## trails out behind, twinkles as it drifts up and fades within a second and a half.
+static func _dust_trail(root: Node3D) -> GPUParticles3D:
+	var p := GPUParticles3D.new()
+	p.name = "Dust"
+	p.amount = 320
+	p.lifetime = 1.6
+	p.local_coords = false
+	p.emitting = false
+	p.position = Vector3(0, 0.3, 0.18)
+	p.visibility_aabb = AABB(Vector3(-6, -2, -6), Vector3(12, 6, 12))
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	pm.emission_sphere_radius = 0.2
+	pm.direction = Vector3(0, 1, 0)
+	pm.spread = 70.0
+	pm.initial_velocity_min = 0.15
+	pm.initial_velocity_max = 0.6
+	pm.gravity = Vector3(0, 0.25, 0)
+	pm.damping_min = 0.6
+	pm.damping_max = 1.2
+	pm.scale_min = 0.6
+	pm.scale_max = 1.8
+	var sc := Curve.new()
+	sc.add_point(Vector2(0.0, 0.3))
+	sc.add_point(Vector2(0.15, 1.0))
+	sc.add_point(Vector2(1.0, 0.0))
+	var sct := CurveTexture.new()
+	sct.curve = sc
+	pm.scale_curve = sct
+	var g := Gradient.new()
+	g.set_color(0, Color(0.55, 1.0, 0.35, 1.0))
+	g.add_point(0.25, Color(DUST.r, DUST.g, DUST.b, 1.0))
+	g.set_color(g.get_point_count() - 1, Color(0.05, 0.6, 0.15, 0.0))
+	var gt := GradientTexture1D.new()
+	gt.gradient = g
+	pm.color_ramp = gt
+	pm.hue_variation_min = -0.04
+	pm.hue_variation_max = 0.06
+	p.process_material = pm
+	var q := QuadMesh.new()
+	q.size = Vector2(0.1, 0.1)
+	q.material = Mats.particle_mat(true, Color(1.3, 2.8, 1.0))
+	p.draw_pass_1 = q
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(p)
+	# a second, sparser pass of bigger motes for the twinkle
+	var big := p.duplicate() as GPUParticles3D
+	big.name = "DustGlints"
+	big.amount = 40
+	var bq := QuadMesh.new()
+	bq.size = Vector2(0.2, 0.2)
+	bq.material = Mats.particle_mat(true, Color(0.7, 1.7, 0.5))
+	big.draw_pass_1 = bq
+	p.add_child(big)
+	big.position = Vector3.ZERO
+	return p

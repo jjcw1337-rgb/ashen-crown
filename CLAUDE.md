@@ -117,6 +117,10 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   limb's rest down the limb so the hero's animation hangs it naturally. A player model also needs `grip_r`/`grip_l`/
   `mount_l`/`chest` anchors (weapons, shields, amulets; scaled for his size) and a `stride` meta (short legs step faster).
   `tools/gnome_anim.gd` renders a contact sheet of his motion.
+  His look extras live in `warlock.gd`: purple cloak and green glowing hat horns (`cloak_mat`, a vertex mask on the hat),
+  horn-tip smoke (`_horn_smoke`), the pixie-dust trail while moving (`_dust_trail`, world-space GPU particles),
+  the hopping hat and the weapon held high when running (`_gnome_sway`). `tools/gnome_run.gd` and
+  `tools/gnome_clip.gd` (movie writer) preview them.
   `tools/model_preview.gd` stages any candidate .glb in the vault for screenshots; `tools/goblin_anim.gd` renders a
   contact sheet of his motion. `tools/blender/grubb.py` (+ `grubb_gear.py`) is the earlier fully scripted Blender
   build, kept as a reference; its export isn't used. Godot's `.import` files and extracted textures under

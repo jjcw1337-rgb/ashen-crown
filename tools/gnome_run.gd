@@ -1,6 +1,6 @@
 extends SceneTree
 ## The gnome Warlock running past the camera, one row of frames over a couple of strides: his
-## footprints trail behind him, the hat hops and the weapon waves overhead. A second row is a
+## pixie dust trails behind him, the hat hops and the weapon waves overhead. A second row is a
 ## close-up of the hat (red horns). Usage: -- out.png [cols]
 const CELL := 330
 
