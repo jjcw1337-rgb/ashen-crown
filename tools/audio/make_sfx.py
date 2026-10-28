@@ -27,9 +27,10 @@ SOUNDS = {}   # name -> (fn, takes, bus, rms_db)
 # The mix (after the first pass was "a little too synthy and too loud"): every sound lands LEVEL dB under
 # its own target and never louder than CEIL, so stacked spells don't pile up; rooms are shorter and drier
 # than each sound's space() asks for (TAIL scales the size, WET the mix), so sounds end tight.
-LEVEL, CEIL = -3.0, -17.0
-LOUD = -12.5   # dB: the loudest 100 ms of any sound stays under this (what the ear hears as "loud")
-TAIL, WET = 0.6, 0.6
+LEVEL, CEIL = -5.0, -19.0
+LOUD = -14.5   # dB: the loudest 100 ms of any sound stays under this (what the ear hears as "loud")
+TAIL, WET = 0.6, 0.5
+THUMP = 0.5   # the low thud under hits and spells: a felt weight, not a sound of its own
 _space = space
 
 
@@ -69,11 +70,11 @@ def thump(rng, f0, f1, dur, decay=14.0, click=0.4):
     n = n_of(dur)
     t = t_axis(n)
     f = f1 + (f0 - f1) * np.exp(-t * 18.0)
-    body = sine(f) * env_exp(n, decay, 0.001)
+    body = sine(f) * env_exp(n, decay * 1.5, 0.001)
     thud = lowpass(brown(n, rng), f0 * 2.0, 3)
-    thud = thud / (np.max(np.abs(thud)) + 1e-9) * env_exp(n, decay * 1.6, 0.001)
+    thud = thud / (np.max(np.abs(thud)) + 1e-9) * env_exp(n, decay * 2.2, 0.001)
     clk = highpass(white(n, rng), 1500) * env_exp(n, 220.0, 0.0005) * click
-    return body * 0.7 + thud * 0.55 + clk
+    return (body * 0.7 + thud * 0.55) * THUMP + clk
 
 
 def crunch(rng, dur, centre, decay=40.0, oct=1.4):
