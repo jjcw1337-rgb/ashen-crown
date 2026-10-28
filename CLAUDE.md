@@ -118,6 +118,16 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   contact sheet of his motion. `tools/blender/grubb.py` (+ `grubb_gear.py`) is the earlier fully scripted Blender
   build, kept as a reference; its export isn't used. Godot's `.import` files and extracted textures under
   `assets/models/` are git-ignored (regenerated on import); run `godot --headless --editor --quit` after re-exporting.
+- **Knight (no armour)** is a Meshy model (white shirt with a red crusader cross, shorts, leather sandals,
+  long hair): `assets/models/knight_meshy.glb`, built by `Knight.build_meshy` on `Knight.MESHY_LAYOUT`. The hero
+  wears it while the armour slot is empty (`Hero._wants_meshy`); `refresh_gear` swaps to the procedural armoured
+  body when armour goes on. To rebuild it: `blender -b --python tools/blender/knight/rig_meshy_knight.py --
+  <meshy.glb> <out.glb> layout.json --cross` (re-poses the A-pose to arms-down, skins by distance, splits the hair
+  into five locks hA..hE of three bones, paints the cross, adds the sandals), then
+  `python3 tools/blender/knight/layout_to_gd.py layout.json` rewrites the layout block in `knight.gd`. The hair
+  locks are simulated in `knight_rig.gd` `_sway_hair` (springs per bone; run, footfall jolt, turning, wind).
+  The knight's run is `Anim` with the `gait` meta `"knight"` (front-to-back arm pump). Preview tools:
+  `tools/knight_clip.gd` (`-- outdir [side|back|close]`), `tools/gait_preview.gd`; test `tools/meshy_knight_test.gd`.
 - `UNLOCK_ALL_ACTS` in `game.gd` is a testing switch (also enables the F8 testing panel: `test_immortal`, `test_onehit`, `test_stamina`, `test_allskills` in `game.gd`, and a level setter, `Hero.set_level`); turn off for real playthroughs.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file).
