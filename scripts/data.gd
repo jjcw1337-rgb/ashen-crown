@@ -22,17 +22,21 @@ const VENDORS := [
 
 ## look keys: skin, cloth, cloth2, armor, height, bulk, head, eyes, horns, cape, thin, tail, wings, weapon, shield
 const ENEMIES := {
-	"fallen": {"name": "Fallen", "rig": "humanoid", "life": 14, "dmg": [2, 5], "speed": 4.2, "range": 1.5, "xp": 9,
+	"fallen": {"mesh": "fallen", "name": "Fallen", "rig": "humanoid", "life": 14, "dmg": [2, 5], "speed": 4.2, "range": 1.5, "xp": 9,
 		"ai": "melee", "atk": "over", "atk_time": 0.85, "armor": 2, "radius": 0.45, "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.62, 0.12, 0.08), "cloth": Color(0.22, 0.16, 0.1), "height": 0.72, "bulk": 0.9, "head": "horned", "eyes": Color(1.0, 0.8, 0.1), "weapon": "club"}},
-	"zombie": {"name": "Zombie", "rig": "humanoid", "life": 32, "dmg": [3, 7], "speed": 1.9, "range": 1.6, "xp": 13,
+	"zombie": {"mesh": "zombie", "faction": "undead", "name": "Zombie", "rig": "humanoid", "life": 32, "dmg": [3, 7], "speed": 1.9, "range": 1.6, "xp": 13,
 		"ai": "melee", "atk": "claw", "atk_time": 1.25, "armor": 4, "radius": 0.5, "blood": Color(0.25, 0.3, 0.05),
 		"look": {"skin": Color(0.42, 0.48, 0.36), "cloth": Color(0.25, 0.23, 0.2), "cloth2": Color(0.18, 0.16, 0.14), "height": 1.0, "bulk": 1.1, "head": "human", "hair": Color(0.15, 0.15, 0.12), "eyes": Color(0.6, 1.0, 0.3)}},
 	# King Grubb's Gold Grabbers: they scoop up his spilled gold and haul it back to him (hoard.gd)
 	"grabber": {"name": "Gold Grabber", "rig": "humanoid", "model": "grabber", "life": 13, "dmg": [2, 4], "speed": 4.4, "range": 1.3, "xp": 6, "no_loot": true,
 		"ai": "melee", "atk": "thrust", "atk_time": 0.75, "armor": 2, "radius": 0.4, "blood": Color(0.4, 0.05, 0.02),
 		"look": {"height": 0.75, "eyes": Color(1.0, 0.6, 0.1)}},
-	"skel_archer": {"name": "Bone Archer", "rig": "humanoid", "life": 18, "dmg": [3, 6], "speed": 3.0, "range": 11.0, "xp": 12,
+	# the goblins of Grubb's fort: they guard it, and fight the moor's dead on sight ("faction")
+	"goblin_guard": {"mesh": "goblin_guard", "faction": "goblin", "name": "Goblin Guard", "rig": "humanoid", "life": 24, "dmg": [3, 7], "speed": 3.8, "range": 1.6, "xp": 12,
+		"ai": "melee", "atk": "over", "atk_time": 0.9, "armor": 4, "radius": 0.45, "blood": Color(0.35, 0.08, 0.03),
+		"look": {"height": 0.8, "eyes": Color(1.0, 0.7, 0.1), "weapon": "scimitar"}},
+	"skel_archer": {"mesh": "archer", "name": "Bone Archer", "rig": "humanoid", "life": 18, "dmg": [3, 6], "speed": 3.0, "range": 11.0, "xp": 12,
 		"ai": "ranged", "atk": "bow", "atk_time": 1.3, "armor": 3, "radius": 0.45, "proj": "arrow", "skin": "archer", "blood": Color(0.85, 0.82, 0.7),
 		"look": {"skin": Color(0.85, 0.82, 0.72), "cloth": Color(0.25, 0.2, 0.15), "height": 1.0, "bulk": 0.8, "head": "skull", "thin": true, "eyes": Color(0.3, 0.7, 1.0), "weapon": "bow"}},
 	"goblin_king": {"name": "King Grubb the Gilded", "rig": "humanoid", "model": "mutant", "life": 360, "dmg": [9, 16], "speed": 2.5, "range": 3.2, "xp": 420,

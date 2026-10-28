@@ -48,6 +48,11 @@ var nova_t := 9.0
 var enraged := false
 ## King Grubb's fight (hoard.gd): on the king and on each of his Gold Grabbers (host side).
 var hoard: Hoard = null
+## Factions (Data.ENEMIES "faction"): goblins and the undead fight each other on sight (and both fight you).
+var rival: Enemy = null
+var rival_t := 0.0
+var _by_rival := false        # set while a rival's blow lands
+var killed_by_rival := false  # no xp or loot for a kill the heroes didn't make
 var pack_id := 0
 # co-op: on a joining player's game every monster is remote and follows the host
 var net_id := 0
@@ -82,7 +87,9 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 	atk_dur = def["atk_time"]
 	var look: Dictionary = def["look"]
 	height = look.get("height", look.get("size", 1.0))
-	if def.has("model"):
+	if def.has("mesh") and MeshyMonster.ok(def["mesh"]):
+		rig = MeshyMonster.build(def["mesh"], look)
+	elif def.has("model"):
 		rig = Goblin.build(def["model"])
 	elif def.has("skin"):
 		rig = SkeletonModel.build(def["skin"])
@@ -96,7 +103,7 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 		"zombie", "mummy": pers = "zombie"
 		"skel_archer": pers = "skeleton"
 		"fallen", "imp", "fetish": pers = "fallen"
-		"grabber": pers = "goblin"
+		"grabber", "goblin_guard": pers = "goblin"
 	if boss:
 		pers = "boss"
 	rig.set_meta("pers", pers)
@@ -222,6 +229,7 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 			Fx.blood(game.world.fx_root, global_position + Vector3(0, height * 1.0, 0), def.get("blood", Color(0.5, 0.0, 0.0)))
 		return total
 	life -= total
+	killed_by_rival = _by_rival
 	hit_t = 1.0 if not boss else 0.3
 	flash_t = 0.12
 	_set_flash(1.0)
@@ -245,6 +253,25 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 		atk_t = -1.0
 	return total
 
+## The nearest living enemy of another faction within sight range.
+func _find_rival() -> Enemy:
+	var best: Enemy = null
+	var bd := 13.0
+	for e in game.enemies_near(global_position, 13.0):
+		if e == self or e.dead or not e.def.has("faction") or e.def["faction"] == def["faction"]:
+			continue
+		var d: float = e.global_position.distance_to(global_position)
+		if d < bd:
+			bd = d
+			best = e
+	return best
+
+## A blow from a rival monster (the same call a hero's take_hit gets, so the attack code works on both).
+func take_hit(amount: float, from: Vector3, _kind := "melee", _elem := "") -> void:
+	_by_rival = true
+	take_damage(amount, 0.0, from, 0.5, false)
+	_by_rival = false
+
 func _die() -> void:
 	if hoard != null:
 		if hoard.boss == self:
@@ -253,7 +280,8 @@ func _die() -> void:
 			hoard.on_grabber_died(self)
 	die_visual()
 	game.net.enemy_died(self)
-	game.on_enemy_killed(self)
+	if not killed_by_rival:
+		game.on_enemy_killed(self)
 
 func die_visual() -> void:
 	dead = true
@@ -370,6 +398,17 @@ func _process(delta: float) -> void:
 		_remote_process(delta)
 		return
 	var hero: Node3D = game.target_for(self)
+	if def.has("faction"):
+		rival_t -= delta
+		if rival_t <= 0.0:
+			rival_t = 0.4 + randf() * 0.2
+			rival = _find_rival()
+		if rival != null and (not is_instance_valid(rival) or rival.dead):
+			rival = null
+		# a rival close by (closer than the hero) is fought first
+		if rival != null and (hero.dead or rival.global_position.distance_to(global_position) < hero.global_position.distance_to(global_position) * 0.85):
+			hero = rival
+			aggro = true
 	var to := hero.global_position - global_position
 	to.y = 0
 	var dist := to.length()
