@@ -22,6 +22,11 @@ to `/opt` and links `blender` (checksum-verified). Claude's cloud workspace rese
 it needs network access to `download.blender.org`. Run scripts headless: `blender -b --python script.py -- args`
 (renders with Eevee work under `xvfb-run -a`). Export `.glb` into `assets/models/`, never `.blend`.
 
+**Meshy** (AI image/text to 3D, paid plan): `python3 tools/meshy/meshy.py text|image|get|check ...` saves a `.glb` plus a
+thumbnail. Key from `$MESHY_API_KEY` or `~/.config/meshy/key` (never in the repo); needs `api.meshy.ai` and
+`assets.meshy.ai` reachable. Each generation costs credits; results expire on Meshy after 3 days. Clean up, rig and
+export with Blender, the way King Grubb was made.
+
 Exporting locally also needs the 4.3 export templates (Editor → Manage Export Templates), but
 you normally don't export locally: pushing to `main` does it in CI.
 
