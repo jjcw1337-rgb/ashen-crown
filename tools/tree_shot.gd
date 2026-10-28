@@ -31,7 +31,10 @@ func _run() -> void:
 		await process_frame
 	await g.start_game(false, "knight")
 	g.ui.close_all()
-	for zone in ["wild", "town"]:
+	var zones := ["wild"] if OS.get_cmdline_user_args().has("wild") else ["wild", "town"]
+	if OS.get_cmdline_user_args().has("zoom"):
+		g.zoom = 1.3
+	for zone in zones:
 		if zone != "town":
 			await g.travel(0, zone, "start")
 		else:
@@ -45,11 +48,11 @@ func _run() -> void:
 		var shots := 0
 		var used := []
 		for s in spots:
-			if shots >= 2:
+			if shots >= 3:
 				break
 			var far := true
 			for u in used:
-				if (u as Vector3).distance_to(s) < 15.0:
+				if (u as Vector3).distance_to(s) < 40.0:
 					far = false
 			if not far:
 				continue
