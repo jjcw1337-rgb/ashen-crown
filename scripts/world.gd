@@ -531,6 +531,22 @@ func _scatter_grass(count: int, colors: Dictionary, height: float, outside := tr
 		var y := height_at(x, z)
 		var s := rng.randf_range(0.7, 1.35) * (1.0 - dm * 0.6)
 		xf.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.3), s)), Vector3(x, y - 0.02, z)))
+	# Act I: the painted grass clumps (lush tufts, tufts with wildflowers, tall seed-head grass)
+	# on a carpet of the blade grass (every other spot), so the ground reads as one lush field
+	if oak_forest and Flora.grass_tex_ok():
+		var cparts := [[], [], [], [], [], []]
+		var keep := []
+		for i in xf.size():
+			if i % 2 == 0:
+				keep.append(xf[i])
+			var r := rng.randf()
+			var k := 0 if r < 0.68 else (1 if r < 0.88 else 2)
+			cparts[k * 2 + (i % 2)].append(xf[i])
+		for ci in cparts.size():
+			var cm := Flora.grass_cards(int(ci / 2.0) + 1, ci % 2, colors)
+			for mmi in mm_chunked(cm, cparts[ci], detail >= 3, 20.0, 60.0):
+				mmi.add_to_group("grass")
+		xf = keep
 	# five clump shapes; about one in fourteen carries wildflowers
 	var m := Flora.grass_mat(colors)
 	var h := height * 1.1
@@ -1137,7 +1153,8 @@ func _build_wild() -> void:
 			mesh = oak_meshes[int(key.substr(3))]
 		else:
 			mesh = bush_mesh
-		mm_chunked(mesh, groups[key], true, 32.0)
+		# the Act I forest has many big oaks: past ~90 m they're off any screen anyway
+		mm_chunked(mesh, groups[key], true, 32.0, 90.0 if (oak_forest and key.begins_with("oak")) else 0.0)
 	for i in 160:
 		var px := rng.randf_range(bounds.position.x + 1, bounds.end.x - 1)
 		var pz := rng.randf_range(bounds.position.y + 1, bounds.end.y - 3)

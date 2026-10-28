@@ -93,6 +93,7 @@ def main() -> None:
     ap.add_argument("--texture", default="", help="texture prompt for the refine pass")
     ap.add_argument("--model", default="latest")
     ap.add_argument("--kind", default="image")
+    ap.add_argument("--cutout", action="store_true", help="draw: transparent background")
     a = ap.parse_args()
     if a.cmd == "check":
         req = urllib.request.Request(API + "/v1/balance", headers={"Authorization": "Bearer " + key()})
@@ -116,7 +117,10 @@ def main() -> None:
         save(wait(f"/v2/text-to-3d/{rid}"), a.out)
     elif a.cmd == "draw":
         model = a.model if a.model != "latest" else "nano-banana-2"
-        tid = call("POST", "/v1/text-to-image", {"ai_model": model, "prompt": a.arg})["result"]
+        body = {"ai_model": model, "prompt": a.arg}
+        if a.cutout:
+            body["remove_background"] = True
+        tid = call("POST", "/v1/text-to-image", body)["result"]
         print("task", tid)
         t = wait(f"/v1/text-to-image/{tid}")
         os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
