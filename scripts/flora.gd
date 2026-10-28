@@ -311,6 +311,82 @@ static func _leaf_cluster(st: SurfaceTool, at: Vector3, center: Vector3, rng: Ra
 		var sw := clampf(0.35 + (at - center).length() * 0.18, 0.3, 1.0)
 		_card(st, at - a * s * 0.5, a * s, b * s, center, sw, sw + 0.15, tint)
 
+# ---------------------------------------------------------------- Meshy oaks
+## The three big old oaks generated with Meshy (assets/models/trees/oakN.glb, prepared by
+## tools/blender/prep_tree.py: trunk on the origin, ~6 m tall). The model's own textured trunk,
+## branches and leaves get a wind-sway shader (sway grows with height and distance from the trunk,
+## same wind as the procedural trees, snow/ash and see-through-near-the-player like the bark), and
+## the canopy is filled out with the game's own swaying leaf clusters. Falls back to Flora.oak.
+const OAK_GLB := "res://assets/models/trees/oak%d.glb"
+## per oak: leaf colours (col, col2, dry), how many leaf clusters, cluster size, texture brightness
+const OAK_LEAVES := [
+	[Color(0.17, 0.27, 0.09), Color(0.32, 0.42, 0.14), Color(0.42, 0.38, 0.14), 70, 1.15, 1.45],
+	[Color(0.16, 0.2, 0.07), Color(0.42, 0.3, 0.1), Color(0.55, 0.3, 0.08), 70, 1.15, 1.1],
+	[Color(0.15, 0.18, 0.08), Color(0.26, 0.28, 0.12), Color(0.36, 0.32, 0.14), 45, 1.0, 1.0],
+]
+
+static func oak_model(k: int) -> ArrayMesh:
+	var key := "moak%d" % k
+	if _cache.has(key):
+		return _cache[key]
+	var path := OAK_GLB % k
+	if not ResourceLoader.exists(path):
+		return oak(9 + k * 3)
+	var scene: Node = (load(path) as PackedScene).instantiate()
+	var out := ArrayMesh.new()
+	var verts := PackedVector3Array()
+	var h := 1.0
+	for n in scene.find_children("*", "MeshInstance3D", true, false):
+		var src: MeshInstance3D = n
+		for si in src.mesh.get_surface_count():
+			var arr: Array = src.mesh.surface_get_arrays(si)
+			var vs: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+			var xf := src.global_transform if src.is_inside_tree() else src.transform
+			for i in vs.size():
+				vs[i] = xf * vs[i]
+				h = maxf(h, vs[i].y)
+			arr[Mesh.ARRAY_VERTEX] = vs
+			verts.append_array(vs)
+			out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+			var sm: Material = src.mesh.surface_get_material(si)
+			var m := ShaderMaterial.new()
+			m.shader = _shader("meshy_tree", MESHY_TREE_SHADER)
+			if sm is BaseMaterial3D:
+				m.set_shader_parameter("albedo_tex", (sm as BaseMaterial3D).albedo_texture)
+				if (sm as BaseMaterial3D).normal_texture != null:
+					m.set_shader_parameter("normal_tex", (sm as BaseMaterial3D).normal_texture)
+					m.set_shader_parameter("use_normal", true)
+			m.set_shader_parameter("height", h)
+			m.set_shader_parameter("tint", float(OAK_LEAVES[k - 1][5]))
+			out.surface_set_material(out.get_surface_count() - 1, m)
+	scene.free()
+	# fill the canopy: leaf clusters on well-spread points of the crown
+	var spec: Array = OAK_LEAVES[k - 1]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4242 + k * 77
+	var leaf := _st()
+	var crown := Vector3(0, h * 0.62, 0)
+	var picks: Array[Vector3] = []
+	var tries := 0
+	while picks.size() < int(spec[3]) and tries < 6000:
+		tries += 1
+		var v: Vector3 = verts[rng.randi() % verts.size()]
+		if v.y < h * 0.42 or Vector2(v.x, v.z).length() < 0.8:
+			continue
+		var ok := true
+		for q in picks:
+			if q.distance_to(v) < 0.75:
+				ok = false
+				break
+		if ok:
+			picks.append(v)
+	for c in picks:
+		_leaf_cluster(leaf, c + (c - crown).normalized() * 0.15, crown, rng, rng.randi_range(8, 11), float(spec[4]))
+	leaf.commit(out)
+	out.surface_set_material(out.get_surface_count() - 1, leaf_mat(LEAVES, spec[0], spec[1], spec[2]))
+	_cache[key] = out
+	return out
+
 # ---------------------------------------------------------------- undergrowth
 static func bush(seed_v: int) -> ArrayMesh:
 	var key := "bush%d" % seed_v
@@ -507,6 +583,61 @@ void fragment(){
 	NORMAL_MAP = normalize(vec3(0.5 + (plates - 0.5) * 0.3, 0.5 + (fis - 0.5) * 0.6, 1.0));
 	AO = mix(0.65, 1.0, 1.0 - fis * 0.6);
 	AO_LIGHT_AFFECT = 0.3;
+}
+"""
+
+const MESHY_TREE_SHADER := """
+shader_type spatial;
+render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
+uniform sampler2D albedo_tex : source_color, filter_linear_mipmap, repeat_enable;
+uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform bool use_normal = false;
+uniform float height = 6.0;
+uniform float tint = 1.0;
+global uniform float snow_amt;
+global uniform float ash_amt;
+global uniform vec3 player_pos;
+global uniform float occlude_k;
+varying vec3 bwp;
+varying vec3 wn;
+float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+void vertex(){
+	vec3 o = MODEL_MATRIX[3].xyz;
+	float ph = o.x * 0.21 + o.z * 0.17;
+	float hy = clamp(VERTEX.y / height, 0.0, 1.0);
+	float s = hy * hy * clamp(length(VERTEX.xz) * 0.5 + 0.4, 0.0, 1.4);
+	float w = sin(TIME * 0.9 + ph) * 0.6 + sin(TIME * 2.1 + ph * 1.7) * 0.25;
+	float flutter = sin(TIME * 5.0 + VERTEX.x * 3.0 + VERTEX.z * 2.0 + ph * 3.0) * 0.015;
+	VERTEX.x += (w * 0.12 + flutter) * s;
+	VERTEX.z += (w * 0.07 + flutter) * s;
+	wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	bwp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment(){
+	{
+		vec3 d = bwp - player_pos;
+		float hh = bwp.y - player_pos.y;
+		float along = d.z - occlude_k * (hh - 1.0);
+		float cover = (1.0 - smoothstep(1.6, 3.2, abs(along))) * (1.0 - smoothstep(2.2, 3.6, abs(d.x)));
+		cover *= step(0.9, hh) * step(0.2, d.z);
+		if (cover * 0.9 > h21(floor(FRAGCOORD.xy))) { discard; }
+	}
+	vec3 c = texture(albedo_tex, UV).rgb;
+	// Meshy bakes the trees quite grey: lift the greens a touch and deepen the bark
+	float g = c.g - max(c.r, c.b);
+	c = mix(c, c * vec3(0.9, 1.12, 0.85), clamp(g * 8.0 + 0.2, 0.0, 1.0));
+	c *= 0.95 * tint;
+	if (snow_amt > 0.0) {
+		c = mix(c, vec3(0.85, 0.88, 0.92), snow_amt * smoothstep(0.45, 0.85, wn.y));
+	}
+	if (ash_amt > 0.0) {
+		c = mix(c, vec3(0.05, 0.045, 0.04), ash_amt * 0.85);
+	}
+	ALBEDO = c;
+	ROUGHNESS = 0.88;
+	SPECULAR = 0.25;
+	if (use_normal) { NORMAL_MAP = texture(normal_tex, UV).rgb; }
+	if (!FRONT_FACING) { NORMAL = -NORMAL; }
 }
 """
 

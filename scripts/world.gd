@@ -824,13 +824,17 @@ func _build_town() -> void:
 	for p4 in [Vector3(-22, 0, 16), Vector3(27, 0, -6), Vector3(14, 0, 22), Vector3(-28, 0, -26), Vector3(20, 0, -30), Vector3(-12, 0, 27)]:
 		_rock(p4, rng.randf_range(1.0, 1.6))
 	var dt_mesh := Flora.dead_tree(5)
-	var oak_mesh := Flora.oak(9)
+	var oak_meshes_town := [Flora.oak_model(1), Flora.oak_model(2), Flora.oak_model(3)]
 	var pine_meshes := [Flora.pine(1), Flora.pine(2), Flora.pine(3)]
-	var inner_trees := []
+	var inner_trees := [[], [], []]
+	var ti := 0
 	for p5 in [Vector3(-29, 0, -15), Vector3(29, 0, 12), Vector3(-20, 0, 27), Vector3(10, 0, 27)]:
-		inner_trees.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.9, 1.2)), Vector3(p5.x, height_at(p5.x, p5.z), p5.z)))
-		add_circle(p5, 0.45)
-	Props.multimesh(props_root, oak_mesh, inner_trees)
+		inner_trees[ti % 3].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.9, 1.15)), Vector3(p5.x, height_at(p5.x, p5.z), p5.z)))
+		add_circle(p5, 0.65)
+		ti += 1
+	for k in 3:
+		if not inner_trees[k].is_empty():
+			Props.multimesh(props_root, oak_meshes_town[k], inner_trees[k])
 	Props.multimesh(props_root, dt_mesh, [Transform3D(Basis(Vector3.UP, 1.0), Vector3(22, height_at(22, 13), 13)), Transform3D(Basis(Vector3.UP, 2.0), Vector3(-30, height_at(-30, 10), 10))])
 	add_circle(Vector3(22, 0, 13), 0.35)
 	add_circle(Vector3(-30, 0, 10), 0.35)
@@ -1051,7 +1055,7 @@ func _build_wild() -> void:
 	# vegetation
 	var dt_meshes := [Flora.dead_tree(11), Flora.dead_tree(23), Flora.dead_tree(37)]
 	var pine_meshes := [Flora.pine(4), Flora.pine(5), Flora.pine(6)]
-	var oak_meshes := [Flora.oak(12), Flora.oak(14)]
+	var oak_meshes := [Flora.oak_model(1), Flora.oak_model(2), Flora.oak_model(3)]
 	var bush_mesh := Flora.bush(3)
 	var groups := {}
 	for i in 1700:
@@ -1070,7 +1074,7 @@ func _build_wild() -> void:
 		elif r < 0.6:
 			key = "dead%d" % (i % 3)
 		elif r < 0.7:
-			key = "oak%d" % (i % 2)
+			key = "oak%d" % (i % 3)
 		else:
 			key = "bush"
 		if not groups.has(key):
@@ -1078,7 +1082,7 @@ func _build_wild() -> void:
 		var s := rng.randf_range(0.8, 1.35)
 		groups[key].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * s), Vector3(px, height_at(px, pz) - 0.15, pz)))
 		if inside and key != "bush":
-			add_circle(Vector3(px, 0, pz), 0.45 if key.begins_with("dead") else 0.55)
+			add_circle(Vector3(px, 0, pz), 0.45 if key.begins_with("dead") else (0.7 * s if key.begins_with("oak") else 0.55))
 	# a share of the trees near the road burn in A3
 	for key in groups.keys():
 		if key.begins_with("pine") or key.begins_with("dead"):
