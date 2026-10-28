@@ -13,6 +13,7 @@ func _initialize():
 func _wipe() -> void:
 	var d := DirAccess.open(DIR)
 	if d:
+		d.include_hidden = true   # the .adopted marker too, or the next run can't adopt
 		for fn in d.get_files():
 			DirAccess.remove_absolute(DIR + fn)
 	if FileAccess.file_exists(OLD):

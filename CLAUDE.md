@@ -73,7 +73,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `net.gd` | LAN co-op over ENet (UDP 24567, discovery 24568); RPC layer |
 | `ui.gd`, `hud_bar.gd`, `icon_renderer.gd` | All UI built in code |
 | `models.gd`, `skeleton.gd`, `flora.gd`, `props.gd`, `geo.gd`, `mats.gd` | Procedural meshes and shaders |
-| `weather.gd`, `fx.gd`, `sfx.gd`, `sfx_bank.gd` | Snow/ash, particles, audio (autoload `Sfx`: rendered sounds from `assets/audio/sfx/` listed in the generated `sfx_bank.gd`, with the old synthesized sounds as fallback) |
+| `weather.gd`, `fx.gd`, `sfx.gd`, `sfx_bank.gd` | Snow/ash, particles, audio (autoload `Sfx`: recorded/generated sounds from `assets/audio/sfx/` listed in the generated `sfx_bank.gd`, with the old synthesized sounds as fallback) |
 
 ## Rules and gotchas
 
@@ -171,17 +171,25 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   the palisade, which repeats ~44 times); without the glbs simple log stand-ins are built. The camp is placed by
   rejection sampling round the courtyard (`Fort._camp`), Grubb's courtyard reuses `World._hoard_room`.
   `tools/fort_test.gd` checks it; `tools/zone_overview.gd -- out.png --fort` renders it from above.
-- **Sound**: effects are rendered offline by `tools/audio/make_sfx.py` (numpy synthesis in `tools/audio/dsp.py`; any
-  python3 with numpy, Blender's bundled python works: `/Applications/Blender.app/Contents/Resources/4.5/python/bin/python3.11`)
-  into `assets/audio/sfx/<name>_<take>.wav` (32 kHz, imported as QOA) and `scripts/sfx_bank.gd`. Each sound is a
-  function in `make_sfx.py` (layered: transient, body, tail; 1-5 takes); `--spectro dir` writes spectrograms to check
-  them by eye. The mix knobs at the top of `make_sfx.py` (`LEVEL`/`CEIL`/`LOUD` for level, `TAIL`/`WET` for the room) apply
-  to every sound; metal, glass and bells (`ring`) and pads (`choir`) are mostly filtered noise, so they don't read as a synth. `Sfx.play(name)` is heard flat (the hero's own skills, UI), `Sfx.play_at(name, pos)` is positional
+- **Sound**: effects are real recordings (Kenney, CC0) and ElevenLabs Sound Effects generations, picked by ear; the
+  old numpy synthesis (`tools/audio/make_sfx.py`) was rejected as cheap-sounding and is kept only as a fallback.
+  Pipeline (`tools/audio/`, the heavy steps run in the venv at `~/Documents/Game Factory Audio/venv`):
+  `spec.py` lists every sound (source, prompt, duration, `hit` = seconds to the payoff, loop); `eleven.py [names]`
+  generates candidates into `~/Documents/Game Factory Audio/candidates/<name>/` (key in `~/.config/elevenlabs/key`,
+  about 10 credits per second of audio, `--dry` estimates, `--credits` shows what's left; never buy more);
+  `score.py --rank` scores them (CLAP: real sound vs synth/beep, audiobox quality) so the obviously bad ones sink;
+  a human picks (the Sound Picks artifact); `build_sfx.py picks.json` (`{name: [files]}`) trims each take, puts
+  its payoff `hit` s in, matches loudness by category, writes `assets/audio/sfx/<name>_<take>.wav` (32 kHz, imported
+  as QOA), `scripts/sfx_bank.gd` (`[takes, bus, hit]`) and `assets/audio/CREDITS.md` (source and license of every
+  file). Run `godot --headless --editor --quit` after a build. `Sfx.play(name)` is heard flat (the hero's own skills, UI), `Sfx.play_at(name, pos)` is positional
   (hits, monsters; AudioStreamPlayer3D, full volume at the camera's distance). Takes rotate, pitch is nudged, at most
   three of one sound per 50 ms, buses SFX/UI/Music/Ambience with a limiter on Master, `Sfx.duck()` under big spells.
-  A cast spell's sound starts with the cast (`Hero._attack_sound`) so its payoff lands on the impact frame (0.3 s);
-  monster impacts, crit stings and kill sounds come from `Enemy._hit_sound`/`die_visual` by `Enemy.material()`.
-  `tools/sound_test.gd` checks every skill fires its sounds (`Sfx.counts`).
+  A cast's sound starts with the cast (`Hero._attack_sound`) and `Sfx.play_synced` lands its payoff on the impact
+  frame at any attack speed; monster impacts, crit stings and kill sounds come from `Enemy._hit_sound`/`die_visual`
+  by `Enemy.material()`. King Grubb's voice is deep (the `cackle`/`roar` takes, never pitched up), and before his fight
+  his muttering (`grubb_mutter`) carries through the fort from him, faint from ~75 m and clear in sight
+  (`Hoard.murmur`, every peer locally; stops at the "intro" event). `tools/sound_test.gd` checks every skill fires its
+  sounds (`Sfx.counts`) and the fort voice.
 - **Characters** (save slots): each character is its own save, `user://characters/<id>.json` (`Game.char_id`,
   `char_name`; the save holds `name` and `played`). `Game.list_characters()` reads them (last played first) for the
   title's Continue button and the Characters list (Play / Delete); New Character asks for a name on the class picker.

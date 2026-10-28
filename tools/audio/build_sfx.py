@@ -26,7 +26,7 @@ SR = 32000
 STEREO = {"holy_nova", "wail", "covenant", "host_summon", "summon_demon", "phase_in", "phase_erupt", "blood_pact",
           "battle_cry", "levelup", "portal", "wind", "drip", "drain_loop", "boss_die", "roar"}
 UI = {"click", "deny", "gold", "coins", "pickup", "equip", "drop", "potion", "levelup", "portal"}
-AMB = {"wind", "drip"}
+AMB = {"wind", "drip", "grubb_mutter"}
 # dB for the loudest 100 ms: hits and voices sit under the big payoffs, UI and loops well under
 LOUD = {"ui": -20.0, "amb": -26.0, "loop": -22.0, "small": -17.0, "big": -14.0, "default": -16.0}
 SMALL = {"swing_light", "swing_heavy", "swing", "spirit_dart", "drain_tick", "hurt_knight", "hurt_gnome", "hurt_wraith",
@@ -122,8 +122,10 @@ def source_of(path):
 def build(picks):
     credits = json.load(open(CREDITS + ".json")) if os.path.exists(CREDITS + ".json") else {}
     for name, files in picks.items():
+        # only this sound's own takes: "hurt_*.wav" would also catch hurt_knight_0.wav
         for old in glob.glob(os.path.join(OUT, f"{name}_*.wav")):
-            os.remove(old)
+            if re.fullmatch(re.escape(name) + r"_\d+\.wav", os.path.basename(old)):
+                os.remove(old)
         for k, f in enumerate(files):
             x = shape(load(f, name in STEREO), name)
             write_wav(os.path.join(OUT, f"{name}_{k}.wav"), x)

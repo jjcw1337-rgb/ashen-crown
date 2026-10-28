@@ -42,6 +42,9 @@ var shout_lbl: Label3D
 var told := false
 var bombs: Array = []                # where live bombs will blow (host)
 var robbed := 0                      # piles heroes have taken (host)
+var met := false                     # the fight has begun (every peer, from the "intro" event)
+var voice: AudioStreamPlayer3D       # his muttering heard across the fort before the fight
+var murmur_t := 2.0
 
 func _init(b: Enemy) -> void:
 	boss = b
@@ -64,6 +67,39 @@ func _grabber(p: Vector3, burrow: bool) -> Enemy:
 		g.aggro = true
 		boss._fx("hole:%.2f:%.2f" % [p.x, p.z])
 	return g
+
+# ---------------------------------------------------------------- his voice in the fort
+## Before the fight his voice carries through the fort: he mutters and chuckles over his gold, faint
+## from the gate and clearer as you close in. Every peer plays it for itself (Enemy._process).
+func murmur(delta: float) -> void:
+	var g = boss.game
+	if met or boss.dead or Sfx.muted or g.hero == null:
+		if voice != null and voice.playing and (met or boss.dead):
+			voice.stop()
+		return
+	var d: float = g.hero.global_position.distance_to(boss.global_position)
+	if voice == null:
+		voice = AudioStreamPlayer3D.new()
+		voice.bus = "Ambience"
+		voice.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED   # the volume follows the distance below
+		voice.max_distance = 0.0
+		voice.position = Vector3(0, boss.height, 0)
+		boss.add_child(voice)
+	# from about 75 m (the gate) at a whisper up to clear when he is in sight
+	var near := 1.0 - smoothstep(14.0, 75.0, d)
+	voice.volume_db = lerpf(-34.0, -4.0, near) + Sfx.volume_db
+	if voice.playing:
+		return
+	murmur_t -= delta
+	if murmur_t > 0.0 or d > 80.0:
+		return
+	murmur_t = randf_range(5.0, 10.0)
+	voice.stream = Sfx._pick("grubb_mutter")
+	if voice.stream == null:
+		return
+	voice.pitch_scale = randf_range(0.9, 0.97)
+	voice.play()
+	Sfx.counts["grubb_mutter"] = int(Sfx.counts.get("grubb_mutter", 0)) + 1
 
 # ---------------------------------------------------------------- host logic
 ## Called every frame on the host while he is fighting.
@@ -382,9 +418,10 @@ func fx(ev: String) -> bool:
 		"hole":
 			var p := Vector3(float(a[1]), 0, float(a[2]))
 			Fx.burst(root, p + Vector3(0, 0.3, 0), Color(0.3, 0.22, 0.14, 0.9), 26, 4.0, 0.14, 0.8, false, -8.0)
-			Sfx.play("cackle", -8.0, randf_range(1.3, 1.6))
+			Sfx.play("cackle", -8.0, randf_range(0.92, 1.02))
 			return true
 		"intro":
+			met = true
 			g.focus_on(boss, 2.6, 0.5)
 			return true
 		"outro":
@@ -395,7 +432,7 @@ func fx(ev: String) -> bool:
 			return true
 		"broke":
 			g.ui.message("King Grubb is out of gold, and furious!", Color(1.0, 0.35, 0.2), 3.5)
-			Sfx.play("roar", 0.0, 1.3)
+			Sfx.play("roar", 0.0, 0.88)
 			Fx.ring(root, boss.global_position, 4.0, Color(1.0, 0.3, 0.1), 0.6)
 			_shout_fx("You'll pay for that. In BLOOD!")
 			return true
@@ -451,4 +488,4 @@ func _shout_fx(text: String) -> void:
 	tw.tween_property(shout_lbl, "scale", Vector3.ONE, 0.08)
 	tw.tween_interval(1.8)
 	tw.tween_property(shout_lbl, "modulate:a", 0.0, 0.5)
-	Sfx.play("cackle", -3.0, 0.75)
+	Sfx.play("cackle", -3.0, randf_range(0.86, 0.94))

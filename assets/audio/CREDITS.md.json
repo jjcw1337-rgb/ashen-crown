@@ -1,19 +1,98 @@
 {
+ "battle_cry": [
+  {
+   "detail": "a medieval warrior's battle cry, one man roaring a fierce 'Haaa!' to rally his allies, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "blight_burst": [
+  {
+   "detail": "a poison bolt bursting on an enemy, splash of bubbling acid that sizzles, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "blight_cast": [
+  {
+   "detail": "a warlock hurling a poison bolt, sinister hiss and whoosh, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "block": [
+  {
+   "detail": "a sword blow blocked by a wooden shield with an iron rim, solid knock and clank, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "blood_pact": [
+  {
+   "detail": "a slow heavy heartbeat thumping twice, with thick blood sloshing, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "boom": [
+  {
+   "detail": "a gunpowder bomb exploding, sharp blast with scattering gold coins, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "boss_die": [
+  {
+   "detail": "a giant goblin king's final dying roar as he crashes onto a pile of gold coins, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "bow": [
+  {
+   "detail": "a bowstring released, an arrow shot whizzing away, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "cackle": [
+  {
+   "detail": "a huge, fat goblin king's deep, guttural, menacing laugh, a slow low chuckle rumbling up from his belly, gravelly and cruel, not high-pitched, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a huge, fat goblin king's deep, guttural, menacing laugh, a slow low chuckle rumbling up from his belly, gravelly and cruel, not high-pitched, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "charge_dash": [
+  {
+   "detail": "a heavily armored knight sprinting a few fast steps, steel plate armor clanking and boots pounding the dirt, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "charge_impact": [
+  {
+   "detail": "an armored knight slamming shield-first into an enemy, heavy crashing body impact, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "cleave_swing": [
+  {
+   "detail": "a huge greatsword cleave in a wide arc, powerful whoosh with a faint steel ring, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "click": [
   {
-   "detail": "click_001.ogg",
+   "detail": "click5.ogg",
    "license": "CC0 1.0",
-   "source": "Kenney interface-sounds (kenney.nl)"
-  },
-  {
-   "detail": "click_002.ogg",
-   "license": "CC0 1.0",
-   "source": "Kenney interface-sounds (kenney.nl)"
-  },
-  {
-   "detail": "click_003.ogg",
-   "license": "CC0 1.0",
-   "source": "Kenney interface-sounds (kenney.nl)"
+   "source": "Kenney ui-audio (kenney.nl)"
   }
  ],
  "coins": [
@@ -26,6 +105,48 @@
    "detail": "handleCoins2.ogg",
    "license": "CC0 1.0",
    "source": "Kenney rpg-audio (kenney.nl)"
+  }
+ ],
+ "covenant": [
+  {
+   "detail": "a dark ritual pact sealed, deep ominous magical boom with faint chanting whispers, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "crit_sting": [
+  {
+   "detail": "a brutal critical hit in a dark fantasy game, heavy crunching impact with a bone snap, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "death_demon": [
+  {
+   "detail": "a demon's dying roar fading into crackling embers, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "death_gnome": [
+  {
+   "detail": "a small old gnome crying out as he dies, a short strangled yelp then a last gasp, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "death_knight": [
+  {
+   "detail": "a knight's dying groan as he falls, then armor crashing onto the ground, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "death_wraith": [
+  {
+   "detail": "a wraith dissipating, a fading ghostly wail that trails off into a whisper, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
   }
  ],
  "deny": [
@@ -43,6 +164,41 @@
    "detail": "error_006.ogg",
    "license": "CC0 1.0",
    "source": "Kenney interface-sounds (kenney.nl)"
+  }
+ ],
+ "die": [
+  {
+   "detail": "a goblin shrieking as it is killed, a short high-pitched squeal cut off, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "drain_loop": [
+  {
+   "detail": "a sustained dark magic beam draining life, humming and crackling energy, steady, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "drain_start": [
+  {
+   "detail": "a dark life-draining beam igniting, crackle of sickly green energy, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "drain_tick": [
+  {
+   "detail": "a small pulse of life sucked out of a body, soft wet suction, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "drip": [
+  {
+   "detail": "water dripping slowly in a stone dungeon, soft drips and quiet cave air, steady, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
   }
  ],
  "drop": [
@@ -89,6 +245,20 @@
    "source": "Kenney rpg-audio (kenney.nl)"
   }
  ],
+ "fireball": [
+  {
+   "detail": "a fireball launched, roaring burst of flame whooshing away, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "fuse": [
+  {
+   "detail": "a lit bomb fuse sizzling and hissing with sparks, steady, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "gold": [
   {
    "detail": "handleCoins.ogg",
@@ -99,6 +269,137 @@
    "detail": "handleCoins2.ogg",
    "license": "CC0 1.0",
    "source": "Kenney rpg-audio (kenney.nl)"
+  }
+ ],
+ "growl": [
+  {
+   "detail": "a rotting zombie's low hungry groan, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "grubb_mutter": [
+  {
+   "detail": "a huge goblin king's deep, gravelly voice muttering and grumbling to himself about his gold, unintelligible words, slow and menacing, ending in a low dark chuckle, heard from a distance in a wooden fort, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a huge goblin king's deep, gravelly voice muttering and grumbling to himself about his gold, unintelligible words, slow and menacing, ending in a low dark chuckle, heard from a distance in a wooden fort, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "hellclaw": [
+  {
+   "detail": "three fast vicious claw slashes tearing flesh, with a short burst of roaring fire, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "holy_nova": [
+  {
+   "detail": "a massive explosion of holy fire around a knight, a deep concussive boom, a roaring outward rush of flame and wind, a faint breath of distant choir, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "host_summon": [
+  {
+   "detail": "a host of ghosts summoned, many spirits rising with eerie overlapping whispers, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "hurt": [
+  {
+   "detail": "a goblin or ghoul hit by a blade, a short ugly grunt of pain, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "hurt_demon": [
+  {
+   "detail": "a big demon hit by a blade, one short deep guttural growl of pain, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "hurt_gnome": [
+  {
+   "detail": "a small gnome grunting in pain, one short higher-pitched 'oof', close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "hurt_knight": [
+  {
+   "detail": "a grown man in armor grunting in pain from a blow, one short gruff 'ugh', close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "hurt_wraith": [
+  {
+   "detail": "a ghostly woman's sharp pained gasp turning into a raspy hiss, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "impact_bone": [
+  {
+   "detail": "a mace smashing into a skeleton, dry bones cracking and clattering, short, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "impact_flesh": [
+  {
+   "detail": "a sword slash hitting a body, meaty wet cut with a solid thud, short and punchy, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "impact_metal": [
+  {
+   "detail": "a sword striking steel plate armor, hard metallic clang, short, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "kill_bone": [
+  {
+   "detail": "a skeleton warrior shattering and collapsing into a pile of bones clattering on stone, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "kill_flesh": [
+  {
+   "detail": "a monster killed by a blade, gory flesh splatter then a body slumping onto dirt, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "levelup": [
+  {
+   "detail": "level up in a dark fantasy game, short triumphant swell with a bright magical chime, subtle, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "phase_erupt": [
+  {
+   "detail": "fire bursting violently up out of the ground, a deep boom, roaring flames and falling rocks, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "phase_in": [
+  {
+   "detail": "stepping into the underworld, a deep dark whoosh with a low ominous hit, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
   }
  ],
  "pickup": [
@@ -141,6 +442,132 @@
    "detail": "clothBelt2.ogg",
    "license": "CC0 1.0",
    "source": "Kenney rpg-audio (kenney.nl)"
+  }
+ ],
+ "portal": [
+  {
+   "detail": "a magic town portal opening, soft swirling whoosh with a warm shimmer, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "potion": [
+  {
+   "detail": "drinking a potion from a glass vial, cork pop and two quick gulps, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "reap_swing": [
+  {
+   "detail": "a ghostly scythe swung in a wide arc, cold airy spectral whoosh, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "roar": [
+  {
+   "detail": "a huge mutated goblin king's furious roar, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "shackles": [
+  {
+   "detail": "magical iron chains whipping around a victim, heavy chains rattling and locking shut, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "shade_implode": [
+  {
+   "detail": "dark energy imploding, sharp inward suction ending in a deep thump, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "shade_in": [
+  {
+   "detail": "a wraith bursting out of shadow, sudden dark whoosh and soft thump, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "shade_out": [
+  {
+   "detail": "a cloaked figure vanishing in a puff of black smoke, a fast airy whoosh sucking inward, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "slam": [
+  {
+   "detail": "a giant slamming his fists into the ground, heavy thud and rubble, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "soul_return": [
+  {
+   "detail": "a stolen soul flowing back into a wraith, soft ethereal whoosh ending in a gentle shimmer, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "spirit_dart": [
+  {
+   "detail": "a small ghostly spirit bolt fired, quick airy spectral zip, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "summon": [
+  {
+   "detail": "a dark shaman summoning minions, eerie rising magical whoosh, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "summon_demon": [
+  {
+   "detail": "a demon summoned from a burning rift, rumble of cracking ground then a beastly roar, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "swing": [
+  {
+   "detail": "a monster swinging a crude rusty blade, rough whoosh, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "swing_heavy": [
+  {
+   "detail": "a single heavy two-handed axe swung hard through the air, deep weighty whoosh, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "swing_light": [
+  {
+   "detail": "a single fast sword swing through the air, sharp whoosh, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "wail": [
+  {
+   "detail": "a terrifying ghost woman screaming, a long piercing shriek, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "wind": [
+  {
+   "detail": "cold wind blowing across an empty moor at night, steady, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
   }
  ]
 }

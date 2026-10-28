@@ -83,4 +83,29 @@ func _run() -> void:
 	await wait(0.2)
 	var want := ["impact_flesh", "crit_sting", "kill_flesh", "impact_bone", "kill_bone", "hurt_gnome"]
 	print("[S] combat: %s, missing %s" % [sfx.counts.keys(), want.filter(func(n): return not sfx.counts.has(n))])
+	# the fort: King Grubb mutters to himself before the fight, louder as you close in, and stops when it starts
+	g.difficulty = 0
+	await g.load_zone(0, "lair", "start")
+	await wait(1.0)
+	var boss = null
+	for e in g.world.enemies_root.get_children():
+		if e.boss and e.hoard != null:
+			boss = e
+	if boss == null:
+		print("[S] fort: no King Grubb")
+		quit()
+		return
+	var start_d: float = g.hero.global_position.distance_to(boss.global_position)
+	sfx.counts.clear()
+	var vols := []
+	for dd in [60.0, 18.0]:
+		boss.aggro = false
+		g.hero.global_position = boss.global_position + Vector3(0, 0, dd)
+		boss.hoard.murmur_t = 0.0
+		await wait(0.3)
+		vols.append(snappedf(boss.hoard.voice.volume_db, 0.1) if boss.hoard.voice else 0.0)
+	var heard: int = sfx.counts.get("grubb_mutter", 0)
+	boss.hoard.fx("intro")
+	await wait(0.1)
+	print("[S] fort: start %.0f m from Grubb, mutters %d, volume at 60 m %.1f dB / 18 m %.1f dB, stops when the fight starts %s" % [start_d, heard, vols[0], vols[1], not boss.hoard.voice.playing])
 	quit()

@@ -413,6 +413,8 @@ func _process(delta: float) -> void:
 		if dead_t > 11.0:
 			queue_free()
 		return
+	if hoard != null and hoard.boss == self:
+		hoard.murmur(delta)
 	if remote:
 		_remote_process(delta)
 		return

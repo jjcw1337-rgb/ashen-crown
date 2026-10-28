@@ -138,8 +138,15 @@ SPEC = [
     dict(name="die", src="eleven", n=4, dur=1.0, hit=0, label="a monster dying",
          prompt_b="a goblin shrieking as it is killed, a short high-pitched squeal cut off" + DRY,
          prompt="a goblin's short dying shriek" + DRY),
-    dict(name="cackle", src="eleven", n=4, dur=1.5, hit=0, label="a goblin laughing",
+    dict(name="cackle", src="eleven", n=4, dur=2.0, hit=0, label="a deep menacing laugh",
+         prompt_b="a huge, fat goblin king's deep, guttural, menacing laugh, a slow low chuckle rumbling up from his belly, "
+                  "gravelly and cruel, not high-pitched" + DRY,
          prompt="a greedy goblin king's nasty cackling laugh" + DRY),
+    # heard from the fort before you reach him: a deep voice muttering to itself, distant and ominous
+    dict(name="grubb_mutter", src="eleven", n=4, dur=6.0, hit=0, label="a deep voice muttering",
+         prompt="a huge goblin king's deep, gravelly voice muttering and grumbling to himself about his gold, "
+                "unintelligible words, slow and menacing, ending in a low dark chuckle, heard from a distance in a wooden fort"
+                ", isolated sound effect, no music"),
     dict(name="roar", src="eleven", n=4, dur=2.0, hit=0, label="a monster roaring",
          prompt="a huge mutated goblin king's furious roar" + DRY),
     dict(name="slam", src="eleven", n=4, dur=1.2, hit=0, label="a heavy ground slam",
