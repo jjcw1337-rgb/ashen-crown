@@ -96,13 +96,13 @@ const ARMORED_LAYOUT := {
 	"hips": ["", Vector3(0.0, 0.92, -0.02)],
 	"torso": ["hips", Vector3(0.0, 1.02, -0.02)],
 	"sh_r": ["torso", Vector3(0.19, 1.465, -0.03)],
-	"el_r": ["sh_r", Vector3(0.2376, 1.1672, -0.03)],
-	"hand_r": ["el_r", Vector3(0.2634, 0.9098, -0.0609)],
+	"el_r": ["sh_r", Vector3(0.2111, 1.1642, -0.03)],
+	"hand_r": ["el_r", Vector3(0.2188, 0.9063, -0.0661)],
 	"leg_r": ["hips", Vector3(0.1, 0.92, -0.03)],
 	"knee_r": ["leg_r", Vector3(0.1, 0.4883, -0.03)],
 	"sh_l": ["torso", Vector3(-0.19, 1.465, -0.03)],
-	"el_l": ["sh_l", Vector3(-0.2376, 1.1672, -0.03)],
-	"hand_l": ["el_l", Vector3(-0.2634, 0.9098, -0.0609)],
+	"el_l": ["sh_l", Vector3(-0.2111, 1.1642, -0.03)],
+	"hand_l": ["el_l", Vector3(-0.2188, 0.9063, -0.0661)],
 	"leg_l": ["hips", Vector3(-0.1, 0.92, -0.03)],
 	"knee_l": ["leg_l", Vector3(-0.1, 0.4883, -0.03)],
 	"head": ["torso", Vector3(0.0, 1.6, -0.03)],
@@ -115,8 +115,23 @@ const ARMORED_LAYOUT := {
 	"hC1": ["torso", Vector3(-0.1626, 1.3762, 0.0708)],
 	"hC2": ["hC1", Vector3(-0.212, 1.0758, 0.1185)],
 	"hC3": ["hC2", Vector3(-0.2806, 0.7626, 0.1435)],
+	"hD1": ["head", Vector3(-0.0878, 1.6786, -0.0712)],
+	"hD2": ["hD1", Vector3(-0.1029, 1.6018, -0.0692)],
+	"hD3": ["hD2", Vector3(-0.1031, 1.5293, -0.1127)],
+	"hE1": ["head", Vector3(-0.0358, 1.6777, -0.0065)],
+	"hE2": ["hE1", Vector3(-0.0522, 1.5991, 0.0114)],
+	"hE3": ["hE2", Vector3(-0.0647, 1.5232, 0.0302)],
+	"hF1": ["head", Vector3(0.0008, 1.6725, 0.0048)],
+	"hF2": ["hF1", Vector3(0.0011, 1.5988, 0.0302)],
+	"hF3": ["hF2", Vector3(0.0034, 1.5193, 0.0396)],
+	"hG1": ["head", Vector3(0.0417, 1.6811, -0.0033)],
+	"hG2": ["hG1", Vector3(0.0623, 1.6019, 0.0149)],
+	"hG3": ["hG2", Vector3(0.0742, 1.5218, 0.0275)],
+	"hH1": ["head", Vector3(0.0901, 1.6803, -0.0693)],
+	"hH2": ["hH1", Vector3(0.1029, 1.6014, -0.0768)],
+	"hH3": ["hH2", Vector3(0.1052, 1.5291, -0.1075)],
 }
-const ARMORED_BONES := ["hips", "torso", "sh_r", "el_r", "hand_r", "leg_r", "knee_r", "sh_l", "el_l", "hand_l", "leg_l", "knee_l", "head", "hA1", "hA2", "hA3", "hB1", "hB2", "hB3", "hC1", "hC2", "hC3"]
+const ARMORED_BONES := ["hips", "torso", "sh_r", "el_r", "hand_r", "leg_r", "knee_r", "sh_l", "el_l", "hand_l", "leg_l", "knee_l", "head", "hA1", "hA2", "hA3", "hB1", "hB2", "hB3", "hC1", "hC2", "hC3", "hD1", "hD2", "hD3", "hE1", "hE2", "hE3", "hF1", "hF2", "hF3", "hG1", "hG2", "hG3", "hH1", "hH2", "hH3"]
 # armored layout end
 ## glb path -> [ArrayMesh, Skin], built once per model.
 static var _meshy_cache := {}
@@ -196,6 +211,8 @@ static func build_meshy(armored := false) -> Node3D:
 	root.set_meta("h", 1.0)
 	root.set_meta("knight", true)
 	root.set_meta("meshy", "armored" if armored else "plain")
+	if armored:
+		root.set_meta("elbow_out", 0.4)    # the plate is wide already: a tighter arm pump
 	return root
 
 ## Sits a helm model on the knight's head joint (each body's head joint and skull differ).

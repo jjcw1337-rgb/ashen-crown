@@ -75,6 +75,15 @@ def grow(mask, allowed, rings=6, r=0.014):
 cape = grow(cape, (z < 1.45) & (z > 0.3) & ((y > 0.12) | ((np.abs(x) > 0.3) & (y > -0.05))))
 tabard = grow(tabard, ~cape & (z < 1.2) & (z > 0.3) & (np.abs(x) < 0.11) & (y < -0.12), rings=3)
 print("cape verts", cape.sum(), "tabard", tabard.sum(), "of", N)
+# hair: the dark strands round the head (not the beard or the steel collar); the scalp stays on the
+# head, the rest hangs on five locks (hD..hH) of three bones that knight_rig.gd swings
+lum = vc @ np.array([0.2126, 0.7152, 0.0722])
+around = (np.hypot(x, y + 0.02) < 0.2) | (z > 1.62)
+dark = (lum < 0.13) & (z > 1.44) & around & ~cape
+beard = dark & (y < -0.05) & (np.abs(x) < 0.09) & (z < 1.72)
+hair = dark & ~beard
+hair = grow(hair, (z > 1.44) & around & ~beard & ~cape & (lum < 0.22), rings=2, r=0.01)
+print("hair verts", hair.sum(), "beard", beard.sum())
 
 # --- joints (A-pose, front is -y; s = +1 is his left)
 def J(s):
@@ -94,6 +103,11 @@ for s in (-1, 1):
 CAPE = [("hA", -0.2), ("hB", 0.0), ("hC", 0.2)]
 CAPE_Z = [1.4, 1.08, 0.76]
 cape_names = [f"{c}{k + 1}" for c, _ in CAPE for k in range(3)]
+# hair locks: azimuth of each lock's centre round the head (0 = the face, A-pose front is -y)
+HAIR_LOCKS = [("hD", 1.25), ("hE", 2.2), ("hF", np.pi), ("hG", -2.2), ("hH", -1.25)]
+HAIR_Z = [1.68, 1.6, 1.52]
+hair_names = [f"{c}{k + 1}" for c, _ in HAIR_LOCKS for k in range(3)]
+cape_names += hair_names
 names = ["hips", "torso", "head", "sh_r", "el_r", "hand_r", "sh_l", "el_l", "hand_l", "leg_r", "knee_r", "leg_l", "knee_l"] + cape_names
 idx = {n: i for i, n in enumerate(names)}
 
@@ -158,6 +172,32 @@ for ci, (c, cx) in enumerate(CAPE):
         band = sel & (np.abs(z - zz) < 0.03)
         pts.append(P[band].mean(0) if band.sum() > 5 else np.array([cx, 0.16, zz]))
     cape_joints[c] = pts
+hm = hair
+az = np.arctan2(x, -(y + 0.02))
+mem = np.stack([np.exp(-((((az - ac) + np.pi) % (2 * np.pi) - np.pi) / 0.45) ** 2) for _, ac in HAIR_LOCKS], 1)
+mem /= np.maximum(mem.sum(1, keepdims=True), 1e-9)
+hbands = [(9.0, HAIR_Z[0])] + [(HAIR_Z[k], HAIR_Z[k + 1] if k + 1 < 3 else -9.0) for k in range(3)]
+hw2 = np.stack([seg_w(z, t, b_, 0.025) for t, b_ in hbands], 1)
+hw2 /= np.maximum(hw2.sum(1, keepdims=True), 1e-9)
+Wt[hm] = 0.0
+Wt[hm, idx["head"]] = hw2[hm, 0]
+for ci, (c, _) in enumerate(HAIR_LOCKS):
+    for k in range(3):
+        Wt[hm, idx[f"{c}{k + 1}"]] = hw2[hm, k + 1] * mem[hm, ci]
+Wt[hm] /= np.maximum(Wt[hm].sum(1, keepdims=True), 1e-9)
+hair_joints = {}
+for ci, (c, ac) in enumerate(HAIR_LOCKS):
+    sel = hm & (mem[:, ci] > 0.5)
+    pts = []
+    for zz in HAIR_Z + [HAIR_Z[-1] - 0.08]:
+        band = sel & (np.abs(z - zz) < 0.02)
+        if band.sum() > 5:
+            pts.append(P[band].mean(0))
+        else:
+            d = np.array([np.sin(ac), -np.cos(ac), 0.0])
+            pts.append(np.array([0, -0.02, zz]) + d * 0.11)
+    hair_joints[c] = pts
+print("hair locks", {c: int((hm & (mem[:, i] > 0.5)).sum()) for i, (c, _) in enumerate(HAIR_LOCKS)})
 print("cape panels", {c: int((cm & (memb[:, i] > 0.5)).sum()) for i, (c, _) in enumerate(CAPE)})
 
 # soften every seam below the chest where neighbours ride different bones (tabard and mail skirt
@@ -196,12 +236,12 @@ down = np.array([0, 0, -1.0])
 for s in (-1, 1):
     S, E, Wr, T, Hp, K, A = J(s)
     n = side_name[s]
-    arm_down = np.array([s * 0.16, 0.0, -1.0])
+    arm_down = np.array([s * 0.07, 0.0, -1.0])
     R1 = rot_to(E - S, arm_down)
     M["sh" + n] = compose(R1, S, (np.eye(3), np.zeros(3)))
     E2 = M["sh" + n][0] @ E + M["sh" + n][1]
     W2 = M["sh" + n][0] @ Wr + M["sh" + n][1]
-    R2 = rot_to(W2 - E2, np.array([s * 0.1, -0.12, -1.0]))
+    R2 = rot_to(W2 - E2, np.array([s * 0.03, -0.14, -1.0]))
     M["el" + n] = compose(R2, E2, M["sh" + n])
     M["hand" + n] = M["el" + n]
     W3 = M["el" + n][0] @ Wr + M["el" + n][1]
@@ -219,7 +259,7 @@ for n in names:
     R, t = M[n]
     P2 += Wt[:, idx[n]][:, None] * (P @ R.T + t)
 newJ.update({"hips": np.array([0, -0.02, 0.92]), "torso": np.array([0, -0.02, 1.02]), "head": np.array([0, -0.03, 1.6])})
-for c, pts in cape_joints.items():
+for c, pts in list(cape_joints.items()) + list(hair_joints.items()):
     for k in range(3):
         newJ[f"{c}{k + 1}"] = pts[k]
     newJ[f"{c}tail"] = pts[3]
@@ -236,6 +276,9 @@ me.update()
 parents = {"hips": None, "torso": "hips", "head": "torso", "sh_r": "torso", "el_r": "sh_r", "hand_r": "el_r",
            "sh_l": "torso", "el_l": "sh_l", "hand_l": "el_l", "leg_r": "hips", "knee_r": "leg_r", "leg_l": "hips", "knee_l": "leg_l"}
 tails = {"hips": newJ["torso"], "torso": newJ["head"], "head": newJ["head"] + [0, 0, 0.2]}
+for c, _ in HAIR_LOCKS:
+    parents[f"{c}1"] = "head"; parents[f"{c}2"] = f"{c}1"; parents[f"{c}3"] = f"{c}2"
+    tails[f"{c}1"] = newJ[f"{c}2"]; tails[f"{c}2"] = newJ[f"{c}3"]; tails[f"{c}3"] = newJ[f"{c}tail"]
 for c, _ in CAPE:
     parents[f"{c}1"] = "torso"; parents[f"{c}2"] = f"{c}1"; parents[f"{c}3"] = f"{c}2"
     tails[f"{c}1"] = newJ[f"{c}2"]; tails[f"{c}2"] = newJ[f"{c}3"]; tails[f"{c}3"] = newJ[f"{c}tail"]

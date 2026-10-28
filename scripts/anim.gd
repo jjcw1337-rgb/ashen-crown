@@ -363,8 +363,9 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 		shr.x = lerpf(shr.x, 0.05 + sw * amp, kg)
 		shl.y = lerpf(shl.y, 0.0, kg)
 		shr.y = lerpf(shr.y, 0.0, kg)
-		shl.z = lerpf(shl.z, -0.3, kg)
-		shr.z = lerpf(shr.z, 0.3, kg)
+		var wide: float = rig.get_meta("elbow_out") if rig.has_meta("elbow_out") else 1.0
+		shl.z = lerpf(shl.z, -0.3 * wide, kg)
+		shr.z = lerpf(shr.z, 0.3 * wide, kg)
 		# elbows bend more as the arm comes forward, open a little as it drives back
 		ell = lerpf(ell, 1.2 - sw * 0.18, kg)
 		elr = lerpf(elr, 1.2 + sw * 0.18, kg)
