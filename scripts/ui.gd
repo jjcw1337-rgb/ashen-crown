@@ -57,6 +57,7 @@ var drag_ghost: TextureRect
 var drag_hint: Label
 var drag_hold := false   # tests/screenshots: keep a drag going without a real mouse button
 var equip_cells := {}
+var helm_btn: Button
 var gold_lbl: Label
 var char_panel: PanelContainer
 var char_labels := {}
@@ -718,6 +719,18 @@ func _build_inventory() -> void:
 		s.position = layout[k][0]
 		eq.add_child(s)
 		equip_cells[k] = s
+	# beside the helm: draw it on the knight or not (its stats stay either way)
+	helm_btn = Button.new()
+	helm_btn.position = Vector2(92, 8)
+	helm_btn.size = Vector2(90, 26)
+	helm_btn.add_theme_font_size_override("font_size", 12)
+	helm_btn.focus_mode = Control.FOCUS_NONE
+	helm_btn.tooltip_text = "Show or hide your helm on your knight. Its stats count either way."
+	helm_btn.pressed.connect(func():
+		hero.show_helm = not hero.show_helm
+		hero.refresh_gear()
+		refresh())
+	eq.add_child(helm_btn)
 	var grid := GridContainer.new()
 	grid.columns = 10
 	grid.add_theme_constant_override("h_separation", 2)
@@ -1788,6 +1801,8 @@ func refresh() -> void:
 			_set_slot(inv_cells[i], hero.inventory[i])
 		for k in equip_cells.keys():
 			_set_slot(equip_cells[k], hero.equipment.get(k))
+		helm_btn.visible = hero.cls == "knight"
+		helm_btn.text = "Helm: shown" if hero.show_helm else "Helm: hidden"
 		gold_lbl.text = "Gold: %d" % hero.gold
 	if stash_panel.visible:
 		for i in 60:

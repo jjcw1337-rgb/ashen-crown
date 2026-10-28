@@ -1,6 +1,6 @@
 extends SceneTree
 ## Preview clip of the knight (Meshy body): idle in the wind, run with the knight gait, stop.
-## Needs a display (xvfb). Usage: -- outdir [close]
+## Needs a display (xvfb). Usage: -- outdir [close|side|back] [armored] [helm]
 func _initialize():
 	_run()
 
@@ -33,13 +33,17 @@ func _run() -> void:
 	ground.mesh = pm
 	ground.material_override = Mats.mat(Color(0.25, 0.27, 0.2), 0.95)
 	root3.add_child(ground)
-	var r: Node3D = Knight.build_meshy()
+	var r: Node3D = Knight.build_meshy(args.has("armored"))
 	r.set_meta("pers", "hero")
 	r.set_meta("gait", "knight")
 	r.set("fixed_dt", 1.0 / 30.0)
 	root3.add_child(r)
 	var J: Dictionary = r.get_meta("j")
 	(J["grip_r"] as Node3D).add_child(Models.item_model({"base": "short_sword", "rarity": 0}))
+	if args.has("helm"):
+		var hm := Models.item_model({"base": "great_helm", "rarity": 0})
+		(J["head"] as Node3D).add_child(hm)
+		Knight.fit_helm(hm, r)
 	var cam := Camera3D.new()
 	cam.fov = 30 if close else 38
 	root3.add_child(cam)

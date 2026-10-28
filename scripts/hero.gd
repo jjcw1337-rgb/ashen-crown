@@ -112,6 +112,8 @@ var stamina := 100.0
 var max_stamina := 100.0
 var stamina_rest := 0.0
 var sprint := false
+## The knight can keep a helm equipped (its stats) but not draw it (inventory toggle).
+var show_helm := true
 var running := false
 var exhausted := false
 # co-op: a puppet is a partner's knight, driven by the poses their game sends
@@ -153,7 +155,8 @@ func _build_rig() -> void:
 	elif is_warlock():
 		rig = Warlock.build(warlock_gear())
 	else:
-		rig = Knight.build_meshy() if _wants_meshy() else Knight.build(Knight.default_gear())
+		var body := _knight_body()
+		rig = Knight.build(Knight.default_gear()) if body == "" else Knight.build_meshy(body == "armored")
 		rig.set_meta("gait", "knight")    # Anim: heavy armoured run, elbows out
 	rig.set_meta("pers", "hero")
 	add_child(rig)
@@ -164,9 +167,15 @@ func _build_rig() -> void:
 	(J["head"] as Node3D).add_child(breath)
 	breath.position = Vector3(0, 0.02, -0.16)
 
-## The knight wears the Meshy body (shirt, shorts, long hair) while no armour is equipped.
-func _wants_meshy() -> bool:
-	return cls == "knight" and Knight.meshy_ok() and equipment.get("armor") == null
+## Which body the knight wears: the Meshy one in shirt and shorts while no armour is equipped
+## ("plain"), the Meshy plate once it is ("armored"), or "" for the procedural armoured body
+## (without the glb files).
+func _knight_body() -> String:
+	if cls != "knight":
+		return ""
+	if equipment.get("armor") == null:
+		return "plain" if Knight.meshy_ok() else ""
+	return "armored" if Knight.armored_ok() else ""
 
 ## Switch the character's class: new body, skills and spirit colours.
 func set_class(c: String) -> void:
@@ -421,7 +430,7 @@ func refresh_gear() -> void:
 		if is_instance_valid(n):
 			n.queue_free()
 	gear_nodes.clear()
-	if cls == "knight" and rig != null and _wants_meshy() != rig.has_meta("meshy"):
+	if cls == "knight" and rig != null and _knight_body() != (str(rig.get_meta("meshy")) if rig.has_meta("meshy") else ""):
 		var yaw := rig.rotation.y
 		rig.queue_free()
 		rig = null
@@ -446,11 +455,10 @@ func refresh_gear() -> void:
 		shield_rest = shield_node.transform
 		gear_nodes.append(shield_node)
 	var h = equipment.get("helm")
-	if h != null and cls == "knight":
+	if h != null and cls == "knight" and show_helm:
 		var hm := Models.item_model(h)
 		(J["head"] as Node3D).add_child(hm)
-		hm.position = Vector3(0, 0.092, 0.006)
-		hm.scale = Vector3(1.04, 1.04, 1.04)
+		Knight.fit_helm(hm, rig)
 		gear_nodes.append(hm)
 	if is_wraith():
 		Wraith.rebuild_body(rig, wraith_gear())
@@ -478,6 +486,7 @@ func refresh_gear() -> void:
 func net_gear() -> Dictionary:
 	var g: Dictionary = equipment.duplicate()
 	g["_cls"] = cls
+	g["_helm"] = show_helm
 	return g
 
 ## Describes the equipped armour so the skinned body can be rebuilt to match.
@@ -1034,6 +1043,8 @@ func apply_net_gear(gear: Dictionary) -> void:
 	equipment = gear.duplicate(true)
 	var c: String = str(equipment.get("_cls", "knight"))
 	equipment.erase("_cls")
+	show_helm = bool(equipment.get("_helm", true))
+	equipment.erase("_helm")
 	if c != cls:
 		set_class(c)
 	for s in Items.EQUIP_SLOTS:
@@ -1886,7 +1897,7 @@ func unequip(slot: String) -> void:
 
 func to_save() -> Dictionary:
 	return {"cls": cls, "level": level, "xp": xp, "str": str_, "dex": dex, "vit": vit, "ene": ene, "points": stat_points, "gold": gold,
-		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash}
+		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm}
 
 func from_save(d: Dictionary) -> void:
 	set_class(str(d.get("cls", "knight")))
@@ -1898,6 +1909,7 @@ func from_save(d: Dictionary) -> void:
 	ene = int(d.get("ene", 10))
 	stat_points = int(d.get("points", 0))
 	gold = int(d.get("gold", 0))
+	show_helm = bool(d.get("show_helm", true))
 	equipment = d.get("equipment", {})
 	for s in Items.EQUIP_SLOTS:
 		if not equipment.has(s):

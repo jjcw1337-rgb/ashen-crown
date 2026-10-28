@@ -3,7 +3,8 @@
 A Diablo II-style isometric ARPG in **Godot 4.3** (GDScript, Forward+ with an OpenGL fallback).
 Everything is procedural (models, textures, sound, music) except a few asset files: the intro video
 `assets/intro.ogv`, the Act I boss King Grubb `assets/models/grubb_mutant.glb` and the gnome Warlock
-`assets/models/gnome_warlock.glb` (both generated with Meshy and rigged in Blender; see "Blender assets"). Two developers (one Windows, one Linux) push to `main`; GitHub
+`assets/models/gnome_warlock.glb`, and the knight's two bodies `knight_meshy.glb` / `knight_armored.glb` (all generated
+with Meshy and rigged in Blender; see "Blender assets"). Two developers (one Windows, one Linux) push to `main`; GitHub
 Actions exports Web + Windows + Linux + Mac and publishes them to GitHub Pages.
 
 - Repo: https://github.com/jjcw1337-rgb/ashen-crown
@@ -129,7 +130,19 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   `python3 tools/blender/knight/layout_to_gd.py layout.json` rewrites the layout block in `knight.gd`. The hair
   locks are simulated in `knight_rig.gd` `_sway_hair` (springs per bone; run, footfall jolt, turning, wind).
   The knight's run is `Anim` with the `gait` meta `"knight"` (front-to-back arm pump). Preview tools:
-  `tools/knight_clip.gd` (`-- outdir [side|back|close]`), `tools/gait_preview.gd`; test `tools/meshy_knight_test.gd`.
+  `tools/knight_clip.gd` (`-- outdir [side|back|close] [armored] [helm]`), `tools/gait_preview.gd`; test `tools/meshy_knight_test.gd`.
+- **Knight (armour on)** is the Meshy crusader (plate over mail, red tabard with the white cross, short cape, long
+  hair, no helm): `assets/models/knight_armored.glb`, `Knight.build_meshy(true)` on `Knight.ARMORED_LAYOUT`.
+  `Hero._knight_body()` picks "plain" (no armour), "armored" (any body armour) or "" (the procedural body, only
+  without the glb files); the rig's `meshy` meta holds which. One look for every armour (the old per-item armour
+  colours only apply to the procedural fallback). Rebuild: decimate the Meshy model to ~70k triangles in
+  `sources/knight_armored.blend`, export it, then `blender -b --python tools/blender/knight/rig_armored_knight.py --
+  <decimated.glb> <out.glb> layout.json` and `python3 tools/blender/knight/layout_to_gd.py layout.json armored`.
+  The script finds the red cloth by colour (strict, the plate's rust is reddish), grows it into the frayed hems,
+  pins the tabard to hips/torso, and softens the seams against the legs so nothing tears. The cape hangs on three
+  panels of three bones (hA..hC, parented to the torso) that `knight_rig.gd` `_sway_hair` swings like hair locks.
+  Helms are separate models on the head (`Knight.fit_helm` per body); `Hero.show_helm` (the inventory's
+  "Helm: shown/hidden" button) hides the model but keeps the stats; it is saved and sent to partners in `net_gear`.
 - **Act I trees and grass** (`World.oak_forest`, set by `game.gd` when `difficulty == 0`; A2/A3 keep the old mix): three
   Meshy oaks `assets/models/trees/oakN.glb` (prepared by `tools/blender/prep_tree.py`: trunk on the origin, ~6 m, 1k
   textures) built by `Flora.oak_model(k)` with `MESHY_TREE_SHADER` (wind sway by height, snow/ash, see-through near the

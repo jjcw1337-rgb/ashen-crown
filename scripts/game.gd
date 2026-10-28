@@ -1621,6 +1621,7 @@ func _shot_setup() -> void:
 		hero.equipment["amulet"] = Items.generate("amulet", 14, 2, r)
 		for i in 14:
 			hero.inventory[i * 2 + (i / 5)] = Items.random_drop(12, 300, r)
+		hero.show_helm = not args.has("--nohelm")
 		hero.recalc()
 		hero.refresh_gear()
 		ui.inv_panel.visible = true
@@ -1664,6 +1665,9 @@ func _shot_setup() -> void:
 		hero.breath.restart()
 	if args.has("--zoomout"):
 		zoom = 1.3
+	if args.has("--zoomin"):
+		zoom = 0.6
+		ui.close_all()
 	if args.has("--enchtest"):
 		hero.equipment["helm"] = Items.generate("great_helm", 12, 1, rng)
 		hero.equipment["helm"]["ench"] = 6
