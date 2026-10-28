@@ -23,7 +23,7 @@ static func impact_at(style: String) -> float:
 		"side": return 0.48
 		"thrust": return 0.52
 		"swipe1": return 0.4
-		"swipe2": return 0.4
+		"swipe2": return 0.42
 		"swipe3": return 0.47
 		"bow": return 0.72
 		"cast": return 0.55
@@ -113,7 +113,16 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 	var ty := sin(ph) * 0.1 * m
 	var hy := ((cos(2.0 * ph) * 0.5 + 0.5) * 0.035 - 0.02) * m * h
 	var hz := 0.0
+	var tz := 0.0
+	var head_z := 0.0
+	var hip_x := 0.0
+	var hip_yaw := 0.0
+	var hip_roll := 0.0
 	var hip_spin := 0.0   # a whole-body turn about the hips (the swipe3 spin); not smoothed
+	var hip_turn := 0.0   # the hips turning over planted feet (the legs counter-turn)
+	var grip_p := 0.0     # wrist: blade cocked back (+) or thrown out in line with the arm (-)
+	var grip_y := 0.0
+	var swiping := false
 	var head_x := 0.0
 	var head_y := sin(t * 0.37) * 0.15 * (1.0 - m)
 
@@ -181,60 +190,88 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 				hz = kf(a, [[0, 0.0], [0.35, 0.06], [0.52, -0.2], [1, 0.0]]) * h
 				leg_r += kf(a, [[0, 0.0], [0.52, 0.5], [1, 0.0]])
 				shl.x += kf(a, [[0, 0.0], [0.52, 0.6], [1, 0.0]])
-			# --- the right-click combo: three swipes that flow into each other (Hero.swipe_attack)
+			# --- the right-click combo (Hero.swipe_attack): three cuts a knight would chain. Each is driven
+			# from the ground up: the feet step, the hips turn first (hip_turn, over planted feet), the
+			# shoulders follow on their spring, the arm last, and the wrist (grip_p) cocks the blade back
+			# in the wind-up and throws it out in line with the arm through the cut. The shield arm pulls
+			# in against the turn. Each swipe starts from the pose the last one is cut off in (a = 0.68),
+			# so the chain flows.
 			"swipe1":
-				# forehand: sword cocked high over the right shoulder, cut down across to the left hip,
-				# stepping in on the right foot and turning the shoulders through the blow
-				shr.x = kf(a, [[0, 0.3], [0.26, 2.55], [0.44, 0.75], [0.62, 0.55], [1, 0.3]])
-				shr.y = kf(a, [[0, 0.0], [0.26, -0.75], [0.44, 1.15], [0.62, 1.3], [1, 0.0]])
-				shr.z = kf(a, [[0, 0.1], [0.26, 0.55], [0.44, -0.2], [1, 0.1]])
-				elr = kf(a, [[0, 0.4], [0.26, 1.55], [0.44, 0.1], [0.62, 0.25], [1, 0.4]])
-				ty += kf(a, [[0, 0.0], [0.26, -0.6], [0.44, 0.55], [0.62, 0.62], [1, 0.0]])
-				tx += kf(a, [[0, 0.0], [0.26, 0.12], [0.44, -0.3], [0.62, -0.26], [1, 0.0]])
-				hz = kf(a, [[0, 0.0], [0.26, 0.04], [0.44, -0.12], [0.7, -0.1], [1, 0.0]]) * h
-				hy -= kf(a, [[0, 0.0], [0.44, 0.05], [0.7, 0.04], [1, 0.0]]) * h
-				leg_r += kf(a, [[0, 0.0], [0.26, -0.2], [0.44, 0.55], [0.7, 0.45], [1, 0.0]])
-				knee_r -= kf(a, [[0, 0.0], [0.44, 0.45], [0.7, 0.4], [1, 0.0]])
-				leg_l += kf(a, [[0, 0.0], [0.44, -0.3], [1, 0.0]])
-				knee_l -= kf(a, [[0, 0.0], [0.44, 0.3], [1, 0.0]])
-				shl.x += kf(a, [[0, 0.0], [0.26, 0.55], [0.44, -0.25], [1, 0.0]])
-				head_x = kf(a, [[0, 0.0], [0.26, -0.1], [0.44, 0.15], [1, 0.0]])
+				# Oberhau: from a high guard over the right shoulder, a diagonal cut down to the left hip,
+				# stepping in on the right foot and dropping the weight onto it
+				swiping = true
+				shr.x = kf(a, [[0, 0.5], [0.24, 2.65], [0.34, 1.9], [0.42, 0.85], [0.6, 0.55], [1, 0.3]])
+				shr.y = kf(a, [[0, 0.0], [0.24, -0.7], [0.34, -0.05], [0.42, 1.05], [0.6, 1.25], [1, 0.0]])
+				shr.z = kf(a, [[0, 0.1], [0.24, 0.55], [0.42, -0.15], [0.6, -0.1], [1, 0.1]])
+				elr = kf(a, [[0, 0.5], [0.24, 1.75], [0.34, 0.9], [0.42, 0.12], [0.6, 0.3], [1, 0.4]])
+				grip_p = kf(a, [[0, 0.0], [0.24, 0.95], [0.34, 0.2], [0.42, -0.75], [0.6, -0.45], [1, 0.0]])
+				hip_turn = kf(a, [[0, 0.0], [0.24, -0.38], [0.38, 0.32], [0.6, 0.38], [1, 0.0]])
+				ty += kf(a, [[0, 0.0], [0.24, -0.55], [0.42, 0.5], [0.6, 0.58], [1, 0.0]])
+				tx += kf(a, [[0, 0.0], [0.24, 0.16], [0.42, -0.34], [0.6, -0.3], [1, 0.0]])
+				tz += kf(a, [[0, 0.0], [0.24, -0.08], [0.42, 0.1], [1, 0.0]])
+				hz = kf(a, [[0, 0.0], [0.24, 0.05], [0.42, -0.14], [0.7, -0.12], [1, 0.0]]) * h
+				hy -= kf(a, [[0, 0.0], [0.24, -0.02], [0.42, 0.08], [0.6, 0.07], [1, 0.0]]) * h
+				hip_x += kf(a, [[0, 0.0], [0.24, -0.03], [0.42, 0.04], [1, 0.0]]) * h
+				# the right foot lifts in the wind-up and plants forward on the cut; the left pushes off
+				leg_r += kf(a, [[0, 0.0], [0.24, 0.3], [0.42, 0.62], [0.7, 0.5], [1, 0.0]])
+				knee_r -= kf(a, [[0, 0.0], [0.24, 0.75], [0.42, 0.38], [0.7, 0.42], [1, 0.0]])
+				leg_l += kf(a, [[0, 0.0], [0.24, 0.05], [0.42, -0.42], [0.7, -0.38], [1, 0.0]])
+				knee_l -= kf(a, [[0, 0.0], [0.24, 0.2], [0.42, 0.12], [0.7, 0.18], [1, 0.0]])
+				shl.x += kf(a, [[0, 0.0], [0.24, 0.65], [0.42, 0.9], [0.6, 0.8], [1, 0.0]])
+				shl.z += kf(a, [[0, 0.0], [0.24, -0.3], [0.42, 0.15], [1, 0.0]])
+				ell += kf(a, [[0, 0.0], [0.42, 1.0], [0.6, 0.9], [1, 0.0]])
+				head_x = kf(a, [[0, 0.0], [0.24, -0.12], [0.42, 0.18], [1, 0.0]])
 			"swipe2":
-				# rising backhand: drop low across the body, then rip the blade up and out to the
-				# right, coming up off bent knees with a step on the left foot
-				shr.x = kf(a, [[0, 0.5], [0.24, 0.45], [0.44, 2.35], [0.62, 2.5], [1, 0.3]])
-				shr.y = kf(a, [[0, 1.2], [0.24, 1.4], [0.44, -1.1], [0.62, -1.25], [1, 0.0]])
-				shr.z = kf(a, [[0, 0.0], [0.24, -0.2], [0.44, 0.6], [1, 0.1]])
-				elr = kf(a, [[0, 0.3], [0.24, 1.3], [0.44, 0.12], [0.62, 0.3], [1, 0.4]])
-				ty += kf(a, [[0, 0.5], [0.24, 0.7], [0.44, -0.6], [0.62, -0.68], [1, 0.0]])
-				tx += kf(a, [[0, -0.2], [0.24, -0.28], [0.44, 0.14], [0.62, 0.1], [1, 0.0]])
-				hy -= kf(a, [[0, 0.03], [0.24, 0.1], [0.44, -0.02], [0.62, 0.0], [1, 0.0]]) * h
-				hz = kf(a, [[0, -0.06], [0.24, -0.04], [0.44, -0.12], [0.7, -0.08], [1, 0.0]]) * h
-				knee_l -= kf(a, [[0, 0.25], [0.24, 0.55], [0.44, 0.2], [1, 0.0]])
-				knee_r -= kf(a, [[0, 0.25], [0.24, 0.6], [0.44, 0.1], [1, 0.0]])
-				leg_l += kf(a, [[0, 0.0], [0.24, 0.2], [0.44, 0.55], [0.7, 0.4], [1, 0.0]])
-				leg_r += kf(a, [[0, 0.3], [0.24, 0.35], [0.44, -0.25], [1, 0.0]])
-				shl.x += kf(a, [[0, 0.0], [0.24, -0.25], [0.44, 0.5], [1, 0.0]])
-				shl.z += kf(a, [[0, 0.0], [0.44, -0.35], [1, 0.0]])
-				head_x = kf(a, [[0, 0.1], [0.24, 0.2], [0.44, -0.2], [1, 0.0]])
+				# Unterhau: sink low with the blade carried back past the left hip, then a passing step
+				# with the left foot as the cut rips up and out to the right, coming up out of the knees
+				swiping = true
+				shr.x = kf(a, [[0, 0.55], [0.22, 0.35], [0.32, 0.95], [0.42, 2.25], [0.6, 2.55], [1, 0.3]])
+				shr.y = kf(a, [[0, 1.25], [0.22, 1.45], [0.32, 0.6], [0.42, -1.0], [0.6, -1.2], [1, 0.0]])
+				shr.z = kf(a, [[0, -0.1], [0.22, -0.25], [0.42, 0.55], [0.6, 0.6], [1, 0.1]])
+				elr = kf(a, [[0, 0.3], [0.22, 1.35], [0.32, 0.7], [0.42, 0.12], [0.6, 0.35], [1, 0.4]])
+				grip_p = kf(a, [[0, -0.45], [0.22, 0.75], [0.32, 0.2], [0.42, -0.85], [0.6, -0.3], [1, 0.0]])
+				hip_turn = kf(a, [[0, 0.38], [0.22, 0.5], [0.4, -0.3], [0.6, -0.38], [1, 0.0]])
+				ty += kf(a, [[0, 0.58], [0.22, 0.7], [0.42, -0.55], [0.6, -0.62], [1, 0.0]])
+				tx += kf(a, [[0, -0.3], [0.22, -0.36], [0.42, 0.12], [0.6, 0.06], [1, 0.0]])
+				tz += kf(a, [[0, 0.0], [0.22, 0.1], [0.42, -0.12], [1, 0.0]])
+				hy -= kf(a, [[0, 0.07], [0.22, 0.14], [0.34, 0.1], [0.44, -0.02], [0.6, 0.0], [1, 0.0]]) * h
+				hz = kf(a, [[0, -0.12], [0.22, -0.08], [0.42, -0.16], [0.7, -0.1], [1, 0.0]]) * h
+				hip_x += kf(a, [[0, 0.04], [0.22, 0.05], [0.42, -0.04], [1, 0.0]]) * h
+				# passing step: the left foot comes through (knee up at the midpoint) and lands in front
+				leg_l += kf(a, [[0, -0.38], [0.22, -0.3], [0.32, 0.25], [0.44, 0.6], [0.7, 0.5], [1, 0.0]])
+				knee_l -= kf(a, [[0, 0.18], [0.22, 0.4], [0.32, 1.0], [0.44, 0.35], [0.7, 0.4], [1, 0.0]])
+				leg_r += kf(a, [[0, 0.5], [0.22, 0.45], [0.44, -0.4], [0.7, -0.35], [1, 0.0]])
+				knee_r -= kf(a, [[0, 0.42], [0.22, 0.7], [0.44, 0.15], [0.7, 0.2], [1, 0.0]])
+				shl.x += kf(a, [[0, 0.8], [0.22, 0.95], [0.42, -0.15], [0.6, -0.1], [1, 0.0]])
+				shl.z += kf(a, [[0, 0.0], [0.22, 0.2], [0.42, -0.55], [0.6, -0.5], [1, 0.0]])
+				ell += kf(a, [[0, 0.9], [0.22, 1.0], [0.42, 0.3], [1, 0.0]])
+				head_x = kf(a, [[0, 0.15], [0.22, 0.25], [0.42, -0.18], [1, 0.0]])
 			"swipe3":
-				# finisher: wind the hips round to the right with the blade trailing low, then spin a
-				# full turn off the left foot with the sword arm flung straight out, landing in a crouch
-				shr.x = kf(a, [[0, 0.3], [0.22, 0.9], [0.3, 1.45], [0.62, 1.4], [0.78, 0.9], [1, 0.3]])
-				shr.y = kf(a, [[0, 0.0], [0.22, -0.6], [0.3, -1.2], [0.62, -1.2], [0.78, -0.4], [1, 0.0]])
-				shr.z = kf(a, [[0, 0.1], [0.22, 0.4], [0.3, 0.35], [0.62, 0.3], [1, 0.1]])
-				elr = kf(a, [[0, 0.4], [0.22, 0.9], [0.3, 0.08], [0.62, 0.08], [0.78, 0.5], [1, 0.4]])
-				hip_spin = kf(a, [[0, 0.0], [0.22, -0.95], [0.64, TAU], [1, TAU]])
-				ty += kf(a, [[0, 0.0], [0.22, -0.35], [0.3, 0.2], [0.62, 0.15], [1, 0.0]])
-				tx += kf(a, [[0, 0.0], [0.22, -0.25], [0.45, -0.15], [0.7, -0.32], [1, 0.0]])
-				hy += kf(a, [[0, 0.0], [0.22, -0.1], [0.42, 0.05], [0.66, -0.13], [0.82, -0.1], [1, 0.0]]) * h
-				knee_l -= kf(a, [[0, 0.0], [0.22, 0.75], [0.42, 0.25], [0.66, 0.85], [1, 0.0]])
-				knee_r -= kf(a, [[0, 0.0], [0.22, 0.6], [0.42, 0.55], [0.66, 0.8], [1, 0.0]])
-				leg_l += kf(a, [[0, 0.0], [0.22, 0.35], [0.42, 0.1], [0.66, 0.5], [1, 0.0]])
-				leg_r += kf(a, [[0, 0.0], [0.22, -0.2], [0.42, 0.35], [0.66, -0.15], [1, 0.0]])
-				shl.x += kf(a, [[0, 0.0], [0.22, 0.3], [0.3, 0.6], [0.62, 0.6], [1, 0.0]])
-				shl.z += kf(a, [[0, 0.0], [0.3, -0.75], [0.62, -0.7], [1, 0.0]])
-				head_x = kf(a, [[0, 0.0], [0.22, 0.12], [0.66, 0.15], [1, 0.0]])
+				# finisher: drop into a crouch with the blade trailing low behind the right hip, then pivot
+				# a full turn on the left foot with the arm and blade flung straight out (a flat cut all
+				# round), the right leg sweeping round, and land wide and low with the sword out in front
+				swiping = true
+				shr.x = kf(a, [[0, 2.5], [0.2, 0.75], [0.3, 1.45], [0.62, 1.42], [0.78, 1.3], [1, 0.3]])
+				shr.y = kf(a, [[0, -1.2], [0.2, -1.05], [0.3, -1.25], [0.62, -1.15], [0.78, -0.45], [1, 0.0]])
+				shr.z = kf(a, [[0, 0.6], [0.2, 0.5], [0.3, 0.3], [0.62, 0.3], [1, 0.1]])
+				elr = kf(a, [[0, 0.35], [0.2, 1.05], [0.3, 0.06], [0.62, 0.06], [0.78, 0.45], [1, 0.4]])
+				grip_p = kf(a, [[0, -0.3], [0.2, 0.55], [0.3, -0.95], [0.62, -0.95], [0.78, -0.15], [1, 0.0]])
+				grip_y = kf(a, [[0, 0.0], [0.3, 0.35], [0.62, 0.3], [0.8, 0.0]])
+				hip_spin = kf(a, [[0, 0.0], [0.2, -0.95], [0.64, TAU], [1, TAU]])
+				hip_turn = kf(a, [[0, -0.38], [0.2, -0.2], [0.3, 0.0], [1, 0.0]])
+				ty += kf(a, [[0, -0.62], [0.2, -0.45], [0.3, 0.25], [0.62, 0.15], [0.8, 0.1], [1, 0.0]])
+				tx += kf(a, [[0, 0.06], [0.2, -0.3], [0.45, -0.12], [0.7, -0.38], [0.85, -0.3], [1, 0.0]])
+				tz += kf(a, [[0, 0.0], [0.3, 0.16], [0.6, 0.14], [0.75, 0.0]])
+				hy += kf(a, [[0, 0.0], [0.2, -0.13], [0.42, 0.06], [0.66, -0.16], [0.85, -0.12], [1, 0.0]]) * h
+				hz = kf(a, [[0, -0.1], [0.2, 0.0], [0.66, -0.1], [1, 0.0]]) * h
+				knee_l -= kf(a, [[0, 0.4], [0.2, 0.9], [0.42, 0.3], [0.66, 0.95], [0.85, 0.85], [1, 0.0]])
+				knee_r -= kf(a, [[0, 0.2], [0.2, 0.75], [0.36, 1.1], [0.5, 0.6], [0.66, 0.9], [0.85, 0.8], [1, 0.0]])
+				leg_l += kf(a, [[0, 0.5], [0.2, 0.4], [0.42, 0.1], [0.66, 0.6], [0.85, 0.55], [1, 0.0]])
+				leg_r += kf(a, [[0, -0.35], [0.2, -0.3], [0.36, 0.45], [0.5, 0.2], [0.66, -0.45], [0.85, -0.4], [1, 0.0]])
+				shl.x += kf(a, [[0, -0.1], [0.2, 0.4], [0.3, 0.7], [0.62, 0.7], [0.8, 0.4], [1, 0.0]])
+				shl.z += kf(a, [[0, -0.5], [0.3, -0.85], [0.62, -0.8], [0.8, -0.3], [1, 0.0]])
+				ell += kf(a, [[0, 0.3], [0.3, 0.5], [0.8, 0.3], [1, 0.0]])
+				head_x = kf(a, [[0, -0.15], [0.2, 0.15], [0.7, 0.22], [1, 0.0]])
 			"bow":
 				shl.x = kf(a, [[0, 0.2], [0.25, 1.55], [0.85, 1.55], [1, 0.2]])
 				shl.z = kf(a, [[0, -0.1], [0.25, 0.2], [0.85, 0.2], [1, -0.1]])
@@ -353,11 +390,6 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 
 	var idle := clampf(1.0 - m, 0.0, 1.0) * (1.0 if a < 0.0 else 0.3) * (1.0 - b)
 	var mm := clampf(m, 0.0, 1.4)
-	var tz := 0.0
-	var head_z := 0.0
-	var hip_x := 0.0
-	var hip_yaw := 0.0
-	var hip_roll := 0.0
 
 	# --- idle life: breathing, weight shifts, glances, fidgets
 	var br := sin(t * breathe_rate + sd * 10.0)
@@ -465,7 +497,23 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 	ell = spring(D, "ell", ell, 120.0 if b < 0.3 else 400.0, 0.5, dt)
 
 	(J["hips"] as Node3D).position = Vector3(hip_x, J["hips_y"] + hy, hz)
-	(J["hips"] as Node3D).rotation = Vector3(0, hip_yaw - ty * 0.2 + hip_spin, hip_roll)
+	if swiping:
+		# the sword arm and wrist get a stiff spring: the snap of the cut stays, but there's no pop
+		# where one swipe takes over from the last or starts from the guard
+		shr = Vector3(spring(D, "srx", shr.x, 1100.0, 0.75, dt), spring(D, "sry", shr.y, 1100.0, 0.75, dt), spring(D, "srz", shr.z, 1100.0, 0.75, dt))
+		elr = spring(D, "elr", elr, 1100.0, 0.75, dt)
+		grip_p = spring(D, "gp", grip_p, 900.0, 0.7, dt)
+		hip_turn = spring(D, "htn", hip_turn, 500.0, 0.7, dt)
+		head_y -= ty * 0.35     # eyes stay on the foe while the shoulders turn
+	else:
+		# outside the combo the springs just track the pose, so the first cut starts from the guard
+		for kv in [["srx", shr.x], ["sry", shr.y], ["srz", shr.z], ["elr", elr], ["gp", 0.0], ["htn", 0.0]]:
+			D[kv[0]] = kv[1]
+			D[kv[0] + "_v"] = 0.0
+	if J.has("grip_r") and (swiping or D.get("grip_set", false)):
+		(J["grip_r"] as Node3D).rotation = Vector3(deg_to_rad(-28.0) + grip_p, grip_y, 0.0)
+		D["grip_set"] = swiping
+	(J["hips"] as Node3D).rotation = Vector3(0, hip_yaw - ty * 0.2 + hip_spin + hip_turn, hip_roll)
 	var dead: float = st.get("dead", 0.0)
 	if dead > 0.0:
 		var dk := clampf(dead * 2.0, 0.0, 1.0)
@@ -485,8 +533,8 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 	if J.has("bow_l"):
 		(J["grip_l"] as Node3D).rotation = Vector3(-(shl.x + ell), 0.0, -shl.z)
 	(J["el_r"] as Node3D).rotation = Vector3(elr, 0, 0)
-	(J["leg_l"] as Node3D).rotation = Vector3(leg_l, 0, -hip_roll * 0.5)
-	(J["leg_r"] as Node3D).rotation = Vector3(leg_r, 0, -hip_roll * 0.5)
+	(J["leg_l"] as Node3D).rotation = Vector3(leg_l, -hip_turn * 0.85, -hip_roll * 0.5)
+	(J["leg_r"] as Node3D).rotation = Vector3(leg_r, -hip_turn * 0.85, -hip_roll * 0.5)
 	(J["knee_l"] as Node3D).rotation = Vector3(knee_l, 0, 0)
 	(J["knee_r"] as Node3D).rotation = Vector3(knee_r, 0, 0)
 	if J.has("wing_l"):

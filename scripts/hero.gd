@@ -109,8 +109,8 @@ var combo := 0
 var combo_t := 0.0
 # right-click combo: three swipes (forehand, rising backhand, spinning finisher)
 const SWIPES := ["swipe1", "swipe2", "swipe3"]
-const SWIPE_DUR := {"swipe1": 0.5, "swipe2": 0.52, "swipe3": 0.82}
-const SWIPE_LUNGE := {"swipe1": [0.2, 0.46, 0.45], "swipe2": [0.22, 0.46, 0.35], "swipe3": [0.2, 0.66, 0.6]}  # from, to, metres
+const SWIPE_DUR := {"swipe1": 0.56, "swipe2": 0.58, "swipe3": 0.9}
+const SWIPE_LUNGE := {"swipe1": [0.22, 0.44, 0.5], "swipe2": [0.2, 0.46, 0.55], "swipe3": [0.18, 0.64, 0.5]}  # from, to, metres
 var swipe_n := 0
 var swipe_idle := 0.0
 var swipe_q := false
