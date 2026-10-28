@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
+`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -182,6 +182,13 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   A cast spell's sound starts with the cast (`Hero._attack_sound`) so its payoff lands on the impact frame (0.3 s);
   monster impacts, crit stings and kill sounds come from `Enemy._hit_sound`/`die_visual` by `Enemy.material()`.
   `tools/sound_test.gd` checks every skill fires its sounds (`Sfx.counts`).
+- **Characters** (save slots): each character is its own save, `user://characters/<id>.json` (`Game.char_id`,
+  `char_name`; the save holds `name` and `played`). `Game.list_characters()` reads them (last played first) for the
+  title's Continue button and the Characters list (Play / Delete); New Character asks for a name on the class picker.
+  The pre-characters save `user://ashen_crown_save.json` is adopted once as the first character and left in place.
+  The pause menu's "Save and Exit to Title" is `Game.exit_to_title()`. Co-op uses the last played character and its
+  name. Tools still save to the test file; `tools/char_test.gd` moves `char_dir`/`old_save` to test the real thing,
+  `tools/char_shot.gd` screenshots the screens.
 - `UNLOCK_ALL_ACTS` in `game.gd` is a testing switch (also enables the F8 testing panel: `test_immortal`, `test_onehit`, `test_stamina`, `test_allskills` in `game.gd`, and a level setter, `Hero.set_level`); turn off for real playthroughs.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file).

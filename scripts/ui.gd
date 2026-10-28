@@ -28,6 +28,10 @@ var bar_style := "A"
 var skill_slots: Array = []
 var skill_hb: HBoxContainer
 var class_panel: Control
+## Title screen: the saved characters (play / delete), and the new character's name.
+var chars_panel: Control
+var chars_list: VBoxContainer
+var name_edit: LineEdit
 var belt_slots: Array = []
 var target_box: PanelContainer
 var target_name: Label
@@ -1183,6 +1187,10 @@ func _build_pause() -> void:
 	fps.text = "Toggle FPS counter (F3)"
 	fps.pressed.connect(func(): show_fps = not show_fps)
 	vb.add_child(fps)
+	var to_title := Button.new()
+	to_title.text = "Save and Exit to Title"
+	to_title.pressed.connect(func(): game.exit_to_title())
+	vb.add_child(to_title)
 	var save := Button.new()
 	save.text = "Save and Quit"
 	save.pressed.connect(func():
@@ -1313,10 +1321,16 @@ func _build_title() -> void:
 	cont.custom_minimum_size = Vector2(0, 46)
 	cont.pressed.connect(func(): game.start_game(true))
 	vb.add_child(cont)
+	var chb := Button.new()
+	chb.name = "characters"
+	chb.text = "Characters"
+	chb.custom_minimum_size = Vector2(0, 46)
+	chb.pressed.connect(func(): open_characters())
+	vb.add_child(chb)
 	var ng := Button.new()
-	ng.text = "New Game"
+	ng.text = "New Character"
 	ng.custom_minimum_size = Vector2(0, 46)
-	ng.pressed.connect(func(): class_panel.visible = true)
+	ng.pressed.connect(func(): open_class_picker())
 	vb.add_child(ng)
 	var coop := HBoxContainer.new()
 	coop.add_theme_constant_override("separation", 12)
@@ -1339,6 +1353,7 @@ func _build_title() -> void:
 	q.pressed.connect(func(): get_tree().quit())
 	vb.add_child(q)
 	_build_class_picker()
+	_build_characters()
 	if OS.has_feature("web"):
 		# browsers can't use the LAN co-op networking, and there's nothing to quit to
 		coop.visible = false
@@ -1572,6 +1587,16 @@ func _build_class_picker() -> void:
 	var t := _label("Choose your path", 40, GOLD, true)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(t)
+	var nrow := HBoxContainer.new()
+	nrow.alignment = BoxContainer.ALIGNMENT_CENTER
+	nrow.add_theme_constant_override("separation", 10)
+	vb.add_child(nrow)
+	nrow.add_child(_label("Name", 18, Color(0.84, 0.8, 0.74)))
+	name_edit = LineEdit.new()
+	name_edit.max_length = 18
+	name_edit.custom_minimum_size = Vector2(260, 40)
+	name_edit.placeholder_text = "a name for your hero"
+	nrow.add_child(name_edit)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 18)
 	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -1616,7 +1641,7 @@ func _build_class_picker() -> void:
 		var cls_id: String = c
 		go.pressed.connect(func():
 			class_panel.visible = false
-			game.start_game(false, cls_id))
+			game.start_game(false, cls_id, "", name_edit.text))
 		cv.add_child(go)
 	var back := Button.new()
 	back.text = "Back"
@@ -1625,12 +1650,115 @@ func _build_class_picker() -> void:
 	back.pressed.connect(func(): class_panel.visible = false)
 	vb.add_child(back)
 
-func show_title(has_save: bool) -> void:
+func open_class_picker() -> void:
+	Sfx.play("click")
+	chars_panel.visible = false
+	name_edit.text = ""
+	class_panel.visible = true
+
+func show_title() -> void:
 	title_panel.visible = true
 	if class_panel:
 		class_panel.visible = false
-	(title_panel.find_child("continue", true, false) as Button).disabled = not has_save
+	if chars_panel:
+		chars_panel.visible = false
+	var chars: Array = game.list_characters()
+	var cont := title_panel.find_child("continue", true, false) as Button
+	cont.disabled = chars.is_empty()
+	cont.text = "Continue" if chars.is_empty() else "Continue  ·  " + _char_line(chars[0])
+	(title_panel.find_child("characters", true, false) as Button).visible = chars.size() > 1
 	_set_hud(false)
+
+func _char_line(c: Dictionary) -> String:
+	var nm: String = c["name"] if str(c["name"]) != "" else "Unnamed"
+	return "%s, level %d %s" % [nm, int(c["level"]), Data.CLASSES.get(c["cls"], {"name": "Knight"})["name"]]
+
+## The saved characters: play one, delete one (asks twice), or make a new one.
+func _build_characters() -> void:
+	chars_panel = Control.new()
+	chars_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	chars_panel.visible = false
+	title_panel.add_child(chars_panel)
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0.01, 0.01, 0.015, 0.95)
+	chars_panel.add_child(dim)
+	var vb := VBoxContainer.new()
+	vb.anchor_left = 0.5
+	vb.anchor_right = 0.5
+	vb.anchor_top = 0.5
+	vb.anchor_bottom = 0.5
+	vb.offset_left = -380
+	vb.offset_right = 380
+	vb.offset_top = -300
+	vb.offset_bottom = 300
+	vb.add_theme_constant_override("separation", 16)
+	chars_panel.add_child(vb)
+	var t := _label("Characters", 40, GOLD, true)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(t)
+	var sc := ScrollContainer.new()
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	vb.add_child(sc)
+	chars_list = VBoxContainer.new()
+	chars_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chars_list.add_theme_constant_override("separation", 8)
+	sc.add_child(chars_list)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 14)
+	vb.add_child(row)
+	var nb := Button.new()
+	nb.text = "New Character"
+	nb.custom_minimum_size = Vector2(200, 42)
+	nb.pressed.connect(func(): open_class_picker())
+	row.add_child(nb)
+	var back := Button.new()
+	back.text = "Back"
+	back.custom_minimum_size = Vector2(160, 42)
+	back.pressed.connect(func(): chars_panel.visible = false)
+	row.add_child(back)
+
+func open_characters() -> void:
+	Sfx.play("click")
+	for c in chars_list.get_children():
+		c.queue_free()
+	var accents := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1), "warlock": Color(0.45, 1.0, 0.35)}
+	for c in game.list_characters():
+		var card := PanelContainer.new()
+		card.add_theme_stylebox_override("panel", _box(Color(0.06, 0.05, 0.05, 0.96), accents.get(c["cls"], GOLD), 2, 6, 10))
+		chars_list.add_child(card)
+		var hb := HBoxContainer.new()
+		hb.add_theme_constant_override("separation", 12)
+		card.add_child(hb)
+		var info := VBoxContainer.new()
+		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hb.add_child(info)
+		info.add_child(_label(str(c["name"]) if str(c["name"]) != "" else "Unnamed", 22, accents.get(c["cls"], GOLD), true))
+		var run: String = Data.RUNS[int(c["difficulty"])]["name"] if int(c["difficulty"]) < Data.RUNS.size() else ""
+		info.add_child(_label("Level %d %s  ·  %s" % [int(c["level"]), Data.CLASSES.get(c["cls"], {"name": "Knight"})["name"], run], 14, Color(0.75, 0.7, 0.62)))
+		var id: String = c["id"]
+		var play := Button.new()
+		play.text = "Play"
+		play.custom_minimum_size = Vector2(110, 40)
+		play.pressed.connect(func():
+			chars_panel.visible = false
+			game.start_game(true, "knight", id))
+		hb.add_child(play)
+		var del := Button.new()
+		del.text = "Delete"
+		del.custom_minimum_size = Vector2(110, 40)
+		del.pressed.connect(func():
+			if del.text == "Delete":
+				del.text = "Sure?"
+				return
+			game.delete_character(id)
+			open_characters()
+			show_title()
+			chars_panel.visible = not game.list_characters().is_empty())
+		hb.add_child(del)
+	chars_panel.visible = true
 
 func hide_title() -> void:
 	title_panel.visible = false

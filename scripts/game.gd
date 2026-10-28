@@ -1,12 +1,21 @@
 extends Node3D
 ## Root of the game: environment, camera, zones, input, combat glue, saving.
 
+## Each character is its own save, CHAR_DIR/<id>.json. SAVE_PATH is the single save from before characters;
+## it is copied in once as the first character (and left in place for older builds).
+const CHAR_DIR := "user://characters/"
 const SAVE_PATH := "user://ashen_crown_save.json"
 ## Headless tools (godot -s tools/x.gd) save to their own file so they never touch a player's save.
 const TEST_SAVE_PATH := "user://ashen_crown_test_save.json"
 const CAM_OFFSET := Vector3(0, 17.0, 16.5)
 
 var world: World
+## The character being played (its save is CHAR_DIR + char_id + ".json") and its name.
+var char_id := ""
+var char_name := ""
+## Where characters live (tools/char_test.gd points these at its own folder to test the real thing).
+var char_dir := CHAR_DIR
+var old_save := SAVE_PATH
 var env: Environment
 var world_env: WorldEnvironment
 var sun: DirectionalLight3D
@@ -104,7 +113,7 @@ func _ready() -> void:
 		return
 	await _play_intro()
 	await load_zone(0, "town", "start")
-	ui.show_title(FileAccess.file_exists(save_path()))
+	ui.show_title()
 
 # ---------------------------------------------------------------- intro
 const INTRO_PATH := "res://assets/intro.ogv"
@@ -884,13 +893,25 @@ func enemies_near(p: Vector3, r: float) -> Array:
 	return out
 
 # ---------------------------------------------------------------- start / save
-func start_game(cont: bool, cls := "knight") -> void:
+## cont: play the character `id` (the last one played when empty); otherwise a new `cls` called `nm`.
+func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
 	Sfx.play("click")
 	ui.hide_title()
 	playing = true
+	if cont:
+		var chars := list_characters()
+		char_id = id if id != "" else (str(chars[0]["id"]) if not chars.is_empty() else "")
+	else:
+		char_id = new_char_id()
+		char_name = nm.strip_edges().substr(0, 18) if nm.strip_edges() != "" else default_name(cls)
 	if cont and load_game():
 		await load_zone(cur_act, "town", "start")
 	else:
+		if cont:
+			# nothing to continue: a new knight
+			char_id = new_char_id()
+			char_name = default_name(cls)
+		net.my_name = char_name
 		hero.set_class(cls)
 		hero.new_character()
 		difficulty = 0
@@ -905,9 +926,9 @@ func start_game(cont: bool, cls := "knight") -> void:
 		ui.open_dialog(Data.VENDORS[0]["elder"], "Welcome to Greywatch, %s. Since the goblin king Grubb tunnelled into the old crypt to loot the dead, the dead walk Cairnfell Moor and the Fallen raid our roads. He sits on a mountain of stolen gold down there and calls himself king. Trade with our folk, then head out through the north gate. End him, and the moor may yet heal." % ("restless one" if hero.is_wraith() else ("pact-bound one" if hero.is_warlock() else "crusader")), [["I will", func(): pass]])
 	ui.refresh()
 
-## Co-op from the title screen. Your saved knight is used if you have one.
+## Co-op from the title screen. Your last character is used if you have one.
 func start_host() -> void:
-	await start_game(FileAccess.file_exists(save_path()))
+	await start_game(not list_characters().is_empty())
 	var err := net.host()
 	if err != OK:
 		ui.big_message("Could not host")
@@ -920,7 +941,10 @@ func start_join(ip: String) -> void:
 	net.stop_listening()
 	ui.hide_title()
 	playing = true
+	var chars := list_characters()
+	char_id = str(chars[0]["id"]) if not chars.is_empty() else new_char_id()
 	if not load_game():
+		char_name = default_name(hero.cls)
 		hero.new_character()
 	loading_lbl.text = "Joining game at %s..." % ip
 	loading.visible = true
@@ -948,13 +972,20 @@ var test_onehit := false
 var test_stamina := false   # infinite stamina: sprint forever
 var test_allskills := false # every skill usable regardless of level
 
+## Headless tools save to TEST_SAVE_PATH, unless they moved the character folder.
+func _testing() -> bool:
+	return get_tree().get_script() != null and char_dir == CHAR_DIR
+
 func save_path() -> String:
-	return TEST_SAVE_PATH if get_tree().get_script() != null else SAVE_PATH
+	return TEST_SAVE_PATH if _testing() else char_dir + char_id + ".json"
 
 func save_game() -> void:
+	if char_id == "" and not _testing():
+		return
 	_store_progress()
 	var d := {"hero": hero.to_save(), "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed, "difficulty": difficulty,
-		"max_run": max_run, "runs": run_progress}
+		"max_run": max_run, "runs": run_progress, "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
+	DirAccess.make_dir_recursive_absolute(char_dir)
 	var f := FileAccess.open(save_path(), FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(d))
@@ -969,6 +1000,9 @@ func load_game() -> bool:
 	if typeof(d) != TYPE_DICTIONARY:
 		return false
 	hero.from_save(d.get("hero", {}))
+	char_name = str(d.get("name", default_name(hero.cls)))
+	if char_name != "":
+		net.my_name = char_name
 	cur_act = int(d.get("act", 0))
 	waypoints_known = d.get("waypoints", ["town"])
 	boss_killed = d.get("boss", false)
@@ -978,6 +1012,77 @@ func load_game() -> bool:
 		max_run = 2
 	run_progress = d.get("runs", {})
 	return true
+
+## Every saved character, the last played first: [{id, name, cls, level, difficulty, act, played}].
+func list_characters() -> Array:
+	if not _testing():
+		_adopt_old_save()
+	var out := []
+	var dir := DirAccess.open(char_dir)
+	if dir == null:
+		return out
+	for fn in dir.get_files():
+		if not fn.ends_with(".json"):
+			continue
+		var f := FileAccess.open(char_dir + fn, FileAccess.READ)
+		if f == null:
+			continue
+		var d = JSON.parse_string(f.get_as_text())
+		if typeof(d) != TYPE_DICTIONARY:
+			continue
+		var h: Dictionary = d.get("hero", {})
+		out.append({"id": fn.get_basename(), "name": str(d.get("name", "")), "cls": str(h.get("cls", "knight")),
+			"level": int(h.get("level", 1)), "difficulty": int(d.get("difficulty", 0)), "act": int(d.get("act", 0)),
+			"played": int(d.get("played", 0))})
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["played"]) > int(b["played"]))
+	return out
+
+## The save from before characters becomes the first character (once; the old file stays for older builds).
+func _adopt_old_save() -> void:
+	if FileAccess.file_exists(char_dir + ".adopted") or not FileAccess.file_exists(old_save):
+		return
+	DirAccess.make_dir_recursive_absolute(char_dir)
+	var src := FileAccess.open(old_save, FileAccess.READ)
+	var d = JSON.parse_string(src.get_as_text()) if src else null
+	if typeof(d) == TYPE_DICTIONARY:
+		var h: Dictionary = d.get("hero", {})
+		d["name"] = default_name(str(h.get("cls", "knight")))
+		d["played"] = int(FileAccess.get_modified_time(old_save)) * 1000
+		var f := FileAccess.open(char_dir + new_char_id() + ".json", FileAccess.WRITE)
+		if f:
+			f.store_string(JSON.stringify(d))
+	var mark := FileAccess.open(char_dir + ".adopted", FileAccess.WRITE)
+	if mark:
+		mark.store_string("1")
+
+func delete_character(id: String) -> void:
+	if id != "" and FileAccess.file_exists(char_dir + id + ".json"):
+		DirAccess.remove_absolute(char_dir + id + ".json")
+
+func new_char_id() -> String:
+	return "%d_%04d" % [int(Time.get_unix_time_from_system()), randi() % 10000]
+
+func default_name(cls: String) -> String:
+	var names: Dictionary = {"knight": ["Aldric", "Bertrand", "Cedric", "Godfrey", "Roland"], "wraith": ["Morwen", "Vesper", "Sable", "Ysolde", "Nyx"],
+		"demon": ["Azrak", "Vorgath", "Malrok", "Ixtar", "Baelor"], "warlock": ["Fizzwick", "Nimbleroot", "Grimble", "Tobbin", "Wendle"]}
+	var pool: Array = names.get(cls, names["knight"])
+	return str(pool[randi() % pool.size()])
+
+## Back to the title screen to pick another character (the pause menu's "Save and Exit to Title").
+func exit_to_title() -> void:
+	save_game()
+	if paused:
+		toggle_pause()
+	if net.active:
+		net.shutdown()
+	playing = false
+	ui.close_all()
+	if hero.dead:
+		hero.respawn(hero.global_position)
+	hero.new_character()
+	char_id = ""
+	await load_zone(0, "town", "start")
+	ui.show_title()
 
 # ---------------------------------------------------------------- shops
 func _stock_shops() -> void:
