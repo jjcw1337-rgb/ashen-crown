@@ -543,9 +543,32 @@ func _scatter_grass(count: int, colors: Dictionary, height: float, outside := tr
 		var y := height_at(x, z)
 		var s := rng.randf_range(0.7, 1.35) * (1.0 - dm * 0.6)
 		xf.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.3), s)), Vector3(x, y - 0.02, z)))
-	# Act I: the painted grass clumps (lush tufts, tufts with wildflowers, tall seed-head grass)
-	# on a carpet of the blade grass (every other spot), so the ground reads as one lush field
-	if oak_forest and Flora.grass_tex_ok():
+	# Act I: grass painted for the camera (Flora.GRASS_TOP: nine kinds of clump, from lush tufts to
+	# dandelions), a clump on every spot and a smaller one beside most, over the blade grass on every
+	# other spot, so the ground reads as one grassy carpet. The older upright photo cards are the fallback.
+	if oak_forest and Flora.grass_top_ok():
+		var gp := []
+		for k in Flora.GRASS_TOP.size():
+			gp.append([])
+		for i in xf.size():
+			var o: Vector3 = (xf[i] as Transform3D).origin
+			var sc := (xf[i] as Transform3D).basis.get_scale()
+			# no yaw: the cards must face the camera; mirrored at random instead
+			var fl := -1.0 if rng.randf() < 0.5 else 1.0
+			gp[Flora.grass_top_kind(rng) - 1].append(Transform3D(Basis.from_scale(Vector3(sc.x * fl, sc.y, sc.x)), o))
+			if rng.randf() < 0.7:
+				var o2 := o + Vector3(rng.randf_range(-0.7, 0.7), 0, rng.randf_range(-0.7, 0.7))
+				o2.y = height_at(o2.x, o2.z) - 0.02
+				var s2 := sc.x * rng.randf_range(0.6, 0.9)
+				gp[Flora.grass_top_kind(rng) - 1].append(Transform3D(Basis.from_scale(Vector3(s2 * -fl, s2, s2)), o2))
+		for k in gp.size():
+			for mmi in mm_chunked(Flora.grass_top(k + 1, colors), gp[k], detail >= 3, 20.0, 60.0):
+				mmi.add_to_group("grass")
+		var keep := []
+		for i in range(0, xf.size(), 2):
+			keep.append(xf[i])
+		xf = keep
+	elif oak_forest and Flora.grass_tex_ok():
 		var cparts := [[], [], [], [], [], []]
 		var keep := []
 		for i in xf.size():
@@ -572,6 +595,38 @@ func _scatter_grass(count: int, colors: Dictionary, height: float, outside := tr
 	for k in parts.size():
 		for mmi in mm_chunked(clumps[k], parts[k], detail >= 3, 20.0, 60.0, m):
 			mmi.add_to_group("grass")
+
+## Act I: a few rare Sunstar Blooms off the road, in among the trees. Picking one gives +50% experience
+## for 5 minutes (Game.use_inter). Their own seed, so the rest of the moor doesn't change around them.
+func _rare_flowers(count: int) -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = int(bounds.size.y * 1000.0) + 7717
+	var placed := []
+	var tries := 400
+	while placed.size() < count and tries > 0:
+		tries -= 1
+		var x := r.randf_range(bounds.position.x + 4.0, bounds.end.x - 4.0)
+		var z := r.randf_range(bounds.position.y + 4.0, bounds.end.y - 4.0)
+		var d := path_dist(x, z)
+		if d < 14.0 or d > 34.0 or is_blocked(x, z) or is_near_obstacle(Vector3(x, 0, z), 1.2):
+			continue
+		var p := Vector3(x, 0, z)
+		if p.distance_to(spawns.get("start", Vector3.ZERO)) < 25.0 or placed.any(func(q: Vector3) -> bool: return q.distance_to(p) < 40.0):
+			continue
+		placed.append(p)
+		var g := Node3D.new()
+		var card := MeshInstance3D.new()
+		card.mesh = Flora.flower_card()
+		card.name = "bloom"
+		g.add_child(card)
+		var l := OmniLight3D.new()
+		l.light_color = Color(1.0, 0.78, 0.35)
+		l.light_energy = 1.5
+		l.omni_range = 4.5
+		l.position = Vector3(0, 0.7, 0)
+		l.name = "light"
+		g.add_child(l)
+		_inter("flower", "Sunstar Bloom", p, 1.2, g)
 
 ## Ferns gather in the shade along the forest edges and between trees.
 func _scatter_ferns(count: int) -> void:
@@ -1324,6 +1379,8 @@ func _build_wild() -> void:
 	_build_terrain(MOOR_ROAD if road_style() == 2 else MOOR_TERRAIN if road_style() == 0 else MOOR_TRAIL)
 	_scatter_grass(94000, MOOR_GRASS, 0.32)
 	_scatter_ferns(700)
+	if oak_forest:
+		_rare_flowers(3)
 
 	# monster packs along the path
 	var foes: Array = Data.ACTS[act]["foes"]

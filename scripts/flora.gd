@@ -455,6 +455,66 @@ const GRASS_TEX := "res://assets/textures/grass/g%d.png"
 ## per texture: card width, height (metres), tint
 const GRASS_CARDS := [[0.66, 0.44, Color(0.86, 0.92, 0.82)], [0.58, 0.46, Color(0.88, 0.93, 0.85)], [0.6, 0.62, Color(0.78, 0.8, 0.7)]]
 
+## Act I grass painted for the game's camera (Meshy, seen from 45 degrees above,
+## assets/textures/grass/topN.png, prepared by tools/grass_prep.py): one card per clump, tilted back to
+## face the fixed camera, so the painting is seen as drawn instead of squashed onto upright cards.
+## Per texture: card size (m), how often it is picked. 1 lush, 2 low clover, 3 daisies and buttercups,
+## 4 seed heads, 5 tussock, 6 heather and clover, 7 small wispy tuft, 8 dandelions, 9 speedwell.
+const GRASS_TOP_TEX := "res://assets/textures/grass/top%d.png"
+const GRASS_TOP := [[0.85, 22], [0.75, 14], [0.8, 8], [0.8, 9], [0.85, 12], [0.8, 7], [0.5, 14], [0.8, 6], [0.75, 8]]
+## the camera looks down at about 46 degrees (Game.CAM_OFFSET), so the cards lean back by 44
+const GRASS_TOP_LEAN := 44.0
+## the rare Sunstar Bloom (World._rare_flowers) is painted the same way
+const FLOWER_TEX := "res://assets/textures/grass/flower_sun.png"
+
+static func grass_top_ok() -> bool:
+	return ResourceLoader.exists(GRASS_TOP_TEX % GRASS_TOP.size())
+
+## A random clump kind (1-based), by the weights in GRASS_TOP.
+static func grass_top_kind(rng: RandomNumberGenerator) -> int:
+	var total := 0
+	for g in GRASS_TOP:
+		total += int(g[1])
+	var r := rng.randi() % total
+	for i in GRASS_TOP.size():
+		r -= int(GRASS_TOP[i][1])
+		if r < 0:
+			return i + 1
+	return 1
+
+static func grass_top(k: int, colors: Dictionary) -> ArrayMesh:
+	return _camera_card("gtop%d" % k, GRASS_TOP_TEX % k, GRASS_TOP[k - 1][0], colors.get("dry_col", Color(0.42, 0.38, 0.18)), 0.0)
+
+static func flower_card() -> ArrayMesh:
+	return _camera_card("flower_sun", FLOWER_TEX, 1.2, Color(0.42, 0.38, 0.18), 0.9)
+
+## A painted cut-out on one quad that leans back to face the fixed camera; `glow` lights it from within.
+static func _camera_card(key: String, tex: String, w: float, dry: Color, glow: float) -> ArrayMesh:
+	if _cache.has(key):
+		return _cache[key]
+	var lean := deg_to_rad(GRASS_TOP_LEAN)
+	# the bottom of the painting is the near side of the clump: sink it a little into the ground
+	var up := Vector3(0, cos(lean), -sin(lean)) * w
+	var b0 := Vector3(-w * 0.5, -0.06, 0.08)
+	var b1 := Vector3(w * 0.5, -0.06, 0.08)
+	var st := _st()
+	var q := [[b0, Vector2(0, 0)], [b1, Vector2(1, 0)], [b1 + up, Vector2(1, 1)], [b0, Vector2(0, 0)], [b1 + up, Vector2(1, 1)], [b0 + up, Vector2(0, 1)]]
+	for v in q:
+		st.set_color(Color.WHITE)
+		st.set_uv(v[1])
+		st.set_normal(Vector3(0, 0.85, 0.5).normalized())
+		st.add_vertex(v[0])
+	var m := ArrayMesh.new()
+	st.commit(m)
+	var mat := ShaderMaterial.new()
+	mat.shader = _shader("grass_cards", GRASS_CARD_SHADER)
+	mat.set_shader_parameter("tex", load(tex))
+	mat.set_shader_parameter("dry_col", dry)
+	mat.set_shader_parameter("glow", glow)
+	m.surface_set_material(0, mat)
+	_cache[key] = m
+	return m
+
 static func grass_tex_ok() -> bool:
 	return ResourceLoader.exists(GRASS_TEX % 1)
 
@@ -581,6 +641,9 @@ varying float sway;
 varying vec3 wn;
 varying float wy;
 float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+// ordered 4x4 dither for the see-through near the player: a steady screen, not per-pixel noise that sparkles
+float bayer2(vec2 a){ a = floor(a); return fract(a.x / 2.0 + a.y * a.y * 0.75); }
+float dith(vec2 a){ return bayer2(0.5 * a) * 0.25 + bayer2(a) + 0.03125; }
 float vn(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
 	return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), u.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), u.x), u.y); }
 void vertex(){
@@ -602,7 +665,7 @@ void fragment(){
 		float along = d.z - occlude_k * (hh - 1.0);
 		float cover = (1.0 - smoothstep(1.6, 3.2, abs(along))) * (1.0 - smoothstep(2.2, 3.6, abs(d.x)));
 		cover *= step(0.9, hh) * step(0.2, d.z);
-		if (cover * 0.9 > h21(floor(FRAGCOORD.xy))) { discard; }
+		if (cover * 0.9 > dith(FRAGCOORD.xy)) { discard; }
 	}
 	// vertical fissures that wander, plates between them
 	vec2 uv = vec2(UV.x * 7.0, UV.y * 1.6);
@@ -652,6 +715,9 @@ global uniform float occlude_k;
 varying vec3 bwp;
 varying vec3 wn;
 float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+// ordered 4x4 dither for the see-through near the player: a steady screen, not per-pixel noise that sparkles
+float bayer2(vec2 a){ a = floor(a); return fract(a.x / 2.0 + a.y * a.y * 0.75); }
+float dith(vec2 a){ return bayer2(0.5 * a) * 0.25 + bayer2(a) + 0.03125; }
 void vertex(){
 	vec3 o = MODEL_MATRIX[3].xyz;
 	float ph = o.x * 0.21 + o.z * 0.17;
@@ -671,7 +737,7 @@ void fragment(){
 		float along = d.z - occlude_k * (hh - 1.0);
 		float cover = (1.0 - smoothstep(1.6, 3.2, abs(along))) * (1.0 - smoothstep(2.2, 3.6, abs(d.x)));
 		cover *= step(0.9, hh) * step(0.2, d.z);
-		if (cover * 0.9 > h21(floor(FRAGCOORD.xy))) { discard; }
+		if (cover * 0.9 > dith(FRAGCOORD.xy)) { discard; }
 	}
 	vec3 c = texture(albedo_tex, UV).rgb;
 	// Meshy bakes the trees quite grey: lift the greens a touch and deepen the bark
@@ -707,6 +773,9 @@ varying vec4 vc;
 varying vec3 wp;
 varying float wny;
 float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+// ordered 4x4 dither for the see-through near the player: a steady screen, not per-pixel noise that sparkles
+float bayer2(vec2 a){ a = floor(a); return fract(a.x / 2.0 + a.y * a.y * 0.75); }
+float dith(vec2 a){ return bayer2(0.5 * a) * 0.25 + bayer2(a) + 0.03125; }
 float vn(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
 	return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), u.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), u.x), u.y); }
 void vertex(){
@@ -775,7 +844,7 @@ void fragment(){
 		float along = d.z - occlude_k * (hh - 1.0);
 		float cover = (1.0 - smoothstep(1.6, 3.2, abs(along))) * (1.0 - smoothstep(2.2, 3.6, abs(d.x)));
 		cover *= step(0.9, hh) * step(0.2, d.z);
-		if (cover * 0.9 > h21(floor(FRAGCOORD.xy))) { discard; }
+		if (cover * 0.9 > dith(FRAGCOORD.xy)) { discard; }
 	}
 	float n = vn(wp.xz * 0.35 + wp.y * 0.2);
 	vec3 c = mix(col, col2, smoothstep(0.2, 0.9, UV.x * 0.6 + n * 0.6));
@@ -809,6 +878,7 @@ render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
 uniform sampler2D tex : source_color, filter_linear_mipmap, repeat_disable;
 uniform vec3 dry_col : source_color = vec3(0.42, 0.38, 0.18);
 uniform float wind = 1.0;
+uniform float glow = 0.0;
 global uniform float snow_amt;
 global uniform float ash_amt;
 varying float hgt;
@@ -832,8 +902,13 @@ void vertex(){
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment(){
-	vec4 t = texture(tex, vec2(UV.x, 1.0 - UV.y));
-	if (t.a < 0.45) { discard; }
+	vec2 uv = vec2(UV.x, 1.0 - UV.y);
+	// mipmapped (a little sharp) so the fine blades don't flicker pixel by pixel as the camera
+	// moves; the cut-out rises with the mip level so far clumps stay wispy instead of merging into
+	// blobs, and MSAA softens the edge (alpha to coverage) instead of a hard discard
+	vec4 t = texture(tex, uv, -0.8);
+	vec2 px = uv * vec2(textureSize(tex, 0));
+	float lod = max(0.0, 0.5 * log2(max(dot(dFdx(px), dFdx(px)), dot(dFdy(px), dFdy(px)))) - 0.8);
 	if (snow_amt > 0.0 && hgt < snow_amt * 0.5) { discard; }
 	float patch = vn(wpos.xz * 0.13);
 	vec3 c = t.rgb * vc.rgb;
@@ -849,9 +924,15 @@ void fragment(){
 		c = mix(c, vec3(0.86, 0.9, 0.96), snow_amt * smoothstep(0.75, 1.0, hgt) * 0.75);
 	}
 	ALBEDO = c;
-	ROUGHNESS = 0.75;
-	SPECULAR = 0.25;
+	ALPHA = t.a;
+	ALPHA_SCISSOR_THRESHOLD = 0.5 + min(lod, 4.0) * 0.06;
+	ALPHA_ANTIALIASING_EDGE = 0.3;
+	ALPHA_TEXTURE_COORDINATE = px;
+	ROUGHNESS = 0.85;
+	SPECULAR = 0.12;
 	BACKLIGHT = c * 0.35 * hgt;
+	// the rare flowers glow softly from within, breathing slowly
+	EMISSION = t.rgb * glow * (0.8 + 0.2 * sin(TIME * 1.8 + wpos.x * 0.7));
 	AO = mix(0.5, 1.0, hgt);
 	AO_LIGHT_AFFECT = 0.4;
 }

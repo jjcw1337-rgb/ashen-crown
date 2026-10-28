@@ -21,6 +21,7 @@ var mana_orb: ColorRect
 var life_lbl: Label
 var mana_lbl: Label
 var xp_bar: HudBar
+var _xp_bonus_on := false   # the XP bonus countdown is showing on xp_bar
 var stamina_bar: HudBar
 var level_medal: HudBar.Medallion
 var action_bar: Control
@@ -1909,6 +1910,15 @@ func set_boss(e) -> void:
 			n.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			boss_bar.add_child(n)
 
+## The experience bar's text, with a Sunstar Bloom's or an Experience Shrine's bonus counting down.
+func _xp_detail() -> String:
+	var need := Data.xp_for_level(hero.level)
+	var pct := int(float(hero.xp) / maxf(need, 1.0) * 100.0)
+	var t := ("%d / %d   (%d%%)" % [hero.xp, need, pct]) if level_medal else ("Level %d   ·   %d / %d   (%d%%)" % [hero.level, hero.xp, need, pct])
+	if game.xp_bonus_t > 0.0:
+		t += "   ·   +50%% XP %d:%02d" % [int(game.xp_bonus_t) / 60, int(game.xp_bonus_t) % 60]
+	return t
+
 func refresh() -> void:
 	if hero == null:
 		return
@@ -1917,11 +1927,10 @@ func refresh() -> void:
 	mana_lbl.text = "Mana  %d / %d" % [int(hero.mana), int(hero.max_mana)]
 	var xpf := float(hero.xp) / maxf(Data.xp_for_level(hero.level), 1.0)
 	xp_bar.value = xpf
-	xp_bar.detail = "Level %d   ·   %d / %d   (%d%%)" % [hero.level, hero.xp, Data.xp_for_level(hero.level), int(xpf * 100.0)]
 	if level_medal:
 		level_medal.level = hero.level
 		level_medal.xp = xpf
-		xp_bar.detail = "%d / %d   (%d%%)" % [hero.xp, Data.xp_for_level(hero.level), int(xpf * 100.0)]
+	xp_bar.detail = _xp_detail()
 	for i in 4:
 		_set_slot(belt_slots[i], hero.belt[i])
 	if inv_panel.visible:
@@ -1964,6 +1973,9 @@ func _process(delta: float) -> void:
 			_join_refresh = 0.5
 			_refresh_join()
 	if hero:
+		if game.xp_bonus_t > 0.0 or _xp_bonus_on:
+			xp_bar.detail = _xp_detail()
+			_xp_bonus_on = game.xp_bonus_t > 0.0
 		stamina_bar.value = hero.stamina / maxf(hero.max_stamina, 1.0)
 		stamina_bar.detail = "%d / %d" % [int(hero.stamina), int(hero.max_stamina)]
 		if hero.exhausted:

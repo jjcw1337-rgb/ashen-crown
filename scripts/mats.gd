@@ -181,6 +181,9 @@ static func shader(name: String) -> Shader:
 
 const NOISE_LIB := """
 float hash21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
+// ordered 4x4 dither for the see-through near the player: a steady screen, not per-pixel noise that sparkles
+float bayer2(vec2 a){ a = floor(a); return fract(a.x / 2.0 + a.y * a.y * 0.75); }
+float dith(vec2 a){ return bayer2(0.5 * a) * 0.25 + bayer2(a) + 0.03125; }
 float vnoise(vec2 p){ vec2 i=floor(p); vec2 f=fract(p); vec2 u=f*f*(3.0-2.0*f);
 	return mix(mix(hash21(i),hash21(i+vec2(1.0,0.0)),u.x), mix(hash21(i+vec2(0.0,1.0)),hash21(i+vec2(1.0,1.0)),u.x), u.y); }
 float fbm(vec2 p){ float v=0.0; float a=0.5; for(int i=0;i<5;i++){ v+=a*vnoise(p); p=p*2.03+vec2(1.7,9.2); a*=0.5; } return v; }
@@ -238,8 +241,7 @@ void fragment(){
 		float along = d.z - occlude_k * (h - 1.0);
 		float cover = (1.0 - smoothstep(1.6, 3.2, abs(along))) * (1.0 - smoothstep(2.2, 3.6, abs(d.x)));
 		cover *= step(0.9, h) * step(0.2, d.z);
-		float dth = hash21(floor(FRAGCOORD.xy));
-		if (cover * 0.9 > dth) { discard; }
+		if (cover * 0.9 > dith(FRAGCOORD.xy)) { discard; }
 	}
 	float burn_rim = 0.0;
 	if (ash_amt > 0.0 && breakable > 0.5 && emission_energy < 0.5) {

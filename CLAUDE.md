@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
+`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -155,8 +155,20 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   Meshy oaks `assets/models/trees/oakN.glb` (prepared by `tools/blender/prep_tree.py`: trunk on the origin, ~6 m, 1k
   textures) built by `Flora.oak_model(k)` with `MESHY_TREE_SHADER` (wind sway by height, snow/ash, see-through near the
   player) plus the game's leaf clusters (`OAK_LEAVES`); the moor is ~40% oaks with groves off the road. Grass is
-  Meshy-painted cut-outs `assets/textures/grass/gN.png` on crossed cards (`Flora.grass_cards`, `GRASS_CARD_SHADER`) over
-  the blade grass at half density. Previews: `tools/tree_lineup.gd`, `tools/tree_shot.gd`. Meshy 2D: `meshy.py draw --cutout`.
+  painted for the game's camera: nine Meshy 2D clumps drawn from 45 degrees above (`assets/textures/grass/topN.png`,
+  `Flora.GRASS_TOP` sizes and weights), each on one card that leans back to face the fixed camera (`Flora._camera_card`,
+  no yaw, mirrored at random; `GRASS_CARD_SHADER`), a clump per spot and a smaller one beside most, over the blade grass
+  at half density. New clumps: `meshy.py draw` with "seen from above at a 45 degree camera angle ... chunky blades,
+  no thin hair-like detail" and `--cutout`, then `tools/grass_prep.py meshy.png topN.png` (crops, squares, scales and
+  bleeds the colour into the clear pixels; without that, far clumps go dark and blobby) and mipmaps on in the .import.
+  Unmipmapped or hair-thin cut-outs flicker pixel by pixel; the card shader cuts out with alpha to coverage. The older
+  upright photo cards (`gN.png`, `Flora.grass_cards`) are the fallback. The see-through near the player (trees, props)
+  uses an ordered dither (`dith`), not per-pixel noise, which sparkled in the tree shadows too.
+  **Sunstar Blooms** (`World._rare_flowers`, Act I only, 3 per moor, 14-34 m off the road, own seed): a glowing
+  painted card (`Flora.flower_card`) and a breathing light; picking one (`Game._interact` "flower") gives +50%
+  experience for 5 minutes (`Game.xp_bonus_t`, shared with the Experience Shrine; the XP bar counts it down) and is
+  synced like shrines. `tools/flower_test.gd` checks the grass kinds and the blooms.
+  Previews: `tools/tree_lineup.gd`, `tools/tree_shot.gd`. Meshy 2D: `meshy.py draw --cutout`.
 - **Act I monsters** (Meshy): concept image, image-to-3D, decimate to ~20k triangles in `sources/act1_enemies.blend`,
   then `blender -b --python tools/blender/act1/rig_monster.py -- <decimated.glb> <out.glb> layout.json [tex px] [hints]`
   (measures the joints; hints `{"sh_z", "sh_x"}` when a hood or helmet spike fools the neck finder) and

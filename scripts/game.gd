@@ -1181,6 +1181,8 @@ func use_inter_remote(t: Inter) -> void:
 		if l:
 			l.visible = false
 		Fx.pillar(world.fx_root, t.global_position, Color(1, 0.9, 0.6), 1.0)
+	elif t.kind == "flower":
+		_pick_flower(t)
 	elif t.kind == "chest":
 		_open_chest(t)
 
@@ -1263,6 +1265,15 @@ func _interact(t: Inter) -> void:
 					ui.message("Experience Shrine: +50% experience for 90 seconds", Color(0.8, 0.5, 1.0))
 			if net.active:
 				net.inter_used(t)
+		"flower":
+			if t.used:
+				return
+			_pick_flower(t)
+			xp_bonus_t = maxf(xp_bonus_t, 300.0)
+			Sfx.play("levelup", -6.0, 1.15)
+			ui.message("Sunstar Bloom: +50% experience for 5 minutes", Color(1.0, 0.8, 0.35))
+			if net.active:
+				net.inter_used(t)
 		"chest":
 			if t.used:
 				return
@@ -1313,6 +1324,15 @@ func open_town_portal_at(p: Vector3) -> void:
 	Sfx.play("portal")
 	Fx.burst(world.fx_root, p + Vector3(0, 1.4, 0), Color(0.4, 0.6, 1.0), 40, 3.0, 0.12, 1.0, true, 0.0)
 	net.portal_created(t)
+
+## A Sunstar Bloom picked (by anyone): it is gone, in a puff of golden motes.
+func _pick_flower(t: Inter) -> void:
+	t.used = true
+	t.label = ""
+	var m := t.get_node_or_null("Model")
+	if m:
+		m.visible = false
+	Fx.burst(world.fx_root, t.global_position + Vector3(0, 0.5, 0), Color(1.0, 0.82, 0.35), 30, 2.2, 0.07, 1.1, true, 1.5)
 
 # ---------------------------------------------------------------- kills & loot
 func gain_kill_xp(xp: int, lvl: int) -> void:
@@ -1508,7 +1528,7 @@ func _update_hover() -> void:
 					break
 	if best == null:
 		for it in world.interactables:
-			if not is_instance_valid(it):
+			if not is_instance_valid(it) or (it.kind == "flower" and it.used):
 				continue
 			var c2: Vector3 = it.global_position + Vector3(0, 1.0, 0)
 			if (c2 - o).cross(d).length() < 1.1:

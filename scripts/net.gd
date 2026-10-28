@@ -411,7 +411,7 @@ func _send_snapshot(pid: int) -> void:
 		var t = game.world.interactables[i]
 		if not is_instance_valid(t):
 			continue
-		if t.kind in ["chest", "shrine"] and t.used:
+		if t.kind in ["chest", "shrine", "flower"] and t.used:
 			rpc_id(pid, "cl_inter", i)
 		elif t.kind == "portal" and t.has_meta("dyn"):
 			rpc_id(pid, "cl_portal", t.global_position, t.data.get("dir", "town"), t.label, game.tp_link)
