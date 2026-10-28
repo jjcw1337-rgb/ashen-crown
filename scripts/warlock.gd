@@ -461,11 +461,11 @@ static func _dust_trail(root: Node3D) -> GPUParticles3D:
 	p.lifetime = 1.6
 	p.local_coords = false
 	p.emitting = false
-	p.position = Vector3(0, 0.3, 0.18)
+	p.position = Vector3(0, 0.38, 0.0)
 	p.visibility_aabb = AABB(Vector3(-6, -2, -6), Vector3(12, 6, 12))
 	var pm := ParticleProcessMaterial.new()
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-	pm.emission_sphere_radius = 0.2
+	pm.emission_sphere_radius = 0.16
 	pm.direction = Vector3(0, 1, 0)
 	pm.spread = 70.0
 	pm.initial_velocity_min = 0.15
