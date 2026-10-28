@@ -9,6 +9,8 @@ extends Node
 const RATE := 22050
 const BANK := preload("res://scripts/sfx_bank.gd").BANK
 const BANK_DIR := "res://assets/audio/sfx/"
+## Rendered sounds that loop (a channel, the ambience beds)
+const LOOPS := ["drain_loop", "wind", "drip"]
 var streams := {}
 ## name -> [streams] for the rendered sounds
 var bank := {}
@@ -73,11 +75,12 @@ func _ready() -> void:
 		if not takes.is_empty():
 			bank[nm] = takes
 	_gen()
-	if bank.has("drain_loop"):
-		var dl: AudioStreamWAV = bank["drain_loop"][0]
-		dl.loop_mode = AudioStreamWAV.LOOP_FORWARD
-		dl.loop_begin = 0
-		dl.loop_end = int(dl.get_length() * dl.mix_rate)
+	for nm in LOOPS:
+		for st in bank.get(nm, []):
+			var w: AudioStreamWAV = st
+			w.loop_mode = AudioStreamWAV.LOOP_FORWARD
+			w.loop_begin = 0
+			w.loop_end = int(w.get_length() * w.mix_rate)
 
 func _buses() -> void:
 	# set_bus_count, never add_bus: in the browser build (Godot 4.5.1's web sample playback) add_bus
@@ -186,8 +189,11 @@ func play_music(kind: String) -> void:
 		if not muted:
 			music.play()
 	var amb := "wind" if kind != "lair" else "drip"
-	if ambience.stream != streams.get(amb):
-		ambience.stream = streams.get(amb)
+	var amb_st: AudioStream = bank[amb][0] if bank.has(amb) else streams.get(amb)
+	if ambience.stream != amb_st:
+		ambience.stream = amb_st
+		# the recorded beds are levelled already; the old synthesized ones need pulling down
+		ambience.volume_db = -4.0 if bank.has(amb) else -20.0
 		if not muted:
 			ambience.play()
 

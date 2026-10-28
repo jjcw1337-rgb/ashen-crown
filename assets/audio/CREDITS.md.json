@@ -1,0 +1,146 @@
+{
+ "click": [
+  {
+   "detail": "click_001.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney interface-sounds (kenney.nl)"
+  },
+  {
+   "detail": "click_002.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney interface-sounds (kenney.nl)"
+  },
+  {
+   "detail": "click_003.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney interface-sounds (kenney.nl)"
+  }
+ ],
+ "coins": [
+  {
+   "detail": "handleCoins.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  },
+  {
+   "detail": "handleCoins2.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  }
+ ],
+ "deny": [
+  {
+   "detail": "error_004.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney interface-sounds (kenney.nl)"
+  },
+  {
+   "detail": "error_005.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney interface-sounds (kenney.nl)"
+  },
+  {
+   "detail": "error_006.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney interface-sounds (kenney.nl)"
+  }
+ ],
+ "drop": [
+  {
+   "detail": "dropLeather.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  },
+  {
+   "detail": "bookPlace1.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  },
+  {
+   "detail": "bookPlace2.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  },
+  {
+   "detail": "bookPlace3.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  }
+ ],
+ "equip": [
+  {
+   "detail": "beltHandle1.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  },
+  {
+   "detail": "beltHandle2.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  },
+  {
+   "detail": "clothBelt.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  },
+  {
+   "detail": "clothBelt2.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  }
+ ],
+ "gold": [
+  {
+   "detail": "handleCoins.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  },
+  {
+   "detail": "handleCoins2.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  }
+ ],
+ "pickup": [
+  {
+   "detail": "handleSmallLeather.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  },
+  {
+   "detail": "handleSmallLeather2.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  },
+  {
+   "detail": "cloth1.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  },
+  {
+   "detail": "cloth2.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  },
+  {
+   "detail": "cloth3.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  },
+  {
+   "detail": "cloth4.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  },
+  {
+   "detail": "clothBelt.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  },
+  {
+   "detail": "clothBelt2.ogg",
+   "license": "CC0 1.0",
+   "source": "Kenney rpg-audio (kenney.nl)"
+  }
+ ]
+}
