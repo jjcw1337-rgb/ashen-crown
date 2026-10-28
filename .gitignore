@@ -12,3 +12,6 @@ assets/models/*_basecolor.jpg
 .DS_Store
 Thumbs.db
 *.tmp
+assets/models/**/*.import
+assets/models/**/*_Image_*
+assets/models/**/*_normal.jpg

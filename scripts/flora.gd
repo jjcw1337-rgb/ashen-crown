@@ -311,6 +311,82 @@ static func _leaf_cluster(st: SurfaceTool, at: Vector3, center: Vector3, rng: Ra
 		var sw := clampf(0.35 + (at - center).length() * 0.18, 0.3, 1.0)
 		_card(st, at - a * s * 0.5, a * s, b * s, center, sw, sw + 0.15, tint)
 
+# ---------------------------------------------------------------- Meshy oaks
+## The three big old oaks generated with Meshy (assets/models/trees/oakN.glb, prepared by
+## tools/blender/prep_tree.py: trunk on the origin, ~6 m tall). The model's own textured trunk,
+## branches and leaves get a wind-sway shader (sway grows with height and distance from the trunk,
+## same wind as the procedural trees, snow/ash and see-through-near-the-player like the bark), and
+## the canopy is filled out with the game's own swaying leaf clusters. Falls back to Flora.oak.
+const OAK_GLB := "res://assets/models/trees/oak%d.glb"
+## per oak: leaf colours (col, col2, dry), how many leaf clusters, cluster size, texture brightness
+const OAK_LEAVES := [
+	[Color(0.17, 0.27, 0.09), Color(0.32, 0.42, 0.14), Color(0.42, 0.38, 0.14), 70, 1.15, 1.45],
+	[Color(0.16, 0.2, 0.07), Color(0.42, 0.3, 0.1), Color(0.55, 0.3, 0.08), 70, 1.15, 1.1],
+	[Color(0.15, 0.18, 0.08), Color(0.26, 0.28, 0.12), Color(0.36, 0.32, 0.14), 45, 1.0, 1.0],
+]
+
+static func oak_model(k: int) -> ArrayMesh:
+	var key := "moak%d" % k
+	if _cache.has(key):
+		return _cache[key]
+	var path := OAK_GLB % k
+	if not ResourceLoader.exists(path):
+		return oak(9 + k * 3)
+	var scene: Node = (load(path) as PackedScene).instantiate()
+	var out := ArrayMesh.new()
+	var verts := PackedVector3Array()
+	var h := 1.0
+	for n in scene.find_children("*", "MeshInstance3D", true, false):
+		var src: MeshInstance3D = n
+		for si in src.mesh.get_surface_count():
+			var arr: Array = src.mesh.surface_get_arrays(si)
+			var vs: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+			var xf := src.global_transform if src.is_inside_tree() else src.transform
+			for i in vs.size():
+				vs[i] = xf * vs[i]
+				h = maxf(h, vs[i].y)
+			arr[Mesh.ARRAY_VERTEX] = vs
+			verts.append_array(vs)
+			out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+			var sm: Material = src.mesh.surface_get_material(si)
+			var m := ShaderMaterial.new()
+			m.shader = _shader("meshy_tree", MESHY_TREE_SHADER)
+			if sm is BaseMaterial3D:
+				m.set_shader_parameter("albedo_tex", (sm as BaseMaterial3D).albedo_texture)
+				if (sm as BaseMaterial3D).normal_texture != null:
+					m.set_shader_parameter("normal_tex", (sm as BaseMaterial3D).normal_texture)
+					m.set_shader_parameter("use_normal", true)
+			m.set_shader_parameter("height", h)
+			m.set_shader_parameter("tint", float(OAK_LEAVES[k - 1][5]))
+			out.surface_set_material(out.get_surface_count() - 1, m)
+	scene.free()
+	# fill the canopy: leaf clusters on well-spread points of the crown
+	var spec: Array = OAK_LEAVES[k - 1]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4242 + k * 77
+	var leaf := _st()
+	var crown := Vector3(0, h * 0.62, 0)
+	var picks: Array[Vector3] = []
+	var tries := 0
+	while picks.size() < int(spec[3]) and tries < 6000:
+		tries += 1
+		var v: Vector3 = verts[rng.randi() % verts.size()]
+		if v.y < h * 0.42 or Vector2(v.x, v.z).length() < 0.8:
+			continue
+		var ok := true
+		for q in picks:
+			if q.distance_to(v) < 0.75:
+				ok = false
+				break
+		if ok:
+			picks.append(v)
+	for c in picks:
+		_leaf_cluster(leaf, c + (c - crown).normalized() * 0.15, crown, rng, rng.randi_range(8, 11), float(spec[4]))
+	leaf.commit(out)
+	out.surface_set_material(out.get_surface_count() - 1, leaf_mat(LEAVES, spec[0], spec[1], spec[2]))
+	_cache[key] = out
+	return out
+
 # ---------------------------------------------------------------- undergrowth
 static func bush(seed_v: int) -> ArrayMesh:
 	var key := "bush%d" % seed_v
@@ -373,6 +449,57 @@ static func _fern_card(st: SurfaceTool, a: Vector3, b: Vector3, across: Vector3,
 
 ## A grass clump: curved, tapered blades with their own tint. flowers > 0 adds wildflower
 ## heads on stems (heather pink, tormentil yellow, harebell blue, cotton-grass white).
+## Act I grass: photographic clumps (Meshy-painted cut-outs, assets/textures/grass/gN.png) on three
+## crossed cards each, with the same wind, snow and ash handling as the blade grass.
+const GRASS_TEX := "res://assets/textures/grass/g%d.png"
+## per texture: card width, height (metres), tint
+const GRASS_CARDS := [[0.66, 0.44, Color(0.86, 0.92, 0.82)], [0.58, 0.46, Color(0.88, 0.93, 0.85)], [0.6, 0.62, Color(0.78, 0.8, 0.7)]]
+
+static func grass_tex_ok() -> bool:
+	return ResourceLoader.exists(GRASS_TEX % 1)
+
+static func grass_cards(k: int, seed_v: int, colors: Dictionary) -> ArrayMesh:
+	var key := "gcard%d_%d" % [k, seed_v]
+	if _cache.has(key):
+		return _cache[key]
+	var spec: Array = GRASS_CARDS[k - 1]
+	var w: float = spec[0]
+	var h: float = spec[1]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_v * 97 + k
+	var st := _st()
+	var a0 := rng.randf() * PI
+	for c in 3:
+		var a := a0 + c * PI / 3.0 + rng.randf_range(-0.2, 0.2)
+		var d := Vector3(cos(a), 0, sin(a)) * w * 0.5
+		var off := Vector3(rng.randf_range(-0.05, 0.05), 0, rng.randf_range(-0.05, 0.05))
+		var hh := h * rng.randf_range(0.9, 1.1)
+		# lean each card outward a little so the clump covers more ground seen from above
+		var outv := Vector3(-sin(a), 0, cos(a)) * (1.0 if c % 2 == 0 else -1.0)
+		var lean := outv * hh * 0.28 + Vector3(rng.randf_range(-0.04, 0.04), 0, rng.randf_range(-0.04, 0.04))
+		var flip := rng.randf() < 0.5
+		var u0 := 1.0 if flip else 0.0
+		var u1 := 0.0 if flip else 1.0
+		var q := [[off - d, Vector2(u0, 0)], [off + d, Vector2(u1, 0)], [off + d + lean + Vector3(0, hh, 0), Vector2(u1, 1)],
+			[off - d, Vector2(u0, 0)], [off + d + lean + Vector3(0, hh, 0), Vector2(u1, 1)], [off - d + lean + Vector3(0, hh, 0), Vector2(u0, 1)]]
+		for v in q:
+			var p: Vector3 = v[0]
+			st.set_color(spec[2])
+			st.set_uv(v[1])
+			st.set_normal((Vector3(p.x, 0, p.z).normalized() * 0.35 + Vector3.UP).normalized())
+			st.add_vertex(p)
+	var m := ArrayMesh.new()
+	st.commit(m)
+	var mat := ShaderMaterial.new()
+	mat.shader = _shader("grass_cards", GRASS_CARD_SHADER)
+	mat.set_shader_parameter("tex", load(GRASS_TEX % k))
+	for ck in colors.keys():
+		if ck in ["dry_col"]:
+			mat.set_shader_parameter(ck, colors[ck])
+	m.surface_set_material(0, mat)
+	_cache[key] = m
+	return m
+
 static func grass_clump(seed_v: int, blades: int = 13, height: float = 0.34, flowers: int = 0) -> ArrayMesh:
 	var key := "grass%d_%d_%.2f_%d" % [seed_v, blades, height, flowers]
 	if _cache.has(key):
@@ -510,6 +637,61 @@ void fragment(){
 }
 """
 
+const MESHY_TREE_SHADER := """
+shader_type spatial;
+render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
+uniform sampler2D albedo_tex : source_color, filter_linear_mipmap, repeat_enable;
+uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform bool use_normal = false;
+uniform float height = 6.0;
+uniform float tint = 1.0;
+global uniform float snow_amt;
+global uniform float ash_amt;
+global uniform vec3 player_pos;
+global uniform float occlude_k;
+varying vec3 bwp;
+varying vec3 wn;
+float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+void vertex(){
+	vec3 o = MODEL_MATRIX[3].xyz;
+	float ph = o.x * 0.21 + o.z * 0.17;
+	float hy = clamp(VERTEX.y / height, 0.0, 1.0);
+	float s = hy * hy * clamp(length(VERTEX.xz) * 0.5 + 0.4, 0.0, 1.4);
+	float w = sin(TIME * 0.9 + ph) * 0.6 + sin(TIME * 2.1 + ph * 1.7) * 0.25;
+	float flutter = sin(TIME * 5.0 + VERTEX.x * 3.0 + VERTEX.z * 2.0 + ph * 3.0) * 0.015;
+	VERTEX.x += (w * 0.12 + flutter) * s;
+	VERTEX.z += (w * 0.07 + flutter) * s;
+	wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	bwp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment(){
+	{
+		vec3 d = bwp - player_pos;
+		float hh = bwp.y - player_pos.y;
+		float along = d.z - occlude_k * (hh - 1.0);
+		float cover = (1.0 - smoothstep(1.6, 3.2, abs(along))) * (1.0 - smoothstep(2.2, 3.6, abs(d.x)));
+		cover *= step(0.9, hh) * step(0.2, d.z);
+		if (cover * 0.9 > h21(floor(FRAGCOORD.xy))) { discard; }
+	}
+	vec3 c = texture(albedo_tex, UV).rgb;
+	// Meshy bakes the trees quite grey: lift the greens a touch and deepen the bark
+	float g = c.g - max(c.r, c.b);
+	c = mix(c, c * vec3(0.9, 1.12, 0.85), clamp(g * 8.0 + 0.2, 0.0, 1.0));
+	c *= 0.95 * tint;
+	if (snow_amt > 0.0) {
+		c = mix(c, vec3(0.85, 0.88, 0.92), snow_amt * smoothstep(0.45, 0.85, wn.y));
+	}
+	if (ash_amt > 0.0) {
+		c = mix(c, vec3(0.05, 0.045, 0.04), ash_amt * 0.85);
+	}
+	ALBEDO = c;
+	ROUGHNESS = 0.88;
+	SPECULAR = 0.25;
+	if (use_normal) { NORMAL_MAP = texture(normal_tex, UV).rgb; }
+	if (!FRONT_FACING) { NORMAL = -NORMAL; }
+}
+"""
+
 const FOLIAGE_SHADER := """
 shader_type spatial;
 render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
@@ -618,6 +800,60 @@ void fragment(){
 	BACKLIGHT = c * 0.6;
 	AO = clamp(vc.r * 0.9 + 0.1, 0.4, 1.0);
 	AO_LIGHT_AFFECT = 0.25;
+}
+"""
+
+const GRASS_CARD_SHADER := """
+shader_type spatial;
+render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
+uniform sampler2D tex : source_color, filter_linear_mipmap, repeat_disable;
+uniform vec3 dry_col : source_color = vec3(0.42, 0.38, 0.18);
+uniform float wind = 1.0;
+global uniform float snow_amt;
+global uniform float ash_amt;
+varying float hgt;
+varying vec3 wpos;
+varying vec4 vc;
+varying float gust;
+float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float vn(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), u.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), u.x), u.y); }
+void vertex(){
+	hgt = UV.y;
+	vc = COLOR;
+	vec3 o = MODEL_MATRIX[3].xyz;
+	gust = vn(o.xz * 0.07 - vec2(TIME * 0.55, TIME * 0.3));
+	float w = sin(TIME * 1.7 + o.x * 0.35 + o.z * 0.22) * 0.5 + gust * 1.3;
+	float flick = sin(TIME * 5.0 + o.x * 3.0 + VERTEX.x * 20.0) * 0.012;
+	VERTEX.x += (w * 0.1 + flick) * hgt * hgt * wind * (1.0 - snow_amt * 0.5);
+	VERTEX.z += (w * 0.06 + flick) * hgt * hgt * wind * (1.0 - snow_amt * 0.5);
+	VERTEX.y -= snow_amt * 0.16;
+	VERTEX.y *= 1.0 - ash_amt * 0.4;
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment(){
+	vec4 t = texture(tex, vec2(UV.x, 1.0 - UV.y));
+	if (t.a < 0.45) { discard; }
+	if (snow_amt > 0.0 && hgt < snow_amt * 0.5) { discard; }
+	float patch = vn(wpos.xz * 0.13);
+	vec3 c = t.rgb * vc.rgb;
+	// patches of drier grass across the field, and a little variation per clump
+	c = mix(c, c * dry_col / max(dot(dry_col, vec3(0.33)), 0.05) * 0.45, smoothstep(0.6, 0.95, patch) * 0.2);
+	c *= 0.82 + h21(floor(MODEL_MATRIX[3].xz * 3.0)) * 0.3;
+	c *= 1.0 + (gust - 0.5) * 0.2 * hgt;
+	if (ash_amt > 0.0) {
+		c = mix(c, mix(vec3(0.06, 0.05, 0.04), vec3(0.3, 0.27, 0.23), hgt), ash_amt * 0.92);
+	}
+	if (snow_amt > 0.0) {
+		c = mix(c, vec3(0.42, 0.38, 0.26), snow_amt * 0.6);
+		c = mix(c, vec3(0.86, 0.9, 0.96), snow_amt * smoothstep(0.75, 1.0, hgt) * 0.75);
+	}
+	ALBEDO = c;
+	ROUGHNESS = 0.75;
+	SPECULAR = 0.25;
+	BACKLIGHT = c * 0.35 * hgt;
+	AO = mix(0.5, 1.0, hgt);
+	AO_LIGHT_AFFECT = 0.4;
 }
 """
 

@@ -730,6 +730,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	World.detail = quality
 	world = World.new()
 	world.name = "World"
+	world.oak_forest = difficulty == 0     # Act I: the moor is an oak forest (A2/A3 keep their own look)
 	add_child(world)
 	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair"].find(zone) * 7)
 	_end_underworld_now()

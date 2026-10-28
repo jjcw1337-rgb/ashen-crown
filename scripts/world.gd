@@ -6,6 +6,7 @@ const CELL := 1.0
 const MARGIN := 30.0
 
 var act := 0
+var oak_forest := false     # Act I moor: oak groves and an oak forest beyond the edges
 var kind := "town"
 var level := 1
 var rng := RandomNumberGenerator.new()
@@ -530,6 +531,22 @@ func _scatter_grass(count: int, colors: Dictionary, height: float, outside := tr
 		var y := height_at(x, z)
 		var s := rng.randf_range(0.7, 1.35) * (1.0 - dm * 0.6)
 		xf.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.3), s)), Vector3(x, y - 0.02, z)))
+	# Act I: the painted grass clumps (lush tufts, tufts with wildflowers, tall seed-head grass)
+	# on a carpet of the blade grass (every other spot), so the ground reads as one lush field
+	if oak_forest and Flora.grass_tex_ok():
+		var cparts := [[], [], [], [], [], []]
+		var keep := []
+		for i in xf.size():
+			if i % 2 == 0:
+				keep.append(xf[i])
+			var r := rng.randf()
+			var k := 0 if r < 0.68 else (1 if r < 0.88 else 2)
+			cparts[k * 2 + (i % 2)].append(xf[i])
+		for ci in cparts.size():
+			var cm := Flora.grass_cards(int(ci / 2.0) + 1, ci % 2, colors)
+			for mmi in mm_chunked(cm, cparts[ci], detail >= 3, 20.0, 60.0):
+				mmi.add_to_group("grass")
+		xf = keep
 	# five clump shapes; about one in fourteen carries wildflowers
 	var m := Flora.grass_mat(colors)
 	var h := height * 1.1
@@ -824,13 +841,17 @@ func _build_town() -> void:
 	for p4 in [Vector3(-22, 0, 16), Vector3(27, 0, -6), Vector3(14, 0, 22), Vector3(-28, 0, -26), Vector3(20, 0, -30), Vector3(-12, 0, 27)]:
 		_rock(p4, rng.randf_range(1.0, 1.6))
 	var dt_mesh := Flora.dead_tree(5)
-	var oak_mesh := Flora.oak(9)
+	var oak_meshes_town := [Flora.oak_model(1), Flora.oak_model(2), Flora.oak_model(3)]
 	var pine_meshes := [Flora.pine(1), Flora.pine(2), Flora.pine(3)]
-	var inner_trees := []
+	var inner_trees := [[], [], []]
+	var ti := 0
 	for p5 in [Vector3(-29, 0, -15), Vector3(29, 0, 12), Vector3(-20, 0, 27), Vector3(10, 0, 27)]:
-		inner_trees.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.9, 1.2)), Vector3(p5.x, height_at(p5.x, p5.z), p5.z)))
-		add_circle(p5, 0.45)
-	Props.multimesh(props_root, oak_mesh, inner_trees)
+		inner_trees[ti % 3].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.9, 1.15)), Vector3(p5.x, height_at(p5.x, p5.z), p5.z)))
+		add_circle(p5, 0.65)
+		ti += 1
+	for k in 3:
+		if not inner_trees[k].is_empty():
+			Props.multimesh(props_root, oak_meshes_town[k], inner_trees[k])
 	Props.multimesh(props_root, dt_mesh, [Transform3D(Basis(Vector3.UP, 1.0), Vector3(22, height_at(22, 13), 13)), Transform3D(Basis(Vector3.UP, 2.0), Vector3(-30, height_at(-30, 10), 10))])
 	add_circle(Vector3(22, 0, 13), 0.35)
 	add_circle(Vector3(-30, 0, 10), 0.35)
@@ -1051,7 +1072,7 @@ func _build_wild() -> void:
 	# vegetation
 	var dt_meshes := [Flora.dead_tree(11), Flora.dead_tree(23), Flora.dead_tree(37)]
 	var pine_meshes := [Flora.pine(4), Flora.pine(5), Flora.pine(6)]
-	var oak_meshes := [Flora.oak(12), Flora.oak(14)]
+	var oak_meshes := [Flora.oak_model(1), Flora.oak_model(2), Flora.oak_model(3)]
 	var bush_mesh := Flora.bush(3)
 	var groups := {}
 	for i in 1700:
@@ -1065,12 +1086,23 @@ func _build_wild() -> void:
 			continue
 		var r := rng.randf()
 		var key := ""
-		if r < 0.38:
+		# Act I is an old oak forest: mostly oaks, some pines, the odd dead tree; other acts as before
+		var cut := [0.3, 0.38, 0.7] if oak_forest else [0.38, 0.6, 0.7]
+		if oak_forest:
+			if r < 0.4:
+				key = "oak%d" % (i % 3)
+			elif r < 0.66:
+				key = "pine%d" % (i % 3)
+			elif r < 0.72:
+				key = "dead%d" % (i % 3)
+			else:
+				key = "bush"
+		elif r < cut[0]:
 			key = "pine%d" % (i % 3)
-		elif r < 0.6:
+		elif r < cut[1]:
 			key = "dead%d" % (i % 3)
-		elif r < 0.7:
-			key = "oak%d" % (i % 2)
+		elif r < cut[2]:
+			key = "oak%d" % (i % 3)
 		else:
 			key = "bush"
 		if not groups.has(key):
@@ -1078,7 +1110,31 @@ func _build_wild() -> void:
 		var s := rng.randf_range(0.8, 1.35)
 		groups[key].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * s), Vector3(px, height_at(px, pz) - 0.15, pz)))
 		if inside and key != "bush":
-			add_circle(Vector3(px, 0, pz), 0.45 if key.begins_with("dead") else 0.55)
+			add_circle(Vector3(px, 0, pz), 0.45 if key.begins_with("dead") else (0.7 * s if key.begins_with("oak") else 0.55))
+	# Act I: groves of three to five oaks a little off the road, with bushes at their feet
+	if oak_forest:
+		for gi in 26:
+			var t := rng.randf_range(0.04, 0.97)
+			var c0: Vector2 = path_poly[int((path_poly.size() - 1) * t)]
+			var side := -1.0 if rng.randf() < 0.5 else 1.0
+			var cg := c0 + Vector2(side * rng.randf_range(10.0, 17.0), rng.randf_range(-4.0, 4.0))
+			for ti in rng.randi_range(3, 5):
+				var a := rng.randf() * TAU
+				var pg := cg + Vector2(cos(a), sin(a)) * rng.randf_range(0.0, 5.5)
+				if not bounds.grow(-1.5).has_point(pg) or path_dist(pg.x, pg.y) < 7.0 or is_near_obstacle(Vector3(pg.x, 0, pg.y), 3.2):
+					continue
+				var key2 := "oak%d" % rng.randi_range(0, 2)
+				if not groups.has(key2):
+					groups[key2] = []
+				var s2 := rng.randf_range(0.9, 1.3)
+				groups[key2].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * s2), Vector3(pg.x, height_at(pg.x, pg.y) - 0.1, pg.y)))
+				add_circle(Vector3(pg.x, 0, pg.y), 0.7 * s2)
+				if rng.randf() < 0.6:
+					var pb := pg + Vector2(rng.randf_range(-2.5, 2.5), rng.randf_range(-2.5, 2.5))
+					if path_dist(pb.x, pb.y) > 5.0:
+						if not groups.has("bush"):
+							groups["bush"] = []
+						groups["bush"].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.8, 1.2)), Vector3(pb.x, height_at(pb.x, pb.y) - 0.15, pb.y)))
 	# a share of the trees near the road burn in A3
 	for key in groups.keys():
 		if key.begins_with("pine") or key.begins_with("dead"):
@@ -1097,7 +1153,8 @@ func _build_wild() -> void:
 			mesh = oak_meshes[int(key.substr(3))]
 		else:
 			mesh = bush_mesh
-		mm_chunked(mesh, groups[key], true, 32.0)
+		# the Act I forest has many big oaks: past ~90 m they're off any screen anyway
+		mm_chunked(mesh, groups[key], true, 32.0, 90.0 if (oak_forest and key.begins_with("oak")) else 0.0)
 	for i in 160:
 		var px := rng.randf_range(bounds.position.x + 1, bounds.end.x - 1)
 		var pz := rng.randf_range(bounds.position.y + 1, bounds.end.y - 3)
