@@ -3,7 +3,7 @@ extends RefCounted
 ## Static game data: acts, monsters, item bases, affixes, uniques, vendors.
 
 const ACTS := [
-	{"name": "The Ashen Moors", "town": "Greywatch Camp", "wild": "Cairnfell Moor", "lair": "Grubb's Hoard",
+	{"name": "The Ashen Moors", "town": "Greywatch Camp", "wild": "Cairnfell Moor", "lair": "Grubb's Fort",
 		"boss": "goblin_king", "lvl": 1, "theme": "moor", "foes": ["fallen", "zombie", "skel_archer"]},
 	{"name": "The Sunscar Wastes", "town": "Lut Khemar", "wild": "Dunes of Sorrow", "lair": "Tomb of Sekhmun",
 		"boss": "sekhmun", "lvl": 8, "theme": "desert", "foes": ["raider", "mummy", "scarab"]},

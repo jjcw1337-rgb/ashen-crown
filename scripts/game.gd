@@ -311,11 +311,16 @@ func _set_fires() -> void:
 
 ## A2 is winter: snow over every outdoor area, falling snow, colder light.
 func is_snowy() -> bool:
-	return difficulty == 1 and cur_zone != "lair"
+	return difficulty == 1 and not indoor()
+
+## The crypt (A3's lair) is underground; every other zone, Grubb's fort included, is under the sky.
+func indoor() -> bool:
+	return cur_zone == "lair" and not (world != null and world.fort)
 
 func _zone_env(kind: String) -> void:
-	var snowy := difficulty == 1 and kind != "lair"
-	var ashen := difficulty >= 2 and kind != "lair"
+	var inside := kind == "lair" and not world.fort
+	var snowy := difficulty == 1 and not inside
+	var ashen := difficulty >= 2 and not inside
 	RenderingServer.global_shader_parameter_set("snow_amt", 1.0 if snowy else 0.0)
 	RenderingServer.global_shader_parameter_set("ash_amt", 1.0 if ashen else 0.0)
 	weather.set_snow(snowy, quality)
@@ -325,7 +330,7 @@ func _zone_env(kind: String) -> void:
 	sky_mat.sky_top_color = Color(0.26, 0.3, 0.31)
 	sky_mat.sky_horizon_color = Color(0.44, 0.47, 0.44)
 	sky_mat.ground_horizon_color = Color(0.44, 0.47, 0.44)
-	if kind == "lair":
+	if inside:
 		env.background_mode = Environment.BG_COLOR
 		env.background_color = Color(0.0, 0.0, 0.0)
 		# lit enough to read the room and the monsters at the edge of the screen: a cool
@@ -522,7 +527,7 @@ var _watch_next := 0.0
 var _dark_hits := 0
 
 func _start_watch() -> void:
-	if not is_forward() or cur_zone == "lair" or DisplayServer.get_name() == "headless":
+	if not is_forward() or indoor() or DisplayServer.get_name() == "headless":
 		_watch_t = -1.0
 		return
 	_watch_t = 0.0
@@ -731,6 +736,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	world = World.new()
 	world.name = "World"
 	world.oak_forest = difficulty == 0     # Act I: the moor is an oak forest (A2/A3 keep their own look)
+	world.fort = difficulty < 2            # Grubb's runs: the lair is his goblin fort, outdoors (A3 keeps the crypt)
 	add_child(world)
 	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair"].find(zone) * 7)
 	_end_underworld_now()
@@ -762,7 +768,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		if not tp_link.is_empty():
 			_make_portal(world.spawns["portal"], "back")
 	ui.set_zone(zone_title(act, zone))
-	Sfx.play_music(zone)
+	Sfx.play_music("fort" if zone == "lair" and world.fort else zone)
 	loading.visible = false
 	_busy = false
 	net.host_zone_loaded()

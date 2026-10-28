@@ -22,6 +22,8 @@ var astar: AStarGrid2D
 var hnoise := FastNoiseLite.new()
 var hill_noise := FastNoiseLite.new()
 var flat_floor := false
+## Act I and A2: the lair is King Grubb's goblin fort (fort.gd) and the moor's road ends at its trail.
+var fort := false
 var dirt_blobs: Array = []     # [Vector2 pos, radius, strength]
 var cobble_blobs: Array = []
 var dirt_lines: Array = []     # [Vector2 a, Vector2 b, width]
@@ -674,7 +676,7 @@ func build(act_i: int, kind_s: String, seed_v: int) -> void:
 	match kind:
 		"town": _build_town()
 		"wild": _build_wild()
-		"lair": _build_lair()
+		"lair": Fort.build(self) if fort else _build_lair()
 
 const MOOR_TERRAIN := {
 	"col_a": Color(0.15, 0.2, 0.08), "col_b": Color(0.21, 0.23, 0.11), "col_accent": Color(0.28, 0.3, 0.13),
@@ -1157,7 +1159,10 @@ func _build_wild() -> void:
 	dirt_blobs.append([end_p + Vector2(0, 3), 9.0, 1.0])
 	cobble_blobs.append([end_p + Vector2(0, 4), 5.0, 0.9])
 	exits.append({"pos": Vector3(0, 0, 0.5), "radius": 2.6, "to": "town", "label": Data.ACTS[act]["town"]})
-	_crypt_entrance(Vector3(end_p.x, 0, end_p.y - 4.0))
+	if fort:
+		Fort.trail_end(self, Vector3(end_p.x, 0, end_p.y - 4.0))
+	else:
+		_crypt_entrance(Vector3(end_p.x, 0, end_p.y - 4.0))
 
 	# landmarks
 	var c3: Vector2 = ctrl[3]
