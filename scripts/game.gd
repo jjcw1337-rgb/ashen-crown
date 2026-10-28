@@ -38,7 +38,6 @@ var hovered = null
 var ground_pt := Vector3.ZERO
 var lmb_held := false
 var lmb_repeat := 0.0
-var rmb_held := false
 var exit_grace := 0.0
 var waypoints_known := ["town"]
 var boss_killed := false
@@ -1439,10 +1438,6 @@ func _unhandled_input(ev: InputEvent) -> void:
 				lmb_held = true
 				lmb_repeat = 0.12
 				_click_world()
-		elif ev.button_index == MOUSE_BUTTON_RIGHT:
-			if ev.pressed and not paused:
-				rmb_held = true
-				_swipe_at_cursor()
 		elif ev.button_index == MOUSE_BUTTON_WHEEL_UP and ev.pressed:
 			zoom = clampf(zoom - 0.08, 0.6, 1.3)
 		elif ev.button_index == MOUSE_BUTTON_WHEEL_DOWN and ev.pressed:
@@ -1490,18 +1485,6 @@ func _input(ev: InputEvent) -> void:
 		return
 	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed:
 		lmb_held = false
-	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_RIGHT and not ev.pressed:
-		rmb_held = false
-
-## Right-click: the three-swipe combo toward the cursor (held, it keeps chaining)
-func _swipe_at_cursor() -> void:
-	if hero == null or hero.dead:
-		return
-	_update_hover()
-	var aim := ground_pt
-	if hovered is Enemy:
-		aim = hovered.global_position
-	hero.swipe_attack(aim)
 
 func cast_slot(i: int) -> void:
 	cast_skill(hero.skill_list()[i]["id"])
@@ -1540,12 +1523,10 @@ func _process(delta: float) -> void:
 		Engine.time_scale = 1.0
 	if playing and not paused and not _busy:
 		_update_hover()
-		hero.blocking = Input.is_key_pressed(KEY_CTRL) and not ui.any_panel_open()
-		if rmb_held and not ui.any_panel_open():
-			_swipe_at_cursor()
+		hero.blocking = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and not ui.any_panel_open()
 		hero.sprint = Input.is_key_pressed(KEY_SHIFT)
-		if Input.is_key_pressed(KEY_SPACE) and hero.can_act():
-			hero.free_attack(hero.aim_ahead(hero.reach() + 1.5))
+		if Input.is_key_pressed(KEY_SPACE):
+			hero.swipe_attack(hero.aim_ahead(hero.reach() + 1.5))
 		var wasd := Vector3.ZERO
 		if Input.is_key_pressed(KEY_W): wasd.z -= 1
 		if Input.is_key_pressed(KEY_S): wasd.z += 1

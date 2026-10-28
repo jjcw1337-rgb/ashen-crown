@@ -115,6 +115,7 @@ var swipe_n := 0
 var swipe_idle := 0.0
 var swipe_q := false
 var swipe_aim := Vector3.ZERO
+var swipe_keep := false
 var atk_target = null
 var stamina := 100.0
 var max_stamina := 100.0
@@ -590,19 +591,22 @@ func free_attack(aim: Vector3) -> void:
 ## Right-click: the next swipe of the combo toward the cursor. Pressing again late in a swipe queues
 ## the next one, which cuts off that swipe's recovery so the three flow together; the finisher
 ## (a full spin that hits all round) always plays out, and the chain starts over after a pause.
-func swipe_attack(aim: Vector3) -> void:
+func swipe_attack(aim: Vector3, keep_target := false) -> void:
 	if dead or charge_t >= 0.0 or drain_t >= 0.0:
 		return
 	if atk_t >= 0.0:
 		if atk_skill == "" and atk_style.begins_with("swipe") and atk_t / atk_dur > 0.3 and atk_style != "swipe3":
 			swipe_q = true
 			swipe_aim = aim
+			swipe_keep = keep_target
 		return
-	_swipe(aim)
+	_swipe(aim, keep_target)
 
-func _swipe(aim: Vector3) -> void:
+## keep_target: a held left-click on a foe keeps him targeted (the hero follows him between swipes)
+func _swipe(aim: Vector3, keep_target := false) -> void:
 	swipe_q = false
-	target = null
+	if not keep_target:
+		target = null
 	moving = false
 	path = PackedVector3Array()
 	atk_aim = aim
@@ -1061,13 +1065,10 @@ func _process(delta: float) -> void:
 						moving = false
 						path = PackedVector3Array()
 					if target is Enemy:
-						if atk_t < 0.0:
-							_face(tp - global_position)
-							atk_target = target
-							_start_attack(["over", "back", "thrust"][combo % 3])
-							combo += 1
-							combo_t = 0.0
-							if not game.lmb_held:
+						# left-click on a foe: the sword combo; held, it keeps chaining at him
+						if atk_t < 0.0 or game.lmb_held:
+							swipe_attack(tp, game.lmb_held)
+							if atk_t >= 0.0 and not game.lmb_held:
 								target = null
 					elif atk_t < 0.0:
 						var t = target
@@ -1263,7 +1264,7 @@ func _update_attack(delta: float) -> void:
 		_impact()
 	if swipe and swipe_q and a >= 0.68:
 		atk_t = -1.0
-		_swipe(swipe_aim)
+		_swipe(swipe_aim, swipe_keep)
 		return
 	if atk_t >= atk_dur:
 		atk_t = -1.0

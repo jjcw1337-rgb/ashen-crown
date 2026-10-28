@@ -213,13 +213,17 @@ func _run() -> void:
 	g.lmb_held = true
 	h.cmd_target(boss)
 	var held := 0
-	var last_combo: int = h.combo
+	var styles := []
+	var last_style := ""
 	for f in 180:
-		if h.combo != last_combo:
+		var cur: String = h.atk_style if h.atk_t >= 0.0 else ""
+		if cur != "" and cur != last_style:
 			held += 1
-			last_combo = h.combo
+			styles.append(cur)
+		last_style = cur
 		h.life = h.max_life
 		await process_frame
+	print("[B] held left-click combo: ", styles)
 	# holy nova fires mid-combo and hurts the boss
 	h.level = 12
 	h.mana = h.max_mana
