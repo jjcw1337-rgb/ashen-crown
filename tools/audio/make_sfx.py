@@ -8,8 +8,8 @@ writes scripts/sfx_bank.gd (each sound's number of takes and its bus) for Sfx to
 Every sound is a function of a random generator, so each take differs a little (pitch, timing,
 grit). Sounds are layered the way game audio usually is: a transient (the crack you hear first), a
 body (the thump you feel) and a tail (debris, ring, room). Class identities:
-  knight  steel and light: ringing metal, boots, bell partials, a choir swell for holy fire
-  wraith  cold and hollow: breath, reversed whispers, glass, long icy tails
+  knight  steel and light: ringing metal, boots, bells, a breath of choir for holy fire
+  wraith  cold and hollow: breath, reversed whispers, glass, icy tails
   demon   fire and flesh: sub-bass, roaring flame, crackle, wet tearing, rock
   warlock fel and chains: bubbling siphons, chains, hissing green fire, a low choir
 """
@@ -23,6 +23,31 @@ OUT = os.path.join(ROOT, "assets/audio/sfx")
 BANK_GD = os.path.join(ROOT, "scripts/sfx_bank.gd")
 
 SOUNDS = {}   # name -> (fn, takes, bus, rms_db)
+
+# The mix (after the first pass was "a little too synthy and too loud"): every sound lands LEVEL dB under
+# its own target and never louder than CEIL, so stacked spells don't pile up; rooms are shorter and drier
+# than each sound's space() asks for (TAIL scales the size, WET the mix), so sounds end tight.
+LEVEL, CEIL = -3.0, -17.0
+LOUD = -12.5   # dB: the loudest 100 ms of any sound stays under this (what the ear hears as "loud")
+TAIL, WET = 0.6, 0.6
+_space = space
+
+
+def space(x, rng, size=1.2, mix=0.25, damp=6000.0, stereo=False):
+    return _space(x, rng, size * TAIL, mix * WET, damp, stereo)
+
+
+def rms(x):
+    return np.sqrt(np.mean(x ** 2)) + 1e-9
+
+
+def loudest(x, win=0.1):
+    p = (x ** 2).mean(axis=0) if x.ndim == 2 else x ** 2
+    w = n_of(win)
+    if len(p) <= w:
+        return 10 * np.log10(p.mean() + 1e-12)
+    c = np.concatenate([[0.0], np.cumsum(p)])
+    return 10 * np.log10(((c[w:] - c[:-w]) / w).max() + 1e-12)
 
 
 def sound(takes=3, bus="sfx", rms=-18.0):
@@ -40,12 +65,15 @@ def whoosh(rng, dur, f0, f1, peak=0.45, width=1.2, kind="pink"):
 
 
 def thump(rng, f0, f1, dur, decay=14.0, click=0.4):
+    # a falling sine for the weight, under a burst of dull noise so it lands like a body, not a kick drum
     n = n_of(dur)
     t = t_axis(n)
     f = f1 + (f0 - f1) * np.exp(-t * 18.0)
     body = sine(f) * env_exp(n, decay, 0.001)
+    thud = lowpass(brown(n, rng), f0 * 2.0, 3)
+    thud = thud / (np.max(np.abs(thud)) + 1e-9) * env_exp(n, decay * 1.6, 0.001)
     clk = highpass(white(n, rng), 1500) * env_exp(n, 220.0, 0.0005) * click
-    return body + clk
+    return body * 0.7 + thud * 0.55 + clk
 
 
 def crunch(rng, dur, centre, decay=40.0, oct=1.4):
@@ -53,11 +81,20 @@ def crunch(rng, dur, centre, decay=40.0, oct=1.4):
     return bandpass(white(n, rng), centre, oct) * env_exp(n, decay, 0.0008)
 
 
-def ring(rng, dur, base, ratios, decay, amp=1.0, detune=0.01):
+def ring(rng, dur, base, ratios, decay, amp=1.0, detune=0.01, grit=0.6):
+    """A struck thing (metal, glass, bell). Pure decaying sines read as a synth, so each mode is mostly a
+    narrow band of noise (it wavers and buzzes like a real resonance) over a quieter sine core."""
     n = n_of(dur)
-    freqs = [base * r for r in ratios]
-    decs = [decay * (1 + 0.35 * i) for i in range(len(ratios))]
-    return partials(n, freqs, decs, [amp / (1 + 0.6 * i) for i in range(len(ratios))], rng, detune)
+    t = t_axis(n)
+    out = np.zeros(n)
+    for i, r in enumerate(ratios):
+        f = base * r * (1.0 + rng.uniform(-detune, detune))
+        e = np.exp(-t * decay * (1 + 0.35 * i) * rng.uniform(0.85, 1.2))
+        band = bandpass(white(n, rng), f, 0.035)
+        band *= 0.707 / rms(band)
+        core = np.sin(2.0 * np.pi * f * t + rng.uniform(0, 6.28))
+        out += amp / (1 + 0.6 * i) * (grit * band + (1 - grit) * core) * e
+    return out
 
 
 METAL = [1.0, 2.76, 5.40, 8.93, 13.34]
@@ -66,13 +103,20 @@ GLASS = [1.0, 2.32, 4.25, 6.63]
 
 
 def choir(rng, dur, roots, vowel_path, scale=1.0, breath=0.15, attack=0.3, release=0.6):
+    """A breathy pad: mostly air through narrow bands on the chord's harmonics (wind over a bottle, not a
+    keyboard), with a faint sung voice underneath for the vowel."""
     n = n_of(dur)
-    out = np.zeros(n)
+    sung = np.zeros(n)
+    air = np.zeros(n)
+    src = pink(n, rng)
     for r in roots:
-        for d in (-0.006, 0.0, 0.007):
-            f0 = r * (1 + d) * (1 + 0.004 * sine(5.0 + rng.uniform(-0.5, 0.5), n))
-            out += voice(n, f0, vowel_path, rng, breath, scale)
-    out = out / (len(roots) * 3)
+        f0 = r * (1 + 0.004 * sine(5.0 + rng.uniform(-0.5, 0.5), n))
+        sung += voice(n, f0, vowel_path, rng, breath + 0.6, scale)
+        for h, g in ((1, 1.0), (2, 0.45), (3, 0.2)):
+            b = bandpass(src, r * h, 0.04)
+            air += g * b / rms(b)
+    s = rms(sung)
+    out = air * (0.8 * s / rms(air)) + sung * 0.3
     return out * env_ad(n, attack, release, 1.5)
 
 
@@ -108,7 +152,7 @@ def swing_heavy(rng):
 
 
 # ---------------------------------------------------------------- combat: impacts
-@sound(5, rms=-14)
+@sound(5, rms=-17)
 def impact_flesh(rng):
     th = thump(rng, rng.uniform(150, 190), rng.uniform(48, 60), 0.3, 16, 0.5)
     cr = crunch(rng, 0.12, rng.uniform(1200, 1800), 45, 1.6) * 0.8
@@ -140,14 +184,14 @@ def impact_metal(rng):
 @sound(3, rms=-15)
 def crit_sting(rng):
     # the "that was big" layer, on top of a normal impact: a bright shing, a crack and a low boom
-    shing = ring(rng, 0.9, rng.uniform(1700, 2000), [1, 1.5, 2.01, 2.99, 4.1], 5.5, 0.7, 0.003)
+    shing = ring(rng, 0.55, rng.uniform(1700, 2000), [1, 1.5, 2.01, 2.99, 4.1], 8.0, 0.7, 0.003)
     crack = highpass(white(n_of(0.04), rng), 3000) * env_exp(n_of(0.04), 120, 0.0003)
     boom = thump(rng, 90, 38, 0.5, 7, 0.0) * 0.9
-    x = place([(shing, 0.0, 0.55), (crack, 0, 1.0), (boom, 0, 1.0)])
+    x = place([(shing, 0.0, 0.35), (crack, 0, 1.0), (boom, 0, 1.0)])
     return space(x, rng, 0.9, 0.22, 8000, stereo=True)
 
 
-@sound(3, rms=-14)
+@sound(3, rms=-15)
 def kill_flesh(rng):
     th = thump(rng, 120, 40, 0.45, 9, 0.6)
     gore = lowpass(white(n_of(0.35), rng), 1400) * env_exp(n_of(0.35), 12) * 0.6
@@ -176,7 +220,7 @@ def block(rng):
 
 
 # ---------------------------------------------------------------- the heroes' bodies
-def grunt(rng, f0, scale, dur, vowels, rough=0.08, drive=1.5, breath=0.35):
+def grunt(rng, f0, scale, dur, vowels, rough=0.12, drive=1.4, breath=0.9):
     n = n_of(dur)
     t = t_axis(n)
     f = f0 * (1.0 + 0.12 * np.exp(-t * 20)) * (1.0 - 0.15 * t / dur)
@@ -213,7 +257,7 @@ def death_voice(rng, f0, scale, vowels, dur, rough, drive):
     n = n_of(dur)
     t = t_axis(n)
     f = f0 * (1.0 - 0.35 * t / dur)
-    v = voice(n, f, vowels, rng, 0.3, scale, rough) * env_ad(n, 0.02, dur * 0.7, 1.0)
+    v = voice(n, f, vowels, rng, 0.8, scale, rough) * env_ad(n, 0.02, dur * 0.7, 1.0)
     return saturate(v, drive)
 
 
@@ -233,7 +277,7 @@ def death_gnome(rng):
 @sound(1, rms=-16)
 def death_wraith(rng):
     n = n_of(1.6)
-    scream = voice(n, 480 * (1 - 0.4 * t_axis(n) / 1.6), [(0, "i"), (1, "u")], rng, 1.5, 1.8, 0.05) * env_ad(n, 0.05, 1.2)
+    scream = voice(n, 480 * (1 - 0.4 * t_axis(n) / 1.6), [(0, "i"), (1, "u")], rng, 3.5, 1.8, 0.05) * env_ad(n, 0.05, 1.0)
     return space(reverse(space(scream * 0.4, rng, 0.6, 1.0)[:n]) * 0.4 + scream, rng, 2.0, 0.4, 4000)
 
 
@@ -250,8 +294,8 @@ def cleave_swing(rng):
     d = 0.42
     w = whoosh(rng, d, 380, 1500, 0.55, 1.3) * 1.2
     cut = highpass(white(n_of(0.08), rng), 4000) * env_ad(n_of(0.08), 0.02, 0.05) * 0.5
-    sing = ring(rng, 0.8, rng.uniform(1650, 1800), [1, 1.5, 2.02, 3.0], 5, 0.3, 0.002)
-    return space(place([(w, 0, 1.0), (cut, 0.2, 1.0), (sing, 0.22, 0.35)]), rng, 0.8, 0.15, 8000, stereo=True)
+    sing = ring(rng, 0.5, rng.uniform(1650, 1800), [1, 1.5, 2.02, 3.0], 8, 0.3, 0.002)
+    return space(place([(w, 0, 1.0), (cut, 0.2, 1.0), (sing, 0.22, 0.2)]), rng, 0.8, 0.15, 8000, stereo=True)
 
 
 @sound(2, "sfx", -15)
@@ -262,11 +306,11 @@ def holy_nova(rng):
     crack = highpass(white(n_of(0.06), rng), 2500) * env_exp(n_of(0.06), 80, 0.0005)
     out_w = whoosh(rng, 0.6, 5000, 700, 0.12, 1.8) * 1.3
     boom = thump(rng, 110, 40, 0.8, 5, 0.0)
-    bells = ring(rng, 2.2, 880, BELL, 1.6, 0.5, 0.004)
+    bells = ring(rng, 1.1, 880, BELL, 3.2, 0.5, 0.004)
     fire = crackle(n_of(1.6), rng, np.linspace(900, 60, n_of(1.6)), 800, 3500) * env_exp(n_of(1.6), 1.8) * 0.6
     roar = bandpass(pink(n_of(1.2), rng), 900, 2.0) * env_exp(n_of(1.2), 3.0) * 0.5
     T = 0.3
-    x = place([(build, 0, 1.8), (crack, T, 1.0), (out_w, T, 1.0), (boom, T, 1.0), (bells, T + 0.02, 0.35), (fire, T + 0.03, 1.0), (roar, T + 0.02, 1.0)])
+    x = place([(build, 0, 1.0), (crack, T, 1.0), (out_w, T, 1.0), (boom, T, 1.0), (bells, T + 0.02, 0.2), (fire, T + 0.03, 1.0), (roar, T + 0.02, 1.0)])
     return space(x, rng, 2.2, 0.3, 7000, stereo=True)
 
 
@@ -291,11 +335,11 @@ def charge_impact(rng):
 def battle_cry(rng):
     n = n_of(1.0)
     t = t_axis(n)
-    shout = voice(n, 150 * (1 + 0.06 * np.exp(-t * 4)) * (1 - 0.1 * t), [(0, "aa"), (0.7, "aa"), (1, "o")], rng, 0.35, 1.0, 0.18)
+    shout = voice(n, 150 * (1 + 0.06 * np.exp(-t * 4)) * (1 - 0.1 * t), [(0, "aa"), (0.7, "aa"), (1, "o")], rng, 0.9, 1.0, 0.25)
     shout = saturate(shout * env_ad(n, 0.04, 0.35, 1.2), 2.2)
-    horn = lowpass(saw(98.0, n_of(1.6)) + 0.6 * saw(147.0, n_of(1.6)), 900) * env_ad(n_of(1.6), 0.35, 0.6, 1.5) * 0.5
+    bash = plus(ring(rng, 0.5, rng.uniform(300, 360), METAL, 9, 0.8), crunch(rng, 0.06, 2600, 70))
     drum = plus(thump(rng, 90, 45, 0.9, 5, 0.9), bandpass(white(n_of(0.3), rng), 220, 1.5) * env_exp(n_of(0.3), 18))
-    return space(place([(shout, 0, 1.0), (horn, 0.1, 0.8), (drum, 0, 1.0), (drum * 0.7, 0.35, 1.0)]), rng, 1.6, 0.28, 6000, stereo=True)
+    return space(place([(shout, 0, 1.0), (bash, 0, 0.5), (drum, 0, 1.0), (drum * 0.7, 0.35, 1.0)]), rng, 1.6, 0.28, 6000, stereo=True)
 
 
 # ---------------------------------------------------------------- Wraith: cold and hollow
@@ -320,9 +364,9 @@ def wail(rng):
     n = n_of(1.4)
     t = t_axis(n)
     f0 = 520 * (1 + 0.05 * np.sin(2 * np.pi * 7 * t)) * (1 + 0.2 * np.minimum(t * 4, 1)) * (1 - 0.25 * np.clip(t - 0.6, 0, 1))
-    scream = voice(n, f0, [(0, "u"), (0.15, "i"), (0.7, "e"), (1, "u")], rng, 1.2, 1.9, 0.06) * env_ad(n, 0.08, 0.6, 1.3)
+    scream = voice(n, f0, [(0, "u"), (0.15, "i"), (0.7, "e"), (1, "u")], rng, 3.5, 1.9, 0.06) * env_ad(n, 0.08, 0.5, 1.3)
     pre = reverse(space(scream[:n_of(0.3)] * 0.6, rng, 0.3, 1.0)[:n_of(0.3)])
-    shatter = plus(ring(rng, 1.2, rng.uniform(3200, 3600), GLASS, 3.5, 0.6), highpass(white(n_of(0.08), rng), 4000) * env_exp(n_of(0.08), 60))
+    shatter = plus(ring(rng, 0.7, rng.uniform(3200, 3600), GLASS, 6.0, 0.6), highpass(white(n_of(0.08), rng), 4000) * env_exp(n_of(0.08), 60))
     blast = whoosh(rng, 0.7, 4000, 500, 0.1, 2.0)
     x = place([(pre, 0, 0.5), (scream, 0.28, 1.0), (shatter, 0.31, 0.5), (blast, 0.3, 0.9)])
     return space(x, rng, 2.4, 0.38, 4500, stereo=True)
@@ -359,14 +403,14 @@ def host_summon(rng):
         whispers = place([(whispers, 0, 1.0), (w, k * 0.18, 0.7)])
     pad = choir(rng, 1.6, [330.0, 415.3, 494.0], [(0, "u"), (1, "o")], 1.6, 0.6, 0.5, 0.8)
     chime = ring(rng, 1.5, 1975.0, [1, 1.5, 2.01], 2.5, 0.4)
-    return space(place([(whispers, 0, 1.0), (pad, 0.2, 0.7), (chime, 0.7, 0.4)]), rng, 2.4, 0.4, 5000, stereo=True)
+    return space(place([(whispers, 0, 1.0), (pad, 0.2, 0.4), (chime, 0.7, 0.25)]), rng, 2.4, 0.4, 5000, stereo=True)
 
 
 @sound(4, rms=-21)
 def spirit_dart(rng):
     n = n_of(0.18)
     t = t_axis(n)
-    zip_ = sine(1300 * np.exp(t * 4.5)) * env_ad(n, 0.01, 0.12) * 0.5
+    zip_ = sweep_bp(white(n, rng), 1300, 5500, 0.35) * env_ad(n, 0.01, 0.12) * 0.9
     air = highpass(white(n, rng), 2500) * env_ad(n, 0.02, 0.12) * 0.4
     return space(zip_ + air, rng, 0.6, 0.3, 6000)
 
@@ -393,7 +437,7 @@ def summon_demon(rng):
     rocks = crackle(n_of(0.9), rng, np.linspace(40, 500, n_of(0.9)), 300, 1200) * 0.8
     m_ = n_of(0.9)
     tt = t_axis(m_)
-    roar = voice(m_, 68 * (1 + 0.15 * np.exp(-tt * 5)), [(0, "o"), (0.3, "aa"), (1, "o")], rng, 0.6, 0.75, 0.45)
+    roar = voice(m_, 68 * (1 + 0.15 * np.exp(-tt * 5)), [(0, "o"), (0.3, "aa"), (1, "o")], rng, 1.3, 0.75, 0.45)
     roar = saturate(roar * env_ad(m_, 0.06, 0.4), 3.0)
     fl = flame(rng, 1.0, 2.5, 400)
     return space(place([(rumble, 0, 1.0), (rocks, 0.1, 1.0), (roar, 0.65, 1.0), (fl, 0.65, 0.8), (thump(rng, 90, 32, 0.7, 6, 0.6), 0.65, 1.0)]), rng, 1.6, 0.2, 5000, stereo=True)
@@ -403,9 +447,9 @@ def summon_demon(rng):
 def phase_in(rng):
     n = n_of(0.9)
     t = t_axis(n)
-    drop = sine(140 * np.exp(-t * 2.2) + 30) * env_ad(n, 0.01, 0.4) * 0.9
+    drop = (sine(140 * np.exp(-t * 2.2) + 30) * 0.4 + sweep_lp(brown(n, rng), 500, 70) * 1.2) * env_ad(n, 0.01, 0.4)
     dark = reverse(space(bandpass(pink(n_of(0.3), rng), 300, 2.0), rng, 0.9, 1.0))[:n]
-    whispers = voice(n, 90.0, [(0, "u"), (1, "o")], rng, 4.0, 1.0) * env_ad(n, 0.2, 0.4) * 0.4
+    whispers = voice(n, 90.0, [(0, "u"), (1, "o")], rng, 4.0, 1.0) * env_ad(n, 0.2, 0.4) * 0.3
     return space(place([(dark, 0, 0.7), (drop, 0.3, 1.0), (whispers, 0.1, 1.0)]), rng, 1.6, 0.35, 3000, stereo=True)
 
 
@@ -426,7 +470,7 @@ def blood_pact(rng):
     wet = bandpass(white(n_of(0.5), rng), 380, 1.2) * env_ad(n_of(0.5), 0.05, 0.3) * 0.7
     wet += crackle(n_of(0.5), rng, 300, 300, 800) * env_ad(n_of(0.5), 0.05, 0.3)
     ch = choir(rng, 1.8, [82.4, 98.0, 123.5], [(0, "o"), (1, "u")], 0.85, 0.1, 0.5, 0.9)
-    return space(place(beats + [(wet, 0.15, 0.8), (ch, 0.3, 1.0)]), rng, 2.0, 0.3, 3500, stereo=True)
+    return space(place(beats + [(wet, 0.15, 0.9), (ch, 0.3, 0.45)]), rng, 2.0, 0.3, 3500, stereo=True)
 
 
 # ---------------------------------------------------------------- Warlock: fel and chains
@@ -434,7 +478,7 @@ def blood_pact(rng):
 def drain_start(rng):
     n = n_of(0.35)
     t = t_axis(n)
-    zap = fm(320 * np.exp(t * 3.0), 1.5, 3.0 * np.exp(-t * 6), n) * env_ad(n, 0.005, 0.2) * 0.5
+    zap = (sweep_bp(white(n, rng), 700, 2600, 0.6) * 0.8 + crackle(n, rng, 500, 500, 2500) * 0.6) * env_ad(n, 0.005, 0.2)
     suck = reverse(space(bandpass(pink(n_of(0.3), rng), 900, 1.2), rng, 0.4, 0.8))
     return space(place([(suck, 0, 0.8), (zap, len(suck) / SR - 0.05, 1.0)]), rng, 0.9, 0.25, 4000, stereo=True)
 
@@ -446,7 +490,7 @@ def drain_loop(rng):
     n = n_of(dur + xf)
     t = t_axis(n)
     f0 = 82 * (1 + 0.01 * np.sin(2 * np.pi * 0.5 * t))
-    hum = voice(n, f0, [(0, "u"), (0.35, "o"), (0.7, "u"), (1, "o")], rng, 0.4, 0.9) * 0.9
+    hum = voice(n, f0, [(0, "u"), (0.35, "o"), (0.7, "u"), (1, "o")], rng, 1.5, 0.9) * 0.6
     bub = bandpass(crackle(n, rng, 60, 160, 400), 500, 1.2) * 1.5
     siphon = bandpass(white(n, rng), 2600, 0.5) * (0.5 + 0.5 * np.sin(2 * np.pi * 1.0 * t)) * 0.12
     x = hum + bub + siphon
@@ -459,8 +503,8 @@ def drain_loop(rng):
 def drain_tick(rng):
     n = n_of(0.16)
     t = t_axis(n)
-    glug = sine(230 * np.exp(-t * 5)) * env_exp(n, 22, 0.004) * 0.7
-    wet = bandpass(white(n, rng), 450, 0.8) * env_exp(n, 30) * 0.5
+    glug = sine(230 * np.exp(-t * 5)) * env_exp(n, 22, 0.004) * 0.4
+    wet = bandpass(white(n, rng), 450, 0.8) * env_exp(n, 30) * 0.7
     return space(glug + wet, rng, 0.4, 0.15, 3000)
 
 
@@ -468,7 +512,7 @@ def drain_tick(rng):
 def blight_cast(rng):
     n = n_of(0.7)
     t = t_axis(n)
-    howl = voice(n, 280 * (1 + 0.06 * np.sin(2 * np.pi * 9 * t)) * (1 + 0.2 * t), [(0, "u"), (0.5, "o"), (1, "u")], rng, 1.0, 1.3, 0.2) * env_ad(n, 0.05, 0.3)
+    howl = voice(n, 280 * (1 + 0.06 * np.sin(2 * np.pi * 9 * t)) * (1 + 0.2 * t), [(0, "u"), (0.5, "o"), (1, "u")], rng, 3.0, 1.3, 0.2) * env_ad(n, 0.05, 0.3)
     w = whoosh(rng, 0.6, 400, 1800, 0.35, 1.2)
     hiss = highpass(white(n, rng), 3500) * env_ad(n, 0.05, 0.4) * 0.12
     return space(place([(howl, 0, 0.8), (w, 0, 1.0), (hiss, 0, 1.0)]), rng, 1.0, 0.25, 4500, stereo=True)
@@ -481,7 +525,7 @@ def blight_burst(rng):
     bubbles = place([(sine(rng.uniform(300, 900) * np.exp(t_axis(n_of(0.06)) * 6)) * env_exp(n_of(0.06), 50) * 0.4, rng.uniform(0.05, 0.9), 1.0) for _ in range(14)])
     th = thump(rng, 110, 40, 0.4, 10, 0.3)
     sizzle = highpass(white(n_of(1.0), rng), 4000) * env_exp(n_of(1.0), 3) * 0.1
-    return space(place([(splash, 0, 1.0), (splat, 0, 1.0), (bubbles, 0, 0.8), (th, 0, 1.0), (sizzle, 0.05, 1.0)]), rng, 1.0, 0.2, 5000, stereo=True)
+    return space(place([(splash, 0, 1.0), (splat, 0, 1.0), (bubbles, 0, 0.45), (th, 0, 1.0), (sizzle, 0.05, 1.0)]), rng, 1.0, 0.2, 5000, stereo=True)
 
 
 def chains(rng, dur, density=320):
@@ -504,11 +548,11 @@ def shackles(rng):
 
 @sound(2, rms=-15)
 def covenant(rng):
-    ch = choir(rng, 2.4, [65.4, 98.0, 130.8], [(0, "u"), (0.4, "o"), (1, "a")], 0.85, 0.08, 0.6, 1.0)
+    ch = choir(rng, 1.8, [65.4, 98.0, 130.8], [(0, "u"), (0.4, "o"), (1, "a")], 0.85, 0.08, 0.5, 0.7)
     fel = bandpass(pink(n_of(1.8), rng), 380, 2.2) * swell(n_of(1.8), 0.35, 1.5, 2) * 0.7
     fel += crackle(n_of(1.8), rng, 200, 700, 3000) * swell(n_of(1.8), 0.35) * 0.4
-    bell = ring(rng, 3.0, 196.0, [1, 2.0, 2.4, 3.0, 4.2, 5.4], 1.2, 0.9, 0.003)
-    return space(place([(ch, 0, 1.0), (fel, 0.2, 1.0), (bell, 0.45, 0.6)]), rng, 2.8, 0.35, 3500, stereo=True)
+    bell = ring(rng, 1.6, 196.0, [1, 2.0, 2.4, 3.0, 4.2, 5.4], 2.4, 0.9, 0.003)
+    return space(place([(ch, 0, 1.0), (fel, 0.2, 1.0), (bell, 0.45, 0.4)]), rng, 2.8, 0.35, 3500, stereo=True)
 
 
 # ---------------------------------------------------------------- reward
@@ -516,9 +560,9 @@ def covenant(rng):
 def levelup(rng):
     pad = choir(rng, 2.0, [261.6, 329.6, 392.0], [(0, "o"), (1, "a")], 1.15, 0.1, 0.25, 0.9)
     notes = [523.3, 659.3, 784.0, 1046.5, 1318.5]
-    arp = place([(ring(rng, 1.2, f, [1, 2.0, 3.01], 3.0, 0.5), 0.08 + k * 0.08, 0.6) for k, f in enumerate(notes)])
+    arp = place([(ring(rng, 0.8, f, [1, 2.0, 3.01], 4.5, 0.5, 0.004, 0.4), 0.08 + k * 0.07, 0.6) for k, f in enumerate(notes)])
     shimmer = highpass(white(n_of(1.5), rng), 6000) * env_ad(n_of(1.5), 0.3, 1.0) * 0.06
-    return space(place([(pad, 0, 0.7), (arp, 0, 1.0), (shimmer, 0.2, 1.0)]), rng, 2.0, 0.3, 8000, stereo=True)
+    return space(place([(pad, 0, 0.4), (arp, 0, 1.0), (shimmer, 0.2, 1.0)]), rng, 2.0, 0.3, 8000, stereo=True)
 
 
 # ---------------------------------------------------------------- render
@@ -533,7 +577,8 @@ def render(names=None, spectro=None):
             rng = np.random.default_rng(zlib.crc32(name.encode()) + k * 7919)
             x = fn(rng)
             x = trim_silence(fade(x) if x.ndim == 1 else np.stack([fade(c) for c in x]))
-            x = normalize(x, 0.92, rms)
+            x = normalize(x, 0.92, min(rms + LEVEL, CEIL))
+            x = x * 10 ** (min(0.0, LOUD - loudest(x)) / 20)
             path = os.path.join(OUT, f"{name}_{k}.wav")
             write_wav(path, x)
             if spectro:

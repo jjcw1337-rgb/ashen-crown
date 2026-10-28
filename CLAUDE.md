@@ -173,7 +173,8 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   python3 with numpy, Blender's bundled python works: `/Applications/Blender.app/Contents/Resources/4.5/python/bin/python3.11`)
   into `assets/audio/sfx/<name>_<take>.wav` (32 kHz, imported as QOA) and `scripts/sfx_bank.gd`. Each sound is a
   function in `make_sfx.py` (layered: transient, body, tail; 1-5 takes); `--spectro dir` writes spectrograms to check
-  them by eye. `Sfx.play(name)` is heard flat (the hero's own skills, UI), `Sfx.play_at(name, pos)` is positional
+  them by eye. The mix knobs at the top of `make_sfx.py` (`LEVEL`/`CEIL`/`LOUD` for level, `TAIL`/`WET` for the room) apply
+  to every sound; metal, glass and bells (`ring`) and pads (`choir`) are mostly filtered noise, so they don't read as a synth. `Sfx.play(name)` is heard flat (the hero's own skills, UI), `Sfx.play_at(name, pos)` is positional
   (hits, monsters; AudioStreamPlayer3D, full volume at the camera's distance). Takes rotate, pitch is nudged, at most
   three of one sound per 50 ms, buses SFX/UI/Music/Ambience with a limiter on Master, `Sfx.duck()` under big spells.
   A cast spell's sound starts with the cast (`Hero._attack_sound`) so its payoff lands on the impact frame (0.3 s);
