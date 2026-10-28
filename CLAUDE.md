@@ -46,6 +46,8 @@ Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class t
 outside their target bands. See `BALANCE.md` for the protocol.
 Screenshots need a display: `xvfb-run -a godot --rendering-driver opengl3 --path . -- --shot out.png --zone town`
 (other flags in `game.gd` `_ready`: `--zone town|wild|lair`, `--run 0|1|2`, `--class knight|wraith|demon|warlock`, `--god`, `--fight`).
+The moor's road is `World.road_style()`: the paved Old Kingsroad (2) by default; `--road 0|1|3` shows the old broad
+road, the wagon trail and the moor trails for comparison. `tools/zone_overview.gd -- out.png [--road N]` renders a high view of it.
 
 Run the relevant tests before pushing. A push to `main` publishes to everyone in ~5 minutes.
 

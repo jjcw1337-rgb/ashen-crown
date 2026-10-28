@@ -25,6 +25,9 @@ var flat_floor := false
 var dirt_blobs: Array = []     # [Vector2 pos, radius, strength]
 var cobble_blobs: Array = []
 var dirt_lines: Array = []     # [Vector2 a, Vector2 b, width]
+var cobble_lines: Array = []   # [Vector2 a, Vector2 b, width] (paved roads)
+## Side trails off the moor's road (to landmarks); path_dist counts them too.
+var trails: Array = []         # PackedVector2Array each
 var obstacles: Array = []      # [Vector2 pos, radius]
 var spawns := {}
 ## Places that burn in A3: [position, size]. Recorded while building; only used for looks.
@@ -81,7 +84,12 @@ func _bake_masks() -> void:
 	cob_mask.fill(0.0)
 	_bake_blobs(dirt_blobs, dirt_mask, 0.55)
 	_bake_blobs(cobble_blobs, cob_mask, 0.5)
-	for l in dirt_lines:
+	_bake_lines(dirt_lines, dirt_mask)
+	_bake_lines(cobble_lines, cob_mask)
+	masks_ready = true
+
+func _bake_lines(list: Array, mask: PackedFloat32Array) -> void:
+	for l in list:
 		var a: Vector2 = l[0]
 		var b: Vector2 = l[1]
 		var wdt: float = l[2]
@@ -93,9 +101,8 @@ func _bake_masks() -> void:
 				var cp := Geometry2D.get_closest_point_to_segment(p, a, b)
 				var v := 1.0 - smoothstep(wdt * 0.4, wdt, p.distance_to(cp))
 				var k := y * mask_w + x
-				if v > dirt_mask[k]:
-					dirt_mask[k] = v
-	masks_ready = true
+				if v > mask[k]:
+					mask[k] = v
 
 func _bake_blobs(list: Array, mask: PackedFloat32Array, inner: float) -> void:
 	for bl in list:
@@ -151,6 +158,9 @@ func cobble_at(x: float, z: float) -> float:
 	for b in cobble_blobs:
 		var d: float = p.distance_to(b[0])
 		v = maxf(v, (1.0 - smoothstep(b[1] * 0.5, b[1], d)) * b[2])
+	for l in cobble_lines:
+		var cp := Geometry2D.get_closest_point_to_segment(p, l[0], l[1])
+		v = maxf(v, 1.0 - smoothstep(l[2] * 0.4, l[2], p.distance_to(cp)))
 	return v
 
 func _cell(x: float, z: float) -> Vector2i:
@@ -671,6 +681,10 @@ const MOOR_TERRAIN := {
 	"col_path": Color(0.25, 0.21, 0.16), "col_cliff": Color(0.3, 0.3, 0.28), "wet": 0.3,
 }
 const MOOR_GRASS := {"base_col": Color(0.12, 0.16, 0.06), "tip_col": Color(0.27, 0.32, 0.13), "dry_col": Color(0.36, 0.35, 0.18), "wind": 1.0}
+## The moor's trails (road styles 1 and 3): lighter, sandier packed earth so a narrow path reads.
+var MOOR_TRAIL: Dictionary = MOOR_TERRAIN.merged({"col_path": Color(0.4, 0.34, 0.25)}, true)
+## The kingsroad: its flagstones a shade darker than the camp's, so they sit in the moor.
+var MOOR_ROAD: Dictionary = MOOR_TERRAIN.merged({"cob_shade": 0.72}, true)
 
 func _build_town() -> void:
 	bounds = Rect2(-38, -42, 76, 80)
@@ -906,7 +920,132 @@ func path_dist(x: float, z: float) -> float:
 	for i in path_poly.size() - 1:
 		var cp := Geometry2D.get_closest_point_to_segment(p, path_poly[i], path_poly[i + 1])
 		best = minf(best, p.distance_to(cp))
+	for tr in trails:
+		var poly: PackedVector2Array = tr
+		for i in poly.size() - 1:
+			best = minf(best, p.distance_to(Geometry2D.get_closest_point_to_segment(p, poly[i], poly[i + 1])))
 	return best
+
+## Which road the moor gets: 2, the old paved kingsroad (broken flagstones, kerbs and milestones), is
+## the game's. The others stay for comparison with `--road N`: 0 the old broad dirt road, 1 a winding
+## wagon trail (two ruts, grass between), 3 a narrow trail with side paths to the landmarks and cairns.
+func road_style() -> int:
+	var args := OS.get_cmdline_user_args()
+	var i := args.find("--road")
+	return int(args[i + 1]) if i >= 0 and i + 1 < args.size() else 2
+
+## A spline that wanders: a sideways kink between each pair of control points.
+func _meander(ctrl: Array, amount: float) -> PackedVector2Array:
+	var pts := [ctrl[0]]
+	for i in ctrl.size() - 1:
+		var a: Vector2 = ctrl[i]
+		var b: Vector2 = ctrl[i + 1]
+		var side := (b - a).orthogonal().normalized()
+		if i > 0 and i < ctrl.size() - 2:
+			pts.append((a + b) * 0.5 + side * rng.randf_range(0.5, 1.0) * amount * (1.0 if i % 2 == 0 else -1.0))
+		pts.append(b)
+	for i in pts.size():
+		var q: Vector2 = pts[i]
+		pts[i] = Vector2(clampf(q.x, -32, 32), q.y)
+	return _spline(pts, 6)
+
+func _lay_road(style: int) -> void:
+	match style:
+		1:
+			# two wheel ruts with grass between, a worn shoulder only at the bends
+			for i in path_poly.size() - 1:
+				var a: Vector2 = path_poly[i]
+				var b: Vector2 = path_poly[i + 1]
+				var n := (b - a).orthogonal().normalized()
+				for s in [-1.1, 1.1]:
+					dirt_lines.append([a + n * s, b + n * s, 0.95])
+			_edge_stones(path_poly, 2.3, 0.35)
+		2:
+			# flagstones down the middle, packed dirt shoulders, kerbs, a milestone now and then
+			for i in path_poly.size() - 1:
+				dirt_lines.append([path_poly[i], path_poly[i + 1], 4.2])
+				cobble_lines.append([path_poly[i], path_poly[i + 1], 3.3])
+			var dist := 0.0
+			var next_mile := 12.0
+			for i in path_poly.size() - 1:
+				var a: Vector2 = path_poly[i]
+				var b: Vector2 = path_poly[i + 1]
+				var seg := a.distance_to(b)
+				var dir := (b - a) / maxf(seg, 0.001)
+				var n := dir.orthogonal()
+				var u := 0.0
+				while u < seg:
+					var c := a + dir * u
+					for s in [-1.0, 1.0]:
+						if rng.randf() < 0.55:
+							var kp: Vector2 = c + n * s * 2.95
+							var v := rng.randi_range(0, 7)
+							if not rock_xf.has(v):
+								rock_xf[v] = []
+							var kb := Basis(Vector3.UP, atan2(dir.x, dir.y) + rng.randf_range(-0.15, 0.15)).scaled(Vector3(0.5, rng.randf_range(0.25, 0.4), rng.randf_range(0.8, 1.1)))
+							rock_xf[v].append(Transform3D(kb, Vector3(kp.x, height_at(kp.x, kp.y) + 0.02, kp.y)))
+					u += 1.1
+				dist += seg
+				if dist > next_mile and i > 2 and i < path_poly.size() - 4:
+					next_mile += rng.randf_range(22, 30)
+					var mp := a + n * (3.8 if i % 2 == 0 else -3.8)
+					var ms := Models.N(null, "milestone")
+					Models.P(ms, Geo.box(0.5, 1.1, 0.35), Props.stone_clean(), Vector3(0, 0.5, 0))
+					Models.P(ms, Geo.cyl(0.25, 0.25, 0.35, 10), Props.stone_clean(), Vector3(0, 1.05, 0), Vector3(90, 0, 0))
+					Models.P(ms, Geo.box(0.06, 0.28, 0.02), Mats.glow(Color(0.9, 0.55, 0.2), 0.8), Vector3(0, 0.7, 0.18))
+					_place(ms, Vector3(mp.x, 0, mp.y))
+					ms.rotation = Vector3(rng.randf_range(-0.1, 0.1), atan2(dir.x, dir.y), rng.randf_range(-0.12, 0.12))
+					add_circle(Vector3(mp.x, 0, mp.y), 0.4)
+		3:
+			for i in path_poly.size() - 1:
+				dirt_lines.append([path_poly[i], path_poly[i + 1], 2.6])
+			_edge_stones(path_poly, 1.9, 0.4)
+		_:
+			for i in path_poly.size() - 1:
+				dirt_lines.append([path_poly[i], path_poly[i + 1], 4.2])
+
+## Small stones half sunk along both edges of a trail, so it reads against the grass.
+func _edge_stones(poly: PackedVector2Array, half: float, chance: float) -> void:
+	for i in poly.size() - 1:
+		var a: Vector2 = poly[i]
+		var b: Vector2 = poly[i + 1]
+		var seg := a.distance_to(b)
+		var dir := (b - a) / maxf(seg, 0.001)
+		var u := 0.0
+		while u < seg:
+			for s: float in [-1.0, 1.0]:
+				if rng.randf() < chance:
+					var sp: Vector2 = a + dir * u + dir.orthogonal() * s * (half + rng.randf_range(-0.25, 0.35))
+					_rock(Vector3(sp.x, 0, sp.y), rng.randf_range(0.22, 0.42), false)
+			u += 1.3
+
+## Style 3: a footpath from the road out to a landmark, with a cairn where it forks off.
+func _side_trail(to: Vector2) -> void:
+	var best := 0
+	for i in path_poly.size():
+		if path_poly[i].distance_to(to) < path_poly[best].distance_to(to):
+			best = i
+	var from: Vector2 = path_poly[best]
+	if from.distance_to(to) < 4.0:
+		return
+	var mid := (from + to) * 0.5 + (to - from).orthogonal().normalized() * rng.randf_range(-2.5, 2.5)
+	var poly := _spline([from, mid, to], 6)
+	trails.append(poly)
+	for i in poly.size() - 1:
+		dirt_lines.append([poly[i], poly[i + 1], 1.7])
+	_edge_stones(poly, 1.3, 0.3)
+	# a cairn beside the fork
+	var off := (to - from).normalized()
+	var cp := from + off * 3.2 + off.orthogonal() * 1.8
+	var g := Models.N(null, "cairn")
+	var sm := Props.stone()
+	var y := 0.0
+	for k in 4:
+		var r := 0.42 - k * 0.08
+		Models.P(g, Props.rock_mesh(rng.randi_range(0, 7), 0.2), sm, Vector3(rng.randf_range(-0.04, 0.04), y + r * 0.5, 0), Vector3(0, rng.randf() * 360.0, 0), Vector3(r * 2.0, r * 1.1, r * 1.8))
+		y += r * 0.95
+	_place(g, Vector3(cp.x, 0, cp.y))
+	add_circle(Vector3(cp.x, 0, cp.y), 0.45)
 
 func _spline(ctrl: Array, steps: int) -> PackedVector2Array:
 	var out := PackedVector2Array()
@@ -1009,9 +1148,9 @@ func _build_wild() -> void:
 		x = clampf(x + rng.randf_range(-18, 18), -26, 26)
 		ctrl.append(Vector2(x, -36 - i * 21))
 	ctrl.append(Vector2(clampf(x * 0.5, -15, 15), -202))
-	path_poly = _spline(ctrl, 6)
-	for i in path_poly.size() - 1:
-		dirt_lines.append([path_poly[i], path_poly[i + 1], 4.2])
+	var style := road_style()
+	path_poly = _meander(ctrl, 7.0) if style == 1 or style == 3 else _spline(ctrl, 6)
+	_lay_road(style)
 	for i in range(2, ctrl.size() - 1, 2):
 		dirt_blobs.append([ctrl[i] + Vector2(rng.randf_range(-3, 3), rng.randf_range(-3, 3)), rng.randf_range(6, 9), 0.85])
 	var end_p: Vector2 = ctrl[ctrl.size() - 1]
@@ -1043,10 +1182,12 @@ func _build_wild() -> void:
 	cobble_blobs.append([wpp, 3.0, 0.8])
 	var kinds := ["healing", "fury", "armor", "experience"]
 	kinds.shuffle()
+	var shrine_ps := []
 	for i in 2:
 		var cc: Vector2 = ctrl[2 + i * 4]
 		var sp := Vector2(clampf(cc.x + (7 if i == 0 else -7), -34, 34), cc.y - 3)
 		_shrine(Vector3(sp.x, 0, sp.y), kinds[i])
+		shrine_ps.append(sp + Vector2(0, 1.6))
 	for i in 4:
 		var cc2: Vector2 = path_poly[int(path_poly.size() * (0.2 + i * 0.2))]
 		var chp := Vector2(clampf(cc2.x + rng.randf_range(-9, 9), -36, 36), cc2.y + rng.randf_range(-4, 4))
@@ -1068,6 +1209,9 @@ func _build_wild() -> void:
 	Models.P(cart, Geo.cyl(0.55, 0.55, 0.1, 14), Props.wood_dark(), Vector3(-0.9, 0.4, 0.8), Vector3(0, 0, 90))
 	Models.P(cart, Geo.cyl(0.55, 0.55, 0.1, 14), Props.wood_dark(), Vector3(0.6, 0.05, -1.4), Vector3(90, 30, 0))
 	solid(_place(cart, Vector3(c2.x + 4.5, 0, c2.y + 2)))
+	if style == 3:
+		for lm in [circle_c, gy + Vector2(0, 2.5), wpp] + shrine_ps:
+			_side_trail(lm)
 
 	# vegetation
 	var dt_meshes := [Flora.dead_tree(11), Flora.dead_tree(23), Flora.dead_tree(37)]
@@ -1080,7 +1224,7 @@ func _build_wild() -> void:
 		var pz := rng.randf_range(bounds.position.y - MARGIN + 3, bounds.end.y + 4)
 		var inside := bounds.grow(-1.5).has_point(Vector2(px, pz))
 		var pd := path_dist(px, pz) if inside else 99.0
-		if inside and (pd < 6.5 or is_near_obstacle(Vector3(px, 0, pz), 2.5)):
+		if inside and (pd < (6.5 if style == 0 or style == 2 else 3.6) or is_near_obstacle(Vector3(px, 0, pz), 2.5)):
 			continue
 		if inside and rng.randf() < 0.3:
 			continue
@@ -1172,7 +1316,7 @@ func _build_wild() -> void:
 
 	_rasterize()
 	_flush_stones(Props.stone())
-	_build_terrain(MOOR_TERRAIN)
+	_build_terrain(MOOR_ROAD if road_style() == 2 else MOOR_TERRAIN if road_style() == 0 else MOOR_TRAIL)
 	_scatter_grass(94000, MOOR_GRASS, 0.32)
 	_scatter_ferns(700)
 
@@ -1197,6 +1341,9 @@ func _build_wild() -> void:
 			pid += 1
 		t += rng.randf_range(0.045, 0.07)
 	spawns["start"] = Vector3(0, 0, -6)
+	for k in [["road", 0.22], ["road2", 0.5]]:
+		var rp: Vector2 = path_poly[int(path_poly.size() * k[1])]
+		spawns[k[0]] = Vector3(rp.x, 0, rp.y)
 	spawns["from_town"] = Vector3(0, 0, -6)
 	spawns["from_lair"] = Vector3(end_p.x, 0, end_p.y + 4.5)
 

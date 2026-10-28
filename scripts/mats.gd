@@ -305,6 +305,7 @@ uniform vec3 col_cliff : source_color = vec3(0.3, 0.3, 0.3);
 uniform vec3 crack_col : source_color = vec3(1.0, 0.35, 0.05);
 uniform float cracks = 0.0;
 uniform float tiles = 0.0;
+uniform float cob_shade = 1.0;
 uniform float wet = 0.0;
 uniform float ripples = 0.0;
 global uniform float snow_amt;
@@ -384,7 +385,7 @@ void fragment(){
 	if (cob > 0.01) {
 		vec2 vv2 = vor(p * 2.6, cid);
 		cm = smoothstep(0.03, 0.14, vv2.y - vv2.x);
-		vec3 stonec = mix(vec3(0.22, 0.21, 0.19), vec3(0.36, 0.34, 0.3), cid) * (0.8 + n3 * 0.3 + (n4 - 0.5) * 0.15);
+		vec3 stonec = mix(vec3(0.22, 0.21, 0.19), vec3(0.36, 0.34, 0.3), cid) * (0.8 + n3 * 0.3 + (n4 - 0.5) * 0.15) * cob_shade;
 		stonec = mix(stonec, col_accent * 0.7, smoothstep(0.62, 0.8, n3) * 0.5);
 		vec3 gap = mix(col_path * 0.45, col_a * 0.6, smoothstep(0.4, 0.7, n2));
 		base = mix(base, mix(gap, stonec, cm), cob);
