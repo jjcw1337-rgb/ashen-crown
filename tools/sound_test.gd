@@ -26,6 +26,10 @@ func _run() -> void:
 		if not sfx.bank.has(nm) or (sfx.bank[nm] as Array).size() != int(sfx.BANK[nm][0]):
 			missing_bank.append(nm)
 	print("[S] bank: %d sounds loaded, missing %s" % [sfx.bank.size(), missing_bank])
+	var buses := []
+	for i in AudioServer.bus_count:
+		buses.append("%s>%s" % [AudioServer.get_bus_name(i), AudioServer.get_bus_send(i)])
+	print("[S] buses: %s" % [buses])
 	for cls in EXPECT.keys():
 		await g.start_game(false, cls)
 		g.ui.close_all()

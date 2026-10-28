@@ -80,12 +80,15 @@ func _ready() -> void:
 		dl.loop_end = int(dl.get_length() * dl.mix_rate)
 
 func _buses() -> void:
-	for nm in ["SFX", "UI", "Music", "Ambience"]:
-		if AudioServer.get_bus_index(nm) < 0:
-			AudioServer.add_bus()
-			var i := AudioServer.bus_count - 1
-			AudioServer.set_bus_name(i, nm)
-			AudioServer.set_bus_send(i, "Master")
+	# set_bus_count, never add_bus: in the browser build (Godot 4.5.1's web sample playback) add_bus
+	# files the new bus in front of Master, which then sends into it instead of the speakers and the
+	# whole game goes silent. set_bus_count appends them in order, each sending to Master.
+	var missing: Array = ["SFX", "UI", "Music", "Ambience"].filter(func(nm: String) -> bool: return AudioServer.get_bus_index(nm) < 0)
+	var first := AudioServer.bus_count
+	AudioServer.set_bus_count(first + missing.size())
+	for k in missing.size():
+		AudioServer.set_bus_name(first + k, missing[k])
+		AudioServer.set_bus_send(first + k, "Master")
 	# a limiter on the master so a big pull of hits doesn't clip (where the platform has one)
 	if ClassDB.class_exists("AudioEffectHardLimiter") and AudioServer.get_bus_effect_count(0) == 0:
 		var lim: AudioEffect = ClassDB.instantiate("AudioEffectHardLimiter")
