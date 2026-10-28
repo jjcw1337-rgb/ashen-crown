@@ -452,10 +452,13 @@ func refresh_gear() -> void:
 	var am = equipment.get("amulet")
 	if am != null:
 		var an := Models.amulet(Models.palette(am))
-		(J["torso"] as Node3D).add_child(an)
-		an.position = Vector3(0, 0.47, -0.15)
-		an.rotation_degrees = Vector3(-75, 0, 0)
-		an.scale = Vector3(1.2, 1.2, 1.2)
+		if J.has("chest"):
+			(J["chest"] as Node3D).add_child(an)
+		else:
+			(J["torso"] as Node3D).add_child(an)
+			an.position = Vector3(0, 0.47, -0.15)
+			an.rotation_degrees = Vector3(-75, 0, 0)
+			an.scale = Vector3(1.2, 1.2, 1.2)
 		gear_nodes.append(an)
 	if not puppet and game and game.net and game.net.active:
 		game.net.send_gear()
@@ -957,7 +960,7 @@ func _process(delta: float) -> void:
 			else:
 				_face_smooth(atk_aim - global_position, delta)
 		move_amt = move_toward(move_amt, stride, delta * 6.0)
-		phase += delta * vel.length() * 2.9 / maxf(move_amt, 0.6)
+		phase += delta * vel.length() * 2.9 / maxf(move_amt, 0.6) * (float(rig.get_meta("stride")) if rig.has_meta("stride") else 1.0)
 		_snow_step()
 	else:
 		move_amt = move_toward(move_amt, 0.0, delta * 6.0)

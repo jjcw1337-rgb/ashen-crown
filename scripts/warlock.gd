@@ -5,6 +5,19 @@ extends RefCounted
 ## Demon it reuses the knight's skeleton and joints (so Anim.pose, weapon grips and co-op
 ## puppets all work) and adds its own pieces.
 
+## The gnome warlock: a model generated with Meshy from a Meshy concept image, rigged in Blender
+## (tools/blender/gnome_warlock.py) on this joint layout (model space, Godot axes, 1.2 m to the hat's
+## tip before "scale"). His arms were modelled out in an A-pose: "aim" turns their rest down the arm
+## so the hero's animation hangs them naturally. "stride" quickens his steps to his short legs.
+const GNOME := {"glb": "res://assets/models/gnome_warlock.glb", "scale": 1.55, "stride": 1.55, "layout": {
+	"hips": ["", Vector3(0, 0.33, 0)], "torso": ["hips", Vector3(0, 0.4, 0)], "head": ["torso", Vector3(0, 0.64, -0.03)],
+	"hat": ["head", Vector3(0, 0.8, 0.01)], "beard": ["head", Vector3(0, 0.6, -0.12)],
+	"sh_r": ["torso", Vector3(0.19, 0.6, 0)], "el_r": ["sh_r", Vector3(0.31, 0.5, -0.02)], "hand_r": ["el_r", Vector3(0.41, 0.42, -0.04)],
+	"sh_l": ["torso", Vector3(-0.19, 0.6, 0)], "el_l": ["sh_l", Vector3(-0.31, 0.5, -0.02)], "hand_l": ["el_l", Vector3(-0.41, 0.42, -0.04)],
+	"leg_r": ["hips", Vector3(0.11, 0.3, 0)], "knee_r": ["leg_r", Vector3(0.14, 0.17, -0.01)],
+	"leg_l": ["hips", Vector3(-0.11, 0.3, 0)], "knee_l": ["leg_l", Vector3(-0.14, 0.17, -0.01)],
+}, "aim": {"sh_r": "el_r", "el_r": "hand_r", "hand_r": "=el_r", "sh_l": "el_l", "el_l": "hand_l", "hand_l": "=el_l"}}
+
 const FEL := Color(0.35, 1.0, 0.3)
 const PALE := Color(0.8, 1.0, 0.7)
 const DEEP := Color(0.05, 0.35, 0.08)
@@ -31,14 +44,21 @@ static func body_gear(g: Dictionary) -> Dictionary:
 	k["coif"] = false
 	return k
 
+## True when the gnome's model is in the project (else the Warlock is the robed knight body).
+static func gnome() -> bool:
+	return ResourceLoader.exists(GNOME["glb"])
+
 static func build(g: Dictionary) -> Node3D:
+	if gnome():
+		return _build_gnome(g)
 	var root := Knight.build(body_gear(g))
 	root.set_meta("warlock", true)
 	_extras(root, g)
 	return root
 
 static func rebuild_body(root: Node3D, g: Dictionary) -> void:
-	Knight.rebuild_body(root, body_gear(g))
+	if not root.has_meta("gnome"):
+		Knight.rebuild_body(root, body_gear(g))
 	for m in root.get_meta("fel_mats", []):
 		(m as ShaderMaterial).set_shader_parameter("color", g["fel"])
 
@@ -102,6 +122,72 @@ static func _extras(root: Node3D, g: Dictionary) -> void:
 	root.set_meta("fel_mats", mats)
 	root.set_meta("warlock_anim", {"book": book, "flame": flame, "energy": mats.map(func(m): return float(m.get_shader_parameter("energy"))), "power": 0.0})
 
+static func _build_gnome(g: Dictionary) -> Node3D:
+	var root := Goblin.imported_rig(GNOME["layout"], GNOME["glb"], "gnome_warlock", GNOME["aim"])
+	var J: Dictionary = root.get_meta("j")
+	# weapons and shields are made at a human's size: hold them a little smaller
+	J["grip_r"] = Models.N(J["hand_r"], "grip_r", Vector3(0, -0.05, -0.01), Vector3(-28, 0, 0))
+	J["grip_l"] = Models.N(J["hand_l"], "grip_l", Vector3(0, -0.05, -0.01))
+	J["mount_l"] = Models.N(J["el_l"], "mount_l", Vector3(-0.05, -0.08, 0), Vector3(0, 70, 0))
+	J["chest"] = Models.N(J["torso"], "chest", Vector3(0, 0.14, -0.13), Vector3(-75, 0, 0))
+	for k in ["grip_r", "grip_l", "mount_l", "chest"]:
+		(J[k] as Node3D).scale = Vector3.ONE * 0.55
+	root.scale = Vector3.ONE * float(GNOME["scale"])
+	root.set_meta("h", 0.5)
+	root.set_meta("stride", GNOME["stride"])
+	root.set_meta("warlock", true)
+	root.set_meta("gnome", true)
+	var fel: Color = g["fel"]
+	var mats := []
+	# his eyes burn green in the model's own texture; a faint light under the brim helps them read
+	var hd: Node3D = J["head"]
+	var el := OmniLight3D.new()
+	el.light_color = fel
+	el.light_energy = 0.25
+	el.omni_range = 0.35
+	el.position = Vector3(0, 0.1, -0.16)
+	hd.add_child(el)
+	# fel fire cupped in the off hand
+	var hl: Node3D = J["hand_l"]
+	var glow := Mats.glow_unique(fel, 1.3)
+	mats.append(glow)
+	var core := Models.P(hl, Geo.sph(0.024, 10), glow, Vector3(0, -0.06, -0.03))
+	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var flame := fel_flame(0.6, fel)
+	flame.position = Vector3(0, -0.06, -0.03)
+	hl.add_child(flame)
+	var hlight := OmniLight3D.new()
+	hlight.light_color = fel
+	hlight.light_energy = 0.45
+	hlight.omni_range = 1.1
+	hlight.position = Vector3(0, -0.06, -0.03)
+	hl.add_child(hlight)
+	# a soft fel glow rides with him, so the dark robes read against a dark moor
+	var aura := OmniLight3D.new()
+	aura.light_color = fel.lerp(Color(1, 1, 1), 0.35)
+	aura.light_energy = 1.3
+	aura.omni_range = 2.0
+	aura.position = Vector3(0.2, 1.25, 0.45)
+	root.add_child(aura)
+	# the grimoire floats at his shoulder, as for the robed Warlock
+	var book := Models.N(root, "grimoire", Vector3(-0.44, 0.7, 0.14))
+	book.scale = Vector3.ONE * 0.7
+	var cover := Mats.mat(Color(0.12, 0.05, 0.04), 0.7)
+	var pages := Mats.mat(Color(0.75, 0.7, 0.55), 0.95)
+	Models.P(book, Geo.box(0.2, 0.012, 0.26), cover, Vector3(0, -0.026, 0))
+	Models.P(book, Geo.box(0.2, 0.012, 0.26), cover, Vector3(0, 0.026, 0))
+	Models.P(book, Geo.box(0.185, 0.04, 0.245), pages, Vector3(0.006, 0, 0))
+	Models.P(book, Geo.box(0.014, 0.064, 0.26), cover, Vector3(-0.1, 0, 0))
+	var sig := Mats.glow_unique(fel, 1.1)
+	mats.append(sig)
+	Models.P(book, Geo.torus(0.045, 0.056, 20, 4), sig, Vector3(0.01, 0.034, 0))
+	Models.P(book, Geo.sph(0.018, 8), sig, Vector3(0.01, 0.034, 0))
+	book.add_child(fel_flame(0.35, fel, true))
+	root.set_meta("fel_mats", mats)
+	root.set_meta("warlock_anim", {"book": book, "flame": flame, "energy": mats.map(func(m): return float(m.get_shader_parameter("energy"))), "power": 0.0,
+		"book_at": Vector3(-0.44, 0.7, 0.14)})
+	return root
+
 ## Green fel fire (or, with motes, a slow drift of sparks). Additive particles in world space.
 static func fel_flame(s: float, col: Color, motes := false) -> GPUParticles3D:
 	var p := GPUParticles3D.new()
@@ -155,6 +241,45 @@ static func animate(root: Node3D, t: float, move: float, power := 0.0) -> void:
 		for i in mats.size():
 			(mats[i] as ShaderMaterial).set_shader_parameter("energy", float(base[i]) * (1.0 + 1.2 * pw) * flick)
 		(a["flame"] as Node3D).scale = Vector3.ONE * (1.0 + 0.8 * pw)
+	if root.has_meta("gnome"):
+		_gnome_sway(root, t, move)
 	var book: Node3D = a["book"]
-	book.position = Vector3(-0.48 - move * 0.06, 1.3 + sin(t * 1.8) * 0.05, 0.12 + move * 0.1)
+	var at: Vector3 = a.get("book_at", Vector3(-0.48, 1.3, 0.12))
+	book.position = at + Vector3(-move * 0.06, sin(t * 1.8) * 0.05, move * 0.1)
 	book.rotation = Vector3(0.35 + sin(t * 1.3) * 0.08, 0.5 + sin(t * 0.7) * 0.25, -0.25 + sin(t * 1.1) * 0.06)
+
+## The gnome's hat and beard lag behind his body on springs: the tall hat tips back when he sets
+## off and nods forward when he stops, bounces on his footfalls and swings out on turns; the beard
+## follows the swing of his chest a beat late.
+static func _gnome_sway(root: Node3D, t: float, move: float) -> void:
+	var J: Dictionary = root.get_meta("j")
+	if not root.has_meta("sway"):
+		root.set_meta("sway", {})
+	var D: Dictionary = root.get_meta("sway")
+	var dt := clampf(t - float(D.get("t", t)), 0.0, 0.05)
+	D["t"] = t
+	if dt <= 0.0:
+		return
+	var torso: Node3D = J["torso"]
+	var head: Node3D = J["head"]
+	var hips: Node3D = J["hips"]
+	var yaw: float = root.get_parent().global_rotation.y if root.get_parent() is Node3D else root.rotation.y
+	yaw += root.rotation.y
+	var yv := wrapf(yaw - float(D.get("yaw", yaw)), -PI, PI) / dt
+	D["yaw"] = yaw
+	var acc := (move - float(D.get("mv", move))) / dt
+	D["mv"] = move
+	var hy: float = hips.position.y
+	var vy := (hy - float(D.get("hy", hy))) / dt
+	D["hy"] = hy
+	var tilt: float = torso.rotation.x + head.rotation.x
+	var tv := (tilt - float(D.get("tilt", tilt))) / dt
+	D["tilt"] = tilt
+	Anim.kick(D, "hx", clampf(acc * 0.05 - vy * 0.6 - tv * 0.25, -3.0, 3.0) * dt * 20.0)
+	Anim.kick(D, "hz", clampf(yv * 0.05, -2.0, 2.0) * dt * 20.0)
+	var hat: Node3D = J["hat"]
+	hat.rotation = Vector3(Anim.spring(D, "hx", -0.06 * move, 70.0, 0.18, dt), sin(t * 0.6) * 0.04,
+		Anim.spring(D, "hz", sin(t * 0.9) * 0.025, 70.0, 0.2, dt))
+	var beard: Node3D = J["beard"]
+	beard.rotation = Vector3(Anim.spring(D, "bx", -tilt * 0.6 + 0.08 * move, 90.0, 0.3, dt),
+		0.0, Anim.spring(D, "bz", -torso.rotation.z * 0.8 + clampf(-yv * 0.03, -0.25, 0.25), 90.0, 0.3, dt))

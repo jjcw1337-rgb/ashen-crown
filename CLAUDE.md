@@ -1,9 +1,9 @@
 # Ashen Crown: notes for Claude (and humans)
 
 A Diablo II-style isometric ARPG in **Godot 4.3** (GDScript, Forward+ with an OpenGL fallback).
-Everything is procedural (models, textures, sound, music) except two asset files: the intro video
-`assets/intro.ogv` and the Act I boss, King Grubb, `assets/models/grubb_mutant.glb` (generated with Meshy,
-rigged in Blender; see "Blender assets"). Two developers (one Windows, one Linux) push to `main`; GitHub
+Everything is procedural (models, textures, sound, music) except a few asset files: the intro video
+`assets/intro.ogv`, the Act I boss King Grubb `assets/models/grubb_mutant.glb` and the gnome Warlock
+`assets/models/gnome_warlock.glb` (both generated with Meshy and rigged in Blender; see "Blender assets"). Two developers (one Windows, one Linux) push to `main`; GitHub
 Actions exports Web + Windows + Linux + Mac and publishes them to GitHub Pages.
 
 - Repo: https://github.com/jjcw1337-rgb/ashen-crown
@@ -45,7 +45,7 @@ Tool scripts save to `user://ashen_crown_test_save.json`, never the player's sav
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
 outside their target bands. See `BALANCE.md` for the protocol.
 Screenshots need a display: `xvfb-run -a godot --rendering-driver opengl3 --path . -- --shot out.png --zone town`
-(other flags in `game.gd` `_ready`: `--zone town|wild|lair`, `--run 0|1|2`, `--god`, `--fight`).
+(other flags in `game.gd` `_ready`: `--zone town|wild|lair`, `--run 0|1|2`, `--class knight|wraith|demon|warlock`, `--god`, `--fight`).
 
 Run the relevant tests before pushing. A push to `main` publishes to everyone in ~5 minutes.
 
@@ -59,7 +59,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `hero.gd`, `knight.gd`, `knight_rig.gd`, `anim.gd` | Player: class (`cls`, `set_class`), stats (`recalc`), combat, skills, gear visuals, animation, co-op puppet mode |
 | `wraith.gd`, `wraith_fx.gd` | Wraith class: body mesh + spectral shader on the knight skeleton; skill effects |
 | `demon.gd`, `demon_fx.gd`, `demon_minion.gd` | Demon class: knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader; skill effects and the Underworld screen grade; summoned demons (simple ally AI) |
-| `warlock.gd`, `warlock_fx.gd` | Warlock class: knight body in a long robe (`robe` gear key) + hood, horns, fel flame, floating grimoire; skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
+| `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
 | `enemy.gd`, `projectile.gd` | Monsters/AI and missiles (host-authoritative in co-op) |
 | `hoard.gd` | King Grubb's fight (Act I boss): Gilded Bombs, the three burst sacks, the gold scramble (piles reaching him heal him; piles a hero takes hurt him) |
 | `goblin.gd`, `sculpt.gd` | Goblin models: King Grubb is the imported mutant (`Goblin.MUTANT`: joint layout + glb, skinned onto the game's skeleton); the Gold Grabbers (and Grubb's fallback) are code-sculpted (`Sculpt` melts SDF shapes into one skinned mesh). `Goblin.after_pose` adds ears, jaw, crown wobble, belly jiggle, sacks and the goblin gaits |
@@ -109,6 +109,11 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   `Goblin._imported` re-binds the glb's skin onto the game's skeleton by bone name, so `Anim.pose` and
   `Goblin.after_pose` drive it; the `held` meta damps his shoulder swings (his gut and arms tear the skin otherwise).
   Burst sacks are hidden by scaling their bones to ~0. Without the file he falls back to the code-sculpted king.
+  The gnome Warlock works the same way (`tools/blender/gnome_warlock.py`, `Warlock.GNOME`, source
+  `sources/gnome_warlock.blend`): `Goblin.imported_rig` builds the skeleton from a layout, and its `aim` turns an A-pose
+  limb's rest down the limb so the hero's animation hangs it naturally. A player model also needs `grip_r`/`grip_l`/
+  `mount_l`/`chest` anchors (weapons, shields, amulets; scaled for his size) and a `stride` meta (short legs step faster).
+  `tools/gnome_anim.gd` renders a contact sheet of his motion.
   `tools/model_preview.gd` stages any candidate .glb in the vault for screenshots; `tools/goblin_anim.gd` renders a
   contact sheet of his motion. `tools/blender/grubb.py` (+ `grubb_gear.py`) is the earlier fully scripted Blender
   build, kept as a reference; its export isn't used. Godot's `.import` files and extracted textures under

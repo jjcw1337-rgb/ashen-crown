@@ -97,6 +97,9 @@ func _ready() -> void:
 	if shot_path != "":
 		ui.hide_title()
 		playing = true
+		var ci := OS.get_cmdline_user_args().find("--class")
+		if ci >= 0 and ci + 1 < OS.get_cmdline_user_args().size():
+			hero.set_class(OS.get_cmdline_user_args()[ci + 1])
 		await load_zone(0, shot_zone, shot_spawn if shot_spawn != "" else "start")
 		return
 	await _play_intro()
@@ -1359,7 +1362,7 @@ func pick_enemy(o: Vector3, d: Vector3) -> Enemy:
 	var best: Enemy = null
 	var best_d := 1e9
 	for e in world.enemies_root.get_children():
-		if not (e is Enemy) or e.dead:
+		if not (e is Enemy) or e.dead or e.is_queued_for_deletion():
 			continue
 		var a: Vector3 = e.global_position + Vector3(0, 0.2, 0)
 		var b: Vector3 = e.global_position + Vector3(0, maxf(e.top() - 0.2, 0.5), 0)
@@ -1384,7 +1387,7 @@ func _update_hover() -> void:
 	var best = pick_enemy(o, d)
 	if best == null:
 		for g in world.items_root.get_children():
-			if g is GroundItem and g._toss >= 1.0:
+			if g is GroundItem and g._toss >= 1.0 and not g.is_queued_for_deletion():
 				var lp: Vector3 = g.global_position + Vector3(0, 0.75, 0)
 				var dist2 := (lp - o).cross(d).length()
 				var dg := Vector2(ground_pt.x - g.global_position.x, ground_pt.z - g.global_position.z).length()
@@ -1405,7 +1408,7 @@ func _update_hover() -> void:
 		hovered = best
 		if hovered is GroundItem:
 			hovered.set_hover(true, true)
-	if hovered is Enemy:
+	if is_instance_valid(hovered) and hovered is Enemy:
 		var col := Color(1, 1, 1)
 		if hovered.champion:
 			col = Color(0.45, 0.6, 1.0)
