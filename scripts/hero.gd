@@ -1002,7 +1002,8 @@ func _hover() -> void:
 		Demon.animate(rig, anim_time, move_amt)
 		return
 	if is_warlock():
-		Warlock.animate(rig, anim_time, move_amt, 1.0 if covenant_t > 0.0 or (puppet and net_buff) else 0.0)
+		Warlock.animate(rig, anim_time, move_amt, 1.0 if covenant_t > 0.0 or (puppet and net_buff) else 0.0,
+			phase, float(last_pose.get("atk", -1.0)) < 0.0 and drain_t < 0.0)
 		return
 	if not is_wraith() or dead:
 		return

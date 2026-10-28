@@ -20,6 +20,10 @@ const GNOME := {"glb": "res://assets/models/gnome_warlock.glb", "scale": 1.55, "
 
 ## The gnome's robes and hat, recoloured from the model's dark green (it vanished against grass).
 const CLOAK := Color(0.36, 0.1, 0.5)
+## The black horns on his hat, recoloured (only above the brim, so boots and belt stay black).
+const HORNS := Color(0.75, 0.06, 0.04)
+## His glowing footprints.
+const PRINT := Color(0.35, 1.0, 0.3)
 
 const FEL := Color(0.35, 1.0, 0.3)
 const PALE := Color(0.8, 1.0, 0.7)
@@ -129,7 +133,9 @@ static func _build_gnome(g: Dictionary) -> Node3D:
 	var root := Goblin.imported_rig(GNOME["layout"], GNOME["glb"], "gnome_warlock", GNOME["aim"])
 	var J: Dictionary = root.get_meta("j")
 	var body: MeshInstance3D = root.get_node("Skeleton/Body")
-	body.material_override = cloak_mat(body.mesh.surface_get_material(0), CLOAK)
+	var src_mat: Material = body.mesh.surface_get_material(0)
+	body.mesh = _hat_masked(body.mesh)
+	body.material_override = cloak_mat(src_mat, CLOAK)
 	# weapons and shields are made at a human's size: hold them a little smaller
 	J["grip_r"] = Models.N(J["hand_r"], "grip_r", Vector3(0, -0.05, -0.01), Vector3(-28, 0, 0))
 	J["grip_l"] = Models.N(J["hand_l"], "grip_l", Vector3(0, -0.05, -0.01))
@@ -194,6 +200,27 @@ static func _build_gnome(g: Dictionary) -> Node3D:
 	return root
 
 static var _cloak_shader: Shader
+static var _masked: ArrayMesh
+
+## The body mesh with a vertex-colour mask on the hat (red = above the brim), so the shader can
+## turn the horns red without touching the black boots, belt and pauldrons. Made once.
+static func _hat_masked(mesh: Mesh) -> Mesh:
+	if _masked != null:
+		return _masked
+	var out := ArrayMesh.new()
+	for si in mesh.get_surface_count():
+		var arr: Array = mesh.surface_get_arrays(si)
+		var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+		var cols := PackedColorArray()
+		cols.resize(v.size())
+		for i in v.size():
+			cols[i] = Color(smoothstep(0.82, 0.86, v[i].y), 0.0, 0.0, 1.0)
+		arr[Mesh.ARRAY_COLOR] = cols
+		out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		out.surface_set_material(si, mesh.surface_get_material(si))
+	out.set_meta("imported", true)
+	_masked = out
+	return out
 
 ## The gnome's own textures with the dark green cloth (robes, hat) turned to `col`; the bright
 ## fel-green runes, skin, beard, leather and metal keep their colours.
@@ -210,6 +237,7 @@ static func cloak_mat(src: Material, col: Color) -> Material:
 	m.set_shader_parameter("normal_tex", sm.normal_texture)
 	m.set_shader_parameter("orm_tex", sm.roughness_texture)
 	m.set_shader_parameter("cloak", col)
+	m.set_shader_parameter("horns", HORNS)
 	return m
 
 const CLOAK_SHADER := """
@@ -219,6 +247,7 @@ uniform sampler2D albedo_tex : source_color, filter_linear_mipmap;
 uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap;
 uniform sampler2D orm_tex : hint_default_white, filter_linear_mipmap;
 uniform vec3 cloak : source_color = vec3(0.36, 0.1, 0.5);
+uniform vec3 horns : source_color = vec3(0.75, 0.06, 0.04);
 vec3 rgb2hsv(vec3 c) {
 	vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
 	vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
@@ -239,7 +268,12 @@ void fragment() {
 	float m = green * dark * smoothstep(0.08, 0.2, h.y);
 	vec3 t = rgb2hsv(cloak);
 	vec3 rc = hsv2rgb(vec3(t.x, clamp(h.y * 1.2, t.y * 0.8, 0.95), max(h.z * 2.6, t.z * 0.3)));
-	ALBEDO = mix(c, rc, m);
+	vec3 col = mix(c, rc, m);
+	// the hat's horns: dark and grey (the hat itself is green, so it is excluded), above the brim
+	float horn = COLOR.r * (1.0 - smoothstep(0.18, 0.32, h.y)) * (1.0 - smoothstep(0.25, 0.45, h.z));
+	vec3 th = rgb2hsv(horns);
+	col = mix(col, hsv2rgb(vec3(th.x, th.y, max(h.z * 3.5, th.z * 0.35))), horn);
+	ALBEDO = col;
 	vec3 orm = texture(orm_tex, UV).rgb;
 	ROUGHNESS = orm.g;
 	METALLIC = orm.b;
@@ -289,7 +323,8 @@ static func fel_flame(s: float, col: Color, motes := false) -> GPUParticles3D:
 
 ## The grimoire bobs and turns, drifting further out while the Warlock moves. Under Fel
 ## Covenant (power 1) the horns, hood rim and sigil burn brighter and the hand-fire swells.
-static func animate(root: Node3D, t: float, move: float, power := 0.0) -> void:
+## phase: the stride phase (footsteps and the hat's hop); free: not attacking, casting or channelling.
+static func animate(root: Node3D, t: float, move: float, power := 0.0, phase := 0.0, free := true) -> void:
 	if not root.has_meta("warlock_anim"):
 		return
 	var a: Dictionary = root.get_meta("warlock_anim")
@@ -303,7 +338,7 @@ static func animate(root: Node3D, t: float, move: float, power := 0.0) -> void:
 			(mats[i] as ShaderMaterial).set_shader_parameter("energy", float(base[i]) * (1.0 + 1.2 * pw) * flick)
 		(a["flame"] as Node3D).scale = Vector3.ONE * (1.0 + 0.8 * pw)
 	if root.has_meta("gnome"):
-		_gnome_sway(root, t, move)
+		_gnome_sway(root, t, move, phase, free)
 	var book: Node3D = a["book"]
 	var at: Vector3 = a.get("book_at", Vector3(-0.48, 1.3, 0.12))
 	book.position = at + Vector3(-move * 0.06, sin(t * 1.8) * 0.05, move * 0.1)
@@ -312,7 +347,7 @@ static func animate(root: Node3D, t: float, move: float, power := 0.0) -> void:
 ## The gnome's hat and beard lag behind his body on springs: the tall hat tips back when he sets
 ## off and nods forward when he stops, bounces on his footfalls and swings out on turns; the beard
 ## follows the swing of his chest a beat late.
-static func _gnome_sway(root: Node3D, t: float, move: float) -> void:
+static func _gnome_sway(root: Node3D, t: float, move: float, phase := 0.0, free := true) -> void:
 	var J: Dictionary = root.get_meta("j")
 	if not root.has_meta("sway"):
 		root.set_meta("sway", {})
@@ -344,3 +379,52 @@ static func _gnome_sway(root: Node3D, t: float, move: float) -> void:
 	var beard: Node3D = J["beard"]
 	beard.rotation = Vector3(Anim.spring(D, "bx", -tilt * 0.6 + 0.08 * move, 90.0, 0.3, dt),
 		0.0, Anim.spring(D, "bz", -torso.rotation.z * 0.8 + clampf(-yv * 0.03, -0.25, 0.25), 90.0, 0.3, dt))
+	# the hat hops on every footfall: up as a foot pushes off, a springy drop as it lands
+	if not D.has("hat_rest"):
+		D["hat_rest"] = hat.position
+	var run := clampf(move, 0.0, 1.3)
+	var hop := absf(sin(phase)) * 0.05 * run
+	hat.position = (D["hat_rest"] as Vector3) + Vector3(0, Anim.spring(D, "hop", hop, 220.0, 0.25, dt), 0)
+	# running, he holds his weapon (or bare fist) high on the right and waves it back and forth
+	var hold := Anim.spring(D, "hold", 1.0 if free and move > 0.35 else 0.0, 60.0, 0.9, dt)
+	if hold > 0.01:
+		var wave := sin(phase * 0.5 + t * 1.5)
+		var sh: Node3D = J["sh_r"]
+		var el: Node3D = J["el_r"]
+		sh.rotation = sh.rotation.lerp(Vector3(2.85 + 0.1 * sin(phase), 0.1 * wave, 0.75 + 0.35 * wave), hold)
+		el.rotation = el.rotation.lerp(Vector3(0.2 + 0.15 * wave, 0.0, 0.0), hold)
+	if root.has_method("sync"):
+		root.sync()
+	_footprint(root, D, phase, move)
+
+## A glowing green footprint where each foot lands; it fades away by the next step or two.
+static func _footprint(root: Node3D, D: Dictionary, phase: float, move: float) -> void:
+	var step := int(floorf(phase / PI))
+	var last: int = D.get("step", step)
+	D["step"] = step
+	if step == last or move < 0.25 or not root.is_inside_tree():
+		return
+	var J: Dictionary = root.get_meta("j")
+	var knee: Node3D = J["knee_l"] if step % 2 == 0 else J["knee_r"]
+	var host := root.get_parent() as Node3D
+	var at: Vector3 = knee.global_position
+	at.y = (host.global_position.y if host != null else 0.0) + 0.015
+	var fwd := -root.global_transform.basis.z
+	fwd.y = 0.0
+	fwd = fwd.normalized()
+	var p := Node3D.new()
+	# in the world, not on the walker, so the print stays where it was left
+	var holder: Node = host.get_parent() if host != null and host.get_parent() != null else root
+	holder.add_child(p)
+	p.global_position = at + fwd * 0.04
+	p.rotation.y = atan2(-fwd.x, -fwd.z)
+	var m := Mats.glow_unique(PRINT, 2.2)
+	# a curled gnome boot: heel, sole and a pointed toe hooking to one side
+	var side := 1.0 if step % 2 == 0 else -1.0
+	for part in [[Vector3(0, 0, 0.07), 0.05, Vector3(1.0, 0.05, 1.0)], [Vector3(0, 0, -0.03), 0.06, Vector3(0.9, 0.05, 1.3)],
+			[Vector3(side * 0.03, 0, -0.13), 0.035, Vector3(0.9, 0.05, 1.4)]]:
+		var mi := Models.P(p, Geo.sph(part[1], 12), m, part[0], Vector3.ZERO, part[2])
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var tw := p.create_tween()
+	tw.tween_method(func(e: float): m.set_shader_parameter("energy", e), 2.2, 0.0, 0.9).set_ease(Tween.EASE_IN)
+	tw.tween_callback(p.queue_free)
