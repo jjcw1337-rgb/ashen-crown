@@ -128,6 +128,12 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   locks are simulated in `knight_rig.gd` `_sway_hair` (springs per bone; run, footfall jolt, turning, wind).
   The knight's run is `Anim` with the `gait` meta `"knight"` (front-to-back arm pump). Preview tools:
   `tools/knight_clip.gd` (`-- outdir [side|back|close]`), `tools/gait_preview.gd`; test `tools/meshy_knight_test.gd`.
+- **Act I trees and grass** (`World.oak_forest`, set by `game.gd` when `difficulty == 0`; A2/A3 keep the old mix): three
+  Meshy oaks `assets/models/trees/oakN.glb` (prepared by `tools/blender/prep_tree.py`: trunk on the origin, ~6 m, 1k
+  textures) built by `Flora.oak_model(k)` with `MESHY_TREE_SHADER` (wind sway by height, snow/ash, see-through near the
+  player) plus the game's leaf clusters (`OAK_LEAVES`); the moor is ~40% oaks with groves off the road. Grass is
+  Meshy-painted cut-outs `assets/textures/grass/gN.png` on crossed cards (`Flora.grass_cards`, `GRASS_CARD_SHADER`) over
+  the blade grass at half density. Previews: `tools/tree_lineup.gd`, `tools/tree_shot.gd`. Meshy 2D: `meshy.py draw --cutout`.
 - `UNLOCK_ALL_ACTS` in `game.gd` is a testing switch (also enables the F8 testing panel: `test_immortal`, `test_onehit`, `test_stamina`, `test_allskills` in `game.gd`, and a level setter, `Hero.set_level`); turn off for real playthroughs.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file).
