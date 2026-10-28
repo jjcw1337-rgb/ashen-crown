@@ -7,6 +7,7 @@ Needs network access to api.meshy.ai and assets.meshy.ai, and a paid Meshy plan 
   python3 tools/meshy/meshy.py text  "a rugged knight..." -o out/knight [--pose a-pose] [--polys 30000] [--texture "..."]
   python3 tools/meshy/meshy.py image ref.png           -o out/knight [--pose a-pose] [--polys 30000]
   python3 tools/meshy/meshy.py get   <task id> [--kind image|text]   -o out/knight   # re-download a finished task
+  python3 tools/meshy/meshy.py draw  "an old oak tree..." -o out/ref     [--model nano-banana-2]    # 2D image from text
   python3 tools/meshy/meshy.py edit  ref.png "remove the belt" -o out/ref2 [--model nano-banana-2]    # 2D image edit
   python3 tools/meshy/meshy.py check                                                # key + network test
 
@@ -83,7 +84,7 @@ def image_ref(src: str) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=["text", "image", "edit", "get", "check"])
+    ap.add_argument("cmd", choices=["text", "image", "edit", "draw", "get", "check"])
     ap.add_argument("arg", nargs="?")
     ap.add_argument("arg2", nargs="?")
     ap.add_argument("-o", "--out", default="meshy_out/model")
@@ -113,6 +114,16 @@ def main() -> None:
             body["texture_prompt"] = a.texture
         rid = call("POST", "/v2/text-to-3d", body)["result"]
         save(wait(f"/v2/text-to-3d/{rid}"), a.out)
+    elif a.cmd == "draw":
+        model = a.model if a.model != "latest" else "nano-banana-2"
+        tid = call("POST", "/v1/text-to-image", {"ai_model": model, "prompt": a.arg})["result"]
+        print("task", tid)
+        t = wait(f"/v1/text-to-image/{tid}")
+        os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
+        json.dump(t, open(a.out + ".json", "w"), indent=2)
+        for i, u in enumerate(t.get("image_urls") or []):
+            fetch(u, a.out + (f"_{i}" if i else "") + ".png")
+        print(f"  credits used: {t.get('consumed_credits')}")
     elif a.cmd == "edit":
         model = a.model if a.model != "latest" else "nano-banana-2"
         tid = call("POST", "/v1/image-to-image", {"ai_model": model, "prompt": a.arg2,
