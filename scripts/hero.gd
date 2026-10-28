@@ -153,7 +153,7 @@ func _build_rig() -> void:
 	elif is_warlock():
 		rig = Warlock.build(warlock_gear())
 	else:
-		rig = Knight.build(Knight.default_gear())
+		rig = Knight.build_meshy() if _wants_meshy() else Knight.build(Knight.default_gear())
 		rig.set_meta("gait", "knight")    # Anim: heavy armoured run, elbows out
 	rig.set_meta("pers", "hero")
 	add_child(rig)
@@ -163,6 +163,10 @@ func _build_rig() -> void:
 	breath = game.weather.make_breath()
 	(J["head"] as Node3D).add_child(breath)
 	breath.position = Vector3(0, 0.02, -0.16)
+
+## The knight wears the Meshy body (shirt, shorts, long hair) while no armour is equipped.
+func _wants_meshy() -> bool:
+	return cls == "knight" and Knight.meshy_ok() and equipment.get("armor") == null
 
 ## Switch the character's class: new body, skills and spirit colours.
 func set_class(c: String) -> void:
@@ -417,6 +421,12 @@ func refresh_gear() -> void:
 		if is_instance_valid(n):
 			n.queue_free()
 	gear_nodes.clear()
+	if cls == "knight" and rig != null and _wants_meshy() != rig.has_meta("meshy"):
+		var yaw := rig.rotation.y
+		rig.queue_free()
+		rig = null
+		_build_rig()
+		rig.rotation.y = yaw
 	weapon_node = null
 	shield_node = null
 	var w = equipment.get("weapon")
@@ -448,7 +458,7 @@ func refresh_gear() -> void:
 		Demon.rebuild_body(rig, demon_gear())
 	elif is_warlock():
 		Warlock.rebuild_body(rig, warlock_gear())
-	else:
+	elif not rig.has_meta("meshy"):
 		Knight.rebuild_body(rig, knight_gear())
 	var am = equipment.get("amulet")
 	if am != null:

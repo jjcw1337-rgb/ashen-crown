@@ -6,6 +6,7 @@ build/
 # Godot's import files for models, and the textures it extracts from them (regenerated on import)
 assets/models/*.import
 assets/models/*_Image_*
+assets/models/*_normal.jpg
 # Editor / OS clutter
 .DS_Store
 Thumbs.db

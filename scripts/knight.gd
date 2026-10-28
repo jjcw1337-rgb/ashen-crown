@@ -46,6 +46,89 @@ static func default_gear() -> Dictionary:
 		"cape": Color(0.3, 0.05, 0.04), "leather": Color(0.3, 0.19, 0.11), "skin": Color(0.66, 0.48, 0.38),
 		"hair": Color(0.22, 0.14, 0.08), "quilt": Color(0.4, 0.34, 0.25), "coif": false}
 
+# ---------------------------------------------------------------- the Meshy knight (no armour)
+## The knight with no armour on: a model generated with Meshy (white shirt, white shorts, long
+## hair), rigged in Blender by tools/blender/knight/rig_meshy_knight.py on this joint layout
+## (Godot axes, model faces -z). hair1/hair2 are sway bones driven by knight_rig.gd.
+const MESHY_GLB := "res://assets/models/knight_meshy.glb"
+const MESHY_LAYOUT := {
+	"hips": ["", Vector3(0.0, 0.95, 0.0)],
+	"torso": ["hips", Vector3(0.0, 1.03, 0.0)],
+	"head": ["torso", Vector3(0.0, 1.64, -0.005)],
+	"sh_r": ["torso", Vector3(0.18, 1.53, 0.0)],
+	"el_r": ["sh_r", Vector3(0.18, 1.2103, 0.0)],
+	"hand_r": ["el_r", Vector3(0.18, 0.9394, 0.0)],
+	"sh_l": ["torso", Vector3(-0.18, 1.53, 0.0)],
+	"el_l": ["sh_l", Vector3(-0.18, 1.2103, 0.0)],
+	"hand_l": ["el_l", Vector3(-0.18, 0.9394, 0.0)],
+	"leg_r": ["hips", Vector3(0.09, 0.9, 0.0)],
+	"knee_r": ["leg_r", Vector3(0.09, 0.4675, 0.0)],
+	"leg_l": ["hips", Vector3(-0.09, 0.9, 0.0)],
+	"knee_l": ["leg_l", Vector3(-0.09, 0.4675, 0.0)],
+	"hair1": ["head", Vector3(0.0, 1.68, 0.085)],
+	"hair2": ["hair1", Vector3(0.0, 1.5, 0.12)],
+}
+const MESHY_BONES := ["hips", "torso", "head", "sh_r", "el_r", "hand_r", "sh_l", "el_l", "hand_l", "leg_r", "knee_r", "leg_l", "knee_l", "hair1", "hair2"]
+static var _meshy_mesh: ArrayMesh
+static var _meshy_skin: Skin
+
+static func meshy_ok() -> bool:
+	return ResourceLoader.exists(MESHY_GLB)
+
+static func build_meshy() -> Node3D:
+	var root := Node3D.new()
+	root.name = "Rig"
+	root.set_script(load("res://scripts/knight_rig.gd"))
+	var J := {}
+	for n in MESHY_BONES:
+		var par: String = MESHY_LAYOUT[n][0]
+		var at: Vector3 = MESHY_LAYOUT[n][1]
+		var base := Vector3.ZERO if par == "" else (MESHY_LAYOUT[par][1] as Vector3)
+		var nd := Node3D.new()
+		nd.name = n
+		nd.position = at - base
+		(J[par] as Node3D if par != "" else root).add_child(nd)
+		J[n] = nd
+	J["hips_y"] = (MESHY_LAYOUT["hips"][1] as Vector3).y
+	J["grip_r"] = Models.N(J["hand_r"], "grip_r", Vector3(0, -0.07, -0.005), Vector3(-28, 0, 0))
+	J["grip_l"] = Models.N(J["hand_l"], "grip_l", Vector3(0, -0.07, 0))
+	J["mount_l"] = Models.N(J["el_l"], "mount_l", Vector3(-0.075, -0.14, 0), Vector3(0, 70, 0))
+	var skel := Skeleton3D.new()
+	skel.name = "Skeleton"
+	root.add_child(skel)
+	var bi := {}
+	for i in MESHY_BONES.size():
+		skel.add_bone(MESHY_BONES[i])
+		bi[MESHY_BONES[i]] = i
+	var proxies := {}
+	for i in MESHY_BONES.size():
+		var n: Node3D = J[MESHY_BONES[i]]
+		var par := n.get_parent()
+		if par != root:
+			skel.set_bone_parent(i, bi[String(par.name)])
+		skel.set_bone_rest(i, n.transform)
+		skel.set_bone_pose_position(i, n.position)
+		if not String(n.name).begins_with("hair"):
+			proxies[i] = n
+	if _meshy_mesh == null:
+		_meshy_mesh = Goblin._imported(MESHY_GLB, bi)
+		_meshy_skin = skel.create_skin_from_rest_transforms()
+	var mi := MeshInstance3D.new()
+	mi.name = "Body"
+	mi.mesh = _meshy_mesh
+	mi.skin = _meshy_skin
+	skel.add_child(mi)
+	mi.skeleton = NodePath("..")
+	root.set("skel", skel)
+	root.set("proxy_of", proxies)
+	root.set("hair_bones", [bi["hair1"], bi["hair2"]])
+	root.set("hair_rest", [(J["hair1"] as Node3D).position, (J["hair2"] as Node3D).position])
+	root.set_meta("j", J)
+	root.set_meta("h", 1.0)
+	root.set_meta("knight", true)
+	root.set_meta("meshy", true)
+	return root
+
 # ---------------------------------------------------------------- rig
 static func build(gear: Dictionary) -> Node3D:
 	var root := Node3D.new()

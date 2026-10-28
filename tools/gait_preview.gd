@@ -9,6 +9,8 @@ func _run() -> void:
 	var out: String = args[0]
 	var mv: float = float(args[1]) if args.size() > 1 else 1.15
 	var view: String = args[2] if args.size() > 2 else "34"
+	var meshy: bool = args.size() > 3 and args[3] == "meshy"
+	var frames: int = int(args[4]) if args.size() > 4 else 48
 	var root3 := Node3D.new()
 	get_root().add_child(root3)
 	var env := WorldEnvironment.new()
@@ -34,7 +36,8 @@ func _run() -> void:
 	root3.add_child(ground)
 	var rigs := []
 	for i in 2:
-		var r := Knight.build(Knight.default_gear())
+		var r: Node3D = Knight.build_meshy() if meshy else Knight.build(Knight.default_gear())
+		r.set("fixed_dt", 1.0 / 30.0)
 		r.set_meta("pers", "hero")
 		if i == 1:
 			r.set_meta("gait", "knight")
@@ -53,14 +56,19 @@ func _run() -> void:
 		cp = Vector3(0, 1.6, -4.2)
 	elif view == "side":
 		cp = Vector3(4.6, 1.5, 0)
-	cam.transform = Transform3D(Basis(), cp).looking_at(Vector3(0, 0.95, 0))
 	var dt := 1.0 / 30.0
 	var phase := 0.0
-	for f in 48:
+	var travel := [0.0, 0.0]
+	for f in frames:
 		var T := f * dt
 		phase += dt * 9.5 * mv
+		for i in rigs.size():
+			# move the rigs so the hair and cape springs feel the speed, then keep them framed
+			(rigs[i] as Node3D).position.z -= mv * 4.0 * dt
 		for r in rigs:
 			Anim.pose(r, {"time": 2.0 + T, "phase": phase, "move": mv})
+		var cz: float = (rigs[0] as Node3D).position.z
+		cam.transform = Transform3D(Basis(), cp + Vector3(0, 0, cz)).looking_at(Vector3(0, 0.95, cz))
 		await process_frame
 		await RenderingServer.frame_post_draw
 		get_root().get_texture().get_image().save_png("%s/g%03d.png" % [out, f])

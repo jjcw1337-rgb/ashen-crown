@@ -13,6 +13,13 @@ var cape_side_vel: Array = [0.0, 0.0, 0.0]
 var _last_pos := Vector3.ZERO
 var _last_t := 0
 var _vel := Vector3.ZERO
+var fixed_dt := 0.0         # tools set this to step the springs at a fixed rate
+var hair_bones: Array = []  # long-hair sway bones (the Meshy knight), top to bottom
+var hair_rest: Array = []
+var hair_ang: Array = [0.0, 0.0]
+var hair_vel: Array = [0.0, 0.0]
+var hair_side: Array = [0.0, 0.0]
+var hair_side_vel: Array = [0.0, 0.0]
 
 func sync() -> void:
 	if skel == null:
@@ -24,8 +31,10 @@ func sync() -> void:
 		skel.set_bone_pose_scale(i, p.scale)
 	var now := Time.get_ticks_usec()
 	var dt := clampf((now - _last_t) / 1000000.0, 0.0, 0.05)
+	if fixed_dt > 0.0:
+		dt = fixed_dt
 	_last_t = now
-	if dt <= 0.0 or cape_bones.is_empty() or not is_inside_tree():
+	if dt <= 0.0 or (cape_bones.is_empty() and hair_bones.is_empty()) or not is_inside_tree():
 		return
 	var gp := global_position
 	var v := (gp - _last_pos) / dt
@@ -37,6 +46,7 @@ func sync() -> void:
 	var fwd_speed := -local_v.z
 	var side_speed := local_v.x
 	var t := now / 1000000.0
+	_sway_hair(fwd_speed, side_speed, t, dt)
 	for k in cape_bones.size():
 		var target := -clampf(fwd_speed * 0.11, -0.2, 0.75) * (1.0 if k == 0 else 0.45)
 		target += sin(t * 1.3 + k * 0.9) * 0.025
@@ -52,3 +62,22 @@ func sync() -> void:
 		var b: int = cape_bones[k]
 		skel.set_bone_pose_position(b, cape_rest[k])
 		skel.set_bone_pose_rotation(b, Quaternion.from_euler(Vector3(cape_ang[k], 0.0, cape_side[k])))
+
+## Long hair: two springs per bone (swing back/forward and side to side). Running throws it back,
+## strafing swings it, and a slow gusting wind keeps it moving while standing.
+func _sway_hair(fwd_speed: float, side_speed: float, t: float, dt: float) -> void:
+	for k in hair_bones.size():
+		var gust := (sin(t * 1.3 + k * 0.7) * 0.6 + sin(t * 2.9 + 1.7) * 0.4) * (0.5 + 0.5 * sin(t * 0.31))
+		var target := clampf(fwd_speed * 0.07, -0.15, 0.45) * (1.0 if k == 0 else 0.7) + gust * 0.05 + 0.02 * k
+		var stiff := 30.0 - k * 8.0
+		var damp := 5.0 - k * 1.2
+		var acc: float = (target - hair_ang[k]) * stiff - hair_vel[k] * damp
+		hair_vel[k] += acc * dt
+		hair_ang[k] += hair_vel[k] * dt
+		var st := clampf(side_speed * 0.06, -0.3, 0.3) + sin(t * 1.7 + k * 1.3) * 0.03
+		var acc2: float = (st - hair_side[k]) * stiff - hair_side_vel[k] * damp
+		hair_side_vel[k] += acc2 * dt
+		hair_side[k] += hair_side_vel[k] * dt
+		var b: int = hair_bones[k]
+		skel.set_bone_pose_position(b, hair_rest[k])
+		skel.set_bone_pose_rotation(b, Quaternion.from_euler(Vector3(hair_ang[k], 0.0, hair_side[k])))
