@@ -70,7 +70,8 @@ How it works:
 | WASD | Move directly (you can keep moving while attacking) |
 | Shift (hold) | Sprint. Drains the yellow stamina bar, also works mid-attack |
 | Space (hold) | Swing the way you face without needing a target |
-| Right-click (hold) | Raise shield. Blocks most melee damage and stops arrows and fireballs from the front |
+| Right-click | Sword combo toward the cursor: a forehand cut, a rising backhand, then a spinning finisher that hits everything around you. Click again (or hold) to chain them |
+| Ctrl (hold) | Raise shield. Blocks most melee damage and stops arrows and fireballs from the front |
 | Q | Cleave: wide arcing blow (level 1) |
 | E | Holy Nova: ring of holy fire (level 3) |
 | R | Charge: dash through enemies (level 6) |

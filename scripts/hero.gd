@@ -107,6 +107,14 @@ var shield_node: Node3D = null
 var gear_nodes: Array = []
 var combo := 0
 var combo_t := 0.0
+# right-click combo: three swipes (forehand, rising backhand, spinning finisher)
+const SWIPES := ["swipe1", "swipe2", "swipe3"]
+const SWIPE_DUR := {"swipe1": 0.5, "swipe2": 0.52, "swipe3": 0.82}
+const SWIPE_LUNGE := {"swipe1": [0.2, 0.46, 0.45], "swipe2": [0.22, 0.46, 0.35], "swipe3": [0.2, 0.66, 0.6]}  # from, to, metres
+var swipe_n := 0
+var swipe_idle := 0.0
+var swipe_q := false
+var swipe_aim := Vector3.ZERO
 var atk_target = null
 var stamina := 100.0
 var max_stamina := 100.0
@@ -579,6 +587,75 @@ func free_attack(aim: Vector3) -> void:
 	combo += 1
 	combo_t = 0.0
 
+## Right-click: the next swipe of the combo toward the cursor. Pressing again late in a swipe queues
+## the next one, which cuts off that swipe's recovery so the three flow together; the finisher
+## (a full spin that hits all round) always plays out, and the chain starts over after a pause.
+func swipe_attack(aim: Vector3) -> void:
+	if dead or charge_t >= 0.0 or drain_t >= 0.0:
+		return
+	if atk_t >= 0.0:
+		if atk_skill == "" and atk_style.begins_with("swipe") and atk_t / atk_dur > 0.3 and atk_style != "swipe3":
+			swipe_q = true
+			swipe_aim = aim
+		return
+	_swipe(aim)
+
+func _swipe(aim: Vector3) -> void:
+	swipe_q = false
+	target = null
+	moving = false
+	path = PackedVector3Array()
+	atk_aim = aim
+	atk_target = null
+	_face(aim - global_position)
+	var st: String = SWIPES[swipe_n % 3]
+	swipe_n = (swipe_n + 1) % 3
+	swipe_idle = 0.0
+	_start_attack(st)
+
+func _swipe_lunge(a0: float, a1: float) -> void:
+	var L: Array = SWIPE_LUNGE[atk_style]
+	var f0 := clampf((a0 - L[0]) / (L[1] - L[0]), 0.0, 1.0)
+	var f1 := clampf((a1 - L[0]) / (L[1] - L[0]), 0.0, 1.0)
+	var d: float = (smoothstep(0.0, 1.0, f1) - smoothstep(0.0, 1.0, f0)) * L[2]
+	if d <= 0.0:
+		return
+	var fwd := -rig.global_transform.basis.z
+	if atk_style == "swipe3":
+		fwd = (atk_aim - global_position) * Vector3(1, 0, 1)
+		fwd = fwd.normalized() if fwd.length() > 0.01 else -rig.global_transform.basis.z
+	fwd.y = 0
+	# don't step through a foe that's already in reach
+	for e in game.enemies_near(global_position, 2.0):
+		var to: Vector3 = e.global_position - global_position
+		to.y = 0
+		if to.length() - e.radius < 0.75 and fwd.dot(to.normalized()) > 0.5:
+			return
+	global_position = game.world.move(global_position, fwd.normalized() * d)
+
+func _swipe_impact() -> void:
+	var fwd := -rig.global_transform.basis.z
+	var fin := atk_style == "swipe3"
+	var rng := reach() + (1.0 if fin else 0.55)
+	var arc := 181.0 if fin else 70.0
+	var mult := 1.0 if atk_style == "swipe1" else (1.15 if atk_style == "swipe2" else 1.7)
+	var any := false
+	for e in game.enemies_near(global_position, rng + 1.5):
+		var to: Vector3 = e.global_position - global_position
+		to.y = 0
+		if to.length() - e.radius > rng:
+			continue
+		if to.length() < 0.5 or fwd.dot(to.normalized()) > cos(deg_to_rad(arc)):
+			_hit_enemy(e, mult, 0.9 if fin else 0.2)
+			Fx.sparks(game.world.fx_root, e.global_position + Vector3(0, 1.1 * e.height, 0), trail_col.lerp(Color(1.0, 0.75, 0.4), 0.5))
+			any = true
+	if fin:
+		Fx.ring(game.world.fx_root, global_position + Vector3(0, 0.05, 0), rng, trail_col, 0.35)
+		Fx.burst(game.world.fx_root, global_position + Vector3(0, 0.2, 0), Color(0.7, 0.62, 0.5, 0.5), 22, 3.5, 0.2, 0.5, false, -2.0, 180.0, Vector3.UP)
+		game.add_shake(0.28 if any else 0.1)
+		if any:
+			game.hitstop(0.06)
+
 func _face_smooth(d: Vector3, delta: float) -> void:
 	d.y = 0
 	if d.length() > 0.01:
@@ -725,6 +802,8 @@ func _start_attack(style: String, skill := "") -> void:
 	atk_skill = skill
 	atk_t = 0.0
 	atk_dur = 0.62 / aspd
+	if SWIPE_DUR.has(style) and skill == "":
+		atk_dur = SWIPE_DUR[style] / aspd
 	if skill == "cleave" or skill == "reap" or skill == "hellclaw":
 		atk_dur = 0.7 / aspd
 	impact_done = false
@@ -757,8 +836,10 @@ func _attack_sound(skill: String) -> void:
 			Sfx.duck(-8.0, 1.0)
 		"blight": Sfx.play("blight_cast", -2.0)
 		"":
-			if atk_style != "cast":
-				Sfx.play(_swing_sound(), -3.0)
+			if atk_style == "swipe3":
+				Sfx.play(_swing_sound(), -2.0, 0.72)    # the finisher's spin: a long low whoosh
+			elif atk_style != "cast":
+				Sfx.play(_swing_sound(), -3.0, 1.12 if atk_style == "swipe2" else 1.0)
 		_:
 			pass
 
@@ -894,6 +975,10 @@ func _process(delta: float) -> void:
 		combo_t += delta
 		if combo_t > 0.9:
 			combo = 0
+		swipe_idle += delta
+		if swipe_idle > 0.75:
+			swipe_n = 0
+			swipe_q = false
 	if dead:
 		dead_t += delta
 		var f := clampf(dead_t / 0.7, 0.0, 1.0)
@@ -1167,19 +1252,32 @@ func _apply_shield_pose() -> void:
 		shield_node.global_transform = shield_node.global_transform.interpolate_with(tgt2, run * 0.8)
 
 func _update_attack(delta: float) -> void:
+	var a0 := atk_t / atk_dur
 	atk_t += delta
 	var a := atk_t / atk_dur
+	var swipe := atk_skill == "" and SWIPE_LUNGE.has(atk_style)
+	if swipe:
+		_swipe_lunge(a0, a)
 	if not impact_done and a >= Anim.impact_at(atk_style):
 		impact_done = true
 		_impact()
+	if swipe and swipe_q and a >= 0.68:
+		atk_t = -1.0
+		_swipe(swipe_aim)
+		return
 	if atk_t >= atk_dur:
 		atk_t = -1.0
 		atk_skill = ""
+		if swipe and atk_style == "swipe3":
+			swipe_n = 0
 
 func _impact() -> void:
 	var fwd := -rig.global_transform.basis.z
 	match atk_skill:
 		"":
+			if atk_style.begins_with("swipe"):
+				_swipe_impact()
+				return
 			var hit_any := false
 			var tg = atk_target
 			if is_instance_valid(tg) and tg is Enemy and not tg.dead:

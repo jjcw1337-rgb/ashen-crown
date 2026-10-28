@@ -22,6 +22,9 @@ static func impact_at(style: String) -> float:
 		"back": return 0.48
 		"side": return 0.48
 		"thrust": return 0.52
+		"swipe1": return 0.4
+		"swipe2": return 0.4
+		"swipe3": return 0.47
 		"bow": return 0.72
 		"cast": return 0.55
 		"claw": return 0.45
@@ -110,6 +113,7 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 	var ty := sin(ph) * 0.1 * m
 	var hy := ((cos(2.0 * ph) * 0.5 + 0.5) * 0.035 - 0.02) * m * h
 	var hz := 0.0
+	var hip_spin := 0.0   # a whole-body turn about the hips (the swipe3 spin); not smoothed
 	var head_x := 0.0
 	var head_y := sin(t * 0.37) * 0.15 * (1.0 - m)
 
@@ -177,6 +181,60 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 				hz = kf(a, [[0, 0.0], [0.35, 0.06], [0.52, -0.2], [1, 0.0]]) * h
 				leg_r += kf(a, [[0, 0.0], [0.52, 0.5], [1, 0.0]])
 				shl.x += kf(a, [[0, 0.0], [0.52, 0.6], [1, 0.0]])
+			# --- the right-click combo: three swipes that flow into each other (Hero.swipe_attack)
+			"swipe1":
+				# forehand: sword cocked high over the right shoulder, cut down across to the left hip,
+				# stepping in on the right foot and turning the shoulders through the blow
+				shr.x = kf(a, [[0, 0.3], [0.26, 2.55], [0.44, 0.75], [0.62, 0.55], [1, 0.3]])
+				shr.y = kf(a, [[0, 0.0], [0.26, -0.75], [0.44, 1.15], [0.62, 1.3], [1, 0.0]])
+				shr.z = kf(a, [[0, 0.1], [0.26, 0.55], [0.44, -0.2], [1, 0.1]])
+				elr = kf(a, [[0, 0.4], [0.26, 1.55], [0.44, 0.1], [0.62, 0.25], [1, 0.4]])
+				ty += kf(a, [[0, 0.0], [0.26, -0.6], [0.44, 0.55], [0.62, 0.62], [1, 0.0]])
+				tx += kf(a, [[0, 0.0], [0.26, 0.12], [0.44, -0.3], [0.62, -0.26], [1, 0.0]])
+				hz = kf(a, [[0, 0.0], [0.26, 0.04], [0.44, -0.12], [0.7, -0.1], [1, 0.0]]) * h
+				hy -= kf(a, [[0, 0.0], [0.44, 0.05], [0.7, 0.04], [1, 0.0]]) * h
+				leg_r += kf(a, [[0, 0.0], [0.26, -0.2], [0.44, 0.55], [0.7, 0.45], [1, 0.0]])
+				knee_r -= kf(a, [[0, 0.0], [0.44, 0.45], [0.7, 0.4], [1, 0.0]])
+				leg_l += kf(a, [[0, 0.0], [0.44, -0.3], [1, 0.0]])
+				knee_l -= kf(a, [[0, 0.0], [0.44, 0.3], [1, 0.0]])
+				shl.x += kf(a, [[0, 0.0], [0.26, 0.55], [0.44, -0.25], [1, 0.0]])
+				head_x = kf(a, [[0, 0.0], [0.26, -0.1], [0.44, 0.15], [1, 0.0]])
+			"swipe2":
+				# rising backhand: drop low across the body, then rip the blade up and out to the
+				# right, coming up off bent knees with a step on the left foot
+				shr.x = kf(a, [[0, 0.5], [0.24, 0.45], [0.44, 2.35], [0.62, 2.5], [1, 0.3]])
+				shr.y = kf(a, [[0, 1.2], [0.24, 1.4], [0.44, -1.1], [0.62, -1.25], [1, 0.0]])
+				shr.z = kf(a, [[0, 0.0], [0.24, -0.2], [0.44, 0.6], [1, 0.1]])
+				elr = kf(a, [[0, 0.3], [0.24, 1.3], [0.44, 0.12], [0.62, 0.3], [1, 0.4]])
+				ty += kf(a, [[0, 0.5], [0.24, 0.7], [0.44, -0.6], [0.62, -0.68], [1, 0.0]])
+				tx += kf(a, [[0, -0.2], [0.24, -0.28], [0.44, 0.14], [0.62, 0.1], [1, 0.0]])
+				hy -= kf(a, [[0, 0.03], [0.24, 0.1], [0.44, -0.02], [0.62, 0.0], [1, 0.0]]) * h
+				hz = kf(a, [[0, -0.06], [0.24, -0.04], [0.44, -0.12], [0.7, -0.08], [1, 0.0]]) * h
+				knee_l -= kf(a, [[0, 0.25], [0.24, 0.55], [0.44, 0.2], [1, 0.0]])
+				knee_r -= kf(a, [[0, 0.25], [0.24, 0.6], [0.44, 0.1], [1, 0.0]])
+				leg_l += kf(a, [[0, 0.0], [0.24, 0.2], [0.44, 0.55], [0.7, 0.4], [1, 0.0]])
+				leg_r += kf(a, [[0, 0.3], [0.24, 0.35], [0.44, -0.25], [1, 0.0]])
+				shl.x += kf(a, [[0, 0.0], [0.24, -0.25], [0.44, 0.5], [1, 0.0]])
+				shl.z += kf(a, [[0, 0.0], [0.44, -0.35], [1, 0.0]])
+				head_x = kf(a, [[0, 0.1], [0.24, 0.2], [0.44, -0.2], [1, 0.0]])
+			"swipe3":
+				# finisher: wind the hips round to the right with the blade trailing low, then spin a
+				# full turn off the left foot with the sword arm flung straight out, landing in a crouch
+				shr.x = kf(a, [[0, 0.3], [0.22, 0.9], [0.3, 1.45], [0.62, 1.4], [0.78, 0.9], [1, 0.3]])
+				shr.y = kf(a, [[0, 0.0], [0.22, -0.6], [0.3, -1.2], [0.62, -1.2], [0.78, -0.4], [1, 0.0]])
+				shr.z = kf(a, [[0, 0.1], [0.22, 0.4], [0.3, 0.35], [0.62, 0.3], [1, 0.1]])
+				elr = kf(a, [[0, 0.4], [0.22, 0.9], [0.3, 0.08], [0.62, 0.08], [0.78, 0.5], [1, 0.4]])
+				hip_spin = kf(a, [[0, 0.0], [0.22, -0.95], [0.64, TAU], [1, TAU]])
+				ty += kf(a, [[0, 0.0], [0.22, -0.35], [0.3, 0.2], [0.62, 0.15], [1, 0.0]])
+				tx += kf(a, [[0, 0.0], [0.22, -0.25], [0.45, -0.15], [0.7, -0.32], [1, 0.0]])
+				hy += kf(a, [[0, 0.0], [0.22, -0.1], [0.42, 0.05], [0.66, -0.13], [0.82, -0.1], [1, 0.0]]) * h
+				knee_l -= kf(a, [[0, 0.0], [0.22, 0.75], [0.42, 0.25], [0.66, 0.85], [1, 0.0]])
+				knee_r -= kf(a, [[0, 0.0], [0.22, 0.6], [0.42, 0.55], [0.66, 0.8], [1, 0.0]])
+				leg_l += kf(a, [[0, 0.0], [0.22, 0.35], [0.42, 0.1], [0.66, 0.5], [1, 0.0]])
+				leg_r += kf(a, [[0, 0.0], [0.22, -0.2], [0.42, 0.35], [0.66, -0.15], [1, 0.0]])
+				shl.x += kf(a, [[0, 0.0], [0.22, 0.3], [0.3, 0.6], [0.62, 0.6], [1, 0.0]])
+				shl.z += kf(a, [[0, 0.0], [0.3, -0.75], [0.62, -0.7], [1, 0.0]])
+				head_x = kf(a, [[0, 0.0], [0.22, 0.12], [0.66, 0.15], [1, 0.0]])
 			"bow":
 				shl.x = kf(a, [[0, 0.2], [0.25, 1.55], [0.85, 1.55], [1, 0.2]])
 				shl.z = kf(a, [[0, -0.1], [0.25, 0.2], [0.85, 0.2], [1, -0.1]])
@@ -407,7 +465,7 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 	ell = spring(D, "ell", ell, 120.0 if b < 0.3 else 400.0, 0.5, dt)
 
 	(J["hips"] as Node3D).position = Vector3(hip_x, J["hips_y"] + hy, hz)
-	(J["hips"] as Node3D).rotation = Vector3(0, hip_yaw - ty * 0.2, hip_roll)
+	(J["hips"] as Node3D).rotation = Vector3(0, hip_yaw - ty * 0.2 + hip_spin, hip_roll)
 	var dead: float = st.get("dead", 0.0)
 	if dead > 0.0:
 		var dk := clampf(dead * 2.0, 0.0, 1.0)

@@ -569,7 +569,7 @@ func _build_hud() -> void:
 	hint_lbl.offset_right = 400
 	hint_lbl.offset_top = -bh - (88 if bar_style == "B" else 40)
 	hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint_lbl.text = "Click: move/attack  ·  Space: swing  ·  Shift: sprint  ·  Right-click: block  ·  QERF: skills  ·  1-4: potions  ·  I/C: inventory/stats  ·  T: portal  ·  Tab: map"
+	hint_lbl.text = "Click: move/attack  ·  Space: swing  ·  Shift: sprint  ·  Right-click: sword combo  ·  Ctrl: block  ·  QERF: skills  ·  1-4: potions  ·  I/C: inventory/stats  ·  T: portal  ·  Tab: map"
 	root.add_child(hint_lbl)
 	minimap = Minimap.new()
 	minimap.ui = self
