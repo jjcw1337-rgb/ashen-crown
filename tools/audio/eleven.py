@@ -46,9 +46,10 @@ def generate(s, k, out):
     mp3 = os.path.join(d, f"{k}.mp3")
     if os.path.exists(mp3):
         return None
-    body = {"text": s["prompt"], "prompt_influence": 0.6, "model_id": "eleven_text_to_sound_v2"}
+    text = s["prompt_b"] if str(k).startswith("b") else s["prompt"]
+    body = {"text": text, "prompt_influence": 0.6, "model_id": "eleven_text_to_sound_v2"}
     if s.get("dur"):
-        body["duration_seconds"] = s["dur"]
+        body["duration_seconds"] = min(30.0, max(0.5, float(s["dur"])))   # the API's range; build_sfx trims the rest
     if s.get("loop"):
         body["loop"] = True
     for attempt in range(4):
@@ -81,12 +82,12 @@ if __name__ == "__main__":
     names = [x for x in a if not x.startswith("--")]
     todo = [s for s in SPEC if s["src"] == "eleven" and (not names or s["name"] in names)]
     if dry:
-        sec = sum(s["n"] * (s.get("dur") or 2.0) for s in todo)
-        print(f"{len(todo)} sounds, {sum(s['n'] for s in todo)} candidates, about {sec * 40:.0f} credits at 40/s"); sys.exit()
+        sec = sum((s["n"] + (4 if s.get("prompt_b") else 0)) * max(0.5, s.get("dur") or 2.0) for s in todo)
+        print(f"{len(todo)} sounds, about {sec * 10:.0f} credits at 10/s (what the API charged)"); sys.exit()
     before = credits()
     print("credits before:", before["character_count"], "/", before["character_limit"])
     for s in todo:
-        for k in range(s["n"]):
+        for k in list(range(s["n"])) + ([f"b{i}" for i in range(4)] if s.get("prompt_b") else []):
             m = generate(s, k, out)
             if m:
                 print(f"{s['name']} {k}: {m['bytes'] // 1024} KB, cost {m['credits']}", flush=True)

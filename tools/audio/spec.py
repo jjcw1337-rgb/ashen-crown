@@ -6,6 +6,7 @@ set was judged "cheap and gimmicky"). Each entry:
          (None lets it choose), `n` candidates; `loop` asks for a seamless loop
          "kenney": CC0 recordings from the Kenney packs, `files` globs under sources/kenney/
   alt    Kenney globs offered next to the generated candidates on the listening page
+  prompt_b  a second wording, 4 more candidates (b0..b3), for sounds whose first batch came out synthetic
   hit    seconds into the sound where its payoff should land (what the game times it to); 0 = at once
   label  what CLAP should hear it as (tools/audio/score.py throws out candidates it doesn't recognise)
 
@@ -45,8 +46,10 @@ SPEC = [
     dict(name="hurt_gnome", src="eleven", n=6, dur=0.5, hit=0, label="a small creature grunting in pain",
          prompt="a small gnome grunting in pain, one short higher-pitched 'oof'" + DRY),
     dict(name="death_gnome", src="eleven", n=4, dur=1.6, hit=0, label="a small creature dying",
+         prompt_b="a small old gnome crying out as he dies, a short strangled yelp then a last gasp" + DRY,
          prompt="a small gnome's dying cry as he collapses onto the ground" + DRY),
     dict(name="hurt_wraith", src="eleven", n=5, dur=0.7, hit=0, label="a ghost hissing",
+         prompt_b="a ghostly woman's sharp pained gasp turning into a raspy hiss" + DRY,
          prompt="a ghost hit by a blade, a short breathy spectral hiss of pain" + DRY),
     dict(name="death_wraith", src="eleven", n=4, dur=2.0, hit=0, label="a ghost wailing",
          prompt="a wraith dissipating, a fading ghostly wail that trails off into a whisper" + DRY),
@@ -59,8 +62,10 @@ SPEC = [
     dict(name="cleave_swing", src="eleven", n=5, dur=0.8, hit=0.3, label="a sword swing whoosh",
          prompt="a huge greatsword cleave in a wide arc, powerful whoosh with a faint steel ring" + DRY),
     dict(name="holy_nova", src="eleven", n=5, dur=2.0, hit=0.3, label="a magic explosion",
+         prompt_b="a massive explosion of holy fire around a knight, a deep concussive boom, a roaring outward rush of flame and wind, a faint breath of distant choir" + DRY,
          prompt="a holy light spell exploding outward from a paladin, bright radiant burst with a deep boom and a shimmering tail" + DRY),
     dict(name="charge_dash", src="eleven", n=4, dur=1.0, hit=0, label="an armored man running",
+         prompt_b="a heavily armored knight sprinting a few fast steps, steel plate armor clanking and boots pounding the dirt" + DRY,
          prompt="an armored knight charging forward, heavy boots and chainmail rattle with a rushing whoosh" + DRY),
     dict(name="charge_impact", src="eleven", n=5, dur=1.0, hit=0, label="a heavy body slam",
          prompt="an armored knight slamming shield-first into an enemy, heavy crashing body impact" + DRY),
@@ -73,8 +78,10 @@ SPEC = [
     dict(name="soul_return", src="eleven", n=4, dur=1.0, hit=0, label="a soft magical whoosh",
          prompt="a stolen soul flowing back into a wraith, soft ethereal whoosh ending in a gentle shimmer" + DRY),
     dict(name="wail", src="eleven", n=5, dur=1.8, hit=0.3, label="a woman screaming",
+         prompt_b="a terrifying ghost woman screaming, a long piercing shriek" + DRY,
          prompt="a banshee's terrifying shriek, a piercing ghostly scream" + DRY),
     dict(name="shade_out", src="eleven", n=4, dur=0.7, hit=0, label="a dark magic whoosh",
+         prompt_b="a cloaked figure vanishing in a puff of black smoke, a fast airy whoosh sucking inward" + DRY,
          prompt="a wraith vanishing into shadow, quick dark inward rush of air" + DRY),
     dict(name="shade_in", src="eleven", n=4, dur=0.8, hit=0, label="a dark magic burst",
          prompt="a wraith bursting out of shadow, sudden dark whoosh and soft thump" + DRY),
@@ -87,20 +94,26 @@ SPEC = [
 
     # ---------------------------------------------------------------- Demon
     dict(name="hellclaw", src="eleven", n=5, dur=1.0, hit=0.1, label="claws slashing",
+         prompt_b="three fast vicious claw slashes tearing flesh, with a short burst of roaring fire" + DRY,
          prompt="a demon's flaming claws raking an enemy, three fast slashes with a burst of fire" + DRY),
     dict(name="summon_demon", src="eleven", n=4, dur=2.0, hit=0.6, label="a monster roaring",
+         prompt_b="the ground cracking open with a deep rumble, then a huge beast's monstrous roar" + DRY,
          prompt="a demon summoned from a burning rift, rumble of cracking ground then a beastly roar" + DRY),
     dict(name="phase_in", src="eleven", n=4, dur=1.5, hit=0, label="a dark ominous whoosh",
          prompt="stepping into the underworld, a deep dark whoosh with a low ominous hit" + DRY),
     dict(name="phase_erupt", src="eleven", n=5, dur=2.0, hit=0, label="a fire explosion",
+         prompt_b="fire bursting violently up out of the ground, a deep boom, roaring flames and falling rocks" + DRY,
          prompt="hellfire erupting from the ground, explosive burst of flame and flying rock" + DRY),
     dict(name="blood_pact", src="eleven", n=4, dur=2.0, hit=0, label="a heartbeat",
+         prompt_b="a slow heavy heartbeat thumping twice, with thick blood sloshing" + DRY,
          prompt="a blood magic pact, two heavy heartbeats under a wet swirl of blood" + DRY),
 
     # ---------------------------------------------------------------- Warlock
     dict(name="drain_start", src="eleven", n=4, dur=0.7, hit=0, label="an electric crackle",
+         prompt_b="a sudden crackling surge of dark energy, like electricity and hissing steam" + DRY,
          prompt="a dark life-draining beam igniting, crackle of sickly green energy" + DRY),
     dict(name="drain_loop", src="eleven", n=3, dur=3.0, hit=0, loop=True, label="a humming energy beam",
+         prompt_b="a steady low hum of a magical energy beam with soft crackles, steady and even" + DRY,
          prompt="a sustained dark magic beam draining life, humming and crackling energy, steady" + DRY),
     dict(name="drain_tick", src="eleven", n=5, dur=0.4, hit=0, label="a soft wet suction",
          prompt="a small pulse of life sucked out of a body, soft wet suction" + DRY),
@@ -123,6 +136,7 @@ SPEC = [
     dict(name="hurt", src="eleven", n=5, dur=0.5, hit=0, label="a monster grunting in pain",
          prompt="a goblin or ghoul hit by a blade, a short ugly grunt of pain" + DRY),
     dict(name="die", src="eleven", n=4, dur=1.0, hit=0, label="a monster dying",
+         prompt_b="a goblin shrieking as it is killed, a short high-pitched squeal cut off" + DRY,
          prompt="a goblin's short dying shriek" + DRY),
     dict(name="cackle", src="eleven", n=4, dur=1.5, hit=0, label="a goblin laughing",
          prompt="a greedy goblin king's nasty cackling laugh" + DRY),
@@ -131,10 +145,12 @@ SPEC = [
     dict(name="slam", src="eleven", n=4, dur=1.2, hit=0, label="a heavy ground slam",
          prompt="a giant slamming his fists into the ground, heavy thud and rubble" + DRY),
     dict(name="fuse", src="eleven", n=3, dur=1.5, hit=0, label="a fuse hissing",
+         prompt_b="a lit bomb fuse sizzling and hissing with sparks, steady" + DRY,
          prompt="the lit fuse of a bomb hissing and sparking" + DRY),
     dict(name="boom", src="eleven", n=4, dur=2.0, hit=0, label="an explosion",
          prompt="a gunpowder bomb exploding, sharp blast with scattering gold coins" + DRY),
     dict(name="fireball", src="eleven", n=4, dur=1.0, hit=0, label="a fireball",
+         prompt_b="a fireball thrown, a burst of roaring flames whooshing past" + DRY,
          prompt="a fireball launched, roaring burst of flame whooshing away" + DRY),
     dict(name="summon", src="eleven", n=3, dur=1.5, hit=0, label="a magic summoning",
          prompt="a dark shaman summoning minions, eerie rising magical whoosh" + DRY),
@@ -161,6 +177,7 @@ SPEC = [
     dict(name="wind", src="eleven", n=3, dur=8.0, hit=0, loop=True, label="wind blowing",
          prompt="cold wind blowing across an empty moor at night, steady, no music"),
     dict(name="drip", src="eleven", n=3, dur=8.0, hit=0, loop=True, label="water dripping in a cave",
+         prompt_b="water dripping slowly in a stone dungeon, soft drips and quiet cave air, steady, no music",
          prompt="a damp stone crypt, slow water drips echoing, faint distant wind, no music"),
 ]
 

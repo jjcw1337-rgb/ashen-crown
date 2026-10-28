@@ -84,11 +84,15 @@ def rank(cand_dir, names=None):
                 x = np.concatenate([x, np.zeros(48000 - len(x), np.float32)])
             a = m.get_audio_embedding_from_data(x=x[None, :], use_tensor=False)[0]
             a = a / np.linalg.norm(a)
-            p = np.exp((T @ a) * 100)
+            sims = T @ a
+            top = labels[int(np.argmax(sims))]
+            # real, not synthetic: its own label against the synthetic-sounding distractors only
+            # (near-synonyms among the other labels, "a magic implosion" for a nova, aren't failures)
+            own = [labels.index(s["label"])] + [labels.index(d) for d in DISTRACTORS]
+            p = np.exp(sims[own] * 100)
             p = p / p.sum()
             q = aes().forward([{"path": torch.tensor(x[None, :]), "sample_rate": 48000}])[0]
-            top = labels[int(np.argmax(p))]
-            rows.append({"file": f, "p": round(float(p[labels.index(s["label"])]), 3), "heard": top,
+            rows.append({"file": f, "p": round(float(p[0]), 3), "heard": top,
                          "pq": round(float(q["PQ"]), 2), "ce": round(float(q["CE"]), 2)})
         rows.sort(key=lambda r: -(r["p"] * 0.6 + r["pq"] / 10 * 0.4))
         out[s["name"]] = rows
