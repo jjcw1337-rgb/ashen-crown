@@ -825,25 +825,28 @@ func _start_attack(style: String, skill := "") -> void:
 	_attack_sound(skill)
 
 ## The swing or wind-up as an attack starts. A cast spell's sound starts here so that its payoff
-## (the crack of Holy Nova, the scream of the Wail) lands on the animation's impact frame (~0.3 s);
+## (the crack of Holy Nova, the scream of the Wail) lands on the animation's impact frame (Sfx.play_synced);
 ## spells with no wind-up play their sound at the impact instead (_impact).
 func _attack_sound(skill: String) -> void:
+	# when this attack's impact frame comes (it scales with attack speed)
+	var at := Anim.impact_at(atk_style) * atk_dur
 	match skill:
-		"cleave": Sfx.play("cleave_swing", -2.0)
-		"reap": Sfx.play("reap_swing", -2.0)
-		"hellclaw": Sfx.play("hellclaw", -1.0)
+		"cleave": Sfx.play_synced("cleave_swing", at, -2.0)
+		"reap": Sfx.play_synced("reap_swing", at, -2.0)
+		"hellclaw": Sfx.play_synced("hellclaw", at, -1.0)
 		"nova":
-			Sfx.play("holy_nova", 0.0)
+			Sfx.play_synced("holy_nova", at, 0.0)
 			Sfx.duck(-8.0, 1.0)
 		"wail":
-			Sfx.play("wail", 0.0)
+			Sfx.play_synced("wail", at, 0.0)
 			Sfx.duck(-8.0, 1.0)
-		"blight": Sfx.play("blight_cast", -2.0)
+		"blight": Sfx.play_synced("blight_cast", at, -2.0)
 		"":
+			# the whoosh peaks just before the blade lands
 			if atk_style == "swipe3":
-				Sfx.play(_swing_sound(), -2.0, 0.72)    # the finisher's spin: a long low whoosh
+				Sfx.play_synced(_swing_sound(), at - 0.04, -2.0, 0.72)    # the finisher's spin: a long low whoosh
 			elif atk_style != "cast":
-				Sfx.play(_swing_sound(), -3.0, 1.12 if atk_style == "swipe2" else 1.0)
+				Sfx.play_synced(_swing_sound(), at - 0.04, -3.0, 1.12 if atk_style == "swipe2" else 1.0)
 		_:
 			pass
 

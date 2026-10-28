@@ -18,9 +18,9 @@ DRY = ", close mic, dry, isolated sound effect, no music"
 
 SPEC = [
     # ---------------------------------------------------------------- melee
-    dict(name="swing_light", src="eleven", n=5, dur=0.6, hit=0, label="a sword swing whoosh",
+    dict(name="swing_light", src="eleven", n=5, dur=0.6, hit=0.12, label="a sword swing whoosh",
          prompt="a single fast sword swing through the air, sharp whoosh" + DRY),
-    dict(name="swing_heavy", src="eleven", n=5, dur=0.8, hit=0, label="a heavy weapon swing whoosh",
+    dict(name="swing_heavy", src="eleven", n=5, dur=0.8, hit=0.18, label="a heavy weapon swing whoosh",
          prompt="a single heavy two-handed axe swung hard through the air, deep weighty whoosh" + DRY),
     dict(name="impact_flesh", src="eleven", n=6, dur=0.5, hit=0, label="a sword hitting flesh",
          prompt="a sword slash hitting a body, meaty wet cut with a solid thud, short and punchy" + DRY),
@@ -114,7 +114,7 @@ SPEC = [
          prompt="a dark ritual pact sealed, deep ominous magical boom with faint chanting whispers" + DRY),
 
     # ---------------------------------------------------------------- monsters (the old synthesized ones)
-    dict(name="swing", src="eleven", n=4, dur=0.6, hit=0, label="a weapon swing whoosh",
+    dict(name="swing", src="eleven", n=4, dur=0.6, hit=0.15, label="a weapon swing whoosh",
          prompt="a monster swinging a crude rusty blade, rough whoosh" + DRY),
     dict(name="bow", src="eleven", n=4, dur=0.6, hit=0, label="a bow shooting an arrow",
          prompt="a bowstring released, an arrow shot whizzing away" + DRY),

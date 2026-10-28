@@ -19,6 +19,8 @@ var _last_take := {}
 var _recent := {}
 ## name -> times played (for tests: tools/sound_test.gd)
 var counts := {}
+## [seconds left, name, volume] for play_synced
+var _pending: Array = []
 var players: Array = []
 var players3d: Array = []
 var _next3 := 0
@@ -124,7 +126,7 @@ func _allow(nm: String) -> bool:
 func _bus(nm: String) -> String:
 	return "UI" if BANK.has(nm) and BANK[nm][1] == "ui" else "SFX"
 
-func play(nm: String, vol := 0.0, pitch := 1.0) -> void:
+func play(nm: String, vol := 0.0, pitch := 1.0, from := 0.0) -> void:
 	if muted or not _allow(nm):
 		return
 	var st := _pick(nm)
@@ -137,7 +139,32 @@ func play(nm: String, vol := 0.0, pitch := 1.0) -> void:
 	p.bus = _bus(nm)
 	p.volume_db = vol + volume_db
 	p.pitch_scale = pitch * (randf_range(0.97, 1.03) if bank.has(nm) else 1.0)
-	p.play()
+	p.play(from)
+
+## Seconds into a rendered sound where its payoff (its loudest moment) is; 0 for the rest.
+func hit_of(nm: String) -> float:
+	return float(BANK[nm][2]) if BANK.has(nm) and (BANK[nm] as Array).size() > 2 else 0.0
+
+## Plays a sound so that its payoff lands `at` seconds from now (an attack's impact frame, whatever the
+## attack speed): started later when there is time, or part-way in when the impact comes sooner.
+## A pitch below 1 plays it slower, so its payoff comes later.
+func play_synced(nm: String, at: float, vol := 0.0, pitch := 1.0) -> void:
+	var lead := at - hit_of(nm) / pitch
+	if lead <= 0.01:
+		play(nm, vol, pitch, -minf(lead, 0.0) * pitch)
+	else:
+		# counted down in _process, on the same clock as the attack it belongs to
+		_pending.append([lead, nm, vol, pitch])
+
+func _process(delta: float) -> void:
+	if _pending.is_empty():
+		return
+	for i in range(_pending.size() - 1, -1, -1):
+		_pending[i][0] -= delta
+		if _pending[i][0] <= 0.0:
+			var q: Array = _pending[i]
+			_pending.remove_at(i)
+			play(q[1], q[2], q[3])
 
 ## A sound from a place in the world: louder near the camera, panned left or right of it.
 func play_at(nm: String, pos: Vector3, vol := 0.0, pitch := 1.0) -> void:

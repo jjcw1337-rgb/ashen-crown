@@ -30,6 +30,15 @@ func _run() -> void:
 	for i in AudioServer.bus_count:
 		buses.append("%s>%s" % [AudioServer.get_bus_name(i), AudioServer.get_bus_send(i)])
 	print("[S] buses: %s" % [buses])
+	# a cast's payoff lands on the impact frame: holy_nova's payoff is 0.3 s in, so for an impact 0.6 s away it
+	# waits 0.3 s; for one 0.2 s away it starts at once, 0.1 s into the sound
+	sfx.play_synced("holy_nova", 0.6)
+	var queued: float = sfx._pending[0][0] if not sfx._pending.is_empty() else -1.0
+	var n0 := int(sfx.counts.get("holy_nova", 0))
+	sfx.play_synced("holy_nova", 0.2)
+	var now := int(sfx.counts.get("holy_nova", 0)) - n0
+	var p: AudioStreamPlayer = sfx.players[(sfx._next - 1 + sfx.players.size()) % sfx.players.size()]
+	print("[S] synced: payoff %.2f s; impact in 0.6 s waits %.2f s; impact in 0.2 s plays now %s from %.2f s" % [sfx.hit_of("holy_nova"), queued, now == 1, p.get_playback_position() if p.playing else -1.0])
 	for cls in EXPECT.keys():
 		await g.start_game(false, cls)
 		g.ui.close_all()
