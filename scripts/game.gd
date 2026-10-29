@@ -383,6 +383,28 @@ func _zone_env(kind: String) -> void:
 		sun.light_energy = 0.85 if kind == "town" else 0.75
 		hero.light.light_energy = 0.9
 		hero.light.omni_range = 10.0
+		if kind == "town" and world.theme.get("forest_camp", false):
+			# Act I's camp deep in the old forest: late dusk under the canopy. Cool blue-green light
+			# and low mist between the trees, so the bonfire, the lanterns and the rune stones glow
+			sky_mat.sky_top_color = Color(0.1, 0.13, 0.17)
+			sky_mat.sky_horizon_color = Color(0.24, 0.29, 0.31)
+			sky_mat.ground_horizon_color = Color(0.2, 0.24, 0.25)
+			env.ambient_light_energy = 0.6
+			env.tonemap_exposure = 1.15
+			env.fog_light_color = Color(0.2, 0.26, 0.28)
+			env.fog_density = 0.012
+			env.fog_height = 1.2
+			env.fog_height_density = 0.12
+			env.adjustment_saturation = 0.9
+			env.adjustment_contrast = 1.1
+			env.volumetric_fog_density = 0.028
+			env.volumetric_fog_albedo = Color(0.6, 0.7, 0.72)
+			env.volumetric_fog_emission = Color(0.012, 0.02, 0.024)
+			env.glow_intensity = 0.85
+			env.glow_bloom = 0.08
+			sun.light_color = Color(0.6, 0.72, 0.9)
+			sun.light_energy = 0.62
+			hero.light.light_energy = 1.0
 		if snowy:
 			# overcast winter: pale sky, cold light, snow bouncing light back up
 			sky_mat.sky_top_color = Color(0.5, 0.55, 0.62)

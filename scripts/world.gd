@@ -744,6 +744,9 @@ var MOOR_TRAIL: Dictionary = MOOR_TERRAIN.merged({"col_path": Color(0.4, 0.34, 0
 var MOOR_ROAD: Dictionary = MOOR_TERRAIN.merged({"cob_shade": 0.72}, true)
 
 func _build_town() -> void:
+	if oak_forest and act == 0 and ForestCamp.ok():
+		ForestCamp.build(self)      # Act I: the camp in the old forest
+		return
 	bounds = Rect2(-38, -42, 76, 80)
 	theme = {"name": "town"}
 	var V: Dictionary = Data.VENDORS[act]

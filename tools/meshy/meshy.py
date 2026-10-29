@@ -9,6 +9,9 @@ Needs network access to api.meshy.ai and assets.meshy.ai, and a paid Meshy plan 
   python3 tools/meshy/meshy.py get   <task id> [--kind image|text]   -o out/knight   # re-download a finished task
   python3 tools/meshy/meshy.py draw  "an old oak tree..." -o out/ref     [--model nano-banana-2]    # 2D image from text
   python3 tools/meshy/meshy.py edit  ref.png "remove the belt" -o out/ref2 [--model nano-banana-2]    # 2D image edit
+  python3 tools/meshy/meshy.py rig   <image/text task id> -o out/npc [--height 1.75]   # skeleton + skin (humanoids)
+  python3 tools/meshy/meshy.py animate <rig task id> 0,128 -o out/npc_anims          # library clips, one glb
+  python3 tools/meshy/meshy.py library [search]                                     # list animation clips (free)
   python3 tools/meshy/meshy.py check                                                # key + network test
 
 Each finished task saves <out>.glb, <out>_thumb.png and <out>.json (the task record).
@@ -84,7 +87,7 @@ def image_ref(src: str) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=["text", "image", "edit", "draw", "get", "check"])
+    ap.add_argument("cmd", choices=["text", "image", "edit", "draw", "get", "check", "rig", "animate", "library"])
     ap.add_argument("arg", nargs="?")
     ap.add_argument("arg2", nargs="?")
     ap.add_argument("-o", "--out", default="meshy_out/model")
@@ -94,6 +97,7 @@ def main() -> None:
     ap.add_argument("--model", default="latest")
     ap.add_argument("--kind", default="image")
     ap.add_argument("--cutout", action="store_true", help="draw: transparent background")
+    ap.add_argument("--height", type=float, default=1.75, help="rig: character height in metres")
     a = ap.parse_args()
     if a.cmd == "check":
         req = urllib.request.Request(API + "/v1/balance", headers={"Authorization": "Bearer " + key()})
@@ -102,6 +106,37 @@ def main() -> None:
                 print("Meshy OK:", r.read().decode()[:200])
         except urllib.error.HTTPError as e:
             print("Meshy reachable, HTTP", e.code, e.read().decode(errors="replace")[:200])
+        return
+    if a.cmd == "library":
+        lib = call("GET", "/v1/animations/library?page_size=1000")
+        items = lib if isinstance(lib, list) else lib.get("result", [])
+        for it in items:
+            if not a.arg or a.arg.lower() in json.dumps(it).lower():
+                print(it.get("action_id"), it.get("name"), "-", it.get("category"), "/", it.get("sub_category"))
+        return
+    if a.cmd == "rig":
+        tid = call("POST", "/v1/rigging", {"input_task_id": a.arg, "height_meters": a.height})["result"]
+        print("rig task", tid)
+        t = wait(f"/v1/rigging/{tid}")
+        os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
+        json.dump(t, open(a.out + ".json", "w"), indent=2)
+        r = t.get("result") or {}
+        if r.get("rigged_character_glb_url"):
+            fetch(r["rigged_character_glb_url"], a.out + ".glb")
+        print(f"  rig task id {tid}   credits used: {t.get('consumed_credits')}")
+        return
+    if a.cmd == "animate":
+        ids = [int(x) for x in a.arg2.split(",")]
+        body = {"rig_task_id": a.arg, ("action_id" if len(ids) == 1 else "action_ids"): ids[0] if len(ids) == 1 else ids}
+        tid = call("POST", "/v1/animations", body)["result"]
+        print("animation task", tid)
+        t = wait(f"/v1/animations/{tid}")
+        os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
+        json.dump(t, open(a.out + ".json", "w"), indent=2)
+        r = t.get("result") or {}
+        if r.get("animation_glb_url"):
+            fetch(r["animation_glb_url"], a.out + ".glb")
+        print(f"  credits used: {t.get('consumed_credits')}")
         return
     common = {"ai_model": a.model, "pose_mode": a.pose, "should_remesh": True, "topology": "triangle",
               "target_polycount": a.polys, "target_formats": ["glb"]}

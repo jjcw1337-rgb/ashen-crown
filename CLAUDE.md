@@ -209,6 +209,15 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   The pause menu's "Save and Exit to Title" is `Game.exit_to_title()`. Co-op uses the last played character and its
   name. Tools still save to the test file; `tools/char_test.gd` moves `char_dir`/`old_save` to test the real thing,
   `tools/char_shot.gd` screenshots the screens.
+- **Act I camp in the forest** (`scripts/forest_camp.gd`, `ForestCamp.build`, used by `World._build_town` when
+  `oak_forest` and act 0; A2/A3 keep the old camp): a ring palisade with a gatehouse, rune stones outside
+  (`RUNE_SHADER` glows their runes), a bonfire, tents and lantern-hung oaks inside, the old forest beyond, and a
+  dusk/mist mood (`Game._zone_env`, `theme.forest_camp`). Everything is Meshy (concept image, then image-to-3D),
+  prepared in Blender: props by `tools/blender/prep_prop.py` into `assets/models/camp/`, trees by `prep_tree.py`.
+  The shopkeepers are Meshy characters rigged by Meshy and animated from its clip library (`meshy.py rig` /
+  `animate` / `library`), cleaned by `tools/blender/prep_npc.py` into `assets/models/npc/`; `Inter._animate`
+  plays their work clips, turns them to face the hero and has them talk when he comes near (clips listed in
+  `ForestCamp.SHOPS`). Screenshots: `tools/camp_shots.gd`.
 - **Skill bar and bindings** (every class, including new ones): the bar has a big slot for each mouse button and six
   hotkeys (Q E R F G V); any skill can go on any of them (`Hero.binds`, saved per character; `Hero.default_binds`:
   left mouse `attack`, right mouse `block`, the class's first four skills on Q-F). `attack` and `block` are
