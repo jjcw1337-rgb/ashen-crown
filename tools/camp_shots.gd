@@ -23,8 +23,8 @@ func _run() -> void:
 	while g._busy:
 		await process_frame
 	print("[C] forest camp: ", g.world.theme.get("forest_camp", false))
-	var spots := {"bonfire": Vector3(0, 0, 5), "alchemist": Vector3(-11.5, 0, -8.5), "smith": Vector3(11.5, 0, -8.5),
-		"armourer": Vector3(15.5, 0, 6.5), "gambler": Vector3(-14.5, 0, 8), "gate": Vector3(2, 0, -24)}
+	var spots := {"bonfire": Vector3(0, 0, 5), "alchemist": Vector3(-8, 0, -6.5), "smith": Vector3(8, 0, -6.5),
+		"armourer": Vector3(11, 0, 5), "gambler": Vector3(-10.5, 0, 6.5), "gate": Vector3(2, 0, -20)}
 	for k in spots:
 		var p: Vector3 = spots[k]
 		g.hero.global_position = g.world.free_spot_near(p, 0.4)

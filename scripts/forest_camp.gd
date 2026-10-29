@@ -9,19 +9,20 @@ extends RefCounted
 ## prep_prop.py, prep_npc.py, prep_tree.py). Without the files it falls back to the old camp.
 
 const CENTER := Vector2(0, -2)
-const RADIUS := 29.0
-const GATE_HALF := 0.2          # half the gap in the ring for the gatehouse (radians)
+const RADIUS := 25.0
+const GATE_HALF := 0.23         # half the gap in the ring for the gatehouse (radians)
 const DIR := "res://assets/models/camp/"
+const STALL_SCALE := 1.45     # the stalls, tents and gatehouse read small from the game's camera at true size
 const NPC_DIR := "res://assets/models/npc/"
 # shopkeepers: model, role, the stall they keep, its spot, and their clips (idle, work, talk)
 const SHOPS := [
-	{"role": "alch", "npc": "maeve", "stall": "alchemy", "at": Vector2(-15, -13), "half": Vector2(1.45, 1.3),
+	{"role": "alch", "npc": "maeve", "stall": "alchemy", "at": Vector2(-12, -11.5), "half": Vector2(1.45, 1.3),
 		"clips": {"idle": "Idle_02", "work": ["Stand_and_Drink", "mage_soell_cast"], "talk": "Talk_with_Left_Hand_Raised"}},
-	{"role": "smith", "npc": "grisold", "stall": "forge", "at": Vector2(15, -13), "half": Vector2(2.2, 1.65),
+	{"role": "smith", "npc": "grisold", "stall": "forge", "at": Vector2(12, -11.5), "half": Vector2(2.2, 1.65),
 		"clips": {"idle": "Idle", "work": ["Heavy_Hammer_Swing", "Heavy_Hammer_Swing", "Catching_Breath"], "talk": "Talk_with_Hands_Open"}},
-	{"role": "armor", "npc": "hedda", "stall": "armory", "at": Vector2(20, 7), "half": Vector2(1.95, 1.62),
+	{"role": "armor", "npc": "hedda", "stall": "armory", "at": Vector2(16, 5), "half": Vector2(1.95, 1.62),
 		"clips": {"idle": "Idle_3", "work": ["Axe_Breathe_and_Look_Around"], "talk": "Talk_with_Left_Hand_on_Hip"}},
-	{"role": "gamble", "npc": "tarrow", "stall": "wagon", "at": Vector2(-19, 9), "half": Vector2(1.7, 1.35),
+	{"role": "gamble", "npc": "tarrow", "stall": "wagon", "at": Vector2(-15.5, 7), "half": Vector2(1.7, 1.35),
 		"clips": {"idle": "Idle_5", "work": ["Stand_and_Chat", "Happy_Sway_Standing"], "talk": "Talk_with_Right_Hand_Open"}},
 ]
 
@@ -72,7 +73,8 @@ static func build(w: World) -> void:
 	w.dirt_lines = [[Vector2(0, 0), Vector2(0, gate_z - 9), 3.2]]
 	for s in SHOPS:
 		var p: Vector2 = s["at"]
-		w.dirt_blobs.append([p.lerp(CENTER, 0.18), 4.8, 0.95])
+		w.dirt_blobs.append([p, 5.2, 1.0])
+		w.dirt_blobs.append([p.lerp(CENTER, 0.3), 4.2, 0.95])
 		w.dirt_lines.append([CENTER, p, 2.4])
 	w.cobble_blobs = [[CENTER, 4.2, 0.85], [Vector2(0, gate_z + 1.5), 3.0, 0.8], [Vector2(-8, 6), 2.6, 0.7]]
 
@@ -90,9 +92,10 @@ static func build(w: World) -> void:
 	Props.multimesh(w.props_root, mesh(DIR + "palisade.glb"), pal_x)
 	var gate := model("gate")
 	w._place(gate, Vector3(0, 0, gate_z))
-	for gx in [-3.6, 3.6]:
-		w.add_box(Vector3(gx, 0, gate_z), Vector2(1.0, 1.9), 0.0)
-	_lantern(w, Vector3(0, w.height_at(0, gate_z) + 4.1, gate_z + 0.3), true)
+	gate.scale = Vector3.ONE * 1.15
+	for gx in [-4.1, 4.1]:
+		w.add_box(Vector3(gx, 0, gate_z), Vector2(1.15, 2.2), 0.0)
+	_lantern(w, Vector3(0, w.height_at(0, gate_z) + 4.7, gate_z + 0.4), true)
 	w.exits.append({"pos": Vector3(0, 0, gate_z - 3.5), "radius": 3.5, "to": "wild", "label": Data.ACTS[w.act]["wild"]})
 
 	# --- rune stones standing in the trees outside the wall, glowing faintly
@@ -135,15 +138,17 @@ static func build(w: World) -> void:
 		var stall := model(s["stall"])
 		w._place(stall, Vector3(p.x, 0, p.y))
 		stall.rotation.y = yaw
-		w.add_box(Vector3(p.x, 0, p.y), (s["half"] as Vector2) * 0.92, yaw)
+		stall.scale = Vector3.ONE * STALL_SCALE
+		var half: Vector2 = (s["half"] as Vector2) * STALL_SCALE
+		w.add_box(Vector3(p.x, 0, p.y), half * 0.92, yaw)
 		var fwd := Vector2(sin(yaw), cos(yaw))
-		var np := p + fwd * ((s["half"] as Vector2).y + 1.0)
+		var np := p + fwd * (half.y + 0.9)
 		_keeper(w, s["npc"], V[s["role"]], s["role"], np, yaw, s["clips"])
 	# the stalls' own light: the forge's coals, the alchemist's cauldron, a lantern on the others
-	_glow(w, SHOPS[1]["at"], Vector3(0.6, 1.0, -0.4), Color(1.0, 0.45, 0.12), 2.2, 5.5)
-	_glow(w, SHOPS[0]["at"], Vector3(-0.9, 0.6, 0.3), Color(0.4, 1.0, 0.35), 1.4, 4.5)
-	_lantern(w, _local(w, SHOPS[2]["at"], Vector3(1.6, 2.9, 1.2)), true)
-	_lantern(w, _local(w, SHOPS[3]["at"], Vector3(-1.4, 2.6, 1.3)), true)
+	_glow(w, SHOPS[1]["at"], Vector3(0.9, 1.4, -0.6), Color(1.0, 0.45, 0.12), 2.6, 7.0)
+	_glow(w, SHOPS[0]["at"], Vector3(-1.3, 0.9, 0.4), Color(0.4, 1.0, 0.35), 1.6, 6.0)
+	_lantern(w, _local(w, SHOPS[2]["at"], Vector3(2.4, 4.0, 1.9)), true)
+	_lantern(w, _local(w, SHOPS[3]["at"], Vector3(-2.0, 3.6, 2.0)), true)
 	# Captain Roth keeps the gate
 	_keeper(w, "roth", V["elder"], "elder", Vector2(5.0, gate_z + 5.0), face(Vector2(5.0, gate_z + 5.0), CENTER),
 		{"idle": "Idle", "work": ["Short_Breathe_and_Look_Around", "Long_Breathe_and_Look_Around"], "talk": "Talk_Passionately"})
@@ -151,18 +156,19 @@ static func build(w: World) -> void:
 		w.solid(Props.banner(w.props_root, Vector3(bx, w.height_at(bx, gate_z + 2.2), gate_z + 2.2), Color(0.42, 0.06, 0.05), Color(0.6, 0.5, 0.25)))
 
 	# --- tents round the inside of the wall
-	for t in [[-0.85, 22.5], [-2.3, 22.0], [2.35, 22.0], [2.95, 21.5], [-2.95, 21.5], [0.95, 23.0], [3.45, 22.5]]:
+	for t in [[-0.75, 19.5], [-1.45, 19.0], [-2.35, 19.0], [2.35, 19.0], [2.85, 18.5], [-2.9, 18.5], [0.8, 19.5], [3.4, 19.5], [-3.45, 19.5], [1.45, 19.5]]:
 		var tp := ring_pt(t[0], t[1])
-		if _near_shop(tp, 5.5):
+		if _near_shop(tp, 6.0):
 			continue
 		var tent := model("tent")
 		w._place(tent, Vector3(tp.x, 0, tp.y))
-		tent.rotation.y = face(tp, CENTER)
-		w.add_box(Vector3(tp.x, 0, tp.y), Vector2(1.8, 1.5), tent.rotation.y)
+		tent.rotation.y = face(tp, CENTER) + rng.randf_range(-0.25, 0.25)
+		tent.scale = Vector3.ONE * 1.25
+		w.add_box(Vector3(tp.x, 0, tp.y), Vector2(2.2, 1.9), tent.rotation.y)
 	# clutter by the stalls
-	for c in [["crate", Vector2(-12, -16.5)], ["barrel", Vector2(-18.2, -10)], ["barrel", Vector2(18.4, -10.2)], ["logs", Vector2(11.5, -16.5)],
-			["crate", Vector2(22.6, 3.6)], ["crate", Vector2(23.2, 4.4)], ["barrel", Vector2(-22, 6.2)], ["crate", Vector2(-3.5, gate_z + 4.0)],
-			["barrel", Vector2(-4.6, gate_z + 3.5)], ["logs", Vector2(9, 15)], ["crate", Vector2(-9.5, 17)]]:
+	for c in [["crate", Vector2(-9.5, -15.5)], ["barrel", Vector2(-15.8, -8.8)], ["barrel", Vector2(15.6, -8.6)], ["logs", Vector2(9.0, -15.5)],
+			["crate", Vector2(18.8, 1.4)], ["crate", Vector2(19.4, 2.2)], ["barrel", Vector2(-18.4, 4.0)], ["crate", Vector2(-3.5, gate_z + 4.5)],
+			["barrel", Vector2(-4.6, gate_z + 4.0)], ["logs", Vector2(6, 13)], ["crate", Vector2(-6.5, 13.5)], ["barrel", Vector2(-1.5, 16)]]:
 		var cp: Vector2 = c[1]
 		var p3 := Vector3(cp.x, w.height_at(cp.x, cp.y), cp.y)
 		match c[0]:
@@ -170,10 +176,21 @@ static func build(w: World) -> void:
 			"barrel": w.solid(Props.barrel(w.props_root, p3))
 			"logs": w.solid(Props.log_pile(w.props_root, p3))
 
+	# --- lantern posts along the paths
+	for lp in [Vector2(-2.6, -9), Vector2(2.6, -15), Vector2(-6.5, -4.5), Vector2(7, -4.5), Vector2(9, 3.5), Vector2(-9.5, 2.5), Vector2(-2.6, gate_z + 7)]:
+		var post := Props.footprint(Models.N(null, "lpost"), 0.15)
+		Models.seg(post, Vector3.ZERO, Vector3(0, 2.7, 0), 0.08, 0.06, Props.wood_dark(), 6)
+		Models.seg(post, Vector3(0, 2.6, 0), Vector3(0.55, 2.62, 0), 0.04, 0.035, Props.wood_dark(), 5)
+		w._place(post, Vector3(lp.x, 0, lp.y))
+		post.rotation.y = rng.randf() * TAU
+		w.solid(post)
+		var tip := post.global_transform * Vector3(0.5, 2.6, 0) if post.is_inside_tree() else post.position + Basis(Vector3.UP, post.rotation.y) * Vector3(0.5, 2.6, 0)
+		_lantern(w, tip, lp.y < -8.0 or absf(lp.x) > 8.0)
+
 	# --- great oaks inside the camp, lanterns hung from their branches
 	var oaks := [[], [], []]
 	var k := 0
-	for op in [Vector2(-8, -21), Vector2(10, -22), Vector2(-21, -2), Vector2(22, -4), Vector2(-12, 19), Vector2(13, 18)]:
+	for op in [Vector2(-7.5, -18.5), Vector2(8.5, -19), Vector2(-18.5, -3), Vector2(19.5, -4), Vector2(-9, 15.5), Vector2(10, 14.5)]:
 		if _near_shop(op, 4.5):
 			continue
 		oaks[k % 3].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(1.15, 1.35)), Vector3(op.x, w.height_at(op.x, op.y), op.y)))
@@ -227,8 +244,8 @@ static func build(w: World) -> void:
 	w._rasterize()
 	w._flush_stones(Props.stone())
 	w._build_terrain(FOREST_FLOOR)
-	w._scatter_grass(38000, FOREST_GRASS, 0.3)
-	w._scatter_ferns(320)
+	w._scatter_grass(24000, FOREST_GRASS, 0.26)
+	w._scatter_ferns(380)
 	w.spawns["start"] = Vector3(0, 0, 5)
 	w.spawns["from_wild"] = Vector3(0, 0, gate_z + 4.5)
 	w.spawns["waypoint"] = Vector3(-8, 0, 9)
