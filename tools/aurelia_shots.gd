@@ -59,6 +59,10 @@ func _run() -> void:
 		if games.state == "stage":
 			break
 	await _shot(out + "_sand1.png", 60)
+	var c3: Vector3 = w.spawns["arena"] - Vector3(0, 0, 9.0)
+	g.hero.global_position = Vector3(c3.x, w.height_at(c3.x, c3.z), c3.z)
+	games.excite = 1.0
+	await _shot(out + "_center.png", 30)
 	print("[A] state %s stage %d foes %d crowd %d" % [games.state, games.stage, games.foes.size(), w.props_root.get_node("crowd").multimesh.instance_count])
 	if args.has("boss"):
 		# on to the champion: clear each bout, then catch the spikes coming up round him

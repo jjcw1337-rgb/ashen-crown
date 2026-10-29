@@ -43,6 +43,7 @@ var bursts := 0                 # spike bursts so far (tests)
 var charge_t := 6.0             # the champion's shield charge: seconds to the next
 var charge := {}                # host, while charging: {phase: wind|dash, t, dir, hit}
 var charges := 0                # (tests)
+var zoom_was := -1.0            # the player's camera zoom before the games pulled it out
 
 func setup(world: World) -> void:
 	w = world
@@ -281,6 +282,7 @@ func fx(ev: String) -> void:
 			excite_to = 0.35
 		"shut":
 			_gate("life", false)
+			_pull_back(true)
 			ui.big_message("The Games of Aurelia")
 			Sfx.play("arena_horn", -2.0)
 			excite_to = 0.6
@@ -325,14 +327,27 @@ func fx(ev: String) -> void:
 			excite = 1.0
 		"won":
 			_gate("life", true)
+			_pull_back(false)
 			Sfx.play("crowd_cheer", 0.0)
 			excite = 1.0
 			excite_to = 0.9
 		"reset":
 			_gate("life", true)
+			_pull_back(false)
 			ui.message("The games are over. Varro will take another wager.", Color(0.85, 0.75, 0.6), 4.0)
 			excite_to = 0.15
 			_stop_roar()
+
+## While the games run the camera pulls back so the stands and the crowd frame the fight; afterwards the
+## player's own zoom comes back.
+func _pull_back(on: bool) -> void:
+	if on:
+		if zoom_was < 0.0:
+			zoom_was = game.zoom
+		game.zoom = 1.3
+	elif zoom_was >= 0.0:
+		game.zoom = zoom_was
+		zoom_was = -1.0
 
 func _stop_roar() -> void:
 	if roar != null and is_instance_valid(roar):
@@ -341,6 +356,7 @@ func _stop_roar() -> void:
 
 func _exit_tree() -> void:
 	_stop_roar()
+	_pull_back(false)
 
 func _update_look(delta: float) -> void:
 	excite = move_toward(excite, excite_to, delta * 0.25)
@@ -439,7 +455,7 @@ func _gate(name: String, up: bool) -> void:
 func _crowd() -> void:
 	var bodies: Array = []
 	var cols: Array = []
-	var pal := [Color(0.45, 0.3, 0.18), Color(0.3, 0.26, 0.2), Color(0.5, 0.12, 0.08), Color(0.62, 0.55, 0.42), Color(0.25, 0.3, 0.18), Color(0.38, 0.2, 0.36), Color(0.7, 0.62, 0.5)]
+	var pal := [Color(0.3, 0.2, 0.12), Color(0.2, 0.17, 0.13), Color(0.38, 0.09, 0.06), Color(0.42, 0.36, 0.27), Color(0.17, 0.2, 0.12), Color(0.25, 0.13, 0.24), Color(0.48, 0.42, 0.33), Color(0.12, 0.11, 0.1)]
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 991
 	for k in 4:
@@ -485,13 +501,15 @@ func _crowd() -> void:
 func _person_mesh() -> Mesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var parts := [[CapsuleMesh.new(), Vector3(0, 0.55, 0), 0.0], [SphereMesh.new(), Vector3(0, 1.28, 0), 1.0]]
-	(parts[0][0] as CapsuleMesh).radius = 0.22
-	(parts[0][0] as CapsuleMesh).height = 1.1
-	(parts[0][0] as CapsuleMesh).radial_segments = 8
-	(parts[0][0] as CapsuleMesh).rings = 2
+	# a body broad at the shoulders, narrow at the hips, and a head
+	var parts := [[CylinderMesh.new(), Vector3(0, 0.5, 0), 0.0], [SphereMesh.new(), Vector3(0, 1.15, 0), 1.0]]
+	(parts[0][0] as CylinderMesh).top_radius = 0.26
+	(parts[0][0] as CylinderMesh).bottom_radius = 0.16
+	(parts[0][0] as CylinderMesh).height = 1.0
+	(parts[0][0] as CylinderMesh).radial_segments = 8
+	(parts[0][0] as CylinderMesh).rings = 1
 	(parts[1][0] as SphereMesh).radius = 0.15
-	(parts[1][0] as SphereMesh).height = 0.3
+	(parts[1][0] as SphereMesh).height = 0.32
 	(parts[1][0] as SphereMesh).radial_segments = 8
 	(parts[1][0] as SphereMesh).rings = 4
 	for part in parts:
@@ -521,7 +539,7 @@ void vertex() {
 	VERTEX.y += step(0.8, VERTEX.y) * excite * jump * 0.12;
 }
 void fragment() {
-	vec3 skin = vec3(0.62, 0.46, 0.34);
+	vec3 skin = vec3(0.5, 0.36, 0.26);
 	ALBEDO = mix(COLOR.rgb, skin, step(0.5, head));
 	ROUGHNESS = 0.9;
 }

@@ -8,8 +8,8 @@ class_name Aurelia
 ## champion, the act's boss.
 
 const CENTRE := Vector2(0, -150)      # the arena floor's middle
-const FLOOR_RX := 17.0                # the sand: an ellipse (small enough that the stands stay in view)
-const FLOOR_RZ := 12.5
+const FLOOR_RX := 15.5                # the sand: an ellipse (small enough that the stands stay in view)
+const FLOOR_RZ := 11.5
 const OUTER_RX := 34.0                # the outer wall
 const OUTER_RZ := 28.0
 const PODIUM_H := 3.4                 # the wall round the sand
