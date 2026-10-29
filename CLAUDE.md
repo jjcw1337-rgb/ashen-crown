@@ -209,6 +209,18 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   The pause menu's "Save and Exit to Title" is `Game.exit_to_title()`. Co-op uses the last played character and its
   name. Tools still save to the test file; `tools/char_test.gd` moves `char_dir`/`old_save` to test the real thing,
   `tools/char_shot.gd` screenshots the screens.
+- **Skill bar and bindings** (every class, including new ones): the bar has a big slot for each mouse button and six
+  hotkeys (Q E R F G V); any skill can go on any of them (`Hero.binds`, saved per character; `Hero.default_binds`:
+  left mouse `attack`, right mouse `block`, the class's first four skills on Q-F). `attack` and `block` are
+  `Data.COMMON_SKILLS` (`Data.skills_known(cls)` = class skills + common). Input goes through `Game._use_bind`
+  (held buttons recast when ready; `Game.skill_held(id)` for Block and Drain Life's channel). Click a bar slot or
+  open the skills window (K) to rebind. Block: 80% less damage from the front (missiles stopped with a shield).
+  Art: Meshy-painted frame and sockets in `assets/textures/ui/`. A new class needs nothing extra.
+- **Globes** (`scripts/globe.gd`, `Globe`): liquid that surges after a hit, ripples on a heal, pulses and shakes
+  when low, darkens when critical, swirls after a cast, rises slowly with regeneration, sends a wave up on a big
+  restore, and grows with maximum life/mana. Meshy frame `globe_frame.png`, Blender glass `globe_glass.png`
+  (`tools/blender/ui_glass_orb.py`, added over the liquid). Standard for every class; a special character can
+  override with a `"hud"` entry in `Data.CLASSES` (see `Globe.set_style`). Preview: `tools/globe_demo.gd`.
 - `UNLOCK_ALL_ACTS` in `game.gd` is a testing switch (also enables the F8 testing panel: `test_immortal`, `test_onehit`, `test_stamina`, `test_allskills` in `game.gd`, and a level setter, `Hero.set_level`); turn off for real playthroughs.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file).

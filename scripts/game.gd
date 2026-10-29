@@ -47,6 +47,8 @@ var hovered = null
 var ground_pt := Vector3.ZERO
 var lmb_held := false
 var lmb_repeat := 0.0
+var rmb_held := false
+const BIND_KEYCODES := {"Q": KEY_Q, "E": KEY_E, "R": KEY_R, "F": KEY_F, "G": KEY_G, "V": KEY_V}
 var exit_grace := 0.0
 var waypoints_known := ["town"]
 var boss_killed := false
@@ -1562,7 +1564,17 @@ func _unhandled_input(ev: InputEvent) -> void:
 			if ev.pressed and not paused:
 				lmb_held = true
 				lmb_repeat = 0.12
-				_click_world()
+				_update_hover()
+				# a skill other than Attack on left mouse casts on a foe (or anywhere with Shift);
+				# clicking the ground, an item or an NPC still walks there
+				if hero.bound("lmb") not in ["attack", ""] and (hovered is Enemy or Input.is_key_pressed(KEY_SHIFT)):
+					_use_bind("lmb", true)
+				else:
+					_click_world()
+		elif ev.button_index == MOUSE_BUTTON_RIGHT:
+			if ev.pressed and not paused:
+				rmb_held = true
+				_use_bind("rmb", true)
 		elif ev.button_index == MOUSE_BUTTON_WHEEL_UP and ev.pressed:
 			zoom = clampf(zoom - 0.08, 0.6, 1.3)
 		elif ev.button_index == MOUSE_BUTTON_WHEEL_DOWN and ev.pressed:
@@ -1580,14 +1592,11 @@ func _unhandled_input(ev: InputEvent) -> void:
 				cast_town_portal()
 			KEY_1, KEY_2, KEY_3, KEY_4:
 				hero.drink(ev.keycode - KEY_1)
-			KEY_Q:
-				cast_slot(0)
-			KEY_E:
-				cast_slot(1)
-			KEY_R:
-				cast_slot(2)
-			KEY_F:
-				cast_slot(3)
+			KEY_Q, KEY_E, KEY_R, KEY_F, KEY_G, KEY_V:
+				if not ui.skills_hotkey(OS.get_keycode_string(ev.keycode)):
+					_use_bind(OS.get_keycode_string(ev.keycode), true)
+			KEY_K:
+				ui.toggle(ui.skills_panel)
 			KEY_F3:
 				ui.show_fps = not ui.show_fps
 			KEY_F2:
@@ -1610,9 +1619,45 @@ func _input(ev: InputEvent) -> void:
 		return
 	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed:
 		lmb_held = false
+	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_RIGHT and not ev.pressed:
+		rmb_held = false
 
 func cast_slot(i: int) -> void:
-	cast_skill(hero.skill_list()[i]["id"])
+	cast_skill(hero.bound(Hero.BIND_KEYS[i]))
+
+## Is this bar slot's button (mouse button or hotkey) being held right now?
+func slot_held(slot: String) -> bool:
+	match slot:
+		"lmb": return lmb_held
+		"rmb": return rmb_held
+	return BIND_KEYCODES.has(slot) and Input.is_key_pressed(BIND_KEYCODES[slot])
+
+## Is any button the skill is bound to being held? (Block, Drain Life's channel, held Attack)
+func skill_held(id: String) -> bool:
+	for slot in Hero.BIND_SLOTS:
+		if hero.bound(slot) == id and slot_held(slot):
+			return true
+	return false
+
+func _cursor_aim() -> Vector3:
+	return hovered.global_position if hovered is Enemy else ground_pt
+
+## A bar slot was pressed (first) or is still held (repeat): cast what's bound there. Attack swings
+## at the cursor, Block is held (see _process), anything else is cast; held, it recasts whenever it
+## is ready again, without the "recharging" and "no mana" messages.
+func _use_bind(slot: String, first: bool) -> void:
+	if hero == null or hero.dead or ui.any_panel_open():
+		return
+	var id := hero.bound(slot)
+	match id:
+		"", "block":
+			return
+		"attack":
+			_update_hover()
+			hero.swipe_attack(_cursor_aim())
+			return
+	if first or hero.skill_ready(id):
+		cast_skill(id)
 
 func cast_skill(id: String) -> void:
 	if not playing or hero.dead:
@@ -1648,7 +1693,10 @@ func _process(delta: float) -> void:
 		Engine.time_scale = 1.0
 	if playing and not paused and not _busy:
 		_update_hover()
-		hero.blocking = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and not ui.any_panel_open()
+		hero.blocking = skill_held("block") and not ui.any_panel_open()
+		for slot in Hero.BIND_SLOTS:
+			if slot != "lmb" and slot_held(slot):
+				_use_bind(slot, false)
 		hero.sprint = Input.is_key_pressed(KEY_SHIFT)
 		if Input.is_key_pressed(KEY_SPACE):
 			hero.swipe_attack(hero.aim_ahead(hero.reach() + 1.5))
@@ -1662,7 +1710,9 @@ func _process(delta: float) -> void:
 			lmb_repeat -= delta
 			if lmb_repeat <= 0.0:
 				lmb_repeat = 0.12
-				if hovered is Enemy:
+				if hero.bound("lmb") not in ["attack", ""] and (hovered is Enemy or Input.is_key_pressed(KEY_SHIFT)):
+					_use_bind("lmb", false)
+				elif hovered is Enemy:
 					if hero.target != hovered:
 						hero.cmd_target(hovered)
 				elif hero.target == null or not (hero.target is Enemy):

@@ -147,6 +147,7 @@ func _init() -> void:
 	stash.resize(60)
 	for s in Data.SKILLS:
 		cds[s["id"]] = 0.0
+	binds = default_binds()
 
 func is_wraith() -> bool:
 	return cls == "wraith"
@@ -159,6 +160,44 @@ func is_warlock() -> bool:
 
 func skill_list() -> Array:
 	return Data.skills_for(cls)
+
+# ---------------------------------------------------------------- skill bindings
+## The bar holds a skill on each mouse button; any skill can also go on a hotkey. Saved per character.
+const BIND_KEYS := ["Q", "E", "R", "F", "G", "V"]
+const BIND_SLOTS := ["lmb", "rmb", "Q", "E", "R", "F", "G", "V"]
+var binds := {}
+
+func default_binds() -> Dictionary:
+	var b := {"lmb": "attack", "rmb": "block"}
+	var own := skill_list()
+	for i in BIND_KEYS.size():
+		b[BIND_KEYS[i]] = own[i]["id"] if i < own.size() else ""
+	return b
+
+## Put a skill on a slot. A skill sits on one hotkey at most, so binding it again moves it.
+func bind(slot: String, id: String) -> void:
+	if not BIND_SLOTS.has(slot):
+		return
+	if id != "" and BIND_KEYS.has(slot):
+		for k in BIND_KEYS:
+			if binds.get(k, "") == id:
+				binds[k] = ""
+	binds[slot] = id
+	if game and game.ui and not puppet:
+		game.ui.refresh_skill_slots()
+
+## Keep only skills this class knows; fill anything missing from the defaults.
+func _check_binds() -> void:
+	var known := {}
+	for s in Data.skills_known(cls):
+		known[s["id"]] = true
+	var d := default_binds()
+	for slot in BIND_SLOTS:
+		var id: String = str(binds.get(slot, d[slot]))
+		binds[slot] = id if (id == "" or known.has(id)) else d[slot]
+
+func bound(slot: String) -> String:
+	return str(binds.get(slot, ""))
 
 func _build_rig() -> void:
 	if is_wraith():
@@ -196,7 +235,10 @@ func set_class(c: String) -> void:
 		c = "knight"
 	if c == cls and rig != null:
 		return
+	var changed := c != cls
 	cls = c
+	if changed or binds.is_empty():
+		binds = default_binds()
 	_clear_spirits()
 	dismiss_minions()
 	end_phase(false)
@@ -323,6 +365,7 @@ func setup(g: Node) -> void:
 
 func new_character() -> void:
 	var c: Dictionary = Data.CLASSES[cls]
+	binds = default_binds()
 	level = 1
 	xp = 0
 	str_ = c["str"]
@@ -704,6 +747,15 @@ func _set_goal(p: Vector3, direct: bool) -> void:
 			path = PackedVector3Array([p])
 	moving = true
 
+## Could this skill be cast right now (level, cooldown, mana, not mid-skill)? Used for held buttons.
+func skill_ready(id: String) -> bool:
+	var sk := Data.skill_def(id)
+	if sk.is_empty() or dead or charge_t >= 0.0 or drain_t >= 0.0:
+		return false
+	if atk_t >= 0.0 and atk_skill != "":
+		return false
+	return (level >= sk["lvl"] or game.test_allskills) and cds.get(id, 0.0) <= 0.0 and mana >= sk["mana"]
+
 func can_act() -> bool:
 	return not dead and atk_t < 0.0 and charge_t < 0.0 and drain_t < 0.0
 
@@ -931,9 +983,9 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	var has_shield: bool = equipment.get("shield") != null
 	var shield_pos := global_position + Vector3(0, 1.2, 0) + fwd * 0.5
 	if block_amt > 0.5 and facing:
-		var reduce := 0.12 if has_shield else 0.5
-		if kind == "proj":
-			reduce = 0.0 if has_shield else 0.4
+		var reduce := 0.2     # Block: 80% less damage from the front
+		if kind == "proj" and has_shield:
+			reduce = 0.0
 		dmg *= reduce
 		block_flash = 0.25
 		hit_t = 0.35
@@ -1556,7 +1608,7 @@ func _update_drain(delta: float) -> void:
 			end_drain()
 			return
 		WarlockFx.latch(game.world.fx_root, drain_main.global_position + Vector3(0, 1.0 * drain_main.height, 0))
-	if drain_t >= DRAIN_MIN and not Input.is_key_pressed(KEY_Q):
+	if drain_t >= DRAIN_MIN and not game.skill_held("drain"):
 		end_drain()
 		return
 	_face_smooth(drain_main.global_position - global_position, delta)
@@ -2062,7 +2114,7 @@ func unequip(slot: String) -> void:
 
 func to_save() -> Dictionary:
 	return {"cls": cls, "level": level, "xp": xp, "str": str_, "dex": dex, "vit": vit, "ene": ene, "points": stat_points, "gold": gold,
-		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm}
+		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds}
 
 func from_save(d: Dictionary) -> void:
 	set_class(str(d.get("cls", "knight")))
@@ -2086,6 +2138,10 @@ func from_save(d: Dictionary) -> void:
 	belt.resize(4)
 	stash = d.get("stash", [])
 	stash.resize(60)
+	binds = (d.get("binds", {}) as Dictionary).duplicate() if d.get("binds") is Dictionary else {}
+	_check_binds()
+	if game and game.ui and not puppet:
+		game.ui.refresh_skill_slots()
 	recalc()
 	life = max_life
 	mana = max_mana

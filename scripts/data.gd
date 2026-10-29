@@ -278,6 +278,26 @@ static func skills_for(cls: String) -> Array:
 			out.append(s)
 	return out
 
+## Skills every class has, whatever classes are added: the weapon attack (each class's own swing; the
+## knight's is the three-swing sword combo) and Block. They live on the mouse buttons by default.
+const COMMON_SKILLS := [
+	{"id": "attack", "cls": "any", "name": "Attack", "key": "", "lvl": 1, "mana": 0, "cd": 0.0, "aim": "point", "desc": "Strike with your weapon toward the cursor. Hold to keep attacking: the knight chains a forehand cut, a rising backhand and a spinning finisher."},
+	{"id": "block", "cls": "any", "name": "Block", "key": "", "lvl": 1, "mana": 0, "cd": 0.0, "aim": "self", "hold": true, "desc": "Hold to raise your guard: 80% less damage from the front. With a shield, arrows and missiles from the front are stopped entirely."},
+]
+
+## Every skill a class can bind: its own skills, then the common ones.
+static func skills_known(cls: String) -> Array:
+	return skills_for(cls) + COMMON_SKILLS
+
+static func skill_def(id: String) -> Dictionary:
+	for s in SKILLS:
+		if s["id"] == id:
+			return s
+	for s in COMMON_SKILLS:
+		if s["id"] == id:
+			return s
+	return {}
+
 static func xp_for_level(lvl: int) -> int:
 	return int(round(120.0 * pow(float(lvl), 1.75) + 60.0 * lvl))
 

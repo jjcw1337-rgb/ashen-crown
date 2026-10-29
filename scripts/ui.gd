@@ -17,6 +17,9 @@ const CELL := 44
 
 var root: Control
 var life_orb: ColorRect
+var life_globe: Globe
+var _slots_hero = null
+var mana_globe: Globe
 var mana_orb: ColorRect
 var life_lbl: Label
 var mana_lbl: Label
@@ -26,7 +29,10 @@ var stamina_bar: HudBar
 var level_medal: HudBar.Medallion
 var action_bar: Control
 var bar_style := "A"
-var skill_slots: Array = []
+var skill_slots := {}        # bar slot ("lmb", "rmb", "Q".."V") -> its Control
+var skills_panel: PanelContainer
+var skill_rows: VBoxContainer
+const BAR_TEX := {"frame": "res://assets/textures/ui/bar_frame.png", "slot": "res://assets/textures/ui/slot.png", "slot_big": "res://assets/textures/ui/slot_big.png"}
 var skill_hb: HBoxContainer
 var class_panel: Control
 ## Title screen: the saved characters (play / delete), and the new character's name.
@@ -133,6 +139,7 @@ func setup(g: Node) -> void:
 	_build_dialog()
 	_build_pause()
 	_build_test_panel()
+	_build_skills_panel()
 	_build_tooltip()
 	_build_title()
 	_build_join()
@@ -399,19 +406,29 @@ func _build_hud() -> void:
 	bottom.offset_top = -190
 	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(bottom)
-	life_orb = _orb(Color(0.85, 0.06, 0.04), Color(0.35, 0.0, 0.0))
-	var lf := _orb_frame(life_orb, true)
-	lf.position = Vector2(14, 6)
-	bottom.add_child(lf)
-	mana_orb = _orb(Color(0.15, 0.3, 1.0), Color(0.02, 0.04, 0.3))
-	var mf := _orb_frame(mana_orb, false)
-	mf.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	mf.position = Vector2(-190, 6)
-	bottom.add_child(mf)
-	mf.anchor_left = 1.0
-	mf.anchor_right = 1.0
-	mf.offset_left = -190
-	mf.offset_right = -14
+	# life and mana globes (scripts/globe.gd): liquid that surges, ripples, swirls and pulses
+	life_globe = Globe.new()
+	life_globe.kind = "life"
+	life_globe.ref_max = 120.0      # a level-1 hero's life; more makes the globe bigger
+	life_globe.size = Vector2(230, 230)
+	life_globe.position = Vector2(-4, -36)
+	bottom.add_child(life_globe)
+	mana_globe = Globe.new()
+	mana_globe.kind = "mana"
+	mana_globe.ref_max = 40.0
+	mana_globe.anchor_left = 1.0
+	mana_globe.anchor_right = 1.0
+	mana_globe.offset_left = -226
+	mana_globe.offset_right = 4
+	mana_globe.offset_top = -36
+	mana_globe.offset_bottom = 194
+	bottom.add_child(mana_globe)
+	life_orb = ColorRect.new()      # kept for older code paths; the globes draw themselves
+	mana_orb = ColorRect.new()
+	life_orb.visible = false
+	mana_orb.visible = false
+	bottom.add_child(life_orb)
+	bottom.add_child(mana_orb)
 	life_lbl = _label("", 14, Color(1, 0.85, 0.8))
 	life_lbl.position = Vector2(34, 166)
 	life_lbl.custom_minimum_size = Vector2(140, 0)
@@ -425,85 +442,80 @@ func _build_hud() -> void:
 	mana_lbl.offset_top = 166
 	mana_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	bottom.add_child(mana_lbl)
-	# centre action bar
-	var ua := OS.get_cmdline_user_args()
-	var si := ua.find("--barstyle")
-	if si >= 0 and si + 1 < ua.size():
-		bar_style = ua[si + 1]
-	var royal := bar_style == "B"
-	var bh := 176 if royal else 156
-	var frame := HudBar.Frame.new()
-	frame.crest = royal
+	# centre action bar: the Meshy-painted iron frame (a 9-slice), XP and stamina along the top, and one
+	# row of slots: three hotkeys, the two mouse-button skills in big crested sockets, three more
+	# hotkeys, then the potion belt
+	var bh := 214
+	var frame := NinePatchRect.new()
+	frame.texture = load(BAR_TEX["frame"])
+	frame.patch_margin_left = 62
+	frame.patch_margin_right = 62
+	frame.patch_margin_top = 62
+	frame.patch_margin_bottom = 62
 	frame.anchor_left = 0.5
 	frame.anchor_right = 0.5
 	frame.anchor_top = 1.0
 	frame.anchor_bottom = 1.0
-	frame.offset_left = -360
-	frame.offset_right = 360
-	frame.offset_top = -bh - 10
-	frame.offset_bottom = -10
+	frame.offset_left = -450
+	frame.offset_right = 450
+	frame.offset_top = -bh - 4
+	frame.offset_bottom = -4
+	frame.mouse_filter = Control.MOUSE_FILTER_STOP
 	root.add_child(frame)
 	action_bar = frame
 	var vb := VBoxContainer.new()
 	vb.set_anchors_preset(Control.PRESET_FULL_RECT)
-	vb.offset_left = 18
-	vb.offset_right = -18
-	vb.offset_top = 16 if not royal else 34
-	vb.offset_bottom = -12
-	vb.add_theme_constant_override("separation", 9)
+	vb.offset_left = 40
+	vb.offset_right = -40
+	vb.offset_top = 30
+	vb.offset_bottom = -24
+	vb.add_theme_constant_override("separation", 7)
 	frame.add_child(vb)
 	xp_bar = HudBar.new()
 	xp_bar.title = "EXPERIENCE"
 	xp_bar.tooltip_text = "Experience: fill it to gain a level"
+	xp_bar.custom_minimum_size = Vector2(0, 18)
+	xp_bar.icon = "star"
+	xp_bar.col_lo = Color(0.5, 0.28, 0.03)
+	xp_bar.col_hi = Color(1.0, 0.82, 0.32)
+	xp_bar.glow = Color(1.0, 0.85, 0.4)
 	stamina_bar = HudBar.new()
 	stamina_bar.title = "STAMINA"
 	stamina_bar.icon = "bolt"
 	stamina_bar.ticks = 0
 	stamina_bar.tooltip_text = "Stamina: hold Shift to sprint"
+	stamina_bar.custom_minimum_size = Vector2(0, 14)
+	stamina_bar.font_size = 11
 	stamina_bar.col_lo = Color(0.03, 0.38, 0.16)
 	stamina_bar.col_hi = Color(0.38, 0.95, 0.45)
 	stamina_bar.glow = Color(0.55, 1.0, 0.6)
-	if royal:
-		xp_bar.custom_minimum_size = Vector2(0, 20)
-		xp_bar.col_lo = Color(0.5, 0.28, 0.03)
-		xp_bar.col_hi = Color(1.0, 0.82, 0.32)
-		xp_bar.glow = Color(1.0, 0.85, 0.4)
-		stamina_bar.custom_minimum_size = Vector2(0, 18)
-		level_medal = HudBar.Medallion.new()
-		level_medal.size = Vector2(96, 96)
-		level_medal.position = Vector2(360 - 48, -62)
-		frame.add_child(level_medal)
-	else:
-		xp_bar.custom_minimum_size = Vector2(0, 22)
-		xp_bar.icon = "star"
-		xp_bar.col_lo = Color(0.3, 0.1, 0.58)
-		xp_bar.col_hi = Color(0.75, 0.5, 1.0)
-		xp_bar.glow = Color(0.85, 0.65, 1.0)
-		stamina_bar.custom_minimum_size = Vector2(0, 20)
 	vb.add_child(xp_bar)
-	if not royal:
-		vb.add_child(stamina_bar)
+	vb.add_child(stamina_bar)
 	var hb := HBoxContainer.new()
-	hb.add_theme_constant_override("separation", 6)
+	hb.add_theme_constant_override("separation", 4)
 	hb.alignment = BoxContainer.ALIGNMENT_CENTER
 	vb.add_child(hb)
 	skill_hb = hb
-	for i in 4:
-		var sk: Dictionary = Data.skills_for(hero.cls if hero else "knight")[i]
-		var s := _skill_slot(sk)
+	skill_slots = {}
+	for slot in ["Q", "E", "R", "_", "lmb", "rmb", "_", "F", "G", "V"]:
+		if slot == "_":
+			var gap := Control.new()
+			gap.custom_minimum_size = Vector2(12, 0)
+			hb.add_child(gap)
+			continue
+		var s := _bar_slot(slot)
 		hb.add_child(s)
-		skill_slots.append(s)
+		skill_slots[slot] = s
 	var sep := Control.new()
-	sep.custom_minimum_size = Vector2(28, 0)
+	sep.custom_minimum_size = Vector2(18, 0)
 	hb.add_child(sep)
 	for i in 4:
 		var idx := i
-		var b := _slot(Vector2(60, 60), func(ev): if ev.button_index == MOUSE_BUTTON_LEFT or ev.button_index == MOUSE_BUTTON_RIGHT: hero.drink(idx), func(p, on): _hover(p, on, ""), str(i + 1))
+		var b := _slot(Vector2(50, 50), func(ev): if ev.button_index == MOUSE_BUTTON_LEFT or ev.button_index == MOUSE_BUTTON_RIGHT: hero.drink(idx), func(p, on): _hover(p, on, ""), str(i + 1))
+		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		b.add_child(_keycap(str(i + 1)))
 		hb.add_child(b)
 		belt_slots.append(b)
-	if royal:
-		vb.add_child(stamina_bar)
 	# top: zone, fps, target, messages
 	zone_lbl = _label("", 20, GOLD, true)
 	zone_lbl.position = Vector2(20, 14)
@@ -572,9 +584,9 @@ func _build_hud() -> void:
 	hint_lbl.anchor_bottom = 1.0
 	hint_lbl.offset_left = -400
 	hint_lbl.offset_right = 400
-	hint_lbl.offset_top = -bh - (88 if bar_style == "B" else 40)
+	hint_lbl.offset_top = -bh - 52
 	hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint_lbl.text = "Click: move / sword combo  ·  Space: swing  ·  Shift: sprint  ·  Right-click: block  ·  QERF: skills  ·  1-4: potions  ·  I/C: inventory/stats  ·  T: portal  ·  Tab: map"
+	hint_lbl.text = "Left / right mouse and Q E R F G V: your skills (K to set them)  ·  Space: swing  ·  Shift: sprint  ·  1-4: potions  ·  I/C: inventory/stats  ·  T: portal  ·  Tab: map"
 	root.add_child(hint_lbl)
 	minimap = Minimap.new()
 	minimap.ui = self
@@ -601,61 +613,232 @@ func _keycap(k: String) -> PanelContainer:
 	cap.add_child(l)
 	return cap
 
-## Swap the four skill buttons for the current class's skills.
+## Rebuild the bar's skill slots from the hero's bindings (after a class change, a load or a rebind).
 func refresh_skill_slots() -> void:
-	if skill_hb == null or skill_slots.size() < 4:
+	if skill_hb == null or skill_slots.is_empty():
 		return
-	var sks: Array = hero.skill_list()
-	for i in 4:
-		var old: Panel = skill_slots[i]
-		var s := _skill_slot(sks[i])
+	for slot in skill_slots.keys():
+		var old: Control = skill_slots[slot]
+		var s := _bar_slot(slot)
 		skill_hb.add_child(s)
 		skill_hb.move_child(s, old.get_index())
 		old.queue_free()
-		skill_slots[i] = s
+		skill_slots[slot] = s
 	tooltip.visible = false
+	if skills_panel and skills_panel.visible:
+		_fill_skills_panel()
+	# the standard globes, unless this class is a special character with its own (Data.CLASSES "hud")
+	if hero and life_globe and life_globe.mat:
+		var hud: Dictionary = Data.CLASSES.get(hero.cls, {}).get("hud", {})
+		life_globe.set_style(hud)
+		mana_globe.set_style(hud)
 
-func _skill_slot(sk: Dictionary) -> Panel:
-	var p := Panel.new()
-	p.custom_minimum_size = Vector2(60, 60)
-	var sb := _box(Color(0.06, 0.05, 0.04, 0.9), Color(0.62, 0.48, 0.26), 2, 4, 0)
-	sb.shadow_size = 0
-	p.add_theme_stylebox_override("panel", sb)
+const SLOT_NAMES := {"lmb": "Left mouse", "rmb": "Right mouse"}
+
+## One bar slot: the Meshy socket, the bound skill's glyph, a cooldown shade, the key and the mana cost.
+## Click it to choose what goes there.
+func _bar_slot(slot: String) -> Control:
+	var big := slot == "lmb" or slot == "rmb"
+	var id: String = hero.bound(slot) if hero else ""
+	var sk := Data.skill_def(id)
+	var p := Control.new()
+	p.custom_minimum_size = Vector2(84, 94) if big else Vector2(62, 64)
+	p.size_flags_vertical = Control.SIZE_SHRINK_END
+	var bg := TextureRect.new()
+	bg.texture = load(BAR_TEX["slot_big" if big else "slot"])
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_SCALE
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(bg)
+	# the socket's hole: where the glyph and cooldown sit
+	var hole := Control.new()
+	hole.name = "hole"
+	hole.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hole.anchor_right = 1.0
+	hole.anchor_bottom = 1.0
+	if big:
+		hole.offset_left = 21; hole.offset_right = -21; hole.offset_top = 32; hole.offset_bottom = -18
+	else:
+		hole.offset_left = 13; hole.offset_right = -13; hole.offset_top = 15; hole.offset_bottom = -13
+	p.add_child(hole)
 	var glyph := SkillGlyph.new()
-	glyph.id = sk["id"]
+	glyph.id = id
 	glyph.set_anchors_preset(Control.PRESET_FULL_RECT)
 	glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	glyph.name = "glyph"
-	p.add_child(glyph)
+	glyph.scale_to = 0.62 if not big else 0.75
+	hole.add_child(glyph)
 	var cd := ColorRect.new()
 	cd.name = "cd"
 	cd.color = Color(0, 0, 0, 0.7)
 	cd.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cd.anchor_right = 1.0
 	cd.anchor_bottom = 1.0
-	p.add_child(cd)
-	p.add_child(_keycap(sk["key"]))
-	var pill := PanelContainer.new()
-	pill.add_theme_stylebox_override("panel", _box(Color(0.06, 0.1, 0.3, 0.95), Color(0.4, 0.55, 1.0), 1, 6, 0))
-	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var cost := _label(str(sk["mana"]), 11, Color(0.75, 0.82, 1.0), true)
-	cost.add_theme_constant_override("outline_size", 0)
-	pill.add_child(cost)
-	pill.position = Vector2(35, 43)
-	pill.custom_minimum_size = Vector2(24, 15)
-	cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	p.add_child(pill)
+	cd.anchor_top = 1.0
+	hole.add_child(cd)
+	var cap := _keycap("L" if slot == "lmb" else ("R" if slot == "rmb" else slot))
+	cap.position = Vector2(-4, -4) if not big else Vector2(-2, 6)
+	p.add_child(cap)
+	if not sk.is_empty() and int(sk["mana"]) > 0:
+		var pill := PanelContainer.new()
+		pill.add_theme_stylebox_override("panel", _box(Color(0.06, 0.1, 0.3, 0.95), Color(0.4, 0.55, 1.0), 1, 6, 0))
+		pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var cost := _label(str(sk["mana"]), 10, Color(0.75, 0.82, 1.0), true)
+		cost.add_theme_constant_override("outline_size", 0)
+		cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		pill.add_child(cost)
+		pill.custom_minimum_size = Vector2(20, 13)
+		pill.position = Vector2(p.custom_minimum_size.x - 24, p.custom_minimum_size.y - 16)
+		p.add_child(pill)
 	p.mouse_entered.connect(func():
-		var lines := [[sk["name"], GOLD], [sk["desc"], Color(0.85, 0.82, 0.75)], ["Mana: %d   Cooldown: %ss   Unlocks at level %d" % [sk["mana"], str(sk["cd"]), sk["lvl"]], Color(0.55, 0.65, 1.0)]]
+		var where: String = SLOT_NAMES.get(slot, "Key " + slot)
+		var lines := []
+		if sk.is_empty():
+			lines = [[where + ": empty", GOLD], ["Click to put a skill here (or press K)", DIM]]
+		else:
+			lines = [[sk["name"] + "   (" + where + ")", GOLD], [sk["desc"], Color(0.85, 0.82, 0.75)]]
+			if int(sk["mana"]) > 0 or float(sk["cd"]) > 0.0:
+				lines.append(["Mana: %d   Cooldown: %ss   Unlocks at level %d" % [sk["mana"], str(sk["cd"]), sk["lvl"]], Color(0.55, 0.65, 1.0)])
+			lines.append(["Click to change", DIM])
 		show_tooltip(lines)
 		tip_owner = p)
 	p.mouse_exited.connect(func():
 		tooltip.visible = false
 		tip_owner = null)
 	p.gui_input.connect(func(ev):
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			game.cast_skill(sk["id"]))
+		if ev is InputEventMouseButton and ev.pressed and (ev.button_index == MOUSE_BUTTON_LEFT or ev.button_index == MOUSE_BUTTON_RIGHT):
+			_choose_skill(slot))
 	return p
+
+## A menu of every skill the class knows, to put on a bar slot.
+func _choose_skill(slot: String) -> void:
+	var pm := PopupMenu.new()
+	var ids := []
+	for sk in Data.skills_known(hero.cls):
+		var locked: bool = hero.level < int(sk["lvl"]) and not game.test_allskills
+		pm.add_item(str(sk["name"]) + ("   (level %d)" % sk["lvl"] if locked else ""))
+		pm.set_item_disabled(pm.item_count - 1, locked)
+		if hero.bound(slot) == sk["id"]:
+			pm.set_item_checked(pm.item_count - 1, true)
+		ids.append(sk["id"])
+	if slot != "lmb":
+		pm.add_separator()
+		pm.add_item("(empty)")
+		ids.append("")
+		ids.append("")
+	pm.id_pressed.connect(func(i: int):
+		var idx := pm.get_item_index(i)
+		if idx >= 0 and idx < ids.size():
+			hero.bind(slot, ids[idx])
+			Sfx.play("click"))
+	pm.popup_hide.connect(pm.queue_free)
+	root.add_child(pm)
+	tooltip.visible = false
+	pm.popup(Rect2i(Vector2i(get_viewport().get_mouse_position()) + Vector2i(-40, -24 - 26 * pm.item_count), Vector2i(180, 0)))
+
+# ---------------------------------------------------------------- skills window (K)
+## Every skill the class knows, with buttons to put each on the left or right mouse button or a
+## hotkey. Hovering a skill and pressing Q E R F G V also binds it.
+var _hover_skill := ""
+func _build_skills_panel() -> void:
+	skills_panel = _panel("Skills", true, 560, 420)
+	var vb: VBoxContainer = skills_panel.get_node("vb")
+	var help := _label("Put a skill on a mouse button or a key. Hover a skill and press Q, E, R, F, G or V to bind it.", 13, DIM)
+	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	help.custom_minimum_size = Vector2(520, 0)
+	vb.add_child(help)
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(540, 360)
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	vb.add_child(sc)
+	skill_rows = VBoxContainer.new()
+	skill_rows.add_theme_constant_override("separation", 8)
+	skill_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(skill_rows)
+	skills_panel.visibility_changed.connect(func():
+		if skills_panel.visible:
+			_fill_skills_panel())
+
+func _fill_skills_panel() -> void:
+	for c in skill_rows.get_children():
+		c.queue_free()
+	for sk in Data.skills_known(hero.cls):
+		var id: String = sk["id"]
+		var locked: bool = hero.level < int(sk["lvl"]) and not game.test_allskills
+		var row := PanelContainer.new()
+		row.add_theme_stylebox_override("panel", _box(Color(0.05, 0.045, 0.04, 0.9), Color(0.32, 0.25, 0.15), 1, 4, 6))
+		row.mouse_entered.connect(func(): _hover_skill = id)
+		row.mouse_exited.connect(func(): if _hover_skill == id: _hover_skill = "")
+		skill_rows.add_child(row)
+		var hb := HBoxContainer.new()
+		hb.add_theme_constant_override("separation", 10)
+		row.add_child(hb)
+		var icon := Control.new()
+		icon.custom_minimum_size = Vector2(48, 48)
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var ibg := TextureRect.new()
+		ibg.texture = load(BAR_TEX["slot"])
+		ibg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ibg.set_anchors_preset(Control.PRESET_FULL_RECT)
+		ibg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.add_child(ibg)
+		var g := SkillGlyph.new()
+		g.id = id
+		g.dim = locked
+		g.scale_to = 0.55
+		g.set_anchors_preset(Control.PRESET_FULL_RECT)
+		g.offset_left = 9; g.offset_right = -9; g.offset_top = 11; g.offset_bottom = -9
+		g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.add_child(g)
+		hb.add_child(icon)
+		var tv := VBoxContainer.new()
+		tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hb.add_child(tv)
+		var head := str(sk["name"])
+		if locked:
+			head += "   (unlocks at level %d)" % sk["lvl"]
+		elif int(sk["mana"]) > 0:
+			head += "   %d mana" % sk["mana"] + ("   %ss cooldown" % str(sk["cd"]) if float(sk["cd"]) > 0.0 else "")
+		tv.add_child(_label(head, 15, GOLD if not locked else DIM, true))
+		var d := _label(str(sk["desc"]), 12, Color(0.8, 0.77, 0.7))
+		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		d.custom_minimum_size = Vector2(250, 0)
+		tv.add_child(d)
+		var grid := GridContainer.new()
+		grid.columns = 4
+		grid.add_theme_constant_override("h_separation", 3)
+		grid.add_theme_constant_override("v_separation", 3)
+		hb.add_child(grid)
+		for slot in ["lmb", "rmb", "Q", "E", "R", "F", "G", "V"]:
+			var b := Button.new()
+			b.text = "L" if slot == "lmb" else ("R🖱" if slot == "rmb" else slot)
+			if slot == "lmb":
+				b.text = "LMB"
+			elif slot == "rmb":
+				b.text = "RMB"
+			b.custom_minimum_size = Vector2(40, 28)
+			b.toggle_mode = true
+			b.button_pressed = hero.bound(slot) == id
+			b.disabled = locked
+			b.tooltip_text = "Put %s on %s" % [sk["name"], SLOT_NAMES.get(slot, "key " + slot)]
+			var sl: String = slot
+			b.pressed.connect(func():
+				hero.bind(sl, "" if (hero.bound(sl) == id and sl != "lmb") else id)
+				Sfx.play("click"))
+			grid.add_child(b)
+
+## In the skills window, hovering a skill and pressing a hotkey binds it there.
+func skills_hotkey(key: String) -> bool:
+	if skills_panel == null or not skills_panel.visible or _hover_skill == "":
+		return false
+	var sk := Data.skill_def(_hover_skill)
+	if sk.is_empty() or (hero.level < int(sk["lvl"]) and not game.test_allskills):
+		return true
+	hero.bind(key, _hover_skill)
+	Sfx.play("click")
+	return true
 
 # ---------------------------------------------------------------- inventory
 func _panel(title: String, left: bool, w: int, h: int) -> PanelContainer:
@@ -832,7 +1015,7 @@ func _drag_target() -> Array:
 		for k in equip_cells.keys():
 			if (equip_cells[k] as Control).get_global_rect().has_point(mp):
 				return ["equip", k]
-	for pnl in [inv_panel, char_panel, stash_panel, shop_panel, wp_panel, dialog_panel, action_bar]:
+	for pnl in [inv_panel, char_panel, stash_panel, shop_panel, wp_panel, dialog_panel, action_bar, skills_panel]:
 		if pnl and pnl.visible and (pnl as Control).get_global_rect().has_point(mp):
 			return ["ui", null]
 	return ["ground", null]
@@ -1766,7 +1949,7 @@ func hide_title() -> void:
 	_set_hud(true)
 
 func _set_hud(v: bool) -> void:
-	for n in [life_orb.get_parent(), mana_orb.get_parent(), life_lbl, mana_lbl, action_bar, zone_lbl, hint_lbl, minimap]:
+	for n in [life_globe, mana_globe, life_lbl, mana_lbl, action_bar, zone_lbl, hint_lbl, minimap]:
 		n.visible = v
 
 func _build_death() -> void:
@@ -1854,7 +2037,7 @@ func toggle(panel: Control) -> void:
 
 func close_all() -> bool:
 	var any := false
-	for p in [inv_panel, char_panel, shop_panel, stash_panel, wp_panel, dialog_panel, ench_panel, test_panel]:
+	for p in [inv_panel, char_panel, shop_panel, stash_panel, wp_panel, dialog_panel, ench_panel, test_panel, skills_panel]:
 		if p.visible:
 			p.visible = false
 			any = true
@@ -1863,7 +2046,7 @@ func close_all() -> bool:
 	return any
 
 func any_panel_open() -> bool:
-	return inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible
+	return inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible
 
 func message(t: String, col := Color(1, 1, 1), dur := 2.5) -> void:
 	msg_lbl.text = t
@@ -1989,20 +2172,27 @@ func _process(delta: float) -> void:
 			stamina_bar.col_hi = Color(0.38, 0.95, 0.45)
 			stamina_bar.glow = Color(0.55, 1.0, 0.6)
 		stamina_bar.pulse = move_toward(stamina_bar.pulse, 1.0 if hero.running else 0.0, delta * 4.0)
-		(life_orb.material as ShaderMaterial).set_shader_parameter("fill", hero.life / hero.max_life)
-		(mana_orb.material as ShaderMaterial).set_shader_parameter("fill", hero.mana / hero.max_mana)
+		if _slots_hero != hero:
+			_slots_hero = hero          # the bar is built before the hero exists: fill it once he does
+			refresh_skill_slots()
+		life_globe.set_value(hero.life, hero.max_life)
+		mana_globe.set_value(hero.mana, hero.max_mana)
 		life_lbl.text = "Life  %d / %d" % [int(hero.life), int(hero.max_life)]
 		mana_lbl.text = "Mana  %d / %d" % [int(hero.mana), int(hero.max_mana)]
-		var sks: Array = hero.skill_list()
-		for i in 4:
-			var sk: Dictionary = sks[i]
-			var s: Panel = skill_slots[i]
-			var cd: ColorRect = s.get_node("cd")
-			var locked: bool = hero.level < sk["lvl"] and not game.test_allskills
-			var frac: float = 1.0 if locked else clampf(hero.cds[sk["id"]] / maxf(sk["cd"], 0.01), 0.0, 1.0)
-			cd.anchor_top = 1.0 - frac
-			cd.color = Color(0, 0, 0, 0.82) if locked else Color(0, 0, 0, 0.6)
-			(s.get_node("glyph") as SkillGlyph).dim = locked or hero.mana < sk["mana"]
+		for slot in skill_slots.keys():
+			var c: Control = skill_slots[slot]
+			if not is_instance_valid(c) or not c.has_node("hole"):
+				continue
+			var sk := Data.skill_def(hero.bound(slot))
+			var cdr: ColorRect = c.get_node("hole/cd")
+			if sk.is_empty():
+				cdr.anchor_top = 1.0
+				continue
+			var locked: bool = hero.level < int(sk["lvl"]) and not game.test_allskills
+			var frac: float = 1.0 if locked else clampf(float(hero.cds.get(sk["id"], 0.0)) / maxf(float(sk["cd"]), 0.01), 0.0, 1.0)
+			cdr.anchor_top = 1.0 - frac
+			cdr.color = Color(0, 0, 0, 0.82) if locked else Color(0, 0, 0, 0.6)
+			(c.get_node("hole/glyph") as SkillGlyph).dim = locked or hero.mana < float(sk["mana"])
 	if msg_t > 0.0:
 		msg_t -= delta
 		msg_lbl.modulate.a = clampf(msg_t, 0.0, 1.0)
@@ -2034,8 +2224,33 @@ func _process(delta: float) -> void:
 class SkillGlyph extends Control:
 	var id := ""
 	var dim := false
+	var scale_to := 1.0     # unused (kept for callers); the glyph scales to fit its box
 	func _draw() -> void:
 		var c := size * 0.5
+		# glyphs are drawn for a ~40 px box around the centre; scale them to whatever box this is
+		var fit := minf(size.x, size.y) / 40.0
+		draw_set_transform(c * (1.0 - fit), 0.0, Vector2(fit, fit))
+		var steel := Color(0.85, 0.87, 0.92) if not dim else Color(0.4, 0.4, 0.42)
+		var gold2 := Color(1.0, 0.8, 0.4) if not dim else Color(0.4, 0.35, 0.3)
+		match id:
+			"attack":
+				# a sword, point up and to the right
+				draw_line(c + Vector2(-11, 11), c + Vector2(12, -12), steel, 4.0, true)
+				draw_line(c + Vector2(12, -12), c + Vector2(15, -15), steel, 2.0, true)
+				draw_line(c + Vector2(-13, 4), c + Vector2(-4, 13), gold2, 3.0, true)
+				draw_line(c + Vector2(-11, 11), c + Vector2(-16, 16), Color(0.45, 0.28, 0.15) if not dim else Color(0.3, 0.27, 0.25), 4.0, true)
+				return
+			"block":
+				# a heater shield with a cross
+				var pts := PackedVector2Array([c + Vector2(-13, -14), c + Vector2(13, -14), c + Vector2(13, 0), c + Vector2(0, 16), c + Vector2(-13, 0)])
+				draw_colored_polygon(pts, Color(0.35, 0.08, 0.06) if not dim else Color(0.25, 0.2, 0.2))
+				pts.append(pts[0])
+				draw_polyline(pts, gold2, 2.5, true)
+				draw_line(c + Vector2(0, -11), c + Vector2(0, 11), gold2, 3.0, true)
+				draw_line(c + Vector2(-9, -4), c + Vector2(9, -4), gold2, 3.0, true)
+				return
+			"":
+				return
 		var col := Color(1.0, 0.8, 0.4) if not dim else Color(0.4, 0.35, 0.3)
 		var wcol := Color(0.45, 0.88, 1.0) if not dim else Color(0.3, 0.35, 0.4)
 		var dcol := Color(1.0, 0.45, 0.1) if not dim else Color(0.4, 0.3, 0.28)
