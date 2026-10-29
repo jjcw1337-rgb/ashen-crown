@@ -36,6 +36,8 @@ static func impact_at(style: String) -> float:
 		"scoop": return 0.55
 		"burst": return 0.3
 		"cackle": return 0.5
+		"feral_lunge": return 0.64      # his hands land (feral.gd's baked lunge)
+		"feral_swipe": return 0.32      # the right claw rakes across
 	return 0.5
 
 ## 0 at walking stride, 1 at full sprint stride (move > 1 means sprinting).

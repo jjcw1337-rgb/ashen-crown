@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
+`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -63,7 +63,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `wraith.gd`, `wraith_fx.gd` | Wraith class: body mesh + spectral shader on the knight skeleton; skill effects |
 | `demon.gd`, `demon_fx.gd`, `demon_minion.gd` | Demon class: knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader; skill effects and the Underworld screen grade; summoned demons (simple ally AI) |
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
-| `enemy.gd`, `projectile.gd` | Monsters/AI and missiles (host-authoritative in co-op) |
+| `enemy.gd`, `projectile.gd`, `feral.gd` | Monsters/AI and missiles (host-authoritative in co-op); the Feral's baked-animation body |
 | `fort.gd` | Grubb's fort (the lair in Act I and A2; A3 keeps the crypt): the muddy approach with the guards fighting the dead, the palisade ring, gatehouse and watchtowers (Meshy props in `assets/models/fort/`), the lived-in camp scattered round Grubb's open courtyard, and the moor's goblin trail end (`Fort.trail_end`) |
 | `meshy_monster.gd` | Act I monsters from Meshy (`MeshyMonster.MODELS`, zombie/fallen/archer/goblin_guard): built on `Goblin.imported_rig` with grips and weapons; `Data.ENEMIES` `"mesh"` picks them |
 | `hoard.gd` | King Grubb's fight (Act I boss): Gilded Bombs, the three burst sacks, the gold scramble (piles reaching him heal him; piles a hero takes hurt him) |
@@ -174,6 +174,15 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   (measures the joints; hints `{"sh_z", "sh_x"}` when a hood or helmet spike fools the neck finder) and
   `python3 tools/blender/act1/layout_to_gd.py <kind> layout.json`. They keep their A-pose (arms aimed down like the
   gnome). Previews: `tools/monster_lineup.gd -- out.png kind...`, `tools/monster_shot.gd` (staged on the moor).
+- **The Feral** (`feral.gd`, Act I forest): a Meshy model rigged and animated in Blender (`sources/feral.blend`:
+  17 bones, skinned by distance along the body's surface because the forearms touch the knees, IK on the four
+  limbs). Unlike the other monsters it plays baked, in-place animations ("crawl", "lunge", "swipe", exported as NLA
+  tracks to `assets/models/monsters/feral.glb`), timed by `Feral.pose` from the enemy state: the crawl from `phase`,
+  the attacks from their progress. Packs of 3-4 cling head-down to oak trunks well off the road
+  (`World._feral_packs`, spawn entries with `"perch"`; `Enemy.perch_on`); come within ~10 m and the pack
+  skitters down (`_feral_perch`, styles "perch"/"descend" carry it to co-op partners), circles about 4.5 m out,
+  and one at a time lunges (`special` "feral_lunge", flying over other monsters), backs off, darts in to claw,
+  backs out (`_feral_combat`, `f_state`). `tools/feral_test.gd` checks it.
 - **Factions** (`"faction"` in `Data.ENEMIES`: goblin, undead): a monster fights the nearest other-faction monster when
   it is closer than the hero (`Enemy.rival`, `Enemy.take_hit` so the attack code works on both); rival kills give no
   xp or loot (`killed_by_rival`). Host-side like all AI.

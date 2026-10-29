@@ -63,6 +63,17 @@ var net_atk := -1.0
 var net_hit := 0.0
 var _net_phase_rate := 0.0
 var _net_t := 0.0
+## The Feral (feral.gd): clinging to a trunk (perch_dir points from the trunk out at him; perch_h > 0 while
+## he is up there), and its fight: lunge, back off ("back"), come in for the claws.
+var perch_h := 0.0
+var perch_dir := Vector3.ZERO
+var f_state := ""
+var f_t := 0.0
+var lunge_cd := 1.5
+var f_n := 0
+var lunge_from := Vector3.ZERO
+var lunge_to := Vector3.ZERO
+var slot_a := 0.0
 
 func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> void:
 	game = g
@@ -87,7 +98,11 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 	atk_dur = def["atk_time"]
 	var look: Dictionary = def["look"]
 	height = look.get("height", look.get("size", 1.0))
-	if def.has("mesh") and MeshyMonster.ok(def["mesh"]):
+	if def.get("mesh", "") == "feral" and Feral.ok():
+		rig = Feral.build()
+		slot_a = randf_range(-1.6, 1.6)
+		lunge_cd = randf_range(0.3, 3.0)
+	elif def.has("mesh") and MeshyMonster.ok(def["mesh"]):
 		rig = MeshyMonster.build(def["mesh"], look)
 	elif def.has("model"):
 		rig = Goblin.build(def["model"])
@@ -339,10 +354,12 @@ func _remote_process(delta: float) -> void:
 	if Vector2(net_pos.x - global_position.x, net_pos.z - global_position.z).length() > 8.0:
 		p = net_pos
 	p.y = game.world.height_at(p.x, p.z)
+	if rig.has_meta("feral"):
+		p.y += Feral.perch_pose(rig, atk_style, net_atk)
 	global_position = p
 	rig.rotation.y = lerp_angle(rig.rotation.y, net_yaw, k)
 	phase += _net_phase_rate * delta
-	Anim.pose(rig, {"time": anim_time, "phase": phase, "move": move_amt, "atk": net_atk,
+	_pose({"time": anim_time, "phase": phase, "move": move_amt, "atk": net_atk,
 		"style": atk_style, "hit": net_hit, "zombie": kind in ["zombie", "mummy"], "aggro": aggro})
 
 ## Visual and sound side of the special attacks, run on every player's game.
@@ -399,6 +416,9 @@ func _process(delta: float) -> void:
 		if rig.has_meta("crawler"):
 			rig.rotation.z = f * PI
 			rig.position.y = f * 0.4 * height
+		elif rig.has_meta("feral"):
+			rig.rotation.x = 0.0
+			rig.rotation.z = f * f * 1.35      # rolls onto his side
 		elif rig.has_meta("goblin"):
 			# knees buckle, then he topples forward onto his belly with a bounce
 			rig.rotation.x = -Anim.kf(dead_t, [[0.0, 0.0], [0.5, 0.08], [1.1, 1.3], [1.25, 1.18], [1.4, 1.28]])
@@ -407,7 +427,7 @@ func _process(delta: float) -> void:
 				Fx.burst(game.world.fx_root, global_position - rig.global_transform.basis.z * 1.5, Color(0.4, 0.35, 0.3, 0.8), 40, 4.0, 0.3, 0.9, false, -3.0, 80.0)
 		else:
 			rig.rotation.x = f * f * 1.45
-		Anim.pose(rig, {"time": anim_time, "hit": 1.0 - f, "dead": minf(dead_t, 1.0)})
+		_pose({"time": anim_time, "hit": 1.0 - f, "dead": minf(dead_t, 1.0)})
 		if dead_t > 8.0:
 			rig.position.y -= delta * 0.4
 		if dead_t > 11.0:
@@ -433,6 +453,9 @@ func _process(delta: float) -> void:
 	var to := hero.global_position - global_position
 	to.y = 0
 	var dist := to.length()
+	if perch_h > 0.0:
+		_feral_perch(delta, hero, dist)
+		return
 	if dist > 50.0 and not boss:
 		return
 	hit_t = maxf(0.0, hit_t - delta * 4.0)
@@ -482,17 +505,23 @@ func _process(delta: float) -> void:
 		global_position = game.world.move(global_position, vel * delta, body_r())
 		if aggro or vel.length() > 0.5:
 			if atk_t < 0.0:
-				_face(vel if not aggro or dist > 3.0 else to)
+				_face(to if aggro and (dist <= 3.0 or f_state in ["back", "out"]) else vel)
 		move_amt = move_toward(move_amt, clampf(vel.length() / maxf(speed, 0.1), 0.0, 1.0), delta * 5.0)
 		var was := phase
-		phase += delta * vel.length() * (1.6 / maxf(height, 0.5))
+		phase += delta * vel.length() * (1.6 / maxf(height, 0.5)) * (-1.0 if f_state in ["back", "out"] else 1.0)
 		if boss and rig.has_meta("goblin") and floorf(phase / PI) != floorf(was / PI) and move_amt > 0.4:
 			_footstep()
 	else:
 		move_amt = move_toward(move_amt, 0.0, delta * 5.0)
 	global_position.y = game.world.height_at(global_position.x, global_position.z)
-	Anim.pose(rig, {"time": anim_time, "phase": phase, "move": move_amt, "atk": (atk_t / atk_dur) if atk_t >= 0.0 else -1.0,
+	_pose({"time": anim_time, "phase": phase, "move": move_amt, "atk": (atk_t / atk_dur) if atk_t >= 0.0 else -1.0,
 		"style": atk_style, "hit": hit_t, "zombie": kind in ["zombie", "mummy"], "aggro": aggro})
+
+func _pose(st: Dictionary) -> void:
+	if rig.has_meta("feral"):
+		Feral.pose(rig, st, height)
+	else:
+		Anim.pose(rig, st)
 
 ## A heavy boss's footfall: a puff of dust under the planted foot, and the ground shakes a
 ## little if you're close.
@@ -524,6 +553,8 @@ func _think_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vect
 		var v: Variant = hoard.steer(self, delta)
 		if v != null:
 			return v
+	if ai == "feral":
+		return _feral_combat(delta, hero, to, dist)
 	var rng_atk: float = def["range"]
 	if boss:
 		if not enraged and life < max_life * 0.35 and hoard == null:
@@ -627,6 +658,10 @@ func _begin_special(sp: String) -> void:
 			_begin_attack(sp)
 			if sp == "nova":
 				_fx("nova_tele")
+		"feral_lunge":
+			atk_style = sp
+			atk_dur = 0.9
+			_begin_attack(sp)
 		# King Grubb (hoard.gd): a lobbed bomb, scooping gold, staggering, cackling
 		"bomb", "scoop", "burst", "cackle":
 			atk_style = "lob" if sp == "bomb" else sp
@@ -635,6 +670,11 @@ func _begin_special(sp: String) -> void:
 func _update_attack(delta: float, hero: Node3D, dist: float) -> void:
 	atk_t += delta
 	var a := atk_t / atk_dur
+	if special == "feral_lunge":
+		# airborne from the launch to the landing: over whatever is in the way (other monsters too)
+		var want := lunge_from.lerp(lunge_to, smoothstep(0.18, 0.62, a)) - global_position
+		want.y = 0
+		global_position = game.world.move(global_position, want, body_r())
 	if a < Anim.impact_at(atk_style) * 0.8 and special in ["", "volley", "bomb"]:
 		_face(hero.global_position - global_position)
 	if not impact_done and a >= Anim.impact_at(atk_style):
@@ -643,6 +683,11 @@ func _update_attack(delta: float, hero: Node3D, dist: float) -> void:
 	if atk_t >= atk_dur:
 		atk_t = -1.0
 		cooldown = randf_range(0.3, 0.8) * (0.5 if boss else 1.0)
+		if special == "feral_lunge":
+			# after the leap he backs off a few steps, watching, before coming in for the claws
+			f_state = "back"
+			f_t = randf_range(0.7, 1.1)
+			atk_dur = def["atk_time"]
 		special = ""
 
 func _roll() -> float:
@@ -687,6 +732,10 @@ func _impact(hero: Node3D, dist: float) -> void:
 			for h in game.all_heroes():
 				if not h.dead and h.global_position.distance_to(global_position) < 7.0:
 					h.take_hit(_roll() * 1.2, global_position, "nova", "fire")
+		"feral_lunge":
+			# the claws come down where he lands
+			if hero.global_position.distance_to(global_position) < radius + hero.radius + 1.1:
+				hero.take_hit(_roll() * 1.5, global_position, "melee")
 
 func _shoot(at: Vector3, pkind: String) -> void:
 	var pr := Projectile.new()
@@ -695,3 +744,98 @@ func _shoot(at: Vector3, pkind: String) -> void:
 	pr.launch(game, pkind, from, at + Vector3(0, 1.1, 0), _roll())
 	game.net.projectile(pkind, from, at + Vector3(0, 1.1, 0))
 	Sfx.play_at("bow" if pkind in ["arrow", "dart"] else "fireball", global_position, -2.0, randf_range(0.9, 1.1))
+
+# ---------------------------------------------------------------- the Feral (feral.gd)
+## Clinging head-down to a trunk until someone comes close, then down it in a skitter, and the rest of
+## its pack with it.
+func perch_on(trunk: Vector3, out_dir: Vector3, h := Feral.PERCH_H) -> void:
+	perch_dir = Vector3(out_dir.x, 0, out_dir.z).normalized()
+	perch_h = h
+	rig.rotation.y = atan2(-perch_dir.x, -perch_dir.z)
+	atk_style = "perch"
+	atk_t = 0.0
+	atk_dur = 1.0
+	global_position = Vector3(global_position.x, game.world.height_at(global_position.x, global_position.z) + Feral.perch_pose(rig, "perch", 0.0), global_position.z)
+
+func _feral_perch(delta: float, hero: Node3D, dist: float) -> void:
+	if atk_style == "perch":
+		var near: bool = dist < 10.0 and not hero.dead and hero.get("phased") != true and game.world.los(global_position, hero.global_position)
+		if near or aggro:
+			_feral_drop()
+			for e in game.enemies_near(global_position, 32.0):
+				if e != self and e.pack_id == pack_id and e.perch_h > 0.0 and e.atk_style == "perch":
+					e.f_t = -randf_range(0.1, 0.6)      # a beat apart, not all at once
+					e._feral_drop()
+	else:
+		atk_t += delta
+		if atk_t >= atk_dur:
+			perch_h = 0.0
+			atk_t = -1.0
+			atk_dur = def["atk_time"]
+			atk_style = def["atk"]
+			rig.rotation.x = 0.0
+			# off the bark and clear of the trunk's footprint
+			global_position = game.world.free_spot_near(global_position + perch_dir * 0.9, 1.2)
+			global_position.y = game.world.height_at(global_position.x, global_position.z)
+			aggro = true
+			cooldown = 0.4
+			return
+	var a := maxf(atk_t, 0.0) / atk_dur
+	var y: float = game.world.height_at(global_position.x, global_position.z)
+	global_position.y = y + Feral.perch_pose(rig, atk_style, a)
+	_pose({"time": anim_time, "atk": a, "style": atk_style, "phase": phase})
+
+func _feral_drop() -> void:
+	atk_style = "descend"
+	atk_dur = Feral.DESCEND_T
+	atk_t = minf(f_t, 0.0)
+	f_t = 0.0
+	aggro = true
+	Sfx.play_at("growl", global_position, -10.0, randf_range(1.15, 1.35))
+
+## Fast, and coming at you from its own side. The pack circles about 4.5 m out; one at a time lunges,
+## backs off a few steps ("back"), darts in for a rake or two with its claws ("in"), then backs out to
+## the circle again ("out") for the next one's turn.
+func _feral_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vector3:
+	lunge_cd -= delta
+	match f_state:
+		"back", "out":
+			f_t -= delta
+			if f_t <= 0.0:
+				f_state = "in" if f_state == "back" else ""
+				f_n = 0
+			return -to.normalized() * speed * 0.5
+		"in":
+			if dist <= def["range"] + hero.radius * 0.5:
+				if cooldown <= 0.0:
+					if f_n >= 2 or (f_n >= 1 and randf() < 0.5):
+						f_state = "out"
+						f_t = randf_range(0.8, 1.2)
+						return Vector3.ZERO
+					f_n += 1
+					_face(to)
+					atk_dur = def["atk_time"]
+					_begin_attack("")
+				return Vector3.ZERO
+			return go_to(delta, hero.global_position, speed)
+	# circling: anyone who ends up right on top of you claws anyway
+	if dist <= def["range"] + hero.radius * 0.5 and cooldown <= 0.0:
+		f_state = "in"
+		f_n = 0
+		return Vector3.ZERO
+	if lunge_cd <= 0.0 and dist > 3.2 and dist < 7.5 and not _pack_lunging() and game.world.los(global_position, hero.global_position):
+		lunge_cd = randf_range(3.0, 5.0)
+		_face(to)
+		rig.rotation.y = atan2(-to.x, -to.z)
+		lunge_from = global_position
+		lunge_to = hero.global_position - to.normalized() * (radius + hero.radius + 0.3)
+		_begin_special("feral_lunge")
+		return Vector3.ZERO
+	var from_hero := (-to).normalized().rotated(Vector3.UP, slot_a)
+	return go_to(delta, hero.global_position + from_hero * 4.5, speed)
+
+func _pack_lunging() -> bool:
+	for e in game.enemies_near(global_position, 16.0):
+		if e != self and e.pack_id == pack_id and e.special == "feral_lunge" and e.atk_t >= 0.0:
+			return true
+	return false
