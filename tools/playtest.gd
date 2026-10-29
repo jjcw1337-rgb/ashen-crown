@@ -93,6 +93,9 @@ func _run() -> void:
 			picked += 1
 	print("[9] picked up ", picked, " gold=", h.gold)
 	# regression: hovered/targeted objects deleted out from under the player
+	# (hold the monsters still meanwhile: a Feral pack knocking him onto the gold would pick it up)
+	for e in g.enemies_near(h.global_position, 60.0):
+		e.set_process(false)
 	g.drop_item(Items.gold(50), h.global_position + Vector3(2, 0, 0))
 	g.drop_item(Items.potion("hp_potion"), h.global_position + Vector3(-2, 0, 0))
 	await wait(60)
@@ -101,6 +104,8 @@ func _run() -> void:
 	h.target = items[1]
 	items[0].queue_free()
 	items[1].queue_free()
+	for e in g.enemies_near(h.global_position, 60.0):
+		e.set_process(true)
 	var victim = g.enemies_near(h.global_position, 300.0)[0]
 	await wait(3)
 	g.hovered = victim
