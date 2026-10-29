@@ -122,12 +122,13 @@ The action bar shows your **experience** (violet, with your level and progress) 
   - King Grubb's model was generated with [Meshy](https://www.meshy.ai) from a Meshy concept image, then rigged in Blender.
   - When the gold is gone the fight goes on. After the last sack he's broke and furious: faster, and three bombs at a time. When he dies his hoard bursts open.
 
-**A2:** after you defeat King Grubb, the victory screen offers **Begin A2**. Everyone starts over at Greywatch Camp with their knight, gear, gold and level. Waypoints and the boss reset. In A2:
+**A2, the Imperial Road:** after you defeat King Grubb, the victory screen offers **Begin A2**. Everyone starts over at Greywatch Camp with their knight, gear, gold and level, and the road north leads somewhere new:
 
-- Monsters have 6 times the life and armor (King Grubb 4 times) and 5 times the damage, and give 5 times the experience.
+- **The Imperial Road**: a longer, wider road under a warm late-afternoon sun. It starts on the moor (the restless dead and the moor's creatures), runs through a rocky pass where **bandits lie in wait** around an overturned wagon and spring out from behind the rocks when you stop to look, then becomes the old Roman road: paving and milestones, tombs along both verges, cypresses, toppled columns and an aqueduct you walk beneath. Near the city, bandits hold the road between ruined colonnades and statues, and a triumphal arch leads into Aurelia.
+- **Aurelia**: a city run by bandits. In through the gate, up the colonnaded main street past shops, apartment blocks, a temple and a market to the old arena, where **Varro the lanista** offers you a place in the games.
+- **The games**: the Gate of Life shuts behind you and the crowd roars. Fight through the stages: **the lions**, **the gladiators**, **the beasts of the pit** (with the pit's spike traps: step out of the glowing circles), and finally **Aurelius, Champion of the Arena**, who charges across the sand behind his shield and calls lions and his gladiator brothers as he weakens. Beat him to finish A2. If you fall, Varro will take another wager.
+- Monsters have 6 times the life and armor (bosses 4 times) and 5 times the damage, and give 5 times the experience.
 - Every item they drop has 5 times the flat stats (damage, defense, life, attributes and other flat bonuses), marked "A2 item" in its tooltip. Percentage bonuses (enhanced damage and defense, attack speed, life steal, resist, block, magic and gold find, run speed) stay as rolled.
-
-**Winter in A2:** A2 is snowed in. The camp and the moor are buried in snow (with packed slush on the roads), trees and rooftops carry snow, the grass pokes through frosted, snow falls around you, your knight leaves footprints and his breath steams in the cold. On Ultra the snowfall is at its heaviest. The crypt stays as it is.
 
 **A3:** beating A2 offers **Begin A3**. Everyone starts over again with their knight, and it stacks on top of A2:
 
