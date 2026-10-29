@@ -76,7 +76,7 @@ func _run() -> void:
 	await create_timer(1.0).timeout
 	print("[D] after travel: minions kept=", h.minions.filter(func(m): return is_instance_valid(m)).size(), " near hero=", h.minions.filter(func(m): return is_instance_valid(m) and m.global_position.distance_to(h.global_position) < 6.0).size())
 	h.set_class("knight")
-	print("[D] switched to knight: minions=", h.minions.size(), " slots ", g.ui.skill_slots.map(func(s): return (s.get_node("glyph") as Control).get("id")))
+	print("[D] switched to knight: minions=", h.minions.size(), " slots ", ["Q", "E", "R", "F"].map(func(k): return h.bound(k)))
 	g.load_game()
 	print("[D] after load: class ", h.cls, " demon rig ", h.rig.has_meta("demon"), " net class ", h.net_gear().get("_cls"))
 	quit()

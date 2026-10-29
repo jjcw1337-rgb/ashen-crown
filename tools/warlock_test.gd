@@ -108,7 +108,7 @@ func _run() -> void:
 		await process_frame
 	print("[W] after travel: bolts %d pools %d channel %s" % [h.bolts.size(), h.blights.size(), h.drain_t >= 0.0])
 	h.set_class("knight")
-	print("[W] switched to knight: covenant ", h.covenant_t, " slots ", g.ui.skill_slots.map(func(s): return (s.get_node("glyph") as Control).get("id")))
+	print("[W] switched to knight: covenant ", h.covenant_t, " slots ", ["Q", "E", "R", "F"].map(func(k): return h.bound(k)), " mouse ", [h.bound("lmb"), h.bound("rmb")])
 	g.load_game()
 	print("[W] after load: class ", h.cls, " warlock rig ", h.rig.has_meta("warlock"), " net class ", h.net_gear().get("_cls"))
 	quit()

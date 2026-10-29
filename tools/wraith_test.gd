@@ -15,7 +15,7 @@ func _run() -> void:
 	var h = g.hero
 	print("[W] class ", h.cls, " wraith rig ", h.rig.has_meta("wraith"), " skills ", h.skill_list().map(func(s): return s["id"]))
 	print("[W] stats str %d dex %d vit %d ene %d life %d mana %d shield %s" % [h.str_, h.dex, h.vit, h.ene, h.max_life, h.max_mana, str(h.equipment["shield"])])
-	print("[W] ui slots ", g.ui.skill_slots.map(func(s): return (s.get_node("glyph") as Control).get("id")))
+	print("[W] ui slots ", ["Q", "E", "R", "F"].map(func(k): return h.bound(k)))
 	await g.travel(0, "wild", "start")
 	while g._busy:
 		await process_frame
@@ -45,7 +45,7 @@ func _run() -> void:
 	print("[W] enemies killed so far: ", dead, " spirits ", h.spirits.size(), " hover y ", snappedf(h.rig.position.y, 0.01))
 	g.save_game()
 	h.set_class("knight")
-	print("[W] switched to knight: rig wraith? ", h.rig.has_meta("wraith"), " slots ", g.ui.skill_slots.map(func(s): return (s.get_node("glyph") as Control).get("id")))
+	print("[W] switched to knight: rig wraith? ", h.rig.has_meta("wraith"), " slots ", ["Q", "E", "R", "F"].map(func(k): return h.bound(k)))
 	g.load_game()
 	print("[W] after load class ", h.cls, " rig wraith ", h.rig.has_meta("wraith"))
 	await g.start_game(false, "knight")
