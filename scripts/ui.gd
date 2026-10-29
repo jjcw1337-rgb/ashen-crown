@@ -1589,12 +1589,12 @@ func _build_character() -> void:
 	var sb := StyleBoxTexture.new()
 	sb.texture = load(SHEET_TEX["panel"])
 	for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
-		sb.set_texture_margin(side, 56)
+		sb.set_texture_margin(side, 100)   # the whole corner piece, never stretched
 	# keep everything inside the gold trim, clear of the iron border and its corner pieces
 	sb.set_content_margin(SIDE_LEFT, 62)
 	sb.set_content_margin(SIDE_RIGHT, 62)
 	sb.set_content_margin(SIDE_TOP, 50)
-	sb.set_content_margin(SIDE_BOTTOM, 60)
+	sb.set_content_margin(SIDE_BOTTOM, 88)   # above the bottom corner pieces
 	char_panel.add_theme_stylebox_override("panel", sb)
 	var vb: VBoxContainer = char_panel.get_node("vb")
 	vb.add_theme_constant_override("separation", 5)
