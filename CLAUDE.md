@@ -182,7 +182,8 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   (`World._feral_packs`, spawn entries with `"perch"`; `Enemy.perch_on`); come within ~10 m and the pack
   skitters down (`_feral_perch`, styles "perch"/"descend" carry it to co-op partners), circles about 4.5 m out,
   and one at a time lunges (`special` "feral_lunge", flying over other monsters), backs off, darts in to claw,
-  backs out (`_feral_combat`, `f_state`). `tools/feral_test.gd` checks it.
+  backs out (`_feral_combat`, `f_state`); the lunge has a 5 s cooldown, and outrun for 6 s (beyond 9 m) the pack
+  gives up and goes home, ignoring you for 8 s unless hit (`f_chase`, `f_calm`). `tools/feral_test.gd` checks it.
 - **Factions** (`"faction"` in `Data.ENEMIES`: goblin, undead): a monster fights the nearest other-faction monster when
   it is closer than the hero (`Enemy.rival`, `Enemy.take_hit` so the attack code works on both); rival kills give no
   xp or loot (`killed_by_rival`). Host-side like all AI.

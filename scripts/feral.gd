@@ -10,8 +10,8 @@ class_name Feral
 ## and they skitter down and come at you from all sides, one lunging at a time (Enemy._feral_combat).
 
 const GLB := "res://assets/models/monsters/feral.glb"
-## the Meshy model is 1.7 m tall crouched; this makes him a man-sized crouch (~1.3 m)
-const SCALE := 0.75
+## the Meshy model is 1.7 m tall crouched; this makes his crouch about 1 m, well under the hero
+const SCALE := 0.6
 ## metres of ground the crawl covers per cycle at this scale (1.5 m in the source)
 const STRIDE := 1.5 * SCALE
 ## how high up the trunk they cling, and how long they take to come down

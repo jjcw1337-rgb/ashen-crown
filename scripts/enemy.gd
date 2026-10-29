@@ -71,6 +71,8 @@ var f_state := ""
 var f_t := 0.0
 var lunge_cd := 1.5
 var f_n := 0
+var f_chase := 0.0     # seconds the hero has kept out of reach; at 6 it gives up and goes home
+var f_calm := 0.0      # after giving up it won't notice you again for a while (unless hit)
 var lunge_from := Vector3.ZERO
 var lunge_to := Vector3.ZERO
 var slot_a := 0.0
@@ -463,6 +465,7 @@ func _process(delta: float) -> void:
 		global_position = game.world.move(global_position, knock * delta * 6.0, body_r())
 		knock = knock.lerp(Vector3.ZERO, clampf(delta * 8.0, 0.0, 1.0))
 	cooldown = maxf(0.0, cooldown - delta)
+	f_calm = maxf(0.0, f_calm - delta)
 	if hoard != null and hoard.boss == self and aggro:
 		hoard.update(delta)
 	var vel := Vector3.ZERO
@@ -473,7 +476,7 @@ func _process(delta: float) -> void:
 	elif atk_t >= 0.0:
 		_update_attack(delta, hero, dist)
 	else:
-		if not aggro and dist < def.get("aggro", 12.0) and not hero_dead and game.world.los(global_position, hero.global_position):
+		if not aggro and f_calm <= 0.0 and dist < def.get("aggro", 12.0) and not hero_dead and game.world.los(global_position, hero.global_position):
 			aggro = true
 			if boss:
 				game.on_boss_aggro(self)
@@ -798,6 +801,16 @@ func _feral_drop() -> void:
 ## the circle again ("out") for the next one's turn.
 func _feral_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vector3:
 	lunge_cd -= delta
+	# outrun for 6 s: it gives up and slinks back to its tree
+	f_chase = f_chase + delta if dist > 9.0 else 0.0
+	if f_chase > 6.0:
+		f_chase = 0.0
+		f_state = ""
+		aggro = false
+		f_calm = 8.0
+		wander_to = home
+		wander_t = 4.0
+		return Vector3.ZERO
 	match f_state:
 		"back", "out":
 			f_t -= delta
@@ -824,7 +837,7 @@ func _feral_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vect
 		f_n = 0
 		return Vector3.ZERO
 	if lunge_cd <= 0.0 and dist > 3.2 and dist < 7.5 and not _pack_lunging() and game.world.los(global_position, hero.global_position):
-		lunge_cd = randf_range(3.0, 5.0)
+		lunge_cd = 5.0
 		_face(to)
 		rig.rotation.y = atan2(-to.x, -to.z)
 		lunge_from = global_position
