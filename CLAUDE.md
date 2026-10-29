@@ -218,7 +218,9 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
     champion pit lion), then the champion (`Data.ENEMIES["champion"]`, a boss: his death ends the act through
     `Game.on_enemy_killed`), who calls lions at 60% life and gladiators at 30%. Host-authoritative; everything seen
     (gates, announcements, the crowd's excitement, sounds) is an event string through `fx` / `Net.games_event`.
-    If no living hero is near the sand for 8 s the games reset. The crowd is one MultiMesh of figures on the
+    In the pit stage and the champion's bout the spike traps fire (`_spike_traps`: glowing warnings, some under
+    the heroes, then iron spikes 1.3 s later; they hurt beasts too, never the champion); each kill makes the crowd
+    cheer (`kill`). If no living hero is near the sand for 8 s the games reset. The crowd is one MultiMesh of figures on the
     standing stands, bobbing and jumping by a shader uniform (`excite`). Sounds: `arena_horn`, `crowd_roar` (loop),
     `crowd_cheer`, `portcullis`, `lion_roar`.
   - **Roman architecture** (`roman.gd`): materials (marble, tuff, brick, tile, bronze), `arch_mesh` (an extruded

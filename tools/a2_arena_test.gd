@@ -96,6 +96,13 @@ func _run() -> void:
 			break
 	var boss = games.boss
 	check(boss != null and is_instance_valid(boss) and boss.kind == "champion" and boss.boss, "the champion enters")
+	for i in 900:
+		await process_frame
+		if games.bursts > 0:
+			break
+	check(games.bursts > 0, "the pit's spike traps burst during the champion's bout (%d)" % games.bursts)
+	if not is_instance_valid(boss) or boss.dead:
+		boss = games.boss
 	boss.life = boss.max_life * 0.55
 	await wait(0.4)
 	var n1: int = w.enemies_root.get_children().filter(func(e): return e is Enemy and not e.dead and e.kind == "lion").size()

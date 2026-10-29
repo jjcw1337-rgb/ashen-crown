@@ -36,6 +36,10 @@ var crowd_mat: ShaderMaterial
 var excite := 0.15
 var excite_to := 0.15
 var roar: AudioStreamPlayer     # the crowd's roar while the games run
+var spike_t := 4.0              # the pit's spike traps (stage 3 and the champion's bout)
+var spikes: Array = []          # host: [[points, seconds to the burst]]
+var alive := 0                  # fighters on the sand last frame (a kill makes the crowd cheer)
+var bursts := 0                 # spike bursts so far (tests)
 
 func setup(world: World) -> void:
 	w = world
@@ -85,6 +89,9 @@ func _process(delta: float) -> void:
 				_next_stage()
 		"stage":
 			foes = foes.filter(func(e): return is_instance_valid(e) and not e.dead)
+			if foes.size() < alive and not foes.is_empty():
+				_event("kill")
+			alive = foes.size()
 			if foes.is_empty():
 				state = "between"
 				t = 4.5
@@ -103,6 +110,8 @@ func _process(delta: float) -> void:
 					adds = 2
 					_event("adds:1")
 					_spawn("gladiator", 2, "side", false)
+	if (state == "stage" and stage >= 2) or state == "boss":
+		_spike_traps(delta)
 	if state in ["intro", "stage", "between", "boss"]:
 		var anyone := false
 		for h in game.all_heroes():
@@ -126,6 +135,7 @@ func _next_stage() -> void:
 	state = "stage"
 	for sp in st["spawns"]:
 		_spawn(sp[0], sp[1], sp[2], sp.size() > 3)
+	alive = foes.size()
 
 ## Fighters onto the sand from a gate ("beast": the two beast gates, "side": west and east, or a gate's name).
 func _spawn(kind: String, n: int, where: String, champ: bool) -> void:
@@ -142,6 +152,38 @@ func _spawn(kind: String, n: int, where: String, champ: bool) -> void:
 			e.aggro = true
 			foes.append(e)
 		_event("gate:%s" % g)
+
+## The pit's traps: every few seconds the sand glows in a handful of places (some under the heroes) and
+## a moment later iron spikes burst up there, hurting heroes and beasts alike (never the champion).
+func _spike_traps(delta: float) -> void:
+	spike_t -= delta
+	if spike_t <= 0.0:
+		var enraged: bool = boss != null and is_instance_valid(boss) and boss.enraged
+		spike_t = randf_range(3.5, 5.0) if enraged else randf_range(5.5, 8.0)
+		var pts := []
+		for h in game.all_heroes():
+			if is_instance_valid(h) and not h.dead:
+				pts.append(Vector2(h.global_position.x, h.global_position.z) + Vector2(randf_range(-1.2, 1.2), randf_range(-1.2, 1.2)))
+		while pts.size() < 6:
+			var a := randf() * TAU
+			pts.append(Aurelia.floor_pt(a, sqrt(randf()) * 0.78))
+		spikes.append([pts, 1.3])
+		_event("spikes:" + "|".join(pts.map(func(q): return "%.1f,%.1f" % [q.x, q.y])))
+	for sp in spikes.duplicate():
+		sp[1] -= delta
+		if sp[1] > 0.0:
+			continue
+		spikes.erase(sp)
+		bursts += 1
+		var dmg := (8.0 + w.level * 2.0) * float(game.run_mult("dmg"))
+		for q in sp[0]:
+			var at := Vector3(q.x, 0, q.y)
+			for h in game.all_heroes():
+				if is_instance_valid(h) and not h.dead and Vector2(h.global_position.x - q.x, h.global_position.z - q.y).length() < 1.7:
+					h.take_hit(dmg, at, "nova", "phys")
+			for e in game.enemies_near(at, 1.9):
+				if not e.boss and not e.dead:
+					e.take_damage(dmg * 0.6, 0.0, at, 0.6, false)
 
 ## Partners still outside when the gate drops are brought onto the sand.
 func _bring_in_partners() -> void:
@@ -201,6 +243,15 @@ func fx(ev: String) -> void:
 			if gates.has(parts[1]) and (parts[1].begins_with("beast") or parts[1] == "champion"):
 				Sfx.play_at("lion_roar", (gates[parts[1]] as Node3D).global_position, 0.0, randf_range(0.9, 1.05))
 			get_tree().create_timer(2.6, false).timeout.connect(func(): _gate(parts[1], false))
+		"kill":
+			excite = minf(1.0, excite + 0.35)
+			Sfx.play("crowd_cheer", -12.0, randf_range(0.95, 1.08))
+		"spikes":
+			var pts := []
+			for q in parts[1].split("|"):
+				var xy := q.split(",")
+				pts.append(Vector2(float(xy[0]), float(xy[1])))
+			_show_spikes(pts)
 		"cheer":
 			ui.message("The crowd roars for more!", Color(1.0, 0.85, 0.5), 3.0)
 			Sfx.play("crowd_cheer", -2.0)
@@ -233,6 +284,40 @@ func _update_look(delta: float) -> void:
 	excite = move_toward(excite, excite_to, delta * 0.25)
 	if crowd_mat:
 		crowd_mat.set_shader_parameter("excite", excite)
+
+## Glowing warnings on the sand, then iron spikes bursting up through it with dust, sinking again.
+func _show_spikes(pts: Array) -> void:
+	for q in pts:
+		var p := Vector3(q.x, w.height_at(q.x, q.y), q.y)
+		var warn := MeshInstance3D.new()
+		warn.mesh = Geo.cyl(1.6, 1.6, 0.02, 24)
+		warn.material_override = Mats.glow_unique(Color(0.75, 0.12, 0.03), 0.45)
+		warn.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		w.fx_root.add_child(warn)
+		warn.position = p + Vector3(0, 0.03, 0)
+		warn.scale = Vector3(0.2, 1, 0.2)
+		var tw := warn.create_tween()
+		tw.tween_property(warn, "scale", Vector3(1, 1, 1), 1.2)
+		tw.tween_callback(func():
+			warn.queue_free()
+			if not is_instance_valid(w) or not w.is_inside_tree():
+				return
+			var trap := Node3D.new()
+			w.fx_root.add_child(trap)
+			trap.position = p + Vector3(0, -1.2, 0)
+			var iron := Props.iron()
+			for k in 7:
+				var a := TAU * k / 7.0
+				var r := 0.25 + (k % 3) * 0.4
+				Models.P(trap, Geo.cone(0.09, 1.1, 6), iron, Vector3(cos(a) * r, 0.55, sin(a) * r), Vector3(randf_range(-12, 12), 0, randf_range(-12, 12)))
+			var up := trap.create_tween()
+			up.tween_property(trap, "position:y", p.y, 0.08)
+			up.tween_interval(1.4)
+			up.tween_property(trap, "position:y", p.y - 1.3, 0.5)
+			up.tween_callback(trap.queue_free)
+			Fx.burst(w.fx_root, p + Vector3(0, 0.3, 0), Color(0.6, 0.5, 0.35, 0.7), 18, 3.0, 0.25, 0.6, false, -2.0)
+			Sfx.play_at("impact_metal", p, -3.0, randf_range(0.8, 0.95))
+			game.add_shake(0.08))
 
 # ---------------------------------------------------------------- gates
 ## An iron portcullis in the podium wall at angle a, a dark passage behind it (the Gate of Life's is

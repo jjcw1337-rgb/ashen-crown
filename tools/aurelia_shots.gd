@@ -60,4 +60,21 @@ func _run() -> void:
 			break
 	await _shot(out + "_sand1.png", 60)
 	print("[A] state %s stage %d foes %d crowd %d" % [games.state, games.stage, games.foes.size(), w.props_root.get_node("crowd").multimesh.instance_count])
+	if args.has("boss"):
+		# on to the champion: clear each bout, then catch the spikes coming up round him
+		for s in 3:
+			for i in 600:
+				await process_frame
+				if games.state == "stage" and games.stage == s:
+					break
+			for e in games.foes:
+				if is_instance_valid(e) and not e.dead:
+					e.take_damage(99999.0, 0.0, g.hero.global_position, 0.0, false)
+		for i in 900:
+			await process_frame
+			if games.state == "boss" and games.spikes.size() > 0:
+				break
+		g.hero.global_position = games.boss.global_position + Vector3(0, 0, 5)
+		await _shot(out + "_boss1.png", 50)
+		await _shot(out + "_boss2.png", 30)
 	quit()
