@@ -177,7 +177,8 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 - **The Feral** (`feral.gd`, Act I forest): a Meshy model rigged and animated in Blender (`sources/feral.blend`:
   17 bones, skinned by distance along the body's surface because the forearms touch the knees, IK on the four
   limbs). Unlike the other monsters it plays baked, in-place animations ("crawl", "lunge", "swipe", exported as NLA
-  tracks to `assets/models/monsters/feral.glb`), timed by `Feral.pose` from the enemy state: the crawl from `phase`,
+  tracks to `assets/models/monsters/feralN.glb`, five models with different rags and skin on the same rig, picked by
+  where each spawns, `Feral.variant_at`), timed by `Feral.pose` from the enemy state: the crawl from `phase`,
   the attacks from their progress. Packs of 3-4 cling head-down to oak trunks well off the road
   (`World._feral_packs`, spawn entries with `"perch"`; `Enemy.perch_on`); come within ~10 m and the pack
   skitters down (`_feral_perch`, styles "perch"/"descend" carry it to co-op partners), circles about 4.5 m out,

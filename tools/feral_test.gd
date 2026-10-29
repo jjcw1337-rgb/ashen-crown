@@ -32,6 +32,10 @@ func _run() -> void:
 			perched += 1
 		road.append(snappedf(g.world.path_dist(e.global_position.x, e.global_position.z), 1.0))
 	var anim_ok: bool = fs.size() > 0 and fs[0].rig.has_meta("feral")
+	var vars := {}
+	for e in fs:
+		vars[e.rig.get_meta("variant", 0)] = int(vars.get(e.rig.get_meta("variant", 0), 0)) + 1
+	print("[F] models in use: ", vars)
 	print("[F] ferals %d in %d packs %s, perched %d, up %.1f m, metres from the road %s, baked animations %s" % [fs.size(), packs.size(), packs.values(), perched,
 		(fs[0].global_position.y - g.world.height_at(fs[0].global_position.x, fs[0].global_position.z)) if fs.size() > 0 else 0.0, road, anim_ok])
 	if fs.is_empty():
