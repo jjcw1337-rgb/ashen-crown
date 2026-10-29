@@ -788,6 +788,13 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	cam_pivot.position = sp
 	exit_grace = 1.0
 	for es in (world.enemy_spawns if not net.is_client() else []):
+		if es.has("perch"):
+			# a Feral on its tree: exactly where it was placed, clinging to the trunk
+			var fe := spawn_enemy(es["kind"], es["pos"], int(es["level"]), false, "", int(es["pack"]))
+			if fe:
+				var tr := Vector3(float(es["perch"][0]), 0, float(es["perch"][1]))
+				fe.perch_on(tr, fe.global_position - tr)
+			continue
 		for i in int(es["count"]):
 			var p: Vector3 = world.free_spot_near(es["pos"], 3.0)
 			var champ_name := ""

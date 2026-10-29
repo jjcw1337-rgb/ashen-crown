@@ -596,6 +596,42 @@ func _scatter_grass(count: int, colors: Dictionary, height: float, outside := tr
 		for mmi in mm_chunked(clumps[k], parts[k], detail >= 3, 20.0, 60.0, m):
 			mmi.add_to_group("grass")
 
+## Act I: packs of Ferals (feral.gd) clinging to oak trunks in the forest, well off the road: three
+## packs of three or four, each Feral on its own oak, waiting head-down for someone to wander close.
+## Their own seed, so the rest of the moor doesn't change around them.
+func _feral_packs(groups: Dictionary, pid: int) -> void:
+	var oaks := []
+	for key in ["oak0", "oak1", "oak2"]:
+		for t in groups.get(key, []):
+			var o: Vector3 = (t as Transform3D).origin
+			var d := path_dist(o.x, o.z)
+			if bounds.grow(-3.0).has_point(Vector2(o.x, o.z)) and d > 11.0 and d < 34.0 and Vector2(o.x, o.z).distance_to(Vector2(0, -6)) > 30.0:
+				oaks.append(t)
+	var r := RandomNumberGenerator.new()
+	r.seed = int(bounds.size.y * 1000.0) + 4242
+	var centres := []
+	for tries in 200:
+		if centres.size() >= 3 or oaks.is_empty():
+			break
+		var c: Transform3D = oaks[r.randi() % oaks.size()]
+		if centres.any(func(q: Vector3) -> bool: return q.distance_to(c.origin) < 35.0):
+			continue
+		centres.append(c.origin)
+		var n := r.randi_range(3, 4)
+		var near := oaks.filter(func(t: Transform3D) -> bool: return t.origin.distance_to(c.origin) < 14.0)
+		near.shuffle()
+		# a big oak can hold two of them
+		while near.size() < n:
+			near.append(near[r.randi() % near.size()])
+		for t in near.slice(0, n):
+			var o: Vector3 = (t as Transform3D).origin
+			# on a random side of the trunk
+			var a := r.randf() * TAU
+			var out := Vector3(cos(a), 0, sin(a))
+			var trunk := 0.45 * (t as Transform3D).basis.get_scale().x
+			enemy_spawns.append({"kind": "feral", "pos": o + out * trunk, "count": 1, "champ": false, "pack": 500 + pid + centres.size(),
+				"level": level + 1, "perch": [o.x, o.z]})
+
 ## Act I: a few rare Sunstar Blooms off the road, in among the trees. Picking one gives +50% experience
 ## for 5 minutes (Game.use_inter). Their own seed, so the rest of the moor doesn't change around them.
 func _rare_flowers(count: int) -> void:
@@ -1405,6 +1441,8 @@ func _build_wild() -> void:
 			enemy_spawns.append({"kind": k, "pos": pc, "count": n, "champ": champ, "pack": pid, "level": level + int(t * 3.0)})
 			pid += 1
 		t += rng.randf_range(0.045, 0.07)
+	if oak_forest:
+		_feral_packs(groups, pid)
 	spawns["start"] = Vector3(0, 0, -6)
 	for k in [["road", 0.22], ["road2", 0.5]]:
 		var rp: Vector2 = path_poly[int(path_poly.size() * k[1])]
