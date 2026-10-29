@@ -519,9 +519,11 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 	# torso and head follow through with a little overshoot
 	var stiff := 260.0 if a >= 0.0 else 140.0
 	tx = spring(D, "tx", tx, stiff, 0.55, dt)
-	ty = spring(D, "ty", ty, stiff, 0.55, dt)
+	# turning: the head looks into the turn first and the shoulders follow a little ("look", radians, + = left)
+	var look: float = st.get("look", 0.0)
+	ty = spring(D, "ty", ty + look * 0.3, stiff, 0.55, dt)
 	head_x = spring(D, "hx", head_x - tx * 0.4, 80.0, 0.5, dt)
-	head_y = spring(D, "hy", head_y - ty * 0.5, 70.0, 0.55, dt)
+	head_y = spring(D, "hy", head_y - ty * 0.5 + look, 70.0, 0.55, dt)
 	head_z = spring(D, "hz", head_z - tz * 0.6, 70.0, 0.5, dt)
 	# the off-hand arm lags behind body motion
 	shl.x = spring(D, "slx", shl.x, 120.0 if b < 0.3 else 400.0, 0.45, dt)
