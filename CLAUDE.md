@@ -320,6 +320,14 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   restore, and grows with maximum life/mana. Meshy frame `globe_frame.png`, Blender glass `globe_glass.png`
   (`tools/blender/ui_glass_orb.py`, added over the liquid). Standard for every class; a special character can
   override with a `"hud"` entry in `Data.CLASSES` (see `Globe.set_style`). Preview: `tools/globe_demo.gd`.
+- **Character sheet (C)** (`UI._build_character`): Meshy frame `sheet_panel.png` (texture margin 100 so the corner
+  pieces never stretch; content margins keep everything inside the gold trim), live portrait (a SubViewport on the
+  shared world) in `sheet_portrait.png`, Meshy medallions `sheet_str/dex/vit/ene.png` and `sheet_plus.png`. Hover a
+  stat for what each point adds (`_stat_tip`, from `Hero.recalc`); combat stats sit in a dark inset (`_combat_tip`).
+  Same for every class. Screenshot: `tools/sheet_shot.gd`.
+- **Skill picker** (`UI._choose_skill`, click a bar slot): the bar's own iron frame and sockets, one card per skill
+  (`_picker_card`: equipped glow, the key it's on now, mana, locked level). Esc / click outside closes
+  (`close_skill_picker`). Screenshot: `tools/picker_shot.gd`.
 - `UNLOCK_ALL_ACTS` in `game.gd` is a testing switch (also enables the F8 testing panel: `test_immortal`, `test_onehit`, `test_stamina`, `test_allskills` in `game.gd`, and a level setter, `Hero.set_level`); turn off for real playthroughs.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file).
