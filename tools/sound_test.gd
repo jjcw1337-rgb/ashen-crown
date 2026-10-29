@@ -1,6 +1,6 @@
 extends SceneTree
 ## Every class skill plays its own sounds (sfx.counts), monsters get layered impacts, crits a sting,
-## kills a death sound by material, and the hero a hurt voice per body. Also checks every bank sound
+## kills a death sound by material, and the hero a plain hit thud (no voice). Also checks every bank sound
 ## loaded. Prints [S] lines; "missing" lists expected sounds that never played.
 var g
 var sfx
@@ -81,7 +81,7 @@ func _run() -> void:
 	g.hero.life = g.hero.max_life
 	g.hero.take_hit(3.0, g.hero.global_position + Vector3(0, 0, -1), "melee")
 	await wait(0.2)
-	var want := ["impact_flesh", "crit_sting", "kill_flesh", "impact_bone", "kill_bone", "hurt_gnome"]
+	var want := ["impact_flesh", "crit_sting", "kill_flesh", "impact_bone", "kill_bone", "hero_hit"]
 	print("[S] combat: %s, missing %s" % [sfx.counts.keys(), want.filter(func(n): return not sfx.counts.has(n))])
 	# the fort: King Grubb mutters to himself before the fight, louder as you close in, and stops when it starts
 	g.difficulty = 0

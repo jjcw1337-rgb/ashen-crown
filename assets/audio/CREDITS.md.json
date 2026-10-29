@@ -297,6 +297,23 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "hero_hit": [
+  {
+   "detail": "a blow landing on a person wearing a padded leather jerkin, one short dull muffled thud, subtle and low, no voice, no grunt, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a blow landing on a person wearing a padded leather jerkin, one short dull muffled thud, subtle and low, no voice, no grunt, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a blow landing on a person wearing a padded leather jerkin, one short dull muffled thud, subtle and low, no voice, no grunt, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "holy_nova": [
   {
    "detail": "a massive explosion of holy fire around a knight, a deep concussive boom, a roaring outward rush of flame and wind, a faint breath of distant choir, close mic, dry, isolated sound effect, no music",
@@ -314,34 +331,6 @@
  "hurt": [
   {
    "detail": "a goblin or ghoul hit by a blade, a short ugly grunt of pain, close mic, dry, isolated sound effect, no music",
-   "license": "ElevenLabs paid plan, commercial use",
-   "source": "ElevenLabs Sound Effects"
-  }
- ],
- "hurt_demon": [
-  {
-   "detail": "a big demon hit by a blade, one short deep guttural growl of pain, close mic, dry, isolated sound effect, no music",
-   "license": "ElevenLabs paid plan, commercial use",
-   "source": "ElevenLabs Sound Effects"
-  }
- ],
- "hurt_gnome": [
-  {
-   "detail": "a small gnome grunting in pain, one short higher-pitched 'oof', close mic, dry, isolated sound effect, no music",
-   "license": "ElevenLabs paid plan, commercial use",
-   "source": "ElevenLabs Sound Effects"
-  }
- ],
- "hurt_knight": [
-  {
-   "detail": "a grown man in armor grunting in pain from a blow, one short gruff 'ugh', close mic, dry, isolated sound effect, no music",
-   "license": "ElevenLabs paid plan, commercial use",
-   "source": "ElevenLabs Sound Effects"
-  }
- ],
- "hurt_wraith": [
-  {
-   "detail": "a ghostly woman's sharp pained gasp turning into a raspy hiss, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }

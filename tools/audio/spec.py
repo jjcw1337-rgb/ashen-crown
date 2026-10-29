@@ -38,23 +38,18 @@ SPEC = [
     dict(name="block", src="eleven", n=4, dur=0.6, hit=0, label="a sword hitting a shield",
          prompt="a sword blow blocked by a wooden shield with an iron rim, solid knock and clank" + DRY),
 
+    # the hero taking a hit: a plain thud, no voice (the "oof" voices were too much on every hit)
+    dict(name="hero_hit", src="eleven", n=5, dur=0.5, hit=0, label="a blow hitting a body",
+         prompt="a blow landing on a person wearing a padded leather jerkin, one short dull muffled thud, "
+                "subtle and low, no voice, no grunt" + DRY),
     # ---------------------------------------------------------------- the heroes' voices
-    dict(name="hurt_knight", src="eleven", n=6, dur=0.6, hit=0, label="a man grunting in pain",
-         prompt="a grown man in armor grunting in pain from a blow, one short gruff 'ugh'" + DRY),
     dict(name="death_knight", src="eleven", n=4, dur=2.0, hit=0, label="a man dying",
          prompt="a knight's dying groan as he falls, then armor crashing onto the ground" + DRY),
-    dict(name="hurt_gnome", src="eleven", n=6, dur=0.5, hit=0, label="a small creature grunting in pain",
-         prompt="a small gnome grunting in pain, one short higher-pitched 'oof'" + DRY),
     dict(name="death_gnome", src="eleven", n=4, dur=1.6, hit=0, label="a small creature dying",
          prompt_b="a small old gnome crying out as he dies, a short strangled yelp then a last gasp" + DRY,
          prompt="a small gnome's dying cry as he collapses onto the ground" + DRY),
-    dict(name="hurt_wraith", src="eleven", n=5, dur=0.7, hit=0, label="a ghost hissing",
-         prompt_b="a ghostly woman's sharp pained gasp turning into a raspy hiss" + DRY,
-         prompt="a ghost hit by a blade, a short breathy spectral hiss of pain" + DRY),
     dict(name="death_wraith", src="eleven", n=4, dur=2.0, hit=0, label="a ghost wailing",
          prompt="a wraith dissipating, a fading ghostly wail that trails off into a whisper" + DRY),
-    dict(name="hurt_demon", src="eleven", n=5, dur=0.7, hit=0, label="a monster growling",
-         prompt="a big demon hit by a blade, one short deep guttural growl of pain" + DRY),
     dict(name="death_demon", src="eleven", n=4, dur=2.0, hit=0, label="a monster roaring",
          prompt="a demon's dying roar fading into crackling embers" + DRY),
 

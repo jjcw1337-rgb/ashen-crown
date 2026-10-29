@@ -29,7 +29,7 @@ UI = {"click", "deny", "gold", "coins", "pickup", "equip", "drop", "potion", "le
 AMB = {"wind", "drip", "grubb_mutter"}
 # dB for the loudest 100 ms: hits and voices sit under the big payoffs, UI and loops well under
 LOUD = {"ui": -20.0, "amb": -26.0, "loop": -22.0, "small": -17.0, "big": -14.0, "default": -16.0}
-SMALL = {"swing_light", "swing_heavy", "swing", "spirit_dart", "drain_tick", "hurt_knight", "hurt_gnome", "hurt_wraith",
+SMALL = {"hero_hit", "swing_light", "swing_heavy", "swing", "spirit_dart", "drain_tick", "hurt_knight", "hurt_gnome", "hurt_wraith",
          "hurt_demon", "hurt", "soul_return", "shade_out", "bow"}
 BIG = {"holy_nova", "phase_erupt", "charge_impact", "boom", "roar", "boss_die", "summon_demon", "covenant", "wail", "crit_sting"}
 

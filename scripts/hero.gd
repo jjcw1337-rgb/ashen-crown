@@ -957,7 +957,8 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	dmg = maxf(1.0, dmg)
 	life -= dmg
 	hit_t = 1.0
-	Sfx.play(_voice("hurt"), -4.0)
+	# a plain thud, no voice: an "oof" on every hit was too much
+	Sfx.play("hero_hit", -3.0, randf_range(0.9, 1.1))
 	Fx.blood(game.world.fx_root, global_position + Vector3(0, 1.2, 0), Color(0.6, 0.02, 0.02))
 	Fx.number(game.world.fx_root, global_position + Vector3(0, 2.2, 0), str(int(dmg)), Color(1.0, 0.3, 0.25))
 	game.add_shake(0.2)
