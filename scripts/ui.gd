@@ -1573,7 +1573,7 @@ var sheet_points: PanelContainer
 var _sheet_t := 0.0
 
 func _build_character() -> void:
-	char_panel = _panel("Character", true, 450, 600)
+	char_panel = _panel("Character", true, 450, 520)
 	var sb := StyleBoxTexture.new()
 	sb.texture = load(SHEET_TEX["panel"])
 	for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
@@ -1680,17 +1680,19 @@ func _build_character() -> void:
 	# --- what it all adds up to, in two columns; hover each for what it means
 	var grid := GridContainer.new()
 	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 18)
-	grid.add_theme_constant_override("v_separation", 2)
+	grid.add_theme_constant_override("h_separation", 26)
+	grid.add_theme_constant_override("v_separation", 3)
 	vb.add_child(grid)
 	for k in ["damage", "aspd", "defense", "block", "life", "mana", "res", "ls", "mf", "gf"]:
-		var cell := VBoxContainer.new()
-		cell.add_theme_constant_override("separation", 0)
+		var cell := HBoxContainer.new()
+		cell.add_theme_constant_override("separation", 6)
 		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		cell.mouse_filter = Control.MOUSE_FILTER_STOP
 		var t := _label(_combat_name(k), 11, DIM)
+		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		cell.add_child(t)
-		var v := _label("", 16, Color(0.97, 0.94, 0.86), true)
+		var v := _label("", 14, Color(0.97, 0.94, 0.86), true)
+		v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		cell.add_child(v)
 		char_labels[k] = v
 		var key: String = k
