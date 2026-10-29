@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
+`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -58,6 +58,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 |---|---|
 | `game.gd` | Root node: boot, intro, zones/travel, camera, graphics presets, settings, save/load, acts and difficulty runs (`difficulty` 0/1/2 = Act I/A2/A3), input |
 | `data.gd` | **Tuning**: classes (`CLASSES`), skills per class (`SKILLS`, `skills_for`), monsters, items, uniques, acts, vendors |
+| `talents.gd` | Talent trees (`Talents.TREES`: three per class), row rules, the auto build for old saves (`AUTO`) |
 | `world.gd` | Zone builder: terrain, roads, buildings, trees/grass (MultiMesh chunks), spawns, `burn_points` |
 | `hero.gd`, `knight.gd`, `knight_rig.gd`, `anim.gd` | Player: class (`cls`, `set_class`), stats (`recalc`), combat, skills, gear visuals, animation, co-op puppet mode |
 | `wraith.gd`, `wraith_fx.gd` | Wraith class: body mesh + spectral shader on the knight skeleton; skill effects |
@@ -234,8 +235,23 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   left mouse `attack`, right mouse `block`, the class's first four skills on Q-F). `attack` and `block` are
   `Data.COMMON_SKILLS` (`Data.skills_known(cls)` = class skills + common). Input goes through `Game._use_bind`
   (held buttons recast when ready; `Game.skill_held(id)` for Block and Drain Life's channel). Click a bar slot or
-  open the skills window (K) to rebind. Block: 80% less damage from the front (missiles stopped with a shield).
+  open the skills window (K) to rebind, or drag: a skill from the skills window onto a slot, one slot onto another
+  (they swap), or off the bar (cleared; left mouse never empties). Drag uses Godot's `set_drag_forwarding`
+  (`UI._skill_drag`, `UI.drop_skill`, the clear in `UI._notification`); a click without a drag opens the slot's menu.
+  Block: 80% less damage from the front (missiles stopped with a shield).
   Art: Meshy-painted frame and sockets in `assets/textures/ui/`. A new class needs nothing extra.
+- **Talents** (`scripts/talents.gd`, the window is N; `tools/talent_test.gd`, `tools/talent_shot.gd`): three trees per
+  class of seven talents in four rows (2, 2, 2, then a capstone); a row opens with 0/3/6/10 points spent above it in
+  that tree (`Talents.ROW_REQ`), and a rank can't be taken back if a deeper talent would lose its row. One point a
+  level from level 2: `Hero.free_talent_points()` = level - 1 - spent (nothing stored but `talents` {id: ranks} in
+  the save). Reset is free; Auto-assign spends free points along `Talents.AUTO[cls]`. A save without `talents` gets
+  that build for its level (`Hero.from_save`); a bad one is cleaned (`Talents.clean`). Effects are data: each
+  talent's `fx` adds up into `Hero.tfx`, read with `Hero.talent(key)` (the key list is at the top of talents.gd):
+  flat stats join the gear's in `recalc`; `dmg`/`dmg:<skill>` through `Hero.dmg_mult` (pass the skill as
+  `_hit_enemy`'s `src` when it isn't the attack in progress), `cost:`/`cd:` through `Hero.skill_cost`/`skill_cd`
+  (use those, not the raw `Data.SKILLS` numbers), the battle buffs through `Hero.buff_mult`, and each class special
+  where its skill is. A new class needs a `TREES` and an `AUTO` entry (icons: its skill ids or the `t_*` glyphs in
+  `SkillGlyph._talent_icon`). The balance sim gives its bots the auto build.
 - **Globes** (`scripts/globe.gd`, `Globe`): liquid that surges after a hit, ripples on a heal, pulses and shakes
   when low, darkens when critical, swirls after a cast, rises slowly with regeneration, sends a wave up on a big
   restore, and grows with maximum life/mana. Meshy frame `globe_frame.png`, Blender glass `globe_glass.png`

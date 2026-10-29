@@ -31,6 +31,14 @@ var action_bar: Control
 var bar_style := "A"
 var skill_slots := {}        # bar slot ("lmb", "rmb", "Q".."V") -> its Control
 var skills_panel: PanelContainer
+var talent_panel: PanelContainer
+var talent_cols: HBoxContainer
+var talent_head: Label
+var talent_badge: Button       # over the bar while talent points wait to be spent
+var _talent_hover := ""
+var _talent_shown := ""        # what the open talents window shows (rebuilt when it changes)
+var _skill_drag_from := ""     # the bar slot a skill is being dragged off ("" from the skills window)
+var _skill_dragged := false
 var skill_rows: VBoxContainer
 const BAR_TEX := {"frame": "res://assets/textures/ui/bar_frame.png", "slot": "res://assets/textures/ui/slot.png", "slot_big": "res://assets/textures/ui/slot_big.png"}
 var skill_hb: HBoxContainer
@@ -140,6 +148,7 @@ func setup(g: Node) -> void:
 	_build_pause()
 	_build_test_panel()
 	_build_skills_panel()
+	_build_talent_panel()
 	_build_tooltip()
 	_build_title()
 	_build_join()
@@ -342,6 +351,7 @@ func _hover(p: Control, on: bool, mode: String) -> void:
 
 func show_tooltip(lines: Array) -> void:
 	for c in tip_box.get_children():
+		tip_box.remove_child(c)      # out now, so the box sizes to the new lines only
 		c.queue_free()
 	var first := true
 	for ln in lines:
@@ -509,6 +519,19 @@ func _build_hud() -> void:
 	var sep := Control.new()
 	sep.custom_minimum_size = Vector2(18, 0)
 	hb.add_child(sep)
+	talent_badge = Button.new()
+	talent_badge.anchor_left = 0.5
+	talent_badge.anchor_right = 0.5
+	talent_badge.anchor_top = 1.0
+	talent_badge.anchor_bottom = 1.0
+	talent_badge.offset_left = -130
+	talent_badge.offset_right = 130
+	talent_badge.offset_top = -bh - 40
+	talent_badge.offset_bottom = -bh - 8
+	talent_badge.add_theme_font_size_override("font_size", 15)
+	talent_badge.visible = false
+	talent_badge.pressed.connect(func(): toggle(talent_panel))
+	root.add_child(talent_badge)
 	for i in 4:
 		var idx := i
 		var b := _slot(Vector2(50, 50), func(ev): if ev.button_index == MOUSE_BUTTON_LEFT or ev.button_index == MOUSE_BUTTON_RIGHT: hero.drink(idx), func(p, on): _hover(p, on, ""), str(i + 1))
@@ -586,7 +609,7 @@ func _build_hud() -> void:
 	hint_lbl.offset_right = 400
 	hint_lbl.offset_top = -bh - 52
 	hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint_lbl.text = "Left / right mouse and Q E R F G V: your skills (K to set them)  ·  Space: swing  ·  Shift: sprint  ·  1-4: potions  ·  I/C: inventory/stats  ·  T: portal  ·  Tab: map"
+	hint_lbl.text = "Left / right mouse and Q E R F G V: your skills (K to set them)  ·  N: talents  ·  Space: swing  ·  Shift: sprint  ·  1-4: potions  ·  I/C: inventory/stats  ·  T: portal  ·  Tab: map"
 	root.add_child(hint_lbl)
 	minimap = Minimap.new()
 	minimap.ui = self
@@ -684,7 +707,7 @@ func _bar_slot(slot: String) -> Control:
 		var pill := PanelContainer.new()
 		pill.add_theme_stylebox_override("panel", _box(Color(0.06, 0.1, 0.3, 0.95), Color(0.4, 0.55, 1.0), 1, 6, 0))
 		pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var cost := _label(str(sk["mana"]), 10, Color(0.75, 0.82, 1.0), true)
+		var cost := _label(str(int(round(hero.skill_cost(id)))), 10, Color(0.75, 0.82, 1.0), true)
 		cost.add_theme_constant_override("outline_size", 0)
 		cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		pill.add_child(cost)
@@ -695,21 +718,75 @@ func _bar_slot(slot: String) -> Control:
 		var where: String = SLOT_NAMES.get(slot, "Key " + slot)
 		var lines := []
 		if sk.is_empty():
-			lines = [[where + ": empty", GOLD], ["Click to put a skill here (or press K)", DIM]]
+			lines = [[where + ": empty", GOLD], ["Click to put a skill here, or drag one from the skills window (K)", DIM]]
 		else:
 			lines = [[sk["name"] + "   (" + where + ")", GOLD], [sk["desc"], Color(0.85, 0.82, 0.75)]]
 			if int(sk["mana"]) > 0 or float(sk["cd"]) > 0.0:
-				lines.append(["Mana: %d   Cooldown: %ss   Unlocks at level %d" % [sk["mana"], str(sk["cd"]), sk["lvl"]], Color(0.55, 0.65, 1.0)])
-			lines.append(["Click to change", DIM])
+				lines.append(["Mana: %d   Cooldown: %ss   Unlocks at level %d" % [int(round(hero.skill_cost(id))), str(snappedf(hero.skill_cd(id), 0.1)), sk["lvl"]], Color(0.55, 0.65, 1.0)])
+			lines.append(["Click to change  ·  drag to move or swap  ·  drag off the bar to clear", DIM])
 		show_tooltip(lines)
 		tip_owner = p)
 	p.mouse_exited.connect(func():
 		tooltip.visible = false
 		tip_owner = null)
+	# drag a skill to another slot (they swap) or off the bar (cleared); a click without a drag opens the menu
+	p.set_drag_forwarding(func(_at: Vector2): return _skill_drag(p, id, slot),
+		func(_at: Vector2, data): return data is Dictionary and data.has("skill"),
+		func(_at: Vector2, data): drop_skill(data, slot))
 	p.gui_input.connect(func(ev):
-		if ev is InputEventMouseButton and ev.pressed and (ev.button_index == MOUSE_BUTTON_LEFT or ev.button_index == MOUSE_BUTTON_RIGHT):
-			_choose_skill(slot))
+		if ev is InputEventMouseButton and (ev.button_index == MOUSE_BUTTON_LEFT or ev.button_index == MOUSE_BUTTON_RIGHT):
+			if ev.pressed:
+				_skill_dragged = false
+			elif not _skill_dragged:
+				_choose_skill(slot))
 	return p
+
+## Start dragging a skill (from a bar slot, or from the skills window when from_slot is "").
+func _skill_drag(src: Control, id: String, from_slot: String) -> Variant:
+	var sk := Data.skill_def(id)
+	if sk.is_empty() or hero == null or (hero.level < int(sk["lvl"]) and not game.test_allskills):
+		return null
+	_skill_dragged = true
+	_skill_drag_from = from_slot
+	tooltip.visible = false
+	var pv := Control.new()
+	var bg := TextureRect.new()
+	bg.texture = load(BAR_TEX["slot"])
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.size = Vector2(62, 64)
+	bg.position = -bg.size * 0.5
+	bg.modulate.a = 0.85
+	pv.add_child(bg)
+	var g := SkillGlyph.new()
+	g.id = id
+	g.size = Vector2(38, 38)
+	g.position = -g.size * 0.5 + Vector2(0, 1)
+	pv.add_child(g)
+	src.set_drag_preview(pv)
+	return {"skill": id, "from": from_slot}
+
+## A skill dropped on a bar slot: it goes there; dragged from another slot, the two swap.
+func drop_skill(data: Dictionary, slot: String) -> void:
+	var id: String = data.get("skill", "")
+	var from: String = data.get("from", "")
+	_skill_drag_from = ""
+	if from == slot:
+		return
+	var here := hero.bound(slot)
+	hero.bind(slot, id)
+	if from != "":
+		hero.bind(from, here if (here != "" or from != "lmb") else "attack")
+	Sfx.play("click")
+
+func _notification(what: int) -> void:
+	# a skill dragged off the bar and let go anywhere but a slot is taken off
+	if what == NOTIFICATION_DRAG_END and _skill_drag_from != "":
+		var from := _skill_drag_from
+		_skill_drag_from = ""
+		if not get_viewport().gui_is_drag_successful() and hero and from != "lmb" \
+				and not action_bar.get_global_rect().has_point(get_viewport().get_mouse_position()):
+			hero.bind(from, "")
+			Sfx.play("click")
 
 ## A menu of every skill the class knows, to put on a bar slot.
 func _choose_skill(slot: String) -> void:
@@ -744,7 +821,7 @@ var _hover_skill := ""
 func _build_skills_panel() -> void:
 	skills_panel = _panel("Skills", true, 560, 420)
 	var vb: VBoxContainer = skills_panel.get_node("vb")
-	var help := _label("Put a skill on a mouse button or a key. Hover a skill and press Q, E, R, F, G or V to bind it.", 13, DIM)
+	var help := _label("Drag a skill onto the bar, use the buttons, or hover a skill and press Q, E, R, F, G or V.", 13, DIM)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	help.custom_minimum_size = Vector2(520, 0)
 	vb.add_child(help)
@@ -752,6 +829,10 @@ func _build_skills_panel() -> void:
 	sc.custom_minimum_size = Vector2(540, 360)
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	vb.add_child(sc)
+	var tb := Button.new()
+	tb.text = "Talents (N)"
+	tb.pressed.connect(func(): toggle(talent_panel))
+	vb.add_child(tb)
 	skill_rows = VBoxContainer.new()
 	skill_rows.add_theme_constant_override("separation", 8)
 	skill_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -770,6 +851,7 @@ func _fill_skills_panel() -> void:
 		row.add_theme_stylebox_override("panel", _box(Color(0.05, 0.045, 0.04, 0.9), Color(0.32, 0.25, 0.15), 1, 4, 6))
 		row.mouse_entered.connect(func(): _hover_skill = id)
 		row.mouse_exited.connect(func(): if _hover_skill == id: _hover_skill = "")
+		row.set_drag_forwarding(func(_at: Vector2): return _skill_drag(row, id, ""), Callable(), Callable())
 		skill_rows.add_child(row)
 		var hb := HBoxContainer.new()
 		hb.add_theme_constant_override("separation", 10)
@@ -800,7 +882,7 @@ func _fill_skills_panel() -> void:
 		if locked:
 			head += "   (unlocks at level %d)" % sk["lvl"]
 		elif int(sk["mana"]) > 0:
-			head += "   %d mana" % sk["mana"] + ("   %ss cooldown" % str(sk["cd"]) if float(sk["cd"]) > 0.0 else "")
+			head += "   %d mana" % int(round(hero.skill_cost(id))) + ("   %ss cooldown" % str(snappedf(hero.skill_cd(id), 0.1)) if float(sk["cd"]) > 0.0 else "")
 		tv.add_child(_label(head, 15, GOLD if not locked else DIM, true))
 		var d := _label(str(sk["desc"]), 12, Color(0.8, 0.77, 0.7))
 		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -839,6 +921,167 @@ func skills_hotkey(key: String) -> bool:
 	hero.bind(key, _hover_skill)
 	Sfx.play("click")
 	return true
+
+# ---------------------------------------------------------------- talents window (N)
+## Three trees side by side, four rows each; left click learns a rank, right click gives it back.
+func _build_talent_panel() -> void:
+	talent_panel = _panel("Talents", true, 960, 600)
+	var vb: VBoxContainer = talent_panel.get_node("vb")
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	vb.add_child(top)
+	talent_head = _label("", 17, GOLD, true)
+	talent_head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(talent_head)
+	var auto := Button.new()
+	auto.text = "Auto-assign"
+	auto.tooltip_text = "Spend your free points on a suggested build"
+	auto.pressed.connect(func():
+		hero.auto_talents()
+		Sfx.play("click"))
+	top.add_child(auto)
+	var reset := Button.new()
+	reset.text = "Reset"
+	reset.tooltip_text = "Take back every point (free)"
+	reset.pressed.connect(func():
+		hero.reset_talents()
+		Sfx.play("click"))
+	top.add_child(reset)
+	talent_cols = HBoxContainer.new()
+	talent_cols.add_theme_constant_override("separation", 12)
+	vb.add_child(talent_cols)
+	var help := _label("Left click: learn a rank   ·   Right click: take it back   ·   A row opens once enough points are spent above it in the same tree. One point each level.", 12, DIM)
+	help.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(help)
+	talent_panel.visibility_changed.connect(func():
+		if talent_panel.visible:
+			skills_panel.visible = false
+			_fill_talents()
+		else:
+			_talent_hover = ""
+		if hero:
+			refresh())
+
+func _talent_sig() -> String:
+	return "%s %s %d" % [hero.cls, str(hero.talents), hero.level]
+
+func _fill_talents() -> void:
+	_talent_shown = _talent_sig()
+	for c in talent_cols.get_children():
+		talent_cols.remove_child(c)
+		c.queue_free()
+	var free: int = hero.free_talent_points()
+	talent_head.text = ("%d talent point%s to spend" % [free, "" if free == 1 else "s"]) if free > 0 else "No points to spend: you get one each level"
+	var ts := Talents.trees(hero.cls)
+	for i in ts.size():
+		var tree: Dictionary = ts[i]
+		var col := PanelContainer.new()
+		col.add_theme_stylebox_override("panel", _box(Color(0.05, 0.045, 0.04, 0.9), Color(0.32, 0.25, 0.15), 1, 4, 10))
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		talent_cols.add_child(col)
+		var cv := VBoxContainer.new()
+		cv.add_theme_constant_override("separation", 0)
+		col.add_child(cv)
+		var spent := Talents.tree_spent(hero.cls, i, hero.talents)
+		var head := _label("%s   %d" % [tree["name"], spent], 21, GOLD, true)
+		head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cv.add_child(head)
+		var d := _label(tree["desc"], 12, DIM)
+		d.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		d.custom_minimum_size = Vector2(270, 34)
+		cv.add_child(d)
+		for row in Talents.ROW_REQ.size():
+			var open := Talents.row_open(hero.cls, i, row, hero.talents)
+			# a shut row says what opens it, just above it
+			var need := _label("" if open else "needs %d points in %s" % [Talents.ROW_REQ[row], tree["name"]], 11, Color(0.6, 0.45, 0.3))
+			need.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			need.custom_minimum_size = Vector2(0, 26)
+			need.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+			cv.add_child(need)
+			var rh := HBoxContainer.new()
+			rh.alignment = BoxContainer.ALIGNMENT_CENTER
+			rh.add_theme_constant_override("separation", 26)
+			cv.add_child(rh)
+			for t in tree["talents"]:
+				if int(t["row"]) == row:
+					rh.add_child(_talent_node(t, i, open))
+
+## One talent: its icon in a socket, ranks taken, a gold rim when a point can go in.
+func _talent_node(t: Dictionary, tree: int, open: bool) -> Control:
+	var id: String = t["id"]
+	var rank := int(hero.talents.get(id, 0))
+	var mx := int(t["max"])
+	var can := Talents.can_learn(hero.cls, id, hero.talents, hero.free_talent_points())
+	var p := Control.new()
+	p.custom_minimum_size = Vector2(66, 68)
+	p.name = id
+	var bg := TextureRect.new()
+	bg.texture = load(BAR_TEX["slot"])
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.modulate = Color(1, 1, 1) if open else Color(0.45, 0.45, 0.45)
+	p.add_child(bg)
+	var g := SkillGlyph.new()
+	g.id = t["icon"]
+	g.dim = rank == 0 and not can
+	g.set_anchors_preset(Control.PRESET_FULL_RECT)
+	g.offset_left = 14; g.offset_right = -14; g.offset_top = 16; g.offset_bottom = -14
+	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(g)
+	var rim := Panel.new()
+	var rim_col := Color(1.0, 0.82, 0.35) if can else (Color(0.45, 0.85, 0.4) if rank >= mx else Color(0, 0, 0, 0))
+	var sb := _box(Color(0, 0, 0, 0), rim_col, 2, 6, 0)
+	sb.shadow_size = 0
+	rim.add_theme_stylebox_override("panel", sb)
+	rim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rim.offset_left = 6; rim.offset_right = -6; rim.offset_top = 7; rim.offset_bottom = -5
+	rim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(rim)
+	var pill := PanelContainer.new()
+	pill.add_theme_stylebox_override("panel", _box(Color(0.06, 0.05, 0.03, 0.95), rim_col if rank > 0 or can else Color(0.3, 0.25, 0.18), 1, 4, 0))
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var rl := _label("%d/%d" % [rank, mx], 11, GOLD if rank > 0 else DIM, true)
+	rl.add_theme_constant_override("outline_size", 0)
+	rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pill.add_child(rl)
+	pill.custom_minimum_size = Vector2(28, 14)
+	pill.position = Vector2(38, 56)
+	p.add_child(pill)
+	var tip := func():
+		var lines := [[t["name"], GOLD], ["Rank %d / %d" % [rank, mx], DIM]]
+		if rank > 0:
+			lines.append([Talents.describe(t, rank), Color(0.85, 0.82, 0.75)])
+		if rank < mx:
+			lines.append([("Next rank: " if rank > 0 else "") + Talents.describe(t, rank + 1), Color(0.6, 0.85, 0.55) if rank > 0 else Color(0.85, 0.82, 0.75)])
+		if not open:
+			lines.append(["Needs %d points in %s" % [Talents.ROW_REQ[int(t["row"])], Talents.trees(hero.cls)[tree]["name"]], Color(1.0, 0.45, 0.35)])
+		elif can:
+			lines.append(["Left click to learn", DIM])
+		if rank > 0:
+			lines.append(["Right click to take back", DIM])
+		show_tooltip(lines)
+		tip_owner = p
+	p.mouse_entered.connect(func():
+		_talent_hover = id
+		tip.call())
+	p.mouse_exited.connect(func():
+		if _talent_hover == id:
+			_talent_hover = ""
+		if tip_owner == p:
+			tooltip.visible = false
+			tip_owner = null)
+	p.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.pressed:
+			if ev.button_index == MOUSE_BUTTON_LEFT:
+				Sfx.play("click" if hero.learn_talent(id) else "deny")
+			elif ev.button_index == MOUSE_BUTTON_RIGHT:
+				Sfx.play("click" if hero.unlearn_talent(id) else "deny"))
+	# rebuilt under the mouse after a click: keep its tooltip up
+	if _talent_hover == id:
+		tip.call()
+	return p
 
 # ---------------------------------------------------------------- inventory
 func _panel(title: String, left: bool, w: int, h: int) -> PanelContainer:
@@ -1015,7 +1258,7 @@ func _drag_target() -> Array:
 		for k in equip_cells.keys():
 			if (equip_cells[k] as Control).get_global_rect().has_point(mp):
 				return ["equip", k]
-	for pnl in [inv_panel, char_panel, stash_panel, shop_panel, wp_panel, dialog_panel, action_bar, skills_panel]:
+	for pnl in [inv_panel, char_panel, stash_panel, shop_panel, wp_panel, dialog_panel, action_bar, skills_panel, talent_panel]:
 		if pnl and pnl.visible and (pnl as Control).get_global_rect().has_point(mp):
 			return ["ui", null]
 	return ["ground", null]
@@ -2037,7 +2280,7 @@ func toggle(panel: Control) -> void:
 
 func close_all() -> bool:
 	var any := false
-	for p in [inv_panel, char_panel, shop_panel, stash_panel, wp_panel, dialog_panel, ench_panel, test_panel, skills_panel]:
+	for p in [inv_panel, char_panel, shop_panel, stash_panel, wp_panel, dialog_panel, ench_panel, test_panel, skills_panel, talent_panel]:
 		if p.visible:
 			p.visible = false
 			any = true
@@ -2046,7 +2289,7 @@ func close_all() -> bool:
 	return any
 
 func any_panel_open() -> bool:
-	return inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible
+	return inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible
 
 func message(t: String, col := Color(1, 1, 1), dur := 2.5) -> void:
 	msg_lbl.text = t
@@ -2127,6 +2370,11 @@ func refresh() -> void:
 	if stash_panel.visible:
 		for i in 60:
 			_set_slot(stash_cells[i], hero.stash[i])
+	var free: int = hero.free_talent_points()
+	talent_badge.visible = free > 0 and not talent_panel.visible
+	talent_badge.text = "%d talent point%s to spend  (N)" % [free, "" if free == 1 else "s"]
+	if talent_panel.visible and _talent_sig() != _talent_shown:
+		_fill_talents()
 	if char_panel.visible:
 		char_labels["name"].text = "Crusader of Greywatch"
 		char_labels["level"].text = "Level %d" % hero.level
@@ -2189,10 +2437,10 @@ func _process(delta: float) -> void:
 				cdr.anchor_top = 1.0
 				continue
 			var locked: bool = hero.level < int(sk["lvl"]) and not game.test_allskills
-			var frac: float = 1.0 if locked else clampf(float(hero.cds.get(sk["id"], 0.0)) / maxf(float(sk["cd"]), 0.01), 0.0, 1.0)
+			var frac: float = 1.0 if locked else clampf(float(hero.cds.get(sk["id"], 0.0)) / maxf(hero.skill_cd(sk["id"]), 0.01), 0.0, 1.0)
 			cdr.anchor_top = 1.0 - frac
 			cdr.color = Color(0, 0, 0, 0.82) if locked else Color(0, 0, 0, 0.6)
-			(c.get_node("hole/glyph") as SkillGlyph).dim = locked or hero.mana < float(sk["mana"])
+			(c.get_node("hole/glyph") as SkillGlyph).dim = locked or hero.mana < hero.skill_cost(sk["id"])
 	if msg_t > 0.0:
 		msg_t -= delta
 		msg_lbl.modulate.a = clampf(msg_t, 0.0, 1.0)
@@ -2225,6 +2473,78 @@ class SkillGlyph extends Control:
 	var id := ""
 	var dim := false
 	var scale_to := 1.0     # unused (kept for callers); the glyph scales to fit its box
+	## The talents' own icons ("t_..."), for talents that aren't about one skill.
+	func _talent_icon(c: Vector2, gold2: Color, steel: Color) -> void:
+		var red := Color(0.85, 0.15, 0.12) if not dim else Color(0.35, 0.25, 0.25)
+		var blue := Color(0.35, 0.55, 1.0) if not dim else Color(0.3, 0.32, 0.4)
+		var green := Color(0.45, 0.9, 0.4) if not dim else Color(0.3, 0.36, 0.3)
+		match id:
+			"t_sword":
+				draw_line(c + Vector2(0, 16), c + Vector2(0, -15), steel, 4.0, true)
+				draw_line(c + Vector2(-8, 7), c + Vector2(8, 7), gold2, 3.0, true)
+				draw_line(c + Vector2(0, 16), c + Vector2(0, 11), Color(0.45, 0.28, 0.15), 4.0, true)
+			"t_haste":
+				for k in 3:
+					var o := Vector2(-10 + k * 9, 0)
+					draw_polyline(PackedVector2Array([c + o + Vector2(-4, -10), c + o + Vector2(4, 0), c + o + Vector2(-4, 10)]), gold2, 3.0, true)
+			"t_star":
+				var pts := PackedVector2Array()
+				for k in 10:
+					var a := -PI / 2.0 + TAU * k / 10.0
+					pts.append(c + Vector2(cos(a), sin(a)) * (16.0 if k % 2 == 0 else 7.0))
+				draw_colored_polygon(pts, gold2)
+			"t_hourglass":
+				draw_colored_polygon(PackedVector2Array([c + Vector2(-10, -14), c + Vector2(10, -14), c + Vector2(0, 0)]), gold2)
+				draw_colored_polygon(PackedVector2Array([c + Vector2(0, 0), c + Vector2(10, 14), c + Vector2(-10, 14)]), gold2.darkened(0.3))
+				draw_line(c + Vector2(-12, -15), c + Vector2(12, -15), steel, 2.5, true)
+				draw_line(c + Vector2(-12, 15), c + Vector2(12, 15), steel, 2.5, true)
+			"t_heart":
+				draw_circle(c + Vector2(-6, -4), 7.5, red)
+				draw_circle(c + Vector2(6, -4), 7.5, red)
+				draw_colored_polygon(PackedVector2Array([c + Vector2(-13, -1), c + Vector2(13, -1), c + Vector2(0, 14)]), red)
+			"t_armor":
+				draw_colored_polygon(PackedVector2Array([c + Vector2(-14, -10), c + Vector2(-6, -14), c + Vector2(0, -10), c + Vector2(6, -14), c + Vector2(14, -10), c + Vector2(11, 14), c + Vector2(-11, 14)]), steel.darkened(0.25))
+				draw_line(c + Vector2(0, -9), c + Vector2(0, 13), gold2, 2.0, true)
+			"t_ward":
+				draw_arc(c, 14, 0, TAU, 28, blue, 3.0, true)
+				draw_arc(c, 8, 0, TAU, 20, blue.lightened(0.3), 2.0, true)
+				for k in 4:
+					var a := TAU * k / 4.0 + PI / 4.0
+					draw_line(c + Vector2(cos(a), sin(a)) * 14, c + Vector2(cos(a), sin(a)) * 19, gold2, 2.0, true)
+			"t_regen":
+				draw_rect(Rect2(c + Vector2(-4, -13), Vector2(8, 26)), red)
+				draw_rect(Rect2(c + Vector2(-13, -4), Vector2(26, 8)), red)
+				draw_arc(c, 17, -0.4, 1.6, 10, gold2, 2.0, true)
+			"t_boot":
+				draw_colored_polygon(PackedVector2Array([c + Vector2(-6, -14), c + Vector2(4, -14), c + Vector2(4, 4), c + Vector2(15, 8), c + Vector2(15, 14), c + Vector2(-6, 14)]), Color(0.55, 0.36, 0.2) if not dim else Color(0.32, 0.3, 0.28))
+				for k in 3:
+					draw_line(c + Vector2(-16, -6 + k * 7), c + Vector2(-10, -6 + k * 7), gold2, 2.0, true)
+			"t_fist":
+				draw_rect(Rect2(c + Vector2(-11, -8), Vector2(22, 16)), Color(0.8, 0.6, 0.45) if not dim else Color(0.4, 0.37, 0.35))
+				for k in 3:
+					draw_line(c + Vector2(-11 + (k + 1) * 5.5, -8), c + Vector2(-11 + (k + 1) * 5.5, 0), Color(0.3, 0.2, 0.15), 1.5, true)
+				draw_rect(Rect2(c + Vector2(-8, 8), Vector2(16, 8)), steel.darkened(0.2))
+			"t_eye":
+				draw_colored_polygon(PackedVector2Array([c + Vector2(-16, 0), c + Vector2(0, -9), c + Vector2(16, 0), c + Vector2(0, 9)]), steel.darkened(0.5))
+				draw_circle(c, 6, gold2)
+				draw_circle(c, 2.5, Color(0.05, 0.05, 0.05))
+			"t_skull":
+				draw_circle(c + Vector2(0, -3), 11, steel)
+				draw_rect(Rect2(c + Vector2(-6, 5), Vector2(12, 8)), steel)
+				draw_circle(c + Vector2(-4.5, -3), 3, Color(0.05, 0.05, 0.05))
+				draw_circle(c + Vector2(4.5, -3), 3, Color(0.05, 0.05, 0.05))
+			"t_drop":
+				draw_circle(c + Vector2(0, 5), 9, blue)
+				draw_colored_polygon(PackedVector2Array([c + Vector2(-8, 1), c + Vector2(0, -15), c + Vector2(8, 1)]), blue)
+			"t_fang":
+				draw_colored_polygon(PackedVector2Array([c + Vector2(-12, -12), c + Vector2(-2, -12), c + Vector2(-7, 12)]), steel)
+				draw_colored_polygon(PackedVector2Array([c + Vector2(2, -12), c + Vector2(12, -12), c + Vector2(7, 12)]), steel)
+				draw_circle(c + Vector2(-7, 14), 2.5, red)
+				draw_circle(c + Vector2(7, 14), 2.5, red)
+			"t_orb":
+				draw_circle(c, 12, green.darkened(0.3))
+				draw_circle(c + Vector2(-3, -4), 5, green.lightened(0.3))
+				draw_arc(c, 16, 0, TAU, 24, gold2, 1.5, true)
 	func _draw() -> void:
 		var c := size * 0.5
 		# glyphs are drawn for a ~40 px box around the centre; scale them to whatever box this is
@@ -2251,6 +2571,9 @@ class SkillGlyph extends Control:
 				return
 			"":
 				return
+		if id.begins_with("t_"):
+			_talent_icon(c, gold2, steel)
+			return
 		var col := Color(1.0, 0.8, 0.4) if not dim else Color(0.4, 0.35, 0.3)
 		var wcol := Color(0.45, 0.88, 1.0) if not dim else Color(0.3, 0.35, 0.4)
 		var dcol := Color(1.0, 0.45, 0.1) if not dim else Color(0.4, 0.3, 0.28)

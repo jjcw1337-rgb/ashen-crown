@@ -20,6 +20,7 @@ var dex := 15
 var vit := 25
 var ene := 10
 var stat_points := 0
+var talents := {}            # talent id -> ranks taken (Talents); a point per level from level 2
 var gold := 120
 var equipment := {}
 var inventory: Array = []
@@ -27,6 +28,7 @@ var belt: Array = [null, null, null, null]
 var stash: Array = []
 
 # --- derived
+var tfx := {}                # what the talents taken add up to (Talents.sum); read with talent()
 var max_life := 100.0
 var max_mana := 30.0
 var life := 100.0
@@ -199,6 +201,52 @@ func _check_binds() -> void:
 func bound(slot: String) -> String:
 	return str(binds.get(slot, ""))
 
+# ---------------------------------------------------------------- talents (Talents, the window is N)
+func talent(key: String) -> float:
+	return float(tfx.get(key, 0.0))
+
+## A point per level from level 2, less what is spent.
+func free_talent_points() -> int:
+	return maxi(0, level - 1 - Talents.spent(talents))
+
+func learn_talent(id: String) -> bool:
+	if not Talents.can_learn(cls, id, talents, free_talent_points()):
+		return false
+	talents[id] = int(talents.get(id, 0)) + 1
+	_talents_changed()
+	return true
+
+func unlearn_talent(id: String) -> bool:
+	if not Talents.can_unlearn(cls, id, talents):
+		return false
+	talents[id] = int(talents[id]) - 1
+	if talents[id] <= 0:
+		talents.erase(id)
+	_talents_changed()
+	return true
+
+func reset_talents() -> void:
+	talents = {}
+	_talents_changed()
+
+## Spend the free points along the class's suggested build.
+func auto_talents() -> void:
+	talents = Talents.auto_build(cls, free_talent_points(), talents)
+	_talents_changed()
+
+func _talents_changed() -> void:
+	tfx = Talents.sum(cls, talents)
+	recalc()
+	if game and game.ui and not puppet:
+		game.ui.refresh_skill_slots()     # mana costs on the bar
+
+## Mana and cooldown after talents.
+func skill_cost(id: String) -> float:
+	return float(Data.skill_def(id).get("mana", 0)) * (1.0 - talent("cost:" + id) / 100.0)
+
+func skill_cd(id: String) -> float:
+	return float(Data.skill_def(id).get("cd", 0.0)) * (1.0 - talent("cd:" + id) / 100.0)
+
 func _build_rig() -> void:
 	if is_wraith():
 		rig = Wraith.build(wraith_gear())
@@ -239,6 +287,9 @@ func set_class(c: String) -> void:
 	cls = c
 	if changed or binds.is_empty():
 		binds = default_binds()
+	if changed:
+		talents = {}
+		tfx = {}
 	_clear_spirits()
 	dismiss_minions()
 	end_phase(false)
@@ -366,6 +417,8 @@ func setup(g: Node) -> void:
 func new_character() -> void:
 	var c: Dictionary = Data.CLASSES[cls]
 	binds = default_binds()
+	talents = {}
+	tfx = {}
 	level = 1
 	xp = 0
 	str_ = c["str"]
@@ -414,11 +467,14 @@ func recalc() -> void:
 		def_sum += Items.defense_of(it)
 		if s == "shield":
 			shield_block = it.get("block", 0)
+	for k in ["str", "dex", "vit", "res", "ls", "regen", "ias", "frw", "block", "mf"]:
+		if tfx.has(k):
+			stats[k] = stats.get(k, 0) + (tfx[k] if k == "regen" else int(tfx[k]))
 	var st_total: int = str_ + stats.get("str", 0)
 	var dx_total: int = dex + stats.get("dex", 0)
 	var vt_total: int = vit + stats.get("vit", 0)
-	max_life = 45.0 + vt_total * 3.0 + level * 4.0 + stats.get("life", 0)
-	max_mana = 15.0 + ene * 2.0 + level * 1.5 + stats.get("mana", 0)
+	max_life = (45.0 + vt_total * 3.0 + level * 4.0 + stats.get("life", 0)) * (1.0 + talent("life_pct") / 100.0)
+	max_mana = (15.0 + (ene + talent("ene")) * 2.0 + level * 1.5 + stats.get("mana", 0)) * (1.0 + talent("mana_pct") / 100.0)
 	max_stamina = 70.0 + vt_total * 0.6 + level * 2.0
 	stamina = minf(stamina, max_stamina)
 	var w = equipment.get("weapon")
@@ -429,7 +485,7 @@ func recalc() -> void:
 	fire_dmg = stats.get("fire", 0)
 	var wspeed: float = Data.BASES[w["base"]].get("speed", 1.0) if w != null else 1.2
 	aspd = wspeed * (1.0 + mini(stats.get("ias", 0), 120) / 100.0 + dx_total * 0.002)  # A2/A3 gear: speed capped
-	armor = def_sum + dx_total / 4
+	armor = int((def_sum + dx_total / 4) * (1.0 + talent("armor_pct") / 100.0))
 	block_chance = 0.0
 	if equipment.get("shield") != null:
 		block_chance = minf(60.0, shield_block + stats.get("block", 0) + dx_total * 0.1)
@@ -471,7 +527,9 @@ func set_level(n: int) -> void:
 		stat_points += (n - level) * 5
 	level = n
 	xp = 0
-	recalc()
+	if Talents.spent(talents) > level - 1:
+		talents = {}
+	_talents_changed()
 	life = max_life
 	mana = max_mana
 	if up and game.world:
@@ -777,7 +835,7 @@ func skill_ready(id: String) -> bool:
 		return false
 	if atk_t >= 0.0 and atk_skill != "":
 		return false
-	return (level >= sk["lvl"] or game.test_allskills) and cds.get(id, 0.0) <= 0.0 and mana >= sk["mana"]
+	return (level >= sk["lvl"] or game.test_allskills) and cds.get(id, 0.0) <= 0.0 and mana >= skill_cost(id)
 
 func can_act() -> bool:
 	return not dead and atk_t < 0.0 and charge_t < 0.0 and drain_t < 0.0
@@ -797,7 +855,7 @@ func use_skill(id: String, aim: Vector3) -> bool:
 	if cds[id] > 0.0:
 		game.ui.message("%s is recharging" % sk["name"], Color(0.8, 0.8, 0.8))
 		return false
-	if mana < sk["mana"]:
+	if mana < skill_cost(id):
 		game.ui.message("Not enough mana", Color(0.4, 0.5, 1.0))
 		Sfx.play("deny")
 		return false
@@ -811,8 +869,8 @@ func use_skill(id: String, aim: Vector3) -> bool:
 	end_drain()
 	atk_t = -1.0
 	impact_done = true
-	mana -= sk["mana"]
-	cds[id] = sk["cd"]
+	mana -= skill_cost(id)
+	cds[id] = skill_cd(id)
 	atk_aim = aim
 	_face(aim - global_position)
 	match id:
@@ -857,7 +915,7 @@ func use_skill(id: String, aim: Vector3) -> bool:
 		"phase":
 			_phase_start()
 		"pact":
-			life = maxf(1.0, life - max_life * 0.2)
+			life = maxf(1.0, life - max_life * maxf(0.05, 0.2 - talent("pact_cost") / 100.0))
 			_start_attack("cast", "pact")
 			atk_dur = 0.6
 		"drain":
@@ -971,18 +1029,27 @@ func reach() -> float:
 
 # ---------------------------------------------------------------- damage
 func roll_damage(mult: float = 1.0) -> Dictionary:
-	var d := randf_range(dmg_min, dmg_max + 1) * mult
-	if buff_t > 0.0:
-		d *= 1.4
-	var crit := randf() < 0.05 + total_dex() * 0.0015
+	var d := randf_range(dmg_min, dmg_max + 1) * mult * buff_mult()
+	var crit := randf() < 0.05 + total_dex() * 0.0015 + talent("crit") / 100.0
 	if crit:
-		d *= 2.0
+		d *= 2.0 + talent("crit_dmg") / 100.0
 	return {"phys": d, "fire": fire_dmg * mult, "crit": crit}
 
-func _hit_enemy(e, mult: float, knock: float = 0.0) -> void:
+## The battle buffs (Battle Cry, Spectral Host, Blood Pact, Fel Covenant): +40% damage, more with talents.
+func buff_mult() -> float:
+	return 1.4 + talent("buff_pow") / 100.0 if buff_t > 0.0 else 1.0
+
+## Talent damage for a skill ("attack" is the weapon attack): all-damage plus that skill's own.
+func dmg_mult(id: String) -> float:
+	return 1.0 + (talent("dmg") + talent("dmg:" + id)) / 100.0
+
+## src: the skill doing the hitting (talent bonuses); by default the attack in progress.
+func _hit_enemy(e, mult: float, knock: float = 0.0, src := "") -> void:
 	if not is_instance_valid(e) or e.dead:
 		return
-	var r := roll_damage(mult)
+	if src == "":
+		src = atk_skill if atk_skill != "" else "attack"
+	var r := roll_damage(mult * dmg_mult(src))
 	var dealt: float = e.take_damage(r["phys"], r["fire"], global_position, knock, r["crit"])
 	if ls > 0.0:
 		life = minf(max_life, life + dealt * ls / 100.0)
@@ -1006,7 +1073,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	var has_shield: bool = equipment.get("shield") != null
 	var shield_pos := global_position + Vector3(0, 1.2, 0) + fwd * 0.5
 	if block_amt > 0.5 and facing:
-		var reduce := 0.2     # Block: 80% less damage from the front
+		var reduce := maxf(0.05, 0.2 - talent("block_dr") / 100.0)     # Block: 80% less damage from the front
 		if kind == "proj" and has_shield:
 			reduce = 0.0
 		dmg *= reduce
@@ -1429,10 +1496,17 @@ func _impact() -> void:
 			Fx.ring(game.world.fx_root, global_position, 7.0, Color(1.0, 0.75, 0.3), 0.5)
 			Fx.burst(game.world.fx_root, global_position + Vector3(0, 1, 0), Color(1.0, 0.8, 0.4), 50, 9.0, 0.15, 0.6, true, 0.0, 180.0)
 			game.add_shake(0.35)
+			nd *= buff_mult() * dmg_mult("nova")
+			var burned := 0
 			for e in game.enemies_near(global_position, 7.0):
-				var dealt: float = e.take_damage(0.0, nd * (1.4 if buff_t > 0.0 else 1.0), global_position, 1.2, false)
+				e.take_damage(0.0, nd, global_position, 1.2, false)
+				burned += 1
+			if talent("nova_heal") > 0.0 and burned > 0:
+				life = minf(max_life, life + max_life * talent("nova_heal") / 100.0 * mini(burned, 5))
 		"cry":
-			buff_t = 12.0
+			buff_t = 12.0 + talent("buff_dur")
+			if talent("cry_heal") > 0.0:
+				life = minf(max_life, life + max_life * talent("cry_heal") / 100.0)
 			Fx.ring(game.world.fx_root, global_position, 6.0, Color(1.0, 0.85, 0.4), 0.6)
 			Fx.pillar(game.world.fx_root, global_position, Color(1.0, 0.8, 0.35), 0.8)
 			Sfx.play("battle_cry")
@@ -1444,47 +1518,53 @@ func _impact() -> void:
 			var yaw := rig.global_rotation.y
 			WraithFx.reap(game.world.fx_root, global_position, yaw, 3.3)
 			var any := false
+			var full := talent("reap_full") > 0.0
+			if full:
+				WraithFx.reap(game.world.fx_root, global_position, yaw + PI, 3.3)
 			for e in game.enemies_near(global_position, 3.6):
 				var to: Vector3 = e.global_position - global_position
 				to.y = 0
-				if to.length() < 0.5 or fwd.dot(to.normalized()) > cos(deg_to_rad(80.0)):
+				if full or to.length() < 0.5 or fwd.dot(to.normalized()) > cos(deg_to_rad(80.0)):
 					_hit_enemy(e, 1.5, 0.6)
 					any = true
 					WraithFx.soul_wisp(game.world.fx_root, e.global_position + Vector3(0, 1.0 * e.height, 0), self, func():
 						if not dead:
 							Sfx.play("soul_return", -8.0)
-							life = minf(max_life, life + max_life * 0.025)
+							life = minf(max_life, life + max_life * (0.025 + talent("reap_heal") / 100.0))
 							stats_changed.emit())
 			game.add_shake(0.12)
 		"wail":
-			var nd := 16.0 + level * 4.5 + (dmg_min + dmg_max) * 0.35
-			WraithFx.wail(game.world.fx_root, global_position, 7.0)
-			game.add_shake(0.4)
-			for e in game.enemies_near(global_position, 7.0):
-				e.take_damage(nd * (1.4 if buff_t > 0.0 else 1.0), 0.0, global_position, 2.2, false)
-				if not e.dead:
-					e.stun(1.6)
+			var nd := (16.0 + level * 4.5 + (dmg_min + dmg_max) * 0.35) * buff_mult() * dmg_mult("wail")
+			_wail(nd, 2.2)
+			if talent("wail_echo") > 0.0:
+				# Echo: the scream comes back a moment later
+				get_tree().create_timer(0.6, false).timeout.connect(func():
+					if is_instance_valid(self) and not dead and game.world:
+						Sfx.play("wail", -6.0)
+						_wail(nd * talent("wail_echo") / 100.0, 1.0))
 		"host":
-			buff_t = 12.0
+			buff_t = 12.0 + talent("buff_dur")
 			WraithFx.summon(game.world.fx_root, global_position)
 			Sfx.play("host_summon")
 			Sfx.duck(-6.0, 1.0)
 			game.add_shake(0.25)
 			_clear_spirits()
-			for i in 3:
+			var count := 3 + int(talent("spirits"))
+			for i in count:
 				var n := WraithFx.spirit_node(game.world.fx_root)
 				n.global_position = global_position + Vector3(0, 1.4, 0)
-				spirits.append({"node": n, "phase": TAU * i / 3.0, "state": "orbit", "t": 0.3 * i, "target": null, "from": Vector3.ZERO})
-			spirit_t = 12.0
+				spirits.append({"node": n, "phase": TAU * i / float(count), "state": "orbit", "t": 0.3 * i, "target": null, "from": Vector3.ZERO})
+			spirit_t = buff_t
 		"hellclaw":
 			var yaw2 := rig.global_rotation.y
-			DemonFx.claw(game.world.fx_root, global_position, yaw2, 3.0)
+			var wide := talent("claw_wide") > 0.0     # Inferno: a metre further, much wider
+			DemonFx.claw(game.world.fx_root, global_position, yaw2, 4.0 if wide else 3.0)
 			var hit := false
-			for e in game.enemies_near(global_position, 3.3):
+			for e in game.enemies_near(global_position, 4.3 if wide else 3.3):
 				var to2: Vector3 = e.global_position - global_position
 				to2.y = 0
-				if to2.length() < 0.5 or fwd.dot(to2.normalized()) > cos(deg_to_rad(75.0)):
-					var r := roll_damage(1.4)
+				if to2.length() < 0.5 or fwd.dot(to2.normalized()) > cos(deg_to_rad(115.0 if wide else 75.0)):
+					var r := roll_damage(1.4 * dmg_mult("hellclaw"))
 					var dealt: float = e.take_damage(r["phys"], r["fire"] + r["phys"] * 0.35, global_position, 0.5, r["crit"])
 					if ls > 0.0:
 						life = minf(max_life, life + dealt * ls / 100.0)
@@ -1494,42 +1574,56 @@ func _impact() -> void:
 		"summon":
 			_summon_minion()
 		"pact":
-			buff_t = 12.0
+			buff_t = 12.0 + talent("buff_dur")
 			DemonFx.pact(game.world.fx_root, global_position)
 			Sfx.play("blood_pact")
 			Sfx.duck(-6.0, 1.2)
 			game.add_shake(0.3)
 			for m in minions:
 				if is_instance_valid(m):
-					m.empowered = 12.0
+					m.empowered = buff_t
 					DemonFx.pact(game.world.fx_root, m.global_position)
 		"blight":
 			var dir := atk_aim - global_position
 			dir.y = 0
 			dir = dir.normalized() if dir.length() > 0.3 else fwd
-			var n := WarlockFx.bolt_node(game.world.fx_root)
-			n.global_position = global_position + Vector3(0, 1.3, 0) + dir * 0.6
-			n.look_at(n.global_position + dir, Vector3.UP)
-			bolts.append({"node": n, "dir": dir, "left": 15.0})
+			# Twin Skulls: two, a little apart
+			var dirs := [dir] if talent("blight_twin") <= 0.0 else [dir.rotated(Vector3.UP, 0.14), dir.rotated(Vector3.UP, -0.14)]
+			for dv in dirs:
+				var n := WarlockFx.bolt_node(game.world.fx_root)
+				n.global_position = global_position + Vector3(0, 1.3, 0) + dv * 0.6
+				n.look_at(n.global_position + dv, Vector3.UP)
+				bolts.append({"node": n, "dir": dv, "left": 15.0})
 		"shackles":
 			var root: Node3D = game.world.fx_root
-			WarlockFx.shackle_cast(root, global_position, 7.0)
+			var reach_s := 7.0 + talent("shackle_range")
+			var bind_t := 2.5 + talent("shackle_dur")
+			WarlockFx.shackle_cast(root, global_position, reach_s)
 			Sfx.play("shackles")
 			game.add_shake(0.25)
-			for e in game.enemies_near(global_position, 7.0):
+			for e in game.enemies_near(global_position, reach_s):
 				WarlockFx.chain(root, global_position + Vector3(0, 1.1, 0), e.global_position + Vector3(0, 0.8 * e.height, 0), 0.8)
 				_hit_enemy(e, 0.8, 0.0)
 				if not e.dead:
-					e.stun(2.5)
-					WarlockFx.shackle(e, 2.5 * (0.3 if e.boss else 1.0))
+					e.stun(bind_t)
+					WarlockFx.shackle(e, bind_t * (0.3 if e.boss else 1.0))
 		"covenant":
-			buff_t = 12.0
-			covenant_t = 12.0
+			buff_t = 12.0 + talent("buff_dur")
+			covenant_t = buff_t
 			WarlockFx.covenant(game.world.fx_root, global_position)
 			Sfx.play("covenant")
 			Sfx.duck(-9.0, 1.6)
 			game.add_shake(0.3)
 	stats_changed.emit()
+
+## Banshee Wail's scream: damage, hurls back and terrifies everything within 7 m.
+func _wail(nd: float, knock: float) -> void:
+	WraithFx.wail(game.world.fx_root, global_position, 7.0)
+	game.add_shake(0.4 if knock > 1.5 else 0.25)
+	for e in game.enemies_near(global_position, 7.0):
+		e.take_damage(nd, 0.0, global_position, knock, false)
+		if not e.dead:
+			e.stun(1.6 + talent("wail_stun"))
 
 # ---------------------------------------------------------------- warlock skills
 const DRAIN_RANGE := 11.0     # how far away a beam can latch on
@@ -1572,7 +1666,7 @@ func _drain_victims() -> Array:
 	var mp: Vector3 = drain_main.global_position
 	var near: Array = game.enemies_near(mp, DRAIN_FORK).filter(func(e): return e != drain_main)
 	near.sort_custom(func(a, b): return a.global_position.distance_to(mp) < b.global_position.distance_to(mp))
-	var forks := 5 if covenant_t > 0.0 else 3
+	var forks := (5 if covenant_t > 0.0 else 3) + int(talent("drain_fork"))
 	return [drain_main] + near.slice(0, forks)
 
 func _drain_start(foe) -> void:
@@ -1653,10 +1747,10 @@ func _update_drain(delta: float) -> void:
 			game.ui.message("Not enough mana", Color(0.4, 0.5, 1.0))
 			end_drain()
 			return
-		mana -= 2.0
+		mana -= 2.0 * (1.0 - talent("cost:drain") / 100.0)
 	var root: Node3D = game.world.fx_root
 	var hand: Vector3 = (J["hand_l"] as Node3D).global_position
-	var dmg := (6.0 + level * 2.4 + (dmg_min + dmg_max) * 0.6) * 0.3 * (1.4 if buff_t > 0.0 else 1.0)
+	var dmg := (6.0 + level * 2.4 + (dmg_min + dmg_max) * 0.6) * 0.3 * buff_mult() * dmg_mult("drain")
 	var heal := 0.0
 	var victims := _drain_victims()
 	for i in victims.size():
@@ -1671,6 +1765,10 @@ func _update_drain(delta: float) -> void:
 		WarlockFx.siphon(root, e.global_position + Vector3(0, 1.0 * e.height, 0), hand if i == 0 else drain_main.global_position + Vector3(0, 1.0 * drain_main.height, 0))
 	if covenant_t > 0.0:
 		heal *= 2.0
+	heal *= 1.0 + talent("drain_heal") / 100.0
+	# Soul Glut: what would heal past full life fills mana instead
+	if talent("drain_glut") > 0.0 and life + heal > max_life:
+		mana = minf(max_mana, mana + (life + heal - max_life) * talent("drain_glut") / 100.0)
 	life = minf(max_life, life + heal)
 	drain_heal += heal
 	drain_heal_t += 0.3
@@ -1754,13 +1852,15 @@ func _update_bolts(delta: float) -> void:
 func _blight_burst(p: Vector3) -> void:
 	var g := Vector3(p.x, game.world.height_at(p.x, p.z), p.z)
 	var root: Node3D = game.world.fx_root
-	WarlockFx.blight_burst(root, g, 3.0)
-	var pool := WarlockFx.blight_pool(root, g, 3.0, 4.0)
-	blights.append({"node": pool, "pos": g, "t": 4.0, "tick": 0.5})
+	var rad := 3.0 * (1.0 + talent("blight_size") / 100.0)
+	var dur := 4.0 + talent("blight_dur")
+	WarlockFx.blight_burst(root, g, rad)
+	var pool := WarlockFx.blight_pool(root, g, rad, dur)
+	blights.append({"node": pool, "pos": g, "t": dur, "tick": 0.5, "r": rad})
 	Sfx.play_at("blight_burst", g, -1.0)
 	game.add_shake(0.18)
-	var nd := (14.0 + level * 4.0 + (dmg_min + dmg_max) * 0.35) * (1.4 if buff_t > 0.0 else 1.0)
-	for e in game.enemies_near(g, 3.0):
+	var nd := (14.0 + level * 4.0 + (dmg_min + dmg_max) * 0.35) * buff_mult() * dmg_mult("blight")
+	for e in game.enemies_near(g, rad):
 		e.take_damage(nd, 0.0, g, 0.8, false)
 
 ## Plague pools rot whatever stands in them every half second.
@@ -1773,8 +1873,8 @@ func _update_blights(delta: float) -> void:
 			continue
 		if bl["tick"] <= 0.0:
 			bl["tick"] = 0.5
-			var nd := (4.0 + level * 1.3 + (dmg_min + dmg_max) * 0.12) * (1.4 if buff_t > 0.0 else 1.0)
-			for e in game.enemies_near(bl["pos"], 3.0):
+			var nd := (4.0 + level * 1.3 + (dmg_min + dmg_max) * 0.12) * buff_mult() * dmg_mult("blight")
+			for e in game.enemies_near(bl["pos"], float(bl.get("r", 3.0))):
 				e.take_damage(nd, 0.0, bl["pos"], 0.0, false)
 
 func _clear_warlock() -> void:
@@ -1792,7 +1892,7 @@ func _clear_warlock() -> void:
 func _summon_minion() -> void:
 	minions = minions.filter(func(m): return is_instance_valid(m))
 	var slot := 0
-	if minions.size() >= 3:
+	if minions.size() >= max_minions():
 		var old = minions.pop_front()
 		slot = old.slot
 		old.dismiss()
@@ -1814,6 +1914,10 @@ func _summon_minion() -> void:
 	m.rig.rotation.y = rig.rotation.y
 	minions.append(m)
 
+## Three demons at once, four with Legion of Hell.
+func max_minions() -> int:
+	return 3 + int(talent("minion_max"))
+
 func dismiss_minions() -> void:
 	for m in minions:
 		if is_instance_valid(m):
@@ -1823,7 +1927,7 @@ func dismiss_minions() -> void:
 ## Underworld Phase: six seconds unseen and untouchable, moving faster; the rift erupts on return.
 func _phase_start() -> void:
 	phased = true
-	phase_t = 6.0
+	phase_t = 6.0 + talent("phase_dur")
 	game.set_underworld(true)
 	DemonFx.phase_tear(game.world.fx_root, global_position)
 	Sfx.play("phase_in")
@@ -1842,9 +1946,12 @@ func end_phase(erupt := true) -> void:
 			Sfx.duck(-8.0, 1.0)
 			game.add_shake(0.4)
 			for e in game.enemies_near(global_position, 4.0):
-				_hit_enemy(e, 2.0, 2.0)
+				_hit_enemy(e, 2.0, 2.0, "phase")
 				if not e.dead:
 					e.stun(0.8)
+			if talent("phase_heal") > 0.0:
+				life = minf(max_life, life + max_life * talent("phase_heal") / 100.0)
+				stats_changed.emit()
 
 # ---------------------------------------------------------------- wraith skills
 ## Shadow Step: dissolve, slide through the shadows to the aim point (stopping at walls), re-form.
@@ -1881,7 +1988,7 @@ func _shadow_step(aim: Vector3) -> void:
 	WraithFx.shade_arrive(root, p)
 	game.add_shake(0.2)
 	for e in game.enemies_near(p, 2.4):
-		_hit_enemy(e, 1.2, 1.0)
+		_hit_enemy(e, 1.2, 1.0, "shade")
 		if not e.dead:
 			e.stun(0.7)
 	# the shade left behind collapses a moment later
@@ -1891,7 +1998,7 @@ func _shadow_step(aim: Vector3) -> void:
 		WraithFx.shade_implode(game.world.fx_root, start)
 		Sfx.play_at("shade_implode", start, -1.0)
 		for e in game.enemies_near(start, 2.6):
-			_hit_enemy(e, 0.9, 0.8))
+			_hit_enemy(e, 0.9, 0.8, "shade"))
 	# a quick cast pose so the re-forming reads on screen
 	_start_attack("cast", "")
 	atk_dur = 0.35
@@ -1953,7 +2060,7 @@ func _update_spirits(delta: float) -> void:
 				var k: float = clampf(s["t"], 0.0, 1.0)
 				n.global_position = (s["from"] as Vector3).lerp(mid, k).lerp(mid.lerp(to, k), k)
 				if k >= 1.0:
-					_hit_enemy(tg, 0.55, 0.3)
+					_hit_enemy(tg, 0.55, 0.3, "host")
 					WraithFx.spirit_hit(game.world.fx_root, to)
 					Sfx.play_at("spirit_dart", to, -4.0)
 					s["state"] = "back"
@@ -1977,8 +2084,13 @@ func _update_charge(delta: float) -> void:
 	for e in game.enemies_near(global_position, 1.6):
 		if not charge_hit.has(e.get_instance_id()):
 			charge_hit[e.get_instance_id()] = true
-			_hit_enemy(e, 1.3, 2.5)
+			_hit_enemy(e, 1.3, 2.5, "charge")
 			e.stun(0.8)
+			# Relentless: each enemy smashed takes time off the other cooldowns
+			if talent("charge_cdr") > 0.0:
+				for k in cds:
+					if k != "charge":
+						cds[k] = maxf(0.0, cds[k] - talent("charge_cdr"))
 			if charge_hit.size() == 1:
 				Sfx.play_at("charge_impact", e.global_position, 0.0)
 			Fx.sparks(game.world.fx_root, e.global_position + Vector3(0, 1.0, 0))
@@ -2145,7 +2257,7 @@ func unequip(slot: String) -> void:
 
 func to_save() -> Dictionary:
 	return {"cls": cls, "level": level, "xp": xp, "str": str_, "dex": dex, "vit": vit, "ene": ene, "points": stat_points, "gold": gold,
-		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds}
+		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "talents": talents}
 
 func from_save(d: Dictionary) -> void:
 	set_class(str(d.get("cls", "knight")))
@@ -2171,6 +2283,14 @@ func from_save(d: Dictionary) -> void:
 	stash.resize(60)
 	binds = (d.get("binds", {}) as Dictionary).duplicate() if d.get("binds") is Dictionary else {}
 	_check_binds()
+	# a save from before talents gets a build picked for its class and level
+	if d.get("talents") is Dictionary:
+		talents = Talents.clean(cls, d["talents"])
+		if Talents.spent(talents) > level - 1:
+			talents = {}
+	else:
+		talents = Talents.auto_build(cls, level - 1)
+	tfx = Talents.sum(cls, talents)
 	if game and game.ui and not puppet:
 		game.ui.refresh_skill_slots()
 	recalc()

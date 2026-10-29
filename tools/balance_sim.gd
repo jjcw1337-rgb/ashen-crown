@@ -167,6 +167,9 @@ func _equip(cls: String, lvl: int, ilvl: int, gear_run: int) -> void:
 		seed(hash(slot) + ilvl)   # affix picks shuffle with the global generator
 		var it := Items.generate(base, ilvl, 1, rng)
 		h.equipment[slot] = Items.empower(it, mult) if gear_run > 0 else it
+	# talents: the build an old save gets (Talents.AUTO), a point per level from level 2
+	h.talents = Talents.auto_build(cls, lvl - 1)
+	h._talents_changed()
 	h.recalc()
 	h.life = h.max_life
 	h.mana = h.max_mana

@@ -64,8 +64,12 @@ func dismiss() -> void:
 func _formation_spot() -> Vector3:
 	var back: Vector3 = (master as Node3D).get("rig").global_transform.basis.z
 	var side := Vector3(back.z, 0, -back.x)
-	var offs := [Vector3.ZERO, side * 1.3, -side * 1.3]
-	return master.global_position + back * (1.6 if slot == 0 else 1.1) + offs[slot]
+	var offs := [Vector3.ZERO, side * 1.3, -side * 1.3, Vector3.ZERO]   # a fourth (Legion of Hell) trails behind
+	return master.global_position + back * [1.6, 1.1, 1.1, 2.8][mini(slot, 3)] + offs[mini(slot, 3)]
+
+## Pack Master: the master's talents make them quicker.
+func _quick() -> float:
+	return 1.0 + float(master.call("talent", "minion_speed")) / 100.0
 
 func _process(delta: float) -> void:
 	if not is_instance_valid(master) or master.get("dead") or game == null or game.world == null or game._busy:
@@ -107,17 +111,17 @@ func _process(delta: float) -> void:
 		to.y = 0
 		var reach: float = target.radius + 0.95
 		if to.length() > reach:
-			vel = to.normalized() * SPEED * (1.25 if empowered > 0.0 else 1.0)
+			vel = to.normalized() * SPEED * (1.25 if empowered > 0.0 else 1.0) * _quick()
 		elif atk_t < 0.0:
 			atk_t = 0.0
 			hit_done = false
-			atk_dur = 0.8 if empowered <= 0.0 else 0.6
+			atk_dur = (0.8 if empowered <= 0.0 else 0.6) / _quick()
 		_face(to)
 	else:
 		var to2 := _formation_spot() - global_position
 		to2.y = 0
 		if to2.length() > 0.6:
-			vel = to2.normalized() * SPEED * clampf(to2.length() / 2.0, 0.4, 1.3)
+			vel = to2.normalized() * SPEED * clampf(to2.length() / 2.0, 0.4, 1.3) * _quick()
 			_face(vel)
 	if vel.length() > 0.01:
 		global_position = game.world.move(global_position, vel * delta)
@@ -142,5 +146,6 @@ func _strike() -> void:
 	var d := avg * 0.45 + lvl * 2.5 + 4.0
 	if empowered > 0.0:
 		d *= 1.6
+	d *= float(master.call("dmg_mult", "summon"))
 	target.take_damage(d, d * 0.35, global_position, 0.4, false)
 	Fx.burst(game.world.fx_root, target.global_position + Vector3(0, 1.0 * target.height, 0), Color(1.0, 0.45, 0.1), 12, 3.5, 0.08, 0.3, true, -4.0)

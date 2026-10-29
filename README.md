@@ -47,6 +47,13 @@ Windows SmartScreen may warn that the app is unrecognised (it isn't code-signed)
 
 Every class has four skills on Q E R F, unlocking at levels 1, 3, 6 and 10. Your class is saved with your character, and co-op partners see it.
 
+**Talents** (press **N**): every class has three talent trees, each with seven talents in four rows, ending in a capstone. You get a talent point every level from level 2; left-click a talent to learn a rank, right-click to take it back. A row opens once you've spent enough points above it in that tree (3, 6, then 10 for the capstone). **Reset** gives every point back for free, and **Auto-assign** spends your points on a suggested build. Characters from before talents arrived got a build picked for their class and level; reset it if you want your own.
+
+- Knight: *Crusader* (Holy Slam and Holy Nova), *Bulwark* (defense, shield and Battle Cry healing), *Vanguard* (Charge, the sword combo, Battle Cry).
+- Wraith: *Reaper* (Soul Reap, crits), *Banshee* (Banshee Wail, Shadow Step), *Revenant* (Spectral Host, toughness).
+- Demon: *Hellfire* (Hellfire Claw, fury), *Summoner* (your demons, Blood Pact, a fourth demon), *Underworld* (Underworld Phase, obsidian hide).
+- Warlock: *Affliction* (Drain Life), *Plague* (Blight Bolt and its pools), *Binding* (Soul Shackles, Fel Covenant, fel wards).
+
 ## Co-op (two to four players on the same home network)
 
 1. On the first computer, pick **Host Co-op Game** on the title screen.
@@ -80,6 +87,8 @@ How it works:
 Space and the skill keys fire the way your hero is facing (for every class), bending slightly onto an enemy just ahead. Shadow Step is the one skill that goes to the cursor.
 | I | Inventory |
 | C | Character sheet (spend stat points) |
+| K | Skills: put any skill on a mouse button or Q E R F G V (or drag it onto the bar) |
+| N | Talents |
 | T | Town portal |
 | Alt (hold) | Show all item names on the ground |
 | M | Toggle minimap |
@@ -87,6 +96,8 @@ Space and the skill keys fire the way your hero is facing (for every class), ben
 | Mouse wheel | Zoom |
 | F3 | FPS counter |
 | Esc | Close panels / pause menu (graphics quality, save and quit) |
+
+Skill bar: drag a skill from the skills window (K) onto a slot, drag one slot onto another to swap them, or drag a skill off the bar to clear it. Clicking a slot opens a list to choose from.
 
 Inventory: click an item to equip it (or an equipped item to take it off). **Drag** an item to another bag slot to move it, onto your equipment to wear it, or out of the window onto the game world to drop it on the ground. Right-click to drink, sell (at a merchant) or store (at the stash). Ctrl-click also drops.
 

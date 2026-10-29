@@ -249,7 +249,7 @@ func _apply_underworld() -> void:
 
 func _on_level(l: int) -> void:
 	ui.big_message("Level %d" % l)
-	ui.message("+5 stat points  (press C)", Color(1, 0.85, 0.4))
+	ui.message("+5 stat points (press C)  ·  +1 talent point (press N)", Color(1, 0.85, 0.4))
 
 # ---------------------------------------------------------------- environment
 func _setup_env() -> void:
@@ -1626,6 +1626,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 					_use_bind(OS.get_keycode_string(ev.keycode), true)
 			KEY_K:
 				ui.toggle(ui.skills_panel)
+			KEY_N:
+				ui.toggle(ui.talent_panel)
 			KEY_F3:
 				ui.show_fps = not ui.show_fps
 			KEY_F2:
