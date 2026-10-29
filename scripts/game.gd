@@ -1290,9 +1290,9 @@ func _interact(t: Inter) -> void:
 					net.request_games()
 				else:
 					g.begin()], ["Not today", func(): pass]]
-			if boss_killed:
-				txt = "You killed Aurelius. Do you know what that cost me? No matter: the crowd has a new favourite, and I have a new purse. Come back when you want to bleed for coin again."
-				btns = [["Farewell", func(): pass]]
+			if g.state == "closed" and boss_killed:
+				# the games run again for a hero who has won them (and for one whose save beat the old A2)
+				txt = "Back again? Aurelius has mended, and he wants your blood more than my purse. The lions are hungry, the stands are full. Step onto my sand and do it all again."
 			elif g.state != "closed":
 				txt = "The games are on! Get onto the sand, the crowd is waiting."
 				btns = [["Farewell", func(): pass]]

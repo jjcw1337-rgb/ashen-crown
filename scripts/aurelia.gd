@@ -298,20 +298,40 @@ static func _brazier(w: World, p: Vector3) -> void:
 	Props.fire(g, Vector3(0, 1.45, 0), 1.8, Color(1.0, 0.55, 0.2), true, false)
 	w.solid(g)
 
-## Varro the lanista by the arena's gate, two of his bandits lounging near: he offers you the games.
+## Varro the lanista by the arena's gate, two of his bandits standing guard: he offers you the games.
+## All three are the Meshy bandit (MeshyMonster), Varro unarmed; the old procedural people without it.
 static func _lanista(w: World, games: Games) -> void:
-	var p := Vector3(4.5, 0, CENTRE.y + OUTER_RZ + 4.5)
-	var look := {"skin": Color(0.66, 0.5, 0.38), "cloth": Color(0.4, 0.12, 0.42), "cloth2": Color(0.3, 0.2, 0.12), "height": 1.0, "bulk": 1.1, "head": "human", "hair": Color(0.08, 0.06, 0.05), "robe": true}
-	var it := w._npc("Varro the Lanista", look, p, "lanista", PI * 0.85)
+	# out on the plaza beside the entrance, clear of the braziers (whose flames hid him behind one)
+	var p := Vector3(7.5, 0, CENTRE.y + OUTER_RZ + 9.0)
+	var it: Inter
+	if MeshyMonster.ok("bandit"):
+		it = w._inter("vendor", "Varro the Lanista", p, 1.4, null, {"role": "lanista", "offset": w.rng.randf() * 9.0})
+		it.rig = MeshyMonster.build("bandit", {"height": 1.04})
+		it.add_child(it.rig)
+		it.rig.rotation.y = PI * 0.9
+		w.add_circle(p, 0.45)
+	else:
+		var look := {"skin": Color(0.66, 0.5, 0.38), "cloth": Color(0.4, 0.12, 0.42), "cloth2": Color(0.3, 0.2, 0.12), "height": 1.0, "bulk": 1.1, "head": "human", "hair": Color(0.08, 0.06, 0.05), "robe": true}
+		it = w._npc("Varro the Lanista", look, p, "lanista", PI * 0.9)
 	it.kind = "lanista"
 	games.lanista = it
 	for sx: int in [-1, 1]:
-		var gl := {"skin": Color(0.6, 0.45, 0.33), "cloth": Color(0.3, 0.24, 0.16), "cloth2": Color(0.22, 0.25, 0.14), "height": 1.0, "bulk": 1.0, "head": "human", "hair": Color(0.12, 0.09, 0.06), "weapon": "scimitar"}
-		var rig := Models.humanoid(gl)
-		w.props_root.add_child(rig)
-		rig.position = Vector3(p.x + sx * 2.4 - 1.0, 0, p.z - 1.5)
+		var at := Vector3(p.x + sx * 2.0, 0, p.z - 1.8)
+		var rig: Node3D
+		if MeshyMonster.ok("bandit"):
+			rig = MeshyMonster.build("bandit", {"height": 1.0, "weapon": "scimitar"})
+		else:
+			rig = Models.humanoid({"skin": Color(0.6, 0.45, 0.33), "cloth": Color(0.3, 0.24, 0.16), "cloth2": Color(0.22, 0.25, 0.14), "height": 1.0, "bulk": 1.0, "head": "human", "hair": Color(0.12, 0.09, 0.06), "weapon": "scimitar"})
+		# a guard: posed and turning to watch the hero like an NPC (Inter), but not clickable
+		var gd := Inter.new()
+		gd.kind = "guard"
+		gd.data = {"still": true}
+		w.props_root.add_child(gd)
+		gd.position = Vector3(at.x, w.height_at(at.x, at.z), at.z)
+		gd.add_child(rig)
+		gd.rig = rig
 		rig.rotation.y = PI + sx * 0.4
-		w.add_circle(rig.position, 0.4)
+		w.add_circle(at, 0.4)
 
 # ---------------------------------------------------------------- the colosseum
 ## The arena: the podium wall round the sand (solid, its Gate of Life on the south a gap the games open

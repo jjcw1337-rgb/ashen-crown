@@ -43,6 +43,7 @@ var bursts := 0                 # spike bursts so far (tests)
 var charge_t := 6.0             # the champion's shield charge: seconds to the next
 var charge := {}                # host, while charging: {phase: wind|dash, t, dir, hit}
 var charges := 0                # (tests)
+var hint_t := 0.0               # the barred gate's hint, shown again after this
 var zoom_was := -1.0            # the player's camera zoom before the games pulled it out
 
 func setup(world: World) -> void:
@@ -361,6 +362,13 @@ func _exit_tree() -> void:
 
 func _update_look(delta: float) -> void:
 	excite = move_toward(excite, excite_to, delta * 0.25)
+	# at the barred Gate of Life before the deal: say who opens it
+	hint_t = maxf(0.0, hint_t - delta)
+	if state == "closed" and hint_t <= 0.0 and game.hero and game.world == w:
+		var hp: Vector3 = game.hero.global_position
+		if Vector2(hp.x, hp.z).distance_to(gate_at) < 7.0 and gate_at != Vector2.ZERO:
+			hint_t = 8.0
+			game.ui.message("The Gate of Life is barred. Varro the lanista, outside the arena, runs the games.", Color(0.95, 0.8, 0.5), 4.0)
 	if crowd_mat:
 		crowd_mat.set_shader_parameter("excite", excite)
 

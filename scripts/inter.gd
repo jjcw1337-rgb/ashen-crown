@@ -65,7 +65,7 @@ func _process(delta: float) -> void:
 				rig.rotation.y = lerp_angle(rig.rotation.y, want, delta * 3.0)
 		var gesture := -1.0
 		var cyc := fmod(_t + data.get("offset", 0.0), 9.0)
-		if cyc > 7.6:
+		if cyc > 7.6 and not data.get("still", false):
 			gesture = (cyc - 7.6) / 1.4
 		Anim.pose(rig, {"time": _t, "phase": 0.0, "move": 0.0, "atk": gesture * 0.35 if gesture >= 0.0 else -1.0, "style": "cast"})
 	if kind == "flower" and not used:

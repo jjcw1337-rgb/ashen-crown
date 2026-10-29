@@ -182,18 +182,33 @@ static func milestone(w: World, p: Vector3, yaw: float) -> void:
 	g.rotation = Vector3(w.rng.randf_range(-0.06, 0.06), yaw, w.rng.randf_range(-0.08, 0.08))
 	w.solid(g)
 
-## A marble statue on a plinth: a figure in a heroic stance (the game's humanoid, carved in marble),
-## an arm raised with a spear; headless or toppled when broken.
+const STATUE_GLB := "res://assets/models/knight_armored.glb"
+
+## A marble statue on a plinth: the Meshy crusader (STATUE_GLB) carved in marble, or without it the
+## game's humanoid in a heroic stance, an arm raised with a spear; toppled (or headless) when broken.
 static func statue(w: World, p: Vector3, yaw: float, s := 1.25, broken := false) -> Node3D:
 	var g := Props.footprint(Models.N(null, "statue"), 0.9)
 	Models.P(g, Geo.box(1.6, 1.4, 1.6), tuff(), Vector3(0, 0.7, 0))
 	Models.P(g, Geo.box(1.8, 0.2, 1.8), marble(), Vector3(0, 1.5, 0))
 	Models.P(g, Geo.box(1.1, 0.3, 0.04), Mats.mat(Color(0.3, 0.27, 0.24), 0.9), Vector3(0, 0.95, 0.81))
-	var white := Color(0.88, 0.86, 0.8)
-	var fig := Models.humanoid({"skin": white, "cloth": white, "cloth2": white, "armor": white, "height": s, "bulk": 1.1, "head": "human", "hair": white, "cape": white})
 	var mm := marble_clean()
-	for mi in fig.find_children("*", "MeshInstance3D", true, false):
-		(mi as MeshInstance3D).material_override = mm
+	var fig: Node3D
+	if ResourceLoader.exists(STATUE_GLB):
+		# the Meshy crusader (the knight in plate) carved in marble, in his rest pose
+		fig = Node3D.new()
+		var body: Node3D = (load(STATUE_GLB) as PackedScene).instantiate()
+		fig.add_child(body)
+		body.rotation.y = PI          # the glb faces +z; a statue faces its plinth's front like the old figure
+		var top := 0.0
+		for mi in body.find_children("*", "MeshInstance3D", true, false):
+			(mi as MeshInstance3D).material_override = mm
+			top = maxf(top, (mi as MeshInstance3D).get_aabb().end.y)
+		body.scale = Vector3.ONE * (1.8 * s / maxf(top, 0.1))
+	else:
+		var white := Color(0.88, 0.86, 0.8)
+		fig = Models.humanoid({"skin": white, "cloth": white, "cloth2": white, "armor": white, "height": s, "bulk": 1.1, "head": "human", "hair": white, "cape": white})
+		for mi in fig.find_children("*", "MeshInstance3D", true, false):
+			(mi as MeshInstance3D).material_override = mm
 	g.add_child(fig)
 	fig.position = Vector3(0, 1.6, 0)
 	if fig.has_meta("j"):

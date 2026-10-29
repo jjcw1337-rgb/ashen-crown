@@ -45,10 +45,10 @@ func _run() -> void:
 		return
 	for e in w.enemies_root.get_children():
 		e.set_process(false)
-	for k in [["gate", Vector2(0, -16)], ["street", Vector2(0, -36)], ["crossroads", Vector2(6, -60)], ["temple", Vector2(-24, -58)], ["plaza", Vector2(0, -110)]]:
+	for k in [["gate", Vector2(0, -16)], ["street", Vector2(0, -36)], ["crossroads", Vector2(6, -60)], ["temple", Vector2(-24, -58)], ["plaza", Vector2(0, -110)], ["entrance", Vector2(4, -113)]]:
 		var p: Vector2 = k[1]
 		g.hero.global_position = Vector3(p.x, w.height_at(p.x, p.y), p.y)
-		await _shot("%s_%s.png" % [out, k[0]])
+		await _shot("%s_%s.png" % [out, k[0]], 240 if k[0] == "entrance" else 20)
 	var games = w.get_meta("games")
 	games.begin()
 	var sp: Vector3 = w.spawns["arena"]

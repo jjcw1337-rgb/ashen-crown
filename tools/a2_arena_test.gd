@@ -26,6 +26,21 @@ func _kill_all(list: Array) -> void:
 		if is_instance_valid(e) and not e.dead:
 			e.take_damage(99999.0, 0.0, g.hero.global_position, 0.0, false)
 
+## Walk the hero toward to (re-ordering the move each second, as a held click would) until within near.
+func _walk(to: Vector3, secs: float, near := 1.0) -> bool:
+	var t0 := Time.get_ticks_msec()
+	var last := -1
+	while Time.get_ticks_msec() - t0 < secs * 1000.0:
+		var sec := int((Time.get_ticks_msec() - t0) / 1000)
+		if sec != last:
+			last = sec
+			g.hero.cmd_move(to)
+		await process_frame
+		var d: Vector3 = g.hero.global_position - to
+		if Vector2(d.x, d.z).length() < near:
+			return true
+	return false
+
 func _run() -> void:
 	while g.world == null or g._busy:
 		g._intro_skip = true
@@ -53,10 +68,15 @@ func _run() -> void:
 	await wait(0.3)
 	check(not am["done"], "no ambush from 30 m away")
 	g.hero.global_position = am["pos"]
-	await wait(0.4)
-	await wait(1.4)
-	var near: Array = w.enemies_root.get_children().filter(func(e): return e is Enemy and not e.dead and e.kind.begins_with("bandit") and e.global_position.distance_to(am["pos"]) < 16.0)
-	var on_road: int = near.filter(func(e): return w.path_dist(e.global_position.x, e.global_position.z) < 7.5).size()
+	# the leaps take ~1.5 s once spawned (spawning a dozen models can stall the first frames): give them 4
+	var near: Array = []
+	var on_road := 0
+	for i in 20:
+		await wait(0.2)
+		near = w.enemies_root.get_children().filter(func(e): return e is Enemy and not e.dead and e.kind.begins_with("bandit") and e.global_position.distance_to(am["pos"]) < 16.0)
+		on_road = near.filter(func(e): return w.path_dist(e.global_position.x, e.global_position.z) < 7.5).size()
+		if on_road >= 5 and i >= 8:
+			break
 	check(am["done"] and bandits_before == 0 and near.size() >= 8 and on_road >= 5, "ambush: none there before (%d), %d bandits sprang out, %d of them down on the road" % [bandits_before, near.size(), on_road])
 	var caps: Array = w.enemies_root.get_children().filter(func(e): return e is Enemy and e.champion and e.kind == "bandit" and e.global_position.distance_to(am["pos"]) < 25.0)
 	check(caps.size() == 1, "the Bandit Captain sprang out with them (%d champion within 25 m)" % caps.size())
@@ -69,19 +89,36 @@ func _run() -> void:
 	check(w.props_root.get_node("crowd").multimesh.instance_count > 400, "a crowd of %d" % w.props_root.get_node("crowd").multimesh.instance_count)
 	var gp: Vector2 = Aur.floor_pt(Aur.GATES["life"], 1.04)
 	check(w.solid_at(gp.x, gp.y, 0.3), "the Gate of Life is shut before the deal")
+	# Varro stands in the open (nothing tall like a brazier within 2.5 m), a Meshy body, and the hero
+	# walks to him from the city gate
+	var vp: Vector3 = games.lanista.global_position
+	var crowded := 0
+	for prop in w.props_root.get_children():
+		if prop is Node3D and str(prop.name).contains("brazier") and (prop as Node3D).global_position.distance_to(vp) < 2.5:
+			crowded += 1
+	check(crowded == 0 and games.lanista.rig != null and games.lanista.rig.has_meta("meshy_monster"), "Varro: in the open (%d braziers by him), the Meshy bandit" % crowded)
+	g.hero.global_position = w.spawns["start"]
+	var walked: bool = await _walk(vp + Vector3(0, 0, 1.6), 40.0)
+	check(walked, "walked from the city gate to Varro (%.1f m off)" % g.hero.global_position.distance_to(vp))
+	# he offers the games even to a hero whose save says the act's boss is dead (the old A2's Grubb)
+	g.boss_killed = true
 	g._interact(games.lanista)
 	await process_frame
-	check(g.ui.dialog_panel.visible, "Varro offers the games")
+	var offers: bool = g.ui.dialog_btns.get_children().any(func(b): return b is Button and (b as Button).text == "Enter the games")
+	check(g.ui.dialog_panel.visible and offers, "Varro offers the games (with the boss already killed once)")
+	g.boss_killed = false
 	games.begin()
 	await process_frame
 	check(games.state == "open" and not w.solid_at(gp.x, gp.y, 0.3), "the deal opens the gate")
 	g.ui.close_all()
-	g.hero.global_position = w.spawns["arena"]
+	var in_ok: bool = await _walk(Vector3(Aur.CENTRE.x, 0, Aur.CENTRE.y), 25.0, 6.0)
+	check(in_ok, "walked through the Gate of Life onto the sand")
 	await wait(0.5)
 	check(games.state == "intro" and w.solid_at(gp.x, gp.y, 0.3), "stepping onto the sand shuts the gate")
 	var seen := []
 	for s in 3:
-		for i in 400:
+		var t0 := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - t0 < 15000:
 			await process_frame
 			if games.state == "stage" and games.stage == s:
 				break

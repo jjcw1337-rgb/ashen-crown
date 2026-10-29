@@ -207,7 +207,9 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   - **Aurelia** (`aurelia.gd`, lair, outdoors; ground levelled by a `ground_fn` that cancels the noise inside the
     zone): the city gate, the colonnaded main street with shops and apartment blocks (`_building`: shop,
     apartment or ruin), districts behind with alleys, the crossroads fountain, the temple (west) and market (east),
-    the arena plaza with Varro the lanista (`Inter` kind "lanista", `Game._interact`), and the colosseum: the sand
+    the arena plaza with Varro the lanista (`Inter` kind "lanista", `Game._interact`; he and his two guards are the Meshy
+    bandit, the guards are non-clickable `Inter`s with `data.still`; he offers the games again after they're won, and a
+    hero at the barred Gate of Life before the deal is told to find him), and the colosseum: the sand
     (`FLOOR_RX/RZ`, `floor_t`), the podium wall (solid), stepped stands, the outer arcade three storeys high on the
     north and fallen to one storey and rubble on the south so the camera sees in, the passage to the Gate of Life,
     beast/side/champion gates (`GATES`), the patron's box.
@@ -227,7 +229,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
     `crowd_cheer`, `portcullis`, `lion_roar`.
   - **Roman architecture** (`roman.gd`): materials (marble, tuff, brick, tile, bronze), `arch_mesh` (an extruded
     wall with a round opening, used by the aqueduct, the colosseum's arcade, gates), columns, colonnades, tombs,
-    milestones, statues (the game's humanoid carved in marble), fountains, the triumphal arch, cypresses
+    milestones, statues (the Meshy crusader `knight_armored.glb` carved in marble, `Roman.STATUE_GLB`), fountains, the triumphal arch, cypresses
     (MultiMesh), ruined walls. Repeating pieces go through `Props.multimesh` with their own mesh copy
     (`Roman._own`: Geo's meshes are cached and shared, never set a material on them).
   - **Monsters**: bandits (`bandit`, `bandit_archer`: the Meshy bandit on `MeshyMonster`, faction "bandit"),
