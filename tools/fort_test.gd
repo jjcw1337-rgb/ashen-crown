@@ -1,6 +1,6 @@
 extends SceneTree
 ## Grubb's fort (Act I lair): the fort is built (gatehouse, palisade, towers, huts), the hero can walk
-## from the start through the gate to Grubb, and the guards and the dead fight each other at the gate
+## from the start through both gates to Grubb, the outer works, and the guards and the dead fight each other at the outer gate
 ## without the hero (no xp or loot for their kills). Then the A3 lair is still the crypt.
 var g
 func _initialize():
@@ -26,22 +26,27 @@ func _run() -> void:
 			boss = e
 	var path: PackedVector3Array = w.find_path(w.spawns["start"], boss.global_position)
 	var gp := Fort.gate_pos()
-	# walk the path (from the start) in short steps: it must pass through the gate's arch
+	var og := Fort.outer_gate()
+	# walk the path (from the start) in short steps: it must pass through both gates' arches
 	var via_gate := false
+	var via_outer := false
 	var prev: Vector3 = w.spawns["start"]
 	for p in path:
 		for k in 40:
 			var q: Vector3 = prev.lerp(p, k / 40.0)
 			if Vector2(q.x, q.z).distance_to(gp) < 3.0:
 				via_gate = true
+			if Vector2(q.x, q.z).distance_to(og) < 3.0:
+				via_outer = true
 		prev = p
-	print("[F] path start -> Grubb: %d steps, through the gate %s" % [path.size(), via_gate])
+	print("[F] path start -> Grubb: %d steps, through the outer gate %s and the gate %s" % [path.size(), via_outer, via_gate])
+	print("[F] outer works: outer palisade %d, bridge %d, hall %d, storehouses %d, ditch water %s" % [count("outer_palisade"), count("bridge"), count("hall"), count("store"), w.props_root.has_node("ditch_water")])
 	g.test_immortal = true
 	var xp0: int = g.hero.xp
 	var guards := []
 	var dead := []
 	for e in w.enemies_root.get_children():
-		if e is Enemy and e.global_position.distance_to(Vector3(gp.x, 0, gp.y)) < 32.0 and e.kind in ["goblin_guard", "zombie"]:
+		if e is Enemy and e.global_position.distance_to(Vector3(og.x, 0, og.y + 12.0)) < 18.0 and e.kind in ["goblin_guard", "zombie"]:
 			(guards if e.kind == "goblin_guard" else dead).append(e)
 	await wait(9.0)
 	var hurt := guards.filter(func(e): return not is_instance_valid(e) or e.dead or e.life < e.max_life).size() + dead.filter(func(e): return not is_instance_valid(e) or e.dead or e.life < e.max_life).size()
@@ -55,3 +60,4 @@ func _run() -> void:
 	await g.load_zone(0, "town", "start")
 	g.save_game()
 	quit()
+

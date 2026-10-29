@@ -194,6 +194,15 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   `tools/blender/act1/prep_prop.py` (`-- in.glb out.glb x=5|h=8|w=11 triangles [yaw] [tex]`; keep ~12k triangles for
   the palisade, which repeats ~44 times); without the glbs simple log stand-ins are built. The camp is placed by
   rejection sampling round the courtyard (`Fort._camp`), Grubb's courtyard reuses `World._hoard_room`.
+  Outer works: the palisade stands on a rampart with a water-logged ditch round it (`Fort.ground`, set as
+  `World.ground_fn`, the generic hook for shaping a zone's ground; the fort's slopes are coloured mud, not rock),
+  a causeway and plank bridge at the gate, stakes on the ditch's lip (`_ditch`); a second, lower stockade round
+  the south (`OUTER_RX/RZ`, `_outer_wall`, its own gatehouse where the track comes in; the gate battle is there
+  now) enclosing the outer yard (`_outer_yard`: stables, pens, wagons of plunder, the camp's Meshy forge and
+  tents, storehouses on stilts, haystacks, lantern posts, guards). Behind the throne, Grubb's great hall (Meshy,
+  `assets/models/fort/hall.glb`, `HALL_YAW` turns its door toward the courtyard; source concept and raw model in
+  `exports/fort/`), with braziers, banners and a treasury hut each side. Outside: stumps where the forest was
+  felled, a lumber yard and a crop field (`_outskirts`). `tools/fort_shots.gd` screenshots it from the game camera.
   `tools/fort_test.gd` checks it; `tools/zone_overview.gd -- out.png --fort` renders it from above.
 - **Sound**: effects are real recordings (Kenney, CC0) and ElevenLabs Sound Effects generations, picked by ear; the
   old numpy synthesis (`tools/audio/make_sfx.py`) was rejected as cheap-sounding and is kept only as a fallback.

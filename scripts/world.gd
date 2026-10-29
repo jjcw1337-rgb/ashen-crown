@@ -22,6 +22,8 @@ var astar: AStarGrid2D
 var hnoise := FastNoiseLite.new()
 var hill_noise := FastNoiseLite.new()
 var flat_floor := false
+## Extra ground shaping for a zone (Fort: the ditch and rampart): f(x, z) -> metres added to the height.
+var ground_fn := Callable()
 ## Act I and A2: the lair is King Grubb's goblin fort (fort.gd) and the moor's road ends at its trail.
 var fort := false
 var dirt_blobs: Array = []     # [Vector2 pos, radius, strength]
@@ -67,6 +69,8 @@ func height_at(x: float, z: float) -> float:
 	# keep the camera side (south, +z) lower so it never blocks the view
 	if z > bounds.end.y - 2.0:
 		hill *= 0.35
+	if ground_fn.is_valid():
+		return inner + hill + float(ground_fn.call(x, z))
 	return inner + hill
 
 var mask_o := Vector2.ZERO
