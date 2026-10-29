@@ -149,6 +149,36 @@ static func _moor(w: World) -> void:
 		w.add_circle(Vector3(wpp.x + cos(a) * 1.85, 0, wpp.y + sin(a) * 1.85), 0.3)
 	w.spawns["waypoint"] = Vector3(wpp.x, 0, wpp.y + 3.0)
 	w.cobble_blobs.append([wpp, 3.0, 0.8])
+	# a signpost at the start of the road: Aurelia, north
+	var sp := beside(w, 0.035, 3.6)
+	var sign := Props.footprint(Models.N(null, "signpost"), 0.2)
+	Models.seg(sign, Vector3.ZERO, Vector3(0, 2.4, 0), 0.07, 0.06, Props.wood_dark(), 6)
+	Models.P(sign, Geo.box(1.3, 0.32, 0.06), Props.wood(), Vector3(0.45, 2.0, 0), Vector3(0, 0, -6))
+	Models.P(sign, Geo.prism(0.32, 0.32, 0.06), Props.wood(), Vector3(1.2, 2.0, 0), Vector3(0, 0, -96))
+	Models.P(sign, Geo.box(0.9, 0.06, 0.07), Mats.mat(Color(0.1, 0.08, 0.06), 0.9), Vector3(0.42, 2.02, 0.01), Vector3(0, 0, -6))
+	w._place(sign, Vector3(sp.x, 0, sp.y))
+	sign.rotation.y = atan2(dir_at(w, 0.035).x, dir_at(w, 0.035).y) - PI * 0.5
+	w.solid(sign)
+	# the bandits' last victims, a little before the pass: a caravan dragged off the road and picked over
+	var cv := beside(w, AMBUSH - 0.06, -7.0)
+	var path := ForestCamp.DIR + "wagon.glb"
+	for k in 2:
+		if ResourceLoader.exists(path):
+			var wg: Node3D = (load(path) as PackedScene).instantiate()
+			var q := cv + Vector2(k * 3.6 - 1.8, w.rng.randf_range(-1.5, 1.5))
+			w._place(wg, Vector3(q.x, 0, q.y))
+			wg.rotation = Vector3(0, w.rng.randf() * TAU, deg_to_rad(12.0 if k == 0 else 78.0))
+			wg.scale = Vector3.ONE * 1.1
+			w.add_box(Vector3(q.x, 0, q.y), Vector2(1.1, 1.9), wg.rotation.y)
+	for k in 7:
+		var q := cv + Vector2(w.rng.randf_range(-5, 5), w.rng.randf_range(-4, 4))
+		if w.is_near_obstacle(Vector3(q.x, 0, q.y), 0.9):
+			continue
+		match k % 3:
+			0: w._bones(Vector3(q.x, 0, q.y))
+			1: w.solid(Props.crate(w.props_root, Vector3(q.x, w.height_at(q.x, q.y), q.y), w.rng.randf_range(0.6, 0.9)))
+			_: w.solid(Props.barrel(w.props_root, Vector3(q.x, w.height_at(q.x, q.y), q.y)))
+	w.dirt_blobs.append([cv, 6.0, 0.7])
 	var kinds := ["healing", "fury", "armor", "experience"]
 	kinds.shuffle()
 	var s1 := beside(w, 0.17, 7.5)
@@ -175,6 +205,17 @@ static func _pass(w: World) -> void:
 			if w.rng.randf() < 0.6:
 				var q := beside(w, t, s * w.rng.randf_range(9.5, 14.0))
 				w._rock(Vector3(q.x, 0, q.y), w.rng.randf_range(1.6, 2.8), true)
+	# the bandits' lookout on the crest above the pass (the fort's Meshy watchtower), a bowman up top
+	var lk := beside(w, t0 + 0.03, 15.5)
+	var tower := Fort.model("tower")
+	if tower != null:
+		var holder := Node3D.new()
+		holder.name = "lookout"
+		holder.add_child(tower)
+		w._place(holder, Vector3(lk.x, 0, lk.y))
+		holder.rotation.y = atan2(c.x - lk.x, c.y - lk.y)
+		holder.scale = Vector3.ONE * 0.85
+		w.add_circle(Vector3(lk.x, 0, lk.y), 1.7)
 	# the bait: an overturned wagon half across the road, crates and sacks spilled
 	var wp := c + d.orthogonal() * 1.2
 	var path := ForestCamp.DIR + "wagon.glb"

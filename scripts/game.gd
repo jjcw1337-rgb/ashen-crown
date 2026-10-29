@@ -936,7 +936,7 @@ func _spring_ambush(am: Dictionary) -> void:
 			if str(es["kind"]).ends_with("archer"):
 				e.aggro = true
 			else:
-				var to := land.lerp(from, 0.4) + Vector3(rng.randf_range(-2.5, 2.5), 0, rng.randf_range(-2.5, 2.5))
+				var to := land.lerp(from, 0.25) + Vector3(rng.randf_range(-2.5, 2.5), 0, rng.randf_range(-2.5, 2.5))
 				e.leap_from(e.global_position, to)
 
 ## Every knight in the area: yours plus your partners'.
