@@ -83,4 +83,23 @@ func _run() -> void:
 		spread.append(int(rad_to_deg(atan2(d.x, d.z))))
 	spread.sort()
 	print("[F] around the hero at angles ", spread, " still up: ", e1.filter(func(e) -> bool: return e.perch_h > 0.0).map(func(e) -> String: return "%s %.1f m away" % [e.atk_style, e.global_position.distance_to(g.hero.global_position)]))
+	# outrun them: after 6 s out of reach they give up and head home
+	var dir: Vector3 = (g.hero.global_position - e1[0].global_position)
+	dir.y = 0
+	dir = dir.normalized()
+	var away: Vector3 = g.hero.global_position + dir * 12.0
+	var t1 := Time.get_ticks_msec()
+	var last := t1
+	var gave_up := -1.0
+	while (Time.get_ticks_msec() - t1) / 1000.0 < 10.0:
+		# sprinting off at 6 m/s (no walls in the way: the test moves him directly)
+		var now := Time.get_ticks_msec()
+		away += dir * 6.0 * (now - last) / 1000.0
+		last = now
+		g.hero.global_position = Vector3(away.x, g.world.height_at(away.x, away.z), away.z)
+		g.hero.life = g.hero.max_life
+		await process_frame
+		if gave_up < 0.0 and _ferals().filter(func(e) -> bool: return e.pack_id == pack).all(func(e) -> bool: return not e.aggro):
+			gave_up = (Time.get_ticks_msec() - t1) / 1000.0
+	print("[F] outrun: the pack gave up after %.1f s; speed %.1f (hero walks 4.8); scale %.2f" % [gave_up, e0.speed, Feral.SCALE])
 	quit()
