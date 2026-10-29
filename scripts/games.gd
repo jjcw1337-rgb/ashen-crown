@@ -195,9 +195,6 @@ func _spike_traps(delta: float) -> void:
 ## (Enemy.scripted).
 func _charge(delta: float) -> void:
 	if charge.is_empty():
-		charge_t -= delta
-		if charge_t > 0.0 or boss.atk_t >= 0.0 or boss.stun_t > 0.0:
-			return
 		var target = null
 		var bd := 99.0
 		for h in game.all_heroes():
@@ -206,6 +203,10 @@ func _charge(delta: float) -> void:
 				if d < bd:
 					bd = d
 					target = h
+		# the further away they keep, the sooner he comes for them
+		charge_t -= delta * (2.5 if bd > 6.0 else 1.0)
+		if charge_t > 0.0 or boss.atk_t >= 0.0 or boss.stun_t > 0.0:
+			return
 		if target == null or bd < 4.5 or bd > 17.0:
 			charge_t = 1.0
 			return

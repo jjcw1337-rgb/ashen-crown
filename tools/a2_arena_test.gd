@@ -101,8 +101,11 @@ func _run() -> void:
 		if games.bursts > 0:
 			break
 	check(games.bursts > 0, "the pit's spike traps burst during the champion's bout (%d)" % games.bursts)
-	g.hero.global_position = boss.global_position + Vector3(0, 0, 9.0)
 	for i in 900:
+		if i % 45 == 0 and games.charges == 0:
+			# keep away from him across the sand
+			var away: Vector3 = (boss.global_position - Vector3(Aur.CENTRE.x, 0, Aur.CENTRE.y)).normalized()
+			g.hero.global_position = Vector3(Aur.CENTRE.x, 0, Aur.CENTRE.y) - away * 9.0
 		await process_frame
 		if games.charges > 0 and games.charge.is_empty():
 			break
