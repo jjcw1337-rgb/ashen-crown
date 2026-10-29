@@ -683,10 +683,28 @@ func cmd_target(t) -> void:
 	if is_instance_valid(t):
 		_set_goal(t.global_position, false)
 
+## WASD steering: the hero runs where it is heading and the heading swings round toward the keys at
+## TURN_RATE, so W then W+A carves a curve instead of snapping to the diagonal. A sharp turn slows him a
+## little; letting go of the keys forgets the heading.
+const TURN_RATE := 9.0      # radians per second
+var wasd_heading := Vector3.ZERO
+
+func _steer(want: Vector3, delta: float) -> Vector3:
+	if wasd_heading.length() < 0.1:
+		# starting off: from the way he faces
+		wasd_heading = -rig.global_transform.basis.z
+		wasd_heading.y = 0
+		wasd_heading = wasd_heading.normalized() if wasd_heading.length() > 0.1 else want
+	var ang := wasd_heading.signed_angle_to(want, Vector3.UP)
+	wasd_heading = wasd_heading.rotated(Vector3.UP, clampf(ang, -TURN_RATE * delta, TURN_RATE * delta)).normalized()
+	return wasd_heading * (0.7 + 0.3 * maxf(0.0, wasd_heading.dot(want)))
+
 func cmd_wasd(dir: Vector3) -> void:
 	if dead or charge_t >= 0.0:
 		return
 	direct_dir = dir
+	if dir.length() < 0.1:
+		wasd_heading = Vector3.ZERO
 	if dir.length() > 0.1:
 		end_drain()
 		if not (is_instance_valid(target) and target is Enemy):
@@ -1099,7 +1117,7 @@ func _process(delta: float) -> void:
 				elif direct_dir.length() < 0.1 and (path.is_empty() or move_goal.distance_to(tp) > 1.5):
 					_set_goal(tp, false)
 		if direct_dir.length() > 0.1:
-			vel = direct_dir.normalized() * speed
+			vel = _steer(direct_dir.normalized(), delta) * speed
 		elif moving and not path.is_empty():
 			var nxt := path[0]
 			var dv := Vector3(nxt.x - global_position.x, 0, nxt.z - global_position.z)
