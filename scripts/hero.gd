@@ -116,6 +116,10 @@ var swipe_idle := 0.0
 var swipe_q := false
 var swipe_aim := Vector3.ZERO
 var swipe_keep := false
+const SLAM_RANGE := 6.0
+const SLAM_REACH := 1.25
+var slam_leap := 0.0       # Holy Slam: how far this leap carries him, and how far ahead the blade lands
+var slam_reach := SLAM_REACH
 var atk_target = null
 var stamina := 100.0
 var max_stamina := 100.0
@@ -621,10 +625,16 @@ func _swipe_lunge(a0: float, a1: float) -> void:
 	var L: Array = SWIPE_LUNGE[atk_style]
 	var f0 := clampf((a0 - L[0]) / (L[1] - L[0]), 0.0, 1.0)
 	var f1 := clampf((a1 - L[0]) / (L[1] - L[0]), 0.0, 1.0)
-	var d: float = (smoothstep(0.0, 1.0, f1) - smoothstep(0.0, 1.0, f0)) * L[2]
+	var slam := atk_style == "cleave" and atk_skill == "cleave"
+	var d: float = (smoothstep(0.0, 1.0, f1) - smoothstep(0.0, 1.0, f0)) * (slam_leap if slam else float(L[2]))
 	if d <= 0.0:
 		return
 	var fwd := -rig.global_transform.basis.z
+	if slam:
+		# Holy Slam leaps to the spot aimed at, sliding round anything solid on the way
+		fwd.y = 0
+		global_position = game.world.move(global_position, fwd.normalized() * d)
+		return
 	if atk_style == "swipe3":
 		fwd = (atk_aim - global_position) * Vector3(1, 0, 1)
 		fwd = fwd.normalized() if fwd.length() > 0.01 else -rig.global_transform.basis.z
@@ -732,6 +742,12 @@ func use_skill(id: String, aim: Vector3) -> bool:
 	_face(aim - global_position)
 	match id:
 		"cleave":
+			# Holy Slam lands on the cursor (up to SLAM_RANGE away): he leaps far enough that the
+			# blade, which strikes about SLAM_REACH in front of him, comes down right there
+			var to := (aim - global_position) * Vector3(1, 0, 1)
+			var dist := minf(to.length(), SLAM_RANGE)
+			slam_reach = minf(dist, SLAM_REACH)
+			slam_leap = dist - slam_reach
 			_start_attack("cleave", "cleave")
 		"nova":
 			_start_attack("cast", "nova")
@@ -1309,7 +1325,7 @@ func _impact() -> void:
 					hit_any = true
 		"cleave":
 			# Holy Slam: the slam lands just ahead; everything around the blow is hit and thrown back
-			var at := global_position + fwd * 1.25
+			var at := global_position + fwd * slam_reach
 			at.y = game.world.height_at(at.x, at.z)
 			var any := false
 			for e in game.enemies_near(at, 3.6):

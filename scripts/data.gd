@@ -241,7 +241,7 @@ const RARITY_COLOR := [Color(0.92, 0.92, 0.92), Color(0.45, 0.55, 1.0), Color(1.
 const RARITY_NAME := ["Normal", "Magic", "Rare", "Unique"]
 
 const SKILLS := [
-	{"id": "cleave", "cls": "knight", "name": "Holy Slam", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 3.5, "desc": "Leap at your foes and bring the sword down in a burst of white light: 160% weapon damage to everything around the blow, knocking them back and stunning them for 1 second."},
+	{"id": "cleave", "cls": "knight", "name": "Holy Slam", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "point", "range": 6.0, "desc": "Leap at the cursor and bring the sword down in a burst of white light: 160% weapon damage to everything around the blow, knocking them back and stunning them for 1 second."},
 	{"id": "nova", "cls": "knight", "name": "Holy Nova", "key": "E", "lvl": 3, "mana": 14, "cd": 2.5, "aim": "self", "desc": "A ring of holy fire bursts outward, burning enemies within 7 metres."},
 	{"id": "charge", "cls": "knight", "name": "Charge", "key": "R", "lvl": 6, "mana": 10, "cd": 4.0, "aim": "facing", "range": 9.0, "desc": "Dash the way you face (toward the nearest enemy ahead), smashing through enemies and knocking them back."},
 	{"id": "cry", "cls": "knight", "name": "Battle Cry", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "aim": "self", "desc": "Rally yourself: +40% damage and +50% defense for 12 seconds. Stuns nearby foes."},
