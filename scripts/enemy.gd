@@ -171,7 +171,7 @@ func _set_flash(v: float) -> void:
 	flash_mat.albedo_color = Color(1, 0.95, 0.9, v * 0.6)
 	if champion:
 		return
-	var rest: Material = soul_mat() if _soul_lit else (drain_mat() if _drained else null)
+	var rest: Material = soul_mat() if _soul_lit else (drain_mat() if _drained else (Feral.rim_mat() if rig.has_meta("feral") else null))
 	for m in meshes:
 		if is_instance_valid(m):
 			(m as MeshInstance3D).material_overlay = flash_mat if v > 0.01 else rest

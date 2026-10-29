@@ -29,12 +29,56 @@ static func build() -> Node3D:
 	body.rotation.y = PI
 	body.scale = Vector3.ONE * SCALE
 	root.add_child(body)
+	# a crisp dark outline and a cool rim, so his pale silhouette reads against the forest floor
+	for mi in body.find_children("*", "MeshInstance3D", true, false):
+		(mi as MeshInstance3D).material_overlay = rim_mat()
+		var shell := MeshInstance3D.new()
+		shell.mesh = (mi as MeshInstance3D).mesh
+		shell.skin = (mi as MeshInstance3D).skin
+		shell.material_override = outline_mat()
+		shell.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.get_parent().add_child(shell)
+		shell.skeleton = shell.get_path_to(mi.get_node((mi as MeshInstance3D).skeleton))
+		shell.transform = (mi as MeshInstance3D).transform
 	var aps := body.find_children("*", "AnimationPlayer", true, false)
 	if aps.size() > 0:
 		var ap: AnimationPlayer = aps[0]
 		ap.speed_scale = 0.0   # timed by pose(), not by the clock
 		root.set_meta("feral", ap)
 	return root
+
+static var _outline: ShaderMaterial
+static var _rim: ShaderMaterial
+
+## The back faces pushed out along their normals and drawn flat and dark: an outline that follows him.
+static func outline_mat() -> ShaderMaterial:
+	if _outline == null:
+		_outline = ShaderMaterial.new()
+		var sh := Shader.new()
+		sh.code = """
+shader_type spatial;
+render_mode cull_front, unshaded, shadows_disabled;
+void vertex(){ VERTEX += NORMAL * 0.012; }
+void fragment(){ ALBEDO = vec3(0.025, 0.02, 0.018); }
+"""
+		_outline.shader = sh
+	return _outline
+
+## A thin cool light along his edges (added over the model's own material).
+static func rim_mat() -> ShaderMaterial:
+	if _rim == null:
+		_rim = ShaderMaterial.new()
+		var sh := Shader.new()
+		sh.code = """
+shader_type spatial;
+render_mode blend_add, unshaded, shadows_disabled;
+void fragment(){
+	float r = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
+	ALBEDO = vec3(0.55, 0.62, 0.7) * r * 0.35;
+}
+"""
+		_rim.shader = sh
+	return _rim
 
 ## Shows the right moment of the right animation. st is the same state Anim.pose gets (phase, move,
 ## atk, style); height is the monster's look height.
