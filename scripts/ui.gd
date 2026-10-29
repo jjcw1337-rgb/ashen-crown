@@ -1585,16 +1585,16 @@ var sheet_points: PanelContainer
 var _sheet_t := 0.0
 
 func _build_character() -> void:
-	char_panel = _panel("Character", true, 480, 520)
+	char_panel = _panel("Character", true, 488, 520)
 	var sb := StyleBoxTexture.new()
 	sb.texture = load(SHEET_TEX["panel"])
 	for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
 		sb.set_texture_margin(side, 56)
 	# keep everything inside the gold trim, clear of the iron border and its corner pieces
-	sb.set_content_margin(SIDE_LEFT, 58)
-	sb.set_content_margin(SIDE_RIGHT, 58)
+	sb.set_content_margin(SIDE_LEFT, 62)
+	sb.set_content_margin(SIDE_RIGHT, 62)
 	sb.set_content_margin(SIDE_TOP, 50)
-	sb.set_content_margin(SIDE_BOTTOM, 54)
+	sb.set_content_margin(SIDE_BOTTOM, 60)
 	char_panel.add_theme_stylebox_override("panel", sb)
 	var vb: VBoxContainer = char_panel.get_node("vb")
 	vb.add_theme_constant_override("separation", 5)
@@ -1698,7 +1698,14 @@ func _build_character() -> void:
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 26)
 	grid.add_theme_constant_override("v_separation", 3)
-	vb.add_child(grid)
+	# set into a dark inset, clear of the frame's trim and corner pieces
+	var inset := PanelContainer.new()
+	var isb := _box(Color(0.0, 0.0, 0.0, 0.32), Color(0.42, 0.33, 0.2, 0.45), 1, 4, 0)
+	isb.content_margin_left = 12; isb.content_margin_right = 12
+	isb.content_margin_top = 6; isb.content_margin_bottom = 6
+	inset.add_theme_stylebox_override("panel", isb)
+	inset.add_child(grid)
+	vb.add_child(inset)
 	for k in ["damage", "aspd", "defense", "block", "life", "mana", "res", "ls", "mf", "gf"]:
 		var cell := HBoxContainer.new()
 		cell.add_theme_constant_override("separation", 6)
