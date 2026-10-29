@@ -35,13 +35,16 @@ func _run() -> void:
 		await process_frame
 	seq.append(_yaw())
 	_keys([KEY_W, KEY_A])
+	var looks := []
 	for i in 30:
 		await process_frame
 		seq.append(_yaw())
+		looks.append(int(round(rad_to_deg(h.look))))
 	var steps := {}
 	for a in seq:
 		steps[a] = true
 	print("[W] facing while turning from W to W+A: ", seq.slice(0, 12), " ... ", seq[-1], "; distinct angles ", steps.size())
+	print("[W] head looks into the turn (deg, + = left): ", looks.slice(0, 12), " ... ", looks[-1])
 	# a full reversal swings round rather than flipping
 	var rev := []
 	_keys([KEY_S, KEY_D])

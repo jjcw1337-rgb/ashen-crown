@@ -731,6 +731,10 @@ func cmd_target(t) -> void:
 ## little; letting go of the keys forgets the heading.
 const TURN_RATE := 9.0      # radians per second
 var wasd_heading := Vector3.ZERO
+## Where the head looks ahead of the body while turning (radians, + = left), for Anim.pose's "look".
+var look := 0.0
+var _look_want := 0.0
+var _last_yaw := 0.0
 
 func _steer(want: Vector3, delta: float) -> Vector3:
 	if wasd_heading.length() < 0.1:
@@ -739,6 +743,7 @@ func _steer(want: Vector3, delta: float) -> Vector3:
 		wasd_heading.y = 0
 		wasd_heading = wasd_heading.normalized() if wasd_heading.length() > 0.1 else want
 	var ang := wasd_heading.signed_angle_to(want, Vector3.UP)
+	_look_want = clampf(ang * 0.8, -0.75, 0.75)
 	wasd_heading = wasd_heading.rotated(Vector3.UP, clampf(ang, -TURN_RATE * delta, TURN_RATE * delta)).normalized()
 	return wasd_heading * (0.7 + 0.3 * maxf(0.0, wasd_heading.dot(want)))
 
@@ -1204,8 +1209,16 @@ func _process(delta: float) -> void:
 	if charge_t < 0.0:
 		global_position.y = game.world.height_at(global_position.x, global_position.z)
 
+	# the head turns into a turn: toward the keys while steering, or with how fast he is swinging round
+	var yaw_rate := wrapf(rig.rotation.y - _last_yaw, -PI, PI) / maxf(delta, 0.001)
+	_last_yaw = rig.rotation.y
+	if direct_dir.length() < 0.1:
+		_look_want = 0.0
+	var lw := clampf(_look_want + yaw_rate * 0.1, -0.75, 0.75) if move_amt > 0.2 and atk_t < 0.0 else 0.0
+	# quick to look into a turn, slow to come back to straight ahead
+	look = lerpf(look, lw, clampf(delta * (16.0 if absf(lw) > absf(look) else 3.5), 0.0, 1.0))
 	var st := {"time": anim_time, "phase": phase, "move": move_amt, "atk": (atk_t / atk_dur) if atk_t >= 0.0 else -1.0,
-		"style": atk_style, "block": block_amt if charge_t < 0.0 else 1.0, "hit": hit_t * (0.3 if block_flash > 0.0 else 1.0)}
+		"style": atk_style, "block": block_amt if charge_t < 0.0 else 1.0, "hit": hit_t * (0.3 if block_flash > 0.0 else 1.0), "look": look}
 	if charge_t >= 0.0:
 		st["atk"] = 0.45
 		st["style"] = "thrust"
