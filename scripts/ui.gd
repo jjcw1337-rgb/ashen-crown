@@ -962,6 +962,18 @@ func _build_talent_panel() -> void:
 		if hero:
 			refresh())
 
+const TALENT_ICON := "res://assets/textures/talents/%s.png"
+static var _grey: ShaderMaterial
+
+## Shut or untaken talents: the painted icon drained of colour and darkened.
+static func _grey_mat() -> ShaderMaterial:
+	if _grey == null:
+		_grey = ShaderMaterial.new()
+		var sh := Shader.new()
+		sh.code = "shader_type canvas_item; void fragment(){ vec4 c = texture(TEXTURE, UV); float l = dot(c.rgb, vec3(0.3, 0.59, 0.11)); COLOR = vec4(vec3(l * 0.55), c.a); }"
+		_grey.shader = sh
+	return _grey
+
 func _talent_sig() -> String:
 	return "%s %s %d" % [hero.cls, str(hero.talents), hero.level]
 
@@ -983,9 +995,20 @@ func _fill_talents() -> void:
 		cv.add_theme_constant_override("separation", 0)
 		col.add_child(cv)
 		var spent := Talents.tree_spent(hero.cls, i, hero.talents)
+		var hh := HBoxContainer.new()
+		hh.alignment = BoxContainer.ALIGNMENT_CENTER
+		hh.add_theme_constant_override("separation", 10)
+		cv.add_child(hh)
+		var em := TALENT_ICON % ("%s_tree%d" % [hero.cls, i])
+		if ResourceLoader.exists(em):
+			var emr := TextureRect.new()
+			emr.texture = load(em)
+			emr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			emr.custom_minimum_size = Vector2(40, 40)
+			emr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			hh.add_child(emr)
 		var head := _label("%s   %d" % [tree["name"], spent], 21, GOLD, true)
-		head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		cv.add_child(head)
+		hh.add_child(head)
 		var d := _label(tree["desc"], 12, DIM)
 		d.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -996,7 +1019,7 @@ func _fill_talents() -> void:
 			# a shut row says what opens it, just above it
 			var need := _label("" if open else "needs %d points in %s" % [Talents.ROW_REQ[row], tree["name"]], 11, Color(0.6, 0.45, 0.3))
 			need.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			need.custom_minimum_size = Vector2(0, 26)
+			need.custom_minimum_size = Vector2(0, 18)
 			need.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 			cv.add_child(need)
 			var rh := HBoxContainer.new()
@@ -1014,7 +1037,7 @@ func _talent_node(t: Dictionary, tree: int, open: bool) -> Control:
 	var mx := int(t["max"])
 	var can := Talents.can_learn(hero.cls, id, hero.talents, hero.free_talent_points())
 	var p := Control.new()
-	p.custom_minimum_size = Vector2(66, 68)
+	p.custom_minimum_size = Vector2(76, 78)
 	p.name = id
 	var bg := TextureRect.new()
 	bg.texture = load(BAR_TEX["slot"])
@@ -1023,11 +1046,24 @@ func _talent_node(t: Dictionary, tree: int, open: bool) -> Control:
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg.modulate = Color(1, 1, 1) if open else Color(0.45, 0.45, 0.45)
 	p.add_child(bg)
-	var g := SkillGlyph.new()
-	g.id = t["icon"]
-	g.dim = rank == 0 and not can
+	# the painted icon (tools/talent_icons.py), else the drawn glyph; greyed until a point can go in
+	var g: Control
+	var tex := TALENT_ICON % id
+	if ResourceLoader.exists(tex):
+		var tr := TextureRect.new()
+		tr.texture = load(tex)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_SCALE
+		if rank == 0 and not can:
+			tr.material = _grey_mat()
+		g = tr
+	else:
+		var sg := SkillGlyph.new()
+		sg.id = t["icon"]
+		sg.dim = rank == 0 and not can
+		g = sg
 	g.set_anchors_preset(Control.PRESET_FULL_RECT)
-	g.offset_left = 14; g.offset_right = -14; g.offset_top = 16; g.offset_bottom = -14
+	g.offset_left = 10; g.offset_right = -10; g.offset_top = 11; g.offset_bottom = -9
 	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(g)
 	var rim := Panel.new()
@@ -1036,7 +1072,7 @@ func _talent_node(t: Dictionary, tree: int, open: bool) -> Control:
 	sb.shadow_size = 0
 	rim.add_theme_stylebox_override("panel", sb)
 	rim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	rim.offset_left = 6; rim.offset_right = -6; rim.offset_top = 7; rim.offset_bottom = -5
+	rim.offset_left = 8; rim.offset_right = -8; rim.offset_top = 9; rim.offset_bottom = -7
 	rim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(rim)
 	var pill := PanelContainer.new()
@@ -1047,7 +1083,7 @@ func _talent_node(t: Dictionary, tree: int, open: bool) -> Control:
 	rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	pill.add_child(rl)
 	pill.custom_minimum_size = Vector2(28, 14)
-	pill.position = Vector2(38, 56)
+	pill.position = Vector2(46, 64)
 	p.add_child(pill)
 	var tip := func():
 		var lines := [[t["name"], GOLD], ["Rank %d / %d" % [rank, mx], DIM]]

@@ -172,5 +172,12 @@ func _check_data() -> void:
 				if not (icon_ok and keys_ok and text_ok):
 					check(false, "%s %s: icon %s keys %s text %s" % [cls, t["id"], icon_ok, keys_ok, text_ok])
 			check(rows == [2, 2, 2, 1], "%s %s rows %s" % [cls, tr["name"], rows])
+		var icons := 0
+		for tr in trees:
+			for t in tr["talents"]:
+				icons += 1 if ResourceLoader.exists("res://assets/textures/talents/%s.png" % t["id"]) else 0
+		for i in trees.size():
+			icons += 1 if ResourceLoader.exists("res://assets/textures/talents/%s_tree%d.png" % [cls, i]) else 0
+		check(icons == 24, "%s: painted icons for all 21 talents and 3 trees (%d)" % [cls, icons])
 		var auto: Array = Talents.AUTO[cls]
 		check(auto.size() == ids.size() and auto.all(func(i): return ids.has(i)), "%s auto build names all %d talents" % [cls, ids.size()])

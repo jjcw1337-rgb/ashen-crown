@@ -250,8 +250,11 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   flat stats join the gear's in `recalc`; `dmg`/`dmg:<skill>` through `Hero.dmg_mult` (pass the skill as
   `_hit_enemy`'s `src` when it isn't the attack in progress), `cost:`/`cd:` through `Hero.skill_cost`/`skill_cd`
   (use those, not the raw `Data.SKILLS` numbers), the battle buffs through `Hero.buff_mult`, and each class special
-  where its skill is. A new class needs a `TREES` and an `AUTO` entry (icons: its skill ids or the `t_*` glyphs in
-  `SkillGlyph._talent_icon`). The balance sim gives its bots the auto build.
+  where its skill is. Icons are painted with Meshy, a 3x3 grid per tree (7 talents, the tree's emblem, a spare),
+  cut into `assets/textures/talents/<id>.png` and `<cls>_tree<N>.png` (128 px, mipmaps) by `tools/talent_icons.py`
+  (the prompts are in it; `prompt`, then `meshy.py draw`, then `cut`); greyed by a shader until a point can go in.
+  A new class needs a `TREES` and an `AUTO` entry and its four grids; without a painted icon a talent falls back to
+  its `icon` glyph (a skill id or a `t_*` in `SkillGlyph._talent_icon`). The balance sim gives its bots the auto build.
 - **Globes** (`scripts/globe.gd`, `Globe`): liquid that surges after a hit, ripples on a heal, pulses and shakes
   when low, darkens when critical, swirls after a cast, rises slowly with regeneration, sends a wave up on a big
   restore, and grows with maximum life/mana. Meshy frame `globe_frame.png`, Blender glass `globe_glass.png`
