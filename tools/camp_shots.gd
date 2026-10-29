@@ -33,11 +33,16 @@ func _run() -> void:
 	g.ui.root.visible = false
 	var cam: Camera3D = g.get_viewport().get_camera_3d()
 	g.set_process(false)
-	cam.global_transform = Transform3D(Basis(), Vector3(0, 62, 42)).looking_at(Vector3(0, 0, -3))
+	cam.global_transform = Transform3D(Basis(), Vector3(0, 52, 34)).looking_at(Vector3(0, 0, -3))
 	cam.fov = 50
 	await _snap("overview", 4)
-	cam.global_transform = Transform3D(Basis(), Vector3(-6, 6, -46)).looking_at(Vector3(0, 2.5, -28))
+	cam.global_transform = Transform3D(Basis(), Vector3(-3, 5, -38)).looking_at(Vector3(0, 2.5, -25))
 	await _snap("gate_outside", 4)
-	cam.global_transform = Transform3D(Basis(), Vector3(-14, 4.5, 8)).looking_at(Vector3(6, 2.0, -12))
+	cam.global_transform = Transform3D(Basis(), Vector3(-11, 5.0, 7)).looking_at(Vector3(5, 1.6, -10))
 	await _snap("inside", 4)
+	# a rune stone outside the wall (the third of ForestCamp's eleven)
+	var ra := TAU * 2.5 / 11.0
+	var rp := ForestCamp.CENTER + Vector2(sin(ra), -cos(ra)) * (ForestCamp.RADIUS + 5.7)
+	cam.global_transform = Transform3D(Basis(), Vector3(rp.x - 5.5, 2.6, rp.y + 2.5)).looking_at(Vector3(rp.x, 1.3, rp.y))
+	await _snap("runestone", 4)
 	quit()

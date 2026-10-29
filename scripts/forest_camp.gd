@@ -17,11 +17,14 @@ const NPC_DIR := "res://assets/models/npc/"
 # shopkeepers: model, role, the stall they keep, its spot, and their clips (idle, work, talk)
 const SHOPS := [
 	{"role": "alch", "npc": "maeve", "stall": "alchemy", "at": Vector2(-12, -11.5), "half": Vector2(1.45, 1.3),
-		"clips": {"idle": "Idle_02", "work": ["Stand_and_Drink", "mage_soell_cast"], "talk": "Talk_with_Left_Hand_Raised"}},
+		"clips": {"idle": "Idle_02", "work": ["Stand_and_Drink", "mage_soell_cast"], "talk": "Talk_with_Left_Hand_Raised"},
+		"hold": {"bone": "RightHand", "potion": Color(0.35, 1.0, 0.3), "pos": Vector3(0.0, 0.07, 0.03)}},
 	{"role": "smith", "npc": "grisold", "stall": "forge", "at": Vector2(12, -11.5), "half": Vector2(2.2, 1.65),
-		"clips": {"idle": "Idle", "work": ["Heavy_Hammer_Swing", "Heavy_Hammer_Swing", "Catching_Breath"], "talk": "Talk_with_Hands_Open"}},
+		"clips": {"idle": "Idle", "work": ["Heavy_Hammer_Swing", "Heavy_Hammer_Swing", "Catching_Breath"], "talk": "Talk_with_Hands_Open"},
+		"hold": {"bone": "RightHand", "item": "war_hammer", "rot": Vector3(0, 0, 90), "pos": Vector3(0.0, 0.08, 0.0)}},
 	{"role": "armor", "npc": "hedda", "stall": "armory", "at": Vector2(16, 5), "half": Vector2(1.95, 1.62),
-		"clips": {"idle": "Idle_3", "work": ["Axe_Breathe_and_Look_Around"], "talk": "Talk_with_Left_Hand_on_Hip"}},
+		"clips": {"idle": "Idle_3", "work": ["Axe_Breathe_and_Look_Around"], "talk": "Talk_with_Left_Hand_on_Hip"},
+		"hold": {"bone": "RightHand", "item": "hand_axe", "rot": Vector3(0, 0, 90), "pos": Vector3(0.0, 0.08, 0.0)}},
 	{"role": "gamble", "npc": "tarrow", "stall": "wagon", "at": Vector2(-15.5, 7), "half": Vector2(1.7, 1.35),
 		"clips": {"idle": "Idle_5", "work": ["Stand_and_Chat", "Happy_Sway_Standing"], "talk": "Talk_with_Right_Hand_Open"}},
 ]
@@ -143,7 +146,9 @@ static func build(w: World) -> void:
 		w.add_box(Vector3(p.x, 0, p.y), half * 0.92, yaw)
 		var fwd := Vector2(sin(yaw), cos(yaw))
 		var np := p + fwd * (half.y + 0.9)
-		_keeper(w, s["npc"], V[s["role"]], s["role"], np, yaw, s["clips"])
+		var kp := _keeper(w, s["npc"], V[s["role"]], s["role"], np, yaw, s["clips"])
+		if s.has("hold"):
+			hold(kp.model, s["hold"])
 	# the stalls' own light: the forge's coals, the alchemist's cauldron, a lantern on the others
 	_glow(w, SHOPS[1]["at"], Vector3(0.9, 1.4, -0.6), Color(1.0, 0.45, 0.12), 2.6, 7.0)
 	_glow(w, SHOPS[0]["at"], Vector3(-1.3, 0.9, 0.4), Color(0.4, 1.0, 0.35), 1.6, 6.0)
@@ -301,6 +306,32 @@ static func _lantern(w: World, pos: Vector3, lit: bool) -> void:
 		l.omni_attenuation = 1.4
 		ln.add_child(l)
 		l.position = Vector3(0, 0.25, 0)
+
+## Something in a shopkeeper's hand (the smith's hammer, the alchemist's potion, the armourer's axe),
+## carried by the hand bone so it follows the animation. spec: {"bone", "item" (a Data.BASES weapon) or
+## "potion": Color, "rot": degrees, "pos": metres in the hand's frame}.
+static func hold(m: Node3D, spec: Dictionary) -> void:
+	var sk: Skeleton3D = m.find_child("Skeleton3D", true, false)
+	if sk == null or sk.find_bone(spec["bone"]) < 0:
+		return
+	var ba := BoneAttachment3D.new()
+	ba.bone_name = spec["bone"]
+	sk.add_child(ba)
+	var it: Node3D
+	if spec.has("potion"):
+		it = Models.N(null, "potion")
+		var glass := Mats.mat(Color(0.75, 0.85, 0.8), 0.05, 0.2)
+		Models.P(it, Geo.sph(0.055, 10), glass, Vector3(0, 0.05, 0))
+		Models.P(it, Geo.cyl(0.018, 0.022, 0.07, 8), glass, Vector3(0, 0.12, 0))
+		Models.P(it, Geo.sph(0.045, 10), Mats.glow_unique(spec["potion"], 2.2), Vector3(0, 0.045, 0))
+	else:
+		it = Models.item_model({"base": spec["item"], "rarity": 0})
+	ba.add_child(it)
+	# Meshy's armature works in centimetres (its node is scaled 0.01): undo that for the held thing
+	var k := 1.0 / maxf((sk.get_parent() as Node3D).scale.x if sk.get_parent() is Node3D else 1.0, 0.0001)
+	it.scale = Vector3.ONE * k
+	it.rotation_degrees = spec.get("rot", Vector3.ZERO)
+	it.position = (spec.get("pos", Vector3.ZERO) as Vector3) * k
 
 ## A shopkeeper: the rigged Meshy model in an Inter, playing its clips (Inter._animate).
 static func _keeper(w: World, file: String, label: String, role: String, p: Vector2, yaw: float, clips: Dictionary) -> Inter:
