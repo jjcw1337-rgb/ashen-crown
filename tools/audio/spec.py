@@ -176,6 +176,23 @@ SPEC = [
          prompt="level up in a dark fantasy game, short triumphant swell with a bright magical chime, subtle" + DRY),
 
     # ---------------------------------------------------------------- ambience loops
+    # the campsite's song (Blaine: eerie, piano); the acts keep the wind
+    # ---------------------------------------------------------------- A2: Aurelia's arena (games.gd)
+    dict(name="arena_horn", src="eleven", n=4, dur=3.0, hit=0, label="a war horn blowing",
+         prompt="a Roman cornu war horn blast in a stone amphitheatre, a deep brassy fanfare call of two long notes"
+                ", isolated sound effect, no music, no voices"),
+    dict(name="crowd_roar", src="eleven", n=3, dur=10.0, hit=0, loop=True, label="a crowd cheering",
+         prompt="a huge crowd in a stone arena roaring, shouting and chanting, excited spectators baying for blood, "
+                "continuous and even, no music"),
+    dict(name="crowd_cheer", src="eleven", n=4, dur=4.0, hit=0, label="a crowd cheering",
+         prompt="a large arena crowd erupting into a huge roaring cheer and applause, then settling, no music"),
+    dict(name="portcullis", src="eleven", n=4, dur=2.5, hit=0, label="a heavy gate opening",
+         prompt="a heavy iron portcullis gate being hauled up by chains, rattling chains and grinding iron, ending in a clank" + DRY),
+    dict(name="lion_roar", src="eleven", n=4, dur=2.5, hit=0, label="a lion roaring",
+         prompt="a big male lion roaring loudly and angrily, close" + DRY),
+    dict(name="music_town", src="eleven", n=3, dur=30.0, hit=0, loop=True, label="a slow eerie piano melody",
+         prompt="slow, eerie solo piano melody for a dark fantasy campsite at night, sparse melancholic notes in a minor "
+                "key with long soft reverb, a few low sustained chords, gentle and quiet, background music loop, no drums"),
     dict(name="wind", src="eleven", n=3, dur=8.0, hit=0, loop=True, label="wind blowing",
          prompt="cold wind blowing across an empty moor at night, steady, no music"),
     dict(name="drip", src="eleven", n=3, dur=8.0, hit=0, loop=True, label="water dripping in a cave",

@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
+`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `a2_arena_test`, and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -65,7 +65,9 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `demon.gd`, `demon_fx.gd`, `demon_minion.gd` | Demon class: knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader; skill effects and the Underworld screen grade; summoned demons (simple ally AI) |
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
 | `enemy.gd`, `projectile.gd`, `feral.gd` | Monsters/AI and missiles (host-authoritative in co-op); the Feral's baked-animation body |
-| `fort.gd` | Grubb's fort (the lair in Act I and A2; A3 keeps the crypt): the muddy approach with the guards fighting the dead, the palisade ring, gatehouse and watchtowers (Meshy props in `assets/models/fort/`), the lived-in camp scattered round Grubb's open courtyard, and the moor's goblin trail end (`Fort.trail_end`) |
+| `via.gd`, `aurelia.gd`, `games.gd`, `roman.gd` | A2: the Imperial Road (wild), the city of Aurelia and its arena (lair), the arena's games (the act's boss fight), and the Roman architecture they're built from |
+| `lion.gd` | The arena lion: a Meshy model on a quadruped skeleton, posed in code (no baked animations) |
+| `fort.gd` | Grubb's fort (the lair in Act I; A3 keeps the crypt): the muddy approach with the guards fighting the dead, the palisade ring, gatehouse and watchtowers (Meshy props in `assets/models/fort/`), the lived-in camp scattered round Grubb's open courtyard, and the moor's goblin trail end (`Fort.trail_end`) |
 | `meshy_monster.gd` | Act I monsters from Meshy (`MeshyMonster.MODELS`, zombie/fallen/archer/goblin_guard): built on `Goblin.imported_rig` with grips and weapons; `Data.ENEMIES` `"mesh"` picks them |
 | `hoard.gd` | King Grubb's fight (Act I boss): Gilded Bombs, the three burst sacks, the gold scramble (piles reaching him heal him; piles a hero takes hurt him) |
 | `goblin.gd`, `sculpt.gd` | Goblin models: King Grubb is the imported mutant (`Goblin.MUTANT`: joint layout + glb, skinned onto the game's skeleton); the Gold Grabbers (and Grubb's fallback) are code-sculpted (`Sculpt` melts SDF shapes into one skinned mesh). `Goblin.after_pose` adds ears, jaw, crown wobble, belly jiggle, sacks and the goblin gaits |
@@ -189,7 +191,50 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 - **Factions** (`"faction"` in `Data.ENEMIES`: goblin, undead): a monster fights the nearest other-faction monster when
   it is closer than the hero (`Enemy.rival`, `Enemy.take_hit` so the attack code works on both); rival kills give no
   xp or loot (`killed_by_rival`). Host-side like all AI.
-- **Grubb's fort** (`fort.gd`, `World.fort` = runs 0 and 1): an outdoor zone still called "lair" (`Game.indoor()` is
+- **A2 is its own act** (`World.run == 1`; `Data.RUN_ACTS[1]` overrides Act I's names, boss and foes, read with
+  `Data.act_info(act, run)` / `World.act_name(key)`; use those, never `Data.ACTS[...]` directly). Warm late-afternoon
+  light, no snow (`Game._zone_env`; `is_snowy()` is false now). The camp is still Act I's.
+  - **The Imperial Road** (`via.gd`, wild, 110 x 334 m): the road changes along its length (`Via.AMBUSH/ROMAN/
+    OUTSKIRTS` are fractions of `path_poly`; `Via.at/dir_at/beside(w, t, off)` place things along it): the moor (dirt
+    trail, farmstead ruin, graveyard, the waypoint), a rocky pass with an overturned wagon where bandits wait, the
+    Roman road (paving patchy where it sank, then whole with kerbs, milestones, tombs along both verges, toppled
+    columns, cypresses, the aqueduct striding across it with one bay always standing over the road), then
+    Aurelia's outskirts (ruined colonnades, statues, a villa, a fountain, bandits holding the road) to the triumphal
+    arch, the exit to the lair.
+  - **Ambushes** (`World.ambushes`, `Game._check_ambushes`/`_spring_ambush`, host only): nothing is spawned until a
+    hero comes within `radius` of `pos`; then the entries spawn and leap from cover onto the road
+    (`Enemy.leap_from`, `leap_t`), bowmen stay on the crests. A spawn entry may carry `"name"` (the champion's).
+  - **Aurelia** (`aurelia.gd`, lair, outdoors; ground levelled by a `ground_fn` that cancels the noise inside the
+    zone): the city gate, the colonnaded main street with shops and apartment blocks (`_building`: shop,
+    apartment or ruin), districts behind with alleys, the crossroads fountain, the temple (west) and market (east),
+    the arena plaza with Varro the lanista (`Inter` kind "lanista", `Game._interact`), and the colosseum: the sand
+    (`FLOOR_RX/RZ`, `floor_t`), the podium wall (solid), stepped stands, the outer arcade three storeys high on the
+    north and fallen to one storey and rubble on the south so the camera sees in, the passage to the Gate of Life,
+    beast/side/champion gates (`GATES`), the patron's box.
+  - **The games** (`games.gd`, a node in the lair, `world.get_meta("games")`): Varro's deal calls `begin()` (a
+    partner's goes through `Net.request_games`); the Gate of Life opens (its bars are an obstacle whose centre is
+    moved far away while open: World's obstacles can't be removed); a hero on the sand shuts it (partners outside
+    are placed in, `Net.place_player`) and the `STAGES` run: the lions, the gladiators, the beasts of the pit (with a
+    champion pit lion), then the champion (`Data.ENEMIES["champion"]`, a boss: his death ends the act through
+    `Game.on_enemy_killed`), who calls lions at 60% life and gladiators at 30%. Host-authoritative; everything seen
+    (gates, announcements, the crowd's excitement, sounds) is an event string through `fx` / `Net.games_event`.
+    If no living hero is near the sand for 8 s the games reset. The crowd is one MultiMesh of figures on the
+    standing stands, bobbing and jumping by a shader uniform (`excite`). Sounds: `arena_horn`, `crowd_roar` (loop),
+    `crowd_cheer`, `portcullis`, `lion_roar`.
+  - **Roman architecture** (`roman.gd`): materials (marble, tuff, brick, tile, bronze), `arch_mesh` (an extruded
+    wall with a round opening, used by the aqueduct, the colosseum's arcade, gates), columns, colonnades, tombs,
+    milestones, statues (the game's humanoid carved in marble), fountains, the triumphal arch, cypresses
+    (MultiMesh), ruined walls. Repeating pieces go through `Props.multimesh` with their own mesh copy
+    (`Roman._own`: Geo's meshes are cached and shared, never set a material on them).
+  - **Monsters**: bandits (`bandit`, `bandit_archer`: the Meshy bandit on `MeshyMonster`, faction "bandit"),
+    the arena lion (`lion.gd`: Meshy model, a 20-bone skeleton from `sources/lion.blend` skinned by surface
+    distance like the Feral, posed every frame in code by `Lion.pose`, the Feral's pack AI with its lunge as the
+    pounce and its swipe as the maul; `tools/lion_sheet.gd`), the gladiator and the champion (procedural humanoids
+    until their Meshy models: the concepts are in `exports/act2/`, the key's monthly Meshy cap stopped them).
+  - Tests and previews: `tools/a2_arena_test.gd` (road, ambush, Aurelia, the whole games), `tools/via_shots.gd`,
+    `tools/aurelia_shots.gd` (`overview` for a top view). Load `aurelia.gd` at run time in a `-s` tool script
+    (`load(...)`): a static reference compiles it, and games.gd's `Sfx`, before the autoload exists.
+- **Grubb's fort** (`fort.gd`, `World.fort` = Act I only): an outdoor zone still called "lair" (`Game.indoor()` is
   false there, so it gets the sky, snow in A2 and the outdoor light). Big pieces are Meshy props prepared by
   `tools/blender/act1/prep_prop.py` (`-- in.glb out.glb x=5|h=8|w=11 triangles [yaw] [tex]`; keep ~12k triangles for
   the palisade, which repeats ~44 times); without the glbs simple log stand-ins are built. The camp is placed by

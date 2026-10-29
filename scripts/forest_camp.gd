@@ -99,7 +99,7 @@ static func build(w: World) -> void:
 	for gx in [-4.1, 4.1]:
 		w.add_box(Vector3(gx, 0, gate_z), Vector2(1.15, 2.2), 0.0)
 	_lantern(w, Vector3(0, w.height_at(0, gate_z) + 4.7, gate_z + 0.4), true)
-	w.exits.append({"pos": Vector3(0, 0, gate_z - 3.5), "radius": 3.5, "to": "wild", "label": Data.ACTS[w.act]["wild"]})
+	w.exits.append({"pos": Vector3(0, 0, gate_z - 3.5), "radius": 3.5, "to": "wild", "label": w.act_name("wild")})
 
 	# --- rune stones standing in the trees outside the wall, glowing faintly
 	var rs := []

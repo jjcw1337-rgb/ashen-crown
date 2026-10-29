@@ -10,7 +10,7 @@ const RATE := 22050
 const BANK := preload("res://scripts/sfx_bank.gd").BANK
 const BANK_DIR := "res://assets/audio/sfx/"
 ## Rendered sounds that loop (a channel, the ambience beds)
-const LOOPS := ["drain_loop", "wind", "drip"]
+const LOOPS := ["drain_loop", "wind", "drip", "music_town"]
 var streams := {}
 ## name -> [streams] for the rendered sounds
 var bank := {}
@@ -209,10 +209,16 @@ func start_loop(nm: String, vol := 0.0, pitch := 1.0) -> AudioStreamPlayer:
 
 func play_music(kind: String) -> void:
 	var key := "music_" + kind
-	if not streams.has(key):
+	# a recorded song where there is one (the campsite's piano), else the old synthesized drone
+	var song: AudioStream = bank[key][0] if bank.has(key) else null
+	if song == null and not streams.has(key):
 		streams[key] = _drone(kind)
-	if music.stream != streams[key]:
-		music.stream = streams[key]
+	if song == null:
+		song = streams[key]
+	if music.stream != song:
+		music.stream = song
+		# the recorded songs are levelled already (build_sfx.py); the synthesized drones are louder
+		music.volume_db = -6.0 if bank.has(key) else -14.0
 		if not muted:
 			music.play()
 	var amb := "wind" if kind != "lair" else "drip"

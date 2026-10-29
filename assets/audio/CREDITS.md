@@ -5,6 +5,7 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 
 | Sound | Takes | Source | License | Prompt / file |
 |---|---|---|---|---|
+| arena_horn | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a Roman cornu war horn blast in a stone amphitheatre, a deep brassy fanfare call of two long notes, isolated sound effect, no music, no voices |
 | battle_cry | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a medieval warrior's battle cry, one man roaring a fierce 'Haaa!' to rally his allies, close mic, dry, isolated sound effect, no music |
 | blight_burst | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a poison bolt bursting on an enemy, splash of bubbling acid that sizzles, close mic, dry, isolated sound effect, no music |
 | blight_cast | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a warlock hurling a poison bolt, sinister hiss and whoosh, close mic, dry, isolated sound effect, no music |
@@ -21,6 +22,8 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | coins | 2 | Kenney rpg-audio (kenney.nl) | CC0 1.0 | handleCoins.ogg |
 | covenant | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a dark ritual pact sealed, deep ominous magical boom with faint chanting whispers, close mic, dry, isolated sound effect, no music |
 | crit_sting | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a brutal critical hit in a dark fantasy game, heavy crunching impact with a bone snap, close mic, dry, isolated sound effect, no music |
+| crowd_cheer | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a large arena crowd erupting into a huge roaring cheer and applause, then settling, no music |
+| crowd_roar | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a huge crowd in a stone arena roaring, shouting and chanting, excited spectators baying for blood, continuous and even, no music |
 | death_demon | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a demon's dying roar fading into crackling embers, close mic, dry, isolated sound effect, no music |
 | death_gnome | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a small old gnome crying out as he dies, a short strangled yelp then a last gasp, close mic, dry, isolated sound effect, no music |
 | death_knight | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a knight's dying groan as he falls, then armor crashing onto the ground, close mic, dry, isolated sound effect, no music |
@@ -49,10 +52,12 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | kill_bone | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a skeleton warrior shattering and collapsing into a pile of bones clattering on stone, close mic, dry, isolated sound effect, no music |
 | kill_flesh | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a monster killed by a blade, gory flesh splatter then a body slumping onto dirt, close mic, dry, isolated sound effect, no music |
 | levelup | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | level up in a dark fantasy game, short triumphant swell with a bright magical chime, subtle, close mic, dry, isolated sound effect, no music |
+| lion_roar | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a big male lion roaring loudly and angrily, close, close mic, dry, isolated sound effect, no music |
 | phase_erupt | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | fire bursting violently up out of the ground, a deep boom, roaring flames and falling rocks, close mic, dry, isolated sound effect, no music |
 | phase_in | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | stepping into the underworld, a deep dark whoosh with a low ominous hit, close mic, dry, isolated sound effect, no music |
 | pickup | 8 | Kenney rpg-audio (kenney.nl) | CC0 1.0 | handleSmallLeather.ogg |
 | portal | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a magic town portal opening, soft swirling whoosh with a warm shimmer, close mic, dry, isolated sound effect, no music |
+| portcullis | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a heavy iron portcullis gate being hauled up by chains, rattling chains and grinding iron, ending in a clank, close mic, dry, isolated sound effect, no music |
 | potion | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | drinking a potion from a glass vial, cork pop and two quick gulps, close mic, dry, isolated sound effect, no music |
 | reap_swing | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a ghostly scythe swung in a wide arc, cold airy spectral whoosh, close mic, dry, isolated sound effect, no music |
 | roar | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a huge mutated goblin king's furious roar, close mic, dry, isolated sound effect, no music |

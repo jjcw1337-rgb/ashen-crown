@@ -1,4 +1,16 @@
 {
+ "arena_horn": [
+  {
+   "detail": "a Roman cornu war horn blast in a stone amphitheatre, a deep brassy fanfare call of two long notes, isolated sound effect, no music, no voices",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a Roman cornu war horn blast in a stone amphitheatre, a deep brassy fanfare call of two long notes, isolated sound effect, no music, no voices",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "battle_cry": [
   {
    "detail": "a medieval warrior's battle cry, one man roaring a fierce 'Haaa!' to rally his allies, close mic, dry, isolated sound effect, no music",
@@ -117,6 +129,25 @@
  "crit_sting": [
   {
    "detail": "a brutal critical hit in a dark fantasy game, heavy crunching impact with a bone snap, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "crowd_cheer": [
+  {
+   "detail": "a large arena crowd erupting into a huge roaring cheer and applause, then settling, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a large arena crowd erupting into a huge roaring cheer and applause, then settling, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "crowd_roar": [
+  {
+   "detail": "a huge crowd in a stone arena roaring, shouting and chanting, excited spectators baying for blood, continuous and even, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }
@@ -377,6 +408,18 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "lion_roar": [
+  {
+   "detail": "a big male lion roaring loudly and angrily, close, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a big male lion roaring loudly and angrily, close, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "phase_erupt": [
   {
    "detail": "fire bursting violently up out of the ground, a deep boom, roaring flames and falling rocks, close mic, dry, isolated sound effect, no music",
@@ -436,6 +479,18 @@
  "portal": [
   {
    "detail": "a magic town portal opening, soft swirling whoosh with a warm shimmer, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "portcullis": [
+  {
+   "detail": "a heavy iron portcullis gate being hauled up by chains, rattling chains and grinding iron, ending in a clank, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a heavy iron portcullis gate being hauled up by chains, rattling chains and grinding iron, ending in a clank, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }

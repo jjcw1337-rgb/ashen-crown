@@ -125,7 +125,7 @@ static func build(w: World) -> void:
 	_approach(w, poly)
 	_outskirts(w)
 	_forest(w)
-	w.exits.append({"pos": Vector3(0, 0, 3.0), "radius": 2.6, "to": "wild", "label": Data.ACTS[w.act]["wild"]})
+	w.exits.append({"pos": Vector3(0, 0, 3.0), "radius": 2.6, "to": "wild", "label": w.act_name("wild")})
 	w.spawns["start"] = Vector3(0, 0, -3.0)
 	w.spawns["boss_room"] = Vector3(ARENA.x, 0, ARENA.y + 12.0)
 	w.spawns["gate"] = Vector3(gp.x, 0, gp.y + 6.0)
@@ -249,7 +249,7 @@ static func _tower_standin() -> Node3D:
 static func _courtyard(w: World) -> void:
 	var c := ARENA
 	w._hoard_room(Rect2(c.x - 14.0, c.y - 14.0, 28.0, 28.0), c)
-	w.boss_spawn = {"kind": Data.ACTS[w.act]["boss"], "pos": Vector3(c.x, 0, c.y - 3.0)}
+	w.boss_spawn = {"kind": w.act_name("boss"), "pos": Vector3(c.x, 0, c.y - 3.0)}
 	# a gong beside the throne, two bonfires and torches round the edge, junk heaped between
 	_gong(w, Vector3(c.x + 4.6, 0, c.y - 11.5))
 	for i in 6:
@@ -1067,4 +1067,4 @@ static func trail_end(w: World, p: Vector3) -> void:
 		_skull_pole(w, p + Vector3(s * 4.2, 0, 7.0))
 		_skull_pole(w, p + Vector3(s * 5.0, 0, 13.0))
 	w.dirt_blobs.append([Vector2(p.x, p.z + 3.0), 8.0, 1.0])
-	w.exits.append({"pos": p + Vector3(0, 0, -0.5), "radius": 2.2, "to": "lair", "label": Data.ACTS[w.act]["lair"]})
+	w.exits.append({"pos": p + Vector3(0, 0, -0.5), "radius": 2.2, "to": "lair", "label": w.act_name("lair")})

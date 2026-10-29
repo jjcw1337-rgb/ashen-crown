@@ -13,6 +13,20 @@ const ACTS := [
 		"boss": "malgoroth", "lvl": 22, "theme": "hell", "foes": ["imp", "hell_knight", "doom_caster"]},
 ]
 
+## A2 is its own act on Act I's camp: the Imperial Road (via.gd: the moor, a bandit ambush, the old
+## Roman road, Aurelia's outskirts) to the city of Aurelia and its arena (aurelia.gd), where the champion
+## of the games (games.gd) is the act's boss. Keys override Data.ACTS[0] for that run (act_info).
+const RUN_ACTS := {
+	1: {"name": "The Imperial Road", "wild": "The Imperial Road", "lair": "Aurelia", "boss": "champion",
+		"foes": ["zombie", "fallen", "skel_archer"]},
+}
+
+## An act's names, boss and foes for a run (difficulty): Data.ACTS with that run's overrides.
+static func act_info(act: int, run: int) -> Dictionary:
+	if act == 0 and RUN_ACTS.has(run):
+		return ACTS[act].merged(RUN_ACTS[run], true)
+	return ACTS[act]
+
 const VENDORS := [
 	{"smith": "Grisold the Smith", "armor": "Hedda Ironhand", "alch": "Old Maeve", "gamble": "Tarrow the Dice", "stash": "Stash", "elder": "Captain Roth"},
 	{"smith": "Kadir Forgebrand", "armor": "Saphra", "alch": "Iskander the Wise", "gamble": "Jamal Two-Coins", "stash": "Stash", "elder": "Vizier Hasun"},
@@ -32,6 +46,24 @@ const ENEMIES := {
 	"feral": {"mesh": "feral", "name": "Feral", "rig": "humanoid", "life": 15, "dmg": [2, 5], "speed": 4.2, "range": 1.4, "xp": 12,
 		"ai": "feral", "atk": "feral_swipe", "atk_time": 0.8, "armor": 1, "radius": 0.5, "aggro": 14.0, "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.66, 0.6, 0.55), "cloth": Color(0.25, 0.2, 0.15), "height": 0.72, "bulk": 0.8, "head": "human", "hair": Color(0.08, 0.07, 0.06), "eyes": Color(1.0, 0.7, 0.3)}},
+	# A2: the bandits of the Imperial Road (they wait hidden and spring an ambush, via.gd) and the beasts,
+	# gladiators and champion of Aurelia's arena (games.gd). "mesh" picks the Meshy model when it's there.
+	"bandit": {"mesh": "bandit", "name": "Road Bandit", "rig": "humanoid", "life": 22, "dmg": [3, 7], "speed": 4.4, "range": 1.6, "xp": 13,
+		"ai": "melee", "atk": "side", "atk_time": 0.8, "armor": 3, "radius": 0.45, "faction": "bandit", "blood": Color(0.5, 0.02, 0.02),
+		"look": {"skin": Color(0.62, 0.46, 0.34), "cloth": Color(0.3, 0.24, 0.16), "cloth2": Color(0.22, 0.25, 0.14), "height": 1.0, "bulk": 0.95, "head": "human", "hair": Color(0.12, 0.09, 0.06), "weapon": "scimitar"}},
+	"bandit_archer": {"mesh": "bandit", "name": "Bandit Bowman", "rig": "humanoid", "life": 16, "dmg": [3, 6], "speed": 3.6, "range": 12.0, "xp": 12,
+		"ai": "ranged", "atk": "bow", "atk_time": 1.2, "armor": 2, "radius": 0.45, "proj": "arrow", "faction": "bandit", "blood": Color(0.5, 0.02, 0.02),
+		"look": {"skin": Color(0.6, 0.45, 0.33), "cloth": Color(0.26, 0.22, 0.15), "cloth2": Color(0.3, 0.2, 0.12), "height": 0.98, "bulk": 0.9, "head": "human", "hair": Color(0.15, 0.1, 0.07), "weapon": "bow"}},
+	"lion": {"mesh": "lion", "name": "Arena Lion", "rig": "crawler", "life": 30, "dmg": [4, 8], "speed": 5.0, "range": 1.9, "xp": 16,
+		"ai": "feral", "atk": "feral_swipe", "atk_time": 0.95, "armor": 3, "radius": 0.8, "aggro": 30.0, "blood": Color(0.5, 0.02, 0.02),
+		"look": {"skin": Color(0.55, 0.4, 0.22), "shell": Color(0.3, 0.2, 0.1), "legs": 4, "size": 1.2, "eyes": Color(1.0, 0.75, 0.2)}},
+	"gladiator": {"mesh": "gladiator", "name": "Gladiator", "rig": "humanoid", "life": 44, "dmg": [5, 10], "speed": 4.0, "range": 1.7, "xp": 22,
+		"ai": "melee", "atk": "side", "atk_time": 0.85, "armor": 8, "radius": 0.5, "blood": Color(0.5, 0.02, 0.02),
+		"look": {"skin": Color(0.66, 0.48, 0.36), "cloth": Color(0.85, 0.82, 0.74), "armor": Color(0.7, 0.5, 0.22), "height": 1.05, "bulk": 1.15, "head": "human", "hair": Color(0.1, 0.08, 0.06), "weapon": "scimitar"}},
+	"champion": {"mesh": "champion", "name": "Aurelius, Champion of the Arena", "rig": "humanoid", "life": 420, "dmg": [9, 16], "speed": 3.4, "range": 2.4, "xp": 520,
+		"ai": "boss", "atk": "over", "atk_time": 1.1, "armor": 14, "radius": 0.9, "boss": true, "summon": "", "slam": true, "nova": "", "proj": "",
+		"aggro": 45.0, "blood": Color(0.5, 0.02, 0.02),
+		"look": {"skin": Color(0.62, 0.45, 0.33), "cloth": Color(0.55, 0.06, 0.05), "armor": Color(0.85, 0.65, 0.25), "height": 1.5, "bulk": 1.35, "head": "human", "hair": Color(0.1, 0.08, 0.06), "weapon": "scimitar", "cape": Color(0.55, 0.06, 0.05)}},
 	# King Grubb's Gold Grabbers: they scoop up his spilled gold and haul it back to him (hoard.gd)
 	"grabber": {"name": "Gold Grabber", "rig": "humanoid", "model": "grabber", "life": 13, "dmg": [2, 4], "speed": 4.4, "range": 1.3, "xp": 6, "no_loot": true,
 		"ai": "melee", "atk": "thrust", "atk_time": 0.75, "armor": 2, "radius": 0.4, "blood": Color(0.4, 0.05, 0.02),

@@ -96,8 +96,8 @@ func _run() -> void:
 	# (hold the monsters still meanwhile: a Feral pack knocking him onto the gold would pick it up)
 	for e in g.enemies_near(h.global_position, 60.0):
 		e.set_process(false)
-	g.drop_item(Items.gold(50), h.global_position + Vector3(2, 0, 0))
-	g.drop_item(Items.potion("hp_potion"), h.global_position + Vector3(-2, 0, 0))
+	g.drop_item(Items.gold(50), h.global_position + Vector3(6, 0, 0))
+	g.drop_item(Items.potion("hp_potion"), h.global_position + Vector3(-6, 0, 0))
 	await wait(60)
 	var items: Array = g.world.items_root.get_children()
 	g.hovered = items[0]

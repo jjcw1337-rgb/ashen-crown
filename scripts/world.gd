@@ -24,8 +24,10 @@ var hill_noise := FastNoiseLite.new()
 var flat_floor := false
 ## Extra ground shaping for a zone (Fort: the ditch and rampart): f(x, z) -> metres added to the height.
 var ground_fn := Callable()
-## Act I and A2: the lair is King Grubb's goblin fort (fort.gd) and the moor's road ends at its trail.
+## Act I: the lair is King Grubb's goblin fort (fort.gd) and the moor's road ends at its trail.
 var fort := false
+## Which run (Game.difficulty) this zone is for: A2 (1) has its own wild zone (via.gd) and lair (aurelia.gd).
+var run := 0
 var dirt_blobs: Array = []     # [Vector2 pos, radius, strength]
 var cobble_blobs: Array = []
 var dirt_lines: Array = []     # [Vector2 a, Vector2 b, width]
@@ -38,6 +40,9 @@ var spawns := {}
 var burn_points: Array = []
 var enemy_spawns: Array = []
 var boss_spawn := {}
+## Hidden enemies that appear when a hero comes near (Via's bandit ambush; Game._check_ambushes):
+## [{pos: Vector3, radius, spawns: [spawn entries], done, land: Vector3}]
+var ambushes: Array = []
 var interactables: Array = []
 var exits: Array = []          # [{pos: Vector3, radius, to: String, label}]
 var props_root: Node3D
@@ -758,6 +763,13 @@ func _npc(label_s: String, look: Dictionary, p: Vector3, role: String, yaw := 0.
 	return it
 
 # ---------------------------------------------------------------- zone builders
+## This act's names, boss and foes for this zone's run (Data.act_info).
+func act_info() -> Dictionary:
+	return Data.act_info(act, run)
+
+func act_name(key: String) -> String:
+	return str(act_info()[key])
+
 func build(act_i: int, kind_s: String, seed_v: int) -> void:
 	act = act_i
 	kind = kind_s
@@ -770,8 +782,14 @@ func build(act_i: int, kind_s: String, seed_v: int) -> void:
 	hill_noise.fractal_octaves = 4
 	match kind:
 		"town": _build_town()
-		"wild": _build_wild()
-		"lair": Fort.build(self) if fort else _build_lair()
+		"wild": Via.build(self) if run == 1 else _build_wild()
+		"lair":
+			if run == 1:
+				Aurelia.build(self)
+			elif fort:
+				Fort.build(self)
+			else:
+				_build_lair()
 
 const MOOR_TERRAIN := {
 	"col_a": Color(0.15, 0.2, 0.08), "col_b": Color(0.21, 0.23, 0.11), "col_accent": Color(0.28, 0.3, 0.13),
@@ -827,7 +845,7 @@ func _build_town() -> void:
 	lintel.position.y = height_at(0, wy)
 	solid(Props.tripod_torch(props_root, Vector3(-5.5, height_at(-5.5, wy + 2.0), wy + 2.0)))
 	solid(Props.tripod_torch(props_root, Vector3(5.5, height_at(5.5, wy + 2.0), wy + 2.0)))
-	exits.append({"pos": Vector3(0, 0, wy - 3.0), "radius": 3.5, "to": "wild", "label": Data.ACTS[act]["wild"]})
+	exits.append({"pos": Vector3(0, 0, wy - 3.0), "radius": 3.5, "to": "wild", "label": act_name("wild")})
 
 	# --- centre: campfire, stash, waypoint
 	var cf := solid(Props.campfire(props_root, Vector3(0, height_at(0, 0), 0)))
@@ -1237,7 +1255,7 @@ func _crypt_entrance(p: Vector3) -> void:
 		Props.fire(br, Vector3(0, 1.3, 0), 1.0, Color(1.0, 0.45, 0.15), true, true)
 		add_circle(p + Vector3(x, 0, 2.2), 0.5)
 	add_box(p + Vector3(0, 0, -2.0), Vector2(4.6, 3.0), 0.0)
-	exits.append({"pos": p + Vector3(0, 0, 1.2), "radius": 1.6, "to": "lair", "label": Data.ACTS[act]["lair"]})
+	exits.append({"pos": p + Vector3(0, 0, 1.2), "radius": 1.6, "to": "lair", "label": act_name("lair")})
 
 func _build_wild() -> void:
 	bounds = Rect2(-42, -214, 84, 216)
@@ -1256,7 +1274,7 @@ func _build_wild() -> void:
 	var end_p: Vector2 = ctrl[ctrl.size() - 1]
 	dirt_blobs.append([end_p + Vector2(0, 3), 9.0, 1.0])
 	cobble_blobs.append([end_p + Vector2(0, 4), 5.0, 0.9])
-	exits.append({"pos": Vector3(0, 0, 0.5), "radius": 2.6, "to": "town", "label": Data.ACTS[act]["town"]})
+	exits.append({"pos": Vector3(0, 0, 0.5), "radius": 2.6, "to": "town", "label": act_name("town")})
 	if fort:
 		Fort.trail_end(self, Vector3(end_p.x, 0, end_p.y - 4.0))
 	else:
@@ -1426,7 +1444,7 @@ func _build_wild() -> void:
 		_rare_flowers(3)
 
 	# monster packs along the path
-	var foes: Array = Data.ACTS[act]["foes"]
+	var foes: Array = act_info()["foes"]
 	var pid := 0
 	var champ_done := false
 	var t := 0.12
@@ -1521,7 +1539,7 @@ func _build_lair() -> void:
 				_place(br, bp)
 				Props.fire(br, Vector3(0, 1.45, 0), 1.1, Color(1.0, 0.42, 0.15), true, corner.y < 0)
 				add_circle(bp, 0.5)
-			boss_spawn = {"kind": Data.ACTS[act]["boss"], "pos": Vector3(c.x, 0, c.y - 3)}
+			boss_spawn = {"kind": act_name("boss"), "pos": Vector3(c.x, 0, c.y - 3)}
 			continue
 		if r.size.x > 14 and r.size.y > 14 and ri > 0:
 			for corner in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
@@ -1542,7 +1560,7 @@ func _build_lair() -> void:
 			var tx := lerpf(r.position.x + 2.0, r.end.x - 2.0, 0.25 + k * 0.5)
 			_wall_torch(Vector3(tx, 0, r.position.y + 0.15), k == 0 and ri % 2 == 0)
 		if ri > 0:
-			var foes: Array = Data.ACTS[act]["foes"]
+			var foes: Array = act_info()["foes"]
 			for k in rng.randi_range(1, 2):
 				var ep := Vector3(rng.randf_range(r.position.x + 2, r.end.x - 2), 0, rng.randf_range(r.position.y + 2, r.end.y - 2))
 				var kk: String = foes[rng.randi() % foes.size()]
@@ -1596,7 +1614,7 @@ func _build_lair() -> void:
 	shaft.position = Vector3(r0.get_center().x, 3.5, r0.end.y - 1.5)
 	shaft.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	props_root.add_child(shaft)
-	exits.append({"pos": Vector3(r0.get_center().x, 0, r0.end.y - 0.8), "radius": 1.8, "to": "wild", "label": Data.ACTS[act]["wild"]})
+	exits.append({"pos": Vector3(r0.get_center().x, 0, r0.end.y - 0.8), "radius": 1.8, "to": "wild", "label": act_name("wild")})
 	spawns["start"] = Vector3(r0.get_center().x, 0, r0.end.y - 5.0)
 	spawns["boss_room"] = Vector3(boss_r.get_center().x, 0, boss_r.end.y - 3)
 

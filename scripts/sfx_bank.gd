@@ -2,6 +2,7 @@
 ## Files are assets/audio/sfx/<name>_<take>.wav (sources in assets/audio/CREDITS.md). Don't edit by hand.
 ## [takes, bus, seconds to the payoff (Sfx.play_synced lands it on an attack's impact frame)]
 const BANK := {
+	"arena_horn": [2, "sfx", 0.0],
 	"battle_cry": [1, "sfx", 0.0],
 	"blight_burst": [1, "sfx", 0.0],
 	"blight_cast": [1, "sfx", 0.0],
@@ -18,6 +19,8 @@ const BANK := {
 	"coins": [2, "ui", 0.0],
 	"covenant": [1, "sfx", 0.4],
 	"crit_sting": [1, "sfx", 0.0],
+	"crowd_cheer": [2, "sfx", 0.0],
+	"crowd_roar": [1, "sfx", 0.0],
 	"death_demon": [1, "sfx", 0.0],
 	"death_gnome": [1, "sfx", 0.0],
 	"death_knight": [1, "sfx", 0.0],
@@ -46,10 +49,12 @@ const BANK := {
 	"kill_bone": [1, "sfx", 0.0],
 	"kill_flesh": [1, "sfx", 0.0],
 	"levelup": [1, "ui", 0.0],
+	"lion_roar": [2, "sfx", 0.0],
 	"phase_erupt": [1, "sfx", 0.0],
 	"phase_in": [1, "sfx", 0.0],
 	"pickup": [8, "ui", 0.0],
 	"portal": [1, "ui", 0.0],
+	"portcullis": [2, "sfx", 0.0],
 	"potion": [1, "ui", 0.0],
 	"reap_swing": [1, "sfx", 0.3],
 	"roar": [1, "sfx", 0.0],

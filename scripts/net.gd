@@ -509,6 +509,36 @@ func boss_aggro(e: Enemy) -> void:
 	if is_host and not players.is_empty():
 		rpc("cl_boss_aggro", e.net_id)
 
+## Aurelia's arena (games.gd): the host's events (gates, announcements, the crowd) to everyone.
+func games_event(ev: String) -> void:
+	if is_host and not players.is_empty():
+		rpc("cl_games", ev)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_games(ev: String) -> void:
+	if not loading and game.world != null and game.world.has_meta("games"):
+		game.world.get_meta("games").fx(ev)
+
+## A partner struck Varro's deal: the host starts the games.
+func request_games() -> void:
+	rpc_id(1, "sv_games")
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_games() -> void:
+	if is_host and game.world != null and game.world.has_meta("games"):
+		game.world.get_meta("games").begin()
+
+## Host: put a partner's knight somewhere (onto the arena's sand when its gate drops).
+func place_player(pid: int, pos: Vector3) -> void:
+	rpc_id(pid, "cl_place", pos)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_place(pos: Vector3) -> void:
+	if not loading and game.world != null:
+		game.hero.global_position = Vector3(pos.x, game.world.height_at(pos.x, pos.z), pos.z)
+		game.hero.path = PackedVector3Array()
+		game.hero.moving = false
+
 func share_xp(xp: int, lvl: int) -> void:
 	if is_host and not players.is_empty():
 		rpc("cl_xp", xp, lvl)

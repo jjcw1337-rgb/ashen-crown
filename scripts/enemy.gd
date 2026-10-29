@@ -21,6 +21,9 @@ var rig: Node3D
 var dead := false
 var dead_t := 0.0
 var aggro := false
+var leap_t := -1.0              # springing from an ambush (leap_from): 0..1 through the leap
+var leap_a := Vector3.ZERO
+var leap_b := Vector3.ZERO
 var atk_t := -1.0
 var atk_dur := 1.0
 var atk_style := "over"
@@ -104,6 +107,10 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 		rig = Feral.build(Feral.variant_at(global_position))
 		slot_a = randf_range(-1.6, 1.6)
 		lunge_cd = randf_range(0.3, 3.0)
+	elif def.get("mesh", "") == "lion" and Lion.ok():
+		rig = Lion.build()
+		slot_a = randf_range(-1.6, 1.6)
+		lunge_cd = randf_range(0.5, 2.5)
 	elif def.has("mesh") and MeshyMonster.ok(def["mesh"]):
 		rig = MeshyMonster.build(def["mesh"], look)
 	elif def.has("model"):
@@ -418,7 +425,7 @@ func _process(delta: float) -> void:
 		if rig.has_meta("crawler"):
 			rig.rotation.z = f * PI
 			rig.position.y = f * 0.4 * height
-		elif rig.has_meta("feral"):
+		elif rig.has_meta("feral") or rig.has_meta("lion"):
 			rig.rotation.x = 0.0
 			rig.rotation.z = f * f * 1.35      # rolls onto his side
 		elif rig.has_meta("goblin"):
@@ -452,6 +459,9 @@ func _process(delta: float) -> void:
 		if rival != null and (hero.dead or rival.global_position.distance_to(global_position) < hero.global_position.distance_to(global_position) * 0.85):
 			hero = rival
 			aggro = true
+	if leap_t >= 0.0:
+		_update_leap(delta, hero)
+		return
 	var to := hero.global_position - global_position
 	to.y = 0
 	var dist := to.length()
@@ -523,6 +533,8 @@ func _process(delta: float) -> void:
 func _pose(st: Dictionary) -> void:
 	if rig.has_meta("feral"):
 		Feral.pose(rig, st, height)
+	elif rig.has_meta("lion"):
+		Lion.pose(rig, st, height)
 	else:
 		Anim.pose(rig, st)
 
@@ -665,6 +677,8 @@ func _begin_special(sp: String) -> void:
 			atk_style = sp
 			atk_dur = 0.9
 			_begin_attack(sp)
+			if kind == "lion":
+				Sfx.play_at("lion_roar", global_position, -3.0, randf_range(0.92, 1.08))
 		# King Grubb (hoard.gd): a lobbed bomb, scooping gold, staggering, cackling
 		"bomb", "scoop", "burst", "cackle":
 			atk_style = "lob" if sp == "bomb" else sp
@@ -751,6 +765,31 @@ func _shoot(at: Vector3, pkind: String) -> void:
 # ---------------------------------------------------------------- the Feral (feral.gd)
 ## Clinging head-down to a trunk until someone comes close, then down it in a skitter, and the rest of
 ## its pack with it.
+## An ambusher (Via's bandits): leaps from where it hid, over the rocks, down onto the road, and is in
+## the fight as it lands.
+func leap_from(a: Vector3, b: Vector3) -> void:
+	leap_a = a
+	leap_b = Vector3(b.x, game.world.height_at(b.x, b.z), b.z)
+	leap_t = randf_range(-0.35, 0.0)     # not all at once
+	aggro = true
+
+func _update_leap(delta: float, hero: Node3D) -> void:
+	leap_t += delta / 0.75
+	var k := clampf(leap_t, 0.0, 1.0)
+	var p := leap_a.lerp(leap_b, smoothstep(0.0, 1.0, k))
+	p.y = lerpf(game.world.height_at(leap_a.x, leap_a.z), leap_b.y, k) + sin(k * PI) * 2.6
+	global_position = p
+	var d := leap_b - leap_a
+	if d.length() > 0.1:
+		rig.rotation.y = atan2(-d.x, -d.z)
+	_pose({"time": anim_time, "phase": phase, "move": 1.0 - k, "atk": 0.25 + k * 0.5, "style": "over", "hit": 0.0})
+	if leap_t >= 1.0:
+		leap_t = -1.0
+		home = global_position
+		Fx.burst(game.world.fx_root, global_position + Vector3(0, 0.2, 0), Color(0.45, 0.38, 0.28, 0.7), 14, 2.5, 0.25, 0.6, false, 0.5)
+		if is_instance_valid(hero) and hero is Node3D:
+			rig.rotation.y = atan2(-(hero.global_position.x - global_position.x), -(hero.global_position.z - global_position.z))
+
 func perch_on(trunk: Vector3, out_dir: Vector3, h := Feral.PERCH_H) -> void:
 	perch_dir = Vector3(out_dir.x, 0, out_dir.z).normalized()
 	perch_h = h

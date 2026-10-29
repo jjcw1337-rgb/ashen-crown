@@ -320,17 +320,18 @@ func _set_fires() -> void:
 		weather.make_smoke(world.fx_root, p, r.randf_range(1.6, 2.6))
 		Props.fire(world.fx_root, p + Vector3(0, 0.6, 0), 2.2, Color(1.0, 0.42, 0.1), false, false, false)
 
-## A2 is winter: snow over every outdoor area, falling snow, colder light.
+## Snow over every outdoor area, falling snow, colder light. (A2 was winter until it became the Imperial
+## Road and Aurelia, which are warm; nothing is snowy now, kept for a later act.)
 func is_snowy() -> bool:
-	return difficulty == 1 and not indoor()
+	return false
 
-## The crypt (A3's lair) is underground; every other zone, Grubb's fort included, is under the sky.
+## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
-	return cur_zone == "lair" and not (world != null and world.fort)
+	return cur_zone == "lair" and not (world != null and (world.fort or world.run == 1))
 
 func _zone_env(kind: String) -> void:
-	var inside := kind == "lair" and not world.fort
-	var snowy := difficulty == 1 and not inside
+	var inside := kind == "lair" and not (world.fort or world.run == 1)
+	var snowy := is_snowy() and not inside
 	var ashen := difficulty >= 2 and not inside
 	RenderingServer.global_shader_parameter_set("snow_amt", 1.0 if snowy else 0.0)
 	RenderingServer.global_shader_parameter_set("ash_amt", 1.0 if ashen else 0.0)
@@ -405,6 +406,23 @@ func _zone_env(kind: String) -> void:
 			sun.light_color = Color(0.6, 0.72, 0.9)
 			sun.light_energy = 0.62
 			hero.light.light_energy = 1.0
+		if difficulty == 1 and kind != "town":
+			# A2, the Imperial Road and Aurelia: a warm late afternoon, low golden sun, dusty haze
+			sky_mat.sky_top_color = Color(0.34, 0.42, 0.55)
+			sky_mat.sky_horizon_color = Color(0.78, 0.62, 0.45)
+			sky_mat.ground_horizon_color = Color(0.5, 0.4, 0.3)
+			env.ambient_light_energy = 0.62
+			env.tonemap_exposure = 1.12
+			env.fog_light_color = Color(0.6, 0.5, 0.38)
+			env.fog_density = 0.006
+			env.fog_height_density = 0.04
+			env.adjustment_saturation = 0.98
+			env.adjustment_contrast = 1.08
+			env.volumetric_fog_density = 0.012
+			env.volumetric_fog_albedo = Color(0.9, 0.78, 0.62)
+			env.volumetric_fog_emission = Color(0.04, 0.03, 0.02)
+			sun.light_color = Color(1.0, 0.82, 0.6)
+			sun.light_energy = 1.05
 		if snowy:
 			# overcast winter: pale sky, cold light, snow bouncing light back up
 			sky_mat.sky_top_color = Color(0.5, 0.55, 0.62)
@@ -662,7 +680,7 @@ void fragment(){
 
 # ---------------------------------------------------------------- zones
 func zone_title(act: int, zone: String) -> String:
-	var a: Dictionary = Data.ACTS[act]
+	var a: Dictionary = Data.act_info(act, difficulty)
 	var tag: String = ["", "  ·  A2", "  ·  A3"][clampi(difficulty, 0, 2)]
 	match zone:
 		"town": return a["town"] + tag
@@ -769,7 +787,8 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	world = World.new()
 	world.name = "World"
 	world.oak_forest = difficulty == 0     # Act I: the moor is an oak forest (A2/A3 keep their own look)
-	world.fort = difficulty < 2            # Grubb's runs: the lair is his goblin fort, outdoors (A3 keeps the crypt)
+	world.fort = difficulty == 0           # Act I: the lair is Grubb's goblin fort, outdoors (A3 keeps the crypt)
+	world.run = difficulty                 # A2 builds its own road and Aurelia
 	add_child(world)
 	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair"].find(zone) * 7)
 	_end_underworld_now()
@@ -888,6 +907,37 @@ func spawn_enemy(kind: String, p: Vector3, lvl: int, champ := false, champ_name 
 	if net.active and net.is_host:
 		net.on_spawn(e)
 	return e
+
+## Via's bandit ambush (World.ambushes): when any hero comes near, the bandits spring from behind the
+## rocks onto the road (Enemy.leap_from), bowmen stay on the crests. Host only; the spawns replicate.
+func _check_ambushes() -> void:
+	if net.is_client() or world == null or world.ambushes.is_empty():
+		return
+	for am in world.ambushes:
+		if am["done"]:
+			continue
+		for h in all_heroes():
+			if is_instance_valid(h) and not h.dead and h.global_position.distance_to(am["pos"]) < float(am["radius"]):
+				am["done"] = true
+				_spring_ambush(am)
+				break
+
+func _spring_ambush(am: Dictionary) -> void:
+	ui.big_message("Ambush!")
+	Sfx.play("battle_cry", -6.0, 0.8)
+	add_shake(0.2)
+	var land: Vector3 = am["land"]
+	for es in am["spawns"]:
+		for i in int(es["count"]):
+			var from: Vector3 = es["pos"] + Vector3(rng.randf_range(-1.6, 1.6), 0, rng.randf_range(-1.6, 1.6))
+			var e := spawn_enemy(es["kind"], from, int(es["level"]), es["champ"], ("%s, %s" % [Data.ENEMIES[es["kind"]]["name"], es["name"]]) if es.has("name") else "", int(es["pack"]))
+			if e == null:
+				continue
+			if str(es["kind"]).ends_with("archer"):
+				e.aggro = true
+			else:
+				var to := land.lerp(from, 0.4) + Vector3(rng.randf_range(-2.5, 2.5), 0, rng.randf_range(-2.5, 2.5))
+				e.leap_from(e.global_position, to)
 
 ## Every knight in the area: yours plus your partners'.
 func all_heroes() -> Array:
@@ -1229,11 +1279,31 @@ func _open_chest(t: Inter) -> void:
 
 func _interact(t: Inter) -> void:
 	match t.kind:
+		"lanista":
+			# Varro, by Aurelia's arena: his games are A2's boss fight (games.gd)
+			var g = world.get_meta("games") if world.has_meta("games") else null
+			if g == null:
+				return
+			var txt := "Well now. A fighter, by the look of you, and a long way from home. The crowd's grown tired of farmers and debtors. Step onto my sand: three bouts, lions, gladiators, the beasts of my pit, and then Aurelius, who has never lost. Win, and the purse is yours. Lose... well. The lions eat either way."
+			var btns := [["Enter the games", func():
+				if net.is_client():
+					net.request_games()
+				else:
+					g.begin()], ["Not today", func(): pass]]
+			if boss_killed:
+				txt = "You killed Aurelius. Do you know what that cost me? No matter: the crowd has a new favourite, and I have a new purse. Come back when you want to bleed for coin again."
+				btns = [["Farewell", func(): pass]]
+			elif g.state != "closed":
+				txt = "The games are on! Get onto the sand, the crowd is waiting."
+				btns = [["Farewell", func(): pass]]
+			ui.open_dialog(t.label, txt, btns)
 		"vendor":
 			var role: String = t.data.get("role", "")
 			if role == "elder":
 				var txt := "The crypt lies at the far end of Cairnfell Moor. Bone archers and the restless dead guard the way. Raise your shield against their arrows: a good block turns them aside. And Grubb guards his gold like his life: rip open one of his sacks and his goblins come running for it. Get to the gold before they bring it back to him."
-				if difficulty >= 2 and not boss_killed:
+				if difficulty == 1 and not boss_killed:
+					txt = "The old Imperial Road runs north to Aurelia. Bandits hold it now, the city too. Watch the pass where the rocks close in: they like to leave a wagon on its side and wait for travellers to stop and look. In Aurelia a man named Varro runs games in the old arena. They say his champion has never lost."
+				elif difficulty >= 2 and not boss_killed:
 					txt = "Something worse than Grubb sits on his stolen throne in the old crypt. They call him the Ashen King. His bone archers hold the moor, and he carries a blade that burns. Kill him and take it."
 				if boss_killed:
 					txt = "Grubb is dead and his gold is ours, and the moor already feels lighter. Greywatch owes you a debt it cannot pay. Rest a while, crusader."
@@ -1257,8 +1327,8 @@ func _interact(t: Inter) -> void:
 				ui.message("Waypoint activated", Color(0.5, 0.7, 1.0))
 				Sfx.play("portal")
 			ui.open_waypoints([
-				{"label": Data.ACTS[cur_act]["town"], "zone": "town", "known": true},
-				{"label": Data.ACTS[cur_act]["wild"], "zone": "wild", "known": waypoints_known.has("wild")},
+				{"label": Data.act_info(cur_act, difficulty)["town"], "zone": "town", "known": true},
+				{"label": Data.act_info(cur_act, difficulty)["wild"], "zone": "wild", "known": waypoints_known.has("wild")},
 			], difficulty, (net.party_max_run if net.is_client() else max_run) if cur_zone == "town" else -1)
 		"portal":
 			Sfx.play("portal")
@@ -1394,7 +1464,7 @@ func on_enemy_killed(e: Enemy) -> void:
 		add_shake(0.8)
 		Fx.pillar(world.fx_root, e.global_position, Color(1.0, 0.3, 0.2), 2.0)
 		var ptl := _make_portal(world.free_spot_near(e.global_position + Vector3(0, 0, 3.5), 1.0), "town")
-		ptl.label = "Portal to " + Data.ACTS[cur_act]["town"]
+		ptl.label = "Portal to " + Data.act_info(cur_act, difficulty)["town"]
 		ptl.set_meta("boss", true)
 		net.portal_created(ptl)
 		save_game()
@@ -1724,6 +1794,7 @@ func _process(delta: float) -> void:
 		Engine.time_scale = 1.0
 	if playing and not paused and not _busy:
 		_update_hover()
+		_check_ambushes()
 		hero.blocking = skill_held("block") and not ui.any_panel_open()
 		for slot in Hero.BIND_SLOTS:
 			if slot != "lmb" and slot_held(slot):
