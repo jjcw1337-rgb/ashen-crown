@@ -60,8 +60,8 @@ const ENEMIES := {
 	"gladiator": {"mesh": "gladiator", "name": "Gladiator", "rig": "humanoid", "life": 44, "dmg": [5, 10], "speed": 4.0, "range": 1.7, "xp": 22,
 		"ai": "melee", "atk": "side", "atk_time": 0.85, "armor": 8, "radius": 0.5, "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.66, 0.48, 0.36), "cloth": Color(0.85, 0.82, 0.74), "armor": Color(0.7, 0.5, 0.22), "height": 1.05, "bulk": 1.15, "head": "human", "hair": Color(0.1, 0.08, 0.06), "weapon": "scimitar"}},
-	"champion": {"mesh": "champion", "name": "Aurelius, Champion of the Arena", "rig": "humanoid", "life": 420, "dmg": [9, 16], "speed": 3.4, "range": 2.4, "xp": 520,
-		"ai": "boss", "atk": "over", "atk_time": 1.1, "armor": 14, "radius": 0.9, "boss": true, "summon": "", "slam": true, "nova": "", "proj": "",
+	"champion": {"mesh": "champion", "name": "Aurelius, Champion of the Arena", "rig": "humanoid", "life": 220, "dmg": [9, 16], "speed": 3.4, "range": 2.4, "xp": 520,
+		"ai": "boss", "atk": "over", "atk_time": 1.1, "armor": 9, "radius": 0.9, "boss": true, "summon": "", "slam": true, "nova": "", "proj": "",
 		"aggro": 45.0, "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.62, 0.45, 0.33), "cloth": Color(0.55, 0.06, 0.05), "armor": Color(0.85, 0.65, 0.25), "height": 1.5, "bulk": 1.35, "head": "human", "hair": Color(0.1, 0.08, 0.06), "weapon": "scimitar", "cape": Color(0.55, 0.06, 0.05)}},
 	# King Grubb's Gold Grabbers: they scoop up his spilled gold and haul it back to him (hoard.gd)

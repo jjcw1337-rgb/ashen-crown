@@ -93,6 +93,7 @@ func _expected_levels() -> Dictionary:
 			g.difficulty = run
 			await g.load_zone(0, zone, "start")
 			var foes := []
+			_arena_boss()
 			for e in g.world.enemies_root.get_children():
 				if e is Enemy:
 					if e.boss:
@@ -119,6 +120,15 @@ func _expected_levels() -> Dictionary:
 		_award(p, float(b[0]), int(b[1]))
 	g.difficulty = 0
 	return out
+
+## A2's boss only comes out in Aurelia's games (games.gd): put him on the sand to measure him.
+func _arena_boss() -> void:
+	if not g.world.has_meta("games") or g.world.enemies_root.get_children().any(func(e): return e is Enemy and e.boss):
+		return
+	var games = g.world.get_meta("games")
+	var sp: Vector3 = g.world.spawns["arena"]
+	g.spawn_enemy("champion", sp - Vector3(0, 0, 12.0), g.world.level + 3, false, "", 999)
+	games.state = "boss"
 
 func _award(p: Dictionary, xp: float, foe_lvl: int) -> void:
 	var ratio := clampf(1.0 - (int(p["lvl"]) - foe_lvl) * 0.08, 0.2, 1.3)
@@ -198,6 +208,7 @@ func _checkpoint(cls: String, cp: Dictionary, lvl: int) -> Dictionary:
 	var h = g.hero
 	var r := {"class": cls, "checkpoint": cp["id"], "level": lvl, "life": int(h.max_life), "dmg": [h.dmg_min, h.dmg_max], "armor": h.armor}
 	if cp["zone"] == "lair":
+		_arena_boss()
 		var boss = null
 		for e in g.world.enemies_root.get_children():
 			if e is Enemy and e.boss:
