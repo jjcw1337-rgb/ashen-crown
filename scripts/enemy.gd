@@ -101,7 +101,7 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 	var look: Dictionary = def["look"]
 	height = look.get("height", look.get("size", 1.0))
 	if def.get("mesh", "") == "feral" and Feral.ok():
-		rig = Feral.build()
+		rig = Feral.build(Feral.variant_at(global_position))
 		slot_a = randf_range(-1.6, 1.6)
 		lunge_cd = randf_range(0.3, 3.0)
 	elif def.has("mesh") and MeshyMonster.ok(def["mesh"]):

@@ -9,7 +9,9 @@ class_name Feral
 ## They wait in packs, clinging head-down to oak trunks deep in the forest (World._feral_packs); come close
 ## and they skitter down and come at you from all sides, one lunging at a time (Enemy._feral_combat).
 
-const GLB := "res://assets/models/monsters/feral.glb"
+## five of them (feralN.glb): different rags and skin, the same rig and animations
+const GLB := "res://assets/models/monsters/feral%d.glb"
+const VARIANTS := 5
 ## the Meshy model is 1.7 m tall crouched; this makes his crouch about 1 m, well under the hero
 const SCALE := 0.6
 ## metres of ground the crawl covers per cycle at this scale (1.5 m in the source)
@@ -19,16 +21,25 @@ const PERCH_H := 3.0
 const DESCEND_T := 1.3
 
 static func ok() -> bool:
-	return ResourceLoader.exists(GLB)
+	return ResourceLoader.exists(GLB % 1)
 
-static func build() -> Node3D:
+## Which of the models one standing at p gets: from where it was placed, so every co-op peer agrees.
+static func variant_at(p: Vector3) -> int:
+	var n := 0
+	for k in VARIANTS:
+		if ResourceLoader.exists(GLB % (k + 1)):
+			n = k + 1
+	return 1 + absi(int(floor(p.x * 3.0)) * 73856093 ^ int(floor(p.z * 3.0)) * 19349663) % maxi(n, 1)
+
+static func build(v := 1) -> Node3D:
 	var root := Node3D.new()
-	var body: Node3D = (load(GLB) as PackedScene).instantiate()
+	var body: Node3D = (load(GLB % v) as PackedScene).instantiate()
 	body.name = "Body"
 	# Blender's front (-Y) arrives facing +z; the game's monsters face -z
 	body.rotation.y = PI
 	body.scale = Vector3.ONE * SCALE
 	root.add_child(body)
+	root.set_meta("variant", v)
 	# a crisp dark outline and a cool rim, so his pale silhouette reads against the forest floor
 	for mi in body.find_children("*", "MeshInstance3D", true, false):
 		(mi as MeshInstance3D).material_overlay = rim_mat()
