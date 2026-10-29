@@ -95,57 +95,131 @@ static func ring(root: Node3D, pos: Vector3, radius: float, col: Color, dur: flo
 	_free_later(mi, dur + 0.05)
 	flash(root, pos + Vector3(0, 1, 0), col, 3.0, dur, radius * 1.5)
 
-## Judgment (the knight's Q) striking the ground: a white explosion. A blinding core and a white
-## dome that swell and fade, shafts of light thrown out flat all round, two white shockwaves racing
-## along the ground, a spray of white-hot sparks, glowing motes that hang in the air, and dust.
+## Holy Slam (the knight's Q) striking the ground: a white explosion. Meshy-painted sprites
+## (assets/textures/fx/holy_slam_*.png): a blinding starburst that flares up and one flat on the
+## ground, a white shockwave of smoke racing out, and the stone cracked open and glowing white where
+## the blade hit, fading over a couple of seconds. Rock chunks (assets/models/fx/rock_chunks.glb, made
+## in Blender) are thrown up out of the cracks and tumble back down; white-hot sparks, glowing motes
+## and pale dust fill the air.
+const SLAM_TEX := {"burst": "res://assets/textures/fx/holy_slam_burst.png", "crack": "res://assets/textures/fx/holy_slam_crack.png", "ring": "res://assets/textures/fx/holy_slam_ring.png"}
+const SLAM_CHUNKS := "res://assets/models/fx/rock_chunks.glb"
+static var _chunk_meshes: Array = []
+static var _stone: StandardMaterial3D
+
+static func _slam_quad(root: Node3D, pos: Vector3, tex_key: String, additive: bool, billboard: bool, yaw: float) -> Array:
+	var mi := MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2(1, 1)
+	if not billboard:
+		q.orientation = PlaneMesh.FACE_Y
+	mi.mesh = q
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD if additive else BaseMaterial3D.BLEND_MODE_MIX
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.no_depth_test = false
+	m.albedo_texture = load(SLAM_TEX[tex_key])
+	if billboard:
+		m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+	mi.global_position = pos
+	mi.rotation.y = yaw
+	return [mi, m]
+
 static func holy_slam(root: Node3D, pos: Vector3, radius: float) -> void:
 	var white := Color(1.0, 0.98, 0.92)
-	flash(root, pos + Vector3(0, 0.9, 0), white, 9.0, 0.4, radius * 2.6)
-	# blinding core, then the dome swelling out past it
-	for spec in [[0.1, radius * 0.22, 0.14, 6.0], [0.2, radius * 0.45, 0.24, 3.0]]:
-		var mi := MeshInstance3D.new()
-		mi.mesh = Geo.sph(1.0, 20, 0.62 if spec[3] < 4.0 else 1.0)
-		var m := Mats.glow_unique(white, spec[3], 0.0, 0.0)
-		mi.material_override = m
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		root.add_child(mi)
-		mi.global_position = pos
-		mi.scale = Vector3.ONE * float(spec[0])
-		var tw := mi.create_tween()
-		tw.set_parallel(true)
-		tw.tween_property(mi, "scale", Vector3.ONE * float(spec[1]), spec[2]).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-		tw.tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 1.0, 0.0, spec[2]).set_ease(Tween.EASE_IN)
-		_free_later(mi, float(spec[2]) + 0.05)
-	# shafts of light: thin white blades thrown out flat in every direction, each its own length
-	var n := 14
-	for k in n:
-		var ray := MeshInstance3D.new()
-		ray.mesh = Geo.box(0.12, 0.03, 1.0)
-		var rm := Mats.glow_unique(white, 6.0, 0.0, 0.0)
-		ray.material_override = rm
-		ray.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		var pivot := Node3D.new()
-		root.add_child(pivot)
-		pivot.global_position = pos + Vector3(0, 0.15, 0)
-		pivot.rotation = Vector3(-randf_range(0.05, 0.35), TAU * (k + randf_range(-0.3, 0.3)) / n, 0)
-		pivot.add_child(ray)
-		var L := radius * randf_range(0.7, 1.15)
-		ray.position = Vector3(0, 0, -0.05)
-		ray.scale = Vector3(1, 1, 0.05)
-		var d := randf_range(0.22, 0.32)
-		var tw2 := ray.create_tween()
-		tw2.set_parallel(true)
-		tw2.tween_property(ray, "scale", Vector3(0.5, 1, L), d).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
-		tw2.tween_property(ray, "position", Vector3(0, 0, -L * 0.55), d).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
-		tw2.tween_method(func(v: float): rm.set_shader_parameter("alpha_mul", v), 1.0, 0.0, d)
-		_free_later(pivot, d + 0.05)
-	# shockwaves along the ground: a fast tight one and a wide soft one
-	ring(root, pos, radius * 0.75, white, 0.22, 0.08)
-	ring(root, pos, radius * 1.3, Color(1.0, 0.96, 0.85), 0.45, 0.12)
+	flash(root, pos + Vector3(0, 0.9, 0), white, 3.0, 0.22, radius * 1.8)
+	var tex_ok := ResourceLoader.exists(SLAM_TEX["burst"])
+	if tex_ok:
+		# the cracked stone, glowing white in its cracks, then cooling and fading away
+		var cr := _slam_quad(root, pos + Vector3(0, 0.04, 0), "crack", false, false, randf() * TAU)
+		var cmi: MeshInstance3D = cr[0]
+		var cm: StandardMaterial3D = cr[1]
+		cm.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+		cm.emission_enabled = true
+		cm.emission_texture = cm.albedo_texture
+		cm.emission = Color(1, 1, 1)
+		cm.emission_energy_multiplier = 0.9
+		cmi.scale = Vector3.ONE * radius * 1.25
+		var ct := cmi.create_tween()
+		ct.tween_property(cm, "emission_energy_multiplier", 0.0, 0.7).set_ease(Tween.EASE_OUT)
+		ct.tween_property(cm, "albedo_color:a", 0.0, 1.0).set_delay(1.0)
+		_free_later(cmi, 2.9)
+		# the starburst: one standing up facing the camera, one flat on the ground
+		for spec in [[true, pos + Vector3(0, 0.6, 0), radius * 1.25, 0.32], [false, pos + Vector3(0, 0.08, 0), radius * 1.6, 0.4]]:
+			var b := _slam_quad(root, spec[1], "burst", true, spec[0], randf() * TAU)
+			var bmi: MeshInstance3D = b[0]
+			var bm: StandardMaterial3D = b[1]
+			bmi.scale = Vector3.ONE * 0.4
+			var bt := bmi.create_tween()
+			bt.set_parallel(true)
+			bt.tween_property(bmi, "scale", Vector3.ONE * float(spec[2]), 0.12).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
+			bt.tween_property(bm, "albedo_color", Color(1, 1, 1, 0), spec[3]).set_delay(0.06).set_ease(Tween.EASE_IN)
+			_free_later(bmi, float(spec[3]) + 0.12)
+		# the shockwave racing out along the ground
+		var r := _slam_quad(root, pos + Vector3(0, 0.12, 0), "ring", true, false, randf() * TAU)
+		var rmi: MeshInstance3D = r[0]
+		var rm: StandardMaterial3D = r[1]
+		rmi.scale = Vector3.ONE * 0.5
+		var rt := rmi.create_tween()
+		rt.set_parallel(true)
+		rt.tween_property(rmi, "scale", Vector3.ONE * radius * 3.0, 0.5).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUART)
+		rt.tween_property(rm, "albedo_color", Color(1, 1, 1, 0), 0.5).set_ease(Tween.EASE_IN)
+		_free_later(rmi, 0.55)
+	else:
+		ring(root, pos, radius * 1.3, white, 0.45, 0.12)
+	_slam_chunks(root, pos)
 	# white-hot sparks flung out and up, slow glowing motes left hanging, pale dust
 	burst(root, pos + Vector3(0, 0.25, 0), white, 48, 9.0, 0.06, 0.45, true, -9.0, 75.0, Vector3.UP)
 	burst(root, pos + Vector3(0, 0.5, 0), Color(1.0, 1.0, 1.0, 0.9), 26, 2.2, 0.12, 1.1, true, 0.6, 90.0, Vector3.UP)
 	burst(root, pos + Vector3(0, 0.15, 0), Color(0.82, 0.8, 0.76, 0.55), 30, 4.0, 0.3, 0.8, false, -2.5, 85.0, Vector3.UP)
+
+## Rock chunks thrown up out of the cracks: each flies on its own arc and spin, lands, and sinks away.
+static func _slam_chunks(root: Node3D, pos: Vector3) -> void:
+	if _chunk_meshes.is_empty():
+		if not ResourceLoader.exists(SLAM_CHUNKS):
+			return
+		var sc: Node = (load(SLAM_CHUNKS) as PackedScene).instantiate()
+		for n in sc.find_children("*", "MeshInstance3D", true, false):
+			_chunk_meshes.append((n as MeshInstance3D).mesh)
+		sc.free()
+		_stone = StandardMaterial3D.new()
+		_stone.albedo_texture = load(SLAM_TEX["crack"])
+		_stone.uv1_triplanar = true
+		_stone.uv1_scale = Vector3(2.5, 2.5, 2.5)
+		_stone.albedo_color = Color(0.85, 0.83, 0.8)
+		_stone.roughness = 0.9
+		_stone.emission_enabled = true
+		_stone.emission = Color(1.0, 0.95, 0.85)
+		_stone.emission_energy_multiplier = 0.25
+	if _chunk_meshes.is_empty():
+		return
+	var g := -14.0
+	for k in 10:
+		var mi := MeshInstance3D.new()
+		mi.mesh = _chunk_meshes[k % _chunk_meshes.size()]
+		mi.material_override = _stone
+		root.add_child(mi)
+		var a := TAU * (k + randf_range(-0.35, 0.35)) / 10.0
+		var start := pos + Vector3(cos(a), 0, sin(a)) * randf_range(0.1, 0.45) + Vector3(0, 0.05, 0)
+		var vel := Vector3(cos(a), 0, sin(a)) * randf_range(1.6, 3.6) + Vector3(0, randf_range(3.5, 6.5), 0)
+		var spin := Vector3(randf_range(-14, 14), randf_range(-10, 10), randf_range(-14, 14))
+		var sz := randf_range(0.8, 1.6)
+		var land := -2.0 * vel.y / g          # time back down to the ground
+		mi.global_position = start
+		mi.scale = Vector3.ONE * sz
+		var tw := mi.create_tween()
+		tw.tween_method(func(t: float):
+			if not is_instance_valid(mi):
+				return
+			var tt := minf(t, land)
+			mi.global_position = start + Vector3(vel.x * tt, vel.y * tt + 0.5 * g * tt * tt, vel.z * tt)
+			mi.rotation = spin * tt, 0.0, land, land)
+		tw.tween_property(mi, "scale", Vector3.ONE * 0.01, 0.6).set_delay(0.5)
+		_free_later(mi, land + 1.2)
 
 ## A red disc that fills over `dur` seconds to warn of an incoming area attack.
 static func telegraph(root: Node3D, pos: Vector3, radius: float, dur: float, col := Color(1.0, 0.15, 0.05)) -> void:

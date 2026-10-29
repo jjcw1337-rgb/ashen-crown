@@ -90,7 +90,7 @@ func _run() -> void:
 			var f0 := clampf((a0 - L[0]) / (L[1] - L[0]), 0.0, 1.0)
 			var f1 := clampf((a - L[0]) / (L[1] - L[0]), 0.0, 1.0)
 			r.position += fdir * (smoothstep(0.0, 1.0, f1) - smoothstep(0.0, 1.0, f0)) * float(s[2][3])
-		if st == "cleave" and prev_a < 0.5 and a >= 0.5:    # Judgment's impact effects, as in Hero._impact
+		if st == "cleave" and prev_a < 0.5 and a >= 0.5:    # Holy Slam's impact effects, as in Hero._impact
 			var fw := -r.global_transform.basis.z
 			var at := r.global_position + fw * 1.25
 			Fx.holy_slam(root3, at, 2.6)

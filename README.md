@@ -26,7 +26,7 @@ Windows SmartScreen may warn that the app is unrecognised (it isn't code-signed)
 
 **New Game** lets you choose:
 
-- **Knight**: sword and shield. *Judgment* (Q), *Holy Nova* (E), *Charge* (R), *Battle Cry* (F).
+- **Knight**: sword and shield. *Holy Slam* (Q), *Holy Nova* (E), *Charge* (R), *Battle Cry* (F).
 - **Wraith**: a hooded spirit that floats above the ground, trailing mist.
   - *Soul Reap* (Q): a spectral scythe arc. Every soul it cuts flies back and heals you.
   - *Banshee Wail* (E): a scream that hurls enemies back and freezes them in terror.
@@ -71,7 +71,7 @@ How it works:
 | Shift (hold) | Sprint. Drains the yellow stamina bar, also works mid-attack |
 | Space (hold) | The same combo the way you face, without needing a target |
 | Right-click (hold) | Raise shield. Blocks most melee damage and stops arrows and fireballs from the front |
-| Q | Judgment: leap in and slam the sword down in a burst of white light; knocks enemies back and stuns them for 1 second (level 1) |
+| Q | Holy Slam: leap in and slam the sword down in a burst of white light; knocks enemies back and stuns them for 1 second (level 1) |
 | E | Holy Nova: ring of holy fire (level 3) |
 | R | Charge: dash through enemies (level 6) |
 | F | Battle Cry: +40% damage and defense, stuns nearby enemies (level 10) |

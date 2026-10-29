@@ -1,4 +1,4 @@
-# Rock chunks for the knight's Judgment slam (thrown out of the cracked ground).
+# Rock chunks for the knight's Holy Slam (thrown out of the cracked ground).
 #   blender -b --python tools/blender/fx_rock_chunks.py -- <out.glb> [count]
 # Each chunk: an icosphere broken up with two layers of noise displacement and flattened or stretched
 # at random, then cut with a few random planes (fresh fracture faces), smooth-shaded with sharp

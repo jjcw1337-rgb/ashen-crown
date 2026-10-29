@@ -811,7 +811,7 @@ func _start_attack(style: String, skill := "") -> void:
 	if skill == "reap" or skill == "hellclaw":
 		atk_dur = 0.7 / aspd
 	elif skill == "cleave":
-		atk_dur = 0.95 / aspd      # Judgment: crouch, leap, slam, hold the blow, rise
+		atk_dur = 0.95 / aspd      # Holy Slam: crouch, leap, slam, hold the blow, rise
 	impact_done = false
 	trail_pts.clear()
 	trail_col = Color(1.0, 0.85, 0.5) if skill == "cleave" else Color(0.85, 0.9, 1.0)
@@ -1308,7 +1308,7 @@ func _impact() -> void:
 					Fx.sparks(game.world.fx_root, best.global_position + Vector3(0, 1.1 * best.height, 0), Color(1.0, 0.75, 0.4))
 					hit_any = true
 		"cleave":
-			# Judgment: the slam lands just ahead; everything around the blow is hit and thrown back
+			# Holy Slam: the slam lands just ahead; everything around the blow is hit and thrown back
 			var at := global_position + fwd * 1.25
 			at.y = game.world.height_at(at.x, at.z)
 			var any := false

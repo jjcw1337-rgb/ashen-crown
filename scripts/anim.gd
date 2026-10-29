@@ -274,7 +274,7 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 				ell += kf(a, [[0, 0.3], [0.3, 0.5], [0.8, 0.3], [1, 0.0]])
 				head_x = kf(a, [[0, -0.15], [0.2, 0.15], [0.7, 0.22], [1, 0.0]])
 			"cleave":
-				# Judgment (the knight's Q): a leaping slam. He sinks into a crouch with the sword drawn back,
+				# Holy Slam (the knight's Q): a leaping slam. He sinks into a crouch with the sword drawn back,
 				# springs up and forward with the blade raised high over his head and his back arched, then
 				# drives it down with everything as he lands, dropping into a deep lunge as the blade hits
 				# the ground in front of him; he holds the blow a moment, then rises back to the guard
