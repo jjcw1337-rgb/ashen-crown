@@ -1318,6 +1318,10 @@ func _talent_node(t: Dictionary, tree: int, open: bool) -> Control:
 			tooltip.visible = false
 			tip_owner = null)
 	p.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton:
+			# taken now: learning rebuilds the tree, and a click whose node leaves the tree
+			# isn't stopped by it and walks the hero
+			p.accept_event()
 		if ev is InputEventMouseButton and ev.pressed:
 			if ev.button_index == MOUSE_BUTTON_LEFT:
 				Sfx.play("click" if hero.learn_talent(id) else "deny")
@@ -2116,7 +2120,7 @@ func _build_pause() -> void:
 		get_tree().quit())
 	vb.add_child(save)
 
-## F8 testing panel: two switches, nothing else in the game changes.
+## F8 testing panel: a few switches and the level, nothing else in the game changes.
 func _build_test_panel() -> void:
 	test_panel = PanelContainer.new()
 	test_panel.anchor_left = 0.0
@@ -2124,7 +2128,7 @@ func _build_test_panel() -> void:
 	test_panel.offset_left = 20
 	test_panel.offset_top = 60
 	test_panel.offset_right = 330
-	test_panel.offset_bottom = 400
+	test_panel.offset_bottom = 440
 	test_panel.visible = false
 	test_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	root.add_child(test_panel)
@@ -2160,6 +2164,13 @@ func _build_test_panel() -> void:
 		game.test_allskills = on
 		message("All skills " + ("unlocked" if on else "back to their levels"), Color(0.6, 0.8, 1.0) if on else Color(0.8, 0.8, 0.8)))
 	vb.add_child(allsk)
+	var fast := CheckButton.new()
+	fast.text = "Super speed (run %dx as fast)" % int(game.TEST_FAST)
+	fast.button_pressed = game.test_fast
+	fast.toggled.connect(func(on: bool):
+		game.test_fast = on
+		message("Super speed " + ("ON" if on else "off"), Color(1.0, 0.9, 0.4) if on else Color(0.8, 0.8, 0.8)))
+	vb.add_child(fast)
 	# character level: pick a number and press Set
 	var lv := HBoxContainer.new()
 	lv.add_theme_constant_override("separation", 8)

@@ -1199,6 +1199,8 @@ func _process(delta: float) -> void:
 		speed *= 0.42
 	if atk_t >= 0.0:
 		speed *= 0.72
+	if game.test_fast:
+		speed *= game.TEST_FAST
 
 	if charge_t >= 0.0:
 		_update_charge(delta)
@@ -1246,7 +1248,8 @@ func _process(delta: float) -> void:
 		elif moving and not path.is_empty():
 			var nxt := path[0]
 			var dv := Vector3(nxt.x - global_position.x, 0, nxt.z - global_position.z)
-			if dv.length() < 0.25:
+			# a waypoint within this frame's step is reached (at super speed he'd overshoot and dither)
+			if dv.length() < maxf(0.25, speed * delta):
 				path.remove_at(0)
 				if path.is_empty():
 					moving = false
@@ -1270,7 +1273,9 @@ func _process(delta: float) -> void:
 			else:
 				_face_smooth(atk_aim - global_position, delta)
 		move_amt = move_toward(move_amt, stride, delta * 6.0)
-		phase += delta * vel.length() * 2.9 / maxf(move_amt, 0.6) * (float(rig.get_meta("stride")) if rig.has_meta("stride") else 1.0)
+		# super speed glides: the legs only go a little faster
+		var anim_v: float = vel.length() * (1.6 / game.TEST_FAST if game.test_fast else 1.0)
+		phase += delta * anim_v * 2.9 / maxf(move_amt, 0.6) * (float(rig.get_meta("stride")) if rig.has_meta("stride") else 1.0)
 		_snow_step()
 	else:
 		move_amt = move_toward(move_amt, 0.0, delta * 6.0)

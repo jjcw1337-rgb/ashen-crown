@@ -1,6 +1,6 @@
 extends SceneTree
 ## Clicks a grid of points over every open window and checks none of them reaches the world
-## (a click on a menu must never walk the hero or attack).
+## (a click on a menu must never walk the hero or attack), the talent tree's rebuilding clicks too.
 var g
 var reached := false
 func _initialize():
@@ -10,7 +10,7 @@ func _initialize():
 func wait(n: int) -> void:
 	for i in n:
 		await process_frame
-func _click(p: Vector2) -> void:
+func _click(p: Vector2, btn := MOUSE_BUTTON_LEFT) -> void:
 	var vp := get_root()
 	var m := InputEventMouseMotion.new()
 	m.position = p
@@ -18,13 +18,14 @@ func _click(p: Vector2) -> void:
 	vp.push_input(m, true)
 	await process_frame
 	var e := InputEventMouseButton.new()
-	e.button_index = MOUSE_BUTTON_LEFT
+	e.button_index = btn
 	e.pressed = true
 	e.position = p
 	e.global_position = p
 	g.lmb_held = false
+	g.rmb_held = false
 	vp.push_input(e, true)
-	reached = g.lmb_held        # set only when the press got past the GUI to the game
+	reached = g.lmb_held or g.rmb_held        # set only when the press got past the GUI to the game
 	var u := e.duplicate()
 	u.pressed = false
 	vp.push_input(u, true)
@@ -125,6 +126,32 @@ func _run() -> void:
 		print("[U] skill menu ", how, ": reaches the game=", reached, " menu still open=", is_instance_valid(pm) and pm.visible)
 		if is_instance_valid(pm):
 			pm.hide()
+	# the talent tree with points to spend: learning or taking back a rank rebuilds the tree under the
+	# cursor, and that click must not walk or swing either
+	var lvl: int = h.level
+	h.set_level(30)
+	g.ui.close_all()
+	g.ui.talent_panel.visible = true
+	await wait(4)
+	var tl := 0
+	var acted := 0
+	var spots := []    # the nodes themselves are freed by each rebuild
+	for c in g.ui.talent_cols.find_children("*", "Control", true, false):
+		if c.get_parent() is HBoxContainer and (c as Control).custom_minimum_size == Vector2(76, 78):
+			spots.append((c as Control).get_global_rect().get_center())
+	for pt: Vector2 in spots:
+		for btn in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
+			h.moving = false
+			h.target = null
+			h.path = PackedVector3Array()
+			await _click(pt, btn)
+			await wait(2)
+			tl += int(reached)
+			acted += int(h.moving or h.atk_t >= 0.0)
+	bad += tl + acted
+	print("[U] talents with points: leaks=", tl, " hero acted=", acted, " ranks taken=", h.talents.size())
+	h.reset_talents()
+	h.set_level(lvl)
 	# the HUD with no window open: a click on any drawn part of it (bar, globes, buttons, minimap)
 	# must not walk; a click on the bare map must
 	g.ui.close_all()

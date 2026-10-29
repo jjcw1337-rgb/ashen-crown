@@ -1052,6 +1052,8 @@ var test_immortal := false
 var test_onehit := false
 var test_stamina := false   # infinite stamina: sprint forever
 var test_allskills := false # every skill usable regardless of level
+var test_fast := false      # super speed: the hero moves TEST_FAST times as fast
+const TEST_FAST := 4.0
 
 ## Headless tools save to TEST_SAVE_PATH, unless they moved the character folder.
 func _testing() -> bool:

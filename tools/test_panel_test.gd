@@ -40,6 +40,20 @@ func _run() -> void:
 	print("[T] infinite stamina: ", int(h.stamina), "/", int(h.max_stamina), " winded=", h.exhausted)
 	h.sprint = false
 	g.test_stamina = false
+	# super speed: a walk across open ground covers TEST_FAST times the distance
+	for fast in [false, true]:
+		g.test_fast = fast
+		h.target = null
+		var p0: Vector3 = h.global_position
+		h.cmd_move(p0 + Vector3(-60, 0, 0))
+		var t0 := Time.get_ticks_msec()
+		await create_timer(1.0).timeout
+		var secs := (Time.get_ticks_msec() - t0) / 1000.0
+		var d0 := Vector2(h.global_position.x - p0.x, h.global_position.z - p0.z).length()
+		print("[T] super speed %s: %.1f m/s" % [fast, d0 / secs])
+		h.moving = false
+		h.path = PackedVector3Array()
+	g.test_fast = false
 	# all skills: a level-1 hero can cast the level-10 skill
 	var last: Dictionary = h.skill_list()[3]
 	h.mana = h.max_mana
