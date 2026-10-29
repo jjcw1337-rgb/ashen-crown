@@ -21,6 +21,7 @@ var rig: Node3D
 var dead := false
 var dead_t := 0.0
 var aggro := false
+var scripted := 0.0             # seconds something else drives this monster (the champion's charge, games.gd)
 var leap_t := -1.0              # springing from an ambush (leap_from): 0..1 through the leap
 var leap_a := Vector3.ZERO
 var leap_b := Vector3.ZERO
@@ -461,6 +462,9 @@ func _process(delta: float) -> void:
 			aggro = true
 	if leap_t >= 0.0:
 		_update_leap(delta, hero)
+		return
+	if scripted > 0.0:
+		scripted -= delta
 		return
 	var to := hero.global_position - global_position
 	to.y = 0

@@ -101,6 +101,12 @@ func _run() -> void:
 		if games.bursts > 0:
 			break
 	check(games.bursts > 0, "the pit's spike traps burst during the champion's bout (%d)" % games.bursts)
+	g.hero.global_position = boss.global_position + Vector3(0, 0, 9.0)
+	for i in 900:
+		await process_frame
+		if games.charges > 0 and games.charge.is_empty():
+			break
+	check(games.charges > 0, "Aurelius charged (%d)" % games.charges)
 	if not is_instance_valid(boss) or boss.dead:
 		boss = games.boss
 	boss.life = boss.max_life * 0.55

@@ -40,6 +40,9 @@ var spike_t := 4.0              # the pit's spike traps (stage 3 and the champio
 var spikes: Array = []          # host: [[points, seconds to the burst]]
 var alive := 0                  # fighters on the sand last frame (a kill makes the crowd cheer)
 var bursts := 0                 # spike bursts so far (tests)
+var charge_t := 6.0             # the champion's shield charge: seconds to the next
+var charge := {}                # host, while charging: {phase: wind|dash, t, dir, hit}
+var charges := 0                # (tests)
 
 func setup(world: World) -> void:
 	w = world
@@ -101,6 +104,7 @@ func _process(delta: float) -> void:
 				state = "won"
 				_event("won")
 			else:
+				_charge(delta)
 				var f: float = boss.life / boss.max_life
 				if adds == 0 and f < 0.6:
 					adds = 1
@@ -185,6 +189,59 @@ func _spike_traps(delta: float) -> void:
 				if not e.boss and not e.dead:
 					e.take_damage(dmg * 0.6, 0.0, at, 0.6, false)
 
+## Aurelius's shield charge: a line glows across the sand from him to a hero, he braces behind his shield,
+## then barrels down it, smashing anyone in the way (once each). He is driven from here meanwhile
+## (Enemy.scripted).
+func _charge(delta: float) -> void:
+	if charge.is_empty():
+		charge_t -= delta
+		if charge_t > 0.0 or boss.atk_t >= 0.0 or boss.stun_t > 0.0:
+			return
+		var target = null
+		var bd := 99.0
+		for h in game.all_heroes():
+			if is_instance_valid(h) and not h.dead:
+				var d: float = h.global_position.distance_to(boss.global_position)
+				if d < bd:
+					bd = d
+					target = h
+		if target == null or bd < 4.5 or bd > 17.0:
+			charge_t = 1.0
+			return
+		var dir: Vector3 = target.global_position - boss.global_position
+		dir.y = 0
+		dir = dir.normalized()
+		charge = {"phase": "wind", "t": 0.8, "dir": dir, "hit": {}}
+		boss.scripted = 3.0
+		boss.rig.rotation.y = atan2(-dir.x, -dir.z)
+		charges += 1
+		var b: Vector3 = boss.global_position
+		_event("charge:%.1f,%.1f,%.2f,%.2f" % [b.x, b.z, dir.x, dir.z])
+		return
+	var dir: Vector3 = charge["dir"]
+	charge["t"] -= delta
+	if charge["phase"] == "wind":
+		boss._pose({"time": boss.anim_time, "phase": boss.phase, "move": 0.0, "atk": 0.15, "style": "over", "hit": 0.0})
+		if charge["t"] <= 0.0:
+			charge["phase"] = "dash"
+			charge["t"] = 0.95
+		return
+	var before: Vector3 = boss.global_position
+	boss.global_position = w.move(boss.global_position, dir * 15.0 * delta, boss.body_r())
+	boss.global_position.y = w.height_at(boss.global_position.x, boss.global_position.z)
+	boss.phase += delta * 15.0 * 1.6 / maxf(boss.height, 0.3)
+	boss._pose({"time": boss.anim_time, "phase": boss.phase, "move": 1.4, "atk": -1.0, "style": "", "hit": 0.0})
+	for h in game.all_heroes():
+		if is_instance_valid(h) and not h.dead and not charge["hit"].has(h.get_instance_id()) and h.global_position.distance_to(boss.global_position) < 1.8:
+			charge["hit"][h.get_instance_id()] = true
+			h.take_hit(boss._roll() * 1.6, boss.global_position - dir, "melee")
+	var stuck: bool = boss.global_position.distance_to(before) < 15.0 * delta * 0.3
+	if charge["t"] <= 0.0 or stuck or Aurelia.floor_t(Vector2(boss.global_position.x, boss.global_position.z)) > 0.92:
+		charge = {}
+		boss.scripted = 0.0
+		charge_t = randf_range(6.5, 9.5) if not boss.enraged else randf_range(4.5, 6.5)
+		_event("charge_end")
+
 ## Partners still outside when the gate drops are brought onto the sand.
 func _bring_in_partners() -> void:
 	var p: Vector3 = w.spawns["arena"]
@@ -243,6 +300,11 @@ func fx(ev: String) -> void:
 			if gates.has(parts[1]) and (parts[1].begins_with("beast") or parts[1] == "champion"):
 				Sfx.play_at("lion_roar", (gates[parts[1]] as Node3D).global_position, 0.0, randf_range(0.9, 1.05))
 			get_tree().create_timer(2.6, false).timeout.connect(func(): _gate(parts[1], false))
+		"charge":
+			var v := parts[1].split(",")
+			_show_charge(Vector3(float(v[0]), 0, float(v[1])), Vector3(float(v[2]), 0, float(v[3])))
+		"charge_end":
+			excite = minf(1.0, excite + 0.25)
 		"kill":
 			excite = minf(1.0, excite + 0.35)
 			Sfx.play("crowd_cheer", -12.0, randf_range(0.95, 1.08))
@@ -284,6 +346,24 @@ func _update_look(delta: float) -> void:
 	excite = move_toward(excite, excite_to, delta * 0.25)
 	if crowd_mat:
 		crowd_mat.set_shader_parameter("excite", excite)
+
+## The charge's telegraph: a red streak along the sand where he'll run, a shout, then the dash's sound.
+func _show_charge(from: Vector3, dir: Vector3) -> void:
+	var line := MeshInstance3D.new()
+	line.mesh = Geo.box(1.4, 0.02, 14.0)
+	line.material_override = Mats.glow_unique(Color(0.75, 0.1, 0.03), 0.4)
+	line.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	w.fx_root.add_child(line)
+	line.position = Vector3(from.x, w.height_at(from.x, from.z) + 0.04, from.z) + dir * 7.5
+	line.rotation.y = atan2(dir.x, dir.z)
+	line.scale = Vector3(1, 1, 0.1)
+	var tw := line.create_tween()
+	tw.tween_property(line, "scale", Vector3(1, 1, 1), 0.7)
+	tw.tween_interval(0.3)
+	tw.tween_callback(line.queue_free)
+	Sfx.play_at("battle_cry", from, -6.0, 0.7)
+	get_tree().create_timer(0.8, false).timeout.connect(func(): Sfx.play_at("charge_dash", from, 0.0, 0.85))
+	excite = minf(1.0, excite + 0.2)
 
 ## Glowing warnings on the sand, then iron spikes bursting up through it with dust, sinking again.
 func _show_spikes(pts: Array) -> void:
