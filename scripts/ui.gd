@@ -810,9 +810,17 @@ func _choose_skill(slot: String) -> void:
 	for m in ["patch_margin_left", "patch_margin_right", "patch_margin_top", "patch_margin_bottom"]:
 		frame.set(m, 62)
 	frame.mouse_filter = Control.MOUSE_FILTER_STOP
+	frame.modulate.a = 0.0
 	cover.add_child(frame)
+	# the frame's middle is open, so a dark backing sits inside it
+	var back := Panel.new()
+	back.add_theme_stylebox_override("panel", _box(Color(0.03, 0.025, 0.02, 0.96), Color(0.2, 0.15, 0.09), 1, 4, 0))
+	back.set_anchors_preset(Control.PRESET_FULL_RECT)
+	back.offset_left = 22; back.offset_right = -22; back.offset_top = 22; back.offset_bottom = -22
+	back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(back)
 	var vb := VBoxContainer.new()
-	vb.position = Vector2(40, 30)
+	vb.position = Vector2(40, 34)
 	vb.add_theme_constant_override("separation", 6)
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	frame.add_child(vb)
@@ -841,7 +849,7 @@ func _choose_skill(slot: String) -> void:
 	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var skills: Array = Data.skills_known(hero.cls)
 	var n := skills.size() + (0 if slot == "lmb" else 1)
-	grid.columns = mini(n, 6)
+	grid.columns = mini(n, 8)
 	vb.add_child(grid)
 	for sk in skills:
 		grid.add_child(_picker_card(slot, sk))
@@ -850,26 +858,30 @@ func _choose_skill(slot: String) -> void:
 	var foot := _label("Tip: drag skills between slots to swap them  ·  drag one off the bar to clear it", 11, DIM)
 	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(foot)
-	# size the frame around its contents, then stand it on the clicked slot, kept on screen
-	vb.reset_size()
-	var sz := vb.get_combined_minimum_size() + Vector2(80, 54)
+	# size the frame around its contents once laid out, then stand it on the clicked slot, kept on screen
+	_place_picker.call_deferred(frame, vb, slot)
+	Sfx.play("click")
+
+func _place_picker(frame: NinePatchRect, vb: VBoxContainer, slot: String) -> void:
+	if not is_instance_valid(frame):
+		return
+	var inner := vb.get_combined_minimum_size()
+	vb.size = inner
+	var sz := inner + Vector2(80, 64)
 	frame.size = sz
-	vb.size = sz - Vector2(80, 54)
 	var src: Control = skill_slots.get(slot)
 	var vp := get_viewport().get_visible_rect().size
-	var at := Vector2(vp.x * 0.5, vp.y - 230)
+	var at := Vector2(vp.x * 0.5, vp.y - 220)
 	if src:
 		var r := src.get_global_rect()
-		at = Vector2(r.get_center().x, (action_bar.get_global_rect().position.y if action_bar else r.position.y) + 6)
+		at = Vector2(r.get_center().x, (action_bar.get_global_rect().position.y if action_bar else r.position.y) + 10)
 	frame.position = Vector2(clampf(at.x - sz.x * 0.5, 8, vp.x - sz.x - 8), maxf(8, at.y - sz.y))
-	# rise in
+	# rise in from the slot
 	frame.pivot_offset = Vector2(clampf(at.x - frame.position.x, 0, sz.x), sz.y)
 	frame.scale = Vector2(0.92, 0.85)
-	frame.modulate.a = 0.0
 	var tw := frame.create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(frame, "scale", Vector2.ONE, 0.18)
 	tw.tween_property(frame, "modulate:a", 1.0, 0.12)
-	Sfx.play("click")
 
 func close_skill_picker() -> bool:
 	if skill_picker == null or not is_instance_valid(skill_picker):
