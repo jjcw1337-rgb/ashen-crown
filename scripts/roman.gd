@@ -182,7 +182,7 @@ static func milestone(w: World, p: Vector3, yaw: float) -> void:
 	g.rotation = Vector3(w.rng.randf_range(-0.06, 0.06), yaw, w.rng.randf_range(-0.08, 0.08))
 	w.solid(g)
 
-const STATUE_GLB := "res://assets/models/knight_armored.glb"
+const STATUE_GLB := "res://assets/models/knight_statue.glb"   # the earlier armoured knight (bare head, red tabard)
 
 ## A marble statue on a plinth: the Meshy crusader (STATUE_GLB) carved in marble, or without it the
 ## game's humanoid in a heroic stance, an arm raised with a spear; toppled (or headless) when broken.

@@ -569,7 +569,8 @@ func refresh_gear() -> void:
 		shield_rest = shield_node.transform
 		gear_nodes.append(shield_node)
 	var h = equipment.get("helm")
-	if h != null and cls == "knight" and show_helm:
+	# the crusader (the armoured body) always wears his own great helm: a helm item's stats count, its model isn't drawn
+	if h != null and cls == "knight" and str(rig.get_meta("meshy", "")) != "armored":
 		var hm := Models.item_model(h)
 		(J["head"] as Node3D).add_child(hm)
 		Knight.fit_helm(hm, rig)
