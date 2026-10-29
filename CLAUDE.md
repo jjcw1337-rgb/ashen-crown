@@ -214,3 +214,6 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file).
 - CI is `.github/workflows/deploy.yml` (container `barichello/godot-ci:4.3`). If it fails, the
   site keeps the last good build; read the failed step in the Actions tab.
+- **Preview builds**: push a branch named `test-*` (`git push origin HEAD:test-something`) and
+  `.github/workflows/preview.yml` builds the Windows, Linux and Mac versions as downloads on that Actions run
+  (Artifacts, kept 7 days) without publishing anything. Use it to let a partner play a change before it goes to main.

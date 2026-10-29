@@ -1,0 +1,73 @@
+# Preview builds: every push to a branch named test-* builds the Windows, Linux and Mac versions
+# (Godot 4.3, the same exports as the live builds) and attaches them to the run as downloads
+# (Actions tab -> the run -> Artifacts), so changes can be played before they reach main.
+# Nothing is published: the site and its downloads only change when main is pushed (deploy.yml).
+name: Preview build
+
+on:
+  push:
+    branches: ['test-*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  desktop:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install export templates
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates
+          mv /root/.local/share/godot/export_templates/4.3.stable ~/.local/share/godot/export_templates/4.3.stable
+
+      - name: Import project
+        run: godot --headless --editor --quit || true
+
+      - name: Export Windows version
+        run: |
+          mkdir -p build/win build/linux build/mac
+          godot --headless --export-release "Windows Desktop" build/win/AshenCrown.exe
+          cp README.md build/win/
+          printf 'start "" "%%~dp0AshenCrown.exe" --rendering-method gl_compatibility --rendering-driver opengl3\r\n' > "build/win/Ashen Crown (Safe Mode).bat"
+
+      - name: Export Linux version
+        run: |
+          godot --headless --export-release "Linux" build/linux/AshenCrown.x86_64
+          chmod +x build/linux/AshenCrown.x86_64
+          cp README.md build/linux/
+
+      - name: Export Mac version
+        run: godot --headless --export-release "macOS" build/mac/AshenCrown-Mac.zip
+
+      - name: Check the exports
+        run: |
+          ls -la build/win build/linux build/mac
+          test $(stat -c %s build/win/AshenCrown.exe) -gt 100000000
+          test -s build/linux/AshenCrown.x86_64
+          test -s build/mac/AshenCrown-Mac.zip
+
+      # each one downloads as its own zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AshenCrown-Windows-preview
+          path: build/win
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AshenCrown-Linux-preview
+          path: build/linux
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AshenCrown-Mac-preview
+          path: build/mac
+          retention-days: 7
