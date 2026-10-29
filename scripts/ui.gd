@@ -62,6 +62,8 @@ var dmg_flash: ColorRect
 var tooltip: PanelContainer
 var tip_box: VBoxContainer
 var tip_owner: Control = null
+var skill_picker: Control = null
+const BIND_KEYS_UI := ["Q", "E", "R", "F", "G", "V"]
 
 var inv_panel: PanelContainer
 var inv_cells: Array = []
@@ -788,36 +790,227 @@ func _notification(what: int) -> void:
 			Sfx.play("click")
 
 ## A menu of every skill the class knows, to put on a bar slot.
+## The skill picker: click a bar slot and this rises above it in the bar's own iron frame, one socket per
+## skill this class knows (name, mana, which key has it now, locked ones greyed with their level).
+## Click one to put it on the slot; click outside or press Esc to close.
 func _choose_skill(slot: String) -> void:
-	var pm := PopupMenu.new()
-	var ids := []
-	for sk in Data.skills_known(hero.cls):
-		var locked: bool = hero.level < int(sk["lvl"]) and not game.test_allskills
-		pm.add_item(str(sk["name"]) + ("   (level %d)" % sk["lvl"] if locked else ""))
-		pm.set_item_disabled(pm.item_count - 1, locked)
-		if hero.bound(slot) == sk["id"]:
-			pm.set_item_checked(pm.item_count - 1, true)
-		ids.append(sk["id"])
-	if slot != "lmb":
-		pm.add_separator()
-		pm.add_item("(empty)")
-		ids.append("")
-		ids.append("")
-	pm.id_pressed.connect(func(i: int):
-		var idx := pm.get_item_index(i)
-		if idx >= 0 and idx < ids.size():
-			hero.bind(slot, ids[idx])
-			Sfx.play("click"))
-	# a clear cover behind the menu eats the click that dismisses it, so that click doesn't walk the hero
+	close_skill_picker()
+	tooltip.visible = false
+	var where: String = SLOT_NAMES.get(slot, "Key " + slot)
 	var cover := Control.new()
 	cover.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cover.mouse_filter = Control.MOUSE_FILTER_STOP
+	cover.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.pressed:
+			close_skill_picker())
 	root.add_child(cover)
-	pm.popup_hide.connect(func():
-		pm.queue_free()
-		cover.queue_free())
-	root.add_child(pm)
+	skill_picker = cover
+	var frame := NinePatchRect.new()
+	frame.texture = load(BAR_TEX["frame"])
+	for m in ["patch_margin_left", "patch_margin_right", "patch_margin_top", "patch_margin_bottom"]:
+		frame.set(m, 62)
+	frame.mouse_filter = Control.MOUSE_FILTER_STOP
+	cover.add_child(frame)
+	var vb := VBoxContainer.new()
+	vb.position = Vector2(40, 30)
+	vb.add_theme_constant_override("separation", 6)
+	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(vb)
+	# header: the slot's keycap and what is being chosen
+	var hb := HBoxContainer.new()
+	hb.alignment = BoxContainer.ALIGNMENT_CENTER
+	hb.add_theme_constant_override("separation", 8)
+	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var capwrap := Control.new()
+	capwrap.custom_minimum_size = Vector2(20, 20)
+	capwrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var cap := _keycap("L" if slot == "lmb" else ("R" if slot == "rmb" else slot))
+	cap.position = Vector2(0, 1)
+	capwrap.add_child(cap)
+	hb.add_child(capwrap)
+	hb.add_child(_label("CHOOSE A SKILL FOR " + where.to_upper(), 17, GOLD, true))
+	vb.add_child(hb)
+	var rule := ColorRect.new()
+	rule.color = Color(0.86, 0.72, 0.44, 0.45)
+	rule.custom_minimum_size = Vector2(0, 1)
+	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(rule)
+	var grid := GridContainer.new()
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 4)
+	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var skills: Array = Data.skills_known(hero.cls)
+	var n := skills.size() + (0 if slot == "lmb" else 1)
+	grid.columns = mini(n, 6)
+	vb.add_child(grid)
+	for sk in skills:
+		grid.add_child(_picker_card(slot, sk))
+	if slot != "lmb":
+		grid.add_child(_picker_card(slot, {}))
+	var foot := _label("Tip: drag skills between slots to swap them  ·  drag one off the bar to clear it", 11, DIM)
+	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(foot)
+	# size the frame around its contents, then stand it on the clicked slot, kept on screen
+	vb.reset_size()
+	var sz := vb.get_combined_minimum_size() + Vector2(80, 54)
+	frame.size = sz
+	vb.size = sz - Vector2(80, 54)
+	var src: Control = skill_slots.get(slot)
+	var vp := get_viewport().get_visible_rect().size
+	var at := Vector2(vp.x * 0.5, vp.y - 230)
+	if src:
+		var r := src.get_global_rect()
+		at = Vector2(r.get_center().x, (action_bar.get_global_rect().position.y if action_bar else r.position.y) + 6)
+	frame.position = Vector2(clampf(at.x - sz.x * 0.5, 8, vp.x - sz.x - 8), maxf(8, at.y - sz.y))
+	# rise in
+	frame.pivot_offset = Vector2(clampf(at.x - frame.position.x, 0, sz.x), sz.y)
+	frame.scale = Vector2(0.92, 0.85)
+	frame.modulate.a = 0.0
+	var tw := frame.create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(frame, "scale", Vector2.ONE, 0.18)
+	tw.tween_property(frame, "modulate:a", 1.0, 0.12)
+	Sfx.play("click")
+
+func close_skill_picker() -> bool:
+	if skill_picker == null or not is_instance_valid(skill_picker):
+		skill_picker = null
+		return false
+	skill_picker.queue_free()
+	skill_picker = null
 	tooltip.visible = false
-	pm.popup(Rect2i(Vector2i(get_viewport().get_mouse_position()) + Vector2i(-40, -24 - 26 * pm.item_count), Vector2i(180, 0)))
+	tip_owner = null
+	return true
+
+## One skill in the picker (an empty dictionary is the "clear this slot" socket).
+func _picker_card(slot: String, sk: Dictionary) -> Control:
+	var id: String = sk.get("id", "")
+	var locked: bool = not sk.is_empty() and hero.level < int(sk["lvl"]) and not game.test_allskills
+	var current := hero.bound(slot) == id
+	var on_key := ""
+	if id != "":
+		for k in ["lmb", "rmb", "Q", "E", "R", "F", "G", "V"]:
+			if k != slot and hero.bound(k) == id:
+				on_key = "L" if k == "lmb" else ("R" if k == "rmb" else k)
+				break
+	var card := PanelContainer.new()
+	var idle := _box(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 1, 6, 4)
+	var cur := _box(Color(0.35, 0.25, 0.08, 0.35), Color(1.0, 0.82, 0.4), 2, 6, 4)
+	var hot := _box(Color(0.3, 0.22, 0.1, 0.3), Color(0.86, 0.72, 0.44, 0.8), 1, 6, 4)
+	card.add_theme_stylebox_override("panel", cur if current else idle)
+	card.custom_minimum_size = Vector2(86, 0)
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	card.mouse_default_cursor_shape = Control.CURSOR_ARROW if locked else Control.CURSOR_POINTING_HAND
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 1)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(col)
+	var sock := Control.new()
+	sock.custom_minimum_size = Vector2(62, 64)
+	sock.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	sock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(sock)
+	var bg := TextureRect.new()
+	bg.texture = load(BAR_TEX["slot"])
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_SCALE
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sock.add_child(bg)
+	var hole := Control.new()
+	hole.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hole.anchor_right = 1.0
+	hole.anchor_bottom = 1.0
+	hole.offset_left = 13; hole.offset_right = -13; hole.offset_top = 15; hole.offset_bottom = -13
+	sock.add_child(hole)
+	if id != "":
+		var g := SkillGlyph.new()
+		g.id = id
+		g.scale_to = 0.62
+		g.set_anchors_preset(Control.PRESET_FULL_RECT)
+		g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hole.add_child(g)
+	else:
+		var x := _label("×", 26, Color(0.6, 0.5, 0.4), true)
+		x.set_anchors_preset(Control.PRESET_FULL_RECT)
+		x.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		x.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		hole.add_child(x)
+	if locked:
+		var shade := ColorRect.new()
+		shade.color = Color(0, 0, 0, 0.62)
+		shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+		shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hole.add_child(shade)
+		var lv := _label("LV %d" % int(sk["lvl"]), 12, Color(0.95, 0.5, 0.35), true)
+		lv.set_anchors_preset(Control.PRESET_FULL_RECT)
+		lv.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		hole.add_child(lv)
+	elif id != "" and int(sk["mana"]) > 0:
+		var pill := PanelContainer.new()
+		pill.add_theme_stylebox_override("panel", _box(Color(0.06, 0.1, 0.3, 0.95), Color(0.4, 0.55, 1.0), 1, 6, 0))
+		pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var cost := _label(str(int(round(hero.skill_cost(id)))), 10, Color(0.75, 0.82, 1.0), true)
+		cost.add_theme_constant_override("outline_size", 0)
+		cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		pill.add_child(cost)
+		pill.custom_minimum_size = Vector2(20, 13)
+		pill.position = Vector2(38, 48)
+		sock.add_child(pill)
+	if on_key != "":
+		var kc := _keycap(on_key)
+		kc.modulate = Color(1, 1, 1, 0.85)
+		kc.position = Vector2(-4, -4)
+		sock.add_child(kc)
+	var nm := _label(sk.get("name", "Empty"), 13, Color(1.0, 0.86, 0.5) if current else (Color(0.5, 0.47, 0.42) if locked else Color(0.88, 0.84, 0.76)), current)
+	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	nm.custom_minimum_size = Vector2(80, 0)
+	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(nm)
+	if current:
+		var tag := _label("EQUIPPED", 10, GOLD, true)
+		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(tag)
+		var tw := card.create_tween().set_loops()
+		tw.tween_property(card, "self_modulate", Color(1.25, 1.15, 0.9), 0.8).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(card, "self_modulate", Color(1, 1, 1), 0.8).set_trans(Tween.TRANS_SINE)
+	var where: String = SLOT_NAMES.get(slot, "key " + slot)
+	card.mouse_entered.connect(func():
+		if not current:
+			card.add_theme_stylebox_override("panel", hot)
+		sock.pivot_offset = sock.size * 0.5
+		sock.create_tween().tween_property(sock, "scale", Vector2(1.08, 1.08), 0.08)
+		var lines := []
+		if id == "":
+			lines = [["Empty", GOLD], ["Take the skill off " + where, DIM]]
+		else:
+			lines = [[sk["name"], GOLD], [sk["desc"], Color(0.85, 0.82, 0.75)]]
+			if int(sk["mana"]) > 0 or float(sk["cd"]) > 0.0:
+				lines.append(["Mana: %d   Cooldown: %ss" % [int(round(hero.skill_cost(id))), str(snappedf(hero.skill_cd(id), 0.1))], Color(0.55, 0.65, 1.0)])
+			if locked:
+				lines.append(["Unlocks at level %d" % int(sk["lvl"]), Color(0.95, 0.5, 0.35)])
+			elif current:
+				lines.append(["Already on " + where, GOLD])
+			elif on_key != "" and BIND_KEYS_UI.has(slot):
+				lines.append(["Click to move it from %s to %s" % [on_key, where], DIM])
+			else:
+				lines.append(["Click to put it on " + where, DIM])
+		show_tooltip(lines)
+		tip_owner = card)
+	card.mouse_exited.connect(func():
+		card.add_theme_stylebox_override("panel", cur if current else idle)
+		sock.create_tween().tween_property(sock, "scale", Vector2.ONE, 0.1)
+		tooltip.visible = false
+		tip_owner = null)
+	card.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			if locked:
+				message("%s unlocks at level %d" % [sk["name"], int(sk["lvl"])], Color(0.95, 0.5, 0.35))
+				return
+			hero.bind(slot, id)
+			Sfx.play("click")
+			close_skill_picker())
+	return card
 
 # ---------------------------------------------------------------- skills window (K)
 ## Every skill the class knows, with buttons to put each on the left or right mouse button or a
@@ -1361,39 +1554,284 @@ func _finish_drag(forced: Array = []) -> void:
 	refresh()
 
 # ---------------------------------------------------------------- character
+# ---------------------------------------------------------------- character sheet (C)
+## Meshy-painted: an iron-and-leather panel, a crowned portrait frame round a live view of the hero (a
+## second camera on the same world, so it shows the gear he's wearing), a medallion per attribute, and a
+## + to spend points. Every line says in plain words what it does; hover for the exact numbers.
+const SHEET_TEX := {"panel": "res://assets/textures/ui/sheet_panel.png", "portrait": "res://assets/textures/ui/sheet_portrait.png",
+	"str": "res://assets/textures/ui/sheet_str.png", "dex": "res://assets/textures/ui/sheet_dex.png", "vit": "res://assets/textures/ui/sheet_vit.png",
+	"ene": "res://assets/textures/ui/sheet_ene.png", "plus": "res://assets/textures/ui/sheet_plus.png", "divider": "res://assets/textures/ui/sheet_divider.png"}
+const STAT_INFO := {
+	"str": ["Strength", "Hit harder", Color(1.0, 0.55, 0.35)],
+	"dex": ["Dexterity", "Attack faster, defend and block better", Color(0.5, 1.0, 0.55)],
+	"vit": ["Vitality", "More life and stamina", Color(1.0, 0.4, 0.42)],
+	"ene": ["Energy", "More mana for your skills", Color(0.45, 0.7, 1.0)],
+}
+var sheet_view: SubViewport
+var sheet_cam: Camera3D
+var sheet_points: PanelContainer
+var _sheet_t := 0.0
+
 func _build_character() -> void:
-	char_panel = _panel("Character", true, 400, 560)
+	char_panel = _panel("Character", true, 450, 600)
+	var sb := StyleBoxTexture.new()
+	sb.texture = load(SHEET_TEX["panel"])
+	for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
+		sb.set_texture_margin(side, 44)
+		sb.set_content_margin(side, 30)
+	char_panel.add_theme_stylebox_override("panel", sb)
 	var vb: VBoxContainer = char_panel.get_node("vb")
-	for k in ["name", "level", "xp", "points"]:
-		var l := _label("", 17 if k != "name" else 20, GOLD if k in ["name", "points"] else Color(0.86, 0.83, 0.77), k == "name")
-		vb.add_child(l)
-		char_labels[k] = l
-	var stats := [["str", "Strength"], ["dex", "Dexterity"], ["vit", "Vitality"], ["ene", "Energy"]]
-	for s in stats:
-		var hb := HBoxContainer.new()
-		vb.add_child(hb)
-		var l := _label(s[1], 17)
-		l.custom_minimum_size = Vector2(130, 0)
-		hb.add_child(l)
-		var v := _label("", 17, Color(1, 1, 1))
-		v.custom_minimum_size = Vector2(80, 0)
-		hb.add_child(v)
-		char_labels[s[0]] = v
-		var b := Button.new()
-		b.text = "+"
-		b.custom_minimum_size = Vector2(34, 28)
-		var stat: String = s[0]
-		b.pressed.connect(func(): _add_stat(stat))
-		hb.add_child(b)
-		plus_btns.append(b)
-	var line := ColorRect.new()
-	line.color = Color(0.42, 0.33, 0.2, 0.6)
-	line.custom_minimum_size = Vector2(0, 1)
-	vb.add_child(line)
-	for k in ["damage", "aspd", "defense", "block", "life", "mana", "res", "ls", "mf"]:
-		var l := _label("", 16)
-		vb.add_child(l)
-		char_labels[k] = l
+	vb.add_theme_constant_override("separation", 5)
+	(vb.get_child(0).get_node("title") as Label).text = ""
+	(vb.get_child(1) as Control).visible = false     # the title's underline
+	# --- header: the portrait in its crowned frame, the name, class, level and experience
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 14)
+	vb.add_child(head)
+	var port := Control.new()
+	port.custom_minimum_size = Vector2(128, 128)
+	head.add_child(port)
+	var svc := SubViewportContainer.new()
+	svc.stretch = true
+	var hole := 128.0 * 0.478
+	svc.position = Vector2(64 - hole * 0.5, 128 * 0.56 - hole * 0.5)
+	svc.size = Vector2(hole, hole)
+	svc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	port.add_child(svc)
+	sheet_view = SubViewport.new()
+	sheet_view.size = Vector2i(160, 160)
+	sheet_view.render_target_update_mode = SubViewport.UPDATE_WHEN_PARENT_VISIBLE
+	sheet_view.own_world_3d = false
+	svc.add_child(sheet_view)
+	sheet_cam = Camera3D.new()
+	sheet_cam.fov = 30
+	sheet_view.add_child(sheet_cam)
+	# a soft key light on the face, so the portrait reads even at dusk or in a crypt
+	var key_light := OmniLight3D.new()
+	key_light.light_color = Color(1.0, 0.9, 0.78)
+	key_light.light_energy = 1.6
+	key_light.omni_range = 2.6
+	key_light.light_cull_mask = 0xFFFFF
+	sheet_cam.add_child(key_light)
+	key_light.position = Vector3(0.5, 0.4, 0.0)
+	var mask := Panel.new()
+	var round_sb := StyleBoxFlat.new()
+	round_sb.bg_color = Color(0, 0, 0, 0)
+	round_sb.border_color = Color(0.03, 0.025, 0.02)
+	round_sb.set_border_width_all(6)
+	round_sb.set_corner_radius_all(int(hole * 0.5))
+	mask.add_theme_stylebox_override("panel", round_sb)
+	mask.position = svc.position - Vector2(4, 4)
+	mask.size = svc.size + Vector2(8, 8)
+	mask.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	port.add_child(mask)
+	var frame := TextureRect.new()
+	frame.texture = load(SHEET_TEX["portrait"])
+	frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	frame.size = Vector2(128, 128)
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	port.add_child(frame)
+	var hv := VBoxContainer.new()
+	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hv.alignment = BoxContainer.ALIGNMENT_CENTER
+	hv.add_theme_constant_override("separation", 3)
+	head.add_child(hv)
+	var nm := _label("", 24, GOLD, true)
+	hv.add_child(nm)
+	char_labels["name"] = nm
+	var lv := _label("", 16, Color(0.86, 0.83, 0.77))
+	hv.add_child(lv)
+	char_labels["level"] = lv
+	var xpb := ProgressBar.new()
+	xpb.custom_minimum_size = Vector2(0, 16)
+	xpb.show_percentage = false
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0.05, 0.04, 0.03)
+	bg.border_color = Color(0.5, 0.4, 0.22)
+	bg.set_border_width_all(1)
+	bg.set_corner_radius_all(3)
+	var fg := StyleBoxFlat.new()
+	fg.bg_color = Color(0.85, 0.62, 0.2)
+	fg.set_corner_radius_all(3)
+	xpb.add_theme_stylebox_override("background", bg)
+	xpb.add_theme_stylebox_override("fill", fg)
+	hv.add_child(xpb)
+	char_labels["xpbar"] = xpb
+	var xpl := _label("", 12, DIM)
+	hv.add_child(xpl)
+	char_labels["xp"] = xpl
+	# --- points to spend: a glowing banner, only when there are some
+	sheet_points = PanelContainer.new()
+	sheet_points.add_theme_stylebox_override("panel", _box(Color(0.25, 0.17, 0.04, 0.9), Color(1.0, 0.8, 0.35), 1, 6, 6))
+	var pl := _label("", 16, Color(1.0, 0.9, 0.55), true)
+	pl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sheet_points.add_child(pl)
+	char_labels["points"] = pl
+	vb.add_child(sheet_points)
+	# --- the four attributes
+	for st in ["str", "dex", "vit", "ene"]:
+		vb.add_child(_stat_row(st))
+	var div := TextureRect.new()
+	div.texture = load(SHEET_TEX["divider"])
+	div.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	div.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	div.custom_minimum_size = Vector2(0, 22)
+	vb.add_child(div)
+	# --- what it all adds up to, in two columns; hover each for what it means
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 18)
+	grid.add_theme_constant_override("v_separation", 2)
+	vb.add_child(grid)
+	for k in ["damage", "aspd", "defense", "block", "life", "mana", "res", "ls", "mf", "gf"]:
+		var cell := VBoxContainer.new()
+		cell.add_theme_constant_override("separation", 0)
+		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cell.mouse_filter = Control.MOUSE_FILTER_STOP
+		var t := _label(_combat_name(k), 11, DIM)
+		cell.add_child(t)
+		var v := _label("", 16, Color(0.97, 0.94, 0.86), true)
+		cell.add_child(v)
+		char_labels[k] = v
+		var key: String = k
+		cell.mouse_entered.connect(func(): show_tooltip(_combat_tip(key)); tip_owner = cell)
+		cell.mouse_exited.connect(func(): tooltip.visible = false; tip_owner = null)
+		grid.add_child(cell)
+
+func _combat_name(k: String) -> String:
+	return {"damage": "DAMAGE", "aspd": "ATTACK SPEED", "defense": "DEFENSE", "block": "BLOCK CHANCE", "life": "LIFE",
+		"mana": "MANA", "res": "RESISTANCES", "ls": "LIFE STEAL", "mf": "MAGIC FIND", "gf": "GOLD FIND"}[k]
+
+func _combat_tip(k: String) -> Array:
+	var h = hero
+	var cut := int(round(100.0 * float(h.armor) / (120.0 + float(h.armor))))
+	match k:
+		"damage": return [["Damage", GOLD], ["What each hit of your weapon does, before the monster's defense.", Color(0.88, 0.85, 0.78)],
+			["Strength raises it by 1% a point; better weapons raise it most.", Color(0.6, 0.85, 0.6)]]
+		"aspd": return [["Attack speed", GOLD], ["How quickly you swing: higher is faster. 1.00 is a normal sword.", Color(0.88, 0.85, 0.78)],
+			["Dexterity and \"attack speed\" on gear raise it.", Color(0.6, 0.85, 0.6)]]
+		"defense": return [["Defense", GOLD], ["Softens physical blows: right now hits do %d%% less damage." % cut, Color(0.88, 0.85, 0.78)],
+			["Comes from your armour, and a little from Dexterity.", Color(0.6, 0.85, 0.6)]]
+		"block": return [["Block chance", GOLD], ["With a shield, the chance to stop a blow from the front completely (up to 60%).", Color(0.88, 0.85, 0.78)],
+			["Hold your block skill for 80% less damage from the front.", Color(0.6, 0.85, 0.6)]]
+		"life": return [["Life", GOLD], ["How much damage you can take. You regain %.1f life a second." % h.regen, Color(0.88, 0.85, 0.78)],
+			["Vitality gives 3 a point; each level gives 4.", Color(0.6, 0.85, 0.6)]]
+		"mana": return [["Mana", GOLD], ["Spent to use your skills, and slowly refills.", Color(0.88, 0.85, 0.78)],
+			["Energy gives 2 a point.", Color(0.6, 0.85, 0.6)]]
+		"res": return [["Resistances", GOLD], ["Cuts damage from fire, poison and other magic (up to 75%).", Color(0.88, 0.85, 0.78)],
+			["Comes from \"resist\" on gear.", Color(0.6, 0.85, 0.6)]]
+		"ls": return [["Life steal", GOLD], ["Heals you for this share of the damage you deal (up to 25%).", Color(0.88, 0.85, 0.78)]]
+		"mf": return [["Magic find", GOLD], ["Better odds that monsters drop magic, rare and unique items.", Color(0.88, 0.85, 0.78)]]
+		"gf": return [["Gold find", GOLD], ["More gold from every pile you pick up.", Color(0.88, 0.85, 0.78)]]
+	return [[k, GOLD]]
+
+## One attribute: its medallion, name, what it does in a few words, its value, and a + to spend a point.
+func _stat_row(st: String) -> Control:
+	var info: Array = STAT_INFO[st]
+	var row := PanelContainer.new()
+	var rsb := _box(Color(0.0, 0.0, 0.0, 0.28), Color(0.4, 0.32, 0.18, 0.5), 1, 6, 4)
+	row.add_theme_stylebox_override("panel", rsb)
+	row.mouse_filter = Control.MOUSE_FILTER_STOP
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 10)
+	row.add_child(hb)
+	var ic := TextureRect.new()
+	ic.texture = load(SHEET_TEX[st])
+	ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ic.custom_minimum_size = Vector2(46, 46)
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hb.add_child(ic)
+	var tv := VBoxContainer.new()
+	tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tv.alignment = BoxContainer.ALIGNMENT_CENTER
+	tv.add_theme_constant_override("separation", 0)
+	tv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hb.add_child(tv)
+	tv.add_child(_label(info[0], 18, info[2], true))
+	var blurb := _label(info[1], 12, Color(0.78, 0.75, 0.68))
+	tv.add_child(blurb)
+	var val := _label("", 26, Color(1, 1, 1), true)
+	val.custom_minimum_size = Vector2(54, 0)
+	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	val.pivot_offset = Vector2(27, 16)
+	val.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hb.add_child(val)
+	char_labels[st] = val
+	var b := TextureButton.new()
+	b.texture_normal = load(SHEET_TEX["plus"])
+	b.ignore_texture_size = true
+	b.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	b.custom_minimum_size = Vector2(36, 36)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	b.tooltip_text = ""
+	b.pressed.connect(func():
+		if hero.stat_points <= 0:
+			return
+		_add_stat(st)
+		var tw := val.create_tween()
+		val.scale = Vector2(1.35, 1.35)
+		val.modulate = Color(1.0, 0.85, 0.4)
+		tw.set_parallel(true)
+		tw.tween_property(val, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(val, "modulate", Color(1, 1, 1), 0.5)
+		show_tooltip(_stat_tip(st)))
+	hb.add_child(b)
+	plus_btns.append(b)
+	row.mouse_entered.connect(func():
+		rsb.border_color = Color(info[2].r, info[2].g, info[2].b, 0.9)
+		row.add_theme_stylebox_override("panel", rsb)
+		show_tooltip(_stat_tip(st))
+		tip_owner = row)
+	row.mouse_exited.connect(func():
+		rsb.border_color = Color(0.4, 0.32, 0.18, 0.5)
+		row.add_theme_stylebox_override("panel", rsb)
+		tooltip.visible = false
+		tip_owner = null)
+	return row
+
+## What an attribute does: per point, and what yours adds up to right now.
+func _stat_tip(st: String) -> Array:
+	var h = hero
+	var info: Array = STAT_INFO[st]
+	var lines := [[info[0], info[2]]]
+	var good := Color(0.55, 0.95, 0.55)
+	var plain := Color(0.88, 0.85, 0.78)
+	match st:
+		"str":
+			var v: int = h.total_str()
+			lines.append(["Each point: +1% weapon damage.", plain])
+			lines.append(["Yours now: +%d%% damage." % v, good])
+		"dex":
+			var v: int = h.total_dex()
+			lines.append(["Each point: a little faster attacks (+0.2%),", plain])
+			lines.append(["+1 defense for every 4 points, and +0.1% block with a shield.", plain])
+			lines.append(["Yours now: +%.1f%% attack speed, +%d defense, +%.1f%% block." % [v * 0.2, v / 4, v * 0.1], good])
+		"vit":
+			var v: int = h.total_vit()
+			lines.append(["Each point: +3 life and a little more stamina for sprinting.", plain])
+			lines.append(["Yours now: +%d life, +%d stamina." % [v * 3, int(v * 0.6)], good])
+		"ene":
+			lines.append(["Each point: +2 mana for casting skills.", plain])
+			lines.append(["Yours now: +%d mana." % (h.ene * 2), good])
+	if h.stat_points > 0:
+		lines.append(["Click + to spend a point here.", Color(1.0, 0.85, 0.45)])
+	return lines
+
+## The portrait's camera: a slow look at the hero's face and shoulders, from the front.
+func _sheet_camera(delta: float) -> void:
+	if sheet_cam == null or hero == null or not is_instance_valid(hero.rig):
+		return
+	_sheet_t += delta
+	var head: Node3D = hero.J.get("head") if hero.J is Dictionary else null
+	var c: Vector3 = head.global_position if head else hero.global_position + Vector3(0, 1.6, 0)
+	var fwd: Vector3 = -hero.rig.global_transform.basis.z
+	fwd.y = 0
+	fwd = fwd.normalized() if fwd.length() > 0.01 else Vector3(0, 0, 1)
+	var side := fwd.cross(Vector3.UP).normalized()
+	var at := c + Vector3(0, -0.12, 0)
+	var eye := at + fwd * 1.35 + side * (0.3 + sin(_sheet_t * 0.4) * 0.15) + Vector3(0, 0.1, 0)
+	sheet_cam.global_transform = Transform3D(Basis(), eye).looking_at(at)
 
 func _add_stat(stat: String) -> void:
 	if hero.stat_points <= 0:
@@ -2320,7 +2758,7 @@ func toggle(panel: Control) -> void:
 	refresh()
 
 func close_all() -> bool:
-	var any := false
+	var any := close_skill_picker()
 	for p in [inv_panel, char_panel, shop_panel, stash_panel, wp_panel, dialog_panel, ench_panel, test_panel, skills_panel, talent_panel]:
 		if p.visible:
 			p.visible = false
@@ -2417,28 +2855,40 @@ func refresh() -> void:
 	if talent_panel.visible and _talent_sig() != _talent_shown:
 		_fill_talents()
 	if char_panel.visible:
-		char_labels["name"].text = "Crusader of Greywatch"
-		char_labels["level"].text = "Level %d" % hero.level
-		char_labels["xp"].text = "Experience: %d / %d" % [hero.xp, Data.xp_for_level(hero.level)]
-		char_labels["points"].text = ("Stat points to spend: %d" % hero.stat_points) if hero.stat_points > 0 else ""
+		var cls: Dictionary = Data.CLASSES.get(hero.cls, {})
+		var pname: String = game.char_name if game.char_name != "" else str(cls.get("name", "Hero"))
+		char_labels["name"].text = pname
+		char_labels["level"].text = "%s  ·  Level %d" % [str(cls.get("name", hero.cls.capitalize())), hero.level]
+		var need: int = Data.xp_for_level(hero.level)
+		(char_labels["xpbar"] as ProgressBar).max_value = maxf(1.0, float(need))
+		(char_labels["xpbar"] as ProgressBar).value = float(hero.xp)
+		char_labels["xp"].text = "Experience  %d / %d" % [hero.xp, need]
+		sheet_points.visible = hero.stat_points > 0
+		char_labels["points"].text = "★  %d point%s to spend  ·  click a +  ★" % [hero.stat_points, "" if hero.stat_points == 1 else "s"]
 		char_labels["str"].text = "%d" % hero.total_str()
 		char_labels["dex"].text = "%d" % hero.total_dex()
 		char_labels["vit"].text = "%d" % hero.total_vit()
 		char_labels["ene"].text = "%d" % hero.ene
 		for b in plus_btns:
-			b.disabled = hero.stat_points <= 0
-		char_labels["damage"].text = "Damage: %d - %d%s" % [hero.dmg_min, hero.dmg_max, ("  (+%d fire)" % hero.fire_dmg) if hero.fire_dmg > 0 else ""]
-		char_labels["aspd"].text = "Attack speed: %.2f" % hero.aspd
-		char_labels["defense"].text = "Defense: %d" % hero.armor
-		char_labels["block"].text = "Chance to block: %d%%" % int(hero.block_chance)
-		char_labels["life"].text = "Life: %d   (regen %.1f/s)" % [int(hero.max_life), hero.regen]
-		char_labels["mana"].text = "Mana: %d" % int(hero.max_mana)
-		char_labels["res"].text = "All resistances: %d%%" % hero.res
-		char_labels["ls"].text = "Life steal: %d%%" % int(hero.ls)
-		char_labels["mf"].text = "Magic find: %d%%   Gold find: %d%%" % [hero.mf, hero.gf]
+			(b as TextureButton).disabled = hero.stat_points <= 0
+			(b as TextureButton).modulate = Color(1, 1, 1) if hero.stat_points > 0 else Color(0.35, 0.33, 0.3, 0.6)
+		char_labels["damage"].text = "%d - %d%s" % [hero.dmg_min, hero.dmg_max, ("  +%d fire" % hero.fire_dmg) if hero.fire_dmg > 0 else ""]
+		char_labels["aspd"].text = "%.2f" % hero.aspd
+		char_labels["defense"].text = "%d" % hero.armor
+		char_labels["block"].text = ("%d%%" % int(hero.block_chance)) if hero.equipment.get("shield") != null else "no shield"
+		char_labels["life"].text = "%d" % int(hero.max_life)
+		char_labels["mana"].text = "%d" % int(hero.max_mana)
+		char_labels["res"].text = "%d%%" % hero.res
+		char_labels["ls"].text = "%d%%" % int(hero.ls)
+		char_labels["mf"].text = "%d%%" % hero.mf
+		char_labels["gf"].text = "%d%%" % hero.gf
 
 func _process(delta: float) -> void:
 	_update_drag(delta)
+	if char_panel and char_panel.visible and hero:
+		_sheet_camera(delta)
+		if sheet_points.visible:
+			sheet_points.modulate = Color(1, 1, 1, 0.75 + 0.25 * sin(_sheet_t * 4.0))
 	if join_panel and join_panel.visible:
 		_join_refresh -= delta
 		if _join_refresh <= 0.0:
