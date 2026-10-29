@@ -35,6 +35,8 @@ func _click(p: Vector2, btn := MOUSE_BUTTON_LEFT) -> void:
 func _drawn_at(c: Node, pt: Vector2) -> String:
 	if c is CanvasItem and not (c as CanvasItem).visible:
 		return ""
+	if c == g.ui.plates:
+		return ""                 # the nameplates over the town's people are click-through
 	var kids := c.get_children()
 	kids.reverse()
 	for k in kids:

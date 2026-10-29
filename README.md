@@ -99,15 +99,17 @@ Space and the skill keys fire the way your hero is facing (for every class), ben
 
 Skill bar: drag a skill from the skills window (K) onto a slot, drag one slot onto another to swap them, or drag a skill off the bar to clear it. Clicking a slot opens a list to choose from.
 
+Traders: talk to anyone with a nameplate, then **Trade**. The trade window shows who you're dealing with, their goods by kind (tabs) and each item's price (red when you can't afford it). Walk away and it closes.
+
 Inventory: click an item to equip it (or an equipped item to take it off). **Drag** an item to another bag slot to move it, onto your equipment to wear it, or out of the window onto the game world to drop it on the ground. Right-click to drink, sell (at a merchant) or store (at the stash). Ctrl-click also drops.
 
 The action bar shows your **experience** (violet, with your level and progress) and **stamina** (green; it turns orange and reads "Winded" when you run out, and glows while you sprint).
 
 ## What's in Act I
 
-- **Greywatch Camp (town):**
-  - Old Maeve's alchemy camp: potions, rings and amulets.
-  - Grisold's forge: weapons and shields.
+- **The Forsaken Wilds (the camp, deep in the forest):**
+  - Agnes Grimwood's alchemy camp: potions, rings and amulets.
+  - Halvar Emberhammer's forge: weapons and shields (he works at his anvil inside it).
   - Hedda's armory: helms, body armor, gloves, boots and belts.
   - Tarrow's gambling tent.
   - Stash, waypoint, and Captain Roth.
@@ -122,7 +124,7 @@ The action bar shows your **experience** (violet, with your level and progress) 
   - King Grubb's model was generated with [Meshy](https://www.meshy.ai) from a Meshy concept image, then rigged in Blender.
   - When the gold is gone the fight goes on. After the last sack he's broke and furious: faster, and three bombs at a time. When he dies his hoard bursts open.
 
-**A2, the Imperial Road:** after you defeat King Grubb, the victory screen offers **Begin A2**. Everyone starts over at Greywatch Camp with their knight, gear, gold and level, and the road north leads somewhere new:
+**A2, the Imperial Road:** after you defeat King Grubb, the victory screen offers **Begin A2**. Everyone starts over at the camp in the Forsaken Wilds with their knight, gear, gold and level, and the road north leads somewhere new:
 
 - **The Imperial Road**: a longer, wider road under a warm late-afternoon sun. It starts on the moor (the restless dead and the moor's creatures), runs through a rocky pass where **bandits lie in wait** around an overturned wagon and spring out from behind the rocks when you stop to look, then becomes the old Roman road: paving and milestones, tombs along both verges, cypresses, toppled columns and an aqueduct you walk beneath. Near the city, bandits hold the road between ruined colonnades and statues, and a triumphal arch leads into Aurelia.
 - **Aurelia**: a city run by bandits. In through the gate, up the colonnaded main street past shops, apartment blocks, a temple and a market to the old arena, where **Varro the lanista** offers you a place in the games.
@@ -142,7 +144,7 @@ The action bar shows your **experience** (violet, with your level and progress) 
 
 **Armor enchanting:** talk to Hedda the armorer and pick **Enchant armor**. Pay gold to enchant your worn helm, body armor, gloves, boots, belt or shield, up to +10. Each level adds 15% defense and extra life (more on A2/A3 gear). Costs rise with each level and with the item's value. Gear at +5 or higher gains a blue arcane glow. Enchant levels show in the item's name and tooltip.
 
-**Switching acts:** once you've unlocked A2 or A3, the waypoint in Greywatch Camp has a **Switch act** row with Act I, A2 and A3. Each act keeps its own waypoints and boss progress; your knight, gear and gold come with you. In co-op the host's game decides, and either player can switch.
+**Switching acts:** once you've unlocked A2 or A3, the camp's waypoint has a **Switch act** row with Act I, A2 and A3. Each act keeps its own waypoints and boss progress; your knight, gear and gold come with you. In co-op the host's game decides, and either player can switch.
 
 Because A2 and A3 multiply every bonus, a few percentages are capped: attack speed at +120%, life steal at 25% and run speed at +100%. Resistances (75%) and block (60%) were already capped.
 

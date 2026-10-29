@@ -1,6 +1,6 @@
 class_name ForestCamp
 extends RefCounted
-## Act I's Greywatch Camp as an encampment deep in an old misty forest (World._build_town hands over
+## Act I's camp, the Forsaken Wilds, as an encampment deep in an old misty forest (World._build_town hands over
 ## to this when World.oak_forest and act 0; A2/A3 keep the old camp). A ring palisade of sharpened
 ## logs with a gatehouse to the north, glowing rune stones in the trees outside it, a bonfire at the
 ## heart, tents and huge oaks hung with lanterns inside, and the shops round the ring, each with its
@@ -19,8 +19,9 @@ const SHOPS := [
 	{"role": "alch", "npc": "maeve", "stall": "alchemy", "at": Vector2(-12, -11.5), "half": Vector2(1.45, 1.3),
 		"clips": {"idle": "Idle_02", "work": ["Stand_and_Drink", "mage_soell_cast"], "talk": "Talk_with_Left_Hand_Raised"},
 		"hold": {"bone": "RightHand", "potion": Color(0.35, 1.0, 0.3), "pos": Vector3(0.0, 0.07, 0.03)}},
-	{"role": "smith", "npc": "grisold", "stall": "forge", "at": Vector2(12, -11.5), "half": Vector2(2.2, 1.65),
-		"clips": {"idle": "Idle", "work": ["Heavy_Hammer_Swing", "Heavy_Hammer_Swing", "Catching_Breath"], "talk": "Talk_with_Hands_Open"},
+	# the smith works inside his forge, behind the anvil ("inside": his spot in the stall's own frame, facing out)
+	{"role": "smith", "npc": "grisold", "stall": "forge", "at": Vector2(12, -11.5), "half": Vector2(2.2, 1.65), "inside": Vector2(0.05, 0.35),
+		"clips": {"idle": "Idle", "work": ["Heavy_Hammer_Swing"], "talk": "Talk_with_Hands_Open", "stay": true},
 		"hold": {"bone": "RightHand", "item": "war_hammer", "rot": Vector3(0, 0, 90), "pos": Vector3(0.0, 0.08, 0.0)}},
 	{"role": "armor", "npc": "hedda", "stall": "armory", "at": Vector2(16, 5), "half": Vector2(1.95, 1.62),
 		"clips": {"idle": "Idle_3", "work": ["Axe_Breathe_and_Look_Around"], "talk": "Talk_with_Left_Hand_on_Hip"},
@@ -146,9 +147,16 @@ static func build(w: World) -> void:
 		w.add_box(Vector3(p.x, 0, p.y), half * 0.92, yaw)
 		var fwd := Vector2(sin(yaw), cos(yaw))
 		var np := p + fwd * (half.y + 0.9)
+		var lp: Vector2 = s.get("inside", Vector2.ZERO) * STALL_SCALE
+		if s.has("inside"):
+			np = p + Vector2(cos(yaw), -sin(yaw)) * lp.x + fwd * lp.y
 		var kp := _keeper(w, s["npc"], V[s["role"]], s["role"], np, yaw, s["clips"])
+		if s.has("inside"):
+			kp.radius = half.y - lp.y + 1.3      # talked to from in front of the stall
+
 		if s.has("hold"):
 			hold(kp.model, s["hold"])
+			kp.set_meta("hold", s["hold"])
 	# the stalls' own light: the forge's coals, the alchemist's cauldron, a lantern on the others
 	_glow(w, SHOPS[1]["at"], Vector3(0.9, 1.4, -0.6), Color(1.0, 0.45, 0.12), 2.6, 7.0)
 	_glow(w, SHOPS[0]["at"], Vector3(-1.3, 0.9, 0.4), Color(0.4, 1.0, 0.35), 1.6, 6.0)
@@ -338,6 +346,7 @@ static func _keeper(w: World, file: String, label: String, role: String, p: Vect
 	var it := w._inter("vendor", label, Vector3(p.x, 0, p.y), 1.5, null, {"role": role})
 	var m: Node3D = (load(NPC_DIR + file + ".glb") as PackedScene).instantiate()
 	m.name = "Keeper"
+	it.set_meta("npc_file", NPC_DIR + file + ".glb")    # the trade window's portrait builds its own copy
 	it.add_child(m)
 	m.rotation.y = yaw
 	it.model = m
@@ -346,12 +355,26 @@ static func _keeper(w: World, file: String, label: String, role: String, p: Vect
 	if ap:
 		for an in ap.get_animation_list():
 			ap.get_animation(an).loop_mode = Animation.LOOP_LINEAR
+			_pin_root(ap.get_animation(an))
 		it.anim = ap
 		it.clips = clips
 		ap.play(clips.get("idle", ""))
 		ap.seek(randf() * 2.0, true)
 	w.add_circle(Vector3(p.x, 0, p.y), 0.45)
 	return it
+
+## Meshy's library clips walk the hips about (Catching_Breath strides 4.6 m and snaps back): pin them
+## over the keeper's spot, keeping only the up and down.
+static func _pin_root(a: Animation) -> void:
+	for t in a.get_track_count():
+		if a.track_get_type(t) != Animation.TYPE_POSITION_3D or not str(a.track_get_path(t)).ends_with(":Hips"):
+			continue
+		if a.track_get_key_count(t) == 0:
+			continue
+		var p0: Vector3 = a.track_get_key_value(t, 0)
+		for k in a.track_get_key_count(t):
+			var v: Vector3 = a.track_get_key_value(t, k)
+			a.track_set_key_value(t, k, Vector3(p0.x, v.y, p0.z))
 
 ## Rune stones: their carved runes glow cyan, and the glow breathes.
 static func _rune_material() -> ShaderMaterial:

@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `a2_arena_test`, `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
+`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `a2_arena_test`, `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -75,6 +75,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `items.gd` | Item rolls, `empower` (A2/A3 multipliers), enchanting, tooltips |
 | `net.gd` | LAN co-op over ENet (UDP 24567, discovery 24568); RPC layer |
 | `ui.gd`, `hud_bar.gd`, `icon_renderer.gd` | All UI built in code |
+| `vendor_ui.gd` | Nameplates over the town's people and the trader's live portrait in the trade window |
 | `models.gd`, `skeleton.gd`, `flora.gd`, `props.gd`, `geo.gd`, `mats.gd` | Procedural meshes and shaders |
 | `weather.gd`, `fx.gd`, `sfx.gd`, `sfx_bank.gd` | Snow/ash, particles, audio (autoload `Sfx`: recorded/generated sounds from `assets/audio/sfx/` listed in the generated `sfx_bank.gd`, with the old synthesized sounds as fallback) |
 
@@ -210,7 +211,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   - **Aurelia** (`aurelia.gd`, lair, outdoors; ground levelled by a `ground_fn` that cancels the noise inside the
     zone): the city gate, the colonnaded main street with shops and apartment blocks (`_building`: shop,
     apartment or ruin), districts behind with alleys, the crossroads fountain, the temple (west) and market (east),
-    the arena plaza with Varro the lanista (`Inter` kind "lanista", `Game._interact`; he and his two guards are the Meshy
+    the arena plaza with Varro the lanista (out in the open on the way up to the entrance) (`Inter` kind "lanista", `Game._interact`; he and his two guards are the Meshy
     bandit, the guards are non-clickable `Inter`s with `data.still`; he offers the games again after they're won, and a
     hero at the barred Gate of Life before the deal is told to find him), and the colosseum: the sand
     (`FLOOR_RX/RZ`, `floor_t`), the podium wall (solid), stepped stands, the outer arcade three storeys high on the
@@ -292,7 +293,20 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   The shopkeepers are Meshy characters rigged by Meshy and animated from its clip library (`meshy.py rig` /
   `animate` / `library`), cleaned by `tools/blender/prep_npc.py` into `assets/models/npc/`; `Inter._animate`
   plays their work clips, turns them to face the hero and has them talk when he comes near (clips listed in
-  `ForestCamp.SHOPS`). Screenshots: `tools/camp_shots.gd`.
+  `ForestCamp.SHOPS`). Their library clips walk the hips about (Catching_Breath strode 4.6 m out of the forge),
+  so `ForestCamp._pin_root` pins every clip's hips over the keeper's spot. The camp is "The Forsaken Wilds"
+  (`Data.ACTS[0]["town"]`); its smith Halvar Emberhammer works inside his forge behind the anvil (a SHOPS entry's
+  `"inside"`: his spot in the stall's frame; `"stay"` in its clips: he never turns from his work and greets once a
+  visit; his `radius` reaches the stall's front, since the stall is solid). Screenshots: `tools/camp_shots.gd`.
+- **Nameplates and the trade window** (`scripts/vendor_ui.gd`): `VendorUI.Plates` (in `ui.plates`, under every
+  window) floats a gold-trimmed plate with the name and trade (`VendorUI.ROLE_TITLES`) over each vendor and Varro,
+  click-through, fading with distance, lit when hovered. The trade window (`UI._build_shop`, `open_shop(mode,
+  title, items, who, greet)`) is headed by the trader: a live portrait (`VendorUI.Portrait`, their model in its
+  own little world, from the keeper's `npc_file` meta or the humanoid's `look`, greeting then idling), name, trade,
+  greeting and your gold; tabs by kind (`UI.SHOP_KINDS`; `shop_view` maps cells to `shop_items`) and a price on
+  each cell, red when you can't afford it. `UI.trade_with` is the NPC whose window is open: walking more than 3 m
+  past their `radius` closes it (`UI._walked_off`, the stash too). `tools/vendor_test.gd` checks all of it with
+  the smith; `tools/vendor_shots.gd -- outdir [role]` screenshots a trader.
 - **Skill bar and bindings** (every class, including new ones): the bar has a big slot for each mouse button and six
   hotkeys (Q E R F G V); any skill can go on any of them (`Hero.binds`, saved per character; `Hero.default_binds`:
   left mouse `attack`, right mouse `block`, the class's first four skills on Q-F). `attack` and `block` are

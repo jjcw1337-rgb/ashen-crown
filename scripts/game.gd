@@ -1004,7 +1004,7 @@ func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
 		if UNLOCK_ALL_ACTS:
 			max_run = 2
 		await load_zone(0, "town", "start")
-		ui.open_dialog(Data.VENDORS[0]["elder"], "Welcome to Greywatch, %s. Since the goblin king Grubb tunnelled into the old crypt to loot the dead, the dead walk Cairnfell Moor and the Fallen raid our roads. He sits on a mountain of stolen gold down there and calls himself king. Trade with our folk, then head out through the north gate. End him, and the moor may yet heal." % ("restless one" if hero.is_wraith() else ("pact-bound one" if hero.is_warlock() else "crusader")), [["I will", func(): pass]])
+		ui.open_dialog(Data.VENDORS[0]["elder"], "Welcome to the Forsaken Wilds, %s. Since the goblin king Grubb tunnelled into the old crypt to loot the dead, the dead walk Cairnfell Moor and the Fallen raid our roads. He sits on a mountain of stolen gold down there and calls himself king. Trade with our folk, then head out through the north gate. End him, and the moor may yet heal." % ("restless one" if hero.is_wraith() else ("pact-bound one" if hero.is_warlock() else "crusader")), [["I will", func(): pass]])
 	ui.refresh()
 
 ## Co-op from the title screen. Your last character is used if you have one.
@@ -1282,6 +1282,7 @@ func _open_chest(t: Inter) -> void:
 func _interact(t: Inter) -> void:
 	match t.kind:
 		"lanista":
+			ui.trade_with = t
 			# Varro, by Aurelia's arena: his games are A2's boss fight (games.gd)
 			var g = world.get_meta("games") if world.has_meta("games") else null
 			if g == null:
@@ -1300,6 +1301,7 @@ func _interact(t: Inter) -> void:
 				btns = [["Farewell", func(): pass]]
 			ui.open_dialog(t.label, txt, btns)
 		"vendor":
+			ui.trade_with = t
 			var role: String = t.data.get("role", "")
 			if role == "elder":
 				var txt := "The crypt lies at the far end of Cairnfell Moor. Bone archers and the restless dead guard the way. Raise your shield against their arrows: a good block turns them aside. And Grubb guards his gold like his life: rip open one of his sacks and his goblins come running for it. Get to the gold before they bring it back to him."
@@ -1308,12 +1310,12 @@ func _interact(t: Inter) -> void:
 				elif difficulty >= 2 and not boss_killed:
 					txt = "Something worse than Grubb sits on his stolen throne in the old crypt. They call him the Ashen King. His bone archers hold the moor, and he carries a blade that burns. Kill him and take it."
 				if boss_killed:
-					txt = "Grubb is dead and his gold is ours, and the moor already feels lighter. Greywatch owes you a debt it cannot pay. Rest a while, crusader."
+					txt = "Grubb is dead and his gold is ours, and the moor already feels lighter. The Wilds owe you a debt it cannot pay. Rest a while, crusader."
 				ui.open_dialog(t.label, txt, [["Farewell", func(): pass]])
 			else:
 				var sh: Array = shops.get(role, ["", []])
 				var lines := {"smith": "Need a blade, or something to stop one?", "armor": "Leather, mail or plate. All of it has seen worse than you.", "alch": "Potions for the body, trinkets for the soul.", "gamble": "Fortune favours the bold. Every piece is a mystery until you pay."}
-				var btns := [["Trade", func(): ui.open_shop(role, sh[0], sh[1])]]
+				var btns := [["Trade", func(): ui.open_shop(role, sh[0], sh[1], t, lines.get(role, ""))]]
 				if role == "armor":
 					btns.append(["Enchant armor", func(): ui.open_enchant(t.label)])
 				btns.append(["Leave", func(): pass])
@@ -1321,6 +1323,7 @@ func _interact(t: Inter) -> void:
 			Sfx.play("click")
 		"stash":
 			ui.open_stash()
+			ui.trade_with = t
 			Sfx.play("equip")
 		"waypoint":
 			var wp_id: String = t.data.get("wp", "town")

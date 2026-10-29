@@ -301,8 +301,9 @@ static func _brazier(w: World, p: Vector3) -> void:
 ## Varro the lanista by the arena's gate, two of his bandits standing guard: he offers you the games.
 ## All three are the Meshy bandit (MeshyMonster), Varro unarmed; the old procedural people without it.
 static func _lanista(w: World, games: Games) -> void:
-	# out on the plaza beside the entrance, clear of the braziers (whose flames hid him behind one)
-	var p := Vector3(7.5, 0, CENTRE.y + OUTER_RZ + 9.0)
+	# out in the open plaza on the way up to the entrance, clear of the braziers (whose flames hid him
+	# behind one) and of the east colonnade (whose columns and wall hid him from the street)
+	var p := Vector3(3.5, 0, CENTRE.y + OUTER_RZ + 12.0)
 	var it: Inter
 	if MeshyMonster.ok("bandit"):
 		it = w._inter("vendor", "Varro the Lanista", p, 1.4, null, {"role": "lanista", "offset": w.rng.randf() * 9.0})

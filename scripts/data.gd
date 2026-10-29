@@ -3,7 +3,7 @@ extends RefCounted
 ## Static game data: acts, monsters, item bases, affixes, uniques, vendors.
 
 const ACTS := [
-	{"name": "The Ashen Moors", "town": "Greywatch Camp", "wild": "Cairnfell Moor", "lair": "Grubb's Fort",
+	{"name": "The Ashen Moors", "town": "The Forsaken Wilds", "wild": "Cairnfell Moor", "lair": "Grubb's Fort",
 		"boss": "goblin_king", "lvl": 1, "theme": "moor", "foes": ["fallen", "zombie", "skel_archer"]},
 	{"name": "The Sunscar Wastes", "town": "Lut Khemar", "wild": "Dunes of Sorrow", "lair": "Tomb of Sekhmun",
 		"boss": "sekhmun", "lvl": 8, "theme": "desert", "foes": ["raider", "mummy", "scarab"]},
@@ -28,7 +28,7 @@ static func act_info(act: int, run: int) -> Dictionary:
 	return ACTS[act]
 
 const VENDORS := [
-	{"smith": "Grisold the Smith", "armor": "Hedda Ironhand", "alch": "Old Maeve", "gamble": "Tarrow the Dice", "stash": "Stash", "elder": "Captain Roth"},
+	{"smith": "Halvar Emberhammer", "armor": "Hedda Ironhand", "alch": "Agnes Grimwood", "gamble": "Tarrow the Dice", "stash": "Stash", "elder": "Captain Roth"},
 	{"smith": "Kadir Forgebrand", "armor": "Saphra", "alch": "Iskander the Wise", "gamble": "Jamal Two-Coins", "stash": "Stash", "elder": "Vizier Hasun"},
 	{"smith": "Ombo Stonejaw", "armor": "Teyla of the Reeds", "alch": "Mother Ashka", "gamble": "Quill", "stash": "Stash", "elder": "Archivist Nel"},
 	{"smith": "Brother Halvard", "armor": "Seraph Aldwen", "alch": "Lumen the Pure", "gamble": "The Faceless", "stash": "Stash", "elder": "High Paladin Corin"},

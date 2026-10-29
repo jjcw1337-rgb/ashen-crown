@@ -21,15 +21,19 @@ var _talked := 0.0
 func _animate(delta: float) -> void:
 	var near := false
 	var want := home_yaw
+	# a keeper who stays at his work (the smith at his anvil) greets once a visit, never turns from it
+	var stay: bool = clips.get("stay", false)
 	var heroes := get_tree().get_nodes_in_group("hero")
 	if heroes.size() > 0:
 		var d: Vector3 = (heroes[0] as Node3D).global_position - global_position
 		if Vector2(d.x, d.z).length() < 6.5:
 			near = true
-			want = atan2(d.x, d.z)       # Meshy models face +z
+			if not stay:
+				want = atan2(d.x, d.z)       # Meshy models face +z
 	model.rotation.y = lerp_angle(model.rotation.y, want, delta * (3.0 if near else 1.2))
 	_clip_t -= delta
-	_talked = maxf(0.0, _talked - delta)
+	if not (stay and near):
+		_talked = maxf(0.0, _talked - delta)
 	var cur := anim.current_animation
 	var works: Array = clips.get("work", []) if clips.get("work") is Array else [clips.get("work", "")]
 	# walking up interrupts the work: greet once, then wait (idle) while the hero shops
@@ -38,10 +42,11 @@ func _animate(delta: float) -> void:
 	if _clip_t > 0.0:
 		return
 	var next: String = clips.get("idle", "")
-	if near:
-		if clips.has("talk") and _talked <= 0.0:
-			next = clips["talk"]
-			_talked = 9.0
+	if near and clips.has("talk") and _talked <= 0.0:
+		next = clips["talk"]
+		_talked = 9.0
+	elif near and not stay:
+		pass
 	elif not works.is_empty() and works[0] != "" and randf() < 0.8:
 		next = works[randi() % works.size()]
 	if next == "" or not anim.has_animation(next):

@@ -87,6 +87,16 @@ var shop_title: Label
 var shop_grid: GridContainer
 var shop_items: Array = []
 var shop_mode := ""
+var shop_view: Array = []      # the shop_items indices shown, in cell order (the open tab's)
+var shop_tab := "All"
+var shop_tabs: HBoxContainer
+var shop_gold: Label
+var shop_who: Label
+var shop_role: Label
+var shop_greet: Label
+var shop_face: PanelContainer  # holds the trader's live portrait
+var trade_with: Inter = null   # the NPC whose window (dialog, trade, stash) is open: walking off closes it
+var plates: Control            # VendorUI.Plates: nameplates over the town's people
 var stash_panel: PanelContainer
 var stash_cells: Array = []
 var wp_panel: PanelContainer
@@ -139,6 +149,9 @@ func setup(g: Node) -> void:
 	fm.shader = fsh
 	dmg_flash.material = fm
 	root.add_child(dmg_flash)
+	plates = VendorUI.Plates.new()
+	plates.ui = self
+	root.add_child(plates)
 	_build_hud()
 	_build_inventory()
 	_build_character()
@@ -1863,25 +1876,96 @@ func _add_stat(stat: String) -> void:
 
 # ---------------------------------------------------------------- shops & stash
 func _build_shop() -> void:
-	shop_panel = _panel("Merchant", true, 480, 560)
+	shop_panel = _panel("Merchant", true, 500, 600)
 	var vb: VBoxContainer = shop_panel.get_node("vb")
 	shop_title = shop_panel.get_node("vb").get_child(0).get_node("title")
-	var note := _label("Left-click to buy  ·  Right-click your own items to sell", 13, DIM)
-	vb.add_child(note)
+	shop_title.add_theme_font_size_override("font_size", 15)
+	shop_title.add_theme_color_override("font_color", DIM)
+	# the trader: their live portrait beside their name, trade and greeting, and your purse
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 14)
+	vb.add_child(head)
+	shop_face = PanelContainer.new()
+	shop_face.add_theme_stylebox_override("panel", _box(Color(0.07, 0.05, 0.035), Color(0.62, 0.48, 0.26), 2, 4, 2))
+	shop_face.custom_minimum_size = Vector2(136, 160)
+	head.add_child(shop_face)
+	var info := VBoxContainer.new()
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.add_theme_constant_override("separation", 4)
+	head.add_child(info)
+	shop_who = _label("", 26, GOLD, true)
+	info.add_child(shop_who)
+	shop_role = _label("", 13, Color(0.74, 0.66, 0.52))
+	var fv := FontVariation.new()
+	fv.base_font = font_body
+	fv.spacing_glyph = 2
+	shop_role.add_theme_font_override("font", fv)
+	info.add_child(shop_role)
+	var rule := ColorRect.new()
+	rule.color = Color(0.55, 0.43, 0.24, 0.5)
+	rule.custom_minimum_size = Vector2(0, 1)
+	info.add_child(rule)
+	shop_greet = _label("", 15, Color(0.86, 0.82, 0.74))
+	shop_greet.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	shop_greet.custom_minimum_size = Vector2(280, 0)
+	shop_greet.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	info.add_child(shop_greet)
+	var purse := PanelContainer.new()
+	purse.add_theme_stylebox_override("panel", _box(Color(0.03, 0.025, 0.02, 0.9), Color(0.4, 0.31, 0.17), 1, 3, 6))
+	info.add_child(purse)
+	shop_gold = _label("", 17, Color(1.0, 0.85, 0.4), true)
+	purse.add_child(shop_gold)
+	# what they sell, by kind
+	shop_tabs = HBoxContainer.new()
+	shop_tabs.add_theme_constant_override("separation", 4)
+	vb.add_child(shop_tabs)
 	shop_grid = GridContainer.new()
 	shop_grid.columns = 10
-	shop_grid.add_theme_constant_override("h_separation", 2)
-	shop_grid.add_theme_constant_override("v_separation", 2)
+	shop_grid.add_theme_constant_override("h_separation", 3)
+	shop_grid.add_theme_constant_override("v_separation", 3)
 	vb.add_child(shop_grid)
-	for i in 60:
+	for i in 50:
 		var idx := i
-		var c := _slot(Vector2(CELL, CELL), func(ev): if ev.button_index == MOUSE_BUTTON_LEFT: _buy(idx), func(p, on): _hover(p, on, "gamble" if shop_mode == "gamble" else "buy"))
+		var c := _slot(Vector2(CELL, CELL + 14), func(ev): if ev.button_index == MOUSE_BUTTON_LEFT: _buy(idx), func(p, on): _hover(p, on, "gamble" if shop_mode == "gamble" else "buy"))
+		var ic: Control = c.get_node("icon")
+		ic.offset_bottom = -16
+		var pr := _label("", 11, Color(1.0, 0.85, 0.4))
+		pr.name = "price"
+		pr.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+		pr.offset_top = -15
+		pr.offset_bottom = -1
+		pr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		pr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		c.add_child(pr)
 		shop_grid.add_child(c)
+	vb.add_child(_label("Left-click to buy  ·  Right-click your own items to sell  ·  Walk away to close", 13, DIM))
 
-func open_shop(mode: String, title: String, items: Array) -> void:
+const SHOP_KINDS := {"weapon": "Weapons", "shield": "Shields", "armor": "Armour", "helm": "Armour", "gloves": "Armour",
+	"boots": "Armour", "belt": "Armour", "ring": "Jewellery", "amulet": "Jewellery", "potion": "Potions"}
+
+static func shop_kind(it: Dictionary) -> String:
+	return str(SHOP_KINDS.get(str(Data.BASES[it["base"]]["slot"]), "Goods"))
+
+func shop_cost(it: Dictionary) -> int:
+	return Items.price(it) * (2 if shop_mode == "gamble" else 1)
+
+## The trade window, headed by the trader (who, when there is one: their portrait, name and trade).
+func open_shop(mode: String, title: String, items: Array, who: Inter = null, greet := "") -> void:
 	shop_mode = mode
 	shop_items = items
 	shop_title.text = title
+	shop_tab = "All"
+	for c in shop_face.get_children():
+		c.queue_free()
+	shop_face.visible = who != null
+	if who:
+		trade_with = who
+		var pt := VendorUI.Portrait.new()
+		shop_face.add_child(pt)
+		pt.setup(who)
+	shop_who.text = who.label if who else title
+	shop_role.text = VendorUI.title_for(who).to_upper() if who else ""
+	shop_greet.text = ("“%s”" % greet) if greet != "" else ""
 	shop_panel.visible = true
 	stash_panel.visible = false
 	inv_panel.visible = true
@@ -1889,14 +1973,65 @@ func open_shop(mode: String, title: String, items: Array) -> void:
 	_refresh_shop()
 
 func _refresh_shop() -> void:
+	# the tabs: All, then each kind on sale (only when there's more than one); rebuilt only on a change
+	var kinds := []
+	for it in shop_items:
+		var k := shop_kind(it)
+		if k not in kinds:
+			kinds.append(k)
+	if shop_tab not in kinds:
+		shop_tab = "All"
+	var sig := "%s %s" % [shop_tab, kinds]
+	var shown: String = str(shop_tabs.get_meta("sig")) if shop_tabs.has_meta("sig") else ""
+	if shown != sig:
+		shop_tabs.set_meta("sig", sig)
+		for c in shop_tabs.get_children():
+			shop_tabs.remove_child(c)
+			c.queue_free()
+		if kinds.size() > 1:
+			for k in ["All"] + kinds:
+				var b := Button.new()
+				b.text = k
+				b.toggle_mode = true
+				b.button_pressed = k == shop_tab
+				b.add_theme_font_size_override("font_size", 14)
+				b.custom_minimum_size = Vector2(0, 28)
+				var kk: String = k
+				b.pressed.connect(func():
+					shop_tab = kk
+					Sfx.play("click")
+					_refresh_shop())
+				shop_tabs.add_child(b)
+	shop_view = []
+	for i in shop_items.size():
+		if shop_tab == "All" or shop_kind(shop_items[i]) == shop_tab:
+			shop_view.append(i)
+	# the goods, each priced (red and dimmed when you can't afford it)
 	for i in shop_grid.get_child_count():
-		_set_slot(shop_grid.get_child(i), shop_items[i] if i < shop_items.size() else null)
+		var cell: Panel = shop_grid.get_child(i)
+		var it = shop_items[shop_view[i]] if i < shop_view.size() else null
+		_set_slot(cell, it)
+		var pr: Label = cell.get_node("price")
+		var ic: Control = cell.get_node("icon")
+		if it == null:
+			pr.text = ""
+			ic.modulate = Color.WHITE
+			continue
+		var cost := shop_cost(it)
+		var ok: bool = hero == null or hero.gold >= cost
+		pr.text = "%d g" % cost
+		pr.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4) if ok else Color(0.9, 0.35, 0.28))
+		ic.modulate = Color.WHITE if ok else Color(0.55, 0.5, 0.5)
+	if hero:
+		shop_gold.text = "◉  Your gold: %d" % hero.gold
 
-func _buy(idx: int) -> void:
-	if idx >= shop_items.size():
+## Buys what's in cell idx of the open tab.
+func _buy(cell: int) -> void:
+	if cell >= shop_view.size():
 		return
+	var idx: int = shop_view[cell]
 	var it: Dictionary = shop_items[idx]
-	var cost := Items.price(it) * (2 if shop_mode == "gamble" else 1)
+	var cost := shop_cost(it)
 	if hero.gold < cost:
 		message("Not enough gold", Color(1, 0.4, 0.3))
 		Sfx.play("deny")
@@ -2780,6 +2915,22 @@ func toggle(panel: Control) -> void:
 	Sfx.play("click")
 	refresh()
 
+## Walking away from the trader (or the stash) closes their windows, as stepping off from a stall would.
+func _walked_off() -> void:
+	if trade_with == null:
+		return
+	var open := shop_panel.visible or stash_panel.visible or dialog_panel.visible or ench_panel.visible
+	if not open or not is_instance_valid(trade_with) or hero == null:
+		trade_with = null
+		return
+	var d: Vector3 = hero.global_position - trade_with.global_position
+	if Vector2(d.x, d.z).length() > trade_with.radius + 3.0:
+		trade_with = null
+		for p in [shop_panel, stash_panel, dialog_panel, ench_panel, inv_panel]:
+			p.visible = false
+		shop_mode = ""
+		tooltip.visible = false
+
 func close_all() -> bool:
 	var any := close_skill_picker()
 	for p in [inv_panel, char_panel, shop_panel, stash_panel, wp_panel, dialog_panel, ench_panel, test_panel, skills_panel, talent_panel]:
@@ -2851,6 +3002,8 @@ func refresh() -> void:
 	if hero == null:
 		return
 	_refresh_enchant()
+	if shop_panel.visible:
+		_refresh_shop()
 	life_lbl.text = "Life  %d / %d" % [int(hero.life), int(hero.max_life)]
 	mana_lbl.text = "Mana  %d / %d" % [int(hero.mana), int(hero.max_mana)]
 	var xpf := float(hero.xp) / maxf(Data.xp_for_level(hero.level), 1.0)
@@ -2906,6 +3059,7 @@ func refresh() -> void:
 
 func _process(delta: float) -> void:
 	_update_drag(delta)
+	_walked_off()
 	if char_panel and char_panel.visible and hero:
 		_sheet_camera(delta)
 		if sheet_points.visible:

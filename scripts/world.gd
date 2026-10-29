@@ -756,6 +756,7 @@ func _inter(kind_s: String, label_s: String, p: Vector3, radius: float, model: N
 func _npc(label_s: String, look: Dictionary, p: Vector3, role: String, yaw := 0.0) -> Inter:
 	var rig := Models.humanoid(look)
 	var it := _inter("vendor", label_s, p, 1.4, null, {"role": role, "offset": rng.randf() * 9.0})
+	it.set_meta("look", look)
 	it.add_child(rig)
 	rig.rotation.y = yaw
 	it.rig = rig
