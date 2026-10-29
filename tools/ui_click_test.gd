@@ -110,24 +110,21 @@ func _run() -> void:
 		p.visible = false
 		bad += n
 		print("[U] ", nm, " leaks=", n)
-	# the skill menu (click a bar slot): pick an item, and dismiss it by clicking outside
+	# the skill picker (click a bar slot): pick a skill from it, and dismiss it by clicking outside
 	for how: String in ["pick", "outside"]:
 		g.ui.close_all()
 		await wait(2)
 		g.ui._choose_skill("Q")
-		await wait(4)
-		var pm: PopupMenu = null
-		for c in g.ui.root.get_children():
-			if c is PopupMenu:
-				pm = c
-		var pr := Rect2(pm.position, pm.size)
-		var pt: Vector2 = pr.get_center() if how == "pick" else pr.position + Vector2(pr.size.x + 200, pr.size.y * 0.5)
+		await wait(6)
+		var frame: Control = g.ui.skill_picker.get_child(0)
+		var grid: GridContainer = frame.find_children("*", "GridContainer", true, false)[0]
+		var fr := frame.get_global_rect()
+		var pt: Vector2 = (grid.get_child(0) as Control).get_global_rect().get_center() if how == "pick" else Vector2(fr.position.x + fr.size.x * 0.5, maxf(20.0, fr.position.y - 120.0))
 		await _click(pt)
 		await wait(3)
 		bad += int(reached)
-		print("[U] skill menu ", how, ": reaches the game=", reached, " menu still open=", is_instance_valid(pm) and pm.visible)
-		if is_instance_valid(pm):
-			pm.hide()
+		print("[U] skill picker ", how, ": reaches the game=", reached, " picker closed=", g.ui.skill_picker == null)
+		g.ui.close_skill_picker()
 	# the talent tree with points to spend: learning or taking back a rank rebuilds the tree under the
 	# cursor, and that click must not walk or swing either
 	var lvl: int = h.level
