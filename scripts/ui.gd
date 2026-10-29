@@ -619,7 +619,6 @@ func _build_hud() -> void:
 	minimap.offset_right = -18
 	minimap.offset_top = 40
 	minimap.offset_bottom = 252
-	minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	minimap.set_big(false)
 	root.add_child(minimap)
 
@@ -809,7 +808,13 @@ func _choose_skill(slot: String) -> void:
 		if idx >= 0 and idx < ids.size():
 			hero.bind(slot, ids[idx])
 			Sfx.play("click"))
-	pm.popup_hide.connect(pm.queue_free)
+	# a clear cover behind the menu eats the click that dismisses it, so that click doesn't walk the hero
+	var cover := Control.new()
+	cover.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.add_child(cover)
+	pm.popup_hide.connect(func():
+		pm.queue_free()
+		cover.queue_free())
 	root.add_child(pm)
 	tooltip.visible = false
 	pm.popup(Rect2i(Vector2i(get_viewport().get_mouse_position()) + Vector2i(-40, -24 - 26 * pm.item_count), Vector2i(180, 0)))
@@ -2773,6 +2778,8 @@ class Minimap extends Control:
 
 	func set_big(b: bool) -> void:
 		big = b
+		# the corner map takes clicks (they don't walk the hero); the big map is an overlay you walk through
+		mouse_filter = Control.MOUSE_FILTER_IGNORE if big else Control.MOUSE_FILTER_STOP
 		if big:
 			anchor_left = 0.5
 			anchor_right = 0.5

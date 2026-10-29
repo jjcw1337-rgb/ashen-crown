@@ -38,7 +38,7 @@ var _t := 0.0
 var _scale := 1.0
 
 func _ready() -> void:
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mouse_filter = Control.MOUSE_FILTER_STOP    # a click on the globe (see _has_point) doesn't walk the hero
 	liquid = ColorRect.new()
 	liquid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mat = ShaderMaterial.new()
@@ -87,6 +87,10 @@ func _layout() -> void:
 		var fw := d / FRAME_HOLE
 		frame.size = Vector2(fw, fw * frame.texture.get_height() / frame.texture.get_width())
 		frame.position = Vector2(c.x - fw * 0.5, c.y - frame.size.y * FRAME_HOLE_Y)
+
+## Only the round globe and its rim take the mouse, not the clear corners of the square.
+func _has_point(point: Vector2) -> bool:
+	return point.distance_to(size * 0.5) <= base_size * _scale * 0.62
 
 const FRAME_HOLE := 0.5       # liquid diameter / frame width: the hole (0.484) plus a little under the rim (globe_frame.png)
 const FRAME_HOLE_Y := 0.5     # hole centre / frame height
