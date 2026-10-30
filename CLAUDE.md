@@ -346,7 +346,8 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   so `ForestCamp._pin_root` pins every clip's hips over the keeper's spot. The camp is "The Forsaken Wilds"
   (`Data.ACTS[0]["town"]`); its smith Halvar Emberhammer works inside his forge behind the anvil (a SHOPS entry's
   `"inside"`: his spot in the stall's frame; `"stay"` in its clips: he never turns from his work and greets once a
-  visit; his `radius` reaches the stall's front, since the stall is solid). Screenshots: `tools/camp_shots.gd`.
+  visit; his `radius` reaches the stall's front, since the stall is solid). His hammer rings the anvil on each blow (`anvil`: five layered Kenney takes; `Inter._strikes` hears the
+  hand bone stop falling; a SHOPS entry's `"strike"`), `tools/anvil_test.gd`. Screenshots: `tools/camp_shots.gd`.
 - **Nameplates and the trade window** (`scripts/vendor_ui.gd`): `VendorUI.Plates` (in `ui.plates`, under every
   window) floats a gold-trimmed plate with the name and trade (`VendorUI.ROLE_TITLES`) over each vendor and Varro,
   click-through, fading with distance, lit when hovered. The trade window (`UI._build_shop`, `open_shop(mode,
