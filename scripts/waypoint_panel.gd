@@ -7,6 +7,7 @@ extends PanelContainer
 ## Everything it shows comes from Data and Game, so a new act or waypoint needs no change here.
 
 const SIGIL := "res://assets/textures/ui/wp_sigil.png"
+const TOWN_PLAQUE := "res://assets/textures/ui/wp_town.png"
 const FRAME := "res://assets/textures/ui/bar_frame.png"
 const SLOT := "res://assets/textures/ui/slot.png"
 const CYAN := Color(0.45, 0.85, 1.0)
@@ -427,8 +428,15 @@ func _point_row(act: Dictionary, p: Dictionary, info: Dictionary) -> Control:
 	tv.alignment = BoxContainer.ALIGNMENT_CENTER
 	tv.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hb.add_child(tv)
-	tv.add_child(ui._label(pname if known else "Unknown waypoint", 16, INK if known else Color(0.45, 0.42, 0.38), true))
-	var kinds := {"camp": "Camp · safe haven", "wild": "Wilderness", "road": "The open road", "city": "City"}
+	# the name, with the act's town marked in small print beside it
+	var nrow := HBoxContainer.new()
+	nrow.add_theme_constant_override("separation", 8)
+	nrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tv.add_child(nrow)
+	nrow.add_child(ui._label(pname if known else "Unknown waypoint", 16, INK if known else Color(0.45, 0.42, 0.38), true))
+	if p.get("kind", "") == "camp":
+		nrow.add_child(_town_plaque())
+	var kinds := {"camp": "Safe haven · traders and stash", "wild": "Wilderness", "road": "The open road", "city": "City"}
 	tv.add_child(ui._label(str(kinds.get(p.get("kind", ""), "")) if known else "Find and touch its stone", 11, DIM))
 	var tag := ui._label("HERE" if here else ("TRAVEL ›" if known else ""), 12, CYAN if here else GOLD, true)
 	hb.add_child(tag)
@@ -457,6 +465,26 @@ func _point_row(act: Dictionary, p: Dictionary, info: Dictionary) -> Control:
 				return
 			_jump(run, str(p["id"]), icon))
 	return row
+
+## The town badge: the Meshy gold nameplate (castle gate on the left) with TOWN set on its plate.
+func _town_plaque() -> Control:
+	var plq := TextureRect.new()
+	plq.texture = load(TOWN_PLAQUE)
+	plq.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	plq.stretch_mode = TextureRect.STRETCH_SCALE
+	plq.custom_minimum_size = Vector2(112, 32)
+	plq.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	plq.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var t := ui._label("TOWN", 13, Color(1.0, 0.86, 0.5), true)
+	t.add_theme_constant_override("outline_size", 4)
+	t.add_theme_color_override("font_outline_color", Color(0.12, 0.02, 0.02))
+	t.anchor_left = 0.3
+	t.anchor_right = 0.9
+	t.anchor_bottom = 1.0
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	t.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	plq.add_child(t)
+	return plq
 
 ## The end of the route: the act's lair, reached on foot; shows whether its lord still rules.
 func _lair_row(act: Dictionary, info: Dictionary) -> Control:
