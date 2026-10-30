@@ -2192,7 +2192,7 @@ func _build_pause() -> void:
 		update_sound_btn())
 	vb.add_child(sound_btn)
 	update_sound_btn()
-	if game.UNLOCK_ALL_ACTS:
+	if game.dev_tools:
 		var kit := Button.new()
 		kit.text = "Testing panel (F8)"
 		kit.pressed.connect(func():
@@ -2230,6 +2230,7 @@ func _build_test_panel() -> void:
 	vb.add_theme_constant_override("separation", 10)
 	test_panel.add_child(vb)
 	vb.add_child(_label("Testing", 22, GOLD, true))
+	vb.add_child(_label(("Admin: " + game.admin_name) if game.admin_name != "" else "Admin: editor", 12, Color(0.55, 0.85, 1.0)))
 	var imm := CheckButton.new()
 	imm.text = "Immortal (take no damage)"
 	imm.button_pressed = game.test_immortal

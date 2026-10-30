@@ -17,3 +17,7 @@ assets/models/**/*_Image_*
 assets/models/**/*_normal.jpg
 __pycache__/
 assets/models/monsters/feral*_*.jpg
+
+# admin keys never go in the repo (AdminKey)
+*.pem
+admin.key

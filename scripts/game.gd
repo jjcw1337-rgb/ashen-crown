@@ -55,8 +55,13 @@ var boss_killed := false
 var difficulty := 0          # 0 = Act I, 1 = A2, 2 = A3: Act I again with tougher monsters and loot each time
 var max_run := 0             # highest of those reached; any of them can be picked at the camp waypoint
 ## TESTING: unlock Act I, A2 and A3 at the camp waypoint from the start. Set to false to
-## go back to unlocking them by beating each final boss.
+## go back to unlocking them by beating each final boss. Only takes effect where dev_tools is on.
 const UNLOCK_ALL_ACTS := true
+## Developer tools (unlock-all-acts and the F8 testing panel): only for the owner. On when running from
+## the Godot editor, or when this PC holds a valid admin key (AdminKey: signed with the owner's private
+## key, so it can't be made up or shared by editing a file). Off for everyone else in every build.
+var admin_name := AdminKey.holder()
+var dev_tools := UNLOCK_ALL_ACTS and (OS.has_feature("editor") or admin_name != "")
 var run_progress := {}       # per run: its waypoints and whether its boss is dead
 var tp_link := {}
 var xp_bonus_t := 0.0
@@ -1006,7 +1011,7 @@ func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
 		waypoints_known = ["town"]
 		boss_killed = false
 		tp_link = {}
-		if UNLOCK_ALL_ACTS:
+		if dev_tools:
 			max_run = 2
 		await load_zone(0, "town", "start")
 		ui.open_dialog(Data.VENDORS[0]["elder"], "Welcome to the Forsaken Wilds, %s. Since the goblin king Grubb tunnelled into the old crypt to loot the dead, the dead walk Cairnfell Moor and the Fallen raid our roads. He sits on a mountain of stolen gold down there and calls himself king. Trade with our folk, then head out through the north gate. End him, and the moor may yet heal." % ("restless one" if hero.is_wraith() else ("pact-bound one" if hero.is_warlock() else "crusader")), [["I will", func(): pass]])
@@ -1051,7 +1056,7 @@ func on_net_failed(msg: String) -> void:
 		if hero.dead:
 			hero.respawn(hero.global_position)
 
-## Testing switches (F8 panel, only while UNLOCK_ALL_ACTS is on). They change nothing else
+## Testing switches (F8 panel, only while dev_tools is on). They change nothing else
 ## and are never saved.
 var test_immortal := false
 var test_onehit := false
@@ -1096,7 +1101,7 @@ func load_game() -> bool:
 	boss_killed = d.get("boss", false)
 	difficulty = int(d.get("difficulty", 0))
 	max_run = maxi(int(d.get("max_run", 0)), difficulty)
-	if UNLOCK_ALL_ACTS:
+	if dev_tools:
 		max_run = 2
 	run_progress = d.get("runs", {})
 	return true
@@ -1404,9 +1409,9 @@ func act_unlocked(run: int) -> bool:
 		return dev_tools_on() or act_boss_slain(int(a["requires"]))
 	return run <= (net.party_max_run if net.is_client() else max_run)
 
-## True where the developer tools are (the testing switch; see UNLOCK_ALL_ACTS).
+## True where the developer tools are (the owner's: see dev_tools).
 func dev_tools_on() -> bool:
-	return bool(get("dev_tools")) if "dev_tools" in self else UNLOCK_ALL_ACTS
+	return dev_tools
 
 ## Has this character touched waypoint `id` in act `run`? Each act keeps its own (run_progress).
 func waypoint_known(run: int, id: String) -> bool:
@@ -1763,7 +1768,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 				ui.message("Sound " + ("on" if sound_on else "off"), Color(0.8, 0.85, 1.0))
 				ui.update_sound_btn()
 			KEY_F8:
-				if UNLOCK_ALL_ACTS:
+				if dev_tools:
 					ui.toggle(ui.test_panel)
 			KEY_M:
 				ui.minimap.visible = not ui.minimap.visible
