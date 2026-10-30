@@ -7,6 +7,7 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 |---|---|---|---|---|
 | arena_horn | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a Roman cornu war horn blast in a stone amphitheatre, a deep brassy fanfare call of two long notes, isolated sound effect, no music, no voices |
 | battle_cry | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a medieval warrior's battle cry, one man roaring a fierce 'Haaa!' to rally his allies, close mic, dry, isolated sound effect, no music |
+| birds_flutter | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a small flock of birds suddenly taking off from a tree, a burst of flapping wings and a few startled chirps, then flying away, close mic, dry, isolated sound effect, no music |
 | blight_burst | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a poison bolt bursting on an enemy, splash of bubbling acid that sizzles, close mic, dry, isolated sound effect, no music |
 | blight_cast | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a warlock hurling a poison bolt, sinister hiss and whoosh, close mic, dry, isolated sound effect, no music |
 | block | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a sword blow blocked by a wooden shield with an iron rim, solid knock and clank, close mic, dry, isolated sound effect, no music |

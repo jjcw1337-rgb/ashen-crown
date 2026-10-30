@@ -4,6 +4,7 @@
 const BANK := {
 	"arena_horn": [2, "sfx", 0.0],
 	"battle_cry": [1, "sfx", 0.0],
+	"birds_flutter": [2, "sfx", 0.0],
 	"blight_burst": [1, "sfx", 0.0],
 	"blight_cast": [1, "sfx", 0.0],
 	"block": [1, "sfx", 0.0],

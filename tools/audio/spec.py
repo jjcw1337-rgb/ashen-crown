@@ -197,6 +197,9 @@ SPEC = [
                 "droning string pad with a lonely wooden flute, ancient woods at dusk, a hopeful refuge, background music loop, no drums"),
     dict(name="wind", src="eleven", n=3, dur=8.0, hit=0, loop=True, label="wind blowing",
          prompt="cold wind blowing across an empty moor at night, steady, no music"),
+    # Act I's birds (birds.gd): a flock bursting up out of the trees
+    dict(name="birds_flutter", src="eleven", n=4, dur=2.5, hit=0, label="a flock of birds taking off",
+         prompt="a small flock of birds suddenly taking off from a tree, a burst of flapping wings and a few startled chirps, then flying away" + DRY),
     # Act I outside the camp (the forest moor, Grubb's fort): soft trees in the breeze instead of the wind
     dict(name="forest", src="eleven", n=4, dur=14.0, hit=0, loop=True, label="trees rustling in a breeze",
          prompt="a soft gentle breeze through the leaves of an old forest, branches swaying and leaves rustling softly, "

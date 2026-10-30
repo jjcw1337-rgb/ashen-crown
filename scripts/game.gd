@@ -827,6 +827,12 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		if not tp_link.is_empty():
 			_make_portal(world.spawns["portal"], "back")
 	ui.set_zone(zone_title(act, zone))
+	# Act I outdoors: birds over the forest (birds.gd)
+	if world.oak_forest and not indoor():
+		var birds := Birds.new()
+		birds.game = self
+		birds.name = "birds"
+		world.add_child(birds)
 	# Act I outside the camp (the forest moor, Grubb's fort): soft trees in the breeze instead of the wind
 	Sfx.play_music("fort" if zone == "lair" and world.fort else zone, "forest" if world.oak_forest and zone != "town" and not indoor() else "")
 	loading.visible = false
