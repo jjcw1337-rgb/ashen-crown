@@ -454,12 +454,14 @@ for isl in islands:
 bmesh.ops.delete(bm, geom=drop, context="FACES_ONLY")
 bm.to_mesh(me); bm.free(); me.update()
 print("dropped crumb faces", len(drop))
-far = np.where((np.hypot(P2[:, 0], P2[:, 1]) > 0.42) & (P2[:, 2] > 0.6) & (P2[:, 2] < 1.4) & ~sword)[0]
-used = np.zeros(N, bool)
-for poly in me.polygons:
-    used[list(poly.vertices)] = True
-far = far[used[far]]
-print("FAR verts", len(far), "bones", {names[k]: int(c) for k, c in zip(*np.unique(np.argmax(Wt[far], 1), return_counts=True))} if len(far) else {}, "A-pose sample", P[far[:5]].round(2).tolist() if len(far) else [])
+# shreds of the cloak's edge that stood out beside the forearms in the A-pose hang in mid-air beside him
+# once the arms come down: drop them
+shred = cape & (np.abs(P[:, 0]) > 0.355) & (P[:, 2] > 0.88)
+bm = bmesh.new(); bm.from_mesh(me)
+gone = [f for f in bm.faces if any(shred[v.index] for v in f.verts)]
+bmesh.ops.delete(bm, geom=gone, context="FACES_ONLY")
+bm.to_mesh(me); bm.free(); me.update()
+print("dropped cloak shreds", len(gone))
 
 # --- armature
 parents = {"hips": None, "torso": "hips", "head": "torso", "sh_r": "torso", "el_r": "sh_r", "hand_r": "el_r",
