@@ -3047,7 +3047,14 @@ func _enchant_burst(p: Control) -> void:
 		tw.tween_property(sp, "modulate:a", 0.0, 0.5).set_delay(0.15)
 		tw.chain().tween_callback(sp.queue_free)
 
-## New Game: choose a class.
+## New Game: choose a class. The heroes stand live on a torch-lit stage (ClassStage): idle they breathe and
+## look about, under the mouse each fidgets, and the chosen one does its signature move. Below them, in the
+## inventory's iron and bronze: the chosen class's name, story, skills and stats, the name field and Play.
+var class_stage: ClassStage
+var class_info: Control
+var class_plates := {}
+var _class_sel := "knight"
+
 func _build_class_picker() -> void:
 	class_panel = Control.new()
 	class_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -3055,95 +3062,215 @@ func _build_class_picker() -> void:
 	title_panel.add_child(class_panel)
 	var dim := ColorRect.new()
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0.01, 0.01, 0.015, 0.95)
+	var dm := ShaderMaterial.new()
+	var dsh := Shader.new()
+	dsh.code = "shader_type canvas_item; void fragment(){ float v = length((UV - vec2(0.5, 0.38)) * vec2(1.3, 1.0)); COLOR = vec4(vec3(0.035, 0.03, 0.028) * (1.0 - v * 0.9), 1.0); }"
+	dm.shader = dsh
+	dim.material = dm
 	class_panel.add_child(dim)
-	var vb := VBoxContainer.new()
-	vb.anchor_left = 0.5
-	vb.anchor_right = 0.5
-	vb.anchor_top = 0.5
-	vb.anchor_bottom = 0.5
-	vb.offset_left = -770
-	vb.offset_right = 770
-	vb.offset_top = -250
-	vb.offset_bottom = 250
-	vb.add_theme_constant_override("separation", 18)
-	class_panel.add_child(vb)
 	var t := _label("Choose your path", 40, GOLD, true)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(t)
-	var nrow := HBoxContainer.new()
-	nrow.alignment = BoxContainer.ALIGNMENT_CENTER
-	nrow.add_theme_constant_override("separation", 10)
-	vb.add_child(nrow)
-	nrow.add_child(_label("Name", 18, Color(0.84, 0.8, 0.74)))
+	t.add_theme_constant_override("outline_size", 8)
+	t.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	t.offset_top = 26
+	class_panel.add_child(t)
+	var hint := _label("Hover over a hero, click to choose", 14, Color(0.62, 0.58, 0.5))
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	hint.offset_top = 80
+	class_panel.add_child(hint)
+	# the stage: built when the picker opens, freed when it closes
+	var holder := Control.new()
+	holder.name = "stage_holder"
+	holder.anchor_right = 1.0
+	holder.anchor_bottom = 1.0
+	holder.offset_bottom = -262
+	holder.offset_top = 96
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	class_panel.add_child(holder)
+	# the chosen class, in the inventory's frame
+	class_info = Control.new()
+	class_info.anchor_left = 0.5
+	class_info.anchor_right = 0.5
+	class_info.anchor_top = 1.0
+	class_info.anchor_bottom = 1.0
+	class_info.offset_left = -560
+	class_info.offset_right = 560
+	class_info.offset_top = -270
+	class_info.offset_bottom = -22
+	class_panel.add_child(class_info)
+	var iron := TextureRect.new()
+	iron.texture = _scaled_tex(INV_TEX["iron"], 0.25)
+	iron.stretch_mode = TextureRect.STRETCH_TILE
+	iron.position = Vector2(28, 28)
+	iron.size = Vector2(1064, 192)
+	class_info.add_child(iron)
+	var fr := NinePatchRect.new()
+	fr.texture = _scaled_tex(INV_TEX["frame"], 0.18)
+	for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
+		fr.set_patch_margin(side, 61)
+	fr.axis_stretch_horizontal = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
+	fr.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
+	fr.draw_center = false
+	fr.size = Vector2(1120, 248)
+	fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	class_info.add_child(fr)
+	var hb := HBoxContainer.new()
+	hb.position = Vector2(66, 42)
+	hb.size = Vector2(988, 168)
+	hb.add_theme_constant_override("separation", 28)
+	class_info.add_child(hb)
+	# left: name, story, stats
+	var lv := VBoxContainer.new()
+	lv.custom_minimum_size = Vector2(380, 0)
+	lv.add_theme_constant_override("separation", 6)
+	hb.add_child(lv)
+	var nm := _label("", 32, GOLD, true)
+	nm.name = "cname"
+	lv.add_child(nm)
+	var ds := _label("", 14, Color(0.84, 0.8, 0.74))
+	ds.name = "cdesc"
+	ds.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ds.custom_minimum_size = Vector2(380, 0)
+	lv.add_child(ds)
+	var stl := _label("", 13, Color(0.78, 0.7, 0.55))
+	stl.name = "cstats"
+	lv.add_child(stl)
+	# middle: the four skills in the action bar's sockets
+	var mv := VBoxContainer.new()
+	mv.custom_minimum_size = Vector2(300, 0)
+	mv.add_theme_constant_override("separation", 6)
+	hb.add_child(mv)
+	mv.add_child(_label("Skills", 15, Color(0.8, 0.72, 0.58), true))
+	var grid := GridContainer.new()
+	grid.name = "cskills"
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 14)
+	grid.add_theme_constant_override("v_separation", 8)
+	mv.add_child(grid)
+	# right: the name and Play
+	var rv := VBoxContainer.new()
+	rv.custom_minimum_size = Vector2(250, 0)
+	rv.alignment = BoxContainer.ALIGNMENT_CENTER
+	rv.add_theme_constant_override("separation", 10)
+	hb.add_child(rv)
+	rv.add_child(_label("Name", 14, Color(0.8, 0.72, 0.58)))
 	name_edit = LineEdit.new()
 	name_edit.max_length = 18
-	name_edit.custom_minimum_size = Vector2(260, 40)
+	name_edit.custom_minimum_size = Vector2(250, 36)
 	name_edit.placeholder_text = "a name for your hero"
-	nrow.add_child(name_edit)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 18)
-	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vb.add_child(row)
-	var accents := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1), "warlock": Color(0.45, 1.0, 0.35), "archer": Archer.HUNTER}
-	for c in ["knight", "wraith", "demon", "warlock", "archer"]:
-		var d: Dictionary = Data.CLASSES[c]
-		var card := PanelContainer.new()
-		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card.add_theme_stylebox_override("panel", _box(Color(0.06, 0.05, 0.05, 0.96), accents[c], 2, 8, 10))
-		row.add_child(card)
-		var cv := VBoxContainer.new()
-		cv.add_theme_constant_override("separation", 10)
-		card.add_child(cv)
-		var nm := _label(d["name"], 30, accents[c], true)
-		nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		cv.add_child(nm)
-		var gl := HBoxContainer.new()
-		gl.alignment = BoxContainer.ALIGNMENT_CENTER
-		gl.add_theme_constant_override("separation", 6)
-		cv.add_child(gl)
-		for sk in Data.skills_for(c):
-			var g := SkillGlyph.new()
-			g.id = sk["id"]
-			g.custom_minimum_size = Vector2(48, 48)
-			gl.add_child(g)
-		var ds := _label(d["desc"], 15, Color(0.84, 0.8, 0.74))
-		ds.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		ds.custom_minimum_size = Vector2(300, 0)
-		cv.add_child(ds)
-		var names := []
-		for sk in Data.skills_for(c):
-			names.append(sk["name"])
-		var sl := _label("  ·  ".join(names), 13, Color(0.6, 0.7, 0.85))
-		sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		cv.add_child(sl)
-		var at := _label("Str %d   Dex %d   Vit %d   Energy %d" % [d["str"], d["dex"], d["vit"], d["ene"]], 13, Color(0.7, 0.66, 0.58))
-		cv.add_child(at)
-		var go := Button.new()
-		go.text = "Play as " + d["name"]
-		go.custom_minimum_size = Vector2(0, 48)
-		var cls_id: String = c
-		go.pressed.connect(func():
-			class_panel.visible = false
-			game.start_game(false, cls_id, "", name_edit.text))
-		cv.add_child(go)
-	var back := Button.new()
-	back.text = "Back"
-	back.custom_minimum_size = Vector2(160, 40)
-	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	back.pressed.connect(func(): class_panel.visible = false)
-	vb.add_child(back)
+	var le := StyleBoxFlat.new()
+	le.bg_color = Color(0.05, 0.045, 0.04, 0.95)
+	le.border_color = Color(0.55, 0.43, 0.24)
+	le.set_border_width_all(1)
+	le.set_corner_radius_all(3)
+	le.content_margin_left = 10
+	name_edit.add_theme_stylebox_override("normal", le)
+	var lef := le.duplicate() as StyleBoxFlat
+	lef.border_color = GOLD
+	name_edit.add_theme_stylebox_override("focus", lef)
+	rv.add_child(name_edit)
+	var go := _iron_button("Play", 250, 46, 18)
+	go.name = "cplay"
+	go.pressed.connect(func():
+		class_panel.visible = false
+		_close_class_stage()
+		game.start_game(false, _class_sel, "", name_edit.text))
+	rv.add_child(go)
+	var back := _iron_button("Back", 250, 34, 14)
+	back.pressed.connect(func():
+		Sfx.play("click")
+		class_panel.visible = false
+		_close_class_stage())
+	rv.add_child(back)
+	_show_class("knight")
+
+## Fills the info panel for a class (the chosen one, or the one under the mouse while it's there).
+func _show_class(c: String) -> void:
+	var d: Dictionary = Data.CLASSES[c]
+	var acc: Color = ClassStage.ACCENTS[c]
+	var nm := class_info.find_child("cname", true, false) as Label
+	nm.text = str(d["name"])
+	nm.add_theme_color_override("font_color", acc)
+	(class_info.find_child("cdesc", true, false) as Label).text = str(d["desc"])
+	(class_info.find_child("cstats", true, false) as Label).text = "Strength %d   Dexterity %d   Vitality %d   Energy %d" % [d["str"], d["dex"], d["vit"], d["ene"]]
+	var grid := class_info.find_child("cskills", true, false) as GridContainer
+	for ch in grid.get_children():
+		ch.queue_free()
+	for sk in Data.skills_for(c):
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var sock := Panel.new()
+		sock.custom_minimum_size = Vector2(46, 46)
+		var sb := StyleBoxTexture.new()
+		if _socket_tex == null:
+			_socket_tex = _scaled_tex(BAR_TEX["slot"], 0.3)
+		sb.texture = _socket_tex
+		for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
+			sb.set_texture_margin(side, 9)
+		sock.add_theme_stylebox_override("panel", sb)
+		var g := SkillGlyph.new()
+		g.id = sk["id"]
+		g.position = Vector2(5, 5)
+		g.size = Vector2(36, 36)
+		g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		sock.add_child(g)
+		sock.tooltip_text = str(sk["desc"])
+		row.add_child(sock)
+		var l := _label(str(sk["name"]), 13, Color(0.86, 0.82, 0.74))
+		l.custom_minimum_size = Vector2(96, 0)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.add_child(l)
+		grid.add_child(row)
+	(class_info.find_child("cplay", true, false) as Button).text = "Play as " + str(d["name"])
+	for k in class_plates:
+		var p: Label = class_plates[k]
+		p.add_theme_color_override("font_color", ClassStage.ACCENTS[k] if k == c else Color(0.75, 0.7, 0.62))
+
+func _open_class_stage() -> void:
+	if class_stage != null:
+		return
+	var holder := class_panel.find_child("stage_holder", true, false) as Control
+	class_stage = ClassStage.new()
+	class_stage.set_anchors_preset(Control.PRESET_FULL_RECT)
+	holder.add_child(class_stage)
+	class_stage.setup(game)
+	class_stage.picked.connect(func(c: String):
+		_class_sel = c
+		_show_class(c))
+	class_stage.hovering.connect(func(c: String): _show_class(c if c != "" else _class_sel))
+	class_plates.clear()
+	for c in ClassStage.CLASSES:
+		var p := _label(str(Data.CLASSES[c]["name"]), 17, Color(0.75, 0.7, 0.62), true)
+		p.add_theme_constant_override("outline_size", 6)
+		p.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		p.size = Vector2(160, 26)
+		p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(p)
+		class_plates[c] = p
+	class_stage.choose(_class_sel)
+	_show_class(_class_sel)
+
+func _close_class_stage() -> void:
+	if class_stage != null:
+		class_stage.queue_free()
+		class_stage = null
+	for c in class_plates:
+		(class_plates[c] as Label).queue_free()
+	class_plates.clear()
 
 func open_class_picker() -> void:
 	Sfx.play("click")
 	chars_panel.visible = false
 	name_edit.text = ""
 	class_panel.visible = true
+	_open_class_stage()
 
 func show_title() -> void:
 	title_panel.visible = true
 	if class_panel:
 		class_panel.visible = false
+		_close_class_stage()
 	if chars_panel:
 		chars_panel.visible = false
 	var chars: Array = game.list_characters()
@@ -3481,6 +3608,11 @@ func refresh() -> void:
 func _process(delta: float) -> void:
 	_update_drag(delta)
 	_walked_off()
+	if class_stage != null and class_stage.is_visible_in_tree():
+		# the nameplates sit just under each hero's feet
+		for c in class_plates:
+			var p: Label = class_plates[c]
+			p.position = class_stage.feet_at(c) + Vector2(-80, 10)
 	if char_panel and char_panel.visible and hero:
 		_sheet_camera(delta)
 		if sheet_points.visible:
