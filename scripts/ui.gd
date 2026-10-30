@@ -45,6 +45,7 @@ var skill_hb: HBoxContainer
 var class_panel: Control
 ## Title screen: the saved characters (play / delete), and the new character's name.
 var chars_panel: Control
+var chars_sub: Label
 var chars_list: VBoxContainer
 var name_edit: LineEdit
 var belt_slots: Array = []
@@ -3025,10 +3026,15 @@ func _build_title() -> void:
 	chb.pressed.connect(func(): open_characters())
 	vb.add_child(chb)
 	var ng := Button.new()
+	ng.name = "newchar"
 	ng.text = "New Character"
 	ng.custom_minimum_size = Vector2(0, 46)
 	ng.pressed.connect(func(): open_class_picker())
 	vb.add_child(ng)
+	var slots := _label("", 14, Color(0.7, 0.66, 0.58))
+	slots.name = "slots"
+	slots.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(slots)
 	var coop := HBoxContainer.new()
 	coop.add_theme_constant_override("separation", 12)
 	vb.add_child(coop)
@@ -3365,7 +3371,7 @@ func _build_class_picker() -> void:
 	var rv := VBoxContainer.new()
 	rv.custom_minimum_size = Vector2(250, 0)
 	rv.alignment = BoxContainer.ALIGNMENT_CENTER
-	rv.add_theme_constant_override("separation", 10)
+	rv.add_theme_constant_override("separation", 5)
 	hb.add_child(rv)
 	rv.add_child(_label("Name", 14, Color(0.8, 0.72, 0.58)))
 	name_edit = LineEdit.new()
@@ -3383,6 +3389,11 @@ func _build_class_picker() -> void:
 	lef.border_color = GOLD
 	name_edit.add_theme_stylebox_override("focus", lef)
 	rv.add_child(name_edit)
+	var note := _label("", 12, Color(0.7, 0.66, 0.58))
+	note.name = "slotnote"
+	note.custom_minimum_size = Vector2(250, 0)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	rv.add_child(note)
 	var go := _iron_button("Play", 250, 46, 18)
 	go.name = "cplay"
 	go.pressed.connect(func():
@@ -3476,6 +3487,9 @@ func open_class_picker() -> void:
 	Sfx.play("click")
 	chars_panel.visible = false
 	name_edit.text = ""
+	var n: int = game.list_characters().size()
+	(class_panel.find_child("slotnote", true, false) as Label).text = "" if n == 0 \
+		else "A new save. Your other %s kept." % ("character is" if n == 1 else "%d are" % n)
 	class_panel.visible = true
 	_open_class_stage()
 
@@ -3490,8 +3504,26 @@ func show_title() -> void:
 	var cont := title_panel.find_child("continue", true, false) as Button
 	cont.disabled = chars.is_empty()
 	cont.text = "Continue" if chars.is_empty() else "Continue  ·  " + _char_line(chars[0])
-	(title_panel.find_child("characters", true, false) as Button).visible = chars.size() > 1
+	var chb := title_panel.find_child("characters", true, false) as Button
+	chb.visible = not chars.is_empty()
+	chb.text = "Characters  ·  %d saved" % chars.size()
+	(title_panel.find_child("newchar", true, false) as Button).text = "New Character" if chars.is_empty() else "New Character  ·  new save"
+	(title_panel.find_child("slots", true, false) as Label).text = "" if chars.is_empty() \
+		else "Every character has its own save. Making a new one never overwrites the others."
 	_set_hud(false)
+
+## "2 hours ago" from a save's `played` (unix ms); "" when unknown.
+func _ago(ms: int) -> String:
+	if ms <= 0:
+		return ""
+	var s := int(Time.get_unix_time_from_system()) - ms / 1000
+	if s < 60:
+		return "just now"
+	for u in [[86400, "day"], [3600, "hour"], [60, "minute"]]:
+		if s >= int(u[0]):
+			var k := s / int(u[0])
+			return "%d %s%s ago" % [k, u[1], "" if k == 1 else "s"]
+	return ""
 
 func _char_line(c: Dictionary) -> String:
 	var nm: String = c["name"] if str(c["name"]) != "" else "Unnamed"
@@ -3521,6 +3553,9 @@ func _build_characters() -> void:
 	var t := _label("Characters", 40, GOLD, true)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(t)
+	chars_sub = _label("", 15, Color(0.75, 0.7, 0.62))
+	chars_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(chars_sub)
 	var sc := ScrollContainer.new()
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -3548,8 +3583,11 @@ func open_characters() -> void:
 	Sfx.play("click")
 	for c in chars_list.get_children():
 		c.queue_free()
-	var accents := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1), "warlock": Color(0.45, 1.0, 0.35)}
-	for c in game.list_characters():
+	var accents := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1), "warlock": Color(0.45, 1.0, 0.35), "archer": Color(0.55, 0.85, 0.45)}
+	var all: Array = game.list_characters()
+	chars_sub.text = "%d saved, each with its own save. Play any of them, or make a new one." % all.size()
+	var first := true
+	for c in all:
 		var card := PanelContainer.new()
 		card.add_theme_stylebox_override("panel", _box(Color(0.06, 0.05, 0.05, 0.96), accents.get(c["cls"], GOLD), 2, 6, 10))
 		chars_list.add_child(card)
@@ -3562,6 +3600,9 @@ func open_characters() -> void:
 		info.add_child(_label(str(c["name"]) if str(c["name"]) != "" else "Unnamed", 22, accents.get(c["cls"], GOLD), true))
 		var run: String = Data.RUNS[int(c["difficulty"])]["name"] if int(c["difficulty"]) < Data.RUNS.size() else ""
 		info.add_child(_label("Level %d %s  ·  %s" % [int(c["level"]), Data.CLASSES.get(c["cls"], {"name": "Knight"})["name"], run], 14, Color(0.75, 0.7, 0.62)))
+		var when := _ago(int(c["played"]))
+		info.add_child(_label(("Last played  ·  " if first else "Played ") + when if when != "" else "", 12, GOLD if first else Color(0.6, 0.57, 0.5)))
+		first = false
 		var id: String = c["id"]
 		var play := Button.new()
 		play.text = "Play"
