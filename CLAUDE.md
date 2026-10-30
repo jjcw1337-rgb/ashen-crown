@@ -109,9 +109,19 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   first enemies on it), Spirit Beast (`spirit_beast.gd`: the lion's body, ghostly, hunting for 30 s, plus the 12 s
   battle buff). Arrows, volleys, snares and beasts live on the hero (`Hero.arrows` etc.), `Archer.update`/`clear`.
   Talents: Marksman, Warden, Beastmaster (`Talents.TREES["archer"]`; specials arrow_split, snare_dur, snare_max,
-  snare_wide, volley_size, beast_two). Body: the knight's procedural body dressed as a hunter (`Archer.build_body`)
-  until the Meshy model; talent icons still to paint (`tools/talent_icons.py` has the archer prompts).
-  `tools/archer_test.gd` checks it.
+  snare_wide, volley_size, beast_two). Body: the ranger (`assets/models/archer_ranger.glb`, `Archer.build_body`): the Meshy
+  northern ranger (wolf-fur cowl, dark leather, quiver) on the knight's mocap system (`Knight.build_mocap(glb, opts)`,
+  `knight_mocap_rig.gd`): Meshy library clips for idle/walk/run and, with the bow out, the aimed stand and walk
+  (`combat_idle`, `walk_aim`); the bow attack, Piercing Shot and Volley play the `shoot` clip whole-body (`Archer.SHOT`:
+  its draw squeezed in before Anim's release frame, the body turned side-on, `yaw`); Snare Trap and Spirit Beast are
+  the game's cast pose over the upper body. He holds the equipped bow in his LEFT hand (`J["grip_bow"]`,
+  `Archer.BOW_HOLD` per bow kind, `Hero._weapon_hand`); bows are drawn by `Models.enemy_weapon` (`item_model`
+  had none). Rebuild: `meshy.py rig`/`animate` (clip ids in the commit), then `blender -b --python
+  tools/blender/archer/prep_ranger_mocap.py -- rigged.glb out.glb 60000 clips_a.glb clips_b.glb` (merges and renames
+  the clips, cuts away the bow Meshy fused into his right hand, `bow_select.py`). Without the glb: the knight's
+  procedural body dressed as a hunter (`Archer.build_placeholder`). Preview: `tools/mocap_knight_clip.gd -- outdir
+  run|attack 34|game|side frames archer [longbow]`. Talent icons still to paint (`tools/talent_icons.py`).
+  `tools/archer_test.gd` checks it (run it with `--fixed-fps 60`; it counts frames).
 - **Adding a class**: add it to `Data.CLASSES`, give it four `SKILLS` entries with its `cls`, build its look the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep working), handle its skill ids in `Hero.use_skill` / `_impact`, and add glyphs in `ui.gd` `SkillGlyph`.
 - **Underworld** (Demon's Phase): `game.set_underworld()` blends a screen-space grade (`DemonFx.UNDERWORLD_SHADER`), the `under_amt` global (terrain veins and rune rings in `mats.gd`), environment tweaks, rising souls and crimson monster outlines (`Enemy.set_soul_lit`). Monsters ignore a phased hero (`hero.phased`).
 - **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `_update_drain`, and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. Skill effects are local only (partners see the cast pose, not the beam), like every other class.

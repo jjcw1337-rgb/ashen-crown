@@ -20,8 +20,39 @@ const SNARE_R := 2.2
 const BEAST_TIME := 30.0
 const HUNTER := Color(0.62, 0.85, 0.75)     # the class's colour: pale spirit-green
 
-## The placeholder body: the knight's skeleton and procedural body in a hunter's dark green and leather.
+## The ranger (assets/models/archer_ranger.glb, tools/blender/archer/prep_ranger_mocap.py): the Meshy northern ranger
+## (wolf-fur cowl, dark leather, quiver on his back) on the knight's mocap system (Knight.build_mocap,
+## knight_mocap_rig.gd): motion capture for idle, walk and run (bow raised and aimed when it's out: "combat_idle",
+## "walk_aim"), the shot as a whole-body clip (`SHOT`: nock, draw, loose on the attack's release frame, follow
+## through), his casts (Snare Trap, Spirit Beast) as the game's own moves laid over the upper body. The bow is the
+## game's (whatever is equipped), held in his LEFT hand like the clips (J "grip_bow", `BOW_HOLD`).
+const RANGER_GLB := "res://assets/models/archer_ranger.glb"
+const SHOT := {"style": "bow", "clip": "shoot", "t0": 1.85, "release": 4.2, "t1": 4.75, "yaw": -90.0, "idle_side": true}
+## the bow in his left fist, per bow kind: [position, rotation in degrees] in the hand follower's frame
+## (solved so the bow stands upright, its back toward the mark, at the full draw of the shot clip)
+## and the grip's spot on the bow model (the short bow's wood bulges 0.18 out from its string; the longbow is centred)
+const BOW_HOLD := {"bow": [Vector3(0.0, -0.06, 0.0), Vector3(-4, -162, -66), Vector3(-0.18, 0, 0)],
+	"longbow": [Vector3(0.0, -0.06, 0.0), Vector3(-66, 98, -80), Vector3.ZERO]}
+
+static func ranger_ok() -> bool:
+	return ResourceLoader.exists(RANGER_GLB)
+
 static func build_body() -> Node3D:
+	if ranger_ok():
+		var r := Knight.build_mocap(RANGER_GLB, {
+			"relaxed": ["idle", 0.0, "walk", 0.5, "run", 3.86],
+			"combat": ["combat_idle", 0.0, "walk_aim", 0.82, "run", 3.86],
+			"shot": SHOT, "meta": "ranger"})
+		var J: Dictionary = r.get_meta("j")
+		J["grip_bow"] = Models.N(J["at_hand_l"], "grip_bow")
+		J["grip_bow_at"] = Models.N(J["grip_bow"], "grip_bow_at")   # the bow hangs from here, by its grip
+		r.set_meta("archer", true)
+		r.remove_meta("knight")
+		return r
+	return build_placeholder()
+
+## The placeholder body (without the glb): the knight's skeleton and procedural body in a hunter's green and leather.
+static func build_placeholder() -> Node3D:
 	var g := Knight.default_gear()
 	g["cloth"] = Color(0.13, 0.17, 0.11)
 	g["cape"] = Color(0.09, 0.1, 0.09)

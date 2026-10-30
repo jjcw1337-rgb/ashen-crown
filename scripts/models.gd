@@ -396,7 +396,11 @@ static func item_model(item: Dictionary) -> Node3D:
 	var kind: String = base["kind"]
 	var sh: Dictionary = base.get("shape", {})
 	match base["slot"]:
-		"weapon": return weapon(kind, sh, p)
+		"weapon":
+			# bows (the archer's): the bow geometry the skeleton archers carry (weapon() has no bow of its own)
+			if kind in ["bow", "longbow"]:
+				return enemy_weapon(kind)
+			return weapon(kind, sh, p)
 		"shield": return shield(kind, sh, p)
 		"helm": return helm(kind, p)
 		"armor": return armor_item(kind, p)

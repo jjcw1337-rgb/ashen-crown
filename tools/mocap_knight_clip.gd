@@ -49,17 +49,30 @@ func _run() -> void:
 		sm.albedo_color = Color(0.4, 0.42, 0.33)
 		s.material_override = sm
 		root3.add_child(s)
-	var r: Node3D = Knight.build_mocap()
+	var archer := args.has("archer")
+	# archer.gd uses the Sfx autoload: load it at run time (a static reference compiles it before Sfx exists)
+	var AR: GDScript = load("res://scripts/archer.gd") if archer else null
+	var r: Node3D = AR.call("build_body") if archer else Knight.build_mocap()
 	r.set_meta("pers", "hero")
 	r.set_meta("gait", "knight")
 	r.set("fixed_dt", 1.0 / 30.0)
 	root3.add_child(r)
 	var J: Dictionary = r.get_meta("j")
-	var sword := Models.item_model({"base": "short_sword", "rarity": 0})
-	(J["grip_r"] as Node3D).add_child(sword)
-	var sh := Models.item_model({"base": "kite_shield", "rarity": 0})
-	(J["mount_l"] as Node3D).add_child(sh)
-	sh.position = Vector3(-0.03, 0, 0)
+	var sword := Models.item_model({"base": "long_bow" if args.has("longbow") else "short_bow", "rarity": 0}) if archer else Models.item_model({"base": "short_sword", "rarity": 0})
+	if archer:
+		var kind: String = Data.BASES["long_bow" if args.has("longbow") else "short_bow"]["kind"]
+		var g: Node3D = J["grip_bow"]
+		var hold: Dictionary = AR.get("BOW_HOLD")
+		g.position = hold[kind][0]
+		g.rotation_degrees = hold[kind][1]
+		(J["grip_bow_at"] as Node3D).position = hold[kind][2]
+		(J["grip_bow_at"] as Node3D).add_child(sword)
+	else:
+		(J["grip_r"] as Node3D).add_child(sword)
+	if not archer:
+		var sh := Models.item_model({"base": "kite_shield", "rarity": 0})
+		(J["mount_l"] as Node3D).add_child(sh)
+		sh.position = Vector3(-0.03, 0, 0)
 	var cam := Camera3D.new()
 	cam.fov = 34
 	root3.add_child(cam)
@@ -85,7 +98,11 @@ func _run() -> void:
 			"attack":
 				var k := fmod(T, 2.1)
 				var idx := int(T / 2.1) % 3
-				if k < 0.65:
+				if archer:
+					if k < 0.8:
+						st["atk"] = k / 0.8
+						st["style"] = "bow"
+				elif k < 0.65:
 					st["atk"] = k / 0.65
 					st["style"] = ["swipe1", "swipe2", "swipe3"][idx]
 			"block":

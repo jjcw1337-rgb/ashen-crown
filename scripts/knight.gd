@@ -209,7 +209,10 @@ static func mocap_ok() -> bool:
 ## humanoid skeleton playing motion capture, with the game's own moves (the combo, skills, the block)
 ## laid over it. The proxies J are the armoured layout's, so Anim poses him like every other body;
 ## the grips, the shield mount, the head and the chest follow the skeleton's real bones.
-static func build_mocap() -> Node3D:
+## opts (other mocap bodies on the same 24-bone Meshy skeleton, e.g. the archer's ranger):
+##   "relaxed"/"combat": [clip, ground speed, ...] for the two blend spaces; "shot": a clip that plays whole-body
+##   for an attack style (KnightMocapRig.shot); "meta": the rig's "meshy" meta.
+static func build_mocap(glb := MOCAP_GLB, opts := {}) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Rig"
 	root.set_script(load("res://scripts/knight_mocap_rig.gd"))
@@ -229,14 +232,14 @@ static func build_mocap() -> Node3D:
 		(J[par] as Node3D if par != "" else px).add_child(nd)
 		J[n] = nd
 	J["hips_y"] = (ARMORED_LAYOUT["hips"][1] as Vector3).y
-	var ps: PackedScene = load(MOCAP_GLB)
+	var ps: PackedScene = load(glb)
 	var body: Node3D = ps.instantiate()
 	body.name = "Body"
 	body.rotation.y = PI          # Meshy's model faces +z; the game's bodies face -z
 	root.add_child(body)
 	var skel: Skeleton3D = body.find_children("*", "Skeleton3D", true, false)[0]
 	var ap: AnimationPlayer = body.find_children("*", "AnimationPlayer", true, false)[0]
-	for c in ["idle", "combat_idle", "walk", "walk_fight", "run", "run_fast", "sprint", "walk_back", "run_fwd_left", "run_fwd_right"]:
+	for c in ["idle", "combat_idle", "walk", "walk_fight", "walk_aim", "run", "run_fast", "sprint", "walk_back", "run_fwd_left", "run_fwd_right"]:
 		if ap.has_animation(c):
 			ap.get_animation(c).loop_mode = Animation.LOOP_LINEAR
 	# the bones the gear and effects ride (followers, set every frame from the skeleton)
@@ -260,8 +263,12 @@ static func build_mocap() -> Node3D:
 	tree.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	var bt := AnimationNodeBlendTree.new()
 	# one run clip played faster or slower beats a blend of two runs with different cycles (the feet mush)
-	var relaxed := _speed_space(["idle", 0.0, "walk", 0.55, "run", 4.25])
-	var combat := _speed_space(["combat_idle", 0.0, "walk_fight", 0.6, "run", 4.25])
+	var rel_pts: Array = opts.get("relaxed", ["idle", 0.0, "walk", 0.55, "run", 4.25])
+	var com_pts: Array = opts.get("combat", ["combat_idle", 0.0, "walk_fight", 0.6, "run", 4.25])
+	root.set("rel_pts", range(1, rel_pts.size(), 2).map(func(i: int) -> float: return float(rel_pts[i])))
+	root.set("com_pts", range(1, com_pts.size(), 2).map(func(i: int) -> float: return float(com_pts[i])))
+	var relaxed := _speed_space(rel_pts)
+	var combat := _speed_space(com_pts)
 	var dead := AnimationNodeAnimation.new()
 	dead.animation = "death"
 	bt.add_node("relaxed", relaxed, Vector2(0, 0))
@@ -279,7 +286,20 @@ static func build_mocap() -> Node3D:
 	bt.connect_node("speed", 0, "mix")
 	bt.connect_node("state", 0, "speed")
 	bt.connect_node("state", 1, "death")
-	bt.connect_node("output", 0, "state")
+	if opts.has("shot") and ap.has_animation(str((opts["shot"] as Dictionary)["clip"])):
+		# a whole-body clip for one attack style (the archer's shot): sought to the attack's progress each frame
+		var shot := AnimationNodeAnimation.new()
+		shot.animation = (opts["shot"] as Dictionary)["clip"]
+		bt.add_node("shot", shot, Vector2(650, 350))
+		bt.add_node("shot_seek", AnimationNodeTimeSeek.new(), Vector2(800, 350))
+		bt.add_node("shot_mix", AnimationNodeBlend2.new(), Vector2(900, 150))
+		bt.connect_node("shot_seek", 0, "shot")
+		bt.connect_node("shot_mix", 0, "state")
+		bt.connect_node("shot_mix", 1, "shot_seek")
+		bt.connect_node("output", 0, "shot_mix")
+		root.set("shot", opts["shot"])
+	else:
+		bt.connect_node("output", 0, "state")
 	tree.tree_root = bt
 	tree.active = true
 	root.set("tree", tree)
@@ -301,12 +321,12 @@ static func build_mocap() -> Node3D:
 	root.set("hair_rest", hr)
 	root.set("hair_key", hk)
 	root.set("hair_conj", hc)
-	root.set("hair_run", 0.3)    # he leans into the run already; at a sprint the cloak streams back, not up
+	root.set("hair_run", float(opts.get("hair_run", 0.3)))    # he leans into the run already; at a sprint the cloak streams back, not up
 	root.set("head_bone", skel.find_bone("Head"))
 	root.set_meta("j", J)
 	root.set_meta("h", 1.0)
 	root.set_meta("knight", true)
-	root.set_meta("meshy", "mocap")
+	root.set_meta("meshy", str(opts.get("meta", "mocap")))
 	root.set_meta("elbow_out", 0.4)
 	return root
 

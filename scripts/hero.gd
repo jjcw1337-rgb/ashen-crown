@@ -581,7 +581,7 @@ func refresh_gear() -> void:
 	var w = equipment.get("weapon")
 	if w != null:
 		weapon_node = Models.item_model(w)
-		(J["grip_r"] as Node3D).add_child(weapon_node)
+		_weapon_hand(J).add_child(weapon_node)
 		# the new model starts in the hand: force _carry_weapon to place it (and the body's hilt) next frame
 		carry.configure(cls)
 		_carry_in_hand = not (carry.t >= float(carry.p["grab"]))
@@ -672,7 +672,7 @@ func _carry_weapon(delta: float) -> void:
 	var J: Dictionary = rig.get_meta("j")
 	if in_hand != _carry_in_hand:
 		_carry_in_hand = in_hand
-		var dest: Node3D = J["grip_r"] if in_hand else _weapon_store(J, store)
+		var dest: Node3D = _weapon_hand(J) if in_hand else _weapon_store(J, store)
 		if dest != null and weapon_node.get_parent() != dest:
 			weapon_node.reparent(dest, true)
 		_set_hilt(not in_hand and store == "hilt")
@@ -681,6 +681,20 @@ func _carry_weapon(delta: float) -> void:
 	# ease into the hold (identity in the hand; the back mount's own rest)
 	var k := 1.0 - exp(-delta * 16.0)
 	weapon_node.transform = weapon_node.transform.interpolate_with(Transform3D.IDENTITY, k)
+
+## The hand that holds the weapon: the right, except a bow on a body that holds it in the left (the ranger),
+## turned for the bow's kind (Archer.BOW_HOLD).
+func _weapon_hand(J: Dictionary) -> Node3D:
+	var w = equipment.get("weapon")
+	if J.has("grip_bow") and w != null and has_bow():
+		var g: Node3D = J["grip_bow"]
+		var hold: Array = Archer.BOW_HOLD.get(Data.BASES[w["base"]]["kind"], Archer.BOW_HOLD["bow"])
+		g.position = hold[0]
+		g.rotation_degrees = hold[1]
+		var at: Node3D = J["grip_bow_at"]
+		at.position = hold[2]
+		return at
+	return J["grip_r"]
 
 ## The storage node on the rig for "back" (made on first use: across the back, hilt over the right
 ## shoulder); "hilt" has none (the weapon model just hides).
