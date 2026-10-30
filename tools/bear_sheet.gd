@@ -4,6 +4,9 @@ extends SceneTree
 const CELL := 300
 
 func _initialize():
+	# bear.gd reaches the Sfx autoload: load it at run time, once the tree (and its autoloads) is up
+	await process_frame
+	var Bear = load("res://scripts/bear.gd")
 	var a := OS.get_cmdline_user_args()
 	var out: String = a[0]
 	var view: String = a[1] if a.size() > 1 else "side"
@@ -35,7 +38,7 @@ func _initialize():
 	root3.add_child(cam)
 	var cpos := Vector3(7.5, 1.6, 0.0) if view == "side" else Vector3(5.2, 3.0, -5.2)
 	cam.transform = Transform3D(Basis(), cpos).looking_at(Vector3(0, 1.0, 0))
-	var rig := Bear.build()
+	var rig: Node3D = Bear.build()
 	root3.add_child(rig)
 	var rows := [["walk", [0.0, 0.17, 0.33, 0.5, 0.67, 0.83]], ["bear_roar", [0.1, 0.22, 0.3, 0.45, 0.7, 0.88]], ["bear_maul", [0.15, 0.3, 0.4, 0.48, 0.6, 0.85]]]
 	var sheet := Image.create(CELL * 6, CELL * rows.size(), false, Image.FORMAT_RGBA8)

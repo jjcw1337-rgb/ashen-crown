@@ -125,8 +125,8 @@ static func pose(rig: Node3D, st: Dictionary, height: float) -> void:
 		# shared over the chest, neck and head so no one joint folds the hide
 		# (he roars up and out over you rather than levelling his head, which would fold the hide on his nape)
 		chest_x = 0.16 * up
-		neck_x = lerpf(neck_x, 0.18 + 0.12 * roar, up)
-		head_x = 0.2 * up - 0.12 * roar + sin(t * 9.0) * 0.05 * roar
+		neck_x = lerpf(neck_x, 0.1 + 0.07 * roar, up)
+		head_x = 0.11 * up - 0.08 * roar + sin(t * 9.0) * 0.04 * roar
 		neck_y = lerpf(neck_y, sin(t * 2.5) * 0.12 * roar, up)
 		jaw = lerpf(jaw, 0.75 + sin(t * 11.0) * 0.06, roar)
 		chest_x += sin(t * 7.5) * 0.06 * roar                    # the chest heaving
