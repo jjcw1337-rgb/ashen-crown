@@ -195,9 +195,15 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   gives up and goes home, ignoring you for 8 s unless hit (`f_chase`, `f_calm`). `tools/feral_test.gd` checks it.
 - **The Hollow Sloths** (`sloth.gd`, Act I, `World._sloths`): three elemental giants, `Data.ENEMIES` `sloth_fire`
   (Cinderhide), `sloth_ice` (Rimeclaw), `sloth_storm` (Thundermaw), each with `"element"` (fire/cold/lightning),
-  `"variant"` (its model) and `"drop"` (its material). Brain: `Sloth.new(enemy)` (Enemy's 50 m cut-off skips it); it
-  walks on all fours, sniffs, rises to look about; a hero in sight (15 m, more while standing) or a blow: it rises,
-  stares, roars and hunts, its run building from 2.2 to 5.6 m/s. Skills (each with its element, `Sloth._land`): the
+  `"variant"` (its model) and `"drop"` (its material). Each lives in its own lair (`sloth_lair.gd`, `SlothLair`:
+  Cinder Hollow, Rimefrost Glade, Stormcall Ring), a clearing `SlothLair.pick` places 20-32 m off the road on the
+  side with room, far apart, before the trees (which, grass and ferns keep out: `World._in_lair`); dressed with a
+  Decal of procedural ground (lava cracks, frost, violet fissures), Meshy props `assets/models/lairs/<kind>.glb`
+  (modelled 1 m tall, scaled; solid), a light, its element's particles, and bolts striking the storm's rune stones.
+  Brain: `Sloth.new(enemy)` (Enemy's 50 m cut-off skips it); it walks on all fours, sniffs, rises to look about,
+  only inside `SlothLair.TERRITORY` of its home; a hero across `SlothLair.BOUNDARY` or a blow wakes it: it rises,
+  stares, roars and hunts (its run building from 2.2 to 5.6 m/s) the hero who struck it last (`on_hit`, 8 s), else
+  the closest, follows anywhere and never gives up or flees; its prey dead, it walks home (`"home"`). Skills (each with its element, `Sloth._land`): the
   Rending Sweep (arc in front; `take_hit` kind `"sweep"` throws the hero back, `Hero.shove`; cold: `"chill"`, slowed,
   `Hero.chill_t`; fire leaves burning ground; lightning chains to heroes near the one struck), the Earthshaker slam
   (ring 5 m ahead; `"quake"` stuns, `Hero.daze_t`; cold `"freeze"`; fire leaves a ring of burning ground; lightning

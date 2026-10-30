@@ -244,6 +244,8 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 	if dead:
 		return 0.0
 	aggro = true
+	if sloth != null:
+		sloth.on_hit(from)
 	if game.test_onehit:
 		phys = maxf(phys, life * 10.0 + 1000000.0)   # testing switch (F8): any hit kills
 	var p := phys * 100.0 / (100.0 + armor * 0.6)

@@ -11,7 +11,10 @@ extends RefCounted
 ##   cold (Rimeclaw): the sweep chills (slows), the slam freezes you solid, the pounce bursts into ice shards;
 ##   lightning (Thundermaw): the sweep chains to the heroes nearby, the slam calls bolts down round it,
 ##   the pounce is a quicker lightning dash that shocks where it lands.
-## Each drops its own material ("drop"), and its model is hollow_sloth_<variant>.glb.
+## Each drops its own material ("drop"), and its model is hollow_sloth_<variant>.glb. Each lives in its own
+## lair (sloth_lair.gd) and wanders only there; cross the lair's edge or strike it and it targets you (the
+## hero who struck it last, else the closest), follows you anywhere and fights until one of you is dead,
+## then walks home.
 ##
 ## The body is posed in code every frame from the enemy's state, like the lion (lion.gd): a skeleton
 ## standing upright at rest (the Meshy A-pose), turned per bone about the model's own axes. Until the
@@ -29,10 +32,6 @@ const MODEL_SCALE := 1.4
 const STRIDE := 2.2
 const WALK := 2.2           # roaming pace (the hero walks at 4.8)
 const RUN := 5.6            # its charge: faster than a walk, slower than a sprint
-const FLEE := 6.2
-const SEE := 15.0           # how far it notices a hero (further when standing up looking about)
-const LOSE := 32.0          # beyond this, out of sight, for LOSE_T seconds: it gives up
-const LOSE_T := 5.0
 
 ## the timed moves: [seconds, the moment it lands (or -1)]
 const MOVES := {"sloth_rise": [1.0, -1.0], "sloth_look": [2.6, -1.0], "sloth_stare": [1.3, -1.0],
@@ -40,14 +39,14 @@ const MOVES := {"sloth_rise": [1.0, -1.0], "sloth_look": [2.6, -1.0], "sloth_sta
 	"sloth_sweep": [1.35, 0.47], "sloth_slam": [1.9, 0.6], "sloth_pounce": [1.25, 0.62]}
 
 var e: Enemy
-var state := "roam"         # roam, notice, hunt, flee, search
+var state := "roam"         # roam (its lair), hunt (until death), home (walking back after its prey fell)
 var goal := Vector3.ZERO
 var goal_t := 0.0
 var queue: Array = []       # the timed moves still to play in this state
 var move := ""              # the timed move playing (atk_style), "" when walking or running
 var chase_t := 0.0          # seconds into the hunt (the run builds up)
-var lost_t := 0.0
-var flees := 0
+var attacker: Node3D = null   # the hero who hit it last, and when
+var attacked_at := -99.0
 var sweep_cd := 0.0
 var slam_cd := 4.0
 var pounce_cd := 3.0
@@ -79,6 +78,14 @@ func update(delta: float, hero: Node3D, to: Vector3, dist: float, hero_gone: boo
 	slam_cd -= delta
 	pounce_cd -= delta
 	_tick_hazards(delta)
+	# its target: whoever hit it last (for a while), else the closest hero
+	var tgt := _target()
+	hero_gone = tgt == null
+	if tgt != null:
+		hero = tgt
+		to = hero.global_position - e.global_position
+		to.y = 0
+		dist = to.length()
 	if e.stun_t > 0.0:
 		e.stun_t -= delta
 		move = ""
@@ -89,56 +96,64 @@ func update(delta: float, hero: Node3D, to: Vector3, dist: float, hero_gone: boo
 		if e.atk_t < 0.0:
 			move = ""
 			queue.clear()
-		else:
+		elif hero != null:
 			return _play(delta, hero, dist)
 	if not queue.is_empty():
 		_start(queue.pop_front())
 		return Vector3.ZERO
-	var sees: bool = not hero_gone and dist < (SEE * (1.6 if e.atk_style == "sloth_look" else 1.0)) and e.game.world.los(e.global_position, hero.global_position)
+	# into its lair: past the boundary round its home
+	var inside: bool = not hero_gone and Vector2(hero.global_position.x - e.home.x, hero.global_position.z - e.home.z).length() < SlothLair.BOUNDARY
 	match state:
-		"roam":
-			if e.aggro or sees:
+		"roam", "home":
+			if e.aggro or inside:
 				_notice(e.aggro)
 				return Vector3.ZERO
+			if state == "home":
+				# back to its lair after its prey fell
+				var d := e.home - e.global_position
+				d.y = 0
+				if d.length() < 3.0:
+					state = "roam"
+					goal_t = 0.0
+				e.atk_style = "sloth_walk"
+				return e.go_to(delta, e.home, WALK)
 			return _roam(delta)
 		"hunt":
+			# it follows wherever you go and keeps on until one of you is dead
 			if hero_gone:
-				_give_up()
+				_go_home()
 				return Vector3.ZERO
-			# badly hurt: it turns and runs, twice in a fight (at half life, then a fifth)
-			if (flees == 0 and e.life < e.max_life * 0.5) or (flees == 1 and e.life < e.max_life * 0.2):
-				flees += 1
-				_flee(hero)
-				return Vector3.ZERO
-			if dist > LOSE or not sees:
-				lost_t += delta
-				if lost_t > LOSE_T:
-					_give_up()
-					return Vector3.ZERO
-			else:
-				lost_t = 0.0
 			return _hunt(delta, hero, to, dist)
-		"flee":
-			goal_t -= delta
-			e.life = minf(e.max_life, e.life + e.max_life * 0.012 * delta)
-			var d := goal - e.global_position
-			d.y = 0
-			if goal_t <= 0.0 or d.length() < 2.0:
-				# far enough: it rises to look back, and comes again if you followed
-				state = "search"
-				queue = ["sloth_rise", "sloth_look"]
-				return Vector3.ZERO
-			e.atk_style = "sloth_run"
-			return e.go_to(delta, goal, FLEE)
-		"search":
-			if sees:
-				_notice(true)
-				return Vector3.ZERO
-			_drop_down()
-			state = "roam"
-			e.aggro = false
-			goal_t = 0.0
 	return Vector3.ZERO
+
+## Whom it fights: the hero who hit it in the last 8 seconds, else the closest one (in the lair or, once
+## it's hunting, anywhere). null when no hero is there to fight.
+func _target() -> Node3D:
+	if attacker != null and is_instance_valid(attacker) and not attacker.dead and attacker.get("phased") != true and e.anim_time - attacked_at < 8.0:
+		return attacker
+	var best: Node3D = null
+	var bd := 1e9
+	for h in e.game.all_heroes():
+		if h.dead or h.get("phased") == true:
+			continue
+		var d: float = h.global_position.distance_to(e.global_position)
+		if d < bd:
+			bd = d
+			best = h
+	return best
+
+## A blow from a hero (Enemy.take_damage): it turns on whoever struck it.
+func on_hit(from: Vector3) -> void:
+	var best: Node3D = null
+	var bd := 4.0
+	for h in e.game.all_heroes():
+		var d: float = h.global_position.distance_to(from)
+		if not h.dead and d < bd:
+			bd = d
+			best = h
+	if best != null:
+		attacker = best
+		attacked_at = e.anim_time
 
 func _start(m: String) -> void:
 	if m == "":
@@ -278,25 +293,15 @@ func _notice(angry: bool) -> void:
 	state = "hunt"
 	e.aggro = true
 	chase_t = 0.0
-	lost_t = 0.0
 	var standing := e.atk_style in ["sloth_look", "sloth_stare", "sloth_roar", "sloth_rise"]
 	queue = ([] if standing else ["sloth_rise"]) + (["sloth_roar"] if angry else ["sloth_stare", "sloth_roar"]) + ["sloth_drop"]
 
-func _give_up() -> void:
-	state = "search"
+## Its prey fell (or left): back to its lair.
+func _go_home() -> void:
+	state = "home"
 	e.aggro = false
-	e.f_calm = 6.0
-	queue = ["sloth_rise", "sloth_look"]
-
-func _flee(hero: Node3D) -> void:
-	state = "flee"
-	var away := e.global_position - hero.global_position
-	away.y = 0
-	away = away.normalized() if away.length() > 0.1 else Vector3(1, 0, 0)
-	goal = _spot(e.global_position + away * 38.0, 10.0)
-	goal_t = 9.0
-	queue = ["sloth_roar"] if e.atk_style in ["sloth_stare", "sloth_look"] else []
-	e._fx("sloth_hurt")
+	attacker = null
+	_drop_down()
 
 ## Down onto all fours if it's standing.
 func _drop_down() -> void:
@@ -315,7 +320,7 @@ func _roam(delta: float) -> Vector3:
 	d.y = 0
 	if goal_t <= 0.0 or d.length() < 3.0:
 		goal = _far_goal()
-		goal_t = 70.0
+		goal_t = 20.0
 	if idle_t <= 0.0:
 		idle_t = _rng.randf_range(7.0, 16.0)
 		queue = ["sloth_sniff"] if _rng.randf() < 0.55 else ["sloth_rise", "sloth_look", "sloth_drop"]
@@ -358,22 +363,14 @@ func _hunt(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vector3:
 	e.atk_style = "sloth_run" if spd > WALK * 1.6 else "sloth_walk"
 	return e.go_to(delta, hero.global_position, spd)
 
-## A far free point to wander to: somewhere else on the moor, kept off the camp's doorstep.
+## A point to wander to inside its territory, round its lair.
 func _far_goal() -> Vector3:
-	var b: Rect2 = e.game.world.bounds.grow(-6.0)
-	for i in 30:
-		var p := Vector3(_rng.randf_range(b.position.x, b.end.x), 0, _rng.randf_range(b.position.y, b.end.y))
-		if p.distance_to(e.global_position) < 45.0 or Vector2(p.x, p.z).distance_to(Vector2(0, -6)) < 28.0:
-			continue
+	for i in 20:
+		var a := _rng.randf() * TAU
+		var p := e.home + Vector3(cos(a), 0, sin(a)) * _rng.randf_range(2.0, SlothLair.TERRITORY)
 		if not e.game.world.is_blocked(p.x, p.z):
 			return p
 	return e.home
-
-func _spot(p: Vector3, r: float) -> Vector3:
-	var b: Rect2 = e.game.world.bounds.grow(-4.0)
-	p.x = clampf(p.x, b.position.x, b.end.x)
-	p.z = clampf(p.z, b.position.y, b.end.y)
-	return e.game.world.free_spot_near(p, r)
 
 # ---------------------------------------------------------------- what everyone sees and hears
 
@@ -419,6 +416,7 @@ static func fx(en: Enemy, ev: String) -> void:
 		at.y = g.world.height_at(at.x, at.z)
 		Fx.telegraph(root, at, en.radius + 1.6, MOVES["sloth_pounce"][0] * MOVES["sloth_pounce"][1])
 		Sfx.play_at("growl", en.global_position, -2.0, 0.5)
+		_pounce_trail(en, el)
 		return
 	match ev:
 		"sloth_sweep_tele":
@@ -441,7 +439,7 @@ static func fx(en: Enemy, ev: String) -> void:
 				Fx.burst(root, p + Vector3(0, 5.5, 0), Color(0.08, 0.07, 0.06, 0.9), 9, 4.0, 0.12, 1.6, false, 1.5, 50.0)
 		"sloth_sweep":
 			Fx.burst(root, en.global_position + fwd * 2.0 + Vector3(0, 0.6, 0), Color(0.35, 0.3, 0.24, 0.7), 24, 5.0, 0.25, 0.7, false, -3.0, 90.0)
-			_elem_burst(root, en.global_position + fwd * 2.2, el, 2.5)
+			_claw_arc(en, el)
 			if d < 12.0:
 				g.add_shake(0.25)
 		"sloth_slam":
@@ -459,10 +457,6 @@ static func fx(en: Enemy, ev: String) -> void:
 			Sfx.play_at("slam", en.global_position, 2.0, 0.55)
 			if d < 15.0:
 				g.add_shake(0.35)
-		"sloth_hurt":
-			Sfx.play_at("growl", en.global_position + Vector3(0, 2.5, 0), 0.0, 0.7)
-			if d < 30.0:
-				g.ui.message("%s flees, wounded" % en.display_name, _col(en))
 		"sloth_enrage":
 			Sfx.play_at("roar", en.global_position + Vector3(0, 3.0, 0), 2.0, 0.55)
 
@@ -487,6 +481,64 @@ static func _elem_burst(root: Node3D, at: Vector3, el: String, r: float) -> void
 				var a := randf() * TAU
 				_bolt(root, at + Vector3(0, 0.3, 0), at + Vector3(cos(a) * r * 0.8, 0.1, sin(a) * r * 0.8), Color(0.8, 0.6, 1.0))
 			Sfx.play_at("thunder_strike", at, -4.0, randf_range(1.0, 1.2))
+
+## The sweep's claws drawn across its front, right to left, in its element: a fan of flame bursts and a
+## burning streak (fire), ice shards flung outward (cold), a crackling chain of lightning (lightning).
+static func _claw_arc(en: Enemy, el: String) -> void:
+	var root: Node3D = en.game.world.fx_root
+	var fwd := -en.rig.global_transform.basis.z
+	var c := en.global_position
+	var pts: Array = []
+	for k in 9:
+		var a := lerpf(-1.3, 1.3, k / 8.0)
+		pts.append(c + fwd.rotated(Vector3.UP, a) * (en.radius + 1.5) + Vector3(0, 0.9, 0))
+	var tw := root.create_tween()
+	for k in pts.size():
+		var p: Vector3 = pts[k]
+		var prev: Vector3 = pts[maxi(k - 1, 0)]
+		tw.tween_interval(0.018)
+		tw.tween_callback(func():
+			match el:
+				"fire":
+					Fx.burst(root, p, Color(1.0, 0.4, 0.06, 0.9), 10, 2.2, 0.22, 0.55, false, 2.5, 60.0)
+					Fx.burst(root, p - Vector3(0, 0.7, 0), Color(0.9, 0.3, 0.04, 0.8), 6, 1.0, 0.3, 0.9, false, 3.0, 25.0)
+				"cold":
+					var out := (p - c)
+					out.y = 0
+					Fx.burst(root, p, Color(0.8, 0.93, 1.0, 0.9), 8, 4.5, 0.09, 0.5, false, -8.0, 30.0, out.normalized() + Vector3(0, 0.4, 0))
+					Fx.burst(root, p, Color(0.85, 0.95, 1.0, 0.4), 4, 0.6, 0.5, 0.9, false, 0.2, 90.0)
+				_:
+					if k > 0:
+						_bolt(root, prev, p, Color(0.85, 0.7, 1.0))
+					Fx.burst(root, p, Color(0.45, 0.32, 0.6), 8, 3.0, 0.05, 0.25, true, 0.0, 180.0)
+		)
+	match el:
+		"fire": Sfx.play_at("fire_erupt", c + fwd * 2.0, -4.0, 1.25)
+		"cold": Sfx.play_at("ice_shatter", c + fwd * 2.0, -4.0, 1.2)
+		_: Sfx.play_at("thunder_strike", c + fwd * 2.0, -8.0, 1.4)
+
+## A trail through the air behind it as it pounces: flames (fire), frost mist and glitter (cold), sparks
+## and arcs (lightning), for as long as the leap lasts.
+static func _pounce_trail(en: Enemy, el: String) -> void:
+	var dur: float = MOVES["sloth_pounce"][0] * (0.75 if el == "lightning" else 1.0)
+	var trail: GPUParticles3D
+	match el:
+		"fire": trail = Fx.aura(en.rig, Color(1.0, 0.4, 0.06, 0.9), 70, 1.0, 0.3, 0.6, 2.0, 0.8, 60.0, Vector3(0, 1.5, 0), false)
+		"cold": trail = Fx.aura(en.rig, Color(0.85, 0.95, 1.0, 0.5), 60, 0.3, 0.6, 1.0, -0.5, 0.8, 90.0, Vector3(0, 1.4, 0), false)
+		_: trail = Fx.aura(en.rig, Color(0.45, 0.32, 0.6), 70, 2.5, 0.06, 0.3, 0.0, 0.9, 180.0, Vector3(0, 1.5, 0))
+	var tw := en.rig.create_tween()
+	if el == "lightning":
+		for k in 8:
+			tw.tween_interval(dur / 10.0)
+			tw.tween_callback(func():
+				if is_instance_valid(en) and not en.dead:
+					var b := en.global_position + Vector3(0, 1.6, 0)
+					_bolt(en.game.world.fx_root, b, b - (-en.rig.global_transform.basis.z) * randf_range(1.5, 3.0) + Vector3(randf_range(-0.8, 0.8), randf_range(-0.8, 0.8), randf_range(-0.8, 0.8)), Color(0.85, 0.7, 1.0)))
+	else:
+		tw.tween_interval(dur * 0.8)
+	tw.tween_callback(func(): trail.emitting = false)
+	tw.tween_interval(1.2)
+	tw.tween_callback(trail.queue_free)
 
 ## Jagged ice spikes thrust up out of the ground in a ring, then sink.
 static func _ice_spikes(root: Node3D, at: Vector3, r: float) -> void:
