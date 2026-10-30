@@ -461,6 +461,10 @@ func _gate(name: String, up: bool) -> void:
 # ---------------------------------------------------------------- the crowd
 ## The bandits' crowd on the standing stands (north and the sides): figures in rough colours that sway,
 ## then jump and wave as the games excite them (shader, `excite`).
+var seats: Array = []          # every spectator's place: [floor point, cos(angle round the arena), size]
+var crowd_pegs: MultiMeshInstance3D
+var crowd_cards: MultiMeshInstance3D
+
 func _crowd() -> void:
 	var bodies: Array = []
 	var cols: Array = []
@@ -486,6 +490,7 @@ func _crowd() -> void:
 				var s := rng.randf_range(0.85, 1.1)
 				bodies.append(Transform3D(Basis(Vector3.UP, face).scaled(Vector3(s, s, s)), Vector3(p.x, top + row * 0.25, p.y)))
 				cols.append(pal[rng.randi() % pal.size()])
+				seats.append([Vector3(p.x, top + row * 0.25, p.y), cos(a), s])
 	crowd_mat = ShaderMaterial.new()
 	var sh := Shader.new()
 	sh.code = CROWD_SHADER
@@ -505,6 +510,9 @@ func _crowd() -> void:
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.name = "crowd"
 	w.props_root.add_child(mi)
+	crowd_pegs = mi
+	# the real crowd: the game's own monsters, drawn once from the game camera's angle (async)
+	call_deferred("_crowd_cards")
 
 ## One spectator: a body and a head in one mesh; the head is marked by UV.y > 0.5 so the shader skins it.
 func _person_mesh() -> Mesh:
@@ -551,5 +559,208 @@ void fragment() {
 	vec3 skin = vec3(0.5, 0.36, 0.26);
 	ALBEDO = mix(COLOR.rgb, skin, step(0.5, head));
 	ROUGHNESS = 0.9;
+}
+"""
+
+# ---------------------------------------------------------------- the crowd of monsters
+## The spectators are the game's own monsters, every kind in Data.ENEMIES (a new one joins by itself): each
+## kind's body is drawn once, idle and cheering, front-on and turned three-quarters, from the game camera's
+## angle (a little studio in its own world), into one atlas; the stands then hold cards of them that face the
+## fixed camera (like the grass, Flora._camera_card) and jump and swap to cheering as the games excite them.
+## The bosses watch from the patron's box. The pegs stand in until the cards are drawn (a few seconds).
+const CARD := Vector2i(112, 160)
+## the game camera's view direction, toward the eye (Game.CAM_OFFSET)
+const EYE := Vector3(0.0, 0.7175, 0.6965)
+static var _atlas: ImageTexture
+static var _atlas_kinds: Array = []
+static var _atlas_size := {}       # kind -> [card width, card height, image centre height] in metres
+
+static func crowd_kinds() -> Array:
+	var out := []
+	for k in Data.ENEMIES:
+		var d: Dictionary = Data.ENEMIES[k]
+		if not d.get("boss", false) and not d.get("trophy", false):
+			out.append(k)
+	return out
+
+static func crowd_bosses() -> Array:
+	var out := []
+	for k in Data.ENEMIES:
+		if Data.ENEMIES[k].get("boss", false) or Data.ENEMIES[k].get("trophy", false):
+			out.append(k)
+	return out
+
+func _crowd_cards() -> void:
+	if _atlas == null:
+		await _draw_atlas()
+	if not is_instance_valid(w) or _atlas == null:
+		return
+	var kinds: Array = _atlas_kinds
+	var regular := kinds.filter(func(k): return k in crowd_kinds())
+	var bosses := kinds.filter(func(k): return k in crowd_bosses())
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4711
+	var xf := []
+	var custom := []
+	for seat in seats:
+		var kind: String = regular[rng.randi() % regular.size()]
+		# north stands face the sand front-on; the sides turn three-quarters toward it (mirrored on the west)
+		var side: float = seat[1]
+		var view := 0 if absf(side) < 0.45 else 1
+		xf.append(_card_xf(kind, seat[0], float(seat[2])))
+		custom.append(Color(float(kinds.find(kind) * 4 + view * 2), 1.0 if side < -0.45 else 0.0, rng.randf(), 0.0))
+	# the bosses in the patron's box over the champion's gate
+	var cg := Aurelia.floor_pt(Aurelia.GATES["champion"], 1.25)
+	var top := Aurelia.PODIUM_H + 2.45
+	for i in bosses.size():
+		var x := (float(i) - (bosses.size() - 1) * 0.5) * minf(1.6, 8.0 / maxf(bosses.size(), 1.0))
+		xf.append(_card_xf(bosses[i], Vector3(cg.x + x, top, cg.y - 0.4), 1.0, 2.6))
+		custom.append(Color(float(kinds.find(bosses[i]) * 4), 0.0, rng.randf(), 0.0))
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_custom_data = true
+	var q := QuadMesh.new()
+	q.size = Vector2.ONE
+	mm.mesh = q
+	mm.instance_count = xf.size()
+	for i in xf.size():
+		mm.set_instance_transform(i, xf[i])
+		mm.set_instance_custom_data(i, custom[i])
+	var mat := ShaderMaterial.new()
+	var sh := Shader.new()
+	sh.code = CARD_SHADER
+	mat.shader = sh
+	mat.set_shader_parameter("atlas", _atlas)
+	mat.set_shader_parameter("grid", Vector2(float(_atlas.get_width()) / CARD.x, float(_atlas.get_height()) / CARD.y))
+	crowd_cards = MultiMeshInstance3D.new()
+	crowd_cards.multimesh = mm
+	crowd_cards.material_override = mat
+	crowd_cards.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	crowd_cards.name = "crowd_cards"
+	w.props_root.add_child(crowd_cards)
+	crowd_mat = mat
+	if is_instance_valid(crowd_pegs):
+		crowd_pegs.visible = false
+
+## A card for kind standing at feet (scaled by s, at most max_h metres tall), facing the game camera.
+func _card_xf(kind: String, feet: Vector3, s: float, max_h := 9.0) -> Transform3D:
+	var sz: Array = _atlas_size[kind]
+	var k := s * minf(1.0, max_h / maxf(float(sz[1]), 0.1))
+	var up := Vector3(0, 1, 0) - EYE * EYE.y
+	up = up.normalized()
+	var right := up.cross(EYE).normalized()
+	var b := Basis(right * float(sz[0]) * k, up * float(sz[1]) * k, EYE)
+	return Transform3D(b, feet + Vector3(0, float(sz[2]) * k, 0))
+
+## Draws every kind (idle and cheering, front and three-quarter) into the atlas. Runs once per game.
+func _draw_atlas() -> void:
+	var kinds: Array = crowd_kinds() + crowd_bosses()
+	var vp := SubViewport.new()
+	vp.own_world_3d = true
+	vp.transparent_bg = true
+	vp.size = CARD
+	vp.msaa_3d = Viewport.MSAA_4X
+	vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(vp)
+	var env := WorldEnvironment.new()
+	var e := Environment.new()
+	e.background_mode = Environment.BG_CLEAR_COLOR
+	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	e.ambient_light_color = Color(0.7, 0.62, 0.52)
+	e.ambient_light_energy = 0.8
+	e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.environment = e
+	vp.add_child(env)
+	var sun := DirectionalLight3D.new()
+	sun.rotation_degrees = Vector3(-50, -30, 0)
+	sun.light_energy = 1.5
+	sun.light_color = Color(1.0, 0.88, 0.7)
+	vp.add_child(sun)
+	var cam := Camera3D.new()
+	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
+	vp.add_child(cam)
+	var cols := 8
+	var cells := kinds.size() * 4
+	var rows := int(ceil(cells / float(cols)))
+	var atlas := Image.create(CARD.x * cols, CARD.y * rows, false, Image.FORMAT_RGBA8)
+	var sizes := {}
+	for ki in kinds.size():
+		var kind: String = kinds[ki]
+		var rig: Node3D = Enemy.build_rig(kind)
+		vp.add_child(rig)
+		var look: Dictionary = Data.ENEMIES[kind]["look"]
+		var h: float = look.get("height", look.get("size", 1.0))
+		var ext := _extent_of(rig, h)
+		var body_h: float = ext.y
+		# the card covers the body seen down the camera's line (wings and tails too): its size on the view plane
+		var view_h := maxf(body_h * 1.18, ext.x * 1.1 * float(CARD.y) / float(CARD.x))
+		var view_w := view_h * float(CARD.x) / float(CARD.y)
+		var centre := body_h * 0.52
+		cam.size = view_h
+		cam.look_at_from_position(Vector3(0, centre, 0) + EYE * 12.0, Vector3(0, centre, 0))
+		# the card's centre on the view plane is the point (0, centre, 0): its height above the feet
+		sizes[kind] = [view_w, view_h, centre]
+		for view in 2:
+			# bodies face -z; the studio camera sits on +z: turned round to face it, then three-quarters
+			rig.rotation.y = PI if view == 0 else PI - 0.75
+			for frame in 2:
+				var st := {"time": 1.0 + ki * 0.37, "phase": 0.0, "move": 0.0, "atk": -1.0 if frame == 0 else 0.42,
+					"style": "cast" if not rig.has_meta("lion") and not rig.has_meta("feral") else "feral_swipe", "hit": 0.0}
+				Enemy.pose_rig(rig, st, h)
+				vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+				await RenderingServer.frame_post_draw
+				await RenderingServer.frame_post_draw
+				var img := vp.get_texture().get_image()
+				img.convert(Image.FORMAT_RGBA8)
+				var cell := ki * 4 + view * 2 + frame
+				atlas.blit_rect(img, Rect2i(Vector2i.ZERO, CARD), Vector2i((cell % cols) * CARD.x, (cell / cols) * CARD.y))
+		rig.queue_free()
+		await get_tree().process_frame
+	vp.queue_free()
+	_atlas = ImageTexture.create_from_image(atlas)
+	_atlas_kinds = kinds
+	_atlas_size = sizes
+
+## How wide (x: the widest reach either side of the feet, doubled) and tall (y) a body is from its meshes'
+## bounds, falling back to its look's height.
+static func _extent_of(r: Node3D, h: float) -> Vector2:
+	var top := 0.0
+	var half := 0.0
+	for c in r.find_children("*", "MeshInstance3D", true, false):
+		var mi := c as MeshInstance3D
+		if not mi.is_visible_in_tree():
+			continue
+		var ab: AABB = mi.global_transform * mi.get_aabb()
+		top = maxf(top, ab.end.y)
+		half = maxf(half, maxf(absf(ab.position.x), absf(ab.end.x)))
+	if top < 0.4 or top > 8.0:
+		top = 1.8 * h
+	return Vector2(minf(half * 2.0, top * 2.0), top)
+
+const CARD_SHADER := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, depth_draw_opaque;
+uniform sampler2D atlas : source_color, filter_linear_mipmap, repeat_disable;
+uniform vec2 grid = vec2(8.0, 8.0);
+uniform float excite = 0.2;
+varying float cell;
+varying float mirror;
+void vertex() {
+	float ph = INSTANCE_CUSTOM.z * 6.28;
+	float jump = max(0.0, sin(TIME * (5.0 + fract(ph) * 3.0) + ph));
+	float sway = sin(TIME * 1.3 + ph) * 0.03;
+	VERTEX.x += sway * (VERTEX.y + 0.5);
+	VERTEX.y += jump * jump * excite * 0.18;
+	// cheering: arms up while they jump, when the crowd is roused
+	cell = INSTANCE_CUSTOM.x + ((jump > 0.45 && excite > 0.3) ? 1.0 : 0.0);
+	mirror = INSTANCE_CUSTOM.y;
+}
+void fragment() {
+	vec2 uv = UV;
+	if (mirror > 0.5) { uv.x = 1.0 - uv.x; }
+	vec2 c = vec2(mod(cell, grid.x), floor(cell / grid.x));
+	vec4 t = texture(atlas, (c + uv) / grid);
+	if (t.a < 0.5) { discard; }
+	ALBEDO = t.rgb * 0.92;
 }
 """
