@@ -100,7 +100,6 @@ var plates: Control            # VendorUI.Plates: nameplates over the town's peo
 var stash_panel: PanelContainer
 var stash_cells: Array = []
 var wp_panel: PanelContainer
-var wp_list: VBoxContainer
 var dialog_panel: PanelContainer
 var dialog_name: Label
 var dialog_text: Label
@@ -2100,57 +2099,16 @@ func open_stash() -> void:
 	inv_panel.visible = true
 	refresh()
 
+## The waypoint window lives in WaypointPanel (scripts/waypoint_panel.gd); its acts and waypoints in
+## Data.WAYPOINT_ACTS.
 func _build_waypoints() -> void:
-	wp_panel = _panel("Waypoints", true, 380, 380)
-	wp_panel.position = Vector2(620, 220)
-	wp_list = VBoxContainer.new()
-	wp_list.add_theme_constant_override("separation", 6)
-	(wp_panel.get_node("vb") as VBoxContainer).add_child(wp_list)
+	var wp := WaypointPanel.new()
+	root.add_child(wp)
+	wp.setup(self)
+	wp_panel = wp
 
-## runs_max >= 0 adds the Act I / A2 / A3 switch (shown at the camp waypoint).
-func open_waypoints(entries: Array, cur_run := 0, runs_max := -1) -> void:
-	for c in wp_list.get_children():
-		c.queue_free()
-	for e in entries:
-		var b := Button.new()
-		b.text = e["label"]
-		b.disabled = not e["known"]
-		var dest: Dictionary = e
-		b.pressed.connect(func():
-			wp_panel.visible = false
-			game.travel_waypoint(dest))
-		wp_list.add_child(b)
-	if runs_max >= 0:
-		var sp := Control.new()
-		sp.custom_minimum_size = Vector2(0, 8)
-		wp_list.add_child(sp)
-		wp_list.add_child(_label("Switch act", 18, GOLD, true))
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
-		wp_list.add_child(row)
-		var names := ["Act I", "A2", "A3"]
-		for d in 3:
-			var rb := Button.new()
-			rb.custom_minimum_size = Vector2(0, 40)
-			rb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			if d == cur_run:
-				rb.text = names[d] + " (here)"
-				rb.disabled = true
-			elif d > runs_max:
-				rb.text = names[d] + " (locked)"
-				rb.disabled = true
-				rb.tooltip_text = "Beat the final boss of the act before it to unlock"
-			else:
-				rb.text = names[d]
-			var dd: int = d
-			rb.pressed.connect(func():
-				wp_panel.visible = false
-				game.switch_run(dd))
-			row.add_child(rb)
-		var hint := _label("Each act keeps its own waypoints and boss. Your knight, gear and gold come with you.", 13, Color(0.65, 0.62, 0.55))
-		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		wp_list.add_child(hint)
-	wp_panel.visible = true
+func open_waypoints() -> void:
+	(wp_panel as WaypointPanel).open()
 
 func _build_dialog() -> void:
 	dialog_panel = PanelContainer.new()

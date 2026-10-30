@@ -27,6 +27,31 @@ static func act_info(act: int, run: int) -> Dictionary:
 		return ACTS[act].merged(RUN_ACTS[run], true)
 	return ACTS[act]
 
+## The waypoint network, one entry per act in the order they unlock (an act is a run of the game:
+## `run` is its difficulty index, Data.RUNS). An act opens once the act before it falls (Game.max_run);
+## each of its waypoints opens once a player touches that waypoint stone (Game.waypoints_known, kept
+## per act in Game.run_progress). The camp's is open as soon as you arrive.
+## Adding an act: a RUNS entry (+ RUN_ACTS names), its zones, and an entry here.
+## Adding a waypoint: a point here, and in that zone's builder an Inter "waypoint" with {"wp": <id>}
+## plus a "waypoint" spawn beside it (see World / Via / ForestCamp).
+##   tab: the numeral on the act's tab (its name is Data.RUNS[run].name) · art: its banner (Meshy) · points: id (what the stone binds),
+##   zone (where it takes you), kind (camp | wild | road | city: its icon), name (optional; else the
+##   act's name for that zone) · boss: the lord whose fall opens the next act
+const WAYPOINT_ACTS := [
+	{"run": 0, "tab": "I", "art": "res://assets/textures/ui/wp_act1.png", "boss": "goblin_king",
+		"points": [{"id": "town", "zone": "town", "kind": "camp"}, {"id": "wild", "zone": "wild", "kind": "wild"}]},
+	{"run": 1, "tab": "II", "art": "res://assets/textures/ui/wp_act2.png", "boss": "champion",
+		"points": [{"id": "town", "zone": "town", "kind": "camp"}, {"id": "wild", "zone": "wild", "kind": "road"}]},
+	{"run": 2, "tab": "III", "art": "res://assets/textures/ui/wp_act3.png", "boss": "ashen_king",
+		"points": [{"id": "town", "zone": "town", "kind": "camp"}, {"id": "wild", "zone": "wild", "kind": "wild"}]},
+]
+
+static func waypoint_act(run: int) -> Dictionary:
+	for a in WAYPOINT_ACTS:
+		if int(a["run"]) == run:
+			return a
+	return {}
+
 const VENDORS := [
 	{"smith": "Halvar Emberhammer", "armor": "Hedda Ironhand", "alch": "Agnes Grimwood", "gamble": "Tarrow the Dice", "stash": "Stash", "elder": "Captain Roth"},
 	{"smith": "Kadir Forgebrand", "armor": "Saphra", "alch": "Iskander the Wise", "gamble": "Jamal Two-Coins", "stash": "Stash", "elder": "Vizier Hasun"},

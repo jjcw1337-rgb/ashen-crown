@@ -708,7 +708,7 @@ func run_note(d: int) -> String:
 func run_name(d: int = -1) -> String:
 	if d < 0:
 		d = difficulty
-	return ["Act I", "A2", "A3"][clampi(d, 0, 2)]
+	return str(Data.RUNS[clampi(d, 0, Data.RUNS.size() - 1)]["name"])
 
 func run_banner() -> void:
 	ui.big_message(run_name() + " begins")
@@ -747,10 +747,11 @@ func _restore_progress(d: int) -> void:
 	waypoints_known = p.get("waypoints", ["town"]).duplicate()
 	boss_killed = p.get("boss", false)
 
-## Waypoint in camp: switch to Act I, A2 or A3 (any you have reached). Each keeps its own progress.
-func switch_run(d: int) -> void:
+## Switch to another act (any you have reached), arriving at its camp or at one of its waypoints.
+## Each act keeps its own waypoints and boss.
+func switch_run(d: int, zone := "town") -> void:
 	if net.is_client():
-		net.request_switch(d)
+		net.request_switch(d, zone)
 		return
 	if d == difficulty or d > max_run or d < 0 or _busy:
 		return
@@ -760,7 +761,7 @@ func switch_run(d: int) -> void:
 	tp_link = {}
 	ui.set_boss(null)
 	Sfx.play("portal")
-	await load_zone(cur_act, "town", "start")
+	await load_zone(cur_act, zone, "start" if zone == "town" else "waypoint")
 	run_switched_banner()
 
 func run_switched_banner() -> void:
@@ -1331,10 +1332,7 @@ func _interact(t: Inter) -> void:
 				waypoints_known.append(wp_id)
 				ui.message("Waypoint activated", Color(0.5, 0.7, 1.0))
 				Sfx.play("portal")
-			ui.open_waypoints([
-				{"label": Data.act_info(cur_act, difficulty)["town"], "zone": "town", "known": true},
-				{"label": Data.act_info(cur_act, difficulty)["wild"], "zone": "wild", "known": waypoints_known.has("wild")},
-			], difficulty, (net.party_max_run if net.is_client() else max_run) if cur_zone == "town" else -1)
+			ui.open_waypoints()
 		"portal":
 			Sfx.play("portal")
 			if t.data.get("dir", "") == "town":
@@ -1390,6 +1388,33 @@ func _interact(t: Inter) -> void:
 func travel_waypoint(dest: Dictionary) -> void:
 	Sfx.play("portal")
 	travel(cur_act, dest["zone"], "waypoint")
+
+# ---------------------------------------------------------------- the waypoint network (Data.WAYPOINT_ACTS)
+## An act is open once the act before it has fallen (in co-op, the host's progress counts).
+func act_unlocked(run: int) -> bool:
+	return run >= 0 and run <= (net.party_max_run if net.is_client() else max_run)
+
+## Has this character touched waypoint `id` in act `run`? Each act keeps its own (run_progress).
+func waypoint_known(run: int, id: String) -> bool:
+	if run == difficulty:
+		return waypoints_known.has(id)
+	return (run_progress.get(str(run), {}).get("waypoints", ["town"]) as Array).has(id)
+
+## Has act `run`'s lord fallen?
+func act_boss_slain(run: int) -> bool:
+	if run == difficulty:
+		return boss_killed
+	return bool(run_progress.get(str(run), {}).get("boss", false))
+
+## Take a waypoint: within this act, travel there; to another act, switch to it and arrive at that waypoint.
+func waypoint_go(run: int, zone: String) -> void:
+	if _busy or not act_unlocked(run):
+		return
+	if run == difficulty:
+		if zone != cur_zone:
+			travel_waypoint({"zone": zone})
+	else:
+		switch_run(run, zone)
 
 func _make_portal(p: Vector3, dir: String) -> Inter:
 	var it := Inter.new()
