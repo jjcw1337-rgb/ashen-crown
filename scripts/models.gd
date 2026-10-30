@@ -407,7 +407,43 @@ static func item_model(item: Dictionary) -> Node3D:
 		"amulet": return amulet(p)
 		"potion": return potion(base["color"], item["base"])
 		"gold": return gold_pile(item.get("count", 50))
+		"material": return material(item["base"])
 	return Node3D.new()
+
+## A Hollow Sloth's material: its Meshy model (assets/models/items/<id>.glb, about 0.3 m) or, without
+## it, a glowing stand-in of its kind; either way lit from inside in its colour.
+static func material(id: String) -> Node3D:
+	var b: Dictionary = Data.BASES[id]
+	var col: Color = b["color"]
+	var root := Node3D.new()
+	if b.has("model") and ResourceLoader.exists(b["model"]):
+		var m: Node3D = (load(b["model"]) as PackedScene).instantiate()
+		root.add_child(m)
+		for mi in m.find_children("*", "MeshInstance3D", true, false):
+			(mi as MeshInstance3D).material_overlay = Mats.glow(col, 0.5, 0.0, 1.0)
+	else:
+		match b["kind"]:
+			"ember":
+				P(root, SphereMesh.new(), Mats.mat(Color(0.08, 0.06, 0.05), 0.9, 0.0, col, 0.8), Vector3(0, 0.12, 0), Vector3.ZERO, Vector3(0.24, 0.22, 0.2))
+			"talon":
+				var c := CylinderMesh.new()
+				c.top_radius = 0.0
+				c.bottom_radius = 0.05
+				c.height = 0.36
+				P(root, c, Mats.mat(col.lerp(Color.WHITE, 0.4), 0.1, 0.0, col, 1.2), Vector3(0, 0.15, 0), Vector3(0, 0, 25))
+			_:
+				P(root, SphereMesh.new(), Mats.mat(col.darkened(0.4), 0.05, 0.0, col, 1.6), Vector3(0, 0.12, 0), Vector3.ZERO, Vector3(0.2, 0.2, 0.2))
+	# the glow inside it
+	var core := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 0.06
+	sm.height = 0.12
+	core.mesh = sm
+	core.material_override = Mats.glow(col, 3.0, 0.0, 0.0)
+	core.position = Vector3(0, 0.12, 0)
+	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(core)
+	return root
 
 static func weapon(kind: String, sh: Dictionary, p: Dictionary) -> Node3D:
 	var root := Node3D.new()

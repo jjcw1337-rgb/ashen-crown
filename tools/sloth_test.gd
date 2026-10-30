@@ -1,8 +1,9 @@
 extends SceneTree
-## The Hollow Sloth (sloth.gd): three roam the Act I moor. Each wanders far on its own; one that sees a
+## The Hollow Sloths (sloth.gd): three roam the Act I moor, one each of fire, ice and lightning. Each wanders far on its own; one that sees a
 ## hero rises, stares, roars and comes, building into a run; its sweep throws the hero back, its slam
 ## stuns, its pounce leaps; badly hurt it runs off, a hero who gets away is given up on, and killing one
-## drops a unique. The corner map marks one that's near. Prints [S] lines.
+## drops a unique and its own material (picked up glowing, with its ting). Each element's skills do their
+## thing: burning ground, a freeze, lightning bolts. The corner map marks one that's near. Prints [S] lines.
 var g
 var fails := 0
 
@@ -20,7 +21,7 @@ func check(ok: bool, what: String) -> void:
 	print("[S] %s %s" % ["ok  " if ok else "FAIL", what])
 
 func _sloths() -> Array:
-	return g.world.enemies_root.get_children().filter(func(e) -> bool: return e is Enemy and e.kind == "sloth" and not e.dead)
+	return g.world.enemies_root.get_children().filter(func(e) -> bool: return e is Enemy and e.def.get("mesh", "") == "sloth" and not e.dead)
 
 ## Plays until cond is true or secs pass, noting every style the sloth shows.
 func _until(s, secs: float, cond: Callable, seen: Dictionary) -> bool:
@@ -51,7 +52,10 @@ func _run() -> void:
 			if spots[i].distance_to(spots[j]) < 30.0:
 				apart = false
 	check(ss.size() == 3 and apart, "three Hollow Sloths on the moor, far apart: %s" % [spots.map(func(v): return "(%.0f, %.0f)" % [v.x, v.y])])
-	check(ss.size() > 0 and ss[0].rig.has_meta("sloth"), "posed on its skeleton (%s)" % ("the Meshy model" if load("res://scripts/sloth.gd").ok() else "the stand-in"))
+	var kinds := ss.map(func(e): return e.kind)
+	kinds.sort()
+	check(kinds == ["sloth_fire", "sloth_ice", "sloth_storm"], "one of each element: %s (%s)" % [kinds, ", ".join(ss.map(func(e): return e.display_name))])
+	check(ss.size() > 0 and ss[0].rig.has_meta("sloth") and ss.all(func(e): return e.rig.has_meta("sloth_light")), "posed on their skeletons, lit in their colours (%s)" % ", ".join(ss.map(func(e): return "%s: %s" % [e.def["variant"], "Meshy model" if load("res://scripts/sloth.gd").ok(e.def["variant"]) else "stand-in"])))
 	if ss.size() < 3:
 		print("[S] done, %d failed" % (fails + 1))
 		quit()
@@ -79,7 +83,7 @@ func _run() -> void:
 	g.hero.global_position = spot
 	g.hero.global_position.y = g.world.height_at(spot.x, spot.z)
 	var noticed := {}
-	var roared := await _until(s, 8.0, func(): return s.atk_style == "sloth_drop", noticed)
+	var roared := await _until(s, 9.0, func(): return noticed.has("sloth_roar") and s.atk_style == "sloth_drop", noticed)
 	check(roared and noticed.has("sloth_roar") and (noticed.has("sloth_stare") or noticed.has("sloth_rise")), "it sees the hero: %s" % [noticed.keys()])
 	var top := 0.0
 	var ran := {}
@@ -112,7 +116,8 @@ func _run() -> void:
 		if not is_instance_valid(s) or s.dead:
 			break
 		g.hero.life = 100000.0
-		if s.atk_style in ["sloth_sweep", "sloth_slam", "sloth_pounce"] and s.atk_t >= 0.0:
+		# a skill counts once it has landed
+		if s.atk_style in ["sloth_sweep", "sloth_slam", "sloth_pounce"] and s.atk_t >= 0.0 and s.impact_done:
 			skills[s.atk_style] = true
 		shoved = maxf(shoved, g.hero.shove.length())
 		dazed = dazed or g.hero.daze_t > 0.0
@@ -152,6 +157,45 @@ func _run() -> void:
 			g.hero.global_position = Vector3(fp.x, g.world.height_at(fp.x, fp.z), fp.z)
 		return s.sloth.state == "roam", {})
 	check(gave and not s.aggro, "a hero who gets away is given up on (state %s)" % s.sloth.state)
+	# each element's slam, with the hero beside it
+	g.test_immortal = false
+	for e in ss:
+		if not is_instance_valid(e) or e.dead:
+			continue
+		e.set_process(false)
+		var near: Vector3 = e.global_position - e.rig.global_transform.basis.z * 1.8
+		g.hero.global_position = Vector3(near.x, g.world.height_at(near.x, near.z), near.z)
+		g.hero.max_life = 100000.0
+		g.hero.life = 100000.0
+		g.hero.daze_t = 0.0
+		g.hero.chill_t = 0.0
+		var l0: float = g.hero.life
+		e.sloth.move = "sloth_slam"
+		e.sloth._land(g.hero, 1.8)
+		var what := ""
+		match e.def["element"]:
+			"fire":
+				var burn0: float = g.hero.life
+				for k in 30:
+					e.sloth._tick_hazards(0.05)
+					await process_frame
+				what = "a ring of fire (%d patches) that burns: %s" % [e.sloth.hazards.size(), g.hero.life < burn0]
+				check(e.sloth.hazards.size() > 0 and g.hero.life < burn0, "Cinderhide's slam: " + what)
+			"cold":
+				what = "frozen %.1f s, chilled %.1f s" % [g.hero.daze_t, g.hero.chill_t]
+				check(g.hero.daze_t > 1.5 and g.hero.chill_t > 3.0, "Rimeclaw's slam: " + what)
+			"lightning":
+				var n: int = e.sloth.strikes.size()
+				var lb: float = g.hero.life
+				for k in 50:
+					e.sloth._tick_hazards(0.05)
+					await process_frame
+				what = "%d bolts called down, struck: %s" % [n, g.hero.life < lb]
+				check(n >= 6 and e.sloth.strikes.is_empty() and g.hero.life < lb, "Thundermaw's slam: " + what)
+		e.set_process(true)
+	g.test_immortal = true
+	g.hero.daze_t = 0.0
+	g.hero.chill_t = 0.0
 	# and killed: a unique and a heap of gold
 	var before: int = g.world.items_root.get_child_count()
 	s.take_damage(9999999.0, 0.0, g.hero.global_position, 0.0, false)
@@ -159,5 +203,21 @@ func _run() -> void:
 	var drops: Array = g.world.items_root.get_children().slice(before)
 	var uniq := drops.filter(func(it): return int(it.item.get("rarity", 0)) >= 3)
 	check(drops.size() >= 4 and uniq.size() >= 1, "killed: %d drops, %d unique" % [drops.size(), uniq.size()])
+	var mats := drops.filter(func(it): return Items.is_material(it.item))
+	check(mats.size() == 1 and mats[0].item["base"] == s.def["drop"], "it drops its own material: %s" % [mats.map(func(it): return it.item["name"])])
+	if mats.size() == 1:
+		var gi = mats[0]
+		check(gi.label.visible and gi._light != null, "it glows on the ground, its name showing")
+		var free_before: int = g.hero.inventory.count(null)
+		var tings: int = int(get_root().get_node("Sfx").counts.get("relic_ting", 0))
+		g._pickup(gi)
+		await process_frame
+		var held: Array = g.hero.inventory.filter(func(it): return it != null and it["base"] == s.def["drop"])
+		check(held.size() == 1 and g.hero.inventory.count(null) == free_before - 1 and int(get_root().get_node("Sfx").counts.get("relic_ting", 0)) > tings,
+			"picked up: one inventory space, with the ting (%d)" % (int(get_root().get_node("Sfx").counts.get("relic_ting", 0)) - tings))
+		var tex = g.ui.icons.get_icon(held[0], func(_t): pass)
+		check(tex != null and tex.get_width() == 256, "its painted icon")
+		var tip: Array = Items.tooltip(held[0], 1, "inv")
+		check(tip.any(func(l): return str(l[0]) == "Crafting Material"), "tooltip: %s" % [tip.map(func(l): return l[0])])
 	print("[S] done, %d failed" % fails)
 	quit()

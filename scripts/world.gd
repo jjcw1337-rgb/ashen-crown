@@ -641,7 +641,7 @@ func _feral_packs(groups: Dictionary, pid: int) -> void:
 			enemy_spawns.append({"kind": "feral", "pos": o + out * trunk, "count": 1, "champ": false, "pack": 500 + pid + centres.size(),
 				"level": level + 1, "perch": [o.x, o.z]})
 
-## Act I: the three Hollow Sloths (sloth.gd), one in each stretch of the moor, well off the road. From
+## Act I: the three Hollow Sloths (sloth.gd: fire, ice, lightning), one in each stretch of the moor, well off the road. From
 ## there each roams the whole moor on its own.
 func _sloths() -> void:
 	var r := RandomNumberGenerator.new()
@@ -652,7 +652,7 @@ func _sloths() -> void:
 			var side := (1.0 if (i + tries) % 2 == 0 else -1.0) * r.randf_range(14.0, 26.0)
 			var p := Vector3(clampf(c.x + side, bounds.position.x + 5, bounds.end.x - 5), 0, c.y + r.randf_range(-8, 8))
 			if not is_blocked(p.x, p.z) and path_dist(p.x, p.z) > 10.0:
-				enemy_spawns.append({"kind": "sloth", "pos": p, "count": 1, "champ": false, "pack": 800 + i, "level": level + 2})
+				enemy_spawns.append({"kind": ["sloth_fire", "sloth_ice", "sloth_storm"][i], "pos": p, "count": 1, "champ": false, "pack": 800 + i, "level": level + 2})
 				break
 
 ## Act I: a few rare Sunstar Blooms off the road, in among the trees. Picking one gives +50% experience

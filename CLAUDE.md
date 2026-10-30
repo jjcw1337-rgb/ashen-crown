@@ -193,22 +193,35 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   and one at a time lunges (`special` "feral_lunge", flying over other monsters), backs off, darts in to claw,
   backs out (`_feral_combat`, `f_state`); the lunge has a 5 s cooldown, and outrun for 6 s (beyond 9 m) the pack
   gives up and goes home, ignoring you for 8 s unless hit (`f_chase`, `f_calm`). `tools/feral_test.gd` checks it.
-- **The Hollow Sloth** (`sloth.gd`, Act I, `World._sloths`: three, one per stretch of the moor, well off the road):
-  each roams the whole moor (`_far_goal`, never near the camp) at a walk, stopping to sniff or to rise and look about;
-  it keeps thinking at any distance (Enemy's 50 m cut-off skips it). A hero in sight within 15 m (more while it's
-  standing up) or a blow: it rises, stares, roars and hunts, its run building from 2.2 to 5.6 m/s (between the
-  hero's walk and sprint). Skills: the Rending Sweep (an arc in front; `take_hit` kind `"sweep"` throws the hero back,
-  `Hero.shove`), the Earthshaker slam (a ring 5 m ahead; kind `"quake"` stuns, `Hero.daze_t`), the Hollow Pounce (5.5
-  to 11 m). At half life and again at a fifth it runs off (`flee`, healing a little), then rises to look back; a
-  hero who stays 32 m off or out of sight for 5 s is given up on. Every timed move is an `atk_t`/`atk_dur`/
-  `atk_style` (`sloth_*`, in `Net.STYLES`), so `Sloth.pose` shows the same on every peer; the posture holds between
-  moves (standing after a rise, look, stare or roar). Its effects are `sloth_*` fx events (`Sloth.fx`); footfalls,
-  groans and the shake come from `Sloth.presence` on every peer. Killing one drops a unique and gold (`"trophy"` in
-  `Data.ENEMIES`); the corner map marks one within 40 m (group `"sloth"`). The body: `assets/models/monsters/
-  hollow_sloth.glb` when it exists (an upright A-pose Meshy model on a skeleton with the bones in `Sloth.BONES`,
-  from `sources/hollow_sloth.blend`; concept in `exports/act1/`), else a capsule stand-in on that skeleton.
-  Previews: `tools/sloth_sheet.gd` (contact sheet), `tools/sloth_shots.gd` (in the moor). Load sloth.gd at run time
-  in a `-s` tool (`load(...)`), like aurelia.gd.
+- **The Hollow Sloths** (`sloth.gd`, Act I, `World._sloths`): three elemental giants, `Data.ENEMIES` `sloth_fire`
+  (Cinderhide), `sloth_ice` (Rimeclaw), `sloth_storm` (Thundermaw), each with `"element"` (fire/cold/lightning),
+  `"variant"` (its model) and `"drop"` (its material). Brain: `Sloth.new(enemy)` (Enemy's 50 m cut-off skips it); it
+  walks on all fours, sniffs, rises to look about; a hero in sight (15 m, more while standing) or a blow: it rises,
+  stares, roars and hunts, its run building from 2.2 to 5.6 m/s. Skills (each with its element, `Sloth._land`): the
+  Rending Sweep (arc in front; `take_hit` kind `"sweep"` throws the hero back, `Hero.shove`; cold: `"chill"`, slowed,
+  `Hero.chill_t`; fire leaves burning ground; lightning chains to heroes near the one struck), the Earthshaker slam
+  (ring 5 m ahead; `"quake"` stuns, `Hero.daze_t`; cold `"freeze"`; fire leaves a ring of burning ground; lightning
+  calls six bolts down round it, `strikes`), the Hollow Pounce (5.5-11 m; cold shatters ice, fire lands in flame,
+  lightning is a quicker dash that shocks, `"shock"`). Burning ground and bolts are host-side lists ticked in
+  `_tick_hazards`; everything seen is a `sloth_*` fx event (place-carrying ones like `sloth_burn:x,z,r,dur` go
+  through `_elem_fx`). Each timed move is an `atk_t`/`atk_dur`/`atk_style` (`sloth_*`, in `Net.STYLES`), so
+  `Sloth.pose` shows the same on every peer; posture holds between moves. The slam has a casting motion per element
+  (rig meta `element`: fire heaves and flings its arms wide, cold crosses its claws and shivers, lightning raises
+  both arms to the sky) with `_elem_charge` effects. `Sloth.dress` lights the body in its colour with its element's
+  particles; `Sloth.presence`/`idle_fx` (every peer) do footfalls, groans, shake, flicker and the storm's arcs.
+  Killing one drops a unique, gold and its material; the corner map marks one within 40 m (group `"sloth"`).
+  Models: `assets/models/monsters/hollow_sloth_<fire|ice|storm>.glb` (Meshy, from concepts in `exports/act1/`;
+  decimated to 42k and rigged by `tools/blender/act1/rig_sloth.py`, skinned by distance to the bones since Blender's
+  heat skinning fails on the fur shells; source `sources/hollow_sloth.blend`), `Sloth.MODEL_SCALE` 1.4; without
+  them a capsule stand-in on the same skeleton (`Sloth.BONES`). Previews: `tools/sloth_sheet.gd -- out.png [front]
+  [fire|ice|storm]`, `tools/sloth_shots.gd`, `tools/sloth_clip.gd` (frames of one fighting; `--fixed-fps 30`).
+  Load sloth.gd at run time in a `-s` tool (`load(...)`), like aurelia.gd.
+- **Materials** (`Data.BASES` slot `"material"`: `cinderheart`, `everfrost`, `stormglass`): one inventory space,
+  never worn or drunk (`Items.is_material`), for crafting later. Each has `"color"`, `"lore"`, a painted `"icon"`
+  (`assets/textures/items/`, cut out of Meshy art by `tools/icon_cutout.py`; `IconRenderer.get_icon` uses it) and a
+  Meshy `"model"` (`assets/models/items/`, `Models.material`). On the ground they glow (`GroundItem._material_glow`:
+  beam, pulsing light, their element rising off them, `Fx.aura`); picking one up is `Game.claim_material` (burst,
+  pillar, the `relic_ting` sound, an announcement).
 - **Factions** (`"faction"` in `Data.ENEMIES`: goblin, undead): a monster fights the nearest other-faction monster when
   it is closer than the hero (`Enemy.rival`, `Enemy.take_hit` so the attack code works on both); rival kills give no
   xp or loot (`killed_by_rival`). Host-side like all AI.

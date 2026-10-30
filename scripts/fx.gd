@@ -60,6 +60,40 @@ static func burst(root: Node3D, pos: Vector3, col: Color, amount: int = 16, spee
 	_free_later(p, life + 0.5)
 	return p
 
+## A steady stream of particles from a parent (embers rising, frost mist, sparks), drawn in world space
+## so it trails behind a mover. radius spreads where they start.
+static func aura(parent: Node3D, col: Color, amount := 24, speed := 0.6, size := 0.08, life := 1.2, gravity := 0.6, radius := 0.15, spread := 40.0, at := Vector3.ZERO, additive := true) -> GPUParticles3D:
+	var p := GPUParticles3D.new()
+	p.amount = amount
+	p.lifetime = life
+	p.local_coords = false
+	p.position = at
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	pm.emission_sphere_radius = radius
+	pm.direction = Vector3.UP
+	pm.spread = spread
+	pm.initial_velocity_min = speed * 0.4
+	pm.initial_velocity_max = speed
+	pm.gravity = Vector3(0, gravity, 0)
+	pm.scale_min = 0.4
+	pm.scale_max = 1.1
+	var g := Gradient.new()
+	g.set_color(0, Color(col.r, col.g, col.b, 0.0))
+	g.add_point(0.15, col)
+	g.set_color(1, Color(col.r, col.g, col.b, 0.0))
+	var gt := GradientTexture1D.new()
+	gt.gradient = g
+	pm.color_ramp = gt
+	p.process_material = pm
+	var q := QuadMesh.new()
+	q.size = Vector2(size, size)
+	q.material = Mats.particle_mat(additive, Color(2, 2, 2) if additive else Color.WHITE)
+	p.draw_pass_1 = q
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(p)
+	return p
+
 static func sparks(root: Node3D, pos: Vector3, col := Color(1.0, 0.8, 0.4)) -> void:
 	burst(root, pos, col, 22, 6.0, 0.07, 0.35, true, -9.0)
 	flash(root, pos, col, 1.5, 0.12)

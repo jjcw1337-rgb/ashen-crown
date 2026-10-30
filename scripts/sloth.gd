@@ -1,11 +1,17 @@
 class_name Sloth
 extends RefCounted
-## The Hollow Sloth (Act I): three giant Forsaken sloths that roam the whole moor, each on its own long
+## The Hollow Sloths (Act I): three giant Forsaken sloths that roam the whole moor, each on its own long
 ## wander, crossing the road, stopping to sniff, rising onto their hind legs to look about. One that
 ## spots a hero rises, stares, roars and comes on all fours, slow to start and building into a
 ## lumbering run; it fights with three skills (the Rending Sweep, the Earthshaker slam, the Hollow
 ## Pounce), runs off when badly hurt and comes back for more, and gives up on a hero who gets away.
 ## Best avoided: its thudding steps and groans carry, and the corner map marks it when it's near.
+## Each has an element ("element" in Data.ENEMIES) that runs through its skills and its look:
+##   fire (Cinderhide): the sweep leaves burning ground, the slam a ring of fire, the pounce lands in flame;
+##   cold (Rimeclaw): the sweep chills (slows), the slam freezes you solid, the pounce bursts into ice shards;
+##   lightning (Thundermaw): the sweep chains to the heroes nearby, the slam calls bolts down round it,
+##   the pounce is a quicker lightning dash that shocks where it lands.
+## Each drops its own material ("drop"), and its model is hollow_sloth_<variant>.glb.
 ##
 ## The body is posed in code every frame from the enemy's state, like the lion (lion.gd): a skeleton
 ## standing upright at rest (the Meshy A-pose), turned per bone about the model's own axes. Until the
@@ -13,8 +19,12 @@ extends RefCounted
 ## skeleton is built. Host-authoritative: every timed move goes through the enemy's atk_t / atk_dur /
 ## atk_style, so co-op partners see it posed by the same `pose` from the synced state.
 
-const GLB := "res://assets/models/monsters/hollow_sloth.glb"
+const GLB := "res://assets/models/monsters/hollow_sloth_%s.glb"
+## per element: its colour (light, aura, effects) and the effect sounds
+const ELEMENTS := {"fire": {"col": Color(1.0, 0.45, 0.1)}, "cold": {"col": Color(0.45, 0.85, 1.0)}, "lightning": {"col": Color(0.72, 0.45, 1.0)}}
 const SCALE := 1.0
+## the Meshy models are 2.5 m in their A-pose: this makes them about 3.5 m reared up
+const MODEL_SCALE := 1.4
 ## ground the walk covers per cycle (at the stand-in's size)
 const STRIDE := 2.2
 const WALK := 2.2           # roaming pace (the hero walks at 4.8)
@@ -44,15 +54,22 @@ var pounce_cd := 3.0
 var pounce_to := Vector3.ZERO
 var pounce_from := Vector3.ZERO
 var idle_t := 0.0
+var element := ""
+## burning ground (fire) on the host: [pos, radius, until (anim time), damage a tick]
+var hazards: Array = []
+var _haz_t := 0.0
+## lightning strikes called down by the storm slam: [pos, at (seconds from now)]
+var strikes: Array = []
 var _rng := RandomNumberGenerator.new()
 
 func _init(enemy: Enemy) -> void:
 	e = enemy
+	element = str(e.def.get("element", ""))
 	_rng.randomize()
 	idle_t = _rng.randf_range(4.0, 12.0)
 
-static func ok() -> bool:
-	return ResourceLoader.exists(GLB)
+static func ok(variant: String) -> bool:
+	return ResourceLoader.exists(GLB % variant)
 
 # ---------------------------------------------------------------- the brain (host only)
 
@@ -61,6 +78,7 @@ func update(delta: float, hero: Node3D, to: Vector3, dist: float, hero_gone: boo
 	sweep_cd -= delta
 	slam_cd -= delta
 	pounce_cd -= delta
+	_tick_hazards(delta)
 	if e.stun_t > 0.0:
 		e.stun_t -= delta
 		move = ""
@@ -129,6 +147,8 @@ func _start(m: String) -> void:
 	e.atk_style = m
 	e.atk_t = 0.0
 	e.atk_dur = MOVES[m][0] * (0.82 if e.enraged and m in ["sloth_sweep", "sloth_slam", "sloth_pounce"] else 1.0)
+	if m == "sloth_pounce" and element == "lightning":
+		e.atk_dur *= 0.75
 	e.impact_done = false
 	e.special = m
 	match m:
@@ -166,30 +186,92 @@ func _play(delta: float, hero: Node3D, dist: float) -> Vector3:
 			e.atk_style = "sloth_walk"
 	return Vector3.ZERO
 
-## Where each move lands: the sweep's arc, the slam's ring, the pounce's claws.
+## Where each move lands: the sweep's arc, the slam's ring, the pounce's claws, each with its element.
 func _land(_hero: Node3D, _dist: float) -> void:
 	var fwd := -e.rig.global_transform.basis.z
+	var el := element if element != "" else "phys"
 	match move:
 		"sloth_roar":
 			e._fx("sloth_roar")
 		"sloth_sweep":
 			e._fx("sloth_sweep")
+			var hit: Array = []
 			for h in e.game.all_heroes():
 				var to: Vector3 = h.global_position - e.global_position
 				to.y = 0
 				if not h.dead and to.length() < e.radius + 2.6 and (to.length() < 1.2 or fwd.dot(to.normalized()) > -0.25):
-					h.take_hit(e._roll() * 1.1, e.global_position, "sweep")
+					h.take_hit(e._roll() * 1.1, e.global_position, "chill" if el == "cold" else "sweep", el)
+					hit.append(h)
+			match element:
+				"fire":
+					# the claws leave a trail of burning ground across the arc
+					for k in 3:
+						var a := (float(k) - 1.0) * 0.7
+						_hazard(e.global_position + fwd.rotated(Vector3.UP, a) * (e.radius + 1.4), 1.3, 4.0, e._roll() * 0.18)
+				"lightning":
+					# it jumps from each hero struck to the others near them
+					for h in hit:
+						for o in e.game.all_heroes():
+							if o != h and not o.dead and not hit.has(o) and o.global_position.distance_to(h.global_position) < 6.0:
+								e._fx("sloth_chain:%.2f,%.2f,%.2f,%.2f" % [h.global_position.x, h.global_position.z, o.global_position.x, o.global_position.z])
+								o.take_hit(e._roll() * 0.6, h.global_position, "melee", "lightning")
 		"sloth_slam":
 			e._fx("sloth_slam")
 			var at := e.global_position + fwd * 1.6
 			for h in e.game.all_heroes():
 				if not h.dead and h.global_position.distance_to(at) < 5.0:
-					h.take_hit(e._roll() * 1.4, at, "quake")
+					h.take_hit(e._roll() * 1.4, at, "freeze" if el == "cold" else "quake", el)
+			match element:
+				"fire":
+					_hazard(at, 4.0, 3.5, e._roll() * 0.22)
+				"lightning":
+					# bolts called down round it: one on each hero near, the rest at random, a moment apart
+					var spots: Array = []
+					for h in e.game.all_heroes():
+						if not h.dead and h.global_position.distance_to(at) < 10.0:
+							spots.append(h.global_position)
+					while spots.size() < 6:
+						var a := _rng.randf() * TAU
+						spots.append(at + Vector3(cos(a), 0, sin(a)) * _rng.randf_range(2.0, 7.5))
+					for k in spots.size():
+						var p: Vector3 = spots[k]
+						strikes.append([p, 0.7 + k * 0.12])
+						e._fx("sloth_strike_tele:%.2f,%.2f,%.2f" % [p.x, p.z, 0.7 + k * 0.12])
 		"sloth_pounce":
 			e._fx("sloth_land")
 			for h in e.game.all_heroes():
-				if not h.dead and h.global_position.distance_to(e.global_position) < e.radius + 1.6:
-					h.take_hit(e._roll() * 1.3, e.global_position, "sweep")
+				if not h.dead and h.global_position.distance_to(e.global_position) < e.radius + (2.4 if el == "cold" else 1.6):
+					h.take_hit(e._roll() * 1.3, e.global_position, {"cold": "chill", "lightning": "shock"}.get(el, "sweep"), el)
+			if element == "fire":
+				_hazard(e.global_position, 2.4, 3.0, e._roll() * 0.2)
+
+## Burning ground (host): it hurts any hero standing in it every half second until it dies down.
+func _hazard(at: Vector3, r: float, dur: float, dmg: float) -> void:
+	at.y = 0.0
+	hazards.append([at, r, e.anim_time + dur, dmg])
+	e._fx("sloth_burn:%.2f,%.2f,%.2f,%.2f" % [at.x, at.z, r, dur])
+
+func _tick_hazards(delta: float) -> void:
+	_haz_t -= delta
+	if _haz_t <= 0.0 and not hazards.is_empty():
+		_haz_t = 0.5
+		for hz in hazards.duplicate():
+			if e.anim_time > float(hz[2]):
+				hazards.erase(hz)
+				continue
+			for h in e.game.all_heroes():
+				var d := Vector2(h.global_position.x - hz[0].x, h.global_position.z - hz[0].z).length()
+				if not h.dead and d < float(hz[1]):
+					h.take_hit(float(hz[3]), hz[0], "burn", "fire")
+	for st in strikes.duplicate():
+		st[1] = float(st[1]) - delta
+		if float(st[1]) <= 0.0:
+			strikes.erase(st)
+			var p: Vector3 = st[0]
+			e._fx("sloth_strike:%.2f,%.2f" % [p.x, p.z])
+			for h in e.game.all_heroes():
+				if not h.dead and Vector2(h.global_position.x - p.x, h.global_position.z - p.z).length() < 1.7:
+					h.take_hit(e._roll() * 0.9, p, "shock", "lightning")
 
 ## It has seen (or felt) a hero: up on its hind legs, a long stare, the roar, and down to come for them.
 func _notice(angry: bool) -> void:
@@ -327,6 +409,10 @@ static func fx(en: Enemy, ev: String) -> void:
 	var root: Node3D = g.world.fx_root
 	var fwd := -en.rig.global_transform.basis.z
 	var d: float = g.hero.global_position.distance_to(en.global_position)
+	var el := str(en.def.get("element", ""))
+	var col := _col(en)
+	if ev.contains(":") and _elem_fx(en, ev, el, col, root, d):
+		return
 	if ev.begins_with("sloth_pounce_tele:"):
 		var xz := ev.get_slice(":", 1).split(",")
 		var at := Vector3(float(xz[0]), 0, float(xz[1]))
@@ -339,6 +425,7 @@ static func fx(en: Enemy, ev: String) -> void:
 			Sfx.play_at("swing_heavy", en.global_position + Vector3(0, 2.0, 0), -2.0, 0.55)
 		"sloth_slam_tele":
 			Fx.telegraph(root, en.global_position + fwd * 1.6, 5.0, MOVES["sloth_slam"][0] * MOVES["sloth_slam"][1])
+			_elem_charge(en, el)
 		"sloth_heave":
 			Sfx.play_at("growl", en.global_position + Vector3(0, 2.0, 0), -9.0, randf_range(0.5, 0.6))
 		"sloth_roar":
@@ -346,7 +433,7 @@ static func fx(en: Enemy, ev: String) -> void:
 			Sfx.play_at("lion_roar", en.global_position + Vector3(0, 3.0, 0), -2.0, 0.55)
 			if d < 30.0:
 				g.add_shake(0.5 * (1.0 - d / 30.0) + 0.1)
-				g.ui.message("The Hollow Sloth has seen you", Color(0.55, 0.9, 0.95))
+				g.ui.message("%s has seen you" % en.display_name, _col(en))
 			# the forest's birds take off from the trees about it
 			for i in 3:
 				var a := randf() * TAU
@@ -354,11 +441,13 @@ static func fx(en: Enemy, ev: String) -> void:
 				Fx.burst(root, p + Vector3(0, 5.5, 0), Color(0.08, 0.07, 0.06, 0.9), 9, 4.0, 0.12, 1.6, false, 1.5, 50.0)
 		"sloth_sweep":
 			Fx.burst(root, en.global_position + fwd * 2.0 + Vector3(0, 0.6, 0), Color(0.35, 0.3, 0.24, 0.7), 24, 5.0, 0.25, 0.7, false, -3.0, 90.0)
+			_elem_burst(root, en.global_position + fwd * 2.2, el, 2.5)
 			if d < 12.0:
 				g.add_shake(0.25)
 		"sloth_slam":
 			var at := en.global_position + fwd * 1.6
-			Fx.ring(root, at, 5.0, Color(0.45, 0.85, 0.9), 0.55)
+			Fx.ring(root, at, 5.0, col, 0.55)
+			_elem_burst(root, at, el, 5.0)
 			Fx.burst(root, at + Vector3(0, 0.3, 0), Color(0.42, 0.37, 0.3, 0.85), 50, 7.0, 0.35, 1.0, false, -4.0, 80.0)
 			Sfx.play_at("slam", at, 6.0, 0.6)
 			Sfx.play_at("boom", at, 0.0, 0.7)
@@ -366,15 +455,229 @@ static func fx(en: Enemy, ev: String) -> void:
 				g.add_shake(0.7 * (1.0 - d / 25.0) + 0.15)
 		"sloth_land":
 			Fx.burst(root, en.global_position + Vector3(0, 0.3, 0), Color(0.4, 0.35, 0.28, 0.8), 30, 5.0, 0.3, 0.8, false, -4.0, 80.0)
+			_elem_burst(root, en.global_position, el, 2.6)
 			Sfx.play_at("slam", en.global_position, 2.0, 0.55)
 			if d < 15.0:
 				g.add_shake(0.35)
 		"sloth_hurt":
 			Sfx.play_at("growl", en.global_position + Vector3(0, 2.5, 0), 0.0, 0.7)
 			if d < 30.0:
-				g.ui.message("The Hollow Sloth flees, wounded", Color(0.55, 0.9, 0.95))
+				g.ui.message("%s flees, wounded" % en.display_name, _col(en))
 		"sloth_enrage":
 			Sfx.play_at("roar", en.global_position + Vector3(0, 3.0, 0), 2.0, 0.55)
+
+static func _col(en: Enemy) -> Color:
+	return ELEMENTS.get(str(en.def.get("element", "")), {"col": Color(0.55, 0.9, 0.95)})["col"]
+
+## Its element bursting out where a blow lands: flames, ice shards and frost, or a crackle of sparks.
+static func _elem_burst(root: Node3D, at: Vector3, el: String, r: float) -> void:
+	match el:
+		"fire":
+			Fx.burst(root, at + Vector3(0, 0.3, 0), Color(1.0, 0.38, 0.05, 0.9), 46, r * 1.4, 0.2, 0.7, false, 2.0, 70.0)
+			Fx.burst(root, at + Vector3(0, 0.5, 0), Color(1.0, 0.7, 0.2, 0.9), 24, r, 0.09, 0.5, false, 4.0, 40.0)
+			Sfx.play_at("fire_erupt", at, 0.0, randf_range(0.9, 1.05))
+		"cold":
+			Fx.burst(root, at + Vector3(0, 0.3, 0), Color(0.25, 0.42, 0.6), 45, r * 1.5, 0.1, 0.8, true, -6.0, 75.0)
+			Fx.burst(root, at + Vector3(0, 0.2, 0), Color(0.85, 0.95, 1.0, 0.5), 18, r * 0.5, 0.6, 1.4, false, 0.2, 90.0)
+			_ice_spikes(root, at, r)
+			Sfx.play_at("ice_shatter", at, 0.0, randf_range(0.9, 1.05))
+		"lightning":
+			Fx.burst(root, at + Vector3(0, 0.4, 0), Color(0.45, 0.32, 0.6), 40, r * 2.0, 0.06, 0.35, true, 0.0, 180.0)
+			for k in 4:
+				var a := randf() * TAU
+				_bolt(root, at + Vector3(0, 0.3, 0), at + Vector3(cos(a) * r * 0.8, 0.1, sin(a) * r * 0.8), Color(0.8, 0.6, 1.0))
+			Sfx.play_at("thunder_strike", at, -4.0, randf_range(1.0, 1.2))
+
+## Jagged ice spikes thrust up out of the ground in a ring, then sink.
+static func _ice_spikes(root: Node3D, at: Vector3, r: float) -> void:
+	var holder := Node3D.new()
+	root.add_child(holder)
+	holder.global_position = at
+	var mat := Mats.mat(Color(0.7, 0.88, 1.0, 0.85), 0.08, 0.0, Color(0.35, 0.65, 1.0), 0.6)
+	for k in 9:
+		var a := TAU * k / 9.0 + randf() * 0.4
+		var c := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.0
+		cm.bottom_radius = randf_range(0.12, 0.22)
+		cm.height = randf_range(0.7, 1.4)
+		c.mesh = cm
+		c.material_override = mat
+		var d := r * randf_range(0.45, 0.85)
+		c.position = Vector3(cos(a) * d, cm.height * 0.35, sin(a) * d)
+		c.rotation = Vector3(randf_range(-0.35, 0.35), 0, randf_range(-0.35, 0.35))
+		holder.add_child(c)
+	var tw := holder.create_tween()
+	holder.scale = Vector3(1, 0.05, 1)
+	tw.tween_property(holder, "scale", Vector3.ONE, 0.12)
+	tw.tween_interval(1.6)
+	tw.tween_property(holder, "position:y", -1.2, 0.8)
+	tw.tween_callback(holder.queue_free)
+
+## A short-lived jagged lightning bolt from a to b.
+static func _bolt(root: Node3D, a: Vector3, b: Vector3, col: Color) -> void:
+	var im := ImmediateMesh.new()
+	var mi := MeshInstance3D.new()
+	mi.mesh = im
+	mi.material_override = Mats.glow(col, 2.2, 0.0, 0.0)
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+	var n := 8
+	var side := (b - a).cross(Vector3.UP).normalized()
+	if side.length() < 0.1:
+		side = Vector3.RIGHT
+	var pts := []
+	for k in n + 1:
+		var t := float(k) / n
+		var p := a.lerp(b, t)
+		if k > 0 and k < n:
+			p += side * randf_range(-0.25, 0.25) + Vector3(0, randf_range(-0.2, 0.2), 0)
+		pts.append(p)
+	im.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	for k in n:
+		var p0: Vector3 = pts[k]
+		var p1: Vector3 = pts[k + 1]
+		var w := 0.03 if col.r < 0.95 else 0.015
+		var up := Vector3(0, w, 0)
+		var sw := side * w
+		for q in [[p0 - sw, p1 - sw, p1 + sw], [p0 - sw, p1 + sw, p0 + sw], [p0 - up, p1 - up, p1 + up], [p0 - up, p1 + up, p0 + up]]:
+			for v in q:
+				im.surface_add_vertex(v)
+	im.surface_end()
+	var tw := mi.create_tween()
+	tw.tween_interval(0.18)
+	tw.tween_callback(mi.queue_free)
+
+## Its element gathering while it rears up to slam (the casting motion in `pose`): embers and a glow
+## swelling from its chest (fire), frost mist curling round its crossed claws (cold), or arcs leaping
+## between its raised claws and up into the sky (lightning).
+static func _elem_charge(en: Enemy, el: String) -> void:
+	var root: Node3D = en.game.world.fx_root
+	var dur: float = MOVES["sloth_slam"][0] * 0.5
+	var tw := root.create_tween()
+	for k in 6:
+		tw.tween_interval(dur / 6.0)
+		tw.tween_callback(func():
+			if not is_instance_valid(en) or en.dead:
+				return
+			var c := en.global_position + Vector3(0, 2.6, 0) - en.rig.global_transform.basis.z * 0.3
+			match el:
+				"fire":
+					Fx.burst(root, c, Color(1.0, 0.45, 0.08, 0.9), 16, 2.0, 0.09, 0.6, false, 3.0, 50.0)
+					Fx.flash(root, c, Color(1.0, 0.45, 0.1), 2.5, 0.3, 5.0)
+				"cold":
+					Fx.burst(root, c - Vector3(0, 0.4, 0), Color(0.8, 0.93, 1.0, 0.6), 10, 0.6, 0.5, 1.0, false, 0.3, 120.0)
+				"lightning":
+					var hand_y := 4.2
+					var l := en.global_position + en.rig.global_transform.basis.x * 0.7 + Vector3(0, hand_y, 0)
+					var r := en.global_position - en.rig.global_transform.basis.x * 0.7 + Vector3(0, hand_y, 0)
+					_bolt(root, l, r, Color(0.85, 0.7, 1.0))
+					if randf() < 0.5:
+						_bolt(root, (l + r) * 0.5, (l + r) * 0.5 + Vector3(randf_range(-2, 2), 8.0, randf_range(-2, 2)), Color(0.9, 0.85, 1.0))
+		)
+	if el == "lightning":
+		Sfx.play_at("thunder_strike", en.global_position + Vector3(0, 4, 0), -8.0, 0.8)
+
+## The element effects that carry a place in their event string.
+static func _elem_fx(en: Enemy, ev: String, el: String, col: Color, root: Node3D, d: float) -> bool:
+	var g = en.game
+	var args := ev.get_slice(":", 1).split(",")
+	var nm := ev.get_slice(":", 0)
+	match nm:
+		"sloth_burn":
+			# burning ground: flames licking up from the patch until it dies down
+			var at := Vector3(float(args[0]), 0, float(args[1]))
+			at.y = g.world.height_at(at.x, at.z)
+			var r := float(args[2])
+			var dur := float(args[3])
+			var patch := Node3D.new()
+			root.add_child(patch)
+			patch.global_position = at + Vector3(0, 0.1, 0)
+			var fl := Fx.aura(patch, Color(1.0, 0.36, 0.04, 0.85), int(14 + r * 16), 1.4, 0.2, 0.8, 1.5, r * 0.8, 20.0, Vector3.ZERO, false)
+			(fl.process_material as ParticleProcessMaterial).emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+			(fl.process_material as ParticleProcessMaterial).emission_box_extents = Vector3(r * 0.75, 0.05, r * 0.75)
+			var l := OmniLight3D.new()
+			l.light_color = Color(1.0, 0.5, 0.15)
+			l.light_energy = 1.5
+			l.omni_range = r * 1.8
+			l.position = Vector3(0, 0.5, 0)
+			patch.add_child(l)
+			Fx.ring(root, at, r, Color(1.0, 0.4, 0.1), 0.5)
+			var tw := patch.create_tween()
+			tw.tween_interval(dur)
+			tw.tween_callback(func(): fl.emitting = false)
+			tw.tween_property(l, "light_energy", 0.0, 0.8)
+			tw.tween_callback(patch.queue_free)
+			return true
+		"sloth_chain":
+			var a := Vector3(float(args[0]), 1.1, float(args[1]))
+			var b := Vector3(float(args[2]), 1.1, float(args[3]))
+			_bolt(root, a, b, Color(0.8, 0.6, 1.0))
+			_bolt(root, a, b, Color(0.95, 0.9, 1.0))
+			Sfx.play_at("thunder_strike", b, -6.0, 1.3)
+			return true
+		"sloth_strike_tele":
+			var at := Vector3(float(args[0]), 0, float(args[1]))
+			at.y = g.world.height_at(at.x, at.z)
+			Fx.telegraph(root, at, 1.7, float(args[2]), Color(0.7, 0.45, 1.0))
+			return true
+		"sloth_strike":
+			var at := Vector3(float(args[0]), 0, float(args[1]))
+			at.y = g.world.height_at(at.x, at.z)
+			_bolt(root, at + Vector3(randf_range(-1, 1), 14.0, randf_range(-1, 1)), at, Color(0.85, 0.7, 1.0))
+			_bolt(root, at + Vector3(randf_range(-1, 1), 14.0, randf_range(-1, 1)), at, Color(1.0, 1.0, 1.0))
+			Fx.flash(root, at + Vector3(0, 1.0, 0), Color(0.75, 0.55, 1.0), 6.0, 0.25, 9.0)
+			Fx.burst(root, at + Vector3(0, 0.2, 0), Color(0.45, 0.32, 0.6), 26, 5.0, 0.06, 0.35, true, -2.0, 80.0)
+			Fx.ring(root, at, 1.7, Color(0.75, 0.5, 1.0), 0.35)
+			Sfx.play_at("thunder_strike", at, 0.0, randf_range(0.9, 1.1))
+			if d < 20.0:
+				g.add_shake(0.25)
+			return true
+	return false
+
+## Its element about its body, on every peer: a light in its colour, and embers rising (fire), frost
+## mist falling (cold) or sparks crackling off it (lightning).
+static func dress(rig: Node3D, el: String) -> void:
+	if not ELEMENTS.has(el):
+		return
+	var col: Color = ELEMENTS[el]["col"]
+	var l := OmniLight3D.new()
+	l.light_color = col
+	l.light_energy = 1.4
+	l.omni_range = 5.0
+	l.position = Vector3(0, 2.0, 0)
+	rig.add_child(l)
+	rig.set_meta("sloth_light", l)
+	rig.set_meta("element", el)
+	match el:
+		"fire":
+			Fx.aura(rig, Color(1.0, 0.45, 0.08, 0.9), 40, 1.2, 0.07, 1.4, 1.2, 0.7, 30.0, Vector3(0, 1.8, 0), false)
+		"cold":
+			Fx.aura(rig, Color(0.8, 0.92, 1.0, 0.5), 22, 0.2, 0.45, 2.2, -0.25, 0.8, 90.0, Vector3(0, 1.4, 0))
+		"lightning":
+			Fx.aura(rig, Color(0.45, 0.32, 0.6), 30, 2.2, 0.05, 0.25, 0.0, 0.9, 180.0, Vector3(0, 1.6, 0))
+
+## Flicker of its light, and the storm's arcs across its body (Enemy._process, every peer).
+static func idle_fx(en: Enemy, delta: float) -> void:
+	var el := str(en.def.get("element", ""))
+	if not en.rig.has_meta("sloth_light"):
+		return
+	var l: OmniLight3D = en.rig.get_meta("sloth_light")
+	var t := en.anim_time
+	match el:
+		"fire":
+			l.light_energy = 1.3 + 0.35 * sin(t * 9.0) + 0.2 * sin(t * 23.0)
+		"cold":
+			l.light_energy = 1.1 + 0.15 * sin(t * 1.3)
+		"lightning":
+			l.light_energy = 0.9 + (2.5 if fmod(t, 0.9) < 0.08 else 0.0)
+			var gt: float = float(en.get_meta("arc_t", 0.0)) - delta
+			if gt <= 0.0:
+				gt = randf_range(0.4, 1.1)
+				var c := en.global_position + Vector3(0, 1.6, 0)
+				_bolt(en.game.world.fx_root, c + Vector3(randf_range(-0.8, 0.8), randf_range(-0.6, 0.8), randf_range(-0.6, 0.6)),
+					c + Vector3(randf_range(-1.1, 1.1), randf_range(-1.0, 0.6), randf_range(-0.6, 0.6)), Color(0.85, 0.7, 1.0))
+			en.set_meta("arc_t", gt)
 
 # ---------------------------------------------------------------- the body
 
@@ -401,16 +704,16 @@ const BONES := {
 	"tail": ["hips", Vector3(0, 1.1, -0.4), 0.16, ""],
 }
 
-static func build() -> Node3D:
+static func build(variant := "", tint := Color(0.52, 0.56, 0.47)) -> Node3D:
 	var root := Node3D.new()
 	var body: Node3D
-	if ok():
-		body = (load(GLB) as PackedScene).instantiate()
+	if variant != "" and ok(variant):
+		body = (load(GLB % variant) as PackedScene).instantiate()
 	else:
-		body = _standin()
+		body = _standin(tint)
 	body.name = "Body"
 	body.rotation.y = PI          # the model faces +z; monsters face -z
-	body.scale = Vector3.ONE * SCALE
+	body.scale = Vector3.ONE * (MODEL_SCALE if variant != "" and ok(variant) else SCALE)
 	root.add_child(body)
 	var sks := body.find_children("*", "Skeleton3D", true, false)
 	if sks.is_empty():
@@ -457,7 +760,7 @@ void fragment(){ ALBEDO = vec3(0.02, 0.018, 0.016); }
 	return _outline
 
 ## The stand-in body: the skeleton with a capsule along each bone, mossy grey-green, claws and cyan eyes.
-static func _standin() -> Node3D:
+static func _standin(tint: Color) -> Node3D:
 	var body := Node3D.new()
 	var sk := Skeleton3D.new()
 	sk.name = "Skeleton3D"
@@ -474,7 +777,7 @@ static func _standin() -> Node3D:
 		var rel: Vector3 = at - (Vector3.ZERO if b[0] == "" else (BONES[b[0]][1] as Vector3))
 		sk.set_bone_rest(i, Transform3D(Basis(), rel))
 	sk.reset_bone_poses()
-	var fur := Mats.mat(Color(0.52, 0.56, 0.47), 0.95)
+	var fur := Mats.mat(tint, 0.95)
 	var bare := Mats.mat(Color(0.55, 0.42, 0.38), 0.8)
 	var claw := Mats.mat(Color(0.05, 0.05, 0.05), 0.35)
 	var eye := Mats.glow(Color(0.45, 0.95, 1.0), 3.0, 0.0, 1.0)
@@ -669,41 +972,94 @@ static func pose(rig: Node3D, st: Dictionary, height: float) -> void:
 				p["forearm_l"] += Vector3(-0.5 * r, 0, 0)
 				p["forearm_r"] += Vector3(-0.5 * r, 0, 0)
 			"sloth_sweep":
-				# the right arm winds back across, then rakes round in a wide arc (lands ~0.47) and on
-				var wind := smoothstep(0.05, 0.35, k)
-				var rake := smoothstep(0.38, 0.55, k)
-				var back := 1.0 - smoothstep(0.7, 1.0, k)
-				var sw := lerpf(1.0, -1.0, rake) * wind * back
-				p["chest"] += Vector3(0, -0.5 * sw, 0)
-				p["spine"] += Vector3(0, -0.25 * sw, 0)
-				p["arm_r"] += Vector3(-1.1 * wind * back, 0.9 * sw, 0.9 * wind * back)
-				p["forearm_r"] += Vector3(-0.2 * wind * back, 0, 0)
-				p["arm_l"] += Vector3(-0.4 * wind * back, 0, -0.3 * wind * back)
+				# Rending Sweep: it sinks and twists away, the right arm cocked far back (anticipation, to 0.36),
+				# the whole body unwinds hips first and the claws rake round in a wide arc (lands ~0.47), the
+				# weight carries it on past (overshoot to 0.62), and it settles back onto all fours
+				var crouch := smoothstep(0.0, 0.3, k) * (1.0 - smoothstep(0.38, 0.5, k))
+				var wind := smoothstep(0.05, 0.36, k)
+				var rake := smoothstep(0.38, 0.5, k)
+				var over := smoothstep(0.46, 0.62, k) * (1.0 - smoothstep(0.62, 0.95, k))
+				var back := 1.0 - smoothstep(0.66, 1.0, k)
+				var sw := (lerpf(1.0, -1.0, rake) - over * 0.35) * wind * back
+				p["hips"] += Vector3(0, -0.2 * sw, 0)
+				p["spine"] += Vector3(0.1 * crouch, -0.3 * sw, 0.06 * sw)
+				p["chest"] += Vector3(-0.1 * rake * back, -0.55 * sw, 0)
+				p["neck"] += Vector3(0.1 * crouch, 0.35 * sw, 0)        # the head stays on the target
+				p["arm_r"] += Vector3(-1.2 * wind * back - 0.3 * over, 1.0 * sw, 0.95 * wind * back)
+				p["forearm_r"] += Vector3(-0.6 * (1.0 - rake) * wind - 0.15 * rake * back, 0, 0)
+				p["hand_r"] += Vector3(0.4 * (1.0 - rake) * wind - 0.5 * rake * back, 0, 0)
+				p["arm_l"] += Vector3(-0.5 * wind * back, -0.3 * sw, -0.35 * wind * back)
+				for leg in ["l", "r"]:
+					p["thigh_" + leg] += Vector3(-0.25 * crouch, 0, 0)
+					p["shin_" + leg] += Vector3(0.35 * crouch, 0, 0)
+				p["tail"] += Vector3(0, 0.5 * sw, 0)
+				lift -= 0.14 * crouch
 			"sloth_slam":
-				# up to its full height, both arms raised high (to 0.5), down they crash (0.6), and up again
-				var raise := smoothstep(0.2, 0.48, k) * (1.0 - smoothstep(0.5, 0.6, k))
+				# Earthshaker: up to its full height and a casting motion of its element (to ~0.5), then both
+				# arms crash down (0.6) with the weight following through, and it hauls itself back up
+				var el: String = rig.get_meta("element", "")
+				var cast := smoothstep(0.15, 0.4, k) * (1.0 - smoothstep(0.48, 0.56, k))
+				var up := smoothstep(0.42, 0.5, k) * (1.0 - smoothstep(0.52, 0.58, k))
 				var crash := smoothstep(0.52, 0.6, k) * (1.0 - smoothstep(0.78, 1.0, k))
-				for s in ["l", "r"]:
-					var sg := 1.0 if s == "l" else -1.0
-					p["arm_" + s] += Vector3(-2.3 * raise - 0.5 * crash, 0, -0.2 * sg * raise)
-					p["forearm_" + s] += Vector3(-0.5 * raise, 0, 0)
-				p["spine"] += Vector3(-0.3 * raise + 0.25 * crash, 0, 0)
-				p["chest"] += Vector3(-0.2 * raise + 0.15 * crash, 0, 0)
-				p["head"] += Vector3(-0.3 * raise + 0.2 * crash, 0, 0)
-				lift += 0.12 * raise - 0.12 * crash
+				var quiver := sin(t * 38.0) * 0.04 * cast
+				match el:
+					"fire":
+						# a great heave of breath: back arched, chest thrown out, arms flung wide, head up
+						p["spine"] += Vector3(-0.35 * cast, 0, 0)
+						p["chest"] += Vector3(-0.3 * cast + quiver, 0, 0)
+						p["head"] += Vector3(-0.5 * cast, 0, 0)
+						for s2 in ["l", "r"]:
+							var sg := 1.0 if s2 == "l" else -1.0
+							p["arm_" + s2] += Vector3(-0.4 * cast, 0, 1.1 * sg * cast)
+							p["forearm_" + s2] += Vector3(-0.7 * cast, 0, 0)
+					"cold":
+						# claws crossed over its chest, hunched and shivering as the cold gathers
+						p["spine"] += Vector3(0.2 * cast, 0, 0)
+						p["chest"] += Vector3(0.15 * cast, quiver * 2.0, 0)
+						p["head"] += Vector3(0.25 * cast, 0, 0)
+						for s2 in ["l", "r"]:
+							var sg := 1.0 if s2 == "l" else -1.0
+							p["arm_" + s2] += Vector3(-1.1 * cast, -0.9 * sg * cast, -0.5 * sg * cast)
+							p["forearm_" + s2] += Vector3(-1.3 * cast + quiver, 0, 0)
+					_:
+						# both arms raised to the sky, head thrown back, crackling, calling the storm down
+						p["spine"] += Vector3(-0.25 * cast, 0, 0)
+						p["chest"] += Vector3(-0.2 * cast, 0, 0)
+						p["head"] += Vector3(-0.6 * cast, quiver, 0)
+						for s2 in ["l", "r"]:
+							var sg := 1.0 if s2 == "l" else -1.0
+							p["arm_" + s2] += Vector3(-2.7 * cast + quiver, 0, 0.35 * sg * cast)
+							p["forearm_" + s2] += Vector3(-0.3 * cast, 0, 0)
+				# the last heave up, then the crash and its follow-through
+				for s2 in ["l", "r"]:
+					var sg := 1.0 if s2 == "l" else -1.0
+					p["arm_" + s2] += Vector3(-2.4 * up - 0.6 * crash, 0, -0.15 * sg * up)
+					p["forearm_" + s2] += Vector3(-0.4 * up + 0.2 * crash, 0, 0)
+				p["spine"] += Vector3(-0.2 * up + 0.35 * crash, 0, 0)
+				p["chest"] += Vector3(-0.15 * up + 0.2 * crash, 0, 0)
+				p["head"] += Vector3(-0.2 * up + 0.3 * crash, 0, 0)
+				p["tail"] += Vector3(-0.3 * crash, 0, 0)
+				lift += 0.12 * (cast + up) * 0.6 - 0.16 * crash
 			"sloth_pounce":
-				# coil low, launch with the arms reaching (0.3-0.6), land on its claws (0.62), recover
+				# Hollow Pounce: it gathers low, rump up and tail lifting, head down on the target (to 0.3),
+				# springs off the hind legs with the arms reaching out (0.3-0.6), lands claws first (0.62),
+				# its weight driving it down, and pushes back up
 				var coil := smoothstep(0.0, 0.26, k) * (1.0 - smoothstep(0.28, 0.36, k))
 				var fly := smoothstep(0.28, 0.4, k) * (1.0 - smoothstep(0.56, 0.66, k))
 				var land := smoothstep(0.6, 0.66, k) * (1.0 - smoothstep(0.75, 1.0, k))
-				lift += -0.3 * coil + sin(clampf((k - 0.28) / 0.34, 0.0, 1.0) * PI) * 1.1 - 0.15 * land
-				p["spine"] += Vector3(0.15 * coil - 0.25 * fly, 0, 0)
-				for s in ["l", "r"]:
-					p["arm_" + s] += Vector3(0.3 * coil - 1.0 * fly + 0.2 * land, 0, 0)
-					p["forearm_" + s] += Vector3(-0.2 * fly, 0, 0)
-					p["thigh_" + s] += Vector3(-0.5 * coil + 0.9 * fly, 0, 0)
-					p["shin_" + s] += Vector3(0.6 * coil - 0.2 * fly, 0, 0)
-				p["neck"] += Vector3(-0.3 * fly + 0.2 * land, 0, 0)
+				var wag := sin(t * 14.0) * 0.06 * coil
+				lift += -0.36 * coil + sin(clampf((k - 0.28) / 0.34, 0.0, 1.0) * PI) * 1.2 - 0.22 * land
+				p["hips"] += Vector3(-0.15 * coil, wag, 0)
+				p["spine"] += Vector3(0.2 * coil - 0.3 * fly + 0.15 * land, 0, 0)
+				p["neck"] += Vector3(0.25 * coil - 0.35 * fly + 0.25 * land, 0, 0)
+				p["head"] += Vector3(-0.2 * coil, 0, 0)
+				for s2 in ["l", "r"]:
+					p["arm_" + s2] += Vector3(0.35 * coil - 1.1 * fly + 0.25 * land, 0, 0)
+					p["forearm_" + s2] += Vector3(-0.25 * fly + 0.2 * land, 0, 0)
+					p["hand_" + s2] += Vector3(-0.4 * fly, 0, 0)
+					p["thigh_" + s2] += Vector3(-0.6 * coil + 1.0 * fly, 0, 0)
+					p["shin_" + s2] += Vector3(0.7 * coil - 0.25 * fly + 0.3 * land, 0, 0)
+				p["tail"] += Vector3(-0.5 * coil - 0.3 * fly, wag * 3.0, 0)
 	# a blow rocks it back a little
 	p["chest"] += Vector3(-hit * 0.15, 0, 0)
 	p["neck"] += Vector3(-hit * 0.2, 0, 0)

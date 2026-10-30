@@ -112,7 +112,8 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 		slot_a = randf_range(-1.6, 1.6)
 		lunge_cd = randf_range(0.3, 3.0)
 	elif def.get("mesh", "") == "sloth":
-		rig = Sloth.build()
+		rig = Sloth.build(str(def.get("variant", "")), look.get("skin", Color(0.52, 0.56, 0.47)))
+		Sloth.dress(rig, str(def.get("element", "")))
 		sloth = Sloth.new(self)
 		atk_style = "sloth_walk"
 		add_to_group("sloth")
@@ -458,6 +459,7 @@ func _process(delta: float) -> void:
 		hoard.murmur(delta)
 	if sloth != null:
 		Sloth.presence(self, delta, _sloth_phase)
+		Sloth.idle_fx(self, delta)
 		_sloth_phase = phase
 	if remote:
 		_remote_process(delta)

@@ -68,6 +68,7 @@ var block_flash := 0.0
 ## the Hollow Sloth's blows (sloth.gd): its sweep throws you back, its slam stuns
 var shove := Vector3.ZERO
 var daze_t := 0.0
+var chill_t := 0.0          # Rimeclaw's cold: slowed while it lasts
 var hit_t := 0.0
 var cls := "knight"          # "knight", "wraith", "demon" or "warlock" (Data.CLASSES)
 var cds := {}
@@ -1104,19 +1105,34 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	life -= dmg
 	hit_t = 1.0
 	# a plain thud, no voice: an "oof" on every hit was too much
-	Sfx.play("hero_hit", -3.0, randf_range(0.9, 1.1))
-	Fx.blood(game.world.fx_root, global_position + Vector3(0, 1.2, 0), Color(0.6, 0.02, 0.02))
-	Fx.number(game.world.fx_root, global_position + Vector3(0, 2.2, 0), str(int(dmg)), Color(1.0, 0.3, 0.25))
-	game.add_shake(0.2)
+	var burn := kind == "burn"
+	if not burn:
+		Sfx.play("hero_hit", -3.0, randf_range(0.9, 1.1))
+		Fx.blood(game.world.fx_root, global_position + Vector3(0, 1.2, 0), Color(0.6, 0.02, 0.02))
+		game.add_shake(0.2)
+	Fx.number(game.world.fx_root, global_position + Vector3(0, 2.2, 0), str(int(dmg)), Color(1.0, 0.55, 0.15) if burn else Color(1.0, 0.3, 0.25))
 	game.ui.flash_damage()
-	if kind == "sweep" or kind == "quake":
-		var away := global_position - from
-		away.y = 0
-		if kind == "sweep" and away.length() > 0.01:
-			shove = away.normalized() * 11.0
-		elif kind == "quake":
+	# the Hollow Sloths' blows: thrown back, stunned, chilled, frozen solid, shocked
+	match kind:
+		"sweep":
+			var away := global_position - from
+			away.y = 0
+			if away.length() > 0.01:
+				shove = away.normalized() * 11.0
+		"quake":
 			daze_t = maxf(daze_t, 1.1)
-			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Stunned", Color(0.55, 0.9, 0.95))
+			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Stunned", Color(0.95, 0.8, 0.5))
+		"chill":
+			chill_t = maxf(chill_t, 2.5)
+			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Chilled", Color(0.55, 0.85, 1.0))
+		"freeze":
+			daze_t = maxf(daze_t, 1.8)
+			chill_t = maxf(chill_t, 4.0)
+			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Frozen", Color(0.6, 0.9, 1.0))
+			Fx.burst(game.world.fx_root, global_position + Vector3(0, 1.0, 0), Color(0.8, 0.95, 1.0), 30, 1.5, 0.15, 1.0, true, -1.0)
+		"shock":
+			daze_t = maxf(daze_t, 0.45)
+			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Shocked", Color(0.8, 0.6, 1.0))
 	if life <= 0.0:
 		life = 0.0
 		dead = true
@@ -1219,6 +1235,9 @@ func _process(delta: float) -> void:
 		daze_t -= delta
 		hit_t = maxf(hit_t, 0.6)
 		speed = 0.0
+	if chill_t > 0.0:
+		chill_t -= delta
+		speed *= 0.55
 
 	if charge_t >= 0.0:
 		_update_charge(delta)
@@ -2243,6 +2262,8 @@ func move_in_inventory(from: int, to: int) -> void:
 func equip_from_inventory(idx: int) -> void:
 	var it = inventory[idx]
 	if it == null:
+		return
+	if Items.is_material(it):
 		return
 	if not Items.is_equip(it):
 		# potions: as many as fit go to the belt, the rest stay here

@@ -1222,7 +1222,10 @@ func _pickup(g: GroundItem) -> void:
 		ui.refresh()
 		return
 	if hero.add_to_inventory(it):
-		Sfx.play("pickup")
+		if Items.is_material(it):
+			claim_material(it, g.global_position)
+		else:
+			Sfx.play("pickup")
 		if hovered == g:
 			hovered = null
 		net.item_gone(g)
@@ -1232,6 +1235,18 @@ func _pickup(g: GroundItem) -> void:
 		ui.message("Inventory is full", Color(1, 0.4, 0.3))
 
 ## Co-op: the host handed us an item we picked up.
+## A Hollow Sloth's material picked up: its colour bursts up and round the hero, a bright crystal ting,
+## and its name is announced.
+func claim_material(it: Dictionary, at: Vector3) -> void:
+	var col: Color = Data.BASES[it["base"]]["color"]
+	Sfx.play("relic_ting", 0.0, randf_range(0.97, 1.03))
+	Fx.burst(world.fx_root, at + Vector3(0, 0.4, 0), col, 40, 4.5, 0.12, 0.9, true, -2.0)
+	Fx.pillar(world.fx_root, at, col, 1.0)
+	Fx.ring(world.fx_root, hero.global_position, 1.6, col, 0.6)
+	Fx.flash(world.fx_root, at + Vector3(0, 1.0, 0), col, 4.0, 0.5, 6.0)
+	ui.big_message("✦ " + it["name"] + " ✦")
+	ui.message("You claim the %s" % it["name"], col)
+
 func receive_item(it: Dictionary, pos: Vector3) -> void:
 	if it["base"] == "gold":
 		var amt := int(it["count"] * (1.0 + hero.gf / 100.0))
@@ -1239,7 +1254,10 @@ func receive_item(it: Dictionary, pos: Vector3) -> void:
 		Sfx.play("gold")
 		Fx.number(world.fx_root, pos + Vector3(0, 1, 0), "+%d gold" % amt, Color(1, 0.85, 0.4))
 	elif hero.add_to_inventory(it):
-		Sfx.play("pickup")
+		if Items.is_material(it):
+			claim_material(it, pos)
+		else:
+			Sfx.play("pickup")
 	else:
 		ui.message("Inventory is full", Color(1, 0.4, 0.3))
 		net.request_drop(it, hero.global_position)
@@ -1456,6 +1474,9 @@ func on_enemy_killed(e: Enemy) -> void:
 		drops = 7
 	for i in drops:
 		_drop_loot_roll(e.global_position, e.level, e.boss or (e.champion and i == 0))
+	if e.def.has("drop"):
+		# a Hollow Sloth's own material
+		drop_item(Items.make(e.def["drop"], 0, 1), e.global_position)
 	if e.def.get("trophy", false):
 		# the Hollow Sloth: a unique for certain, and a heap of gold
 		var cands := Data.UNIQUES.keys().filter(func(k): return Data.UNIQUES[k]["lvl"] <= e.level + 3 and not Data.UNIQUES[k].get("boss_only", false))
@@ -1466,7 +1487,7 @@ func on_enemy_killed(e: Enemy) -> void:
 			drop_item(su, e.global_position)
 		for i in 3:
 			drop_item(Items.gold(int(rng.randf_range(40, 70) * (1.0 + e.level * 0.6))), e.global_position)
-		ui.message("The Hollow Sloth is slain", Color(0.55, 0.9, 0.95))
+		ui.message("%s is slain" % e.display_name, Color(0.55, 0.9, 0.95))
 	if e.def.has("boss_drop"):
 		var bu := Items.make_unique(e.def["boss_drop"])
 		if difficulty >= 1:

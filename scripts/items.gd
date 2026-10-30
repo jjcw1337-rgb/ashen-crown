@@ -21,7 +21,7 @@ static func pick_base(ilvl: int, rng: RandomNumberGenerator, slot_filter: String
 	for k in Data.BASES.keys():
 		var b: Dictionary = Data.BASES[k]
 		var slot: String = b["slot"]
-		if slot in ["potion", "gold"]:
+		if slot in ["potion", "gold", "material"]:
 			continue
 		if slot_filter != "" and slot != slot_filter:
 			continue
@@ -208,7 +208,11 @@ static func sell_price(it: Dictionary) -> int:
 	return maxi(1, price(it) / 5)
 
 static func is_equip(it: Dictionary) -> bool:
-	return not (Data.BASES[it["base"]]["slot"] in ["potion", "gold"])
+	return not (Data.BASES[it["base"]]["slot"] in ["potion", "gold", "material"])
+
+## A crafting material (the Hollow Sloths' drops): one space, kept, never worn or drunk.
+static func is_material(it) -> bool:
+	return it != null and Data.BASES[it["base"]]["slot"] == "material"
 
 ## Which equipment slot an item would go in (rings prefer the empty one).
 static func equip_slot(it: Dictionary, equipment: Dictionary) -> String:
@@ -226,6 +230,8 @@ static func tooltip(it: Dictionary, hero_level: int = 99, mode: String = "") -> 
 	var lines := []
 	var col: Color = Data.RARITY_COLOR[int(it.get("rarity", 0))]
 	var b: Dictionary = Data.BASES[it["base"]]
+	if b["slot"] == "material":
+		col = b["color"]
 	var en := int(it.get("ench", 0))
 	lines.append([("+%d " % en if en > 0 else "") + it["name"], col])
 	if int(it.get("rarity", 0)) > 0:
@@ -251,6 +257,9 @@ static func tooltip(it: Dictionary, hero_level: int = 99, mode: String = "") -> 
 		lines.append(["Restores %d mana over 4 seconds" % b["mana"], white])
 	if b.has("rejuv"):
 		lines.append(["Instantly restores %d%% life and mana" % int(b["rejuv"] * 100), white])
+	if b["slot"] == "material":
+		lines.append(["Crafting Material", Color(0.75, 0.7, 0.6)])
+		lines.append([b["lore"], Color(0.7, 0.66, 0.58)])
 	var req: int = it.get("req", 1)
 	if req > 1:
 		lines.append(["Required Level: %d" % req, Color(1.0, 0.3, 0.3) if req > hero_level else white])
@@ -264,7 +273,9 @@ static func tooltip(it: Dictionary, hero_level: int = 99, mode: String = "") -> 
 		"sell": lines.append(["Sell value: %d gold   (Right-click to sell)" % sell_price(it), Color(1.0, 0.85, 0.4)])
 		"gamble": lines.append(["Gamble: %d gold" % (price(it) * 2), Color(1.0, 0.85, 0.4)])
 		"inv":
-			if is_equip(it):
+			if is_material(it):
+				lines.append(["Drag to move  ·  Ctrl-click to drop", Color(0.6, 0.6, 0.6)])
+			elif is_equip(it):
 				lines.append(["Left-click to equip  ·  Ctrl-click to drop", Color(0.6, 0.6, 0.6)])
 			else:
 				lines.append(["Right-click to drink  ·  Left-click to move to belt", Color(0.6, 0.6, 0.6)])

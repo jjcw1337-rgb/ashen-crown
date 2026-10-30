@@ -1457,7 +1457,7 @@ func _inv_click(idx: int, ev: InputEventMouseButton) -> void:
 					Sfx.play("pickup")
 					break
 			refresh()
-		elif not Items.is_equip(it):
+		elif not Items.is_equip(it) and not Items.is_material(it):
 			hero.equip_from_inventory(idx)
 			refresh()
 
