@@ -1332,7 +1332,7 @@ func _interact(t: Inter) -> void:
 				waypoints_known.append(wp_id)
 				ui.message("Waypoint activated", Color(0.5, 0.7, 1.0))
 				Sfx.play("portal")
-			ui.open_waypoints()
+			ui.open_waypoints(t)
 		"portal":
 			Sfx.play("portal")
 			if t.data.get("dir", "") == "town":
@@ -1406,9 +1406,10 @@ func act_boss_slain(run: int) -> bool:
 		return boss_killed
 	return bool(run_progress.get(str(run), {}).get("boss", false))
 
-## Take a waypoint: within this act, travel there; to another act, switch to it and arrive at that waypoint.
+## Take a waypoint (its id is its zone): within this act, travel there; to another act, switch to it and
+## arrive at that waypoint. Only acts that are open and waypoints this character has touched.
 func waypoint_go(run: int, zone: String) -> void:
-	if _busy or not act_unlocked(run):
+	if _busy or not act_unlocked(run) or not waypoint_known(run, zone):
 		return
 	if run == difficulty:
 		if zone != cur_zone:

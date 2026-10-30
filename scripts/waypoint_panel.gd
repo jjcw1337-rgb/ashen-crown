@@ -31,29 +31,41 @@ var seal: Label
 var route_box: VBoxContainer
 var route_line: Control
 var here_icons: Array = []   # the "you are here" sigils, pulsed in _process
+var stone: Node3D = null     # the waypoint stone it was opened from: walk away and it closes
+var cover: Control           # a clear layer behind the window: a click off the window closes it
 
 func setup(u: UI) -> void:
 	ui = u
 	game = u.game
 	name = "Waypoints"
 	visible = false
+	cover = Control.new()
+	cover.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cover.mouse_filter = Control.MOUSE_FILTER_STOP
+	cover.visible = false
+	cover.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.pressed:
+			close())
+	get_parent().add_child(cover)
+	get_parent().move_child(cover, get_index())
+	visibility_changed.connect(func(): cover.visible = visible)
 	anchor_left = 0.5
 	anchor_right = 0.5
 	anchor_top = 0.5
 	anchor_bottom = 0.5
-	offset_left = -460
-	offset_right = 460
-	offset_top = -350
-	offset_bottom = 228
+	offset_left = -480
+	offset_right = 480
+	offset_top = -362
+	offset_bottom = 236
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var sb := StyleBoxTexture.new()
 	sb.texture = load(FRAME)
 	for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
 		sb.set_texture_margin(side, 62)
-	sb.content_margin_left = 56
-	sb.content_margin_right = 56
-	sb.content_margin_top = 46
-	sb.content_margin_bottom = 58
+	sb.content_margin_left = 74
+	sb.content_margin_right = 74
+	sb.content_margin_top = 54
+	sb.content_margin_bottom = 70
 	add_theme_stylebox_override("panel", sb)
 	# the frame's middle is open: a dark backing inside it
 	var back := Panel.new()
@@ -92,8 +104,7 @@ func setup(u: UI) -> void:
 	x.custom_minimum_size = Vector2(34, 30)
 	x.focus_mode = Control.FOCUS_NONE
 	x.pressed.connect(func():
-		visible = false
-		ui.tooltip.visible = false
+		close()
 		Sfx.play("click"))
 	head.add_child(x)
 	var rule := ColorRect.new()
@@ -157,8 +168,9 @@ func setup(u: UI) -> void:
 	banner_note = ui._label("", 12, INK)
 	banner_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	cap.add_child(banner_note)
-	seal = ui._label("", 18, Color(1.0, 0.55, 0.4), true)
+	seal = ui._label("", 30, Color(1.0, 0.5, 0.35), true)
 	seal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	seal.offset_bottom = -110
 	seal.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	seal.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	seal.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -184,7 +196,8 @@ func setup(u: UI) -> void:
 	right.add_child(next_box)
 
 ## Show the window on the act you are in.
-func open() -> void:
+func open(from: Node3D = null) -> void:
+	stone = from
 	sel_run = int(game.difficulty)
 	_fill()
 	visible = true
@@ -195,6 +208,12 @@ func open() -> void:
 	tw.tween_property(self, "modulate:a", 1.0, 0.14)
 	tw.tween_property(self, "scale", Vector2.ONE, 0.2)
 	Sfx.play("portal", -10.0, 1.3)
+
+func close() -> void:
+	visible = false
+	stone = null
+	ui.tooltip.visible = false
+	ui.tip_owner = null
 
 func _act_name(run: int) -> String:
 	return str(Data.RUNS[clampi(run, 0, Data.RUNS.size() - 1)]["name"])
@@ -214,11 +233,11 @@ func _fill() -> void:
 	banner_title.text = str(info["name"])
 	banner_note.text = game.run_note(sel_run)
 	seal.visible = not open_act
-	if not open_act:
-		var prev: Dictionary = Data.waypoint_act(sel_run - 1)
-		seal.text = "SEALED\n\nSlay %s\nin %s to open this act" % [_boss_name(prev), _act_name(sel_run - 1)]
+	seal.text = "SEALED"
 	for c in route_box.get_children():
 		c.queue_free()
+	if not open_act:
+		route_box.add_child(_sealed_card(Data.waypoint_act(sel_run - 1)))
 	if open_act:
 		var pts: Array = act["points"]
 		for i in pts.size():
@@ -383,6 +402,19 @@ func _lair_row(act: Dictionary, info: Dictionary) -> Control:
 	tv.add_child(ui._label(("Slain: " if slain else "Lord: ") + _boss_name(act) + "  ·  reached on foot", 11, DIM))
 	return row
 
+## A sealed act's route: what opens it.
+func _sealed_card(prev: Dictionary) -> Control:
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", ui._box(Color(0.08, 0.03, 0.02, 0.75), Color(0.5, 0.2, 0.14), 1, 6, 12))
+	var tv := VBoxContainer.new()
+	tv.add_theme_constant_override("separation", 4)
+	card.add_child(tv)
+	tv.add_child(ui._label("THIS ACT IS SEALED", 14, Color(1.0, 0.5, 0.35), true))
+	var l := ui._label("Slay %s in %s to open it. Its waypoints then wait to be found, one stone at a time." % [_boss_name(prev), _act_name(int(prev.get("run", 0)))], 13, INK)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tv.add_child(l)
+	return card
+
 ## Where the road leads after this act: the next act's tab, open or sealed by this act's lord.
 func _next_card(act: Dictionary, nxt: Dictionary) -> Control:
 	var run: int = nxt["run"]
@@ -446,13 +478,18 @@ func _jump(run: int, zone: String, icon: Control) -> void:
 	tw.tween_property(icon, "modulate", Color(2.2, 2.6, 3.0), 0.12)
 	tw.tween_property(icon, "modulate", Color(1, 1, 1), 0.2)
 	await get_tree().create_timer(0.28).timeout
-	visible = false
-	ui.tooltip.visible = false
+	close()
 	game.waypoint_go(run, zone)
 
 func _process(delta: float) -> void:
 	if not visible:
 		return
+	# stepped away from the stone (or it is gone, after travel): close, as walking off from a stall would
+	if stone != null:
+		var h = game.hero
+		if not is_instance_valid(stone) or h == null or h.global_position.distance_to(stone.global_position) > 4.5:
+			close()
+			return
 	_t += delta
 	_spin = move_toward(_spin, 0.0, delta * 18.0)
 	sigil.rotation += delta * (0.35 + _spin)
