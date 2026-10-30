@@ -65,6 +65,9 @@ var impact_done := false
 var blocking := false
 var block_amt := 0.0
 var block_flash := 0.0
+## the Hollow Sloth's blows (sloth.gd): its sweep throws you back, its slam stuns
+var shove := Vector3.ZERO
+var daze_t := 0.0
 var hit_t := 0.0
 var cls := "knight"          # "knight", "wraith", "demon" or "warlock" (Data.CLASSES)
 var cds := {}
@@ -698,7 +701,7 @@ func free_attack(aim: Vector3) -> void:
 ## the next one, which cuts off that swipe's recovery so the three flow together; the finisher
 ## (a full spin that hits all round) always plays out, and the chain starts over after a pause.
 func swipe_attack(aim: Vector3, keep_target := false) -> void:
-	if dead or charge_t >= 0.0 or drain_t >= 0.0:
+	if dead or charge_t >= 0.0 or drain_t >= 0.0 or daze_t > 0.0:
 		return
 	if atk_t >= 0.0:
 		if atk_skill == "" and atk_style.begins_with("swipe") and atk_t / atk_dur > 0.3 and atk_style != "swipe3":
@@ -842,7 +845,7 @@ func can_act() -> bool:
 	return not dead and atk_t < 0.0 and charge_t < 0.0 and drain_t < 0.0
 
 func use_skill(id: String, aim: Vector3) -> bool:
-	if dead or charge_t >= 0.0:
+	if dead or charge_t >= 0.0 or daze_t > 0.0:
 		return false
 	if atk_t >= 0.0 and atk_skill != "":
 		return false
@@ -1106,6 +1109,14 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	Fx.number(game.world.fx_root, global_position + Vector3(0, 2.2, 0), str(int(dmg)), Color(1.0, 0.3, 0.25))
 	game.add_shake(0.2)
 	game.ui.flash_damage()
+	if kind == "sweep" or kind == "quake":
+		var away := global_position - from
+		away.y = 0
+		if kind == "sweep" and away.length() > 0.01:
+			shove = away.normalized() * 11.0
+		elif kind == "quake":
+			daze_t = maxf(daze_t, 1.1)
+			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Stunned", Color(0.55, 0.9, 0.95))
 	if life <= 0.0:
 		life = 0.0
 		dead = true
@@ -1201,6 +1212,13 @@ func _process(delta: float) -> void:
 		speed *= 0.72
 	if game.test_fast:
 		speed *= game.TEST_FAST
+	if shove.length() > 0.05:
+		global_position = game.world.move(global_position, shove * delta)
+		shove = shove.lerp(Vector3.ZERO, clampf(delta * 6.0, 0.0, 1.0))
+	if daze_t > 0.0:
+		daze_t -= delta
+		hit_t = maxf(hit_t, 0.6)
+		speed = 0.0
 
 	if charge_t >= 0.0:
 		_update_charge(delta)

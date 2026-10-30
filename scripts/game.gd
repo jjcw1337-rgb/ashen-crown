@@ -1456,6 +1456,17 @@ func on_enemy_killed(e: Enemy) -> void:
 		drops = 7
 	for i in drops:
 		_drop_loot_roll(e.global_position, e.level, e.boss or (e.champion and i == 0))
+	if e.def.get("trophy", false):
+		# the Hollow Sloth: a unique for certain, and a heap of gold
+		var cands := Data.UNIQUES.keys().filter(func(k): return Data.UNIQUES[k]["lvl"] <= e.level + 3 and not Data.UNIQUES[k].get("boss_only", false))
+		if cands.size() > 0:
+			var su := Items.make_unique(cands[rng.randi() % cands.size()])
+			if difficulty >= 1:
+				Items.empower(su, loot_mult())
+			drop_item(su, e.global_position)
+		for i in 3:
+			drop_item(Items.gold(int(rng.randf_range(40, 70) * (1.0 + e.level * 0.6))), e.global_position)
+		ui.message("The Hollow Sloth is slain", Color(0.55, 0.9, 0.95))
 	if e.def.has("boss_drop"):
 		var bu := Items.make_unique(e.def["boss_drop"])
 		if difficulty >= 1:

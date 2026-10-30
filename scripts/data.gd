@@ -46,6 +46,10 @@ const ENEMIES := {
 	"feral": {"mesh": "feral", "name": "Feral", "rig": "humanoid", "life": 15, "dmg": [2, 5], "speed": 4.2, "range": 1.4, "xp": 12,
 		"ai": "feral", "atk": "feral_swipe", "atk_time": 0.8, "armor": 1, "radius": 0.5, "aggro": 14.0, "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.66, 0.6, 0.55), "cloth": Color(0.25, 0.2, 0.15), "height": 0.72, "bulk": 0.8, "head": "human", "hair": Color(0.08, 0.07, 0.06), "eyes": Color(1.0, 0.7, 0.3)}},
+	# the Hollow Sloth (sloth.gd): three giants roam the whole Act I moor; best avoided
+	"sloth": {"mesh": "sloth", "name": "Hollow Sloth", "rig": "crawler", "life": 320, "dmg": [8, 15], "speed": 2.2, "range": 2.6, "xp": 160,
+		"ai": "sloth", "atk": "sloth_sweep", "atk_time": 1.35, "armor": 10, "radius": 1.3, "aggro": 15.0, "trophy": true, "blood": Color(0.3, 0.06, 0.04),
+		"look": {"skin": Color(0.36, 0.42, 0.34), "height": 1.7, "eyes": Color(0.45, 0.95, 1.0)}},
 	# A2: the bandits of the Imperial Road (they wait hidden and spring an ambush, via.gd) and the beasts,
 	# gladiators and champion of Aurelia's arena (games.gd). "mesh" picks the Meshy model when it's there.
 	"bandit": {"mesh": "bandit", "name": "Road Bandit", "rig": "humanoid", "life": 22, "dmg": [3, 7], "speed": 4.4, "range": 1.6, "xp": 13,

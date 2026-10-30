@@ -52,6 +52,9 @@ var nova_t := 9.0
 var enraged := false
 ## King Grubb's fight (hoard.gd): on the king and on each of his Gold Grabbers (host side).
 var hoard: Hoard = null
+## The Hollow Sloth's brain (sloth.gd), when this is one
+var sloth: Sloth = null
+var _sloth_phase := 0.0
 ## Factions (Data.ENEMIES "faction"): goblins and the undead fight each other on sight (and both fight you).
 var rival: Enemy = null
 var rival_t := 0.0
@@ -108,6 +111,11 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 		rig = Feral.build(Feral.variant_at(global_position))
 		slot_a = randf_range(-1.6, 1.6)
 		lunge_cd = randf_range(0.3, 3.0)
+	elif def.get("mesh", "") == "sloth":
+		rig = Sloth.build()
+		sloth = Sloth.new(self)
+		atk_style = "sloth_walk"
+		add_to_group("sloth")
 	elif def.get("mesh", "") == "lion" and Lion.ok():
 		rig = Lion.build()
 		slot_a = randf_range(-1.6, 1.6)
@@ -226,7 +234,7 @@ func stun(t: float) -> void:
 	if remote:
 		game.net.send_enemy_stun(self, t)
 		return
-	if boss:
+	if boss or sloth != null:
 		t *= 0.3
 	stun_t = maxf(stun_t, t)
 	atk_t = -1.0
@@ -262,7 +270,7 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 	var away := global_position - from
 	away.y = 0
 	if away.length() > 0.01:
-		knock += away.normalized() * knockback * (0.25 if boss else 1.0)
+		knock += away.normalized() * knockback * (0.25 if boss else (0.12 if sloth != null else 1.0))
 	var col := Color(1.0, 0.95, 0.8) if not crit else Color(1.0, 0.75, 0.2)
 	if fire > p:
 		col = Color(1.0, 0.55, 0.15)
@@ -349,7 +357,7 @@ func apply_net_state(x: float, z: float, yaw: float, mv: float, ph: float, atk: 
 	net_pos = Vector3(x, 0, z)
 	net_yaw = yaw
 	move_amt = mv
-	if atk >= 0.0 and net_atk < 0.0:
+	if atk >= 0.0 and net_atk < 0.0 and sloth == null:
 		_swing_sound()
 	net_atk = atk
 	atk_style = style
@@ -375,6 +383,9 @@ func _remote_process(delta: float) -> void:
 ## Visual and sound side of the special attacks, run on every player's game.
 func special_fx(ev: String) -> void:
 	if hoard != null and hoard.boss == self and hoard.fx(ev):
+		return
+	if ev.begins_with("sloth"):
+		Sloth.fx(self, ev)
 		return
 	var col := Color(0.4, 1.0, 0.3) if def.get("nova", "") == "poison" else Color(1.0, 0.4, 0.1)
 	match ev:
@@ -426,7 +437,7 @@ func _process(delta: float) -> void:
 		if rig.has_meta("crawler"):
 			rig.rotation.z = f * PI
 			rig.position.y = f * 0.4 * height
-		elif rig.has_meta("feral") or rig.has_meta("lion"):
+		elif rig.has_meta("feral") or rig.has_meta("lion") or rig.has_meta("sloth"):
 			rig.rotation.x = 0.0
 			rig.rotation.z = f * f * 1.35      # rolls onto his side
 		elif rig.has_meta("goblin"):
@@ -445,6 +456,9 @@ func _process(delta: float) -> void:
 		return
 	if hoard != null and hoard.boss == self:
 		hoard.murmur(delta)
+	if sloth != null:
+		Sloth.presence(self, delta, _sloth_phase)
+		_sloth_phase = phase
 	if remote:
 		_remote_process(delta)
 		return
@@ -472,7 +486,7 @@ func _process(delta: float) -> void:
 	if perch_h > 0.0:
 		_feral_perch(delta, hero, dist)
 		return
-	if dist > 50.0 and not boss:
+	if dist > 50.0 and not boss and sloth == null:
 		return
 	hit_t = maxf(0.0, hit_t - delta * 4.0)
 	if knock.length() > 0.01:
@@ -485,7 +499,9 @@ func _process(delta: float) -> void:
 	var vel := Vector3.ZERO
 	# a Demon phased into the Underworld cannot be seen
 	var hero_dead: bool = hero.dead or hero.get("phased") == true
-	if stun_t > 0.0:
+	if sloth != null:
+		vel = sloth.update(delta, hero, to, dist, hero_dead)
+	elif stun_t > 0.0:
 		stun_t -= delta
 	elif atk_t >= 0.0:
 		_update_attack(delta, hero, dist)
@@ -522,7 +538,7 @@ func _process(delta: float) -> void:
 		global_position = game.world.move(global_position, vel * delta, body_r())
 		if aggro or vel.length() > 0.5:
 			if atk_t < 0.0:
-				_face(to if aggro and (dist <= 3.0 or f_state in ["back", "out"]) else vel)
+				_face(to if aggro and sloth == null and (dist <= 3.0 or f_state in ["back", "out"]) else vel)
 		move_amt = move_toward(move_amt, clampf(vel.length() / maxf(speed, 0.1), 0.0, 1.0), delta * 5.0)
 		var was := phase
 		phase += delta * vel.length() * (1.6 / maxf(height, 0.5)) * (-1.0 if f_state in ["back", "out"] else 1.0)
@@ -539,6 +555,8 @@ func _pose(st: Dictionary) -> void:
 		Feral.pose(rig, st, height)
 	elif rig.has_meta("lion"):
 		Lion.pose(rig, st, height)
+	elif rig.has_meta("sloth"):
+		Sloth.pose(rig, st, height)
 	else:
 		Anim.pose(rig, st)
 
@@ -554,7 +572,7 @@ func _footstep() -> void:
 ## The radius it collides with props and walls at: a boss's real bulk (so a 3.5 m King Grubb
 ## doesn't wade through pillars), everyone else the usual body size (they fit through gaps).
 func body_r() -> float:
-	return clampf(radius * 0.75, World.BODY_R, 1.1) if boss else World.BODY_R
+	return clampf(radius * 0.75, World.BODY_R, 1.1) if boss or sloth != null else World.BODY_R
 
 ## How tall it stands, in metres (mouse picking).
 func top() -> float:

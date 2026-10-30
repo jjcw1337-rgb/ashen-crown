@@ -641,6 +641,20 @@ func _feral_packs(groups: Dictionary, pid: int) -> void:
 			enemy_spawns.append({"kind": "feral", "pos": o + out * trunk, "count": 1, "champ": false, "pack": 500 + pid + centres.size(),
 				"level": level + 1, "perch": [o.x, o.z]})
 
+## Act I: the three Hollow Sloths (sloth.gd), one in each stretch of the moor, well off the road. From
+## there each roams the whole moor on its own.
+func _sloths() -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = int(bounds.size.y * 1000.0) + 5151
+	for i in 3:
+		var c: Vector2 = path_poly[int(path_poly.size() * (0.3 + 0.25 * i))]
+		for tries in 40:
+			var side := (1.0 if (i + tries) % 2 == 0 else -1.0) * r.randf_range(14.0, 26.0)
+			var p := Vector3(clampf(c.x + side, bounds.position.x + 5, bounds.end.x - 5), 0, c.y + r.randf_range(-8, 8))
+			if not is_blocked(p.x, p.z) and path_dist(p.x, p.z) > 10.0:
+				enemy_spawns.append({"kind": "sloth", "pos": p, "count": 1, "champ": false, "pack": 800 + i, "level": level + 2})
+				break
+
 ## Act I: a few rare Sunstar Blooms off the road, in among the trees. Picking one gives +50% experience
 ## for 5 minutes (Game.use_inter). Their own seed, so the rest of the moor doesn't change around them.
 func _rare_flowers(count: int) -> void:
@@ -1466,6 +1480,7 @@ func _build_wild() -> void:
 		t += rng.randf_range(0.045, 0.07)
 	if oak_forest:
 		_feral_packs(groups, pid)
+		_sloths()
 	spawns["start"] = Vector3(0, 0, -6)
 	for k in [["road", 0.22], ["road2", 0.5]]:
 		var rp: Vector2 = path_poly[int(path_poly.size() * k[1])]

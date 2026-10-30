@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `a2_arena_test`, `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
+`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -67,6 +67,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `enemy.gd`, `projectile.gd`, `feral.gd` | Monsters/AI and missiles (host-authoritative in co-op); the Feral's baked-animation body |
 | `via.gd`, `aurelia.gd`, `games.gd`, `roman.gd` | A2: the Imperial Road (wild), the city of Aurelia and its arena (lair), the arena's games (the act's boss fight), and the Roman architecture they're built from |
 | `lion.gd` | The arena lion: a Meshy model on a quadruped skeleton, posed in code (no baked animations) |
+| `sloth.gd` | The Hollow Sloth (Act I): three giants roaming the moor; its brain (`Sloth.new(enemy)`) and its code-posed body |
 | `fort.gd` | Grubb's fort (the lair in Act I; A3 keeps the crypt): the muddy approach with the guards fighting the dead, the palisade ring, gatehouse and watchtowers (Meshy props in `assets/models/fort/`), the lived-in camp scattered round Grubb's open courtyard, and the moor's goblin trail end (`Fort.trail_end`) |
 | `meshy_monster.gd` | Act I monsters from Meshy (`MeshyMonster.MODELS`, zombie/fallen/archer/goblin_guard): built on `Goblin.imported_rig` with grips and weapons; `Data.ENEMIES` `"mesh"` picks them |
 | `hoard.gd` | King Grubb's fight (Act I boss): Gilded Bombs, the three burst sacks, the gold scramble (piles reaching him heal him; piles a hero takes hurt him) |
@@ -192,6 +193,22 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   and one at a time lunges (`special` "feral_lunge", flying over other monsters), backs off, darts in to claw,
   backs out (`_feral_combat`, `f_state`); the lunge has a 5 s cooldown, and outrun for 6 s (beyond 9 m) the pack
   gives up and goes home, ignoring you for 8 s unless hit (`f_chase`, `f_calm`). `tools/feral_test.gd` checks it.
+- **The Hollow Sloth** (`sloth.gd`, Act I, `World._sloths`: three, one per stretch of the moor, well off the road):
+  each roams the whole moor (`_far_goal`, never near the camp) at a walk, stopping to sniff or to rise and look about;
+  it keeps thinking at any distance (Enemy's 50 m cut-off skips it). A hero in sight within 15 m (more while it's
+  standing up) or a blow: it rises, stares, roars and hunts, its run building from 2.2 to 5.6 m/s (between the
+  hero's walk and sprint). Skills: the Rending Sweep (an arc in front; `take_hit` kind `"sweep"` throws the hero back,
+  `Hero.shove`), the Earthshaker slam (a ring 5 m ahead; kind `"quake"` stuns, `Hero.daze_t`), the Hollow Pounce (5.5
+  to 11 m). At half life and again at a fifth it runs off (`flee`, healing a little), then rises to look back; a
+  hero who stays 32 m off or out of sight for 5 s is given up on. Every timed move is an `atk_t`/`atk_dur`/
+  `atk_style` (`sloth_*`, in `Net.STYLES`), so `Sloth.pose` shows the same on every peer; the posture holds between
+  moves (standing after a rise, look, stare or roar). Its effects are `sloth_*` fx events (`Sloth.fx`); footfalls,
+  groans and the shake come from `Sloth.presence` on every peer. Killing one drops a unique and gold (`"trophy"` in
+  `Data.ENEMIES`); the corner map marks one within 40 m (group `"sloth"`). The body: `assets/models/monsters/
+  hollow_sloth.glb` when it exists (an upright A-pose Meshy model on a skeleton with the bones in `Sloth.BONES`,
+  from `sources/hollow_sloth.blend`; concept in `exports/act1/`), else a capsule stand-in on that skeleton.
+  Previews: `tools/sloth_sheet.gd` (contact sheet), `tools/sloth_shots.gd` (in the moor). Load sloth.gd at run time
+  in a `-s` tool (`load(...)`), like aurelia.gd.
 - **Factions** (`"faction"` in `Data.ENEMIES`: goblin, undead): a monster fights the nearest other-faction monster when
   it is closer than the hero (`Enemy.rival`, `Enemy.take_hit` so the attack code works on both); rival kills give no
   xp or loot (`killed_by_rival`). Host-side like all AI.
