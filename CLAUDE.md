@@ -346,6 +346,14 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   restore, and grows with maximum life/mana. Meshy frame `globe_frame.png`, Blender glass `globe_glass.png`
   (`tools/blender/ui_glass_orb.py`, added over the liquid). Standard for every class; a special character can
   override with a `"hud"` entry in `Data.CLASSES` (see `Globe.set_style`). Preview: `tools/globe_demo.gd`.
+- **Inventory (I)** (`UI._build_inventory`, jj's "Classic"): Meshy art in the action bar's iron and bronze
+  (`assets/textures/ui/inv_*.png`, cut and cleaned from Meshy concepts in `exports/ui/inventory/`): a NinePatchRect
+  frame (`INV_SCALE`, corners `INV_PATCH` texture px, the middle bands mirror-symmetric so they tile seamlessly,
+  `draw_center` off over a tiled iron inside), the equipment in a recessed alcove with a knight's silhouette
+  (`INV_EQUIP` rects and `Caption` labels), the bag's 40 sockets (`_slot(..., iron = true)`: the action bar's
+  socket on a 9-patch, a rarity line inside) and the gold on a bronze plate. Every piece keeps clear of the frame's
+  corner spikes and trim: `tools/inv_geometry_test.gd` samples each socket, label, the alcove and the plate against
+  the frame's ornament as the 9-patch draws it. Screenshot: `tools/inventory_shot.gd`.
 - **Character sheet (C)** (`UI._build_character`): Meshy frame `sheet_panel.png` (texture margin 100 so the corner
   pieces never stretch; content margins keep everything inside the gold trim), live portrait (a SubViewport on the
   shared world) in `sheet_portrait.png`, Meshy medallions `sheet_str/dex/vit/ene.png` and `sheet_plus.png`. Hover a

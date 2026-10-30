@@ -253,19 +253,53 @@ func _bar(col: Color, h: int) -> ProgressBar:
 	return pb
 
 # ---------------------------------------------------------------- slots
-func _slot(size: Vector2, on_click: Callable, on_hover: Callable, placeholder := "") -> Panel:
+static var _socket_tex: Texture2D
+
+## An item socket. iron: the action bar's riveted iron socket (the inventory), else a plain dark box.
+func _slot(size: Vector2, on_click: Callable, on_hover: Callable, placeholder := "", iron := false) -> Panel:
 	var p := Panel.new()
 	p.custom_minimum_size = size
-	var sb := _box(Color(0.03, 0.03, 0.03, 0.85), Color(0.25, 0.2, 0.13), 1, 1, 0)
-	sb.shadow_size = 0
-	p.add_theme_stylebox_override("panel", sb)
+	p.size = size
+	if iron:
+		p.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+		if _socket_tex == null:
+			_socket_tex = _scaled_tex(BAR_TEX["slot"], 0.3)
+		var fr := NinePatchRect.new()
+		fr.name = "socket"
+		fr.texture = _socket_tex
+		for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
+			fr.set_patch_margin(side, 9)
+		fr.set_anchors_preset(Control.PRESET_FULL_RECT)
+		fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		p.add_child(fr)
+		# the rarity: a coloured line just inside the socket's lip
+		var rar := Panel.new()
+		rar.name = "rar"
+		var rsb := StyleBoxFlat.new()
+		rsb.bg_color = Color(0, 0, 0, 0)
+		rsb.set_border_width_all(2)
+		rsb.set_corner_radius_all(1)
+		rar.add_theme_stylebox_override("panel", rsb)
+		rar.set_anchors_preset(Control.PRESET_FULL_RECT)
+		rar.offset_left = 5
+		rar.offset_top = 5
+		rar.offset_right = -5
+		rar.offset_bottom = -5
+		rar.visible = false
+		rar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		p.add_child(rar)
+	else:
+		var sb := _box(Color(0.03, 0.03, 0.03, 0.85), Color(0.25, 0.2, 0.13), 1, 1, 0)
+		sb.shadow_size = 0
+		p.add_theme_stylebox_override("panel", sb)
 	var tr := TextureRect.new()
 	tr.name = "icon"
 	tr.set_anchors_preset(Control.PRESET_FULL_RECT)
-	tr.offset_left = 2
-	tr.offset_top = 2
-	tr.offset_right = -2
-	tr.offset_bottom = -2
+	var ins := 6 if iron else 2
+	tr.offset_left = ins
+	tr.offset_top = ins
+	tr.offset_right = -ins
+	tr.offset_bottom = -ins
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -332,13 +366,17 @@ func _set_slot(p: Panel, it) -> void:
 	var tr: TextureRect = p.get_node("icon")
 	var ph: Label = p.get_node("ph")
 	var cnt: Label = p.get_node("count")
-	var sb: StyleBoxFlat = p.get_theme_stylebox("panel")
+	var sb := p.get_theme_stylebox("panel") as StyleBoxFlat
+	var rar := p.get_node_or_null("rar") as Panel
 	if it == null:
 		tr.texture = null
 		ph.visible = true
 		cnt.text = ""
-		sb.bg_color = Color(0.03, 0.03, 0.03, 0.85)
-		sb.border_color = Color(0.25, 0.2, 0.13)
+		if sb:
+			sb.bg_color = Color(0.03, 0.03, 0.03, 0.85)
+			sb.border_color = Color(0.25, 0.2, 0.13)
+		if rar:
+			rar.visible = false
 		p.set_meta("item", null)
 		return
 	ph.visible = false
@@ -346,8 +384,12 @@ func _set_slot(p: Panel, it) -> void:
 	var c := int(it.get("count", 1))
 	cnt.text = str(c) if c > 1 and it["base"] != "gold" else ""
 	var r := int(it.get("rarity", 0))
-	sb.bg_color = [Color(0.04, 0.04, 0.04, 0.9), Color(0.03, 0.04, 0.1, 0.9), Color(0.09, 0.08, 0.02, 0.9), Color(0.09, 0.06, 0.03, 0.9)][r]
-	sb.border_color = Color(0.25, 0.2, 0.13) if r == 0 else (Data.RARITY_COLOR[r] as Color).darkened(0.35)
+	if sb:
+		sb.bg_color = [Color(0.04, 0.04, 0.04, 0.9), Color(0.03, 0.04, 0.1, 0.9), Color(0.09, 0.08, 0.02, 0.9), Color(0.09, 0.06, 0.03, 0.9)][r]
+		sb.border_color = Color(0.25, 0.2, 0.13) if r == 0 else (Data.RARITY_COLOR[r] as Color).darkened(0.35)
+	if rar:
+		rar.visible = r > 0
+		(rar.get_theme_stylebox("panel") as StyleBoxFlat).border_color = (Data.RARITY_COLOR[r] as Color).darkened(0.2)
 	var tex := icons.get_icon(it, func(t):
 		if is_instance_valid(p) and (p.get_meta("item") if p.has_meta("item") else null) == it:
 			tr.texture = t)
@@ -1388,49 +1430,209 @@ func _panel(title: String, left: bool, w: int, h: int) -> PanelContainer:
 	vb.add_child(line)
 	return p
 
+## The inventory (Meshy art in the action bar's riveted iron and bronze, `assets/textures/ui/inv_*.png`): an
+## ornate iron frame, the equipment round a knight's silhouette in a recessed alcove, the bag's 40 sockets
+## below and the gold on a bronze plate. Every piece sits inside the frame's trim, clear of the corner pieces'
+## spikes (INV_SAFE; tools/inv_geometry_test.gd checks each socket against the frame's ornament).
+const INV_TEX := {"frame": "res://assets/textures/ui/inv_frame_full.png", "iron": "res://assets/textures/ui/inv_iron.png",
+	"alcove": "res://assets/textures/ui/inv_alcove.png", "plate": "res://assets/textures/ui/inv_plate.png",
+	"coinplate": "res://assets/textures/ui/inv_coinplate.png", "coins": "res://assets/textures/ui/inv_coins.png"}
+const INV_SIZE := Vector2(650, 641)
+## the frame texture's scale on screen; its corner pieces fill INV_PATCH texture pixels of each corner
+const INV_SCALE := 0.4
+const INV_PATCH := 340
+## the alcove, the bag and the gold plate (in the window)
+const INV_ALCOVE := Rect2(98, 88, 454, 236)
+const INV_GRID := Vector2(96, 334)
+const INV_PLATE := Rect2(225, 526, 200, 44)
+## the equipment in the alcove: rect, label
+const INV_EQUIP := {
+	"helm": [Rect2(195, 18, 64, 54), "Helm"], "amulet": [Rect2(275, 28, 40, 40), "Amulet"],
+	"weapon": [Rect2(26, 46, 72, 116), "Weapon"], "shield": [Rect2(356, 46, 72, 116), "Shield"],
+	"armor": [Rect2(185, 88, 84, 86), "Armour"],
+	"gloves": [Rect2(26, 182, 72, 46), "Gloves"], "boots": [Rect2(356, 182, 72, 46), "Boots"],
+	"ring1": [Rect2(132, 192, 38, 38), "Ring"], "belt": [Rect2(185, 192, 84, 38), "Belt"], "ring2": [Rect2(284, 192, 38, 38), "Ring"]}
+static var _inv_frame_tex: Texture2D
+
+## A texture at a fraction of its size (the frame and its pieces are drawn at their pixel size in a NinePatchRect).
+static func _scaled_tex(path: String, k: float) -> Texture2D:
+	var img: Image = (load(path) as Texture2D).get_image()
+	img.resize(int(img.get_width() * k), int(img.get_height() * k), Image.INTERPOLATE_LANCZOS)
+	return ImageTexture.create_from_image(img)
+
 func _build_inventory() -> void:
-	inv_panel = _panel("Inventory", false, 480, 640)
-	var vb: VBoxContainer = inv_panel.get_node("vb")
-	var eq := Control.new()
-	eq.custom_minimum_size = Vector2(450, 300)
-	vb.add_child(eq)
-	var layout := {
-		"helm": [Vector2(186, 0), Vector2(78, 70), "Helm"],
-		"amulet": [Vector2(280, 18), Vector2(44, 44), "Amulet"],
-		"weapon": [Vector2(40, 40), Vector2(90, 160), "Weapon"],
-		"armor": [Vector2(176, 82), Vector2(98, 130), "Armor"],
-		"shield": [Vector2(320, 40), Vector2(90, 160), "Shield"],
-		"ring1": [Vector2(130, 222), Vector2(44, 44), "Ring"],
-		"belt": [Vector2(186, 224), Vector2(78, 40), "Belt"],
-		"ring2": [Vector2(276, 222), Vector2(44, 44), "Ring"],
-		"gloves": [Vector2(40, 214), Vector2(78, 76), "Gloves"],
-		"boots": [Vector2(332, 214), Vector2(78, 76), "Boots"],
-	}
-	for k in layout.keys():
+	inv_panel = PanelContainer.new()
+	inv_panel.anchor_left = 1.0
+	inv_panel.anchor_right = 1.0
+	inv_panel.offset_left = -INV_SIZE.x - 18
+	inv_panel.offset_right = -18
+	inv_panel.offset_top = 36
+	inv_panel.custom_minimum_size = INV_SIZE
+	inv_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	inv_panel.visible = false
+	root.add_child(inv_panel)
+	var body := Control.new()
+	body.name = "body"
+	body.custom_minimum_size = INV_SIZE
+	body.mouse_filter = Control.MOUSE_FILTER_STOP
+	inv_panel.add_child(body)
+	# the iron inside, then the frame over it (its corners and trim drawn at their own size, the edges tiled)
+	var trim := int(178 * INV_SCALE)
+	var iron := TextureRect.new()
+	iron.texture = _scaled_tex(INV_TEX["iron"], INV_SCALE)
+	iron.stretch_mode = TextureRect.STRETCH_TILE
+	iron.position = Vector2(trim, trim)
+	iron.size = INV_SIZE - Vector2(trim * 2, trim * 2 - 2)
+	iron.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(iron)
+	if _inv_frame_tex == null:
+		_inv_frame_tex = _scaled_tex(INV_TEX["frame"], INV_SCALE)
+	var frame := NinePatchRect.new()
+	frame.name = "frame"
+	frame.texture = _inv_frame_tex
+	var pm := int(INV_PATCH * INV_SCALE)
+	frame.patch_margin_left = pm
+	frame.patch_margin_right = pm
+	frame.patch_margin_top = pm
+	frame.patch_margin_bottom = pm
+	frame.axis_stretch_horizontal = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
+	frame.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
+	frame.draw_center = false
+	frame.size = INV_SIZE
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(frame)
+	# the title plate on the top border, and the close button beside it
+	var plate := TextureRect.new()
+	plate.texture = load(INV_TEX["plate"])
+	plate.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	plate.size = Vector2(240, 36)
+	plate.position = Vector2((INV_SIZE.x - 240) * 0.5, 14)
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(plate)
+	var title := _label("INVENTORY", 15, GOLD, true)
+	var tfv := FontVariation.new()
+	tfv.base_font = font_title
+	tfv.spacing_glyph = 3
+	title.add_theme_font_override("font", tfv)
+	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	title.add_theme_constant_override("outline_size", 4)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.position = plate.position
+	title.size = plate.size
+	body.add_child(title)
+	var x := Button.new()
+	x.text = "✕"
+	x.flat = true
+	x.add_theme_color_override("font_color", Color(0.85, 0.7, 0.42))
+	x.add_theme_color_override("font_hover_color", Color(1.0, 0.85, 0.5))
+	x.add_theme_font_size_override("font_size", 18)
+	x.position = Vector2(INV_SIZE.x - pm - 34, 18)
+	x.size = Vector2(30, 30)
+	x.pressed.connect(func():
+		inv_panel.visible = false
+		tooltip.visible = false
+		shop_panel.visible = false
+		stash_panel.visible = false
+		burn_panel.visible = false
+		shop_mode = ""
+		Sfx.play("click"))
+	body.add_child(x)
+	# the alcove: the knight's silhouette in recessed iron, a bronze line round it
+	var al := TextureRect.new()
+	al.texture = load(INV_TEX["alcove"])
+	al.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	al.position = INV_ALCOVE.position
+	al.size = INV_ALCOVE.size
+	al.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(al)
+	body.add_child(_inset_line(INV_ALCOVE))
+	var lfv := FontVariation.new()
+	lfv.base_font = font_body
+	lfv.spacing_glyph = 2
+	for k in INV_EQUIP.keys():
 		var slot_name: String = k
-		var s := _slot(layout[k][1], func(ev):
+		var r: Rect2 = INV_EQUIP[k][0]
+		var s := _slot(r.size, func(ev):
 			if ev.button_index == MOUSE_BUTTON_LEFT:
 				hero.unequip(slot_name)
-				tooltip.visible = false, func(p, on): _hover(p, on, "equipped"), layout[k][2])
-		s.position = layout[k][0]
-		eq.add_child(s)
+				tooltip.visible = false, func(p, on): _hover(p, on, "equipped"), "", true)
+		s.position = INV_ALCOVE.position + r.position
+		body.add_child(s)
 		equip_cells[k] = s
-	var grid := GridContainer.new()
-	grid.columns = 10
-	grid.add_theme_constant_override("h_separation", 2)
-	grid.add_theme_constant_override("v_separation", 2)
-	vb.add_child(grid)
+		var lb := Caption.new()
+		lb.text = str(INV_EQUIP[k][1]).to_upper()
+		lb.font = lfv
+		lb.position = INV_ALCOVE.position + r.position + Vector2(-8, -12)
+		lb.size = Vector2(r.size.x + 16, 11)
+		body.add_child(lb)
+	# the bag: 10 x 4 sockets
 	for i in 40:
 		var idx := i
-		var c := _slot(Vector2(CELL, CELL), func(ev): _inv_click(idx, ev), func(p, on): _hover(p, on, "sell" if shop_mode in ["smith", "armor", "alch", "gamble"] else ("stash" if shop_mode == "stash" else "inv")))
+		var c := _slot(Vector2(CELL, CELL), func(ev): _inv_click(idx, ev), func(p, on): _hover(p, on, "sell" if shop_mode in ["smith", "armor", "alch", "gamble"] else ("stash" if shop_mode == "stash" else "inv")), "", true)
 		c.gui_input.connect(func(ev: InputEvent): _inv_drag_input(idx, ev))
-		grid.add_child(c)
+		c.position = INV_GRID + Vector2((i % 10) * (CELL + 2), (i / 10) * (CELL + 2))
+		body.add_child(c)
 		inv_cells.append(c)
-	gold_lbl = _label("", 18, Color(1.0, 0.85, 0.4), true)
-	vb.add_child(gold_lbl)
-	var help := _label("Click to equip  ·  Drag to move, or out onto the ground to drop  ·  Right-click drink/sell/store", 13, DIM)
-	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vb.add_child(help)
+	# the gold, on its bronze plate
+	var cp := TextureRect.new()
+	cp.texture = load(INV_TEX["coinplate"])
+	cp.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	cp.position = INV_PLATE.position
+	cp.size = INV_PLATE.size
+	cp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(cp)
+	var coins := TextureRect.new()
+	coins.texture = load(INV_TEX["coins"])
+	coins.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	coins.position = INV_PLATE.position + Vector2(22, 6)
+	coins.size = Vector2(32, 32)
+	coins.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(coins)
+	gold_lbl = _label("", 17, Color(1.0, 0.85, 0.45), true)
+	gold_lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	gold_lbl.add_theme_constant_override("outline_size", 4)
+	gold_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	gold_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	gold_lbl.position = INV_PLATE.position + Vector2(58, 0)
+	gold_lbl.size = Vector2(INV_PLATE.size.x - 80, INV_PLATE.size.y)
+	gold_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(gold_lbl)
+
+## A small letter-spaced caption drawn on its bottom edge, exactly inside its rect (a Label's line height
+## would run into the socket below it).
+class Caption extends Control:
+	var text := ""
+	var font: Font
+	var size_px := 10
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+	func _draw() -> void:
+		if font == null:
+			return
+		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size_px).x
+		var at := Vector2((size.x - w) * 0.5, size.y - 1.0)
+		draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size_px, 3, Color(0, 0, 0, 0.85))
+		draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size_px, Color(0.72, 0.6, 0.4))
+
+## A recessed line round r: dark outside, bronze, dark inside.
+func _inset_line(r: Rect2) -> Control:
+	var c := Control.new()
+	c.position = r.position - Vector2(3, 3)
+	c.size = r.size + Vector2(6, 6)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for k in [[0, Color(0, 0, 0, 0.75), 1], [1, Color(0.55, 0.43, 0.24), 2], [3, Color(0, 0, 0, 0.6), 1]]:
+		var pn := Panel.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0, 0, 0, 0)
+		sb.border_color = k[1]
+		sb.set_border_width_all(k[2])
+		pn.add_theme_stylebox_override("panel", sb)
+		pn.position = Vector2(k[0], k[0])
+		pn.size = c.size - Vector2(k[0] * 2, k[0] * 2)
+		pn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		c.add_child(pn)
+	return c
 
 func _inv_click(idx: int, ev: InputEventMouseButton) -> void:
 	var it = hero.inventory[idx]
@@ -3109,7 +3311,7 @@ func refresh() -> void:
 			_set_slot(inv_cells[i], hero.inventory[i])
 		for k in equip_cells.keys():
 			_set_slot(equip_cells[k], hero.equipment.get(k))
-		gold_lbl.text = "Gold: %d" % hero.gold
+		gold_lbl.text = "%d" % hero.gold
 	if stash_panel.visible:
 		for i in 60:
 			_set_slot(stash_cells[i], hero.stash[i])
