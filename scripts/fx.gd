@@ -243,6 +243,43 @@ static func telegraph(root: Node3D, pos: Vector3, radius: float, dur: float, col
 	_free_later(outer, dur)
 	_free_later(fill, dur)
 
+## A wedge of danger on the ground (the Fallen Reaver's cleave): radius metres out from pos along dir, half
+## degrees each side; it fills outward over dur, the moment the blow lands.
+static func arc_telegraph(root: Node3D, pos: Vector3, dir: Vector3, radius: float, half: float, dur: float, col := Color(1.0, 0.15, 0.05)) -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var n := 24
+	var a0 := -deg_to_rad(half)
+	var a1 := deg_to_rad(half)
+	for i in n:
+		var u0 := lerpf(a0, a1, float(i) / n)
+		var u1 := lerpf(a0, a1, float(i + 1) / n)
+		st.add_vertex(Vector3.ZERO)
+		st.add_vertex(Vector3(sin(u1), 0, -cos(u1)))
+		st.add_vertex(Vector3(sin(u0), 0, -cos(u0)))
+	var fan := st.commit()
+	var yaw := atan2(-dir.x, -dir.z)
+	var edge := MeshInstance3D.new()
+	edge.mesh = fan
+	edge.material_override = Mats.glow_unique(col, 0.35)
+	edge.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(edge)
+	edge.global_position = pos + Vector3(0, 0.06, 0)
+	edge.rotation.y = yaw
+	edge.scale = Vector3(radius, 1, radius)
+	var fill := MeshInstance3D.new()
+	fill.mesh = fan
+	fill.material_override = Mats.glow_unique(col, 1.1)
+	fill.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(fill)
+	fill.global_position = pos + Vector3(0, 0.07, 0)
+	fill.rotation.y = yaw
+	fill.scale = Vector3(0.05, 1, 0.05)
+	var tw := fill.create_tween()
+	tw.tween_property(fill, "scale", Vector3(radius, 1, radius), dur)
+	_free_later(edge, dur + 0.05)
+	_free_later(fill, dur + 0.05)
+
 static func pillar(root: Node3D, pos: Vector3, col: Color, dur: float = 1.4) -> void:
 	var mi := MeshInstance3D.new()
 	mi.mesh = Geo.cyl(0.9, 0.9, 1.0, 24)

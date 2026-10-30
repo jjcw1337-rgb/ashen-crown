@@ -536,6 +536,14 @@ static func enemy_weapon(kind: String) -> Node3D:
 			p["glow"] = Color(1.0, 0.25, 0.05)
 			p["gem"] = Color(1.0, 0.2, 0.05)
 			return weapon("sword", {"len": 1.15, "w": 0.13, "guard": 0.4, "wavy": 1.0}, p)
+		"sickle":
+			# the Fallen Skirmisher's hooked blade
+			p["metal"] = Color(0.42, 0.36, 0.3)
+			return weapon("sword", {"len": 0.5, "w": 0.06, "guard": 0.06, "curve": 3.0}, p)
+		"cleaver":
+			# the Fallen Reaver's cleaver-axe: a short haft and one broad, chipped head
+			p["metal"] = Color(0.5, 0.46, 0.42)
+			return weapon("axe", {"haft": 0.8, "head": 0.5, "beard": 1.0}, p)
 		"great_axe":
 			p["metal"] = Color(0.2, 0.15, 0.13)
 			p["glow"] = Color(1.0, 0.35, 0.05)
