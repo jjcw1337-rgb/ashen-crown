@@ -1301,6 +1301,7 @@ func _process(delta: float) -> void:
 		st["atk"] = 0.6
 		st["style"] = "cast"
 	Anim.pose(rig, st)
+	_carry_weapon(st, delta)
 	last_pose = st
 	_hover()
 	_draw_drain()
@@ -1409,9 +1410,47 @@ func _puppet_process(delta: float) -> void:
 	block_amt = st.get("block", 0.0)
 	atk_t = 0.0 if st.get("atk", -1.0) >= 0.0 else -1.0
 	Anim.pose(rig, st)
+	_carry_weapon(st, delta)
 	_hover()
 	_apply_shield_pose()
 	_update_trail(atk_t >= 0.0)
+
+## Running, the weapon is carried at a steady slant (head up and a little back) instead of turning with
+## the arm's pump: held fixed in the hand it whipped round with every stride and dipped into his body.
+## Eases in with the run, and lets go for an attack or a block. Not the gnome (Warlock._gnome_sway).
+var _carry := 0.0
+func _carry_weapon(st: Dictionary, delta: float) -> void:
+	if is_warlock() or weapon_node == null or not is_instance_valid(weapon_node):
+		return
+	var want := 0.0
+	if float(st.get("atk", -1.0)) < 0.0 and float(st.get("block", 0.0)) < 0.3:
+		want = clampf((float(st.get("move", 0.0)) - 0.25) / 0.5, 0.0, 1.0)
+	_carry = move_toward(_carry, want, delta * 5.0)
+	carry_grip(rig, _carry)
+
+## Turns the rig's right-hand grip toward the running carry by amount (0 = as the hand holds it).
+static func carry_grip(r: Node3D, amount: float) -> void:
+	if not r.has_meta("j"):
+		return
+	var J: Dictionary = r.get_meta("j")
+	if not J.has("grip_r"):
+		return
+	var grip: Node3D = J["grip_r"]
+	if not grip.has_meta("rest"):
+		grip.set_meta("rest", grip.transform.basis)
+	var rest: Basis = grip.get_meta("rest")
+	if amount <= 0.001:
+		grip.transform.basis = rest
+		return
+	# the slant in the rig's frame (it faces -z, its right is +x): blade (-Z of the grip) up and back,
+	# leaning a touch outward, the grip's Y toward the front
+	var rb := r.global_transform.basis.orthonormalized()
+	var dir := rb * Vector3(0.18, 0.85, 0.5).normalized()
+	var want := Basis.looking_at(dir, rb * Vector3(0, 0, -1))
+	var parent_b := (grip.get_parent() as Node3D).global_transform.basis.orthonormalized()
+	var local := (parent_b.inverse() * want).orthonormalized()
+	var sc := rest.get_scale()
+	grip.transform.basis = rest.orthonormalized().slerp(local, amount).scaled(sc)
 
 func _apply_shield_pose() -> void:
 	if shield_node == null or not is_instance_valid(shield_node):

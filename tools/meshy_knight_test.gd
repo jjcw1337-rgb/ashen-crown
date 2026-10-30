@@ -45,4 +45,23 @@ func _run() -> void:
 		h.cmd_move(h.global_position + Vector3(3, 0, 0))
 		await process_frame
 	print("[M] back to plain and moving ok: ", h.rig.get_meta("meshy", "") == "plain", " J head ok: ", is_instance_valid(h.J["head"]))
+	# running, the weapon is carried head up at a steady slant, not turning with the arm's pump
+	for body in ["plain", "armored"]:
+		if body == "armored":
+			h.equipment["armor"] = {"base": "chain_mail", "rarity": 0, "affixes": [], "stats": {}}
+		h.equipment["weapon"] = Items.make("hand_axe", 0, 1)
+		h.refresh_gear()
+		await process_frame
+		var lo := 1.0
+		var hi := -1.0
+		var start: Vector3 = h.global_position
+		for i in 90:
+			h.cmd_move(start + Vector3(30, 0, 0), true)
+			await process_frame
+			if i > 30 and h.weapon_node != null:
+				var blade: Vector3 = -h.weapon_node.global_transform.basis.z.normalized()
+				lo = minf(lo, blade.y)
+				hi = maxf(hi, blade.y)
+		h.cmd_move(h.global_position)
+		print("[M] %s running: the axe's head stays up (blade up %.2f .. %.2f, %s)" % [body, lo, hi, "ok" if lo > 0.5 else "FAIL"])
 	quit()

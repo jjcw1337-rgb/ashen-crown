@@ -2,7 +2,7 @@ extends SceneTree
 ## Contact sheet of the armoured knight's cloak (knight_rig.gd `_sway_cloak`) from behind and the side:
 ## standing in the wind, starting to run, running, stopping, and a sharp turn, sampled through the
 ## motion with the springs stepped at 30 fps. Needs a display.
-## Usage: godot --path . -s tools/cape_sheet.gd -- out.png [side|game]
+## Usage: godot --path . -s tools/cape_sheet.gd -- out.png [side|game] [axe|sword]
 const CELL := 220
 const COLS := 8
 
@@ -41,6 +41,10 @@ func _run() -> void:
 	r.set_meta("gait", "knight")
 	r.set("fixed_dt", 1.0 / 30.0)
 	root3.add_child(r)
+	# a weapon in hand, as the hero carries it ("axe" for a hand axe)
+	if args.has("axe") or args.has("sword"):
+		var J: Dictionary = r.get_meta("j")
+		(J["grip_r"] as Node3D).add_child(Models.item_model(Items.make("hand_axe" if args.has("axe") else "broad_sword", 0, 1)))
 	var cam := Camera3D.new()
 	cam.fov = 34
 	root3.add_child(cam)
@@ -62,6 +66,8 @@ func _run() -> void:
 			var mv := spd / 3.8
 			phase += dt * 9.5 * mv
 			Anim.pose(r, {"time": 2.0 + f * dt, "phase": phase, "move": mv})
+			if args.has("axe") or args.has("sword"):
+				load("res://scripts/hero.gd").carry_grip(r, clampf((mv - 0.25) / 0.5, 0.0, 1.0))
 			var c := r.position
 			var back := r.global_transform.basis.z
 			var rt := r.global_transform.basis.x
