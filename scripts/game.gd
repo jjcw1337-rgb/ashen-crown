@@ -1265,7 +1265,15 @@ func receive_item(it: Dictionary, pos: Vector3) -> void:
 		net.request_drop(it, hero.global_position)
 	ui.refresh()
 
+## Somewhere else: alone, straight there; in a co-op party, everyone is asked first and the party goes
+## only when all agree (Net.ask_trip, the ready check), then `travel_now` takes the whole party.
 func travel(act: int, zone: String, spawn: String, at = null, clear_tp := false) -> void:
+	if net.party_size() > 1:
+		net.ask_trip(act, zone, spawn, at, clear_tp)
+		return
+	travel_now(act, zone, spawn, at, clear_tp)
+
+func travel_now(act: int, zone: String, spawn: String, at = null, clear_tp := false) -> void:
 	if net.is_client():
 		net.request_travel(act, zone, spawn, at, clear_tp)
 		return

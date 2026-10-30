@@ -99,6 +99,7 @@ var trade_with: Inter = null   # the NPC whose window (dialog, trade, stash) is 
 var plates: Control            # VendorUI.Plates: nameplates over the town's people
 var stash_panel: PanelContainer
 var burn_panel: PanelContainer   # the camp's bonfire: drag or right-click an item to burn it for good
+var vote_panel: Control          # the party's ready check (Net.ask_trip): Join / Not yet
 var burn_fire: Control
 var stash_cells: Array = []
 var wp_panel: PanelContainer
@@ -160,6 +161,7 @@ func setup(g: Node) -> void:
 	_build_shop()
 	_build_stash()
 	_build_burn()
+	_build_vote()
 	_build_waypoints()
 	_build_dialog()
 	_build_pause()
@@ -2313,6 +2315,133 @@ func open_stash() -> void:
 	char_panel.visible = false
 	inv_panel.visible = true
 	refresh()
+
+# ---------------------------------------------------------------- the party's ready check
+## A small window in the inventory's iron and bronze, top centre: "<name> wants to travel to <place>" with
+## Join / Not yet; for the one who asked, "Waiting for <names>" and Cancel.
+var vote_title: Label
+var vote_dest: Label
+var vote_wait: Label
+var vote_yes: Button
+var vote_no: Button
+var vote_cancel: Button
+var _vote_mine := false
+
+func _iron_button(text: String, w := 130, h := 38, fs := 15) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.custom_minimum_size = Vector2(w, h)
+	b.add_theme_font_override("font", font_title)
+	b.add_theme_font_size_override("font_size", fs)
+	b.add_theme_color_override("font_color", Color(0.96, 0.82, 0.5))
+	b.add_theme_color_override("font_hover_color", Color(1.0, 0.92, 0.65))
+	for st in ["normal", "hover", "pressed", "focus"]:
+		var sb := StyleBoxTexture.new()
+		if _socket_tex == null:
+			_socket_tex = _scaled_tex(BAR_TEX["slot"], 0.3)
+		sb.texture = _socket_tex
+		for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
+			sb.set_texture_margin(side, 9)
+		sb.modulate_color = Color(1.25, 1.15, 1.0) if st == "hover" else (Color(0.85, 0.8, 0.75) if st == "pressed" else Color.WHITE)
+		b.add_theme_stylebox_override(st, sb)
+	return b
+
+func _build_vote() -> void:
+	vote_panel = Control.new()
+	vote_panel.anchor_left = 0.5
+	vote_panel.anchor_right = 0.5
+	vote_panel.offset_left = -170
+	vote_panel.offset_right = 170
+	vote_panel.offset_top = 30
+	vote_panel.offset_bottom = 30 + 124
+	vote_panel.visible = false
+	root.add_child(vote_panel)
+	var iron := TextureRect.new()
+	iron.texture = _scaled_tex(INV_TEX["iron"], 0.2)
+	iron.stretch_mode = TextureRect.STRETCH_TILE
+	iron.position = Vector2(20, 20)
+	iron.size = Vector2(300, 84)
+	vote_panel.add_child(iron)
+	var fr := NinePatchRect.new()
+	fr.texture = _scaled_tex(INV_TEX["frame"], 0.13)
+	for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
+		fr.set_patch_margin(side, 44)
+	fr.axis_stretch_horizontal = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
+	fr.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
+	fr.draw_center = false
+	fr.size = Vector2(340, 124)
+	fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vote_panel.add_child(fr)
+	var vb := VBoxContainer.new()
+	vb.position = Vector2(30, 24)
+	vb.size = Vector2(280, 80)
+	vb.add_theme_constant_override("separation", 1)
+	vote_panel.add_child(vb)
+	vote_title = _label("", 12, Color(0.8, 0.72, 0.58))
+	vote_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(vote_title)
+	vote_dest = _label("", 17, GOLD, true)
+	vote_dest.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(vote_dest)
+	vote_wait = _label("", 11, Color(0.7, 0.66, 0.58))
+	vote_wait.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vote_wait.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vb.add_child(vote_wait)
+	var hb := HBoxContainer.new()
+	hb.alignment = BoxContainer.ALIGNMENT_CENTER
+	hb.add_theme_constant_override("separation", 12)
+	vb.add_child(hb)
+	vote_yes = _iron_button("Join", 92, 28, 13)
+	vote_yes.pressed.connect(func():
+		Sfx.play("click")
+		game.net.answer_vote(true)
+		vote_yes.visible = false
+		vote_no.visible = false
+		vote_wait.text = "Ready. Waiting for the others…")
+	hb.add_child(vote_yes)
+	vote_no = _iron_button("Not yet", 92, 28, 13)
+	vote_no.pressed.connect(func():
+		Sfx.play("click")
+		game.net.answer_vote(false)
+		vote_no.visible = false
+		vote_wait.text = "The party waits for you. Join when you're ready.")
+	hb.add_child(vote_no)
+	vote_cancel = _iron_button("Cancel", 92, 28, 13)
+	vote_cancel.pressed.connect(func():
+		Sfx.play("click")
+		game.net.cancel_vote())
+	hb.add_child(vote_cancel)
+
+func party_vote(nm: String, dest: String, mine: bool) -> void:
+	_vote_mine = mine
+	vote_title.text = "You want to travel to" if mine else "%s wants to travel to" % nm
+	vote_dest.text = dest
+	vote_wait.text = ""
+	vote_yes.visible = not mine
+	vote_no.visible = not mine
+	vote_cancel.visible = mine
+	vote_panel.visible = true
+	Sfx.play("portal", -8.0, 1.1)
+
+func party_vote_wait(names: Array) -> void:
+	if not vote_panel.visible:
+		return
+	if _vote_mine:
+		vote_wait.text = "Waiting for %s…" % ", ".join(names)
+	elif vote_yes.visible == false and vote_no.visible == false:
+		vote_wait.text = "Ready. Waiting for %s…" % ", ".join(names)
+
+func party_vote_end() -> void:
+	if vote_panel:
+		vote_panel.visible = false
+
+## The party leader removing someone: asked first.
+func confirm_kick(pid: int, nm: String) -> void:
+	if nm == "":
+		return
+	open_dialog("Party", "Remove %s from the party?" % nm, [
+		["Remove", func(): game.net.kick(pid)],
+		["Keep", func(): pass]])
 
 ## The camp's bonfire: a window with the fire in it beside your inventory. Drag an item onto the flames, or
 ## right-click it, and it burns, gone for good (rare, unique and the sloths' materials ask first).

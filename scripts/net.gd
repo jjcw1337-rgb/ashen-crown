@@ -95,6 +95,9 @@ func shutdown() -> void:
 	active = false
 	is_host = false
 	loading = false
+	vote = {}
+	if game and game.ui:
+		game.ui.party_vote_end()
 	if disco and not listening:
 		disco.close()
 		disco = null
@@ -140,6 +143,13 @@ func _on_peer_disconnected(pid: int) -> void:
 		return
 	var n: String = players[pid]["name"]
 	_remove_player(pid)
+	# a trip waiting on them: theirs is called off, otherwise it goes on without their answer
+	if is_host and not vote.is_empty():
+		if int(vote["from"]) == pid:
+			_end_vote()
+		else:
+			(vote["yes"] as Dictionary).erase(pid)
+			_vote_check()
 	game.ui.message(n + " left the game", Color(1.0, 0.8, 0.4))
 	_update_status()
 
@@ -197,6 +207,7 @@ func alive_ally() -> Node3D:
 func _process(delta: float) -> void:
 	_clock += delta
 	travel_cool = maxf(0.0, travel_cool - delta)
+	_trip_cool = maxf(0.0, _trip_cool - delta)
 	if listening and disco:
 		while disco.get_available_packet_count() > 0:
 			var txt := disco.get_packet().get_string_from_utf8()
@@ -707,6 +718,122 @@ func cl_portal(pos: Vector3, dir: String, label: String, tp: Dictionary) -> void
 	Sfx.play("portal")
 	Fx.burst(game.world.fx_root, pos + Vector3(0, 1.4, 0), Color(0.4, 0.6, 1.0), 40, 3.0, 0.12, 1.0, true, 0.0)
 
+# ---------------------------------------------------------------- the ready check: the party travels only together
+## Someone wants to go elsewhere (an exit, a waypoint, a portal; Game.travel): everyone is asked (UI.party_vote,
+## Join / Not yet) and the host takes the party there once all have said Join. One trip at a time; the one who
+## asked can call it off. The host keeps the vote: {"trip": [act, zone, spawn, at, clear_tp], "from": pid,
+## "name", "dest", "yes": {pid: bool}}.
+var vote := {}
+var _trip_cool := 0.0
+
+## Everyone in the game, this player included.
+func party_size() -> int:
+	return (players.size() + 1) if active else 1
+
+func ask_trip(act: int, zone: String, spawn: String, at, clear_tp := false) -> void:
+	if _trip_cool > 0.0 or (game.ui.vote_panel != null and game.ui.vote_panel.visible):
+		return
+	_trip_cool = 1.0
+	if is_host:
+		_start_vote(1, act, zone, spawn, Vector3.INF if at == null else at, clear_tp)
+	else:
+		rpc_id(1, "sv_trip", act, zone, spawn, at if at != null else Vector3.INF, clear_tp)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_trip(act: int, zone: String, spawn: String, at: Vector3, clear_tp: bool) -> void:
+	if is_host and not game._busy:
+		_start_vote(multiplayer.get_remote_sender_id(), act, zone, spawn, at, clear_tp)
+
+func _name_of(pid: int) -> String:
+	if pid == 1 and is_host:
+		return my_name
+	return str(players[pid]["name"]) if players.has(pid) else "?"
+
+func _start_vote(pid: int, act: int, zone: String, spawn: String, at: Vector3, clear_tp: bool) -> void:
+	if not vote.is_empty():
+		return
+	vote = {"trip": [act, zone, spawn, at, clear_tp], "from": pid, "name": _name_of(pid), "dest": game.zone_title(act, zone), "yes": {pid: true}}
+	game.ui.party_vote(vote["name"], vote["dest"], pid == 1)
+	rpc("cl_vote", pid, vote["name"], vote["dest"])
+	_vote_check()
+
+@rpc("authority", "call_remote", "reliable")
+func cl_vote(from_pid: int, nm: String, dest: String) -> void:
+	game.ui.party_vote(nm, dest, from_pid == multiplayer.get_unique_id())
+
+## This player's answer (the popup's Join / Not yet).
+func answer_vote(yes: bool) -> void:
+	if is_host:
+		_vote_answer(1, yes)
+	else:
+		rpc_id(1, "sv_vote", yes)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_vote(yes: bool) -> void:
+	if is_host:
+		_vote_answer(multiplayer.get_remote_sender_id(), yes)
+
+func _vote_answer(pid: int, yes: bool) -> void:
+	if vote.is_empty():
+		return
+	vote["yes"][pid] = yes
+	_vote_check()
+
+## The one who asked calls the trip off.
+func cancel_vote() -> void:
+	if is_host:
+		_end_vote()
+	else:
+		rpc_id(1, "sv_vote_cancel")
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_vote_cancel() -> void:
+	if is_host and not vote.is_empty() and int(vote["from"]) == multiplayer.get_remote_sender_id():
+		_end_vote()
+
+func _vote_check() -> void:
+	var waiting := []
+	for pid in [1] + players.keys():
+		if not bool(vote["yes"].get(pid, false)):
+			waiting.append(_name_of(pid))
+	if waiting.is_empty():
+		var t: Array = vote["trip"]
+		_end_vote()
+		game.travel_now(int(t[0]), str(t[1]), str(t[2]), null if t[3] == Vector3.INF else t[3], bool(t[4]))
+		return
+	game.ui.party_vote_wait(waiting)
+	rpc("cl_vote_wait", waiting)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_vote_wait(waiting: Array) -> void:
+	game.ui.party_vote_wait(waiting)
+
+func _end_vote() -> void:
+	vote = {}
+	game.ui.party_vote_end()
+	if not players.is_empty():
+		rpc("cl_vote_end")
+
+@rpc("authority", "call_remote", "reliable")
+func cl_vote_end() -> void:
+	game.ui.party_vote_end()
+
+# ---------------------------------------------------------------- the party leader (the host) removes a member
+func kick(pid: int) -> void:
+	if not is_host or not players.has(pid):
+		return
+	var nm := _name_of(pid)
+	rpc_id(pid, "cl_kicked")
+	await get_tree().create_timer(0.3).timeout
+	if peer != null and players.has(pid):
+		peer.disconnect_peer(pid)
+	game.ui.message("%s was removed from the party" % nm, Color(1.0, 0.8, 0.4))
+
+@rpc("authority", "call_remote", "reliable")
+func cl_kicked() -> void:
+	shutdown()
+	game.on_net_failed("The party leader removed you from the game.")
+
 # ---------------------------------------------------------------- party panel
 func _build_party_ui() -> void:
 	var layer := CanvasLayer.new()
@@ -730,7 +857,7 @@ func _update_status() -> void:
 		status_lbl.text = ""
 	elif is_host:
 		var ips := local_ips()
-		status_lbl.text = "Hosting co-op  ·  %d joined%s" % [players.size(), ("  ·  " + ips[0]) if ips.size() > 0 else ""]
+		status_lbl.text = "♛ Party leader  ·  %d joined%s" % [players.size(), ("  ·  " + ips[0]) if ips.size() > 0 else ""]
 	else:
 		status_lbl.text = "Co-op"
 
@@ -743,7 +870,8 @@ func _rebuild_party_ui() -> void:
 		row.add_theme_constant_override("separation", 8)
 		row.set_meta("pid", pid)
 		var nm := Label.new()
-		nm.text = players[pid]["name"]
+		# the party leader (the host) wears the crown
+		nm.text = ("♛ " if pid == 1 else "") + str(players[pid]["name"])
 		nm.custom_minimum_size = Vector2(110, 0)
 		nm.add_theme_font_size_override("font_size", 15)
 		var h = players[pid]["hero"]
@@ -761,6 +889,27 @@ func _rebuild_party_ui() -> void:
 		fill.color = Color(0.75, 0.1, 0.08)
 		fill.size = Vector2(140, 12)
 		bg.add_child(fill)
+		if is_host:
+			var k := Button.new()
+			k.text = "✕"
+			k.tooltip_text = "Remove %s from the party" % players[pid]["name"]
+			k.custom_minimum_size = Vector2(26, 22)
+			k.add_theme_font_size_override("font_size", 13)
+			k.add_theme_color_override("font_color", Color(0.85, 0.7, 0.42))
+			k.add_theme_color_override("font_hover_color", Color(1.0, 0.45, 0.35))
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = Color(0.07, 0.065, 0.06, 0.92)
+			sb.border_color = Color(0.55, 0.43, 0.24)
+			sb.set_border_width_all(1)
+			sb.set_corner_radius_all(3)
+			k.add_theme_stylebox_override("normal", sb)
+			var sbh := sb.duplicate() as StyleBoxFlat
+			sbh.border_color = Color(1.0, 0.6, 0.4)
+			k.add_theme_stylebox_override("hover", sbh)
+			k.add_theme_stylebox_override("pressed", sbh)
+			var kp: int = pid
+			k.pressed.connect(func(): game.ui.confirm_kick(kp, str(players[kp]["name"]) if players.has(kp) else ""))
+			row.add_child(k)
 		party_box.add_child(row)
 	_update_status()
 

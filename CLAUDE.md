@@ -298,6 +298,12 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 - **Birds** (`scripts/birds.gd`, Act I outdoors, added by `Game.load_zone`): flocks of dark swept-wing silhouettes cross
   the sky round the hero (flapping, gliding, banking, shadows), and every 25-50 s a flock bursts out of the trees near
   him with `birds_flutter`. Cosmetic and local (not synced). Screenshot: `tools/birds_shot.gd`.
+- **The party's ready check** (`Net.ask_trip`, called by `Game.travel` whenever the party has more than one player):
+  the host runs a vote (`Net.vote`), every peer sees `UI.party_vote` (a small iron-and-bronze window, Join / Not yet;
+  the one who asked sees "Waiting for …" and Cancel), and the host's `Game.travel_now` takes the whole party once
+  everyone has said Join. A member leaving mid-vote is dropped from it (theirs is called off). The host is the party
+  leader (♛ on the party list) and can remove a member (✕, `UI.confirm_kick`, `Net.kick`). `tools/mp_test.gd`
+  (host + join) checks it; `tools/vote_shot.gd` screenshots the window.
 - **Characters** (save slots): each character is its own save, `user://characters/<id>.json` (`Game.char_id`,
   `char_name`; the save holds `name` and `played`). `Game.list_characters()` reads them (last played first) for the
   title's Continue button and the Characters list (Play / Delete); New Character asks for a name on the class picker.

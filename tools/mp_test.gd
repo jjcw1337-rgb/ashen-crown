@@ -9,7 +9,31 @@ func _initialize():
 	var scn: PackedScene = load("res://main.tscn")
 	g = scn.instantiate()
 	get_root().add_child(g)
+	process_frame.connect(_answer_votes)
 	_run()
+
+## The ready check (UI.party_vote): the partner says "Not yet" to the first trip and joins 2 s later, then
+## joins every other trip at once; the host joins the partner's trips.
+var votes_seen := 0
+var _vote_wait := 0.0
+var _vote_open := false
+func _answer_votes() -> void:
+	if g == null or g.ui == null or g.ui.vote_panel == null:
+		return
+	var ui = g.ui
+	if not ui.vote_panel.visible:
+		_vote_open = false
+		return
+	if not _vote_open:
+		_vote_open = true
+		votes_seen += 1
+		_vote_wait = 2.0 if (role == "join" and votes_seen == 1) else 0.3
+		if role == "join" and votes_seen == 1 and ui.vote_no.visible:
+			ui.vote_no.pressed.emit()
+	if ui.vote_yes.visible:
+		_vote_wait -= 1.0 / 60.0
+		if _vote_wait <= 0.0:
+			ui.vote_yes.pressed.emit()
 
 func wait(n: int) -> void:
 	for i in n:
@@ -49,6 +73,11 @@ func _host() -> void:
 	await secs(3.0)
 	g.playing = false
 	g.travel(0, "wild", "from_town")
+	await secs(1.0)
+	print("[H2b] the ready check: the partner said Not yet, the party waits in town: ", g.cur_zone == "town" and g.ui.vote_panel.visible, " (", g.ui.vote_wait.text, ")")
+	var tw := Time.get_ticks_msec()
+	while g.cur_zone != "wild" and Time.get_ticks_msec() - tw < 15000:
+		await wait(5)
 	await wait(5)
 	await idle()
 	var h = g.hero
