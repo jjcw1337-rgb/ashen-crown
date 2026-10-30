@@ -237,7 +237,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
     (gates, announcements, the crowd's excitement, sounds) is an event string through `fx` / `Net.games_event`.
     In the pit stage and the champion's bout the spike traps fire (`_spike_traps`: glowing warnings, some under
     the heroes, then iron spikes 1.3 s later; they hurt beasts too, never the champion); each kill makes the crowd
-    cheer (`kill`). The crowd is the game's own monsters (`Games._crowd_cards`): every kind in `Data.ENEMIES` is drawn once
+    cheer (`kill`). The crowd is the game's own monsters (`Games._crowd_cards`): every kind in `Data.ENEMIES` with a finished Meshy model (`Games.finished_model`) is drawn once
     (idle and cheering, front and three-quarter, `Enemy.build_rig`/`pose_rig` in a little studio) into an atlas, and
     the stands hold camera-facing cards of them (`CARD_SHADER`, jumping and cheering with `excite`); bosses sit in the
     patron's box. A new monster joins by itself. `tools/crowd_shot.gd` screenshots it. Aurelius's shield charge (`_charge`): a red streak on the sand toward the nearest hero, a

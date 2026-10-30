@@ -563,7 +563,8 @@ void fragment() {
 """
 
 # ---------------------------------------------------------------- the crowd of monsters
-## The spectators are the game's own monsters, every kind in Data.ENEMIES (a new one joins by itself): each
+## The spectators are the game's own monsters, every kind in Data.ENEMIES with a finished model (a new one
+## joins by itself once its Meshy model is in): each
 ## kind's body is drawn once, idle and cheering, front-on and turned three-quarters, from the game camera's
 ## angle (a little studio in its own world), into one atlas; the stands then hold cards of them that face the
 ## fixed camera (like the grass, Flora._camera_card) and jump and swap to cheering as the games excite them.
@@ -575,18 +576,30 @@ static var _atlas: ImageTexture
 static var _atlas_kinds: Array = []
 static var _atlas_size := {}       # kind -> [card width, card height, image centre height] in metres
 
+## Only monsters with a finished model (Meshy, prepared in Blender) watch: the code-built stand-ins don't.
+static func finished_model(kind: String) -> bool:
+	var d: Dictionary = Data.ENEMIES[kind]
+	var m: String = d.get("mesh", "")
+	if m == "feral":
+		return Feral.ok()
+	if m == "lion":
+		return Lion.ok()
+	if m != "":
+		return MeshyMonster.ok(m)
+	return d.get("model", "") == "mutant" and ResourceLoader.exists(Goblin.MUTANT["glb"])
+
 static func crowd_kinds() -> Array:
 	var out := []
 	for k in Data.ENEMIES:
 		var d: Dictionary = Data.ENEMIES[k]
-		if not d.get("boss", false) and not d.get("trophy", false):
+		if not d.get("boss", false) and not d.get("trophy", false) and finished_model(k):
 			out.append(k)
 	return out
 
 static func crowd_bosses() -> Array:
 	var out := []
 	for k in Data.ENEMIES:
-		if Data.ENEMIES[k].get("boss", false) or Data.ENEMIES[k].get("trophy", false):
+		if (Data.ENEMIES[k].get("boss", false) or Data.ENEMIES[k].get("trophy", false)) and finished_model(k):
 			out.append(k)
 	return out
 
