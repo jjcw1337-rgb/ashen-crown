@@ -1331,7 +1331,8 @@ func _process(delta: float) -> void:
 	if block_amt > 0.5:
 		speed *= 0.42
 	if atk_t >= 0.0:
-		speed *= 0.72
+		# an archer loosing arrows steps slowly with the bow drawn; everyone else slows a little mid-swing
+		speed *= Archer.SHOOT_MOVE if (has_bow() and atk_style == "bow") else 0.72
 	if game.test_fast:
 		speed *= game.TEST_FAST
 

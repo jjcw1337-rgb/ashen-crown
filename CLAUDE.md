@@ -113,7 +113,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   northern ranger (wolf-fur cowl, dark leather, quiver) on the knight's mocap system (`Knight.build_mocap(glb, opts)`,
   `knight_mocap_rig.gd`): Meshy library clips for idle/walk/run and, with the bow out, the aimed stand and walk
   (`combat_idle`, `walk_aim`); the bow attack, Piercing Shot and Volley play the `shoot` clip whole-body (`Archer.SHOT`:
-  its draw squeezed in before Anim's release frame, the body turned side-on, `yaw`); Snare Trap and Spirit Beast are
+  its draw squeezed in before Anim's release frame, the body turned side-on, `yaw`); Shooting on the move: an archer loosing arrows keeps walking at `Archer.SHOOT_MOVE` (36%) of his pace (`Hero._process`; a shot at a clicked foe still plants him), and the rig plays the aimed walk (`SHOT.walk_clip`, `walk_aim`, timed to his speed; `w_aimwalk`) instead of the standing side-on shot, the string held drawn and an arrow nocked between shots. Snare Trap and Spirit Beast are
   the game's cast pose over the upper body. He holds the equipped bow in his LEFT hand (`J["grip_bow"]`,
   `Archer.BOW_HOLD` per bow kind, `Hero._weapon_hand`); bows are drawn by `Models.enemy_weapon` (`item_model`
   had none). `Archer.pose_bow` (every frame after the pose, the puppet's too) turns the bow from hanging in his

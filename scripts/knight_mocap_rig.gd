@@ -37,6 +37,7 @@ var speed := 0.0              # smoothed ground speed (m/s)
 var shot := {}                # whole-body clip for an attack style: {style, clip, t0, release, t1}; see sync_pose
 var w_shot := 0.0
 var w_side := 0.0
+var w_aimwalk := 0.0          # shooting on the move: the aimed walk (shot "walk_clip")
 var rel_pts: Array = []       # the blend spaces' clip speeds (from Knight.build_mocap's opts)
 var com_pts: Array = []
 var hilt_bone := -1           # the bone the scabbard rides (the hips)
@@ -162,8 +163,16 @@ func sync_pose(st: Dictionary) -> void:
 	# the follow-through after it, so the arrow leaves on Anim.impact_at's frame at any attack speed
 	var die := dead > 0.0
 	var shooting: bool = not shot.is_empty() and a >= 0.0 and st.get("style", "") == shot["style"] and not die
+	# stepping while he shoots: the aimed walk carries the whole body instead of the standing shot
+	var stepping: bool = shooting and speed > 0.45 and shot.has("walk_clip")
 	if not shot.is_empty():
 		var kk := 1.0 - exp(-dt * 18.0) if dt > 0.0 else 1.0
+		w_aimwalk = lerpf(w_aimwalk, 1.0 if stepping else 0.0, kk)
+		if shot.has("walk_clip"):
+			tree.set("parameters/aimwalk_mix/blend_amount", w_aimwalk)
+			tree.set("parameters/aimwalk_speed/scale", clampf(speed / float(shot.get("walk_speed", 0.82)), 0.6, 2.4))
+		if stepping:
+			shooting = false
 		w_shot = lerpf(w_shot, 1.0 if shooting else 0.0, kk)
 		if shooting:
 			var imp := Anim.impact_at(str(shot["style"]))
@@ -173,7 +182,7 @@ func sync_pose(st: Dictionary) -> void:
 		# an archer stands side-on to his mark: the body turns so the bow arm points where the shot goes; his
 		# battle-ready stand ("combat_idle", aiming) is side-on too, so it turns the same way while he stands
 		if body_root != null:
-			var stand := drawn * (1.0 - clampf(speed / 0.8, 0.0, 1.0)) if shot.get("idle_side", false) else 0.0
+			var stand := drawn * (1.0 - clampf(speed / 0.8, 0.0, 1.0)) * (1.0 - w_aimwalk) if shot.get("idle_side", false) else 0.0
 			w_side = lerpf(w_side, maxf(w_shot, stand), kk)
 			body_root.rotation.y = PI + deg_to_rad(float(shot.get("yaw", 0.0))) * w_side
 	var want_state := "dead" if die else "alive"
@@ -185,7 +194,7 @@ func sync_pose(st: Dictionary) -> void:
 	var style: String = st.get("style", "")
 	# the draw / holster (WeaponCarry) is acting only while the blade is on its way (0 = put away, 1 = in guard)
 	var drawing := drawn > 0.001 and drawn < 0.999
-	var acting: bool = (a >= 0.0 and not shooting) or float(st.get("block", 0.0)) > 0.05 or drawing or float(st.get("hit", 0.0)) > 0.3
+	var acting: bool = (a >= 0.0 and not shooting and not stepping) or float(st.get("block", 0.0)) > 0.05 or drawing or float(st.get("hit", 0.0)) > 0.3
 	var up_t := 0.0 if die else (1.0 if acting else 0.0)
 	var low_t := 0.0 if die else (1.0 if (a >= 0.0 and FOOTWORK.has(style)) else 0.0)
 	var k := 1.0 - exp(-dt * 14.0) if dt > 0.0 else 1.0

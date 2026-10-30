@@ -27,7 +27,10 @@ const HUNTER := Color(0.62, 0.85, 0.75)     # the class's colour: pale spirit-gr
 ## through), his casts (Snare Trap, Spirit Beast) as the game's own moves laid over the upper body. The bow is the
 ## game's (whatever is equipped), held in his LEFT hand like the clips (J "grip_bow", `BOW_HOLD`).
 const RANGER_GLB := "res://assets/models/archer_ranger.glb"
-const SHOT := {"style": "bow", "clip": "shoot", "t0": 1.85, "release": 4.2, "t1": 4.75, "yaw": -90.0, "idle_side": true}
+const SHOT := {"style": "bow", "clip": "shoot", "t0": 1.85, "release": 4.2, "t1": 4.75, "yaw": -90.0, "idle_side": true,
+	"walk_clip": "walk_aim", "walk_speed": 0.82}
+## how fast he steps while he looses arrows (of his normal pace): slowed to a careful, aimed walk
+const SHOOT_MOVE := 0.36
 ## the bow in his left fist, per bow kind: [position, rotation in degrees] in the hand follower's frame
 ## (solved so the bow stands upright, its back toward the mark, at the full draw of the shot clip)
 ## and the grip's spot on the bow model (the short bow's wood bulges 0.18 out from its string; the longbow is centred)
@@ -86,8 +89,10 @@ static func shoot(h: Hero, aim: Vector3, keep_target: bool) -> void:
 		return
 	if not keep_target:
 		h.target = null
-	h.moving = false
-	h.path = PackedVector3Array()
+	else:
+		# a shot at the foe he walked up to: he stands his ground
+		h.moving = false
+		h.path = PackedVector3Array()
 	h.atk_aim = _assist(h, aim)
 	h.atk_target = null
 	h._face(h.atk_aim - h.global_position)
@@ -446,6 +451,12 @@ static func pose_bow_on(rig: Node3D, w: Node3D, kind: String, st: Dictionary) ->
 	var aim_w = rig.get("w_side")
 	if aim_w != null:
 		side = float(aim_w)
+	# stepping while he shoots: the aimed walk holds the bow up on the line too
+	var walk_w = rig.get("w_aimwalk")
+	var stepping := 0.0
+	if walk_w != null:
+		stepping = float(walk_w)
+		side = maxf(side, stepping)
 	var g: Node3D = J["grip_bow"]
 	var hang: Array = sp["hang"]
 	var hq := Basis(hang[0], hang[1], hang[2]).get_rotation_quaternion()
@@ -461,10 +472,12 @@ static func pose_bow_on(rig: Node3D, w: Node3D, kind: String, st: Dictionary) ->
 	w.set_meta("draw_t", float(st.get("time", 0.0)))
 	var rest: Vector3 = sp["rest"]
 	var pull: Vector3 = sp["pull"]
-	var nocked := drawing and a > 0.03 and a < imp
+	# nocked through the draw, and between shots on the move (his hand stays at his cheek in the aimed walk)
+	var nocked := (drawing and a > 0.03 and a < imp) or (in_hand and stepping > 0.6 and a < 0.0)
 	if nocked:
 		var fingers: Vector3 = (J["at_hand_r"] as Node3D).global_transform * Vector3(0, -0.06, 0)
-		var target := clampf((w.to_local(fingers) - rest).dot(pull), 0.0, float(sp["max"])) * smoothstep(0.03, 0.12, a)
+		var ease := smoothstep(0.03, 0.12, a) if a >= 0.0 else smoothstep(0.6, 1.0, stepping)
+		var target := clampf((w.to_local(fingers) - rest).dot(pull), 0.0, float(sp["max"])) * ease
 		s = target
 		v = 0.0
 	else:

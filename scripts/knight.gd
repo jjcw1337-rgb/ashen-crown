@@ -294,8 +294,21 @@ static func build_mocap(glb := MOCAP_GLB, opts := {}) -> Node3D:
 		bt.add_node("shot_seek", AnimationNodeTimeSeek.new(), Vector2(800, 350))
 		bt.add_node("shot_mix", AnimationNodeBlend2.new(), Vector2(900, 150))
 		bt.connect_node("shot_seek", 0, "shot")
-		bt.connect_node("shot_mix", 0, "state")
 		bt.connect_node("shot_mix", 1, "shot_seek")
+		var wc: String = (opts["shot"] as Dictionary).get("walk_clip", "")
+		if wc != "" and ap.has_animation(wc):
+			# shooting on the move: the aimed walk at the pace he's stepping (bow up, string at his cheek)
+			var aw := AnimationNodeAnimation.new()
+			aw.animation = wc
+			bt.add_node("aimwalk", aw, Vector2(650, 500))
+			bt.add_node("aimwalk_speed", AnimationNodeTimeScale.new(), Vector2(780, 500))
+			bt.add_node("aimwalk_mix", AnimationNodeBlend2.new(), Vector2(800, 150))
+			bt.connect_node("aimwalk_speed", 0, "aimwalk")
+			bt.connect_node("aimwalk_mix", 0, "state")
+			bt.connect_node("aimwalk_mix", 1, "aimwalk_speed")
+			bt.connect_node("shot_mix", 0, "aimwalk_mix")
+		else:
+			bt.connect_node("shot_mix", 0, "state")
 		bt.connect_node("output", 0, "shot_mix")
 		root.set("shot", opts["shot"])
 	else:

@@ -105,6 +105,14 @@ func _run() -> void:
 				elif k < 0.65:
 					st["atk"] = k / 0.65
 					st["style"] = ["swipe1", "swipe2", "swipe3"][idx]
+			"shootwalk":
+				# idle aimed, then walking slowed while he looses arrows (as the archer does in game), then stop
+				want = 4.8 * 0.36 if T > 0.6 and T < 5.4 else 0.0
+				var k2 := fmod(T, 0.96)
+				if T > 0.6 and T < 5.6 and k2 < 0.96:
+					st["atk"] = k2 / 0.96
+					st["style"] = "bow"
+				st["draw"] = 1.0
 			"block":
 				st["block"] = 1.0 if fmod(T, 2.0) < 1.2 else 0.0
 			"tour":
