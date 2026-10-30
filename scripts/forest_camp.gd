@@ -119,6 +119,8 @@ static func build(w: World) -> void:
 	w._place(bf, Vector3(CENTER.x, 0, CENTER.y))
 	Props.fire(bf, Vector3(0, 0.3, 0), 1.15, Color(1.0, 0.5, 0.18), true, true)
 	w.add_circle(Vector3(CENTER.x, 0, CENTER.y), 1.4)
+	# click it to burn what you don't want (UI.open_burn)
+	w._inter("bonfire", "Bonfire", Vector3(CENTER.x, 0, CENTER.y), 2.6)
 	for i in 4:
 		var la := TAU * i / 4.0 + 0.6
 		var lg := Props.footprint(Models.N(null, "seat"), Vector2(0.25, 0.8))

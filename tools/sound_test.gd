@@ -9,6 +9,7 @@ const EXPECT := {
 	"wraith": {"reap": ["reap_swing"], "wail": ["wail"], "shade": ["shade_in", "shade_out"], "host": ["host_summon"]},
 	"demon": {"hellclaw": ["hellclaw"], "summon": ["summon_demon"], "phase": ["phase_in"], "pact": ["blood_pact"]},
 	"warlock": {"drain": ["drain_start"], "blight": ["blight_cast"], "shackles": ["shackles"], "covenant": ["covenant"]},
+	"archer": {"pierce": ["bow"], "volley": ["bow"], "snare": ["impact_metal"], "beast": ["lion_roar"]},
 }
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
@@ -108,4 +109,10 @@ func _run() -> void:
 	boss.hoard.fx("intro")
 	await wait(0.1)
 	print("[S] fort: start %.0f m from Grubb, mutters %d, volume at 60 m %.1f dB / 18 m %.1f dB, stops when the fight starts %s" % [start_d, heard, vols[0], vols[1], not boss.hoard.voice.playing])
+	# Act I: the camp's song in the camp; soft trees in the breeze on the moor and at the fort, not the wind
+	var beds := {}
+	for zn in ["town", "wild", "lair"]:
+		await g.load_zone(0, zn, "start")
+		beds[zn] = [sfx.music.stream == sfx.bank["music_town"][0], sfx.ambience.stream == sfx.bank["forest"][0], sfx.ambience.stream == sfx.bank["wind"][0]]
+	print("[S] Act I beds: camp plays its song %s (wind %s); moor rustling trees %s; fort rustling trees %s" % [beds["town"][0], beds["town"][2], beds["wild"][1], beds["lair"][1]])
 	quit()

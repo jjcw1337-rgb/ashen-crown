@@ -10,7 +10,7 @@ const RATE := 22050
 const BANK := preload("res://scripts/sfx_bank.gd").BANK
 const BANK_DIR := "res://assets/audio/sfx/"
 ## Rendered sounds that loop (a channel, the ambience beds)
-const LOOPS := ["drain_loop", "wind", "drip", "music_town"]
+const LOOPS := ["drain_loop", "wind", "forest", "drip", "music_town"]
 var streams := {}
 ## name -> [streams] for the rendered sounds
 var bank := {}
@@ -207,7 +207,9 @@ func start_loop(nm: String, vol := 0.0, pitch := 1.0) -> AudioStreamPlayer:
 	p.play()
 	return p
 
-func play_music(kind: String) -> void:
+## The zone's music and its ambience bed (wind outdoors, drips in the crypt; `amb` picks another, like
+## Act I's forest rustle outside the camp).
+func play_music(kind: String, amb_over := "") -> void:
 	var key := "music_" + kind
 	# a recorded song where there is one (the campsite's piano), else the old synthesized drone
 	var song: AudioStream = bank[key][0] if bank.has(key) else null
@@ -221,7 +223,7 @@ func play_music(kind: String) -> void:
 		music.volume_db = -6.0 if bank.has(key) else -14.0
 		if not muted:
 			music.play()
-	var amb := "wind" if kind != "lair" else "drip"
+	var amb := amb_over if amb_over != "" and bank.has(amb_over) else ("wind" if kind != "lair" else "drip")
 	var amb_st: AudioStream = bank[amb][0] if bank.has(amb) else streams.get(amb)
 	if ambience.stream != amb_st:
 		ambience.stream = amb_st

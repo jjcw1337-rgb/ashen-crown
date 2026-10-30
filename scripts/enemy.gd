@@ -104,24 +104,13 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 	atk_dur = def["atk_time"]
 	var look: Dictionary = def["look"]
 	height = look.get("height", look.get("size", 1.0))
-	if def.get("mesh", "") == "feral" and Feral.ok():
-		rig = Feral.build(Feral.variant_at(global_position))
+	rig = build_rig(k, Feral.variant_at(global_position))
+	if rig.has_meta("feral"):
 		slot_a = randf_range(-1.6, 1.6)
 		lunge_cd = randf_range(0.3, 3.0)
-	elif def.get("mesh", "") == "lion" and Lion.ok():
-		rig = Lion.build()
+	elif rig.has_meta("lion"):
 		slot_a = randf_range(-1.6, 1.6)
 		lunge_cd = randf_range(0.5, 2.5)
-	elif def.has("mesh") and MeshyMonster.ok(def["mesh"]):
-		rig = MeshyMonster.build(def["mesh"], look)
-	elif def.has("model"):
-		rig = Goblin.build(def["model"])
-	elif def.has("skin"):
-		rig = SkeletonModel.build(def["skin"])
-		if absf(height - 1.0) > 0.01:
-			rig.scale = Vector3.ONE * height
-	else:
-		rig = Models.crawler(look) if def["rig"] == "crawler" else Models.humanoid(look)
 	add_child(rig)
 	var pers := "warrior"
 	match k:
@@ -535,12 +524,37 @@ func _process(delta: float) -> void:
 		"style": atk_style, "hit": hit_t, "zombie": kind in ["zombie", "mummy"], "aggro": aggro})
 
 func _pose(st: Dictionary) -> void:
-	if rig.has_meta("feral"):
-		Feral.pose(rig, st, height)
-	elif rig.has_meta("lion"):
-		Lion.pose(rig, st, height)
+	pose_rig(rig, st, height)
+
+## A monster kind's body (its Meshy model, sculpted goblin, skeleton or code-built figure), as setup gives
+## it; also used to draw the arena's crowd (games.gd). variant: the Feral's model.
+static func build_rig(kind: String, variant := 1) -> Node3D:
+	var d: Dictionary = Data.ENEMIES[kind]
+	var look: Dictionary = d["look"]
+	var h: float = look.get("height", look.get("size", 1.0))
+	if d.get("mesh", "") == "feral" and Feral.ok():
+		return Feral.build(variant)
+	if d.get("mesh", "") == "lion" and Lion.ok():
+		return Lion.build()
+	if d.has("mesh") and MeshyMonster.ok(d["mesh"]):
+		return MeshyMonster.build(d["mesh"], look)
+	if d.has("model"):
+		return Goblin.build(d["model"])
+	if d.has("skin"):
+		var r := SkeletonModel.build(d["skin"])
+		if absf(h - 1.0) > 0.01:
+			r.scale = Vector3.ONE * h
+		return r
+	return Models.crawler(look) if d["rig"] == "crawler" else Models.humanoid(look)
+
+## Poses any monster body from the enemy state (see `_pose`).
+static func pose_rig(r: Node3D, st: Dictionary, height: float) -> void:
+	if r.has_meta("feral"):
+		Feral.pose(r, st, height)
+	elif r.has_meta("lion"):
+		Lion.pose(r, st, height)
 	else:
-		Anim.pose(rig, st)
+		Anim.pose(r, st)
 
 ## A heavy boss's footfall: a puff of dust under the planted foot, and the ground shakes a
 ## little if you're close.

@@ -86,6 +86,11 @@ var drain_heal := 0.0        # healing gathered since the last "+N" number
 var drain_heal_t := 0.0
 var covenant_t := 0.0        # Warlock: Fel Covenant (Drain Life forks further and heals double)
 var bolts: Array = []        # Warlock's Blight Bolts in flight: [{node, dir, left}]
+## The archer (archer.gd): arrows in flight, volleys raining down, snares lying in wait, the spirit beasts
+var arrows: Array = []
+var volleys: Array = []
+var snares: Array = []
+var beasts: Array = []
 var blights: Array = []      # plague pools on the ground: [{node, pos, t, tick}]
 var buff_t := 0.0
 var heal_pool := 0.0
@@ -164,6 +169,14 @@ func is_demon() -> bool:
 
 func is_warlock() -> bool:
 	return cls == "warlock"
+
+func is_archer() -> bool:
+	return cls == "archer"
+
+## The archer with a bow in his hands: his attack shoots instead of swinging.
+func has_bow() -> bool:
+	var w = equipment.get("weapon") if equipment is Dictionary else null
+	return is_archer() and w != null and Data.BASES[w["base"]]["kind"] in ["bow", "longbow"]
 
 func skill_list() -> Array:
 	return Data.skills_for(cls)
@@ -259,6 +272,8 @@ func _build_rig() -> void:
 		rig = Demon.build(demon_gear())
 	elif is_warlock():
 		rig = Warlock.build(warlock_gear())
+	elif is_archer():
+		rig = Archer.build_body()
 	else:
 		var body := _knight_body()
 		if body == "mocap":
@@ -304,6 +319,7 @@ func set_class(c: String) -> void:
 	dismiss_minions()
 	end_phase(false)
 	_clear_warlock()
+	Archer.clear(self)
 	if rig != null:
 		rig.queue_free()
 		rig = null
@@ -449,7 +465,7 @@ func new_character() -> void:
 	equipment = {}
 	for s in Items.EQUIP_SLOTS:
 		equipment[s] = null
-	equipment["weapon"] = Items.make("hand_axe" if is_demon() else "short_sword")
+	equipment["weapon"] = Items.make(str(Data.CLASSES[cls].get("weapon", "hand_axe" if is_demon() else "short_sword")))
 	if cls == "knight":
 		equipment["shield"] = Items.make("buckler")
 	equipment["armor"] = Items.make("quilted")
@@ -759,6 +775,9 @@ func skill_aim(id: String, cursor: Vector3) -> Vector3:
 func free_attack(aim: Vector3) -> void:
 	if not can_act():
 		return
+	if has_bow():
+		Archer.shoot(self, aim, false)
+		return
 	atk_aim = aim
 	atk_target = null
 	_face(aim - global_position)
@@ -771,6 +790,9 @@ func free_attack(aim: Vector3) -> void:
 ## (a full spin that hits all round) always plays out, and the chain starts over after a pause.
 func swipe_attack(aim: Vector3, keep_target := false) -> void:
 	if dead or charge_t >= 0.0 or drain_t >= 0.0:
+		return
+	if has_bow():
+		Archer.shoot(self, aim, keep_target)
 		return
 	if atk_t >= 0.0:
 		if atk_skill == "" and atk_style.begins_with("swipe") and atk_t / atk_dur > 0.3 and atk_style != "swipe3":
@@ -1002,6 +1024,8 @@ func use_skill(id: String, aim: Vector3) -> bool:
 		"covenant":
 			_start_attack("cast", "covenant")
 			atk_dur = 0.6 * Data.attack_pace(cls)
+		"pierce", "volley", "snare", "beast":
+			Archer.cast(self, id, aim)
 	return true
 
 func drink(slot: int) -> void:
@@ -1038,6 +1062,8 @@ func _start_attack(style: String, skill := "") -> void:
 	impact_done = false
 	trail_pts.clear()
 	trail_col = Color(1.0, 0.85, 0.5) if skill == "cleave" else Color(0.85, 0.9, 1.0)
+	if is_archer():
+		trail_col = Archer.HUNTER
 	if is_wraith():
 		trail_col = WraithFx.SPIRIT if skill != "reap" else WraithFx.PALE
 	elif is_demon():
@@ -1055,6 +1081,10 @@ func _start_attack(style: String, skill := "") -> void:
 func _attack_sound(skill: String) -> void:
 	# when this attack's impact frame comes (it scales with attack speed)
 	var at := Anim.impact_at(atk_style) * atk_dur
+	if atk_style == "bow":
+		# the archer: the string's twang on the release (Volley's flight a little lower)
+		Sfx.play_synced("bow", at, -3.0, 0.85 if skill == "volley" else (0.92 if skill == "pierce" else 1.0))
+		return
 	match skill:
 		"cleave": Sfx.play_synced("cleave_swing", at, -2.0)
 		"reap": Sfx.play_synced("reap_swing", at, -2.0)
@@ -1099,7 +1129,7 @@ func _face(d: Vector3) -> void:
 		rig.rotation.y = atan2(-d.x, -d.z)
 
 func reach() -> float:
-	return 1.7
+	return Archer.RANGE if has_bow() else 1.7
 
 # ---------------------------------------------------------------- damage
 func roll_damage(mult: float = 1.0) -> Dictionary:
@@ -1220,6 +1250,7 @@ func _process(delta: float) -> void:
 	covenant_t = maxf(0.0, covenant_t - delta)
 	_update_spirits(delta)
 	_update_bolts(delta)
+	Archer.update(self, delta)
 	_update_blights(delta)
 	if phased:
 		phase_t -= delta
@@ -1544,6 +1575,8 @@ func _update_attack(delta: float) -> void:
 
 func _impact() -> void:
 	var fwd := -rig.global_transform.basis.z
+	if Archer.impact(self):
+		return
 	match atk_skill:
 		"":
 			if atk_style.begins_with("swipe"):
@@ -2017,6 +2050,10 @@ func max_minions() -> int:
 	return 3 + int(talent("minion_max"))
 
 func dismiss_minions() -> void:
+	for b in beasts:
+		if is_instance_valid(b):
+			b.dismiss()
+	beasts.clear()
 	for m in minions:
 		if is_instance_valid(m):
 			m.dismiss()
@@ -2326,6 +2363,11 @@ func equip_from_inventory(idx: int) -> void:
 			it["count"] = n
 			inventory[idx] = it
 		stats_changed.emit()
+		return
+	var only: String = str(Data.BASES[it["base"]].get("cls", ""))
+	if only != "" and only != cls:
+		game.ui.message("Only the %s can use that" % Data.CLASSES[only]["name"], Color(1, 0.4, 0.3))
+		Sfx.play("deny")
 		return
 	if int(it.get("req", 1)) > level:
 		game.ui.message("You need to be level %d" % it["req"], Color(1, 0.4, 0.3))

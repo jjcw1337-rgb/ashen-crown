@@ -837,7 +837,14 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		if not tp_link.is_empty():
 			_make_portal(world.spawns["portal"], "back")
 	ui.set_zone(zone_title(act, zone))
-	Sfx.play_music("fort" if zone == "lair" and world.fort else zone)
+	# Act I outdoors: birds over the forest (birds.gd)
+	if world.oak_forest and not indoor():
+		var birds := Birds.new()
+		birds.game = self
+		birds.name = "birds"
+		world.add_child(birds)
+	# Act I outside the camp (the forest moor, Grubb's fort): soft trees in the breeze instead of the wind
+	Sfx.play_music("fort" if zone == "lair" and world.fort else zone, "forest" if world.oak_forest and zone != "town" and not indoor() else "")
 	loading.visible = false
 	_busy = false
 	net.host_zone_loaded()
@@ -1242,6 +1249,19 @@ func _pickup(g: GroundItem) -> void:
 		ui.message("Inventory is full", Color(1, 0.4, 0.3))
 
 ## Co-op: the host handed us an item we picked up.
+## An item thrown on the camp's bonfire (UI._burn): the flames flare and roar up, and it's gone.
+func burned(it: Dictionary) -> void:
+	Sfx.play("burn_item", 0.0, randf_range(0.95, 1.05))
+	var fire: Inter = null
+	for t in world.interactables:
+		if is_instance_valid(t) and t.kind == "bonfire":
+			fire = t
+	if fire:
+		var at := fire.global_position + Vector3(0, 0.8, 0)
+		Fx.burst(world.fx_root, at, Color(1.0, 0.45, 0.08, 0.9), 40, 4.0, 0.22, 0.9, false, 3.0, 35.0)
+		Fx.burst(world.fx_root, at + Vector3(0, 0.6, 0), Color(1.0, 0.8, 0.35, 0.8), 24, 3.0, 0.1, 0.7, false, 2.0, 25.0)
+		Fx.flash(world.fx_root, at, Color(1.0, 0.55, 0.2), 6.0, 0.5, 8.0)
+
 func receive_item(it: Dictionary, pos: Vector3) -> void:
 	if it["base"] == "gold":
 		var amt := int(it["count"] * (1.0 + hero.gf / 100.0))
@@ -1255,7 +1275,15 @@ func receive_item(it: Dictionary, pos: Vector3) -> void:
 		net.request_drop(it, hero.global_position)
 	ui.refresh()
 
+## Somewhere else: alone, straight there; in a co-op party, everyone is asked first and the party goes
+## only when all agree (Net.ask_trip, the ready check), then `travel_now` takes the whole party.
 func travel(act: int, zone: String, spawn: String, at = null, clear_tp := false) -> void:
+	if net.party_size() > 1:
+		net.ask_trip(act, zone, spawn, at, clear_tp)
+		return
+	travel_now(act, zone, spawn, at, clear_tp)
+
+func travel_now(act: int, zone: String, spawn: String, at = null, clear_tp := false) -> void:
 	if net.is_client():
 		net.request_travel(act, zone, spawn, at, clear_tp)
 		return
@@ -1335,6 +1363,10 @@ func _interact(t: Inter) -> void:
 			ui.open_stash()
 			ui.trade_with = t
 			Sfx.play("equip")
+		"bonfire":
+			ui.open_burn()
+			ui.trade_with = t
+			Sfx.play("bonfire_open")
 		"waypoint":
 			var wp_id: String = t.data.get("wp", "town")
 			if not waypoints_known.has(wp_id):

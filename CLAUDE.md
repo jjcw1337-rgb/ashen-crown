@@ -101,6 +101,17 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   - don't mute audio buses (`AudioServer.set_bus_mute`): it throws in Godot 4.3's web audio and aborts startup. Use `Sfx.set_muted`;
   - don't create audio buses with `AudioServer.add_bus()`: Godot 4.5.1's web sample playback files the new bus in front
     of Master and routes Master into it, so the whole game is silent in the browser. `Sfx._buses` uses `set_bus_count`;
+- **The archer** (`scripts/archer.gd`, `Archer`; the bow class for Jace, its name still his to choose, "Archer" in
+  `Data.CLASSES` until then): with a bow (`Hero.has_bow`; bows are `Data.BASES` with `"cls": "archer"`, only he can
+  equip them) his attack shoots (`Archer.shoot` from `Hero.swipe_attack`/`free_attack`; `Hero.reach` is `Archer.RANGE`,
+  so a clicked foe is shot from range; Anim's `"bow"` pose, the arrow looses on its impact frame). Skills: Piercing
+  Shot (an arrow through a line), Volley (a rain of arrows on the cursor, hits every 0.2 s), Snare Trap (stuns the
+  first enemies on it), Spirit Beast (`spirit_beast.gd`: the lion's body, ghostly, hunting for 30 s, plus the 12 s
+  battle buff). Arrows, volleys, snares and beasts live on the hero (`Hero.arrows` etc.), `Archer.update`/`clear`.
+  Talents: Marksman, Warden, Beastmaster (`Talents.TREES["archer"]`; specials arrow_split, snare_dur, snare_max,
+  snare_wide, volley_size, beast_two). Body: the knight's procedural body dressed as a hunter (`Archer.build_body`)
+  until the Meshy model; talent icons still to paint (`tools/talent_icons.py` has the archer prompts).
+  `tools/archer_test.gd` checks it.
 - **Adding a class**: add it to `Data.CLASSES`, give it four `SKILLS` entries with its `cls`, build its look the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep working), handle its skill ids in `Hero.use_skill` / `_impact`, and add glyphs in `ui.gd` `SkillGlyph`.
 - **Underworld** (Demon's Phase): `game.set_underworld()` blends a screen-space grade (`DemonFx.UNDERWORLD_SHADER`), the `under_amt` global (terrain veins and rune rings in `mats.gd`), environment tweaks, rising souls and crimson monster outlines (`Enemy.set_soul_lit`). Monsters ignore a phased hero (`hero.phased`).
 - **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `_update_drain`, and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. Skill effects are local only (partners see the cast pose, not the beam), like every other class.
@@ -226,7 +237,10 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
     (gates, announcements, the crowd's excitement, sounds) is an event string through `fx` / `Net.games_event`.
     In the pit stage and the champion's bout the spike traps fire (`_spike_traps`: glowing warnings, some under
     the heroes, then iron spikes 1.3 s later; they hurt beasts too, never the champion); each kill makes the crowd
-    cheer (`kill`). Aurelius's shield charge (`_charge`): a red streak on the sand toward the nearest hero, a
+    cheer (`kill`). The crowd is the game's own monsters (`Games._crowd_cards`): every kind in `Data.ENEMIES` with a finished Meshy model (`Games.finished_model`) is drawn once
+    (idle and cheering, front and three-quarter, `Enemy.build_rig`/`pose_rig` in a little studio) into an atlas, and
+    the stands hold camera-facing cards of them (`CARD_SHADER`, jumping and cheering with `excite`); bosses sit in the
+    patron's box. A new monster joins by itself. `tools/crowd_shot.gd` screenshots it. Aurelius's shield charge (`_charge`): a red streak on the sand toward the nearest hero, a
     brace, then a dash at 15 m/s smashing each hero in the way once; Games drives him meanwhile (`Enemy.scripted`
     skips his own AI). If no living hero is near the sand for 8 s the games reset. The crowd is one MultiMesh of figures on the
     standing stands, bobbing and jumping by a shader uniform (`excite`). Sounds: `arena_horn`, `crowd_roar` (loop),
@@ -277,7 +291,31 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   by `Enemy.material()`. King Grubb's voice is deep (the `cackle`/`roar` takes, never pitched up), and before his fight
   his muttering (`grubb_mutter`) carries through the fort from him, faint from ~75 m and clear in sight
   (`Hoard.murmur`, every peer locally; stops at the "intro" event). `tools/sound_test.gd` checks every skill fires its
-  sounds (`Sfx.counts`) and the fort voice.
+  sounds (`Sfx.counts`) and the fort voice. The camp's song is `music_town` (jj's pick: a dark forest sanctuary, harp over a low
+  string drone with a wooden flute; candidate take 13). Ambience: wind, drips in the crypt, and in Act I outside the camp (moor and fort) `forest`, soft
+  trees in a breeze (`Sfx.play_music(kind, amb)`, picked in `Game.load_zone`).
+- **The camp's bonfire** (`Inter` kind `"bonfire"`, `UI.open_burn`): clicking it roars up (`bonfire_open`) and opens the fire
+  window in the inventory's iron frame (a shader fire in a stone hearth, `UI.Flames`/`FIRE_SHADER`) with its options below
+  in the bar's sockets (`UI.BONFIRE_OPTIONS`: Burn, Enchant; empty sockets wait for more) beside the
+  inventory; drag an item onto the flames or right-click it to burn it for good (`UI.burn_request`, `Game.burned`: the
+  `burn_item` sound and a flare); rare, unique and material items ask first. A click on an inventory item plays
+  `inv_click`. `tools/bonfire_test.gd`, `tools/bonfire_shot.gd`.
+- **Birds** (`scripts/birds.gd`, Act I outdoors, added by `Game.load_zone`): flocks of dark swept-wing silhouettes cross
+  the sky round the hero (flapping, gliding, banking, shadows), and every 25-50 s a flock bursts out of the trees near
+  him with `birds_flutter`. Cosmetic and local (not synced). Screenshot: `tools/birds_shot.gd`.
+- **The party's ready check** (`Net.ask_trip`, called by `Game.travel` whenever the party has more than one player):
+  the host runs a vote (`Net.vote`), every peer sees `UI.party_vote` (a small iron-and-bronze window, Join / Not yet;
+  the one who asked sees "Waiting for …" and Cancel), and the host's `Game.travel_now` takes the whole party once
+  everyone has said Join. A member leaving mid-vote is dropped from it (theirs is called off). The host is the party
+  leader (♛ on the party list) and can remove a member (✕, `UI.confirm_kick`, `Net.kick`). `tools/mp_test.gd`
+  (host + join) checks it; `tools/vote_shot.gd` screenshots the window.
+- **New Character screen** (`UI._build_class_picker`, `scripts/class_stage.gd` `ClassStage`): every class stands live
+  on a torch-lit stage in its own world, as co-op puppets (`Hero.puppet`, driven through `net_st`/`net_pos`/`net_yaw`)
+  in its starting gear: idle they breathe and look about (`_idle`), under the mouse each fidgets its own annoying way
+  (`_fidget`), and the chosen one steps into the light and does its signature move every 4.5 s with its effects
+  (`SIGNATURE`, `_signature`). Below, in the inventory's iron frame: name, story, stats, skills in the bar's sockets,
+  the name and Play. The stage is built when the picker opens and freed when it closes. A new class needs a
+  `ClassStage.CLASSES`/`ACCENTS`/`SIGNATURE` entry and its `_fidget` case. `tools/class_shot.gd -- outdir [frames]`.
 - **Characters** (save slots): each character is its own save, `user://characters/<id>.json` (`Game.char_id`,
   `char_name`; the save holds `name` and `played`). `Game.list_characters()` reads them (last played first) for the
   title's Continue button and the Characters list (Play / Delete); New Character asks for a name on the class picker.
@@ -346,6 +384,14 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   line in that zone's builder, `add_waypoint("<id>", Vector3(x, 0, z))` (stone, colliders, its own arrival spot;
   a zone can hold several). Tests: `tools/waypoint_test.gd`
   (rules), `tools/waypoint_shot.gd -- out.png [run]` (screenshot).
+- **Inventory (I)** (`UI._build_inventory`, jj's "Classic"): Meshy art in the action bar's iron and bronze
+  (`assets/textures/ui/inv_*.png`, cut and cleaned from Meshy concepts in `exports/ui/inventory/`): a NinePatchRect
+  frame (`INV_SCALE`, corners `INV_PATCH` texture px, the middle bands mirror-symmetric so they tile seamlessly,
+  `draw_center` off over a tiled iron inside), the equipment in a recessed alcove with a knight's silhouette
+  (`INV_EQUIP` rects and `Caption` labels), the bag's 40 sockets (`_slot(..., iron = true)`: the action bar's
+  socket on a 9-patch, a rarity line inside) and the gold on a bronze plate. Every piece keeps clear of the frame's
+  corner spikes and trim: `tools/inv_geometry_test.gd` samples each socket, label, the alcove and the plate against
+  the frame's ornament as the 9-patch draws it. Screenshot: `tools/inventory_shot.gd`.
 - **Character sheet (C)** (`UI._build_character`): Meshy frame `sheet_panel.png` (texture margin 100 so the corner
   pieces never stretch; content margins keep everything inside the gold trim), live portrait (a SubViewport on the
   shared world) in `sheet_portrait.png`, Meshy medallions `sheet_str/dex/vit/ene.png` and `sheet_plus.png`. Hover a

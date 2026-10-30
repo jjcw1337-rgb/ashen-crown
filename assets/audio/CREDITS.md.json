@@ -18,6 +18,18 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "birds_flutter": [
+  {
+   "detail": "a small flock of birds suddenly taking off from a tree, a burst of flapping wings and a few startled chirps, then flying away, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a small flock of birds suddenly taking off from a tree, a burst of flapping wings and a few startled chirps, then flying away, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "blight_burst": [
   {
    "detail": "a poison bolt bursting on an enemy, splash of bubbling acid that sizzles, close mic, dry, isolated sound effect, no music",
@@ -46,6 +58,13 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "bonfire_open": [
+  {
+   "detail": "a campfire roaring up, a deep soft whoosh of flames swelling then settling into warm crackling, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "boom": [
   {
    "detail": "a gunpowder bomb exploding, sharp blast with scattering gold coins, close mic, dry, isolated sound effect, no music",
@@ -63,6 +82,13 @@
  "bow": [
   {
    "detail": "a bowstring released, an arrow shot whizzing away, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "burn_item": [
+  {
+   "detail": "an object thrown into a roaring campfire, a soft thump then a burst of flames flaring up and crackling sparks, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }
@@ -283,6 +309,18 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "forest": [
+  {
+   "detail": "a soft gentle breeze through the leaves of an old forest, branches swaying and leaves rustling softly, calm and peaceful, steady and even, no birds, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a soft gentle breeze through the leaves of an old forest, branches swaying and leaves rustling softly, calm and peaceful, steady and even, no birds, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "fuse": [
   {
    "detail": "a lit bomb fuse sizzling and hissing with sparks, steady, close mic, dry, isolated sound effect, no music",
@@ -387,6 +425,13 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "inv_click": [
+  {
+   "detail": "picking up a small metal and leather item in a dark fantasy game inventory, a short soft clink with a leather rustle, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "kill_bone": [
   {
    "detail": "a skeleton warrior shattering and collapsing into a pile of bones clattering on stone, close mic, dry, isolated sound effect, no music",
@@ -416,6 +461,13 @@
   },
   {
    "detail": "a big male lion roaring loudly and angrily, close, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "music_town": [
+  {
+   "detail": "dark forest sanctuary music for a dark fantasy game: mysterious but warm, soft harp arpeggios over a low droning string pad with a lonely wooden flute, ancient woods at dusk, a hopeful refuge, background music loop, no drums",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }
