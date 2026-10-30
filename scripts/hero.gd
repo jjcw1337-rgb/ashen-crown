@@ -1438,6 +1438,8 @@ func _process(delta: float) -> void:
 		st.merge(carry.anim_state(), true)
 		_carry_weapon(delta)
 	Anim.pose(rig, st)
+	if is_archer():
+		Archer.pose_bow(self, st)
 	last_pose = st
 	_hover()
 	_draw_drain()
@@ -1546,6 +1548,8 @@ func _puppet_process(delta: float) -> void:
 	block_amt = st.get("block", 0.0)
 	atk_t = 0.0 if st.get("atk", -1.0) >= 0.0 else -1.0
 	Anim.pose(rig, st)
+	if is_archer():
+		Archer.pose_bow(self, st)
 	_hover()
 	_apply_shield_pose()
 	_update_trail(atk_t >= 0.0)

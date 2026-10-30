@@ -556,7 +556,8 @@ static func enemy_weapon(kind: String) -> Node3D:
 				var nx := Vector3(0.0 + 0.18 * (1.0 - pow(2.0 * t - 1.0, 2.0)), 0, z)
 				seg(root, prev, nx, 0.018, 0.018, wood, 6)
 				prev = nx
-			seg(root, Vector3(0, 0, -0.55), Vector3(0, 0, 0.55), 0.003, 0.003, Mats.mat(Color(0.85, 0.8, 0.7), 0.6), 4)
+			var bstr := seg(root, Vector3(0, 0, -0.55), Vector3(0, 0, 0.55), 0.003, 0.003, Mats.mat(Color(0.85, 0.8, 0.7), 0.6), 4)
+			bstr.name = "string"
 			root.rotation_degrees = Vector3(0, 0, 0)
 			root.position = Vector3(0, 0, 0)
 		"longbow":

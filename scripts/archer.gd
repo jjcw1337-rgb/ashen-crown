@@ -32,7 +32,19 @@ const SHOT := {"style": "bow", "clip": "shoot", "t0": 1.85, "release": 4.2, "t1"
 ## (solved so the bow stands upright, its back toward the mark, at the full draw of the shot clip)
 ## and the grip's spot on the bow model (the short bow's wood bulges 0.18 out from its string; the longbow is centred)
 const BOW_HOLD := {"bow": [Vector3(0.0, -0.06, 0.0), Vector3(-4, -162, -66), Vector3(-0.18, 0, 0)],
-	"longbow": [Vector3(0.0, -0.06, 0.0), Vector3(-66, 98, -80), Vector3.ZERO]}
+	"longbow": [Vector3(0.0, -0.06, 0.0), Vector3(-66, 98, -80), Vector3(0, 0, 0.11)]}
+## Each bow model's shape (Models.enemy_weapon, in the bow's own frame): its string's two tips, the string's
+## middle at rest (where the arrow nocks), the way the string pulls (toward the archer), how far it can be drawn,
+## the grip (where the arrow rests on the bow), and how it hangs in a relaxed hand (the hand follower's frame:
+## the arm hanging, -y down to the fingers, -z ahead), as [x, y, z] columns.
+const BOW_SPEC := {
+	"bow": {"tips": [Vector3(0, 0, -0.55), Vector3(0, 0, 0.55)], "rest": Vector3.ZERO, "pull": Vector3(-1, 0, 0),
+		"max": 0.62, "grip": Vector3(0.18, 0, 0), "limb": Vector3(0, 0, 1),
+		"hang": [Vector3(0, 0, -1), Vector3(-1, 0, 0), Vector3(0, 1, 0)]},
+	"longbow": {"tips": [Vector3(0, -0.82, 0.038), Vector3(0, 0.86, 0.063)], "rest": Vector3(0, 0.02, 0.05),
+		"pull": Vector3(0, 0, 1), "max": 0.7, "grip": Vector3(0, 0, -0.11), "limb": Vector3(0, 1, 0),
+		"hang": [Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1)]},
+}
 
 static func ranger_ok() -> bool:
 	return ResourceLoader.exists(RANGER_GLB)
@@ -143,6 +155,10 @@ static func _loose(h: Hero, at: Vector3, pierce: bool, mult: float, src: String,
 	dir = dir.normalized() if dir.length() > 0.1 else -h.rig.global_transform.basis.z
 	dir = dir.rotated(Vector3.UP, yaw)
 	from += dir * 0.6
+	# off the bow in his hand, where the nocked arrow lay
+	var J: Dictionary = h.rig.get_meta("j")
+	if J.has("at_hand_l") and h.weapon_node != null and is_instance_valid(h.weapon_node) and h.weapon_node.get_parent() == J.get("grip_bow_at"):
+		from = (J["at_hand_l"] as Node3D).global_position + dir * 0.15
 	var n := _arrow_mesh(pierce)
 	h.game.world.fx_root.add_child(n)
 	n.global_position = from
@@ -402,3 +418,141 @@ static func clear(h: Hero) -> void:
 		if is_instance_valid(b):
 			b.dismiss()
 	h.beasts.clear()
+
+# ---------------------------------------------------------------- the bow in his hands
+## Every frame after the pose (Hero._process and the co-op puppet's): the bow turns from hanging in his relaxed hand
+## to upright on the line of the shot as he takes his stance (the rig's side-on weight), and its string is drawn by
+## his right hand: from the nock, back with his fingers to the anchor at his cheek, a nocked arrow lying on the bow;
+## on the release the arrow is gone and the string snaps back and shivers.
+static func pose_bow(h: Hero, st: Dictionary) -> void:
+	var w: Node3D = h.weapon_node
+	if w == null or not is_instance_valid(w) or h.rig == null or not h.has_bow():
+		return
+	pose_bow_on(h.rig, w, Data.BASES[h.equipment["weapon"]["base"]]["kind"], st)
+
+## The same for any ranger rig holding bow model w of this kind (the hero, previews).
+static func pose_bow_on(rig: Node3D, w: Node3D, kind: String, st: Dictionary) -> void:
+	var J: Dictionary = rig.get_meta("j")
+	if not J.has("grip_bow_at"):
+		return
+	if not BOW_SPEC.has(kind):
+		return
+	var sp: Dictionary = BOW_SPEC[kind]
+	if not w.has_meta("bow_rig"):
+		_rig_bow(w)
+	var in_hand: bool = w.get_parent() == J["grip_bow_at"]
+	# how it sits in the hand: relaxed (hanging) .. on the line of the shot (BOW_HOLD), by the stance
+	var side := 0.0
+	var aim_w = rig.get("w_side")
+	if aim_w != null:
+		side = float(aim_w)
+	var g: Node3D = J["grip_bow"]
+	var hang: Array = sp["hang"]
+	var hq := Basis(hang[0], hang[1], hang[2]).get_rotation_quaternion()
+	var aq := Basis.from_euler((BOW_HOLD[kind][1] as Vector3) * (PI / 180.0)).get_rotation_quaternion()
+	g.basis = Basis(hq.slerp(aq, smoothstep(0.0, 1.0, side)))
+	# the draw: his right hand's fingers, along the string's pull
+	var a: float = st.get("atk", -1.0)
+	var drawing: bool = in_hand and a >= 0.0 and str(st.get("style", "")) == "bow"
+	var imp := Anim.impact_at("bow")
+	var s: float = w.get_meta("draw_s", 0.0)
+	var v: float = w.get_meta("draw_v", 0.0)
+	var dt := clampf(float(st.get("time", 0.0)) - float(w.get_meta("draw_t", 0.0)), 0.0, 0.1)
+	w.set_meta("draw_t", float(st.get("time", 0.0)))
+	var rest: Vector3 = sp["rest"]
+	var pull: Vector3 = sp["pull"]
+	var nocked := drawing and a > 0.03 and a < imp
+	if nocked:
+		var fingers: Vector3 = (J["at_hand_r"] as Node3D).global_transform * Vector3(0, -0.06, 0)
+		var target := clampf((w.to_local(fingers) - rest).dot(pull), 0.0, float(sp["max"])) * smoothstep(0.03, 0.12, a)
+		s = target
+		v = 0.0
+	else:
+		# loosed (or never drawn): the string flies home and shivers
+		var acc := -s * 1500.0 - v * 34.0
+		v += acc * dt
+		s = maxf(s + v * dt, -0.04)      # a little past straight, no further (the limbs stop it)
+		if absf(s) < 0.0005 and absf(v) < 0.01:
+			s = 0.0
+			v = 0.0
+	w.set_meta("draw_s", s)
+	w.set_meta("draw_v", v)
+	var nock := rest + pull * s
+	var strands: Array = w.get_meta("strands")
+	_strand(strands[0], sp["tips"][0], nock)
+	_strand(strands[1], sp["tips"][1], nock)
+	var arrow: Node3D = w.get_meta("nocked")
+	arrow.visible = nocked
+	if nocked:
+		var dir := ((sp["grip"] as Vector3) - nock).normalized()
+		arrow.transform = Transform3D(Basis.looking_at(dir, sp["limb"]), nock + dir * 0.36)
+
+## The bow's straight string swapped for two strands that can be drawn back, and an arrow to nock.
+static func _rig_bow(w: Node3D) -> void:
+	var old := w.find_child("string", true, false) as MeshInstance3D
+	var mat: Material = old.material_override if old != null and old.material_override != null else Mats.mat(Color(0.85, 0.8, 0.7), 0.6)
+	if old != null:
+		old.visible = false
+	var strands := []
+	for k in 2:
+		var mi := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.0035
+		cm.bottom_radius = 0.0035
+		cm.height = 1.0
+		cm.radial_segments = 4
+		cm.rings = 1
+		mi.mesh = cm
+		mi.material_override = mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		w.add_child(mi)
+		strands.append(mi)
+	var arrow := Node3D.new()
+	var shaft := MeshInstance3D.new()
+	var sm := CylinderMesh.new()
+	sm.top_radius = 0.006
+	sm.bottom_radius = 0.006
+	sm.height = 0.72
+	shaft.mesh = sm
+	shaft.rotation_degrees = Vector3(90, 0, 0)
+	shaft.material_override = Mats.mat(Color(0.32, 0.23, 0.14), 0.8)
+	arrow.add_child(shaft)
+	var head := MeshInstance3D.new()
+	var hm := CylinderMesh.new()
+	hm.top_radius = 0.0
+	hm.bottom_radius = 0.016
+	hm.height = 0.06
+	head.mesh = hm
+	head.rotation_degrees = Vector3(-90, 0, 0)
+	head.position = Vector3(0, 0, -0.39)
+	head.material_override = Mats.mat(Color(0.5, 0.5, 0.52), 0.35, 0.9)
+	arrow.add_child(head)
+	for k in 3:
+		var f := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3(0.002, 0.03, 0.09)
+		f.mesh = bm
+		f.position = Vector3(0, 0, 0.29)
+		f.rotation = Vector3(0, 0, TAU * k / 3.0)
+		f.material_override = Mats.mat(Color(0.75, 0.72, 0.65), 0.9)
+		var off := Node3D.new()
+		off.rotation = Vector3(0, 0, TAU * k / 3.0)
+		arrow.add_child(off)
+		f.rotation = Vector3.ZERO
+		f.position = Vector3(0, 0.016, 0.29)
+		off.add_child(f)
+	arrow.visible = false
+	w.add_child(arrow)
+	w.set_meta("strands", strands)
+	w.set_meta("nocked", arrow)
+	w.set_meta("bow_rig", true)
+
+static func _strand(mi: MeshInstance3D, a: Vector3, b: Vector3) -> void:
+	var d := b - a
+	var L := d.length()
+	if L < 0.001:
+		return
+	var y := d / L
+	var x := y.cross(Vector3.UP if absf(y.dot(Vector3.UP)) < 0.95 else Vector3.RIGHT).normalized()
+	var z := x.cross(y)
+	mi.transform = Transform3D(Basis(x, y * L, z), (a + b) * 0.5)

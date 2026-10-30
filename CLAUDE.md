@@ -116,7 +116,11 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   its draw squeezed in before Anim's release frame, the body turned side-on, `yaw`); Snare Trap and Spirit Beast are
   the game's cast pose over the upper body. He holds the equipped bow in his LEFT hand (`J["grip_bow"]`,
   `Archer.BOW_HOLD` per bow kind, `Hero._weapon_hand`); bows are drawn by `Models.enemy_weapon` (`item_model`
-  had none). Rebuild: `meshy.py rig`/`animate` (clip ids in the commit), then `blender -b --python
+  had none). `Archer.pose_bow` (every frame after the pose, the puppet's too) turns the bow from hanging in his
+  relaxed hand to upright on the shot's line with his stance (the rig's `w_side`), swaps the straight string for two
+  strands his right hand's fingers draw back to his cheek with a nocked arrow on the bow, and on the release the
+  arrow (fired from the bow hand, `_loose`) is gone and the string snaps back with a damped shiver
+  (`Archer.BOW_SPEC`: each bow model's tips, nock, pull, grip and hang). Rebuild: `meshy.py rig`/`animate` (clip ids in the commit), then `blender -b --python
   tools/blender/archer/prep_ranger_mocap.py -- rigged.glb out.glb 60000 clips_a.glb clips_b.glb` (merges and renames
   the clips, cuts away the bow Meshy fused into his right hand, `bow_select.py`). Without the glb: the knight's
   procedural body dressed as a hunter (`Archer.build_placeholder`). Preview: `tools/mocap_knight_clip.gd -- outdir

@@ -155,6 +155,8 @@ func _run() -> void:
 		st["move"] = mv
 		st["speed"] = spd
 		Anim.pose(r, st)
+		if archer:
+			AR.call("pose_bow_on", r, sword, Data.BASES["long_bow" if args.has("longbow") else "short_bow"]["kind"], st)
 		var c := r.position
 		var off: Vector3 = {"side": Vector3(4.4, 1.2, 0.0), "front": Vector3(0.0, 1.4, -4.4), "back": Vector3(0.0, 1.6, 4.4), "34": Vector3(2.8, 2.0, -3.0), "game": Vector3(0, 17.0, 16.5) * 0.45}.get(view, Vector3(2.8, 2.0, -3.0))
 		if view == "game":
