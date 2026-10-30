@@ -827,7 +827,8 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		if not tp_link.is_empty():
 			_make_portal(world.spawns["portal"], "back")
 	ui.set_zone(zone_title(act, zone))
-	Sfx.play_music("fort" if zone == "lair" and world.fort else zone)
+	# Act I outside the camp (the forest moor, Grubb's fort): soft trees in the breeze instead of the wind
+	Sfx.play_music("fort" if zone == "lair" and world.fort else zone, "forest" if world.oak_forest and zone != "town" and not indoor() else "")
 	loading.visible = false
 	_busy = false
 	net.host_zone_loaded()

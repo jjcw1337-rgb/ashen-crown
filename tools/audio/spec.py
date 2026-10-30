@@ -190,11 +190,16 @@ SPEC = [
          prompt="a heavy iron portcullis gate being hauled up by chains, rattling chains and grinding iron, ending in a clank" + DRY),
     dict(name="lion_roar", src="eleven", n=4, dur=2.5, hit=0, label="a lion roaring",
          prompt="a big male lion roaring loudly and angrily, close" + DRY),
-    dict(name="music_town", src="eleven", n=3, dur=30.0, hit=0, loop=True, label="a slow eerie piano melody",
-         prompt="slow, eerie solo piano melody for a dark fantasy campsite at night, sparse melancholic notes in a minor "
-                "key with long soft reverb, a few low sustained chords, gentle and quiet, background music loop, no drums"),
+    # the camp's song: first an eerie piano (Blaine; takes 0-2), now soft and uplifting (jj; takes 3-5)
+    dict(name="music_town", src="eleven", n=6, dur=30.0, hit=0, loop=True, label="soft uplifting music",
+         prompt="soft, gentle and uplifting fantasy music for a safe campfire camp in an old forest at dusk, warm harp "
+                "and soft strings with a hopeful flowing melody in a major key, calm and peaceful, background music loop, no drums"),
     dict(name="wind", src="eleven", n=3, dur=8.0, hit=0, loop=True, label="wind blowing",
          prompt="cold wind blowing across an empty moor at night, steady, no music"),
+    # Act I outside the camp (the forest moor, Grubb's fort): soft trees in the breeze instead of the wind
+    dict(name="forest", src="eleven", n=4, dur=14.0, hit=0, loop=True, label="trees rustling in a breeze",
+         prompt="a soft gentle breeze through the leaves of an old forest, branches swaying and leaves rustling softly, "
+                "calm and peaceful, steady and even, no birds, no music"),
     dict(name="drip", src="eleven", n=3, dur=8.0, hit=0, loop=True, label="water dripping in a cave",
          prompt_b="water dripping slowly in a stone dungeon, soft drips and quiet cave air, steady, no music",
          prompt="a damp stone crypt, slow water drips echoing, faint distant wind, no music"),

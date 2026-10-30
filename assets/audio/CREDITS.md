@@ -37,6 +37,7 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | drop | 4 | Kenney rpg-audio (kenney.nl) | CC0 1.0 | dropLeather.ogg |
 | equip | 4 | Kenney rpg-audio (kenney.nl) | CC0 1.0 | beltHandle1.ogg |
 | fireball | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a fireball launched, roaring burst of flame whooshing away, close mic, dry, isolated sound effect, no music |
+| forest | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a soft gentle breeze through the leaves of an old forest, branches swaying and leaves rustling softly, calm and peaceful, steady and even, no birds, no music |
 | fuse | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a lit bomb fuse sizzling and hissing with sparks, steady, close mic, dry, isolated sound effect, no music |
 | gold | 2 | Kenney rpg-audio (kenney.nl) | CC0 1.0 | handleCoins.ogg |
 | growl | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a rotting zombie's low hungry groan, close mic, dry, isolated sound effect, no music |
@@ -53,6 +54,7 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | kill_flesh | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a monster killed by a blade, gory flesh splatter then a body slumping onto dirt, close mic, dry, isolated sound effect, no music |
 | levelup | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | level up in a dark fantasy game, short triumphant swell with a bright magical chime, subtle, close mic, dry, isolated sound effect, no music |
 | lion_roar | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a big male lion roaring loudly and angrily, close, close mic, dry, isolated sound effect, no music |
+| music_town | 3 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | soft, gentle and uplifting fantasy music for a safe campfire camp in an old forest at dusk, warm harp and soft strings with a hopeful flowing melody in a major key, calm and peaceful, background music loop, no drums |
 | phase_erupt | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | fire bursting violently up out of the ground, a deep boom, roaring flames and falling rocks, close mic, dry, isolated sound effect, no music |
 | phase_in | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | stepping into the underworld, a deep dark whoosh with a low ominous hit, close mic, dry, isolated sound effect, no music |
 | pickup | 8 | Kenney rpg-audio (kenney.nl) | CC0 1.0 | handleSmallLeather.ogg |

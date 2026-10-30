@@ -24,9 +24,9 @@ LIB = os.path.expanduser("~/Documents/Game Factory Audio")
 SR = 32000
 
 STEREO = {"music_town", "crowd_roar", "crowd_cheer", "arena_horn", "holy_nova", "wail", "covenant", "host_summon", "summon_demon", "phase_in", "phase_erupt", "blood_pact",
-          "battle_cry", "levelup", "portal", "wind", "drip", "drain_loop", "boss_die", "roar"}
+          "battle_cry", "levelup", "portal", "wind", "forest", "drip", "drain_loop", "boss_die", "roar"}
 UI = {"click", "deny", "gold", "coins", "pickup", "equip", "drop", "potion", "levelup", "portal"}
-AMB = {"wind", "drip", "grubb_mutter"}
+AMB = {"wind", "forest", "drip", "grubb_mutter"}
 # dB for the loudest 100 ms: hits and voices sit under the big payoffs, UI and loops well under
 LOUD = {"ui": -20.0, "amb": -26.0, "music": -24.0, "loop": -22.0, "small": -17.0, "big": -14.0, "default": -16.0}
 SMALL = {"hero_hit", "swing_light", "swing_heavy", "swing", "spirit_dart", "drain_tick", "hurt_knight", "hurt_gnome", "hurt_wraith",
