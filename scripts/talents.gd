@@ -14,7 +14,8 @@ extends RefCounted
 ##   seconds: buff_dur (the 12 s buffs), phase_dur, wail_stun, shackle_dur, blight_dur
 ##   class specials, used where the skill is: nova_heal, cry_heal, charge_cdr, reap_heal, reap_full,
 ##     wail_echo, spirits, claw_wide, minion_speed, minion_max, pact_cost, phase_heal, drain_heal,
-##     drain_fork, drain_glut, blight_size, blight_twin, shackle_range
+##     drain_fork, drain_glut, blight_size, blight_twin, shackle_range, arrow_split, snare_dur, snare_max,
+##     snare_wide, volley_size, beast_two
 ## "text" shows the total for the ranks taken: {key} is replaced by the fx value times the rank.
 ## Saves made before talents get a build picked for them (`auto_build`, the class's `AUTO` order).
 
@@ -137,6 +138,35 @@ const TREES := {
 			{"id": "l_eternal", "name": "Eternal Covenant", "row": 3, "max": 1, "icon": "covenant", "fx": {"buff_dur": 6}, "text": "Fel Covenant lasts {buff_dur} seconds longer."},
 		]},
 	],
+	"archer": [
+		{"name": "Marksman", "desc": "The bow: harder shots, Piercing Shot and deadly crits.", "talents": [
+			{"id": "a_eye", "name": "Keen Eye", "row": 0, "max": 3, "icon": "t_eye", "fx": {"dex": 3}, "text": "+{dex} dexterity."},
+			{"id": "a_draw", "name": "Heavy Draw", "row": 0, "max": 3, "icon": "attack", "fx": {"dmg:attack": 8}, "text": "Your bow shots deal {dmg:attack}% more damage."},
+			{"id": "a_broad", "name": "Broadhead", "row": 1, "max": 3, "icon": "pierce", "fx": {"dmg:pierce": 12}, "text": "Piercing Shot deals {dmg:pierce}% more damage."},
+			{"id": "a_nock", "name": "Quick Nock", "row": 1, "max": 3, "icon": "t_haste", "fx": {"ias": 5}, "text": "+{ias}% attack speed."},
+			{"id": "a_dead", "name": "Deadeye", "row": 2, "max": 3, "icon": "t_star", "fx": {"crit": 3}, "text": "+{crit}% chance to land a critical hit."},
+			{"id": "a_vital", "name": "Vital Shot", "row": 2, "max": 2, "icon": "t_skull", "fx": {"crit_dmg": 20}, "text": "Critical hits deal {crit_dmg}% more damage."},
+			{"id": "a_split", "name": "Split Arrow", "row": 3, "max": 1, "icon": "attack", "fx": {"arrow_split": 1}, "text": "Every bow shot flies as three arrows (the outer two at half damage)."},
+		]},
+		{"name": "Warden", "desc": "The wild's own hunter: hides, quick feet and the Snare Trap.", "talents": [
+			{"id": "a_hide", "name": "Hide Armour", "row": 0, "max": 3, "icon": "t_armor", "fx": {"armor_pct": 6}, "text": "+{armor_pct}% defense."},
+			{"id": "a_vigor", "name": "Hunter's Vigor", "row": 0, "max": 3, "icon": "t_heart", "fx": {"life_pct": 4}, "text": "+{life_pct}% maximum life."},
+			{"id": "a_jaws", "name": "Iron Jaws", "row": 1, "max": 3, "icon": "snare", "fx": {"dmg:snare": 15, "snare_dur": 0.5}, "text": "Snare Trap deals {dmg:snare}% more damage and holds {snare_dur} seconds longer."},
+			{"id": "a_fleet", "name": "Fleet Foot", "row": 1, "max": 3, "icon": "t_boot", "fx": {"frw": 5}, "text": "+{frw}% run speed."},
+			{"id": "a_trapper", "name": "Trapper", "row": 2, "max": 2, "icon": "snare", "fx": {"snare_max": 1}, "text": "Set {snare_max} more Snare Trap at once."},
+			{"id": "a_ward", "name": "Woodland Ward", "row": 2, "max": 3, "icon": "t_ward", "fx": {"res": 5}, "text": "+{res}% to all resistances."},
+			{"id": "a_caltrop", "name": "Wide Snare", "row": 3, "max": 1, "icon": "snare", "fx": {"snare_wide": 1}, "text": "A sprung Snare Trap catches everything within 4 metres."},
+		]},
+		{"name": "Beastmaster", "desc": "Arrows from the sky and the Spirit Beast.", "talents": [
+			{"id": "a_storm", "name": "Arrow Storm", "row": 0, "max": 3, "icon": "volley", "fx": {"dmg:volley": 10}, "text": "Volley deals {dmg:volley}% more damage."},
+			{"id": "a_cover", "name": "Wider Cover", "row": 0, "max": 3, "icon": "volley", "fx": {"volley_size": 10}, "text": "Volley covers {volley_size}% more ground."},
+			{"id": "a_bond", "name": "Spirit Bond", "row": 1, "max": 3, "icon": "beast", "fx": {"dmg:beast": 15}, "text": "Your Spirit Beast hits {dmg:beast}% harder."},
+			{"id": "a_call", "name": "Call of the Wild", "row": 1, "max": 3, "icon": "t_hourglass", "fx": {"cd:beast": 10}, "text": "Spirit Beast recharges {cd:beast}% faster."},
+			{"id": "a_pack", "name": "Pack Hunter", "row": 2, "max": 3, "icon": "beast", "fx": {"buff_pow": 10}, "text": "Spirit Beast's damage bonus is {buff_pow}% higher."},
+			{"id": "a_rain", "name": "Endless Rain", "row": 2, "max": 2, "icon": "t_hourglass", "fx": {"cd:volley": 12, "cost:volley": 10}, "text": "Volley recharges {cd:volley}% faster and costs {cost:volley}% less mana."},
+			{"id": "a_alpha", "name": "Alpha", "row": 3, "max": 1, "icon": "beast", "fx": {"beast_two": 1}, "text": "Spirit Beast calls two beasts."},
+		]},
+	],
 }
 
 ## The build an old save gets (and the window's Auto button follows): talents in order, each taken to
@@ -150,6 +180,8 @@ const AUTO := {
 		"d_hide", "d_plate", "d_rift", "d_abyss", "d_erupt", "d_hunger", "d_furnace"],
 	"warlock": ["l_deep", "l_thirst", "l_thrift", "l_intel", "l_fork", "l_wither", "l_glut", "l_virulence", "l_contagion", "l_quick", "l_vigor", "l_spread", "l_malice", "l_twin",
 		"l_felarmor", "l_reserves", "l_chains", "l_sigils", "l_reach", "l_dark", "l_eternal"],
+	"archer": ["a_draw", "a_eye", "a_broad", "a_nock", "a_dead", "a_vital", "a_split", "a_vigor", "a_hide", "a_jaws", "a_fleet", "a_trapper", "a_ward", "a_caltrop",
+		"a_storm", "a_cover", "a_bond", "a_call", "a_pack", "a_rain", "a_alpha"],
 }
 
 static func trees(cls: String) -> Array:

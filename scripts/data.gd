@@ -178,6 +178,12 @@ const BASES := {
 	"mp_potion": {"name": "Mana Potion", "slot": "potion", "kind": "potion", "lvl": 1, "price": 12, "mana": 40, "color": Color(0.1, 0.25, 1.0)},
 	"rejuv": {"name": "Rejuvenation Potion", "slot": "potion", "kind": "potion", "lvl": 1, "price": 60, "rejuv": 0.4, "color": Color(0.6, 0.1, 0.9)},
 	"gold": {"name": "Gold", "slot": "gold", "kind": "gold", "lvl": 1, "price": 0},
+	# bows: the archer's weapons ("cls": only he can draw them)
+	"short_bow": {"name": "Short Bow", "slot": "weapon", "kind": "bow", "cls": "archer", "dmg": [2, 6], "speed": 1.15, "lvl": 1, "price": 30},
+	"hunting_bow": {"name": "Hunting Bow", "slot": "weapon", "kind": "bow", "cls": "archer", "dmg": [4, 10], "speed": 1.1, "lvl": 5, "price": 85},
+	"long_bow": {"name": "Long Bow", "slot": "weapon", "kind": "longbow", "cls": "archer", "dmg": [7, 16], "speed": 1.0, "lvl": 11, "price": 170},
+	"war_bow": {"name": "War Bow", "slot": "weapon", "kind": "longbow", "cls": "archer", "dmg": [12, 25], "speed": 0.95, "lvl": 19, "price": 330},
+	"grave_bow": {"name": "Gravewood Bow", "slot": "weapon", "kind": "longbow", "cls": "archer", "dmg": [18, 34], "speed": 1.0, "lvl": 26, "price": 600},
 }
 
 ## Affixes: [stat, prefix/suffix name, min, max, per-level growth]
@@ -292,6 +298,11 @@ const SKILLS := [
 	{"id": "drain", "cls": "warlock", "name": "Drain Life", "key": "Q", "lvl": 1, "mana": 6, "cd": 0.0, "aim": "facing", "range": 11.0, "desc": "Latch a green beam onto an enemy and pull the life out of it. The beam forks to up to 3 enemies near your target and everything it drains heals you. Hold Q to keep draining (costs mana each second)."},
 	{"id": "blight", "cls": "warlock", "name": "Blight Bolt", "key": "E", "lvl": 3, "mana": 12, "cd": 1.5, "aim": "facing", "range": 15.0, "desc": "Hurl a howling skull of blight. It bursts where it lands and leaves a plague pool that rots enemies standing in it for 4 seconds."},
 	{"id": "shackles", "cls": "warlock", "name": "Soul Shackles", "key": "R", "lvl": 6, "mana": 16, "cd": 8.0, "aim": "self", "desc": "Chains of fel fire snap out to every enemy within 7 metres, damaging them and binding them in place for 2.5 seconds."},
+	# the archer: his attack is the bow (Hero._bow_attack); the arrows are Hero.arrows
+	{"id": "pierce", "cls": "archer", "name": "Piercing Shot", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 16.0, "desc": "A heavy arrow that punches through every enemy in a line for 130% weapon damage."},
+	{"id": "volley", "cls": "archer", "name": "Volley", "key": "E", "lvl": 3, "mana": 14, "cd": 3.0, "aim": "point", "range": 14.0, "desc": "Loose a flight of arrows into the sky: they rain down on the cursor for over a second, hitting everything within 4 metres again and again."},
+	{"id": "snare", "cls": "archer", "name": "Snare Trap", "key": "R", "lvl": 6, "mana": 10, "cd": 6.0, "aim": "point", "range": 10.0, "desc": "Throw an iron snare at the cursor. The first enemies to step on it are held fast for 3 seconds and take 120% weapon damage. It lies in wait for 20 seconds."},
+	{"id": "beast", "cls": "archer", "name": "Spirit Beast", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "aim": "self", "desc": "A spectral beast runs at your side for 30 seconds, savaging whatever you hunt. +40% damage for 12 seconds."},
 	{"id": "covenant", "cls": "warlock", "name": "Fel Covenant", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "aim": "self", "desc": "Seal a pact with what waits beyond: +40% damage for 12 seconds, and Drain Life forks to two more enemies and heals twice as much."},
 ]
 
@@ -303,6 +314,9 @@ const CLASSES := {
 		"desc": "A hooded spirit that never touches the ground. Reaps souls to heal, screams enemies into terror, steps through shadow and calls a host of spirits."},
 	"demon": {"name": "Demon", "str": 24, "dex": 14, "vit": 24, "ene": 18,
 		"desc": "A horned, winged fiend in obsidian plate. Claws with hellfire, summons up to three demons and slips into the Underworld to walk unseen."},
+	# the bow class (Jace's): its name is his to choose; "Archer" until then
+	"archer": {"name": "Archer", "str": 14, "dex": 26, "vit": 18, "ene": 14, "weapon": "short_bow",
+		"desc": "A hooded hunter with a black longbow. Shoots from range, punches arrows through whole packs, rains volleys, sets snares and hunts beside a spirit beast."},
 	"warlock": {"name": "Warlock", "str": 10, "dex": 10, "vit": 10, "ene": 10,
 		"desc": "A hooded sorcerer bound by a fel pact. Drains the life from foes in a forking green beam, rots them with blight and chains them where they stand."},
 }

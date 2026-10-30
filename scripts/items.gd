@@ -251,6 +251,8 @@ static func tooltip(it: Dictionary, hero_level: int = 99, mode: String = "") -> 
 		lines.append(["Restores %d mana over 4 seconds" % b["mana"], white])
 	if b.has("rejuv"):
 		lines.append(["Instantly restores %d%% life and mana" % int(b["rejuv"] * 100), white])
+	if b.has("cls"):
+		lines.append(["%s only" % Data.CLASSES[b["cls"]]["name"], Color(0.75, 0.7, 0.6)])
 	var req: int = it.get("req", 1)
 	if req > 1:
 		lines.append(["Required Level: %d" % req, Color(1.0, 0.3, 0.3) if req > hero_level else white])

@@ -9,7 +9,7 @@ extends SceneTree
 ## --fixed-fps makes the sim run as fast as the CPU allows (each frame is 1/30 s of game time).
 ## Lines starting [BAL] are the table; [BAL-FLAG] lines are numbers outside their band.
 
-const CLASSES := ["knight", "wraith", "demon", "warlock"]
+const CLASSES := ["knight", "wraith", "demon", "warlock", "archer"]
 ## Share of each zone's monsters a player kills on the way through.
 const CLEAR := 1.0
 ## Where we measure: run (0 Act I, 1 A2, 2 A3), zone, the gear the player has by then
