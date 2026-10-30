@@ -17,12 +17,18 @@ const RANGE := 13.0
 const ARROW_SPEED := 34.0
 const VOLLEY_R := 4.0
 const SNARE_R := 2.2
-const BEAST_TIME := 30.0
 const HUNTER := Color(0.62, 0.85, 0.75)     # the class's colour: pale spirit-green
 
 ## The placeholder body: the knight's skeleton and procedural body in a hunter's dark green and leather.
 static func build_body() -> Node3D:
-	var g := Knight.default_gear()
+	var r := Knight.build(body_gear(Knight.default_gear()))
+	r.set_meta("archer", true)
+	return r
+
+## The hunter's colours laid over the knight's gear description (his armour's shape stays; Hero.refresh_gear
+## rebuilds the body with this whenever his gear changes, so the knight's red never comes back).
+static func body_gear(g: Dictionary) -> Dictionary:
+	g = g.duplicate()
 	g["cloth"] = Color(0.13, 0.17, 0.11)
 	g["cape"] = Color(0.09, 0.1, 0.09)
 	g["quilt"] = Color(0.27, 0.22, 0.16)
@@ -32,9 +38,7 @@ static func build_body() -> Node3D:
 	g["trim"] = Color(0.45, 0.36, 0.22)
 	g["hair"] = Color(0.12, 0.09, 0.07)
 	g["coif"] = true
-	var r := Knight.build(g)
-	r.set_meta("archer", true)
-	return r
+	return g
 
 # ---------------------------------------------------------------- the bow
 ## Loose an arrow toward aim (an attack: the draw, the release on the pose's impact frame).
@@ -78,6 +82,7 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 			h._start_attack("cast", "snare")
 			h.atk_dur = 0.4
 		"beast":
+			h.atk_aim = aim
 			h._start_attack("cast", "beast")
 			h.atk_dur = 0.6
 
@@ -100,7 +105,7 @@ static func impact(h: Hero) -> bool:
 		"snare":
 			_set_snare(h, h.atk_aim)
 		"beast":
-			_call_beast(h)
+			_command_beast(h, h.atk_aim)
 		_:
 			return false
 	return true
@@ -275,30 +280,67 @@ static func _spring(h: Hero, s: Dictionary) -> void:
 	h.game.add_shake(0.1)
 
 # ---------------------------------------------------------------- Spirit Beast
-static func _call_beast(h: Hero) -> void:
-	for b in h.beasts:
-		if is_instance_valid(b):
-			b.dismiss()
-	h.beasts.clear()
-	var n := 2 if h.talent("beast_two") > 0.0 else 1
+## The archer always has his Spirit Beast (two with Alpha): it rises beside him when he becomes an archer, a
+## while after it falls, and with him in every zone (SpiritBeast follows him through portals itself).
+static func keep_companions(h: Hero, delta: float) -> void:
+	h.mark_t = maxf(0.0, h.mark_t - delta)
+	if h.mark != null and (not is_instance_valid(h.mark) or h.mark.dead):
+		h.mark = null
+	if h.puppet or h.dead or not h.is_archer() or h.game == null or h.game.world == null or h.game._busy:
+		return
+	h.beasts = h.beasts.filter(func(b) -> bool: return is_instance_valid(b) and not b.dead)
+	var want := 2 if h.talent("beast_two") > 0.0 else 1
+	if h.beasts.size() >= want:
+		return
+	h.beast_down_t -= delta
+	if h.beast_down_t > 0.0:
+		return
+	h.beast_down_t = 0.0
 	var fwd: Vector3 = -h.rig.global_transform.basis.z
-	for k in n:
-		var side := Vector3(fwd.z, 0, -fwd.x) * (1.2 if k == 0 else -1.2)
-		var pos: Vector3 = h.game.world.move(h.global_position, fwd * 1.6 + side * (1.0 if n > 1 else 0.0))
-		pos.y = h.game.world.height_at(pos.x, pos.z)
-		var b := SpiritBeast.new()
-		h.game.add_child(b)
-		b.setup(h, h.game, k)
-		b.global_position = pos
-		h.beasts.append(b)
-		Fx.burst(h.game.world.fx_root, pos + Vector3(0, 0.6, 0), HUNTER, 30, 3.0, 0.14, 0.8, true, 1.0)
+	var k := h.beasts.size()
+	var side := Vector3(fwd.z, 0, -fwd.x) * (1.4 if k == 0 else -1.4)
+	var pos: Vector3 = h.game.world.free_spot_near(h.global_position + side - fwd * 0.8, 1.5)
+	pos.y = h.game.world.height_at(pos.x, pos.z)
+	var b := SpiritBeast.new()
+	h.game.add_child(b)
+	b.setup(h, h.game, k)
+	b.global_position = pos
+	h.beasts.append(b)
+	Fx.burst(h.game.world.fx_root, pos + Vector3(0, 0.6, 0), HUNTER, 30, 3.0, 0.14, 0.8, true, 1.0)
+
+## The Spirit Beast skill commands it: at a foe near the cursor it pounces and fights it; on open ground it
+## holds that spot; on himself it comes back to his side. Each command rouses the hunt: +40% damage, 12 s.
+static func _command_beast(h: Hero, aim: Vector3) -> void:
+	var foe = null
+	var bd := 3.0
+	for e in h.game.enemies_near(aim, 3.0):
+		var d: float = e.global_position.distance_to(aim)
+		if not e.dead and d < bd:
+			bd = d
+			foe = e
+	var home: bool = foe == null and aim.distance_to(h.global_position) < 2.5
+	for b in h.beasts:
+		if not is_instance_valid(b) or b.dead:
+			continue
+		if foe != null:
+			b.command("attack", foe)
+		elif home:
+			b.command("follow")
+		else:
+			b.command("hold", null, aim)
+	if foe != null:
+		h.mark = foe
+		h.mark_t = 8.0
+		Fx.ring(h.game.world.fx_root, foe.global_position, 1.2, HUNTER, 0.4)
+	elif not home:
+		Fx.ring(h.game.world.fx_root, aim, 1.5, HUNTER, 0.5)
 	h.buff_t = 12.0 + h.talent("buff_dur")
 	Sfx.play("lion_roar", -4.0, 1.25)
-	Sfx.play("summon", -6.0, 1.1)
-	h.game.add_shake(0.2)
+	h.game.add_shake(0.15)
 
 # ---------------------------------------------------------------- every frame
 static func update(h: Hero, delta: float) -> void:
+	keep_companions(h, delta)
 	if h.arrows.is_empty() and h.volleys.is_empty() and h.snares.is_empty():
 		return
 	var w = h.game.world
@@ -323,6 +365,9 @@ static func update(h: Hero, delta: float) -> void:
 			if d < e.radius + 0.35:
 				a["hit"][e] = true
 				h._hit_enemy(e, a["mult"], 0.25 if not a["pierce"] else 0.5, a["src"])
+				# the one he shoots is the one his beast goes for
+				h.mark = e
+				h.mark_t = 6.0
 				Fx.sparks(w.fx_root, e.global_position + Vector3(0, e.height, 0), Color(0.9, 0.85, 0.7))
 				if not a["pierce"]:
 					stop = true

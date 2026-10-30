@@ -54,6 +54,8 @@ var enraged := false
 var hoard: Hoard = null
 ## Factions (Data.ENEMIES "faction"): goblins and the undead fight each other on sight (and both fight you).
 var rival: Enemy = null
+var taunt: Node3D = null      # a companion that bit it (the archer's Spirit Beast): it turns on it for a while
+var taunt_t := 0.0
 var rival_t := 0.0
 var _by_rival := false        # set while a rival's blow lands
 var killed_by_rival := false  # no xp or loot for a kill the heroes didn't make
@@ -438,6 +440,14 @@ func _process(delta: float) -> void:
 		_remote_process(delta)
 		return
 	var hero: Node3D = game.target_for(self)
+	# bitten by a companion: it goes for the beast while that is the nearer threat
+	if taunt != null:
+		taunt_t -= delta
+		if not is_instance_valid(taunt) or taunt.dead or taunt_t <= 0.0:
+			taunt = null
+		elif hero == null or hero.dead or taunt.global_position.distance_to(global_position) < hero.global_position.distance_to(global_position) * 0.9:
+			hero = taunt
+			aggro = true
 	if def.has("faction"):
 		rival_t -= delta
 		if rival_t <= 0.0:
@@ -535,7 +545,10 @@ static func build_rig(kind: String, variant := 1) -> Node3D:
 	if d.get("mesh", "") == "feral" and Feral.ok():
 		return Feral.build(variant)
 	if d.get("mesh", "") == "lion" and Lion.ok():
-		return Lion.build()
+		var lr := Lion.build()
+		if d.get("ghost", false):
+			SpiritBeast.ghostly(lr)
+		return lr
 	if d.has("mesh") and MeshyMonster.ok(d["mesh"]):
 		return MeshyMonster.build(d["mesh"], look)
 	if d.has("model"):

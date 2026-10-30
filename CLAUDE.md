@@ -106,8 +106,15 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   equip them) his attack shoots (`Archer.shoot` from `Hero.swipe_attack`/`free_attack`; `Hero.reach` is `Archer.RANGE`,
   so a clicked foe is shot from range; Anim's `"bow"` pose, the arrow looses on its impact frame). Skills: Piercing
   Shot (an arrow through a line), Volley (a rain of arrows on the cursor, hits every 0.2 s), Snare Trap (stuns the
-  first enemies on it), Spirit Beast (`spirit_beast.gd`: the lion's body, ghostly, hunting for 30 s, plus the 12 s
-  battle buff). Arrows, volleys, snares and beasts live on the hero (`Hero.arrows` etc.), `Archer.update`/`clear`.
+  first enemies on it), Spirit Beast (his companion from the start, `spirit_beast.gd`: the lion's body, ghostly; a state machine of
+  follow / engage / command / protect / investigate / return / hold, every number in `SpiritBeast.CFG`; it settles at his
+  side, trots or sprints to keep up, sniffs at loot and chests, protects him, goes for the one he shoots (`Hero.mark`),
+  keeps its target (`commit`), gives up on what it can't reach, follows him through zones; monsters it bites turn on
+  it (`Enemy.taunt`), and it rises again 18 s after falling (`Archer.keep_companions`, `Hero.beast_down_t`); he runs
+  10% faster while it lives. The F skill commands it (`Archer._command_beast`): on an enemy it pounces, on open ground it
+  holds, on himself it comes back, each with the 12 s battle buff; `"spirit_beast"` in `Data.ENEMIES` is the same body
+  as a monster). Bows are drawn in his left hand (`Models.weapon` "bow", `J["bow_l"]`), and his hunter colours are
+  `Archer.body_gear` (the knight's red never comes back on a gear change). Arrows, volleys, snares and beasts live on the hero (`Hero.arrows` etc.), `Archer.update`/`clear`.
   Talents: Marksman, Warden, Beastmaster (`Talents.TREES["archer"]`; specials arrow_split, snare_dur, snare_max,
   snare_wide, volley_size, beast_two). Body: the knight's procedural body dressed as a hunter (`Archer.build_body`)
   until the Meshy model; talent icons still to paint (`tools/talent_icons.py` has the archer prompts).

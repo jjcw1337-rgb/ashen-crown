@@ -90,6 +90,9 @@ var arrows: Array = []
 var volleys: Array = []
 var snares: Array = []
 var beasts: Array = []
+var beast_down_t := 0.0     # after the Spirit Beast falls, seconds until it rises again beside him
+var mark = null             # the enemy the archer is shooting at: his beast goes for it first
+var mark_t := 0.0
 var blights: Array = []      # plague pools on the ground: [{node, pos, t, tick}]
 var buff_t := 0.0
 var heal_pool := 0.0
@@ -571,7 +574,13 @@ func refresh_gear() -> void:
 	var w = equipment.get("weapon")
 	if w != null:
 		weapon_node = Models.item_model(w)
-		(J["grip_r"] as Node3D).add_child(weapon_node)
+		if has_bow() and J.has("grip_l"):
+			# a bow is held in the left hand; Anim keeps the grip lined up with the arm (bow_l)
+			(J["grip_l"] as Node3D).add_child(weapon_node)
+			J["bow_l"] = weapon_node
+		else:
+			J.erase("bow_l")
+			(J["grip_r"] as Node3D).add_child(weapon_node)
 		gear_nodes.append(weapon_node)
 		if w.get("rarity", 0) == 3 and Models.palette(w)["glow"] != null:
 			var fl := Props.fire(weapon_node, Vector3(0, 0, -0.5), 0.35, Models.palette(w)["glow"], false, false, false)
@@ -597,6 +606,8 @@ func refresh_gear() -> void:
 		Demon.rebuild_body(rig, demon_gear())
 	elif is_warlock():
 		Warlock.rebuild_body(rig, warlock_gear())
+	elif is_archer():
+		Knight.rebuild_body(rig, Archer.body_gear(knight_gear()))
 	elif not rig.has_meta("meshy"):
 		Knight.rebuild_body(rig, knight_gear())
 	var am = equipment.get("amulet")
@@ -1222,6 +1233,9 @@ func _process(delta: float) -> void:
 	if exhausted and stamina >= max_stamina * 0.3:
 		exhausted = false
 	var speed := 4.8 * (1.0 + frw / 100.0)
+	# the archer runs 10% faster while his Spirit Beast is at his side
+	if is_archer() and beasts.any(func(b) -> bool: return is_instance_valid(b) and not b.dead):
+		speed *= 1.1
 	if running:
 		speed *= 1.6
 	if phased:
