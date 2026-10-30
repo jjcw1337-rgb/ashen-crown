@@ -303,7 +303,7 @@ const CLASSES := {
 		"desc": "A hooded spirit that never touches the ground. Reaps souls to heal, screams enemies into terror, steps through shadow and calls a host of spirits."},
 	"demon": {"name": "Demon", "str": 24, "dex": 14, "vit": 24, "ene": 18,
 		"desc": "A horned, winged fiend in obsidian plate. Claws with hellfire, summons up to three demons and slips into the Underworld to walk unseen."},
-	"warlock": {"name": "Warlock", "str": 14, "dex": 16, "vit": 20, "ene": 30,
+	"warlock": {"name": "Warlock", "str": 10, "dex": 10, "vit": 10, "ene": 10,
 		"desc": "A hooded sorcerer bound by a fel pact. Drains the life from foes in a forking green beam, rots them with blight and chains them where they stand."},
 }
 
