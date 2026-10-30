@@ -17,6 +17,8 @@ var fixed_dt := 0.0         # tools set this to step the springs at a fixed rate
 var hair_bones: Array = []  # long-hair lock bones (the Meshy knight): chains of three per lock
 var hair_rest: Array = []
 var hair_key: Array = []    # per bone: [lock index, depth 0..2]
+var hair_run := 1.0          # how far running streams the locks back (the mocap knight leans into his run already)
+var hair_conj: Array = []   # per bone [rest rotation, rest rotation in the rig frame] when the bones aren't axis-aligned (the mocap body)
 var head_bone := -1
 var hair_ang: Array = []
 var hair_vel: Array = []
@@ -92,7 +94,7 @@ func _sway_hair(fwd_speed: float, side_speed: float, t: float, dt: float) -> voi
 	_last_yaw = yaw
 	if absf(yaw_v) > 30.0:
 		yaw_v = 0.0
-	var run := clampf(fwd_speed / 4.5, -0.4, 1.2)
+	var run := clampf(fwd_speed / 4.5, -0.4, 1.2) * hair_run
 	var calm := 1.0 - clampf(run, 0.0, 1.0) * 0.5
 	for i in n:
 		var lock: int = hair_key[i][0]
@@ -122,4 +124,9 @@ func _sway_hair(fwd_speed: float, side_speed: float, t: float, dt: float) -> voi
 			hair_side[i] = -0.08 * out_sign      # never swing a lock in through the head or neck
 		var b: int = hair_bones[i]
 		skel.set_bone_pose_position(b, rest)
-		skel.set_bone_pose_rotation(b, Quaternion.from_euler(Vector3(hair_ang[i], 0.0, hair_side[i])))
+		var q := Quaternion.from_euler(Vector3(hair_ang[i], 0.0, hair_side[i]))
+		if not hair_conj.is_empty():
+			# the swing is about the rig's axes: turn it into the bone's own frame
+			var c: Quaternion = hair_conj[i][1]
+			q = (hair_conj[i][0] as Quaternion) * (c.inverse() * q * c)
+		skel.set_bone_pose_rotation(b, q)

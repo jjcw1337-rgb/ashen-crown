@@ -105,6 +105,23 @@ static func check_waypoints() -> Array:
 				errs.append(tag + ": waypoint '%s' leads to unknown zone '%s'" % [id, p.get("zone", "")])
 	return errs
 
+## How each character draws and puts away its weapon (WeaponCarry; the motion itself lives in Anim).
+## Keyed by class (or, later, an enemy kind). Any key left out takes WeaponCarry.DEFAULT; a character
+## with no entry gets the default draw and a warning. A new character = a new entry (and, for a new
+## kind of motion, a new "draw_motion" branch in Anim.pose).
+##   motion: "knight" (cross-body draw from the left hip) | "back" (over the right shoulder)
+##   store: "hilt" (the body model's sheathed hilt shows; the weapon model hides) | "back" (on the back)
+##   draw_time / holster_time: seconds · grab: fraction of the motion where the hand takes it
+##   threat_range: metres · disengage: seconds safe before holstering · town: "holster" (always away)
+const WEAPON_PROFILES := {
+	# the crusader: a heavy, deliberate draw across the body from the scabbard on his left hip
+	"knight": {"motion": "knight", "store": "hilt", "draw_time": 0.85, "holster_time": 0.9, "grab": 0.38, "disengage": 4.0},
+	# the other classes keep the default over-the-shoulder draw until their new models arrive
+	"warlock": {"motion": "back", "store": "back"},
+	"wraith": {"motion": "back", "store": "back"},
+	"demon": {"motion": "back", "store": "back"},
+}
+
 const VENDORS := [
 	{"smith": "Halvar Emberhammer", "armor": "Hedda Ironhand", "alch": "Agnes Grimwood", "gamble": "Tarrow the Dice", "stash": "Stash", "elder": "Captain Roth"},
 	{"smith": "Kadir Forgebrand", "armor": "Saphra", "alch": "Iskander the Wise", "gamble": "Jamal Two-Coins", "stash": "Stash", "elder": "Vizier Hasun"},
@@ -367,13 +384,22 @@ const SKILLS := [
 	{"id": "summon", "cls": "demon", "name": "Summon Demon", "key": "E", "lvl": 3, "mana": 18, "cd": 1.5, "aim": "self", "desc": "A demon claws its way up out of a burning sigil to fight beside you. Up to 3 at once; a fourth replaces the oldest."},
 	{"id": "phase", "cls": "demon", "name": "Underworld Phase", "key": "R", "lvl": 6, "mana": 15, "cd": 12.0, "aim": "self", "desc": "Slip into the Underworld for 6 seconds: monsters cannot see or hurt you and you move faster. When you return, the rift erupts around you."},
 	{"id": "pact", "cls": "demon", "name": "Blood Pact", "key": "F", "lvl": 10, "mana": 0, "cd": 20.0, "aim": "self", "desc": "Pay 20% of your life: you and your demons deal +40% damage for 12 seconds, and your demons are healed, faster and fiercer."},
-	{"id": "drain", "cls": "warlock", "name": "Drain Life", "key": "Q", "lvl": 1, "mana": 6, "cd": 0.0, "aim": "facing", "range": 11.0, "desc": "Latch a green beam onto an enemy and pull the life out of it. The beam forks to up to 3 enemies near your target and everything it drains heals you. Hold Q to keep draining (costs mana each second)."},
+	{"id": "drain", "cls": "warlock", "channel": true, "name": "Drain Life", "key": "Q", "lvl": 1, "mana": 6, "cd": 0.0, "aim": "facing", "range": 11.0, "desc": "Latch a green beam onto an enemy and pull the life out of it. The beam forks to up to 3 enemies near your target and everything it drains heals you. Hold Q to keep draining (costs mana each second)."},
 	{"id": "blight", "cls": "warlock", "name": "Blight Bolt", "key": "E", "lvl": 3, "mana": 12, "cd": 1.5, "aim": "facing", "range": 15.0, "desc": "Hurl a howling skull of blight. It bursts where it lands and leaves a plague pool that rots enemies standing in it for 4 seconds."},
 	{"id": "shackles", "cls": "warlock", "name": "Soul Shackles", "key": "R", "lvl": 6, "mana": 16, "cd": 8.0, "aim": "self", "desc": "Chains of fel fire snap out to every enemy within 7 metres, damaging them and binding them in place for 2.5 seconds."},
 	{"id": "covenant", "cls": "warlock", "name": "Fel Covenant", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "aim": "self", "desc": "Seal a pact with what waits beyond: +40% damage for 12 seconds, and Drain Life forks to two more enemies and heals twice as much."},
 ]
 
 ## Playable classes. Base attributes at level 1.
+## How long every attack, skill swing and cast takes, as a multiple of its base timing (1.2 = 20% slower).
+## Every class uses it, including new ones; a class can set its own "attack_pace" in CLASSES (a special
+## character). Weapon speed, increased attack speed and Dexterity still speed attacks up from there.
+## Attacks whose rate the swing sets hit that much harder (Hero.pace_mult), so damage per second stays where the balance put it.
+const ATTACK_PACE := 1.2
+
+static func attack_pace(cls: String) -> float:
+	return float(CLASSES[cls].get("attack_pace", ATTACK_PACE)) if CLASSES.has(cls) else ATTACK_PACE
+
 const CLASSES := {
 	"knight": {"name": "Knight", "str": 20, "dex": 15, "vit": 25, "ene": 10,
 		"desc": "A crusader in steel. Sword and shield, heavy blows, holy fire and a rallying cry."},

@@ -1851,7 +1851,7 @@ func _sheet_camera(delta: float) -> void:
 	if sheet_cam == null or hero == null or not is_instance_valid(hero.rig):
 		return
 	_sheet_t += delta
-	var head: Node3D = hero.J.get("head") if hero.J is Dictionary else null
+	var head: Node3D = hero.J.get("at_head", hero.J.get("head")) if hero.J is Dictionary else null
 	var c: Vector3 = head.global_position if head else hero.global_position + Vector3(0, 1.6, 0)
 	var fwd: Vector3 = -hero.rig.global_transform.basis.z
 	fwd.y = 0
