@@ -107,13 +107,13 @@ const ARMORED_LAYOUT := {
 	"knee_l": ["leg_l", Vector3(-0.1, 0.5184, -0.02)],
 	"head": ["torso", Vector3(0.0, 1.6, -0.03)],
 	"hA1": ["torso", Vector3(0.1467, 1.428, 0.1515)],
-	"hA2": ["hA1", Vector3(0.1728, 1.0185, 0.137)],
+	"hA2": ["hA1", Vector3(0.1789, 1.0178, 0.1334)],
 	"hA3": ["hA2", Vector3(0.2312, 0.6243, 0.1506)],
 	"hB1": ["torso", Vector3(-0.0015, 1.4263, 0.1572)],
 	"hB2": ["hB1", Vector3(0.0167, 1.0214, 0.1426)],
 	"hB3": ["hB2", Vector3(-0.0167, 0.6185, 0.1992)],
 	"hC1": ["torso", Vector3(-0.1559, 1.4241, 0.1566)],
-	"hC2": ["hC1", Vector3(-0.2155, 1.0113, 0.1324)],
+	"hC2": ["hC1", Vector3(-0.2246, 1.0106, 0.1262)],
 	"hC3": ["hC2", Vector3(-0.2609, 0.6209, 0.128)],
 }
 const ARMORED_BONES := ["hips", "torso", "sh_r", "el_r", "hand_r", "leg_r", "knee_r", "sh_l", "el_l", "hand_l", "leg_l", "knee_l", "head", "hA1", "hA2", "hA3", "hB1", "hB2", "hB3", "hC1", "hC2", "hC3"]

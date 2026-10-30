@@ -83,10 +83,17 @@ arm = np.zeros(N, bool)
 for s_ in (-1, 1):
     arm |= near_seg((s_ * 0.24, -0.03, 1.43), (s_ * 0.355, -0.065, 1.215), 0.15)
     arm |= near_seg((s_ * 0.355, -0.065, 1.215), (s_ * 0.475, -0.15, 1.0), 0.14)
-    arm |= near_seg((s_ * 0.475, -0.15, 1.0), (s_ * 0.55, -0.2, 0.83), 0.12)
+    arm |= near_seg((s_ * 0.475, -0.15, 1.0), (s_ * 0.6, -0.22, 0.74), 0.13)    # past the fingertips
 # the cloak hangs behind from the shoulders and wraps the sides behind the arms
 cape_zone = ~arm & (z < 1.5) & (z > 0.12) & ((y > 0.1) | ((np.abs(x) > 0.24) & (y > 0.0) & (z < 1.0)))
 cape = grow(soft & cape_zone, cape_zone, rings=4)
+# everything hanging behind or beside the legs that isn't the leg itself is cloak, cloth or not (its hem,
+# the metal-flecked edges): it must never take leg weights, or it stretches into a web when he runs
+legs = np.zeros(N, bool)
+for s_ in (-1, 1):
+    legs |= near_seg((s_ * 0.1, -0.02, 0.92), (s_ * 0.13, -0.04, 0.52), 0.1)
+    legs |= near_seg((s_ * 0.13, -0.04, 0.52), (s_ * 0.145, 0.0, 0.08), 0.085)
+cape |= cape_zone & ~legs & (z < 1.0)
 # the surcoat's front panel below the belt, between the legs
 tab_zone = ~cape & (z < 1.0) & (z > 0.2) & (np.abs(x) < 0.12) & (y < -0.08)
 tabard = grow(soft & tab_zone, tab_zone, rings=3)
@@ -160,6 +167,66 @@ for s in (-1, 1):
     Wt[m] = 0; Wt[m, idx["knee" + side_name[s]]] = 1
 Wt /= Wt.sum(1, keepdims=True)
 
+# --- Blender's heat (automatic) weights on the 13 body bones, A-pose: smooth falloff along each limb,
+# plates and mail bending together. The distance weights above stay only where heat weighting leaves a
+# piece unweighted (it can on small loose islands).
+heat_parents = {"hips": None, "torso": "hips", "head": "torso", "sh_r": "torso", "el_r": "sh_r", "hand_r": "el_r",
+                "sh_l": "torso", "el_l": "sh_l", "hand_l": "el_l", "leg_r": "hips", "knee_r": "leg_r", "leg_l": "hips", "knee_l": "leg_l"}
+tarm = bpy.data.armatures.new("heat")
+trig = bpy.data.objects.new("heat", tarm)
+bpy.context.scene.collection.objects.link(trig)
+bpy.ops.object.select_all(action="DESELECT")
+bpy.context.view_layer.objects.active = trig
+bpy.ops.object.mode_set(mode="EDIT")
+for n, (a, b) in seg.items():
+    eb = tarm.edit_bones.new(n); eb.head = Vector(a); eb.tail = Vector(b)
+for n, par in heat_parents.items():
+    if par:
+        tarm.edit_bones[n].parent = tarm.edit_bones[par]
+bpy.ops.object.mode_set(mode="OBJECT")
+# heat weighting needs a watertight mesh (Meshy's has loose plates and open seams): weight a voxel-remeshed
+# copy, then carry the weights over to the real mesh by nearest surface
+proxy = body.copy(); proxy.data = body.data.copy(); proxy.name = "proxy"
+bpy.context.scene.collection.objects.link(proxy)
+rm = proxy.modifiers.new("vox", "REMESH"); rm.mode = "VOXEL"; rm.voxel_size = 0.012; rm.adaptivity = 0.0
+bpy.ops.object.select_all(action="DESELECT")
+bpy.context.view_layer.objects.active = proxy; proxy.select_set(True)
+bpy.ops.object.modifier_apply(modifier="vox")
+dec = proxy.modifiers.new("dec", "DECIMATE"); dec.ratio = min(1.0, 60000 / max(len(proxy.data.polygons), 1))
+bpy.ops.object.modifier_apply(modifier="dec")
+print("proxy faces", len(proxy.data.polygons))
+bpy.ops.object.select_all(action="DESELECT")
+proxy.select_set(True); trig.select_set(True)
+bpy.context.view_layer.objects.active = trig
+bpy.ops.object.parent_set(type="ARMATURE_AUTO")
+print("proxy weighted groups", len(proxy.vertex_groups))
+for vg in proxy.vertex_groups:
+    body.vertex_groups.new(name=vg.name)
+dt = body.modifiers.new("dt", "DATA_TRANSFER")
+dt.object = proxy; dt.use_vert_data = True; dt.data_types_verts = {"VGROUP_WEIGHTS"}
+dt.vert_mapping = "POLYINTERP_NEAREST"; dt.layers_vgroup_select_src = "ALL"; dt.layers_vgroup_select_dst = "NAME"
+bpy.ops.object.select_all(action="DESELECT")
+bpy.context.view_layer.objects.active = body; body.select_set(True)
+bpy.ops.object.modifier_apply(modifier="dt")
+H = np.zeros((N, len(names)))
+gi = {vg.index: vg.name for vg in body.vertex_groups}
+for v in me.vertices:
+    for g in v.groups:
+        nm = gi.get(g.group)
+        if nm in idx:
+            H[v.index, idx[nm]] = g.weight
+hs = H.sum(1)
+ok = hs > 0.05
+print("heat-weighted verts", ok.sum(), "of", N)
+Wt[ok] = H[ok] / hs[ok][:, None]
+body.parent = None
+for m in list(body.modifiers):
+    body.modifiers.remove(m)
+body.vertex_groups.clear()
+bpy.data.objects.remove(proxy)
+bpy.data.objects.remove(trig)
+bpy.context.view_layer.objects.active = body
+
 # the arms (with their spikes) move only with their own arm: outside the chest, nothing else pulls on them
 arm_only = {}
 for s_ in (-1, 1):
@@ -167,8 +234,8 @@ for s_ in (-1, 1):
     m = np.zeros(N, bool)
     m |= near_seg((s_ * 0.24, -0.03, 1.43), (s_ * 0.355, -0.065, 1.215), 0.14)
     m |= near_seg((s_ * 0.355, -0.065, 1.215), (s_ * 0.475, -0.15, 1.0), 0.13)
-    m |= near_seg((s_ * 0.475, -0.15, 1.0), (s_ * 0.56, -0.2, 0.8), 0.12)
-    m &= (s_ * x > 0.28) & (z < 1.42) & (z > 0.72) & ~cape & ~sword
+    m |= near_seg((s_ * 0.475, -0.15, 1.0), (s_ * 0.6, -0.22, 0.74), 0.12)
+    m &= (s_ * x > 0.28) & (z < 1.42) & (z > 0.68) & ~cape & ~sword
     keep = [idx["sh" + n_], idx["el" + n_], idx["hand" + n_]]
     w = Wt[m][:, keep]
     w /= np.maximum(w.sum(1, keepdims=True), 1e-9)
@@ -182,6 +249,16 @@ def take(mask_w, bone):
     Wt[:] *= (1 - mask_w)[:, None]; Wt[:, idx[bone]] += mask_w
 take(sm(z, 1.55, 1.6) * (np.hypot(x, y + 0.05) < 0.2), "head")
 take(sword.astype(float), "hips")
+# the cloth hanging between the legs (front and back of the crotch) rides the hips alone: pulled by both
+# legs it would stretch into a web when they swing apart
+legs_tight = np.zeros(N, bool)
+for s_ in (-1, 1):
+    legs_tight |= near_seg((s_ * 0.1, -0.02, 0.9), (s_ * 0.13, -0.04, 0.52), 0.09)
+    legs_tight |= near_seg((s_ * 0.13, -0.04, 0.52), (s_ * 0.145, 0.0, 0.0), 0.075)
+skirt = (z < 0.88) & (z > 0.12) & (np.abs(x) < 0.075) & ~legs_tight & ~cape & ~sword
+Wt[skirt] = 0.0
+Wt[skirt, idx["hips"]] = 1.0
+print("skirt verts", skirt.sum())
 # the tabard: hips below the belt, torso above
 tb = tabard
 Wt[tb] = 0.0
@@ -218,19 +295,76 @@ print("cape panels", {c: int((cm & (memb[:, i] > 0.5)).sum()) for i, (c, _) in e
 # times, so the cloth stretches a little instead of tearing when the legs swing
 top0 = np.argmax(Wt, 1)
 seam = np.zeros(N, bool)
-for i in np.where((z < 1.2) & ~arm_lock)[0]:
+for i in np.where((z < 1.2) & ~arm_lock & ~cape & ~skirt)[0]:
     for _, j, _ in kd.find_range(P[i], 0.03):
         if top0[j] != top0[i]:
             seam[i] = True
             break
 sidx = np.where(seam)[0]
-nbrs = [[j for _, j, _ in kd.find_range(P[i], 0.025) if not arm_lock[j]] or [i] for i in sidx]
+nbrs = [[j for _, j, _ in kd.find_range(P[i], 0.025) if not (arm_lock[j] or cape[j])] or [i] for i in sidx]
 for _ in range(3):
     Wn = Wt.copy()
     for k, i in enumerate(sidx):
         Wn[i] = Wt[nbrs[k]].mean(0)
     Wt = Wn
 print("softened seam verts", len(sidx))
+
+# --- optional debug: renders of the A-pose coloured by each vertex's main bone (cloak red, legs blue,
+# hips green, torso yellow, arms cyan, head white): python ... -- in out layout --debug prefix
+# Meshy fuses the cloak to the legs and the gauntlets to the hips where they touch: faces bridging parts
+# that move apart (cloak and leg, cloak and arm, arm and hips/leg) would stretch into sheets when he
+# runs or swings, so they are cut (at rest they lie inside, unseen)
+import bmesh
+top1 = np.argmax(Wt, 1)
+kind = np.zeros(N, int)       # 0 body, 1 cloak, 2 leg, 3 arm
+for j, n_ in enumerate(names):
+    k_ = 1 if (n_.startswith("h") and len(n_) == 3) else (2 if n_.startswith(("leg", "knee")) else (3 if n_.startswith(("sh", "el", "hand")) else 0))
+    kind[top1 == j] = k_
+bm = bmesh.new(); bm.from_mesh(me)
+bad = []
+for f in bm.faces:
+    ks = {int(kind[v.index]) for v in f.verts}
+    hipsy = any(top1[v.index] == idx["hips"] for v in f.verts)
+    if (1 in ks and 2 in ks) or (1 in ks and 3 in ks) or (3 in ks and 2 in ks) or (3 in ks and hipsy and min(P[v.index][2] for v in f.verts) < 1.2):
+        bad.append(f)
+bmesh.ops.delete(bm, geom=bad, context="FACES_ONLY")
+bm.to_mesh(me); bm.free(); me.update()
+print("cut bridging faces", len(bad))
+print("NaN weight rows", int(np.isnan(Wt).any(1).sum()), "zero rows", int((Wt.sum(1) < 1e-6).sum()), "head-top rows", int((np.argmax(Wt, 1) == idx["head"]).sum()))
+if "--debug" in argv:
+    pre = argv[argv.index("--debug") + 1]
+    top1 = np.argmax(Wt, 1)
+    pal = {"hips": (0.1, 0.8, 0.1), "torso": (0.9, 0.85, 0.1), "head": (1, 1, 1)}
+    for n_ in names:
+        if n_.startswith("h") and len(n_) == 3:
+            pal[n_] = (0.9, 0.1, 0.1)
+        elif n_.startswith(("leg", "knee")):
+            pal[n_] = (0.15, 0.3, 1.0) if n_.endswith("_l") else (0.5, 0.2, 0.9)
+        elif n_.startswith(("sh", "el", "hand")):
+            pal[n_] = (0.1, 0.9, 0.9)
+    dbg = body.copy(); dbg.data = body.data.copy(); bpy.context.scene.collection.objects.link(dbg)
+    ca = dbg.data.color_attributes.new("dbg", "FLOAT_COLOR", "POINT")
+    cols = np.array([pal.get(names[t], (0.5, 0.5, 0.5)) + (1.0,) for t in top1], np.float32)
+    ca.data.foreach_set("color", cols.reshape(-1))
+    mat = bpy.data.materials.new("dbg"); mat.use_nodes = True
+    nt = mat.node_tree; bs = nt.nodes["Principled BSDF"]; at = nt.nodes.new("ShaderNodeAttribute"); at.attribute_name = "dbg"
+    nt.links.new(at.outputs["Color"], bs.inputs["Base Color"])
+    dbg.data.materials.clear(); dbg.data.materials.append(mat)
+    body.hide_render = True
+    sc = bpy.context.scene
+    w_ = bpy.data.worlds.new("w"); sc.world = w_; w_.use_nodes = True
+    w_.node_tree.nodes["Background"].inputs["Strength"].default_value = 1.5
+    sc.render.engine = "BLENDER_EEVEE_NEXT"
+    cd = bpy.data.cameras.new("c"); cd.type = "ORTHO"; cd.ortho_scale = 2.0
+    cam = bpy.data.objects.new("c", cd); sc.collection.objects.link(cam); sc.camera = cam
+    sc.render.resolution_x = sc.render.resolution_y = 800
+    for v_, loc in (("front", (0, -5, 1.0)), ("side", (5, 0, 1.0)), ("back", (0, 5, 1.0)), ("lside", (-5, 0, 1.0))):
+        cam.location = loc
+        cam.rotation_euler = (Vector((0, 0, 1.0)) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
+        sc.render.filepath = f"{pre}_{v_}.png"
+        bpy.ops.render.render(write_still=True)
+    bpy.data.objects.remove(dbg)
+    body.hide_render = False
 
 # --- repose: arms down (a little out from the plate), legs straight
 def rot_to(a, b):
@@ -284,6 +418,48 @@ for k in newJ:
     newJ[k] = newJ[k] * flip
 me.vertices.foreach_set("co", P2.reshape(-1).astype(np.float32))
 me.update()
+# crumbs: small loose pieces left hanging in the air after the repose (bits of a fingertip or a spike the
+# arm no longer carries) are dropped: islands under 60 faces with nothing else within 4 cm
+bm = bmesh.new(); bm.from_mesh(me); bm.faces.ensure_lookup_table()
+seen = set(); islands = []
+for f in bm.faces:
+    if f.index in seen:
+        continue
+    stack = [f]; isl = []; seen.add(f.index)
+    while stack:
+        g = stack.pop(); isl.append(g)
+        for e in g.edges:
+            for h in e.link_faces:
+                if h.index not in seen:
+                    seen.add(h.index); stack.append(h)
+    islands.append(isl)
+kd2 = KDTree(N)
+for i, p_ in enumerate(P2):
+    kd2.insert(p_, i)
+kd2.balance()
+drop = []
+for isl in islands:
+    if len(isl) >= 60:
+        continue
+    vs = {v.index for f in isl for v in f.verts}
+    alone = True
+    for vi in list(vs)[:12]:
+        for _, j, _ in kd2.find_range(P2[vi], 0.04):
+            if j not in vs:
+                alone = False; break
+        if not alone:
+            break
+    if alone:
+        drop += isl
+bmesh.ops.delete(bm, geom=drop, context="FACES_ONLY")
+bm.to_mesh(me); bm.free(); me.update()
+print("dropped crumb faces", len(drop))
+far = np.where((np.hypot(P2[:, 0], P2[:, 1]) > 0.42) & (P2[:, 2] > 0.6) & (P2[:, 2] < 1.4) & ~sword)[0]
+used = np.zeros(N, bool)
+for poly in me.polygons:
+    used[list(poly.vertices)] = True
+far = far[used[far]]
+print("FAR verts", len(far), "bones", {names[k]: int(c) for k, c in zip(*np.unique(np.argmax(Wt[far], 1), return_counts=True))} if len(far) else {}, "A-pose sample", P[far[:5]].round(2).tolist() if len(far) else [])
 
 # --- armature
 parents = {"hips": None, "torso": "hips", "head": "torso", "sh_r": "torso", "el_r": "sh_r", "hand_r": "el_r",
