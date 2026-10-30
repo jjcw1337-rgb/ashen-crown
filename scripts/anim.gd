@@ -495,6 +495,41 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 		hip_roll *= 1.0 - 0.5 * kg
 		tx -= 0.06 * kg
 
+	# --- drawing / holstering the weapon (WeaponCarry): an overlay along the motion's clock, 0 = put
+	# away .. 1 = in guard. Holstering runs the same keys backwards. Not during an attack.
+	var dr: float = st.get("draw", 1.0)
+	if dr < 1.0 and a < 0.0:
+		var dw := kf(dr, [[0, 0.0], [0.12, 1.0], [0.82, 1.0], [1, 0.0]])
+		match str(st.get("draw_motion", "back")):
+			"knight":
+				# heavy cross-body draw: the right hand crosses to the hilt at the left hip as the shoulders
+				# turn into it and the knees give a little; the left hand steadies the scabbard; then the
+				# blade is hauled up and out in an arc, the weight comes back, and he settles into guard
+				var tgt := Vector3(kf(dr, [[0, 0.2], [0.38, 0.35], [0.62, 1.55], [0.82, 1.1], [1, 0.4]]),
+					kf(dr, [[0, 0.0], [0.38, 1.05], [0.62, 0.25], [0.82, -0.15], [1, 0.0]]),
+					kf(dr, [[0, 0.1], [0.38, -0.3], [0.62, 0.45], [0.82, 0.2], [1, 0.1]]))
+				shr = shr.lerp(tgt, dw)
+				elr = lerpf(elr, kf(dr, [[0, 0.5], [0.38, 1.45], [0.62, 0.55], [0.82, 0.9], [1, 0.6]]), dw)
+				grip_p += kf(dr, [[0, 0.0], [0.38, 0.6], [0.62, -0.5], [0.82, -0.2], [1, 0.0]]) * dw
+				ty += kf(dr, [[0, 0.0], [0.38, 0.38], [0.62, -0.18], [0.82, -0.08], [1, 0.0]]) * dw
+				tx += kf(dr, [[0, 0.0], [0.38, 0.1], [0.62, -0.06], [1, 0.0]]) * dw
+				hy -= kf(dr, [[0, 0.0], [0.38, 0.05], [0.62, 0.02], [0.82, 0.03], [1, 0.0]]) * h * dw
+				knee_l -= kf(dr, [[0, 0.0], [0.38, 0.22], [0.82, 0.16], [1, 0.0]]) * dw
+				knee_r -= kf(dr, [[0, 0.0], [0.38, 0.18], [0.82, 0.12], [1, 0.0]]) * dw
+				shl = shl.lerp(Vector3(0.15, 0.25, -0.05), kf(dr, [[0, 0.0], [0.3, 0.8], [0.5, 0.6], [0.8, 0.0]]) * dw)
+				ell = lerpf(ell, 0.75, kf(dr, [[0, 0.0], [0.3, 0.8], [0.5, 0.6], [0.8, 0.0]]) * dw)
+				head_x += kf(dr, [[0, 0.0], [0.38, 0.18], [0.62, -0.05], [1, 0.0]]) * dw
+			_:
+				# over the right shoulder: reach back for the grip, draw it up and forward into guard
+				var tgt := Vector3(kf(dr, [[0, 0.2], [0.4, 2.7], [0.68, 1.9], [1, 0.4]]),
+					kf(dr, [[0, 0.0], [0.4, -0.35], [0.68, 0.25], [1, 0.0]]),
+					kf(dr, [[0, 0.1], [0.4, 0.35], [0.68, 0.25], [1, 0.1]]))
+				shr = shr.lerp(tgt, dw)
+				elr = lerpf(elr, kf(dr, [[0, 0.5], [0.4, 2.0], [0.68, 0.8], [1, 0.6]]), dw)
+				ty += kf(dr, [[0, 0.0], [0.4, -0.22], [0.68, 0.1], [1, 0.0]]) * dw
+				head_x += kf(dr, [[0, 0.0], [0.4, -0.1], [1, 0.0]]) * dw
+		D["grip_set"] = true
+
 	# --- dynamics: lean into speed and acceleration, bank into turns, settle with overshoot
 	var prev_m: float = D.get("pm", mm)
 	var accel := (mm - prev_m) / maxf(dt, 0.001) if dt > 0.0 else 0.0
@@ -543,9 +578,10 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 		for kv in [["srx", shr.x], ["sry", shr.y], ["srz", shr.z], ["elr", elr], ["gp", 0.0], ["htn", 0.0]]:
 			D[kv[0]] = kv[1]
 			D[kv[0] + "_v"] = 0.0
-	if J.has("grip_r") and (swiping or D.get("grip_set", false)):
+	var drawing_now: bool = st.get("draw", 1.0) < 1.0 and a < 0.0
+	if J.has("grip_r") and (swiping or drawing_now or D.get("grip_set", false)):
 		(J["grip_r"] as Node3D).rotation = Vector3(deg_to_rad(-28.0) + grip_p, grip_y, 0.0)
-		D["grip_set"] = swiping
+		D["grip_set"] = swiping or drawing_now
 	(J["hips"] as Node3D).rotation = Vector3(0, hip_yaw - ty * 0.2 + hip_spin + hip_turn, hip_roll)
 	var dead: float = st.get("dead", 0.0)
 	if dead > 0.0:
@@ -580,7 +616,9 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 		(J["tail"] as Node3D).rotation = Vector3(-0.1 + sin(ph * 2.0) * 0.08 * mm, tw, 0)
 	if rig.has_meta("goblin"):
 		Goblin.after_pose(rig, J, D, st, dt)
-	if rig.has_method("sync"):
+	if rig.has_method("sync_pose"):
+		rig.sync_pose(st)    # the mocap knight: motion capture with these moves laid over it
+	elif rig.has_method("sync"):
 		rig.sync()
 
 static func _pose_crawler(rig: Node3D, J: Dictionary, st: Dictionary, s: float) -> void:

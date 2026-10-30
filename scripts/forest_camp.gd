@@ -131,11 +131,7 @@ static func build(w: World) -> void:
 	var chest := Props.stash_chest(null, Vector3.ZERO, -15.0)
 	w._inter("stash", "Stash", Vector3(4.2, 0, 3.2), 1.6, chest)
 	w.solid(chest)
-	var wp := Props.waypoint(null, Vector3.ZERO)
-	w._inter("waypoint", "Waypoint", Vector3(-8, 0, 6), 2.4, wp)
-	for i in 4:
-		var pa := TAU * i / 4.0 + PI * 0.25
-		w.add_circle(Vector3(-8 + cos(pa) * 1.85, 0, 6 + sin(pa) * 1.85), 0.3)
+	w.add_waypoint("town", Vector3(-8, 0, 6))
 
 	# --- the shops round the ring, each keeper in front of their stall
 	for s in SHOPS:
@@ -263,7 +259,6 @@ static func build(w: World) -> void:
 	w._scatter_ferns(380)
 	w.spawns["start"] = Vector3(0, 0, 5)
 	w.spawns["from_wild"] = Vector3(0, 0, gate_z + 4.5)
-	w.spawns["waypoint"] = Vector3(-8, 0, 9)
 	w.spawns["portal"] = Vector3(4, 0, 8)
 	w.spawns["alch"] = Vector3(-11.5, 0, -9)
 	w.spawns["forge"] = Vector3(11.5, 0, -9)

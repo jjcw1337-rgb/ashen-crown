@@ -39,6 +39,7 @@ var fire_dmg := 0
 var armor := 0
 var block_chance := 0.0
 var aspd := 1.0
+var dmg_stack: DamageStack     # the stacking red damage number over the head
 var ls := 0.0
 var res := 0
 var frw := 0
@@ -110,6 +111,10 @@ var breath: GPUParticles3D
 var _breath_t := 1.0
 var _last_step := 0
 var weapon_node: Node3D = null
+## Drawing / holstering (WeaponCarry, profile Data.WEAPON_PROFILES[cls]); the weapon rides in the hand
+## or in storage, moving between them at the motion's grab point without popping.
+var carry := WeaponCarry.new()
+var _carry_in_hand := true
 var shield_node: Node3D = null
 var gear_nodes: Array = []
 var combo := 0
@@ -271,7 +276,10 @@ func _build_rig() -> void:
 		rig = Archer.build_body()
 	else:
 		var body := _knight_body()
-		rig = Knight.build(Knight.default_gear()) if body == "" else Knight.build_meshy(body == "armored")
+		if body == "mocap":
+			rig = Knight.build_mocap()
+		else:
+			rig = Knight.build(Knight.default_gear()) if body == "" else Knight.build_meshy(body == "armored")
 		rig.set_meta("gait", "knight")    # Anim: heavy armoured run, elbows out
 	rig.set_meta("pers", "hero")
 	add_child(rig)
@@ -279,7 +287,7 @@ func _build_rig() -> void:
 	if breath != null and is_instance_valid(breath):
 		breath.queue_free()
 	breath = game.weather.make_breath()
-	(J["head"] as Node3D).add_child(breath)
+	(J.get("at_head", J["head"]) as Node3D).add_child(breath)
 	breath.position = Vector3(0, 0.02, -0.16)
 
 ## Which body the knight wears: the Meshy one in shirt and shorts while no armour is equipped
@@ -290,6 +298,8 @@ func _knight_body() -> String:
 		return ""
 	if equipment.get("armor") == null:
 		return "plain" if Knight.meshy_ok() else ""
+	if Knight.mocap_ok():
+		return "mocap"
 	return "armored" if Knight.armored_ok() else ""
 
 ## Switch the character's class: new body, skills and spirit colours.
@@ -572,6 +582,9 @@ func refresh_gear() -> void:
 	if w != null:
 		weapon_node = Models.item_model(w)
 		(J["grip_r"] as Node3D).add_child(weapon_node)
+		# the new model starts in the hand: force _carry_weapon to place it (and the body's hilt) next frame
+		carry.configure(cls)
+		_carry_in_hand = not (carry.t >= float(carry.p["grab"]))
 		gear_nodes.append(weapon_node)
 		if w.get("rarity", 0) == 3 and Models.palette(w)["glow"] != null:
 			var fl := Props.fire(weapon_node, Vector3(0, 0, -0.5), 0.35, Models.palette(w)["glow"], false, false, false)
@@ -586,9 +599,9 @@ func refresh_gear() -> void:
 		gear_nodes.append(shield_node)
 	var h = equipment.get("helm")
 	# the crusader (the armoured body) always wears his own great helm: a helm item's stats count, its model isn't drawn
-	if h != null and cls == "knight" and str(rig.get_meta("meshy", "")) != "armored":
+	if h != null and cls == "knight" and not ["armored", "mocap"].has(str(rig.get_meta("meshy", ""))):
 		var hm := Models.item_model(h)
-		(J["head"] as Node3D).add_child(hm)
+		(J.get("at_head", J["head"]) as Node3D).add_child(hm)
 		Knight.fit_helm(hm, rig)
 		gear_nodes.append(hm)
 	if is_wraith():
@@ -647,6 +660,65 @@ func knight_gear() -> Dictionary:
 	g["belt"] = true
 	g["coif"] = g["armor"] in ["chain", "plate", "ornate"]
 	return g
+
+## Where the weapon is this frame: in the hand once the draw passes its grab point, else in storage
+## ("hilt": the body's own sheathed hilt shows and the weapon model hides; "back": on the back). When it
+## changes hands it keeps its place in the world and eases into the new hold, so it never jumps.
+func _carry_weapon(delta: float) -> void:
+	if weapon_node == null or not is_instance_valid(weapon_node) or rig == null:
+		return
+	var in_hand := carry.t >= float(carry.p["grab"])
+	var store: String = carry.p["store"]
+	var J: Dictionary = rig.get_meta("j")
+	if in_hand != _carry_in_hand:
+		_carry_in_hand = in_hand
+		var dest: Node3D = J["grip_r"] if in_hand else _weapon_store(J, store)
+		if dest != null and weapon_node.get_parent() != dest:
+			weapon_node.reparent(dest, true)
+		_set_hilt(not in_hand and store == "hilt")
+	# hidden in the scabbard; on the back it stays in view
+	weapon_node.visible = in_hand or store != "hilt"
+	# ease into the hold (identity in the hand; the back mount's own rest)
+	var k := 1.0 - exp(-delta * 16.0)
+	weapon_node.transform = weapon_node.transform.interpolate_with(Transform3D.IDENTITY, k)
+
+## The storage node on the rig for "back" (made on first use: across the back, hilt over the right
+## shoulder); "hilt" has none (the weapon model just hides).
+func _weapon_store(J: Dictionary, store: String) -> Node3D:
+	if store != "back":
+		return J["grip_r"]
+	var torso: Node3D = J.get("at_torso", J["torso"])    # the mocap knight's real chest bone when it has one
+	var m := torso.get_node_or_null("back_mount") as Node3D
+	if m == null:
+		m = Node3D.new()
+		m.name = "back_mount"
+		torso.add_child(m)
+		m.position = Vector3(0.0, 0.32, 0.2)
+		m.rotation = Vector3(deg_to_rad(-80.0), deg_to_rad(10.0), deg_to_rad(35.0))
+	return m
+
+## The crusader body's own sword hilt (its "Hilt" surface, see rig_crusader_knight.py) shows only while
+## the sword is sheathed. Bodies without one are left alone.
+func _set_hilt(show: bool) -> void:
+	if rig == null:
+		return
+	for mi in rig.find_children("*", "MeshInstance3D", true, false):
+		var m := (mi as MeshInstance3D).mesh
+		if m == null:
+			continue
+		for si in m.get_surface_count():
+			var mat := m.surface_get_material(si)
+			if mat != null and mat.resource_name == "Hilt":
+				(mi as MeshInstance3D).set_surface_override_material(si, null if show else _hidden_mat())
+
+static var _hide_mat: StandardMaterial3D
+static func _hidden_mat() -> StandardMaterial3D:
+	if _hide_mat == null:
+		_hide_mat = StandardMaterial3D.new()
+		_hide_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_hide_mat.albedo_color = Color(0, 0, 0, 0)
+		_hide_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	return _hide_mat
 
 # ---------------------------------------------------------------- commands
 func cmd_move(p: Vector3, direct := false) -> void:
@@ -907,7 +979,7 @@ func use_skill(id: String, aim: Vector3) -> bool:
 			_start_attack("cleave", "cleave")
 		"nova":
 			_start_attack("cast", "nova")
-			atk_dur = 0.55
+			atk_dur = 0.55 * Data.attack_pace(cls)
 		"charge":
 			var d := aim - global_position
 			d.y = 0
@@ -919,39 +991,39 @@ func use_skill(id: String, aim: Vector3) -> bool:
 			moving = false
 		"cry":
 			_start_attack("cast", "cry")
-			atk_dur = 0.6
+			atk_dur = 0.6 * Data.attack_pace(cls)
 		"reap":
 			_start_attack("side", "reap")
 		"wail":
 			_start_attack("cast", "wail")
-			atk_dur = 0.5
+			atk_dur = 0.5 * Data.attack_pace(cls)
 		"shade":
 			_shadow_step(aim)
 		"host":
 			_start_attack("cast", "host")
-			atk_dur = 0.65
+			atk_dur = 0.65 * Data.attack_pace(cls)
 		"hellclaw":
 			_start_attack("side", "hellclaw")
 		"summon":
 			_start_attack("cast", "summon")
-			atk_dur = 0.55
+			atk_dur = 0.55 * Data.attack_pace(cls)
 		"phase":
 			_phase_start()
 		"pact":
 			life = maxf(1.0, life - max_life * maxf(0.05, 0.2 - talent("pact_cost") / 100.0))
 			_start_attack("cast", "pact")
-			atk_dur = 0.6
+			atk_dur = 0.6 * Data.attack_pace(cls)
 		"drain":
 			_drain_start(foe)
 		"blight":
 			_start_attack("cast", "blight")
-			atk_dur = 0.45
+			atk_dur = 0.45 * Data.attack_pace(cls)
 		"shackles":
 			_start_attack("cast", "shackles")
-			atk_dur = 0.5
+			atk_dur = 0.5 * Data.attack_pace(cls)
 		"covenant":
 			_start_attack("cast", "covenant")
-			atk_dur = 0.6
+			atk_dur = 0.6 * Data.attack_pace(cls)
 		"pierce", "volley", "snare", "beast":
 			Archer.cast(self, id, aim)
 	return true
@@ -986,6 +1058,7 @@ func _start_attack(style: String, skill := "") -> void:
 		atk_dur = 0.7 / aspd
 	elif skill == "cleave":
 		atk_dur = 0.95 / aspd      # Holy Slam: crouch, leap, slam, hold the blow, rise
+	atk_dur *= Data.attack_pace(cls)     # every class's pace (Data.ATTACK_PACE)
 	impact_done = false
 	trail_pts.clear()
 	trail_col = Color(1.0, 0.85, 0.5) if skill == "cleave" else Color(0.85, 0.9, 1.0)
@@ -1071,8 +1144,23 @@ func buff_mult() -> float:
 	return 1.4 + talent("buff_pow") / 100.0 if buff_t > 0.0 else 1.0
 
 ## Talent damage for a skill ("attack" is the weapon attack): all-damage plus that skill's own.
+## The red number over the head: hits close together stack into one running total (DamageStack).
+func show_damage(dmg: float) -> void:
+	if dmg_stack == null or not is_instance_valid(dmg_stack):
+		dmg_stack = DamageStack.new()
+		add_child(dmg_stack)
+	dmg_stack.add(dmg)
+
 func dmg_mult(id: String) -> float:
-	return 1.0 + (talent("dmg") + talent("dmg:" + id)) / 100.0
+	return (1.0 + (talent("dmg") + talent("dmg:" + id)) / 100.0) * pace_mult(id)
+
+## Attacks are slower by the class's pace (Data.ATTACK_PACE); the ones whose rate the swing itself sets
+## (the basic attack, skills with no cooldown) hit that much harder, so their damage per second stays put.
+## Skills on a cooldown fire just as often, and channels ("channel" in Data.SKILLS) tick on their own clock, so they keep their damage.
+func pace_mult(id: String) -> float:
+	if id == "attack" or (skill_cd(id) <= 0.0 and not Data.skill_def(id).get("channel", false)):
+		return Data.attack_pace(cls)
+	return 1.0
 
 ## src: the skill doing the hitting (talent bonuses); by default the attack in progress.
 func _hit_enemy(e, mult: float, knock: float = 0.0, src := "") -> void:
@@ -1133,7 +1221,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	# a plain thud, no voice: an "oof" on every hit was too much
 	Sfx.play("hero_hit", -3.0, randf_range(0.9, 1.1))
 	Fx.blood(game.world.fx_root, global_position + Vector3(0, 1.2, 0), Color(0.6, 0.02, 0.02))
-	Fx.number(game.world.fx_root, global_position + Vector3(0, 2.2, 0), str(int(dmg)), Color(1.0, 0.3, 0.25))
+	show_damage(dmg)
 	game.add_shake(0.2)
 	game.ui.flash_damage()
 	if life <= 0.0:
@@ -1331,6 +1419,10 @@ func _process(delta: float) -> void:
 		# both hands thrust out, holding the beam
 		st["atk"] = 0.6
 		st["style"] = "cast"
+	if not puppet:
+		carry.update(self, delta)
+		st.merge(carry.anim_state(), true)
+		_carry_weapon(delta)
 	Anim.pose(rig, st)
 	last_pose = st
 	_hover()
@@ -1788,7 +1880,7 @@ func _update_drain(delta: float) -> void:
 			return
 		mana -= 2.0 * (1.0 - talent("cost:drain") / 100.0)
 	var root: Node3D = game.world.fx_root
-	var hand: Vector3 = (J["hand_l"] as Node3D).global_position
+	var hand: Vector3 = (J.get("at_hand_l", J["hand_l"]) as Node3D).global_position
 	var dmg := (6.0 + level * 2.4 + (dmg_min + dmg_max) * 0.6) * 0.3 * buff_mult() * dmg_mult("drain")
 	var heal := 0.0
 	var victims := _drain_victims()
@@ -1824,7 +1916,7 @@ func _draw_drain() -> void:
 	if victims.is_empty():
 		return
 	var root: Node3D = game.world.fx_root
-	var hand: Vector3 = (J["hand_l"] as Node3D).global_position + (-rig.global_transform.basis.z) * 0.08
+	var hand: Vector3 = (J.get("at_hand_l", J["hand_l"]) as Node3D).global_position + (-rig.global_transform.basis.z) * 0.08
 	var mc: Vector3 = drain_main.global_position + Vector3(0, 1.0 * drain_main.height, 0)
 	var keep := {}
 	for i in victims.size():

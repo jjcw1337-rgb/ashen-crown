@@ -24,7 +24,7 @@ func _run() -> void:
 	h.equipment["armor"] = {"base": "chain_mail", "rarity": 0, "affixes": [], "stats": {}}
 	h.refresh_gear()
 	await process_frame
-	print("[M] armour -> armoured meshy body: ", h.rig.get_meta("meshy", "") == "armored", " cape bones ", (h.rig.get("hair_bones") as Array).size())
+	print("[M] armour -> armoured meshy body: ", ["armored", "mocap"].has(h.rig.get_meta("meshy", "")), " (", h.rig.get_meta("meshy", ""), ")", " cape bones ", (h.rig.get("hair_bones") as Array).size())
 	var helm := Items.generate(Items.pick_base(5, RandomNumberGenerator.new(), "helm"), 5, 0, RandomNumberGenerator.new())
 	h.equipment["helm"] = helm
 	h.show_helm = true

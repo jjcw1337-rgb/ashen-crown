@@ -103,7 +103,6 @@ var vote_panel: Control          # the party's ready check (Net.ask_trip): Join 
 var burn_fire: Control
 var stash_cells: Array = []
 var wp_panel: PanelContainer
-var wp_list: VBoxContainer
 var dialog_panel: PanelContainer
 var dialog_name: Label
 var dialog_text: Label
@@ -2066,7 +2065,7 @@ func _sheet_camera(delta: float) -> void:
 	if sheet_cam == null or hero == null or not is_instance_valid(hero.rig):
 		return
 	_sheet_t += delta
-	var head: Node3D = hero.J.get("head") if hero.J is Dictionary else null
+	var head: Node3D = hero.J.get("at_head", hero.J.get("head")) if hero.J is Dictionary else null
 	var c: Vector3 = head.global_position if head else hero.global_position + Vector3(0, 1.6, 0)
 	var fwd: Vector3 = -hero.rig.global_transform.basis.z
 	fwd.y = 0
@@ -2520,57 +2519,17 @@ class Flames extends Control:
 					c + Vector2(sway, -th), c + Vector2(sway * 0.5 + half * 0.18, -th * 0.5), c + Vector2(half * 0.32, 0)])
 				draw_colored_polygon(pts, cols[layer])
 
+## The waypoint window lives in WaypointPanel (scripts/waypoint_panel.gd); its acts and waypoints in
+## Data.WAYPOINT_ACTS.
 func _build_waypoints() -> void:
-	wp_panel = _panel("Waypoints", true, 380, 380)
-	wp_panel.position = Vector2(620, 220)
-	wp_list = VBoxContainer.new()
-	wp_list.add_theme_constant_override("separation", 6)
-	(wp_panel.get_node("vb") as VBoxContainer).add_child(wp_list)
+	var wp := WaypointPanel.new()
+	root.add_child(wp)
+	wp.setup(self)
+	wp_panel = wp
 
-## runs_max >= 0 adds the Act I / A2 / A3 switch (shown at the camp waypoint).
-func open_waypoints(entries: Array, cur_run := 0, runs_max := -1) -> void:
-	for c in wp_list.get_children():
-		c.queue_free()
-	for e in entries:
-		var b := Button.new()
-		b.text = e["label"]
-		b.disabled = not e["known"]
-		var dest: Dictionary = e
-		b.pressed.connect(func():
-			wp_panel.visible = false
-			game.travel_waypoint(dest))
-		wp_list.add_child(b)
-	if runs_max >= 0:
-		var sp := Control.new()
-		sp.custom_minimum_size = Vector2(0, 8)
-		wp_list.add_child(sp)
-		wp_list.add_child(_label("Switch act", 18, GOLD, true))
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
-		wp_list.add_child(row)
-		var names := ["Act I", "A2", "A3"]
-		for d in 3:
-			var rb := Button.new()
-			rb.custom_minimum_size = Vector2(0, 40)
-			rb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			if d == cur_run:
-				rb.text = names[d] + " (here)"
-				rb.disabled = true
-			elif d > runs_max:
-				rb.text = names[d] + " (locked)"
-				rb.disabled = true
-				rb.tooltip_text = "Beat the final boss of the act before it to unlock"
-			else:
-				rb.text = names[d]
-			var dd: int = d
-			rb.pressed.connect(func():
-				wp_panel.visible = false
-				game.switch_run(dd))
-			row.add_child(rb)
-		var hint := _label("Each act keeps its own waypoints and boss. Your knight, gear and gold come with you.", 13, Color(0.65, 0.62, 0.55))
-		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		wp_list.add_child(hint)
-	wp_panel.visible = true
+## Opened from a waypoint stone (`stone`): walking away from it, or clicking outside the window, closes it.
+func open_waypoints(stone: Node3D = null) -> void:
+	(wp_panel as WaypointPanel).open(stone)
 
 func _build_dialog() -> void:
 	dialog_panel = PanelContainer.new()
@@ -2653,7 +2612,7 @@ func _build_pause() -> void:
 		update_sound_btn())
 	vb.add_child(sound_btn)
 	update_sound_btn()
-	if game.UNLOCK_ALL_ACTS:
+	if game.dev_tools:
 		var kit := Button.new()
 		kit.text = "Testing panel (F8)"
 		kit.pressed.connect(func():
@@ -2691,6 +2650,7 @@ func _build_test_panel() -> void:
 	vb.add_theme_constant_override("separation", 10)
 	test_panel.add_child(vb)
 	vb.add_child(_label("Testing", 22, GOLD, true))
+	vb.add_child(_label(("Admin: " + game.admin_name) if game.admin_name != "" else "Admin: editor", 12, Color(0.55, 0.85, 1.0)))
 	var imm := CheckButton.new()
 	imm.text = "Immortal (take no damage)"
 	imm.button_pressed = game.test_immortal

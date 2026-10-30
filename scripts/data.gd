@@ -27,6 +27,101 @@ static func act_info(act: int, run: int) -> Dictionary:
 		return ACTS[act].merged(RUN_ACTS[run], true)
 	return ACTS[act]
 
+## The waypoint network, one entry per act in the order they unlock (an act is a run of the game:
+## `run` is its difficulty index, Data.RUNS). An act opens once the act before it falls (Game.max_run);
+## each of its waypoints opens once a player touches that waypoint stone (Game.waypoints_known, kept
+## per act in Game.run_progress). The camp's is open as soon as you arrive.
+## Adding an act: a RUNS entry (+ RUN_ACTS names), its zones, and an entry here ("name" overrides the
+## tab name, which is otherwise Data.RUNS[run].name).
+## Adding a waypoint: a point here (a new id; its zone), and in that zone's builder one line,
+## `add_waypoint("<id>", Vector3(x, 0, z))` (World.add_waypoint: the stone, its colliders and its own
+## arrival spot), so a zone can hold several (see World / Via / ForestCamp for the existing ones). A new zone also goes in
+## WAYPOINT_ZONES and World.build. check_waypoints() reports mistakes (dev builds print them at start).
+## Optional per entry: "name" (the tab's name; else Data.RUNS[run].name), "requires" (open once that
+## run's lord falls, instead of the act before it: for side areas such as Ancient Levels).
+##   group: its tab group (WAYPOINT_GROUPS) · tab: the numeral on the act's tab (its name is Data.RUNS[run].name) · art: its banner (Meshy) · points: id (what the stone binds),
+##   zone (where it takes you), kind (camp | wild | road | city: its icon), name (optional; else the
+##   act's name for that zone) · boss: the lord whose fall opens the next act
+## The window's tab groups, left to right; a group shows only once it has an entry (group: its id).
+const WAYPOINT_GROUPS := [
+	{"id": "acts", "name": "Acts"},
+	{"id": "ancient", "name": "Ancient Levels"},
+]
+
+const WAYPOINT_ACTS := [
+	{"run": 0, "group": "acts", "tab": "I", "art": "res://assets/textures/ui/wp_act1.png", "boss": "goblin_king",
+		"points": [{"id": "town", "zone": "town", "kind": "camp"}, {"id": "wild", "zone": "wild", "kind": "wild"}]},
+	{"run": 1, "group": "acts", "tab": "II", "art": "res://assets/textures/ui/wp_act2.png", "boss": "champion",
+		"points": [{"id": "town", "zone": "town", "kind": "camp"}, {"id": "wild", "zone": "wild", "kind": "road"}]},
+	{"run": 2, "group": "acts", "tab": "III", "art": "res://assets/textures/ui/wp_act3.png", "boss": "ashen_king",
+		"points": [{"id": "town", "zone": "town", "kind": "camp"}, {"id": "wild", "zone": "wild", "kind": "wild"}]},
+]
+
+static func waypoint_act(run: int) -> Dictionary:
+	for a in WAYPOINT_ACTS:
+		if int(a["run"]) == run:
+			return a
+	return {}
+
+static func waypoint_point(run: int, id: String) -> Dictionary:
+	for p in waypoint_act(run).get("points", []):
+		if str(p["id"]) == id:
+			return p
+	return {}
+
+## Zones the world can build (World.build); a waypoint must lead to one of these.
+const WAYPOINT_ZONES := ["town", "wild", "lair"]
+
+## Problems in WAYPOINT_ACTS, one line each (empty = all good). Checked at start in dev builds
+## (Game) and by tools/waypoint_test.gd, so a mistake shows the moment it is made.
+static func check_waypoints() -> Array:
+	var errs := []
+	var runs := {}
+	var groups := WAYPOINT_GROUPS.map(func(g): return g["id"])
+	for a in WAYPOINT_ACTS:
+		var r := int(a.get("run", -1))
+		var tag := "act run %d" % r
+		if runs.has(r):
+			errs.append(tag + ": run used twice")
+		runs[r] = true
+		if not groups.has(a.get("group", "acts")):
+			errs.append(tag + ": unknown group '%s' (add it to WAYPOINT_GROUPS)" % a.get("group"))
+		if a.has("art") and not ResourceLoader.exists(a["art"]):
+			errs.append(tag + ": banner not found: " + str(a["art"]))
+		if a.has("boss") and not ENEMIES.has(a["boss"]):
+			errs.append(tag + ": unknown boss '%s'" % a["boss"])
+		if not a.has("requires") and r >= RUNS.size():
+			errs.append(tag + ": no Data.RUNS entry (or give it \"requires\")")
+		var pts: Array = a.get("points", [])
+		if pts.is_empty():
+			errs.append(tag + ": no waypoints")
+		var ids := {}
+		for p in pts:
+			var id := str(p.get("id", ""))
+			if id == "" or ids.has(id):
+				errs.append(tag + ": waypoint id missing or used twice ('%s')" % id)
+			ids[id] = true
+			if not WAYPOINT_ZONES.has(str(p.get("zone", ""))):
+				errs.append(tag + ": waypoint '%s' leads to unknown zone '%s'" % [id, p.get("zone", "")])
+	return errs
+
+## How each character draws and puts away its weapon (WeaponCarry; the motion itself lives in Anim).
+## Keyed by class (or, later, an enemy kind). Any key left out takes WeaponCarry.DEFAULT; a character
+## with no entry gets the default draw and a warning. A new character = a new entry (and, for a new
+## kind of motion, a new "draw_motion" branch in Anim.pose).
+##   motion: "knight" (cross-body draw from the left hip) | "back" (over the right shoulder)
+##   store: "hilt" (the body model's sheathed hilt shows; the weapon model hides) | "back" (on the back)
+##   draw_time / holster_time: seconds · grab: fraction of the motion where the hand takes it
+##   threat_range: metres · disengage: seconds safe before holstering · town: "holster" (always away)
+const WEAPON_PROFILES := {
+	# the crusader: a heavy, deliberate draw across the body from the scabbard on his left hip
+	"knight": {"motion": "knight", "store": "hilt", "draw_time": 0.85, "holster_time": 0.9, "grab": 0.38, "disengage": 4.0},
+	# the other classes keep the default over-the-shoulder draw until their new models arrive
+	"warlock": {"motion": "back", "store": "back"},
+	"wraith": {"motion": "back", "store": "back"},
+	"demon": {"motion": "back", "store": "back"},
+}
+
 const VENDORS := [
 	{"smith": "Halvar Emberhammer", "armor": "Hedda Ironhand", "alch": "Agnes Grimwood", "gamble": "Tarrow the Dice", "stash": "Stash", "elder": "Captain Roth"},
 	{"smith": "Kadir Forgebrand", "armor": "Saphra", "alch": "Iskander the Wise", "gamble": "Jamal Two-Coins", "stash": "Stash", "elder": "Vizier Hasun"},
@@ -295,7 +390,7 @@ const SKILLS := [
 	{"id": "summon", "cls": "demon", "name": "Summon Demon", "key": "E", "lvl": 3, "mana": 18, "cd": 1.5, "aim": "self", "desc": "A demon claws its way up out of a burning sigil to fight beside you. Up to 3 at once; a fourth replaces the oldest."},
 	{"id": "phase", "cls": "demon", "name": "Underworld Phase", "key": "R", "lvl": 6, "mana": 15, "cd": 12.0, "aim": "self", "desc": "Slip into the Underworld for 6 seconds: monsters cannot see or hurt you and you move faster. When you return, the rift erupts around you."},
 	{"id": "pact", "cls": "demon", "name": "Blood Pact", "key": "F", "lvl": 10, "mana": 0, "cd": 20.0, "aim": "self", "desc": "Pay 20% of your life: you and your demons deal +40% damage for 12 seconds, and your demons are healed, faster and fiercer."},
-	{"id": "drain", "cls": "warlock", "name": "Drain Life", "key": "Q", "lvl": 1, "mana": 6, "cd": 0.0, "aim": "facing", "range": 11.0, "desc": "Latch a green beam onto an enemy and pull the life out of it. The beam forks to up to 3 enemies near your target and everything it drains heals you. Hold Q to keep draining (costs mana each second)."},
+	{"id": "drain", "cls": "warlock", "channel": true, "name": "Drain Life", "key": "Q", "lvl": 1, "mana": 6, "cd": 0.0, "aim": "facing", "range": 11.0, "desc": "Latch a green beam onto an enemy and pull the life out of it. The beam forks to up to 3 enemies near your target and everything it drains heals you. Hold Q to keep draining (costs mana each second)."},
 	{"id": "blight", "cls": "warlock", "name": "Blight Bolt", "key": "E", "lvl": 3, "mana": 12, "cd": 1.5, "aim": "facing", "range": 15.0, "desc": "Hurl a howling skull of blight. It bursts where it lands and leaves a plague pool that rots enemies standing in it for 4 seconds."},
 	{"id": "shackles", "cls": "warlock", "name": "Soul Shackles", "key": "R", "lvl": 6, "mana": 16, "cd": 8.0, "aim": "self", "desc": "Chains of fel fire snap out to every enemy within 7 metres, damaging them and binding them in place for 2.5 seconds."},
 	# the archer: his attack is the bow (Hero._bow_attack); the arrows are Hero.arrows
@@ -307,6 +402,15 @@ const SKILLS := [
 ]
 
 ## Playable classes. Base attributes at level 1.
+## How long every attack, skill swing and cast takes, as a multiple of its base timing (1.2 = 20% slower).
+## Every class uses it, including new ones; a class can set its own "attack_pace" in CLASSES (a special
+## character). Weapon speed, increased attack speed and Dexterity still speed attacks up from there.
+## Attacks whose rate the swing sets hit that much harder (Hero.pace_mult), so damage per second stays where the balance put it.
+const ATTACK_PACE := 1.2
+
+static func attack_pace(cls: String) -> float:
+	return float(CLASSES[cls].get("attack_pace", ATTACK_PACE)) if CLASSES.has(cls) else ATTACK_PACE
+
 const CLASSES := {
 	"knight": {"name": "Knight", "str": 20, "dex": 15, "vit": 25, "ene": 10,
 		"desc": "A crusader in steel. Sword and shield, heavy blows, holy fire and a rallying cry."},

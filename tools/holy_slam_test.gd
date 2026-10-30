@@ -50,7 +50,7 @@ func _run() -> void:
 		h.cds["cleave"] = 0.0
 		var ok: bool = h.use_skill("cleave", aim)
 		var landed := Vector3.ZERO
-		for f in 90:
+		for f in 130:   # long enough for the slam at the slower attack pace
 			await process_frame
 			if h.impact_done and landed == Vector3.ZERO:
 				landed = h.global_position - h.rig.global_transform.basis.z * h.slam_reach

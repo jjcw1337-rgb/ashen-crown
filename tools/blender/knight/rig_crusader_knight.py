@@ -488,6 +488,20 @@ for n in names:
     if parents[n]:
         arm.edit_bones[n].parent = arm.edit_bones[parents[n]]
 bpy.ops.object.mode_set(mode="OBJECT")
+# the sword's hilt standing out of the scabbard (pommel, grip, crossguard) gets its own material,
+# "Hilt", so the game can hide it while the drawn sword is in his hand (Hero._set_hilt)
+hilt = sword & (P[:, 2] > 1.0)
+if hilt.sum() > 0:
+    base_mat = body.data.materials[0]
+    hm = base_mat.copy(); hm.name = "Hilt"
+    body.data.materials.append(hm)
+    hidx = len(body.data.materials) - 1
+    nh = 0
+    for poly in body.data.polygons:
+        if all(hilt[v] for v in poly.vertices):
+            poly.material_index = hidx
+            nh += 1
+    print("hilt faces", nh)
 top = np.argsort(-Wt, axis=1)[:, :4]
 body.vertex_groups.clear()
 for j, n in enumerate(names):

@@ -356,13 +356,13 @@ func _client_goto(act: int, zone: String, spawn: String, at) -> void:
 	loading = false
 	rpc_id(1, "sv_zone_ready")
 
-func request_switch(d: int) -> void:
-	rpc_id(1, "sv_switch", d)
+func request_switch(d: int, zone := "town", spawn := "") -> void:
+	rpc_id(1, "sv_switch", d, zone, spawn)
 
 @rpc("any_peer", "call_remote", "reliable")
-func sv_switch(d: int) -> void:
+func sv_switch(d: int, zone: String, spawn: String) -> void:
 	if is_host and not game._busy:
-		game.switch_run(d)
+		game.switch_run(d, zone, spawn)
 
 func request_a2() -> void:
 	rpc_id(1, "sv_a2")

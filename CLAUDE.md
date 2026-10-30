@@ -374,6 +374,15 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   socket on a 9-patch, a rarity line inside) and the gold on a bronze plate. Every piece keeps clear of the frame's
   corner spikes and trim: `tools/inv_geometry_test.gd` samples each socket, label, the alcove and the plate against
   the frame's ornament as the 9-patch draws it. Screenshot: `tools/inventory_shot.gd`.
+- **Waypoints** (`Data.WAYPOINT_ACTS`, `WaypointPanel` in `scripts/waypoint_panel.gd`, `Game.waypoint_go`): one entry
+  per act (its `run`, tab numeral, Meshy banner `wp_actN.png`, boss, and its waypoints: `id`, `zone`, `kind`). An act
+  opens once the act before it falls (`Game.act_unlocked`, from `max_run`); a waypoint opens once the player touches
+  its stone (`Game.waypoint_known`, per act in `run_progress`). The window has a tab per act, the act's banner and
+  route (lit waypoints travel, across acts too via `switch_run(run, zone)`); it closes when you walk off the stone
+  or click outside it. Add an act: a `Data.RUNS` entry, its zones, an entry here (its `group`, e.g. "acts" or "ancient"; groups are `Data.WAYPOINT_GROUPS`, and a group's heading appears once it has an entry; the tab row scrolls when it overflows). Add a waypoint: a point here + one
+  line in that zone's builder, `add_waypoint("<id>", Vector3(x, 0, z))` (stone, colliders, its own arrival spot;
+  a zone can hold several). Tests: `tools/waypoint_test.gd`
+  (rules), `tools/waypoint_shot.gd -- out.png [run]` (screenshot).
 - **Character sheet (C)** (`UI._build_character`): Meshy frame `sheet_panel.png` (texture margin 100 so the corner
   pieces never stretch; content margins keep everything inside the gold trim), live portrait (a SubViewport on the
   shared world) in `sheet_portrait.png`, Meshy medallions `sheet_str/dex/vit/ene.png` and `sheet_plus.png`. Hover a
@@ -382,7 +391,16 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 - **Skill picker** (`UI._choose_skill`, click a bar slot): the bar's own iron frame and sockets, one card per skill
   (`_picker_card`: equipped glow, the key it's on now, mana, locked level). Esc / click outside closes
   (`close_skill_picker`). Screenshot: `tools/picker_shot.gd`.
-- `UNLOCK_ALL_ACTS` in `game.gd` is a testing switch (also enables the F8 testing panel: `test_immortal`, `test_onehit`, `test_stamina`, `test_allskills`, `test_fast` (super speed, `TEST_FAST` times as fast) in `game.gd`, and a level setter, `Hero.set_level`); turn off for real playthroughs.
+- **Attack pace** (every class, new ones too): `Data.ATTACK_PACE` (1.2 = attacks, skill swings and casts take 20%
+  longer) multiplies `Hero.atk_dur` in `_start_attack` and the casts' own times in `use_skill`; a special class can set
+  `"attack_pace"` in `Data.CLASSES` (`Data.attack_pace(cls)`). Attacks whose rate the swing sets (the basic attack, skills
+  with no cooldown) hit that much harder (`Hero.pace_mult` in `dmg_mult`), so damage per second is unchanged; cooldown
+  skills and channels (`"channel": true` in `Data.SKILLS`) keep their damage. Weapon speed, IAS and Dexterity still apply.
+- **Damage taken** shows as one red number over the hero's head (`DamageStack`, `scripts/damage_stack.gd`, made by
+  `Hero.show_damage`): hits close together add to a running total that counts up smoothly and pops on each hit; 1.1 s
+  after the last hit it drifts up and fades, and the next hit starts a new total. Every class gets it. Preview:
+  `tools/damage_stack_clip.gd -- outdir`.
+- Developer tools (`Game.dev_tools`): unlock-all-acts (`UNLOCK_ALL_ACTS`) and the F8 testing panel (`test_immortal`, `test_onehit`, `test_stamina`, `test_allskills`, `test_fast` (super speed, `TEST_FAST` times as fast) in `game.gd`, and a level setter, `Hero.set_level`). On only when running from the Godot editor or when this PC holds a valid **admin key** (`AdminKey`, `scripts/admin_key.gd`): `user://admin.key`, signed with the owner's private key; the game checks it against the public key built into the code, so nobody can forge one. Off for everyone else, in every build (live and preview). Make a key: `tools/admin_key.gd` (needs the private key, which is never in the repo). `UNLOCK_ALL_ACTS = false` turns the tools off everywhere.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file).
 - CI is `.github/workflows/deploy.yml` (container `barichello/godot-ci:4.3`). If it fails, the

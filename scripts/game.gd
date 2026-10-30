@@ -55,8 +55,13 @@ var boss_killed := false
 var difficulty := 0          # 0 = Act I, 1 = A2, 2 = A3: Act I again with tougher monsters and loot each time
 var max_run := 0             # highest of those reached; any of them can be picked at the camp waypoint
 ## TESTING: unlock Act I, A2 and A3 at the camp waypoint from the start. Set to false to
-## go back to unlocking them by beating each final boss.
+## go back to unlocking them by beating each final boss. Only takes effect where dev_tools is on.
 const UNLOCK_ALL_ACTS := true
+## Developer tools (unlock-all-acts and the F8 testing panel): only for the owner. On when running from
+## the Godot editor, or when this PC holds a valid admin key (AdminKey: signed with the owner's private
+## key, so it can't be made up or shared by editing a file). Off for everyone else in every build.
+var admin_name := AdminKey.holder()
+var dev_tools := UNLOCK_ALL_ACTS and (OS.has_feature("editor") or admin_name != "")
 var run_progress := {}       # per run: its waypoints and whether its boss is dead
 var tp_link := {}
 var xp_bonus_t := 0.0
@@ -72,6 +77,9 @@ var _busy := false
 
 func _ready() -> void:
 	rng.randomize()
+	if OS.is_debug_build():
+		for e in Data.check_waypoints():
+			push_warning("Waypoints: " + e)
 	Mats.ensure_globals()
 	var args := OS.get_cmdline_user_args()
 	for i in args.size():
@@ -708,7 +716,7 @@ func run_note(d: int) -> String:
 func run_name(d: int = -1) -> String:
 	if d < 0:
 		d = difficulty
-	return ["Act I", "A2", "A3"][clampi(d, 0, 2)]
+	return str(Data.RUNS[clampi(d, 0, Data.RUNS.size() - 1)]["name"])
 
 func run_banner() -> void:
 	ui.big_message(run_name() + " begins")
@@ -747,10 +755,11 @@ func _restore_progress(d: int) -> void:
 	waypoints_known = p.get("waypoints", ["town"]).duplicate()
 	boss_killed = p.get("boss", false)
 
-## Waypoint in camp: switch to Act I, A2 or A3 (any you have reached). Each keeps its own progress.
-func switch_run(d: int) -> void:
+## Switch to another act (any you have reached), arriving at its camp or at one of its waypoints.
+## Each act keeps its own waypoints and boss.
+func switch_run(d: int, zone := "town", spawn := "") -> void:
 	if net.is_client():
-		net.request_switch(d)
+		net.request_switch(d, zone, spawn)
 		return
 	if d == difficulty or d > max_run or d < 0 or _busy:
 		return
@@ -760,7 +769,7 @@ func switch_run(d: int) -> void:
 	tp_link = {}
 	ui.set_boss(null)
 	Sfx.play("portal")
-	await load_zone(cur_act, "town", "start")
+	await load_zone(cur_act, zone, spawn if spawn != "" else ("start" if zone == "town" else "waypoint"))
 	run_switched_banner()
 
 func run_switched_banner() -> void:
@@ -795,7 +804,8 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	_zone_env(zone)
 	apply_quality(quality)
 	await _capture_map(zone)
-	var sp: Vector3 = world.spawns.get(spawn, world.spawns["start"])
+	# a waypoint's own arrival spot ("waypoint_<id>"), else the zone's main waypoint, else the start
+	var sp: Vector3 = world.spawns.get(spawn, world.spawns.get("waypoint", world.spawns["start"]) if spawn.begins_with("waypoint") else world.spawns["start"])
 	if at != null:
 		sp = at
 	sp.y = world.height_at(sp.x, sp.z)
@@ -1008,7 +1018,7 @@ func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
 		waypoints_known = ["town"]
 		boss_killed = false
 		tp_link = {}
-		if UNLOCK_ALL_ACTS:
+		if dev_tools:
 			max_run = 2
 		await load_zone(0, "town", "start")
 		ui.open_dialog(Data.VENDORS[0]["elder"], "Welcome to the Forsaken Wilds, %s. Since the goblin king Grubb tunnelled into the old crypt to loot the dead, the dead walk Cairnfell Moor and the Fallen raid our roads. He sits on a mountain of stolen gold down there and calls himself king. Trade with our folk, then head out through the north gate. End him, and the moor may yet heal." % ("restless one" if hero.is_wraith() else ("pact-bound one" if hero.is_warlock() else "crusader")), [["I will", func(): pass]])
@@ -1053,7 +1063,7 @@ func on_net_failed(msg: String) -> void:
 		if hero.dead:
 			hero.respawn(hero.global_position)
 
-## Testing switches (F8 panel, only while UNLOCK_ALL_ACTS is on). They change nothing else
+## Testing switches (F8 panel, only while dev_tools is on). They change nothing else
 ## and are never saved.
 var test_immortal := false
 var test_onehit := false
@@ -1098,7 +1108,7 @@ func load_game() -> bool:
 	boss_killed = d.get("boss", false)
 	difficulty = int(d.get("difficulty", 0))
 	max_run = maxi(int(d.get("max_run", 0)), difficulty)
-	if UNLOCK_ALL_ACTS:
+	if dev_tools:
 		max_run = 2
 	run_progress = d.get("runs", {})
 	return true
@@ -1363,10 +1373,7 @@ func _interact(t: Inter) -> void:
 				waypoints_known.append(wp_id)
 				ui.message("Waypoint activated", Color(0.5, 0.7, 1.0))
 				Sfx.play("portal")
-			ui.open_waypoints([
-				{"label": Data.act_info(cur_act, difficulty)["town"], "zone": "town", "known": true},
-				{"label": Data.act_info(cur_act, difficulty)["wild"], "zone": "wild", "known": waypoints_known.has("wild")},
-			], difficulty, (net.party_max_run if net.is_client() else max_run) if cur_zone == "town" else -1)
+			ui.open_waypoints(t)
 		"portal":
 			Sfx.play("portal")
 			if t.data.get("dir", "") == "town":
@@ -1422,6 +1429,57 @@ func _interact(t: Inter) -> void:
 func travel_waypoint(dest: Dictionary) -> void:
 	Sfx.play("portal")
 	travel(cur_act, dest["zone"], "waypoint")
+
+# ---------------------------------------------------------------- the waypoint network (Data.WAYPOINT_ACTS)
+## An act is open once the act before it has fallen (in co-op, the host's progress counts). An entry
+## with "requires": <run> opens instead once that act's lord has fallen. Dev tools open everything.
+func act_unlocked(run: int) -> bool:
+	var a := Data.waypoint_act(run)
+	if a.is_empty() or run < 0:
+		return false
+	if a.has("requires"):
+		return dev_tools_on() or act_boss_slain(int(a["requires"]))
+	return run <= (net.party_max_run if net.is_client() else max_run)
+
+## True where the developer tools are (the owner's: see dev_tools).
+func dev_tools_on() -> bool:
+	return dev_tools
+
+## Has this character touched waypoint `id` in act `run`? Each act keeps its own (run_progress).
+func waypoint_known(run: int, id: String) -> bool:
+	if run == difficulty:
+		return waypoints_known.has(id)
+	return (run_progress.get(str(run), {}).get("waypoints", ["town"]) as Array).has(id)
+
+## Has act `run`'s lord fallen?
+func act_boss_slain(run: int) -> bool:
+	if run == difficulty:
+		return boss_killed
+	return bool(run_progress.get(str(run), {}).get("boss", false))
+
+## Take waypoint `id` of act `run`: within this act, travel to its zone; to another act, switch to it and
+## arrive at that waypoint. Only open acts, and waypoints this character has touched.
+func waypoint_go(run: int, id: String) -> void:
+	var p := Data.waypoint_point(run, id)
+	if _busy or p.is_empty() or not act_unlocked(run) or not waypoint_known(run, id):
+		return
+	var zone: String = p["zone"]
+	var spawn := "waypoint_" + id
+	if run == difficulty:
+		if zone != cur_zone or id != _at_waypoint():
+			Sfx.play("portal")
+			travel(cur_act, zone, spawn)
+	else:
+		switch_run(run, zone, spawn)
+
+## The waypoint stone the hero stands at, if any ("" if none).
+func _at_waypoint() -> String:
+	if world == null or hero == null:
+		return ""
+	for it in world.interactables:
+		if is_instance_valid(it) and it.kind == "waypoint" and it.global_position.distance_to(hero.global_position) < 4.5:
+			return str(it.data.get("wp", "town"))
+	return ""
 
 func _make_portal(p: Vector3, dir: String) -> Inter:
 	var it := Inter.new()
@@ -1742,7 +1800,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 				ui.message("Sound " + ("on" if sound_on else "off"), Color(0.8, 0.85, 1.0))
 				ui.update_sound_btn()
 			KEY_F8:
-				if UNLOCK_ALL_ACTS:
+				if dev_tools:
 					ui.toggle(ui.test_panel)
 			KEY_M:
 				ui.minimap.visible = not ui.minimap.visible
