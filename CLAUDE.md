@@ -280,6 +280,10 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   sounds (`Sfx.counts`) and the fort voice. The camp's song is `music_town` (jj's pick: a dark forest sanctuary, harp over a low
   string drone with a wooden flute; candidate take 13). Ambience: wind, drips in the crypt, and in Act I outside the camp (moor and fort) `forest`, soft
   trees in a breeze (`Sfx.play_music(kind, amb)`, picked in `Game.load_zone`).
+- **The camp's bonfire** (`Inter` kind `"bonfire"`, `UI.open_burn`): clicking it opens the fire (`UI.Flames`) beside the
+  inventory; drag an item onto the flames or right-click it to burn it for good (`UI.burn_request`, `Game.burned`: the
+  `burn_item` sound and a flare); rare, unique and material items ask first. A click on an inventory item plays
+  `inv_click`. `tools/bonfire_test.gd`, `tools/bonfire_shot.gd`.
 - **Birds** (`scripts/birds.gd`, Act I outdoors, added by `Game.load_zone`): flocks of dark swept-wing silhouettes cross
   the sky round the hero (flapping, gliding, banking, shadows), and every 25-50 s a flock bursts out of the trees near
   him with `birds_flutter`. Cosmetic and local (not synced). Screenshot: `tools/birds_shot.gd`.

@@ -79,6 +79,13 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "burn_item": [
+  {
+   "detail": "an object thrown into a roaring campfire, a soft thump then a burst of flames flaring up and crackling sparks, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "cackle": [
   {
    "detail": "a huge, fat goblin king's deep, guttural, menacing laugh, a slow low chuckle rumbling up from his belly, gravelly and cruel, not high-pitched, close mic, dry, isolated sound effect, no music",
@@ -407,6 +414,13 @@
  "impact_metal": [
   {
    "detail": "a sword striking steel plate armor, hard metallic clang, short, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "inv_click": [
+  {
+   "detail": "picking up a small metal and leather item in a dark fantasy game inventory, a short soft clink with a leather rustle, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }

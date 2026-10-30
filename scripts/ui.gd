@@ -98,6 +98,8 @@ var shop_face: PanelContainer  # holds the trader's live portrait
 var trade_with: Inter = null   # the NPC whose window (dialog, trade, stash) is open: walking off closes it
 var plates: Control            # VendorUI.Plates: nameplates over the town's people
 var stash_panel: PanelContainer
+var burn_panel: PanelContainer   # the camp's bonfire: drag or right-click an item to burn it for good
+var burn_fire: Control
 var stash_cells: Array = []
 var wp_panel: PanelContainer
 var wp_list: VBoxContainer
@@ -157,6 +159,7 @@ func setup(g: Node) -> void:
 	_build_character()
 	_build_shop()
 	_build_stash()
+	_build_burn()
 	_build_waypoints()
 	_build_dialog()
 	_build_pause()
@@ -1375,7 +1378,7 @@ func _panel(title: String, left: bool, w: int, h: int) -> PanelContainer:
 	x.pressed.connect(func():
 		p.visible = false
 		tooltip.visible = false
-		if p == shop_panel or p == stash_panel:
+		if p == shop_panel or p == stash_panel or p == burn_panel:
 			shop_mode = ""
 		Sfx.play("click"))
 	hb.add_child(x)
@@ -1443,12 +1446,15 @@ func _inv_click(idx: int, ev: InputEventMouseButton) -> void:
 		drag_idx = idx
 		drag_from = get_viewport().get_mouse_position()
 		dragging = false
+		Sfx.play("inv_click", -2.0, randf_range(0.96, 1.04))
 	elif ev.button_index == MOUSE_BUTTON_RIGHT:
 		if shop_mode in ["smith", "armor", "alch", "gamble"]:
 			hero.inventory[idx] = null
 			hero.gold += Items.sell_price(it)
 			Sfx.play("gold")
 			refresh()
+		elif shop_mode == "burn":
+			burn_request(idx)
 		elif shop_mode == "stash":
 			for i in hero.stash.size():
 				if hero.stash[i] == null:
@@ -1508,7 +1514,9 @@ func _drag_target() -> Array:
 		for k in equip_cells.keys():
 			if (equip_cells[k] as Control).get_global_rect().has_point(mp):
 				return ["equip", k]
-	for pnl in [inv_panel, char_panel, stash_panel, shop_panel, wp_panel, dialog_panel, action_bar, skills_panel, talent_panel]:
+	if burn_panel.visible and burn_fire.get_global_rect().has_point(mp):
+		return ["fire", null]
+	for pnl in [inv_panel, char_panel, stash_panel, burn_panel, shop_panel, wp_panel, dialog_panel, action_bar, skills_panel, talent_panel]:
 		if pnl and pnl.visible and (pnl as Control).get_global_rect().has_point(mp):
 			return ["ui", null]
 	return ["ground", null]
@@ -1567,6 +1575,8 @@ func _finish_drag(forced: Array = []) -> void:
 				click_fx(inv_cells[j])
 		"equip":
 			hero.equip_from_inventory(idx)
+		"fire":
+			burn_request(idx)
 	refresh()
 
 # ---------------------------------------------------------------- character
@@ -1968,6 +1978,7 @@ func open_shop(mode: String, title: String, items: Array, who: Inter = null, gre
 	shop_greet.text = ("“%s”" % greet) if greet != "" else ""
 	shop_panel.visible = true
 	stash_panel.visible = false
+	burn_panel.visible = false
 	inv_panel.visible = true
 	char_panel.visible = false
 	_refresh_shop()
@@ -2094,11 +2105,89 @@ func _build_stash() -> void:
 
 func open_stash() -> void:
 	shop_mode = "stash"
+	burn_panel.visible = false
 	stash_panel.visible = true
 	shop_panel.visible = false
 	char_panel.visible = false
 	inv_panel.visible = true
 	refresh()
+
+## The camp's bonfire: a window with the fire in it beside your inventory. Drag an item onto the flames, or
+## right-click it, and it burns, gone for good (rare, unique and the sloths' materials ask first).
+func _build_burn() -> void:
+	burn_panel = _panel("Bonfire", true, 300, 360)
+	var vb: VBoxContainer = burn_panel.get_node("vb")
+	var t := _label("Drag an item onto the fire, or right-click it in your bag, to burn it. It is gone forever.", 13, DIM)
+	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	t.custom_minimum_size = Vector2(260, 0)
+	vb.add_child(t)
+	burn_fire = Flames.new()
+	burn_fire.custom_minimum_size = Vector2(260, 250)
+	burn_fire.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(burn_fire)
+
+func open_burn() -> void:
+	shop_mode = "burn"
+	stash_panel.visible = false
+	shop_panel.visible = false
+	char_panel.visible = false
+	burn_panel.visible = true
+	inv_panel.visible = true
+	refresh()
+
+## Burns inventory slot idx, asking first for anything rare, unique or a material.
+func burn_request(idx: int) -> void:
+	var it = hero.inventory[idx]
+	if it == null:
+		return
+	tooltip.visible = false
+	if int(it.get("rarity", 0)) >= 2 or Data.BASES[it["base"]].get("slot", "") == "material":
+		open_dialog("Bonfire", "Burn the %s? It will be gone forever." % it["name"], [
+			["Burn it", func(): _burn(idx, it)],
+			["Keep it", func(): pass]])
+		return
+	_burn(idx, it)
+
+func _burn(idx: int, it: Dictionary) -> void:
+	if hero.inventory[idx] != it:
+		return
+	hero.inventory[idx] = null
+	game.burned(it)
+	(burn_fire as Flames).flare = 1.0
+	message("%s burns" % it["name"], Color(1.0, 0.6, 0.3))
+	refresh()
+
+## A fire drawn in the bonfire window: tongues of flame that lick and sway, flaring when something burns.
+class Flames extends Control:
+	var flare := 0.0
+	var _t := 0.0
+	func _process(delta: float) -> void:
+		_t += delta
+		flare = maxf(0.0, flare - delta * 1.2)
+		queue_redraw()
+	func _draw() -> void:
+		var w := size.x
+		var h := size.y
+		var base := Vector2(w * 0.5, h - 18.0)
+		# the glow, the logs, then the flames from the back (dark red) to the front (yellow)
+		for k in 4:
+			draw_circle(base + Vector2(0, -h * 0.18), w * (0.42 - k * 0.08) * (1.0 + flare * 0.3), Color(1.0, 0.45, 0.1, 0.05 + k * 0.03 + flare * 0.06))
+		for lg in [[-0.32, 0.25], [0.32, -0.25]]:
+			var a := Vector2(w * (0.5 + lg[0]), h - 10.0)
+			var b := Vector2(w * (0.5 - lg[0] * 0.2), h - 26.0)
+			draw_line(a, b, Color(0.22, 0.13, 0.07), 13.0, true)
+		var cols := [Color(0.75, 0.12, 0.04), Color(0.95, 0.35, 0.06), Color(1.0, 0.62, 0.15), Color(1.0, 0.88, 0.45)]
+		for layer in 4:
+			var tall := h * (0.78 - layer * 0.14) * (1.0 + flare * 0.45)
+			var half := w * (0.3 - layer * 0.055)
+			for tongue in 5:
+				var off := (float(tongue) - 2.0) / 2.0
+				var sway := sin(_t * (3.0 + tongue * 0.7) + layer * 1.3 + tongue) * 10.0
+				var th := tall * (0.65 + 0.35 * absf(sin(_t * 2.3 + tongue * 1.7 + layer)))
+				var c := base + Vector2(off * half, 0)
+				var pts := PackedVector2Array([c + Vector2(-half * 0.32, 0), c + Vector2(sway * 0.5 - half * 0.18, -th * 0.5),
+					c + Vector2(sway, -th), c + Vector2(sway * 0.5 + half * 0.18, -th * 0.5), c + Vector2(half * 0.32, 0)])
+				draw_colored_polygon(pts, cols[layer])
 
 func _build_waypoints() -> void:
 	wp_panel = _panel("Waypoints", true, 380, 380)
@@ -2911,6 +3000,7 @@ func toggle(panel: Control) -> void:
 	if panel == inv_panel and not panel.visible:
 		shop_panel.visible = false
 		stash_panel.visible = false
+		burn_panel.visible = false
 		shop_mode = ""
 	Sfx.play("click")
 	refresh()
@@ -2919,21 +3009,21 @@ func toggle(panel: Control) -> void:
 func _walked_off() -> void:
 	if trade_with == null:
 		return
-	var open := shop_panel.visible or stash_panel.visible or dialog_panel.visible or ench_panel.visible
+	var open := shop_panel.visible or stash_panel.visible or burn_panel.visible or dialog_panel.visible or ench_panel.visible
 	if not open or not is_instance_valid(trade_with) or hero == null:
 		trade_with = null
 		return
 	var d: Vector3 = hero.global_position - trade_with.global_position
 	if Vector2(d.x, d.z).length() > trade_with.radius + 3.0:
 		trade_with = null
-		for p in [shop_panel, stash_panel, dialog_panel, ench_panel, inv_panel]:
+		for p in [shop_panel, stash_panel, burn_panel, dialog_panel, ench_panel, inv_panel]:
 			p.visible = false
 		shop_mode = ""
 		tooltip.visible = false
 
 func close_all() -> bool:
 	var any := close_skill_picker()
-	for p in [inv_panel, char_panel, shop_panel, stash_panel, wp_panel, dialog_panel, ench_panel, test_panel, skills_panel, talent_panel]:
+	for p in [inv_panel, char_panel, shop_panel, stash_panel, burn_panel, wp_panel, dialog_panel, ench_panel, test_panel, skills_panel, talent_panel]:
 		if p.visible:
 			p.visible = false
 			any = true
@@ -2942,7 +3032,7 @@ func close_all() -> bool:
 	return any
 
 func any_panel_open() -> bool:
-	return inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible
+	return inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible
 
 func message(t: String, col := Color(1, 1, 1), dur := 2.5) -> void:
 	msg_lbl.text = t

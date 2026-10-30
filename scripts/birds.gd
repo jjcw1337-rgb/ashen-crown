@@ -7,7 +7,7 @@ extends Node3D
 ## Game.load_zone adds one when the zone is Act I's forest and outdoors.
 
 const FLOCKS := 5              # crossing the sky at once
-const HEIGHT := Vector2(6.5, 11.0)
+const HEIGHT := Vector2(8.5, 13.0)
 const SPEED := Vector2(6.5, 9.5)
 
 var game
@@ -107,7 +107,7 @@ func _new_flock(burst: bool, anywhere := false) -> void:
 	var n := _rng.randi_range(5, 9) if burst else _rng.randi_range(3, 8)
 	var birds := []
 	for i in n:
-		var bd := _bird(_rng.randf_range(1.5, 2.0))
+		var bd := _bird(_rng.randf_range(1.0, 1.35))
 		# a loose V or a scatter, each with its own beat
 		var off := Vector3(_rng.randf_range(-2.5, 2.5), _rng.randf_range(-0.8, 0.8), _rng.randf_range(0.0, 3.5))
 		if burst:

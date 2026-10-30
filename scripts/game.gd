@@ -1239,6 +1239,19 @@ func _pickup(g: GroundItem) -> void:
 		ui.message("Inventory is full", Color(1, 0.4, 0.3))
 
 ## Co-op: the host handed us an item we picked up.
+## An item thrown on the camp's bonfire (UI._burn): the flames flare and roar up, and it's gone.
+func burned(it: Dictionary) -> void:
+	Sfx.play("burn_item", 0.0, randf_range(0.95, 1.05))
+	var fire: Inter = null
+	for t in world.interactables:
+		if is_instance_valid(t) and t.kind == "bonfire":
+			fire = t
+	if fire:
+		var at := fire.global_position + Vector3(0, 0.8, 0)
+		Fx.burst(world.fx_root, at, Color(1.0, 0.45, 0.08, 0.9), 40, 4.0, 0.22, 0.9, false, 3.0, 35.0)
+		Fx.burst(world.fx_root, at + Vector3(0, 0.6, 0), Color(1.0, 0.8, 0.35, 0.8), 24, 3.0, 0.1, 0.7, false, 2.0, 25.0)
+		Fx.flash(world.fx_root, at, Color(1.0, 0.55, 0.2), 6.0, 0.5, 8.0)
+
 func receive_item(it: Dictionary, pos: Vector3) -> void:
 	if it["base"] == "gold":
 		var amt := int(it["count"] * (1.0 + hero.gf / 100.0))
@@ -1332,6 +1345,10 @@ func _interact(t: Inter) -> void:
 			ui.open_stash()
 			ui.trade_with = t
 			Sfx.play("equip")
+		"bonfire":
+			ui.open_burn()
+			ui.trade_with = t
+			Sfx.play("click")
 		"waypoint":
 			var wp_id: String = t.data.get("wp", "town")
 			if not waypoints_known.has(wp_id):
