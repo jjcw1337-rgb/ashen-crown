@@ -41,6 +41,9 @@ const CFG := {
 	"sniff_every": [8.0, 15.0], "sniff_time": 1.6,
 }
 const HEIGHT := 1.2
+## its body: JJ's dire forest wolf (Meshy, 25% larger than a wolf; rigged by tools/blender/act1/rig_quadruped.py on
+## the lion's skeleton, so Lion.pose runs it); the ghostly lion, then the crawler, without the file
+const WOLF_GLB := "res://assets/models/monsters/wolf.glb"
 
 var master: Hero
 var game: Node
@@ -91,21 +94,26 @@ func setup(m: Hero, g: Node, s: int) -> void:
 	master = m
 	game = g
 	slot = s
-	lion = Lion.ok()
-	if lion:
+	var wolf := ResourceLoader.exists(WOLF_GLB)
+	lion = wolf or Lion.ok()
+	if wolf:
+		rig = Lion.build(WOLF_GLB, 1.0)
+	elif lion:
 		rig = Lion.build()
 		rig.scale = Vector3.ONE * 0.85
 	else:
 		rig = Models.crawler({"skin": Color(0.5, 0.7, 0.65), "shell": Color(0.4, 0.6, 0.55), "legs": 4, "size": 1.0, "eyes": Archer.HUNTER})
 	add_child(rig)
-	ghostly(rig)
+	if not wolf:
+		ghostly(rig)
+	# a faint spirit about it: a soft green light and a few motes drifting off its coat
 	var l := OmniLight3D.new()
 	l.light_color = Archer.HUNTER
-	l.light_energy = 0.8
-	l.omni_range = 4.0
+	l.light_energy = 0.45 if wolf else 0.8
+	l.omni_range = 3.0
 	l.position = Vector3(0, 1.0, 0)
 	add_child(l)
-	var trail := Fx.aura(self, Archer.HUNTER, 20, 0.4, 0.1, 0.9, 0.3, 0.5, 60.0, Vector3(0, 0.7, 0))
+	var trail := Fx.aura(self, Archer.HUNTER, 10 if wolf else 20, 0.3, 0.06, 0.9, 0.3, 0.45, 60.0, Vector3(0, 0.6, 0))
 	trail.name = "trail"
 	max_life = float(CFG["life"]) + float(CFG["life_per_level"]) * master.level
 	life = max_life
@@ -508,6 +516,14 @@ func _strike(mult: float) -> void:
 	target.take_damage(d, 0.0, global_position, 0.5 if mult > 1.2 else 0.2, false)
 	if mult > 1.2 and target.has_method("stun"):
 		target.stun(0.6)
+	# Ember Fangs (Flame): its bites set them alight; Winter Howl (Frost): its pounce chills all round where it lands
+	if master.talent("wolf_burn") > 0.0:
+		target.ignite(d * master.talent("wolf_burn") / 100.0, 3.0)
+	if mult > 1.2 and master.talent("wolf_howl") > 0.0:
+		for e in game.enemies_near(global_position, 3.5):
+			if not e.dead:
+				e.chill(0.25 + 0.15 * master.talent("wolf_howl"), 2.5)
+		Fx.ring(game.world.fx_root, global_position, 3.5, Color(0.6, 0.85, 1.0), 0.45)
 	# it turns on the beast
 	target.taunt = self
 	target.taunt_t = 4.0

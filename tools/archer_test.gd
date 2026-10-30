@@ -52,6 +52,11 @@ func _run() -> void:
 	check(flew and e1.life < l1, "the bow shot: an arrow flew 9 m and hit (%.0f -> %.0f)" % [l1, e1.life])
 	e1.take_damage(99999.0, 0.0, p0, 0.0, false)
 	# Piercing Shot through three in a line
+	# his wolf waits this part out, so only his arrows hit
+	for b in h.beasts:
+		b.queue_free()
+	h.beasts.clear()
+	h.beast_down_t = 9999.0
 	var line := []
 	for k in 3:
 		line.append(_foe(p0 + fwd * (5.0 + k * 2.5)))
@@ -64,7 +69,8 @@ func _run() -> void:
 	for k in 3:
 		if line[k].life < lives[k]:
 			pierced += 1
-	check(pierced == 3, "Piercing Shot went through all three in a line (%d hit)" % pierced)
+	check(pierced == 3, "Fire Arrow went through all three in a line (%d hit)" % pierced)
+	check(line.all(func(e) -> bool: return e.burn_t > 0.0), "and set them all alight (burning %s)" % [line.map(func(e): return snappedf(e.burn_t, 0.1))])
 	for e in line:
 		e.take_damage(99999.0, 0.0, p0, 0.0, false)
 	# Volley: everything in the ring takes several hits
@@ -81,7 +87,8 @@ func _run() -> void:
 	for k in 3:
 		if pack[k].life < lv[k]:
 			rained += 1
-	check(rained == 3, "Volley rained on all three (%d hit)" % rained)
+	check(rained == 3, "Frost Volley rained on all three (%d hit)" % rained)
+	check(pack.all(func(e) -> bool: return e.chill_t > 0.0 and e.chill_k > 0.3), "and chilled them (%.0f%% slower)" % (pack[0].chill_k * 100.0))
 	for e in pack:
 		e.take_damage(99999.0, 0.0, p0, 0.0, false)
 	# Snare Trap: set, an enemy walks on, it's held fast
@@ -93,10 +100,16 @@ func _run() -> void:
 	var set_ok: bool = h.snares.size() == 1
 	var e2 := _foe(trap_at + Vector3(3, 0, 0))
 	var l2: float = e2.life
+	var by := _foe(trap_at + Vector3(-4.0, 0, 1.0))
+	var lb: float = by.life
 	e2.global_position = trap_at
 	await wait(0.3)
 	check(set_ok and h.snares.is_empty() and e2.stun_t > 2.0 and e2.life < l2, "Snare Trap: set, sprung by the enemy on it (held %.1f s, hurt %s)" % [e2.stun_t, e2.life < l2])
+	check(by.life < lb and by.stun_t > 0.0, "Storm Snare's lightning leapt into one nearby (hurt, stunned %.1f s)" % by.stun_t)
 	e2.take_damage(99999.0, 0.0, p0, 0.0, false)
+	by.take_damage(99999.0, 0.0, p0, 0.0, false)
+	h.beast_down_t = 0.0
+	await wait(0.3)
 	# Spirit Beast: it comes, mauls a foe, and the buff is on
 	h.cds["beast"] = 0.0
 	h.mana = h.max_mana

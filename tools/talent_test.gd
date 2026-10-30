@@ -12,7 +12,8 @@ const KEYS := ["str", "dex", "vit", "ene", "res", "ls", "regen", "ias", "frw", "
 	"armor_pct", "crit", "crit_dmg", "buff_pow", "block_dr", "buff_dur", "phase_dur", "wail_stun", "shackle_dur", "blight_dur",
 	"nova_heal", "cry_heal", "charge_cdr", "reap_heal", "reap_full", "wail_echo", "spirits", "claw_wide", "minion_speed",
 	"minion_max", "pact_cost", "phase_heal", "drain_heal", "drain_fork", "drain_glut", "blight_size", "blight_twin", "shackle_range",
-	"arrow_split", "snare_dur", "snare_max", "snare_wide", "volley_size", "beast_two"]
+	"arrow_split", "snare_dur", "snare_max", "snare_wide", "volley_size", "beast_two", "burn_dmg", "wolf_burn", "chill_pct", "wolf_howl",
+	"frost_shatter", "arc_count"]
 
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()

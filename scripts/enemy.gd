@@ -54,6 +54,14 @@ var enraged := false
 var hoard: Hoard = null
 ## Factions (Data.ENEMIES "faction"): goblins and the undead fight each other on sight (and both fight you).
 var rival: Enemy = null
+# burning (the archer's Fire Arrow, his wolf's Ember Fangs): fire damage every half second; chilled (Frost
+# Volley, Winter Howl): slower on its feet. Burning is ticked by whoever set it (take_damage routes to the host);
+# a chill from a partner reaches the host through Net.send_enemy_chill.
+var burn_t := 0.0
+var burn_dps := 0.0
+var burn_tick := 0.0
+var chill_t := 0.0
+var chill_k := 0.0
 var taunt: Node3D = null      # a companion that bit it (the archer's Spirit Beast): it turns on it for a while
 var taunt_t := 0.0
 var rival_t := 0.0
@@ -212,6 +220,43 @@ func set_soul_lit(on: bool) -> void:
 		return
 	_soul_lit = on
 	_set_flash(0.0)
+
+func ignite(dps: float, t: float) -> void:
+	if dead:
+		return
+	burn_dps = maxf(burn_dps if burn_t > 0.0 else 0.0, dps)
+	burn_t = maxf(burn_t, t)
+	if game and game.world:
+		DemonFx.ignite(game.world.fx_root, self)
+
+func chill(k: float, t: float) -> void:
+	if remote:
+		game.net.send_enemy_chill(self, k, t)
+	if boss:
+		k *= 0.5
+	chill_k = maxf(chill_k if chill_t > 0.0 else 0.0, k)
+	chill_t = maxf(chill_t, t)
+	if game and game.world and not has_node("frost"):
+		var f := Fx.aura(self, Color(0.6, 0.85, 1.0), 14, 0.3, 0.07, 0.8, -0.2, 0.4 * radius + 0.2, 60.0, Vector3(0, height * 0.8, 0))
+		f.name = "frost"
+
+## Burning and chill wearing off (every peer: a burn ticks where it was set, a chill slows the host's AI).
+func _statuses(delta: float) -> void:
+	if burn_t > 0.0:
+		burn_t -= delta
+		burn_tick -= delta
+		if burn_tick <= 0.0:
+			burn_tick = 0.5
+			take_damage(0.0, burn_dps * 0.5, global_position, 0.0, false)
+			if game and game.world and randf() < 0.5:
+				DemonFx.ignite(game.world.fx_root, self)
+	if chill_t > 0.0:
+		chill_t -= delta
+		if chill_t <= 0.0:
+			chill_k = 0.0
+			var f := get_node_or_null("frost")
+			if f:
+				f.queue_free()
 
 func stun(t: float) -> void:
 	if remote:
@@ -436,6 +481,9 @@ func _process(delta: float) -> void:
 		return
 	if hoard != null and hoard.boss == self:
 		hoard.murmur(delta)
+	_statuses(delta)
+	if dead:
+		return
 	if remote:
 		_remote_process(delta)
 		return
@@ -518,7 +566,7 @@ func _process(delta: float) -> void:
 	if not hero_dead and dist < radius + hero.radius:
 		vel -= to.normalized() * (radius + hero.radius - dist) * 4.0
 	if vel.length() > 0.01:
-		global_position = game.world.move(global_position, vel * delta, body_r())
+		global_position = game.world.move(global_position, vel * delta * (1.0 - chill_k), body_r())
 		if aggro or vel.length() > 0.5:
 			if atk_t < 0.0:
 				_face(to if aggro and (dist <= 3.0 or f_state in ["back", "out"]) else vel)
@@ -545,10 +593,9 @@ static func build_rig(kind: String, variant := 1) -> Node3D:
 	if d.get("mesh", "") == "feral" and Feral.ok():
 		return Feral.build(variant)
 	if d.get("mesh", "") == "lion" and Lion.ok():
-		var lr := Lion.build()
-		if d.get("ghost", false):
-			SpiritBeast.ghostly(lr)
-		return lr
+		return Lion.build()
+	if d.get("mesh", "") == "wolf" and ResourceLoader.exists(SpiritBeast.WOLF_GLB):
+		return Lion.build(SpiritBeast.WOLF_GLB, 1.0)
 	if d.has("mesh") and MeshyMonster.ok(d["mesh"]):
 		return MeshyMonster.build(d["mesh"], look)
 	if d.has("model"):

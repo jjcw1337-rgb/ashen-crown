@@ -1351,7 +1351,8 @@ func _process(delta: float) -> void:
 	_draw_drain()
 	_breathe(delta)
 	_apply_shield_pose()
-	_update_trail(atk_t >= 0.0 or charge_t >= 0.0)
+	# no sword-swing streak off a bow
+	_update_trail((atk_t >= 0.0 or charge_t >= 0.0) and not has_bow())
 
 ## The Wraith floats a hand's breadth off the ground, bobbing slowly and leaning into motion.
 func _hover() -> void:
@@ -1456,7 +1457,7 @@ func _puppet_process(delta: float) -> void:
 	Anim.pose(rig, st)
 	_hover()
 	_apply_shield_pose()
-	_update_trail(atk_t >= 0.0)
+	_update_trail(atk_t >= 0.0 and not has_bow())
 
 func _apply_shield_pose() -> void:
 	if shield_node == null or not is_instance_valid(shield_node):

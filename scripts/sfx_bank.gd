@@ -2,6 +2,7 @@
 ## Files are assets/audio/sfx/<name>_<take>.wav (sources in assets/audio/CREDITS.md). Don't edit by hand.
 ## [takes, bus, seconds to the payoff (Sfx.play_synced lands it on an attack's impact frame)]
 const BANK := {
+	"anvil": [5, "sfx", 0.0],
 	"arena_horn": [2, "sfx", 0.0],
 	"battle_cry": [1, "sfx", 0.0],
 	"birds_flutter": [2, "sfx", 0.0],

@@ -39,8 +39,8 @@ const ENEMIES := {
 	"fallen": {"mesh": "fallen", "name": "Fallen", "rig": "humanoid", "life": 14, "dmg": [2, 5], "speed": 4.2, "range": 1.5, "xp": 9,
 		"ai": "melee", "atk": "over", "atk_time": 0.85, "armor": 2, "radius": 0.45, "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.62, 0.12, 0.08), "cloth": Color(0.22, 0.16, 0.1), "height": 0.72, "bulk": 0.9, "head": "horned", "eyes": Color(1.0, 0.8, 0.1), "weapon": "club"}},
-	# the archer's Spirit Beast as a monster (a ghostly arena lion, the Feral's pack AI): not placed anywhere yet
-	"spirit_beast": {"mesh": "lion", "ghost": true, "name": "Spirit Beast", "rig": "crawler", "life": 34, "dmg": [5, 9], "speed": 5.2, "range": 1.9, "xp": 20,
+	# the archer's Spirit Beast as a monster (JJ's dire forest wolf, the Feral's pack AI): not placed anywhere yet
+	"spirit_beast": {"mesh": "wolf", "name": "Spirit Wolf", "rig": "crawler", "life": 34, "dmg": [5, 9], "speed": 5.2, "range": 1.9, "xp": 20,
 		"ai": "feral", "atk": "feral_swipe", "atk_time": 1.0, "armor": 4, "radius": 0.7, "aggro": 13.0, "blood": Color(0.55, 0.95, 0.6),
 		"look": {"skin": Color(0.55, 0.85, 0.6), "height": 1.2}},
 	"zombie": {"mesh": "zombie", "faction": "undead", "name": "Zombie", "rig": "humanoid", "life": 32, "dmg": [3, 7], "speed": 1.9, "range": 1.6, "xp": 13,
@@ -303,9 +303,9 @@ const SKILLS := [
 	{"id": "blight", "cls": "warlock", "name": "Blight Bolt", "key": "E", "lvl": 3, "mana": 12, "cd": 1.5, "aim": "facing", "range": 15.0, "desc": "Hurl a howling skull of blight. It bursts where it lands and leaves a plague pool that rots enemies standing in it for 4 seconds."},
 	{"id": "shackles", "cls": "warlock", "name": "Soul Shackles", "key": "R", "lvl": 6, "mana": 16, "cd": 8.0, "aim": "self", "desc": "Chains of fel fire snap out to every enemy within 7 metres, damaging them and binding them in place for 2.5 seconds."},
 	# the archer: his attack is the bow (Hero._bow_attack); the arrows are Hero.arrows
-	{"id": "pierce", "cls": "archer", "name": "Piercing Shot", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 16.0, "desc": "A heavy arrow that punches through every enemy in a line for 130% weapon damage."},
-	{"id": "volley", "cls": "archer", "name": "Volley", "key": "E", "lvl": 3, "mana": 14, "cd": 3.0, "aim": "point", "range": 14.0, "desc": "Loose a flight of arrows into the sky: they rain down on the cursor for over a second, hitting everything within 4 metres again and again."},
-	{"id": "snare", "cls": "archer", "name": "Snare Trap", "key": "R", "lvl": 6, "mana": 10, "cd": 6.0, "aim": "point", "range": 10.0, "desc": "Throw an iron snare at the cursor. The first enemies to step on it are held fast for 3 seconds and take 120% weapon damage. It lies in wait for 20 seconds."},
+	{"id": "pierce", "cls": "archer", "name": "Fire Arrow", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 16.0, "desc": "A burning arrow that tears through every enemy in a line for 130% weapon damage and sets them alight: they burn for 3 seconds."},
+	{"id": "volley", "cls": "archer", "name": "Frost Volley", "key": "E", "lvl": 3, "mana": 14, "cd": 3.0, "aim": "point", "range": 14.0, "desc": "Loose a flight of frost arrows into the sky: they rain on the cursor for over a second, hitting everything within 4 metres again and again and chilling them (40% slower)."},
+	{"id": "snare", "cls": "archer", "name": "Storm Snare", "key": "R", "lvl": 6, "mana": 10, "cd": 6.0, "aim": "point", "range": 10.0, "desc": "Set a storm-charged trap (up to 2): the first enemies to cross it are held fast and hurt, and lightning bursts from it into the 3 nearest others, stunning them."},
 	{"id": "beast", "cls": "archer", "name": "Spirit Beast", "key": "F", "lvl": 10, "mana": 12, "cd": 8.0, "aim": "point", "range": 18.0, "desc": "Your Spirit Beast hunts at your side from the start (and you run 10% faster with it). Command it: on an enemy it pounces and fights it, on open ground it holds there, on yourself it comes back. Each command rouses you both: +40% damage for 12 seconds."},
 	{"id": "covenant", "cls": "warlock", "name": "Fel Covenant", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "aim": "self", "desc": "Seal a pact with what waits beyond: +40% damage for 12 seconds, and Drain Life forks to two more enemies and heals twice as much."},
 ]
