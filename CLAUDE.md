@@ -203,6 +203,15 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   and one at a time lunges (`special` "feral_lunge", flying over other monsters), backs off, darts in to claw,
   backs out (`_feral_combat`, `f_state`); the lunge has a 5 s cooldown, and outrun for 6 s (beyond 9 m) the pack
   gives up and goes home, ignoring you for 8 s unless hit (`f_chase`, `f_calm`). `tools/feral_test.gd` checks it.
+- **The three Fallen** (Act I's foes; reusable in any act by adding the id to its `"foes"`): `fallen_skirmisher`
+  (fast, Savage Lunge), `fallen_reaver` (heavy, Brutal Cleave with a ground wedge warning, `Fx.arc_telegraph`),
+  `fallen_stalker` (circles and weaves, Hooking Slash from an angle). Meshy models from JJ (`exports/fallen/` on
+  jj-models), prepared by `tools/blender/act1/prep_monster.py -- in.glb out.glb height [tris] [cut]` (base cut,
+  decimated, scaled) and rigged by `rig_monster.py` like the other Act I monsters. Each has its own run (Anim's
+  `"gait"` from the look: skirm / reaver / stalk, plus a `"stride"`), its own attack style (`Anim.pose`, `Net.STYLES`),
+  its own AI (`Enemy._skirm_combat`/`_reaver_combat`/`_stalk_combat`); the attacks move the body along a path
+  (`Enemy.atk_path`, `_fallen_path`), land once in their window and leave a recovery (`f_state` "recover"/"rest").
+  The old `"fallen"` entry is kept, unused. `tools/fallen_test.gd`, `tools/fallen_sheet.gd -- out.png [side|34]`.
 - **Factions** (`"faction"` in `Data.ENEMIES`: goblin, undead): a monster fights the nearest other-faction monster when
   it is closer than the hero (`Enemy.rival`, `Enemy.take_hit` so the attack code works on both); rival kills give no
   xp or loot (`killed_by_rival`). Host-side like all AI.

@@ -4,7 +4,7 @@ extends RefCounted
 
 const ACTS := [
 	{"name": "The Ashen Moors", "town": "The Forsaken Wilds", "wild": "Cairnfell Moor", "lair": "Grubb's Fort",
-		"boss": "goblin_king", "lvl": 1, "theme": "moor", "foes": ["fallen", "zombie", "skel_archer"]},
+		"boss": "goblin_king", "lvl": 1, "theme": "moor", "foes": ["fallen_skirmisher", "fallen_reaver", "fallen_stalker", "zombie", "skel_archer"]},
 	{"name": "The Sunscar Wastes", "town": "Lut Khemar", "wild": "Dunes of Sorrow", "lair": "Tomb of Sekhmun",
 		"boss": "sekhmun", "lvl": 8, "theme": "desert", "foes": ["raider", "mummy", "scarab"]},
 	{"name": "The Drowned Wilds", "town": "Vel Dara", "wild": "Mirewood", "lair": "Temple of Vael",
@@ -18,7 +18,7 @@ const ACTS := [
 ## of the games (games.gd) is the act's boss. Keys override Data.ACTS[0] for that run (act_info).
 const RUN_ACTS := {
 	1: {"name": "The Imperial Road", "wild": "The Imperial Road", "lair": "Aurelia", "boss": "champion",
-		"foes": ["zombie", "fallen", "skel_archer"]},
+		"foes": ["zombie", "fallen_skirmisher", "fallen_reaver", "fallen_stalker", "skel_archer"]},
 }
 
 ## An act's names, boss and foes for a run (difficulty): Data.ACTS with that run's overrides.
@@ -134,6 +134,17 @@ const ENEMIES := {
 	"fallen": {"mesh": "fallen", "name": "Fallen", "rig": "humanoid", "life": 14, "dmg": [2, 5], "speed": 4.2, "range": 1.5, "xp": 9,
 		"ai": "melee", "atk": "over", "atk_time": 0.85, "armor": 2, "radius": 0.45, "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.62, 0.12, 0.08), "cloth": Color(0.22, 0.16, 0.1), "height": 0.72, "bulk": 0.9, "head": "horned", "eyes": Color(1.0, 0.8, 0.1), "weapon": "club"}},
+	# the three Fallen (enemy.gd _skirm_combat / _reaver_combat / _stalk_combat; Anim's "gait"s and styles): one
+	# faction, three ways of fighting. Usable in any act: add the id to that act's "foes".
+	"fallen_skirmisher": {"mesh": "fallen_skirmisher", "name": "Fallen Skirmisher", "rig": "humanoid", "life": 18, "dmg": [4, 8], "speed": 4.6, "range": 1.5, "xp": 12,
+		"ai": "skirmisher", "atk": "skirm_lunge", "atk_time": 0.9, "armor": 2, "radius": 0.42, "blood": Color(0.5, 0.02, 0.02),
+		"look": {"skin": Color(0.6, 0.14, 0.08), "cloth": Color(0.22, 0.16, 0.1), "height": 0.69, "bulk": 0.9, "head": "horned", "eyes": Color(1.0, 0.8, 0.1), "weapon": "sickle", "gait": "skirm", "stride": 1.3}},
+	"fallen_reaver": {"mesh": "fallen_reaver", "name": "Fallen Reaver", "rig": "humanoid", "life": 45, "dmg": [8, 14], "speed": 3.2, "range": 2.2, "xp": 22,
+		"ai": "reaver", "atk": "reaver_cleave", "atk_time": 1.6, "armor": 6, "radius": 0.6, "turn": 0.09, "blood": Color(0.45, 0.02, 0.02),
+		"look": {"skin": Color(0.35, 0.1, 0.08), "cloth": Color(0.15, 0.12, 0.1), "height": 0.97, "bulk": 1.3, "head": "horned", "eyes": Color(1.0, 0.5, 0.1), "weapon": "cleaver", "gait": "reaver", "stride": 0.8}},
+	"fallen_stalker": {"mesh": "fallen_stalker", "name": "Fallen Stalker", "rig": "humanoid", "life": 20, "dmg": [4, 8], "speed": 4.4, "range": 1.6, "xp": 16,
+		"ai": "stalker", "atk": "stalk_hook", "atk_time": 1.1, "armor": 3, "radius": 0.42, "blood": Color(0.4, 0.03, 0.05),
+		"look": {"skin": Color(0.4, 0.2, 0.18), "cloth": Color(0.18, 0.14, 0.12), "height": 0.94, "bulk": 0.8, "head": "horned", "eyes": Color(0.9, 1.0, 0.4), "gait": "stalk", "stride": 0.95}},
 	"zombie": {"mesh": "zombie", "faction": "undead", "name": "Zombie", "rig": "humanoid", "life": 32, "dmg": [3, 7], "speed": 1.9, "range": 1.6, "xp": 13,
 		"ai": "melee", "atk": "claw", "atk_time": 1.25, "armor": 4, "radius": 0.5, "blood": Color(0.25, 0.3, 0.05),
 		"look": {"skin": Color(0.42, 0.48, 0.36), "cloth": Color(0.25, 0.23, 0.2), "cloth2": Color(0.18, 0.16, 0.14), "height": 1.0, "bulk": 1.1, "head": "human", "hair": Color(0.15, 0.15, 0.12), "eyes": Color(0.6, 1.0, 0.3)}},

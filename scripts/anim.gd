@@ -38,6 +38,9 @@ static func impact_at(style: String) -> float:
 		"cackle": return 0.5
 		"feral_lunge": return 0.64      # his hands land (feral.gd's baked lunge)
 		"feral_swipe": return 0.32      # the right claw rakes across
+		"skirm_lunge": return 0.5       # the Fallen Skirmisher's sickle comes down at the end of the leap
+		"reaver_cleave": return 0.52    # the Reaver's axe whips through its arc
+		"stalk_hook": return 0.45       # the Stalker's claws hook across
 	return 0.5
 
 ## 0 at walking stride, 1 at full sprint stride (move > 1 means sprinting).
@@ -155,6 +158,61 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 
 	if a >= 0.0:
 		match style:
+			# --- the three Fallen (enemy.gd moves the body along each attack's path; these pose it)
+			"skirm_lunge":
+				# Savage Lunge: drop low and coil (the sickle drawn back), launch, a committed downward cut at
+				# the end of the leap, then stumble through and recover (the opening)
+				var coil := kf(a, [[0, 0.0], [0.28, 1.0], [0.36, 0.6], [0.5, 0.0], [1, 0.0]])
+				var stum := kf(a, [[0, 0.0], [0.5, 0.0], [0.62, 1.0], [0.85, 0.5], [1, 0.0]])
+				hy -= (0.16 * coil + 0.08 * stum) * h
+				tx -= 0.45 * coil + 0.35 * stum
+				knee_l -= 0.9 * coil + 0.3 * stum
+				knee_r -= 0.9 * coil + 0.3 * stum
+				leg_l += 0.55 * coil - kf(a, [[0, 0.0], [0.36, 0.0], [0.45, 0.6], [0.6, 0.2], [1, 0.0]])
+				leg_r -= 0.25 * coil - kf(a, [[0, 0.0], [0.36, 0.0], [0.45, 0.7], [0.6, 0.3], [1, 0.0]])
+				shr.x = kf(a, [[0, 0.4], [0.28, 2.9], [0.4, 3.1], [0.5, 0.2], [0.65, -0.3], [1, 0.4]])
+				shr.z = kf(a, [[0, 0.1], [0.28, 0.5], [0.5, -0.2], [1, 0.1]])
+				elr = kf(a, [[0, 0.5], [0.28, 1.5], [0.42, 1.2], [0.5, 0.1], [1, 0.5]])
+				shl.x += kf(a, [[0, 0.0], [0.28, -0.6], [0.45, 1.0], [0.62, 0.5], [1, 0.0]])
+				ty += kf(a, [[0, 0.0], [0.28, 0.35], [0.5, -0.4], [0.7, -0.2], [1, 0.0]])
+				head_x += 0.3 * coil
+			"reaver_cleave":
+				# Brutal Cleave: plant and turn (0..0.15), haul the axe up and twist back (..0.45), the shoulders
+				# whip round in a flat swing (..0.6, the hit at 0.52), the weight carries him on round (..0.75),
+				# a long recovery with the axe low (..1)
+				shr.x = kf(a, [[0, 0.5], [0.15, 1.2], [0.45, 2.5], [0.52, 1.45], [0.6, 1.3], [0.75, 0.8], [1, 0.4]])
+				shr.y = kf(a, [[0, 0.0], [0.15, 0.4], [0.45, 1.3], [0.52, 0.0], [0.6, -1.25], [0.75, -1.4], [1, 0.0]])
+				shr.z = kf(a, [[0, 0.15], [0.45, 0.6], [0.52, 0.2], [0.75, 0.1], [1, 0.15]])
+				elr = kf(a, [[0, 0.6], [0.45, 1.7], [0.52, 0.25], [0.6, 0.15], [1, 0.6]])
+				ty += kf(a, [[0, 0.0], [0.15, 0.15], [0.45, 0.85], [0.52, -0.1], [0.6, -0.85], [0.75, -1.0], [1, 0.0]])
+				hip_turn += kf(a, [[0, 0.0], [0.45, 0.3], [0.55, -0.35], [0.75, -0.45], [1, 0.0]])
+				tx += kf(a, [[0, 0.0], [0.45, 0.12], [0.55, -0.2], [0.8, -0.15], [1, 0.0]])
+				hy -= kf(a, [[0, 0.0], [0.15, 0.04], [0.45, 0.02], [0.55, 0.07], [0.8, 0.05], [1, 0.0]]) * h
+				knee_l -= kf(a, [[0, 0.0], [0.15, 0.25], [0.55, 0.4], [1, 0.0]])
+				knee_r -= kf(a, [[0, 0.0], [0.15, 0.2], [0.55, 0.3], [1, 0.0]])
+				leg_l += kf(a, [[0, 0.0], [0.15, 0.25], [0.55, 0.35], [1, 0.0]])
+				leg_r -= kf(a, [[0, 0.0], [0.15, 0.15], [0.55, 0.2], [1, 0.0]])
+				shl.x += kf(a, [[0, 0.0], [0.45, 0.9], [0.55, -0.4], [1, 0.0]])
+				shl.z -= kf(a, [[0, 0.0], [0.45, 0.4], [0.6, 0.1], [1, 0.0]])
+			"stalk_hook":
+				# Hooking Slash: low and sidelong while it shifts (0..0.25), darting in (..0.45), a diagonal
+				# hook from high on the right to low on the left (0.45), pulling back out (..1)
+				var low := kf(a, [[0, 0.0], [0.2, 1.0], [0.42, 0.8], [0.5, 0.5], [0.8, 0.7], [1, 0.0]])
+				hy -= 0.13 * low * h
+				tx -= 0.35 * low
+				knee_l -= 0.7 * low
+				knee_r -= 0.7 * low
+				tz += kf(a, [[0, 0.0], [0.2, 0.25], [0.4, -0.1], [1, 0.0]])
+				shr.x = kf(a, [[0, 0.2], [0.25, 1.6], [0.4, 2.6], [0.47, 0.6], [0.6, -0.2], [1, 0.2]])
+				shr.y = kf(a, [[0, 0.0], [0.4, 0.5], [0.47, -0.9], [0.6, -1.1], [1, 0.0]])
+				shr.z = kf(a, [[0, 0.2], [0.4, 0.9], [0.47, 0.2], [1, 0.2]])
+				elr = kf(a, [[0, 0.4], [0.4, 1.4], [0.47, 0.2], [1, 0.4]])
+				shl.x += kf(a, [[0, 0.0], [0.3, 0.5], [0.47, -0.4], [1, 0.0]])
+				shl.z -= kf(a, [[0, 0.0], [0.3, 0.5], [0.5, 0.2], [1, 0.0]])
+				ty += kf(a, [[0, 0.0], [0.4, 0.45], [0.47, -0.55], [0.6, -0.4], [1, 0.0]])
+				leg_l += kf(a, [[0, 0.0], [0.3, 0.4], [0.47, 0.5], [0.7, -0.3], [1, 0.0]])
+				leg_r -= kf(a, [[0, 0.0], [0.3, 0.2], [0.47, 0.3], [0.7, -0.4], [1, 0.0]])
+				head_z += kf(a, [[0, 0.0], [0.2, 0.3], [0.45, -0.2], [1, 0.0]])
 			"over":
 				shr.x = kf(a, [[0, 0.3], [0.35, 3.3], [0.52, 0.45], [1, 0.3]])
 				shr.z = kf(a, [[0, 0.1], [0.35, 0.55], [0.52, -0.3], [1, 0.1]])
@@ -494,6 +552,65 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 		tz *= 1.0 - 0.8 * kg
 		hip_roll *= 1.0 - 0.5 * kg
 		tx -= 0.06 * kg
+
+	# --- the Fallen's runs ("gait" meta from their look; each its own posture, stride and upper body)
+	var fg: String = rig.get_meta("gait") if rig.has_meta("gait") else ""
+	if fg in ["skirm", "reaver", "stalk"]:
+		var fw := clampf(mm * 1.5, 0.0, 1.0) * (1.0 if a < 0.0 else 0.25)
+		var sw := sin(ph)
+		match fg:
+			"skirm":
+				# frantic and low: bent far forward, knees deep, quick bouncing strides, the torso twisting hard
+				# with each, the sickle arm pumping high, the head up to keep its eyes on the prey
+				tx -= 0.42 * fw
+				hy -= 0.07 * h * fw - absf(cos(ph)) * 0.03 * h * fw
+				knee_l -= 0.4 * fw
+				knee_r -= 0.4 * fw
+				leg_l += sw * 0.18 * fw
+				leg_r -= sw * 0.18 * fw
+				ty += sw * 0.3 * fw
+				shl.x = lerpf(shl.x, -sw * 0.95, fw)
+				shr.x = lerpf(shr.x, 0.7 + sw * 0.8, fw)
+				shl.z = lerpf(shl.z, -0.35, fw)
+				shr.z = lerpf(shr.z, 0.3, fw)
+				ell = lerpf(ell, 1.15, fw)
+				elr = lerpf(elr, 1.35, fw)
+				head_x += 0.32 * fw
+				head_z += sin(t * 9.0 + sd) * 0.06 * fw
+			"reaver":
+				# heavy and upright: long strides, a dip and a jolt through the body at each footfall, the
+				# shoulders rolling with the weight, the axe carried on the right shoulder, chin down
+				var fall := pow(1.0 - absf(sin(ph)), 3.0)
+				tx += 0.06 * fw - fall * 0.06 * fw
+				hy -= fall * 0.05 * h * fw
+				leg_l *= 1.0 + 0.3 * fw
+				leg_r *= 1.0 + 0.3 * fw
+				tz += sw * 0.13 * fw
+				hip_roll += sw * 0.09 * fw
+				ty += sw * 0.12 * fw
+				shr = shr.lerp(Vector3(2.35, 0.25, 0.4), fw)
+				elr = lerpf(elr, 2.25, fw)
+				shl.x = lerpf(shl.x, -sw * 0.55, fw)
+				shl.z = lerpf(shl.z, -0.22, fw)
+				ell = lerpf(ell, 0.55, fw)
+				head_x -= 0.12 * fw - fall * 0.05 * fw
+			"stalk":
+				# low and loping: hunched over bent knees, the long claws trailing behind, the head tilted and
+				# twitching, a lope that rocks the body (the weave itself is the AI's)
+				tx -= 0.55 * fw
+				hy -= 0.1 * h * fw - absf(sin(ph)) * 0.025 * h * fw
+				knee_l -= 0.5 * fw
+				knee_r -= 0.5 * fw
+				leg_l += sw * 0.12 * fw
+				leg_r -= sw * 0.12 * fw
+				shl = shl.lerp(Vector3(-0.45 - sw * 0.3, 0.0, -0.3), fw)
+				shr = shr.lerp(Vector3(-0.45 + sw * 0.3, 0.0, 0.3), fw)
+				ell = lerpf(ell, 0.35, fw)
+				elr = lerpf(elr, 0.35, fw)
+				ty += sw * 0.16 * fw
+				tz += cos(ph * 0.5) * 0.08 * fw
+				head_x += 0.5 * fw
+				head_z += (0.25 + sin(t * 6.0 + sd * 3.0) * 0.12 + (sin(t * 41.0) * 0.08 if fmod(t + sd, 2.3) < 0.15 else 0.0)) * fw
 
 	# --- drawing / holstering the weapon (WeaponCarry): an overlay along the motion's clock, 0 = put
 	# away .. 1 = in guard. Holstering runs the same keys backwards. Not during an attack.
