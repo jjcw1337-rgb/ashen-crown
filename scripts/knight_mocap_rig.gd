@@ -34,6 +34,8 @@ var hips_pose_rest := Vector3.ZERO
 var w_up := 0.0               # how much of the upper body the procedural moves own (0..1)
 var w_low := 0.0              # ... and of the legs
 var speed := 0.0              # smoothed ground speed (m/s)
+var hilt_bone := -1           # the bone the scabbard rides (the hips)
+var hilt_local := Vector3.ZERO  # the hilt's centre in that bone's frame (skeleton units)
 var _last_st_t := -1.0
 var _last_gp := Vector3.INF
 var _state := ""            # the death transition's state ("" until the first frame sends one)
@@ -84,6 +86,7 @@ func setup(root_node: Node3D, skeleton: Skeleton3D, joints: Dictionary) -> void:
 			if dir.length() > 0.001:
 				B = Basis(Quaternion(dir.normalized(), want)) * B
 		B_ref[i] = B
+	_find_hilt()
 	hips_rest = (J["hips"] as Node3D).position
 	hips_pose_rest = skel.get_bone_rest(skel.find_bone("Hips")).origin
 
@@ -166,6 +169,7 @@ func sync_pose(st: Dictionary) -> void:
 	w_low = lerpf(w_low, low_t, k)
 	if w_up > 0.002 or w_low > 0.002:
 		_apply_procedural()
+	_reach_hilt(st)
 	sync()   # the cloak (knight_rig.gd)
 	_follow()
 
@@ -237,3 +241,78 @@ func _follow() -> void:
 			# a relaxed hand (motion capture) carries the blade tipped down, not pointing ahead
 			basis = basis * Basis(Vector3.RIGHT, deg_to_rad(RELAXED_TIP) * (1.0 - w_up))
 		nd.transform = Transform3D(basis.orthonormalized(), X * g.origin)
+
+## The scabbard hilt's centre (its "Hilt" surface, prep_knight_mocap.py), kept in the hips' frame so it can be
+## found wherever the hips are this frame.
+func _find_hilt() -> void:
+	hilt_bone = skel.find_bone("Hips")
+	if hilt_bone < 0:
+		return
+	for mi in skel.find_children("*", "MeshInstance3D", true, false):
+		var m := (mi as MeshInstance3D).mesh
+		if m == null:
+			continue
+		for si in m.get_surface_count():
+			var mat := m.surface_get_material(si)
+			if mat == null or mat.resource_name != "Hilt":
+				continue
+			var verts: PackedVector3Array = m.surface_get_arrays(si)[Mesh.ARRAY_VERTEX]
+			if verts.is_empty():
+				continue
+			var c := Vector3.ZERO
+			for v in verts:
+				c += v
+			c /= verts.size()
+			# the mesh is in metres; the skeleton (under Meshy's 0.01-scaled armature) in centimetres
+			c /= maxf(s_scale, 1e-6)
+			hilt_local = skel.get_bone_global_rest(hilt_bone).affine_inverse() * c
+			return
+	hilt_bone = -1
+
+## The cross-body draw (WeaponCarry, Anim's "knight" draw motion): around the grab the right hand is steered
+## onto the real hilt at his left hip by a two-bone IK on the arm, blended in and out, so he takes hold of the
+## sword where it hangs (the procedural keys alone stop at his chest on this body).
+func _reach_hilt(st: Dictionary) -> void:
+	if hilt_bone < 0 or str(st.get("draw_motion", "")) != "knight" or float(st.get("atk", -1.0)) >= 0.0:
+		return
+	var dr: float = st.get("draw", 1.0)
+	if dr <= 0.12 or dr >= 0.6:
+		return
+	var w := Anim.kf(dr, [[0.12, 0.0], [0.3, 1.0], [0.42, 1.0], [0.6, 0.0]])
+	if w <= 0.001:
+		return
+	var ua := skel.find_bone("RightArm")
+	var fa := skel.find_bone("RightForeArm")
+	var ha := skel.find_bone("RightHand")
+	if ua < 0 or fa < 0 or ha < 0:
+		return
+	skel.force_update_all_bone_transforms()
+	var Gu := skel.get_bone_global_pose(ua)
+	var Gf := skel.get_bone_global_pose(fa)
+	var Gh := skel.get_bone_global_pose(ha)
+	var T: Vector3 = skel.get_bone_global_pose(hilt_bone) * hilt_local
+	var S := Gu.origin
+	var E := Gf.origin
+	var H := Gh.origin
+	var a := (E - S).length()
+	var b := (H - E).length()
+	var to_t := T - S
+	var d := clampf(to_t.length(), absf(a - b) + 0.01, a + b - 0.01)
+	var dir := to_t.normalized()
+	# the elbow stays on the side it bends to now (out and back)
+	var pole := (E - S) - dir * (E - S).dot(dir)
+	if pole.length() < 0.001:
+		pole = Vector3.UP.cross(dir)
+	pole = pole.normalized()
+	var cos_a := clampf((a * a + d * d - b * b) / (2.0 * a * d), -1.0, 1.0)
+	var E2 := S + dir * a * cos_a + pole * a * sqrt(1.0 - cos_a * cos_a)
+	var q1 := Quaternion((E - S).normalized(), (E2 - S).normalized())
+	var H1 := S + q1 * (H - S)
+	var q2 := Quaternion((H1 - E2).normalized(), (S + dir * d - E2).normalized())
+	var up_g := Basis(q1) * Gu.basis.orthonormalized()
+	var fo_g := Basis(q2 * q1) * Gf.basis.orthonormalized()
+	var par_g := skel.get_bone_global_pose(skel.get_bone_parent(ua)).basis.orthonormalized()
+	var up_l := (par_g.inverse() * up_g).get_rotation_quaternion()
+	var fo_l := (up_g.inverse() * fo_g).get_rotation_quaternion()
+	skel.set_bone_pose_rotation(ua, skel.get_bone_pose_rotation(ua).slerp(up_l, w))
+	skel.set_bone_pose_rotation(fa, skel.get_bone_pose_rotation(fa).slerp(fo_l, w))

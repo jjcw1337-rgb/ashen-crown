@@ -301,7 +301,7 @@ static func build_mocap() -> Node3D:
 	root.set("hair_rest", hr)
 	root.set("hair_key", hk)
 	root.set("hair_conj", hc)
-	root.set("hair_run", 0.45)
+	root.set("hair_run", 0.3)    # he leans into the run already; at a sprint the cloak streams back, not up
 	root.set("head_bone", skel.find_bone("Head"))
 	root.set_meta("j", J)
 	root.set_meta("h", 1.0)

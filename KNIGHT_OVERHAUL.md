@@ -36,3 +36,11 @@ motion-captured animation, keeping every existing combat move working.
   feet). Planted-foot slide: ~0.26 m/s at 4.8 m/s, ~0.33 at 6.2 (was 0.74 / 1.39).
 - Game-camera tour (`mocap_knight_clip.gd -- out tour game 330`): turns, swing, block, hit, death all read.
 - Tests: weapon_draw_test (16/16), meshy_knight_test, holy_slam_test.
+
+## Finish (test-knight-finish)
+- The cross-body draw reaches the real hilt: `KnightMocapRig._reach_hilt` steers the right arm onto the scabbard hilt
+  (found from the "Hilt" surface, kept in the hips' frame) with a two-bone IK blended in around the grab (draw 0.12-0.6).
+  Hand-to-hilt at the grab: 0 cm (was about 90).
+- Cloak at speed: `hair_run` 0.3 (was 0.45), so at a sprint it streams back instead of lifting.
+- Co-op checked with `mp_test` host + join (the host plays the mocap knight): the partner sees him, travel, kills, loot
+  and leaving all work.
