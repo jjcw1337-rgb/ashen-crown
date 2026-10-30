@@ -200,10 +200,130 @@ static func build_meshy(armored := false) -> Node3D:
 		root.set_meta("elbow_out", 0.4)    # the plate is wide already: a tighter arm pump
 	return root
 
+const MOCAP_GLB := "res://assets/models/knight_mocap.glb"
+
+static func mocap_ok() -> bool:
+	return not ARMORED_BONES.is_empty() and ResourceLoader.exists(MOCAP_GLB)
+
+## The armoured knight on his motion-captured body (knight_mocap_rig.gd): the Meshy crusader on a real
+## humanoid skeleton playing motion capture, with the game's own moves (the combo, skills, the block)
+## laid over it. The proxies J are the armoured layout's, so Anim poses him like every other body;
+## the grips, the shield mount, the head and the chest follow the skeleton's real bones.
+static func build_mocap() -> Node3D:
+	var root := Node3D.new()
+	root.name = "Rig"
+	root.set_script(load("res://scripts/knight_mocap_rig.gd"))
+	var J := {}
+	var px := Node3D.new()
+	px.name = "Proxies"
+	root.add_child(px)
+	for n in ARMORED_BONES:
+		if _is_hair(n):
+			continue
+		var par: String = ARMORED_LAYOUT[n][0]
+		var at: Vector3 = ARMORED_LAYOUT[n][1]
+		var base := Vector3.ZERO if par == "" else (ARMORED_LAYOUT[par][1] as Vector3)
+		var nd := Node3D.new()
+		nd.name = n
+		nd.position = at - base
+		(J[par] as Node3D if par != "" else px).add_child(nd)
+		J[n] = nd
+	J["hips_y"] = (ARMORED_LAYOUT["hips"][1] as Vector3).y
+	var ps: PackedScene = load(MOCAP_GLB)
+	var body: Node3D = ps.instantiate()
+	body.name = "Body"
+	body.rotation.y = PI          # Meshy's model faces +z; the game's bodies face -z
+	root.add_child(body)
+	var skel: Skeleton3D = body.find_children("*", "Skeleton3D", true, false)[0]
+	var ap: AnimationPlayer = body.find_children("*", "AnimationPlayer", true, false)[0]
+	for c in ["idle", "combat_idle", "walk", "walk_fight", "run", "run_fast", "sprint", "walk_back", "run_fwd_left", "run_fwd_right"]:
+		if ap.has_animation(c):
+			ap.get_animation(c).loop_mode = Animation.LOOP_LINEAR
+	# the bones the gear and effects ride (followers, set every frame from the skeleton)
+	var fol := {}
+	for f in [["hand_r", "RightHand"], ["hand_l", "LeftHand"], ["el_l", "LeftForeArm"], ["head", "Head"], ["torso", "Spine02"]]:
+		var nd := Node3D.new()
+		nd.name = "at_" + f[0]
+		root.add_child(nd)
+		fol[f[1]] = [skel.find_bone(f[1]), nd, f[0]]
+		J["at_" + f[0]] = nd
+	J["grip_r"] = Models.N(J["at_hand_r"], "grip_r", Vector3(0, -0.07, -0.005), Vector3(-28, 0, 0))
+	J["grip_l"] = Models.N(J["at_hand_l"], "grip_l", Vector3(0, -0.07, 0))
+	J["mount_l"] = Models.N(J["at_el_l"], "mount_l", Vector3(-0.075, -0.14, 0), Vector3(0, 70, 0))
+	J["chest"] = Models.N(J["at_torso"], "chest", Vector3(0, 0.06, -0.17), Vector3(-80, 0, 0))
+	# motion capture: relaxed and battle-ready locomotion by ground speed (m/s), mixed by how drawn the weapon is
+	var tree := AnimationTree.new()
+	tree.name = "Mocap"
+	body.add_child(tree)
+	tree.root_node = NodePath("..")
+	tree.anim_player = NodePath("../" + String(body.get_path_to(ap)))
+	tree.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
+	var bt := AnimationNodeBlendTree.new()
+	var relaxed := _speed_space(["idle", 0.0, "walk", 0.55, "run", 4.25, "run_fast", 6.6])
+	var combat := _speed_space(["combat_idle", 0.0, "walk_fight", 0.6, "run", 4.25, "run_fast", 6.6])
+	var dead := AnimationNodeAnimation.new()
+	dead.animation = "death"
+	bt.add_node("relaxed", relaxed, Vector2(0, 0))
+	bt.add_node("combat", combat, Vector2(0, 200))
+	bt.add_node("mix", AnimationNodeBlend2.new(), Vector2(250, 100))
+	bt.add_node("speed", AnimationNodeTimeScale.new(), Vector2(450, 100))
+	bt.add_node("death", dead, Vector2(450, 300))
+	var tr := AnimationNodeTransition.new()
+	tr.add_input("alive")
+	tr.add_input("dead")
+	tr.xfade_time = 0.15
+	bt.add_node("state", tr, Vector2(650, 150))
+	bt.connect_node("mix", 0, "relaxed")
+	bt.connect_node("mix", 1, "combat")
+	bt.connect_node("speed", 0, "mix")
+	bt.connect_node("state", 0, "speed")
+	bt.connect_node("state", 1, "death")
+	bt.connect_node("output", 0, "state")
+	tree.tree_root = bt
+	tree.active = true
+	root.set("tree", tree)
+	root.set("followers", fol)
+	root.call("setup", body, skel, J)
+	# the cloak: three panels of three bones on Spine02, swung by knight_rig.gd _sway_hair
+	var hb := []
+	var hr := []
+	var hk := []
+	var hc := []
+	for i in skel.get_bone_count():
+		var n := skel.get_bone_name(i)
+		if _is_hair(n):
+			hb.append(i)
+			hr.append(skel.get_bone_rest(i).origin)
+			hk.append([n.unicode_at(1) - 65, n.right(1).to_int() - 1])
+			hc.append([skel.get_bone_rest(i).basis.get_rotation_quaternion(), root.call("rest_rot", i)])
+	root.set("hair_bones", hb)
+	root.set("hair_rest", hr)
+	root.set("hair_key", hk)
+	root.set("hair_conj", hc)
+	root.set("hair_run", 0.45)
+	root.set("head_bone", skel.find_bone("Head"))
+	root.set_meta("j", J)
+	root.set_meta("h", 1.0)
+	root.set_meta("knight", true)
+	root.set_meta("meshy", "mocap")
+	root.set_meta("elbow_out", 0.4)
+	return root
+
+static func _speed_space(pts: Array) -> AnimationNodeBlendSpace1D:
+	var bs := AnimationNodeBlendSpace1D.new()
+	bs.min_space = 0.0
+	bs.max_space = 8.0
+	bs.sync = true
+	for i in range(0, pts.size(), 2):
+		var a := AnimationNodeAnimation.new()
+		a.animation = pts[i]
+		bs.add_blend_point(a, pts[i + 1])
+	return bs
+
 ## Sits a helm model on the knight's head joint (each body's head joint and skull differ).
 static func fit_helm(hm: Node3D, r: Node3D) -> void:
 	match str(r.get_meta("meshy")) if r.has_meta("meshy") else "":
-		"armored":
+		"armored", "mocap":
 			hm.position = Vector3(0, 0.095, -0.06)
 			hm.scale = Vector3(1.32, 1.32, 1.36)
 		_:

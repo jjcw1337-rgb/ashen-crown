@@ -256,7 +256,10 @@ func _build_rig() -> void:
 		rig = Warlock.build(warlock_gear())
 	else:
 		var body := _knight_body()
-		rig = Knight.build(Knight.default_gear()) if body == "" else Knight.build_meshy(body == "armored")
+		if body == "mocap":
+			rig = Knight.build_mocap()
+		else:
+			rig = Knight.build(Knight.default_gear()) if body == "" else Knight.build_meshy(body == "armored")
 		rig.set_meta("gait", "knight")    # Anim: heavy armoured run, elbows out
 	rig.set_meta("pers", "hero")
 	add_child(rig)
@@ -264,7 +267,7 @@ func _build_rig() -> void:
 	if breath != null and is_instance_valid(breath):
 		breath.queue_free()
 	breath = game.weather.make_breath()
-	(J["head"] as Node3D).add_child(breath)
+	(J.get("at_head", J["head"]) as Node3D).add_child(breath)
 	breath.position = Vector3(0, 0.02, -0.16)
 
 ## Which body the knight wears: the Meshy one in shirt and shorts while no armour is equipped
@@ -275,6 +278,8 @@ func _knight_body() -> String:
 		return ""
 	if equipment.get("armor") == null:
 		return "plain" if Knight.meshy_ok() else ""
+	if Knight.mocap_ok():
+		return "mocap"
 	return "armored" if Knight.armored_ok() else ""
 
 ## Switch the character's class: new body, skills and spirit colours.
@@ -570,9 +575,9 @@ func refresh_gear() -> void:
 		gear_nodes.append(shield_node)
 	var h = equipment.get("helm")
 	# the crusader (the armoured body) always wears his own great helm: a helm item's stats count, its model isn't drawn
-	if h != null and cls == "knight" and str(rig.get_meta("meshy", "")) != "armored":
+	if h != null and cls == "knight" and not ["armored", "mocap"].has(str(rig.get_meta("meshy", ""))):
 		var hm := Models.item_model(h)
-		(J["head"] as Node3D).add_child(hm)
+		(J.get("at_head", J["head"]) as Node3D).add_child(hm)
 		Knight.fit_helm(hm, rig)
 		gear_nodes.append(hm)
 	if is_wraith():
@@ -1755,7 +1760,7 @@ func _update_drain(delta: float) -> void:
 			return
 		mana -= 2.0 * (1.0 - talent("cost:drain") / 100.0)
 	var root: Node3D = game.world.fx_root
-	var hand: Vector3 = (J["hand_l"] as Node3D).global_position
+	var hand: Vector3 = (J.get("at_hand_l", J["hand_l"]) as Node3D).global_position
 	var dmg := (6.0 + level * 2.4 + (dmg_min + dmg_max) * 0.6) * 0.3 * buff_mult() * dmg_mult("drain")
 	var heal := 0.0
 	var victims := _drain_victims()
@@ -1791,7 +1796,7 @@ func _draw_drain() -> void:
 	if victims.is_empty():
 		return
 	var root: Node3D = game.world.fx_root
-	var hand: Vector3 = (J["hand_l"] as Node3D).global_position + (-rig.global_transform.basis.z) * 0.08
+	var hand: Vector3 = (J.get("at_hand_l", J["hand_l"]) as Node3D).global_position + (-rig.global_transform.basis.z) * 0.08
 	var mc: Vector3 = drain_main.global_position + Vector3(0, 1.0 * drain_main.height, 0)
 	var keep := {}
 	for i in victims.size():

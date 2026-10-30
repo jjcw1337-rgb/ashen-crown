@@ -580,7 +580,9 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 		(J["tail"] as Node3D).rotation = Vector3(-0.1 + sin(ph * 2.0) * 0.08 * mm, tw, 0)
 	if rig.has_meta("goblin"):
 		Goblin.after_pose(rig, J, D, st, dt)
-	if rig.has_method("sync"):
+	if rig.has_method("sync_pose"):
+		rig.sync_pose(st)    # the mocap knight: motion capture with these moves laid over it
+	elif rig.has_method("sync"):
 		rig.sync()
 
 static func _pose_crawler(rig: Node3D, J: Dictionary, st: Dictionary, s: float) -> void:
