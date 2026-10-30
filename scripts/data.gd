@@ -31,18 +31,25 @@ static func act_info(act: int, run: int) -> Dictionary:
 ## `run` is its difficulty index, Data.RUNS). An act opens once the act before it falls (Game.max_run);
 ## each of its waypoints opens once a player touches that waypoint stone (Game.waypoints_known, kept
 ## per act in Game.run_progress). The camp's is open as soon as you arrive.
-## Adding an act: a RUNS entry (+ RUN_ACTS names), its zones, and an entry here.
+## Adding an act: a RUNS entry (+ RUN_ACTS names), its zones, and an entry here ("name" overrides the
+## tab name, which is otherwise Data.RUNS[run].name).
 ## Adding a waypoint: a point here, and in that zone's builder an Inter "waypoint" with {"wp": <id>}
 ## plus a "waypoint" spawn beside it (see World / Via / ForestCamp).
-##   tab: the numeral on the act's tab (its name is Data.RUNS[run].name) · art: its banner (Meshy) · points: id (what the stone binds),
+##   group: its tab group (WAYPOINT_GROUPS) · tab: the numeral on the act's tab (its name is Data.RUNS[run].name) · art: its banner (Meshy) · points: id (what the stone binds),
 ##   zone (where it takes you), kind (camp | wild | road | city: its icon), name (optional; else the
 ##   act's name for that zone) · boss: the lord whose fall opens the next act
+## The window's tab groups, left to right; a group shows only once it has an entry (group: its id).
+const WAYPOINT_GROUPS := [
+	{"id": "acts", "name": "Acts"},
+	{"id": "ancient", "name": "Ancient Levels"},
+]
+
 const WAYPOINT_ACTS := [
-	{"run": 0, "tab": "I", "art": "res://assets/textures/ui/wp_act1.png", "boss": "goblin_king",
+	{"run": 0, "group": "acts", "tab": "I", "art": "res://assets/textures/ui/wp_act1.png", "boss": "goblin_king",
 		"points": [{"id": "town", "zone": "town", "kind": "camp"}, {"id": "wild", "zone": "wild", "kind": "wild"}]},
-	{"run": 1, "tab": "II", "art": "res://assets/textures/ui/wp_act2.png", "boss": "champion",
+	{"run": 1, "group": "acts", "tab": "II", "art": "res://assets/textures/ui/wp_act2.png", "boss": "champion",
 		"points": [{"id": "town", "zone": "town", "kind": "camp"}, {"id": "wild", "zone": "wild", "kind": "road"}]},
-	{"run": 2, "tab": "III", "art": "res://assets/textures/ui/wp_act3.png", "boss": "ashen_king",
+	{"run": 2, "group": "acts", "tab": "III", "art": "res://assets/textures/ui/wp_act3.png", "boss": "ashen_king",
 		"points": [{"id": "town", "zone": "town", "kind": "camp"}, {"id": "wild", "zone": "wild", "kind": "wild"}]},
 ]
 

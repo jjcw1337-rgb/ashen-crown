@@ -1,6 +1,6 @@
 class_name WaypointPanel
 extends PanelContainer
-## The waypoint window: a tab per act (Data.WAYPOINT_ACTS), its Meshy banner, and the act's route of
+## The waypoint window: a tab per act (_acts()), its Meshy banner, and the act's route of
 ## waypoints. Built in the action bar's iron frame and sockets. An act's tab opens once the act before
 ## it falls (Game.act_unlocked); a waypoint lights once a player has touched its stone
 ## (Game.waypoint_known). Click a lit waypoint to go there, in this act or another (Game.waypoint_go).
@@ -21,6 +21,9 @@ var _t := 0.0
 var _spin := 0.0             # extra sigil spin after a click (the jump)
 var sigil: TextureRect
 var tabs_box: HBoxContainer
+var groups_box: HBoxContainer
+var sel_group := "acts"
+var acts_override: Array = []   # screenshots only: sample future acts in place of _acts()
 var banner_clip: Control
 var banner: TextureRect
 var banner_title: Label
@@ -111,10 +114,19 @@ func setup(u: UI) -> void:
 	rule.color = Color(GOLD, 0.4)
 	rule.custom_minimum_size = Vector2(0, 1)
 	vb.add_child(rule)
-	# --- the act tabs
+	# --- the tab groups (Acts, Ancient Levels, ...: shown once there is more than one) and the act tabs,
+	# in a row that scrolls sideways when more acts are added than fit
+	groups_box = HBoxContainer.new()
+	groups_box.add_theme_constant_override("separation", 18)
+	vb.add_child(groups_box)
+	var tscroll := ScrollContainer.new()
+	tscroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	tscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	tscroll.custom_minimum_size = Vector2(0, 58)
+	vb.add_child(tscroll)
 	tabs_box = HBoxContainer.new()
 	tabs_box.add_theme_constant_override("separation", 10)
-	vb.add_child(tabs_box)
+	tscroll.add_child(tabs_box)
 	# --- body: the act's banner on the left, its route on the right
 	var body := HBoxContainer.new()
 	body.add_theme_constant_override("separation", 18)
@@ -199,6 +211,7 @@ func setup(u: UI) -> void:
 func open(from: Node3D = null) -> void:
 	stone = from
 	sel_run = int(game.difficulty)
+	sel_group = str(_act(sel_run).get("group", "acts"))
 	_fill()
 	visible = true
 	modulate.a = 0.0
@@ -215,16 +228,40 @@ func close() -> void:
 	ui.tooltip.visible = false
 	ui.tip_owner = null
 
+func _acts() -> Array:
+	return acts_override if not acts_override.is_empty() else Data.WAYPOINT_ACTS
+
+func _act(run: int) -> Dictionary:
+	for a in _acts():
+		if int(a["run"]) == run:
+			return a
+	return {}
+
+## An act's name: its entry's "name", else its run's (Data.RUNS).
 func _act_name(run: int) -> String:
+	var a := _act(run)
+	if a.has("name"):
+		return str(a["name"])
 	return str(Data.RUNS[clampi(run, 0, Data.RUNS.size() - 1)]["name"])
 
 func _fill() -> void:
 	here_icons.clear()
 	for c in tabs_box.get_children():
 		c.queue_free()
-	for a in Data.WAYPOINT_ACTS:
-		tabs_box.add_child(_tab(a))
-	var act: Dictionary = Data.waypoint_act(sel_run)
+	for c in groups_box.get_children():
+		c.queue_free()
+	var used := []
+	for a in _acts():
+		if not used.has(a.get("group", "acts")):
+			used.append(a.get("group", "acts"))
+	groups_box.visible = used.size() > 1
+	for gdef in Data.WAYPOINT_GROUPS:
+		if used.has(gdef["id"]):
+			groups_box.add_child(_group_tab(gdef))
+	for a in _acts():
+		if str(a.get("group", "acts")) == sel_group:
+			tabs_box.add_child(_tab(a))
+	var act: Dictionary = _act(sel_run)
 	var info: Dictionary = Data.act_info(0, sel_run)
 	var open_act: bool = game.act_unlocked(sel_run)
 	banner.texture = load(act["art"]) if act.has("art") and ResourceLoader.exists(act["art"]) else null
@@ -237,7 +274,7 @@ func _fill() -> void:
 	for c in route_box.get_children():
 		c.queue_free()
 	if not open_act:
-		route_box.add_child(_sealed_card(Data.waypoint_act(sel_run - 1)))
+		route_box.add_child(_sealed_card(_act(sel_run - 1)))
 	if open_act:
 		var pts: Array = act["points"]
 		for i in pts.size():
@@ -245,7 +282,7 @@ func _fill() -> void:
 		route_box.add_child(_lair_row(act, info))
 	for c in next_box.get_children():
 		c.queue_free()
-	var nxt: Dictionary = Data.waypoint_act(sel_run + 1)
+	var nxt: Dictionary = _act(sel_run + 1)
 	if open_act and not nxt.is_empty():
 		next_box.add_child(_next_card(act, nxt))
 	route_line.queue_redraw()
@@ -253,6 +290,33 @@ func _fill() -> void:
 func _boss_name(act: Dictionary) -> String:
 	var b: String = act.get("boss", "")
 	return str(Data.ENEMIES[b]["name"]) if Data.ENEMIES.has(b) else "its lord"
+
+## A tab group's heading (ACTS | ANCIENT LEVELS): picks which acts' tabs show; gold underline when chosen.
+func _group_tab(gdef: Dictionary) -> Control:
+	var gid: String = gdef["id"]
+	var on := gid == sel_group
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 2)
+	vb.mouse_filter = Control.MOUSE_FILTER_STOP
+	vb.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var l := ui._label(str(gdef["name"]).to_upper(), 13, GOLD if on else DIM, true)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(l)
+	var bar := ColorRect.new()
+	bar.color = GOLD if on else Color(0, 0, 0, 0)
+	bar.custom_minimum_size = Vector2(0, 2)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(bar)
+	vb.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT and gid != sel_group:
+			sel_group = gid
+			for a in _acts():
+				if str(a.get("group", "acts")) == gid:
+					sel_run = int(a["run"])
+					break
+			Sfx.play("click")
+			_fill())
+	return vb
 
 ## One act's tab: a bar socket with the act's numeral; gold when selected, a cyan glow on the act you
 ## are in, dark and sealed until it is open.
@@ -268,7 +332,7 @@ func _tab(a: Dictionary) -> Control:
 		st.shadow_color = Color(CYAN, 0.35)
 		st.shadow_size = 8
 	t.add_theme_stylebox_override("panel", st)
-	t.custom_minimum_size = Vector2(150, 0)
+	t.custom_minimum_size = Vector2(140, 0)
 	t.mouse_filter = Control.MOUSE_FILTER_STOP
 	t.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	var hb := HBoxContainer.new()
@@ -298,7 +362,7 @@ func _tab(a: Dictionary) -> Control:
 	t.mouse_entered.connect(func():
 		var lines := [[_act_name(run) + "  ·  " + str(Data.act_info(0, run)["name"]), GOLD]]
 		if not opened:
-			lines.append(["Slay %s in %s to open it" % [_boss_name(Data.waypoint_act(run - 1)), _act_name(run - 1)], Color(1.0, 0.55, 0.4)])
+			lines.append(["Slay %s in %s to open it" % [_boss_name(_act(run - 1)), _act_name(run - 1)], Color(1.0, 0.55, 0.4)])
 		else:
 			lines.append([game.run_note(run), INK])
 		ui.show_tooltip(lines)
