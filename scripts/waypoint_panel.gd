@@ -1,6 +1,6 @@
 class_name WaypointPanel
 extends PanelContainer
-## The waypoint window: a tab per act (_acts()), its Meshy banner, and the act's route of
+## The waypoint window: a tab per act (Data.WAYPOINT_ACTS), its Meshy banner, and the act's route of
 ## waypoints. Built in the action bar's iron frame and sockets. An act's tab opens once the act before
 ## it falls (Game.act_unlocked); a waypoint lights once a player has touched its stone
 ## (Game.waypoint_known). Click a lit waypoint to go there, in this act or another (Game.waypoint_go).
@@ -23,7 +23,7 @@ var sigil: TextureRect
 var tabs_box: HBoxContainer
 var groups_box: HBoxContainer
 var sel_group := "acts"
-var acts_override: Array = []   # screenshots only: sample future acts in place of _acts()
+var acts_override: Array = []   # screenshots only: sample future acts in place of Data.WAYPOINT_ACTS
 var banner_clip: Control
 var banner: TextureRect
 var banner_title: Label
@@ -33,6 +33,7 @@ var next_box: VBoxContainer
 var seal: Label
 var route_box: VBoxContainer
 var route_line: Control
+var route_stack: Control      # holds the road and the stops; sized to the stops so the route scrolls
 var here_icons: Array = []   # the "you are here" sigils, pulsed in _process
 var stone: Node3D = null     # the waypoint stone it was opened from: walk away and it closes
 var cover: Control           # a clear layer behind the window: a click off the window closes it
@@ -192,9 +193,16 @@ func setup(u: UI) -> void:
 	right.add_theme_constant_override("separation", 8)
 	body.add_child(right)
 	right.add_child(ui._label("THE ROUTE", 13, DIM, true))
-	var rwrap := Control.new()
-	rwrap.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	right.add_child(rwrap)
+	# the route scrolls when an act has more waypoints than fit; the road is drawn behind the stops
+	var rscroll := ScrollContainer.new()
+	rscroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	rscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	right.add_child(rscroll)
+	route_stack = Control.new()
+	route_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	route_stack.mouse_filter = Control.MOUSE_FILTER_PASS
+	rscroll.add_child(route_stack)
+	var rwrap := route_stack
 	route_line = Control.new()
 	route_line.set_anchors_preset(Control.PRESET_FULL_RECT)
 	route_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -227,6 +235,10 @@ func close() -> void:
 	stone = null
 	ui.tooltip.visible = false
 	ui.tip_owner = null
+
+## The act whose lord opens act `run`: its "requires", else the act before it.
+func _opener(run: int) -> int:
+	return int(_act(run).get("requires", run - 1))
 
 func _acts() -> Array:
 	return acts_override if not acts_override.is_empty() else Data.WAYPOINT_ACTS
@@ -272,9 +284,10 @@ func _fill() -> void:
 	seal.visible = not open_act
 	seal.text = "SEALED"
 	for c in route_box.get_children():
+		route_box.remove_child(c)
 		c.queue_free()
 	if not open_act:
-		route_box.add_child(_sealed_card(_act(sel_run - 1)))
+		route_box.add_child(_sealed_card(_act(_opener(sel_run))))
 	if open_act:
 		var pts: Array = act["points"]
 		for i in pts.size():
@@ -285,6 +298,7 @@ func _fill() -> void:
 	var nxt: Dictionary = _act(sel_run + 1)
 	if open_act and not nxt.is_empty():
 		next_box.add_child(_next_card(act, nxt))
+	_size_route.call_deferred()
 	route_line.queue_redraw()
 
 func _boss_name(act: Dictionary) -> String:
@@ -362,7 +376,7 @@ func _tab(a: Dictionary) -> Control:
 	t.mouse_entered.connect(func():
 		var lines := [[_act_name(run) + "  ·  " + str(Data.act_info(0, run)["name"]), GOLD]]
 		if not opened:
-			lines.append(["Slay %s in %s to open it" % [_boss_name(_act(run - 1)), _act_name(run - 1)], Color(1.0, 0.55, 0.4)])
+			lines.append(["Slay %s in %s to open it" % [_boss_name(_act(_opener(run))), _act_name(_opener(run))], Color(1.0, 0.55, 0.4)])
 		else:
 			lines.append([game.run_note(run), INK])
 		ui.show_tooltip(lines)
@@ -440,7 +454,7 @@ func _point_row(act: Dictionary, p: Dictionary, info: Dictionary) -> Control:
 			if not known or here:
 				Sfx.play("deny")
 				return
-			_jump(run, zone, icon))
+			_jump(run, str(p["id"]), icon))
 	return row
 
 ## The end of the route: the act's lair, reached on foot; shows whether its lord still rules.
@@ -519,6 +533,9 @@ func _next_card(act: Dictionary, nxt: Dictionary) -> Control:
 			_fill())
 	return card
 
+func _size_route() -> void:
+	route_stack.custom_minimum_size = Vector2(0, route_box.get_combined_minimum_size().y + 4)
+
 ## The dotted road joining the route's sigils, top to bottom.
 func _draw_route() -> void:
 	var pts := []
@@ -535,7 +552,7 @@ func _draw_route() -> void:
 				route_line.draw_line(a.lerp(b, float(k) / n), a.lerp(b, float(k + 1) / n), Color(GOLD, 0.8), 2.5)
 
 ## Take the waypoint: the sigils spin up, a flash, then the journey.
-func _jump(run: int, zone: String, icon: Control) -> void:
+func _jump(run: int, id: String, icon: Control) -> void:
 	_spin = 14.0
 	Sfx.play("portal")
 	var tw := icon.create_tween()
@@ -543,7 +560,7 @@ func _jump(run: int, zone: String, icon: Control) -> void:
 	tw.tween_property(icon, "modulate", Color(1, 1, 1), 0.2)
 	await get_tree().create_timer(0.28).timeout
 	close()
-	game.waypoint_go(run, zone)
+	game.waypoint_go(run, id)
 
 func _process(delta: float) -> void:
 	if not visible:

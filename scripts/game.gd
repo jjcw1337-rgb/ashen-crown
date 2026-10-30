@@ -72,6 +72,9 @@ var _busy := false
 
 func _ready() -> void:
 	rng.randomize()
+	if OS.is_debug_build():
+		for e in Data.check_waypoints():
+			push_warning("Waypoints: " + e)
 	Mats.ensure_globals()
 	var args := OS.get_cmdline_user_args()
 	for i in args.size():
@@ -1390,9 +1393,19 @@ func travel_waypoint(dest: Dictionary) -> void:
 	travel(cur_act, dest["zone"], "waypoint")
 
 # ---------------------------------------------------------------- the waypoint network (Data.WAYPOINT_ACTS)
-## An act is open once the act before it has fallen (in co-op, the host's progress counts).
+## An act is open once the act before it has fallen (in co-op, the host's progress counts). An entry
+## with "requires": <run> opens instead once that act's lord has fallen. Dev tools open everything.
 func act_unlocked(run: int) -> bool:
-	return run >= 0 and run <= (net.party_max_run if net.is_client() else max_run)
+	var a := Data.waypoint_act(run)
+	if a.is_empty() or run < 0:
+		return false
+	if a.has("requires"):
+		return dev_tools_on() or act_boss_slain(int(a["requires"]))
+	return run <= (net.party_max_run if net.is_client() else max_run)
+
+## True where the developer tools are (the testing switch; see UNLOCK_ALL_ACTS).
+func dev_tools_on() -> bool:
+	return bool(get("dev_tools")) if "dev_tools" in self else UNLOCK_ALL_ACTS
 
 ## Has this character touched waypoint `id` in act `run`? Each act keeps its own (run_progress).
 func waypoint_known(run: int, id: String) -> bool:
@@ -1406,11 +1419,13 @@ func act_boss_slain(run: int) -> bool:
 		return boss_killed
 	return bool(run_progress.get(str(run), {}).get("boss", false))
 
-## Take a waypoint (its id is its zone): within this act, travel there; to another act, switch to it and
-## arrive at that waypoint. Only acts that are open and waypoints this character has touched.
-func waypoint_go(run: int, zone: String) -> void:
-	if _busy or not act_unlocked(run) or not waypoint_known(run, zone):
+## Take waypoint `id` of act `run`: within this act, travel to its zone; to another act, switch to it and
+## arrive at that waypoint. Only open acts, and waypoints this character has touched.
+func waypoint_go(run: int, id: String) -> void:
+	var p := Data.waypoint_point(run, id)
+	if _busy or p.is_empty() or not act_unlocked(run) or not waypoint_known(run, id):
 		return
+	var zone: String = p["zone"]
 	if run == difficulty:
 		if zone != cur_zone:
 			travel_waypoint({"zone": zone})

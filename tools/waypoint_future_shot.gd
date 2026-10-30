@@ -19,6 +19,11 @@ func _run() -> void:
 	g.waypoints_known = ["town", "wild"]
 	var wp = g.ui.wp_panel
 	var acts: Array = Data.WAYPOINT_ACTS.duplicate(true)
+	if args.has("many"):
+		acts[0]["points"] = [{"id": "town", "zone": "town", "kind": "camp"}, {"id": "wild", "zone": "wild", "kind": "wild"},
+			{"id": "w3", "zone": "w3", "kind": "wild", "name": "Blackroot Hollow"}, {"id": "w4", "zone": "w4", "kind": "road", "name": "The Old Toll Bridge"},
+			{"id": "w5", "zone": "w5", "kind": "wild", "name": "Weeping Fen"}, {"id": "w6", "zone": "w6", "kind": "city", "name": "Ruins of Carrow"}]
+		g.waypoints_known = ["town", "wild", "w3", "w4"]
 	acts.append({"run": 3, "group": "acts", "tab": "IV", "name": "Act IV", "art": "res://assets/textures/ui/wp_act3.png", "boss": "ashen_king", "points": [{"id": "town", "zone": "town", "kind": "camp"}]})
 	acts.append({"run": 4, "group": "acts", "tab": "V", "name": "Act V", "art": "res://assets/textures/ui/wp_act3.png", "boss": "ashen_king", "points": [{"id": "town", "zone": "town", "kind": "camp"}]})
 	acts.append({"run": 10, "group": "ancient", "tab": "✦", "name": "The Sunken Vault", "art": "res://assets/textures/ui/wp_act1.png", "boss": "goblin_king", "points": [{"id": "town", "zone": "town", "kind": "camp"}]})

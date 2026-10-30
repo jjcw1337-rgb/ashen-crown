@@ -23,6 +23,8 @@ func _settle() -> void:
 func _run() -> void:
 	while g.world == null or g._busy or g._intro_playing:
 		await process_frame
+	var errs: Array = Data.check_waypoints()
+	ok(errs.is_empty(), "Data.WAYPOINT_ACTS checks out " + str(errs))
 	await g.start_game(false, "knight")
 	await _settle()
 	g.max_run = 0

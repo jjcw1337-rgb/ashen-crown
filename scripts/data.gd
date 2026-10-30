@@ -34,7 +34,10 @@ static func act_info(act: int, run: int) -> Dictionary:
 ## Adding an act: a RUNS entry (+ RUN_ACTS names), its zones, and an entry here ("name" overrides the
 ## tab name, which is otherwise Data.RUNS[run].name).
 ## Adding a waypoint: a point here, and in that zone's builder an Inter "waypoint" with {"wp": <id>}
-## plus a "waypoint" spawn beside it (see World / Via / ForestCamp).
+## plus a "waypoint" spawn beside it (see World / Via / ForestCamp). A new zone also goes in
+## WAYPOINT_ZONES and World.build. check_waypoints() reports mistakes (dev builds print them at start).
+## Optional per entry: "name" (the tab's name; else Data.RUNS[run].name), "requires" (open once that
+## run's lord falls, instead of the act before it: for side areas such as Ancient Levels).
 ##   group: its tab group (WAYPOINT_GROUPS) · tab: the numeral on the act's tab (its name is Data.RUNS[run].name) · art: its banner (Meshy) · points: id (what the stone binds),
 ##   zone (where it takes you), kind (camp | wild | road | city: its icon), name (optional; else the
 ##   act's name for that zone) · boss: the lord whose fall opens the next act
@@ -58,6 +61,48 @@ static func waypoint_act(run: int) -> Dictionary:
 		if int(a["run"]) == run:
 			return a
 	return {}
+
+static func waypoint_point(run: int, id: String) -> Dictionary:
+	for p in waypoint_act(run).get("points", []):
+		if str(p["id"]) == id:
+			return p
+	return {}
+
+## Zones the world can build (World.build); a waypoint must lead to one of these.
+const WAYPOINT_ZONES := ["town", "wild", "lair"]
+
+## Problems in WAYPOINT_ACTS, one line each (empty = all good). Checked at start in dev builds
+## (Game) and by tools/waypoint_test.gd, so a mistake shows the moment it is made.
+static func check_waypoints() -> Array:
+	var errs := []
+	var runs := {}
+	var groups := WAYPOINT_GROUPS.map(func(g): return g["id"])
+	for a in WAYPOINT_ACTS:
+		var r := int(a.get("run", -1))
+		var tag := "act run %d" % r
+		if runs.has(r):
+			errs.append(tag + ": run used twice")
+		runs[r] = true
+		if not groups.has(a.get("group", "acts")):
+			errs.append(tag + ": unknown group '%s' (add it to WAYPOINT_GROUPS)" % a.get("group"))
+		if a.has("art") and not ResourceLoader.exists(a["art"]):
+			errs.append(tag + ": banner not found: " + str(a["art"]))
+		if a.has("boss") and not ENEMIES.has(a["boss"]):
+			errs.append(tag + ": unknown boss '%s'" % a["boss"])
+		if not a.has("requires") and r >= RUNS.size():
+			errs.append(tag + ": no Data.RUNS entry (or give it \"requires\")")
+		var pts: Array = a.get("points", [])
+		if pts.is_empty():
+			errs.append(tag + ": no waypoints")
+		var ids := {}
+		for p in pts:
+			var id := str(p.get("id", ""))
+			if id == "" or ids.has(id):
+				errs.append(tag + ": waypoint id missing or used twice ('%s')" % id)
+			ids[id] = true
+			if not WAYPOINT_ZONES.has(str(p.get("zone", ""))):
+				errs.append(tag + ": waypoint '%s' leads to unknown zone '%s'" % [id, p.get("zone", "")])
+	return errs
 
 const VENDORS := [
 	{"smith": "Halvar Emberhammer", "armor": "Hedda Ironhand", "alch": "Agnes Grimwood", "gamble": "Tarrow the Dice", "stash": "Stash", "elder": "Captain Roth"},
