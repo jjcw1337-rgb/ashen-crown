@@ -118,7 +118,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   Talents: Marksman, Warden, Beastmaster (`Talents.TREES["archer"]`; specials arrow_split, snare_dur, snare_max,
   snare_wide, volley_size, beast_two). Body: the knight's procedural body dressed as a hunter (`Archer.build_body`)
   until the Meshy model; talent icons still to paint (`tools/talent_icons.py` has the archer prompts).
-  `tools/archer_test.gd` checks it.
+  `tools/archer_test.gd` checks it; `tools/pet_test.gd` the Spirit Beast companion, `tools/pet_clip.gd` films it.
 - **Adding a class**: add it to `Data.CLASSES`, give it four `SKILLS` entries with its `cls`, build its look the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep working), handle its skill ids in `Hero.use_skill` / `_impact`, and add glyphs in `ui.gd` `SkillGlyph`.
 - **Underworld** (Demon's Phase): `game.set_underworld()` blends a screen-space grade (`DemonFx.UNDERWORLD_SHADER`), the `under_amt` global (terrain veins and rune rings in `mats.gd`), environment tweaks, rising souls and crimson monster outlines (`Enemy.set_soul_lit`). Monsters ignore a phased hero (`hero.phased`).
 - **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `_update_drain`, and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. Skill effects are local only (partners see the cast pose, not the beam), like every other class.
