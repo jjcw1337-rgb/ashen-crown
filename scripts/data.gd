@@ -105,6 +105,23 @@ static func check_waypoints() -> Array:
 				errs.append(tag + ": waypoint '%s' leads to unknown zone '%s'" % [id, p.get("zone", "")])
 	return errs
 
+## How each character draws and puts away its weapon (WeaponCarry; the motion itself lives in Anim).
+## Keyed by class (or, later, an enemy kind). Any key left out takes WeaponCarry.DEFAULT; a character
+## with no entry gets the default draw and a warning. A new character = a new entry (and, for a new
+## kind of motion, a new "draw_motion" branch in Anim.pose).
+##   motion: "knight" (cross-body draw from the left hip) | "back" (over the right shoulder)
+##   store: "hilt" (the body model's sheathed hilt shows; the weapon model hides) | "back" (on the back)
+##   draw_time / holster_time: seconds · grab: fraction of the motion where the hand takes it
+##   threat_range: metres · disengage: seconds safe before holstering · town: "holster" (always away)
+const WEAPON_PROFILES := {
+	# the crusader: a heavy, deliberate draw across the body from the scabbard on his left hip
+	"knight": {"motion": "knight", "store": "hilt", "draw_time": 0.85, "holster_time": 0.9, "grab": 0.38, "disengage": 4.0},
+	# the other classes keep the default over-the-shoulder draw until their new models arrive
+	"warlock": {"motion": "back", "store": "back"},
+	"wraith": {"motion": "back", "store": "back"},
+	"demon": {"motion": "back", "store": "back"},
+}
+
 const VENDORS := [
 	{"smith": "Halvar Emberhammer", "armor": "Hedda Ironhand", "alch": "Agnes Grimwood", "gamble": "Tarrow the Dice", "stash": "Stash", "elder": "Captain Roth"},
 	{"smith": "Kadir Forgebrand", "armor": "Saphra", "alch": "Iskander the Wise", "gamble": "Jamal Two-Coins", "stash": "Stash", "elder": "Vizier Hasun"},
