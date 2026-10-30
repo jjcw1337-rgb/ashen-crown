@@ -190,10 +190,11 @@ SPEC = [
          prompt="a heavy iron portcullis gate being hauled up by chains, rattling chains and grinding iron, ending in a clank" + DRY),
     dict(name="lion_roar", src="eleven", n=4, dur=2.5, hit=0, label="a lion roaring",
          prompt="a big male lion roaring loudly and angrily, close" + DRY),
-    # the camp's song: first an eerie piano (Blaine; takes 0-2), now soft and uplifting (jj; takes 3-5)
-    dict(name="music_town", src="eleven", n=6, dur=30.0, hit=0, loop=True, label="soft uplifting music",
-         prompt="soft, gentle and uplifting fantasy music for a safe campfire camp in an old forest at dusk, warm harp "
-                "and soft strings with a hopeful flowing melody in a major key, calm and peaceful, background music loop, no drums"),
+    # the camp's song: first an eerie piano (Blaine; takes 0-2), then soft and uplifting (takes 3-11), then for
+    # Act I's dark forest (takes 12-14); jj picked take 13, the forest sanctuary
+    dict(name="music_town", src="eleven", n=15, dur=30.0, hit=0, loop=True, label="dark forest sanctuary music",
+         prompt="dark forest sanctuary music for a dark fantasy game: mysterious but warm, soft harp arpeggios over a low "
+                "droning string pad with a lonely wooden flute, ancient woods at dusk, a hopeful refuge, background music loop, no drums"),
     dict(name="wind", src="eleven", n=3, dur=8.0, hit=0, loop=True, label="wind blowing",
          prompt="cold wind blowing across an empty moor at night, steady, no music"),
     # Act I outside the camp (the forest moor, Grubb's fort): soft trees in the breeze instead of the wind
