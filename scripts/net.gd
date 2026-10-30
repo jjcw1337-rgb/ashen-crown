@@ -7,7 +7,7 @@ extends Node
 const PORT := 24567
 const DISCO_PORT := 24568
 const MAX_CLIENTS := 3
-const STYLES := ["over", "back", "side", "thrust", "bow", "cast", "claw", "slam", "bite", "smash", "lob", "scoop", "burst", "cackle", "swipe1", "swipe2", "swipe3", "cleave", "feral_lunge", "feral_swipe", "perch", "descend"]
+const STYLES := ["over", "back", "side", "thrust", "bow", "cast", "claw", "slam", "bite", "smash", "lob", "scoop", "burst", "cackle", "swipe1", "swipe2", "swipe3", "cleave", "feral_lunge", "feral_swipe", "perch", "descend", "bear_roar", "bear_maul"]
 const SEND_RATE := 0.05
 const ALLY_COLORS := [Color(0.45, 0.8, 1.0), Color(0.5, 1.0, 0.5), Color(1.0, 0.6, 0.9)]
 

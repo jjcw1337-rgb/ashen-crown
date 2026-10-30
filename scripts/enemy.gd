@@ -80,6 +80,9 @@ var f_calm := 0.0      # after giving up it won't notice you again for a while (
 var lunge_from := Vector3.ZERO
 var lunge_to := Vector3.ZERO
 var slot_a := 0.0
+# the Forsaken Bear (bear.gd): roars once on noticing you, roars now and then while it wanders
+var b_roared := false
+var b_idle_t := 0.0
 
 func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> void:
 	game = g
@@ -384,6 +387,21 @@ func special_fx(ev: String) -> void:
 			Fx.burst(game.world.fx_root, global_position + Vector3(0, 1, 0), col, 50, 8.0, 0.2, 0.7, true, 0.0)
 			Sfx.play("nova")
 			game.add_shake(0.4)
+		"bear_tele":
+			# the danger zone: a ring where the paws will land
+			Fx.telegraph(game.world.fx_root, global_position - rig.global_transform.basis.z * 1.6, 1.9, atk_dur * Bear.MAUL_HIT, Color(0.6, 1.0, 0.4))
+		"bear_roar":
+			Bear.sound("bear_roar", global_position + Vector3(0, 2.0, 0))
+			Fx.burst(game.world.fx_root, global_position + Vector3(0, 2.4, 0) - rig.global_transform.basis.z * 0.9, Color(0.75, 0.8, 0.75, 0.35), 18, 1.6, 0.35, 0.9, false, 0.4, 35.0, -rig.global_transform.basis.z)
+			if game.hero.global_position.distance_to(global_position) < 16.0:
+				game.add_shake(0.25)
+		"bear_maul":
+			Bear.sound("bear_maul", global_position)
+			var paws := global_position - rig.global_transform.basis.z * 1.6
+			Fx.ring(game.world.fx_root, paws, 2.6, Color(0.45, 0.4, 0.33), 0.4)
+			Fx.burst(game.world.fx_root, paws + Vector3(0, 0.2, 0), Color(0.38, 0.33, 0.28, 0.8), 30, 4.5, 0.3, 0.8, false, -4.0, 80.0)
+			if game.hero.global_position.distance_to(global_position) < 10.0:
+				game.add_shake(0.45)
 		"enrage":
 			game.ui.message(display_name + " is enraged!", Color(1.0, 0.3, 0.2))
 			Sfx.play("roar")
@@ -415,7 +433,7 @@ func _process(delta: float) -> void:
 		if rig.has_meta("crawler"):
 			rig.rotation.z = f * PI
 			rig.position.y = f * 0.4 * height
-		elif rig.has_meta("feral") or rig.has_meta("lion"):
+		elif rig.has_meta("feral") or rig.has_meta("lion") or rig.has_meta("bear"):
 			rig.rotation.x = 0.0
 			rig.rotation.z = f * f * 1.35      # rolls onto his side
 		elif rig.has_meta("goblin"):
@@ -490,6 +508,8 @@ func _process(delta: float) -> void:
 			aggro = false
 		if aggro:
 			vel = _think_combat(delta, hero, to, dist)
+		elif def["ai"] == "bear":
+			vel = _bear_idle(delta)
 		else:
 			vel = _wander(delta)
 	# separation
@@ -536,6 +556,8 @@ static func build_rig(kind: String, variant := 1) -> Node3D:
 		return Feral.build(variant)
 	if d.get("mesh", "") == "lion" and Lion.ok():
 		return Lion.build()
+	if d.get("mesh", "") == "bear" and Bear.ok():
+		return Bear.build()
 	if d.has("mesh") and MeshyMonster.ok(d["mesh"]):
 		return MeshyMonster.build(d["mesh"], look)
 	if d.has("model"):
@@ -553,6 +575,8 @@ static func pose_rig(r: Node3D, st: Dictionary, height: float) -> void:
 		Feral.pose(r, st, height)
 	elif r.has_meta("lion"):
 		Lion.pose(r, st, height)
+	elif r.has_meta("bear"):
+		Bear.pose(r, st, height)
 	else:
 		Anim.pose(r, st)
 
@@ -588,6 +612,8 @@ func _think_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vect
 			return v
 	if ai == "feral":
 		return _feral_combat(delta, hero, to, dist)
+	if ai == "bear":
+		return _bear_combat(delta, hero, to, dist)
 	var rng_atk: float = def["range"]
 	if boss:
 		if not enraged and life < max_life * 0.35 and hoard == null:
@@ -697,6 +723,16 @@ func _begin_special(sp: String) -> void:
 			_begin_attack(sp)
 			if kind == "lion":
 				Sfx.play_at("lion_roar", global_position, -3.0, randf_range(0.92, 1.08))
+		# the Forsaken Bear: rear up and roar; rear and slam both forepaws down
+		"bear_roar":
+			atk_style = sp
+			atk_dur = Bear.ROAR_T
+			_begin_attack(sp)
+		"bear_maul":
+			atk_style = sp
+			atk_dur = Bear.MAUL_T
+			_begin_attack(sp)
+			_fx("bear_tele")
 		# King Grubb (hoard.gd): a lobbed bomb, scooping gold, staggering, cackling
 		"bomb", "scoop", "burst", "cackle":
 			atk_style = "lob" if sp == "bomb" else sp
@@ -710,7 +746,7 @@ func _update_attack(delta: float, hero: Node3D, dist: float) -> void:
 		var want := lunge_from.lerp(lunge_to, smoothstep(0.18, 0.62, a)) - global_position
 		want.y = 0
 		global_position = game.world.move(global_position, want, body_r())
-	if a < Anim.impact_at(atk_style) * 0.8 and special in ["", "volley", "bomb"]:
+	if a < Anim.impact_at(atk_style) * 0.8 and special in ["", "volley", "bomb", "bear_maul"]:
 		_face(hero.global_position - global_position)
 	if not impact_done and a >= Anim.impact_at(atk_style):
 		impact_done = true
@@ -718,6 +754,8 @@ func _update_attack(delta: float, hero: Node3D, dist: float) -> void:
 	if atk_t >= atk_dur:
 		atk_t = -1.0
 		cooldown = randf_range(0.3, 0.8) * (0.5 if boss else 1.0)
+		if special == "bear_maul":
+			cooldown = randf_range(0.9, 1.4)      # a heavy blow: a real opening after it
 		if special == "feral_lunge":
 			# after the leap he backs off a few steps, watching, before coming in for the claws
 			f_state = "back"
@@ -767,6 +805,18 @@ func _impact(hero: Node3D, dist: float) -> void:
 			for h in game.all_heroes():
 				if not h.dead and h.global_position.distance_to(global_position) < 7.0:
 					h.take_hit(_roll() * 1.2, global_position, "nova", "fire")
+		"bear_roar":
+			_fx("bear_roar")
+		"bear_maul":
+			# both forepaws come down in front: everyone in a 3 m arc ahead is hit and knocked back
+			_fx("bear_maul")
+			for h in game.all_heroes():
+				if h.dead:
+					continue
+				var to_h: Vector3 = h.global_position - global_position
+				to_h.y = 0
+				if to_h.length() < 3.0 + radius * 0.5 and fwd.dot(to_h.normalized()) > 0.2:
+					h.take_hit(_roll(), global_position, "maul")
 		"feral_lunge":
 			# the claws come down where he lands
 			if hero.global_position.distance_to(global_position) < radius + hero.radius + 1.1:
@@ -909,3 +959,45 @@ func _pack_lunging() -> bool:
 		if e != self and e.pack_id == pack_id and e.special == "feral_lunge" and e.atk_t >= 0.0:
 			return true
 	return false
+
+# ---------------------------------------------------------------- the Forsaken Bear (bear.gd)
+## Ambling about its home ground (wider than most monsters'), stopping every so often to rear up and roar.
+func _bear_idle(delta: float) -> Vector3:
+	b_idle_t -= delta
+	if b_idle_t <= 0.0:
+		b_idle_t = randf_range(14.0, 26.0)
+		if move_amt < 0.3 and global_position.distance_to(home) < 12.0:
+			_begin_special("bear_roar")
+			return Vector3.ZERO
+	wander_t -= delta
+	if wander_t <= 0.0:
+		wander_t = randf_range(3.0, 7.0)
+		wander_to = game.world.free_spot_near(home, 9.0) if randf() < 0.7 else global_position
+	var d := wander_to - global_position
+	d.y = 0
+	if d.length() < 0.4:
+		return Vector3.ZERO
+	return d.normalized() * speed * (0.45 if d.length() > 12.0 else 0.32)
+
+## On noticing a hero it rears and roars once, then charges and mauls, and keeps at it until one of them dies;
+## it gives up only when led more than 30 m from home.
+func _bear_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vector3:
+	if not b_roared:
+		b_roared = true
+		_face(to)
+		rig.rotation.y = atan2(-to.x, -to.z)
+		_begin_special("bear_roar")
+		return Vector3.ZERO
+	if global_position.distance_to(home) > 30.0:
+		aggro = false
+		b_roared = false
+		f_calm = 6.0
+		wander_to = home
+		wander_t = 8.0
+		return Vector3.ZERO
+	if dist <= def["range"] + hero.radius * 0.5:
+		if cooldown <= 0.0:
+			_face(to)
+			_begin_special("bear_maul")
+		return Vector3.ZERO
+	return go_to(delta, hero.global_position, speed * 1.5)

@@ -149,6 +149,10 @@ const ENEMIES := {
 	"bandit_archer": {"mesh": "bandit", "name": "Bandit Bowman", "rig": "humanoid", "life": 16, "dmg": [3, 6], "speed": 3.6, "range": 12.0, "xp": 12,
 		"ai": "ranged", "atk": "bow", "atk_time": 1.2, "armor": 2, "radius": 0.45, "proj": "arrow", "faction": "bandit", "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.6, 0.45, 0.33), "cloth": Color(0.26, 0.22, 0.15), "cloth2": Color(0.3, 0.2, 0.12), "height": 0.98, "bulk": 0.9, "head": "human", "hair": Color(0.15, 0.1, 0.07), "weapon": "bow"}},
+	# the Forsaken Bear (bear.gd): a lone wanderer off the road; no faction, so it fights anything in its way
+	"bear": {"mesh": "bear", "name": "Forsaken Bear", "rig": "crawler", "life": 130, "dmg": [9, 16], "speed": 3.0, "range": 2.4, "xp": 60,
+		"ai": "bear", "atk": "bear_maul", "atk_time": 1.5, "armor": 8, "radius": 1.0, "aggro": 12.0, "blood": Color(0.35, 0.05, 0.03),
+		"look": {"skin": Color(0.16, 0.15, 0.14), "shell": Color(0.1, 0.1, 0.09), "legs": 4, "size": 1.6, "eyes": Color(0.45, 1.0, 0.4)}},
 	"lion": {"mesh": "lion", "name": "Arena Lion", "rig": "crawler", "life": 30, "dmg": [4, 8], "speed": 5.0, "range": 1.9, "xp": 16,
 		"ai": "feral", "atk": "feral_swipe", "atk_time": 0.95, "armor": 3, "radius": 0.8, "aggro": 30.0, "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.55, 0.4, 0.22), "shell": Color(0.3, 0.2, 0.1), "legs": 4, "size": 1.2, "eyes": Color(1.0, 0.75, 0.2)}},
