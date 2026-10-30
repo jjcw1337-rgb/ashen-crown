@@ -121,6 +121,52 @@ const ARMORED_BONES := ["hips", "torso", "sh_r", "el_r", "hand_r", "leg_r", "kne
 ## glb path -> [ArrayMesh, Skin], built once per model.
 static var _meshy_cache := {}
 
+## Meshy fused faces between the cloak and the legs; with the cloak streaming out as cloth they stretch
+## into webs. Drops every triangle below the waist that joins cloak vertices (mostly weighted to the
+## cloak bones) to body vertices (mostly not); the cloak's own seam at the shoulders stays.
+const CLOAK_CUT_BELOW := 1.1
+static func _cut_cloak_bridges(m: ArrayMesh, cloak: Array, below := CLOAK_CUT_BELOW) -> ArrayMesh:
+	var out := ArrayMesh.new()
+	var cut := 0
+	for si in m.get_surface_count():
+		var arr: Array = m.surface_get_arrays(si)
+		var mat := m.surface_get_material(si)
+		if arr[Mesh.ARRAY_BONES] == null or arr[Mesh.ARRAY_WEIGHTS] == null:
+			out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+			out.surface_set_material(out.get_surface_count() - 1, mat)
+			continue
+		var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+		var bones: PackedInt32Array = arr[Mesh.ARRAY_BONES]
+		var wts: PackedFloat32Array = arr[Mesh.ARRAY_WEIGHTS]
+		var per := bones.size() / maxi(verts.size(), 1)
+		var share := PackedFloat32Array()
+		share.resize(verts.size())
+		for v in verts.size():
+			var c := 0.0
+			for k in per:
+				if cloak.has(bones[v * per + k]):
+					c += wts[v * per + k]
+			share[v] = c
+		var idx: PackedInt32Array = arr[Mesh.ARRAY_INDEX] if arr[Mesh.ARRAY_INDEX] != null else PackedInt32Array(range(verts.size()))
+		var keep := PackedInt32Array()
+		for t in idx.size() / 3:
+			var a := idx[t * 3]
+			var b := idx[t * 3 + 1]
+			var c2 := idx[t * 3 + 2]
+			var hi := maxf(share[a], maxf(share[b], share[c2]))
+			var lo := minf(share[a], minf(share[b], share[c2]))
+			var y := (verts[a].y + verts[b].y + verts[c2].y) / 3.0
+			if hi > 0.6 and lo < 0.4 and y < below:
+				cut += 1
+				continue
+			keep.append_array([a, b, c2])
+		arr[Mesh.ARRAY_INDEX] = keep
+		out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		out.surface_set_material(out.get_surface_count() - 1, mat)
+	out.set_meta("imported", true)
+	out.set_meta("bridges_cut", cut)
+	return out
+
 static func _is_hair(n: String) -> bool:
 	return n.length() == 3 and n.begins_with("h") and n.unicode_at(1) >= 65 and n.unicode_at(1) <= 90
 
@@ -170,7 +216,10 @@ static func build_meshy(armored := false) -> Node3D:
 		if not _is_hair(BONES[i]):
 			proxies[i] = n
 	if not _meshy_cache.has(GLB):
-		_meshy_cache[GLB] = [Goblin._imported(GLB, bi), skel.create_skin_from_rest_transforms()]
+		var mesh: ArrayMesh = Goblin._imported(GLB, bi)
+		if armored:
+			mesh = _cut_cloak_bridges(mesh, ["hA1", "hA2", "hA3", "hB1", "hB2", "hB3", "hC1", "hC2", "hC3"].map(func(nm): return bi[nm]))
+		_meshy_cache[GLB] = [mesh, skel.create_skin_from_rest_transforms()]
 	var mi := MeshInstance3D.new()
 	mi.name = "Body"
 	mi.mesh = _meshy_cache[GLB][0]
@@ -199,7 +248,6 @@ static func build_meshy(armored := false) -> Node3D:
 	if armored:
 		# his long cloak hangs on the three panels: cloth, not hair
 		root.set("cloak", true)
-		root.set("cloak_legs", [bi["leg_l"], bi["leg_r"]])
 		root.set_meta("elbow_out", 0.4)    # the plate is wide already: a tighter arm pump
 	return root
 

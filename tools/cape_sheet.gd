@@ -2,7 +2,7 @@ extends SceneTree
 ## Contact sheet of the armoured knight's cloak (knight_rig.gd `_sway_cloak`) from behind and the side:
 ## standing in the wind, starting to run, running, stopping, and a sharp turn, sampled through the
 ## motion with the springs stepped at 30 fps. Needs a display.
-## Usage: godot --path . -s tools/cape_sheet.gd -- out.png [side]
+## Usage: godot --path . -s tools/cape_sheet.gd -- out.png [side|game]
 const CELL := 220
 const COLS := 8
 
@@ -13,6 +13,7 @@ func _run() -> void:
 	var args := OS.get_cmdline_user_args()
 	var out: String = args[0]
 	var side: bool = args.has("side")
+	var game_cam: bool = args.has("game")      # from the game camera's angle (Game.CAM_OFFSET), closer in
 	var root3 := Node3D.new()
 	get_root().add_child(root3)
 	var env := WorldEnvironment.new()
@@ -65,6 +66,8 @@ func _run() -> void:
 			var back := r.global_transform.basis.z
 			var rt := r.global_transform.basis.x
 			var eye := c + (rt * 3.4 + Vector3(0, 1.3, 0) + back * 0.4 if side else back * 2.6 + rt * 1.3 + Vector3(0, 1.8, 0))
+			if game_cam:
+				eye = c + Vector3(0, 17.0, 16.5) * 0.3
 			cam.transform = Transform3D(Basis(), eye).looking_at(c + Vector3(0, 1.1, 0))
 			await process_frame
 			if f % every == 0:

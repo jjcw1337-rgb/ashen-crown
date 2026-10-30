@@ -155,10 +155,13 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   voxel-remeshed watertight proxy (Meshy's mesh isn't watertight) and transfers the weights; the helm rides the head,
   the sword and the cloth between the legs ride the hips, the arms (and their spikes) only their own arm; the cloak
   (found by the metallic map and where it hangs) hangs on three panels of three bones (hA..hC) that `knight_rig.gd`
-  `_sway_cloak` moves as cloth (`cloak`, set by `Knight.build_meshy(true)`: gusting wind with a ripple down and across
-  the panels when he stands, streaming back about 45 degrees and flapping at a run, footfall bounce, swinging out on
-  turns; the panels pull together so the sheet stays whole, it never folds forward into the legs, a leg's back swing
-  pushes the hem; preview `tools/cape_sheet.gd -- out.png [side]`); faces Meshy fused between parts that move apart (cloak/leg, cloak/arm, arm/hips) are cut, and
+  `_cloth_cloak` simulates as cloth (`cloak`, set by `Knight.build_meshy(true)`): a 3 x 4 grid of verlet points down
+  the panels, the top row pinned under the shoulders, pushed by gravity, a gusting wind that changes direction and the
+  air he moves through (so it streams out opposite to wherever he goes, like a flag, fluttering with the airflow),
+  held by lengths down and across, kept behind his back, out of his leg capsules and above the ground; the panel
+  bones are turned to follow the points. `Knight._cut_cloak_bridges` drops the triangles Meshy fused between the
+  cloak and the legs below the waist, which would stretch into webs; preview `tools/cape_sheet.gd -- out.png
+  [side|game]`); faces Meshy fused between parts that move apart (cloak/leg, cloak/arm, arm/hips) are cut, and
   cloak shreds left beside the A-pose arms are dropped. `--debug` renders the A-pose coloured by main bone.
   The earlier armoured knight (bare head, red tabard) is kept as `knight_statue.glb` for the arena statues.
 - **Act I trees and grass** (`World.oak_forest`, set by `game.gd` when `difficulty == 0`; A2/A3 keep the old mix): three
