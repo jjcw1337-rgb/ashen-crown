@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `a2_arena_test`, `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
+`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -67,6 +67,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `enemy.gd`, `projectile.gd`, `feral.gd` | Monsters/AI and missiles (host-authoritative in co-op); the Feral's baked-animation body |
 | `via.gd`, `aurelia.gd`, `games.gd`, `roman.gd` | A2: the Imperial Road (wild), the city of Aurelia and its arena (lair), the arena's games (the act's boss fight), and the Roman architecture they're built from |
 | `lion.gd` | The arena lion: a Meshy model on a quadruped skeleton, posed in code (no baked animations) |
+| `sloth.gd` | The Hollow Sloth (Act I): three giants roaming the moor; its brain (`Sloth.new(enemy)`) and its code-posed body |
 | `fort.gd` | Grubb's fort (the lair in Act I; A3 keeps the crypt): the muddy approach with the guards fighting the dead, the palisade ring, gatehouse and watchtowers (Meshy props in `assets/models/fort/`), the lived-in camp scattered round Grubb's open courtyard, and the moor's goblin trail end (`Fort.trail_end`) |
 | `meshy_monster.gd` | Act I monsters from Meshy (`MeshyMonster.MODELS`, zombie/fallen/archer/goblin_guard): built on `Goblin.imported_rig` with grips and weapons; `Data.ENEMIES` `"mesh"` picks them |
 | `hoard.gd` | King Grubb's fight (Act I boss): Gilded Bombs, the three burst sacks, the gold scramble (piles reaching him heal him; piles a hero takes hurt him) |
@@ -220,6 +221,41 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   charges and mauls (a 3 m arc, `"maul"` hits knock the hero back: `Hero.knock_v`), gives up 30 m from home. Its sounds
   borrow `lion_roar` (pitched down) and `slam` until `bear_roar`/`bear_maul` exist (`Bear.sound`; ElevenLabs needs
   Blaine's OK). `tools/bear_test.gd`, `tools/bear_sheet.gd -- out.png [side|34]`.
+- **The Hollow Sloths** (`sloth.gd`, Act I, `World._sloths`): three elemental giants, `Data.ENEMIES` `sloth_fire`
+  (Cinderhide), `sloth_ice` (Rimeclaw), `sloth_storm` (Thundermaw), each with `"element"` (fire/cold/lightning),
+  `"variant"` (its model) and `"drop"` (its material). Each lives in its own lair (`sloth_lair.gd`, `SlothLair`:
+  Cinder Hollow, Rimefrost Glade, Stormcall Ring), a clearing `SlothLair.pick` places 20-32 m off the road on the
+  side with room, far apart, before the trees (which, grass and ferns keep out: `World._in_lair`); dressed with a
+  Decal of procedural ground (lava cracks, frost, violet fissures), Meshy props `assets/models/lairs/<kind>.glb`
+  (modelled 1 m tall, scaled; solid), a light, its element's particles, and bolts striking the storm's rune stones.
+  Brain: `Sloth.new(enemy)` (Enemy's 50 m cut-off skips it); it walks on all fours, sniffs, rises to look about,
+  only inside `SlothLair.TERRITORY` of its home; a hero across `SlothLair.BOUNDARY` or a blow wakes it: it rises,
+  stares, roars and hunts (its run building from 2.2 to 5.6 m/s) the hero who struck it last (`on_hit`, 8 s), else
+  the closest, follows anywhere and never gives up or flees; its prey dead, it walks home (`"home"`). Skills (each with its element, `Sloth._land`): the
+  Rending Sweep (arc in front; `take_hit` kind `"sweep"` throws the hero back, `Hero.shove`; cold: `"chill"`, slowed,
+  `Hero.chill_t`; fire leaves burning ground; lightning chains to heroes near the one struck), the Earthshaker slam
+  (ring 5 m ahead; `"quake"` stuns, `Hero.daze_t`; cold `"freeze"`; fire leaves a ring of burning ground; lightning
+  calls six bolts down round it, `strikes`), the Hollow Pounce (5.5-11 m; cold shatters ice, fire lands in flame,
+  lightning is a quicker dash that shocks, `"shock"`). Burning ground and bolts are host-side lists ticked in
+  `_tick_hazards`; everything seen is a `sloth_*` fx event (place-carrying ones like `sloth_burn:x,z,r,dur` go
+  through `_elem_fx`). Each timed move is an `atk_t`/`atk_dur`/`atk_style` (`sloth_*`, in `Net.STYLES`), so
+  `Sloth.pose` shows the same on every peer; posture holds between moves. The slam has a casting motion per element
+  (rig meta `element`: fire heaves and flings its arms wide, cold crosses its claws and shivers, lightning raises
+  both arms to the sky) with `_elem_charge` effects. `Sloth.dress` lights the body in its colour with its element's
+  particles; `Sloth.presence`/`idle_fx` (every peer) do footfalls, groans, shake, flicker and the storm's arcs.
+  Killing one drops a unique, gold and its material; the corner map marks one within 40 m (group `"sloth"`).
+  Models: `assets/models/monsters/hollow_sloth_<fire|ice|storm>.glb` (Meshy, from concepts in `exports/act1/`;
+  decimated to 42k and rigged by `tools/blender/act1/rig_sloth.py`, skinned by distance to the bones since Blender's
+  heat skinning fails on the fur shells; source `sources/hollow_sloth.blend`), `Sloth.MODEL_SCALE` 1.4; without
+  them a capsule stand-in on the same skeleton (`Sloth.BONES`). Previews: `tools/sloth_sheet.gd -- out.png [front]
+  [fire|ice|storm]`, `tools/sloth_shots.gd`, `tools/sloth_clip.gd` (frames of one fighting; `--fixed-fps 30`).
+  Load sloth.gd at run time in a `-s` tool (`load(...)`), like aurelia.gd.
+- **Materials** (`Data.BASES` slot `"material"`: `cinderheart`, `everfrost`, `stormglass`): one inventory space,
+  never worn or drunk (`Items.is_material`), for crafting later. Each has `"color"`, `"lore"`, a painted `"icon"`
+  (`assets/textures/items/`, cut out of Meshy art by `tools/icon_cutout.py`; `IconRenderer.get_icon` uses it) and a
+  Meshy `"model"` (`assets/models/items/`, `Models.material`). On the ground they glow (`GroundItem._material_glow`:
+  beam, pulsing light, their element rising off them, `Fx.aura`); picking one up is `Game.claim_material` (burst,
+  pillar, the `relic_ting` sound, an announcement).
 - **Factions** (`"faction"` in `Data.ENEMIES`: goblin, undead): a monster fights the nearest other-faction monster when
   it is closer than the hero (`Enemy.rival`, `Enemy.take_hit` so the attack code works on both); rival kills give no
   xp or loot (`killed_by_rival`). Host-side like all AI.

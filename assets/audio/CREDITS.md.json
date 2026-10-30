@@ -302,6 +302,18 @@
    "source": "Kenney rpg-audio (kenney.nl)"
   }
  ],
+ "fire_erupt": [
+  {
+   "detail": "a ring of fire erupting from the ground, roaring whoosh of flames bursting up, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a ring of fire erupting from the ground, roaring whoosh of flames bursting up, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "fireball": [
   {
    "detail": "a fireball launched, roaring burst of flame whooshing away, close mic, dry, isolated sound effect, no music",
@@ -400,6 +412,18 @@
  "hurt": [
   {
    "detail": "a goblin or ghoul hit by a blade, a short ugly grunt of pain, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "ice_shatter": [
+  {
+   "detail": "a block of ice cracking and shattering into shards on stone, sharp crystalline crunch, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a block of ice cracking and shattering into shards on stone, sharp crystalline crunch, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }
@@ -561,6 +585,23 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "relic_ting": [
+  {
+   "detail": "picking up a rare magical gem in a dark fantasy game, one bright clear crystal ting with a shimmering glassy ring that fades, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "picking up a rare magical gem in a dark fantasy game, one bright clear crystal ting with a shimmering glassy ring that fades, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "picking up a rare magical gem in a dark fantasy game, one bright clear crystal ting with a shimmering glassy ring that fades, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "roar": [
   {
    "detail": "a huge mutated goblin king's furious roar, close mic, dry, isolated sound effect, no music",
@@ -648,6 +689,18 @@
  "swing_light": [
   {
    "detail": "a single fast sword swing through the air, sharp whoosh, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "thunder_strike": [
+  {
+   "detail": "a bolt of lightning striking the ground close by, sharp electric crack and a short rumble, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a bolt of lightning striking the ground close by, sharp electric crack and a short rumble, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }

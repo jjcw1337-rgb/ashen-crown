@@ -51,6 +51,11 @@ func get_icon(it: Dictionary, cb: Callable) -> Texture2D:
 	var k := key_of(it)
 	if cache.has(k):
 		return cache[k]
+	# a painted icon (the materials) instead of a render of the model
+	var b: Dictionary = Data.BASES[it["base"]]
+	if b.has("icon") and ResourceLoader.exists(b["icon"]):
+		cache[k] = load(b["icon"])
+		return cache[k]
 	if not waiting.has(k):
 		waiting[k] = []
 		queue.append(it)

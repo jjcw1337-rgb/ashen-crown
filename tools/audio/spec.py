@@ -175,6 +175,16 @@ SPEC = [
     dict(name="levelup", src="eleven", n=4, dur=2.0, hit=0, label="a triumphant chime",
          prompt="level up in a dark fantasy game, short triumphant swell with a bright magical chime, subtle" + DRY),
 
+    dict(name="relic_ting", src="eleven", n=5, dur=1.6, hit=0, label="a crystal ting",
+         prompt="picking up a rare magical gem in a dark fantasy game, one bright clear crystal ting with a shimmering glassy ring that fades" + DRY),
+    # ---------------------------------------------------------------- the Hollow Sloths' elements (sloth.gd)
+    dict(name="ice_shatter", src="eleven", n=4, dur=1.2, hit=0, label="ice shattering",
+         prompt="a block of ice cracking and shattering into shards on stone, sharp crystalline crunch" + DRY),
+    dict(name="thunder_strike", src="eleven", n=4, dur=1.6, hit=0, label="a lightning strike",
+         prompt="a bolt of lightning striking the ground close by, sharp electric crack and a short rumble" + DRY),
+    dict(name="fire_erupt", src="eleven", n=4, dur=1.4, hit=0, label="flames erupting",
+         prompt="a ring of fire erupting from the ground, roaring whoosh of flames bursting up" + DRY),
+
     # ---------------------------------------------------------------- ambience loops
     # the campsite's song (Blaine: eerie, piano); the acts keep the wind
     # ---------------------------------------------------------------- A2: Aurelia's arena (games.gd)

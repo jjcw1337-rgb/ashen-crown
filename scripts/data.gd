@@ -152,6 +152,17 @@ const ENEMIES := {
 	"feral": {"mesh": "feral", "name": "Feral", "rig": "humanoid", "life": 15, "dmg": [2, 5], "speed": 4.2, "range": 1.4, "xp": 12,
 		"ai": "feral", "atk": "feral_swipe", "atk_time": 0.8, "armor": 1, "radius": 0.5, "aggro": 14.0, "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.66, 0.6, 0.55), "cloth": Color(0.25, 0.2, 0.15), "height": 0.72, "bulk": 0.8, "head": "human", "hair": Color(0.08, 0.07, 0.06), "eyes": Color(1.0, 0.7, 0.3)}},
+	# the Hollow Sloths (sloth.gd): three elemental giants roam the whole Act I moor, best avoided; each fights with
+	# its element ("element") and drops its own material ("drop"). "variant" picks its model.
+	"sloth_fire": {"mesh": "sloth", "variant": "fire", "element": "fire", "drop": "cinderheart", "name": "Cinderhide, the Burning Sloth", "rig": "crawler",
+		"life": 320, "dmg": [8, 15], "speed": 2.2, "range": 2.6, "xp": 160, "ai": "sloth", "atk": "sloth_sweep", "atk_time": 1.35, "armor": 10, "radius": 1.3,
+		"aggro": 15.0, "trophy": true, "blood": Color(0.35, 0.08, 0.02), "look": {"skin": Color(0.16, 0.12, 0.1), "height": 1.7, "eyes": Color(1.0, 0.5, 0.1)}},
+	"sloth_ice": {"mesh": "sloth", "variant": "ice", "element": "cold", "drop": "everfrost", "name": "Rimeclaw, the Frozen Sloth", "rig": "crawler",
+		"life": 320, "dmg": [8, 15], "speed": 2.2, "range": 2.6, "xp": 160, "ai": "sloth", "atk": "sloth_sweep", "atk_time": 1.35, "armor": 10, "radius": 1.3,
+		"aggro": 15.0, "trophy": true, "blood": Color(0.3, 0.06, 0.04), "look": {"skin": Color(0.78, 0.8, 0.82), "height": 1.7, "eyes": Color(0.45, 0.85, 1.0)}},
+	"sloth_storm": {"mesh": "sloth", "variant": "storm", "element": "lightning", "drop": "stormglass", "name": "Thundermaw, the Storm Sloth", "rig": "crawler",
+		"life": 320, "dmg": [8, 15], "speed": 2.2, "range": 2.6, "xp": 160, "ai": "sloth", "atk": "sloth_sweep", "atk_time": 1.35, "armor": 10, "radius": 1.3,
+		"aggro": 15.0, "trophy": true, "blood": Color(0.3, 0.06, 0.04), "look": {"skin": Color(0.25, 0.26, 0.33), "height": 1.7, "eyes": Color(0.75, 0.45, 1.0)}},
 	# A2: the bandits of the Imperial Road (they wait hidden and spring an ambush, via.gd) and the beasts,
 	# gladiators and champion of Aurelia's arena (games.gd). "mesh" picks the Meshy model when it's there.
 	"bandit": {"mesh": "bandit", "name": "Road Bandit", "rig": "humanoid", "life": 22, "dmg": [3, 7], "speed": 4.4, "range": 1.6, "xp": 13,
@@ -242,7 +253,7 @@ const ENEMIES := {
 const CHAMP_PREFIX := ["Gloom", "Rot", "Blood", "Storm", "Grim", "Bane", "Cinder", "Vile", "Doom", "Ash"]
 const CHAMP_SUFFIX := ["maw", "fang", "hide", "brand", "skull", "spine", "heart", "claw"]
 
-## Item bases. slot: weapon, shield, helm, armor, gloves, boots, belt, ring, amulet, potion, gold
+## Item bases. slot: weapon, shield, helm, armor, gloves, boots, belt, ring, amulet, potion, gold, material
 const BASES := {
 	"short_sword": {"name": "Short Sword", "slot": "weapon", "kind": "sword", "dmg": [2, 6], "speed": 1.1, "lvl": 1, "price": 30, "shape": {"len": 0.62, "w": 0.06, "guard": 0.2}},
 	"falchion": {"name": "Falchion", "slot": "weapon", "kind": "sword", "dmg": [4, 10], "speed": 1.0, "lvl": 5, "price": 80, "shape": {"len": 0.72, "w": 0.075, "guard": 0.22, "curve": 1.0}},
@@ -294,6 +305,13 @@ const BASES := {
 	"long_bow": {"name": "Long Bow", "slot": "weapon", "kind": "longbow", "cls": "archer", "dmg": [7, 16], "speed": 1.0, "lvl": 11, "price": 170},
 	"war_bow": {"name": "War Bow", "slot": "weapon", "kind": "longbow", "cls": "archer", "dmg": [12, 25], "speed": 0.95, "lvl": 19, "price": 330},
 	"grave_bow": {"name": "Gravewood Bow", "slot": "weapon", "kind": "longbow", "cls": "archer", "dmg": [18, 34], "speed": 1.0, "lvl": 26, "price": 600},
+	# materials: one space in the inventory, kept for crafting; each Hollow Sloth drops its own (sloth.gd)
+	"cinderheart": {"icon": "res://assets/textures/items/cinderheart.png", "model": "res://assets/models/items/cinderheart.glb", "name": "Cinderheart Ember", "slot": "material", "kind": "ember", "lvl": 1, "price": 400, "color": Color(1.0, 0.45, 0.08),
+		"lore": "Still burning, torn from the chest of Cinderhide"},
+	"everfrost": {"icon": "res://assets/textures/items/everfrost.png", "model": "res://assets/models/items/everfrost.glb", "name": "Everfrost Talon", "slot": "material", "kind": "talon", "lvl": 1, "price": 400, "color": Color(0.45, 0.85, 1.0),
+		"lore": "A claw of Rimeclaw's that never thaws"},
+	"stormglass": {"icon": "res://assets/textures/items/stormglass.png", "model": "res://assets/models/items/stormglass.glb", "name": "Stormglass Eye", "slot": "material", "kind": "orb", "lvl": 1, "price": 400, "color": Color(0.72, 0.45, 1.0),
+		"lore": "Thundermaw's eye, a storm still raging inside"},
 }
 
 ## Affixes: [stat, prefix/suffix name, min, max, per-level growth]

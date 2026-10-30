@@ -39,6 +39,8 @@ var spawns := {}
 ## Places that burn in A3: [position, size]. Recorded while building; only used for looks.
 var burn_points: Array = []
 var enemy_spawns: Array = []
+## Act I: the Hollow Sloths' lairs (sloth_lair.gd), picked before the trees so they stay clear
+var sloth_lairs: Array = []
 var boss_spawn := {}
 ## Hidden enemies that appear when a hero comes near (Via's bandit ambush; Game._check_ambushes):
 ## [{pos: Vector3, radius, spawns: [spawn entries], done, land: Vector3}]
@@ -549,6 +551,8 @@ func _scatter_grass(count: int, colors: Dictionary, height: float, outside := tr
 			continue
 		if bounds.grow(-1.2).has_point(Vector2(x, z)) and is_blocked(x, z):
 			continue
+		if _in_lair(x, z, 0.8):
+			continue
 		var y := height_at(x, z)
 		var s := rng.randf_range(0.7, 1.35) * (1.0 - dm * 0.6)
 		xf.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.3), s)), Vector3(x, y - 0.02, z)))
@@ -664,6 +668,22 @@ func _bear_dens(count: int, lair: Vector2) -> void:
 		placed.append(p)
 		enemy_spawns.append({"kind": "bear", "pos": p, "count": 1, "champ": false, "pack": 900 + placed.size(), "level": level + 2})
 
+## Act I: the three Hollow Sloths (sloth.gd: fire, ice, lightning), each in its own lair (sloth_lair.gd),
+## a clearing far off the road dressed for its element, where it lives and wanders.
+func _sloths() -> void:
+	var kinds := ["sloth_fire", "sloth_ice", "sloth_storm"]
+	for i in sloth_lairs.size():
+		var p: Vector3 = sloth_lairs[i]
+		SlothLair.make(self, p, Data.ENEMIES[kinds[i]]["element"])
+		enemy_spawns.append({"kind": kinds[i], "pos": p, "count": 1, "champ": false, "pack": 800 + i, "level": level + 2, "lair": true})
+
+## Inside a Hollow Sloth's clearing (no trees there; k shrinks it, so the grass thins in at its edge).
+func _in_lair(x: float, z: float, k := 1.0) -> bool:
+	for l in sloth_lairs:
+		if Vector2(x, z).distance_to(Vector2(l.x, l.z)) < SlothLair.CLEAR * k:
+			return true
+	return false
+
 ## Act I: a few rare Sunstar Blooms off the road, in among the trees. Picking one gives +50% experience
 ## for 5 minutes (Game.use_inter). Their own seed, so the rest of the moor doesn't change around them.
 func _rare_flowers(count: int) -> void:
@@ -712,6 +732,8 @@ func _scatter_ferns(count: int) -> void:
 			continue
 		var inside := bounds.grow(-1.5).has_point(Vector2(x, z))
 		if inside and (is_blocked(x, z) or rng.randf() < 0.6):
+			continue
+		if _in_lair(x, z, 0.85):
 			continue
 		xf.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.7, 1.35)), Vector3(x, height_at(x, z) - 0.03, z)))
 	var parts := [[], []]
@@ -1364,6 +1386,11 @@ func _build_wild() -> void:
 		for lm in [circle_c, gy + Vector2(0, 2.5), wpp] + shrine_ps:
 			_side_trail(lm)
 
+	if oak_forest:
+		sloth_lairs = SlothLair.pick(self)
+		# bare earth under each lair (its decal paints the element over it)
+		for l in sloth_lairs:
+			dirt_blobs.append([Vector2(l.x, l.z), SlothLair.CLEAR * 0.9, 0.9])
 	# vegetation
 	var dt_meshes := [Flora.dead_tree(11), Flora.dead_tree(23), Flora.dead_tree(37)]
 	var pine_meshes := [Flora.pine(4), Flora.pine(5), Flora.pine(6)]
@@ -1378,6 +1405,8 @@ func _build_wild() -> void:
 		if inside and (pd < (6.5 if style == 0 or style == 2 else 3.6) or is_near_obstacle(Vector3(px, 0, pz), 2.5)):
 			continue
 		if inside and rng.randf() < 0.3:
+			continue
+		if _in_lair(px, pz):
 			continue
 		var r := rng.randf()
 		var key := ""
@@ -1416,7 +1445,7 @@ func _build_wild() -> void:
 			for ti in rng.randi_range(3, 5):
 				var a := rng.randf() * TAU
 				var pg := cg + Vector2(cos(a), sin(a)) * rng.randf_range(0.0, 5.5)
-				if not bounds.grow(-1.5).has_point(pg) or path_dist(pg.x, pg.y) < 7.0 or is_near_obstacle(Vector3(pg.x, 0, pg.y), 3.2):
+				if not bounds.grow(-1.5).has_point(pg) or path_dist(pg.x, pg.y) < 7.0 or is_near_obstacle(Vector3(pg.x, 0, pg.y), 3.2) or _in_lair(pg.x, pg.y):
 					continue
 				var key2 := "oak%d" % rng.randi_range(0, 2)
 				if not groups.has(key2):
@@ -1496,6 +1525,7 @@ func _build_wild() -> void:
 	if oak_forest:
 		_feral_packs(groups, pid)
 		_bear_dens(2, end_p)
+		_sloths()
 	spawns["start"] = Vector3(0, 0, -6)
 	for k in [["road", 0.22], ["road2", 0.5]]:
 		var rp: Vector2 = path_poly[int(path_poly.size() * k[1])]

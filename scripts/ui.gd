@@ -1666,7 +1666,7 @@ func _inv_click(idx: int, ev: InputEventMouseButton) -> void:
 					Sfx.play("pickup")
 					break
 			refresh()
-		elif not Items.is_equip(it):
+		elif not Items.is_equip(it) and not Items.is_material(it):
 			hero.equip_from_inventory(idx)
 			refresh()
 
@@ -4319,6 +4319,14 @@ class Minimap extends Control:
 				"chest":
 					if not it.used:
 						ci.draw_rect(Rect2(sp2 - Vector2(3.5, 2.5), Vector2(7, 5)), Color(0.85, 0.65, 0.3))
+		# a Hollow Sloth close by: a red mark, so you can steer clear
+		for sl in g.get_tree().get_nodes_in_group("sloth"):
+			if is_instance_valid(sl) and not sl.dead and sl.global_position.distance_to(hp) < 40.0:
+				var ssp := _to_screen(sl.global_position, hp)
+				if _inside(ssp):
+					var pulse := 0.75 + 0.25 * sin(Time.get_ticks_msec() * 0.006)
+					ci.draw_circle(ssp, 7.5, Color(0, 0, 0, 0.75))
+					ci.draw_circle(ssp, 5.5 * pulse, Color(0.95, 0.15, 0.1))
 		# co-op partners
 		if g.net and g.net.active:
 			for a in g.net.puppets():

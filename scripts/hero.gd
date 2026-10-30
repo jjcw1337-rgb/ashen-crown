@@ -67,6 +67,10 @@ var impact_done := false
 var blocking := false
 var block_amt := 0.0
 var block_flash := 0.0
+## the Hollow Sloth's blows (sloth.gd): its sweep throws you back, its slam stuns
+var shove := Vector3.ZERO
+var daze_t := 0.0
+var chill_t := 0.0          # Rimeclaw's cold: slowed while it lasts
 var hit_t := 0.0
 var cls := "knight"          # "knight", "wraith", "demon" or "warlock" (Data.CLASSES)
 var cds := {}
@@ -790,7 +794,7 @@ func free_attack(aim: Vector3) -> void:
 ## the next one, which cuts off that swipe's recovery so the three flow together; the finisher
 ## (a full spin that hits all round) always plays out, and the chain starts over after a pause.
 func swipe_attack(aim: Vector3, keep_target := false) -> void:
-	if dead or charge_t >= 0.0 or drain_t >= 0.0:
+	if dead or charge_t >= 0.0 or drain_t >= 0.0 or daze_t > 0.0:
 		return
 	if has_bow():
 		Archer.shoot(self, aim, keep_target)
@@ -937,7 +941,7 @@ func can_act() -> bool:
 	return not dead and atk_t < 0.0 and charge_t < 0.0 and drain_t < 0.0
 
 func use_skill(id: String, aim: Vector3) -> bool:
-	if dead or charge_t >= 0.0:
+	if dead or charge_t >= 0.0 or daze_t > 0.0:
 		return false
 	if atk_t >= 0.0 and atk_skill != "":
 		return false
@@ -1225,11 +1229,34 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 		away.y = 0
 		knock_v = (away.normalized() if away.length() > 0.05 else -rig.global_transform.basis.z) * 7.5
 	# a plain thud, no voice: an "oof" on every hit was too much
-	Sfx.play("hero_hit", -3.0, randf_range(0.9, 1.1))
-	Fx.blood(game.world.fx_root, global_position + Vector3(0, 1.2, 0), Color(0.6, 0.02, 0.02))
+	var burn := kind == "burn"
+	if not burn:
+		Sfx.play("hero_hit", -3.0, randf_range(0.9, 1.1))
+		Fx.blood(game.world.fx_root, global_position + Vector3(0, 1.2, 0), Color(0.6, 0.02, 0.02))
+		game.add_shake(0.2)
 	show_damage(dmg)
-	game.add_shake(0.2)
 	game.ui.flash_damage()
+	# the Hollow Sloths' blows: thrown back, stunned, chilled, frozen solid, shocked
+	match kind:
+		"sweep":
+			var away := global_position - from
+			away.y = 0
+			if away.length() > 0.01:
+				shove = away.normalized() * 11.0
+		"quake":
+			daze_t = maxf(daze_t, 1.1)
+			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Stunned", Color(0.95, 0.8, 0.5))
+		"chill":
+			chill_t = maxf(chill_t, 2.5)
+			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Chilled", Color(0.55, 0.85, 1.0))
+		"freeze":
+			daze_t = maxf(daze_t, 1.8)
+			chill_t = maxf(chill_t, 4.0)
+			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Frozen", Color(0.6, 0.9, 1.0))
+			Fx.burst(game.world.fx_root, global_position + Vector3(0, 1.0, 0), Color(0.8, 0.95, 1.0), 30, 1.5, 0.15, 1.0, true, -1.0)
+		"shock":
+			daze_t = maxf(daze_t, 0.45)
+			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Shocked", Color(0.8, 0.6, 1.0))
 	if life <= 0.0:
 		life = 0.0
 		dead = true
@@ -1329,6 +1356,16 @@ func _process(delta: float) -> void:
 		speed *= 0.72
 	if game.test_fast:
 		speed *= game.TEST_FAST
+	if shove.length() > 0.05:
+		global_position = game.world.move(global_position, shove * delta)
+		shove = shove.lerp(Vector3.ZERO, clampf(delta * 6.0, 0.0, 1.0))
+	if daze_t > 0.0:
+		daze_t -= delta
+		hit_t = maxf(hit_t, 0.6)
+		speed = 0.0
+	if chill_t > 0.0:
+		chill_t -= delta
+		speed *= 0.55
 
 	if charge_t >= 0.0:
 		_update_charge(delta)
@@ -2363,6 +2400,8 @@ func move_in_inventory(from: int, to: int) -> void:
 func equip_from_inventory(idx: int) -> void:
 	var it = inventory[idx]
 	if it == null:
+		return
+	if Items.is_material(it):
 		return
 	if not Items.is_equip(it):
 		# potions: as many as fit go to the belt, the rest stay here
