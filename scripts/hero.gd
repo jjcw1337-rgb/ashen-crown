@@ -39,6 +39,7 @@ var fire_dmg := 0
 var armor := 0
 var block_chance := 0.0
 var aspd := 1.0
+var knock_v := Vector3.ZERO    # being thrown back (a bear's maul)
 var dmg_stack: DamageStack     # the stacking red damage number over the head
 var ls := 0.0
 var res := 0
@@ -1218,6 +1219,11 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	dmg = maxf(1.0, dmg)
 	life -= dmg
 	hit_t = 1.0
+	if kind == "maul":
+		# thrown back from the blow
+		var away := global_position - from
+		away.y = 0
+		knock_v = (away.normalized() if away.length() > 0.05 else -rig.global_transform.basis.z) * 7.5
 	# a plain thud, no voice: an "oof" on every hit was too much
 	Sfx.play("hero_hit", -3.0, randf_range(0.9, 1.1))
 	Fx.blood(game.world.fx_root, global_position + Vector3(0, 1.2, 0), Color(0.6, 0.02, 0.02))
@@ -1267,6 +1273,9 @@ func _process(delta: float) -> void:
 		if swipe_idle > 0.75:
 			swipe_n = 0
 			swipe_q = false
+	if knock_v.length() > 0.05:
+		global_position = game.world.move(global_position, knock_v * delta)
+		knock_v = knock_v.lerp(Vector3.ZERO, clampf(delta * 6.0, 0.0, 1.0))
 	if dead:
 		dead_t += delta
 		var f := clampf(dead_t / 0.7, 0.0, 1.0)

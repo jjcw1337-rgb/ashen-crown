@@ -19,6 +19,8 @@ static func kf(t: float, keys: Array) -> float:
 static func impact_at(style: String) -> float:
 	match style:
 		"over": return 0.5
+		"bear_maul": return Bear.MAUL_HIT
+		"bear_roar": return Bear.ROAR_AT
 		"back": return 0.48
 		"side": return 0.48
 		"thrust": return 0.52

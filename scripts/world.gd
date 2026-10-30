@@ -641,6 +641,29 @@ func _feral_packs(groups: Dictionary, pid: int) -> void:
 			enemy_spawns.append({"kind": "feral", "pos": o + out * trunk, "count": 1, "champ": false, "pack": 500 + pid + centres.size(),
 				"level": level + 1, "perch": [o.x, o.z]})
 
+## Act I: the Forsaken Bears (bear.gd), each a lone wanderer 20-40 m off the road, well apart, clear of the
+## camp's gate (the start) and the fort's end of the moor. Their own seed, so nothing else moves.
+func _bear_dens(count: int, lair: Vector2) -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = int(bounds.size.y * 1000.0) + 9311
+	var placed := []
+	var start: Vector3 = Vector3(0, 0, -6)
+	for tries in 600:
+		if placed.size() >= count:
+			break
+		var x := r.randf_range(bounds.position.x + 6.0, bounds.end.x - 6.0)
+		var z := r.randf_range(bounds.position.y + 6.0, bounds.end.y - 6.0)
+		var d := path_dist(x, z)
+		if d < 20.0 or d > 40.0 or is_blocked(x, z) or is_near_obstacle(Vector3(x, 0, z), 2.0):
+			continue
+		var p := Vector3(x, 0, z)
+		if p.distance_to(start) < 45.0 or Vector2(x, z).distance_to(lair) < 40.0:
+			continue
+		if placed.any(func(q: Vector3) -> bool: return q.distance_to(p) < 60.0):
+			continue
+		placed.append(p)
+		enemy_spawns.append({"kind": "bear", "pos": p, "count": 1, "champ": false, "pack": 900 + placed.size(), "level": level + 2})
+
 ## Act I: a few rare Sunstar Blooms off the road, in among the trees. Picking one gives +50% experience
 ## for 5 minutes (Game.use_inter). Their own seed, so the rest of the moor doesn't change around them.
 func _rare_flowers(count: int) -> void:
@@ -1472,6 +1495,7 @@ func _build_wild() -> void:
 		t += rng.randf_range(0.045, 0.07)
 	if oak_forest:
 		_feral_packs(groups, pid)
+		_bear_dens(2, end_p)
 	spawns["start"] = Vector3(0, 0, -6)
 	for k in [["road", 0.22], ["road2", 0.5]]:
 		var rp: Vector2 = path_poly[int(path_poly.size() * k[1])]

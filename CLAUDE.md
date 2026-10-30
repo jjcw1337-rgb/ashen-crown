@@ -212,6 +212,14 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   its own AI (`Enemy._skirm_combat`/`_reaver_combat`/`_stalk_combat`); the attacks move the body along a path
   (`Enemy.atk_path`, `_fallen_path`), land once in their window and leave a recovery (`f_state` "recover"/"rest").
   The old `"fallen"` entry is kept, unused. `tools/fallen_test.gd`, `tools/fallen_sheet.gd -- out.png [side|34]`.
+- **The Forsaken Bear** (`bear.gd`, Act I moor): JJ's Meshy model (concept 2, "corrupted ancient"), cleaned and rigged by
+  `tools/blender/act1/rig_bear.py` (cuts the slab, 25k tris, 21 lion-named bones + jaw and antlers, surface-distance
+  skin) into `assets/models/monsters/bear.glb`, posed in code like the lion (`Bear.pose`: the walk, `bear_roar` rear-up,
+  `bear_maul` double-paw slam). Two lone wanderers per moor, 20-40 m off the road (`World._bear_dens`, own seed); the AI
+  (`Enemy._bear_idle`/`_bear_combat`) wanders its ground, rears and roars now and then, roars once on noticing you,
+  charges and mauls (a 3 m arc, `"maul"` hits knock the hero back: `Hero.knock_v`), gives up 30 m from home. Its sounds
+  borrow `lion_roar` (pitched down) and `slam` until `bear_roar`/`bear_maul` exist (`Bear.sound`; ElevenLabs needs
+  Blaine's OK). `tools/bear_test.gd`, `tools/bear_sheet.gd -- out.png [side|34]`.
 - **Factions** (`"faction"` in `Data.ENEMIES`: goblin, undead): a monster fights the nearest other-faction monster when
   it is closer than the hero (`Enemy.rival`, `Enemy.take_hit` so the attack code works on both); rival kills give no
   xp or loot (`killed_by_rival`). Host-side like all AI.
