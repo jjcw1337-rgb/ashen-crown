@@ -90,6 +90,21 @@ func _run() -> void:
 					st["style"] = ["swipe1", "swipe2", "swipe3"][idx]
 			"block":
 				st["block"] = 1.0 if fmod(T, 2.0) < 1.2 else 0.0
+			"tour":
+				# a square run (turns each way), stop, a swing, a block, a hit, death
+				if T < 6.0:
+					want = 4.8
+					var seg := int(T / 1.5)
+					yaw = lerp_angle(yaw, [0.0, PI * 0.5, PI, -PI * 0.5][seg % 4], clampf(dt * 8.0, 0.0, 1.0))
+				elif T > 6.6 and T < 7.3:
+					st["atk"] = (T - 6.6) / 0.7
+					st["style"] = "swipe2"
+				elif T > 7.6 and T < 8.4:
+					st["block"] = 1.0
+				elif T > 8.6 and T < 9.0:
+					st["hit"] = 1.0 - (T - 8.6) / 0.4
+				elif T >= 9.2:
+					st["dead"] = T - 9.2
 			"draw":
 				# run sheathed, stop, draw (0.85 s), stand in guard, holster (0.9 s)
 				want = 4.8 if T > 0.5 and T < 2.2 else 0.0
@@ -124,7 +139,9 @@ func _run() -> void:
 		st["speed"] = spd
 		Anim.pose(r, st)
 		var c := r.position
-		var off: Vector3 = {"side": Vector3(4.4, 1.2, 0.0), "front": Vector3(0.0, 1.4, -4.4), "back": Vector3(0.0, 1.6, 4.4), "34": Vector3(2.8, 2.0, -3.0)}.get(view, Vector3(2.8, 2.0, -3.0))
+		var off: Vector3 = {"side": Vector3(4.4, 1.2, 0.0), "front": Vector3(0.0, 1.4, -4.4), "back": Vector3(0.0, 1.6, 4.4), "34": Vector3(2.8, 2.0, -3.0), "game": Vector3(0, 17.0, 16.5) * 0.45}.get(view, Vector3(2.8, 2.0, -3.0))
+		if view == "game":
+			off = Vector3(0, 17.0, 16.5) * 0.45
 		if mode == "turn":
 			c = Vector3.ZERO
 			off = Vector3(0, 9, 7)

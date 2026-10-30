@@ -259,8 +259,9 @@ static func build_mocap() -> Node3D:
 	tree.anim_player = NodePath("../" + String(body.get_path_to(ap)))
 	tree.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	var bt := AnimationNodeBlendTree.new()
-	var relaxed := _speed_space(["idle", 0.0, "walk", 0.55, "run", 4.25, "run_fast", 6.6])
-	var combat := _speed_space(["combat_idle", 0.0, "walk_fight", 0.6, "run", 4.25, "run_fast", 6.6])
+	# one run clip played faster or slower beats a blend of two runs with different cycles (the feet mush)
+	var relaxed := _speed_space(["idle", 0.0, "walk", 0.55, "run", 4.25])
+	var combat := _speed_space(["combat_idle", 0.0, "walk_fight", 0.6, "run", 4.25])
 	var dead := AnimationNodeAnimation.new()
 	dead.animation = "death"
 	bt.add_node("relaxed", relaxed, Vector2(0, 0))

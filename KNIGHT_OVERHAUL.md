@@ -28,3 +28,11 @@ motion-captured animation, keeping every existing combat move working.
 - Cloak: 9 bones hA..hC swung by `_sway_hair` (rig-axis swing turned into each bone's frame, `hair_conj`; `hair_run` 0.45).
 - Preview: `tools/mocap_knight_clip.gd -- outdir run|attack|runattack|block|turn [side|front|34|back] [frames]`.
 - Tests: meshy_knight_test (accepts mocap), holy_slam_test pass.
+
+## Stage 3: checks (test-knight-rig)
+- Weapon draw/holster merged (test-weapondraw): the draw counts as "acting" only while the blade moves; sheathed he runs
+  the relaxed clips, drawn the battle-ready ones. The mocap body's scabbard hilt hides while the sword is out.
+- Locomotion uses one run clip scaled by speed (run_fast dropped from the blend: two runs with different cycles mushed the
+  feet). Planted-foot slide: ~0.26 m/s at 4.8 m/s, ~0.33 at 6.2 (was 0.74 / 1.39).
+- Game-camera tour (`mocap_knight_clip.gd -- out tour game 330`): turns, swing, block, hit, death all read.
+- Tests: weapon_draw_test (16/16), meshy_knight_test, holy_slam_test.

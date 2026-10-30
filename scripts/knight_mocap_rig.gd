@@ -45,8 +45,8 @@ const LOWER := ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", "LeftToeBase", "Righ
 const FOOTWORK := ["swipe1", "swipe2", "swipe3", "cleave", "over", "back", "side", "thrust", "slam", "leap", "spin"]
 ## the clips' own ground speeds (m/s, measured from the planted foot), as in the blend spaces
 const RELAXED_TIP := -38.0    # degrees the sword tips down while the motion capture owns the arm
-const RELAXED_PTS := [0.0, 0.55, 4.25, 6.6]
-const COMBAT_PTS := [0.0, 0.6, 4.25, 6.6]
+const RELAXED_PTS := [0.0, 0.55, 4.25]
+const COMBAT_PTS := [0.0, 0.6, 4.25]
 
 ## Sets up the conversions (works before the rig is in the tree).
 func setup(root_node: Node3D, skeleton: Skeleton3D, joints: Dictionary) -> void:
@@ -144,8 +144,8 @@ func sync_pose(st: Dictionary) -> void:
 		_last_gp = gp
 	speed = lerpf(speed, v, 1.0 - exp(-dt * 10.0)) if dt > 0.0 else v
 	# --- layer 1: motion capture
-	tree.set("parameters/relaxed/blend_position", speed)
-	tree.set("parameters/combat/blend_position", speed)
+	tree.set("parameters/relaxed/blend_position", minf(speed, 4.25))
+	tree.set("parameters/combat/blend_position", minf(speed, 4.25))
 	tree.set("parameters/mix/blend_amount", drawn)
 	tree.set("parameters/speed/scale", _rate(speed, COMBAT_PTS if drawn > 0.5 else RELAXED_PTS))
 	var die := dead > 0.0
