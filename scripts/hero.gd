@@ -39,6 +39,7 @@ var fire_dmg := 0
 var armor := 0
 var block_chance := 0.0
 var aspd := 1.0
+var dmg_stack: DamageStack     # the stacking red damage number over the head
 var ls := 0.0
 var res := 0
 var frw := 0
@@ -890,7 +891,7 @@ func use_skill(id: String, aim: Vector3) -> bool:
 			_start_attack("cleave", "cleave")
 		"nova":
 			_start_attack("cast", "nova")
-			atk_dur = 0.55
+			atk_dur = 0.55 * Data.attack_pace(cls)
 		"charge":
 			var d := aim - global_position
 			d.y = 0
@@ -902,39 +903,39 @@ func use_skill(id: String, aim: Vector3) -> bool:
 			moving = false
 		"cry":
 			_start_attack("cast", "cry")
-			atk_dur = 0.6
+			atk_dur = 0.6 * Data.attack_pace(cls)
 		"reap":
 			_start_attack("side", "reap")
 		"wail":
 			_start_attack("cast", "wail")
-			atk_dur = 0.5
+			atk_dur = 0.5 * Data.attack_pace(cls)
 		"shade":
 			_shadow_step(aim)
 		"host":
 			_start_attack("cast", "host")
-			atk_dur = 0.65
+			atk_dur = 0.65 * Data.attack_pace(cls)
 		"hellclaw":
 			_start_attack("side", "hellclaw")
 		"summon":
 			_start_attack("cast", "summon")
-			atk_dur = 0.55
+			atk_dur = 0.55 * Data.attack_pace(cls)
 		"phase":
 			_phase_start()
 		"pact":
 			life = maxf(1.0, life - max_life * maxf(0.05, 0.2 - talent("pact_cost") / 100.0))
 			_start_attack("cast", "pact")
-			atk_dur = 0.6
+			atk_dur = 0.6 * Data.attack_pace(cls)
 		"drain":
 			_drain_start(foe)
 		"blight":
 			_start_attack("cast", "blight")
-			atk_dur = 0.45
+			atk_dur = 0.45 * Data.attack_pace(cls)
 		"shackles":
 			_start_attack("cast", "shackles")
-			atk_dur = 0.5
+			atk_dur = 0.5 * Data.attack_pace(cls)
 		"covenant":
 			_start_attack("cast", "covenant")
-			atk_dur = 0.6
+			atk_dur = 0.6 * Data.attack_pace(cls)
 	return true
 
 func drink(slot: int) -> void:
@@ -967,6 +968,7 @@ func _start_attack(style: String, skill := "") -> void:
 		atk_dur = 0.7 / aspd
 	elif skill == "cleave":
 		atk_dur = 0.95 / aspd      # Holy Slam: crouch, leap, slam, hold the blow, rise
+	atk_dur *= Data.attack_pace(cls)     # every class's pace (Data.ATTACK_PACE)
 	impact_done = false
 	trail_pts.clear()
 	trail_col = Color(1.0, 0.85, 0.5) if skill == "cleave" else Color(0.85, 0.9, 1.0)
@@ -1046,8 +1048,23 @@ func buff_mult() -> float:
 	return 1.4 + talent("buff_pow") / 100.0 if buff_t > 0.0 else 1.0
 
 ## Talent damage for a skill ("attack" is the weapon attack): all-damage plus that skill's own.
+## The red number over the head: hits close together stack into one running total (DamageStack).
+func show_damage(dmg: float) -> void:
+	if dmg_stack == null or not is_instance_valid(dmg_stack):
+		dmg_stack = DamageStack.new()
+		add_child(dmg_stack)
+	dmg_stack.add(dmg)
+
 func dmg_mult(id: String) -> float:
-	return 1.0 + (talent("dmg") + talent("dmg:" + id)) / 100.0
+	return (1.0 + (talent("dmg") + talent("dmg:" + id)) / 100.0) * pace_mult(id)
+
+## Attacks are slower by the class's pace (Data.ATTACK_PACE); the ones whose rate the swing itself sets
+## (the basic attack, skills with no cooldown) hit that much harder, so their damage per second stays put.
+## Skills on a cooldown fire just as often, and channels ("channel" in Data.SKILLS) tick on their own clock, so they keep their damage.
+func pace_mult(id: String) -> float:
+	if id == "attack" or (skill_cd(id) <= 0.0 and not Data.skill_def(id).get("channel", false)):
+		return Data.attack_pace(cls)
+	return 1.0
 
 ## src: the skill doing the hitting (talent bonuses); by default the attack in progress.
 func _hit_enemy(e, mult: float, knock: float = 0.0, src := "") -> void:
@@ -1108,7 +1125,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	# a plain thud, no voice: an "oof" on every hit was too much
 	Sfx.play("hero_hit", -3.0, randf_range(0.9, 1.1))
 	Fx.blood(game.world.fx_root, global_position + Vector3(0, 1.2, 0), Color(0.6, 0.02, 0.02))
-	Fx.number(game.world.fx_root, global_position + Vector3(0, 2.2, 0), str(int(dmg)), Color(1.0, 0.3, 0.25))
+	show_damage(dmg)
 	game.add_shake(0.2)
 	game.ui.flash_damage()
 	if life <= 0.0:

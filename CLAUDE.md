@@ -354,6 +354,15 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 - **Skill picker** (`UI._choose_skill`, click a bar slot): the bar's own iron frame and sockets, one card per skill
   (`_picker_card`: equipped glow, the key it's on now, mana, locked level). Esc / click outside closes
   (`close_skill_picker`). Screenshot: `tools/picker_shot.gd`.
+- **Attack pace** (every class, new ones too): `Data.ATTACK_PACE` (1.2 = attacks, skill swings and casts take 20%
+  longer) multiplies `Hero.atk_dur` in `_start_attack` and the casts' own times in `use_skill`; a special class can set
+  `"attack_pace"` in `Data.CLASSES` (`Data.attack_pace(cls)`). Attacks whose rate the swing sets (the basic attack, skills
+  with no cooldown) hit that much harder (`Hero.pace_mult` in `dmg_mult`), so damage per second is unchanged; cooldown
+  skills and channels (`"channel": true` in `Data.SKILLS`) keep their damage. Weapon speed, IAS and Dexterity still apply.
+- **Damage taken** shows as one red number over the hero's head (`DamageStack`, `scripts/damage_stack.gd`, made by
+  `Hero.show_damage`): hits close together add to a running total that counts up smoothly and pops on each hit; 1.1 s
+  after the last hit it drifts up and fades, and the next hit starts a new total. Every class gets it. Preview:
+  `tools/damage_stack_clip.gd -- outdir`.
 - `UNLOCK_ALL_ACTS` in `game.gd` is a testing switch (also enables the F8 testing panel: `test_immortal`, `test_onehit`, `test_stamina`, `test_allskills`, `test_fast` (super speed, `TEST_FAST` times as fast) in `game.gd`, and a level setter, `Hero.set_level`); turn off for real playthroughs.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file).
