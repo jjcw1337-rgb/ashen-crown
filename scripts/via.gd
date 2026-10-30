@@ -143,12 +143,7 @@ static func _moor(w: World) -> void:
 	w.dirt_blobs.append([gy + Vector2(0, 2.5), 6.0, 0.5])
 	# the waypoint, before the pass
 	var wpp := beside(w, 0.3, 6.5)
-	w._inter("waypoint", "Waypoint", Vector3(wpp.x, 0, wpp.y), 2.4, Props.waypoint(null, Vector3.ZERO), {"wp": "wild"})
-	for i in 4:
-		var a := TAU * i / 4.0 + PI * 0.25
-		w.add_circle(Vector3(wpp.x + cos(a) * 1.85, 0, wpp.y + sin(a) * 1.85), 0.3)
-	w.spawns["waypoint"] = Vector3(wpp.x, 0, wpp.y + 3.0)
-	w.cobble_blobs.append([wpp, 3.0, 0.8])
+	w.add_waypoint("wild", Vector3(wpp.x, 0, wpp.y), true)
 	# a signpost at the start of the road: Aurelia, north
 	var sp := beside(w, 0.035, 3.6)
 	var sign := Props.footprint(Models.N(null, "signpost"), 0.2)

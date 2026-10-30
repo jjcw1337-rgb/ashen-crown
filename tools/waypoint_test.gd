@@ -42,6 +42,12 @@ func _run() -> void:
 	g.waypoint_go(0, "wild")
 	await _settle()
 	ok(g.cur_zone == "wild", "a touched waypoint travels there (now in %s)" % g.cur_zone)
+	var ws = null
+	for it in g.world.interactables:
+		if is_instance_valid(it) and it.kind == "waypoint":
+			ws = it
+	ok(ws != null and g.hero.global_position.distance_to(ws.global_position) < 5.0, "arrived beside that waypoint's own stone")
+	ok(g.world.spawns.has("waypoint_wild"), "each stone registers its own arrival spot")
 	g.max_run = 1
 	g.waypoint_go(1, "town")
 	await _settle()

@@ -342,8 +342,9 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   opens once the act before it falls (`Game.act_unlocked`, from `max_run`); a waypoint opens once the player touches
   its stone (`Game.waypoint_known`, per act in `run_progress`). The window has a tab per act, the act's banner and
   route (lit waypoints travel, across acts too via `switch_run(run, zone)`); it closes when you walk off the stone
-  or click outside it. Add an act: a `Data.RUNS` entry, its zones, an entry here (its `group`, e.g. "acts" or "ancient"; groups are `Data.WAYPOINT_GROUPS`, and a group's heading appears once it has an entry; the tab row scrolls when it overflows). Add a waypoint: a point here + an
-  Inter "waypoint" with `{"wp": id}` and a "waypoint" spawn in that zone's builder. Tests: `tools/waypoint_test.gd`
+  or click outside it. Add an act: a `Data.RUNS` entry, its zones, an entry here (its `group`, e.g. "acts" or "ancient"; groups are `Data.WAYPOINT_GROUPS`, and a group's heading appears once it has an entry; the tab row scrolls when it overflows). Add a waypoint: a point here + one
+  line in that zone's builder, `add_waypoint("<id>", Vector3(x, 0, z))` (stone, colliders, its own arrival spot;
+  a zone can hold several). Tests: `tools/waypoint_test.gd`
   (rules), `tools/waypoint_shot.gd -- out.png [run]` (screenshot).
 - **Character sheet (C)** (`UI._build_character`): Meshy frame `sheet_panel.png` (texture margin 100 so the corner
   pieces never stretch; content margins keep everything inside the gold trim), live portrait (a SubViewport on the

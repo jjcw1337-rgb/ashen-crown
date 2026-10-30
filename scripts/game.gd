@@ -752,9 +752,9 @@ func _restore_progress(d: int) -> void:
 
 ## Switch to another act (any you have reached), arriving at its camp or at one of its waypoints.
 ## Each act keeps its own waypoints and boss.
-func switch_run(d: int, zone := "town") -> void:
+func switch_run(d: int, zone := "town", spawn := "") -> void:
 	if net.is_client():
-		net.request_switch(d, zone)
+		net.request_switch(d, zone, spawn)
 		return
 	if d == difficulty or d > max_run or d < 0 or _busy:
 		return
@@ -764,7 +764,7 @@ func switch_run(d: int, zone := "town") -> void:
 	tp_link = {}
 	ui.set_boss(null)
 	Sfx.play("portal")
-	await load_zone(cur_act, zone, "start" if zone == "town" else "waypoint")
+	await load_zone(cur_act, zone, spawn if spawn != "" else ("start" if zone == "town" else "waypoint"))
 	run_switched_banner()
 
 func run_switched_banner() -> void:
@@ -799,7 +799,8 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	_zone_env(zone)
 	apply_quality(quality)
 	await _capture_map(zone)
-	var sp: Vector3 = world.spawns.get(spawn, world.spawns["start"])
+	# a waypoint's own arrival spot ("waypoint_<id>"), else the zone's main waypoint, else the start
+	var sp: Vector3 = world.spawns.get(spawn, world.spawns.get("waypoint", world.spawns["start"]) if spawn.begins_with("waypoint") else world.spawns["start"])
 	if at != null:
 		sp = at
 	sp.y = world.height_at(sp.x, sp.z)
@@ -1426,11 +1427,22 @@ func waypoint_go(run: int, id: String) -> void:
 	if _busy or p.is_empty() or not act_unlocked(run) or not waypoint_known(run, id):
 		return
 	var zone: String = p["zone"]
+	var spawn := "waypoint_" + id
 	if run == difficulty:
-		if zone != cur_zone:
-			travel_waypoint({"zone": zone})
+		if zone != cur_zone or id != _at_waypoint():
+			Sfx.play("portal")
+			travel(cur_act, zone, spawn)
 	else:
-		switch_run(run, zone)
+		switch_run(run, zone, spawn)
+
+## The waypoint stone the hero stands at, if any ("" if none).
+func _at_waypoint() -> String:
+	if world == null or hero == null:
+		return ""
+	for it in world.interactables:
+		if is_instance_valid(it) and it.kind == "waypoint" and it.global_position.distance_to(hero.global_position) < 4.5:
+			return str(it.data.get("wp", "town"))
+	return ""
 
 func _make_portal(p: Vector3, dir: String) -> Inter:
 	var it := Inter.new()

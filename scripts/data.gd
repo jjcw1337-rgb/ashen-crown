@@ -33,8 +33,9 @@ static func act_info(act: int, run: int) -> Dictionary:
 ## per act in Game.run_progress). The camp's is open as soon as you arrive.
 ## Adding an act: a RUNS entry (+ RUN_ACTS names), its zones, and an entry here ("name" overrides the
 ## tab name, which is otherwise Data.RUNS[run].name).
-## Adding a waypoint: a point here, and in that zone's builder an Inter "waypoint" with {"wp": <id>}
-## plus a "waypoint" spawn beside it (see World / Via / ForestCamp). A new zone also goes in
+## Adding a waypoint: a point here (a new id; its zone), and in that zone's builder one line,
+## `add_waypoint("<id>", Vector3(x, 0, z))` (World.add_waypoint: the stone, its colliders and its own
+## arrival spot), so a zone can hold several (see World / Via / ForestCamp for the existing ones). A new zone also goes in
 ## WAYPOINT_ZONES and World.build. check_waypoints() reports mistakes (dev builds print them at start).
 ## Optional per entry: "name" (the tab's name; else Data.RUNS[run].name), "requires" (open once that
 ## run's lord falls, instead of the act before it: for side areas such as Ancient Levels).

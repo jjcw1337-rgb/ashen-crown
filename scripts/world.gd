@@ -736,6 +736,22 @@ func _place(node: Node3D, p: Vector3) -> Node3D:
 	node.position = Vector3(p.x, height_at(p.x, p.z), p.z)
 	return node
 
+## A waypoint stone (Data.WAYPOINT_ACTS point `id`) at `p`: the stone, its four pillar colliders, and
+## where travellers arrive by it ("waypoint_<id>", 3 m in front; the zone's first stone is also
+## "waypoint"). Any zone builder can place several. `cobble` paves the ground round it.
+func add_waypoint(id: String, p: Vector3, cobble := false) -> Inter:
+	var it := _inter("waypoint", "Waypoint", Vector3(p.x, 0, p.z), 2.4, Props.waypoint(null, Vector3.ZERO), {"wp": id})
+	for i in 4:
+		var a := TAU * i / 4.0 + PI * 0.25
+		add_circle(Vector3(p.x + cos(a) * 1.85, 0, p.z + sin(a) * 1.85), 0.3)
+	var arrive := Vector3(p.x, 0, p.z + 3.0)
+	spawns["waypoint_" + id] = arrive
+	if not spawns.has("waypoint"):
+		spawns["waypoint"] = arrive
+	if cobble:
+		cobble_blobs.append([Vector2(p.x, p.z), 3.0, 0.8])
+	return it
+
 func _inter(kind_s: String, label_s: String, p: Vector3, radius: float, model: Node3D = null, data := {}) -> Inter:
 	var it := Inter.new()
 	it.kind = kind_s
@@ -853,11 +869,7 @@ func _build_town() -> void:
 	var chest := Props.stash_chest(null, Vector3.ZERO, -15.0)
 	_inter("stash", "Stash", Vector3(3.6, 0, 2.6), 1.6, chest)
 	solid(chest)
-	var wp := Props.waypoint(null, Vector3.ZERO)
-	_inter("waypoint", "Waypoint", Vector3(-8, 0, 6), 2.4, wp)
-	for i in 4:
-		var a := TAU * i / 4.0 + PI * 0.25
-		add_circle(Vector3(-8 + cos(a) * 1.85, 0, 6 + sin(a) * 1.85), 0.3)
+	add_waypoint("town", Vector3(-8, 0, 6))
 	# log seats around fire
 	for i in 3:
 		var a := TAU * i / 3.0 + 0.4
@@ -1014,7 +1026,6 @@ func _build_town() -> void:
 	_scatter_ferns(120)
 	spawns["start"] = Vector3(0, 0, 6)
 	spawns["from_wild"] = Vector3(0, 0, wy + 4.0)
-	spawns["waypoint"] = Vector3(-8, 0, 9)
 	spawns["portal"] = Vector3(4, 0, 9)
 	spawns["alch"] = Vector3(-12.5, 0, -6.5)
 	spawns["forge"] = Vector3(13, 0, -7)
@@ -1296,12 +1307,7 @@ func _build_wild() -> void:
 		_gravestone(Vector3(gp.x, 0, gp.y), rng.randf() < 0.25)
 	dirt_blobs.append([gy + Vector2(0, 2.5), 6.0, 0.5])
 	var wpp: Vector2 = ctrl[4] + Vector2(6 if ctrl[4].x < 10 else -6, 0)
-	_inter("waypoint", "Waypoint", Vector3(wpp.x, 0, wpp.y), 2.4, Props.waypoint(null, Vector3.ZERO), {"wp": "wild"})
-	for i in 4:
-		var a := TAU * i / 4.0 + PI * 0.25
-		add_circle(Vector3(wpp.x + cos(a) * 1.85, 0, wpp.y + sin(a) * 1.85), 0.3)
-	spawns["waypoint"] = Vector3(wpp.x, 0, wpp.y + 3.0)
-	cobble_blobs.append([wpp, 3.0, 0.8])
+	add_waypoint("wild", Vector3(wpp.x, 0, wpp.y), true)
 	var kinds := ["healing", "fury", "armor", "experience"]
 	kinds.shuffle()
 	var shrine_ps := []

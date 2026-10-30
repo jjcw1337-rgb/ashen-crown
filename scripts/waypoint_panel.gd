@@ -396,7 +396,8 @@ func _point_row(act: Dictionary, p: Dictionary, info: Dictionary) -> Control:
 	var run: int = act["run"]
 	var zone: String = p["zone"]
 	var known: bool = game.waypoint_known(run, str(p["id"]))
-	var here: bool = run == int(game.difficulty) and zone == str(game.cur_zone)
+	var at: String = game._at_waypoint()
+	var here: bool = run == int(game.difficulty) and (str(p["id"]) == at if at != "" else zone == str(game.cur_zone))
 	var pname: String = p.get("name", info.get(zone, zone.capitalize()))
 	var row := PanelContainer.new()
 	var idle := ui._box(Color(0.06, 0.05, 0.04, 0.85), Color(0.3, 0.24, 0.15), 1, 6, 6)
