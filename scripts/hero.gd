@@ -106,6 +106,10 @@ var breath: GPUParticles3D
 var _breath_t := 1.0
 var _last_step := 0
 var weapon_node: Node3D = null
+## Drawing / holstering (WeaponCarry, profile Data.WEAPON_PROFILES[cls]); the weapon rides in the hand
+## or in storage, moving between them at the motion's grab point without popping.
+var carry := WeaponCarry.new()
+var _carry_in_hand := true
 var shield_node: Node3D = null
 var gear_nodes: Array = []
 var combo := 0
@@ -562,6 +566,9 @@ func refresh_gear() -> void:
 	if w != null:
 		weapon_node = Models.item_model(w)
 		(J["grip_r"] as Node3D).add_child(weapon_node)
+		# the new model starts in the hand: force _carry_weapon to place it (and the body's hilt) next frame
+		carry.configure(cls)
+		_carry_in_hand = not (carry.t >= float(carry.p["grab"]))
 		gear_nodes.append(weapon_node)
 		if w.get("rarity", 0) == 3 and Models.palette(w)["glow"] != null:
 			var fl := Props.fire(weapon_node, Vector3(0, 0, -0.5), 0.35, Models.palette(w)["glow"], false, false, false)
@@ -637,6 +644,65 @@ func knight_gear() -> Dictionary:
 	g["belt"] = true
 	g["coif"] = g["armor"] in ["chain", "plate", "ornate"]
 	return g
+
+## Where the weapon is this frame: in the hand once the draw passes its grab point, else in storage
+## ("hilt": the body's own sheathed hilt shows and the weapon model hides; "back": on the back). When it
+## changes hands it keeps its place in the world and eases into the new hold, so it never jumps.
+func _carry_weapon(delta: float) -> void:
+	if weapon_node == null or not is_instance_valid(weapon_node) or rig == null:
+		return
+	var in_hand := carry.t >= float(carry.p["grab"])
+	var store: String = carry.p["store"]
+	var J: Dictionary = rig.get_meta("j")
+	if in_hand != _carry_in_hand:
+		_carry_in_hand = in_hand
+		var dest: Node3D = J["grip_r"] if in_hand else _weapon_store(J, store)
+		if dest != null and weapon_node.get_parent() != dest:
+			weapon_node.reparent(dest, true)
+		_set_hilt(not in_hand and store == "hilt")
+	# hidden in the scabbard; on the back it stays in view
+	weapon_node.visible = in_hand or store != "hilt"
+	# ease into the hold (identity in the hand; the back mount's own rest)
+	var k := 1.0 - exp(-delta * 16.0)
+	weapon_node.transform = weapon_node.transform.interpolate_with(Transform3D.IDENTITY, k)
+
+## The storage node on the rig for "back" (made on first use: across the back, hilt over the right
+## shoulder); "hilt" has none (the weapon model just hides).
+func _weapon_store(J: Dictionary, store: String) -> Node3D:
+	if store != "back":
+		return J["grip_r"]
+	var torso: Node3D = J.get("at_torso", J["torso"])    # the mocap knight's real chest bone when it has one
+	var m := torso.get_node_or_null("back_mount") as Node3D
+	if m == null:
+		m = Node3D.new()
+		m.name = "back_mount"
+		torso.add_child(m)
+		m.position = Vector3(0.0, 0.32, 0.2)
+		m.rotation = Vector3(deg_to_rad(-80.0), deg_to_rad(10.0), deg_to_rad(35.0))
+	return m
+
+## The crusader body's own sword hilt (its "Hilt" surface, see rig_crusader_knight.py) shows only while
+## the sword is sheathed. Bodies without one are left alone.
+func _set_hilt(show: bool) -> void:
+	if rig == null:
+		return
+	for mi in rig.find_children("*", "MeshInstance3D", true, false):
+		var m := (mi as MeshInstance3D).mesh
+		if m == null:
+			continue
+		for si in m.get_surface_count():
+			var mat := m.surface_get_material(si)
+			if mat != null and mat.resource_name == "Hilt":
+				(mi as MeshInstance3D).set_surface_override_material(si, null if show else _hidden_mat())
+
+static var _hide_mat: StandardMaterial3D
+static func _hidden_mat() -> StandardMaterial3D:
+	if _hide_mat == null:
+		_hide_mat = StandardMaterial3D.new()
+		_hide_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_hide_mat.albedo_color = Color(0, 0, 0, 0)
+		_hide_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	return _hide_mat
 
 # ---------------------------------------------------------------- commands
 func cmd_move(p: Vector3, direct := false) -> void:
@@ -1322,6 +1388,10 @@ func _process(delta: float) -> void:
 		# both hands thrust out, holding the beam
 		st["atk"] = 0.6
 		st["style"] = "cast"
+	if not puppet:
+		carry.update(self, delta)
+		st.merge(carry.anim_state(), true)
+		_carry_weapon(delta)
 	Anim.pose(rig, st)
 	last_pose = st
 	_hover()

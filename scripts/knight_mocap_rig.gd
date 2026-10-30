@@ -156,7 +156,9 @@ func sync_pose(st: Dictionary) -> void:
 	tree.advance(dt)
 	# --- layer 2: the procedural moves, by weight
 	var style: String = st.get("style", "")
-	var acting := a >= 0.0 or float(st.get("block", 0.0)) > 0.05 or drawn < 0.999 or float(st.get("hit", 0.0)) > 0.3
+	# the draw / holster (WeaponCarry) is acting only while the blade is on its way (0 = put away, 1 = in guard)
+	var drawing := drawn > 0.001 and drawn < 0.999
+	var acting := a >= 0.0 or float(st.get("block", 0.0)) > 0.05 or drawing or float(st.get("hit", 0.0)) > 0.3
 	var up_t := 0.0 if die else (1.0 if acting else 0.0)
 	var low_t := 0.0 if die else (1.0 if (a >= 0.0 and FOOTWORK.has(style)) else 0.0)
 	var k := 1.0 - exp(-dt * 14.0) if dt > 0.0 else 1.0

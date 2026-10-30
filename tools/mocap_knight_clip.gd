@@ -2,7 +2,7 @@ extends SceneTree
 ## Preview of the mocap knight (Knight.build_mocap) as the game drives him through Anim.pose.
 ## Needs a display (xvfb). Usage: -- outdir mode [side|front|34|back] [frames]
 ## modes: idle, run (stand, run, stop), attack (the three-swing combo standing), runattack (run into a swing),
-##        block, turn (runs a circle)
+##        block, turn (runs a circle), draw (sheathed run, stop, draw the sword, guard, holster)
 func _initialize():
 	_run()
 
@@ -55,7 +55,8 @@ func _run() -> void:
 	r.set("fixed_dt", 1.0 / 30.0)
 	root3.add_child(r)
 	var J: Dictionary = r.get_meta("j")
-	(J["grip_r"] as Node3D).add_child(Models.item_model({"base": "short_sword", "rarity": 0}))
+	var sword := Models.item_model({"base": "short_sword", "rarity": 0})
+	(J["grip_r"] as Node3D).add_child(sword)
 	var sh := Models.item_model({"base": "kite_shield", "rarity": 0})
 	(J["mount_l"] as Node3D).add_child(sh)
 	sh.position = Vector3(-0.03, 0, 0)
@@ -89,6 +90,30 @@ func _run() -> void:
 					st["style"] = ["swipe1", "swipe2", "swipe3"][idx]
 			"block":
 				st["block"] = 1.0 if fmod(T, 2.0) < 1.2 else 0.0
+			"draw":
+				# run sheathed, stop, draw (0.85 s), stand in guard, holster (0.9 s)
+				want = 4.8 if T > 0.5 and T < 2.2 else 0.0
+				var dr := 0.0
+				if T > 2.8 and T < 3.65:
+					dr = (T - 2.8) / 0.85
+				elif T >= 3.65 and T < 4.8:
+					dr = 1.0
+				elif T >= 4.8 and T < 5.7:
+					dr = 1.0 - (T - 4.8) / 0.9
+				st["draw"] = dr
+				st["draw_motion"] = "knight"
+				st["draw_dir"] = 1.0 if (T > 2.8 and T < 3.65) else (-1.0 if (T >= 4.8 and T < 5.7) else 0.0)
+				var in_hand := dr >= 0.38
+				sword.visible = in_hand
+				for mi in r.find_children("*", "MeshInstance3D", true, false):
+					var m := (mi as MeshInstance3D).mesh
+					for si in (m.get_surface_count() if m != null else 0):
+						var mat := m.surface_get_material(si)
+						if mat != null and mat.resource_name == "Hilt":
+							var hide := StandardMaterial3D.new()
+							hide.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+							hide.albedo_color = Color(0, 0, 0, 0)
+							(mi as MeshInstance3D).set_surface_override_material(si, hide if in_hand else null)
 		spd = move_toward(spd, want, dt * 18.0)
 		r.rotation.y = yaw
 		r.position += -r.transform.basis.z * spd * dt
