@@ -478,6 +478,14 @@ func sv_enemy_hit(id: int, phys: float, fire: float, from: Vector3, knock: float
 	if is_instance_valid(e) and not e.dead:
 		e.take_damage(phys, fire, from, knock, crit)
 
+func send_enemy_chill(e: Enemy, k: float, t: float) -> void:
+	rpc_id(1, "sv_enemy_chill", e.net_id, k, t)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_enemy_chill(id: int, k: float, t: float) -> void:
+	if is_host and enemies.has(id) and is_instance_valid(enemies[id]):
+		(enemies[id] as Enemy).chill(clampf(k, 0.0, 0.8), clampf(t, 0.0, 6.0))
+
 func send_enemy_stun(e: Enemy, t: float) -> void:
 	rpc_id(1, "sv_enemy_stun", e.net_id, t)
 

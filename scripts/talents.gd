@@ -15,7 +15,7 @@ extends RefCounted
 ##   class specials, used where the skill is: nova_heal, cry_heal, charge_cdr, reap_heal, reap_full,
 ##     wail_echo, spirits, claw_wide, minion_speed, minion_max, pact_cost, phase_heal, drain_heal,
 ##     drain_fork, drain_glut, blight_size, blight_twin, shackle_range, arrow_split, snare_dur, snare_max,
-##     snare_wide, volley_size, beast_two
+##     snare_wide, volley_size, beast_two, burn_dmg, wolf_burn, chill_pct, wolf_howl, frost_shatter, arc_count
 ## "text" shows the total for the ranks taken: {key} is replaced by the fx value times the rank.
 ## Saves made before talents get a build picked for them (`auto_build`, the class's `AUTO` order).
 
@@ -139,32 +139,32 @@ const TREES := {
 		]},
 	],
 	"archer": [
-		{"name": "Marksman", "desc": "The bow: harder shots, Piercing Shot and deadly crits.", "talents": [
-			{"id": "a_eye", "name": "Keen Eye", "row": 0, "max": 3, "icon": "t_eye", "fx": {"dex": 3}, "text": "+{dex} dexterity."},
+		{"name": "Flame", "desc": "Fire Arrow, burning wounds and the bow's weight; his wolf's fangs catch fire.", "talents": [
+			{"id": "a_kindle", "name": "Kindling", "row": 0, "max": 3, "icon": "pierce", "fx": {"dmg:pierce": 12}, "text": "Fire Arrow deals {dmg:pierce}% more damage."},
 			{"id": "a_draw", "name": "Heavy Draw", "row": 0, "max": 3, "icon": "attack", "fx": {"dmg:attack": 8}, "text": "Your bow shots deal {dmg:attack}% more damage."},
-			{"id": "a_broad", "name": "Broadhead", "row": 1, "max": 3, "icon": "pierce", "fx": {"dmg:pierce": 12}, "text": "Piercing Shot deals {dmg:pierce}% more damage."},
+			{"id": "a_pyre", "name": "Pyre", "row": 1, "max": 3, "icon": "t_fist", "fx": {"burn_dmg": 20}, "text": "Burning from Fire Arrow lasts and hurts {burn_dmg}% more."},
 			{"id": "a_nock", "name": "Quick Nock", "row": 1, "max": 3, "icon": "t_haste", "fx": {"ias": 5}, "text": "+{ias}% attack speed."},
+			{"id": "a_embers", "name": "Ember Fangs", "row": 2, "max": 3, "icon": "beast", "fx": {"wolf_burn": 15}, "text": "Your wolf's bites set foes alight: {wolf_burn}% of each bite burns them every second for 3 seconds."},
 			{"id": "a_dead", "name": "Deadeye", "row": 2, "max": 3, "icon": "t_star", "fx": {"crit": 3}, "text": "+{crit}% chance to land a critical hit."},
-			{"id": "a_vital", "name": "Vital Shot", "row": 2, "max": 2, "icon": "t_skull", "fx": {"crit_dmg": 20}, "text": "Critical hits deal {crit_dmg}% more damage."},
 			{"id": "a_split", "name": "Split Arrow", "row": 3, "max": 1, "icon": "attack", "fx": {"arrow_split": 1}, "text": "Every bow shot flies as three arrows (the outer two at half damage)."},
 		]},
-		{"name": "Warden", "desc": "The wild's own hunter: hides, quick feet and the Snare Trap.", "talents": [
-			{"id": "a_hide", "name": "Hide Armour", "row": 0, "max": 3, "icon": "t_armor", "fx": {"armor_pct": 6}, "text": "+{armor_pct}% defense."},
-			{"id": "a_vigor", "name": "Hunter's Vigor", "row": 0, "max": 3, "icon": "t_heart", "fx": {"life_pct": 4}, "text": "+{life_pct}% maximum life."},
-			{"id": "a_jaws", "name": "Iron Jaws", "row": 1, "max": 3, "icon": "snare", "fx": {"dmg:snare": 15, "snare_dur": 0.5}, "text": "Snare Trap deals {dmg:snare}% more damage and holds {snare_dur} seconds longer."},
-			{"id": "a_fleet", "name": "Fleet Foot", "row": 1, "max": 3, "icon": "t_boot", "fx": {"frw": 5}, "text": "+{frw}% run speed."},
-			{"id": "a_trapper", "name": "Trapper", "row": 2, "max": 2, "icon": "snare", "fx": {"snare_max": 1}, "text": "Set {snare_max} more Snare Trap at once."},
-			{"id": "a_ward", "name": "Woodland Ward", "row": 2, "max": 3, "icon": "t_ward", "fx": {"res": 5}, "text": "+{res}% to all resistances."},
-			{"id": "a_caltrop", "name": "Wide Snare", "row": 3, "max": 1, "icon": "snare", "fx": {"snare_wide": 1}, "text": "A sprung Snare Trap catches everything within 4 metres."},
+		{"name": "Frost", "desc": "Frost Volley, the chill that slows them and the hide that keeps him alive; his wolf howls the cold.", "talents": [
+			{"id": "a_eye", "name": "Keen Eye", "row": 0, "max": 3, "icon": "t_eye", "fx": {"dex": 3}, "text": "+{dex} dexterity."},
+			{"id": "a_cover", "name": "Hailstorm", "row": 0, "max": 3, "icon": "volley", "fx": {"volley_size": 10}, "text": "Frost Volley covers {volley_size}% more ground."},
+			{"id": "a_rime", "name": "Rime", "row": 1, "max": 3, "icon": "volley", "fx": {"chill_pct": 15}, "text": "Frost Volley's chill slows {chill_pct}% more."},
+			{"id": "a_hide", "name": "Hide Armour", "row": 1, "max": 3, "icon": "t_armor", "fx": {"armor_pct": 6}, "text": "+{armor_pct}% defense."},
+			{"id": "a_howl", "name": "Winter Howl", "row": 2, "max": 2, "icon": "beast", "fx": {"wolf_howl": 1}, "text": "Your wolf's pounce chills everything within 3.5 metres of where it lands."},
+			{"id": "a_rain", "name": "Endless Rain", "row": 2, "max": 2, "icon": "t_hourglass", "fx": {"cd:volley": 12, "cost:volley": 10}, "text": "Frost Volley recharges {cd:volley}% faster and costs {cost:volley}% less mana."},
+			{"id": "a_shatter", "name": "Shatter", "row": 3, "max": 1, "icon": "t_skull", "fx": {"frost_shatter": 1}, "text": "Chilled enemies take 20% more damage from your arrows."},
 		]},
-		{"name": "Beastmaster", "desc": "Arrows from the sky and the Spirit Beast.", "talents": [
-			{"id": "a_storm", "name": "Arrow Storm", "row": 0, "max": 3, "icon": "volley", "fx": {"dmg:volley": 10}, "text": "Volley deals {dmg:volley}% more damage."},
-			{"id": "a_cover", "name": "Wider Cover", "row": 0, "max": 3, "icon": "volley", "fx": {"volley_size": 10}, "text": "Volley covers {volley_size}% more ground."},
-			{"id": "a_bond", "name": "Spirit Bond", "row": 1, "max": 3, "icon": "beast", "fx": {"dmg:beast": 15}, "text": "Your Spirit Beast hits {dmg:beast}% harder."},
-			{"id": "a_call", "name": "Call of the Wild", "row": 1, "max": 3, "icon": "t_hourglass", "fx": {"cd:beast": 10}, "text": "Spirit Beast recharges {cd:beast}% faster."},
-			{"id": "a_pack", "name": "Pack Hunter", "row": 2, "max": 3, "icon": "beast", "fx": {"buff_pow": 10}, "text": "Spirit Beast's damage bonus is {buff_pow}% higher."},
-			{"id": "a_rain", "name": "Endless Rain", "row": 2, "max": 2, "icon": "t_hourglass", "fx": {"cd:volley": 12, "cost:volley": 10}, "text": "Volley recharges {cd:volley}% faster and costs {cost:volley}% less mana."},
-			{"id": "a_alpha", "name": "Alpha", "row": 3, "max": 1, "icon": "beast", "fx": {"beast_two": 1}, "text": "Spirit Beast calls two beasts."},
+		{"name": "Storm", "desc": "Storm Snare, forked lightning and the bond with his wolf.", "talents": [
+			{"id": "a_vigor", "name": "Hunter's Vigor", "row": 0, "max": 3, "icon": "t_heart", "fx": {"life_pct": 4}, "text": "+{life_pct}% maximum life."},
+			{"id": "a_jaws", "name": "Thunder Jaws", "row": 0, "max": 3, "icon": "snare", "fx": {"dmg:snare": 15, "snare_dur": 0.5}, "text": "Storm Snare deals {dmg:snare}% more damage and holds {snare_dur} seconds longer."},
+			{"id": "a_arc", "name": "Forked Lightning", "row": 1, "max": 3, "icon": "snare", "fx": {"arc_count": 1}, "text": "Storm Snare's lightning leaps to {arc_count} more enemies."},
+			{"id": "a_bond", "name": "Spirit Bond", "row": 1, "max": 3, "icon": "beast", "fx": {"dmg:beast": 15}, "text": "Your wolf hits {dmg:beast}% harder."},
+			{"id": "a_trapper", "name": "Trapper", "row": 2, "max": 2, "icon": "snare", "fx": {"snare_max": 1}, "text": "Set {snare_max} more Storm Snare at once."},
+			{"id": "a_pack", "name": "Pack Hunter", "row": 2, "max": 3, "icon": "beast", "fx": {"buff_pow": 10}, "text": "The hunt your commands rouse is {buff_pow}% stronger."},
+			{"id": "a_alpha", "name": "Alpha", "row": 3, "max": 1, "icon": "beast", "fx": {"beast_two": 1}, "text": "A second wolf runs with you."},
 		]},
 	],
 }
@@ -180,8 +180,8 @@ const AUTO := {
 		"d_hide", "d_plate", "d_rift", "d_abyss", "d_erupt", "d_hunger", "d_furnace"],
 	"warlock": ["l_deep", "l_thirst", "l_thrift", "l_intel", "l_fork", "l_wither", "l_glut", "l_virulence", "l_contagion", "l_quick", "l_vigor", "l_spread", "l_malice", "l_twin",
 		"l_felarmor", "l_reserves", "l_chains", "l_sigils", "l_reach", "l_dark", "l_eternal"],
-	"archer": ["a_draw", "a_eye", "a_broad", "a_nock", "a_dead", "a_vital", "a_split", "a_vigor", "a_hide", "a_jaws", "a_fleet", "a_trapper", "a_ward", "a_caltrop",
-		"a_storm", "a_cover", "a_bond", "a_call", "a_pack", "a_rain", "a_alpha"],
+	"archer": ["a_kindle", "a_draw", "a_pyre", "a_nock", "a_embers", "a_dead", "a_split", "a_eye", "a_cover", "a_rime", "a_hide", "a_howl", "a_rain",
+		"a_shatter", "a_vigor", "a_jaws", "a_arc", "a_bond", "a_trapper", "a_pack", "a_alpha"],
 }
 
 static func trees(cls: String) -> Array:

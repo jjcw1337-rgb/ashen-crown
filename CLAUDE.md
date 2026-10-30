@@ -104,15 +104,26 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
     of Master and routes Master into it, so the whole game is silent in the browser. `Sfx._buses` uses `set_bus_count`;
 - **The archer** (`scripts/archer.gd`, `Archer`; the bow class for Jace, its name still his to choose, "Archer" in
   `Data.CLASSES` until then): with a bow (`Hero.has_bow`; bows are `Data.BASES` with `"cls": "archer"`, only he can
-  equip them) his attack shoots (`Archer.shoot` from `Hero.swipe_attack`/`free_attack`; `Hero.reach` is `Archer.RANGE`,
-  so a clicked foe is shot from range; Anim's `"bow"` pose, the arrow looses on its impact frame). Skills: Piercing
-  Shot (an arrow through a line), Volley (a rain of arrows on the cursor, hits every 0.2 s), Snare Trap (stuns the
-  first enemies on it), Spirit Beast (`spirit_beast.gd`: the lion's body, ghostly, hunting for 30 s, plus the 12 s
-  battle buff). Arrows, volleys, snares and beasts live on the hero (`Hero.arrows` etc.), `Archer.update`/`clear`.
-  Talents: Marksman, Warden, Beastmaster (`Talents.TREES["archer"]`; specials arrow_split, snare_dur, snare_max,
-  snare_wide, volley_size, beast_two). Body: the knight's procedural body dressed as a hunter (`Archer.build_body`)
-  until the Meshy model; talent icons still to paint (`tools/talent_icons.py` has the archer prompts).
-  `tools/archer_test.gd` checks it.
+  equip them; drawn in his left hand, `Models.weapon` "bow", `J["bow_l"]`) his attack shoots (`Archer.shoot` from
+  `Hero.swipe_attack`/`free_attack`; `Hero.reach` is `Archer.RANGE`). His skills are fire, cold and lightning (ids kept):
+  Fire Arrow (`pierce`: through a line, sets them burning, `Enemy.ignite`), Frost Volley (`volley`: a rain on the cursor,
+  hits every 0.2 s and chills, `Enemy.chill`, slower on their feet; a partner's chill reaches the host through
+  `Net.send_enemy_chill`), Storm Snare (`snare`: holds the first on it, lightning arcs into the nearest others,
+  `Fx.bolt`), Spirit Beast (`beast`: commands his wolf, below). Arrows are Meshy models (`assets/models/arrows/`
+  war / fire / frost, prepared by `tools/blender/prep_arrow.py`: head toward Godot -Z), `Archer._arrow_mesh(kind)`.
+  Talents: Flame, Frost, Storm (`Talents.TREES["archer"]`; specials arrow_split, burn_dmg, wolf_burn, chill_pct, wolf_howl,
+  frost_shatter, arc_count, snare_dur, snare_max, volley_size, beast_two). Body: the knight's procedural body in hunter
+  colours (`Archer.body_gear`, kept on every gear change) until his Meshy model; talent icons still to paint
+  (`tools/talent_icons.py`). His **wolf** (`spirit_beast.gd`, `SpiritBeast`): JJ's dire forest wolf (Meshy, 25% larger
+  than a wolf, `assets/models/monsters/wolf.glb`, rigged by `tools/blender/act1/rig_quadruped.py` on the lion's
+  skeleton, so `Lion.build(glb, scale)`/`Lion.pose` run it), his companion from the start: a state machine of follow /
+  engage / command / protect / investigate / return / hold (every number in `SpiritBeast.CFG`); it settles at his side,
+  trots or sprints to keep up, sniffs at loot and chests, protects him, goes for the one he shoots (`Hero.mark`), keeps
+  its target (`commit`), gives up on what it can't reach, follows him through zones; monsters it bites turn on it
+  (`Enemy.taunt`), it rises again 18 s after falling (`Archer.keep_companions`, `Hero.beast_down_t`), and he runs 10%
+  faster while it lives. F commands it (`Archer._command_beast`): on an enemy it pounces, on open ground it holds, on
+  himself it comes back, each with the 12 s battle buff. `"spirit_beast"` in `Data.ENEMIES` is the wolf as a monster.
+  `tools/archer_test.gd`, `tools/pet_test.gd`, `tools/pet_clip.gd`, `tools/archer_shots.gd`, `tools/wolf_sheet.gd`.
 - **Adding a class**: add it to `Data.CLASSES`, give it four `SKILLS` entries with its `cls`, build its look the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep working), handle its skill ids in `Hero.use_skill` / `_impact`, and add glyphs in `ui.gd` `SkillGlyph`.
 - **Underworld** (Demon's Phase): `game.set_underworld()` blends a screen-space grade (`DemonFx.UNDERWORLD_SHADER`), the `under_amt` global (terrain veins and rune rings in `mats.gd`), environment tweaks, rising souls and crimson monster outlines (`Enemy.set_soul_lit`). Monsters ignore a phased hero (`hero.phased`).
 - **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `_update_drain`, and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. Skill effects are local only (partners see the cast pose, not the beam), like every other class.
@@ -388,7 +399,8 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   so `ForestCamp._pin_root` pins every clip's hips over the keeper's spot. The camp is "The Forsaken Wilds"
   (`Data.ACTS[0]["town"]`); its smith Halvar Emberhammer works inside his forge behind the anvil (a SHOPS entry's
   `"inside"`: his spot in the stall's frame; `"stay"` in its clips: he never turns from his work and greets once a
-  visit; his `radius` reaches the stall's front, since the stall is solid). Screenshots: `tools/camp_shots.gd`.
+  visit; his `radius` reaches the stall's front, since the stall is solid). His hammer rings the anvil on each blow (`anvil`: five layered Kenney takes; `Inter._strikes` hears the
+  hand bone stop falling; a SHOPS entry's `"strike"`), `tools/anvil_test.gd`. Screenshots: `tools/camp_shots.gd`.
 - **Nameplates and the trade window** (`scripts/vendor_ui.gd`): `VendorUI.Plates` (in `ui.plates`, under every
   window) floats a gold-trimmed plate with the name and trade (`VendorUI.ROLE_TITLES`) over each vendor and Varro,
   click-through, fading with distance, lit when hovered. The trade window (`UI._build_shop`, `open_shop(mode,

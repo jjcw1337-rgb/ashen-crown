@@ -314,6 +314,40 @@ static func arc_telegraph(root: Node3D, pos: Vector3, dir: Vector3, radius: floa
 	_free_later(edge, dur + 0.05)
 	_free_later(fill, dur + 0.05)
 
+## A crack of lightning from a to b: a jagged line of short glowing segments that flickers out (Storm Snare).
+static func bolt(root: Node3D, a: Vector3, b: Vector3, col: Color, dur: float = 0.22) -> void:
+	var holder := Node3D.new()
+	root.add_child(holder)
+	var m := Mats.glow_unique(col, 4.0, 0.0, 0.0)
+	var n := 7
+	var prev := a
+	var side := (b - a).cross(Vector3.UP).normalized()
+	for i in n:
+		var t := float(i + 1) / n
+		var p := a.lerp(b, t)
+		if i < n - 1:
+			p += side * randf_range(-0.35, 0.35) + Vector3(0, randf_range(-0.25, 0.25), 0)
+		var seg := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.035
+		cm.bottom_radius = 0.035
+		cm.height = prev.distance_to(p)
+		cm.radial_segments = 4
+		cm.rings = 1
+		seg.mesh = cm
+		seg.material_override = m
+		seg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		holder.add_child(seg)
+		seg.global_position = (prev + p) * 0.5
+		if prev.distance_to(p) > 0.01:
+			seg.look_at(p, Vector3.UP if absf((p - prev).normalized().y) < 0.95 else Vector3.FORWARD)
+			seg.rotate_object_local(Vector3.RIGHT, PI * 0.5)
+		prev = p
+	burst(root, b, col, 10, 3.0, 0.06, 0.3, true, 0.0)
+	var tw := holder.create_tween()
+	tw.tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 1.0, 0.0, dur)
+	_free_later(holder, dur + 0.05)
+
 static func pillar(root: Node3D, pos: Vector3, col: Color, dur: float = 1.4) -> void:
 	var mi := MeshInstance3D.new()
 	mi.mesh = Geo.cyl(0.9, 0.9, 1.0, 24)

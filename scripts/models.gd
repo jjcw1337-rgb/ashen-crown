@@ -446,6 +446,9 @@ static func material(id: String) -> Node3D:
 	return root
 
 static func weapon(kind: String, sh: Dictionary, p: Dictionary) -> Node3D:
+	if kind == "bow":
+		# the archer's bows: the hunting longbow, held in the left hand (Hero.refresh_gear)
+		return enemy_weapon("longbow")
 	var root := Node3D.new()
 	var w := N(root, "w", Vector3.ZERO, Vector3(-90, 0, 0))
 	var mm := _metal(p)

@@ -96,6 +96,9 @@ var arrows: Array = []
 var volleys: Array = []
 var snares: Array = []
 var beasts: Array = []
+var beast_down_t := 0.0     # after the Spirit Beast falls, seconds until it rises again beside him
+var mark = null             # the enemy the archer is shooting at: his beast goes for it first
+var mark_t := 0.0
 var blights: Array = []      # plague pools on the ground: [{node, pos, t, tick}]
 var buff_t := 0.0
 var heal_pool := 0.0
@@ -586,7 +589,13 @@ func refresh_gear() -> void:
 	var w = equipment.get("weapon")
 	if w != null:
 		weapon_node = Models.item_model(w)
-		(J["grip_r"] as Node3D).add_child(weapon_node)
+		if has_bow() and J.has("grip_l"):
+			# a bow is held in the left hand; Anim keeps the grip lined up with the arm (bow_l)
+			(J["grip_l"] as Node3D).add_child(weapon_node)
+			J["bow_l"] = weapon_node
+		else:
+			J.erase("bow_l")
+			(J["grip_r"] as Node3D).add_child(weapon_node)
 		# the new model starts in the hand: force _carry_weapon to place it (and the body's hilt) next frame
 		carry.configure(cls)
 		_carry_in_hand = not (carry.t >= float(carry.p["grab"]))
@@ -615,6 +624,8 @@ func refresh_gear() -> void:
 		Demon.rebuild_body(rig, demon_gear())
 	elif is_warlock():
 		Warlock.rebuild_body(rig, warlock_gear())
+	elif is_archer():
+		Knight.rebuild_body(rig, Archer.body_gear(knight_gear()))
 	elif not rig.has_meta("meshy"):
 		Knight.rebuild_body(rig, knight_gear())
 	var am = equipment.get("amulet")
@@ -670,7 +681,7 @@ func knight_gear() -> Dictionary:
 ## ("hilt": the body's own sheathed hilt shows and the weapon model hides; "back": on the back). When it
 ## changes hands it keeps its place in the world and eases into the new hold, so it never jumps.
 func _carry_weapon(delta: float) -> void:
-	if weapon_node == null or not is_instance_valid(weapon_node) or rig == null:
+	if weapon_node == null or not is_instance_valid(weapon_node) or rig == null or has_bow():  # a bow stays in the left hand
 		return
 	var in_hand := carry.t >= float(carry.p["grab"])
 	var store: String = carry.p["store"]
@@ -1346,6 +1357,9 @@ func _process(delta: float) -> void:
 	if exhausted and stamina >= max_stamina * 0.3:
 		exhausted = false
 	var speed := 4.8 * (1.0 + frw / 100.0)
+	# the archer runs 10% faster while his Spirit Beast is at his side
+	if is_archer() and beasts.any(func(b) -> bool: return is_instance_valid(b) and not b.dead):
+		speed *= 1.1
 	if running:
 		speed *= 1.6
 	if phased:
@@ -1475,7 +1489,8 @@ func _process(delta: float) -> void:
 	_draw_drain()
 	_breathe(delta)
 	_apply_shield_pose()
-	_update_trail(atk_t >= 0.0 or charge_t >= 0.0)
+	# no sword-swing streak off a bow
+	_update_trail((atk_t >= 0.0 or charge_t >= 0.0) and not has_bow())
 
 ## The Wraith floats a hand's breadth off the ground, bobbing slowly and leaning into motion.
 func _hover() -> void:
@@ -1580,7 +1595,7 @@ func _puppet_process(delta: float) -> void:
 	Anim.pose(rig, st)
 	_hover()
 	_apply_shield_pose()
-	_update_trail(atk_t >= 0.0)
+	_update_trail(atk_t >= 0.0 and not has_bow())
 
 func _apply_shield_pose() -> void:
 	if shield_node == null or not is_instance_valid(shield_node):
