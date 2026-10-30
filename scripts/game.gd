@@ -1356,7 +1356,7 @@ func _interact(t: Inter) -> void:
 		"bonfire":
 			ui.open_burn()
 			ui.trade_with = t
-			Sfx.play("click")
+			Sfx.play("bonfire_open")
 		"waypoint":
 			var wp_id: String = t.data.get("wp", "town")
 			if not waypoints_known.has(wp_id):

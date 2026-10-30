@@ -294,7 +294,9 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   sounds (`Sfx.counts`) and the fort voice. The camp's song is `music_town` (jj's pick: a dark forest sanctuary, harp over a low
   string drone with a wooden flute; candidate take 13). Ambience: wind, drips in the crypt, and in Act I outside the camp (moor and fort) `forest`, soft
   trees in a breeze (`Sfx.play_music(kind, amb)`, picked in `Game.load_zone`).
-- **The camp's bonfire** (`Inter` kind `"bonfire"`, `UI.open_burn`): clicking it opens the fire (`UI.Flames`) beside the
+- **The camp's bonfire** (`Inter` kind `"bonfire"`, `UI.open_burn`): clicking it roars up (`bonfire_open`) and opens the fire
+  window in the inventory's iron frame (a shader fire in a stone hearth, `UI.Flames`/`FIRE_SHADER`) with its options below
+  in the bar's sockets (`UI.BONFIRE_OPTIONS`: Burn, Enchant; empty sockets wait for more) beside the
   inventory; drag an item onto the flames or right-click it to burn it for good (`UI.burn_request`, `Game.burned`: the
   `burn_item` sound and a flare); rare, unique and material items ask first. A click on an inventory item plays
   `inv_click`. `tools/bonfire_test.gd`, `tools/bonfire_shot.gd`.

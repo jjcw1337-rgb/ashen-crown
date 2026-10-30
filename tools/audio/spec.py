@@ -200,6 +200,8 @@ SPEC = [
     # the camp's bonfire takes what you throw in (gone for good), and a pick-up click in the inventory
     dict(name="burn_item", src="eleven", n=4, dur=1.8, hit=0, label="something thrown into a fire",
          prompt="an object thrown into a roaring campfire, a soft thump then a burst of flames flaring up and crackling sparks" + DRY),
+    dict(name="bonfire_open", src="eleven", n=3, dur=1.6, hit=0, label="the camp's bonfire roaring up when clicked",
+         prompt="a campfire roaring up, a deep soft whoosh of flames swelling then settling into warm crackling" + DRY),
     dict(name="inv_click", src="eleven", n=4, dur=0.5, hit=0, label="picking up an item",
          prompt="picking up a small metal and leather item in a dark fantasy game inventory, a short soft clink with a leather rustle" + DRY),
     # Act I's birds (birds.gd): a flock bursting up out of the trees

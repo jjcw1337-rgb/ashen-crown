@@ -12,6 +12,7 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | blight_cast | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a warlock hurling a poison bolt, sinister hiss and whoosh, close mic, dry, isolated sound effect, no music |
 | block | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a sword blow blocked by a wooden shield with an iron rim, solid knock and clank, close mic, dry, isolated sound effect, no music |
 | blood_pact | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a slow heavy heartbeat thumping twice, with thick blood sloshing, close mic, dry, isolated sound effect, no music |
+| bonfire_open | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a campfire roaring up, a deep soft whoosh of flames swelling then settling into warm crackling, close mic, dry, isolated sound effect, no music |
 | boom | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a gunpowder bomb exploding, sharp blast with scattering gold coins, close mic, dry, isolated sound effect, no music |
 | boss_die | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a giant goblin king's final dying roar as he crashes onto a pile of gold coins, close mic, dry, isolated sound effect, no music |
 | bow | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a bowstring released, an arrow shot whizzing away, close mic, dry, isolated sound effect, no music |

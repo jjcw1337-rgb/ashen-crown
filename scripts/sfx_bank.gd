@@ -9,6 +9,7 @@ const BANK := {
 	"blight_cast": [1, "sfx", 0.0],
 	"block": [1, "sfx", 0.0],
 	"blood_pact": [1, "sfx", 0.0],
+	"bonfire_open": [1, "sfx", 0.0],
 	"boom": [1, "sfx", 0.0],
 	"boss_die": [1, "sfx", 0.0],
 	"bow": [1, "sfx", 0.0],

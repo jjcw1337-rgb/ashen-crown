@@ -2445,20 +2445,209 @@ func confirm_kick(pid: int, nm: String) -> void:
 
 ## The camp's bonfire: a window with the fire in it beside your inventory. Drag an item onto the flames, or
 ## right-click it, and it burns, gone for good (rare, unique and the sloths' materials ask first).
+## The bonfire window in the inventory's iron and bronze (the same frame, plate and trim): the fire burns in
+## a recessed stone hearth on an iron grate; drop an item on it (or right-click it in the bag) to burn it.
+## Below the hearth, what the fire can do (`BONFIRE_OPTIONS`, in the action bar's sockets): Burn and Enchant
+## now, with empty sockets left for what comes later (a new entry here fills the next one).
+const BURN_SIZE := Vector2(360, 590)
+const BURN_SCALE := 0.26
+const BURN_HEARTH := Rect2(52, 112, 256, 260)
+const BONFIRE_OPTIONS := [
+	["burn", "Burn", "Throw unwanted gear on the fire. Drag it onto the flames or right-click it in your bag."],
+	["enchant", "Enchant", "Bind runes into your worn armour over the flames: more defense and life, up to +10."],
+]
+const BONFIRE_SOCKETS := 6
+var burn_hint: Label
+var burn_opts := {}
+
 func _build_burn() -> void:
-	burn_panel = _panel("Bonfire", true, 300, 360)
-	var vb: VBoxContainer = burn_panel.get_node("vb")
-	var t := _label("Drag an item onto the fire, or right-click it in your bag, to burn it. It is gone forever.", 13, DIM)
+	burn_panel = PanelContainer.new()
+	burn_panel.position = Vector2(24, 64)
+	burn_panel.custom_minimum_size = BURN_SIZE
+	burn_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	burn_panel.visible = false
+	root.add_child(burn_panel)
+	var body := Control.new()
+	body.custom_minimum_size = BURN_SIZE
+	body.mouse_filter = Control.MOUSE_FILTER_STOP
+	burn_panel.add_child(body)
+	var trim := int(178 * BURN_SCALE)
+	var iron := TextureRect.new()
+	iron.texture = _scaled_tex(INV_TEX["iron"], BURN_SCALE)
+	iron.stretch_mode = TextureRect.STRETCH_TILE
+	iron.position = Vector2(trim, trim)
+	iron.size = BURN_SIZE - Vector2(trim * 2, trim * 2 - 2)
+	iron.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(iron)
+	var frame := NinePatchRect.new()
+	frame.texture = _scaled_tex(INV_TEX["frame"], BURN_SCALE)
+	var pm := int(INV_PATCH * BURN_SCALE)
+	for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
+		frame.set_patch_margin(side, pm)
+	frame.axis_stretch_horizontal = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
+	frame.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
+	frame.draw_center = false
+	frame.size = BURN_SIZE
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(frame)
+	var plate := TextureRect.new()
+	plate.texture = load(INV_TEX["plate"])
+	plate.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	plate.size = Vector2(150, 30)
+	plate.position = Vector2((BURN_SIZE.x - 150) * 0.5, 11)
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(plate)
+	var title := _label("BONFIRE", 14, GOLD, true)
+	var tfv := FontVariation.new()
+	tfv.base_font = font_title
+	tfv.spacing_glyph = 3
+	title.add_theme_font_override("font", tfv)
+	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	title.add_theme_constant_override("outline_size", 4)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.position = plate.position
+	title.size = plate.size
+	body.add_child(title)
+	var x := Button.new()
+	x.text = "✕"
+	x.flat = true
+	x.add_theme_color_override("font_color", Color(0.85, 0.7, 0.42))
+	x.add_theme_color_override("font_hover_color", Color(1.0, 0.85, 0.5))
+	x.add_theme_font_size_override("font_size", 16)
+	x.position = Vector2(BURN_SIZE.x * 0.5 + 80, 12)
+	x.size = Vector2(28, 28)
+	x.pressed.connect(func():
+		burn_panel.visible = false
+		tooltip.visible = false
+		shop_mode = ""
+		Sfx.play("click"))
+	body.add_child(x)
+	var t := _label("Drag an item onto the fire, or right-click it in your bag. It burns for good.", 13, Color(0.8, 0.74, 0.62))
+	burn_hint = t
 	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	t.custom_minimum_size = Vector2(260, 0)
-	vb.add_child(t)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	t.position = Vector2(66, 58)
+	t.size = Vector2(BURN_SIZE.x - 132, 48)
+	body.add_child(t)
+	# the hearth: a recess in the iron, a bronze line round it, the fire inside
+	var well := Panel.new()
+	var wsb := StyleBoxFlat.new()
+	wsb.bg_color = Color(0.03, 0.025, 0.022)
+	wsb.shadow_color = Color(0, 0, 0, 0.6)
+	wsb.shadow_size = 6
+	well.add_theme_stylebox_override("panel", wsb)
+	well.position = BURN_HEARTH.position
+	well.size = BURN_HEARTH.size
+	well.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(well)
 	burn_fire = Flames.new()
-	burn_fire.custom_minimum_size = Vector2(260, 250)
+	burn_fire.position = BURN_HEARTH.position
+	burn_fire.size = BURN_HEARTH.size
+	burn_fire.clip_contents = true
 	burn_fire.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(burn_fire)
+	body.add_child(burn_fire)
+	body.add_child(_inset_line(BURN_HEARTH))
+	# what the fire can do: a socket each, three to a row; the empty ones wait for upgrades
+	var grid_at := Vector2(BURN_HEARTH.position.x + 6, BURN_HEARTH.end.y + 18)
+	if _socket_tex == null:
+		_socket_tex = _scaled_tex(BAR_TEX["slot"], 0.3)
+	for i in BONFIRE_SOCKETS:
+		var cell := Control.new()
+		cell.position = grid_at + Vector2((i % 3) * 84, (i / 3) * 86)
+		cell.size = Vector2(76, 80)
+		body.add_child(cell)
+		var sock := Panel.new()
+		var sb := StyleBoxTexture.new()
+		sb.texture = _socket_tex
+		for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
+			sb.set_texture_margin(side, 9)
+		sock.add_theme_stylebox_override("panel", sb)
+		sock.position = Vector2(12, 0)
+		sock.size = Vector2(52, 52)
+		cell.add_child(sock)
+		if i >= BONFIRE_OPTIONS.size():
+			sock.modulate = Color(0.55, 0.52, 0.5)
+			sock.tooltip_text = "More to come"
+			continue
+		var opt: Array = BONFIRE_OPTIONS[i]
+		var id: String = opt[0]
+		var ic := FireIcon.new()
+		ic.kind = id
+		ic.position = Vector2(6, 6)
+		ic.size = Vector2(40, 40)
+		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		sock.add_child(ic)
+		var lb := _label(str(opt[1]), 13, Color(0.86, 0.8, 0.7))
+		lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lb.position = Vector2(0, 54)
+		lb.size = Vector2(76, 20)
+		lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cell.add_child(lb)
+		var b := Button.new()
+		b.flat = true
+		b.position = Vector2.ZERO
+		b.size = cell.size
+		b.tooltip_text = str(opt[2])
+		b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		b.pressed.connect(func(): _bonfire_option(id))
+		cell.add_child(b)
+		burn_opts[id] = [sock, lb]
+	_bonfire_select("burn")
+
+func _bonfire_select(id: String) -> void:
+	for k in burn_opts:
+		var on: bool = k == id
+		(burn_opts[k][0] as Panel).modulate = Color(1.35, 1.15, 0.85) if on else Color.WHITE
+		(burn_opts[k][1] as Label).add_theme_color_override("font_color", GOLD if on else Color(0.86, 0.8, 0.7))
+
+func _bonfire_option(id: String) -> void:
+	Sfx.play("click")
+	match id:
+		"burn":
+			_bonfire_select("burn")
+			shop_mode = "burn"
+		"enchant":
+			var fire = trade_with
+			open_enchant("Bonfire")
+			trade_with = fire
+
+## The bonfire's option icons, drawn: a flame (Burn), a rune-lit breastplate (Enchant).
+class FireIcon extends Control:
+	var kind := ""
+	var _t := 0.0
+	func _process(delta: float) -> void:
+		_t += delta
+		queue_redraw()
+	func _draw() -> void:
+		var c := size * 0.5
+		var s := size.x
+		match kind:
+			"burn":
+				var cols := [Color(0.8, 0.15, 0.04), Color(1.0, 0.5, 0.1), Color(1.0, 0.85, 0.45)]
+				for k in 3:
+					var h := s * (0.42 - k * 0.1)
+					var w := s * (0.22 - k * 0.05)
+					var sw := sin(_t * 4.0 + k) * 2.0
+					var b := c + Vector2(0, s * 0.3)
+					draw_colored_polygon(PackedVector2Array([b + Vector2(-w, 0), b + Vector2(-w * 0.9 + sw * 0.3, -h * 0.55),
+						b + Vector2(sw, -h * 1.6), b + Vector2(w * 0.9 + sw * 0.3, -h * 0.55), b + Vector2(w, 0)]), cols[k])
+			"enchant":
+				var pts := PackedVector2Array([c + Vector2(-s * 0.32, -s * 0.3), c + Vector2(s * 0.32, -s * 0.3), c + Vector2(s * 0.26, s * 0.12),
+					c + Vector2(0, s * 0.36), c + Vector2(-s * 0.26, s * 0.12)])
+				draw_colored_polygon(pts, Color(0.42, 0.4, 0.38))
+				draw_polyline(pts + PackedVector2Array([pts[0]]), Color(0.75, 0.6, 0.35), 1.5)
+				var glow := 0.6 + 0.4 * sin(_t * 3.0)
+				var r := c + Vector2(0, -s * 0.02)
+				for a in 4:
+					var ang := a * PI * 0.5 + _t * 0.6
+					draw_line(r, r + Vector2(cos(ang), sin(ang)) * s * 0.16, Color(0.55, 0.9, 1.0, glow), 2.0)
+				draw_circle(r, s * 0.05, Color(0.8, 0.95, 1.0, glow))
 
 func open_burn() -> void:
 	shop_mode = "burn"
+	ench_panel.visible = false
+	_bonfire_select("burn")
 	stash_panel.visible = false
 	shop_panel.visible = false
 	char_panel.visible = false
@@ -2488,37 +2677,101 @@ func _burn(idx: int, it: Dictionary) -> void:
 	message("%s burns" % it["name"], Color(1.0, 0.6, 0.3))
 	refresh()
 
-## A fire drawn in the bonfire window: tongues of flame that lick and sway, flaring when something burns.
+## The fire in the bonfire's hearth: the firelight on the recess, a shader fire (noise-driven tongues, dark red
+## at the roots to white-gold at the heart), then in front the iron grate, the ring of hearth stones and embers
+## drifting up. `flare` (set when something burns) makes it leap and brighten, then dies down.
 class Flames extends Control:
 	var flare := 0.0
 	var _t := 0.0
+	var _fire: ColorRect
+	var _front: Control
+	func _ready() -> void:
+		_fire = ColorRect.new()
+		_fire.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_fire.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var m := ShaderMaterial.new()
+		var sh := Shader.new()
+		sh.code = FIRE_SHADER
+		m.shader = sh
+		_fire.material = m
+		add_child(_fire)
+		_front = Control.new()
+		_front.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_front.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_front.draw.connect(_draw_front)
+		add_child(_front)
 	func _process(delta: float) -> void:
 		_t += delta
 		flare = maxf(0.0, flare - delta * 1.2)
+		if _fire:
+			(_fire.material as ShaderMaterial).set_shader_parameter("flare", flare)
+			_front.queue_redraw()
 		queue_redraw()
 	func _draw() -> void:
 		var w := size.x
 		var h := size.y
-		var base := Vector2(w * 0.5, h - 18.0)
-		# the glow, the logs, then the flames from the back (dark red) to the front (yellow)
-		for k in 4:
-			draw_circle(base + Vector2(0, -h * 0.18), w * (0.42 - k * 0.08) * (1.0 + flare * 0.3), Color(1.0, 0.45, 0.1, 0.05 + k * 0.03 + flare * 0.06))
-		for lg in [[-0.32, 0.25], [0.32, -0.25]]:
-			var a := Vector2(w * (0.5 + lg[0]), h - 10.0)
-			var b := Vector2(w * (0.5 - lg[0] * 0.2), h - 26.0)
-			draw_line(a, b, Color(0.22, 0.13, 0.07), 13.0, true)
-		var cols := [Color(0.75, 0.12, 0.04), Color(0.95, 0.35, 0.06), Color(1.0, 0.62, 0.15), Color(1.0, 0.88, 0.45)]
-		for layer in 4:
-			var tall := h * (0.78 - layer * 0.14) * (1.0 + flare * 0.45)
-			var half := w * (0.3 - layer * 0.055)
-			for tongue in 5:
-				var off := (float(tongue) - 2.0) / 2.0
-				var sway := sin(_t * (3.0 + tongue * 0.7) + layer * 1.3 + tongue) * 10.0
-				var th := tall * (0.65 + 0.35 * absf(sin(_t * 2.3 + tongue * 1.7 + layer)))
-				var c := base + Vector2(off * half, 0)
-				var pts := PackedVector2Array([c + Vector2(-half * 0.32, 0), c + Vector2(sway * 0.5 - half * 0.18, -th * 0.5),
-					c + Vector2(sway, -th), c + Vector2(sway * 0.5 + half * 0.18, -th * 0.5), c + Vector2(half * 0.32, 0)])
-				draw_colored_polygon(pts, cols[layer])
+		var c := Vector2(w * 0.5, h * 0.62)
+		var flick := sin(_t * 7.0) * 0.004 + sin(_t * 11.3) * 0.003
+		for k in 18:
+			var r := w * (1.05 - k * 0.05) * (1.0 + flare * 0.2)
+			draw_circle(c, r, Color(1.0, 0.36, 0.08, 0.012 + flare * 0.012 + flick))
+	func _draw_front() -> void:
+		var w := size.x
+		var h := size.y
+		var gy := h - 52.0
+		# embers drifting up out of the fire
+		for e in 26:
+			var life := fmod(_t * (0.3 + fmod(e * 0.37, 0.3)) + e * 0.137, 1.0)
+			var ex := w * 0.5 + sin(e * 12.9898) * w * 0.2 + sin(_t * 2.0 + e) * 10.0 * life
+			var ey := gy - 10.0 - life * h * (0.7 + flare * 0.2)
+			_front.draw_circle(Vector2(ex, ey), 1.7 * (1.0 - life) + 0.5, Color(1.0, 0.6 + 0.35 * (1.0 - life), 0.25, (1.0 - life) * 0.9))
+		# the iron grate
+		_front.draw_line(Vector2(w * 0.14, gy), Vector2(w * 0.86, gy), Color(0.09, 0.08, 0.075), 6.0)
+		for b in 8:
+			var bx := w * (0.18 + b * 0.094)
+			_front.draw_line(Vector2(bx, gy - 2.0), Vector2(bx, gy + 16.0), Color(0.11, 0.1, 0.09), 3.0)
+		_front.draw_line(Vector2(w * 0.14, gy - 3.0), Vector2(w * 0.86, gy - 3.0), Color(1.0, 0.5, 0.18, 0.55 + flare * 0.4), 1.0)
+		# the ring of hearth stones, lit from the fire above
+		var stones := 9
+		for k in stones:
+			var f := (float(k) + 0.5) / stones
+			var cx := w * (0.05 + f * 0.9)
+			var cy := h - 22.0 - absf(f - 0.5) * 12.0
+			var rw := w * 0.058 + sin(k * 7.1) * 3.0
+			var rh := 15.0 + cos(k * 3.3) * 3.0
+			var pts := PackedVector2Array()
+			for q in 12:
+				var aq := TAU * q / 12.0
+				pts.append(Vector2(cx + cos(aq) * rw * (1.0 + sin(aq * 3.0 + k) * 0.08), cy + sin(aq) * rh))
+			var lit := 0.55 + 0.45 * (1.0 - absf(f - 0.5) * 2.0)
+			_front.draw_colored_polygon(pts, Color(0.19, 0.17, 0.155) * lit)
+			_front.draw_arc(Vector2(cx, cy + 2.0), rw * 0.9, PI * 1.15, PI * 1.85, 8, Color(1.0, 0.5, 0.2, 0.35 * lit + flare * 0.3), 2.0)
+
+const FIRE_SHADER := """
+shader_type canvas_item;
+uniform float flare = 0.0;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
+}
+float fbm(vec2 p) { float v = 0.0; float a = 0.5; for (int i = 0; i < 5; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }
+void fragment() {
+	vec2 uv = vec2(UV.x, 1.0 - UV.y);
+	float y = (uv.y - 0.2) / (0.66 + flare * 0.3);
+	float n = fbm(vec2(uv.x * 4.0, uv.y * 3.2 - TIME * 2.1));
+	float n2 = fbm(vec2(uv.x * 9.0 + 3.0, uv.y * 6.0 - TIME * 3.4));
+	// the flames lick sideways more the higher they reach, and split into tongues
+	float x = (uv.x - 0.5) * 2.0 + (n - 0.5) * 0.7 * max(y, 0.0);
+	float tongues = 0.25 * sin(x * 9.0 + n2 * 4.0 - TIME * 1.5) * max(y, 0.0);
+	float shape = 1.0 - abs(x) * (1.5 + max(y, 0.0) * 1.1) - y * 0.95 + tongues;
+	float f = clamp((shape + n * 1.1 + n2 * 0.6 - 0.8) * 2.0, 0.0, 1.0);
+	f *= smoothstep(-0.08, 0.04, y);
+	vec3 c = mix(vec3(0.45, 0.04, 0.0), vec3(1.0, 0.42, 0.05), smoothstep(0.0, 0.45, f));
+	c = mix(c, vec3(1.0, 0.86, 0.5), smoothstep(0.62, 1.0, f));
+	COLOR = vec4(c * (1.15 + flare * 0.4), smoothstep(0.03, 0.3, f));
+}
+"""
 
 func _build_waypoints() -> void:
 	wp_panel = _panel("Waypoints", true, 380, 380)
