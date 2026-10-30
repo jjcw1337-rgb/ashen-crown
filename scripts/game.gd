@@ -1007,9 +1007,10 @@ func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
 		ui.open_dialog(Data.VENDORS[0]["elder"], "Welcome to the Forsaken Wilds, %s. Since the goblin king Grubb tunnelled into the old crypt to loot the dead, the dead walk Cairnfell Moor and the Fallen raid our roads. He sits on a mountain of stolen gold down there and calls himself king. Trade with our folk, then head out through the north gate. End him, and the moor may yet heal." % ("restless one" if hero.is_wraith() else ("pact-bound one" if hero.is_warlock() else "crusader")), [["I will", func(): pass]])
 	ui.refresh()
 
-## Co-op from the title screen. Your last character is used if you have one.
-func start_host() -> void:
-	await start_game(not list_characters().is_empty())
+## Co-op from the title screen, with the character picked for it (id; "" for the last played, or a
+## new knight if there's none).
+func start_host(id := "") -> void:
+	await start_game(not list_characters().is_empty(), "knight", id)
 	var err := net.host()
 	if err != OK:
 		ui.big_message("Could not host")
@@ -1017,13 +1018,14 @@ func start_host() -> void:
 	else:
 		ui.message("Hosting! Your partner can now pick Join Co-op Game", Color(0.5, 1.0, 0.5))
 
+var coop_char := ""     # the character picked to join a co-op game with
 func start_join(ip: String) -> void:
 	Sfx.play("click")
 	net.stop_listening()
 	ui.hide_title()
 	playing = true
 	var chars := list_characters()
-	char_id = str(chars[0]["id"]) if not chars.is_empty() else new_char_id()
+	char_id = coop_char if coop_char != "" else (str(chars[0]["id"]) if not chars.is_empty() else new_char_id())
 	if not load_game():
 		char_name = default_name(hero.cls)
 		hero.new_character()
@@ -1069,19 +1071,71 @@ func save_game() -> void:
 	var d := {"hero": hero.to_save(), "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed, "difficulty": difficulty,
 		"max_run": max_run, "runs": run_progress, "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
 	DirAccess.make_dir_recursive_absolute(char_dir)
-	var f := FileAccess.open(save_path(), FileAccess.WRITE)
-	if f:
-		f.store_string(JSON.stringify(d))
+	if not write_save(save_path(), d):
+		push_warning("could not save " + save_path())
 
-func load_game() -> bool:
-	if not FileAccess.file_exists(save_path()):
-		return false
-	var f := FileAccess.open(save_path(), FileAccess.READ)
+## The save format; a save from an older version is brought up to date by `_migrate` as it loads.
+const SAVE_VERSION := 1
+## how many earlier saves are kept beside each character's (<id>.json.bak1 is the newest)
+const SAVE_BACKUPS := 3
+
+## Writes a save safely: to <path>.tmp first, read back and checked, and only then swapped in, the
+## saves before it kept as .bak1 to .bak3. A crash or a full disk mid-save never costs the character.
+func write_save(path: String, d: Dictionary) -> bool:
+	d["version"] = SAVE_VERSION
+	var txt := JSON.stringify(d)
+	var tmp := path + ".tmp"
+	var f := FileAccess.open(tmp, FileAccess.WRITE)
 	if f == null:
 		return false
-	var d = JSON.parse_string(f.get_as_text())
-	if typeof(d) != TYPE_DICTIONARY:
+	f.store_string(txt)
+	f.flush()
+	var ok := f.get_error() == OK
+	f.close()
+	if not ok or FileAccess.get_file_as_string(tmp) != txt:
 		return false
+	if FileAccess.file_exists(path):
+		for i in range(SAVE_BACKUPS - 1, 0, -1):
+			_replace("%s.bak%d" % [path, i], "%s.bak%d" % [path, i + 1])
+		_replace(path, path + ".bak1")
+	return _replace(tmp, path)
+
+## Moves a over b (b removed first: renaming onto an existing file fails on Windows).
+func _replace(a: String, b: String) -> bool:
+	if not FileAccess.file_exists(a):
+		return false
+	if FileAccess.file_exists(b):
+		DirAccess.remove_absolute(b)
+	return DirAccess.rename_absolute(a, b) == OK
+
+## Reads a save, falling back to the half-written .tmp and then the backups, newest first, when the
+## save itself is missing or damaged. {} when there's nothing usable. `save_recovered` says which.
+var save_recovered := ""
+func read_save(path: String) -> Dictionary:
+	save_recovered = ""
+	for p in [path, path + ".tmp"] + range(1, SAVE_BACKUPS + 1).map(func(i): return "%s.bak%d" % [path, i]):
+		if not FileAccess.file_exists(p):
+			continue
+		var d = JSON.parse_string(FileAccess.get_file_as_string(p))
+		if typeof(d) == TYPE_DICTIONARY and typeof(d.get("hero")) == TYPE_DICTIONARY:
+			if p != path:
+				save_recovered = p.get_file()
+			return _migrate(d)
+	return {}
+
+## Brings an older save up to SAVE_VERSION (version 0 is every save from before versions; nothing to change yet).
+func _migrate(d: Dictionary) -> Dictionary:
+	d["version"] = int(d.get("version", 0))
+	return d
+
+func load_game() -> bool:
+	var d := read_save(save_path())
+	if d.is_empty():
+		return false
+	if save_recovered != "":
+		# the save was damaged or half-written: put the recovered one back in its place
+		write_save(save_path(), d.duplicate(true))
+		ui.message("Your save was damaged; restored the last good copy", Color(1.0, 0.8, 0.4))
 	hero.from_save(d.get("hero", {}))
 	char_name = str(d.get("name", default_name(hero.cls)))
 	if char_name != "":
@@ -1104,17 +1158,18 @@ func list_characters() -> Array:
 	var dir := DirAccess.open(char_dir)
 	if dir == null:
 		return out
+	# a character is <id>.json, or only its .tmp / backups if a save was cut short
+	var ids := {}
 	for fn in dir.get_files():
-		if not fn.ends_with(".json"):
-			continue
-		var f := FileAccess.open(char_dir + fn, FileAccess.READ)
-		if f == null:
-			continue
-		var d = JSON.parse_string(f.get_as_text())
-		if typeof(d) != TYPE_DICTIONARY:
+		var i := fn.find(".json")
+		if i > 0 and (fn.ends_with(".json") or fn.ends_with(".json.tmp") or fn.substr(i).begins_with(".json.bak")):
+			ids[fn.substr(0, i)] = true
+	for id in ids:
+		var d := read_save(char_dir + id + ".json")
+		if d.is_empty():
 			continue
 		var h: Dictionary = d.get("hero", {})
-		out.append({"id": fn.get_basename(), "name": str(d.get("name", "")), "cls": str(h.get("cls", "knight")),
+		out.append({"id": id, "name": str(d.get("name", "")), "cls": str(h.get("cls", "knight")),
 			"level": int(h.get("level", 1)), "difficulty": int(d.get("difficulty", 0)), "act": int(d.get("act", 0)),
 			"played": int(d.get("played", 0))})
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["played"]) > int(b["played"]))
@@ -1131,16 +1186,17 @@ func _adopt_old_save() -> void:
 		var h: Dictionary = d.get("hero", {})
 		d["name"] = default_name(str(h.get("cls", "knight")))
 		d["played"] = int(FileAccess.get_modified_time(old_save)) * 1000
-		var f := FileAccess.open(char_dir + new_char_id() + ".json", FileAccess.WRITE)
-		if f:
-			f.store_string(JSON.stringify(d))
+		write_save(char_dir + new_char_id() + ".json", d)
 	var mark := FileAccess.open(char_dir + ".adopted", FileAccess.WRITE)
 	if mark:
 		mark.store_string("1")
 
 func delete_character(id: String) -> void:
-	if id != "" and FileAccess.file_exists(char_dir + id + ".json"):
-		DirAccess.remove_absolute(char_dir + id + ".json")
+	if id == "":
+		return
+	for sfx in [".json", ".json.tmp"] + range(1, SAVE_BACKUPS + 1).map(func(i): return ".json.bak%d" % i):
+		if FileAccess.file_exists(char_dir + id + sfx):
+			DirAccess.remove_absolute(char_dir + id + sfx)
 
 func new_char_id() -> String:
 	return "%d_%04d" % [int(Time.get_unix_time_from_system()), randi() % 10000]

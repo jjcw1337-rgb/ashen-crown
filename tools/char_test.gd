@@ -60,8 +60,34 @@ func _run() -> void:
 	print("[C] played Fizz: class %s gold %d name %s" % [g.hero.cls, g.hero.gold, g.char_name])
 	await g.exit_to_title()
 	print("[C] Fizz now first: ", g.list_characters()[0]["name"] == "Fizz")
+	# safe saves: backups kept, a damaged save recovered, a half-written one still listed
+	for i in 4:
+		g.char_id = fizz
+		g.hero.gold = 5000 + i
+		g.save_game()
+	var fp: String = DIR + fizz + ".json"
+	var baks := range(1, 5).filter(func(i): return FileAccess.file_exists("%s.bak%d" % [fp, i]))
+	var ver = JSON.parse_string(FileAccess.get_file_as_string(fp)).get("version", -1)
+	print("[C] safe saves: backups %s (3 kept), no .tmp left %s, version %s" % [baks, not FileAccess.file_exists(fp + ".tmp"), ver])
+	var bad := FileAccess.open(fp, FileAccess.WRITE)
+	bad.store_string("{\"hero\": {\"cls\": \"warl")       # cut off mid-write
+	bad.close()
+	await g.start_game(true, "knight", fizz)
+	print("[C] damaged save: loaded %s gold %d from %s, repaired %s" % [g.hero.cls, g.hero.gold, g.save_recovered,
+		typeof(JSON.parse_string(FileAccess.get_file_as_string(fp))) == TYPE_DICTIONARY])
+	await g.exit_to_title()
+	DirAccess.rename_absolute(fp, fp + ".tmp")
+	DirAccess.remove_absolute(fp + ".bak1")
+	print("[C] only a .tmp left: still listed %s" % g.list_characters().any(func(c): return c["id"] == fizz))
+	# co-op: Host and Join ask which character comes along
+	g.ui.open_characters("host")
+	await process_frame
+	var btn: Button = g.ui.chars_list.get_child(0).find_child("play", true, false)
+	print("[C] co-op picker: title '%s', button '%s'" % [g.ui.chars_title.text, btn.text])
+	g.ui.chars_panel.visible = false
 	# delete Fizz
 	g.delete_character(fizz)
+	print("[C] delete removes the backups too: ", not range(1, 4).any(func(i): return FileAccess.file_exists("%s.bak%d" % [fp, i])) and not FileAccess.file_exists(fp + ".tmp"))
 	chars = g.list_characters()
 	print("[C] after delete: %d left, Fizz gone %s" % [chars.size(), chars.all(func(c): return c["name"] != "Fizz")])
 	_wipe()

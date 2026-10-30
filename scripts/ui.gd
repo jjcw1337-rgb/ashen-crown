@@ -2403,13 +2403,15 @@ func _build_title() -> void:
 	hb.text = "Host Co-op Game"
 	hb.custom_minimum_size = Vector2(0, 46)
 	hb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hb.pressed.connect(func(): game.start_host())
+	hb.pressed.connect(func(): open_characters("host") if not game.list_characters().is_empty() else game.start_host())
 	coop.add_child(hb)
 	var jb := Button.new()
 	jb.text = "Join Co-op Game"
 	jb.custom_minimum_size = Vector2(0, 46)
 	jb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	jb.pressed.connect(func(): open_join())
+	jb.pressed.connect(func():
+		game.coop_char = ""
+		open_characters("join") if not game.list_characters().is_empty() else open_join())
 	coop.add_child(jb)
 	var q := Button.new()
 	q.text = "Quit"
@@ -2470,7 +2472,7 @@ func _build_join() -> void:
 	go.custom_minimum_size = Vector2(100, 40)
 	go.pressed.connect(func(): _join_ip(join_ip.text))
 	row.add_child(go)
-	var note := _label("Your saved knight comes with you (a new one if you have no save).", 13, Color(0.6, 0.57, 0.5))
+	var note := _label("The character you picked comes with you (a new knight if you have none).", 13, Color(0.6, 0.57, 0.5))
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(note)
 	var back := Button.new()
@@ -2758,9 +2760,9 @@ func _build_characters() -> void:
 	vb.offset_bottom = 300
 	vb.add_theme_constant_override("separation", 16)
 	chars_panel.add_child(vb)
-	var t := _label("Characters", 40, GOLD, true)
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(t)
+	chars_title = _label("Characters", 40, GOLD, true)
+	chars_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(chars_title)
 	var sc := ScrollContainer.new()
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -2784,8 +2786,11 @@ func _build_characters() -> void:
 	back.pressed.connect(func(): chars_panel.visible = false)
 	row.add_child(back)
 
-func open_characters() -> void:
+## The character list. For co-op ("host" or "join") it picks who you bring: Play becomes Host / Join.
+var chars_title: Label
+func open_characters(coop := "") -> void:
 	Sfx.play("click")
+	chars_title.text = "Characters" if coop == "" else ("Host Co-op: choose your character" if coop == "host" else "Join Co-op: choose your character")
 	for c in chars_list.get_children():
 		c.queue_free()
 	var accents := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1), "warlock": Color(0.45, 1.0, 0.35)}
@@ -2804,11 +2809,18 @@ func open_characters() -> void:
 		info.add_child(_label("Level %d %s  ·  %s" % [int(c["level"]), Data.CLASSES.get(c["cls"], {"name": "Knight"})["name"], run], 14, Color(0.75, 0.7, 0.62)))
 		var id: String = c["id"]
 		var play := Button.new()
-		play.text = "Play"
+		play.name = "play"
+		play.text = {"": "Play", "host": "Host", "join": "Join"}[coop]
 		play.custom_minimum_size = Vector2(110, 40)
 		play.pressed.connect(func():
 			chars_panel.visible = false
-			game.start_game(true, "knight", id))
+			if coop == "host":
+				game.start_host(id)
+			elif coop == "join":
+				game.coop_char = id
+				open_join()
+			else:
+				game.start_game(true, "knight", id))
 		hb.add_child(play)
 		var del := Button.new()
 		del.text = "Delete"
@@ -2818,7 +2830,7 @@ func open_characters() -> void:
 				del.text = "Sure?"
 				return
 			game.delete_character(id)
-			open_characters()
+			open_characters(coop)
 			show_title()
 			chars_panel.visible = not game.list_characters().is_empty())
 		hb.add_child(del)

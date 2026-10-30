@@ -282,8 +282,12 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   `char_name`; the save holds `name` and `played`). `Game.list_characters()` reads them (last played first) for the
   title's Continue button and the Characters list (Play / Delete); New Character asks for a name on the class picker.
   The pre-characters save `user://ashen_crown_save.json` is adopted once as the first character and left in place.
-  The pause menu's "Save and Exit to Title" is `Game.exit_to_title()`. Co-op uses the last played character and its
-  name. Tools still save to the test file; `tools/char_test.gd` moves `char_dir`/`old_save` to test the real thing,
+  The pause menu's "Save and Exit to Title" is `Game.exit_to_title()`. Host / Join Co-op first ask which character
+  comes along (`UI.open_characters("host"|"join")`, `Game.start_host(id)`, `Game.coop_char`); with none, a new knight.
+  Saves are written safely (`Game.write_save`: to `<id>.json.tmp`, read back, then swapped in; the three saves before
+  it kept as `.bak1`-`.bak3`) and read with fallbacks (`Game.read_save`: the save, its .tmp, the backups newest first;
+  a recovered save is written back and the player told). Every save carries `"version"` (`Game.SAVE_VERSION`); bump it
+  and bring older saves up in `Game._migrate` when the format changes. Write any new save file through `write_save`. Tools still save to the test file; `tools/char_test.gd` moves `char_dir`/`old_save` to test the real thing,
   `tools/char_shot.gd` screenshots the screens.
 - **Act I camp in the forest** (`scripts/forest_camp.gd`, `ForestCamp.build`, used by `World._build_town` when
   `oak_forest` and act 0; A2/A3 keep the old camp): a ring palisade with a gatehouse, rune stones outside
