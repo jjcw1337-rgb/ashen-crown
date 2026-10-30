@@ -57,10 +57,11 @@ var max_run := 0             # highest of those reached; any of them can be pick
 ## TESTING: unlock Act I, A2 and A3 at the camp waypoint from the start. Set to false to
 ## go back to unlocking them by beating each final boss. Only takes effect where dev_tools is on.
 const UNLOCK_ALL_ACTS := true
-## Developer tools (unlock-all-acts and the F8 testing panel): on when running from the editor, in
-## debug exports (the preview builds of test-* branches) and in any build started with --dev; off in
-## the live release builds players get (the site and the public downloads).
-var dev_tools := UNLOCK_ALL_ACTS and (OS.is_debug_build() or OS.get_cmdline_args().has("--dev") or OS.get_cmdline_user_args().has("--dev"))
+## Developer tools (unlock-all-acts and the F8 testing panel): only for the owner. On when running from
+## the Godot editor, or when this PC holds a valid admin key (AdminKey: signed with the owner's private
+## key, so it can't be made up or shared by editing a file). Off for everyone else in every build.
+var admin_name := AdminKey.holder()
+var dev_tools := UNLOCK_ALL_ACTS and (OS.has_feature("editor") or admin_name != "")
 var run_progress := {}       # per run: its waypoints and whether its boss is dead
 var tp_link := {}
 var xp_bonus_t := 0.0
@@ -1408,9 +1409,9 @@ func act_unlocked(run: int) -> bool:
 		return dev_tools_on() or act_boss_slain(int(a["requires"]))
 	return run <= (net.party_max_run if net.is_client() else max_run)
 
-## True where the developer tools are (the testing switch; see UNLOCK_ALL_ACTS).
+## True where the developer tools are (the owner's: see dev_tools).
 func dev_tools_on() -> bool:
-	return bool(get("dev_tools")) if "dev_tools" in self else UNLOCK_ALL_ACTS
+	return dev_tools
 
 ## Has this character touched waypoint `id` in act `run`? Each act keeps its own (run_progress).
 func waypoint_known(run: int, id: String) -> bool:
