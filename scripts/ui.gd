@@ -2192,7 +2192,7 @@ func _build_pause() -> void:
 		update_sound_btn())
 	vb.add_child(sound_btn)
 	update_sound_btn()
-	if game.UNLOCK_ALL_ACTS:
+	if game.dev_tools:
 		var kit := Button.new()
 		kit.text = "Testing panel (F8)"
 		kit.pressed.connect(func():
