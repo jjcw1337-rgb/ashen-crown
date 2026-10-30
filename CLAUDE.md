@@ -331,7 +331,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 - **Skill picker** (`UI._choose_skill`, click a bar slot): the bar's own iron frame and sockets, one card per skill
   (`_picker_card`: equipped glow, the key it's on now, mana, locked level). Esc / click outside closes
   (`close_skill_picker`). Screenshot: `tools/picker_shot.gd`.
-- `UNLOCK_ALL_ACTS` in `game.gd` is a testing switch (also enables the F8 testing panel: `test_immortal`, `test_onehit`, `test_stamina`, `test_allskills` in `game.gd`, and a level setter, `Hero.set_level`); turn off for real playthroughs.
+- Developer tools (`Game.dev_tools`): unlock-all-acts (`UNLOCK_ALL_ACTS`) and the F8 testing panel (`test_immortal`, `test_onehit`, `test_stamina`, `test_allskills` in `game.gd`, and a level setter, `Hero.set_level`). On in the editor, in debug exports (the `test-*` preview builds, `preview.yml` exports with `--export-debug`) and in any build launched with `--dev`; off in the live release builds (`deploy.yml`, `--export-release`). `UNLOCK_ALL_ACTS = false` turns them off everywhere.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file).
 - CI is `.github/workflows/deploy.yml` (container `barichello/godot-ci:4.3`). If it fails, the

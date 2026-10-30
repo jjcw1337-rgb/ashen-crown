@@ -35,18 +35,18 @@ jobs:
       - name: Export Windows version
         run: |
           mkdir -p build/win build/linux build/mac
-          godot --headless --export-release "Windows Desktop" build/win/AshenCrown.exe
+          godot --headless --export-debug "Windows Desktop" build/win/AshenCrown.exe
           cp README.md build/win/
           printf 'start "" "%%~dp0AshenCrown.exe" --rendering-method gl_compatibility --rendering-driver opengl3\r\n' > "build/win/Ashen Crown (Safe Mode).bat"
 
       - name: Export Linux version
         run: |
-          godot --headless --export-release "Linux" build/linux/AshenCrown.x86_64
+          godot --headless --export-debug "Linux" build/linux/AshenCrown.x86_64
           chmod +x build/linux/AshenCrown.x86_64
           cp README.md build/linux/
 
       - name: Export Mac version
-        run: godot --headless --export-release "macOS" build/mac/AshenCrown-Mac.zip
+        run: godot --headless --export-debug "macOS" build/mac/AshenCrown-Mac.zip
 
       - name: Check the exports
         run: |
