@@ -197,6 +197,9 @@ static func build_meshy(armored := false) -> Node3D:
 	root.set_meta("knight", true)
 	root.set_meta("meshy", "armored" if armored else "plain")
 	if armored:
+		# his long cloak hangs on the three panels: cloth, not hair
+		root.set("cloak", true)
+		root.set("cloak_legs", [bi["leg_l"], bi["leg_r"]])
 		root.set_meta("elbow_out", 0.4)    # the plate is wide already: a tighter arm pump
 	return root
 
