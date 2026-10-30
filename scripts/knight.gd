@@ -305,7 +305,30 @@ static func build_mocap(glb := MOCAP_GLB, opts := {}) -> Node3D:
 			bt.add_node("aimwalk_mix", AnimationNodeBlend2.new(), Vector2(800, 150))
 			bt.connect_node("aimwalk_speed", 0, "aimwalk")
 			bt.connect_node("aimwalk_mix", 0, "state")
-			bt.connect_node("aimwalk_mix", 1, "aimwalk_speed")
+			var rc: String = (opts["shot"] as Dictionary).get("reach_clip", "")
+			if rc != "" and ap.has_animation(rc):
+				# and each shot on the move, his drawing arm alone from the reach clip: over his shoulder to the quiver
+				var ra := AnimationNodeAnimation.new()
+				ra.animation = rc
+				var rm := AnimationNodeBlend2.new()
+				rm.filter_enabled = true
+				var sk_path := ""
+				var anim := ap.get_animation(rc)
+				for ti in anim.get_track_count():
+					var tp := str(anim.track_get_path(ti))
+					if tp.ends_with(":Hips"):
+						sk_path = tp.get_slice(":", 0)
+				for bn in (opts["shot"] as Dictionary).get("reach_bones", []):
+					rm.set_filter_path(NodePath(sk_path + ":" + str(bn)), true)
+				bt.add_node("reach", ra, Vector2(650, 650))
+				bt.add_node("reach_seek", AnimationNodeTimeSeek.new(), Vector2(780, 650))
+				bt.add_node("reach_mix", rm, Vector2(780, 550))
+				bt.connect_node("reach_seek", 0, "reach")
+				bt.connect_node("reach_mix", 0, "aimwalk_speed")
+				bt.connect_node("reach_mix", 1, "reach_seek")
+				bt.connect_node("aimwalk_mix", 1, "reach_mix")
+			else:
+				bt.connect_node("aimwalk_mix", 1, "aimwalk_speed")
 			bt.connect_node("shot_mix", 0, "aimwalk_mix")
 		else:
 			bt.connect_node("shot_mix", 0, "state")

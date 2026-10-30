@@ -27,10 +27,28 @@ const HUNTER := Color(0.62, 0.85, 0.75)     # the class's colour: pale spirit-gr
 ## through), his casts (Snare Trap, Spirit Beast) as the game's own moves laid over the upper body. The bow is the
 ## game's (whatever is equipped), held in his LEFT hand like the clips (J "grip_bow", `BOW_HOLD`).
 const RANGER_GLB := "res://assets/models/archer_ranger.glb"
-const SHOT := {"style": "bow", "clip": "shoot", "t0": 1.85, "release": 4.2, "t1": 4.75, "yaw": -90.0, "idle_side": true,
-	"walk_clip": "walk_aim", "walk_speed": 0.82}
+const SHOT := {"style": "bow", "clip": "shoot_back",
+	# "Draw and Shoot from Back" (7.8 s) squeezed into the attack, by its phases: reach over the shoulder (0.2 s),
+	# the hand at the quiver (0.8), the arrow out (1.6), at the bow and nocked (2.2), the bow raised (3.1),
+	# full draw (5.0), the release (6.8, on Anim's impact frame 0.72), the arms coming down (7.35)
+	"keys": [[0.0, 0.2], [0.16, 0.8], [0.28, 1.6], [0.38, 2.2], [0.46, 3.1], [0.62, 5.0], [0.72, 6.8], [1.0, 7.35]],
+	"yaw": -56.0, "stand_yaw": -90.0, "idle_side": true,
+	"walk_clip": "walk_aim", "walk_speed": 0.82,
+	# on the move: only his right arm reaches back for the arrow (over the aimed walk), then draws to his cheek
+	"reach_clip": "shoot_back", "reach_bones": ["RightShoulder", "RightArm", "RightForeArm", "RightHand"],
+	"reach_keys": [[0.0, 0.2], [0.16, 0.8], [0.3, 1.6], [1.0, 1.6]],
+	"reach": [[0.0, 0.0], [0.07, 1.0], [0.3, 1.0], [0.44, 0.0]]}
+## when the hand closes on an arrow in the quiver and when it's on the string (of the shot's progress), standing and moving
+const GRAB := 0.15
+const NOCK := 0.38
+const NOCK_MOVING := 0.42
+const QUIVER := Vector3(0.25, 1.0, -0.24)     # the quiver's bottom on his back, in his body's frame (the glb faces +z)
 ## how fast he steps while he looses arrows (of his normal pace): slowed to a careful, aimed walk
 const SHOOT_MOVE := 0.36
+## where the drawing fingers are on his right hand (its frame), and the bow's cant off upright (degrees, the way
+## archers tip it)
+const FINGERS := Vector3(0, -0.06, 0)
+const CANT := 8.0
 ## the bow in his left fist, per bow kind: [position, rotation in degrees] in the hand follower's frame
 ## (solved so the bow stands upright, its back toward the mark, at the full draw of the shot clip)
 ## and the grip's spot on the bow model (the short bow's wood bulges 0.18 out from its string; the longbow is centred)
@@ -63,8 +81,30 @@ static func build_body() -> Node3D:
 		J["grip_bow_at"] = Models.N(J["grip_bow"], "grip_bow_at")   # the bow hangs from here, by its grip
 		r.set_meta("archer", true)
 		r.remove_meta("knight")
+		dye(r, COLORS)
 		return r
 	return build_placeholder()
+
+## His colours (tools/archer_colors.py recolours the Meshy texture: hood, tunic, coat and trousers dyed, the fur,
+## leather straps, hands and face left as they are), so he stands out against the moor: "crimson" (default),
+## "teal", "verdant", "royal" (assets/textures/ranger/ranger_<name>.jpg). "" keeps Meshy's black and grey.
+const COLORS := "crimson"
+
+static func dye(r: Node3D, scheme: String) -> void:
+	var path := "res://assets/textures/ranger/ranger_%s.jpg" % scheme
+	if scheme == "" or not ResourceLoader.exists(path):
+		return
+	var tex: Texture2D = load(path)
+	for mi in r.find_children("*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		if m.mesh == null or not (m.mesh is ArrayMesh) or m.get_parent() is BoneAttachment3D:
+			continue
+		for si in m.mesh.get_surface_count():
+			var mat := m.mesh.surface_get_material(si) as StandardMaterial3D
+			if mat != null and mat.albedo_texture != null and mat.albedo_texture.get_width() >= 1024:
+				var dm := mat.duplicate() as StandardMaterial3D
+				dm.albedo_texture = tex
+				m.set_surface_override_material(si, dm)
 
 ## The placeholder body (without the glb): the knight's skeleton and procedural body in a hunter's green and leather.
 static func build_placeholder() -> Node3D:
@@ -466,31 +506,71 @@ static func pose_bow_on(rig: Node3D, w: Node3D, kind: String, st: Dictionary) ->
 	var a: float = st.get("atk", -1.0)
 	var drawing: bool = in_hand and a >= 0.0 and str(st.get("style", "")) == "bow"
 	var imp := Anim.impact_at("bow")
-	var s: float = w.get_meta("draw_s", 0.0)
-	var v: float = w.get_meta("draw_v", 0.0)
 	var dt := clampf(float(st.get("time", 0.0)) - float(w.get_meta("draw_t", 0.0)), 0.0, 0.1)
 	w.set_meta("draw_t", float(st.get("time", 0.0)))
 	var rest: Vector3 = sp["rest"]
-	var pull: Vector3 = sp["pull"]
-	# nocked through the draw, and between shots on the move (his hand stays at his cheek in the aimed walk)
-	var nocked := (drawing and a > 0.03 and a < imp) or (in_hand and stepping > 0.6 and a < 0.0)
+	var fingers: Vector3 = (J["at_hand_r"] as Node3D).global_transform * FINGERS
+	# every shot: his right hand reaches over his shoulder and pulls an arrow from the quiver (GRAB), brings it to
+	# the bow and nocks it (NOCK), draws it to his cheek and looses it on the impact frame
+	var nock_at := NOCK_MOVING if stepping > 0.5 else NOCK
+	var nocked := drawing and a >= nock_at and a < imp
+	var carrying := drawing and a >= GRAB and a < nock_at
+	# while he draws, the bow is solved onto his hands: its grip in his left fist, its draw line pointing at his right
+	# fingers, its limbs upright (canted a little), so the string always meets the hand that draws it
+	# (before the arrow is on the string the line points back at his chest: the bow comes up upright, ready)
+	var solve := 0.0
+	var on_string := 0.0
+	if drawing:
+		solve = _curve([[0.0, 0.0], [0.08, 1.0], [imp + 0.05, 1.0], [imp + 0.22, 0.0]], a)
+		on_string = _curve([[nock_at - 0.06, 0.0], [nock_at, 1.0]], a)
+	if not w.has_meta("base_xf"):
+		w.set_meta("base_xf", w.transform)
+	var base_xf: Transform3D = w.get_meta("base_xf")
+	w.transform = base_xf
+	if solve > 0.001:
+		var palm: Vector3 = g.global_position
+		var chest: Vector3 = rig.global_transform * Vector3(0, 1.42, 0)
+		var pull_w := chest.lerp(fingers, on_string) - palm
+		if pull_w.length() > 0.15:
+			pull_w = pull_w.normalized()
+			var up_w := (Vector3.UP - pull_w * Vector3.UP.dot(pull_w)).normalized()
+			up_w = up_w.rotated(pull_w, deg_to_rad(CANT) * (1.0 if kind == "bow" else 0.6))
+			var e1: Vector3 = (sp["pull"] as Vector3).normalized()
+			var lb: Vector3 = sp["limb"]
+			var e2 := (lb - e1 * lb.dot(e1)).normalized()
+			var local_b := Basis(e1, e2, e1.cross(e2))
+			var world_b := Basis(pull_w, up_w, pull_w.cross(up_w))
+			var m := world_b * local_b.inverse()
+			# the arrow rests on his fist: the bow's grip sits just on the far side of the draw line
+			var aimed := Transform3D(m, palm - m * (sp["grip"] as Vector3))
+			var held: Transform3D = w.global_transform
+			var k := smoothstep(0.0, 1.0, solve)
+			w.global_transform = Transform3D(held.basis.get_rotation_quaternion().slerp(aimed.basis.get_rotation_quaternion(), k), held.origin.lerp(aimed.origin, k)).scaled_local(held.basis.get_scale())
+	_hand_arrow(rig, w, fingers, (J["grip_bow"] as Node3D).global_position, carrying, _curve([[0.27, 0.0], [nock_at, 1.0]], a))
+	# the nock: on his fingers while drawn, else a spring (a vector, so it settles back from any side)
+	var off: Vector3 = w.get_meta("draw_off", Vector3.ZERO)
+	var vel: Vector3 = w.get_meta("draw_vel", Vector3.ZERO)
 	if nocked:
-		var fingers: Vector3 = (J["at_hand_r"] as Node3D).global_transform * Vector3(0, -0.06, 0)
-		var ease := smoothstep(0.03, 0.12, a) if a >= 0.0 else smoothstep(0.6, 1.0, stepping)
-		var target := clampf((w.to_local(fingers) - rest).dot(pull), 0.0, float(sp["max"])) * ease
-		s = target
-		v = 0.0
+		var ease := 1.0
+		var want := w.to_local(fingers) - rest
+		if want.length() > float(sp["max"]):
+			want = want.normalized() * float(sp["max"])
+		off = want * ease
+		vel = Vector3.ZERO
 	else:
 		# loosed (or never drawn): the string flies home and shivers
-		var acc := -s * 1500.0 - v * 34.0
-		v += acc * dt
-		s = maxf(s + v * dt, -0.04)      # a little past straight, no further (the limbs stop it)
-		if absf(s) < 0.0005 and absf(v) < 0.01:
-			s = 0.0
-			v = 0.0
-	w.set_meta("draw_s", s)
-	w.set_meta("draw_v", v)
-	var nock := rest + pull * s
+		vel += (-off * 1500.0 - vel * 34.0) * dt
+		off += vel * dt
+		var along := off.dot(sp["pull"])
+		if along < -0.04:
+			off -= (sp["pull"] as Vector3) * (along + 0.04)      # a little past straight, no further
+		if off.length() < 0.0005 and vel.length() < 0.01:
+			off = Vector3.ZERO
+			vel = Vector3.ZERO
+	w.set_meta("draw_off", off)
+	w.set_meta("draw_vel", vel)
+	w.set_meta("draw_s", off.dot(sp["pull"]))
+	var nock := rest + off
 	var strands: Array = w.get_meta("strands")
 	_strand(strands[0], sp["tips"][0], nock)
 	_strand(strands[1], sp["tips"][1], nock)
@@ -499,6 +579,36 @@ static func pose_bow_on(rig: Node3D, w: Node3D, kind: String, st: Dictionary) ->
 	if nocked:
 		var dir := ((sp["grip"] as Vector3) - nock).normalized()
 		arrow.transform = Transform3D(Basis.looking_at(dir, sp["limb"]), nock + dir * 0.36)
+
+static func _curve(pts: Array, a: float) -> float:
+	if pts.is_empty() or a < float(pts[0][0]):
+		return 0.0
+	for i in range(1, pts.size()):
+		if a <= float(pts[i][0]):
+			return lerpf(float(pts[i - 1][1]), float(pts[i][1]), smoothstep(float(pts[i - 1][0]), float(pts[i][0]), a))
+	return float(pts[pts.size() - 1][1])
+
+## The arrow in his right hand, from the quiver to the string (made once, beside the bow): pinched by its nock at his
+## fingers, its point first down into the quiver on his back, then swung round onto the bow as he brings it forward.
+static func _hand_arrow(rig: Node3D, w: Node3D, fingers: Vector3, palm: Vector3, show: bool, k: float) -> void:
+	var ar: Node3D = w.get_node_or_null("HandArrow")
+	if ar == null:
+		if not show:
+			return
+		ar = (w.get_meta("nocked") as Node3D).duplicate()
+		ar.name = "HandArrow"
+		w.add_child(ar)
+	ar.visible = show
+	if not show:
+		return
+	# the quiver turns with his body (the shot turns him side-on)
+	var br = rig.get("body_root")
+	var bb: Basis = (br as Node3D).global_transform.basis.orthonormalized() if br is Node3D else rig.global_transform.basis.orthonormalized() * Basis(Vector3.UP, PI)
+	var quiver: Vector3 = rig.global_position + bb * QUIVER
+	var d := (quiver - fingers).normalized().slerp((palm - fingers).normalized(), smoothstep(0.0, 1.0, k))
+	var upv := Vector3.UP if absf(d.y) < 0.95 else Vector3.BACK
+	var sc := w.global_transform.basis.get_scale()
+	ar.global_transform = Transform3D(Basis.looking_at(d, upv).scaled(sc), fingers + d * 0.36 * sc.x)
 
 ## The bow's straight string swapped for two strands that can be drawn back, and an arrow to nock.
 static func _rig_bow(w: Node3D) -> void:

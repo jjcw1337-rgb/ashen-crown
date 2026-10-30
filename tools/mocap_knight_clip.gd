@@ -165,6 +165,13 @@ func _run() -> void:
 		Anim.pose(r, st)
 		if archer:
 			AR.call("pose_bow_on", r, sword, Data.BASES["long_bow" if args.has("longbow") else "short_bow"]["kind"], st)
+			if f % 2 == 0 and f < 26 and sword.has_meta("strands"):
+				var fing: Vector3 = (J["at_hand_r"] as Node3D).global_transform * Vector3(0, -0.06, 0)
+				var sp: Dictionary = (AR.get("BOW_SPEC") as Dictionary)[Data.BASES["long_bow" if args.has("longbow") else "short_bow"]["kind"]]
+				var nk: Vector3 = sword.global_transform * ((sp["rest"] as Vector3) + (sword.get_meta("draw_off", Vector3.ZERO) as Vector3))
+				var lh: Vector3 = (J["at_hand_l"] as Node3D).global_position
+				var gp: Vector3 = sword.global_transform * (sp["grip"] as Vector3)
+				print("[H] f%d atk %.2f  nock-fingers %.3f m  grip-lefthand %.3f m" % [f, float(st.get("atk", -1.0)), nk.distance_to(fing), gp.distance_to(lh)])
 		var c := r.position
 		var off: Vector3 = {"side": Vector3(4.4, 1.2, 0.0), "front": Vector3(0.0, 1.4, -4.4), "back": Vector3(0.0, 1.6, 4.4), "34": Vector3(2.8, 2.0, -3.0), "game": Vector3(0, 17.0, 16.5) * 0.45}.get(view, Vector3(2.8, 2.0, -3.0))
 		if view == "game":
@@ -172,7 +179,13 @@ func _run() -> void:
 		if mode == "turn":
 			c = Vector3.ZERO
 			off = Vector3(0, 9, 7)
-		cam.transform = Transform3D(Basis(), c + off).looking_at(c + Vector3(0, 0.95, 0))
+		var look := Vector3(0, 0.95, 0)
+		var closes := {"close": Vector3(2.2, 0.1, -2.0), "closeback": Vector3(-1.4, 0.3, 2.6), "closetop": Vector3(0.3, 1.6, -0.6)}
+		if closes.has(view):
+			# the hands and the string, close up (relative to the way he faces)
+			off = r.transform.basis * (closes[view] as Vector3)
+			look = Vector3(0, 1.25, 0)
+		cam.transform = Transform3D(Basis(), c + off + (look - Vector3(0, 0.95, 0) if closes.has(view) else Vector3.ZERO)).looking_at(c + look)
 		await process_frame
 		await RenderingServer.frame_post_draw
 		get_root().get_texture().get_image().save_png("%s/c%03d.png" % [out, f])

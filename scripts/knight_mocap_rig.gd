@@ -38,6 +38,33 @@ var shot := {}                # whole-body clip for an attack style: {style, cli
 var w_shot := 0.0
 var w_side := 0.0
 var w_aimwalk := 0.0          # shooting on the move: the aimed walk (shot "walk_clip")
+var w_reach := 0.0            # on the move, the drawing arm reaching to the quiver (shot "reach")
+var yaw_now := 0.0            # the body's side-on turn (degrees)
+
+## A shot's clip time for the attack's progress a: piecewise along shot "keys" [[a, t], ...] (the release key at
+## Anim's impact), or the old three-point squeeze (t0, release, t1).
+static func shot_time(shot: Dictionary, a: float) -> float:
+	if shot.has("keys"):
+		var ks: Array = shot["keys"]
+		for i in range(1, ks.size()):
+			if a <= float(ks[i][0]):
+				var k0: Array = ks[i - 1]
+				var k1: Array = ks[i]
+				return lerpf(float(k0[1]), float(k1[1]), clampf((a - float(k0[0])) / maxf(float(k1[0]) - float(k0[0]), 0.0001), 0.0, 1.0))
+		return float(ks[ks.size() - 1][1])
+	var imp := Anim.impact_at(str(shot["style"]))
+	return lerpf(shot["t0"], shot["release"], a / imp) if a < imp else lerpf(shot["release"], shot["t1"], (a - imp) / (1.0 - imp))
+
+## A piecewise weight [[a, w], ...] at a.
+static func curve_at(pts: Array, a: float) -> float:
+	if pts.is_empty() or a < float(pts[0][0]):
+		return 0.0
+	for i in range(1, pts.size()):
+		if a <= float(pts[i][0]):
+			var p0: Array = pts[i - 1]
+			var p1: Array = pts[i]
+			return lerpf(float(p0[1]), float(p1[1]), smoothstep(float(p0[0]), float(p1[0]), a))
+	return float(pts[pts.size() - 1][1])
 var rel_pts: Array = []       # the blend spaces' clip speeds (from Knight.build_mocap's opts)
 var com_pts: Array = []
 var hilt_bone := -1           # the bone the scabbard rides (the hips)
@@ -171,20 +198,26 @@ func sync_pose(st: Dictionary) -> void:
 		if shot.has("walk_clip"):
 			tree.set("parameters/aimwalk_mix/blend_amount", w_aimwalk)
 			tree.set("parameters/aimwalk_speed/scale", clampf(speed / float(shot.get("walk_speed", 0.82)), 0.6, 2.4))
+		if shot.has("reach_clip"):
+			w_reach = curve_at(shot.get("reach", []), a) if stepping else lerpf(w_reach, 0.0, kk)
+			tree.set("parameters/reach_mix/blend_amount", w_reach)
+			if stepping:
+				tree.set("parameters/reach_seek/seek_request", shot_time({"keys": shot["reach_keys"]}, a))
 		if stepping:
 			shooting = false
 		w_shot = lerpf(w_shot, 1.0 if shooting else 0.0, kk)
 		if shooting:
-			var imp := Anim.impact_at(str(shot["style"]))
-			var ct: float = lerpf(shot["t0"], shot["release"], a / imp) if a < imp else lerpf(shot["release"], shot["t1"], (a - imp) / (1.0 - imp))
-			tree.set("parameters/shot_seek/seek_request", ct)
+			tree.set("parameters/shot_seek/seek_request", shot_time(shot, a))
 		tree.set("parameters/shot_mix/blend_amount", w_shot)
 		# an archer stands side-on to his mark: the body turns so the bow arm points where the shot goes; his
 		# battle-ready stand ("combat_idle", aiming) is side-on too, so it turns the same way while he stands
 		if body_root != null:
 			var stand := drawn * (1.0 - clampf(speed / 0.8, 0.0, 1.0)) * (1.0 - w_aimwalk) if shot.get("idle_side", false) else 0.0
 			w_side = lerpf(w_side, maxf(w_shot, stand), kk)
-			body_root.rotation.y = PI + deg_to_rad(float(shot.get("yaw", 0.0))) * w_side
+			# the shot's clip and the aiming stand may each want their own turn
+			var want_yaw: float = float(shot.get("yaw", 0.0)) if shooting else float(shot.get("stand_yaw", shot.get("yaw", 0.0))) * stand
+			yaw_now = lerpf(yaw_now, want_yaw, kk * 0.6)
+			body_root.rotation.y = PI + deg_to_rad(yaw_now)
 	var want_state := "dead" if die else "alive"
 	if want_state != _state:
 		_state = want_state
