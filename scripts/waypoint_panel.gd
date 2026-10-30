@@ -427,8 +427,17 @@ func _point_row(act: Dictionary, p: Dictionary, info: Dictionary) -> Control:
 	tv.alignment = BoxContainer.ALIGNMENT_CENTER
 	tv.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hb.add_child(tv)
-	tv.add_child(ui._label(pname if known else "Unknown waypoint", 16, INK if known else Color(0.45, 0.42, 0.38), true))
-	var kinds := {"camp": "Camp · safe haven", "wild": "Wilderness", "road": "The open road", "city": "City"}
+	# the name, with the act's town marked in small print beside it
+	var nrow := HBoxContainer.new()
+	nrow.add_theme_constant_override("separation", 8)
+	nrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tv.add_child(nrow)
+	nrow.add_child(ui._label(pname if known else "Unknown waypoint", 16, INK if known else Color(0.45, 0.42, 0.38), true))
+	if p.get("kind", "") == "camp":
+		var town := ui._label("TOWN", 10, Color(0.95, 0.8, 0.5), true)
+		town.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		nrow.add_child(town)
+	var kinds := {"camp": "Safe haven · traders and stash", "wild": "Wilderness", "road": "The open road", "city": "City"}
 	tv.add_child(ui._label(str(kinds.get(p.get("kind", ""), "")) if known else "Find and touch its stone", 11, DIM))
 	var tag := ui._label("HERE" if here else ("TRAVEL ›" if known else ""), 12, CYAN if here else GOLD, true)
 	hb.add_child(tag)
