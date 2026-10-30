@@ -471,8 +471,8 @@ func _town_plaque() -> Control:
 	var plq := TextureRect.new()
 	plq.texture = load(TOWN_PLAQUE)
 	plq.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	plq.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	plq.custom_minimum_size = Vector2(104, 30)
+	plq.stretch_mode = TextureRect.STRETCH_SCALE
+	plq.custom_minimum_size = Vector2(112, 32)
 	plq.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	plq.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var t := ui._label("TOWN", 13, Color(1.0, 0.86, 0.5), true)
