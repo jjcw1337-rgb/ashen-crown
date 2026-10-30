@@ -142,18 +142,21 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   locks are simulated in `knight_rig.gd` `_sway_hair` (springs per bone; run, footfall jolt, turning, wind).
   The knight's run is `Anim` with the `gait` meta `"knight"` (front-to-back arm pump). Preview tools:
   `tools/knight_clip.gd` (`-- outdir [side|back|close] [armored] [helm]`), `tools/gait_preview.gd`; test `tools/meshy_knight_test.gd`.
-- **Knight (armour on)** is the Meshy crusader (plate over mail, red tabard with the white cross, short cape, long
-  hair, no helm): `assets/models/knight_armored.glb`, `Knight.build_meshy(true)` on `Knight.ARMORED_LAYOUT`.
-  `Hero._knight_body()` picks "plain" (no armour), "armored" (any body armour) or "" (the procedural body, only
-  without the glb files); the rig's `meshy` meta holds which. One look for every armour (the old per-item armour
-  colours only apply to the procedural fallback). Rebuild: decimate the Meshy model to ~70k triangles in
-  `sources/knight_armored.blend`, export it, then `blender -b --python tools/blender/knight/rig_armored_knight.py --
-  <decimated.glb> <out.glb> layout.json` and `python3 tools/blender/knight/layout_to_gd.py layout.json armored`.
-  The script finds the red cloth by colour (strict, the plate's rust is reddish), grows it into the frayed hems,
-  pins the tabard to hips/torso, and softens the seams against the legs so nothing tears. The cape hangs on three
-  panels of three bones (hA..hC, parented to the torso) that `knight_rig.gd` `_sway_hair` swings like hair locks.
-  Helms are separate models on the head (`Knight.fit_helm` per body); `Hero.show_helm` (the inventory's
-  "Helm: shown/hidden" button) hides the model but keeps the stats; it is saved and sent to partners in `net_gear`.
+- **Knight (armour on)** is the Meshy crusader (enclosed great helm, spiked plate over mail, dark surcoat with a
+  faded red cross, sword in its scabbard on the left hip, long tattered cloak): `assets/models/knight_armored.glb`,
+  `Knight.build_meshy(true)` on `Knight.ARMORED_LAYOUT`. `Hero._knight_body()` picks "plain" (no armour), "armored"
+  (any body armour) or "" (the procedural body, only without the glb files); the rig's `meshy` meta holds which.
+  He always wears his own helm: helm items keep their stats but aren't drawn on him (`Hero.refresh_gear`), and there
+  is no show/hide helm button. Rebuild from the Meshy glb: `blender -b --python tools/blender/knight/prep_crusader.py
+  -- meshy.glb dec.glb --tris 70000 [--grid prefix]` (decimate, 1.8 m, feet on the ground; the grid renders are for
+  placing joints), then `blender -b --python tools/blender/knight/rig_crusader_knight.py -- dec.glb out.glb layout.json
+  [--debug prefix]` and `python3 tools/blender/knight/layout_to_gd.py layout.json armored`. The rig script heat-skins a
+  voxel-remeshed watertight proxy (Meshy's mesh isn't watertight) and transfers the weights; the helm rides the head,
+  the sword and the cloth between the legs ride the hips, the arms (and their spikes) only their own arm; the cloak
+  (found by the metallic map and where it hangs) hangs on three panels of three bones (hA..hC) that `knight_rig.gd`
+  `_sway_hair` swings; faces Meshy fused between parts that move apart (cloak/leg, cloak/arm, arm/hips) are cut, and
+  cloak shreds left beside the A-pose arms are dropped. `--debug` renders the A-pose coloured by main bone.
+  The earlier armoured knight (bare head, red tabard) is kept as `knight_statue.glb` for the arena statues.
 - **Act I trees and grass** (`World.oak_forest`, set by `game.gd` when `difficulty == 0`; A2/A3 keep the old mix): three
   Meshy oaks `assets/models/trees/oakN.glb` (prepared by `tools/blender/prep_tree.py`: trunk on the origin, ~6 m, 1k
   textures) built by `Flora.oak_model(k)` with `MESHY_TREE_SHADER` (wind sway by height, snow/ash, see-through near the
@@ -229,7 +232,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
     `crowd_cheer`, `portcullis`, `lion_roar`.
   - **Roman architecture** (`roman.gd`): materials (marble, tuff, brick, tile, bronze), `arch_mesh` (an extruded
     wall with a round opening, used by the aqueduct, the colosseum's arcade, gates), columns, colonnades, tombs,
-    milestones, statues (the Meshy crusader `knight_armored.glb` carved in marble, `Roman.STATUE_GLB`), fountains, the triumphal arch, cypresses
+    milestones, statues (the earlier Meshy knight `knight_statue.glb` carved in marble, `Roman.STATUE_GLB`), fountains, the triumphal arch, cypresses
     (MultiMesh), ruined walls. Repeating pieces go through `Props.multimesh` with their own mesh copy
     (`Roman._own`: Geo's meshes are cached and shared, never set a material on them).
   - **Monsters**: bandits (`bandit`, `bandit_archer`: the Meshy bandit on `MeshyMonster`, faction "bandit"),
