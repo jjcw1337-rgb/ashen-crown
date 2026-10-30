@@ -35,8 +35,12 @@ jobs:
       - name: Export Windows version
         run: |
           mkdir -p build/win build/linux build/mac
+          # previews also get the console exe (prints the engine's output) and a launcher that keeps its
+          # window open, so a build that closes on someone's PC shows why
+          sed -i 's/^debug\/export_console_wrapper=0/debug\/export_console_wrapper=1/' export_presets.cfg
           godot --headless --export-release "Windows Desktop" build/win/AshenCrown.exe
           cp README.md build/win/
+          printf '@echo off\r\n"%%~dp0AshenCrown.console.exe" --verbose\r\necho.\r\necho The game closed. Copy everything above (or the godot.log in %%%%APPDATA%%%%\\Godot\\app_userdata\\Ashen Crown\\logs).\r\npause\r\n' > "build/win/Ashen Crown (Debug Log).bat"
           printf 'start "" "%%~dp0AshenCrown.exe" --rendering-method gl_compatibility --rendering-driver opengl3\r\n' > "build/win/Ashen Crown (Safe Mode).bat"
 
       - name: Export Linux version
