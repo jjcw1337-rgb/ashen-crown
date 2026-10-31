@@ -9,6 +9,7 @@ var g
 const SHOTS := ["wraith:siphon", "wraith:grasp", "wraith:night", "warlock:drain", "demon:summon", "archer:volley"]
 const SECS := {"siphon": 3.6, "grasp": 3.0, "night": 6.6, "phantom": 2.6, "drain": 3.2, "summon": 2.6, "volley": 2.8, "cleave": 2.0}
 const OFF := Vector3(40.0, 0, 0)
+var off := OFF            # to the puppet's spot, the ground's height there included
 var puppet: Hero
 
 func _initialize():
@@ -34,11 +35,11 @@ func _shift(w: Dictionary, from_pack: Array, to_pack: Array) -> Dictionary:
 	var ev := SkillFx.decode(g.net, w)
 	for k in ["p", "q"]:
 		if ev.has(k):
-			ev[k] = (ev[k] as Vector3) + OFF
+			ev[k] = (ev[k] as Vector3) + off
 	if ev.has("ps"):
 		var ps: PackedVector3Array = ev["ps"]
 		for i in ps.size():
-			ps[i] += OFF
+			ps[i] += off
 		ev["ps"] = ps
 	if ev.has("t"):
 		var out := []
@@ -93,6 +94,9 @@ func _run() -> void:
 			e.queue_free()
 		await process_frame
 		var home: Vector3 = h.global_position
+		var there := home + OFF
+		there.y = g.world.height_at(there.x, there.z)
+		off = there - home
 		var n := 1 if sk in ["siphon", "drain"] else 3
 		var pack: Array = _pack(home, n, 24)
 		h._face(Vector3(0, 0, -1))
@@ -121,11 +125,11 @@ func _run() -> void:
 		h.end_phase(false)
 		WraithSkills.clear(h)
 		# the puppet plays it back far away, beside its own pack; the hero waits out of sight
-		var pack2: Array = _pack(home + OFF, n, 24)
+		var pack2: Array = _pack(there, n, 24)
 		h.global_position = home + Vector3(0, 0, 60.0)
 		h.dismiss_minions()
-		puppet.global_position = home + OFF
-		puppet.net_pos = home + OFF
+		puppet.global_position = there
+		puppet.net_pos = there
 		puppet.net_yaw = rec[0]["yaw"]
 		puppet.net_st = rec[0]["st"]
 		puppet.net_has = true
@@ -133,13 +137,13 @@ func _run() -> void:
 		await wait(0.3)
 		var i := 0
 		for r in rec:
-			puppet.net_pos = (r["pos"] as Vector3) + OFF
+			puppet.net_pos = (r["pos"] as Vector3) + off
 			puppet.net_yaw = r["yaw"]
 			puppet.net_st = r["st"]
 			for w in r["ev"]:
 				SkillFx.play(puppet, _shift(w, pack, pack2))
 			cam.current = true
-			var c: Vector3 = home + OFF
+			var c: Vector3 = there
 			var off := Vector3(4.2, 2.3, 0.4)
 			var look := c + Vector3(0, 0.9, -2.4)
 			if sk == "night":
@@ -148,6 +152,10 @@ func _run() -> void:
 			elif sk in ["drain", "volley", "cleave"]:
 				off = Vector3(5.0, 2.8, 0.6)
 				look = c + Vector3(0, 0.9, -2.8)
+			elif sk == "summon":
+				# from his left and a little behind, so the demon climbing out ahead of him is in the open
+				off = Vector3(-4.6, 2.6, 1.8)
+				look = c + Vector3(0.4, 0.8, -2.0)
 			cam.global_transform = Transform3D(Basis(), c + off).looking_at(look)
 			await process_frame
 			await RenderingServer.frame_post_draw
