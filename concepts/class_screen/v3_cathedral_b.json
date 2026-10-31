@@ -1,0 +1,16 @@
+{
+  "id": "01a191d7-e63c-7609-b42d-686e9f6687ae",
+  "type": "image-to-image",
+  "ai_model": "nano-banana-2",
+  "prompt": "Recreate the first image: the same ruined gothic cathedral hall, five carved stone plinths, a shaft of coloured light on each hero's plinth, tattered banners, candles, drifting ash, the iron and gold info panel and the title 'Choose your path'. The heroes must be the exact five heroes from the second image (the in-game screenshot), keeping their real designs and colours: the armoured crusader knight with a dark helm and red cross, the dark hooded wraith with glowing ice-blue edges and white eyes, the demon with red bat wings, curled horns, a red face and a red tabard with a gold cross, the gnome warlock with a huge purple hat, glowing green fel flames on the hat, a white beard and purple robes, and the red-hooded ranger archer drawing a bow. Painted in the same rich painterly Diablo-style quality as the first image, cinematic lighting, high detail, 16:9 widescreen. Order left to right as in the game: knight (on the brightest gold plinth, he is chosen), wraith (icy blue), demon (ember red), warlock (fel green), archer (crimson). Keep the info panel text: Knight, A crusader in steel. Sword and shield, heavy blows, holy fire and a rallying cry. Skills: Holy Slam, Holy Nova, Charge, Battle Cry. Play as Knight.",
+  "status": "SUCCEEDED",
+  "progress": 100,
+  "created_at": 1793448208712,
+  "started_at": 1793448208719,
+  "finished_at": 1793448273951,
+  "expires_at": 1793707473951,
+  "image_urls": [
+    "https://assets.meshy.ai/8fd76281-d576-493e-b9d7-513b7c3809be/uploads/image_01a191d7-e63c-7609-b42d-686e9f6687ae_0.png?Expires=1793707473&Signature=TivNNt1gAZUfaIAraj~lF25RV~NpXWgavUj0j3g5kdQUuiW~rNCSu0h9JTVEW1mbOjtZHXPKlYK56q9ZfPy5X0BnQX9mQ2QP75lRUJhbyWrQYpNC1CoPM4q0eo9WohfMoXaSz9NGQbqe2ZVcSF-RAITODqrpEh6IKjg8nlNrwsjZCOSHMWYzOABHmRDcyzTI8tp8OHz5nYW6BQk97tsorRII~P9lgxZ~rL1WrGqVpA7FIQZyRCoigiRzpJWCugEfxMR1WGPbzjs4ocJEPX1KQiG3SXm3~DrBtj1P3-XnGBSWopCzrK72~J-Amh-tuv0EBRZ3Au7uZ~1nq0~6jma10w__&Key-Pair-Id=K1VGYTHIYLM9UM"
+  ],
+  "consumed_credits": 6
+}

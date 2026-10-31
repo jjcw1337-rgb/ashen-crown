@@ -8,7 +8,7 @@ Needs network access to api.meshy.ai and assets.meshy.ai, and a paid Meshy plan 
   python3 tools/meshy/meshy.py image ref.png           -o out/knight [--pose a-pose] [--polys 30000]
   python3 tools/meshy/meshy.py get   <task id> [--kind image|text]   -o out/knight   # re-download a finished task
   python3 tools/meshy/meshy.py draw  "an old oak tree..." -o out/ref     [--model nano-banana-2]    # 2D image from text
-  python3 tools/meshy/meshy.py edit  ref.png "remove the belt" -o out/ref2 [--model nano-banana-2]    # 2D image edit
+  python3 tools/meshy/meshy.py edit  ref.png "remove the belt" -o out/ref2 [--ref more.png] [--aspect 16:9]   # 2D image edit
   python3 tools/meshy/meshy.py rig   <image/text task id> -o out/npc [--height 1.75]   # skeleton + skin (humanoids)
   python3 tools/meshy/meshy.py animate <rig task id> 0,128 -o out/npc_anims          # library clips, one glb
   python3 tools/meshy/meshy.py library [search]                                     # list animation clips (free)
@@ -98,6 +98,7 @@ def main() -> None:
     ap.add_argument("--kind", default="image")
     ap.add_argument("--cutout", action="store_true", help="draw: transparent background")
     ap.add_argument("--aspect", default="", help="draw/edit: aspect ratio, e.g. 16:9")
+    ap.add_argument("--ref", action="append", default=[], help="edit: another reference image (repeatable)")
     ap.add_argument("--height", type=float, default=1.75, help="rig: character height in metres")
     a = ap.parse_args()
     if a.cmd == "check":
@@ -168,8 +169,10 @@ def main() -> None:
         print(f"  credits used: {t.get('consumed_credits')}")
     elif a.cmd == "edit":
         model = a.model if a.model != "latest" else "nano-banana-2"
-        tid = call("POST", "/v1/image-to-image", {"ai_model": model, "prompt": a.arg2,
-                                                  "reference_image_urls": [image_ref(a.arg)]})["result"]
+        body = {"ai_model": model, "prompt": a.arg2, "reference_image_urls": [image_ref(a.arg)] + [image_ref(r) for r in a.ref]}
+        if a.aspect:
+            body["aspect_ratio"] = a.aspect
+        tid = call("POST", "/v1/image-to-image", body)["result"]
         print("task", tid)
         t = wait(f"/v1/image-to-image/{tid}")
         os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
