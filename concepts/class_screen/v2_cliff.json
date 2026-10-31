@@ -1,0 +1,16 @@
+{
+  "id": "01a191d3-4b69-72e7-94d6-caddcc0cc2f8",
+  "type": "image-to-image",
+  "ai_model": "nano-banana-2",
+  "prompt": "Redesign this dark fantasy ARPG character select screen into a dramatic, exciting, premium game menu. Keep the same five heroes exactly as they look in this screenshot, same designs, same colours, same left-to-right order: the armoured crusader knight with the red cross, the dark hooded wraith with glowing blue edges, the winged horned demon with red wings and red tabard, the purple-hatted white-bearded gnome warlock with green fel flames on his hat, and the red-hooded ranger archer with a bow. Keep the bottom info panel in dark iron and gold with the same layout and text. Painterly Diablo-style lighting, cinematic, high detail, 16:9. Setting: a cliff edge over an ashen battlefield at dusk, a colossal broken burning crown in the distance under storm clouds, the heroes lined up on the cliff with capes and ash blowing in the wind, each lit by their own element, the chosen knight raised on a rock with a god ray on him.",
+  "status": "SUCCEEDED",
+  "progress": 100,
+  "created_at": 1793447906633,
+  "started_at": 1793447906640,
+  "finished_at": 1793447927403,
+  "expires_at": 1793707127403,
+  "image_urls": [
+    "https://assets.meshy.ai/8fd76281-d576-493e-b9d7-513b7c3809be/uploads/image_01a191d3-4b69-72e7-94d6-caddcc0cc2f8_0.png?Expires=1793707127&Signature=i-CvpAv8KPGL-FZbqsVu7KkgTt~ONfAtQNT1Py9l3pwVEmlZcqEfTKthO4ELfr8Ub9I4VzDO4wc14vYQIOmPUiFpVNN0PUoZtk~6b0xiYfIShgGfgTyTWc5XLM5mqBXVtpnDgJbnul6WMRjeKYJAb94rAP9T8mvNNjQaEyRbn8DdftdHQ1MfjuQ9o8mRq8~mmlmtUXubcqqzIMOS~2CSGhElU350JutIkJAtVNtX5AXWvC3725XscX5iDCsOmRGoEYRulfgggngZ0uPDeLHDuZGTibHL3IUCNonH8as1fLQo4Q0dN~PP0UxRLBbcxop-XSL0AYh0zEeYODfvAPNx5g__&Key-Pair-Id=K1VGYTHIYLM9UM"
+  ],
+  "consumed_credits": 6
+}
