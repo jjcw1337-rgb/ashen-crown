@@ -47,6 +47,10 @@ Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class t
 outside their target bands. See `BALANCE.md` for the protocol.
 Screenshots need a display: `xvfb-run -a godot --rendering-driver opengl3 --path . -- --shot out.png --zone town`
 (other flags in `game.gd` `_ready`: `--zone town|wild|lair`, `--run 0|1|2`, `--class knight|wraith|demon|warlock`, `--god`, `--fight`).
+Image clarity (pause menu, saved in `user://settings.cfg`): **Smoothing** `Game.smoothing` = MSAA (the preset's), FSR 2
+(temporal AA at full resolution, also smooths grass and leaves) or Supersample 1.5x (Forward+ only; `Game.smoothing_modes`),
+and **Sharpen** `Game.sharpen` Off/Low/High (`SCREEN_SHARPEN_SHADER` on a CanvasLayer at -1, over the 3D, under the UI);
+`Game._apply_clarity` runs from `apply_quality`. Compare them in shots with `--smooth msaa|fsr2|ssaa --sharpen 0..1`.
 The moor's road is `World.road_style()`: the paved Old Kingsroad (2) by default; `--road 0|1|3` shows the old broad
 road, the wagon trail and the moor trails for comparison. `tools/zone_overview.gd -- out.png [--road N]` renders a high view of it.
 

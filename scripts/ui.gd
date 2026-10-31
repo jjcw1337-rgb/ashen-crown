@@ -114,6 +114,8 @@ var dialog_btns: HBoxContainer
 var gfx_info: Label
 var pause_panel: PanelContainer
 var gfx_btn: Button
+var smooth_btn: Button       # the graphics menu's smoothing (MSAA / FSR 2 / supersampling), Game.smoothing
+var sharpen_btn: Button      # and its sharpen pass (Off / Low / High), Game.sharpen
 var title_panel: Control
 var sound_btn: Button
 var test_panel: PanelContainer
@@ -2963,6 +2965,18 @@ func _build_pause() -> void:
 		_update_gfx_btn()
 		message("Grass and fern density changes when you next enter an area", Color(0.7, 0.8, 1.0)))
 	vb.add_child(gfx_btn)
+	smooth_btn = Button.new()
+	smooth_btn.pressed.connect(func():
+		var modes: Array = game.smoothing_modes()
+		game.set_smoothing(modes[(modes.find(game.smoothing) + 1) % modes.size()])
+		_update_gfx_btn())
+	vb.add_child(smooth_btn)
+	sharpen_btn = Button.new()
+	sharpen_btn.pressed.connect(func():
+		var i: int = game.SHARPEN_STEPS.find(game.sharpen)
+		game.set_sharpen(game.SHARPEN_STEPS[(i + 1) % game.SHARPEN_STEPS.size()])
+		_update_gfx_btn())
+	vb.add_child(sharpen_btn)
 	gfx_info = _label("", 13, Color(0.7, 0.66, 0.58))
 	gfx_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	gfx_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -3080,6 +3094,11 @@ func update_sound_btn() -> void:
 
 func _update_gfx_btn() -> void:
 	gfx_btn.text = "Graphics: " + ["Low", "Medium", "High", "Ultra"][game.quality]
+	var mode: String = game.smoothing if game.smoothing_modes().has(game.smoothing) else "msaa"
+	smooth_btn.text = "Smoothing: " + str(game.SMOOTHING_NAMES[mode])
+	smooth_btn.disabled = game.smoothing_modes().size() < 2
+	var si: int = game.SHARPEN_STEPS.find(game.sharpen)
+	sharpen_btn.text = "Sharpen: " + (game.SHARPEN_NAMES[si] if si >= 0 else "%d%%" % int(game.sharpen * 100))
 	if gfx_info:
 		gfx_info.text = game.renderer_info()
 

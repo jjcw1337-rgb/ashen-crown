@@ -94,6 +94,14 @@ func _ready() -> void:
 		if args[i] == "--run" and i + 1 < args.size():
 			difficulty = int(args[i + 1])
 	quality = _initial_quality()
+	smoothing = str(_load_setting("graphics", "smoothing", "msaa"))
+	sharpen = float(_load_setting("graphics", "sharpen", 0.0))
+	for i in args.size():
+		# screenshots and comparisons: --smooth msaa|fsr2|ssaa, --sharpen 0..1 (not saved)
+		if args[i] == "--smooth" and i + 1 < args.size():
+			smoothing = args[i + 1]
+		if args[i] == "--sharpen" and i + 1 < args.size():
+			sharpen = float(args[i + 1])
 	set_sound(bool(_load_setting("audio", "sound_on", true)))
 	_setup_env()
 	weather = Weather.new()
@@ -522,6 +530,7 @@ func apply_quality(q: int) -> void:
 	if OS.has_feature("web"):
 		# no multisampling or FXAA in the browser's WebGL renderer
 		get_viewport().msaa_3d = Viewport.MSAA_DISABLED
+	_apply_clarity()
 	# Ultra: real bounce light, finer shadows and effects, no simplifying of distant meshes
 	var ultra := q >= 3 and forward
 	env.sdfgi_enabled = ultra
@@ -546,6 +555,85 @@ func apply_quality(q: int) -> void:
 		if not g.has_meta("grass3d"):
 			(g as MultiMeshInstance3D).visibility_range_end = [32.0, 45.0, 60.0, 95.0][q]
 	Grass.apply_quality(self, q)
+
+## Image clarity, two switches in the graphics menu on top of the preset. Smoothing: "msaa" (the preset's
+## multisampling, which smooths model edges only), "fsr2" (FSR 2's temporal anti-aliasing at full resolution: also
+## grass, leaves and texture shimmer, with its own sharpening; Forward+ only) or "ssaa" (renders at 1.5x and shrinks
+## it: sharpest and cleanest, heavy). Sharpen (0..1): a contrast-adaptive sharpen over the 3D image, under the UI.
+const SMOOTHING := ["msaa", "fsr2", "ssaa"]
+const SMOOTHING_NAMES := {"msaa": "MSAA", "fsr2": "FSR 2", "ssaa": "Supersample 1.5x"}
+const SHARPEN_STEPS := [0.0, 0.3, 0.6]
+const SHARPEN_NAMES := ["Off", "Low", "High"]
+var smoothing := "msaa"
+var sharpen := 0.0
+var _sharpen_layer: CanvasLayer
+var _sharpen_rect: ColorRect
+
+## The smoothing modes this machine can run (FSR 2 and supersampling need the Forward+ renderer, not the browser's)
+func smoothing_modes() -> Array:
+	return SMOOTHING if is_forward() and not OS.has_feature("web") else ["msaa"]
+
+func _apply_clarity() -> void:
+	var vp := get_viewport()
+	var mode := smoothing if smoothing_modes().has(smoothing) else "msaa"
+	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+	vp.scaling_3d_scale = 1.0
+	match mode:
+		"fsr2":
+			# FSR 2 does its own anti-aliasing; multisampling under it only costs
+			vp.msaa_3d = Viewport.MSAA_DISABLED
+			vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR2
+			vp.fsr_sharpness = 0.2          # 0 = sharpest .. 2
+		"ssaa":
+			if vp.msaa_3d > Viewport.MSAA_2X:
+				vp.msaa_3d = Viewport.MSAA_2X
+			vp.scaling_3d_scale = 1.5
+	if sharpen > 0.001 and _sharpen_rect == null:
+		_sharpen_layer = CanvasLayer.new()
+		_sharpen_layer.layer = -1           # over the 3D image, under every other layer (the grade, vignette, UI)
+		add_child(_sharpen_layer)
+		_sharpen_rect = ColorRect.new()
+		_sharpen_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_sharpen_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var sm := ShaderMaterial.new()
+		var sh := Shader.new()
+		sh.code = SCREEN_SHARPEN_SHADER
+		sm.shader = sh
+		_sharpen_rect.material = sm
+		_sharpen_layer.add_child(_sharpen_rect)
+	if _sharpen_rect != null:
+		_sharpen_rect.visible = sharpen > 0.001
+		(_sharpen_rect.material as ShaderMaterial).set_shader_parameter("amount", sharpen)
+
+func set_smoothing(mode: String) -> void:
+	smoothing = mode
+	apply_quality(quality)
+	_save_setting("graphics", "smoothing", smoothing)
+
+func set_sharpen(amount: float) -> void:
+	sharpen = amount
+	_apply_clarity()
+	_save_setting("graphics", "sharpen", sharpen)
+
+## TitleStage.SHARPEN_SHADER read off the screen: each pixel pushed away from its neighbours' average, held inside
+## their range so edges get crisper without halos.
+const SCREEN_SHARPEN_SHADER := """
+shader_type canvas_item;
+uniform sampler2D screen: hint_screen_texture, filter_nearest;
+uniform float amount = 0.3;
+void fragment() {
+	vec2 px = SCREEN_PIXEL_SIZE;
+	vec3 c = texture(screen, SCREEN_UV).rgb;
+	vec3 n = texture(screen, SCREEN_UV + vec2(0.0, -px.y)).rgb;
+	vec3 s = texture(screen, SCREEN_UV + vec2(0.0, px.y)).rgb;
+	vec3 w = texture(screen, SCREEN_UV + vec2(-px.x, 0.0)).rgb;
+	vec3 e = texture(screen, SCREEN_UV + vec2(px.x, 0.0)).rgb;
+	vec3 mn = min(c, min(min(n, s), min(w, e)));
+	vec3 mx = max(c, max(max(n, s), max(w, e)));
+	vec3 sharp = c + (c * 4.0 - (n + s + w + e)) * amount;
+	COLOR = vec4(clamp(sharp, mn, mx), 1.0);
+}
+"""
 
 func max_quality() -> int:
 	return 1 if OS.has_feature("web") else 3
