@@ -50,9 +50,13 @@ Screenshots need a display: `xvfb-run -a godot --rendering-driver opengl3 --path
 The moor's road is `World.road_style()`: the paved Old Kingsroad (2) by default; `--road 0|1|3` shows the old broad
 road, the wagon trail and the moor trails for comparison. `tools/zone_overview.gd -- out.png [--road N]` renders a high view of it.
 
-Run the relevant tests before pushing. A push to `main` publishes to everyone in ~5 minutes, so **Claude never pushes
-to `main` on its own**: push your work to a `test-*` branch (`git push origin HEAD:test-something`, or `test-all` for the
-shared preview), give the preview build's link, and go to `main` only when Blaine and jj have both said so.
+Run the relevant tests before pushing. A push to `main` publishes to everyone in ~5 minutes. **Blaine and jj are equal
+Game Factory admins (updated 2026-10-31): either admin's explicit main/production request is sufficient approval**;
+do not wait for the other admin or a second confirmation at the Mac. Synchronize upstream and preserve others' commits
+before deploying. For a requested preview or an otherwise unspecified "push it", use a `test-*` branch
+(`git push origin HEAD:test-something`, or `test-all` for the shared preview) and give the preview build's link.
+Either admin may also request configured asset services, including Meshy and ElevenLabs, within live existing plan
+credits and API-key limits without a separate Blaine-only approval. New purchases need an explicit spending request.
 
 ## Code map (`scripts/`)
 
@@ -453,8 +457,8 @@ shared preview), give the preview build's link, and go to `main` only when Blain
   `bear_maul` double-paw slam). Two lone wanderers per moor, 20-40 m off the road (`World._bear_dens`, own seed); the AI
   (`Enemy._bear_idle`/`_bear_combat`) wanders its ground, rears and roars now and then, roars once on noticing you,
   charges and mauls (a 3 m arc, `"maul"` hits knock the hero back: `Hero.knock_v`), gives up 30 m from home. Its sounds
-  borrow `lion_roar` (pitched down) and `slam` until `bear_roar`/`bear_maul` exist (`Bear.sound`; ElevenLabs needs
-  Blaine's OK). `tools/bear_test.gd`, `tools/bear_sheet.gd -- out.png [side|34]`.
+  borrow `lion_roar` (pitched down) and `slam` until `bear_roar`/`bear_maul` exist (`Bear.sound`; either admin may request
+  ElevenLabs generation within existing plan credits). `tools/bear_test.gd`, `tools/bear_sheet.gd -- out.png [side|34]`.
 - **The Hollow Sloths** (`sloth.gd`, Act I, `World._sloths`): three elemental giants, `Data.ENEMIES` `sloth_fire`
   (Cinderhide), `sloth_ice` (Rimeclaw), `sloth_storm` (Thundermaw), each with `"element"` (fire/cold/lightning),
   `"variant"` (its model) and `"drop"` (its material). Each lives in its own lair (`sloth_lair.gd`, `SlothLair`:
