@@ -34,6 +34,7 @@ const WIND := {
 	"fort": {"dir": 15.0, "strength": 0.45, "gust": 0.55, "drift": 0.3},
 	"calm": {"dir": 0.0, "strength": 0.12, "gust": 0.25, "drift": 0.1},
 	"storm": {"dir": 20.0, "strength": 0.95, "gust": 1.0, "drift": 0.2},
+	"sea": {"dir": 10.0, "strength": 0.62, "gust": 0.75, "drift": 0.3},
 }
 
 static var inst: GrassField = null

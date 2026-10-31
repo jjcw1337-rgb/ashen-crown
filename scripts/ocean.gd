@@ -32,6 +32,7 @@ const PERIOD := 1800.0         # ocean_t wraps every half hour (float precision 
 
 static var _shaders := {}
 static var _tex := {}
+static var _bakes := {}
 
 var mat: ShaderMaterial
 var mesh_i: MeshInstance3D
@@ -54,10 +55,17 @@ func _init() -> void:
 	name = "Ocean"
 
 ## Builds the surface for a zone. `forward`: the Forward+ renderer (refraction, depth); else LITE.
-func setup(w: World, q: int, forward: bool) -> void:
+## `key` names the bake so a zone visited again reuses its map (the coast and islands never change).
+func setup(w: World, rect: Rect2, c: float, q: int, forward: bool, key := "") -> void:
 	Mats.ensure_globals()
 	_forward = forward
-	bake(w)
+	if key != "" and _bakes.has(key):
+		var b: Array = _bakes[key]
+		map_img = b[0]; _depth = b[1]; _dist = b[2]; map_rect = b[3]; cell = b[4]; _nx = b[5]; _nz = b[6]
+	else:
+		bake(w, rect, c)
+		if key != "":
+			_bakes[key] = [map_img, _depth, _dist, map_rect, cell, _nx, _nz]
 	mat = ShaderMaterial.new()
 	mesh_i = MeshInstance3D.new()
 	mesh_i.name = "surface"
@@ -204,18 +212,18 @@ static func foam_tex() -> Texture2D:
 # ---------------------------------------------------------------- the zone's map
 ## Samples the zone's ground once (1 m cells): depth below the sea (y = 0) and distance from the
 ## nearest dry land (a chamfer distance transform, two passes).
-func bake(w: World) -> void:
-	var r := w.bounds.grow(World.MARGIN + MAP_MARGIN)
-	var nx := int(r.size.x)
-	var nz := int(r.size.y)
-	map_rect = Rect2(r.position, Vector2(nx, nz))
+func bake(w: World, r: Rect2, c := 1.0) -> void:
+	cell = c
+	var nx := int(r.size.x / c)
+	var nz := int(r.size.y / c)
+	map_rect = Rect2(r.position, Vector2(nx, nz) * c)
 	var depth := PackedFloat32Array()
 	depth.resize(nx * nz)
 	var dist := PackedFloat32Array()
 	dist.resize(nx * nz)
 	for j in nz:
 		for i in nx:
-			var h := w.height_at(r.position.x + i + 0.5, r.position.y + j + 0.5)
+			var h := w.ground_h(r.position.x + (i + 0.5) * cell, r.position.y + (j + 0.5) * cell)
 			var k := j * nx + i
 			depth[k] = -h
 			dist[k] = 0.0 if h > 0.0 else 1e6
@@ -226,11 +234,11 @@ func bake(w: World) -> void:
 			var v := dist[k]
 			if v == 0.0:
 				continue
-			if i > 0: v = minf(v, dist[k - 1] + 1.0)
+			if i > 0: v = minf(v, dist[k - 1] + c)
 			if j > 0:
-				v = minf(v, dist[k - nx] + 1.0)
-				if i > 0: v = minf(v, dist[k - nx - 1] + 1.414)
-				if i < nx - 1: v = minf(v, dist[k - nx + 1] + 1.414)
+				v = minf(v, dist[k - nx] + c)
+				if i > 0: v = minf(v, dist[k - nx - 1] + c * 1.414)
+				if i < nx - 1: v = minf(v, dist[k - nx + 1] + c * 1.414)
 			dist[k] = v
 	for j in range(nz - 1, -1, -1):
 		for i in range(nx - 1, -1, -1):
@@ -238,11 +246,11 @@ func bake(w: World) -> void:
 			var v := dist[k]
 			if v == 0.0:
 				continue
-			if i < nx - 1: v = minf(v, dist[k + 1] + 1.0)
+			if i < nx - 1: v = minf(v, dist[k + 1] + c)
 			if j < nz - 1:
-				v = minf(v, dist[k + nx] + 1.0)
-				if i < nx - 1: v = minf(v, dist[k + nx + 1] + 1.414)
-				if i > 0: v = minf(v, dist[k + nx - 1] + 1.414)
+				v = minf(v, dist[k + nx] + c)
+				if i < nx - 1: v = minf(v, dist[k + nx + 1] + c * 1.414)
+				if i > 0: v = minf(v, dist[k + nx - 1] + c * 1.414)
 			dist[k] = v
 	map_img = Image.create(nx, nz, false, Image.FORMAT_RGBA8)
 	for j in nz:
@@ -254,6 +262,7 @@ func bake(w: World) -> void:
 	_nx = nx
 	_nz = nz
 
+var cell := 1.0
 var _depth := PackedFloat32Array()
 var _dist := PackedFloat32Array()
 var _nx := 0
@@ -268,8 +277,8 @@ func shore_at(x: float, z: float) -> float:
 	return _sample(_dist, x, z, SHORE_MAX * 4.0)
 
 func _sample(a: PackedFloat32Array, x: float, z: float, outside: float) -> float:
-	var fx := x - map_rect.position.x - 0.5
-	var fz := z - map_rect.position.y - 0.5
+	var fx := (x - map_rect.position.x) / cell - 0.5
+	var fz := (z - map_rect.position.y) / cell - 0.5
 	var ix := int(floor(fx))
 	var iz := int(floor(fz))
 	if ix < 0 or iz < 0 or ix >= _nx - 1 or iz >= _nz - 1:

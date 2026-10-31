@@ -11,6 +11,7 @@ extends RefCounted
 const CENTER := Vector2(0, -2)
 const RADIUS := 25.0
 const GATE_HALF := 0.23         # half the gap in the ring for the gatehouse (radians)
+const WEST := PI * 1.5          # the west gate (ring angle): the path to the coast (coast.gd)
 const DIR := "res://assets/models/camp/"
 const STALL_SCALE := 1.45     # the stalls, tents and gatehouse read small from the game's camera at true size
 const NPC_DIR := "res://assets/models/npc/"
@@ -87,6 +88,9 @@ static func build(w: World) -> void:
 	var step := 3.9 / RADIUS
 	var a := GATE_HALF + step * 0.5
 	while a < TAU - GATE_HALF - step * 0.3:
+		if absf(a - WEST) < GATE_HALF:
+			a += step
+			continue
 		var p := ring_pt(a, RADIUS + rng.randf_range(-0.15, 0.15))
 		var yaw := face(p, CENTER) + rng.randf_range(-0.03, 0.03)
 		var sc := rng.randf_range(0.93, 1.08)
@@ -101,13 +105,24 @@ static func build(w: World) -> void:
 		w.add_box(Vector3(gx, 0, gate_z), Vector2(1.15, 2.2), 0.0)
 	_lantern(w, Vector3(0, w.height_at(0, gate_z) + 4.7, gate_z + 0.4), true)
 	w.exits.append({"pos": Vector3(0, 0, gate_z - 3.5), "radius": 3.5, "to": "wild", "label": w.act_name("wild")})
+	# the west gate and the track down to the Mournwater Coast
+	var wg := ring_pt(WEST, RADIUS)
+	var wgate := model("gate")
+	w._place(wgate, Vector3(wg.x, 0, wg.y))
+	wgate.scale = Vector3.ONE * 1.15
+	wgate.rotation.y = PI * 0.5
+	for gz in [-4.1, 4.1]:
+		w.add_box(Vector3(wg.x, 0, wg.y + gz), Vector2(2.2, 1.15), 0.0)
+	_lantern(w, Vector3(wg.x + 0.4, w.height_at(wg.x, wg.y) + 4.7, wg.y), true)
+	w.exits.append({"pos": Vector3(wg.x - 6.0, 0, wg.y), "radius": 3.2, "to": "coast", "label": w.act_name("coast")})
+	w.dirt_lines.append([CENTER, Vector2(wg.x - 9.0, wg.y), 2.6])
 
 	# --- rune stones standing in the trees outside the wall, glowing faintly
 	var rs := []
 	var rune_mat := _rune_material()
 	for i in 11:
 		var ra := TAU * (i + 0.5) / 11.0
-		if absf(wrapf(ra, -PI, PI)) < 0.45:
+		if absf(wrapf(ra, -PI, PI)) < 0.45 or absf(wrapf(ra - WEST, -PI, PI)) < 0.45:
 			continue
 		var p := ring_pt(ra + rng.randf_range(-0.08, 0.08), RADIUS + rng.randf_range(4.5, 7.0))
 		rs.append(Transform3D(Basis(Vector3.UP, face(p, CENTER)).scaled(Vector3.ONE * rng.randf_range(0.85, 1.2)), Vector3(p.x, w.height_at(p.x, p.y) - 0.15, p.y)))
@@ -169,7 +184,7 @@ static func build(w: World) -> void:
 	# --- tents round the inside of the wall
 	for t in [[-0.75, 19.5], [-1.45, 19.0], [-2.35, 19.0], [2.35, 19.0], [2.85, 18.5], [-2.9, 18.5], [0.8, 19.5], [3.4, 19.5], [-3.45, 19.5], [1.45, 19.5]]:
 		var tp := ring_pt(t[0], t[1])
-		if _near_shop(tp, 6.0):
+		if _near_shop(tp, 6.0) or absf(wrapf(float(t[0]) - WEST, -PI, PI)) < 0.4:
 			continue
 		var tent := model("tent")
 		w._place(tent, Vector3(tp.x, 0, tp.y))
@@ -201,7 +216,7 @@ static func build(w: World) -> void:
 	# --- great oaks inside the camp, lanterns hung from their branches
 	var oaks := [[], [], []]
 	var k := 0
-	for op in [Vector2(-7.5, -18.5), Vector2(8.5, -19), Vector2(-18.5, -3), Vector2(19.5, -4), Vector2(-9, 15.5), Vector2(10, 14.5)]:
+	for op in [Vector2(-7.5, -18.5), Vector2(8.5, -19), Vector2(-18.5, -9.5), Vector2(19.5, -4), Vector2(-9, 15.5), Vector2(10, 14.5)]:
 		if _near_shop(op, 4.5):
 			continue
 		oaks[k % 3].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(1.15, 1.35)), Vector3(op.x, w.height_at(op.x, op.y), op.y)))
@@ -227,6 +242,8 @@ static func build(w: World) -> void:
 			continue
 		if absf(x) < 5.5 and z < gate_z and z > gate_z - 40:
 			continue                     # the road out of the gate
+		if absf(z - CENTER.y) < 6.0 and x < -RADIUS + 2.0:
+			continue                     # the track out of the west gate
 		var xf := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.9, 1.5)), Vector3(x, w.height_at(x, z) - 0.1, z))
 		var r := rng.randf()
 		if has_dead and r < 0.07:
@@ -259,6 +276,7 @@ static func build(w: World) -> void:
 	w._scatter_ferns(380)
 	w.spawns["start"] = Vector3(0, 0, 5)
 	w.spawns["from_wild"] = Vector3(0, 0, gate_z + 4.5)
+	w.spawns["from_coast"] = Vector3(-RADIUS + 4.5, 0, CENTER.y)
 	w.spawns["portal"] = Vector3(4, 0, 8)
 	w.spawns["alch"] = Vector3(-11.5, 0, -9)
 	w.spawns["forge"] = Vector3(11.5, 0, -9)

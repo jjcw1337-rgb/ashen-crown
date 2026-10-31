@@ -29,6 +29,13 @@ var height_fn := Callable()
 ## The coast: the sea is at y = 0; walkers stop where the water gets deeper than WADE (coast.gd).
 var sea := false
 const WADE := -0.18
+## Ground steeper than this (rise per metre) is a wall in a sea zone: the islands' cliffs (0 = off).
+var steep := 0.0
+
+func _too_steep(x: float, z: float) -> bool:
+	var gx := ground_h(x + 0.4, z) - ground_h(x - 0.4, z)
+	var gz := ground_h(x, z + 0.4) - ground_h(x, z - 0.4)
+	return Vector2(gx, gz).length() / 0.8 > steep
 ## Act I: the lair is King Grubb's goblin fort (fort.gd) and the moor's road ends at its trail.
 var fort := false
 ## Which run (Game.difficulty) this zone is for: A2 (1) has its own wild zone (via.gd) and lair (aurelia.gd).
@@ -73,7 +80,31 @@ func _init() -> void:
 func in_bounds(x: float, z: float) -> bool:
 	return bounds.has_point(Vector2(x, z))
 
+## Where things stand: the ground, or a pier's or jetty's deck over it (decks).
 func height_at(x: float, z: float) -> float:
+	if decks.is_empty():
+		return ground_h(x, z)
+	return maxf(ground_h(x, z), deck_at(x, z))
+
+## Walkable decks over the water (piers, jetties): [centre Vector2, half size Vector2 (x across its
+## length's normal frame like add_box), yaw, height]. The ground itself (terrain, the sea's depth map,
+## grass) ignores them: they read ground_h.
+var decks: Array = []
+
+func add_deck(c: Vector2, half: Vector2, yaw: float, h: float) -> void:
+	decks.append([c, half, yaw, h])
+
+func deck_at(x: float, z: float) -> float:
+	var best := -INF
+	for d in decks:
+		var lp := (Vector2(x, z) - (d[0] as Vector2)).rotated(float(d[2]))
+		var half: Vector2 = d[1]
+		if absf(lp.x) <= half.x and absf(lp.y) <= half.y:
+			best = maxf(best, float(d[3]))
+	return best
+
+## The bare ground (no decks).
+func ground_h(x: float, z: float) -> float:
 	if flat_floor:
 		return 0.0
 	if height_fn.is_valid():
@@ -352,7 +383,7 @@ func solid_at(x: float, z: float, r := 0.0) -> bool:
 ## Map edge, or dungeon rock (the same cells the wall blocks are built on). Probes the
 ## body's four sides.
 func _wall_at(x: float, z: float, r := 0.0) -> bool:
-	if sea and height_at(x, z) < WADE:
+	if sea and deck_at(x, z) == -INF and (ground_h(x, z) < WADE or steep > 0.0 and _too_steep(x, z)):
 		return true
 	if rock.is_empty():
 		return not bounds.grow(-1.0 - r).has_point(Vector2(x, z))
@@ -408,7 +439,7 @@ func _rasterize() -> void:
 		for x in gw:
 			var wx := origin.x + (x + 0.5) * CELL
 			var wz := origin.y + (y + 0.5) * CELL
-			if not bounds.grow(-1.0).has_point(Vector2(wx, wz)) or sea and height_at(wx, wz) < WADE + 0.1:
+			if not bounds.grow(-1.0).has_point(Vector2(wx, wz)) or sea and deck_at(wx, wz) == -INF and (ground_h(wx, wz) < WADE + 0.1 or steep > 0.0 and _too_steep(wx, wz)):
 				blocked[y * gw + x] = 1
 	var pad := 0.45
 	for o in obstacles:
@@ -480,13 +511,18 @@ func mm_chunked(mesh: Mesh, xforms: Array, shadows := true, chunk := 28.0, vis_e
 
 # ---------------------------------------------------------------- terrain
 func _build_terrain(tcol: Dictionary) -> void:
+	terrain_patch(bounds.grow(MARGIN), 1.0, tcol, "Terrain")
+
+## A piece of ground over `r`, `step` metres between vertices (the coast builds its distant islands and
+## shores coarser than the ground under the hero). Cells wholly deeper than `floor_y` are left out:
+## nobody sees the bottom of the open sea.
+func terrain_patch(r: Rect2, step: float, tcol: Dictionary, nm := "Terrain", floor_y := -INF, own := Callable()) -> MeshInstance3D:
 	if not masks_ready:
 		_bake_masks()
-	var x0 := bounds.position.x - MARGIN
-	var z0 := bounds.position.y - MARGIN
-	var nx := int((bounds.size.x + MARGIN * 2.0) / 1.0)
-	var nz := int((bounds.size.y + MARGIN * 2.0) / 1.0)
-	var step := 1.0
+	var x0 := r.position.x
+	var z0 := r.position.y
+	var nx := int(r.size.x / step)
+	var nz := int(r.size.y / step)
 	var verts := PackedVector3Array()
 	var norms := PackedVector3Array()
 	var cols := PackedColorArray()
@@ -498,7 +534,7 @@ func _build_terrain(tcol: Dictionary) -> void:
 	hs.resize((nx + 3) * (nz + 3))
 	for j in nz + 3:
 		for i in nx + 3:
-			hs[j * (nx + 3) + i] = height_at(x0 + (i - 1) * step, z0 + (j - 1) * step)
+			hs[j * (nx + 3) + i] = ground_h(x0 + (i - 1) * step, z0 + (j - 1) * step)
 	for j in nz + 1:
 		for i in nx + 1:
 			var x := x0 + i * step
@@ -519,7 +555,13 @@ func _build_terrain(tcol: Dictionary) -> void:
 			var b := a + 1
 			var c := a + (nx + 1)
 			var d := c + 1
+			if verts[a].y < floor_y and verts[b].y < floor_y and verts[c].y < floor_y and verts[d].y < floor_y:
+				continue
+			if own.is_valid() and not bool(own.call(x0 + (i + 0.5) * step, z0 + (j + 0.5) * step)):
+				continue
 			idx.append_array([a, b, d, a, d, c])
+	if idx.is_empty():
+		return null
 	var arr := []
 	arr.resize(Mesh.ARRAY_MAX)
 	arr[Mesh.ARRAY_VERTEX] = verts
@@ -534,11 +576,12 @@ func _build_terrain(tcol: Dictionary) -> void:
 		mat.set_shader_parameter(k, tcol[k])
 	mesh.surface_set_material(0, mat)
 	var mi := MeshInstance3D.new()
-	mi.name = "Terrain"
+	mi.name = nm
 	mi.mesh = mesh
 	add_child(mi)
 	# Godot culls clockwise as front; flip if our winding is inverted
 	mi.set_meta("terrain", true)
+	return mi
 
 ## Grass, wildflowers and ferns use their own random numbers so a denser graphics setting
 ## never shifts anything gameplay-related (co-op players can use different settings).
@@ -632,7 +675,7 @@ func _scatter_grass(count: int, colors: Dictionary, height: float, outside := tr
 ## none on the road, under solid things or in a Sloth's clearing, thinning toward the edges of paths.
 func grass_ground(x: float, z: float) -> float:
 	if sea:
-		var hy := height_at(x, z)
+		var hy := ground_h(x, z)
 		if hy < 1.0:
 			return 0.0           # sand and sea
 		if hy < 1.5:
@@ -803,6 +846,8 @@ func _scatter_ferns(count: int) -> void:
 			continue
 		if _in_lair(x, z, 0.85):
 			continue
+		if sea and grass_ground(x, z) < 0.3:
+			continue
 		xf.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.7, 1.35)), Vector3(x, height_at(x, z) - 0.03, z)))
 	var parts := [[], []]
 	for i in xf.size():
@@ -914,6 +959,9 @@ func build(act_i: int, kind_s: String, seed_v: int) -> void:
 		"town": _build_town()
 		"wild": Via.build(self) if run == 1 else _build_wild()
 		"coast": Coast.build(self)
+		_:
+			if kind.begins_with("isle_"):
+				Isles.build_zone(self, Isles.id_of(kind))
 		"lair":
 			if run == 1:
 				Aurelia.build(self)

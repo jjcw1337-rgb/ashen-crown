@@ -311,7 +311,7 @@ func _setup_env() -> void:
 ## A3: set the camp and the moor ablaze, with smoke columns rising beyond the trees.
 func _set_fires() -> void:
 	var r := RandomNumberGenerator.new()
-	r.seed = 99 + ["town", "wild", "lair"].find(cur_zone)
+	r.seed = 99 + ["town", "wild", "lair", "coast"].find(cur_zone)
 	var lit := 0
 	for bp in world.burn_points:
 		var pos: Vector3 = bp[0]
@@ -351,6 +351,9 @@ func zone_music() -> void:
 		Sfx.play_music("select")
 		return
 	if world == null:
+		return
+	if world.sea:
+		Sfx.play_music("wild", "wind")      # the coast and the islands: the sea's own sounds come later
 		return
 	Sfx.play_music("fort" if cur_zone == "lair" and world.fort else cur_zone, "forest" if world.oak_forest and cur_zone != "town" and not indoor() else "")
 
@@ -452,6 +455,8 @@ func _zone_env(kind: String) -> void:
 			env.volumetric_fog_emission = Color(0.04, 0.03, 0.02)
 			sun.light_color = Color(1.0, 0.82, 0.6)
 			sun.light_energy = 1.05
+		if world.sea:
+			_sea_env()
 		if snowy:
 			# overcast winter: pale sky, cold light, snow bouncing light back up
 			sky_mat.sky_top_color = Color(0.5, 0.55, 0.62)
@@ -493,6 +498,57 @@ func _zone_env(kind: String) -> void:
 			sun.light_energy = 0.6
 			hero.light.light_energy = 1.0
 			_set_fires()
+
+const SUN_DEFAULT := Vector3(-52, -38, 0)
+## The coast and the islands: a long golden evening over the sea. The sun hangs low in the west over
+## the open water so the waves catch it in a glittering path, the sky warms to amber at the horizon,
+## and the air is clear enough to see the far islands as hazy blue silhouettes.
+func _sea_env() -> void:
+	sky_mat.sky_top_color = Color(0.22, 0.32, 0.46)
+	sky_mat.sky_horizon_color = Color(0.86, 0.66, 0.46)
+	sky_mat.ground_horizon_color = Color(0.5, 0.48, 0.44)
+	sky_mat.ground_bottom_color = Color(0.1, 0.14, 0.16)
+	sky_mat.sun_angle_max = 22.0
+	env.ambient_light_energy = 0.62
+	env.tonemap_exposure = 1.1
+	env.fog_light_color = Color(0.62, 0.6, 0.56)
+	env.fog_density = 0.0028
+	env.fog_sky_affect = 0.25
+	env.fog_height = 0.0
+	env.fog_height_density = 0.0
+	env.adjustment_saturation = 1.0
+	env.adjustment_contrast = 1.07
+	env.volumetric_fog_density = 0.006
+	env.volumetric_fog_albedo = Color(0.9, 0.82, 0.72)
+	env.volumetric_fog_emission = Color(0.02, 0.016, 0.012)
+	env.glow_intensity = 0.8
+	env.glow_bloom = 0.07
+	sun.rotation_degrees = Vector3(-24, -112, 0)
+	sun.light_color = Color(1.0, 0.8, 0.6)
+	sun.light_energy = 1.15
+	hero.light.light_energy = 0.7
+	_ocean_light()
+
+## Hands the sea the sun and the sky's colour (Ocean.set_light).
+func _ocean_light() -> void:
+	if world == null or not world.has_node("Ocean"):
+		return
+	(world.get_node("Ocean") as Ocean).set_light(sun.global_basis.z, sun.light_color * sun.light_energy, sky_mat.sky_horizon_color.lerp(sky_mat.sky_top_color, 0.5))
+
+## A sea zone (the coast, an island) gets the ocean: its map covers the whole sea on the coast
+## (2 m cells) and the island's waters on an island (1 m).
+func _add_ocean(zone: String) -> void:
+	sun.rotation_degrees = SUN_DEFAULT
+	sky_mat.ground_bottom_color = Color(0.16, 0.18, 0.15)
+	sky_mat.sun_angle_max = 30.0
+	cam.far = 300.0
+	if not world.sea:
+		return
+	cam.far = 900.0
+	var oc := Ocean.new()
+	var r: Rect2 = world.get_meta("sea_rect") if zone == "coast" else world.bounds.grow(World.MARGIN + 28.0 + Ocean.MAP_MARGIN)
+	world.add_child(oc)
+	oc.setup(world, r, 2.0 if zone == "coast" else 1.0, quality, is_forward(), zone)
 
 const SETTINGS_PATH := "user://settings.cfg"
 const QUALITY_NAMES := ["Low", "Medium", "High", "Ultra"]
@@ -546,6 +602,8 @@ func apply_quality(q: int) -> void:
 		if not g.has_meta("grass3d"):
 			(g as MultiMeshInstance3D).visibility_range_end = [32.0, 45.0, 60.0, 95.0][q]
 	Grass.apply_quality(self, q)
+	if world != null and world.has_node("Ocean"):
+		(world.get_node("Ocean") as Ocean).set_quality(q)
 
 func max_quality() -> int:
 	return 1 if OS.has_feature("web") else 3
@@ -720,6 +778,9 @@ func zone_title(act: int, zone: String) -> String:
 		"town": return a["town"] + tag
 		"wild": return a["wild"] + tag
 		"lair": return ("Throne of the Ashen King" if difficulty >= 2 else a["lair"]) + tag
+		"coast": return str(a.get("coast", "The Coast")) + tag
+	if zone.begins_with("isle_"):
+		return str(Isles.get_isle(Isles.id_of(zone)).get("name", "An Island")) + tag
 	return ""
 
 ## The current run's multipliers on Act I (Data.RUNS).
@@ -827,7 +888,8 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	world.fort = difficulty == 0           # Act I: the lair is Grubb's goblin fort, outdoors (A3 keeps the crypt)
 	world.run = difficulty                 # A2 builds its own road and Aurelia
 	add_child(world)
-	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair"].find(zone) * 7)
+	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair", "coast"].find(zone) * 7 + (zone.hash() % 997 if zone.begins_with("isle_") else 0))
+	_add_ocean(zone)
 	_end_underworld_now()
 	_zone_env(zone)
 	_grass_zone(zone)
@@ -955,6 +1017,8 @@ func _grass_zone(zone: String) -> void:
 		w = "camp"
 	elif zone == "wild":
 		w = "moor"
+	elif world.sea:
+		w = "sea"
 	elif world.fort:
 		w = "fort"
 	grass_field.set_wind(w, 0.05)
@@ -2061,14 +2125,8 @@ func _process(delta: float) -> void:
 				var dd: Vector3 = ex["pos"] - hero.global_position
 				if Vector2(dd.x, dd.z).length() < ex["radius"]:
 					var to: String = ex["to"]
-					var spawn := "start"
-					if cur_zone == "town" and to == "wild":
-						spawn = "from_town"
-					elif cur_zone == "wild" and to == "town":
-						spawn = "from_wild"
-					elif cur_zone == "lair" and to == "wild":
-						spawn = "from_lair"
-					travel(cur_act, to, spawn)
+					# each zone names its arrival spots after where you came from ("from_town", "from_wild", ...)
+					travel(cur_act, to, "from_" + cur_zone)
 					break
 	if death_t > 0.0:
 		death_t -= delta

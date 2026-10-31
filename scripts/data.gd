@@ -3,7 +3,7 @@ extends RefCounted
 ## Static game data: acts, monsters, item bases, affixes, uniques, vendors.
 
 const ACTS := [
-	{"name": "The Ashen Moors", "town": "The Forsaken Wilds", "wild": "Cairnfell Moor", "lair": "Grubb's Fort",
+	{"name": "The Ashen Moors", "town": "The Forsaken Wilds", "wild": "Cairnfell Moor", "lair": "Grubb's Fort", "coast": "The Mournwater Coast",
 		"boss": "goblin_king", "lvl": 1, "theme": "moor", "foes": ["fallen_skirmisher", "fallen_reaver", "fallen_stalker", "zombie", "skel_archer"]},
 	{"name": "The Sunscar Wastes", "town": "Lut Khemar", "wild": "Dunes of Sorrow", "lair": "Tomb of Sekhmun",
 		"boss": "sekhmun", "lvl": 8, "theme": "desert", "foes": ["raider", "mummy", "scarab"]},
@@ -501,4 +501,6 @@ static func zone_level(act: int, kind: String) -> int:
 	match kind:
 		"wild": return base + 2
 		"lair": return base + 5
+	if kind == "coast" or kind.begins_with("isle_"):
+		return base + 3
 	return base
