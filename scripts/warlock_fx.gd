@@ -30,7 +30,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 		["drain", "cast"], ["blight", "cast"], ["shackles", "cast"], ["covenant", "cast"]:
 			pass
 		["drain", "start"]:
-			clear(h)
+			_end_drain(h, false)
 			var victims: Array = ev.get("t", [])
 			var d := {"victims": victims, "beams": {}, "lit": {}, "light": null, "sigil": sigil(root, 1.25),
 				"hum": Sfx.start_loop("drain_loop", -9.0), "until": DRAIN_TIMEOUT}
