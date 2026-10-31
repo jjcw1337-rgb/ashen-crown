@@ -1,5 +1,5 @@
 extends SceneTree
-## Screenshots of the Wraith: idle, Soul Reap, Banshee Wail, Spectral Host. Needs a display (xvfb).
+## Screenshots of the Wraith: idle, Spectral Rend, Soul Siphon, Haunting Grasp. Needs a display (xvfb).
 ## godot --rendering-driver opengl3 --path . -s tools/wraith_shot.gd -- <out_dir>
 var g
 func _initialize():
@@ -24,19 +24,19 @@ func _run() -> void:
 	await create_timer(0.6).timeout
 	snap(out, "idle")
 	h.mana = h.max_mana
-	h.use_skill("reap", h.global_position + Vector3(0, 0, -3))
+	h.use_skill("rend", h.global_position + Vector3(0, 0, -3))
 	await create_timer(0.5).timeout
-	snap(out, "reap")
+	snap(out, "rend")
 	await create_timer(0.8).timeout
 	h.mana = h.max_mana
-	h.use_skill("wail", h.global_position)
+	h.use_skill("siphon", h.skill_aim("siphon", h.global_position + Vector3(0, 0, -4)))
 	await create_timer(0.42).timeout
-	snap(out, "wail")
+	snap(out, "siphon")
 	await create_timer(1.0).timeout
 	h.mana = h.max_mana
-	h.use_skill("host", h.global_position)
+	h.use_skill("grasp", h.global_position + Vector3(0, 0, -4))
 	await create_timer(1.6).timeout
-	snap(out, "host")
+	snap(out, "grasp")
 	h.cmd_move(h.global_position + Vector3(4, 0, 2))
 	await create_timer(0.5).timeout
 	snap(out, "move")

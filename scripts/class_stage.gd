@@ -14,7 +14,7 @@ const ACCENTS := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 
 const SPACING := 1.75
 const FACE := PI                     # bodies face -z; the camera is on +z
 ## signature moves: [pose style, seconds, impact fraction, skill name]
-const SIGNATURE := {"knight": ["cleave", 1.1, 0.5, "Holy Slam"], "wraith": ["cast", 1.2, 0.45, "Banshee Wail"],
+const SIGNATURE := {"knight": ["cleave", 1.1, 0.5, "Holy Slam"], "wraith": ["rend", 0.95, 0.42, "Spectral Rend"],
 	"demon": ["side", 0.9, 0.45, "Hellfire Claw"], "warlock": ["cast", 1.8, 0.2, "Drain Life"], "archer": ["bow", 1.0, 0.55, "Volley"]}
 const SIG_EVERY := 4.5
 ## The sound of choosing each hero: layers of the game's own recordings, [sound, delay s, dB, pitch]
@@ -271,10 +271,12 @@ func _fidget(c: String, h: Hero, home: Vector3, f: float) -> void:
 			pos.y = absf(sin(f * 6.3)) * 0.05
 			yaw = FACE + sin(f * 3.0) * 0.25
 		"wraith":
-			# spins on the spot, rising and sinking
-			yaw = FACE + f * 7.0
-			pos.y = 0.25 + sin(f * 5.0) * 0.2
-			st["move"] = 0.3
+			# rakes the air with his claws over and over, drifting side to side
+			var cyc := fmod(f, 1.1)
+			st["style"] = "rend"
+			st["atk"] = cyc / 1.1
+			pos.x += sin(f * 2.4) * 0.25
+			yaw = FACE + sin(f * 2.4) * 0.3
 		"demon":
 			# hops up and down raking the air
 			pos.y = absf(sin(f * 7.0)) * 0.35
@@ -313,7 +315,8 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 			pos.y = sin(clampf(a / 0.5, 0.0, 1.0) * PI) * 0.6
 			pos.z += clampf(a / 0.5, 0.0, 1.0) * 0.35
 		"wraith":
-			pos.y = 0.2 + sin(a * PI) * 0.35
+			# the lunge of Spectral Rend
+			pos.z += smoothstep(0.05, 0.4, a) * 0.5
 		"warlock":
 			# Drain Life: both hands out, holding the beam
 			st["atk"] = minf(a / 0.2, 1.0) * 0.6
@@ -336,9 +339,8 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 				Fx.burst(root3d, at + Vector3(0, 0.3, 0), Color(1.0, 0.85, 0.45), 40, 5.0, 0.1, 0.6, true, -5.0)
 				Sfx.play("cleave_hit", -10.0)
 			"wraith":
-				Fx.ring(root3d, Vector3(h.global_position.x, 0.0, h.global_position.z), 3.4, col, 0.7, 1.0)
-				Fx.burst(root3d, h.global_position + Vector3(0, 1.4, 0), col, 46, 5.5, 0.09, 0.7, true, 0.0)
-				Sfx.play("wail", -12.0)
+				WraithFx.rake(root3d, h.global_position, h.net_yaw, 2.4, false)
+				Sfx.play("reap_swing", -12.0)
 			"demon":
 				for k in 3:
 					Fx.burst(root3d, front + Vector3((k - 1) * 0.35, 0.9 - k * 0.15, 0), col, 18, 3.5, 0.09, 0.45, true, 2.0, 30.0, Vector3(1.0 - k, 0.2, 0.5))
