@@ -215,6 +215,8 @@ static var _drain_mat: Material
 var _drained := false
 ## Damage numbers in this colour, and no blood (set around a Drain Life tick). Alpha 0 = normal.
 var dmg_tint := Color(0, 0, 0, 0)
+## a damage tick (the plague doctor's poison): the number shows, but no white flash and no flinch
+var soft_hit := false
 
 static func drain_mat() -> Material:
 	if _drain_mat == null:
@@ -301,8 +303,9 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 	if remote:
 		# the host applies the real damage; show the hit straight away
 		game.net.send_enemy_hit(self, phys, fire, from, knockback, crit)
-		flash_t = 0.12
-		_set_flash(1.0)
+		if not soft_hit:
+			flash_t = 0.12
+			_set_flash(1.0)
 		var c2 := Color(1.0, 0.95, 0.8) if not crit else Color(1.0, 0.75, 0.2)
 		if fire > p:
 			c2 = Color(1.0, 0.55, 0.15)
@@ -315,9 +318,10 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 		return total
 	life -= total
 	killed_by_rival = _by_rival
-	hit_t = 1.0 if not boss else 0.3
-	flash_t = 0.12
-	_set_flash(1.0)
+	if not soft_hit:
+		hit_t = 1.0 if not boss else 0.3
+		flash_t = 0.12
+		_set_flash(1.0)
 	var away := global_position - from
 	away.y = 0
 	if away.length() > 0.01:

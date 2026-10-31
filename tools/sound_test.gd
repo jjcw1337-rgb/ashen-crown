@@ -10,6 +10,7 @@ const EXPECT := {
 	"demon": {"hellclaw": ["hellclaw"], "summon": ["summon_demon"], "phase": ["phase_in"], "pact": ["blood_pact"]},
 	"warlock": {"drain": ["drain_start"], "blight": ["blight_cast"], "shackles": ["shackles"], "covenant": ["covenant"]},
 	"archer": {"pierce": ["bow"], "volley": ["bow"], "snare": ["impact_metal"], "beast": ["lion_roar"]},
+	"plague": {"toxic": ["swing_light", "ice_shatter", "blight_burst"], "volatile": ["fuse", "swing"], "trap": ["impact_metal"], "epidemic": ["slam", "phase_erupt"]},
 }
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()

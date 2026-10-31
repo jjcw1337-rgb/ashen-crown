@@ -336,6 +336,42 @@ static func build_mocap(glb := MOCAP_GLB, opts := {}) -> Node3D:
 		root.set("shot", opts["shot"])
 	else:
 		bt.connect_node("output", 0, "state")
+	if opts.has("acts"):
+		# whole-body clips per attack style (the plague doctor's throws, the trap, the ultimate, his cane): each its
+		# own clip sought to the attack's progress along its "keys", picked by a transition and mixed over everything
+		var acts: Dictionary = {}
+		var pick := AnimationNodeTransition.new()
+		pick.xfade_time = 0.0
+		var n_in := 0
+		for style in (opts["acts"] as Dictionary).keys():
+			var spec: Dictionary = (opts["acts"][style] as Dictionary).duplicate(true)
+			if not ap.has_animation(str(spec["clip"])):
+				continue
+			if spec.get("frac", false):
+				# keys given as fractions of the clip's length: into seconds
+				var ln := ap.get_animation(str(spec["clip"])).length
+				spec["keys"] = (spec["keys"] as Array).map(func(k: Array) -> Array: return [k[0], float(k[1]) * ln])
+			var an := AnimationNodeAnimation.new()
+			an.animation = spec["clip"]
+			bt.add_node("act_" + str(style), an, Vector2(1000, 300 + n_in * 120))
+			bt.add_node("actseek_" + str(style), AnimationNodeTimeSeek.new(), Vector2(1150, 300 + n_in * 120))
+			bt.connect_node("actseek_" + str(style), 0, "act_" + str(style))
+			pick.add_input(str(style))
+			acts[style] = spec
+			n_in += 1
+		if n_in > 0:
+			var prev := "shot_mix" if opts.has("shot") and bt.has_node("shot_mix") else "state"
+			bt.disconnect_node("output", 0)
+			bt.add_node("act_pick", pick, Vector2(1300, 300))
+			var i_in := 0
+			for style in acts.keys():
+				bt.connect_node("act_pick", i_in, "actseek_" + str(style))
+				i_in += 1
+			bt.add_node("act_mix", AnimationNodeBlend2.new(), Vector2(1450, 150))
+			bt.connect_node("act_mix", 0, prev)
+			bt.connect_node("act_mix", 1, "act_pick")
+			bt.connect_node("output", 0, "act_mix")
+			root.set("acts", acts)
 	tree.tree_root = bt
 	tree.active = true
 	root.set("tree", tree)

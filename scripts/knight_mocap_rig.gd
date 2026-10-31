@@ -40,6 +40,11 @@ var w_side := 0.0
 var w_aimwalk := 0.0          # shooting on the move: the aimed walk (shot "walk_clip")
 var w_reach := 0.0            # on the move, the drawing arm reaching to the quiver (shot "reach")
 var yaw_now := 0.0            # the body's side-on turn (degrees)
+## Whole-body clips per attack style (Knight.build_mocap opts "acts": {style: {clip, keys, [yaw]}}): the plague
+## doctor's throws, trap, ultimate and cane. While one plays it owns every bone; the hips stay over his spot.
+var acts := {}
+var w_act := 0.0
+var act_cur := ""
 
 ## A shot's clip time for the attack's progress a: piecewise along shot "keys" [[a, t], ...] (the release key at
 ## Anim's impact), or the old three-point squeeze (t0, release, t1).
@@ -222,14 +227,32 @@ func sync_pose(st: Dictionary) -> void:
 	if want_state != _state:
 		_state = want_state
 		tree.set("parameters/state/transition_request", want_state)
-	tree.advance(dt)
-	# --- layer 2: the procedural moves, by weight
+	# a whole-body clip for this attack style (acts), sought to the attack's progress
 	var style: String = st.get("style", "")
+	var playing_act: bool = not acts.is_empty() and a >= 0.0 and acts.has(style) and not die
+	if not acts.is_empty():
+		var ka := 1.0 - exp(-dt * 16.0) if dt > 0.0 else 1.0
+		if playing_act:
+			if style != act_cur:
+				act_cur = style
+				tree.set("parameters/act_pick/transition_request", style)
+			tree.set("parameters/actseek_%s/seek_request" % style, shot_time(acts[style], a))
+		w_act = lerpf(w_act, 1.0 if playing_act else 0.0, ka)
+		# w_act fades the clip in; it hands back to the locomotion over the move's last 12%
+		var edge := clampf((1.0 - a) / 0.12, 0.0, 1.0) if playing_act else 1.0
+		tree.set("parameters/act_mix/blend_amount", w_act * edge)
+	tree.advance(dt)
+	# library clips step about: the hips stay over his spot while a whole-body clip plays
+	if w_act > 0.002:
+		var hb := skel.find_bone("Hips")
+		var hp := skel.get_bone_pose_position(hb)
+		skel.set_bone_pose_position(hb, Vector3(lerpf(hp.x, hips_pose_rest.x, w_act), hp.y, lerpf(hp.z, hips_pose_rest.z, w_act)))
+	# --- layer 2: the procedural moves, by weight
 	# the draw / holster (WeaponCarry) is acting only while the blade is on its way (0 = put away, 1 = in guard)
 	var drawing := drawn > 0.001 and drawn < 0.999
-	var acting: bool = (a >= 0.0 and not shooting and not stepping) or float(st.get("block", 0.0)) > 0.05 or drawing or float(st.get("hit", 0.0)) > 0.3
+	var acting: bool = (a >= 0.0 and not shooting and not stepping and not playing_act) or float(st.get("block", 0.0)) > 0.05 or drawing or float(st.get("hit", 0.0)) > 0.3
 	var up_t := 0.0 if die else (1.0 if acting else 0.0)
-	var low_t := 0.0 if die else (1.0 if (a >= 0.0 and FOOTWORK.has(style)) else 0.0)
+	var low_t := 0.0 if (die or playing_act) else (1.0 if (a >= 0.0 and FOOTWORK.has(style)) else 0.0)
 	var k := 1.0 - exp(-dt * 14.0) if dt > 0.0 else 1.0
 	w_up = lerpf(w_up, up_t, k)
 	w_low = lerpf(w_low, low_t, k)

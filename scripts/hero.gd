@@ -95,6 +95,7 @@ var bolts: Array = []        # Warlock's Blight Bolts in flight: [{node, dir, le
 var arrows: Array = []
 var volleys: Array = []
 var snares: Array = []
+var pd: Plague = null           # the plague doctor's flasks, clouds, traps, poison and infection (plague.gd)
 var beasts: Array = []
 var beast_down_t := 0.0     # after the Spirit Beast falls, seconds until it rises again beside him
 var mark = null             # the enemy the archer is shooting at: his beast goes for it first
@@ -180,6 +181,9 @@ func is_warlock() -> bool:
 
 func is_archer() -> bool:
 	return cls == "archer"
+
+func is_plague() -> bool:
+	return cls == "plague"
 
 ## The archer with a bow in his hands: his attack shoots instead of swinging.
 func has_bow() -> bool:
@@ -282,6 +286,10 @@ func _build_rig() -> void:
 		rig = Warlock.build(warlock_gear())
 	elif is_archer():
 		rig = Archer.build_body()
+	elif is_plague():
+		rig = Plague.build_body()
+		if pd == null:
+			pd = Plague.new(self)
 	else:
 		var body := _knight_body()
 		if body == "mocap":
@@ -328,6 +336,9 @@ func set_class(c: String) -> void:
 	end_phase(false)
 	_clear_warlock()
 	Archer.clear(self)
+	if pd != null:
+		pd.clear()
+		pd = null
 	if rig != null:
 		rig.queue_free()
 		rig = null
@@ -694,7 +705,7 @@ func _carry_weapon(delta: float) -> void:
 			weapon_node.reparent(dest, true)
 		_set_hilt(not in_hand and store == "hilt")
 	# hidden in the scabbard; on the back it stays in view
-	weapon_node.visible = in_hand or store != "hilt"
+	weapon_node.visible = (in_hand or store != "hilt") and not (pd != null and pd.hands_busy)   # the plague doctor puts his cane away to throw
 	# ease into the hold (identity in the hand; the back mount's own rest)
 	var k := 1.0 - exp(-delta * 16.0)
 	weapon_node.transform = weapon_node.transform.interpolate_with(Transform3D.IDENTITY, k)
@@ -881,6 +892,7 @@ func _swipe_impact() -> void:
 	var arc := 181.0 if fin else 70.0
 	var mult := 1.0 if atk_style == "swipe1" else (1.15 if atk_style == "swipe2" else 1.7)
 	var any := false
+	var struck := []
 	for e in game.enemies_near(global_position, rng + 1.5):
 		var to: Vector3 = e.global_position - global_position
 		to.y = 0
@@ -890,6 +902,9 @@ func _swipe_impact() -> void:
 			_hit_enemy(e, mult, 0.9 if fin else 0.2)
 			Fx.sparks(game.world.fx_root, e.global_position + Vector3(0, 1.1 * e.height, 0), trail_col.lerp(Color(1.0, 0.75, 0.4), 0.5))
 			any = true
+			struck.append(e)
+	if pd != null:
+		pd.cane_blow(atk_style, struck)      # the plague doctor's blows each leave something of his own
 	if fin:
 		Fx.ring(game.world.fx_root, global_position + Vector3(0, 0.05, 0), rng, trail_col, 0.35)
 		Fx.burst(game.world.fx_root, global_position + Vector3(0, 0.2, 0), Color(0.7, 0.62, 0.5, 0.5), 22, 3.5, 0.2, 0.5, false, -2.0, 180.0, Vector3.UP)
@@ -1057,6 +1072,8 @@ func use_skill(id: String, aim: Vector3) -> bool:
 			atk_dur = 0.6 * Data.attack_pace(cls)
 		"pierce", "volley", "snare", "beast":
 			Archer.cast(self, id, aim)
+		"toxic", "volatile", "trap", "epidemic":
+			Plague.cast(self, id, aim)
 	return true
 
 func drink(slot: int) -> void:
@@ -1095,6 +1112,8 @@ func _start_attack(style: String, skill := "") -> void:
 	trail_col = Color(1.0, 0.85, 0.5) if skill == "cleave" else Color(0.85, 0.9, 1.0)
 	if is_archer():
 		trail_col = Archer.HUNTER
+	elif is_plague():
+		trail_col = Plague.TOXIC
 	if is_wraith():
 		trail_col = WraithFx.SPIRIT if skill != "reap" else WraithFx.PALE
 	elif is_demon():
@@ -1127,6 +1146,12 @@ func _attack_sound(skill: String) -> void:
 			Sfx.play_synced("wail", at, 0.0)
 			Sfx.duck(-8.0, 1.0)
 		"blight": Sfx.play_synced("blight_cast", at, -2.0)
+		"toxic": Sfx.play_synced("swing_light", at - 0.05, -4.0, 0.85)
+		"volatile":
+			Sfx.play_synced("fuse", at * 0.5, -6.0, 1.2)
+			Sfx.play_synced("swing", at - 0.05, -3.0, 0.8)
+		"trap": Sfx.play_synced("equip", at, -4.0, 0.8)
+		"epidemic": Sfx.play_synced("swing_heavy", at - 0.08, -3.0, 0.75)
 		"":
 			# the whoosh peaks just before the blade lands
 			if atk_style == "swipe3":
@@ -1302,6 +1327,8 @@ func _process(delta: float) -> void:
 	anim_time += delta
 	if puppet:
 		_puppet_process(delta)
+		if pd != null:
+			pd.update(delta)       # a partner plague doctor's flasks and clouds (shown only)
 		return
 	for k in cds.keys():
 		cds[k] = maxf(0.0, cds[k] - delta)
@@ -1310,6 +1337,8 @@ func _process(delta: float) -> void:
 	_update_spirits(delta)
 	_update_bolts(delta)
 	Archer.update(self, delta)
+	if pd != null:
+		pd.update(delta)
 	_update_blights(delta)
 	if phased:
 		phase_t -= delta
@@ -1499,6 +1528,8 @@ func _process(delta: float) -> void:
 		carry.update(self, delta)
 		st.merge(carry.anim_state(), true)
 		_carry_weapon(delta)
+		if pd != null:
+			pd.idle_fidget(st, delta)   # now and then, standing about, he peers at a vial
 	Anim.pose(rig, st)
 	if is_archer():
 		Archer.pose_bow(self, st)
@@ -1657,6 +1688,8 @@ func _update_attack(delta: float) -> void:
 func _impact() -> void:
 	var fwd := -rig.global_transform.basis.z
 	if Archer.impact(self):
+		return
+	if Plague.impact(self):
 		return
 	match atk_skill:
 		"":
