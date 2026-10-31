@@ -248,23 +248,23 @@ func _fidget(c: String, h: Hero, home: Vector3, f: float) -> void:
 			var k := int(cyc / 0.5)
 			st["style"] = ["swipe1", "swipe2", "swipe3"][k]
 			st["atk"] = fmod(cyc, 0.5) / 0.5
-			pos.y = absf(sin(f * 6.3)) * 0.05
+			pos.y += absf(sin(f * 6.3)) * 0.05
 			yaw = FACE + sin(f * 3.0) * 0.25
 		"wraith":
 			# spins on the spot, rising and sinking
 			yaw = FACE + f * 7.0
-			pos.y = 0.25 + sin(f * 5.0) * 0.2
+			pos.y += 0.25 + sin(f * 5.0) * 0.2
 			st["move"] = 0.3
 		"demon":
 			# hops up and down raking the air
-			pos.y = absf(sin(f * 7.0)) * 0.35
+			pos.y += absf(sin(f * 7.0)) * 0.35
 			st["style"] = "claw"
 			st["atk"] = fmod(f, 0.6) / 0.6
 		"warlock":
 			# cackling, tiny frantic hops
 			st["style"] = "cackle"
 			st["atk"] = fmod(f, 1.2) / 1.2
-			pos.y = absf(sin(f * 11.0)) * 0.14
+			pos.y += absf(sin(f * 11.0)) * 0.14
 			yaw = FACE + sin(f * 9.0) * 0.35
 		"archer":
 			# sways side to side drawing the bow at everything
@@ -290,10 +290,10 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 	match c:
 		"knight":
 			# leaps and brings the sword down
-			pos.y = sin(clampf(a / 0.5, 0.0, 1.0) * PI) * 0.6
+			pos.y += sin(clampf(a / 0.5, 0.0, 1.0) * PI) * 0.6
 			pos.z += clampf(a / 0.5, 0.0, 1.0) * 0.2
 		"wraith":
-			pos.y = 0.2 + sin(a * PI) * 0.35
+			pos.y += 0.2 + sin(a * PI) * 0.35
 		"warlock":
 			# Drain Life: both hands out, holding the beam
 			st["atk"] = minf(a / 0.2, 1.0) * 0.6
@@ -310,9 +310,8 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 		_hit_done[c] = true
 		match c:
 			"knight":
-				var at := h.global_position + Vector3(0, 0, 0.9)
-				at.y = 0.02
-				Fx.ring(root3d, at, 2.6, Color(1.0, 0.92, 0.6), 0.55)
+				var at := home + Vector3(0, 0.02, 0.2)
+				Fx.ring(root3d, at, 1.6, Color(1.0, 0.92, 0.6), 0.55)
 				Fx.burst(root3d, at + Vector3(0, 0.3, 0), Color(1.0, 0.85, 0.45), 40, 5.0, 0.1, 0.6, true, -5.0)
 				Sfx.play("cleave_hit", -10.0)
 			"wraith":
