@@ -102,6 +102,8 @@ func _ready() -> void:
 			smoothing = args[i + 1]
 		if args[i] == "--sharpen" and i + 1 < args.size():
 			sharpen = float(args[i + 1])
+		if args[i] == "--quality" and i + 1 < args.size():
+			quality = int(args[i + 1])      # a preset for this run only (shots), not saved
 	set_sound(bool(_load_setting("audio", "sound_on", true)))
 	_setup_env()
 	weather = Weather.new()
@@ -501,6 +503,67 @@ func _zone_env(kind: String) -> void:
 			sun.light_energy = 0.6
 			hero.light.light_energy = 1.0
 			_set_fires()
+	_cinematic(inside)
+
+## The cinematic pass (Act I outdoors): a colour grade (a 3D LUT made in code, _grade_color: cool shadows, warm
+## highlights, greens a little muted, a gentle S-curve), light shafts in the volumetric fog toward the sun (High and
+## up, where the fog is on), and a soft depth blur far up the screen (High and up, _update_dof).
+## --nograde turns it off for comparison shots.
+var dof_on := false
+var cam_attr: CameraAttributesPractical
+var _lut: ImageTexture3D
+
+func _cinematic(inside: bool) -> void:
+	var on := difficulty == 0 and not inside and not OS.get_cmdline_user_args().has("--nograde")
+	env.adjustment_color_correction = _act1_lut() if on else null
+	env.volumetric_fog_anisotropy = 0.6 if on else 0.2
+	sun.light_volumetric_fog_energy = 1.8 if on else 1.0
+	dof_on = on
+
+func _act1_lut() -> ImageTexture3D:
+	if _lut != null:
+		return _lut
+	var n := 32
+	var imgs: Array[Image] = []
+	for b in n:
+		var im := Image.create(n, n, false, Image.FORMAT_RGB8)
+		for g in n:
+			for r in n:
+				im.set_pixel(r, g, _grade_color(Color(r / float(n - 1), g / float(n - 1), b / float(n - 1))))
+		imgs.append(im)
+	_lut = ImageTexture3D.new()
+	_lut.create(Image.FORMAT_RGB8, n, n, n, false, imgs)
+	return _lut
+
+static func _grade_color(c: Color) -> Color:
+	# greens and yellow-greens a little muted, toward the moor's olive
+	if c.h > 0.14 and c.h < 0.46:
+		var k := 1.0 - 0.16 * sin((c.h - 0.14) / 0.32 * PI)
+		c = Color.from_hsv(c.h, c.s * k, c.v)
+	var l := c.get_luminance()
+	# cool, deep shadows; warm highlights
+	var sh := (1.0 - l) * (1.0 - l)
+	var hi := l * l
+	c.r += -0.012 * sh + 0.03 * hi
+	c.g += 0.004 * sh + 0.01 * hi
+	c.b += 0.02 * sh - 0.025 * hi
+	# contrast in the mid-tones and highlights only, so the dark moor doesn't sink further (a hair of lift in the blacks)
+	for i in 3:
+		var x := clampf(c[i], 0.0, 1.0)
+		c[i] = x + 0.18 * (x * x * (3.0 - 2.0 * x) - x) * smoothstep(0.12, 0.45, x) + 0.012 * (1.0 - x) * (1.0 - x)
+	return c.clamp()
+
+## the far blur sits beyond the hero, so it only softens the top of the screen
+func _update_dof() -> void:
+	if cam_attr == null:
+		cam_attr = CameraAttributesPractical.new()
+		cam.attributes = cam_attr
+	cam_attr.dof_blur_far_enabled = dof_on and quality >= 2 and is_forward()
+	if cam_attr.dof_blur_far_enabled:
+		var d := cam.position.length()
+		cam_attr.dof_blur_far_distance = d + 10.0
+		cam_attr.dof_blur_far_transition = 16.0
+		cam_attr.dof_blur_amount = 0.05
 
 const SETTINGS_PATH := "user://settings.cfg"
 const QUALITY_NAMES := ["Low", "Medium", "High", "Ultra"]
@@ -2184,6 +2247,7 @@ func _process(delta: float) -> void:
 		shake = maxf(0.0, shake - real_dt * 2.2)
 		var sh := Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake * shake * 0.35
 		cam.position = CAM_OFFSET * zoom * lerpf(1.0, focus_zoom, fw) + sh
+		_update_dof()
 		RenderingServer.global_shader_parameter_set("player_pos", hero.global_position)
 		if grass_field:
 			grass_field.center = cam_target

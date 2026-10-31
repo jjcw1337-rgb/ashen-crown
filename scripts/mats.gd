@@ -171,6 +171,18 @@ static func particle_mat(additive: bool, color: Color = Color.WHITE) -> Standard
 	_cache[key] = m
 	return m
 
+## Act I's ground: the photo textures (Poly Haven CC0, see assets/textures/ground/CREDITS.md) on a terrain material
+static func ground_textures(m: ShaderMaterial) -> void:
+	if OS.get_cmdline_user_args().has("--notex"):
+		return          # screenshots of the painted ground, for comparison
+	for n in ["moss", "leaves", "dirt", "rock"]:
+		var d := "res://assets/textures/ground/%s_diff.jpg" % n
+		if not ResourceLoader.exists(d):
+			return
+		m.set_shader_parameter("tex_" + n, load(d))
+		m.set_shader_parameter("tex_%s_n" % n, load("res://assets/textures/ground/%s_nor.jpg" % n))
+	m.set_shader_parameter("tex_amt", 1.0)
+
 static func shader(name: String) -> Shader:
 	if _shaders.has(name):
 		return _shaders[name]
@@ -319,6 +331,16 @@ uniform float tiles = 0.0;
 uniform float cob_shade = 1.0;
 uniform float wet = 0.0;
 uniform float ripples = 0.0;
+// Act I: real ground textures (Poly Haven CC0, assets/textures/ground) give the detail; the zone's colours stay
+uniform float tex_amt = 0.0;
+uniform sampler2D tex_moss : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D tex_moss_n : filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D tex_leaves : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D tex_leaves_n : filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D tex_dirt : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D tex_dirt_n : filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D tex_rock : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D tex_rock_n : filter_linear_mipmap_anisotropic, repeat_enable;
 global uniform float snow_amt;
 global uniform float ash_amt;
 global uniform float under_amt;
@@ -352,6 +374,19 @@ vec2 vor(vec2 p, out float id){
 	id = hash21(best);
 	return vec2(d1, d2);
 }
+// a texture sampled twice (a second, turned and scaled copy, chosen by noise) so its repeat doesn't show
+vec4 tex2(sampler2D t, vec2 p, float scale, float k){
+	vec4 a = texture(t, p * scale);
+	vec4 b = texture(t, mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8)) * p * scale * 0.73 + vec2(0.37, 0.61));
+	return mix(a, b, smoothstep(0.42, 0.58, k));
+}
+// the photo's detail as a multiplier round 1, so the zone's palette stays: brightness fully, colour half
+vec3 detail(vec3 t, vec3 mean){
+	float l = dot(t, vec3(0.3, 0.55, 0.15)) / dot(mean, vec3(0.3, 0.55, 0.15));
+	return clamp(mix(vec3(l), t / max(mean, vec3(0.04)), 0.5), 0.0, 2.6);
+}
+// a GL normal map's bend for flat ground in world space (u along x, v along z)
+vec3 nbend(vec4 n){ vec2 d = n.xy * 2.0 - 1.0; return vec3(d.x, 0.0, -d.y); }
 void fragment(){
 	vec2 p = wpos.xz;
 	float n1 = fbm(p * 0.05);
@@ -364,6 +399,29 @@ void fragment(){
 	base = mix(base, col_accent, smoothstep(0.52, 0.75, n2) * 0.65);
 	base = mix(base, col_a * 0.55, smoothstep(0.6, 0.8, n5) * 0.5);
 	base *= 0.78 + n3 * 0.3 + (n4 - 0.5) * 0.18;
+	vec3 tn = vec3(0.0);
+	vec3 rockd = vec3(1.0);
+	vec3 dirtd = vec3(1.0);
+	if (tex_amt > 0.0) {
+		// grassy forest floor, leaf litter in patches; dirt for the trodden ground; rock for cliffs and stones
+		float k = n2;
+		float leaf = smoothstep(0.42, 0.68, n5 + (n1 - 0.5) * 0.7);
+		vec4 gm = tex2(tex_moss, p, 0.3, k);
+		vec4 gl = tex2(tex_leaves, p, 0.28, k);
+		vec4 gd = tex2(tex_dirt, p, 0.33, k);
+		vec4 gr = tex2(tex_rock, p, 0.25, k);
+		vec3 gd_ground = mix(detail(gm.rgb, vec3(0.2918, 0.2482, 0.1198)), detail(gl.rgb, vec3(0.2945, 0.1788, 0.0570)), leaf);
+		dirtd = mix(vec3(1.0), detail(gd.rgb, vec3(0.1523, 0.1086, 0.0639)), tex_amt);
+		rockd = mix(vec3(1.0), detail(gr.rgb, vec3(0.1653, 0.1582, 0.1032)), tex_amt);
+		base = mix(base, base * gd_ground * 0.92, tex_amt);
+		tn = mix(nbend(tex2(tex_moss_n, p, 0.3, k)), nbend(tex2(tex_leaves_n, p, 0.28, k)), leaf) * 0.55;
+		vec3 tnd = nbend(tex2(tex_dirt_n, p, 0.33, k)) * 0.7;
+		vec3 tnr = nbend(tex2(tex_rock_n, p, 0.25, k)) * 0.8;
+		float pr0 = smoothstep(0.42, 0.62, vcol.r + (n2 - 0.5) * 0.7 + (n3 - 0.5) * 0.35);
+		float cl0 = clamp(vcol.g + (1.0 - wnorm.y) * 2.0, 0.0, 1.0);
+		tn = mix(mix(tn, tnd, pr0), tnr, max(cl0, smoothstep(0.35, 0.65, vcol.b)));
+		tn *= tex_amt;
+	}
 	if (ripples > 0.0) {
 		float r = sin(p.x * 1.7 + p.y * 0.6 + n1 * 9.0) * 0.5 + 0.5;
 		base *= 1.0 - ripples * 0.12 * r;
@@ -374,7 +432,7 @@ void fragment(){
 	path *= 1.0 - smoothstep(0.66, 0.8, n5) * 0.55 * (1.0 - smoothstep(0.85, 1.0, vcol.r));
 	vec3 pathc = mix(col_path, col_path * vec3(0.78, 0.8, 0.72), smoothstep(0.35, 0.7, n2));
 	pathc = mix(pathc, col_path * 0.6, smoothstep(0.55, 0.8, n3) * 0.5);
-	pathc *= 0.85 + n4 * 0.3;
+	pathc *= mix(0.85 + n4 * 0.3, 1.0, tex_amt) * dirtd;
 	float pebble = smoothstep(0.86, 0.93, vnoise(p * 14.0)) * smoothstep(0.4, 0.7, n3);
 	pathc = mix(pathc, vec3(0.42, 0.4, 0.36), pebble * 0.6);
 	float edge = smoothstep(0.2, 0.5, path) * (1.0 - smoothstep(0.5, 0.95, path));
@@ -385,7 +443,7 @@ void fragment(){
 	if (tiles > 0.0) {
 		vec2 vv = vor(p * 1.3, tid);
 		tm = smoothstep(0.02, 0.09, vv.y - vv.x);
-		vec3 slab = col_path * (0.7 + tid * 0.45) * (0.85 + n3 * 0.3);
+		vec3 slab = col_path * (0.7 + tid * 0.45) * (0.85 + n3 * 0.3) * rockd;
 		base = mix(base, mix(col_path * 0.3, slab, tm), path);
 	}
 	// cobbles: irregular stones, half buried in dirt
@@ -396,13 +454,13 @@ void fragment(){
 	if (cob > 0.01) {
 		vec2 vv2 = vor(p * 2.6, cid);
 		cm = smoothstep(0.03, 0.14, vv2.y - vv2.x);
-		vec3 stonec = mix(vec3(0.22, 0.21, 0.19), vec3(0.36, 0.34, 0.3), cid) * (0.8 + n3 * 0.3 + (n4 - 0.5) * 0.15) * cob_shade;
+		vec3 stonec = mix(vec3(0.22, 0.21, 0.19), vec3(0.36, 0.34, 0.3), cid) * (0.8 + n3 * 0.3 + (n4 - 0.5) * 0.15) * cob_shade * rockd;
 		stonec = mix(stonec, col_accent * 0.7, smoothstep(0.62, 0.8, n3) * 0.5);
 		vec3 gap = mix(col_path * 0.45, col_a * 0.6, smoothstep(0.4, 0.7, n2));
 		base = mix(base, mix(gap, stonec, cm), cob);
 	}
 	float cliff = clamp(vcol.g + (1.0 - wnorm.y) * 2.0, 0.0, 1.0);
-	base = mix(base, col_cliff * (0.6 + n2 * 0.5 + (n4 - 0.5) * 0.2), cliff);
+	base = mix(base, col_cliff * (0.6 + n2 * 0.5 + (n4 - 0.5) * 0.2) * rockd, cliff);
 	float wetf = wet * smoothstep(0.5, 0.72, n2) * (1.0 - cliff) * (0.4 + path * 0.6);
 	base *= 1.0 - wetf * 0.3;
 	float cover = 0.0;
@@ -470,7 +528,7 @@ void fragment(){
 	float e = 0.05;
 	float sc = 1.8;
 	float hc = fbm3(p * sc); float hx = fbm3((p + vec2(e, 0.0)) * sc); float hz = fbm3((p + vec2(0.0, e)) * sc);
-	vec3 wn = normalize(wnorm + vec3(hc - hx, 0.0, hc - hz) * (2.0 + path) / e * 0.05 * (1.0 - cover * 0.8));
+	vec3 wn = normalize(wnorm + vec3(hc - hx, 0.0, hc - hz) * (2.0 + path) / e * 0.05 * (1.0 - cover * 0.8) * (1.0 - tex_amt * 0.6) + tn * (1.0 - cover * 0.85));
 	if (cover > 0.0) {
 		// soft wind-blown drift ripples
 		float dd = 0.4;

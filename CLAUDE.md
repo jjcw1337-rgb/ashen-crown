@@ -51,6 +51,12 @@ Image clarity (pause menu, saved in `user://settings.cfg`): **Smoothing** `Game.
 (temporal AA at full resolution, also smooths grass and leaves) or Supersample 1.5x (Forward+ only; `Game.smoothing_modes`),
 and **Sharpen** `Game.sharpen` Off/Low/High (`SCREEN_SHARPEN_SHADER` on a CanvasLayer at -1, over the 3D, under the UI);
 `Game._apply_clarity` runs from `apply_quality`. Compare them in shots with `--smooth msaa|fsr2|ssaa --sharpen 0..1`.
+**Act I's look** (any Act I zone outdoors): the terrain's detail comes from four Poly Haven CC0 photo textures
+(`assets/textures/ground/`: forest floor, leaf litter, dirt, mossy rock, with normal maps; `Mats.ground_textures`, the
+terrain shader's `tex_*`, each sampled twice so the repeat doesn't show, as a multiplier round 1 so the zone's own
+colours stay; credits in that folder's `CREDITS.md`), and `Game._cinematic` adds a colour grade (a 3D LUT built by
+`_grade_color`: cool shadows, warm highlights, greens muted), stronger light shafts in the volumetric fog and, on High
+and up, a soft depth blur at the top of the screen (`_update_dof`). Shots: `--notex`, `--nograde`, `--quality 0..3`.
 The moor's road is `World.road_style()`: the paved Old Kingsroad (2) by default; `--road 0|1|3` shows the old broad
 road, the wagon trail and the moor trails for comparison. `tools/zone_overview.gd -- out.png [--road N]` renders a high view of it.
 

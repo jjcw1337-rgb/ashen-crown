@@ -523,6 +523,8 @@ func _build_terrain(tcol: Dictionary) -> void:
 	mat.shader = Mats.shader("terrain")
 	for k in tcol.keys():
 		mat.set_shader_parameter(k, tcol[k])
+	if oak_forest:
+		Mats.ground_textures(mat)
 	mesh.surface_set_material(0, mat)
 	var mi := MeshInstance3D.new()
 	mi.name = "Terrain"
