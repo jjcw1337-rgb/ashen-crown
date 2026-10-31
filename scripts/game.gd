@@ -346,6 +346,10 @@ func is_snowy() -> bool:
 ## The zone's song and ambience. Act I outside the camp (the forest moor, Grubb's fort): soft trees in the breeze
 ## instead of the wind.
 func zone_music() -> void:
+	# on the title screen (and the class picker over it) the hero select's theme plays, not the camp's song
+	if not playing and ui != null and ui.title_panel != null and ui.title_panel.visible:
+		Sfx.play_music("select")
+		return
 	if world == null:
 		return
 	Sfx.play_music("fort" if cur_zone == "lair" and world.fort else cur_zone, "forest" if world.oak_forest and cur_zone != "town" and not indoor() else "")
@@ -1203,6 +1207,22 @@ func list_characters() -> Array:
 			"played": int(d.get("played", 0))})
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["played"]) > int(b["played"]))
 	return out
+
+## What a saved character wears, for the title screen's figure: Hero.net_gear()'s shape (equipment plus
+## "_cls" and "_helm"), read from the save without changing it. {} when the save can't be read.
+func character_gear(id: String) -> Dictionary:
+	var path := char_dir + id + ".json"
+	if id == "" or not FileAccess.file_exists(path):
+		return {}
+	var f := FileAccess.open(path, FileAccess.READ)
+	var d = JSON.parse_string(f.get_as_text()) if f else null
+	if typeof(d) != TYPE_DICTIONARY:
+		return {}
+	var h: Dictionary = d.get("hero", {}) if d.get("hero") is Dictionary else {}
+	var g: Dictionary = (h.get("equipment", {}) as Dictionary).duplicate(true) if h.get("equipment") is Dictionary else {}
+	g["_cls"] = str(h.get("cls", "knight"))
+	g["_helm"] = bool(h.get("show_helm", true))
+	return g
 
 ## The save from before characters becomes the first character (once; the old file stays for older builds).
 func _adopt_old_save() -> void:
