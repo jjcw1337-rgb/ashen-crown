@@ -3411,6 +3411,8 @@ func _build_class_picker() -> void:
 
 ## Fills the info panel for a class (the chosen one, or the one under the mouse while it's there).
 func _show_class(c: String) -> void:
+	if class_stage != null:
+		class_stage.stop_skill()      # the skill rows are rebuilt; a hovered one is gone
 	var d: Dictionary = Data.CLASSES[c]
 	var acc: Color = ClassStage.ACCENTS[c]
 	var nm := class_info.find_child("cname", true, false) as Label
@@ -3446,6 +3448,15 @@ func _show_class(c: String) -> void:
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		row.add_child(l)
 		grid.add_child(row)
+		# hover a skill and the hero shows it on the stage
+		var sid: String = sk["id"]
+		row.mouse_filter = Control.MOUSE_FILTER_PASS
+		row.mouse_entered.connect(func():
+			if class_stage != null:
+				class_stage.show_skill(c, sid))
+		row.mouse_exited.connect(func():
+			if class_stage != null:
+				class_stage.show_skill(c, ""))
 	(class_info.find_child("cplay", true, false) as Button).text = "Play as " + str(d["name"])
 	for k in class_plates:
 		var p: Label = class_plates[k]

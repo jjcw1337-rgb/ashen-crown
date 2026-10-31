@@ -24,6 +24,14 @@ const FACE := PI                     # bodies face -z; the camera is on +z
 const SIGNATURE := {"knight": ["cleave", 1.1, 0.5, "Holy Slam"], "wraith": ["cast", 1.2, 0.45, "Banshee Wail"],
 	"demon": ["side", 0.9, 0.45, "Hellfire Claw"], "warlock": ["cast", 1.8, 0.2, "Drain Life"], "archer": ["bow", 1.0, 0.55, "Volley"]}
 const SIG_EVERY := 4.5
+## Skill previews (hover a skill in the panel, `show_skill`): each skill's pose style and seconds (before the
+## class's attack pace), as Hero.use_skill plays them; the effects are the game's own, scaled to the stage.
+const SKILL_SHOW := {"cleave": ["cleave", 0.95], "nova": ["cast", 0.55], "charge": ["swipe3", 0.7], "cry": ["cast", 0.6],
+	"reap": ["side", 0.7], "wail": ["cast", 0.5], "shade": ["cast", 0.55], "host": ["cast", 0.65],
+	"hellclaw": ["side", 0.7], "summon": ["cast", 0.55], "phase": ["cast", 0.6], "pact": ["cast", 0.6],
+	"drain": ["cast", 1.6], "blight": ["cast", 0.45], "shackles": ["cast", 0.5], "covenant": ["cast", 0.6],
+	"pierce": ["bow", 0.9], "volley": ["bow", 0.9], "snare": ["cast", 0.6], "beast": ["cast", 0.6]}
+const SKILL_GAP := 1.1              # rest between repeats of a previewed skill
 
 var game: Node
 var vp: SubViewport
@@ -35,6 +43,11 @@ var homes := {}                     # cls -> feet position on its plinth
 var shafts := {}                    # cls -> the light shaft's material (power)
 var glows := {}                     # cls -> the plinth runes' material (power)
 var _flicker: Array[OmniLight3D] = []
+var _skill_c := ""                 # the class showing a skill (its panel's skill is hovered), or ""
+var _skill_id := ""
+var _skill_t := 0.0
+var _skill_hit := false
+var _spirits: Array[Node3D] = []    # Spectral Host's spirits circling while it's shown
 var _pow := {}                      # cls -> the shaft/rune power now (eases toward its target)
 var hovered := ""
 var chosen := ""
@@ -194,7 +207,7 @@ func _process(delta: float) -> void:
 	if not is_visible_in_tree():
 		return
 	t += delta
-	if chosen != "" and _sig_t.get(chosen, -1.0) < 0.0:
+	if chosen != "" and _sig_t.get(chosen, -1.0) < 0.0 and _skill_c != chosen:
 		_sig_wait -= delta
 		if _sig_wait <= 0.0:
 			_sig_t[chosen] = 0.0
@@ -208,7 +221,7 @@ func _process(delta: float) -> void:
 		var home: Vector3 = homes[c]
 		var sp: SpotLight3D = spots[c]
 		sp.light_energy = move_toward(sp.light_energy, 6.0 if c == chosen else (3.0 if c == hovered else 1.2), delta * 12.0)
-		var pw := 1.0 if c == chosen else (0.6 if c == hovered else 0.32)
+		var pw := 1.0 if c == chosen or c == _skill_c else (0.6 if c == hovered else 0.32)
 		var sm: ShaderMaterial = shafts[c]
 		var nxt := move_toward(float(_pow.get(c, 0.2)), pw, delta * 3.0)
 		_pow[c] = nxt
@@ -217,13 +230,180 @@ func _process(delta: float) -> void:
 		gm.set_shader_parameter("power", nxt)
 		(gm.get_meta("cap") as ShaderMaterial).set_shader_parameter("power", nxt)
 		h.net_buff = c == chosen
-		if float(_sig_t[c]) >= 0.0:
+		if c == _skill_c:
+			_skill_show(c, h, home, delta)
+		elif float(_sig_t[c]) >= 0.0:
 			_signature(c, h, home, delta)
 		elif c == hovered:
 			_fid_t[c] = float(_fid_t[c]) + delta
 			_fidget(c, h, home, float(_fid_t[c]))
 		else:
 			_idle(c, h, home, i)
+
+## Hovering a skill in the panel: that class performs it on its plinth, over and over ("" stops).
+func show_skill(c: String, id: String) -> void:
+	if id == "" and c != _skill_c:
+		return
+	_clear_spirits()
+	if id == "" or not heroes.has(c) or not SKILL_SHOW.has(id):
+		_skill_c = ""
+		_skill_id = ""
+		return
+	if _skill_c != "" and _skill_c != c:
+		_sig_t[_skill_c] = -1.0
+	_skill_c = c
+	_skill_id = id
+	_skill_t = 0.0
+	_skill_hit = false
+	_sig_t[c] = -1.0
+
+func stop_skill() -> void:
+	if _skill_c != "":
+		show_skill(_skill_c, "")
+
+func _clear_spirits() -> void:
+	for n in _spirits:
+		if is_instance_valid(n):
+			n.queue_free()
+	_spirits.clear()
+
+func _skill_show(c: String, h: Hero, home: Vector3, delta: float) -> void:
+	var spec: Array = SKILL_SHOW[_skill_id]
+	var style: String = spec[0]
+	var dur: float = float(spec[1]) * Data.attack_pace(c)
+	_skill_t += delta
+	if _skill_t >= dur + SKILL_GAP:
+		_skill_t -= dur + SKILL_GAP
+		_skill_hit = false
+	var resting := _skill_t > dur
+	var a := clampf(_skill_t / dur, 0.0, 1.0)
+	var st := {"move": 0.0, "atk": -1.0 if resting else a, "style": style, "block": 0.0, "hit": 0.0}
+	var pos := home + Vector3(0, 0, STEP)
+	var impact := Anim.impact_at(style)
+	match _skill_id:
+		"cleave":
+			if not resting:
+				pos.y += sin(clampf(a / 0.5, 0.0, 1.0) * PI) * 0.6
+				pos.z += clampf(a / 0.5, 0.0, 1.0) * 0.2
+		"charge":
+			# a short rush to the plinth's edge and back
+			if not resting:
+				pos.z += sin(a * PI) * 0.32
+				st["move"] = 1.0 - a
+			impact = 0.5
+		"drain":
+			st["atk"] = -1.0 if resting else minf(a / 0.15, 1.0) * 0.6
+			impact = 0.15
+			if not resting and a > 0.15 and a < 0.95:
+				_beam_t -= delta
+				if _beam_t <= 0.0:
+					_beam_t = 0.05
+					var from := h.global_position + Vector3(0, 0.75, 0.35)
+					Fx.burst(root3d, from + Vector3(randf_range(-0.05, 0.05), 0, 0), ACCENTS[c], 4, 3.5, 0.07, 0.5, true, 0.0, 6.0, Vector3(0, 0.08, 1))
+		"host":
+			# the spirits circle the wraith
+			for k in _spirits.size():
+				var ang := t * 2.2 + k * TAU / 3.0
+				_spirits[k].global_position = h.global_position + Vector3(cos(ang) * 0.75, 1.1 + sin(t * 3.0 + k) * 0.15, sin(ang) * 0.75)
+	if c == "wraith":
+		pos.y += 0.15
+	h.net_pos = pos
+	h.net_yaw = FACE
+	h.net_st = st
+	if not _skill_hit and not resting and a >= impact:
+		_skill_hit = true
+		_skill_fx(c, h, home)
+
+## The skill's effects at its impact frame: the game's own, at stage scale.
+func _skill_fx(c: String, h: Hero, home: Vector3) -> void:
+	var col: Color = ACCENTS[c]
+	var p := Vector3(home.x, home.y + 0.02, home.z + STEP)
+	var yaw := h.rig.global_rotation.y
+	var floor_front := Vector3(home.x, 0.03, home.z + 1.5)
+	var chest := h.global_position + Vector3(0, 1.1, 0.2)
+	match _skill_id:
+		"cleave":
+			Fx.holy_slam(root3d, p + Vector3(0, 0, 0.25), 1.3)
+			Sfx.play("cleave_hit", -10.0)
+		"nova":
+			Fx.ring(root3d, p, 2.4, Color(1.0, 0.75, 0.3), 0.5)
+			Fx.burst(root3d, p + Vector3(0, 0.9, 0), Color(1.0, 0.8, 0.4), 40, 5.0, 0.12, 0.6, true, 0.0, 180.0)
+			Sfx.play("holy_nova", -10.0)
+		"charge":
+			Fx.burst(root3d, p + Vector3(0, 0.6, 0.6), Color(1.0, 0.9, 0.7), 24, 3.0, 0.08, 0.4, true, -2.0, 50.0, Vector3(0, 0.3, 1))
+			Fx.flash(root3d, p + Vector3(0, 1.0, 0.6), col, 2.0, 0.25, 3.0)
+			Sfx.play("charge_impact", -10.0)
+		"cry":
+			Fx.ring(root3d, p, 2.0, Color(1.0, 0.85, 0.4), 0.6)
+			Fx.pillar(root3d, p, Color(1.0, 0.8, 0.35), 0.8)
+			Sfx.play("battle_cry", -10.0)
+		"reap":
+			WraithFx.reap(root3d, p, yaw, 1.5)
+			Sfx.play("reap_swing", -10.0)
+		"wail":
+			WraithFx.wail(root3d, p, 2.2)
+			Sfx.play("wail", -12.0)
+		"shade":
+			WraithFx.shade_depart(root3d, p)
+			WraithFx.shade_arrive(root3d, p + Vector3(0, 0, 0.1))
+			Sfx.play("shade_out", -10.0)
+		"host":
+			WraithFx.summon(root3d, p)
+			_clear_spirits()
+			for k in 3:
+				_spirits.append(WraithFx.spirit_node(root3d))
+			Sfx.play("host_summon", -10.0)
+		"hellclaw":
+			DemonFx.claw(root3d, p, yaw, 1.5)
+			Sfx.play("hellclaw", -10.0)
+		"summon":
+			DemonFx.summon_circle(root3d, floor_front)
+			Sfx.play("summon_demon", -10.0)
+		"phase":
+			DemonFx.phase_tear(root3d, p)
+			DemonFx.eruption(root3d, p, 1.6)
+			Sfx.play("phase_in", -10.0)
+		"pact":
+			DemonFx.pact(root3d, p)
+			Sfx.play("blood_pact", -10.0)
+		"drain":
+			Fx.flash(root3d, chest + Vector3(0, -0.3, 0.4), col, 2.5, 1.2, 3.5)
+			Sfx.play("drain_start", -12.0)
+		"blight":
+			Fx.burst(root3d, chest, col, 26, 6.0, 0.1, 0.35, true, -2.0, 10.0, Vector3(0, 0.15, 1))
+			WarlockFx.blight_burst(root3d, floor_front, 0.9)
+			Sfx.play("blight_cast", -10.0)
+		"shackles":
+			WarlockFx.shackle_cast(root3d, p, 1.7)
+			for k in 3:
+				var to := Vector3(home.x + (k - 1) * 1.1, 0.4, home.z + 1.6)
+				WarlockFx.chain(root3d, chest, to, 0.8)
+			Sfx.play("shackles", -10.0)
+		"covenant":
+			WarlockFx.covenant(root3d, p)
+			Sfx.play("covenant", -10.0)
+		"pierce":
+			# a burning arrow streaking out of the bow
+			Fx.burst(root3d, chest + Vector3(0, 0.2, 0.2), Color(1.0, 0.5, 0.15), 30, 9.0, 0.08, 0.4, true, 0.0, 3.0, Vector3(0, 0, 1))
+			Fx.flash(root3d, chest + Vector3(0, 0.2, 0.4), Color(1.0, 0.5, 0.15), 2.0, 0.3, 3.0)
+			Sfx.play("bow", -10.0)
+		"volley":
+			for k in 5:
+				Fx.burst(root3d, chest + Vector3(0, 0.2, 0.2), Color(0.7, 0.9, 1.0), 6, 9.0, 0.06, 0.45, true, -2.0, 4.0, Vector3((k - 2) * 0.15, 1.0, 0.4))
+			Fx.ring(root3d, floor_front, 1.2, Color(0.7, 0.9, 1.0), 0.8)
+			Fx.burst(root3d, floor_front + Vector3(0, 2.5, 0), Color(0.75, 0.92, 1.0), 40, 4.0, 0.06, 0.6, true, -12.0, 15.0, Vector3.DOWN)
+			Sfx.play("bow", -10.0)
+		"snare":
+			Fx.ring(root3d, floor_front, 0.8, Color(0.75, 0.6, 1.0), 0.7)
+			for k in 3:
+				var to := floor_front + Vector3((k - 1) * 0.9, 0.0, 0.3)
+				Fx.bolt(root3d, floor_front + Vector3(0, 0.1, 0), to + Vector3(0, 0.1, 0), Color(0.8, 0.7, 1.0), 0.3)
+			Sfx.play("thunder_strike", -14.0)
+		"beast":
+			# the spirit beast answers: a grey spirit burst where it would pounce
+			Fx.burst(root3d, floor_front + Vector3(0, 0.5, 0), Color(0.75, 0.8, 0.85), 30, 3.0, 0.1, 0.7, true, 0.0)
+			Fx.ring(root3d, floor_front, 1.0, Color(0.75, 0.8, 0.85), 0.6)
+			Sfx.play("growl", -8.0)
 
 ## Alive: breathing (Anim's idle), the weight shifting, the head turning to look about, now and then a
 ## glance at you; the chosen one stands a step forward in the light.
