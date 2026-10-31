@@ -411,6 +411,8 @@ static func item_model(item: Dictionary) -> Node3D:
 					root.set_meta("ranger_bow", true)
 					return root
 				return enemy_weapon(kind)
+			if kind == "cane":
+				return Plague.cane_model()
 			return weapon(kind, sh, p)
 		"shield": return shield(kind, sh, p)
 		"helm": return helm(kind, p)

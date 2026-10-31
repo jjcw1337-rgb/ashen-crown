@@ -24,8 +24,10 @@ var cam: Camera3D
 var hero: Hero
 var net: Net
 var weather: Weather
+var grass_field: GrassField   # the grass's touch and wind (grass_field.gd)
 var sky_mat: ProceduralSkyMaterial
 var ui: UI
+var quests: Quests          # the quest log (quests.gd), per character and run
 var vignette: ColorRect
 var loading: ColorRect
 var loading_lbl: Label
@@ -97,8 +99,13 @@ func _ready() -> void:
 	weather = Weather.new()
 	weather.name = "Weather"
 	add_child(weather)
+	grass_field = GrassField.new()
+	grass_field.name = "GrassField"
+	grass_field.movers_fn = _grass_movers
+	add_child(grass_field)
 	_setup_camera()
 	_setup_post()
+	quests = Quests.new(self)
 	ui = UI.new()
 	add_child(ui)
 	ui.setup(self)
@@ -122,8 +129,11 @@ func _ready() -> void:
 		await load_zone(0, shot_zone, shot_spawn if shot_spawn != "" else "start")
 		return
 	await _play_intro()
-	await load_zone(0, "town", "start")
+	# straight from the intro to the title: the camp builds behind it, with no loading screen or zone banner
+	_boot_quiet = true
 	ui.show_title()
+	await load_zone(0, "town", "start")
+	_boot_quiet = false
 
 # ---------------------------------------------------------------- intro
 const INTRO_PATH := "res://assets/intro.ogv"
@@ -333,6 +343,17 @@ func _set_fires() -> void:
 func is_snowy() -> bool:
 	return false
 
+## The zone's song and ambience. Act I outside the camp (the forest moor, Grubb's fort): soft trees in the breeze
+## instead of the wind.
+func zone_music() -> void:
+	# on the title screen (and the class picker over it) the hero select's theme plays, not the camp's song
+	if not playing and ui != null and ui.title_panel != null and ui.title_panel.visible:
+		Sfx.play_music("select")
+		return
+	if world == null:
+		return
+	Sfx.play_music("fort" if cur_zone == "lair" and world.fort else cur_zone, "forest" if world.oak_forest and cur_zone != "town" and not indoor() else "")
+
 ## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
 	return cur_zone == "lair" and not (world != null and (world.fort or world.run == 1))
@@ -522,7 +543,9 @@ func apply_quality(q: int) -> void:
 	if sun:
 		sun.directional_shadow_max_distance = 90.0 if q >= 3 else 70.0
 	for g in get_tree().get_nodes_in_group("grass"):
-		(g as MultiMeshInstance3D).visibility_range_end = [32.0, 45.0, 60.0, 95.0][q]
+		if not g.has_meta("grass3d"):
+			(g as MultiMeshInstance3D).visibility_range_end = [32.0, 45.0, 60.0, 95.0][q]
+	Grass.apply_quality(self, q)
 
 func max_quality() -> int:
 	return 1 if OS.has_feature("web") else 3
@@ -658,11 +681,14 @@ func _setup_post() -> void:
 	sh.code = """
 shader_type canvas_item;
 uniform float strength = 0.6;
+uniform float night = 0.0;         // the Wraith's Eternal Night: violet dark closing in from the edges (WraithFx.set_night)
 void fragment(){
 	vec2 uv = UV - 0.5;
 	uv.x *= 1.3;
 	float v = smoothstep(0.3, 0.85, length(uv));
-	COLOR = vec4(0.0, 0.0, 0.0, v * strength);
+	float n = smoothstep(0.1, 0.62, length(uv)) * night;
+	vec3 col = mix(vec3(0.0), vec3(0.05, 0.02, 0.1), n);
+	COLOR = vec4(col, clamp(v * strength + n * 0.82, 0.0, 1.0));
 }
 """
 	sm.shader = sh
@@ -776,13 +802,15 @@ func run_switched_banner() -> void:
 	ui.big_message(run_name())
 	ui.message(("The Ashen King's reign. " if difficulty >= 2 else "") + run_note(difficulty), Color(1.0, 0.7, 0.4))
 
+var _boot_quiet := false      # the camp loading behind the title at boot: no loading screen, no zone banner
+
 func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	if _busy:
 		return
 	_busy = true
 	net.broadcast_goto(act, zone, spawn, at)
 	loading_lbl.text = "Entering %s..." % zone_title(act, zone)
-	loading.visible = true
+	loading.visible = not _boot_quiet
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if world:
@@ -802,6 +830,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair"].find(zone) * 7)
 	_end_underworld_now()
 	_zone_env(zone)
+	_grass_zone(zone)
 	apply_quality(quality)
 	await _capture_map(zone)
 	# a waypoint's own arrival spot ("waypoint_<id>"), else the zone's main waypoint, else the start
@@ -836,15 +865,17 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		_stock_shops()
 		if not tp_link.is_empty():
 			_make_portal(world.spawns["portal"], "back")
-	ui.set_zone(zone_title(act, zone))
+	if _boot_quiet:
+		ui.zone_lbl.text = zone_title(act, zone)
+	else:
+		ui.set_zone(zone_title(act, zone))
 	# Act I outdoors: birds over the forest (birds.gd)
 	if world.oak_forest and not indoor():
 		var birds := Birds.new()
 		birds.game = self
 		birds.name = "birds"
 		world.add_child(birds)
-	# Act I outside the camp (the forest moor, Grubb's fort): soft trees in the breeze instead of the wind
-	Sfx.play_music("fort" if zone == "lair" and world.fort else zone, "forest" if world.oak_forest and zone != "town" and not indoor() else "")
+	zone_music()
 	loading.visible = false
 	_busy = false
 	net.host_zone_loaded()
@@ -911,6 +942,42 @@ func _capture_map(zone: String) -> void:
 		img.generate_mipmaps()
 		tex = ImageTexture.create_from_image(img)
 	ui.minimap.set_map(tex, b, zone != "town")
+
+## The living grass (Act I, outdoors): its wind for the zone, and its touch on.
+func _grass_zone(zone: String) -> void:
+	if grass_field == null or world == null:
+		return
+	grass_field.enabled = world.oak_forest and not indoor()
+	var w := "default"
+	if indoor():
+		w = "calm"
+	elif zone == "town":
+		w = "camp"
+	elif zone == "wild":
+		w = "moor"
+	elif world.fort:
+		w = "fort"
+	grass_field.set_wind(w, 0.05)
+	grass_field.center = hero.global_position if hero else Vector3.ZERO
+
+## Everyone who parts the grass: the hero and partners, their pets and summoned demons, and the monsters.
+func _grass_movers() -> Array:
+	var out: Array = []
+	if world == null:
+		return out
+	var heroes: Array = [hero] if hero else []
+	heroes.append_array(net.puppets())
+	for h in heroes:
+		if not is_instance_valid(h):
+			continue
+		out.append(h)
+		for m in h.minions:
+			out.append(m)
+		for b in h.beasts:
+			out.append(b)
+	for e in world.enemies_root.get_children():
+		out.append(e)
+	return out
 
 func spawn_enemy(kind: String, p: Vector3, lvl: int, champ := false, champ_name := "", pack := 0, from_net := false) -> Enemy:
 	if net.is_client() and not from_net:
@@ -993,6 +1060,9 @@ func enemies_near(p: Vector3, r: float) -> Array:
 # ---------------------------------------------------------------- start / save
 ## cont: play the character `id` (the last one played when empty); otherwise a new `cls` called `nm`.
 func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
+	# chosen while the camp was still building behind the title: let it finish first
+	while _busy:
+		await get_tree().process_frame
 	Sfx.play("click")
 	ui.hide_title()
 	playing = true
@@ -1015,6 +1085,7 @@ func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
 		difficulty = 0
 		max_run = 0
 		run_progress = {}
+		quests.from_save({})
 		waypoints_known = ["town"]
 		boss_killed = false
 		tp_link = {}
@@ -1035,6 +1106,8 @@ func start_host() -> void:
 		ui.message("Hosting! Your partner can now pick Join Co-op Game", Color(0.5, 1.0, 0.5))
 
 func start_join(ip: String) -> void:
+	while _busy:
+		await get_tree().process_frame
 	Sfx.play("click")
 	net.stop_listening()
 	ui.hide_title()
@@ -1084,7 +1157,7 @@ func save_game() -> void:
 		return
 	_store_progress()
 	var d := {"hero": hero.to_save(), "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed, "difficulty": difficulty,
-		"max_run": max_run, "runs": run_progress, "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
+		"max_run": max_run, "runs": run_progress, "quests": quests.to_save(), "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
 	DirAccess.make_dir_recursive_absolute(char_dir)
 	var f := FileAccess.open(save_path(), FileAccess.WRITE)
 	if f:
@@ -1111,6 +1184,7 @@ func load_game() -> bool:
 	if dev_tools:
 		max_run = 2
 	run_progress = d.get("runs", {})
+	quests.from_save(d.get("quests", {}))
 	return true
 
 ## Every saved character, the last played first: [{id, name, cls, level, difficulty, act, played}].
@@ -1136,6 +1210,22 @@ func list_characters() -> Array:
 			"played": int(d.get("played", 0))})
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["played"]) > int(b["played"]))
 	return out
+
+## What a saved character wears, for the title screen's figure: Hero.net_gear()'s shape (equipment plus
+## "_cls" and "_helm"), read from the save without changing it. {} when the save can't be read.
+func character_gear(id: String) -> Dictionary:
+	var path := char_dir + id + ".json"
+	if id == "" or not FileAccess.file_exists(path):
+		return {}
+	var f := FileAccess.open(path, FileAccess.READ)
+	var d = JSON.parse_string(f.get_as_text()) if f else null
+	if typeof(d) != TYPE_DICTIONARY:
+		return {}
+	var h: Dictionary = d.get("hero", {}) if d.get("hero") is Dictionary else {}
+	var g: Dictionary = (h.get("equipment", {}) as Dictionary).duplicate(true) if h.get("equipment") is Dictionary else {}
+	g["_cls"] = str(h.get("cls", "knight"))
+	g["_helm"] = bool(h.get("show_helm", true))
+	return g
 
 ## The save from before characters becomes the first character (once; the old file stays for older builds).
 func _adopt_old_save() -> void:
@@ -1276,6 +1366,7 @@ func claim_material(it: Dictionary, at: Vector3) -> void:
 	Fx.flash(world.fx_root, at + Vector3(0, 1.0, 0), col, 4.0, 0.5, 6.0)
 	ui.big_message("✦ " + it["name"] + " ✦")
 	ui.message("You claim the %s" % it["name"], col)
+	quests.on_pick(str(it["base"]))
 
 func receive_item(it: Dictionary, pos: Vector3) -> void:
 	if it["base"] == "gold":
@@ -1335,6 +1426,27 @@ func _open_chest(t: Inter) -> void:
 	for i in n:
 		_drop_loot_roll(t.global_position, world.level, false)
 
+## A camp vendor's own talk: the elder's news, a trader's greeting and Trade.
+func _vendor_talk(t: Inter) -> void:
+	var role: String = t.data.get("role", "")
+	if role == "elder":
+		var txt := "The crypt lies at the far end of Cairnfell Moor. Bone archers and the restless dead guard the way. Raise your shield against their arrows: a good block turns them aside. And Grubb guards his gold like his life: rip open one of his sacks and his goblins come running for it. Get to the gold before they bring it back to him."
+		if difficulty == 1 and not boss_killed:
+			txt = "The old Imperial Road runs north to Aurelia. Bandits hold it now, the city too. Watch the pass where the rocks close in: they like to leave a wagon on its side and wait for travellers to stop and look. In Aurelia a man named Varro runs games in the old arena. They say his champion has never lost."
+		elif difficulty >= 2 and not boss_killed:
+			txt = "Something worse than Grubb sits on his stolen throne in the old crypt. They call him the Ashen King. His bone archers hold the moor, and he carries a blade that burns. Kill him and take it."
+		if boss_killed:
+			txt = "Grubb is dead and his gold is ours, and the moor already feels lighter. The Wilds owe you a debt it cannot pay. Rest a while, crusader."
+		ui.open_dialog(t.label, txt, [["Farewell", func(): pass]])
+	else:
+		var sh: Array = shops.get(role, ["", []])
+		var lines := {"smith": "Need a blade, or something to stop one?", "armor": "Leather, mail or plate. All of it has seen worse than you.", "alch": "Potions for the body, trinkets for the soul.", "gamble": "Fortune favours the bold. Every piece is a mystery until you pay."}
+		var btns := [["Trade", func(): ui.open_shop(role, sh[0], sh[1], t, lines.get(role, ""))]]
+		if role == "armor":
+			btns.append(["Enchant armor", func(): ui.open_enchant(t.label)])
+		btns.append(["Leave", func(): pass])
+		ui.open_dialog(t.label, lines.get(role, ""), btns)
+
 func _interact(t: Inter) -> void:
 	match t.kind:
 		"lanista":
@@ -1358,25 +1470,11 @@ func _interact(t: Inter) -> void:
 			ui.open_dialog(t.label, txt, btns)
 		"vendor":
 			ui.trade_with = t
-			var role: String = t.data.get("role", "")
-			if role == "elder":
-				var txt := "The crypt lies at the far end of Cairnfell Moor. Bone archers and the restless dead guard the way. Raise your shield against their arrows: a good block turns them aside. And Grubb guards his gold like his life: rip open one of his sacks and his goblins come running for it. Get to the gold before they bring it back to him."
-				if difficulty == 1 and not boss_killed:
-					txt = "The old Imperial Road runs north to Aurelia. Bandits hold it now, the city too. Watch the pass where the rocks close in: they like to leave a wagon on its side and wait for travellers to stop and look. In Aurelia a man named Varro runs games in the old arena. They say his champion has never lost."
-				elif difficulty >= 2 and not boss_killed:
-					txt = "Something worse than Grubb sits on his stolen throne in the old crypt. They call him the Ashen King. His bone archers hold the moor, and he carries a blade that burns. Kill him and take it."
-				if boss_killed:
-					txt = "Grubb is dead and his gold is ours, and the moor already feels lighter. The Wilds owe you a debt it cannot pay. Rest a while, crusader."
-				ui.open_dialog(t.label, txt, [["Farewell", func(): pass]])
-			else:
-				var sh: Array = shops.get(role, ["", []])
-				var lines := {"smith": "Need a blade, or something to stop one?", "armor": "Leather, mail or plate. All of it has seen worse than you.", "alch": "Potions for the body, trinkets for the soul.", "gamble": "Fortune favours the bold. Every piece is a mystery until you pay."}
-				var btns := [["Trade", func(): ui.open_shop(role, sh[0], sh[1], t, lines.get(role, ""))]]
-				if role == "armor":
-					btns.append(["Enchant armor", func(): ui.open_enchant(t.label)])
-				btns.append(["Leave", func(): pass])
-				ui.open_dialog(t.label, lines.get(role, ""), btns)
 			Sfx.play("click")
+			var rest := func(): _vendor_talk(t)
+			# a quest to hand in or on offer comes before their trade (Quests.talk)
+			if not quests.talk(str(t.data.get("role", "")), t.label, rest):
+				rest.call()
 		"stash":
 			ui.open_stash()
 			ui.trade_with = t
@@ -1435,6 +1533,7 @@ func _interact(t: Inter) -> void:
 			xp_bonus_t = maxf(xp_bonus_t, 300.0)
 			Sfx.play("levelup", -6.0, 1.15)
 			ui.message("Sunstar Bloom: +50% experience for 5 minutes", Color(1.0, 0.8, 0.35))
+			quests.progress("flower")
 			if net.active:
 				net.inter_used(t)
 		"chest":
@@ -1555,6 +1654,7 @@ func gain_kill_xp(xp: int, lvl: int) -> void:
 	hero.add_xp(int(xp * lvl_ratio * bonus))
 
 func on_enemy_killed(e: Enemy) -> void:
+	quests.on_kill(e)
 	gain_kill_xp(e.xp, e.level)
 	net.share_xp(e.xp, e.level)
 	var drops := 0 if e.def.get("no_loot", false) else 1
@@ -1825,6 +1925,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 				ui.toggle(ui.skills_panel)
 			KEY_N:
 				ui.toggle(ui.talent_panel)
+			KEY_J:
+				ui.toggle(ui.quest_panel)
 			KEY_F3:
 				ui.show_fps = not ui.show_fps
 			KEY_F2:
@@ -1995,6 +2097,9 @@ func _process(delta: float) -> void:
 		var sh := Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake * shake * 0.35
 		cam.position = CAM_OFFSET * zoom * lerpf(1.0, focus_zoom, fw) + sh
 		RenderingServer.global_shader_parameter_set("player_pos", hero.global_position)
+		if grass_field:
+			grass_field.center = cam_target
+			grass_field.cam_pos = cam.global_position
 	_update_underworld(real_dt)
 	for l in get_tree().get_nodes_in_group("flicker"):
 		var lt := l as OmniLight3D
@@ -2005,11 +2110,102 @@ func _process(delta: float) -> void:
 		shot_frames += 1
 		if shot_frames == 50:
 			_shot_setup()
+		if _perf_step():
+			return
 		if shot_frames == (320 if OS.get_cmdline_user_args().has("--spill") else 150 if OS.get_cmdline_user_args().has("--inv") else (120 if OS.get_cmdline_user_args().has("--dragtest") else (62 if OS.get_cmdline_user_args().has("--snowtest") else 90))):
 			var img := get_viewport().get_texture().get_image()
 			img.save_png(shot_path)
 			print("saved ", shot_path)
 			get_tree().quit()
+
+## Performance capture for any build (an exported game too), e.g.
+##   AshenCrown.exe -- --shot grass.png --zone wild --perf 12 --quality 2 --grassspot
+## --grassspot stands the hero in open grass off the road, --perf N walks him in a loop for N seconds
+## measuring every frame, then writes <shot>.txt (frame times, draw calls, primitives, GPU) and the shot.
+var _perf := {}
+func _perf_step() -> bool:
+	var args := OS.get_cmdline_user_args()
+	var pi := args.find("--perf")
+	if pi < 0:
+		return false
+	if _perf.is_empty():
+		var qi := args.find("--quality")
+		if qi >= 0 and qi + 1 < args.size():
+			set_quality(int(args[qi + 1]))
+		if args.has("--grassspot"):
+			var spot := _open_grass_spot()
+			hero.global_position = spot
+			cam_target = spot
+		_perf = {"centre": hero.global_position, "t": 0.0, "frames": [], "dc": 0.0, "prims": 0.0, "objs": 0.0, "n": 0,
+			"secs": float(args[pi + 1]) if pi + 1 < args.size() and args[pi + 1].is_valid_float() else 10.0, "t0": 0}
+		return true
+	var dt := get_process_delta_time()
+	if shot_frames < 70:
+		return true   # settle (shaders compiled, field running)
+	if int(_perf["t0"]) == 0:
+		_perf["t0"] = Time.get_ticks_usec()
+	_perf["t"] = float(_perf["t"]) + dt
+	var a := float(_perf["t"]) * 0.9
+	hero.global_position = (_perf["centre"] as Vector3) + Vector3(cos(a), 0, sin(a)) * 3.0
+	(_perf["frames"] as Array).append(dt * 1000.0)
+	_perf["dc"] = float(_perf["dc"]) + Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
+	_perf["prims"] = float(_perf["prims"]) + Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)
+	_perf["objs"] = float(_perf["objs"]) + Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)
+	_perf["n"] = int(_perf["n"]) + 1
+	if float(_perf["t"]) < float(_perf["secs"]):
+		return true
+	var fr: Array = _perf["frames"]
+	fr.sort()
+	var n := maxi(1, int(_perf["n"]))
+	var wall := float(Time.get_ticks_usec() - int(_perf["t0"])) / 1e6
+	var worst1 := 0.0
+	var k := maxi(1, int(fr.size() * 0.01))
+	for i in k:
+		worst1 += float(fr[fr.size() - 1 - i])
+	worst1 /= k
+	var grass_n := 0
+	for gr in get_tree().get_nodes_in_group("grass"):
+		grass_n += (gr as MultiMeshInstance3D).multimesh.instance_count if gr.has_meta("grass3d") and int(gr.get_meta("grass3d")) == 0 else 0
+	var lines := [
+		"Ashen Crown perf: zone %s, preset %s, %s, %s" % [shot_zone, QUALITY_NAMES[quality], "Forward+" if is_forward() else "Compatibility", RenderingServer.get_video_adapter_name()],
+		"resolution %s, %d frames in %.1f s" % [get_viewport().get_visible_rect().size, n, wall],
+		"average %.1f fps (%.2f ms), median %.2f ms, 1%% low %.1f fps (%.2f ms)" % [n / wall, wall * 1000.0 / n, float(fr[fr.size() / 2]), 1000.0 / worst1, worst1],
+		"draw calls %.0f, primitives %.0f, objects %.0f (per frame)" % [float(_perf["dc"]) / n, float(_perf["prims"]) / n, float(_perf["objs"]) / n],
+		"3D grass clumps in the zone: %d" % grass_n,
+	]
+	var f := FileAccess.open(shot_path.get_basename() + ".txt", FileAccess.WRITE)
+	for l in lines:
+		print("[PERF] ", l)
+		if f:
+			f.store_line(l)
+	if f:
+		f.close()
+	var img := get_viewport().get_texture().get_image()
+	img.save_png(shot_path)
+	print("saved ", shot_path)
+	get_tree().quit()
+	return true
+
+## The grassiest open spot near the hero: 9-16 m off the road, nothing solid within 4 m.
+func _open_grass_spot() -> Vector3:
+	var start: Vector3 = hero.global_position
+	var best := start
+	var best_s := -1.0
+	var r := RandomNumberGenerator.new()
+	r.seed = 77
+	for i in 600:
+		var p := start + Vector3(r.randf_range(-40, 40), 0, r.randf_range(-40, 40))
+		var d: float = world.path_dist(p.x, p.z)
+		if d < 9.0 or d > 16.0 or world.is_blocked(p.x, p.z) or world.is_near_obstacle(p, 4.0):
+			continue
+		if world.dirt_at(p.x, p.z) + world.cobble_at(p.x, p.z) > 0.05:
+			continue
+		var sc := 40.0 - p.distance_to(start)
+		if sc > best_s:
+			best_s = sc
+			best = p
+	best.y = world.height_at(best.x, best.z)
+	return best
 
 ## For automated screenshots: stage a fight near the hero.
 func _shot_setup() -> void:

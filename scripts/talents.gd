@@ -11,11 +11,12 @@ extends RefCounted
 ##   percent: dmg (all damage), dmg:<skill> (one skill, "attack" = the weapon attack, "summon" = the
 ##     demons' claws), cd:<skill> (shorter cooldown), cost:<skill> (less mana), life_pct, mana_pct,
 ##     armor_pct, crit (chance), crit_dmg, buff_pow (the 12 s buffs' +40% damage), block_dr
-##   seconds: buff_dur (the 12 s buffs), phase_dur, wail_stun, shackle_dur, blight_dur
-##   class specials, used where the skill is: nova_heal, cry_heal, charge_cdr, reap_heal, reap_full,
-##     wail_echo, spirits, claw_wide, minion_speed, minion_max, pact_cost, phase_heal, drain_heal,
+##   seconds: buff_dur (the 12 s buffs), phase_dur, siphon_dur, step_stun, veil, grasp_hold, shackle_dur, blight_dur
+##   class specials, used where the skill is: nova_heal, cry_heal, charge_cdr, rend_heal, rend_full,
+##     phantoms, claw_wide, minion_speed, minion_max, pact_cost, phase_heal, drain_heal,
 ##     drain_fork, drain_glut, blight_size, blight_twin, shackle_range, arrow_split, snare_dur, snare_max,
-##     snare_wide, volley_size, beast_two, burn_dmg, wolf_burn, chill_pct, wolf_howl, frost_shatter, arc_count
+##     snare_wide, volley_size, beast_two, burn_dmg, wolf_burn, chill_pct, wolf_howl, frost_shatter, arc_count,
+##     plague: cloud_size cloud_dur poison_dmg poison_dur blast_size ignite_dmg trap_max trap_stun inf_jumps inf_dur dome_size dome_dur
 ## "text" shows the total for the ranks taken: {key} is replaced by the fx value times the rank.
 ## Saves made before talents get a build picked for them (`auto_build`, the class's `AUTO` order).
 
@@ -52,32 +53,32 @@ const TREES := {
 		]},
 	],
 	"wraith": [
-		{"name": "Reaper", "desc": "The scythe: Soul Reap, quick strikes and cruel crits.", "talents": [
-			{"id": "w_scythe", "name": "Keen Scythe", "row": 0, "max": 3, "icon": "reap", "fx": {"dmg:reap": 10}, "text": "Soul Reap deals {dmg:reap}% more damage."},
+		{"name": "Render", "desc": "The claws: Spectral Rend, quick strikes and cruel crits.", "talents": [
+			{"id": "w_scythe", "name": "Keen Claws", "row": 0, "max": 3, "icon": "rend", "fx": {"dmg:rend": 10}, "text": "Spectral Rend deals {dmg:rend}% more damage."},
 			{"id": "w_focus", "name": "Grim Focus", "row": 0, "max": 3, "icon": "t_eye", "fx": {"dex": 3}, "text": "+{dex} dexterity."},
-			{"id": "w_harvest", "name": "Soul Harvest", "row": 1, "max": 3, "icon": "t_heart", "fx": {"reap_heal": 1}, "text": "Each soul Soul Reap cuts heals {reap_heal}% more of your life."},
+			{"id": "w_harvest", "name": "Soul Harvest", "row": 1, "max": 3, "icon": "t_heart", "fx": {"rend_heal": 1}, "text": "Each soul Spectral Rend tears out heals {rend_heal}% more of your life."},
 			{"id": "w_haste", "name": "Deathly Haste", "row": 1, "max": 3, "icon": "t_haste", "fx": {"ias": 5}, "text": "+{ias}% attack speed."},
 			{"id": "w_cruel", "name": "Cruelty", "row": 2, "max": 3, "icon": "t_star", "fx": {"crit": 3}, "text": "+{crit}% chance to land a critical hit."},
 			{"id": "w_exec", "name": "Executioner", "row": 2, "max": 2, "icon": "t_skull", "fx": {"crit_dmg": 20}, "text": "Critical hits deal {crit_dmg}% more damage."},
-			{"id": "w_moon", "name": "Harvest Moon", "row": 3, "max": 1, "icon": "reap", "fx": {"reap_full": 1}, "text": "Soul Reap sweeps all the way round you."},
+			{"id": "w_moon", "name": "Harvest Moon", "row": 3, "max": 1, "icon": "rend", "fx": {"rend_full": 1}, "text": "Spectral Rend's claws tear all the way round you."},
 		]},
-		{"name": "Banshee", "desc": "The scream and the shadow: Banshee Wail and Shadow Step.", "talents": [
-			{"id": "w_scream", "name": "Piercing Scream", "row": 0, "max": 3, "icon": "wail", "fx": {"dmg:wail": 12}, "text": "Banshee Wail deals {dmg:wail}% more damage."},
+		{"name": "Shadow", "desc": "The tether and the mist: Soul Siphon and Shadowstep.", "talents": [
+			{"id": "w_scream", "name": "Hungry Tether", "row": 0, "max": 3, "icon": "siphon", "fx": {"dmg:siphon": 12}, "text": "Soul Siphon drains {dmg:siphon}% more."},
 			{"id": "w_mind", "name": "Ethereal Mind", "row": 0, "max": 3, "icon": "t_drop", "fx": {"mana_pct": 5}, "text": "+{mana_pct}% maximum mana."},
-			{"id": "w_dread", "name": "Dread", "row": 1, "max": 3, "icon": "wail", "fx": {"wail_stun": 0.3}, "text": "Banshee Wail's terror lasts {wail_stun} seconds longer."},
-			{"id": "w_slip", "name": "Slipstream", "row": 1, "max": 3, "icon": "shade", "fx": {"cd:shade": 10, "dmg:shade": 10}, "text": "Shadow Step recharges {cd:shade}% faster and strikes {dmg:shade}% harder."},
-			{"id": "w_hollow", "name": "Hollow Voice", "row": 2, "max": 3, "icon": "t_drop", "fx": {"cost:wail": 15, "cd:wail": 8}, "text": "Banshee Wail costs {cost:wail}% less mana and recharges {cd:wail}% faster."},
+			{"id": "w_dread", "name": "Long Grip", "row": 1, "max": 3, "icon": "siphon", "fx": {"siphon_dur": 0.3}, "text": "Soul Siphon holds {siphon_dur} seconds longer."},
+			{"id": "w_slip", "name": "Slipstream", "row": 1, "max": 3, "icon": "step", "fx": {"cd:step": 10, "dmg:step": 10}, "text": "Shadowstep recharges {cd:step}% faster and strikes {dmg:step}% harder."},
+			{"id": "w_hollow", "name": "Hollow Hunger", "row": 2, "max": 3, "icon": "t_drop", "fx": {"cost:siphon": 15, "cd:siphon": 8}, "text": "Soul Siphon costs {cost:siphon}% less mana and recharges {cd:siphon}% faster."},
 			{"id": "w_form", "name": "Spirit Form", "row": 2, "max": 2, "icon": "t_ward", "fx": {"res": 6}, "text": "+{res}% to all resistances."},
-			{"id": "w_echo", "name": "Echo", "row": 3, "max": 1, "icon": "wail", "fx": {"wail_echo": 50}, "text": "Banshee Wail screams again a moment later for {wail_echo}% of the damage."},
+			{"id": "w_echo", "name": "Lingering Mist", "row": 3, "max": 1, "icon": "step", "fx": {"veil": 0.6, "step_stun": 0.5}, "text": "After Shadowstep you stay mist {veil} seconds longer, and its strike stuns {step_stun} seconds longer."},
 		]},
-		{"name": "Revenant", "desc": "What will not stay dead: Spectral Host and a body hard to harm.", "talents": [
+		{"name": "Night", "desc": "What comes out of the dark: Haunting Grasp, Phantom Assault and Eternal Night.", "talents": [
 			{"id": "w_unlife", "name": "Unlife", "row": 0, "max": 3, "icon": "t_heart", "fx": {"life_pct": 4}, "text": "+{life_pct}% maximum life."},
 			{"id": "w_chill", "name": "Grave Chill", "row": 0, "max": 3, "icon": "t_armor", "fx": {"armor_pct": 6}, "text": "+{armor_pct}% defense."},
-			{"id": "w_legion", "name": "Legion", "row": 1, "max": 3, "icon": "host", "fx": {"dmg:host": 15}, "text": "Spectral Host's spirits strike {dmg:host}% harder."},
+			{"id": "w_legion", "name": "Legion", "row": 1, "max": 3, "icon": "phantom", "fx": {"dmg:phantom": 12, "dmg:grasp": 12}, "text": "Phantom Assault and Haunting Grasp strike {dmg:phantom}% harder."},
 			{"id": "w_ward", "name": "Spectral Ward", "row": 1, "max": 3, "icon": "t_ward", "fx": {"res": 5}, "text": "+{res}% to all resistances."},
-			{"id": "w_eternal", "name": "Eternal Host", "row": 2, "max": 2, "icon": "t_hourglass", "fx": {"buff_dur": 2}, "text": "Spectral Host lasts {buff_dur} seconds longer."},
+			{"id": "w_eternal", "name": "Eternal", "row": 2, "max": 2, "icon": "t_hourglass", "fx": {"buff_dur": 2, "grasp_hold": 0.3}, "text": "Eternal Night's power lasts {buff_dur} seconds longer and Haunting Grasp holds {grasp_hold} seconds longer."},
 			{"id": "w_siphon", "name": "Soul Siphon", "row": 2, "max": 3, "icon": "t_fang", "fx": {"ls": 1}, "text": "+{ls}% of the damage you deal comes back as life."},
-			{"id": "w_rider", "name": "Fourth Rider", "row": 3, "max": 1, "icon": "host", "fx": {"spirits": 1}, "text": "Spectral Host calls {spirits} more spirit."},
+			{"id": "w_rider", "name": "Fourth Rider", "row": 3, "max": 1, "icon": "night", "fx": {"phantoms": 1, "dmg:night": 15}, "text": "Phantom Assault sends a fourth phantom, and Eternal Night deals {dmg:night}% more damage."},
 		]},
 	],
 	"demon": [
@@ -138,6 +139,35 @@ const TREES := {
 			{"id": "l_eternal", "name": "Eternal Covenant", "row": 3, "max": 1, "icon": "covenant", "fx": {"buff_dur": 6}, "text": "Fel Covenant lasts {buff_dur} seconds longer."},
 		]},
 	],
+	"plague": [
+		{"name": "Toxicology", "desc": "Poison: Toxic Flask, longer and crueller clouds.", "talents": [
+			{"id": "p_dose", "name": "Stronger Dose", "row": 0, "max": 3, "icon": "toxic", "fx": {"dmg:toxic": 10}, "text": "Toxic Flask deals {dmg:toxic}% more damage."},
+			{"id": "p_study", "name": "Studied Hand", "row": 0, "max": 3, "icon": "t_eye", "fx": {"ene": 3}, "text": "+{ene} energy."},
+			{"id": "p_venom", "name": "Virulent Venom", "row": 1, "max": 3, "icon": "t_star", "fx": {"poison_dmg": 8}, "text": "All your poison hurts {poison_dmg}% more."},
+			{"id": "p_cloud", "name": "Heavy Vapour", "row": 1, "max": 3, "icon": "toxic", "fx": {"cloud_size": 10}, "text": "Your poison clouds spread {cloud_size}% wider."},
+			{"id": "p_linger", "name": "Lingering Rot", "row": 2, "max": 3, "icon": "t_hourglass", "fx": {"poison_dur": 1.0}, "text": "Poison keeps working {poison_dur} seconds longer after a foe leaves a cloud."},
+			{"id": "p_thrift", "name": "Measured Doses", "row": 2, "max": 2, "icon": "t_hourglass", "fx": {"cost:toxic": 15}, "text": "Toxic Flask costs {cost:toxic}% less mana."},
+			{"id": "p_miasma", "name": "Standing Miasma", "row": 3, "max": 1, "icon": "toxic", "fx": {"cloud_dur": 2.0}, "text": "Every poison cloud hangs {cloud_dur} seconds longer."},
+		]},
+		{"name": "Volatile Arts", "desc": "Fire and fuses: Volatile Mixture and the ignition of his clouds.", "talents": [
+			{"id": "p_charge", "name": "Bigger Charge", "row": 0, "max": 3, "icon": "volatile", "fx": {"dmg:volatile": 12}, "text": "Volatile Mixture deals {dmg:volatile}% more damage."},
+			{"id": "p_steady", "name": "Steady Hands", "row": 0, "max": 3, "icon": "t_fist", "fx": {"dex": 3}, "text": "+{dex} dexterity."},
+			{"id": "p_blast", "name": "Wide Blast", "row": 1, "max": 3, "icon": "volatile", "fx": {"blast_size": 8}, "text": "Volatile Mixture's blast reaches {blast_size}% further."},
+			{"id": "p_quick", "name": "Short Fuse", "row": 1, "max": 3, "icon": "t_hourglass", "fx": {"cd:volatile": 8}, "text": "Volatile Mixture recharges {cd:volatile}% faster."},
+			{"id": "p_ignite", "name": "Flashpoint", "row": 2, "max": 3, "icon": "volatile", "fx": {"ignite_dmg": 20}, "text": "Ignited clouds burn {ignite_dmg}% hotter."},
+			{"id": "p_cane", "name": "Iron-Shod Cane", "row": 2, "max": 2, "icon": "attack", "fx": {"dmg:attack": 10}, "text": "Your cane strikes {dmg:attack}% harder."},
+			{"id": "p_inferno", "name": "Alchemical Fire", "row": 3, "max": 1, "icon": "volatile", "fx": {"dmg:volatile": 25, "blast_size": 15}, "text": "Volatile Mixture deals {dmg:volatile}% more damage and its blast reaches {blast_size}% further."},
+		]},
+		{"name": "Contagion", "desc": "Traps and the epidemic: preparation, infection and the dome.", "talents": [
+			{"id": "p_spring", "name": "Hair Trigger", "row": 0, "max": 3, "icon": "trap", "fx": {"dmg:trap": 12}, "text": "Pestilent Trap deals {dmg:trap}% more damage."},
+			{"id": "p_hardy", "name": "Hardened Physician", "row": 0, "max": 3, "icon": "t_heart", "fx": {"life_pct": 4}, "text": "+{life_pct}% maximum life."},
+			{"id": "p_snare", "name": "Choking Gas", "row": 1, "max": 3, "icon": "trap", "fx": {"trap_stun": 0.3}, "text": "Pestilent Trap stuns {trap_stun} seconds longer."},
+			{"id": "p_spread", "name": "Carriers", "row": 1, "max": 3, "icon": "epidemic", "fx": {"inf_jumps": 1}, "text": "Infection can jump {inf_jumps} more times."},
+			{"id": "p_cache", "name": "Second Cache", "row": 2, "max": 1, "icon": "trap", "fx": {"trap_max": 1}, "text": "Keep {trap_max} more Pestilent Trap set."},
+			{"id": "p_fever", "name": "Long Fever", "row": 2, "max": 3, "icon": "t_hourglass", "fx": {"inf_dur": 1.0, "dome_dur": 0.5}, "text": "Infection lasts {inf_dur} seconds longer and the dome {dome_dur} seconds longer."},
+			{"id": "p_last", "name": "Pandemic", "row": 3, "max": 1, "icon": "epidemic", "fx": {"dome_size": 20, "cd:epidemic": 20}, "text": "The Last Epidemic's dome is {dome_size}% wider and it recharges {cd:epidemic}% faster."},
+		]},
+	],
 	"archer": [
 		{"name": "Flame", "desc": "Fire Arrow, burning wounds and the bow's weight; his wolf's fangs catch fire.", "talents": [
 			{"id": "a_kindle", "name": "Kindling", "row": 0, "max": 3, "icon": "pierce", "fx": {"dmg:pierce": 12}, "text": "Fire Arrow deals {dmg:pierce}% more damage."},
@@ -172,6 +202,8 @@ const TREES := {
 ## The build an old save gets (and the window's Auto button follows): talents in order, each taken to
 ## its maximum while points last and its row is open.
 const AUTO := {
+	"plague": ["p_dose", "p_study", "p_venom", "p_cloud", "p_linger", "p_thrift", "p_miasma", "p_charge", "p_steady", "p_blast", "p_quick", "p_ignite",
+		"p_cane", "p_inferno", "p_spring", "p_hardy", "p_snare", "p_spread", "p_cache", "p_fever", "p_last"],
 	"knight": ["k_zeal", "k_heavy", "k_radiance", "k_fervor", "k_steel", "k_purify", "k_consecrate", "k_vigor", "k_tough", "k_resolve", "k_wall", "k_guard", "k_wind", "k_unbroken",
 		"k_might", "k_momentum", "k_ram", "k_sword", "k_command", "k_rally", "k_relentless"],
 	"wraith": ["w_scythe", "w_focus", "w_harvest", "w_haste", "w_cruel", "w_exec", "w_moon", "w_unlife", "w_chill", "w_legion", "w_ward", "w_eternal", "w_siphon", "w_rider",

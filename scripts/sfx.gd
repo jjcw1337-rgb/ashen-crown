@@ -10,7 +10,7 @@ const RATE := 22050
 const BANK := preload("res://scripts/sfx_bank.gd").BANK
 const BANK_DIR := "res://assets/audio/sfx/"
 ## Rendered sounds that loop (a channel, the ambience beds)
-const LOOPS := ["drain_loop", "wind", "forest", "drip", "music_town"]
+const LOOPS := ["drain_loop", "wind", "forest", "drip", "music_town", "music_select"]
 var streams := {}
 ## name -> [streams] for the rendered sounds
 var bank := {}

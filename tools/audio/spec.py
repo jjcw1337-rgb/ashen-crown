@@ -205,6 +205,11 @@ SPEC = [
     dict(name="music_town", src="eleven", n=15, dur=30.0, hit=0, loop=True, label="dark forest sanctuary music",
          prompt="dark forest sanctuary music for a dark fantasy game: mysterious but warm, soft harp arpeggios over a low "
                 "droning string pad with a lonely wooden flute, ancient woods at dusk, a hopeful refuge, background music loop, no drums"),
+    # the New Character screen's theme: music_town's take 14 (the haunting viola over a hummed choir), not generated
+    # again (n=0); build_sfx.py with {"music_select": [".../candidates/music_town/14.mp3"]}
+    dict(name="music_select", src="eleven", n=0, dur=30.0, hit=0, loop=True, label="haunting hero-select music",
+         prompt="the haunting but gentle song of a camp in a forsaken dark forest, dark fantasy: a slow solo viola and soft "
+                "lute over a low hummed choir, sombre and tender, background music loop, no drums"),
     dict(name="wind", src="eleven", n=3, dur=8.0, hit=0, loop=True, label="wind blowing",
          prompt="cold wind blowing across an empty moor at night, steady, no music"),
     # the camp's bonfire takes what you throw in (gone for good), and a pick-up click in the inventory

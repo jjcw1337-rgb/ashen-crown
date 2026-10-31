@@ -74,8 +74,8 @@ var chill_t := 0.0          # Rimeclaw's cold: slowed while it lasts
 var hit_t := 0.0
 var cls := "knight"          # "knight", "wraith", "demon" or "warlock" (Data.CLASSES)
 var cds := {}
-var spirits: Array = []      # Wraith's Spectral Host: [{node, phase, state, t, target, from}]
-var spirit_t := 0.0
+var wr := {}                 # Wraith: the skills' state (WraithSkills: the tether, phantoms, the night, the claws)
+var veil_t := 0.0            # Wraith: seconds he is mist, and blows pass through him (Shadowstep, Eternal Night)
 var minions: Array = []      # Demon's summoned demons (DemonMinion), oldest first
 var phased := false          # Demon: walking in the Underworld, unseen and untouchable
 var phase_t := 0.0
@@ -95,6 +95,7 @@ var bolts: Array = []        # Warlock's Blight Bolts in flight: [{node, dir, le
 var arrows: Array = []
 var volleys: Array = []
 var snares: Array = []
+var pd: Plague = null           # the plague doctor's flasks, clouds, traps, poison and infection (plague.gd)
 var beasts: Array = []
 var beast_down_t := 0.0     # after the Spirit Beast falls, seconds until it rises again beside him
 var mark = null             # the enemy the archer is shooting at: his beast goes for it first
@@ -180,6 +181,9 @@ func is_warlock() -> bool:
 
 func is_archer() -> bool:
 	return cls == "archer"
+
+func is_plague() -> bool:
+	return cls == "plague"
 
 ## The archer with a bow in his hands: his attack shoots instead of swinging.
 func has_bow() -> bool:
@@ -282,6 +286,10 @@ func _build_rig() -> void:
 		rig = Warlock.build(warlock_gear())
 	elif is_archer():
 		rig = Archer.build_body()
+	elif is_plague():
+		rig = Plague.build_body()
+		if pd == null:
+			pd = Plague.new(self)
 	else:
 		var body := _knight_body()
 		if body == "mocap":
@@ -323,11 +331,14 @@ func set_class(c: String) -> void:
 	if changed:
 		talents = {}
 		tfx = {}
-	_clear_spirits()
+	WraithSkills.clear(self)
 	dismiss_minions()
 	end_phase(false)
 	_clear_warlock()
 	Archer.clear(self)
+	if pd != null:
+		pd.clear()
+		pd = null
 	if rig != null:
 		rig.queue_free()
 		rig = null
@@ -466,7 +477,7 @@ func new_character() -> void:
 	for k in cds.keys():
 		cds[k] = 0.0
 	buff_t = 0.0
-	_clear_spirits()
+	WraithSkills.clear(self)
 	dismiss_minions()
 	end_phase(false)
 	_clear_warlock()
@@ -694,7 +705,7 @@ func _carry_weapon(delta: float) -> void:
 			weapon_node.reparent(dest, true)
 		_set_hilt(not in_hand and store == "hilt")
 	# hidden in the scabbard; on the back it stays in view
-	weapon_node.visible = in_hand or store != "hilt"
+	weapon_node.visible = (in_hand or store != "hilt") and not (pd != null and pd.hands_busy)   # the plague doctor puts his cane away to throw
 	# ease into the hold (identity in the hand; the back mount's own rest)
 	var k := 1.0 - exp(-delta * 16.0)
 	weapon_node.transform = weapon_node.transform.interpolate_with(Transform3D.IDENTITY, k)
@@ -881,6 +892,7 @@ func _swipe_impact() -> void:
 	var arc := 181.0 if fin else 70.0
 	var mult := 1.0 if atk_style == "swipe1" else (1.15 if atk_style == "swipe2" else 1.7)
 	var any := false
+	var struck := []
 	for e in game.enemies_near(global_position, rng + 1.5):
 		var to: Vector3 = e.global_position - global_position
 		to.y = 0
@@ -890,6 +902,9 @@ func _swipe_impact() -> void:
 			_hit_enemy(e, mult, 0.9 if fin else 0.2)
 			Fx.sparks(game.world.fx_root, e.global_position + Vector3(0, 1.1 * e.height, 0), trail_col.lerp(Color(1.0, 0.75, 0.4), 0.5))
 			any = true
+			struck.append(e)
+	if pd != null:
+		pd.cane_blow(atk_style, struck)      # the plague doctor's blows each leave something of his own
 	if fin:
 		Fx.ring(game.world.fx_root, global_position + Vector3(0, 0.05, 0), rng, trail_col, 0.35)
 		Fx.burst(game.world.fx_root, global_position + Vector3(0, 0.2, 0), Color(0.7, 0.62, 0.5, 0.5), 22, 3.5, 0.2, 0.5, false, -2.0, 180.0, Vector3.UP)
@@ -991,6 +1006,9 @@ func use_skill(id: String, aim: Vector3) -> bool:
 		if foe == null:
 			game.ui.message("No enemy in reach", Color(0.8, 0.8, 0.8))
 			return false
+	if id == "siphon" and WraithSkills.siphon_pick(self, aim) == null:
+		game.ui.message("No enemy in reach", Color(0.8, 0.8, 0.8))
+		return false
 	# cancel a basic swing (or a Drain Life channel) so the skill fires right away
 	end_drain()
 	atk_t = -1.0
@@ -1023,16 +1041,8 @@ func use_skill(id: String, aim: Vector3) -> bool:
 		"cry":
 			_start_attack("cast", "cry")
 			atk_dur = 0.6 * Data.attack_pace(cls)
-		"reap":
-			_start_attack("side", "reap")
-		"wail":
-			_start_attack("cast", "wail")
-			atk_dur = 0.5 * Data.attack_pace(cls)
-		"shade":
-			_shadow_step(aim)
-		"host":
-			_start_attack("cast", "host")
-			atk_dur = 0.65 * Data.attack_pace(cls)
+		"rend", "siphon", "step", "grasp", "phantom", "night":
+			WraithSkills.cast(self, id, aim)
 		"hellclaw":
 			_start_attack("side", "hellclaw")
 		"summon":
@@ -1057,6 +1067,8 @@ func use_skill(id: String, aim: Vector3) -> bool:
 			atk_dur = 0.6 * Data.attack_pace(cls)
 		"pierce", "volley", "snare", "beast":
 			Archer.cast(self, id, aim)
+		"toxic", "volatile", "trap", "epidemic":
+			Plague.cast(self, id, aim)
 	return true
 
 func drink(slot: int) -> void:
@@ -1085,7 +1097,7 @@ func _start_attack(style: String, skill := "") -> void:
 	atk_dur = 0.62 / aspd
 	if SWIPE_DUR.has(style) and skill == "":
 		atk_dur = SWIPE_DUR[style] / aspd
-	if skill == "reap" or skill == "hellclaw":
+	if skill == "hellclaw":
 		atk_dur = 0.7 / aspd
 	elif skill == "cleave":
 		atk_dur = 0.95 / aspd      # Holy Slam: crouch, leap, slam, hold the blow, rise
@@ -1095,8 +1107,10 @@ func _start_attack(style: String, skill := "") -> void:
 	trail_col = Color(1.0, 0.85, 0.5) if skill == "cleave" else Color(0.85, 0.9, 1.0)
 	if is_archer():
 		trail_col = Archer.HUNTER
+	elif is_plague():
+		trail_col = Plague.TOXIC
 	if is_wraith():
-		trail_col = WraithFx.SPIRIT if skill != "reap" else WraithFx.PALE
+		trail_col = WraithFx.SPIRIT
 	elif is_demon():
 		trail_col = DemonFx.EMBER
 	elif is_warlock():
@@ -1118,15 +1132,22 @@ func _attack_sound(skill: String) -> void:
 		return
 	match skill:
 		"cleave": Sfx.play_synced("cleave_swing", at, -2.0)
-		"reap": Sfx.play_synced("reap_swing", at, -2.0)
+		"rend": Sfx.play_synced("reap_swing", at, -2.0, 1.05)
+		"siphon": Sfx.play_synced("shade_in", at, -6.0, 0.8)
+		"step": Sfx.play_synced("shade_out", 0.35 * atk_dur, -4.0, 1.1)
+		"grasp": Sfx.play_synced("slam", at, -2.0, 0.9)
+		"phantom": Sfx.play_synced("reap_swing", at, -3.0, 0.9)
 		"hellclaw": Sfx.play_synced("hellclaw", at, -1.0)
 		"nova":
 			Sfx.play_synced("holy_nova", at, 0.0)
 			Sfx.duck(-8.0, 1.0)
-		"wail":
-			Sfx.play_synced("wail", at, 0.0)
-			Sfx.duck(-8.0, 1.0)
 		"blight": Sfx.play_synced("blight_cast", at, -2.0)
+		"toxic": Sfx.play_synced("swing_light", at - 0.05, -4.0, 0.85)
+		"volatile":
+			Sfx.play_synced("fuse", at * 0.5, -6.0, 1.2)
+			Sfx.play_synced("swing", at - 0.05, -3.0, 0.8)
+		"trap": Sfx.play_synced("equip", at, -4.0, 0.8)
+		"epidemic": Sfx.play_synced("swing_heavy", at - 0.08, -3.0, 0.75)
 		"":
 			# the whoosh peaks just before the blade lands
 			if atk_style == "swipe3":
@@ -1170,7 +1191,7 @@ func roll_damage(mult: float = 1.0) -> Dictionary:
 		d *= 2.0 + talent("crit_dmg") / 100.0
 	return {"phys": d, "fire": fire_dmg * mult, "crit": crit}
 
-## The battle buffs (Battle Cry, Spectral Host, Blood Pact, Fel Covenant): +40% damage, more with talents.
+## The battle buffs (Battle Cry, Eternal Night, Blood Pact, Fel Covenant): +40% damage, more with talents.
 func buff_mult() -> float:
 	return 1.4 + talent("buff_pow") / 100.0 if buff_t > 0.0 else 1.0
 
@@ -1194,12 +1215,16 @@ func pace_mult(id: String) -> float:
 	return 1.0
 
 ## src: the skill doing the hitting (talent bonuses); by default the attack in progress.
-func _hit_enemy(e, mult: float, knock: float = 0.0, src := "") -> void:
+## flat: damage on top of the weapon roll (a spell's part by level, e.g. the Wraith's spirit-light), scaled by the
+## buffs and the skill's talents like the rest, in the same number.
+func _hit_enemy(e, mult: float, knock: float = 0.0, src := "", flat := 0.0) -> void:
 	if not is_instance_valid(e) or e.dead:
 		return
 	if src == "":
 		src = atk_skill if atk_skill != "" else "attack"
 	var r := roll_damage(mult * dmg_mult(src))
+	if flat > 0.0:
+		r["phys"] += flat * buff_mult() * dmg_mult(src) * (2.0 if r["crit"] else 1.0)
 	var dealt: float = e.take_damage(r["phys"], r["fire"], global_position, knock, r["crit"])
 	if ls > 0.0:
 		life = minf(max_life, life + dealt * ls / 100.0)
@@ -1215,6 +1240,11 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 			game.net.hit_player(peer_id, dmg, from, kind, element)
 		return
 	if game.test_immortal or phased:
+		return
+	if veil_t > 0.0:
+		# the Wraith as mist: the blow goes through him
+		Fx.number(game.world.fx_root, global_position + Vector3(0, 2.2, 0), "Mist", WraithFx.SPIRIT)
+		Fx.burst(game.world.fx_root, global_position + Vector3(0, 1.0, 0), Color(0.06, 0.03, 0.1, 0.7), 8, 1.5, 0.3, 0.5, false, 0.8)
 		return
 	var to_src := from - global_position
 	to_src.y = 0
@@ -1289,6 +1319,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 		end_phase(false)
 		dismiss_minions()
 		end_drain()
+		WraithSkills.clear(self)
 		dead_t = 0.0
 		atk_t = -1.0
 		Sfx.play(_voice("death"), -2.0)
@@ -1302,14 +1333,18 @@ func _process(delta: float) -> void:
 	anim_time += delta
 	if puppet:
 		_puppet_process(delta)
+		if pd != null:
+			pd.update(delta)       # a partner plague doctor's flasks and clouds (shown only)
 		return
 	for k in cds.keys():
 		cds[k] = maxf(0.0, cds[k] - delta)
 	buff_t = maxf(0.0, buff_t - delta)
 	covenant_t = maxf(0.0, covenant_t - delta)
-	_update_spirits(delta)
+	WraithSkills.update(self, delta)
 	_update_bolts(delta)
 	Archer.update(self, delta)
+	if pd != null:
+		pd.update(delta)
 	_update_blights(delta)
 	if phased:
 		phase_t -= delta
@@ -1333,8 +1368,9 @@ func _process(delta: float) -> void:
 		dead_t += delta
 		var f := clampf(dead_t / 0.7, 0.0, 1.0)
 		var fall := clampf((dead_t - 0.35) / 0.6, 0.0, 1.0)
-		rig.rotation.x = fall * fall * 1.42
-		rig.position.y = -fall * 0.12
+		if not _floats():
+			rig.rotation.x = fall * fall * 1.42
+			rig.position.y = -fall * 0.12
 		Anim.pose(rig, {"time": anim_time, "dead": f, "hit": (1.0 - f) * 0.5})
 		_update_trail(false)
 		return
@@ -1451,6 +1487,8 @@ func _process(delta: float) -> void:
 			else:
 				vel = dv.normalized() * speed
 	var stride := 1.3 if running else 1.0
+	if WraithSkills.rooted(self):
+		vel = Vector3.ZERO
 	if vel.length() > 0.01:
 		var np: Vector3 = game.world.move(global_position, vel * delta)
 		var moved := (np - global_position)
@@ -1499,16 +1537,19 @@ func _process(delta: float) -> void:
 		carry.update(self, delta)
 		st.merge(carry.anim_state(), true)
 		_carry_weapon(delta)
+		if pd != null:
+			pd.idle_fidget(st, delta)   # now and then, standing about, he peers at a vial
 	Anim.pose(rig, st)
 	if is_archer():
 		Archer.pose_bow(self, st)
 	last_pose = st
 	_hover()
 	_draw_drain()
+	WraithSkills.draw(self)
 	_breathe(delta)
 	_apply_shield_pose()
-	# no sword-swing streak off a bow
-	_update_trail((atk_t >= 0.0 or charge_t >= 0.0) and not has_bow())
+	# no sword-swing streak off a bow, nor off the Wraith's skills
+	_update_trail(((atk_t >= 0.0 and not (is_wraith() and atk_skill != "")) or charge_t >= 0.0) and not has_bow())
 
 ## The Wraith floats a hand's breadth off the ground, bobbing slowly and leaning into motion.
 func _hover() -> void:
@@ -1519,10 +1560,14 @@ func _hover() -> void:
 		Warlock.animate(rig, anim_time, move_amt, 1.0 if covenant_t > 0.0 or (puppet and net_buff) else 0.0,
 			phase, float(last_pose.get("atk", -1.0)) < 0.0 and drain_t < 0.0)
 		return
-	if not is_wraith() or dead:
+	if not is_wraith() or dead or _floats():
 		return
 	rig.position.y = 0.2 + sin(anim_time * 2.1) * 0.05
 	rig.rotation.x = -move_amt * 0.12
+
+## The Wraith's mocap body floats by itself (KnightMocapRig's float mode: hover, lean, the sinking death).
+func _floats() -> bool:
+	return is_wraith() and rig != null and rig.has_method("sync_pose")
 
 # ---------------------------------------------------------------- winter
 ## A footprint each time a foot comes down in the snow.
@@ -1595,8 +1640,9 @@ func _puppet_process(delta: float) -> void:
 	if dead:
 		var f := clampf(dead_t / 0.7, 0.0, 1.0)
 		var fall := clampf((dead_t - 0.35) / 0.6, 0.0, 1.0)
-		rig.rotation.x = fall * fall * 1.42
-		rig.position.y = -fall * 0.12
+		if not _floats():
+			rig.rotation.x = fall * fall * 1.42
+			rig.position.y = -fall * 0.12
 		Anim.pose(rig, {"time": anim_time, "dead": f, "hit": (1.0 - f) * 0.5})
 		_update_trail(false)
 		return
@@ -1657,6 +1703,11 @@ func _update_attack(delta: float) -> void:
 func _impact() -> void:
 	var fwd := -rig.global_transform.basis.z
 	if Archer.impact(self):
+		return
+	if Plague.impact(self):
+		return
+	if WraithSkills.impact(self):
+		stats_changed.emit()
 		return
 	match atk_skill:
 		"":
@@ -1726,47 +1777,6 @@ func _impact() -> void:
 			game.add_shake(0.3)
 			for e in game.enemies_near(global_position, 6.0):
 				e.stun(2.0)
-		"reap":
-			var yaw := rig.global_rotation.y
-			WraithFx.reap(game.world.fx_root, global_position, yaw, 3.3)
-			var any := false
-			var full := talent("reap_full") > 0.0
-			if full:
-				WraithFx.reap(game.world.fx_root, global_position, yaw + PI, 3.3)
-			for e in game.enemies_near(global_position, 3.6):
-				var to: Vector3 = e.global_position - global_position
-				to.y = 0
-				if full or to.length() < 0.5 or fwd.dot(to.normalized()) > cos(deg_to_rad(80.0)):
-					_hit_enemy(e, 1.5, 0.6)
-					any = true
-					WraithFx.soul_wisp(game.world.fx_root, e.global_position + Vector3(0, 1.0 * e.height, 0), self, func():
-						if not dead:
-							Sfx.play("soul_return", -8.0)
-							life = minf(max_life, life + max_life * (0.025 + talent("reap_heal") / 100.0))
-							stats_changed.emit())
-			game.add_shake(0.12)
-		"wail":
-			var nd := (16.0 + level * 4.5 + (dmg_min + dmg_max) * 0.35) * buff_mult() * dmg_mult("wail")
-			_wail(nd, 2.2)
-			if talent("wail_echo") > 0.0:
-				# Echo: the scream comes back a moment later
-				get_tree().create_timer(0.6, false).timeout.connect(func():
-					if is_instance_valid(self) and not dead and game.world:
-						Sfx.play("wail", -6.0)
-						_wail(nd * talent("wail_echo") / 100.0, 1.0))
-		"host":
-			buff_t = 12.0 + talent("buff_dur")
-			WraithFx.summon(game.world.fx_root, global_position)
-			Sfx.play("host_summon")
-			Sfx.duck(-6.0, 1.0)
-			game.add_shake(0.25)
-			_clear_spirits()
-			var count := 3 + int(talent("spirits"))
-			for i in count:
-				var n := WraithFx.spirit_node(game.world.fx_root)
-				n.global_position = global_position + Vector3(0, 1.4, 0)
-				spirits.append({"node": n, "phase": TAU * i / float(count), "state": "orbit", "t": 0.3 * i, "target": null, "from": Vector3.ZERO})
-			spirit_t = buff_t
 		"hellclaw":
 			var yaw2 := rig.global_rotation.y
 			var wide := talent("claw_wide") > 0.0     # Inferno: a metre further, much wider
@@ -1827,15 +1837,6 @@ func _impact() -> void:
 			Sfx.duck(-9.0, 1.6)
 			game.add_shake(0.3)
 	stats_changed.emit()
-
-## Banshee Wail's scream: damage, hurls back and terrifies everything within 7 m.
-func _wail(nd: float, knock: float) -> void:
-	WraithFx.wail(game.world.fx_root, global_position, 7.0)
-	game.add_shake(0.4 if knock > 1.5 else 0.25)
-	for e in game.enemies_near(global_position, 7.0):
-		e.take_damage(nd, 0.0, global_position, knock, false)
-		if not e.dead:
-			e.stun(1.6 + talent("wail_stun"))
 
 # ---------------------------------------------------------------- warlock skills
 const DRAIN_RANGE := 11.0     # how far away a beam can latch on
@@ -2169,124 +2170,6 @@ func end_phase(erupt := true) -> void:
 				life = minf(max_life, life + max_life * talent("phase_heal") / 100.0)
 				stats_changed.emit()
 
-# ---------------------------------------------------------------- wraith skills
-## Shadow Step: dissolve, slide through the shadows to the aim point (stopping at walls), re-form.
-func _shadow_step(aim: Vector3) -> void:
-	var start := global_position
-	var d := aim - start
-	d.y = 0
-	var dist := minf(d.length(), 9.0)
-	if dist < 0.5:
-		dist = 4.0
-		d = -rig.global_transform.basis.z
-	var dir := d.normalized()
-	var p := start
-	var step := 0.4
-	var travelled := 0.0
-	while travelled < dist:
-		var np: Vector3 = game.world.move(p, dir * minf(step, dist - travelled))
-		var moved := np - p
-		moved.y = 0
-		if moved.length() < step * 0.3:
-			break
-		p = np
-		travelled += moved.length()
-	p.y = game.world.height_at(p.x, p.z)
-	var root: Node3D = game.world.fx_root
-	WraithFx.shade_depart(root, start)
-	Sfx.play_at("shade_out", start, -2.0)
-	Sfx.play("shade_in", -2.0)
-	global_position = p
-	path = PackedVector3Array()
-	moving = false
-	target = null
-	_face(dir)
-	WraithFx.shade_arrive(root, p)
-	game.add_shake(0.2)
-	for e in game.enemies_near(p, 2.4):
-		_hit_enemy(e, 1.2, 1.0, "shade")
-		if not e.dead:
-			e.stun(0.7)
-	# the shade left behind collapses a moment later
-	get_tree().create_timer(0.45, false).timeout.connect(func():
-		if not is_instance_valid(self) or game.world == null:
-			return
-		WraithFx.shade_implode(game.world.fx_root, start)
-		Sfx.play_at("shade_implode", start, -1.0)
-		for e in game.enemies_near(start, 2.6):
-			_hit_enemy(e, 0.9, 0.8, "shade"))
-	# a quick cast pose so the re-forming reads on screen
-	_start_attack("cast", "")
-	atk_dur = 0.35
-	impact_done = true
-
-func _clear_spirits() -> void:
-	for s in spirits:
-		if is_instance_valid(s["node"]):
-			var n: Node3D = s["node"]
-			if game and game.world:
-				WraithFx.spirit_hit(game.world.fx_root, n.global_position)
-			n.queue_free()
-	spirits.clear()
-	spirit_t = 0.0
-
-## Spectral Host: the spirits orbit, then dart at the nearest foe and fly back.
-func _update_spirits(delta: float) -> void:
-	if spirits.is_empty():
-		return
-	spirit_t -= delta
-	if spirit_t <= 0.0 or dead:
-		_clear_spirits()
-		return
-	var centre := global_position + Vector3(0, 1.35, 0)
-	for s in spirits:
-		var n: Node3D = s["node"]
-		if not is_instance_valid(n):
-			continue
-		s["phase"] += delta * 2.6
-		var orbit: Vector3 = centre + Vector3(cos(s["phase"]) * 1.15, sin(s["phase"] * 2.0) * 0.18, sin(s["phase"]) * 1.15)
-		match s["state"]:
-			"orbit":
-				n.global_position = n.global_position.lerp(orbit, clampf(delta * 10.0, 0.0, 1.0))
-				s["t"] -= delta
-				if s["t"] <= 0.0:
-					var best = null
-					var bd := 7.5
-					for e in game.enemies_near(global_position, 7.5):
-						var dd: float = e.global_position.distance_to(global_position)
-						if dd < bd:
-							bd = dd
-							best = e
-					if best != null:
-						s["state"] = "dart"
-						s["target"] = best
-						s["from"] = n.global_position
-						s["t"] = 0.0
-					else:
-						s["t"] = 0.3
-			"dart":
-				var tg = s["target"]
-				if not is_instance_valid(tg) or tg.dead:
-					s["state"] = "back"
-					s["t"] = 0.0
-					continue
-				s["t"] += delta / 0.28
-				var to: Vector3 = tg.global_position + Vector3(0, 1.0 * tg.height, 0)
-				var mid: Vector3 = (s["from"] as Vector3).lerp(to, 0.5) + Vector3(0, 1.2, 0)
-				var k: float = clampf(s["t"], 0.0, 1.0)
-				n.global_position = (s["from"] as Vector3).lerp(mid, k).lerp(mid.lerp(to, k), k)
-				if k >= 1.0:
-					_hit_enemy(tg, 0.55, 0.3, "host")
-					WraithFx.spirit_hit(game.world.fx_root, to)
-					Sfx.play_at("spirit_dart", to, -4.0)
-					s["state"] = "back"
-					s["t"] = 0.0
-			"back":
-				n.global_position = n.global_position.lerp(orbit, clampf(delta * 7.0, 0.0, 1.0))
-				if n.global_position.distance_to(orbit) < 0.25:
-					s["state"] = "orbit"
-					s["t"] = randf_range(0.7, 1.1)
-
 func _update_charge(delta: float) -> void:
 	charge_t += delta
 	var dist := 18.0 * delta
@@ -2505,6 +2388,7 @@ func from_save(d: Dictionary) -> void:
 	stash = d.get("stash", [])
 	stash.resize(60)
 	binds = (d.get("binds", {}) as Dictionary).duplicate() if d.get("binds") is Dictionary else {}
+	WraithSkills.migrate_binds(binds)
 	_check_binds()
 	# a save from before talents gets a build picked for its class and level
 	if d.get("talents") is Dictionary:

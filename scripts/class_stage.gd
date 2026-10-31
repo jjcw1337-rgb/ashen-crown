@@ -10,28 +10,39 @@ extends SubViewportContainer
 signal picked(cls: String)
 signal hovering(cls: String)
 
-## left to right on the stage; the knight, the first choice, stands in the middle
-const CLASSES := ["wraith", "demon", "knight", "warlock", "archer"]
-const ACCENTS := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1), "warlock": Color(0.45, 1.0, 0.35), "archer": Color(0.92, 0.24, 0.3)}
-## the banner's emblem (ClassCathedral.BANNER_SHADER): cross, hood, horns, hat, arrow
-const EMBLEMS := {"knight": 1, "wraith": 2, "demon": 3, "warlock": 4, "archer": 5}
-const SPACING := 2.05
-const PLINTH_TOP := 0.78            # feet height on a plinth (the middle one is taller, nearer and wider)
-const PLINTH_R := 0.6
+## left to right on the stage; the knight, the first choice, stands in the middle on the biggest plinth
+const CLASSES := ["archer", "wraith", "knight", "plague", "demon", "warlock"]
+const ACCENTS := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1), "warlock": Color(0.45, 1.0, 0.35), "archer": Color(0.92, 0.24, 0.3), "plague": Color(0.6, 0.95, 0.3)}
+## the banner's emblem (ClassCathedral.BANNER_SHADER): cross, hood, horns, hat, arrow, beak
+const EMBLEMS := {"knight": 1, "wraith": 2, "demon": 3, "warlock": 4, "archer": 5, "plague": 6}
+const SPACING := 1.95
+const PLINTH_TOP := 0.78            # feet height on a plinth (the knight's is taller, nearer and wider)
+const PLINTH_R := 0.56
 const STEP := 0.1                   # how far the chosen one steps forward on its plinth
 const FACE := PI                     # bodies face -z; the camera is on +z
 ## signature moves: [pose style, seconds, impact fraction, skill name]
-const SIGNATURE := {"knight": ["cleave", 1.1, 0.5, "Holy Slam"], "wraith": ["cast", 1.2, 0.45, "Banshee Wail"],
-	"demon": ["side", 0.9, 0.45, "Hellfire Claw"], "warlock": ["cast", 1.8, 0.2, "Drain Life"], "archer": ["bow", 1.0, 0.55, "Volley"]}
+const SIGNATURE := {"knight": ["cleave", 1.1, 0.5, "Holy Slam"], "wraith": ["rend", 0.95, 0.42, "Spectral Rend"],
+	"demon": ["side", 0.9, 0.45, "Hellfire Claw"], "warlock": ["cast", 1.8, 0.2, "Drain Life"], "archer": ["bow", 1.0, 0.55, "Volley"],
+	"plague": ["pd_flask", 1.3, 0.55, "Toxic Flask"]}
 const SIG_EVERY := 4.5
 ## Skill previews (hover a skill in the panel, `show_skill`): each skill's pose style and seconds (before the
 ## class's attack pace), as Hero.use_skill plays them; the effects are the game's own, scaled to the stage.
 const SKILL_SHOW := {"cleave": ["cleave", 0.95], "nova": ["cast", 0.55], "charge": ["swipe3", 0.7], "cry": ["cast", 0.6],
-	"reap": ["side", 0.7], "wail": ["cast", 0.5], "shade": ["cast", 0.55], "host": ["cast", 0.65],
+	"rend": ["rend", 0.8], "siphon": ["siphon", 0.7], "step": ["wstep", 0.75], "grasp": ["grasp", 0.95],
+	"phantom": ["phantom", 1.0], "night": ["night_scream", 0.9],
 	"hellclaw": ["side", 0.7], "summon": ["cast", 0.55], "phase": ["cast", 0.6], "pact": ["cast", 0.6],
 	"drain": ["cast", 1.6], "blight": ["cast", 0.45], "shackles": ["cast", 0.5], "covenant": ["cast", 0.6],
-	"pierce": ["bow", 0.9], "volley": ["bow", 0.9], "snare": ["cast", 0.6], "beast": ["cast", 0.6]}
+	"pierce": ["bow", 0.9], "volley": ["bow", 0.9], "snare": ["cast", 0.6], "beast": ["cast", 0.6],
+	"toxic": ["pd_flask", 0.85], "volatile": ["pd_volatile", 1.25], "trap": ["pd_trap", 1.0], "epidemic": ["pd_slam", 1.2]}
 const SKILL_GAP := 1.1              # rest between repeats of a previewed skill
+## The sound of choosing each hero: layers of the game's own recordings, [sound, delay s, dB, pitch]
+const PICK_SOUND := {
+	"knight": [["swing_heavy", 0.0, -2.0, 0.9], ["block", 0.16, 0.0, 0.85], ["battle_cry", 0.3, -3.0, 1.0]],
+	"wraith": [["phase_in", 0.0, -2.0, 1.0], ["wail", 0.12, -4.0, 1.1], ["shade_implode", 0.75, -3.0, 0.9]],
+	"demon": [["fire_erupt", 0.0, 0.0, 0.85], ["summon_demon", 0.2, -3.0, 0.9]],
+	"warlock": [["blight_cast", 0.0, -2.0, 1.0], ["relic_ting", 0.08, -6.0, 1.3], ["cackle", 0.3, -4.0, 1.55]],
+	"archer": [["bow", 0.0, 0.0, 0.85], ["bow", 0.14, -3.0, 1.05], ["lion_roar", 0.32, -8.0, 1.45]],
+	"plague": [["ice_shatter", 0.0, -4.0, 1.4], ["blight_burst", 0.1, -5.0, 1.15], ["fuse", 0.35, -9.0, 1.0]]}
 
 var game: Node
 var vp: SubViewport
@@ -47,7 +58,6 @@ var _skill_c := ""                 # the class showing a skill (its panel's skil
 var _skill_id := ""
 var _skill_t := 0.0
 var _skill_hit := false
-var _spirits: Array[Node3D] = []    # Spectral Host's spirits circling while it's shown
 var _pow := {}                      # cls -> the shaft/rune power now (eases toward its target)
 var hovered := ""
 var chosen := ""
@@ -160,6 +170,17 @@ func choose(c: String) -> void:
 		_sig_t[k] = -1.0
 	picked.emit(c)
 
+## Each hero's own sound when chosen (PICK_SOUND), heard flat like the UI.
+func pick_sound(c: String) -> void:
+	for layer in PICK_SOUND.get(c, [["click", 0.0, 0.0, 1.0]]):
+		var nm: String = layer[0]
+		var vol: float = layer[2]
+		var pitch: float = layer[3]
+		if float(layer[1]) <= 0.0:
+			Sfx.play(nm, vol, pitch)
+		else:
+			get_tree().create_timer(float(layer[1])).timeout.connect(func(): Sfx.play(nm, vol, pitch))
+
 ## The class whose body is under this point of the stage (screen space of this control), or "".
 func class_at(p: Vector2) -> String:
 	var sc := size / Vector2(vp.size) if vp.size.x > 0 else Vector2.ONE
@@ -195,7 +216,7 @@ func _gui_input(ev: InputEvent) -> void:
 		var c2 := class_at((ev as InputEventMouseButton).position)
 		accept_event()
 		if c2 != "":
-			Sfx.play("click")
+			pick_sound(c2)
 			choose(c2)
 
 func _notification(what: int) -> void:
@@ -244,7 +265,6 @@ func _process(delta: float) -> void:
 func show_skill(c: String, id: String) -> void:
 	if id == "" and c != _skill_c:
 		return
-	_clear_spirits()
 	if id == "" or not heroes.has(c) or not SKILL_SHOW.has(id):
 		_skill_c = ""
 		_skill_id = ""
@@ -260,12 +280,6 @@ func show_skill(c: String, id: String) -> void:
 func stop_skill() -> void:
 	if _skill_c != "":
 		show_skill(_skill_c, "")
-
-func _clear_spirits() -> void:
-	for n in _spirits:
-		if is_instance_valid(n):
-			n.queue_free()
-	_spirits.clear()
 
 func _skill_show(c: String, h: Hero, home: Vector3, delta: float) -> void:
 	var spec: Array = SKILL_SHOW[_skill_id]
@@ -300,13 +314,10 @@ func _skill_show(c: String, h: Hero, home: Vector3, delta: float) -> void:
 					_beam_t = 0.05
 					var from := h.global_position + Vector3(0, 0.75, 0.35)
 					Fx.burst(root3d, from + Vector3(randf_range(-0.05, 0.05), 0, 0), ACCENTS[c], 4, 3.5, 0.07, 0.5, true, 0.0, 6.0, Vector3(0, 0.08, 1))
-		"host":
-			# the spirits circle the wraith
-			for k in _spirits.size():
-				var ang := t * 2.2 + k * TAU / 3.0
-				_spirits[k].global_position = h.global_position + Vector3(cos(ang) * 0.75, 1.1 + sin(t * 3.0 + k) * 0.15, sin(ang) * 0.75)
-	if c == "wraith":
-		pos.y += 0.15
+		"rend", "phantom":
+			# the wraith's lunge, kept on his plinth
+			if not resting:
+				pos.z += smoothstep(0.05, 0.4, a) * 0.25
 	h.net_pos = pos
 	h.net_yaw = FACE
 	h.net_st = st
@@ -337,22 +348,29 @@ func _skill_fx(c: String, h: Hero, home: Vector3) -> void:
 			Fx.ring(root3d, p, 2.0, Color(1.0, 0.85, 0.4), 0.6)
 			Fx.pillar(root3d, p, Color(1.0, 0.8, 0.35), 0.8)
 			Sfx.play("battle_cry", -10.0)
-		"reap":
-			WraithFx.reap(root3d, p, yaw, 1.5)
+		"rend":
+			WraithFx.rake(root3d, h.global_position, yaw, 1.6, false)
 			Sfx.play("reap_swing", -10.0)
-		"wail":
-			WraithFx.wail(root3d, p, 2.2)
-			Sfx.play("wail", -12.0)
-		"shade":
-			WraithFx.shade_depart(root3d, p)
-			WraithFx.shade_arrive(root3d, p + Vector3(0, 0, 0.1))
+		"siphon":
+			WraithFx.latch(root3d, floor_front + Vector3(0, 0.9, 0))
+			WraithFx.pulse(root3d, chest, col, 0.6, 0.6)
+			Fx.burst(root3d, floor_front + Vector3(0, 0.9, 0), col, 24, 4.0, 0.07, 0.5, true, 0.0, 10.0, Vector3(0, 0.1, -1))
+			Sfx.play("shade_in", -10.0)
+		"step":
+			WraithFx.mist_out(root3d, p)
+			WraithFx.mist_in(root3d, p + Vector3(0, 0, 0.1))
 			Sfx.play("shade_out", -10.0)
-		"host":
-			WraithFx.summon(root3d, p)
-			_clear_spirits()
-			for k in 3:
-				_spirits.append(WraithFx.spirit_node(root3d))
-			Sfx.play("host_summon", -10.0)
+		"grasp":
+			WraithFx.grasp(root3d, floor_front, 1.0, 1.6)
+			Sfx.play("slam", -10.0, 0.9)
+		"phantom":
+			WraithFx.split(root3d, p)
+			WraithFx.phantom_hit(root3d, floor_front + Vector3(0, 0.9, 0), Vector3(0, 0, 1))
+			Sfx.play("reap_swing", -10.0, 0.9)
+		"night":
+			WraithFx.scream(root3d, p, 2.2)
+			WraithFx.collapse(root3d, p, 1.4)
+			Sfx.play("host_summon", -10.0, 0.8)
 		"hellclaw":
 			DemonFx.claw(root3d, p, yaw, 1.5)
 			Sfx.play("hellclaw", -10.0)
@@ -404,6 +422,29 @@ func _skill_fx(c: String, h: Hero, home: Vector3) -> void:
 			Fx.burst(root3d, floor_front + Vector3(0, 0.5, 0), Color(0.75, 0.8, 0.85), 30, 3.0, 0.1, 0.7, true, 0.0)
 			Fx.ring(root3d, floor_front, 1.0, Color(0.75, 0.8, 0.85), 0.6)
 			Sfx.play("growl", -8.0)
+		"toxic":
+			# the flask shatters on the floor in front: glass and a green cloud
+			Fx.burst(root3d, floor_front, Color(0.8, 1.0, 0.85), 14, 3.0, 0.05, 0.4, true, -9.0)
+			Fx.burst(root3d, floor_front + Vector3(0, 0.3, 0), col, 34, 1.8, 0.16, 1.2, true, 0.4)
+			Fx.flash(root3d, floor_front + Vector3(0, 0.6, 0), col, 2.5, 0.6, 3.0)
+			Sfx.play("ice_shatter", -10.0, 1.35)
+		"volatile":
+			# it lands, fizzes and blows: fire and poison
+			Fx.flash(root3d, floor_front + Vector3(0, 0.7, 0), Color(1.0, 0.6, 0.2), 4.0, 0.4, 4.0)
+			Fx.burst(root3d, floor_front + Vector3(0, 0.3, 0), Color(1.0, 0.55, 0.15), 40, 5.0, 0.1, 0.5, true, -4.0)
+			Fx.burst(root3d, floor_front + Vector3(0, 0.4, 0), col, 30, 2.0, 0.18, 1.0, true, 0.5)
+			Fx.ring(root3d, floor_front, 1.3, Color(1.0, 0.6, 0.25), 0.4)
+			Sfx.play("boom", -12.0)
+		"trap":
+			Fx.ring(root3d, floor_front, 0.6, col, 0.8)
+			Fx.burst(root3d, floor_front + Vector3(0, 0.1, 0), col, 20, 2.0, 0.07, 0.6, true, -3.0, 25.0)
+			Sfx.play("equip", -10.0, 0.8)
+		"epidemic":
+			# the cane slams down: a plague wave rolls out and a sickly pillar rises
+			Fx.ring(root3d, p, 2.4, col, 0.7)
+			Fx.pillar(root3d, p, col, 0.9)
+			Fx.burst(root3d, p + Vector3(0, 0.4, 0), col, 46, 4.0, 0.14, 0.9, true, 0.3)
+			Sfx.play("blight_burst", -10.0)
 
 ## Alive: breathing (Anim's idle), the weight shifting, the head turning to look about, now and then a
 ## glance at you; the chosen one stands a step forward in the light.
@@ -431,10 +472,12 @@ func _fidget(c: String, h: Hero, home: Vector3, f: float) -> void:
 			pos.y += absf(sin(f * 6.3)) * 0.05
 			yaw = FACE + sin(f * 3.0) * 0.25
 		"wraith":
-			# spins on the spot, rising and sinking
-			yaw = FACE + f * 7.0
-			pos.y += 0.25 + sin(f * 5.0) * 0.2
-			st["move"] = 0.3
+			# rakes the air with his claws over and over, drifting side to side
+			var cyc := fmod(f, 1.1)
+			st["style"] = "rend"
+			st["atk"] = cyc / 1.1
+			pos.x += sin(f * 2.4) * 0.25
+			yaw = FACE + sin(f * 2.4) * 0.3
 		"demon":
 			# hops up and down raking the air
 			pos.y += absf(sin(f * 7.0)) * 0.35
@@ -452,6 +495,11 @@ func _fidget(c: String, h: Hero, home: Vector3, f: float) -> void:
 			yaw = FACE + sin(f * 2.0) * 0.9
 			st["style"] = "bow"
 			st["atk"] = fmod(f, 0.8) / 0.8
+		"plague":
+			# holds a vial up to the light and peers at it, tilting his head, again and again
+			st["style"] = "pd_inspect"
+			st["atk"] = fmod(f, 3.2) / 3.2
+			yaw = FACE + sin(f * 1.3) * 0.2
 	h.net_pos = pos
 	h.net_yaw = yaw
 	h.net_st = st
@@ -473,7 +521,8 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 			pos.y += sin(clampf(a / 0.5, 0.0, 1.0) * PI) * 0.6
 			pos.z += clampf(a / 0.5, 0.0, 1.0) * 0.2
 		"wraith":
-			pos.y += 0.2 + sin(a * PI) * 0.35
+			# the lunge of Spectral Rend, kept on the plinth
+			pos.z += smoothstep(0.05, 0.4, a) * 0.3
 		"warlock":
 			# Drain Life: both hands out, holding the beam
 			st["atk"] = minf(a / 0.2, 1.0) * 0.6
@@ -495,9 +544,8 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 				Fx.burst(root3d, at + Vector3(0, 0.3, 0), Color(1.0, 0.85, 0.45), 40, 5.0, 0.1, 0.6, true, -5.0)
 				Sfx.play("cleave_hit", -10.0)
 			"wraith":
-				Fx.ring(root3d, Vector3(home.x, home.y + 0.02, home.z), 3.4, col, 0.7, 1.0)
-				Fx.burst(root3d, h.global_position + Vector3(0, 1.4, 0), col, 46, 5.5, 0.09, 0.7, true, 0.0)
-				Sfx.play("wail", -12.0)
+				WraithFx.rake(root3d, h.global_position, h.net_yaw, 2.4, false)
+				Sfx.play("reap_swing", -12.0)
 			"demon":
 				for k in 3:
 					Fx.burst(root3d, front + Vector3((k - 1) * 0.35, 0.9 - k * 0.15, 0), col, 18, 3.5, 0.09, 0.45, true, 2.0, 30.0, Vector3(1.0 - k, 0.2, 0.5))
@@ -512,6 +560,13 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 					Fx.burst(root3d, h.global_position + Vector3(0, 1.3, 0.3), col, 6, 9.0, 0.06, 0.45, true, -2.0, 4.0, Vector3((k - 2) * 0.15, 1.0, 0.4))
 				Fx.flash(root3d, h.global_position + Vector3(0, 1.4, 0.4), col, 2.0, 0.3, 3.0)
 				Sfx.play("bow", -10.0)
+			"plague":
+				# the flask shatters at the edge of the light: glass and a green cloud
+				var at2 := Vector3(h.global_position.x, 0.05, h.global_position.z + 1.6)   # on the floor in front of the plinth
+				Fx.burst(root3d, at2, Color(0.8, 1.0, 0.85), 14, 3.0, 0.05, 0.4, true, -9.0)
+				Fx.burst(root3d, at2 + Vector3(0, 0.3, 0), col, 34, 1.8, 0.16, 1.2, true, 0.4)
+				Fx.flash(root3d, at2 + Vector3(0, 0.6, 0), col, 2.5, 0.6, 3.0)
+				Sfx.play("ice_shatter", -10.0, 1.35)
 	if s >= dur:
 		_sig_t[c] = -1.0
 		_sig_wait = SIG_EVERY

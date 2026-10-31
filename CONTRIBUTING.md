@@ -53,7 +53,8 @@ code map, gotchas). Either way works:
 - **Claude on claude.ai:** connect GitHub (Settings → Connectors) with an account that has
   access to this repository, then ask Claude to work on `jjcw1337-rgb/ashen-crown`.
 
-Claude can push to `main` like anyone else, so the same rule applies: run the tests first.
+Claude pushes only to `test-*` branches (see "Preview builds" in `CLAUDE.md`), never straight to `main`:
+play the preview first, and `main` goes out once Blaine and jj both say so. Run the tests first either way.
 
 ## Everyday workflow
 

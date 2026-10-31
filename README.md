@@ -27,11 +27,13 @@ Windows SmartScreen may warn that the app is unrecognised (it isn't code-signed)
 **New Game** lets you choose:
 
 - **Knight**: sword and shield. *Holy Slam* (Q), *Holy Nova* (E), *Charge* (R), *Battle Cry* (F).
-- **Wraith**: a hooded spirit that floats above the ground, trailing mist.
-  - *Soul Reap* (Q): a spectral scythe arc. Every soul it cuts flies back and heals you.
-  - *Banshee Wail* (E): a scream that hurls enemies back and freezes them in terror.
-  - *Shadow Step* (R): melt into shadow and re-form at the cursor. The shade left behind implodes.
-  - *Spectral Host* (F): three spirits circle you for 12 seconds, darting out to strike enemies.
+- **Wraith**: a horned spirit in chains that floats above the ground, trailing mist.
+  - *Spectral Rend* (Q): lunge at the foe ahead and tear through it with spectral claws, twice. Every soul torn out flies back and heals you.
+  - *Soul Siphon* (E): hook a tether into an enemy: it stands rigid while its soul is drained into you, and is slowed after.
+  - *Shadow Step* (R): come apart into mist and re-form at the cursor with a spinning claw strike. For a moment after, blows pass through you; the shade left behind collapses.
+  - *Haunting Grasp* (F): spectral hands burst out of the earth around the cursor, drag enemies in and hold them.
+  - *Phantom Assault* (G, level 14): three phantoms streak through the enemies ahead, then your own claws land.
+  - *Eternal Night* (V, level 18): rise and bring down the night: a scream of terror, the dark feeding on everything in it while you hang untouchable above, and its collapse into your slam. +40% damage after.
 
 - **Demon**: a horned, winged fiend in obsidian plate with ember-edged horns, spikes, claws and wings.
   - *Hellfire Claw* (Q): three burning rakes that set enemies alight.
@@ -45,12 +47,19 @@ Windows SmartScreen may warn that the app is unrecognised (it isn't code-signed)
   - *Soul Shackles* (R): chains of fel fire bind every enemy within 7 metres for 2.5 seconds.
   - *Fel Covenant* (F): +40% damage for 12 seconds; Drain Life forks to two more enemies and heals twice as much.
 
+- **Plague Doctor**: a plague physician of the cursed years in a beaked leather mask with green-lit goggles, a buckled oxblood-red leather greatcoat under a black hat, gloves and boots, a belt and bandolier of glass vials and a smoking brass censer, with a crow-skull cane. He fights by preparation: poison, fire and traps. (Model, cane and props made with [Meshy](https://www.meshy.ai), prepared in Blender; every skill has its own motion-captured move.)
+  - His cane combo is his own: *Crow's Peck* hooks the crow-skull handle up into them and leaves a short poison, *Vial Flick* is a wide swing that flings poison drops across everyone it strikes, and the *Censer Slam* finisher drives the cane into the ground and cracks a vial into a small poison cloud.
+  - *Toxic Flask* (Q): lob a vial that shatters into a poison cloud. Enemies in it are poisoned and keep rotting for a few seconds after they leave. Clouds of the same kind don't stack.
+  - *Volatile Mixture* (E): throw a bottle with a lit fuse. A warning ring, then a fire blast that hurls enemies back and sets them burning. If the blast reaches one of your poison clouds, the cloud ignites and burns out all its poison at once.
+  - *Pestilent Trap* (R): kneel and set a brass canister (up to 2). The first enemy to step on it is stunned and it vents a poison cloud. If that enemy was infected, the cloud spreads the infection.
+  - *The Last Epidemic* (F): smash your censer and raise a miasma dome for 8 seconds. Enemies inside are poisoned, slowed and infected; an infected enemy that dies passes it to the two nearest (up to 6 times). The dome collapses with a final blow. Co-op partners see your flasks, clouds, traps and dome too.
+
 Every class has four skills on Q E R F, unlocking at levels 1, 3, 6 and 10. Your class is saved with your character, and co-op partners see it.
 
 **Talents** (press **N**): every class has three talent trees, each with seven talents in four rows, ending in a capstone. You get a talent point every level from level 2; left-click a talent to learn a rank, right-click to take it back. A row opens once you've spent enough points above it in that tree (3, 6, then 10 for the capstone). **Reset** gives every point back for free, and **Auto-assign** spends your points on a suggested build. Characters from before talents arrived got a build picked for their class and level; reset it if you want your own.
 
 - Knight: *Crusader* (Holy Slam and Holy Nova), *Bulwark* (defense, shield and Battle Cry healing), *Vanguard* (Charge, the sword combo, Battle Cry).
-- Wraith: *Reaper* (Soul Reap, crits), *Banshee* (Banshee Wail, Shadow Step), *Revenant* (Spectral Host, toughness).
+- Wraith: *Render* (Spectral Rend, crits), *Shadow* (Soul Siphon, Shadow Step), *Night* (Haunting Grasp, Phantom Assault, Eternal Night, toughness).
 - Demon: *Hellfire* (Hellfire Claw, fury), *Summoner* (your demons, Blood Pact, a fourth demon), *Underworld* (Underworld Phase, obsidian hide).
 - Warlock: *Affliction* (Drain Life), *Plague* (Blight Bolt and its pools), *Binding* (Soul Shackles, Fel Covenant, fel wards).
 
@@ -84,7 +93,7 @@ How it works:
 | F | Battle Cry: +40% damage and defense, stuns nearby enemies (level 10) |
 | 1–4 | Drink potion from belt |
 
-Space and the skill keys fire the way your hero is facing (for every class), bending slightly onto an enemy just ahead. Shadow Step is the one skill that goes to the cursor.
+Space and the skill keys fire the way your hero is facing (for every class), bending slightly onto an enemy just ahead. Shadow Step and Haunting Grasp go to the cursor.
 | I | Inventory |
 | C | Character sheet (spend stat points) |
 | K | Skills: put any skill on a mouse button or Q E R F G V (or drag it onto the bar) |

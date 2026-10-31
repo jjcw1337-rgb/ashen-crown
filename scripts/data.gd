@@ -122,6 +122,8 @@ const WEAPON_PROFILES := {
 	"archer": {"motion": "back", "store": "back"},
 	"wraith": {"motion": "back", "store": "back"},
 	"demon": {"motion": "back", "store": "back"},
+	# the plague doctor's cane rides across his back too (his coat's belt is full of vials)
+	"plague": {"motion": "back", "store": "back"},
 }
 
 const VENDORS := [
@@ -305,7 +307,10 @@ const BASES := {
 	"mp_potion": {"name": "Mana Potion", "slot": "potion", "kind": "potion", "lvl": 1, "price": 12, "mana": 40, "color": Color(0.1, 0.25, 1.0)},
 	"rejuv": {"name": "Rejuvenation Potion", "slot": "potion", "kind": "potion", "lvl": 1, "price": 60, "rejuv": 0.4, "color": Color(0.6, 0.1, 0.9)},
 	"gold": {"name": "Gold", "slot": "gold", "kind": "gold", "lvl": 1, "price": 0},
-	# bows: the archer's weapons ("cls": only he can draw them)
+	# the plague doctor's cane ("cls": only he carries it; Plague.cane_model draws it)
+"physician_cane": {"name": "Physician's Cane", "slot": "weapon", "kind": "cane", "cls": "plague", "dmg": [3, 7], "speed": 1.1, "lvl": 1, "price": 35},
+"crow_cane": {"name": "Crow-Skull Cane", "slot": "weapon", "kind": "cane", "cls": "plague", "dmg": [8, 16], "speed": 1.1, "lvl": 12, "price": 210},
+# bows: the archer's weapons ("cls": only he can draw them)
 	"short_bow": {"name": "Short Bow", "slot": "weapon", "kind": "bow", "cls": "archer", "dmg": [2, 6], "speed": 1.15, "lvl": 1, "price": 30},
 	"hunting_bow": {"name": "Hunting Bow", "slot": "weapon", "kind": "bow", "cls": "archer", "dmg": [4, 10], "speed": 1.1, "lvl": 5, "price": 85},
 	"long_bow": {"name": "Long Bow", "slot": "weapon", "kind": "longbow", "cls": "archer", "dmg": [7, 16], "speed": 1.0, "lvl": 11, "price": 170},
@@ -421,10 +426,12 @@ const SKILLS := [
 	{"id": "nova", "cls": "knight", "name": "Holy Nova", "key": "E", "lvl": 3, "mana": 14, "cd": 2.5, "aim": "self", "desc": "A ring of holy fire bursts outward, burning enemies within 7 metres."},
 	{"id": "charge", "cls": "knight", "name": "Charge", "key": "R", "lvl": 6, "mana": 10, "cd": 4.0, "aim": "facing", "range": 9.0, "desc": "Dash the way you face (toward the nearest enemy ahead), smashing through enemies and knocking them back."},
 	{"id": "cry", "cls": "knight", "name": "Battle Cry", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "aim": "self", "desc": "Rally yourself: +40% damage and +50% defense for 12 seconds. Stuns nearby foes."},
-	{"id": "reap", "cls": "wraith", "name": "Soul Reap", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 3.5, "desc": "A spectral scythe sweeps in front of you for 150% weapon damage. Each soul it cuts flies back and heals you."},
-	{"id": "wail", "cls": "wraith", "name": "Banshee Wail", "key": "E", "lvl": 3, "mana": 14, "cd": 3.0, "aim": "self", "desc": "A scream that tears outward 7 metres: hurls enemies back, freezes them in terror and damages them."},
-	{"id": "shade", "cls": "wraith", "name": "Shadow Step", "key": "R", "lvl": 6, "mana": 10, "cd": 4.0, "aim": "point", "desc": "Melt into shadow and re-form at the cursor, striking everything around you. The shade you leave behind implodes."},
-	{"id": "host", "cls": "wraith", "name": "Spectral Host", "key": "F", "lvl": 10, "mana": 20, "cd": 18.0, "aim": "self", "desc": "Three spirits circle you for 12 seconds, darting out to strike nearby enemies. +40% damage while they last."},
+	{"id": "rend", "cls": "wraith", "name": "Spectral Rend", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 4.5, "desc": "Lunge at the foe ahead and tear through it with elongated spectral claws: two rakes for 90% weapon damage each. Every soul the claws tear out flies back and heals you."},
+	{"id": "siphon", "cls": "wraith", "name": "Soul Siphon", "key": "E", "lvl": 3, "mana": 12, "cd": 6.0, "aim": "facing", "range": 9.0, "desc": "Reach out and hook a spectral tether into an enemy: for 2.5 seconds it stands rigid while the tether drains it (about 180% weapon damage in all) and heals you a third of what it takes, and it is slowed after. A soul torn loose heals you more. The tether holds while you fight on."},
+	{"id": "step", "cls": "wraith", "name": "Shadow Step", "key": "R", "lvl": 6, "mana": 10, "cd": 5.0, "aim": "point", "range": 9.0, "desc": "Come apart into mist and re-form at the cursor, spinning into a claw strike round where you land for 130% weapon damage. For a moment after, blows pass through you. The shade you left behind collapses and hurts."},
+	{"id": "grasp", "cls": "wraith", "name": "Haunting Grasp", "key": "F", "lvl": 10, "mana": 16, "cd": 10.0, "aim": "point", "range": 10.0, "desc": "Slam the ground: spectral hands burst out of the earth around the cursor, seizing every enemy within 3.5 metres for 110% weapon damage, dragging them inward and holding them fast for 2.5 seconds."},
+	{"id": "phantom", "cls": "wraith", "name": "Phantom Assault", "key": "G", "lvl": 14, "mana": 22, "cd": 14.0, "aim": "facing", "range": 8.0, "desc": "Split into three phantoms that streak through the enemies ahead in a fan, each tearing everything in its path for 120% weapon damage, then strike with your own claws."},
+	{"id": "night", "cls": "wraith", "name": "Eternal Night", "key": "V", "lvl": 18, "mana": 40, "cd": 40.0, "aim": "self", "desc": "Rise and bring down the night over 9 metres: a scream of terror (150% weapon damage, enemies hurled back and frozen with fear), then the dark feeds on everything in it while you hang untouchable above it, and it collapses into your slam for 200%. +40% damage for 12 seconds."},
 	{"id": "hellclaw", "cls": "demon", "name": "Hellfire Claw", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 3.5, "desc": "Three burning rakes tear across the front for 140% weapon damage plus fire, setting enemies alight."},
 	{"id": "summon", "cls": "demon", "name": "Summon Demon", "key": "E", "lvl": 3, "mana": 18, "cd": 1.5, "aim": "self", "desc": "A demon claws its way up out of a burning sigil to fight beside you. Up to 3 at once; a fourth replaces the oldest."},
 	{"id": "phase", "cls": "demon", "name": "Underworld Phase", "key": "R", "lvl": 6, "mana": 15, "cd": 12.0, "aim": "self", "desc": "Slip into the Underworld for 6 seconds: monsters cannot see or hurt you and you move faster. When you return, the rift erupts around you."},
@@ -437,6 +444,10 @@ const SKILLS := [
 	{"id": "volley", "cls": "archer", "name": "Frost Volley", "key": "E", "lvl": 3, "mana": 14, "cd": 3.0, "aim": "point", "range": 14.0, "desc": "Loose a flight of frost arrows into the sky: they rain on the cursor for over a second, hitting everything within 4 metres again and again and chilling them (40% slower)."},
 	{"id": "snare", "cls": "archer", "name": "Storm Snare", "key": "R", "lvl": 6, "mana": 10, "cd": 6.0, "aim": "point", "range": 10.0, "desc": "Set a storm-charged trap (up to 2): the first enemies to cross it are held fast and hurt, and lightning bursts from it into the 3 nearest others, stunning them."},
 	{"id": "beast", "cls": "archer", "name": "Spirit Beast", "key": "F", "lvl": 10, "mana": 12, "cd": 8.0, "aim": "point", "range": 18.0, "desc": "Your Spirit Beast hunts at your side from the start (and you run 10% faster with it). Command it: on an enemy it pounces and fights it, on open ground it holds there, on yourself it comes back. Each command rouses you both: +40% damage for 12 seconds."},
+	{"id": "toxic", "cls": "plague", "name": "Toxic Flask", "key": "Q", "lvl": 1, "mana": 7, "cd": 0.0, "aim": "point", "range": 12.0, "desc": "Pull a vial from your belt and lob it: it shatters into a poison cloud 3 metres wide for 4 seconds. Anything in it is poisoned and keeps rotting for 3 seconds after it leaves. Clouds of the same kind don't stack."},
+	{"id": "volatile", "cls": "plague", "name": "Volatile Mixture", "key": "E", "lvl": 3, "mana": 15, "cd": 4.0, "aim": "point", "range": 11.0, "desc": "Throw a bottle with a lit fuse. A warning ring, then a fire blast 4 metres wide that hurls enemies back and sets them burning. A blast that reaches your poison clouds ignites them, burning out all their remaining poison at once."},
+	{"id": "trap", "cls": "plague", "name": "Pestilent Trap", "key": "R", "lvl": 6, "mana": 12, "cd": 5.0, "aim": "point", "range": 10.0, "desc": "Kneel and set a brass canister (up to 2, 30 seconds). The first enemy to step on it is stunned and it vents a poison cloud 3.5 metres wide. An infected enemy that springs it starts an outbreak: the cloud infects everything it touches."},
+	{"id": "epidemic", "cls": "plague", "name": "The Last Epidemic", "key": "F", "lvl": 10, "mana": 30, "cd": 24.0, "aim": "self", "desc": "Smash your censer and raise a miasma dome 9 metres wide for 8 seconds. Inside, enemies are poisoned, slowed and infected; an infected enemy that dies passes it to the two nearest (up to 6 times). The dome collapses with a final blow."},
 	{"id": "covenant", "cls": "warlock", "name": "Fel Covenant", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "aim": "self", "desc": "Seal a pact with what waits beyond: +40% damage for 12 seconds, and Drain Life forks to two more enemies and heals twice as much."},
 ]
 
@@ -454,12 +465,14 @@ const CLASSES := {
 	"knight": {"name": "Knight", "str": 20, "dex": 15, "vit": 25, "ene": 10,
 		"desc": "A crusader in steel. Sword and shield, heavy blows, holy fire and a rallying cry."},
 	"wraith": {"name": "Wraith", "str": 15, "dex": 22, "vit": 18, "ene": 28,
-		"desc": "A hooded spirit that never touches the ground. Reaps souls to heal, screams enemies into terror, steps through shadow and calls a host of spirits."},
+		"desc": "A horned spirit in chains that never touches the ground. Tears souls out with spectral claws, drains them down a tether, steps through shadow, drags foes into the earth's grasp and brings down the night."},
 	"demon": {"name": "Demon", "str": 24, "dex": 14, "vit": 24, "ene": 18,
 		"desc": "A horned, winged fiend in obsidian plate. Claws with hellfire, summons up to three demons and slips into the Underworld to walk unseen."},
 	# the bow class (Jace's): its name is his to choose; "Archer" until then
 	"archer": {"name": "Archer", "str": 14, "dex": 26, "vit": 18, "ene": 14, "weapon": "short_bow",
 		"desc": "A red-hooded ranger with a carved recurve bow and his dire wolf at his side. Shoots on the move: fire arrows that burn through a line, frost volleys that chill, storm snares that chain lightning."},
+	"plague": {"name": "Plague Doctor", "str": 14, "dex": 18, "vit": 18, "ene": 24, "weapon": "physician_cane",
+		"desc": "A beaked physician of the cursed years, belted with vials and a smoking censer. Fights by preparation: poison clouds, fused fire, traps that wait, and an epidemic that spreads from foe to foe."},
 	"warlock": {"name": "Warlock", "str": 10, "dex": 10, "vit": 10, "ene": 10,
 		"desc": "A hooded sorcerer bound by a fel pact. Drains the life from foes in a forking green beam, rots them with blight and chains them where they stand."},
 }

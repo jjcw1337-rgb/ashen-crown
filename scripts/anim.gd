@@ -29,6 +29,12 @@ static func impact_at(style: String) -> float:
 		"swipe3": return 0.47
 		"cleave": return 0.5
 		"bow": return 0.72
+		"pd_flask": return 0.55
+		"pd_volatile": return 0.6
+		"pd_trap": return 0.5
+		"pd_slam": return 0.6
+		"pd_dome": return 0.7
+		"pd_inspect": return 0.5
 		"cast": return 0.55
 		"claw": return 0.45
 		"slam": return 0.58
@@ -43,6 +49,17 @@ static func impact_at(style: String) -> float:
 		"skirm_lunge": return 0.5       # the Fallen Skirmisher's sickle comes down at the end of the leap
 		"reaver_cleave": return 0.52    # the Reaver's axe whips through its arc
 		"stalk_hook": return 0.45       # the Stalker's claws hook across
+		# the Wraith's clips (WraithSkills.SHOTS): the first rake, the hand thrust out, the spin's strike, the slam,
+		# the claw after the phantoms, and Eternal Night's stages
+		"rend": return 0.42
+		"siphon": return 0.5
+		"wstep": return 0.7
+		"grasp": return 0.5
+		"phantom": return 0.55
+		"night_rise": return 0.9
+		"night_scream": return 0.45
+		"night_hold": return 0.5
+		"night_fall": return 0.5
 	return 0.5
 
 ## 0 at walking stride, 1 at full sprint stride (move > 1 means sprinting).

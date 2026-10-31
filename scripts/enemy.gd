@@ -32,6 +32,8 @@ var impact_done := false
 var cooldown := 0.0
 var hit_t := 0.0
 var stun_t := 0.0
+var slow_t := 0.0               # slowed (Soul Siphon): seconds left and how much of its pace is lost
+var slow_amt := 0.0
 var flash_t := 0.0
 var knock := Vector3.ZERO
 var phase := 0.0
@@ -211,20 +213,26 @@ func drain_flash(col: Color) -> void:
 	flash_mat.albedo_color = Color(col.r, col.g, col.b, 0.3)
 
 ## Held in a Warlock's Drain Life beam: a green rim-light for as long as the beam holds on.
-static var _drain_mat: Material
+static var _drain_mats := {}
 var _drained := false
+var _drain_col := Color(0.25, 1.0, 0.2)
 ## Damage numbers in this colour, and no blood (set around a Drain Life tick). Alpha 0 = normal.
 var dmg_tint := Color(0, 0, 0, 0)
+## a damage tick (the plague doctor's poison): the number shows, but no white flash and no flinch
+var soft_hit := false
 
-static func drain_mat() -> Material:
-	if _drain_mat == null:
-		_drain_mat = Mats.glow(Color(0.25, 1.0, 0.2), 0.75, 0.0, 1.0)
-	return _drain_mat
+## The rim of a drained victim: the Warlock's fel green, or the Wraith's cold cyan (Soul Siphon).
+func drain_mat() -> Material:
+	var key := _drain_col.to_html()
+	if not _drain_mats.has(key):
+		_drain_mats[key] = Mats.glow(_drain_col, 0.75, 0.0, 1.0)
+	return _drain_mats[key]
 
-func set_drained(on: bool) -> void:
+func set_drained(on: bool, col := Color(0.25, 1.0, 0.2)) -> void:
 	if on == _drained or champion:
 		return
 	_drained = on
+	_drain_col = col
 	_set_flash(0.0)
 
 ## Seen from the Underworld (Demon's Phase) every monster burns with a crimson soul-outline.
@@ -280,6 +288,10 @@ func _statuses(delta: float) -> void:
 				f.queue_free()
 
 func stun(t: float) -> void:
+	if t < 0.0:
+		# a slow rides the stun RPC as a negative time (the Wraith's Soul Siphon), so the RPC set stays as it is
+		slow(-t, 0.5)
+		return
 	if remote:
 		game.net.send_enemy_stun(self, t)
 		return
@@ -287,6 +299,14 @@ func stun(t: float) -> void:
 		t *= 0.3
 	stun_t = maxf(stun_t, t)
 	atk_t = -1.0
+
+## Slowed to (1 - amt) of its pace for t seconds (host-side, like every movement).
+func slow(t: float, amt: float) -> void:
+	if remote:
+		game.net.send_enemy_stun(self, -t)
+		return
+	slow_t = maxf(slow_t, t)
+	slow_amt = amt
 
 func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit: bool) -> float:
 	if dead:
@@ -301,8 +321,9 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 	if remote:
 		# the host applies the real damage; show the hit straight away
 		game.net.send_enemy_hit(self, phys, fire, from, knockback, crit)
-		flash_t = 0.12
-		_set_flash(1.0)
+		if not soft_hit:
+			flash_t = 0.12
+			_set_flash(1.0)
 		var c2 := Color(1.0, 0.95, 0.8) if not crit else Color(1.0, 0.75, 0.2)
 		if fire > p:
 			c2 = Color(1.0, 0.55, 0.15)
@@ -315,9 +336,10 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 		return total
 	life -= total
 	killed_by_rival = _by_rival
-	hit_t = 1.0 if not boss else 0.3
-	flash_t = 0.12
-	_set_flash(1.0)
+	if not soft_hit:
+		hit_t = 1.0 if not boss else 0.3
+		flash_t = 0.12
+		_set_flash(1.0)
 	var away := global_position - from
 	away.y = 0
 	if away.length() > 0.01:
@@ -616,6 +638,9 @@ func _process(delta: float) -> void:
 			vel += away / dd * push * 4.0
 	if not hero_dead and dist < radius + hero.radius:
 		vel -= to.normalized() * (radius + hero.radius - dist) * 4.0
+	if slow_t > 0.0:
+		slow_t -= delta
+		vel *= 1.0 - slow_amt * (0.3 if boss else 1.0)
 	if vel.length() > 0.01:
 		global_position = game.world.move(global_position, vel * delta * (1.0 - chill_k), body_r())
 		if aggro or vel.length() > 0.5:
