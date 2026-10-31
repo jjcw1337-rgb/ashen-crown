@@ -2326,7 +2326,9 @@ func _perf_step() -> bool:
 			var spot := _open_grass_spot()
 			hero.global_position = spot
 			cam_target = spot
+		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 		_perf = {"centre": hero.global_position, "t": 0.0, "frames": [], "dc": 0.0, "prims": 0.0, "objs": 0.0, "n": 0,
+			"physics": 0.0, "rcpu": 0.0, "gpu": 0.0,
 			"secs": float(args[pi + 1]) if pi + 1 < args.size() and args[pi + 1].is_valid_float() else 10.0, "t0": 0}
 		return true
 	var dt := get_process_delta_time()
@@ -2341,6 +2343,11 @@ func _perf_step() -> bool:
 	_perf["dc"] = float(_perf["dc"]) + Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
 	_perf["prims"] = float(_perf["prims"]) + Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)
 	_perf["objs"] = float(_perf["objs"]) + Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)
+	# where the frame goes: our scripts, the renderer's CPU work (draw calls), the GPU
+	var vrid := get_viewport().get_viewport_rid()
+	_perf["physics"] = float(_perf["physics"]) + Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0
+	_perf["rcpu"] = float(_perf["rcpu"]) + RenderingServer.viewport_get_measured_render_time_cpu(vrid) + RenderingServer.get_frame_setup_time_cpu()
+	_perf["gpu"] = float(_perf["gpu"]) + RenderingServer.viewport_get_measured_render_time_gpu(vrid)
 	_perf["n"] = int(_perf["n"]) + 1
 	if float(_perf["t"]) < float(_perf["secs"]):
 		return true
@@ -2362,6 +2369,9 @@ func _perf_step() -> bool:
 		"average %.1f fps (%.2f ms), median %.2f ms, 1%% low %.1f fps (%.2f ms)" % [n / wall, wall * 1000.0 / n, float(fr[fr.size() / 2]), 1000.0 / worst1, worst1],
 		"draw calls %.0f, primitives %.0f, objects %.0f (per frame)" % [float(_perf["dc"]) / n, float(_perf["prims"]) / n, float(_perf["objs"]) / n],
 		"3D grass clumps in the zone: %d" % grass_n,
+		# the GPU busy for much less than the frame means the CPU (our scripts, the engine) holds it back
+		"per frame: GPU %.2f ms (busy %d%% of the frame), render CPU %.2f ms, physics %.2f ms" % [float(_perf["gpu"]) / n, int(100.0 * float(_perf["gpu"]) / n / (wall * 1000.0 / n)), float(_perf["rcpu"]) / n, float(_perf["physics"]) / n],
+		"v-sync %s, max fps %d, CPU %s (%d threads)" % [["off", "on", "adaptive", "mailbox"][DisplayServer.window_get_vsync_mode()], Engine.max_fps, OS.get_processor_name(), OS.get_processor_count()],
 	]
 	var f := FileAccess.open(shot_path.get_basename() + ".txt", FileAccess.WRITE)
 	for l in lines:

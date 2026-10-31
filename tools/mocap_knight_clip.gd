@@ -81,6 +81,7 @@ func _run() -> void:
 		var sh := Models.item_model({"base": "kite_shield", "rarity": 0})
 		(J["mount_l"] as Node3D).add_child(sh)
 		sh.position = Vector3(-0.03, 0, 0)
+		r.set_meta("shield", true)      # as Hero.refresh_gear does: the left arm carries the shield (Anim's pose)
 	var cam := Camera3D.new()
 	cam.fov = 34
 	root3.add_child(cam)

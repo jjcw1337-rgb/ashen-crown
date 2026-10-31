@@ -1718,6 +1718,16 @@ func _apply_shield_pose() -> void:
 	var run := Anim.run_factor(move_amt) * (0.0 if atk_t >= 0.0 else 1.0) * (1.0 - b)
 	if b <= 0.001 and run <= 0.001:
 		return
+	if "w_shield" in rig:
+		# a mocap body's shield arm already takes Anim's pose (raised to block, across the chest at a run), so the
+		# shield stays strapped to the forearm and only turns on it to face the front; moving it to a fixed spot left
+		# it floating off his arm
+		var face := rig.global_transform.basis.orthonormalized() * Basis(Vector3.UP, 0.25 if b > 0.001 else 0.55)
+		var gt := shield_node.global_transform
+		var sc := gt.basis.get_scale()
+		var q := gt.basis.orthonormalized().get_rotation_quaternion().slerp(face.get_rotation_quaternion(), maxf(b, run * 0.8))
+		shield_node.global_transform = Transform3D(Basis(q).scaled(sc), gt.origin)
+		return
 	if b > 0.001:
 		var tgt := rig.global_transform * Transform3D(Basis(Vector3.UP, 0.25), Vector3(-0.12, 1.22, -0.48))
 		shield_node.global_transform = shield_node.global_transform.interpolate_with(tgt, b)

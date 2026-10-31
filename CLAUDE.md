@@ -381,7 +381,8 @@ shared preview), give the preview build's link, and go to `main` only when Blain
   The earlier armoured knight (bare head, red tabard) is kept as `knight_statue.glb` for the arena statues.
   **Shield arm** (any mocap body): with a shield on (`Hero.refresh_gear` sets the rig's `shield` meta) the left arm
   (`KnightMocapRig.SHIELD_ARM`) always takes Anim's pose (`w_shield`): the shield at his side, up across the chest at a
-  run, raised to block. The motion capture's empty-handed arm swing left it hanging by his knee and flapping about.
+  run, raised to block. The shield stays on the forearm; `Hero._apply_shield_pose` only turns it there to face the
+  front (the procedural body still moves it to a fixed spot). The motion capture's empty-handed arm swing left it hanging by his knee and flapping about.
 - **Act I trees and grass** (`World.oak_forest`, set by `game.gd` when `difficulty == 0`; A2/A3 keep the old mix): three
   Meshy oaks `assets/models/trees/oakN.glb` (prepared by `tools/blender/prep_tree.py`: trunk on the origin, ~6 m, 1k
   textures) built by `Flora.oak_model(k)` with `MESHY_TREE_SHADER` (wind sway by height, snow/ash, see-through near the
@@ -418,7 +419,7 @@ shared preview), give the preview build's link, and go to `main` only when Blain
   (`GrassField.impulse(pos, radius, strength)`). Local and cosmetic: no network traffic. Far grass thins by
   shrinking clumps by their random value and LOD0/LOD1 cross-fade per clump (`Grass.FADE`, `LOD_BAND` per
   preset, using the global `grass_cam` so shadow passes agree); density per preset `QUALITY_DENSITY`; grass
-  casts shadows only on Ultra. `Grass.apply_quality` updates distances (`Game.apply_quality` skips the 3D grass's
+  casts no shadows (`Grass.GRASS_SHADOWS`; on Ultra they were 36M more triangles a frame), only receives them. `Grass.apply_quality` updates distances (`Game.apply_quality` skips the 3D grass's
   nodes, meta `grass3d`). Tests: `tools/grass_test.gd` (headless: species, LODs, no painted clumps, field on/off,
   movers, swings, rings, wind); `tools/grass_lab.gd -- outdir [quality] [zoomin]` (needs a display: biome bands,
   scripted walkers that walk, sprint, stop, turn and dash, a big beast, swings, a slam, wind changes; saves frames
@@ -764,4 +765,5 @@ shared preview), give the preview build's link, and go to `main` only when Blain
   site keeps the last good build; read the failed step in the Actions tab.
 - **Preview builds**: push a branch named `test-*` (`git push origin HEAD:test-something`) and
   `.github/workflows/preview.yml` builds the Windows, Linux and Mac versions as downloads on that Actions run
-  (Artifacts, kept 7 days) without publishing anything. Use it to let a partner play a change before it goes to main.
+  (Artifacts, kept 7 days) without publishing anything. The Windows one has `Ashen Crown (Performance Test).bat`: double-click it and
+  it runs `--perf` on Ultra and High and opens the results (fps, draw calls, GPU time and how busy the GPU is). Use it to let a partner play a change before it goes to main.

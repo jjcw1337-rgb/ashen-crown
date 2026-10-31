@@ -38,6 +38,8 @@ jobs:
           godot --headless --export-release "Windows Desktop" build/win/AshenCrown.exe
           cp README.md build/win/
           printf 'start "" "%%~dp0AshenCrown.exe" --rendering-method gl_compatibility --rendering-driver opengl3\r\n' > "build/win/Ashen Crown (Safe Mode).bat"
+          # double-click performance test: the moor's grassiest spot on Ultra, then High; results open in Notepad
+          printf '@echo off\r\ncd /d "%%~dp0"\r\necho Measuring Ultra, then High. The game opens twice, about a minute in all.\r\nstart "" /wait AshenCrown.exe -- --shot perf_ultra.png --zone wild --god --perf 12 --quality 3 --grassspot\r\nstart "" /wait AshenCrown.exe -- --shot perf_high.png --zone wild --god --perf 12 --quality 2 --grassspot\r\ntype perf_ultra.txt perf_high.txt > "Performance results.txt"\r\nstart "" notepad "Performance results.txt"\r\n' > "build/win/Ashen Crown (Performance Test).bat"
 
       - name: Export Linux version
         run: |
