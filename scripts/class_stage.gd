@@ -1,17 +1,24 @@
 class_name ClassStage
 extends SubViewportContainer
-## The New Character screen's heroes (UI._build_class_picker): every class stands in a row on a torch-lit
-## stone floor in its own little world, as the co-op puppets are (Hero with `puppet`, driven by `net_st`), in
-## its starting gear. Idle they breathe, shift their weight and look about; under the mouse each fidgets in its
+## The New Character screen's heroes (UI._build_class_picker): every class stands on its own carved plinth in a
+## ruined cathedral (ClassCathedral: a shaft of light in its colour, its banner above, candles, drifting ash),
+## in its own little world, as the co-op puppets are (Hero with `puppet`, driven by `net_st`), in
+## its starting gear. The chosen one's shaft and runes blaze; the one under the mouse brightens. Idle they breathe, shift their weight and look about; under the mouse each fidgets in its
 ## own annoying way (`_fidget`); the chosen one steps into the light and does its signature move every few
 ## seconds (`_signature`, with its effects). `hovered` / `chosen` are class ids ("" for none).
 
 signal picked(cls: String)
 signal hovering(cls: String)
 
-const CLASSES := ["knight", "wraith", "demon", "warlock", "archer"]
-const ACCENTS := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1), "warlock": Color(0.45, 1.0, 0.35), "archer": Color(0.55, 0.85, 0.45)}
-const SPACING := 1.75
+## left to right on the stage; the knight, the first choice, stands in the middle
+const CLASSES := ["wraith", "demon", "knight", "warlock", "archer"]
+const ACCENTS := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1), "warlock": Color(0.45, 1.0, 0.35), "archer": Color(0.92, 0.24, 0.3)}
+## the banner's emblem (ClassCathedral.BANNER_SHADER): cross, hood, horns, hat, arrow
+const EMBLEMS := {"knight": 1, "wraith": 2, "demon": 3, "warlock": 4, "archer": 5}
+const SPACING := 2.05
+const PLINTH_TOP := 0.5             # feet height on a plinth (the middle one is taller, nearer and wider)
+const PLINTH_R := 0.6
+const STEP := 0.1                   # how far the chosen one steps forward on its plinth
 const FACE := PI                     # bodies face -z; the camera is on +z
 ## signature moves: [pose style, seconds, impact fraction, skill name]
 const SIGNATURE := {"knight": ["cleave", 1.1, 0.5, "Holy Slam"], "wraith": ["cast", 1.2, 0.45, "Banshee Wail"],
@@ -24,6 +31,10 @@ var cam: Camera3D
 var root3d: Node3D
 var heroes := {}                    # cls -> Hero
 var spots := {}                     # cls -> SpotLight3D over them
+var homes := {}                     # cls -> feet position on its plinth
+var shafts := {}                    # cls -> the light shaft's material (power)
+var glows := {}                     # cls -> the plinth runes' material (power)
+var _flicker: Array[OmniLight3D] = []
 var hovered := ""
 var chosen := ""
 var t := 0.0
@@ -49,28 +60,44 @@ func setup(g: Node) -> void:
 	var e := Environment.new()
 	e.background_mode = Environment.BG_CLEAR_COLOR
 	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	e.ambient_light_color = Color(0.42, 0.4, 0.46)
-	e.ambient_light_energy = 0.55
+	e.ambient_light_color = Color(0.36, 0.38, 0.46)
+	e.ambient_light_energy = 0.35
 	e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	e.glow_enabled = true
-	e.glow_intensity = 0.6
-	e.glow_bloom = 0.05
+	e.glow_intensity = 0.75
+	e.glow_bloom = 0.08
+	e.fog_enabled = true
+	e.fog_light_color = Color(0.07, 0.075, 0.09)
+	e.fog_density = 0.035
 	env.environment = e
 	vp.add_child(env)
 	var key := DirectionalLight3D.new()
-	key.rotation_degrees = Vector3(-38, 18, 0)
-	key.light_energy = 0.9
-	key.light_color = Color(1.0, 0.86, 0.68)
+	key.rotation_degrees = Vector3(-52, 24, 0)
+	key.light_energy = 0.45
+	key.light_color = Color(0.75, 0.8, 1.0)
 	key.shadow_enabled = true
 	root3d.add_child(key)
 	cam = Camera3D.new()
 	cam.fov = 30.0
 	root3d.add_child(cam)
-	cam.look_at_from_position(Vector3(0, 2.0, 9.6), Vector3(0, 0.95, 0))
-	_floor()
+	cam.look_at_from_position(Vector3(0, 2.15, 10.6), Vector3(0, 1.5, 0))
+	var radii := {}
 	for i in CLASSES.size():
 		var c: String = CLASSES[i]
 		var x := (float(i) - (CLASSES.size() - 1) * 0.5) * SPACING
+		var mid := c == "knight"
+		homes[c] = Vector3(x, PLINTH_TOP + (0.12 if mid else 0.0), 0.35 if mid else 0.0)
+		radii[c] = PLINTH_R * (1.2 if mid else 1.0)
+	var built := ClassCathedral.build(root3d, homes, radii, ACCENTS, EMBLEMS)
+	shafts = built["shafts"]
+	glows = built["glows"]
+	for n in root3d.get_children():
+		if n is OmniLight3D and n.has_meta("flicker"):
+			_flicker.append(n as OmniLight3D)
+	for i in CLASSES.size():
+		var c: String = CLASSES[i]
+		var home: Vector3 = homes[c]
+		var x := home.x
 		var h := Hero.new()
 		h.puppet = true
 		h.name = "Stage_" + c
@@ -82,7 +109,7 @@ func setup(g: Node) -> void:
 			gear["shield"] = Items.make("buckler")
 		gear["armor"] = Items.make("quilted")
 		h.apply_net_gear(gear)
-		h.global_position = Vector3(x, 0, 0)
+		h.global_position = home
 		h.net_pos = h.global_position
 		h.net_yaw = FACE
 		h.rig.rotation.y = FACE
@@ -93,62 +120,22 @@ func setup(g: Node) -> void:
 		heroes[c] = h
 		_sig_t[c] = -1.0
 		_fid_t[c] = 0.0
-		# a pool of light over each, brighter for the chosen one; a rim light in the class's colour behind
+		# the shaft's light falling on each, in its colour, blazing for the chosen one; a rim light behind
 		var sp := SpotLight3D.new()
-		sp.light_color = Color(1.0, 0.9, 0.75)
-		sp.spot_angle = 22.0
-		sp.spot_range = 9.0
-		sp.light_energy = 0.0
+		sp.light_color = (ACCENTS[c] as Color).lerp(Color(1.0, 0.95, 0.85), 0.35)
+		sp.spot_angle = 20.0
+		sp.spot_range = 10.0
+		sp.light_energy = 1.0
 		sp.shadow_enabled = false
 		root3d.add_child(sp)
-		sp.look_at_from_position(Vector3(x, 6.5, 2.2), Vector3(x, 0, 0))
+		sp.look_at_from_position(Vector3(x, 7.5, home.z + 1.6), home)
 		spots[c] = sp
 		var rim := OmniLight3D.new()
 		rim.light_color = ACCENTS[c]
-		rim.light_energy = 1.1
-		rim.omni_range = 3.2
-		rim.position = Vector3(x, 1.6, -1.4)
+		rim.light_energy = 1.3
+		rim.omni_range = 3.4
+		rim.position = Vector3(x, home.y + 1.7, home.z - 1.3)
 		root3d.add_child(rim)
-
-## A round stone floor fading into the dark, and two braziers.
-func _floor() -> void:
-	var fl := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 7.5
-	cyl.bottom_radius = 7.5
-	cyl.height = 0.2
-	cyl.radial_segments = 64
-	fl.mesh = cyl
-	var sm := ShaderMaterial.new()
-	var sh := Shader.new()
-	sh.code = FLOOR_SHADER
-	sm.shader = sh
-	fl.material_override = sm
-	fl.position = Vector3(0, -0.1, 0)
-	root3d.add_child(fl)
-	for sx: int in [-1, 1]:
-		var p := Vector3(sx * 5.6, 0, -1.2)
-		var bowl := MeshInstance3D.new()
-		var bc := CylinderMesh.new()
-		bc.top_radius = 0.38
-		bc.bottom_radius = 0.16
-		bc.height = 1.1
-		bowl.mesh = bc
-		var bm := StandardMaterial3D.new()
-		bm.albedo_color = Color(0.13, 0.11, 0.1)
-		bm.metallic = 0.6
-		bm.roughness = 0.5
-		bowl.material_override = bm
-		bowl.position = p + Vector3(0, 0.55, 0)
-		root3d.add_child(bowl)
-		Props.fire(root3d, p + Vector3(0, 1.1, 0), 0.8, Color(1.0, 0.55, 0.2), false, false, true)
-		var l := OmniLight3D.new()
-		l.light_color = Color(1.0, 0.6, 0.3)
-		l.light_energy = 1.6
-		l.omni_range = 6.5
-		l.position = p + Vector3(0, 1.6, 0.3)
-		l.name = "brazier_light"
-		root3d.add_child(l)
 
 func choose(c: String) -> void:
 	if not heroes.has(c):
@@ -212,12 +199,22 @@ func _process(delta: float) -> void:
 			_sig_t[chosen] = 0.0
 			_hit_done[chosen] = false
 			_sig_wait = SIG_EVERY
+	for l in _flicker:
+		l.light_energy = 1.2 + 0.18 * sin(t * 11.0 + l.position.x) * sin(t * 6.7)
 	for i in CLASSES.size():
 		var c: String = CLASSES[i]
 		var h: Hero = heroes[c]
-		var home := Vector3((float(i) - (CLASSES.size() - 1) * 0.5) * SPACING, 0, 0)
+		var home: Vector3 = homes[c]
 		var sp: SpotLight3D = spots[c]
-		sp.light_energy = move_toward(sp.light_energy, 5.0 if c == chosen else (2.0 if c == hovered else 0.0), delta * 12.0)
+		sp.light_energy = move_toward(sp.light_energy, 6.0 if c == chosen else (3.0 if c == hovered else 1.2), delta * 12.0)
+		var pw := 1.0 if c == chosen else (0.55 if c == hovered else 0.18)
+		var sm: ShaderMaterial = shafts[c]
+		var cur: float = sm.get_shader_parameter("power")
+		var nxt := move_toward(cur, pw, delta * 3.0)
+		sm.set_shader_parameter("power", nxt)
+		var gm: ShaderMaterial = glows[c]
+		gm.set_shader_parameter("power", nxt)
+		(gm.get_meta("cap") as ShaderMaterial).set_shader_parameter("power", nxt)
 		h.net_buff = c == chosen
 		if float(_sig_t[c]) >= 0.0:
 			_signature(c, h, home, delta)
@@ -235,13 +232,13 @@ func _idle(c: String, h: Hero, home: Vector3, i: int) -> void:
 	if fmod(t + i * 2.3, 9.0) < 1.6:
 		look = 0.0       # a look straight at you
 	h.net_yaw = FACE + look
-	h.net_pos = home + Vector3(sin(ph * 0.7) * 0.04, 0, 0.45 if c == chosen else 0.0)
+	h.net_pos = home + Vector3(sin(ph * 0.7) * 0.04, 0, STEP if c == chosen else 0.0)
 	h.net_st = {"move": 0.0, "atk": -1.0, "style": "over", "block": 0.0, "hit": 0.0}
 
 ## Hovered: each class fidgets in its own (annoying) way.
 func _fidget(c: String, h: Hero, home: Vector3, f: float) -> void:
 	var st := {"move": 0.0, "atk": -1.0, "style": "over", "block": 0.0, "hit": 0.0}
-	var pos := home + Vector3(0, 0, 0.45 if c == chosen else 0.15)
+	var pos := home + Vector3(0, 0, STEP if c == chosen else 0.05)
 	var yaw := FACE
 	match c:
 		"knight":
@@ -270,7 +267,7 @@ func _fidget(c: String, h: Hero, home: Vector3, f: float) -> void:
 			yaw = FACE + sin(f * 9.0) * 0.35
 		"archer":
 			# sways side to side drawing the bow at everything
-			pos.x += sin(f * 4.0) * 0.3
+			pos.x += sin(f * 4.0) * 0.22
 			yaw = FACE + sin(f * 2.0) * 0.9
 			st["style"] = "bow"
 			st["atk"] = fmod(f, 0.8) / 0.8
@@ -285,7 +282,7 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 	var s: float = float(_sig_t[c]) + delta
 	_sig_t[c] = s
 	var a := clampf(s / dur, 0.0, 1.0)
-	var pos := home + Vector3(0, 0, 0.45)
+	var pos := home + Vector3(0, 0, STEP)
 	var front := h.global_position + Vector3(0, 0, 1.0)
 	var col: Color = ACCENTS[c]
 	var st := {"move": 0.0, "atk": a, "style": str(sig[0]), "block": 0.0, "hit": 0.0}
@@ -293,7 +290,7 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 		"knight":
 			# leaps and brings the sword down
 			pos.y = sin(clampf(a / 0.5, 0.0, 1.0) * PI) * 0.6
-			pos.z += clampf(a / 0.5, 0.0, 1.0) * 0.35
+			pos.z += clampf(a / 0.5, 0.0, 1.0) * 0.2
 		"wraith":
 			pos.y = 0.2 + sin(a * PI) * 0.35
 		"warlock":
@@ -313,12 +310,12 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 		match c:
 			"knight":
 				var at := h.global_position + Vector3(0, 0, 0.9)
-				at.y = 0.0
+				at.y = 0.02
 				Fx.ring(root3d, at, 2.6, Color(1.0, 0.92, 0.6), 0.55)
 				Fx.burst(root3d, at + Vector3(0, 0.3, 0), Color(1.0, 0.85, 0.45), 40, 5.0, 0.1, 0.6, true, -5.0)
 				Sfx.play("cleave_hit", -10.0)
 			"wraith":
-				Fx.ring(root3d, Vector3(h.global_position.x, 0.0, h.global_position.z), 3.4, col, 0.7, 1.0)
+				Fx.ring(root3d, Vector3(home.x, home.y + 0.02, home.z), 3.4, col, 0.7, 1.0)
 				Fx.burst(root3d, h.global_position + Vector3(0, 1.4, 0), col, 46, 5.5, 0.09, 0.7, true, 0.0)
 				Sfx.play("wail", -12.0)
 			"demon":
@@ -338,23 +335,3 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 	if s >= dur:
 		_sig_t[c] = -1.0
 		_sig_wait = SIG_EVERY
-
-const FLOOR_SHADER := """
-shader_type spatial;
-render_mode cull_back;
-varying vec3 wp;
-void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
-float h(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-void fragment() {
-	vec2 p = wp.xz * 1.6;
-	vec2 c = floor(p);
-	vec2 f = fract(p);
-	// flagstones: a dark seam round each slab, each slab its own shade
-	float seam = smoothstep(0.0, 0.05, f.x) * smoothstep(0.0, 0.05, f.y) * smoothstep(1.0, 0.95, f.x) * smoothstep(1.0, 0.95, f.y);
-	float shade = 0.75 + h(c) * 0.35;
-	float r = length(wp.xz);
-	float fade = 1.0 - smoothstep(3.0, 7.2, r);
-	ALBEDO = vec3(0.11, 0.1, 0.09) * shade * mix(0.3, 1.0, seam) * fade;
-	ROUGHNESS = 0.85;
-}
-"""
