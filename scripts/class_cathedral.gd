@@ -8,26 +8,24 @@ class_name ClassCathedral
 const HALL_W := 32.0
 const WALL_Z := -9.5
 
-## homes: cls -> feet position on top of its plinth; radii: cls -> plinth radius.
-static func build(root: Node3D, homes: Dictionary, radii: Dictionary, accents: Dictionary, emblems: Dictionary) -> Dictionary:
-	var shafts := {}
-	var glows := {}
+## The hall itself (floor, walls, windows, pillars, rubble, candelabras, ash): it never moves.
+static func build_hall(root: Node3D) -> void:
 	_floor(root)
 	_hall(root)
-	var seed := 0.0
-	for c: String in homes:
-		var home: Vector3 = homes[c]
-		var r: float = radii[c]
-		var col: Color = accents[c]
-		glows[c] = _plinth(root, Vector3(home.x, 0.0, home.z), r, home.y, col)
-		shafts[c] = _shaft(root, home, r, col)
-		_banner(root, Vector3(home.x, 3.7, home.z - 1.7), col, int(emblems.get(c, 0)), seed)
-		_candles(root, Vector3(home.x, 0.0, home.z), r, seed)
-		seed += 1.7
-	_candelabra(root, Vector3(-6.3, 0.0, -0.6))
-	_candelabra(root, Vector3(6.3, 0.0, -0.6))
+	_candelabra(root, Vector3(-6.6, 0.0, 0.2))
+	_candelabra(root, Vector3(6.6, 0.0, 0.2))
 	_ash(root)
-	return {"shafts": shafts, "glows": glows}
+
+## One hero's stand, built at the origin of `stand` (ClassStage's carousel moves the node): the plinth (its
+## top at `top`, radius `r`), the shaft of light, the banner above and the candles at its foot. Returns the
+## materials ClassStage drives: "glow" (the runes, with the cap in meta "cap") and "shaft" (uniform `power`).
+static func build_stand(stand: Node3D, r: float, top: float, col: Color, emblem: int, seed: float) -> Dictionary:
+	var home := Vector3(0.0, top, 0.0)
+	var glow := _plinth(stand, Vector3.ZERO, r, top, col)
+	var shaft := _shaft(stand, home, r, col)
+	_banner(stand, Vector3(0.0, 3.35, -1.7), col, emblem, seed)
+	_candles(stand, Vector3.ZERO, r, seed)
+	return {"glow": glow, "shaft": shaft}
 
 # --- floor, walls, pillars ---------------------------------------------------------------------------------
 

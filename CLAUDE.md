@@ -508,16 +508,33 @@ shared preview), give the preview build's link, and go to `main` only when Blain
   everyone has said Join. A member leaving mid-vote is dropped from it (theirs is called off). The host is the party
   leader (♛ on the party list) and can remove a member (✕, `UI.confirm_kick`, `Net.kick`). `tools/mp_test.gd`
   (host + join) checks it; `tools/vote_shot.gd` screenshots the window.
-- **New Character screen** (`UI._build_class_picker`, `scripts/class_stage.gd` `ClassStage`): every class stands live
-  on its own carved plinth in a ruined cathedral (`scripts/class_cathedral.gd` `ClassCathedral`, all in code: plinths
-  with runes glowing in the class colour, a coloured light shaft and a tattered banner with its emblem over each, candles,
-  ash, pointed windows, pillars; the knight in the middle on the biggest plinth; the chosen one's shaft and runes blaze,
-  the hovered one's brighten; concept art in `concepts/class_screen/`, picked: `v4_cathedral_arc.png`) in its own world, as co-op puppets (`Hero.puppet`, driven through `net_st`/`net_pos`/`net_yaw`)
-  in its starting gear: idle they breathe and look about (`_idle`), under the mouse each fidgets its own annoying way
-  (`_fidget`), and the chosen one steps into the light and does its signature move every 4.5 s with its effects
-  (`SIGNATURE`, `_signature`). Choosing a hero plays its own sound (`ClassStage.PICK_SOUND`: layers of the game's recordings, `pick_sound`), and the screen has its own theme, `music_select` (music_town's candidate take 14; `Game.zone_music()` brings the zone's song back when it closes). Below, in the inventory's iron frame: name, story, stats, skills in the bar's sockets,
-  the name and Play. The stage is built when the picker opens and freed when it closes. A new class needs a
-  `ClassStage.CLASSES`/`ACCENTS`/`EMBLEMS`/`SIGNATURE` entry and its `_fidget` case (a new class gets its own plinth, shaft and banner from `CLASSES`) and a `SKILL_SHOW` entry per skill (hover a skill in the panel: that hero performs it on the stage, `show_skill`). `tools/class_shot.gd -- outdir [frames]`.
+- **New Character screen** (`UI._build_class_picker`, `scripts/class_stage.gd` `ClassStage`): a **focused carousel** in a
+  ruined cathedral (`scripts/class_cathedral.gd` `ClassCathedral`, all in code; concept `concepts/class_screen/arrows_b_focus.png`):
+  the chosen hero stands large in the middle, front and close, on the biggest plinth with its shaft blazing; the ones
+  either side stand back, smaller and dimmer; the outer ones further back, fading into the gloom; the rest wait unseen.
+  `ClassCathedral.build_hall` is the still set (floor, back wall with pointed windows, pillars, rubble, candelabras,
+  ash); each class gets a **stand** (`build_stand` under one Node3D in `ClassStage.stands`: hexagonal plinth with runes
+  glowing in the class colour, the coloured light shaft, a tattered banner with its emblem, candles, its spot and rim
+  lights), and the carousel moves the stand with its hero, so any number of classes in `ClassStage.CLASSES` works and
+  the ring wraps round. Slots are by distance from the middle (`SLOT_X/Z/SCALE/LIGHT`, interpolated across the glide;
+  `VISIBLE` = where a slot fades out; the hero node is scaled with its stand, so every lift and effect in a move is
+  multiplied by `_k(cls)`). Turning: the two arrows at the stage's edges (`UI.ClassArrow`: Meshy-painted iron chevron
+  `assets/textures/ui/arrow_left.png`, flipped for the right one, with the gem's glow `arrow_gem.png` added on hover;
+  hover brightens and grows it, pressed dips it, a key press flashes it; it `accept_event`s), the mouse wheel over the
+  stage, Left/Right or A/D (`UI._class_key`, not while the name field has focus), or a click on a side hero: `turn(dir)`
+  / `go_to(cls)` glide the ring one slot (`TURN_T`, eased; rapid turns queue into one longer glide from where the ring is,
+  never a snap; `snap_to` opens on the knight), the hero that will arrive is `chosen` at once (`picked`, its `PICK_SOUND`,
+  the panel follows) and its signature move starts once it has arrived. Nameplates follow the feet (`feet_at`) and fade
+  with the slot (`plate_alpha`); `class_at` picks only the visible heroes at their scale. Hidden slots' heroes and lights
+  are off (WebGL's light budget). Idle they breathe and look about (`_idle`), under the mouse the front three fidget
+  (`_fidget`), the chosen one does its signature move every 4.5 s with its effects (`SIGNATURE`, `_signature`). Choosing
+  a hero plays its own sound (`ClassStage.PICK_SOUND`, `pick_sound`), and the screen has its own theme, `music_select`
+  (`Game.zone_music()` brings the zone's song back when it closes). Below, in the inventory's iron frame: name, story,
+  stats, skills in the bar's sockets, the name and Play. The stage is built when the picker opens and freed when it
+  closes. A new class needs only a `ClassStage.CLASSES`/`ACCENTS`/`EMBLEMS`/`SIGNATURE` entry and its `_fidget` case (it
+  gets its own stand automatically) and a `SKILL_SHOW` entry per skill (hover a skill in the panel: the centred hero
+  performs it on the stage, `show_skill`). Tests: `tools/class_carousel_test.gd` (`--fixed-fps 60`: turning, wrapping,
+  queued turns, clicks, keys, wheel, feet on plinths, skill previews); `tools/class_shot.gd -- outdir [frames]`.
 - **Title screen** (`UI._build_title`, `scripts/title_stage.gd` `TitleStage`): the Gate of the Ashen Crown at dusk in
   its own World3D: a ruined cathedral gate with the dusk showing through its arch (`BACKDROP_SHADER`), broken arcades,
   the fallen stone king and a giant crown in the ash, fog banks, falling ash, embers, braziers and torches, heat

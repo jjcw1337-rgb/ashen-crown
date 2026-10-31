@@ -3502,6 +3502,7 @@ func _enchant_burst(p: Control) -> void:
 var class_stage: ClassStage
 var class_info: Control
 var class_plates := {}
+var class_arrows := {}              # -1 / 1 -> ClassArrow
 var _class_sel := "knight"
 
 func _build_class_picker() -> void:
@@ -3523,7 +3524,7 @@ func _build_class_picker() -> void:
 	t.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	t.offset_top = 26
 	class_panel.add_child(t)
-	var hint := _label("Hover over a hero, click to choose", 14, Color(0.62, 0.58, 0.5))
+	var hint := _label("Turn with the arrows or the keys, click a hero to choose", 14, Color(0.62, 0.58, 0.5))
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	hint.offset_top = 80
@@ -3713,7 +3714,25 @@ func _open_class_stage() -> void:
 		p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(p)
 		class_plates[c] = p
-	class_stage.choose(_class_sel)
+	# the carousel's arrows at the stage's edges, level with the heroes
+	for dir: int in [-1, 1]:
+		var ar := ClassArrow.new()
+		ar.setup(dir)
+		ar.anchor_left = 0.0 if dir < 0 else 1.0
+		ar.anchor_right = ar.anchor_left
+		ar.anchor_top = 0.5
+		ar.anchor_bottom = 0.5
+		var w := ClassArrow.SIZE.x
+		ar.offset_left = 48.0 if dir < 0 else -48.0 - w
+		ar.offset_right = ar.offset_left + w
+		ar.offset_top = -ClassArrow.SIZE.y * 0.5 - 36.0
+		ar.offset_bottom = ar.offset_top + ClassArrow.SIZE.y
+		ar.turned.connect(func(d: int):
+			if class_stage != null:
+				class_stage.turn(d))
+		holder.add_child(ar)
+		class_arrows[dir] = ar
+	class_stage.snap_to(_class_sel)
 	_show_class(_class_sel)
 	# the hero select has its own theme (back to the zone's when it closes)
 	Sfx.play_music("select")
@@ -3726,6 +3745,120 @@ func _close_class_stage() -> void:
 	for c in class_plates:
 		(class_plates[c] as Label).queue_free()
 	class_plates.clear()
+	for d in class_arrows:
+		(class_arrows[d] as Control).queue_free()
+	class_arrows.clear()
+
+## Left/Right (or A/D) turn the carousel while the picker is open and nothing is being typed.
+func _class_key(ev: InputEvent) -> bool:
+	if class_stage == null or not class_panel.visible or not (ev is InputEventKey):
+		return false
+	var k := ev as InputEventKey
+	if not k.pressed:
+		return false
+	if name_edit != null and name_edit.has_focus():
+		return false
+	var dir := 0
+	if k.keycode == KEY_LEFT or k.keycode == KEY_A:
+		dir = -1
+	elif k.keycode == KEY_RIGHT or k.keycode == KEY_D:
+		dir = 1
+	if dir == 0:
+		return false
+	if not k.echo:
+		var ar := class_arrows.get(dir) as ClassArrow
+		if ar != null:
+			ar.flash()
+		class_stage.turn(dir)
+	return true
+
+## One of the carousel's two arrows (a Meshy-painted iron chevron with a gold gem): brightens, grows a
+## little and its gem glows under the mouse; pressed it dips; a click turns the ring one way.
+class ClassArrow extends Control:
+	signal turned(dir: int)
+	const SIZE := Vector2(150, 158)
+	static var _tex: Texture2D
+	static var _gem: Texture2D
+	var dir := 1
+	var art: TextureRect
+	var gem: TextureRect
+	var _hot := 0.0
+	var _over := false
+	var _down := false
+	var _flash := 0.0
+
+	func setup(d: int) -> void:
+		dir = d
+		if _tex == null:
+			_tex = load("res://assets/textures/ui/arrow_left.png")
+			_gem = load("res://assets/textures/ui/arrow_gem.png")
+		custom_minimum_size = SIZE
+		size = SIZE
+		pivot_offset = SIZE * 0.5
+		mouse_filter = Control.MOUSE_FILTER_STOP
+		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		tooltip_text = "Previous hero  (Left, A)" if d < 0 else "Next hero  (Right, D)"
+		art = TextureRect.new()
+		art.texture = _tex
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		art.set_anchors_preset(Control.PRESET_FULL_RECT)
+		art.flip_h = d > 0
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(art)
+		gem = TextureRect.new()
+		gem.texture = _gem
+		gem.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		gem.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		gem.set_anchors_preset(Control.PRESET_FULL_RECT)
+		gem.flip_h = d > 0
+		gem.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var gm := CanvasItemMaterial.new()
+		gm.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		gem.material = gm
+		gem.modulate = Color(1, 1, 1, 0.0)
+		add_child(gem)
+		mouse_entered.connect(func(): _over = true)
+		mouse_exited.connect(func():
+			_over = false
+			_down = false)
+		_apply(0.0)
+
+	func _gui_input(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton:
+			var mb := ev as InputEventMouseButton
+			accept_event()
+			if mb.button_index == MOUSE_BUTTON_LEFT:
+				if mb.pressed:
+					_down = true
+					_flash = 1.0
+					turned.emit(dir)
+				else:
+					_down = false
+			elif mb.pressed and (mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_LEFT):
+				turned.emit(-1)
+			elif mb.pressed and (mb.button_index == MOUSE_BUTTON_WHEEL_DOWN or mb.button_index == MOUSE_BUTTON_WHEEL_RIGHT):
+				turned.emit(1)
+		elif ev is InputEventMouseMotion:
+			accept_event()
+
+	## A key press lights the arrow for a moment as a click would.
+	func flash() -> void:
+		_flash = 1.0
+
+	func _process(delta: float) -> void:
+		_hot = move_toward(_hot, 1.0 if _over else 0.0, delta * 7.0)
+		_flash = maxf(_flash - delta * 3.0, 0.0)
+		_apply(delta)
+
+	func _apply(_delta: float) -> void:
+		var glow := maxf(_hot, _flash)
+		var k := 1.0 + 0.06 * _hot - (0.05 if _down else 0.0) + 0.03 * _flash
+		scale = Vector2(k, k)
+		art.modulate = Color(1, 1, 1).lerp(Color(1.25, 1.18, 1.05), glow) * (0.9 if _down else 1.0)
+		# the gem's light: a slow pulse at rest, blazing under the mouse
+		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 2.2 + dir)
+		gem.modulate = Color(1, 1, 1, 0.1 + 0.12 * pulse + 0.75 * glow)
 
 func open_class_picker() -> void:
 	Sfx.play("click")
@@ -3979,6 +4112,9 @@ func _unhandled_key_input(ev: InputEvent) -> void:
 	if game and game.paused and ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_ESCAPE:
 		game.toggle_pause()
 		get_viewport().set_input_as_handled()
+		return
+	if _class_key(ev):
+		get_viewport().set_input_as_handled()
 
 # ---------------------------------------------------------------- updates
 func toggle(panel: Control) -> void:
@@ -4140,10 +4276,13 @@ func _process(delta: float) -> void:
 	_update_drag(delta)
 	_walked_off()
 	if class_stage != null and class_stage.is_visible_in_tree():
-		# the nameplates sit just under each hero's feet
+		# the nameplates sit just under each hero's feet, fading with the hero into the gloom
 		for c in class_plates:
 			var p: Label = class_plates[c]
-			p.position = class_stage.feet_at(c) + Vector2(-80, 10)
+			var a: float = class_stage.plate_alpha(c)
+			p.visible = a > 0.02
+			p.modulate = Color(1, 1, 1, a)
+			p.position = class_stage.feet_at(c) + Vector2(-80, 8 + 10 * float(class_stage.scales[c]))
 	if char_panel and char_panel.visible and hero:
 		_sheet_camera(delta)
 		if sheet_points.visible:
