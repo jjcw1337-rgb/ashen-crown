@@ -1,6 +1,6 @@
 extends SceneTree
 ## Preview of the mocap knight (Knight.build_mocap) as the game drives him through Anim.pose.
-## Needs a display (xvfb). Usage: -- outdir mode [side|front|34|back] [frames]
+## Needs a display (xvfb). Usage: -- outdir mode [side|front|34|back|game|close] [frames] [archer|wraith] [relaxed]
 ## modes: idle, run (stand, run, stop), attack (the three-swing combo standing), runattack (run into a swing),
 ##        block, turn (runs a circle), draw (sheathed run, stop, draw the sword, guard, holster)
 func _initialize():
@@ -52,7 +52,9 @@ func _run() -> void:
 	var archer := args.has("archer")
 	# archer.gd uses the Sfx autoload: load it at run time (a static reference compiles it before Sfx exists)
 	var AR: GDScript = load("res://scripts/archer.gd") if archer else null
-	var r: Node3D = AR.call("build_body") if archer else Knight.build_mocap()
+	var wraith := args.has("wraith")
+	var relaxed := args.has("relaxed")    # weapon away (no battle stance)
+	var r: Node3D = AR.call("build_body") if archer else (Wraith.build(Wraith.default_gear()) if wraith else Knight.build_mocap())
 	r.set_meta("pers", "hero")
 	r.set_meta("gait", "knight")
 	r.set("fixed_dt", 1.0 / 30.0)
@@ -70,7 +72,9 @@ func _run() -> void:
 		(J["grip_bow_at"] as Node3D).add_child(sword)
 	else:
 		(J["grip_r"] as Node3D).add_child(sword)
-	if not archer:
+	if wraith:
+		sword.visible = false
+	if not archer and not wraith:
 		var sh := Models.item_model({"base": "kite_shield", "rarity": 0})
 		(J["mount_l"] as Node3D).add_child(sh)
 		sh.position = Vector3(-0.03, 0, 0)
@@ -85,9 +89,14 @@ func _run() -> void:
 		var T := f * dt
 		var want := 0.0
 		var st := {"time": 2.0 + T}
+		if relaxed:
+			st["draw"] = 0.0
 		match mode:
 			"run":
 				want = 4.8 if T > 0.8 and T < 3.4 else 0.0
+			"walk":
+				want = 1.1 if T > 0.6 and T < 4.6 else 0.0
+				st["draw"] = 0.0
 			"turn":
 				want = 4.8
 				yaw += dt * 1.3
