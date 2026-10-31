@@ -3,7 +3,8 @@ extends SceneTree
 ## Needs a display (xvfb). Usage: -- outdir mode [side|front|34|back|game|close] [frames] [archer|wraith|demon] [relaxed]
 ## modes: idle, run (stand, run, stop), attack (the three-swing combo standing), runattack (run into a swing),
 ##        block, turn (runs a circle), draw (sheathed run, stop, draw the sword, guard, holster),
-##        demontour (the Demon: idle, walk, run, a turn, every clip of his, a hit, death; ~34 s)
+##        demontour (the Demon: idle, walk, run, a turn, every clip of his, a hit, death; ~34 s),
+##        demontail (the Demon's tail: 8 s standing, walk, run, charge, a turn, one swing; 25 s; view "tail" = rear 3/4)
 func _initialize():
 	_run()
 
@@ -172,6 +173,22 @@ func _run() -> void:
 							st["hit"] = 1.0 - (tt - acc - 0.4) / 0.5
 						elif tt >= acc + 1.6:
 							st["dead"] = tt - acc - 1.6
+			"demontail":
+				st["draw"] = 0.0 if T < 8.0 else 1.0
+				if T < 8.0:
+					want = 0.0
+				elif T < 12.0:
+					want = 1.3
+				elif T < 16.0:
+					want = 4.8
+				elif T < 19.0:
+					want = 7.7
+				elif T < 22.0:
+					want = 4.8
+					yaw += dt * 1.6
+				elif T > 22.6 and T < 23.5:
+					st["atk"] = (T - 22.6) / 0.9
+					st["style"] = "swipe2"
 			"draw":
 				# run sheathed, stop, draw (0.85 s), stand in guard, holster (0.9 s)
 				want = 4.8 if T > 0.5 and T < 2.2 else 0.0
@@ -215,13 +232,15 @@ func _run() -> void:
 				var gp: Vector3 = sword.global_transform * (sp["grip"] as Vector3)
 				print("[H] f%d atk %.2f  nock-fingers %.3f m  grip-lefthand %.3f m" % [f, float(st.get("atk", -1.0)), nk.distance_to(fing), gp.distance_to(lh)])
 		var c := r.position
-		var off: Vector3 = {"side": Vector3(4.4, 1.2, 0.0), "front": Vector3(0.0, 1.4, -4.4), "back": Vector3(0.0, 1.6, 4.4), "34": Vector3(2.8, 2.0, -3.0), "game": Vector3(0, 17.0, 16.5) * 0.45}.get(view, Vector3(2.8, 2.0, -3.0))
+		var off: Vector3 = {"side": Vector3(4.4, 1.2, 0.0), "front": Vector3(0.0, 1.4, -4.4), "back": Vector3(0.0, 1.6, 4.4), "34": Vector3(2.8, 2.0, -3.0), "tail": Vector3(3.6, 1.4, 3.4), "game": Vector3(0, 17.0, 16.5) * 0.45}.get(view, Vector3(2.8, 2.0, -3.0))
 		if view == "game":
 			off = Vector3(0, 17.0, 16.5) * 0.45
 		if mode == "turn":
 			c = Vector3.ZERO
 			off = Vector3(0, 9, 7)
 		var look := Vector3(0, 0.95, 0)
+		if view == "tail":
+			look = Vector3(0, 1.0, 0)
 		var closes := {"close": Vector3(2.2, 0.1, -2.0), "closeback": Vector3(-1.4, 0.3, 2.6), "closetop": Vector3(0.3, 1.6, -0.6)}
 		if demon:
 			off *= 1.4 if view != "game" else 1.0

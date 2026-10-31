@@ -20,6 +20,8 @@ var tail_bones: Array = []
 var tail_p: Array = []        # per bone pitch spring [x, v] (about the rig's x)
 var tail_y: Array = []        # per bone yaw spring [x, v] (about the rig's y)
 var tail_lash := 0.0
+var tail_bend_y: Array = []   # the model's own curl: each bone's yaw and pitch from the one before (rig frame), undone to straighten it
+var tail_bend_p: Array = []
 var bone_conj := {}           # bone -> [rest local rotation, rest rotation in the rig frame]
 var bone_rest_pos := {}
 var _st := {}
@@ -32,10 +34,11 @@ var thump := 0.0              # a footfall this frame (its weight), read and cle
 var dead_t := -1.0
 var cloth_kick := 0.0
 var lash_sign := 1.0
+var flick_t := 3.0            # seconds to the tail's next flick or curl while he stands
 var _gait := 0.0
 
-const TAIL_LIFT := [-0.6, -0.3, -0.08, 0.05, 0.08, 0.05, 0.0]     # the resting pitch per bone (rad, - = swung back)
-const TAIL_BEND := [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]            # yaw laid on the curl at rest
+const TAIL_LIFT := [-0.68, -0.35, -0.18, -0.1, -0.06, -0.02, 0.0]   # the resting pitch per bone (rad, - = swung back; -1.39 in all: the tip a hand off the ground)
+const LIFT_W := [0.35, 0.25, 0.15, 0.1, 0.08, 0.05, 0.02]           # how a lift of the whole tail is shared down the chain
 
 func setup(root_node: Node3D, skeleton: Skeleton3D, joints: Dictionary) -> void:
 	super(root_node, skeleton, joints)
@@ -60,6 +63,23 @@ func setup(root_node: Node3D, skeleton: Skeleton3D, joints: Dictionary) -> void:
 	for i in skel.get_bone_count():
 		bone_conj[i] = [skel.get_bone_rest(i).basis.get_rotation_quaternion(), rest_rot(i)]
 		bone_rest_pos[i] = skel.get_bone_rest(i).origin
+	# the tail's curl as modelled: the turn of each bone from the one before, so the sim can straighten it out
+	var prev_dir := Vector3.DOWN
+	for k in tail_bones.size():
+		var b: int = tail_bones[k]
+		var dir: Vector3
+		if k + 1 < tail_bones.size():
+			dir = R * ((rest_g[tail_bones[k + 1]] as Transform3D).origin - (rest_g[b] as Transform3D).origin)
+		else:
+			dir = R * ((rest_g[b] as Transform3D).basis * Vector3.UP)   # the last bone's own length (Blender bones point along +y)
+		dir = dir.normalized()
+		var yaw0 := atan2(prev_dir.x, prev_dir.z)
+		var yaw1 := atan2(dir.x, dir.z)
+		var flat0 := Vector2(prev_dir.x, prev_dir.z).length()
+		var flat1 := Vector2(dir.x, dir.z).length()
+		tail_bend_y.append(wrapf(yaw1 - yaw0, -PI, PI) if flat0 > 0.2 and flat1 > 0.2 else 0.0)
+		tail_bend_p.append(atan2(dir.y, flat1) - atan2(prev_dir.y, flat0))
+		prev_dir = dir
 	for n in ["LeftFoot", "RightFoot"]:
 		foot_bones.append(skel.find_bone(n))
 
@@ -122,8 +142,11 @@ func _footfalls(dt: float, g: float) -> void:
 		if foot_vy[k] < -0.5 and vy > -0.08 and y < 0.2 and g > 0.12:
 			thump = maxf(thump, clampf(-foot_vy[k] * 0.4, 0.3, 1.0))
 			cloth_kick += 0.12
+			# the stride's phase locks to the feet (left lands at 0, right at PI), so the tail's sway keeps time
+			var want_ph := 0.0 if k == 0 else PI
+			_gait += wrapf(want_ph - fmod(_gait, TAU), -PI, PI) * 0.5
 			for i in tail_p.size():
-				tail_p[i][1] += 0.35 * (0.5 + 0.1 * i)
+				tail_p[i][1] += (0.3 + 0.3 * clampf(g, 0.0, 1.6)) * (0.5 + 0.12 * i)
 		foot_y[k] = y
 		foot_vy[k] = vy
 
@@ -197,7 +220,12 @@ func _wings(a: float, style: String, hit: float, die: bool, g: float, t: float, 
 		var q4 := Quaternion(Vector3.BACK, -sx * (0.3 * closed - 0.2 * lift)) * Quaternion(Vector3.UP, sx * 0.3 * closed)
 		_set_rig_rot(ids[3], q4)
 
-## The tail: a chain of springs (pitch and yaw per bone, the end looser than the root).
+## The tail: a heavy chain of springs (pitch and yaw per bone, the end looser than the root). Standing, it is never
+## still: a slow travelling wave runs down it (the root barely moves, the tip most, each bone a little behind the one
+## before; three incommensurate sines and a drift of noise, so nothing repeats), it lifts and settles, and every few
+## seconds the tip curls or flicks. Moving, it sways side to side with the stride (phased to the footfalls, counter
+## to the hips, the wave lagging down the chain so the tip whips), lifts off the ground and trails behind with the
+## speed (the charge most), bounces on each footfall, swings out the other way round a turn and lashes on an attack.
 func _tail(a: float, style: String, die: bool, g: float, t: float, dt: float, started: bool, struck: bool, yaw_v: float, fwd_speed: float, side_speed: float) -> void:
 	var n := tail_bones.size()
 	if n == 0:
@@ -213,24 +241,67 @@ func _tail(a: float, style: String, die: bool, g: float, t: float, dt: float, st
 		for i in n:
 			tail_p[i][1] += 1.5 + 0.3 * i
 	tail_lash = maxf(tail_lash - dt * 1.5, 0.0)
-	var sway_amp := 0.03 + 0.12 * clampf(g, 0.0, 1.0)
-	var turn := clampf(yaw_v * 0.22, -0.7, 0.7)
+	var moving := clampf(g * 2.5, 0.0, 1.0)          # 0 standing .. 1 walking and above
 	var limp := smoothstep(0.3, 1.4, dead_t) if dead_t >= 0.0 else 0.0
+	# the occasional flick of the tip while he stands (or a slow curl): an impulse into the outer bones
+	flick_t -= dt
+	if flick_t <= 0.0 and moving < 0.5 and a < 0.0 and limp == 0.0:
+		flick_t = randf_range(2.5, 6.5)
+		var curl := randf() < 0.45
+		var sgn := -1.0 if randf() < 0.5 else 1.0
+		for i in n:
+			var d := float(i) / maxf(n - 1, 1)
+			var reach := smoothstep(0.3, 1.0, d)
+			if curl:
+				tail_p[i][1] += -1.1 * reach       # the tip curls up, then settles
+				tail_y[i][1] += sgn * 0.5 * reach
+			else:
+				tail_y[i][1] += sgn * (1.6 + 0.6 * randf()) * reach     # a sideways flick
+	var turn := clampf(yaw_v * 0.16, -0.5, 0.5)
+	var sway_amp := 0.06 + 0.14 * clampf(g, 0.0, 1.6)
+	# the whole tail's lift at speed (shared down the chain by LIFT_W): a run carries it level, the charge a little up
+	var lift_run := 0.25 * clampf(g, 0.0, 1.0) + 0.1 * clampf((g - 1.1) / 0.5, 0.0, 1.0)
+	var breath := sin(t * 0.21 + 0.4) * 0.6 + sin(t * 0.137) * 0.4                              # the slow lift and settle
+	# the model's curl opens as he moves: coiled a quarter at rest, straight out behind him at a run
+	var straight := 0.25 + 0.75 * clampf(g / 0.9, 0.0, 1.0)
 	for i in n:
 		var d := float(i) / maxf(n - 1, 1)
 		var lift: float = TAIL_LIFT[mini(i, TAIL_LIFT.size() - 1)]
-		# the heavy tail hangs toward the ground: at speed it streams out behind and rises a little
-		var want_p: float = lift - 0.22 * clampf(g, 0.0, 1.2) * (0.3 + d) + sin(t * 1.1 + d * 2.0) * 0.03 * (1.0 - g)
-		var want_y: float = TAIL_BEND[mini(i, TAIL_BEND.size() - 1)] + sin(_gait * 0.5 - d * 2.4) * sway_amp * (0.3 + d) + sin(t * 0.7 + d * 3.0) * 0.04
-		want_y += turn * (0.4 + 0.8 * d)        # swings out the other way round a turn
+		var lw: float = LIFT_W[mini(i, LIFT_W.size() - 1)]
+		var uncurl_y: float = -tail_bend_y[i] * straight
+		var uncurl_p: float = tail_bend_p[i] * straight * 0.8 if i > 0 else 0.0
+		# standing: the lazy wave down the chain (phase lag per bone, more swing toward the tip) and a drift of noise
+		var lag := d * 2.4
+		var wave_y := (sin(t * 0.62 - lag) * 0.55 + sin(t * 1.0 * 1.618 - lag * 1.3 + 1.1) * 0.3 + sin(t * 0.29 - lag * 0.7 + 2.0) * 0.25) * (0.025 + 0.13 * d * d)
+		var wave_p := (sin(t * 0.47 - lag * 0.9 + 0.5) * 0.6 + sin(t * 0.83 * 1.3 - lag + 2.6) * 0.4) * (0.015 + 0.07 * d)
+		var noise_y := (sin(t * 0.37 * 2.1 + d * 5.0) * sin(t * 0.91 + d) + sin(t * 1.73 * 0.6 + d * 3.0) * 0.5) * 0.02 * (0.2 + d)
+		var idle_p := lift + wave_p + noise_y * 0.5 - breath * 0.12 * lw
+		var idle_y := wave_y + noise_y
+		# moving: the gait sway (phased to the footfalls, lagging down the chain) and the lift at speed
+		var gait_y := sin(_gait - 0.4 - d * 1.9) * sway_amp * (0.25 + 0.75 * d)
+		var move_p := lift - lift_run * lw + sin(_gait * 2.0 - d * 1.5) * 0.03 * (0.3 + d)
+		var move_y := gait_y + sin(t * 1.3 - lag) * 0.02 * d
+		var want_p := lerpf(idle_p, move_p, moving) + uncurl_p
+		var want_y := lerpf(idle_y, move_y, moving) + uncurl_y
+		want_y += turn * (0.25 + 0.5 * d)       # swings out the other way round a turn
 		want_y -= clampf(side_speed * 0.05, -0.25, 0.25) * (0.3 + d)
 		if limp > 0.0:
 			want_p = lerpf(want_p, 0.3 + 0.2 * d, limp)
 			want_y = lerpf(want_y, 0.0, limp)
-		var stiff := (34.0 - 3.2 * i) * (1.0 - 0.7 * limp)
-		var damp := (4.8 - 0.35 * i) * (1.0 + 1.5 * limp)
-		var p := _spring(tail_p[i], want_p, stiff, damp, dt, 1.3)
+		var stiff := (30.0 - 2.8 * i) * (1.0 - 0.7 * limp)
+		var damp := (4.6 - 0.32 * i) * (1.0 + 1.5 * limp)
+		var p := _spring(tail_p[i], want_p, stiff, damp, dt, 1.4)
 		var y := _spring(tail_y[i], want_y, stiff * 0.9, damp, dt, 1.1)
+		# never down into the ground past its rest hang, and the root never swings in between the legs
+		if limp == 0.0:
+			var floor_p := lift + uncurl_p + 0.18 * (0.4 + 0.6 * d)
+			if p > floor_p:
+				tail_p[i][0] = floor_p
+				tail_p[i][1] = minf(tail_p[i][1], 0.0)
+				p = floor_p
+			if i < 2 and absf(y) > 0.55:
+				tail_y[i][0] = signf(y) * 0.55
+				y = tail_y[i][0]
 		_set_rig_rot(tail_bones[i], Quaternion(Vector3.UP, y) * Quaternion(Vector3.RIGHT, p))
 
 ## The loincloth's front flap: kicked forward by the stride, pressed back a little by the air, never into the legs.

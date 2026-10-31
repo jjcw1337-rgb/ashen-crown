@@ -208,10 +208,15 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   every frame, all springs: the wings fold and breathe at rest, half open and flex with the walk, spread and sweep back
   at a run, fly wide for a cast or a roar, beat on the slams and stomps, sag in death (`_wings`: fold / lift / sweep
   per side, turns in the rig frame through the bones' rest conj like the hair locks); the tail is a heavy chain
-  (`_tail`: `TAIL_LIFT` holds it off the ground, it sways with the gait, swings out opposite a turn, lashes when an
-  attack starts, is jolted by footfalls, goes limp dead); the flap is kicked by the stride and never swings into
-  the legs (`_cloth`); `_footfalls` counts each foot landing (`thump`, which `Demon.animate` turns into a small
-  `add_shake` for the local hero). His moves are whole-body clips through `Demon.SHOTS` (style -> clip and
+  (`_tail`: `TAIL_LIFT` holds it a hand off the ground; standing, a slow travelling wave of three incommensurate
+  sines plus noise runs down it (root still, tip most, lag per bone), it lifts and settles, and every 2.5-6.5 s the
+  tip curls or flicks (`flick_t`); moving, it sways with the stride, phased to the detected footfalls (`_gait` is
+  pulled to the foot that lands), lifts and straightens out behind him with speed (the modelled curl is measured
+  in `setup`, `tail_bend_y/p`, and undone by `straight`; `LIFT_W` shares the lift down the chain; the charge
+  lifts it most), bounces on footfalls, swings out opposite a turn, lashes when an attack starts, never pitches
+  below its rest hang nor swings its root between the legs, goes limp dead); the flap is kicked by the stride and
+  never swings into the legs (`_cloth`); `_footfalls` counts each foot landing (`thump`, which `Demon.animate`
+  turns into a small `add_shake` for the local hero). His moves are whole-body clips through `Demon.SHOTS` (style -> clip and
   progress keys: Hellfire Claw "side" = claw, the casts = cast, the combo swipe1/2/3 = claw / smash / slam, Space's
   over / back / thrust = smash / claw / hurl; roar, stomp and grab wait for his skills' stage). The death is the
   clip's fall (meta `own_death`: `Hero._own_death` skips the death tilt), then the rig cools the lava (shader
@@ -221,7 +226,8 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   Blood Pact), `phase_amt` = the Underworld shadow (dithered away, violet in the cracks; `Demon.animate` eases it
   from `hero.phased`). The weapon grips sit lower in his big fists and are scaled 1.35x (`Demon.build_mocap`).
   Preview: `tools/mocap_knight_clip.gd -- outdir demontour close|closeback|game|side|back 1020 demon` (idle, walk,
-  run, a turn, every clip, a hit, death; `--fixed-fps 30`).
+  run, a turn, every clip, a hit, death; `--fixed-fps 30`); `demontail tail|game 750 demon` is the tail alone (8 s
+  standing, walk, run, charge, a turn, a swing; the `tail` view is a rear three-quarter).
 - **Underworld** (Demon's Phase): `game.set_underworld()` blends a screen-space grade (`DemonFx.UNDERWORLD_SHADER`), the `under_amt` global (terrain veins and rune rings in `mats.gd`), environment tweaks, rising souls and crimson monster outlines (`Enemy.set_soul_lit`). Monsters ignore a phased hero (`hero.phased`).
 - **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `_update_drain`, and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. Skill effects are local only (partners see the cast pose, not the beam), like every other class.
 - **King Grubb** (Act I boss, `hoard.gd`) is host-authoritative. Every visible part of the fight (piles, bombs, burst
