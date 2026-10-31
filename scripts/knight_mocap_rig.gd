@@ -33,6 +33,7 @@ var hips_rest := Vector3.ZERO
 var hips_pose_rest := Vector3.ZERO
 var w_up := 0.0               # how much of the upper body the procedural moves own (0..1)
 var w_low := 0.0              # ... and of the legs
+var w_shield := 0.0           # the shield arm (SHIELD_ARM) carried by the procedural pose while a shield is on (meta "shield")
 var speed := 0.0              # smoothed ground speed (m/s)
 var shot := {}                # whole-body clip for an attack style: {style, clip, t0, release, t1}; see sync_pose
 var shots := {}               # several such clips, one per attack style (the Wraith's skills): the "shot" node plays whichever
@@ -103,6 +104,9 @@ var _state := ""            # the death transition's state ("" until the first f
 
 const UPPER := ["Spine", "Spine01", "Spine02", "neck", "Head", "LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand",
 	"RightShoulder", "RightArm", "RightForeArm", "RightHand"]
+## with a shield on (the hero sets the rig's "shield" meta), the left arm always takes Anim's pose: shield at his
+## side, up across the chest at a run, raised to block; the motion capture's empty-handed swing tore it about
+const SHIELD_ARM := ["LeftArm", "LeftForeArm", "LeftHand"]
 const LOWER := ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", "LeftToeBase", "RightUpLeg", "RightLeg", "RightFoot", "RightToeBase"]
 ## attacks whose footwork the procedural move owns (steps, leaps, spins)
 const FOOTWORK := ["swipe1", "swipe2", "swipe3", "cleave", "over", "back", "side", "thrust", "slam", "leap", "spin"]
@@ -297,7 +301,9 @@ func sync_pose(st: Dictionary) -> void:
 	var k := 1.0 - exp(-dt * 14.0) if dt > 0.0 else 1.0
 	w_up = lerpf(w_up, up_t, k)
 	w_low = lerpf(w_low, low_t, k)
-	if w_up > 0.002 or w_low > 0.002:
+	var sh_t := 1.0 if (bool(get_meta("shield", false)) and not die and not playing_act) else 0.0
+	w_shield = lerpf(w_shield, sh_t, k)
+	if w_up > 0.002 or w_low > 0.002 or w_shield > 0.002:
 		_apply_procedural()
 	_reach_hilt(st)
 	sync()   # the cloak (knight_rig.gd)
@@ -340,6 +346,8 @@ func _apply_procedural() -> void:
 			g = Basis(from_q.slerp(full.get_rotation_quaternion(), 0.34 if nm == "Spine" else (0.67 if nm == "Spine01" else 0.5)))
 		proc_g[i] = g
 		var w := w_up if UPPER.has(nm) else (w_low if LOWER.has(nm) else 0.0)
+		if SHIELD_ARM.has(nm):
+			w = maxf(w, w_shield)
 		if w <= 0.002:
 			continue
 		# global (rig) -> local: pose_local = parent_global^-1 * global, both in the skeleton frame
