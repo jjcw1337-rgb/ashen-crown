@@ -5,8 +5,8 @@ class_name ClassCathedral
 ## pointed windows letting in cold light, rows of pillars, fallen stones. `build` returns the materials
 ## ClassStage drives: "shafts" and "glows" (cls -> ShaderMaterial, uniform `power`).
 
-const HALL_W := 22.0
-const WALL_Z := -6.5
+const HALL_W := 32.0
+const WALL_Z := -9.5
 
 ## homes: cls -> feet position on top of its plinth; radii: cls -> plinth radius.
 static func build(root: Node3D, homes: Dictionary, radii: Dictionary, accents: Dictionary, emblems: Dictionary) -> Dictionary:
@@ -21,7 +21,7 @@ static func build(root: Node3D, homes: Dictionary, radii: Dictionary, accents: D
 		var col: Color = accents[c]
 		glows[c] = _plinth(root, Vector3(home.x, 0.0, home.z), r, home.y, col)
 		shafts[c] = _shaft(root, home, r, col)
-		_banner(root, Vector3(home.x, 3.15, home.z - 1.45), col, int(emblems.get(c, 0)), seed)
+		_banner(root, Vector3(home.x, 4.35, home.z - 1.7), col, int(emblems.get(c, 0)), seed)
 		_candles(root, Vector3(home.x, 0.0, home.z), r, seed)
 		seed += 1.7
 	_candelabra(root, Vector3(-6.3, 0.0, -0.6))
@@ -34,10 +34,10 @@ static func build(root: Node3D, homes: Dictionary, radii: Dictionary, accents: D
 static func _floor(root: Node3D) -> void:
 	var fl := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
-	pm.size = Vector2(HALL_W, 16.0)
+	pm.size = Vector2(HALL_W, 22.0)
 	fl.mesh = pm
 	fl.material_override = _shader_mat(FLOOR_SHADER)
-	fl.position = Vector3(0, 0, -0.5)
+	fl.position = Vector3(0, 0, -2.5)
 	root.add_child(fl)
 	# fallen stones and a toppled column drum among the rubble at the sides
 	var rubble: Array = [[-5.0, 1.1, 0.35], [-4.4, 1.6, 0.2], [-5.6, 0.2, 0.25], [4.7, 1.3, 0.3], [5.3, 0.6, 0.22],
@@ -70,12 +70,12 @@ static func _hall(root: Node3D) -> void:
 	# the back wall, with three pointed windows of cold light
 	var wall := MeshInstance3D.new()
 	var wb := BoxMesh.new()
-	wb.size = Vector3(HALL_W, 13.0, 0.6)
+	wb.size = Vector3(HALL_W, 16.0, 0.6)
 	wall.mesh = wb
 	wall.material_override = stone
-	wall.position = Vector3(0, 6.5, WALL_Z)
+	wall.position = Vector3(0, 8.0, WALL_Z)
 	root.add_child(wall)
-	for e: Array in [[0.0, 3.0, 7.2], [-4.3, 2.2, 5.6], [4.3, 2.2, 5.6]]:
+	for e: Array in [[0.0, 3.6, 9.5], [-5.4, 2.8, 7.6], [5.4, 2.8, 7.6]]:
 		var w := MeshInstance3D.new()
 		var q := QuadMesh.new()
 		q.size = Vector2(float(e[1]), float(e[2]))
@@ -87,13 +87,13 @@ static func _hall(root: Node3D) -> void:
 		root.add_child(w)
 	var moon := OmniLight3D.new()
 	moon.light_color = Color(0.55, 0.65, 0.85)
-	moon.light_energy = 1.2
-	moon.omni_range = 7.0
-	moon.position = Vector3(0, 5.0, WALL_Z + 1.5)
+	moon.light_energy = 1.6
+	moon.omni_range = 10.0
+	moon.position = Vector3(0, 6.0, WALL_Z + 2.0)
 	root.add_child(moon)
 	# rows of pillars down both sides, the nearest framing the stage
 	for sx: int in [-1, 1]:
-		for e: Array in [[5.9, -4.6, 0.42], [7.0, -1.8, 0.5], [8.4, 1.6, 0.62]]:
+		for e: Array in [[5.6, -7.2, 0.48], [6.4, -4.2, 0.52], [7.4, -1.2, 0.58], [8.8, 2.2, 0.7]]:
 			_pillar(root, Vector3(sx * float(e[0]), 0.0, float(e[1])), float(e[2]), stone)
 
 static func _pillar(root: Node3D, at: Vector3, r: float, mat: Material) -> void:
@@ -124,6 +124,7 @@ static func _plinth(root: Node3D, at: Vector3, r: float, top: float, col: Color)
 	var glow := _shader_mat(PLINTH_SHADER)
 	glow.set_shader_parameter("glow", col)
 	glow.set_shader_parameter("body_h", top - 0.24)
+	glow.set_shader_parameter("power", 0.2)
 	var foot := MeshInstance3D.new()
 	var fm := CylinderMesh.new()
 	fm.top_radius = r * 1.12
@@ -154,6 +155,7 @@ static func _plinth(root: Node3D, at: Vector3, r: float, top: float, col: Color)
 	var cm := _shader_mat(CAP_SHADER)
 	cm.set_shader_parameter("glow", col)
 	cm.set_shader_parameter("rad", r * 1.08)
+	cm.set_shader_parameter("power", 0.2)
 	cap.material_override = cm
 	cap.position = at + Vector3(0, top - 0.06, 0)
 	root.add_child(cap)
@@ -165,8 +167,8 @@ static func _plinth(root: Node3D, at: Vector3, r: float, top: float, col: Color)
 static func _shaft(root: Node3D, home: Vector3, r: float, col: Color) -> ShaderMaterial:
 	var m := MeshInstance3D.new()
 	var cm := CylinderMesh.new()
-	cm.top_radius = r * 0.45
-	cm.bottom_radius = r * 1.35
+	cm.top_radius = r * 0.4
+	cm.bottom_radius = r * 1.15
 	cm.height = 8.0
 	cm.radial_segments = 24
 	cm.cap_top = false
@@ -174,9 +176,10 @@ static func _shaft(root: Node3D, home: Vector3, r: float, col: Color) -> ShaderM
 	m.mesh = cm
 	var sm := _shader_mat(SHAFT_SHADER)
 	sm.set_shader_parameter("col", col)
+	sm.set_shader_parameter("power", 0.2)
 	m.material_override = sm
 	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	m.position = Vector3(home.x, home.y + 4.0 - 0.05, home.z - 0.05)
+	m.position = Vector3(home.x, home.y + 4.0 - 0.05, home.z - 0.45)
 	root.add_child(m)
 	return sm
 
@@ -186,13 +189,13 @@ static func _shaft(root: Node3D, home: Vector3, r: float, col: Color) -> ShaderM
 static func _banner(root: Node3D, at: Vector3, col: Color, emblem: int, seed: float) -> void:
 	var b := MeshInstance3D.new()
 	var q := QuadMesh.new()
-	q.size = Vector2(1.05, 2.4)
+	q.size = Vector2(0.9, 2.1)
 	q.subdivide_width = 4
 	q.subdivide_depth = 16
 	b.mesh = q
 	var bm := _shader_mat(BANNER_SHADER)
-	bm.set_shader_parameter("cloth", col.darkened(0.72))
-	bm.set_shader_parameter("mark", col)
+	bm.set_shader_parameter("cloth", col.darkened(0.8).lerp(Color(0.08, 0.07, 0.06), 0.35))
+	bm.set_shader_parameter("mark", col.lerp(Color(0.85, 0.7, 0.4), 0.25))
 	bm.set_shader_parameter("emblem", emblem)
 	bm.set_shader_parameter("seed", seed)
 	b.material_override = bm
@@ -202,14 +205,14 @@ static func _banner(root: Node3D, at: Vector3, col: Color, emblem: int, seed: fl
 	var rc := CylinderMesh.new()
 	rc.top_radius = 0.025
 	rc.bottom_radius = 0.025
-	rc.height = 1.35
+	rc.height = 1.2
 	rod.mesh = rc
 	var rm := StandardMaterial3D.new()
 	rm.albedo_color = Color(0.12, 0.1, 0.08)
 	rm.metallic = 0.7
 	rm.roughness = 0.45
 	rod.material_override = rm
-	rod.position = at + Vector3(0, 1.22, 0.02)
+	rod.position = at + Vector3(0, 1.07, 0.02)
 	rod.rotation = Vector3(0, 0, PI * 0.5)
 	root.add_child(rod)
 
@@ -369,13 +372,13 @@ void fragment() {
 	// ashlar blocks on walls and pillars, worn stone everywhere
 	vec2 q = abs(wn.x) > abs(wn.z) ? wp.zy : wp.xy;
 	if (abs(wn.y) > 0.6) q = wp.xz;
-	q *= vec2(1.3, 2.4);
+	q *= vec2(0.9, 1.7);
 	q.x += floor(q.y) * 0.5;
 	vec2 f = fract(q);
 	float seam = smoothstep(0.0, 0.05, f.x) * smoothstep(0.0, 0.07, f.y) * smoothstep(1.0, 0.95, f.x) * smoothstep(1.0, 0.93, f.y);
 	float n = vnoise(wp.xy * 2.0 + wp.z) * 0.5 + vnoise(wp.zy * 6.0) * 0.3;
-	vec3 c = vec3(0.17, 0.155, 0.14) * (0.75 + h21(floor(q)) * 0.35) * (0.7 + n * 0.6);
-	ALBEDO = c * mix(0.45, 1.0, seam);
+	vec3 c = vec3(0.15, 0.14, 0.13) * (0.82 + h21(floor(q)) * 0.22) * (0.65 + n * 0.6);
+	ALBEDO = c * mix(0.62, 1.0, seam);
 	ROUGHNESS = 0.85;
 }
 """
@@ -454,7 +457,7 @@ void fragment() {
 	float streak = 0.75 + 0.25 * vnoise(vec2(ang * 3.0, lp.y * 0.6 - TIME * 0.15));
 	vec2 g = vec2(ang * 9.0, lp.y * 9.0 + TIME * 0.7);
 	float dust = step(0.975, h21(floor(g))) * smoothstep(0.5, 0.0, length(fract(g) - 0.5)) * 2.0;
-	ALBEDO = col.rgb * (soft * fall * streak * 0.42 + dust * soft * fall) * (0.35 + power * 1.3);
+	ALBEDO = col.rgb * (soft * fall * streak * 0.26 + dust * soft * fall * 0.7) * (0.25 + power * 1.25);
 }
 """
 
@@ -520,7 +523,7 @@ void fragment() {
 	c *= 1.0 - 0.45 * smoothstep(0.55, 0.8, uv.y);                      // grimy, scorched hem
 	// a gold border and the emblem
 	float border = step(uv.x, 0.06) + step(0.94, uv.x) + step(uv.y, 0.04);
-	vec2 p = vec2((uv.x - 0.5) * 2.0, (0.36 - uv.y) * 4.4);              // emblem space, centred
+	vec2 p = vec2((uv.x - 0.5) * 3.1, (0.3 - uv.y) * 6.6);              // emblem space, centred
 	float e = 0.0;
 	if (emblem == 1) {
 		e = max(step(abs(p.x), 0.11) * step(abs(p.y + 0.15), 0.85), step(abs(p.y - 0.25), 0.11) * step(abs(p.x), 0.5));
@@ -543,8 +546,8 @@ void fragment() {
 	}
 	e = clamp(e, 0.0, 1.0);
 	vec3 gold = vec3(0.55, 0.42, 0.18);
-	ALBEDO = mix(mix(c, gold, clamp(border, 0.0, 1.0) * 0.8), mark.rgb * 0.8, e);
-	EMISSION = mark.rgb * e * 0.35;
+	ALBEDO = mix(mix(c, gold, clamp(border, 0.0, 1.0) * 0.7), mark.rgb * 0.55, e * 0.85);
+	EMISSION = mark.rgb * e * 0.12;
 	ROUGHNESS = 0.95;
 }
 """

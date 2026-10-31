@@ -16,7 +16,7 @@ const ACCENTS := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 
 ## the banner's emblem (ClassCathedral.BANNER_SHADER): cross, hood, horns, hat, arrow
 const EMBLEMS := {"knight": 1, "wraith": 2, "demon": 3, "warlock": 4, "archer": 5}
 const SPACING := 2.05
-const PLINTH_TOP := 0.5             # feet height on a plinth (the middle one is taller, nearer and wider)
+const PLINTH_TOP := 0.78            # feet height on a plinth (the middle one is taller, nearer and wider)
 const PLINTH_R := 0.6
 const STEP := 0.1                   # how far the chosen one steps forward on its plinth
 const FACE := PI                     # bodies face -z; the camera is on +z
@@ -35,6 +35,7 @@ var homes := {}                     # cls -> feet position on its plinth
 var shafts := {}                    # cls -> the light shaft's material (power)
 var glows := {}                     # cls -> the plinth runes' material (power)
 var _flicker: Array[OmniLight3D] = []
+var _pow := {}                      # cls -> the shaft/rune power now (eases toward its target)
 var hovered := ""
 var chosen := ""
 var t := 0.0
@@ -68,7 +69,7 @@ func setup(g: Node) -> void:
 	e.glow_bloom = 0.08
 	e.fog_enabled = true
 	e.fog_light_color = Color(0.07, 0.075, 0.09)
-	e.fog_density = 0.035
+	e.fog_density = 0.045
 	env.environment = e
 	vp.add_child(env)
 	var key := DirectionalLight3D.new()
@@ -80,13 +81,13 @@ func setup(g: Node) -> void:
 	cam = Camera3D.new()
 	cam.fov = 30.0
 	root3d.add_child(cam)
-	cam.look_at_from_position(Vector3(0, 2.15, 10.6), Vector3(0, 1.5, 0))
+	cam.look_at_from_position(Vector3(0, 2.4, 11.4), Vector3(0, 1.85, 0))
 	var radii := {}
 	for i in CLASSES.size():
 		var c: String = CLASSES[i]
 		var x := (float(i) - (CLASSES.size() - 1) * 0.5) * SPACING
 		var mid := c == "knight"
-		homes[c] = Vector3(x, PLINTH_TOP + (0.12 if mid else 0.0), 0.35 if mid else 0.0)
+		homes[c] = Vector3(x, PLINTH_TOP + (0.14 if mid else 0.0), 0.4 if mid else 0.0)
 		radii[c] = PLINTH_R * (1.2 if mid else 1.0)
 	var built := ClassCathedral.build(root3d, homes, radii, ACCENTS, EMBLEMS)
 	shafts = built["shafts"]
@@ -209,8 +210,8 @@ func _process(delta: float) -> void:
 		sp.light_energy = move_toward(sp.light_energy, 6.0 if c == chosen else (3.0 if c == hovered else 1.2), delta * 12.0)
 		var pw := 1.0 if c == chosen else (0.55 if c == hovered else 0.18)
 		var sm: ShaderMaterial = shafts[c]
-		var cur: float = sm.get_shader_parameter("power")
-		var nxt := move_toward(cur, pw, delta * 3.0)
+		var nxt := move_toward(float(_pow.get(c, 0.2)), pw, delta * 3.0)
+		_pow[c] = nxt
 		sm.set_shader_parameter("power", nxt)
 		var gm: ShaderMaterial = glows[c]
 		gm.set_shader_parameter("power", nxt)
