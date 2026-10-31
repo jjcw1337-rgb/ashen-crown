@@ -9,7 +9,7 @@ func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
 	_run()
-func shot(out: String, name: String, frames := 24) -> void:
+func shot(out: String, name: String, frames := 8) -> void:
 	for i in frames:
 		await process_frame
 	get_root().get_texture().get_image().save_png("%s_%s.png" % [out, name])
