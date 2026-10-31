@@ -6,7 +6,7 @@ extends SceneTree
 ##     -s tools/coop_fx_shot.gd -- <outdir> [class:skill,...]
 ## Writes <outdir>/<class>_<skill>_NNN.png (every 5th frame of the playback).
 var g
-const SHOTS := ["wraith:siphon", "wraith:grasp", "wraith:night", "wraith:phantom", "warlock:drain", "demon:summon", "archer:volley", "knight:cleave"]
+const SHOTS := ["wraith:siphon", "wraith:grasp", "wraith:night", "warlock:drain", "demon:summon", "archer:volley"]
 const SECS := {"siphon": 3.6, "grasp": 3.0, "night": 6.6, "phantom": 2.6, "drain": 3.2, "summon": 2.6, "volley": 2.8, "cleave": 2.0}
 const OFF := Vector3(40.0, 0, 0)
 var puppet: Hero
@@ -56,6 +56,7 @@ func _run() -> void:
 	while g.world == null or g._busy or g._intro_playing:
 		g._intro_skip = true
 		await process_frame
+	g.apply_quality(0)     # software GL under xvfb: the Low preset before any zone is built (grass, shadows)
 	var cls_now := ""
 	var cam := Camera3D.new()
 	cam.fov = 38
