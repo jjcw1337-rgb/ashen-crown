@@ -110,6 +110,36 @@ for ac in bpy.data.actions:
         for i in range(4):
             fq[i].update()
 print("legs eased in walk/run")
+# the death ("Strangled and Fall Forward") stands choking for 3.5 s before it drops: it starts 3 s in, at the
+# last of the choke, so a killed wraith goes down at once (to its knees, then the fall)
+DEATH_START = 3.0
+for ac in bpy.data.actions:
+    if ac.name != "death":
+        continue
+    fps = bpy.context.scene.render.fps / bpy.context.scene.render.fps_base
+    f_cut = ac.frame_range[0] + DEATH_START * fps
+    f_end = ac.frame_range[1]
+    for fc in ac.fcurves:
+        v = fc.evaluate(f_cut)
+        for kp in reversed(list(fc.keyframe_points)):
+            if kp.co.x < f_cut:
+                fc.keyframe_points.remove(kp)
+        fc.keyframe_points.insert(f_cut, v)
+        for kp in fc.keyframe_points:
+            kp.co.x -= f_cut
+            kp.handle_left.x -= f_cut
+            kp.handle_right.x -= f_cut
+        fc.update()
+    ac.frame_range = (0.0, f_end - f_cut)
+    # its NLA strip was made before the cut: make it again
+    for tr in list(arm.animation_data.nla_tracks):
+        if tr.name == "death":
+            arm.animation_data.nla_tracks.remove(tr)
+    tr = arm.animation_data.nla_tracks.new()
+    tr.name = "death"
+    tr.strips.new("death", 0, ac)
+    tr.mute = True
+    print("death trimmed from frame %.0f" % f_cut)
 bpy.context.view_layer.objects.active = body
 cur = len(body.data.polygons)
 if cur > TRIS:
