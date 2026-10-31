@@ -15,14 +15,93 @@ static var _shader: Shader
 static func default_gear() -> Dictionary:
 	return {"robe": Color(0.045, 0.05, 0.07), "trim": Color(0.3, 0.8, 1.0), "spirit": Color(0.35, 0.85, 1.0)}
 
+## The Wraith's real body: the Meshy horned, chained wraith on the shared mocap system (tools/blender/wraith/
+## prep_wraith_mocap.py: Meshy library clips, root motion taken out, the robe on six cloth panels hA..hF).
+const MOCAP_GLB := "res://assets/models/wraith_mocap.glb"
+## Clip ground speeds (m/s, measured from the planted foot): the stalking walk and the low glide.
+const WALK_SPEED := 0.45
+const GLIDE_SPEED := 4.27
+const HOVER := 0.16            # it floats this far off the ground
+
+static func mocap_ok() -> bool:
+	return ResourceLoader.exists(MOCAP_GLB)
+
 static func build(gear: Dictionary) -> Node3D:
+	if mocap_ok():
+		return build_mocap(gear)
 	var root := Knight.build(Knight.default_gear())
 	root.set_meta("wraith", true)
 	rebuild_body(root, gear)
 	_extras(root, gear)
 	return root
 
+static func build_mocap(gear: Dictionary) -> Node3D:
+	var r := Knight.build_mocap(MOCAP_GLB, {
+		"relaxed": ["idle", 0.0, "walk", WALK_SPEED, "run", GLIDE_SPEED],
+		"combat": ["combat_idle", 0.0, "walk", WALK_SPEED, "run", GLIDE_SPEED],
+		"meta": "wraith", "hair_run": 0.35})
+	r.remove_meta("knight")
+	r.set_meta("wraith", true)
+	r.set("hover", HOVER)
+	_spectral(r, gear)
+	_mocap_extras(r, gear)
+	return r
+
+## The Meshy textures under the spectral shader (MOCAP_SHADER): its own shading, the cyan light in the robe's tears
+## and its eyes, a cold rim, and the robe, shins and feet fraying into mist toward the hem (vertex colour R).
+static func _spectral(r: Node3D, gear: Dictionary) -> void:
+	var sh: Shader = load("res://scripts/wraith_mocap.gdshader")
+	for mi in r.find_children("*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		if m.mesh == null or m.get_parent() is BoneAttachment3D or m.has_meta("fx"):
+			continue
+		for si in m.mesh.get_surface_count():
+			var src := m.mesh.surface_get_material(si) as StandardMaterial3D
+			if src == null or src.albedo_texture == null:
+				continue
+			var mat := ShaderMaterial.new()
+			mat.shader = sh
+			mat.set_shader_parameter("albedo_tex", src.albedo_texture)
+			if src.normal_texture != null:
+				mat.set_shader_parameter("normal_tex", src.normal_texture)
+				mat.set_shader_parameter("use_normal", true)
+			if src.roughness_texture != null:
+				mat.set_shader_parameter("rough_tex", src.roughness_texture)
+				mat.set_shader_parameter("use_rough", true)
+			m.set_surface_override_material(si, mat)
+			var mats: Array = r.get_meta("spectral_mats") if r.has_meta("spectral_mats") else []
+			mats.append(mat)
+			r.set_meta("spectral_mats", mats)
+	_tint(r, gear)
+
+static func _tint(r: Node3D, gear: Dictionary) -> void:
+	if not r.has_meta("spectral_mats"):
+		return
+	for mat in r.get_meta("spectral_mats"):
+		(mat as ShaderMaterial).set_shader_parameter("spirit", gear["spirit"])
+
+## Mist pouring off the hem, a cold light in the hood (its eyes light the horns and shoulders a little).
+static func _mocap_extras(r: Node3D, gear: Dictionary) -> void:
+	var J: Dictionary = r.get_meta("j")
+	var head: Node3D = J.get("at_head", J["head"])
+	var l := OmniLight3D.new()
+	l.name = "EyeGlow"
+	l.light_color = gear["spirit"]
+	l.light_energy = 0.45
+	l.omni_range = 0.45
+	l.omni_attenuation = 2.0
+	l.shadow_enabled = false
+	l.position = Vector3(0, 0.12, -0.16)
+	head.add_child(l)
+	r.add_child(_hem_mist(gear, 0.34, 64))
+
 static func rebuild_body(root: Node3D, gear: Dictionary) -> void:
+	if str(root.get_meta("meshy", "")) == "wraith":
+		_tint(root, gear)
+		var gl := root.find_child("EyeGlow", true, false) as OmniLight3D
+		if gl != null:
+			gl.light_color = gear["spirit"]
+		return
 	var skel: Skeleton3D = root.get_node("Skeleton")
 	var old := skel.get_node_or_null("Body")
 	if old:
@@ -120,17 +199,20 @@ static func _extras(root: Node3D, gear: Dictionary) -> void:
 		for i in 4:
 			var f := Models.P(h, Geo.cone(0.008, 0.085, 6), bone, Vector3((i - 1.5) * 0.014, -0.075, -0.02), Vector3(180 + 12, 0, (i - 1.5) * 9.0))
 			f.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	# spirit-mist pouring off the hem
+	root.add_child(_hem_mist(gear, 0.38, 48))
+
+## Spirit-mist pouring off the hem (world-space particles, so it trails behind when it moves).
+static func _hem_mist(gear: Dictionary, radius: float, amount: int) -> GPUParticles3D:
 	var mist := GPUParticles3D.new()
 	mist.name = "Mist"
-	mist.amount = 48
+	mist.amount = amount
 	mist.lifetime = 1.6
 	mist.local_coords = false
 	var pm := ParticleProcessMaterial.new()
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
 	pm.emission_ring_axis = Vector3.UP
-	pm.emission_ring_radius = 0.38
-	pm.emission_ring_inner_radius = 0.2
+	pm.emission_ring_radius = radius
+	pm.emission_ring_inner_radius = radius * 0.55
 	pm.emission_ring_height = 0.05
 	pm.direction = Vector3(0, -0.2, 1)
 	pm.spread = 70.0
@@ -163,7 +245,7 @@ static func _extras(root: Node3D, gear: Dictionary) -> void:
 	mist.draw_pass_1 = q
 	mist.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mist.position = Vector3(0, 0.12, 0.05)
-	root.add_child(mist)
+	return mist
 
 # ---------------------------------------------------------------- shader
 const SHADER := """

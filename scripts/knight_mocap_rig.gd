@@ -40,6 +40,9 @@ var w_side := 0.0
 var w_aimwalk := 0.0          # shooting on the move: the aimed walk (shot "walk_clip")
 var w_reach := 0.0            # on the move, the drawing arm reaching to the quiver (shot "reach")
 var yaw_now := 0.0            # the body's side-on turn (degrees)
+var hover := 0.0              # metres the body floats above the ground (the Wraith), with a slow drift
+var hover_now := 0.0
+var hover_base := 0.0
 
 ## A shot's clip time for the attack's progress a: piecewise along shot "keys" [[a, t], ...] (the release key at
 ## Anim's impact), or the old three-point squeeze (t0, release, t1).
@@ -223,6 +226,13 @@ func sync_pose(st: Dictionary) -> void:
 		_state = want_state
 		tree.set("parameters/state/transition_request", want_state)
 	tree.advance(dt)
+	# a body that floats (the Wraith): risen off the ground, drifting slowly, sinking when it dies
+	if hover > 0.0 and body_root != null:
+		if hover_now == 0.0 and hover_base == 0.0:
+			hover_base = body_root.position.y
+		var want_h := 0.0 if die else hover + sin(t * 1.7) * 0.035 + sin(t * 0.63) * 0.02
+		hover_now = lerpf(hover_now, want_h, 1.0 - exp(-dt * (2.0 if die else 6.0)))
+		body_root.position.y = hover_base + hover_now
 	# --- layer 2: the procedural moves, by weight
 	var style: String = st.get("style", "")
 	# the draw / holster (WeaponCarry) is acting only while the blade is on its way (0 = put away, 1 = in guard)
@@ -297,8 +307,8 @@ func _apply_procedural() -> void:
 
 ## Puts the gear followers on their bones (in the proxies' frame, so the old grip offsets fit).
 func _follow() -> void:
-	if not shot.is_empty():
-		X = _rel(skel)        # the body may be turned (the archer's side-on stance)
+	if not shot.is_empty() or hover > 0.0:
+		X = _rel(skel)        # the body may be turned (the archer's side-on stance) or floating (the Wraith)
 		R = X.basis.orthonormalized()
 	for nm in followers.keys():
 		var f: Array = followers[nm]
