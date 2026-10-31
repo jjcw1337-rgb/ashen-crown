@@ -459,7 +459,7 @@ const CLASSES := {
 		"desc": "A horned, winged fiend in obsidian plate. Claws with hellfire, summons up to three demons and slips into the Underworld to walk unseen."},
 	# the bow class (Jace's): its name is his to choose; "Archer" until then
 	"archer": {"name": "Archer", "str": 14, "dex": 26, "vit": 18, "ene": 14, "weapon": "short_bow",
-		"desc": "A hooded hunter with a black longbow. Shoots from range, punches arrows through whole packs, rains volleys, sets snares and hunts beside a spirit beast."},
+		"desc": "A red-hooded ranger with a carved recurve bow and his dire wolf at his side. Shoots on the move: fire arrows that burn through a line, frost volleys that chill, storm snares that chain lightning."},
 	"warlock": {"name": "Warlock", "str": 10, "dex": 10, "vit": 10, "ene": 10,
 		"desc": "A hooded sorcerer bound by a fel pact. Drains the life from foes in a forking green beam, rots them with blight and chains them where they stand."},
 }
