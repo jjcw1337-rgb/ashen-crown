@@ -63,7 +63,7 @@ shared preview), give the preview build's link, and go to `main` only when Blain
 | `talents.gd` | Talent trees (`Talents.TREES`: three per class), row rules, the auto build for old saves (`AUTO`) |
 | `world.gd` | Zone builder: terrain, roads, buildings, trees/grass (MultiMesh chunks), spawns, `burn_points` |
 | `hero.gd`, `knight.gd`, `knight_rig.gd`, `anim.gd` | Player: class (`cls`, `set_class`), stats (`recalc`), combat, skills, gear visuals, animation, co-op puppet mode |
-| `wraith.gd`, `wraith_fx.gd` | Wraith class: body mesh + spectral shader on the knight skeleton; skill effects |
+| `wraith.gd`, `wraith_skills.gd`, `wraith_fx.gd` | Wraith class: the Meshy body on the mocap system with the spectral shader; its six skills (casts, blows, the tether, phantoms, the night); their effects |
 | `demon.gd`, `demon_fx.gd`, `demon_minion.gd` | Demon class: knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader; skill effects and the Underworld screen grade; summoned demons (simple ally AI) |
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
 | `enemy.gd`, `projectile.gd`, `feral.gd` | Monsters/AI and missiles (host-authoritative in co-op); the Feral's baked-animation body |
@@ -142,7 +142,52 @@ shared preview), give the preview build's link, and go to `main` only when Blain
   procedural body dressed as a hunter (`Archer.build_placeholder`, `Archer.body_gear` kept on every gear change; its bow in `J["grip_l"]`/`J["bow_l"]`). Preview: `tools/mocap_knight_clip.gd -- outdir
   run|attack|shootwalk 34|game|side|close|closeback frames archer [longbow]`. Talent icons still to paint (`tools/talent_icons.py`).
   `tools/archer_test.gd` checks it (run it with `--fixed-fps 60`; it counts frames).
-- **Adding a class**: add it to `Data.CLASSES`, give it four `SKILLS` entries with its `cls`, build its look the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep working), handle its skill ids in `Hero.use_skill` / `_impact`, and add glyphs in `ui.gd` `SkillGlyph`.
+- **Adding a class**: add it to `Data.CLASSES`, give it four (up to six: Q E R F G V) `SKILLS` entries with its `cls`, build its look the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep working), handle its skill ids in `Hero.use_skill` / `_impact`, and add glyphs in `ui.gd` `SkillGlyph`.
+- **The Wraith's body**: the Meshy horned, chained wraith (concept D) on the shared mocap system
+  (`Wraith.build_mocap`, `assets/models/wraith_mocap.glb`; falls back to the code-built robe without it). He has no
+  legs and never walks: `tools/blender/wraith/prep_wraith_mocap.py` cuts the skeletal legs and feet out of the mesh
+  (what sat within reach of the leg bones, plus the scraps), hangs the robe below the hips on six cloth panels of
+  three bones (hA..hF, from the hips only, no leg weights) and the wrist shackle chains on two more (hG, hH, from the
+  hands), rebinds the sleeve rags and chain links Meshy had tied to the legs onto the arms (weights diffused edge by
+  edge from the arm-bound vertices), and writes vertex colour R = down the robe. Clips: Meshy's idle, punches, casts,
+  scream, hit, dodge (root motion taken out) plus clips the script makes from the idle: `combat_idle` (the claws
+  raised and forward; Meshy's boxer's stance is dropped), `float` / `float_combat` (the arms eased back, trailing)
+  and `death` (rears up, arms flung wide and head back, then the head drops and the arms sag). Rebuild: `blender -b
+  --python tools/blender/wraith/prep_wraith_mocap.py -- rigged.glb out.glb 45000 clips_a.glb clips_b.glb`, then
+  `godot --headless --import`. The glide is `KnightMocapRig`'s **float mode** (`float_mode`, set by `Wraith.build_mocap`
+  with `hover` = `Wraith.HOVER`): the blend spaces go idle -> float by ground speed (`Wraith.FLOAT_SPEED`, clips never
+  retimed), and `_float` leans the body into its travel (`FLOAT_LEAN`, more while accelerating, pivoting at the hips
+  `FLOAT_PIVOT`), banks into turns (`FLOAT_BANK`), lifts it a little at speed and bobs it. `_sway_robe` (in place of
+  the hair sim) swings the panels toward the push of the air he moves through (the ones behind stream out and back,
+  the front ones press in a little, a turn drags them round, gusts drift them at rest, a hit kicks them, lower bones
+  looser so a panel curves instead of turning like a board) and the wrist chains as pendulums that always hang from
+  the hands. Death: the clip's rear-up, then the rig sinks him into the ground (`death_t`) while the spectral
+  materials dissolve (`phase_amt`, meta `spectral_mats`), the eyes flare and go out (`eye_light`) and the hem mist
+  stops (`hem_mist`); all reset on revive. `Hero._hover` and the hero's death tilt leave the mocap wraith alone
+  (`Hero._floats`). `scripts/wraith_mocap.gdshader`: matte Meshy textures, the cyan light in the tears, a rim, the
+  hem fraying into mist (R + noise, cut away with a glowing edge), the robe's inside a dark hollow (back faces).
+  Preview: `tools/mocap_knight_clip.gd -- outdir idle|run|turn|tour|attack|block 34|side|front|close|game frames wraith
+  [relaxed]`.
+- **The Wraith's skills** (`scripts/wraith_skills.gd` `WraithSkills`, effects `scripts/wraith_fx.gd`, tuning in
+  `Data.SKILLS`; six on Q E R F G V): Spectral Rend (Q: lunges at the foe ahead, two claw rakes, souls heal), Soul
+  Siphon (E: a tether into one foe for 2.5 s that drains, heals and slows; it holds while he fights on), Shadowstep (R:
+  mist to the cursor, a spinning strike on landing, `Hero.veil_t` = mist for a moment, blows pass through; the shade
+  left behind collapses), Haunting Grasp (F: spectral hands out of the ground at the cursor, pull in and hold),
+  Phantom Assault (G, level 14: three afterimages streak through the foes ahead in a fan, then his own strike) and
+  Eternal Night (V, level 18, the ultimate: rise, scream, hang in the dark, fall; four attacks chained by
+  `_update_night`, +40% damage after). Each skill is a whole-body clip of his (`Wraith.SHOTS`: style -> clip and the
+  attack progress -> clip seconds keys; `Knight.build_mocap` opts `"shots"` and `KnightMocapRig.shots` hand the rig's
+  one shot node whichever style is playing; the blow lands on `Anim.impact_at` of its style): claw2 for the rend,
+  cast2's reach for the tether, the dodge's spin for the step, the slam for the grasp and the night's fall, claw1 for
+  the phantoms, cast and scream for the night. Skill state lives in `Hero.wr` (the tether, phantoms in flight, the
+  night's stage; `WraithSkills.clear`). Afterimages are `WraithFx.afterimage`: the body's armature duplicated with
+  its bone poses, under copies of the spectral materials with `ghost` on. The spectral claws (`WraithFx.claws`) sit
+  on the hand bones (BoneAttachment3D, in the armature's centimetres) and grow out for the rakes. Soul Siphon's slow
+  is `Enemy.slow` (rides the stun RPC as a negative time). Old saves' bindings of reap/wail/shade/host become
+  rend/siphon/step/grasp (`WraithSkills.OLD_IDS`, `migrate_binds` in `Hero.from_save`); the talent ids (and their
+  painted icons) were kept, their effects now name the new skills. `tools/wraith_test.gd` exercises every skill;
+  `tools/wraith_skills_clip.gd -- outdir [skill|all] [close|game]` renders frames of each (needs xvfb and
+  `--fixed-fps 30`; the Low preset and no shadows, since software GL is slow).
 - **Underworld** (Demon's Phase): `game.set_underworld()` blends a screen-space grade (`DemonFx.UNDERWORLD_SHADER`), the `under_amt` global (terrain veins and rune rings in `mats.gd`), environment tweaks, rising souls and crimson monster outlines (`Enemy.set_soul_lit`). Monsters ignore a phased hero (`hero.phased`).
 - **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `_update_drain`, and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. Skill effects are local only (partners see the cast pose, not the beam), like every other class.
 - **King Grubb** (Act I boss, `hoard.gd`) is host-authoritative. Every visible part of the fight (piles, bombs, burst
