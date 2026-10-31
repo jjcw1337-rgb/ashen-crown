@@ -28,7 +28,7 @@ func pack(h, n: int, at: Vector3) -> Array:
 	await process_frame
 	var out := []
 	for i in n:
-		var e = g.spawn_enemy("zombie", at + Vector3(-1.0 + i * 1.0, 0, 0), 3)
+		var e = g.spawn_enemy("zombie", at + Vector3(-1.0 + i * 1.0, 0, 0), 18)     # tough enough to survive a blow at level 20
 		e.aggro = false
 		out.append(e)
 	await process_frame

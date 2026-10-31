@@ -32,7 +32,7 @@ func _run() -> void:
 	g.test_immortal = true
 	g.zoom = 0.62
 	g.ui.visible = false     # just the scene
-	g.vignette.visible = false
+	(g.vignette.material as ShaderMaterial).set_shader_parameter("strength", 0.0)    # no vignette, but the night's grade still shows
 	# software GL under xvfb: the Low preset, no shadows and no multisampling make the frames bearable
 	g.apply_quality(0)
 	g.sun.shadow_enabled = false

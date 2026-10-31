@@ -148,7 +148,8 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 		"night":
 			end_night(h, false)
 			var root: Node3D = h.game.world.fx_root
-			w["night"] = {"stage": 0, "t": 0.0, "tick": 0.0, "node": WraithFx.night(root, h.global_position, NIGHT_R + 1.5), "ghosts": [], "veil": true}
+			var grade: ShaderMaterial = h.game.vignette.material if h.game.get("vignette") != null else null
+			w["night"] = {"stage": 0, "t": 0.0, "tick": 0.0, "node": WraithFx.night(root, h.global_position, NIGHT_R * 0.8, grade), "ghosts": [], "veil": true}
 			_set_hover(h, NIGHT_HOVER)
 			h.veil_t = 99.0        # mist to every blow until the night ends
 			_start(h, "night_rise", "night")
@@ -307,6 +308,8 @@ static func end_night(h: Hero, finished: bool) -> void:
 		var tw: Tween = node.create_tween()
 		tw.tween_method(func(v: float): WraithFx.set_night(node, v), 1.0 if finished else 0.6, 0.0, 0.5 if finished else 0.3)
 		tw.tween_callback(node.queue_free)
+	elif h.game.get("vignette") != null:
+		(h.game.vignette.material as ShaderMaterial).set_shader_parameter("night", 0.0)
 	for g in n["ghosts"]:
 		if is_instance_valid(g):
 			(g as Node).queue_free()

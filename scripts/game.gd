@@ -658,11 +658,14 @@ func _setup_post() -> void:
 	sh.code = """
 shader_type canvas_item;
 uniform float strength = 0.6;
+uniform float night = 0.0;         // the Wraith's Eternal Night: violet dark closing in from the edges (WraithFx.set_night)
 void fragment(){
 	vec2 uv = UV - 0.5;
 	uv.x *= 1.3;
 	float v = smoothstep(0.3, 0.85, length(uv));
-	COLOR = vec4(0.0, 0.0, 0.0, v * strength);
+	float n = smoothstep(0.1, 0.62, length(uv)) * night;
+	vec3 col = mix(vec3(0.0), vec3(0.05, 0.02, 0.1), n);
+	COLOR = vec4(col, clamp(v * strength + n * 0.82, 0.0, 1.0));
 }
 """
 	sm.shader = sh

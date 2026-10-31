@@ -13,7 +13,6 @@ static var _crescent: ArrayMesh
 static var _mark: ArrayMesh
 static var _disc: ArrayMesh
 static var _claw: ArrayMesh
-static var _dome_shader: Shader
 static var _floor_shader: Shader
 static var _ribbon_mat: StandardMaterial3D
 
@@ -548,25 +547,13 @@ static func split(root: Node3D, pos: Vector3) -> void:
 	Fx.ring(root, pos, 2.0, VIOLET, 0.3, 0.2)
 
 # ---------------------------------------------------------------- Eternal Night
-## The night: a dome of darkness that falls over everything round him (a multiplicative dome, so the ground, the
-## foes and the Wraith himself are plunged into violet dark, softly at its edge), and the dark floor under it
-## with his runes turning. `set_night(n, k)` brings it down (k 0..1) and lifts it again.
-static func night(root: Node3D, pos: Vector3, radius: float) -> Node3D:
-	if _dome_shader == null:
-		_dome_shader = Shader.new()
-		_dome_shader.code = DOME_SHADER
+## The night: the screen's edges close in with violet dark (the vignette's "night", `grade`: the hero's own light
+## stays in the middle, so the fight is readable), the dark floor under him with his runes turning, and souls
+## drifting up out of the ground. `set_night(n, k)` brings it down (k 0..1) and lifts it again.
+static func night(root: Node3D, pos: Vector3, radius: float, grade: ShaderMaterial = null) -> Node3D:
 	var n := Node3D.new()
 	root.add_child(n)
 	n.global_position = pos
-	var dome := MeshInstance3D.new()
-	dome.mesh = Geo.sph(1.0, 32)
-	var dm := ShaderMaterial.new()
-	dm.shader = _dome_shader
-	dm.set_shader_parameter("amt", 0.0)
-	dome.material_override = dm
-	dome.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	dome.scale = Vector3.ONE * radius
-	n.add_child(dome)
 	var floor_m := MeshInstance3D.new()
 	floor_m.mesh = _disc_mesh()
 	var fm := _floor_mat(VIOLET, 0.0)
@@ -574,14 +561,14 @@ static func night(root: Node3D, pos: Vector3, radius: float) -> Node3D:
 	floor_m.material_override = fm
 	floor_m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	floor_m.position.y = 0.05
-	floor_m.scale = Vector3.ONE * radius * 0.5
+	floor_m.scale = Vector3.ONE * radius * 0.6
 	n.add_child(floor_m)
 	# souls drifting up out of the ground under the night
 	var souls := _trail(VIOLET.lerp(PALE, 0.4), 0.14, 60, 2.2)
 	var pm := souls.process_material as ParticleProcessMaterial
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
 	pm.emission_ring_axis = Vector3.UP
-	pm.emission_ring_radius = radius * 0.6
+	pm.emission_ring_radius = radius * 0.7
 	pm.emission_ring_inner_radius = 1.0
 	pm.emission_ring_height = 0.2
 	pm.direction = Vector3.UP
@@ -590,32 +577,19 @@ static func night(root: Node3D, pos: Vector3, radius: float) -> Node3D:
 	pm.initial_velocity_max = 1.4
 	souls.amount_ratio = 0.0
 	n.add_child(souls)
-	n.set_meta("dome", dm)
 	n.set_meta("floor", fm)
 	n.set_meta("souls", souls)
-	n.set_meta("light", null)
+	n.set_meta("grade", grade)
 	return n
 
 static func set_night(n: Node3D, k: float) -> void:
 	if n == null or not is_instance_valid(n):
 		return
-	(n.get_meta("dome") as ShaderMaterial).set_shader_parameter("amt", k)
 	(n.get_meta("floor") as ShaderMaterial).set_shader_parameter("amt", k)
 	(n.get_meta("souls") as GPUParticles3D).amount_ratio = k
-
-const DOME_SHADER := """
-shader_type spatial;
-render_mode unshaded, blend_mul, depth_draw_never, cull_disabled, shadows_disabled;
-uniform float amt = 1.0;
-uniform vec3 tint : source_color = vec3(0.22, 0.12, 0.42);
-void fragment(){
-	// darkest in the middle of the view of it, softening to nothing at the dome's rim (its silhouette)
-	float f = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
-	float k = smoothstep(0.0, 0.55, f) * amt;
-	vec3 night = mix(vec3(1.0), tint, k * 0.8);
-	ALBEDO = night;
-}
-"""
+	var g := n.get_meta("grade") as ShaderMaterial
+	if g != null:
+		g.set_shader_parameter("night", k)
 
 ## The scream of the night: three rings of terror racing out, a burst of pale shrieking shapes.
 static func scream(root: Node3D, pos: Vector3, radius: float) -> void:
