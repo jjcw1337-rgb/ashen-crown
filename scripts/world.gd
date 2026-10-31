@@ -24,6 +24,11 @@ var hill_noise := FastNoiseLite.new()
 var flat_floor := false
 ## Extra ground shaping for a zone (Fort: the ditch and rampart): f(x, z) -> metres added to the height.
 var ground_fn := Callable()
+## A zone that shapes all of its ground itself (the coast: seabed, beaches, islands): f(x, z) -> height.
+var height_fn := Callable()
+## The coast: the sea is at y = 0; walkers stop where the water gets deeper than WADE (coast.gd).
+var sea := false
+const WADE := -0.18
 ## Act I: the lair is King Grubb's goblin fort (fort.gd) and the moor's road ends at its trail.
 var fort := false
 ## Which run (Game.difficulty) this zone is for: A2 (1) has its own wild zone (via.gd) and lair (aurelia.gd).
@@ -71,6 +76,8 @@ func in_bounds(x: float, z: float) -> bool:
 func height_at(x: float, z: float) -> float:
 	if flat_floor:
 		return 0.0
+	if height_fn.is_valid():
+		return float(height_fn.call(x, z))
 	var inner := hnoise.get_noise_2d(x, z) * 0.35
 	var dx := maxf(bounds.position.x - x, x - bounds.end.x)
 	var dz := maxf(bounds.position.y - z, z - bounds.end.y)
@@ -345,6 +352,8 @@ func solid_at(x: float, z: float, r := 0.0) -> bool:
 ## Map edge, or dungeon rock (the same cells the wall blocks are built on). Probes the
 ## body's four sides.
 func _wall_at(x: float, z: float, r := 0.0) -> bool:
+	if sea and height_at(x, z) < WADE:
+		return true
 	if rock.is_empty():
 		return not bounds.grow(-1.0 - r).has_point(Vector2(x, z))
 	return _rock_at(x, z) or r > 0.0 and (_rock_at(x - r, z) or _rock_at(x + r, z) or _rock_at(x, z - r) or _rock_at(x, z + r))
@@ -399,7 +408,7 @@ func _rasterize() -> void:
 		for x in gw:
 			var wx := origin.x + (x + 0.5) * CELL
 			var wz := origin.y + (y + 0.5) * CELL
-			if not bounds.grow(-1.0).has_point(Vector2(wx, wz)):
+			if not bounds.grow(-1.0).has_point(Vector2(wx, wz)) or sea and height_at(wx, wz) < WADE + 0.1:
 				blocked[y * gw + x] = 1
 	var pad := 0.45
 	for o in obstacles:
@@ -622,6 +631,12 @@ func _scatter_grass(count: int, colors: Dictionary, height: float, outside := tr
 ## Grass (grass.gd) asks the zone three things about a spot. How much grass can grow (0 bare .. 1 full):
 ## none on the road, under solid things or in a Sloth's clearing, thinning toward the edges of paths.
 func grass_ground(x: float, z: float) -> float:
+	if sea:
+		var hy := height_at(x, z)
+		if hy < 1.0:
+			return 0.0           # sand and sea
+		if hy < 1.5:
+			return (hy - 1.0) * 2.0 * (1.0 - clampf((dirt_at(x, z) + cobble_at(x, z)) * 1.6, 0.0, 1.0))
 	var dm := dirt_at(x, z) + cobble_at(x, z)
 	if dm > 0.55:
 		return 0.0
@@ -898,6 +913,7 @@ func build(act_i: int, kind_s: String, seed_v: int) -> void:
 	match kind:
 		"town": _build_town()
 		"wild": Via.build(self) if run == 1 else _build_wild()
+		"coast": Coast.build(self)
 		"lair":
 			if run == 1:
 				Aurelia.build(self)

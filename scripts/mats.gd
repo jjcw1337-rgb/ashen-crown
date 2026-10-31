@@ -31,6 +31,8 @@ static func ensure_globals() -> void:
 	RenderingServer.global_shader_parameter_add("wind_strength", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.45)
 	RenderingServer.global_shader_parameter_add("wind_gust", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.6)
 	RenderingServer.global_shader_parameter_add("wind_phase", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
+	# the sea's clock (ocean.gd): its waves on the GPU and Ocean.surface_y on the CPU read the same time
+	RenderingServer.global_shader_parameter_add("ocean_t", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
 
 static func detail_normal() -> Texture2D:
 	if _detail == null:
@@ -321,6 +323,10 @@ uniform float tiles = 0.0;
 uniform float cob_shade = 1.0;
 uniform float wet = 0.0;
 uniform float ripples = 0.0;
+// the coast (coast.gd): sand round the sea (y = 0), wet sand at the waterline, the seabed under water
+uniform float sea = 0.0;
+uniform vec3 col_sand : source_color = vec3(0.6, 0.53, 0.4);
+global uniform float ocean_t;
 global uniform float snow_amt;
 global uniform float ash_amt;
 global uniform float under_amt;
@@ -407,6 +413,36 @@ void fragment(){
 	base = mix(base, col_cliff * (0.6 + n2 * 0.5 + (n4 - 0.5) * 0.2), cliff);
 	float wetf = wet * smoothstep(0.5, 0.72, n2) * (1.0 - cliff) * (0.4 + path * 0.6);
 	base *= 1.0 - wetf * 0.3;
+	float wetb = 0.0;
+	if (sea > 0.0) {
+		float hy = wpos.y + (n2 - 0.5) * 0.6 + (n4 - 0.5) * 0.15;
+		float sandm = (1.0 - smoothstep(0.85, 1.5, hy)) * (1.0 - cliff * 0.85);
+		vec3 sand = col_sand * (0.86 + n3 * 0.2 + (n4 - 0.5) * 0.12);
+		sand = mix(sand, sand * vec3(0.86, 0.84, 0.76), smoothstep(0.5, 0.8, n5) * 0.5);
+		sand *= 0.95 + 0.05 * sin(p.x * 2.3 + p.y * 1.1 + n2 * 6.0);
+		float shellm = smoothstep(0.9, 0.95, vnoise(p * 11.0)) * 0.35;
+		sand = mix(sand, vec3(0.78, 0.76, 0.7), shellm);
+		base = mix(base, sand, sandm);
+		// the waterline: dark glossy wet sand where the swash reaches
+		wetb = (1.0 - smoothstep(-0.05, 0.4, wpos.y)) * (1.0 - cliff * 0.5);
+		base *= 1.0 - wetb * 0.38;
+		// under the water: the seabed fading darker with depth, weed in patches, sunlight caustics
+		float uw = smoothstep(0.0, -0.35, wpos.y);
+		float deep = smoothstep(0.0, -11.0, wpos.y);
+		vec3 bed = mix(sand, col_a * 0.75, smoothstep(0.55, 0.75, n1) * 0.55);
+		bed = mix(bed, col_cliff * 0.7, cliff * 0.7);
+		base = mix(base, bed * (1.0 - deep * 0.6), uw);
+		if (uw > 0.01) {
+			float cid1 = 0.0;
+			float cid2 = 0.0;
+			vec2 v1 = vor(p * 0.62 + vec2(ocean_t * 0.11, ocean_t * 0.05), cid1);
+			vec2 v2 = vor(p * 0.83 - vec2(ocean_t * 0.07, -ocean_t * 0.09) + 3.7, cid2);
+			float e1 = 1.0 - smoothstep(0.0, 0.16, v1.y - v1.x);
+			float e2 = 1.0 - smoothstep(0.0, 0.16, v2.y - v2.x);
+			float caus = e1 * 0.6 + e2 * 0.6 + e1 * e2 * 1.2;
+			base += base * caus * 1.4 * uw * (1.0 - smoothstep(-0.5, -7.0, wpos.y));
+		}
+	}
 	float cover = 0.0;
 	float trod = 0.0;
 	float drift = 0.5;
@@ -434,7 +470,7 @@ void fragment(){
 		base = mix(base, burnt * (0.85 + n3 * 0.2), ash_amt);
 	}
 	ALBEDO = base;
-	ROUGHNESS = mix(mix(0.95, 0.35, wetf), 0.55 + trod * 0.35, cover);
+	ROUGHNESS = mix(mix(mix(0.95, 0.35, wetf), 0.3, wetb), 0.55 + trod * 0.35, cover);
 	if (ash_amt > 0.0) {
 		// glowing cracks and smouldering patches that pulse slowly
 		float cv = abs(fbm(p * 0.17 + 3.0) - 0.5);
