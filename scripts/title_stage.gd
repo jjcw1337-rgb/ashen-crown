@@ -38,6 +38,7 @@ var t := 0.0
 var _lean := 0.0                          # -1 left .. 1 right, eased
 var _push := 0.0                          # 0..1 the move into a choice
 var _spot := {}                           # side -> SpotLight3D
+var _key := {}                            # side -> OmniLight3D in front of the dais
 var _flames: Array[OmniLight3D] = []
 var _runes: ShaderMaterial
 var _pillar: ShaderMaterial
@@ -56,6 +57,17 @@ func setup(g: Node) -> void:
 	var q: int = int(game.quality)
 	vp.msaa_3d = Viewport.MSAA_DISABLED if OS.has_feature("web") else (Viewport.MSAA_4X if q >= 2 else Viewport.MSAA_2X)
 	vp.positional_shadow_atlas_size = 0
+	# sharp, not soft: full resolution, full mesh detail, no blurring anti-aliasing (MSAA only),
+	# anisotropic filtering, and a light sharpening pass over the result (SHARPEN_SHADER)
+	vp.scaling_3d_scale = 1.0
+	vp.mesh_lod_threshold = 0.0
+	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
+	vp.use_taa = false
+	var shm := ShaderMaterial.new()
+	var shs := Shader.new()
+	shs.code = SHARPEN_SHADER
+	shm.shader = shs
+	material = shm
 	add_child(vp)
 	root3d = Node3D.new()
 	vp.add_child(root3d)
@@ -100,9 +112,9 @@ func _environment(q: int) -> void:
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	env.tonemap_exposure = 1.05
 	env.glow_enabled = true
-	env.glow_intensity = 0.7
-	env.glow_bloom = 0.04
-	env.glow_hdr_threshold = 0.9
+	env.glow_intensity = 0.45
+	env.glow_bloom = 0.0
+	env.glow_hdr_threshold = 1.15
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.2, 0.14, 0.13)
 	env.fog_light_energy = 0.9
@@ -141,8 +153,18 @@ func _environment(q: int) -> void:
 static func has_model(n: String) -> bool:
 	return ResourceLoader.exists(MODEL_DIR + n + ".glb")
 
-func _model(n: String, pos: Vector3, rot_deg: Vector3, scl: float) -> Node3D:
+func _model(n: String, pos: Vector3, rot_deg: Vector3, scl: float, tint := Color.WHITE) -> Node3D:
 	var m: Node3D = (load(MODEL_DIR + n + ".glb") as PackedScene).instantiate()
+	# its own materials, copied: sooted down to the game's palette, and anisotropic filtering so the stone
+	# stays crisp where it's seen at a slant
+	for mi: MeshInstance3D in m.find_children("*", "MeshInstance3D", true, false):
+		for si in mi.mesh.get_surface_count():
+			var src := mi.mesh.surface_get_material(si) as BaseMaterial3D
+			if src:
+				var dm := src.duplicate() as BaseMaterial3D
+				dm.albedo_color = src.albedo_color * tint
+				dm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+				mi.set_surface_override_material(si, dm)
 	m.name = n.capitalize()
 	m.position = pos
 	m.rotation_degrees = rot_deg
@@ -174,8 +196,19 @@ func _ground() -> void:
 ## top; a warm glow of the lands beyond inside the arch. (Meshy replaces this: GATE.)
 func _gate() -> void:
 	if has_model("gate"):
-		_model("gate", Vector3(0, -0.05, -12.0), Vector3(0, GATE_YAW, 0), 1.0)
+		_model("gate", Vector3(0, -0.05, -12.0), Vector3(0, GATE_YAW, 0), 1.0, SOOT)
 		_gate_light(Vector3(0, 0, -12.0))
+		for sx: int in [-1, 1]:
+			var tp := Vector3(sx * 3.6, 2.6, -8.3)
+			Models.P(root3d, Geo.cyl(0.06, 0.03, 0.6, 6), Mats.mat(Color(0.08, 0.07, 0.07), 0.5, 0.7), tp + Vector3(0, -0.3, 0), Vector3(sx * -20, 0, 0))
+			Props.fire(root3d, tp + Vector3(0, 0.05, 0.1), 0.45, Color(1.0, 0.55, 0.2), false, false, true)
+			var tl := OmniLight3D.new()
+			tl.light_color = Color(1.0, 0.6, 0.3)
+			tl.light_energy = 1.4
+			tl.omni_range = 7.0
+			tl.position = tp + Vector3(0, 0.4, 0.8)
+			root3d.add_child(tl)
+			_flames.append(tl)
 		return
 	var gate := Node3D.new()
 	gate.name = "Gate"
@@ -244,6 +277,7 @@ func _gate() -> void:
 		Models.P(gate, Geo.box(7.0 - k * 0.8, 0.18, 1.0), sd, Vector3(0, 0.09 + k * 0.18, 2.6 - k * 0.8))
 
 const GATE_YAW := 0.0
+const SOOT := Color(0.72, 0.66, 0.62)
 ## The glow of the lands beyond inside the arch, and its light on the court.
 func _gate_light(at: Vector3) -> void:
 	var glow := MeshInstance3D.new()
@@ -269,8 +303,8 @@ func _gate_light(at: Vector3) -> void:
 ## Broken arcades running back on both sides: pointed bays, some fallen. (Meshy replaces these: ARCADE.)
 func _arcades() -> void:
 	if has_model("arcade"):
-		_model("arcade", Vector3(-12.5, -0.05, -5.5), Vector3(0, 62, 0), 1.0)
-		_model("arcade", Vector3(12.5, -0.05, -5.5), Vector3(0, -62, 0), 1.0)
+		_model("arcade", Vector3(-14.5, -0.05, -3.0), Vector3(0, 70, 0), 1.0, SOOT)
+		_model("arcade", Vector3(14.5, -0.05, -3.0), Vector3(0, -70, 0), 1.0, SOOT)
 		return
 	var st := _stone()
 	var sd := _stone_dark()
@@ -299,8 +333,21 @@ func _arcades() -> void:
 func _monuments() -> void:
 	if has_model("colossus") and has_model("crown"):
 		# the fallen king, sunk to the chest in the ash and leaning; his crown lying huge on the other side
-		_model("colossus", Vector3(-17.5, -2.6, -21.0), Vector3(-4, 32, 8), 1.45)
-		_model("crown", Vector3(15.0, -0.8, -16.0), Vector3(24, -30, 12), 5.0)
+		_model("colossus", Vector3(-12.5, -2.2, -15.5), Vector3(-3, 34, 7), 1.35, SOOT)
+		_model("crown", Vector3(11.5, -0.35, -13.0), Vector3(6, -22, 16), 4.2)
+		# a cold light picking out the king's face and a warm glint on the crown
+		var kl := OmniLight3D.new()
+		kl.light_color = Color(0.6, 0.68, 0.9)
+		kl.light_energy = 1.6
+		kl.omni_range = 9.0
+		kl.position = Vector3(-9.5, 9.0, -9.5)
+		root3d.add_child(kl)
+		var cl := OmniLight3D.new()
+		cl.light_color = Color(1.0, 0.6, 0.3)
+		cl.light_energy = 2.4
+		cl.omni_range = 7.0
+		cl.position = Vector3(10.0, 3.4, -9.0)
+		root3d.add_child(cl)
 		return
 	var sd := Mats.world(Color(0.24, 0.23, 0.23), Color(0.13, 0.12, 0.12), 0.95, 0.5, 0.25, Color(0.14, 0.18, 0.1), false)
 	if ResourceLoader.exists(Roman.STATUE_GLB):
@@ -367,6 +414,21 @@ func _dais(at: Vector3, col: Color, side: String) -> void:
 	root3d.add_child(sp)
 	sp.look_at_from_position(at + Vector3(0.4, 7.5, 3.2), at + Vector3(0, 0.6, 0))
 	_spot[side] = sp
+	# a key light in front (warm for the hero, cold for the empty dais) and a rim light behind
+	var key := OmniLight3D.new()
+	key.name = "key_" + side
+	key.light_color = col.lerp(Color.WHITE, 0.35)
+	key.light_energy = 1.8
+	key.omni_range = 5.6
+	key.position = at + Vector3(0.7, 2.4, 2.0)
+	root3d.add_child(key)
+	_key[side] = key
+	var rim := OmniLight3D.new()
+	rim.light_color = Color(0.6, 0.7, 1.0) if side == "continue" else col
+	rim.light_energy = 1.2
+	rim.omni_range = 3.4
+	rim.position = at + Vector3(-0.5, 2.2, -1.3)
+	root3d.add_child(rim)
 
 ## The empty dais: a rune circle on its top, a faint column of light, and rune stones in an arc behind it.
 func _new_dais_magic() -> void:
@@ -688,6 +750,8 @@ func _process(delta: float) -> void:
 	var lwant := (0.0 if not has_char else (4.0 if f == "continue" else 1.8))
 	lspot.light_energy = move_toward(lspot.light_energy, lwant, delta * 8.0)
 	rspot.light_energy = move_toward(rspot.light_energy, 4.0 if f == "new" else 1.6, delta * 8.0)
+	(_key["continue"] as OmniLight3D).light_energy = move_toward((_key["continue"] as OmniLight3D).light_energy, 0.0 if not has_char else (3.6 if f == "continue" else 2.8), delta * 6.0)
+	(_key["new"] as OmniLight3D).light_energy = move_toward((_key["new"] as OmniLight3D).light_energy, 2.4 if f == "new" else 1.2, delta * 6.0)
 	var rp := 1.6 if f == "new" else (0.85 if not has_char else 0.6)
 	_runes.set_shader_parameter("power", lerpf(float(_runes.get_shader_parameter("power")), rp, 1.0 - exp(-delta * 4.0)))
 	_pillar.set_shader_parameter("power", lerpf(float(_pillar.get_shader_parameter("power")), rp * 0.85, 1.0 - exp(-delta * 4.0)))
@@ -757,6 +821,25 @@ static func pointed_arch(w: float, h: float, d: float, span: float, crown: float
 	return Geo.extrude(pts, d, key)
 
 # ---------------------------------------------------------------- shaders
+## A light contrast-adaptive sharpen over the stage's image: each pixel pushed away from its neighbours'
+## average, held inside their range so edges get crisper without halos.
+const SHARPEN_SHADER := """
+shader_type canvas_item;
+uniform float amount = 0.45;
+void fragment() {
+	vec2 px = TEXTURE_PIXEL_SIZE;
+	vec3 c = texture(TEXTURE, UV).rgb;
+	vec3 n = texture(TEXTURE, UV + vec2(0.0, -px.y)).rgb;
+	vec3 s = texture(TEXTURE, UV + vec2(0.0, px.y)).rgb;
+	vec3 w = texture(TEXTURE, UV + vec2(-px.x, 0.0)).rgb;
+	vec3 e = texture(TEXTURE, UV + vec2(px.x, 0.0)).rgb;
+	vec3 mn = min(c, min(min(n, s), min(w, e)));
+	vec3 mx = max(c, max(max(n, s), max(w, e)));
+	vec3 sharp = c + (c * 4.0 - (n + s + w + e)) * amount;
+	COLOR = vec4(clamp(sharp, mn, mx), 1.0);
+}
+"""
+
 const GROUND_SHADER := """
 shader_type spatial;
 varying vec3 wp;
