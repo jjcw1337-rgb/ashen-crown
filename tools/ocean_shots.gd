@@ -67,6 +67,13 @@ func _run() -> void:
 		await shot(out, "arriving_bleak")
 		look(Vector3(-120.0, 520.0, 260.0), Vector3(-120.0, 0.0, 0.0), 55.0)
 		await shot(out, "overview", 30)
+	if only == "overview":
+		await g.load_zone(0, "coast", "dock")
+		g.ui.visible = false
+		look(Vector3(-120.0, 520.0, 260.0), Vector3(-120.0, 0.0, 0.0), 55.0)
+		await shot(out, "overview", 12)
+		quit()
+		return
 	for id in I.ids():
 		if only != "" and only != id:
 			continue
