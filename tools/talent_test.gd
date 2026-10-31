@@ -132,6 +132,12 @@ func _run() -> void:
 			var foe = g.enemies_near(h.global_position, 12.0)
 			if foe.size() > 0:
 				aim = foe[0].global_position
+			elif sk["id"] == "siphon":
+				# the tether needs a living foe within its 9 m; the casts before may have cleared the pack
+				var far: Array = g.enemies_near(h.global_position, 200.0)
+				if far.size() > 0:
+					h.global_position = far[0].global_position + Vector3(3.0, 0, 0)
+					aim = far[0].global_position
 			var ok: bool = h.use_skill(sk["id"], aim)
 			await wait(1.2 if sk["id"] != "drain" else 0.4)
 			if sk["id"] == "drain":
