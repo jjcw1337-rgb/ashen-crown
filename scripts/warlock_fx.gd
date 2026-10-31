@@ -11,6 +11,237 @@ static var _beam_mat: StandardMaterial3D
 static func _free_later(n: Node, t: float) -> void:
 	n.get_tree().create_timer(t, false).timeout.connect(n.queue_free)
 
+# ---------------------------------------------------------------- the skills' events (SkillFx)
+## What each skill shows, on the Warlock's own game and on his puppet on every partner's:
+##  Drain Life: "start" {t: [the victim]} (the latch, the sigil, the hum; the beams are h.fxs["drain"], drawn by
+##    `update` from his hand to the main victim and arching on to the forks), "victims" {t: all of them now} whenever
+##    the set changes, "tick" (the motes of life streaming back and the victims' green flash, every 0.3 s) and
+##    "end" (the release). A partner's copy also ends itself after DRAIN_TIMEOUT s without a tick.
+##  Blight Bolt: "bolt" {d: direction, x: Twin Skulls}: the skulls fly in h.bolts (`update`); "burst" {p, r, x: dur}:
+##    the burst and the pool (a puppet's skull nearest the burst is taken by it).
+##  Soul Shackles: "impact" {r: reach, x: how long, t: the foes bound}
+##  Fel Covenant: "impact"
+const DRAIN_TIMEOUT := 1.5
+
+static func play(h: Hero, ev: Dictionary) -> bool:
+	var root: Node3D = h.game.world.fx_root
+	var pos := h.global_position
+	match [str(ev["s"]), str(ev["e"])]:
+		["drain", "cast"], ["blight", "cast"], ["shackles", "cast"], ["covenant", "cast"]:
+			pass
+		["drain", "start"]:
+			_end_drain(h, false)
+			var victims: Array = ev.get("t", [])
+			var d := {"victims": victims, "beams": {}, "lit": {}, "light": null, "sigil": sigil(root, 1.25),
+				"hum": Sfx.start_loop("drain_loop", -9.0), "until": DRAIN_TIMEOUT}
+			(d["sigil"] as Node3D).global_position = pos + Vector3(0, 0.06, 0)
+			h.fxs["drain"] = d
+			for e in victims:
+				latch(root, SkillFx.chest_of(e, 1.0))
+			SkillFx.snd(h, "drain_start", -3.0)
+		["drain", "victims"]:
+			if not h.fxs.has("drain"):
+				return true
+			var d: Dictionary = h.fxs["drain"]
+			var was: Array = d["victims"]
+			var now: Array = ev.get("t", [])
+			for e in now:
+				if not was.has(e):
+					latch(root, SkillFx.chest_of(e, 1.0))
+			d["victims"] = now
+			d["until"] = DRAIN_TIMEOUT
+		["drain", "tick"]:
+			if not h.fxs.has("drain"):
+				return true
+			var d: Dictionary = h.fxs["drain"]
+			d["until"] = DRAIN_TIMEOUT
+			var victims: Array = d["victims"]
+			if victims.is_empty():
+				return true
+			var hand := SkillFx.hand(h, false)
+			var main = victims[0]
+			for i in victims.size():
+				var e = victims[i]
+				if not is_instance_valid(e):
+					continue
+				if not e.dead:
+					e.drain_flash(Warlock.FEL)
+				siphon(root, SkillFx.chest_of(e, 1.0), hand if i == 0 else (SkillFx.chest_of(main, 1.0) if is_instance_valid(main) else hand))
+			if h.puppet:
+				Sfx.play_at("drain_tick", pos, -12.0)
+			else:
+				Sfx.play("drain_tick", -7.0)
+		["drain", "end"]:
+			_end_drain(h, true)
+		["blight", "bolt"]:
+			var dir: Vector3 = ev["d"]
+			var dirs := [dir] if not bool(ev.get("x", false)) else [dir.rotated(Vector3.UP, 0.14), dir.rotated(Vector3.UP, -0.14)]
+			for dv in dirs:
+				var n := bolt_node(root)
+				n.global_position = pos + Vector3(0, 1.3, 0) + dv * 0.6
+				n.look_at(n.global_position + dv, Vector3.UP)
+				h.bolts.append({"node": n, "dir": dv, "left": 15.0})
+		["blight", "burst"]:
+			var g: Vector3 = ev["p"]
+			var rad: float = float(ev.get("r", 3.0))
+			blight_burst(root, g, rad)
+			blight_pool(root, g, rad, float(ev.get("x", 4.0)))
+			Sfx.play_at("blight_burst", g, -1.0)
+			if h.puppet:
+				# the skull that burst: the one nearest to it is gone
+				var best = null
+				var bd := 3.0
+				for b in h.bolts:
+					var n = b["node"]
+					if is_instance_valid(n) and n.global_position.distance_to(g) < bd:
+						bd = n.global_position.distance_to(g)
+						best = b
+				if best != null:
+					(best["node"] as Node).queue_free()
+					h.bolts.erase(best)
+		["shackles", "impact"]:
+			var reach_s: float = float(ev.get("r", 7.0))
+			var bind_t: float = float(ev.get("x", 2.5))
+			shackle_cast(root, pos, reach_s)
+			SkillFx.snd(h, "shackles")
+			SkillFx.shake(h, 0.25)
+			for e in ev.get("t", []):
+				chain(root, pos + Vector3(0, 1.1, 0), SkillFx.chest_of(e, 0.8), 0.8)
+				if not e.dead:
+					shackle(e, bind_t * (0.3 if e.boss else 1.0))
+		["covenant", "impact"]:
+			covenant(root, pos)
+			SkillFx.snd(h, "covenant")
+			SkillFx.duck(h, -9.0, 1.6)
+			SkillFx.shake(h, 0.3)
+		_:
+			return false
+	return true
+
+## The beams let go: the victims' rims, the hand's light, the sigil and the hum are gone.
+static func _end_drain(h: Hero, release_flash: bool) -> void:
+	if not h.fxs.has("drain"):
+		return
+	var d: Dictionary = h.fxs["drain"]
+	for b in (d["beams"] as Dictionary).values():
+		if is_instance_valid(b):
+			b.queue_free()
+	for e in (d["lit"] as Dictionary).values():
+		if is_instance_valid(e):
+			e.set_drained(false)
+	var l = d["light"]
+	if l != null and is_instance_valid(l):
+		if release_flash and h.game.world != null:
+			release(h.game.world.fx_root, l.global_position)
+		l.queue_free()
+	if d["sigil"] != null:
+		sigil_fade(d["sigil"])
+	var hum = d["hum"]
+	if hum != null and is_instance_valid(hum):
+		hum.stop()
+		hum.queue_free()
+	h.fxs.erase("drain")
+
+## Every frame after the pose: the beams leave the hand where it is now and follow the victims; the skulls fly.
+static func update(h: Hero, delta: float) -> void:
+	if h.fxs.has("drain"):
+		_draw_drain(h, delta)
+	if not h.bolts.is_empty():
+		_fly_bolts(h, delta)
+
+static func _draw_drain(h: Hero, delta: float) -> void:
+	var d: Dictionary = h.fxs["drain"]
+	if h.puppet:
+		d["until"] = float(d["until"]) - delta
+		if float(d["until"]) <= 0.0:
+			_end_drain(h, false)
+			return
+	var victims: Array = (d["victims"] as Array).filter(func(e): return is_instance_valid(e) and not e.dead)
+	var root: Node3D = h.game.world.fx_root
+	var hand: Vector3 = SkillFx.hand(h, false) + (-h.rig.global_transform.basis.z) * 0.08
+	var beams: Dictionary = d["beams"]
+	var lit: Dictionary = d["lit"]
+	var keep := {}
+	if not victims.is_empty():
+		var main = victims[0]
+		var mc: Vector3 = SkillFx.chest_of(main, 1.0)
+		for i in victims.size():
+			var e = victims[i]
+			var id: int = e.get_instance_id()
+			keep[id] = true
+			var b = beams.get(id)
+			if b == null or not is_instance_valid(b):
+				b = beam(root, 0.26 if i == 0 else 0.15)
+				beams[id] = b
+			b.width = 0.26 if i == 0 else 0.15
+			b.caps = i == 0
+			if not lit.has(id):
+				lit[id] = e
+				e.set_drained(true)
+			if i == 0:
+				b.draw(hand, mc, h.anim_time)
+			else:
+				var ec: Vector3 = SkillFx.chest_of(e, 1.0)
+				b.arc = 0.45 + mc.distance_to(ec) * 0.12
+				b.draw(mc, ec, h.anim_time)
+	for id in beams.keys():
+		if not keep.has(id):
+			var b = beams[id]
+			if is_instance_valid(b):
+				b.queue_free()
+			beams.erase(id)
+	for id in lit.keys():
+		if not keep.has(id):
+			var e = lit[id]
+			if is_instance_valid(e):
+				e.set_drained(false)
+			lit.erase(id)
+	var l = d["light"]
+	if l == null or not is_instance_valid(l):
+		l = hand_light(root)
+		d["light"] = l
+	l.global_position = hand
+	l.light_energy = 1.5 + 0.4 * sin(h.anim_time * 23.0) + 0.3 * sin(h.anim_time * 7.0)
+	var sg = d["sigil"]
+	if sg != null and is_instance_valid(sg):
+		sg.global_position = h.global_position + Vector3(0, 0.06, 0)
+		sg.rotation.y = h.anim_time * 0.9
+
+## Blight Bolt flies straight until it meets an enemy, a wall or the end of its range. The caster's own
+## bursts it (Hero._blight_burst: the damage, and the "burst" event everyone sees); a puppet's just flies
+## until that event takes it, or quietly vanishes at a wall or its range.
+static func _fly_bolts(h: Hero, delta: float) -> void:
+	var world = h.game.world
+	for b in h.bolts.duplicate():
+		var n = b["node"]
+		if not is_instance_valid(n):
+			h.bolts.erase(b)
+			continue
+		var step := 16.0 * delta
+		var p: Vector3 = n.global_position
+		var np: Vector3 = world.move(p, (b["dir"] as Vector3) * step, 0.15)
+		var moved := np - p
+		moved.y = 0
+		np.y = lerpf(p.y, world.height_at(np.x, np.z) + 1.2, clampf(delta * 6.0, 0.0, 1.0))
+		n.global_position = np
+		b["left"] -= step
+		var blocked: bool = b["left"] <= 0.0 or moved.length() < step * 0.4
+		if h.puppet:
+			if blocked:
+				n.queue_free()
+				h.bolts.erase(b)
+		elif blocked or not h.game.enemies_near(np, 1.0).is_empty():
+			h._blight_burst(np)
+			n.queue_free()
+			h.bolts.erase(b)
+
+static func clear(h: Hero) -> void:
+	_end_drain(h, false)
+	for b in h.bolts:
+		if is_instance_valid(b["node"]):
+			(b["node"] as Node).queue_free()
+	h.bolts.clear()
+
 ## One Drain Life beam: twisting green strands redrawn every frame, turned to face the
 ## camera. Bright pulses and motes of life run from the victim back toward the caster, a
 ## glowing bite sits on the victim and (on the main beam) a vortex swirls in the palm.

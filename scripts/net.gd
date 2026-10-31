@@ -274,6 +274,31 @@ func pl_gear(gear: Dictionary) -> void:
 	if players.has(pid) and is_instance_valid(players[pid]["hero"]):
 		players[pid]["hero"].apply_net_gear(gear)
 
+# ---------------------------------------------------------------- skill effects (SkillFx)
+## Every skill effect the local hero shows (Hero.fx) goes out as one small event; each partner plays it on
+## this player's puppet, visuals only. Enemies in it travel as net ids (SkillFx.encode/decode).
+var fx_tap: Callable      # tests: handed every event as it would go on the wire
+var fx_sent := 0          # events sent to partners and played from them (mp_test counts both)
+var fx_got := 0
+
+func skill_fx(ev: Dictionary) -> void:
+	var w := SkillFx.encode(self, ev)
+	if fx_tap.is_valid():
+		fx_tap.call(w)
+	if active and not players.is_empty() and not loading:
+		fx_sent += 1
+		rpc("pl_fx", w)
+
+@rpc("any_peer", "call_remote", "reliable")
+func pl_fx(w: Dictionary) -> void:
+	var pid := multiplayer.get_remote_sender_id()
+	if not players.has(pid) or loading or game.world == null:
+		return
+	var h = players[pid]["hero"]
+	if is_instance_valid(h) and h.net_has:
+		fx_got += 1
+		SkillFx.play(h, SkillFx.decode(self, w))
+
 # ---------------------------------------------------------------- handshake
 @rpc("any_peer", "call_remote", "reliable")
 func sv_hello(nm: String, gear: Dictionary, _lvl: int) -> void:
@@ -315,6 +340,8 @@ func broadcast_goto(act: int, zone: String, spawn: String, at) -> void:
 		return
 	enemies.clear()
 	items.clear()
+	for h in puppets():
+		h.net_zone_reset()
 	rpc("cl_goto", act, zone, spawn, at if at != null else Vector3.INF, game.tp_link, game.boss_killed, game.difficulty, nr, game.max_run)
 
 @rpc("authority", "call_remote", "reliable")
@@ -346,8 +373,7 @@ func _client_goto(act: int, zone: String, spawn: String, at) -> void:
 	enemies.clear()
 	items.clear()
 	for h in puppets():
-		h.visible = false
-		h.net_has = false
+		h.net_zone_reset()
 	while game._busy:
 		await get_tree().process_frame
 	await game.load_zone(act, zone, spawn, at)
