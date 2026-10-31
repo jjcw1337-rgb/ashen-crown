@@ -21,7 +21,7 @@ static func build(root: Node3D, homes: Dictionary, radii: Dictionary, accents: D
 		var col: Color = accents[c]
 		glows[c] = _plinth(root, Vector3(home.x, 0.0, home.z), r, home.y, col)
 		shafts[c] = _shaft(root, home, r, col)
-		_banner(root, Vector3(home.x, 4.35, home.z - 1.7), col, int(emblems.get(c, 0)), seed)
+		_banner(root, Vector3(home.x, 3.7, home.z - 1.7), col, int(emblems.get(c, 0)), seed)
 		_candles(root, Vector3(home.x, 0.0, home.z), r, seed)
 		seed += 1.7
 	_candelabra(root, Vector3(-6.3, 0.0, -0.6))
@@ -189,7 +189,7 @@ static func _shaft(root: Node3D, home: Vector3, r: float, col: Color) -> ShaderM
 static func _banner(root: Node3D, at: Vector3, col: Color, emblem: int, seed: float) -> void:
 	var b := MeshInstance3D.new()
 	var q := QuadMesh.new()
-	q.size = Vector2(0.9, 2.1)
+	q.size = Vector2(0.85, 1.9)
 	q.subdivide_width = 4
 	q.subdivide_depth = 16
 	b.mesh = q
@@ -212,7 +212,7 @@ static func _banner(root: Node3D, at: Vector3, col: Color, emblem: int, seed: fl
 	rm.metallic = 0.7
 	rm.roughness = 0.45
 	rod.material_override = rm
-	rod.position = at + Vector3(0, 1.07, 0.02)
+	rod.position = at + Vector3(0, 0.97, 0.02)
 	rod.rotation = Vector3(0, 0, PI * 0.5)
 	root.add_child(rod)
 
@@ -457,7 +457,7 @@ void fragment() {
 	float streak = 0.75 + 0.25 * vnoise(vec2(ang * 3.0, lp.y * 0.6 - TIME * 0.15));
 	vec2 g = vec2(ang * 9.0, lp.y * 9.0 + TIME * 0.7);
 	float dust = step(0.975, h21(floor(g))) * smoothstep(0.5, 0.0, length(fract(g) - 0.5)) * 2.0;
-	ALBEDO = col.rgb * (soft * fall * streak * 0.26 + dust * soft * fall * 0.7) * (0.25 + power * 1.25);
+	ALBEDO = col.rgb * (soft * fall * streak * 0.34 + dust * soft * fall * 0.7) * (0.25 + power * 1.25);
 }
 """
 

@@ -208,7 +208,7 @@ func _process(delta: float) -> void:
 		var home: Vector3 = homes[c]
 		var sp: SpotLight3D = spots[c]
 		sp.light_energy = move_toward(sp.light_energy, 6.0 if c == chosen else (3.0 if c == hovered else 1.2), delta * 12.0)
-		var pw := 1.0 if c == chosen else (0.55 if c == hovered else 0.18)
+		var pw := 1.0 if c == chosen else (0.6 if c == hovered else 0.32)
 		var sm: ShaderMaterial = shafts[c]
 		var nxt := move_toward(float(_pow.get(c, 0.2)), pw, delta * 3.0)
 		_pow[c] = nxt
