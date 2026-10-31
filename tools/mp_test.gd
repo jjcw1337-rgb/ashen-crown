@@ -91,8 +91,25 @@ func _host() -> void:
 	var seen := {}
 	var max_items := 0
 	t0 = Time.get_ticks_msec()
+	var cast_t := 0.0
+	var fx0: int = g.net.fx_got
+	var fx_nodes := 0
 	while Time.get_ticks_msec() - t0 < 40000 and g.cur_zone == "wild":
 		h.life = h.max_life
+		# the host casts at the partner's foes now and then, so the partner sees his effects on this puppet
+		cast_t -= 10.0 / 60.0
+		if cast_t <= 0.0 and g.world:
+			cast_t = 3.0
+			h.mana = h.max_mana
+			for k in h.cds.keys():
+				h.cds[k] = 0.0
+			var foes: Array = g.enemies_near(ally.global_position, 8.0)
+			if not foes.is_empty():
+				h.global_position = g.world.free_spot_near(foes[0].global_position + Vector3(2.0, 0, 0), 1.0)
+				var id: String = h.skill_list()[int(seen.size()) % 2]["id"]
+				h.use_skill(id, h.skill_aim(id, foes[0].global_position))
+		if g.world and g.net.fx_got > fx0:
+			fx_nodes = maxi(fx_nodes, g.world.fx_root.get_child_count())
 		if g.world:
 			max_items = maxi(max_items, g.world.items_root.get_child_count())
 		if OS.get_cmdline_user_args().has("shot") and not shot_done and Time.get_ticks_msec() - t0 > 13000:
@@ -108,6 +125,7 @@ func _host() -> void:
 					seen[e.get_instance_id()] = true
 		await wait(10)
 	print("[H5] monsters killed by partner=", seen.size(), " items dropped peak=", max_items, " items left=", g.net.items.size())
+	print("[H8] partner's skill effects received=", g.net.fx_got - fx0, " seen on his puppet=", (g.net.fx_got - fx0) > 0 and fx_nodes > 0, " mine sent to him=", g.net.fx_sent)
 	t0 = Time.get_ticks_msec()
 	while g.cur_zone != "town" and Time.get_ticks_msec() - t0 < 20000:
 		await wait(10)
@@ -162,9 +180,21 @@ func _join() -> void:
 		start_pos[id] = g.net.enemies[id].global_position
 	t0 = Time.get_ticks_msec()
 	var retarget := 0.0
+	var cast_t := 0.0
+	var fx0: int = g.net.fx_got
+	var sent0: int = g.net.fx_sent
 	while Time.get_ticks_msec() - t0 < 30000:
 		if h.life < last_life - 0.5:
 			hits += 1
+		# a skill now and then on top of the attacks, so the host sees this hero's effects on its puppet
+		cast_t -= 1.0 / 60.0
+		if cast_t <= 0.0:
+			cast_t = 2.5
+			h.mana = h.max_mana
+			for k in h.cds.keys():
+				h.cds[k] = 0.0
+			var id: String = h.skill_list()[kills % 2]["id"]
+			h.use_skill(id, h.skill_aim(id, h.global_position + Vector3(0, 0, -3)))
 		if h.life < h.max_life * 0.6:
 			h.life = h.max_life
 		last_life = h.life
@@ -201,6 +231,7 @@ func _join() -> void:
 	await secs(1.0)
 	var gained: int = h.xp + h.level * 100000 - xp0
 	print("[C3] monsters moved on my screen=", moved_monsters, " I killed=", kills, " xp gained=", gained > 0, " times hit by monsters=", hits)
+	print("[C7] my skill effects sent to the host=", g.net.fx_sent - sent0, " the host's received here=", g.net.fx_got - fx0, " shown on his puppet=", (g.net.fx_got - fx0) > 0 and g.net.puppets().size() > 0)
 	var gold0: int = h.gold
 	var inv0: int = h.inventory.filter(func(x): return x != null).size()
 	var belt0 := 0

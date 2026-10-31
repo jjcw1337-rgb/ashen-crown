@@ -10,6 +10,66 @@ const SOUL := Color(0.62, 0.42, 1.0)
 static func _free_later(n: Node, t: float) -> void:
 	n.get_tree().create_timer(t, false).timeout.connect(n.queue_free)
 
+# ---------------------------------------------------------------- the skills' events (SkillFx)
+## What each skill shows, on the Demon's own game and on his puppet on every partner's:
+##  Hellfire Claw: "impact" {y: yaw, x: wide, t: the foes it set alight}
+##  Summon Demon: "impact" {p: where it climbs out, n: its slot, y: yaw, x: how many he may keep}: the demon itself
+##    (DemonMinion) is raised here on every game; only the summoner's own copy deals its blows
+##  Underworld Phase: "tear" (the rift; the Underworld's grade is the caster's own screen), "erupt" {}, "end"
+##  Blood Pact: "impact" {x: how long}: the blood on him and on each of his demons, which are empowered everywhere
+static func play(h: Hero, ev: Dictionary) -> bool:
+	var root: Node3D = h.game.world.fx_root
+	var pos := h.global_position
+	match [str(ev["s"]), str(ev["e"])]:
+		["hellclaw", "cast"], ["summon", "cast"], ["pact", "cast"], ["phase", "cast"]:
+			pass
+		["hellclaw", "impact"]:
+			claw(root, pos, float(ev["y"]), 4.0 if bool(ev.get("x", false)) else 3.0)
+			var lit: Array = ev.get("t", [])
+			for e in lit:
+				ignite(root, e)
+			SkillFx.shake(h, 0.15 if not lit.is_empty() else 0.05)
+		["summon", "impact"]:
+			var at: Vector3 = ev["p"]
+			summon_circle(root, at)
+			SkillFx.snd(h, "summon_demon")
+			SkillFx.shake(h, 0.2)
+			h.minions = h.minions.filter(func(m): return is_instance_valid(m))
+			var mx: int = int(ev.get("x", 3))
+			while h.minions.size() >= mx and not h.minions.is_empty():
+				var old = h.minions.pop_front()
+				old.dismiss()
+			var m := DemonMinion.new()
+			m.name = "Minion%d" % int(ev["n"])
+			h.game.add_child(m)
+			m.setup(h, h.game, int(ev["n"]))
+			m.global_position = at
+			m.rig.rotation.y = float(ev["y"])
+			h.minions.append(m)
+		["pact", "impact"]:
+			pact(root, pos)
+			SkillFx.snd(h, "blood_pact")
+			SkillFx.duck(h, -6.0, 1.2)
+			SkillFx.shake(h, 0.3)
+			for m in h.minions:
+				if is_instance_valid(m):
+					m.empowered = float(ev.get("x", 12.0))
+					pact(root, m.global_position)
+		["phase", "tear"]:
+			phase_tear(root, pos)
+			SkillFx.snd(h, "phase_in")
+			SkillFx.shake(h, 0.2)
+		["phase", "erupt"]:
+			eruption(root, pos, 4.0)
+			SkillFx.snd(h, "phase_erupt")
+			SkillFx.duck(h, -8.0, 1.0)
+			SkillFx.shake(h, 0.4)
+		["phase", "end"]:
+			pass
+		_:
+			return false
+	return true
+
 ## A steady drift of embers (Blood Pact on a summoned demon).
 static func ember_aura() -> GPUParticles3D:
 	var p := GPUParticles3D.new()

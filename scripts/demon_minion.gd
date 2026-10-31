@@ -137,9 +137,13 @@ func _face(d: Vector3) -> void:
 	if d.length() > 0.01:
 		rig.rotation.y = lerp_angle(rig.rotation.y, atan2(-d.x, -d.z), 0.3)
 
-## Claw hit: part of the master's weapon damage plus fire, more under Blood Pact.
+## Claw hit: part of the master's weapon damage plus fire, more under Blood Pact. A partner's demon
+## (its master a puppet) only shows the blow: the summoner's own game deals it.
 func _strike() -> void:
 	if target == null or not is_instance_valid(target) or target.dead:
+		return
+	if bool(master.get("puppet")):
+		Fx.burst(game.world.fx_root, target.global_position + Vector3(0, 1.0 * target.height, 0), Color(1.0, 0.45, 0.1), 12, 3.5, 0.08, 0.3, true, -4.0)
 		return
 	var avg: float = (float(master.get("dmg_min")) + float(master.get("dmg_max"))) * 0.5
 	var lvl: int = int(master.get("level"))

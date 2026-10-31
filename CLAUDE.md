@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `grass_test`, `collision_test`, `aim_test`, `plague_test` (`--fixed-fps 60`), `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test`, `mp_boss_test` and `plague_mp_test` (run one copy
+`det_test`, `grass_test`, `collision_test`, `aim_test`, `plague_test` (`--fixed-fps 60`), `hoard_test`, `coop_fx_test` (every skill's effects reach a puppet, in one process), `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test`, `mp_boss_test` and `plague_mp_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -78,6 +78,7 @@ shared preview), give the preview build's link, and go to `main` only when Blain
 | `ground_item.gd`, `inter.gd` | Loot on the ground; interactables (chests, shrines, waypoints, portals, NPCs) |
 | `items.gd` | Item rolls, `empower` (A2/A3 multipliers), enchanting, tooltips |
 | `net.gd` | LAN co-op over ENet (UDP 24567, discovery 24568); RPC layer |
+| `skill_fx.gd`, `knight_fx.gd`, `archer_fx.gd` | Co-op skill effects: `SkillFx` plays every class's skill events on the caster and on his puppet for partners (see "Co-op skill effects"); the knight's and archer's effect handlers (the Wraith's, Demon's and Warlock's are in their `*_fx.gd`) |
 | `ui.gd`, `hud_bar.gd`, `icon_renderer.gd` | All UI built in code |
 | `vendor_ui.gd` | Nameplates over the town's people and the trader's live portrait in the trade window |
 | `models.gd`, `skeleton.gd`, `flora.gd`, `props.gd`, `geo.gd`, `mats.gd` | Procedural meshes and shaders |
@@ -98,6 +99,35 @@ shared preview), give the preview build's link, and go to `main` only when Blain
 
 - **Typed GDScript**: inference from Variant is treated as an error. Write `var x: Type = ...`.
 - **Co-op**: every peer must run the same build; RPC ids depend on each script's RPC set.
+- **Co-op skill effects** (`scripts/skill_fx.gd` `SkillFx`): partners see a hero as a puppet (`Hero.puppet`, posed
+  from `net_st`/`net_pos`/`net_yaw`), so his animation plays for them, but what a skill DRAWS has to be told: every
+  skill effect is an event. Skill code never draws; wherever something is to be seen it calls
+  `Hero.fx(skill_id, event, data)` (e.g. `fx("grasp", "impact", {"p": at, "x": hold})`), which plays the event at once
+  on the local hero (`SkillFx.play`) and, in co-op, sends it with one RPC (`Net.pl_fx`, reliable) to every partner,
+  whose game plays the same event on the caster's puppet. `Hero.use_skill` sends `(id, "cast", {"p": aim})` for
+  every skill by itself, so a new class's casts reach partners before it has any effects of its own (an event no
+  class claims gets `SkillFx._default`: a puff and a burst in the hero's colour). The event is a small Dictionary:
+  `"s"` the skill id (`"attack"` for the weapon), `"e"` the event name, and what it needs: `"p"`/`"q"` points,
+  `"d"` a direction, `"y"` a yaw, `"x"`/`"r"`/`"n"` numbers, `"ps"` a PackedVector3Array, `"t"` the enemies it
+  touches (Enemy nodes; on the wire their net ids, `SkillFx.encode`/`decode`, so a partner finds the same
+  monsters). `SkillFx.play` dispatches on the skill's class (`Data.SKILLS` `cls`) to `KnightFx` / `WraithFx` /
+  `DemonFx` / `WarlockFx` / `ArcherFx` `play(h, ev) -> bool`. A handler draws only: it must not touch life, mana,
+  cooldowns, stuns or talents (a puppet has none; send what the effect needs in the event), and it uses
+  `SkillFx.snd` (flat for the caster, positional from the puppet), `SkillFx.shake`/`hitstop`/`duck` (the caster's
+  screen only). Nothing is sent per frame: effects that run on (the Siphon tether, Drain Life's beams, Eternal Night,
+  phantoms, arrows, bolts, snares, summoned demons and the wolf) are state in `Hero.fxs` (or the hero's own lists)
+  started and ended by events and moved every frame by `SkillFx.update(h, delta)` after the pose, on the local hero
+  and on the puppet alike; a partner's copy ends itself if the end is lost (the tether after its hold + 2 s, the
+  beams 1.5 s after the last tick, the night 1 s after its clip stops). Drain Life's `"tick"` goes out every 0.3 s
+  and `"victims"` only when the fork set changes. A summoned demon, the wolf and the Spirit Beast's commands run
+  their own AI on every game (positions aren't streamed; they follow the same master and the same monsters) and
+  only the master's own copy deals damage (`DemonMinion._strike`, `SpiritBeast._strike`, `Archer.update` check
+  `master.puppet`). Screen-wide things stay the caster's own: the Underworld grade, and Eternal Night's edge
+  darkening (a partner standing in a Wraith's night gets a fainter one, `WraithFx.NIGHT_PARTNER`). On a zone change
+  `Hero.net_zone_reset` drops a puppet's lingering effects. `tools/coop_fx_test.gd` casts every skill of every class
+  in `Data.SKILLS` beside a puppet and fails if a skill sends no event, the puppet shows nothing, a lingering effect
+  doesn't reach it, or replaying the events on the puppet hurts a monster or changes its life or mana; the
+  `mp_test` host+join pair counts the events each side receives from the other ("[H8]"/"[C7]").
 - **Browser build (WebGL)** is a test build only and is fragile:
   - it is exported with **Godot 4.5.1** in CI (the desktop builds use 4.3): Godot 4.3's WebGL renderer
     blanks the whole 3D view in busy scenes (many objects near lights). Keep code working in both versions:
@@ -182,7 +212,10 @@ shared preview), give the preview build's link, and go to `main` only when Blain
   Props: `assets/models/plague/` flask, volatile, trap (Meshy text-to-3D, `act1/prep_prop.py`). Talents: Toxicology,
   Volatile Arts, Contagion (icons `p_*.png`, `plague_tree*.png`). Tests: `tools/plague_test.gd` (`--fixed-fps 60`),
   `tools/plague_mp_test.gd` (host + join); screenshots `tools/plague_shots.gd` (`--fixed-fps 10`).
-- **Adding a class**: add it to `Data.CLASSES`, give it four (up to six: Q E R F G V) `SKILLS` entries with its `cls`, build its look the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep working), handle its skill ids in `Hero.use_skill` / `_impact`, and add glyphs in `ui.gd` `SkillGlyph`.
+- **Adding a class**: add it to `Data.CLASSES`, give it four (up to six: Q E R F G V) `SKILLS` entries with its `cls`, build its look the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep working), handle its skill ids in `Hero.use_skill` / `_impact`, and add glyphs in `ui.gd` `SkillGlyph`. Keep the gameplay
+  and the effects apart: the skill code deals the damage and calls `Hero.fx(id, event, data)` for everything seen,
+  and a `<Class>Fx.play(h, ev)` handler draws it (add the class to the `match` in `SkillFx.play`); the cast's event
+  comes for free, and `tools/coop_fx_test.gd` fails any skill that shows partners nothing (see "Co-op skill effects").
 - **The Wraith's body**: the Meshy horned, chained wraith (concept D) on the shared mocap system
   (`Wraith.build_mocap`, `assets/models/wraith_mocap.glb`; falls back to the code-built robe without it). He has no
   legs and never walks: `tools/blender/wraith/prep_wraith_mocap.py` cuts the skeletal legs and feet out of the mesh
@@ -219,8 +252,10 @@ shared preview), give the preview build's link, and go to `main` only when Blain
   attack progress -> clip seconds keys; `Knight.build_mocap` opts `"shots"` and `KnightMocapRig.shots` hand the rig's
   one shot node whichever style is playing; the blow lands on `Anim.impact_at` of its style): claw2 for the rend,
   cast2's reach for the tether, the dodge's spin for the step, the slam for the grasp and the night's fall, claw1 for
-  the phantoms, cast and scream for the night. Skill state lives in `Hero.wr` (the tether, phantoms in flight, the
-  night's stage; `WraithSkills.clear`). Afterimages are `WraithFx.afterimage`: the body's armature duplicated with
+  the phantoms, cast and scream for the night. Skill state lives in `Hero.wr` (the tether's victim and ticks, the
+  night's stage; `WraithSkills.clear`); what is seen is fx events (`Hero.fx`) that `WraithFx.play` draws and
+  `WraithFx.update` keeps going (`Hero.fxs`: the tether node following its victim, the phantoms' flight, the night's
+  dark ramping with the rise, the ghosts wheeling, the claws), on his puppet for partners too. Afterimages are `WraithFx.afterimage`: the body's armature duplicated with
   its bone poses, under copies of the spectral materials with `ghost` on. The spectral claws (`WraithFx.claws`) sit
   on the hand bones (BoneAttachment3D, in the armature's centimetres) and grow out for the rakes. Soul Siphon's slow
   is `Enemy.slow` (rides the stun RPC as a negative time). Old saves' bindings of reap/wail/shade/host become
@@ -229,7 +264,7 @@ shared preview), give the preview build's link, and go to `main` only when Blain
   `tools/wraith_skills_clip.gd -- outdir [skill|all] [close|game]` renders frames of each (needs xvfb and
   `--fixed-fps 30`; the Low preset and no shadows, since software GL is slow).
 - **Underworld** (Demon's Phase): `game.set_underworld()` blends a screen-space grade (`DemonFx.UNDERWORLD_SHADER`), the `under_amt` global (terrain veins and rune rings in `mats.gd`), environment tweaks, rising souls and crimson monster outlines (`Enemy.set_soul_lit`). Monsters ignore a phased hero (`hero.phased`).
-- **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `_update_drain`, and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. Skill effects are local only (partners see the cast pose, not the beam), like every other class.
+- **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `_update_drain`, and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. The beams, sigil, hand light and hum are the `"drain"` fx events' effect (`WarlockFx.play`, state in `Hero.fxs["drain"]`, drawn by `WarlockFx.update` after the pose on the caster and on his puppet; `"start"`, `"victims"` when the fork set changes, `"tick"`, `"end"`), so partners see the beam on him too.
 - **King Grubb** (Act I boss, `hoard.gd`) is host-authoritative. Every visible part of the fight (piles, bombs, burst
   sacks, shouts, a grabber's `carry_on`/`carry_off`) is an Enemy fx event string handled in `Hoard.fx`, so partners see it;
   damage, healing and gold happen only on the host. Grabbers reach the fight through `Enemy.hoard` (`Hoard.steer`).
