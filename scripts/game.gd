@@ -124,8 +124,11 @@ func _ready() -> void:
 		await load_zone(0, shot_zone, shot_spawn if shot_spawn != "" else "start")
 		return
 	await _play_intro()
-	await load_zone(0, "town", "start")
+	# straight from the intro to the title: the camp builds behind it, with no loading screen or zone banner
+	_boot_quiet = true
 	ui.show_title()
+	await load_zone(0, "town", "start")
+	_boot_quiet = false
 
 # ---------------------------------------------------------------- intro
 const INTRO_PATH := "res://assets/intro.ogv"
@@ -785,13 +788,15 @@ func run_switched_banner() -> void:
 	ui.big_message(run_name())
 	ui.message(("The Ashen King's reign. " if difficulty >= 2 else "") + run_note(difficulty), Color(1.0, 0.7, 0.4))
 
+var _boot_quiet := false      # the camp loading behind the title at boot: no loading screen, no zone banner
+
 func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	if _busy:
 		return
 	_busy = true
 	net.broadcast_goto(act, zone, spawn, at)
 	loading_lbl.text = "Entering %s..." % zone_title(act, zone)
-	loading.visible = true
+	loading.visible = not _boot_quiet
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if world:
@@ -845,7 +850,10 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		_stock_shops()
 		if not tp_link.is_empty():
 			_make_portal(world.spawns["portal"], "back")
-	ui.set_zone(zone_title(act, zone))
+	if _boot_quiet:
+		ui.zone_lbl.text = zone_title(act, zone)
+	else:
+		ui.set_zone(zone_title(act, zone))
 	# Act I outdoors: birds over the forest (birds.gd)
 	if world.oak_forest and not indoor():
 		var birds := Birds.new()
@@ -1001,6 +1009,9 @@ func enemies_near(p: Vector3, r: float) -> Array:
 # ---------------------------------------------------------------- start / save
 ## cont: play the character `id` (the last one played when empty); otherwise a new `cls` called `nm`.
 func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
+	# chosen while the camp was still building behind the title: let it finish first
+	while _busy:
+		await get_tree().process_frame
 	Sfx.play("click")
 	ui.hide_title()
 	playing = true
@@ -1044,6 +1055,8 @@ func start_host() -> void:
 		ui.message("Hosting! Your partner can now pick Join Co-op Game", Color(0.5, 1.0, 0.5))
 
 func start_join(ip: String) -> void:
+	while _busy:
+		await get_tree().process_frame
 	Sfx.play("click")
 	net.stop_listening()
 	ui.hide_title()
