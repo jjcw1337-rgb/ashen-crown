@@ -145,13 +145,13 @@ static func surface_mesh(seg: int) -> Mesh:
 		rings += 1
 		r *= grow
 	for s in seg:
-		idx.append_array([0, 1 + (s + 1) % seg, 1 + s])
+		idx.append_array([0, 1 + s, 1 + (s + 1) % seg])
 	for ri in rings - 1:
 		var b0 := 1 + ri * seg
 		var b1 := b0 + seg
 		for s in seg:
 			var s1 := (s + 1) % seg
-			idx.append_array([b0 + s, b0 + s1, b1 + s, b1 + s, b0 + s1, b1 + s1])
+			idx.append_array([b0 + s, b1 + s, b0 + s1, b1 + s, b1 + s1, b0 + s1])
 	var arr := []
 	arr.resize(Mesh.ARRAY_MAX)
 	arr[Mesh.ARRAY_VERTEX] = verts
@@ -349,7 +349,7 @@ uniform float detail = 1.0;
 uniform vec3 sun_dir = vec3(-0.5, 0.45, -0.3);
 uniform vec3 sun_col = vec3(1.0, 0.8, 0.6);
 uniform vec3 sky_col = vec3(0.5, 0.6, 0.7);
-uniform vec3 shallow_col : source_color = vec3(0.10, 0.42, 0.40);
+uniform vec3 shallow_col : source_color = vec3(0.07, 0.40, 0.42);
 uniform vec3 deep_col : source_color = vec3(0.012, 0.075, 0.10);
 uniform vec3 absorb = vec3(0.42, 0.085, 0.06);
 global uniform float ocean_t;
@@ -443,7 +443,11 @@ void fragment(){
 	// the water's own colour: light scattered back by it, turquoise over sand, blue-green far out,
 	// lit by the sky and the sun
 	vec3 scat = mix(shallow_col, deep_col, smoothstep(0.5, 14.0, v_depth));
-	scat *= sky_col * 0.9 + sun_col * max(sun_dir.y, 0.0) * 0.55;
+	// lit by the sky and sun's brightness, only a little by their colour (a warm evening shouldn't turn
+	// the sea olive)
+	float sky_l = dot(sky_col, vec3(0.3, 0.5, 0.2));
+	vec3 light = mix(vec3(sky_l), sky_col, 0.25) * 1.1 + mix(vec3(dot(sun_col, vec3(0.33))), sun_col, 0.3) * max(sun_dir.y, 0.0) * 0.5;
+	scat *= light;
 	vec3 body = under * trans + scat * (1.0 - tavg);
 	// light through the thin top of a wave, seen against the sun
 	float back = pow(clamp(dot(view_w, -normalize(vec3(sun_dir.x, 0.0, sun_dir.z))) * 0.5 + 0.5, 0.0, 1.0), 4.0);
@@ -454,8 +458,10 @@ void fragment(){
 	float shoreband = 1.0 - smoothstep(0.0, 9.0, v_shore);
 	float surf = sin(v_shore * 1.15 + t * 1.6 - texture(foam_tex, p * 0.02).r * 4.0) * 0.5 + 0.5;
 	surf = smoothstep(0.55, 0.95, surf) * shoreband * smoothstep(0.0, 1.2, v_shore + 0.6);
-	float contact = 1.0 - smoothstep(0.0, 0.55, thick);
-	contact = max(contact, 1.0 - smoothstep(0.0, 1.4, v_shore));
+	// the swash line: a thin, broken edge of foam that rides up and back with the water
+	float swash = 0.5 + 0.5 * sin(t * 1.25 - v_shore * 0.9 + 1.4);
+	float contact = (1.0 - smoothstep(0.0, 0.45, thick)) * 0.8;
+	contact = max(contact, (1.0 - smoothstep(0.0, 0.5 + swash * 0.9, v_shore)) * (0.55 + 0.45 * swash));
 	float caps = smoothstep(0.55, 1.0, v_crest) * 0.7;
 	float lace = texture(foam_tex, p * 0.21 + vec2(t * 0.02, -t * 0.013)).r;
 	float lace2 = texture(foam_tex, p * 0.53 - vec2(t * 0.031, t * 0.017)).r;

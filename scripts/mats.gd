@@ -435,12 +435,12 @@ void fragment(){
 		if (uw > 0.01) {
 			float cid1 = 0.0;
 			float cid2 = 0.0;
-			vec2 v1 = vor(p * 0.62 + vec2(ocean_t * 0.11, ocean_t * 0.05), cid1);
-			vec2 v2 = vor(p * 0.83 - vec2(ocean_t * 0.07, -ocean_t * 0.09) + 3.7, cid2);
-			float e1 = 1.0 - smoothstep(0.0, 0.16, v1.y - v1.x);
-			float e2 = 1.0 - smoothstep(0.0, 0.16, v2.y - v2.x);
-			float caus = e1 * 0.6 + e2 * 0.6 + e1 * e2 * 1.2;
-			base += base * caus * 1.4 * uw * (1.0 - smoothstep(-0.5, -7.0, wpos.y));
+			vec2 v1 = vor(p * 1.7 + vec2(ocean_t * 0.23, ocean_t * 0.11), cid1);
+			vec2 v2 = vor(p * 2.3 - vec2(ocean_t * 0.15, -ocean_t * 0.19) + 3.7, cid2);
+			float e1 = 1.0 - smoothstep(0.0, 0.12, v1.y - v1.x);
+			float e2 = 1.0 - smoothstep(0.0, 0.12, v2.y - v2.x);
+			float caus = e1 * e2 * 1.6 + (e1 + e2) * 0.18;
+			base += base * caus * 0.8 * uw * (1.0 - smoothstep(-0.4, -6.0, wpos.y));
 		}
 	}
 	float cover = 0.0;

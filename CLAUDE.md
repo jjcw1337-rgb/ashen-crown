@@ -438,6 +438,31 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   sounds (`Sfx.counts`) and the fort voice. The camp's song is `music_town` (jj's pick: a dark forest sanctuary, harp over a low
   string drone with a wooden flute; candidate take 13). Ambience: wind, drips in the crypt, and in Act I outside the camp (moor and fort) `forest`, soft
   trees in a breeze (`Sfx.play_music(kind, amb)`, picked in `Game.load_zone`).
+- **The Mournwater Coast and its islands** (Act I, west of the camp through its west gate; branch `test-ocean`, work in
+  progress: boat, shipwright and sailing come next). `coast.gd` (`Coast`, zone `"coast"`): a headland with the open sea on
+  three sides (the mainland's shore is a parabola round its tip, `shore_x`), the pier at the tip (`DOCK` = the origin,
+  the boat's mooring), the shipwright's shed (`SHED`), the path back to the camp (`EXIT`). The islands are data in
+  `isles.gd` (`Isles.ISLANDS`: id, name, bearing from the dock, `sail` = metres of open water from the dock to the end of
+  its jetty, radius, beach/cliff, colours, and empty `foes`/`loot`/`quests`/`dungeon` for later), each with its own
+  builder script `isle_<id>.gd` (`relief` = its inland shape, `pads` = flat spots, `dress` = trees, landmark, props,
+  named spots `poi_*`); a new island is a table entry, a script and a line in `ISLE_SCRIPTS`. The five are 250 m across,
+  164 m of water (~22 s at the boat's 8 m/s) from the dock, 14.5 m channels apart. Out at sea (the coast zone) every
+  island is drawn at full size (`Isles.dress(..., full = false)`: ground at 2 m, trees, landmark, jetty); stepping off at
+  its jetty loads its own zone `"isle_<id>"` (`Isles.build_zone`: the island at the origin, same ground at 1 m, grass,
+  ferns, props, the far shores from `Coast.distant`). Ground: `Coast.ground(p)` (sea floor, mainland, islands) baked into
+  `HeightGrid`s (`height_grid.gd`; cached for the session) and read through `World.height_fn`. Sea zones (`World.sea`):
+  walkers stop where the water is deeper than `World.WADE` and at cliffs steeper than `World.steep`; piers and jetties are
+  `World.add_deck` (`height_at` includes decks, `ground_h` is the bare ground the terrain, sea map and grass read).
+  Terrain: `World.terrain_patch(rect, step, colours, name, floor, own)` (the zone's own ground plus coarser patches; the
+  terrain shader's `sea` mode adds sand, wet sand and the seabed with caustics). The water is `ocean.gd` (`Ocean`, added
+  by `Game._add_ocean`): Gerstner waves on a camera-following ring mesh (the same sum on the CPU, `surface_y`, for
+  floating), a baked depth/shore map (`bake`: turquoise shallows, calm water inshore, surf rolling onto every beach,
+  foam at rocks and posts), Forward+ refraction and depth (Medium+), the `LITE` variant on Low and OpenGL; global
+  `ocean_t`. Light: `Game._sea_env` (golden evening, low sun over the sea, clear air). `World.get_meta("sea_rocks")`
+  lists rocks in the water for boats. Tests: `tools/ocean_test.gd`; screenshots `tools/ocean_shots.gd -- outprefix [q] [only]`
+  (Forward+ screenshots need a Vulkan driver: `apt-get install mesa-vulkan-drivers` gives lavapipe, slow but correct).
+  Note: a first import of the project needs `godot --headless --editor --quit-after 2000` (plain `--quit` can abort the
+  scan before the class cache is written).
 - **The camp's bonfire** (`Inter` kind `"bonfire"`, `UI.open_burn`): clicking it roars up (`bonfire_open`) and opens the fire
   window in the inventory's iron frame (a shader fire in a stone hearth, `UI.Flames`/`FIRE_SHADER`) with its options below
   in the bar's sockets (`UI.BONFIRE_OPTIONS`: Burn, Enchant; empty sockets wait for more) beside the
