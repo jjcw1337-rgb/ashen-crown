@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `grass_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
+`det_test`, `grass_test`, `collision_test`, `aim_test`, `plague_test` (`--fixed-fps 60`), `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test`, `mp_boss_test` and `plague_mp_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -66,6 +66,7 @@ shared preview), give the preview build's link, and go to `main` only when Blain
 | `wraith.gd`, `wraith_skills.gd`, `wraith_fx.gd` | Wraith class: the Meshy body on the mocap system with the spectral shader; its six skills (casts, blows, the tether, phantoms, the night); their effects |
 | `demon.gd`, `demon_fx.gd`, `demon_minion.gd` | Demon class: knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader; skill effects and the Underworld screen grade; summoned demons (simple ally AI) |
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
+| `plague.gd` | Plague Doctor class: body (mocap, whole-body skill clips), Toxic Flask, Volatile Mixture, Pestilent Trap, The Last Epidemic, poison and infection, co-op replay |
 | `enemy.gd`, `projectile.gd`, `feral.gd` | Monsters/AI and missiles (host-authoritative in co-op); the Feral's baked-animation body |
 | `via.gd`, `aurelia.gd`, `games.gd`, `roman.gd` | A2: the Imperial Road (wild), the city of Aurelia and its arena (lair), the arena's games (the act's boss fight), and the Roman architecture they're built from |
 | `lion.gd` | The arena lion: a Meshy model on a quadruped skeleton, posed in code (no baked animations) |
@@ -142,6 +143,45 @@ shared preview), give the preview build's link, and go to `main` only when Blain
   procedural body dressed as a hunter (`Archer.build_placeholder`, `Archer.body_gear` kept on every gear change; its bow in `J["grip_l"]`/`J["bow_l"]`). Preview: `tools/mocap_knight_clip.gd -- outdir
   run|attack|shootwalk 34|game|side|close|closeback frames archer [longbow]`. Talent icons still to paint (`tools/talent_icons.py`).
   `tools/archer_test.gd` checks it (run it with `--fixed-fps 60`; it counts frames).
+- **The Plague Doctor** (`scripts/plague.gd`, `Plague`; class `"plague"`, one `Plague` per hero in `Hero.pd`): the Meshy
+  plague doctor (concept 1 of four in the session's picks: beaked mask with green-lit goggles, buckled greatcoat split
+  front and back, bandolier and belt of green/amber/violet vials, pouches, instrument roll, brass censer) on the knight's
+  mocap system like the ranger: `assets/models/plague_doctor.glb` from `tools/blender/plague/prep_plague_mocap.py --
+  rigged.glb out.glb 60000 clips_a.glb clips_b.glb clips_c.glb` (Meshy task ids and the 26 clip ids are at its top).
+  **Whole-body clips per attack style** (new, any mocap body can use them): `Knight.build_mocap` opts `"acts"`
+  `{style: {clip, keys, frac}}` adds one AnimationNodeAnimation + TimeSeek per style behind a Transition (`act_pick`) and
+  a Blend2 (`act_mix`) over everything; `knight_mocap_rig.gd` seeks the clip to the attack's progress along `keys`
+  (`"frac": true` = clip times as fractions of the clip's length), turns the procedural layer off and pins the hips over
+  his spot (library clips step about). `Plague.ACTS`: his own cane combo (`swipe1/2/3` = `peck`, `flick`, `censer_slam`: Meshy 221, 242, 128; each blow's
+  effect is `Plague.cane_blow`, called by `Hero._swipe_impact` with the foes struck: Crow's Peck poisons them for 2 s,
+  Vial Flick fans drops across the arc and poisons everyone struck for 3 s, Censer Slam cracks a vial on the ground
+  ahead in a 2 m cloud for 2.5 s; poison source `"cane"`, scaled by `dmg:attack`), Toxic
+  Flask `pd_flask` (over-shoulder throw), Volatile Mixture `pd_volatile` (crouch charge and throw), Pestilent Trap
+  `pd_trap` (crouch and place), The Last Epidemic in two stages `pd_slam` (the censer smashed) then `pd_dome` (arms
+  raised; `Plague.update` starts it when the first ends), `pd_inspect` (the class stage's fidget: a vial held to the
+  light). New styles are appended to `Net.STYLES` and timed in `Anim.impact_at`. Clip strips: `tools/blender/plague/clip_sheet.py`.
+  Skills: Toxic Flask (Q, a lobbed flask, cloud 3 m / 4 s), Volatile Mixture (E, a fuse ring 0.6 s then a 4 m fire
+  blast that burns; **Ignition**: a blast that reaches one of his clouds burns it out at once for its remaining poison),
+  Pestilent Trap (R, up to 2, armed after 0.8 s, the first foe springs it: stun + cloud; **Outbreak**: sprung by an
+  infected foe, its cloud infects), The Last Epidemic (F, a 9 m dome for 8 s: poison, slow, infection; collapses with a
+  last blow). **Statuses live on the caster** (`Plague.poison`, `infected`, `immune`), ticking every 0.5 s through
+  `Enemy.take_damage` on the elemental channel (green numbers, `dmg_tint`, no blood), so a partner's damage reaches the
+  host the usual way and nothing new crosses the network for it. Guards: one poison per source per foe (refreshed, never
+  stacked; sources toxic, trap, epidemic, infection); one infection per foe; a dead carrier passes it to the two nearest,
+  at most `INF_JUMPS` (6) jumps per cast; 4 s immunity after it ends. Every number is a const at the top of plague.gd;
+  talent keys (`cloud_size`, `poison_dmg`, `blast_size`, `ignite_dmg`, `trap_max`, `inf_jumps`, `dome_size` ...) are
+  read where the skill is. **Co-op**: the first class whose effects partners see: `Plague._send` → `Net.hero_fx` (the
+  host relays; `sv_hero_fx`/`cl_hero_fx`) → `Plague.remote` on the puppet, whose `Plague` is a `ghost()` (builds the same
+  flasks, clouds, traps and dome, deals nothing). His leather is dyed (`Plague.COLORS`, default "oxblood2": an oxblood coat and cape with a black hat,
+  gloves and boots; also "oxblood", "plague", "plague2", "ash2", "" = Meshy's black): `Plague.dye` swaps the albedo for
+  `assets/textures/plague/coat_<scheme>.jpg`, made by `tools/plague_colors.py` from the albedo and metal maps that
+  `tools/blender/plague/dump_textures.py` saves out of the glb and the regions `tools/blender/plague/region_uv.py` finds
+  (head and hat above the collar, gloves by the hand bones, boots below the coat's hem): only the dark, grey, non-metal
+  leather is tinted. His cane: `Data.BASES` `physician_cane`/`crow_cane` (kind `"cane"`,
+  `"cls": "plague"`, `Plague.cane_model`: the Meshy crow-skull cane `assets/models/plague/cane.glb`, `prep_cane.py`).
+  Props: `assets/models/plague/` flask, volatile, trap (Meshy text-to-3D, `act1/prep_prop.py`). Talents: Toxicology,
+  Volatile Arts, Contagion (icons `p_*.png`, `plague_tree*.png`). Tests: `tools/plague_test.gd` (`--fixed-fps 60`),
+  `tools/plague_mp_test.gd` (host + join); screenshots `tools/plague_shots.gd` (`--fixed-fps 10`).
 - **Adding a class**: add it to `Data.CLASSES`, give it four (up to six: Q E R F G V) `SKILLS` entries with its `cls`, build its look the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep working), handle its skill ids in `Hero.use_skill` / `_impact`, and add glyphs in `ui.gd` `SkillGlyph`.
 - **The Wraith's body**: the Meshy horned, chained wraith (concept D) on the shared mocap system
   (`Wraith.build_mocap`, `assets/models/wraith_mocap.glb`; falls back to the code-built robe without it). He has no

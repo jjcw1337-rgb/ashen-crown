@@ -15,7 +15,8 @@ extends RefCounted
 ##   class specials, used where the skill is: nova_heal, cry_heal, charge_cdr, rend_heal, rend_full,
 ##     phantoms, claw_wide, minion_speed, minion_max, pact_cost, phase_heal, drain_heal,
 ##     drain_fork, drain_glut, blight_size, blight_twin, shackle_range, arrow_split, snare_dur, snare_max,
-##     snare_wide, volley_size, beast_two, burn_dmg, wolf_burn, chill_pct, wolf_howl, frost_shatter, arc_count
+##     snare_wide, volley_size, beast_two, burn_dmg, wolf_burn, chill_pct, wolf_howl, frost_shatter, arc_count,
+##     plague: cloud_size cloud_dur poison_dmg poison_dur blast_size ignite_dmg trap_max trap_stun inf_jumps inf_dur dome_size dome_dur
 ## "text" shows the total for the ranks taken: {key} is replaced by the fx value times the rank.
 ## Saves made before talents get a build picked for them (`auto_build`, the class's `AUTO` order).
 
@@ -138,6 +139,35 @@ const TREES := {
 			{"id": "l_eternal", "name": "Eternal Covenant", "row": 3, "max": 1, "icon": "covenant", "fx": {"buff_dur": 6}, "text": "Fel Covenant lasts {buff_dur} seconds longer."},
 		]},
 	],
+	"plague": [
+		{"name": "Toxicology", "desc": "Poison: Toxic Flask, longer and crueller clouds.", "talents": [
+			{"id": "p_dose", "name": "Stronger Dose", "row": 0, "max": 3, "icon": "toxic", "fx": {"dmg:toxic": 10}, "text": "Toxic Flask deals {dmg:toxic}% more damage."},
+			{"id": "p_study", "name": "Studied Hand", "row": 0, "max": 3, "icon": "t_eye", "fx": {"ene": 3}, "text": "+{ene} energy."},
+			{"id": "p_venom", "name": "Virulent Venom", "row": 1, "max": 3, "icon": "t_star", "fx": {"poison_dmg": 8}, "text": "All your poison hurts {poison_dmg}% more."},
+			{"id": "p_cloud", "name": "Heavy Vapour", "row": 1, "max": 3, "icon": "toxic", "fx": {"cloud_size": 10}, "text": "Your poison clouds spread {cloud_size}% wider."},
+			{"id": "p_linger", "name": "Lingering Rot", "row": 2, "max": 3, "icon": "t_hourglass", "fx": {"poison_dur": 1.0}, "text": "Poison keeps working {poison_dur} seconds longer after a foe leaves a cloud."},
+			{"id": "p_thrift", "name": "Measured Doses", "row": 2, "max": 2, "icon": "t_hourglass", "fx": {"cost:toxic": 15}, "text": "Toxic Flask costs {cost:toxic}% less mana."},
+			{"id": "p_miasma", "name": "Standing Miasma", "row": 3, "max": 1, "icon": "toxic", "fx": {"cloud_dur": 2.0}, "text": "Every poison cloud hangs {cloud_dur} seconds longer."},
+		]},
+		{"name": "Volatile Arts", "desc": "Fire and fuses: Volatile Mixture and the ignition of his clouds.", "talents": [
+			{"id": "p_charge", "name": "Bigger Charge", "row": 0, "max": 3, "icon": "volatile", "fx": {"dmg:volatile": 12}, "text": "Volatile Mixture deals {dmg:volatile}% more damage."},
+			{"id": "p_steady", "name": "Steady Hands", "row": 0, "max": 3, "icon": "t_fist", "fx": {"dex": 3}, "text": "+{dex} dexterity."},
+			{"id": "p_blast", "name": "Wide Blast", "row": 1, "max": 3, "icon": "volatile", "fx": {"blast_size": 8}, "text": "Volatile Mixture's blast reaches {blast_size}% further."},
+			{"id": "p_quick", "name": "Short Fuse", "row": 1, "max": 3, "icon": "t_hourglass", "fx": {"cd:volatile": 8}, "text": "Volatile Mixture recharges {cd:volatile}% faster."},
+			{"id": "p_ignite", "name": "Flashpoint", "row": 2, "max": 3, "icon": "volatile", "fx": {"ignite_dmg": 20}, "text": "Ignited clouds burn {ignite_dmg}% hotter."},
+			{"id": "p_cane", "name": "Iron-Shod Cane", "row": 2, "max": 2, "icon": "attack", "fx": {"dmg:attack": 10}, "text": "Your cane strikes {dmg:attack}% harder."},
+			{"id": "p_inferno", "name": "Alchemical Fire", "row": 3, "max": 1, "icon": "volatile", "fx": {"dmg:volatile": 25, "blast_size": 15}, "text": "Volatile Mixture deals {dmg:volatile}% more damage and its blast reaches {blast_size}% further."},
+		]},
+		{"name": "Contagion", "desc": "Traps and the epidemic: preparation, infection and the dome.", "talents": [
+			{"id": "p_spring", "name": "Hair Trigger", "row": 0, "max": 3, "icon": "trap", "fx": {"dmg:trap": 12}, "text": "Pestilent Trap deals {dmg:trap}% more damage."},
+			{"id": "p_hardy", "name": "Hardened Physician", "row": 0, "max": 3, "icon": "t_heart", "fx": {"life_pct": 4}, "text": "+{life_pct}% maximum life."},
+			{"id": "p_snare", "name": "Choking Gas", "row": 1, "max": 3, "icon": "trap", "fx": {"trap_stun": 0.3}, "text": "Pestilent Trap stuns {trap_stun} seconds longer."},
+			{"id": "p_spread", "name": "Carriers", "row": 1, "max": 3, "icon": "epidemic", "fx": {"inf_jumps": 1}, "text": "Infection can jump {inf_jumps} more times."},
+			{"id": "p_cache", "name": "Second Cache", "row": 2, "max": 1, "icon": "trap", "fx": {"trap_max": 1}, "text": "Keep {trap_max} more Pestilent Trap set."},
+			{"id": "p_fever", "name": "Long Fever", "row": 2, "max": 3, "icon": "t_hourglass", "fx": {"inf_dur": 1.0, "dome_dur": 0.5}, "text": "Infection lasts {inf_dur} seconds longer and the dome {dome_dur} seconds longer."},
+			{"id": "p_last", "name": "Pandemic", "row": 3, "max": 1, "icon": "epidemic", "fx": {"dome_size": 20, "cd:epidemic": 20}, "text": "The Last Epidemic's dome is {dome_size}% wider and it recharges {cd:epidemic}% faster."},
+		]},
+	],
 	"archer": [
 		{"name": "Flame", "desc": "Fire Arrow, burning wounds and the bow's weight; his wolf's fangs catch fire.", "talents": [
 			{"id": "a_kindle", "name": "Kindling", "row": 0, "max": 3, "icon": "pierce", "fx": {"dmg:pierce": 12}, "text": "Fire Arrow deals {dmg:pierce}% more damage."},
@@ -172,6 +202,8 @@ const TREES := {
 ## The build an old save gets (and the window's Auto button follows): talents in order, each taken to
 ## its maximum while points last and its row is open.
 const AUTO := {
+	"plague": ["p_dose", "p_study", "p_venom", "p_cloud", "p_linger", "p_thrift", "p_miasma", "p_charge", "p_steady", "p_blast", "p_quick", "p_ignite",
+		"p_cane", "p_inferno", "p_spring", "p_hardy", "p_snare", "p_spread", "p_cache", "p_fever", "p_last"],
 	"knight": ["k_zeal", "k_heavy", "k_radiance", "k_fervor", "k_steel", "k_purify", "k_consecrate", "k_vigor", "k_tough", "k_resolve", "k_wall", "k_guard", "k_wind", "k_unbroken",
 		"k_might", "k_momentum", "k_ram", "k_sword", "k_command", "k_rally", "k_relentless"],
 	"wraith": ["w_scythe", "w_focus", "w_harvest", "w_haste", "w_cruel", "w_exec", "w_moon", "w_unlife", "w_chill", "w_legion", "w_ward", "w_eternal", "w_siphon", "w_rider",

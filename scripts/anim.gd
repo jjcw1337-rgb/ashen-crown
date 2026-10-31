@@ -29,6 +29,12 @@ static func impact_at(style: String) -> float:
 		"swipe3": return 0.47
 		"cleave": return 0.5
 		"bow": return 0.72
+		"pd_flask": return 0.55
+		"pd_volatile": return 0.6
+		"pd_trap": return 0.5
+		"pd_slam": return 0.6
+		"pd_dome": return 0.7
+		"pd_inspect": return 0.5
 		"cast": return 0.55
 		"claw": return 0.45
 		"slam": return 0.58

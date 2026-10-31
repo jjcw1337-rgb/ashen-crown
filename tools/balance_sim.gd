@@ -9,7 +9,7 @@ extends SceneTree
 ## --fixed-fps makes the sim run as fast as the CPU allows (each frame is 1/30 s of game time).
 ## Lines starting [BAL] are the table; [BAL-FLAG] lines are numbers outside their band.
 
-const CLASSES := ["knight", "wraith", "demon", "warlock", "archer"]
+const CLASSES := ["knight", "wraith", "demon", "warlock", "archer", "plague"]
 ## Share of each zone's monsters a player kills on the way through.
 const CLEAR := 1.0
 ## Where we measure: run (0 Act I, 1 A2, 2 A3), zone, the gear the player has by then
@@ -151,7 +151,7 @@ func _equip(cls: String, lvl: int, ilvl: int, gear_run: int) -> void:
 	h.new_character()
 	h.level = lvl
 	var pts := (lvl - 1) * 5
-	var w: Dictionary = {"knight": {"str": 2, "dex": 1, "vit": 2}, "wraith": {"str": 1, "dex": 2, "vit": 2}, "demon": {"str": 2, "vit": 2, "ene": 1}, "warlock": {"str": 1, "vit": 2, "ene": 2}}[cls]
+	var w: Dictionary = {"knight": {"str": 2, "dex": 1, "vit": 2}, "wraith": {"str": 1, "dex": 2, "vit": 2}, "demon": {"str": 2, "vit": 2, "ene": 1}, "warlock": {"str": 1, "vit": 2, "ene": 2}, "archer": {"dex": 2, "vit": 2, "str": 1}, "plague": {"dex": 1, "vit": 2, "ene": 2}}[cls]
 	var wsum := 0
 	for k in w:
 		wsum += int(w[k])
@@ -362,7 +362,8 @@ func _bot(fs: Array) -> void:
 					_:
 						want = crowd >= 2 or (near.boss and nd < 6.0)
 			"point":
-				want = nd > 3.0 and nd < 12.0
+				# the plague doctor's flasks and traps work at his feet too (a player throws them point-blank)
+				want = nd < 12.0 if h.is_plague() else (nd > 3.0 and nd < 12.0)
 			_:
 				want = nd <= float(s.get("range", 3.5))
 		if not want:

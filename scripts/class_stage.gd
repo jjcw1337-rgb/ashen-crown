@@ -9,13 +9,14 @@ extends SubViewportContainer
 signal picked(cls: String)
 signal hovering(cls: String)
 
-const CLASSES := ["knight", "wraith", "demon", "warlock", "archer"]
-const ACCENTS := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1), "warlock": Color(0.45, 1.0, 0.35), "archer": Color(0.55, 0.85, 0.45)}
+const CLASSES := ["knight", "wraith", "demon", "warlock", "archer", "plague"]
+const ACCENTS := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1), "warlock": Color(0.45, 1.0, 0.35), "archer": Color(0.55, 0.85, 0.45), "plague": Color(0.6, 0.95, 0.3)}
 const SPACING := 1.75
 const FACE := PI                     # bodies face -z; the camera is on +z
 ## signature moves: [pose style, seconds, impact fraction, skill name]
 const SIGNATURE := {"knight": ["cleave", 1.1, 0.5, "Holy Slam"], "wraith": ["rend", 0.95, 0.42, "Spectral Rend"],
-	"demon": ["side", 0.9, 0.45, "Hellfire Claw"], "warlock": ["cast", 1.8, 0.2, "Drain Life"], "archer": ["bow", 1.0, 0.55, "Volley"]}
+	"demon": ["side", 0.9, 0.45, "Hellfire Claw"], "warlock": ["cast", 1.8, 0.2, "Drain Life"], "archer": ["bow", 1.0, 0.55, "Volley"],
+	"plague": ["pd_flask", 1.3, 0.55, "Toxic Flask"]}
 const SIG_EVERY := 4.5
 ## The sound of choosing each hero: layers of the game's own recordings, [sound, delay s, dB, pitch]
 const PICK_SOUND := {
@@ -23,7 +24,8 @@ const PICK_SOUND := {
 	"wraith": [["phase_in", 0.0, -2.0, 1.0], ["wail", 0.12, -4.0, 1.1], ["shade_implode", 0.75, -3.0, 0.9]],
 	"demon": [["fire_erupt", 0.0, 0.0, 0.85], ["summon_demon", 0.2, -3.0, 0.9]],
 	"warlock": [["blight_cast", 0.0, -2.0, 1.0], ["relic_ting", 0.08, -6.0, 1.3], ["cackle", 0.3, -4.0, 1.55]],
-	"archer": [["bow", 0.0, 0.0, 0.85], ["bow", 0.14, -3.0, 1.05], ["lion_roar", 0.32, -8.0, 1.45]]}
+	"archer": [["bow", 0.0, 0.0, 0.85], ["bow", 0.14, -3.0, 1.05], ["lion_roar", 0.32, -8.0, 1.45]],
+	"plague": [["ice_shatter", 0.0, -4.0, 1.4], ["blight_burst", 0.1, -5.0, 1.15], ["fuse", 0.35, -9.0, 1.0]]}
 
 var game: Node
 var vp: SubViewport
@@ -294,6 +296,11 @@ func _fidget(c: String, h: Hero, home: Vector3, f: float) -> void:
 			yaw = FACE + sin(f * 2.0) * 0.9
 			st["style"] = "bow"
 			st["atk"] = fmod(f, 0.8) / 0.8
+		"plague":
+			# holds a vial up to the light and peers at it, tilting his head, again and again
+			st["style"] = "pd_inspect"
+			st["atk"] = fmod(f, 3.2) / 3.2
+			yaw = FACE + sin(f * 1.3) * 0.2
 	h.net_pos = pos
 	h.net_yaw = yaw
 	h.net_st = st
@@ -355,6 +362,13 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 					Fx.burst(root3d, h.global_position + Vector3(0, 1.3, 0.3), col, 6, 9.0, 0.06, 0.45, true, -2.0, 4.0, Vector3((k - 2) * 0.15, 1.0, 0.4))
 				Fx.flash(root3d, h.global_position + Vector3(0, 1.4, 0.4), col, 2.0, 0.3, 3.0)
 				Sfx.play("bow", -10.0)
+			"plague":
+				# the flask shatters at the edge of the light: glass and a green cloud
+				var at2 := h.global_position + Vector3(0, 0.1, 1.6)
+				Fx.burst(root3d, at2, Color(0.8, 1.0, 0.85), 14, 3.0, 0.05, 0.4, true, -9.0)
+				Fx.burst(root3d, at2 + Vector3(0, 0.3, 0), col, 34, 1.8, 0.16, 1.2, true, 0.4)
+				Fx.flash(root3d, at2 + Vector3(0, 0.6, 0), col, 2.5, 0.6, 3.0)
+				Sfx.play("ice_shatter", -10.0, 1.35)
 	if s >= dur:
 		_sig_t[c] = -1.0
 		_sig_wait = SIG_EVERY
