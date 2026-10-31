@@ -138,6 +138,8 @@ func _run() -> void:
 			puppet.global_position = far + OFF
 			h._clear_warlock()
 			h.blights.clear()
+			if h.pd != null:
+				h.pd.clear()  # the Plague Doctor's clouds and dome linger where he cast them, over the fresh pack
 			var en2: Array = await pack(far + OFF + Vector3(0, 0, -2.5), 3)
 			var l0 := lives(en2)
 			puppet.life = 50.0
