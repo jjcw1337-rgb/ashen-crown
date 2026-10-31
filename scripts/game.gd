@@ -26,6 +26,7 @@ var net: Net
 var weather: Weather
 var sky_mat: ProceduralSkyMaterial
 var ui: UI
+var quests: Quests          # the quest log (quests.gd), per character and run
 var vignette: ColorRect
 var loading: ColorRect
 var loading_lbl: Label
@@ -99,6 +100,7 @@ func _ready() -> void:
 	add_child(weather)
 	_setup_camera()
 	_setup_post()
+	quests = Quests.new(self)
 	ui = UI.new()
 	add_child(ui)
 	ui.setup(self)
@@ -1021,6 +1023,7 @@ func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
 		difficulty = 0
 		max_run = 0
 		run_progress = {}
+		quests.from_save({})
 		waypoints_known = ["town"]
 		boss_killed = false
 		tp_link = {}
@@ -1090,7 +1093,7 @@ func save_game() -> void:
 		return
 	_store_progress()
 	var d := {"hero": hero.to_save(), "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed, "difficulty": difficulty,
-		"max_run": max_run, "runs": run_progress, "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
+		"max_run": max_run, "runs": run_progress, "quests": quests.to_save(), "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
 	DirAccess.make_dir_recursive_absolute(char_dir)
 	var f := FileAccess.open(save_path(), FileAccess.WRITE)
 	if f:
@@ -1117,6 +1120,7 @@ func load_game() -> bool:
 	if dev_tools:
 		max_run = 2
 	run_progress = d.get("runs", {})
+	quests.from_save(d.get("quests", {}))
 	return true
 
 ## Every saved character, the last played first: [{id, name, cls, level, difficulty, act, played}].
@@ -1282,6 +1286,7 @@ func claim_material(it: Dictionary, at: Vector3) -> void:
 	Fx.flash(world.fx_root, at + Vector3(0, 1.0, 0), col, 4.0, 0.5, 6.0)
 	ui.big_message("✦ " + it["name"] + " ✦")
 	ui.message("You claim the %s" % it["name"], col)
+	quests.on_pick(str(it["base"]))
 
 func receive_item(it: Dictionary, pos: Vector3) -> void:
 	if it["base"] == "gold":
@@ -1341,6 +1346,27 @@ func _open_chest(t: Inter) -> void:
 	for i in n:
 		_drop_loot_roll(t.global_position, world.level, false)
 
+## A camp vendor's own talk: the elder's news, a trader's greeting and Trade.
+func _vendor_talk(t: Inter) -> void:
+	var role: String = t.data.get("role", "")
+	if role == "elder":
+		var txt := "The crypt lies at the far end of Cairnfell Moor. Bone archers and the restless dead guard the way. Raise your shield against their arrows: a good block turns them aside. And Grubb guards his gold like his life: rip open one of his sacks and his goblins come running for it. Get to the gold before they bring it back to him."
+		if difficulty == 1 and not boss_killed:
+			txt = "The old Imperial Road runs north to Aurelia. Bandits hold it now, the city too. Watch the pass where the rocks close in: they like to leave a wagon on its side and wait for travellers to stop and look. In Aurelia a man named Varro runs games in the old arena. They say his champion has never lost."
+		elif difficulty >= 2 and not boss_killed:
+			txt = "Something worse than Grubb sits on his stolen throne in the old crypt. They call him the Ashen King. His bone archers hold the moor, and he carries a blade that burns. Kill him and take it."
+		if boss_killed:
+			txt = "Grubb is dead and his gold is ours, and the moor already feels lighter. The Wilds owe you a debt it cannot pay. Rest a while, crusader."
+		ui.open_dialog(t.label, txt, [["Farewell", func(): pass]])
+	else:
+		var sh: Array = shops.get(role, ["", []])
+		var lines := {"smith": "Need a blade, or something to stop one?", "armor": "Leather, mail or plate. All of it has seen worse than you.", "alch": "Potions for the body, trinkets for the soul.", "gamble": "Fortune favours the bold. Every piece is a mystery until you pay."}
+		var btns := [["Trade", func(): ui.open_shop(role, sh[0], sh[1], t, lines.get(role, ""))]]
+		if role == "armor":
+			btns.append(["Enchant armor", func(): ui.open_enchant(t.label)])
+		btns.append(["Leave", func(): pass])
+		ui.open_dialog(t.label, lines.get(role, ""), btns)
+
 func _interact(t: Inter) -> void:
 	match t.kind:
 		"lanista":
@@ -1364,25 +1390,11 @@ func _interact(t: Inter) -> void:
 			ui.open_dialog(t.label, txt, btns)
 		"vendor":
 			ui.trade_with = t
-			var role: String = t.data.get("role", "")
-			if role == "elder":
-				var txt := "The crypt lies at the far end of Cairnfell Moor. Bone archers and the restless dead guard the way. Raise your shield against their arrows: a good block turns them aside. And Grubb guards his gold like his life: rip open one of his sacks and his goblins come running for it. Get to the gold before they bring it back to him."
-				if difficulty == 1 and not boss_killed:
-					txt = "The old Imperial Road runs north to Aurelia. Bandits hold it now, the city too. Watch the pass where the rocks close in: they like to leave a wagon on its side and wait for travellers to stop and look. In Aurelia a man named Varro runs games in the old arena. They say his champion has never lost."
-				elif difficulty >= 2 and not boss_killed:
-					txt = "Something worse than Grubb sits on his stolen throne in the old crypt. They call him the Ashen King. His bone archers hold the moor, and he carries a blade that burns. Kill him and take it."
-				if boss_killed:
-					txt = "Grubb is dead and his gold is ours, and the moor already feels lighter. The Wilds owe you a debt it cannot pay. Rest a while, crusader."
-				ui.open_dialog(t.label, txt, [["Farewell", func(): pass]])
-			else:
-				var sh: Array = shops.get(role, ["", []])
-				var lines := {"smith": "Need a blade, or something to stop one?", "armor": "Leather, mail or plate. All of it has seen worse than you.", "alch": "Potions for the body, trinkets for the soul.", "gamble": "Fortune favours the bold. Every piece is a mystery until you pay."}
-				var btns := [["Trade", func(): ui.open_shop(role, sh[0], sh[1], t, lines.get(role, ""))]]
-				if role == "armor":
-					btns.append(["Enchant armor", func(): ui.open_enchant(t.label)])
-				btns.append(["Leave", func(): pass])
-				ui.open_dialog(t.label, lines.get(role, ""), btns)
 			Sfx.play("click")
+			var rest := func(): _vendor_talk(t)
+			# a quest to hand in or on offer comes before their trade (Quests.talk)
+			if not quests.talk(str(t.data.get("role", "")), t.label, rest):
+				rest.call()
 		"stash":
 			ui.open_stash()
 			ui.trade_with = t
@@ -1441,6 +1453,7 @@ func _interact(t: Inter) -> void:
 			xp_bonus_t = maxf(xp_bonus_t, 300.0)
 			Sfx.play("levelup", -6.0, 1.15)
 			ui.message("Sunstar Bloom: +50% experience for 5 minutes", Color(1.0, 0.8, 0.35))
+			quests.progress("flower")
 			if net.active:
 				net.inter_used(t)
 		"chest":
@@ -1561,6 +1574,7 @@ func gain_kill_xp(xp: int, lvl: int) -> void:
 	hero.add_xp(int(xp * lvl_ratio * bonus))
 
 func on_enemy_killed(e: Enemy) -> void:
+	quests.on_kill(e)
 	gain_kill_xp(e.xp, e.level)
 	net.share_xp(e.xp, e.level)
 	var drops := 0 if e.def.get("no_loot", false) else 1
@@ -1831,6 +1845,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 				ui.toggle(ui.skills_panel)
 			KEY_N:
 				ui.toggle(ui.talent_panel)
+			KEY_J:
+				ui.toggle(ui.quest_panel)
 			KEY_F3:
 				ui.show_fps = not ui.show_fps
 			KEY_F2:

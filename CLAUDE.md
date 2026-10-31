@@ -395,6 +395,16 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   (`SIGNATURE`, `_signature`). Choosing a hero plays its own sound (`ClassStage.PICK_SOUND`: layers of the game's recordings, `pick_sound`), and the screen has its own theme, `music_select` (music_town's candidate take 14; `Game.zone_music()` brings the zone's song back when it closes). Below, in the inventory's iron frame: name, story, stats, skills in the bar's sockets,
   the name and Play. The stage is built when the picker opens and freed when it closes. A new class needs a
   `ClassStage.CLASSES`/`ACCENTS`/`SIGNATURE` entry and its `_fidget` case. `tools/class_shot.gd -- outdir [frames]`.
+- **Quests** (`scripts/quests.gd`, `Quests`, `Game.quests`; the log is J, `UI._build_quests`): every quest is data in
+  `Quests.LINES` by run (0 = Act I; other runs have none yet): its giver (a camp role, `Data.VENDORS`), texts (`offer`,
+  `busy`, `done`), goals (`kill` with Data.ENEMIES ids, `pick` with item bases, `flower`), `after` (a quest that comes
+  first), `auto` (the act's main quest, on from the start) and reward (gold, xp, items: a base, or "weapon" = his own
+  kind, "armor", "unique"). Talking to a giver (`Game._interact` "vendor") goes through `Quests.talk`: a quest to hand
+  in or on offer comes before their trade (`Game._vendor_talk`). Counters move from `Game.on_enemy_killed`,
+  `Game.claim_material` and the Sunstar Bloom; partners count the host's kills through `Net.cl_enemy_die` (no new
+  RPCs). The gold "!" / "?" over a giver is `VendorUI.Plates._mark`; the tracker under the corner map is
+  `UI._fill_tracker`. State is per character and run in the save (`"quests"`). Act I's line is a first draft for jj
+  and Blaine to rewrite. `tools/quest_test.gd`.
 - **Characters** (save slots): each character is its own save, `user://characters/<id>.json` (`Game.char_id`,
   `char_name`; the save holds `name` and `played`). `Game.list_characters()` reads them (last played first) for the
   title's Continue button and the Characters list (Play / Delete); New Character asks for a name on the class picker.

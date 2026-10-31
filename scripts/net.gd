@@ -506,6 +506,7 @@ func cl_enemy_die(id: int) -> void:
 	enemies.erase(id)
 	if is_instance_valid(e) and not e.dead:
 		e.die_visual()
+		game.quests.on_kill(e)       # a partner's quests count the party's kills
 		if e.boss:
 			game.boss_down_remote(e)
 
