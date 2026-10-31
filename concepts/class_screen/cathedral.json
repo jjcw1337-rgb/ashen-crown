@@ -1,0 +1,16 @@
+{
+  "id": "01a191b6-edba-72e2-9a56-475e20ccf735",
+  "type": "text-to-image",
+  "ai_model": "nano-banana-2",
+  "prompt": "Concept art for a dark fantasy ARPG character select screen, a dramatic, exciting, premium game menu. Five heroes: an armoured crusader knight with sword and shield and a red cross, a glowing blue hooded wraith with a scythe, a winged horned demon in obsidian plate with hellfire claws, a small gnome warlock in a huge purple hat with green fel flames, and a red-hooded ranger archer with a recurve bow and a dire wolf. At the bottom centre an ornate info panel in dark iron and gold with the chosen hero's name, description, four skill icons and a Play button, and the title 'Choose your path' at the top. Painterly Diablo-style lighting, cinematic, high detail, 16:9 widescreen. Setting: a ruined gothic cathedral hall, each hero standing on its own carved stone plinth in a shaft of light coloured by their power (gold for the knight, icy blue for the wraith, ember red for the demon, fel green for the warlock, crimson for the archer), tattered banners above each, candles and drifting ash, the chosen knight in the centre on the brightest glowing plinth.",
+  "status": "SUCCEEDED",
+  "progress": 100,
+  "created_at": 1793446047187,
+  "started_at": 1793446047197,
+  "finished_at": 1793446068112,
+  "expires_at": 1793705268112,
+  "image_urls": [
+    "https://assets.meshy.ai/8fd76281-d576-493e-b9d7-513b7c3809be/uploads/image_01a191b6-edba-72e2-9a56-475e20ccf735_0.png?Expires=1793705268&Signature=OiH9zl6LLDpyNnWlmH3TQLsd~VTO6H7tcJSMIHdhkD8309rFxin7Ja9v3eQ5R-NavLNAAQplBRkOxWwL2ZgVPWVAkagOVe~JswBsKblq1oOSt08hB33Zbb4TXO0mfroCYngVhDqav~E1k1-xtrAt0KHv7N~YIaDVGM3HawD0WPt7K1rsGMugEWBckCN-IcPXhbs9aokoIFwS1V-e6rYF7ySHnxejA0lNZwoRgYEU255iZIZVZ2xtLB3YN8vxv6djDu81ipOLfN7i4OSMHPIdEfPQGItn54ehU0F4fIUDngCimUMKAjGMgoV~8bckJ4Jn1gzTFhxAEza6yd~9E6JVVQ__&Key-Pair-Id=K1VGYTHIYLM9UM"
+  ],
+  "consumed_credits": 6
+}

@@ -97,6 +97,7 @@ def main() -> None:
     ap.add_argument("--model", default="latest")
     ap.add_argument("--kind", default="image")
     ap.add_argument("--cutout", action="store_true", help="draw: transparent background")
+    ap.add_argument("--aspect", default="", help="draw/edit: aspect ratio, e.g. 16:9")
     ap.add_argument("--height", type=float, default=1.75, help="rig: character height in metres")
     a = ap.parse_args()
     if a.cmd == "check":
@@ -155,6 +156,8 @@ def main() -> None:
         body = {"ai_model": model, "prompt": a.arg}
         if a.cutout:
             body["remove_background"] = True
+        if a.aspect:
+            body["aspect_ratio"] = a.aspect
         tid = call("POST", "/v1/text-to-image", body)["result"]
         print("task", tid)
         t = wait(f"/v1/text-to-image/{tid}")
