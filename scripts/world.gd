@@ -516,7 +516,7 @@ func _build_terrain(tcol: Dictionary) -> void:
 ## A piece of ground over `r`, `step` metres between vertices (the coast builds its distant islands and
 ## shores coarser than the ground under the hero). Cells wholly deeper than `floor_y` are left out:
 ## nobody sees the bottom of the open sea.
-func terrain_patch(r: Rect2, step: float, tcol: Dictionary, nm := "Terrain", floor_y := -INF, own := Callable()) -> MeshInstance3D:
+func terrain_patch(r: Rect2, step: float, tcol: Dictionary, nm := "Terrain", floor_y := -INF, own := Callable(), drop := 0.0) -> MeshInstance3D:
 	if not masks_ready:
 		_bake_masks()
 	var x0 := r.position.x
@@ -545,7 +545,7 @@ func terrain_patch(r: Rect2, step: float, tcol: Dictionary, nm := "Terrain", flo
 			var hr := hs[(j + 1) * (nx + 3) + (i + 2)]
 			var hd := hs[j * (nx + 3) + (i + 1)]
 			var hu := hs[(j + 2) * (nx + 3) + (i + 1)]
-			verts[k] = Vector3(x, hc, z)
+			verts[k] = Vector3(x, hc - drop, z)
 			norms[k] = Vector3(hl - hr, 2.0 * step, hd - hu).normalized()
 			var cliff := clampf((1.0 - norms[k].y) * 3.0, 0.0, 1.0)
 			cols[k] = Color(dirt_at(x, z), cliff, cobble_at(x, z), 1.0)

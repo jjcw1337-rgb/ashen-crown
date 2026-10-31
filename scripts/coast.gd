@@ -141,8 +141,12 @@ static func distant(w: World, o: Vector2, hole: Rect2, step := 2.0) -> void:
 		tc["col_sand"] = isle["sand"]
 		w.terrain_patch(Rect2(c - Vector2(e, e), Vector2(e, e) * 2.0), step, tc, "far_" + id, Isles.DEEP + 1.0,
 			func(x: float, z: float) -> bool: return not hole.has_point(Vector2(x, z)) and owner_of(Vector2(x, z) - o) == id)
-	w.terrain_patch(Rect2(sr.position + o, sr.size), step * 2.0, FAR_TERRAIN, "far_sea", Isles.DEEP + 1.0,
-		func(x: float, z: float) -> bool: return not hole.has_point(Vector2(x, z)) and owner_of(Vector2(x, z) - o) == "")
+	# the mainland and the sea floor: under the islands' patches too where it's deep (a little lower, so
+	# there are no cracks between patches and the islands' own ground always wins), and on east past the
+	# sea so the mainland never ends in sight
+	var far := Rect2(sr.position + o, sr.size + Vector2(260.0, 0.0)).grow_individual(0, 120.0, 0, 120.0)
+	w.terrain_patch(far, step * 2.0, FAR_TERRAIN, "far_sea", Isles.DEEP + 1.0,
+		func(x: float, z: float) -> bool: return not hole.has_point(Vector2(x, z)) and (owner_of(Vector2(x, z) - o) == "" or w.ground_h(x, z) < -5.0), 0.25)
 
 ## The headland: a path from the camp's woods down to the dock, the pier, the shipwright's shed,
 ## boats pulled up on the sand, nets drying, lanterns, the woods closing in behind.
