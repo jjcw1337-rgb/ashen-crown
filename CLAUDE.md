@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `a2_arena_test`, `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
+`det_test`, `grass_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -67,6 +67,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `enemy.gd`, `projectile.gd`, `feral.gd` | Monsters/AI and missiles (host-authoritative in co-op); the Feral's baked-animation body |
 | `via.gd`, `aurelia.gd`, `games.gd`, `roman.gd` | A2: the Imperial Road (wild), the city of Aurelia and its arena (lair), the arena's games (the act's boss fight), and the Roman architecture they're built from |
 | `lion.gd` | The arena lion: a Meshy model on a quadruped skeleton, posed in code (no baked animations) |
+| `sloth.gd` | The Hollow Sloth (Act I): three giants roaming the moor; its brain (`Sloth.new(enemy)`) and its code-posed body |
 | `fort.gd` | Grubb's fort (the lair in Act I; A3 keeps the crypt): the muddy approach with the guards fighting the dead, the palisade ring, gatehouse and watchtowers (Meshy props in `assets/models/fort/`), the lived-in camp scattered round Grubb's open courtyard, and the moor's goblin trail end (`Fort.trail_end`) |
 | `meshy_monster.gd` | Act I monsters from Meshy (`MeshyMonster.MODELS`, zombie/fallen/archer/goblin_guard): built on `Goblin.imported_rig` with grips and weapons; `Data.ENEMIES` `"mesh"` picks them |
 | `hoard.gd` | King Grubb's fight (Act I boss): Gilded Bombs, the three burst sacks, the gold scramble (piles reaching him heal him; piles a hero takes hurt him) |
@@ -77,6 +78,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `ui.gd`, `hud_bar.gd`, `icon_renderer.gd` | All UI built in code |
 | `vendor_ui.gd` | Nameplates over the town's people and the trader's live portrait in the trade window |
 | `models.gd`, `skeleton.gd`, `flora.gd`, `props.gd`, `geo.gd`, `mats.gd` | Procedural meshes and shaders |
+| `grass.gd`, `grass_field.gd` | Act I's living 3D grass: species, biomes, placement and shader (`Grass`); the touch field and the wind (`GrassField`, a node of Game) |
 | `weather.gd`, `fx.gd`, `sfx.gd`, `sfx_bank.gd` | Snow/ash, particles, audio (autoload `Sfx`: recorded/generated sounds from `assets/audio/sfx/` listed in the generated `sfx_bank.gd`, with the old synthesized sounds as fallback) |
 
 ## Rules and gotchas
@@ -103,17 +105,29 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
     of Master and routes Master into it, so the whole game is silent in the browser. `Sfx._buses` uses `set_bus_count`;
 - **The archer** (`scripts/archer.gd`, `Archer`; the bow class for Jace, its name still his to choose, "Archer" in
   `Data.CLASSES` until then): with a bow (`Hero.has_bow`; bows are `Data.BASES` with `"cls": "archer"`, only he can
-  equip them) his attack shoots (`Archer.shoot` from `Hero.swipe_attack`/`free_attack`; `Hero.reach` is `Archer.RANGE`,
-  so a clicked foe is shot from range; Anim's `"bow"` pose, the arrow looses on its impact frame). Skills: Piercing
-  Shot (an arrow through a line), Volley (a rain of arrows on the cursor, hits every 0.2 s), Snare Trap (stuns the
-  first enemies on it), Spirit Beast (`spirit_beast.gd`: the lion's body, ghostly, hunting for 30 s, plus the 12 s
-  battle buff). Arrows, volleys, snares and beasts live on the hero (`Hero.arrows` etc.), `Archer.update`/`clear`.
-  Talents: Marksman, Warden, Beastmaster (`Talents.TREES["archer"]`; specials arrow_split, snare_dur, snare_max,
-  snare_wide, volley_size, beast_two). Body: the ranger (`assets/models/archer_ranger.glb`, `Archer.build_body`): the Meshy
+  equip them) his attack shoots (`Archer.shoot` from
+  `Hero.swipe_attack`/`free_attack`; `Hero.reach` is `Archer.RANGE`). His skills are fire, cold and lightning (ids kept):
+  Fire Arrow (`pierce`: through a line, sets them burning, `Enemy.ignite`), Frost Volley (`volley`: a rain on the cursor,
+  hits every 0.2 s and chills, `Enemy.chill`, slower on their feet; a partner's chill reaches the host through
+  `Net.send_enemy_chill`), Storm Snare (`snare`: holds the first on it, lightning arcs into the nearest others,
+  `Fx.bolt`), Spirit Beast (`beast`: commands his wolf, below). Arrows are Meshy models (`assets/models/arrows/`
+  war / fire / frost, prepared by `tools/blender/prep_arrow.py`: head toward Godot -Z), `Archer._arrow_mesh(kind)`.
+  Talents: Flame, Frost, Storm (`Talents.TREES["archer"]`; specials arrow_split, burn_dmg, wolf_burn, chill_pct, wolf_howl,
+  frost_shatter, arc_count, snare_dur, snare_max, volley_size, beast_two). His **wolf** (`spirit_beast.gd`, `SpiritBeast`): JJ's dire forest wolf (Meshy, 25% larger
+  than a wolf, `assets/models/monsters/wolf.glb`, rigged by `tools/blender/act1/rig_quadruped.py` on the lion's
+  skeleton, so `Lion.build(glb, scale)`/`Lion.pose` run it), his companion from the start: a state machine of follow /
+  engage / command / protect / investigate / return / hold (every number in `SpiritBeast.CFG`); it settles at his side,
+  trots or sprints to keep up, sniffs at loot and chests, protects him, goes for the one he shoots (`Hero.mark`), keeps
+  its target (`commit`), gives up on what it can't reach, follows him through zones; monsters it bites turn on it
+  (`Enemy.taunt`), it rises again 18 s after falling (`Archer.keep_companions`, `Hero.beast_down_t`), and he runs 10%
+  faster while it lives. F commands it (`Archer._command_beast`): on an enemy it pounces, on open ground it holds, on
+  himself it comes back, each with the 12 s battle buff. `"spirit_beast"` in `Data.ENEMIES` is the wolf as a monster.
+  `tools/archer_test.gd`, `tools/pet_test.gd`, `tools/pet_clip.gd`, `tools/archer_shots.gd`, `tools/wolf_sheet.gd`.
+  Body: the ranger (`assets/models/archer_ranger.glb`, `Archer.build_body`): the Meshy
   northern ranger (wolf-fur cowl, dark leather, quiver) on the knight's mocap system (`Knight.build_mocap(glb, opts)`,
   `knight_mocap_rig.gd`): Meshy library clips for idle/walk/run and, with the bow out, the aimed stand and walk
-  (`combat_idle`, `walk_aim`); the bow attack, Piercing Shot and Volley play the `shoot` clip whole-body (`Archer.SHOT`:
-  its draw squeezed in before Anim's release frame, the body turned side-on, `yaw`); Every shot draws a fresh arrow from the quiver: the standing shot plays Meshy's "Draw and Shoot from Back" (`shoot_back`) squeezed along `SHOT.keys` (reach, grab, arrow out, nock, raise, full draw, release on Anim's impact frame, follow-through; `KnightMocapRig.shot_time`), turned side-on (`yaw`; the aiming stand has `stand_yaw`). Shooting on the move: he keeps walking at `Archer.SHOOT_MOVE` (36%) of his pace (`Hero._process`; a shot at a clicked foe still plants him) in the aimed walk (`walk_clip`, timed to his speed, `w_aimwalk`), and only his right arm takes the reach to the quiver from `reach_clip` (a filtered Blend2 over `reach_bones`, weighted by `reach`). `Archer.pose_bow` shows the arrow in his hand from `GRAB` to `NOCK` (`_hand_arrow`: point first into the quiver `QUIVER`, then swung onto the bow) and, while he shoots, solves the bow onto his hands: grip in his left fist, the draw line on his right fingers (`FINGERS`), limbs upright with a `CANT`, so the string always meets the hand. Colours: `Archer.COLORS` ("crimson"; also teal, verdant, royal, "" = Meshy's own) swaps the albedo for `assets/textures/ranger/ranger_<name>.jpg` (`Archer.dye`), made by `tools/archer_colors.py` (texture dumped from the glb, regions from `tools/blender/archer/region_uv.py`: the face, hands, fur and straps keep their colour). Snare Trap and Spirit Beast are
+  (`combat_idle`, `walk_aim`); the bow attack, Fire Arrow and Frost Volley play the `shoot` clip whole-body (`Archer.SHOT`:
+  its draw squeezed in before Anim's release frame, the body turned side-on, `yaw`); Every shot draws a fresh arrow from the quiver: the standing shot plays Meshy's "Draw and Shoot from Back" (`shoot_back`) squeezed along `SHOT.keys` (reach, grab, arrow out, nock, raise, full draw, release on Anim's impact frame, follow-through; `KnightMocapRig.shot_time`), turned side-on (`yaw`; the aiming stand has `stand_yaw`). Shooting on the move: he keeps walking at `Archer.SHOOT_MOVE` (36%) of his pace (`Hero._process`; a shot at a clicked foe still plants him) in the aimed walk (`walk_clip`, timed to his speed, `w_aimwalk`), and only his right arm takes the reach to the quiver from `reach_clip` (a filtered Blend2 over `reach_bones`, weighted by `reach`). `Archer.pose_bow` shows the arrow in his hand from `GRAB` to `NOCK` (`_hand_arrow`: point first into the quiver `QUIVER`, then swung onto the bow) and, while he shoots, solves the bow onto his hands: grip in his left fist, the draw line on his right fingers (`FINGERS`), limbs upright with a `CANT`, so the string always meets the hand. Colours: `Archer.COLORS` ("crimson"; also teal, verdant, royal, "" = Meshy's own) swaps the albedo for `assets/textures/ranger/ranger_<name>.jpg` (`Archer.dye`), made by `tools/archer_colors.py` (texture dumped from the glb, regions from `tools/blender/archer/region_uv.py`: the face, hands, fur and straps keep their colour). Storm Snare and Spirit Beast are
   the game's cast pose over the upper body. He holds the equipped bow in his LEFT hand (`J["grip_bow"]`,
   `Archer.BOW_HOLD` per bow kind, `Hero._weapon_hand`); bows are drawn by `Models.enemy_weapon` (`item_model`
   had none). `Archer.pose_bow` (every frame after the pose, the puppet's too) turns the bow from hanging in his
@@ -123,11 +137,11 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   (`Archer.BOW_SPEC`: each bow model's tips, nock, pull, grip and hang). His bow is the Meshy carved recurve `assets/models/ranger_bow.glb` (`Models.item_model` for bow kinds, `Models.RANGER_BOW`; a longbow is it at 1.15x; `Archer.bow_key` picks the `ranger`/`ranger_long` BOW_HOLD/BOW_SPEC entries; bandit archers keep `enemy_weapon`'s bow). Rebuild: `blender -b --python tools/blender/archer/prep_bow.py -- meshy.glb assets/models/ranger_bow.glb spec.json [length] [tris]` (cuts Meshy's string, stands it limbs +y / string +z / grip on the origin, 1.45 m, ~9k tris, 1k textures) and copy spec.json's tips and rest into BOW_SPEC. Rebuild: `meshy.py rig`/`animate` (clip ids in the commit), then `blender -b --python
   tools/blender/archer/prep_ranger_mocap.py -- rigged.glb out.glb 60000 clips_a.glb clips_b.glb` (merges and renames
   the clips, cuts away the bow Meshy fused into his right hand, `bow_select.py`). Without the glb: the knight's
-  procedural body dressed as a hunter (`Archer.build_placeholder`). Preview: `tools/mocap_knight_clip.gd -- outdir
+  procedural body dressed as a hunter (`Archer.build_placeholder`, `Archer.body_gear` kept on every gear change; its bow in `J["grip_l"]`/`J["bow_l"]`). Preview: `tools/mocap_knight_clip.gd -- outdir
   run|attack|shootwalk 34|game|side|close|closeback frames archer [longbow]`. Talent icons still to paint (`tools/talent_icons.py`).
   `tools/archer_test.gd` checks it (run it with `--fixed-fps 60`; it counts frames).
 - **Adding a class**: add it to `Data.CLASSES`, give it four (up to six: Q E R F G V) `SKILLS` entries with its `cls`, build its look the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep working), handle its skill ids in `Hero.use_skill` / `_impact`, and add glyphs in `ui.gd` `SkillGlyph`.
-- **The Wraith's body** (`test-wraith`): the Meshy horned, chained wraith (concept D) on the shared mocap system
+- **The Wraith's body**: the Meshy horned, chained wraith (concept D) on the shared mocap system
   (`Wraith.build_mocap`, `assets/models/wraith_mocap.glb`; falls back to the code-built robe without it). He has no
   legs and never walks: `tools/blender/wraith/prep_wraith_mocap.py` cuts the skeletal legs and feet out of the mesh
   (what sat within reach of the leg bones, plus the scraps), hangs the robe below the hips on six cloth panels of
@@ -232,15 +246,34 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   Meshy oaks `assets/models/trees/oakN.glb` (prepared by `tools/blender/prep_tree.py`: trunk on the origin, ~6 m, 1k
   textures) built by `Flora.oak_model(k)` with `MESHY_TREE_SHADER` (wind sway by height, snow/ash, see-through near the
   player) plus the game's leaf clusters (`OAK_LEAVES`); the moor is ~40% oaks with groves off the road. Grass is
-  painted for the game's camera: nine Meshy 2D clumps drawn from 45 degrees above (`assets/textures/grass/topN.png`,
-  `Flora.GRASS_TOP` sizes and weights), each on one card that leans back to face the fixed camera (`Flora._camera_card`,
-  no yaw, mirrored at random; `GRASS_CARD_SHADER`), a clump per spot and a smaller one beside most, over the blade grass
-  at half density. New clumps: `meshy.py draw` with "seen from above at a 45 degree camera angle ... chunky blades,
-  no thin hair-like detail" and `--cutout`, then `tools/grass_prep.py meshy.png topN.png` (crops, squares, scales and
-  bleeds the colour into the clear pixels; without that, far clumps go dark and blobby) and mipmaps on in the .import.
-  Unmipmapped or hair-thin cut-outs flicker pixel by pixel; the card shader cuts out with alpha to coverage. The older
-  upright photo cards (`gN.png`, `Flora.grass_cards`) are the fallback. The see-through near the player (trees, props)
-  uses an ordered dither (`dith`), not per-pixel noise, which sparkled in the tree shadows too.
+  the **living 3D grass** (`scripts/grass.gd` `Grass`, `scripts/grass_field.gd` `GrassField`; Act I's camp, moor and
+  fort, i.e. whenever `oak_forest`; A2/A3 keep the old blade clumps): seven species built in code (`Grass.SPECIES`:
+  meadow, tall seed-head grass, tussock, dry straw, moss with clover, broad-leaved weeds, sparse verge grass;
+  curved tapered blades with rounded normals, two variants, two LODs) mixed by biomes (`Grass.BIOMES`: meadow,
+  woodland, dry, verge, trampled, ruins). A zone answers `grass_ground(x, z)` (0 bare .. 1), `grass_height` and
+  `grass_biome` (weights; World's: verges by the road, undergrowth near `tree_pts`, dry patches and round the
+  Sloths' clearings, trodden in the fort and camp), and `Grass.scatter` fills MultiMesh chunks (`CHUNK` m, per
+  instance custom data: shade, dryness, random) in about a second. Colours: `Grass.ACT1` (matched to the painted
+  clumps it replaced). The shader bends each blade from its root by the **wind** (global `wind_dir`,
+  `wind_strength`, `wind_gust`, `wind_phase`: gust fronts rolling along the wind, sway per clump, flutter;
+  `GrassField.WIND` profiles per zone set in `Game._grass_zone`, blended by `set_wind(profile, secs)`, drifting
+  on their own) and by **touch**: `GrassField` is a GPU spring simulation following the camera (two ping-pong
+  SubViewports, 256 px over 64 m, RG bend / BA velocity in 8 bits, global `grass_field` + `grass_field_rect`);
+  every mover from `Game._grass_movers` (hero, partners, monsters, pets, demons) presses a capsule along its real
+  path (size from its `radius`, harder when sprinting or dashing, a slow flattening when standing), an attack's
+  impact frame (`Anim.impact_at`, so every peer sees it) throws an arc in front (`GrassField.swing`; slams and
+  mauls add a ring), and `Fx.ring`/`Fx.holy_slam` (any nova, slam or spell ring) shove a ring
+  (`GrassField.impulse(pos, radius, strength)`). Local and cosmetic: no network traffic. Far grass thins by
+  shrinking clumps by their random value and LOD0/LOD1 cross-fade per clump (`Grass.FADE`, `LOD_BAND` per
+  preset, using the global `grass_cam` so shadow passes agree); density per preset `QUALITY_DENSITY`; grass
+  casts shadows only on Ultra. `Grass.apply_quality` updates distances (`Game.apply_quality` skips the 3D grass's
+  nodes, meta `grass3d`). Tests: `tools/grass_test.gd` (headless: species, LODs, no painted clumps, field on/off,
+  movers, swings, rings, wind); `tools/grass_lab.gd -- outdir [quality] [zoomin]` (needs a display: biome bands,
+  scripted walkers that walk, sprint, stop, turn and dash, a big beast, swings, a slam, wind changes; saves frames
+  and checks the field lines up and returns fully to rest). Performance from any build:
+  `AshenCrown -- --shot out.png --zone wild --god --perf 12 --quality 2 --grassspot` writes `out.txt` (fps, 1% low,
+  draw calls, primitives, GPU). The painted clumps (`Flora.GRASS_TOP`, `_camera_card`) are no longer placed;
+  `Flora.flower_card` still uses `_camera_card` for the Sunstar Blooms.
   **Sunstar Blooms** (`World._rare_flowers`, Act I only, 3 per moor, 14-34 m off the road, own seed): a glowing
   painted card (`Flora.flower_card`) and a breathing light; picking one (`Game._interact` "flower") gives +50%
   experience for 5 minutes (`Game.xp_bonus_t`, shared with the Experience Shrine; the XP bar counts it down) and is
@@ -262,6 +295,58 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   and one at a time lunges (`special` "feral_lunge", flying over other monsters), backs off, darts in to claw,
   backs out (`_feral_combat`, `f_state`); the lunge has a 5 s cooldown, and outrun for 6 s (beyond 9 m) the pack
   gives up and goes home, ignoring you for 8 s unless hit (`f_chase`, `f_calm`). `tools/feral_test.gd` checks it.
+- **The three Fallen** (Act I's foes; reusable in any act by adding the id to its `"foes"`): `fallen_skirmisher`
+  (fast, Savage Lunge), `fallen_reaver` (heavy, Brutal Cleave with a ground wedge warning, `Fx.arc_telegraph`),
+  `fallen_stalker` (circles and weaves, Hooking Slash from an angle). Meshy models from JJ (`exports/fallen/` on
+  jj-models), prepared by `tools/blender/act1/prep_monster.py -- in.glb out.glb height [tris] [cut]` (base cut,
+  decimated, scaled) and rigged by `rig_monster.py` like the other Act I monsters. Each has its own run (Anim's
+  `"gait"` from the look: skirm / reaver / stalk, plus a `"stride"`), its own attack style (`Anim.pose`, `Net.STYLES`),
+  its own AI (`Enemy._skirm_combat`/`_reaver_combat`/`_stalk_combat`); the attacks move the body along a path
+  (`Enemy.atk_path`, `_fallen_path`), land once in their window and leave a recovery (`f_state` "recover"/"rest").
+  The old `"fallen"` entry is kept, unused. `tools/fallen_test.gd`, `tools/fallen_sheet.gd -- out.png [side|34]`.
+- **The Forsaken Bear** (`bear.gd`, Act I moor): JJ's Meshy model (concept 2, "corrupted ancient"), cleaned and rigged by
+  `tools/blender/act1/rig_bear.py` (cuts the slab, 25k tris, 21 lion-named bones + jaw and antlers, surface-distance
+  skin) into `assets/models/monsters/bear.glb`, posed in code like the lion (`Bear.pose`: the walk, `bear_roar` rear-up,
+  `bear_maul` double-paw slam). Two lone wanderers per moor, 20-40 m off the road (`World._bear_dens`, own seed); the AI
+  (`Enemy._bear_idle`/`_bear_combat`) wanders its ground, rears and roars now and then, roars once on noticing you,
+  charges and mauls (a 3 m arc, `"maul"` hits knock the hero back: `Hero.knock_v`), gives up 30 m from home. Its sounds
+  borrow `lion_roar` (pitched down) and `slam` until `bear_roar`/`bear_maul` exist (`Bear.sound`; ElevenLabs needs
+  Blaine's OK). `tools/bear_test.gd`, `tools/bear_sheet.gd -- out.png [side|34]`.
+- **The Hollow Sloths** (`sloth.gd`, Act I, `World._sloths`): three elemental giants, `Data.ENEMIES` `sloth_fire`
+  (Cinderhide), `sloth_ice` (Rimeclaw), `sloth_storm` (Thundermaw), each with `"element"` (fire/cold/lightning),
+  `"variant"` (its model) and `"drop"` (its material). Each lives in its own lair (`sloth_lair.gd`, `SlothLair`:
+  Cinder Hollow, Rimefrost Glade, Stormcall Ring), a clearing `SlothLair.pick` places 20-32 m off the road on the
+  side with room, far apart, before the trees (which, grass and ferns keep out: `World._in_lair`); dressed with a
+  Decal of procedural ground (lava cracks, frost, violet fissures), Meshy props `assets/models/lairs/<kind>.glb`
+  (modelled 1 m tall, scaled; solid), a light, its element's particles, and bolts striking the storm's rune stones.
+  Brain: `Sloth.new(enemy)` (Enemy's 50 m cut-off skips it); it walks on all fours, sniffs, rises to look about,
+  only inside `SlothLair.TERRITORY` of its home; a hero across `SlothLair.BOUNDARY` or a blow wakes it: it rises,
+  stares, roars and hunts (its run building from 2.2 to 5.6 m/s) the hero who struck it last (`on_hit`, 8 s), else
+  the closest, follows anywhere and never gives up or flees; its prey dead, it walks home (`"home"`). Skills (each with its element, `Sloth._land`): the
+  Rending Sweep (arc in front; `take_hit` kind `"sweep"` throws the hero back, `Hero.shove`; cold: `"chill"`, slowed,
+  `Hero.chill_t`; fire leaves burning ground; lightning chains to heroes near the one struck), the Earthshaker slam
+  (ring 5 m ahead; `"quake"` stuns, `Hero.daze_t`; cold `"freeze"`; fire leaves a ring of burning ground; lightning
+  calls six bolts down round it, `strikes`), the Hollow Pounce (5.5-11 m; cold shatters ice, fire lands in flame,
+  lightning is a quicker dash that shocks, `"shock"`). Burning ground and bolts are host-side lists ticked in
+  `_tick_hazards`; everything seen is a `sloth_*` fx event (place-carrying ones like `sloth_burn:x,z,r,dur` go
+  through `_elem_fx`). Each timed move is an `atk_t`/`atk_dur`/`atk_style` (`sloth_*`, in `Net.STYLES`), so
+  `Sloth.pose` shows the same on every peer; posture holds between moves. The slam has a casting motion per element
+  (rig meta `element`: fire heaves and flings its arms wide, cold crosses its claws and shivers, lightning raises
+  both arms to the sky) with `_elem_charge` effects. `Sloth.dress` lights the body in its colour with its element's
+  particles; `Sloth.presence`/`idle_fx` (every peer) do footfalls, groans, shake, flicker and the storm's arcs.
+  Killing one drops a unique, gold and its material; the corner map marks one within 40 m (group `"sloth"`).
+  Models: `assets/models/monsters/hollow_sloth_<fire|ice|storm>.glb` (Meshy, from concepts in `exports/act1/`;
+  decimated to 42k and rigged by `tools/blender/act1/rig_sloth.py`, skinned by distance to the bones since Blender's
+  heat skinning fails on the fur shells; source `sources/hollow_sloth.blend`), `Sloth.MODEL_SCALE` 1.4; without
+  them a capsule stand-in on the same skeleton (`Sloth.BONES`). Previews: `tools/sloth_sheet.gd -- out.png [front]
+  [fire|ice|storm]`, `tools/sloth_shots.gd`, `tools/sloth_clip.gd` (frames of one fighting; `--fixed-fps 30`).
+  Load sloth.gd at run time in a `-s` tool (`load(...)`), like aurelia.gd.
+- **Materials** (`Data.BASES` slot `"material"`: `cinderheart`, `everfrost`, `stormglass`): one inventory space,
+  never worn or drunk (`Items.is_material`), for crafting later. Each has `"color"`, `"lore"`, a painted `"icon"`
+  (`assets/textures/items/`, cut out of Meshy art by `tools/icon_cutout.py`; `IconRenderer.get_icon` uses it) and a
+  Meshy `"model"` (`assets/models/items/`, `Models.material`). On the ground they glow (`GroundItem._material_glow`:
+  beam, pulsing light, their element rising off them, `Fx.aura`); picking one up is `Game.claim_material` (burst,
+  pillar, the `relic_ting` sound, an announcement).
 - **Factions** (`"faction"` in `Data.ENEMIES`: goblin, undead): a monster fights the nearest other-faction monster when
   it is closer than the hero (`Enemy.rival`, `Enemy.take_hit` so the attack code works on both); rival kills give no
   xp or loot (`killed_by_rival`). Host-side like all AI.
@@ -372,12 +457,41 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   on a torch-lit stage in its own world, as co-op puppets (`Hero.puppet`, driven through `net_st`/`net_pos`/`net_yaw`)
   in its starting gear: idle they breathe and look about (`_idle`), under the mouse each fidgets its own annoying way
   (`_fidget`), and the chosen one steps into the light and does its signature move every 4.5 s with its effects
-  (`SIGNATURE`, `_signature`). Below, in the inventory's iron frame: name, story, stats, skills in the bar's sockets,
+  (`SIGNATURE`, `_signature`). Choosing a hero plays its own sound (`ClassStage.PICK_SOUND`: layers of the game's recordings, `pick_sound`), and the screen has its own theme, `music_select` (music_town's candidate take 14; `Game.zone_music()` brings the zone's song back when it closes). Below, in the inventory's iron frame: name, story, stats, skills in the bar's sockets,
   the name and Play. The stage is built when the picker opens and freed when it closes. A new class needs a
   `ClassStage.CLASSES`/`ACCENTS`/`SIGNATURE` entry and its `_fidget` case. `tools/class_shot.gd -- outdir [frames]`.
+- **Title screen** (`UI._build_title`, `scripts/title_stage.gd` `TitleStage`): the Gate of the Ashen Crown at dusk in
+  its own World3D: a ruined cathedral gate with the dusk showing through its arch (`BACKDROP_SHADER`), broken arcades,
+  the fallen stone king and a giant crown in the ash, fog banks, falling ash, embers, braziers and torches, heat
+  lightning now and then. Models are Meshy (concept image, then image-to-3D, 144 credits) in `assets/models/title/`
+  (`gate` 18 m, `arcade` 8 m, `colossus` 10 m, `crown` 1 m, prepared by `tools/blender/prep_prop.py`; the colossus cut
+  at the ash line by `tools/blender/trim_below.py`), darkened to the game's palette in code (`SOOT`); without them
+  procedural stand-ins are built. Two daises: Continue (left) shows the last character played as a co-op puppet in
+  their saved gear (`Game.character_gear(id)`, read-only), idle, doing their class's `ClassStage.SIGNATURE` move when
+  hovered; Create New Character (right) is an empty dais with a rune circle and a cold light. The choices are cards
+  (`UI._title_card`) placed under their daises each frame (`TitleStage._place_cards`); dais or card, hover leans the
+  camera and lights that side (`set_focus`), a click plays the camera's move in (`enter`) and then Continue calls
+  `start_game(true, …, id)` with the id of the one shown, New opens the class picker. No saves: the Continue card is
+  disabled and the camera leans to New. Characters, co-op and Quit sit in a row below. While the title is up the main
+  viewport's 3D is off (`disable_3d`; the camp still builds behind), the stage stops drawing under the class picker or
+  the list (`covered`), and the music is `music_select` (`Game.zone_music`). Sharpness: MSAA only (no FXAA/TAA), no
+  mesh LOD, anisotropic filtering on the models, light bloom and a contrast-adaptive sharpen (`SHARPEN_SHADER`). Screens
+  narrower than 16:9 keep 16:9's width of view (`H_FOV`). `tools/title_test.gd` (the flow), `tools/title_shot.gd --
+  outprefix [class]` (screenshots with and without a save), `tools/title_clip.gd -- outdir` (frames of the hover and
+  the move in; `--fixed-fps 30`).
+- **Quests** (`scripts/quests.gd`, `Quests`, `Game.quests`; the log is J, `UI._build_quests`): every quest is data in
+  `Quests.LINES` by run (0 = Act I; other runs have none yet): its giver (a camp role, `Data.VENDORS`), texts (`offer`,
+  `busy`, `done`), goals (`kill` with Data.ENEMIES ids, `pick` with item bases, `flower`), `after` (a quest that comes
+  first), `auto` (the act's main quest, on from the start) and reward (gold, xp, items: a base, or "weapon" = his own
+  kind, "armor", "unique"). Talking to a giver (`Game._interact` "vendor") goes through `Quests.talk`: a quest to hand
+  in or on offer comes before their trade (`Game._vendor_talk`). Counters move from `Game.on_enemy_killed`,
+  `Game.claim_material` and the Sunstar Bloom; partners count the host's kills through `Net.cl_enemy_die` (no new
+  RPCs). The gold "!" / "?" over a giver is `VendorUI.Plates._mark`; the tracker under the corner map is
+  `UI._fill_tracker`. State is per character and run in the save (`"quests"`). Act I's line is a first draft for jj
+  and Blaine to rewrite. `tools/quest_test.gd`.
 - **Characters** (save slots): each character is its own save, `user://characters/<id>.json` (`Game.char_id`,
   `char_name`; the save holds `name` and `played`). `Game.list_characters()` reads them (last played first) for the
-  title's Continue button and the Characters list (Play / Delete); New Character asks for a name on the class picker.
+  title's Continue card and the Characters list (Play / Delete); New Character asks for a name on the class picker.
   The pre-characters save `user://ashen_crown_save.json` is adopted once as the first character and left in place.
   The pause menu's "Save and Exit to Title" is `Game.exit_to_title()`. Co-op uses the last played character and its
   name. Tools still save to the test file; `tools/char_test.gd` moves `char_dir`/`old_save` to test the real thing,
@@ -394,7 +508,8 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   so `ForestCamp._pin_root` pins every clip's hips over the keeper's spot. The camp is "The Forsaken Wilds"
   (`Data.ACTS[0]["town"]`); its smith Halvar Emberhammer works inside his forge behind the anvil (a SHOPS entry's
   `"inside"`: his spot in the stall's frame; `"stay"` in its clips: he never turns from his work and greets once a
-  visit; his `radius` reaches the stall's front, since the stall is solid). Screenshots: `tools/camp_shots.gd`.
+  visit; his `radius` reaches the stall's front, since the stall is solid). His hammer rings the anvil on each blow (`anvil`: five layered Kenney takes; `Inter._strikes` hears the
+  hand bone stop falling; a SHOPS entry's `"strike"`), `tools/anvil_test.gd`. Screenshots: `tools/camp_shots.gd`.
 - **Nameplates and the trade window** (`scripts/vendor_ui.gd`): `VendorUI.Plates` (in `ui.plates`, under every
   window) floats a gold-trimmed plate with the name and trade (`VendorUI.ROLE_TITLES`) over each vendor and Varro,
   click-through, fading with distance, lit when hovered. The trade window (`UI._build_shop`, `open_shop(mode,

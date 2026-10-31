@@ -21,7 +21,7 @@ const SHOPS := [
 		"hold": {"bone": "RightHand", "potion": Color(0.35, 1.0, 0.3), "pos": Vector3(0.0, 0.07, 0.03)}},
 	# the smith works inside his forge, behind the anvil ("inside": his spot in the stall's own frame, facing out)
 	{"role": "smith", "npc": "grisold", "stall": "forge", "at": Vector2(12, -11.5), "half": Vector2(2.2, 1.65), "inside": Vector2(0.05, 0.35),
-		"clips": {"idle": "Idle", "work": ["Heavy_Hammer_Swing"], "talk": "Talk_with_Hands_Open", "stay": true},
+		"clips": {"idle": "Idle", "work": ["Heavy_Hammer_Swing"], "talk": "Talk_with_Hands_Open", "stay": true, "strike": "anvil"},
 		"hold": {"bone": "RightHand", "item": "war_hammer", "rot": Vector3(0, 0, 90), "pos": Vector3(0.0, 0.08, 0.0)}},
 	{"role": "armor", "npc": "hedda", "stall": "armory", "at": Vector2(16, 5), "half": Vector2(1.95, 1.62),
 		"clips": {"idle": "Idle_3", "work": ["Axe_Breathe_and_Look_Around"], "talk": "Talk_with_Left_Hand_on_Hip"},

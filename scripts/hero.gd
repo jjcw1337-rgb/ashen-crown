@@ -39,6 +39,7 @@ var fire_dmg := 0
 var armor := 0
 var block_chance := 0.0
 var aspd := 1.0
+var knock_v := Vector3.ZERO    # being thrown back (a bear's maul)
 var dmg_stack: DamageStack     # the stacking red damage number over the head
 var ls := 0.0
 var res := 0
@@ -66,6 +67,10 @@ var impact_done := false
 var blocking := false
 var block_amt := 0.0
 var block_flash := 0.0
+## the Hollow Sloth's blows (sloth.gd): its sweep throws you back, its slam stuns
+var shove := Vector3.ZERO
+var daze_t := 0.0
+var chill_t := 0.0          # Rimeclaw's cold: slowed while it lasts
 var hit_t := 0.0
 var cls := "knight"          # "knight", "wraith", "demon" or "warlock" (Data.CLASSES)
 var cds := {}
@@ -86,6 +91,9 @@ var arrows: Array = []
 var volleys: Array = []
 var snares: Array = []
 var beasts: Array = []
+var beast_down_t := 0.0     # after the Spirit Beast falls, seconds until it rises again beside him
+var mark = null             # the enemy the archer is shooting at: his beast goes for it first
+var mark_t := 0.0
 var blights: Array = []      # plague pools on the ground, their ticks: [{pos, t, tick, r}] (the pool itself is a WarlockFx effect)
 var buff_t := 0.0
 var heal_pool := 0.0
@@ -600,7 +608,13 @@ func refresh_gear() -> void:
 	var w = equipment.get("weapon")
 	if w != null:
 		weapon_node = Models.item_model(w)
-		_weapon_hand(J).add_child(weapon_node)
+		if has_bow() and J.has("grip_l") and not J.has("grip_bow"):
+			# the placeholder body holds a bow in its left hand; Anim keeps the grip lined up with the arm (bow_l)
+			(J["grip_l"] as Node3D).add_child(weapon_node)
+			J["bow_l"] = weapon_node
+		else:
+			J.erase("bow_l")
+			_weapon_hand(J).add_child(weapon_node)
 		# the new model starts in the hand: force _carry_weapon to place it (and the body's hilt) next frame
 		carry.configure(cls)
 		_carry_in_hand = not (carry.t >= float(carry.p["grab"]))
@@ -629,6 +643,9 @@ func refresh_gear() -> void:
 		Demon.rebuild_body(rig, demon_gear())
 	elif is_warlock():
 		Warlock.rebuild_body(rig, warlock_gear())
+	elif is_archer():
+		if not rig.has_meta("meshy"):      # the ranger's own body has nothing to rebuild
+			Knight.rebuild_body(rig, Archer.body_gear(knight_gear()))
 	elif not rig.has_meta("meshy"):
 		Knight.rebuild_body(rig, knight_gear())
 	var am = equipment.get("amulet")
@@ -684,7 +701,7 @@ func knight_gear() -> Dictionary:
 ## ("hilt": the body's own sheathed hilt shows and the weapon model hides; "back": on the back). When it
 ## changes hands it keeps its place in the world and eases into the new hold, so it never jumps.
 func _carry_weapon(delta: float) -> void:
-	if weapon_node == null or not is_instance_valid(weapon_node) or rig == null:
+	if weapon_node == null or not is_instance_valid(weapon_node) or rig == null or has_bow():  # a bow stays in the left hand
 		return
 	var in_hand := carry.t >= float(carry.p["grab"])
 	var store: String = carry.p["store"]
@@ -822,7 +839,7 @@ func free_attack(aim: Vector3) -> void:
 ## the next one, which cuts off that swipe's recovery so the three flow together; the finisher
 ## (a full spin that hits all round) always plays out, and the chain starts over after a pause.
 func swipe_attack(aim: Vector3, keep_target := false) -> void:
-	if dead or charge_t >= 0.0 or drain_t >= 0.0:
+	if dead or charge_t >= 0.0 or drain_t >= 0.0 or daze_t > 0.0:
 		return
 	if has_bow():
 		Archer.shoot(self, aim, keep_target)
@@ -967,7 +984,7 @@ func can_act() -> bool:
 	return not dead and atk_t < 0.0 and charge_t < 0.0 and drain_t < 0.0
 
 func use_skill(id: String, aim: Vector3) -> bool:
-	if dead or charge_t >= 0.0:
+	if dead or charge_t >= 0.0 or daze_t > 0.0:
 		return false
 	if atk_t >= 0.0 and atk_skill != "":
 		return false
@@ -1255,12 +1272,40 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	dmg = maxf(1.0, dmg)
 	life -= dmg
 	hit_t = 1.0
+	if kind == "maul":
+		# thrown back from the blow
+		var away := global_position - from
+		away.y = 0
+		knock_v = (away.normalized() if away.length() > 0.05 else -rig.global_transform.basis.z) * 7.5
 	# a plain thud, no voice: an "oof" on every hit was too much
-	Sfx.play("hero_hit", -3.0, randf_range(0.9, 1.1))
-	Fx.blood(game.world.fx_root, global_position + Vector3(0, 1.2, 0), Color(0.6, 0.02, 0.02))
+	var burn := kind == "burn"
+	if not burn:
+		Sfx.play("hero_hit", -3.0, randf_range(0.9, 1.1))
+		Fx.blood(game.world.fx_root, global_position + Vector3(0, 1.2, 0), Color(0.6, 0.02, 0.02))
+		game.add_shake(0.2)
 	show_damage(dmg)
-	game.add_shake(0.2)
 	game.ui.flash_damage()
+	# the Hollow Sloths' blows: thrown back, stunned, chilled, frozen solid, shocked
+	match kind:
+		"sweep":
+			var away := global_position - from
+			away.y = 0
+			if away.length() > 0.01:
+				shove = away.normalized() * 11.0
+		"quake":
+			daze_t = maxf(daze_t, 1.1)
+			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Stunned", Color(0.95, 0.8, 0.5))
+		"chill":
+			chill_t = maxf(chill_t, 2.5)
+			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Chilled", Color(0.55, 0.85, 1.0))
+		"freeze":
+			daze_t = maxf(daze_t, 1.8)
+			chill_t = maxf(chill_t, 4.0)
+			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Frozen", Color(0.6, 0.9, 1.0))
+			Fx.burst(game.world.fx_root, global_position + Vector3(0, 1.0, 0), Color(0.8, 0.95, 1.0), 30, 1.5, 0.15, 1.0, true, -1.0)
+		"shock":
+			daze_t = maxf(daze_t, 0.45)
+			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Shocked", Color(0.8, 0.6, 1.0))
 	if life <= 0.0:
 		life = 0.0
 		dead = true
@@ -1305,6 +1350,9 @@ func _process(delta: float) -> void:
 		if swipe_idle > 0.75:
 			swipe_n = 0
 			swipe_q = false
+	if knock_v.length() > 0.05:
+		global_position = game.world.move(global_position, knock_v * delta)
+		knock_v = knock_v.lerp(Vector3.ZERO, clampf(delta * 6.0, 0.0, 1.0))
 	if dead:
 		dead_t += delta
 		var f := clampf(dead_t / 0.7, 0.0, 1.0)
@@ -1349,6 +1397,9 @@ func _process(delta: float) -> void:
 	if exhausted and stamina >= max_stamina * 0.3:
 		exhausted = false
 	var speed := 4.8 * (1.0 + frw / 100.0)
+	# the archer runs 10% faster while his Spirit Beast is at his side
+	if is_archer() and beasts.any(func(b) -> bool: return is_instance_valid(b) and not b.dead):
+		speed *= 1.1
 	if running:
 		speed *= 1.6
 	if phased:
@@ -1360,6 +1411,16 @@ func _process(delta: float) -> void:
 		speed *= Archer.SHOOT_MOVE if (has_bow() and atk_style == "bow") else 0.72
 	if game.test_fast:
 		speed *= game.TEST_FAST
+	if shove.length() > 0.05:
+		global_position = game.world.move(global_position, shove * delta)
+		shove = shove.lerp(Vector3.ZERO, clampf(delta * 6.0, 0.0, 1.0))
+	if daze_t > 0.0:
+		daze_t -= delta
+		hit_t = maxf(hit_t, 0.6)
+		speed = 0.0
+	if chill_t > 0.0:
+		chill_t -= delta
+		speed *= 0.55
 
 	if charge_t >= 0.0:
 		_update_charge(delta)
@@ -1474,7 +1535,8 @@ func _process(delta: float) -> void:
 	SkillFx.update(self, delta)
 	_breathe(delta)
 	_apply_shield_pose()
-	_update_trail((atk_t >= 0.0 and not (is_wraith() and atk_skill != "")) or charge_t >= 0.0)
+	# no sword-swing streak off a bow, nor off the Wraith's skills
+	_update_trail(((atk_t >= 0.0 and not (is_wraith() and atk_skill != "")) or charge_t >= 0.0) and not has_bow())
 
 ## The Wraith floats a hand's breadth off the ground, bobbing slowly and leaning into motion.
 func _hover() -> void:
@@ -1606,7 +1668,7 @@ func _puppet_process(delta: float) -> void:
 	Archer.update(self, delta)
 	SkillFx.update(self, delta)
 	_apply_shield_pose()
-	_update_trail(atk_t >= 0.0)
+	_update_trail(atk_t >= 0.0 and not has_bow())
 
 func _apply_shield_pose() -> void:
 	if shield_node == null or not is_instance_valid(shield_node):
@@ -2122,6 +2184,8 @@ func move_in_inventory(from: int, to: int) -> void:
 func equip_from_inventory(idx: int) -> void:
 	var it = inventory[idx]
 	if it == null:
+		return
+	if Items.is_material(it):
 		return
 	if not Items.is_equip(it):
 		# potions: as many as fit go to the belt, the rest stay here

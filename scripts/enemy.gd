@@ -54,8 +54,21 @@ var nova_t := 9.0
 var enraged := false
 ## King Grubb's fight (hoard.gd): on the king and on each of his Gold Grabbers (host side).
 var hoard: Hoard = null
+## The Hollow Sloth's brain (sloth.gd), when this is one
+var sloth: Sloth = null
+var _sloth_phase := 0.0
 ## Factions (Data.ENEMIES "faction"): goblins and the undead fight each other on sight (and both fight you).
 var rival: Enemy = null
+# burning (the archer's Fire Arrow, his wolf's Ember Fangs): fire damage every half second; chilled (Frost
+# Volley, Winter Howl): slower on its feet. Burning is ticked by whoever set it (take_damage routes to the host);
+# a chill from a partner reaches the host through Net.send_enemy_chill.
+var burn_t := 0.0
+var burn_dps := 0.0
+var burn_tick := 0.0
+var chill_t := 0.0
+var chill_k := 0.0
+var taunt: Node3D = null      # a companion that bit it (the archer's Spirit Beast): it turns on it for a while
+var taunt_t := 0.0
 var rival_t := 0.0
 var _by_rival := false        # set while a rival's blow lands
 var killed_by_rival := false  # no xp or loot for a kill the heroes didn't make
@@ -82,6 +95,19 @@ var f_calm := 0.0      # after giving up it won't notice you again for a while (
 var lunge_from := Vector3.ZERO
 var lunge_to := Vector3.ZERO
 var slot_a := 0.0
+# the three Fallen (fallen_skirmisher / fallen_reaver / fallen_stalker): an attack that moves the body along a
+# path (atk_path: [from fraction, to fraction, from, to]), the Reaver's warning shown once, his slow start,
+# the Stalker's chosen side and weave
+var atk_path: Array = []
+var atk_aim := Vector3.ZERO
+var tele_done := false
+var rv_spd := 0.0
+var fv_side := 1.0
+var fv_flip := 1.5
+var fv_weave := 0.0
+# the Forsaken Bear (bear.gd): roars once on noticing you, roars now and then while it wanders
+var b_roared := false
+var b_idle_t := 0.0
 
 func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> void:
 	game = g
@@ -110,6 +136,11 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 	if rig.has_meta("feral"):
 		slot_a = randf_range(-1.6, 1.6)
 		lunge_cd = randf_range(0.3, 3.0)
+	elif rig.has_meta("sloth"):
+		Sloth.dress(rig, str(def.get("element", "")))
+		sloth = Sloth.new(self)
+		atk_style = "sloth_walk"
+		add_to_group("sloth")
 	elif rig.has_meta("lion"):
 		slot_a = randf_range(-1.6, 1.6)
 		lunge_cd = randf_range(0.5, 2.5)
@@ -118,7 +149,7 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 	match k:
 		"zombie", "mummy": pers = "zombie"
 		"skel_archer": pers = "skeleton"
-		"fallen", "imp", "fetish": pers = "fallen"
+		"fallen", "fallen_skirmisher", "fallen_stalker", "imp", "fetish": pers = "fallen"
 		"grabber", "goblin_guard": pers = "goblin"
 	if boss:
 		pers = "boss"
@@ -217,6 +248,43 @@ func set_soul_lit(on: bool) -> void:
 	_soul_lit = on
 	_set_flash(0.0)
 
+func ignite(dps: float, t: float) -> void:
+	if dead:
+		return
+	burn_dps = maxf(burn_dps if burn_t > 0.0 else 0.0, dps)
+	burn_t = maxf(burn_t, t)
+	if game and game.world:
+		DemonFx.ignite(game.world.fx_root, self)
+
+func chill(k: float, t: float) -> void:
+	if remote:
+		game.net.send_enemy_chill(self, k, t)
+	if boss:
+		k *= 0.5
+	chill_k = maxf(chill_k if chill_t > 0.0 else 0.0, k)
+	chill_t = maxf(chill_t, t)
+	if game and game.world and not has_node("frost"):
+		var f := Fx.aura(self, Color(0.6, 0.85, 1.0), 14, 0.3, 0.07, 0.8, -0.2, 0.4 * radius + 0.2, 60.0, Vector3(0, height * 0.8, 0))
+		f.name = "frost"
+
+## Burning and chill wearing off (every peer: a burn ticks where it was set, a chill slows the host's AI).
+func _statuses(delta: float) -> void:
+	if burn_t > 0.0:
+		burn_t -= delta
+		burn_tick -= delta
+		if burn_tick <= 0.0:
+			burn_tick = 0.5
+			take_damage(0.0, burn_dps * 0.5, global_position, 0.0, false)
+			if game and game.world and randf() < 0.5:
+				DemonFx.ignite(game.world.fx_root, self)
+	if chill_t > 0.0:
+		chill_t -= delta
+		if chill_t <= 0.0:
+			chill_k = 0.0
+			var f := get_node_or_null("frost")
+			if f:
+				f.queue_free()
+
 func stun(t: float) -> void:
 	if t < 0.0:
 		# a slow rides the stun RPC as a negative time (the Wraith's Soul Siphon), so the RPC set stays as it is
@@ -225,7 +293,7 @@ func stun(t: float) -> void:
 	if remote:
 		game.net.send_enemy_stun(self, t)
 		return
-	if boss:
+	if boss or sloth != null:
 		t *= 0.3
 	stun_t = maxf(stun_t, t)
 	atk_t = -1.0
@@ -242,6 +310,8 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 	if dead:
 		return 0.0
 	aggro = true
+	if sloth != null:
+		sloth.on_hit(from)
 	if game.test_onehit:
 		phys = maxf(phys, life * 10.0 + 1000000.0)   # testing switch (F8): any hit kills
 	var p := phys * 100.0 / (100.0 + armor * 0.6)
@@ -269,7 +339,7 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 	var away := global_position - from
 	away.y = 0
 	if away.length() > 0.01:
-		knock += away.normalized() * knockback * (0.25 if boss else 1.0)
+		knock += away.normalized() * knockback * (0.25 if boss else (0.12 if sloth != null else 1.0))
 	var col := Color(1.0, 0.95, 0.8) if not crit else Color(1.0, 0.75, 0.2)
 	if fire > p:
 		col = Color(1.0, 0.55, 0.15)
@@ -356,7 +426,7 @@ func apply_net_state(x: float, z: float, yaw: float, mv: float, ph: float, atk: 
 	net_pos = Vector3(x, 0, z)
 	net_yaw = yaw
 	move_amt = mv
-	if atk >= 0.0 and net_atk < 0.0:
+	if atk >= 0.0 and net_atk < 0.0 and sloth == null:
 		_swing_sound()
 	net_atk = atk
 	atk_style = style
@@ -383,10 +453,15 @@ func _remote_process(delta: float) -> void:
 func special_fx(ev: String) -> void:
 	if hoard != null and hoard.boss == self and hoard.fx(ev):
 		return
+	if ev.begins_with("sloth"):
+		Sloth.fx(self, ev)
+		return
 	var col := Color(0.4, 1.0, 0.3) if def.get("nova", "") == "poison" else Color(1.0, 0.4, 0.1)
 	match ev:
 		"slam_tele":
 			Fx.telegraph(game.world.fx_root, global_position, 4.2, atk_dur * Anim.impact_at("slam"))
+		"reaver_tele":
+			Fx.arc_telegraph(game.world.fx_root, global_position, -rig.global_transform.basis.z, 2.6 + radius * 0.5, 60.0, atk_dur * (Anim.impact_at("reaver_cleave") - 0.15))
 		"nova_tele":
 			Fx.telegraph(game.world.fx_root, global_position, 7.0, atk_dur * Anim.impact_at("cast"), col)
 		"slam":
@@ -402,6 +477,21 @@ func special_fx(ev: String) -> void:
 			Fx.burst(game.world.fx_root, global_position + Vector3(0, 1, 0), col, 50, 8.0, 0.2, 0.7, true, 0.0)
 			Sfx.play("nova")
 			game.add_shake(0.4)
+		"bear_tele":
+			# the danger zone: a ring where the paws will land
+			Fx.telegraph(game.world.fx_root, global_position - rig.global_transform.basis.z * 1.6, 1.9, atk_dur * Bear.MAUL_HIT, Color(0.6, 1.0, 0.4))
+		"bear_roar":
+			Bear.sound("bear_roar", global_position + Vector3(0, 2.0, 0))
+			Fx.burst(game.world.fx_root, global_position + Vector3(0, 2.4, 0) - rig.global_transform.basis.z * 0.9, Color(0.75, 0.8, 0.75, 0.35), 18, 1.6, 0.35, 0.9, false, 0.4, 35.0, -rig.global_transform.basis.z)
+			if game.hero.global_position.distance_to(global_position) < 16.0:
+				game.add_shake(0.25)
+		"bear_maul":
+			Bear.sound("bear_maul", global_position)
+			var paws := global_position - rig.global_transform.basis.z * 1.6
+			Fx.ring(game.world.fx_root, paws, 2.6, Color(0.45, 0.4, 0.33), 0.4)
+			Fx.burst(game.world.fx_root, paws + Vector3(0, 0.2, 0), Color(0.38, 0.33, 0.28, 0.8), 30, 4.5, 0.3, 0.8, false, -4.0, 80.0)
+			if game.hero.global_position.distance_to(global_position) < 10.0:
+				game.add_shake(0.45)
 		"enrage":
 			game.ui.message(display_name + " is enraged!", Color(1.0, 0.3, 0.2))
 			Sfx.play("roar")
@@ -433,7 +523,7 @@ func _process(delta: float) -> void:
 		if rig.has_meta("crawler"):
 			rig.rotation.z = f * PI
 			rig.position.y = f * 0.4 * height
-		elif rig.has_meta("feral") or rig.has_meta("lion"):
+		elif rig.has_meta("feral") or rig.has_meta("lion") or rig.has_meta("bear") or rig.has_meta("sloth"):
 			rig.rotation.x = 0.0
 			rig.rotation.z = f * f * 1.35      # rolls onto his side
 		elif rig.has_meta("goblin"):
@@ -452,10 +542,25 @@ func _process(delta: float) -> void:
 		return
 	if hoard != null and hoard.boss == self:
 		hoard.murmur(delta)
+	if sloth != null:
+		Sloth.presence(self, delta, _sloth_phase)
+		Sloth.idle_fx(self, delta)
+		_sloth_phase = phase
+	_statuses(delta)
+	if dead:
+		return
 	if remote:
 		_remote_process(delta)
 		return
 	var hero: Node3D = game.target_for(self)
+	# bitten by a companion: it goes for the beast while that is the nearer threat
+	if taunt != null:
+		taunt_t -= delta
+		if not is_instance_valid(taunt) or taunt.dead or taunt_t <= 0.0:
+			taunt = null
+		elif hero == null or hero.dead or taunt.global_position.distance_to(global_position) < hero.global_position.distance_to(global_position) * 0.9:
+			hero = taunt
+			aggro = true
 	if def.has("faction"):
 		rival_t -= delta
 		if rival_t <= 0.0:
@@ -479,7 +584,7 @@ func _process(delta: float) -> void:
 	if perch_h > 0.0:
 		_feral_perch(delta, hero, dist)
 		return
-	if dist > 50.0 and not boss:
+	if dist > 50.0 and not boss and sloth == null:
 		return
 	hit_t = maxf(0.0, hit_t - delta * 4.0)
 	if knock.length() > 0.01:
@@ -492,7 +597,9 @@ func _process(delta: float) -> void:
 	var vel := Vector3.ZERO
 	# a Demon phased into the Underworld cannot be seen
 	var hero_dead: bool = hero.dead or hero.get("phased") == true
-	if stun_t > 0.0:
+	if sloth != null:
+		vel = sloth.update(delta, hero, to, dist, hero_dead)
+	elif stun_t > 0.0:
 		stun_t -= delta
 	elif atk_t >= 0.0:
 		_update_attack(delta, hero, dist)
@@ -508,6 +615,8 @@ func _process(delta: float) -> void:
 			aggro = false
 		if aggro:
 			vel = _think_combat(delta, hero, to, dist)
+		elif def["ai"] == "bear":
+			vel = _bear_idle(delta)
 		else:
 			vel = _wander(delta)
 	# separation
@@ -529,13 +638,13 @@ func _process(delta: float) -> void:
 		slow_t -= delta
 		vel *= 1.0 - slow_amt * (0.3 if boss else 1.0)
 	if vel.length() > 0.01:
-		global_position = game.world.move(global_position, vel * delta, body_r())
+		global_position = game.world.move(global_position, vel * delta * (1.0 - chill_k), body_r())
 		if aggro or vel.length() > 0.5:
 			if atk_t < 0.0:
-				_face(to if aggro and (dist <= 3.0 or f_state in ["back", "out"]) else vel)
+				_face(to if aggro and sloth == null and (dist <= 3.0 or f_state in ["back", "out"]) else vel)
 		move_amt = move_toward(move_amt, clampf(vel.length() / maxf(speed, 0.1), 0.0, 1.0), delta * 5.0)
 		var was := phase
-		phase += delta * vel.length() * (1.6 / maxf(height, 0.5)) * (-1.0 if f_state in ["back", "out"] else 1.0)
+		phase += delta * vel.length() * (1.6 / maxf(height, 0.5)) * (-1.0 if f_state in ["back", "out"] else 1.0) * (float(rig.get_meta("stride")) if rig.has_meta("stride") else 1.0)
 		if boss and rig.has_meta("goblin") and floorf(phase / PI) != floorf(was / PI) and move_amt > 0.4:
 			_footstep()
 	else:
@@ -557,6 +666,12 @@ static func build_rig(kind: String, variant := 1) -> Node3D:
 		return Feral.build(variant)
 	if d.get("mesh", "") == "lion" and Lion.ok():
 		return Lion.build()
+	if d.get("mesh", "") == "bear" and Bear.ok():
+		return Bear.build()
+	if d.get("mesh", "") == "sloth":
+		return Sloth.build(str(d.get("variant", "")), look.get("skin", Color(0.52, 0.56, 0.47)))
+	if d.get("mesh", "") == "wolf" and ResourceLoader.exists(SpiritBeast.WOLF_GLB):
+		return Lion.build(SpiritBeast.WOLF_GLB, 1.0)
 	if d.has("mesh") and MeshyMonster.ok(d["mesh"]):
 		return MeshyMonster.build(d["mesh"], look)
 	if d.has("model"):
@@ -574,6 +689,10 @@ static func pose_rig(r: Node3D, st: Dictionary, height: float) -> void:
 		Feral.pose(r, st, height)
 	elif r.has_meta("lion"):
 		Lion.pose(r, st, height)
+	elif r.has_meta("bear"):
+		Bear.pose(r, st, height)
+	elif r.has_meta("sloth"):
+		Sloth.pose(r, st, height)
 	else:
 		Anim.pose(r, st)
 
@@ -589,7 +708,7 @@ func _footstep() -> void:
 ## The radius it collides with props and walls at: a boss's real bulk (so a 3.5 m King Grubb
 ## doesn't wade through pillars), everyone else the usual body size (they fit through gaps).
 func body_r() -> float:
-	return clampf(radius * 0.75, World.BODY_R, 1.1) if boss else World.BODY_R
+	return clampf(radius * 0.75, World.BODY_R, 1.1) if boss or sloth != null else World.BODY_R
 
 ## How tall it stands, in metres (mouse picking).
 func top() -> float:
@@ -599,7 +718,7 @@ func _face(d: Vector3) -> void:
 	d.y = 0
 	if d.length() > 0.01:
 		var want := atan2(-d.x, -d.z)
-		rig.rotation.y = lerp_angle(rig.rotation.y, want, 0.25)
+		rig.rotation.y = lerp_angle(rig.rotation.y, want, float(def.get("turn", 0.25)))
 
 func _think_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vector3:
 	var ai: String = def["ai"]
@@ -609,6 +728,14 @@ func _think_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vect
 			return v
 	if ai == "feral":
 		return _feral_combat(delta, hero, to, dist)
+	if ai == "skirmisher":
+		return _skirm_combat(delta, hero, to, dist)
+	if ai == "reaver":
+		return _reaver_combat(delta, hero, to, dist)
+	if ai == "stalker":
+		return _stalk_combat(delta, hero, to, dist)
+	if ai == "bear":
+		return _bear_combat(delta, hero, to, dist)
 	var rng_atk: float = def["range"]
 	if boss:
 		if not enraged and life < max_life * 0.35 and hoard == null:
@@ -718,6 +845,23 @@ func _begin_special(sp: String) -> void:
 			_begin_attack(sp)
 			if kind == "lion":
 				Sfx.play_at("lion_roar", global_position, -3.0, randf_range(0.92, 1.08))
+		# the Fallen: each signature attack moves the body along its own path (no snapping into range)
+		"skirm_lunge", "reaver_cleave", "stalk_hook":
+			atk_style = sp
+			atk_dur = def["atk_time"]
+			tele_done = false
+			_begin_attack(sp)
+			_fallen_path(sp)
+		# the Forsaken Bear: rear up and roar; rear and slam both forepaws down
+		"bear_roar":
+			atk_style = sp
+			atk_dur = Bear.ROAR_T
+			_begin_attack(sp)
+		"bear_maul":
+			atk_style = sp
+			atk_dur = Bear.MAUL_T
+			_begin_attack(sp)
+			_fx("bear_tele")
 		# King Grubb (hoard.gd): a lobbed bomb, scooping gold, staggering, cackling
 		"bomb", "scoop", "burst", "cackle":
 			atk_style = "lob" if sp == "bomb" else sp
@@ -731,7 +875,28 @@ func _update_attack(delta: float, hero: Node3D, dist: float) -> void:
 		var want := lunge_from.lerp(lunge_to, smoothstep(0.18, 0.62, a)) - global_position
 		want.y = 0
 		global_position = game.world.move(global_position, want, body_r())
-	if a < Anim.impact_at(atk_style) * 0.8 and special in ["", "volley", "bomb"]:
+	if not atk_path.is_empty():
+		for sg in atk_path:
+			if a >= float(sg[0]) and a <= float(sg[1]) + 0.08:
+				var p: Vector3 = (sg[2] as Vector3).lerp(sg[3], smoothstep(float(sg[0]), float(sg[1]), a))
+				var step := p - global_position
+				step.y = 0
+				global_position = game.world.move(global_position, step, body_r())
+				break
+	match special:
+		"skirm_lunge":
+			if a < 0.3:
+				_face(hero.global_position - global_position)
+		"reaver_cleave":
+			if a < 0.15:
+				_face(hero.global_position - global_position)
+			elif not tele_done:
+				tele_done = true
+				_fx("reaver_tele")
+		"stalk_hook":
+			if a > 0.22 and a < 0.45:
+				_face(hero.global_position - global_position)
+	if a < Anim.impact_at(atk_style) * 0.8 and special in ["", "volley", "bomb", "bear_maul"]:
 		_face(hero.global_position - global_position)
 	if not impact_done and a >= Anim.impact_at(atk_style):
 		impact_done = true
@@ -739,6 +904,24 @@ func _update_attack(delta: float, hero: Node3D, dist: float) -> void:
 	if atk_t >= atk_dur:
 		atk_t = -1.0
 		cooldown = randf_range(0.3, 0.8) * (0.5 if boss else 1.0)
+		atk_path = []
+		match special:
+			"skirm_lunge":
+				# committed: a real opening after the leap
+				cooldown = randf_range(1.3, 1.7)
+				f_state = "recover"
+				f_t = randf_range(0.45, 0.65)
+			"reaver_cleave":
+				cooldown = randf_range(1.1, 1.5)
+				f_state = "rest"
+				f_t = 1.0
+				rv_spd = speed * 0.3
+			"stalk_hook":
+				cooldown = randf_range(1.6, 2.2)
+				f_t = 1.0
+				fv_side = -fv_side if randf() < 0.5 else fv_side
+			"bear_maul":
+				cooldown = randf_range(0.9, 1.4)      # a heavy blow: a real opening after it
 		if special == "feral_lunge":
 			# after the leap he backs off a few steps, watching, before coming in for the claws
 			f_state = "back"
@@ -752,6 +935,26 @@ func _roll() -> float:
 func _impact(hero: Node3D, dist: float) -> void:
 	var fwd := -rig.global_transform.basis.z
 	match special:
+		"skirm_lunge", "stalk_hook":
+			# one blow, on the target, only if it is still there and in front
+			if is_instance_valid(hero) and not hero.dead:
+				var th: Vector3 = hero.global_position - global_position
+				th.y = 0
+				var reach: float = radius + hero.radius + (1.0 if special == "skirm_lunge" else 1.1)
+				if th.length() <= reach and fwd.dot(th.normalized()) > (0.3 if special == "skirm_lunge" else 0.2):
+					hero.take_hit(_roll(), global_position, "melee")
+			return
+		"reaver_cleave":
+			# everyone in the 120-degree arc out to 2.6 m is caught
+			for h in game.all_heroes():
+				if h.dead:
+					continue
+				var tc: Vector3 = h.global_position - global_position
+				tc.y = 0
+				if tc.length() < 2.6 + radius * 0.5 and (tc.length() < 0.3 or fwd.dot(tc.normalized()) > 0.5):
+					h.take_hit(_roll(), global_position, "melee")
+			game.add_shake(0.15)
+			return
 		"":
 			if def["ai"] == "ranged":
 				_shoot(hero.global_position, def.get("proj", "arrow"))
@@ -788,6 +991,18 @@ func _impact(hero: Node3D, dist: float) -> void:
 			for h in game.all_heroes():
 				if not h.dead and h.global_position.distance_to(global_position) < 7.0:
 					h.take_hit(_roll() * 1.2, global_position, "nova", "fire")
+		"bear_roar":
+			_fx("bear_roar")
+		"bear_maul":
+			# both forepaws come down in front: everyone in a 3 m arc ahead is hit and knocked back
+			_fx("bear_maul")
+			for h in game.all_heroes():
+				if h.dead:
+					continue
+				var to_h: Vector3 = h.global_position - global_position
+				to_h.y = 0
+				if to_h.length() < 3.0 + radius * 0.5 and fwd.dot(to_h.normalized()) > 0.2:
+					h.take_hit(_roll(), global_position, "maul")
 		"feral_lunge":
 			# the claws come down where he lands
 			if hero.global_position.distance_to(global_position) < radius + hero.radius + 1.1:
@@ -930,3 +1145,134 @@ func _pack_lunging() -> bool:
 		if e != self and e.pack_id == pack_id and e.special == "feral_lunge" and e.atk_t >= 0.0:
 			return true
 	return false
+
+# ---------------------------------------------------------------- the three Fallen
+## Each signature attack's path, from where it starts toward its target: the Skirmisher launches at you and
+## stumbles on through; the Reaver plants his feet (no path); the Stalker shifts sideways, darts in at an
+## angle and pulls back out.
+func _fallen_path(sp: String) -> void:
+	atk_path = []
+	var hero: Node3D = game.target_for(self)
+	if hero == null:
+		return
+	var hp: Vector3 = hero.global_position
+	var p0 := global_position
+	var to := hp - p0
+	to.y = 0
+	var dir := to.normalized() if to.length() > 0.05 else -rig.global_transform.basis.z
+	var reach: float = radius + hero.radius
+	match sp:
+		"skirm_lunge":
+			var land := p0 + dir * clampf(to.length() - reach - 0.15, 0.0, 4.5)
+			atk_path = [[0.3, 0.5, p0, land], [0.5, 0.62, land, land + dir * 0.45]]
+		"stalk_hook":
+			var side := Vector3(-dir.z, 0, dir.x) * fv_side
+			var p1 := p0 + side * 1.5
+			var from_h := (p1 - hp)
+			from_h.y = 0
+			var app := from_h.normalized().rotated(Vector3.UP, fv_side * 0.7) if from_h.length() > 0.05 else -dir
+			var p2 := hp + app * (reach + 0.3)
+			var out := (p2 - hp)
+			out.y = 0
+			var p3 := p2 + (out.normalized() if out.length() > 0.05 else -dir) * 1.5
+			atk_path = [[0.0, 0.25, p0, p1], [0.25, 0.44, p1, p2], [0.55, 1.0, p2, p3]]
+
+## The Skirmisher: comes straight in, fast; from about 5 m it coils and launches the Savage Lunge, then
+## stands a moment (the opening); too close to lunge, it hops back a step first.
+func _skirm_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vector3:
+	if f_state == "recover":
+		f_t -= delta
+		if f_t > 0.0:
+			_face(to)
+			return Vector3.ZERO
+		f_state = ""
+	var reach: float = radius + hero.radius
+	if cooldown <= 0.0 and dist < 5.2 and dist > reach + 0.5 and game.world.los(global_position, hero.global_position):
+		_face(to)
+		_begin_special("skirm_lunge")
+		return Vector3.ZERO
+	if dist < reach + 0.5:
+		return -to.normalized() * speed * 0.7
+	return go_to(delta, hero.global_position, speed * 1.1)
+
+## The Reaver: walks in steadily, slow to get going and slow to turn; in reach he plants and cleaves, then
+## stands for a second with the axe low.
+func _reaver_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vector3:
+	if f_state == "rest":
+		f_t -= delta
+		if f_t > 0.0:
+			return Vector3.ZERO
+		f_state = ""
+	if dist <= 2.4 + hero.radius * 0.5 and cooldown <= 0.0:
+		_begin_special("reaver_cleave")
+		return Vector3.ZERO
+	if dist < radius + hero.radius + 0.2:
+		return Vector3.ZERO
+	rv_spd = move_toward(rv_spd, speed, delta * 1.8)
+	return go_to(delta, hero.global_position, rv_spd)
+
+## The Stalker: circles 4-6 m out on a side it picks (switching now and then), weaving as it goes, edging in
+## on an arc; when ready it shifts, darts in at an angle and hooks, then pulls out and circles again.
+func _stalk_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vector3:
+	fv_flip -= delta
+	if fv_flip <= 0.0:
+		fv_flip = randf_range(1.0, 2.0)
+		if randf() < 0.45:
+			fv_side = -fv_side
+	f_t -= delta
+	var reach: float = radius + hero.radius
+	if cooldown <= 0.0 and f_t <= 0.0 and dist < 6.0 and dist > reach + 0.3 and game.world.los(global_position, hero.global_position):
+		_begin_special("stalk_hook")
+		return Vector3.ZERO
+	var ring := 5.0 if (cooldown > 0.0 or f_t > 0.0) else 3.8
+	var from_h := global_position - hero.global_position
+	from_h.y = 0
+	var base := atan2(from_h.z, from_h.x)
+	var want := base + fv_side * 0.55
+	var tgt: Vector3 = hero.global_position + Vector3(cos(want), 0, sin(want)) * ring
+	var v := go_to(delta, tgt, speed)
+	# the weave: a smooth sideways sway over the arc (its side flips with fv_side, so it reads as intent)
+	fv_weave += delta * 2.6
+	var side := Vector3(-to.z, 0, to.x).normalized() if to.length() > 0.05 else Vector3.ZERO
+	return v + side * sin(fv_weave) * speed * 0.3 * fv_side
+# ---------------------------------------------------------------- the Forsaken Bear (bear.gd)
+## Ambling about its home ground (wider than most monsters'), stopping every so often to rear up and roar.
+func _bear_idle(delta: float) -> Vector3:
+	b_idle_t -= delta
+	if b_idle_t <= 0.0:
+		b_idle_t = randf_range(14.0, 26.0)
+		if move_amt < 0.3 and global_position.distance_to(home) < 12.0:
+			_begin_special("bear_roar")
+			return Vector3.ZERO
+	wander_t -= delta
+	if wander_t <= 0.0:
+		wander_t = randf_range(3.0, 7.0)
+		wander_to = game.world.free_spot_near(home, 9.0) if randf() < 0.7 else global_position
+	var d := wander_to - global_position
+	d.y = 0
+	if d.length() < 0.4:
+		return Vector3.ZERO
+	return d.normalized() * speed * (0.45 if d.length() > 12.0 else 0.32)
+
+## On noticing a hero it rears and roars once, then charges and mauls, and keeps at it until one of them dies;
+## it gives up only when led more than 30 m from home.
+func _bear_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vector3:
+	if not b_roared:
+		b_roared = true
+		_face(to)
+		rig.rotation.y = atan2(-to.x, -to.z)
+		_begin_special("bear_roar")
+		return Vector3.ZERO
+	if global_position.distance_to(home) > 30.0:
+		aggro = false
+		b_roared = false
+		f_calm = 6.0
+		wander_to = home
+		wander_t = 8.0
+		return Vector3.ZERO
+	if dist <= def["range"] + hero.radius * 0.5:
+		if cooldown <= 0.0:
+			_face(to)
+			_begin_special("bear_maul")
+		return Vector3.ZERO
+	return go_to(delta, hero.global_position, speed * 1.5)

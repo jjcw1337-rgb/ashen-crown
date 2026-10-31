@@ -38,8 +38,11 @@ func setup(it: Dictionary, from: Vector3, to: Vector3) -> void:
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
 	label.position = Vector3(0, 0.75, 0)
-	label.visible = int(it.get("rarity", 0)) > 0 or slot == "gold"
+	label.visible = int(it.get("rarity", 0)) > 0 or slot == "gold" or slot == "material"
 	add_child(label)
+	if slot == "material":
+		_material_glow(Data.BASES[it["base"]])
+		return
 	var r := int(it.get("rarity", 0))
 	if r >= 2:
 		var beam := MeshInstance3D.new()
@@ -56,14 +59,40 @@ func setup(it: Dictionary, from: Vector3, to: Vector3) -> void:
 		l.position = Vector3(0, 0.5, 0)
 		add_child(l)
 
+## A Hollow Sloth's material on the ground: a tall beam and a pulsing light in its colour, and its
+## element rising off it (embers, frost mist, sparks); the label in its colour.
+var _light: OmniLight3D
+func _material_glow(b: Dictionary) -> void:
+	var col: Color = b["color"]
+	label.modulate = col.lerp(Color.WHITE, 0.25)
+	label.text = "✦ " + item["name"] + " ✦"
+	var beam := MeshInstance3D.new()
+	beam.mesh = Geo.cyl(0.1, 0.3, 6.0, 12)
+	beam.material_override = Mats.glow(col, 2.2, 1.2, 0.6)
+	beam.position = Vector3(0, 3.0, 0)
+	beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(beam)
+	_light = OmniLight3D.new()
+	_light.light_color = col
+	_light.light_energy = 1.6
+	_light.omni_range = 3.5
+	_light.position = Vector3(0, 0.5, 0)
+	add_child(_light)
+	match b["kind"]:
+		"ember": Fx.aura(self, Color(1.0, 0.45, 0.08, 0.9), 28, 0.9, 0.07, 1.3, 0.8, 0.12, 25.0, Vector3(0, 0.2, 0), false)
+		"talon": Fx.aura(self, Color(0.7, 0.9, 1.0, 0.6), 18, 0.25, 0.22, 1.8, -0.05, 0.2, 80.0, Vector3(0, 0.15, 0))
+		_: Fx.aura(self, Color(0.42, 0.28, 0.6), 22, 1.6, 0.05, 0.35, 0.0, 0.18, 180.0, Vector3(0, 0.2, 0))
+
 func set_hover(h: bool, show_all: bool) -> void:
 	hovered = h
-	label.visible = h or show_all or int(item.get("rarity", 0)) > 0 or item["base"] == "gold"
+	label.visible = h or show_all or int(item.get("rarity", 0)) > 0 or item["base"] == "gold" or Items.is_material(item)
 	label.modulate.a = 1.0
 	label.font_size = 44 if h else 36
 
 func _process(delta: float) -> void:
 	_t += delta
+	if _light:
+		_light.light_energy = 1.3 + 0.6 * sin(_t * 3.0) + 0.2 * sin(_t * 7.3)
 	if _toss < 1.0:
 		_toss = minf(1.0, _toss + delta * 1.8)
 		var p := _from.lerp(_to, _toss)

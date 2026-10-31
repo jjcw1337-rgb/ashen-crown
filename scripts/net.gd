@@ -7,7 +7,7 @@ extends Node
 const PORT := 24567
 const DISCO_PORT := 24568
 const MAX_CLIENTS := 3
-const STYLES := ["over", "back", "side", "thrust", "bow", "cast", "claw", "slam", "bite", "smash", "lob", "scoop", "burst", "cackle", "swipe1", "swipe2", "swipe3", "cleave", "feral_lunge", "feral_swipe", "perch", "descend",
+const STYLES := ["over", "back", "side", "thrust", "bow", "cast", "claw", "slam", "bite", "smash", "lob", "scoop", "burst", "cackle", "swipe1", "swipe2", "swipe3", "cleave", "feral_lunge", "feral_swipe", "perch", "descend", "skirm_lunge", "reaver_cleave", "stalk_hook", "bear_roar", "bear_maul", "sloth_walk", "sloth_run", "sloth_rise", "sloth_look", "sloth_stare", "sloth_roar", "sloth_drop", "sloth_sniff", "sloth_sweep", "sloth_slam", "sloth_pounce",
 	"rend", "siphon", "wstep", "grasp", "phantom", "night_rise", "night_scream", "night_hold", "night_fall"]
 const SEND_RATE := 0.05
 const ALLY_COLORS := [Color(0.45, 0.8, 1.0), Color(0.5, 1.0, 0.5), Color(1.0, 0.6, 0.9)]
@@ -501,6 +501,14 @@ func sv_enemy_hit(id: int, phys: float, fire: float, from: Vector3, knock: float
 	if is_instance_valid(e) and not e.dead:
 		e.take_damage(phys, fire, from, knock, crit)
 
+func send_enemy_chill(e: Enemy, k: float, t: float) -> void:
+	rpc_id(1, "sv_enemy_chill", e.net_id, k, t)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_enemy_chill(id: int, k: float, t: float) -> void:
+	if is_host and enemies.has(id) and is_instance_valid(enemies[id]):
+		(enemies[id] as Enemy).chill(clampf(k, 0.0, 0.8), clampf(t, 0.0, 6.0))
+
 func send_enemy_stun(e: Enemy, t: float) -> void:
 	rpc_id(1, "sv_enemy_stun", e.net_id, t)
 
@@ -521,6 +529,7 @@ func cl_enemy_die(id: int) -> void:
 	enemies.erase(id)
 	if is_instance_valid(e) and not e.dead:
 		e.die_visual()
+		game.quests.on_kill(e)       # a partner's quests count the party's kills
 		if e.boss:
 			game.boss_down_remote(e)
 

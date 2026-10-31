@@ -4,7 +4,7 @@ extends RefCounted
 
 const ACTS := [
 	{"name": "The Ashen Moors", "town": "The Forsaken Wilds", "wild": "Cairnfell Moor", "lair": "Grubb's Fort",
-		"boss": "goblin_king", "lvl": 1, "theme": "moor", "foes": ["fallen", "zombie", "skel_archer"]},
+		"boss": "goblin_king", "lvl": 1, "theme": "moor", "foes": ["fallen_skirmisher", "fallen_reaver", "fallen_stalker", "zombie", "skel_archer"]},
 	{"name": "The Sunscar Wastes", "town": "Lut Khemar", "wild": "Dunes of Sorrow", "lair": "Tomb of Sekhmun",
 		"boss": "sekhmun", "lvl": 8, "theme": "desert", "foes": ["raider", "mummy", "scarab"]},
 	{"name": "The Drowned Wilds", "town": "Vel Dara", "wild": "Mirewood", "lair": "Temple of Vael",
@@ -18,7 +18,7 @@ const ACTS := [
 ## of the games (games.gd) is the act's boss. Keys override Data.ACTS[0] for that run (act_info).
 const RUN_ACTS := {
 	1: {"name": "The Imperial Road", "wild": "The Imperial Road", "lair": "Aurelia", "boss": "champion",
-		"foes": ["zombie", "fallen", "skel_archer"]},
+		"foes": ["zombie", "fallen_skirmisher", "fallen_reaver", "fallen_stalker", "skel_archer"]},
 }
 
 ## An act's names, boss and foes for a run (difficulty): Data.ACTS with that run's overrides.
@@ -136,6 +136,21 @@ const ENEMIES := {
 	"fallen": {"mesh": "fallen", "name": "Fallen", "rig": "humanoid", "life": 14, "dmg": [2, 5], "speed": 4.2, "range": 1.5, "xp": 9,
 		"ai": "melee", "atk": "over", "atk_time": 0.85, "armor": 2, "radius": 0.45, "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.62, 0.12, 0.08), "cloth": Color(0.22, 0.16, 0.1), "height": 0.72, "bulk": 0.9, "head": "horned", "eyes": Color(1.0, 0.8, 0.1), "weapon": "club"}},
+	# the three Fallen (enemy.gd _skirm_combat / _reaver_combat / _stalk_combat; Anim's "gait"s and styles): one
+	# faction, three ways of fighting. Usable in any act: add the id to that act's "foes".
+	"fallen_skirmisher": {"mesh": "fallen_skirmisher", "name": "Fallen Skirmisher", "rig": "humanoid", "life": 18, "dmg": [4, 8], "speed": 4.6, "range": 1.5, "xp": 12,
+		"ai": "skirmisher", "atk": "skirm_lunge", "atk_time": 0.9, "armor": 2, "radius": 0.42, "blood": Color(0.5, 0.02, 0.02),
+		"look": {"skin": Color(0.6, 0.14, 0.08), "cloth": Color(0.22, 0.16, 0.1), "height": 0.69, "bulk": 0.9, "head": "horned", "eyes": Color(1.0, 0.8, 0.1), "weapon": "sickle", "gait": "skirm", "stride": 1.3}},
+	"fallen_reaver": {"mesh": "fallen_reaver", "name": "Fallen Reaver", "rig": "humanoid", "life": 45, "dmg": [8, 14], "speed": 3.2, "range": 2.2, "xp": 22,
+		"ai": "reaver", "atk": "reaver_cleave", "atk_time": 1.6, "armor": 6, "radius": 0.6, "turn": 0.09, "blood": Color(0.45, 0.02, 0.02),
+		"look": {"skin": Color(0.35, 0.1, 0.08), "cloth": Color(0.15, 0.12, 0.1), "height": 0.97, "bulk": 1.3, "head": "horned", "eyes": Color(1.0, 0.5, 0.1), "weapon": "cleaver", "gait": "reaver", "stride": 0.8}},
+	"fallen_stalker": {"mesh": "fallen_stalker", "name": "Fallen Stalker", "rig": "humanoid", "life": 20, "dmg": [4, 8], "speed": 4.4, "range": 1.6, "xp": 16,
+		"ai": "stalker", "atk": "stalk_hook", "atk_time": 1.1, "armor": 3, "radius": 0.42, "blood": Color(0.4, 0.03, 0.05),
+		"look": {"skin": Color(0.4, 0.2, 0.18), "cloth": Color(0.18, 0.14, 0.12), "height": 0.94, "bulk": 0.8, "head": "horned", "eyes": Color(0.9, 1.0, 0.4), "gait": "stalk", "stride": 0.95}},
+	# the archer's Spirit Beast as a monster (JJ's dire forest wolf, the Feral's pack AI): not placed anywhere yet
+	"spirit_beast": {"mesh": "wolf", "name": "Spirit Wolf", "rig": "crawler", "life": 34, "dmg": [5, 9], "speed": 5.2, "range": 1.9, "xp": 20,
+		"ai": "feral", "atk": "feral_swipe", "atk_time": 1.0, "armor": 4, "radius": 0.7, "aggro": 13.0, "blood": Color(0.55, 0.95, 0.6),
+		"look": {"skin": Color(0.55, 0.85, 0.6), "height": 1.2}},
 	"zombie": {"mesh": "zombie", "faction": "undead", "name": "Zombie", "rig": "humanoid", "life": 32, "dmg": [3, 7], "speed": 1.9, "range": 1.6, "xp": 13,
 		"ai": "melee", "atk": "claw", "atk_time": 1.25, "armor": 4, "radius": 0.5, "blood": Color(0.25, 0.3, 0.05),
 		"look": {"skin": Color(0.42, 0.48, 0.36), "cloth": Color(0.25, 0.23, 0.2), "cloth2": Color(0.18, 0.16, 0.14), "height": 1.0, "bulk": 1.1, "head": "human", "hair": Color(0.15, 0.15, 0.12), "eyes": Color(0.6, 1.0, 0.3)}},
@@ -143,6 +158,17 @@ const ENEMIES := {
 	"feral": {"mesh": "feral", "name": "Feral", "rig": "humanoid", "life": 15, "dmg": [2, 5], "speed": 4.2, "range": 1.4, "xp": 12,
 		"ai": "feral", "atk": "feral_swipe", "atk_time": 0.8, "armor": 1, "radius": 0.5, "aggro": 14.0, "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.66, 0.6, 0.55), "cloth": Color(0.25, 0.2, 0.15), "height": 0.72, "bulk": 0.8, "head": "human", "hair": Color(0.08, 0.07, 0.06), "eyes": Color(1.0, 0.7, 0.3)}},
+	# the Hollow Sloths (sloth.gd): three elemental giants roam the whole Act I moor, best avoided; each fights with
+	# its element ("element") and drops its own material ("drop"). "variant" picks its model.
+	"sloth_fire": {"mesh": "sloth", "variant": "fire", "element": "fire", "drop": "cinderheart", "name": "Cinderhide, the Burning Sloth", "rig": "crawler",
+		"life": 320, "dmg": [8, 15], "speed": 2.2, "range": 2.6, "xp": 160, "ai": "sloth", "atk": "sloth_sweep", "atk_time": 1.35, "armor": 10, "radius": 1.3,
+		"aggro": 15.0, "trophy": true, "blood": Color(0.35, 0.08, 0.02), "look": {"skin": Color(0.16, 0.12, 0.1), "height": 1.7, "eyes": Color(1.0, 0.5, 0.1)}},
+	"sloth_ice": {"mesh": "sloth", "variant": "ice", "element": "cold", "drop": "everfrost", "name": "Rimeclaw, the Frozen Sloth", "rig": "crawler",
+		"life": 320, "dmg": [8, 15], "speed": 2.2, "range": 2.6, "xp": 160, "ai": "sloth", "atk": "sloth_sweep", "atk_time": 1.35, "armor": 10, "radius": 1.3,
+		"aggro": 15.0, "trophy": true, "blood": Color(0.3, 0.06, 0.04), "look": {"skin": Color(0.78, 0.8, 0.82), "height": 1.7, "eyes": Color(0.45, 0.85, 1.0)}},
+	"sloth_storm": {"mesh": "sloth", "variant": "storm", "element": "lightning", "drop": "stormglass", "name": "Thundermaw, the Storm Sloth", "rig": "crawler",
+		"life": 320, "dmg": [8, 15], "speed": 2.2, "range": 2.6, "xp": 160, "ai": "sloth", "atk": "sloth_sweep", "atk_time": 1.35, "armor": 10, "radius": 1.3,
+		"aggro": 15.0, "trophy": true, "blood": Color(0.3, 0.06, 0.04), "look": {"skin": Color(0.25, 0.26, 0.33), "height": 1.7, "eyes": Color(0.75, 0.45, 1.0)}},
 	# A2: the bandits of the Imperial Road (they wait hidden and spring an ambush, via.gd) and the beasts,
 	# gladiators and champion of Aurelia's arena (games.gd). "mesh" picks the Meshy model when it's there.
 	"bandit": {"mesh": "bandit", "name": "Road Bandit", "rig": "humanoid", "life": 22, "dmg": [3, 7], "speed": 4.4, "range": 1.6, "xp": 13,
@@ -151,6 +177,10 @@ const ENEMIES := {
 	"bandit_archer": {"mesh": "bandit", "name": "Bandit Bowman", "rig": "humanoid", "life": 16, "dmg": [3, 6], "speed": 3.6, "range": 12.0, "xp": 12,
 		"ai": "ranged", "atk": "bow", "atk_time": 1.2, "armor": 2, "radius": 0.45, "proj": "arrow", "faction": "bandit", "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.6, 0.45, 0.33), "cloth": Color(0.26, 0.22, 0.15), "cloth2": Color(0.3, 0.2, 0.12), "height": 0.98, "bulk": 0.9, "head": "human", "hair": Color(0.15, 0.1, 0.07), "weapon": "bow"}},
+	# the Forsaken Bear (bear.gd): a lone wanderer off the road; no faction, so it fights anything in its way
+	"bear": {"mesh": "bear", "name": "Forsaken Bear", "rig": "crawler", "life": 130, "dmg": [9, 16], "speed": 3.0, "range": 2.4, "xp": 60,
+		"ai": "bear", "atk": "bear_maul", "atk_time": 1.5, "armor": 8, "radius": 1.0, "aggro": 12.0, "blood": Color(0.35, 0.05, 0.03),
+		"look": {"skin": Color(0.16, 0.15, 0.14), "shell": Color(0.1, 0.1, 0.09), "legs": 4, "size": 1.6, "eyes": Color(0.45, 1.0, 0.4)}},
 	"lion": {"mesh": "lion", "name": "Arena Lion", "rig": "crawler", "life": 30, "dmg": [4, 8], "speed": 5.0, "range": 1.9, "xp": 16,
 		"ai": "feral", "atk": "feral_swipe", "atk_time": 0.95, "armor": 3, "radius": 0.8, "aggro": 30.0, "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.55, 0.4, 0.22), "shell": Color(0.3, 0.2, 0.1), "legs": 4, "size": 1.2, "eyes": Color(1.0, 0.75, 0.2)}},
@@ -229,7 +259,7 @@ const ENEMIES := {
 const CHAMP_PREFIX := ["Gloom", "Rot", "Blood", "Storm", "Grim", "Bane", "Cinder", "Vile", "Doom", "Ash"]
 const CHAMP_SUFFIX := ["maw", "fang", "hide", "brand", "skull", "spine", "heart", "claw"]
 
-## Item bases. slot: weapon, shield, helm, armor, gloves, boots, belt, ring, amulet, potion, gold
+## Item bases. slot: weapon, shield, helm, armor, gloves, boots, belt, ring, amulet, potion, gold, material
 const BASES := {
 	"short_sword": {"name": "Short Sword", "slot": "weapon", "kind": "sword", "dmg": [2, 6], "speed": 1.1, "lvl": 1, "price": 30, "shape": {"len": 0.62, "w": 0.06, "guard": 0.2}},
 	"falchion": {"name": "Falchion", "slot": "weapon", "kind": "sword", "dmg": [4, 10], "speed": 1.0, "lvl": 5, "price": 80, "shape": {"len": 0.72, "w": 0.075, "guard": 0.22, "curve": 1.0}},
@@ -281,6 +311,13 @@ const BASES := {
 	"long_bow": {"name": "Long Bow", "slot": "weapon", "kind": "longbow", "cls": "archer", "dmg": [7, 16], "speed": 1.0, "lvl": 11, "price": 170},
 	"war_bow": {"name": "War Bow", "slot": "weapon", "kind": "longbow", "cls": "archer", "dmg": [12, 25], "speed": 0.95, "lvl": 19, "price": 330},
 	"grave_bow": {"name": "Gravewood Bow", "slot": "weapon", "kind": "longbow", "cls": "archer", "dmg": [18, 34], "speed": 1.0, "lvl": 26, "price": 600},
+	# materials: one space in the inventory, kept for crafting; each Hollow Sloth drops its own (sloth.gd)
+	"cinderheart": {"icon": "res://assets/textures/items/cinderheart.png", "model": "res://assets/models/items/cinderheart.glb", "name": "Cinderheart Ember", "slot": "material", "kind": "ember", "lvl": 1, "price": 400, "color": Color(1.0, 0.45, 0.08),
+		"lore": "Still burning, torn from the chest of Cinderhide"},
+	"everfrost": {"icon": "res://assets/textures/items/everfrost.png", "model": "res://assets/models/items/everfrost.glb", "name": "Everfrost Talon", "slot": "material", "kind": "talon", "lvl": 1, "price": 400, "color": Color(0.45, 0.85, 1.0),
+		"lore": "A claw of Rimeclaw's that never thaws"},
+	"stormglass": {"icon": "res://assets/textures/items/stormglass.png", "model": "res://assets/models/items/stormglass.glb", "name": "Stormglass Eye", "slot": "material", "kind": "orb", "lvl": 1, "price": 400, "color": Color(0.72, 0.45, 1.0),
+		"lore": "Thundermaw's eye, a storm still raging inside"},
 }
 
 ## Affixes: [stat, prefix/suffix name, min, max, per-level growth]
@@ -398,10 +435,10 @@ const SKILLS := [
 	{"id": "blight", "cls": "warlock", "name": "Blight Bolt", "key": "E", "lvl": 3, "mana": 12, "cd": 1.5, "aim": "facing", "range": 15.0, "desc": "Hurl a howling skull of blight. It bursts where it lands and leaves a plague pool that rots enemies standing in it for 4 seconds."},
 	{"id": "shackles", "cls": "warlock", "name": "Soul Shackles", "key": "R", "lvl": 6, "mana": 16, "cd": 8.0, "aim": "self", "desc": "Chains of fel fire snap out to every enemy within 7 metres, damaging them and binding them in place for 2.5 seconds."},
 	# the archer: his attack is the bow (Hero._bow_attack); the arrows are Hero.arrows
-	{"id": "pierce", "cls": "archer", "name": "Piercing Shot", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 16.0, "desc": "A heavy arrow that punches through every enemy in a line for 130% weapon damage."},
-	{"id": "volley", "cls": "archer", "name": "Volley", "key": "E", "lvl": 3, "mana": 14, "cd": 3.0, "aim": "point", "range": 14.0, "desc": "Loose a flight of arrows into the sky: they rain down on the cursor for over a second, hitting everything within 4 metres again and again."},
-	{"id": "snare", "cls": "archer", "name": "Snare Trap", "key": "R", "lvl": 6, "mana": 10, "cd": 6.0, "aim": "point", "range": 10.0, "desc": "Throw an iron snare at the cursor. The first enemies to step on it are held fast for 3 seconds and take 120% weapon damage. It lies in wait for 20 seconds."},
-	{"id": "beast", "cls": "archer", "name": "Spirit Beast", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "aim": "self", "desc": "A spectral beast runs at your side for 30 seconds, savaging whatever you hunt. +40% damage for 12 seconds."},
+	{"id": "pierce", "cls": "archer", "name": "Fire Arrow", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 16.0, "desc": "A burning arrow that tears through every enemy in a line for 130% weapon damage and sets them alight: they burn for 3 seconds."},
+	{"id": "volley", "cls": "archer", "name": "Frost Volley", "key": "E", "lvl": 3, "mana": 14, "cd": 3.0, "aim": "point", "range": 14.0, "desc": "Loose a flight of frost arrows into the sky: they rain on the cursor for over a second, hitting everything within 4 metres again and again and chilling them (40% slower)."},
+	{"id": "snare", "cls": "archer", "name": "Storm Snare", "key": "R", "lvl": 6, "mana": 10, "cd": 6.0, "aim": "point", "range": 10.0, "desc": "Set a storm-charged trap (up to 2): the first enemies to cross it are held fast and hurt, and lightning bursts from it into the 3 nearest others, stunning them."},
+	{"id": "beast", "cls": "archer", "name": "Spirit Beast", "key": "F", "lvl": 10, "mana": 12, "cd": 8.0, "aim": "point", "range": 18.0, "desc": "Your Spirit Beast hunts at your side from the start (and you run 10% faster with it). Command it: on an enemy it pounces and fights it, on open ground it holds there, on yourself it comes back. Each command rouses you both: +40% damage for 12 seconds."},
 	{"id": "covenant", "cls": "warlock", "name": "Fel Covenant", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "aim": "self", "desc": "Seal a pact with what waits beyond: +40% damage for 12 seconds, and Drain Life forks to two more enemies and heals twice as much."},
 ]
 
@@ -424,7 +461,7 @@ const CLASSES := {
 		"desc": "A horned, winged fiend in obsidian plate. Claws with hellfire, summons up to three demons and slips into the Underworld to walk unseen."},
 	# the bow class (Jace's): its name is his to choose; "Archer" until then
 	"archer": {"name": "Archer", "str": 14, "dex": 26, "vit": 18, "ene": 14, "weapon": "short_bow",
-		"desc": "A hooded hunter with a black longbow. Shoots from range, punches arrows through whole packs, rains volleys, sets snares and hunts beside a spirit beast."},
+		"desc": "A red-hooded ranger with a carved recurve bow and his dire wolf at his side. Shoots on the move: fire arrows that burn through a line, frost volleys that chill, storm snares that chain lightning."},
 	"warlock": {"name": "Warlock", "str": 10, "dex": 10, "vit": 10, "ene": 10,
 		"desc": "A hooded sorcerer bound by a fel pact. Drains the life from foes in a forking green beam, rots them with blight and chains them where they stand."},
 }

@@ -114,6 +114,8 @@ static func flash(root: Node3D, pos: Vector3, col: Color, energy: float, dur: fl
 
 ## Expanding ring on the ground (nova, shockwave, slam).
 static func ring(root: Node3D, pos: Vector3, radius: float, col: Color, dur: float = 0.5, height: float = 0.25) -> void:
+	# every shockwave ring also shoves the grass outward (a bigger ring, a harder shove)
+	GrassField.impulse(pos, radius, clampf(0.35 + radius * 0.06, 0.35, 0.75), clampf(dur * 0.8, 0.25, 0.55))
 	var mi := MeshInstance3D.new()
 	mi.mesh = Geo.torus(0.85, 1.0, 48, 4)
 	var m := Mats.glow_unique(col, 3.0, 0.0, 0.0)
@@ -164,6 +166,7 @@ static func _slam_quad(root: Node3D, pos: Vector3, tex_key: String, additive: bo
 	return [mi, m]
 
 static func holy_slam(root: Node3D, pos: Vector3, radius: float) -> void:
+	GrassField.impulse(pos, radius * 1.3, 0.9, 0.5)
 	var white := Color(1.0, 0.98, 0.92)
 	flash(root, pos + Vector3(0, 0.9, 0), white, 3.0, 0.22, radius * 1.8)
 	var tex_ok := ResourceLoader.exists(SLAM_TEX["burst"])
@@ -276,6 +279,77 @@ static func telegraph(root: Node3D, pos: Vector3, radius: float, dur: float, col
 	tw.tween_property(fill, "scale", Vector3(radius, 1, radius), dur)
 	_free_later(outer, dur)
 	_free_later(fill, dur)
+
+## A wedge of danger on the ground (the Fallen Reaver's cleave): radius metres out from pos along dir, half
+## degrees each side; it fills outward over dur, the moment the blow lands.
+static func arc_telegraph(root: Node3D, pos: Vector3, dir: Vector3, radius: float, half: float, dur: float, col := Color(1.0, 0.15, 0.05)) -> void:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var n := 24
+	var a0 := -deg_to_rad(half)
+	var a1 := deg_to_rad(half)
+	for i in n:
+		var u0 := lerpf(a0, a1, float(i) / n)
+		var u1 := lerpf(a0, a1, float(i + 1) / n)
+		st.add_vertex(Vector3.ZERO)
+		st.add_vertex(Vector3(sin(u1), 0, -cos(u1)))
+		st.add_vertex(Vector3(sin(u0), 0, -cos(u0)))
+	var fan := st.commit()
+	var yaw := atan2(-dir.x, -dir.z)
+	var edge := MeshInstance3D.new()
+	edge.mesh = fan
+	edge.material_override = Mats.glow_unique(col, 0.35)
+	edge.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(edge)
+	edge.global_position = pos + Vector3(0, 0.06, 0)
+	edge.rotation.y = yaw
+	edge.scale = Vector3(radius, 1, radius)
+	var fill := MeshInstance3D.new()
+	fill.mesh = fan
+	fill.material_override = Mats.glow_unique(col, 1.1)
+	fill.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(fill)
+	fill.global_position = pos + Vector3(0, 0.07, 0)
+	fill.rotation.y = yaw
+	fill.scale = Vector3(0.05, 1, 0.05)
+	var tw := fill.create_tween()
+	tw.tween_property(fill, "scale", Vector3(radius, 1, radius), dur)
+	_free_later(edge, dur + 0.05)
+	_free_later(fill, dur + 0.05)
+
+## A crack of lightning from a to b: a jagged line of short glowing segments that flickers out (Storm Snare).
+static func bolt(root: Node3D, a: Vector3, b: Vector3, col: Color, dur: float = 0.22) -> void:
+	var holder := Node3D.new()
+	root.add_child(holder)
+	var m := Mats.glow_unique(col, 4.0, 0.0, 0.0)
+	var n := 7
+	var prev := a
+	var side := (b - a).cross(Vector3.UP).normalized()
+	for i in n:
+		var t := float(i + 1) / n
+		var p := a.lerp(b, t)
+		if i < n - 1:
+			p += side * randf_range(-0.35, 0.35) + Vector3(0, randf_range(-0.25, 0.25), 0)
+		var seg := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.035
+		cm.bottom_radius = 0.035
+		cm.height = prev.distance_to(p)
+		cm.radial_segments = 4
+		cm.rings = 1
+		seg.mesh = cm
+		seg.material_override = m
+		seg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		holder.add_child(seg)
+		seg.global_position = (prev + p) * 0.5
+		if prev.distance_to(p) > 0.01:
+			seg.look_at(p, Vector3.UP if absf((p - prev).normalized().y) < 0.95 else Vector3.FORWARD)
+			seg.rotate_object_local(Vector3.RIGHT, PI * 0.5)
+		prev = p
+	burst(root, b, col, 10, 3.0, 0.06, 0.3, true, 0.0)
+	var tw := holder.create_tween()
+	tw.tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 1.0, 0.0, dur)
+	_free_later(holder, dur + 0.05)
 
 static func pillar(root: Node3D, pos: Vector3, col: Color, dur: float = 1.4) -> void:
 	var mi := MeshInstance3D.new()

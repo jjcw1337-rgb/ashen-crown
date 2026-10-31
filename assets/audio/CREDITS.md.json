@@ -1,4 +1,31 @@
 {
+ "anvil": [
+  {
+   "detail": "metal impact + bell ring layered, Halvar's anvil take 1",
+   "license": "CC0 1.0",
+   "source": "Kenney Impact Sounds (kenney.nl), layered into an anvil strike"
+  },
+  {
+   "detail": "metal impact + bell ring layered, Halvar's anvil take 2",
+   "license": "CC0 1.0",
+   "source": "Kenney Impact Sounds (kenney.nl), layered into an anvil strike"
+  },
+  {
+   "detail": "metal impact + bell ring layered, Halvar's anvil take 3",
+   "license": "CC0 1.0",
+   "source": "Kenney Impact Sounds (kenney.nl), layered into an anvil strike"
+  },
+  {
+   "detail": "metal impact + bell ring layered, Halvar's anvil take 4",
+   "license": "CC0 1.0",
+   "source": "Kenney Impact Sounds (kenney.nl), layered into an anvil strike"
+  },
+  {
+   "detail": "metal impact + bell ring layered, Halvar's anvil take 5",
+   "license": "CC0 1.0",
+   "source": "Kenney Impact Sounds (kenney.nl), layered into an anvil strike"
+  }
+ ],
  "arena_horn": [
   {
    "detail": "a Roman cornu war horn blast in a stone amphitheatre, a deep brassy fanfare call of two long notes, isolated sound effect, no music, no voices",
@@ -302,6 +329,18 @@
    "source": "Kenney rpg-audio (kenney.nl)"
   }
  ],
+ "fire_erupt": [
+  {
+   "detail": "a ring of fire erupting from the ground, roaring whoosh of flames bursting up, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a ring of fire erupting from the ground, roaring whoosh of flames bursting up, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "fireball": [
   {
    "detail": "a fireball launched, roaring burst of flame whooshing away, close mic, dry, isolated sound effect, no music",
@@ -404,6 +443,18 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "ice_shatter": [
+  {
+   "detail": "a block of ice cracking and shattering into shards on stone, sharp crystalline crunch, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a block of ice cracking and shattering into shards on stone, sharp crystalline crunch, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "impact_bone": [
   {
    "detail": "a mace smashing into a skeleton, dry bones cracking and clattering, short, close mic, dry, isolated sound effect, no music",
@@ -461,6 +512,13 @@
   },
   {
    "detail": "a big male lion roaring loudly and angrily, close, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "music_select": [
+  {
+   "detail": "the haunting but gentle song of a camp in a forsaken dark forest, dark fantasy: a slow solo viola and soft lute over a low hummed choir, sombre and tender, a safe place among the shadows, background music loop, no drums",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }
@@ -561,6 +619,23 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "relic_ting": [
+  {
+   "detail": "picking up a rare magical gem in a dark fantasy game, one bright clear crystal ting with a shimmering glassy ring that fades, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "picking up a rare magical gem in a dark fantasy game, one bright clear crystal ting with a shimmering glassy ring that fades, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "picking up a rare magical gem in a dark fantasy game, one bright clear crystal ting with a shimmering glassy ring that fades, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "roar": [
   {
    "detail": "a huge mutated goblin king's furious roar, close mic, dry, isolated sound effect, no music",
@@ -648,6 +723,18 @@
  "swing_light": [
   {
    "detail": "a single fast sword swing through the air, sharp whoosh, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "thunder_strike": [
+  {
+   "detail": "a bolt of lightning striking the ground close by, sharp electric crack and a short rumble, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a bolt of lightning striking the ground close by, sharp electric crack and a short rumble, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }

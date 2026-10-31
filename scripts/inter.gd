@@ -17,6 +17,13 @@ var clips := {}
 var home_yaw := 0.0
 var _clip_t := 0.0
 var _talked := 0.0
+# a keeper whose work makes a sound at each blow (the smith's hammer on the anvil: clips "strike"): the hand
+# bone carrying the tool, tracked to hear it land
+var _hand: Node3D = null
+var _hand_y := 0.0
+var _hand_vy := 0.0
+var _hand_top := -1e9
+var _strike_cd := 0.0
 
 func _animate(delta: float) -> void:
 	var near := false
@@ -59,6 +66,9 @@ func _process(delta: float) -> void:
 	_t += delta
 	if anim and model:
 		_animate(delta)
+		if clips.has("strike"):
+			_strikes(delta)
+
 	if rig:
 		var face := 0.0
 		var heroes := get_tree().get_nodes_in_group("hero")
@@ -83,3 +93,38 @@ func _process(delta: float) -> void:
 		if c:
 			c.rotation.y += delta * 0.8
 			c.position.y = 1.4 + sin(_t * 1.5) * 0.08
+
+## The hammer coming down on the metal: the moment the tool hand stops falling and rebounds, low in its
+## swing, during a work clip. A ring of the anvil there, and a few sparks.
+func _strikes(delta: float) -> void:
+	_strike_cd -= delta
+	if _hand == null:
+		for c in model.find_children("*", "BoneAttachment3D", true, false):
+			_hand = c
+			break
+		if _hand == null:
+			return
+		_hand_y = _hand.global_position.y
+	var works: Array = clips.get("work", []) if clips.get("work") is Array else [clips.get("work", "")]
+	var y: float = _hand.global_position.y
+	var vy := (y - _hand_y) / maxf(delta, 0.001)
+	_hand_y = y
+	if not (anim.current_animation in works):
+		_hand_top = -1e9
+		_hand_vy = vy
+		return
+	_hand_top = maxf(_hand_top - delta * 0.5, y)
+	# falling fast a moment ago, now stopped or rising, and well below the top of the swing
+	if _hand_vy < -1.2 and vy > -0.2 and _hand_top - y > 0.25 and _strike_cd <= 0.0:
+		_strike_cd = 0.35
+		var at: Vector3 = _hand.global_position
+		Sfx.play_at(str(clips["strike"]), at, -2.0, randf_range(0.97, 1.08))
+		if game_fx() != null:
+			Fx.sparks(game_fx(), at + Vector3(0, 0.05, 0), Color(1.0, 0.7, 0.3))
+	_hand_vy = vy
+
+func game_fx() -> Node3D:
+	var w = get_parent()
+	while w != null and not (w is World):
+		w = w.get_parent()
+	return (w as World).fx_root if w != null else null

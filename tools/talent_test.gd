@@ -12,7 +12,8 @@ const KEYS := ["str", "dex", "vit", "ene", "res", "ls", "regen", "ias", "frw", "
 	"armor_pct", "crit", "crit_dmg", "buff_pow", "block_dr", "buff_dur", "phase_dur", "siphon_dur", "step_stun", "veil", "grasp_hold",
 	"shackle_dur", "blight_dur", "nova_heal", "cry_heal", "charge_cdr", "rend_heal", "rend_full", "phantoms", "claw_wide", "minion_speed",
 	"minion_max", "pact_cost", "phase_heal", "drain_heal", "drain_fork", "drain_glut", "blight_size", "blight_twin", "shackle_range",
-	"arrow_split", "snare_dur", "snare_max", "snare_wide", "volley_size", "beast_two"]
+	"arrow_split", "snare_dur", "snare_max", "snare_wide", "volley_size", "beast_two", "burn_dmg", "wolf_burn", "chill_pct", "wolf_howl",
+	"frost_shatter", "arc_count"]
 
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
@@ -60,7 +61,7 @@ func _run() -> void:
 	h.reset_talents()
 	h.talents = {"k_zeal": 3, "k_heavy": 3, "k_steel": 1, "k_purify": 2}
 	h._talents_changed()
-	check(is_equal_approx(h.dmg_mult("cleave"), 1.42) and is_equal_approx(h.dmg_mult("nova"), 1.12), "damage: Holy Slam x%.2f, Holy Nova x%.2f" % [h.dmg_mult("cleave"), h.dmg_mult("nova")])
+	check(is_equal_approx(h.dmg_mult("cleave"), 1.42 * h.pace_mult("cleave")) and is_equal_approx(h.dmg_mult("nova"), 1.12), "damage: Holy Slam x%.2f, Holy Nova x%.2f" % [h.dmg_mult("cleave"), h.dmg_mult("nova")])
 	check(is_equal_approx(h.skill_cost("nova"), cost0 * 0.7) and is_equal_approx(h.skill_cd("nova"), cd0 * 0.8), "Purifying Fire: Nova %.1f mana %.2fs" % [h.skill_cost("nova"), h.skill_cd("nova")])
 	# saves: an old one gets a build, a new one keeps its own, a bad one is cleaned
 	var sv: Dictionary = h.to_save()

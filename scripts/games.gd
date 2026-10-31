@@ -584,6 +584,8 @@ static func finished_model(kind: String) -> bool:
 		return Feral.ok()
 	if m == "lion":
 		return Lion.ok()
+	if m == "bear":
+		return Bear.ok()
 	if m != "":
 		return MeshyMonster.ok(m)
 	return d.get("model", "") == "mutant" and ResourceLoader.exists(Goblin.MUTANT["glb"])

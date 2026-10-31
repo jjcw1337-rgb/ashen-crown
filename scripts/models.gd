@@ -422,9 +422,48 @@ static func item_model(item: Dictionary) -> Node3D:
 		"amulet": return amulet(p)
 		"potion": return potion(base["color"], item["base"])
 		"gold": return gold_pile(item.get("count", 50))
+		"material": return material(item["base"])
 	return Node3D.new()
 
+## A Hollow Sloth's material: its Meshy model (assets/models/items/<id>.glb, about 0.3 m) or, without
+## it, a glowing stand-in of its kind; either way lit from inside in its colour.
+static func material(id: String) -> Node3D:
+	var b: Dictionary = Data.BASES[id]
+	var col: Color = b["color"]
+	var root := Node3D.new()
+	if b.has("model") and ResourceLoader.exists(b["model"]):
+		var m: Node3D = (load(b["model"]) as PackedScene).instantiate()
+		root.add_child(m)
+		for mi in m.find_children("*", "MeshInstance3D", true, false):
+			(mi as MeshInstance3D).material_overlay = Mats.glow(col, 0.5, 0.0, 1.0)
+	else:
+		match b["kind"]:
+			"ember":
+				P(root, SphereMesh.new(), Mats.mat(Color(0.08, 0.06, 0.05), 0.9, 0.0, col, 0.8), Vector3(0, 0.12, 0), Vector3.ZERO, Vector3(0.24, 0.22, 0.2))
+			"talon":
+				var c := CylinderMesh.new()
+				c.top_radius = 0.0
+				c.bottom_radius = 0.05
+				c.height = 0.36
+				P(root, c, Mats.mat(col.lerp(Color.WHITE, 0.4), 0.1, 0.0, col, 1.2), Vector3(0, 0.15, 0), Vector3(0, 0, 25))
+			_:
+				P(root, SphereMesh.new(), Mats.mat(col.darkened(0.4), 0.05, 0.0, col, 1.6), Vector3(0, 0.12, 0), Vector3.ZERO, Vector3(0.2, 0.2, 0.2))
+	# the glow inside it
+	var core := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 0.06
+	sm.height = 0.12
+	core.mesh = sm
+	core.material_override = Mats.glow(col, 3.0, 0.0, 0.0)
+	core.position = Vector3(0, 0.12, 0)
+	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(core)
+	return root
+
 static func weapon(kind: String, sh: Dictionary, p: Dictionary) -> Node3D:
+	if kind == "bow":
+		# the archer's bows: the hunting longbow, held in the left hand (Hero.refresh_gear)
+		return enemy_weapon("longbow")
 	var root := Node3D.new()
 	var w := N(root, "w", Vector3.ZERO, Vector3(-90, 0, 0))
 	var mm := _metal(p)
@@ -551,6 +590,14 @@ static func enemy_weapon(kind: String) -> Node3D:
 			p["glow"] = Color(1.0, 0.25, 0.05)
 			p["gem"] = Color(1.0, 0.2, 0.05)
 			return weapon("sword", {"len": 1.15, "w": 0.13, "guard": 0.4, "wavy": 1.0}, p)
+		"sickle":
+			# the Fallen Skirmisher's hooked blade
+			p["metal"] = Color(0.42, 0.36, 0.3)
+			return weapon("sword", {"len": 0.5, "w": 0.06, "guard": 0.06, "curve": 3.0}, p)
+		"cleaver":
+			# the Fallen Reaver's cleaver-axe: a short haft and one broad, chipped head
+			p["metal"] = Color(0.5, 0.46, 0.42)
+			return weapon("axe", {"haft": 0.8, "head": 0.5, "beard": 1.0}, p)
 		"great_axe":
 			p["metal"] = Color(0.2, 0.15, 0.13)
 			p["glow"] = Color(1.0, 0.35, 0.05)

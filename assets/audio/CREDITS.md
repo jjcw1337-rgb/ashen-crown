@@ -5,6 +5,7 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 
 | Sound | Takes | Source | License | Prompt / file |
 |---|---|---|---|---|
+| anvil | 5 | Kenney Impact Sounds (kenney.nl), layered into an anvil strike | CC0 1.0 | metal impact + bell ring layered, Halvar's anvil take 1 |
 | arena_horn | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a Roman cornu war horn blast in a stone amphitheatre, a deep brassy fanfare call of two long notes, isolated sound effect, no music, no voices |
 | battle_cry | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a medieval warrior's battle cry, one man roaring a fierce 'Haaa!' to rally his allies, close mic, dry, isolated sound effect, no music |
 | birds_flutter | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a small flock of birds suddenly taking off from a tree, a burst of flapping wings and a few startled chirps, then flying away, close mic, dry, isolated sound effect, no music |
@@ -39,6 +40,7 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | drip | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | water dripping slowly in a stone dungeon, soft drips and quiet cave air, steady, no music |
 | drop | 4 | Kenney rpg-audio (kenney.nl) | CC0 1.0 | dropLeather.ogg |
 | equip | 4 | Kenney rpg-audio (kenney.nl) | CC0 1.0 | beltHandle1.ogg |
+| fire_erupt | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a ring of fire erupting from the ground, roaring whoosh of flames bursting up, close mic, dry, isolated sound effect, no music |
 | fireball | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a fireball launched, roaring burst of flame whooshing away, close mic, dry, isolated sound effect, no music |
 | forest | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a soft gentle breeze through the leaves of an old forest, branches swaying and leaves rustling softly, calm and peaceful, steady and even, no birds, no music |
 | fuse | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a lit bomb fuse sizzling and hissing with sparks, steady, close mic, dry, isolated sound effect, no music |
@@ -50,6 +52,7 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | holy_nova | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a massive explosion of holy fire around a knight, a deep concussive boom, a roaring outward rush of flame and wind, a faint breath of distant choir, close mic, dry, isolated sound effect, no music |
 | host_summon | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a host of ghosts summoned, many spirits rising with eerie overlapping whispers, close mic, dry, isolated sound effect, no music |
 | hurt | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a goblin or ghoul hit by a blade, a short ugly grunt of pain, close mic, dry, isolated sound effect, no music |
+| ice_shatter | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a block of ice cracking and shattering into shards on stone, sharp crystalline crunch, close mic, dry, isolated sound effect, no music |
 | impact_bone | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a mace smashing into a skeleton, dry bones cracking and clattering, short, close mic, dry, isolated sound effect, no music |
 | impact_flesh | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a sword slash hitting a body, meaty wet cut with a solid thud, short and punchy, close mic, dry, isolated sound effect, no music |
 | impact_metal | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a sword striking steel plate armor, hard metallic clang, short, close mic, dry, isolated sound effect, no music |
@@ -58,6 +61,7 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | kill_flesh | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a monster killed by a blade, gory flesh splatter then a body slumping onto dirt, close mic, dry, isolated sound effect, no music |
 | levelup | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | level up in a dark fantasy game, short triumphant swell with a bright magical chime, subtle, close mic, dry, isolated sound effect, no music |
 | lion_roar | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a big male lion roaring loudly and angrily, close, close mic, dry, isolated sound effect, no music |
+| music_select | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | the haunting but gentle song of a camp in a forsaken dark forest, dark fantasy: a slow solo viola and soft lute over a low hummed choir, sombre and tender, a safe place among the shadows, background music loop, no drums |
 | music_town | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | dark forest sanctuary music for a dark fantasy game: mysterious but warm, soft harp arpeggios over a low droning string pad with a lonely wooden flute, ancient woods at dusk, a hopeful refuge, background music loop, no drums |
 | phase_erupt | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | fire bursting violently up out of the ground, a deep boom, roaring flames and falling rocks, close mic, dry, isolated sound effect, no music |
 | phase_in | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | stepping into the underworld, a deep dark whoosh with a low ominous hit, close mic, dry, isolated sound effect, no music |
@@ -66,6 +70,7 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | portcullis | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a heavy iron portcullis gate being hauled up by chains, rattling chains and grinding iron, ending in a clank, close mic, dry, isolated sound effect, no music |
 | potion | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | drinking a potion from a glass vial, cork pop and two quick gulps, close mic, dry, isolated sound effect, no music |
 | reap_swing | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a ghostly scythe swung in a wide arc, cold airy spectral whoosh, close mic, dry, isolated sound effect, no music |
+| relic_ting | 3 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | picking up a rare magical gem in a dark fantasy game, one bright clear crystal ting with a shimmering glassy ring that fades, close mic, dry, isolated sound effect, no music |
 | roar | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a huge mutated goblin king's furious roar, close mic, dry, isolated sound effect, no music |
 | shackles | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | magical iron chains whipping around a victim, heavy chains rattling and locking shut, close mic, dry, isolated sound effect, no music |
 | shade_implode | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | dark energy imploding, sharp inward suction ending in a deep thump, close mic, dry, isolated sound effect, no music |
@@ -79,5 +84,6 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | swing | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a monster swinging a crude rusty blade, rough whoosh, close mic, dry, isolated sound effect, no music |
 | swing_heavy | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a single heavy two-handed axe swung hard through the air, deep weighty whoosh, close mic, dry, isolated sound effect, no music |
 | swing_light | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a single fast sword swing through the air, sharp whoosh, close mic, dry, isolated sound effect, no music |
+| thunder_strike | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a bolt of lightning striking the ground close by, sharp electric crack and a short rumble, close mic, dry, isolated sound effect, no music |
 | wail | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a terrifying ghost woman screaming, a long piercing shriek, close mic, dry, isolated sound effect, no music |
 | wind | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | cold wind blowing across an empty moor at night, steady, no music |

@@ -175,6 +175,16 @@ SPEC = [
     dict(name="levelup", src="eleven", n=4, dur=2.0, hit=0, label="a triumphant chime",
          prompt="level up in a dark fantasy game, short triumphant swell with a bright magical chime, subtle" + DRY),
 
+    dict(name="relic_ting", src="eleven", n=5, dur=1.6, hit=0, label="a crystal ting",
+         prompt="picking up a rare magical gem in a dark fantasy game, one bright clear crystal ting with a shimmering glassy ring that fades" + DRY),
+    # ---------------------------------------------------------------- the Hollow Sloths' elements (sloth.gd)
+    dict(name="ice_shatter", src="eleven", n=4, dur=1.2, hit=0, label="ice shattering",
+         prompt="a block of ice cracking and shattering into shards on stone, sharp crystalline crunch" + DRY),
+    dict(name="thunder_strike", src="eleven", n=4, dur=1.6, hit=0, label="a lightning strike",
+         prompt="a bolt of lightning striking the ground close by, sharp electric crack and a short rumble" + DRY),
+    dict(name="fire_erupt", src="eleven", n=4, dur=1.4, hit=0, label="flames erupting",
+         prompt="a ring of fire erupting from the ground, roaring whoosh of flames bursting up" + DRY),
+
     # ---------------------------------------------------------------- ambience loops
     # the campsite's song (Blaine: eerie, piano); the acts keep the wind
     # ---------------------------------------------------------------- A2: Aurelia's arena (games.gd)
@@ -195,6 +205,11 @@ SPEC = [
     dict(name="music_town", src="eleven", n=15, dur=30.0, hit=0, loop=True, label="dark forest sanctuary music",
          prompt="dark forest sanctuary music for a dark fantasy game: mysterious but warm, soft harp arpeggios over a low "
                 "droning string pad with a lonely wooden flute, ancient woods at dusk, a hopeful refuge, background music loop, no drums"),
+    # the New Character screen's theme: music_town's take 14 (the haunting viola over a hummed choir), not generated
+    # again (n=0); build_sfx.py with {"music_select": [".../candidates/music_town/14.mp3"]}
+    dict(name="music_select", src="eleven", n=0, dur=30.0, hit=0, loop=True, label="haunting hero-select music",
+         prompt="the haunting but gentle song of a camp in a forsaken dark forest, dark fantasy: a slow solo viola and soft "
+                "lute over a low hummed choir, sombre and tender, background music loop, no drums"),
     dict(name="wind", src="eleven", n=3, dur=8.0, hit=0, loop=True, label="wind blowing",
          prompt="cold wind blowing across an empty moor at night, steady, no music"),
     # the camp's bonfire takes what you throw in (gone for good), and a pick-up click in the inventory
@@ -202,6 +217,8 @@ SPEC = [
          prompt="an object thrown into a roaring campfire, a soft thump then a burst of flames flaring up and crackling sparks" + DRY),
     dict(name="bonfire_open", src="eleven", n=3, dur=1.6, hit=0, label="the camp's bonfire roaring up when clicked",
          prompt="a campfire roaring up, a deep soft whoosh of flames swelling then settling into warm crackling" + DRY),
+    # Halvar at his anvil (forest_camp.gd / Inter: each hammer blow on the metal); Kenney metal hits layered with a ring
+    dict(name="anvil", src="mix", n=5, dur=1.0, hit=0, label="a hammer striking hot metal on an anvil"),
     dict(name="inv_click", src="eleven", n=4, dur=0.5, hit=0, label="picking up an item",
          prompt="picking up a small metal and leather item in a dark fantasy game inventory, a short soft clink with a leather rustle" + DRY),
     # Act I's birds (birds.gd): a flock bursting up out of the trees
