@@ -20,12 +20,12 @@ func _run() -> void:
 	g.char_dir = DIR
 	g.old_save = DIR + "none.json"
 	DirAccess.make_dir_recursive_absolute(DIR)
-	var t := 1000
+	var t := int(Time.get_unix_time_from_system() * 1000.0) - 2 * 3600 * 1000
 	for c in [["Aldric", "knight", 14, 1], ["Fizzwick", "warlock", 22, 2], ["Morwen", "wraith", 6, 0]]:
 		var f := FileAccess.open(DIR + c[0] + ".json", FileAccess.WRITE)
 		f.store_string(JSON.stringify({"name": c[0], "hero": {"cls": c[1], "level": c[2]}, "difficulty": c[3], "played": t}))
 		f.close()
-		t -= 1
+		t -= 3 * 86400 * 1000
 	g.ui.show_title()
 	await _shot(out + "_title.png")
 	g.ui.open_characters()
