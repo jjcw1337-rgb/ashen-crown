@@ -58,6 +58,7 @@ const BANK := {
 	"kill_flesh": [1, "sfx", 0.0],
 	"levelup": [1, "ui", 0.0],
 	"lion_roar": [2, "sfx", 0.0],
+	"music_select": [1, "sfx", 0.0],
 	"music_town": [1, "sfx", 0.0],
 	"phase_erupt": [1, "sfx", 0.0],
 	"phase_in": [1, "sfx", 0.0],

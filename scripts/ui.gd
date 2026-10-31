@@ -3474,11 +3474,14 @@ func _open_class_stage() -> void:
 		class_plates[c] = p
 	class_stage.choose(_class_sel)
 	_show_class(_class_sel)
+	# the hero select has its own theme (back to the zone's when it closes)
+	Sfx.play_music("select")
 
 func _close_class_stage() -> void:
 	if class_stage != null:
 		class_stage.queue_free()
 		class_stage = null
+		game.zone_music()
 	for c in class_plates:
 		(class_plates[c] as Label).queue_free()
 	class_plates.clear()

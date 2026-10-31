@@ -17,6 +17,13 @@ const FACE := PI                     # bodies face -z; the camera is on +z
 const SIGNATURE := {"knight": ["cleave", 1.1, 0.5, "Holy Slam"], "wraith": ["cast", 1.2, 0.45, "Banshee Wail"],
 	"demon": ["side", 0.9, 0.45, "Hellfire Claw"], "warlock": ["cast", 1.8, 0.2, "Drain Life"], "archer": ["bow", 1.0, 0.55, "Volley"]}
 const SIG_EVERY := 4.5
+## The sound of choosing each hero: layers of the game's own recordings, [sound, delay s, dB, pitch]
+const PICK_SOUND := {
+	"knight": [["swing_heavy", 0.0, -2.0, 0.9], ["block", 0.16, 0.0, 0.85], ["battle_cry", 0.3, -3.0, 1.0]],
+	"wraith": [["phase_in", 0.0, -2.0, 1.0], ["wail", 0.12, -4.0, 1.1], ["shade_implode", 0.75, -3.0, 0.9]],
+	"demon": [["fire_erupt", 0.0, 0.0, 0.85], ["summon_demon", 0.2, -3.0, 0.9]],
+	"warlock": [["blight_cast", 0.0, -2.0, 1.0], ["relic_ting", 0.08, -6.0, 1.3], ["cackle", 0.3, -4.0, 1.55]],
+	"archer": [["bow", 0.0, 0.0, 0.85], ["bow", 0.14, -3.0, 1.05], ["lion_roar", 0.32, -8.0, 1.45]]}
 
 var game: Node
 var vp: SubViewport
@@ -159,6 +166,17 @@ func choose(c: String) -> void:
 		_sig_t[k] = -1.0
 	picked.emit(c)
 
+## Each hero's own sound when chosen (PICK_SOUND), heard flat like the UI.
+func pick_sound(c: String) -> void:
+	for layer in PICK_SOUND.get(c, [["click", 0.0, 0.0, 1.0]]):
+		var nm: String = layer[0]
+		var vol: float = layer[2]
+		var pitch: float = layer[3]
+		if float(layer[1]) <= 0.0:
+			Sfx.play(nm, vol, pitch)
+		else:
+			get_tree().create_timer(float(layer[1])).timeout.connect(func(): Sfx.play(nm, vol, pitch))
+
 ## The class whose body is under this point of the stage (screen space of this control), or "".
 func class_at(p: Vector2) -> String:
 	var sc := size / Vector2(vp.size) if vp.size.x > 0 else Vector2.ONE
@@ -194,7 +212,7 @@ func _gui_input(ev: InputEvent) -> void:
 		var c2 := class_at((ev as InputEventMouseButton).position)
 		accept_event()
 		if c2 != "":
-			Sfx.play("click")
+			pick_sound(c2)
 			choose(c2)
 
 func _notification(what: int) -> void:

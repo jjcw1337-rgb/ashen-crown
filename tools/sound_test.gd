@@ -115,4 +115,26 @@ func _run() -> void:
 		await g.load_zone(0, zn, "start")
 		beds[zn] = [sfx.music.stream == sfx.bank["music_town"][0], sfx.ambience.stream == sfx.bank["forest"][0], sfx.ambience.stream == sfx.bank["wind"][0]]
 	print("[S] Act I beds: camp plays its song %s (wind %s); moor rustling trees %s; fort rustling trees %s" % [beds["town"][0], beds["town"][2], beds["wild"][1], beds["lair"][1]])
+	# the New Character screen: its own theme while open, each hero's own sound when chosen, the camp's song after
+	await g.load_zone(0, "town", "start")
+	g.ui.open_class_picker()
+	await process_frame
+	var theme: bool = sfx.music.stream == sfx.bank["music_select"][0]
+	var picks := {}
+	for c in ClassStage.CLASSES:
+		sfx.counts.clear()
+		g.ui.class_stage.pick_sound(c)
+		await create_timer(1.0).timeout
+		var got: Array = sfx.counts.keys()
+		got.sort()
+		picks[c] = got
+	var unique := true
+	for a in picks:
+		for b in picks:
+			if a != b and picks[a] == picks[b]:
+				unique = false
+	g.ui.show_title()
+	await process_frame
+	var back: bool = sfx.music.stream == sfx.bank["music_town"][0]
+	print("[S] hero select: theme %s, each hero its own sound %s %s, camp song again after %s" % [theme, unique and picks.values().all(func(v): return v.size() >= 2), picks, back])
 	quit()

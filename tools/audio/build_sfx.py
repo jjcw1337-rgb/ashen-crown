@@ -23,7 +23,7 @@ CREDITS = os.path.join(ROOT, "assets/audio/CREDITS.md")
 LIB = os.path.expanduser("~/Documents/Game Factory Audio")
 SR = 32000
 
-STEREO = {"music_town", "crowd_roar", "crowd_cheer", "arena_horn", "holy_nova", "wail", "covenant", "host_summon", "summon_demon", "phase_in", "phase_erupt", "blood_pact",
+STEREO = {"music_town", "music_select", "crowd_roar", "crowd_cheer", "arena_horn", "holy_nova", "wail", "covenant", "host_summon", "summon_demon", "phase_in", "phase_erupt", "blood_pact",
           "battle_cry", "levelup", "portal", "wind", "forest", "drip", "drain_loop", "boss_die", "roar"}
 UI = {"click", "deny", "gold", "coins", "pickup", "equip", "drop", "potion", "levelup", "portal"}
 AMB = {"wind", "forest", "drip", "grubb_mutter"}

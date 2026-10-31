@@ -333,6 +333,13 @@ func _set_fires() -> void:
 func is_snowy() -> bool:
 	return false
 
+## The zone's song and ambience. Act I outside the camp (the forest moor, Grubb's fort): soft trees in the breeze
+## instead of the wind.
+func zone_music() -> void:
+	if world == null:
+		return
+	Sfx.play_music("fort" if cur_zone == "lair" and world.fort else cur_zone, "forest" if world.oak_forest and cur_zone != "town" and not indoor() else "")
+
 ## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
 	return cur_zone == "lair" and not (world != null and (world.fort or world.run == 1))
@@ -843,8 +850,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		birds.game = self
 		birds.name = "birds"
 		world.add_child(birds)
-	# Act I outside the camp (the forest moor, Grubb's fort): soft trees in the breeze instead of the wind
-	Sfx.play_music("fort" if zone == "lair" and world.fort else zone, "forest" if world.oak_forest and zone != "town" and not indoor() else "")
+	zone_music()
 	loading.visible = false
 	_busy = false
 	net.host_zone_loaded()

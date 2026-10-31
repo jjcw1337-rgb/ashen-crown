@@ -392,7 +392,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   on a torch-lit stage in its own world, as co-op puppets (`Hero.puppet`, driven through `net_st`/`net_pos`/`net_yaw`)
   in its starting gear: idle they breathe and look about (`_idle`), under the mouse each fidgets its own annoying way
   (`_fidget`), and the chosen one steps into the light and does its signature move every 4.5 s with its effects
-  (`SIGNATURE`, `_signature`). Below, in the inventory's iron frame: name, story, stats, skills in the bar's sockets,
+  (`SIGNATURE`, `_signature`). Choosing a hero plays its own sound (`ClassStage.PICK_SOUND`: layers of the game's recordings, `pick_sound`), and the screen has its own theme, `music_select` (music_town's candidate take 14; `Game.zone_music()` brings the zone's song back when it closes). Below, in the inventory's iron frame: name, story, stats, skills in the bar's sockets,
   the name and Play. The stage is built when the picker opens and freed when it closes. A new class needs a
   `ClassStage.CLASSES`/`ACCENTS`/`SIGNATURE` entry and its `_fidget` case. `tools/class_shot.gd -- outdir [frames]`.
 - **Characters** (save slots): each character is its own save, `user://characters/<id>.json` (`Game.char_id`,
