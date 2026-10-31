@@ -15,7 +15,9 @@ extends Node3D
 ## a while. Monsters it bites turn on it (`Enemy.taunt`); it can be killed and rises again beside him
 ## (`Archer.keep_companions`). Commands: `command(kind, ...)`: "attack" (a foe; with a pounce), "hold"
 ## (a place), "follow"/"return". The archer's Spirit Beast skill issues them (archer.gd). Every tuning
-## number is in CFG. Local to each player's game (like every class's summons): partners don't see it.
+## number is in CFG. A partner's copy of the archer (Hero.puppet) runs one too, on the partner's game, so it
+## is seen there (its commands come as fx events, ArcherFx): it hunts and bites the same, but hurts nothing
+## and nothing hunts it; its position isn't streamed (it follows the same man and the same monsters).
 
 const CFG := {
 	"follow_dist": 2.3,     # how far from him it likes to be
@@ -159,7 +161,7 @@ func command(kind: String, foe = null, at := Vector3.ZERO) -> void:
 
 # ---------------------------------------------------------------- being hit, dying
 func take_hit(dmg: float, from: Vector3, _kind: String = "melee", _element: String = "phys") -> void:
-	if dead:
+	if dead or master.puppet:
 		return
 	life -= dmg * float(CFG["armor"])
 	hit = 1.0
@@ -181,7 +183,8 @@ func die() -> void:
 	if game and game.world:
 		Fx.burst(game.world.fx_root, global_position + Vector3(0, 0.7, 0), Archer.HUNTER, 40, 4.0, 0.16, 1.1, true, 2.0)
 		Fx.flash(game.world.fx_root, global_position + Vector3(0, 1, 0), Archer.HUNTER, 3.0, 0.6, 5.0)
-	game.ui.message("Your Spirit Beast fades. It will return.", Color(0.6, 0.9, 0.6))
+	if not master.puppet:
+		game.ui.message("Your Spirit Beast fades. It will return.", Color(0.6, 0.9, 0.6))
 	queue_free()
 
 # ---------------------------------------------------------------- every frame
@@ -510,6 +513,10 @@ func _strike(mult: float) -> void:
 	to.y = 0
 	var fwd := Vector3(-sin(heading), 0, -cos(heading))
 	if to.length() > float(CFG["bite_range"]) + target.radius + radius + 0.4 or (to.length() > 0.3 and fwd.dot(to.normalized()) < 0.3):
+		return
+	if master.puppet:
+		# a partner's beast: the bite is seen, its master's own game deals it
+		Fx.burst(game.world.fx_root, target.global_position + Vector3(0, target.height, 0), Archer.HUNTER, 12, 3.0, 0.08, 0.35, true, -3.0)
 		return
 	var avg: float = (master.dmg_min + master.dmg_max) * 0.5
 	var d := (avg * 0.5 + master.level * 3.0 + 5.0) * master.dmg_mult("beast") * mult

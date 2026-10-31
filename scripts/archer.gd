@@ -9,8 +9,9 @@ extends RefCounted
 ##   Spirit Beast: a spectral beast (the lion's body, ghostly) that hunts with him for 30 s, and the
 ##     class's 12 s battle buff (+40% damage).
 ## Everything in flight or lying in wait lives on the hero (arrows, volleys, snares, beasts), updated
-## by `update` and cleared by `clear`. Local only, like every class's skill effects (damage to monsters
-## goes through Enemy.take_damage, which routes to the host in co-op).
+## by `update` and cleared by `clear`. What is seen is raised by fx events (Hero.fx -> ArcherFx), so a
+## partner's copy of him (Hero.puppet) shoots, rains, sets traps and runs his wolf too; only his own game
+## deals the damage (Enemy.take_damage routes to the host in co-op).
 ## Body: until the Meshy archer exists, the knight's procedural body dressed as a hooded hunter.
 
 const RANGE := 13.0
@@ -225,11 +226,7 @@ static func _loose(h: Hero, at: Vector3, pierce: bool, mult: float, src: String,
 	var J: Dictionary = h.rig.get_meta("j")
 	if J.has("at_hand_l") and h.weapon_node != null and is_instance_valid(h.weapon_node) and h.weapon_node.get_parent() == J.get("grip_bow_at"):
 		from = (J["at_hand_l"] as Node3D).global_position + dir * 0.15
-	var n := _arrow_mesh("fire" if pierce else "war")
-	h.game.world.fx_root.add_child(n)
-	n.global_position = from
-	n.look_at(from + dir, Vector3.UP)
-	h.arrows.append({"node": n, "dir": dir, "left": RANGE + 5.0, "pierce": pierce, "hit": {}, "mult": mult, "src": src})
+	h.fx(src, "loose", {"p": from, "d": dir, "k": "fire" if pierce else "war", "x": pierce, "m": mult})
 
 ## The arrows are Meshy models (tools/blender/prep_arrow.py, head toward -Z): "war" (black-shafted, barbed: his
 ## plain shots), "fire" (red-fletched: Fire Arrow, burning in flight), "frost" (pale, white-fletched: Frost Volley,
@@ -290,18 +287,7 @@ static func _arrow_mesh(kind: String) -> Node3D:
 static func _volley(h: Hero, at: Vector3) -> void:
 	var g := Vector3(at.x, h.game.world.height_at(at.x, at.z), at.z)
 	var r := VOLLEY_R * (1.0 + h.talent("volley_size") / 100.0)
-	h.volleys.append({"pos": g, "t": 1.3, "tick": 0.25, "r": r})
-	Fx.telegraph(h.game.world.fx_root, g, r, 0.25, FROST)
-	# the flight going up
-	for k in 5:
-		var up := _arrow_mesh("frost")
-		h.game.world.fx_root.add_child(up)
-		var p0: Vector3 = h.global_position + Vector3(randf_range(-0.3, 0.3), 1.6, randf_range(-0.3, 0.3))
-		up.global_position = p0
-		up.look_at(p0 + Vector3(randf_range(-0.2, 0.2), 1.0, randf_range(-0.2, 0.2)), Vector3.FORWARD)
-		var tw := up.create_tween()
-		tw.tween_property(up, "global_position", p0 + Vector3(0, 9.0, 0), 0.3)
-		tw.tween_callback(up.queue_free)
+	h.fx("volley", "impact", {"p": g, "r": r})    # the flight up, the rain (h.volleys) on every game
 
 ## Arrows falling on the volley's ground: a hit on everything in reach every 0.2 s, arrows sticking in.
 static func _rain(h: Hero, v: Dictionary) -> void:
@@ -322,28 +308,20 @@ static func _rain(h: Hero, v: Dictionary) -> void:
 		tw.tween_callback(func(): Fx.burst(root, p + Vector3(0, 0.1, 0), FROST, 5, 1.2, 0.1, 0.45, true, -2.0, 70.0))
 		tw.tween_interval(1.4)
 		tw.tween_callback(ar.queue_free)
+	Sfx.play_at("bow", pos, -10.0, randf_range(0.8, 0.95))
+	if h.puppet:
+		return
 	# Frost Volley: each hit chills (slower), Rime deepens it; Shatter: the chilled take more
 	var slow := 0.4 * (1.0 + h.talent("chill_pct") / 100.0)
 	for e in h.game.enemies_near(pos, r):
 		if not e.dead:
 			h._hit_enemy(e, 0.35 * shatter(h, e), 0.0, "volley")
 			e.chill(minf(slow, 0.75), 2.0)
-	Sfx.play_at("bow", pos, -10.0, randf_range(0.8, 0.95))
 
 # ---------------------------------------------------------------- Snare Trap
 static func _set_snare(h: Hero, at: Vector3) -> void:
 	var g := Vector3(at.x, h.game.world.height_at(at.x, at.z), at.z)
-	var mx := 2 + int(h.talent("snare_max"))
-	while h.snares.size() >= mx:
-		var old: Dictionary = h.snares.pop_front()
-		if is_instance_valid(old["node"]):
-			(old["node"] as Node3D).queue_free()
-	var n := _snare_mesh()
-	h.game.world.fx_root.add_child(n)
-	n.global_position = g + Vector3(0, 0.03, 0)
-	h.snares.append({"node": n, "pos": g, "t": 20.0})
-	Fx.ring(h.game.world.fx_root, g, 0.9, HUNTER, 0.4)
-	Sfx.play_at("impact_metal", g, -8.0, 1.3)
+	h.fx("snare", "impact", {"p": g, "n": 2 + int(h.talent("snare_max"))})    # the trap (h.snares) on every game
 
 ## An iron jaw trap: two toothed half-rings open on a plate, a faint glow round it.
 static func _snare_mesh() -> Node3D:
@@ -402,27 +380,15 @@ static func _spring(h: Hero, s: Dictionary) -> void:
 			caught.append(e)
 	# Storm Snare: lightning bursts out of the jaws into the nearest others (Forked Lightning: more of them)
 	var arcs := 3 + int(h.talent("arc_count"))
-	var from := pos + Vector3(0, 0.4, 0)
 	var near: Array = h.game.enemies_near(pos, 7.0).filter(func(e) -> bool: return not e.dead and not (e in caught))
 	near.sort_custom(func(a, b) -> bool: return a.global_position.distance_to(pos) < b.global_position.distance_to(pos))
-	for e in near.slice(0, arcs):
-		var to: Vector3 = e.global_position + Vector3(0, e.height * 0.9, 0)
-		Fx.bolt(h.game.world.fx_root, from, to, STORM)
+	var struck: Array = near.slice(0, arcs)
+	# the jaws, the lightning, the ring: seen by everyone (the trap itself goes with the event)
+	h.snares.append(s)
+	h.fx("snare", "spring", {"p": pos, "r": r, "t": struck})
+	for e in struck:
 		h._hit_enemy(e, 0.8, 0.0, "snare")
 		e.stun(0.5)
-	Fx.flash(h.game.world.fx_root, from, STORM, 4.0, 0.25, 6.0)
-	Sfx.play_at("impact_metal", pos, -4.0, 1.6)
-	var n: Node3D = s["node"]
-	if is_instance_valid(n):
-		var tw := n.create_tween().set_parallel(true)
-		for j in ["jaw_l", "jaw_r"]:
-			tw.tween_property(n.get_node(j), "rotation:z", 0.0, 0.08)
-		tw.chain().tween_interval(0.8)
-		tw.chain().tween_callback(n.queue_free)
-	Fx.sparks(h.game.world.fx_root, pos + Vector3(0, 0.3, 0), Color(0.9, 0.85, 0.7))
-	Fx.ring(h.game.world.fx_root, pos, r, HUNTER, 0.35)
-	Sfx.play_at("impact_metal", pos, 0.0, 0.8)
-	h.game.add_shake(0.1)
 
 # ---------------------------------------------------------------- Spirit Beast
 ## The archer always has his Spirit Beast (two with Alpha): it rises beside him when he becomes an archer, a
@@ -431,7 +397,9 @@ static func keep_companions(h: Hero, delta: float) -> void:
 	h.mark_t = maxf(0.0, h.mark_t - delta)
 	if h.mark != null and (not is_instance_valid(h.mark) or h.mark.dead):
 		h.mark = null
-	if h.puppet or h.dead or not h.is_archer() or h.game == null or h.game.world == null or h.game._busy:
+	if h.dead or not h.is_archer() or h.game == null or h.game.world == null or h.game._busy:
+		return
+	if h.puppet and not h.net_has:
 		return
 	h.beasts = h.beasts.filter(func(b) -> bool: return is_instance_valid(b) and not b.dead)
 	var want := 2 if h.talent("beast_two") > 0.0 else 1
@@ -468,24 +436,12 @@ static func _command_beast(h: Hero, aim: Vector3) -> void:
 			bd = d
 			foe = e
 	var home: bool = foe == null and aim.distance_to(h.global_position) < 2.5
-	for b in h.beasts:
-		if not is_instance_valid(b) or b.dead:
-			continue
-		if foe != null:
-			b.command("attack", foe)
-		elif home:
-			b.command("follow")
-		else:
-			b.command("hold", null, aim)
+	# (the beasts take the command in ArcherFx, on every game)
 	if foe != null:
 		h.mark = foe
 		h.mark_t = 8.0
-		Fx.ring(h.game.world.fx_root, foe.global_position, 1.2, HUNTER, 0.4)
-	elif not home:
-		Fx.ring(h.game.world.fx_root, aim, 1.5, HUNTER, 0.5)
 	h.buff_t = 12.0 + h.talent("buff_dur")
-	Sfx.play("lion_roar", -4.0, 1.25)
-	h.game.add_shake(0.15)
+	h.fx("beast", "impact", {"p": aim, "t": [foe] if foe != null else [], "x": home})
 
 # ---------------------------------------------------------------- every frame
 static func update(h: Hero, delta: float) -> void:
@@ -513,6 +469,15 @@ static func update(h: Hero, delta: float) -> void:
 			var d := _seg_dist(Vector2(e.global_position.x, e.global_position.z), Vector2(p.x, p.z), Vector2(np.x, np.z))
 			if d < e.radius + 0.35:
 				a["hit"][e] = true
+				if h.puppet:
+					# a partner's arrow: it strikes home for the eye only (his own game deals the hit)
+					Fx.sparks(w.fx_root, e.global_position + Vector3(0, e.height, 0), Color(0.9, 0.85, 0.7))
+					if a["pierce"]:
+						DemonFx.ignite(w.fx_root, e)
+					else:
+						stop = true
+						break
+					continue
 				h._hit_enemy(e, a["mult"] * shatter(h, e), 0.25 if not a["pierce"] else 0.5, a["src"])
 				# Fire Arrow sets what it passes through alight (Pyre: longer and hotter)
 				if a["pierce"]:
@@ -545,6 +510,8 @@ static func update(h: Hero, delta: float) -> void:
 				n2.queue_free()
 			h.snares.erase(s)
 			continue
+		if h.puppet:
+			continue     # a partner's trap springs on his word (the "spring" event)
 		for e in h.game.enemies_near(s["pos"], 1.1):
 			if not e.dead:
 				h.snares.erase(s)

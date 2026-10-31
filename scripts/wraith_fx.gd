@@ -358,9 +358,11 @@ static func clear(h: Hero) -> void:
 	h.fxs.erase("claw_shown")
 
 static func _free_later(n: Node, t: float) -> void:
+	var w: WeakRef = weakref(n)
 	n.get_tree().create_timer(t, false).timeout.connect(func():
-		if is_instance_valid(n):
-			n.queue_free())
+		var m: Node = w.get_ref() as Node
+		if m != null and is_instance_valid(m):
+			m.queue_free())
 
 ## A flat crescent blade lying in the XZ plane and opening forward (-Z); UV.y 0 at its cutting edge.
 static func _crescent_mesh() -> ArrayMesh:
@@ -918,7 +920,8 @@ static func night(root: Node3D, pos: Vector3, radius: float, grade: ShaderMateri
 	n.add_child(souls)
 	n.set_meta("floor", fm)
 	n.set_meta("souls", souls)
-	n.set_meta("grade", grade)
+	if grade != null:
+		n.set_meta("grade", grade)     # the caster's own screen darkens; a puppet's night has no grade
 	return n
 
 static func set_night(n: Node3D, k: float) -> void:
@@ -926,9 +929,10 @@ static func set_night(n: Node3D, k: float) -> void:
 		return
 	(n.get_meta("floor") as ShaderMaterial).set_shader_parameter("amt", k)
 	(n.get_meta("souls") as GPUParticles3D).amount_ratio = k
-	var g := n.get_meta("grade") as ShaderMaterial
-	if g != null:
-		g.set_shader_parameter("night", k)
+	if n.has_meta("grade"):
+		var g := n.get_meta("grade") as ShaderMaterial
+		if g != null:
+			g.set_shader_parameter("night", k)
 
 ## The scream of the night: three rings of terror racing out, a burst of pale shrieking shapes.
 static func scream(root: Node3D, pos: Vector3, radius: float) -> void:

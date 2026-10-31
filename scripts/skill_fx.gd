@@ -129,9 +129,11 @@ static func chest_of(e: Node3D, k := 0.9) -> Vector3:
 static func free_later(n: Node, t: float) -> void:
 	if n == null or not is_instance_valid(n):
 		return
+	var w: WeakRef = weakref(n)
 	n.get_tree().create_timer(t, false).timeout.connect(func():
-		if is_instance_valid(n):
-			n.queue_free())
+		var m: Node = w.get_ref() as Node
+		if m != null and is_instance_valid(m):
+			m.queue_free())
 
 # ---------------------------------------------------------------- the wire
 ## Enemy nodes in "t" become ids: their net id in co-op, their instance id otherwise (tests round-trip them).

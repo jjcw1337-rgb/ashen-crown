@@ -278,12 +278,15 @@ func pl_gear(gear: Dictionary) -> void:
 ## Every skill effect the local hero shows (Hero.fx) goes out as one small event; each partner plays it on
 ## this player's puppet, visuals only. Enemies in it travel as net ids (SkillFx.encode/decode).
 var fx_tap: Callable      # tests: handed every event as it would go on the wire
+var fx_sent := 0          # events sent to partners and played from them (mp_test counts both)
+var fx_got := 0
 
 func skill_fx(ev: Dictionary) -> void:
 	var w := SkillFx.encode(self, ev)
 	if fx_tap.is_valid():
 		fx_tap.call(w)
 	if active and not players.is_empty() and not loading:
+		fx_sent += 1
 		rpc("pl_fx", w)
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -293,6 +296,7 @@ func pl_fx(w: Dictionary) -> void:
 		return
 	var h = players[pid]["hero"]
 	if is_instance_valid(h) and h.net_has:
+		fx_got += 1
 		SkillFx.play(h, SkillFx.decode(self, w))
 
 # ---------------------------------------------------------------- handshake
