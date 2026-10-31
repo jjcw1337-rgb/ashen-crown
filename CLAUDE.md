@@ -120,7 +120,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   relaxed hand to upright on the shot's line with his stance (the rig's `w_side`), swaps the straight string for two
   strands his right hand's fingers draw back to his cheek with a nocked arrow on the bow, and on the release the
   arrow (fired from the bow hand, `_loose`) is gone and the string snaps back with a damped shiver
-  (`Archer.BOW_SPEC`: each bow model's tips, nock, pull, grip and hang). Rebuild: `meshy.py rig`/`animate` (clip ids in the commit), then `blender -b --python
+  (`Archer.BOW_SPEC`: each bow model's tips, nock, pull, grip and hang). His bow is the Meshy carved recurve `assets/models/ranger_bow.glb` (`Models.item_model` for bow kinds, `Models.RANGER_BOW`; a longbow is it at 1.15x; `Archer.bow_key` picks the `ranger`/`ranger_long` BOW_HOLD/BOW_SPEC entries; bandit archers keep `enemy_weapon`'s bow). Rebuild: `blender -b --python tools/blender/archer/prep_bow.py -- meshy.glb assets/models/ranger_bow.glb spec.json [length] [tris]` (cuts Meshy's string, stands it limbs +y / string +z / grip on the origin, 1.45 m, ~9k tris, 1k textures) and copy spec.json's tips and rest into BOW_SPEC. Rebuild: `meshy.py rig`/`animate` (clip ids in the commit), then `blender -b --python
   tools/blender/archer/prep_ranger_mocap.py -- rigged.glb out.glb 60000 clips_a.glb clips_b.glb` (merges and renames
   the clips, cuts away the bow Meshy fused into his right hand, `bow_select.py`). Without the glb: the knight's
   procedural body dressed as a hunter (`Archer.build_placeholder`). Preview: `tools/mocap_knight_clip.gd -- outdir

@@ -63,6 +63,7 @@ func _run() -> void:
 		var kind: String = Data.BASES["long_bow" if args.has("longbow") else "short_bow"]["kind"]
 		var g: Node3D = J["grip_bow"]
 		var hold: Dictionary = AR.get("BOW_HOLD")
+		kind = AR.call("bow_key", kind)
 		g.position = hold[kind][0]
 		g.rotation_degrees = hold[kind][1]
 		(J["grip_bow_at"] as Node3D).position = hold[kind][2]
@@ -167,7 +168,7 @@ func _run() -> void:
 			AR.call("pose_bow_on", r, sword, Data.BASES["long_bow" if args.has("longbow") else "short_bow"]["kind"], st)
 			if f % 2 == 0 and f < 26 and sword.has_meta("strands"):
 				var fing: Vector3 = (J["at_hand_r"] as Node3D).global_transform * Vector3(0, -0.06, 0)
-				var sp: Dictionary = (AR.get("BOW_SPEC") as Dictionary)[Data.BASES["long_bow" if args.has("longbow") else "short_bow"]["kind"]]
+				var sp: Dictionary = (AR.get("BOW_SPEC") as Dictionary)[AR.call("bow_key", Data.BASES["long_bow" if args.has("longbow") else "short_bow"]["kind"])]
 				var nk: Vector3 = sword.global_transform * ((sp["rest"] as Vector3) + (sword.get_meta("draw_off", Vector3.ZERO) as Vector3))
 				var lh: Vector3 = (J["at_hand_l"] as Node3D).global_position
 				var gp: Vector3 = sword.global_transform * (sp["grip"] as Vector3)

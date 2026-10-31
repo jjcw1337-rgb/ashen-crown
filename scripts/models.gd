@@ -390,6 +390,8 @@ static func _gem(p: Dictionary) -> Material:
 # ---------------------------------------------------------------- item models
 ## Returns a model for an item. Weapons: grip at origin, blade along -Z.
 ## Shields face -Z. Helms are centred on the head. Others are free-standing.
+const RANGER_BOW := "res://assets/models/ranger_bow.glb"
+
 static func item_model(item: Dictionary) -> Node3D:
 	var base: Dictionary = Data.BASES[item["base"]]
 	var p := palette(item)
@@ -399,6 +401,15 @@ static func item_model(item: Dictionary) -> Node3D:
 		"weapon":
 			# bows (the archer's): the bow geometry the skeleton archers carry (weapon() has no bow of its own)
 			if kind in ["bow", "longbow"]:
+				# the ranger's own carved recurve (Meshy, tools/blender/archer/prep_bow.py) when it's there; a
+				# longbow is the same bow drawn longer
+				if ResourceLoader.exists(RANGER_BOW):
+					var b: Node3D = (load(RANGER_BOW) as PackedScene).instantiate()
+					var root := Node3D.new()
+					root.add_child(b)
+					b.scale = Vector3.ONE * (1.15 if kind == "longbow" else 1.0)
+					root.set_meta("ranger_bow", true)
+					return root
 				return enemy_weapon(kind)
 			return weapon(kind, sh, p)
 		"shield": return shield(kind, sh, p)

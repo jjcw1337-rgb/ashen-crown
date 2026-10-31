@@ -688,7 +688,7 @@ func _weapon_hand(J: Dictionary) -> Node3D:
 	var w = equipment.get("weapon")
 	if J.has("grip_bow") and w != null and has_bow():
 		var g: Node3D = J["grip_bow"]
-		var hold: Array = Archer.BOW_HOLD.get(Data.BASES[w["base"]]["kind"], Archer.BOW_HOLD["bow"])
+		var hold: Array = Archer.BOW_HOLD.get(Archer.bow_key(Data.BASES[w["base"]]["kind"]), Archer.BOW_HOLD["bow"])
 		g.position = hold[0]
 		g.rotation_degrees = hold[1]
 		var at: Node3D = J["grip_bow_at"]

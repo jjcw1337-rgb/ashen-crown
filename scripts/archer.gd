@@ -52,13 +52,23 @@ const CANT := 8.0
 ## the bow in his left fist, per bow kind: [position, rotation in degrees] in the hand follower's frame
 ## (solved so the bow stands upright, its back toward the mark, at the full draw of the shot clip)
 ## and the grip's spot on the bow model (the short bow's wood bulges 0.18 out from its string; the longbow is centred)
-const BOW_HOLD := {"bow": [Vector3(0.0, -0.06, 0.0), Vector3(-4, -162, -66), Vector3(-0.18, 0, 0)],
+const BOW_HOLD := {"ranger": [Vector3(0.0, -0.06, 0.0), Vector3(-66, 98, -80), Vector3.ZERO],
+	"ranger_long": [Vector3(0.0, -0.06, 0.0), Vector3(-66, 98, -80), Vector3.ZERO],
+	"bow": [Vector3(0.0, -0.06, 0.0), Vector3(-4, -162, -66), Vector3(-0.18, 0, 0)],
 	"longbow": [Vector3(0.0, -0.06, 0.0), Vector3(-66, 98, -80), Vector3(0, 0, 0.11)]}
 ## Each bow model's shape (Models.enemy_weapon, in the bow's own frame): its string's two tips, the string's
 ## middle at rest (where the arrow nocks), the way the string pulls (toward the archer), how far it can be drawn,
 ## the grip (where the arrow rests on the bow), and how it hangs in a relaxed hand (the hand follower's frame:
 ## the arm hanging, -y down to the fingers, -z ahead), as [x, y, z] columns.
 const BOW_SPEC := {
+	# the ranger's carved recurve (assets/models/ranger_bow.glb, measured by prep_bow.py: limbs up +y, the string on
+	# the +z side, the grip on the origin); "ranger_long" is the same model at 1.15x (the longbow)
+	"ranger": {"tips": [Vector3(0.0166, 0.6915, 0.1802), Vector3(0.0133, -0.7211, 0.1983)], "rest": Vector3(0.0, 0.035, 0.1873), "pull": Vector3(0, 0, 1),
+		"max": 0.66, "grip": Vector3.ZERO, "limb": Vector3(0, 1, 0),
+		"hang": [Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1)]},
+	"ranger_long": {"tips": [Vector3(0.0191, 0.7952, 0.2072), Vector3(0.0153, -0.8293, 0.228)], "rest": Vector3(0.0, 0.0403, 0.2154), "pull": Vector3(0, 0, 1),
+		"max": 0.7, "grip": Vector3.ZERO, "limb": Vector3(0, 1, 0),
+		"hang": [Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1)]},
 	"bow": {"tips": [Vector3(0, 0, -0.55), Vector3(0, 0, 0.55)], "rest": Vector3.ZERO, "pull": Vector3(-1, 0, 0),
 		"max": 0.62, "grip": Vector3(0.18, 0, 0), "limb": Vector3(0, 0, 1),
 		"hang": [Vector3(0, 0, -1), Vector3(-1, 0, 0), Vector3(0, 1, 0)]},
@@ -66,6 +76,12 @@ const BOW_SPEC := {
 		"pull": Vector3(0, 0, 1), "max": 0.7, "grip": Vector3(0, 0, -0.11), "limb": Vector3(0, 1, 0),
 		"hang": [Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1)]},
 }
+
+## Which BOW_HOLD / BOW_SPEC entry a bow of this kind uses: the ranger's recurve when its model is in the game.
+static func bow_key(kind: String) -> String:
+	if ResourceLoader.exists(Models.RANGER_BOW):
+		return "ranger_long" if kind == "longbow" else "ranger"
+	return kind
 
 static func ranger_ok() -> bool:
 	return ResourceLoader.exists(RANGER_GLB)
@@ -480,6 +496,8 @@ static func pose_bow_on(rig: Node3D, w: Node3D, kind: String, st: Dictionary) ->
 	var J: Dictionary = rig.get_meta("j")
 	if not J.has("grip_bow_at"):
 		return
+	if w.has_meta("ranger_bow") and not kind.begins_with("ranger"):
+		kind = "ranger_long" if kind == "longbow" else "ranger"
 	if not BOW_SPEC.has(kind):
 		return
 	var sp: Dictionary = BOW_SPEC[kind]
