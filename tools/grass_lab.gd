@@ -6,6 +6,9 @@ extends SceneTree
 ## and the wind goes from a breeze to a storm and back to calm. Saves frames, checks the touch field
 ## (lines up with the world, comes fully back to rest) and prints [GL] lines.
 ##   xvfb-run -a godot --rendering-driver opengl3 --resolution 960x540 --fixed-fps 15 --path . -s tools/grass_lab.gd -- outdir [quality] [zoomin] [frames t1,t2,..]
+## Options: until T (stop at T s), only=meadow,tall (show just those species), notouch, nofield, nofog,
+## debugtouch (pressed grass shown red). Note: Mesa's llvmpipe software renderer tints some clumps in rainbow
+## colours in this scene (it did so before the textured grass too); judge colours on a real GPU.
 var out := "grass_lab"
 var q := 2
 var zoom := 1.0
@@ -105,8 +108,14 @@ func _initialize() -> void:
 	_stage()
 	field = GF.new()
 	field.movers_fn = func() -> Array: return walkers
-	stage.add_child(field)
-	field.set_wind("moor", 0.01)
+	if OS.get_cmdline_user_args().has("nofield"):
+		field.free()
+		field = null
+	else:
+		stage.add_child(field)
+		field.set_wind("moor", 0.01)
+	if field and OS.get_cmdline_user_args().has("notouch"):
+		field.touch = 0.0
 	_aim(Vector3.ZERO)
 	var ctx := Ctx.new()
 	var moor: Dictionary = GR.ACT1
@@ -114,6 +123,12 @@ func _initialize() -> void:
 	if not OS.get_cmdline_user_args().has("fieldonly"):
 		n = GR.scatter(stage, Rect2(-30, -32, 60, 62), ctx, moor, q, 1234)
 	_log("quality %d, clumps %d" % [q, n])
+	for arg in OS.get_cmdline_user_args():
+		if String(arg).begins_with("only="):
+			var keep: PackedStringArray = String(arg).substr(5).split(",")
+			for gn in stage.find_children("Grass_*", "", true, false):
+				var sp := String(gn.name).split("_")[3].rstrip("0123456789")
+				(gn as Node3D).visible = keep.has(sp)
 	if OS.get_cmdline_user_args().has("debugtouch"):
 		for m in GR.material(moor):
 			(m as ShaderMaterial).set_shader_parameter("debug_touch", true)
@@ -128,7 +143,7 @@ func _stage() -> void:
 	e.ambient_light_color = Color(0.55, 0.6, 0.65)
 	e.ambient_light_energy = 0.55
 	e.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	e.fog_enabled = true
+	e.fog_enabled = not OS.get_cmdline_user_args().has("nofog")
 	e.fog_light_color = Color(0.6, 0.66, 0.72)
 	e.fog_density = 0.006
 	env.environment = e

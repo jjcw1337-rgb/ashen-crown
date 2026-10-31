@@ -1,0 +1,245 @@
+{
+ "size": [
+  2048,
+  1024
+ ],
+ "cell": [
+  128,
+  512
+ ],
+ "cols": 16,
+ "cells": [
+  {
+   "i": 0,
+   "group": "green",
+   "kind": "blade",
+   "name": "green0",
+   "wf": 1.0,
+   "hf": 1.0
+  },
+  {
+   "i": 1,
+   "group": "green",
+   "kind": "blade",
+   "name": "green1",
+   "wf": 1.0,
+   "hf": 1.0
+  },
+  {
+   "i": 2,
+   "group": "green",
+   "kind": "blade",
+   "name": "green2",
+   "wf": 1.0,
+   "hf": 1.0
+  },
+  {
+   "i": 3,
+   "group": "green",
+   "kind": "blade",
+   "name": "green3",
+   "wf": 1.0,
+   "hf": 1.0
+  },
+  {
+   "i": 4,
+   "group": "green",
+   "kind": "blade",
+   "name": "green4",
+   "wf": 1.0,
+   "hf": 1.0
+  },
+  {
+   "i": 5,
+   "group": "green",
+   "kind": "blade",
+   "name": "green5",
+   "wf": 1.0,
+   "hf": 1.0
+  },
+  {
+   "i": 6,
+   "group": "green",
+   "kind": "blade",
+   "name": "green6",
+   "wf": 1.0,
+   "hf": 1.0
+  },
+  {
+   "i": 7,
+   "group": "green",
+   "kind": "blade",
+   "name": "green7",
+   "wf": 1.0,
+   "hf": 1.0
+  },
+  {
+   "i": 8,
+   "group": "dry",
+   "kind": "blade",
+   "name": "dry0",
+   "wf": 1.0,
+   "hf": 1.0
+  },
+  {
+   "i": 9,
+   "group": "dry",
+   "kind": "blade",
+   "name": "dry1",
+   "wf": 1.0,
+   "hf": 1.0
+  },
+  {
+   "i": 10,
+   "group": "dry",
+   "kind": "blade",
+   "name": "dry2",
+   "wf": 1.0,
+   "hf": 1.0
+  },
+  {
+   "i": 11,
+   "group": "dry",
+   "kind": "blade",
+   "name": "dry3",
+   "wf": 1.0,
+   "hf": 1.0
+  },
+  {
+   "i": 12,
+   "group": "dry",
+   "kind": "blade",
+   "name": "dry4",
+   "wf": 1.0,
+   "hf": 1.0
+  },
+  {
+   "i": 13,
+   "group": "dry",
+   "kind": "blade",
+   "name": "dry5",
+   "wf": 1.0,
+   "hf": 1.0
+  },
+  {
+   "i": 14,
+   "group": "dry",
+   "kind": "blade",
+   "name": "dry6",
+   "wf": 1.0,
+   "hf": 1.0
+  },
+  {
+   "i": 15,
+   "group": "dry",
+   "kind": "blade",
+   "name": "dry7",
+   "wf": 1.0,
+   "hf": 1.0
+  },
+  {
+   "i": 16,
+   "group": "heads",
+   "kind": "card",
+   "name": "oat",
+   "wf": 0.867,
+   "hf": 0.979
+  },
+  {
+   "i": 17,
+   "group": "heads",
+   "kind": "card",
+   "name": "timothy",
+   "wf": 0.234,
+   "hf": 0.979
+  },
+  {
+   "i": 18,
+   "group": "heads",
+   "kind": "card",
+   "name": "fescue",
+   "wf": 0.898,
+   "hf": 0.979
+  },
+  {
+   "i": 19,
+   "group": "heads",
+   "kind": "card",
+   "name": "daisy",
+   "wf": 0.859,
+   "hf": 0.979
+  },
+  {
+   "i": 20,
+   "group": "heads",
+   "kind": "card",
+   "name": "buttercup",
+   "wf": 0.938,
+   "hf": 0.979
+  },
+  {
+   "i": 21,
+   "group": "heads",
+   "kind": "card",
+   "name": "heather",
+   "wf": 0.758,
+   "hf": 0.979
+  },
+  {
+   "i": 22,
+   "group": "heads",
+   "kind": "card",
+   "name": "yarrow",
+   "wf": 0.977,
+   "hf": 0.814
+  },
+  {
+   "i": 23,
+   "group": "heads",
+   "kind": "card",
+   "name": "dandelion",
+   "wf": 0.898,
+   "hf": 0.979
+  },
+  {
+   "i": 24,
+   "group": "leaves",
+   "kind": "card",
+   "name": "plantain",
+   "wf": 0.977,
+   "hf": 0.969
+  },
+  {
+   "i": 25,
+   "group": "leaves",
+   "kind": "card",
+   "name": "dock",
+   "wf": 0.961,
+   "hf": 0.979
+  },
+  {
+   "i": 26,
+   "group": "leaves",
+   "kind": "card",
+   "name": "dandelion_leaf",
+   "wf": 0.703,
+   "hf": 0.979
+  },
+  {
+   "i": 27,
+   "group": "leaves",
+   "kind": "card",
+   "name": "clover",
+   "wf": 0.977,
+   "hf": 0.846
+  },
+  {
+   "i": 28,
+   "group": "leaves",
+   "kind": "card",
+   "name": "sorrel",
+   "wf": 0.828,
+   "hf": 0.979
+  }
+ ]
+}

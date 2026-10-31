@@ -203,8 +203,19 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   player) plus the game's leaf clusters (`OAK_LEAVES`); the moor is ~40% oaks with groves off the road. Grass is
   the **living 3D grass** (`scripts/grass.gd` `Grass`, `scripts/grass_field.gd` `GrassField`; Act I's camp, moor and
   fort, i.e. whenever `oak_forest`; A2/A3 keep the old blade clumps): seven species built in code (`Grass.SPECIES`:
-  meadow, tall seed-head grass, tussock, dry straw, moss with clover, broad-leaved weeds, sparse verge grass;
-  curved tapered blades with rounded normals, two variants, two LODs) mixed by biomes (`Grass.BIOMES`: meadow,
+  meadow, tall seed-head grass, tussock, dry straw, moss with clover, broad-leaved weeds, sparse verge grass)
+  **modelled in Blender on Meshy textures**: four Meshy botanical sheets (green blades, dry straw, seed heads and
+  wildflowers, broad leaves; `meshy.py draw "... laid flat side by side ..." --cutout`, ~6 credits each, the prompts
+  are in the commit) are cut by `tools/grass_atlas.py <dir> assets/textures/grass` into `atlas.png` (2048x1024, 32
+  cells of 128x512: blades unrolled to the full cell width so they stay opaque, heads/flowers/leaves kept as
+  cut-outs; mipmaps on) and `atlas.json`; `blender -b --python tools/blender/grass/build_clumps.py --
+  assets/textures/grass/atlas.json assets/models/grass` models each species' clumps (folded blades with a raised
+  midrib, sheaths, twists, snapped straw, crossed seed-head cards, leaf rosettes; two variants, two LODs; objects
+  `<species>_<variant>_<lod>`) into `assets/models/grass/<species>.glb`. Per vertex: UV = atlas, UV2 = (flex, height
+  along the plant), COLOR = (dry, sway phase, lush, 1 blade / 0.5 card). `Grass.glb_mesh` loads them (stripping the
+  importer's automatic LODs and tangents, since the `.import` files are git-ignored) and the shader's `textured`
+  mode draws them; species without a glb fall back to the code-built clumps (`Grass.mesh`, curved tapered blades).
+  `tools/grass_closeup.gd -- out.png [lod] [dist]` renders every species side by side. Mixed by biomes (`Grass.BIOMES`: meadow,
   woodland, dry, verge, trampled, ruins). A zone answers `grass_ground(x, z)` (0 bare .. 1), `grass_height` and
   `grass_biome` (weights; World's: verges by the road, undergrowth near `tree_pts`, dry patches and round the
   Sloths' clearings, trodden in the fort and camp), and `Grass.scatter` fills MultiMesh chunks (`CHUNK` m, per
@@ -213,7 +224,8 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   `wind_strength`, `wind_gust`, `wind_phase`: gust fronts rolling along the wind, sway per clump, flutter;
   `GrassField.WIND` profiles per zone set in `Game._grass_zone`, blended by `set_wind(profile, secs)`, drifting
   on their own) and by **touch**: `GrassField` is a GPU spring simulation following the camera (two ping-pong
-  SubViewports, 256 px over 64 m, RG bend / BA velocity in 8 bits, global `grass_field` + `grass_field_rect`);
+  SubViewports, 256 px over 64 m, RG bend / BA velocity in 8 bits; its texture goes to the grass materials,
+  `Grass.set_field`, and where it lies is the global `grass_field_rect`);
   every mover from `Game._grass_movers` (hero, partners, monsters, pets, demons) presses a capsule along its real
   path (size from its `radius`, harder when sprinting or dashing, a slow flattening when standing), an attack's
   impact frame (`Anim.impact_at`, so every peer sees it) throws an arc in front (`GrassField.swing`; slams and
@@ -225,7 +237,8 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   nodes, meta `grass3d`). Tests: `tools/grass_test.gd` (headless: species, LODs, no painted clumps, field on/off,
   movers, swings, rings, wind); `tools/grass_lab.gd -- outdir [quality] [zoomin]` (needs a display: biome bands,
   scripted walkers that walk, sprint, stop, turn and dash, a big beast, swings, a slam, wind changes; saves frames
-  and checks the field lines up and returns fully to rest). Performance from any build:
+  and checks the field lines up and returns fully to rest; Mesa's llvmpipe software renderer, the only one in the
+  cloud workspace, tints some clumps in rainbow colours there, so judge colours on a real GPU). Performance from any build:
   `AshenCrown -- --shot out.png --zone wild --god --perf 12 --quality 2 --grassspot` writes `out.txt` (fps, 1% low,
   draw calls, primitives, GPU). The painted clumps (`Flora.GRASS_TOP`, `_camera_card`) are no longer placed;
   `Flora.flower_card` still uses `_camera_card` for the Sunstar Blooms.
