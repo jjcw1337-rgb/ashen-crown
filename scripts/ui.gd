@@ -4018,6 +4018,13 @@ class SkillGlyph extends Control:
 				draw_circle(c, 12, green.darkened(0.3))
 				draw_circle(c + Vector2(-3, -4), 5, green.lightened(0.3))
 				draw_arc(c, 16, 0, TAU, 24, gold2, 1.5, true)
+	## The attack is a bow shot for a hero holding a bow (the archer), so its slot shows a bow instead of a sword.
+	func _bow_hand() -> bool:
+		if not is_inside_tree():
+			return false
+		var h := get_tree().get_first_node_in_group("hero") as Hero
+		return h != null and h.has_bow()
+
 	func _draw() -> void:
 		var c := size * 0.5
 		# glyphs are drawn for a ~40 px box around the centre; scale them to whatever box this is
@@ -4028,6 +4035,21 @@ class SkillGlyph extends Control:
 		var ahunt := Archer.HUNTER if not dim else Color(0.35, 0.4, 0.38)
 		match id:
 			"attack":
+				if _bow_hand():
+					# a drawn bow with a nocked arrow, pointing up and to the right
+					var wood := Color(0.62, 0.42, 0.24) if not dim else Color(0.35, 0.3, 0.27)
+					var ax := Vector2(1, -1).normalized()
+					var bc := c + ax * 4.0
+					draw_arc(bc, 15.0, ax.angle() - 1.25, ax.angle() + 1.25, 18, wood, 3.5, true)
+					var t1 := bc + ax.rotated(-1.25) * 15.0
+					var t2 := bc + ax.rotated(1.25) * 15.0
+					var nock := c - ax * 9.0
+					draw_polyline(PackedVector2Array([t1, nock, t2]), Color(0.9, 0.86, 0.75) if not dim else steel, 1.2, true)
+					draw_line(nock, c + ax * 16.0, steel, 2.0, true)
+					draw_colored_polygon(PackedVector2Array([c + ax * 21.0, c + ax * 15.0 + ax.orthogonal() * 3.5, c + ax * 15.0 - ax.orthogonal() * 3.5]), steel)
+					draw_line(nock, nock - ax * 4.0 + ax.orthogonal() * 3.5, gold2, 2.0, true)
+					draw_line(nock, nock - ax * 4.0 - ax.orthogonal() * 3.5, gold2, 2.0, true)
+					return
 				# a sword, point up and to the right
 				draw_line(c + Vector2(-11, 11), c + Vector2(12, -12), steel, 4.0, true)
 				draw_line(c + Vector2(12, -12), c + Vector2(15, -15), steel, 2.0, true)
