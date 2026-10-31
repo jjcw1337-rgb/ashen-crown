@@ -92,7 +92,7 @@ func _host() -> void:
 	var max_items := 0
 	t0 = Time.get_ticks_msec()
 	var cast_t := 0.0
-	var fx0 := g.net.fx_got
+	var fx0: int = g.net.fx_got
 	var fx_nodes := 0
 	while Time.get_ticks_msec() - t0 < 40000 and g.cur_zone == "wild":
 		h.life = h.max_life
@@ -181,8 +181,8 @@ func _join() -> void:
 	t0 = Time.get_ticks_msec()
 	var retarget := 0.0
 	var cast_t := 0.0
-	var fx0 := g.net.fx_got
-	var sent0 := g.net.fx_sent
+	var fx0: int = g.net.fx_got
+	var sent0: int = g.net.fx_sent
 	while Time.get_ticks_msec() - t0 < 30000:
 		if h.life < last_life - 0.5:
 			hits += 1

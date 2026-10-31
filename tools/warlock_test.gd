@@ -43,15 +43,15 @@ func _run() -> void:
 	var ok: bool = h.use_skill("drain", best.global_position)
 	await create_timer(0.5).timeout
 	# main: latched onto the pack that was aimed at (the facing assist may pick any of it)
-	print("[W] drain ok=%s channel=%s main=%s victims=%d (pack of %d) beams=%d light=%s" % [ok, h.drain_t >= 0.0, h.drain_main != null and (h.drain_main == best or (h.drain_main as Node3D).global_position.distance_to(best.global_position) < 5.5), h._drain_victims().size(), bn, h.drain_beams.size(), h.drain_light != null])
+	print("[W] drain ok=%s channel=%s main=%s victims=%d (pack of %d) beams=%d light=%s" % [ok, h.drain_t >= 0.0, h.drain_main != null and (h.drain_main == best or (h.drain_main as Node3D).global_position.distance_to(best.global_position) < 5.5), h._drain_victims().size(), bn, (h.fxs["drain"]["beams"] as Dictionary).size() if h.fxs.has("drain") else 0, h.fxs.has("drain") and h.fxs["drain"]["light"] != null])
 	print("[W] can_act while channelling: ", h.can_act())
 	var lit := func():
 		return g.world.get_node("Enemies").get_children().filter(func(e): return e._drained).size()
-	print("[W] polish: drained rims %d sigil %s" % [lit.call(), h.drain_sigil != null and is_instance_valid(h.drain_sigil)])
+	print("[W] polish: drained rims %d sigil %s" % [lit.call(), h.fxs.has("drain") and is_instance_valid(h.fxs["drain"]["sigil"])])
 	await create_timer(0.4).timeout
 	print("[W] drain damage %d healed %d" % [int(l0 - lives.call()), int(h.life - life0)])
 	await create_timer(0.5).timeout
-	print("[W] channel ended after tap: ", h.drain_t < 0.0, " beams left ", h.drain_beams.size(), " rims left ", lit.call(), " sigil ", h.drain_sigil)
+	print("[W] channel ended after tap: ", h.drain_t < 0.0, " beams left ", (h.fxs["drain"]["beams"] as Dictionary).size() if h.fxs.has("drain") else 0, " rims left ", lit.call(), " sigil ", h.fxs.has("drain"))
 	# retarget: kill the main victim mid-channel
 	h.mana = h.max_mana
 	var foes: Array = g.enemies_near(h.global_position, 11.0)
