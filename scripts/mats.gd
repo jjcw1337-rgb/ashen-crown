@@ -20,6 +20,17 @@ static func ensure_globals() -> void:
 	RenderingServer.global_shader_parameter_add("ash_amt", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
 	# 0 = normal, 1 = the Demon has phased into the Underworld
 	RenderingServer.global_shader_parameter_add("under_amt", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
+	# grass (grass_field.gd / grass.gd): the touch field (RG bend, BA velocity, 0.5 = rest), where it lies
+	# (origin x, z, size, strength; strength 0 = no touch), the camera for the distance fade, and the wind
+	var rest := Image.create(4, 4, false, Image.FORMAT_RGBA8)
+	rest.fill(Color8(128, 128, 128, 128))
+	RenderingServer.global_shader_parameter_add("grass_field", RenderingServer.GLOBAL_VAR_TYPE_SAMPLER2D, ImageTexture.create_from_image(rest))
+	RenderingServer.global_shader_parameter_add("grass_field_rect", RenderingServer.GLOBAL_VAR_TYPE_VEC4, Vector4(0, 0, 64, 0))
+	RenderingServer.global_shader_parameter_add("grass_cam", RenderingServer.GLOBAL_VAR_TYPE_VEC3, Vector3(0, 20, 20))
+	RenderingServer.global_shader_parameter_add("wind_dir", RenderingServer.GLOBAL_VAR_TYPE_VEC2, Vector2(0.87, 0.5))
+	RenderingServer.global_shader_parameter_add("wind_strength", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.45)
+	RenderingServer.global_shader_parameter_add("wind_gust", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.6)
+	RenderingServer.global_shader_parameter_add("wind_phase", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
 
 static func detail_normal() -> Texture2D:
 	if _detail == null:

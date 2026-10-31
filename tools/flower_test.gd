@@ -1,5 +1,5 @@
 extends SceneTree
-## The Act I grass and the rare Sunstar Blooms: the moor gets the painted grass, a few blooms deep in the
+## The Act I grass and the rare Sunstar Blooms: the moor gets the 3D grass (grass.gd), a few blooms deep in the
 ## trees (off the road), and picking one gives +50% experience for 5 minutes, once. Prints [F] lines.
 var g
 
@@ -20,13 +20,13 @@ func _run() -> void:
 	await g.load_zone(0, "wild", "start")
 	await wait(0.5)
 	var w = g.world
+	# Act I's grass is the 3D grass now (grass.gd): count its clumps by species (LOD0 chunks)
 	var kinds := {}
-	for mmi in w.find_children("*", "MultiMeshInstance3D", true, false):
-		var mm: MultiMesh = (mmi as MultiMeshInstance3D).multimesh
-		for k in Flora.GRASS_TOP.size():
-			if mm and mm.mesh == Flora.grass_top(k + 1, {}):
-				kinds[k + 1] = int(kinds.get(k + 1, 0)) + mm.instance_count
-	print("[F] painted grass kinds: %d of %d, clumps %s" % [kinds.size(), Flora.GRASS_TOP.size(), kinds])
+	for mmi in g.get_tree().get_nodes_in_group("grass"):
+		if mmi.has_meta("grass3d") and int(mmi.get_meta("grass3d")) == 0:
+			var sp := String(mmi.name).split("_")[3].rstrip("0123456789")
+			kinds[sp] = int(kinds.get(sp, 0)) + (mmi as MultiMeshInstance3D).multimesh.instance_count
+	print("[F] 3D grass species: %d of %d, clumps %s" % [kinds.size(), Grass.SPECIES.size(), kinds])
 	var blooms: Array = w.interactables.filter(func(t) -> bool: return t.kind == "flower")
 	var dists := []
 	for b in blooms:

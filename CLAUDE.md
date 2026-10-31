@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
+`det_test`, `grass_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -78,6 +78,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `ui.gd`, `hud_bar.gd`, `icon_renderer.gd` | All UI built in code |
 | `vendor_ui.gd` | Nameplates over the town's people and the trader's live portrait in the trade window |
 | `models.gd`, `skeleton.gd`, `flora.gd`, `props.gd`, `geo.gd`, `mats.gd` | Procedural meshes and shaders |
+| `grass.gd`, `grass_field.gd` | Act I's living 3D grass: species, biomes, placement and shader (`Grass`); the touch field and the wind (`GrassField`, a node of Game) |
 | `weather.gd`, `fx.gd`, `sfx.gd`, `sfx_bank.gd` | Snow/ash, particles, audio (autoload `Sfx`: recorded/generated sounds from `assets/audio/sfx/` listed in the generated `sfx_bank.gd`, with the old synthesized sounds as fallback) |
 
 ## Rules and gotchas
@@ -200,15 +201,34 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   Meshy oaks `assets/models/trees/oakN.glb` (prepared by `tools/blender/prep_tree.py`: trunk on the origin, ~6 m, 1k
   textures) built by `Flora.oak_model(k)` with `MESHY_TREE_SHADER` (wind sway by height, snow/ash, see-through near the
   player) plus the game's leaf clusters (`OAK_LEAVES`); the moor is ~40% oaks with groves off the road. Grass is
-  painted for the game's camera: nine Meshy 2D clumps drawn from 45 degrees above (`assets/textures/grass/topN.png`,
-  `Flora.GRASS_TOP` sizes and weights), each on one card that leans back to face the fixed camera (`Flora._camera_card`,
-  no yaw, mirrored at random; `GRASS_CARD_SHADER`), a clump per spot and a smaller one beside most, over the blade grass
-  at half density. New clumps: `meshy.py draw` with "seen from above at a 45 degree camera angle ... chunky blades,
-  no thin hair-like detail" and `--cutout`, then `tools/grass_prep.py meshy.png topN.png` (crops, squares, scales and
-  bleeds the colour into the clear pixels; without that, far clumps go dark and blobby) and mipmaps on in the .import.
-  Unmipmapped or hair-thin cut-outs flicker pixel by pixel; the card shader cuts out with alpha to coverage. The older
-  upright photo cards (`gN.png`, `Flora.grass_cards`) are the fallback. The see-through near the player (trees, props)
-  uses an ordered dither (`dith`), not per-pixel noise, which sparkled in the tree shadows too.
+  the **living 3D grass** (`scripts/grass.gd` `Grass`, `scripts/grass_field.gd` `GrassField`; Act I's camp, moor and
+  fort, i.e. whenever `oak_forest`; A2/A3 keep the old blade clumps): seven species built in code (`Grass.SPECIES`:
+  meadow, tall seed-head grass, tussock, dry straw, moss with clover, broad-leaved weeds, sparse verge grass;
+  curved tapered blades with rounded normals, two variants, two LODs) mixed by biomes (`Grass.BIOMES`: meadow,
+  woodland, dry, verge, trampled, ruins). A zone answers `grass_ground(x, z)` (0 bare .. 1), `grass_height` and
+  `grass_biome` (weights; World's: verges by the road, undergrowth near `tree_pts`, dry patches and round the
+  Sloths' clearings, trodden in the fort and camp), and `Grass.scatter` fills MultiMesh chunks (`CHUNK` m, per
+  instance custom data: shade, dryness, random) in about a second. Colours: `Grass.ACT1` (matched to the painted
+  clumps it replaced). The shader bends each blade from its root by the **wind** (global `wind_dir`,
+  `wind_strength`, `wind_gust`, `wind_phase`: gust fronts rolling along the wind, sway per clump, flutter;
+  `GrassField.WIND` profiles per zone set in `Game._grass_zone`, blended by `set_wind(profile, secs)`, drifting
+  on their own) and by **touch**: `GrassField` is a GPU spring simulation following the camera (two ping-pong
+  SubViewports, 256 px over 64 m, RG bend / BA velocity in 8 bits, global `grass_field` + `grass_field_rect`);
+  every mover from `Game._grass_movers` (hero, partners, monsters, pets, demons) presses a capsule along its real
+  path (size from its `radius`, harder when sprinting or dashing, a slow flattening when standing), an attack's
+  impact frame (`Anim.impact_at`, so every peer sees it) throws an arc in front (`GrassField.swing`; slams and
+  mauls add a ring), and `Fx.ring`/`Fx.holy_slam` (any nova, slam or spell ring) shove a ring
+  (`GrassField.impulse(pos, radius, strength)`). Local and cosmetic: no network traffic. Far grass thins by
+  shrinking clumps by their random value and LOD0/LOD1 cross-fade per clump (`Grass.FADE`, `LOD_BAND` per
+  preset, using the global `grass_cam` so shadow passes agree); density per preset `QUALITY_DENSITY`; grass
+  casts shadows only on Ultra. `Grass.apply_quality` updates distances (`Game.apply_quality` skips the 3D grass's
+  nodes, meta `grass3d`). Tests: `tools/grass_test.gd` (headless: species, LODs, no painted clumps, field on/off,
+  movers, swings, rings, wind); `tools/grass_lab.gd -- outdir [quality] [zoomin]` (needs a display: biome bands,
+  scripted walkers that walk, sprint, stop, turn and dash, a big beast, swings, a slam, wind changes; saves frames
+  and checks the field lines up and returns fully to rest). Performance from any build:
+  `AshenCrown -- --shot out.png --zone wild --god --perf 12 --quality 2 --grassspot` writes `out.txt` (fps, 1% low,
+  draw calls, primitives, GPU). The painted clumps (`Flora.GRASS_TOP`, `_camera_card`) are no longer placed;
+  `Flora.flower_card` still uses `_camera_card` for the Sunstar Blooms.
   **Sunstar Blooms** (`World._rare_flowers`, Act I only, 3 per moor, 14-34 m off the road, own seed): a glowing
   painted card (`Flora.flower_card`) and a breathing light; picking one (`Game._interact` "flower") gives +50%
   experience for 5 minutes (`Game.xp_bonus_t`, shared with the Experience Shrine; the XP bar counts it down) and is

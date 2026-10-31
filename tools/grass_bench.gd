@@ -77,7 +77,7 @@ func _run() -> void:
 		print("[GB] ", l)
 		f.store_line(l)
 	f.close()
-	var img := g.get_viewport().get_texture().get_image()
+	var img: Image = g.get_viewport().get_texture().get_image()
 	img.save_png(prefix + ".png")
 	print("[GB] saved ", prefix + ".png")
 	quit()
