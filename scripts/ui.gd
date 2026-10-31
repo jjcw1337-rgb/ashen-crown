@@ -3773,6 +3773,7 @@ func show_title() -> void:
 	_title_busy = false
 	# the camp keeps building behind; it isn't drawn while the title's own world is up
 	get_viewport().disable_3d = true
+	game.zone_music()
 	_set_hud(false)
 
 ## "2 hours ago" from a save's `played` (unix ms); "" when unknown.

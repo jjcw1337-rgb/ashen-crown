@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
+`det_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -395,6 +395,25 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   (`SIGNATURE`, `_signature`). Choosing a hero plays its own sound (`ClassStage.PICK_SOUND`: layers of the game's recordings, `pick_sound`), and the screen has its own theme, `music_select` (music_town's candidate take 14; `Game.zone_music()` brings the zone's song back when it closes). Below, in the inventory's iron frame: name, story, stats, skills in the bar's sockets,
   the name and Play. The stage is built when the picker opens and freed when it closes. A new class needs a
   `ClassStage.CLASSES`/`ACCENTS`/`SIGNATURE` entry and its `_fidget` case. `tools/class_shot.gd -- outdir [frames]`.
+- **Title screen** (`UI._build_title`, `scripts/title_stage.gd` `TitleStage`): the Gate of the Ashen Crown at dusk in
+  its own World3D: a ruined cathedral gate with the dusk showing through its arch (`BACKDROP_SHADER`), broken arcades,
+  the fallen stone king and a giant crown in the ash, fog banks, falling ash, embers, braziers and torches, heat
+  lightning now and then. Models are Meshy (concept image, then image-to-3D, 144 credits) in `assets/models/title/`
+  (`gate` 18 m, `arcade` 8 m, `colossus` 10 m, `crown` 1 m, prepared by `tools/blender/prep_prop.py`; the colossus cut
+  at the ash line by `tools/blender/trim_below.py`), darkened to the game's palette in code (`SOOT`); without them
+  procedural stand-ins are built. Two daises: Continue (left) shows the last character played as a co-op puppet in
+  their saved gear (`Game.character_gear(id)`, read-only), idle, doing their class's `ClassStage.SIGNATURE` move when
+  hovered; Create New Character (right) is an empty dais with a rune circle and a cold light. The choices are cards
+  (`UI._title_card`) placed under their daises each frame (`TitleStage._place_cards`); dais or card, hover leans the
+  camera and lights that side (`set_focus`), a click plays the camera's move in (`enter`) and then Continue calls
+  `start_game(true, …, id)` with the id of the one shown, New opens the class picker. No saves: the Continue card is
+  disabled and the camera leans to New. Characters, co-op and Quit sit in a row below. While the title is up the main
+  viewport's 3D is off (`disable_3d`; the camp still builds behind), the stage stops drawing under the class picker or
+  the list (`covered`), and the music is `music_select` (`Game.zone_music`). Sharpness: MSAA only (no FXAA/TAA), no
+  mesh LOD, anisotropic filtering on the models, light bloom and a contrast-adaptive sharpen (`SHARPEN_SHADER`). Screens
+  narrower than 16:9 keep 16:9's width of view (`H_FOV`). `tools/title_test.gd` (the flow), `tools/title_shot.gd --
+  outprefix [class]` (screenshots with and without a save), `tools/title_clip.gd -- outdir` (frames of the hover and
+  the move in; `--fixed-fps 30`).
 - **Quests** (`scripts/quests.gd`, `Quests`, `Game.quests`; the log is J, `UI._build_quests`): every quest is data in
   `Quests.LINES` by run (0 = Act I; other runs have none yet): its giver (a camp role, `Data.VENDORS`), texts (`offer`,
   `busy`, `done`), goals (`kill` with Data.ENEMIES ids, `pick` with item bases, `flower`), `after` (a quest that comes
@@ -407,7 +426,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   and Blaine to rewrite. `tools/quest_test.gd`.
 - **Characters** (save slots): each character is its own save, `user://characters/<id>.json` (`Game.char_id`,
   `char_name`; the save holds `name` and `played`). `Game.list_characters()` reads them (last played first) for the
-  title's Continue button and the Characters list (Play / Delete); New Character asks for a name on the class picker.
+  title's Continue card and the Characters list (Play / Delete); New Character asks for a name on the class picker.
   The pre-characters save `user://ashen_crown_save.json` is adopted once as the first character and left in place.
   The pause menu's "Save and Exit to Title" is `Game.exit_to_title()`. Co-op uses the last played character and its
   name. Tools still save to the test file; `tools/char_test.gd` moves `char_dir`/`old_save` to test the real thing,

@@ -52,6 +52,9 @@ func _run() -> void:
 	await _frames(3)
 	print("[T] two saves: card '%s' / '%s', figure %s, id %s" % [(cont.find_child("big", true, false) as Label).text, (cont.find_child("line", true, false) as Label).text, ui.title_stage.hero.cls if ui.title_stage.hero else "-", ui.title_stage.get_meta("char_id")])
 	print("[T] the saves are untouched by showing them: ", FileAccess.get_file_as_string(DIR + "new_one.json").contains("\"gold\":7777"))
+	var sfx: Node = get_root().get_node("Sfx")
+	var sel: Variant = sfx.bank["music_select"][0] if sfx.bank.has("music_select") else null
+	print("[T] title plays the hero select theme: ", sel != null and sfx.music.stream == sel)
 	# --- Create New: picker opens, stage stops drawing; Back: it draws again
 	await ui._title_choose("new")
 	await _frames(3)
@@ -70,6 +73,7 @@ func _run() -> void:
 	await _frames(3)
 	print("[T] continue: playing %s, char %s (%s), class %s, level %d, gold %d, title hidden %s, 3D back on %s" % [g.playing, g.char_name, g.char_id, g.hero.cls, g.hero.level, g.hero.gold, not ui.title_panel.visible, not get_root().disable_3d])
 	print("[T] no duplicate save made: ", DirAccess.get_files_at(DIR).size() == 2)
+	print("[T] the camp's song once playing: ", sfx.music.stream != sel)
 	await g.exit_to_title()
 	print("[T] back to title: shows Roland again %s, 3D off %s" % [(cont.find_child("big", true, false) as Label).text == "Roland", get_root().disable_3d])
 	_wipe()
