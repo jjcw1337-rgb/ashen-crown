@@ -389,12 +389,15 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   leader (♛ on the party list) and can remove a member (✕, `UI.confirm_kick`, `Net.kick`). `tools/mp_test.gd`
   (host + join) checks it; `tools/vote_shot.gd` screenshots the window.
 - **New Character screen** (`UI._build_class_picker`, `scripts/class_stage.gd` `ClassStage`): every class stands live
-  on a torch-lit stage in its own world, as co-op puppets (`Hero.puppet`, driven through `net_st`/`net_pos`/`net_yaw`)
+  on its own carved plinth in a ruined cathedral (`scripts/class_cathedral.gd` `ClassCathedral`, all in code: plinths
+  with runes glowing in the class colour, a coloured light shaft and a tattered banner with its emblem over each, candles,
+  ash, pointed windows, pillars; the knight in the middle on the biggest plinth; the chosen one's shaft and runes blaze,
+  the hovered one's brighten; concept art in `concepts/class_screen/`, picked: `v4_cathedral_arc.png`) in its own world, as co-op puppets (`Hero.puppet`, driven through `net_st`/`net_pos`/`net_yaw`)
   in its starting gear: idle they breathe and look about (`_idle`), under the mouse each fidgets its own annoying way
   (`_fidget`), and the chosen one steps into the light and does its signature move every 4.5 s with its effects
   (`SIGNATURE`, `_signature`). Below, in the inventory's iron frame: name, story, stats, skills in the bar's sockets,
   the name and Play. The stage is built when the picker opens and freed when it closes. A new class needs a
-  `ClassStage.CLASSES`/`ACCENTS`/`SIGNATURE` entry and its `_fidget` case. `tools/class_shot.gd -- outdir [frames]`.
+  `ClassStage.CLASSES`/`ACCENTS`/`EMBLEMS`/`SIGNATURE` entry and its `_fidget` case (a sixth class gets its own plinth from `CLASSES`). `tools/class_shot.gd -- outdir [frames]`.
 - **Characters** (save slots): each character is its own save, `user://characters/<id>.json` (`Game.char_id`,
   `char_name`; the save holds `name` and `played`). `Game.list_characters()` reads them (last played first) for the
   title's Continue button and the Characters list (Play / Delete); New Character asks for a name on the class picker.
