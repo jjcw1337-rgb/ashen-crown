@@ -50,7 +50,9 @@ Screenshots need a display: `xvfb-run -a godot --rendering-driver opengl3 --path
 The moor's road is `World.road_style()`: the paved Old Kingsroad (2) by default; `--road 0|1|3` shows the old broad
 road, the wagon trail and the moor trails for comparison. `tools/zone_overview.gd -- out.png [--road N]` renders a high view of it.
 
-Run the relevant tests before pushing. A push to `main` publishes to everyone in ~5 minutes.
+Run the relevant tests before pushing. A push to `main` publishes to everyone in ~5 minutes, so **Claude never pushes
+to `main` on its own**: push your work to a `test-*` branch (`git push origin HEAD:test-something`, or `test-all` for the
+shared preview), give the preview build's link, and go to `main` only when Blaine and jj have both said so.
 
 ## Code map (`scripts/`)
 
