@@ -622,6 +622,7 @@ func refresh_gear() -> void:
 		shield_node.position = Vector3(-0.03, 0, 0)
 		shield_rest = shield_node.transform
 		gear_nodes.append(shield_node)
+	rig.set_meta("shield", shield_node != null)
 	var h = equipment.get("helm")
 	# the crusader (the armoured body) always wears his own great helm: a helm item's stats count, its model isn't drawn
 	if h != null and cls == "knight" and not ["armored", "mocap"].has(str(rig.get_meta("meshy", ""))):
