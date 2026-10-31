@@ -127,7 +127,31 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   run|attack|shootwalk 34|game|side|close|closeback frames archer [longbow]`. Talent icons still to paint (`tools/talent_icons.py`).
   `tools/archer_test.gd` checks it (run it with `--fixed-fps 60`; it counts frames).
 - **Adding a class**: add it to `Data.CLASSES`, give it four `SKILLS` entries with its `cls`, build its look the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep working), handle its skill ids in `Hero.use_skill` / `_impact`, and add glyphs in `ui.gd` `SkillGlyph`.
-- **The Wraith's body** (work in progress, `test-wraith`): the Meshy horned, chained wraith (concept D) on the shared mocap system (`Wraith.build_mocap`, `assets/models/wraith_mocap.glb`, falls back to the code-built robe without it). Rebuild: `meshy.py rig`/`animate` (clips 0, 89, 559, 509, 198, 200, 125, 129, 386, 178, 186, 384, 127), then `blender -b --python tools/blender/wraith/prep_wraith_mocap.py -- rigged.glb out.glb 45000 clips_a.glb clips_b.glb` (renames the clips, takes the root motion out, eases the legs in walk/run into a glide, hangs the robe on six cloth panels hA..hF from the hips, vertex colour R = down the robe). `scripts/wraith_mocap.gdshader`: matte Meshy textures, the cyan light in the tears, a rim, the hem/shins/feet fraying into mist (R + noise, cut away with a glowing edge). It floats (`KnightMocapRig.hover`, `Wraith.HOVER`). Preview: `tools/mocap_knight_clip.gd -- outdir idle|walk|run|tour 34|close|game frames wraith`. Skills are still the old ones.
+- **The Wraith's body** (`test-wraith`): the Meshy horned, chained wraith (concept D) on the shared mocap system
+  (`Wraith.build_mocap`, `assets/models/wraith_mocap.glb`; falls back to the code-built robe without it). He has no
+  legs and never walks: `tools/blender/wraith/prep_wraith_mocap.py` cuts the skeletal legs and feet out of the mesh
+  (what sat within reach of the leg bones, plus the scraps), hangs the robe below the hips on six cloth panels of
+  three bones (hA..hF, from the hips only, no leg weights) and the wrist shackle chains on two more (hG, hH, from the
+  hands), rebinds the sleeve rags and chain links Meshy had tied to the legs onto the arms (weights diffused edge by
+  edge from the arm-bound vertices), and writes vertex colour R = down the robe. Clips: Meshy's idle, punches, casts,
+  scream, hit, dodge (root motion taken out) plus clips the script makes from the idle: `combat_idle` (the claws
+  raised and forward; Meshy's boxer's stance is dropped), `float` / `float_combat` (the arms eased back, trailing)
+  and `death` (rears up, arms flung wide and head back, then the head drops and the arms sag). Rebuild: `blender -b
+  --python tools/blender/wraith/prep_wraith_mocap.py -- rigged.glb out.glb 45000 clips_a.glb clips_b.glb`, then
+  `godot --headless --import`. The glide is `KnightMocapRig`'s **float mode** (`float_mode`, set by `Wraith.build_mocap`
+  with `hover` = `Wraith.HOVER`): the blend spaces go idle -> float by ground speed (`Wraith.FLOAT_SPEED`, clips never
+  retimed), and `_float` leans the body into its travel (`FLOAT_LEAN`, more while accelerating, pivoting at the hips
+  `FLOAT_PIVOT`), banks into turns (`FLOAT_BANK`), lifts it a little at speed and bobs it. `_sway_robe` (in place of
+  the hair sim) swings the panels toward the push of the air he moves through (the ones behind stream out and back,
+  the front ones press in a little, a turn drags them round, gusts drift them at rest, a hit kicks them, lower bones
+  looser so a panel curves instead of turning like a board) and the wrist chains as pendulums that always hang from
+  the hands. Death: the clip's rear-up, then the rig sinks him into the ground (`death_t`) while the spectral
+  materials dissolve (`phase_amt`, meta `spectral_mats`), the eyes flare and go out (`eye_light`) and the hem mist
+  stops (`hem_mist`); all reset on revive. `Hero._hover` and the hero's death tilt leave the mocap wraith alone
+  (`Hero._floats`). `scripts/wraith_mocap.gdshader`: matte Meshy textures, the cyan light in the tears, a rim, the
+  hem fraying into mist (R + noise, cut away with a glowing edge), the robe's inside a dark hollow (back faces).
+  Preview: `tools/mocap_knight_clip.gd -- outdir idle|run|turn|tour|attack|block 34|side|front|close|game frames wraith
+  [relaxed]`. Skills are still the old ones.
 - **Underworld** (Demon's Phase): `game.set_underworld()` blends a screen-space grade (`DemonFx.UNDERWORLD_SHADER`), the `under_amt` global (terrain veins and rune rings in `mats.gd`), environment tweaks, rising souls and crimson monster outlines (`Enemy.set_soul_lit`). Monsters ignore a phased hero (`hero.phased`).
 - **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `_update_drain`, and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. Skill effects are local only (partners see the cast pose, not the beam), like every other class.
 - **King Grubb** (Act I boss, `hoard.gd`) is host-authoritative. Every visible part of the fight (piles, bombs, burst

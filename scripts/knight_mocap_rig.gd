@@ -43,6 +43,25 @@ var yaw_now := 0.0            # the body's side-on turn (degrees)
 var hover := 0.0              # metres the body floats above the ground (the Wraith), with a slow drift
 var hover_now := 0.0
 var hover_base := 0.0
+## A body that floats instead of walking (the Wraith, Wraith.build_mocap): the clips are never retimed to a ground
+## speed, the glide is procedural (sync_pose -> _float: the body leans into its travel and banks into turns,
+## bobs, lifts a little at speed), the robe panels hA..hF are cloth in the wind (_sway_robe), and the death
+## rears up, then sinks into the ground dissolving (the spectral materials' phase_amt, meta "spectral_mats").
+var float_mode := false
+var lean_now := 0.0           # pitch (rad, + = forward) and roll the glide puts on the body
+var bank_now := 0.0
+var _yaw_prev := INF
+var _speed_prev := 0.0
+var death_t := -1.0           # seconds since he died (float mode), -1 alive
+var _hit_prev := 0.0
+var robe_out: Array = []      # per robe bone: the panel's outward direction (rig frame, horizontal), from its rest
+var robe_kick := Vector2.ZERO # a jolt into the robe (rig frame, horizontal), from a hit
+var chain_last := {}          # the wrist chains' hands: last position and velocity (rig frame), per lock
+var chain_vel := {}
+const FLOAT_LEAN := 0.2      # rad of forward lean at full glide
+const FLOAT_BANK := 0.14      # rad of roll per rad/s of turn at full glide
+const FLOAT_LIFT := 0.07      # extra height at full glide
+const FLOAT_PIVOT := 1.05     # the lean turns about this height (his hips)
 
 ## A shot's clip time for the attack's progress a: piecewise along shot "keys" [[a, t], ...] (the release key at
 ## Anim's impact), or the old three-point squeeze (t0, release, t1).
@@ -230,9 +249,12 @@ func sync_pose(st: Dictionary) -> void:
 	if hover > 0.0 and body_root != null:
 		if hover_now == 0.0 and hover_base == 0.0:
 			hover_base = body_root.position.y
-		var want_h := 0.0 if die else hover + sin(t * 1.7) * 0.035 + sin(t * 0.63) * 0.02
-		hover_now = lerpf(hover_now, want_h, 1.0 - exp(-dt * (2.0 if die else 6.0)))
-		body_root.position.y = hover_base + hover_now
+		if float_mode:
+			_float(st, t, dt, die)
+		else:
+			var want_h := 0.0 if die else hover + sin(t * 1.7) * 0.035 + sin(t * 0.63) * 0.02
+			hover_now = lerpf(hover_now, want_h, 1.0 - exp(-dt * (2.0 if die else 6.0)))
+			body_root.position.y = hover_base + hover_now
 	# --- layer 2: the procedural moves, by weight
 	var style: String = st.get("style", "")
 	# the draw / holster (WeaponCarry) is acting only while the blade is on its way (0 = put away, 1 = in guard)
@@ -251,7 +273,7 @@ func sync_pose(st: Dictionary) -> void:
 
 ## Playback rate so the planted foot moves at the ground speed (between clips, by the blend).
 func _rate(v: float, pts: Array) -> float:
-	if v < 0.3:
+	if v < 0.3 or float_mode:
 		return 1.0
 	var nat: float = pts[pts.size() - 1]
 	if v <= pts[1]:
@@ -395,3 +417,190 @@ func _reach_hilt(st: Dictionary) -> void:
 	var fo_l := (up_g.inverse() * fo_g).get_rotation_quaternion()
 	skel.set_bone_pose_rotation(ua, skel.get_bone_pose_rotation(ua).slerp(up_l, w))
 	skel.set_bone_pose_rotation(fa, skel.get_bone_pose_rotation(fa).slerp(fo_l, w))
+
+# ---------------------------------------------------------------- the float (the Wraith)
+## The glide: no steps, the body carried on its travel. It leans into the direction it moves by its speed (and a
+## touch more as it accelerates, a touch back as it brakes), banks into turns, lifts a little at speed and bobs
+## slowly. Dead, it rears up with the clip's throw of the arms, hangs, then sinks into the ground dissolving.
+func _float(st: Dictionary, t: float, dt: float, die: bool) -> void:
+	var yaw := global_rotation.y if is_inside_tree() else rotation.y
+	var yaw_v := 0.0
+	if _yaw_prev != INF and dt > 0.0:
+		yaw_v = wrapf(yaw - _yaw_prev, -PI, PI) / dt
+	_yaw_prev = yaw
+	if absf(yaw_v) > 30.0:
+		yaw_v = 0.0
+	var g := clampf(speed / 4.8, 0.0, 1.15)
+	var accel := (speed - _speed_prev) / dt if dt > 0.0 else 0.0
+	_speed_prev = speed
+	var want_lean := FLOAT_LEAN * g + clampf(accel * 0.025, -0.14, 0.1)
+	var want_bank := -clampf(yaw_v, -3.0, 3.0) * FLOAT_BANK * (0.25 + 0.75 * g)
+	var want_h := hover + FLOAT_LIFT * g + sin(t * 1.7) * 0.035 + sin(t * 0.63) * 0.02 + sin(t * 2.6) * 0.012 * g
+	var k_lean := 1.0 - exp(-dt * 4.5)
+	var k_h := 1.0 - exp(-dt * 6.0)
+	if die:
+		death_t = 0.0 if death_t < 0.0 else death_t + dt
+		var rise := smoothstep(0.0, 0.45, death_t)
+		var sink := smoothstep(0.85, 2.7, death_t)
+		sink = sink * sink
+		want_h = hover + 0.4 * rise - 1.45 * sink
+		want_lean = -0.3 * rise + 0.55 * sink
+		want_bank = 0.0
+		k_lean = 1.0 - exp(-dt * 3.0)
+		k_h = 1.0 - exp(-dt * 5.0)
+		_death_look(smoothstep(0.7, 2.4, death_t), rise)
+	elif death_t >= 0.0:
+		# back from the dead: whole again
+		death_t = -1.0
+		_death_look(0.0, 0.0)
+	lean_now = lerpf(lean_now, want_lean, k_lean)
+	bank_now = lerpf(bank_now, want_bank, k_lean)
+	hover_now = lerpf(hover_now, want_h, k_h)
+	body_root.rotation.x = lean_now
+	body_root.rotation.z = bank_now
+	# the lean and bank pivot at his hips, not at the ground
+	var piv := Vector3(0.0, FLOAT_PIVOT, 0.0)
+	body_root.position = Vector3(0.0, hover_base + hover_now, 0.0) + piv - body_root.basis * piv
+	body_root.visible = death_t < 3.2
+	# a hit jolts the robe
+	var hit: float = st.get("hit", 0.0)
+	if hit > _hit_prev + 0.3:
+		robe_kick += Vector2(0.0, 1.0) * 2.5    # back
+	_hit_prev = hit
+
+## The dissolve: the spectral materials thin to nothing (phase_amt), the eyes flare as he rears then go out, the
+## hem's mist stops.
+func _death_look(fade: float, rise: float) -> void:
+	if has_meta("spectral_mats"):
+		for m in get_meta("spectral_mats"):
+			(m as ShaderMaterial).set_shader_parameter("phase_amt", fade)
+	if has_meta("eye_light"):
+		var l := get_meta("eye_light") as OmniLight3D
+		if l != null:
+			l.light_energy = 0.45 * (1.0 + 2.0 * rise) * (1.0 - fade)
+	if has_meta("hem_mist"):
+		var mist := get_meta("hem_mist") as GPUParticles3D
+		if mist != null:
+			mist.amount_ratio = clampf(1.0 - smoothstep(0.75, 0.95, fade), 0.0, 1.0)
+
+## The robe panels (float mode) instead of the hair locks.
+func _sway_hair(fwd_speed: float, side_speed: float, t: float, dt: float) -> void:
+	if float_mode:
+		_sway_robe(fwd_speed, side_speed, t, dt)
+	else:
+		super(fwd_speed, side_speed, t, dt)
+
+## Six panels of three bones hang from the hips round the body (hA..hF). Each bone swings about the rig's x and z
+## (in the bone's own frame through hair_conj, like the locks), toward a wanted horizontal push on its hanging tip:
+## the air of his travel lifts the panels behind him out and back (they stream), presses the ones in front a little
+## in, sweeps the side ones along; a turn drags every panel the other way round; a gust drifts them when he hangs
+## still; a hit kicks them back; the ones lower down are looser, so the panel curves instead of turning like a board.
+## Dying, they flare out as he rears, then go limp as he sinks.
+func _sway_robe(fwd_speed: float, side_speed: float, t: float, dt: float) -> void:
+	var n := hair_bones.size()
+	if n == 0:
+		return
+	if hair_ang.size() != n:
+		hair_ang.resize(n); hair_ang.fill(0.0)
+		hair_vel.resize(n); hair_vel.fill(0.0)
+		hair_side.resize(n); hair_side.fill(0.0)
+		hair_side_vel.resize(n); hair_side_vel.fill(0.0)
+	if robe_out.size() != n:
+		robe_out.resize(n)
+		var hb := skel.find_bone("Hips")
+		var hp: Vector3 = R * (rest_g[hb] as Transform3D).origin
+		for i in n:
+			var root_i: int = hair_bones[i - (hair_key[i][1] as int)]
+			var o: Vector3 = R * (rest_g[root_i] as Transform3D).origin - hp
+			var o2 := Vector2(o.x, o.z)
+			robe_out[i] = o2.normalized() if o2.length() > 0.001 else Vector2(0, 1)
+	var yaw := global_rotation.y
+	var yaw_v := wrapf(yaw - _last_yaw, -PI, PI) / dt
+	_last_yaw = yaw
+	if absf(yaw_v) > 30.0:
+		yaw_v = 0.0
+	# the air he moves through, in the rig frame (forward is -z)
+	var wind := Vector2(-side_speed, fwd_speed) * hair_run
+	var g := clampf(fwd_speed / 4.5, 0.0, 1.2)
+	var dying := death_t >= 0.0
+	var rise := smoothstep(0.0, 0.5, death_t) if dying else 0.0
+	var limp := smoothstep(0.9, 2.2, death_t) if dying else 0.0
+	robe_kick = robe_kick.lerp(Vector2.ZERO, 1.0 - exp(-dt * 9.0))
+	var pend_g := {}        # pendulum chains: each bone's wanted global basis (skeleton frame), parents first
+	var updated := false
+	for i in n:
+		var lock: int = hair_key[i][0]
+		var d: int = hair_key[i][1]
+		if lock >= 6:
+			# the shackle chains (hG.., hH..): pendulums from the hands. They hang straight down whatever the arm
+			# does, swing back against the hand's own motion and the air, and settle with the same springs
+			var b: int = hair_bones[i]
+			var p: int = parent_of[b]
+			if not updated:
+				skel.force_update_all_bone_transforms()
+				updated = true
+			var pg: Basis = pend_g[p] if pend_g.has(p) else skel.get_bone_global_pose(p).basis.orthonormalized()
+			if d == 0:
+				var hp := X * skel.get_bone_global_pose(p).origin
+				var hv := Vector3.ZERO
+				if chain_last.has(lock):
+					hv = (hp - (chain_last[lock] as Vector3)) / dt
+				chain_last[lock] = hp
+				if hv.length() > 30.0:
+					hv = Vector3.ZERO
+				chain_vel[lock] = (chain_vel[lock] as Vector3).lerp(hv, 1.0 - exp(-dt * 14.0)) if chain_vel.has(lock) else hv
+			var cv: Vector3 = chain_vel.get(lock, Vector3.ZERO)
+			var ph2 := float(lock) * 2.3
+			var Dc := (wind - Vector2(cv.x, cv.z) * 0.9) * 0.06 * (0.7 + 0.5 * d)
+			Dc += Vector2(sin(t * 1.3 + ph2), cos(t * 1.7 + ph2)) * 0.02 * (0.5 + 0.5 * d)
+			Dc += robe_kick * 0.2
+			Dc *= 1.0 - limp * 0.5
+			var txc := -Dc.y
+			var tzc := Dc.x
+			var stc := 26.0 - d * 5.0
+			var dpc := 4.0 - d * 0.6
+			hair_vel[i] += ((txc - hair_ang[i]) * stc - hair_vel[i] * dpc) * dt
+			hair_ang[i] = clampf(hair_ang[i] + hair_vel[i] * dt, -0.9, 0.9)
+			hair_side_vel[i] += ((tzc - hair_side[i]) * stc - hair_side_vel[i] * dpc) * dt
+			hair_side[i] = clampf(hair_side[i] + hair_side_vel[i] * dt, -0.9, 0.9)
+			var swing := Basis(Quaternion.from_euler(Vector3(hair_ang[i], 0.0, hair_side[i])))
+			var g_des: Basis = R.inverse() * (swing * Basis(hair_conj[i][1] as Quaternion))
+			pend_g[b] = g_des
+			skel.set_bone_pose_position(b, hair_rest[i])
+			skel.set_bone_pose_rotation(b, (pg.inverse() * g_des).get_rotation_quaternion())
+			continue
+		var o: Vector2 = robe_out[i]
+		var tang := Vector2(-o.y, o.x)
+		var ph := float(lock) * 1.9
+		# the wanted push on this bone's tip (rig frame, horizontal; rad of swing)
+		var along := wind.dot(o)        # + the air pushes this panel outward
+		var across := wind.dot(tang)
+		var lift := clampf(along * 0.05, -0.03, 0.095) * (0.6 + 0.7 * d)
+		var sweep := clampf(across * 0.045, -0.1, 0.1) * (0.6 + 0.7 * d)
+		var turn := clampf(yaw_v * 0.06, -0.15, 0.15) * (0.5 + 0.4 * d)
+		var calm := 1.0 - 0.6 * clampf(g, 0.0, 1.0)
+		var gust := (sin(t * 1.1 + ph) * 0.6 + sin(t * 2.3 + ph * 1.3) * 0.4) * (0.5 + 0.5 * sin(t * 0.31 + 0.7)) * 0.03 * calm * (0.6 + 0.5 * d)
+		var flutter := sin(t * (2.6 + d * 1.5) + ph * 2.3 + d) * (0.008 + d * 0.009) * (0.4 + 0.8 * g)
+		var D := o * (lift + gust + rise * 0.18 * (0.6 + 0.4 * d)) + tang * (sweep + turn + flutter) + robe_kick * 0.25 * (0.5 + 0.4 * d)
+		D *= 1.0 - limp
+		# front panels never swing in far (the body is there); behind, they stream freely
+		var inward := -D.dot(o)
+		if inward > 0.06:
+			D += o * (inward - 0.06)
+		var tx := -D.y
+		var tz := D.x
+		var stiff := (30.0 - d * 7.0) * (1.0 - 0.6 * limp)
+		var damp := (4.4 - d * 0.9) * (1.0 + 1.5 * limp)
+		var acc: float = (tx - hair_ang[i]) * stiff - hair_vel[i] * damp
+		hair_vel[i] += acc * dt
+		hair_ang[i] = clampf(hair_ang[i] + hair_vel[i] * dt, -0.55, 0.55)
+		var acc2: float = (tz - hair_side[i]) * stiff - hair_side_vel[i] * damp
+		hair_side_vel[i] += acc2 * dt
+		hair_side[i] = clampf(hair_side[i] + hair_side_vel[i] * dt, -0.55, 0.55)
+		var b: int = hair_bones[i]
+		skel.set_bone_pose_position(b, hair_rest[i])
+		var q := Quaternion.from_euler(Vector3(hair_ang[i], 0.0, hair_side[i]))
+		if not hair_conj.is_empty():
+			var c: Quaternion = hair_conj[i][1]
+			q = (hair_conj[i][0] as Quaternion) * (c.inverse() * q * c)
+		skel.set_bone_pose_rotation(b, q)

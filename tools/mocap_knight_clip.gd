@@ -1,6 +1,6 @@
 extends SceneTree
 ## Preview of the mocap knight (Knight.build_mocap) as the game drives him through Anim.pose.
-## Needs a display (xvfb). Usage: -- outdir mode [side|front|34|back] [frames]
+## Needs a display (xvfb). Usage: -- outdir mode [side|front|34|back|game|close] [frames] [archer|wraith] [relaxed]
 ## modes: idle, run (stand, run, stop), attack (the three-swing combo standing), runattack (run into a swing),
 ##        block, turn (runs a circle), draw (sheathed run, stop, draw the sword, guard, holster)
 func _initialize():
@@ -53,6 +53,7 @@ func _run() -> void:
 	# archer.gd uses the Sfx autoload: load it at run time (a static reference compiles it before Sfx exists)
 	var AR: GDScript = load("res://scripts/archer.gd") if archer else null
 	var wraith := args.has("wraith")
+	var relaxed := args.has("relaxed")    # weapon away (no battle stance)
 	var r: Node3D = AR.call("build_body") if archer else (Wraith.build(Wraith.default_gear()) if wraith else Knight.build_mocap())
 	r.set_meta("pers", "hero")
 	r.set_meta("gait", "knight")
@@ -88,6 +89,8 @@ func _run() -> void:
 		var T := f * dt
 		var want := 0.0
 		var st := {"time": 2.0 + T}
+		if relaxed:
+			st["draw"] = 0.0
 		match mode:
 			"run":
 				want = 4.8 if T > 0.8 and T < 3.4 else 0.0

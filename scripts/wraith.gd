@@ -18,9 +18,9 @@ static func default_gear() -> Dictionary:
 ## The Wraith's real body: the Meshy horned, chained wraith on the shared mocap system (tools/blender/wraith/
 ## prep_wraith_mocap.py: Meshy library clips, root motion taken out, the robe on six cloth panels hA..hF).
 const MOCAP_GLB := "res://assets/models/wraith_mocap.glb"
-## Clip ground speeds (m/s, measured from the planted foot): the stalking walk and the low glide.
-const WALK_SPEED := 0.45
-const GLIDE_SPEED := 4.27
+## He floats: idle (or the claws-ready stance) blends into the "float" clips (the arms eased back, trailing) by
+## this ground speed; the lean, bank, bob and the robe in the wind are KnightMocapRig's float mode.
+const FLOAT_SPEED := 1.4
 const HOVER := 0.16            # it floats this far off the ground
 
 static func mocap_ok() -> bool:
@@ -37,12 +37,13 @@ static func build(gear: Dictionary) -> Node3D:
 
 static func build_mocap(gear: Dictionary) -> Node3D:
 	var r := Knight.build_mocap(MOCAP_GLB, {
-		"relaxed": ["idle", 0.0, "walk", WALK_SPEED, "run", GLIDE_SPEED],
-		"combat": ["combat_idle", 0.0, "walk", WALK_SPEED, "run", GLIDE_SPEED],
-		"meta": "wraith", "hair_run": 0.35})
+		"relaxed": ["idle", 0.0, "float", FLOAT_SPEED],
+		"combat": ["combat_idle", 0.0, "float_combat", FLOAT_SPEED],
+		"meta": "wraith", "hair_run": 1.0})
 	r.remove_meta("knight")
 	r.set_meta("wraith", true)
 	r.set("hover", HOVER)
+	r.set("float_mode", true)
 	_spectral(r, gear)
 	_mocap_extras(r, gear)
 	return r
@@ -93,7 +94,10 @@ static func _mocap_extras(r: Node3D, gear: Dictionary) -> void:
 	l.shadow_enabled = false
 	l.position = Vector3(0, 0.12, -0.16)
 	head.add_child(l)
-	r.add_child(_hem_mist(gear, 0.34, 64))
+	r.set_meta("eye_light", l)
+	var mist := _hem_mist(gear, 0.34, 64)
+	r.add_child(mist)
+	r.set_meta("hem_mist", mist)
 
 static func rebuild_body(root: Node3D, gear: Dictionary) -> void:
 	if str(root.get_meta("meshy", "")) == "wraith":

@@ -1,7 +1,7 @@
 // The Wraith's body (Wraith._spectral): Meshy's own textures, lit like everything else, plus
 //  - the cold cyan light in the robe's tears and its eyes (the bluest, brightest texels glow, breathing slowly)
 //  - a faint rim of spirit-light so it reads against dark ground
-//  - the robe, shins and feet fraying into mist toward the hem: vertex colour R (0 at the hips, 1 at the hem,
+//  - the robe fraying into mist toward the hem (he has no legs: the robe is a dark hollow inside): vertex colour R (0 at the hips, 1 at the hem,
 //    tools/blender/wraith/prep_wraith_mocap.py) against drifting 3D noise; what's eaten is cut away (no sorting
 //    trouble on a skinned mesh) with a glowing edge, and the hem's mist particles fill in the softness
 shader_type spatial;
@@ -46,13 +46,16 @@ void fragment() {
 	float down = COLOR.r;
 	// the fray: noise drifting upward through the robe; past the threshold it's gone
 	float n = fbm(wpos * vec3(5.5, 3.2, 5.5) + vec3(0.0, -TIME * 0.55, 0.0));
-	float eat = smoothstep(fray, 1.0, down) * 1.15 + phase_amt * 0.85;
+	float eat = smoothstep(fray, 1.0, down) * 1.15 + phase_amt * 1.3;
 	float keep = n - eat;
 	if (keep < 0.0) {
 		discard;
 	}
 	float edge = (1.0 - smoothstep(0.0, 0.14, keep)) * step(0.02, eat);
 	vec3 col = c.rgb * mix(1.0, 0.55, smoothstep(0.2, 1.0, down));
+	// the inside of the robe (seen through its open front and the tears, no legs in it) is a dark hollow
+	float inside = FRONT_FACING ? 0.0 : smoothstep(0.0, 0.25, down);
+	col = mix(col, col * 0.08 + spirit * 0.02, inside);
 	ALBEDO = col;
 	// matte grave-cloth: Meshy's roughness map makes the robe wet and glassy, so it's only allowed to roughen
 	ROUGHNESS = use_rough ? max(texture(rough_tex, UV).g, 0.82) : 0.88;
@@ -65,5 +68,5 @@ void fragment() {
 	float cyan = smoothstep(0.1, 0.22, c.b - c.r) * smoothstep(0.32, 0.6, c.b);
 	float breathe = 0.75 + 0.25 * sin(TIME * 1.9 + wpos.y * 3.0);
 	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
-	EMISSION = spirit * (cyan * 1.2 * breathe * glow + rim * 0.16 + edge * 1.4 + phase_amt * 0.6 * rim);
+	EMISSION = spirit * ((cyan * 1.2 * breathe * glow + rim * 0.16) * (1.0 - inside * 0.85) + edge * 1.4 + phase_amt * 0.6 * rim);
 }
