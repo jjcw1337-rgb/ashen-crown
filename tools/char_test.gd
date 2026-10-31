@@ -50,7 +50,8 @@ func _run() -> void:
 	for c in chars:
 		names.append("%s %s L%d" % [c["name"], c["cls"], c["level"]])
 	print("[C] list (last played first): ", names)
-	print("[C] continue button: ", (g.ui.title_panel.find_child("continue", true, false) as Button).text)
+	var cc := g.ui.title_panel.find_child("continue", true, false) as Button
+	print("[C] continue card: %s / %s, enabled %s, figure %s, loads %s" % [(cc.find_child("big", true, false) as Label).text, (cc.find_child("line", true, false) as Label).text, not cc.disabled, g.ui.title_stage.hero.cls if g.ui.title_stage.hero else "-", g.ui.title_stage.get_meta("char_id") == chars[0]["id"]])
 	print("[C] characters button shown: ", (g.ui.title_panel.find_child("characters", true, false) as Button).visible)
 	g.ui.open_characters()
 	await process_frame

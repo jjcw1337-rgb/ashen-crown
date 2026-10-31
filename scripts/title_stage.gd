@@ -20,6 +20,8 @@ const MODEL_DIR := "res://assets/models/title/"
 const DAIS_TOP := 0.52
 const FACE := PI                          # bodies face -z; the camera is on +z
 const WARM := Color(1.0, 0.66, 0.36)
+## 16:9's horizontal field of view at the 40° vertical one, kept on narrower screens
+const H_FOV := 64.0
 const COLD := Color(0.55, 0.78, 1.0)
 
 var game: Node
@@ -775,11 +777,19 @@ func _process(delta: float) -> void:
 ## The camera: a slow drift, leaning toward the hovered side; `_push` carries it into the chosen dais.
 func _place_camera(_delta: float) -> void:
 	var aspect := float(vp.size.x) / maxf(float(vp.size.y), 1.0) if vp.size.y > 0 else 16.0 / 9.0
-	# narrower screens step back so both daises stay in view
-	var back := 15.5 * clampf((16.0 / 9.0) / aspect, 1.0, 1.45)
+	# narrower than 16:9 (4:3, 5:4, 16:10): keep 16:9's width of view, so both daises stay in the same
+	# places across, and tilt up a little so they sit as low on the screen as they do on 16:9
+	var narrow := clampf((16.0 / 9.0) / aspect, 1.0, 1.6)
+	if narrow > 1.001:
+		cam.keep_aspect = Camera3D.KEEP_WIDTH
+		cam.fov = H_FOV
+	else:
+		cam.keep_aspect = Camera3D.KEEP_HEIGHT
+		cam.fov = 40.0
+	var back := 15.5
 	var drift := Vector3(sin(t * 0.11) * 0.5, sin(t * 0.17) * 0.18, sin(t * 0.07) * 0.3)
 	var pos := Vector3(_lean * 0.9, 2.1, back) + drift
-	var look := Vector3(_lean * 1.5, 2.7, -4.0) + drift * 0.3
+	var look := Vector3(_lean * 1.5, 2.7 + (narrow - 1.0) * 4.0, -4.0) + drift * 0.3
 	if _push > 0.0 and entering != "":
 		var at: Vector3 = (LEFT if entering == "continue" else RIGHT) + Vector3(0, 1.4, 0)
 		var close := at + Vector3(0, 0.4, 4.0)
