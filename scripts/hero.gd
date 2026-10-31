@@ -589,13 +589,13 @@ func refresh_gear() -> void:
 	var w = equipment.get("weapon")
 	if w != null:
 		weapon_node = Models.item_model(w)
-		if has_bow() and J.has("grip_l"):
-			# a bow is held in the left hand; Anim keeps the grip lined up with the arm (bow_l)
+		if has_bow() and J.has("grip_l") and not J.has("grip_bow"):
+			# the placeholder body holds a bow in its left hand; Anim keeps the grip lined up with the arm (bow_l)
 			(J["grip_l"] as Node3D).add_child(weapon_node)
 			J["bow_l"] = weapon_node
 		else:
 			J.erase("bow_l")
-			(J["grip_r"] as Node3D).add_child(weapon_node)
+			_weapon_hand(J).add_child(weapon_node)
 		# the new model starts in the hand: force _carry_weapon to place it (and the body's hilt) next frame
 		carry.configure(cls)
 		_carry_in_hand = not (carry.t >= float(carry.p["grab"]))
@@ -625,7 +625,8 @@ func refresh_gear() -> void:
 	elif is_warlock():
 		Warlock.rebuild_body(rig, warlock_gear())
 	elif is_archer():
-		Knight.rebuild_body(rig, Archer.body_gear(knight_gear()))
+		if not rig.has_meta("meshy"):      # the ranger's own body has nothing to rebuild
+			Knight.rebuild_body(rig, Archer.body_gear(knight_gear()))
 	elif not rig.has_meta("meshy"):
 		Knight.rebuild_body(rig, knight_gear())
 	var am = equipment.get("amulet")
@@ -688,7 +689,7 @@ func _carry_weapon(delta: float) -> void:
 	var J: Dictionary = rig.get_meta("j")
 	if in_hand != _carry_in_hand:
 		_carry_in_hand = in_hand
-		var dest: Node3D = J["grip_r"] if in_hand else _weapon_store(J, store)
+		var dest: Node3D = _weapon_hand(J) if in_hand else _weapon_store(J, store)
 		if dest != null and weapon_node.get_parent() != dest:
 			weapon_node.reparent(dest, true)
 		_set_hilt(not in_hand and store == "hilt")
@@ -697,6 +698,20 @@ func _carry_weapon(delta: float) -> void:
 	# ease into the hold (identity in the hand; the back mount's own rest)
 	var k := 1.0 - exp(-delta * 16.0)
 	weapon_node.transform = weapon_node.transform.interpolate_with(Transform3D.IDENTITY, k)
+
+## The hand that holds the weapon: the right, except a bow on a body that holds it in the left (the ranger),
+## turned for the bow's kind (Archer.BOW_HOLD).
+func _weapon_hand(J: Dictionary) -> Node3D:
+	var w = equipment.get("weapon")
+	if J.has("grip_bow") and w != null and has_bow():
+		var g: Node3D = J["grip_bow"]
+		var hold: Array = Archer.BOW_HOLD.get(Archer.bow_key(Data.BASES[w["base"]]["kind"]), Archer.BOW_HOLD["bow"])
+		g.position = hold[0]
+		g.rotation_degrees = hold[1]
+		var at: Node3D = J["grip_bow_at"]
+		at.position = hold[2]
+		return at
+	return J["grip_r"]
 
 ## The storage node on the rig for "back" (made on first use: across the back, hilt over the right
 ## shoulder); "hilt" has none (the weapon model just hides).
@@ -1367,7 +1382,8 @@ func _process(delta: float) -> void:
 	if block_amt > 0.5:
 		speed *= 0.42
 	if atk_t >= 0.0:
-		speed *= 0.72
+		# an archer loosing arrows steps slowly with the bow drawn; everyone else slows a little mid-swing
+		speed *= Archer.SHOOT_MOVE if (has_bow() and atk_style == "bow") else 0.72
 	if game.test_fast:
 		speed *= game.TEST_FAST
 	if shove.length() > 0.05:
@@ -1484,6 +1500,8 @@ func _process(delta: float) -> void:
 		st.merge(carry.anim_state(), true)
 		_carry_weapon(delta)
 	Anim.pose(rig, st)
+	if is_archer():
+		Archer.pose_bow(self, st)
 	last_pose = st
 	_hover()
 	_draw_drain()
@@ -1593,6 +1611,8 @@ func _puppet_process(delta: float) -> void:
 	block_amt = st.get("block", 0.0)
 	atk_t = 0.0 if st.get("atk", -1.0) >= 0.0 else -1.0
 	Anim.pose(rig, st)
+	if is_archer():
+		Archer.pose_bow(self, st)
 	_hover()
 	_apply_shield_pose()
 	_update_trail(atk_t >= 0.0 and not has_bow())

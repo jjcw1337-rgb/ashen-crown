@@ -34,6 +34,39 @@ var hips_pose_rest := Vector3.ZERO
 var w_up := 0.0               # how much of the upper body the procedural moves own (0..1)
 var w_low := 0.0              # ... and of the legs
 var speed := 0.0              # smoothed ground speed (m/s)
+var shot := {}                # whole-body clip for an attack style: {style, clip, t0, release, t1}; see sync_pose
+var w_shot := 0.0
+var w_side := 0.0
+var w_aimwalk := 0.0          # shooting on the move: the aimed walk (shot "walk_clip")
+var w_reach := 0.0            # on the move, the drawing arm reaching to the quiver (shot "reach")
+var yaw_now := 0.0            # the body's side-on turn (degrees)
+
+## A shot's clip time for the attack's progress a: piecewise along shot "keys" [[a, t], ...] (the release key at
+## Anim's impact), or the old three-point squeeze (t0, release, t1).
+static func shot_time(shot: Dictionary, a: float) -> float:
+	if shot.has("keys"):
+		var ks: Array = shot["keys"]
+		for i in range(1, ks.size()):
+			if a <= float(ks[i][0]):
+				var k0: Array = ks[i - 1]
+				var k1: Array = ks[i]
+				return lerpf(float(k0[1]), float(k1[1]), clampf((a - float(k0[0])) / maxf(float(k1[0]) - float(k0[0]), 0.0001), 0.0, 1.0))
+		return float(ks[ks.size() - 1][1])
+	var imp := Anim.impact_at(str(shot["style"]))
+	return lerpf(shot["t0"], shot["release"], a / imp) if a < imp else lerpf(shot["release"], shot["t1"], (a - imp) / (1.0 - imp))
+
+## A piecewise weight [[a, w], ...] at a.
+static func curve_at(pts: Array, a: float) -> float:
+	if pts.is_empty() or a < float(pts[0][0]):
+		return 0.0
+	for i in range(1, pts.size()):
+		if a <= float(pts[i][0]):
+			var p0: Array = pts[i - 1]
+			var p1: Array = pts[i]
+			return lerpf(float(p0[1]), float(p1[1]), smoothstep(float(p0[0]), float(p1[0]), a))
+	return float(pts[pts.size() - 1][1])
+var rel_pts: Array = []       # the blend spaces' clip speeds (from Knight.build_mocap's opts)
+var com_pts: Array = []
 var hilt_bone := -1           # the bone the scabbard rides (the hips)
 var hilt_local := Vector3.ZERO  # the hilt's centre in that bone's frame (skeleton units)
 var _last_st_t := -1.0
@@ -147,11 +180,44 @@ func sync_pose(st: Dictionary) -> void:
 		_last_gp = gp
 	speed = lerpf(speed, v, 1.0 - exp(-dt * 10.0)) if dt > 0.0 else v
 	# --- layer 1: motion capture
-	tree.set("parameters/relaxed/blend_position", minf(speed, 4.25))
-	tree.set("parameters/combat/blend_position", minf(speed, 4.25))
+	var rp: Array = rel_pts if not rel_pts.is_empty() else RELAXED_PTS
+	var cp: Array = com_pts if not com_pts.is_empty() else COMBAT_PTS
+	tree.set("parameters/relaxed/blend_position", minf(speed, float(rp[rp.size() - 1])))
+	tree.set("parameters/combat/blend_position", minf(speed, float(cp[cp.size() - 1])))
 	tree.set("parameters/mix/blend_amount", drawn)
-	tree.set("parameters/speed/scale", _rate(speed, COMBAT_PTS if drawn > 0.5 else RELAXED_PTS))
+	tree.set("parameters/speed/scale", _rate(speed, cp if drawn > 0.5 else rp))
+	# the whole-body attack clip (the archer's shot): its draw squeezed into the attack before the release frame,
+	# the follow-through after it, so the arrow leaves on Anim.impact_at's frame at any attack speed
 	var die := dead > 0.0
+	var shooting: bool = not shot.is_empty() and a >= 0.0 and st.get("style", "") == shot["style"] and not die
+	# stepping while he shoots: the aimed walk carries the whole body instead of the standing shot
+	var stepping: bool = shooting and speed > 0.45 and shot.has("walk_clip")
+	if not shot.is_empty():
+		var kk := 1.0 - exp(-dt * 18.0) if dt > 0.0 else 1.0
+		w_aimwalk = lerpf(w_aimwalk, 1.0 if stepping else 0.0, kk)
+		if shot.has("walk_clip"):
+			tree.set("parameters/aimwalk_mix/blend_amount", w_aimwalk)
+			tree.set("parameters/aimwalk_speed/scale", clampf(speed / float(shot.get("walk_speed", 0.82)), 0.6, 2.4))
+		if shot.has("reach_clip"):
+			w_reach = curve_at(shot.get("reach", []), a) if stepping else lerpf(w_reach, 0.0, kk)
+			tree.set("parameters/reach_mix/blend_amount", w_reach)
+			if stepping:
+				tree.set("parameters/reach_seek/seek_request", shot_time({"keys": shot["reach_keys"]}, a))
+		if stepping:
+			shooting = false
+		w_shot = lerpf(w_shot, 1.0 if shooting else 0.0, kk)
+		if shooting:
+			tree.set("parameters/shot_seek/seek_request", shot_time(shot, a))
+		tree.set("parameters/shot_mix/blend_amount", w_shot)
+		# an archer stands side-on to his mark: the body turns so the bow arm points where the shot goes; his
+		# battle-ready stand ("combat_idle", aiming) is side-on too, so it turns the same way while he stands
+		if body_root != null:
+			var stand := drawn * (1.0 - clampf(speed / 0.8, 0.0, 1.0)) * (1.0 - w_aimwalk) if shot.get("idle_side", false) else 0.0
+			w_side = lerpf(w_side, maxf(w_shot, stand), kk)
+			# the shot's clip and the aiming stand may each want their own turn
+			var want_yaw: float = float(shot.get("yaw", 0.0)) if shooting else float(shot.get("stand_yaw", shot.get("yaw", 0.0))) * stand
+			yaw_now = lerpf(yaw_now, want_yaw, kk * 0.6)
+			body_root.rotation.y = PI + deg_to_rad(yaw_now)
 	var want_state := "dead" if die else "alive"
 	if want_state != _state:
 		_state = want_state
@@ -161,7 +227,7 @@ func sync_pose(st: Dictionary) -> void:
 	var style: String = st.get("style", "")
 	# the draw / holster (WeaponCarry) is acting only while the blade is on its way (0 = put away, 1 = in guard)
 	var drawing := drawn > 0.001 and drawn < 0.999
-	var acting := a >= 0.0 or float(st.get("block", 0.0)) > 0.05 or drawing or float(st.get("hit", 0.0)) > 0.3
+	var acting: bool = (a >= 0.0 and not shooting and not stepping) or float(st.get("block", 0.0)) > 0.05 or drawing or float(st.get("hit", 0.0)) > 0.3
 	var up_t := 0.0 if die else (1.0 if acting else 0.0)
 	var low_t := 0.0 if die else (1.0 if (a >= 0.0 and FOOTWORK.has(style)) else 0.0)
 	var k := 1.0 - exp(-dt * 14.0) if dt > 0.0 else 1.0
@@ -231,6 +297,9 @@ func _apply_procedural() -> void:
 
 ## Puts the gear followers on their bones (in the proxies' frame, so the old grip offsets fit).
 func _follow() -> void:
+	if not shot.is_empty():
+		X = _rel(skel)        # the body may be turned (the archer's side-on stance)
+		R = X.basis.orthonormalized()
 	for nm in followers.keys():
 		var f: Array = followers[nm]
 		var i: int = f[0]

@@ -63,8 +63,13 @@ func _run() -> void:
 	var lives := line.map(func(e): return e.life)
 	h.cds["pierce"] = 0.0
 	h.use_skill("pierce", p0 + fwd * 12.0)
-	for i in 70:
+	# the ranger's shot draws from the quiver first: wait for the arrow to be loosed and spent
+	var loosed := false
+	for i in 240:
 		await process_frame
+		loosed = loosed or not h.arrows.is_empty()
+		if loosed and h.arrows.is_empty():
+			break
 	var pierced := 0
 	for k in 3:
 		if line[k].life < lives[k]:

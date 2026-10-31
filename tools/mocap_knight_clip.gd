@@ -49,17 +49,31 @@ func _run() -> void:
 		sm.albedo_color = Color(0.4, 0.42, 0.33)
 		s.material_override = sm
 		root3.add_child(s)
-	var r: Node3D = Knight.build_mocap()
+	var archer := args.has("archer")
+	# archer.gd uses the Sfx autoload: load it at run time (a static reference compiles it before Sfx exists)
+	var AR: GDScript = load("res://scripts/archer.gd") if archer else null
+	var r: Node3D = AR.call("build_body") if archer else Knight.build_mocap()
 	r.set_meta("pers", "hero")
 	r.set_meta("gait", "knight")
 	r.set("fixed_dt", 1.0 / 30.0)
 	root3.add_child(r)
 	var J: Dictionary = r.get_meta("j")
-	var sword := Models.item_model({"base": "short_sword", "rarity": 0})
-	(J["grip_r"] as Node3D).add_child(sword)
-	var sh := Models.item_model({"base": "kite_shield", "rarity": 0})
-	(J["mount_l"] as Node3D).add_child(sh)
-	sh.position = Vector3(-0.03, 0, 0)
+	var sword := Models.item_model({"base": "long_bow" if args.has("longbow") else "short_bow", "rarity": 0}) if archer else Models.item_model({"base": "short_sword", "rarity": 0})
+	if archer:
+		var kind: String = Data.BASES["long_bow" if args.has("longbow") else "short_bow"]["kind"]
+		var g: Node3D = J["grip_bow"]
+		var hold: Dictionary = AR.get("BOW_HOLD")
+		kind = AR.call("bow_key", kind)
+		g.position = hold[kind][0]
+		g.rotation_degrees = hold[kind][1]
+		(J["grip_bow_at"] as Node3D).position = hold[kind][2]
+		(J["grip_bow_at"] as Node3D).add_child(sword)
+	else:
+		(J["grip_r"] as Node3D).add_child(sword)
+	if not archer:
+		var sh := Models.item_model({"base": "kite_shield", "rarity": 0})
+		(J["mount_l"] as Node3D).add_child(sh)
+		sh.position = Vector3(-0.03, 0, 0)
 	var cam := Camera3D.new()
 	cam.fov = 34
 	root3.add_child(cam)
@@ -85,9 +99,21 @@ func _run() -> void:
 			"attack":
 				var k := fmod(T, 2.1)
 				var idx := int(T / 2.1) % 3
-				if k < 0.65:
+				if archer:
+					if k < 0.8:
+						st["atk"] = k / 0.8
+						st["style"] = "bow"
+				elif k < 0.65:
 					st["atk"] = k / 0.65
 					st["style"] = ["swipe1", "swipe2", "swipe3"][idx]
+			"shootwalk":
+				# idle aimed, then walking slowed while he looses arrows (as the archer does in game), then stop
+				want = 4.8 * 0.36 if T > 0.6 and T < 5.4 else 0.0
+				var k2 := fmod(T, 0.96)
+				if T > 0.6 and T < 5.6 and k2 < 0.96:
+					st["atk"] = k2 / 0.96
+					st["style"] = "bow"
+				st["draw"] = 1.0
 			"block":
 				st["block"] = 1.0 if fmod(T, 2.0) < 1.2 else 0.0
 			"tour":
@@ -138,6 +164,15 @@ func _run() -> void:
 		st["move"] = mv
 		st["speed"] = spd
 		Anim.pose(r, st)
+		if archer:
+			AR.call("pose_bow_on", r, sword, Data.BASES["long_bow" if args.has("longbow") else "short_bow"]["kind"], st)
+			if f % 2 == 0 and f < 26 and sword.has_meta("strands"):
+				var fing: Vector3 = (J["at_hand_r"] as Node3D).global_transform * Vector3(0, -0.06, 0)
+				var sp: Dictionary = (AR.get("BOW_SPEC") as Dictionary)[AR.call("bow_key", Data.BASES["long_bow" if args.has("longbow") else "short_bow"]["kind"])]
+				var nk: Vector3 = sword.global_transform * ((sp["rest"] as Vector3) + (sword.get_meta("draw_off", Vector3.ZERO) as Vector3))
+				var lh: Vector3 = (J["at_hand_l"] as Node3D).global_position
+				var gp: Vector3 = sword.global_transform * (sp["grip"] as Vector3)
+				print("[H] f%d atk %.2f  nock-fingers %.3f m  grip-lefthand %.3f m" % [f, float(st.get("atk", -1.0)), nk.distance_to(fing), gp.distance_to(lh)])
 		var c := r.position
 		var off: Vector3 = {"side": Vector3(4.4, 1.2, 0.0), "front": Vector3(0.0, 1.4, -4.4), "back": Vector3(0.0, 1.6, 4.4), "34": Vector3(2.8, 2.0, -3.0), "game": Vector3(0, 17.0, 16.5) * 0.45}.get(view, Vector3(2.8, 2.0, -3.0))
 		if view == "game":
@@ -145,7 +180,13 @@ func _run() -> void:
 		if mode == "turn":
 			c = Vector3.ZERO
 			off = Vector3(0, 9, 7)
-		cam.transform = Transform3D(Basis(), c + off).looking_at(c + Vector3(0, 0.95, 0))
+		var look := Vector3(0, 0.95, 0)
+		var closes := {"close": Vector3(2.2, 0.1, -2.0), "closeback": Vector3(-1.4, 0.3, 2.6), "closetop": Vector3(0.3, 1.6, -0.6)}
+		if closes.has(view):
+			# the hands and the string, close up (relative to the way he faces)
+			off = r.transform.basis * (closes[view] as Vector3)
+			look = Vector3(0, 1.25, 0)
+		cam.transform = Transform3D(Basis(), c + off + (look - Vector3(0, 0.95, 0) if closes.has(view) else Vector3.ZERO)).looking_at(c + look)
 		await process_frame
 		await RenderingServer.frame_post_draw
 		get_root().get_texture().get_image().save_png("%s/c%03d.png" % [out, f])

@@ -390,13 +390,28 @@ static func _gem(p: Dictionary) -> Material:
 # ---------------------------------------------------------------- item models
 ## Returns a model for an item. Weapons: grip at origin, blade along -Z.
 ## Shields face -Z. Helms are centred on the head. Others are free-standing.
+const RANGER_BOW := "res://assets/models/ranger_bow.glb"
+
 static func item_model(item: Dictionary) -> Node3D:
 	var base: Dictionary = Data.BASES[item["base"]]
 	var p := palette(item)
 	var kind: String = base["kind"]
 	var sh: Dictionary = base.get("shape", {})
 	match base["slot"]:
-		"weapon": return weapon(kind, sh, p)
+		"weapon":
+			# bows (the archer's): the bow geometry the skeleton archers carry (weapon() has no bow of its own)
+			if kind in ["bow", "longbow"]:
+				# the ranger's own carved recurve (Meshy, tools/blender/archer/prep_bow.py) when it's there; a
+				# longbow is the same bow drawn longer
+				if ResourceLoader.exists(RANGER_BOW):
+					var b: Node3D = (load(RANGER_BOW) as PackedScene).instantiate()
+					var root := Node3D.new()
+					root.add_child(b)
+					b.scale = Vector3.ONE * (1.15 if kind == "longbow" else 1.0)
+					root.set_meta("ranger_bow", true)
+					return root
+				return enemy_weapon(kind)
+			return weapon(kind, sh, p)
 		"shield": return shield(kind, sh, p)
 		"helm": return helm(kind, p)
 		"armor": return armor_item(kind, p)
@@ -599,7 +614,8 @@ static func enemy_weapon(kind: String) -> Node3D:
 				var nx := Vector3(0.0 + 0.18 * (1.0 - pow(2.0 * t - 1.0, 2.0)), 0, z)
 				seg(root, prev, nx, 0.018, 0.018, wood, 6)
 				prev = nx
-			seg(root, Vector3(0, 0, -0.55), Vector3(0, 0, 0.55), 0.003, 0.003, Mats.mat(Color(0.85, 0.8, 0.7), 0.6), 4)
+			var bstr := seg(root, Vector3(0, 0, -0.55), Vector3(0, 0, 0.55), 0.003, 0.003, Mats.mat(Color(0.85, 0.8, 0.7), 0.6), 4)
+			bstr.name = "string"
 			root.rotation_degrees = Vector3(0, 0, 0)
 			root.position = Vector3(0, 0, 0)
 		"longbow":

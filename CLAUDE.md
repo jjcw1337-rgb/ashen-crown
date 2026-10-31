@@ -104,7 +104,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
     of Master and routes Master into it, so the whole game is silent in the browser. `Sfx._buses` uses `set_bus_count`;
 - **The archer** (`scripts/archer.gd`, `Archer`; the bow class for Jace, its name still his to choose, "Archer" in
   `Data.CLASSES` until then): with a bow (`Hero.has_bow`; bows are `Data.BASES` with `"cls": "archer"`, only he can
-  equip them; drawn in his left hand, `Models.weapon` "bow", `J["bow_l"]`) his attack shoots (`Archer.shoot` from
+  equip them) his attack shoots (`Archer.shoot` from
   `Hero.swipe_attack`/`free_attack`; `Hero.reach` is `Archer.RANGE`). His skills are fire, cold and lightning (ids kept):
   Fire Arrow (`pierce`: through a line, sets them burning, `Enemy.ignite`), Frost Volley (`volley`: a rain on the cursor,
   hits every 0.2 s and chills, `Enemy.chill`, slower on their feet; a partner's chill reaches the host through
@@ -112,9 +112,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   `Fx.bolt`), Spirit Beast (`beast`: commands his wolf, below). Arrows are Meshy models (`assets/models/arrows/`
   war / fire / frost, prepared by `tools/blender/prep_arrow.py`: head toward Godot -Z), `Archer._arrow_mesh(kind)`.
   Talents: Flame, Frost, Storm (`Talents.TREES["archer"]`; specials arrow_split, burn_dmg, wolf_burn, chill_pct, wolf_howl,
-  frost_shatter, arc_count, snare_dur, snare_max, volley_size, beast_two). Body: the knight's procedural body in hunter
-  colours (`Archer.body_gear`, kept on every gear change) until his Meshy model; talent icons still to paint
-  (`tools/talent_icons.py`). His **wolf** (`spirit_beast.gd`, `SpiritBeast`): JJ's dire forest wolf (Meshy, 25% larger
+  frost_shatter, arc_count, snare_dur, snare_max, volley_size, beast_two). His **wolf** (`spirit_beast.gd`, `SpiritBeast`): JJ's dire forest wolf (Meshy, 25% larger
   than a wolf, `assets/models/monsters/wolf.glb`, rigged by `tools/blender/act1/rig_quadruped.py` on the lion's
   skeleton, so `Lion.build(glb, scale)`/`Lion.pose` run it), his companion from the start: a state machine of follow /
   engage / command / protect / investigate / return / hold (every number in `SpiritBeast.CFG`); it settles at his side,
@@ -124,6 +122,23 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   faster while it lives. F commands it (`Archer._command_beast`): on an enemy it pounces, on open ground it holds, on
   himself it comes back, each with the 12 s battle buff. `"spirit_beast"` in `Data.ENEMIES` is the wolf as a monster.
   `tools/archer_test.gd`, `tools/pet_test.gd`, `tools/pet_clip.gd`, `tools/archer_shots.gd`, `tools/wolf_sheet.gd`.
+  Body: the ranger (`assets/models/archer_ranger.glb`, `Archer.build_body`): the Meshy
+  northern ranger (wolf-fur cowl, dark leather, quiver) on the knight's mocap system (`Knight.build_mocap(glb, opts)`,
+  `knight_mocap_rig.gd`): Meshy library clips for idle/walk/run and, with the bow out, the aimed stand and walk
+  (`combat_idle`, `walk_aim`); the bow attack, Fire Arrow and Frost Volley play the `shoot` clip whole-body (`Archer.SHOT`:
+  its draw squeezed in before Anim's release frame, the body turned side-on, `yaw`); Every shot draws a fresh arrow from the quiver: the standing shot plays Meshy's "Draw and Shoot from Back" (`shoot_back`) squeezed along `SHOT.keys` (reach, grab, arrow out, nock, raise, full draw, release on Anim's impact frame, follow-through; `KnightMocapRig.shot_time`), turned side-on (`yaw`; the aiming stand has `stand_yaw`). Shooting on the move: he keeps walking at `Archer.SHOOT_MOVE` (36%) of his pace (`Hero._process`; a shot at a clicked foe still plants him) in the aimed walk (`walk_clip`, timed to his speed, `w_aimwalk`), and only his right arm takes the reach to the quiver from `reach_clip` (a filtered Blend2 over `reach_bones`, weighted by `reach`). `Archer.pose_bow` shows the arrow in his hand from `GRAB` to `NOCK` (`_hand_arrow`: point first into the quiver `QUIVER`, then swung onto the bow) and, while he shoots, solves the bow onto his hands: grip in his left fist, the draw line on his right fingers (`FINGERS`), limbs upright with a `CANT`, so the string always meets the hand. Colours: `Archer.COLORS` ("crimson"; also teal, verdant, royal, "" = Meshy's own) swaps the albedo for `assets/textures/ranger/ranger_<name>.jpg` (`Archer.dye`), made by `tools/archer_colors.py` (texture dumped from the glb, regions from `tools/blender/archer/region_uv.py`: the face, hands, fur and straps keep their colour). Storm Snare and Spirit Beast are
+  the game's cast pose over the upper body. He holds the equipped bow in his LEFT hand (`J["grip_bow"]`,
+  `Archer.BOW_HOLD` per bow kind, `Hero._weapon_hand`); bows are drawn by `Models.enemy_weapon` (`item_model`
+  had none). `Archer.pose_bow` (every frame after the pose, the puppet's too) turns the bow from hanging in his
+  relaxed hand to upright on the shot's line with his stance (the rig's `w_side`), swaps the straight string for two
+  strands his right hand's fingers draw back to his cheek with a nocked arrow on the bow, and on the release the
+  arrow (fired from the bow hand, `_loose`) is gone and the string snaps back with a damped shiver
+  (`Archer.BOW_SPEC`: each bow model's tips, nock, pull, grip and hang). His bow is the Meshy carved recurve `assets/models/ranger_bow.glb` (`Models.item_model` for bow kinds, `Models.RANGER_BOW`; a longbow is it at 1.15x; `Archer.bow_key` picks the `ranger`/`ranger_long` BOW_HOLD/BOW_SPEC entries; bandit archers keep `enemy_weapon`'s bow). Rebuild: `blender -b --python tools/blender/archer/prep_bow.py -- meshy.glb assets/models/ranger_bow.glb spec.json [length] [tris]` (cuts Meshy's string, stands it limbs +y / string +z / grip on the origin, 1.45 m, ~9k tris, 1k textures) and copy spec.json's tips and rest into BOW_SPEC. Rebuild: `meshy.py rig`/`animate` (clip ids in the commit), then `blender -b --python
+  tools/blender/archer/prep_ranger_mocap.py -- rigged.glb out.glb 60000 clips_a.glb clips_b.glb` (merges and renames
+  the clips, cuts away the bow Meshy fused into his right hand, `bow_select.py`). Without the glb: the knight's
+  procedural body dressed as a hunter (`Archer.build_placeholder`, `Archer.body_gear` kept on every gear change; its bow in `J["grip_l"]`/`J["bow_l"]`). Preview: `tools/mocap_knight_clip.gd -- outdir
+  run|attack|shootwalk 34|game|side|close|closeback frames archer [longbow]`. Talent icons still to paint (`tools/talent_icons.py`).
+  `tools/archer_test.gd` checks it (run it with `--fixed-fps 60`; it counts frames).
 - **Adding a class**: add it to `Data.CLASSES`, give it four `SKILLS` entries with its `cls`, build its look the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep working), handle its skill ids in `Hero.use_skill` / `_impact`, and add glyphs in `ui.gd` `SkillGlyph`.
 - **Underworld** (Demon's Phase): `game.set_underworld()` blends a screen-space grade (`DemonFx.UNDERWORLD_SHADER`), the `under_amt` global (terrain veins and rune rings in `mats.gd`), environment tweaks, rising souls and crimson monster outlines (`Enemy.set_soul_lit`). Monsters ignore a phased hero (`hero.phased`).
 - **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `_update_drain`, and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. Skill effects are local only (partners see the cast pose, not the beam), like every other class.

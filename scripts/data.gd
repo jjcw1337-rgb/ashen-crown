@@ -118,6 +118,8 @@ const WEAPON_PROFILES := {
 	"knight": {"motion": "knight", "store": "hilt", "draw_time": 0.85, "holster_time": 0.9, "grab": 0.38, "disengage": 4.0},
 	# the other classes keep the default over-the-shoulder draw until their new models arrive
 	"warlock": {"motion": "back", "store": "back"},
+	# the archer's bow goes across his back beside the quiver
+	"archer": {"motion": "back", "store": "back"},
 	"wraith": {"motion": "back", "store": "back"},
 	"demon": {"motion": "back", "store": "back"},
 }
