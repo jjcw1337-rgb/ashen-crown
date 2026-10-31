@@ -32,6 +32,9 @@ var bar_style := "A"
 var skill_slots := {}        # bar slot ("lmb", "rmb", "Q".."V") -> its Control
 var skills_panel: PanelContainer
 var talent_panel: PanelContainer
+var quest_panel: PanelContainer       # the quest log (J, Quests)
+var quest_list: VBoxContainer
+var quest_tracker: VBoxContainer     # the current objectives under the corner map
 var talent_cols: HBoxContainer
 var talent_head: Label
 var talent_badge: Button       # over the bar while talent points wait to be spent
@@ -168,6 +171,7 @@ func setup(g: Node) -> void:
 	_build_test_panel()
 	_build_skills_panel()
 	_build_talent_panel()
+	_build_quests()
 	_build_tooltip()
 	_build_title()
 	_build_join()
@@ -670,7 +674,7 @@ func _build_hud() -> void:
 	hint_lbl.offset_right = 400
 	hint_lbl.offset_top = -bh - 52
 	hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint_lbl.text = "Left / right mouse and Q E R F G V: your skills (K to set them)  ·  N: talents  ·  Space: swing  ·  Shift: sprint  ·  1-4: potions  ·  I/C: inventory/stats  ·  T: portal  ·  Tab: map"
+	hint_lbl.text = "Left / right mouse and Q E R F G V: your skills (K to set them)  ·  N: talents  ·  J: quests  ·  Space: swing  ·  Shift: sprint  ·  1-4: potions  ·  I/C: inventory/stats  ·  T: portal  ·  Tab: map"
 	root.add_child(hint_lbl)
 	minimap = Minimap.new()
 	minimap.ui = self
@@ -682,6 +686,15 @@ func _build_hud() -> void:
 	minimap.offset_bottom = 252
 	minimap.set_big(false)
 	root.add_child(minimap)
+	quest_tracker = VBoxContainer.new()
+	quest_tracker.anchor_left = 1.0
+	quest_tracker.anchor_right = 1.0
+	quest_tracker.offset_left = -250
+	quest_tracker.offset_right = -18
+	quest_tracker.offset_top = 262
+	quest_tracker.add_theme_constant_override("separation", 1)
+	quest_tracker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(quest_tracker)
 
 ## Small gold key-cap in a slot's corner showing its hotkey.
 func _keycap(k: String) -> PanelContainer:
@@ -1393,6 +1406,101 @@ func _talent_node(t: Dictionary, tree: int, open: bool) -> Control:
 	return p
 
 # ---------------------------------------------------------------- inventory
+## The quest log (J): every quest taken, the main quest first, with its story, objectives and reward. The tracker
+## under the corner map lists the current objectives. Both redraw when a quest moves (Quests.changed).
+func _build_quests() -> void:
+	quest_panel = _panel("Quests", true, 540, 470)
+	var vb: VBoxContainer = quest_panel.get_node("vb")
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(520, 420)
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	vb.add_child(sc)
+	quest_list = VBoxContainer.new()
+	quest_list.add_theme_constant_override("separation", 14)
+	quest_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(quest_list)
+	quest_panel.visibility_changed.connect(func():
+		if quest_panel.visible:
+			_fill_quests())
+	game.quests.changed.connect(func():
+		_fill_tracker()
+		if quest_panel.visible:
+			_fill_quests())
+
+func _fill_quests() -> void:
+	for c in quest_list.get_children():
+		c.queue_free()
+	var qs = game.quests
+	var shown := 0
+	for pass_done in [false, true]:
+		for q in qs.current() if not pass_done else qs.line().filter(func(x): return qs.status(x["id"]) == "done"):
+			var id: String = q["id"]
+			var s: String = qs.status(id)
+			var box := VBoxContainer.new()
+			box.add_theme_constant_override("separation", 3)
+			quest_list.add_child(box)
+			var tl := _label(("◆  " if q.get("main", false) else "") + str(q["name"]) + ("   (done)" if s == "done" else ""), 19, GOLD if s != "done" else DIM, true)
+			box.add_child(tl)
+			var who: String = Data.VENDORS[0].get(q["giver"], "")
+			box.add_child(_label(("Main quest  ·  " if q.get("main", false) else "") + "From " + who, 12, DIM))
+			var story := _label(str(q["done"] if s != "active" else q["busy"]), 14)
+			story.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			story.custom_minimum_size = Vector2(500, 0)
+			box.add_child(story)
+			if s != "done":
+				var c: Array = qs.counts(id)
+				var goals: Array = q["goals"]
+				for i in goals.size():
+					var g: Dictionary = goals[i]
+					var got: bool = int(c[i]) >= int(g["n"])
+					var gl := _label(("☑  " if got else "☐  ") + str(g["text"]) + ("   %d / %d" % [c[i], g["n"]] if int(g["n"]) > 1 else ""), 14, Color(0.6, 0.85, 0.5) if got else Color(0.9, 0.86, 0.78))
+					box.add_child(gl)
+				if s == "ready":
+					box.add_child(_label("✔  Return to " + who, 14, Color(1.0, 0.82, 0.45)))
+				var rw := _label("Reward: " + qs.reward_text(q), 13, DIM)
+				rw.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				rw.custom_minimum_size = Vector2(500, 0)
+				box.add_child(rw)
+			shown += 1
+	if shown == 0:
+		var none := _label("No quests yet. Talk to the people of the camp: a gold ! over someone means they have work for you.", 14, DIM)
+		none.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		none.custom_minimum_size = Vector2(500, 0)
+		quest_list.add_child(none)
+
+func _fill_tracker() -> void:
+	if quest_tracker == null:
+		return
+	for c in quest_tracker.get_children():
+		c.queue_free()
+	var qs = game.quests
+	for q in (qs.current() as Array).slice(0, 4):
+		var id: String = q["id"]
+		var t := _label(str(q["name"]), 15, GOLD, true)
+		t.add_theme_constant_override("outline_size", 4)
+		t.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+		t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		quest_tracker.add_child(t)
+		var lines: Array = []
+		if qs.status(id) == "ready":
+			lines.append(["✔ Return to " + str(Data.VENDORS[0].get(q["giver"], "")), Color(1.0, 0.82, 0.45)])
+		else:
+			var c: Array = qs.counts(id)
+			var goals: Array = q["goals"]
+			for i in goals.size():
+				if int(c[i]) < int(goals[i]["n"]):
+					lines.append(["· %s%s" % [goals[i]["text"], (" %d/%d" % [c[i], goals[i]["n"]]) if int(goals[i]["n"]) > 1 else ""], Color(0.88, 0.85, 0.78)])
+		for ln in lines:
+			var l := _label(str(ln[0]), 13, ln[1])
+			l.add_theme_constant_override("outline_size", 4)
+			l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+			l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			quest_tracker.add_child(l)
+		var gap := Control.new()
+		gap.custom_minimum_size = Vector2(0, 6)
+		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		quest_tracker.add_child(gap)
+
 func _panel(title: String, left: bool, w: int, h: int) -> PanelContainer:
 	var p := PanelContainer.new()
 	if left:
@@ -3738,7 +3846,7 @@ func _walked_off() -> void:
 
 func close_all() -> bool:
 	var any := close_skill_picker()
-	for p in [inv_panel, char_panel, shop_panel, stash_panel, burn_panel, wp_panel, dialog_panel, ench_panel, test_panel, skills_panel, talent_panel]:
+	for p in [inv_panel, char_panel, shop_panel, stash_panel, burn_panel, wp_panel, dialog_panel, ench_panel, test_panel, skills_panel, talent_panel, quest_panel]:
 		if p.visible:
 			p.visible = false
 			any = true
@@ -3747,7 +3855,7 @@ func close_all() -> bool:
 	return any
 
 func any_panel_open() -> bool:
-	return inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible
+	return inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible or quest_panel.visible
 
 func message(t: String, col := Color(1, 1, 1), dur := 2.5) -> void:
 	msg_lbl.text = t
@@ -3764,6 +3872,7 @@ func flash_damage() -> void:
 func set_zone(t: String) -> void:
 	zone_lbl.text = t
 	big_message(t)
+	_fill_tracker()
 
 func show_target(nm: String, frac: float, col: Color) -> void:
 	target_box.visible = true

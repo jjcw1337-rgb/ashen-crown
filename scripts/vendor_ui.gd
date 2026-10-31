@@ -50,6 +50,7 @@ static func _aabb(n: Node, to: Transform3D) -> AABB:
 class Plates extends Control:
 	var ui
 	var plates := {}     # Inter -> PanelContainer
+	var marks := {}      # Inter -> Label: the quest giver's "!" (work on offer) or "?" (a quest to hand in)
 
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -123,6 +124,8 @@ class Plates extends Control:
 			var d: float = g.hero.global_position.distance_to(it.global_position)
 			if cam.is_position_behind(head) or d > 18.0:
 				p.visible = false
+				if marks.has(it):
+					(marks[it] as Label).visible = false
 				continue
 			var hov: bool = g.hovered == it
 			p.visible = true
@@ -133,12 +136,42 @@ class Plates extends Control:
 			p.pivot_offset = Vector2(p.size.x * 0.5, p.size.y)
 			var sp: Vector2 = cam.unproject_position(head)
 			p.position = (sp - Vector2(p.size.x * 0.5, p.size.y)).round()
+			_mark(it, p, g)
 		for it in plates.keys():
 			if not live.has(it):
 				var p: PanelContainer = plates[it]
 				if is_instance_valid(p):
 					p.queue_free()
 				plates.erase(it)
+				if marks.has(it):
+					(marks[it] as Label).queue_free()
+					marks.erase(it)
+
+	## A gold "!" or "?" over the plate of someone with a quest (Quests.mark), bobbing gently.
+	func _mark(it: Inter, p: PanelContainer, g) -> void:
+		var mk: String = g.quests.mark(str(it.data.get("role", ""))) if g.quests != null and it.kind == "vendor" else ""
+		var l: Label = marks.get(it)
+		if mk == "":
+			if l != null:
+				l.visible = false
+			return
+		if l == null:
+			l = Label.new()
+			l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			l.add_theme_font_override("font", ui.font_title)
+			l.add_theme_font_size_override("font_size", 34)
+			l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+			l.add_theme_constant_override("outline_size", 7)
+			l.size = Vector2(40, 44)
+			add_child(l)
+			marks[it] = l
+		l.text = mk
+		l.add_theme_color_override("font_color", Color(1.0, 0.82, 0.3) if mk == "!" else Color(0.75, 0.9, 1.0))
+		l.visible = p.visible
+		l.modulate.a = p.modulate.a
+		var bob := sin(Time.get_ticks_msec() / 260.0) * 3.0
+		l.position = (p.position + Vector2(p.size.x * 0.5 - 20.0, -46.0 + bob)).round()
 
 ## A live, lit bust of the trader: a copy of their model in its own little world, playing their
 ## talk and idle clips.
