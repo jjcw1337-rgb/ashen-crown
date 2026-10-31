@@ -6,7 +6,7 @@ var g
 var sfx
 const EXPECT := {
 	"knight": {"cleave": ["cleave_swing", "impact_flesh"], "nova": ["holy_nova"], "charge": ["charge_dash"], "cry": ["battle_cry"]},
-	"wraith": {"reap": ["reap_swing"], "wail": ["wail"], "shade": ["shade_in", "shade_out"], "host": ["host_summon"]},
+	"wraith": {"rend": ["reap_swing"], "siphon": ["spirit_dart"], "step": ["shade_in", "shade_out"], "grasp": ["slam"], "phantom": ["host_summon"], "night": ["host_summon"]},
 	"demon": {"hellclaw": ["hellclaw"], "summon": ["summon_demon"], "phase": ["phase_in"], "pact": ["blood_pact"]},
 	"warlock": {"drain": ["drain_start"], "blight": ["blight_cast"], "shackles": ["shackles"], "covenant": ["covenant"]},
 	"archer": {"pierce": ["bow"], "volley": ["bow"], "snare": ["impact_metal"], "beast": ["lion_roar"]},
@@ -48,7 +48,7 @@ func _run() -> void:
 		g.ui.close_all()
 		g.test_immortal = true
 		var h = g.hero
-		h.level = 12
+		h.level = 20       # every skill (the Wraith's ultimate opens at 18)
 		h.recalc()
 		h.mana = h.max_mana
 		var bad := []

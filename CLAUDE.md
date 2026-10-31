@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `collision_test`, `aim_test`, `plague_test` (`--fixed-fps 60`), `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test`, `mp_boss_test` and `plague_mp_test` (run one copy
+`det_test`, `grass_test`, `collision_test`, `aim_test`, `plague_test` (`--fixed-fps 60`), `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test`, `mp_boss_test` and `plague_mp_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -50,7 +50,9 @@ Screenshots need a display: `xvfb-run -a godot --rendering-driver opengl3 --path
 The moor's road is `World.road_style()`: the paved Old Kingsroad (2) by default; `--road 0|1|3` shows the old broad
 road, the wagon trail and the moor trails for comparison. `tools/zone_overview.gd -- out.png [--road N]` renders a high view of it.
 
-Run the relevant tests before pushing. A push to `main` publishes to everyone in ~5 minutes.
+Run the relevant tests before pushing. A push to `main` publishes to everyone in ~5 minutes, so **Claude never pushes
+to `main` on its own**: push your work to a `test-*` branch (`git push origin HEAD:test-something`, or `test-all` for the
+shared preview), give the preview build's link, and go to `main` only when Blaine and jj have both said so.
 
 ## Code map (`scripts/`)
 
@@ -61,7 +63,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `talents.gd` | Talent trees (`Talents.TREES`: three per class), row rules, the auto build for old saves (`AUTO`) |
 | `world.gd` | Zone builder: terrain, roads, buildings, trees/grass (MultiMesh chunks), spawns, `burn_points` |
 | `hero.gd`, `knight.gd`, `knight_rig.gd`, `anim.gd` | Player: class (`cls`, `set_class`), stats (`recalc`), combat, skills, gear visuals, animation, co-op puppet mode |
-| `wraith.gd`, `wraith_fx.gd` | Wraith class: body mesh + spectral shader on the knight skeleton; skill effects |
+| `wraith.gd`, `wraith_skills.gd`, `wraith_fx.gd` | Wraith class: the Meshy body on the mocap system with the spectral shader; its six skills (casts, blows, the tether, phantoms, the night); their effects |
 | `demon.gd`, `demon_fx.gd`, `demon_minion.gd` | Demon class: knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader; skill effects and the Underworld screen grade; summoned demons (simple ally AI) |
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
 | `plague.gd` | Plague Doctor class: body (mocap, whole-body skill clips), Toxic Flask, Volatile Mixture, Pestilent Trap, The Last Epidemic, poison and infection, co-op replay |
@@ -79,6 +81,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `ui.gd`, `hud_bar.gd`, `icon_renderer.gd` | All UI built in code |
 | `vendor_ui.gd` | Nameplates over the town's people and the trader's live portrait in the trade window |
 | `models.gd`, `skeleton.gd`, `flora.gd`, `props.gd`, `geo.gd`, `mats.gd` | Procedural meshes and shaders |
+| `grass.gd`, `grass_field.gd` | Act I's living 3D grass: species, biomes, placement and shader (`Grass`); the touch field and the wind (`GrassField`, a node of Game) |
 | `weather.gd`, `fx.gd`, `sfx.gd`, `sfx_bank.gd` | Snow/ash, particles, audio (autoload `Sfx`: recorded/generated sounds from `assets/audio/sfx/` listed in the generated `sfx_bank.gd`, with the old synthesized sounds as fallback) |
 
 ## Rules and gotchas
@@ -179,7 +182,52 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   Props: `assets/models/plague/` flask, volatile, trap (Meshy text-to-3D, `act1/prep_prop.py`). Talents: Toxicology,
   Volatile Arts, Contagion (icons `p_*.png`, `plague_tree*.png`). Tests: `tools/plague_test.gd` (`--fixed-fps 60`),
   `tools/plague_mp_test.gd` (host + join); screenshots `tools/plague_shots.gd` (`--fixed-fps 10`).
-- **Adding a class**: add it to `Data.CLASSES`, give it four `SKILLS` entries with its `cls`, build its look the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep working), handle its skill ids in `Hero.use_skill` / `_impact`, and add glyphs in `ui.gd` `SkillGlyph`.
+- **Adding a class**: add it to `Data.CLASSES`, give it four (up to six: Q E R F G V) `SKILLS` entries with its `cls`, build its look the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep working), handle its skill ids in `Hero.use_skill` / `_impact`, and add glyphs in `ui.gd` `SkillGlyph`.
+- **The Wraith's body**: the Meshy horned, chained wraith (concept D) on the shared mocap system
+  (`Wraith.build_mocap`, `assets/models/wraith_mocap.glb`; falls back to the code-built robe without it). He has no
+  legs and never walks: `tools/blender/wraith/prep_wraith_mocap.py` cuts the skeletal legs and feet out of the mesh
+  (what sat within reach of the leg bones, plus the scraps), hangs the robe below the hips on six cloth panels of
+  three bones (hA..hF, from the hips only, no leg weights) and the wrist shackle chains on two more (hG, hH, from the
+  hands), rebinds the sleeve rags and chain links Meshy had tied to the legs onto the arms (weights diffused edge by
+  edge from the arm-bound vertices), and writes vertex colour R = down the robe. Clips: Meshy's idle, punches, casts,
+  scream, hit, dodge (root motion taken out) plus clips the script makes from the idle: `combat_idle` (the claws
+  raised and forward; Meshy's boxer's stance is dropped), `float` / `float_combat` (the arms eased back, trailing)
+  and `death` (rears up, arms flung wide and head back, then the head drops and the arms sag). Rebuild: `blender -b
+  --python tools/blender/wraith/prep_wraith_mocap.py -- rigged.glb out.glb 45000 clips_a.glb clips_b.glb`, then
+  `godot --headless --import`. The glide is `KnightMocapRig`'s **float mode** (`float_mode`, set by `Wraith.build_mocap`
+  with `hover` = `Wraith.HOVER`): the blend spaces go idle -> float by ground speed (`Wraith.FLOAT_SPEED`, clips never
+  retimed), and `_float` leans the body into its travel (`FLOAT_LEAN`, more while accelerating, pivoting at the hips
+  `FLOAT_PIVOT`), banks into turns (`FLOAT_BANK`), lifts it a little at speed and bobs it. `_sway_robe` (in place of
+  the hair sim) swings the panels toward the push of the air he moves through (the ones behind stream out and back,
+  the front ones press in a little, a turn drags them round, gusts drift them at rest, a hit kicks them, lower bones
+  looser so a panel curves instead of turning like a board) and the wrist chains as pendulums that always hang from
+  the hands. Death: the clip's rear-up, then the rig sinks him into the ground (`death_t`) while the spectral
+  materials dissolve (`phase_amt`, meta `spectral_mats`), the eyes flare and go out (`eye_light`) and the hem mist
+  stops (`hem_mist`); all reset on revive. `Hero._hover` and the hero's death tilt leave the mocap wraith alone
+  (`Hero._floats`). `scripts/wraith_mocap.gdshader`: matte Meshy textures, the cyan light in the tears, a rim, the
+  hem fraying into mist (R + noise, cut away with a glowing edge), the robe's inside a dark hollow (back faces).
+  Preview: `tools/mocap_knight_clip.gd -- outdir idle|run|turn|tour|attack|block 34|side|front|close|game frames wraith
+  [relaxed]`.
+- **The Wraith's skills** (`scripts/wraith_skills.gd` `WraithSkills`, effects `scripts/wraith_fx.gd`, tuning in
+  `Data.SKILLS`; six on Q E R F G V): Spectral Rend (Q: lunges at the foe ahead, two claw rakes, souls heal), Soul
+  Siphon (E: a tether into one foe for 2.5 s that drains, heals and slows; it holds while he fights on), Shadowstep (R:
+  mist to the cursor, a spinning strike on landing, `Hero.veil_t` = mist for a moment, blows pass through; the shade
+  left behind collapses), Haunting Grasp (F: spectral hands out of the ground at the cursor, pull in and hold),
+  Phantom Assault (G, level 14: three afterimages streak through the foes ahead in a fan, then his own strike) and
+  Eternal Night (V, level 18, the ultimate: rise, scream, hang in the dark, fall; four attacks chained by
+  `_update_night`, +40% damage after). Each skill is a whole-body clip of his (`Wraith.SHOTS`: style -> clip and the
+  attack progress -> clip seconds keys; `Knight.build_mocap` opts `"shots"` and `KnightMocapRig.shots` hand the rig's
+  one shot node whichever style is playing; the blow lands on `Anim.impact_at` of its style): claw2 for the rend,
+  cast2's reach for the tether, the dodge's spin for the step, the slam for the grasp and the night's fall, claw1 for
+  the phantoms, cast and scream for the night. Skill state lives in `Hero.wr` (the tether, phantoms in flight, the
+  night's stage; `WraithSkills.clear`). Afterimages are `WraithFx.afterimage`: the body's armature duplicated with
+  its bone poses, under copies of the spectral materials with `ghost` on. The spectral claws (`WraithFx.claws`) sit
+  on the hand bones (BoneAttachment3D, in the armature's centimetres) and grow out for the rakes. Soul Siphon's slow
+  is `Enemy.slow` (rides the stun RPC as a negative time). Old saves' bindings of reap/wail/shade/host become
+  rend/siphon/step/grasp (`WraithSkills.OLD_IDS`, `migrate_binds` in `Hero.from_save`); the talent ids (and their
+  painted icons) were kept, their effects now name the new skills. `tools/wraith_test.gd` exercises every skill;
+  `tools/wraith_skills_clip.gd -- outdir [skill|all] [close|game]` renders frames of each (needs xvfb and
+  `--fixed-fps 30`; the Low preset and no shadows, since software GL is slow).
 - **Underworld** (Demon's Phase): `game.set_underworld()` blends a screen-space grade (`DemonFx.UNDERWORLD_SHADER`), the `under_amt` global (terrain veins and rune rings in `mats.gd`), environment tweaks, rising souls and crimson monster outlines (`Enemy.set_soul_lit`). Monsters ignore a phased hero (`hero.phased`).
 - **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `_update_drain`, and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. Skill effects are local only (partners see the cast pose, not the beam), like every other class.
 - **King Grubb** (Act I boss, `hoard.gd`) is host-authoritative. Every visible part of the fight (piles, bombs, burst
@@ -240,15 +288,34 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   Meshy oaks `assets/models/trees/oakN.glb` (prepared by `tools/blender/prep_tree.py`: trunk on the origin, ~6 m, 1k
   textures) built by `Flora.oak_model(k)` with `MESHY_TREE_SHADER` (wind sway by height, snow/ash, see-through near the
   player) plus the game's leaf clusters (`OAK_LEAVES`); the moor is ~40% oaks with groves off the road. Grass is
-  painted for the game's camera: nine Meshy 2D clumps drawn from 45 degrees above (`assets/textures/grass/topN.png`,
-  `Flora.GRASS_TOP` sizes and weights), each on one card that leans back to face the fixed camera (`Flora._camera_card`,
-  no yaw, mirrored at random; `GRASS_CARD_SHADER`), a clump per spot and a smaller one beside most, over the blade grass
-  at half density. New clumps: `meshy.py draw` with "seen from above at a 45 degree camera angle ... chunky blades,
-  no thin hair-like detail" and `--cutout`, then `tools/grass_prep.py meshy.png topN.png` (crops, squares, scales and
-  bleeds the colour into the clear pixels; without that, far clumps go dark and blobby) and mipmaps on in the .import.
-  Unmipmapped or hair-thin cut-outs flicker pixel by pixel; the card shader cuts out with alpha to coverage. The older
-  upright photo cards (`gN.png`, `Flora.grass_cards`) are the fallback. The see-through near the player (trees, props)
-  uses an ordered dither (`dith`), not per-pixel noise, which sparkled in the tree shadows too.
+  the **living 3D grass** (`scripts/grass.gd` `Grass`, `scripts/grass_field.gd` `GrassField`; Act I's camp, moor and
+  fort, i.e. whenever `oak_forest`; A2/A3 keep the old blade clumps): seven species built in code (`Grass.SPECIES`:
+  meadow, tall seed-head grass, tussock, dry straw, moss with clover, broad-leaved weeds, sparse verge grass;
+  curved tapered blades with rounded normals, two variants, two LODs) mixed by biomes (`Grass.BIOMES`: meadow,
+  woodland, dry, verge, trampled, ruins). A zone answers `grass_ground(x, z)` (0 bare .. 1), `grass_height` and
+  `grass_biome` (weights; World's: verges by the road, undergrowth near `tree_pts`, dry patches and round the
+  Sloths' clearings, trodden in the fort and camp), and `Grass.scatter` fills MultiMesh chunks (`CHUNK` m, per
+  instance custom data: shade, dryness, random) in about a second. Colours: `Grass.ACT1` (matched to the painted
+  clumps it replaced). The shader bends each blade from its root by the **wind** (global `wind_dir`,
+  `wind_strength`, `wind_gust`, `wind_phase`: gust fronts rolling along the wind, sway per clump, flutter;
+  `GrassField.WIND` profiles per zone set in `Game._grass_zone`, blended by `set_wind(profile, secs)`, drifting
+  on their own) and by **touch**: `GrassField` is a GPU spring simulation following the camera (two ping-pong
+  SubViewports, 256 px over 64 m, RG bend / BA velocity in 8 bits, global `grass_field` + `grass_field_rect`);
+  every mover from `Game._grass_movers` (hero, partners, monsters, pets, demons) presses a capsule along its real
+  path (size from its `radius`, harder when sprinting or dashing, a slow flattening when standing), an attack's
+  impact frame (`Anim.impact_at`, so every peer sees it) throws an arc in front (`GrassField.swing`; slams and
+  mauls add a ring), and `Fx.ring`/`Fx.holy_slam` (any nova, slam or spell ring) shove a ring
+  (`GrassField.impulse(pos, radius, strength)`). Local and cosmetic: no network traffic. Far grass thins by
+  shrinking clumps by their random value and LOD0/LOD1 cross-fade per clump (`Grass.FADE`, `LOD_BAND` per
+  preset, using the global `grass_cam` so shadow passes agree); density per preset `QUALITY_DENSITY`; grass
+  casts shadows only on Ultra. `Grass.apply_quality` updates distances (`Game.apply_quality` skips the 3D grass's
+  nodes, meta `grass3d`). Tests: `tools/grass_test.gd` (headless: species, LODs, no painted clumps, field on/off,
+  movers, swings, rings, wind); `tools/grass_lab.gd -- outdir [quality] [zoomin]` (needs a display: biome bands,
+  scripted walkers that walk, sprint, stop, turn and dash, a big beast, swings, a slam, wind changes; saves frames
+  and checks the field lines up and returns fully to rest). Performance from any build:
+  `AshenCrown -- --shot out.png --zone wild --god --perf 12 --quality 2 --grassspot` writes `out.txt` (fps, 1% low,
+  draw calls, primitives, GPU). The painted clumps (`Flora.GRASS_TOP`, `_camera_card`) are no longer placed;
+  `Flora.flower_card` still uses `_camera_card` for the Sunstar Blooms.
   **Sunstar Blooms** (`World._rare_flowers`, Act I only, 3 per moor, 14-34 m off the road, own seed): a glowing
   painted card (`Flora.flower_card`) and a breathing light; picking one (`Game._interact` "flower") gives +50%
   experience for 5 minutes (`Game.xp_bonus_t`, shared with the Experience Shrine; the XP bar counts it down) and is
@@ -435,6 +502,25 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   (`SIGNATURE`, `_signature`). Choosing a hero plays its own sound (`ClassStage.PICK_SOUND`: layers of the game's recordings, `pick_sound`), and the screen has its own theme, `music_select` (music_town's candidate take 14; `Game.zone_music()` brings the zone's song back when it closes). Below, in the inventory's iron frame: name, story, stats, skills in the bar's sockets,
   the name and Play. The stage is built when the picker opens and freed when it closes. A new class needs a
   `ClassStage.CLASSES`/`ACCENTS`/`SIGNATURE` entry and its `_fidget` case. `tools/class_shot.gd -- outdir [frames]`.
+- **Title screen** (`UI._build_title`, `scripts/title_stage.gd` `TitleStage`): the Gate of the Ashen Crown at dusk in
+  its own World3D: a ruined cathedral gate with the dusk showing through its arch (`BACKDROP_SHADER`), broken arcades,
+  the fallen stone king and a giant crown in the ash, fog banks, falling ash, embers, braziers and torches, heat
+  lightning now and then. Models are Meshy (concept image, then image-to-3D, 144 credits) in `assets/models/title/`
+  (`gate` 18 m, `arcade` 8 m, `colossus` 10 m, `crown` 1 m, prepared by `tools/blender/prep_prop.py`; the colossus cut
+  at the ash line by `tools/blender/trim_below.py`), darkened to the game's palette in code (`SOOT`); without them
+  procedural stand-ins are built. Two daises: Continue (left) shows the last character played as a co-op puppet in
+  their saved gear (`Game.character_gear(id)`, read-only), idle, doing their class's `ClassStage.SIGNATURE` move when
+  hovered; Create New Character (right) is an empty dais with a rune circle and a cold light. The choices are cards
+  (`UI._title_card`) placed under their daises each frame (`TitleStage._place_cards`); dais or card, hover leans the
+  camera and lights that side (`set_focus`), a click plays the camera's move in (`enter`) and then Continue calls
+  `start_game(true, …, id)` with the id of the one shown, New opens the class picker. No saves: the Continue card is
+  disabled and the camera leans to New. Characters, co-op and Quit sit in a row below. While the title is up the main
+  viewport's 3D is off (`disable_3d`; the camp still builds behind), the stage stops drawing under the class picker or
+  the list (`covered`), and the music is `music_select` (`Game.zone_music`). Sharpness: MSAA only (no FXAA/TAA), no
+  mesh LOD, anisotropic filtering on the models, light bloom and a contrast-adaptive sharpen (`SHARPEN_SHADER`). Screens
+  narrower than 16:9 keep 16:9's width of view (`H_FOV`). `tools/title_test.gd` (the flow), `tools/title_shot.gd --
+  outprefix [class]` (screenshots with and without a save), `tools/title_clip.gd -- outdir` (frames of the hover and
+  the move in; `--fixed-fps 30`).
 - **Quests** (`scripts/quests.gd`, `Quests`, `Game.quests`; the log is J, `UI._build_quests`): every quest is data in
   `Quests.LINES` by run (0 = Act I; other runs have none yet): its giver (a camp role, `Data.VENDORS`), texts (`offer`,
   `busy`, `done`), goals (`kill` with Data.ENEMIES ids, `pick` with item bases, `flower`), `after` (a quest that comes
@@ -447,7 +533,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   and Blaine to rewrite. `tools/quest_test.gd`.
 - **Characters** (save slots): each character is its own save, `user://characters/<id>.json` (`Game.char_id`,
   `char_name`; the save holds `name` and `played`). `Game.list_characters()` reads them (last played first) for the
-  title's Continue button and the Characters list (Play / Delete); New Character asks for a name on the class picker.
+  title's Continue card and the Characters list (Play / Delete); New Character asks for a name on the class picker.
   The pre-characters save `user://ashen_crown_save.json` is adopted once as the first character and left in place.
   The pause menu's "Save and Exit to Title" is `Game.exit_to_title()`. Co-op uses the last played character and its
   name. Tools still save to the test file; `tools/char_test.gd` moves `char_dir`/`old_save` to test the real thing,

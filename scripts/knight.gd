@@ -286,6 +286,11 @@ static func build_mocap(glb := MOCAP_GLB, opts := {}) -> Node3D:
 	bt.connect_node("speed", 0, "mix")
 	bt.connect_node("state", 0, "speed")
 	bt.connect_node("state", 1, "death")
+	if opts.has("shots") and not opts.has("shot"):
+		# several whole-body clips, one per attack style (the Wraith's skills): the first is the shot node's to start
+		for sty in (opts["shots"] as Dictionary):
+			opts["shot"] = (opts["shots"] as Dictionary)[sty]
+			break
 	if opts.has("shot") and ap.has_animation(str((opts["shot"] as Dictionary)["clip"])):
 		# a whole-body clip for one attack style (the archer's shot): sought to the attack's progress each frame
 		var shot := AnimationNodeAnimation.new()
@@ -334,6 +339,8 @@ static func build_mocap(glb := MOCAP_GLB, opts := {}) -> Node3D:
 			bt.connect_node("shot_mix", 0, "state")
 		bt.connect_node("output", 0, "shot_mix")
 		root.set("shot", opts["shot"])
+		if opts.has("shots"):
+			root.set("shots", opts["shots"])
 	else:
 		bt.connect_node("output", 0, "state")
 	if opts.has("acts"):

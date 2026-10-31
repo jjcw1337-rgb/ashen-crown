@@ -9,8 +9,8 @@ var fails := 0
 const ICONS := ["t_sword", "t_haste", "t_star", "t_hourglass", "t_heart", "t_armor", "t_ward", "t_regen", "t_boot",
 	"t_fist", "t_eye", "t_skull", "t_drop", "t_fang", "t_orb"]
 const KEYS := ["str", "dex", "vit", "ene", "res", "ls", "regen", "ias", "frw", "block", "mf", "dmg", "life_pct", "mana_pct",
-	"armor_pct", "crit", "crit_dmg", "buff_pow", "block_dr", "buff_dur", "phase_dur", "wail_stun", "shackle_dur", "blight_dur",
-	"nova_heal", "cry_heal", "charge_cdr", "reap_heal", "reap_full", "wail_echo", "spirits", "claw_wide", "minion_speed",
+	"armor_pct", "crit", "crit_dmg", "buff_pow", "block_dr", "buff_dur", "phase_dur", "siphon_dur", "step_stun", "veil", "grasp_hold",
+	"shackle_dur", "blight_dur", "nova_heal", "cry_heal", "charge_cdr", "rend_heal", "rend_full", "phantoms", "claw_wide", "minion_speed",
 	"minion_max", "pact_cost", "phase_heal", "drain_heal", "drain_fork", "drain_glut", "blight_size", "blight_twin", "shackle_range",
 	"arrow_split", "snare_dur", "snare_max", "snare_wide", "volley_size", "beast_two", "burn_dmg", "wolf_burn", "chill_pct", "wolf_howl",
 	"frost_shatter", "arc_count",
@@ -133,13 +133,19 @@ func _run() -> void:
 			var foe = g.enemies_near(h.global_position, 12.0)
 			if foe.size() > 0:
 				aim = foe[0].global_position
+			elif sk["id"] == "siphon":
+				# the tether needs a living foe within its 9 m; the casts before may have cleared the pack
+				var far: Array = g.enemies_near(h.global_position, 200.0)
+				if far.size() > 0:
+					h.global_position = far[0].global_position + Vector3(3.0, 0, 0)
+					aim = far[0].global_position
 			var ok: bool = h.use_skill(sk["id"], aim)
 			await wait(1.2 if sk["id"] != "drain" else 0.4)
 			if sk["id"] == "drain":
 				h.end_drain()
 			check(ok, "%s: %s cast" % [cls, sk["name"]])
 		if cls == "wraith":
-			check(h.spirits.size() == 4, "Fourth Rider: %d spirits" % h.spirits.size())
+			check(h.talent("phantoms") == 1.0 and h.talent("rend_full") == 1.0, "Fourth Rider and Harvest Moon taken")
 		if cls == "demon":
 			for i in 4:
 				h.cds["summon"] = 0.0
