@@ -959,9 +959,6 @@ func build(act_i: int, kind_s: String, seed_v: int) -> void:
 		"town": _build_town()
 		"wild": Via.build(self) if run == 1 else _build_wild()
 		"coast": Coast.build(self)
-		_:
-			if kind.begins_with("isle_"):
-				Isles.build_zone(self, Isles.id_of(kind))
 		"lair":
 			if run == 1:
 				Aurelia.build(self)
@@ -969,6 +966,9 @@ func build(act_i: int, kind_s: String, seed_v: int) -> void:
 				Fort.build(self)
 			else:
 				_build_lair()
+		_:
+			if kind.begins_with("isle_"):
+				Isles.build_zone(self, Isles.id_of(kind))
 
 const MOOR_TERRAIN := {
 	"col_a": Color(0.15, 0.2, 0.08), "col_b": Color(0.21, 0.23, 0.11), "col_accent": Color(0.28, 0.3, 0.13),

@@ -194,7 +194,8 @@ static func elev(isle: Dictionary, l: Vector2) -> float:
 		var cliff := float(isle["cliff_h"]) * smoothstep(0.0, 3.2, s) + maxf(s - 3.2, 0.0) * 0.01
 		var edge := lerpf(beach, cliff, cl)
 		var inner: float = script_of(isle).relief(isle, l, s, rr, tb["noise"]) * smoothstep(bw * 0.5, bw + 16.0, s)
-		h = maxf(edge, 1.1 + inner)
+		# the beach slopes down into the water; inland rises from where the sand ends
+		h = maxf(edge, lerpf(edge, 1.1 + inner, smoothstep(bw * 0.6, bw + 4.0, s)))
 	for p in tb["pads"]:
 		var pd := l.distance_to(p[0])
 		if pd < float(p[1]) + 6.0:
