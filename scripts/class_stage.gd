@@ -69,6 +69,7 @@ var heroes := {}                    # cls -> Hero
 var stands := {}                    # cls -> the Node3D its plinth, shaft, banner, candles and lights hang from
 var spots := {}                     # cls -> SpotLight3D over them
 var rims := {}                      # cls -> the rim light behind them
+var ups := {}                       # cls -> the runes' light rising onto him (chosen and hovered only)
 var homes := {}                     # cls -> feet position on its plinth now (world; moves with the carousel)
 var shafts := {}                    # cls -> the light shaft's material (power)
 var glows := {}                     # cls -> the plinth runes' material (power)
@@ -155,23 +156,38 @@ func setup(g: Node) -> void:
 		shafts[c] = built["shaft"]
 		glows[c] = built["glow"]
 		stands[c] = stand
-		# the shaft's light falling on it, in its colour, blazing for the chosen one; a rim light behind
+		# light on the body itself: the shaft's light falling on him from in front and above (his colour warmed toward
+		# white so faces and steel read), a rim light high behind him in his colour that outlines him, and for the
+		# chosen and hovered one the runes' glow rising onto him from the plinth
 		var sp := SpotLight3D.new()
-		sp.light_color = col.lerp(Color(1.0, 0.95, 0.85), 0.35)
-		sp.spot_angle = 20.0
-		sp.spot_range = 10.0
+		sp.light_color = col.lerp(Color(1.0, 0.94, 0.84), 0.55)
+		sp.spot_angle = 24.0
+		sp.spot_angle_attenuation = 0.6
+		sp.spot_range = 11.0
 		sp.light_energy = 1.0
+		sp.light_specular = 0.8
 		sp.shadow_enabled = false
 		stand.add_child(sp)
-		sp.look_at_from_position(Vector3(0, 7.5, 1.6), Vector3(0, PLINTH_TOP, 0))
+		sp.look_at_from_position(Vector3(0, 6.2, 3.4), Vector3(0, PLINTH_TOP + 1.05, 0))
 		spots[c] = sp
 		var rim := OmniLight3D.new()
 		rim.light_color = col
 		rim.light_energy = 1.3
-		rim.omni_range = 3.4
-		rim.position = Vector3(0, PLINTH_TOP + 1.7, -1.3)
+		rim.omni_range = 3.2
+		rim.omni_attenuation = 1.4
+		rim.position = Vector3(0, PLINTH_TOP + 2.3, -1.05)
 		stand.add_child(rim)
 		rims[c] = rim
+		var up := OmniLight3D.new()
+		up.light_color = col
+		up.light_energy = 0.0
+		up.omni_range = 1.9
+		up.omni_attenuation = 1.6
+		up.light_specular = 0.2
+		up.position = Vector3(0, PLINTH_TOP + 0.12, 0.5)
+		up.visible = false
+		stand.add_child(up)
+		ups[c] = up
 		var h := Hero.new()
 		h.puppet = true
 		h.name = "Stage_" + c
@@ -471,8 +487,12 @@ func _process(delta: float) -> void:
 		var sp: SpotLight3D = spots[c]
 		var rim: OmniLight3D = rims[c]
 		var hov := c == hovered and c != chosen
-		sp.light_energy = move_toward(sp.light_energy, (6.0 * lit + 1.0 + (2.0 if hov else 0.0)) * vis, delta * 12.0)
-		rim.light_energy = (0.5 + 1.1 * lit + (0.4 if hov else 0.0)) * vis
+		sp.light_energy = move_toward(sp.light_energy, (4.6 * lit + 0.7 + (1.8 if hov else 0.0)) * vis, delta * 12.0)
+		rim.light_energy = (0.8 + 2.0 * lit + (0.6 if hov else 0.0)) * vis
+		var up: OmniLight3D = ups[c]
+		var upk := maxf(lit * lit, 0.55 if hov else 0.0) * vis
+		up.light_energy = 1.5 * upk
+		up.visible = upk > 0.05
 		# the lights of the hidden slots are off (WebGL's light budget)
 		sp.visible = vis > 0.05
 		rim.visible = vis > 0.05
@@ -489,7 +509,7 @@ func _process(delta: float) -> void:
 		var gm: ShaderMaterial = glows[c]
 		gm.set_shader_parameter("power", nxt)
 		(gm.get_meta("cap") as ShaderMaterial).set_shader_parameter("power", nxt)
-		h.net_buff = c == chosen and d < 0.5
+		h.net_buff = false      # no buff aura on the stage: its motes floated in front of the chosen one; his light marks him
 		if not h.visible:
 			continue
 		if c == _skill_c:

@@ -161,7 +161,8 @@ static func _plinth(root: Node3D, at: Vector3, r: float, top: float, col: Color)
 	glow.set_meta("cap", cm)
 	return glow
 
-## The coloured shaft of light falling on a plinth: a soft cone drawn additively, dust motes drifting in it.
+## The coloured shaft of light falling on a plinth: a soft cone drawn additively, dust motes drifting in it. Only its
+## far half is drawn (cull_front), so it glows BEHIND the hero standing in it and never washes over his body.
 static func _shaft(root: Node3D, home: Vector3, r: float, col: Color) -> ShaderMaterial:
 	var m := MeshInstance3D.new()
 	var cm := CylinderMesh.new()
@@ -177,7 +178,7 @@ static func _shaft(root: Node3D, home: Vector3, r: float, col: Color) -> ShaderM
 	sm.set_shader_parameter("power", 0.2)
 	m.material_override = sm
 	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	m.position = Vector3(home.x, home.y + 4.0 - 0.05, home.z - 0.45)
+	m.position = Vector3(home.x, home.y + 4.0 - 0.05, home.z - 0.12)
 	root.add_child(m)
 	return sm
 
@@ -433,13 +434,13 @@ void fragment() {
 	float n = vnoise(lp.xz * 14.0) * 0.35;
 	ALBEDO = vec3(0.24, 0.22, 0.2) * (0.75 + n) * mix(1.0, 0.5, ring);
 	ROUGHNESS = 0.7;
-	EMISSION = glow.rgb * (ring * (1.0 + 3.0 * power) + pool * 0.35 * power);
+	EMISSION = glow.rgb * (ring * (1.0 + 3.0 * power) + pool * 0.18 * power);
 }
 """
 
 const SHAFT_SHADER := """
 shader_type spatial;
-render_mode unshaded, blend_add, depth_draw_never, cull_back, shadows_disabled;
+render_mode unshaded, blend_add, depth_draw_never, cull_front, shadows_disabled;
 uniform vec4 col : source_color = vec4(1.0);
 uniform float power = 0.5;
 varying vec3 lp;
