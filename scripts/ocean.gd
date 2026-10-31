@@ -461,11 +461,11 @@ void fragment(){
 	// the swash line: a thin, broken edge of foam that rides up and back with the water
 	float swash = 0.5 + 0.5 * sin(t * 1.25 - v_shore * 0.9 + 1.4);
 	float contact = (1.0 - smoothstep(0.0, 0.45, thick)) * 0.8;
-	contact = max(contact, (1.0 - smoothstep(0.0, 0.5 + swash * 0.9, v_shore)) * (0.55 + 0.45 * swash));
+	contact = max(contact, (1.0 - smoothstep(0.0, 0.3 + swash * 0.6, v_shore)) * (0.45 + 0.4 * swash));
 	float caps = smoothstep(0.55, 1.0, v_crest) * 0.7;
 	float lace = texture(foam_tex, p * 0.21 + vec2(t * 0.02, -t * 0.013)).r;
 	float lace2 = texture(foam_tex, p * 0.53 - vec2(t * 0.031, t * 0.017)).r;
-	float famt = clamp(surf * 0.9 + contact * 0.85 + caps, 0.0, 1.0);
+	float famt = clamp(surf * 0.75 + contact * 0.8 + caps, 0.0, 1.0);
 	float foam = smoothstep(1.0 - famt, 1.0 - famt * 0.55, lace * 0.6 + lace2 * 0.4) * famt;
 	foam = clamp(foam * 1.35, 0.0, 1.0);
 
