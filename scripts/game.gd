@@ -506,8 +506,10 @@ const SUN_DEFAULT := Vector3(-52, -38, 0)
 func _sea_env() -> void:
 	sky_mat.sky_top_color = Color(0.22, 0.32, 0.46)
 	sky_mat.sky_horizon_color = Color(0.86, 0.66, 0.46)
-	sky_mat.ground_horizon_color = Color(0.5, 0.48, 0.44)
-	sky_mat.ground_bottom_color = Color(0.1, 0.14, 0.16)
+	# below the horizon the sky is what wave backs reflect at low angles: keep it close to the horizon so
+	# the far water doesn't streak dark
+	sky_mat.ground_horizon_color = Color(0.8, 0.64, 0.48)
+	sky_mat.ground_bottom_color = Color(0.46, 0.5, 0.54)
 	sky_mat.sun_angle_max = 22.0
 	env.ambient_light_energy = 0.62
 	env.tonemap_exposure = 1.1
