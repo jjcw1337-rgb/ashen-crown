@@ -1,0 +1,162 @@
+extends SceneTree
+## Co-op skill effects (SkillFx), in one process: for every class and every skill in Data.SKILLS, the local hero
+## casts it while a puppet of him (a partner's view, Hero.puppet) mirrors his pose and gets every event the way
+## a partner would (Net.fx_tap -> SkillFx.decode -> SkillFx.play). Fails if a skill sends no event, if the
+## puppet shows nothing for it, if the lingering effects (the tether, the beams, the night, phantoms) don't
+## reach the puppet, or if replaying the events on the puppet hurts a monster or changes the puppet's life or
+## mana. Prints [X] lines.
+
+var g
+var fails := 0
+var events: Array = []
+var puppet: Hero
+const OFF := Vector3(3.0, 0, 0)
+## what a partner's copy of each skill must leave in Hero.fxs (the effects that run on)
+const LINGER := {"siphon": "tether", "drain": "drain", "night": "night", "phantom": "phantoms"}
+
+func _initialize():
+	g = (load("res://main.tscn") as PackedScene).instantiate()
+	get_root().add_child(g)
+	_run()
+
+func wait(s: float) -> void:
+	await create_timer(s).timeout
+
+func check(ok: bool, what: String) -> void:
+	if not ok:
+		fails += 1
+	print("[X] %s %s" % ["ok  " if ok else "FAIL", what])
+
+func lives(en: Array) -> float:
+	var t := 0.0
+	for e in en:
+		if is_instance_valid(e):
+			t += e.life
+	return t
+
+func pack(at: Vector3, n: int) -> Array:
+	for e in g.enemies_near(at, 60.0):
+		e.queue_free()
+	await process_frame
+	var out := []
+	for i in n:
+		var e = g.spawn_enemy("zombie", at + Vector3(-1.0 + i * 1.0, 0, 0), 18)
+		e.aggro = false
+		out.append(e)
+	await process_frame
+	return out
+
+## The puppet follows the hero's pose each frame, a few metres to the side, as a partner would see it.
+func _mirror() -> void:
+	if puppet == null or not is_instance_valid(puppet) or g.hero == null:
+		return
+	var h = g.hero
+	puppet.net_pos = h.global_position + OFF
+	puppet.net_yaw = h.rig.rotation.y
+	var st: Dictionary = h.last_pose.duplicate()
+	if st.is_empty():
+		st = {"move": 0.0, "atk": -1.0, "style": "over", "block": 0.0, "hit": 0.0}
+	st.erase("time")
+	st.erase("phase")
+	puppet.net_st = st
+	puppet.net_has = true
+
+func _make_puppet() -> void:
+	if puppet != null and is_instance_valid(puppet):
+		puppet.queue_free()
+	puppet = Hero.new()
+	puppet.puppet = true
+	puppet.peer_id = 99
+	puppet.name = "Ally99"
+	g.add_child(puppet)
+	puppet.setup(g)
+	puppet.apply_net_gear(g.hero.net_gear())
+	puppet.global_position = g.hero.global_position + OFF
+	_mirror()
+	puppet.visible = true
+
+func _run() -> void:
+	while g.world == null or g._busy:
+		await process_frame
+	process_frame.connect(_mirror)
+	g.net.fx_tap = func(w: Dictionary):
+		events.append(w)
+		if puppet != null and is_instance_valid(puppet):
+			SkillFx.play(puppet, SkillFx.decode(g.net, w))
+	for cls in Data.CLASSES.keys():
+		await g.start_game(false, cls)
+		g.ui.close_all()
+		await g.travel(0, "wild", "start")
+		while g._busy:
+			await process_frame
+		var h = g.hero
+		h.set_level(20)
+		g.test_immortal = true
+		_make_puppet()
+		check(puppet.cls == cls and puppet.puppet, "%s: a puppet of him stands beside him" % cls)
+		var root: Node3D = g.world.fx_root
+		for sk in Data.skills_for(cls):
+			var id: String = sk["id"]
+			var en: Array = await pack(h.global_position + Vector3(0, 0, -3.5), 3)
+			h._face(Vector3(0, 0, -1))
+			for k in h.cds.keys():
+				h.cds[k] = 0.0
+			h.mana = h.max_mana
+			h.life = h.max_life
+			events.clear()
+			var n0 := root.get_child_count()
+			var p0 := puppet.get_child_count() + puppet.rig.get_child_count()
+			var ok: bool = h.use_skill(id, h.skill_aim(id, en[1].global_position))
+			var peak := 0
+			var fxs_seen := {}
+			for i in (60 if LINGER.has(id) else 36):
+				await wait(0.05)
+				peak = maxi(peak, root.get_child_count() + g.get_child_count())
+				for k in puppet.fxs.keys():
+					fxs_seen[k] = true
+			if id == "drain":
+				h.end_drain()
+			if id == "phase":
+				h.end_phase(true)
+			await wait(0.2)
+			var mine: Array = events.filter(func(w): return str(w["s"]) == id)
+			var kinds: Array = mine.map(func(w): return str(w["e"]))
+			check(ok and not mine.is_empty(), "%s %s: cast sent %d event(s) %s" % [cls, id, mine.size(), kinds])
+			check(peak > n0 or puppet.get_child_count() + puppet.rig.get_child_count() > p0 or fxs_seen.has(LINGER.get(id, "-")),
+				"%s %s: the partner's view shows it (%d new nodes)" % [cls, id, peak - n0])
+			if LINGER.has(id):
+				check(fxs_seen.has(LINGER[id]), "%s %s: its %s reached the puppet" % [cls, id, LINGER[id]])
+				check(not puppet.fxs.has(LINGER[id]) or id == "night", "%s %s: and was let go when it ended" % [cls, id])
+			# every event survives the wire: enemies as ids, back to nodes
+			for w in mine:
+				var d := SkillFx.decode(g.net, w)
+				check(d.has("s") and d.has("e") and (not w.has("t") or d["t"] is Array), "%s %s: '%s' decodes" % [cls, id, w["e"]])
+			# the replay alone, on a fresh pack by the puppet with the hero far away: no damage, no healing
+			var far: Vector3 = h.global_position
+			h.global_position = far + Vector3(0, 0, 40.0)
+			puppet.net_pos = far + OFF
+			puppet.global_position = far + OFF
+			h._clear_warlock()
+			h.blights.clear()
+			var en2: Array = await pack(far + OFF + Vector3(0, 0, -2.5), 3)
+			var l0 := lives(en2)
+			puppet.life = 50.0
+			puppet.mana = 20.0
+			for w in mine:
+				SkillFx.play(puppet, SkillFx.decode(g.net, w))
+			await wait(1.2)
+			check(is_equal_approx(lives(en2), l0), "%s %s: replayed on the puppet, the pack is unhurt (%d of %d)" % [cls, id, int(lives(en2)), int(l0)])
+			check(is_equal_approx(puppet.life, 50.0) and is_equal_approx(puppet.mana, 20.0), "%s %s: and the puppet's life and mana are untouched" % [cls, id])
+			SkillFx.clear(puppet)
+			puppet.dismiss_minions()
+			h.global_position = far
+			h.end_drain()
+			h.end_phase(false)
+			WraithSkills.clear(h)
+			h.dismiss_minions()
+		SkillFx.clear(puppet)
+		puppet.queue_free()
+		puppet = null
+	g.net.fx_tap = Callable()
+	print("[X] done, %d failed" % fails)
+	quit()
