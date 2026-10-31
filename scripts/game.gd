@@ -586,7 +586,10 @@ func apply_quality(q: int) -> void:
 	env.volumetric_fog_detail_spread = 2.0
 	env.volumetric_fog_ambient_inject = 0.4
 	sun.shadow_enabled = true
-	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS if q >= 2 else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+	# shadows were most of the frame: Ultra's 8192 map alone cost ~45 ms on integrated graphics and looked no better
+	# from this camera, so every preset keeps a 4096 map at most, High two cascades, and a shorter reach (the screen's
+	# top edge is ~45 m away)
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS if q >= 3 else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 	RenderingServer.directional_shadow_atlas_set_size(4096 if q >= 2 else 2048, true)
 	get_viewport().msaa_3d = Viewport.MSAA_8X if q >= 3 else (Viewport.MSAA_4X if q >= 2 else Viewport.MSAA_2X)
 	get_viewport().screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
@@ -606,14 +609,12 @@ func apply_quality(q: int) -> void:
 		env.ssr_max_steps = 96
 	RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_ULTRA if q >= 3 else (RenderingServer.SHADOW_QUALITY_SOFT_HIGH if q >= 2 else RenderingServer.SHADOW_QUALITY_SOFT_LOW))
 	RenderingServer.positional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH if q >= 3 else RenderingServer.SHADOW_QUALITY_SOFT_LOW)
-	if q >= 3:
-		RenderingServer.directional_shadow_atlas_set_size(8192, true)
 	RenderingServer.environment_set_ssao_quality(RenderingServer.ENV_SSAO_QUALITY_ULTRA if q >= 3 else RenderingServer.ENV_SSAO_QUALITY_MEDIUM, true, 0.5, 2, 50.0, 300.0)
 	RenderingServer.environment_set_ssil_quality(RenderingServer.ENV_SSIL_QUALITY_HIGH if q >= 3 else RenderingServer.ENV_SSIL_QUALITY_MEDIUM, true, 0.5, 4, 50.0, 300.0)
 	RenderingServer.environment_set_volumetric_fog_volume_size(160 if q >= 3 else 96, 128 if q >= 3 else 64)
 	get_viewport().mesh_lod_threshold = 0.0 if q >= 3 else 1.0
 	if sun:
-		sun.directional_shadow_max_distance = 90.0 if q >= 3 else 70.0
+		sun.directional_shadow_max_distance = [45.0, 50.0, 55.0, 65.0][q]
 	for g in get_tree().get_nodes_in_group("grass"):
 		if not g.has_meta("grass3d"):
 			(g as MultiMeshInstance3D).visibility_range_end = [32.0, 45.0, 60.0, 95.0][q]
@@ -2303,6 +2304,18 @@ func _perf_step() -> bool:
 				sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 			if parts.has("shadowdist"):
 				sun.directional_shadow_max_distance = 45.0
+			if parts.has("msaa4"):
+				get_viewport().msaa_3d = Viewport.MSAA_4X
+			if parts.has("lod"):
+				get_viewport().mesh_lod_threshold = 1.0
+			if parts.has("ssr"):
+				env.ssr_enabled = false
+			if parts.has("grassshadow"):
+				for n in world.find_children("*", "MultiMeshInstance3D", true, false):
+					if n.has_meta("grass3d"):
+						(n as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			if parts.has("atlas4k"):
+				RenderingServer.directional_shadow_atlas_set_size(4096, true)
 			if parts.has("atlas2k"):
 				RenderingServer.directional_shadow_atlas_set_size(2048, true)
 			env.volumetric_fog_enabled = env.volumetric_fog_enabled and not parts.has("vfog")

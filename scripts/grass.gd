@@ -23,6 +23,9 @@ extends RefCounted
 const CHUNK := 20.0
 ## clumps per square metre at density 1 on the High preset; presets scale it
 const BASE_DENSITY := 7.0
+## the preset from which grass casts shadows: none now (on Ultra they were 36M more triangles a frame into the
+## shadow maps for a barely visible darkening; the grass still receives shadows)
+const GRASS_SHADOWS := 4
 const QUALITY_DENSITY := [0.4, 0.65, 1.0, 1.35]
 ## camera distances: LOD0 -> LOD1 cross-fade band, and the far thinning (start, end), per preset
 const LOD_BAND := [Vector2(24, 28), Vector2(27, 31), Vector2(30, 35), Vector2(34, 40)]
@@ -227,7 +230,7 @@ static func scatter(parent: Node3D, area: Rect2, ctx: Object, colors: Dictionary
 			mmi.position = Vector3.ZERO
 			# shadows only from the near, detailed grass, and only on Ultra (as before): grass shading grass on
 			# lower presets darkens the field more than it grounds it, and costs a second pass
-			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if (shadows and l == 0 and quality >= 3) else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if (shadows and l == 0 and quality >= GRASS_SHADOWS) else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			_set_ranges(mmi, l, lod, fade, half)
 			mmi.set_meta("grass3d", l)
 			mmi.add_to_group("grass")
@@ -261,7 +264,7 @@ static func apply_quality(root: Node, q: int) -> void:
 		if g.has_meta("grass3d"):
 			var l := int(g.get_meta("grass3d"))
 			_set_ranges(g as GeometryInstance3D, l, lod, fade, CHUNK * 0.75)
-			(g as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if (l == 0 and quality >= 3) else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			(g as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if (l == 0 and quality >= GRASS_SHADOWS) else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 static func _pick(mix: Dictionary, rng: RandomNumberGenerator, keys: Array) -> String:
 	var total := 0.0
