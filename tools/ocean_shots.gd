@@ -70,7 +70,10 @@ func _run() -> void:
 	if only == "overview":
 		await g.load_zone(0, "coast", "dock")
 		g.ui.visible = false
-		look(Vector3(-120.0, 520.0, 260.0), Vector3(-120.0, 0.0, 0.0), 55.0)
+		# a map view: no haze, so the layout reads
+		g.env.fog_enabled = false
+		g.env.volumetric_fog_enabled = false
+		look(Vector3(-110.0, 640.0, 120.0), Vector3(-110.0, 0.0, 0.0), 60.0)
 		await shot(out, "overview", 12)
 		quit()
 		return
