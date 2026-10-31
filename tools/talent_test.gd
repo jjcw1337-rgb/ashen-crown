@@ -61,7 +61,7 @@ func _run() -> void:
 	h.reset_talents()
 	h.talents = {"k_zeal": 3, "k_heavy": 3, "k_steel": 1, "k_purify": 2}
 	h._talents_changed()
-	check(is_equal_approx(h.dmg_mult("cleave"), 1.42) and is_equal_approx(h.dmg_mult("nova"), 1.12), "damage: Holy Slam x%.2f, Holy Nova x%.2f" % [h.dmg_mult("cleave"), h.dmg_mult("nova")])
+	check(is_equal_approx(h.dmg_mult("cleave"), 1.42 * h.pace_mult("cleave")) and is_equal_approx(h.dmg_mult("nova"), 1.12), "damage: Holy Slam x%.2f, Holy Nova x%.2f" % [h.dmg_mult("cleave"), h.dmg_mult("nova")])
 	check(is_equal_approx(h.skill_cost("nova"), cost0 * 0.7) and is_equal_approx(h.skill_cd("nova"), cd0 * 0.8), "Purifying Fire: Nova %.1f mana %.2fs" % [h.skill_cost("nova"), h.skill_cd("nova")])
 	# saves: an old one gets a build, a new one keeps its own, a bad one is cleaned
 	var sv: Dictionary = h.to_save()
