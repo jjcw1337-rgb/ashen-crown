@@ -35,6 +35,7 @@ var w_up := 0.0               # how much of the upper body the procedural moves 
 var w_low := 0.0              # ... and of the legs
 var speed := 0.0              # smoothed ground speed (m/s)
 var shot := {}                # whole-body clip for an attack style: {style, clip, t0, release, t1}; see sync_pose
+var shots := {}               # several such clips, one per attack style (the Wraith's skills): the "shot" node plays whichever
 var w_shot := 0.0
 var w_side := 0.0
 var w_aimwalk := 0.0          # shooting on the move: the aimed walk (shot "walk_clip")
@@ -211,6 +212,14 @@ func sync_pose(st: Dictionary) -> void:
 	# the whole-body attack clip (the archer's shot): its draw squeezed into the attack before the release frame,
 	# the follow-through after it, so the arrow leaves on Anim.impact_at's frame at any attack speed
 	var die := dead > 0.0
+	if not shots.is_empty() and a >= 0.0:
+		# a body with a clip per style (the Wraith): the shot node is handed the style's clip when it changes
+		var sty := str(st.get("style", ""))
+		if shots.has(sty) and (shot.is_empty() or str(shot.get("style", "")) != sty):
+			shot = shots[sty]
+			var an := (tree.tree_root as AnimationNodeBlendTree).get_node("shot") as AnimationNodeAnimation
+			if an != null:
+				an.animation = str(shot["clip"])
 	var shooting: bool = not shot.is_empty() and a >= 0.0 and st.get("style", "") == shot["style"] and not die
 	# stepping while he shoots: the aimed walk carries the whole body instead of the standing shot
 	var stepping: bool = shooting and speed > 0.45 and shot.has("walk_clip")

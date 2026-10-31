@@ -16,6 +16,7 @@ uniform vec3 spirit : source_color = vec3(0.35, 0.85, 1.0);
 uniform float fray = 0.62;        // how much of the way down the robe starts to fray (0..1 of R)
 uniform float glow = 1.0;         // the tears' and eyes' light (skills can flare it)
 uniform float phase_amt = 0.0;    // 0..1: the whole body thinning to spirit (Wraithform, dissolves)
+uniform float ghost = 0.0;        // 1: an afterimage, all spirit-light and no cloth (WraithFx.afterimage)
 
 varying vec3 wpos;
 
@@ -56,6 +57,7 @@ void fragment() {
 	// the inside of the robe (seen through its open front and the tears, no legs in it) is a dark hollow
 	float inside = FRONT_FACING ? 0.0 : smoothstep(0.0, 0.25, down);
 	col = mix(col, col * 0.08 + spirit * 0.02, inside);
+	col = mix(col, spirit * 0.1, ghost);
 	ALBEDO = col;
 	// matte grave-cloth: Meshy's roughness map makes the robe wet and glassy, so it's only allowed to roughen
 	ROUGHNESS = use_rough ? max(texture(rough_tex, UV).g, 0.82) : 0.88;
@@ -68,5 +70,6 @@ void fragment() {
 	float cyan = smoothstep(0.1, 0.22, c.b - c.r) * smoothstep(0.32, 0.6, c.b);
 	float breathe = 0.75 + 0.25 * sin(TIME * 1.9 + wpos.y * 3.0);
 	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
-	EMISSION = spirit * ((cyan * 1.2 * breathe * glow + rim * 0.16) * (1.0 - inside * 0.85) + edge * 1.4 + phase_amt * 0.6 * rim);
+	EMISSION = spirit * ((cyan * 1.2 * breathe * glow + rim * 0.16) * (1.0 - inside * 0.85) + edge * 1.4 + phase_amt * 0.6 * rim)
+		+ spirit * ghost * (0.6 + rim * 1.4) * (1.0 - phase_amt * 0.5);
 }

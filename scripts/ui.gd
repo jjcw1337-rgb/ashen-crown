@@ -4028,27 +4028,64 @@ class SkillGlyph extends Control:
 			"cry":
 				draw_colored_polygon(PackedVector2Array([c + Vector2(-14, -6), c + Vector2(-4, -6), c + Vector2(8, -14), c + Vector2(8, 14), c + Vector2(-4, 6), c + Vector2(-14, 6)]), col)
 				draw_arc(c + Vector2(8, 0), 10, -0.8, 0.8, 8, col, 2.0, true)
-			"reap":
-				# a scythe: long haft and a sweeping crescent blade
-				draw_line(c + Vector2(-12, 16), c + Vector2(8, -14), wcol, 3.0, true)
-				draw_arc(c + Vector2(-2, -10), 15, PI * 1.05, PI * 1.95, 18, wcol, 4.0, true)
-				draw_arc(c + Vector2(-2, -10), 11, PI * 1.15, PI * 1.85, 14, wcol.lightened(0.4), 1.5, true)
-			"wail":
-				# a screaming hooded face with rings of sound
-				draw_arc(c + Vector2(0, -2), 9, PI, TAU, 14, wcol, 3.0, true)
-				draw_circle(c + Vector2(-4, -3), 1.8, wcol)
-				draw_circle(c + Vector2(4, -3), 1.8, wcol)
-				draw_arc(c + Vector2(0, 4), 3.5, 0, TAU, 12, wcol, 2.0, true)
-				for r in [14, 19]:
-					draw_arc(c, r, -0.6, 0.6, 8, wcol, 1.5, true)
-					draw_arc(c, r, PI - 0.6, PI + 0.6, 8, wcol, 1.5, true)
-			"shade":
-				# a fading silhouette streaking towards a bright one
+			"rend":
+				# three spectral claw rakes, curving, with a soul flying off the top
+				for k in 3:
+					var o := Vector2((k - 1) * 8, 0)
+					draw_arc(c + o + Vector2(-10, 4), 17, -PI * 0.42, PI * 0.08, 10, wcol, 3.0, true)
+				draw_circle(c + Vector2(11, -12), 3.0, Color(0.9, 0.97, 1.0))
+			"siphon":
+				# a tether: a twisted cord from a hand (left) to a torn soul (right)
+				var pts := PackedVector2Array()
+				for i in 13:
+					var u := i / 12.0
+					pts.append(c + Vector2(-16 + 32 * u, sin(u * PI * 3.0) * 4.0))
+				draw_polyline(pts, wcol, 2.5, true)
+				var pts2 := PackedVector2Array()
+				for i in 13:
+					var u := i / 12.0
+					pts2.append(c + Vector2(-16 + 32 * u, -sin(u * PI * 3.0) * 4.0))
+				draw_polyline(pts2, Color(0.62, 0.38, 1.0) if not dim else wcol, 2.0, true)
+				draw_circle(c + Vector2(15, 0), 5.5, wcol)
+				draw_circle(c + Vector2(15, 0), 2.5, Color(1, 1, 1, 0.9))
+				draw_circle(c + Vector2(-16, 0), 3.0, wcol.lightened(0.3))
+			"step":
+				# a fading silhouette streaking into a sharp one, mist between
 				for k in 3:
 					var o := Vector2(-12 + k * 9, 0)
-					var a := 0.25 + k * 0.35
-					draw_circle(c + o + Vector2(0, -8), 4.0, Color(wcol.r, wcol.g, wcol.b, a))
-					draw_colored_polygon(PackedVector2Array([c + o + Vector2(-5, -3), c + o + Vector2(5, -3), c + o + Vector2(7, 14), c + o + Vector2(-7, 14)]), Color(wcol.r, wcol.g, wcol.b, a))
+					var al := 0.25 + k * 0.35
+					draw_circle(c + o + Vector2(0, -8), 4.0, Color(wcol.r, wcol.g, wcol.b, al))
+					draw_colored_polygon(PackedVector2Array([c + o + Vector2(-5, -3), c + o + Vector2(5, -3), c + o + Vector2(7, 14), c + o + Vector2(-7, 14)]), Color(wcol.r, wcol.g, wcol.b, al))
+			"grasp":
+				# a clawed hand reaching up out of a dark ring
+				draw_arc(c + Vector2(0, 12), 15, 0, TAU, 28, Color(0.62, 0.38, 1.0) if not dim else wcol, 2.5, true)
+				draw_colored_polygon(PackedVector2Array([c + Vector2(-5, 12), c + Vector2(5, 12), c + Vector2(4, -2), c + Vector2(-4, -2)]), wcol)
+				for k in 4:
+					var x := -7.5 + k * 5.0
+					draw_line(c + Vector2(x, -1), c + Vector2(x * 1.5, -14 + absf(k - 1.5) * 2.0), wcol, 2.5, true)
+				draw_line(c + Vector2(-6, 2), c + Vector2(-13, -6), wcol, 2.5, true)
+			"phantom":
+				# three hooded shapes fanning forward from one
+				for k in 3:
+					var ang := (k - 1) * 0.55
+					var d := Vector2(sin(ang), -cos(ang))
+					var p := c + Vector2(0, 10) + d * 16
+					var al := 0.5 + 0.5 * float(k == 1)
+					draw_circle(p + Vector2(0, -4), 3.2, Color(wcol.r, wcol.g, wcol.b, al))
+					draw_colored_polygon(PackedVector2Array([p + Vector2(-4, -1), p + Vector2(4, -1), p + Vector2(5, 8), p + Vector2(-5, 8)]), Color(wcol.r, wcol.g, wcol.b, al * 0.8))
+				draw_circle(c + Vector2(0, 12), 2.5, Color(0.62, 0.38, 1.0) if not dim else wcol)
+			"night":
+				# a crescent of night over a screaming hood, with rings of sound
+				var ncol := Color(0.62, 0.38, 1.0) if not dim else wcol
+				draw_circle(c + Vector2(0, -4), 13.0, Color(ncol.r, ncol.g, ncol.b, 0.45))
+				draw_circle(c + Vector2(5, -8), 10.0, Color(0.05, 0.03, 0.09) if not dim else Color(0.22, 0.2, 0.24))
+				draw_arc(c + Vector2(0, 6), 7, PI, TAU, 14, wcol, 3.0, true)
+				draw_circle(c + Vector2(-3, 5), 1.6, wcol)
+				draw_circle(c + Vector2(3, 5), 1.6, wcol)
+				draw_arc(c + Vector2(0, 11), 3.0, 0, TAU, 12, wcol, 2.0, true)
+				for r in [14, 19]:
+					draw_arc(c + Vector2(0, 8), r, -0.5, 0.5, 8, wcol, 1.5, true)
+					draw_arc(c + Vector2(0, 8), r, PI - 0.5, PI + 0.5, 8, wcol, 1.5, true)
 			"hellclaw":
 				# three raking claw marks with burning tips
 				for k in 3:
@@ -4146,15 +4183,6 @@ class SkillGlyph extends Control:
 				draw_colored_polygon(PackedVector2Array([c + Vector2(-12, -10), c + Vector2(-6, -4), c + Vector2(6, -4), c + Vector2(12, -10), c + Vector2(10, 4), c + Vector2(0, 15), c + Vector2(-10, 4)]), Color(ahunt.r, ahunt.g, ahunt.b, 0.55))
 				draw_circle(c + Vector2(-5, 2), 2.2, Color(1, 1, 1, 0.9))
 				draw_circle(c + Vector2(5, 2), 2.2, Color(1, 1, 1, 0.9))
-			"host":
-				# three spirits circling
-				draw_arc(c, 13, 0, TAU, 32, Color(wcol.r, wcol.g, wcol.b, 0.4), 1.5, true)
-				var t0 := Time.get_ticks_msec() / 900.0
-				for k in 3:
-					var ang := t0 + TAU * k / 3.0
-					var p := c + Vector2(cos(ang), sin(ang)) * 13
-					draw_circle(p, 4.5, wcol)
-					draw_circle(p, 2.0, Color(1, 1, 1, 0.9))
 	func _process(_d: float) -> void:
 		queue_redraw()
 

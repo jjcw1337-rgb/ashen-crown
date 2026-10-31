@@ -38,6 +38,17 @@ static func impact_at(style: String) -> float:
 		"cackle": return 0.5
 		"feral_lunge": return 0.64      # his hands land (feral.gd's baked lunge)
 		"feral_swipe": return 0.32      # the right claw rakes across
+		# the Wraith's clips (WraithSkills.SHOTS): the first rake, the hand thrust out, the spin's strike, the slam,
+		# the claw after the phantoms, and Eternal Night's stages
+		"rend": return 0.42
+		"siphon": return 0.5
+		"wstep": return 0.7
+		"grasp": return 0.5
+		"phantom": return 0.55
+		"night_rise": return 0.9
+		"night_scream": return 0.45
+		"night_hold": return 0.5
+		"night_fall": return 0.5
 	return 0.5
 
 ## 0 at walking stride, 1 at full sprint stride (move > 1 means sprinting).

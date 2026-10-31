@@ -11,9 +11,9 @@ extends RefCounted
 ##   percent: dmg (all damage), dmg:<skill> (one skill, "attack" = the weapon attack, "summon" = the
 ##     demons' claws), cd:<skill> (shorter cooldown), cost:<skill> (less mana), life_pct, mana_pct,
 ##     armor_pct, crit (chance), crit_dmg, buff_pow (the 12 s buffs' +40% damage), block_dr
-##   seconds: buff_dur (the 12 s buffs), phase_dur, wail_stun, shackle_dur, blight_dur
-##   class specials, used where the skill is: nova_heal, cry_heal, charge_cdr, reap_heal, reap_full,
-##     wail_echo, spirits, claw_wide, minion_speed, minion_max, pact_cost, phase_heal, drain_heal,
+##   seconds: buff_dur (the 12 s buffs), phase_dur, siphon_dur, step_stun, veil, grasp_hold, shackle_dur, blight_dur
+##   class specials, used where the skill is: nova_heal, cry_heal, charge_cdr, rend_heal, rend_full,
+##     phantoms, claw_wide, minion_speed, minion_max, pact_cost, phase_heal, drain_heal,
 ##     drain_fork, drain_glut, blight_size, blight_twin, shackle_range, arrow_split, snare_dur, snare_max,
 ##     snare_wide, volley_size, beast_two
 ## "text" shows the total for the ranks taken: {key} is replaced by the fx value times the rank.
@@ -52,32 +52,32 @@ const TREES := {
 		]},
 	],
 	"wraith": [
-		{"name": "Reaper", "desc": "The scythe: Soul Reap, quick strikes and cruel crits.", "talents": [
-			{"id": "w_scythe", "name": "Keen Scythe", "row": 0, "max": 3, "icon": "reap", "fx": {"dmg:reap": 10}, "text": "Soul Reap deals {dmg:reap}% more damage."},
+		{"name": "Render", "desc": "The claws: Spectral Rend, quick strikes and cruel crits.", "talents": [
+			{"id": "w_scythe", "name": "Keen Claws", "row": 0, "max": 3, "icon": "rend", "fx": {"dmg:rend": 10}, "text": "Spectral Rend deals {dmg:rend}% more damage."},
 			{"id": "w_focus", "name": "Grim Focus", "row": 0, "max": 3, "icon": "t_eye", "fx": {"dex": 3}, "text": "+{dex} dexterity."},
-			{"id": "w_harvest", "name": "Soul Harvest", "row": 1, "max": 3, "icon": "t_heart", "fx": {"reap_heal": 1}, "text": "Each soul Soul Reap cuts heals {reap_heal}% more of your life."},
+			{"id": "w_harvest", "name": "Soul Harvest", "row": 1, "max": 3, "icon": "t_heart", "fx": {"rend_heal": 1}, "text": "Each soul Spectral Rend tears out heals {rend_heal}% more of your life."},
 			{"id": "w_haste", "name": "Deathly Haste", "row": 1, "max": 3, "icon": "t_haste", "fx": {"ias": 5}, "text": "+{ias}% attack speed."},
 			{"id": "w_cruel", "name": "Cruelty", "row": 2, "max": 3, "icon": "t_star", "fx": {"crit": 3}, "text": "+{crit}% chance to land a critical hit."},
 			{"id": "w_exec", "name": "Executioner", "row": 2, "max": 2, "icon": "t_skull", "fx": {"crit_dmg": 20}, "text": "Critical hits deal {crit_dmg}% more damage."},
-			{"id": "w_moon", "name": "Harvest Moon", "row": 3, "max": 1, "icon": "reap", "fx": {"reap_full": 1}, "text": "Soul Reap sweeps all the way round you."},
+			{"id": "w_moon", "name": "Harvest Moon", "row": 3, "max": 1, "icon": "rend", "fx": {"rend_full": 1}, "text": "Spectral Rend's claws tear all the way round you."},
 		]},
-		{"name": "Banshee", "desc": "The scream and the shadow: Banshee Wail and Shadow Step.", "talents": [
-			{"id": "w_scream", "name": "Piercing Scream", "row": 0, "max": 3, "icon": "wail", "fx": {"dmg:wail": 12}, "text": "Banshee Wail deals {dmg:wail}% more damage."},
+		{"name": "Shadow", "desc": "The tether and the mist: Soul Siphon and Shadowstep.", "talents": [
+			{"id": "w_scream", "name": "Hungry Tether", "row": 0, "max": 3, "icon": "siphon", "fx": {"dmg:siphon": 12}, "text": "Soul Siphon drains {dmg:siphon}% more."},
 			{"id": "w_mind", "name": "Ethereal Mind", "row": 0, "max": 3, "icon": "t_drop", "fx": {"mana_pct": 5}, "text": "+{mana_pct}% maximum mana."},
-			{"id": "w_dread", "name": "Dread", "row": 1, "max": 3, "icon": "wail", "fx": {"wail_stun": 0.3}, "text": "Banshee Wail's terror lasts {wail_stun} seconds longer."},
-			{"id": "w_slip", "name": "Slipstream", "row": 1, "max": 3, "icon": "shade", "fx": {"cd:shade": 10, "dmg:shade": 10}, "text": "Shadow Step recharges {cd:shade}% faster and strikes {dmg:shade}% harder."},
-			{"id": "w_hollow", "name": "Hollow Voice", "row": 2, "max": 3, "icon": "t_drop", "fx": {"cost:wail": 15, "cd:wail": 8}, "text": "Banshee Wail costs {cost:wail}% less mana and recharges {cd:wail}% faster."},
+			{"id": "w_dread", "name": "Long Grip", "row": 1, "max": 3, "icon": "siphon", "fx": {"siphon_dur": 0.3}, "text": "Soul Siphon holds {siphon_dur} seconds longer."},
+			{"id": "w_slip", "name": "Slipstream", "row": 1, "max": 3, "icon": "step", "fx": {"cd:step": 10, "dmg:step": 10}, "text": "Shadowstep recharges {cd:step}% faster and strikes {dmg:step}% harder."},
+			{"id": "w_hollow", "name": "Hollow Hunger", "row": 2, "max": 3, "icon": "t_drop", "fx": {"cost:siphon": 15, "cd:siphon": 8}, "text": "Soul Siphon costs {cost:siphon}% less mana and recharges {cd:siphon}% faster."},
 			{"id": "w_form", "name": "Spirit Form", "row": 2, "max": 2, "icon": "t_ward", "fx": {"res": 6}, "text": "+{res}% to all resistances."},
-			{"id": "w_echo", "name": "Echo", "row": 3, "max": 1, "icon": "wail", "fx": {"wail_echo": 50}, "text": "Banshee Wail screams again a moment later for {wail_echo}% of the damage."},
+			{"id": "w_echo", "name": "Lingering Mist", "row": 3, "max": 1, "icon": "step", "fx": {"veil": 0.6, "step_stun": 0.5}, "text": "After Shadowstep you stay mist {veil} seconds longer, and its strike stuns {step_stun} seconds longer."},
 		]},
-		{"name": "Revenant", "desc": "What will not stay dead: Spectral Host and a body hard to harm.", "talents": [
+		{"name": "Night", "desc": "What comes out of the dark: Haunting Grasp, Phantom Assault and Eternal Night.", "talents": [
 			{"id": "w_unlife", "name": "Unlife", "row": 0, "max": 3, "icon": "t_heart", "fx": {"life_pct": 4}, "text": "+{life_pct}% maximum life."},
 			{"id": "w_chill", "name": "Grave Chill", "row": 0, "max": 3, "icon": "t_armor", "fx": {"armor_pct": 6}, "text": "+{armor_pct}% defense."},
-			{"id": "w_legion", "name": "Legion", "row": 1, "max": 3, "icon": "host", "fx": {"dmg:host": 15}, "text": "Spectral Host's spirits strike {dmg:host}% harder."},
+			{"id": "w_legion", "name": "Legion", "row": 1, "max": 3, "icon": "phantom", "fx": {"dmg:phantom": 12, "dmg:grasp": 12}, "text": "Phantom Assault and Haunting Grasp strike {dmg:phantom}% harder."},
 			{"id": "w_ward", "name": "Spectral Ward", "row": 1, "max": 3, "icon": "t_ward", "fx": {"res": 5}, "text": "+{res}% to all resistances."},
-			{"id": "w_eternal", "name": "Eternal Host", "row": 2, "max": 2, "icon": "t_hourglass", "fx": {"buff_dur": 2}, "text": "Spectral Host lasts {buff_dur} seconds longer."},
+			{"id": "w_eternal", "name": "Eternal", "row": 2, "max": 2, "icon": "t_hourglass", "fx": {"buff_dur": 2, "grasp_hold": 0.3}, "text": "Eternal Night's power lasts {buff_dur} seconds longer and Haunting Grasp holds {grasp_hold} seconds longer."},
 			{"id": "w_siphon", "name": "Soul Siphon", "row": 2, "max": 3, "icon": "t_fang", "fx": {"ls": 1}, "text": "+{ls}% of the damage you deal comes back as life."},
-			{"id": "w_rider", "name": "Fourth Rider", "row": 3, "max": 1, "icon": "host", "fx": {"spirits": 1}, "text": "Spectral Host calls {spirits} more spirit."},
+			{"id": "w_rider", "name": "Fourth Rider", "row": 3, "max": 1, "icon": "night", "fx": {"phantoms": 1, "dmg:night": 15}, "text": "Phantom Assault sends a fourth phantom, and Eternal Night deals {dmg:night}% more damage."},
 		]},
 	],
 	"demon": [

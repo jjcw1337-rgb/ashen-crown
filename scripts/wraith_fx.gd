@@ -1,69 +1,197 @@
 class_name WraithFx
 extends RefCounted
-## Visual effects for the Wraith's skills. Everything is parented to the zone's FX node.
+## Visual effects for the Wraith's skills (WraithSkills). Everything one-shot is parented to the zone's FX node;
+## what rides the body (the spectral claws) hangs on the rig's hand followers. The colours: his cold cyan spirit-
+## light (SPIRIT), the pale core of a torn soul (PALE), and the violet of the dark he moves through (VIOLET, NIGHT).
 
 const SPIRIT := Color(0.35, 0.85, 1.0)
 const VIOLET := Color(0.62, 0.38, 1.0)
 const PALE := Color(0.85, 0.95, 1.0)
+const NIGHT := Color(0.18, 0.08, 0.32)
 
 static var _crescent: ArrayMesh
+static var _mark: ArrayMesh
+static var _disc: ArrayMesh
+static var _claw: ArrayMesh
+static var _dome_shader: Shader
+static var _floor_shader: Shader
+static var _ribbon_mat: StandardMaterial3D
 
-## A flat crescent blade (the reaping arc), lying in the XZ plane and opening forward (-Z).
+static func _free_later(n: Node, t: float) -> void:
+	n.get_tree().create_timer(t, false).timeout.connect(func():
+		if is_instance_valid(n):
+			n.queue_free())
+
+## A flat crescent blade lying in the XZ plane and opening forward (-Z); UV.y 0 at its cutting edge.
 static func _crescent_mesh() -> ArrayMesh:
 	if _crescent != null:
 		return _crescent
+	_crescent = _crescent_make(0.32, 85.0)
+	return _crescent
+
+## A thin claw-mark crescent (a narrower band over a shorter arc).
+static func _mark_mesh() -> ArrayMesh:
+	if _mark != null:
+		return _mark
+	_mark = _crescent_make(0.1, 55.0)
+	return _mark
+
+static func _crescent_make(thick: float, half_deg: float) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var seg := 40
-	var a0 := deg_to_rad(-85.0)
-	var a1 := deg_to_rad(85.0)
+	var a0 := deg_to_rad(-half_deg)
+	var a1 := deg_to_rad(half_deg)
 	for i in seg:
 		var t0 := float(i) / seg
 		var t1 := float(i + 1) / seg
 		var pts := []
 		for t in [t0, t1]:
 			var a: float = lerpf(a0, a1, t)
-			var taper: float = sin(t * PI)              # thin at both tips
-			var outer := 1.0
-			var inner: float = 1.0 - 0.32 * taper
+			var taper: float = sin(t * PI)
+			var inner: float = 1.0 - thick * taper
 			var d := Vector3(sin(a), 0, -cos(a))
-			pts.append([d * inner, d * outer, t])
+			pts.append([d * inner, d, t])
 		for q in [[pts[0][0], 0.0, pts[0][2]], [pts[0][1], 1.0, pts[0][2]], [pts[1][1], 1.0, pts[1][2]],
 				[pts[0][0], 0.0, pts[0][2]], [pts[1][1], 1.0, pts[1][2]], [pts[1][0], 0.0, pts[1][2]]]:
-			st.set_uv(Vector2(q[2], 1.0 - q[1]))   # 0 at the cutting edge, fading towards the inside
+			st.set_uv(Vector2(q[2], 1.0 - q[1]))
 			st.set_normal(Vector3.UP)
 			st.add_vertex(q[0])
-	_crescent = st.commit()
-	return _crescent
+	return st.commit()
 
-static func _free_later(n: Node, t: float) -> void:
-	n.get_tree().create_timer(t, false).timeout.connect(n.queue_free)
+## A unit disc in the XZ plane with UV = position (0.5 at the centre), for ground decals.
+static func _disc_mesh() -> ArrayMesh:
+	if _disc != null:
+		return _disc
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var seg := 40
+	for i in seg:
+		var a0 := TAU * i / seg
+		var a1 := TAU * (i + 1) / seg
+		for p in [Vector3.ZERO, Vector3(cos(a1), 0, sin(a1)), Vector3(cos(a0), 0, sin(a0))]:
+			st.set_uv(Vector2(0.5 + p.x * 0.5, 0.5 + p.z * 0.5))
+			st.set_normal(Vector3.UP)
+			st.add_vertex(p)
+	_disc = st.commit()
+	return _disc
 
-## Soul Reap: a spectral scythe arc sweeps across the front, a bright edge riding its rim.
-static func reap(root: Node3D, pos: Vector3, yaw: float, radius: float) -> void:
+## A curved spectral claw: a tapering blade bent along its length, pointing down -Y from the fingertip.
+static func _claw_mesh() -> ArrayMesh:
+	if _claw != null:
+		return _claw
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var n := 10
+	var prev: Array = []
+	for i in n + 1:
+		var t := float(i) / n
+		var r := 0.011 * (1.0 - t * 0.92)
+		var p := Vector3(0.0, -t, -0.3 * t * t)     # bends forward as it goes down
+		var ring := []
+		for k in 5:
+			var a := TAU * k / 5.0
+			ring.append(p + Vector3(cos(a) * r, 0.0, sin(a) * r * 0.6))
+		if not prev.is_empty():
+			for k in 5:
+				var k2 := (k + 1) % 5
+				for v in [prev[k], ring[k], ring[k2], prev[k], ring[k2], prev[k2]]:
+					st.set_uv(Vector2(0.0, t))
+					st.add_vertex(v)
+		prev = ring
+	st.generate_normals()
+	_claw = st.commit()
+	return _claw
+
+static func _ribbon_mat_get() -> StandardMaterial3D:
+	if _ribbon_mat == null:
+		_ribbon_mat = StandardMaterial3D.new()
+		_ribbon_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_ribbon_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_ribbon_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		_ribbon_mat.vertex_color_use_as_albedo = true
+		_ribbon_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_ribbon_mat.albedo_color = Color(1.2, 1.2, 1.2)
+	return _ribbon_mat
+
+# ---------------------------------------------------------------- the spectral claws (Spectral Rend, Phantom Assault)
+## Four claws of spirit-light on each hand, on the skeleton's hand bones (BoneAttachment3D: the bone's own Y runs
+## down the fingers), grown out by set_claws. The armature is in centimetres (scale 0.01), hence the x100.
+static func claws(rig: Node3D) -> Array:
+	if rig.has_meta("claws"):
+		return rig.get_meta("claws")
+	var out := []
+	var skels := rig.find_children("*", "Skeleton3D", true, false)
+	if skels.is_empty():
+		rig.set_meta("claws", out)
+		return out
+	var skel: Skeleton3D = skels[0]
+	for bone in ["RightHand", "LeftHand"]:
+		var bi := skel.find_bone(bone)
+		if bi < 0:
+			continue
+		var at := BoneAttachment3D.new()
+		at.bone_name = bone
+		skel.add_child(at)
+		var side := 1.0 if bone == "RightHand" else -1.0
+		# the way the fingers point, in the hand bone's own frame: on along the forearm
+		var hg := skel.get_bone_global_rest(bi)
+		var fg := skel.get_bone_global_rest(skel.get_bone_parent(bi))
+		var fingers: Vector3 = (hg.basis.inverse() * (hg.origin - fg.origin)).normalized()
+		var hand_up: Vector3 = (hg.basis.inverse() * Vector3.UP).normalized()      # the back of the hand (A-pose, palms down)
+		var across := fingers.cross(hand_up).normalized()
+		var base := Basis(-across, -fingers, -across.cross(-fingers)).orthonormalized()  # the claw mesh hangs down -y, curling to the palm
+		for i in 4:
+			var c := MeshInstance3D.new()
+			c.mesh = _claw_mesh()
+			c.material_override = Mats.glow_unique(PALE.lerp(SPIRIT, 0.6), 2.2, 0.0, 0.0)
+			c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			var fan := Basis(fingers, deg_to_rad((i - 1.5) * 9.0 * side)) * Basis(across, deg_to_rad(-12.0))
+			c.transform = Transform3D((fan * base).scaled(Vector3(100.0, 0.1, 100.0)), fingers * 9.0 + across * (i - 1.5) * 2.0 * side)
+			c.set_meta("base", fan * base)
+			c.visible = false
+			at.add_child(c)
+			out.append(c)
+	rig.set_meta("claws", out)
+	return out
+
+## k 0..1: how far the claws are out (0.38 m at full), their light with them.
+static func set_claws(rig: Node3D, k: float) -> void:
+	for c in claws(rig):
+		var m := c as MeshInstance3D
+		if not is_instance_valid(m):
+			continue
+		m.visible = k > 0.01
+		m.basis = (m.get_meta("base") as Basis).scaled(Vector3(100.0 + k * 30.0, maxf(0.1, 24.0 * k), 100.0 + k * 30.0))
+		(m.material_override as ShaderMaterial).set_shader_parameter("alpha_mul", clampf(k * 1.4, 0.0, 1.0))
+
+## The rake: three thin spectral crescents tearing across in front, a flash and a spray of torn light.
+static func rake(root: Node3D, pos: Vector3, yaw: float, radius: float, left: bool) -> void:
+	var dir := Vector3(-sin(yaw), 0, -cos(yaw))
 	for layer in 3:
 		var mi := MeshInstance3D.new()
-		mi.mesh = _crescent_mesh()
-		var col: Color = [SPIRIT, PALE, VIOLET][layer]
-		var m := Mats.glow_unique(col, [1.4, 1.8, 0.9][layer], 1.0)
+		mi.mesh = _mark_mesh()
+		var col: Color = [PALE, SPIRIT, SPIRIT.lerp(VIOLET, 0.5)][layer]
+		var m := Mats.glow_unique(col, [2.0, 1.5, 1.1][layer], 1.2)
 		mi.material_override = m
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		root.add_child(mi)
-		var r: float = radius * [1.0, 1.04, 0.86][layer]
-		mi.global_position = pos + Vector3(0, 0.9 + layer * 0.12, 0)
-		mi.scale = Vector3(r * 0.6, 1.0, r * 0.6)
-		mi.rotation = Vector3(0.0, yaw + 0.9, [0.0, 0.05, -0.08][layer])
+		var r: float = radius * [0.9, 1.0, 0.8][layer]
+		mi.global_position = pos + Vector3(0, 1.05 + (layer - 1) * 0.2, 0)
+		var s := 1.0 if left else -1.0
+		mi.scale = Vector3(r * 0.5, 1.0, r * 0.5)
+		mi.rotation = Vector3(-0.3 * s * (0.6 + layer * 0.2), yaw + 0.7 * s, 0.3 * s)
 		var tw := mi.create_tween()
 		tw.set_parallel(true)
-		var d := 0.22 + layer * 0.04
-		tw.tween_property(mi, "rotation:y", yaw - 0.9, d).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		var d := 0.16 + layer * 0.03
+		tw.tween_property(mi, "rotation:y", yaw - 0.7 * s, d).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.tween_property(mi, "scale", Vector3(r, 1.0, r), d).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		tw.tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 1.0, 0.0, 0.42).set_delay(0.08)
-		_free_later(mi, 0.6)
-	Fx.burst(root, pos + Vector3(0, 0.9, 0) + Vector3(-sin(yaw), 0, -cos(yaw)) * radius * 0.6, SPIRIT, 26, 4.0, 0.09, 0.5, true, 0.5, 70.0, Vector3(-sin(yaw), 0.2, -cos(yaw)))
-	Fx.flash(root, pos + Vector3(0, 1.2, 0), SPIRIT, 2.0, 0.25, 6.0)
+		tw.tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 1.0, 0.0, 0.3).set_delay(0.06)
+		_free_later(mi, 0.45)
+	Fx.burst(root, pos + Vector3(0, 1.1, 0) + dir * radius * 0.6, SPIRIT, 18, 4.5, 0.08, 0.4, true, 0.5, 60.0, dir + Vector3(0, 0.3, 0))
+	Fx.flash(root, pos + Vector3(0, 1.2, 0) + dir * 0.8, SPIRIT, 1.6, 0.2, 5.0)
 
-## A captured soul: a little flame that curves back to the Wraith and heals it on arrival.
+## A soul torn out of a foe: a pale flame that curves back to the Wraith and heals it on arrival.
 static func soul_wisp(root: Node3D, from: Vector3, hero: Node3D, on_arrive: Callable) -> void:
 	var n := Node3D.new()
 	root.add_child(n)
@@ -93,86 +221,436 @@ static func soul_wisp(root: Node3D, from: Vector3, hero: Node3D, on_arrive: Call
 		on_arrive.call())
 	_free_later(n, dur + 0.8)
 
-## Banshee Wail: three shock rings, a burst of pale screaming shapes and a cold flash.
-static func wail(root: Node3D, pos: Vector3, radius: float) -> void:
-	Fx.ring(root, pos, radius, SPIRIT.darkened(0.35), 0.45, 0.3)
+# ---------------------------------------------------------------- Soul Siphon: the tether
+## The tether from the Wraith's hand into a victim: two strands of spirit-light twisted round a dark core, pulled
+## taut, with the stolen soul-stuff flowing back along it as pale motes, and the soul being torn loose at the far
+## end (a writhing pale knot). Redrawn each frame (an ImmediateMesh ribbon facing the camera).
+class Tether extends MeshInstance3D:
+	var born := -1.0
+	var jitter := 0.0
+	var _from := Vector3.ZERO
+	var _span := Vector3.ZERO
+	var _len := 1.0
+	var _side := Vector3.RIGHT
+	var _up := Vector3.UP
+	var _vup := Vector3.UP
+	var _t := 0.0
+	var fade := 1.0      # 1 holding, eased to 0 as it lets go
+
+	func _init() -> void:
+		jitter = randf() * 10.0
+		mesh = ImmediateMesh.new()
+		cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		top_level = true
+		material_override = WraithFx._ribbon_mat_get()
+
+	func _at(u: float, wob: float, rate: float, ph: float) -> Vector3:
+		var env := sin(u * PI)
+		var a := u * rate * TAU * _len / 5.0 + _t * 6.0 + ph + jitter
+		var sag := Vector3.DOWN * 0.18 * env * _len * 0.12
+		return _from + _span * u + (_side * sin(a) + _up * cos(a * 1.3) * 0.7) * wob * env + sag
+
+	func _blob(im: ImmediateMesh, p: Vector3, r: float, c0: Color, c1: Color, seg := 10, star := 0.0) -> void:
+		for i in seg:
+			var a0 := TAU * i / seg + _t * 2.0
+			var a1 := TAU * (i + 1) / seg + _t * 2.0
+			var r0 := r * (1.0 + star * sin(a0 * 3.0 + _t * 11.0))
+			var r1 := r * (1.0 + star * sin(a1 * 3.0 + _t * 11.0))
+			im.surface_set_color(c0)
+			im.surface_add_vertex(p)
+			im.surface_set_color(c1)
+			im.surface_add_vertex(p + (_side * cos(a0) + _vup * sin(a0)) * r0)
+			im.surface_add_vertex(p + (_side * cos(a1) + _vup * sin(a1)) * r1)
+
+	func _strip(im: ImmediateMesh, pts: Array, ws: Array, cols: Array, across: Vector3) -> void:
+		for i in range(1, pts.size()):
+			var a: Vector3 = pts[i - 1]
+			var b: Vector3 = pts[i]
+			var wa: float = ws[i - 1]
+			var wb: float = ws[i]
+			var ca: Color = cols[i - 1]
+			var cb: Color = cols[i]
+			var la := a - across * wa * 0.5
+			var ra := a + across * wa * 0.5
+			var lb := b - across * wb * 0.5
+			var rb := b + across * wb * 0.5
+			for v in [[la, ca], [ra, ca], [rb, cb], [la, ca], [rb, cb], [lb, cb]]:
+				im.surface_set_color(v[1])
+				im.surface_add_vertex(v[0])
+
+	## from: the Wraith's hand; to: the victim's chest.
+	func draw(from: Vector3, to: Vector3, t: float) -> void:
+		global_transform = Transform3D.IDENTITY
+		var im: ImmediateMesh = mesh
+		im.clear_surfaces()
+		if born < 0.0:
+			born = t
+		var grow := 1.0 - pow(1.0 - clampf((t - born) / 0.14, 0.0, 1.0), 3.0)
+		to = from.lerp(to, grow)
+		_t = t
+		_from = from
+		_span = to - from
+		_len = _span.length()
+		if _len < 0.05 or fade <= 0.01:
+			return
+		var dir := _span / _len
+		var cam := get_viewport().get_camera_3d()
+		var view := Vector3.UP
+		if cam != null:
+			view = (cam.global_position - (from + to) * 0.5).normalized()
+		_side = dir.cross(view)
+		if _side.length() < 0.01:
+			_side = dir.cross(Vector3.RIGHT)
+		_side = _side.normalized()
+		_up = _side.cross(dir).normalized()
+		_vup = view.cross(_side).normalized()
+		var n := clampi(int(_len * 6.0), 12, 64)
+		im.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+		var strands := [
+			[0.3, 0.02, 1.5, 0.0, WraithFx.NIGHT.lightened(0.2), 0.5],
+			[0.11, 0.1, 3.2, 0.0, WraithFx.SPIRIT, 0.8],
+			[0.08, 0.1, 3.2, PI, WraithFx.VIOLET, 0.7],
+			[0.04, 0.01, 2.0, 1.0, WraithFx.PALE, 0.85],
+		]
+		for s in strands:
+			var pts := []
+			var ws := []
+			var cols := []
+			for i in n + 1:
+				var u := float(i) / n
+				pts.append(_at(u, float(s[1]), float(s[2]), float(s[3])))
+				ws.append(float(s[0]) * (0.6 + 0.4 * sin(u * PI)) * grow * fade)
+				var pulse := pow(0.5 + 0.5 * sin(u * _len * 2.5 - t * 12.0 + jitter), 5.0)
+				var c: Color = s[4]
+				cols.append(Color(c.r, c.g, c.b, clampf(float(s[5]) * (0.5 + 0.8 * pulse) * fade, 0.0, 1.0)))
+			_strip(im, pts, ws, cols, _side)
+		# motes of the stolen soul drifting down the tether into the hand
+		for k in 10:
+			var h := fposmod(sin(k * 12.9898 + jitter) * 43758.5453, 1.0)
+			var u := fposmod(k / 10.0 + h * 0.1 - t * (0.6 + h * 0.5), 1.0)
+			var e := sin(u * PI)
+			var mp := _at(u, 0.08 + h * 0.12, 3.2, k * 1.7)
+			_blob(im, mp, (0.05 + 0.05 * h) * (0.4 + 0.6 * e) * fade, Color(0.95, 1.0, 1.0, 0.9 * e * fade), Color(WraithFx.SPIRIT.r, WraithFx.SPIRIT.g, WraithFx.SPIRIT.b, 0.0), 6)
+		# the soul being torn loose: a pale knot writhing at the victim
+		var throb := 1.0 + 0.25 * sin(t * 16.0)
+		_blob(im, to, 0.5 * throb * fade, Color(WraithFx.VIOLET.r, WraithFx.VIOLET.g, WraithFx.VIOLET.b, 0.3 * fade), Color(0.1, 0.0, 0.2, 0.0), 14)
+		_blob(im, to, 0.22 * throb * fade, Color(1.0, 1.0, 1.0, 0.8 * fade), Color(WraithFx.SPIRIT.r, WraithFx.SPIRIT.g, WraithFx.SPIRIT.b, 0.0), 10, 0.4)
+		# the grip: a small vortex at the hand
+		_blob(im, from, 0.16 * fade, Color(WraithFx.PALE.r, WraithFx.PALE.g, WraithFx.PALE.b, 0.7 * fade), Color(WraithFx.VIOLET.r, WraithFx.VIOLET.g, WraithFx.VIOLET.b, 0.0), 8, 0.3)
+		im.surface_end()
+
+static func tether(root: Node3D) -> Tether:
+	var t := Tether.new()
+	root.add_child(t)
+	return t
+
+## The tether's bite: a flash of violet where it sinks in.
+static func latch(root: Node3D, pos: Vector3) -> void:
+	Fx.burst(root, pos, VIOLET, 14, 2.5, 0.09, 0.4, true, 0.0)
+	Fx.flash(root, pos, VIOLET, 1.6, 0.25, 3.0)
+
+## A ring of pale light that races out from a point in the air (hits, the soul leaving).
+static func pulse(root: Node3D, pos: Vector3, col: Color, size: float, dur: float) -> void:
+	var mi := MeshInstance3D.new()
+	mi.mesh = Geo.sph(1.0, 16)
+	var m := Mats.glow_unique(col, 1.6, 0.0, 1.0)
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+	mi.global_position = pos
+	mi.scale = Vector3.ONE * 0.1
+	var tw := mi.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(mi, "scale", Vector3.ONE * size, dur).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tw.tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 1.0, 0.0, dur)
+	_free_later(mi, dur + 0.05)
+
+# ---------------------------------------------------------------- Shadowstep: the mist and the shade
+## He comes apart into mist: dark smoke curling up off him and a cold flash in it.
+static func mist_out(root: Node3D, pos: Vector3) -> void:
+	Fx.burst(root, pos + Vector3(0, 0.9, 0), Color(0.3, 0.26, 0.42, 0.7), 34, 2.0, 0.4, 0.9, false, 0.9, 120.0)
+	Fx.burst(root, pos + Vector3(0, 1.0, 0), SPIRIT, 20, 2.5, 0.09, 0.5, true, 0.0)
+	Fx.flash(root, pos + Vector3(0, 1.1, 0), VIOLET, 2.2, 0.3, 5.0)
+
+## He re-forms: mist drawn in off the ground into the body, a ring of spirit-light, a flash.
+static func mist_in(root: Node3D, pos: Vector3) -> void:
+	Fx.ring(root, pos, 2.2, SPIRIT, 0.32, 0.12)
+	var p := Fx.burst(root, pos + Vector3(0, 0.15, 0), SPIRIT, 30, 4.0, 0.12, 0.6, true, 3.5, 30.0)
+	p.position = pos + Vector3(0, 0.15, 0)
+	Fx.burst(root, pos + Vector3(0, 0.7, 0), Color(0.3, 0.26, 0.42, 0.6), 18, 1.4, 0.4, 0.7, false, 1.2)
+
+## The shade he left: a dark echo of his shape (an afterimage) standing where he was, which caves in on itself.
+static func shade_collapse(root: Node3D, pos: Vector3) -> void:
+	Fx.ring(root, pos, 2.6, VIOLET, 0.35, 0.3)
+	Fx.burst(root, pos + Vector3(0, 0.8, 0), VIOLET, 28, 5.0, 0.12, 0.45, true, 0.0)
+	Fx.burst(root, pos + Vector3(0, 0.9, 0), Color(0.3, 0.26, 0.42, 0.7), 16, 2.5, 0.45, 0.7, false, 0.6)
+	Fx.flash(root, pos + Vector3(0, 1.0, 0), VIOLET, 3.0, 0.3, 6.0)
+
+# ---------------------------------------------------------------- afterimages (Shadowstep, Phantom Assault, Eternal Night)
+## A ghost of the Wraith frozen in his pose this instant: a copy of the skinned body (the armature with its bone
+## poses) under its own spectral materials, tinted and thinned to spirit (the shader's "ghost" and phase_amt).
+## It lives `life` seconds, dissolving over the last part. Returns the ghost's root (its origin = the hero's).
+static func afterimage(rig: Node3D, root: Node3D, tint: Color, life: float, start_phase := 0.3) -> Node3D:
+	var body: Node3D = rig.get_node_or_null("Body")
+	if body == null:
+		return null
+	var arm: Node3D = body.get_node_or_null("Armature")
+	if arm == null:
+		return null
+	var g := Node3D.new()
+	root.add_child(g)
+	g.global_transform = rig.global_transform
+	var b := Node3D.new()
+	b.transform = body.transform       # the float's lean and height, the turn
+	g.add_child(b)
+	var copy: Node3D = arm.duplicate()
+	b.add_child(copy)
+	var mats := []
+	for mi in copy.find_children("*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		for si in (m.mesh.get_surface_count() if m.mesh != null else 0):
+			var src := m.get_surface_override_material(si) as ShaderMaterial
+			if src == null:
+				continue
+			var mat := src.duplicate() as ShaderMaterial
+			mat.set_shader_parameter("ghost", 1.0)
+			mat.set_shader_parameter("spirit", tint)
+			mat.set_shader_parameter("phase_amt", start_phase)
+			mat.set_shader_parameter("glow", 2.0)
+			m.set_surface_override_material(si, mat)
+			mats.append(mat)
+	g.set_meta("mats", mats)
+	g.set_meta("born", 0.0)
+	var tw := g.create_tween()
+	tw.tween_method(func(v: float):
+		for mt in mats:
+			(mt as ShaderMaterial).set_shader_parameter("phase_amt", v), start_phase, 1.0, life).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_free_later(g, life + 0.05)
+	return g
+
+# ---------------------------------------------------------------- Haunting Grasp
+## Spectral hands bursting up out of the ground round a point: long-fingered claws of spirit-light reaching up and
+## closing, on a dark stain that spreads under them; they sink again as the hold ends.
+static func grasp(root: Node3D, pos: Vector3, radius: float, dur: float) -> Node3D:
+	var n := Node3D.new()
+	root.add_child(n)
+	n.global_position = pos
+	# the stain: a dark disc with a violet rim, grown out
+	var stain := MeshInstance3D.new()
+	stain.mesh = _disc_mesh()
+	var sm := _floor_mat(VIOLET, 0.0)
+	stain.material_override = sm
+	stain.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	n.add_child(stain)
+	stain.position.y = 0.04
+	stain.scale = Vector3.ONE * 0.2
+	var tw := stain.create_tween()
+	tw.tween_property(stain, "scale", Vector3.ONE * radius, 0.25).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_interval(maxf(dur - 0.6, 0.1))
+	tw.tween_method(func(v: float): sm.set_shader_parameter("amt", v), 1.0, 0.0, 0.5)
+	sm.set_shader_parameter("amt", 1.0)
+	# the hands: eight round the ring, two in the middle, each a palm and four fingers, rising then closing
+	var hands := []
+	for i in 9:
+		var a := TAU * i / 8.0 + 0.3
+		var r := radius * (0.72 if i < 8 else 0.0) + (randf_range(-0.2, 0.2) if i < 8 else 0.0)
+		var h := Node3D.new()
+		n.add_child(h)
+		h.position = Vector3(cos(a) * r, -0.9, sin(a) * r)
+		h.rotation.y = -a + PI * 0.5 + randf_range(-0.4, 0.4)
+		var palm := MeshInstance3D.new()
+		palm.mesh = Geo.cyl(0.07, 0.11, 0.9, 7)
+		palm.material_override = Mats.glow_unique(VIOLET.lerp(NIGHT, 0.4), 1.1, 0.0, 0.9)
+		palm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		palm.position.y = 0.45
+		h.add_child(palm)
+		var fingers := []
+		for k in 4:
+			var f := MeshInstance3D.new()
+			f.mesh = _claw_mesh()
+			f.material_override = Mats.glow_unique(SPIRIT.lerp(VIOLET, 0.35), 1.5, 0.0, 0.0)
+			f.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			f.position = Vector3((k - 1.5) * 0.06, 0.92, 0.0)
+			f.rotation_degrees = Vector3(180.0 - 35.0, 0.0, (k - 1.5) * 10.0)   # the claws point up, curling inward
+			f.scale = Vector3(2.6, 0.42, 2.6)
+			h.add_child(f)
+			fingers.append(f)
+		hands.append([h, fingers])
+		var rise := h.create_tween()
+		rise.tween_interval(0.03 * i)
+		rise.tween_property(h, "position:y", 0.0, 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+		# the fingers close on whatever is there
+		for f in fingers:
+			var cl: Tween = f.create_tween()
+			cl.tween_interval(0.25 + 0.03 * i)
+			cl.tween_property(f, "rotation_degrees:x", 180.0 - 85.0, 0.18).set_ease(Tween.EASE_IN)
+		var sink := h.create_tween()
+		sink.tween_interval(maxf(dur - 0.45, 0.1))
+		sink.tween_property(h, "position:y", -1.0, 0.45).set_ease(Tween.EASE_IN)
+	n.set_meta("hands", hands)
+	Fx.burst(root, pos + Vector3(0, 0.2, 0), Color(0.08, 0.04, 0.12, 0.85), 30, 3.0, 0.35, 0.8, false, 1.5, 70.0)
+	Fx.burst(root, pos + Vector3(0, 0.3, 0), VIOLET, 30, 4.5, 0.1, 0.6, true, 1.0, 60.0)
+	Fx.flash(root, pos + Vector3(0, 1.0, 0), VIOLET, 2.5, 0.5, radius * 2.5)
+	_free_later(n, dur + 0.1)
+	return n
+
+## A dark ground decal: black fading to a coloured rim, with slow drifting noise.
+static func _floor_mat(col: Color, amt: float) -> ShaderMaterial:
+	if _floor_shader == null:
+		_floor_shader = Shader.new()
+		_floor_shader.code = FLOOR_SHADER
+	var m := ShaderMaterial.new()
+	m.shader = _floor_shader
+	m.set_shader_parameter("rim", col)
+	m.set_shader_parameter("amt", amt)
+	return m
+
+const FLOOR_SHADER := """
+shader_type spatial;
+render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
+uniform vec3 rim : source_color = vec3(0.6, 0.4, 1.0);
+uniform float amt = 1.0;
+uniform float runes = 0.0;
+float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float vn(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), u.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), u.x), u.y); }
+void fragment(){
+	vec2 c = UV - 0.5;
+	float r = length(c) * 2.0;
+	float n = vn(c * 9.0 + vec2(TIME * 0.25, -TIME * 0.17)) * 0.5 + vn(c * 19.0 - TIME * 0.4) * 0.25;
+	float edge = 1.0 - smoothstep(0.78, 1.0, r + (n - 0.4) * 0.25);
+	float dark = edge * 0.78;
+	float ring = smoothstep(0.1, 0.0, abs(r - 0.86 + (n - 0.4) * 0.2)) * 0.9;
+	float ang = atan(c.y, c.x);
+	float rn = 0.0;
+	if (runes > 0.0) {
+		float spokes = smoothstep(0.75, 1.0, sin(ang * 12.0 + TIME * 0.6) * 0.5 + 0.5) * smoothstep(0.3, 0.45, r) * (1.0 - smoothstep(0.7, 0.8, r));
+		float inner = smoothstep(0.06, 0.0, abs(r - 0.42));
+		rn = (spokes + inner) * runes;
+	}
+	vec3 col = mix(vec3(0.02, 0.01, 0.04), rim, clamp(ring + rn, 0.0, 1.0) * 0.8) * (0.6 + 0.4 * n);
+	ALBEDO = col * (1.0 + (ring + rn) * 0.7);
+	ALPHA = clamp(dark + ring * 0.9 + rn * 0.6, 0.0, 1.0) * amt;
+}
+"""
+
+# ---------------------------------------------------------------- Phantom Assault
+## Where a phantom tears through a foe: a pale crescent and a spray.
+static func phantom_hit(root: Node3D, pos: Vector3, dir: Vector3) -> void:
+	Fx.burst(root, pos, PALE, 14, 4.0, 0.08, 0.35, true, 0.0, 70.0, dir)
+	Fx.flash(root, pos, VIOLET, 1.4, 0.15, 3.5)
+
+## The split: a violet flash and a ring where the phantoms leave him.
+static func split(root: Node3D, pos: Vector3) -> void:
+	Fx.flash(root, pos + Vector3(0, 1.2, 0), VIOLET, 3.0, 0.35, 6.0)
+	Fx.burst(root, pos + Vector3(0, 1.0, 0), VIOLET, 26, 3.5, 0.1, 0.5, true, 0.0)
+	Fx.ring(root, pos, 2.0, VIOLET, 0.3, 0.2)
+
+# ---------------------------------------------------------------- Eternal Night
+## The night: a dome of darkness that falls over everything round him (a multiplicative dome, so the ground, the
+## foes and the Wraith himself are plunged into violet dark, softly at its edge), and the dark floor under it
+## with his runes turning. `set_night(n, k)` brings it down (k 0..1) and lifts it again.
+static func night(root: Node3D, pos: Vector3, radius: float) -> Node3D:
+	if _dome_shader == null:
+		_dome_shader = Shader.new()
+		_dome_shader.code = DOME_SHADER
+	var n := Node3D.new()
+	root.add_child(n)
+	n.global_position = pos
+	var dome := MeshInstance3D.new()
+	dome.mesh = Geo.sph(1.0, 32)
+	var dm := ShaderMaterial.new()
+	dm.shader = _dome_shader
+	dm.set_shader_parameter("amt", 0.0)
+	dome.material_override = dm
+	dome.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	dome.scale = Vector3.ONE * radius
+	n.add_child(dome)
+	var floor_m := MeshInstance3D.new()
+	floor_m.mesh = _disc_mesh()
+	var fm := _floor_mat(VIOLET, 0.0)
+	fm.set_shader_parameter("runes", 1.0)
+	floor_m.material_override = fm
+	floor_m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	floor_m.position.y = 0.05
+	floor_m.scale = Vector3.ONE * radius * 0.5
+	n.add_child(floor_m)
+	# souls drifting up out of the ground under the night
+	var souls := _trail(VIOLET.lerp(PALE, 0.4), 0.14, 60, 2.2)
+	var pm := souls.process_material as ParticleProcessMaterial
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
+	pm.emission_ring_axis = Vector3.UP
+	pm.emission_ring_radius = radius * 0.6
+	pm.emission_ring_inner_radius = 1.0
+	pm.emission_ring_height = 0.2
+	pm.direction = Vector3.UP
+	pm.spread = 12.0
+	pm.initial_velocity_min = 0.6
+	pm.initial_velocity_max = 1.4
+	souls.amount_ratio = 0.0
+	n.add_child(souls)
+	n.set_meta("dome", dm)
+	n.set_meta("floor", fm)
+	n.set_meta("souls", souls)
+	n.set_meta("light", null)
+	return n
+
+static func set_night(n: Node3D, k: float) -> void:
+	if n == null or not is_instance_valid(n):
+		return
+	(n.get_meta("dome") as ShaderMaterial).set_shader_parameter("amt", k)
+	(n.get_meta("floor") as ShaderMaterial).set_shader_parameter("amt", k)
+	(n.get_meta("souls") as GPUParticles3D).amount_ratio = k
+
+const DOME_SHADER := """
+shader_type spatial;
+render_mode unshaded, blend_mul, depth_draw_never, cull_disabled, shadows_disabled;
+uniform float amt = 1.0;
+uniform vec3 tint : source_color = vec3(0.22, 0.12, 0.42);
+void fragment(){
+	// darkest in the middle of the view of it, softening to nothing at the dome's rim (its silhouette)
+	float f = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
+	float k = smoothstep(0.0, 0.55, f) * amt;
+	vec3 night = mix(vec3(1.0), tint, k * 0.8);
+	ALBEDO = night;
+}
+"""
+
+## The scream of the night: three rings of terror racing out, a burst of pale shrieking shapes.
+static func scream(root: Node3D, pos: Vector3, radius: float) -> void:
+	Fx.ring(root, pos, radius, SPIRIT.darkened(0.3), 0.5, 0.3)
 	var tree := root.get_tree()
 	tree.create_timer(0.1, false).timeout.connect(func():
 		if is_instance_valid(root):
-			Fx.ring(root, pos, radius * 0.8, VIOLET.darkened(0.3), 0.5, 0.9))
+			Fx.ring(root, pos, radius * 0.85, VIOLET, 0.55, 0.9))
 	tree.create_timer(0.2, false).timeout.connect(func():
 		if is_instance_valid(root):
 			Fx.ring(root, pos, radius * 1.05, SPIRIT.darkened(0.55), 0.5, 0.15))
-	Fx.burst(root, pos + Vector3(0, 1.3, 0), Color(0.75, 0.9, 1.0, 0.7), 30, 9.0, 0.22, 0.5, true, 0.0, 180.0)
-	Fx.burst(root, pos + Vector3(0, 0.4, 0), VIOLET, 40, 6.0, 0.12, 0.8, true, 1.5, 90.0)
-	# the scream itself: a tall cone of light flaring up out of the hood
+	Fx.burst(root, pos + Vector3(0, 1.5, 0), Color(0.75, 0.9, 1.0, 0.7), 34, 10.0, 0.22, 0.5, true, 0.0, 180.0)
+	Fx.burst(root, pos + Vector3(0, 0.5, 0), VIOLET, 40, 6.0, 0.12, 0.8, true, 1.5, 90.0)
 	var mi := MeshInstance3D.new()
 	mi.mesh = Geo.cone(0.6, 2.6, 24)
 	var m := Mats.glow_unique(SPIRIT, 2.0, 1.0, 0.6)
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(mi)
-	mi.global_position = pos + Vector3(0, 1.8, 0)
+	mi.global_position = pos + Vector3(0, 2.4, 0)
 	mi.rotation = Vector3(PI, 0, 0)
 	mi.scale = Vector3(0.2, 0.3, 0.2)
 	var tw := mi.create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(mi, "scale", Vector3(1.4, 1.2, 1.4), 0.3).set_ease(Tween.EASE_OUT)
+	tw.tween_property(mi, "scale", Vector3(1.6, 1.3, 1.6), 0.3).set_ease(Tween.EASE_OUT)
 	tw.tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 0.9, 0.0, 0.45)
 	_free_later(mi, 0.6)
 
-## Shadow Step, departure: the body collapses into smoke and leaves a shade that implodes.
-static func shade_depart(root: Node3D, pos: Vector3) -> void:
-	Fx.burst(root, pos + Vector3(0, 1.0, 0), Color(0.05, 0.03, 0.09, 0.85), 30, 2.5, 0.35, 0.9, false, 0.6)
-	Fx.burst(root, pos + Vector3(0, 1.0, 0), VIOLET, 24, 3.0, 0.1, 0.6, true, 0.0)
-	var mi := MeshInstance3D.new()
-	mi.mesh = Geo.cyl(0.35, 0.5, 2.0, 18)
-	var m := Mats.glow_unique(VIOLET, 1.6, 1.0, 0.9)
-	mi.material_override = m
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(mi)
-	mi.global_position = pos + Vector3(0, 1.0, 0)
-	var tw := mi.create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(mi, "scale", Vector3(0.05, 1.3, 0.05), 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	tw.tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 1.0, 0.3, 0.45)
-	_free_later(mi, 0.5)
-
-static func shade_implode(root: Node3D, pos: Vector3) -> void:
-	Fx.ring(root, pos, 2.6, VIOLET, 0.35, 0.4)
-	Fx.burst(root, pos + Vector3(0, 0.8, 0), VIOLET, 30, 5.0, 0.12, 0.45, true, 0.0)
-	Fx.flash(root, pos + Vector3(0, 1.0, 0), VIOLET, 3.0, 0.3, 6.0)
-
-## Shadow Step, arrival: mist pours up out of the ground and the Wraith re-forms in it.
-static func shade_arrive(root: Node3D, pos: Vector3) -> void:
-	Fx.ring(root, pos, 2.4, SPIRIT, 0.35, 0.15)
-	Fx.burst(root, pos + Vector3(0, 0.2, 0), SPIRIT, 34, 4.5, 0.14, 0.7, true, 3.0, 35.0)
-	Fx.burst(root, pos + Vector3(0, 0.6, 0), Color(0.05, 0.03, 0.09, 0.8), 20, 1.5, 0.4, 0.8, false, 1.0)
-
-## Spectral Host: one orbiting spirit (a bright core in a comet trail).
-static func spirit_node(root: Node3D) -> Node3D:
-	var n := Node3D.new()
-	root.add_child(n)
-	var core := MeshInstance3D.new()
-	core.mesh = Geo.sph(0.085, 12)
-	core.material_override = Mats.glow(PALE, 6.0)
-	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	n.add_child(core)
-	var halo := MeshInstance3D.new()
-	halo.mesh = Geo.sph(0.17, 12)
-	halo.material_override = Mats.glow(SPIRIT, 1.2, 0.0, 1.0)
-	halo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	n.add_child(halo)
-	n.add_child(_trail(SPIRIT, 0.13, 40, 0.5))
-	return n
-
-static func summon(root: Node3D, pos: Vector3) -> void:
-	Fx.pillar(root, pos, SPIRIT, 1.0)
-	Fx.ring(root, pos, 3.0, VIOLET, 0.5, 0.2)
-
-static func spirit_hit(root: Node3D, pos: Vector3) -> void:
-	Fx.burst(root, pos, PALE, 16, 4.0, 0.08, 0.35, true, 0.0)
-	Fx.flash(root, pos, SPIRIT, 1.5, 0.15, 3.0)
+## The night's collapse: the dark drawn into the slam and thrown out again as a wave of spirit-light.
+static func collapse(root: Node3D, pos: Vector3, radius: float) -> void:
+	Fx.ring(root, pos, radius, VIOLET, 0.5, 0.3)
+	Fx.ring(root, pos, radius * 0.7, PALE, 0.35, 0.15)
+	Fx.burst(root, pos + Vector3(0, 0.3, 0), SPIRIT, 50, 8.0, 0.14, 0.7, true, 1.0, 80.0)
+	Fx.burst(root, pos + Vector3(0, 0.4, 0), Color(0.06, 0.03, 0.1, 0.9), 30, 4.0, 0.5, 0.9, false, 1.0, 90.0)
+	Fx.flash(root, pos + Vector3(0, 1.2, 0), PALE, 5.0, 0.5, radius * 2.0)
 
 ## A soft comet trail that stays in world space behind whatever it is attached to.
 static func _trail(col: Color, size: float, amount: int, life: float) -> GPUParticles3D:

@@ -23,6 +23,20 @@ const MOCAP_GLB := "res://assets/models/wraith_mocap.glb"
 const FLOAT_SPEED := 1.4
 const HOVER := 0.16            # it floats this far off the ground
 
+## His skills' clips per attack style (WraithSkills; KnightMocapRig "shots"): [[attack progress, clip second], ...]
+## (KnightMocapRig.shot_time), so each blow lands on Anim.impact_at's frame at any attack speed.
+const SHOTS := {
+	"rend": {"style": "rend", "clip": "claw2", "keys": [[0.0, 0.45], [0.2, 0.7], [0.42, 0.83], [0.55, 1.02], [0.72, 1.33], [1.0, 1.7]]},
+	"siphon": {"style": "siphon", "clip": "cast2", "keys": [[0.0, 0.95], [0.25, 1.3], [0.5, 1.68], [0.8, 1.9], [1.0, 2.2]]},
+	"wstep": {"style": "wstep", "clip": "dodge", "keys": [[0.0, 0.1], [0.35, 0.4], [0.7, 0.85], [1.0, 1.16]]},
+	"grasp": {"style": "grasp", "clip": "slam", "keys": [[0.0, 0.35], [0.3, 1.1], [0.5, 1.63], [0.72, 2.3], [1.0, 3.0]]},
+	"phantom": {"style": "phantom", "clip": "claw1", "keys": [[0.0, 0.25], [0.3, 0.6], [0.55, 0.85], [0.7, 1.05], [1.0, 2.4]]},
+	"night_rise": {"style": "night_rise", "clip": "cast", "keys": [[0.0, 0.0], [1.0, 0.45]]},
+	"night_scream": {"style": "night_scream", "clip": "scream", "keys": [[0.0, 0.75], [0.45, 1.25], [1.0, 1.9]]},
+	"night_hold": {"style": "night_hold", "clip": "cast", "keys": [[0.0, 0.8], [1.0, 1.45]]},
+	"night_fall": {"style": "night_fall", "clip": "slam", "keys": [[0.0, 0.5], [0.25, 1.1], [0.5, 1.63], [0.75, 2.3], [1.0, 3.0]]},
+}
+
 static func mocap_ok() -> bool:
 	return ResourceLoader.exists(MOCAP_GLB)
 
@@ -39,7 +53,8 @@ static func build_mocap(gear: Dictionary) -> Node3D:
 	var r := Knight.build_mocap(MOCAP_GLB, {
 		"relaxed": ["idle", 0.0, "float", FLOAT_SPEED],
 		"combat": ["combat_idle", 0.0, "float_combat", FLOAT_SPEED],
-		"meta": "wraith", "hair_run": 1.0})
+		"meta": "wraith", "hair_run": 1.0,
+		"shots": SHOTS})     # his skills: a whole-body clip per attack style
 	r.remove_meta("knight")
 	r.set_meta("wraith", true)
 	r.set("hover", HOVER)
