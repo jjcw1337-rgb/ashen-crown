@@ -425,7 +425,8 @@ shared preview), give the preview build's link, and go to `main` only when Blain
   and checks the field lines up and returns fully to rest; Mesa's llvmpipe software renderer, the only one in the
   cloud workspace, tints some clumps in rainbow colours there, so judge colours on a real GPU). Performance from any build:
   `AshenCrown -- --shot out.png --zone wild --god --perf 12 --quality 2 --grassspot` writes `out.txt` (fps, 1% low,
-  draw calls, primitives, GPU). The painted clumps (`Flora.GRASS_TOP`, `_camera_card`) are no longer placed;
+  draw calls, primitives, GPU). `--hide grass,shadows,vfog,ssao,ssil,sdfgi,softshadow,split2,shadowdist,atlas2k` switches parts
+  off (or cheaper) for that run to see what each costs. The painted clumps (`Flora.GRASS_TOP`, `_camera_card`) are no longer placed;
   `Flora.flower_card` still uses `_camera_card` for the Sunstar Blooms.
   **Sunstar Blooms** (`World._rare_flowers`, Act I only, 3 per moor, 14-34 m off the road, own seed): a glowing
   painted card (`Flora.flower_card`) and a breathing light; picking one (`Game._interact` "flower") gives +50%

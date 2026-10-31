@@ -2284,6 +2284,31 @@ func _perf_step() -> bool:
 		var qi := args.find("--quality")
 		if qi >= 0 and qi + 1 < args.size():
 			set_quality(int(args[qi + 1]))
+		# --hide grass,shadows,vfog,ssao,ssil,sdfgi: switch parts off to see what each costs
+		var hi := args.find("--hide")
+		if hi >= 0 and hi + 1 < args.size():
+			var parts: PackedStringArray = args[hi + 1].split(",")
+			for g in get_tree().get_nodes_in_group("grass"):
+				if parts.has("grass"):
+					(g as Node3D).visible = false
+			if parts.has("grass"):
+				for n in world.find_children("*", "MultiMeshInstance3D", true, false):
+					if n.has_meta("grass3d"):
+						(n as Node3D).visible = false
+			if parts.has("shadows"):
+				sun.shadow_enabled = false
+			if parts.has("softshadow"):
+				RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_LOW)
+			if parts.has("split2"):
+				sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+			if parts.has("shadowdist"):
+				sun.directional_shadow_max_distance = 45.0
+			if parts.has("atlas2k"):
+				RenderingServer.directional_shadow_atlas_set_size(2048, true)
+			env.volumetric_fog_enabled = env.volumetric_fog_enabled and not parts.has("vfog")
+			env.ssao_enabled = env.ssao_enabled and not parts.has("ssao")
+			env.ssil_enabled = env.ssil_enabled and not parts.has("ssil")
+			env.sdfgi_enabled = env.sdfgi_enabled and not parts.has("sdfgi")
 		if args.has("--grassspot"):
 			var spot := _open_grass_spot()
 			hero.global_position = spot
