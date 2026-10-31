@@ -875,7 +875,6 @@ func _update_attack(delta: float, hero: Node3D, dist: float) -> void:
 		"stalk_hook":
 			if a > 0.22 and a < 0.45:
 				_face(hero.global_position - global_position)
-	if a < Anim.impact_at(atk_style) * 0.8 and special in ["", "volley", "bomb"]:
 	if a < Anim.impact_at(atk_style) * 0.8 and special in ["", "volley", "bomb", "bear_maul"]:
 		_face(hero.global_position - global_position)
 	if not impact_done and a >= Anim.impact_at(atk_style):
@@ -900,6 +899,8 @@ func _update_attack(delta: float, hero: Node3D, dist: float) -> void:
 				cooldown = randf_range(1.6, 2.2)
 				f_t = 1.0
 				fv_side = -fv_side if randf() < 0.5 else fv_side
+			"bear_maul":
+				cooldown = randf_range(0.9, 1.4)      # a heavy blow: a real opening after it
 		if special == "feral_lunge":
 			# after the leap he backs off a few steps, watching, before coming in for the claws
 			f_state = "back"
