@@ -24,7 +24,8 @@ const ACCENTS := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 
 const EMBLEMS := {"knight": 1, "wraith": 2, "demon": 3, "warlock": 4, "archer": 5, "plague": 6}
 const PLINTH_TOP := 0.78            # feet height on a plinth (the stand is scaled with its slot)
 const PLINTH_R := 0.56
-const STEP := 0.1                   # how far the chosen one steps forward on its plinth
+const STEP := 0.1
+const FOV := 31.0                   # the stage band's vertical field of view (see `_frame`)                   # how far the chosen one steps forward on its plinth
 const FACE := PI                     # bodies face -z; the camera is on +z
 ## The carousel's slots, by distance from the middle (0 = chosen, 1 = beside it, 2 = outer; further is unseen):
 ## x spacing, z (toward the camera), the stand's scale, and its light (1 = the chosen one's blaze).
@@ -60,6 +61,7 @@ const PICK_SOUND := {
 	"plague": [["ice_shatter", 0.0, -4.0, 1.4], ["blight_burst", 0.1, -5.0, 1.15], ["fuse", 0.35, -9.0, 1.0]]}
 
 var game: Node
+var band := Vector2(96.0, 262.0)    # screen pixels above (title) and below (info panel) the heroes' band
 var vp: SubViewport
 var cam: Camera3D
 var root3d: Node3D
@@ -131,9 +133,10 @@ func setup(g: Node) -> void:
 	key.shadow_enabled = true
 	root3d.add_child(key)
 	cam = Camera3D.new()
-	cam.fov = 31.0
+	cam.fov = FOV
 	root3d.add_child(cam)
 	cam.look_at_from_position(Vector3(0, 2.35, 10.6), Vector3(0, 1.6, 0.4))
+	_frame()
 	ClassCathedral.build_hall(root3d)
 	for n in root3d.get_children():
 		if n is OmniLight3D and n.has_meta("flicker"):
@@ -423,7 +426,23 @@ func _wheel(dir: int) -> void:
 	_wheel_t = t
 	turn(dir)
 
+## The stage fills the whole screen behind the title and the info panel, so the hall carries on round them (no
+## black bands); the camera's frustum is shifted and widened so the heroes sit in the band between them (`band`:
+## pixels kept for the title above and the panel below) framed exactly as a stage of just that band would be.
+func _frame() -> void:
+	if cam == null or size.y < 2.0:
+		return
+	var h := size.y
+	var hs := maxf(h - band.x - band.y, 1.0)
+	var near := 0.05
+	cam.near = near
+	cam.projection = Camera3D.PROJECTION_FRUSTUM
+	cam.size = 2.0 * near * tan(deg_to_rad(FOV) * 0.5) * h / hs
+	cam.frustum_offset = Vector2(0.0, -(band.y - band.x) * 0.5 / h * cam.size)
+
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_frame()
 	if what == NOTIFICATION_MOUSE_EXIT and hovered != "":
 		hovered = ""
 		hovering.emit("")

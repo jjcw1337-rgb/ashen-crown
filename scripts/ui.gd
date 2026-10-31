@@ -3503,6 +3503,19 @@ var class_stage: ClassStage
 var class_info: Control
 var class_plates := {}
 var class_arrows := {}              # -1 / 1 -> ClassArrow
+## Over the New Character stage: darkens the hall softly behind the title at the top and behind the info panel at
+## the bottom, and into the corners, so the cathedral runs to the screen's edges without fighting the text.
+const STAGE_FADE_SHADER := """
+shader_type canvas_item;
+void fragment() {
+	float top = 1.0 - smoothstep(0.02, 0.17, UV.y);
+	float bottom = smoothstep(0.62, 0.86, UV.y);
+	vec2 c = (UV - vec2(0.5, 0.42)) * vec2(1.25, 1.0);
+	float edge = smoothstep(0.45, 0.85, length(c));
+	float a = clamp(max(max(top * 0.82, bottom * 0.9), edge * 0.7), 0.0, 1.0);
+	COLOR = vec4(0.03, 0.026, 0.024, a);
+}
+"""
 var _class_sel := "knight"
 
 func _build_class_picker() -> void:
@@ -3529,15 +3542,25 @@ func _build_class_picker() -> void:
 	hint.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	hint.offset_top = 80
 	class_panel.add_child(hint)
-	# the stage: built when the picker opens, freed when it closes
+	# the stage: built when the picker opens, freed when it closes. It fills the screen behind the title and the
+	# panel (ClassStage.band keeps the heroes between them), with soft dark fades so the text stays readable
 	var holder := Control.new()
 	holder.name = "stage_holder"
-	holder.anchor_right = 1.0
-	holder.anchor_bottom = 1.0
-	holder.offset_bottom = -262
-	holder.offset_top = 96
+	holder.set_anchors_preset(Control.PRESET_FULL_RECT)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	class_panel.add_child(holder)
+	class_panel.move_child(holder, dim.get_index() + 1)
+	var fade := ColorRect.new()
+	fade.name = "stage_fade"
+	fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fm := ShaderMaterial.new()
+	var fsh := Shader.new()
+	fsh.code = STAGE_FADE_SHADER
+	fm.shader = fsh
+	fade.material = fm
+	class_panel.add_child(fade)
+	class_panel.move_child(fade, holder.get_index() + 1)
 	# the chosen class, in the inventory's frame
 	class_info = Control.new()
 	class_info.anchor_left = 0.5
@@ -3725,7 +3748,7 @@ func _open_class_stage() -> void:
 		var w := ClassArrow.SIZE.x
 		ar.offset_left = 48.0 if dir < 0 else -48.0 - w
 		ar.offset_right = ar.offset_left + w
-		ar.offset_top = -ClassArrow.SIZE.y * 0.5 - 36.0
+		ar.offset_top = -ClassArrow.SIZE.y * 0.5 - 36.0 - 83.0     # level with the heroes' band (ClassStage.band)
 		ar.offset_bottom = ar.offset_top + ClassArrow.SIZE.y
 		ar.turned.connect(func(d: int):
 			if class_stage != null:

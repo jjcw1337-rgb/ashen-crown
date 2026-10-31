@@ -512,7 +512,7 @@ shared preview), give the preview build's link, and go to `main` only when Blain
   leader (♛ on the party list) and can remove a member (✕, `UI.confirm_kick`, `Net.kick`). `tools/mp_test.gd`
   (host + join) checks it; `tools/vote_shot.gd` screenshots the window.
 - **New Character screen** (`UI._build_class_picker`, `scripts/class_stage.gd` `ClassStage`): a **focused carousel** in a
-  ruined cathedral (`scripts/class_cathedral.gd` `ClassCathedral`, all in code; concept `concepts/class_screen/arrows_b_focus.png`):
+  ruined cathedral (`scripts/class_cathedral.gd` `ClassCathedral`, all in code; concept `concepts/class_screen/arrows_b_focus.png`; the stage fills the whole screen behind the title and the panel, its camera's frustum shifted and widened by `ClassStage._frame` so the heroes sit in the band between them (`band`), with soft fades over it, `UI.STAGE_FADE_SHADER`):
   the chosen hero stands large in the middle, front and close, on the biggest plinth with its shaft blazing; the ones
   either side stand back, smaller and dimmer; the outer ones further back, fading into the gloom; the rest wait unseen.
   `ClassCathedral.build_hall` is the still set (floor, back wall with pointed windows, pillars, rubble, candelabras,

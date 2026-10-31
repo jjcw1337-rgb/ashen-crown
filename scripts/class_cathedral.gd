@@ -32,10 +32,10 @@ static func build_stand(stand: Node3D, r: float, top: float, col: Color, emblem:
 static func _floor(root: Node3D) -> void:
 	var fl := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
-	pm.size = Vector2(HALL_W, 22.0)
+	pm.size = Vector2(HALL_W, 30.0)
 	fl.mesh = pm
 	fl.material_override = _shader_mat(FLOOR_SHADER)
-	fl.position = Vector3(0, 0, -2.5)
+	fl.position = Vector3(0, 0, 1.5)
 	root.add_child(fl)
 	# fallen stones and a toppled column drum among the rubble at the sides
 	var rubble: Array = [[-5.0, 1.1, 0.35], [-4.4, 1.6, 0.2], [-5.6, 0.2, 0.25], [4.7, 1.3, 0.3], [5.3, 0.6, 0.22],
