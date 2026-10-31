@@ -1387,10 +1387,12 @@ func _process(delta: float) -> void:
 		dead_t += delta
 		var f := clampf(dead_t / 0.7, 0.0, 1.0)
 		var fall := clampf((dead_t - 0.35) / 0.6, 0.0, 1.0)
-		if not _floats():
+		if not _floats() and not _own_death():
 			rig.rotation.x = fall * fall * 1.42
 			rig.position.y = -fall * 0.12
 		Anim.pose(rig, {"time": anim_time, "dead": f, "hit": (1.0 - f) * 0.5})
+		if is_demon():
+			_hover()      # the lava keeps cooling, the Underworld's shadow lifts
 		_update_trail(false)
 		return
 	# regen & potions
@@ -1573,7 +1575,7 @@ func _process(delta: float) -> void:
 ## The Wraith floats a hand's breadth off the ground, bobbing slowly and leaning into motion.
 func _hover() -> void:
 	if is_demon():
-		Demon.animate(rig, anim_time, move_amt)
+		Demon.animate(rig, anim_time, move_amt, self)
 		return
 	if is_warlock():
 		Warlock.animate(rig, anim_time, move_amt, 1.0 if covenant_t > 0.0 or (puppet and net_buff) else 0.0,
@@ -1587,6 +1589,10 @@ func _hover() -> void:
 ## The Wraith's mocap body floats by itself (KnightMocapRig's float mode: hover, lean, the sinking death).
 func _floats() -> bool:
 	return is_wraith() and rig != null and rig.has_method("sync_pose")
+
+## A body whose death clip lays it down itself (the Demon's mocap body): the hero's death tilt stays off it.
+func _own_death() -> bool:
+	return rig != null and rig.has_meta("own_death")
 
 # ---------------------------------------------------------------- winter
 ## A footprint each time a foot comes down in the snow.
@@ -1677,10 +1683,12 @@ func _puppet_process(delta: float) -> void:
 	if dead:
 		var f := clampf(dead_t / 0.7, 0.0, 1.0)
 		var fall := clampf((dead_t - 0.35) / 0.6, 0.0, 1.0)
-		if not _floats():
+		if not _floats() and not _own_death():
 			rig.rotation.x = fall * fall * 1.42
 			rig.position.y = -fall * 0.12
 		Anim.pose(rig, {"time": anim_time, "dead": f, "hit": (1.0 - f) * 0.5})
+		if is_demon():
+			_hover()      # the lava keeps cooling, the Underworld's shadow lifts
 		_update_trail(false)
 		return
 	phase += net_phase_rate * delta

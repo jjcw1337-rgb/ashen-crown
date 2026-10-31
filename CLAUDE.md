@@ -64,7 +64,7 @@ shared preview), give the preview build's link, and go to `main` only when Blain
 | `world.gd` | Zone builder: terrain, roads, buildings, trees/grass (MultiMesh chunks), spawns, `burn_points` |
 | `hero.gd`, `knight.gd`, `knight_rig.gd`, `anim.gd` | Player: class (`cls`, `set_class`), stats (`recalc`), combat, skills, gear visuals, animation, co-op puppet mode |
 | `wraith.gd`, `wraith_skills.gd`, `wraith_fx.gd` | Wraith class: the Meshy body on the mocap system with the spectral shader; its six skills (casts, blows, the tether, phantoms, the night); their effects |
-| `demon.gd`, `demon_fx.gd`, `demon_minion.gd` | Demon class: knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader; skill effects and the Underworld screen grade; summoned demons (simple ally AI) |
+| `demon.gd`, `demon_mocap_rig.gd`, `demon_fx.gd`, `demon_minion.gd` | Demon class: the Meshy magma brute on the mocap system with the magma shader and his own wing/tail/cloth rig (falls back to the knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader); skill effects and the Underworld screen grade; summoned demons (simple ally AI) |
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
 | `plague.gd` | Plague Doctor class: body (mocap, whole-body skill clips), Toxic Flask, Volatile Mixture, Pestilent Trap, The Last Epidemic, poison and infection, co-op replay |
 | `enemy.gd`, `projectile.gd`, `feral.gd` | Monsters/AI and missiles (host-authoritative in co-op); the Feral's baked-animation body |
@@ -263,6 +263,56 @@ shared preview), give the preview build's link, and go to `main` only when Blain
   painted icons) were kept, their effects now name the new skills. `tools/wraith_test.gd` exercises every skill;
   `tools/wraith_skills_clip.gd -- outdir [skill|all] [close|game]` renders frames of each (needs xvfb and
   `--fixed-fps 30`; the Low preset and no shadows, since software GL is slow).
+- **The Demon's body**: the Meshy "Magma Brute" (concept A: cracked charcoal skin with lava in the cracks, swept
+  horns, bat wings, a spiked tail, a loincloth, hooves; 2.2 m as modelled, `Demon.SCALE` 1.08 on top) on the shared
+  mocap system (`Demon.build_mocap`, `assets/models/demon_mocap.glb`; without it the old knight-based fiend,
+  `Demon.body_gear`). `tools/blender/demon/prep_demon_mocap.py` merges and renames the Meshy library clips (ids in
+  the commit: Idle, Slow Orc Walk, Run 2, Combat Idle, Male Head-down Charge, Punch Forward with Both Fists, Charged
+  Ground Slam, Charged Axe Chop, Grip and Throw Down, Crouch Charge and Throw, Charged Spell Cast, Zombie Scream, Angry
+  Ground Stomp, Hit Reaction, Falling Down -> idle, walk, run, combat_idle, charge, claw, slam, smash, grab_throw,
+  hurl, cast, roar, stomp, hit, death), trims the long ones to their useful part, takes the root motion out (as the
+  Wraith's), welds and decimates to 50k, and re-bones what Meshy had tied to the arms and legs: each wing on its own
+  chain from Spine01 (`wL1`/`wR1` the root on the back, `w?2` the arm up to the top joint, `w?3` the leading finger
+  out to the outer tip, `w?4` the lower finger; the membrane skinned to the nearest finger bones, blending into
+  the spine along the flank so the join never tears; the thread Meshy left under each bottom tip is cut), the tail
+  on `tail1..tail7` along its own centreline (geodesic from the root, so the curl is followed; the root blends into
+  the hips), the loincloth's front flap on the cloth panel `hA1..3` from the hips (a back flap would be `hB`).
+  Vertex colour R = along the tail, G = wing membrane. Rebuild: `blender -b --python
+  tools/blender/demon/prep_demon_mocap.py -- rigged.glb assets/models/demon_mocap.glb 50000 clips_a.glb clips_b.glb
+  [--debug prefix]` (the debug renders colour the regions), then `godot --headless --import`; it prints the clips'
+  ground speeds (`Demon.WALK_SPEED`/`RUN_SPEED`/`CHARGE_SPEED` are the blend points; the charge clip is his sprint).
+  Meshy's Slow Orc Walk is bow-legged and hunched, so it only shows at a crawl: the run is in the blend again at
+  `Demon.WALK_BLEND` (2.6 m/s), and `DemonMocapRig._rate` plays the run at his real ground speed (0.77x at 4.8 m/s,
+  heavy, no sliding). The rig eases the speed the clips are blended by over ~0.3 s when he sets off (`ease_speed`:
+  standing crossfades into the stride; it drops at once when he stops) and lags the hero's snap turn on the body
+  (`_vis_yaw`, visual only, up to 0.6 rad), so a start is a heavy push-off rather than a snap.
+  `scripts/demon_mocap_rig.gd` (`Knight.build_mocap` opts `"script"`, `"scale"`) lays the moving parts over the clips
+  every frame, all springs: the wings fold and breathe at rest, half open and flex with the walk, spread and sweep back
+  at a run, fly wide for a cast or a roar, beat on the slams and stomps, sag in death (`_wings`: fold / lift / sweep
+  per side, turns in the rig frame through the bones' rest conj like the hair locks); the tail is a heavy chain
+  (`_tail`: it hangs low (`TAIL_LIFT`, the outer half just over the ground) and wags the whole time: a wag
+  oscillator (`wag_ph`) whose speed, size and axis drift on slow noise, the root swaying moderately and the swing
+  growing and lagging down the chain into an S at the tip, its vertical part only ever lifting from the hang;
+  every few seconds the tip curls or flicks (`flick_t`); moving, the stride's sway (phased to the detected
+  footfalls: `_gait` is pulled to the foot that lands) joins the wag, the modelled curl straightens out behind him
+  (measured in `setup`, `tail_bend_y/p`, undone by `straight`) and the whole tail springs up on an underdamped
+  lift (`tail_up`, overshooting as he sets off, `LIFT_W` sharing it down the chain; the charge highest), bouncing
+  on footfalls; it swings out opposite a turn, lashes when an attack starts, never pitches below its rest hang nor
+  swings its root between the legs, and goes limp dead); the flap is kicked by the stride and
+  never swings into the legs (`_cloth`); `_footfalls` counts each foot landing (`thump`, which `Demon.animate`
+  turns into a small `add_shake` for the local hero). His moves are whole-body clips through `Demon.SHOTS` (style -> clip and
+  progress keys: Hellfire Claw "side" = claw, the casts = cast, the combo swipe1/2/3 = claw / smash / slam, Space's
+  over / back / thrust = smash / claw / hurl; roar, stomp and grab wait for his skills' stage). The death is the
+  clip's fall (meta `own_death`: `Hero._own_death` skips the death tilt), then the rig cools the lava (shader
+  `cool`, meta `demon_mats`) and lights the embers (meta `death_embers`); revive resets. `scripts/demon_mocap.gdshader`:
+  Meshy's textures matte (roughness 0.9, no metal), the hot orange texels found as the cracks and lit as magma that
+  breathes, `glow` from `Demon.animate` (flares through attacks and casts, pulses with `hit_t`, a little more under
+  Blood Pact), `phase_amt` = the Underworld shadow (dithered away, violet in the cracks; `Demon.animate` eases it
+  from `hero.phased`). The weapon grips sit lower in his big fists and are scaled 1.35x (`Demon.build_mocap`).
+  Preview: `tools/mocap_knight_clip.gd -- outdir demontour close|closeback|game|side|back 1020 demon` (idle, walk,
+  run, a turn, every clip, a hit, death; `--fixed-fps 30`); `demontail tail|game 750 demon` is the tail alone (8 s
+  standing, walk, run, charge, a turn, a swing; the `tail` view is a rear three-quarter); `demonsteps 34 270 demon`
+  is the first steps (stand, run, stop, run into a turn, stop).
 - **Underworld** (Demon's Phase): `game.set_underworld()` blends a screen-space grade (`DemonFx.UNDERWORLD_SHADER`), the `under_amt` global (terrain veins and rune rings in `mats.gd`), environment tweaks, rising souls and crimson monster outlines (`Enemy.set_soul_lit`). Monsters ignore a phased hero (`hero.phased`).
 - **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `_update_drain`, and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. The beams, sigil, hand light and hum are the `"drain"` fx events' effect (`WarlockFx.play`, state in `Hero.fxs["drain"]`, drawn by `WarlockFx.update` after the pose on the caster and on his puppet; `"start"`, `"victims"` when the fork set changes, `"tick"`, `"end"`), so partners see the beam on him too.
 - **King Grubb** (Act I boss, `hoard.gd`) is host-authoritative. Every visible part of the fight (piles, bombs, burst

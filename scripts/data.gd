@@ -467,7 +467,7 @@ const CLASSES := {
 	"wraith": {"name": "Wraith", "str": 15, "dex": 22, "vit": 18, "ene": 28,
 		"desc": "A horned spirit in chains that never touches the ground. Tears souls out with spectral claws, drains them down a tether, steps through shadow, drags foes into the earth's grasp and brings down the night."},
 	"demon": {"name": "Demon", "str": 24, "dex": 14, "vit": 24, "ene": 18,
-		"desc": "A horned, winged fiend in obsidian plate. Claws with hellfire, summons up to three demons and slips into the Underworld to walk unseen."},
+		"desc": "A horned, winged brute of charcoal hide with magma burning through the cracks. Claws with hellfire, summons up to three demons and slips into the Underworld to walk unseen."},
 	# the bow class (Jace's): its name is his to choose; "Archer" until then
 	"archer": {"name": "Archer", "str": 14, "dex": 26, "vit": 18, "ene": 14, "weapon": "short_bow",
 		"desc": "A red-hooded ranger with a carved recurve bow and his dire wolf at his side. Shoots on the move: fire arrows that burn through a line, frost volleys that chill, storm snares that chain lightning."},

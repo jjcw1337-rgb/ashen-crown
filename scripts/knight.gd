@@ -211,11 +211,12 @@ static func mocap_ok() -> bool:
 ## the grips, the shield mount, the head and the chest follow the skeleton's real bones.
 ## opts (other mocap bodies on the same 24-bone Meshy skeleton, e.g. the archer's ranger):
 ##   "relaxed"/"combat": [clip, ground speed, ...] for the two blend spaces; "shot": a clip that plays whole-body
-##   for an attack style (KnightMocapRig.shot); "meta": the rig's "meshy" meta.
+##   for an attack style (KnightMocapRig.shot); "meta": the rig's "meshy" meta; "script": the rig's script (a
+##   KnightMocapRig subclass, the Demon's); "scale": the body's size (1 = as modelled).
 static func build_mocap(glb := MOCAP_GLB, opts := {}) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Rig"
-	root.set_script(load("res://scripts/knight_mocap_rig.gd"))
+	root.set_script(load(str(opts.get("script", "res://scripts/knight_mocap_rig.gd"))))
 	var J := {}
 	var px := Node3D.new()
 	px.name = "Proxies"
@@ -236,10 +237,11 @@ static func build_mocap(glb := MOCAP_GLB, opts := {}) -> Node3D:
 	var body: Node3D = ps.instantiate()
 	body.name = "Body"
 	body.rotation.y = PI          # Meshy's model faces +z; the game's bodies face -z
+	body.scale = Vector3.ONE * float(opts.get("scale", 1.0))
 	root.add_child(body)
 	var skel: Skeleton3D = body.find_children("*", "Skeleton3D", true, false)[0]
 	var ap: AnimationPlayer = body.find_children("*", "AnimationPlayer", true, false)[0]
-	for c in ["idle", "combat_idle", "walk", "walk_fight", "walk_aim", "run", "run_fast", "sprint", "walk_back", "run_fwd_left", "run_fwd_right"]:
+	for c in ["idle", "combat_idle", "walk", "walk_fight", "walk_aim", "run", "run_fast", "sprint", "charge", "walk_back", "run_fwd_left", "run_fwd_right"]:
 		if ap.has_animation(c):
 			ap.get_animation(c).loop_mode = Animation.LOOP_LINEAR
 	# the bones the gear and effects ride (followers, set every frame from the skeleton)
