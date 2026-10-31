@@ -42,6 +42,7 @@ const SCALE := 1.08
 const WALK_SPEED := 1.3
 const RUN_SPEED := 6.2
 const CHARGE_SPEED := 7.6
+const WALK_BLEND := 2.6        # above this ground speed the walk is gone from the blend
 ## His moves' clips per attack style (KnightMocapRig "shots": [[attack progress, clip second], ...], the blow on
 ## Anim.impact_at's frame): Hellfire Claw ("side") is the both-fisted punch, casts (Summon, Blood Pact) the charged
 ## spell, the weapon swings the punch, the axe chop and the ground slam (the finisher), Space's swings the chop,
@@ -73,9 +74,11 @@ static func build(g: Dictionary) -> Node3D:
 	return root
 
 static func build_mocap(g: Dictionary) -> Node3D:
+	# the orc walk only at a crawl: from WALK_BLEND up the run alone carries him, slowed to his ground speed by
+	# DemonMocapRig._rate (the run's planted foot moves at RUN_SPEED; at his 4.8 m/s it plays at 0.77x, heavy)
 	var r := Knight.build_mocap(MOCAP_GLB, {
-		"relaxed": ["idle", 0.0, "walk", WALK_SPEED, "run", RUN_SPEED, "charge", CHARGE_SPEED],
-		"combat": ["combat_idle", 0.0, "walk", WALK_SPEED, "run", RUN_SPEED, "charge", CHARGE_SPEED],
+		"relaxed": ["idle", 0.0, "walk", WALK_SPEED, "run", WALK_BLEND, "run", RUN_SPEED, "charge", CHARGE_SPEED],
+		"combat": ["combat_idle", 0.0, "walk", WALK_SPEED, "run", WALK_BLEND, "run", RUN_SPEED, "charge", CHARGE_SPEED],
 		"meta": "demon", "scale": SCALE, "script": "res://scripts/demon_mocap_rig.gd",
 		"shots": SHOTS})
 	r.remove_meta("knight")

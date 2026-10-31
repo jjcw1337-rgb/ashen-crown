@@ -34,10 +34,17 @@ var thump := 0.0              # a footfall this frame (its weight), read and cle
 var dead_t := -1.0
 var cloth_kick := 0.0
 var lash_sign := 1.0
-var flick_t := 3.0            # seconds to the tail's next flick or curl while he stands
+var flick_t := 3.0            # seconds to the tail's next flick or curl
+var wag_ph := 0.0             # the wag oscillator's phase
+var tail_up: Array = [0.0, 0.0]   # the whole tail's lift at speed (an underdamped spring)
 var _gait := 0.0
+var ease_speed := 0.0         # the ground speed the clips are blended by, eased in
+var _ease_t := -1.0
+var _ease_gp := Vector3.INF
+var _vis_yaw := INF           # the body's lagging turn
+var _vis_t := -1.0
 
-const TAIL_LIFT := [-0.68, -0.35, -0.18, -0.1, -0.06, -0.02, 0.0]   # the resting pitch per bone (rad, - = swung back; -1.39 in all: the tip a hand off the ground)
+const TAIL_LIFT := [-0.5, -0.28, -0.14, -0.08, -0.04, -0.02, 0.0]   # the resting pitch per bone (rad, - = swung back; -1.06 in all: low, the outer half just over the ground)
 const LIFT_W := [0.35, 0.25, 0.15, 0.1, 0.08, 0.05, 0.02]           # how a lift of the whole tail is shared down the chain
 
 func setup(root_node: Node3D, skeleton: Skeleton3D, joints: Dictionary) -> void:
@@ -85,7 +92,53 @@ func setup(root_node: Node3D, skeleton: Skeleton3D, joints: Dictionary) -> void:
 
 func sync_pose(st: Dictionary) -> void:
 	_st = st
+	# a heavy start: his ground speed, as the clips see it, eases in over ~0.3 s (and drops at once when he stops),
+	# so standing crossfades into the stride instead of snapping
+	if not st.has("speed") and is_inside_tree():
+		var t: float = st.get("time", 0.0)
+		var dt := clampf(t - _ease_t, 0.0, 0.1) if _ease_t >= 0.0 else 0.0
+		_ease_t = t
+		var gp := global_position
+		var meas := 0.0
+		if _ease_gp != Vector3.INF and dt > 0.0:
+			var dd := gp - _ease_gp
+			dd.y = 0.0
+			meas = dd.length() / dt
+			if meas >= 15.0:
+				meas = 0.0
+		_ease_gp = gp
+		if dt > 0.0:
+			ease_speed = lerpf(ease_speed, meas, 1.0 - exp(-dt * (5.0 if meas > ease_speed else 14.0)))
+		st = st.duplicate()
+		st["speed"] = ease_speed
 	super(st)
+	# the body turns heavily: it lags the hero's snap turn and catches up in a beat (visual only)
+	if body_root != null and dead_t < 0.0:
+		var yaw := global_rotation.y if is_inside_tree() else rotation.y
+		var dt2 := clampf(float(st.get("time", 0.0)) - _vis_t, 0.0, 0.1) if _vis_t >= 0.0 else 0.0
+		_vis_t = float(st.get("time", 0.0))
+		if _vis_yaw == INF or dt2 <= 0.0:
+			_vis_yaw = yaw
+		else:
+			_vis_yaw = lerp_angle(_vis_yaw, yaw, 1.0 - exp(-dt2 * 9.0))
+		var lag := clampf(wrapf(_vis_yaw - yaw, -PI, PI), -0.6, 0.6)
+		body_root.rotation.y += lag
+
+## The run's planted foot moves at Demon.RUN_SPEED; between the crawl and the run the blend's natural speed runs
+## from the walk's to the run's, so the clips play at his real ground speed (slower than Meshy's, heavy).
+func _rate(v: float, pts: Array) -> float:
+	if v < 0.3 or pts.size() < 4:
+		return super(v, pts)
+	var nat: float
+	if v <= pts[1]:
+		nat = pts[1]
+	elif v <= pts[2]:
+		nat = lerpf(pts[1], pts[3], (v - pts[1]) / maxf(pts[2] - pts[1], 0.01))
+	elif v <= pts[3]:
+		nat = pts[3]
+	else:
+		nat = pts[3] + (v - pts[3]) * 0.4    # toward the charge clip, a little quicker on its feet
+	return clampf(v / maxf(nat, 0.3), 0.5, 1.8)
 
 ## A turn in the rig's frame laid on a bone, over its rest (the parent's pose carries down the chain).
 func _set_rig_rot(b: int, q: Quaternion) -> void:
@@ -220,12 +273,14 @@ func _wings(a: float, style: String, hit: float, die: bool, g: float, t: float, 
 		var q4 := Quaternion(Vector3.BACK, -sx * (0.3 * closed - 0.2 * lift)) * Quaternion(Vector3.UP, sx * 0.3 * closed)
 		_set_rig_rot(ids[3], q4)
 
-## The tail: a heavy chain of springs (pitch and yaw per bone, the end looser than the root). Standing, it is never
-## still: a slow travelling wave runs down it (the root barely moves, the tip most, each bone a little behind the one
-## before; three incommensurate sines and a drift of noise, so nothing repeats), it lifts and settles, and every few
-## seconds the tip curls or flicks. Moving, it sways side to side with the stride (phased to the footfalls, counter
-## to the hips, the wave lagging down the chain so the tip whips), lifts off the ground and trails behind with the
-## speed (the charge most), bounces on each footfall, swings out the other way round a turn and lashes on an attack.
+## The tail: a heavy chain of springs (pitch and yaw per bone, the end looser than the root), never still. It hangs
+## low, the outer half just above the ground, and wags the whole time like a big cat's: a wag oscillator whose
+## speed, size and axis (side to side, tilting toward diagonal) drift on slow noise, so the direction keeps changing
+## and nothing repeats; the root sways moderately and the swing grows and lags down the chain, so the tip sweeps in
+## an S. Every few seconds the tip flicks or curls on top. Moving, the stride's sway (phased to the footfalls) joins
+## the wag, the modelled curl straightens out behind him, and the whole tail springs up (an underdamped lift that
+## overshoots when he sets off) into a raised arc, bouncing on each footfall; it settles low again when he stops.
+## The charge lifts it highest; a turn swings it out the other way; an attack lashes it.
 func _tail(a: float, style: String, die: bool, g: float, t: float, dt: float, started: bool, struck: bool, yaw_v: float, fwd_speed: float, side_speed: float) -> void:
 	var n := tail_bones.size()
 	if n == 0:
@@ -243,10 +298,10 @@ func _tail(a: float, style: String, die: bool, g: float, t: float, dt: float, st
 	tail_lash = maxf(tail_lash - dt * 1.5, 0.0)
 	var moving := clampf(g * 2.5, 0.0, 1.0)          # 0 standing .. 1 walking and above
 	var limp := smoothstep(0.3, 1.4, dead_t) if dead_t >= 0.0 else 0.0
-	# the occasional flick of the tip while he stands (or a slow curl): an impulse into the outer bones
+	# the occasional flick of the tip (or a slow curl): an impulse into the outer bones, more often standing
 	flick_t -= dt
-	if flick_t <= 0.0 and moving < 0.5 and a < 0.0 and limp == 0.0:
-		flick_t = randf_range(2.5, 6.5)
+	if flick_t <= 0.0 and limp == 0.0:
+		flick_t = randf_range(2.5, 6.5) * (1.0 + moving)
 		var curl := randf() < 0.45
 		var sgn := -1.0 if randf() < 0.5 else 1.0
 		for i in n:
@@ -257,11 +312,20 @@ func _tail(a: float, style: String, die: bool, g: float, t: float, dt: float, st
 				tail_y[i][1] += sgn * 0.5 * reach
 			else:
 				tail_y[i][1] += sgn * (1.6 + 0.6 * randf()) * reach     # a sideways flick
+	# the wag: its speed, size and axis drift on slow noise (two incommensurate sines each)
+	var n_f := sin(t * 0.071 * TAU) * 0.6 + sin(t * 0.113 * TAU + 1.7) * 0.4
+	var n_a := sin(t * 0.053 * TAU + 0.9) * 0.6 + sin(t * 0.097 * TAU + 2.8) * 0.4
+	var n_x := sin(t * 0.041 * TAU + 2.2) * 0.6 + sin(t * 0.089 * TAU + 0.4) * 0.4
+	var wag_f := 0.42 + 0.2 * n_f                       # Hz: a slow heavy wag, quicker now and then
+	wag_ph += dt * wag_f * TAU * (1.0 + 0.35 * moving)
+	var wag_a := (0.16 + 0.07 * n_a) * (1.0 - 0.35 * moving) * (1.0 - limp)
+	var wag_axis := 0.5 * n_x                           # how far the wag tilts off level (diagonal, never vertical)
+	# the whole tail's lift at speed, an underdamped spring so it springs up and overshoots as he sets off
+	var want_up := (0.55 * clampf(g, 0.0, 1.0) + 0.25 * clampf((g - 1.1) / 0.5, 0.0, 1.0)) * (1.0 - limp)
+	var up := _spring(tail_up, want_up, 11.0, 2.4, dt, 1.2)
 	var turn := clampf(yaw_v * 0.16, -0.5, 0.5)
-	var sway_amp := 0.06 + 0.14 * clampf(g, 0.0, 1.6)
-	# the whole tail's lift at speed (shared down the chain by LIFT_W): a run carries it level, the charge a little up
-	var lift_run := 0.25 * clampf(g, 0.0, 1.0) + 0.1 * clampf((g - 1.1) / 0.5, 0.0, 1.0)
-	var breath := sin(t * 0.21 + 0.4) * 0.6 + sin(t * 0.137) * 0.4                              # the slow lift and settle
+	var sway_amp := 0.05 + 0.12 * clampf(g, 0.0, 1.6)
+	var breath := sin(t * 0.21 + 0.4) * 0.6 + sin(t * 0.137) * 0.4       # the slow lift and settle, standing
 	# the model's curl opens as he moves: coiled a quarter at rest, straight out behind him at a run
 	var straight := 0.25 + 0.75 * clampf(g / 0.9, 0.0, 1.0)
 	for i in n:
@@ -270,19 +334,18 @@ func _tail(a: float, style: String, die: bool, g: float, t: float, dt: float, st
 		var lw: float = LIFT_W[mini(i, LIFT_W.size() - 1)]
 		var uncurl_y: float = -tail_bend_y[i] * straight
 		var uncurl_p: float = tail_bend_p[i] * straight * 0.8 if i > 0 else 0.0
-		# standing: the lazy wave down the chain (phase lag per bone, more swing toward the tip) and a drift of noise
-		var lag := d * 2.4
-		var wave_y := (sin(t * 0.62 - lag) * 0.55 + sin(t * 1.0 * 1.618 - lag * 1.3 + 1.1) * 0.3 + sin(t * 0.29 - lag * 0.7 + 2.0) * 0.25) * (0.025 + 0.13 * d * d)
-		var wave_p := (sin(t * 0.47 - lag * 0.9 + 0.5) * 0.6 + sin(t * 0.83 * 1.3 - lag + 2.6) * 0.4) * (0.015 + 0.07 * d)
-		var noise_y := (sin(t * 0.37 * 2.1 + d * 5.0) * sin(t * 0.91 + d) + sin(t * 1.73 * 0.6 + d * 3.0) * 0.5) * 0.02 * (0.2 + d)
-		var idle_p := lift + wave_p + noise_y * 0.5 - breath * 0.12 * lw
-		var idle_y := wave_y + noise_y
-		# moving: the gait sway (phased to the footfalls, lagging down the chain) and the lift at speed
-		var gait_y := sin(_gait - 0.4 - d * 1.9) * sway_amp * (0.25 + 0.75 * d)
-		var move_p := lift - lift_run * lw + sin(_gait * 2.0 - d * 1.5) * 0.03 * (0.3 + d)
-		var move_y := gait_y + sin(t * 1.3 - lag) * 0.02 * d
-		var want_p := lerpf(idle_p, move_p, moving) + uncurl_p
-		var want_y := lerpf(idle_y, move_y, moving) + uncurl_y
+		# the wag: the root sways, the swing grows and lags down the chain (an S by the tip)
+		var lag := d * 3.2
+		var grow := 0.35 + 0.95 * d
+		var wag := sin(wag_ph - lag) * wag_a * grow
+		var wag_y := wag * cos(wag_axis)
+		# its vertical part lifts from the hang and comes back down, never below the rest
+		var wag_p := -absf(wag * sin(wag_axis)) - (0.5 + 0.5 * sin(wag_ph * 0.5 - lag * 0.7 + 1.0)) * 0.06 * grow * (1.0 - moving)
+		# the stride's sway (phased to the footfalls, lagging down the chain) and bounce
+		var gait_y := sin(_gait - 0.4 - d * 1.9) * sway_amp * (0.25 + 0.75 * d) * moving
+		var gait_p := sin(_gait * 2.0 - d * 1.5) * 0.03 * (0.3 + d) * moving
+		var want_p := lift + wag_p + gait_p - up * lw * 1.6 - breath * 0.08 * lw * (1.0 - moving) + uncurl_p
+		var want_y := wag_y + gait_y + uncurl_y
 		want_y += turn * (0.25 + 0.5 * d)       # swings out the other way round a turn
 		want_y -= clampf(side_speed * 0.05, -0.25, 0.25) * (0.3 + d)
 		if limp > 0.0:
@@ -294,7 +357,7 @@ func _tail(a: float, style: String, die: bool, g: float, t: float, dt: float, st
 		var y := _spring(tail_y[i], want_y, stiff * 0.9, damp, dt, 1.1)
 		# never down into the ground past its rest hang, and the root never swings in between the legs
 		if limp == 0.0:
-			var floor_p := lift + uncurl_p + 0.18 * (0.4 + 0.6 * d)
+			var floor_p := lift + uncurl_p + 0.1 * (0.4 + 0.6 * d)
 			if p > floor_p:
 				tail_p[i][0] = floor_p
 				tail_p[i][1] = minf(tail_p[i][1], 0.0)

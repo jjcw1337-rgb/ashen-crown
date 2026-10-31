@@ -204,17 +204,24 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   tools/blender/demon/prep_demon_mocap.py -- rigged.glb assets/models/demon_mocap.glb 50000 clips_a.glb clips_b.glb
   [--debug prefix]` (the debug renders colour the regions), then `godot --headless --import`; it prints the clips'
   ground speeds (`Demon.WALK_SPEED`/`RUN_SPEED`/`CHARGE_SPEED` are the blend points; the charge clip is his sprint).
+  Meshy's Slow Orc Walk is bow-legged and hunched, so it only shows at a crawl: the run is in the blend again at
+  `Demon.WALK_BLEND` (2.6 m/s), and `DemonMocapRig._rate` plays the run at his real ground speed (0.77x at 4.8 m/s,
+  heavy, no sliding). The rig eases the speed the clips are blended by over ~0.3 s when he sets off (`ease_speed`:
+  standing crossfades into the stride; it drops at once when he stops) and lags the hero's snap turn on the body
+  (`_vis_yaw`, visual only, up to 0.6 rad), so a start is a heavy push-off rather than a snap.
   `scripts/demon_mocap_rig.gd` (`Knight.build_mocap` opts `"script"`, `"scale"`) lays the moving parts over the clips
   every frame, all springs: the wings fold and breathe at rest, half open and flex with the walk, spread and sweep back
   at a run, fly wide for a cast or a roar, beat on the slams and stomps, sag in death (`_wings`: fold / lift / sweep
   per side, turns in the rig frame through the bones' rest conj like the hair locks); the tail is a heavy chain
-  (`_tail`: `TAIL_LIFT` holds it a hand off the ground; standing, a slow travelling wave of three incommensurate
-  sines plus noise runs down it (root still, tip most, lag per bone), it lifts and settles, and every 2.5-6.5 s the
-  tip curls or flicks (`flick_t`); moving, it sways with the stride, phased to the detected footfalls (`_gait` is
-  pulled to the foot that lands), lifts and straightens out behind him with speed (the modelled curl is measured
-  in `setup`, `tail_bend_y/p`, and undone by `straight`; `LIFT_W` shares the lift down the chain; the charge
-  lifts it most), bounces on footfalls, swings out opposite a turn, lashes when an attack starts, never pitches
-  below its rest hang nor swings its root between the legs, goes limp dead); the flap is kicked by the stride and
+  (`_tail`: it hangs low (`TAIL_LIFT`, the outer half just over the ground) and wags the whole time: a wag
+  oscillator (`wag_ph`) whose speed, size and axis drift on slow noise, the root swaying moderately and the swing
+  growing and lagging down the chain into an S at the tip, its vertical part only ever lifting from the hang;
+  every few seconds the tip curls or flicks (`flick_t`); moving, the stride's sway (phased to the detected
+  footfalls: `_gait` is pulled to the foot that lands) joins the wag, the modelled curl straightens out behind him
+  (measured in `setup`, `tail_bend_y/p`, undone by `straight`) and the whole tail springs up on an underdamped
+  lift (`tail_up`, overshooting as he sets off, `LIFT_W` sharing it down the chain; the charge highest), bouncing
+  on footfalls; it swings out opposite a turn, lashes when an attack starts, never pitches below its rest hang nor
+  swings its root between the legs, and goes limp dead); the flap is kicked by the stride and
   never swings into the legs (`_cloth`); `_footfalls` counts each foot landing (`thump`, which `Demon.animate`
   turns into a small `add_shake` for the local hero). His moves are whole-body clips through `Demon.SHOTS` (style -> clip and
   progress keys: Hellfire Claw "side" = claw, the casts = cast, the combo swipe1/2/3 = claw / smash / slam, Space's
@@ -227,7 +234,8 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   from `hero.phased`). The weapon grips sit lower in his big fists and are scaled 1.35x (`Demon.build_mocap`).
   Preview: `tools/mocap_knight_clip.gd -- outdir demontour close|closeback|game|side|back 1020 demon` (idle, walk,
   run, a turn, every clip, a hit, death; `--fixed-fps 30`); `demontail tail|game 750 demon` is the tail alone (8 s
-  standing, walk, run, charge, a turn, a swing; the `tail` view is a rear three-quarter).
+  standing, walk, run, charge, a turn, a swing; the `tail` view is a rear three-quarter); `demonsteps 34 270 demon`
+  is the first steps (stand, run, stop, run into a turn, stop).
 - **Underworld** (Demon's Phase): `game.set_underworld()` blends a screen-space grade (`DemonFx.UNDERWORLD_SHADER`), the `under_amt` global (terrain veins and rune rings in `mats.gd`), environment tweaks, rising souls and crimson monster outlines (`Enemy.set_soul_lit`). Monsters ignore a phased hero (`hero.phased`).
 - **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `_update_drain`, and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. Skill effects are local only (partners see the cast pose, not the beam), like every other class.
 - **King Grubb** (Act I boss, `hoard.gd`) is host-authoritative. Every visible part of the fight (piles, bombs, burst

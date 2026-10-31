@@ -173,12 +173,21 @@ func _run() -> void:
 							st["hit"] = 1.0 - (tt - acc - 0.4) / 0.5
 						elif tt >= acc + 1.6:
 							st["dead"] = tt - acc - 1.6
+			"demonsteps":
+				# the first steps, at the game's pace: stand, run, stop, run into a turn, stop (~9 s)
+				st["draw"] = clampf((T - 1.0) / 0.8, 0.0, 1.0)
+				if T > 1.5 and T < 4.0:
+					want = 4.8
+				elif T > 5.5 and T < 7.5:
+					want = 4.8
+					if T > 6.0:
+						yaw = lerp_angle(yaw, PI * 0.5, clampf(dt * 10.0, 0.0, 1.0))
 			"demontail":
-				st["draw"] = 0.0 if T < 8.0 else 1.0
+				st["draw"] = clampf((T - 7.6) / 0.8, 0.0, 1.0)
 				if T < 8.0:
 					want = 0.0
 				elif T < 12.0:
-					want = 1.3
+					want = 2.0        # his slow pace (blocking): the walk/run blend
 				elif T < 16.0:
 					want = 4.8
 				elif T < 19.0:
