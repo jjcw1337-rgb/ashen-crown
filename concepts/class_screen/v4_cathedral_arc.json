@@ -1,0 +1,16 @@
+{
+  "id": "01a191e3-2d0d-75ef-b8f3-cd098ca9ca04",
+  "type": "image-to-image",
+  "ai_model": "nano-banana-2",
+  "prompt": "Recreate the ruined gothic cathedral hall from the first image, with carved stone plinths, a coloured shaft of light on each hero, tattered banners, candles and drifting ash. The chosen knight stands in front at the centre on a larger plinth glowing brightest gold; behind him five plinths in a semicircle, left to right: wraith (icy blue light), demon (ember red), the empty plinth (back centre), warlock (fel green), archer (crimson). Five heroes, and they must look exactly like the heroes in the in-game reference images (the screenshot and the close-ups): the KNIGHT in an enclosed flat-topped great helm, dark spiked steel plate over mail, a dark surcoat with a red cross, a tattered dark cloak, sword and small shield; the WRAITH, a floating dark hooded robe with jagged glowing ice-blue edges and white eyes; the DEMON with red bat wings, curled horns, a red face and a red tabard with a gold cross over dark armour; the gnome WARLOCK, short, with a huge purple wizard hat with two glowing green fel flames on it, a big white beard and purple robes; the ARCHER, a bearded man (not a woman) in a crimson hood with a white wolf-fur collar and crimson leather, drawing a carved recurve bow, with a big grey dire wolf at his side. The sixth plinth is EMPTY: no figure on it, only a faint dim light, waiting for a hero still to come. Painted in the rich painterly Diablo-style quality of the cathedral image, cinematic lighting, high detail, 16:9 widescreen. Keep the iron and gold info panel with: Knight, A crusader in steel. Sword and shield, heavy blows, holy fire and a rallying cry. Skills: Holy Slam, Holy Nova, Charge, Battle Cry. Play as Knight. Title 'Choose your path'.",
+  "status": "SUCCEEDED",
+  "progress": 100,
+  "created_at": 1793448947993,
+  "started_at": 1793448948000,
+  "finished_at": 1793449015011,
+  "expires_at": 1793708215011,
+  "image_urls": [
+    "https://assets.meshy.ai/8fd76281-d576-493e-b9d7-513b7c3809be/uploads/image_01a191e3-2d0d-75ef-b8f3-cd098ca9ca04_0.png?Expires=1793708215&Signature=Q2p79oOURXFWjXEoBawP3qoIJ6Fsc0FC2ssaau3KX4yOTkPQmzmF9n8EHiTR6vXlhwbl7mmt3Daht~gUAAkFaciZ0NldMWeTFQUW-7JWv2gZSe4bHXGLJTLhcVoXzYTDMuq8iA9bQNo7nug9kU29zIGIZ2N-LLv-icF3X8pLZz31s-G1XgGxhDJ0zeyP-B2hL1xIHkula4gdOzFgwKl~DOvNM-EDwTk2ZWVd7Dtda0i9MWbVgUteFjtnY34xUq7PyGflNuTV9x0RpZSmqjzg8vZid5qXuvHFsJ~WRUCCUhX8PhDtv1ARjUQrTNQF6rUgH9NaeiPOYIAAZcD3AqqnDw__&Key-Pair-Id=K1VGYTHIYLM9UM"
+  ],
+  "consumed_credits": 6
+}
