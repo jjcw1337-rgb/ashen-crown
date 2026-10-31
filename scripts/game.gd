@@ -1160,6 +1160,22 @@ func list_characters() -> Array:
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["played"]) > int(b["played"]))
 	return out
 
+## What a saved character wears, for the title screen's figure: Hero.net_gear()'s shape (equipment plus
+## "_cls" and "_helm"), read from the save without changing it. {} when the save can't be read.
+func character_gear(id: String) -> Dictionary:
+	var path := char_dir + id + ".json"
+	if id == "" or not FileAccess.file_exists(path):
+		return {}
+	var f := FileAccess.open(path, FileAccess.READ)
+	var d = JSON.parse_string(f.get_as_text()) if f else null
+	if typeof(d) != TYPE_DICTIONARY:
+		return {}
+	var h: Dictionary = d.get("hero", {}) if d.get("hero") is Dictionary else {}
+	var g: Dictionary = (h.get("equipment", {}) as Dictionary).duplicate(true) if h.get("equipment") is Dictionary else {}
+	g["_cls"] = str(h.get("cls", "knight"))
+	g["_helm"] = bool(h.get("show_helm", true))
+	return g
+
 ## The save from before characters becomes the first character (once; the old file stays for older builds).
 func _adopt_old_save() -> void:
 	if FileAccess.file_exists(char_dir + ".adopted") or not FileAccess.file_exists(old_save):

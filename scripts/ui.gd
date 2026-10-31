@@ -3091,90 +3091,212 @@ func _fullscreen_panel(col: Color) -> Control:
 	root.add_child(c)
 	return c
 
+var title_stage: TitleStage
+var _title_cards := {}          # "continue"/"new" -> Button (the choice cards)
+var _title_fade: ColorRect
+var _title_busy := false        # a choice is under way: ignore more clicks
+
+## The title screen: the Gate of the Ashen Crown (TitleStage, its own 3D world) with the two choices as cards
+## under their daises: Continue (the last character played, shown on the left dais in their gear) and Create
+## New Character (the empty dais, into the class picker). Characters, co-op, settings and Quit sit in a row below.
 func _build_title() -> void:
 	title_panel = Control.new()
 	title_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.add_child(title_panel)
+	title_stage = TitleStage.new()
+	title_stage.set_anchors_preset(Control.PRESET_FULL_RECT)
+	title_panel.add_child(title_stage)
+	title_stage.setup(game)
+	title_stage.hovering.connect(_title_hover)
+	title_stage.clicked.connect(_title_choose)
+	# while the class picker or the character list covers it, the stage stops drawing
+	title_stage.covered = func() -> bool: return (class_panel != null and class_panel.visible) or (chars_panel != null and chars_panel.visible)
 	var shade := ColorRect.new()
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sm := ShaderMaterial.new()
 	var sh := Shader.new()
-	sh.code = "shader_type canvas_item; void fragment(){ float v = smoothstep(0.0, 0.75, abs(UV.x - 0.5) * 1.4 + abs(UV.y - 0.45) * 0.6); COLOR = vec4(0.0, 0.0, 0.0, 0.35 + v * 0.55); }"
+	sh.code = "shader_type canvas_item; void fragment(){ vec2 d = (UV - vec2(0.5, 0.48)) * vec2(1.1, 1.0); float v = smoothstep(0.35, 0.95, length(d) * 1.25); float top = smoothstep(0.32, 0.0, UV.y) * 0.45; float bot = smoothstep(0.7, 1.0, UV.y) * 0.55; COLOR = vec4(0.0, 0.0, 0.0, clamp(v * 0.75 + top + bot, 0.0, 0.9)); }"
 	sm.shader = sh
 	shade.material = sm
 	title_panel.add_child(shade)
-	var vb := VBoxContainer.new()
-	vb.anchor_left = 0.5
-	vb.anchor_right = 0.5
-	vb.anchor_top = 0.24
-	vb.offset_left = -360
-	vb.offset_right = 360
-	vb.add_theme_constant_override("separation", 14)
-	title_panel.add_child(vb)
-	var t := _label("ASHEN CROWN", 76, Color(0.88, 0.7, 0.42), true)
+	# the name, high over the gate
+	var head := VBoxContainer.new()
+	head.name = "title_head"
+	head.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	head.offset_top = 34
+	head.add_theme_constant_override("separation", 2)
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title_panel.add_child(head)
+	var t := _label("ASHEN CROWN", 84, Color(0.92, 0.74, 0.44), true)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	t.add_theme_constant_override("outline_size", 12)
-	vb.add_child(t)
-	var st := _label("Act I  ·  The Ashen Moors", 22, Color(0.75, 0.7, 0.62), true)
+	t.add_theme_constant_override("outline_size", 14)
+	t.add_theme_color_override("font_outline_color", Color(0.04, 0.02, 0.01, 0.95))
+	t.add_theme_color_override("font_shadow_color", Color(1.0, 0.45, 0.15, 0.35))
+	t.add_theme_constant_override("shadow_outline_size", 22)
+	t.add_theme_constant_override("shadow_offset_x", 0)
+	t.add_theme_constant_override("shadow_offset_y", 0)
+	head.add_child(t)
+	var orn := _label("—  ✦  —", 18, Color(0.7, 0.55, 0.32), true)
+	orn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	head.add_child(orn)
+	var st := _label("ACT I  ·  THE ASHEN MOORS", 18, Color(0.78, 0.72, 0.62), true)
 	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(st)
-	var sp := Control.new()
-	sp.custom_minimum_size = Vector2(0, 40)
-	vb.add_child(sp)
-	var cont := Button.new()
-	cont.name = "continue"
-	cont.text = "Continue"
-	cont.custom_minimum_size = Vector2(0, 46)
-	cont.pressed.connect(func(): game.start_game(true))
-	vb.add_child(cont)
-	var chb := Button.new()
+	head.add_child(st)
+	# the two choices
+	var cont := _title_card("continue", WARM_CARD)
+	cont.pressed.connect(func(): _title_choose("continue"))
+	var ng := _title_card("newchar", COLD_CARD)
+	ng.pressed.connect(func(): _title_choose("new"))
+	_title_cards = {"continue": cont, "new": ng}
+	title_stage.cards = _title_cards
+	(ng.find_child("kicker", true, false) as Label).text = "A NEW LEGEND"
+	(ng.find_child("big", true, false) as Label).text = "Create New Character"
+	(ng.find_child("line", true, false) as Label).text = "Choose a class and forge your hero"
+	(ng.find_child("ago", true, false) as Label).text = ""
+	# the rest, in a row along the bottom
+	var row := HBoxContainer.new()
+	row.name = "title_row"
+	row.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	row.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	row.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	row.offset_bottom = -18
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 10)
+	title_panel.add_child(row)
+	var chb := _iron_button("Characters", 170, 38, 15)
 	chb.name = "characters"
-	chb.text = "Characters"
-	chb.custom_minimum_size = Vector2(0, 46)
 	chb.pressed.connect(func(): open_characters())
-	vb.add_child(chb)
-	var ng := Button.new()
-	ng.name = "newchar"
-	ng.text = "New Character"
-	ng.custom_minimum_size = Vector2(0, 46)
-	ng.pressed.connect(func(): open_class_picker())
-	vb.add_child(ng)
-	var slots := _label("", 14, Color(0.7, 0.66, 0.58))
+	row.add_child(chb)
+	var hb := _iron_button("Host Co-op", 150, 38, 15)
+	hb.name = "host"
+	hb.pressed.connect(func(): game.start_host())
+	row.add_child(hb)
+	var jb := _iron_button("Join Co-op", 150, 38, 15)
+	jb.name = "join"
+	jb.pressed.connect(func(): open_join())
+	row.add_child(jb)
+	var q := _iron_button("Quit", 110, 38, 15)
+	q.pressed.connect(func(): get_tree().quit())
+	row.add_child(q)
+	var slots := _label("", 13, Color(0.62, 0.58, 0.5))
 	slots.name = "slots"
 	slots.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(slots)
-	var coop := HBoxContainer.new()
-	coop.add_theme_constant_override("separation", 12)
-	vb.add_child(coop)
-	var hb := Button.new()
-	hb.text = "Host Co-op Game"
-	hb.custom_minimum_size = Vector2(0, 46)
-	hb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hb.pressed.connect(func(): game.start_host())
-	coop.add_child(hb)
-	var jb := Button.new()
-	jb.text = "Join Co-op Game"
-	jb.custom_minimum_size = Vector2(0, 46)
-	jb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	jb.pressed.connect(func(): open_join())
-	coop.add_child(jb)
-	var q := Button.new()
-	q.text = "Quit"
-	q.custom_minimum_size = Vector2(0, 46)
-	q.pressed.connect(func(): get_tree().quit())
-	vb.add_child(q)
-	_build_class_picker()
-	_build_characters()
+	slots.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	slots.offset_top = -86
+	slots.offset_bottom = -66
+	title_panel.add_child(slots)
 	if OS.has_feature("web"):
 		# browsers can't use the LAN co-op networking, and there's nothing to quit to
-		coop.visible = false
+		hb.visible = false
+		jb.visible = false
 		q.visible = false
-		var wn := _label("Playing in the browser. Co-op needs the downloadable Windows version.", 14, Color(0.6, 0.57, 0.5))
-		wn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		vb.add_child(wn)
-	var credit := _label("All models, textures, music and sound are generated in code.", 14, Color(0.5, 0.47, 0.42))
-	credit.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(credit)
+	# a fade for the move into a choice (under the picker and the list, which are built on top)
+	_title_fade = ColorRect.new()
+	_title_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_title_fade.color = Color(0, 0, 0, 0)
+	_title_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title_panel.add_child(_title_fade)
+	_build_class_picker()
+	_build_characters()
+
+const WARM_CARD := Color(0.95, 0.68, 0.36)
+const COLD_CARD := Color(0.58, 0.8, 1.0)
+
+## A choice card: a dark glass plate edged in its colour, with a kicker, a big line, a detail line and a
+## last-played line (filled by show_title). The whole card is the button.
+func _title_card(nm: String, col: Color) -> Button:
+	var b := Button.new()
+	b.name = nm
+	b.custom_minimum_size = Vector2(420, 116)
+	b.size = Vector2(420, 116)
+	b.focus_mode = Control.FOCUS_ALL
+	b.pivot_offset = Vector2(210, 58)
+	for s in ["normal", "hover", "pressed", "focus", "disabled"]:
+		var sb := StyleBoxFlat.new()
+		var lit: bool = s == "hover" or s == "focus" or s == "pressed"
+		sb.bg_color = Color(0.03, 0.025, 0.025, 0.78 if not lit else 0.86)
+		sb.border_color = Color(col.r, col.g, col.b, 0.95 if lit else (0.25 if s == "disabled" else 0.55))
+		sb.set_border_width_all(2 if lit else 1)
+		sb.border_width_top = 3 if lit else 2
+		sb.set_corner_radius_all(3)
+		sb.shadow_color = Color(col.r, col.g, col.b, 0.35 if lit else 0.0)
+		sb.shadow_size = 18 if lit else 0
+		sb.set_content_margin_all(14)
+		b.add_theme_stylebox_override(s, sb)
+	var vb := VBoxContainer.new()
+	vb.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vb.offset_left = 18
+	vb.offset_right = -18
+	vb.offset_top = 12
+	vb.offset_bottom = -10
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	vb.add_theme_constant_override("separation", 2)
+	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(vb)
+	var k := _label("", 13, col, true)
+	k.name = "kicker"
+	k.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(k)
+	var big := _label("", 28, Color(0.97, 0.9, 0.78), true)
+	big.name = "big"
+	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	big.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	big.add_theme_constant_override("outline_size", 6)
+	vb.add_child(big)
+	var line := _label("", 16, Color(0.82, 0.77, 0.68))
+	line.name = "line"
+	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(line)
+	var ago := _label("", 13, Color(0.6, 0.56, 0.5))
+	ago.name = "ago"
+	ago.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(ago)
+	b.mouse_entered.connect(func(): if not b.disabled: title_stage.set_focus("continue" if nm == "continue" else "new"))
+	b.mouse_exited.connect(func(): title_stage.set_focus(""))
+	b.focus_entered.connect(func(): if not b.disabled: title_stage.set_focus("continue" if nm == "continue" else "new"))
+	title_panel.add_child(b)
+	return b
+
+## The stage's hover (a dais or a card): the matching card lifts and the other settles.
+func _title_hover(which: String) -> void:
+	for side in _title_cards:
+		var c: Button = _title_cards[side]
+		var on: bool = side == which and not c.disabled
+		var tw := c.create_tween()
+		tw.tween_property(c, "scale", Vector2.ONE * (1.04 if on else 1.0), 0.18).set_trans(Tween.TRANS_SINE)
+		# hovering the dais lights the card as if the mouse were on it
+		if not c.has_meta("plain"):
+			c.set_meta("plain", c.get_theme_stylebox("normal"))
+		c.add_theme_stylebox_override("normal", c.get_theme_stylebox("hover") if on else c.get_meta("plain"))
+	if which != "":
+		Sfx.play("inv_click", -14.0, 0.8 if which == "continue" else 1.15)
+
+## A choice made (card or dais): the camera moves into it, then Continue loads the character shown and
+## New Character opens the class picker.
+func _title_choose(which: String) -> void:
+	if _title_busy or game._intro_playing:
+		return
+	if which == "continue" and (_title_cards["continue"] as Button).disabled:
+		return
+	_title_busy = true
+	Sfx.play("click")
+	if which == "continue":
+		Sfx.play("swing_heavy", -10.0, 0.8)
+	else:
+		Sfx.play("phase_in", -8.0, 1.0)
+	var tw := create_tween()
+	tw.tween_interval(0.25)
+	tw.tween_property(_title_fade, "color", Color(0, 0, 0, 1) if which == "continue" else Color(0.02, 0.03, 0.05, 1), 0.3)
+	await title_stage.enter(which)
+	if which == "continue":
+		var id: String = str(title_stage.get_meta("char_id")) if title_stage.has_meta("char_id") else ""
+		await game.start_game(true, "knight", id)
+	else:
+		open_class_picker()
+	_title_fade.color = Color(0, 0, 0, 0)
+	title_stage.reset()
+	_title_busy = false
 
 func _build_join() -> void:
 	join_panel = PanelContainer.new()
@@ -3612,15 +3734,45 @@ func show_title() -> void:
 	if chars_panel:
 		chars_panel.visible = false
 	var chars: Array = game.list_characters()
-	var cont := title_panel.find_child("continue", true, false) as Button
+	var cont := _title_cards["continue"] as Button
 	cont.disabled = chars.is_empty()
-	cont.text = "Continue" if chars.is_empty() else "Continue  ·  " + _char_line(chars[0])
+	cont.mouse_default_cursor_shape = Control.CURSOR_ARROW if chars.is_empty() else Control.CURSOR_POINTING_HAND
+	var kick := cont.find_child("kicker", true, false) as Label
+	var big := cont.find_child("big", true, false) as Label
+	var line := cont.find_child("line", true, false) as Label
+	var ago := cont.find_child("ago", true, false) as Label
+	if chars.is_empty():
+		kick.text = "CONTINUE"
+		big.text = "No hero yet"
+		line.text = "Your first character will wait for you here"
+		ago.text = ""
+		big.add_theme_color_override("font_color", Color(0.55, 0.52, 0.48))
+		title_stage.show_character({})
+		title_stage.remove_meta("char_id")
+	else:
+		var c: Dictionary = chars[0]
+		kick.text = "CONTINUE YOUR LEGEND"
+		big.text = str(c["name"]) if str(c["name"]) != "" else "Unnamed"
+		big.add_theme_color_override("font_color", Color(0.97, 0.9, 0.78))
+		line.text = "Level %d %s  ·  %s" % [int(c["level"]), Data.CLASSES.get(c["cls"], {"name": "Knight"})["name"], ["Act I", "Act II", "Act III"][clampi(int(c["difficulty"]), 0, 2)]]
+		var a := _ago(int(c["played"]))
+		ago.text = "Last played " + a if a != "" else ""
+		# the figure on the dais and the save Continue loads are the same one
+		title_stage.set_meta("char_id", str(c["id"]))
+		title_stage.show_character(game.character_gear(str(c["id"])))
 	var chb := title_panel.find_child("characters", true, false) as Button
 	chb.visible = not chars.is_empty()
-	chb.text = "Characters  ·  %d saved" % chars.size()
-	(title_panel.find_child("newchar", true, false) as Button).text = "New Character" if chars.is_empty() else "New Character  ·  new save"
+	chb.text = "Characters  ·  %d" % chars.size()
+	var ng := _title_cards["new"] as Button
+	(ng.find_child("kicker", true, false) as Label).text = "BEGIN YOUR LEGEND" if chars.is_empty() else "A NEW LEGEND"
 	(title_panel.find_child("slots", true, false) as Label).text = "" if chars.is_empty() \
 		else "Every character has its own save. Making a new one never overwrites the others."
+	title_stage.reset()
+	_title_hover("")
+	_title_fade.color = Color(0, 0, 0, 0)
+	_title_busy = false
+	# the camp keeps building behind; it isn't drawn while the title's own world is up
+	get_viewport().disable_3d = true
 	_set_hud(false)
 
 ## "2 hours ago" from a save's `played` (unix ms); "" when unknown.
@@ -3738,6 +3890,7 @@ func open_characters() -> void:
 
 func hide_title() -> void:
 	title_panel.visible = false
+	get_viewport().disable_3d = false
 	_set_hud(true)
 
 func _set_hud(v: bool) -> void:
