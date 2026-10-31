@@ -1,8 +1,9 @@
 extends SceneTree
 ## Preview of the mocap knight (Knight.build_mocap) as the game drives him through Anim.pose.
-## Needs a display (xvfb). Usage: -- outdir mode [side|front|34|back|game|close] [frames] [archer|wraith] [relaxed]
+## Needs a display (xvfb). Usage: -- outdir mode [side|front|34|back|game|close] [frames] [archer|wraith|demon] [relaxed]
 ## modes: idle, run (stand, run, stop), attack (the three-swing combo standing), runattack (run into a swing),
-##        block, turn (runs a circle), draw (sheathed run, stop, draw the sword, guard, holster)
+##        block, turn (runs a circle), draw (sheathed run, stop, draw the sword, guard, holster),
+##        demontour (the Demon: idle, walk, run, a turn, every clip of his, a hit, death; ~34 s)
 func _initialize():
 	_run()
 
@@ -53,14 +54,15 @@ func _run() -> void:
 	# archer.gd uses the Sfx autoload: load it at run time (a static reference compiles it before Sfx exists)
 	var AR: GDScript = load("res://scripts/archer.gd") if archer else null
 	var wraith := args.has("wraith")
+	var demon := args.has("demon")
 	var relaxed := args.has("relaxed")    # weapon away (no battle stance)
-	var r: Node3D = AR.call("build_body") if archer else (Wraith.build(Wraith.default_gear()) if wraith else Knight.build_mocap())
+	var r: Node3D = AR.call("build_body") if archer else (Wraith.build(Wraith.default_gear()) if wraith else (Demon.build(Demon.default_gear()) if demon else Knight.build_mocap()))
 	r.set_meta("pers", "hero")
 	r.set_meta("gait", "knight")
 	r.set("fixed_dt", 1.0 / 30.0)
 	root3.add_child(r)
 	var J: Dictionary = r.get_meta("j")
-	var sword := Models.item_model({"base": "long_bow" if args.has("longbow") else "short_bow", "rarity": 0}) if archer else Models.item_model({"base": "short_sword", "rarity": 0})
+	var sword := Models.item_model({"base": "long_bow" if args.has("longbow") else "short_bow", "rarity": 0}) if archer else Models.item_model({"base": "hand_axe" if demon else "short_sword", "rarity": 0})
 	if archer:
 		var kind: String = Data.BASES["long_bow" if args.has("longbow") else "short_bow"]["kind"]
 		var g: Node3D = J["grip_bow"]
@@ -74,7 +76,7 @@ func _run() -> void:
 		(J["grip_r"] as Node3D).add_child(sword)
 	if wraith:
 		sword.visible = false
-	if not archer and not wraith:
+	if not archer and not wraith and not demon:
 		var sh := Models.item_model({"base": "kite_shield", "rarity": 0})
 		(J["mount_l"] as Node3D).add_child(sh)
 		sh.position = Vector3(-0.03, 0, 0)
@@ -140,6 +142,36 @@ func _run() -> void:
 					st["hit"] = 1.0 - (T - 8.6) / 0.4
 				elif T >= 9.2:
 					st["dead"] = T - 9.2
+			"demontour":
+				# stand (wings folded), walk, run, a turn, then every move of his, a hit and death
+				var tour := [["side", 0.9], ["swipe1", 0.7], ["swipe2", 0.8], ["swipe3", 1.0], ["over", 0.8], ["thrust", 1.0],
+					["cast", 0.8], ["roar", 1.4], ["stomp", 0.8], ["grab", 1.6]]
+				if T < 2.5:
+					want = 0.0
+					st["draw"] = 0.0
+				elif T < 5.5:
+					want = 1.3
+					st["draw"] = 0.0
+				elif T < 8.5:
+					want = 4.8
+				elif T < 11.0:
+					want = 4.8
+					yaw += dt * 1.5
+				else:
+					var tt := T - 11.4
+					var acc := 0.0
+					var done := false
+					for mv in tour:
+						if not done and tt >= acc and tt < acc + float(mv[1]):
+							st["atk"] = (tt - acc) / float(mv[1])
+							st["style"] = mv[0]
+							done = true
+						acc += float(mv[1]) + 0.6
+					if not done:
+						if tt > acc + 0.4 and tt < acc + 0.9:
+							st["hit"] = 1.0 - (tt - acc - 0.4) / 0.5
+						elif tt >= acc + 1.6:
+							st["dead"] = tt - acc - 1.6
 			"draw":
 				# run sheathed, stop, draw (0.85 s), stand in guard, holster (0.9 s)
 				want = 4.8 if T > 0.5 and T < 2.2 else 0.0
@@ -191,10 +223,16 @@ func _run() -> void:
 			off = Vector3(0, 9, 7)
 		var look := Vector3(0, 0.95, 0)
 		var closes := {"close": Vector3(2.2, 0.1, -2.0), "closeback": Vector3(-1.4, 0.3, 2.6), "closetop": Vector3(0.3, 1.6, -0.6)}
+		if demon:
+			off *= 1.4 if view != "game" else 1.0
+			look = Vector3(0, 1.25, 0)
+			closes = {"close": Vector3(3.4, 0.9, -3.0), "closeback": Vector3(-2.2, 0.8, 3.6), "closetop": Vector3(0.3, 2.6, -0.8)}
 		if closes.has(view):
 			# the hands and the string, close up (relative to the way he faces)
 			off = r.transform.basis * (closes[view] as Vector3)
 			look = Vector3(0, 1.25, 0)
+		if demon and mode == "demontour" and view == "close":
+			off = Vector3(3.4, 1.2, -3.0)     # fixed, so the turn and the moves read
 		cam.transform = Transform3D(Basis(), c + off + (look - Vector3(0, 0.95, 0) if closes.has(view) else Vector3.ZERO)).looking_at(c + look)
 		await process_frame
 		await RenderingServer.frame_post_draw
