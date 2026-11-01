@@ -19,8 +19,8 @@ const RIM_LAYER := 1 << 19            # render layer 20: only the hero's meshes 
 
 const LOOKS := {
 	# Act I's camp at dusk under the canopy: teal-blue shadows, warm firelit highlights, a little crushed black
-	"forest_camp": {"shadow": Color(0.0, 0.05, 0.07), "high": Color(0.07, 0.03, -0.03), "curve": 0.18, "lift": -0.01,
-		"sat": 0.95, "vignette": 0.72, "grain": 0.035,
+	"forest_camp": {"shadow": Color(0.0, 0.05, 0.07), "high": Color(0.07, 0.03, -0.03), "curve": 0.12, "lift": 0.012,
+		"sat": 0.97, "vignette": 0.55, "grain": 0.03,
 		"rim": {"color": Color(0.55, 0.72, 1.0), "energy": 2.2, "range": 4.5}},
 }
 

@@ -148,9 +148,9 @@ static func build(w: World) -> void:
 	# the heart of the camp's light (graphics plan, phase 1): reaches the shops, glows in the mist, always shadowed
 	for n in bf.find_children("*", "OmniLight3D", true, false):
 		var fl: OmniLight3D = n
-		fl.light_energy *= 1.6
+		fl.light_energy *= 2.2
 		fl.set_meta("base", fl.light_energy)
-		fl.omni_range = 15.0
+		fl.omni_range = 17.0
 		fl.omni_attenuation = 1.15
 		fl.light_volumetric_fog_energy = 3.0
 		fl.shadow_blur = 1.4
@@ -374,8 +374,8 @@ static func _local(w: World, at: Vector2, off: Vector3) -> Vector3:
 static func _glow(w: World, at: Vector2, off: Vector3, col: Color, energy: float, rng_m: float) -> void:
 	var l := OmniLight3D.new()
 	l.light_color = col
-	l.light_energy = energy * 1.3
-	l.omni_range = rng_m * 1.25
+	l.light_energy = energy * 1.7
+	l.omni_range = rng_m * 1.4
 	l.omni_attenuation = 1.3
 	l.light_volumetric_fog_energy = 2.0
 	l.shadow_blur = 1.2
@@ -407,8 +407,8 @@ static func _candle(parent: Node3D, at: Vector3, lit: bool) -> void:
 	if lit:
 		var l := OmniLight3D.new()
 		l.light_color = Color(1.0, 0.68, 0.38)
-		l.light_energy = 1.9
-		l.omni_range = 8.0
+		l.light_energy = 2.6
+		l.omni_range = 9.5
 		l.omni_attenuation = 1.3
 		l.light_volumetric_fog_energy = 2.0
 		l.shadow_blur = 1.2

@@ -462,25 +462,28 @@ func _zone_env(kind: String) -> void:
 			sky_mat.sky_top_color = Color(0.1, 0.13, 0.17)
 			sky_mat.sky_horizon_color = Color(0.24, 0.29, 0.31)
 			sky_mat.ground_horizon_color = Color(0.2, 0.24, 0.25)
-			# Graphics plan, phase 1: a darker fill and a dimmer, softer moon, so the fire, the lanterns and
-			# the forge carve the camp out of the dark (their lights are brighter and cast shadows, Grade)
-			env.ambient_light_energy = 0.3
-			env.tonemap_exposure = 1.25
-			env.fog_light_color = Color(0.16, 0.21, 0.24)
-			env.fog_density = 0.012
+			# Graphics plan, phase 1 (retuned on a real GPU, 2026-11-01): the first pass (ambient 0.3, moon 0.38,
+			# volumetric fog 0.03) was judged in the cloud's software OpenGL renderer and came out far too dark in
+			# Forward+, where the volumetric fog, SSAO and SSIL all take light away. A moonlit fill you can see by,
+			# thinner mist, and the fire, lanterns and forge still the brightest things (their lights, Grade)
+			env.ambient_light_energy = 0.62
+			env.tonemap_exposure = 1.5
+			env.fog_light_color = Color(0.2, 0.26, 0.29)
+			env.fog_density = 0.009
 			env.fog_height = 1.2
-			env.fog_height_density = 0.12
-			env.adjustment_saturation = 0.95
-			env.adjustment_contrast = 1.08
-			env.volumetric_fog_density = 0.03
-			env.volumetric_fog_albedo = Color(0.6, 0.7, 0.72)
-			env.volumetric_fog_emission = Color(0.006, 0.01, 0.013)
+			env.fog_height_density = 0.1
+			env.adjustment_saturation = 0.97
+			env.adjustment_contrast = 1.05
+			env.volumetric_fog_density = 0.014
+			env.volumetric_fog_albedo = Color(0.62, 0.7, 0.72)
+			env.volumetric_fog_emission = Color(0.016, 0.022, 0.028)
 			env.glow_intensity = 0.95
 			env.glow_bloom = 0.1
-			sun.light_color = Color(0.55, 0.68, 0.9)
-			sun.light_energy = 0.38
-			sun.shadow_blur = 2.6
-			hero.light.light_energy = 1.0
+			sun.light_color = Color(0.58, 0.7, 0.92)
+			sun.light_energy = 0.6
+			sun.shadow_blur = 2.2
+			hero.light.light_energy = 1.7
+			hero.light.omni_range = 12.0
 			grade_look = "forest_camp"
 		if difficulty == 1 and kind != "town":
 			# A2, the Imperial Road and Aurelia: a warm late afternoon, low golden sun, dusty haze
