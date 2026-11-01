@@ -498,7 +498,7 @@ shader_type spatial;
 render_mode cull_disabled;
 uniform vec4 cloth : source_color = vec4(0.3, 0.1, 0.1, 1.0);
 uniform vec4 mark : source_color = vec4(1.0, 0.8, 0.4, 1.0);
-uniform int emblem = 0;   // 0 diamond, 1 cross, 2 hood, 3 horns, 4 hat, 5 arrow, 6 beaked mask
+uniform int emblem = 0;   // 0 diamond, 1 cross, 2 hood, 3 horns, 4 hat, 5 arrow, 6 beaked mask, 7 claw marks
 uniform float seed = 0.0;
 """ + NOISE + """
 void vertex() {
@@ -546,6 +546,10 @@ void fragment() {
 		e = max(e, step(abs(length(p - vec2(-0.3, 0.32)) - 0.09), 0.04));
 		e = max(e, seg(p, vec2(0.05, 0.12), vec2(0.65, -0.5), 0.1) + seg(p, vec2(-0.1, -0.02), vec2(0.65, -0.5), 0.05));
 		e = max(e, seg(p, vec2(-0.6, 0.55), vec2(0.25, 0.55), 0.06));
+	} else if (emblem == 7) {
+		// the dragons: three claw marks raked across the banner
+		e = seg(p, vec2(-0.55, 0.65), vec2(-0.15, -0.7), 0.075) + seg(p, vec2(-0.1, 0.75), vec2(0.25, -0.65), 0.085);
+		e = max(e, seg(p, vec2(0.35, 0.65), vec2(0.65, -0.55), 0.075));
 	} else {
 		e = step(abs(abs(p.x) + abs(p.y) - 0.5), 0.07) + step(length(p), 0.13);
 	}

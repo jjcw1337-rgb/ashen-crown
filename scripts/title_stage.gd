@@ -615,6 +615,8 @@ func show_character(gear: Dictionary) -> void:
 	root3d.add_child(hero)
 	hero.setup(game)
 	hero.apply_net_gear(gear)
+	if Dragon.is_dragon(hero.cls):
+		hero.rig.scale = Vector3.ONE * Dragon.stage_scale(hero.cls)    # a dragon shrunk onto the dais like the class picker's
 	var home := LEFT + Vector3(0, DAIS_TOP, 0)
 	hero.global_position = home
 	hero.net_pos = home

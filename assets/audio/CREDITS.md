@@ -87,3 +87,7 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | thunder_strike | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a bolt of lightning striking the ground close by, sharp electric crack and a short rumble, close mic, dry, isolated sound effect, no music |
 | wail | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a terrifying ghost woman screaming, a long piercing shriek, close mic, dry, isolated sound effect, no music |
 | wind | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | cold wind blowing across an empty moor at night, steady, no music |
+
+## Dragon sounds (tools/audio/dragon_sfx.py)
+
+Derived from recordings already listed above (lion_roar, roar, fire_erupt, slam, charge_impact, hellclaw, swing_heavy, swing_light, growl, impact_bone, cleave_swing, death_demon, death_wraith, boss_die, wail, wind, ice_shatter, thunder_strike, birds_flutter, reap_swing) by pitching, filtering and layering; same licences as their sources. Files: `death_serpent_0.wav`, `death_wyrm_0.wav`, `death_wyvern_0.wav`, `serpent_bite_0.wav`, `serpent_claw_0.wav`, `serpent_roar_0.wav`, `serpent_step_0.wav`, `serpent_tail_0.wav`, `wyrm_bite_0.wav`, `wyrm_claw_0.wav`, `wyrm_roar_0.wav`, `wyrm_step_0.wav`, `wyrm_tail_0.wav`, `wyvern_bite_0.wav`, `wyvern_claw_0.wav`, `wyvern_flap_0.wav`, `wyvern_roar_0.wav`, `wyvern_step_0.wav`, `wyvern_tail_0.wav`.

@@ -195,6 +195,10 @@ func is_archer() -> bool:
 func is_plague() -> bool:
 	return cls == "plague"
 
+## The dragon classes (Obsidian Wyrm, Frost Serpent, Storm Wyvern; scripts/dragon.gd).
+func is_dragon() -> bool:
+	return Dragon.is_dragon(cls)
+
 ## The archer with a bow in his hands: his attack shoots instead of swinging.
 func has_bow() -> bool:
 	var w = equipment.get("weapon") if equipment is Dictionary else null
@@ -319,6 +323,8 @@ func _build_rig() -> void:
 		rig = Plague.build_body()
 		if pd == null:
 			pd = Plague.new(self)
+	elif is_dragon():
+		rig = Dragon.build(cls)     # posed in code every frame (Anim.pose hands it to Dragon.pose)
 	else:
 		var body := _knight_body()
 		if body == "mocap":
@@ -327,6 +333,7 @@ func _build_rig() -> void:
 			rig = Knight.build(Knight.default_gear()) if body == "" else Knight.build_meshy(body == "armored")
 		rig.set_meta("gait", "knight")    # Anim: heavy armoured run, elbows out
 	rig.set_meta("pers", "hero")
+	radius = float(Dragon.spec(cls)["radius"]) if is_dragon() else 0.45
 	add_child(rig)
 	J = rig.get_meta("j")
 	if breath != null and is_instance_valid(breath):
@@ -506,7 +513,8 @@ func new_character() -> void:
 	equipment = {}
 	for s in Items.EQUIP_SLOTS:
 		equipment[s] = null
-	equipment["weapon"] = Items.make(str(Data.CLASSES[cls].get("weapon", "hand_axe" if is_demon() else "short_sword")))
+	# a dragon starts with its own claws and teeth (Data.unarmed); everyone else with their weapon
+	equipment["weapon"] = null if is_dragon() else Items.make(str(Data.CLASSES[cls].get("weapon", "hand_axe" if is_demon() else "short_sword")))
 	if cls == "knight":
 		equipment["shield"] = Items.make("buckler")
 	equipment["armor"] = Items.make("quilted")
@@ -545,12 +553,12 @@ func recalc() -> void:
 	max_stamina = 70.0 + vt_total * 0.6 + level * 2.0
 	stamina = minf(stamina, max_stamina)
 	var w = equipment.get("weapon")
-	var wd: Array = Items.damage_of(w) if w != null else [1, 3]
+	var wd: Array = Items.damage_of(w) if w != null else Data.unarmed(cls)    # a dragon's claws and teeth
 	var k := 1.0 + st_total / 100.0
 	dmg_min = maxi(1, int(wd[0] * k))
 	dmg_max = maxi(dmg_min, int(wd[1] * k))
 	fire_dmg = stats.get("fire", 0)
-	var wspeed: float = Data.BASES[w["base"]].get("speed", 1.0) if w != null else 1.2
+	var wspeed: float = Data.BASES[w["base"]].get("speed", 1.0) if w != null else Data.unarmed_speed(cls)
 	aspd = wspeed * (1.0 + mini(stats.get("ias", 0), 120) / 100.0 + dx_total * 0.002)  # A2/A3 gear: speed capped
 	armor = int((def_sum + dx_total / 4) * (1.0 + talent("armor_pct") / 100.0))
 	block_chance = 0.0
@@ -658,6 +666,8 @@ func refresh_gear() -> void:
 		Demon.rebuild_body(rig, demon_gear())
 	elif is_warlock():
 		Warlock.rebuild_body(rig, warlock_gear())
+	elif is_dragon():
+		pass                               # a dragon's body has no armour to show (its gear hangs off a hidden joint)
 	elif is_archer():
 		if not rig.has_meta("meshy"):      # the ranger's own body has nothing to rebuild
 			Knight.rebuild_body(rig, Archer.body_gear(knight_gear()))
@@ -1146,6 +1156,8 @@ func _face(d: Vector3) -> void:
 		rig.rotation.y = atan2(-d.x, -d.z)
 
 func reach() -> float:
+	if is_dragon():
+		return Dragon.reach(cls)
 	return Archer.RANGE if has_bow() else 1.7
 
 # ---------------------------------------------------------------- damage
@@ -1507,7 +1519,7 @@ func _process(delta: float) -> void:
 	_breathe(delta)
 	_apply_shield_pose()
 	# no sword-swing streak off a bow, nor off the Wraith's and the Demon's skills (their clips, not weapon swings)
-	_update_trail(((atk_t >= 0.0 and not ((is_wraith() or is_demon()) and atk_skill != "")) or charge_t >= 0.0) and not has_bow())
+	_update_trail(((atk_t >= 0.0 and not ((is_wraith() or is_demon()) and atk_skill != "")) or charge_t >= 0.0) and not has_bow() and not is_dragon())
 
 ## The Wraith floats a hand's breadth off the ground, bobbing slowly and leaning into motion.
 func _hover() -> void:
@@ -1640,7 +1652,7 @@ func _puppet_process(delta: float) -> void:
 	Archer.update(self, delta)
 	SkillFx.update(self, delta)
 	_apply_shield_pose()
-	_update_trail(atk_t >= 0.0 and not has_bow())
+	_update_trail(atk_t >= 0.0 and not has_bow() and not is_dragon())
 
 func _apply_shield_pose() -> void:
 	if shield_node == null or not is_instance_valid(shield_node):

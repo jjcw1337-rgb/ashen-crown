@@ -1,0 +1,60 @@
+# TEMPORARY (test-dragons only): imports the project, runs the dragon test and the class/carousel/sound smoke
+# tests, and renders screenshots of the class picker and each dragon in the camp. Remove before merging.
+name: Dragon check
+
+on:
+  push:
+    branches: ['test-dragons']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dragon-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Import project
+        run: |
+          godot --headless --editor --quit 2>&1 | tee import.log || true
+          echo "---- script errors during import ----"
+          grep -nE "SCRIPT ERROR|Parse Error|Compile Error|Failed to load script|Identifier not found|ERROR: .*\.gd" import.log || echo "none"
+
+      - name: Dragon test
+        run: timeout 900 godot --headless --path . -s tools/dragon_test.gd --fixed-fps 60 2>&1 | tee dragon_test.log; grep -nE "SCRIPT ERROR|Parse Error" dragon_test.log || true
+
+      - name: Smoke tests
+        continue-on-error: true
+        run: |
+          for t in class_carousel_test sound_test char_test title_test playtest coop_fx_test; do
+            echo "======== $t"
+            timeout 600 godot --headless --path . -s tools/$t.gd --fixed-fps 60 2>&1 | tee $t.log | grep -E "FAIL|SCRIPT ERROR|Parse Error|done|failed" | head -40 || true
+          done
+
+      - name: Screenshots
+        continue-on-error: true
+        run: |
+          apt-get update -qq && apt-get install -y -qq xvfb libgl1-mesa-dri libglx-mesa0 mesa-utils > /dev/null 2>&1 || true
+          mkdir -p shots
+          timeout 400 xvfb-run -a -s "-screen 0 1600x900x24" godot --rendering-driver opengl3 --path . -s tools/class_shot.gd -- shots 2>&1 | tail -20 || true
+          for c in wyrm serpent wyvern; do
+            timeout 240 xvfb-run -a -s "-screen 0 1600x900x24" godot --rendering-driver opengl3 --path . -- --shot shots/game_$c.png --zone town --class $c 2>&1 | tail -5 || true
+          done
+          ls -la shots
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dragon-check
+          path: |
+            *.log
+            shots
+          retention-days: 3

@@ -17,11 +17,13 @@ extends SubViewportContainer
 signal picked(cls: String)
 signal hovering(cls: String)
 
-## the ring, in order; the knight, the first choice, starts in the middle
-const CLASSES := ["archer", "wraith", "knight", "plague", "demon", "warlock"]
-const ACCENTS := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1), "warlock": Color(0.45, 1.0, 0.35), "archer": Color(0.92, 0.24, 0.3), "plague": Color(0.6, 0.95, 0.3)}
-## the banner's emblem (ClassCathedral.BANNER_SHADER): cross, hood, horns, hat, arrow, beak
-const EMBLEMS := {"knight": 1, "wraith": 2, "demon": 3, "warlock": 4, "archer": 5, "plague": 6}
+## the ring, in order; the knight, the first choice, starts in the middle. The three dragons are spread round it
+## (never two side by side, the wrap from the last to the first included).
+const CLASSES := ["archer", "wyrm", "wraith", "knight", "serpent", "plague", "demon", "wyvern", "warlock"]
+const ACCENTS := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1), "warlock": Color(0.45, 1.0, 0.35), "archer": Color(0.92, 0.24, 0.3), "plague": Color(0.6, 0.95, 0.3),
+	"wyrm": Color(1.0, 0.3, 0.12), "serpent": Color(0.55, 0.88, 1.0), "wyvern": Color(0.45, 0.95, 0.85)}
+## the banner's emblem (ClassCathedral.BANNER_SHADER): cross, hood, horns, hat, arrow, beak, claw marks (the dragons)
+const EMBLEMS := {"knight": 1, "wraith": 2, "demon": 3, "warlock": 4, "archer": 5, "plague": 6, "wyrm": 7, "serpent": 7, "wyvern": 7}
 const PLINTH_TOP := 0.78            # feet height on a plinth (the stand is scaled with its slot)
 const PLINTH_R := 0.56
 const STEP := 0.1
@@ -39,7 +41,8 @@ const WHEEL_GAP := 0.08             # seconds between wheel notches that count
 ## signature moves: [pose style, seconds, impact fraction, skill name]
 const SIGNATURE := {"knight": ["cleave", 1.1, 0.5, "Holy Slam"], "wraith": ["rend", 0.95, 0.42, "Spectral Rend"],
 	"demon": ["fists", 0.9, 0.48, "Molten Fists"], "warlock": ["cast", 1.8, 0.2, "Drain Life"], "archer": ["bow", 1.0, 0.55, "Volley"],
-	"plague": ["pd_flask", 1.3, 0.55, "Toxic Flask"]}
+	"plague": ["pd_flask", 1.3, 0.55, "Toxic Flask"],
+	"wyrm": ["swipe3", 1.2, 0.47, "Tail Spin"], "serpent": ["swipe3", 1.1, 0.47, "Tail Spin"], "wyvern": ["swipe3", 1.1, 0.47, "Tail Spin"]}
 const SIG_EVERY := 4.5
 ## Skill previews (hover a skill in the panel, `show_skill`): each skill's pose style and seconds (before the
 ## class's attack pace), as Hero.use_skill plays them; the effects are the game's own, scaled to the stage.
@@ -59,7 +62,10 @@ const PICK_SOUND := {
 	"demon": [["fire_erupt", 0.0, 0.0, 0.85], ["summon_demon", 0.2, -3.0, 0.9]],
 	"warlock": [["blight_cast", 0.0, -2.0, 1.0], ["relic_ting", 0.08, -6.0, 1.3], ["cackle", 0.3, -4.0, 1.55]],
 	"archer": [["bow", 0.0, 0.0, 0.85], ["bow", 0.14, -3.0, 1.05], ["lion_roar", 0.32, -8.0, 1.45]],
-	"plague": [["ice_shatter", 0.0, -4.0, 1.4], ["blight_burst", 0.1, -5.0, 1.15], ["fuse", 0.35, -9.0, 1.0]]}
+	"plague": [["ice_shatter", 0.0, -4.0, 1.4], ["blight_burst", 0.1, -5.0, 1.15], ["fuse", 0.35, -9.0, 1.0]],
+	"wyrm": [["wyrm_step", 0.0, -2.0, 0.9], ["wyrm_roar", 0.12, -3.0, 1.0]],
+	"serpent": [["serpent_tail", 0.0, -6.0, 1.1], ["serpent_roar", 0.15, -3.0, 1.0]],
+	"wyvern": [["wyvern_flap", 0.0, -3.0, 1.0], ["wyvern_roar", 0.2, -3.0, 1.0]]}
 
 var game: Node
 var band := Vector2(96.0, 262.0)    # screen pixels above (title) and below (info panel) the heroes' band
@@ -195,13 +201,17 @@ func setup(g: Node) -> void:
 		root3d.add_child(h)
 		h.setup(game)
 		var gear := {"_cls": c, "_helm": true}
-		gear["weapon"] = Items.make(str(Data.CLASSES[c].get("weapon", "hand_axe" if c == "demon" else "short_sword")))
+		if not Dragon.is_dragon(c):
+			gear["weapon"] = Items.make(str(Data.CLASSES[c].get("weapon", "hand_axe" if c == "demon" else "short_sword")))
 		if c == "knight":
 			gear["shield"] = Items.make("buckler")
 		gear["armor"] = Items.make("quilted")
 		h.apply_net_gear(gear)
-		h.net_yaw = FACE
-		h.rig.rotation.y = FACE
+		if Dragon.is_dragon(c):
+			# a dragon is several metres long: shrunk onto its plinth and turned three-quarters so its length shows
+			h.rig.scale = Vector3.ONE * Dragon.stage_scale(c)
+		h.net_yaw = _face(c)
+		h.rig.rotation.y = _face(c)
 		h.net_has = true
 		h.net_st = {"move": 0.0, "atk": -1.0, "style": "over", "block": 0.0, "hit": 0.0}
 		h.light.light_energy = 0.35
@@ -546,6 +556,10 @@ func stop_skill() -> void:
 	if _skill_c != "":
 		show_skill(_skill_c, "")
 
+## Which way a class faces on its plinth: toward the camera, the dragons turned three-quarters.
+func _face(c: String) -> float:
+	return FACE + (Dragon.stage_yaw(c) if Dragon.is_dragon(c) else 0.0)
+
 ## The stand's scale: lifts and reaches in a move are in the hero's own metres, scaled with it.
 func _k(c: String) -> float:
 	return float(scales.get(c, 1.0))
@@ -589,7 +603,7 @@ func _skill_show(c: String, h: Hero, home: Vector3, delta: float) -> void:
 			if not resting:
 				pos.z += smoothstep(0.05, 0.4, a) * 0.25 * k
 	h.net_pos = pos
-	h.net_yaw = FACE
+	h.net_yaw = _face(c)
 	h.net_st = st
 	if not _skill_hit and not resting and a >= impact:
 		_skill_hit = true
@@ -742,7 +756,7 @@ func _idle(c: String, h: Hero, home: Vector3, i: int) -> void:
 	if fmod(t + i * 2.3, 9.0) < 1.6:
 		look = 0.0       # a look straight at you
 	var k := _k(c)
-	h.net_yaw = FACE + look
+	h.net_yaw = _face(c) + look
 	h.net_pos = home + Vector3(sin(ph * 0.7) * 0.04, 0, STEP if c == chosen else 0.0) * k
 	h.net_st = {"move": 0.0, "atk": -1.0, "style": "over", "block": 0.0, "hit": 0.0}
 
@@ -751,7 +765,7 @@ func _fidget(c: String, h: Hero, home: Vector3, f: float) -> void:
 	var st := {"move": 0.0, "atk": -1.0, "style": "over", "block": 0.0, "hit": 0.0}
 	var k := _k(c)
 	var pos := home + Vector3(0, 0, STEP if c == chosen else 0.05) * k
-	var yaw := FACE
+	var yaw := _face(c)
 	match c:
 		"knight":
 			# show-off sword combo, over and over, stamping between swings
@@ -790,6 +804,12 @@ func _fidget(c: String, h: Hero, home: Vector3, f: float) -> void:
 			st["style"] = "pd_inspect"
 			st["atk"] = fmod(f, 3.2) / 3.2
 			yaw = FACE + sin(f * 1.3) * 0.2
+		"wyrm", "serpent", "wyvern":
+			# snaps and rakes at the hand over it, claw then bite, swinging its head after it
+			var cyc := fmod(f, 1.4)
+			st["style"] = "swipe1" if cyc < 0.7 else "swipe2"
+			st["atk"] = fmod(cyc, 0.7) / 0.7
+			yaw = _face(c) + sin(f * 1.6) * 0.3
 	h.net_pos = pos
 	h.net_yaw = yaw
 	h.net_st = st
@@ -824,7 +844,7 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 					var from := h.global_position + Vector3(0, 0.75, 0.35) * k
 					Fx.burst(root3d, from + Vector3(randf_range(-0.05, 0.05), 0, 0), col, 4, 3.5 * k, 0.07 * k, 0.5, true, 0.0, 6.0, Vector3(0, 0.08, 1))
 	h.net_pos = pos
-	h.net_yaw = FACE
+	h.net_yaw = _face(c)
 	h.net_st = st
 	if not bool(_hit_done.get(c, false)) and a >= float(sig[2]):
 		_hit_done[c] = true
@@ -862,6 +882,12 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 				Fx.burst(root3d, at2 + Vector3(0, 0.3 * k, 0), col, 34, 1.8 * k, 0.16 * k, 1.2, true, 0.4)
 				Fx.flash(root3d, at2 + Vector3(0, 0.6 * k, 0), col, 2.5, 0.6, 3.0 * k)
 				Sfx.play("ice_shatter", -10.0, 1.35)
+			"wyrm", "serpent", "wyvern":
+				# the tail spin: a ring of dust in the dragon's colour swept round the plinth
+				var at3 := home + Vector3(0, 0.03, 0)
+				Fx.ring(root3d, at3, 1.5 * k, col, 0.5)
+				Fx.burst(root3d, at3 + Vector3(0, 0.2 * k, 0), col.lerp(Color(0.7, 0.65, 0.6), 0.5), 30, 4.0 * k, 0.08 * k, 0.5, true, -4.0, 180.0)
+				Sfx.play(c + "_tail", -8.0)
 	if s >= dur:
 		_sig_t[c] = -1.0
 		_sig_wait = SIG_EVERY
