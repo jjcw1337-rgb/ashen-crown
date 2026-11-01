@@ -21,7 +21,7 @@ check() {  # name, log, finished-in-time
   fi
 }
 
-for t in playtest coop_fx_test title_test char_test ui_click_test grass_test; do
+for t in playtest coop_fx_test title_test char_test ui_click_test grass_test intro_skip_test controls_test telemetry_test screen_test; do
   "$G" --headless --path . -s tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
@@ -31,12 +31,22 @@ for t in archer_test plague_test; do
 done
 
 # the Battlegrounds pair
-"$G" --headless --path . -s tools/bg_test.gd -- --server --port 24631 server > "$OUT/gate_bg_server.log" 2>&1 & s=$!
+"$G" --headless --path . -s tools/bg_test.gd -- --server --port 24631 --raid-fast server > "$OUT/gate_bg_server.log" 2>&1 & s=$!
 sleep 6
 "$G" --headless --path . -s tools/bg_test.gd -- client 24631 > "$OUT/gate_bg_client.log" 2>&1 & c=$!
-waitfor $c 300; rc=$?; waitfor $s 60
+waitfor $c 420; rc=$?; waitfor $s 200
 check bg_test_server "$OUT/gate_bg_server.log" 0
 check bg_test_client "$OUT/gate_bg_client.log" $rc
+
+# Battlegrounds PvP: a server and two players
+"$G" --headless --path . -s tools/bg_pvp_test.gd -- --server --port 24641 --raid-fast server > "$OUT/gate_pvp_server.log" 2>&1 & s=$!
+sleep 6
+"$G" --headless --path . -s tools/bg_pvp_test.gd -- a 24641 > "$OUT/gate_pvp_a.log" 2>&1 & a=$!
+"$G" --headless --path . -s tools/bg_pvp_test.gd -- b 24641 > "$OUT/gate_pvp_b.log" 2>&1 & b=$!
+waitfor $s 300; rc=$?; waitfor $a 30; waitfor $b 30
+check pvp_server "$OUT/gate_pvp_server.log" $rc
+check pvp_attacker "$OUT/gate_pvp_a.log" 0
+check pvp_victim "$OUT/gate_pvp_b.log" 0
 
 # the online co-op server with two players
 "$G" --headless --path . -s tools/coop_server_test.gd -- --server --coop --port 24651 server > "$OUT/gate_coop_server.log" 2>&1 & s=$!

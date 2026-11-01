@@ -1,0 +1,8 @@
+{"date": "2026-11-01", "phase": "before", "scene": "wild", "preset": 2, "fps": 22.9, "low1": 14.5, "draw_calls": 3002, "primitives": 20007730, "gpu_ms": 25.07, "gpu_busy": 58.0, "boot_ms": 5202, "tex_vram_mb": 1038}
+{"date": "2026-11-01", "phase": "before", "scene": "wild", "preset": 1, "fps": 37.9, "low1": 29.9, "draw_calls": 2740, "primitives": 17980614, "gpu_ms": 15.58, "gpu_busy": 59.0, "boot_ms": 4835, "tex_vram_mb": 943}
+{"date": "2026-11-01", "phase": "before", "scene": "wild", "preset": 3, "fps": 9.2, "low1": 8.5, "draw_calls": 4288, "primitives": 36273923, "gpu_ms": 61.6, "gpu_busy": 57.0, "boot_ms": 4660, "tex_vram_mb": 1941}
+{"date": "2026-11-01", "phase": "before", "scene": "town", "preset": 2, "fps": 12.4, "low1": 11.3, "draw_calls": 3835, "primitives": 152543230, "gpu_ms": 53.11, "gpu_busy": 66.0, "boot_ms": 5409, "tex_vram_mb": 1044}
+{"date": "2026-11-01", "phase": "after", "scene": "wild", "preset": 2, "fps": 22.9, "low1": 13.7, "draw_calls": 3022, "primitives": 19575479, "gpu_ms": 25.14, "gpu_busy": 57.0, "boot_ms": 3774, "tex_vram_mb": 836}
+{"date": "2026-11-01", "phase": "after", "scene": "wild", "preset": 1, "fps": 37.8, "low1": 25.4, "draw_calls": 2729, "primitives": 17948772, "gpu_ms": 15.64, "gpu_busy": 59.0, "boot_ms": 3780, "tex_vram_mb": 741}
+{"date": "2026-11-01", "phase": "after", "scene": "wild", "preset": 3, "fps": 9.2, "low1": 7.6, "draw_calls": 4276, "primitives": 35775425, "gpu_ms": 61.78, "gpu_busy": 57.0, "boot_ms": 3833, "tex_vram_mb": 1764}
+{"date": "2026-11-01", "phase": "after", "scene": "town", "preset": 2, "fps": 12.4, "low1": 11.1, "draw_calls": 3834, "primitives": 152512998, "gpu_ms": 53.3, "gpu_busy": 66.0, "boot_ms": 4548, "tex_vram_mb": 884}

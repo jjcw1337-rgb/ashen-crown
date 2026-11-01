@@ -38,8 +38,18 @@ func setup(it: Dictionary, from: Vector3, to: Vector3) -> void:
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.no_depth_test = true
 	label.position = Vector3(0, 0.75, 0)
-	label.visible = int(it.get("rarity", 0)) > 0 or slot == "gold" or slot == "material"
+	label.visible = int(it.get("rarity", 0)) > 0 or slot == "gold" or slot == "material" or slot == "resource"
 	add_child(label)
+	if slot == "resource":
+		# gathered wood: the name and how many, in the wood's colour; heartwood smoulders
+		var b: Dictionary = Data.BASES[it["base"]]
+		label.modulate = (b["color"] as Color).lerp(Color.WHITE, 0.45)
+		label.font_size = 30
+		if int(it.get("count", 1)) > 1:
+			label.text = "%s ×%d" % [it["name"], int(it["count"])]
+		if b.get("glow", false):
+			Fx.aura(self, Color(1.0, 0.45, 0.1, 0.8), 14, 0.5, 0.05, 1.1, 0.7, 0.18, 30.0, Vector3(0, 0.15, 0))
+		return
 	if slot == "material":
 		_material_glow(Data.BASES[it["base"]])
 		return
@@ -85,7 +95,7 @@ func _material_glow(b: Dictionary) -> void:
 
 func set_hover(h: bool, show_all: bool) -> void:
 	hovered = h
-	label.visible = h or show_all or int(item.get("rarity", 0)) > 0 or item["base"] == "gold" or Items.is_material(item)
+	label.visible = h or show_all or int(item.get("rarity", 0)) > 0 or item["base"] == "gold" or Items.is_material(item) or Items.is_resource(item)
 	label.modulate.a = 1.0
 	label.font_size = 44 if h else 36
 

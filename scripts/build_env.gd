@@ -11,6 +11,7 @@ const BG_SERVER := "127.0.0.1:24567"
 const NAKAMA_URL := "http://127.0.0.1:7350"
 const NAKAMA_KEY := "defaultkey"
 const CLOUD := "0"       # "1": characters and the Battlegrounds stash live in Nakama (staging and production builds)
+const REV := "dev"       # the commit the build was made from (CI writes it; a deployed server reads res://DEPLOYED_REV)
 
 const OVERRIDE := "user://env.cfg"
 static var forced := {}  # tests: values that win over everything
@@ -27,6 +28,10 @@ static func value(key: String) -> String:
 		"nakama_url": return NAKAMA_URL
 		"nakama_key": return NAKAMA_KEY
 		"cloud": return CLOUD
+		"rev":
+			if REV == "dev" and FileAccess.file_exists("res://DEPLOYED_REV"):
+				return FileAccess.get_file_as_string("res://DEPLOYED_REV").strip_edges()
+			return REV
 		"coop_server": return BG_SERVER.split(":")[0] + ":24570"     # the online co-op server, beside the raid server
 	return ""
 

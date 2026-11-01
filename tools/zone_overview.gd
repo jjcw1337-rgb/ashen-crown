@@ -1,6 +1,7 @@
 extends SceneTree
 ## A high, steep view down the first stretch of Cairnfell Moor (for comparing road layouts).
-## Usage: godot --path . -s tools/zone_overview.gd -- out.png [--road N] [--fort]   (--fort: Grubb's fort, the lair)
+## Usage: godot --path . -s tools/zone_overview.gd -- out.png [--road N] [--fort] [--bg]   (--fort: Grubb's fort, the lair;
+## --bg: the Battlegrounds' Hollow Crypt)
 var g
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
@@ -13,16 +14,17 @@ func _run() -> void:
 	await g.start_game(false, "knight")
 	g.ui.close_all()
 	var fort := OS.get_cmdline_user_args().has("--fort")
-	await g.load_zone(0, "lair" if fort else "wild", "start")
+	var bgz := OS.get_cmdline_user_args().has("--bg")
+	await g.load_zone(0, Battlegrounds.ZONE if bgz else ("lair" if fort else "wild"), "start")
 	g.ui.close_all()
 	for e in g.world.enemies_root.get_children():
 		e.queue_free()
 	var w = g.world
-	var mid: Vector2 = Vector2(0, -62) if fort else w.path_poly[int(w.path_poly.size() * 0.36)]
+	var mid: Vector2 = Vector2.ZERO if bgz else (Vector2(0, -62) if fort else w.path_poly[int(w.path_poly.size() * 0.36)])
 	var cam := Camera3D.new()
 	w.add_child(cam)
 	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
-	cam.size = 150.0 if fort else 125.0
+	cam.size = 110.0 if bgz else (150.0 if fort else 125.0)
 	cam.far = 400.0
 	var at := Vector3(0, 0, mid.y)
 	cam.transform = Transform3D(Basis(), at + Vector3(0, 120, 40)).looking_at(at)

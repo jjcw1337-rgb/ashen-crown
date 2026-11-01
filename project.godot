@@ -46,3 +46,8 @@ textures/vram_compression/import_etc2_astc=true
 wav={
 "compress/mode": 2
 }
+texture={
+"compress/lossy_quality": 0.9,
+"compress/mode": 1,
+"detect_3d/compress_to": 0
+}

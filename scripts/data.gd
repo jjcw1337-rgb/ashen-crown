@@ -327,7 +327,40 @@ const BASES := {
 		"lore": "A claw of Rimeclaw's that never thaws"},
 	"stormglass": {"icon": "res://assets/textures/items/stormglass.png", "model": "res://assets/models/items/stormglass.glb", "name": "Stormglass Eye", "slot": "material", "kind": "orb", "lvl": 1, "price": 400, "color": Color(0.72, 0.45, 1.0),
 		"lore": "Thundermaw's eye, a storm still raging inside"},
+	# resources (Harvest, Furnace): stacked in one inventory cell up to "stack", never worn; "fuel" is what the
+	# furnace reads (heat it adds per second while burning, how long one burns, the hottest it can drive the fire)
+	"oak_log": {"name": "Oak Log", "slot": "resource", "kind": "log", "lvl": 1, "price": 4, "stack": 50, "color": Color(0.55, 0.38, 0.22),
+		"bark": Color(0.24, 0.18, 0.12), "heart": Color(0.78, 0.6, 0.4), "fuel": {"heat": 62.0, "burn": 40.0, "max_temp": 1240.0, "name": "steady"},
+		"lore": "Dense moor oak. Burns long and even."},
+	"pine_log": {"name": "Pine Log", "slot": "resource", "kind": "log", "lvl": 1, "price": 3, "stack": 50, "color": Color(0.72, 0.56, 0.34),
+		"bark": Color(0.3, 0.2, 0.13), "heart": Color(0.9, 0.76, 0.52), "fuel": {"heat": 105.0, "burn": 16.0, "max_temp": 1040.0, "name": "fast and hot"},
+		"lore": "Resinous pine. Flares quickly and is gone."},
+	"heartwood": {"name": "Ashen Heartwood", "slot": "resource", "kind": "log", "lvl": 1, "price": 40, "stack": 10, "color": Color(1.0, 0.42, 0.12),
+		"bark": Color(0.06, 0.05, 0.05), "heart": Color(0.95, 0.35, 0.08), "glow": true, "fuel": {"heat": 120.0, "burn": 50.0, "max_temp": 1400.0, "name": "searing"},
+		"lore": "Wood that smouldered for an age inside a living tree. Only it burns white."},
+	# tools: carried in the inventory, never equipped; the woodsman's axe lets anyone chop trees (combat axes do too)
+	"woodsman_axe": {"name": "Woodsman's Axe", "slot": "tool", "kind": "axe", "lvl": 1, "price": 25, "chop": 1.0, "shape": {"haft": 0.62, "head": 0.17},
+		"lore": "A plain felling axe. Every hero in the Wilds carries one."},
 }
+
+## How many strikes' worth each combat axe is when used to chop (a woodsman's axe is 1.0; Harvest.chop_power).
+const CHOP_POWER := {"hand_axe": 1.1, "war_axe": 1.35, "executioner": 1.65}
+
+## Chopping, per class (like WEAPON_PROFILES): how far from the trunk the hero stands, the swing's length in seconds,
+## the axe's size in the hand. A class with no entry gets DEFAULT_CHOP and the procedural "chop" pose (Anim), so a
+## new class chops on day one.
+const DEFAULT_CHOP := {"stand": 1.05, "swing": 1.05, "axe_scale": 1.0}
+const CHOP_PROFILES := {
+	"knight": {"stand": 1.1, "swing": 1.05},
+	"archer": {"stand": 1.05, "swing": 1.0},
+	"plague": {"stand": 1.05, "swing": 1.1},
+	"demon": {"stand": 1.35, "swing": 1.25, "axe_scale": 1.35},
+	"wraith": {"stand": 1.15, "swing": 1.0, "axe_scale": 1.0, "spectral": true},
+	"warlock": {"stand": 0.85, "swing": 0.9, "axe_scale": 0.75},
+}
+
+static func chop_profile(cls: String) -> Dictionary:
+	return DEFAULT_CHOP.merged(CHOP_PROFILES.get(cls, {}), true)
 
 ## Affixes: [stat, prefix/suffix name, min, max, per-level growth]
 const AFFIXES := [

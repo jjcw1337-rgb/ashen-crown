@@ -1,0 +1,541 @@
+{
+ "uid": "ashen-telemetry",
+ "title": "Ashen Crown: players, errors and logs",
+ "tags": [
+  "ashen-crown",
+  "telemetry"
+ ],
+ "timezone": "America/New_York",
+ "schemaVersion": 39,
+ "version": 1,
+ "time": {
+  "from": "now-24h",
+  "to": "now"
+ },
+ "panels": [
+  {
+   "type": "text",
+   "title": "",
+   "options": {
+    "mode": "markdown",
+    "content": "**Players and errors.** What the staging builds send (`scripts/telemetry.gd`: a performance sample a minute of play, every error and crash with where the player was and what they did), and the servers' logs (Loki). The nightly triage job (05:00) works from the same data: `tools/telemetry_query.sh issues` / `spots`. Docs: `docs/nightly/TELEMETRY.md`."
+   },
+   "id": 1,
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 3
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Open issues (in range)",
+   "description": "Distinct errors (fingerprints) seen in the time range.",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "tm-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "tm-pg"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT count(DISTINCT fingerprint) AS issues FROM tm_error WHERE $__timeFilter(ts)"
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 1
+       },
+       {
+        "color": "red",
+        "value": 5
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "id": 2,
+   "gridPos": {
+    "x": 0,
+    "y": 3,
+    "w": 6,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Crashes (in range)",
+   "description": "Sessions that ended without shutting down.",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "tm-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "tm-pg"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT count(*) AS crashes FROM tm_error WHERE kind = 'crash' AND $__timeFilter(ts)"
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 1
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "id": 3,
+   "gridPos": {
+    "x": 6,
+    "y": 3,
+    "w": 6,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Players (in range)",
+   "description": "Players who sent performance samples.",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "tm-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "tm-pg"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT count(DISTINCT user_id) AS players FROM tm_sample WHERE $__timeFilter(ts)"
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "id": 4,
+   "gridPos": {
+    "x": 12,
+    "y": 3,
+    "w": 6,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Players' average fps (in range)",
+   "description": "Average fps over every sample.",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "tm-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "tm-pg"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT round(avg(fps_avg)::numeric, 1) AS fps FROM tm_sample WHERE $__timeFilter(ts)"
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "red",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 30
+       },
+       {
+        "color": "green",
+        "value": 60
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "id": 5,
+   "gridPos": {
+    "x": 18,
+    "y": 3,
+    "w": 6,
+    "h": 4
+   }
+  },
+  {
+   "type": "table",
+   "title": "Issues, worst first",
+   "description": "One row per issue (errors grouped by fingerprint): crashes first, then by players hit, then by events.",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "tm-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "tm-pg"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT kind, source, count(*) AS reports, sum(count) AS events, count(DISTINCT user_id) AS players, max(ts) AS last_seen, string_agg(DISTINCT build, ' ') AS builds, string_agg(DISTINCT zone, ' ') AS zones, min(message) AS message, min(at) AS at, fingerprint FROM tm_error WHERE $__timeFilter(ts) GROUP BY fingerprint, kind, source ORDER BY (kind = 'crash') DESC, players DESC, events DESC LIMIT 50"
+    }
+   ],
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm"
+   },
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "id": 6,
+   "gridPos": {
+    "x": 0,
+    "y": 7,
+    "w": 24,
+    "h": 10
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Errors per hour",
+   "description": "Error events per hour, by kind (script, error, crash).",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "tm-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "tm-pg"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "time_series",
+     "rawSql": "SELECT date_trunc('hour', ts) AS time, kind AS metric, sum(count) AS value FROM tm_error WHERE $__timeFilter(ts) GROUP BY 1, 2 ORDER BY 1"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "none",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "showPoints": "auto",
+      "spanNulls": true
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "id": 7,
+   "gridPos": {
+    "x": 0,
+    "y": 17,
+    "w": 12,
+    "h": 8
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Players' fps by zone",
+   "description": "The hourly average of the players' fps, per zone.",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "tm-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "tm-pg"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "time_series",
+     "rawSql": "SELECT date_trunc('hour', ts) AS time, zone AS metric, avg(fps_avg) AS value FROM tm_sample WHERE $__timeFilter(ts) GROUP BY 1, 2 ORDER BY 1"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "none",
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "showPoints": "auto",
+      "spanNulls": true
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "id": 8,
+   "gridPos": {
+    "x": 12,
+    "y": 17,
+    "w": 12,
+    "h": 8
+   }
+  },
+  {
+   "type": "table",
+   "title": "Slowest spots (20 m squares)",
+   "description": "Where players were when it ran worst: the world cut into 20 m squares per zone and preset, slowest first.",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "tm-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "tm-pg"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT zone, run, round(x / 20) * 20 AS x, round(z / 20) * 20 AS z, preset, count(*) AS samples, count(DISTINCT user_id) AS players, round(avg(fps_avg)::numeric, 1) AS fps, round(avg(fps_low1)::numeric, 1) AS low1, sum(hitches) AS hitches, round(avg(enemies)::numeric, 1) AS enemies, bool_or(boss) AS boss, min(gpu) AS gpu FROM tm_sample WHERE $__timeFilter(ts) GROUP BY 1, 2, 3, 4, 5 ORDER BY fps LIMIT 30"
+    }
+   ],
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm"
+   },
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "id": 9,
+   "gridPos": {
+    "x": 0,
+    "y": 25,
+    "w": 24,
+    "h": 10
+   }
+  },
+  {
+   "type": "table",
+   "title": "Latest crashes",
+   "description": "Each crash with where it happened and the end of its log.",
+   "datasource": {
+    "type": "grafana-postgresql-datasource",
+    "uid": "tm-pg"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "grafana-postgresql-datasource",
+      "uid": "tm-pg"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT ts, user_id, context->>'zone' AS zone, context->>'class' AS class, context->>'gpu' AS gpu, build, message, right(tail, 300) AS log_end FROM tm_error WHERE kind = 'crash' AND $__timeFilter(ts) ORDER BY ts DESC LIMIT 20"
+    }
+   ],
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm"
+   },
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "id": 10,
+   "gridPos": {
+    "x": 0,
+    "y": 35,
+    "w": 24,
+    "h": 8
+   }
+  },
+  {
+   "type": "logs",
+   "title": "Server errors (Loki)",
+   "description": "Error lines from the game servers, Nakama, Caddy, Postgres and Grafana.",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "{host=\"staging\", level=\"error\"}",
+     "queryType": "range"
+    }
+   ],
+   "options": {
+    "showTime": true,
+    "wrapLogMessage": true,
+    "sortOrder": "Descending",
+    "enableLogDetails": true
+   },
+   "id": 11,
+   "gridPos": {
+    "x": 0,
+    "y": 43,
+    "w": 24,
+    "h": 10
+   }
+  },
+  {
+   "type": "logs",
+   "title": "Game servers' log (Loki)",
+   "description": "Everything the Battlegrounds and co-op servers print.",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "{unit=~\"ashen-crown-.*\"}",
+     "queryType": "range"
+    }
+   ],
+   "options": {
+    "showTime": true,
+    "wrapLogMessage": true,
+    "sortOrder": "Descending",
+    "enableLogDetails": true
+   },
+   "id": 12,
+   "gridPos": {
+    "x": 0,
+    "y": 53,
+    "w": 24,
+    "h": 10
+   }
+  }
+ ]
+}

@@ -48,7 +48,9 @@ var playing := false
 ## player in a raid, and that player's stash as the server last reported it.
 var bg: Battlegrounds
 var bg_mode := false
-var bg_stash: Array = []
+var net_joining := false     # a co-op join sent, no welcome yet (on_net_failed then goes back to the co-op screen)
+var bg_home_run := -1        # in a raid: the character's own act (Net.cl_welcome swaps to the raid's, saves keep this)
+var bg_raid := {}               # the round as the raid server last said (Net.cl_bg_raid): state, t, open portals...
 ## Characters and the stash in Nakama (cloud_saves.gd), in builds with BuildEnv.cloud() on; null otherwise.
 var cloud: CloudSaves
 var coop_server: CoopServer     # the online co-op server's logic (coop_server.gd), only on a `--server --coop` run
@@ -73,6 +75,8 @@ const UNLOCK_ALL_ACTS := true
 var admin_name := AdminKey.holder()
 var dev_tools := UNLOCK_ALL_ACTS and (OS.has_feature("editor") or admin_name != "")
 var run_progress := {}       # per run: its waypoints and whether its boss is dead
+var played_s := 0.0          # seconds this character has been played (saved); the clock trees regrow on (Harvest)
+var harvest_saved := {}      # "<run>:<act>:<zone>" -> Harvest.to_save() (the felled trees and when they regrow)
 var tp_link := {}
 var xp_bonus_t := 0.0
 var shops := {}
@@ -103,6 +107,7 @@ func _ready() -> void:
 			difficulty = int(args[i + 1])
 	quality = _initial_quality()
 	set_sound(bool(_load_setting("audio", "sound_on", true)))
+	click_move = bool(_load_setting("controls", "click_move", false))
 	_setup_env()
 	weather = Weather.new()
 	weather.name = "Weather"
@@ -128,10 +133,14 @@ func _ready() -> void:
 	hero.died.connect(_on_hero_died)
 	hero.leveled.connect(_on_level)
 	ui.bind_hero(hero)
-	if BuildEnv.cloud() and not args.has("--server") and shot_path == "":
+	if BuildEnv.cloud() and not args.has("--server") and shot_path == "" and not args.has("--kpi"):
 		cloud = CloudSaves.new(self)
 		add_child(cloud)
 		_cloud_start()
+	if Telemetry.wanted():
+		add_child(Telemetry.new(self))      # player telemetry and error reports (scripts/telemetry.gd)
+	if Kpi.start(self):
+		return       # the official performance KPIs (scripts/kpi.gd): a scripted scenario, measured, then quit
 	if args.has("--server"):
 		# the Battlegrounds' dedicated server: `godot --headless --path . -- --server [--port N]`
 		var pi := args.find("--port")
@@ -152,6 +161,7 @@ func _ready() -> void:
 	await _play_intro()
 	# straight from the intro to the title: the camp builds behind it, with no loading screen or zone banner
 	_boot_quiet = true
+	_bury_lost_raiders()
 	ui.show_title()
 	await load_zone(0, "town", "start")
 	_boot_quiet = false
@@ -160,8 +170,23 @@ func _ready() -> void:
 const INTRO_PATH := "res://assets/intro.ogv"
 var _intro_playing := false
 var _intro_skip := false
+var _intro_t := 0.0             # seconds the intro has played
+var _intro_armed := -100.0      # when the first skip press came (a second one within INTRO_CONFIRM skips)
+const INTRO_CONFIRM := 3.0
 
-## The trailer plays full screen when the game opens; any key or click skips it.
+## A press meant to skip the intro: Esc, Space, Enter, a click or a gamepad's A/Start. Anything else (volume and
+## media keys, letters, modifiers) is ignored, so turning the sound up never skips it.
+static func _is_skip_press(ev: InputEvent) -> bool:
+	if ev is InputEventKey:
+		return ev.pressed and not ev.echo and ev.keycode in [KEY_ESCAPE, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
+	if ev is InputEventMouseButton:
+		return ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT
+	if ev is InputEventJoypadButton:
+		return ev.pressed and ev.button_index in [JOY_BUTTON_A, JOY_BUTTON_START]
+	return false
+
+## The trailer plays full screen when the game opens. Skipping takes two deliberate presses (_is_skip_press):
+## the first shows "press again to skip", a second within INTRO_CONFIRM seconds skips; other keys do nothing.
 ## Left out of the browser build (too big a download for a test page) and headless runs.
 func _play_intro() -> void:
 	if OS.has_feature("web") or DisplayServer.get_name() == "headless" or not ResourceLoader.exists(INTRO_PATH):
@@ -183,7 +208,7 @@ func _play_intro() -> void:
 	vp.volume = 1.0 if sound_on else 0.0
 	box.add_child(vp)
 	var hint := Label.new()
-	hint.text = "Press any key to skip"
+	hint.text = "Esc / Space to skip"
 	hint.add_theme_font_size_override("font_size", 16)
 	hint.add_theme_color_override("font_color", Color(0.85, 0.75, 0.6, 0.0))
 	hint.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
@@ -194,13 +219,16 @@ func _play_intro() -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	layer.add_child(hint)
 	_intro_skip = false
+	_intro_armed = -100.0
+	_intro_t = 0.0
 	_intro_playing = true
 	vp.play()
-	var t := 0.0
 	while vp.is_playing() and not _intro_skip:
 		await get_tree().process_frame
-		t += get_process_delta_time()
-		hint.add_theme_color_override("font_color", Color(0.85, 0.75, 0.6, clampf((t - 1.5) * 0.8, 0.0, 0.55)))
+		_intro_t += get_process_delta_time()
+		var armed := _intro_t - _intro_armed < INTRO_CONFIRM
+		hint.text = "Press again to skip" if armed else "Esc / Space to skip"
+		hint.add_theme_color_override("font_color", Color(0.95, 0.85, 0.65, 0.9) if armed else Color(0.85, 0.75, 0.6, clampf((_intro_t - 1.5) * 0.8, 0.0, 0.45)))
 	_intro_playing = false
 	vp.stop()
 	# a short fade from black into the title screen
@@ -287,6 +315,7 @@ func _apply_underworld() -> void:
 			_soul_field.global_position = hero.global_position
 
 func _on_level(l: int) -> void:
+	Telemetry.crumb("level", {"level": l})
 	ui.big_message("Level %d" % l)
 	ui.message("+5 stat points (press C)  ·  +1 talent point (press N)", Color(1, 0.85, 0.4))
 
@@ -377,10 +406,10 @@ func zone_music() -> void:
 
 ## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
-	return cur_zone == "lair" and not (world != null and (world.fort or world.run == 1))
+	return cur_zone == Battlegrounds.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
 
 func _zone_env(kind: String) -> void:
-	var inside := kind == "lair" and not (world.fort or world.run == 1)
+	var inside := kind == Battlegrounds.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
 	var snowy := is_snowy() and not inside
 	var ashen := difficulty >= 2 and not inside
 	RenderingServer.global_shader_parameter_set("snow_amt", 1.0 if snowy else 0.0)
@@ -415,6 +444,12 @@ func _zone_env(kind: String) -> void:
 		sun.visible = false
 		hero.light.light_energy = 2.6
 		hero.light.omni_range = 17.0
+		if kind == Battlegrounds.ZONE:
+			# the Hollow Crypt is darker: a smaller circle round the hero, the torches and candles do the rest
+			env.ambient_light_energy = 0.55
+			env.tonemap_exposure = 1.25
+			hero.light.light_energy = 2.0
+			hero.light.omni_range = 11.0
 	else:
 		env.background_mode = Environment.BG_SKY
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
@@ -442,25 +477,28 @@ func _zone_env(kind: String) -> void:
 			sky_mat.sky_top_color = Color(0.1, 0.13, 0.17)
 			sky_mat.sky_horizon_color = Color(0.24, 0.29, 0.31)
 			sky_mat.ground_horizon_color = Color(0.2, 0.24, 0.25)
-			# Graphics plan, phase 1: a darker fill and a dimmer, softer moon, so the fire, the lanterns and
-			# the forge carve the camp out of the dark (their lights are brighter and cast shadows, Grade)
-			env.ambient_light_energy = 0.3
-			env.tonemap_exposure = 1.25
-			env.fog_light_color = Color(0.16, 0.21, 0.24)
-			env.fog_density = 0.012
+			# Graphics plan, phase 1 (retuned on a real GPU, 2026-11-01): the first pass (ambient 0.3, moon 0.38,
+			# volumetric fog 0.03) was judged in the cloud's software OpenGL renderer and came out far too dark in
+			# Forward+, where the volumetric fog, SSAO and SSIL all take light away. A moonlit fill you can see by,
+			# thinner mist, and the fire, lanterns and forge still the brightest things (their lights, Grade)
+			env.ambient_light_energy = 0.62
+			env.tonemap_exposure = 1.5
+			env.fog_light_color = Color(0.2, 0.26, 0.29)
+			env.fog_density = 0.009
 			env.fog_height = 1.2
-			env.fog_height_density = 0.12
-			env.adjustment_saturation = 0.95
-			env.adjustment_contrast = 1.08
-			env.volumetric_fog_density = 0.03
-			env.volumetric_fog_albedo = Color(0.6, 0.7, 0.72)
-			env.volumetric_fog_emission = Color(0.006, 0.01, 0.013)
+			env.fog_height_density = 0.1
+			env.adjustment_saturation = 0.97
+			env.adjustment_contrast = 1.05
+			env.volumetric_fog_density = 0.014
+			env.volumetric_fog_albedo = Color(0.62, 0.7, 0.72)
+			env.volumetric_fog_emission = Color(0.016, 0.022, 0.028)
 			env.glow_intensity = 0.95
 			env.glow_bloom = 0.1
-			sun.light_color = Color(0.55, 0.68, 0.9)
-			sun.light_energy = 0.38
-			sun.shadow_blur = 2.6
-			hero.light.light_energy = 1.0
+			sun.light_color = Color(0.58, 0.7, 0.92)
+			sun.light_energy = 0.6
+			sun.shadow_blur = 2.2
+			hero.light.light_energy = 1.7
+			hero.light.omni_range = 12.0
 			grade_look = "forest_camp"
 		if difficulty == 1 and kind != "town":
 			# A2, the Imperial Road and Aurelia: a warm late afternoon, low golden sun, dusty haze
@@ -867,6 +905,28 @@ func start_a2() -> void:
 	await load_zone(cur_act, "town", "start")
 	run_banner()
 
+## The zone's felled trees into the save's record (the host's forest is the one that counts in co-op).
+func _harvest_key() -> String:
+	return "%d:%d:%s" % [difficulty, cur_act, str(cur_zone)]
+
+func _store_harvest() -> void:
+	if world == null or net.is_client():
+		return
+	var h := Harvest.of(world)
+	if h == null:
+		return
+	var d := h.to_save()
+	if d.is_empty():
+		harvest_saved.erase(_harvest_key())
+	else:
+		harvest_saved[_harvest_key()] = d
+
+func _restore_harvest() -> void:
+	var h := Harvest.of(world)
+	if h == null or net.is_client():
+		return
+	h.from_save(harvest_saved.get(_harvest_key(), {}), played_s)
+
 func _store_progress() -> void:
 	run_progress[str(difficulty)] = {"waypoints": waypoints_known.duplicate(), "boss": boss_killed}
 
@@ -908,10 +968,13 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if world:
+		_store_harvest()
 		world.queue_free()
 		world = null
 		hovered = null
 		await get_tree().process_frame
+	Telemetry.crumb("enter", {"to": zone, "run": difficulty})
+	ui.close_all()             # (a trader, a stash or a waypoint list belongs to the zone being left)
 	cur_act = act
 	cur_zone = zone
 	World.detail = quality
@@ -922,6 +985,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	world.run = difficulty                 # A2 builds its own road and Aurelia
 	add_child(world)
 	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair"].find(zone) * 7)
+	_restore_harvest()
 	_end_underworld_now()
 	_zone_env(zone)
 	_grass_zone(zone)
@@ -964,7 +1028,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	else:
 		ui.set_zone(zone_title(act, zone))
 	# Act I outdoors: birds over the forest (birds.gd)
-	if world.oak_forest and not indoor():
+	if world.oak_forest and not indoor() and not net.server:
 		var birds := Birds.new()
 		birds.game = self
 		birds.name = "birds"
@@ -1041,7 +1105,7 @@ func _capture_map(zone: String) -> void:
 func _grass_zone(zone: String) -> void:
 	if grass_field == null or world == null:
 		return
-	grass_field.enabled = world.oak_forest and not indoor()
+	grass_field.enabled = world.oak_forest and not indoor() and not net.server
 	var w := "default"
 	if indoor():
 		w = "calm"
@@ -1177,6 +1241,8 @@ func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
 		difficulty = 0
 		max_run = 0
 		run_progress = {}
+		played_s = 0.0
+		harvest_saved = {}
 		quests.from_save({})
 		waypoints_known = ["town"]
 		boss_killed = false
@@ -1209,6 +1275,7 @@ func start_join(ip: String) -> void:
 	if not load_game():
 		char_name = default_name(hero.cls)
 		hero.new_character()
+	net_joining = true      # (until the host welcomes us: Net.cl_welcome)
 	var addr: Array = Battlegrounds.parse_address(ip)      # "host" or "host:port" (the online co-op server)
 	loading_lbl.text = "Joining game at %s..." % ip
 	loading.visible = true
@@ -1220,31 +1287,37 @@ func start_join(ip: String) -> void:
 		net.shutdown()
 		on_net_failed("No answer from %s. Check the host's game is running and Windows Firewall allowed it." % ip)
 
-## Battlegrounds from the title screen: a fresh hero of `cls` (not saved; a raid's character is its own) joins the
-## raid server at `addr` ("host" or "host:port").
-func start_battlegrounds(addr: String, cls: String) -> void:
+## Battlegrounds from the title screen: the character `id` (one of the player's own; what it carries in, it risks)
+## joins the raid server at `addr` ("host" or "host:port"). Its save is marked in_raid until it extracts, so closing
+## the game mid-raid counts as dying (_bury_lost_raiders). Dying costs every item it wore and carried, and its gold
+## (bg_strip); it keeps its levels, stats and talents. The camp's stash isn't carried, so it is never lost.
+func start_battlegrounds(addr: String, id: String) -> void:
 	while _busy:
 		await get_tree().process_frame
+	Telemetry.crumb("raid", {"server": addr})
 	Sfx.play("click")
 	net.stop_listening()
+	char_id = id
+	if id == "" or not load_game():
+		ui.message("Pick a character for the crypt first", Color(1, 0.6, 0.4))
+		char_id = ""
+		ui.open_battlegrounds()
+		return
 	ui.hide_title()
 	ui.close_all()
 	playing = true
 	bg_mode = true
-	char_id = ""
-	char_name = default_name(cls)
-	net.my_name = char_name
-	hero.set_class(cls)
-	hero.new_character()
-	difficulty = 0
-	tp_link = {}
-	boss_killed = false
+	bg_raid = {}
+	if hero.dead:
+		hero.respawn(hero.global_position)
 	var a: Array = Battlegrounds.parse_address(addr)
 	_save_setting("battlegrounds", "address", addr.strip_edges())
+	_save_setting("battlegrounds", "character", id)
 	if cloud != null and not await cloud.ensure():
-		on_net_failed("Could not sign in to your account (%s)." % cloud.nk.last_error)
+		_bg_abort("Could not sign in to your account (%s)." % cloud.nk.last_error)
 		return
-	loading_lbl.text = "Joining the Battlegrounds at %s..." % a[0]
+	save_game()             # (marked in_raid from here on)
+	loading_lbl.text = "Descending into %s..." % Battlegrounds.TITLE
 	loading.visible = true
 	if net.join(a[0], int(a[1])) != OK:
 		on_net_failed("Could not reach the Battlegrounds server.")
@@ -1254,23 +1327,127 @@ func start_battlegrounds(addr: String, cls: String) -> void:
 		net.shutdown()
 		on_net_failed("No answer from the Battlegrounds server at %s." % a[0])
 
-## The server let us out of the raid with `gained`; `s` is the whole stash now.
-func bg_extracted(gained: Array, s: Array) -> void:
-	bg_stash = s
-	Battlegrounds.cache_stash(s)
+## The server let us out: what we carry is ours, saved to the character as it is.
+## The crypt never let us in (sign-in failed before the character was marked in_raid): back to the Battlegrounds
+## screen, the character as it was.
+func _bg_abort(msg: String) -> void:
+	bg_mode = false
+	_bg_home()
+	loading.visible = false
+	if net.active:
+		net.shutdown()
+	await exit_to_title()
+	ui.open_battlegrounds()
+	ui.big_message("Couldn't enter the crypt")
+	ui.message(msg, Color(1, 0.6, 0.4))
+
+func bg_extracted(gained: Array) -> void:
+	bg_mode = false
+	save_game()
 	ui.big_message("Extracted!")
-	ui.message("%d item%s to your stash (%d in it)" % [gained.size(), "" if gained.size() == 1 else "s", s.size()], Color(0.6, 1.0, 0.6))
+	ui.message("%s made it out with %d new item%s" % [char_name, gained.size(), "" if gained.size() == 1 else "s"], Color(0.6, 1.0, 0.6))
 	Sfx.play("portal")
 	await get_tree().create_timer(2.0).timeout
 	_leave_battlegrounds()
 
-func _leave_battlegrounds() -> void:
-	if not bg_mode:
+## The local hero fell in the crypt: everything on them goes to the server to drop where they fell.
+func _bg_fell() -> void:
+	var items := []
+	for slot in hero.equipment:
+		if hero.equipment[slot] != null:
+			items.append(hero.equipment[slot])
+	for it in hero.inventory + hero.belt:
+		if it != null:
+			items.append(it)
+	if hero.gold > 0:
+		items.append(Items.gold(hero.gold))
+	if net.is_client():
+		net.send_bg_died(items)
+	ui.big_message("%s has fallen" % char_name)
+	ui.message("Everything %s wore and carried lies where they fell. Their strength remains." % char_name, Color(1, 0.45, 0.35), 6.0)
+
+## What a hero keeps after dying in the crypt: levels, stats, talents, the camp's stash, and nothing else but a
+## plain weapon of their class (so they can walk back into the world). The save is written at once.
+static func strip_save(h: Dictionary) -> Dictionary:
+	var cls := str(h.get("cls", "knight"))
+	var eq := {}
+	for slot in Items.EQUIP_SLOTS:
+		eq[slot] = null
+	eq["weapon"] = Items.make(str(Data.CLASSES.get(cls, {}).get("weapon", "hand_axe" if cls == "demon" else "short_sword")))
+	var inv := []
+	inv.resize(40)
+	h["equipment"] = eq
+	h["inventory"] = inv
+	h["belt"] = [null, null, null, null]
+	h["gold"] = 0
+	return h
+
+func bg_strip() -> void:
+	if char_id == "":
 		return
+	if hero.dead:
+		hero.respawn(hero.global_position)
+	var h := strip_save(hero.to_save())
+	hero.equipment = h["equipment"]
+	hero.inventory = h["inventory"]
+	hero.belt = h["belt"]
+	hero.gold = 0
+	hero.refresh_gear()
+	hero.recalc()
+	bg_mode = false
+	_bg_home()
+	save_game()
+	print("[BG] character ", char_id, " died in the crypt and lost everything it carried")
+
+## Out of a raid: the character's own act again (its waypoints and boss), as it was before Net.cl_welcome swapped in
+## the raid's.
+func _bg_home() -> void:
+	if bg_home_run < 0:
+		return
+	_store_progress()
+	_restore_progress(bg_home_run)
+	difficulty = bg_home_run
+	bg_home_run = -1
+
+## Characters whose game closed while they were in a raid died there: they lose what they carried.
+func _bury_lost_raiders() -> void:
+	if _testing():
+		return
+	for c in list_characters():
+		var p := char_dir + str(c["id"]) + ".json"
+		var d = JSON.parse_string(FileAccess.get_file_as_string(p))
+		if d is Dictionary and bool(d.get("in_raid", false)):
+			d["hero"] = strip_save(d.get("hero", {}))
+			d["in_raid"] = false
+			var f := FileAccess.open(p, FileAccess.WRITE)
+			if f:
+				f.store_string(JSON.stringify(d))
+				f.close()
+			if cloud != null:
+				cloud.push(str(c["id"]), d)
+			ui.message("%s fell in %s and lost everything they carried" % [str(c["name"]), Battlegrounds.TITLE], Color(1, 0.5, 0.4), 6.0)
+
+func _leave_battlegrounds() -> void:
+	if not bg_mode and char_id == "" and not playing:
+		return
+	if hero.dead and bg_mode:
+		bg_strip()
+	bg_mode = false
+	_bg_home()
+	bg_raid = {}
 	await exit_to_title()
 	ui.open_battlegrounds()
 
 func on_net_failed(msg: String) -> void:
+	if net_joining:
+		# a co-op join that never got in: back to the co-op screen
+		net_joining = false
+		ui.big_message("Couldn't join")
+		ui.message(msg, Color(1, 0.6, 0.4))
+		loading.visible = false
+		await exit_to_title()
+		ui.open_join()
+		return
 	if bg_mode:
 		ui.big_message("Left the Battlegrounds")
 		ui.message(msg, Color(1, 0.6, 0.4))
@@ -1305,15 +1482,18 @@ func save_path() -> String:
 ## shows what came down from other devices.
 func _cloud_start() -> void:
 	await get_tree().process_frame
-	if await cloud.sync() and ui.title_panel.visible and not playing:
+	if await cloud.sync() and ui.title_idle() and not playing:
+		_bury_lost_raiders()
 		ui.show_title()
 
 func save_game() -> void:
 	if char_id == "" and not _testing():
 		return
 	_store_progress()
-	var d := {"hero": hero.to_save(), "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed, "difficulty": difficulty,
-		"max_run": max_run, "runs": run_progress, "quests": quests.to_save(), "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
+	_store_harvest()
+	var d := {"hero": hero.to_save(), "in_raid": bg_mode, "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed,
+		"difficulty": bg_home_run if bg_mode and bg_home_run >= 0 else difficulty,     # (a raid is Act I's; the character keeps its own)
+		"max_run": max_run, "runs": run_progress, "quests": quests.to_save(), "harvest": {"t": played_s, "zones": harvest_saved}, "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
 	DirAccess.make_dir_recursive_absolute(char_dir)
 	var f := FileAccess.open(save_path(), FileAccess.WRITE)
 	if f:
@@ -1343,6 +1523,9 @@ func load_game() -> bool:
 		max_run = 2
 	run_progress = d.get("runs", {})
 	quests.from_save(d.get("quests", {}))
+	var hv: Dictionary = d.get("harvest", {}) if d.get("harvest") is Dictionary else {}
+	played_s = float(hv.get("t", 0.0))
+	harvest_saved = (hv.get("zones", {}) as Dictionary).duplicate(true) if hv.get("zones") is Dictionary else {}
 	return true
 
 ## Every saved character, the last played first: [{id, name, cls, level, difficulty, act, played}].
@@ -1420,8 +1603,27 @@ func default_name(cls: String) -> String:
 
 ## Back to the title screen to pick another character (the pause menu's "Save and Exit to Title").
 func exit_to_title() -> void:
-	save_game()
+	if bg_mode and not hero.dead:
+		bg_strip()           # leaving a raid without extracting is dying there (it saves)
+	else:
+		save_game()
+	_bg_home()
 	bg_mode = false
+	bg_raid = {}
+	net_joining = false
+	# nothing of the character that was playing carries on: its death or victory screen still to come, its portal,
+	# its experience bonus, the F8 switches
+	death_t = -1.0
+	ui.death_panel.visible = false
+	ui.victory_panel.visible = false
+	ui.set_boss(null)
+	tp_link = {}
+	xp_bonus_t = 0.0
+	test_immortal = false
+	test_onehit = false
+	test_stamina = false
+	test_allskills = false
+	test_fast = false
 	if paused:
 		toggle_pause()
 	if net.active:
@@ -1432,6 +1634,8 @@ func exit_to_title() -> void:
 		hero.respawn(hero.global_position)
 	hero.new_character()
 	char_id = ""
+	while _busy:
+		await get_tree().process_frame       # (a zone still loading would swallow ours)
 	await load_zone(0, "town", "start")
 	ui.show_title()
 
@@ -1441,8 +1645,8 @@ func _stock_shops() -> void:
 	var lvl := maxi(hero.level, 1) + 1
 	var r := RandomNumberGenerator.new()
 	r.randomize()
-	var smith := []
-	for i in 14:
+	var smith := [Items.make("woodsman_axe")]     # a spare felling axe, always on the smith's rack
+	for i in 13:
 		var b := Items.pick_base(lvl + 2, r, "weapon" if i < 9 else "shield")
 		smith.append(Items.generate(b, lvl, 1 if r.randf() < 0.4 else 0, r))
 	var armor := []
@@ -1610,8 +1814,18 @@ func _vendor_talk(t: Inter) -> void:
 
 func _interact(t: Inter) -> void:
 	match t.kind:
+		"tree":
+			# a harvestable tree (Harvest): walk up, and the hero sets to it with an axe
+			hero.start_chop(t)
+		"furnace":
+			# Halvar's furnace (Furnace): temper a weapon over felled wood
+			if t is Furnace:
+				Sfx.play("bonfire_open", -10.0, 0.8)
+				ui.open_furnace(t)
 		"extract":
-			if bg_mode and net.is_client() and not hero.dead:
+			if not bool(t.data.get("open", false)):
+				ui.message("The portal is dark. It opens later in the raid.", Color(0.8, 0.8, 0.9))
+			elif bg_mode and net.is_client() and not hero.dead:
 				ui.message("Extracting...", Color(0.6, 0.85, 1.0))
 				net.request_extract()
 		"lanista":
@@ -1864,8 +2078,15 @@ func on_enemy_killed(e: Enemy) -> void:
 		net.portal_created(ptl)
 		save_game()
 		await get_tree().create_timer(3.5).timeout
+		if not playing:
+			return       # (left for the title meanwhile)
 		ui.show_victory(difficulty)
 		Sfx.play("levelup")
+
+## The local hero rose again (any path: the death screen, co-op, a zone change): the death screen goes.
+func on_local_respawn() -> void:
+	death_t = -1.0
+	ui.death_panel.visible = false
 
 ## Co-op: the host's game reports the boss fell.
 func boss_down_remote(e: Enemy) -> void:
@@ -1876,6 +2097,8 @@ func boss_down_remote(e: Enemy) -> void:
 	Fx.pillar(world.fx_root, e.global_position, Color(1.0, 0.3, 0.2), 2.0)
 	save_game()
 	await get_tree().create_timer(3.5).timeout
+	if not playing:
+		return
 	ui.show_victory(difficulty)
 	Sfx.play("levelup")
 
@@ -1928,13 +2151,15 @@ func hitstop(t: float) -> void:
 	Engine.time_scale = 0.08
 
 func _on_hero_died() -> void:
+	Telemetry.crumb("died", {"bg": bg_mode})
 	death_t = 2.0
+	if bg_mode:
+		_bg_fell()
 	ui.set_boss(null)
 
 func respawn() -> void:
 	if bg_mode:
-		# no coming back in a raid: what you carried lies where you fell
-		ui.message("You fell. Everything you carried is lost.", Color(1, 0.5, 0.4))
+		# no coming back from the crypt
 		_leave_battlegrounds()
 		return
 	hero.gold = int(hero.gold * 0.9)
@@ -1958,6 +2183,10 @@ func toggle_pause() -> void:
 	ui.pause_panel.visible = paused
 	Engine.time_scale = 1.0
 	lmb_held = false
+	rmb_held = false
+	if paused and hero != null:
+		hero.cmd_wasd(Vector3.ZERO)     # (in co-op the game runs on under the menu: he mustn't walk on)
+		hero.sprint = false
 
 # ---------------------------------------------------------------- input
 func _ground_from_ray(o: Vector3, d: Vector3) -> Vector3:
@@ -2011,7 +2240,7 @@ func pick_enemy(o: Vector3, d: Vector3) -> Enemy:
 
 func _update_hover() -> void:
 	_drop_stale()
-	if world == null:
+	if world == null or net.server:
 		return
 	var mp := get_viewport().get_mouse_position()
 	var o := cam.project_ray_origin(mp)
@@ -2049,15 +2278,72 @@ func _update_hover() -> void:
 			col = Color(0.85, 0.66, 0.38)
 		ui.target_bar.visible = true
 		ui.show_target(hovered.display_name, hovered.life / hovered.max_life, col)
+	elif hovered is Harvest.HTree:
+		var tr: Harvest.HTree = hovered
+		if tr.state == "stand":
+			ui.show_target("%s  ·  %s" % [tr.label, "Chop" if hero.chop_axe()[0] != "" else "Needs an axe"], tr.hp / tr.max_hp, Color(0.78, 0.62, 0.4))
+		else:
+			ui.show_target("%s stump" % tr.label, 0.0, Color(0.55, 0.5, 0.42))
 	elif hovered is Inter:
 		ui.show_target(hovered.label, 1.0, Color(0.85, 0.75, 0.5))
 		ui.target_bar.visible = false
 	else:
 		ui.hide_target()
 
-func _unhandled_input(ev: InputEvent) -> void:
-	if not playing:
+## Dev cheat (not in production builds, or with the dev tools): typing "maxout" while playing makes the current
+## character as strong as it gets: level 99, its stat points spread over its class's stats, every talent point spent
+## (the class's auto build), a million gold, full potions and a bag of the best gear (equip what you like). Saved.
+var _typed := ""
+func _cheat_keys(ev: InputEvent) -> void:
+	if not (ev is InputEventKey and ev.pressed and not ev.echo) or not playing or hero == null:
 		return
+	var ch := String.chr(ev.unicode) if ev.unicode > 0 else ""
+	if ch == "":
+		return
+	_typed = (_typed + ch.to_lower()).right(12)
+	if _typed.ends_with("maxout") and (dev_tools_on() or BuildEnv.env() != "production"):
+		_typed = ""
+		max_out()
+
+func max_out() -> void:
+	hero.set_level(99)
+	var c: Dictionary = Data.CLASSES.get(hero.cls, {})
+	var tot := float(int(c.get("str", 1)) + int(c.get("dex", 1)) + int(c.get("vit", 1)) + int(c.get("ene", 1)))
+	var pts := hero.stat_points
+	hero.str_ += int(pts * int(c.get("str", 1)) / tot)
+	hero.dex += int(pts * int(c.get("dex", 1)) / tot)
+	hero.vit += int(pts * int(c.get("vit", 1)) / tot)
+	hero.ene += pts - int(pts * int(c.get("str", 1)) / tot) - int(pts * int(c.get("dex", 1)) / tot) - int(pts * int(c.get("vit", 1)) / tot)
+	hero.stat_points = 0
+	hero.talents = Talents.auto_build(hero.cls, hero.free_talent_points(), hero.talents)
+	hero._talents_changed()
+	hero.gold += 1000000
+	hero.belt = [Items.potion("hp_potion"), Items.potion("hp_potion"), Items.potion("mp_potion"), Items.potion("rejuv")]
+	for b in hero.belt:
+		b["count"] = 20
+	var r := RandomNumberGenerator.new()
+	r.randomize()
+	var n := 0
+	for i in 60:
+		if n >= 16:
+			break
+		var it := Items.random_drop(99, 2000.0, r, true)
+		if Items.is_material(it) or int(it.get("rarity", 0)) < 2:
+			continue
+		if hero.add_to_inventory(it):
+			n += 1
+	hero.recalc()
+	hero.life = hero.max_life
+	hero.mana = hero.max_mana
+	ui.refresh()
+	save_game()
+	ui.big_message("MAXED OUT")
+	ui.message("Level 99, every talent, a million gold and %d pieces of the best gear in your bag" % n, Color(1.0, 0.85, 0.4), 6.0)
+
+func _unhandled_input(ev: InputEvent) -> void:
+	if not playing or _busy or world == null:
+		return      # (the title and its screens, and a zone loading: nothing in the game takes keys or clicks)
+	_cheat_keys(ev)
 	if ev is InputEventMouseButton:
 		if ev.button_index == MOUSE_BUTTON_LEFT:
 			if ev.pressed and not paused:
@@ -2068,6 +2354,12 @@ func _unhandled_input(ev: InputEvent) -> void:
 				# clicking the ground, an item or an NPC still walks there
 				if hero.bound("lmb") not in ["attack", ""] and (hovered is Enemy or Input.is_key_pressed(KEY_SHIFT)):
 					_use_bind("lmb", true)
+				elif not click_move and hero.bound("lmb") == "attack" and not (hovered is GroundItem or hovered is Inter) \
+						and (wasd_dir().length() > 0.1 or not (hovered is Enemy)):
+					# Path of Exile controls: the click attacks toward the pointer where he stands (or as the
+					# keys carry him); a foe clicked while standing still is walked up to and struck
+					hero.target = null
+					hero.swipe_attack(_attack_aim())
 				else:
 					_click_world()
 		elif ev.button_index == MOUSE_BUTTON_RIGHT:
@@ -2079,6 +2371,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 		elif ev.button_index == MOUSE_BUTTON_WHEEL_DOWN and ev.pressed:
 			zoom = clampf(zoom + 0.08, 0.6, 1.3)
 	if ev is InputEventKey and ev.pressed and not ev.echo:
+		if paused and ev.keycode != KEY_ESCAPE:
+			return       # (paused: only Esc, which resumes)
 		match ev.keycode:
 			KEY_ESCAPE:
 				if not ui.close_all():
@@ -2089,6 +2383,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 				ui.toggle(ui.char_panel)
 			KEY_T:
 				cast_town_portal()
+			KEY_SPACE:
+				dodge_roll()
 			KEY_1, KEY_2, KEY_3, KEY_4:
 				hero.drink(ev.keycode - KEY_1)
 			KEY_Q, KEY_E, KEY_R, KEY_F, KEY_G, KEY_V:
@@ -2116,14 +2412,47 @@ func _unhandled_input(ev: InputEvent) -> void:
 				ui.minimap.set_big(not ui.minimap.big)
 
 func _input(ev: InputEvent) -> void:
-	if _intro_playing and ((ev is InputEventKey and ev.pressed and not ev.echo) or (ev is InputEventMouseButton and ev.pressed)):
-		_intro_skip = true
-		get_viewport().set_input_as_handled()
+	if _intro_playing:
+		if _is_skip_press(ev) and _intro_t > 0.5:
+			if _intro_t - _intro_armed < INTRO_CONFIRM:
+				_intro_skip = true
+			else:
+				_intro_armed = _intro_t
+		get_viewport().set_input_as_handled()      # nothing reaches the game behind the intro
 		return
 	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed:
 		lmb_held = false
 	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_RIGHT and not ev.pressed:
 		rmb_held = false
+
+## Controls: Path of Exile 2's by default (WASD moves, left click attacks toward the pointer, right click a skill,
+## Space rolls); `click_move` (pause menu, saved) brings back clicking the ground to walk there.
+var click_move := false
+var roll_sprint := false
+
+## The movement keys as a flat direction on the ground (W = up the screen).
+func wasd_dir() -> Vector3:
+	var v := Vector3.ZERO
+	if Input.is_key_pressed(KEY_W): v.z -= 1
+	if Input.is_key_pressed(KEY_S): v.z += 1
+	if Input.is_key_pressed(KEY_A): v.x -= 1
+	if Input.is_key_pressed(KEY_D): v.x += 1
+	return v.normalized() if v.length() > 0.1 else Vector3.ZERO
+
+## Space: roll the way the keys point, or toward the pointer with no key held.
+func dodge_roll() -> void:
+	if hero == null or paused or ui.any_panel_open():
+		return
+	var d := wasd_dir()
+	if d.length() < 0.1:
+		_update_hover()
+		d = hero.dir_to(ground_pt)
+	if Dodge.start(hero, d):
+		roll_sprint = true
+
+func set_click_move(on: bool) -> void:
+	click_move = on
+	_save_setting("controls", "click_move", on)
 
 func cast_slot(i: int) -> void:
 	cast_skill(hero.bound(Hero.BIND_KEYS[i]))
@@ -2145,9 +2474,9 @@ func skill_held(id: String) -> bool:
 func _cursor_aim() -> Vector3:
 	return hovered.global_position if hovered is Enemy else ground_pt
 
-## Space's swing: at the foe under the pointer, else at a foe close to the pointer's line within reach,
+## The left click's swing: at the foe under the pointer, else at a foe close to the pointer's line within reach,
 ## else toward the pointer (the same melee help a short directional skill gets, Hero.skill_aim).
-func _space_aim() -> Vector3:
+func _attack_aim() -> Vector3:
 	if hovered is Enemy:
 		return hovered.global_position
 	var dir := hero.dir_to(ground_pt)
@@ -2196,12 +2525,23 @@ func _click_world() -> void:
 
 # ---------------------------------------------------------------- loop
 func _process(delta: float) -> void:
+	if bg_mode:
+		Battlegrounds.sync_proxies(self)
+		Battlegrounds.hud(self, delta)
+	elif ui != null and ui.hud.get_node_or_null("bg_hud") != null:
+		ui.hud.get_node("bg_hud").visible = false
 	_t += delta
 	var real_dt := delta / maxf(Engine.time_scale, 0.01)
 	_watchdog(real_dt)
+	if net.server:
+		Kpi.server_tick(real_dt)
+	else:
+		Kpi.step(real_dt)
 	if world == null:
 		return
 	xp_bonus_t = maxf(0.0, xp_bonus_t - delta)
+	if playing and not paused:
+		played_s += delta
 	exit_grace = maxf(0.0, exit_grace - delta)
 	_drop_stale()
 	_update_grade(real_dt)
@@ -2215,15 +2555,11 @@ func _process(delta: float) -> void:
 		for slot in Hero.BIND_SLOTS:
 			if slot != "lmb" and slot_held(slot):
 				_use_bind(slot, false)
-		hero.sprint = Input.is_key_pressed(KEY_SHIFT)
-		if Input.is_key_pressed(KEY_SPACE):
-			# swing toward the pointer, whichever way he is walking
-			hero.swipe_attack(_space_aim())
-		var wasd := Vector3.ZERO
-		if Input.is_key_pressed(KEY_W): wasd.z -= 1
-		if Input.is_key_pressed(KEY_S): wasd.z += 1
-		if Input.is_key_pressed(KEY_A): wasd.x -= 1
-		if Input.is_key_pressed(KEY_D): wasd.x += 1
+		# Shift sprints; so does Space held on after a dodge roll (Path of Exile 2)
+		if not Input.is_key_pressed(KEY_SPACE):
+			roll_sprint = false
+		hero.sprint = Input.is_key_pressed(KEY_SHIFT) or (roll_sprint and hero.roll_t < 0.0)
+		var wasd := wasd_dir()
 		hero.cmd_wasd(wasd)
 		if lmb_held and not hero.dead:
 			lmb_repeat -= delta
@@ -2231,6 +2567,10 @@ func _process(delta: float) -> void:
 				lmb_repeat = 0.12
 				if hero.bound("lmb") not in ["attack", ""] and (hovered is Enemy or Input.is_key_pressed(KEY_SHIFT)):
 					_use_bind("lmb", false)
+				elif click_move == false and hero.bound("lmb") == "attack" and (wasd_dir().length() > 0.1 or not (hovered is Enemy)) \
+						and not (hovered is GroundItem or hovered is Inter) and hero.target == null:
+					# held: keep swinging toward the pointer (the keys move him)
+					hero.swipe_attack(_attack_aim())
 				elif hovered is Enemy:
 					if hero.target != hovered:
 						hero.cmd_target(hovered)
@@ -2260,7 +2600,7 @@ func _process(delta: float) -> void:
 					break
 	if death_t > 0.0:
 		death_t -= delta
-		if death_t <= 0.0:
+		if death_t <= 0.0 and playing:
 			ui.death_panel.visible = true
 	if hero and world:
 		var look_ahead := Vector3.ZERO
@@ -2325,7 +2665,9 @@ func _perf_step() -> bool:
 			hero.global_position = spot
 			cam_target = spot
 		_perf = {"centre": hero.global_position, "t": 0.0, "frames": [], "dc": 0.0, "prims": 0.0, "objs": 0.0, "n": 0,
-			"secs": float(args[pi + 1]) if pi + 1 < args.size() and args[pi + 1].is_valid_float() else 10.0, "t0": 0}
+			"secs": float(args[pi + 1]) if pi + 1 < args.size() and args[pi + 1].is_valid_float() else 10.0, "t0": 0,
+			"gpu": 0.0, "cpu": 0.0, "boot_ms": Time.get_ticks_msec()}
+		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 		return true
 	var dt := get_process_delta_time()
 	if shot_frames < 70:
@@ -2340,6 +2682,9 @@ func _perf_step() -> bool:
 	_perf["prims"] = float(_perf["prims"]) + Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)
 	_perf["objs"] = float(_perf["objs"]) + Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)
 	_perf["n"] = int(_perf["n"]) + 1
+	var vp_rid := get_viewport().get_viewport_rid()
+	_perf["gpu"] = float(_perf["gpu"]) + RenderingServer.viewport_get_measured_render_time_gpu(vp_rid)
+	_perf["cpu"] = float(_perf["cpu"]) + RenderingServer.viewport_get_measured_render_time_cpu(vp_rid)
 	if float(_perf["t"]) < float(_perf["secs"]):
 		return true
 	var fr: Array = _perf["frames"]
@@ -2360,6 +2705,8 @@ func _perf_step() -> bool:
 		"average %.1f fps (%.2f ms), median %.2f ms, 1%% low %.1f fps (%.2f ms)" % [n / wall, wall * 1000.0 / n, float(fr[fr.size() / 2]), 1000.0 / worst1, worst1],
 		"draw calls %.0f, primitives %.0f, objects %.0f (per frame)" % [float(_perf["dc"]) / n, float(_perf["prims"]) / n, float(_perf["objs"]) / n],
 		"3D grass clumps in the zone: %d" % grass_n,
+		"gpu %.2f ms per frame (busy %.0f%%), render cpu %.2f ms, engine start to zone ready %d ms" % [float(_perf["gpu"]) / n, 100.0 * float(_perf["gpu"]) / n / (wall * 1000.0 / n), float(_perf["cpu"]) / n, int(_perf["boot_ms"])],
+		"video memory %.0f MB (textures %.0f MB, buffers %.0f MB), static memory %.0f MB" % [Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1e6, Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / 1e6, Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / 1e6, Performance.get_monitor(Performance.MEMORY_STATIC) / 1e6],
 	]
 	var f := FileAccess.open(shot_path.get_basename() + ".txt", FileAccess.WRITE)
 	for l in lines:

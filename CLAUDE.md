@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `grass_test`, `collision_test`, `aim_test`, `plague_test` (`--fixed-fps 60`), `hoard_test`, `coop_fx_test` (every skill's effects reach a puppet, in one process), `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), `bg_test` (the Battlegrounds: a server and a client, `-- --server --port 24611 server` and `-- client 24611`), and the co-op pairs `mp_test`, `mp_boss_test` and `plague_mp_test` (run one copy
+`det_test`, `woodcut_test` (`--fixed-fps 60`), `temper_test`, `woodcut_mp_test` (host + join), `grass_test`, `collision_test`, `aim_test`, `plague_test` (`--fixed-fps 60`), `hoard_test`, `coop_fx_test` (every skill's effects reach a puppet, in one process), `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), `bg_test` (the Battlegrounds: a server and a client, `-- --server --port 24611 --raid-fast server` and `-- client 24611`), `bg_pvp_test` (a server and two players, `a` and `b`), `controls_test` (WASD, the left click, the dodge roll, every class), and the co-op pairs `mp_test`, `mp_boss_test` and `plague_mp_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -73,6 +73,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
 | `plague.gd` | Plague Doctor class: body (mocap, whole-body skill clips), Toxic Flask, Volatile Mixture, Pestilent Trap, The Last Epidemic, poison and infection, co-op replay |
 | `dragon.gd`, `dragon_skills.gd` | The three dragon classes (`wyrm` Obsidian Wyrm, `serpent` Frost Serpent, `wyvern` Storm Wyvern): Meshy bodies posed in code every frame (`Dragon.pose`, handed over by `Anim.pose`); no skills yet (`DragonSkills` is the empty, ready skills script and plays their attack sounds) |
+| `dodge.gd` | The dodge roll on Space (every class): direction, distance, i-frames, stamina, the tumble, the co-op event |
 | `enemy.gd`, `projectile.gd`, `feral.gd` | Monsters/AI and missiles (host-authoritative in co-op); the Feral's baked-animation body |
 | `via.gd`, `aurelia.gd`, `games.gd`, `roman.gd` | A2: the Imperial Road (wild), the city of Aurelia and its arena (lair), the arena's games (the act's boss fight), and the Roman architecture they're built from |
 | `lion.gd` | The arena lion: a Meshy model on a quadruped skeleton, posed in code (no baked animations) |
@@ -82,11 +83,14 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `hoard.gd` | King Grubb's fight (Act I boss): Gilded Bombs, the three burst sacks, the gold scramble (piles reaching him heal him; piles a hero takes hurt him) |
 | `goblin.gd`, `sculpt.gd` | Goblin models: King Grubb is the imported mutant (`Goblin.MUTANT`: joint layout + glb, skinned onto the game's skeleton); the Gold Grabbers (and Grubb's fallback) are code-sculpted (`Sculpt` melts SDF shapes into one skinned mesh). `Goblin.after_pose` adds ears, jaw, crown wobble, belly jiggle, sacks and the goblin gaits |
 | `ground_item.gd`, `inter.gd` | Loot on the ground; interactables (chests, shrines, waypoints, portals, NPCs) |
+| `harvest.gd`, `wood.gd` | Woodcutting: Act I's harvestable trees (`Harvest`, `Harvest.HTree`), chopping, felling, stumps, respawns; wood made in code (logs, end grain, notches, chips and debris) |
+| `furnace.gd`, `furnace_ui.gd` | Halvar's furnace in the Act I camp: the heat model and weapon tempering (`Furnace`); its window (`FurnaceUI`) |
 | `items.gd` | Item rolls, `empower` (A2/A3 multipliers), enchanting, tooltips |
 | `net.gd` | LAN co-op over ENet (UDP 24567, discovery 24568); RPC layer; `server` = a dedicated host with no player (Battlegrounds) |
 | `coop_server.gd` | Online co-op: the story game hosted by a dedicated server (see "Online co-op") |
 | `build_env.gd`, `nakama_client.gd`, `cloud_saves.gd` | Which backend a build uses; the Nakama REST client; characters kept in Nakama (see "Staging and accounts") |
 | `battlegrounds.gd` | Battlegrounds prototype: the raid map, the dedicated server's raid logic (respawns, carried loot, extraction, the stash), the client's id and cached stash |
+| `kpi.gd` | The official performance KPIs: scripted scenarios measured frame by frame (`--kpi`), see docs/nightly/KPIS.md |
 | `skill_fx.gd`, `knight_fx.gd`, `archer_fx.gd` | Co-op skill effects: `SkillFx` plays every class's skill events on the caster and on his puppet for partners (see "Co-op skill effects"); the knight's and archer's effect handlers (the Wraith's, Demon's and Warlock's are in their `*_fx.gd`) |
 | `ui.gd`, `hud_bar.gd`, `icon_renderer.gd` | All UI built in code |
 | `vendor_ui.gd` | Nameplates over the town's people and the trader's live portrait in the trade window |
@@ -100,9 +104,18 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   (`Props.footprint(root, radius_or_half)`) and are registered with `world.solid(node)` after placing (it reads the node's
   position, yaw and scale). Use `add_circle`/`add_box` only for things with no prop node. Movers call `world.move(pos, d, radius)`,
   which slides against the exact footprints; `blocked` (a padded 1 m grid) is only for A* and spawn spots.
+- **Controls** (Path of Exile 2 style, every class; `tools/controls_test.gd`): WASD moves (`Game.wasd_dir`), left
+  click attacks toward the pointer where he stands (or as the keys carry him; a foe clicked while standing still is
+  walked up to and struck; items, chests and NPCs are still walked to), right mouse is a skill (a new character's
+  first class skill; old saves' Block there becomes it, `binds_v`), and **Space is the dodge roll** (`scripts/dodge.gd`
+  `Dodge`: the way the keys point, else toward the pointer; `DIST` 3.8 m in `DUR` 0.5 s; blows miss for the first
+  `IFRAME` s, PvP included; it drops a swing not yet landed and a channel; costs `STAMINA`; holding Space on after
+  it sprints, as Shift does). Partners see it through the `"roll"` fx event (`SkillFx.play` hands it to `Dodge.fx`;
+  `Dodge.pose` tumbles the body, the Wraith swoops low). The pause menu's Controls button brings back
+  click-to-move (`Game.click_move`, saved in settings).
 - **Aiming** (Path of Exile style): **the mouse pointer is the source of truth; WASD only moves.** `Game` writes the
   pointer's point (the enemy under it, else the ground) to `Hero.cursor` every frame, and every action aims from it:
-  Space (`Game._space_aim`), the skill keys (`Game.cast_skill` → `Hero.skill_aim`) and mouse binds. Every skill in
+  the left click's attack (`Game._attack_aim`), the skill keys (`Game.cast_skill` → `Hero.skill_aim`) and mouse binds. Every skill in
   `Data.SKILLS` has `"aim"`: `"point"` (lands on the pointer; the skill clamps to its own range), `"facing"` (the old
   name, now meaning *directional*: from the hero toward the pointer, out to its `"range"`; the pointer itself when it's
   nearer, so a beam or tether latches on what's under it) or `"self"` (centred on him, no turn). Only short melee
@@ -148,23 +161,29 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   in `Data.SKILLS` beside a puppet and fails if a skill sends no event, the puppet shows nothing, a lingering effect
   doesn't reach it, or replaying the events on the puppet hurts a monster or changes its life or mana; the
   `mp_test` host+join pair counts the events each side receives from the other ("[H8]"/"[C7]").
-- **Battlegrounds** (`scripts/battlegrounds.gd`, `Battlegrounds`; prototype, phase 1): an extraction raid on a
-  **dedicated server**. The server is the game itself run headless: `godot --headless --path . -- --server [--port N]`
-  (`Game._ready` -> `Battlegrounds.start_server`; default UDP 24567, up to `MAX_PLAYERS` 16). It hosts zone `"bg"`
-  (`Battlegrounds.build`: a 60 m walled ruin, broken walls and graves, two chests, an Extraction Portal north and
-  south, Inter kind `"extract"`) through the normal co-op layer with `Net.server` on: its own hero is hidden, parked off
-  the map and phased (`park_hero`, skipped by `Game.target_for`), it never streams its hero, isn't in the roster
-  players get, and refuses travel, portals and trips; a joiner arrives at the free-est of the map's `bg_spawns`
-  (`spawn_point`). Zombies are kept at `ZOMBIES`, respawning away from players. Players: the title's Battlegrounds
-  button (`UI.open_battlegrounds`: class, server address `host[:port]`, the stash) -> `Game.start_battlegrounds`, a
-  fresh unsaved hero (`bg_mode`; `char_id` is empty, so nothing is saved). The server keeps the record: every item a
-  player picks up (`Net.sv_pickup`) is `carried[pid]`; at an Extraction Portal (`Net.sv_extract`, the server checks
-  the player stands within `EXTRACT_R`) it joins their stash, saved on the server in `user://bg_server/stash.json`
-  under the player's id (`client_id`, a random id in `user://bg_id.txt`, sent by `Net.sv_bg_hello`; not hack-proof,
-  Nakama takes accounts over later); dying or disconnecting drops it on the ground (`_drop_carried`). A death ends the
-  raid (`Game.respawn` in `bg_mode` -> back to the Battlegrounds screen). The client caches the stash the server last
-  sent (`user://bg_stash_cache.json`). Not yet: PvP damage, bringing stash items in, raid timers, several raids per
-  server, Steam/Nakama, WebSocket for the browser. `tools/bg_test.gd` runs the whole loop with a server and a client.
+- **Battlegrounds** (`scripts/battlegrounds.gd`, `Battlegrounds`): **the Hollow Crypt**, a hardcore extraction raid in
+  the Dark and Darker mould on a **dedicated server** (`godot --headless --path . -- --server [--port N]`, staging systemd
+  `ashen-crown-bg`, UDP 24567; `Net.server`). The map (`Battlegrounds.build`, zone `"bg"`, indoor, dark: a smaller
+  hero light) is a 4x4 grid of rooms round a great central hall: corner rooms are where players arrive, one middle
+  room per side holds a candidate Extraction Portal (Inter `"extract"`, hidden until open), the other is a treasure
+  room and the only way into the hall from that side; a ring of corridors with one link missing; crypt rooms with
+  sarcophagi, chests, few but tough monsters (`MON_LIFE`, `MON_DMG`, level `MON_LEVEL`); the hall has a pillar ring,
+  three chests and a champion with bowmen. The walls come from `World.crypt_shell` (shared with the crypt). **Rounds**
+  of `RAID_SECS` (15 min): two of the four portals open at `PORTALS_AT` (5 min), joining closes at `JOIN_CLOSE`, the
+  crypt collapses at the end (everyone inside dies) and the dungeon resets (`new_round`). The state reaches players
+  through `Net.cl_bg_raid` (the HUD clock, `Battlegrounds.hud`). **Combat is slower and heavier** while
+  `Game.bg_mode` (Hero: `ATTACK_PACE`, `HIT_MULT`, `CD_MULT`, `MOVE_MULT`, no life regeneration). **PvP**: every other
+  player is an invisible stand-in `Enemy` with `pvp_pid` on each client (`sync_proxies`), so any attack or skill
+  that hits monsters hits players; `Enemy.take_damage` sends `Net.sv_pvp_hit`, the server scales it (`PVP_MULT`) and
+  deals it (`Net.hit_player`); kills are announced. **Real characters**: the Battlegrounds screen picks one of the
+  player's characters (`Game.start_battlegrounds(addr, id)`); its save says `in_raid` until it extracts; what it
+  extracts with stays in its inventory. **Death** costs every item worn and carried, the belt and the gold
+  (`Game.bg_strip` / `strip_save`: levels, stats, talents and the camp's stash are kept; a plain class weapon is
+  given back), dropped where it fell (`Net.sv_bg_died`); a character whose game closed mid-raid is stripped the next
+  time the game starts (`Game._bury_lost_raiders`). Joining uses a one-time Nakama ticket on staging (see "Staging
+  and accounts"). Tests: `tools/bg_test.gd` (server `--raid-fast`: 150 s rounds) and `tools/bg_pvp_test.gd`.
+  Dev cheat (non-production builds or dev tools): type `maxout` while playing (`Game.max_out`: level 99, stats,
+  every talent, a million gold, potions, a bag of the best gear).
 - **Online co-op** (`scripts/coop_server.gd`, `CoopServer`): the story game hosted by a dedicated server
   (`-- --server --coop --port 24570`, staging systemd `ashen-crown-coop`), so friends co-op over the internet with no
   router setup: the title's "Online Co-op" (non-local builds) joins `BuildEnv.value("coop_server")` with the
@@ -476,6 +495,12 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   contact sheet of his motion. `tools/blender/grubb.py` (+ `grubb_gear.py`) is the earlier fully scripted Blender
   build, kept as a reference; its export isn't used. Godot's `.import` files and extracted textures under
   `assets/models/` are git-ignored (regenerated on import); run `godot --headless --editor --quit` after re-exporting.
+  Since those `.import` files are made fresh, the textures take `project.godot`'s `[importer_defaults] texture`:
+  **lossy WebP at quality 0.9, 3D detection off** (the default was lossless, 490 MB of the old 618 MB pack; q0.9 is
+  ~41 dB against the source JPGs, which are lossy already). A checkout imported before 2026-11-01 keeps its old
+  lossless `.import` files until they're deleted (`find assets/models -name '*.jpg.import' -o -name '*.png.import' |
+  xargs rm`, then `godot --headless --import`). Give a new texture with a committed `.import` the same settings when it
+  is a JPG-sourced 3D texture (like `assets/textures/plague/coat_*.jpg`); keep UI and cut-out PNGs lossless.
 - **Knight (no armour)** is a Meshy model (white shirt with a red crusader cross, shorts, leather sandals,
   long hair): `assets/models/knight_meshy.glb`, built by `Knight.build_meshy` on `Knight.MESHY_LAYOUT`. The hero
   wears it while the armour slot is empty (`Hero._wants_meshy`); `refresh_gear` swaps to the procedural armoured
@@ -719,6 +744,49 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   inventory; drag an item onto the flames or right-click it to burn it for good (`UI.burn_request`, `Game.burned`: the
   `burn_item` sound and a flare); rare, unique and material items ask first. A click on an inventory item plays
   `inv_click`. `tools/bonfire_test.gd`, `tools/bonfire_shot.gd`.
+- **Woodcutting** (`scripts/harvest.gd` `Harvest`, visuals `scripts/wood.gd` `Wood`; Act I's moor): `Harvest.pick`
+  takes up to `CAP` (24) trees out of `World._build_wild`'s MultiMesh groups on its own seed (the same on every peer;
+  8-42 m off the road, `SPACING` apart, never by the arrival point; Ferals never perch on them since they're gone from
+  the groups before `_feral_packs`), `HEARTWOODS` of them Ashen Heartwood from the dead trees; the rest stay scenery.
+  `Harvest.build` makes each a `Harvest.HTree` (an `Inter`, kind `"tree"`, in `world.interactables`, so hovering,
+  clicking and walking up are the usual interaction; `Game._interact` -> `Hero.start_chop`), keeps the footprint World
+  already had for it (`World.obstacle_at`; a stump shrinks it, regrowth restores it) and cuts its mesh in two at the
+  cut (`Harvest.split_mesh`) for the stump and the falling trunk. Kinds and numbers: `Harvest.KINDS` (Moor Oak 7
+  blows / 3-4 logs / 8 min, Old Pine 4 / 2-3 / 6 min, Ashen Heartwood 14 / 1-2 / 25 min). Chopping (`Hero.chop_*`):
+  the hero needs an axe (`Hero.chop_axe`: the `woodsman_axe` tool every hero gets in the last bag cell, sold by the
+  smith, or a combat axe, `Data.CHOP_POWER`), puts his weapon away and swings style `"chop"` (an attack with
+  `atk_skill` `"chop"`; Anim's procedural chop for every body, whole-body clips where a body has them: the Demon's
+  Charged Axe Chop, the Wraith's slam with a spectral axe, the Plague Doctor's censer slam; per class
+  `Data.CHOP_PROFILES`, a missing class gets `DEFAULT_CHOP`), one blow per swing on its impact frame
+  (`Harvest.strike_from`); moving, a skill, a target or a blow taken stops him (`stop_chop`). **The host owns the
+  trees**: a partner's blow is `Net.request_chop` -> `sv_chop`, and `Harvest.strike` refuses it beyond `REACH`, faster
+  than `STRIKE_GAP` or at a felled tree; what happens goes to everyone as `Net.cl_tree` events (`hit`, `fell`,
+  `heal`, `regrow`; `play_event`), joiners get `cl_trees` in the snapshot; the logs are ordinary host ground items
+  (`Game.drop_item`, one pickup each). Wounds heal after `HEAL_AFTER`; stumps regrow on the host character's played
+  time (`Game.played_s`, saved) after the kind's respawn, only with no hero within `REGROW_CLEAR`; stumps are saved
+  with the character (`Game.harvest_saved`, `"harvest"` in the save, keyed `run:act:zone`). Off in the Battlegrounds.
+  Sounds: `Harvest.snd` uses `axe_chop`, `bark_crack`, `tree_creak`, `tree_fall`, `tree_thud`, `leaves_rustle`,
+  `log_pickup` when they're in the bank and existing sounds pitched to fit until then (`SOUND_STAND_IN`).
+  Resources: `Data.BASES` slot `"resource"` (`oak_log`, `pine_log`, `heartwood`: `"stack"`, `"fuel"`), stacked by
+  `Hero.add_to_inventory` (`Items.stack_cap`), counted and taken with `Hero.count_of`/`take_items`; slot `"tool"`
+  for the axe. New resources (ore, coal) are BASES entries. Tests: `tools/woodcut_test.gd` (`--fixed-fps 60`),
+  `tools/woodcut_mp_test.gd` (host + join); screenshots `tools/woodcut_shots.gd -- outdir [class]` (xvfb).
+- **Weapon tempering** (`scripts/furnace.gd` `Furnace`, window `scripts/furnace_ui.gd` `FurnaceUI`): Halvar's furnace
+  stands beside his forge in the Act I camp (`Furnace.place` from `ForestCamp.build`; Inter kind `"furnace"` ->
+  `UI.open_furnace`, shop_mode `"furnace"`: right-click a weapon in the bag to put it before the fire, a log to load
+  it, Shift for five). **Weapons only** (armour keeps the gold enchanting), `Items.TEMPER_MAX` (+5) levels, each
+  +`TEMPER_ED`% (6) enhanced damage and +1 damage (`Items.stat_sum`'s `"temper"`). The heat model (`Furnace.step`):
+  `dT/dt = (P - LOSS (T - AMBIENT)) / MASS`, at most `SLOTS` (3) logs burning, in the order loaded, each for its
+  `"burn"`; the fire can't pass the best fuel's `"max_temp"` (pine 1040, oak 1240, Heartwood 1400 = `MAX_T`); the
+  bellows (held) give `BELLOWS_HEAT` more heat and burn twice as fast; it cools once the wood is gone. A level
+  (`Items.temper_cost`): its band (`TEMPER_BANDS` 600/850/1050/1250/1350 °C), a charge of logs (from +4 with Ashen
+  Heartwood, so oak first to raise the fire, then the Heartwood), the smith's fee, and a soak that only runs while
+  the fire is at the band; Quench after the soak = the level, before it = nothing (the weapon is safe, the charge is
+  spent and burns on in `spent`). Closing the window mid-temper is a quench before time. Each player's own (nothing
+  crosses the network). Visuals: flame cards and coals shaded by the heat (`FLAME_SHADER`, `COALS_SHADER`,
+  `heat_color`), the weapon glowing in the mouth (`HOT_METAL_SHADER`), embers, sparks, chimney smoke, heat haze
+  (screen texture; not on the web), the bellows working; the roar is `furnace_roar` when it exists (the wind pitched
+  down until then). Test: `tools/temper_test.gd`.
 - **Birds** (`scripts/birds.gd`, Act I outdoors, added by `Game.load_zone`): flocks of dark swept-wing silhouettes cross
   the sky round the hero (flapping, gliding, banking, shadows), and every 25-50 s a flock bursts out of the trees near
   him with `birds_flutter`. Cosmetic and local (not synced). Screenshot: `tools/birds_shot.gd`.
@@ -816,7 +884,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   the smith; `tools/vendor_shots.gd -- outdir [role]` screenshots a trader.
 - **Skill bar and bindings** (every class, including new ones): the bar has a big slot for each mouse button and six
   hotkeys (Q E R F G V); any skill can go on any of them (`Hero.binds`, saved per character; `Hero.default_binds`:
-  left mouse `attack`, right mouse `block`, the class's first four skills on Q-F). `attack` and `block` are
+  left mouse `attack`, right mouse the class's first skill, the class's first four skills on Q-F). `attack` and `block` are
   `Data.COMMON_SKILLS` (`Data.skills_known(cls)` = class skills + common). Input goes through `Game._use_bind`
   (held buttons recast when ready; `Game.skill_held(id)` for Block and Drain Life's channel). Click a bar slot or
   open the skills window (K) to rebind, or drag: a skill from the skills window onto a slot, one slot onto another
@@ -878,11 +946,33 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `Hero.show_damage`): hits close together add to a running total that counts up smoothly and pops on each hit; 1.1 s
   after the last hit it drifts up and fades, and the next hit starts a new total. Every class gets it. Preview:
   `tools/damage_stack_clip.gd -- outdir`.
+- **UI layers and screen isolation** (`UI.setup`): every control lives in one layer of `UI.root`, bottom to top:
+  `hud` (globes, bar, corner map, quest tracker, target and boss bars, nameplates, the raid HUD), `windows` (inventory,
+  sheet, shops, stash, fire, waypoints, skill picker), `menus` (the title and its screens; co-op and Battlegrounds open
+  over the title, dimmed by `menu_shade`, which also keeps its clicks off it), `modals` (dialogs, the party vote, pause,
+  F8, death, victory) and `top` (tooltips, drags, messages, sparkles). Add a new control to its layer, never to `root`.
+  `_set_hud` shows or hides the whole HUD. Game input is ignored unless `playing` (and not while a zone loads), keys
+  but Esc while paused. Leaving for the title (`Game.exit_to_title`) resets what belonged to the character: its death
+  and victory screens, portal, XP bonus, F8 switches, a raid (left without extracting = died there, `bg_strip`) and the
+  raid's act (`bg_home_run`). `tools/screen_test.gd` checks it (in the nightly gate).
+- **Performance KPIs** (`scripts/kpi.gd` `Kpi`, `docs/nightly/KPIS.md`): the official numbers. Scripted, deterministic
+  scenarios (camp, moor, fight, boss, arena, crypt, server; `Kpi.SCENARIOS`) run in any build with
+  `-- --kpi <scenario> out.json [--quality N] [--secs N]` (the server: `-- --server --kpi server out.json`), measuring
+  fps, 1% low, p99 frame time, hitches, load time, main thread, GPU, draw calls, triangles, memory; then quit.
+  `tools/nightly/bench.sh` runs the suite (plus the download size), `tools/nightly/kpi_push.py` stores it in the KPI
+  database on the staging server, Grafana draws it (https://<staging>/grafana/), `sh tools/kpi_query.sh latest` reads it.
+- **Nightly lab** (`tools/nightly/`, `docs/nightly/README.md`): two launchd jobs on the Game Factory Mac, `perf` (01:00)
+  and `mode` (04:30), each on a fresh `staging` with its own log (`docs/nightly/perf/LOG.md`, `docs/nightly/modes/LOG.md`:
+  lessons, then one row per attempt), the KPI benchmark before and after (slower = not shipped), the gate, a push to
+  `staging` and a Discord report. `bash tools/nightly/install.sh` installs or updates them.
 - Developer tools (`Game.dev_tools`): unlock-all-acts (`UNLOCK_ALL_ACTS`) and the F8 testing panel (`test_immortal`, `test_onehit`, `test_stamina`, `test_allskills`, `test_fast` (super speed, `TEST_FAST` times as fast) in `game.gd`, and a level setter, `Hero.set_level`). On only when running from the Godot editor or when this PC holds a valid **admin key** (`AdminKey`, `scripts/admin_key.gd`): `user://admin.key`, signed with the owner's private key; the game checks it against the public key built into the code, so nobody can forge one. Off for everyone else, in every build (live and preview). Make a key: `tools/admin_key.gd` (needs the private key, which is never in the repo). `UNLOCK_ALL_ACTS = false` turns the tools off everywhere.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file). Since 2026-10-31 it is Blaine's
-  new trailer (60 s, 1280x720, Theora ~2.4 Mbit/s + Vorbis, 17.6 MB; encoded with ffmpeg on the staging server:
-  `-vf scale=1280:720 -c:v libtheora -b:v 2400k -maxrate 3600k -bufsize 6000k -c:a libvorbis -q:a 3 -ar 44100`).
+  new trailer at full quality (Blaine: no visible compression): 60 s, 1920x1088 (a multiple of 16, so Theora adds no padding rows), Theora 12 Mbit/s + Vorbis q6,
+  85.4 MB; ffmpeg on the staging server: `-vf scale=1920:1088,setsar=1 -c:v libtheora -b:v 12000k -maxrate 16000k -bufsize 24000k -c:a libvorbis
+  -q:a 6 -ar 48000`. Don't recompress it to save download size. Skipping it takes two deliberate presses (Esc, Space,
+  Enter, a click or gamepad A/Start: the first says "Press again to skip"; `Game._is_skip_press`, other keys such as
+  volume do nothing); `tools/intro_skip_test.gd`.
   The originals and the previous intro are kept on Blaine's Mac in ~/Documents/Game Factory/Trailers/.
 - CI is `.github/workflows/deploy.yml` (container `barichello/godot-ci:4.3`). If it fails, the
   site keeps the last good build; read the failed step in the Actions tab.

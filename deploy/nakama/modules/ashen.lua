@@ -102,3 +102,96 @@ nk.register_rpc(ticket, "bg_ticket")
 nk.register_rpc(ticket_redeem, "bg_ticket_redeem")
 nk.register_req_before(guard_write, "WriteStorageObjects")
 nk.register_req_before(guard_delete, "DeleteStorageObjects")
+
+-- Telemetry and error reports (docs/nightly/TELEMETRY.md, the game's scripts/telemetry.gd): performance samples and
+-- errors go into two tables of Nakama's own database, which Grafana reads (role grafana_ro, SELECT only) and the
+-- nightly triage job queries. Players send with their session ("telemetry"), the dedicated servers with the runtime
+-- http_key ("telemetry_server"). A batch holds at most MAX_ROWS of each; long strings are cut.
+local MAX_ROWS = 20
+
+local function setup_tables()
+  nk.sql_exec([[
+    CREATE TABLE IF NOT EXISTS tm_sample (
+      id bigserial PRIMARY KEY, ts timestamptz NOT NULL DEFAULT now(), user_id text, session text,
+      build text, env text, os text, gpu text, zone text, run int, class text, level int, x real, z real, preset int,
+      bg boolean, enemies int, boss boolean, partners int, dead boolean,
+      secs real, fps_avg real, fps_low1 real, frame_p99 real, hitches int, vram_mb int, res text)]], {})
+  nk.sql_exec([[
+    CREATE TABLE IF NOT EXISTS tm_error (
+      id bigserial PRIMARY KEY, ts timestamptz NOT NULL DEFAULT now(), user_id text, session text, source text,
+      kind text, fingerprint text, message text, at text, count int, build text, env text, zone text,
+      context jsonb, crumbs jsonb, tail text)]], {})
+  nk.sql_exec("CREATE INDEX IF NOT EXISTS tm_sample_ts ON tm_sample (ts)", {})
+  nk.sql_exec("CREATE INDEX IF NOT EXISTS tm_error_fp ON tm_error (fingerprint, ts)", {})
+  -- one row per issue (a fingerprint): how often, how many players, when, on which builds
+  nk.sql_exec([[
+    CREATE OR REPLACE VIEW tm_issue AS
+    SELECT fingerprint, kind, source, min(message) AS message, min(at) AS at, sum(count) AS events,
+      count(DISTINCT user_id) AS players, count(DISTINCT session) AS sessions, min(ts) AS first_seen,
+      max(ts) AS last_seen, string_agg(DISTINCT build, ' ') AS builds, string_agg(DISTINCT zone, ' ') AS zones
+    FROM tm_error GROUP BY fingerprint, kind, source]], {})
+  -- (the role exists once deploy/staging/kpi_setup.sh has run; without it there's nothing to grant)
+  pcall(nk.sql_exec, "GRANT SELECT ON tm_sample, tm_error, tm_issue TO grafana_ro", {})
+end
+local ok, err = pcall(setup_tables)
+if not ok then
+  nk.logger_error("telemetry tables: " .. tostring(err))
+end
+
+local function cut(v, n)
+  if v == nil then return nil end
+  return string.sub(tostring(v), 1, n)
+end
+
+local function num(v)
+  if type(v) == "number" then return v end
+  return nil
+end
+
+local function bool(v)
+  if type(v) == "boolean" then return v end
+  return nil
+end
+
+local function store(user_id, source, p)
+  local session = cut(p.session, 64)
+  local n = 0
+  for i, s in ipairs(p.samples or {}) do
+    if i > MAX_ROWS then break end
+    nk.sql_exec([[INSERT INTO tm_sample (user_id, session, build, env, os, gpu, zone, run, class, level, x, z, preset,
+        bg, enemies, boss, partners, dead, secs, fps_avg, fps_low1, frame_p99, hitches, vram_mb, res)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)]], {
+      user_id, session, cut(s.build, 40), cut(s.env, 20), cut(s.os, 40), cut(s.gpu, 120), cut(s.zone, 40), num(s.run),
+      cut(s.class, 40), num(s.level), num(s.x), num(s.z), num(s.preset), bool(s.bg), num(s.enemies), bool(s.boss),
+      num(s.partners), bool(s.dead), num(s.secs), num(s.fps_avg), num(s.fps_low1), num(s.frame_p99), num(s.hitches),
+      num(s.vram_mb), cut(s.res, 20) })
+    n = n + 1
+  end
+  for i, e in ipairs(p.errors or {}) do
+    if i > MAX_ROWS then break end
+    local c = type(e.context) == "table" and e.context or {}
+    nk.sql_exec([[INSERT INTO tm_error (user_id, session, source, kind, fingerprint, message, at, count, build, env, zone,
+        context, crumbs, tail)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb,$13::jsonb,$14)]], {
+      user_id, cut(e.session, 64) or session, source, cut(e.kind, 20), cut(e.fingerprint, 32), cut(e.message, 500),
+      cut(e.at, 300), num(e.count) or 1, cut(c.build, 40), cut(c.env, 20), cut(c.zone, 40),
+      cut(nk.json_encode(c), 4000), cut(nk.json_encode(e.crumbs or {}), 12000), cut(e.tail, 8000) })
+    n = n + 1
+  end
+  return nk.json_encode({ ok = true, rows = n })
+end
+
+local function telemetry(context, payload)
+  if context.user_id == nil or context.user_id == "" then
+    error({ "sign in first", 16 })
+  end
+  return store(context.user_id, "client", nk.json_decode(payload))
+end
+
+local function telemetry_server(context, payload)
+  server_only(context)
+  return store("server", "server", nk.json_decode(payload))
+end
+
+nk.register_rpc(telemetry, "telemetry")
+nk.register_rpc(telemetry_server, "telemetry_server")
