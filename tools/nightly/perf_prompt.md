@@ -5,6 +5,13 @@ report go there; keep it to the best 4-8 images).
 
 GOAL: make the game measurably faster or lighter tonight, in a way not tried before, without changing how it looks
 or plays (unless it looks the same and you can show it).
+STANDING GOAL, EVERY NIGHT: the DOWNLOAD SIZE (Blaine: "we want this to be much much smaller"; it was ~650-740 MB
+per platform on 2026-11-01). Read docs/nightly/perf/SIZE.md. Measure the export size every night:
+  mkdir -p {{OUT}}/export && $G --headless --path . --export-release "macOS" {{OUT}}/export/mac.zip
+  $G --headless --path . --export-release "Windows Desktop" {{OUT}}/export/win/AshenCrown.exe
+(the 4.3 templates are installed; record the .zip / .exe / .pck sizes) and add a row to SIZE.md. Until the download
+is well under 200 MB, make tonight's concept a size reduction at least every other night (see SIZE.md for where the
+megabytes are). Size changes must keep the look: show before/after images of anything you recompress.
 
 1. Learn from the past. Read docs/nightly/perf/CONCEPTS.md, the last few docs/nightly/perf/runs/*.md and
    docs/nightly/perf/metrics.jsonl. Do not repeat a concept already tried unless you are building on it and say how.
