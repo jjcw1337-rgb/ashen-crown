@@ -8,6 +8,8 @@
 #              STAGING_NAKAMA_KEY (Nakama's server key: the public client key every build carries),
 #              STEAM_APP_ID, STEAM_DEPOT_WINDOWS, STEAM_DEPOT_MAC, STEAM_DEPOT_LINUX
 #   secrets:   STEAM_USERNAME, STEAM_CONFIG_VDF (base64 of the build account's config.vdf after a Steam Guard login)
+# Until Steam: itch.io (tools/ci/itch_upload.sh): variable ITCH_TARGET (user/game of the private itch page), secret
+#   BUTLER_API_KEY; the itch app then auto-updates. Pushed to channels windows-staging, mac-staging, linux-staging.
 # Without the staging variables the build stops with a message (a staging build must never fall back to local);
 # without the Steam ones the builds are still attached to the run and the upload is skipped with a notice.
 name: Staging build
@@ -105,3 +107,32 @@ jobs:
           # (artifacts lose file modes: the Linux and Mac executables need theirs back)
           chmod +x build/linux/AshenCrown.x86_64 build/mac/*.app/Contents/MacOS/*
           sh tools/ci/steam_upload.sh staging "staging ${GITHUB_SHA::7}"
+
+  itch:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      ITCH_TARGET: ${{ vars.ITCH_TARGET }}
+      BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: itch settings present?
+        id: ready
+        run: |
+          if [ -n "$ITCH_TARGET" ] && [ -n "$BUTLER_API_KEY" ]; then
+            echo "go=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::itch.io upload skipped: ITCH_TARGET / BUTLER_API_KEY are not set yet"
+            echo "go=0" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/download-artifact@v4
+        if: steps.ready.outputs.go == '1'
+        with:
+          name: AshenCrown-staging
+          path: build
+      - name: Upload to itch.io (staging channels)
+        if: steps.ready.outputs.go == '1'
+        run: |
+          # (artifacts lose file modes: the Linux and Mac executables need theirs back)
+          chmod +x build/linux/AshenCrown.x86_64 build/mac/*.app/Contents/MacOS/*
+          sh tools/ci/itch_upload.sh "$ITCH_TARGET" staging "staging-${GITHUB_SHA::7}"
