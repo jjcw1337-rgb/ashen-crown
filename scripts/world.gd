@@ -837,12 +837,18 @@ func _place(node: Node3D, p: Vector3) -> Node3D:
 ## A waypoint stone (Data.WAYPOINT_ACTS point `id`) at `p`: the stone, its four pillar colliders, and
 ## where travellers arrive by it ("waypoint_<id>", 3 m in front; the zone's first stone is also
 ## "waypoint"). Any zone builder can place several. `cobble` paves the ground round it.
-func add_waypoint(id: String, p: Vector3, cobble := false) -> Inter:
-	var it := _inter("waypoint", "Waypoint", Vector3(p.x, 0, p.z), 2.4, Props.waypoint(null, Vector3.ZERO), {"wp": id})
-	for i in 4:
-		var a := TAU * i / 4.0 + PI * 0.25
-		add_circle(Vector3(p.x + cos(a) * 1.85, 0, p.z + sin(a) * 1.85), 0.3)
-	var arrive := Vector3(p.x, 0, p.z + 3.0)
+func add_waypoint(id: String, p: Vector3, cobble := false, grand := false) -> Inter:
+	# `grand`: the camp's large waypoint (WaypointGrand, blockout on test-waypoint) with its own colliders
+	var model: Node3D = WaypointGrand.build() if grand else Props.waypoint(null, Vector3.ZERO)
+	var it := _inter("waypoint", "Waypoint", Vector3(p.x, 0, p.z), 3.4 if grand else 2.4, model, {"wp": id})
+	if grand:
+		for s in WaypointGrand.SOLIDS:
+			add_circle(Vector3(p.x + s[0], 0, p.z + s[1]), s[2])
+	else:
+		for i in 4:
+			var a := TAU * i / 4.0 + PI * 0.25
+			add_circle(Vector3(p.x + cos(a) * 1.85, 0, p.z + sin(a) * 1.85), 0.3)
+	var arrive := Vector3(p.x, 0, p.z + (3.2 if grand else 3.0))
 	spawns["waypoint_" + id] = arrive
 	if not spawns.has("waypoint"):
 		spawns["waypoint"] = arrive
