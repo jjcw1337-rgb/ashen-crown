@@ -19,8 +19,10 @@ extends Node3D
 ##   lands the hero there (Game.land_boat): on the coast she moors at the pier, at an island the
 ##   island's zone loads with her moored at its jetty.
 
-const DRAFT := 1.0                 # metres of water she needs under her
-const DECK := Vector3(0.15, Boat.SHEER - 0.22, 2.25)   # where the hero stands, by the tiller
+var DRAFT := 1.0                   # metres of water she needs under her (Data.BOATS "need", else from her draft)
+var DECK := Vector3(0.15, Boat.SHEER - 0.22, 2.25)     # where the hero stands, by the tiller (Data.BOATS "deck")
+var kl := 1.0                      # her length and beam against the Gull's: the probes, wake and spray scale by them
+var kb := 1.0
 const DOCK_REACH := 10.0           # how close to a dock's mooring she must be to land
 const DOCK_SPEED := 3.5            # and how slow
 const ASTERN := -2.0               # her best speed going backward
@@ -48,6 +50,11 @@ func setup(g, boat_id: String) -> BoatRide:
 	game = g
 	id = boat_id
 	spec = Data.BOATS.get(id, Data.BOATS["gull"])
+	var dm := Boat.dims(id)
+	kl = float(dm["length"]) / Boat.LENGTH
+	kb = float(dm["beam"]) / Boat.BEAM
+	DRAFT = float(spec.get("need", maxf(1.0, float(dm["draft"]) * 1.8)))
+	DECK = spec.get("deck", Vector3(0.15, float(dm["sheer"]) - 0.22, 2.25 * kl))
 	name = "boat_ride"
 	model = Boat.model(id)
 	add_child(model)
@@ -70,8 +77,8 @@ func moor(p: Vector3, y: float) -> void:
 	global_position = Vector3(p.x, 0.0, p.z)
 	_float(0.0)
 	if inter == null or not is_instance_valid(inter):
-		inter = game.world._inter("boat", str(spec["name"]), Vector3(p.x, 0, p.z), 4.2, null, {"boat": id})
-		inter.set_meta("pick", 3.6)
+		inter = game.world._inter("boat", str(spec["name"]), Vector3(p.x, 0, p.z), 4.2 * kl, null, {"boat": id})
+		inter.set_meta("pick", 3.6 * kl)
 		inter.set_meta("pick_y", 1.2)
 	inter.global_position = Vector3(p.x, 0.0, p.z)
 
@@ -247,8 +254,8 @@ func _clearance(p: Vector3) -> float:
 	var oc: Ocean = game.world.get_node_or_null("Ocean")
 	if oc == null:
 		return 99.0
-	var f := forward()
-	var s := side()
+	var f := forward() * kl
+	var s := side() * kb
 	var least := 99.0
 	for off in [Vector3.ZERO, f * 3.9, f * 2.4 + s * 1.05, f * 2.4 - s * 1.05, -f * 3.6, s * 1.15, -s * 1.15, -f * 2.2 + s * 1.0, -f * 2.2 - s * 1.0]:
 		var q: Vector3 = p + off
@@ -299,11 +306,11 @@ func _effects(delta: float) -> void:
 	var v := absf(speed)
 	_wake.emitting = v > 0.6
 	_wake.amount_ratio = clampf(v / 8.0, 0.15, 1.0)
-	_wake.global_position = global_position - forward() * 3.7 + Vector3(0, -global_position.y + 0.12, 0)
+	_wake.global_position = global_position - forward() * 3.7 * kl + Vector3(0, -global_position.y + 0.12, 0)
 	_wake.global_rotation = Vector3(0, yaw, 0)
 	_spray.emitting = speed > 3.0
 	_spray.amount_ratio = clampf((speed - 3.0) / 5.0, 0.2, 1.0)
-	_spray.global_position = global_position + forward() * 3.6 + Vector3(0, 0.3, 0)
+	_spray.global_position = global_position + forward() * 3.6 * kl + Vector3(0, 0.3, 0)
 	_spray.global_rotation = Vector3(0, yaw, 0)
 
 ## Under sail: the open sea round her (the `sea` bed, louder with speed), her planks creaking as she works

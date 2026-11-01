@@ -31,6 +31,16 @@ var sailed := false
 
 func owns_boat(id: String) -> bool:
 	return boats.has(id)
+
+## The boat he sails: the dearest one he owns (Data.BOATS), or the Gull (moored at the pier before he buys her).
+func best_boat() -> String:
+	var best := "gull"
+	var price := -1
+	for b in boats:
+		if Data.BOATS.has(str(b)) and int(Data.BOATS[str(b)]["price"]) > price:
+			best = str(b)
+			price = int(Data.BOATS[str(b)]["price"])
+	return best
 var equipment := {}
 var inventory: Array = []
 var belt: Array = [null, null, null, null]

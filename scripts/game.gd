@@ -2004,7 +2004,7 @@ func _add_boat(zone: String, spawn: String) -> void:
 		return
 	var b := BoatRide.new()
 	world.add_child(b)
-	b.setup(self, "gull")
+	b.setup(self, hero.best_boat())
 	boat = b
 	if zone == "coast":
 		b.docks.append({"name": "the pier", "kind": "pier", "pos": Vector2(Coast.MOOR.x, Coast.MOOR.z), "yaw": PI * 0.5})
@@ -2140,11 +2140,20 @@ func _sail_camera(dt: float, sh: Vector3) -> void:
 ## Osric Saltmarrow, the shipwright on the Mournwater Coast: a word about the isles, then his boat
 ## (BoatShop). Once you own her, he tells you where she's moored.
 func _shipwright_talk(t: Inter) -> void:
-	var owned := hero.owns_boat("gull")
+	var owned := not hero.boats.is_empty()
 	var txt := "The Mournwater, they call it. Five isles out there, each a fair sail: the Verdant Isle with its great oak, the old ruins on their terraces, the Lost Isle with its black stone, the Bleak Isle where the fog never lifts, and the Merchant's Reach, empty since the night its people left. No bridge, no ferry. A boat, or nothing. I've built a good one."
 	if owned:
 		txt = "She's lying alongside the pier, ready when you are. Mind the rocks off the Bleak Isle, and bring her back in one piece."
-	ui.open_dialog(t.label, txt, [["See the boat" if not owned else "Look her over", func(): ui.boat_shop.open(t, "gull")], ["Leave", func(): pass]])
+	# one button per boat in Data.BOATS, cheapest first
+	var ids: Array = Data.BOATS.keys()
+	ids.sort_custom(func(a, b): return int(Data.BOATS[a]["price"]) < int(Data.BOATS[b]["price"]))
+	var btns: Array = []
+	for id in ids:
+		var bid := str(id)
+		var nm := str(Data.BOATS[bid]["name"])
+		btns.append([("Look over " if hero.owns_boat(bid) else "See ") + nm, func(): ui.boat_shop.open(t, bid)])
+	btns.append(["Leave", func(): pass])
+	ui.open_dialog(t.label, txt, btns)
 
 ## Buys a boat (Data.BOATS) from the shipwright: pays, owns it from now on (saved with the character).
 func buy_boat(id: String) -> bool:
@@ -2159,6 +2168,12 @@ func buy_boat(id: String) -> bool:
 	ui.big_message("%s is yours" % spec["name"])
 	ui.message("She's moored at the end of the pier. Click her to go aboard.", Color(0.75, 0.88, 1.0), 4.0)
 	save_game()
+	# a better boat takes the old one's place at the dock (not while he's out sailing)
+	if boat != null and is_instance_valid(boat) and not hero.aboard and boat.id != hero.best_boat():
+		boat.queue_free()
+		if boat.inter != null and is_instance_valid(boat.inter):
+			boat.inter.queue_free()
+		_add_boat(cur_zone, "")
 	return true
 
 func _interact(t: Inter) -> void:
