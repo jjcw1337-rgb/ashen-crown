@@ -267,10 +267,15 @@ func _fill() -> void:
 	for a in _acts():
 		if not used.has(a.get("group", "acts")):
 			used.append(a.get("group", "acts"))
+	if acts_override.is_empty() and not Data.WAYPOINT_BATTLEGROUNDS.is_empty():
+		used.append("battlegrounds")
 	groups_box.visible = used.size() > 1
 	for gdef in Data.WAYPOINT_GROUPS:
 		if used.has(gdef["id"]):
 			groups_box.add_child(_group_tab(gdef))
+	if sel_group == "battlegrounds":
+		_fill_battlegrounds()
+		return
 	for a in _acts():
 		if str(a.get("group", "acts")) == sel_group:
 			tabs_box.add_child(_tab(a))
@@ -301,6 +306,56 @@ func _fill() -> void:
 		next_box.add_child(_next_card(act, nxt))
 	_size_route.call_deferred()
 	route_line.queue_redraw()
+
+## The Battlegrounds group: no act tabs or route, a card per battleground (Data.WAYPOINT_BATTLEGROUNDS).
+func _fill_battlegrounds() -> void:
+	banner.texture = null
+	banner.modulate = Color(1, 1, 1)
+	banner_sub.text = "BATTLEGROUNDS"
+	banner_title.text = "Raids against other heroes"
+	banner_note.text = "A raid uses a fresh hero of the class you pick. Your character is saved and waits here."
+	seal.visible = false
+	for c in route_box.get_children():
+		route_box.remove_child(c)
+		c.queue_free()
+	for c in next_box.get_children():
+		c.queue_free()
+	for b in Data.WAYPOINT_BATTLEGROUNDS:
+		route_box.add_child(_bg_card(b))
+	_size_route.call_deferred()
+	route_line.queue_redraw()
+
+## One battleground: its name and mode, what happens there, and Enter (or why it can't be entered from here).
+func _bg_card(b: Dictionary) -> Control:
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", ui._box(Color(0.06, 0.05, 0.04, 0.92), Color(0.42, 0.33, 0.2), 1, 6, 12))
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	card.add_child(vb)
+	vb.add_child(ui._label(str(b["name"]), 18, INK, true))
+	vb.add_child(ui._label("%s  ·  up to %d heroes" % [str(b.get("kind", "Raid")), int(b.get("players", 16))], 12, CYAN))
+	for line in b.get("lines", []):
+		var l := ui._label(str(line), 13, DIM)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.custom_minimum_size = Vector2(300, 0)
+		vb.add_child(l)
+	var why := ""
+	if game.net.active:
+		why = "Leave co-op to enter."
+	if why != "":
+		vb.add_child(ui._label(why, 13, Color(1.0, 0.55, 0.4)))
+	else:
+		var go := Button.new()
+		go.text = "Enter the Battlegrounds"
+		go.custom_minimum_size = Vector2(0, 38)
+		go.focus_mode = Control.FOCUS_NONE
+		go.pressed.connect(func():
+			Sfx.play("portal", -6.0, 0.9)
+			close()
+			game.waypoint_battleground(str(b["id"])))
+		vb.add_child(go)
+	return card
 
 func _boss_name(act: Dictionary) -> String:
 	var b: String = act.get("boss", "")

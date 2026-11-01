@@ -46,6 +46,18 @@ static func act_info(act: int, run: int) -> Dictionary:
 const WAYPOINT_GROUPS := [
 	{"id": "acts", "name": "Acts"},
 	{"id": "ancient", "name": "Ancient Levels"},
+	{"id": "battlegrounds", "name": "Battlegrounds"},
+]
+
+## Battlegrounds the waypoint window offers (its "Battlegrounds" tab group; shown once this has an entry).
+## Each card hands off to the Battlegrounds screen (Game.waypoint_battleground: saves, back to the title's
+## Battlegrounds window, a fresh raid hero as from the title). A new battleground is one entry here.
+##   id · name · kind (its mode, shown under the name) · lines (what the card says) · players (most at once)
+const WAYPOINT_BATTLEGROUNDS := [
+	{"id": "raid", "name": "The Extraction Raid", "kind": "Extraction", "players": 16,
+		"lines": ["A walled ruin of broken walls and graves, held by the restless dead.",
+			"Loot what you can and reach an Extraction Portal to keep it in your Battlegrounds stash.",
+			"Fall, and what you carried stays on the ground."]},
 ]
 
 const WAYPOINT_ACTS := [

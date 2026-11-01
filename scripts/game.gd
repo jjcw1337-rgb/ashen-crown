@@ -1418,6 +1418,19 @@ func default_name(cls: String) -> String:
 	var pool: Array = names.get(cls, names["knight"])
 	return str(pool[randi() % pool.size()])
 
+## The waypoint window's Battlegrounds card (Data.WAYPOINT_BATTLEGROUNDS): save the story character, go back to
+## the title and open its Battlegrounds window (class, server, stash), so a raid starts exactly as from the title.
+## Not from co-op (the party's host would lose a player mid-act) or from a raid.
+func waypoint_battleground(_id: String) -> void:
+	if bg_mode:
+		return
+	if net.active:
+		ui.message("Leave co-op to enter the Battlegrounds.", Color(1.0, 0.6, 0.45))
+		return
+	ui.close_all()
+	await exit_to_title()
+	ui.open_battlegrounds()
+
 ## Back to the title screen to pick another character (the pause menu's "Save and Exit to Title").
 func exit_to_title() -> void:
 	save_game()
