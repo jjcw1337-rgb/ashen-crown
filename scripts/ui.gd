@@ -2805,7 +2805,7 @@ class Flames extends Control:
 		m.shader = sh
 		if book != null:
 			m.set_shader_parameter("flip_tex", book)
-			m.set_shader_parameter("grid", FireFx.GRID)
+			m.set_shader_parameter("grid", FireFx.grid_of("body"))
 		_fire.material = m
 		add_child(_fire)
 		_front = Control.new()

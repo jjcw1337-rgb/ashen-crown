@@ -20,7 +20,8 @@ const BOOKS := {
 	"smoke": "res://assets/textures/fx/smoke_body.png",
 }
 const LEGACY_BOOK := "res://assets/textures/fx/fire_flipbook.png"
-const GRID := Vector2(6, 6)          # frames per book: 6 x 6
+const GRID := Vector2(6, 6)          # frames per book unless GRIDS says otherwise
+const GRIDS := {"body": Vector2(8, 8)}   # the body book holds 64 frames
 const FPS := 30.0
 
 ## Each kind of fire: its book, how many flames per second (per metre of size), their life, how wide and tall a
@@ -53,6 +54,13 @@ static func guess(size: float, light: bool) -> String:
 		return "brazier" if light else "torch"
 	return "weapon" if not light else "torch"
 
+static func grid_of(name: String) -> Vector2:
+	if name != "body" and not ResourceLoader.exists(BOOKS.get(name, "")):
+		return grid_of("body")        # a missing book plays the body book
+	if name == "body" and not ResourceLoader.exists(BOOKS["body"]):
+		return GRID                   # the legacy flipbook is 6 x 6
+	return GRIDS.get(name, GRID)
+
 static func book(name: String) -> Texture2D:
 	if not _books.has(name):
 		var t: Texture2D = null
@@ -80,7 +88,7 @@ static func flame_mat(bk: String, life: float, hot: float, tint: float) -> Shade
 		m = ShaderMaterial.new()
 		m.shader = InfernalFx.shader("flipfire")
 		m.set_shader_parameter("flip_tex", tex)
-		m.set_shader_parameter("grid", GRID)
+		m.set_shader_parameter("grid", grid_of(bk))
 		m.set_shader_parameter("frames_per_life", FPS * life)
 		m.set_shader_parameter("hot", hot)
 		m.set_shader_parameter("tint", tint)

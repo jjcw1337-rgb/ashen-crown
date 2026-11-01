@@ -283,7 +283,7 @@ static func tongue_mat(life := 0.6) -> ShaderMaterial:
 	if fb != null:
 		m.shader = shader("flipfire")
 		m.set_shader_parameter("flip_tex", fb)
-		m.set_shader_parameter("grid", FLIP_GRID)
+		m.set_shader_parameter("grid", FireFx.grid_of("tongue"))
 		m.set_shader_parameter("frames_per_life", FLIP_FPS * life)
 		return _palette(m)
 	m.shader = shader("tongue")
