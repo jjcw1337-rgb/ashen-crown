@@ -176,11 +176,40 @@ func _sway_hair(fwd_speed: float, side_speed: float, t: float, dt: float) -> voi
 	elif dead_t >= 0.0:
 		dead_t = -1.0
 		_cooling(dt)
+	if style == "fists" and a >= 0.0 and not die:
+		_fists_pose(a, t)
 	_gait += dt * (2.2 + 4.5 * clampf(g, 0.0, 1.2)) * clampf(g * 3.0, 0.0, 1.0)
 	_footfalls(dt, g)
 	_wings(a, style, hit, die, g, t, dt, started, struck, yaw_v)
 	_tail(a, style, die, g, t, dt, started, struck, yaw_v, fwd_speed, side_speed)
 	_cloth(g, t, dt, die, fwd_speed, side_speed, yaw_v)
+
+## Molten Fists over its clip (Demon.SHOTS "fists" snaps into the chamber and holds it): through the gather he
+## rears back, chest out and head up, twisting into it with a strained tremble; through the blow he folds down
+## over his fists, driving them at the ground ahead, then straightens with the recovery. Turns in the rig frame
+## (-z ahead: a negative turn about x bends forward) laid over whatever the clip has the bone doing.
+var _fist_bones := {}
+func _fists_pose(a: float, t: float) -> void:
+	if _fist_bones.is_empty():
+		for n in ["Spine02", "Spine01", "Spine", "Head", "LeftArm", "RightArm"]:
+			_fist_bones[n] = skel.find_bone(n)
+	var imp := Anim.impact_at("fists")
+	var gather := smoothstep(0.02, 0.17, a) * (1.0 - smoothstep(imp - 0.08, imp - 0.01, a))
+	var drive := smoothstep(imp - 0.06, imp + 0.01, a) * (1.0 - smoothstep(imp + 0.12, 0.97, a))
+	var trem := gather * smoothstep(0.15, imp - 0.1, a) * (sin(t * 53.0) * 0.6 + sin(t * 37.0) * 0.4) * 0.018
+	_rig_turn("Spine02", Quaternion(Vector3.RIGHT, 0.13 * gather - 0.3 * drive) * Quaternion(Vector3.UP, 0.15 * gather))
+	_rig_turn("Spine01", Quaternion(Vector3.RIGHT, 0.08 * gather - 0.17 * drive + trem))
+	_rig_turn("Spine", Quaternion(Vector3.RIGHT, 0.05 * gather - 0.1 * drive))
+	_rig_turn("Head", Quaternion(Vector3.RIGHT, 0.16 * gather - 0.12 * drive))
+	_rig_turn("LeftArm", Quaternion(Vector3.RIGHT, -0.26 * drive))
+	_rig_turn("RightArm", Quaternion(Vector3.RIGHT, -0.26 * drive))
+
+func _rig_turn(bone: String, q: Quaternion) -> void:
+	var b: int = _fist_bones.get(bone, -1)
+	if b < 0 or q.is_equal_approx(Quaternion.IDENTITY):
+		return
+	var gq: Quaternion = (R * skel.get_bone_global_pose(b).basis.orthonormalized()).get_rotation_quaternion()
+	skel.set_bone_pose_rotation(b, skel.get_bone_pose_rotation(b) * (gq.inverse() * q * gq))
 
 ## Each foot's bone coming down hard while he moves: a thump (the camera), a jolt into the cloth and the tail.
 func _footfalls(dt: float, g: float) -> void:

@@ -57,7 +57,9 @@ const SHOTS := {
 	"thrust": {"style": "thrust", "clip": "hurl", "keys": [[0.0, 0.5], [0.52, 1.75], [0.8, 2.3], [1.0, 3.3]]},
 	# his skills (DemonSkills): the punch, the charge (the clip loops through the run), the slam, the throw (the
 	# boulder leaves at the release), the grab (seized at 0.25, held up, smashed at 0.5), the roar and the stomp
-	"fists": {"style": "fists", "clip": "claw", "keys": [[0.0, 0.45], [0.3, 1.0], [0.48, 1.33], [0.7, 1.7], [1.0, 2.4]]},
+	# Molten Fists: snaps into the chamber, holds it while the fists catch fire (DemonFistsFx), then the blow at
+	# full speed and a lingering follow-through (the blow's frame unchanged)
+	"fists": {"style": "fists", "clip": "claw", "keys": [[0.0, 0.45], [0.15, 0.95], [0.4, 1.07], [0.48, 1.33], [0.62, 1.5], [1.0, 2.4]]},
 	"icharge": {"style": "icharge", "clip": "charge", "keys": [[0.0, 0.0], [1.0, 1.5]]},
 	"cslam": {"style": "cslam", "clip": "slam", "keys": [[0.0, 0.3], [0.3, 1.3], [0.58, 2.75], [1.0, 3.0]]},
 	"hurl": {"style": "hurl", "clip": "hurl", "keys": [[0.0, 0.3], [0.52, 1.75], [0.8, 2.4], [1.0, 3.3]]},

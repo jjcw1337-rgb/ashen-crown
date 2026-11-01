@@ -7,7 +7,8 @@ extends RefCounted
 ## near-black of cooled crust (CRUST).
 ##
 ## `play` is the skills' fx events (SkillFx: the same on the caster and on his puppet):
-##  Molten Fists: "impact" {y: yaw, r: reach, t: the foes set alight} (the ground cracks open in a wedge)
+##  Molten Fists: "cast" (the gather) and "impact" {y: yaw, r: reach, t: the foes set alight}: DemonFistsFx
+##    ("Hellbrand": the hellfire gauntlets, the sigil, the rift, the obsidian fangs)
 ##  Infernal Charge: "start" {d} (embers off his hooves, h.fxs["icharge"]), "hit" {p, d}, "trail" {ps: the lava patches,
 ##    x: how long they burn}, "end"
 ##  Cataclysm Slam: "impact" {p: the blow, y, ps: every fissure point, n: fissures, x: hit any} (the ring and the
@@ -36,24 +37,10 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 	var root: Node3D = h.game.world.fx_root
 	var pos := h.global_position
 	match [str(ev["s"]), str(ev["e"])]:
-		["fists", "cast"], ["icharge", "cast"], ["cslam", "cast"], ["hurl", "cast"], ["grip", "cast"]:
+		["fists", "cast"], ["fists", "impact"]:
+			return DemonFistsFx.play(h, ev)
+		["icharge", "cast"], ["cslam", "cast"], ["hurl", "cast"], ["grip", "cast"]:
 			pass
-		["fists", "impact"]:
-			var yaw: float = float(ev["y"])
-			var reach: float = float(ev.get("r", DemonSkills.FISTS_R))
-			var fwd := Vector3(-sin(yaw), 0, -cos(yaw))
-			var at := pos + fwd * 0.6
-			at.y = h.game.world.height_at(at.x, at.z)
-			var d := lava_decal(root, at + fwd * reach * 0.42, reach * 0.55, 1.6, 0.25, yaw, deg_to_rad(DemonSkills.FISTS_HALF + 8.0))
-			d.rotation.y = yaw
-			Fx.burst(root, pos + Vector3(0, 0.3, 0) + fwd * 1.2, EMBER, 28, 5.0, 0.07, 0.5, true, -4.0, 50.0, fwd + Vector3(0, 0.5, 0))
-			Fx.burst(root, pos + Vector3(0, 0.15, 0) + fwd * 1.0, Color(0.35, 0.3, 0.25, 0.6), 14, 2.5, 0.3, 0.5, false, -2.0, 70.0, fwd + Vector3(0, 0.6, 0))
-			Fx.flash(root, pos + Vector3(0, 0.6, 0) + fwd * 1.4, EMBER, 2.4, 0.25, 5.0)
-			for e in ev.get("t", []):
-				ignite(root, e)
-			SkillFx.snd(h, "hellclaw", -2.0, 0.9)
-			SkillFx.snd(h, "slam", -9.0, 1.2)
-			SkillFx.shake(h, 0.2 if not (ev.get("t", []) as Array).is_empty() else 0.1)
 		["icharge", "start"]:
 			_end_charge(h)
 			var au := Fx.aura(h.rig, EMBER, 40, 1.8, 0.1, 0.5, 1.2, 0.45, 60.0, Vector3(0, 0.3, 0.3))
@@ -267,6 +254,7 @@ static func _set_heat(h: Hero, k: float) -> void:
 static func update(h: Hero, delta: float) -> void:
 	if not h.is_demon():
 		return
+	DemonFistsFx.update(h, delta)
 	var world = h.game.world
 	var root: Node3D = world.fx_root
 	if h.fxs.has("icharge"):
@@ -343,6 +331,7 @@ static func update(h: Hero, delta: float) -> void:
 
 ## Everything of his that lingers is gone (death, a class change, a zone change).
 static func clear(h: Hero) -> void:
+	DemonFistsFx.clear(h)
 	_end_charge(h)
 	_end_grip(h, false)
 	_end_wrath(h, false)

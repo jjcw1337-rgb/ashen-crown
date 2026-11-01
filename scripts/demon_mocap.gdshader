@@ -15,12 +15,17 @@ uniform float cool = 0.0;        // 1 = the lava gone dark (death)
 uniform float phase_amt = 0.0;   // 1 = in the Underworld
 uniform float lava_base = 1.0;   // the lava's light at rest
 uniform float wrath = 0.0;       // 1 = Wrath of the Pit: the cracks blaze white-hot
+uniform float brand = 0.0;       // Molten Fists' gather (DemonFistsFx): the magma runs down into his fists
+uniform vec3 hand_l = vec3(0.0, -100.0, 0.0);   // his fists, world space
+uniform vec3 hand_r = vec3(0.0, -100.0, 0.0);
 varying float v_wing;
+varying vec3 v_wpos;
 
 float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 
 void vertex(){
 	v_wing = COLOR.g;
+	v_wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 
 void fragment(){
@@ -39,6 +44,16 @@ void fragment(){
 	// white heat: the cracks go to yellow-white and far brighter, the skin round them warms
 	em = mix(em, vec3(1.0, 0.92, 0.7) * hot * (4.5 + 1.5 * breathe) * (1.0 - cool), wrath);
 	em += vec3(1.0, 0.45, 0.15) * wrath * 0.12 * (1.0 - cool);
+	// Molten Fists: pulses of magma run down the arms toward the fists (the wave's phase falls toward them), and the
+	// cracks round the fists burn white, the skin there reddening
+	if (brand > 0.001) {
+		float dh = min(distance(v_wpos, hand_l), distance(v_wpos, hand_r));
+		float near = 1.0 - smoothstep(0.08, 0.7, dh);
+		float flow = smoothstep(0.5, 1.0, sin(dh * 15.0 + TIME * 24.0)) * (1.0 - smoothstep(0.3, 1.5, dh));
+		float bk = brand * (near * 1.4 + flow);
+		em += mix(ember * 3.0, vec3(1.0, 0.9, 0.7) * 5.0, clamp(near * brand, 0.0, 1.0)) * hot * bk * (1.0 - cool);
+		em += vec3(0.75, 0.04, 0.03) * near * brand * 0.3 * (1.0 - cool);
+	}
 	// the membrane lets a little light through, warm from the body
 	em += ember * v_wing * 0.08 * (1.0 - cool) * (0.6 + 0.4 * breathe);
 	// the Underworld: a shadow of himself, dithered away, violet through the cracks
