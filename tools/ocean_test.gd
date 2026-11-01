@@ -69,7 +69,7 @@ func _run() -> void:
 			var pp: PackedVector3Array = w.find_path(sp, w.spawns[k])
 			if pp.size() > 0:
 				reach += 1
-		print("[O] %-20s built in %5d ms, start blocked %s, places %s, reachable on foot %d/%d, exit back %s" % [isle["name"], ms(t0), w.solid_at(sp.x, sp.z, 0.3), pois, reach, pois.size(), w.exits.size() == 1])
+		print("[O] %-20s built in %5d ms, start blocked %s, places %s, reachable on foot %d/%d, boat at the jetty %s" % [isle["name"], ms(t0), w.solid_at(sp.x, sp.z, 0.3), pois, reach, pois.size(), g.boat != null])
 	t0 = Time.get_ticks_msec()
 	await g.load_zone(0, "coast", "from_isle_lost")
 	print("[O] back to the coast in %d ms (cached ground and sea map)" % ms(t0))

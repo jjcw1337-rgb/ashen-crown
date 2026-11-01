@@ -24,6 +24,10 @@ var talents := {}            # talent id -> ranks taken (Talents); a point per l
 var gold := 120
 ## Boats this character owns (Data.BOATS ids; bought from the shipwright on the Mournwater Coast, saved).
 var boats: Array = []
+## Aboard a boat (BoatRide): he stands at the tiller; the boat moves him, so his own moving stops.
+var aboard := false
+## He has sailed before (the controls guide shows the first time only; saved).
+var sailed := false
 
 func owns_boat(id: String) -> bool:
 	return boats.has(id)
@@ -1362,6 +1366,17 @@ func _process(delta: float) -> void:
 	life = minf(max_life, life + regen * delta)
 	mana = minf(max_mana, mana + (1.0 + ene * 0.06) * delta)
 
+	if aboard:
+		# at the tiller: standing, swaying a little with the boat; BoatRide places him
+		move_amt = move_toward(move_amt, 0.0, delta * 6.0)
+		block_amt = 0.0
+		var stand := {"time": anim_time, "phase": phase, "move": move_amt, "atk": -1.0, "style": atk_style, "block": 0.0, "hit": 0.0, "look": 0.0}
+		if not puppet:
+			carry.update(self, delta)
+			stand.merge(carry.anim_state(), true)
+		Anim.pose(rig, stand)
+		last_pose = stand
+		return
 	var want_block := blocking and atk_t < 0.0 and charge_t < 0.0
 	block_amt = move_toward(block_amt, 1.0 if (want_block or block_flash > 0.0) else 0.0, delta * 9.0)
 	var vel := Vector3.ZERO
@@ -2335,7 +2350,7 @@ func unequip(slot: String) -> void:
 
 func to_save() -> Dictionary:
 	return {"cls": cls, "level": level, "xp": xp, "str": str_, "dex": dex, "vit": vit, "ene": ene, "points": stat_points, "gold": gold,
-		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "talents": talents, "boats": boats}
+		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "talents": talents, "boats": boats, "sailed": sailed}
 
 func from_save(d: Dictionary) -> void:
 	set_class(str(d.get("cls", "knight")))
@@ -2348,6 +2363,7 @@ func from_save(d: Dictionary) -> void:
 	stat_points = int(d.get("points", 0))
 	gold = int(d.get("gold", 0))
 	boats = (d.get("boats", []) as Array).filter(func(b): return Data.BOATS.has(str(b))) if d.get("boats") is Array else []
+	sailed = bool(d.get("sailed", false))
 	show_helm = bool(d.get("show_helm", true))
 	equipment = d.get("equipment", {})
 	for s in Items.EQUIP_SLOTS:

@@ -70,6 +70,11 @@ var xp_bonus_t := 0.0
 var shops := {}
 var rng := RandomNumberGenerator.new()
 var shot_path := ""
+## The boat in this zone (coast.gd / isles.gd zones; BoatRide): moored, or sailing with the hero aboard.
+var boat: BoatRide = null
+var sail_blend := 0.0          # 0 = the isometric camera, 1 = the sailing camera behind and above her
+var sail_cam_yaw := 0.0
+var water_pt := Vector3.ZERO   # where the mouse meets the sea's surface (steering by mouse)
 var shot_spawn := ""
 var shot_zone := "town"
 var shot_frames := 0
@@ -939,6 +944,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		birds.game = self
 		birds.name = "birds"
 		world.add_child(birds)
+	_add_boat(zone, spawn)
 	zone_music()
 	loading.visible = false
 	_busy = false
@@ -1516,6 +1522,133 @@ func _vendor_talk(t: Inter) -> void:
 		btns.append(["Leave", func(): pass])
 		ui.open_dialog(t.label, lines.get(role, ""), btns)
 
+# ---------------------------------------------------------------- the boat (boat_ride.gd)
+func sailing() -> bool:
+	return boat != null and is_instance_valid(boat) and boat.sailing
+
+## A sea zone's boat. On the coast she lies alongside the pier (for sale until the hero owns her); if he
+## arrives sailing from an island ("sail_from_<id>") she's off that island's jetty with him at the tiller.
+## On an island she's moored at its jetty: boarding her sails him back out onto the Mournwater.
+func _add_boat(zone: String, spawn: String) -> void:
+	boat = null
+	sail_blend = 0.0
+	hero.aboard = false
+	ui.set_sail_prompt("")
+	if not world.sea:
+		return
+	var b := BoatRide.new()
+	world.add_child(b)
+	b.setup(self, "gull")
+	boat = b
+	if zone == "coast":
+		b.docks.append({"name": "the pier", "kind": "pier", "pos": Vector2(Coast.MOOR.x, Coast.MOOR.z), "yaw": PI * 0.5})
+		for isle in Isles.ISLANDS:
+			var m := isle_mooring(isle, Vector2.ZERO, true)
+			b.docks.append({"name": isle["name"], "kind": "isle", "id": isle["id"], "pos": Vector2(m.x, m.z), "yaw": m.w})
+		if spawn.begins_with("sail_from_"):
+			var isle := Isles.get_isle(spawn.trim_prefix("sail_from_"))
+			var m := isle_mooring(isle, Vector2.ZERO, true)
+			b.moor(Vector3(m.x, 0, m.z), m.w)
+			b.board(hero)
+			sail_blend = 1.0
+			sail_cam_yaw = b.yaw
+			cam_target = b.global_position
+		else:
+			b.moor(Coast.MOOR, PI * 0.5)
+	else:
+		var isle := Isles.get_isle(Isles.id_of(zone))
+		var m := isle_mooring(isle, Vector2.ZERO, false)
+		b.moor(Vector3(m.x, 0, m.z), m.w)
+
+## Where a boat lies at an island's jetty (alongside its end), bow out toward the dock: x, z and her
+## yaw in w. `coast`: in the coast's frame; else in the island's own zone (the island at the origin).
+func isle_mooring(isle: Dictionary, _o: Vector2, coast: bool) -> Vector4:
+	var l := Isles.jetty_end(isle) + Vector2(-3.0, 3.4)
+	var p := Isles.to_coast(isle, l)
+	if not coast:
+		p -= Isles.centre(isle)
+	var u: Vector2 = Isles.axes(isle)[0]
+	return Vector4(p.x, 0.0, p.y, atan2(-u.x, -u.y))
+
+func _boat_clicked() -> void:
+	if boat == null:
+		return
+	if not hero.owns_boat(boat.id):
+		ui.message("That's Osric's boat. Talk to him if you want her.", Color(0.85, 0.75, 0.5))
+		return
+	if cur_zone.begins_with("isle_"):
+		# back out to sea: the coast loads with her off this island's jetty and him at the tiller
+		travel(cur_act, "coast", "sail_from_" + Isles.id_of(cur_zone))
+		return
+	boat.board(hero)
+	Sfx.play("click")
+	if not hero.sailed:
+		hero.sailed = true
+		ui.open_dialog("Sailing", "W  sail on; she holds her speed when you let go.\nS  ease off, then back her.\nA / D  steer.   Space  heave to.\nOr hold the left mouse button on the water to sail toward it.\n\nBring her alongside an island's jetty (or back to this pier), slow, and press E to step ashore.", [["Cast off", func(): pass]])
+	else:
+		ui.message("Cast off: W to sail, A / D to steer", Color(0.75, 0.88, 1.0))
+
+## Keys and mouse to the boat while sailing.
+func _sail_input() -> void:
+	var thr := 0
+	if Input.is_key_pressed(KEY_W): thr += 1
+	if Input.is_key_pressed(KEY_S): thr -= 1
+	var steer := 0.0
+	if Input.is_key_pressed(KEY_A): steer -= 1.0
+	if Input.is_key_pressed(KEY_D): steer += 1.0
+	var pt: Variant = null
+	if lmb_held and not ui.any_panel_open():
+		_update_hover()
+		pt = water_pt
+	boat.drive = {"throttle": thr, "steer": steer, "stop": Input.is_key_pressed(KEY_SPACE), "point": pt}
+	var d := boat.dock_near()
+	ui.set_sail_prompt(("Step ashore at " + str(d["name"])) if not d.is_empty() else "")
+
+## Steps ashore where she is, if she's at a dock and slow (E, or the prompt's button).
+func try_land() -> bool:
+	if not sailing():
+		return false
+	var d := boat.dock_near()
+	if d.is_empty():
+		ui.message("Bring her alongside a jetty first, and slow", Color(0.75, 0.88, 1.0))
+		return false
+	land_boat(d)
+	return true
+
+func land_boat(d: Dictionary) -> void:
+	ui.set_sail_prompt("")
+	boat.leave(hero)
+	if d["kind"] == "pier":
+		boat.moor(Coast.MOOR, PI * 0.5)
+		var on := Vector3(Coast.DOCK.x + 1.0, 0, -0.6)
+		hero.global_position = Vector3(on.x, world.height_at(on.x, on.z), on.z)
+		cam_target = hero.global_position
+	else:
+		travel(cur_act, Isles.zone_of(d["id"]), "jetty")
+
+## The sailing camera: behind her and high, looking past the bow to the horizon so the isles show
+## ahead; it eases in when he takes the tiller and back to the isometric view when he steps ashore.
+func _sail_camera(dt: float, sh: Vector3) -> void:
+	var want := 1.0 if sailing() else 0.0
+	sail_blend = move_toward(sail_blend, want, dt / 1.3)
+	if sail_blend <= 0.0:
+		cam.basis = Basis.looking_at(Vector3(0, 1.0, 0) - CAM_OFFSET, Vector3.UP)
+		return
+	if boat == null or not is_instance_valid(boat):
+		return
+	sail_cam_yaw = lerp_angle(sail_cam_yaw, boat.yaw, clampf(dt * 1.6, 0.0, 1.0))
+	var f := Vector3(-sin(sail_cam_yaw), 0, -cos(sail_cam_yaw))
+	var bp := Vector3(boat.global_position.x, 0, boat.global_position.z)
+	cam_target = bp
+	cam_pivot.position = bp
+	var k := smoothstep(0.0, 1.0, sail_blend)
+	var iso_pos := cam_pivot.global_position + CAM_OFFSET * zoom
+	var iso_look := cam_pivot.global_position + Vector3(0, 1.0, 0)
+	var sail_pos := bp - f * 19.0 * zoom + Vector3(0, 8.5 * zoom, 0)
+	var sail_look := bp + f * 22.0 + Vector3(0, 1.5, 0)
+	cam.global_position = iso_pos.lerp(sail_pos, k) + sh
+	cam.look_at(iso_look.lerp(sail_look, k), Vector3.UP)
+
 ## Osric Saltmarrow, the shipwright on the Mournwater Coast: a word about the isles, then his boat
 ## (BoatShop). Once you own her, he tells you where she's moored.
 func _shipwright_talk(t: Inter) -> void:
@@ -1568,6 +1701,8 @@ func _interact(t: Inter) -> void:
 			# a quest to hand in or on offer comes before their trade (Quests.talk)
 			if not quests.talk(str(t.data.get("role", "")), t.label, rest):
 				rest.call()
+		"boat":
+			_boat_clicked()
 		"stash":
 			ui.open_stash()
 			ui.trade_with = t
@@ -1937,6 +2072,8 @@ func _update_hover() -> void:
 	var o := cam.project_ray_origin(mp)
 	var d := cam.project_ray_normal(mp)
 	ground_pt = _ground_from_ray(o, d)
+	if absf(d.y) > 0.0001:
+		water_pt = o + d * (-o.y / d.y)
 	var best = pick_enemy(o, d)
 	if best == null:
 		for g in world.items_root.get_children():
@@ -1951,8 +2088,8 @@ func _update_hover() -> void:
 		for it in world.interactables:
 			if not is_instance_valid(it) or (it.kind == "flower" and it.used):
 				continue
-			var c2: Vector3 = it.global_position + Vector3(0, 1.0, 0)
-			if (c2 - o).cross(d).length() < 1.1:
+			var c2: Vector3 = it.global_position + Vector3(0, float(it.get_meta("pick_y")) if it.has_meta("pick_y") else 1.0, 0)
+			if (c2 - o).cross(d).length() < (float(it.get_meta("pick")) if it.has_meta("pick") else 1.1):
 				best = it
 				break
 	if hovered != best:
@@ -1986,12 +2123,14 @@ func _unhandled_input(ev: InputEvent) -> void:
 				_update_hover()
 				# a skill other than Attack on left mouse casts on a foe (or anywhere with Shift);
 				# clicking the ground, an item or an NPC still walks there
-				if hero.bound("lmb") not in ["attack", ""] and (hovered is Enemy or Input.is_key_pressed(KEY_SHIFT)):
+				if sailing():
+					pass                      # steering: Game._sail_input reads the held button
+				elif hero.bound("lmb") not in ["attack", ""] and (hovered is Enemy or Input.is_key_pressed(KEY_SHIFT)):
 					_use_bind("lmb", true)
 				else:
 					_click_world()
 		elif ev.button_index == MOUSE_BUTTON_RIGHT:
-			if ev.pressed and not paused:
+			if ev.pressed and not paused and not sailing():
 				rmb_held = true
 				_use_bind("rmb", true)
 		elif ev.button_index == MOUSE_BUTTON_WHEEL_UP and ev.pressed:
@@ -2011,6 +2150,10 @@ func _unhandled_input(ev: InputEvent) -> void:
 				cast_town_portal()
 			KEY_1, KEY_2, KEY_3, KEY_4:
 				hero.drink(ev.keycode - KEY_1)
+			KEY_E when sailing():
+				try_land()
+			KEY_Q, KEY_E, KEY_R, KEY_F, KEY_G, KEY_V when sailing():
+				pass
 			KEY_Q, KEY_E, KEY_R, KEY_F, KEY_G, KEY_V:
 				if not ui.skills_hotkey(OS.get_keycode_string(ev.keycode)):
 					_use_bind(OS.get_keycode_string(ev.keycode), true)
@@ -2117,20 +2260,24 @@ func _process(delta: float) -> void:
 	if playing and not paused and not _busy:
 		_update_hover()
 		_check_ambushes()
-		hero.blocking = skill_held("block") and not ui.any_panel_open()
+		if sailing():
+			_sail_input()
+		hero.blocking = skill_held("block") and not ui.any_panel_open() and not sailing()
 		for slot in Hero.BIND_SLOTS:
+			if sailing():
+				break
 			if slot != "lmb" and slot_held(slot):
 				_use_bind(slot, false)
 		hero.sprint = Input.is_key_pressed(KEY_SHIFT)
-		if Input.is_key_pressed(KEY_SPACE):
+		if Input.is_key_pressed(KEY_SPACE) and not sailing():
 			hero.swipe_attack(hero.aim_ahead(hero.reach() + 1.5))
 		var wasd := Vector3.ZERO
 		if Input.is_key_pressed(KEY_W): wasd.z -= 1
 		if Input.is_key_pressed(KEY_S): wasd.z += 1
 		if Input.is_key_pressed(KEY_A): wasd.x -= 1
 		if Input.is_key_pressed(KEY_D): wasd.x += 1
-		hero.cmd_wasd(wasd)
-		if lmb_held and not hero.dead:
+		hero.cmd_wasd(wasd if not sailing() else Vector3.ZERO)
+		if lmb_held and not hero.dead and not sailing():
 			lmb_repeat -= delta
 			if lmb_repeat <= 0.0:
 				lmb_repeat = 0.12
@@ -2149,7 +2296,7 @@ func _process(delta: float) -> void:
 				if g.item["base"] == "gold" and g._toss >= 1.0 and not hero.dead:
 					if g.global_position.distance_to(hero.global_position) < 1.0:
 						_pickup(g)
-		if exit_grace <= 0.0 and not hero.dead:
+		if exit_grace <= 0.0 and not hero.dead and not hero.aboard:
 			for ex in world.exits:
 				var dd: Vector3 = ex["pos"] - hero.global_position
 				if Vector2(dd.x, dd.z).length() < ex["radius"]:
@@ -2183,6 +2330,7 @@ func _process(delta: float) -> void:
 		shake = maxf(0.0, shake - real_dt * 2.2)
 		var sh := Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake * shake * 0.35
 		cam.position = CAM_OFFSET * zoom * lerpf(1.0, focus_zoom, fw) + sh
+		_sail_camera(real_dt, sh)
 		RenderingServer.global_shader_parameter_set("player_pos", hero.global_position)
 		if grass_field:
 			grass_field.center = cam_target

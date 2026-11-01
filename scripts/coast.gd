@@ -19,7 +19,7 @@ const DOCK := Vector2(0.0, 0.0)         # the end of the pier (where boats tie u
 const PIER_ROOT := Vector2(17.0, 0.0)
 const SHED := Vector2(25.0, -10.0)      # the shipwright's boathouse
 const SHED_YAW := 0.35                  # it opens toward the path and the pier (+z of its frame turned by this)
-const MOOR := Vector3(5.0, 0.0, -3.4)   # where a boat lies alongside the pier (north side), bow out to sea
+const MOOR := Vector3(-5.6, 0.0, -2.3)  # where a boat lies off the pier's end, bow out to sea (open water every way)
 const EXIT := Vector2(68.0, 0.0)        # the path back to the camp
 
 static var _n: FastNoiseLite
@@ -273,7 +273,7 @@ static func _pier(w: World) -> void:
 ## Osric Saltmarrow's boatyard: an open timber boathouse (posts, a plank roof, a back wall hung with
 ## tools, nets and oars), his workbench and a painted sign, a lantern; Osric in front of it (Inter
 ## "vendor", role "shipwright": he talks, then shows the boat, Game._vendor_talk / BoatShop); and the
-## boat he sells lying alongside the pier, where a bought one waits too.
+## boat he sells lies alongside the pier (Game._add_boat), where a bought one waits too.
 static func _boatyard(w: World) -> void:
 	var g := Props.footprint(Models.N(null, "boathouse"), Vector2(3.6, 2.6))
 	var wd := Props.wood()
@@ -337,14 +337,7 @@ static func _boatyard(w: World) -> void:
 	var osric := w._npc(V["shipwright"], look, op, "shipwright", SHED_YAW + PI)
 	osric.radius = 2.0
 	w.spawns["shipwright"] = op + front * Vector3(0, 0, 2.0)
-	# the boat for sale, lying alongside the pier
-	var boat := Boat.model("gull")
-	boat.name = "moored_boat"
-	w.props_root.add_child(boat)
-	boat.position = MOOR
-	boat.rotation.y = PI * 0.5
-	w.set_meta("moored_boat", boat)
-	Isles.sea_rock(w, Vector2(MOOR.x, MOOR.z), 1.4)
+	# the boat itself (for sale, or his once bought) lies alongside the pier: Game._add_boat (BoatRide)
 
 ## A rowboat pulled up on the sand, tipped a little.
 static func _rowboat(w: World, p: Vector2, yaw: float) -> void:

@@ -90,6 +90,8 @@ var shop_panel: PanelContainer
 ## The shipwright's window (boat_shop.gd): the boat, its price, how to sail it, Buy.
 var boat_shop: BoatShop
 var boat_panel: PanelContainer
+## Sailing: "E  Step ashore at …" over the action bar when the boat is at a dock (Game.try_land).
+var sail_prompt: Button
 var shop_title: Label
 var shop_grid: GridContainer
 var shop_items: Array = []
@@ -167,6 +169,7 @@ func setup(g: Node) -> void:
 	_build_shop()
 	boat_shop = BoatShop.new()
 	boat_panel = boat_shop.build(self)
+	_build_sail_prompt()
 	_build_stash()
 	_build_burn()
 	_build_vote()
@@ -2202,6 +2205,38 @@ func _add_stat(stat: String) -> void:
 	hero.recalc()
 
 # ---------------------------------------------------------------- shops & stash
+func _build_sail_prompt() -> void:
+	sail_prompt = Button.new()
+	sail_prompt.anchor_left = 0.5
+	sail_prompt.anchor_right = 0.5
+	sail_prompt.anchor_top = 1.0
+	sail_prompt.anchor_bottom = 1.0
+	sail_prompt.offset_left = -190
+	sail_prompt.offset_right = 190
+	sail_prompt.offset_top = -250
+	sail_prompt.offset_bottom = -210
+	sail_prompt.add_theme_font_override("font", font_title)
+	sail_prompt.add_theme_font_size_override("font_size", 18)
+	sail_prompt.add_theme_color_override("font_color", GOLD)
+	sail_prompt.add_theme_stylebox_override("normal", _box(Color(0.045, 0.035, 0.025, 0.88), Color(0.62, 0.48, 0.26), 2, 4, 8))
+	sail_prompt.add_theme_stylebox_override("hover", _box(Color(0.09, 0.07, 0.04, 0.95), Color(0.86, 0.68, 0.36), 2, 4, 8))
+	sail_prompt.visible = false
+	sail_prompt.pressed.connect(func():
+		accept_event_safe()
+		game.try_land())
+	root.add_child(sail_prompt)
+
+func accept_event_safe() -> void:
+	if is_inside_tree():
+		get_viewport().set_input_as_handled()
+
+func set_sail_prompt(t: String) -> void:
+	if sail_prompt == null:
+		return
+	sail_prompt.visible = t != ""
+	if t != "":
+		sail_prompt.text = "E   " + t
+
 func _build_shop() -> void:
 	shop_panel = _panel("Merchant", true, 500, 600)
 	var vb: VBoxContainer = shop_panel.get_node("vb")

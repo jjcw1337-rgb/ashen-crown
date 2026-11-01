@@ -24,7 +24,7 @@ func _run() -> void:
 	for it in w.interactables:
 		if it.kind == "vendor" and str(it.data.get("role", "")) == "shipwright":
 			osric = it
-	print("[B] shipwright: %s '%s' (%s), boat moored at the pier %s" % [osric != null, osric.label if osric else "", VendorUI.title_for(osric) if osric else "", w.has_meta("moored_boat")])
+	print("[B] shipwright: %s '%s' (%s), boat moored at the pier %s" % [osric != null, osric.label if osric else "", VendorUI.title_for(osric) if osric else "", g.boat != null and not g.boat.sailing])
 	var path: PackedVector3Array = w.find_path(w.spawns["start"], w.spawns["shipwright"])
 	print("[B] walkable from the camp path to him: %s" % (path.size() > 0))
 	g.hero.gold = 150

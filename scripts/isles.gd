@@ -406,8 +406,9 @@ static func build_zone(w: World, id: String) -> void:
 	dress(w, isle, Vector2.ZERO, true)
 	var lr := at(w, isle, Vector2.ZERO, jetty_root(isle) - Vector2(4.0, 0))
 	w.spawns["start"] = lr
-	w.spawns["jetty"] = lr
-	w.exits.append({"pos": at(w, isle, Vector2.ZERO, jetty_end(isle) - Vector2(1.0, 0)), "radius": 1.8, "to": "coast", "label": "Back to the Mournwater Coast"})
+	# stepping off the boat: on the jetty's end, beside her (boarding her again sails back out, Game._boat_clicked)
+	var je := at(w, isle, Vector2.ZERO, jetty_end(isle) - Vector2(2.0, 0.0))
+	w.spawns["jetty"] = Vector3(je.x, 0.0, je.z)
 	w._rasterize()
 	_settle_places(w)
 	w._flush_stones(Props.stone())
