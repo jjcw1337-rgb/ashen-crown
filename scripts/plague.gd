@@ -295,9 +295,7 @@ func cane_blow(style: String, struck: Array) -> void:
 	if ghost():
 		return
 	var root: Node3D = h.game.world.fx_root
-	var fwd := -h.rig.global_transform.basis.z
-	fwd.y = 0.0
-	fwd = fwd.normalized() if fwd.length() > 0.01 else Vector3.FORWARD
+	var fwd := h.aim_dir()      # the way the blow was aimed (the pointer), not the body's facing
 	match style:
 		"swipe1", "over":
 			for e in struck:

@@ -83,9 +83,9 @@ How it works:
 | Input | Action |
 |---|---|
 | Left-click | Move / attack / pick up / talk (hold to keep moving or attacking). Attacking is a three-swing sword combo: a diagonal cut, a rising cut, then a spinning finisher that hits everything around you; keep clicking or hold to chain it |
-| WASD | Move directly (you can keep moving while attacking) |
+| WASD | Move directly. You keep moving while you attack or cast, in any direction: the mouse aims, the keys move |
 | Shift (hold) | Sprint. Drains the yellow stamina bar, also works mid-attack |
-| Space (hold) | The same combo the way you face, without needing a target |
+| Space (hold) | The same combo toward the cursor, without needing a target |
 | Right-click (hold) | Raise shield. Blocks most melee damage and stops arrows and fireballs from the front |
 | Q | Holy Slam: leap at the cursor and slam the sword down in a burst of white light; knocks enemies back and stuns them for 1 second (level 1) |
 | E | Holy Nova: ring of holy fire (level 3) |
@@ -93,7 +93,7 @@ How it works:
 | F | Battle Cry: +40% damage and defense, stuns nearby enemies (level 10) |
 | 1–4 | Drink potion from belt |
 
-Space and the skill keys fire the way your hero is facing (for every class), bending slightly onto an enemy just ahead. Shadow Step and Haunting Grasp go to the cursor.
+The mouse aims everything, for every class: arrows, bolts, beams, charges and swings go from your hero toward the cursor, and skills that land on the ground (Frost Volley, Haunting Grasp, Brimstone Hurl, the flasks...) land on it, up to their range. Which way your hero is facing or walking doesn't matter, so you can run one way with WASD and shoot the other. Close-range blows bend slightly onto an enemy right next to the cursor's line.
 | I | Inventory |
 | C | Character sheet (spend stat points) |
 | K | Skills: put any skill on a mouse button or Q E R F G V (or drag it onto the bar) |

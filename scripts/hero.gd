@@ -62,7 +62,19 @@ var atk_t := -1.0
 var atk_dur := 0.6
 var atk_style := "over"
 var atk_skill := ""
-var atk_aim := Vector3.ZERO
+## Where the current (or last) attack or skill was aimed. Setting it also fixes atk_dir, the flat
+## direction from the hero to that point at the moment of aiming, so the blow, the projectile or the
+## lunge keep going the way the pointer was even if he walks on (WASD) or the body turns meanwhile.
+var atk_aim := Vector3.ZERO:
+	set(v):
+		atk_aim = v
+		if is_inside_tree():
+			var d := (v - global_position) * Vector3(1, 0, 1)
+			if d.length() > 0.05:
+				atk_dir = d.normalized()
+var atk_dir := Vector3.FORWARD
+## The mouse pointer's point on the ground (or the enemy under it), refreshed by Game every frame.
+var cursor := Vector3.ZERO
 var impact_done := false
 var blocking := false
 var block_amt := 0.0
@@ -788,47 +800,84 @@ func cmd_move(p: Vector3, direct := false) -> void:
 	_set_goal(p, direct)
 
 # ---------------------------------------------------------------- aiming
-## Keyboard actions (Space and the QERF skills) go where the hero is facing, for every class:
-## run with WASD, press a key, and it fires ahead. A light assist bends the shot onto the enemy
-## nearest that line, inside a cone that is wider up close. Mouse clicks still go where you
-## click. Each skill says how it aims in Data.SKILLS: "facing" (with a "range"), "point" (the
-## cursor; Shadow Step's destination) or "self" (centred on the hero, no turn).
-const AIM_CONE_NEAR := 0.8    # radians either side of facing, for melee reach
-const AIM_CONE_FAR := 0.42    # for ranged skills
+## The mouse pointer is the source of truth for aim, Path of Exile style: WASD moves, the pointer
+## aims, and the two are independent, so he can run one way and cast another. Facing never decides
+## where anything goes; the body only turns to show it (see _process). Each skill says in
+## Data.SKILLS how it uses the pointer:
+##   "point"  lands on the pointer (each skill still clamps to its own range: Volley, Grasp, Hurl...)
+##   "facing" directional: goes from the hero toward the pointer, out to the skill's "range" (projectiles,
+##            beams, charges, lunges, frontal arcs). The name is kept for old data; it means "toward
+##            the pointer" now. Short melee skills (range < MELEE_RANGE) bend onto a foe within AIM_CONE_MELEE
+##            of the pointer's line; ranged ones go exactly where the pointer says.
+##   "self"   centred on the hero; he doesn't turn.
+const AIM_CONE_MELEE := 0.35  # radians either side of the pointer's line, for melee reach only
+const MELEE_RANGE := 5.0
 
+## The way the body faces (visual; used for blocking's "from the front" and a few effects).
 func facing() -> Vector3:
 	var f := -rig.global_transform.basis.z
 	f.y = 0
 	return f.normalized() if f.length() > 0.01 else Vector3.FORWARD
 
-## Where a facing-aimed action lands: the best enemy in the cone ahead, else straight ahead.
-func aim_ahead(dist: float) -> Vector3:
-	var f := facing()
-	var cone := AIM_CONE_NEAR if dist < 4.0 else AIM_CONE_FAR
+## The way the current attack or skill was aimed (from the pointer when it started).
+func aim_dir() -> Vector3:
+	return atk_dir
+
+## The flat unit direction from the hero to point p (the hero's facing if p is on top of him).
+func dir_to(p: Vector3) -> Vector3:
+	var d := (p - global_position) * Vector3(1, 0, 1)
+	return d.normalized() if d.length() > 0.05 else facing()
+
+## The best enemy within dist inside a cone of `cone` radians round `axis` (null if none).
+func _assist_pick(axis: Vector3, dist: float, cone: float):
 	var best = null
 	var bs := INF
 	for e in game.enemies_near(global_position, dist):
 		var d: Vector3 = e.global_position - global_position
 		d.y = 0
 		var dl := d.length()
-		var ang := f.angle_to(d / dl) if dl > 0.05 else 0.0
+		var ang := axis.angle_to(d / dl) if dl > 0.05 else 0.0
 		if ang > cone:
 			continue
 		var score := dl * (1.0 + 2.5 * ang)
 		if score < bs:
 			bs = score
 			best = e
-	return best.global_position if best != null else global_position + f * dist
+	return best
 
-## The aim point for skill `id` given the cursor point (used only by "point" skills).
-func skill_aim(id: String, cursor: Vector3) -> Vector3:
-	for s in skill_list():
-		if s["id"] == id:
-			match String(s.get("aim", "facing")):
-				"point": return cursor
-				"self": return global_position + facing()
-				_: return aim_ahead(float(s.get("range", 3.5)))
-	return cursor
+## Where an action aimed along the current aim direction lands: for melee reach a foe close to that
+## line, else straight along it. Used when a skill needs to find its foe again mid-cast.
+func aim_ahead(dist: float) -> Vector3:
+	var axis := aim_dir()
+	if dist < MELEE_RANGE:
+		var best = _assist_pick(axis, dist, AIM_CONE_MELEE)
+		if best != null:
+			return best.global_position
+	return global_position + axis * dist
+
+## The aim point for skill `id`, given the pointer's point `at` (the enemy under it if there is one).
+func skill_aim(id: String, at: Vector3) -> Vector3:
+	var s := Data.skill_def(id)
+	if s.is_empty():
+		return at
+	match String(s.get("aim", "facing")):
+		"point":
+			return at
+		"self":
+			return global_position + facing()
+	# directional: toward the pointer, out to the skill's range
+	var rng := float(s.get("range", 3.5))
+	var to := (at - global_position) * Vector3(1, 0, 1)
+	var dir := to.normalized() if to.length() > 0.05 else facing()
+	if rng < MELEE_RANGE:
+		var best = _assist_pick(dir, rng + 0.5, AIM_CONE_MELEE)
+		if best != null:
+			return best.global_position
+	# the pointer itself when it's in range (so a beam or a tether latches on what's under it), else
+	# the point on its line at full range; either way the direction is the pointer's
+	var p := global_position + dir * minf(maxf(to.length(), 0.5), rng)
+	p.y = game.world.height_at(p.x, p.z) if game != null and game.world != null else at.y
+	return p
 
 ## Swing toward a point without needing a target (Space). Works while moving.
 func free_attack(aim: Vector3) -> void:
@@ -884,16 +933,12 @@ func _swipe_lunge(a0: float, a1: float) -> void:
 	var d: float = (smoothstep(0.0, 1.0, f1) - smoothstep(0.0, 1.0, f0)) * (slam_leap if slam else float(L[2]))
 	if d <= 0.0:
 		return
-	var fwd := -rig.global_transform.basis.z
+	# along the aim taken when the swing started, not the body's facing
+	var fwd := aim_dir()
 	if slam:
 		# Holy Slam leaps to the spot aimed at, sliding round anything solid on the way
-		fwd.y = 0
-		global_position = game.world.move(global_position, fwd.normalized() * d)
+		global_position = game.world.move(global_position, fwd * d)
 		return
-	if atk_style == "swipe3":
-		fwd = (atk_aim - global_position) * Vector3(1, 0, 1)
-		fwd = fwd.normalized() if fwd.length() > 0.01 else -rig.global_transform.basis.z
-	fwd.y = 0
 	# don't step through a foe that's already in reach
 	for e in game.enemies_near(global_position, 2.0):
 		var to: Vector3 = e.global_position - global_position
@@ -903,7 +948,7 @@ func _swipe_lunge(a0: float, a1: float) -> void:
 	global_position = game.world.move(global_position, fwd.normalized() * d)
 
 func _swipe_impact() -> void:
-	var fwd := -rig.global_transform.basis.z
+	var fwd := aim_dir()
 	var fin := atk_style == "swipe3"
 	var rng := reach() + (1.0 if fin else 0.55)
 	var arc := 181.0 if fin else 70.0
@@ -940,10 +985,11 @@ func cmd_target(t) -> void:
 	if is_instance_valid(t):
 		_set_goal(t.global_position, false)
 
-## WASD steering: the hero runs where it is heading and the heading swings round toward the keys at
-## TURN_RATE, so W then W+A carves a curve instead of snapping to the diagonal. A sharp turn slows him a
-## little; letting go of the keys forgets the heading.
-const TURN_RATE := 9.0      # radians per second
+## WASD steering: the hero runs where the keys point. The heading eases toward the keys at TURN_RATE
+## (fast: a full reversal takes about a tenth of a second) only to smooth the change of direction; it
+## starts from the keys themselves, not from the way the body faces, and it has nothing to do with
+## aiming (the pointer aims). A sharp turn slows him a little; letting go of the keys forgets the heading.
+const TURN_RATE := 28.0     # radians per second
 var wasd_heading := Vector3.ZERO
 ## Where the head looks ahead of the body while turning (radians, + = left), for Anim.pose's "look".
 var look := 0.0
@@ -952,10 +998,8 @@ var _last_yaw := 0.0
 
 func _steer(want: Vector3, delta: float) -> Vector3:
 	if wasd_heading.length() < 0.1:
-		# starting off: from the way he faces
-		wasd_heading = -rig.global_transform.basis.z
-		wasd_heading.y = 0
-		wasd_heading = wasd_heading.normalized() if wasd_heading.length() > 0.1 else want
+		# starting off: straight the way the keys say (he may be facing his last shot)
+		wasd_heading = want
 	var ang := wasd_heading.signed_angle_to(want, Vector3.UP)
 	_look_want = clampf(ang * 0.8, -0.75, 0.75)
 	wasd_heading = wasd_heading.rotated(Vector3.UP, clampf(ang, -TURN_RATE * delta, TURN_RATE * delta)).normalized()
@@ -1050,7 +1094,7 @@ func use_skill(id: String, aim: Vector3) -> bool:
 		"charge":
 			var d := aim - global_position
 			d.y = 0
-			charge_dir = d.normalized() if d.length() > 0.1 else -rig.global_transform.basis.z
+			charge_dir = d.normalized() if d.length() > 0.1 else aim_dir()
 			charge_t = 0.0
 			charge_hit = {}
 			path = PackedVector3Array()
@@ -1502,14 +1546,14 @@ func _process(delta: float) -> void:
 		if moved.length() < vel.length() * delta * 0.2 and moving:
 			moving = false
 			path = PackedVector3Array()
-		if atk_t < 0.0 and charge_t < 0.0:
+		if atk_t >= 0.0:
+			# moving while he attacks or casts: the body keeps to the aim taken at the start, whichever
+			# way the legs carry him (visual; the blow goes along atk_dir regardless)
+			_face_smooth(atk_dir, delta)
+		elif block_amt > 0.5 and charge_t < 0.0:
+			_face_smooth(cursor - global_position, delta)
+		elif charge_t < 0.0 and drain_t < 0.0:
 			_face(vel)
-		elif atk_t >= 0.0:
-			# keep facing the foe while stepping
-			if is_instance_valid(target) and target is Enemy:
-				_face_smooth(target.global_position - global_position, delta)
-			else:
-				_face_smooth(atk_aim - global_position, delta)
 		move_amt = move_toward(move_amt, stride, delta * 6.0)
 		# super speed glides: the legs only go a little faster
 		var anim_v: float = vel.length() * (1.6 / game.TEST_FAST if game.test_fast else 1.0)
@@ -1517,6 +1561,9 @@ func _process(delta: float) -> void:
 		_snow_step()
 	else:
 		move_amt = move_toward(move_amt, 0.0, delta * 6.0)
+		if atk_t < 0.0 and charge_t < 0.0 and drain_t < 0.0 and block_amt > 0.5:
+			# standing with the guard up: the shield turns to the pointer
+			_face_smooth(cursor - global_position, delta)
 	if charge_t < 0.0:
 		global_position.y = game.world.height_at(global_position.x, global_position.z)
 
@@ -1727,7 +1774,7 @@ func _update_attack(delta: float) -> void:
 			swipe_n = 0
 
 func _impact() -> void:
-	var fwd := -rig.global_transform.basis.z
+	var fwd := aim_dir()
 	if Archer.impact(self):
 		return
 	if Plague.impact(self):
@@ -1800,9 +1847,7 @@ func _impact() -> void:
 			for e in game.enemies_near(global_position, 6.0):
 				e.stun(2.0)
 		"blight":
-			var dir := atk_aim - global_position
-			dir.y = 0
-			dir = dir.normalized() if dir.length() > 0.3 else fwd
+			var dir := fwd      # toward the pointer as it was when he cast
 			# Twin Skulls: two, a little apart
 			fx("blight", "bolt", {"d": dir, "x": talent("blight_twin") > 0.0})
 		"shackles":

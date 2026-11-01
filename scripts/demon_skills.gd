@@ -78,7 +78,7 @@ static func grip_pick(h: Hero, aim: Vector3):
 	var best = null
 	var bd := 99.0
 	var fwd := (aim - h.global_position) * Vector3(1, 0, 1)
-	fwd = fwd.normalized() if fwd.length() > 0.3 else h.facing()
+	fwd = fwd.normalized() if fwd.length() > 0.3 else h.aim_dir()
 	for e in h.game.enemies_near(h.global_position, GRIP_RANGE + 1.0):
 		var to: Vector3 = e.global_position - h.global_position
 		to.y = 0
@@ -110,7 +110,7 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 		"fists":
 			_start(h, "fists", "fists")
 		"icharge":
-			var dir := to.normalized() if to.length() > 0.5 else h.facing()
+			var dir := to.normalized() if to.length() > 0.5 else h.aim_dir()
 			w["charge"] = {"dir": dir, "a": 0.0, "dist": minf(maxf(to.length(), 3.0), CHARGE_RANGE), "hit": {}, "laid": 0.0, "ps": PackedVector3Array()}
 			_start(h, "icharge", "icharge")
 			h.fx("icharge", "start", {"d": dir})
@@ -119,7 +119,7 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 		"hurl":
 			var at := h.global_position + to.limit_length(HURL_RANGE)
 			if to.length() < 1.5:
-				at = h.global_position + h.facing() * 4.0
+				at = h.global_position + h.aim_dir() * 4.0
 			at.y = h.game.world.height_at(at.x, at.z)
 			w["hurl_at"] = at
 			_start(h, "hurl", "hurl")
@@ -140,7 +140,7 @@ static func impact(h: Hero) -> bool:
 	var w: Dictionary = h.dm
 	match h.atk_skill:
 		"fists":
-			var fwd := h.facing()
+			var fwd := h.aim_dir()
 			var wide := h.talent("fists_wide") > 0.0
 			var reach := FISTS_R + (1.0 if wide else 0.0)
 			var lit := []
@@ -158,7 +158,7 @@ static func impact(h: Hero) -> bool:
 		"icharge":
 			pass      # the charge itself moves and hits in update
 		"cslam":
-			var at := h.global_position + h.facing() * 1.2
+			var at := h.global_position + h.aim_dir() * 1.2
 			at.y = h.game.world.height_at(at.x, at.z)
 			var any := false
 			for e in h.game.enemies_near(at, SLAM_R + 1.0):
@@ -170,7 +170,7 @@ static func impact(h: Hero) -> bool:
 						e.stun(0.8)
 					any = true
 			# the fissures race out ahead in a fan; their eruptions come in waves (update)
-			var fwd := h.facing()
+			var fwd := h.aim_dir()
 			var lines: Array = []
 			var ps := PackedVector3Array()
 			for i in FISSURES:
@@ -197,12 +197,12 @@ static func impact(h: Hero) -> bool:
 			h.fx("cslam", "impact", {"p": at, "y": h.rig.global_rotation.y, "ps": ps, "n": lines.size(), "x": any})
 			SkillFx.hitstop(h, 0.05 if any else 0.0)
 		"hurl":
-			var at: Vector3 = w.get("hurl_at", h.global_position + h.facing() * 4.0)
+			var at: Vector3 = w.get("hurl_at", h.global_position + h.aim_dir() * 4.0)
 			var hand := SkillFx.hand(h, true) if h.rig != null else h.global_position + Vector3(0, 1.8, 0)
 			var twin := h.talent("hurl_twin") > 0.0
 			var targets: Array = [at]
 			if twin:
-				var side := h.facing().rotated(Vector3.UP, PI * 0.5) * 2.2
+				var side := h.aim_dir().rotated(Vector3.UP, PI * 0.5) * 2.2
 				var at2 := at + side
 				at2.y = h.game.world.height_at(at2.x, at2.z)
 				targets.append(at2)
@@ -227,7 +227,7 @@ static func impact(h: Hero) -> bool:
 static func _grip_smash(h: Hero) -> void:
 	var w: Dictionary = h.dm
 	var v = w.get("grip_victim")
-	var at := h.global_position + h.facing() * 1.6
+	var at := h.global_position + h.aim_dir() * 1.6
 	at.y = h.game.world.height_at(at.x, at.z)
 	var held: bool = v != null and is_instance_valid(v) and not v.dead
 	if held:

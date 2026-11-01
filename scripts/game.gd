@@ -1970,6 +1970,18 @@ func skill_held(id: String) -> bool:
 func _cursor_aim() -> Vector3:
 	return hovered.global_position if hovered is Enemy else ground_pt
 
+## Space's swing: at the foe under the pointer, else at a foe close to the pointer's line within reach,
+## else toward the pointer (the same melee help a short directional skill gets, Hero.skill_aim).
+func _space_aim() -> Vector3:
+	if hovered is Enemy:
+		return hovered.global_position
+	var dir := hero.dir_to(ground_pt)
+	var best = hero._assist_pick(dir, hero.reach() + 1.5, Hero.AIM_CONE_MELEE)
+	if best != null and not hero.has_bow():
+		return best.global_position
+	# a bow shoots at the pointer (Archer.shoot has its own help near the point)
+	return ground_pt if hero.has_bow() else hero.global_position + dir * (hero.reach() + 1.0)
+
 ## A bar slot was pressed (first) or is still held (repeat): cast what's bound there. Attack swings
 ## at the cursor, Block is held (see _process), anything else is cast; held, it recasts whenever it
 ## is ready again, without the "recharging" and "no mana" messages.
@@ -2021,6 +2033,7 @@ func _process(delta: float) -> void:
 		Engine.time_scale = 1.0
 	if playing and not paused and not _busy:
 		_update_hover()
+		hero.cursor = _cursor_aim()     # the pointer aims everything (see Hero's aiming notes)
 		_check_ambushes()
 		hero.blocking = skill_held("block") and not ui.any_panel_open()
 		for slot in Hero.BIND_SLOTS:
@@ -2028,7 +2041,8 @@ func _process(delta: float) -> void:
 				_use_bind(slot, false)
 		hero.sprint = Input.is_key_pressed(KEY_SHIFT)
 		if Input.is_key_pressed(KEY_SPACE):
-			hero.swipe_attack(hero.aim_ahead(hero.reach() + 1.5))
+			# swing toward the pointer, whichever way he is walking
+			hero.swipe_attack(_space_aim())
 		var wasd := Vector3.ZERO
 		if Input.is_key_pressed(KEY_W): wasd.z -= 1
 		if Input.is_key_pressed(KEY_S): wasd.z += 1
