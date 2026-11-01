@@ -24,7 +24,10 @@ jobs:
 
       - name: Import project
         run: |
-          godot --headless --editor --quit 2>&1 | tee import.log || true
+          # --import waits for the scan and every import (a bare --editor --quit aborts the scan, leaving no class cache)
+          godot --headless --import 2>&1 | tee import.log || true
+          godot --headless --editor --quit-after 900 2>&1 | tee -a import.log || true
+          ls .godot/global_script_class_cache.cfg && grep -c "class" .godot/global_script_class_cache.cfg || echo "no class cache"
           echo "---- script errors during import ----"
           grep -nE "SCRIPT ERROR|Parse Error|Compile Error|Failed to load script|Identifier not found|ERROR: .*\.gd" import.log || echo "none"
 
