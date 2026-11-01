@@ -64,7 +64,7 @@ shared preview), give the preview build's link, and go to `main` only when Blain
 | `world.gd` | Zone builder: terrain, roads, buildings, trees/grass (MultiMesh chunks), spawns, `burn_points` |
 | `hero.gd`, `knight.gd`, `knight_rig.gd`, `anim.gd` | Player: class (`cls`, `set_class`), stats (`recalc`), combat, skills, gear visuals, animation, co-op puppet mode |
 | `wraith.gd`, `wraith_skills.gd`, `wraith_fx.gd` | Wraith class: the Meshy body on the mocap system with the spectral shader; its six skills (casts, blows, the tether, phantoms, the night); their effects |
-| `demon.gd`, `demon_mocap_rig.gd`, `demon_skills.gd`, `demon_fx.gd` | Demon class: the Meshy magma brute on the mocap system with the magma shader and his own wing/tail/cloth rig (falls back to the knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader); his six skills (the fists, the charge, the slam, the boulder, the grip, the wrath); their effects (lava on the ground, fissures, boulders, meteors) |
+| `demon.gd`, `demon_mocap_rig.gd`, `demon_skills.gd`, `demon_fx.gd`, `demon_fists_fx.gd`, `infernal_fx.gd` | Demon class: the Meshy magma brute on the mocap system with the magma shader and his own wing/tail/cloth rig (falls back to the knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader); his six skills (the fists, the charge, the slam, the boulder, the grip, the wrath); their effects (lava on the ground, fissures, boulders, meteors) |
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
 | `plague.gd` | Plague Doctor class: body (mocap, whole-body skill clips), Toxic Flask, Volatile Mixture, Pestilent Trap, The Last Epidemic, poison and infection, co-op replay |
 | `enemy.gd`, `projectile.gd`, `feral.gd` | Monsters/AI and missiles (host-authoritative in co-op); the Feral's baked-animation body |
@@ -83,6 +83,7 @@ shared preview), give the preview build's link, and go to `main` only when Blain
 | `vendor_ui.gd` | Nameplates over the town's people and the trader's live portrait in the trade window |
 | `models.gd`, `skeleton.gd`, `flora.gd`, `props.gd`, `geo.gd`, `mats.gd` | Procedural meshes and shaders |
 | `grass.gd`, `grass_field.gd` | Act I's living 3D grass: species, biomes, placement and shader (`Grass`); the touch field and the wind (`GrassField`, a node of Game) |
+| `fire_fx.gd` | Every fire in the game: simulated-fire flipbooks on layered particles, a preset per kind (see "Fire") |
 | `weather.gd`, `fx.gd`, `sfx.gd`, `sfx_bank.gd` | Snow/ash, particles, audio (autoload `Sfx`: recorded/generated sounds from `assets/audio/sfx/` listed in the generated `sfx_bank.gd`, with the old synthesized sounds as fallback) |
 
 ## Rules and gotchas
@@ -353,6 +354,33 @@ shared preview), give the preview build's link, and go to `main` only when Blain
   `tools/demon_skills_clip.gd -- outdir [skill|all] [close|game]` renders frames of each (xvfb, `--fixed-fps 30`);
   `tools/coop_fx_shot.gd` has `demon:grip` and `demon:wrath`. The Underworld grade in `game.gd`
   (`set_underworld`, `DemonFx.UNDERWORLD_SHADER`, `under_amt`) and the body shader's `phase_amt` stay, unused.
+- **Molten Fists' look, "Hellbrand"** (`scripts/demon_fists_fx.gd` `DemonFistsFx`, on the Demon's Q; the gameplay in
+  `DemonSkills` is unchanged): the "cast" event starts the gather (hellfire gauntlets on both fists, the body shader's
+  `brand` running the magma down his arms, a light between his hands, crimson motes pulled in, his sigil drawing
+  itself under him), the "impact" event the release (a flash at the fists, the rift tearing open in a wedge with a
+  light sweeping along it, a crescent of fire with heat haze from High, obsidian fangs bursting up near to far and
+  shattering into burning fragments, fires out of the fissures, smoke, embers, earth; each foe struck gets a molten
+  flash, a splash, fire on its body and a visual stagger, `fists_stag`). State in `h.fxs["fists"]`. The clip is
+  re-timed in `Demon.SHOTS` "fists" (snaps into the chamber and holds it; the impact frame unchanged) and
+  `DemonMocapRig._fists_pose` rears him back and drives him down over it. Built from **`InfernalFx`**
+  (`scripts/infernal_fx.gd`): the Demon's reusable visual language (palette OBSIDIAN/CRIMSON/MOLTEN/WHITEHOT, the
+  sigil, rift, obsidian shard, wave, smoke, glow and haze shaders, noise textures made in code, `particles(...)` from
+  a dictionary, budgets by `tier(game)`; `force_tier` for previews). Preview: `tools/demon_fists_clip.gd -- outdir
+  close|front|game|fight|fire [tier] [secs] [casts]` (xvfb, `--fixed-fps 30`).
+- **Fire** (`scripts/fire_fx.gd` `FireFx`): every fire in the game is simulated fire. `Props.fire(..., kind)` builds
+  it (the old particle fire is `Props.fire_legacy`; `Props.use_legacy_fire` switches back for comparisons). Kinds
+  (`FireFx.PRESETS`): torch, candle, campfire, bonfire, brazier, building, ground, magic, weapon, burning; each a
+  flipbook book, flame rate and life, size, back / main / core layers, embers, sparks, smoke, haze and light. Flames
+  are particles playing a flipbook of a Blender Mantaflow fire (`InfernalFx` `FLIPFIRE_SHADER`), each starting on
+  its own frame and mirrored at random, so nothing loops visibly; overlapping flames share their brightness so a fire
+  never sums to white. Books in `assets/textures/fx/`: `fire_body.png` (8 x 8), `fire_tongue.png` and
+  `fire_spread.png` (6 x 6). Fire lights carry meta `fire` and flicker like real fire in `Game`'s flicker loop; they
+  fade out past ~40 m. The bonfire window plays the body book too (`UI.FIRE_FLIP_SHADER`). Make a book:
+  `FIRE_KIND=body|tongue|spread blender -b --python tools/blender/fx/fire_flipbook.py -- outdir res frames px`
+  (Blender 4.5; ~2 min a 3-frame test, 20-60 min a full book on the cloud's 2 cores; `RENDER_ONLY=1` reuses the
+  bake), then `bash tools/fx_flipbook.sh outdir assets/textures/fx/fire_<kind>.png first cell tile`. Settings that
+  worked and mistakes to avoid are in the project doc "fire pipeline". Comparison: `tools/fire_compare.gd -- outdir
+  new|old close|wide|game frames`.
 - **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `_update_drain`, and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. The beams, sigil, hand light and hum are the `"drain"` fx events' effect (`WarlockFx.play`, state in `Hero.fxs["drain"]`, drawn by `WarlockFx.update` after the pose on the caster and on his puppet; `"start"`, `"victims"` when the fork set changes, `"tick"`, `"end"`), so partners see the beam on him too.
 - **King Grubb** (Act I boss, `hoard.gd`) is host-authoritative. Every visible part of the fight (piles, bombs, burst
   sacks, shouts, a grabber's `carry_on`/`carry_off`) is an Enemy fx event string handled in `Hoard.fx`, so partners see it;
