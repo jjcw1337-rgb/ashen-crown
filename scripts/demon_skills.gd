@@ -22,7 +22,9 @@ extends RefCounted
 ##    foes round him (one every WRATH_EVERY s, WRATH_R out) while he fights on with +40% damage.
 
 ## Each attack's length in seconds (before Data.ATTACK_PACE; Molten Fists also by attack speed)
-const DUR := {"fists": 0.8, "icharge": 0.75, "cslam": 1.2, "hurl": 1.1, "grip": 1.7, "wrath_roar": 1.3, "wrath_stomp": 0.8}
+## Molten Fists is a heavy blow the Path of Exile way (jj, 2026-11-01): no cooldown, a 2 s use time (1.67 x the pace 1.2)
+## with a 1.5 s wind-up the foes can read, and double the damage of a quick punch; the dodge roll cancels it.
+const DUR := {"fists": 1.67, "icharge": 0.75, "cslam": 1.2, "hurl": 1.1, "grip": 1.7, "wrath_roar": 1.3, "wrath_stomp": 0.8}
 ## The attack style each skill starts with
 const STYLE := {"fists": "fists", "icharge": "icharge", "cslam": "cslam", "hurl": "hurl", "grip": "grip", "wrath": "wrath_roar"}
 const WRATH_STAGES := ["wrath_roar", "wrath_stomp"]
@@ -157,9 +159,9 @@ static func impact(h: Hero) -> bool:
 				if to.length() - e.radius > reach:
 					continue
 				if to.length() < 0.6 or fwd.dot(to.normalized()) > cos(deg_to_rad(FISTS_HALF + (12.0 if wide else 0.0))):
-					h._hit_enemy(e, 1.5, 0.5, "fists", magma(h, 0.25))
+					h._hit_enemy(e, 3.0, 0.5, "fists", magma(h, 0.5))
 					if is_instance_valid(e) and not e.dead:
-						e.ignite(magma(h, 0.12) * h.dmg_mult("fists"), 6.0 if wide else 3.0)
+						e.ignite(magma(h, 0.24) * h.dmg_mult("fists"), 6.0 if wide else 3.0)
 						lit.append(e)
 			h.fx("fists", "impact", {"y": h.rig.global_rotation.y, "r": reach, "t": lit})
 		"icharge":

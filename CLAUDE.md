@@ -172,8 +172,9 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   three chests and a champion with bowmen. The walls come from `World.crypt_shell` (shared with the crypt). **Rounds**
   of `RAID_SECS` (15 min): two of the four portals open at `PORTALS_AT` (5 min), joining closes at `JOIN_CLOSE`, the
   crypt collapses at the end (everyone inside dies) and the dungeon resets (`new_round`). The state reaches players
-  through `Net.cl_bg_raid` (the HUD clock, `Battlegrounds.hud`). **Combat is slower and heavier** while
-  `Game.bg_mode` (Hero: `ATTACK_PACE`, `HIT_MULT`, `CD_MULT`, `MOVE_MULT`, no life regeneration). **PvP**: every other
+  through `Net.cl_bg_raid` (the HUD clock, `Battlegrounds.hud`). **Attacks are the same as everywhere**
+  (timing, damage, cooldowns: one standard, jj 2026-11-01); while `Game.bg_mode` only walking is slower (`MOVE_MULT`) and
+  life doesn't regenerate. **PvP**: every other
   player is an invisible stand-in `Enemy` with `pvp_pid` on each client (`sync_proxies`), so any attack or skill
   that hits monsters hits players; `Enemy.take_damage` sends `Net.sv_pvp_hit`, the server scales it (`PVP_MULT`) and
   deals it (`Net.hit_player`); kills are announced. **Real characters**: the Battlegrounds screen picks one of the
@@ -1048,6 +1049,14 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 - **Skill picker** (`UI._choose_skill`, click a bar slot): the bar's own iron frame and sockets, one card per skill
   (`_picker_card`: equipped glow, the key it's on now, mana, locked level). Esc / click outside closes
   (`close_skill_picker`). Screenshot: `tools/picker_shot.gd`.
+- **Skill design: the Path of Exile way** (jj, 2026-11-01; the base for every new skill, so they all play alike):
+  a main skill has **no cooldown**; what limits it is its **use time** (its `DUR`/`atk_dur`, times `Data.ATTACK_PACE`,
+  shortened by attack speed) and its mana. A heavy skill gets a long, readable **wind-up** (the impact late in the
+  swing, `Anim.impact_at`, with its tell drawn through the cast's fx event) and hits harder to pay for the wait (about
+  the damage per second of a quick skill); the dodge roll cancels a swing that hasn't landed (`Dodge.start`). Cooldowns
+  are for utility (movement, warcries, summons, ultimates). Attacks follow the same rules in every scenario: the
+  story game, co-op and the Battlegrounds (no crypt-only attack timing, damage or cooldowns). The model: Molten
+  Fists (`DemonSkills.DUR`, 2 s, the blow at 1.5 s, 300% weapon damage). `tools/demon_test.gd` checks it.
 - **Attack pace** (every class, new ones too): `Data.ATTACK_PACE` (1.2 = attacks, skill swings and casts take 20%
   longer) multiplies `Hero.atk_dur` in `_start_attack` and the casts' own times in `use_skill`; a special class can set
   `"attack_pace"` in `Data.CLASSES` (`Data.attack_pace(cls)`). Attacks whose rate the swing sets (the basic attack, skills
