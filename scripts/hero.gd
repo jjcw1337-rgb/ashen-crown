@@ -1146,8 +1146,9 @@ func _attack_sound(skill: String) -> void:
 	# when this attack's impact frame comes (it scales with attack speed)
 	var at := Anim.impact_at(atk_style) * atk_dur
 	if atk_style == "bow":
-		# the archer: the string's twang on the release (Volley's flight a little lower)
-		Sfx.play_synced("bow", at, -3.0, 0.85 if skill == "volley" else (0.92 if skill == "pierce" else 1.0))
+		# the archer: the string's twang on the release (Volley's flight a little lower); the Fire Arrow's release
+		# roars over it (ArrowFx "release" layers land with the arrow's "loose" event)
+		Sfx.play_synced("bow", at, -3.0 if skill != "pierce" else -6.0, 0.85 if skill == "volley" else (0.92 if skill == "pierce" else 1.0))
 		return
 	match skill:
 		"cleave": Sfx.play_synced("cleave_swing", at, -2.0)

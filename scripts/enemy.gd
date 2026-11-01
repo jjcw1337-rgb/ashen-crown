@@ -63,6 +63,7 @@ var rival: Enemy = null
 # Volley, Winter Howl): slower on its feet. Burning is ticked by whoever set it (take_damage routes to the host);
 # a chill from a partner reaches the host through Net.send_enemy_chill.
 var burn_t := 0.0
+var burn_look := ""            # who draws the burn (Enemy.ignite)
 var burn_dps := 0.0
 var burn_tick := 0.0
 var chill_t := 0.0
@@ -250,12 +251,15 @@ func set_soul_lit(on: bool) -> void:
 	_soul_lit = on
 	_set_flash(0.0)
 
-func ignite(dps: float, t: float) -> void:
+## `look` names who draws the burn: "" = the Demon's ember flames (DemonFx.ignite, here and as it ticks);
+## an arrow kind (ArrowFx.burn, the archer's own body flames) draws its own and these are skipped.
+func ignite(dps: float, t: float, look := "") -> void:
 	if dead:
 		return
 	burn_dps = maxf(burn_dps if burn_t > 0.0 else 0.0, dps)
 	burn_t = maxf(burn_t, t)
-	if game and game.world:
+	burn_look = look
+	if game and game.world and look == "":
 		DemonFx.ignite(game.world.fx_root, self)
 
 func chill(k: float, t: float) -> void:
@@ -277,7 +281,7 @@ func _statuses(delta: float) -> void:
 		if burn_tick <= 0.0:
 			burn_tick = 0.5
 			take_damage(0.0, burn_dps * 0.5, global_position, 0.0, false)
-			if game and game.world and randf() < 0.5:
+			if game and game.world and randf() < 0.5 and burn_look == "":
 				DemonFx.ignite(game.world.fx_root, self)
 	if chill_t > 0.0:
 		chill_t -= delta

@@ -140,7 +140,7 @@ shared preview), give the preview build's link, and go to `main` only when Blain
   `Data.CLASSES` until then): with a bow (`Hero.has_bow`; bows are `Data.BASES` with `"cls": "archer"`, only he can
   equip them) his attack shoots (`Archer.shoot` from
   `Hero.swipe_attack`/`free_attack`; `Hero.reach` is `Archer.RANGE`). His skills are fire, cold and lightning (ids kept):
-  Fire Arrow (`pierce`: through a line, sets them burning, `Enemy.ignite`), Frost Volley (`volley`: a rain on the cursor,
+  Fire Arrow (`pierce`: through a line, sets them burning, `Enemy.ignite`; its look is the **Phoenix**, below), Frost Volley (`volley`: a rain on the cursor,
   hits every 0.2 s and chills, `Enemy.chill`, slower on their feet; a partner's chill reaches the host through
   `Net.send_enemy_chill`), Storm Snare (`snare`: holds the first on it, lightning arcs into the nearest others,
   `Fx.bolt`), Spirit Beast (`beast`: commands his wolf, below). Arrows are Meshy models (`assets/models/arrows/`
@@ -173,6 +173,31 @@ shared preview), give the preview build's link, and go to `main` only when Blain
   procedural body dressed as a hunter (`Archer.build_placeholder`, `Archer.body_gear` kept on every gear change; its bow in `J["grip_l"]`/`J["bow_l"]`). Preview: `tools/mocap_knight_clip.gd -- outdir
   run|attack|shootwalk 34|game|side|close|closeback frames archer [longbow]`. Talent icons still to paint (`tools/talent_icons.py`).
   `tools/archer_test.gd` checks it (run it with `--fixed-fps 60`; it counts frames).
+  **Arrow effects** (`scripts/arrow_fx.gd`, `ArrowFx`; the quality standard every Archer skill must meet is
+  `docs/archer_vfx_standard.md`): data-driven per arrow kind (`ArrowFx.PRESETS`: the model, a hot core and tip
+  spark, shader flame sheaths (`FLAME_SHADER`: scrolling noise, a core → mid → edge → violet-tip gradient), the
+  signature shape, textured GPU particles, the ribbon trail (`_trail`: an ImmediateMesh strip from the head's last
+  positions, `TRAIL_SHADER` flame into smoke), a flickering OmniLight (≤ `LIGHT_CAP` arrows lit), the heat haze
+  (Forward+ only), and the `release` / `draw_charge` / `pierce` / `burn` / `finish` moments with their sound layers
+  (`"sounds"`, existing takes). `ArcherFx` "loose" builds `ArrowFx.projectile(kind)` and plays `release`; `Archer.update`
+  calls `fly` every frame, `pierce` + `burn` on each foe (`Enemy.ignite(dps, t, look)`: a look other than "" keeps the
+  Demon's ember flames off) and `finish` at the end of the flight, on the caster and his puppet alike from the one
+  "loose" event; `ArcherFx.update` grows the draw charge on the nocked arrow from the attack's progress (the puppet's
+  from the "cast" event). Fire Arrow is the `"fire"` preset, the **Phoenix** (concept
+  `concepts/archer_fire/concept_b_phoenix.png`): feather wings of fire unfurling behind the head (`_wings`: axis
+  billboards of the painted feathers), feather embers, dark smoke, a ring of embers off the bow on the release, an
+  entry flash and a cone of fire out of a pierced foe's back with a scorch under him, body flames on the burning
+  (`burn`, one system per foe), and the phoenix burst where the flight ends (flash, fire swelling open, feather
+  embers, ring, rock chunks, bouncing sparks, ground flames, smoke, a scorch streak). Textures: four Meshy sheets
+  (`concepts/archer_fire/sheets/`, 24 credits; feathers, flame tongues, smoke puffs, a burn streak) packed by
+  `tools/fx_atlas.py` into `assets/textures/fx/phoenix_*.png` (mipmaps on). Web / Low (`ArrowFx.cheap`): half the
+  particles, no smoke, haze or chunks. The shot's body (`KnightMocapRig._shot_body`, on for `SHOT` "body"): procedural
+  turns over the clip (the spine winding up through the full draw, weight on the back foot, a tremor at full draw,
+  the bow arm's recoil kick, the string hand flung back past the ear, the head steady on the mark), lighter while
+  walking, before `pose_bow` solves the bow. Proof: `tools/fire_arrow_clip.gd -- outdir [skill] [game|close|both]
+  [fps] [quality] [stand|walk]` (any skill id; the ranger on the road with three monsters in a line, standing then
+  walking, game and close cameras; `xvfb-run`, `--fixed-fps 30`); `tools/arrow_fx_lab.gd -- outdir [kind]` flies a
+  preset alone past a close camera.
 - **The Plague Doctor** (`scripts/plague.gd`, `Plague`; class `"plague"`, one `Plague` per hero in `Hero.pd`): the Meshy
   plague doctor (concept 1 of four in the session's picks: beaked mask with green-lit goggles, buckled greatcoat split
   front and back, bandolier and belt of green/amber/violet vials, pouches, instrument roll, brass censer) on the knight's

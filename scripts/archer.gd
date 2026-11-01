@@ -32,7 +32,7 @@ const SHOT := {"style": "bow", "clip": "shoot_back",
 	# the hand at the quiver (0.8), the arrow out (1.6), at the bow and nocked (2.2), the bow raised (3.1),
 	# full draw (5.0), the release (6.8, on Anim's impact frame 0.72), the arms coming down (7.35)
 	"keys": [[0.0, 0.2], [0.16, 0.8], [0.28, 1.6], [0.38, 2.2], [0.46, 3.1], [0.62, 5.0], [0.72, 6.8], [1.0, 7.35]],
-	"yaw": -56.0, "stand_yaw": -90.0, "idle_side": true,
+	"yaw": -56.0, "stand_yaw": -90.0, "idle_side": true, "body": true,
 	"walk_clip": "walk_aim", "walk_speed": 0.82,
 	# on the move: only his right arm reaches back for the arrow (over the aimed walk), then draws to his cheek
 	"reach_clip": "shoot_back", "reach_bones": ["RightShoulder", "RightArm", "RightForeArm", "RightHand"],
@@ -236,7 +236,7 @@ const FIRE := Color(1.0, 0.45, 0.12)
 const FROST := Color(0.55, 0.8, 1.0)
 const STORM := Color(0.6, 0.75, 1.0)
 
-static func _arrow_mesh(kind: String) -> Node3D:
+static func _arrow_mesh(kind: String, bare := false) -> Node3D:
 	var root := Node3D.new()
 	var path := ARROW_GLB % kind
 	if ResourceLoader.exists(path):
@@ -267,6 +267,8 @@ static func _arrow_mesh(kind: String) -> Node3D:
 		head.position = Vector3(0, 0, -0.4)
 		head.material_override = Mats.mat(Color(0.5, 0.5, 0.52), 0.35, 0.9)
 		root.add_child(head)
+	if bare:
+		return root       # ArrowFx lays its own layers on it
 	var col: Color = {"fire": FIRE, "frost": FROST}.get(kind, Color(0.9, 0.85, 0.7))
 	var glow := MeshInstance3D.new()
 	var gm := CylinderMesh.new()
@@ -452,8 +454,10 @@ static func update(h: Hero, delta: float) -> void:
 	for a in h.arrows.duplicate():
 		var n = a["node"]
 		if not is_instance_valid(n):
+			ArrowFx.end_flight(a)
 			h.arrows.erase(a)
 			continue
+		var kind: String = str(a.get("kind", "war"))
 		var step := ARROW_SPEED * delta
 		var p: Vector3 = n.global_position
 		var np: Vector3 = w.move(p, (a["dir"] as Vector3) * step, 0.05)
@@ -462,18 +466,21 @@ static func update(h: Hero, delta: float) -> void:
 		np.y = w.height_at(np.x, np.z) + 1.3
 		n.global_position = np
 		a["left"] -= step
-		var stop: bool = a["left"] <= 0.0 or moved.length() < step * 0.4
+		var wall: bool = moved.length() < step * 0.4
+		var stop: bool = a["left"] <= 0.0 or wall
+		ArrowFx.fly(a, n, delta, h.game)
 		for e in h.game.enemies_near(np, 1.6):
 			if e.dead or (a["hit"] as Dictionary).has(e):
 				continue
 			var d := _seg_dist(Vector2(e.global_position.x, e.global_position.z), Vector2(p.x, p.z), Vector2(np.x, np.z))
 			if d < e.radius + 0.35:
 				a["hit"][e] = true
+				# the strike seen (the puppet's too): the entry flash, the cone out of his back, the sparks
+				ArrowFx.pierce(h, kind, e, a["dir"])
 				if h.puppet:
 					# a partner's arrow: it strikes home for the eye only (his own game deals the hit)
-					Fx.sparks(w.fx_root, e.global_position + Vector3(0, e.height, 0), Color(0.9, 0.85, 0.7))
 					if a["pierce"]:
-						DemonFx.ignite(w.fx_root, e)
+						ArrowFx.burn(h.game, e, kind, 3.0)
 					else:
 						stop = true
 						break
@@ -483,15 +490,18 @@ static func update(h: Hero, delta: float) -> void:
 				if a["pierce"]:
 					var avg: float = (h.dmg_min + h.dmg_max) * 0.5
 					var pyre := 1.0 + h.talent("burn_dmg") / 100.0
-					e.ignite((avg * 0.35 + h.level * 1.2 + 2.0) * pyre * h.dmg_mult("pierce"), 3.0 * pyre)
+					e.ignite((avg * 0.35 + h.level * 1.2 + 2.0) * pyre * h.dmg_mult("pierce"), 3.0 * pyre, kind)
+					ArrowFx.burn(h.game, e, kind, 3.0 * pyre)
 				# the one he shoots is the one his beast goes for
 				h.mark = e
 				h.mark_t = 6.0
-				Fx.sparks(w.fx_root, e.global_position + Vector3(0, e.height, 0), Color(0.9, 0.85, 0.7))
 				if not a["pierce"]:
 					stop = true
 					break
 		if stop:
+			# the end of the flight (the range run out, or a wall): the burst where it ends
+			ArrowFx.finish(h, kind, np, a["dir"], wall)
+			ArrowFx.end_flight(a)
 			n.queue_free()
 			h.arrows.erase(a)
 	for v in h.volleys.duplicate():
@@ -525,9 +535,11 @@ static func _seg_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
 
 static func clear(h: Hero) -> void:
 	for a in h.arrows:
+		ArrowFx.end_flight(a)
 		if is_instance_valid(a["node"]):
 			(a["node"] as Node3D).queue_free()
 	h.arrows.clear()
+	ArrowFx.end_draw(h)
 	h.volleys.clear()
 	for s in h.snares:
 		if is_instance_valid(s["node"]):
