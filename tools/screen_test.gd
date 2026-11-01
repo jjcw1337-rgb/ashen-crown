@@ -111,6 +111,31 @@ func _run() -> void:
 	await frames(10)
 	check(ui.hud.is_visible_in_tree() and not ui.title_panel.visible, "play: the HUD is back, the title gone")
 	check(ui.dialog_panel.get_parent() == ui.modals and ui.pause_panel.get_parent() == ui.modals and ui.modals.get_index() > ui.windows.get_index(), "play: dialogs and the pause menu are over the windows")
+	# a new character starts with an empty stash (not the last one's)
+	g.hero.stash[0] = Items.make("short_sword")
+	g.hero.new_character()
+	check(g.hero.stash.filter(func(x): return x != null).is_empty(), "a new character's stash is empty")
+	# in a raid a save keeps the character's own act (the raid is Act I's)
+	g.char_id = g.new_char_id()
+	g.char_name = "Raider"
+	g.hero.set_level(9)
+	g.hero.inventory[0] = Items.make("short_sword")
+	g.hero.gold = 500
+	g.bg_mode = true
+	g.bg_home_run = 2
+	g.difficulty = 0
+	g.save_game()
+	var sv = JSON.parse_string(FileAccess.get_file_as_string(g.save_path()))
+	check(int(sv.get("difficulty", -1)) == 2 and bool(sv.get("in_raid", false)), "a save in a raid keeps the character's own act")
+	# Save and Exit to Title in a raid (without extracting) is dying there: items and gold gone, levels kept
+	var path: String = g.save_path()
+	await g.exit_to_title()
+	sv = JSON.parse_string(FileAccess.get_file_as_string(path))
+	var hs: Dictionary = sv.get("hero", {})
+	check(not bool(sv.get("in_raid", true)) and int(hs.get("level", 0)) == 9 and int(hs.get("gold", -1)) == 0 \
+		and (hs.get("inventory", []) as Array).filter(func(x): return x != null).is_empty(), "leaving a raid for the title costs what was carried, not the levels")
+	check(int(sv.get("difficulty", -1)) == 2 and g.difficulty == 2 and g.bg_home_run == -1, "and the character is back in its own act")
+	check(ui.title_panel.visible and not ui.death_panel.visible and not ui.hud.is_visible_in_tree(), "and it's the title, with nothing of the raid over it")
 	for fn in DirAccess.get_files_at(DIR):
 		DirAccess.remove_absolute(DIR + fn)
 	print("[S] done, %d failed" % fails)

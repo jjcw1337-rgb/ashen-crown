@@ -448,7 +448,7 @@ static func hud(g: Node, delta: float) -> void:
 	if r.is_empty():
 		return
 	r["t"] = float(r["t"]) + delta
-	var lbl: Label = g.ui.root.get_node_or_null("bg_hud")
+	var lbl: Label = g.ui.hud.get_node_or_null("bg_hud")
 	if lbl == null:
 		lbl = Label.new()
 		lbl.name = "bg_hud"
@@ -459,7 +459,7 @@ static func hud(g: Node, delta: float) -> void:
 		lbl.add_theme_font_size_override("font_size", 20)
 		lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0))
 		lbl.add_theme_constant_override("outline_size", 6)
-		g.ui.root.add_child(lbl)
+		g.ui.hud.add_child(lbl)
 	lbl.visible = g.bg_mode
 	var left := maxf(0.0, float(r["len"]) - float(r["t"]))
 	var txt := "%s  ·  %d:%02d" % [TITLE.to_upper(), int(left) / 60, int(left) % 60]

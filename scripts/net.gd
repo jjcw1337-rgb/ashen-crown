@@ -344,7 +344,15 @@ func sv_hello(nm: String, gear: Dictionary, _lvl: int) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func cl_welcome(act: int, zone: String, pos: Vector3, tp: Dictionary, bk: bool, roster: Array, diff: int) -> void:
+	if diff != game.difficulty:
+		# the host's (or the raid's) act: keep our own act's waypoints and boss aside, as cl_goto does
+		if game.bg_mode and game.bg_home_run < 0:
+			game.bg_home_run = game.difficulty
+		game._store_progress()
+		game._restore_progress(diff)
 	game.difficulty = diff
+	game.max_run = maxi(game.max_run, diff)
+	game.net_joining = false
 	for r in roster:
 		_add_player(int(r[0]), str(r[1]), r[2])
 	game.tp_link = tp
@@ -580,7 +588,8 @@ func cl_enemy_die(id: int) -> void:
 	enemies.erase(id)
 	if is_instance_valid(e) and not e.dead:
 		e.die_visual()
-		game.quests.on_kill(e)       # a partner's quests count the party's kills
+		if not game.bg_mode:
+			game.quests.on_kill(e)       # a partner's quests count the party's kills (a raid's don't: no story there)
 		if e.boss:
 			game.boss_down_remote(e)
 

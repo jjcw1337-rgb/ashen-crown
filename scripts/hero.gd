@@ -503,6 +503,8 @@ func new_character() -> void:
 	gold = 120
 	inventory = []
 	inventory.resize(40)
+	stash = []           # (a new character starts with an empty stash, not the last one's)
+	stash.resize(60)
 	for k in cds.keys():
 		cds[k] = 0.0
 	buff_t = 0.0
@@ -577,6 +579,8 @@ func total_dex() -> int: return dex + stats.get("dex", 0)
 func total_vit() -> int: return vit + stats.get("vit", 0)
 
 func add_xp(v: int) -> void:
+	if game != null and game.net.server and game.hero == self:
+		return      # (a dedicated server's parked hero isn't anyone's)
 	xp += v
 	while xp >= Data.xp_for_level(level):
 		xp -= Data.xp_for_level(level)
@@ -1886,6 +1890,8 @@ func _update_trail(active: bool) -> void:
 	im.surface_end()
 
 func respawn(p: Vector3) -> void:
+	if not puppet and game != null and game.hero == self:
+		game.on_local_respawn()
 	Dodge.cancel(self)
 	dead = false
 	dead_t = 0.0

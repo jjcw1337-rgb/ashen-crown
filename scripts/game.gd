@@ -48,6 +48,8 @@ var playing := false
 ## player in a raid, and that player's stash as the server last reported it.
 var bg: Battlegrounds
 var bg_mode := false
+var net_joining := false     # a co-op join sent, no welcome yet (on_net_failed then goes back to the co-op screen)
+var bg_home_run := -1        # in a raid: the character's own act (Net.cl_welcome swaps to the raid's, saves keep this)
 var bg_raid := {}               # the round as the raid server last said (Net.cl_bg_raid): state, t, open portals...
 ## Characters and the stash in Nakama (cloud_saves.gd), in builds with BuildEnv.cloud() on; null otherwise.
 var cloud: CloudSaves
@@ -972,6 +974,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		hovered = null
 		await get_tree().process_frame
 	Telemetry.crumb("enter", {"to": zone, "run": difficulty})
+	ui.close_all()             # (a trader, a stash or a waypoint list belongs to the zone being left)
 	cur_act = act
 	cur_zone = zone
 	World.detail = quality
@@ -1025,7 +1028,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	else:
 		ui.set_zone(zone_title(act, zone))
 	# Act I outdoors: birds over the forest (birds.gd)
-	if world.oak_forest and not indoor():
+	if world.oak_forest and not indoor() and not net.server:
 		var birds := Birds.new()
 		birds.game = self
 		birds.name = "birds"
@@ -1102,7 +1105,7 @@ func _capture_map(zone: String) -> void:
 func _grass_zone(zone: String) -> void:
 	if grass_field == null or world == null:
 		return
-	grass_field.enabled = world.oak_forest and not indoor()
+	grass_field.enabled = world.oak_forest and not indoor() and not net.server
 	var w := "default"
 	if indoor():
 		w = "calm"
@@ -1272,6 +1275,7 @@ func start_join(ip: String) -> void:
 	if not load_game():
 		char_name = default_name(hero.cls)
 		hero.new_character()
+	net_joining = true      # (until the host welcomes us: Net.cl_welcome)
 	var addr: Array = Battlegrounds.parse_address(ip)      # "host" or "host:port" (the online co-op server)
 	loading_lbl.text = "Joining game at %s..." % ip
 	loading.visible = true
@@ -1297,6 +1301,7 @@ func start_battlegrounds(addr: String, id: String) -> void:
 	if id == "" or not load_game():
 		ui.message("Pick a character for the crypt first", Color(1, 0.6, 0.4))
 		char_id = ""
+		ui.open_battlegrounds()
 		return
 	ui.hide_title()
 	ui.close_all()
@@ -1309,8 +1314,7 @@ func start_battlegrounds(addr: String, id: String) -> void:
 	_save_setting("battlegrounds", "address", addr.strip_edges())
 	_save_setting("battlegrounds", "character", id)
 	if cloud != null and not await cloud.ensure():
-		bg_mode = false
-		on_net_failed("Could not sign in to your account (%s)." % cloud.nk.last_error)
+		_bg_abort("Could not sign in to your account (%s)." % cloud.nk.last_error)
 		return
 	save_game()             # (marked in_raid from here on)
 	loading_lbl.text = "Descending into %s..." % Battlegrounds.TITLE
@@ -1324,6 +1328,19 @@ func start_battlegrounds(addr: String, id: String) -> void:
 		on_net_failed("No answer from the Battlegrounds server at %s." % a[0])
 
 ## The server let us out: what we carry is ours, saved to the character as it is.
+## The crypt never let us in (sign-in failed before the character was marked in_raid): back to the Battlegrounds
+## screen, the character as it was.
+func _bg_abort(msg: String) -> void:
+	bg_mode = false
+	_bg_home()
+	loading.visible = false
+	if net.active:
+		net.shutdown()
+	await exit_to_title()
+	ui.open_battlegrounds()
+	ui.big_message("Couldn't enter the crypt")
+	ui.message(msg, Color(1, 0.6, 0.4))
+
 func bg_extracted(gained: Array) -> void:
 	bg_mode = false
 	save_game()
@@ -1378,8 +1395,19 @@ func bg_strip() -> void:
 	hero.refresh_gear()
 	hero.recalc()
 	bg_mode = false
+	_bg_home()
 	save_game()
 	print("[BG] character ", char_id, " died in the crypt and lost everything it carried")
+
+## Out of a raid: the character's own act again (its waypoints and boss), as it was before Net.cl_welcome swapped in
+## the raid's.
+func _bg_home() -> void:
+	if bg_home_run < 0:
+		return
+	_store_progress()
+	_restore_progress(bg_home_run)
+	difficulty = bg_home_run
+	bg_home_run = -1
 
 ## Characters whose game closed while they were in a raid died there: they lose what they carried.
 func _bury_lost_raiders() -> void:
@@ -1405,11 +1433,21 @@ func _leave_battlegrounds() -> void:
 	if hero.dead and bg_mode:
 		bg_strip()
 	bg_mode = false
+	_bg_home()
 	bg_raid = {}
 	await exit_to_title()
 	ui.open_battlegrounds()
 
 func on_net_failed(msg: String) -> void:
+	if net_joining:
+		# a co-op join that never got in: back to the co-op screen
+		net_joining = false
+		ui.big_message("Couldn't join")
+		ui.message(msg, Color(1, 0.6, 0.4))
+		loading.visible = false
+		await exit_to_title()
+		ui.open_join()
+		return
 	if bg_mode:
 		ui.big_message("Left the Battlegrounds")
 		ui.message(msg, Color(1, 0.6, 0.4))
@@ -1444,7 +1482,7 @@ func save_path() -> String:
 ## shows what came down from other devices.
 func _cloud_start() -> void:
 	await get_tree().process_frame
-	if await cloud.sync() and ui.title_panel.visible and not playing:
+	if await cloud.sync() and ui.title_idle() and not playing:
 		_bury_lost_raiders()
 		ui.show_title()
 
@@ -1453,7 +1491,8 @@ func save_game() -> void:
 		return
 	_store_progress()
 	_store_harvest()
-	var d := {"hero": hero.to_save(), "in_raid": bg_mode, "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed, "difficulty": difficulty,
+	var d := {"hero": hero.to_save(), "in_raid": bg_mode, "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed,
+		"difficulty": bg_home_run if bg_mode and bg_home_run >= 0 else difficulty,     # (a raid is Act I's; the character keeps its own)
 		"max_run": max_run, "runs": run_progress, "quests": quests.to_save(), "harvest": {"t": played_s, "zones": harvest_saved}, "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
 	DirAccess.make_dir_recursive_absolute(char_dir)
 	var f := FileAccess.open(save_path(), FileAccess.WRITE)
@@ -1564,8 +1603,27 @@ func default_name(cls: String) -> String:
 
 ## Back to the title screen to pick another character (the pause menu's "Save and Exit to Title").
 func exit_to_title() -> void:
-	save_game()
+	if bg_mode and not hero.dead:
+		bg_strip()           # leaving a raid without extracting is dying there (it saves)
+	else:
+		save_game()
+	_bg_home()
 	bg_mode = false
+	bg_raid = {}
+	net_joining = false
+	# nothing of the character that was playing carries on: its death or victory screen still to come, its portal,
+	# its experience bonus, the F8 switches
+	death_t = -1.0
+	ui.death_panel.visible = false
+	ui.victory_panel.visible = false
+	ui.set_boss(null)
+	tp_link = {}
+	xp_bonus_t = 0.0
+	test_immortal = false
+	test_onehit = false
+	test_stamina = false
+	test_allskills = false
+	test_fast = false
 	if paused:
 		toggle_pause()
 	if net.active:
@@ -1576,6 +1634,8 @@ func exit_to_title() -> void:
 		hero.respawn(hero.global_position)
 	hero.new_character()
 	char_id = ""
+	while _busy:
+		await get_tree().process_frame       # (a zone still loading would swallow ours)
 	await load_zone(0, "town", "start")
 	ui.show_title()
 
@@ -2018,8 +2078,15 @@ func on_enemy_killed(e: Enemy) -> void:
 		net.portal_created(ptl)
 		save_game()
 		await get_tree().create_timer(3.5).timeout
+		if not playing:
+			return       # (left for the title meanwhile)
 		ui.show_victory(difficulty)
 		Sfx.play("levelup")
+
+## The local hero rose again (any path: the death screen, co-op, a zone change): the death screen goes.
+func on_local_respawn() -> void:
+	death_t = -1.0
+	ui.death_panel.visible = false
 
 ## Co-op: the host's game reports the boss fell.
 func boss_down_remote(e: Enemy) -> void:
@@ -2030,6 +2097,8 @@ func boss_down_remote(e: Enemy) -> void:
 	Fx.pillar(world.fx_root, e.global_position, Color(1.0, 0.3, 0.2), 2.0)
 	save_game()
 	await get_tree().create_timer(3.5).timeout
+	if not playing:
+		return
 	ui.show_victory(difficulty)
 	Sfx.play("levelup")
 
@@ -2114,6 +2183,10 @@ func toggle_pause() -> void:
 	ui.pause_panel.visible = paused
 	Engine.time_scale = 1.0
 	lmb_held = false
+	rmb_held = false
+	if paused and hero != null:
+		hero.cmd_wasd(Vector3.ZERO)     # (in co-op the game runs on under the menu: he mustn't walk on)
+		hero.sprint = false
 
 # ---------------------------------------------------------------- input
 func _ground_from_ray(o: Vector3, d: Vector3) -> Vector3:
@@ -2167,7 +2240,7 @@ func pick_enemy(o: Vector3, d: Vector3) -> Enemy:
 
 func _update_hover() -> void:
 	_drop_stale()
-	if world == null:
+	if world == null or net.server:
 		return
 	var mp := get_viewport().get_mouse_position()
 	var o := cam.project_ray_origin(mp)
@@ -2268,9 +2341,9 @@ func max_out() -> void:
 	ui.message("Level 99, every talent, a million gold and %d pieces of the best gear in your bag" % n, Color(1.0, 0.85, 0.4), 6.0)
 
 func _unhandled_input(ev: InputEvent) -> void:
+	if not playing or _busy or world == null:
+		return      # (the title and its screens, and a zone loading: nothing in the game takes keys or clicks)
 	_cheat_keys(ev)
-	if not playing:
-		return
 	if ev is InputEventMouseButton:
 		if ev.button_index == MOUSE_BUTTON_LEFT:
 			if ev.pressed and not paused:
@@ -2298,6 +2371,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 		elif ev.button_index == MOUSE_BUTTON_WHEEL_DOWN and ev.pressed:
 			zoom = clampf(zoom + 0.08, 0.6, 1.3)
 	if ev is InputEventKey and ev.pressed and not ev.echo:
+		if paused and ev.keycode != KEY_ESCAPE:
+			return       # (paused: only Esc, which resumes)
 		match ev.keycode:
 			KEY_ESCAPE:
 				if not ui.close_all():
@@ -2453,8 +2528,8 @@ func _process(delta: float) -> void:
 	if bg_mode:
 		Battlegrounds.sync_proxies(self)
 		Battlegrounds.hud(self, delta)
-	elif ui != null and ui.root.get_node_or_null("bg_hud") != null:
-		ui.root.get_node("bg_hud").visible = false
+	elif ui != null and ui.hud.get_node_or_null("bg_hud") != null:
+		ui.hud.get_node("bg_hud").visible = false
 	_t += delta
 	var real_dt := delta / maxf(Engine.time_scale, 0.01)
 	_watchdog(real_dt)
@@ -2525,7 +2600,7 @@ func _process(delta: float) -> void:
 					break
 	if death_t > 0.0:
 		death_t -= delta
-		if death_t <= 0.0:
+		if death_t <= 0.0 and playing:
 			ui.death_panel.visible = true
 	if hero and world:
 		var look_ahead := Vector3.ZERO

@@ -914,6 +914,15 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `Hero.show_damage`): hits close together add to a running total that counts up smoothly and pops on each hit; 1.1 s
   after the last hit it drifts up and fades, and the next hit starts a new total. Every class gets it. Preview:
   `tools/damage_stack_clip.gd -- outdir`.
+- **UI layers and screen isolation** (`UI.setup`): every control lives in one layer of `UI.root`, bottom to top:
+  `hud` (globes, bar, corner map, quest tracker, target and boss bars, nameplates, the raid HUD), `windows` (inventory,
+  sheet, shops, stash, fire, waypoints, skill picker), `menus` (the title and its screens; co-op and Battlegrounds open
+  over the title, dimmed by `menu_shade`, which also keeps its clicks off it), `modals` (dialogs, the party vote, pause,
+  F8, death, victory) and `top` (tooltips, drags, messages, sparkles). Add a new control to its layer, never to `root`.
+  `_set_hud` shows or hides the whole HUD. Game input is ignored unless `playing` (and not while a zone loads), keys
+  but Esc while paused. Leaving for the title (`Game.exit_to_title`) resets what belonged to the character: its death
+  and victory screens, portal, XP bonus, F8 switches, a raid (left without extracting = died there, `bg_strip`) and the
+  raid's act (`bg_home_run`). `tools/screen_test.gd` checks it (in the nightly gate).
 - **Performance KPIs** (`scripts/kpi.gd` `Kpi`, `docs/nightly/KPIS.md`): the official numbers. Scripted, deterministic
   scenarios (camp, moor, fight, boss, arena, crypt, server; `Kpi.SCENARIOS`) run in any build with
   `-- --kpi <scenario> out.json [--quality N] [--secs N]` (the server: `-- --server --kpi server out.json`), measuring

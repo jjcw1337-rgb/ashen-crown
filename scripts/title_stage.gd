@@ -728,6 +728,10 @@ func _notification(what: int) -> void:
 # ---------------------------------------------------------------- every frame
 func _process(delta: float) -> void:
 	if not is_visible_in_tree():
+		# hidden (the game is being played): stop rendering the title's 3D scene, which otherwise draws on unseen
+		# every frame at full resolution
+		if vp.render_target_update_mode != SubViewport.UPDATE_DISABLED:
+			vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 		return
 	var hide: bool = covered.is_valid() and bool(covered.call())
 	var mode := SubViewport.UPDATE_DISABLED if hide else SubViewport.UPDATE_ALWAYS
