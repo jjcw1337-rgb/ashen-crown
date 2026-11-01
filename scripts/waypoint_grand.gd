@@ -7,7 +7,7 @@ extends Node3D
 ## wall and two warm torches in front. Local +z faces the camera (travellers arrive on that side).
 ## `SOLIDS` lists the colliders (local x, z, radius) that World.add_waypoint turns into circles.
 
-const RUNE := Color(0.35, 0.72, 1.0)
+const RUNE := Color(0.12, 0.5, 1.0)     # deep cyan: the fx shader multiplies it by energy, so pale tints clip to white
 const DAIS_R := 4.85          # outer step radius
 const TOP_Y := 0.36           # walking height of the inner dais
 
@@ -20,8 +20,8 @@ const SOLIDS := [
 	[1.7, -5.3, 0.15], [-1.7, -5.3, 0.15], [5.0, 3.0, 0.18], [-5.0, 3.0, 0.18], [0.0, 0.0, 0.6],
 ]
 
-const IDLE := 0.35           # rune glow with nobody near (a soft cyan: the old stone's white blaze read as UI)
-const NEAR := 1.7            # rune glow with a hero on the dais
+const IDLE := 0.3            # rune glow with nobody near (a soft cyan: the old stone's white blaze read as UI)
+const NEAR := 0.85           # rune glow with a hero on the dais
 const WAKE_R := 11.0         # a hero inside this starts waking it; fully awake at 3.5 m
 
 var crystal: Node3D
@@ -50,7 +50,7 @@ func _build() -> void:
 	var iron := Mats.mat(Color(0.12, 0.11, 0.1), 0.55, 0.85)
 	var statue_m := Mats.world(Color(0.34, 0.33, 0.31), Color(0.2, 0.2, 0.19), 0.9, 1.7, 0.4, Props.MOSS)
 	rune_mat = Mats.glow_unique(RUNE, 1.1)
-	beam_mat = Mats.glow_unique(Color(0.45, 0.78, 1.0), 1.4, 0.6)
+	beam_mat = Mats.glow_unique(Color(0.22, 0.58, 1.0), 0.6, 0.6)
 
 	# --- the dais: three worn steps, each edged with dressed blocks
 	var tiers := [[DAIS_R, 0.06], [4.15, 0.18], [3.45, 0.30]]
@@ -94,12 +94,12 @@ func _build() -> void:
 	Models.P(self, Geo.cyl(0.48, 0.66, 0.22, 8), stone_d, Vector3(0, TOP_Y + 0.11, 0))
 	Models.P(self, Geo.torus(0.36, 0.44, 24, 4), rune_mat, Vector3(0, TOP_Y + 0.23, 0)).scale = Vector3(1, 0.3, 1)
 	Models.P(self, Geo.cyl(0.1, 0.2, 2.3, 12), beam_mat, Vector3(0, TOP_Y + 1.35, 0))
-	Models.P(self, Geo.cyl(0.32, 0.5, 2.6, 16), Mats.glow(Color(0.3, 0.55, 1.0), 0.25, 0.7), Vector3(0, TOP_Y + 1.4, 0))
+	Models.P(self, Geo.cyl(0.32, 0.5, 2.6, 16), Mats.glow(Color(0.15, 0.4, 1.0), 0.12, 0.7), Vector3(0, TOP_Y + 1.4, 0))
 	crystal = Models.N(self, "crystal", Vector3(0, 3.0, 0))
-	var cm := Mats.mat(Color(0.18, 0.34, 0.7), 0.08, 0.2, Color(0.35, 0.65, 1.0), 1.4)
+	var cm := Mats.mat(Color(0.06, 0.16, 0.45), 0.08, 0.3, Color(0.12, 0.42, 1.0), 0.65)
 	Models.P(crystal, Geo.cyl(0.0, 0.44, 1.15, 6), cm, Vector3(0, 0.575, 0))
 	Models.P(crystal, Geo.cyl(0.44, 0.0, 0.75, 6), cm, Vector3(0, -0.375, 0))
-	Models.P(crystal, Geo.sph(0.2, 10), Mats.glow(Color(0.75, 0.9, 1.0), 2.5), Vector3(0, 0.05, 0))
+	Models.P(crystal, Geo.sph(0.2, 10), Mats.glow(Color(0.45, 0.78, 1.0), 1.3), Vector3(0, 0.05, 0))
 	# a carved rune on its face, toward the camera
 	Models.P(crystal, Geo.box(0.04, 0.42, 0.02), rune_mat, Vector3(0, 0.12, 0.33), Vector3(-17, 0, 0))
 	Models.P(crystal, Geo.box(0.26, 0.04, 0.02), rune_mat, Vector3(0, 0.2, 0.31), Vector3(-17, 0, 0))
@@ -130,9 +130,9 @@ func _build() -> void:
 				Vector2(0.36, 1.12), Vector2(0.0, 1.1)], 16, "wp_brazier_bowl"), iron, Vector3.ZERO)
 		# blue spirit-fire (Props.fire's flames start warm white, so these are their own): a dense core, licking
 		# tongues, a few sparks, and a small light on the stones
-		Fx.aura(b, Color(0.55, 0.8, 1.0), 22, 0.9, 0.16, 0.55, 1.8, 0.12, 12.0, Vector3(0, 1.16, 0))
-		Fx.aura(b, Color(0.2, 0.45, 1.0), 16, 1.3, 0.26, 0.8, 1.2, 0.2, 20.0, Vector3(0, 1.2, 0))
-		Fx.aura(b, Color(0.7, 0.9, 1.0), 6, 1.8, 0.04, 1.6, 0.8, 0.2, 30.0, Vector3(0, 1.3, 0))
+		Fx.aura(b, Color(0.22, 0.55, 1.0), 18, 0.9, 0.15, 0.55, 1.8, 0.1, 12.0, Vector3(0, 1.16, 0))
+		Fx.aura(b, Color(0.05, 0.25, 0.9), 14, 1.3, 0.26, 0.8, 1.2, 0.18, 20.0, Vector3(0, 1.2, 0))
+		Fx.aura(b, Color(0.4, 0.75, 1.0), 6, 1.8, 0.04, 1.6, 0.8, 0.2, 30.0, Vector3(0, 1.3, 0))
 		var bl := OmniLight3D.new()
 		bl.light_color = Color(0.35, 0.6, 1.0)
 		bl.light_energy = 0.8
@@ -191,7 +191,7 @@ func _build() -> void:
 		Props.fire(tp, Vector3(0, 2.12, 0), 0.4, Color(1.0, 0.55, 0.2), true, false, true)
 
 	# motes of energy drifting up off the dais
-	motes = Fx.aura(self, Color(0.45, 0.75, 1.0), 36, 0.35, 0.05, 3.2, 0.25, 2.6, 15.0, Vector3(0, TOP_Y + 0.15, 0))
+	motes = Fx.aura(self, Color(0.15, 0.45, 1.0), 36, 0.35, 0.05, 3.2, 0.25, 2.6, 15.0, Vector3(0, TOP_Y + 0.15, 0))
 
 ## The activation burst (a hero arrives by it, or opens the travel window at it).
 func pulse() -> void:
@@ -200,7 +200,7 @@ func pulse() -> void:
 	if root == null:
 		return
 	Fx.ring(root, global_position + Vector3(0, TOP_Y + 0.05, 0), 3.2, RUNE, 0.7, 0.2)
-	Fx.burst(root, global_position + Vector3(0, 1.0, 0), Color(0.5, 0.8, 1.0), 30, 3.5, 0.08, 1.0, true, 1.5, 35.0)
+	Fx.burst(root, global_position + Vector3(0, 1.0, 0), Color(0.2, 0.55, 1.0), 30, 3.5, 0.08, 1.0, true, 1.5, 35.0)
 	Fx.flash(root, global_position + Vector3(0, 2.2, 0), Color(0.45, 0.7, 1.0), 3.5, 0.9, 9.0)
 
 func _nearest_hero() -> float:
@@ -225,9 +225,9 @@ func _process(delta: float) -> void:
 	for i in ring_mats.size():
 		var on := smoothstep(i * 0.25, i * 0.25 + 0.5, _wake)
 		var ph := 0.5 + 0.5 * sin(_t * 2.2 - i * 0.9)
-		ring_mats[i].set_shader_parameter("energy", lerpf(IDLE, NEAR, on) * (0.8 + 0.35 * ph) + _flash * 2.5)
-	rune_mat.set_shader_parameter("energy", lerpf(IDLE * 0.8, NEAR * 0.85, smoothstep(0.3, 1.0, _wake)) * (0.85 + 0.25 * pulse_w) + _flash * 2.0)
-	beam_mat.set_shader_parameter("energy", lerpf(0.7, 1.9, _wake) + _flash * 3.0)
+		ring_mats[i].set_shader_parameter("energy", lerpf(IDLE, NEAR, on) * (0.8 + 0.3 * ph) + _flash * 0.8)
+	rune_mat.set_shader_parameter("energy", lerpf(IDLE * 0.8, NEAR * 0.85, smoothstep(0.3, 1.0, _wake)) * (0.85 + 0.2 * pulse_w) + _flash * 0.6)
+	beam_mat.set_shader_parameter("energy", lerpf(0.35, 0.85, _wake) + _flash * 1.0)
 	_spin += delta * lerpf(0.3, 1.3, _wake) + delta * _flash * 4.0
 	crystal.rotation.y = _spin
 	crystal.position.y = 3.0 + sin(_t * 1.1) * lerpf(0.1, 0.18, _wake)
