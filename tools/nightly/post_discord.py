@@ -29,7 +29,8 @@ def token():
 def chunks(text, n=1900):
     out, cur = [], ""
     for para in text.split("\n"):
-        if len(cur) + len(para) + 1 > n:
+        # (a section starts a new message rather than being cut, once the message has some length)
+        if len(cur) + len(para) + 1 > n or (para.startswith("## ") and len(cur) > n * 0.6):
             out.append(cur)
             cur = ""
         cur += para + "\n"

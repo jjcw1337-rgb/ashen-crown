@@ -91,8 +91,10 @@ phase() {  # name, prompt file, seconds
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 }
 phase perf tools/nightly/perf_prompt.md 10800
-# `touch "$STATE/skip_mode_once"`: skip the new-mode phase for one night (e.g. while a person is rebuilding the mode)
+# `echo "why" > "$STATE/skip_mode_once"`: skip the new-mode phase for one night (e.g. while a person is rebuilding the
+# mode); the report says it was skipped and why (the file's text)
 if [ -f "$STATE/skip_mode_once" ]; then
+  cp "$STATE/skip_mode_once" "$OUT/mode_skipped.txt"
   rm -f "$STATE/skip_mode_once"; status mode skipped "skip_mode_once"
 else
   phase mode tools/nightly/mode_prompt.md 12600
