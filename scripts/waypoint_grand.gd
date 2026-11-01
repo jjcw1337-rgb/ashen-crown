@@ -290,7 +290,16 @@ func _build() -> void:
 	var gold := Mats.mat(Color(0.75, 0.55, 0.22), 0.35, 0.9)
 	for sx in [-1.0, 1.0]:
 		var bn := Models.N(self, "banner", Vector3(1.7 * sx, 0, -5.3))
-		if _put(bn, "banner", Vector3.ZERO, 0.0):
+		var bmod := _put(bn, "banner", Vector3.ZERO, 0.0)
+		if bmod:
+			# Meshy's cloth is a dark oxblood that the crystal's cold light turns navy: warm it so it stays red
+			for g in bmod.find_children("*", "MeshInstance3D", true, false):
+				var bmi: MeshInstance3D = g
+				var bb := bmi.get_active_material(0)
+				if bb is StandardMaterial3D:
+					var bm2: StandardMaterial3D = (bb as StandardMaterial3D).duplicate()
+					bm2.albedo_color = Color(1.9, 1.05, 0.9)
+					bmi.material_override = bm2
 			continue
 		Models.P(bn, Geo.cyl(0.05, 0.06, 4.4, 8), iron, Vector3(0, 2.2, 0))
 		Models.P(bn, Geo.cyl(0.0, 0.08, 0.3, 4), iron, Vector3(0, 4.55, 0))
