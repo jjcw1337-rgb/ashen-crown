@@ -819,9 +819,11 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   route (lit waypoints travel, across acts too via `switch_run(run, zone)`); it closes when you walk off the stone
   or click outside it. Add an act: a `Data.RUNS` entry, its zones, an entry here (its `group`, e.g. "acts" or "ancient"; groups are `Data.WAYPOINT_GROUPS`, and a group's heading appears once it has an entry; the tab row scrolls when it overflows). Add a waypoint: a point here + one
   line in that zone's builder, `add_waypoint("<id>", Vector3(x, 0, z))` (stone, colliders, its own arrival spot;
-  a zone can hold several). The camp's stone is the grand dais (`WaypointGrand`, `scripts/waypoint_grand.gd`, stage-1 blockout of the
-  waypoint overhaul: dais, rune channels, floating crystal, blue braziers, guardians, banners; wakes as a hero nears, flares on
-  arrival and when the window opens; `add_waypoint(id, p, cobble, true)`, colliders in `SOLIDS`; `-- --old-waypoint` shows the old
+  a zone can hold several). The camp's stone is the grand dais (`WaypointGrand`, `scripts/waypoint_grand.gd`): models in
+  `assets/models/waypoint/` (`dais.glb` modelled by `tools/blender/waypoint/build_dais.py`, its floor rings' gaps are the carved
+  rune channels the glow sits in; Meshy crystal, brazier, guardian, banner, torch, pillar re-baked by `camp/rebake_prop.py`, the crystal
+  split and the modelled flames cut by `waypoint/split_parts.py`; each missing model falls back to its code blockout); wakes as a
+  hero nears, flares on arrival and when the window opens; `add_waypoint(id, p, cobble, true)`, colliders in `SOLIDS`; `-- --old-waypoint` shows the old
   stone). The window's Battlegrounds tab lists `Data.WAYPOINT_BATTLEGROUNDS` (Enter -> `Game.waypoint_battleground`: save, title's
   Battlegrounds window; not from co-op). Tests: `tools/waypoint_grand_test.gd`, `tools/waypoint_test.gd`
   (rules), `tools/waypoint_shot.gd -- out.png [run]` (screenshot).
