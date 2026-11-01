@@ -6,8 +6,9 @@ extends SceneTree
 ##     -s tools/coop_fx_shot.gd -- <outdir> [class:skill,...]
 ## Writes <outdir>/<class>_<skill>_NNN.png (every 5th frame of the playback).
 var g
-const SHOTS := ["wraith:siphon", "wraith:grasp", "wraith:night", "warlock:drain", "demon:summon", "archer:volley"]
-const SECS := {"siphon": 3.6, "grasp": 3.0, "night": 6.6, "phantom": 2.6, "drain": 3.2, "summon": 2.6, "volley": 2.8, "cleave": 2.0}
+const SHOTS := ["wraith:siphon", "wraith:grasp", "wraith:night", "warlock:drain", "demon:grip", "demon:wrath", "archer:volley"]
+const SECS := {"siphon": 3.6, "grasp": 3.0, "night": 6.6, "phantom": 2.6, "drain": 3.2, "volley": 2.8, "cleave": 2.0,
+	"fists": 2.0, "icharge": 2.6, "cslam": 3.6, "hurl": 3.2, "grip": 3.2, "wrath": 9.0}
 const OFF := Vector3(40.0, 0, 0)
 var off := OFF            # to the puppet's spot, the ground's height there included
 var puppet: Hero
@@ -20,10 +21,10 @@ func _initialize():
 func wait(s: float) -> void:
 	await create_timer(s).timeout
 
-func _pack(at: Vector3, n: int, lvl: int) -> Array:
+func _pack(at: Vector3, n: int, lvl: int, dist := 4.5) -> Array:
 	var out := []
 	for i in n:
-		var p := at + Vector3(-1.1 + i * 1.1, 0, -4.5 - absf(i - 1) * 0.5)
+		var p := at + Vector3(-1.1 + i * 1.1, 0, -dist - absf(i - 1) * 0.5)
 		var e = g.spawn_enemy("zombie", p, lvl)
 		e.aggro = false
 		e.scripted = 99.0
@@ -31,6 +32,24 @@ func _pack(at: Vector3, n: int, lvl: int) -> Array:
 	return out
 
 ## An event moved over to the puppet's spot: points shifted, enemies swapped for the puppet's own pack.
+## A spot OFF away from home (or the clearest of a ring of such spots) with no tree trunk within 9 m and room for
+## the pack, so the camera isn't buried in a canopy.
+func _clearing(home: Vector3) -> Vector3:
+	var best := home + OFF
+	var best_d := -1.0
+	for i in 12:
+		var ang := i * TAU / 12.0
+		var p := home + Vector3(cos(ang) * OFF.x, 0, sin(ang) * OFF.x)
+		if g.world.is_blocked(p.x, p.z) or g.world.is_blocked(p.x, p.z - 5.0) or g.world.is_blocked(p.x + 5.0, p.z):
+			continue
+		var d := 999.0
+		for t in g.world.tree_pts:
+			d = minf(d, Vector2(p.x, p.z).distance_to(t))
+		if d > best_d:
+			best_d = d
+			best = p
+	return best
+
 func _shift(w: Dictionary, from_pack: Array, to_pack: Array) -> Dictionary:
 	var ev := SkillFx.decode(g.net, w)
 	for k in ["p", "q"]:
@@ -94,11 +113,12 @@ func _run() -> void:
 			e.queue_free()
 		await process_frame
 		var home: Vector3 = h.global_position
-		var there := home + OFF
+		var there := _clearing(home)
 		there.y = g.world.height_at(there.x, there.z)
 		off = there - home
 		var n := 1 if sk in ["siphon", "drain"] else 3
-		var pack: Array = _pack(home, n, 24)
+		var dist := 2.4 if sk == "grip" else 4.5      # Hellgrip only reaches 3.6 m
+		var pack: Array = _pack(home, n, 24, dist)
 		h._face(Vector3(0, 0, -1))
 		for k in h.cds.keys():
 			h.cds[k] = 0.0
@@ -122,12 +142,11 @@ func _run() -> void:
 			evs.clear()
 		g.net.fx_tap = Callable()
 		h.end_drain()
-		h.end_phase(false)
 		WraithSkills.clear(h)
+		DemonSkills.clear(h)
 		# the puppet plays it back far away, beside its own pack; the hero waits out of sight
-		var pack2: Array = _pack(there, n, 24)
+		var pack2: Array = _pack(there, n, 24, dist)
 		h.global_position = home + Vector3(0, 0, 60.0)
-		h.dismiss_minions()
 		puppet.global_position = there
 		puppet.net_pos = there
 		puppet.net_yaw = rec[0]["yaw"]
@@ -152,10 +171,12 @@ func _run() -> void:
 			elif sk in ["drain", "volley", "cleave"]:
 				off = Vector3(5.0, 2.8, 0.6)
 				look = c + Vector3(0, 0.9, -2.8)
-			elif sk == "summon":
-				# from his left and a little behind, so the demon climbing out ahead of him is in the open
-				off = Vector3(-4.6, 2.6, 1.8)
-				look = c + Vector3(0.4, 0.8, -2.0)
+			elif sk == "wrath":
+				off = Vector3(8.0, 4.5, 0.5)
+				look = c + Vector3(0, 1.2, -2.5)
+			elif sk in ["cslam", "hurl", "icharge"]:
+				off = Vector3(6.5, 3.6, 1.0)
+				look = c + Vector3(0, 0.8, -4.0)
 			cam.global_transform = Transform3D(Basis(), c + off).looking_at(look)
 			await process_frame
 			await RenderingServer.frame_post_draw
@@ -163,7 +184,6 @@ func _run() -> void:
 				get_root().get_texture().get_image().save_png("%s/%s_%s_%03d.png" % [out, cls, sk, i])
 			i += 1
 		SkillFx.clear(puppet)
-		puppet.dismiss_minions()
 		for e in pack2:
 			if is_instance_valid(e):
 				e.queue_free()

@@ -8,12 +8,13 @@ extends RefCounted
 ## Each talent's "fx" is what one rank gives; ranks add up (`sum`) into `Hero.tfx`, read with
 ## `Hero.talent(key)`. The keys:
 ##   flat, added to the character's stats in `Hero.recalc`: str dex vit ene res ls regen ias frw block mf
-##   percent: dmg (all damage), dmg:<skill> (one skill, "attack" = the weapon attack, "summon" = the
-##     demons' claws), cd:<skill> (shorter cooldown), cost:<skill> (less mana), life_pct, mana_pct,
+##   percent: dmg (all damage), dmg:<skill> (one skill, "attack" = the weapon attack), cd:<skill> (shorter
+##     cooldown), cost:<skill> (less mana), life_pct, mana_pct,
 ##     armor_pct, crit (chance), crit_dmg, buff_pow (the 12 s buffs' +40% damage), block_dr
-##   seconds: buff_dur (the 12 s buffs), phase_dur, siphon_dur, step_stun, veil, grasp_hold, shackle_dur, blight_dur
+##   seconds: buff_dur (the 12 s buffs), siphon_dur, step_stun, veil, grasp_hold, shackle_dur, blight_dur,
+##     trail_dur (the Demon's lava on the ground), wrath_dur
 ##   class specials, used where the skill is: nova_heal, cry_heal, charge_cdr, rend_heal, rend_full,
-##     phantoms, claw_wide, minion_speed, minion_max, pact_cost, phase_heal, drain_heal,
+##     phantoms, fists_wide, hurl_twin, wrath_double, drain_heal,
 ##     drain_fork, drain_glut, blight_size, blight_twin, shackle_range, arrow_split, snare_dur, snare_max,
 ##     snare_wide, volley_size, beast_two, burn_dmg, wolf_burn, chill_pct, wolf_howl, frost_shatter, arc_count
 ## "text" shows the total for the ranks taken: {key} is replaced by the fx value times the rank.
@@ -81,32 +82,32 @@ const TREES := {
 		]},
 	],
 	"demon": [
-		{"name": "Hellfire", "desc": "Burning claws: Hellfire Claw and raw fury.", "talents": [
-			{"id": "d_sear", "name": "Searing Claws", "row": 0, "max": 3, "icon": "hellclaw", "fx": {"dmg:hellclaw": 10}, "text": "Hellfire Claw deals {dmg:hellclaw}% more damage."},
+		{"name": "Magma", "desc": "The fists and the charge: Molten Fists, Infernal Charge and raw fury.", "talents": [
+			{"id": "d_sear", "name": "Searing Fists", "row": 0, "max": 3, "icon": "fists", "fx": {"dmg:fists": 10}, "text": "Molten Fists deal {dmg:fists}% more damage."},
 			{"id": "d_brim", "name": "Brimstone", "row": 0, "max": 3, "icon": "t_fist", "fx": {"str": 3}, "text": "+{str} strength."},
 			{"id": "d_kindle", "name": "Kindling", "row": 1, "max": 3, "icon": "t_sword", "fx": {"dmg": 4}, "text": "+{dmg}% damage."},
 			{"id": "d_frenzy", "name": "Frenzy", "row": 1, "max": 3, "icon": "t_haste", "fx": {"ias": 5}, "text": "+{ias}% attack speed."},
 			{"id": "d_edge", "name": "Infernal Edge", "row": 2, "max": 3, "icon": "t_star", "fx": {"crit": 3}, "text": "+{crit}% chance to land a critical hit."},
 			{"id": "d_cinder", "name": "Cinder Heart", "row": 2, "max": 2, "icon": "t_skull", "fx": {"crit_dmg": 20}, "text": "Critical hits deal {crit_dmg}% more damage."},
-			{"id": "d_inferno", "name": "Inferno", "row": 3, "max": 1, "icon": "hellclaw", "fx": {"claw_wide": 1}, "text": "Hellfire Claw rakes a metre further and much wider."},
+			{"id": "d_inferno", "name": "Inferno", "row": 3, "max": 1, "icon": "fists", "fx": {"fists_wide": 1}, "text": "Molten Fists crack the ground a metre further and wider, and what they light burns twice as long."},
 		]},
-		{"name": "Summoner", "desc": "Your demons: more of them, fiercer, and the Blood Pact.", "talents": [
-			{"id": "d_bargain", "name": "Dark Bargain", "row": 0, "max": 3, "icon": "summon", "fx": {"cost:summon": 15}, "text": "Summon Demon costs {cost:summon}% less mana."},
-			{"id": "d_ferocity", "name": "Ferocity", "row": 0, "max": 3, "icon": "summon", "fx": {"dmg:summon": 15}, "text": "Your demons deal {dmg:summon}% more damage."},
+		{"name": "Cataclysm", "desc": "The ground torn open: Infernal Charge, Cataclysm Slam and Brimstone Hurl.", "talents": [
+			{"id": "d_bargain", "name": "Cheap Fury", "row": 0, "max": 3, "icon": "icharge", "fx": {"cost:icharge": 15, "cost:hurl": 10}, "text": "Infernal Charge costs {cost:icharge}% and Brimstone Hurl {cost:hurl}% less mana."},
+			{"id": "d_ferocity", "name": "Ferocity", "row": 0, "max": 3, "icon": "cslam", "fx": {"dmg:cslam": 12, "dmg:hurl": 12}, "text": "Cataclysm Slam and Brimstone Hurl deal {dmg:cslam}% more damage."},
 			{"id": "d_hellsworn", "name": "Hellsworn", "row": 1, "max": 3, "icon": "t_heart", "fx": {"life_pct": 4}, "text": "+{life_pct}% maximum life."},
-			{"id": "d_pack", "name": "Pack Master", "row": 1, "max": 3, "icon": "t_boot", "fx": {"minion_speed": 8}, "text": "Your demons move and claw {minion_speed}% faster."},
-			{"id": "d_tithe", "name": "Blood Tithe", "row": 2, "max": 2, "icon": "pact", "fx": {"pact_cost": 4}, "text": "Blood Pact costs {pact_cost}% less of your life."},
-			{"id": "d_oath", "name": "Pact Master", "row": 2, "max": 3, "icon": "pact", "fx": {"buff_pow": 10}, "text": "Blood Pact's damage bonus is {buff_pow}% higher."},
-			{"id": "d_legion", "name": "Legion of Hell", "row": 3, "max": 1, "icon": "summon", "fx": {"minion_max": 1}, "text": "{minion_max} more demon can fight beside you (4 at once)."},
+			{"id": "d_pack", "name": "Slow Cooling", "row": 1, "max": 3, "icon": "hurl", "fx": {"trail_dur": 1}, "text": "The charge's lava trail and the boulder's pool burn {trail_dur} seconds longer."},
+			{"id": "d_tithe", "name": "Stampede", "row": 2, "max": 2, "icon": "icharge", "fx": {"cd:icharge": 15, "dmg:icharge": 10}, "text": "Infernal Charge recharges {cd:icharge}% faster and hits {dmg:icharge}% harder."},
+			{"id": "d_oath", "name": "Pit Lord", "row": 2, "max": 3, "icon": "wrath", "fx": {"buff_pow": 10}, "text": "Wrath of the Pit's damage bonus is {buff_pow}% higher."},
+			{"id": "d_legion", "name": "Twin Boulders", "row": 3, "max": 1, "icon": "hurl", "fx": {"hurl_twin": 1}, "text": "Brimstone Hurl throws a second boulder beside the first."},
 		]},
-		{"name": "Underworld", "desc": "The other side: Underworld Phase and obsidian hide.", "talents": [
-			{"id": "d_plate", "name": "Obsidian Plate", "row": 0, "max": 3, "icon": "t_armor", "fx": {"armor_pct": 6}, "text": "+{armor_pct}% defense."},
+		{"name": "The Pit", "desc": "What the pit gives: Hellgrip, Wrath of the Pit and charcoal hide.", "talents": [
+			{"id": "d_plate", "name": "Charcoal Hide", "row": 0, "max": 3, "icon": "t_armor", "fx": {"armor_pct": 6}, "text": "+{armor_pct}% defense."},
 			{"id": "d_hide", "name": "Demon Hide", "row": 0, "max": 3, "icon": "t_heart", "fx": {"life_pct": 4}, "text": "+{life_pct}% maximum life."},
-			{"id": "d_rift", "name": "Rift Walker", "row": 1, "max": 3, "icon": "phase", "fx": {"phase_dur": 1}, "text": "Underworld Phase lasts {phase_dur} seconds longer."},
+			{"id": "d_rift", "name": "Crushing Grip", "row": 1, "max": 3, "icon": "grip", "fx": {"dmg:grip": 12}, "text": "Hellgrip smashes {dmg:grip}% harder."},
 			{"id": "d_abyss", "name": "Abyssal Ward", "row": 1, "max": 3, "icon": "t_ward", "fx": {"res": 5}, "text": "+{res}% to all resistances."},
-			{"id": "d_erupt", "name": "Eruption", "row": 2, "max": 2, "icon": "phase", "fx": {"dmg:phase": 25, "cd:phase": 10}, "text": "The rift erupts {dmg:phase}% harder; Underworld Phase recharges {cd:phase}% faster."},
-			{"id": "d_hunger", "name": "Hungering Dark", "row": 2, "max": 3, "icon": "t_fang", "fx": {"ls": 1}, "text": "+{ls}% of the damage you deal comes back as life."},
-			{"id": "d_furnace", "name": "Soul Furnace", "row": 3, "max": 1, "icon": "t_heart", "fx": {"phase_heal": 30}, "text": "Coming back from the Underworld heals you {phase_heal}% of your life."},
+			{"id": "d_erupt", "name": "Long Wrath", "row": 2, "max": 2, "icon": "wrath", "fx": {"wrath_dur": 1, "cd:wrath": 8}, "text": "Wrath of the Pit rains {wrath_dur} seconds longer and recharges {cd:wrath}% faster."},
+			{"id": "d_hunger", "name": "Hungering Fire", "row": 2, "max": 3, "icon": "t_fang", "fx": {"ls": 1}, "text": "+{ls}% of the damage you deal comes back as life."},
+			{"id": "d_furnace", "name": "Meteor Storm", "row": 3, "max": 1, "icon": "wrath", "fx": {"wrath_double": 1}, "text": "Wrath of the Pit calls two meteors at a time."},
 		]},
 	],
 	"warlock": [
@@ -176,7 +177,7 @@ const AUTO := {
 		"k_might", "k_momentum", "k_ram", "k_sword", "k_command", "k_rally", "k_relentless"],
 	"wraith": ["w_scythe", "w_focus", "w_harvest", "w_haste", "w_cruel", "w_exec", "w_moon", "w_unlife", "w_chill", "w_legion", "w_ward", "w_eternal", "w_siphon", "w_rider",
 		"w_scream", "w_mind", "w_dread", "w_slip", "w_hollow", "w_form", "w_echo"],
-	"demon": ["d_ferocity", "d_bargain", "d_pack", "d_hellsworn", "d_oath", "d_tithe", "d_legion", "d_sear", "d_brim", "d_kindle", "d_frenzy", "d_edge", "d_cinder", "d_inferno",
+	"demon": ["d_sear", "d_brim", "d_kindle", "d_frenzy", "d_edge", "d_cinder", "d_inferno", "d_ferocity", "d_bargain", "d_pack", "d_hellsworn", "d_tithe", "d_oath", "d_legion",
 		"d_hide", "d_plate", "d_rift", "d_abyss", "d_erupt", "d_hunger", "d_furnace"],
 	"warlock": ["l_deep", "l_thirst", "l_thrift", "l_intel", "l_fork", "l_wither", "l_glut", "l_virulence", "l_contagion", "l_quick", "l_vigor", "l_spread", "l_malice", "l_twin",
 		"l_felarmor", "l_reserves", "l_chains", "l_sigils", "l_reach", "l_dark", "l_eternal"],

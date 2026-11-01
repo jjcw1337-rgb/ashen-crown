@@ -353,12 +353,10 @@ func _bot(fs: Array) -> void:
 		match String(s.get("aim", "facing")):
 			"self":
 				match id:
-					"cry", "host", "covenant", "pact":
-						want = nd < 8.0 and (id != "pact" or h.life > h.max_life * 0.6)
-					"phase":
-						want = h.life < h.max_life * 0.5
-					"summon":
-						want = nd < 12.0 and h.minions.size() < 3
+					"cry", "host", "covenant":
+						want = nd < 8.0
+					"wrath":
+						want = crowd >= 3 or (near.boss and nd < 8.0)
 					_:
 						want = crowd >= 2 or (near.boss and nd < 6.0)
 			"point":

@@ -74,12 +74,14 @@ static func update(h: Hero, delta: float) -> void:
 		return
 	KnightFx.update(h, delta)
 	WraithFx.update(h, delta)
+	DemonFx.update(h, delta)
 	WarlockFx.update(h, delta)
 	ArcherFx.update(h, delta)
 
 ## Everything lingering is gone (death, a class change, a zone change).
 static func clear(h: Hero) -> void:
 	WraithFx.clear(h)
+	DemonFx.clear(h)
 	WarlockFx.clear(h)
 	ArcherFx.clear(h)
 	KnightFx.clear(h)

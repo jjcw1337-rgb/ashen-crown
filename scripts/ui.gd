@@ -4415,37 +4415,58 @@ class SkillGlyph extends Control:
 				for r in [14, 19]:
 					draw_arc(c + Vector2(0, 8), r, -0.5, 0.5, 8, wcol, 1.5, true)
 					draw_arc(c + Vector2(0, 8), r, PI - 0.5, PI + 0.5, 8, wcol, 1.5, true)
-			"hellclaw":
-				# three raking claw marks with burning tips
-				for k in 3:
-					var o := Vector2((k - 1) * 9, 0)
-					draw_arc(c + o + Vector2(14, -2), 18, PI * 0.72, PI * 1.12, 10, dcol, 3.5, true)
-					draw_circle(c + o + Vector2(-3, -12), 2.2, dhot)
-			"summon":
-				# a burning sigil with a horned head rising out of it
-				draw_arc(c + Vector2(0, 9), 15, 0, TAU, 28, dcol, 2.0, true)
+			"fists":
+				# two fists coming down on cracking ground
+				for sx in [-1, 1]:
+					draw_circle(c + Vector2(sx * 8, -8), 6.5, dcol)
+					draw_arc(c + Vector2(sx * 8, -8), 6.5, 0, TAU, 16, dhot, 1.5, true)
 				for k in 5:
-					var a0 := -PI * 0.5 + TAU * k / 5.0
-					var a1 := -PI * 0.5 + TAU * (k + 2) / 5.0
-					draw_line(c + Vector2(0, 9) + Vector2(cos(a0), sin(a0) * 0.45) * 15, c + Vector2(0, 9) + Vector2(cos(a1), sin(a1) * 0.45) * 15, dcol, 1.3, true)
-				draw_circle(c + Vector2(0, -4), 7, Color(0.25, 0.04, 0.03) if not dim else Color(0.2, 0.17, 0.15))
-				draw_polyline(PackedVector2Array([c + Vector2(-5, -8), c + Vector2(-11, -18), c + Vector2(-7, -9)]), dhot, 2.0, true)
-				draw_polyline(PackedVector2Array([c + Vector2(5, -8), c + Vector2(11, -18), c + Vector2(7, -9)]), dhot, 2.0, true)
-				draw_circle(c + Vector2(-3, -5), 1.4, dhot)
-				draw_circle(c + Vector2(3, -5), 1.4, dhot)
-			"phase":
-				# a rift: a violet tear with a figure stepping through
-				var vio := Color(0.65, 0.45, 1.0) if not dim else Color(0.32, 0.3, 0.38)
-				draw_colored_polygon(PackedVector2Array([c + Vector2(0, -18), c + Vector2(8, -4), c + Vector2(4, 4), c + Vector2(9, 18), c + Vector2(-2, 6), c + Vector2(-8, 16), c + Vector2(-5, -2), c + Vector2(-9, -10)]), Color(vio.r, vio.g, vio.b, 0.35))
-				draw_polyline(PackedVector2Array([c + Vector2(0, -18), c + Vector2(8, -4), c + Vector2(4, 4), c + Vector2(9, 18)]), vio, 2.0, true)
-				draw_polyline(PackedVector2Array([c + Vector2(0, -18), c + Vector2(-9, -10), c + Vector2(-5, -2), c + Vector2(-8, 16)]), vio, 2.0, true)
-				draw_circle(c + Vector2(0, -6), 3.0, dcol)
-				draw_line(c + Vector2(0, -3), c + Vector2(0, 8), dcol, 3.0, true)
-			"pact":
-				# a dripping blood drop over a burning star
-				draw_colored_polygon(PackedVector2Array([c + Vector2(0, -17), c + Vector2(9, 0), c + Vector2(7, 8), c + Vector2(0, 12), c + Vector2(-7, 8), c + Vector2(-9, 0)]), Color(0.85, 0.05, 0.08) if not dim else Color(0.35, 0.25, 0.25))
-				draw_circle(c + Vector2(-3, 2), 2.5, Color(1, 0.6, 0.6, 0.6))
-				draw_arc(c, 18, PI * 0.15, PI * 0.85, 12, dcol, 2.0, true)
+					var a0 := PI * 0.15 + k * PI * 0.175
+					draw_line(c + Vector2(0, 4), c + Vector2(cos(a0), sin(a0) * 0.6) * 19 + Vector2(0, 4), dhot, 2.0, true)
+			"icharge":
+				# a horned head lowered into a charge, lava streaking behind
+				draw_colored_polygon(PackedVector2Array([c + Vector2(14, -2), c + Vector2(4, -10), c + Vector2(-6, -6), c + Vector2(-4, 6), c + Vector2(6, 8)]), dcol)
+				draw_polyline(PackedVector2Array([c + Vector2(2, -10), c + Vector2(6, -19), c + Vector2(10, -12)]), dhot, 2.2, true)
+				draw_polyline(PackedVector2Array([c + Vector2(-5, -6), c + Vector2(-11, -15), c + Vector2(-3, -11)]), dhot, 2.2, true)
+				for k in 3:
+					draw_line(c + Vector2(-6, 2 + k * 4), c + Vector2(-19, 6 + k * 4), dhot, 2.5 - k * 0.5, true)
+			"cslam":
+				# a fist's blow with fissures fanning out from it
+				draw_circle(c + Vector2(0, -6), 7, dcol)
+				for k in 5:
+					var a0 := PI * 0.1 + k * PI * 0.2
+					var e := c + Vector2(0, -2) + Vector2(cos(a0), sin(a0)) * 19
+					draw_polyline(PackedVector2Array([c + Vector2(0, -2), c + Vector2(0, -2) + (e - c - Vector2(0, -2)) * 0.5 + Vector2(k - 2, 0) * 1.5, e]), dhot, 2.0, true)
+					draw_circle(e, 2.0, dhot)
+			"hurl":
+				# a molten boulder in flight with an ember trail
+				draw_circle(c + Vector2(6, -6), 9, dcol)
+				draw_arc(c + Vector2(6, -6), 9, 0, TAU, 20, dhot, 1.5, true)
+				draw_line(c + Vector2(2, -9), c + Vector2(9, -2), dhot, 2.0, true)
+				draw_line(c + Vector2(4, -2), c + Vector2(10, -8), dhot, 1.5, true)
+				for k in 3:
+					draw_circle(c + Vector2(-6 - k * 5, 2 + k * 5), 3.0 - k * 0.7, Color(dhot.r, dhot.g, dhot.b, 0.8 - k * 0.2))
+			"grip":
+				# a clawed hand closed round a small figure, smashing down
+				draw_circle(c + Vector2(0, -4), 8, dcol)
+				for k in 4:
+					var a0 := PI * 0.75 + k * PI * 0.17
+					draw_line(c + Vector2(0, -4), c + Vector2(0, -4) + Vector2(cos(a0), sin(a0)) * 15, dcol, 3.0, true)
+				draw_circle(c + Vector2(0, -2), 2.8, dhot)
+				draw_line(c + Vector2(0, 1), c + Vector2(0, 8), dhot, 2.5, true)
+				draw_arc(c + Vector2(0, 14), 12, PI * 1.1, PI * 1.9, 10, dhot, 2.0, true)
+			"wrath":
+				# a horned head roaring under a rain of meteors
+				var pit := Color(1.0, 0.92, 0.6) if not dim else Color(0.45, 0.42, 0.35)
+				draw_circle(c + Vector2(0, 8), 7, dcol)
+				draw_polyline(PackedVector2Array([c + Vector2(-5, 4), c + Vector2(-11, -5), c + Vector2(-6, 2)]), dhot, 2.0, true)
+				draw_polyline(PackedVector2Array([c + Vector2(5, 4), c + Vector2(11, -5), c + Vector2(6, 2)]), dhot, 2.0, true)
+				draw_circle(c + Vector2(-2, 8), 1.4, pit)
+				draw_circle(c + Vector2(2, 8), 1.4, pit)
+				for k in 3:
+					var o := Vector2(-12 + k * 12, -18 + (k % 2) * 4)
+					draw_circle(c + o, 3.2, pit)
+					draw_line(c + o + Vector2(2, -2), c + o + Vector2(7, -9), Color(dhot.r, dhot.g, dhot.b, 0.7), 2.0, true)
 			"drain":
 				# a beam from an open hand that forks into three victims
 				var src := c + Vector2(-15, 12)

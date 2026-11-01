@@ -62,7 +62,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `world.gd` | Zone builder: terrain, roads, buildings, trees/grass (MultiMesh chunks), spawns, `burn_points` |
 | `hero.gd`, `knight.gd`, `knight_rig.gd`, `anim.gd` | Player: class (`cls`, `set_class`), stats (`recalc`), combat, skills, gear visuals, animation, co-op puppet mode |
 | `wraith.gd`, `wraith_skills.gd`, `wraith_fx.gd` | Wraith class: the Meshy body on the mocap system with the spectral shader; its six skills (casts, blows, the tether, phantoms, the night); their effects |
-| `demon.gd`, `demon_mocap_rig.gd`, `demon_fx.gd`, `demon_minion.gd` | Demon class: the Meshy magma brute on the mocap system with the magma shader and his own wing/tail/cloth rig (falls back to the knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader); skill effects and the Underworld screen grade; summoned demons (simple ally AI) |
+| `demon.gd`, `demon_mocap_rig.gd`, `demon_skills.gd`, `demon_fx.gd` | Demon class: the Meshy magma brute on the mocap system with the magma shader and his own wing/tail/cloth rig (falls back to the knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader); his six skills (the fists, the charge, the slam, the boulder, the grip, the wrath); their effects (lava on the ground, fissures, boulders, meteors) |
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
 | `enemy.gd`, `projectile.gd`, `feral.gd` | Monsters/AI and missiles (host-authoritative in co-op); the Feral's baked-animation body |
 | `via.gd`, `aurelia.gd`, `games.gd`, `roman.gd` | A2: the Imperial Road (wild), the city of Aurelia and its arena (lair), the arena's games (the act's boss fight), and the Roman architecture they're built from |
@@ -259,19 +259,47 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   swings its root between the legs, and goes limp dead); the flap is kicked by the stride and
   never swings into the legs (`_cloth`); `_footfalls` counts each foot landing (`thump`, which `Demon.animate`
   turns into a small `add_shake` for the local hero). His moves are whole-body clips through `Demon.SHOTS` (style -> clip and
-  progress keys: Hellfire Claw "side" = claw, the casts = cast, the combo swipe1/2/3 = claw / smash / slam, Space's
-  over / back / thrust = smash / claw / hurl; roar, stomp and grab wait for his skills' stage). The death is the
+  progress keys: the combo swipe1/2/3 = claw / smash / slam, Space's over / back / thrust = smash / claw / hurl, and
+  his skills' styles, see "The Demon's skills"). The death is the
   clip's fall (meta `own_death`: `Hero._own_death` skips the death tilt), then the rig cools the lava (shader
   `cool`, meta `demon_mats`) and lights the embers (meta `death_embers`); revive resets. `scripts/demon_mocap.gdshader`:
   Meshy's textures matte (roughness 0.9, no metal), the hot orange texels found as the cracks and lit as magma that
-  breathes, `glow` from `Demon.animate` (flares through attacks and casts, pulses with `hit_t`, a little more under
-  Blood Pact), `phase_amt` = the Underworld shadow (dithered away, violet in the cracks; `Demon.animate` eases it
-  from `hero.phased`). The weapon grips sit lower in his big fists and are scaled 1.35x (`Demon.build_mocap`).
+  breathes, `glow` from `Demon.animate` (flares through attacks and casts, pulses with `hit_t`, more under the wrath's
+  buff), `wrath` = the white heat of Wrath of the Pit, `phase_amt` = a dithered shadow (unused now). The weapon grips sit lower in his big fists and are scaled 1.35x (`Demon.build_mocap`).
   Preview: `tools/mocap_knight_clip.gd -- outdir demontour close|closeback|game|side|back 1020 demon` (idle, walk,
   run, a turn, every clip, a hit, death; `--fixed-fps 30`); `demontail tail|game 750 demon` is the tail alone (8 s
   standing, walk, run, charge, a turn, a swing; the `tail` view is a rear three-quarter); `demonsteps 34 270 demon`
   is the first steps (stand, run, stop, run into a turn, stop).
-- **Underworld** (Demon's Phase): `game.set_underworld()` blends a screen-space grade (`DemonFx.UNDERWORLD_SHADER`), the `under_amt` global (terrain veins and rune rings in `mats.gd`), environment tweaks, rising souls and crimson monster outlines (`Enemy.set_soul_lit`). Monsters ignore a phased hero (`hero.phased`).
+- **The Demon's skills** (`scripts/demon_skills.gd` `DemonSkills`, effects `scripts/demon_fx.gd`, tuning in
+  `Data.SKILLS`; six on Q E R F G V; a pure magma brute, the summons, Blood Pact, Hellfire Claw and Underworld
+  Phase are gone): Molten Fists (Q: the two-fisted punch cracks the ground open in a wedge ahead, `FISTS_R`, hits
+  and ignites), Infernal Charge (E: the head-down charge up to `CHARGE_RANGE`, moved by `_update_charge` through
+  the clip, bowling foes aside with a knockback and a stun, laying lava every `TRAIL_STEP` that burns `TRAIL_DUR`
+  s), Cataclysm Slam (R: a ring round the blow, then `FISSURES` fissures walked out ahead with `world.move` and
+  erupting in waves, `FISSURE_DELAY`/`FISSURE_WAVE`, each foe once per fissure), Brimstone Hurl (F: a boulder
+  thrown from the hand at the release frame, landing `HURL_FLIGHT` s later: the splash, a knockback, fire, a pool
+  for `POOL_DUR`), Hellgrip (G, level 14: the foe ahead is seized a quarter into the clip, `grip_pick`, stunned
+  and hoisted, smashed at the impact for his heaviest blow plus a shockwave; refused with "No enemy in reach"),
+  Wrath of the Pit (V, level 18, the ultimate: two stages chained as attacks by `_update_wrath`, the roar (terror
+  round him) and the stomp (a lava ring), then `WRATH_DUR` s of meteors, one every `WRATH_EVERY` on the foe struck
+  least recently within `WRATH_R` (`_call_meteor`; the spot goes in the event, so partners see the same sky), with
+  the +40% buff). Every blow adds `magma(h, k)` on top of the weapon, the same curve as the Wraith's spirit-light.
+  Clips through `Demon.SHOTS` (fists = claw, icharge = the looping charge, cslam = slam, hurl = hurl, grip =
+  grab_throw, wrath_roar = roar, wrath_stomp = stomp; `Anim.impact_at` has their frames, `Net.STYLES` the styles).
+  State lives in `Hero.dm` (the charge, `lava` patches ticking every `HAZARD_TICK`, `fissures`, `boulders` and
+  `meteors` in the air, the grip's victim, the wrath); `DemonSkills.clear` drops it all (class change, death, a
+  zone change) and `DemonFx.clear` what is seen. Effects are fx events `DemonFx.play` draws and `DemonFx.update`
+  keeps going on the puppet too (`Hero.fxs`: `icharge` embers, `boulders`/`meteors` flown on a parabola, `grip`
+  lifting the victim's rig, `wrath` ramping the body shader's `wrath` = white-hot cracks and a light); the lava on
+  the ground is `DemonFx.lava_decal` (a disc of `LAVA_SHADER`: cracked rock with magma breathing through, a wedge
+  for the fists, cooling to black over its life) and `lava_strip` for the fissures, `boulder` the molten rock
+  (meteors too), `crater` where one lands. Old saves' bindings of hellclaw/summon/phase/pact become
+  fists/icharge/cslam/hurl (`DemonSkills.OLD_IDS`, `migrate_binds` in `Hero.from_save`); the talent ids (and their
+  painted icons) were kept, their effects now name the new skills (`fists_wide`, `trail_dur`, `hurl_twin`,
+  `wrath_dur`, `wrath_double`). `tools/demon_test.gd` exercises every skill, the migration and the talents;
+  `tools/demon_skills_clip.gd -- outdir [skill|all] [close|game]` renders frames of each (xvfb, `--fixed-fps 30`);
+  `tools/coop_fx_shot.gd` has `demon:grip` and `demon:wrath`. The Underworld grade in `game.gd`
+  (`set_underworld`, `DemonFx.UNDERWORLD_SHADER`, `under_amt`) and the body shader's `phase_amt` stay, unused.
 - **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `_update_drain`, and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. The beams, sigil, hand light and hum are the `"drain"` fx events' effect (`WarlockFx.play`, state in `Hero.fxs["drain"]`, drawn by `WarlockFx.update` after the pose on the caster and on his puppet; `"start"`, `"victims"` when the fork set changes, `"tick"`, `"end"`), so partners see the beam on him too.
 - **King Grubb** (Act I boss, `hoard.gd`) is host-authoritative. Every visible part of the fight (piles, bombs, burst
   sacks, shouts, a grabber's `carry_on`/`carry_off`) is an Enemy fx event string handled in `Hoard.fx`, so partners see it;

@@ -76,9 +76,8 @@ var cls := "knight"          # "knight", "wraith", "demon" or "warlock" (Data.CL
 var cds := {}
 var wr := {}                 # Wraith: the skills' state (WraithSkills: the tether, phantoms, the night, the claws)
 var veil_t := 0.0            # Wraith: seconds he is mist, and blows pass through him (Shadowstep, Eternal Night)
-var minions: Array = []      # Demon's summoned demons (DemonMinion), oldest first
-var phased := false          # Demon: walking in the Underworld, unseen and untouchable
-var phase_t := 0.0
+var dm := {}                 # Demon: the skills' state (DemonSkills: the charge, lava on the ground, fissures, boulders, the grip, the wrath)
+var phased := false          # (the Underworld's grade in game.gd reads it; no skill sets it now)
 var drain_t := -1.0          # Warlock: Drain Life channel time (-1 = not channelling)
 var drain_tick := 0.0
 var drain_main = null        # the enemy the beam is latched onto (the beams themselves are fxs["drain"], WarlockFx)
@@ -341,8 +340,7 @@ func set_class(c: String) -> void:
 		talents = {}
 		tfx = {}
 	WraithSkills.clear(self)
-	dismiss_minions()
-	end_phase(false)
+	DemonSkills.clear(self)
 	_clear_warlock()
 	Archer.clear(self)
 	SkillFx.clear(self)
@@ -485,8 +483,7 @@ func new_character() -> void:
 		cds[k] = 0.0
 	buff_t = 0.0
 	WraithSkills.clear(self)
-	dismiss_minions()
-	end_phase(false)
+	DemonSkills.clear(self)
 	_clear_warlock()
 	SkillFx.clear(self)
 	equipment = {}
@@ -1011,6 +1008,9 @@ func use_skill(id: String, aim: Vector3) -> bool:
 	if id == "siphon" and WraithSkills.siphon_pick(self, aim) == null:
 		game.ui.message("No enemy in reach", Color(0.8, 0.8, 0.8))
 		return false
+	if id == "grip" and DemonSkills.grip_pick(self, aim) == null:
+		game.ui.message("No enemy in reach", Color(0.8, 0.8, 0.8))
+		return false
 	# cancel a basic swing (or a Drain Life channel) so the skill fires right away
 	end_drain()
 	atk_t = -1.0
@@ -1044,17 +1044,8 @@ func use_skill(id: String, aim: Vector3) -> bool:
 			atk_dur = 0.6 * Data.attack_pace(cls)
 		"rend", "siphon", "step", "grasp", "phantom", "night":
 			WraithSkills.cast(self, id, aim)
-		"hellclaw":
-			_start_attack("side", "hellclaw")
-		"summon":
-			_start_attack("cast", "summon")
-			atk_dur = 0.55 * Data.attack_pace(cls)
-		"phase":
-			_phase_start()
-		"pact":
-			life = maxf(1.0, life - max_life * maxf(0.05, 0.2 - talent("pact_cost") / 100.0))
-			_start_attack("cast", "pact")
-			atk_dur = 0.6 * Data.attack_pace(cls)
+		"fists", "icharge", "cslam", "hurl", "grip", "wrath":
+			DemonSkills.cast(self, id, aim)
 		"drain":
 			_drain_start(foe)
 		"blight":
@@ -1098,9 +1089,7 @@ func _start_attack(style: String, skill := "") -> void:
 	atk_dur = 0.62 / aspd
 	if SWIPE_DUR.has(style) and skill == "":
 		atk_dur = SWIPE_DUR[style] / aspd
-	if skill == "hellclaw":
-		atk_dur = 0.7 / aspd
-	elif skill == "cleave":
+	if skill == "cleave":
 		atk_dur = 0.95 / aspd      # Holy Slam: crouch, leap, slam, hold the blow, rise
 	atk_dur *= Data.attack_pace(cls)     # every class's pace (Data.ATTACK_PACE)
 	impact_done = false
@@ -1136,7 +1125,6 @@ func _attack_sound(skill: String) -> void:
 		"step": Sfx.play_synced("shade_out", 0.35 * atk_dur, -4.0, 1.1)
 		"grasp": Sfx.play_synced("slam", at, -2.0, 0.9)
 		"phantom": Sfx.play_synced("reap_swing", at, -3.0, 0.9)
-		"hellclaw": Sfx.play_synced("hellclaw", at, -1.0)
 		"nova":
 			Sfx.play_synced("holy_nova", at, 0.0)
 			Sfx.duck(-8.0, 1.0)
@@ -1309,10 +1297,9 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	if life <= 0.0:
 		life = 0.0
 		dead = true
-		end_phase(false)
-		dismiss_minions()
 		end_drain()
 		WraithSkills.clear(self)
+		DemonSkills.clear(self)
 		SkillFx.clear(self)
 		dead_t = 0.0
 		atk_t = -1.0
@@ -1333,12 +1320,9 @@ func _process(delta: float) -> void:
 	buff_t = maxf(0.0, buff_t - delta)
 	covenant_t = maxf(0.0, covenant_t - delta)
 	WraithSkills.update(self, delta)
+	DemonSkills.update(self, delta)
 	Archer.update(self, delta)
 	_update_blights(delta)
-	if phased:
-		phase_t -= delta
-		if phase_t <= 0.0:
-			end_phase(true)
 	aura.emitting = buff_t > 0.0
 	hit_t = maxf(0.0, hit_t - delta * 4.0)
 	block_flash = maxf(0.0, block_flash - delta)
@@ -1478,7 +1462,7 @@ func _process(delta: float) -> void:
 			else:
 				vel = dv.normalized() * speed
 	var stride := 1.3 if running else 1.0
-	if WraithSkills.rooted(self):
+	if WraithSkills.rooted(self) or DemonSkills.rooted(self):
 		vel = Vector3.ZERO
 	if vel.length() > 0.01:
 		var np: Vector3 = game.world.move(global_position, vel * delta)
@@ -1537,8 +1521,8 @@ func _process(delta: float) -> void:
 	SkillFx.update(self, delta)
 	_breathe(delta)
 	_apply_shield_pose()
-	# no sword-swing streak off a bow, nor off the Wraith's skills
-	_update_trail(((atk_t >= 0.0 and not (is_wraith() and atk_skill != "")) or charge_t >= 0.0) and not has_bow())
+	# no sword-swing streak off a bow, nor off the Wraith's and the Demon's skills (their clips, not weapon swings)
+	_update_trail(((atk_t >= 0.0 and not ((is_wraith() or is_demon()) and atk_skill != "")) or charge_t >= 0.0) and not has_bow())
 
 ## The Wraith floats a hand's breadth off the ground, bobbing slowly and leaning into motion.
 func _hover() -> void:
@@ -1623,7 +1607,6 @@ func apply_net_state(p: PackedFloat32Array) -> void:
 	elif dead and not was_dead:
 		# the partner fell: whatever his skills left behind goes with him, as on his own screen
 		SkillFx.clear(self)
-		dismiss_minions()
 	net_has = true
 
 ## The zone changed under a puppet: its lingering effects belonged to the old one.
@@ -1631,10 +1614,6 @@ func net_zone_reset() -> void:
 	visible = false
 	net_has = false
 	SkillFx.clear(self)
-	for m in minions:
-		if is_instance_valid(m):
-			m.queue_free()
-	minions.clear()
 	for b in beasts:
 		if is_instance_valid(b):
 			b.queue_free()
@@ -1722,6 +1701,9 @@ func _impact() -> void:
 	if WraithSkills.impact(self):
 		stats_changed.emit()
 		return
+	if DemonSkills.impact(self):
+		stats_changed.emit()
+		return
 	match atk_skill:
 		"":
 			if atk_style.begins_with("swipe"):
@@ -1783,25 +1765,6 @@ func _impact() -> void:
 			fx("cry", "impact")
 			for e in game.enemies_near(global_position, 6.0):
 				e.stun(2.0)
-		"hellclaw":
-			var yaw2 := rig.global_rotation.y
-			var wide := talent("claw_wide") > 0.0     # Inferno: a metre further, much wider
-			var lit := []
-			for e in game.enemies_near(global_position, 4.3 if wide else 3.3):
-				var to2: Vector3 = e.global_position - global_position
-				to2.y = 0
-				if to2.length() < 0.5 or fwd.dot(to2.normalized()) > cos(deg_to_rad(115.0 if wide else 75.0)):
-					var r := roll_damage(1.4 * dmg_mult("hellclaw"))
-					var dealt: float = e.take_damage(r["phys"], r["fire"] + r["phys"] * 0.35, global_position, 0.5, r["crit"])
-					if ls > 0.0:
-						life = minf(max_life, life + dealt * ls / 100.0)
-					lit.append(e)
-			fx("hellclaw", "impact", {"y": yaw2, "x": wide, "t": lit})
-		"summon":
-			_summon_minion()
-		"pact":
-			buff_t = 12.0 + talent("buff_dur")
-			fx("pact", "impact", {"x": buff_t})
 		"blight":
 			var dir := atk_aim - global_position
 			dir.y = 0
@@ -1991,62 +1954,6 @@ func _clear_warlock() -> void:
 	WarlockFx.clear(self)
 	blights.clear()
 	covenant_t = 0.0
-
-# ---------------------------------------------------------------- demon skills
-## Summon Demon: a demon climbs out of a sigil in front of you. Up to three; a fourth
-## replaces the oldest.
-func _summon_minion() -> void:
-	minions = minions.filter(func(m): return is_instance_valid(m))
-	var slot := 0
-	if minions.size() >= max_minions():
-		slot = minions[0].slot     # the oldest goes (DemonFx dismisses it)
-	else:
-		var used := minions.map(func(m): return m.slot)
-		while slot in used:
-			slot += 1
-	var fwd := -rig.global_transform.basis.z
-	var pos: Vector3 = game.world.move(global_position, fwd * 1.8)
-	pos.y = game.world.height_at(pos.x, pos.z)
-	# the demon is the effect: DemonFx raises it here and on every partner's game (its blows only count here)
-	fx("summon", "impact", {"p": pos, "n": slot, "y": rig.rotation.y, "x": max_minions()})
-
-## Three demons at once, four with Legion of Hell.
-func max_minions() -> int:
-	return 3 + int(talent("minion_max"))
-
-func dismiss_minions() -> void:
-	for b in beasts:
-		if is_instance_valid(b):
-			b.dismiss()
-	beasts.clear()
-	for m in minions:
-		if is_instance_valid(m):
-			m.dismiss()
-	minions.clear()
-
-## Underworld Phase: six seconds unseen and untouchable, moving faster; the rift erupts on return.
-func _phase_start() -> void:
-	phased = true
-	phase_t = 6.0 + talent("phase_dur")
-	game.set_underworld(true)
-	fx("phase", "tear")
-
-func end_phase(erupt := true) -> void:
-	if not phased:
-		return
-	phased = false
-	phase_t = 0.0
-	if game and game.world:
-		game.set_underworld(false)
-		fx("phase", "erupt" if erupt and not dead else "end")
-		if erupt and not dead:
-			for e in game.enemies_near(global_position, 4.0):
-				_hit_enemy(e, 2.0, 2.0, "phase")
-				if not e.dead:
-					e.stun(0.8)
-			if talent("phase_heal") > 0.0:
-				life = minf(max_life, life + max_life * talent("phase_heal") / 100.0)
-				stats_changed.emit()
 
 func _update_charge(delta: float) -> void:
 	charge_t += delta
@@ -2263,6 +2170,7 @@ func from_save(d: Dictionary) -> void:
 	stash.resize(60)
 	binds = (d.get("binds", {}) as Dictionary).duplicate() if d.get("binds") is Dictionary else {}
 	WraithSkills.migrate_binds(binds)
+	DemonSkills.migrate_binds(binds)
 	_check_binds()
 	# a save from before talents gets a build picked for its class and level
 	if d.get("talents") is Dictionary:

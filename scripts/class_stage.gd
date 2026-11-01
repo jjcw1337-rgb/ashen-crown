@@ -15,7 +15,7 @@ const SPACING := 1.75
 const FACE := PI                     # bodies face -z; the camera is on +z
 ## signature moves: [pose style, seconds, impact fraction, skill name]
 const SIGNATURE := {"knight": ["cleave", 1.1, 0.5, "Holy Slam"], "wraith": ["rend", 0.95, 0.42, "Spectral Rend"],
-	"demon": ["side", 0.9, 0.45, "Hellfire Claw"], "warlock": ["cast", 1.8, 0.2, "Drain Life"], "archer": ["bow", 1.0, 0.55, "Volley"]}
+	"demon": ["fists", 0.9, 0.48, "Molten Fists"], "warlock": ["cast", 1.8, 0.2, "Drain Life"], "archer": ["bow", 1.0, 0.55, "Volley"]}
 const SIG_EVERY := 4.5
 ## The sound of choosing each hero: layers of the game's own recordings, [sound, delay s, dB, pitch]
 const PICK_SOUND := {
@@ -278,10 +278,10 @@ func _fidget(c: String, h: Hero, home: Vector3, f: float) -> void:
 			pos.x += sin(f * 2.4) * 0.25
 			yaw = FACE + sin(f * 2.4) * 0.3
 		"demon":
-			# hops up and down raking the air
-			pos.y = absf(sin(f * 7.0)) * 0.35
-			st["style"] = "claw"
-			st["atk"] = fmod(f, 0.6) / 0.6
+			# pounds the air with both fists, stamping
+			pos.y = absf(sin(f * 7.0)) * 0.12
+			st["style"] = "fists"
+			st["atk"] = fmod(f, 0.9) / 0.9
 		"warlock":
 			# cackling, tiny frantic hops
 			st["style"] = "cackle"
@@ -342,10 +342,14 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 				WraithFx.rake(root3d, h.global_position, h.net_yaw, 2.4, false)
 				Sfx.play("reap_swing", -12.0)
 			"demon":
-				for k in 3:
-					Fx.burst(root3d, front + Vector3((k - 1) * 0.35, 0.9 - k * 0.15, 0), col, 18, 3.5, 0.09, 0.45, true, 2.0, 30.0, Vector3(1.0 - k, 0.2, 0.5))
-				Fx.flash(root3d, front + Vector3(0, 1, 0), col, 3.0, 0.4, 4.0)
+				# the fists crack the stage open ahead of him
+				var fwd2 := Vector3(-sin(h.net_yaw), 0, -cos(h.net_yaw))
+				var d := DemonFx.lava_decal(root3d, h.global_position + fwd2 * 1.8, 1.6, 1.6, 0.25, h.net_yaw, deg_to_rad(50.0))
+				d.position.y = h.global_position.y + 0.04
+				Fx.burst(root3d, front + Vector3(0, 0.3, 0), col, 24, 4.5, 0.08, 0.5, true, -4.0, 50.0, fwd2 + Vector3(0, 0.5, 0))
+				Fx.flash(root3d, front + Vector3(0, 0.7, 0), col, 3.0, 0.3, 4.0)
 				Sfx.play("hellclaw", -10.0)
+				Sfx.play("slam", -16.0, 1.2)
 			"warlock":
 				Fx.flash(root3d, h.global_position + Vector3(0, 0.8, 0.6), col, 2.5, 1.4, 3.5)
 				Sfx.play("drain", -14.0)

@@ -10,8 +10,8 @@ const ICONS := ["t_sword", "t_haste", "t_star", "t_hourglass", "t_heart", "t_arm
 	"t_fist", "t_eye", "t_skull", "t_drop", "t_fang", "t_orb"]
 const KEYS := ["str", "dex", "vit", "ene", "res", "ls", "regen", "ias", "frw", "block", "mf", "dmg", "life_pct", "mana_pct",
 	"armor_pct", "crit", "crit_dmg", "buff_pow", "block_dr", "buff_dur", "phase_dur", "siphon_dur", "step_stun", "veil", "grasp_hold",
-	"shackle_dur", "blight_dur", "nova_heal", "cry_heal", "charge_cdr", "rend_heal", "rend_full", "phantoms", "claw_wide", "minion_speed",
-	"minion_max", "pact_cost", "phase_heal", "drain_heal", "drain_fork", "drain_glut", "blight_size", "blight_twin", "shackle_range",
+	"shackle_dur", "blight_dur", "nova_heal", "cry_heal", "charge_cdr", "rend_heal", "rend_full", "phantoms", "fists_wide", "trail_dur",
+	"hurl_twin", "wrath_dur", "wrath_double", "drain_heal", "drain_fork", "drain_glut", "blight_size", "blight_twin", "shackle_range",
 	"arrow_split", "snare_dur", "snare_max", "snare_wide", "volley_size", "beast_two", "burn_dmg", "wolf_burn", "chill_pct", "wolf_howl",
 	"frost_shatter", "arc_count"]
 
@@ -130,22 +130,26 @@ func _run() -> void:
 			h.mana = h.max_mana
 			var aim: Vector3 = h.global_position + Vector3(-2.0, 0, 0)
 			var foe = g.enemies_near(h.global_position, 12.0)
+			if foe.is_empty():
+				# the pack is dead already (a level 60 with every talent): a fresh one to aim at
+				var z = g.spawn_enemy("zombie", h.global_position + Vector3(-2.0, 0, 0), 30)
+				z.max_life = 50000.0
+				z.life = 50000.0
+				z.aggro = false
+				await process_frame
+				foe = [z]
 			if foe.size() > 0:
 				aim = foe[0].global_position
+				h.global_position = aim + Vector3(2.0, 0, 0)      # back beside it (a charge or a step carried him off)
 			var ok: bool = h.use_skill(sk["id"], aim)
-			await wait(1.2 if sk["id"] != "drain" else 0.4)
+			await wait((2.2 if cls == "demon" else 1.2) if sk["id"] != "drain" else 0.4)
 			if sk["id"] == "drain":
 				h.end_drain()
 			check(ok, "%s: %s cast" % [cls, sk["name"]])
 		if cls == "wraith":
 			check(h.talent("phantoms") == 1.0 and h.talent("rend_full") == 1.0, "Fourth Rider and Harvest Moon taken")
 		if cls == "demon":
-			for i in 4:
-				h.cds["summon"] = 0.0
-				h.mana = h.max_mana
-				h.use_skill("summon", h.global_position)
-				await wait(0.7)
-			check(h.minions.size() == 4, "Legion of Hell: %d demons" % h.minions.size())
+			check(h.talent("hurl_twin") == 1.0 and h.talent("wrath_double") == 1.0 and h.talent("fists_wide") == 1.0, "Twin Boulders, Meteor Storm and Inferno taken")
 		await wait(1.0)
 	print("[T] done, %d failed" % fails)
 	quit()
@@ -167,7 +171,7 @@ func _check_data() -> void:
 				var keys_ok := true
 				for k in t["fx"]:
 					var base: String = k.split(":")[0]
-					if not (KEYS.has(k) or (["dmg", "cd", "cost"].has(base) and k.contains(":") and (skills.has(k.split(":")[1]) or k == "dmg:summon"))):
+					if not (KEYS.has(k) or (["dmg", "cd", "cost"].has(base) and k.contains(":") and skills.has(k.split(":")[1]))):
 						keys_ok = false
 						print("[T]   unknown key ", k)
 				var text_ok := not Talents.describe(t, int(t["max"])).contains("{")

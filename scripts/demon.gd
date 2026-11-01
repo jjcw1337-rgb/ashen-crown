@@ -44,9 +44,8 @@ const RUN_SPEED := 6.2
 const CHARGE_SPEED := 7.6
 const WALK_BLEND := 2.6        # above this ground speed the walk is gone from the blend
 ## His moves' clips per attack style (KnightMocapRig "shots": [[attack progress, clip second], ...], the blow on
-## Anim.impact_at's frame): Hellfire Claw ("side") is the both-fisted punch, casts (Summon, Blood Pact) the charged
-## spell, the weapon swings the punch, the axe chop and the ground slam (the finisher), Space's swings the chop,
-## the punch and the hurl.
+## Anim.impact_at's frame): the weapon swings the punch, the axe chop and the ground slam (the finisher), Space's
+## swings the chop, the punch and the hurl; his skills' styles below (DemonSkills.STYLE).
 const SHOTS := {
 	"side": {"style": "side", "clip": "claw", "keys": [[0.0, 0.45], [0.3, 1.0], [0.48, 1.33], [0.7, 1.7], [1.0, 2.4]]},
 	"cast": {"style": "cast", "clip": "cast", "keys": [[0.0, 0.5], [0.3, 1.4], [0.55, 2.08], [1.0, 2.66]]},
@@ -56,7 +55,16 @@ const SHOTS := {
 	"over": {"style": "over", "clip": "smash", "keys": [[0.0, 0.7], [0.5, 1.58], [0.75, 2.0], [1.0, 2.7]]},
 	"back": {"style": "back", "clip": "claw", "keys": [[0.0, 0.7], [0.48, 1.33], [0.75, 1.7], [1.0, 2.3]]},
 	"thrust": {"style": "thrust", "clip": "hurl", "keys": [[0.0, 0.5], [0.52, 1.75], [0.8, 2.3], [1.0, 3.3]]},
-	# for his coming skills (and the preview): the roar, the stomp, the grab and throw-down
+	# his skills (DemonSkills): the punch, the charge (the clip loops through the run), the slam, the throw (the
+	# boulder leaves at the release), the grab (seized at 0.25, held up, smashed at 0.5), the roar and the stomp
+	"fists": {"style": "fists", "clip": "claw", "keys": [[0.0, 0.45], [0.3, 1.0], [0.48, 1.33], [0.7, 1.7], [1.0, 2.4]]},
+	"icharge": {"style": "icharge", "clip": "charge", "keys": [[0.0, 0.0], [1.0, 1.5]]},
+	"cslam": {"style": "cslam", "clip": "slam", "keys": [[0.0, 0.3], [0.3, 1.3], [0.58, 2.75], [1.0, 3.0]]},
+	"hurl": {"style": "hurl", "clip": "hurl", "keys": [[0.0, 0.3], [0.52, 1.75], [0.8, 2.4], [1.0, 3.3]]},
+	"grip": {"style": "grip", "clip": "grab_throw", "keys": [[0.0, 0.2], [0.25, 1.2], [0.5, 3.08], [0.7, 3.4], [1.0, 4.0]]},
+	"wrath_roar": {"style": "wrath_roar", "clip": "roar", "keys": [[0.0, 0.0], [0.5, 1.25], [1.0, 2.75]]},
+	"wrath_stomp": {"style": "wrath_stomp", "clip": "stomp", "keys": [[0.0, 0.0], [0.5, 0.62], [1.0, 1.3]]},
+	# the preview tool's names for the roar, the stomp and the grab
 	"roar": {"style": "roar", "clip": "roar", "keys": [[0.0, 0.0], [0.5, 1.25], [1.0, 2.75]]},
 	"stomp": {"style": "stomp", "clip": "stomp", "keys": [[0.0, 0.0], [0.5, 0.62], [1.0, 1.3]]},
 	"grab": {"style": "grab", "clip": "grab_throw", "keys": [[0.0, 0.0], [0.3, 1.5], [0.5, 3.08], [1.0, 4.0]]},
@@ -304,6 +312,9 @@ static func animate(root: Node3D, t: float, move: float, h: Node = null) -> void
 		var hit_t: float = float(h.get("hit_t"))
 		var pulse := 0.8 * clampf(hit_t, 0.0, 1.0) * (0.5 + 0.5 * sin(t * 18.0))
 		var buff := 0.3 if float(h.get("buff_t")) > 0.0 else 0.0
+		# Wrath of the Pit: the white heat (DemonFx keeps the shader's "wrath"); the glow rides a little higher with it
+		if (h.get("fxs") as Dictionary).has("wrath"):
+			buff += 0.6 * float((h.get("fxs") as Dictionary)["wrath"].get("k", 0.0))
 		var want_phase := 1.0 if bool(h.get("phased")) else 0.0
 		var ph: float = float(root.get_meta("phase_now", 0.0))
 		var dt := clampf(t - float(root.get_meta("phase_t", t)), 0.0, 0.1)

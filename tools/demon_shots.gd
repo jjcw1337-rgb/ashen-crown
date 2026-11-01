@@ -52,16 +52,16 @@ func _run() -> void:
 	await _snap("hellclaw")
 	await create_timer(1.0).timeout
 	h.mana = h.max_mana
-	h.use_skill("summon", h.global_position)
-	await create_timer(0.3).timeout
-	await _snap("summon")
+	h.use_skill("fists", h.global_position + Vector3(0, 0, -2.0))
+	await create_timer(0.4).timeout
+	await _snap("fists")
 	await create_timer(1.0).timeout
 	h.mana = h.max_mana
-	h.use_skill("phase", h.global_position)
-	await create_timer(1.2).timeout
-	await _snap("phased")
-	print("[DS] phased=%s phase_amt=%.2f" % [str(h.phased), float(h.rig.get_meta("phase_now", 0.0))])
-	h.end_phase(false)
+	h.use_skill("wrath", h.global_position)
+	await create_timer(2.6).timeout
+	await _snap("wrath")
+	print("[DS] wrath=%s heat=%.2f" % [str(h.dm.has("wrath")), float(((h.rig.get_meta("demon_mats") as Array)[0] as ShaderMaterial).get_shader_parameter("wrath"))])
+	DemonSkills.clear(h)
 	await create_timer(1.0).timeout
 	g.test_immortal = false
 	h.take_hit(99999.0, h.global_position + Vector3(1, 0, 0))

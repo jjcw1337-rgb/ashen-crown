@@ -14,6 +14,7 @@ uniform float glow = 0.0;        // extra lava light (0 at rest; attacks, casts 
 uniform float cool = 0.0;        // 1 = the lava gone dark (death)
 uniform float phase_amt = 0.0;   // 1 = in the Underworld
 uniform float lava_base = 1.0;   // the lava's light at rest
+uniform float wrath = 0.0;       // 1 = Wrath of the Pit: the cracks blaze white-hot
 varying float v_wing;
 
 float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
@@ -35,6 +36,9 @@ void fragment(){
 	vec3 cinder = mix(vec3(0.05, 0.035, 0.03), vec3(0.16, 0.03, 0.01), 0.3 * (1.0 - cool) + 0.2 * h21(floor(UV * 240.0)));
 	vec3 skin = mix(alb, cinder, hot * cool);
 	vec3 em = alb * alb * hot * life * 2.2 + ember * hot * life * 0.35;
+	// white heat: the cracks go to yellow-white and far brighter, the skin round them warms
+	em = mix(em, vec3(1.0, 0.92, 0.7) * hot * (4.5 + 1.5 * breathe) * (1.0 - cool), wrath);
+	em += vec3(1.0, 0.45, 0.15) * wrath * 0.12 * (1.0 - cool);
 	// the membrane lets a little light through, warm from the body
 	em += ember * v_wing * 0.08 * (1.0 - cool) * (0.6 + 0.4 * breathe);
 	// the Underworld: a shadow of himself, dithered away, violet through the cracks

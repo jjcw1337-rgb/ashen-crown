@@ -971,8 +971,6 @@ func _grass_movers() -> Array:
 		if not is_instance_valid(h):
 			continue
 		out.append(h)
-		for m in h.minions:
-			out.append(m)
 		for b in h.beasts:
 			out.append(b)
 	for e in world.enemies_root.get_children():

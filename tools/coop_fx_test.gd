@@ -12,7 +12,7 @@ var events: Array = []
 var puppet: Hero
 const OFF := Vector3(3.0, 0, 0)
 ## what a partner's copy of each skill must leave in Hero.fxs (the effects that run on)
-const LINGER := {"siphon": "tether", "drain": "drain", "night": "night", "phantom": "phantoms"}
+const LINGER := {"siphon": "tether", "drain": "drain", "night": "night", "phantom": "phantoms", "hurl": "boulders", "grip": "grip", "wrath": "wrath"}
 
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
@@ -109,15 +109,13 @@ func _run() -> void:
 			var ok: bool = h.use_skill(id, h.skill_aim(id, en[1].global_position))
 			var peak := 0
 			var fxs_seen := {}
-			for i in (60 if LINGER.has(id) else 36):
+			for i in (60 if LINGER.has(id) and id != "wrath" else (190 if id == "wrath" else 36)):
 				await wait(0.05)
 				peak = maxi(peak, root.get_child_count() + g.get_child_count())
 				for k in puppet.fxs.keys():
 					fxs_seen[k] = true
 			if id == "drain":
 				h.end_drain()
-			if id == "phase":
-				h.end_phase(true)
 			await wait(0.2)
 			var mine: Array = events.filter(func(w): return str(w["s"]) == id)
 			var kinds: Array = mine.map(func(w): return str(w["e"]))
@@ -126,7 +124,7 @@ func _run() -> void:
 				"%s %s: the partner's view shows it (%d new nodes)" % [cls, id, peak - n0])
 			if LINGER.has(id):
 				check(fxs_seen.has(LINGER[id]), "%s %s: its %s reached the puppet" % [cls, id, LINGER[id]])
-				check(not puppet.fxs.has(LINGER[id]) or id == "night", "%s %s: and was let go when it ended" % [cls, id])
+				check(not puppet.fxs.has(LINGER[id]) or id in ["night", "wrath"], "%s %s: and was let go when it ended" % [cls, id])
 			# every event survives the wire: enemies as ids, back to nodes
 			for w in mine:
 				var d := SkillFx.decode(g.net, w)
@@ -138,6 +136,7 @@ func _run() -> void:
 			puppet.global_position = far + OFF
 			h._clear_warlock()
 			h.blights.clear()
+			DemonSkills.clear(h)        # his lava on the ground would burn the fresh pack
 			var en2: Array = await pack(far + OFF + Vector3(0, 0, -2.5), 3)
 			var l0 := lives(en2)
 			puppet.life = 50.0
@@ -148,12 +147,10 @@ func _run() -> void:
 			check(is_equal_approx(lives(en2), l0), "%s %s: replayed on the puppet, the pack is unhurt (%d of %d)" % [cls, id, int(lives(en2)), int(l0)])
 			check(is_equal_approx(puppet.life, 50.0) and is_equal_approx(puppet.mana, 20.0), "%s %s: and the puppet's life and mana are untouched" % [cls, id])
 			SkillFx.clear(puppet)
-			puppet.dismiss_minions()
 			h.global_position = far
 			h.end_drain()
-			h.end_phase(false)
 			WraithSkills.clear(h)
-			h.dismiss_minions()
+			DemonSkills.clear(h)
 		SkillFx.clear(puppet)
 		puppet.queue_free()
 		puppet = null
