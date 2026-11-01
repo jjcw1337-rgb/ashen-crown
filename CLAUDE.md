@@ -462,6 +462,12 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   contact sheet of his motion. `tools/blender/grubb.py` (+ `grubb_gear.py`) is the earlier fully scripted Blender
   build, kept as a reference; its export isn't used. Godot's `.import` files and extracted textures under
   `assets/models/` are git-ignored (regenerated on import); run `godot --headless --editor --quit` after re-exporting.
+  Since those `.import` files are made fresh, the textures take `project.godot`'s `[importer_defaults] texture`:
+  **lossy WebP at quality 0.9, 3D detection off** (the default was lossless, 490 MB of the old 618 MB pack; q0.9 is
+  ~41 dB against the source JPGs, which are lossy already). A checkout imported before 2026-11-01 keeps its old
+  lossless `.import` files until they're deleted (`find assets/models -name '*.jpg.import' -o -name '*.png.import' |
+  xargs rm`, then `godot --headless --import`). Give a new texture with a committed `.import` the same settings when it
+  is a JPG-sourced 3D texture (like `assets/textures/plague/coat_*.jpg`); keep UI and cut-out PNGs lossless.
 - **Knight (no armour)** is a Meshy model (white shirt with a red crusader cross, shorts, leather sandals,
   long hair): `assets/models/knight_meshy.glb`, built by `Knight.build_meshy` on `Knight.MESHY_LAYOUT`. The hero
   wears it while the armour slot is empty (`Hero._wants_meshy`); `refresh_gear` swaps to the procedural armoured

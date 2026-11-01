@@ -2578,7 +2578,9 @@ func _perf_step() -> bool:
 			hero.global_position = spot
 			cam_target = spot
 		_perf = {"centre": hero.global_position, "t": 0.0, "frames": [], "dc": 0.0, "prims": 0.0, "objs": 0.0, "n": 0,
-			"secs": float(args[pi + 1]) if pi + 1 < args.size() and args[pi + 1].is_valid_float() else 10.0, "t0": 0}
+			"secs": float(args[pi + 1]) if pi + 1 < args.size() and args[pi + 1].is_valid_float() else 10.0, "t0": 0,
+			"gpu": 0.0, "cpu": 0.0, "boot_ms": Time.get_ticks_msec()}
+		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 		return true
 	var dt := get_process_delta_time()
 	if shot_frames < 70:
@@ -2593,6 +2595,9 @@ func _perf_step() -> bool:
 	_perf["prims"] = float(_perf["prims"]) + Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)
 	_perf["objs"] = float(_perf["objs"]) + Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)
 	_perf["n"] = int(_perf["n"]) + 1
+	var vp_rid := get_viewport().get_viewport_rid()
+	_perf["gpu"] = float(_perf["gpu"]) + RenderingServer.viewport_get_measured_render_time_gpu(vp_rid)
+	_perf["cpu"] = float(_perf["cpu"]) + RenderingServer.viewport_get_measured_render_time_cpu(vp_rid)
 	if float(_perf["t"]) < float(_perf["secs"]):
 		return true
 	var fr: Array = _perf["frames"]
@@ -2613,6 +2618,8 @@ func _perf_step() -> bool:
 		"average %.1f fps (%.2f ms), median %.2f ms, 1%% low %.1f fps (%.2f ms)" % [n / wall, wall * 1000.0 / n, float(fr[fr.size() / 2]), 1000.0 / worst1, worst1],
 		"draw calls %.0f, primitives %.0f, objects %.0f (per frame)" % [float(_perf["dc"]) / n, float(_perf["prims"]) / n, float(_perf["objs"]) / n],
 		"3D grass clumps in the zone: %d" % grass_n,
+		"gpu %.2f ms per frame (busy %.0f%%), render cpu %.2f ms, engine start to zone ready %d ms" % [float(_perf["gpu"]) / n, 100.0 * float(_perf["gpu"]) / n / (wall * 1000.0 / n), float(_perf["cpu"]) / n, int(_perf["boot_ms"])],
+		"video memory %.0f MB (textures %.0f MB, buffers %.0f MB), static memory %.0f MB" % [Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1e6, Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / 1e6, Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / 1e6, Performance.get_monitor(Performance.MEMORY_STATIC) / 1e6],
 	]
 	var f := FileAccess.open(shot_path.get_basename() + ".txt", FileAccess.WRITE)
 	for l in lines:
