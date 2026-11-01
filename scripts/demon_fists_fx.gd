@@ -107,7 +107,7 @@ static func _hand(h: Hero, root: Node3D, tr: int, right: bool) -> Dictionary:
 	root.add_child(n)
 	n.global_position = SkillFx.hand(h, right)
 	# living fire wreathing the fist: world-space tongues, so a swing streams it back off the hand
-	var fire := InfernalFx.fire(n, n.global_position + Vector3(0, -0.1, 0), 0.55, 70.0, tr)
+	var fire := InfernalFx.ready_fire(InfernalFx.fire(n, n.global_position + Vector3(0, -0.18, 0), 0.9, 90.0, tr))
 	var core_mat := InfernalFx.glow_mat(InfernalFx.MOLTEN, 1.2, 2.8)
 	var core := InfernalFx.glow(n, n.global_position, 0.5, core_mat)
 	var em := InfernalFx.particles(n, n.global_position, {"amount": HAND_EMBERS[tr], "life": 0.5, "one_shot": false,
@@ -176,7 +176,7 @@ static func update(h: Hero, delta: float) -> void:
 		else:
 			hl = p
 		InfernalFx.fire_on(hd["fire"], k > 0.1)
-		_fire_heat(hd["fire"], 0.6 + 0.4 * k + 0.4 * flare)
+		_fire_heat(hd["fire"], 0.9 + 0.5 * k + 0.5 * flare)
 		(hd["core"] as Node3D).scale = Vector3.ONE * (0.3 + 0.35 * k + 0.6 * flare)
 		(hd["core_mat"] as ShaderMaterial).set_shader_parameter("alpha", clampf(k * 1.2 + flare, 0.0, 1.0))
 		(hd["core_mat"] as ShaderMaterial).set_shader_parameter("energy", 1.0 + 0.6 * k + 1.0 * flare)
@@ -307,10 +307,10 @@ static func _release(h: Hero, ev: Dictionary) -> void:
 	if hands.size() == 2 and is_instance_valid(hands[0]["node"]) and is_instance_valid(hands[1]["node"]):
 		fist = ((hands[0]["node"] as Node3D).global_position + (hands[1]["node"] as Node3D).global_position) * 0.5
 	# the flash at the fists: a white-gold star over a wide blood-red bloom
-	var f1 := InfernalFx.glow_mat(InfernalFx.WHITEHOT, 2.0, 2.2, 0.7)
+	var f1 := InfernalFx.glow_mat(InfernalFx.WHITEHOT, 1.3, 2.6, 0.5)
 	var g1 := InfernalFx.glow(root, fist, 0.6, f1)
 	var tw1 := g1.create_tween().set_parallel(true)
-	tw1.tween_property(g1, "scale", Vector3.ONE * 1.9, 0.12).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
+	tw1.tween_property(g1, "scale", Vector3.ONE * 1.3, 0.1).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
 	InfernalFx.tween_param(g1, f1, "alpha", 1.0, 0.0, 0.2)
 	Fx._free_later(g1, 0.25)
 	var f2 := InfernalFx.glow_mat(InfernalFx.BLOODFIRE, 1.4, 1.8)
@@ -343,8 +343,8 @@ static func _release(h: Hero, ev: Dictionary) -> void:
 	root.add_child(rift)
 	rift.global_position = pos
 	InfernalFx.tween_param(rift, rm, "front", 0.0, 1.08, 0.16).set_ease(Tween.EASE_OUT)
-	InfernalFx.tween_param(rift, rm, "heat", 1.0, 0.0, 1.5, 0.35)
-	InfernalFx.tween_param(rift, rm, "life", 1.0, 0.0, 1.6, 1.3)
+	InfernalFx.tween_param(rift, rm, "heat", 1.0, 0.0, 0.9, 0.18)
+	InfernalFx.tween_param(rift, rm, "life", 1.0, 0.0, 1.3, 0.9)
 	Fx._free_later(rift, 3.0)
 	# the obsidian fangs
 	_fangs(root, world, pos, yaw, reach, half, tr)
@@ -375,7 +375,7 @@ static func _release(h: Hero, ev: Dictionary) -> void:
 		var ang := yaw - lane * half
 		var p := pos + Vector3(-sin(ang), 0, -cos(ang)) * (0.25 + u * reach)
 		p.y = world.height_at(p.x, p.z)
-		var sz := randf_range(0.7, 1.15) * (1.15 - 0.4 * u)
+		var sz := randf_range(1.0, 1.5) * (1.15 - 0.4 * u)
 		var fr := InfernalFx.fire(root, p, sz, 45.0, tr, true, i % 2 == 0)
 		InfernalFx.fire_on(fr, false)
 		var twf := fr.create_tween()

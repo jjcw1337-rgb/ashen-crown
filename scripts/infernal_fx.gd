@@ -259,6 +259,13 @@ static func fire(parent: Node3D, pos: Vector3, size := 0.8, rate := 40.0, tr := 
 		e.name = "embers"
 	return n
 
+## A fire that is already burning when it appears (its particles pre-run a lifetime).
+static func ready_fire(f: Node3D) -> Node3D:
+	for c in f.get_children():
+		if c is GPUParticles3D:
+			(c as GPUParticles3D).preprocess = (c as GPUParticles3D).lifetime
+	return f
+
 ## Turns a fire on or off (off: the tongues already alive burn out, nothing new is born).
 static func fire_on(f: Node3D, on: bool) -> void:
 	if f == null or not is_instance_valid(f):
@@ -889,10 +896,10 @@ void fragment() {
 	float mn = main_ * rv * mask;
 	float hm = mn * heat;
 	float hc = cells * heat * (0.02 + 0.25 * near);
-	vec3 em = crimson * 2.0 * hm + molten * 2.4 * hm * hm + whitehot * 2.0 * pow(hm, 3.0) * (1.0 - r * 0.85);
+	vec3 em = crimson * 1.1 * hm + molten * 1.1 * hm * hm + whitehot * 0.8 * pow(hm, 3.0) * (1.0 - r * 0.85);
 	em += crimson * 0.9 * glowband * rv * mask * heat;
-	em += crimson * 1.6 * hc + molten * 1.4 * hc * hc;
-	em += molten * 3.0 * fr * heat * mask * max(main_, crack);
+	em += crimson * 0.8 * hc + molten * 0.6 * hc * hc;
+	em += molten * 1.4 * fr * heat * mask * max(main_, crack);
 	float cool = (1.0 - heat) * max(mn, cells * near) * smoothstep(0.0, 0.35, life) * (0.55 + 0.45 * sin(TIME * 5.0 + r * 23.0 + a * 9.0));
 	em += crimson * 1.1 * cool;
 	float scorch = mask * rv * (0.4 + 0.35 * smoothstep(0.3, 0.7, n)) + lip * rv * mask * 0.35 + cells * 0.3;
@@ -928,13 +935,13 @@ void fragment() {
 	float root = 1.0 - hg;
 	float h = heat;
 	if (particle) { h *= COLOR.r; }
-	ALBEDO = vec3(0.022, 0.016, 0.02);
-	ROUGHNESS = 0.1 + 0.3 * vein;
+	ALBEDO = vec3(0.012, 0.009, 0.011);
+	ROUGHNESS = 0.22 + 0.3 * vein;
 	METALLIC = 0.0;
-	SPECULAR = 0.85;
+	SPECULAR = 0.35;
 	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
 	vec3 em = crimson * 1.8 * vein * (0.25 + 0.75 * root) + molten * 2.4 * vein * root * root * root + whitehot * 3.0 * crack * vein;
-	em += crimson * fres * 0.35 * (0.4 + 0.6 * root);
+	em += crimson * fres * 0.12 * (0.4 + 0.6 * root);
 	EMISSION = em * h;
 }
 """
