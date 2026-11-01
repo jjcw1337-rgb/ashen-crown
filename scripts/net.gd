@@ -21,6 +21,12 @@ var is_host := false
 ## A dedicated server (Battlegrounds, `-- --server`): the host has no player of its own, so it never streams its
 ## hero, isn't in the roster partners see, and refuses party travel (Battlegrounds.gd).
 var server := false
+## ... and a co-op server (coop_server.gd: the story game hosted online) allows travel, portals and the ready check.
+var coop_server := false
+
+## A raid server takes no party travel (each player comes and goes on their own); a co-op server does.
+func refuses_travel() -> bool:
+	return server and not coop_server
 var my_name := "Crusader"
 var players := {}          # peer id -> {"name": String, "hero": Hero}
 var enemies := {}          # net id -> Enemy
@@ -326,10 +332,12 @@ func sv_hello(nm: String, gear: Dictionary, _lvl: int) -> void:
 		roster.append([op, players[op]["name"], players[op]["hero"].net_gear()])
 		rpc_id(op, "cl_player_join", pid, nm, gear)
 	_add_player(pid, nm, gear)
-	var at: Vector3 = game.bg.spawn_point() if server and game.bg != null else game.hero.global_position
+	var at: Vector3 = game.hero.global_position
+	if server:
+		at = game.bg.spawn_point() if game.bg != null else (game.coop_server.spawn_point() if game.coop_server != null else at)
 	rpc_id(pid, "cl_welcome", game.cur_act, game.cur_zone, at, game.tp_link, game.boss_killed, roster, game.difficulty)
 	if server:
-		print("[BG] %s joined (%d in the raid)" % [nm, players.size()])
+		print("[%s] %s joined (%d playing)" % ["COOP" if coop_server else "BG", nm, players.size()])
 	game.ui.message(nm + " joined the game", Color(0.5, 1.0, 0.5))
 	Sfx.play("portal")
 	_update_status()
@@ -343,6 +351,8 @@ func cl_welcome(act: int, zone: String, pos: Vector3, tp: Dictionary, bk: bool, 
 	game.boss_killed = bk
 	if game.bg_mode:
 		game.ui.message("Joined the Battlegrounds", Color(0.5, 1.0, 0.5))
+	elif not players.has(1):
+		game.ui.message("Joined the online co-op server", Color(0.5, 1.0, 0.5))
 	else:
 		game.ui.message("Joined %s's game" % players.get(1, {"name": "the host"})["name"], Color(0.5, 1.0, 0.5))
 	_update_status()
@@ -410,7 +420,7 @@ func request_switch(d: int, zone := "town", spawn := "") -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func sv_switch(d: int, zone: String, spawn: String) -> void:
-	if is_host and not server and not game._busy:
+	if is_host and not refuses_travel() and not game._busy:
 		game.switch_run(d, zone, spawn)
 
 func request_a2() -> void:
@@ -418,7 +428,7 @@ func request_a2() -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func sv_a2() -> void:
-	if is_host and not server and game.boss_killed and not game._busy:
+	if is_host and not refuses_travel() and game.boss_killed and not game._busy:
 		game.start_a2()
 
 func request_travel(act: int, zone: String, spawn: String, at, clear_tp := false) -> void:
@@ -430,7 +440,7 @@ func request_travel(act: int, zone: String, spawn: String, at, clear_tp := false
 
 @rpc("any_peer", "call_remote", "reliable")
 func sv_travel(act: int, zone: String, spawn: String, at: Vector3, clear_tp: bool) -> void:
-	if not is_host or server or game._busy:
+	if not is_host or refuses_travel() or game._busy:
 		return
 	var pid := multiplayer.get_remote_sender_id()
 	if players.has(pid):
@@ -847,7 +857,7 @@ func request_portal(pos: Vector3) -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func sv_portal(pos: Vector3) -> void:
-	if is_host and not server and game.world and game.cur_zone != "town":
+	if is_host and not refuses_travel() and game.world and game.cur_zone != "town":
 		game.open_town_portal_at(pos)
 
 func portal_created(t: Inter) -> void:
@@ -889,7 +899,7 @@ func ask_trip(act: int, zone: String, spawn: String, at, clear_tp := false) -> v
 
 @rpc("any_peer", "call_remote", "reliable")
 func sv_trip(act: int, zone: String, spawn: String, at: Vector3, clear_tp: bool) -> void:
-	if is_host and not server and not game._busy:
+	if is_host and not refuses_travel() and not game._busy:
 		_start_vote(multiplayer.get_remote_sender_id(), act, zone, spawn, at, clear_tp)
 
 func _name_of(pid: int) -> String:
@@ -901,6 +911,8 @@ func _start_vote(pid: int, act: int, zone: String, spawn: String, at: Vector3, c
 	if not vote.is_empty():
 		return
 	vote = {"trip": [act, zone, spawn, at, clear_tp], "from": pid, "name": _name_of(pid), "dest": game.zone_title(act, zone), "yes": {pid: true}}
+	if server:
+		vote["yes"][1] = true      # a dedicated server has no player of its own to ask
 	game.ui.party_vote(vote["name"], vote["dest"], pid == 1)
 	rpc("cl_vote", pid, vote["name"], vote["dest"])
 	_vote_check()

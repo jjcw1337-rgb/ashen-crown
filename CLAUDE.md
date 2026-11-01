@@ -82,6 +82,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `ground_item.gd`, `inter.gd` | Loot on the ground; interactables (chests, shrines, waypoints, portals, NPCs) |
 | `items.gd` | Item rolls, `empower` (A2/A3 multipliers), enchanting, tooltips |
 | `net.gd` | LAN co-op over ENet (UDP 24567, discovery 24568); RPC layer; `server` = a dedicated host with no player (Battlegrounds) |
+| `coop_server.gd` | Online co-op: the story game hosted by a dedicated server (see "Online co-op") |
 | `build_env.gd`, `nakama_client.gd`, `cloud_saves.gd` | Which backend a build uses; the Nakama REST client; characters kept in Nakama (see "Staging and accounts") |
 | `battlegrounds.gd` | Battlegrounds prototype: the raid map, the dedicated server's raid logic (respawns, carried loot, extraction, the stash), the client's id and cached stash |
 | `skill_fx.gd`, `knight_fx.gd`, `archer_fx.gd` | Co-op skill effects: `SkillFx` plays every class's skill events on the caster and on his puppet for partners (see "Co-op skill effects"); the knight's and archer's effect handlers (the Wraith's, Demon's and Warlock's are in their `*_fx.gd`) |
@@ -162,6 +163,13 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   raid (`Game.respawn` in `bg_mode` -> back to the Battlegrounds screen). The client caches the stash the server last
   sent (`user://bg_stash_cache.json`). Not yet: PvP damage, bringing stash items in, raid timers, several raids per
   server, Steam/Nakama, WebSocket for the browser. `tools/bg_test.gd` runs the whole loop with a server and a client.
+- **Online co-op** (`scripts/coop_server.gd`, `CoopServer`): the story game hosted by a dedicated server
+  (`-- --server --coop --port 24570`, staging systemd `ashen-crown-coop`), so friends co-op over the internet with no
+  router setup: the title's "Online Co-op" (non-local builds) joins `BuildEnv.value("coop_server")` with the
+  player's own saved character (`Game.start_join` takes `host:port`). It is the normal co-op host with `Net.server` and
+  `Net.coop_server`: the server's hero hidden, parked and phased; travel, waypoints, portals and the ready check work
+  (`Net.refuses_travel()` is only true on a raid server; the server always says yes to a trip); a joiner arrives
+  beside a partner. `tools/coop_server_test.gd` (a server and two players, in the nightly gate).
 - **Staging and accounts** (`deploy/staging/README.md`): one DigitalOcean droplet runs the staging backend (Nakama
   3.41 + its own PostgreSQL in Docker behind Caddy's HTTPS on an IP certificate, and the Battlegrounds server as a
   systemd service); production will get its own server and database. Which backend a build talks to is

@@ -38,6 +38,16 @@ waitfor $c 300; rc=$?; waitfor $s 60
 check bg_test_server "$OUT/gate_bg_server.log" 0
 check bg_test_client "$OUT/gate_bg_client.log" $rc
 
+# the online co-op server with two players
+"$G" --headless --path . -s tools/coop_server_test.gd -- --server --coop --port 24651 server > "$OUT/gate_coop_server.log" 2>&1 & s=$!
+sleep 6
+"$G" --headless --path . -s tools/coop_server_test.gd -- a 24651 > "$OUT/gate_coop_a.log" 2>&1 & a=$!
+"$G" --headless --path . -s tools/coop_server_test.gd -- b 24651 > "$OUT/gate_coop_b.log" 2>&1 & b=$!
+waitfor $s 300; rc=$?; waitfor $a 30; waitfor $b 30
+check coop_server "$OUT/gate_coop_server.log" $rc
+check coop_player_a "$OUT/gate_coop_a.log" 0
+check coop_player_b "$OUT/gate_coop_b.log" 0
+
 # the co-op pairs
 for t in mp_test plague_mp_test; do
   "$G" --headless --path . -s tools/$t.gd -- host > "$OUT/gate_${t}_host.log" 2>&1 & h=$!

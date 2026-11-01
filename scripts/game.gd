@@ -51,6 +51,7 @@ var bg_mode := false
 var bg_stash: Array = []
 ## Characters and the stash in Nakama (cloud_saves.gd), in builds with BuildEnv.cloud() on; null otherwise.
 var cloud: CloudSaves
+var coop_server: CoopServer     # the online co-op server's logic (coop_server.gd), only on a `--server --coop` run
 var paused := false
 var hovered = null
 var ground_pt := Vector3.ZERO
@@ -134,7 +135,11 @@ func _ready() -> void:
 	if args.has("--server"):
 		# the Battlegrounds' dedicated server: `godot --headless --path . -- --server [--port N]`
 		var pi := args.find("--port")
-		await Battlegrounds.start_server(self, int(args[pi + 1]) if pi >= 0 and pi + 1 < args.size() else Net.PORT)
+		var port := int(args[pi + 1]) if pi >= 0 and pi + 1 < args.size() else Net.PORT
+		if args.has("--coop"):
+			await CoopServer.start(self, port)       # online co-op: the story game hosted by the server
+		else:
+			await Battlegrounds.start_server(self, port)
 		return
 	if shot_path != "":
 		ui.hide_title()
@@ -221,9 +226,9 @@ func set_underworld(on: bool) -> void:
 	_under_target = 1.0 if on else 0.0
 
 func _end_underworld_now() -> void:
-	if hero and hero.phased:
+	if hero and hero.phased and coop_server == null and bg == null:
+		# (a dedicated server's own hero stays phased: it's how monsters ignore it)
 		hero.phased = false
-		hero.phase_t = 0.0
 	if underworld > 0.0 or _under_target > 0.0:
 		_under_target = 0.0
 		underworld = 0.0
@@ -1132,9 +1137,10 @@ func start_join(ip: String) -> void:
 	if not load_game():
 		char_name = default_name(hero.cls)
 		hero.new_character()
+	var addr: Array = Battlegrounds.parse_address(ip)      # "host" or "host:port" (the online co-op server)
 	loading_lbl.text = "Joining game at %s..." % ip
 	loading.visible = true
-	if net.join(ip) != OK:
+	if net.join(str(addr[0]), int(addr[1])) != OK:
 		on_net_failed("Could not connect to that game.")
 		return
 	await get_tree().create_timer(8.0).timeout

@@ -27,6 +27,7 @@ static func value(key: String) -> String:
 		"nakama_url": return NAKAMA_URL
 		"nakama_key": return NAKAMA_KEY
 		"cloud": return CLOUD
+		"coop_server": return BG_SERVER.split(":")[0] + ":24570"     # the online co-op server, beside the raid server
 	return ""
 
 static func env() -> String:
