@@ -145,6 +145,14 @@ const BOATS := {
 	"gull": {"name": "The Gull", "price": 400, "speed": 8.0, "accel": 3.2, "turn": 0.95, "crew": 1,
 		"paint": Color(0.16, 0.3, 0.42),
 		"desc": "A single-masted cutter of tarred oak, seven paces long, built here on the strand. Quick on the wind, steady in a swell, and she'll put you ashore at any jetty on the Mournwater."},
+	# Imported boats: "glb" is a model prepared by tools/blender/prep_boat.py (bow toward -z, waterline y = 0); its
+	# printout gives length, beam, sheer and draft. "deck" is where the hero stands at the helm, "lamps" the lanterns'
+	# lights. Swap the model by changing "glb" (and the sizes); without the file she's drawn as the Gull.
+	"sloop": {"name": "The Ember Sloop", "price": 1500, "speed": 9.0, "accel": 2.6, "turn": 0.8, "crew": 2,
+		"glb": "res://assets/models/boats/sloop.glb", "length": 14.0, "beam": 4.6, "sheer": 1.74, "draft": 1.3,
+		"deck": Vector3(0.6, 1.15, 2.6), "lamps": [[Vector3(1.21, 2.85, 6.73), 1.2], [Vector3(-1.21, 2.85, 6.73), 1.2]],
+		"paint": Color(0.3, 0.06, 0.04),
+		"desc": "A gaff-rigged sloop of black-tarred oak with patched rust-red canvas, fourteen paces stem to stern. Roomier and a knot faster than the Gull, with a cabin aft and lanterns at her stern."},
 }
 
 ## look keys: skin, cloth, cloth2, armor, height, bulk, head, eyes, horns, cape, thin, tail, wings, weapon, shield

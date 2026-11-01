@@ -793,8 +793,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   sounds (`Sfx.counts`) and the fort voice. The camp's song is `music_town` (jj's pick: a dark forest sanctuary, harp over a low
   string drone with a wooden flute; candidate take 13). Ambience: wind, drips in the crypt, and in Act I outside the camp (moor and fort) `forest`, soft
   trees in a breeze (`Sfx.play_music(kind, amb)`, picked in `Game.load_zone`).
-- **The Mournwater Coast and its islands** (Act I, west of the camp through its west gate; on `staging` since 2026-11-01.
-  Still to come: sea sounds, co-op sailing (partners don't see each other's boats yet)). `coast.gd` (`Coast`, zone `"coast"`): a headland with the open sea on
+- **The Mournwater Coast and its islands** (Act I, west of the camp through its west gate; on `staging` since 2026-11-01). `coast.gd` (`Coast`, zone `"coast"`): a headland with the open sea on
   three sides (the mainland's shore is a parabola round its tip, `shore_x`), the pier at the tip (`DOCK` = the origin,
   the boat's mooring), the shipwright's shed (`SHED`), the path back to the camp (`EXIT`). The islands are data in
   `isles.gd` (`Isles.ISLANDS`: id, name, bearing from the dock, `sail` = metres of open water from the dock to the end of
@@ -812,7 +811,18 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   the normal), with talus stones under them (`Isles.shore_rocks`). At sea `Birds` are gulls (`sea`: pale, long black-
   tipped wings, gliding, some wheeling over the hero) and fish leap with a splash (`Birds._fish`). The coast's corner map
   is a painted sea chart of the whole sea (`Game._sea_chart`, cached; `Minimap.chart`: no fog, a wider view while
-  sailing). `tools/sea_life_shot.gd -- outprefix [q]` screenshots the chart, gulls, a fish and the Bleak Isle. The five are 250 m across,
+  sailing). `tools/sea_life_shot.gd -- outprefix [q]` screenshots the chart, gulls, a fish and the Bleak Isle. **Sounds** (made in code by
+  `tools/audio/make_sea.py`, built by `build_sfx.py` like any take; replace them under the same names later): `surf`
+  is the sea zones' ambience bed, loudest on the beach and fading inland and out at sea (`Game._sea_sounds`); under
+  sail `BoatRide._sounds` plays the `sea` loop (louder with speed), `hull_creak` (more as she pitches and rolls) and
+  `hull_slap` at speed; gulls cry (`gull`, `Birds._gull_calls`), a fish lands with `splash`; Osric's hammer knocks
+  with `mallet` (his clips' `"strike"`, `"sparks": false`). `tools/sea_sound_test.gd`. **Co-op**: a sailing player's
+  boat rides at the end of his state packet (`Net._boat_packet`: aboard, x, z, yaw, speed; no new RPC), and each
+  partner draws it under his puppet with him at the tiller (`BoatRide.puppet_update`, a BoatRide with `puppet` on:
+  glides to the sent place, rides the local waves, wake and creaks, no sea loop, no docking); it goes when he steps
+  ashore. Each game moors its own boat at the docks. Boarding at an island takes the party out to sea with every
+  owner aboard his own boat, 9 m apart by peer id (`Game._party_rank`); a partner with no boat is set down on the
+  pier. `tools/sail_mp_test.gd` (host + join). The five are 250 m across,
   164 m of water (~22 s at the boat's 8 m/s) from the dock, 14.5 m channels apart. Out at sea (the coast zone) every
   island is drawn at full size (`Isles.dress(..., full = false)`: ground at 2 m, trees, landmark, jetty); stepping off at
   its jetty loads its own zone `"isle_<id>"` (`Isles.build_zone`: the island at the origin, same ground at 1 m, grass,
@@ -832,8 +842,17 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `ForestCamp._keeper` loaded at run time, hammering the hull on its trestles, `Coast.HULL_AT`; the procedural
   humanoid without the glb) at his boathouse (`Coast._boatyard`), an `Inter` "vendor" with role "shipwright": `Game._shipwright_talk`
   (dialogue) opens `BoatShop` (`boat_shop.gd`, `ui.boat_panel`: portrait, the boat turning on the water, name, price, text,
-  how to sail, Buy). Boats are `Data.BOATS` (`gull`: 400 gold, speed 8); owning one is `Hero.boats` (saved), bought with
-  `Game.buy_boat`. The boat's model is `Boat.model(id)` (`boat.gd`: lofted clinker hull with its own plank shader, deck,
+  how to sail, Buy). Boats are `Data.BOATS` (`gull`: 400 gold, speed 8; `sloop`, the Ember Sloop: 1500 gold, speed 9, a
+  14 m Meshy model); owning one is `Hero.boats` (saved), bought with `Game.buy_boat`; Osric offers every boat, cheapest
+  first, and the docks hold the dearest one owned (`Hero.best_boat`, swapped at once on a purchase). **Imported boats**:
+  an entry with `"glb"` (a model prepared by `tools/blender/prep_boat.py -- in.glb out.glb <length m> --draft m --bow
+  +x|-x|+y|-y [--tris N] [--tex px] [--shot png]`: bow to Godot -z, waterline y = 0; it prints the numbers) plus
+  `"length"`, `"beam"`, `"sheer"`, `"draft"`, `"deck"` (the helm spot) and `"lamps"`; `Boat.model` loads it (the Gull
+  built in code if the file is missing, so a better model is a one-path swap), `Boat.dims(id)` gives the size, and
+  `BoatRide` scales by length and beam against the Gull (`kl`, `kb`): the shallow-water probes, helm, wake, spray,
+  click area, docking reach and the sailing camera; a longer boat eases out from the Gull-sized moorings until she can
+  swing round clear of the pier or jetty (`_swing_clear`). In co-op the boat's index in `Data.BOATS` rides at the end
+  of `Net._boat_packet` (`Hero.net_boat_id`), so partners draw the right boat. `tools/sloop_test.gd`. The boat's model is `Boat.model(id)` (`boat.gd`: lofted clinker hull with its own plank shader, deck,
   mast, gaff main and jib in the cloth shader, rigging, rudder, lantern).
   `tools/boat_shop_test.gd`, `tools/boat_shop_shot.gd`. **Sailing** (`boat_ride.gd`, `BoatRide`; Game: `_add_boat`,
   `_boat_clicked`, `_sail_input`, `try_land`/`land_boat`, `_sail_camera`): every sea zone has a boat, moored off the
@@ -850,7 +869,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   GPUParticles. The camera eases to a view over her port quarter looking past the bow (`_sail_camera`, `sail_blend`).
   First time aboard, a controls guide (`Hero.sailed`, saved). `tools/sail_test.gd` (sails every route with her own
   physics: 21-23 s each; grounding, unsticking, the sea's edge, waves, landing, boarding at an island, back to the
-  pier), `tools/sail_shots.gd -- outprefix [q] [isle]`. Tests: `tools/ocean_test.gd`; screenshots `tools/ocean_shots.gd -- outprefix [q] [only]`
+  pier), `tools/sail_shots.gd -- outprefix [q] [isle] [boat id]`. Tests: `tools/ocean_test.gd`; screenshots `tools/ocean_shots.gd -- outprefix [q] [only]`
   (Forward+ screenshots need a Vulkan driver: `apt-get install mesa-vulkan-drivers` gives lavapipe, slow but correct).
   Note: a first import of the project needs `godot --headless --editor --quit-after 2000` (plain `--quit` can abort the
   scan before the class cache is written).

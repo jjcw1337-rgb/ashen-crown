@@ -177,6 +177,7 @@ func _process(delta: float) -> void:
 	if sea:
 		_burst_t = 99.0
 		_fish(delta)
+		_gull_calls(delta)
 	if _burst_t <= 0.0:
 		_burst_t = _rng.randf_range(25.0, 50.0)
 		_new_flock(true)
@@ -281,6 +282,26 @@ func _fish(delta: float) -> void:
 		var bs := Basis.looking_at(v.normalized(), Vector3.UP) * Basis(Vector3.RIGHT, PI * 0.5) * Basis(Vector3.FORWARD, sin(float(f["t"]) * 30.0) * 0.25)
 		n.basis = bs * Basis.from_scale(Vector3(0.8, 1.0, 1.0) * float(f["size"]))
 
+## Now and then one of the gulls near the hero cries (nearer flocks first; the wheeling ones more often).
+var _call_t := 3.0
+func _gull_calls(delta: float) -> void:
+	_call_t -= delta
+	if _call_t > 0.0 or flocks.is_empty():
+		return
+	_call_t = _rng.randf_range(4.0, 11.0)
+	var hp: Vector3 = game.hero.global_position
+	var best: Node3D = null
+	var bd := 60.0
+	for f in flocks:
+		for bd_ in f["birds"]:
+			var b: Node3D = bd_
+			var d := b.global_position.distance_to(hp) * (0.6 if f.has("circle") else 1.0)
+			if d < bd:
+				bd = d
+				best = b
+	if best:
+		Sfx.play_at("gull", best.global_position, -8.0, _rng.randf_range(0.9, 1.12))
+
 ## A little burst of white droplets and a ring on the water where a fish broke the surface.
 func _splash(oc: Ocean, at: Vector3) -> void:
 	var y := oc.surface_y(at.x, at.z)
@@ -311,5 +332,6 @@ func _splash(oc: Ocean, at: Vector3) -> void:
 	p.mesh = q
 	add_child(p)
 	p.position = Vector3(at.x, y + 0.05, at.z)
+	Sfx.play_at("splash", Vector3(at.x, y, at.z), -9.0, _rng.randf_range(0.85, 1.25))
 	Fx.ring(self, Vector3(at.x, y + 0.04, at.z), 0.6, Color(0.9, 0.95, 1.0, 0.6), 0.7, 0.05)
 	get_tree().create_timer(1.2).timeout.connect(p.queue_free)

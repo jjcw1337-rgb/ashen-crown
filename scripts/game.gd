@@ -408,9 +408,27 @@ func zone_music() -> void:
 	if world == null:
 		return
 	if world.sea:
-		Sfx.play_music("wild", "wind")      # the coast and the islands: the sea's own sounds come later
+		Sfx.play_music("wild", "surf")      # the coast and the islands: surf on the beaches (Game._sea_sounds fades it)
 		return
 	Sfx.play_music("fort" if cur_zone == "lair" and world.fort else cur_zone, "forest" if world.oak_forest and cur_zone != "town" and not indoor() else "")
+
+## In a sea zone the surf bed follows the shore: full on the beach, fading inland and out at sea (the boat's
+## own `sea` bed takes over out there, BoatRide._sounds).
+func _sea_sounds() -> void:
+	if world == null or not world.sea or Sfx.ambience == null:
+		return
+	var p := hero.global_position
+	var d := 0.0
+	var oc: Ocean = world.get_node_or_null("Ocean")
+	if oc and oc.depth_at(p.x, p.z) > 0.3:
+		d = oc.shore_at(p.x, p.z)                                 # out on the water: how far from land
+	elif cur_zone.begins_with("isle_"):
+		var isle := Isles.get_isle(Isles.id_of(cur_zone))
+		d = maxf(0.0, float(isle.get("r", 100.0)) - Vector2(p.x, p.z).length() - 10.0)   # inland
+	else:
+		d = maxf(0.0, absf(p.x - Coast.shore_x(p.z)) - 10.0)
+	var want := -4.0 - clampf((d - 8.0) / 70.0, 0.0, 1.0) * 18.0
+	Sfx.ambience.volume_db = move_toward(Sfx.ambience.volume_db, want, get_process_delta_time() * 6.0)
 
 ## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
@@ -1986,17 +2004,30 @@ func _add_boat(zone: String, spawn: String) -> void:
 		return
 	var b := BoatRide.new()
 	world.add_child(b)
-	b.setup(self, "gull")
+	b.setup(self, hero.best_boat())
 	boat = b
 	if zone == "coast":
 		b.docks.append({"name": "the pier", "kind": "pier", "pos": Vector2(Coast.MOOR.x, Coast.MOOR.z), "yaw": PI * 0.5})
 		for isle in Isles.ISLANDS:
 			var m := isle_mooring(isle, Vector2.ZERO, true)
 			b.docks.append({"name": isle["name"], "kind": "isle", "id": isle["id"], "pos": Vector2(m.x, m.z), "yaw": m.w})
-		if spawn.begins_with("sail_from_"):
+		if spawn.begins_with("sail_from_") and hero.boats.is_empty():
+			# a partner brought along by the party's trip with no boat of his own: he's set down on the pier
+			b.moor(Coast.MOOR, PI * 0.5)
+			var dp: Vector3 = world.spawns.get("dock", Vector3(2, 0, 0))
+			hero.global_position = Vector3(dp.x, world.height_at(dp.x, dp.z), dp.z)
+			cam_target = hero.global_position
+		elif spawn.begins_with("sail_from_"):
 			var isle := Isles.get_isle(spawn.trim_prefix("sail_from_"))
 			var m := isle_mooring(isle, Vector2.ZERO, true)
-			b.moor(Vector3(m.x, 0, m.z), m.w)
+			# the whole party sails out together: each his own boat, the others a few lengths further out ahead
+			var r := _party_rank()
+			# spaced for the longest boat any of them may sail (each game knows only its own)
+			var gap := 9.0
+			for bid in Data.BOATS:
+				gap = maxf(gap, 9.0 * float(Boat.dims(str(bid))["length"]) / Boat.LENGTH)
+			var off := Vector3(-sin(m.w), 0, -cos(m.w)) * gap * float(r)
+			b.moor(Vector3(m.x, 0, m.z) + off, m.w)
 			b.board(hero)
 			sail_blend = 1.0
 			sail_cam_yaw = b.yaw
@@ -2007,6 +2038,17 @@ func _add_boat(zone: String, spawn: String) -> void:
 		var isle := Isles.get_isle(Isles.id_of(zone))
 		var m := isle_mooring(isle, Vector2.ZERO, false)
 		b.moor(Vector3(m.x, 0, m.z), m.w)
+
+## This player's place in the party (0 = the lowest peer id), so things placed per player don't overlap.
+func _party_rank() -> int:
+	if net == null or not net.active or multiplayer.multiplayer_peer == null:
+		return 0
+	var me := multiplayer.get_unique_id()
+	var r := 0
+	for pid in net.players.keys():
+		if int(pid) < me:
+			r += 1
+	return r
 
 ## Where a boat lies at an island's jetty (alongside its end), bow out toward the dock: x, z and her
 ## yaw in w. `coast`: in the coast's frame; else in the island's own zone (the island at the origin).
@@ -2094,19 +2136,30 @@ func _sail_camera(dt: float, sh: Vector3) -> void:
 	var iso_look := cam_pivot.global_position + Vector3(0, 1.0, 0)
 	# over her port quarter, so the sail doesn't hide the way ahead and he's in view at the tiller
 	var sd := Vector3(cos(sail_cam_yaw), 0, -sin(sail_cam_yaw))
-	var sail_pos := bp - f * 16.0 * zoom - sd * 5.5 * zoom + Vector3(0, 7.0 * zoom, 0)
-	var sail_look := bp + f * 11.0 + sd * 1.0 + Vector3(0, 0.3, 0)
+	# framed for the Gull; a bigger boat (BoatRide.kl, her length against the Gull's) pulls the camera back with her
+	var bk: float = boat.kl
+	var sail_pos := bp + (-f * 16.0 * zoom - sd * 5.5 * zoom + Vector3(0, 7.0 * zoom, 0)) * bk
+	var sail_look := bp + (f * 11.0 + sd * 1.0 + Vector3(0, 0.3, 0)) * bk
 	cam.global_position = iso_pos.lerp(sail_pos, k) + sh
 	cam.look_at(iso_look.lerp(sail_look, k), Vector3.UP)
 
 ## Osric Saltmarrow, the shipwright on the Mournwater Coast: a word about the isles, then his boat
 ## (BoatShop). Once you own her, he tells you where she's moored.
 func _shipwright_talk(t: Inter) -> void:
-	var owned := hero.owns_boat("gull")
+	var owned := not hero.boats.is_empty()
 	var txt := "The Mournwater, they call it. Five isles out there, each a fair sail: the Verdant Isle with its great oak, the old ruins on their terraces, the Lost Isle with its black stone, the Bleak Isle where the fog never lifts, and the Merchant's Reach, empty since the night its people left. No bridge, no ferry. A boat, or nothing. I've built a good one."
 	if owned:
 		txt = "She's lying alongside the pier, ready when you are. Mind the rocks off the Bleak Isle, and bring her back in one piece."
-	ui.open_dialog(t.label, txt, [["See the boat" if not owned else "Look her over", func(): ui.boat_shop.open(t, "gull")], ["Leave", func(): pass]])
+	# one button per boat in Data.BOATS, cheapest first
+	var ids: Array = Data.BOATS.keys()
+	ids.sort_custom(func(a, b): return int(Data.BOATS[a]["price"]) < int(Data.BOATS[b]["price"]))
+	var btns: Array = []
+	for id in ids:
+		var bid := str(id)
+		var nm := str(Data.BOATS[bid]["name"])
+		btns.append([("Look over " if hero.owns_boat(bid) else "See ") + nm, func(): ui.boat_shop.open(t, bid)])
+	btns.append(["Leave", func(): pass])
+	ui.open_dialog(t.label, txt, btns)
 
 ## Buys a boat (Data.BOATS) from the shipwright: pays, owns it from now on (saved with the character).
 func buy_boat(id: String) -> bool:
@@ -2121,6 +2174,12 @@ func buy_boat(id: String) -> bool:
 	ui.big_message("%s is yours" % spec["name"])
 	ui.message("She's moored at the end of the pier. Click her to go aboard.", Color(0.75, 0.88, 1.0), 4.0)
 	save_game()
+	# a better boat takes the old one's place at the dock (not while he's out sailing)
+	if boat != null and is_instance_valid(boat) and not hero.aboard and boat.id != hero.best_boat():
+		boat.queue_free()
+		if boat.inter != null and is_instance_valid(boat.inter):
+			boat.inter.queue_free()
+		_add_boat(cur_zone, "")
 	return true
 
 func _interact(t: Inter) -> void:
@@ -2945,6 +3004,8 @@ func _process(delta: float) -> void:
 		var sh := Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake * shake * 0.35
 		cam.position = CAM_OFFSET * zoom * lerpf(1.0, focus_zoom, fw) + sh
 		_sail_camera(real_dt, sh)
+		if playing:
+			_sea_sounds()
 		RenderingServer.global_shader_parameter_set("player_pos", hero.global_position)
 		if grass_field:
 			grass_field.center = cam_target

@@ -17,10 +17,23 @@ const DRAFT := 0.55          # keel depth below the waterline amidships
 
 static var _cache := {}
 
-## A boat's model by id (Data.BOATS). `quality` < 1 leaves out the small things (the shop's and the
-## far boats can use the full one; it's cheap).
+## A boat's size: Data.BOATS keys "length", "beam", "sheer" and "draft" (metres), the Gull's when left out.
+## BoatRide scales its shallow-water probes, the helm, the wake and the spray by these, so a bigger boat sails
+## the same way. tools/blender/prep_boat.py prints them for an imported model.
+static func dims(id: String) -> Dictionary:
+	var spec: Dictionary = Data.BOATS.get(id, Data.BOATS["gull"])
+	return {"length": float(spec.get("length", LENGTH)), "beam": float(spec.get("beam", BEAM)),
+		"sheer": float(spec.get("sheer", SHEER)), "draft": float(spec.get("draft", DRAFT))}
+
+## A boat's model by id (Data.BOATS). A boat with a "glb" (a Meshy or Blender model prepared by
+## tools/blender/prep_boat.py: bow toward -z, waterline at y = 0) loads that file; a missing file falls back to
+## the Gull built in code, so a boat can be swapped for a better model by changing one path.
 static func model(id: String) -> Node3D:
 	var spec: Dictionary = Data.BOATS.get(id, Data.BOATS["gull"])
+	if spec.has("glb"):
+		var imported := _glb_model(id, spec)
+		if imported != null:
+			return imported
 	var root := Node3D.new()
 	root.name = "Boat"
 	var paint: Color = spec.get("paint", Color(0.16, 0.3, 0.42))
@@ -100,6 +113,32 @@ static func model(id: String) -> Node3D:
 	Props.barrel(root, Vector3(-0.6, SHEER - 0.18, mz + 1.0))
 	Props.crate(root, Vector3(0.35, SHEER - 0.2, LENGTH * 0.28), 0.9)
 	Models.P(root, Geo.torus(0.12, 0.28, 14, 6), rope, Vector3(-0.45, SHEER - 0.12, LENGTH * 0.3))
+	root.set_meta("boat", id)
+	return root
+
+## An imported boat: the glb, plus its lanterns' lights (spec "lamps": [[Vector3 position, energy], ...]).
+static func _glb_model(id: String, spec: Dictionary) -> Node3D:
+	var path := str(spec["glb"])
+	if not ResourceLoader.exists(path):
+		return null
+	var ps := load(path) as PackedScene
+	if ps == null:
+		return null
+	var root := Node3D.new()
+	root.name = "Boat"
+	var body := ps.instantiate() as Node3D
+	body.name = "model"
+	root.add_child(body)
+	var li := 0
+	for lp in spec.get("lamps", []):
+		var lamp := OmniLight3D.new()
+		lamp.name = "lamp%d" % li
+		li += 1
+		lamp.light_color = Color(1.0, 0.72, 0.38)
+		lamp.light_energy = float(lp[1])
+		lamp.omni_range = 6.0
+		root.add_child(lamp)
+		lamp.position = lp[0]
 	root.set_meta("boat", id)
 	return root
 
