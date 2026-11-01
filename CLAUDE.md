@@ -849,8 +849,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 - Developer tools (`Game.dev_tools`): unlock-all-acts (`UNLOCK_ALL_ACTS`) and the F8 testing panel (`test_immortal`, `test_onehit`, `test_stamina`, `test_allskills`, `test_fast` (super speed, `TEST_FAST` times as fast) in `game.gd`, and a level setter, `Hero.set_level`). On only when running from the Godot editor or when this PC holds a valid **admin key** (`AdminKey`, `scripts/admin_key.gd`): `user://admin.key`, signed with the owner's private key; the game checks it against the public key built into the code, so nobody can forge one. Off for everyone else, in every build (live and preview). Make a key: `tools/admin_key.gd` (needs the private key, which is never in the repo). `UNLOCK_ALL_ACTS = false` turns the tools off everywhere.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file). Since 2026-10-31 it is Blaine's
-  new trailer at full quality (Blaine: no visible compression): 60 s, 1920x1080, Theora 12 Mbit/s + Vorbis q6,
-  85.4 MB; ffmpeg on the staging server: `-c:v libtheora -b:v 12000k -maxrate 16000k -bufsize 24000k -c:a libvorbis
+  new trailer at full quality (Blaine: no visible compression): 60 s, 1920x1088 (a multiple of 16, so Theora adds no padding rows), Theora 12 Mbit/s + Vorbis q6,
+  85.4 MB; ffmpeg on the staging server: `-vf scale=1920:1088,setsar=1 -c:v libtheora -b:v 12000k -maxrate 16000k -bufsize 24000k -c:a libvorbis
   -q:a 6 -ar 48000`. Don't recompress it to save download size. Skipping it takes two deliberate presses (Esc, Space,
   Enter, a click or gamepad A/Start: the first says "Press again to skip"; `Game._is_skip_press`, other keys such as
   volume do nothing); `tools/intro_skip_test.gd`.
