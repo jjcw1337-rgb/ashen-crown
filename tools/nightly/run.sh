@@ -80,7 +80,8 @@ phase() {  # name, prompt file, seconds
   if [ "$SMOKE" = 1 ]; then
     p="Smoke test of the nightly pipeline, phase $name. Do not change any game code. Append one line '- smoke $DATE ($name)' to docs/nightly/smoke.md (create it), write $OUT/${name}_summary.md with one line saying the pipeline works, and commit it on the current branch. Don't push."
   else
-    p=$(sed -e "s|{{DATE}}|$DATE|g" -e "s|{{OUT}}|$OUT|g" -e "s|{{MESHY_CAP}}|$MESHY_CAP|g" -e "s|{{ELEVEN_CAP}}|$ELEVEN_CAP|g" "$prompt")
+    local dl; dl=$(date -v+$((lim / 60 - 15))M +%H:%M)     # (the prompt's own deadline: 15 min before the watchdog)
+    p=$(sed -e "s|{{DATE}}|$DATE|g" -e "s|{{OUT}}|$OUT|g" -e "s|{{DEADLINE}}|$dl|g" -e "s|{{MESHY_CAP}}|$MESHY_CAP|g" -e "s|{{ELEVEN_CAP}}|$ELEVEN_CAP|g" "$prompt")
   fi
   run_limited "$lim" claude -p "$p" --output-format json --permission-mode bypassPermissions --model claude-opus-5-5 \
     > "$OUT/${name}_result.json" 2> "$OUT/${name}_stderr.log"
