@@ -678,6 +678,7 @@ void fragment() {
 	float fade = smoothstep(0.0, 0.12, v_age) * (1.0 - smoothstep(0.55, 1.0, v_age));
 	// the sim's floor is the frame's bottom edge: soften it so a flame never shows a straight cut
 	fade *= smoothstep(0.0, 0.14, 1.0 - UV.y) * smoothstep(0.0, 0.2, UV.y);   // and its ceiling
+	fade *= smoothstep(0.0, 0.16, UV.x) * smoothstep(0.0, 0.16, 1.0 - UV.x);    // and its walls (a wide fire touches them)
 	float lum = max(c.r, max(c.g, c.b));
 	// a touch toward hellfire: the dim edges go blood-red, the hearts stay molten
 	vec3 hell = mix(crimson * 1.6, molten * 1.3, smoothstep(0.25, 0.8, lum)) * lum;

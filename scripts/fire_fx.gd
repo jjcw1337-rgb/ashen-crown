@@ -27,16 +27,16 @@ const FPS := 30.0
 ## Each kind of fire: its book, how many flames per second (per metre of size), their life, how wide and tall a
 ## flame is (x size), the back layer, embers, sparks, smoke, the light (energy and range per metre) and haze.
 const PRESETS := {
-	"torch":    {"book": "tongue", "rate": 10.0, "life": 0.55, "w": 0.55, "h": 1.05, "back": 0.0, "core": 1.0, "embers": 6.0, "sparks": 0.0, "smoke": 0.4, "light": 1.8, "range": 6.5, "haze": false, "jitter": 0.12},
+	"torch":    {"book": "tongue", "rate": 12.0, "life": 0.55, "w": 0.85, "h": 1.6, "back": 0.0, "core": 1.0, "embers": 6.0, "sparks": 0.0, "smoke": 0.4, "light": 1.8, "range": 6.5, "haze": false, "jitter": 0.12},
 	"candle":   {"book": "tongue", "rate": 6.0, "life": 0.5, "w": 0.4, "h": 1.0, "back": 0.0, "core": 0.0, "embers": 0.0, "sparks": 0.0, "smoke": 0.0, "light": 0.9, "range": 3.0, "haze": false, "jitter": 0.05},
 	"campfire": {"book": "body", "rate": 7.0, "life": 0.75, "w": 0.95, "h": 1.15, "back": 0.6, "core": 1.0, "embers": 10.0, "sparks": 0.25, "smoke": 1.0, "light": 2.4, "range": 7.5, "haze": true, "jitter": 0.18},
 	"bonfire":  {"book": "body", "rate": 9.0, "life": 0.85, "w": 1.0, "h": 1.25, "back": 0.8, "core": 1.0, "embers": 16.0, "sparks": 0.4, "smoke": 1.3, "light": 2.8, "range": 8.0, "haze": true, "jitter": 0.22},
 	"brazier":  {"book": "body", "rate": 7.0, "life": 0.6, "w": 0.85, "h": 1.0, "back": 0.4, "core": 1.0, "embers": 8.0, "sparks": 0.15, "smoke": 0.6, "light": 2.2, "range": 7.0, "haze": false, "jitter": 0.14},
 	"building": {"book": "spread", "rate": 8.0, "life": 0.9, "w": 1.8, "h": 0.9, "back": 0.9, "core": 0.7, "embers": 14.0, "sparks": 0.3, "smoke": 1.6, "light": 2.6, "range": 9.0, "haze": true, "jitter": 0.3},
 	"ground":   {"book": "spread", "rate": 7.0, "life": 0.7, "w": 1.5, "h": 0.75, "back": 0.5, "core": 0.6, "embers": 8.0, "sparks": 0.1, "smoke": 0.8, "light": 2.0, "range": 6.5, "haze": false, "jitter": 0.35},
-	"magic":    {"book": "tongue", "rate": 10.0, "life": 0.5, "w": 0.65, "h": 1.1, "back": 0.3, "core": 1.0, "embers": 10.0, "sparks": 0.3, "smoke": 0.0, "light": 2.0, "range": 6.0, "haze": false, "jitter": 0.15},
-	"weapon":   {"book": "tongue", "rate": 12.0, "life": 0.42, "w": 0.6, "h": 1.0, "back": 0.0, "core": 0.0, "embers": 8.0, "sparks": 0.0, "smoke": 0.0, "light": 0.0, "range": 0.0, "haze": false, "jitter": 0.1},
-	"burning":  {"book": "tongue", "rate": 10.0, "life": 0.5, "w": 0.75, "h": 1.15, "back": 0.3, "core": 0.0, "embers": 8.0, "sparks": 0.1, "smoke": 0.5, "light": 0.0, "range": 0.0, "haze": false, "jitter": 0.2},
+	"magic":    {"book": "tongue", "rate": 12.0, "life": 0.5, "w": 0.95, "h": 1.6, "back": 0.3, "core": 1.0, "embers": 10.0, "sparks": 0.3, "smoke": 0.0, "light": 2.0, "range": 6.0, "haze": false, "jitter": 0.15},
+	"weapon":   {"book": "tongue", "rate": 14.0, "life": 0.42, "w": 0.9, "h": 1.5, "back": 0.0, "core": 0.0, "embers": 8.0, "sparks": 0.0, "smoke": 0.0, "light": 0.0, "range": 0.0, "haze": false, "jitter": 0.1},
+	"burning":  {"book": "tongue", "rate": 12.0, "life": 0.5, "w": 1.1, "h": 1.7, "back": 0.3, "core": 0.0, "embers": 8.0, "sparks": 0.1, "smoke": 0.5, "light": 0.0, "range": 0.0, "haze": false, "jitter": 0.2},
 }
 ## Flames per preset scale with the graphics budget (InfernalFx.tier: Low, Medium, High, Ultra).
 const TIER_K := [0.5, 0.75, 1.0, 1.25]
