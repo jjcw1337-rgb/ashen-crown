@@ -7,7 +7,8 @@
 #
 #   blender -b --python rebake_prop.py -- <in.glb> <out.glb> <size: h=2 | w=1.6 | x=3> <triangles> [--tex 1024]
 #        [--yaw deg] [--cut m] [--samples 4] [--voxel 0.006]
-# size: h= scales to that height, w= its widest side, x= its length along x (metres, after yaw).
+# size: h= scales to that height, w= its widest side, x= its length along x (metres, after yaw); "keep" leaves an
+# already prepared prop exactly where and as big as it is (only the surface and textures are rebuilt).
 # --cut removes everything below that height (metres, after scaling): Meshy's ground patches under a prop.
 # Prints "PROP <out> size ... foot half ..." (footprint half-extents in Godot x/z) and "EXPORTED <out>".
 import bpy, bmesh, sys, math
@@ -45,9 +46,14 @@ P = np.empty(len(me.vertices) * 3); me.vertices.foreach_get("co", P); P = P.resh
 P[:, 0] -= 0.5 * (P[:, 0].min() + P[:, 0].max())
 P[:, 1] -= 0.5 * (P[:, 1].min() + P[:, 1].max())
 P[:, 2] -= P[:, 2].min()
-key, val = SIZE.split("=")
-ext = {"x": np.ptp(P[:, 0]), "h": np.ptp(P[:, 2]), "w": max(np.ptp(P[:, 0]), np.ptp(P[:, 1]))}[key]
-P *= float(val) / ext
+if SIZE == "keep":
+    # an already prepared prop (the camp's older glbs): keep its placement and size exactly, so the code that
+    # places it needs no change; only its surface and textures are rebuilt
+    me.vertices.foreach_get("co", P.reshape(-1))
+else:
+    key, val = SIZE.split("=")
+    ext = {"x": np.ptp(P[:, 0]), "h": np.ptp(P[:, 2]), "w": max(np.ptp(P[:, 0]), np.ptp(P[:, 1]))}[key]
+    P *= float(val) / ext
 me.vertices.foreach_set("co", P.reshape(-1).astype(np.float32)); me.update()
 
 if CUT > 0:

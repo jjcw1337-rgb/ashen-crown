@@ -49,6 +49,8 @@ const ACTS := {
 	"swipe2": {"clip": "flick", "frac": true, "keys": [[0.0, 0.15], [0.42, 0.6], [1.0, 0.9]]},
 	# 3 Censer Slam: the cane raised in both hands and driven into the ground, cracking a vial: a small burst of miasma
 	"swipe3": {"clip": "censer_slam", "frac": true, "keys": [[0.0, 0.3], [0.47, 0.85], [1.0, 1.0]]},
+	# felling a tree (Harvest): the axe raised in both hands and driven into the trunk, from the censer slam
+	"chop": {"clip": "censer_slam", "frac": true, "keys": [[0.0, 0.3], [0.55, 0.85], [1.0, 1.0]]},
 	# the free swings (Hero.free_attack) use the same three
 	"over": {"clip": "peck", "frac": true, "keys": [[0.0, 0.12], [0.5, 0.42], [1.0, 0.7]]},
 	"back": {"clip": "flick", "frac": true, "keys": [[0.0, 0.15], [0.48, 0.6], [1.0, 0.9]]},

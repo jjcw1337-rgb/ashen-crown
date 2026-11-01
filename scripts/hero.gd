@@ -22,6 +22,25 @@ var ene := 10
 var stat_points := 0
 var talents := {}            # talent id -> ranks taken (Talents); a point per level from level 2
 var gold := 120
+## Boats this character owns (Data.BOATS ids; bought from the shipwright on the Mournwater Coast, saved).
+var boats: Array = []
+## Aboard a boat (BoatRide): he stands at the tiller; the boat moves him, so his own moving stops.
+var aboard := false
+## He has sailed before (the controls guide shows the first time only; saved).
+var sailed := false
+
+func owns_boat(id: String) -> bool:
+	return boats.has(id)
+
+## The boat he sails: the dearest one he owns (Data.BOATS), or the Gull (moored at the pier before he buys her).
+func best_boat() -> String:
+	var best := "gull"
+	var price := -1
+	for b in boats:
+		if Data.BOATS.has(str(b)) and int(Data.BOATS[str(b)]["price"]) > price:
+			best = str(b)
+			price = int(Data.BOATS[str(b)]["price"])
+	return best
 var equipment := {}
 var inventory: Array = []
 var belt: Array = [null, null, null, null]
@@ -88,6 +107,9 @@ var cls := "knight"          # "knight", "wraith", "demon" or "warlock" (Data.CL
 var cds := {}
 var wr := {}                 # Wraith: the skills' state (WraithSkills: the tether, phantoms, the night, the claws)
 var veil_t := 0.0            # Wraith: seconds he is mist, and blows pass through him (Shadowstep, Eternal Night)
+var roll_t := -1.0          # the dodge roll on Space (Dodge): seconds into it, -1 when not rolling
+var roll_dir := Vector3.FORWARD
+var roll_cd := 0.0
 var dm := {}                 # Demon: the skills' state (DemonSkills: the charge, lava on the ground, fissures, boulders, the grip, the wrath)
 var phased := false          # (the Underworld's grade in game.gd reads it; no skill sets it now)
 var drain_t := -1.0          # Warlock: Drain Life channel time (-1 = not channelling)
@@ -168,6 +190,9 @@ var net_yaw := 0.0
 var net_phase_rate := 0.0
 var net_st := {}
 var net_buff := false
+var net_boat_st: Variant = null      # a partner sailing: Vector4(x, z, yaw, speed) of his boat (Net._boat_packet)
+var net_boat_id := "gull"            # and which boat she is (Data.BOATS)
+var net_boat: BoatRide               # the boat drawn under his puppet (BoatRide.puppet_update)
 var _net_last_t := 0.0
 ## Skill effects that linger (SkillFx: the Siphon tether, Drain Life's beams, Eternal Night, phantoms, arrows
 ## in flight), on the local hero and on a puppet alike; started and ended by fx events, moved by SkillFx.update.
@@ -194,6 +219,10 @@ func is_archer() -> bool:
 
 func is_plague() -> bool:
 	return cls == "plague"
+
+## The dragon classes (Obsidian Wyrm, Frost Serpent, Storm Wyvern; scripts/dragon.gd).
+func is_dragon() -> bool:
+	return Dragon.is_dragon(cls)
 
 ## The archer with a bow in his hands: his attack shoots instead of swinging.
 func has_bow() -> bool:
@@ -228,9 +257,11 @@ const BIND_KEYS := ["Q", "E", "R", "F", "G", "V"]
 const BIND_SLOTS := ["lmb", "rmb", "Q", "E", "R", "F", "G", "V"]
 var binds := {}
 
+## Path of Exile style: left mouse attacks, right mouse is the class's first skill (also on Q); Block is in the
+## skills window (K) for anyone who wants it on a slot.
 func default_binds() -> Dictionary:
-	var b := {"lmb": "attack", "rmb": "block"}
 	var own := skill_list()
+	var b := {"lmb": "attack", "rmb": own[0]["id"] if not own.is_empty() else "block"}
 	for i in BIND_KEYS.size():
 		b[BIND_KEYS[i]] = own[i]["id"] if i < own.size() else ""
 	return b
@@ -304,7 +335,7 @@ func skill_cost(id: String) -> float:
 	return float(Data.skill_def(id).get("mana", 0)) * (1.0 - talent("cost:" + id) / 100.0)
 
 func skill_cd(id: String) -> float:
-	return float(Data.skill_def(id).get("cd", 0.0)) * (1.0 - talent("cd:" + id) / 100.0)
+	return float(Data.skill_def(id).get("cd", 0.0)) * (1.0 - talent("cd:" + id) / 100.0) * (Battlegrounds.CD_MULT if game.bg_mode else 1.0)
 
 func _build_rig() -> void:
 	if is_wraith():
@@ -319,6 +350,8 @@ func _build_rig() -> void:
 		rig = Plague.build_body()
 		if pd == null:
 			pd = Plague.new(self)
+	elif is_dragon():
+		rig = Dragon.build(cls)     # posed in code every frame (Anim.pose hands it to Dragon.pose)
 	else:
 		var body := _knight_body()
 		if body == "mocap":
@@ -327,6 +360,7 @@ func _build_rig() -> void:
 			rig = Knight.build(Knight.default_gear()) if body == "" else Knight.build_meshy(body == "armored")
 		rig.set_meta("gait", "knight")    # Anim: heavy armoured run, elbows out
 	rig.set_meta("pers", "hero")
+	radius = float(Dragon.spec(cls)["radius"]) if is_dragon() else 0.45
 	add_child(rig)
 	J = rig.get_meta("j")
 	if breath != null and is_instance_valid(breath):
@@ -498,6 +532,8 @@ func new_character() -> void:
 	gold = 120
 	inventory = []
 	inventory.resize(40)
+	stash = []           # (a new character starts with an empty stash, not the last one's)
+	stash.resize(60)
 	for k in cds.keys():
 		cds[k] = 0.0
 	buff_t = 0.0
@@ -506,7 +542,8 @@ func new_character() -> void:
 	equipment = {}
 	for s in Items.EQUIP_SLOTS:
 		equipment[s] = null
-	equipment["weapon"] = Items.make(str(Data.CLASSES[cls].get("weapon", "hand_axe" if is_demon() else "short_sword")))
+	# a dragon starts with its own claws and teeth (Data.unarmed); everyone else with their weapon
+	equipment["weapon"] = null if is_dragon() else Items.make(str(Data.CLASSES[cls].get("weapon", "hand_axe" if is_demon() else "short_sword")))
 	if cls == "knight":
 		equipment["shield"] = Items.make("buckler")
 	equipment["armor"] = Items.make("quilted")
@@ -514,6 +551,7 @@ func new_character() -> void:
 	belt[0]["count"] = 4
 	belt[1]["count"] = 4
 	belt[2]["count"] = 3
+	inventory[39] = Items.make("woodsman_axe")     # every hero in the Wilds carries a felling axe (Harvest)
 	recalc()
 	life = max_life
 	mana = max_mana
@@ -545,12 +583,12 @@ func recalc() -> void:
 	max_stamina = 70.0 + vt_total * 0.6 + level * 2.0
 	stamina = minf(stamina, max_stamina)
 	var w = equipment.get("weapon")
-	var wd: Array = Items.damage_of(w) if w != null else [1, 3]
+	var wd: Array = Items.damage_of(w) if w != null else Data.unarmed(cls)    # a dragon's claws and teeth
 	var k := 1.0 + st_total / 100.0
 	dmg_min = maxi(1, int(wd[0] * k))
 	dmg_max = maxi(dmg_min, int(wd[1] * k))
 	fire_dmg = stats.get("fire", 0)
-	var wspeed: float = Data.BASES[w["base"]].get("speed", 1.0) if w != null else 1.2
+	var wspeed: float = Data.BASES[w["base"]].get("speed", 1.0) if w != null else Data.unarmed_speed(cls)
 	aspd = wspeed * (1.0 + mini(stats.get("ias", 0), 120) / 100.0 + dx_total * 0.002)  # A2/A3 gear: speed capped
 	armor = int((def_sum + dx_total / 4) * (1.0 + talent("armor_pct") / 100.0))
 	block_chance = 0.0
@@ -571,6 +609,8 @@ func total_dex() -> int: return dex + stats.get("dex", 0)
 func total_vit() -> int: return vit + stats.get("vit", 0)
 
 func add_xp(v: int) -> void:
+	if game != null and game.net.server and game.hero == self:
+		return      # (a dedicated server's parked hero isn't anyone's)
 	xp += v
 	while xp >= Data.xp_for_level(level):
 		xp -= Data.xp_for_level(level)
@@ -634,7 +674,7 @@ func refresh_gear() -> void:
 		_carry_in_hand = not (carry.t >= float(carry.p["grab"]))
 		gear_nodes.append(weapon_node)
 		if w.get("rarity", 0) == 3 and Models.palette(w)["glow"] != null:
-			var fl := Props.fire(weapon_node, Vector3(0, 0, -0.5), 0.35, Models.palette(w)["glow"], false, false, false)
+			var fl := Props.fire(weapon_node, Vector3(0, 0, -0.5), 0.35, Models.palette(w)["glow"], false, false, false, "weapon")
 			gear_nodes.append(fl)
 	var s = equipment.get("shield")
 	if s != null:
@@ -658,6 +698,8 @@ func refresh_gear() -> void:
 		Demon.rebuild_body(rig, demon_gear())
 	elif is_warlock():
 		Warlock.rebuild_body(rig, warlock_gear())
+	elif is_dragon():
+		pass                               # a dragon's body has no armour to show (its gear hangs off a hidden joint)
 	elif is_archer():
 		if not rig.has_meta("meshy"):      # the ranger's own body has nothing to rebuild
 			Knight.rebuild_body(rig, Archer.body_gear(knight_gear()))
@@ -728,7 +770,7 @@ func _carry_weapon(delta: float) -> void:
 			weapon_node.reparent(dest, true)
 		_set_hilt(not in_hand and store == "hilt")
 	# hidden in the scabbard; on the back it stays in view
-	weapon_node.visible = (in_hand or store != "hilt") and not (pd != null and pd.hands_busy)   # the plague doctor puts his cane away to throw
+	weapon_node.visible = (in_hand or store != "hilt") and not (pd != null and pd.hands_busy) and _chop_axe == null   # the plague doctor puts his cane away to throw; the felling axe replaces it
 	# ease into the hold (identity in the hand; the back mount's own rest)
 	var k := 1.0 - exp(-delta * 16.0)
 	weapon_node.transform = weapon_node.transform.interpolate_with(Transform3D.IDENTITY, k)
@@ -789,6 +831,7 @@ static func _hidden_mat() -> StandardMaterial3D:
 func cmd_move(p: Vector3, direct := false) -> void:
 	if dead or charge_t >= 0.0:
 		return
+	stop_chop()
 	end_drain()
 	target = null
 	_set_goal(p, direct)
@@ -890,6 +933,98 @@ func free_attack(aim: Vector3) -> void:
 ## Right-click: the next swipe of the combo toward the cursor. Pressing again late in a swipe queues
 ## the next one, which cuts off that swipe's recovery so the three flow together; the finisher
 ## (a full spin that hits all round) always plays out, and the chain starts over after a pause.
+# ---------------------------------------------------------------- woodcutting (Harvest)
+var chop_tree = null              # the Harvest.HTree he's felling
+var chop_power := 0.0
+var _chop_axe: Node3D = null      # the felling axe in his hand while he chops (none when his weapon is the axe)
+var _chop_axe_base := ""
+
+## Starts felling a tree he has walked up to (Game._interact "tree"). False, with a word why, when he can't.
+func start_chop(t) -> bool:
+	if dead or not is_instance_valid(t) or str(t.state) != "stand":
+		return false
+	if game.bg_mode:
+		return false
+	var ax := chop_axe()
+	if str(ax[0]) == "":
+		game.ui.message("You need an axe to fell trees. Halvar the smith sells them.", Color(1, 0.6, 0.35))
+		Sfx.play("deny")
+		return false
+	chop_tree = t
+	chop_power = float(ax[1])
+	target = null
+	moving = false
+	path = PackedVector3Array()
+	var w = equipment.get("weapon")
+	_show_chop_axe(not (w != null and str(w["base"]) == str(ax[0])), str(ax[0]))
+	if atk_t < 0.0:
+		_chop_swing()
+	return true
+
+## One swing of the axe at the trunk: turned square to it, the class's own swing time (Data.CHOP_PROFILES).
+func _chop_swing() -> void:
+	var d: Vector3 = (chop_tree as Node3D).global_position - global_position
+	d.y = 0.0
+	if d.length() > 0.05:
+		_face(d.normalized())
+	var prof := Data.chop_profile(cls)
+	_start_attack("chop", "chop")
+	atk_dur = float(prof["swing"])
+	Sfx.play_synced("swing_heavy", Anim.impact_at("chop") * atk_dur - 0.05, -7.0, 0.82)
+
+func _chop_ok() -> bool:
+	if dead or not is_instance_valid(chop_tree) or str(chop_tree.state) != "stand":
+		return false
+	var tp: Vector3 = (chop_tree as Node3D).global_position
+	return Vector2(tp.x - global_position.x, tp.z - global_position.z).length() <= float(chop_tree.radius) + 0.8
+
+func _chop_impact() -> void:
+	if _chop_ok():
+		Harvest.strike_from(self, int(chop_tree.id), chop_power)
+
+func _chop_next() -> void:
+	if _chop_ok():
+		_chop_swing()
+	else:
+		stop_chop()
+
+## Puts the axe away (moving, a skill, a blow taken, the tree down).
+func stop_chop() -> void:
+	if chop_tree == null and _chop_axe == null:
+		return
+	if atk_skill == "chop":
+		atk_t = -1.0
+		atk_skill = ""
+	chop_tree = null
+	_show_chop_axe(false, "")
+
+## The felling axe in his weapon hand (sized for his body; the Wraith's is a spectral one), his own weapon away.
+func _show_chop_axe(on: bool, base: String) -> void:
+	if rig == null:
+		return
+	if on and _chop_axe != null and _chop_axe_base == base:
+		return
+	if _chop_axe != null:
+		if is_instance_valid(_chop_axe):
+			_chop_axe.queue_free()
+		_chop_axe = null
+		_chop_axe_base = ""
+	if on and base != "":
+		var J: Dictionary = rig.get_meta("j")
+		var hand: Node3D = J.get("grip_r", null)
+		if hand == null:
+			return
+		var prof := Data.chop_profile(cls)
+		_chop_axe = Models.item_model(Items.make(base))
+		_chop_axe.scale = Vector3.ONE * float(prof["axe_scale"])
+		if prof.get("spectral", false):
+			for mi in _chop_axe.find_children("*", "MeshInstance3D", true, false):
+				(mi as MeshInstance3D).material_overlay = Mats.glow(Color(0.45, 0.9, 1.0), 1.1, 0.0, 0.8)
+		hand.add_child(_chop_axe)
+		_chop_axe_base = base
+	if weapon_node != null and is_instance_valid(weapon_node) and puppet:
+		weapon_node.visible = _chop_axe == null
+
 func swipe_attack(aim: Vector3, keep_target := false) -> void:
 	if dead or charge_t >= 0.0 or drain_t >= 0.0 or daze_t > 0.0:
 		return
@@ -974,6 +1109,8 @@ func _face_smooth(d: Vector3, delta: float) -> void:
 func cmd_target(t) -> void:
 	if dead or charge_t >= 0.0:
 		return
+	if t != chop_tree:
+		stop_chop()
 	end_drain()
 	target = t
 	if is_instance_valid(t):
@@ -1007,6 +1144,7 @@ func cmd_wasd(dir: Vector3) -> void:
 		wasd_heading = Vector3.ZERO
 	if dir.length() > 0.1:
 		end_drain()
+		stop_chop()
 		if not (is_instance_valid(target) and target is Enemy):
 			target = null
 		path = PackedVector3Array()
@@ -1035,6 +1173,7 @@ func can_act() -> bool:
 	return not dead and atk_t < 0.0 and charge_t < 0.0 and drain_t < 0.0
 
 func use_skill(id: String, aim: Vector3) -> bool:
+	stop_chop()
 	if dead or charge_t >= 0.0 or daze_t > 0.0:
 		return false
 	if atk_t >= 0.0 and atk_skill != "":
@@ -1101,6 +1240,8 @@ func _start_attack(style: String, skill := "", secs := 0.0) -> void:
 	if secs > 0.0:
 		atk_dur = secs / aspd
 	atk_dur *= Data.attack_pace(cls)     # every class's pace (Data.ATTACK_PACE)
+	if game.bg_mode and not puppet:
+		atk_dur *= Battlegrounds.ATTACK_PACE     # the crypt's slower, heavier fights
 	impact_done = false
 	trail_pts.clear()
 	trail_col = ClassSkills.trail_color(cls, skill)
@@ -1146,6 +1287,8 @@ func _face(d: Vector3) -> void:
 		rig.rotation.y = atan2(-d.x, -d.z)
 
 func reach() -> float:
+	if is_dragon():
+		return Dragon.reach(cls)
 	return Archer.RANGE if has_bow() else 1.7
 
 # ---------------------------------------------------------------- damage
@@ -1169,7 +1312,7 @@ func show_damage(dmg: float) -> void:
 	dmg_stack.add(dmg)
 
 func dmg_mult(id: String) -> float:
-	return (1.0 + (talent("dmg") + talent("dmg:" + id)) / 100.0) * pace_mult(id)
+	return (1.0 + (talent("dmg") + talent("dmg:" + id)) / 100.0) * pace_mult(id) * (Battlegrounds.HIT_MULT if game.bg_mode else 1.0)
 
 ## Attacks are slower by the class's pace (Data.ATTACK_PACE); the ones whose rate the swing itself sets
 ## (the basic attack, skills with no cooldown) hit that much harder, so their damage per second stays put.
@@ -1198,6 +1341,7 @@ func _hit_enemy(e, mult: float, knock: float = 0.0, src := "", flat := 0.0) -> v
 	game.add_shake(0.15 if not r["crit"] else 0.3)
 
 func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String = "phys") -> void:
+	stop_chop()
 	if dead:
 		return
 	if puppet:
@@ -1205,6 +1349,9 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 			game.net.hit_player(peer_id, dmg, from, kind, element)
 		return
 	if game.test_immortal or phased:
+		return
+	if Dodge.dodging(self):
+		Dodge.dodged(self)
 		return
 	if veil_t > 0.0:
 		# the Wraith as mist: the blow goes through him
@@ -1281,6 +1428,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	if life <= 0.0:
 		life = 0.0
 		dead = true
+		Dodge.cancel(self)
 		ClassSkills.died(self)
 		SkillFx.clear(self)
 		dead_t = 0.0
@@ -1302,6 +1450,7 @@ func _process(delta: float) -> void:
 	for k in cds.keys():
 		cds[k] = maxf(0.0, cds[k] - delta)
 	buff_t = maxf(0.0, buff_t - delta)
+	roll_cd = maxf(0.0, roll_cd - delta)
 	ClassSkills.update(self, delta)     # every class's lingering skills (pools, the tether, lava, arrows, clouds...)
 	aura.emitting = buff_t > 0.0
 	hit_t = maxf(0.0, hit_t - delta * 4.0)
@@ -1338,9 +1487,21 @@ func _process(delta: float) -> void:
 		var m := minf(mana_pool, delta * 20.0)
 		mana_pool -= m
 		mana = minf(max_mana, mana + m)
-	life = minf(max_life, life + regen * delta)
+	if not game.bg_mode:            # (no life regeneration in the crypt: potions and care)
+		life = minf(max_life, life + regen * delta)
 	mana = minf(max_mana, mana + (1.0 + ene * 0.06) * delta)
 
+	if aboard:
+		# at the tiller: standing, swaying a little with the boat; BoatRide places him
+		move_amt = move_toward(move_amt, 0.0, delta * 6.0)
+		block_amt = 0.0
+		var stand := {"time": anim_time, "phase": phase, "move": move_amt, "atk": -1.0, "style": atk_style, "block": 0.0, "hit": 0.0, "look": 0.0}
+		if not puppet:
+			carry.update(self, delta)
+			stand.merge(carry.anim_state(), true)
+		Anim.pose(rig, stand)
+		last_pose = stand
+		return
 	var want_block := blocking and atk_t < 0.0 and charge_t < 0.0
 	block_amt = move_toward(block_amt, 1.0 if (want_block or block_flash > 0.0) else 0.0, delta * 9.0)
 	var vel := Vector3.ZERO
@@ -1362,7 +1523,7 @@ func _process(delta: float) -> void:
 		exhausted = false
 	if exhausted and stamina >= max_stamina * 0.3:
 		exhausted = false
-	var speed := 4.8 * (1.0 + frw / 100.0)
+	var speed := 4.8 * (1.0 + frw / 100.0) * (Battlegrounds.MOVE_MULT if game.bg_mode else 1.0)
 	# the archer runs 10% faster while his Spirit Beast is at his side
 	if is_archer() and beasts.any(func(b) -> bool: return is_instance_valid(b) and not b.dead):
 		speed *= 1.1
@@ -1388,7 +1549,9 @@ func _process(delta: float) -> void:
 		chill_t -= delta
 		speed *= 0.55
 
-	if charge_t >= 0.0:
+	if roll_t >= 0.0:
+		vel = Dodge.step(self, delta)
+	elif charge_t >= 0.0:
 		KnightSkills.update_charge(self, delta)
 	else:
 		if atk_t >= 0.0:
@@ -1492,6 +1655,8 @@ func _process(delta: float) -> void:
 		st["atk"] = 0.6
 		st["style"] = "cast"
 	if not puppet:
+		if _chop_axe != null and not is_instance_valid(chop_tree):
+			stop_chop()
 		carry.update(self, delta)
 		st.merge(carry.anim_state(), true)
 		_carry_weapon(delta)
@@ -1502,12 +1667,13 @@ func _process(delta: float) -> void:
 		Archer.pose_bow(self, st)
 	last_pose = st
 	_hover()
+	Dodge.pose(self, delta)
 	WarlockSkills.drain_victims_changed(self)
 	SkillFx.update(self, delta)
 	_breathe(delta)
 	_apply_shield_pose()
 	# no sword-swing streak off a bow, nor off the Wraith's and the Demon's skills (their clips, not weapon swings)
-	_update_trail(((atk_t >= 0.0 and not ((is_wraith() or is_demon()) and atk_skill != "")) or charge_t >= 0.0) and not has_bow())
+	_update_trail(((atk_t >= 0.0 and not ((is_wraith() or is_demon()) and atk_skill != "")) or charge_t >= 0.0) and not has_bow() and not is_dragon())
 
 ## The Wraith floats a hand's breadth off the ground, bobbing slowly and leaning into motion.
 func _hover() -> void:
@@ -1586,6 +1752,10 @@ func apply_net_state(p: PackedFloat32Array) -> void:
 	life = p[12]
 	max_life = maxf(p[13], 1.0)
 	net_buff = p[14] > 0.5
+	net_boat_st = Vector4(p[16], p[17], p[18], p[19]) if p.size() >= 20 and p[15] > 0.5 else null
+	var bi := int(p[20]) if p.size() >= 21 else 0
+	var bk: Array = Data.BOATS.keys()
+	net_boat_id = str(bk[bi]) if bi >= 0 and bi < bk.size() else "gull"
 	if was_dead and not dead:
 		rig.rotation.x = 0.0
 		rig.position.y = 0.0
@@ -1596,6 +1766,11 @@ func apply_net_state(p: PackedFloat32Array) -> void:
 
 ## The zone changed under a puppet: its lingering effects belonged to the old one.
 func net_zone_reset() -> void:
+	Dodge.cancel(self)
+	net_boat_st = null
+	if net_boat and is_instance_valid(net_boat):
+		net_boat.queue_free()
+	net_boat = null
 	visible = false
 	net_has = false
 	SkillFx.clear(self)
@@ -1611,6 +1786,7 @@ func _puppet_process(delta: float) -> void:
 	var k := clampf(delta * 14.0, 0.0, 1.0)
 	global_position = global_position.lerp(net_pos, k)
 	rig.rotation.y = lerp_angle(rig.rotation.y, net_yaw, k)
+	BoatRide.puppet_update(self, delta)      # a partner at sea: his boat, and him at its tiller
 	aura.emitting = net_buff
 	if dead:
 		var f := clampf(dead_t / 0.7, 0.0, 1.0)
@@ -1633,14 +1809,16 @@ func _puppet_process(delta: float) -> void:
 	move_amt = st.get("move", 0.0)
 	block_amt = st.get("block", 0.0)
 	atk_t = 0.0 if st.get("atk", -1.0) >= 0.0 else -1.0
+	_show_chop_axe(atk_t >= 0.0 and str(st.get("style", "")) == "chop", "woodsman_axe")
 	Anim.pose(rig, st)
 	if is_archer():
 		Archer.pose_bow(self, st)
 	_hover()
+	Dodge.pose(self, delta)
 	Archer.update(self, delta)
 	SkillFx.update(self, delta)
 	_apply_shield_pose()
-	_update_trail(atk_t >= 0.0 and not has_bow())
+	_update_trail(atk_t >= 0.0 and not has_bow() and not is_dragon())
 
 func _apply_shield_pose() -> void:
 	if shield_node == null or not is_instance_valid(shield_node):
@@ -1674,12 +1852,18 @@ func _update_attack(delta: float) -> void:
 		_swipe(swipe_aim, swipe_keep)
 		return
 	if atk_t >= atk_dur:
+		var was_chop := atk_skill == "chop"
 		atk_t = -1.0
 		atk_skill = ""
 		if swipe and atk_style == "swipe3":
 			swipe_n = 0
+		if was_chop:
+			_chop_next()
 
 func _impact() -> void:
+	if atk_skill == "chop":
+		_chop_impact()
+		return
 	var fwd := aim_dir()
 	# a skill (or the archer's shot): its class's script deals it
 	if ClassSkills.impact(self):
@@ -1760,6 +1944,9 @@ func _update_trail(active: bool) -> void:
 	im.surface_end()
 
 func respawn(p: Vector3) -> void:
+	if not puppet and game != null and game.hero == self:
+		game.on_local_respawn()
+	Dodge.cancel(self)
 	dead = false
 	dead_t = 0.0
 	rig.rotation.x = 0.0
@@ -1791,6 +1978,12 @@ func add_to_inventory(it: Dictionary) -> bool:
 		stats_changed.emit()
 		it["count"] = n
 		return n <= 0
+	if Items.stack_cap(it["base"]) > 1:
+		# resources (wood): onto matching stacks first, then empty cells, each up to the base's "stack"
+		var left := _stack_into(inventory, it, Items.stack_cap(it["base"]), int(it.get("count", 1)), false)
+		stats_changed.emit()
+		it["count"] = left
+		return left <= 0
 	for i in inventory.size():
 		if inventory[i] == null:
 			inventory[i] = it
@@ -1830,13 +2023,63 @@ func stack_potions() -> void:
 				it["count"] = n
 				inventory[i] = it
 
+## How many of a base the inventory holds, across all its stacks.
+func count_of(base_id: String) -> int:
+	var n := 0
+	for s in inventory:
+		if s != null and s["base"] == base_id:
+			n += int(s.get("count", 1))
+	return n
+
+## Takes n of a base out of the inventory (smallest stacks first). False, and nothing taken, if there aren't enough.
+func take_items(base_id: String, n: int) -> bool:
+	if n <= 0:
+		return true
+	if count_of(base_id) < n:
+		return false
+	var cells := []
+	for i in inventory.size():
+		if inventory[i] != null and inventory[i]["base"] == base_id:
+			cells.append(i)
+	cells.sort_custom(func(x, y): return int(inventory[x].get("count", 1)) < int(inventory[y].get("count", 1)))
+	for i in cells:
+		var c := int(inventory[i].get("count", 1))
+		var k := mini(c, n)
+		n -= k
+		if k >= c:
+			inventory[i] = null
+		else:
+			inventory[i]["count"] = c - k
+		if n <= 0:
+			break
+	stats_changed.emit()
+	return true
+
+## The best thing he carries to chop with: [base id, power] (an equipped or carried combat axe, or the
+## woodsman's axe), or ["", 0.0] with none (Data.CHOP_POWER).
+func chop_axe() -> Array:
+	var best := ["", 0.0]
+	var cands := [equipment.get("weapon")] + inventory
+	for it in cands:
+		if it == null:
+			continue
+		var bid: String = it["base"]
+		var pw := 0.0
+		if bid == "woodsman_axe":
+			pw = float(Data.BASES[bid].get("chop", 1.0))
+		elif Data.CHOP_POWER.has(bid):
+			pw = float(Data.CHOP_POWER[bid])
+		if pw > float(best[1]):
+			best = [bid, pw]
+	return best
+
 ## Drops inventory cell `from` onto cell `to`: potions of the same kind merge (up to a full
 ## stack), anything else swaps.
 func move_in_inventory(from: int, to: int) -> void:
 	var a = inventory[from]
 	var b = inventory[to]
-	if a != null and b != null and a["base"] == b["base"] and Data.BASES[a["base"]]["slot"] == "potion":
-		var add := mini(int(a.get("count", 1)), INV_STACK - int(b.get("count", 1)))
+	if a != null and b != null and a["base"] == b["base"] and Items.stack_cap(a["base"]) > 1:
+		var add := mini(int(a.get("count", 1)), Items.stack_cap(a["base"]) - int(b.get("count", 1)))
 		b["count"] = int(b.get("count", 1)) + add
 		a["count"] = int(a.get("count", 1)) - add
 		if a["count"] <= 0:
@@ -1850,7 +2093,7 @@ func equip_from_inventory(idx: int) -> void:
 	var it = inventory[idx]
 	if it == null:
 		return
-	if Items.is_material(it):
+	if Items.is_material(it) or Items.is_resource(it) or Items.is_tool_item(it):
 		return
 	if not Items.is_equip(it):
 		# potions: as many as fit go to the belt, the rest stay here
@@ -1894,7 +2137,7 @@ func unequip(slot: String) -> void:
 
 func to_save() -> Dictionary:
 	return {"cls": cls, "level": level, "xp": xp, "str": str_, "dex": dex, "vit": vit, "ene": ene, "points": stat_points, "gold": gold,
-		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "talents": talents}
+		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "binds_v": 2, "talents": talents, "axe_given": true, "boats": boats, "sailed": sailed}
 
 func from_save(d: Dictionary) -> void:
 	set_class(str(d.get("cls", "knight")))
@@ -1906,6 +2149,8 @@ func from_save(d: Dictionary) -> void:
 	ene = int(d.get("ene", 10))
 	stat_points = int(d.get("points", 0))
 	gold = int(d.get("gold", 0))
+	boats = (d.get("boats", []) as Array).filter(func(b): return Data.BOATS.has(str(b))) if d.get("boats") is Array else []
+	sailed = bool(d.get("sailed", false))
 	show_helm = bool(d.get("show_helm", true))
 	equipment = d.get("equipment", {})
 	for s in Items.EQUIP_SLOTS:
@@ -1913,6 +2158,12 @@ func from_save(d: Dictionary) -> void:
 			equipment[s] = null
 	inventory = d.get("inventory", [])
 	inventory.resize(40)
+	# characters from before woodcutting get their felling axe once (in the last free cell)
+	if not d.get("axe_given", false) and count_of("woodsman_axe") == 0:
+		for i in range(inventory.size() - 1, -1, -1):
+			if inventory[i] == null:
+				inventory[i] = Items.make("woodsman_axe")
+				break
 	stack_potions()
 	belt = d.get("belt", [null, null, null, null])
 	belt.resize(4)
@@ -1921,6 +2172,9 @@ func from_save(d: Dictionary) -> void:
 	binds = (d.get("binds", {}) as Dictionary).duplicate() if d.get("binds") is Dictionary else {}
 	WraithSkills.migrate_binds(binds)
 	DemonSkills.migrate_binds(binds)
+	# saves from before the Path of Exile controls had Block on right mouse by default: it becomes the first skill
+	if int(d.get("binds_v", 1)) < 2 and str(binds.get("rmb", "")) == "block":
+		binds.erase("rmb")
 	_check_binds()
 	# a save from before talents gets a build picked for its class and level
 	if d.get("talents") is Dictionary:

@@ -1,0 +1,19 @@
+# Player telemetry and error reports (docs/nightly/TELEMETRY.md): the tables tm_sample, tm_error and the view tm_issue
+# in Nakama's database, read-only through grafana_ro (SELECT on those three only); and Loki, the server logs.
+apiVersion: 1
+datasources:
+  - name: Telemetry
+    uid: tm-pg
+    type: grafana-postgresql-datasource
+    url: postgres:5432
+    user: grafana_ro
+    jsonData:
+      database: nakama
+      sslmode: disable
+      postgresVersion: 1600
+    secureJsonData:
+      password: $GRAFANA_PG_PASSWORD
+  - name: Logs
+    uid: loki
+    type: loki
+    url: http://loki:3100

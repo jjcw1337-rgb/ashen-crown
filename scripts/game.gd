@@ -48,7 +48,9 @@ var playing := false
 ## player in a raid, and that player's stash as the server last reported it.
 var bg: Battlegrounds
 var bg_mode := false
-var bg_stash: Array = []
+var net_joining := false     # a co-op join sent, no welcome yet (on_net_failed then goes back to the co-op screen)
+var bg_home_run := -1        # in a raid: the character's own act (Net.cl_welcome swaps to the raid's, saves keep this)
+var bg_raid := {}               # the round as the raid server last said (Net.cl_bg_raid): state, t, open portals...
 ## Characters and the stash in Nakama (cloud_saves.gd), in builds with BuildEnv.cloud() on; null otherwise.
 var cloud: CloudSaves
 var coop_server: CoopServer     # the online co-op server's logic (coop_server.gd), only on a `--server --coop` run
@@ -73,15 +75,25 @@ const UNLOCK_ALL_ACTS := true
 var admin_name := AdminKey.holder()
 var dev_tools := UNLOCK_ALL_ACTS and (OS.has_feature("editor") or admin_name != "")
 var run_progress := {}       # per run: its waypoints and whether its boss is dead
+var played_s := 0.0          # seconds this character has been played (saved); the clock trees regrow on (Harvest)
+var harvest_saved := {}      # "<run>:<act>:<zone>" -> Harvest.to_save() (the felled trees and when they regrow)
 var tp_link := {}
 var xp_bonus_t := 0.0
 var shops := {}
 var rng := RandomNumberGenerator.new()
 var shot_path := ""
+## The boat in this zone (coast.gd / isles.gd zones; BoatRide): moored, or sailing with the hero aboard.
+var boat: BoatRide = null
+var sail_blend := 0.0          # 0 = the isometric camera, 1 = the sailing camera behind and above her
+var sail_cam_yaw := 0.0
+var water_pt := Vector3.ZERO   # where the mouse meets the sea's surface (steering by mouse)
 var shot_spawn := ""
 var shot_zone := "town"
 var shot_frames := 0
 var death_t := -1.0
+var spectating := 0             # Battlegrounds: the fallen hero's camera follows this player (peer id; 0 = no one)
+var _spec_lost := 0.0           # ... how long the one watched has been down
+var _spec_over := 0.0           # ... how long since the round ended (then the crypt sends them home)
 var _t := 0.0
 var _busy := false
 
@@ -103,6 +115,7 @@ func _ready() -> void:
 			difficulty = int(args[i + 1])
 	quality = _initial_quality()
 	set_sound(bool(_load_setting("audio", "sound_on", true)))
+	click_move = bool(_load_setting("controls", "click_move", false))
 	_setup_env()
 	weather = Weather.new()
 	weather.name = "Weather"
@@ -128,10 +141,14 @@ func _ready() -> void:
 	hero.died.connect(_on_hero_died)
 	hero.leveled.connect(_on_level)
 	ui.bind_hero(hero)
-	if BuildEnv.cloud() and not args.has("--server") and shot_path == "":
+	if BuildEnv.cloud() and not args.has("--server") and shot_path == "" and not args.has("--kpi"):
 		cloud = CloudSaves.new(self)
 		add_child(cloud)
 		_cloud_start()
+	if Telemetry.wanted():
+		add_child(Telemetry.new(self))      # player telemetry and error reports (scripts/telemetry.gd)
+	if Kpi.start(self):
+		return       # the official performance KPIs (scripts/kpi.gd): a scripted scenario, measured, then quit
 	if args.has("--server"):
 		# the Battlegrounds' dedicated server: `godot --headless --path . -- --server [--port N]`
 		var pi := args.find("--port")
@@ -152,6 +169,7 @@ func _ready() -> void:
 	await _play_intro()
 	# straight from the intro to the title: the camp builds behind it, with no loading screen or zone banner
 	_boot_quiet = true
+	_bury_lost_raiders()
 	ui.show_title()
 	await load_zone(0, "town", "start")
 	_boot_quiet = false
@@ -160,8 +178,23 @@ func _ready() -> void:
 const INTRO_PATH := "res://assets/intro.ogv"
 var _intro_playing := false
 var _intro_skip := false
+var _intro_t := 0.0             # seconds the intro has played
+var _intro_armed := -100.0      # when the first skip press came (a second one within INTRO_CONFIRM skips)
+const INTRO_CONFIRM := 3.0
 
-## The trailer plays full screen when the game opens; any key or click skips it.
+## A press meant to skip the intro: Esc, Space, Enter, a click or a gamepad's A/Start. Anything else (volume and
+## media keys, letters, modifiers) is ignored, so turning the sound up never skips it.
+static func _is_skip_press(ev: InputEvent) -> bool:
+	if ev is InputEventKey:
+		return ev.pressed and not ev.echo and ev.keycode in [KEY_ESCAPE, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
+	if ev is InputEventMouseButton:
+		return ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT
+	if ev is InputEventJoypadButton:
+		return ev.pressed and ev.button_index in [JOY_BUTTON_A, JOY_BUTTON_START]
+	return false
+
+## The trailer plays full screen when the game opens. Skipping takes two deliberate presses (_is_skip_press):
+## the first shows "press again to skip", a second within INTRO_CONFIRM seconds skips; other keys do nothing.
 ## Left out of the browser build (too big a download for a test page) and headless runs.
 func _play_intro() -> void:
 	if OS.has_feature("web") or DisplayServer.get_name() == "headless" or not ResourceLoader.exists(INTRO_PATH):
@@ -183,7 +216,7 @@ func _play_intro() -> void:
 	vp.volume = 1.0 if sound_on else 0.0
 	box.add_child(vp)
 	var hint := Label.new()
-	hint.text = "Press any key to skip"
+	hint.text = "Esc / Space to skip"
 	hint.add_theme_font_size_override("font_size", 16)
 	hint.add_theme_color_override("font_color", Color(0.85, 0.75, 0.6, 0.0))
 	hint.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
@@ -194,13 +227,16 @@ func _play_intro() -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	layer.add_child(hint)
 	_intro_skip = false
+	_intro_armed = -100.0
+	_intro_t = 0.0
 	_intro_playing = true
 	vp.play()
-	var t := 0.0
 	while vp.is_playing() and not _intro_skip:
 		await get_tree().process_frame
-		t += get_process_delta_time()
-		hint.add_theme_color_override("font_color", Color(0.85, 0.75, 0.6, clampf((t - 1.5) * 0.8, 0.0, 0.55)))
+		_intro_t += get_process_delta_time()
+		var armed := _intro_t - _intro_armed < INTRO_CONFIRM
+		hint.text = "Press again to skip" if armed else "Esc / Space to skip"
+		hint.add_theme_color_override("font_color", Color(0.95, 0.85, 0.65, 0.9) if armed else Color(0.85, 0.75, 0.6, clampf((_intro_t - 1.5) * 0.8, 0.0, 0.45)))
 	_intro_playing = false
 	vp.stop()
 	# a short fade from black into the title screen
@@ -287,6 +323,7 @@ func _apply_underworld() -> void:
 			_soul_field.global_position = hero.global_position
 
 func _on_level(l: int) -> void:
+	Telemetry.crumb("level", {"level": l})
 	ui.big_message("Level %d" % l)
 	ui.message("+5 stat points (press C)  ·  +1 talent point (press N)", Color(1, 0.85, 0.4))
 
@@ -332,7 +369,7 @@ func _setup_env() -> void:
 ## A3: set the camp and the moor ablaze, with smoke columns rising beyond the trees.
 func _set_fires() -> void:
 	var r := RandomNumberGenerator.new()
-	r.seed = 99 + ["town", "wild", "lair"].find(cur_zone)
+	r.seed = 99 + ["town", "wild", "lair", "coast"].find(cur_zone)
 	var lit := 0
 	for bp in world.burn_points:
 		var pos: Vector3 = bp[0]
@@ -340,7 +377,7 @@ func _set_fires() -> void:
 		if cur_zone == "wild" and r.randf() < 0.35:
 			continue
 		var with_light := lit < (8 if quality >= 2 else 4)
-		Props.fire(world.fx_root, pos, sz, Color(1.0, 0.45, 0.12), with_light, false, true)
+		Props.fire(world.fx_root, pos, sz, Color(1.0, 0.45, 0.12), with_light, false, true, "building" if sz >= 1.0 else "ground")
 		if with_light:
 			lit += 1
 		if r.randf() < 0.45:
@@ -357,7 +394,7 @@ func _set_fires() -> void:
 			_: p = Vector3(b.end.x + r.randf_range(8, 22), 0, lerpf(b.position.y, b.end.y, r.randf()))
 		p.y = world.height_at(p.x, p.z)
 		weather.make_smoke(world.fx_root, p, r.randf_range(1.6, 2.6))
-		Props.fire(world.fx_root, p + Vector3(0, 0.6, 0), 2.2, Color(1.0, 0.42, 0.1), false, false, false)
+		Props.fire(world.fx_root, p + Vector3(0, 0.6, 0), 2.2, Color(1.0, 0.42, 0.1), false, false, false, "building")
 
 ## Snow over every outdoor area, falling snow, colder light. (A2 was winter until it became the Imperial
 ## Road and Aurelia, which are warm; nothing is snowy now, kept for a later act.)
@@ -373,14 +410,35 @@ func zone_music() -> void:
 		return
 	if world == null:
 		return
+	if world.sea:
+		Sfx.play_music("wild", "surf")      # the coast and the islands: surf on the beaches (Game._sea_sounds fades it)
+		return
 	Sfx.play_music("fort" if cur_zone == "lair" and world.fort else cur_zone, "forest" if world.oak_forest and cur_zone != "town" and not indoor() else "")
+
+## In a sea zone the surf bed follows the shore: full on the beach, fading inland and out at sea (the boat's
+## own `sea` bed takes over out there, BoatRide._sounds).
+func _sea_sounds() -> void:
+	if world == null or not world.sea or Sfx.ambience == null:
+		return
+	var p := hero.global_position
+	var d := 0.0
+	var oc: Ocean = world.get_node_or_null("Ocean")
+	if oc and oc.depth_at(p.x, p.z) > 0.3:
+		d = oc.shore_at(p.x, p.z)                                 # out on the water: how far from land
+	elif cur_zone.begins_with("isle_"):
+		var isle := Isles.get_isle(Isles.id_of(cur_zone))
+		d = maxf(0.0, float(isle.get("r", 100.0)) - Vector2(p.x, p.z).length() - 10.0)   # inland
+	else:
+		d = maxf(0.0, absf(p.x - Coast.shore_x(p.z)) - 10.0)
+	var want := -4.0 - clampf((d - 8.0) / 70.0, 0.0, 1.0) * 18.0
+	Sfx.ambience.volume_db = move_toward(Sfx.ambience.volume_db, want, get_process_delta_time() * 6.0)
 
 ## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
-	return cur_zone == "lair" and not (world != null and (world.fort or world.run == 1))
+	return cur_zone == Battlegrounds.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
 
 func _zone_env(kind: String) -> void:
-	var inside := kind == "lair" and not (world.fort or world.run == 1)
+	var inside := kind == Battlegrounds.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
 	var snowy := is_snowy() and not inside
 	var ashen := difficulty >= 2 and not inside
 	RenderingServer.global_shader_parameter_set("snow_amt", 1.0 if snowy else 0.0)
@@ -415,6 +473,12 @@ func _zone_env(kind: String) -> void:
 		sun.visible = false
 		hero.light.light_energy = 2.6
 		hero.light.omni_range = 17.0
+		if kind == Battlegrounds.ZONE:
+			# the Hollow Crypt is darker: a smaller circle round the hero, the torches and candles do the rest
+			env.ambient_light_energy = 0.55
+			env.tonemap_exposure = 1.25
+			hero.light.light_energy = 2.0
+			hero.light.omni_range = 11.0
 	else:
 		env.background_mode = Environment.BG_SKY
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
@@ -442,25 +506,28 @@ func _zone_env(kind: String) -> void:
 			sky_mat.sky_top_color = Color(0.1, 0.13, 0.17)
 			sky_mat.sky_horizon_color = Color(0.24, 0.29, 0.31)
 			sky_mat.ground_horizon_color = Color(0.2, 0.24, 0.25)
-			# Graphics plan, phase 1: a darker fill and a dimmer, softer moon, so the fire, the lanterns and
-			# the forge carve the camp out of the dark (their lights are brighter and cast shadows, Grade)
-			env.ambient_light_energy = 0.3
-			env.tonemap_exposure = 1.25
-			env.fog_light_color = Color(0.16, 0.21, 0.24)
-			env.fog_density = 0.012
+			# Graphics plan, phase 1 (retuned on a real GPU, 2026-11-01): the first pass (ambient 0.3, moon 0.38,
+			# volumetric fog 0.03) was judged in the cloud's software OpenGL renderer and came out far too dark in
+			# Forward+, where the volumetric fog, SSAO and SSIL all take light away. A moonlit fill you can see by,
+			# thinner mist, and the fire, lanterns and forge still the brightest things (their lights, Grade)
+			env.ambient_light_energy = 0.62
+			env.tonemap_exposure = 1.5
+			env.fog_light_color = Color(0.2, 0.26, 0.29)
+			env.fog_density = 0.009
 			env.fog_height = 1.2
-			env.fog_height_density = 0.12
-			env.adjustment_saturation = 0.95
-			env.adjustment_contrast = 1.08
-			env.volumetric_fog_density = 0.03
-			env.volumetric_fog_albedo = Color(0.6, 0.7, 0.72)
-			env.volumetric_fog_emission = Color(0.006, 0.01, 0.013)
+			env.fog_height_density = 0.1
+			env.adjustment_saturation = 0.97
+			env.adjustment_contrast = 1.05
+			env.volumetric_fog_density = 0.014
+			env.volumetric_fog_albedo = Color(0.62, 0.7, 0.72)
+			env.volumetric_fog_emission = Color(0.016, 0.022, 0.028)
 			env.glow_intensity = 0.95
 			env.glow_bloom = 0.1
-			sun.light_color = Color(0.55, 0.68, 0.9)
-			sun.light_energy = 0.38
-			sun.shadow_blur = 2.6
-			hero.light.light_energy = 1.0
+			sun.light_color = Color(0.58, 0.7, 0.92)
+			sun.light_energy = 0.6
+			sun.shadow_blur = 2.2
+			hero.light.light_energy = 1.7
+			hero.light.omni_range = 12.0
 			grade_look = "forest_camp"
 		if difficulty == 1 and kind != "town":
 			# A2, the Imperial Road and Aurelia: a warm late afternoon, low golden sun, dusty haze
@@ -479,6 +546,8 @@ func _zone_env(kind: String) -> void:
 			env.volumetric_fog_emission = Color(0.04, 0.03, 0.02)
 			sun.light_color = Color(1.0, 0.82, 0.6)
 			sun.light_energy = 1.05
+		if world.sea:
+			_sea_env()
 		if snowy:
 			# overcast winter: pale sky, cold light, snow bouncing light back up
 			sky_mat.sky_top_color = Color(0.5, 0.55, 0.62)
@@ -574,6 +643,89 @@ func _update_grade(delta: float) -> void:
 	if rim and rim.visible:
 		Grade.tag_hero(hero)
 
+const SUN_DEFAULT := Vector3(-52, -38, 0)
+## The coast and the islands: a long golden evening over the sea. The sun hangs low in the west over
+## the open water so the waves catch it in a glittering path, the sky warms to amber at the horizon,
+## and the air is clear enough to see the far islands as hazy blue silhouettes.
+func _sea_env() -> void:
+	sky_mat.sky_top_color = Color(0.22, 0.32, 0.46)
+	sky_mat.sky_horizon_color = Color(0.86, 0.66, 0.46)
+	# below the horizon the sky is what wave backs reflect at low angles: keep it close to the horizon so
+	# the far water doesn't streak dark
+	sky_mat.ground_horizon_color = Color(0.8, 0.64, 0.48)
+	sky_mat.ground_bottom_color = Color(0.46, 0.5, 0.54)
+	sky_mat.sun_angle_max = 22.0
+	env.ambient_light_energy = 0.62
+	env.tonemap_exposure = 1.1
+	env.fog_light_color = Color(0.62, 0.6, 0.56)
+	env.fog_density = 0.0028
+	env.fog_sky_affect = 0.25
+	env.fog_height = 0.0
+	env.fog_height_density = 0.0
+	env.adjustment_saturation = 1.0
+	env.adjustment_contrast = 1.07
+	env.volumetric_fog_density = 0.006
+	env.volumetric_fog_albedo = Color(0.9, 0.82, 0.72)
+	env.volumetric_fog_emission = Color(0.02, 0.016, 0.012)
+	env.glow_intensity = 0.8
+	env.glow_bloom = 0.07
+	sun.rotation_degrees = Vector3(-24, -112, 0)
+	sun.light_color = Color(1.0, 0.8, 0.6)
+	sun.light_energy = 1.15
+	hero.light.light_energy = 0.7
+	_isle_mood()
+	_ocean_light()
+
+## An island with a "mood" in Isles.ISLANDS (the Bleak Isle) has its own water and air in its zone.
+func _isle_mood() -> void:
+	if not cur_zone.begins_with("isle_"):
+		return
+	var isle := Isles.get_isle(cur_zone.trim_prefix("isle_"))
+	if isle.is_empty() or not isle.has("mood"):
+		return
+	var m: Dictionary = isle["mood"]
+	sky_mat.sky_top_color = m["sky_top"]
+	sky_mat.sky_horizon_color = m["horizon"]
+	sky_mat.ground_horizon_color = m["horizon"]
+	sky_mat.ground_bottom_color = (m["horizon"] as Color).darkened(0.3)
+	env.fog_light_color = m["fog"]
+	env.fog_density = m["fog_density"]
+	env.fog_sky_affect = 0.6
+	env.fog_height = m["fog_height"]
+	env.fog_height_density = m["fog_height_density"]
+	env.volumetric_fog_albedo = m["vol_albedo"]
+	env.volumetric_fog_density = m["vol_density"]
+	env.volumetric_fog_emission = Color(0.01, 0.014, 0.01)
+	env.adjustment_saturation = m["sat"]
+	env.adjustment_contrast = m["contrast"]
+	env.ambient_light_energy = m["ambient"]
+	env.glow_intensity = 0.5
+	sun.light_color = m["sun"]
+	sun.light_energy = m["sun_energy"]
+	if world and world.has_node("Ocean"):
+		(world.get_node("Ocean") as Ocean).set_tint(m["shallow"], m["deep"], m["absorb"])
+
+## Hands the sea the sun and the sky's colour (Ocean.set_light).
+func _ocean_light() -> void:
+	if world == null or not world.has_node("Ocean"):
+		return
+	(world.get_node("Ocean") as Ocean).set_light(sun.global_basis.z, sun.light_color * sun.light_energy, sky_mat.sky_horizon_color.lerp(sky_mat.sky_top_color, 0.5))
+
+## A sea zone (the coast, an island) gets the ocean: its map covers the whole sea on the coast
+## (2 m cells) and the island's waters on an island (1 m).
+func _add_ocean(zone: String) -> void:
+	sun.rotation_degrees = SUN_DEFAULT
+	sky_mat.ground_bottom_color = Color(0.16, 0.18, 0.15)
+	sky_mat.sun_angle_max = 30.0
+	cam.far = 300.0
+	if not world.sea:
+		return
+	cam.far = 900.0
+	var oc := Ocean.new()
+	var r: Rect2 = world.get_meta("sea_rect") if zone == "coast" else world.bounds.grow(World.MARGIN + 28.0 + Ocean.MAP_MARGIN)
+	world.add_child(oc)
+	oc.setup(world, r, 2.0 if zone == "coast" else 1.0, quality, is_forward(), zone)
+
 const SETTINGS_PATH := "user://settings.cfg"
 const QUALITY_NAMES := ["Low", "Medium", "High", "Ultra"]
 
@@ -626,6 +778,8 @@ func apply_quality(q: int) -> void:
 		if not g.has_meta("grass3d"):
 			(g as MultiMeshInstance3D).visibility_range_end = [32.0, 45.0, 60.0, 95.0][q]
 	Grass.apply_quality(self, q)
+	if world != null and world.has_node("Ocean"):
+		(world.get_node("Ocean") as Ocean).set_quality(q)
 
 func max_quality() -> int:
 	return 1 if OS.has_feature("web") else 3
@@ -813,7 +967,10 @@ func zone_title(act: int, zone: String) -> String:
 		"town": return a["town"] + tag
 		"wild": return a["wild"] + tag
 		"lair": return ("Throne of the Ashen King" if difficulty >= 2 else a["lair"]) + tag
+		"coast": return str(a.get("coast", "The Coast")) + tag
 		Battlegrounds.ZONE: return Battlegrounds.TITLE
+	if zone.begins_with("isle_"):
+		return str(Isles.get_isle(Isles.id_of(zone)).get("name", "An Island")) + tag
 	return ""
 
 ## The current run's multipliers on Act I (Data.RUNS).
@@ -867,6 +1024,28 @@ func start_a2() -> void:
 	await load_zone(cur_act, "town", "start")
 	run_banner()
 
+## The zone's felled trees into the save's record (the host's forest is the one that counts in co-op).
+func _harvest_key() -> String:
+	return "%d:%d:%s" % [difficulty, cur_act, str(cur_zone)]
+
+func _store_harvest() -> void:
+	if world == null or net.is_client():
+		return
+	var h := Harvest.of(world)
+	if h == null:
+		return
+	var d := h.to_save()
+	if d.is_empty():
+		harvest_saved.erase(_harvest_key())
+	else:
+		harvest_saved[_harvest_key()] = d
+
+func _restore_harvest() -> void:
+	var h := Harvest.of(world)
+	if h == null or net.is_client():
+		return
+	h.from_save(harvest_saved.get(_harvest_key(), {}), played_s)
+
 func _store_progress() -> void:
 	run_progress[str(difficulty)] = {"waypoints": waypoints_known.duplicate(), "boss": boss_killed}
 
@@ -908,10 +1087,13 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if world:
+		_store_harvest()
 		world.queue_free()
 		world = null
 		hovered = null
 		await get_tree().process_frame
+	Telemetry.crumb("enter", {"to": zone, "run": difficulty})
+	ui.close_all()             # (a trader, a stash or a waypoint list belongs to the zone being left)
 	cur_act = act
 	cur_zone = zone
 	World.detail = quality
@@ -921,7 +1103,9 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	world.fort = difficulty == 0           # Act I: the lair is Grubb's goblin fort, outdoors (A3 keeps the crypt)
 	world.run = difficulty                 # A2 builds its own road and Aurelia
 	add_child(world)
-	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair"].find(zone) * 7)
+	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair", "coast"].find(zone) * 7 + (zone.hash() % 997 if zone.begins_with("isle_") else 0))
+	_restore_harvest()
+	_add_ocean(zone)
 	_end_underworld_now()
 	_zone_env(zone)
 	_grass_zone(zone)
@@ -964,11 +1148,13 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	else:
 		ui.set_zone(zone_title(act, zone))
 	# Act I outdoors: birds over the forest (birds.gd)
-	if world.oak_forest and not indoor():
+	if world.oak_forest and not indoor() and not net.server:
 		var birds := Birds.new()
 		birds.game = self
+		birds.sea = world.sea
 		birds.name = "birds"
 		world.add_child(birds)
+	_add_boat(zone, spawn)
 	zone_music()
 	loading.visible = false
 	_busy = false
@@ -979,6 +1165,10 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 
 ## Photographs the freshly built zone from straight above for the minimap.
 func _capture_map(zone: String) -> void:
+	ui.minimap.chart = false
+	if zone == "coast":
+		_sea_chart()
+		return
 	var b: Rect2 = world.bounds.grow(6.0)
 	if DisplayServer.get_name() == "headless":
 		ui.minimap.set_map(null, b, zone != "town")
@@ -1037,11 +1227,59 @@ func _capture_map(zone: String) -> void:
 		tex = ImageTexture.create_from_image(img)
 	ui.minimap.set_map(tex, b, zone != "town")
 
+## The coast's corner map is a sea chart painted from the sea's ground (Coast.ground through the zone's
+## height grid): the deep and the shallows, sand, land shaded by height, cliffs and the isles, from the
+## pier out past all five, with no fog (a chart is already known). Made once a session (2 m a pixel).
+static var _chart_tex: Texture2D
+static var _chart_rect: Rect2
+func _sea_chart() -> void:
+	if _chart_tex == null:
+		var r: Rect2 = world.bounds
+		for isle in Isles.ISLANDS:
+			var ce := Isles.centre(isle)
+			var rr := float(isle["r"]) * 1.2
+			r = r.merge(Rect2(ce - Vector2(rr, rr), Vector2(rr, rr) * 2.0))
+		r = r.grow(20.0)
+		var step := 2.0
+		var w := int(r.size.x / step)
+		var h := int(r.size.y / step)
+		var img := Image.create(w, h, false, Image.FORMAT_RGB8)
+		var hs := PackedFloat32Array()
+		hs.resize(w * h)
+		for y in h:
+			for x in w:
+				hs[y * w + x] = world.ground_h(r.position.x + (x + 0.5) * step, r.position.y + (y + 0.5) * step)
+		for y in h:
+			for x in w:
+				var g: float = hs[y * w + x]
+				var gx: float = hs[y * w + mini(x + 1, w - 1)] - hs[y * w + maxi(x - 1, 0)]
+				var gy: float = hs[mini(y + 1, h - 1) * w + x] - hs[maxi(y - 1, 0) * w + x]
+				var slope: float = sqrt(gx * gx + gy * gy) / (2.0 * step)
+				var c: Color
+				if g < 0.0:
+					# water: pale turquoise shallows to dark deep, a lighter rim right at the shore
+					var dk := clampf(-g / 16.0, 0.0, 1.0)
+					c = Color(0.22, 0.46, 0.46).lerp(Color(0.05, 0.12, 0.17), sqrt(dk))
+					if g > -0.8:
+						c = c.lerp(Color(0.62, 0.7, 0.62), 0.45)
+				elif g < 1.3 and slope < 0.5:
+					c = Color(0.62, 0.56, 0.42)                              # sand
+				else:
+					c = Color(0.26, 0.32, 0.17).lerp(Color(0.42, 0.4, 0.28), clampf(g / 24.0, 0.0, 1.0))
+					c = c.lerp(Color(0.2, 0.19, 0.18), clampf(slope * 0.9, 0.0, 0.85))    # cliffs
+					c = c.darkened(clampf(gx * 0.08, -0.15, 0.25))           # light from the west
+				img.set_pixel(x, y, c)
+		img.generate_mipmaps()
+		_chart_tex = ImageTexture.create_from_image(img)
+		_chart_rect = Rect2(r.position, Vector2(w, h) * step)
+	ui.minimap.set_map(_chart_tex, _chart_rect, false)
+	ui.minimap.chart = true
+
 ## The living grass (Act I, outdoors): its wind for the zone, and its touch on.
 func _grass_zone(zone: String) -> void:
 	if grass_field == null or world == null:
 		return
-	grass_field.enabled = world.oak_forest and not indoor()
+	grass_field.enabled = world.oak_forest and not indoor() and not net.server
 	var w := "default"
 	if indoor():
 		w = "calm"
@@ -1049,6 +1287,8 @@ func _grass_zone(zone: String) -> void:
 		w = "camp"
 	elif zone == "wild":
 		w = "moor"
+	elif world.sea:
+		w = "sea"
 	elif world.fort:
 		w = "fort"
 	grass_field.set_wind(w, 0.05)
@@ -1177,6 +1417,8 @@ func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
 		difficulty = 0
 		max_run = 0
 		run_progress = {}
+		played_s = 0.0
+		harvest_saved = {}
 		quests.from_save({})
 		waypoints_known = ["town"]
 		boss_killed = false
@@ -1209,6 +1451,7 @@ func start_join(ip: String) -> void:
 	if not load_game():
 		char_name = default_name(hero.cls)
 		hero.new_character()
+	net_joining = true      # (until the host welcomes us: Net.cl_welcome)
 	var addr: Array = Battlegrounds.parse_address(ip)      # "host" or "host:port" (the online co-op server)
 	loading_lbl.text = "Joining game at %s..." % ip
 	loading.visible = true
@@ -1220,31 +1463,37 @@ func start_join(ip: String) -> void:
 		net.shutdown()
 		on_net_failed("No answer from %s. Check the host's game is running and Windows Firewall allowed it." % ip)
 
-## Battlegrounds from the title screen: a fresh hero of `cls` (not saved; a raid's character is its own) joins the
-## raid server at `addr` ("host" or "host:port").
-func start_battlegrounds(addr: String, cls: String) -> void:
+## Battlegrounds from the title screen: the character `id` (one of the player's own; what it carries in, it risks)
+## joins the raid server at `addr` ("host" or "host:port"). Its save is marked in_raid until it extracts, so closing
+## the game mid-raid counts as dying (_bury_lost_raiders). Dying costs every item it wore and carried, and its gold
+## (bg_strip); it keeps its levels, stats and talents. The camp's stash isn't carried, so it is never lost.
+func start_battlegrounds(addr: String, id: String) -> void:
 	while _busy:
 		await get_tree().process_frame
+	Telemetry.crumb("raid", {"server": addr})
 	Sfx.play("click")
 	net.stop_listening()
+	char_id = id
+	if id == "" or not load_game():
+		ui.message("Pick a character for the crypt first", Color(1, 0.6, 0.4))
+		char_id = ""
+		ui.open_battlegrounds()
+		return
 	ui.hide_title()
 	ui.close_all()
 	playing = true
 	bg_mode = true
-	char_id = ""
-	char_name = default_name(cls)
-	net.my_name = char_name
-	hero.set_class(cls)
-	hero.new_character()
-	difficulty = 0
-	tp_link = {}
-	boss_killed = false
+	bg_raid = {}
+	if hero.dead:
+		hero.respawn(hero.global_position)
 	var a: Array = Battlegrounds.parse_address(addr)
 	_save_setting("battlegrounds", "address", addr.strip_edges())
+	_save_setting("battlegrounds", "character", id)
 	if cloud != null and not await cloud.ensure():
-		on_net_failed("Could not sign in to your account (%s)." % cloud.nk.last_error)
+		_bg_abort("Could not sign in to your account (%s)." % cloud.nk.last_error)
 		return
-	loading_lbl.text = "Joining the Battlegrounds at %s..." % a[0]
+	save_game()             # (marked in_raid from here on)
+	loading_lbl.text = "Descending into %s..." % Battlegrounds.TITLE
 	loading.visible = true
 	if net.join(a[0], int(a[1])) != OK:
 		on_net_failed("Could not reach the Battlegrounds server.")
@@ -1254,23 +1503,127 @@ func start_battlegrounds(addr: String, cls: String) -> void:
 		net.shutdown()
 		on_net_failed("No answer from the Battlegrounds server at %s." % a[0])
 
-## The server let us out of the raid with `gained`; `s` is the whole stash now.
-func bg_extracted(gained: Array, s: Array) -> void:
-	bg_stash = s
-	Battlegrounds.cache_stash(s)
+## The server let us out: what we carry is ours, saved to the character as it is.
+## The crypt never let us in (sign-in failed before the character was marked in_raid): back to the Battlegrounds
+## screen, the character as it was.
+func _bg_abort(msg: String) -> void:
+	bg_mode = false
+	_bg_home()
+	loading.visible = false
+	if net.active:
+		net.shutdown()
+	await exit_to_title()
+	ui.open_battlegrounds()
+	ui.big_message("Couldn't enter the crypt")
+	ui.message(msg, Color(1, 0.6, 0.4))
+
+func bg_extracted(gained: Array) -> void:
+	bg_mode = false
+	save_game()
 	ui.big_message("Extracted!")
-	ui.message("%d item%s to your stash (%d in it)" % [gained.size(), "" if gained.size() == 1 else "s", s.size()], Color(0.6, 1.0, 0.6))
+	ui.message("%s made it out with %d new item%s" % [char_name, gained.size(), "" if gained.size() == 1 else "s"], Color(0.6, 1.0, 0.6))
 	Sfx.play("portal")
 	await get_tree().create_timer(2.0).timeout
 	_leave_battlegrounds()
 
-func _leave_battlegrounds() -> void:
-	if not bg_mode:
+## The local hero fell in the crypt: everything on them goes to the server to drop where they fell.
+func _bg_fell() -> void:
+	var items := []
+	for slot in hero.equipment:
+		if hero.equipment[slot] != null:
+			items.append(hero.equipment[slot])
+	for it in hero.inventory + hero.belt:
+		if it != null:
+			items.append(it)
+	if hero.gold > 0:
+		items.append(Items.gold(hero.gold))
+	if net.is_client():
+		net.send_bg_died(items)
+	ui.big_message("%s has fallen" % char_name)
+	ui.message("Everything %s wore and carried lies where they fell. Their strength remains." % char_name, Color(1, 0.45, 0.35), 6.0)
+
+## What a hero keeps after dying in the crypt: levels, stats, talents, the camp's stash, and nothing else but a
+## plain weapon of their class (so they can walk back into the world). The save is written at once.
+static func strip_save(h: Dictionary) -> Dictionary:
+	var cls := str(h.get("cls", "knight"))
+	var eq := {}
+	for slot in Items.EQUIP_SLOTS:
+		eq[slot] = null
+	eq["weapon"] = Items.make(str(Data.CLASSES.get(cls, {}).get("weapon", "hand_axe" if cls == "demon" else "short_sword")))
+	var inv := []
+	inv.resize(40)
+	h["equipment"] = eq
+	h["inventory"] = inv
+	h["belt"] = [null, null, null, null]
+	h["gold"] = 0
+	return h
+
+func bg_strip() -> void:
+	if char_id == "":
 		return
+	if hero.dead:
+		hero.respawn(hero.global_position)
+	var h := strip_save(hero.to_save())
+	hero.equipment = h["equipment"]
+	hero.inventory = h["inventory"]
+	hero.belt = h["belt"]
+	hero.gold = 0
+	hero.refresh_gear()
+	hero.recalc()
+	bg_mode = false
+	_bg_home()
+	save_game()
+	print("[BG] character ", char_id, " died in the crypt and lost everything it carried")
+
+## Out of a raid: the character's own act again (its waypoints and boss), as it was before Net.cl_welcome swapped in
+## the raid's.
+func _bg_home() -> void:
+	if bg_home_run < 0:
+		return
+	_store_progress()
+	_restore_progress(bg_home_run)
+	difficulty = bg_home_run
+	bg_home_run = -1
+
+## Characters whose game closed while they were in a raid died there: they lose what they carried.
+func _bury_lost_raiders() -> void:
+	if _testing():
+		return
+	for c in list_characters():
+		var p := char_dir + str(c["id"]) + ".json"
+		var d = JSON.parse_string(FileAccess.get_file_as_string(p))
+		if d is Dictionary and bool(d.get("in_raid", false)):
+			d["hero"] = strip_save(d.get("hero", {}))
+			d["in_raid"] = false
+			var f := FileAccess.open(p, FileAccess.WRITE)
+			if f:
+				f.store_string(JSON.stringify(d))
+				f.close()
+			if cloud != null:
+				cloud.push(str(c["id"]), d)
+			ui.message("%s fell in %s and lost everything they carried" % [str(c["name"]), Battlegrounds.TITLE], Color(1, 0.5, 0.4), 6.0)
+
+func _leave_battlegrounds() -> void:
+	if not bg_mode and char_id == "" and not playing:
+		return
+	if hero.dead and bg_mode:
+		bg_strip()
+	bg_mode = false
+	_bg_home()
+	bg_raid = {}
 	await exit_to_title()
 	ui.open_battlegrounds()
 
 func on_net_failed(msg: String) -> void:
+	if net_joining:
+		# a co-op join that never got in: back to the co-op screen
+		net_joining = false
+		ui.big_message("Couldn't join")
+		ui.message(msg, Color(1, 0.6, 0.4))
+		loading.visible = false
+		await exit_to_title()
+		ui.open_join()
+		return
 	if bg_mode:
 		ui.big_message("Left the Battlegrounds")
 		ui.message(msg, Color(1, 0.6, 0.4))
@@ -1305,15 +1658,18 @@ func save_path() -> String:
 ## shows what came down from other devices.
 func _cloud_start() -> void:
 	await get_tree().process_frame
-	if await cloud.sync() and ui.title_panel.visible and not playing:
+	if await cloud.sync() and ui.title_idle() and not playing:
+		_bury_lost_raiders()
 		ui.show_title()
 
 func save_game() -> void:
 	if char_id == "" and not _testing():
 		return
 	_store_progress()
-	var d := {"hero": hero.to_save(), "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed, "difficulty": difficulty,
-		"max_run": max_run, "runs": run_progress, "quests": quests.to_save(), "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
+	_store_harvest()
+	var d := {"hero": hero.to_save(), "in_raid": bg_mode, "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed,
+		"difficulty": bg_home_run if bg_mode and bg_home_run >= 0 else difficulty,     # (a raid is Act I's; the character keeps its own)
+		"max_run": max_run, "runs": run_progress, "quests": quests.to_save(), "harvest": {"t": played_s, "zones": harvest_saved}, "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
 	DirAccess.make_dir_recursive_absolute(char_dir)
 	var f := FileAccess.open(save_path(), FileAccess.WRITE)
 	if f:
@@ -1343,6 +1699,9 @@ func load_game() -> bool:
 		max_run = 2
 	run_progress = d.get("runs", {})
 	quests.from_save(d.get("quests", {}))
+	var hv: Dictionary = d.get("harvest", {}) if d.get("harvest") is Dictionary else {}
+	played_s = float(hv.get("t", 0.0))
+	harvest_saved = (hv.get("zones", {}) as Dictionary).duplicate(true) if hv.get("zones") is Dictionary else {}
 	return true
 
 ## Every saved character, the last played first: [{id, name, cls, level, difficulty, act, played}].
@@ -1433,8 +1792,28 @@ func waypoint_battleground(_id: String) -> void:
 
 ## Back to the title screen to pick another character (the pause menu's "Save and Exit to Title").
 func exit_to_title() -> void:
-	save_game()
+	if bg_mode and not hero.dead:
+		bg_strip()           # leaving a raid without extracting is dying there (it saves)
+	else:
+		save_game()
+	_bg_home()
 	bg_mode = false
+	bg_raid = {}
+	net_joining = false
+	# nothing of the character that was playing carries on: its death or victory screen still to come, its portal,
+	# its experience bonus, the F8 switches
+	death_t = -1.0
+	ui.death_panel.visible = false
+	ui.victory_panel.visible = false
+	spectate_stop()
+	ui.set_boss(null)
+	tp_link = {}
+	xp_bonus_t = 0.0
+	test_immortal = false
+	test_onehit = false
+	test_stamina = false
+	test_allskills = false
+	test_fast = false
 	if paused:
 		toggle_pause()
 	if net.active:
@@ -1445,6 +1824,8 @@ func exit_to_title() -> void:
 		hero.respawn(hero.global_position)
 	hero.new_character()
 	char_id = ""
+	while _busy:
+		await get_tree().process_frame       # (a zone still loading would swallow ours)
 	await load_zone(0, "town", "start")
 	ui.show_title()
 
@@ -1454,8 +1835,8 @@ func _stock_shops() -> void:
 	var lvl := maxi(hero.level, 1) + 1
 	var r := RandomNumberGenerator.new()
 	r.randomize()
-	var smith := []
-	for i in 14:
+	var smith := [Items.make("woodsman_axe")]     # a spare felling axe, always on the smith's rack
+	for i in 13:
 		var b := Items.pick_base(lvl + 2, r, "weapon" if i < 9 else "shield")
 		smith.append(Items.generate(b, lvl, 1 if r.randf() < 0.4 else 0, r))
 	var armor := []
@@ -1603,6 +1984,9 @@ func _open_chest(t: Inter) -> void:
 ## A camp vendor's own talk: the elder's news, a trader's greeting and Trade.
 func _vendor_talk(t: Inter) -> void:
 	var role: String = t.data.get("role", "")
+	if role == "shipwright":
+		_shipwright_talk(t)
+		return
 	if role == "elder":
 		var txt := "The crypt lies at the far end of Cairnfell Moor. Bone archers and the restless dead guard the way. Raise your shield against their arrows: a good block turns them aside. And Grubb guards his gold like his life: rip open one of his sacks and his goblins come running for it. Get to the gold before they bring it back to him."
 		if difficulty == 1 and not boss_killed:
@@ -1621,10 +2005,214 @@ func _vendor_talk(t: Inter) -> void:
 		btns.append(["Leave", func(): pass])
 		ui.open_dialog(t.label, lines.get(role, ""), btns)
 
+# ---------------------------------------------------------------- the boat (boat_ride.gd)
+func sailing() -> bool:
+	return boat != null and is_instance_valid(boat) and boat.sailing
+
+## A sea zone's boat. On the coast she lies alongside the pier (for sale until the hero owns her); if he
+## arrives sailing from an island ("sail_from_<id>") she's off that island's jetty with him at the tiller.
+## On an island she's moored at its jetty: boarding her sails him back out onto the Mournwater.
+func _add_boat(zone: String, spawn: String) -> void:
+	boat = null
+	sail_blend = 0.0
+	hero.aboard = false
+	ui.set_sail_prompt("")
+	if not world.sea:
+		return
+	var b := BoatRide.new()
+	world.add_child(b)
+	b.setup(self, hero.best_boat())
+	boat = b
+	if zone == "coast":
+		b.docks.append({"name": "the pier", "kind": "pier", "pos": Vector2(Coast.MOOR.x, Coast.MOOR.z), "yaw": PI * 0.5})
+		for isle in Isles.ISLANDS:
+			var m := isle_mooring(isle, Vector2.ZERO, true)
+			b.docks.append({"name": isle["name"], "kind": "isle", "id": isle["id"], "pos": Vector2(m.x, m.z), "yaw": m.w})
+		if spawn.begins_with("sail_from_") and hero.boats.is_empty():
+			# a partner brought along by the party's trip with no boat of his own: he's set down on the pier
+			b.moor(Coast.MOOR, PI * 0.5)
+			var dp: Vector3 = world.spawns.get("dock", Vector3(2, 0, 0))
+			hero.global_position = Vector3(dp.x, world.height_at(dp.x, dp.z), dp.z)
+			cam_target = hero.global_position
+		elif spawn.begins_with("sail_from_"):
+			var isle := Isles.get_isle(spawn.trim_prefix("sail_from_"))
+			var m := isle_mooring(isle, Vector2.ZERO, true)
+			# the whole party sails out together: each his own boat, the others a few lengths further out ahead
+			var r := _party_rank()
+			# spaced for the longest boat any of them may sail (each game knows only its own)
+			var gap := 9.0
+			for bid in Data.BOATS:
+				gap = maxf(gap, 9.0 * float(Boat.dims(str(bid))["length"]) / Boat.LENGTH)
+			var off := Vector3(-sin(m.w), 0, -cos(m.w)) * gap * float(r)
+			b.moor(Vector3(m.x, 0, m.z) + off, m.w)
+			b.board(hero)
+			sail_blend = 1.0
+			sail_cam_yaw = b.yaw
+			cam_target = b.global_position
+		else:
+			b.moor(Coast.MOOR, PI * 0.5)
+	else:
+		var isle := Isles.get_isle(Isles.id_of(zone))
+		var m := isle_mooring(isle, Vector2.ZERO, false)
+		b.moor(Vector3(m.x, 0, m.z), m.w)
+
+## This player's place in the party (0 = the lowest peer id), so things placed per player don't overlap.
+func _party_rank() -> int:
+	if net == null or not net.active or multiplayer.multiplayer_peer == null:
+		return 0
+	var me := multiplayer.get_unique_id()
+	var r := 0
+	for pid in net.players.keys():
+		if int(pid) < me:
+			r += 1
+	return r
+
+## Where a boat lies at an island's jetty (alongside its end), bow out toward the dock: x, z and her
+## yaw in w. `coast`: in the coast's frame; else in the island's own zone (the island at the origin).
+func isle_mooring(isle: Dictionary, _o: Vector2, coast: bool) -> Vector4:
+	var l := Isles.jetty_end(isle) + Vector2(-3.0, 3.4)
+	var p := Isles.to_coast(isle, l)
+	if not coast:
+		p -= Isles.centre(isle)
+	var u: Vector2 = Isles.axes(isle)[0]
+	return Vector4(p.x, 0.0, p.y, atan2(-u.x, -u.y))
+
+func _boat_clicked() -> void:
+	if boat == null:
+		return
+	if not hero.owns_boat(boat.id):
+		ui.message("That's Osric's boat. Talk to him if you want her.", Color(0.85, 0.75, 0.5))
+		return
+	if cur_zone.begins_with("isle_"):
+		# back out to sea: the coast loads with her off this island's jetty and him at the tiller
+		travel(cur_act, "coast", "sail_from_" + Isles.id_of(cur_zone))
+		return
+	boat.board(hero)
+	Sfx.play("click")
+	if not hero.sailed:
+		hero.sailed = true
+		ui.open_dialog("Sailing", "W  sail on; she holds her speed when you let go.\nS  ease off, then back her.\nA / D  steer.   Space  heave to.\nOr hold the left mouse button on the water to sail toward it.\n\nBring her alongside an island's jetty (or back to this pier), slow, and press E to step ashore.", [["Cast off", func(): pass]])
+	else:
+		ui.message("Cast off: W to sail, A / D to steer", Color(0.75, 0.88, 1.0))
+
+## Keys and mouse to the boat while sailing.
+func _sail_input() -> void:
+	var thr := 0
+	if Input.is_key_pressed(KEY_W): thr += 1
+	if Input.is_key_pressed(KEY_S): thr -= 1
+	var steer := 0.0
+	if Input.is_key_pressed(KEY_A): steer -= 1.0
+	if Input.is_key_pressed(KEY_D): steer += 1.0
+	var pt: Variant = null
+	if lmb_held and not ui.any_panel_open():
+		_update_hover()
+		pt = water_pt
+	boat.drive = {"throttle": thr, "steer": steer, "stop": Input.is_key_pressed(KEY_SPACE), "point": pt}
+	var d := boat.dock_near()
+	ui.set_sail_prompt(("Step ashore at " + str(d["name"])) if not d.is_empty() else "")
+
+## Steps ashore where she is, if she's at a dock and slow (E, or the prompt's button).
+func try_land() -> bool:
+	if not sailing():
+		return false
+	var d := boat.dock_near()
+	if d.is_empty():
+		ui.message("Bring her alongside a jetty first, and slow", Color(0.75, 0.88, 1.0))
+		return false
+	land_boat(d)
+	return true
+
+func land_boat(d: Dictionary) -> void:
+	ui.set_sail_prompt("")
+	boat.leave(hero)
+	if d["kind"] == "pier":
+		boat.moor(Coast.MOOR, PI * 0.5)
+		var on := Vector3(Coast.DOCK.x + 1.0, 0, -0.6)
+		hero.global_position = Vector3(on.x, world.height_at(on.x, on.z), on.z)
+		cam_target = hero.global_position
+	else:
+		travel(cur_act, Isles.zone_of(d["id"]), "jetty")
+
+## The sailing camera: behind her and high, looking past the bow to the horizon so the isles show
+## ahead; it eases in when he takes the tiller and back to the isometric view when he steps ashore.
+func _sail_camera(dt: float, sh: Vector3) -> void:
+	var want := 1.0 if sailing() else 0.0
+	sail_blend = move_toward(sail_blend, want, dt / 1.3)
+	if sail_blend <= 0.0:
+		cam.basis = Basis.looking_at(Vector3(0, 1.0, 0) - CAM_OFFSET, Vector3.UP)
+		return
+	if boat == null or not is_instance_valid(boat):
+		return
+	sail_cam_yaw = lerp_angle(sail_cam_yaw, boat.yaw, clampf(dt * 1.6, 0.0, 1.0))
+	var f := Vector3(-sin(sail_cam_yaw), 0, -cos(sail_cam_yaw))
+	var bp := Vector3(boat.global_position.x, 0, boat.global_position.z)
+	cam_target = bp
+	cam_pivot.position = bp
+	var k := smoothstep(0.0, 1.0, sail_blend)
+	var iso_pos := cam_pivot.global_position + CAM_OFFSET * zoom
+	var iso_look := cam_pivot.global_position + Vector3(0, 1.0, 0)
+	# over her port quarter, so the sail doesn't hide the way ahead and he's in view at the tiller
+	var sd := Vector3(cos(sail_cam_yaw), 0, -sin(sail_cam_yaw))
+	# framed for the Gull; a bigger boat (BoatRide.kl, her length against the Gull's) pulls the camera back with her
+	var bk: float = boat.kl
+	var sail_pos := bp + (-f * 16.0 * zoom - sd * 5.5 * zoom + Vector3(0, 7.0 * zoom, 0)) * bk
+	var sail_look := bp + (f * 11.0 + sd * 1.0 + Vector3(0, 0.3, 0)) * bk
+	cam.global_position = iso_pos.lerp(sail_pos, k) + sh
+	cam.look_at(iso_look.lerp(sail_look, k), Vector3.UP)
+
+## Osric Saltmarrow, the shipwright on the Mournwater Coast: a word about the isles, then his boat
+## (BoatShop). Once you own her, he tells you where she's moored.
+func _shipwright_talk(t: Inter) -> void:
+	var owned := not hero.boats.is_empty()
+	var txt := "The Mournwater, they call it. Five isles out there, each a fair sail: the Verdant Isle with its great oak, the old ruins on their terraces, the Lost Isle with its black stone, the Bleak Isle where the fog never lifts, and the Merchant's Reach, empty since the night its people left. No bridge, no ferry. A boat, or nothing. I've built a good one."
+	if owned:
+		txt = "She's lying alongside the pier, ready when you are. Mind the rocks off the Bleak Isle, and bring her back in one piece."
+	# one button per boat in Data.BOATS, cheapest first
+	var ids: Array = Data.BOATS.keys()
+	ids.sort_custom(func(a, b): return int(Data.BOATS[a]["price"]) < int(Data.BOATS[b]["price"]))
+	var btns: Array = []
+	for id in ids:
+		var bid := str(id)
+		var nm := str(Data.BOATS[bid]["name"])
+		btns.append([("Look over " if hero.owns_boat(bid) else "See ") + nm, func(): ui.boat_shop.open(t, bid)])
+	btns.append(["Leave", func(): pass])
+	ui.open_dialog(t.label, txt, btns)
+
+## Buys a boat (Data.BOATS) from the shipwright: pays, owns it from now on (saved with the character).
+func buy_boat(id: String) -> bool:
+	var spec: Dictionary = Data.BOATS[id]
+	var price := int(spec["price"])
+	if hero.owns_boat(id) or hero.gold < price:
+		return false
+	hero.gold -= price
+	hero.boats.append(id)
+	hero.stats_changed.emit()
+	Sfx.play("gold")
+	ui.big_message("%s is yours" % spec["name"])
+	ui.message("She's moored at the end of the pier. Click her to go aboard.", Color(0.75, 0.88, 1.0), 4.0)
+	save_game()
+	# a better boat takes the old one's place at the dock (not while he's out sailing)
+	if boat != null and is_instance_valid(boat) and not hero.aboard and boat.id != hero.best_boat():
+		boat.queue_free()
+		if boat.inter != null and is_instance_valid(boat.inter):
+			boat.inter.queue_free()
+		_add_boat(cur_zone, "")
+	return true
+
 func _interact(t: Inter) -> void:
 	match t.kind:
+		"tree":
+			# a harvestable tree (Harvest): walk up, and the hero sets to it with an axe
+			hero.start_chop(t)
+		"furnace":
+			# Halvar's furnace (Furnace): temper a weapon over felled wood
+			if t is Furnace:
+				Sfx.play("bonfire_open", -10.0, 0.8)
+				ui.open_furnace(t)
 		"extract":
-			if bg_mode and net.is_client() and not hero.dead:
+			if not bool(t.data.get("open", false)):
+				ui.message("The portal is dark. It opens later in the raid.", Color(0.8, 0.8, 0.9))
+			elif bg_mode and net.is_client() and not hero.dead:
 				ui.message("Extracting...", Color(0.6, 0.85, 1.0))
 				net.request_extract()
 		"lanista":
@@ -1653,6 +2241,8 @@ func _interact(t: Inter) -> void:
 			# a quest to hand in or on offer comes before their trade (Quests.talk)
 			if not quests.talk(str(t.data.get("role", "")), t.label, rest):
 				rest.call()
+		"boat":
+			_boat_clicked()
 		"stash":
 			ui.open_stash()
 			ui.trade_with = t
@@ -1877,8 +2467,16 @@ func on_enemy_killed(e: Enemy) -> void:
 		net.portal_created(ptl)
 		save_game()
 		await get_tree().create_timer(3.5).timeout
+		if not playing:
+			return       # (left for the title meanwhile)
 		ui.show_victory(difficulty)
 		Sfx.play("levelup")
+
+## The local hero rose again (any path: the death screen, co-op, a zone change): the death screen goes.
+func on_local_respawn() -> void:
+	death_t = -1.0
+	ui.death_panel.visible = false
+	spectate_stop()
 
 ## Co-op: the host's game reports the boss fell.
 func boss_down_remote(e: Enemy) -> void:
@@ -1889,6 +2487,8 @@ func boss_down_remote(e: Enemy) -> void:
 	Fx.pillar(world.fx_root, e.global_position, Color(1.0, 0.3, 0.2), 2.0)
 	save_game()
 	await get_tree().create_timer(3.5).timeout
+	if not playing:
+		return
 	ui.show_victory(difficulty)
 	Sfx.play("levelup")
 
@@ -1941,13 +2541,73 @@ func hitstop(t: float) -> void:
 	Engine.time_scale = 0.08
 
 func _on_hero_died() -> void:
+	Telemetry.crumb("died", {"bg": bg_mode})
 	death_t = 2.0
+	if bg_mode:
+		_bg_fell()
 	ui.set_boss(null)
+
+## Battlegrounds: fallen in the crypt, the hero watches the living (the camera follows them; Tab or the arrow keys
+## switch) until they leave. Whoever they watch falls, the camera stays over the body a moment and moves on; whoever
+## leaves, it moves on at once. When the round ends the crypt sends them home.
+func spectate_start() -> void:
+	spectating = 0
+	_spec_over = 0.0
+	spectate_next(1)
+	ui.spectate_panel.visible = true
+	Telemetry.crumb("spectate", {"watching": ui.spectate_name()})
+
+func spectate_stop() -> void:
+	spectating = 0
+	ui.spectate_panel.visible = false
+
+## The living players one could watch, in a fixed order.
+func spectate_targets() -> Array:
+	var ids: Array = net.players.keys()
+	ids.sort()
+	return ids.filter(func(pid):
+		var h = net.players[pid]["hero"]
+		return is_instance_valid(h) and not h.dead and h.visible and h.net_has)
+
+func spectate_next(dir: int) -> void:
+	var ids := spectate_targets()
+	var i := ids.find(spectating)
+	if ids.is_empty():
+		spectating = 0
+	elif i < 0:
+		spectating = int(ids[0])
+	else:
+		spectating = int(ids[posmod(i + dir, ids.size())])
+	_spec_lost = 0.0
+	ui.update_spectate()
+
+## The hero being watched (null when no one is).
+func spectate_hero() -> Node3D:
+	if spectating == 0 or not bg_mode or not net.players.has(spectating):
+		return null
+	var h = net.players[spectating]["hero"]
+	return h if is_instance_valid(h) else null
+
+func _update_spectate(dt: float) -> void:
+	if not ui.spectate_panel.visible:
+		return
+	var h := spectate_hero()
+	if h == null or h.dead or not h.visible:
+		_spec_lost += dt
+		if h == null or _spec_lost > 2.5 or spectating == 0:
+			spectate_next(1)
+	if str(bg_raid.get("state", "")) == "reset":
+		_spec_over += dt
+		if _spec_over > 4.0:
+			ui.message("The crypt has collapsed: the round is over", Color(1, 0.6, 0.4))
+			spectate_stop()
+			respawn()
+			return
+	ui.update_spectate()
 
 func respawn() -> void:
 	if bg_mode:
-		# no coming back in a raid: what you carried lies where you fell
-		ui.message("You fell. Everything you carried is lost.", Color(1, 0.5, 0.4))
+		# no coming back from the crypt
 		_leave_battlegrounds()
 		return
 	hero.gold = int(hero.gold * 0.9)
@@ -1971,6 +2631,10 @@ func toggle_pause() -> void:
 	ui.pause_panel.visible = paused
 	Engine.time_scale = 1.0
 	lmb_held = false
+	rmb_held = false
+	if paused and hero != null:
+		hero.cmd_wasd(Vector3.ZERO)     # (in co-op the game runs on under the menu: he mustn't walk on)
+		hero.sprint = false
 
 # ---------------------------------------------------------------- input
 func _ground_from_ray(o: Vector3, d: Vector3) -> Vector3:
@@ -2024,12 +2688,14 @@ func pick_enemy(o: Vector3, d: Vector3) -> Enemy:
 
 func _update_hover() -> void:
 	_drop_stale()
-	if world == null:
+	if world == null or net.server:
 		return
 	var mp := get_viewport().get_mouse_position()
 	var o := cam.project_ray_origin(mp)
 	var d := cam.project_ray_normal(mp)
 	ground_pt = _ground_from_ray(o, d)
+	if absf(d.y) > 0.0001:
+		water_pt = o + d * (-o.y / d.y)
 	var best = pick_enemy(o, d)
 	if best == null:
 		for g in world.items_root.get_children():
@@ -2044,8 +2710,8 @@ func _update_hover() -> void:
 		for it in world.interactables:
 			if not is_instance_valid(it) or (it.kind == "flower" and it.used):
 				continue
-			var c2: Vector3 = it.global_position + Vector3(0, 1.0, 0)
-			if (c2 - o).cross(d).length() < 1.1:
+			var c2: Vector3 = it.global_position + Vector3(0, float(it.get_meta("pick_y")) if it.has_meta("pick_y") else 1.0, 0)
+			if (c2 - o).cross(d).length() < (float(it.get_meta("pick")) if it.has_meta("pick") else 1.1):
 				best = it
 				break
 	if hovered != best:
@@ -2062,15 +2728,72 @@ func _update_hover() -> void:
 			col = Color(0.85, 0.66, 0.38)
 		ui.target_bar.visible = true
 		ui.show_target(hovered.display_name, hovered.life / hovered.max_life, col)
+	elif hovered is Harvest.HTree:
+		var tr: Harvest.HTree = hovered
+		if tr.state == "stand":
+			ui.show_target("%s  ·  %s" % [tr.label, "Chop" if hero.chop_axe()[0] != "" else "Needs an axe"], tr.hp / tr.max_hp, Color(0.78, 0.62, 0.4))
+		else:
+			ui.show_target("%s stump" % tr.label, 0.0, Color(0.55, 0.5, 0.42))
 	elif hovered is Inter:
 		ui.show_target(hovered.label, 1.0, Color(0.85, 0.75, 0.5))
 		ui.target_bar.visible = false
 	else:
 		ui.hide_target()
 
-func _unhandled_input(ev: InputEvent) -> void:
-	if not playing:
+## Dev cheat (not in production builds, or with the dev tools): typing "maxout" while playing makes the current
+## character as strong as it gets: level 99, its stat points spread over its class's stats, every talent point spent
+## (the class's auto build), a million gold, full potions and a bag of the best gear (equip what you like). Saved.
+var _typed := ""
+func _cheat_keys(ev: InputEvent) -> void:
+	if not (ev is InputEventKey and ev.pressed and not ev.echo) or not playing or hero == null:
 		return
+	var ch := String.chr(ev.unicode) if ev.unicode > 0 else ""
+	if ch == "":
+		return
+	_typed = (_typed + ch.to_lower()).right(12)
+	if _typed.ends_with("maxout") and (dev_tools_on() or BuildEnv.env() != "production"):
+		_typed = ""
+		max_out()
+
+func max_out() -> void:
+	hero.set_level(99)
+	var c: Dictionary = Data.CLASSES.get(hero.cls, {})
+	var tot := float(int(c.get("str", 1)) + int(c.get("dex", 1)) + int(c.get("vit", 1)) + int(c.get("ene", 1)))
+	var pts := hero.stat_points
+	hero.str_ += int(pts * int(c.get("str", 1)) / tot)
+	hero.dex += int(pts * int(c.get("dex", 1)) / tot)
+	hero.vit += int(pts * int(c.get("vit", 1)) / tot)
+	hero.ene += pts - int(pts * int(c.get("str", 1)) / tot) - int(pts * int(c.get("dex", 1)) / tot) - int(pts * int(c.get("vit", 1)) / tot)
+	hero.stat_points = 0
+	hero.talents = Talents.auto_build(hero.cls, hero.free_talent_points(), hero.talents)
+	hero._talents_changed()
+	hero.gold += 1000000
+	hero.belt = [Items.potion("hp_potion"), Items.potion("hp_potion"), Items.potion("mp_potion"), Items.potion("rejuv")]
+	for b in hero.belt:
+		b["count"] = 20
+	var r := RandomNumberGenerator.new()
+	r.randomize()
+	var n := 0
+	for i in 60:
+		if n >= 16:
+			break
+		var it := Items.random_drop(99, 2000.0, r, true)
+		if Items.is_material(it) or int(it.get("rarity", 0)) < 2:
+			continue
+		if hero.add_to_inventory(it):
+			n += 1
+	hero.recalc()
+	hero.life = hero.max_life
+	hero.mana = hero.max_mana
+	ui.refresh()
+	save_game()
+	ui.big_message("MAXED OUT")
+	ui.message("Level 99, every talent, a million gold and %d pieces of the best gear in your bag" % n, Color(1.0, 0.85, 0.4), 6.0)
+
+func _unhandled_input(ev: InputEvent) -> void:
+	if not playing or _busy or world == null:
+		return      # (the title and its screens, and a zone loading: nothing in the game takes keys or clicks)
+	_cheat_keys(ev)
 	if ev is InputEventMouseButton:
 		if ev.button_index == MOUSE_BUTTON_LEFT:
 			if ev.pressed and not paused:
@@ -2079,12 +2802,20 @@ func _unhandled_input(ev: InputEvent) -> void:
 				_update_hover()
 				# a skill other than Attack on left mouse casts on a foe (or anywhere with Shift);
 				# clicking the ground, an item or an NPC still walks there
-				if hero.bound("lmb") not in ["attack", ""] and (hovered is Enemy or Input.is_key_pressed(KEY_SHIFT)):
+				if sailing():
+					pass                      # steering: Game._sail_input reads the held button
+				elif hero.bound("lmb") not in ["attack", ""] and (hovered is Enemy or Input.is_key_pressed(KEY_SHIFT)):
 					_use_bind("lmb", true)
+				elif not click_move and hero.bound("lmb") == "attack" and not (hovered is GroundItem or hovered is Inter) \
+						and (wasd_dir().length() > 0.1 or not (hovered is Enemy)):
+					# Path of Exile controls: the click attacks toward the pointer where he stands (or as the
+					# keys carry him); a foe clicked while standing still is walked up to and struck
+					hero.target = null
+					hero.swipe_attack(_attack_aim())
 				else:
 					_click_world()
 		elif ev.button_index == MOUSE_BUTTON_RIGHT:
-			if ev.pressed and not paused:
+			if ev.pressed and not paused and not sailing():
 				rmb_held = true
 				_use_bind("rmb", true)
 		elif ev.button_index == MOUSE_BUTTON_WHEEL_UP and ev.pressed:
@@ -2092,6 +2823,11 @@ func _unhandled_input(ev: InputEvent) -> void:
 		elif ev.button_index == MOUSE_BUTTON_WHEEL_DOWN and ev.pressed:
 			zoom = clampf(zoom + 0.08, 0.6, 1.3)
 	if ev is InputEventKey and ev.pressed and not ev.echo:
+		if paused and ev.keycode != KEY_ESCAPE:
+			return       # (paused: only Esc, which resumes)
+		if ui.spectate_panel.visible and ev.keycode in [KEY_TAB, KEY_LEFT, KEY_RIGHT]:
+			spectate_next(-1 if ev.keycode == KEY_LEFT or (ev.keycode == KEY_TAB and ev.shift_pressed) else 1)
+			return
 		match ev.keycode:
 			KEY_ESCAPE:
 				if not ui.close_all():
@@ -2102,8 +2838,14 @@ func _unhandled_input(ev: InputEvent) -> void:
 				ui.toggle(ui.char_panel)
 			KEY_T:
 				cast_town_portal()
+			KEY_SPACE:
+				dodge_roll()
 			KEY_1, KEY_2, KEY_3, KEY_4:
 				hero.drink(ev.keycode - KEY_1)
+			KEY_E when sailing():
+				try_land()
+			KEY_Q, KEY_E, KEY_R, KEY_F, KEY_G, KEY_V when sailing():
+				pass
 			KEY_Q, KEY_E, KEY_R, KEY_F, KEY_G, KEY_V:
 				if not ui.skills_hotkey(OS.get_keycode_string(ev.keycode)):
 					_use_bind(OS.get_keycode_string(ev.keycode), true)
@@ -2129,14 +2871,47 @@ func _unhandled_input(ev: InputEvent) -> void:
 				ui.minimap.set_big(not ui.minimap.big)
 
 func _input(ev: InputEvent) -> void:
-	if _intro_playing and ((ev is InputEventKey and ev.pressed and not ev.echo) or (ev is InputEventMouseButton and ev.pressed)):
-		_intro_skip = true
-		get_viewport().set_input_as_handled()
+	if _intro_playing:
+		if _is_skip_press(ev) and _intro_t > 0.5:
+			if _intro_t - _intro_armed < INTRO_CONFIRM:
+				_intro_skip = true
+			else:
+				_intro_armed = _intro_t
+		get_viewport().set_input_as_handled()      # nothing reaches the game behind the intro
 		return
 	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed:
 		lmb_held = false
 	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_RIGHT and not ev.pressed:
 		rmb_held = false
+
+## Controls: Path of Exile 2's by default (WASD moves, left click attacks toward the pointer, right click a skill,
+## Space rolls); `click_move` (pause menu, saved) brings back clicking the ground to walk there.
+var click_move := false
+var roll_sprint := false
+
+## The movement keys as a flat direction on the ground (W = up the screen).
+func wasd_dir() -> Vector3:
+	var v := Vector3.ZERO
+	if Input.is_key_pressed(KEY_W): v.z -= 1
+	if Input.is_key_pressed(KEY_S): v.z += 1
+	if Input.is_key_pressed(KEY_A): v.x -= 1
+	if Input.is_key_pressed(KEY_D): v.x += 1
+	return v.normalized() if v.length() > 0.1 else Vector3.ZERO
+
+## Space: roll the way the keys point, or toward the pointer with no key held.
+func dodge_roll() -> void:
+	if hero == null or paused or ui.any_panel_open() or sailing():
+		return       # (aboard, Space heaves the boat to: _sail_input)
+	var d := wasd_dir()
+	if d.length() < 0.1:
+		_update_hover()
+		d = hero.dir_to(ground_pt)
+	if Dodge.start(hero, d):
+		roll_sprint = true
+
+func set_click_move(on: bool) -> void:
+	click_move = on
+	_save_setting("controls", "click_move", on)
 
 func cast_slot(i: int) -> void:
 	cast_skill(hero.bound(Hero.BIND_KEYS[i]))
@@ -2158,9 +2933,9 @@ func skill_held(id: String) -> bool:
 func _cursor_aim() -> Vector3:
 	return hovered.global_position if hovered is Enemy else ground_pt
 
-## Space's swing: at the foe under the pointer, else at a foe close to the pointer's line within reach,
+## The left click's swing: at the foe under the pointer, else at a foe close to the pointer's line within reach,
 ## else toward the pointer (the same melee help a short directional skill gets, Hero.skill_aim).
-func _space_aim() -> Vector3:
+func _attack_aim() -> Vector3:
 	if hovered is Enemy:
 		return hovered.global_position
 	var dir := hero.dir_to(ground_pt)
@@ -2209,12 +2984,23 @@ func _click_world() -> void:
 
 # ---------------------------------------------------------------- loop
 func _process(delta: float) -> void:
+	if bg_mode:
+		Battlegrounds.sync_proxies(self)
+		Battlegrounds.hud(self, delta)
+	elif ui != null and ui.hud.get_node_or_null("bg_hud") != null:
+		ui.hud.get_node("bg_hud").visible = false
 	_t += delta
 	var real_dt := delta / maxf(Engine.time_scale, 0.01)
 	_watchdog(real_dt)
+	if net.server:
+		Kpi.server_tick(real_dt)
+	else:
+		Kpi.step(real_dt)
 	if world == null:
 		return
 	xp_bonus_t = maxf(0.0, xp_bonus_t - delta)
+	if playing and not paused:
+		played_s += delta
 	exit_grace = maxf(0.0, exit_grace - delta)
 	_drop_stale()
 	_update_grade(real_dt)
@@ -2224,26 +3010,31 @@ func _process(delta: float) -> void:
 		_update_hover()
 		hero.cursor = _cursor_aim()     # the pointer aims everything (see Hero's aiming notes)
 		_check_ambushes()
-		hero.blocking = skill_held("block") and not ui.any_panel_open()
+		if sailing():
+			_sail_input()
+		hero.blocking = skill_held("block") and not ui.any_panel_open() and not sailing()
 		for slot in Hero.BIND_SLOTS:
+			if sailing():
+				break
 			if slot != "lmb" and slot_held(slot):
 				_use_bind(slot, false)
-		hero.sprint = Input.is_key_pressed(KEY_SHIFT)
-		if Input.is_key_pressed(KEY_SPACE):
-			# swing toward the pointer, whichever way he is walking
-			hero.swipe_attack(_space_aim())
-		var wasd := Vector3.ZERO
-		if Input.is_key_pressed(KEY_W): wasd.z -= 1
-		if Input.is_key_pressed(KEY_S): wasd.z += 1
-		if Input.is_key_pressed(KEY_A): wasd.x -= 1
-		if Input.is_key_pressed(KEY_D): wasd.x += 1
-		hero.cmd_wasd(wasd)
-		if lmb_held and not hero.dead:
+		# Shift sprints; so does Space held on after a dodge roll (Path of Exile 2). Aboard, WASD and Space sail
+		# the boat (_sail_input) instead of moving or rolling the hero.
+		if not Input.is_key_pressed(KEY_SPACE):
+			roll_sprint = false
+		hero.sprint = Input.is_key_pressed(KEY_SHIFT) or (roll_sprint and hero.roll_t < 0.0)
+		var wasd := wasd_dir()
+		hero.cmd_wasd(wasd if not sailing() else Vector3.ZERO)
+		if lmb_held and not hero.dead and not sailing():
 			lmb_repeat -= delta
 			if lmb_repeat <= 0.0:
 				lmb_repeat = 0.12
 				if hero.bound("lmb") not in ["attack", ""] and (hovered is Enemy or Input.is_key_pressed(KEY_SHIFT)):
 					_use_bind("lmb", false)
+				elif click_move == false and hero.bound("lmb") == "attack" and (wasd_dir().length() > 0.1 or not (hovered is Enemy)) \
+						and not (hovered is GroundItem or hovered is Inter) and hero.target == null:
+					# held: keep swinging toward the pointer (the keys move him)
+					hero.swipe_attack(_attack_aim())
 				elif hovered is Enemy:
 					if hero.target != hovered:
 						hero.cmd_target(hovered)
@@ -2257,30 +3048,31 @@ func _process(delta: float) -> void:
 				if g.item["base"] == "gold" and g._toss >= 1.0 and not hero.dead:
 					if g.global_position.distance_to(hero.global_position) < 1.0:
 						_pickup(g)
-		if exit_grace <= 0.0 and not hero.dead:
+		if exit_grace <= 0.0 and not hero.dead and not hero.aboard:
 			for ex in world.exits:
 				var dd: Vector3 = ex["pos"] - hero.global_position
 				if Vector2(dd.x, dd.z).length() < ex["radius"]:
 					var to: String = ex["to"]
-					var spawn := "start"
-					if cur_zone == "town" and to == "wild":
-						spawn = "from_town"
-					elif cur_zone == "wild" and to == "town":
-						spawn = "from_wild"
-					elif cur_zone == "lair" and to == "wild":
-						spawn = "from_lair"
-					travel(cur_act, to, spawn)
+					# each zone names its arrival spots after where you came from ("from_town", "from_wild", ...)
+					travel(cur_act, to, "from_" + cur_zone)
 					break
 	if death_t > 0.0:
 		death_t -= delta
-		if death_t <= 0.0:
-			ui.death_panel.visible = true
+		if death_t <= 0.0 and playing:
+			if bg_mode:
+				spectate_start()
+			else:
+				ui.death_panel.visible = true
+	_update_spectate(real_dt)
 	if hero and world:
 		var look_ahead := Vector3.ZERO
 		if playing and not hero.dead and shot_path == "":
 			var mp := get_viewport().get_mouse_position() / get_viewport().get_visible_rect().size - Vector2(0.5, 0.5)
 			look_ahead = Vector3(mp.x, 0, mp.y) * 2.0
 		var goal: Vector3 = hero.global_position + look_ahead
+		var watched := spectate_hero()
+		if watched != null:
+			goal = watched.global_position
 		var fw := 0.0
 		if focus_node != null:
 			focus_t += real_dt
@@ -2297,7 +3089,10 @@ func _process(delta: float) -> void:
 		shake = maxf(0.0, shake - real_dt * 2.2)
 		var sh := Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake * shake * 0.35
 		cam.position = CAM_OFFSET * zoom * lerpf(1.0, focus_zoom, fw) + sh
-		RenderingServer.global_shader_parameter_set("player_pos", hero.global_position)
+		_sail_camera(real_dt, sh)
+		if playing:
+			_sea_sounds()
+		RenderingServer.global_shader_parameter_set("player_pos", watched.global_position if watched != null else hero.global_position)
 		if grass_field:
 			grass_field.center = cam_target
 			grass_field.cam_pos = cam.global_position
@@ -2306,7 +3101,11 @@ func _process(delta: float) -> void:
 		var lt := l as OmniLight3D
 		var b: float = lt.get_meta("base", 1.0)
 		var id := float(lt.get_instance_id() % 100)
-		lt.light_energy = b * (0.85 + 0.1 * sin(_t * 9.0 + id) + 0.07 * sin(_t * 23.0 + id * 2.3))
+		if lt.has_meta("fire"):
+			# a real fire's light: slow breathing, quicker licks and a ragged flutter, never in step with another
+			lt.light_energy = b * (0.8 + 0.09 * sin(_t * 3.1 + id) + 0.07 * sin(_t * 8.7 + id * 1.7) + 0.05 * sin(_t * 17.3 + id * 2.9) + 0.03 * sin(_t * 31.0 + id * 4.1))
+		else:
+			lt.light_energy = b * (0.85 + 0.1 * sin(_t * 9.0 + id) + 0.07 * sin(_t * 23.0 + id * 2.3))
 	if shot_path != "" and not _busy and world:
 		shot_frames += 1
 		if shot_frames == 50:
@@ -2338,7 +3137,9 @@ func _perf_step() -> bool:
 			hero.global_position = spot
 			cam_target = spot
 		_perf = {"centre": hero.global_position, "t": 0.0, "frames": [], "dc": 0.0, "prims": 0.0, "objs": 0.0, "n": 0,
-			"secs": float(args[pi + 1]) if pi + 1 < args.size() and args[pi + 1].is_valid_float() else 10.0, "t0": 0}
+			"secs": float(args[pi + 1]) if pi + 1 < args.size() and args[pi + 1].is_valid_float() else 10.0, "t0": 0,
+			"gpu": 0.0, "cpu": 0.0, "boot_ms": Time.get_ticks_msec()}
+		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
 		return true
 	var dt := get_process_delta_time()
 	if shot_frames < 70:
@@ -2353,6 +3154,9 @@ func _perf_step() -> bool:
 	_perf["prims"] = float(_perf["prims"]) + Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)
 	_perf["objs"] = float(_perf["objs"]) + Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)
 	_perf["n"] = int(_perf["n"]) + 1
+	var vp_rid := get_viewport().get_viewport_rid()
+	_perf["gpu"] = float(_perf["gpu"]) + RenderingServer.viewport_get_measured_render_time_gpu(vp_rid)
+	_perf["cpu"] = float(_perf["cpu"]) + RenderingServer.viewport_get_measured_render_time_cpu(vp_rid)
 	if float(_perf["t"]) < float(_perf["secs"]):
 		return true
 	var fr: Array = _perf["frames"]
@@ -2373,6 +3177,8 @@ func _perf_step() -> bool:
 		"average %.1f fps (%.2f ms), median %.2f ms, 1%% low %.1f fps (%.2f ms)" % [n / wall, wall * 1000.0 / n, float(fr[fr.size() / 2]), 1000.0 / worst1, worst1],
 		"draw calls %.0f, primitives %.0f, objects %.0f (per frame)" % [float(_perf["dc"]) / n, float(_perf["prims"]) / n, float(_perf["objs"]) / n],
 		"3D grass clumps in the zone: %d" % grass_n,
+		"gpu %.2f ms per frame (busy %.0f%%), render cpu %.2f ms, engine start to zone ready %d ms" % [float(_perf["gpu"]) / n, 100.0 * float(_perf["gpu"]) / n / (wall * 1000.0 / n), float(_perf["cpu"]) / n, int(_perf["boot_ms"])],
+		"video memory %.0f MB (textures %.0f MB, buffers %.0f MB), static memory %.0f MB" % [Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1e6, Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / 1e6, Performance.get_monitor(Performance.RENDER_BUFFER_MEM_USED) / 1e6, Performance.get_monitor(Performance.MEMORY_STATIC) / 1e6],
 	]
 	var f := FileAccess.open(shot_path.get_basename() + ".txt", FileAccess.WRITE)
 	for l in lines:

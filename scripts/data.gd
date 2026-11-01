@@ -3,7 +3,7 @@ extends RefCounted
 ## Static game data: acts, monsters, item bases, affixes, uniques, vendors.
 
 const ACTS := [
-	{"name": "The Ashen Moors", "town": "The Forsaken Wilds", "wild": "Cairnfell Moor", "lair": "Grubb's Fort",
+	{"name": "The Ashen Moors", "town": "The Forsaken Wilds", "wild": "Cairnfell Moor", "lair": "Grubb's Fort", "coast": "The Mournwater Coast",
 		"boss": "goblin_king", "lvl": 1, "theme": "moor", "foes": ["fallen_skirmisher", "fallen_reaver", "fallen_stalker", "zombie", "skel_archer"]},
 	{"name": "The Sunscar Wastes", "town": "Lut Khemar", "wild": "Dunes of Sorrow", "lair": "Tomb of Sekhmun",
 		"boss": "sekhmun", "lvl": 8, "theme": "desert", "foes": ["raider", "mummy", "scarab"]},
@@ -136,14 +136,36 @@ const WEAPON_PROFILES := {
 	"demon": {"motion": "back", "store": "back"},
 	# the plague doctor's cane rides across his back too (his coat's belt is full of vials)
 	"plague": {"motion": "back", "store": "back"},
+	# the dragons hold nothing (an equipped weapon hangs off a hidden joint): the default motion, out of sight
+	"wyrm": {"motion": "back", "store": "back"},
+	"serpent": {"motion": "back", "store": "back"},
+	"wyvern": {"motion": "back", "store": "back"},
 }
 
 const VENDORS := [
-	{"smith": "Halvar Emberhammer", "armor": "Hedda Ironhand", "alch": "Agnes Grimwood", "gamble": "Tarrow the Dice", "stash": "Stash", "elder": "Captain Roth"},
+	{"smith": "Halvar Emberhammer", "armor": "Hedda Ironhand", "alch": "Agnes Grimwood", "gamble": "Tarrow the Dice", "stash": "Stash", "elder": "Captain Roth", "shipwright": "Osric Saltmarrow"},
 	{"smith": "Kadir Forgebrand", "armor": "Saphra", "alch": "Iskander the Wise", "gamble": "Jamal Two-Coins", "stash": "Stash", "elder": "Vizier Hasun"},
 	{"smith": "Ombo Stonejaw", "armor": "Teyla of the Reeds", "alch": "Mother Ashka", "gamble": "Quill", "stash": "Stash", "elder": "Archivist Nel"},
 	{"smith": "Brother Halvard", "armor": "Seraph Aldwen", "alch": "Lumen the Pure", "gamble": "The Faceless", "stash": "Stash", "elder": "High Paladin Corin"},
 ]
+
+## Boats the shipwright on the Mournwater Coast sells (coast.gd, boat.gd, boat_ride.gd). One today; more
+## boats, faster hulls or upgrades are new entries here. speed: cruising m/s (the island routes are
+## planned for 8: Isles.ISLANDS "sail" / speed ~ the crossing's seconds), accel: m/s per second,
+## turn: radians per second at speed, crew: how many it carries (co-op: each player sails their own).
+const BOATS := {
+	"gull": {"name": "The Gull", "price": 400, "speed": 8.0, "accel": 3.2, "turn": 0.95, "crew": 1,
+		"paint": Color(0.16, 0.3, 0.42),
+		"desc": "A single-masted cutter of tarred oak, seven paces long, built here on the strand. Quick on the wind, steady in a swell, and she'll put you ashore at any jetty on the Mournwater."},
+	# Imported boats: "glb" is a model prepared by tools/blender/prep_boat.py (bow toward -z, waterline y = 0); its
+	# printout gives length, beam, sheer and draft. "deck" is where the hero stands at the helm, "lamps" the lanterns'
+	# lights. Swap the model by changing "glb" (and the sizes); without the file she's drawn as the Gull.
+	"sloop": {"name": "The Ember Sloop", "price": 1500, "speed": 9.0, "accel": 2.6, "turn": 0.8, "crew": 2,
+		"glb": "res://assets/models/boats/sloop.glb", "length": 14.0, "beam": 4.6, "sheer": 1.74, "draft": 1.3,
+		"deck": Vector3(0.6, 1.15, 2.6), "lamps": [[Vector3(1.21, 2.85, 6.73), 1.2], [Vector3(-1.21, 2.85, 6.73), 1.2]],
+		"paint": Color(0.3, 0.06, 0.04),
+		"desc": "A gaff-rigged sloop of black-tarred oak with patched rust-red canvas, fourteen paces stem to stern. Roomier and a knot faster than the Gull, with a cabin aft and lanterns at her stern."},
+}
 
 ## look keys: skin, cloth, cloth2, armor, height, bulk, head, eyes, horns, cape, thin, tail, wings, weapon, shield
 const ENEMIES := {
@@ -335,7 +357,40 @@ const BASES := {
 		"lore": "A claw of Rimeclaw's that never thaws"},
 	"stormglass": {"icon": "res://assets/textures/items/stormglass.png", "model": "res://assets/models/items/stormglass.glb", "name": "Stormglass Eye", "slot": "material", "kind": "orb", "lvl": 1, "price": 400, "color": Color(0.72, 0.45, 1.0),
 		"lore": "Thundermaw's eye, a storm still raging inside"},
+	# resources (Harvest, Furnace): stacked in one inventory cell up to "stack", never worn; "fuel" is what the
+	# furnace reads (heat it adds per second while burning, how long one burns, the hottest it can drive the fire)
+	"oak_log": {"name": "Oak Log", "slot": "resource", "kind": "log", "lvl": 1, "price": 4, "stack": 50, "color": Color(0.55, 0.38, 0.22),
+		"bark": Color(0.24, 0.18, 0.12), "heart": Color(0.78, 0.6, 0.4), "fuel": {"heat": 62.0, "burn": 40.0, "max_temp": 1240.0, "name": "steady"},
+		"lore": "Dense moor oak. Burns long and even."},
+	"pine_log": {"name": "Pine Log", "slot": "resource", "kind": "log", "lvl": 1, "price": 3, "stack": 50, "color": Color(0.72, 0.56, 0.34),
+		"bark": Color(0.3, 0.2, 0.13), "heart": Color(0.9, 0.76, 0.52), "fuel": {"heat": 105.0, "burn": 16.0, "max_temp": 1040.0, "name": "fast and hot"},
+		"lore": "Resinous pine. Flares quickly and is gone."},
+	"heartwood": {"name": "Ashen Heartwood", "slot": "resource", "kind": "log", "lvl": 1, "price": 40, "stack": 10, "color": Color(1.0, 0.42, 0.12),
+		"bark": Color(0.06, 0.05, 0.05), "heart": Color(0.95, 0.35, 0.08), "glow": true, "fuel": {"heat": 120.0, "burn": 50.0, "max_temp": 1400.0, "name": "searing"},
+		"lore": "Wood that smouldered for an age inside a living tree. Only it burns white."},
+	# tools: carried in the inventory, never equipped; the woodsman's axe lets anyone chop trees (combat axes do too)
+	"woodsman_axe": {"name": "Woodsman's Axe", "slot": "tool", "kind": "axe", "lvl": 1, "price": 25, "chop": 1.0, "shape": {"haft": 0.62, "head": 0.17},
+		"lore": "A plain felling axe. Every hero in the Wilds carries one."},
 }
+
+## How many strikes' worth each combat axe is when used to chop (a woodsman's axe is 1.0; Harvest.chop_power).
+const CHOP_POWER := {"hand_axe": 1.1, "war_axe": 1.35, "executioner": 1.65}
+
+## Chopping, per class (like WEAPON_PROFILES): how far from the trunk the hero stands, the swing's length in seconds,
+## the axe's size in the hand. A class with no entry gets DEFAULT_CHOP and the procedural "chop" pose (Anim), so a
+## new class chops on day one.
+const DEFAULT_CHOP := {"stand": 1.05, "swing": 1.05, "axe_scale": 1.0}
+const CHOP_PROFILES := {
+	"knight": {"stand": 1.1, "swing": 1.05},
+	"archer": {"stand": 1.05, "swing": 1.0},
+	"plague": {"stand": 1.05, "swing": 1.1},
+	"demon": {"stand": 1.35, "swing": 1.25, "axe_scale": 1.35},
+	"wraith": {"stand": 1.15, "swing": 1.0, "axe_scale": 1.0, "spectral": true},
+	"warlock": {"stand": 0.85, "swing": 0.9, "axe_scale": 0.75},
+}
+
+static func chop_profile(cls: String) -> Dictionary:
+	return DEFAULT_CHOP.merged(CHOP_PROFILES.get(cls, {}), true)
 
 ## Affixes: [stat, prefix/suffix name, min, max, per-level growth]
 const AFFIXES := [
@@ -491,7 +546,22 @@ const CLASSES := {
 		"desc": "A beaked physician of the cursed years, belted with vials and a smoking censer. Fights by preparation: poison clouds, fused fire, traps that wait, and an epidemic that spreads from foe to foe."},
 	"warlock": {"voice": "gnome", "name": "Warlock", "str": 10, "dex": 10, "vit": 10, "ene": 10,
 		"desc": "A hooded sorcerer bound by a fel pact. Drains the life from foes in a forking green beam, rots them with blight and chains them where they stand."},
+	# the dragons (scripts/dragon.gd): no skills yet, only the basic attack (claw, bite, tail spin); "claws" is the
+	# damage and speed of their natural weapons when nothing is equipped (they start with none)
+	"wyrm": {"voice": "wyrm", "name": "Obsidian Wyrm", "str": 26, "dex": 12, "vit": 26, "ene": 12, "claws": [3, 8], "claw_speed": 1.0,
+		"desc": "A heavy, low-slung dragon of black volcanic scale, ember-tipped spines and blood-red wings. Rakes with its foreclaws, bites, and spins to sweep its long tail through everything around it."},
+	"serpent": {"voice": "serpent", "name": "Frost Serpent", "str": 20, "dex": 22, "vit": 20, "ene": 14, "claws": [3, 7], "claw_speed": 1.1,
+		"desc": "A long, wingless dragon of pale ice-blue scale with crystal antlers and a ridge of ice shards. Swims over the ground, strikes with claw and fang and lashes its tail in a full turn."},
+	"wyvern": {"voice": "wyvern", "name": "Storm Wyvern", "str": 22, "dex": 20, "vit": 22, "ene": 12, "claws": [3, 7], "claw_speed": 1.1,
+		"desc": "A rearing two-legged dragon whose wings are its forelimbs, with lightning veined through the membranes. Strikes with its wing claws, bites, and whips its barbed tail round."},
 }
+
+## A class's damage and speed with no weapon equipped: the dragons' claws and teeth, bare hands for the rest.
+static func unarmed(cls: String) -> Array:
+	return CLASSES[cls].get("claws", [1, 3]) if CLASSES.has(cls) else [1, 3]
+
+static func unarmed_speed(cls: String) -> float:
+	return float(CLASSES[cls].get("claw_speed", 1.2)) if CLASSES.has(cls) else 1.2
 
 static func skills_for(cls: String) -> Array:
 	var out := []
@@ -528,4 +598,6 @@ static func zone_level(act: int, kind: String) -> int:
 	match kind:
 		"wild": return base + 2
 		"lair": return base + 5
+	if kind == "coast" or kind.begins_with("isle_"):
+		return base + 3
 	return base

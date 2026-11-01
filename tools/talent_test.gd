@@ -104,6 +104,7 @@ func _run() -> void:
 	h.binds = h.default_binds()
 	g.ui.drop_skill({"skill": "nova", "from": ""}, "G")
 	check(h.bound("G") == "nova" and h.bound("E") == "", "drag Holy Nova from the window to G (it leaves E)")
+	h.bind("rmb", "block")      # (a new character has its first skill there; Block makes the swap visible)
 	g.ui.drop_skill({"skill": "cleave", "from": "Q"}, "rmb")
 	check(h.bound("rmb") == "cleave" and h.bound("Q") == "block", "drag Q onto right mouse: they swap")
 	g.ui.drop_skill({"skill": "attack", "from": "lmb"}, "E")

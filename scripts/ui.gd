@@ -87,6 +87,11 @@ var char_panel: PanelContainer
 var char_labels := {}
 var plus_btns: Array = []
 var shop_panel: PanelContainer
+## The shipwright's window (boat_shop.gd): the boat, its price, how to sail it, Buy.
+var boat_shop: BoatShop
+var boat_panel: PanelContainer
+## Sailing: "E  Step ashore at …" over the action bar when the boat is at a dock (Game.try_land).
+var sail_prompt: Button
 var shop_title: Label
 var shop_grid: GridContainer
 var shop_items: Array = []
@@ -99,6 +104,7 @@ var shop_who: Label
 var shop_role: Label
 var shop_greet: Label
 var shop_face: PanelContainer  # holds the trader's live portrait
+var furnace_ui: FurnaceUI      # the furnace window (furnace_ui.gd), opened at Halvar's furnace
 var trade_with: Inter = null   # the NPC whose window (dialog, trade, stash) is open: walking off closes it
 var plates: Control            # VendorUI.Plates: nameplates over the town's people
 var stash_panel: PanelContainer
@@ -121,12 +127,21 @@ var join_panel: PanelContainer
 var join_list: VBoxContainer
 var join_ip: LineEdit
 var join_hint: Label
+var hud: Control                  # the screen's layers (setup): the in-game HUD
+var windows: Control              # inventory, character sheet, shops, the stash, the fire, waypoints
+var menus: Control                # the title and its screens (characters, class picker, co-op, Battlegrounds)
+var modals: Control               # dialogs, the party vote, the pause menu, the F8 panel, death and victory
+var top: Control                  # tooltips, drags, messages, sparkles: over everything
+var menu_shade: ColorRect         # under a menu screen opened over the title: dims it and keeps its clicks off it
 var bg_panel: PanelContainer      # the Battlegrounds screen (open_battlegrounds): class, server address, the stash
-var bg_class: OptionButton
+var bg_class: OptionButton       # the Battlegrounds screen's hero picker (character ids as metadata)
 var bg_addr: LineEdit
-var bg_stash_list: VBoxContainer
 var _join_refresh := 0.0
 var death_panel: Control
+var spectate_panel: Control      # Battlegrounds: the fallen hero watching the living (Game.spectate_*)
+var _spec_name: Label
+var _spec_hint: Label
+var _spec_btns: Array = []
 var victory_panel: Control
 var boss_bar_box: VBoxContainer
 var boss_bar: ProgressBar
@@ -149,6 +164,14 @@ func setup(g: Node) -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.theme = theme_
 	add_child(root)
+	# the screen's layers, bottom to top: each part of the UI lives in one, so what shows where is decided in one place
+	# (the title and its menus cover the HUD, a dialog or the pause menu is above every screen, tooltips and messages
+	# above everything); `_set_hud` shows or hides the whole in-game HUD at once
+	hud = _layer("hud")
+	windows = _layer("windows")
+	menus = _layer("menus")
+	modals = _layer("modals")
+	top = _layer("top")
 	dmg_flash = ColorRect.new()
 	dmg_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dmg_flash.color = Color(0.6, 0.0, 0.0, 0.0)
@@ -158,16 +181,22 @@ func setup(g: Node) -> void:
 	fsh.code = "shader_type canvas_item; void fragment(){ vec2 uv = UV - 0.5; uv.x *= 1.4; float v = smoothstep(0.35, 0.8, length(uv)); COLOR = vec4(0.55, 0.0, 0.0, v * COLOR.a * 1.6); }"
 	fm.shader = fsh
 	dmg_flash.material = fm
-	root.add_child(dmg_flash)
+	hud.add_child(dmg_flash)
 	plates = VendorUI.Plates.new()
 	plates.ui = self
-	root.add_child(plates)
+	hud.add_child(plates)
 	_build_hud()
 	_build_inventory()
 	_build_character()
 	_build_shop()
+	boat_shop = BoatShop.new()
+	boat_panel = boat_shop.build(self)
+	_build_sail_prompt()
 	_build_stash()
 	_build_burn()
+	furnace_ui = FurnaceUI.new()
+	windows.add_child(furnace_ui)
+	furnace_ui.build(self)
 	_build_vote()
 	_build_waypoints()
 	_build_dialog()
@@ -182,6 +211,7 @@ func setup(g: Node) -> void:
 	_build_battlegrounds()
 	_build_enchant()
 	_build_death()
+	_build_spectate()
 	_build_victory()
 
 func bind_hero(h: Hero) -> void:
@@ -363,7 +393,7 @@ func click_fx(p: Control) -> void:
 		sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		sp.position = c - Vector2(2, 2)
 		sp.rotation = randf() * TAU
-		root.add_child(sp)
+		top.add_child(sp)
 		var a := TAU * i / 10.0 + randf_range(-0.2, 0.2)
 		var dist := randf_range(22.0, 38.0)
 		var ts := create_tween().set_parallel(true)
@@ -443,7 +473,7 @@ func _build_tooltip() -> void:
 	tip_box.add_theme_constant_override("separation", 1)
 	tip_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tooltip.add_child(tip_box)
-	root.add_child(tooltip)
+	top.add_child(tooltip)
 
 # ---------------------------------------------------------------- HUD
 func _orb(col: Color, col2: Color) -> ColorRect:
@@ -485,7 +515,7 @@ func _build_hud() -> void:
 	bottom.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	bottom.offset_top = -190
 	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(bottom)
+	hud.add_child(bottom)
 	# life and mana globes (scripts/globe.gd): liquid that surges, ripples, swirls and pulses
 	life_globe = Globe.new()
 	life_globe.kind = "life"
@@ -541,7 +571,7 @@ func _build_hud() -> void:
 	frame.offset_top = -bh - 4
 	frame.offset_bottom = -4
 	frame.mouse_filter = Control.MOUSE_FILTER_STOP
-	root.add_child(frame)
+	hud.add_child(frame)
 	action_bar = frame
 	var vb := VBoxContainer.new()
 	vb.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -601,7 +631,7 @@ func _build_hud() -> void:
 	talent_badge.add_theme_font_size_override("font_size", 15)
 	talent_badge.visible = false
 	talent_badge.pressed.connect(func(): toggle(talent_panel))
-	root.add_child(talent_badge)
+	hud.add_child(talent_badge)
 	for i in 4:
 		var idx := i
 		var b := _slot(Vector2(50, 50), func(ev): if ev.button_index == MOUSE_BUTTON_LEFT or ev.button_index == MOUSE_BUTTON_RIGHT: hero.drink(idx), func(p, on): _hover(p, on, ""), str(i + 1))
@@ -612,13 +642,13 @@ func _build_hud() -> void:
 	# top: zone, fps, target, messages
 	zone_lbl = _label("", 20, GOLD, true)
 	zone_lbl.position = Vector2(20, 14)
-	root.add_child(zone_lbl)
+	hud.add_child(zone_lbl)
 	fps_lbl = _label("", 14, Color(0.7, 0.9, 0.6))
 	fps_lbl.anchor_left = 1.0
 	fps_lbl.anchor_right = 1.0
 	fps_lbl.offset_left = -120
 	fps_lbl.offset_top = 14
-	root.add_child(fps_lbl)
+	top.add_child(fps_lbl)
 	target_box = PanelContainer.new()
 	target_box.anchor_left = 0.5
 	target_box.anchor_right = 0.5
@@ -636,7 +666,7 @@ func _build_hud() -> void:
 	target_bar = _bar(Color(0.65, 0.05, 0.03), 8)
 	tv.add_child(target_bar)
 	target_box.visible = false
-	root.add_child(target_box)
+	hud.add_child(target_box)
 	boss_bar_box = VBoxContainer.new()
 	boss_bar_box.anchor_left = 0.5
 	boss_bar_box.anchor_right = 0.5
@@ -650,7 +680,7 @@ func _build_hud() -> void:
 	boss_bar = _bar(Color(0.6, 0.03, 0.02), 14)
 	boss_bar_box.add_child(boss_bar)
 	boss_bar_box.visible = false
-	root.add_child(boss_bar_box)
+	hud.add_child(boss_bar_box)
 	msg_lbl = _label("", 20, Color(1, 1, 1), true)
 	msg_lbl.anchor_left = 0.5
 	msg_lbl.anchor_right = 0.5
@@ -659,7 +689,7 @@ func _build_hud() -> void:
 	msg_lbl.anchor_top = 0.62
 	msg_lbl.anchor_bottom = 0.62
 	msg_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	root.add_child(msg_lbl)
+	top.add_child(msg_lbl)
 	big_lbl = _label("", 42, GOLD, true)
 	big_lbl.anchor_left = 0.5
 	big_lbl.anchor_right = 0.5
@@ -669,7 +699,7 @@ func _build_hud() -> void:
 	big_lbl.anchor_bottom = 0.2
 	big_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	big_lbl.add_theme_constant_override("outline_size", 8)
-	root.add_child(big_lbl)
+	top.add_child(big_lbl)
 	hint_lbl = _label("", 14, DIM)
 	hint_lbl.anchor_left = 0.5
 	hint_lbl.anchor_right = 0.5
@@ -679,8 +709,8 @@ func _build_hud() -> void:
 	hint_lbl.offset_right = 400
 	hint_lbl.offset_top = -bh - 52
 	hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint_lbl.text = "Left / right mouse and Q E R F G V: your skills (K to set them)  ·  N: talents  ·  J: quests  ·  Space: swing  ·  Shift: sprint  ·  1-4: potions  ·  I/C: inventory/stats  ·  T: portal  ·  Tab: map"
-	root.add_child(hint_lbl)
+	hint_lbl.text = "WASD: move  ·  Left mouse: attack  ·  Right mouse, Q E R F G V: skills (K to set them)  ·  Space: dodge roll (hold to sprint)  ·  N: talents  ·  J: quests  ·  1-4: potions  ·  I/C: inventory/stats  ·  T: portal  ·  Tab: map"
+	hud.add_child(hint_lbl)
 	minimap = Minimap.new()
 	minimap.ui = self
 	minimap.anchor_left = 1.0
@@ -690,7 +720,7 @@ func _build_hud() -> void:
 	minimap.offset_top = 40
 	minimap.offset_bottom = 252
 	minimap.set_big(false)
-	root.add_child(minimap)
+	hud.add_child(minimap)
 	quest_tracker = VBoxContainer.new()
 	quest_tracker.anchor_left = 1.0
 	quest_tracker.anchor_right = 1.0
@@ -699,7 +729,7 @@ func _build_hud() -> void:
 	quest_tracker.offset_top = 262
 	quest_tracker.add_theme_constant_override("separation", 1)
 	quest_tracker.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(quest_tracker)
+	hud.add_child(quest_tracker)
 
 ## Small gold key-cap in a slot's corner showing its hotkey.
 func _keycap(k: String) -> PanelContainer:
@@ -880,7 +910,7 @@ func _choose_skill(slot: String) -> void:
 	cover.gui_input.connect(func(ev):
 		if ev is InputEventMouseButton and ev.pressed:
 			close_skill_picker())
-	root.add_child(cover)
+	windows.add_child(cover)
 	skill_picker = cover
 	var frame := NinePatchRect.new()
 	frame.texture = load(BAR_TEX["frame"])
@@ -1518,7 +1548,7 @@ func _panel(title: String, left: bool, w: int, h: int) -> PanelContainer:
 		p.offset_top = 60
 	p.custom_minimum_size = Vector2(w, h)
 	p.visible = false
-	root.add_child(p)
+	windows.add_child(p)
 	var vb := VBoxContainer.new()
 	vb.name = "vb"
 	vb.add_theme_constant_override("separation", 10)
@@ -1585,7 +1615,7 @@ func _build_inventory() -> void:
 	inv_panel.custom_minimum_size = INV_SIZE
 	inv_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	inv_panel.visible = false
-	root.add_child(inv_panel)
+	windows.add_child(inv_panel)
 	var body := Control.new()
 	body.name = "body"
 	body.custom_minimum_size = INV_SIZE
@@ -1772,6 +1802,8 @@ func _inv_click(idx: int, ev: InputEventMouseButton) -> void:
 			refresh()
 		elif shop_mode == "burn":
 			burn_request(idx)
+		elif shop_mode == "furnace":
+			furnace_ui.bag_click(idx, ev.shift_pressed)
 		elif shop_mode == "stash":
 			for i in hero.stash.size():
 				if hero.stash[i] == null:
@@ -1809,11 +1841,11 @@ func _start_drag(idx: int) -> void:
 		drag_ghost.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		drag_ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		drag_ghost.z_index = 100
-		root.add_child(drag_ghost)
+		top.add_child(drag_ghost)
 		drag_hint = _label("", 15, Color(1.0, 0.86, 0.5), true)
 		drag_hint.z_index = 100
 		drag_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		root.add_child(drag_hint)
+		top.add_child(drag_hint)
 	drag_ghost.texture = src.texture
 	drag_ghost.size = Vector2(CELL, CELL) * 1.7
 	drag_ghost.pivot_offset = drag_ghost.size * 0.5
@@ -2202,6 +2234,38 @@ func _add_stat(stat: String) -> void:
 	hero.recalc()
 
 # ---------------------------------------------------------------- shops & stash
+func _build_sail_prompt() -> void:
+	sail_prompt = Button.new()
+	sail_prompt.anchor_left = 0.5
+	sail_prompt.anchor_right = 0.5
+	sail_prompt.anchor_top = 1.0
+	sail_prompt.anchor_bottom = 1.0
+	sail_prompt.offset_left = -190
+	sail_prompt.offset_right = 190
+	sail_prompt.offset_top = -250
+	sail_prompt.offset_bottom = -210
+	sail_prompt.add_theme_font_override("font", font_title)
+	sail_prompt.add_theme_font_size_override("font_size", 18)
+	sail_prompt.add_theme_color_override("font_color", GOLD)
+	sail_prompt.add_theme_stylebox_override("normal", _box(Color(0.045, 0.035, 0.025, 0.88), Color(0.62, 0.48, 0.26), 2, 4, 8))
+	sail_prompt.add_theme_stylebox_override("hover", _box(Color(0.09, 0.07, 0.04, 0.95), Color(0.86, 0.68, 0.36), 2, 4, 8))
+	sail_prompt.visible = false
+	sail_prompt.pressed.connect(func():
+		accept_event_safe()
+		game.try_land())
+	hud.add_child(sail_prompt)
+
+func accept_event_safe() -> void:
+	if is_inside_tree():
+		get_viewport().set_input_as_handled()
+
+func set_sail_prompt(t: String) -> void:
+	if sail_prompt == null:
+		return
+	sail_prompt.visible = t != ""
+	if t != "":
+		sail_prompt.text = "E   " + t
+
 func _build_shop() -> void:
 	shop_panel = _panel("Merchant", true, 500, 600)
 	var vb: VBoxContainer = shop_panel.get_node("vb")
@@ -2268,7 +2332,7 @@ func _build_shop() -> void:
 	vb.add_child(_label("Left-click to buy  ·  Right-click your own items to sell  ·  Walk away to close", 13, DIM))
 
 const SHOP_KINDS := {"weapon": "Weapons", "shield": "Shields", "armor": "Armour", "helm": "Armour", "gloves": "Armour",
-	"boots": "Armour", "belt": "Armour", "ring": "Jewellery", "amulet": "Jewellery", "potion": "Potions"}
+	"boots": "Armour", "belt": "Armour", "ring": "Jewellery", "amulet": "Jewellery", "potion": "Potions", "tool": "Tools", "resource": "Goods"}
 
 static func shop_kind(it: Dictionary) -> String:
 	return str(SHOP_KINDS.get(str(Data.BASES[it["base"]]["slot"]), "Goods"))
@@ -2278,6 +2342,8 @@ func shop_cost(it: Dictionary) -> int:
 
 ## The trade window, headed by the trader (who, when there is one: their portrait, name and trade).
 func open_shop(mode: String, title: String, items: Array, who: Inter = null, greet := "") -> void:
+	if furnace_ui != null:
+		furnace_ui.visible = false
 	shop_mode = mode
 	shop_items = items
 	shop_title.text = title
@@ -2421,6 +2487,8 @@ func _build_stash() -> void:
 		stash_cells.append(c)
 
 func open_stash() -> void:
+	if furnace_ui != null:
+		furnace_ui.visible = false
 	shop_mode = "stash"
 	burn_panel.visible = false
 	stash_panel.visible = true
@@ -2468,7 +2536,7 @@ func _build_vote() -> void:
 	vote_panel.offset_top = 30
 	vote_panel.offset_bottom = 30 + 124
 	vote_panel.visible = false
-	root.add_child(vote_panel)
+	modals.add_child(vote_panel)
 	var iron := TextureRect.new()
 	iron.texture = _scaled_tex(INV_TEX["iron"], 0.2)
 	iron.stretch_mode = TextureRect.STRETCH_TILE
@@ -2579,7 +2647,7 @@ func _build_burn() -> void:
 	burn_panel.custom_minimum_size = BURN_SIZE
 	burn_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	burn_panel.visible = false
-	root.add_child(burn_panel)
+	windows.add_child(burn_panel)
 	var body := Control.new()
 	body.custom_minimum_size = BURN_SIZE
 	body.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -2757,7 +2825,22 @@ class FireIcon extends Control:
 					draw_line(r, r + Vector2(cos(ang), sin(ang)) * s * 0.16, Color(0.55, 0.9, 1.0, glow), 2.0)
 				draw_circle(r, s * 0.05, Color(0.8, 0.95, 1.0, glow))
 
+## Halvar's furnace: the furnace window beside the bag (FurnaceUI); right-clicks in the bag feed it.
+func open_furnace(f: Furnace) -> void:
+	ench_panel.visible = false
+	burn_panel.visible = false
+	stash_panel.visible = false
+	shop_panel.visible = false
+	char_panel.visible = false
+	shop_mode = "furnace"
+	trade_with = f
+	furnace_ui.open(f)
+	inv_panel.visible = true
+	refresh()
+
 func open_burn() -> void:
+	if furnace_ui != null:
+		furnace_ui.visible = false
 	shop_mode = "burn"
 	ench_panel.visible = false
 	_bonfire_select("burn")
@@ -2804,8 +2887,13 @@ class Flames extends Control:
 		_fire.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var m := ShaderMaterial.new()
 		var sh := Shader.new()
-		sh.code = FIRE_SHADER
+		# the simulated fire's flipbook (FireFx) when it is there: three flames played out of step, side by side
+		var book := FireFx.book("body")
+		sh.code = FIRE_FLIP_SHADER if book != null else FIRE_SHADER
 		m.shader = sh
+		if book != null:
+			m.set_shader_parameter("flip_tex", book)
+			m.set_shader_parameter("grid", FireFx.grid_of("body"))
 		_fire.material = m
 		add_child(_fire)
 		_front = Control.new()
@@ -2860,6 +2948,39 @@ class Flames extends Control:
 			_front.draw_colored_polygon(pts, Color(0.19, 0.17, 0.155) * lit)
 			_front.draw_arc(Vector2(cx, cy + 2.0), rw * 0.9, PI * 1.15, PI * 1.85, 8, Color(1.0, 0.5, 0.2, 0.35 * lit + flare * 0.3), 2.0)
 
+## The bonfire window's fire from the simulated flipbook: a tall flame in the middle and two smaller ones either
+## side, each at its own speed and frame, the side ones mirrored; all light (added), brighter on a flare.
+const FIRE_FLIP_SHADER := """
+shader_type canvas_item;
+render_mode blend_add;
+uniform sampler2D flip_tex : source_color, filter_linear_mipmap;
+uniform vec2 grid = vec2(6.0, 6.0);
+uniform float flare = 0.0;
+vec3 frame_at(float f, vec2 uv) {
+	float n = grid.x * grid.y;
+	f = mod(f, n);
+	vec2 cell = vec2(mod(f, grid.x), floor(f / grid.x));
+	return texture(flip_tex, (cell + clamp(uv, vec2(0.002), vec2(0.998))) / grid).rgb;
+}
+vec3 flame(vec2 uv, vec2 at, vec2 sz, float speed, float off, bool flip) {
+	vec2 u = (uv - at) / sz + vec2(0.5, 1.0);
+	if (u.x < 0.0 || u.x > 1.0 || u.y < 0.0 || u.y > 1.0) { return vec3(0.0); }
+	if (flip) { u.x = 1.0 - u.x; }
+	float f = TIME * 30.0 * speed + off;
+	float f0 = floor(f);
+	return mix(frame_at(f0, u), frame_at(f0 + 1.0, u), f - f0);
+}
+void fragment() {
+	vec2 uv = UV;
+	float grow = 1.0 + flare * 0.3;
+	vec3 c = flame(uv, vec2(0.5, 0.86), vec2(0.62, 1.05) * grow, 1.0, 0.0, false);
+	c += flame(uv, vec2(0.33, 0.87), vec2(0.42, 0.72) * grow, 0.86, 11.0, true) * 0.75;
+	c += flame(uv, vec2(0.67, 0.87), vec2(0.4, 0.68) * grow, 1.12, 23.0, false) * 0.7;
+	c *= 1.05 + flare * 0.5;
+	COLOR = vec4(c, 1.0);
+}
+"""
+
 const FIRE_SHADER := """
 shader_type canvas_item;
 uniform float flare = 0.0;
@@ -2890,7 +3011,7 @@ void fragment() {
 ## Data.WAYPOINT_ACTS.
 func _build_waypoints() -> void:
 	var wp := WaypointPanel.new()
-	root.add_child(wp)
+	windows.add_child(wp)
 	wp.setup(self)
 	wp_panel = wp
 
@@ -2913,7 +3034,7 @@ func _build_dialog() -> void:
 	dialog_panel.offset_top = -170
 	dialog_panel.offset_bottom = 120
 	dialog_panel.visible = false
-	root.add_child(dialog_panel)
+	modals.add_child(dialog_panel)
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 14)
 	dialog_panel.add_child(vb)
@@ -2951,11 +3072,11 @@ func _build_pause() -> void:
 	pause_panel.anchor_bottom = 0.5
 	pause_panel.offset_left = -170
 	pause_panel.offset_right = 170
-	pause_panel.offset_top = -250
-	pause_panel.offset_bottom = 250
+	pause_panel.offset_top = -280
+	pause_panel.offset_bottom = 280
 	pause_panel.visible = false
 	pause_panel.process_mode = Node.PROCESS_MODE_ALWAYS
-	root.add_child(pause_panel)
+	modals.add_child(pause_panel)
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 12)
 	pause_panel.add_child(vb)
@@ -2983,6 +3104,13 @@ func _build_pause() -> void:
 		update_sound_btn())
 	vb.add_child(sound_btn)
 	update_sound_btn()
+	var ctl := Button.new()
+	var ctl_text := func(): ctl.text = "Controls: " + ("click to move (classic)" if game.click_move else "WASD + click to attack")
+	ctl_text.call()
+	ctl.pressed.connect(func():
+		game.set_click_move(not game.click_move)
+		ctl_text.call())
+	vb.add_child(ctl)
 	if game.dev_tools:
 		var kit := Button.new()
 		kit.text = "Testing panel (F8)"
@@ -3013,15 +3141,19 @@ func _build_test_panel() -> void:
 	test_panel.offset_left = 20
 	test_panel.offset_top = 60
 	test_panel.offset_right = 330
-	test_panel.offset_bottom = 440
+	test_panel.offset_bottom = 490
 	test_panel.visible = false
 	test_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	root.add_child(test_panel)
+	modals.add_child(test_panel)
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 10)
 	test_panel.add_child(vb)
 	vb.add_child(_label("Testing", 22, GOLD, true))
 	vb.add_child(_label(("Admin: " + game.admin_name) if game.admin_name != "" else "Admin: editor", 12, Color(0.55, 0.85, 1.0)))
+	var mx := Button.new()
+	mx.text = "Max out this character"
+	mx.pressed.connect(func(): game.max_out())
+	vb.add_child(mx)
 	var imm := CheckButton.new()
 	imm.text = "Immortal (take no damage)"
 	imm.button_pressed = game.test_immortal
@@ -3092,12 +3224,33 @@ func _update_gfx_btn() -> void:
 	if gfx_info:
 		gfx_info.text = game.renderer_info()
 
+## The shade under the co-op and Battlegrounds screens (the title shows dimmed behind them, and can't be clicked).
+func _sync_menu_shade() -> void:
+	if menu_shade == null:
+		menu_shade = ColorRect.new()
+		menu_shade.name = "menu_shade"
+		menu_shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+		menu_shade.color = Color(0.0, 0.0, 0.0, 0.55)
+		menu_shade.mouse_filter = Control.MOUSE_FILTER_STOP
+		menus.add_child(menu_shade)
+		menus.move_child(menu_shade, title_panel.get_index() + 1)
+	menu_shade.visible = (join_panel != null and join_panel.visible) or (bg_panel != null and bg_panel.visible)
+
+## One of the screen's layers (see `setup`): a full-screen holder that lets the mouse through.
+func _layer(nm: String) -> Control:
+	var l := Control.new()
+	l.name = nm
+	l.set_anchors_preset(Control.PRESET_FULL_RECT)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(l)
+	return l
+
 func _fullscreen_panel(col: Color) -> Control:
 	var c := ColorRect.new()
 	c.set_anchors_preset(Control.PRESET_FULL_RECT)
 	c.color = col
 	c.visible = false
-	root.add_child(c)
+	modals.add_child(c)
 	return c
 
 var title_stage: TitleStage
@@ -3111,7 +3264,7 @@ var _title_busy := false        # a choice is under way: ignore more clicks
 func _build_title() -> void:
 	title_panel = Control.new()
 	title_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root.add_child(title_panel)
+	menus.add_child(title_panel)
 	title_stage = TitleStage.new()
 	title_stage.set_anchors_preset(Control.PRESET_FULL_RECT)
 	title_panel.add_child(title_stage)
@@ -3204,6 +3357,16 @@ func _build_title() -> void:
 		envl.name = "env_badge"
 		envl.position = Vector2(14, 10)
 		title_panel.add_child(envl)
+	# the build, tiny in the corner, so a screenshot shows at once whether a copy is out of date
+	var rev := _label("%s · %s" % [BuildEnv.env(), BuildEnv.value("rev")], 11, Color(0.5, 0.47, 0.42, 0.7))
+	rev.name = "build_rev"
+	rev.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	rev.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	rev.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	rev.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	rev.offset_right = -10
+	rev.offset_bottom = -6
+	title_panel.add_child(rev)
 	var slots := _label("", 13, Color(0.62, 0.58, 0.5))
 	slots.name = "slots"
 	slots.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -3334,8 +3497,9 @@ func _build_join() -> void:
 	join_panel.offset_right = 300
 	join_panel.offset_top = -230
 	join_panel.offset_bottom = 230
+	join_panel.visibility_changed.connect(_sync_menu_shade)
 	join_panel.visible = false
-	root.add_child(join_panel)
+	menus.add_child(join_panel)
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 12)
 	join_panel.add_child(vb)
@@ -3373,42 +3537,43 @@ func _build_join() -> void:
 	back.custom_minimum_size = Vector2(0, 40)
 	back.pressed.connect(func():
 		join_panel.visible = false
-		game.net.stop_listening()
-		title_panel.visible = true)
+		game.net.stop_listening())
 	vb.add_child(back)
 
-## The Battlegrounds screen (battlegrounds.gd): pick a class, type the raid server's address, Enter; the stash below
-## is what you have extracted (as the server last reported it).
+## The Battlegrounds screen (battlegrounds.gd): pick one of your characters, the raid server's address, Enter. Death in
+## the crypt costs everything carried (Game.bg_strip; levels kept), and the screen says so before anyone goes in.
 func _build_battlegrounds() -> void:
 	bg_panel = PanelContainer.new()
+	bg_panel.visibility_changed.connect(_sync_menu_shade)
 	bg_panel.anchor_left = 0.5
 	bg_panel.anchor_right = 0.5
 	bg_panel.anchor_top = 0.5
 	bg_panel.anchor_bottom = 0.5
-	bg_panel.offset_left = -320
-	bg_panel.offset_right = 320
-	bg_panel.offset_top = -270
-	bg_panel.offset_bottom = 270
+	bg_panel.offset_left = -330
+	bg_panel.offset_right = 330
+	bg_panel.offset_top = -250
+	bg_panel.offset_bottom = 250
 	bg_panel.visible = false
-	root.add_child(bg_panel)
+	menus.add_child(bg_panel)
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 10)
 	bg_panel.add_child(vb)
-	var t := _label("The Battlegrounds", 28, GOLD, true)
+	var t := _label(Battlegrounds.TITLE, 30, GOLD, true)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(t)
-	var sub := _label("Enter the raid, kill, loot, and reach an Extraction Portal to keep what you found. Fall, and it stays where you fell.", 14, Color(0.75, 0.7, 0.62))
+	var sub := _label("Descend with one of your heroes. Monsters are few and deadly, other players are hunting too, and the Extraction Portals only open %d minutes in. Get out alive and everything you carry is yours. Fall, and it lies where you fell." % int(Battlegrounds.PORTALS_AT / 60.0), 14, Color(0.78, 0.72, 0.64))
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(sub)
+	var warn := _label("☠  DEATH COSTS EVERYTHING YOU CARRY. Fall in the crypt and every item you wear and carry, your belt and your gold stay where you fell. Your hero lives on: levels, stats and talents are kept, and your camp stash is safe.", 15, Color(1.0, 0.42, 0.32), true)
+	warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vb.add_child(warn)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	vb.add_child(row)
-	row.add_child(_label("Class", 16))
+	row.add_child(_label("Hero", 16))
 	bg_class = OptionButton.new()
-	for c in Data.CLASSES.keys():
-		bg_class.add_item(str(Data.CLASSES[c].get("name", c)))
-		bg_class.set_item_metadata(bg_class.item_count - 1, c)
-	bg_class.custom_minimum_size = Vector2(180, 36)
+	bg_class.custom_minimum_size = Vector2(380, 36)
+	bg_class.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(bg_class)
 	vb.add_child(_label("Server address (host or host:port):", 14, Color(0.7, 0.66, 0.58)))
 	var row2 := HBoxContainer.new()
@@ -3422,55 +3587,52 @@ func _build_battlegrounds() -> void:
 	row2.add_child(bg_addr)
 	var go := Button.new()
 	go.name = "enter"
-	go.text = "Enter"
-	go.custom_minimum_size = Vector2(100, 40)
+	go.text = "Enter the Crypt"
+	go.custom_minimum_size = Vector2(150, 40)
 	go.pressed.connect(func(): _bg_go())
 	row2.add_child(go)
-	vb.add_child(_label("Your stash", 18, GOLD))
-	var sc := ScrollContainer.new()
-	sc.custom_minimum_size = Vector2(0, 200)
-	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	vb.add_child(sc)
-	bg_stash_list = VBoxContainer.new()
-	bg_stash_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sc.add_child(bg_stash_list)
 	var back := Button.new()
 	back.text = "Back"
 	back.custom_minimum_size = Vector2(0, 40)
-	back.pressed.connect(func():
-		bg_panel.visible = false
-		title_panel.visible = true)
+	back.pressed.connect(func(): bg_panel.visible = false)
 	vb.add_child(back)
 
 func open_battlegrounds() -> void:
-	title_panel.visible = false
 	join_panel.visible = false
 	bg_panel.visible = true
 	bg_addr.text = str(game._load_setting("battlegrounds", "address", ""))
 	if bg_addr.text == "" and BuildEnv.env() != "local":
 		bg_addr.text = BuildEnv.value("bg_server")      # a staging or production build knows its server
-	var last := str(game._load_setting("battlegrounds", "class", "knight"))
-	for i in bg_class.item_count:
-		if bg_class.get_item_metadata(i) == last:
-			bg_class.select(i)
-	for c in bg_stash_list.get_children():
-		c.queue_free()
-	var st: Array = game.bg_stash if not game.bg_stash.is_empty() else Battlegrounds.cached_stash()
-	if st.is_empty():
-		bg_stash_list.add_child(_label("Empty. Extract with loot to fill it.", 14, Color(0.6, 0.57, 0.5)))
-	for it in st:
-		var nm := "%d gold" % int(it.get("count", 0)) if str(it.get("base", "")) == "gold" else str(it.get("name", it.get("base", "?")))
-		bg_stash_list.add_child(_label(nm, 15, Data.RARITY_COLOR[clampi(int(it.get("rarity", 0)), 0, Data.RARITY_COLOR.size() - 1)]))
+	bg_class.clear()
+	var last := str(game._load_setting("battlegrounds", "character", ""))
+	for c in game.list_characters():
+		bg_class.add_item("%s  ·  level %d %s" % [c["name"], int(c["level"]), str(Data.CLASSES.get(c["cls"], {}).get("name", c["cls"]))])
+		bg_class.set_item_metadata(bg_class.item_count - 1, c["id"])
+		if c["id"] == last:
+			bg_class.select(bg_class.item_count - 1)
+	var go := bg_panel.find_child("enter", true, false) as Button
+	if bg_class.item_count == 0:
+		bg_class.add_item("No heroes yet: create one first")
+		bg_class.disabled = true
+		go.disabled = true
+	else:
+		bg_class.disabled = false
+		go.disabled = false
 
 func _bg_go() -> void:
-	var cls: String = str(bg_class.get_item_metadata(bg_class.selected)) if bg_class.selected >= 0 else "knight"
-	game._save_setting("battlegrounds", "class", cls)
-	bg_panel.visible = false
-	game.start_battlegrounds(bg_addr.text if bg_addr.text.strip_edges() != "" else "127.0.0.1", cls)
+	if bg_class.disabled or bg_class.selected < 0:
+		return
+	var id := str(bg_class.get_item_metadata(bg_class.selected))
+	var nm := bg_class.get_item_text(bg_class.selected).split("  ·  ")[0]
+	var addr := bg_addr.text if bg_addr.text.strip_edges() != "" else "127.0.0.1"
+	# a last word before risking everything they carry
+	open_dialog(Battlegrounds.TITLE, "%s will enter with everything they wear and carry. If %s dies down there, all of it stays on the crypt floor (their levels and talents are kept).\n\nEnter the crypt?" % [nm, nm],
+		[["Enter", func():
+			bg_panel.visible = false
+			game.start_battlegrounds(addr, id)], ["Not yet", func(): pass]])
 
 func open_join() -> void:
 	Sfx.play("click")
-	title_panel.visible = false
 	join_panel.visible = true
 	game.net.start_listening()
 	_refresh_join()
@@ -3535,6 +3697,8 @@ func _build_enchant() -> void:
 	vb.add_child(ench_gold)
 
 func open_enchant(title: String) -> void:
+	if furnace_ui != null:
+		furnace_ui.visible = false
 	close_all()
 	(ench_panel.get_node("vb").get_child(0).get_node("title") as Label).text = title + " · Enchanting"
 	ench_panel.visible = true
@@ -3606,7 +3770,7 @@ func _enchant_burst(p: Control) -> void:
 		sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		sp.position = c - Vector2(2.5, 2.5)
 		sp.rotation = PI * 0.25
-		root.add_child(sp)
+		top.add_child(sp)
 		var a := TAU * i / 16.0
 		var tw := create_tween().set_parallel(true)
 		tw.tween_property(sp, "position", sp.position + Vector2(cos(a), sin(a)) * 60.0, 0.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
@@ -4179,8 +4343,7 @@ func hide_title() -> void:
 	_set_hud(true)
 
 func _set_hud(v: bool) -> void:
-	for n in [life_globe, mana_globe, life_lbl, mana_lbl, action_bar, zone_lbl, hint_lbl, minimap]:
-		n.visible = v
+	hud.visible = v
 
 func _build_death() -> void:
 	death_panel = _fullscreen_panel(Color(0.15, 0.0, 0.0, 0.55))
@@ -4205,6 +4368,83 @@ func _build_death() -> void:
 		death_panel.visible = false
 		game.respawn())
 	vb.add_child(b)
+
+## The Battlegrounds' death screen: the world dimmed red, who you're watching with arrows to switch, and the way out.
+## In the HUD's layer, so it is only ever seen in play.
+func _build_spectate() -> void:
+	spectate_panel = Control.new()
+	spectate_panel.name = "spectate"
+	spectate_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	spectate_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	spectate_panel.visible = false
+	hud.add_child(spectate_panel)
+	var tint := ColorRect.new()
+	tint.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tint.color = Color(0.14, 0.0, 0.0, 0.25)
+	tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	spectate_panel.add_child(tint)
+	var head := VBoxContainer.new()
+	head.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	head.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	head.offset_top = 92
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	spectate_panel.add_child(head)
+	var t := _label("YOU HAVE FALLEN", 40, Color(0.85, 0.14, 0.08), true)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	head.add_child(t)
+	var s := _label("Everything you carried lies where you fell. Your hero lives on.", 15, Color(0.85, 0.75, 0.68))
+	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	head.add_child(s)
+	var box := PanelContainer.new()
+	box.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	box.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	box.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	box.offset_bottom = -225          # (above the action bar, the experience bar and the keys' hint line)
+	spectate_panel.add_child(box)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 8)
+	box.add_child(vb)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 14)
+	vb.add_child(row)
+	_spec_btns = []
+	for d in [-1, 1]:
+		var b := Button.new()
+		b.text = "◀" if d < 0 else "▶"
+		b.custom_minimum_size = Vector2(44, 40)
+		var dir: int = d
+		b.pressed.connect(func(): game.spectate_next(dir))
+		_spec_btns.append(b)
+	row.add_child(_spec_btns[0])
+	_spec_name = _label("", 20, GOLD, true)
+	_spec_name.custom_minimum_size = Vector2(300, 0)
+	_spec_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	row.add_child(_spec_name)
+	row.add_child(_spec_btns[1])
+	_spec_hint = _label("Tab or ← → to watch someone else", 13, DIM)
+	_spec_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(_spec_hint)
+	var leave := Button.new()
+	leave.name = "leave"
+	leave.text = "Leave the Crypt"
+	leave.custom_minimum_size = Vector2(0, 42)
+	leave.pressed.connect(func():
+		game.spectate_stop()
+		game.respawn())
+	vb.add_child(leave)
+
+## The name of the player being watched ("" for no one).
+func spectate_name() -> String:
+	return str(game.net.players[game.spectating]["name"]) if game.spectate_hero() != null else ""
+
+func update_spectate() -> void:
+	var n: int = game.spectate_targets().size()
+	var nm := spectate_name()
+	_spec_name.text = ("Watching  %s" % nm) if nm != "" else "No one left alive to watch"
+	for b in _spec_btns:
+		(b as Button).disabled = n < 2
+	_spec_hint.visible = n >= 2
 
 func _build_victory() -> void:
 	victory_panel = _fullscreen_panel(Color(0.0, 0.0, 0.0, 0.6))
@@ -4273,21 +4513,21 @@ func toggle(panel: Control) -> void:
 func _walked_off() -> void:
 	if trade_with == null:
 		return
-	var open := shop_panel.visible or stash_panel.visible or burn_panel.visible or dialog_panel.visible or ench_panel.visible
+	var open := shop_panel.visible or stash_panel.visible or burn_panel.visible or furnace_ui.visible or dialog_panel.visible or ench_panel.visible or boat_panel.visible
 	if not open or not is_instance_valid(trade_with) or hero == null:
 		trade_with = null
 		return
 	var d: Vector3 = hero.global_position - trade_with.global_position
 	if Vector2(d.x, d.z).length() > trade_with.radius + 3.0:
 		trade_with = null
-		for p in [shop_panel, stash_panel, burn_panel, dialog_panel, ench_panel, inv_panel]:
+		for p in [shop_panel, stash_panel, burn_panel, furnace_ui, dialog_panel, ench_panel, inv_panel, boat_panel]:
 			p.visible = false
 		shop_mode = ""
 		tooltip.visible = false
 
 func close_all() -> bool:
 	var any := close_skill_picker()
-	for p in [inv_panel, char_panel, shop_panel, stash_panel, burn_panel, wp_panel, dialog_panel, ench_panel, test_panel, skills_panel, talent_panel, quest_panel]:
+	for p in [inv_panel, char_panel, shop_panel, stash_panel, burn_panel, furnace_ui, wp_panel, dialog_panel, ench_panel, test_panel, skills_panel, talent_panel, quest_panel, boat_panel]:
 		if p.visible:
 			p.visible = false
 			any = true
@@ -4295,8 +4535,13 @@ func close_all() -> bool:
 	tooltip.visible = false
 	return any
 
+## The title with nothing open over it (no class picker, character list, co-op or Battlegrounds screen).
+func title_idle() -> bool:
+	return title_panel.visible and not (class_panel != null and class_panel.visible) and not (chars_panel != null and chars_panel.visible) \
+		and not join_panel.visible and not bg_panel.visible
+
 func any_panel_open() -> bool:
-	return inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible or quest_panel.visible
+	return inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or furnace_ui.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible or quest_panel.visible or boat_panel.visible
 
 func message(t: String, col := Color(1, 1, 1), dur := 2.5) -> void:
 	msg_lbl.text = t
@@ -4325,6 +4570,8 @@ func hide_target() -> void:
 	target_box.visible = false
 
 func set_boss(e) -> void:
+	if e != null and e != boss_ref:
+		Telemetry.crumb("boss", {"kind": str(e.kind)})
 	boss_ref = e
 	boss_bar_box.visible = e != null
 	if e:
@@ -4413,6 +4660,8 @@ func refresh() -> void:
 		char_labels["gf"].text = "%d%%" % hero.gf
 
 func _process(delta: float) -> void:
+	if boat_shop:
+		boat_shop.tick(delta)
 	_update_drag(delta)
 	_walked_off()
 	if class_stage != null and class_stage.is_visible_in_tree():
@@ -4871,6 +5120,7 @@ class Minimap extends Control:
 	var view_m := 80.0
 	var _reveal_t := 0.0
 	var has_map := false
+	var chart := false        # the coast's sea chart (Game._sea_chart): a wider view, more so while sailing
 
 	func _init() -> void:
 		var sh := Shader.new()
@@ -4946,7 +5196,9 @@ class Minimap extends Control:
 		if g == null or g.hero == null or g.world == null:
 			return
 		if big:
-			view_m = clampf(maxf(map_rect.size.x, map_rect.size.y) * 0.95, 60.0, 130.0)
+			view_m = clampf(maxf(map_rect.size.x, map_rect.size.y) * 0.95, 60.0, 520.0 if chart else 130.0)
+		elif chart:
+			view_m = lerpf(view_m, 240.0 if g.sailing() else 110.0, clampf(delta * 2.0, 0.0, 1.0))
 		var hp: Vector3 = g.hero.global_position
 		_reveal_t -= delta
 		if _reveal_t <= 0.0:

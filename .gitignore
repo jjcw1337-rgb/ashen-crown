@@ -25,3 +25,4 @@ assets/models/monsters/feral*_*.jpg
 # admin keys never go in the repo (AdminKey)
 *.pem
 admin.key
+waveletNoiseTile.bin

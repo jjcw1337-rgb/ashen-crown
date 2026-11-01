@@ -1,0 +1,54 @@
+// Grafana Alloy: ships the server's logs to Loki (docs/nightly/TELEMETRY.md):
+//  - the systemd journal: the game servers (ashen-crown-bg, ashen-crown-coop) and the rest of the box, label `unit`;
+//  - every Docker container (Nakama, Caddy, Postgres, Grafana), label `container`.
+// Lines with ERROR / SCRIPT ERROR / panic get the label level="error".
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+
+loki.relabel "journal" {
+  forward_to = []
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+}
+
+loki.source.journal "system" {
+  path          = "/var/log/journal"
+  relabel_rules = loki.relabel.journal.rules
+  labels        = { job = "journal", host = "staging" }
+  forward_to    = [loki.process.levels.receiver]
+}
+
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.containers.output
+  labels     = { job = "docker", host = "staging" }
+  forward_to = [loki.process.levels.receiver]
+}
+
+loki.process "levels" {
+  forward_to = [loki.write.local.receiver]
+  stage.match {
+    selector = "{job=~\".+\"} |~ \"(SCRIPT ERROR|ERROR:|\\\"level\\\":\\\"error\\\"|panic)\""
+    stage.static_labels {
+      values = { level = "error" }
+    }
+  }
+}

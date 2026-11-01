@@ -1,14 +1,16 @@
 You are the Ashen Crown NIGHTLY GAME MODE run. You work alone, unattended, in a checkout of the `staging` branch
-(the current directory) on the Game Factory Mac, right after tonight's performance run. Nobody will answer
+(the current directory) on the Game Factory Mac, in the evening (the performance and triage jobs follow overnight). Nobody will answer
 questions: decide, build, test, record. Read CLAUDE.md first (especially "Battlegrounds", "Staging and accounts" and
 "Co-op"). Night: {{DATE}}. Output folder for images: {{OUT}}.
 
 GOAL: by morning, Blaine and JJ can open the itch.io staging build and play a NEW multiplayer game mode or map
 together, on the staging server, and it's fun enough to have an opinion about.
 
-1. Learn from the past. Read docs/nightly/modes/INDEX.md, every docs/nightly/modes/*/feedback.md (what they liked
-   and disliked is the most important input you have) and docs/nightly/README.md. Don't rebuild something that
-   exists; build on what got good feedback, avoid what got bad feedback.
+1. Learn from the past. Read docs/nightly/modes/LOG.md FIRST: its Lessons and every row, above all the Verdict
+   column (Blaine's and JJ's keep / iterate / cut) and Next. Open the linked folders' feedback.md of every mode with
+   feedback (what they liked and disliked is the most important input you have) and docs/nightly/README.md. Don't
+   rebuild something that exists; iterate on "keep"/"iterate" verdicts, avoid what got "cut". The nightly script
+   benchmarks the game before and after your session: if the main game got slower, your work does not ship.
 2. Pick ONE concept: a new Battlegrounds map, a new mode on the dedicated server (king of the hill, horde survival,
    escort, capture the relic, a boss raid, extraction variant, PvP arena...) or a co-op map. It must:
    - be reachable from the game's UI (e.g. a mode picker on the Battlegrounds screen, or a portal in a raid);
@@ -31,7 +33,9 @@ together, on the staging server, and it's fun enough to have an opinion about.
      (Meshy/ElevenLabs credits) - the script adds the Claude cost;
    - feedback.md: a template with headings "Blaine", "JJ", "Verdict (keep / iterate / cut)", left empty;
    - copy the best screenshots in;
-   and append a line to docs/nightly/modes/INDEX.md: | {{DATE}} | name | pitch | playable / not | (empty) |
+   and add a row to docs/nightly/modes/LOG.md (short cells):
+     | {{DATE}} | name | pitch (one line) | playable / not (tests) | (empty) | Next: what to build on or fix | [{{DATE}}-<slug>](<{{DATE}}-<slug>/README.md>) |
+   and REWRITE its Lessons list (at most 8 bullets: what players liked, what failed to build, what's quick to reuse);
    Also write {{OUT}}/mode_summary.md: a launch announcement for Discord, HYPE AS HELL (it's a "multiplayer game
    launch!"), 8-15 lines: name, pitch, how to jump in, what's new, a callout to give feedback. Fun, not cringe.
    And {{OUT}}/mode_costs.json: {"meshy_credits": n, "elevenlabs_credits": n, "notes": "..."}.

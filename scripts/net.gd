@@ -10,7 +10,7 @@ const MAX_CLIENTS := 3
 const STYLES := ["over", "back", "side", "thrust", "bow", "cast", "claw", "slam", "bite", "smash", "lob", "scoop", "burst", "cackle", "swipe1", "swipe2", "swipe3", "cleave", "feral_lunge", "feral_swipe", "perch", "descend", "skirm_lunge", "reaver_cleave", "stalk_hook", "bear_roar", "bear_maul", "sloth_walk", "sloth_run", "sloth_rise", "sloth_look", "sloth_stare", "sloth_roar", "sloth_drop", "sloth_sniff", "sloth_sweep", "sloth_slam", "sloth_pounce",
 	"rend", "siphon", "wstep", "grasp", "phantom", "night_rise", "night_scream", "night_hold", "night_fall",
 	"pd_flask", "pd_volatile", "pd_trap", "pd_slam", "pd_dome", "pd_inspect",
-	"fists", "icharge", "cslam", "hurl", "grip", "wrath_roar", "wrath_stomp"]
+	"fists", "icharge", "cslam", "hurl", "grip", "wrath_roar", "wrath_stomp", "chop"]
 const SEND_RATE := 0.05
 const ALLY_COLORS := [Color(0.45, 0.8, 1.0), Color(0.5, 1.0, 0.5), Color(1.0, 0.6, 0.9)]
 
@@ -275,7 +275,16 @@ func _hero_packet(h: Hero) -> PackedFloat32Array:
 	return PackedFloat32Array([h.global_position.x, h.global_position.y, h.global_position.z, h.rig.rotation.y,
 		h.phase, st.get("move", 0.0), st.get("atk", -1.0), float(maxi(0, STYLES.find(st.get("style", "over")))),
 		st.get("block", 0.0), st.get("hit", 0.0), 1.0 if h.dead else 0.0, h.dead_t, h.life, h.max_life,
-		1.0 if h.buff_t > 0.0 else 0.0])
+		1.0 if h.buff_t > 0.0 else 0.0]) + _boat_packet(h)
+
+## A sailing player's boat rides along at the end of his state (aboard, x, z, yaw, speed); partners draw it
+## under his puppet (BoatRide.puppet_update). Older builds read only the first 15 numbers.
+func _boat_packet(h: Hero) -> PackedFloat32Array:
+	var b = game.boat
+	if not h.aboard or b == null or not is_instance_valid(b):
+		return PackedFloat32Array()
+	# last: which boat (her index in Data.BOATS; every peer runs the same build), so partners draw the right one
+	return PackedFloat32Array([1.0, b.global_position.x, b.global_position.z, b.yaw, b.speed, float(Data.BOATS.keys().find(b.id))])
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func pl_state(p: PackedFloat32Array) -> void:
@@ -344,7 +353,15 @@ func sv_hello(nm: String, gear: Dictionary, _lvl: int) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func cl_welcome(act: int, zone: String, pos: Vector3, tp: Dictionary, bk: bool, roster: Array, diff: int) -> void:
+	if diff != game.difficulty:
+		# the host's (or the raid's) act: keep our own act's waypoints and boss aside, as cl_goto does
+		if game.bg_mode and game.bg_home_run < 0:
+			game.bg_home_run = game.difficulty
+		game._store_progress()
+		game._restore_progress(diff)
 	game.difficulty = diff
+	game.max_run = maxi(game.max_run, diff)
+	game.net_joining = false
 	for r in roster:
 		_add_player(int(r[0]), str(r[1]), r[2])
 	game.tp_link = tp
@@ -489,6 +506,12 @@ func _send_snapshot(pid: int) -> void:
 		var e = enemies[id]
 		if is_instance_valid(e) and e.boss and e.aggro and not e.dead:
 			rpc_id(pid, "cl_boss_aggro", id)
+	# the felled and the wounded trees (Harvest)
+	var hv := Harvest.of(game.world)
+	if hv != null:
+		var snap := hv.snapshot()
+		if not snap.is_empty():
+			rpc_id(pid, "cl_trees", snap)
 
 # ---------------------------------------------------------------- enemies
 func on_spawn(e: Enemy) -> void:
@@ -574,7 +597,8 @@ func cl_enemy_die(id: int) -> void:
 	enemies.erase(id)
 	if is_instance_valid(e) and not e.dead:
 		e.die_visual()
-		game.quests.on_kill(e)       # a partner's quests count the party's kills
+		if not game.bg_mode:
+			game.quests.on_kill(e)       # a partner's quests count the party's kills (a raid's don't: no story there)
 		if e.boss:
 			game.boss_down_remote(e)
 
@@ -776,45 +800,75 @@ func cl_grant(it: Dictionary, pos: Vector3) -> void:
 	game.receive_item(it, pos)
 
 # ---------------------------------------------------------------- Battlegrounds (battlegrounds.gd)
-## Client -> server: who this player is (their stash's id); the server answers with their stash.
+## Client -> server: who this player is (a one-time Nakama join ticket, else the per-PC id). The server answers with
+## the round's state, or turns them away (the round is closing, the ticket was refused).
 @rpc("any_peer", "call_remote", "reliable")
-func sv_bg_hello(uid: String, session: String) -> void:
+func sv_bg_hello(uid: String, ticket: String) -> void:
 	if not server or game.bg == null:
 		return
 	var pid := multiplayer.get_remote_sender_id()
-	var s = await game.bg.player_hello(pid, uid.substr(0, 64), session)
-	if s == null:
-		rpc_id(pid, "cl_bg_note", "The server could not confirm your account. Try again in a moment.")
+	var r = await game.bg.player_hello(pid, uid.substr(0, 64), ticket)
+	if r != "ok":
+		rpc_id(pid, "cl_bg_note", "This raid is closing: try again in a minute, for the next one." if r == "closed" else "The server could not confirm your account. Try again in a moment.")
 		await get_tree().create_timer(0.5).timeout
 		if peer != null:
 			peer.disconnect_peer(pid)
 		return
-	rpc_id(pid, "cl_bg_stash", s)
+	game.bg.broadcast(pid)
 
+## The round: "raid" or "reset", seconds into it, the open portals, its length, when the portals open.
 @rpc("authority", "call_remote", "reliable")
-func cl_bg_stash(s: Array) -> void:
-	game.bg_stash = s
-	Battlegrounds.cache_stash(s)
+func cl_bg_raid(state: String, t: float, open: Array, length: float, portals_at: float) -> void:
+	game.bg_raid = {"state": state, "t": t, "open": open, "len": length, "portals_at": portals_at}
+	if game.world != null:
+		var ps := Battlegrounds.portal_list(game.world)
+		for i in ps.size():
+			var on := open.has(i)
+			ps[i].data["open"] = on
+			var m = ps[i].get_node_or_null("Model")
+			if m:
+				m.visible = on
+
+## PvP: the local hero struck another player's stand-in (Battlegrounds.sync_proxies); the server deals it.
+func send_pvp_hit(target_pid: int, amount: float, from: Vector3) -> void:
+	rpc_id(1, "sv_pvp_hit", target_pid, amount, from)
+
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func sv_pvp_hit(target_pid: int, amount: float, from: Vector3) -> void:
+	if server and game.bg != null:
+		game.bg.pvp_hit(multiplayer.get_remote_sender_id(), target_pid, amount, from)
+
+## The local hero fell in a raid: everything they had, for the server to drop where they fell.
+func send_bg_died(items: Array) -> void:
+	rpc_id(1, "sv_bg_died", items)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_bg_died(items: Array) -> void:
+	if not server or game.bg == null:
+		return
+	var pid := multiplayer.get_remote_sender_id()
+	if players.has(pid) and is_instance_valid(players[pid]["hero"]):
+		game.bg.died(pid, items.slice(0, 80), players[pid]["hero"].global_position)
 
 func request_extract() -> void:
 	rpc_id(1, "sv_extract")
 
-## The server checks the player stands at an Extraction Portal, files their loot and lets them out.
+## The server checks the player stands at an open Extraction Portal and lets them out.
 @rpc("any_peer", "call_remote", "reliable")
 func sv_extract() -> void:
 	if not server or game.bg == null:
 		return
 	var pid := multiplayer.get_remote_sender_id()
-	if not game.bg.near_extract(pid):
-		rpc_id(pid, "cl_bg_note", "Stand in the Extraction Portal to leave")
+	if not game.bg.near_open_extract(pid):
+		rpc_id(pid, "cl_bg_note", "The portal isn't open yet" if game.bg.open.is_empty() else "Stand in an open Extraction Portal to leave")
 		return
-	var r: Array = await game.bg.extract(pid)
-	print("[BG] %s extracted with %d item(s), stash %d" % [_name_of(pid), (r[0] as Array).size(), (r[1] as Array).size()])
-	rpc_id(pid, "cl_extracted", r[0], r[1])
+	var gained: Array = game.bg.extract(pid)
+	print("[BG] %s extracted with %d item(s) picked up" % [_name_of(pid), gained.size()])
+	rpc_id(pid, "cl_extracted", gained)
 
 @rpc("authority", "call_remote", "reliable")
-func cl_extracted(gained: Array, s: Array) -> void:
-	game.bg_extracted(gained, s)
+func cl_extracted(gained: Array) -> void:
+	game.bg_extracted(gained)
 
 @rpc("authority", "call_remote", "reliable")
 func cl_bg_note(txt: String) -> void:
@@ -851,6 +905,46 @@ func cl_inter(idx: int) -> void:
 	var t = game.world.interactables[idx]
 	if is_instance_valid(t) and not t.used:
 		game.use_inter_remote(t)
+
+# ---------------------------------------------------------------- woodcutting (Harvest; the host owns the trees)
+func request_chop(id: int, power: float) -> void:
+	rpc_id(1, "sv_chop", id, power)
+
+## Host: a partner's axe blow. The host checks it (Harvest.strike: the tree stands, the partner is by it, not
+## too quick), applies it and tells everyone.
+@rpc("any_peer", "call_remote", "reliable")
+func sv_chop(id: int, power: float) -> void:
+	# a dedicated server hosting the story game owns the trees just like a player host
+	if not is_host or game.world == null:
+		return
+	var pid := multiplayer.get_remote_sender_id()
+	var h := Harvest.of(game.world)
+	var ph = players.get(pid, {}).get("hero")
+	if h == null or not is_instance_valid(ph):
+		return
+	h.strike(id, pid, ph.global_position, power)
+
+## Host -> everyone: what happened to a tree ("hit", "fell", "heal", "regrow").
+func send_tree(id: int, ev: String, data: Dictionary) -> void:
+	if players.is_empty():
+		return
+	rpc("cl_tree", id, ev, data)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_tree(id: int, ev: String, data: Dictionary) -> void:
+	if loading or game.world == null:
+		return
+	var h := Harvest.of(game.world)
+	if h != null:
+		h.play_event(id, ev, data)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_trees(d: Dictionary) -> void:
+	if loading or game.world == null:
+		return
+	var h := Harvest.of(game.world)
+	if h != null:
+		h.apply_snapshot(d)
 
 func request_portal(pos: Vector3) -> void:
 	rpc_id(1, "sv_portal", pos)

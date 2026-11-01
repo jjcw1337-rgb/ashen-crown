@@ -16,6 +16,7 @@ static func grand_waypoint() -> bool:
 	return not OS.get_cmdline_user_args().has("--old-waypoint")
 const RADIUS := 25.0
 const GATE_HALF := 0.23         # half the gap in the ring for the gatehouse (radians)
+const WEST := PI * 1.5          # the west gate (ring angle): the path to the coast (coast.gd)
 const DIR := "res://assets/models/camp/"
 const STALL_SCALE := 1.45     # the stalls, tents and gatehouse read small from the game's camera at true size
 const NPC_DIR := "res://assets/models/npc/"
@@ -119,6 +120,9 @@ static func build(w: World) -> void:
 	var step := 3.9 / RADIUS
 	var a := GATE_HALF + step * 0.5
 	while a < TAU - GATE_HALF - step * 0.3:
+		if absf(a - WEST) < GATE_HALF:
+			a += step
+			continue
 		var p := ring_pt(a, RADIUS + rng.randf_range(-0.15, 0.15))
 		var yaw := face(p, CENTER) + rng.randf_range(-0.03, 0.03)
 		var sc := rng.randf_range(0.93, 1.08)
@@ -133,13 +137,24 @@ static func build(w: World) -> void:
 		w.add_box(Vector3(gx, 0, gate_z), Vector2(1.15, 2.2), 0.0)
 	_lantern(w, Vector3(0, w.height_at(0, gate_z) + 4.7, gate_z + 0.4), true)
 	w.exits.append({"pos": Vector3(0, 0, gate_z - 3.5), "radius": 3.5, "to": "wild", "label": w.act_name("wild")})
+	# the west gate and the track down to the Mournwater Coast
+	var wg := ring_pt(WEST, RADIUS)
+	var wgate := model("gate")
+	w._place(wgate, Vector3(wg.x, 0, wg.y))
+	wgate.scale = Vector3.ONE * 1.15
+	wgate.rotation.y = PI * 0.5
+	for gz in [-4.1, 4.1]:
+		w.add_box(Vector3(wg.x, 0, wg.y + gz), Vector2(2.2, 1.15), 0.0)
+	_lantern(w, Vector3(wg.x + 0.4, w.height_at(wg.x, wg.y) + 4.7, wg.y), true)
+	w.exits.append({"pos": Vector3(wg.x - 6.0, 0, wg.y), "radius": 3.2, "to": "coast", "label": w.act_name("coast")})
+	w.dirt_lines.append([CENTER, Vector2(wg.x - 9.0, wg.y), 2.6])
 
 	# --- rune stones standing in the trees outside the wall, glowing faintly
 	var rs := []
 	var rune_mat := _rune_material()
 	for i in 11:
 		var ra := TAU * (i + 0.5) / 11.0
-		if absf(wrapf(ra, -PI, PI)) < 0.45:
+		if absf(wrapf(ra, -PI, PI)) < 0.45 or absf(wrapf(ra - WEST, -PI, PI)) < 0.45:
 			continue
 		var p := ring_pt(ra + rng.randf_range(-0.08, 0.08), RADIUS + rng.randf_range(4.5, 7.0))
 		rs.append(Transform3D(Basis(Vector3.UP, face(p, CENTER)).scaled(Vector3.ONE * rng.randf_range(0.85, 1.2)), Vector3(p.x, w.height_at(p.x, p.y) - 0.15, p.y)))
@@ -149,13 +164,13 @@ static func build(w: World) -> void:
 	# --- the heart of the camp: the bonfire, seats, stash and waypoint
 	var bf := model("bonfire")
 	w._place(bf, Vector3(CENTER.x, 0, CENTER.y))
-	Props.fire(bf, Vector3(0, 0.3, 0), 1.15, Color(1.0, 0.5, 0.18), true, true)
+	Props.fire(bf, Vector3(0, 0.3, 0), 1.15, Color(1.0, 0.5, 0.18), true, true, true, "bonfire")
 	# the heart of the camp's light (graphics plan, phase 1): reaches the shops, glows in the mist, always shadowed
 	for n in bf.find_children("*", "OmniLight3D", true, false):
 		var fl: OmniLight3D = n
-		fl.light_energy *= 1.6
+		fl.light_energy *= 2.2
 		fl.set_meta("base", fl.light_energy)
-		fl.omni_range = 15.0
+		fl.omni_range = 17.0
 		fl.omni_attenuation = 1.15
 		fl.light_volumetric_fog_energy = 3.0
 		fl.shadow_blur = 1.4
@@ -219,6 +234,9 @@ static func build(w: World) -> void:
 		if s.has("hold"):
 			hold(kp.model, s["hold"])
 			kp.set_meta("hold", s["hold"])
+	# Halvar's furnace beside his forge, where weapons are tempered over felled wood (Furnace)
+	var fp: Vector3 = _local(w, SHOPS[1]["at"], Vector3(5.2, 0, 0.5))
+	Furnace.place(w, fp, face(Vector2(fp.x, fp.z), CENTER))
 	# the stalls' own light: the forge's coals, the alchemist's cauldron, a lantern on the others
 	_glow(w, SHOPS[1]["at"], Vector3(0.9, 1.4, -0.6), Color(1.0, 0.45, 0.12), 2.6, 7.0)
 	_glow(w, SHOPS[0]["at"], Vector3(-1.3, 0.9, 0.4), Color(0.4, 1.0, 0.35), 1.6, 6.0)
@@ -233,7 +251,7 @@ static func build(w: World) -> void:
 	# --- tents round the inside of the wall
 	for t in [[-0.75, 19.5], [-1.45, 19.0], [-2.35, 19.0], [2.35, 19.0], [2.85, 18.5], [-2.9, 18.5], [0.8, 19.5], [3.4, 19.5], [-3.45, 19.5], [1.45, 19.5]]:
 		var tp := ring_pt(t[0], t[1])
-		if _near_shop(tp, 6.0):
+		if _near_shop(tp, 6.0) or absf(wrapf(float(t[0]) - WEST, -PI, PI)) < 0.4:
 			continue
 		var tent := model("tent")
 		w._place(tent, Vector3(tp.x, 0, tp.y))
@@ -244,7 +262,7 @@ static func build(w: World) -> void:
 	# woodpiles with a chopping stump), else the old procedural crates, barrels and log piles
 	var sets := has_piece("supply_pile") and has_piece("woodpile")
 	if sets:
-		for c in [["supply_pile", Vector2(-9.2, -16.0), 0.9], ["supply_pile", Vector2(16.2, -8.4), 1.0],
+		for c in [["supply_pile", Vector2(-9.2, -16.0), 0.9], ["supply_pile", Vector2(17.8, -4.6), 1.0],
 				["supply_pile", Vector2(19.2, 1.8), 0.95], ["supply_pile", Vector2(-4.2, gate_z + 4.3), 0.85],
 				["supply_pile", Vector2(-18.0, 4.2), 0.9], ["woodpile", Vector2(9.2, -16.2), 1.0],
 				["woodpile", Vector2(6.2, 13.4), 0.9]]:
@@ -253,13 +271,13 @@ static func build(w: World) -> void:
 		# a cookfire for the camp's folk, a weapon rack by the armoury, hides drying by the alchemist
 		var cf := piece(w, "cookfire", Vector2(-3.8, 11.8), rng.randf() * TAU)
 		if cf:
-			Props.fire(cf, Vector3(0, 0.15, 0), 0.55, Color(1.0, 0.5, 0.2), true, false)
+			Props.fire(cf, Vector3(0, 0.15, 0), 0.55, Color(1.0, 0.5, 0.2), true, false, true, "campfire")
 			for n in cf.find_children("*", "OmniLight3D", true, false):
 				(n as OmniLight3D).add_to_group(Grade.SHADOW_GROUP)
 		piece(w, "weapon_rack", Vector2(12.2, 8.8), face(Vector2(12.2, 8.8), CENTER))
 		piece(w, "hide_rack", Vector2(-14.8, -1.6), face(Vector2(-14.8, -1.6), CENTER) + 0.3)
 	else:
-		for c in [["crate", Vector2(-9.5, -15.5)], ["barrel", Vector2(-15.8, -8.8)], ["barrel", Vector2(15.6, -8.6)], ["logs", Vector2(9.0, -15.5)],
+		for c in [["crate", Vector2(-9.5, -15.5)], ["barrel", Vector2(-15.8, -8.8)], ["barrel", Vector2(17.6, -4.9)], ["logs", Vector2(9.0, -15.5)],
 				["crate", Vector2(18.8, 1.4)], ["crate", Vector2(19.4, 2.2)], ["barrel", Vector2(-18.4, 4.0)], ["crate", Vector2(-3.5, gate_z + 4.5)],
 				["barrel", Vector2(-4.6, gate_z + 4.0)], ["logs", Vector2(6, 13)], ["crate", Vector2(-6.5, 13.5)], ["barrel", Vector2(-1.5, 16)]]:
 			var cp: Vector2 = c[1]
@@ -294,7 +312,7 @@ static func build(w: World) -> void:
 	# --- great oaks inside the camp, lanterns hung from their branches
 	var oaks := [[], [], []]
 	var k := 0
-	for op in [Vector2(-7.5, -18.5), Vector2(8.5, -19), Vector2(-18.5, -3), Vector2(19.5, -4), Vector2(-9, 15.5), Vector2(10, 14.5)]:
+	for op in [Vector2(-7.5, -18.5), Vector2(8.5, -19), Vector2(-18.5, -9.5), Vector2(19.5, -4), Vector2(-9, 15.5), Vector2(10, 14.5)]:
 		if _near_shop(op, 4.5):
 			continue
 		oaks[k % 3].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(1.15, 1.35)), Vector3(op.x, w.height_at(op.x, op.y), op.y)))
@@ -320,6 +338,8 @@ static func build(w: World) -> void:
 			continue
 		if absf(x) < 5.5 and z < gate_z and z > gate_z - 40:
 			continue                     # the road out of the gate
+		if absf(z - CENTER.y) < 6.0 and x < -RADIUS + 2.0:
+			continue                     # the track out of the west gate
 		var xf := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.9, 1.5)), Vector3(x, w.height_at(x, z) - 0.1, z))
 		var r := rng.randf()
 		if has_dead and r < 0.07:
@@ -352,6 +372,7 @@ static func build(w: World) -> void:
 	w._scatter_ferns(380)
 	w.spawns["start"] = Vector3(0, 0, 5)
 	w.spawns["from_wild"] = Vector3(0, 0, gate_z + 4.5)
+	w.spawns["from_coast"] = Vector3(-RADIUS + 4.5, 0, CENTER.y)
 	w.spawns["portal"] = Vector3(4, 0, 8)
 	w.spawns["alch"] = Vector3(-11.5, 0, -9)
 	w.spawns["forge"] = Vector3(11.5, 0, -9)
@@ -378,8 +399,8 @@ static func _local(w: World, at: Vector2, off: Vector3) -> Vector3:
 static func _glow(w: World, at: Vector2, off: Vector3, col: Color, energy: float, rng_m: float) -> void:
 	var l := OmniLight3D.new()
 	l.light_color = col
-	l.light_energy = energy * 1.3
-	l.omni_range = rng_m * 1.25
+	l.light_energy = energy * 1.7
+	l.omni_range = rng_m * 1.4
 	l.omni_attenuation = 1.3
 	l.light_volumetric_fog_energy = 2.0
 	l.shadow_blur = 1.2
@@ -411,8 +432,8 @@ static func _candle(parent: Node3D, at: Vector3, lit: bool) -> void:
 	if lit:
 		var l := OmniLight3D.new()
 		l.light_color = Color(1.0, 0.68, 0.38)
-		l.light_energy = 1.9
-		l.omni_range = 8.0
+		l.light_energy = 2.6
+		l.omni_range = 9.5
 		l.omni_attenuation = 1.3
 		l.light_volumetric_fog_energy = 2.0
 		l.shadow_blur = 1.2

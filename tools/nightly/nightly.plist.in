@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- A nightly lab job (docs/nightly/README.md), made from this template by tools/nightly/install.sh for each job:
+     @JOB@ at @HOUR@:@MINUTE@ every day, Mac local time (America/New_York). If the Mac was asleep then, launchd runs it
+     once when it wakes. Run now: `launchctl kickstart gui/$(id -u)/com.gamefactory.ashen-nightly-@JOB@`.
+     It runs the copy in ~/dev/ashen-crown-nightly-runner (install.sh keeps it), so a run never edits the script it is
+     running. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.gamefactory.ashen-nightly-@JOB@</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/blaine/dev/ashen-crown-nightly-runner/run.sh</string>
+    <string>@JOB@</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict><key>Hour</key><integer>@HOUR@</integer><key>Minute</key><integer>@MINUTE@</integer></dict>
+  <key>StandardOutPath</key><string>/Users/blaine/Library/Logs/ashen-nightly/launchd.log</string>
+  <key>StandardErrorPath</key><string>/Users/blaine/Library/Logs/ashen-nightly/launchd.log</string>
+  <key>ProcessType</key><string>Standard</string>
+  <key>LowPriorityIO</key><false/>
+</dict>
+</plist>

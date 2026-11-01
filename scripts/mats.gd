@@ -29,6 +29,8 @@ static func ensure_globals() -> void:
 	RenderingServer.global_shader_parameter_add("wind_strength", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.45)
 	RenderingServer.global_shader_parameter_add("wind_gust", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.6)
 	RenderingServer.global_shader_parameter_add("wind_phase", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
+	# the sea's clock (ocean.gd): its waves on the GPU and Ocean.surface_y on the CPU read the same time
+	RenderingServer.global_shader_parameter_add("ocean_t", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
 
 static func detail_normal() -> Texture2D:
 	if _detail == null:
@@ -319,6 +321,10 @@ uniform float tiles = 0.0;
 uniform float cob_shade = 1.0;
 uniform float wet = 0.0;
 uniform float ripples = 0.0;
+// the coast (coast.gd): sand round the sea (y = 0), wet sand at the waterline, the seabed under water
+uniform float sea = 0.0;
+uniform vec3 col_sand : source_color = vec3(0.6, 0.53, 0.4);
+global uniform float ocean_t;
 global uniform float snow_amt;
 global uniform float ash_amt;
 global uniform float under_amt;
@@ -403,8 +409,65 @@ void fragment(){
 	}
 	float cliff = clamp(vcol.g + (1.0 - wnorm.y) * 2.0, 0.0, 1.0);
 	base = mix(base, col_cliff * (0.6 + n2 * 0.5 + (n4 - 0.5) * 0.2), cliff);
+	// sea cliffs (the coast and the isles): layered rock projected on the face, not the ground plane:
+	// strata bands of different stone, blocky joints, ledges that catch the light, lichen up top
+	float ledge = 0.0;
+	if (sea > 0.0 && cliff > 0.02) {
+		vec3 an = abs(wnorm);
+		vec2 q = an.x > an.z ? vec2(wpos.z, wpos.y) : vec2(wpos.x, wpos.y);
+		float wob = fbm(q * vec2(0.035, 0.02)) * 4.0 + fbm(q * 0.3) * 0.7;
+		float lay = wpos.y * 0.42 + wob;
+		float band = floor(lay);
+		float bh = hash21(vec2(band, 3.1));
+		float bf = fract(lay);
+		vec3 rock = col_cliff * mix(0.66, 1.2, bh);
+		rock = mix(rock, rock * vec3(1.1, 1.02, 0.88), step(0.62, hash21(vec2(band, 7.7))) * 0.55);
+		rock *= 0.78 + fbm(q * 0.04 + 4.0) * 0.45;                                   // big tonal patches
+		rock *= 0.86 + fbm(vec2(q.x * 0.7, q.y * 0.06) + 2.0) * 0.28;               // rain streaks down the face
+		float jid = 0.0;
+		vec2 jv = vor(vec2(q.x * 0.16, lay * 0.7), jid);
+		float joint = (1.0 - smoothstep(0.015, 0.07, jv.y - jv.x)) * smoothstep(0.45, 0.7, fbm(q * 0.12 + 5.0));
+		rock *= 0.88 + jid * 0.18 + fbm3(q * 1.3) * 0.22 + (n4 - 0.5) * 0.1;
+		rock *= 1.0 - joint * 0.5;
+		rock *= 1.0 - (1.0 - smoothstep(0.0, 0.07, bf)) * 0.4 * step(0.35, bh);    // a seam under some ledges
+		float lich = smoothstep(0.55, 0.8, fbm(q * 0.25 + 9.0)) * smoothstep(1.0, 4.0, wpos.y) * 0.5;
+		rock = mix(rock, col_a * 0.9, lich);
+		float rk = smoothstep(0.25, 0.7, cliff);
+		base = mix(base, rock, rk);
+		ledge = (smoothstep(0.88, 1.0, bf) * step(0.35, bh) * 0.6 - (1.0 - smoothstep(0.0, 0.07, bf)) * 0.35 * step(0.35, bh) - joint * 0.3) * rk;
+	}
 	float wetf = wet * smoothstep(0.5, 0.72, n2) * (1.0 - cliff) * (0.4 + path * 0.6);
 	base *= 1.0 - wetf * 0.3;
+	float wetb = 0.0;
+	if (sea > 0.0) {
+		float hy = wpos.y + (n2 - 0.5) * 0.6 + (n4 - 0.5) * 0.15;
+		float sandm = (1.0 - smoothstep(0.85, 1.5, hy)) * (1.0 - cliff * 0.85);
+		vec3 sand = col_sand * (0.86 + n3 * 0.2 + (n4 - 0.5) * 0.12);
+		sand = mix(sand, sand * vec3(0.86, 0.84, 0.76), smoothstep(0.5, 0.8, n5) * 0.5);
+		sand *= 0.95 + 0.05 * sin(p.x * 2.3 + p.y * 1.1 + n2 * 6.0);
+		float shellm = smoothstep(0.9, 0.95, vnoise(p * 11.0)) * 0.35;
+		sand = mix(sand, vec3(0.78, 0.76, 0.7), shellm);
+		base = mix(base, sand, sandm);
+		// the waterline: dark glossy wet sand where the swash reaches
+		wetb = (1.0 - smoothstep(-0.05, 0.4, wpos.y)) * (1.0 - cliff * 0.5);
+		base *= 1.0 - wetb * 0.38;
+		// under the water: the seabed fading darker with depth, weed in patches, sunlight caustics
+		float uw = smoothstep(0.0, -0.35, wpos.y);
+		float deep = smoothstep(0.0, -11.0, wpos.y);
+		vec3 bed = mix(sand, col_a * 0.75, smoothstep(0.55, 0.75, n1) * 0.55);
+		bed = mix(bed, col_cliff * 0.7, cliff * 0.7);
+		base = mix(base, bed * (1.0 - deep * 0.6), uw);
+		if (uw > 0.01) {
+			float cid1 = 0.0;
+			float cid2 = 0.0;
+			vec2 v1 = vor(p * 1.7 + vec2(ocean_t * 0.23, ocean_t * 0.11), cid1);
+			vec2 v2 = vor(p * 2.3 - vec2(ocean_t * 0.15, -ocean_t * 0.19) + 3.7, cid2);
+			float e1 = 1.0 - smoothstep(0.0, 0.12, v1.y - v1.x);
+			float e2 = 1.0 - smoothstep(0.0, 0.12, v2.y - v2.x);
+			float caus = e1 * e2 * 1.6 + (e1 + e2) * 0.18;
+			base += base * caus * 0.8 * uw * (1.0 - smoothstep(-0.4, -6.0, wpos.y));
+		}
+	}
 	float cover = 0.0;
 	float trod = 0.0;
 	float drift = 0.5;
@@ -432,7 +495,7 @@ void fragment(){
 		base = mix(base, burnt * (0.85 + n3 * 0.2), ash_amt);
 	}
 	ALBEDO = base;
-	ROUGHNESS = mix(mix(0.95, 0.35, wetf), 0.55 + trod * 0.35, cover);
+	ROUGHNESS = mix(mix(mix(0.95, 0.35, wetf), 0.3, wetb), 0.55 + trod * 0.35, cover);
 	if (ash_amt > 0.0) {
 		// glowing cracks and smouldering patches that pulse slowly
 		float cv = abs(fbm(p * 0.17 + 3.0) - 0.5);
@@ -471,6 +534,9 @@ void fragment(){
 	float sc = 1.8;
 	float hc = fbm3(p * sc); float hx = fbm3((p + vec2(e, 0.0)) * sc); float hz = fbm3((p + vec2(0.0, e)) * sc);
 	vec3 wn = normalize(wnorm + vec3(hc - hx, 0.0, hc - hz) * (2.0 + path) / e * 0.05 * (1.0 - cover * 0.8));
+	if (ledge != 0.0) {
+		wn = normalize(wn + vec3(0.0, ledge * 0.9, 0.0));
+	}
 	if (cover > 0.0) {
 		// soft wind-blown drift ripples
 		float dd = 0.4;

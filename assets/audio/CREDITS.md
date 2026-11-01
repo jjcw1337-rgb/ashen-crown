@@ -47,10 +47,13 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | gold | 2 | Kenney rpg-audio (kenney.nl) | CC0 1.0 | handleCoins.ogg |
 | growl | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a rotting zombie's low hungry groan, close mic, dry, isolated sound effect, no music |
 | grubb_mutter | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a huge goblin king's deep, gravelly voice muttering and grumbling to himself about his gold, unintelligible words, slow and menacing, ending in a low dark chuckle, heard from a distance in a wooden fort, isolated sound effect, no music |
+| gull | 4 | Procedural (tools/audio/make_sea.py) | CC0 1.0 (made for the game) | herring gull cries, two to four calls |
 | hellclaw | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | three fast vicious claw slashes tearing flesh, with a short burst of roaring fire, close mic, dry, isolated sound effect, no music |
 | hero_hit | 3 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a blow landing on a person wearing a padded leather jerkin, one short dull muffled thud, subtle and low, no voice, no grunt, close mic, dry, isolated sound effect, no music |
 | holy_nova | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a massive explosion of holy fire around a knight, a deep concussive boom, a roaring outward rush of flame and wind, a faint breath of distant choir, close mic, dry, isolated sound effect, no music |
 | host_summon | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a host of ghosts summoned, many spirits rising with eerie overlapping whispers, close mic, dry, isolated sound effect, no music |
+| hull_creak | 4 | Procedural (tools/audio/make_sea.py) | CC0 1.0 (made for the game) | a small wooden boat's planks creaking in a seaway |
+| hull_slap | 3 | Procedural (tools/audio/make_sea.py) | CC0 1.0 (made for the game) | the bow dropping into a wave: a hollow thump and spray |
 | hurt | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a goblin or ghoul hit by a blade, a short ugly grunt of pain, close mic, dry, isolated sound effect, no music |
 | ice_shatter | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a block of ice cracking and shattering into shards on stone, sharp crystalline crunch, close mic, dry, isolated sound effect, no music |
 | impact_bone | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a mace smashing into a skeleton, dry bones cracking and clattering, short, close mic, dry, isolated sound effect, no music |
@@ -61,6 +64,7 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | kill_flesh | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a monster killed by a blade, gory flesh splatter then a body slumping onto dirt, close mic, dry, isolated sound effect, no music |
 | levelup | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | level up in a dark fantasy game, short triumphant swell with a bright magical chime, subtle, close mic, dry, isolated sound effect, no music |
 | lion_roar | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a big male lion roaring loudly and angrily, close, close mic, dry, isolated sound effect, no music |
+| mallet | 4 | Procedural (tools/audio/make_sea.py) | CC0 1.0 (made for the game) | a wooden mallet knocking into an oak plank |
 | music_select | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | the haunting but gentle song of a camp in a forsaken dark forest, dark fantasy: a slow solo viola and soft lute over a low hummed choir, sombre and tender, a safe place among the shadows, background music loop, no drums |
 | music_town | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | dark forest sanctuary music for a dark fantasy game: mysterious but warm, soft harp arpeggios over a low droning string pad with a lonely wooden flute, ancient woods at dusk, a hopeful refuge, background music loop, no drums |
 | phase_erupt | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | fire bursting violently up out of the ground, a deep boom, roaring flames and falling rocks, close mic, dry, isolated sound effect, no music |
@@ -72,6 +76,7 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | reap_swing | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a ghostly scythe swung in a wide arc, cold airy spectral whoosh, close mic, dry, isolated sound effect, no music |
 | relic_ting | 3 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | picking up a rare magical gem in a dark fantasy game, one bright clear crystal ting with a shimmering glassy ring that fades, close mic, dry, isolated sound effect, no music |
 | roar | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a huge mutated goblin king's furious roar, close mic, dry, isolated sound effect, no music |
+| sea | 1 | Procedural (tools/audio/make_sea.py) | CC0 1.0 (made for the game) | open water round a small boat: the swell's heave, lapping wavelets, far whitecaps (loop) |
 | shackles | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | magical iron chains whipping around a victim, heavy chains rattling and locking shut, close mic, dry, isolated sound effect, no music |
 | shade_implode | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | dark energy imploding, sharp inward suction ending in a deep thump, close mic, dry, isolated sound effect, no music |
 | shade_in | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a wraith bursting out of shadow, sudden dark whoosh and soft thump, close mic, dry, isolated sound effect, no music |
@@ -79,11 +84,17 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | slam | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a giant slamming his fists into the ground, heavy thud and rubble, close mic, dry, isolated sound effect, no music |
 | soul_return | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a stolen soul flowing back into a wraith, soft ethereal whoosh ending in a gentle shimmer, close mic, dry, isolated sound effect, no music |
 | spirit_dart | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a small ghostly spirit bolt fired, quick airy spectral zip, close mic, dry, isolated sound effect, no music |
+| splash | 3 | Procedural (tools/audio/make_sea.py) | CC0 1.0 (made for the game) | a fish breaking the surface: plop, spray, droplets |
 | summon | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a dark shaman summoning minions, eerie rising magical whoosh, close mic, dry, isolated sound effect, no music |
 | summon_demon | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a demon summoned from a burning rift, rumble of cracking ground then a beastly roar, close mic, dry, isolated sound effect, no music |
+| surf | 2 | Procedural (tools/audio/make_sea.py) | CC0 1.0 (made for the game) | surf breaking on a beach: swell, crash, wash back over sand and shingle (loop) |
 | swing | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a monster swinging a crude rusty blade, rough whoosh, close mic, dry, isolated sound effect, no music |
 | swing_heavy | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a single heavy two-handed axe swung hard through the air, deep weighty whoosh, close mic, dry, isolated sound effect, no music |
 | swing_light | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a single fast sword swing through the air, sharp whoosh, close mic, dry, isolated sound effect, no music |
 | thunder_strike | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a bolt of lightning striking the ground close by, sharp electric crack and a short rumble, close mic, dry, isolated sound effect, no music |
 | wail | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a terrifying ghost woman screaming, a long piercing shriek, close mic, dry, isolated sound effect, no music |
 | wind | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | cold wind blowing across an empty moor at night, steady, no music |
+
+## Dragon sounds (tools/audio/dragon_sfx.py)
+
+Derived from recordings already listed above (lion_roar, roar, fire_erupt, slam, charge_impact, hellclaw, swing_heavy, swing_light, growl, impact_bone, cleave_swing, death_demon, death_wraith, boss_die, wail, wind, ice_shatter, thunder_strike, birds_flutter, reap_swing) by pitching, filtering and layering; same licences as their sources. Files: `death_serpent_0.wav`, `death_wyrm_0.wav`, `death_wyvern_0.wav`, `serpent_bite_0.wav`, `serpent_claw_0.wav`, `serpent_roar_0.wav`, `serpent_step_0.wav`, `serpent_tail_0.wav`, `wyrm_bite_0.wav`, `wyrm_claw_0.wav`, `wyrm_roar_0.wav`, `wyrm_step_0.wav`, `wyrm_tail_0.wav`, `wyvern_bite_0.wav`, `wyvern_claw_0.wav`, `wyvern_flap_0.wav`, `wyvern_roar_0.wav`, `wyvern_step_0.wav`, `wyvern_tail_0.wav`.
