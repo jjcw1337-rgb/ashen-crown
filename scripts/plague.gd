@@ -70,7 +70,11 @@ const ACTS := {
 }
 ## the bottle in his right hand while he winds up a throw (from these points of the move until the release), and the
 ## skills that need both hands: the cane is put away (hidden) while they play
-const HELD := {"pd_flask": [0.08, 0.55, FLASK_GLB], "pd_volatile": [0.12, 0.6, VOLATILE_GLB], "pd_inspect": [0.1, 0.9, FLASK_GLB]}
+## ("vial" = Pestilence Vial's glass vial with its sloshing liquid, PlagueVialFx.vial, in the next recipe's colour)
+const HELD := {"pd_flask": [0.08, 0.55, "vial"], "pd_volatile": [0.12, 0.6, VOLATILE_GLB], "pd_inspect": [0.1, 0.9, "vial"]}
+var held_slosh: PlagueVialFx.Slosh = null
+var recipe := 0              # Pestilence Vial's next mixture (PlagueVialFx.RECIPES), turning each throw
+var vial_flights: Array = []  # PlagueVialFx.Flight in the air, with their landing: {f, to, r, ri}
 const HANDS_FREE := ["pd_flask", "pd_volatile", "pd_trap", "pd_slam", "pd_dome", "pd_inspect"]
 var held: Node3D = null       # the bottle in his hand
 var held_path := ""
@@ -78,8 +82,9 @@ var hands_busy := false
 ## seconds each takes at normal pace (times Data.attack_pace)
 const DUR := {"toxic": 0.85, "volatile": 1.25, "trap": 1.0, "epidemic": 1.2, "epidemic2": 1.1}
 
-const CLOUD_R := 3.0
-const CLOUD_T := 4.0
+const CLOUD_R := 2.6           # Pestilence Vial's pool
+const CLOUD_T := 3.5
+const VIAL_LINGER := 2.0       # its poison keeps ticking this long after leaving the pool
 const VOLATILE_R := 4.0
 const FUSE := 0.6
 const TRAP_MAX := 2
@@ -133,6 +138,8 @@ func remote(ev: String) -> void:
 	match a[0]:
 		"throw":
 			if a.size() >= 5:
+				if a.size() >= 6:
+					recipe = int(a[5])
 				_launch(a[1], _pv(a[2]), _pv(a[3]), float(a[4]))
 		"trap":
 			if a.size() >= 2:
@@ -332,11 +339,22 @@ func _throw(kind: String, at: Vector3) -> void:
 	var from: Vector3 = (J["at_hand_r"] as Node3D).global_position if J.has("at_hand_r") else h.global_position + Vector3(0, 1.6, 0)
 	var to := Vector3(at.x, w.height_at(at.x, at.z), at.z)
 	var r := CLOUD_R * (1.0 + h.talent("cloud_size") / 100.0) if kind == "toxic" else VOLATILE_R * (1.0 + h.talent("blast_size") / 100.0)
+	_send("throw|%s|%s|%s|%.2f|%d" % [kind, _v(from), _v(to), r, recipe])
 	_launch(kind, from, to, r)
-	_send("throw|%s|%s|%s|%.2f" % [kind, _v(from), _v(to), r])
 
 func _launch(kind: String, from: Vector3, to: Vector3, r: float) -> void:
 	var w: World = h.game.world
+	if kind == "toxic":
+		# Pestilence Vial: the glass vial tumbling through the air, its landing ring under it for everyone
+		var dist := Vector2(to.x - from.x, to.z - from.z).length()
+		var dur := clampf(0.45 + dist * 0.03, 0.45, 0.8)
+		var ri := recipe
+		recipe = (recipe + 1) % PlagueVialFx.RECIPES.size()
+		var f := PlagueVialFx.Flight.new(w.fx_root, from, to, ri, dur)
+		PlagueVialFx.landing_ring(w.fx_root, w, to, r, ri, dur)
+		vial_flights.append({"f": f, "from": from, "to": to, "r": r, "ri": ri})
+		Sfx.play_at("swing_light", from, -5.0, 0.75)
+		return
 	var n := _prop(FLASK_GLB if kind == "toxic" else VOLATILE_GLB)
 	w.fx_root.add_child(n)
 	n.global_position = from
@@ -345,6 +363,15 @@ func _launch(kind: String, from: Vector3, to: Vector3, r: float) -> void:
 	var dist := Vector2(to.x - from.x, to.z - from.z).length()
 	flasks.append({"node": n, "from": from, "to": to, "t": 0.0, "dur": clampf(0.35 + dist * 0.045, 0.35, 0.9), "kind": kind, "r": r})
 	Sfx.play("swing_light", -4.0, 0.8)
+
+func _update_vials(delta: float) -> void:
+	for v in vial_flights.duplicate():
+		var f: PlagueVialFx.Flight = v["f"]
+		if f.step(delta):
+			vial_flights.erase(v)
+			if is_instance_valid(f.node):
+				f.node.queue_free()
+			_shatter(v["to"], float(v["r"]), int(v["ri"]), (v["to"] as Vector3) - (v["from"] as Vector3))
 
 func _update_flasks(delta: float) -> void:
 	for f in flasks.duplicate():
@@ -363,22 +390,26 @@ func _update_flasks(delta: float) -> void:
 		if a >= 1.0:
 			flasks.erase(f)
 			n.queue_free()
-			if f["kind"] == "toxic":
-				_shatter(to, float(f["r"]))
-			else:
-				_land_volatile(to, float(f["r"]))
+			_land_volatile(to, float(f["r"]))
 
-## Toxic Flask lands: glass, a splash, and the cloud.
-func _shatter(at: Vector3, r: float) -> void:
-	var root: Node3D = h.game.world.fx_root
-	Fx.burst(root, at + Vector3(0, 0.2, 0), Color(0.8, 1.0, 0.85), 14, 3.5, 0.05, 0.4, true, -9.0)   # glass
-	Sfx.play_at("ice_shatter", at, -3.0, 1.35)
-	Sfx.play_at("blight_burst", at, -6.0, 1.2)
+## Pestilence Vial lands: the glass bursts, the liquid splashes up, a small hit, and the pool creeps out.
+func _shatter(at: Vector3, r: float, ri: int, dir: Vector3) -> void:
+	var w: World = h.game.world
+	var root: Node3D = w.fx_root
+	PlagueVialFx.shatter(root, w, at, r, ri, dir, true)
+	Sfx.play_at("ice_shatter", at, -2.0, 1.45)
+	Sfx.play_at("blight_burst", at, -7.0, 1.25)
+	Sfx.play_at("drip", at, -4.0, 0.8)
 	if not ghost():
+		h.game.add_shake(0.06)
 		var dmg := _base(12.0, 3.0, 0.24, "toxic")
-		for e in h.game.enemies_near(at, r):
+		for e in h.game.enemies_near(at, r * 0.6):
 			_damage(e, dmg, at, true)
-	_cloud(at, r, CLOUD_T + h.talent("cloud_dur"), "toxic", false)
+	var pool := PlagueVialFx.Pool.new()
+	root.add_child(pool)
+	pool.global_position = Vector3(at.x, w.height_at(at.x, at.z), at.z)
+	pool.setup(w, pool.global_position, r, ri, true)
+	clouds.append({"node": pool, "pos": at, "r": r, "t": CLOUD_T + h.talent("cloud_dur"), "src": "toxic", "infect": false, "tick": 0.0})
 
 ## Volatile Mixture lands: the bottle rolls to a stop and its fuse burns down inside a warning ring.
 func _land_volatile(at: Vector3, r: float) -> void:
@@ -512,6 +543,9 @@ static func _soft_tex() -> Texture2D:
 func _end_cloud(c: Dictionary) -> void:
 	clouds.erase(c)
 	var n = c["node"]
+	if n is PlagueVialFx.Pool and is_instance_valid(n):
+		(n as PlagueVialFx.Pool).end()
+		return
 	if is_instance_valid(n):
 		for ch in (n as Node3D).get_children():
 			if ch is GPUParticles3D:
@@ -534,7 +568,7 @@ func _update_clouds(delta: float) -> void:
 		for e in h.game.enemies_near(c["pos"], float(c["r"])):
 			if e.dead:
 				continue
-			_poison(e, src, POISON_LINGER)
+			_poison(e, src, VIAL_LINGER if src == "toxic" else POISON_LINGER)
 			if bool(c["infect"]):
 				_infect(e, 0)
 
@@ -934,12 +968,22 @@ func _hands() -> void:
 		if held != null and is_instance_valid(held):
 			held.queue_free()
 		held = null
+		held_slosh = null
 		held_path = want
 		var J: Dictionary = h.rig.get_meta("j")
 		if want != "" and J.has("at_hand_r"):
-			held = _prop(want, 0.9)
-			held.position = Vector3(0, -0.1, -0.02)
+			if want == "vial":
+				held = PlagueVialFx.vial(recipe)
+				held.scale = Vector3.ONE * PlagueVialFx.HAND_SCALE
+				held.position = Vector3(0, -0.06, -0.03)
+				held_slosh = PlagueVialFx.Slosh.new()
+			else:
+				held = _prop(want, 0.9)
+				held.position = Vector3(0, -0.1, -0.02)
+				held_slosh = null
 			(J["at_hand_r"] as Node3D).add_child(held)
+	if held_slosh != null and held != null and is_instance_valid(held):
+		held_slosh.step(held, h.get_process_delta_time())
 	hands_busy = a >= 0.0 and HANDS_FREE.has(style)    # Hero._carry_weapon hides the cane meanwhile
 	if h.puppet and h.weapon_node != null and is_instance_valid(h.weapon_node):
 		h.weapon_node.visible = not hands_busy           # a puppet has no weapon carry of its own
@@ -958,6 +1002,7 @@ func update(delta: float) -> void:
 			h.atk_dur = float(DUR["epidemic2"]) * Data.attack_pace(h.cls)
 	elif stage2 and h.atk_skill != "epidemic":
 		stage2 = false
+	_update_vials(delta)
 	_update_flasks(delta)
 	_update_fuses(delta)
 	_update_clouds(delta)
@@ -968,6 +1013,11 @@ func update(delta: float) -> void:
 
 ## Everything on the ground goes (a zone change, a class change, death).
 func clear() -> void:
+	for v in vial_flights:
+		var f: PlagueVialFx.Flight = v["f"]
+		if is_instance_valid(f.node):
+			f.node.queue_free()
+	vial_flights.clear()
 	for arr in [flasks, fuses, clouds, traps]:
 		for x in arr:
 			if is_instance_valid(x["node"]):

@@ -1662,7 +1662,8 @@ func _process(delta: float) -> void:
 	_breathe(delta)
 	_apply_shield_pose()
 	# no sword-swing streak off a bow, nor off the Wraith's and the Demon's skills (their clips, not weapon swings)
-	_update_trail(((atk_t >= 0.0 and not ((is_wraith() or is_demon()) and atk_skill != "")) or charge_t >= 0.0) and not has_bow() and not is_dragon())
+	# the Plague Doctor's skills put the cane away (thrown vials, the censer): no weapon trail on his hand
+	_update_trail(((atk_t >= 0.0 and not ((is_wraith() or is_demon() or cls == "plague") and atk_skill != "")) or charge_t >= 0.0) and not has_bow() and not is_dragon())
 
 ## The Wraith floats a hand's breadth off the ground, bobbing slowly and leaning into motion.
 func _hover() -> void:
@@ -1804,7 +1805,7 @@ func _puppet_process(delta: float) -> void:
 	Archer.update(self, delta)
 	SkillFx.update(self, delta)
 	_apply_shield_pose()
-	_update_trail(atk_t >= 0.0 and not has_bow() and not is_dragon())
+	_update_trail(atk_t >= 0.0 and not has_bow() and not is_dragon() and not (pd != null and pd.hands_busy))
 
 func _apply_shield_pose() -> void:
 	if shield_node == null or not is_instance_valid(shield_node):

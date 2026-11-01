@@ -293,6 +293,20 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   Props: `assets/models/plague/` flask, volatile, trap (Meshy text-to-3D, `act1/prep_prop.py`). Talents: Toxicology,
   Volatile Arts, Contagion (icons `p_*.png`, `plague_tree*.png`). Tests: `tools/plague_test.gd` (`--fixed-fps 60`),
   `tools/plague_mp_test.gd` (host + join); screenshots `tools/plague_shots.gd` (`--fixed-fps 10`).
+- **Pestilence Vial** (the Plague Doctor's Q, id kept as `toxic`; 2026-11-01, branch `test-plague-kit`, first skill of
+  the Plague kit overhaul in the project doc "plague kit overhaul plan"): look in `scripts/plague_vial_fx.gd`
+  (`PlagueVialFx`), gameplay in `Plague` (`_launch`/`_update_vials`/`_shatter`; pool 2.6 m for 3.5 s as a `clouds`
+  entry whose node is a `PlagueVialFx.Pool`, poison lingers `VIAL_LINGER` 2 s, cooldown 1.6 s). The vial is
+  `assets/models/plague/vial.glb` and its fractured glass `vial_shards.glb`, both built in code by
+  `tools/blender/plague/vial_build.py -- assets/models/plague` (objects glass/liquid/cork/wax/twine/collar; materials
+  are assigned by name in `PlagueVialFx.vial`). The liquid is a full inner volume cut by a world-space plane in its
+  shader (`plane_n`/`plane_d`, back faces = the surface) that `PlagueVialFx.Slosh` leans against the vial's
+  acceleration on a spring; in his hand (`HELD` "vial", `held_slosh`) and in the air (`Flight`, its own light). Three
+  mixtures rotate (`RECIPES`, `Plague.recipe`, sent as the 6th field of the "throw" event). Everyone sees a landing
+  ring for the flight (`landing_ring`); the shatter flings the real shards and the cork (`Debris`), a splash crown,
+  droplets and mist; the pool creeps out, bubbles, glows in its veins and dries to a stain (`_pool_shader`).
+  His skills draw no weapon trail (`Hero._update_trail`). Frames: `tools/plague_vial_clip.gd -- outdir
+  close|hand|game|fight [secs] [throws] [quality]` (xvfb, `--fixed-fps 30`; ~5-7 s a frame on the cloud).
 - **Adding a class** (nothing in `hero.gd` names a class's skills; `ClassSkills` hands them to the class's script):
   1. `Data.CLASSES`: name, starting stats, `desc`, optional `weapon`, `voice` (hurt/death sound suffix), `attack_pace`, `hud`.
   2. `Data.SKILLS`: four (up to six: Q E R F G V) entries with its `cls`, each with an `aim`.
