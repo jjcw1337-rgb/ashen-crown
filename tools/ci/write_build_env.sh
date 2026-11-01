@@ -17,4 +17,13 @@ sed -i.bak \
   -e "s|^const CLOUD := \"[^\"]*\"|const CLOUD := \"1\"|" $F
 rm -f $F.bak
 grep -q "const ENV := \"$ENV_NAME\"" $F && grep -q 'const CLOUD := "1"' $F || { echo "build_env.gd was not rewritten"; exit 1; }
+# a staging build is its own app: its own name and window title, its own save folder (Godot's user dir follows the
+# project name: app_userdata/Ashen Crown Staging) and its own macOS bundle id, so it never touches the live game's saves
+if [ "$ENV_NAME" = staging ]; then
+  sed -i.bak -e 's|^config/name="Ashen Crown"$|config/name="Ashen Crown Staging"|' project.godot
+  sed -i.bak -e 's|^application/bundle_identifier="io.github.jjcw1337rgb.ashencrown"$|application/bundle_identifier="io.github.jjcw1337rgb.ashencrown.staging"|' export_presets.cfg
+  rm -f project.godot.bak export_presets.cfg.bak
+  grep -q '^config/name="Ashen Crown Staging"$' project.godot || { echo "project name not changed"; exit 1; }
+  grep -q 'ashencrown.staging"$' export_presets.cfg || { echo "bundle id not changed"; exit 1; }
+fi
 echo "build env: $ENV_NAME, game server $BG, Nakama $URL"
