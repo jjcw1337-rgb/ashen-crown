@@ -33,6 +33,7 @@ var hips_rest := Vector3.ZERO
 var hips_pose_rest := Vector3.ZERO
 var w_up := 0.0               # how much of the upper body the procedural moves own (0..1)
 var w_low := 0.0              # ... and of the legs
+var w_shield := 0.0           # the shield arm (SHIELD_ARM) carried by the procedural pose while a shield is on (meta "shield")
 var speed := 0.0              # smoothed ground speed (m/s)
 var shot := {}                # whole-body clip for an attack style: {style, clip, t0, release, t1}; see sync_pose
 var shots := {}               # several such clips, one per attack style (the Wraith's skills): the "shot" node plays whichever
@@ -41,6 +42,11 @@ var w_side := 0.0
 var w_aimwalk := 0.0          # shooting on the move: the aimed walk (shot "walk_clip")
 var w_reach := 0.0            # on the move, the drawing arm reaching to the quiver (shot "reach")
 var yaw_now := 0.0            # the body's side-on turn (degrees)
+## Whole-body clips per attack style (Knight.build_mocap opts "acts": {style: {clip, keys, [yaw]}}): the plague
+## doctor's throws, trap, ultimate and cane. While one plays it owns every bone; the hips stay over his spot.
+var acts := {}
+var w_act := 0.0
+var act_cur := ""
 var hover := 0.0              # metres the body floats above the ground (the Wraith), with a slow drift
 var hover_now := 0.0
 var hover_base := 0.0
@@ -98,6 +104,9 @@ var _state := ""            # the death transition's state ("" until the first f
 
 const UPPER := ["Spine", "Spine01", "Spine02", "neck", "Head", "LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand",
 	"RightShoulder", "RightArm", "RightForeArm", "RightHand"]
+## with a shield on (the hero sets the rig's "shield" meta), the left arm always takes Anim's pose: shield at his
+## side, up across the chest at a run, raised to block; the motion capture's empty-handed swing tore it about
+const SHIELD_ARM := ["LeftArm", "LeftForeArm", "LeftHand"]
 const LOWER := ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", "LeftToeBase", "RightUpLeg", "RightLeg", "RightFoot", "RightToeBase"]
 ## attacks whose footwork the procedural move owns (steps, leaps, spins)
 const FOOTWORK := ["swipe1", "swipe2", "swipe3", "cleave", "over", "back", "side", "thrust", "slam", "leap", "spin"]
@@ -253,7 +262,26 @@ func sync_pose(st: Dictionary) -> void:
 	if want_state != _state:
 		_state = want_state
 		tree.set("parameters/state/transition_request", want_state)
+	# a whole-body clip for this attack style (acts), sought to the attack's progress
+	var style: String = st.get("style", "")
+	var playing_act: bool = not acts.is_empty() and a >= 0.0 and acts.has(style) and not die
+	if not acts.is_empty():
+		var ka := 1.0 - exp(-dt * 16.0) if dt > 0.0 else 1.0
+		if playing_act:
+			if style != act_cur:
+				act_cur = style
+				tree.set("parameters/act_pick/transition_request", style)
+			tree.set("parameters/actseek_%s/seek_request" % style, shot_time(acts[style], a))
+		w_act = lerpf(w_act, 1.0 if playing_act else 0.0, ka)
+		# w_act fades the clip in; it hands back to the locomotion over the move's last 12%
+		var edge := clampf((1.0 - a) / 0.12, 0.0, 1.0) if playing_act else 1.0
+		tree.set("parameters/act_mix/blend_amount", w_act * edge)
 	tree.advance(dt)
+	# library clips step about: the hips stay over his spot while a whole-body clip plays
+	if w_act > 0.002:
+		var hb := skel.find_bone("Hips")
+		var hp := skel.get_bone_pose_position(hb)
+		skel.set_bone_pose_position(hb, Vector3(lerpf(hp.x, hips_pose_rest.x, w_act), hp.y, lerpf(hp.z, hips_pose_rest.z, w_act)))
 	# a body that floats (the Wraith): risen off the ground, drifting slowly, sinking when it dies
 	if hover > 0.0 and body_root != null:
 		if hover_now == 0.0 and hover_base == 0.0:
@@ -265,16 +293,17 @@ func sync_pose(st: Dictionary) -> void:
 			hover_now = lerpf(hover_now, want_h, 1.0 - exp(-dt * (2.0 if die else 6.0)))
 			body_root.position.y = hover_base + hover_now
 	# --- layer 2: the procedural moves, by weight
-	var style: String = st.get("style", "")
 	# the draw / holster (WeaponCarry) is acting only while the blade is on its way (0 = put away, 1 = in guard)
 	var drawing := drawn > 0.001 and drawn < 0.999
-	var acting: bool = (a >= 0.0 and not shooting and not stepping) or float(st.get("block", 0.0)) > 0.05 or drawing or float(st.get("hit", 0.0)) > 0.3
+	var acting: bool = (a >= 0.0 and not shooting and not stepping and not playing_act) or float(st.get("block", 0.0)) > 0.05 or drawing or float(st.get("hit", 0.0)) > 0.3
 	var up_t := 0.0 if die else (1.0 if acting else 0.0)
-	var low_t := 0.0 if die else (1.0 if (a >= 0.0 and FOOTWORK.has(style)) else 0.0)
+	var low_t := 0.0 if (die or playing_act) else (1.0 if (a >= 0.0 and FOOTWORK.has(style)) else 0.0)
 	var k := 1.0 - exp(-dt * 14.0) if dt > 0.0 else 1.0
 	w_up = lerpf(w_up, up_t, k)
 	w_low = lerpf(w_low, low_t, k)
-	if w_up > 0.002 or w_low > 0.002:
+	var sh_t := 1.0 if (bool(get_meta("shield", false)) and not die and not playing_act) else 0.0
+	w_shield = lerpf(w_shield, sh_t, k)
+	if w_up > 0.002 or w_low > 0.002 or w_shield > 0.002:
 		_apply_procedural()
 	_reach_hilt(st)
 	sync()   # the cloak (knight_rig.gd)
@@ -317,6 +346,8 @@ func _apply_procedural() -> void:
 			g = Basis(from_q.slerp(full.get_rotation_quaternion(), 0.34 if nm == "Spine" else (0.67 if nm == "Spine01" else 0.5)))
 		proc_g[i] = g
 		var w := w_up if UPPER.has(nm) else (w_low if LOWER.has(nm) else 0.0)
+		if SHIELD_ARM.has(nm):
+			w = maxf(w, w_shield)
 		if w <= 0.002:
 			continue
 		# global (rig) -> local: pose_local = parent_global^-1 * global, both in the skeleton frame

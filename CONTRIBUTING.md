@@ -53,7 +53,9 @@ code map, gotchas). Either way works:
 - **Claude on claude.ai:** connect GitHub (Settings → Connectors) with an account that has
   access to this repository, then ask Claude to work on `jjcw1337-rgb/ashen-crown`.
 
-Claude can push to `main` like anyone else, so the same rule applies: run the tests first.
+Blaine and jj are equal Game Factory admins. Either may explicitly authorize a push to `main` or production;
+Claude does not need the other admin's approval. Requested previews and otherwise unspecified "push it" requests
+use `test-*` branches (see "Preview builds" in `CLAUDE.md`). Synchronize upstream and run relevant tests before pushing.
 
 ## Everyday workflow
 

@@ -1,0 +1,138 @@
+# STAGING: every push to the `staging` branch builds Windows, Mac and Linux pointed at the staging backend
+# (scripts/build_env.gd rewritten by tools/ci/write_build_env.sh) and, once the Steam settings exist, uploads them to
+# the Steam app's password-protected `staging` beta branch (tools/ci/steam_upload.sh). Production (main) is
+# untouched: deploy.yml still builds main for GitHub Pages and nothing here can set Steam's default branch live.
+#
+# Repository settings this needs (Settings -> Secrets and variables -> Actions; adding them needs repo admin):
+#   variables: STAGING_BG_SERVER (host:port of the Battlegrounds server), STAGING_NAKAMA_URL (https://host),
+#              STAGING_NAKAMA_KEY (Nakama's server key: the public client key every build carries),
+#              STEAM_APP_ID, STEAM_DEPOT_WINDOWS, STEAM_DEPOT_MAC, STEAM_DEPOT_LINUX
+#   secrets:   STEAM_USERNAME, STEAM_CONFIG_VDF (base64 of the build account's config.vdf after a Steam Guard login)
+# Until Steam: itch.io (tools/ci/itch_upload.sh): variable ITCH_TARGET (user/game of the private itch page), secret
+#   BUTLER_API_KEY; the itch app then auto-updates. Pushed to channels windows-staging, mac-staging, linux-staging.
+# Without the staging variables the build stops with a message (a staging build must never fall back to local);
+# without the Steam ones the builds are still attached to the run and the upload is skipped with a notice.
+name: Staging build
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Point the build at staging
+        env:
+          BG: ${{ vars.STAGING_BG_SERVER }}
+          URL: ${{ vars.STAGING_NAKAMA_URL }}
+          KEY: ${{ vars.STAGING_NAKAMA_KEY }}
+        run: |
+          if [ -z "$BG" ] || [ -z "$URL" ] || [ -z "$KEY" ]; then
+            echo "::error::STAGING_BG_SERVER / STAGING_NAKAMA_URL / STAGING_NAKAMA_KEY repository variables are not set"
+            exit 1
+          fi
+          sh tools/ci/write_build_env.sh staging "$BG" "$URL" "$KEY"
+
+      - name: Install export templates
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates
+          mv /root/.local/share/godot/export_templates/4.3.stable ~/.local/share/godot/export_templates/4.3.stable
+
+      - name: Import project
+        run: godot --headless --editor --quit || true
+
+      - name: Export
+        run: |
+          mkdir -p build/win build/linux build/mac
+          godot --headless --export-release "Windows Desktop" build/win/AshenCrown.exe
+          printf 'start "" "%%~dp0AshenCrown.exe" --rendering-method gl_compatibility --rendering-driver opengl3\r\n' > "build/win/Ashen Crown (Safe Mode).bat"
+          godot --headless --export-release "Linux" build/linux/AshenCrown.x86_64
+          chmod +x build/linux/AshenCrown.x86_64
+          godot --headless --export-release "macOS" build/AshenCrown-Mac.zip
+          apt-get update -qq && apt-get install -y -qq unzip > /dev/null
+          unzip -q build/AshenCrown-Mac.zip -d build/mac && rm build/AshenCrown-Mac.zip
+          ls -la build/win build/linux build/mac
+          test $(stat -c %s build/win/AshenCrown.exe) -gt 100000000
+          test -s build/linux/AshenCrown.x86_64
+          test -n "$(ls build/mac)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AshenCrown-staging
+          path: build
+          retention-days: 7
+
+  steam:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      STEAM_APP_ID: ${{ vars.STEAM_APP_ID }}
+      STEAM_DEPOT_WINDOWS: ${{ vars.STEAM_DEPOT_WINDOWS }}
+      STEAM_DEPOT_MAC: ${{ vars.STEAM_DEPOT_MAC }}
+      STEAM_DEPOT_LINUX: ${{ vars.STEAM_DEPOT_LINUX }}
+      STEAM_USERNAME: ${{ secrets.STEAM_USERNAME }}
+      STEAM_CONFIG_VDF: ${{ secrets.STEAM_CONFIG_VDF }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Steam settings present?
+        id: ready
+        run: |
+          if [ -n "$STEAM_APP_ID" ] && [ -n "$STEAM_DEPOT_WINDOWS" ] && [ -n "$STEAM_DEPOT_MAC" ] && [ -n "$STEAM_DEPOT_LINUX" ] && [ -n "$STEAM_USERNAME" ] && [ -n "$STEAM_CONFIG_VDF" ]; then
+            echo "go=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Steam upload skipped: the STEAM_* variables and secrets are not set yet (no App ID)"
+            echo "go=0" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/download-artifact@v4
+        if: steps.ready.outputs.go == '1'
+        with:
+          name: AshenCrown-staging
+          path: build
+      - name: Upload to Steam (staging beta branch)
+        if: steps.ready.outputs.go == '1'
+        run: |
+          # (artifacts lose file modes: the Linux and Mac executables need theirs back)
+          chmod +x build/linux/AshenCrown.x86_64 build/mac/*.app/Contents/MacOS/*
+          sh tools/ci/steam_upload.sh staging "staging ${GITHUB_SHA::7}"
+
+  itch:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      ITCH_TARGET: ${{ vars.ITCH_TARGET }}
+      BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: itch settings present?
+        id: ready
+        run: |
+          if [ -n "$ITCH_TARGET" ] && [ -n "$BUTLER_API_KEY" ]; then
+            echo "go=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::itch.io upload skipped: ITCH_TARGET / BUTLER_API_KEY are not set yet"
+            echo "go=0" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/download-artifact@v4
+        if: steps.ready.outputs.go == '1'
+        with:
+          name: AshenCrown-staging
+          path: build
+      - name: Upload to itch.io (staging channels)
+        if: steps.ready.outputs.go == '1'
+        run: |
+          # (artifacts lose file modes: the Linux and Mac executables need theirs back)
+          chmod +x build/linux/AshenCrown.x86_64 build/mac/*.app/Contents/MacOS/*
+          sh tools/ci/itch_upload.sh "$ITCH_TARGET" staging "staging-${GITHUB_SHA::7}"

@@ -411,6 +411,8 @@ static func item_model(item: Dictionary) -> Node3D:
 					root.set_meta("ranger_bow", true)
 					return root
 				return enemy_weapon(kind)
+			if kind == "cane":
+				return Plague.cane_model()
 			return weapon(kind, sh, p)
 		"shield": return shield(kind, sh, p)
 		"helm": return helm(kind, p)
@@ -423,6 +425,8 @@ static func item_model(item: Dictionary) -> Node3D:
 		"potion": return potion(base["color"], item["base"])
 		"gold": return gold_pile(item.get("count", 50))
 		"material": return material(item["base"])
+		"resource": return Wood.item_model(item["base"])
+		"tool": return weapon(kind, sh, p)
 	return Node3D.new()
 
 ## A Hollow Sloth's material: its Meshy model (assets/models/items/<id>.glb, about 0.3 m) or, without
@@ -965,7 +969,7 @@ static func gold_pile(count: int) -> Node3D:
 ## How an item model should lie on the ground (rotation applied to the model root).
 static func ground_pose(slot: String) -> Vector3:
 	match slot:
-		"weapon": return Vector3(0, 0, 90)
+		"weapon", "tool": return Vector3(0, 0, 90)
 		"shield": return Vector3(-90, 0, 0)
 		"armor": return Vector3(-90, 0, 0)
 		"helm": return Vector3(-20, 0, 15)
@@ -975,7 +979,7 @@ static func ground_pose(slot: String) -> Vector3:
 ## Lift so the model rests on the ground.
 static func ground_lift(slot: String) -> float:
 	match slot:
-		"weapon": return 0.03
+		"weapon", "tool": return 0.03
 		"shield": return 0.05
 		"armor": return 0.13
 		"helm": return 0.1

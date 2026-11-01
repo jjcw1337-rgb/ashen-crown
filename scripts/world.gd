@@ -304,6 +304,14 @@ func add_box(p: Vector3, half: Vector2, yaw: float) -> void:
 	obstacles.append([Vector2(p.x, p.z), -1.0, half, yaw])
 	_bucket(obstacles.size() - 1, Vector2(p.x, p.z), half.length())
 
+## The index of the circle footprint centred at `c` (within 5 cm), or -1. Harvest finds its trees' this way.
+func obstacle_at(c: Vector2) -> int:
+	for i in _near(c):
+		var o: Array = obstacles[i]
+		if float(o[1]) > 0.0 and (o[0] as Vector2).distance_to(c) < 0.05:
+			return i
+	return -1
+
 ## Registers a prop's own footprint (see Props.footprint) where the prop stands.
 func solid(node: Node3D) -> Node3D:
 	if not node.has_meta("footprint"):
@@ -956,6 +964,7 @@ func build(act_i: int, kind_s: String, seed_v: int) -> void:
 	hill_noise.frequency = 0.03
 	hill_noise.fractal_octaves = 4
 	match kind:
+		Battlegrounds.ZONE: Battlegrounds.build(self)
 		"town": _build_town()
 		"wild": Via.build(self) if run == 1 else _build_wild()
 		"coast": Coast.build(self)
@@ -1426,7 +1435,7 @@ func _crypt_entrance(p: Vector3) -> void:
 		Models.P(br, Geo.cyl(0.08, 0.15, 1.0, 8), Props.iron(), Vector3(0, 0.5, 0))
 		Models.P(br, Geo.lathe([Vector2(0.05, 0.0), Vector2(0.35, 0.1), Vector2(0.4, 0.3), Vector2(0.0, 0.2)], 12, "brazier"), Props.iron(), Vector3(0, 1.0, 0))
 		_place(br, p + Vector3(x, 0, 2.2))
-		Props.fire(br, Vector3(0, 1.3, 0), 1.0, Color(1.0, 0.45, 0.15), true, true)
+		Props.fire(br, Vector3(0, 1.3, 0), 1.0, Color(1.0, 0.45, 0.15), true, true, true, "brazier")
 		add_circle(p + Vector3(x, 0, 2.2), 0.5)
 	add_box(p + Vector3(0, 0, -2.0), Vector2(4.6, 3.0), 0.0)
 	exits.append({"pos": p + Vector3(0, 0, 1.2), "radius": 1.6, "to": "lair", "label": act_name("lair")})
@@ -1576,6 +1585,15 @@ func _build_wild() -> void:
 						if not groups.has("bush"):
 							groups["bush"] = []
 						groups["bush"].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.8, 1.2)), Vector3(pb.x, height_at(pb.x, pb.y) - 0.15, pb.y)))
+	# Act I: a few of the trees can be felled (Harvest); they come out of the groups and get their own nodes
+	var harvest_specs: Array = []
+	if oak_forest and act == 0:
+		var hm := {}
+		for k3 in 3:
+			hm["oak%d" % k3] = oak_meshes[k3]
+			hm["pine%d" % k3] = pine_meshes[k3]
+			hm["dead%d" % k3] = dt_meshes[k3]
+		harvest_specs = Harvest.pick(self, groups, hm)
 	# a share of the trees near the road burn in A3
 	for key in groups.keys():
 		if key.begins_with("pine") or key.begins_with("dead"):
@@ -1654,6 +1672,7 @@ func _build_wild() -> void:
 		spawns[k[0]] = Vector3(rp.x, 0, rp.y)
 	spawns["from_town"] = Vector3(0, 0, -6)
 	spawns["from_lair"] = Vector3(end_p.x, 0, end_p.y + 4.5)
+	Harvest.build(self, harvest_specs)
 
 # ---------------------------------------------------------------- dungeon: the crypt and Grubb's Hoard
 var floor_rects: Array = []
@@ -1720,7 +1739,7 @@ func _build_lair() -> void:
 				Models.P(br, Geo.cyl(0.1, 0.2, 1.1, 8), Props.iron(), Vector3(0, 0.55, 0))
 				Models.P(br, Geo.lathe([Vector2(0.05, 0.0), Vector2(0.4, 0.1), Vector2(0.45, 0.32), Vector2(0.0, 0.22)], 12, "brazier2"), Props.iron(), Vector3(0, 1.1, 0))
 				_place(br, bp)
-				Props.fire(br, Vector3(0, 1.45, 0), 1.1, Color(1.0, 0.42, 0.15), true, corner.y < 0)
+				Props.fire(br, Vector3(0, 1.45, 0), 1.1, Color(1.0, 0.42, 0.15), true, corner.y < 0, true, "brazier")
 				add_circle(bp, 0.5)
 			boss_spawn = {"kind": act_name("boss"), "pos": Vector3(c.x, 0, c.y - 3)}
 			continue
@@ -1748,6 +1767,27 @@ func _build_lair() -> void:
 				var ep := Vector3(rng.randf_range(r.position.x + 2, r.end.x - 2), 0, rng.randf_range(r.position.y + 2, r.end.y - 2))
 				var kk: String = foes[rng.randi() % foes.size()]
 				enemy_spawns.append({"kind": kk, "pos": ep, "count": rng.randi_range(3, 5), "champ": rng.randf() < 0.15 + ri * 0.04, "pack": ri * 10 + k, "level": level + ri / 2})
+	crypt_shell()
+	var r0: Rect2 = rooms[0]
+	# stairs back up
+	var st := Models.N(null, "stairs")
+	for i in 6:
+		Models.P(st, Geo.box(3.6, 0.25 + i * 0.25, 0.7), sm, Vector3(0, (0.25 + i * 0.25) * 0.5, -i * 0.7))
+	_place(st, Vector3(r0.get_center().x, 0, r0.end.y - 0.6))
+	st.rotation.y = PI
+	var shaft := MeshInstance3D.new()
+	shaft.mesh = Geo.cyl(1.4, 2.2, 7.0, 16)
+	shaft.material_override = Mats.glow(Color(0.6, 0.7, 0.8), 0.25, 1.0, 0.5)
+	shaft.position = Vector3(r0.get_center().x, 3.5, r0.end.y - 1.5)
+	shaft.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	props_root.add_child(shaft)
+	exits.append({"pos": Vector3(r0.get_center().x, 0, r0.end.y - 0.8), "radius": 1.8, "to": "wild", "label": act_name("wild")})
+	spawns["start"] = Vector3(r0.get_center().x, 0, r0.end.y - 5.0)
+	spawns["boss_room"] = Vector3(boss_r.get_center().x, 0, boss_r.end.y - 3)
+
+## The crypt's stone shell around `floor_rects`: everything that isn't floor is solid rock, wall blocks along the
+## floor's edges, a dark top over the rock, and the crypt floor. Used by the crypt and the Battlegrounds dungeon.
+func crypt_shell() -> void:
 	_rasterize()
 	# everything that is not floor is solid rock
 	rock.resize(gw * gh)
@@ -1784,22 +1824,6 @@ func _build_lair() -> void:
 	Props.multimesh(props_root, Geo.box(1.0, 1.0, 1.0), top_xf, false).material_override = Mats.world(Color(0.05, 0.05, 0.05), Color(0.03, 0.03, 0.03), 1.0, 1.0, 0.0, Props.MOSS, true)
 	_flush_stones(Props.stone())
 	_build_terrain(CRYPT_TERRAIN)
-	var r0: Rect2 = rooms[0]
-	# stairs back up
-	var st := Models.N(null, "stairs")
-	for i in 6:
-		Models.P(st, Geo.box(3.6, 0.25 + i * 0.25, 0.7), sm, Vector3(0, (0.25 + i * 0.25) * 0.5, -i * 0.7))
-	_place(st, Vector3(r0.get_center().x, 0, r0.end.y - 0.6))
-	st.rotation.y = PI
-	var shaft := MeshInstance3D.new()
-	shaft.mesh = Geo.cyl(1.4, 2.2, 7.0, 16)
-	shaft.material_override = Mats.glow(Color(0.6, 0.7, 0.8), 0.25, 1.0, 0.5)
-	shaft.position = Vector3(r0.get_center().x, 3.5, r0.end.y - 1.5)
-	shaft.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	props_root.add_child(shaft)
-	exits.append({"pos": Vector3(r0.get_center().x, 0, r0.end.y - 0.8), "radius": 1.8, "to": "wild", "label": act_name("wild")})
-	spawns["start"] = Vector3(r0.get_center().x, 0, r0.end.y - 5.0)
-	spawns["boss_room"] = Vector3(boss_r.get_center().x, 0, boss_r.end.y - 3)
 
 ## King Grubb's vault: heaps of coins, open chests, his throne of chests, goblin tunnels.
 func _hoard_room(r: Rect2, c: Vector2) -> void:
@@ -1943,4 +1967,4 @@ func _wall_torch(p: Vector3, shadow: bool) -> void:
 	Models.P(g, Geo.box(0.12, 0.3, 0.1), Props.iron(), Vector3(0, 2.2, 0.0))
 	Models.seg(g, Vector3(0, 2.1, 0), Vector3(0, 2.5, 0.3), 0.03, 0.04, Props.wood_dark(), 6)
 	_place(g, p)
-	Props.fire(g, Vector3(0, 2.62, 0.34), 0.6, Color(1.0, 0.5, 0.2), true, shadow, false)
+	Props.fire(g, Vector3(0, 2.62, 0.34), 0.6, Color(1.0, 0.5, 0.2), true, shadow, false, "torch")

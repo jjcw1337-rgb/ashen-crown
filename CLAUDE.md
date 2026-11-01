@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `grass_test`, `collision_test`, `aim_test`, `hoard_test`, `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
+`det_test`, `woodcut_test` (`--fixed-fps 60`), `temper_test`, `woodcut_mp_test` (host + join), `grass_test`, `collision_test`, `aim_test`, `plague_test` (`--fixed-fps 60`), `hoard_test`, `coop_fx_test` (every skill's effects reach a puppet, in one process), `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), `bg_test` (the Battlegrounds: a server and a client, `-- --server --port 24611 --raid-fast server` and `-- client 24611`), `bg_pvp_test` (a server and two players, `a` and `b`), `controls_test` (WASD, the left click, the dodge roll, every class), and the co-op pairs `mp_test`, `mp_boss_test` and `plague_mp_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -50,7 +50,13 @@ Screenshots need a display: `xvfb-run -a godot --rendering-driver opengl3 --path
 The moor's road is `World.road_style()`: the paved Old Kingsroad (2) by default; `--road 0|1|3` shows the old broad
 road, the wagon trail and the moor trails for comparison. `tools/zone_overview.gd -- out.png [--road N]` renders a high view of it.
 
-Run the relevant tests before pushing. A push to `main` publishes to everyone in ~5 minutes.
+Run the relevant tests before pushing. A push to `main` publishes to everyone in ~5 minutes. **Blaine and jj are equal
+Game Factory admins (updated 2026-10-31): either admin's explicit main/production request is sufficient approval**;
+do not wait for the other admin or a second confirmation at the Mac. Synchronize upstream and preserve others' commits
+before deploying. For a requested preview or an otherwise unspecified "push it", use a `test-*` branch
+(`git push origin HEAD:test-something`, or `test-all` for the shared preview) and give the preview build's link.
+Either admin may also request configured asset services, including Meshy and ElevenLabs, within live existing plan
+credits and API-key limits without a separate Blaine-only approval. New purchases need an explicit spending request.
 
 ## Code map (`scripts/`)
 
@@ -60,10 +66,14 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `data.gd` | **Tuning**: classes (`CLASSES`), skills per class (`SKILLS`, `skills_for`), monsters, items, uniques, acts, vendors |
 | `talents.gd` | Talent trees (`Talents.TREES`: three per class), row rules, the auto build for old saves (`AUTO`) |
 | `world.gd` | Zone builder: terrain, roads, buildings, trees/grass (MultiMesh chunks), spawns, `burn_points` |
-| `hero.gd`, `knight.gd`, `knight_rig.gd`, `anim.gd` | Player: class (`cls`, `set_class`), stats (`recalc`), combat, skills, gear visuals, animation, co-op puppet mode |
+| `hero.gd`, `knight.gd`, `knight_rig.gd`, `anim.gd` | Player: class (`cls`, `set_class`), stats (`recalc`), combat, the shared skill flow (mana, cooldowns, cancel, animation), gear visuals, animation, co-op puppet mode |
+| `class_skills.gd`, `knight_skills.gd`, `warlock_skills.gd`, `plague_skills.gd` | Every class's skills, one script per class (`ClassSkills.of(cls)`: KnightSkills, WraithSkills, DemonSkills, WarlockSkills, Archer, PlagueSkills); `hero.gd` hands each cast, impact frame, frame update, root check, clear, death and cast sound to it. Template for a new class: `tools/templates/new_class_skills.gd` |
 | `wraith.gd`, `wraith_skills.gd`, `wraith_fx.gd` | Wraith class: the Meshy body on the mocap system with the spectral shader; its six skills (casts, blows, the tether, phantoms, the night); their effects |
-| `demon.gd`, `demon_fx.gd`, `demon_minion.gd` | Demon class: knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader; skill effects and the Underworld screen grade; summoned demons (simple ally AI) |
+| `demon.gd`, `demon_mocap_rig.gd`, `demon_skills.gd`, `demon_fx.gd`, `demon_fists_fx.gd`, `infernal_fx.gd` | Demon class: the Meshy magma brute on the mocap system with the magma shader and his own wing/tail/cloth rig (falls back to the knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader); his six skills (the fists, the charge, the slam, the boulder, the grip, the wrath); their effects (lava on the ground, fissures, boulders, meteors) |
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
+| `plague.gd` | Plague Doctor class: body (mocap, whole-body skill clips), Toxic Flask, Volatile Mixture, Pestilent Trap, The Last Epidemic, poison and infection, co-op replay |
+| `dragon.gd`, `dragon_skills.gd` | The three dragon classes (`wyrm` Obsidian Wyrm, `serpent` Frost Serpent, `wyvern` Storm Wyvern): Meshy bodies posed in code every frame (`Dragon.pose`, handed over by `Anim.pose`); no skills yet (`DragonSkills` is the empty, ready skills script and plays their attack sounds) |
+| `dodge.gd` | The dodge roll on Space (every class): direction, distance, i-frames, stamina, the tumble, the co-op event |
 | `enemy.gd`, `projectile.gd`, `feral.gd` | Monsters/AI and missiles (host-authoritative in co-op); the Feral's baked-animation body |
 | `via.gd`, `aurelia.gd`, `games.gd`, `roman.gd` | A2: the Imperial Road (wild), the city of Aurelia and its arena (lair), the arena's games (the act's boss fight), and the Roman architecture they're built from |
 | `lion.gd` | The arena lion: a Meshy model on a quadruped skeleton, posed in code (no baked animations) |
@@ -73,12 +83,20 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `hoard.gd` | King Grubb's fight (Act I boss): Gilded Bombs, the three burst sacks, the gold scramble (piles reaching him heal him; piles a hero takes hurt him) |
 | `goblin.gd`, `sculpt.gd` | Goblin models: King Grubb is the imported mutant (`Goblin.MUTANT`: joint layout + glb, skinned onto the game's skeleton); the Gold Grabbers (and Grubb's fallback) are code-sculpted (`Sculpt` melts SDF shapes into one skinned mesh). `Goblin.after_pose` adds ears, jaw, crown wobble, belly jiggle, sacks and the goblin gaits |
 | `ground_item.gd`, `inter.gd` | Loot on the ground; interactables (chests, shrines, waypoints, portals, NPCs) |
+| `harvest.gd`, `wood.gd` | Woodcutting: Act I's harvestable trees (`Harvest`, `Harvest.HTree`), chopping, felling, stumps, respawns; wood made in code (logs, end grain, notches, chips and debris) |
+| `furnace.gd`, `furnace_ui.gd` | Halvar's furnace in the Act I camp: the heat model and weapon tempering (`Furnace`); its window (`FurnaceUI`) |
 | `items.gd` | Item rolls, `empower` (A2/A3 multipliers), enchanting, tooltips |
-| `net.gd` | LAN co-op over ENet (UDP 24567, discovery 24568); RPC layer |
+| `net.gd` | LAN co-op over ENet (UDP 24567, discovery 24568); RPC layer; `server` = a dedicated host with no player (Battlegrounds) |
+| `coop_server.gd` | Online co-op: the story game hosted by a dedicated server (see "Online co-op") |
+| `build_env.gd`, `nakama_client.gd`, `cloud_saves.gd` | Which backend a build uses; the Nakama REST client; characters kept in Nakama (see "Staging and accounts") |
+| `battlegrounds.gd` | Battlegrounds prototype: the raid map, the dedicated server's raid logic (respawns, carried loot, extraction, the stash), the client's id and cached stash |
+| `kpi.gd` | The official performance KPIs: scripted scenarios measured frame by frame (`--kpi`), see docs/nightly/KPIS.md |
+| `skill_fx.gd`, `knight_fx.gd`, `archer_fx.gd` | Co-op skill effects: `SkillFx` plays every class's skill events on the caster and on his puppet for partners (see "Co-op skill effects"); the knight's and archer's effect handlers (the Wraith's, Demon's and Warlock's are in their `*_fx.gd`) |
 | `ui.gd`, `hud_bar.gd`, `icon_renderer.gd` | All UI built in code |
 | `vendor_ui.gd` | Nameplates over the town's people and the trader's live portrait in the trade window |
 | `models.gd`, `skeleton.gd`, `flora.gd`, `props.gd`, `geo.gd`, `mats.gd` | Procedural meshes and shaders |
 | `grass.gd`, `grass_field.gd` | Act I's living 3D grass: species, biomes, placement and shader (`Grass`); the touch field and the wind (`GrassField`, a node of Game) |
+| `fire_fx.gd` | Every fire in the game: simulated-fire flipbooks on layered particles, a preset per kind (see "Fire") |
 | `weather.gd`, `fx.gd`, `sfx.gd`, `sfx_bank.gd` | Snow/ash, particles, audio (autoload `Sfx`: recorded/generated sounds from `assets/audio/sfx/` listed in the generated `sfx_bank.gd`, with the old synthesized sounds as fallback) |
 
 ## Rules and gotchas
@@ -87,14 +105,110 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   (`Props.footprint(root, radius_or_half)`) and are registered with `world.solid(node)` after placing (it reads the node's
   position, yaw and scale). Use `add_circle`/`add_box` only for things with no prop node. Movers call `world.move(pos, d, radius)`,
   which slides against the exact footprints; `blocked` (a padded 1 m grid) is only for A* and spawn spots.
-- **Aiming**: Space and the skill keys fire the way the hero faces, with a light assist (`Hero.aim_ahead`). Every skill in
-  `Data.SKILLS` has `"aim"`: `"facing"` (plus `"range"`), `"self"` or `"point"` (the cursor); `Hero.skill_aim` applies it.
-  Give a new skill an `aim`.
+- **Controls** (Path of Exile 2 style, every class; `tools/controls_test.gd`): WASD moves (`Game.wasd_dir`), left
+  click attacks toward the pointer where he stands (or as the keys carry him; a foe clicked while standing still is
+  walked up to and struck; items, chests and NPCs are still walked to), right mouse is a skill (a new character's
+  first class skill; old saves' Block there becomes it, `binds_v`), and **Space is the dodge roll** (`scripts/dodge.gd`
+  `Dodge`: the way the keys point, else toward the pointer; `DIST` 3.8 m in `DUR` 0.5 s; blows miss for the first
+  `IFRAME` s, PvP included; it drops a swing not yet landed and a channel; costs `STAMINA`; holding Space on after
+  it sprints, as Shift does). Partners see it through the `"roll"` fx event (`SkillFx.play` hands it to `Dodge.fx`;
+  `Dodge.pose` tumbles the body, the Wraith swoops low). The pause menu's Controls button brings back
+  click-to-move (`Game.click_move`, saved in settings).
+- **Aiming** (Path of Exile style): **the mouse pointer is the source of truth; WASD only moves.** `Game` writes the
+  pointer's point (the enemy under it, else the ground) to `Hero.cursor` every frame, and every action aims from it:
+  the left click's attack (`Game._attack_aim`), the skill keys (`Game.cast_skill` → `Hero.skill_aim`) and mouse binds. Every skill in
+  `Data.SKILLS` has `"aim"`: `"point"` (lands on the pointer; the skill clamps to its own range), `"facing"` (the old
+  name, now meaning *directional*: from the hero toward the pointer, out to its `"range"`; the pointer itself when it's
+  nearer, so a beam or tether latches on what's under it) or `"self"` (centred on him, no turn). Only short melee
+  skills (range < `Hero.MELEE_RANGE` 5 m) and Space get help: a foe within `AIM_CONE_MELEE` (20°) of the pointer's
+  line (`Hero._assist_pick`); ranged directional skills go exactly where the pointer says. Setting `atk_aim` also fixes
+  `Hero.atk_dir` (`aim_dir()`), the direction at the moment of aiming: **skill code reads `aim_dir()` for "ahead",
+  never the rig's facing** (`facing()` is the body, for blocking's "from the front" and effects), so a blow, arrow or
+  lunge keeps the pointer's line while he walks on or turns. The body only shows the aim: snapped to it as an action
+  starts, held on `atk_dir` while he moves mid-action, turned to the pointer while blocking, and to his walk
+  otherwise. WASD's heading eases at `TURN_RATE` (28 rad/s) from the keys themselves. Skills that root him (the
+  Demon's charge, slam, throw, grip, wrath) still do. `tools/aim_test.gd` (`--fixed-fps 60`). Give a new skill an `aim`.
 - **Runs** (Act I, A2, A3) are `Data.RUNS` multipliers (`Game.run_mult`). `Items.empower` scales only flat stats; percentages
   (`Items.PCT_STATS`) stay as rolled. Re-run the balance sim after changing any of them.
 
 - **Typed GDScript**: inference from Variant is treated as an error. Write `var x: Type = ...`.
 - **Co-op**: every peer must run the same build; RPC ids depend on each script's RPC set.
+- **Co-op skill effects** (`scripts/skill_fx.gd` `SkillFx`): partners see a hero as a puppet (`Hero.puppet`, posed
+  from `net_st`/`net_pos`/`net_yaw`), so his animation plays for them, but what a skill DRAWS has to be told: every
+  skill effect is an event. Skill code never draws; wherever something is to be seen it calls
+  `Hero.fx(skill_id, event, data)` (e.g. `fx("grasp", "impact", {"p": at, "x": hold})`), which plays the event at once
+  on the local hero (`SkillFx.play`) and, in co-op, sends it with one RPC (`Net.pl_fx`, reliable) to every partner,
+  whose game plays the same event on the caster's puppet. `Hero.use_skill` sends `(id, "cast", {"p": aim})` for
+  every skill by itself, so a new class's casts reach partners before it has any effects of its own (an event no
+  class claims gets `SkillFx._default`: a puff and a burst in the hero's colour). The event is a small Dictionary:
+  `"s"` the skill id (`"attack"` for the weapon), `"e"` the event name, and what it needs: `"p"`/`"q"` points,
+  `"d"` a direction, `"y"` a yaw, `"x"`/`"r"`/`"n"` numbers, `"ps"` a PackedVector3Array, `"t"` the enemies it
+  touches (Enemy nodes; on the wire their net ids, `SkillFx.encode`/`decode`, so a partner finds the same
+  monsters). `SkillFx.play` dispatches on the skill's class (`Data.SKILLS` `cls`) to `KnightFx` / `WraithFx` /
+  `DemonFx` / `WarlockFx` / `ArcherFx` `play(h, ev) -> bool`. A handler draws only: it must not touch life, mana,
+  cooldowns, stuns or talents (a puppet has none; send what the effect needs in the event), and it uses
+  `SkillFx.snd` (flat for the caster, positional from the puppet), `SkillFx.shake`/`hitstop`/`duck` (the caster's
+  screen only). Nothing is sent per frame: effects that run on (the Siphon tether, Drain Life's beams, Eternal Night,
+  phantoms, arrows, bolts, snares, summoned demons and the wolf) are state in `Hero.fxs` (or the hero's own lists)
+  started and ended by events and moved every frame by `SkillFx.update(h, delta)` after the pose, on the local hero
+  and on the puppet alike; a partner's copy ends itself if the end is lost (the tether after its hold + 2 s, the
+  beams 1.5 s after the last tick, the night 1 s after its clip stops). Drain Life's `"tick"` goes out every 0.3 s
+  and `"victims"` only when the fork set changes. A summoned demon, the wolf and the Spirit Beast's commands run
+  their own AI on every game (positions aren't streamed; they follow the same master and the same monsters) and
+  only the master's own copy deals damage (`DemonMinion._strike`, `SpiritBeast._strike`, `Archer.update` check
+  `master.puppet`). Screen-wide things stay the caster's own: the Underworld grade, and Eternal Night's edge
+  darkening (a partner standing in a Wraith's night gets a fainter one, `WraithFx.NIGHT_PARTNER`). On a zone change
+  `Hero.net_zone_reset` drops a puppet's lingering effects. `tools/coop_fx_test.gd` casts every skill of every class
+  in `Data.SKILLS` beside a puppet and fails if a skill sends no event, the puppet shows nothing, a lingering effect
+  doesn't reach it, or replaying the events on the puppet hurts a monster or changes its life or mana; the
+  `mp_test` host+join pair counts the events each side receives from the other ("[H8]"/"[C7]").
+- **Battlegrounds** (`scripts/battlegrounds.gd`, `Battlegrounds`): **the Hollow Crypt**, a hardcore extraction raid in
+  the Dark and Darker mould on a **dedicated server** (`godot --headless --path . -- --server [--port N]`, staging systemd
+  `ashen-crown-bg`, UDP 24567; `Net.server`). The map (`Battlegrounds.build`, zone `"bg"`, indoor, dark: a smaller
+  hero light) is a 4x4 grid of rooms round a great central hall: corner rooms are where players arrive, one middle
+  room per side holds a candidate Extraction Portal (Inter `"extract"`, hidden until open), the other is a treasure
+  room and the only way into the hall from that side; a ring of corridors with one link missing; crypt rooms with
+  sarcophagi, chests, few but tough monsters (`MON_LIFE`, `MON_DMG`, level `MON_LEVEL`); the hall has a pillar ring,
+  three chests and a champion with bowmen. The walls come from `World.crypt_shell` (shared with the crypt). **Rounds**
+  of `RAID_SECS` (15 min): two of the four portals open at `PORTALS_AT` (5 min), joining closes at `JOIN_CLOSE`, the
+  crypt collapses at the end (everyone inside dies) and the dungeon resets (`new_round`). The state reaches players
+  through `Net.cl_bg_raid` (the HUD clock, `Battlegrounds.hud`). **Combat is slower and heavier** while
+  `Game.bg_mode` (Hero: `ATTACK_PACE`, `HIT_MULT`, `CD_MULT`, `MOVE_MULT`, no life regeneration). **PvP**: every other
+  player is an invisible stand-in `Enemy` with `pvp_pid` on each client (`sync_proxies`), so any attack or skill
+  that hits monsters hits players; `Enemy.take_damage` sends `Net.sv_pvp_hit`, the server scales it (`PVP_MULT`) and
+  deals it (`Net.hit_player`); kills are announced. **Real characters**: the Battlegrounds screen picks one of the
+  player's characters (`Game.start_battlegrounds(addr, id)`); its save says `in_raid` until it extracts; what it
+  extracts with stays in its inventory. **Death** costs every item worn and carried, the belt and the gold
+  (`Game.bg_strip` / `strip_save`: levels, stats, talents and the camp's stash are kept; a plain class weapon is
+  given back), dropped where it fell (`Net.sv_bg_died`); a character whose game closed mid-raid is stripped the next
+  time the game starts (`Game._bury_lost_raiders`). Joining uses a one-time Nakama ticket on staging (see "Staging
+  and accounts"). Tests: `tools/bg_test.gd` (server `--raid-fast`: 150 s rounds) and `tools/bg_pvp_test.gd`.
+  Dev cheat (non-production builds or dev tools): type `maxout` while playing (`Game.max_out`: level 99, stats,
+  every talent, a million gold, potions, a bag of the best gear).
+- **Online co-op** (`scripts/coop_server.gd`, `CoopServer`): the story game hosted by a dedicated server
+  (`-- --server --coop --port 24570`, staging systemd `ashen-crown-coop`), so friends co-op over the internet with no
+  router setup: the title's "Online Co-op" (non-local builds) joins `BuildEnv.value("coop_server")` with the
+  player's own saved character (`Game.start_join` takes `host:port`). It is the normal co-op host with `Net.server` and
+  `Net.coop_server`: the server's hero hidden, parked and phased; travel, waypoints, portals and the ready check work
+  (`Net.refuses_travel()` is only true on a raid server; the server always says yes to a trip); a joiner arrives
+  beside a partner. `tools/coop_server_test.gd` (a server and two players, in the nightly gate).
+- **Staging and accounts** (`deploy/staging/README.md`): one DigitalOcean droplet runs the staging backend (Nakama
+  3.41 + its own PostgreSQL in Docker behind Caddy's HTTPS on an IP certificate, and the Battlegrounds server as a
+  systemd service); production will get its own server and database. Which backend a build talks to is
+  `BuildEnv` (`scripts/build_env.gd`: local by default; `tools/ci/write_build_env.sh` rewrites it for staging in CI;
+  `user://env.cfg` overrides it on a dev machine; the title shows a "STAGING BUILD" badge). `NakamaClient`
+  (`scripts/nakama_client.gd`) is a small REST client: device sign-in, storage, user and server RPCs. In cloud builds
+  (`BuildEnv.cloud()`) **characters live in Nakama** (`CloudSaves`, `scripts/cloud_saves.gd`): the local files stay
+  the working copy; the first start uploads them (the migration), later starts bring down newer copies from other
+  devices (by the save's `played`), every `save_game` is pushed, deletes are removed; offline it plays from the files.
+  The Battlegrounds stash is the game server's (`deploy/nakama/modules/ashen.lua`): players can read theirs, never
+  write or delete it (before-hooks on WriteStorageObjects/DeleteStorageObjects for `battlegrounds` and `bg_tickets`;
+  the server writes through the `bg_stash_*` RPCs with the runtime http_key). Joining a raid the client never sends
+  its Nakama session over the game's unencrypted UDP: it gets a one-time 60 s ticket (`bg_ticket`, HTTPS) and the
+  server redeems it (`bg_ticket_redeem`). `.github/workflows/staging.yml`: pushes to the `staging` branch build all
+  three platforms against staging and upload them to Steam's password-protected `staging` beta branch
+  (`tools/ci/steam_upload.sh`, refuses the default branch). Tests: `tools/nakama_check.gd`, `tools/cloud_test.gd`
+  (incl. forged stashes, replayed and planted tickets), `bg_test` with `cloud`.
 - **Browser build (WebGL)** is a test build only and is fragile:
   - it is exported with **Godot 4.5.1** in CI (the desktop builds use 4.3): Godot 4.3's WebGL renderer
     blanks the whole 3D view in busy scenes (many objects near lights). Keep code working in both versions:
@@ -140,7 +254,92 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   procedural body dressed as a hunter (`Archer.build_placeholder`, `Archer.body_gear` kept on every gear change; its bow in `J["grip_l"]`/`J["bow_l"]`). Preview: `tools/mocap_knight_clip.gd -- outdir
   run|attack|shootwalk 34|game|side|close|closeback frames archer [longbow]`. Talent icons still to paint (`tools/talent_icons.py`).
   `tools/archer_test.gd` checks it (run it with `--fixed-fps 60`; it counts frames).
-- **Adding a class**: add it to `Data.CLASSES`, give it four (up to six: Q E R F G V) `SKILLS` entries with its `cls`, build its look the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep working), handle its skill ids in `Hero.use_skill` / `_impact`, and add glyphs in `ui.gd` `SkillGlyph`.
+- **The Plague Doctor** (`scripts/plague.gd`, `Plague`; class `"plague"`, one `Plague` per hero in `Hero.pd`): the Meshy
+  plague doctor (concept 1 of four in the session's picks: beaked mask with green-lit goggles, buckled greatcoat split
+  front and back, bandolier and belt of green/amber/violet vials, pouches, instrument roll, brass censer) on the knight's
+  mocap system like the ranger: `assets/models/plague_doctor.glb` from `tools/blender/plague/prep_plague_mocap.py --
+  rigged.glb out.glb 60000 clips_a.glb clips_b.glb clips_c.glb` (Meshy task ids and the 26 clip ids are at its top).
+  **Whole-body clips per attack style** (new, any mocap body can use them): `Knight.build_mocap` opts `"acts"`
+  `{style: {clip, keys, frac}}` adds one AnimationNodeAnimation + TimeSeek per style behind a Transition (`act_pick`) and
+  a Blend2 (`act_mix`) over everything; `knight_mocap_rig.gd` seeks the clip to the attack's progress along `keys`
+  (`"frac": true` = clip times as fractions of the clip's length), turns the procedural layer off and pins the hips over
+  his spot (library clips step about). `Plague.ACTS`: his own cane combo (`swipe1/2/3` = `peck`, `flick`, `censer_slam`: Meshy 221, 242, 128; each blow's
+  effect is `Plague.cane_blow`, called by `Hero._swipe_impact` with the foes struck: Crow's Peck poisons them for 2 s,
+  Vial Flick fans drops across the arc and poisons everyone struck for 3 s, Censer Slam cracks a vial on the ground
+  ahead in a 2 m cloud for 2.5 s; poison source `"cane"`, scaled by `dmg:attack`), Toxic
+  Flask `pd_flask` (over-shoulder throw), Volatile Mixture `pd_volatile` (crouch charge and throw), Pestilent Trap
+  `pd_trap` (crouch and place), The Last Epidemic in two stages `pd_slam` (the censer smashed) then `pd_dome` (arms
+  raised; `Plague.update` starts it when the first ends), `pd_inspect` (the class stage's fidget: a vial held to the
+  light). New styles are appended to `Net.STYLES` and timed in `Anim.impact_at`. Clip strips: `tools/blender/plague/clip_sheet.py`.
+  Skills: Toxic Flask (Q, a lobbed flask, cloud 3 m / 4 s), Volatile Mixture (E, a fuse ring 0.6 s then a 4 m fire
+  blast that burns; **Ignition**: a blast that reaches one of his clouds burns it out at once for its remaining poison),
+  Pestilent Trap (R, up to 2, armed after 0.8 s, the first foe springs it: stun + cloud; **Outbreak**: sprung by an
+  infected foe, its cloud infects), The Last Epidemic (F, a 9 m dome for 8 s: poison, slow, infection; collapses with a
+  last blow). **Statuses live on the caster** (`Plague.poison`, `infected`, `immune`), ticking every 0.5 s through
+  `Enemy.take_damage` on the elemental channel (green numbers, `dmg_tint`, no blood), so a partner's damage reaches the
+  host the usual way and nothing new crosses the network for it. Guards: one poison per source per foe (refreshed, never
+  stacked; sources toxic, trap, epidemic, infection); one infection per foe; a dead carrier passes it to the two nearest,
+  at most `INF_JUMPS` (6) jumps per cast; 4 s immunity after it ends. Every number is a const at the top of plague.gd;
+  talent keys (`cloud_size`, `poison_dmg`, `blast_size`, `ignite_dmg`, `trap_max`, `inf_jumps`, `dome_size` ...) are
+  read where the skill is. **Co-op**: the first class whose effects partners see: `Plague._send` → `Net.hero_fx` (the
+  host relays; `sv_hero_fx`/`cl_hero_fx`) → `Plague.remote` on the puppet, whose `Plague` is a `ghost()` (builds the same
+  flasks, clouds, traps and dome, deals nothing). His leather is dyed (`Plague.COLORS`, default "oxblood2": an oxblood coat and cape with a black hat,
+  gloves and boots; also "oxblood", "plague", "plague2", "ash2", "" = Meshy's black): `Plague.dye` swaps the albedo for
+  `assets/textures/plague/coat_<scheme>.jpg`, made by `tools/plague_colors.py` from the albedo and metal maps that
+  `tools/blender/plague/dump_textures.py` saves out of the glb and the regions `tools/blender/plague/region_uv.py` finds
+  (head and hat above the collar, gloves by the hand bones, boots below the coat's hem): only the dark, grey, non-metal
+  leather is tinted. His cane: `Data.BASES` `physician_cane`/`crow_cane` (kind `"cane"`,
+  `"cls": "plague"`, `Plague.cane_model`: the Meshy crow-skull cane `assets/models/plague/cane.glb`, `prep_cane.py`).
+  Props: `assets/models/plague/` flask, volatile, trap (Meshy text-to-3D, `act1/prep_prop.py`). Talents: Toxicology,
+  Volatile Arts, Contagion (icons `p_*.png`, `plague_tree*.png`). Tests: `tools/plague_test.gd` (`--fixed-fps 60`),
+  `tools/plague_mp_test.gd` (host + join); screenshots `tools/plague_shots.gd` (`--fixed-fps 10`).
+- **Adding a class** (nothing in `hero.gd` names a class's skills; `ClassSkills` hands them to the class's script):
+  1. `Data.CLASSES`: name, starting stats, `desc`, optional `weapon`, `voice` (hurt/death sound suffix), `attack_pace`, `hud`.
+  2. `Data.SKILLS`: four (up to six: Q E R F G V) entries with its `cls`, each with an `aim`.
+  3. Skills: copy `tools/templates/new_class_skills.gd` to `scripts/<class>_skills.gd` (uncomment its `class_name`)
+     and add it to `ClassSkills.of` and `ClassSkills.all`. Its static `can_cast`/`cast`/`impact`/`update`/`rooted`/
+     `clear`/`died`/`sound` are the whole contract; skill state goes on the hero in one dictionary (like `Hero.wr`,
+     `Hero.dm`) or one object (like `Hero.pd`), so hero.gd doesn't grow. Start motions with
+     `h._start_attack(style, id, seconds)`; "ahead" is `h.aim_dir()`. Weapon-trail colour: `ClassSkills.trail_color`.
+     Run `godot --headless --editor --quit` after adding the class_name.
+  4. Effects: a `<Class>Fx.play(h, ev)` handler (add the class to the `match` in `SkillFx.play`). Keep the gameplay
+     and the effects apart: the skill code deals the damage and calls `Hero.fx(id, event, data)` for everything seen;
+     the cast's event comes for free, and `tools/coop_fx_test.gd` fails any skill that shows partners nothing (see
+     "Co-op skill effects").
+  5. Look: build it the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep
+     working), `Hero._build_rig`. Glyphs in `ui.gd` `SkillGlyph`, talents (`Talents.TREES`/`AUTO`), the class
+     picker (`ClassStage.CLASSES`/`ACCENTS`/`EMBLEMS`/`SIGNATURE`/`SKILL_SHOW`, `_fidget`).
+- **The dragons** (`scripts/dragon.gd` `Dragon`, classes `wyrm` / `serpent` / `wyvern`; added 2026-11-01 on
+  `test-dragons`): the Obsidian Wyrm (four legs, wings), the Frost Serpent (long, wingless, four short legs) and the
+  Storm Wyvern (two legs, wings as forelimbs). Models: Meshy 7.1 (text-to-3D for the wyrm and serpent, a Meshy concept
+  image then image-to-3D for the wyvern so it has four limbs, not six), remeshed to ~31k triangles, rigged in Blender
+  with a chain skeleton (`spine_*`, `neck_*`, `head_0/1`, `jaw_0`, `tail_*`, `leg_<FL|FR|HL|HR|L|R>_0..2`, winged:
+  `arm_<L|R>_0/1`, `fing<N>_<L|R>_0/1`; `_L` at the model's -x) heat-skinned through a voxel proxy, 2K JPEG
+  textures plus a glow map, real-world metres (wyrm 10 m long, serpent 12 m, wyvern 6.3 m tall; `Dragon.KINDS`
+  `"scale"` shrinks them to ~4.6 / 5 / 2.8 m in play). `assets/models/dragons/*.glb` also carry baked Idle /
+  Flap(Swim) / Roar clips that the game ignores; full 4K FBX/GLB and the source sculpts are outside the repo.
+  **No baked animation in play**: like the lion, `Dragon.pose` turns every bone from its rest each frame from the
+  hero's state (`Anim.pose` hands it any rig with the `"dragon"` meta, local hero and co-op puppet alike): breathing
+  and looking about; a diagonal trot (quad, serpent) or striding run (biped) on the hero's `phase` (the rig's
+  `stride` meta slows it for long legs), bob/sway/lean, the serpent undulating head to tail; wings folded at rest,
+  half open and beating at a sprint (`_wing(P, bone, lower, back)`); the **tail** always moving and more than the
+  Demon's (a wag down the chain into an S, speed and size drifting on slow noise, lifted at a run, swinging with
+  the stride, a flick or curl every `FLICK_EVERY` s, a lash when hit). The **basic attack** is the hero's three-swipe
+  combo: `swipe1` a foreclaw rake (the wyvern's wing claw), `swipe2` a lunging bite (jaw snaps on the impact frame),
+  `swipe3` a full spin sweeping the tail round (the finisher's 181° arc); any other attack style plays a roar with
+  wings flared, so a future skill animates before it has a pose. Block = hunkered behind the wings (the serpent
+  coils), death = it rolls onto its side (`own_death` meta). Footfalls `<kind>_step` and the wyvern's `wyvern_flap`
+  play where the body is. The hero side: `Hero.is_dragon()`; no starting weapon, damage from `Data.CLASSES`
+  `"claws"`/`"claw_speed"` (`Data.unarmed`) when nothing is equipped (a found weapon still counts, unseen: grips,
+  shield mount and amulet hang off a hidden node in `J`), `Hero.reach` = `Dragon.reach`, `radius` from `KINDS`, no
+  sword trail. **Adding skills**: Data.SKILLS entries with `"cls": "wyrm"` (etc.) and an `aim`, then handle them in
+  `DragonSkills` (`cast`/`impact`/...), effects in a `DragonFx` added to `SkillFx.play`, a pose per new style in
+  `Dragon.pose`'s attack `match`, `SKILL_SHOW` entries for the picker. Class picker: `ClassStage.CLASSES` spreads
+  the three round the ring (never side by side, wrap included), `Dragon.stage_scale`/`stage_yaw` shrink and turn
+  them on their plinths (and on the title's Continue dais), banner emblem 7 (claw marks), signature "Tail Spin".
+  Sounds: `tools/audio/dragon_sfx.py` derives `<kind>_roar/step/claw/bite/tail`, `death_<kind>` and `wyvern_flap`
+  from the game's own recordings (replace any with an ElevenLabs take later under the same name). Test:
+  `tools/dragon_test.gd` (`--fixed-fps 60`).
 - **The Wraith's body**: the Meshy horned, chained wraith (concept D) on the shared mocap system
   (`Wraith.build_mocap`, `assets/models/wraith_mocap.glb`; falls back to the code-built robe without it). He has no
   legs and never walks: `tools/blender/wraith/prep_wraith_mocap.py` cuts the skeletal legs and feet out of the mesh
@@ -177,8 +376,10 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   attack progress -> clip seconds keys; `Knight.build_mocap` opts `"shots"` and `KnightMocapRig.shots` hand the rig's
   one shot node whichever style is playing; the blow lands on `Anim.impact_at` of its style): claw2 for the rend,
   cast2's reach for the tether, the dodge's spin for the step, the slam for the grasp and the night's fall, claw1 for
-  the phantoms, cast and scream for the night. Skill state lives in `Hero.wr` (the tether, phantoms in flight, the
-  night's stage; `WraithSkills.clear`). Afterimages are `WraithFx.afterimage`: the body's armature duplicated with
+  the phantoms, cast and scream for the night. Skill state lives in `Hero.wr` (the tether's victim and ticks, the
+  night's stage; `WraithSkills.clear`); what is seen is fx events (`Hero.fx`) that `WraithFx.play` draws and
+  `WraithFx.update` keeps going (`Hero.fxs`: the tether node following its victim, the phantoms' flight, the night's
+  dark ramping with the rise, the ghosts wheeling, the claws), on his puppet for partners too. Afterimages are `WraithFx.afterimage`: the body's armature duplicated with
   its bone poses, under copies of the spectral materials with `ghost` on. The spectral claws (`WraithFx.claws`) sit
   on the hand bones (BoneAttachment3D, in the armature's centimetres) and grow out for the rakes. Soul Siphon's slow
   is `Enemy.slow` (rides the stun RPC as a negative time). Old saves' bindings of reap/wail/shade/host become
@@ -186,8 +387,113 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   painted icons) were kept, their effects now name the new skills. `tools/wraith_test.gd` exercises every skill;
   `tools/wraith_skills_clip.gd -- outdir [skill|all] [close|game]` renders frames of each (needs xvfb and
   `--fixed-fps 30`; the Low preset and no shadows, since software GL is slow).
-- **Underworld** (Demon's Phase): `game.set_underworld()` blends a screen-space grade (`DemonFx.UNDERWORLD_SHADER`), the `under_amt` global (terrain veins and rune rings in `mats.gd`), environment tweaks, rising souls and crimson monster outlines (`Enemy.set_soul_lit`). Monsters ignore a phased hero (`hero.phased`).
-- **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `_update_drain`, and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. Skill effects are local only (partners see the cast pose, not the beam), like every other class.
+- **The Demon's body**: the Meshy "Magma Brute" (concept A: cracked charcoal skin with lava in the cracks, swept
+  horns, bat wings, a spiked tail, a loincloth, hooves; 2.2 m as modelled, `Demon.SCALE` 1.08 on top) on the shared
+  mocap system (`Demon.build_mocap`, `assets/models/demon_mocap.glb`; without it the old knight-based fiend,
+  `Demon.body_gear`). `tools/blender/demon/prep_demon_mocap.py` merges and renames the Meshy library clips (ids in
+  the commit: Idle, Slow Orc Walk, Run 2, Combat Idle, Male Head-down Charge, Punch Forward with Both Fists, Charged
+  Ground Slam, Charged Axe Chop, Grip and Throw Down, Crouch Charge and Throw, Charged Spell Cast, Zombie Scream, Angry
+  Ground Stomp, Hit Reaction, Falling Down -> idle, walk, run, combat_idle, charge, claw, slam, smash, grab_throw,
+  hurl, cast, roar, stomp, hit, death), trims the long ones to their useful part, takes the root motion out (as the
+  Wraith's), welds and decimates to 50k, and re-bones what Meshy had tied to the arms and legs: each wing on its own
+  chain from Spine01 (`wL1`/`wR1` the root on the back, `w?2` the arm up to the top joint, `w?3` the leading finger
+  out to the outer tip, `w?4` the lower finger; the membrane skinned to the nearest finger bones, blending into
+  the spine along the flank so the join never tears; the thread Meshy left under each bottom tip is cut), the tail
+  on `tail1..tail7` along its own centreline (geodesic from the root, so the curl is followed; the root blends into
+  the hips), the loincloth's front flap on the cloth panel `hA1..3` from the hips (a back flap would be `hB`).
+  Vertex colour R = along the tail, G = wing membrane. Rebuild: `blender -b --python
+  tools/blender/demon/prep_demon_mocap.py -- rigged.glb assets/models/demon_mocap.glb 50000 clips_a.glb clips_b.glb
+  [--debug prefix]` (the debug renders colour the regions), then `godot --headless --import`; it prints the clips'
+  ground speeds (`Demon.WALK_SPEED`/`RUN_SPEED`/`CHARGE_SPEED` are the blend points; the charge clip is his sprint).
+  Meshy's Slow Orc Walk is bow-legged and hunched, so it only shows at a crawl: the run is in the blend again at
+  `Demon.WALK_BLEND` (2.6 m/s), and `DemonMocapRig._rate` plays the run at his real ground speed (0.77x at 4.8 m/s,
+  heavy, no sliding). The rig eases the speed the clips are blended by over ~0.3 s when he sets off (`ease_speed`:
+  standing crossfades into the stride; it drops at once when he stops) and lags the hero's snap turn on the body
+  (`_vis_yaw`, visual only, up to 0.6 rad; none while he attacks or casts, so the body shows the aim at once), so a start is a heavy push-off rather than a snap.
+  `scripts/demon_mocap_rig.gd` (`Knight.build_mocap` opts `"script"`, `"scale"`) lays the moving parts over the clips
+  every frame, all springs: the wings fold and breathe at rest, half open and flex with the walk, spread and sweep back
+  at a run, fly wide for a cast or a roar, beat on the slams and stomps, sag in death (`_wings`: fold / lift / sweep
+  per side, turns in the rig frame through the bones' rest conj like the hair locks); the tail is a heavy chain
+  (`_tail`: it hangs low (`TAIL_LIFT`, the outer half just over the ground) and wags the whole time: a wag
+  oscillator (`wag_ph`) whose speed, size and axis drift on slow noise, the root swaying moderately and the swing
+  growing and lagging down the chain into an S at the tip, its vertical part only ever lifting from the hang;
+  every few seconds the tip curls or flicks (`flick_t`); moving, the stride's sway (phased to the detected
+  footfalls: `_gait` is pulled to the foot that lands) joins the wag, the modelled curl straightens out behind him
+  (measured in `setup`, `tail_bend_y/p`, undone by `straight`) and the whole tail springs up on an underdamped
+  lift (`tail_up`, overshooting as he sets off, `LIFT_W` sharing it down the chain; the charge highest), bouncing
+  on footfalls; it swings out opposite a turn, lashes when an attack starts, never pitches below its rest hang nor
+  swings its root between the legs, and goes limp dead); the flap is kicked by the stride and
+  never swings into the legs (`_cloth`); `_footfalls` counts each foot landing (`thump`, which `Demon.animate`
+  turns into a small `add_shake` for the local hero). His moves are whole-body clips through `Demon.SHOTS` (style -> clip and
+  progress keys: the combo swipe1/2/3 = claw / smash / slam, Space's over / back / thrust = smash / claw / hurl, and
+  his skills' styles, see "The Demon's skills"). The death is the
+  clip's fall (meta `own_death`: `Hero._own_death` skips the death tilt), then the rig cools the lava (shader
+  `cool`, meta `demon_mats`) and lights the embers (meta `death_embers`); revive resets. `scripts/demon_mocap.gdshader`:
+  Meshy's textures matte (roughness 0.9, no metal), the hot orange texels found as the cracks and lit as magma that
+  breathes, `glow` from `Demon.animate` (flares through attacks and casts, pulses with `hit_t`, more under the wrath's
+  buff), `wrath` = the white heat of Wrath of the Pit, `phase_amt` = a dithered shadow (unused now). The weapon grips sit lower in his big fists and are scaled 1.35x (`Demon.build_mocap`).
+  Preview: `tools/mocap_knight_clip.gd -- outdir demontour close|closeback|game|side|back 1020 demon` (idle, walk,
+  run, a turn, every clip, a hit, death; `--fixed-fps 30`); `demontail tail|game 750 demon` is the tail alone (8 s
+  standing, walk, run, charge, a turn, a swing; the `tail` view is a rear three-quarter); `demonsteps 34 270 demon`
+  is the first steps (stand, run, stop, run into a turn, stop).
+- **The Demon's skills** (`scripts/demon_skills.gd` `DemonSkills`, effects `scripts/demon_fx.gd`, tuning in
+  `Data.SKILLS`; six on Q E R F G V; a pure magma brute, the summons, Blood Pact, Hellfire Claw and Underworld
+  Phase are gone): Molten Fists (Q: the two-fisted punch cracks the ground open in a wedge ahead, `FISTS_R`, hits
+  and ignites), Infernal Charge (E: the head-down charge up to `CHARGE_RANGE`, moved by `_update_charge` through
+  the clip, bowling foes aside with a knockback and a stun, laying lava every `TRAIL_STEP` that burns `TRAIL_DUR`
+  s), Cataclysm Slam (R: a ring round the blow, then `FISSURES` fissures walked out ahead with `world.move` and
+  erupting in waves, `FISSURE_DELAY`/`FISSURE_WAVE`, each foe once per fissure), Brimstone Hurl (F: a boulder
+  thrown from the hand at the release frame, landing `HURL_FLIGHT` s later: the splash, a knockback, fire, a pool
+  for `POOL_DUR`), Hellgrip (G, level 14: the foe ahead is seized a quarter into the clip, `grip_pick`, stunned
+  and hoisted, smashed at the impact for his heaviest blow plus a shockwave; refused with "No enemy in reach"),
+  Wrath of the Pit (V, level 18, the ultimate: two stages chained as attacks by `_update_wrath`, the roar (terror
+  round him) and the stomp (a lava ring), then `WRATH_DUR` s of meteors, one every `WRATH_EVERY` on the foe struck
+  least recently within `WRATH_R` (`_call_meteor`; the spot goes in the event, so partners see the same sky), with
+  the +40% buff). Every blow adds `magma(h, k)` on top of the weapon, the same curve as the Wraith's spirit-light.
+  Clips through `Demon.SHOTS` (fists = claw, icharge = the looping charge, cslam = slam, hurl = hurl, grip =
+  grab_throw, wrath_roar = roar, wrath_stomp = stomp; `Anim.impact_at` has their frames, `Net.STYLES` the styles).
+  State lives in `Hero.dm` (the charge, `lava` patches ticking every `HAZARD_TICK`, `fissures`, `boulders` and
+  `meteors` in the air, the grip's victim, the wrath); `DemonSkills.clear` drops it all (class change, death, a
+  zone change) and `DemonFx.clear` what is seen. Effects are fx events `DemonFx.play` draws and `DemonFx.update`
+  keeps going on the puppet too (`Hero.fxs`: `icharge` embers, `boulders`/`meteors` flown on a parabola, `grip`
+  lifting the victim's rig, `wrath` ramping the body shader's `wrath` = white-hot cracks and a light); the lava on
+  the ground is `DemonFx.lava_decal` (a disc of `LAVA_SHADER`: cracked rock with magma breathing through, a wedge
+  for the fists, cooling to black over its life) and `lava_strip` for the fissures, `boulder` the molten rock
+  (meteors too), `crater` where one lands. Old saves' bindings of hellclaw/summon/phase/pact become
+  fists/icharge/cslam/hurl (`DemonSkills.OLD_IDS`, `migrate_binds` in `Hero.from_save`); the talent ids (and their
+  painted icons) were kept, their effects now name the new skills (`fists_wide`, `trail_dur`, `hurl_twin`,
+  `wrath_dur`, `wrath_double`). `tools/demon_test.gd` exercises every skill, the migration and the talents;
+  `tools/demon_skills_clip.gd -- outdir [skill|all] [close|game]` renders frames of each (xvfb, `--fixed-fps 30`);
+  `tools/coop_fx_shot.gd` has `demon:grip` and `demon:wrath`. The Underworld grade in `game.gd`
+  (`set_underworld`, `DemonFx.UNDERWORLD_SHADER`, `under_amt`) and the body shader's `phase_amt` stay, unused.
+- **Molten Fists' look, "Hellbrand"** (`scripts/demon_fists_fx.gd` `DemonFistsFx`, on the Demon's Q; the gameplay in
+  `DemonSkills` is unchanged): the "cast" event starts the gather (hellfire gauntlets on both fists, the body shader's
+  `brand` running the magma down his arms, a light between his hands, crimson motes pulled in, his sigil drawing
+  itself under him), the "impact" event the release (a flash at the fists, the rift tearing open in a wedge with a
+  light sweeping along it, a crescent of fire with heat haze from High, obsidian fangs bursting up near to far and
+  shattering into burning fragments, fires out of the fissures, smoke, embers, earth; each foe struck gets a molten
+  flash, a splash, fire on its body and a visual stagger, `fists_stag`). State in `h.fxs["fists"]`. The clip is
+  re-timed in `Demon.SHOTS` "fists" (snaps into the chamber and holds it; the impact frame unchanged) and
+  `DemonMocapRig._fists_pose` rears him back and drives him down over it. Built from **`InfernalFx`**
+  (`scripts/infernal_fx.gd`): the Demon's reusable visual language (palette OBSIDIAN/CRIMSON/MOLTEN/WHITEHOT, the
+  sigil, rift, obsidian shard, wave, smoke, glow and haze shaders, noise textures made in code, `particles(...)` from
+  a dictionary, budgets by `tier(game)`; `force_tier` for previews). Preview: `tools/demon_fists_clip.gd -- outdir
+  close|front|game|fight|fire [tier] [secs] [casts]` (xvfb, `--fixed-fps 30`).
+- **Fire** (`scripts/fire_fx.gd` `FireFx`): every fire in the game is simulated fire. `Props.fire(..., kind)` builds
+  it (the old particle fire is `Props.fire_legacy`; `Props.use_legacy_fire` switches back for comparisons). Kinds
+  (`FireFx.PRESETS`): torch, candle, campfire, bonfire, brazier, building, ground, magic, weapon, burning; each a
+  flipbook book, flame rate and life, size, back / main / core layers, embers, sparks, smoke, haze and light. Flames
+  are particles playing a flipbook of a Blender Mantaflow fire (`InfernalFx` `FLIPFIRE_SHADER`), each starting on
+  its own frame and mirrored at random, so nothing loops visibly; overlapping flames share their brightness so a fire
+  never sums to white. Books in `assets/textures/fx/`: `fire_body.png` (8 x 8), `fire_tongue.png` and
+  `fire_spread.png` (6 x 6). Fire lights carry meta `fire` and flicker like real fire in `Game`'s flicker loop; they
+  fade out past ~40 m. The bonfire window plays the body book too (`UI.FIRE_FLIP_SHADER`). Make a book:
+  `FIRE_KIND=body|tongue|spread blender -b --python tools/blender/fx/fire_flipbook.py -- outdir res frames px`
+  (Blender 4.5; ~2 min a 3-frame test, 20-60 min a full book on the cloud's 2 cores; `RENDER_ONLY=1` reuses the
+  bake), then `bash tools/fx_flipbook.sh outdir assets/textures/fx/fire_<kind>.png first cell tile`. Settings that
+  worked and mistakes to avoid are in the project doc "fire pipeline". Comparison: `tools/fire_compare.gd -- outdir
+  new|old close|wide|game frames`.
+- **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `WarlockSkills.update_drain` (all of Drain Life is in `warlock_skills.gd`), and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. The beams, sigil, hand light and hum are the `"drain"` fx events' effect (`WarlockFx.play`, state in `Hero.fxs["drain"]`, drawn by `WarlockFx.update` after the pose on the caster and on his puppet; `"start"`, `"victims"` when the fork set changes, `"tick"`, `"end"`), so partners see the beam on him too.
 - **King Grubb** (Act I boss, `hoard.gd`) is host-authoritative. Every visible part of the fight (piles, bombs, burst
   sacks, shouts, a grabber's `carry_on`/`carry_off`) is an Enemy fx event string handled in `Hoard.fx`, so partners see it;
   damage, healing and gold happen only on the host. Grabbers reach the fight through `Enemy.hoard` (`Hoard.steer`).
@@ -217,6 +523,12 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   contact sheet of his motion. `tools/blender/grubb.py` (+ `grubb_gear.py`) is the earlier fully scripted Blender
   build, kept as a reference; its export isn't used. Godot's `.import` files and extracted textures under
   `assets/models/` are git-ignored (regenerated on import); run `godot --headless --editor --quit` after re-exporting.
+  Since those `.import` files are made fresh, the textures take `project.godot`'s `[importer_defaults] texture`:
+  **lossy WebP at quality 0.9, 3D detection off** (the default was lossless, 490 MB of the old 618 MB pack; q0.9 is
+  ~41 dB against the source JPGs, which are lossy already). A checkout imported before 2026-11-01 keeps its old
+  lossless `.import` files until they're deleted (`find assets/models -name '*.jpg.import' -o -name '*.png.import' |
+  xargs rm`, then `godot --headless --import`). Give a new texture with a committed `.import` the same settings when it
+  is a JPG-sourced 3D texture (like `assets/textures/plague/coat_*.jpg`); keep UI and cut-out PNGs lossless.
 - **Knight (no armour)** is a Meshy model (white shirt with a red crusader cross, shorts, leather sandals,
   long hair): `assets/models/knight_meshy.glb`, built by `Knight.build_meshy` on `Knight.MESHY_LAYOUT`. The hero
   wears it while the armour slot is empty (`Hero._wants_meshy`); `refresh_gear` swaps to the procedural armoured
@@ -242,14 +554,28 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   `_sway_hair` swings; faces Meshy fused between parts that move apart (cloak/leg, cloak/arm, arm/hips) are cut, and
   cloak shreds left beside the A-pose arms are dropped. `--debug` renders the A-pose coloured by main bone.
   The earlier armoured knight (bare head, red tabard) is kept as `knight_statue.glb` for the arena statues.
+  **Shield arm** (any mocap body): with a shield on (`Hero.refresh_gear` sets the rig's `shield` meta) the left arm
+  (`KnightMocapRig.SHIELD_ARM`) always takes Anim's pose (`w_shield`): the shield at his side, up across the chest at a
+  run, raised to block. The motion capture's empty-handed arm swing left it hanging by his knee and flapping about.
 - **Act I trees and grass** (`World.oak_forest`, set by `game.gd` when `difficulty == 0`; A2/A3 keep the old mix): three
   Meshy oaks `assets/models/trees/oakN.glb` (prepared by `tools/blender/prep_tree.py`: trunk on the origin, ~6 m, 1k
   textures) built by `Flora.oak_model(k)` with `MESHY_TREE_SHADER` (wind sway by height, snow/ash, see-through near the
   player) plus the game's leaf clusters (`OAK_LEAVES`); the moor is ~40% oaks with groves off the road. Grass is
   the **living 3D grass** (`scripts/grass.gd` `Grass`, `scripts/grass_field.gd` `GrassField`; Act I's camp, moor and
   fort, i.e. whenever `oak_forest`; A2/A3 keep the old blade clumps): seven species built in code (`Grass.SPECIES`:
-  meadow, tall seed-head grass, tussock, dry straw, moss with clover, broad-leaved weeds, sparse verge grass;
-  curved tapered blades with rounded normals, two variants, two LODs) mixed by biomes (`Grass.BIOMES`: meadow,
+  meadow, tall seed-head grass, tussock, dry straw, moss with clover, broad-leaved weeds, sparse verge grass)
+  **modelled in Blender on Meshy textures**: four Meshy botanical sheets (green blades, dry straw, seed heads and
+  wildflowers, broad leaves; `meshy.py draw "... laid flat side by side ..." --cutout`, ~6 credits each, the prompts
+  are in the commit) are cut by `tools/grass_atlas.py <dir> assets/textures/grass` into `atlas.png` (2048x1024, 32
+  cells of 128x512: blades unrolled to the full cell width so they stay opaque, heads/flowers/leaves kept as
+  cut-outs; mipmaps on) and `atlas.json`; `blender -b --python tools/blender/grass/build_clumps.py --
+  assets/textures/grass/atlas.json assets/models/grass` models each species' clumps (folded blades with a raised
+  midrib, sheaths, twists, snapped straw, crossed seed-head cards, leaf rosettes; two variants, two LODs; objects
+  `<species>_<variant>_<lod>`) into `assets/models/grass/<species>.glb`. Per vertex: UV = atlas, UV2 = (flex, height
+  along the plant), COLOR = (dry, sway phase, lush, 1 blade / 0.5 card). `Grass.glb_mesh` loads them (stripping the
+  importer's automatic LODs and tangents, since the `.import` files are git-ignored) and the shader's `textured`
+  mode draws them; species without a glb fall back to the code-built clumps (`Grass.mesh`, curved tapered blades).
+  `tools/grass_closeup.gd -- out.png [lod] [dist]` renders every species side by side. Mixed by biomes (`Grass.BIOMES`: meadow,
   woodland, dry, verge, trampled, ruins). A zone answers `grass_ground(x, z)` (0 bare .. 1), `grass_height` and
   `grass_biome` (weights; World's: verges by the road, undergrowth near `tree_pts`, dry patches and round the
   Sloths' clearings, trodden in the fort and camp), and `Grass.scatter` fills MultiMesh chunks (`CHUNK` m, per
@@ -258,7 +584,8 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   `wind_strength`, `wind_gust`, `wind_phase`: gust fronts rolling along the wind, sway per clump, flutter;
   `GrassField.WIND` profiles per zone set in `Game._grass_zone`, blended by `set_wind(profile, secs)`, drifting
   on their own) and by **touch**: `GrassField` is a GPU spring simulation following the camera (two ping-pong
-  SubViewports, 256 px over 64 m, RG bend / BA velocity in 8 bits, global `grass_field` + `grass_field_rect`);
+  SubViewports, 256 px over 64 m, RG bend / BA velocity in 8 bits; its texture goes to the grass materials,
+  `Grass.set_field`, and where it lies is the global `grass_field_rect`);
   every mover from `Game._grass_movers` (hero, partners, monsters, pets, demons) presses a capsule along its real
   path (size from its `radius`, harder when sprinting or dashing, a slow flattening when standing), an attack's
   impact frame (`Anim.impact_at`, so every peer sees it) throws an arc in front (`GrassField.swing`; slams and
@@ -270,7 +597,8 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   nodes, meta `grass3d`). Tests: `tools/grass_test.gd` (headless: species, LODs, no painted clumps, field on/off,
   movers, swings, rings, wind); `tools/grass_lab.gd -- outdir [quality] [zoomin]` (needs a display: biome bands,
   scripted walkers that walk, sprint, stop, turn and dash, a big beast, swings, a slam, wind changes; saves frames
-  and checks the field lines up and returns fully to rest). Performance from any build:
+  and checks the field lines up and returns fully to rest; Mesa's llvmpipe software renderer, the only one in the
+  cloud workspace, tints some clumps in rainbow colours there, so judge colours on a real GPU). Performance from any build:
   `AshenCrown -- --shot out.png --zone wild --god --perf 12 --quality 2 --grassspot` writes `out.txt` (fps, 1% low,
   draw calls, primitives, GPU). The painted clumps (`Flora.GRASS_TOP`, `_camera_card`) are no longer placed;
   `Flora.flower_card` still uses `_camera_card` for the Sunstar Blooms.
@@ -310,8 +638,8 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   `bear_maul` double-paw slam). Two lone wanderers per moor, 20-40 m off the road (`World._bear_dens`, own seed); the AI
   (`Enemy._bear_idle`/`_bear_combat`) wanders its ground, rears and roars now and then, roars once on noticing you,
   charges and mauls (a 3 m arc, `"maul"` hits knock the hero back: `Hero.knock_v`), gives up 30 m from home. Its sounds
-  borrow `lion_roar` (pitched down) and `slam` until `bear_roar`/`bear_maul` exist (`Bear.sound`; ElevenLabs needs
-  Blaine's OK). `tools/bear_test.gd`, `tools/bear_sheet.gd -- out.png [side|34]`.
+  borrow `lion_roar` (pitched down) and `slam` until `bear_roar`/`bear_maul` exist (`Bear.sound`; either admin may request
+  ElevenLabs generation within existing plan credits). `tools/bear_test.gd`, `tools/bear_sheet.gd -- out.png [side|34]`.
 - **The Hollow Sloths** (`sloth.gd`, Act I, `World._sloths`): three elemental giants, `Data.ENEMIES` `sloth_fire`
   (Cinderhide), `sloth_ice` (Rimeclaw), `sloth_storm` (Thundermaw), each with `"element"` (fire/cold/lightning),
   `"variant"` (its model) and `"drop"` (its material). Each lives in its own lair (`sloth_lair.gd`, `SlothLair`:
@@ -505,6 +833,49 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   inventory; drag an item onto the flames or right-click it to burn it for good (`UI.burn_request`, `Game.burned`: the
   `burn_item` sound and a flare); rare, unique and material items ask first. A click on an inventory item plays
   `inv_click`. `tools/bonfire_test.gd`, `tools/bonfire_shot.gd`.
+- **Woodcutting** (`scripts/harvest.gd` `Harvest`, visuals `scripts/wood.gd` `Wood`; Act I's moor): `Harvest.pick`
+  takes up to `CAP` (24) trees out of `World._build_wild`'s MultiMesh groups on its own seed (the same on every peer;
+  8-42 m off the road, `SPACING` apart, never by the arrival point; Ferals never perch on them since they're gone from
+  the groups before `_feral_packs`), `HEARTWOODS` of them Ashen Heartwood from the dead trees; the rest stay scenery.
+  `Harvest.build` makes each a `Harvest.HTree` (an `Inter`, kind `"tree"`, in `world.interactables`, so hovering,
+  clicking and walking up are the usual interaction; `Game._interact` -> `Hero.start_chop`), keeps the footprint World
+  already had for it (`World.obstacle_at`; a stump shrinks it, regrowth restores it) and cuts its mesh in two at the
+  cut (`Harvest.split_mesh`) for the stump and the falling trunk. Kinds and numbers: `Harvest.KINDS` (Moor Oak 7
+  blows / 3-4 logs / 8 min, Old Pine 4 / 2-3 / 6 min, Ashen Heartwood 14 / 1-2 / 25 min). Chopping (`Hero.chop_*`):
+  the hero needs an axe (`Hero.chop_axe`: the `woodsman_axe` tool every hero gets in the last bag cell, sold by the
+  smith, or a combat axe, `Data.CHOP_POWER`), puts his weapon away and swings style `"chop"` (an attack with
+  `atk_skill` `"chop"`; Anim's procedural chop for every body, whole-body clips where a body has them: the Demon's
+  Charged Axe Chop, the Wraith's slam with a spectral axe, the Plague Doctor's censer slam; per class
+  `Data.CHOP_PROFILES`, a missing class gets `DEFAULT_CHOP`), one blow per swing on its impact frame
+  (`Harvest.strike_from`); moving, a skill, a target or a blow taken stops him (`stop_chop`). **The host owns the
+  trees**: a partner's blow is `Net.request_chop` -> `sv_chop`, and `Harvest.strike` refuses it beyond `REACH`, faster
+  than `STRIKE_GAP` or at a felled tree; what happens goes to everyone as `Net.cl_tree` events (`hit`, `fell`,
+  `heal`, `regrow`; `play_event`), joiners get `cl_trees` in the snapshot; the logs are ordinary host ground items
+  (`Game.drop_item`, one pickup each). Wounds heal after `HEAL_AFTER`; stumps regrow on the host character's played
+  time (`Game.played_s`, saved) after the kind's respawn, only with no hero within `REGROW_CLEAR`; stumps are saved
+  with the character (`Game.harvest_saved`, `"harvest"` in the save, keyed `run:act:zone`). Off in the Battlegrounds.
+  Sounds: `Harvest.snd` uses `axe_chop`, `bark_crack`, `tree_creak`, `tree_fall`, `tree_thud`, `leaves_rustle`,
+  `log_pickup` when they're in the bank and existing sounds pitched to fit until then (`SOUND_STAND_IN`).
+  Resources: `Data.BASES` slot `"resource"` (`oak_log`, `pine_log`, `heartwood`: `"stack"`, `"fuel"`), stacked by
+  `Hero.add_to_inventory` (`Items.stack_cap`), counted and taken with `Hero.count_of`/`take_items`; slot `"tool"`
+  for the axe. New resources (ore, coal) are BASES entries. Tests: `tools/woodcut_test.gd` (`--fixed-fps 60`),
+  `tools/woodcut_mp_test.gd` (host + join); screenshots `tools/woodcut_shots.gd -- outdir [class]` (xvfb).
+- **Weapon tempering** (`scripts/furnace.gd` `Furnace`, window `scripts/furnace_ui.gd` `FurnaceUI`): Halvar's furnace
+  stands beside his forge in the Act I camp (`Furnace.place` from `ForestCamp.build`; Inter kind `"furnace"` ->
+  `UI.open_furnace`, shop_mode `"furnace"`: right-click a weapon in the bag to put it before the fire, a log to load
+  it, Shift for five). **Weapons only** (armour keeps the gold enchanting), `Items.TEMPER_MAX` (+5) levels, each
+  +`TEMPER_ED`% (6) enhanced damage and +1 damage (`Items.stat_sum`'s `"temper"`). The heat model (`Furnace.step`):
+  `dT/dt = (P - LOSS (T - AMBIENT)) / MASS`, at most `SLOTS` (3) logs burning, in the order loaded, each for its
+  `"burn"`; the fire can't pass the best fuel's `"max_temp"` (pine 1040, oak 1240, Heartwood 1400 = `MAX_T`); the
+  bellows (held) give `BELLOWS_HEAT` more heat and burn twice as fast; it cools once the wood is gone. A level
+  (`Items.temper_cost`): its band (`TEMPER_BANDS` 600/850/1050/1250/1350 °C), a charge of logs (from +4 with Ashen
+  Heartwood, so oak first to raise the fire, then the Heartwood), the smith's fee, and a soak that only runs while
+  the fire is at the band; Quench after the soak = the level, before it = nothing (the weapon is safe, the charge is
+  spent and burns on in `spent`). Closing the window mid-temper is a quench before time. Each player's own (nothing
+  crosses the network). Visuals: flame cards and coals shaded by the heat (`FLAME_SHADER`, `COALS_SHADER`,
+  `heat_color`), the weapon glowing in the mouth (`HOT_METAL_SHADER`), embers, sparks, chimney smoke, heat haze
+  (screen texture; not on the web), the bellows working; the roar is `furnace_roar` when it exists (the wind pitched
+  down until then). Test: `tools/temper_test.gd`.
 - **Birds** (`scripts/birds.gd`, Act I outdoors, added by `Game.load_zone`): flocks of dark swept-wing silhouettes cross
   the sky round the hero (flapping, gliding, banking, shadows), and every 25-50 s a flock bursts out of the trees near
   him with `birds_flutter`. Cosmetic and local (not synced). Screenshot: `tools/birds_shot.gd`.
@@ -514,13 +885,33 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   everyone has said Join. A member leaving mid-vote is dropped from it (theirs is called off). The host is the party
   leader (♛ on the party list) and can remove a member (✕, `UI.confirm_kick`, `Net.kick`). `tools/mp_test.gd`
   (host + join) checks it; `tools/vote_shot.gd` screenshots the window.
-- **New Character screen** (`UI._build_class_picker`, `scripts/class_stage.gd` `ClassStage`): every class stands live
-  on a torch-lit stage in its own world, as co-op puppets (`Hero.puppet`, driven through `net_st`/`net_pos`/`net_yaw`)
-  in its starting gear: idle they breathe and look about (`_idle`), under the mouse each fidgets its own annoying way
-  (`_fidget`), and the chosen one steps into the light and does its signature move every 4.5 s with its effects
-  (`SIGNATURE`, `_signature`). Choosing a hero plays its own sound (`ClassStage.PICK_SOUND`: layers of the game's recordings, `pick_sound`), and the screen has its own theme, `music_select` (music_town's candidate take 14; `Game.zone_music()` brings the zone's song back when it closes). Below, in the inventory's iron frame: name, story, stats, skills in the bar's sockets,
-  the name and Play. The stage is built when the picker opens and freed when it closes. A new class needs a
-  `ClassStage.CLASSES`/`ACCENTS`/`SIGNATURE` entry and its `_fidget` case. `tools/class_shot.gd -- outdir [frames]`.
+- **New Character screen** (`UI._build_class_picker`, `scripts/class_stage.gd` `ClassStage`): a **focused carousel** in a
+  ruined cathedral (`scripts/class_cathedral.gd` `ClassCathedral`, all in code; concept `concepts/class_screen/arrows_b_focus.png`; the stage fills the whole screen behind the title and the panel, its camera's frustum shifted and widened by `ClassStage._frame` so the heroes sit in the band between them (`band`), with soft fades over it, `UI.STAGE_FADE_SHADER`):
+  the chosen hero stands large in the middle, front and close, on the biggest plinth with its shaft blazing; the ones
+  either side stand back, smaller and dimmer; the outer ones further back, fading into the gloom; the rest wait unseen.
+  `ClassCathedral.build_hall` is the still set (floor, back wall with pointed windows, pillars, rubble, candelabras,
+  ash); each class gets a **stand** (`build_stand` under one Node3D in `ClassStage.stands`: hexagonal plinth with runes
+  glowing in the class colour, the coloured light shaft, a tattered banner with its emblem, candles, its spot and rim
+  lights), and the carousel moves the stand with its hero, so any number of classes in `ClassStage.CLASSES` works and
+  the ring wraps round. Slots are by distance from the middle (`SLOT_X/Z/SCALE/LIGHT`, interpolated across the glide;
+  `VISIBLE` = where a slot fades out; the hero node is scaled with its stand, so every lift and effect in a move is
+  multiplied by `_k(cls)`). Turning: the two arrows at the stage's edges (`UI.ClassArrow`: Meshy-painted iron chevron
+  `assets/textures/ui/arrow_left.png`, flipped for the right one, with the gem's glow `arrow_gem.png` added on hover;
+  hover brightens and grows it, pressed dips it, a key press flashes it; it `accept_event`s), the mouse wheel over the
+  stage, Left/Right or A/D (`UI._class_key`, not while the name field has focus), or a click on a side hero: `turn(dir)`
+  / `go_to(cls)` glide the ring one slot (`TURN_T`, eased; rapid turns queue into one longer glide from where the ring is,
+  never a snap; `snap_to` opens on the knight), the hero that will arrive is `chosen` at once (`picked`, its `PICK_SOUND`,
+  the panel follows) and its signature move starts once it has arrived. Nameplates follow the feet (`feet_at`) and fade
+  with the slot (`plate_alpha`); `class_at` picks only the visible heroes at their scale. Hidden slots' heroes and lights
+  are off (WebGL's light budget). Idle they breathe and look about (`_idle`), under the mouse the front three fidget
+  (`_fidget`), the chosen one does its signature move every 4.5 s with its effects (`SIGNATURE`, `_signature`). Choosing
+  a hero plays its own sound (`ClassStage.PICK_SOUND`, `pick_sound`), and the screen has its own theme, `music_select`
+  (`Game.zone_music()` brings the zone's song back when it closes). Below, in the inventory's iron frame: name, story,
+  stats, skills in the bar's sockets, the name and Play. The stage is built when the picker opens and freed when it
+  closes. A new class needs only a `ClassStage.CLASSES`/`ACCENTS`/`EMBLEMS`/`SIGNATURE` entry and its `_fidget` case (it
+  gets its own stand automatically) and a `SKILL_SHOW` entry per skill (hover a skill in the panel: the centred hero
+  performs it on the stage, `show_skill`). Tests: `tools/class_carousel_test.gd` (`--fixed-fps 60`: turning, wrapping,
+  queued turns, clicks, keys, wheel, feet on plinths, skill previews); `tools/class_shot.gd -- outdir [frames]`.
 - **Title screen** (`UI._build_title`, `scripts/title_stage.gd` `TitleStage`): the Gate of the Ashen Crown at dusk in
   its own World3D: a ruined cathedral gate with the dusk showing through its arch (`BACKDROP_SHADER`), broken arcades,
   the fallen stone king and a giant crown in the ash, fog banks, falling ash, embers, braziers and torches, heat
@@ -582,7 +973,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   the smith; `tools/vendor_shots.gd -- outdir [role]` screenshots a trader.
 - **Skill bar and bindings** (every class, including new ones): the bar has a big slot for each mouse button and six
   hotkeys (Q E R F G V); any skill can go on any of them (`Hero.binds`, saved per character; `Hero.default_binds`:
-  left mouse `attack`, right mouse `block`, the class's first four skills on Q-F). `attack` and `block` are
+  left mouse `attack`, right mouse the class's first skill, the class's first four skills on Q-F). `attack` and `block` are
   `Data.COMMON_SKILLS` (`Data.skills_known(cls)` = class skills + common). Input goes through `Game._use_bind`
   (held buttons recast when ready; `Game.skill_held(id)` for Block and Drain Life's channel). Click a bar slot or
   open the skills window (K) to rebind, or drag: a skill from the skills window onto a slot, one slot onto another
@@ -644,9 +1035,34 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   `Hero.show_damage`): hits close together add to a running total that counts up smoothly and pops on each hit; 1.1 s
   after the last hit it drifts up and fades, and the next hit starts a new total. Every class gets it. Preview:
   `tools/damage_stack_clip.gd -- outdir`.
+- **UI layers and screen isolation** (`UI.setup`): every control lives in one layer of `UI.root`, bottom to top:
+  `hud` (globes, bar, corner map, quest tracker, target and boss bars, nameplates, the raid HUD), `windows` (inventory,
+  sheet, shops, stash, fire, waypoints, skill picker), `menus` (the title and its screens; co-op and Battlegrounds open
+  over the title, dimmed by `menu_shade`, which also keeps its clicks off it), `modals` (dialogs, the party vote, pause,
+  F8, death, victory) and `top` (tooltips, drags, messages, sparkles). Add a new control to its layer, never to `root`.
+  `_set_hud` shows or hides the whole HUD. Game input is ignored unless `playing` (and not while a zone loads), keys
+  but Esc while paused. Leaving for the title (`Game.exit_to_title`) resets what belonged to the character: its death
+  and victory screens, portal, XP bonus, F8 switches, a raid (left without extracting = died there, `bg_strip`) and the
+  raid's act (`bg_home_run`). `tools/screen_test.gd` checks it (in the nightly gate).
+- **Performance KPIs** (`scripts/kpi.gd` `Kpi`, `docs/nightly/KPIS.md`): the official numbers. Scripted, deterministic
+  scenarios (camp, moor, fight, boss, arena, crypt, server; `Kpi.SCENARIOS`) run in any build with
+  `-- --kpi <scenario> out.json [--quality N] [--secs N]` (the server: `-- --server --kpi server out.json`), measuring
+  fps, 1% low, p99 frame time, hitches, load time, main thread, GPU, draw calls, triangles, memory; then quit.
+  `tools/nightly/bench.sh` runs the suite (plus the download size), `tools/nightly/kpi_push.py` stores it in the KPI
+  database on the staging server, Grafana draws it (https://<staging>/grafana/), `sh tools/kpi_query.sh latest` reads it.
+- **Nightly lab** (`tools/nightly/`, `docs/nightly/README.md`): two launchd jobs on the Game Factory Mac, `perf` (01:00)
+  and `mode` (04:30), each on a fresh `staging` with its own log (`docs/nightly/perf/LOG.md`, `docs/nightly/modes/LOG.md`:
+  lessons, then one row per attempt), the KPI benchmark before and after (slower = not shipped), the gate, a push to
+  `staging` and a Discord report. `bash tools/nightly/install.sh` installs or updates them.
 - Developer tools (`Game.dev_tools`): unlock-all-acts (`UNLOCK_ALL_ACTS`) and the F8 testing panel (`test_immortal`, `test_onehit`, `test_stamina`, `test_allskills`, `test_fast` (super speed, `TEST_FAST` times as fast) in `game.gd`, and a level setter, `Hero.set_level`). On only when running from the Godot editor or when this PC holds a valid **admin key** (`AdminKey`, `scripts/admin_key.gd`): `user://admin.key`, signed with the owner's private key; the game checks it against the public key built into the code, so nobody can forge one. Off for everyone else, in every build (live and preview). Make a key: `tools/admin_key.gd` (needs the private key, which is never in the repo). `UNLOCK_ALL_ACTS = false` turns the tools off everywhere.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
-- Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file).
+- Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file). Since 2026-10-31 it is Blaine's
+  new trailer at full quality (Blaine: no visible compression): 60 s, 1920x1088 (a multiple of 16, so Theora adds no padding rows), Theora 12 Mbit/s + Vorbis q6,
+  85.4 MB; ffmpeg on the staging server: `-vf scale=1920:1088,setsar=1 -c:v libtheora -b:v 12000k -maxrate 16000k -bufsize 24000k -c:a libvorbis
+  -q:a 6 -ar 48000`. Don't recompress it to save download size. Skipping it takes two deliberate presses (Esc, Space,
+  Enter, a click or gamepad A/Start: the first says "Press again to skip"; `Game._is_skip_press`, other keys such as
+  volume do nothing); `tools/intro_skip_test.gd`.
+  The originals and the previous intro are kept on Blaine's Mac in ~/Documents/Game Factory/Trailers/.
 - CI is `.github/workflows/deploy.yml` (container `barichello/godot-ci:4.3`). If it fails, the
   site keeps the last good build; read the failed step in the Actions tab.
 - **Preview builds**: push a branch named `test-*` (`git push origin HEAD:test-something`) and

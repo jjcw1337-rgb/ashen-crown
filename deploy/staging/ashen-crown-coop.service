@@ -1,0 +1,21 @@
+# The online co-op dedicated server (STAGING, coop_server.gd): the game run headless from the checked-out staging branch with
+# Godot 4.3 (the same engine version as the builds). Installed by setup.sh to /etc/systemd/system/.
+# Its environment (ASHEN_NAKAMA_URL, ASHEN_NAKAMA_HTTP_KEY) is /opt/ashen-crown/staging/bg.env, mode 600.
+[Unit]
+Description=Ashen Crown online co-op server (staging; coop_server.gd)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=ashen
+Group=ashen
+WorkingDirectory=/opt/ashen-crown/staging/game
+EnvironmentFile=/opt/ashen-crown/staging/bg.env
+ExecStart=/opt/ashen-crown/godot/godot --headless --path /opt/ashen-crown/staging/game -- --server --coop --port 24570
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -79,7 +79,11 @@ func _render(it: Dictionary) -> void:
 	var size := 0.8
 	m.rotation_degrees = Vector3.ZERO
 	match slot:
-		"weapon":
+		"resource":
+			m.rotation_degrees = Vector3(25, -35, 0)
+			m.position = Vector3(-0.22, -0.12, 0)
+			size = 0.62
+		"weapon", "tool":
 			var sh: Dictionary = Data.BASES[it["base"]].get("shape", {})
 			var l: float = sh.get("len", sh.get("haft", 0.7)) + 0.2
 			var dir := Vector3(0.62, 0.78, 0.0).normalized()

@@ -122,6 +122,12 @@ const WEAPON_PROFILES := {
 	"archer": {"motion": "back", "store": "back"},
 	"wraith": {"motion": "back", "store": "back"},
 	"demon": {"motion": "back", "store": "back"},
+	# the plague doctor's cane rides across his back too (his coat's belt is full of vials)
+	"plague": {"motion": "back", "store": "back"},
+	# the dragons hold nothing (an equipped weapon hangs off a hidden joint): the default motion, out of sight
+	"wyrm": {"motion": "back", "store": "back"},
+	"serpent": {"motion": "back", "store": "back"},
+	"wyvern": {"motion": "back", "store": "back"},
 }
 
 const VENDORS := [
@@ -315,7 +321,10 @@ const BASES := {
 	"mp_potion": {"name": "Mana Potion", "slot": "potion", "kind": "potion", "lvl": 1, "price": 12, "mana": 40, "color": Color(0.1, 0.25, 1.0)},
 	"rejuv": {"name": "Rejuvenation Potion", "slot": "potion", "kind": "potion", "lvl": 1, "price": 60, "rejuv": 0.4, "color": Color(0.6, 0.1, 0.9)},
 	"gold": {"name": "Gold", "slot": "gold", "kind": "gold", "lvl": 1, "price": 0},
-	# bows: the archer's weapons ("cls": only he can draw them)
+	# the plague doctor's cane ("cls": only he carries it; Plague.cane_model draws it)
+"physician_cane": {"name": "Physician's Cane", "slot": "weapon", "kind": "cane", "cls": "plague", "dmg": [3, 7], "speed": 1.1, "lvl": 1, "price": 35},
+"crow_cane": {"name": "Crow-Skull Cane", "slot": "weapon", "kind": "cane", "cls": "plague", "dmg": [8, 16], "speed": 1.1, "lvl": 12, "price": 210},
+# bows: the archer's weapons ("cls": only he can draw them)
 	"short_bow": {"name": "Short Bow", "slot": "weapon", "kind": "bow", "cls": "archer", "dmg": [2, 6], "speed": 1.15, "lvl": 1, "price": 30},
 	"hunting_bow": {"name": "Hunting Bow", "slot": "weapon", "kind": "bow", "cls": "archer", "dmg": [4, 10], "speed": 1.1, "lvl": 5, "price": 85},
 	"long_bow": {"name": "Long Bow", "slot": "weapon", "kind": "longbow", "cls": "archer", "dmg": [7, 16], "speed": 1.0, "lvl": 11, "price": 170},
@@ -328,7 +337,40 @@ const BASES := {
 		"lore": "A claw of Rimeclaw's that never thaws"},
 	"stormglass": {"icon": "res://assets/textures/items/stormglass.png", "model": "res://assets/models/items/stormglass.glb", "name": "Stormglass Eye", "slot": "material", "kind": "orb", "lvl": 1, "price": 400, "color": Color(0.72, 0.45, 1.0),
 		"lore": "Thundermaw's eye, a storm still raging inside"},
+	# resources (Harvest, Furnace): stacked in one inventory cell up to "stack", never worn; "fuel" is what the
+	# furnace reads (heat it adds per second while burning, how long one burns, the hottest it can drive the fire)
+	"oak_log": {"name": "Oak Log", "slot": "resource", "kind": "log", "lvl": 1, "price": 4, "stack": 50, "color": Color(0.55, 0.38, 0.22),
+		"bark": Color(0.24, 0.18, 0.12), "heart": Color(0.78, 0.6, 0.4), "fuel": {"heat": 62.0, "burn": 40.0, "max_temp": 1240.0, "name": "steady"},
+		"lore": "Dense moor oak. Burns long and even."},
+	"pine_log": {"name": "Pine Log", "slot": "resource", "kind": "log", "lvl": 1, "price": 3, "stack": 50, "color": Color(0.72, 0.56, 0.34),
+		"bark": Color(0.3, 0.2, 0.13), "heart": Color(0.9, 0.76, 0.52), "fuel": {"heat": 105.0, "burn": 16.0, "max_temp": 1040.0, "name": "fast and hot"},
+		"lore": "Resinous pine. Flares quickly and is gone."},
+	"heartwood": {"name": "Ashen Heartwood", "slot": "resource", "kind": "log", "lvl": 1, "price": 40, "stack": 10, "color": Color(1.0, 0.42, 0.12),
+		"bark": Color(0.06, 0.05, 0.05), "heart": Color(0.95, 0.35, 0.08), "glow": true, "fuel": {"heat": 120.0, "burn": 50.0, "max_temp": 1400.0, "name": "searing"},
+		"lore": "Wood that smouldered for an age inside a living tree. Only it burns white."},
+	# tools: carried in the inventory, never equipped; the woodsman's axe lets anyone chop trees (combat axes do too)
+	"woodsman_axe": {"name": "Woodsman's Axe", "slot": "tool", "kind": "axe", "lvl": 1, "price": 25, "chop": 1.0, "shape": {"haft": 0.62, "head": 0.17},
+		"lore": "A plain felling axe. Every hero in the Wilds carries one."},
 }
+
+## How many strikes' worth each combat axe is when used to chop (a woodsman's axe is 1.0; Harvest.chop_power).
+const CHOP_POWER := {"hand_axe": 1.1, "war_axe": 1.35, "executioner": 1.65}
+
+## Chopping, per class (like WEAPON_PROFILES): how far from the trunk the hero stands, the swing's length in seconds,
+## the axe's size in the hand. A class with no entry gets DEFAULT_CHOP and the procedural "chop" pose (Anim), so a
+## new class chops on day one.
+const DEFAULT_CHOP := {"stand": 1.05, "swing": 1.05, "axe_scale": 1.0}
+const CHOP_PROFILES := {
+	"knight": {"stand": 1.1, "swing": 1.05},
+	"archer": {"stand": 1.05, "swing": 1.0},
+	"plague": {"stand": 1.05, "swing": 1.1},
+	"demon": {"stand": 1.35, "swing": 1.25, "axe_scale": 1.35},
+	"wraith": {"stand": 1.15, "swing": 1.0, "axe_scale": 1.0, "spectral": true},
+	"warlock": {"stand": 0.85, "swing": 0.9, "axe_scale": 0.75},
+}
+
+static func chop_profile(cls: String) -> Dictionary:
+	return DEFAULT_CHOP.merged(CHOP_PROFILES.get(cls, {}), true)
 
 ## Affixes: [stat, prefix/suffix name, min, max, per-level growth]
 const AFFIXES := [
@@ -429,7 +471,7 @@ const RARITY_NAME := ["Normal", "Magic", "Rare", "Unique"]
 const SKILLS := [
 	{"id": "cleave", "cls": "knight", "name": "Holy Slam", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "point", "range": 6.0, "desc": "Leap at the cursor and bring the sword down in a burst of white light: 160% weapon damage to everything around the blow, knocking them back and stunning them for 1 second."},
 	{"id": "nova", "cls": "knight", "name": "Holy Nova", "key": "E", "lvl": 3, "mana": 14, "cd": 2.5, "aim": "self", "desc": "A ring of holy fire bursts outward, burning enemies within 7 metres."},
-	{"id": "charge", "cls": "knight", "name": "Charge", "key": "R", "lvl": 6, "mana": 10, "cd": 4.0, "aim": "facing", "range": 9.0, "desc": "Dash the way you face (toward the nearest enemy ahead), smashing through enemies and knocking them back."},
+	{"id": "charge", "cls": "knight", "name": "Charge", "key": "R", "lvl": 6, "mana": 10, "cd": 4.0, "aim": "facing", "range": 9.0, "desc": "Dash toward the cursor, smashing through enemies and knocking them back."},
 	{"id": "cry", "cls": "knight", "name": "Battle Cry", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "aim": "self", "desc": "Rally yourself: +40% damage and +50% defense for 12 seconds. Stuns nearby foes."},
 	{"id": "rend", "cls": "wraith", "name": "Spectral Rend", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 4.5, "desc": "Lunge at the foe ahead and tear through it with elongated spectral claws: two rakes for 90% weapon damage each. Every soul the claws tear out flies back and heals you."},
 	{"id": "siphon", "cls": "wraith", "name": "Soul Siphon", "key": "E", "lvl": 3, "mana": 12, "cd": 6.0, "aim": "facing", "range": 9.0, "desc": "Reach out and hook a spectral tether into an enemy: for 2.5 seconds it stands rigid while the tether drains it (about 180% weapon damage in all) and heals you a third of what it takes, and it is slowed after. A soul torn loose heals you more. The tether holds while you fight on."},
@@ -437,10 +479,12 @@ const SKILLS := [
 	{"id": "grasp", "cls": "wraith", "name": "Haunting Grasp", "key": "F", "lvl": 10, "mana": 16, "cd": 10.0, "aim": "point", "range": 10.0, "desc": "Slam the ground: spectral hands burst out of the earth around the cursor, seizing every enemy within 3.5 metres for 110% weapon damage, dragging them inward and holding them fast for 2.5 seconds."},
 	{"id": "phantom", "cls": "wraith", "name": "Phantom Assault", "key": "G", "lvl": 14, "mana": 22, "cd": 14.0, "aim": "facing", "range": 8.0, "desc": "Split into three phantoms that streak through the enemies ahead in a fan, each tearing everything in its path for 120% weapon damage, then strike with your own claws."},
 	{"id": "night", "cls": "wraith", "name": "Eternal Night", "key": "V", "lvl": 18, "mana": 40, "cd": 40.0, "aim": "self", "desc": "Rise and bring down the night over 9 metres: a scream of terror (150% weapon damage, enemies hurled back and frozen with fear), then the dark feeds on everything in it while you hang untouchable above it, and it collapses into your slam for 200%. +40% damage for 12 seconds."},
-	{"id": "hellclaw", "cls": "demon", "name": "Hellfire Claw", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 3.5, "desc": "Three burning rakes tear across the front for 140% weapon damage plus fire, setting enemies alight."},
-	{"id": "summon", "cls": "demon", "name": "Summon Demon", "key": "E", "lvl": 3, "mana": 18, "cd": 1.5, "aim": "self", "desc": "A demon claws its way up out of a burning sigil to fight beside you. Up to 3 at once; a fourth replaces the oldest."},
-	{"id": "phase", "cls": "demon", "name": "Underworld Phase", "key": "R", "lvl": 6, "mana": 15, "cd": 12.0, "aim": "self", "desc": "Slip into the Underworld for 6 seconds: monsters cannot see or hurt you and you move faster. When you return, the rift erupts around you."},
-	{"id": "pact", "cls": "demon", "name": "Blood Pact", "key": "F", "lvl": 10, "mana": 0, "cd": 20.0, "aim": "self", "desc": "Pay 20% of your life: you and your demons deal +40% damage for 12 seconds, and your demons are healed, faster and fiercer."},
+	{"id": "fists", "cls": "demon", "name": "Molten Fists", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 3.4, "desc": "A two-fisted punch that cracks the ground open ahead of you: everything in the wedge takes 150% weapon damage plus magma and is set alight."},
+	{"id": "icharge", "cls": "demon", "name": "Infernal Charge", "key": "E", "lvl": 3, "mana": 12, "cd": 7.0, "aim": "point", "range": 9.0, "desc": "A head-down charge of up to 9 metres: enemies in your way are bowled aside for 120% weapon damage plus magma and stunned, and your hooves leave a trail of lava that burns whoever stands in it for 4 seconds."},
+	{"id": "cslam", "cls": "demon", "name": "Cataclysm Slam", "key": "R", "lvl": 6, "mana": 16, "cd": 10.0, "aim": "facing", "range": 2.0, "desc": "Slam the ground: everything within 3 metres takes 160% weapon damage plus magma and is stunned, then five magma fissures race out 8 metres ahead and erupt along their length in waves of lava bursts for 110% each."},
+	{"id": "hurl", "cls": "demon", "name": "Brimstone Hurl", "key": "F", "lvl": 10, "mana": 18, "cd": 8.0, "aim": "point", "range": 12.0, "desc": "Tear a molten boulder out of the ground and hurl it at the cursor, up to 12 metres: it splashes over 2.6 metres for 180% weapon damage plus magma, throws enemies back, sets them alight and leaves a lava pool that burns for 5 seconds."},
+	{"id": "grip", "cls": "demon", "name": "Hellgrip", "key": "G", "lvl": 14, "mana": 20, "cd": 12.0, "aim": "facing", "range": 3.6, "desc": "Seize the enemy ahead, hoist it over your head and smash it into the ground for 320% weapon damage plus magma, leaving it burning; the shockwave hits everything round it for 70% and throws it back."},
+	{"id": "wrath", "cls": "demon", "name": "Wrath of the Pit", "key": "V", "lvl": 18, "mana": 40, "cd": 45.0, "aim": "self", "desc": "Roar with your wings spread (enemies within 6 metres take 100% weapon damage, are hurled back and frozen with fear) and stomp (120% over 4 metres): for 7 seconds your cracks blaze white-hot, meteors rain on the enemies round you (110% plus magma each, burning) and you deal +40% damage."},
 	{"id": "drain", "cls": "warlock", "channel": true, "name": "Drain Life", "key": "Q", "lvl": 1, "mana": 6, "cd": 0.0, "aim": "facing", "range": 11.0, "desc": "Latch a green beam onto an enemy and pull the life out of it. The beam forks to up to 3 enemies near your target and everything it drains heals you. Hold Q to keep draining (costs mana each second)."},
 	{"id": "blight", "cls": "warlock", "name": "Blight Bolt", "key": "E", "lvl": 3, "mana": 12, "cd": 1.5, "aim": "facing", "range": 15.0, "desc": "Hurl a howling skull of blight. It bursts where it lands and leaves a plague pool that rots enemies standing in it for 4 seconds."},
 	{"id": "shackles", "cls": "warlock", "name": "Soul Shackles", "key": "R", "lvl": 6, "mana": 16, "cd": 8.0, "aim": "self", "desc": "Chains of fel fire snap out to every enemy within 7 metres, damaging them and binding them in place for 2.5 seconds."},
@@ -449,6 +493,10 @@ const SKILLS := [
 	{"id": "volley", "cls": "archer", "name": "Frost Volley", "key": "E", "lvl": 3, "mana": 14, "cd": 3.0, "aim": "point", "range": 14.0, "desc": "Loose a flight of frost arrows into the sky: they rain on the cursor for over a second, hitting everything within 4 metres again and again and chilling them (40% slower)."},
 	{"id": "snare", "cls": "archer", "name": "Storm Snare", "key": "R", "lvl": 6, "mana": 10, "cd": 6.0, "aim": "point", "range": 10.0, "desc": "Set a storm-charged trap (up to 2): the first enemies to cross it are held fast and hurt, and lightning bursts from it into the 3 nearest others, stunning them."},
 	{"id": "beast", "cls": "archer", "name": "Spirit Beast", "key": "F", "lvl": 10, "mana": 12, "cd": 8.0, "aim": "point", "range": 18.0, "desc": "Your Spirit Beast hunts at your side from the start (and you run 10% faster with it). Command it: on an enemy it pounces and fights it, on open ground it holds there, on yourself it comes back. Each command rouses you both: +40% damage for 12 seconds."},
+	{"id": "toxic", "cls": "plague", "name": "Toxic Flask", "key": "Q", "lvl": 1, "mana": 7, "cd": 0.0, "aim": "point", "range": 12.0, "desc": "Pull a vial from your belt and lob it: it shatters into a poison cloud 3 metres wide for 4 seconds. Anything in it is poisoned and keeps rotting for 3 seconds after it leaves. Clouds of the same kind don't stack."},
+	{"id": "volatile", "cls": "plague", "name": "Volatile Mixture", "key": "E", "lvl": 3, "mana": 15, "cd": 4.0, "aim": "point", "range": 11.0, "desc": "Throw a bottle with a lit fuse. A warning ring, then a fire blast 4 metres wide that hurls enemies back and sets them burning. A blast that reaches your poison clouds ignites them, burning out all their remaining poison at once."},
+	{"id": "trap", "cls": "plague", "name": "Pestilent Trap", "key": "R", "lvl": 6, "mana": 12, "cd": 5.0, "aim": "point", "range": 10.0, "desc": "Kneel and set a brass canister (up to 2, 30 seconds). The first enemy to step on it is stunned and it vents a poison cloud 3.5 metres wide. An infected enemy that springs it starts an outbreak: the cloud infects everything it touches."},
+	{"id": "epidemic", "cls": "plague", "name": "The Last Epidemic", "key": "F", "lvl": 10, "mana": 30, "cd": 24.0, "aim": "self", "desc": "Smash your censer and raise a miasma dome 9 metres wide for 8 seconds. Inside, enemies are poisoned, slowed and infected; an infected enemy that dies passes it to the two nearest (up to 6 times). The dome collapses with a final blow."},
 	{"id": "covenant", "cls": "warlock", "name": "Fel Covenant", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "aim": "self", "desc": "Seal a pact with what waits beyond: +40% damage for 12 seconds, and Drain Life forks to two more enemies and heals twice as much."},
 ]
 
@@ -462,19 +510,38 @@ const ATTACK_PACE := 1.2
 static func attack_pace(cls: String) -> float:
 	return float(CLASSES[cls].get("attack_pace", ATTACK_PACE)) if CLASSES.has(cls) else ATTACK_PACE
 
+## Every playable class. "voice": the hurt/death sounds' suffix (hurt_<voice>, death_<voice>; "knight" when absent).
+## A new class also needs its skills (SKILLS, with "cls"), a skills script (ClassSkills.of) and its effects (SkillFx.play).
 const CLASSES := {
 	"knight": {"name": "Knight", "str": 20, "dex": 15, "vit": 25, "ene": 10,
 		"desc": "A crusader in steel. Sword and shield, heavy blows, holy fire and a rallying cry."},
-	"wraith": {"name": "Wraith", "str": 15, "dex": 22, "vit": 18, "ene": 28,
+	"wraith": {"voice": "wraith", "name": "Wraith", "str": 15, "dex": 22, "vit": 18, "ene": 28,
 		"desc": "A horned spirit in chains that never touches the ground. Tears souls out with spectral claws, drains them down a tether, steps through shadow, drags foes into the earth's grasp and brings down the night."},
-	"demon": {"name": "Demon", "str": 24, "dex": 14, "vit": 24, "ene": 18,
-		"desc": "A horned, winged fiend in obsidian plate. Claws with hellfire, summons up to three demons and slips into the Underworld to walk unseen."},
+	"demon": {"voice": "demon", "name": "Demon", "str": 24, "dex": 14, "vit": 24, "ene": 18,
+		"desc": "A horned, winged brute of charcoal hide with magma burning through the cracks. Cracks the ground with his fists, charges through his foes on a trail of lava, hurls molten boulders and calls meteors down from the pit."},
 	# the bow class (Jace's): its name is his to choose; "Archer" until then
 	"archer": {"name": "Archer", "str": 14, "dex": 26, "vit": 18, "ene": 14, "weapon": "short_bow",
 		"desc": "A red-hooded ranger with a carved recurve bow and his dire wolf at his side. Shoots on the move: fire arrows that burn through a line, frost volleys that chill, storm snares that chain lightning."},
-	"warlock": {"name": "Warlock", "str": 10, "dex": 10, "vit": 10, "ene": 10,
+	"plague": {"name": "Plague Doctor", "str": 14, "dex": 18, "vit": 18, "ene": 24, "weapon": "physician_cane",
+		"desc": "A beaked physician of the cursed years, belted with vials and a smoking censer. Fights by preparation: poison clouds, fused fire, traps that wait, and an epidemic that spreads from foe to foe."},
+	"warlock": {"voice": "gnome", "name": "Warlock", "str": 10, "dex": 10, "vit": 10, "ene": 10,
 		"desc": "A hooded sorcerer bound by a fel pact. Drains the life from foes in a forking green beam, rots them with blight and chains them where they stand."},
+	# the dragons (scripts/dragon.gd): no skills yet, only the basic attack (claw, bite, tail spin); "claws" is the
+	# damage and speed of their natural weapons when nothing is equipped (they start with none)
+	"wyrm": {"voice": "wyrm", "name": "Obsidian Wyrm", "str": 26, "dex": 12, "vit": 26, "ene": 12, "claws": [3, 8], "claw_speed": 1.0,
+		"desc": "A heavy, low-slung dragon of black volcanic scale, ember-tipped spines and blood-red wings. Rakes with its foreclaws, bites, and spins to sweep its long tail through everything around it."},
+	"serpent": {"voice": "serpent", "name": "Frost Serpent", "str": 20, "dex": 22, "vit": 20, "ene": 14, "claws": [3, 7], "claw_speed": 1.1,
+		"desc": "A long, wingless dragon of pale ice-blue scale with crystal antlers and a ridge of ice shards. Swims over the ground, strikes with claw and fang and lashes its tail in a full turn."},
+	"wyvern": {"voice": "wyvern", "name": "Storm Wyvern", "str": 22, "dex": 20, "vit": 22, "ene": 12, "claws": [3, 7], "claw_speed": 1.1,
+		"desc": "A rearing two-legged dragon whose wings are its forelimbs, with lightning veined through the membranes. Strikes with its wing claws, bites, and whips its barbed tail round."},
 }
+
+## A class's damage and speed with no weapon equipped: the dragons' claws and teeth, bare hands for the rest.
+static func unarmed(cls: String) -> Array:
+	return CLASSES[cls].get("claws", [1, 3]) if CLASSES.has(cls) else [1, 3]
+
+static func unarmed_speed(cls: String) -> float:
+	return float(CLASSES[cls].get("claw_speed", 1.2)) if CLASSES.has(cls) else 1.2
 
 static func skills_for(cls: String) -> Array:
 	var out := []

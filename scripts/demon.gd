@@ -32,13 +32,140 @@ static func body_gear(g: Dictionary) -> Dictionary:
 	k["coif"] = false
 	return k
 
+## His real body: the Meshy "Magma Brute" on the shared mocap system (tools/blender/demon/prep_demon_mocap.py:
+## Meshy library clips, root motion taken out, the wings, tail and loincloth on their own bones that
+## scripts/demon_mocap_rig.gd animates). Without the glb the knight body in obsidian plate below stands in.
+const MOCAP_GLB := "res://assets/models/demon_mocap.glb"
+## A brute: the model is 2.2 m tall as Meshy made it, and he stands this much bigger again (the knight is 1.8 m).
+const SCALE := 1.08
+## The clips' natural ground speeds (m/s; prep_demon_mocap.py prints them): the slow walk, the run, the head-down charge.
+const WALK_SPEED := 1.3
+const RUN_SPEED := 6.2
+const CHARGE_SPEED := 7.6
+const WALK_BLEND := 2.6        # above this ground speed the walk is gone from the blend
+## His moves' clips per attack style (KnightMocapRig "shots": [[attack progress, clip second], ...], the blow on
+## Anim.impact_at's frame): the weapon swings the punch, the axe chop and the ground slam (the finisher), Space's
+## swings the chop, the punch and the hurl; his skills' styles below (DemonSkills.STYLE).
+const SHOTS := {
+	"side": {"style": "side", "clip": "claw", "keys": [[0.0, 0.45], [0.3, 1.0], [0.48, 1.33], [0.7, 1.7], [1.0, 2.4]]},
+	"cast": {"style": "cast", "clip": "cast", "keys": [[0.0, 0.5], [0.3, 1.4], [0.55, 2.08], [1.0, 2.66]]},
+	"swipe1": {"style": "swipe1", "clip": "claw", "keys": [[0.0, 0.6], [0.4, 1.33], [0.7, 1.7], [1.0, 2.3]]},
+	"swipe2": {"style": "swipe2", "clip": "smash", "keys": [[0.0, 0.6], [0.42, 1.58], [0.7, 2.0], [1.0, 2.7]]},
+	"swipe3": {"style": "swipe3", "clip": "slam", "keys": [[0.0, 0.6], [0.47, 2.75], [1.0, 3.0]]},
+	"over": {"style": "over", "clip": "smash", "keys": [[0.0, 0.7], [0.5, 1.58], [0.75, 2.0], [1.0, 2.7]]},
+	"back": {"style": "back", "clip": "claw", "keys": [[0.0, 0.7], [0.48, 1.33], [0.75, 1.7], [1.0, 2.3]]},
+	# felling a tree (Harvest): Meshy's Charged Axe Chop is his "smash", the blow into the trunk at 0.55
+	"chop": {"style": "chop", "clip": "smash", "keys": [[0.0, 0.7], [0.55, 1.58], [0.8, 2.0], [1.0, 2.7]]},
+	"thrust": {"style": "thrust", "clip": "hurl", "keys": [[0.0, 0.5], [0.52, 1.75], [0.8, 2.3], [1.0, 3.3]]},
+	# his skills (DemonSkills): the punch, the charge (the clip loops through the run), the slam, the throw (the
+	# boulder leaves at the release), the grab (seized at 0.25, held up, smashed at 0.5), the roar and the stomp
+	# Molten Fists: snaps into the chamber, holds it while the fists catch fire (DemonFistsFx), then the blow at
+	# full speed and a lingering follow-through (the blow's frame unchanged)
+	"fists": {"style": "fists", "clip": "claw", "keys": [[0.0, 0.45], [0.15, 0.95], [0.4, 1.07], [0.48, 1.33], [0.62, 1.5], [1.0, 2.4]]},
+	"icharge": {"style": "icharge", "clip": "charge", "keys": [[0.0, 0.0], [1.0, 1.5]]},
+	"cslam": {"style": "cslam", "clip": "slam", "keys": [[0.0, 0.3], [0.3, 1.3], [0.58, 2.75], [1.0, 3.0]]},
+	"hurl": {"style": "hurl", "clip": "hurl", "keys": [[0.0, 0.3], [0.52, 1.75], [0.8, 2.4], [1.0, 3.3]]},
+	"grip": {"style": "grip", "clip": "grab_throw", "keys": [[0.0, 0.2], [0.25, 1.2], [0.5, 3.08], [0.7, 3.4], [1.0, 4.0]]},
+	"wrath_roar": {"style": "wrath_roar", "clip": "roar", "keys": [[0.0, 0.0], [0.5, 1.25], [1.0, 2.75]]},
+	"wrath_stomp": {"style": "wrath_stomp", "clip": "stomp", "keys": [[0.0, 0.0], [0.5, 0.62], [1.0, 1.3]]},
+	# the preview tool's names for the roar, the stomp and the grab
+	"roar": {"style": "roar", "clip": "roar", "keys": [[0.0, 0.0], [0.5, 1.25], [1.0, 2.75]]},
+	"stomp": {"style": "stomp", "clip": "stomp", "keys": [[0.0, 0.0], [0.5, 0.62], [1.0, 1.3]]},
+	"grab": {"style": "grab", "clip": "grab_throw", "keys": [[0.0, 0.0], [0.3, 1.5], [0.5, 3.08], [1.0, 4.0]]},
+}
+
+static func mocap_ok() -> bool:
+	return ResourceLoader.exists(MOCAP_GLB)
+
 static func build(g: Dictionary) -> Node3D:
+	if mocap_ok():
+		return build_mocap(g)
 	var root := Knight.build(body_gear(g))
 	root.set_meta("demon", true)
 	_extras(root, g)
 	return root
 
+static func build_mocap(g: Dictionary) -> Node3D:
+	# the orc walk only at a crawl: from WALK_BLEND up the run alone carries him, slowed to his ground speed by
+	# DemonMocapRig._rate (the run's planted foot moves at RUN_SPEED; at his 4.8 m/s it plays at 0.77x, heavy)
+	var r := Knight.build_mocap(MOCAP_GLB, {
+		"relaxed": ["idle", 0.0, "walk", WALK_SPEED, "run", WALK_BLEND, "run", RUN_SPEED, "charge", CHARGE_SPEED],
+		"combat": ["combat_idle", 0.0, "walk", WALK_SPEED, "run", WALK_BLEND, "run", RUN_SPEED, "charge", CHARGE_SPEED],
+		"meta": "demon", "scale": SCALE, "script": "res://scripts/demon_mocap_rig.gd",
+		"shots": SHOTS})
+	r.remove_meta("knight")
+	r.set_meta("demon", true)
+	r.set_meta("own_death", true)      # the death clip lays him down: no tilt from the hero
+	var J: Dictionary = r.get_meta("j")
+	# his hands are huge: the grips sit lower in the fist and the weapons scale up with him
+	for gname in ["grip_r", "grip_l"]:
+		var gr: Node3D = J[gname]
+		gr.position.y = -0.13
+		gr.scale = Vector3.ONE * 1.35
+	(J["mount_l"] as Node3D).scale = Vector3.ONE * 1.3
+	(J["mount_l"] as Node3D).position = Vector3(-0.09, -0.2, 0.0)
+	_magma(r, g)
+	_mocap_extras(r, g)
+	return r
+
+## The Meshy textures under the magma shader (scripts/demon_mocap.gdshader): matte skin, the lava in the cracks
+## breathing, flaring, cooling in death, the Underworld's shadow.
+static func _magma(r: Node3D, g: Dictionary) -> void:
+	var sh: Shader = load("res://scripts/demon_mocap.gdshader")
+	var mats := []
+	for mi in r.find_children("*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		if m.mesh == null or m.get_parent() is BoneAttachment3D or m.has_meta("fx"):
+			continue
+		for si in m.mesh.get_surface_count():
+			var src := m.mesh.surface_get_material(si) as StandardMaterial3D
+			if src == null or src.albedo_texture == null:
+				continue
+			var mat := ShaderMaterial.new()
+			mat.shader = sh
+			mat.set_shader_parameter("albedo_tex", src.albedo_texture)
+			if src.normal_texture != null:
+				mat.set_shader_parameter("normal_tex", src.normal_texture)
+				mat.set_shader_parameter("use_normal", true)
+			mat.set_shader_parameter("ember", g["edge"])
+			m.set_surface_override_material(si, mat)
+			mats.append(mat)
+	r.set_meta("demon_mats", mats)
+
+## The lava's own light between his horns and chest, and the embers that rise off him when he dies.
+static func _mocap_extras(r: Node3D, g: Dictionary) -> void:
+	var J: Dictionary = r.get_meta("j")
+	var tor: Node3D = J.get("at_torso", J["torso"])
+	var l := OmniLight3D.new()
+	l.name = "EmberGlow"
+	l.light_color = g["edge"]
+	l.light_energy = 0.5
+	l.omni_range = 1.1
+	l.omni_attenuation = 1.8
+	l.shadow_enabled = false
+	l.position = Vector3(0, 0.15, -0.3)
+	tor.add_child(l)
+	r.set_meta("eye_light", l)
+	var e := DemonFx.ember_aura()
+	e.name = "DeathEmbers"
+	e.amount = 40
+	e.lifetime = 1.6
+	(e.process_material as ParticleProcessMaterial).emission_ring_radius = 0.9
+	(e.process_material as ParticleProcessMaterial).emission_ring_inner_radius = 0.1
+	(e.process_material as ParticleProcessMaterial).initial_velocity_min = 0.4
+	(e.process_material as ParticleProcessMaterial).initial_velocity_max = 1.1
+	e.position = Vector3(0, 0.15, -0.5)      # he falls forward: the embers rise off where he lies
+	r.add_child(e)
+	r.set_meta("death_embers", e)
+
 static func rebuild_body(root: Node3D, g: Dictionary) -> void:
+	if str(root.get_meta("meshy", "")) == "demon":
+		for m in root.get_meta("demon_mats", []):
+			(m as ShaderMaterial).set_shader_parameter("ember", g["edge"])
+		var gl := root.find_child("EmberGlow", true, false) as OmniLight3D
+		if gl != null:
+			gl.light_color = g["edge"]
+		return
 	Knight.rebuild_body(root, body_gear(g))
 	for m in root.get_meta("edge_mats", []):
 		(m as ShaderMaterial).set_shader_parameter("edge", g["edge"])
@@ -175,8 +302,41 @@ static func _extras(root: Node3D, g: Dictionary) -> void:
 	root.set_meta("edge_mats", mats)
 	root.set_meta("demon_anim", {"wings": wings, "tail": segs})
 
-## Wings beat slowly (faster when moving), the tail sways like a cat's.
-static func animate(root: Node3D, t: float, move: float) -> void:
+## Wings beat slowly (faster when moving), the tail sways like a cat's (the procedural fallback body). The mocap
+## body's wings and tail are the rig's own (DemonMocapRig); here only its lava is driven: it flares through an
+## attack or a cast, pulses when he is hurt, and goes to the Underworld's shadow while he is phased (hero.phased).
+static func animate(root: Node3D, t: float, move: float, h: Node = null) -> void:
+	if root.has_meta("demon_mats"):
+		if h == null:
+			return
+		var a: float = float(h.get("atk_t")) / maxf(float(h.get("atk_dur")), 0.01) if float(h.get("atk_t")) >= 0.0 else -1.0
+		var flare := 0.0
+		if a >= 0.0:
+			flare = 0.9 * sin(clampf(a / 0.75, 0.0, 1.0) * PI)
+		var hit_t: float = float(h.get("hit_t"))
+		var pulse := 0.8 * clampf(hit_t, 0.0, 1.0) * (0.5 + 0.5 * sin(t * 18.0))
+		var buff := 0.3 if float(h.get("buff_t")) > 0.0 else 0.0
+		# Wrath of the Pit: the white heat (DemonFx keeps the shader's "wrath"); the glow rides a little higher with it
+		if (h.get("fxs") as Dictionary).has("wrath"):
+			buff += 0.6 * float((h.get("fxs") as Dictionary)["wrath"].get("k", 0.0))
+		var want_phase := 1.0 if bool(h.get("phased")) else 0.0
+		var ph: float = float(root.get_meta("phase_now", 0.0))
+		var dt := clampf(t - float(root.get_meta("phase_t", t)), 0.0, 0.1)
+		root.set_meta("phase_t", t)
+		ph = move_toward(ph, want_phase, dt * 2.4)
+		root.set_meta("phase_now", ph)
+		for m in root.get_meta("demon_mats"):
+			(m as ShaderMaterial).set_shader_parameter("glow", flare + pulse + buff)
+			(m as ShaderMaterial).set_shader_parameter("phase_amt", ph)
+		var gl := root.get_meta("eye_light") as OmniLight3D if root.has_meta("eye_light") else null
+		if gl != null and not bool(h.get("dead")):
+			gl.light_energy = (0.5 + 0.6 * (flare + pulse)) * (1.0 - 0.8 * ph)
+		# a heavy footfall shakes the camera a touch (local only)
+		var thump: float = float(root.get("thump")) if root.get("thump") != null else 0.0
+		var gm = h.get("game")
+		if thump > 0.0 and not bool(h.get("puppet")) and gm != null and gm.has_method("add_shake"):
+			gm.add_shake(0.035 * thump * (1.0 + 0.5 * move))
+		return
 	if not root.has_meta("demon_anim"):
 		return
 	var a: Dictionary = root.get_meta("demon_anim")

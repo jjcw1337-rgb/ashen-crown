@@ -118,9 +118,9 @@ func _run() -> void:
 	l0 = lives(en)
 	ok = h.use_skill("phantom", h.skill_aim("phantom", en[1].global_position))
 	await wait(0.45)
-	check(ok and h.wr.has("phantoms") and (h.wr["phantoms"] as Array).size() == 3, "three phantoms split off him")
+	check(ok and h.fxs.has("phantoms") and (h.fxs["phantoms"] as Array).size() == 3, "three phantoms split off him")
 	await wait(1.4)
-	check(lives(en) < l0 and not h.wr.has("phantoms"), "they tore through the pack (%d) and are gone" % int(l0 - lives(en)))
+	check(lives(en) < l0 and not h.fxs.has("phantoms"), "they tore through the pack (%d) and are gone" % int(l0 - lives(en)))
 	# --- Eternal Night: four stages, the dark, the scream's fear, the ticks, the collapse, the buff
 	en = await pack(h, 3, h.global_position + Vector3(0, 0, -3.0))
 	h.mana = h.max_mana

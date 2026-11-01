@@ -166,7 +166,7 @@ func _process(delta: float) -> void:
 	m.set_shader_parameter("sc", _sc)
 	_vp[nxt].render_target_update_mode = SubViewport.UPDATE_ONCE
 	# the one on show was integrated from last frame's origin: hand that origin to the grass with it
-	RenderingServer.global_shader_parameter_set("grass_field", _vp[_cur].get_texture())
+	Grass.set_field(_vp[_cur].get_texture())
 	shown_rect = Vector4(_shown_origin.x, _shown_origin.y, SIZE, touch)
 	RenderingServer.global_shader_parameter_set("grass_field_rect", shown_rect)
 	_shown_origin = _origin
