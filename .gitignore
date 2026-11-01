@@ -15,6 +15,10 @@ Thumbs.db
 assets/models/**/*.import
 assets/models/**/*_Image_*
 assets/models/**/*_normal.jpg
+# textures Godot extracts from the re-baked set pieces (tools/blender/camp/rebake_prop.py)
+assets/models/**/*_albedo.jpg
+assets/models/**/*_metal_rough.jpg
+assets/models/**/*_normal.png
 __pycache__/
 assets/models/monsters/feral*_*.jpg
 

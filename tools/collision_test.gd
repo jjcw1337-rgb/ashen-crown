@@ -90,7 +90,14 @@ func _run() -> void:
 		var tip := sn.position + sn.basis.z * 0.7
 		if w.solid_at(tip.x, tip.z):
 			seat_ok += 1
-	print("[C] fire seats blocked along their length: %d/%d" % [seat_ok, seats.size()])
+	# the Meshy log benches (ForestCamp.piece "log_bench") lie along their own x
+	var benches: Array = props.filter(func(n): return n.has_meta("piece") and n.get_meta("piece") == "log_bench")
+	for s in benches:
+		var sn := s as Node3D
+		var tip := sn.position + sn.basis.x.normalized() * 0.6
+		if w.solid_at(tip.x, tip.z):
+			seat_ok += 1
+	print("[C] fire seats blocked along their length: %d/%d" % [seat_ok, seats.size() + benches.size()])
 	# pathfinding around a crate and los through it
 	var crates: Array = props.filter(func(n): return absf((n.get_meta("footprint").get("half", Vector2.ZERO) as Vector2).x - (n.get_meta("footprint").get("half", Vector2.ZERO) as Vector2).y) < 0.001 and n.get_meta("footprint").has("half"))
 	if not crates.is_empty():

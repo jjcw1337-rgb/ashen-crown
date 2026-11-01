@@ -389,6 +389,8 @@ func _zone_env(kind: String) -> void:
 	weather.set_ash(ashen, quality)
 	env.glow_intensity = 0.7
 	env.glow_bloom = 0.06
+	sun.shadow_blur = 1.5
+	grade_look = ""
 	sky_mat.sky_top_color = Color(0.26, 0.3, 0.31)
 	sky_mat.sky_horizon_color = Color(0.44, 0.47, 0.44)
 	sky_mat.ground_horizon_color = Color(0.44, 0.47, 0.44)
@@ -440,22 +442,26 @@ func _zone_env(kind: String) -> void:
 			sky_mat.sky_top_color = Color(0.1, 0.13, 0.17)
 			sky_mat.sky_horizon_color = Color(0.24, 0.29, 0.31)
 			sky_mat.ground_horizon_color = Color(0.2, 0.24, 0.25)
-			env.ambient_light_energy = 0.6
-			env.tonemap_exposure = 1.15
-			env.fog_light_color = Color(0.2, 0.26, 0.28)
+			# Graphics plan, phase 1: a darker fill and a dimmer, softer moon, so the fire, the lanterns and
+			# the forge carve the camp out of the dark (their lights are brighter and cast shadows, Grade)
+			env.ambient_light_energy = 0.3
+			env.tonemap_exposure = 1.25
+			env.fog_light_color = Color(0.16, 0.21, 0.24)
 			env.fog_density = 0.012
 			env.fog_height = 1.2
 			env.fog_height_density = 0.12
-			env.adjustment_saturation = 0.9
-			env.adjustment_contrast = 1.1
-			env.volumetric_fog_density = 0.028
+			env.adjustment_saturation = 0.95
+			env.adjustment_contrast = 1.08
+			env.volumetric_fog_density = 0.03
 			env.volumetric_fog_albedo = Color(0.6, 0.7, 0.72)
-			env.volumetric_fog_emission = Color(0.012, 0.02, 0.024)
-			env.glow_intensity = 0.85
-			env.glow_bloom = 0.08
-			sun.light_color = Color(0.6, 0.72, 0.9)
-			sun.light_energy = 0.62
+			env.volumetric_fog_emission = Color(0.006, 0.01, 0.013)
+			env.glow_intensity = 0.95
+			env.glow_bloom = 0.1
+			sun.light_color = Color(0.55, 0.68, 0.9)
+			sun.light_energy = 0.38
+			sun.shadow_blur = 2.6
 			hero.light.light_energy = 1.0
+			grade_look = "forest_camp"
 		if difficulty == 1 and kind != "town":
 			# A2, the Imperial Road and Aurelia: a warm late afternoon, low golden sun, dusty haze
 			sky_mat.sky_top_color = Color(0.34, 0.42, 0.55)
@@ -514,6 +520,59 @@ func _zone_env(kind: String) -> void:
 			sun.light_energy = 0.6
 			hero.light.light_energy = 1.0
 			_set_fires()
+	_apply_grade()
+
+# ---------------------------------------------------------------- grade (graphics plan, phase 1)
+## The zone's look from Grade.LOOKS ("" = none): the colour-grading LUT, the vignette and grain, and the hero's rim
+## light. The shadow budget (Grade.pick_shadows) runs in _process for any zone whose lights join Grade.SHADOW_GROUP.
+var grade_look := ""
+var rim: OmniLight3D
+var _grade_t := 0.0
+
+func _apply_grade() -> void:
+	var lk := Grade.look(grade_look)
+	env.adjustment_color_correction = Grade.lut(grade_look) if not lk.is_empty() else null
+	if vignette:
+		var vm := vignette.material as ShaderMaterial
+		vm.set_shader_parameter("strength", float(lk.get("vignette", 0.6)))
+		vm.set_shader_parameter("grain", float(lk.get("grain", 0.0)))
+	var rd: Dictionary = lk.get("rim", {})
+	# the OpenGL renderer (Safe Mode, the browser) ignores a light's cull mask, so there the rim would light the
+	# ground round him too: Forward+ only
+	if rd.is_empty() or not is_forward():
+		if rim:
+			rim.visible = false
+		return
+	if rim == null:
+		rim = OmniLight3D.new()
+		rim.light_cull_mask = Grade.RIM_LAYER
+		rim.shadow_enabled = false
+		rim.omni_attenuation = 1.2
+		rim.light_specular = 0.6
+		add_child(rim)
+	rim.visible = true
+	rim.light_color = rd["color"]
+	rim.light_energy = rd["energy"]
+	rim.omni_range = rd["range"]
+	_grade_t = 0.0
+
+## Every frame: keeps the rim light behind the hero (away from the camera, above his shoulders); every
+## Grade.PICK_EVERY seconds re-picks which lights cast shadows and tags the hero's meshes for the rim.
+func _update_grade(delta: float) -> void:
+	if hero == null or world == null:
+		return
+	if rim and rim.visible:
+		var away := -cam.global_transform.basis.z
+		away.y = 0.0
+		away = away.normalized() if away.length() > 0.01 else Vector3(0, 0, -1)
+		rim.global_position = hero.global_position + away * 1.6 + Vector3(0, 2.3, 0)
+	_grade_t -= delta
+	if _grade_t > 0.0:
+		return
+	_grade_t = Grade.PICK_EVERY
+	Grade.pick_shadows(get_tree(), hero.global_position, quality)
+	if rim and rim.visible:
+		Grade.tag_hero(hero)
 
 const SETTINGS_PATH := "user://settings.cfg"
 const QUALITY_NAMES := ["Low", "Medium", "High", "Ultra"]
@@ -703,13 +762,26 @@ func _setup_post() -> void:
 shader_type canvas_item;
 uniform float strength = 0.6;
 uniform float night = 0.0;         // the Wraith's Eternal Night: violet dark closing in from the edges (WraithFx.set_night)
+uniform float grain = 0.0;         // film grain (Grade.LOOKS): a faint flicker of light and dark specks, new every 1/24 s
+float ghash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 void fragment(){
 	vec2 uv = UV - 0.5;
 	uv.x *= 1.3;
 	float v = smoothstep(0.3, 0.85, length(uv));
 	float n = smoothstep(0.1, 0.62, length(uv)) * night;
 	vec3 col = mix(vec3(0.0), vec3(0.05, 0.02, 0.1), n);
-	COLOR = vec4(col, clamp(v * strength + n * 0.82, 0.0, 1.0));
+	float a = clamp(v * strength + n * 0.82, 0.0, 1.0);
+	if (grain > 0.0) {
+		// grain as a light or dark speck over the scene: white or black at a small alpha
+		float g = ghash(floor(FRAGCOORD.xy) + floor(TIME * 24.0) * vec2(17.13, 31.71));
+		float s = (g - 0.5) * 2.0;
+		vec3 cs = vec3(step(0.0, s));          // a light or a dark speck
+		float as_ = abs(s) * grain;
+		float ao = as_ + a * (1.0 - as_);      // the speck laid over the vignette
+		col = (cs * as_ + col * a * (1.0 - as_)) / max(ao, 1e-4);
+		a = ao;
+	}
+	COLOR = vec4(col, a);
 }
 """
 	sm.shader = sh
@@ -2132,6 +2204,7 @@ func _process(delta: float) -> void:
 	xp_bonus_t = maxf(0.0, xp_bonus_t - delta)
 	exit_grace = maxf(0.0, exit_grace - delta)
 	_drop_stale()
+	_update_grade(real_dt)
 	if Engine.time_scale < 1.0 and Time.get_ticks_msec() > _hitstop_until:
 		Engine.time_scale = 1.0
 	if playing and not paused and not _busy:

@@ -58,6 +58,33 @@ static func mesh(path: String) -> Mesh:
 static func model(name: String) -> Node3D:
 	return (load(DIR + name + ".glb") as PackedScene).instantiate()
 
+## The set pieces (graphics plan, phase 3): Meshy props re-baked onto clean UVs by tools/blender/camp/rebake_prop.py,
+## each with its footprint (half-extents in its own x/z, from the script's "foot half"). Optional: without a file the
+## camp keeps its old procedural prop in that spot.
+const SET_PIECES := {
+	"supply_pile": Vector2(0.85, 0.95), "woodpile": Vector2(1.0, 0.6), "cookfire": Vector2(0.9, 0.9),
+	"weapon_rack": Vector2(1.15, 0.45), "lantern_post": Vector2(0.26, 0.18), "log_bench": Vector2(0.8, 0.25),
+	"stash_chest": Vector2(0.55, 0.38), "hide_rack": Vector2(1.0, 0.75),
+}
+## Where the lantern hangs on lantern_post.glb (its own frame, metres): the light goes there.
+const LANTERN_AT := Vector3(-0.6, 1.5, 0.0)
+
+static func has_piece(name: String) -> bool:
+	return ResourceLoader.exists(DIR + name + ".glb")
+
+## Places a set piece standing on the ground at `at`, turned by `yaw`, solid by its footprint. null if it isn't there.
+static func piece(w: World, name: String, at: Vector2, yaw: float, s := 1.0) -> Node3D:
+	if not has_piece(name):
+		return null
+	var root := Props.footprint(Models.N(null, name), SET_PIECES[name] * 0.9)
+	root.set_meta("piece", name)      # which set piece (node names of duplicates get renamed)
+	root.add_child(model(name))
+	w._place(root, Vector3(at.x, 0, at.y))
+	root.rotation.y = yaw
+	root.scale = Vector3.ONE * s
+	w.solid(root)
+	return root
+
 ## Yaw that turns a model's front (+z) toward a point.
 static func face(from: Vector2, to: Vector2) -> float:
 	var d := to - from
@@ -118,20 +145,52 @@ static func build(w: World) -> void:
 	var bf := model("bonfire")
 	w._place(bf, Vector3(CENTER.x, 0, CENTER.y))
 	Props.fire(bf, Vector3(0, 0.3, 0), 1.15, Color(1.0, 0.5, 0.18), true, true)
+	# the heart of the camp's light (graphics plan, phase 1): reaches the shops, glows in the mist, always shadowed
+	for n in bf.find_children("*", "OmniLight3D", true, false):
+		var fl: OmniLight3D = n
+		fl.light_energy *= 1.6
+		fl.set_meta("base", fl.light_energy)
+		fl.omni_range = 15.0
+		fl.omni_attenuation = 1.15
+		fl.light_volumetric_fog_energy = 3.0
+		fl.shadow_blur = 1.4
+		fl.set_meta("shadow_pri", true)
+		fl.add_to_group(Grade.SHADOW_GROUP)
 	w.add_circle(Vector3(CENTER.x, 0, CENTER.y), 1.4)
 	# click it to burn what you don't want (UI.open_burn)
 	w._inter("bonfire", "Bonfire", Vector3(CENTER.x, 0, CENTER.y), 2.6)
 	for i in 4:
 		var la := TAU * i / 4.0 + 0.6
+		var sp := Vector2(CENTER.x + cos(la) * 3.6, CENTER.y + sin(la) * 3.6)
+		# a log bench facing the fire (Meshy), else the old plain log
+		if piece(w, "log_bench", sp, face(sp, CENTER) + rng.randf_range(-0.12, 0.12)) != null:
+			continue
 		var lg := Props.footprint(Models.N(null, "seat"), Vector2(0.25, 0.8))
 		Models.P(lg, Geo.cyl(0.22, 0.24, 1.6, 10), Props.wood(), Vector3(0, 0.2, 0), Vector3(90, 0, 0))
-		w._place(lg, Vector3(CENTER.x + cos(la) * 3.6, 0, CENTER.y + sin(la) * 3.6))
+		w._place(lg, Vector3(sp.x, 0, sp.y))
 		lg.rotation.y = -la
 		w.solid(lg)
-	var chest := Props.stash_chest(null, Vector3.ZERO, -15.0)
+	var chest: Node3D
+	if has_piece("stash_chest"):
+		chest = Props.footprint(Models.N(null, "stash"), SET_PIECES["stash_chest"] * 0.9)
+		var cm := model("stash_chest")
+		chest.add_child(cm)
+		cm.rotation.y = deg_to_rad(-15.0)
+	else:
+		chest = Props.stash_chest(null, Vector3.ZERO, -15.0)
 	w._inter("stash", "Stash", Vector3(4.2, 0, 3.2), 1.6, chest)
 	w.solid(chest)
-	w.add_waypoint("town", Vector3(-8, 0, 6))
+	var wp := w.add_waypoint("town", Vector3(-8, 0, 6))
+	# old mossy stone, not the clean pale stone: it was the brightest thing on screen at dusk (graphics plan, phase 1)
+	var clean := Props.stone_clean()
+	var dark := Mats.world(Color(0.26, 0.26, 0.27), Color(0.17, 0.17, 0.18), 0.92, 1.3, 0.5, Props.MOSS)
+	for n in wp.find_children("*", "MeshInstance3D", true, false):
+		var mi: MeshInstance3D = n
+		if mi.material_override == clean:     # Mats.world caches, so it's the same material instance
+			mi.material_override = dark
+		elif mi.name == "rune_ring" and mi.material_override is ShaderMaterial:
+			# the ring and its runes share one glow material (Props.waypoint, its own copy): a soft cyan, not a white blaze
+			(mi.material_override as ShaderMaterial).set_shader_parameter("energy", 0.35)
 
 	# --- the shops round the ring, each keeper in front of their stall
 	for s in SHOPS:
@@ -176,19 +235,46 @@ static func build(w: World) -> void:
 		tent.rotation.y = face(tp, CENTER) + rng.randf_range(-0.25, 0.25)
 		tent.scale = Vector3.ONE * 1.25
 		w.add_box(Vector3(tp.x, 0, tp.y), Vector2(2.2, 1.9), tent.rotation.y)
-	# clutter by the stalls
-	for c in [["crate", Vector2(-9.5, -15.5)], ["barrel", Vector2(-15.8, -8.8)], ["barrel", Vector2(15.6, -8.6)], ["logs", Vector2(9.0, -15.5)],
-			["crate", Vector2(18.8, 1.4)], ["crate", Vector2(19.4, 2.2)], ["barrel", Vector2(-18.4, 4.0)], ["crate", Vector2(-3.5, gate_z + 4.5)],
-			["barrel", Vector2(-4.6, gate_z + 4.0)], ["logs", Vector2(6, 13)], ["crate", Vector2(-6.5, 13.5)], ["barrel", Vector2(-1.5, 16)]]:
-		var cp: Vector2 = c[1]
-		var p3 := Vector3(cp.x, w.height_at(cp.x, cp.y), cp.y)
-		match c[0]:
-			"crate": w.solid(Props.crate(w.props_root, p3, rng.randf_range(0.85, 1.15)))
-			"barrel": w.solid(Props.barrel(w.props_root, p3))
-			"logs": w.solid(Props.log_pile(w.props_root, p3))
+	# clutter by the stalls: the Meshy set pieces where they exist (supply piles of crates, barrels and sacks;
+	# woodpiles with a chopping stump), else the old procedural crates, barrels and log piles
+	var sets := has_piece("supply_pile") and has_piece("woodpile")
+	if sets:
+		for c in [["supply_pile", Vector2(-9.2, -16.0), 0.9], ["supply_pile", Vector2(16.2, -8.4), 1.0],
+				["supply_pile", Vector2(19.2, 1.8), 0.95], ["supply_pile", Vector2(-4.2, gate_z + 4.3), 0.85],
+				["supply_pile", Vector2(-18.0, 4.2), 0.9], ["woodpile", Vector2(9.2, -16.2), 1.0],
+				["woodpile", Vector2(6.2, 13.4), 0.9]]:
+			var cp: Vector2 = c[1]
+			piece(w, c[0], cp, face(cp, CENTER) + rng.randf_range(-0.5, 0.5), c[2])
+		# a cookfire for the camp's folk, a weapon rack by the armoury, hides drying by the alchemist
+		var cf := piece(w, "cookfire", Vector2(-3.8, 11.8), rng.randf() * TAU)
+		if cf:
+			Props.fire(cf, Vector3(0, 0.15, 0), 0.55, Color(1.0, 0.5, 0.2), true, false)
+			for n in cf.find_children("*", "OmniLight3D", true, false):
+				(n as OmniLight3D).add_to_group(Grade.SHADOW_GROUP)
+		piece(w, "weapon_rack", Vector2(12.2, 8.8), face(Vector2(12.2, 8.8), CENTER))
+		piece(w, "hide_rack", Vector2(-14.8, -1.6), face(Vector2(-14.8, -1.6), CENTER) + 0.3)
+	else:
+		for c in [["crate", Vector2(-9.5, -15.5)], ["barrel", Vector2(-15.8, -8.8)], ["barrel", Vector2(15.6, -8.6)], ["logs", Vector2(9.0, -15.5)],
+				["crate", Vector2(18.8, 1.4)], ["crate", Vector2(19.4, 2.2)], ["barrel", Vector2(-18.4, 4.0)], ["crate", Vector2(-3.5, gate_z + 4.5)],
+				["barrel", Vector2(-4.6, gate_z + 4.0)], ["logs", Vector2(6, 13)], ["crate", Vector2(-6.5, 13.5)], ["barrel", Vector2(-1.5, 16)]]:
+			var cp: Vector2 = c[1]
+			var p3 := Vector3(cp.x, w.height_at(cp.x, cp.y), cp.y)
+			match c[0]:
+				"crate": w.solid(Props.crate(w.props_root, p3, rng.randf_range(0.85, 1.15)))
+				"barrel": w.solid(Props.barrel(w.props_root, p3))
+				"logs": w.solid(Props.log_pile(w.props_root, p3))
 
 	# --- lantern posts along the paths
 	for lp in [Vector2(-2.6, -9), Vector2(2.6, -15), Vector2(-6.5, -4.5), Vector2(7, -4.5), Vector2(9, 3.5), Vector2(-9.5, 2.5), Vector2(-2.6, gate_z + 7)]:
+		var lit: bool = lp.y < -8.0 or absf(lp.x) > 8.0
+		var mp := piece(w, "lantern_post", lp, rng.randf() * TAU)
+		if mp:
+			# the Meshy post carries its own lantern: no shadows from it (the light sits inside the lantern),
+			# a glowing candle and the light where the lantern hangs
+			for n in mp.find_children("*", "GeometryInstance3D", true, false):
+				(n as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			_candle(mp, LANTERN_AT, lit)
+			continue
 		var post := Props.footprint(Models.N(null, "lpost"), 0.15)
 		Models.seg(post, Vector3.ZERO, Vector3(0, 2.7, 0), 0.08, 0.06, Props.wood_dark(), 6)
 		Models.seg(post, Vector3(0, 2.6, 0), Vector3(0.55, 2.62, 0), 0.04, 0.035, Props.wood_dark(), 5)
@@ -285,8 +371,15 @@ static func _local(w: World, at: Vector2, off: Vector3) -> Vector3:
 static func _glow(w: World, at: Vector2, off: Vector3, col: Color, energy: float, rng_m: float) -> void:
 	var l := OmniLight3D.new()
 	l.light_color = col
-	l.light_energy = energy
-	l.omni_range = rng_m
+	l.light_energy = energy * 1.3
+	l.omni_range = rng_m * 1.25
+	l.omni_attenuation = 1.3
+	l.light_volumetric_fog_energy = 2.0
+	l.shadow_blur = 1.2
+	# a living glow (coals, a cauldron): it flickers with the fires, and may cast shadows (Grade)
+	l.add_to_group("flicker")
+	l.set_meta("base", l.light_energy)
+	l.add_to_group(Grade.SHADOW_GROUP)
 	w.props_root.add_child(l)
 	l.position = _local(w, at, off)
 
@@ -298,19 +391,30 @@ static func _lantern(w: World, pos: Vector3, lit: bool) -> void:
 	for n in ln.find_children("*", "MeshInstance3D", true, false):
 		var mi: MeshInstance3D = n
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_candle(ln, Vector3(0, 0.24, 0), lit)
+
+## A candle's glowing core at `at` under `parent` and, when `lit`, its flickering, shadow-capable light (Grade).
+static func _candle(parent: Node3D, at: Vector3, lit: bool) -> void:
 	var core := MeshInstance3D.new()
 	core.mesh = Geo.sph(0.06, 8)
 	core.material_override = Mats.glow_unique(Color(1.0, 0.75, 0.4), 4.0)
-	ln.add_child(core)
-	core.position = Vector3(0, 0.24, 0)
+	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(core)
+	core.position = at
 	if lit:
 		var l := OmniLight3D.new()
-		l.light_color = Color(1.0, 0.7, 0.4)
-		l.light_energy = 1.4
-		l.omni_range = 6.5
-		l.omni_attenuation = 1.4
-		ln.add_child(l)
-		l.position = Vector3(0, 0.25, 0)
+		l.light_color = Color(1.0, 0.68, 0.38)
+		l.light_energy = 1.9
+		l.omni_range = 8.0
+		l.omni_attenuation = 1.3
+		l.light_volumetric_fog_energy = 2.0
+		l.shadow_blur = 1.2
+		# a candle: a slow, gentle flicker (Game's flicker loop), and shadows when it's among the nearest (Grade)
+		l.add_to_group("flicker")
+		l.set_meta("base", l.light_energy)
+		l.add_to_group(Grade.SHADOW_GROUP)
+		parent.add_child(l)
+		l.position = at + Vector3(0, 0.01, 0)
 
 ## Something in a shopkeeper's hand (the smith's hammer, the alchemist's potion, the armourer's axe),
 ## carried by the hand bone so it follows the animation. spec: {"bone", "item" (a Data.BASES weapon) or
