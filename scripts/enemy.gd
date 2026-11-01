@@ -75,6 +75,9 @@ var killed_by_rival := false  # no xp or loot for a kill the heroes didn't make
 var pack_id := 0
 # co-op: on a joining player's game every monster is remote and follows the host
 var net_id := 0
+## Battlegrounds PvP: this is no monster but the invisible stand-in for player `pvp_pid` on this client
+## (Battlegrounds.sync_proxies keeps it on their puppet); a blow on it goes to that player through the server.
+var pvp_pid := 0
 var remote := false
 var net_pos := Vector3.ZERO
 var net_yaw := 0.0
@@ -311,6 +314,13 @@ func slow(t: float, amt: float) -> void:
 func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit: bool) -> float:
 	if dead:
 		return 0.0
+	if pvp_pid > 0:
+		# another player: the server scales it and deals it to them; the number shows here at once
+		var total0 := phys + fire
+		game.net.send_pvp_hit(pvp_pid, total0, from)
+		Fx.number(game.world.fx_root, global_position + Vector3(0, 2.2, 0), str(int(total0 * Battlegrounds.PVP_MULT)) + ("!" if crit else ""), Color(1.0, 0.4, 0.35), crit)
+		Fx.blood(game.world.fx_root, global_position + Vector3(0, 1.0, 0), Color(0.5, 0.0, 0.0))
+		return total0 * Battlegrounds.PVP_MULT
 	aggro = true
 	if sloth != null:
 		sloth.on_hit(from)
@@ -516,6 +526,8 @@ func _fx(ev: String) -> void:
 func _process(delta: float) -> void:
 	if game == null or game.hero == null or game.world == null or not is_inside_tree():
 		return
+	if pvp_pid > 0:
+		return          # a player's stand-in (Battlegrounds.sync_proxies moves it)
 	anim_time += delta
 	if flash_t > 0.0:
 		flash_t -= delta

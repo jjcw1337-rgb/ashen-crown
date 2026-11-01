@@ -1,18 +1,17 @@
 extends SceneTree
-## Battlegrounds (battlegrounds.gd), two processes on this machine:
-##   godot --headless --path . -s tools/bg_test.gd -- --server --port 24611 server
+## Battlegrounds (battlegrounds.gd), the Hollow Crypt, two processes on this machine:
+##   godot --headless --path . -s tools/bg_test.gd -- --server --port 24611 --raid-fast server
 ##   godot --headless --path . -s tools/bg_test.gd -- client 24611 [addr <host>] [cloud <nakama url> <server key>]
-## With Nakama (the server started with ASHEN_NAKAMA_URL / ASHEN_NAKAMA_HTTP_KEY, the client with `cloud`), the client
-## signs in and the stash is kept in Nakama; the server side then also reads it back from there.
-## The server is the real dedicated server (Game boots it from --server); this side only reports on it.
-## The client enters, kills a zombie, opens a chest and picks up the loot, extracts (the server files it in the
-## stash), then enters again, picks something up and dies: the loot falls where they died and their stash keeps
-## only what they extracted.
+## The client makes a real character (in a scratch character folder), takes it into the crypt (its save says
+## in_raid), kills a monster, loots a chest, waits for the portals, extracts (the loot is in its own inventory and
+## saved, in_raid off), goes back in, levels up and dies: it loses every item and its gold (a plain weapon given back),
+## keeps its level, and its gear drops for others. The server
+## checks the round (portals open, the collapse, a new round) and the drop. `--raid-fast` = a round of 150 s.
 
 var g
 var role := "client"
 var port := 24611
-var host := "127.0.0.1"       # `addr <host>`: a server elsewhere (the staging server)
+var host := "127.0.0.1"
 var fails := 0
 
 func _initialize():
@@ -23,8 +22,7 @@ func _initialize():
 			port = int(a[i])
 	if role == "client":
 		Battlegrounds.id_path = "user://bg_test_id.txt"
-		DirAccess.remove_absolute(Battlegrounds.id_path)    # a new player every run (a stash in Nakama outlives the run)
-		Battlegrounds.cache_path = "user://bg_test_cache.json"
+		DirAccess.remove_absolute(Battlegrounds.id_path)
 		var ai := a.find("addr")
 		if ai >= 0 and ai + 1 < a.size():
 			host = a[ai + 1]
@@ -69,135 +67,127 @@ func _run() -> void:
 
 func _server() -> void:
 	await until(func(): return g.bg != null and g.net.active and g.cur_zone == Battlegrounds.ZONE and not g._busy, 40.0)
-	g.bg.stash = {}
-	g.bg.save_stash()
-	check(g.net.server and g.net.is_host, "dedicated server hosting the raid")
+	check(g.net.server and g.net.is_host and Battlegrounds.fast, "dedicated server hosting the crypt (fast rounds)")
 	check(not g.hero.visible and g.hero.phased, "the server's own hero is hidden and unseen")
-	var zombies := func() -> int:
+	var mons := func() -> int:
 		var n := 0
 		for e in g.world.enemies_root.get_children():
 			if e is Enemy and not e.dead:
 				n += 1
 		return n
-	check(zombies.call() >= Battlegrounds.ZOMBIES, "%d zombies on the map" % zombies.call())
+	check(mons.call() >= 10, "%d monsters in the crypt" % mons.call())
+	var e0 = g.world.enemies_root.get_child(0)
+	check(e0 is Enemy and e0.max_life > Data.ENEMIES[e0.kind]["life"] * 2.0, "they are tougher than outside")
+	check(Battlegrounds.portal_list(g.world).size() == 4, "four candidate portals")
 	check(await until(func(): return not g.net.players.is_empty(), 60.0), "a player joined")
-	var pid: int = g.net.players.keys()[0] if not g.net.players.is_empty() else 0
-	# the client's first raid ends in an extraction
-	var got := await until(func(): return g.bg.stash.size() > 0 and (g.bg.stash.values()[0] as Array).size() > 0, 90.0)
-	check(got, "the extraction filed the loot in the stash: %s" % str(g.bg.stash.values()[0].size() if got else 0))
-	var first: int = (g.bg.stash.values()[0] as Array).size() if got else 0
-	if g.bg.nk != null:
-		var uid: String = g.bg.stash.keys()[0] if got else ""
-		check(uid.begins_with("nk:"), "the player's account was confirmed by Nakama")
-		# (the extraction's write to Nakama finishes just after the server's own copy changes)
-		var n := -1
-		for i in 20:
-			var r: Dictionary = await g.bg.nk.server_rpc("bg_stash_read", {"user_id": uid.substr(3)}, g.bg.nk_key)
-			n = (r["items"] as Array).size() if r.get("items") is Array else 0
-			if n == first:
-				break
-			await secs(0.25)
-		check(n == first, "and Nakama holds the stash (%d)" % n)
-	else:
-		check(FileAccess.file_exists(g.bg.stash_path), "the stash is saved on the server")
-	# second raid: they die with loot
-	check(await until(func(): return not g.net.players.is_empty() and (g.bg.carried.get(g.net.players.keys()[0], []) as Array).size() > 0, 60.0), "back in a second raid, carrying loot")
-	# watch what they carry; when it empties (the death), it must be lying on the ground
-	var w := {"last": []}       # (a lambda can't assign to the locals it captures, so a Dictionary carries it)
-	var dropped := await until(func():
-		if g.net.players.is_empty():
-			return false
-		var c: Array = g.bg.carried.get(g.net.players.keys()[0], [])
-		if not c.is_empty():
-			w["last"] = c.duplicate()
-			return false
-		return not (w["last"] as Array).is_empty(), 40.0)
-	var last: Array = w["last"]
-	await secs(0.5)
-	var on_ground := 0
-	for id in g.net.items:
-		var gi = g.net.items[id]
-		if is_instance_valid(gi) and last.has(gi.item):
-			on_ground += 1
-	check(dropped and on_ground == last.size(), "their death dropped what they carried (%d of %d on the ground)" % [on_ground, last.size()])
-	await secs(3.0)
-	check((g.bg.stash.values()[0] as Array).size() == first, "and the stash kept only what was extracted (%d)" % first)
-	# zombies rise again after the kills
-	await until(func(): return zombies.call() >= Battlegrounds.ZOMBIES, 30.0)
-	check(zombies.call() >= Battlegrounds.ZOMBIES, "zombies respawned (%d)" % zombies.call())
-	await until(func(): return g.net.players.is_empty(), 20.0)
+	check(await until(func(): return g.bg.open.size() == Battlegrounds.OPEN_PORTALS, 70.0), "two portals opened on time")
+	var items0: int = g.net.items.size()
+	check(await until(func(): return g.net.items.size() >= items0 + 3, 120.0), "the fallen hero's gear lay on the floor (%d items)" % (g.net.items.size() - items0))
+	check(await until(func(): return g.bg.state == "reset", 120.0), "the crypt collapsed at the end of the round")
+	check(await until(func(): return g.bg.state == "raid" and g.bg.raid_t < 5.0, 30.0), "and a new round began")
 
 func _client() -> void:
 	while g._busy:
 		await wait(5)
-	await secs(2.0)
+	await secs(3.0)
+	# a real character in a scratch folder
+	g.char_dir = "user://bg_test_chars/"
+	DirAccess.make_dir_recursive_absolute(g.char_dir)
+	for fn in DirAccess.get_files_at(g.char_dir):
+		DirAccess.remove_absolute(g.char_dir + fn)
+	g.hero.set_class("knight")
+	g.hero.new_character()
+	g.char_id = g.new_char_id()
+	g.char_name = "Testric"
+	g.save_game()
+	var id: String = g.char_id
+	var path: String = g.char_dir + id + ".json"
+	var inv0: int = _inv_count()
+	check(FileAccess.file_exists(path), "made a character (%d items)" % inv0)
 	g.test_immortal = true
 	g.test_onehit = true
-	await g.start_battlegrounds("%s:%d" % [host, port], "knight")
-	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "entered the Battlegrounds")
-	check(g.bg_mode and g.net.is_client() and not g.net.players.has(1), "as a raid player, with no host player in the roster")
-	await secs(1.5)
-	check(await until(func(): return g.world.enemies_root.get_child_count() > 0, 10.0), "the server's zombies are here (%d)" % g.world.enemies_root.get_child_count())
-	# kill the nearest zombie
+	await g.start_battlegrounds("%s:%d" % [host, port], id)
+	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "entered the crypt as Testric")
+	check(_save().get("in_raid", false), "the save says in_raid")
+	check(await until(func(): return not g.bg_raid.is_empty(), 10.0), "the raid's clock arrived (%s)" % str(g.bg_raid.get("state", "?")))
+	await secs(1.0)
 	var z = _nearest_enemy()
-	check(z != null, "found a zombie")
+	check(z != null, "a monster nearby")
 	if z:
 		g.hero.global_position = g.world.free_spot_near(z.global_position, 1.6)
 		g.hero.target = z
-		check(await until(func(): return not is_instance_valid(z) or z.dead, 20.0), "killed it")
-	# a chest's loot
-	var ch = _nearest("chest")
-	g.hero.global_position = g.world.free_spot_near(ch.global_position, 1.6)
-	await secs(0.5)
-	g._interact(ch)
-	check(await until(func(): return g.world.items_root.get_child_count() > 0, 10.0), "the chest dropped loot (%d)" % g.world.items_root.get_child_count())
+		check(await until(func(): return not is_instance_valid(z) or z.dead, 25.0), "killed it")
+	var ch = _nearest("chest", true)
+	if ch:
+		g.hero.global_position = g.world.free_spot_near(ch.global_position, 1.6)
+		await secs(0.5)
+		g._interact(ch)
+		await until(func(): return g.world.items_root.get_child_count() > 0, 10.0)
 	await secs(1.5)
 	var n: int = await _pick_all()
 	check(n > 0, "picked up %d item(s)" % n)
-	# extract
-	var ex = _nearest("extract")
+	# a portal that isn't open refuses
+	var ex = Battlegrounds.portal_list(g.world)[0]
+	check(not bool(ex.data.get("open", false)) or not g.bg_raid["open"].is_empty(), "portals start closed")
+	check(await until(func(): return not (g.bg_raid.get("open", []) as Array).is_empty(), 70.0), "the portals opened")
+	var ps: Array = Battlegrounds.portal_list(g.world)
+	var op = ps[int(g.bg_raid["open"][0])]
 	g.hero.target = null
-	g.hero.global_position = g.world.free_spot_near(ex.global_position, 1.0)
+	g.hero.global_position = g.world.free_spot_near(op.global_position, 1.0)
 	await secs(1.0)
-	g._interact(ex)
-	check(await until(func(): return not g.bg_mode, 15.0), "extracted and left the raid")
-	check(g.bg_stash.size() > 0 and Battlegrounds.cached_stash().size() == g.bg_stash.size(), "the stash came back from the server (%d)" % g.bg_stash.size())
-	check(await until(func(): return g.ui.bg_panel.visible, 15.0), "the Battlegrounds screen shows it")
-	var stash0: int = g.bg_stash.size()
-	# second raid: pick something up, then die
-	await until(func(): return not g._busy, 20.0)
-	await g.start_battlegrounds("%s:%d" % [host, port], "wraith")
-	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "entered again as a wraith")
-	await secs(1.5)
-	var ch2 = _nearest("chest", true)
-	if ch2:
-		g.hero.global_position = g.world.free_spot_near(ch2.global_position, 1.6)
-		await secs(0.5)
-		g._interact(ch2)
-		await until(func(): return g.world.items_root.get_child_count() > 0, 10.0)
-	else:
-		var z2 = _nearest_enemy()
-		if z2:
-			g.hero.global_position = g.world.free_spot_near(z2.global_position, 1.6)
-			g.hero.target = z2
-		await until(func(): return g.world.items_root.get_child_count() > 0, 30.0)
-	await secs(1.5)
-	var n2: int = await _pick_all()
-	check(n2 > 0, "picked up %d item(s) in the second raid" % n2)
-	await secs(1.0)
+	var held: int = _inv_count()
+	g._interact(op)
+	check(await until(func(): return not g.bg_mode, 15.0), "extracted")
+	var sv := _save()
+	check(FileAccess.file_exists(path) and not sv.get("in_raid", true), "the character is safe and saved (in_raid off)")
+	check(held > inv0 and _count_saved(sv) >= held, "and keeps what it found (%d -> %d items)" % [inv0, held])
+	# back in, and die
+	await until(func(): return not g._busy and g.ui.bg_panel.visible, 20.0)
+	await g.start_battlegrounds("%s:%d" % [host, port], id)
+	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "went back in")
+	await secs(2.0)
+	g.hero.set_level(12)
 	g.test_immortal = false
-	g.hero.take_hit(99999.0, g.hero.global_position + Vector3(1, 0, 0))
+	g.hero.take_hit(999999.0, g.hero.global_position + Vector3(1, 0, 0))
 	check(g.hero.dead, "died")
 	await secs(3.0)
 	g.respawn()
-	check(await until(func(): return not g.bg_mode, 15.0), "a death ends the raid")
-	check(g.bg_stash.size() == stash0, "the stash still holds only the extracted loot (%d)" % g.bg_stash.size())
+	check(await until(func(): return not g.bg_mode and not g._busy, 20.0), "a death ends the raid")
+	var after := _save(path)
+	var eq: Dictionary = (after.get("hero", {}) as Dictionary).get("equipment", {})
+	var worn: Array = eq.values().filter(func(x): return x != null)
+	check(FileAccess.file_exists(path) and not after.get("in_raid", true), "the character lives on (saved, in_raid off)")
+	check(int((after.get("hero", {}) as Dictionary).get("level", 0)) == 12, "with its level kept (12)")
+	check(_count_saved(after) == 0 and int((after.get("hero", {}) as Dictionary).get("gold", -1)) == 0 and worn.size() == 1, "but every item and its gold are gone (a plain weapon left)")
+
+func _save(p := "") -> Dictionary:
+	if p == "":
+		p = g.char_dir + g.char_id + ".json"
+	if not FileAccess.file_exists(p):
+		return {}
+	var d = JSON.parse_string(FileAccess.get_file_as_string(p))
+	return d if d is Dictionary else {}
+
+func _count_saved(sv: Dictionary) -> int:
+	var h: Dictionary = sv.get("hero", {})
+	var n := 0
+	for it in h.get("inventory", []):
+		if it != null:
+			n += 1
+	return n
+
+func _inv_count() -> int:
+	var n := 0
+	for it in g.hero.inventory:
+		if it != null:
+			n += 1
+	return n
 
 func _nearest_enemy():
 	var best = null
 	var bd := INF
 	for e in g.world.enemies_root.get_children():
-		if e is Enemy and not e.dead:
+		if e is Enemy and not e.dead and e.pvp_pid == 0:
 			var d: float = e.global_position.distance_to(g.hero.global_position)
 			if d < bd:
 				bd = d

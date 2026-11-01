@@ -149,23 +149,29 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   in `Data.SKILLS` beside a puppet and fails if a skill sends no event, the puppet shows nothing, a lingering effect
   doesn't reach it, or replaying the events on the puppet hurts a monster or changes its life or mana; the
   `mp_test` host+join pair counts the events each side receives from the other ("[H8]"/"[C7]").
-- **Battlegrounds** (`scripts/battlegrounds.gd`, `Battlegrounds`; prototype, phase 1): an extraction raid on a
-  **dedicated server**. The server is the game itself run headless: `godot --headless --path . -- --server [--port N]`
-  (`Game._ready` -> `Battlegrounds.start_server`; default UDP 24567, up to `MAX_PLAYERS` 16). It hosts zone `"bg"`
-  (`Battlegrounds.build`: a 60 m walled ruin, broken walls and graves, two chests, an Extraction Portal north and
-  south, Inter kind `"extract"`) through the normal co-op layer with `Net.server` on: its own hero is hidden, parked off
-  the map and phased (`park_hero`, skipped by `Game.target_for`), it never streams its hero, isn't in the roster
-  players get, and refuses travel, portals and trips; a joiner arrives at the free-est of the map's `bg_spawns`
-  (`spawn_point`). Zombies are kept at `ZOMBIES`, respawning away from players. Players: the title's Battlegrounds
-  button (`UI.open_battlegrounds`: class, server address `host[:port]`, the stash) -> `Game.start_battlegrounds`, a
-  fresh unsaved hero (`bg_mode`; `char_id` is empty, so nothing is saved). The server keeps the record: every item a
-  player picks up (`Net.sv_pickup`) is `carried[pid]`; at an Extraction Portal (`Net.sv_extract`, the server checks
-  the player stands within `EXTRACT_R`) it joins their stash, saved on the server in `user://bg_server/stash.json`
-  under the player's id (`client_id`, a random id in `user://bg_id.txt`, sent by `Net.sv_bg_hello`; not hack-proof,
-  Nakama takes accounts over later); dying or disconnecting drops it on the ground (`_drop_carried`). A death ends the
-  raid (`Game.respawn` in `bg_mode` -> back to the Battlegrounds screen). The client caches the stash the server last
-  sent (`user://bg_stash_cache.json`). Not yet: PvP damage, bringing stash items in, raid timers, several raids per
-  server, Steam/Nakama, WebSocket for the browser. `tools/bg_test.gd` runs the whole loop with a server and a client.
+- **Battlegrounds** (`scripts/battlegrounds.gd`, `Battlegrounds`): **the Hollow Crypt**, a hardcore extraction raid in
+  the Dark and Darker mould on a **dedicated server** (`godot --headless --path . -- --server [--port N]`, staging systemd
+  `ashen-crown-bg`, UDP 24567; `Net.server`). The map (`Battlegrounds.build`, zone `"bg"`, indoor, dark: a smaller
+  hero light) is a 4x4 grid of rooms round a great central hall: corner rooms are where players arrive, one middle
+  room per side holds a candidate Extraction Portal (Inter `"extract"`, hidden until open), the other is a treasure
+  room and the only way into the hall from that side; a ring of corridors with one link missing; crypt rooms with
+  sarcophagi, chests, few but tough monsters (`MON_LIFE`, `MON_DMG`, level `MON_LEVEL`); the hall has a pillar ring,
+  three chests and a champion with bowmen. The walls come from `World.crypt_shell` (shared with the crypt). **Rounds**
+  of `RAID_SECS` (15 min): two of the four portals open at `PORTALS_AT` (5 min), joining closes at `JOIN_CLOSE`, the
+  crypt collapses at the end (everyone inside dies) and the dungeon resets (`new_round`). The state reaches players
+  through `Net.cl_bg_raid` (the HUD clock, `Battlegrounds.hud`). **Combat is slower and heavier** while
+  `Game.bg_mode` (Hero: `ATTACK_PACE`, `HIT_MULT`, `CD_MULT`, `MOVE_MULT`, no life regeneration). **PvP**: every other
+  player is an invisible stand-in `Enemy` with `pvp_pid` on each client (`sync_proxies`), so any attack or skill
+  that hits monsters hits players; `Enemy.take_damage` sends `Net.sv_pvp_hit`, the server scales it (`PVP_MULT`) and
+  deals it (`Net.hit_player`); kills are announced. **Real characters**: the Battlegrounds screen picks one of the
+  player's characters (`Game.start_battlegrounds(addr, id)`); its save says `in_raid` until it extracts; what it
+  extracts with stays in its inventory. **Death** costs every item worn and carried, the belt and the gold
+  (`Game.bg_strip` / `strip_save`: levels, stats, talents and the camp's stash are kept; a plain class weapon is
+  given back), dropped where it fell (`Net.sv_bg_died`); a character whose game closed mid-raid is stripped the next
+  time the game starts (`Game._bury_lost_raiders`). Joining uses a one-time Nakama ticket on staging (see "Staging
+  and accounts"). Tests: `tools/bg_test.gd` (server `--raid-fast`: 150 s rounds) and `tools/bg_pvp_test.gd`.
+  Dev cheat (non-production builds or dev tools): type `maxout` while playing (`Game.max_out`: level 99, stats,
+  every talent, a million gold, potions, a bag of the best gear).
 - **Online co-op** (`scripts/coop_server.gd`, `CoopServer`): the story game hosted by a dedicated server
   (`-- --server --coop --port 24570`, staging systemd `ashen-crown-coop`), so friends co-op over the internet with no
   router setup: the title's "Online Co-op" (non-local builds) joins `BuildEnv.value("coop_server")` with the

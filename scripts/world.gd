@@ -1703,6 +1703,27 @@ func _build_lair() -> void:
 				var ep := Vector3(rng.randf_range(r.position.x + 2, r.end.x - 2), 0, rng.randf_range(r.position.y + 2, r.end.y - 2))
 				var kk: String = foes[rng.randi() % foes.size()]
 				enemy_spawns.append({"kind": kk, "pos": ep, "count": rng.randi_range(3, 5), "champ": rng.randf() < 0.15 + ri * 0.04, "pack": ri * 10 + k, "level": level + ri / 2})
+	crypt_shell()
+	var r0: Rect2 = rooms[0]
+	# stairs back up
+	var st := Models.N(null, "stairs")
+	for i in 6:
+		Models.P(st, Geo.box(3.6, 0.25 + i * 0.25, 0.7), sm, Vector3(0, (0.25 + i * 0.25) * 0.5, -i * 0.7))
+	_place(st, Vector3(r0.get_center().x, 0, r0.end.y - 0.6))
+	st.rotation.y = PI
+	var shaft := MeshInstance3D.new()
+	shaft.mesh = Geo.cyl(1.4, 2.2, 7.0, 16)
+	shaft.material_override = Mats.glow(Color(0.6, 0.7, 0.8), 0.25, 1.0, 0.5)
+	shaft.position = Vector3(r0.get_center().x, 3.5, r0.end.y - 1.5)
+	shaft.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	props_root.add_child(shaft)
+	exits.append({"pos": Vector3(r0.get_center().x, 0, r0.end.y - 0.8), "radius": 1.8, "to": "wild", "label": act_name("wild")})
+	spawns["start"] = Vector3(r0.get_center().x, 0, r0.end.y - 5.0)
+	spawns["boss_room"] = Vector3(boss_r.get_center().x, 0, boss_r.end.y - 3)
+
+## The crypt's stone shell around `floor_rects`: everything that isn't floor is solid rock, wall blocks along the
+## floor's edges, a dark top over the rock, and the crypt floor. Used by the crypt and the Battlegrounds dungeon.
+func crypt_shell() -> void:
 	_rasterize()
 	# everything that is not floor is solid rock
 	rock.resize(gw * gh)
@@ -1739,22 +1760,6 @@ func _build_lair() -> void:
 	Props.multimesh(props_root, Geo.box(1.0, 1.0, 1.0), top_xf, false).material_override = Mats.world(Color(0.05, 0.05, 0.05), Color(0.03, 0.03, 0.03), 1.0, 1.0, 0.0, Props.MOSS, true)
 	_flush_stones(Props.stone())
 	_build_terrain(CRYPT_TERRAIN)
-	var r0: Rect2 = rooms[0]
-	# stairs back up
-	var st := Models.N(null, "stairs")
-	for i in 6:
-		Models.P(st, Geo.box(3.6, 0.25 + i * 0.25, 0.7), sm, Vector3(0, (0.25 + i * 0.25) * 0.5, -i * 0.7))
-	_place(st, Vector3(r0.get_center().x, 0, r0.end.y - 0.6))
-	st.rotation.y = PI
-	var shaft := MeshInstance3D.new()
-	shaft.mesh = Geo.cyl(1.4, 2.2, 7.0, 16)
-	shaft.material_override = Mats.glow(Color(0.6, 0.7, 0.8), 0.25, 1.0, 0.5)
-	shaft.position = Vector3(r0.get_center().x, 3.5, r0.end.y - 1.5)
-	shaft.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	props_root.add_child(shaft)
-	exits.append({"pos": Vector3(r0.get_center().x, 0, r0.end.y - 0.8), "radius": 1.8, "to": "wild", "label": act_name("wild")})
-	spawns["start"] = Vector3(r0.get_center().x, 0, r0.end.y - 5.0)
-	spawns["boss_room"] = Vector3(boss_r.get_center().x, 0, boss_r.end.y - 3)
 
 ## King Grubb's vault: heaps of coins, open chests, his throne of chests, goblin tunnels.
 func _hoard_room(r: Rect2, c: Vector2) -> void:

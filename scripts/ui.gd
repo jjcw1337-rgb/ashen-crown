@@ -123,9 +123,8 @@ var join_list: VBoxContainer
 var join_ip: LineEdit
 var join_hint: Label
 var bg_panel: PanelContainer      # the Battlegrounds screen (open_battlegrounds): class, server address, the stash
-var bg_class: OptionButton
+var bg_class: OptionButton       # the Battlegrounds screen's hero picker (character ids as metadata)
 var bg_addr: LineEdit
-var bg_stash_list: VBoxContainer
 var _join_refresh := 0.0
 var death_panel: Control
 var victory_panel: Control
@@ -3398,38 +3397,39 @@ func _build_join() -> void:
 		title_panel.visible = true)
 	vb.add_child(back)
 
-## The Battlegrounds screen (battlegrounds.gd): pick a class, type the raid server's address, Enter; the stash below
-## is what you have extracted (as the server last reported it).
+## The Battlegrounds screen (battlegrounds.gd): pick one of your characters, the raid server's address, Enter. Death in
+## the crypt is permanent, and the screen says so before anyone goes in.
 func _build_battlegrounds() -> void:
 	bg_panel = PanelContainer.new()
 	bg_panel.anchor_left = 0.5
 	bg_panel.anchor_right = 0.5
 	bg_panel.anchor_top = 0.5
 	bg_panel.anchor_bottom = 0.5
-	bg_panel.offset_left = -320
-	bg_panel.offset_right = 320
-	bg_panel.offset_top = -270
-	bg_panel.offset_bottom = 270
+	bg_panel.offset_left = -330
+	bg_panel.offset_right = 330
+	bg_panel.offset_top = -250
+	bg_panel.offset_bottom = 250
 	bg_panel.visible = false
 	root.add_child(bg_panel)
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 10)
 	bg_panel.add_child(vb)
-	var t := _label("The Battlegrounds", 28, GOLD, true)
+	var t := _label(Battlegrounds.TITLE, 30, GOLD, true)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(t)
-	var sub := _label("Enter the raid, kill, loot, and reach an Extraction Portal to keep what you found. Fall, and it stays where you fell.", 14, Color(0.75, 0.7, 0.62))
+	var sub := _label("Descend with one of your heroes. Monsters are few and deadly, other players are hunting too, and the Extraction Portals only open %d minutes in. Get out alive and everything you carry is yours. Fall, and it lies where you fell." % int(Battlegrounds.PORTALS_AT / 60.0), 14, Color(0.78, 0.72, 0.64))
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(sub)
+	var warn := _label("☠  DEATH IS PERMANENT. A hero who dies in the crypt is gone for good, with all their gear.", 15, Color(1.0, 0.42, 0.32), true)
+	warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vb.add_child(warn)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	vb.add_child(row)
-	row.add_child(_label("Class", 16))
+	row.add_child(_label("Hero", 16))
 	bg_class = OptionButton.new()
-	for c in Data.CLASSES.keys():
-		bg_class.add_item(str(Data.CLASSES[c].get("name", c)))
-		bg_class.set_item_metadata(bg_class.item_count - 1, c)
-	bg_class.custom_minimum_size = Vector2(180, 36)
+	bg_class.custom_minimum_size = Vector2(380, 36)
+	bg_class.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(bg_class)
 	vb.add_child(_label("Server address (host or host:port):", 14, Color(0.7, 0.66, 0.58)))
 	var row2 := HBoxContainer.new()
@@ -3443,18 +3443,10 @@ func _build_battlegrounds() -> void:
 	row2.add_child(bg_addr)
 	var go := Button.new()
 	go.name = "enter"
-	go.text = "Enter"
-	go.custom_minimum_size = Vector2(100, 40)
+	go.text = "Enter the Crypt"
+	go.custom_minimum_size = Vector2(150, 40)
 	go.pressed.connect(func(): _bg_go())
 	row2.add_child(go)
-	vb.add_child(_label("Your stash", 18, GOLD))
-	var sc := ScrollContainer.new()
-	sc.custom_minimum_size = Vector2(0, 200)
-	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	vb.add_child(sc)
-	bg_stash_list = VBoxContainer.new()
-	bg_stash_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sc.add_child(bg_stash_list)
 	var back := Button.new()
 	back.text = "Back"
 	back.custom_minimum_size = Vector2(0, 40)
@@ -3470,24 +3462,33 @@ func open_battlegrounds() -> void:
 	bg_addr.text = str(game._load_setting("battlegrounds", "address", ""))
 	if bg_addr.text == "" and BuildEnv.env() != "local":
 		bg_addr.text = BuildEnv.value("bg_server")      # a staging or production build knows its server
-	var last := str(game._load_setting("battlegrounds", "class", "knight"))
-	for i in bg_class.item_count:
-		if bg_class.get_item_metadata(i) == last:
-			bg_class.select(i)
-	for c in bg_stash_list.get_children():
-		c.queue_free()
-	var st: Array = game.bg_stash if not game.bg_stash.is_empty() else Battlegrounds.cached_stash()
-	if st.is_empty():
-		bg_stash_list.add_child(_label("Empty. Extract with loot to fill it.", 14, Color(0.6, 0.57, 0.5)))
-	for it in st:
-		var nm := "%d gold" % int(it.get("count", 0)) if str(it.get("base", "")) == "gold" else str(it.get("name", it.get("base", "?")))
-		bg_stash_list.add_child(_label(nm, 15, Data.RARITY_COLOR[clampi(int(it.get("rarity", 0)), 0, Data.RARITY_COLOR.size() - 1)]))
+	bg_class.clear()
+	var last := str(game._load_setting("battlegrounds", "character", ""))
+	for c in game.list_characters():
+		bg_class.add_item("%s  ·  level %d %s" % [c["name"], int(c["level"]), str(Data.CLASSES.get(c["cls"], {}).get("name", c["cls"]))])
+		bg_class.set_item_metadata(bg_class.item_count - 1, c["id"])
+		if c["id"] == last:
+			bg_class.select(bg_class.item_count - 1)
+	var go := bg_panel.find_child("enter", true, false) as Button
+	if bg_class.item_count == 0:
+		bg_class.add_item("No heroes yet: create one first")
+		bg_class.disabled = true
+		go.disabled = true
+	else:
+		bg_class.disabled = false
+		go.disabled = false
 
 func _bg_go() -> void:
-	var cls: String = str(bg_class.get_item_metadata(bg_class.selected)) if bg_class.selected >= 0 else "knight"
-	game._save_setting("battlegrounds", "class", cls)
-	bg_panel.visible = false
-	game.start_battlegrounds(bg_addr.text if bg_addr.text.strip_edges() != "" else "127.0.0.1", cls)
+	if bg_class.disabled or bg_class.selected < 0:
+		return
+	var id := str(bg_class.get_item_metadata(bg_class.selected))
+	var nm := bg_class.get_item_text(bg_class.selected).split("  ·  ")[0]
+	var addr := bg_addr.text if bg_addr.text.strip_edges() != "" else "127.0.0.1"
+	# a last word before risking a hero for good
+	open_dialog(Battlegrounds.TITLE, "%s will enter with everything they wear and carry. If %s dies down there, they are gone forever.\n\nEnter the crypt?" % [nm, nm],
+		[["Enter", func():
+			bg_panel.visible = false
+			game.start_battlegrounds(addr, id)], ["Not yet", func(): pass]])
 
 func open_join() -> void:
 	Sfx.play("click")

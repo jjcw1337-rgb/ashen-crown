@@ -782,45 +782,75 @@ func cl_grant(it: Dictionary, pos: Vector3) -> void:
 	game.receive_item(it, pos)
 
 # ---------------------------------------------------------------- Battlegrounds (battlegrounds.gd)
-## Client -> server: who this player is (their stash's id); the server answers with their stash.
+## Client -> server: who this player is (a one-time Nakama join ticket, else the per-PC id). The server answers with
+## the round's state, or turns them away (the round is closing, the ticket was refused).
 @rpc("any_peer", "call_remote", "reliable")
-func sv_bg_hello(uid: String, session: String) -> void:
+func sv_bg_hello(uid: String, ticket: String) -> void:
 	if not server or game.bg == null:
 		return
 	var pid := multiplayer.get_remote_sender_id()
-	var s = await game.bg.player_hello(pid, uid.substr(0, 64), session)
-	if s == null:
-		rpc_id(pid, "cl_bg_note", "The server could not confirm your account. Try again in a moment.")
+	var r = await game.bg.player_hello(pid, uid.substr(0, 64), ticket)
+	if r != "ok":
+		rpc_id(pid, "cl_bg_note", "This raid is closing: try again in a minute, for the next one." if r == "closed" else "The server could not confirm your account. Try again in a moment.")
 		await get_tree().create_timer(0.5).timeout
 		if peer != null:
 			peer.disconnect_peer(pid)
 		return
-	rpc_id(pid, "cl_bg_stash", s)
+	game.bg.broadcast(pid)
 
+## The round: "raid" or "reset", seconds into it, the open portals, its length, when the portals open.
 @rpc("authority", "call_remote", "reliable")
-func cl_bg_stash(s: Array) -> void:
-	game.bg_stash = s
-	Battlegrounds.cache_stash(s)
+func cl_bg_raid(state: String, t: float, open: Array, length: float, portals_at: float) -> void:
+	game.bg_raid = {"state": state, "t": t, "open": open, "len": length, "portals_at": portals_at}
+	if game.world != null:
+		var ps := Battlegrounds.portal_list(game.world)
+		for i in ps.size():
+			var on := open.has(i)
+			ps[i].data["open"] = on
+			var m = ps[i].get_node_or_null("Model")
+			if m:
+				m.visible = on
+
+## PvP: the local hero struck another player's stand-in (Battlegrounds.sync_proxies); the server deals it.
+func send_pvp_hit(target_pid: int, amount: float, from: Vector3) -> void:
+	rpc_id(1, "sv_pvp_hit", target_pid, amount, from)
+
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func sv_pvp_hit(target_pid: int, amount: float, from: Vector3) -> void:
+	if server and game.bg != null:
+		game.bg.pvp_hit(multiplayer.get_remote_sender_id(), target_pid, amount, from)
+
+## The local hero fell in a raid: everything they had, for the server to drop where they fell.
+func send_bg_died(items: Array) -> void:
+	rpc_id(1, "sv_bg_died", items)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_bg_died(items: Array) -> void:
+	if not server or game.bg == null:
+		return
+	var pid := multiplayer.get_remote_sender_id()
+	if players.has(pid) and is_instance_valid(players[pid]["hero"]):
+		game.bg.died(pid, items.slice(0, 80), players[pid]["hero"].global_position)
 
 func request_extract() -> void:
 	rpc_id(1, "sv_extract")
 
-## The server checks the player stands at an Extraction Portal, files their loot and lets them out.
+## The server checks the player stands at an open Extraction Portal and lets them out.
 @rpc("any_peer", "call_remote", "reliable")
 func sv_extract() -> void:
 	if not server or game.bg == null:
 		return
 	var pid := multiplayer.get_remote_sender_id()
-	if not game.bg.near_extract(pid):
-		rpc_id(pid, "cl_bg_note", "Stand in the Extraction Portal to leave")
+	if not game.bg.near_open_extract(pid):
+		rpc_id(pid, "cl_bg_note", "The portal isn't open yet" if game.bg.open.is_empty() else "Stand in an open Extraction Portal to leave")
 		return
-	var r: Array = await game.bg.extract(pid)
-	print("[BG] %s extracted with %d item(s), stash %d" % [_name_of(pid), (r[0] as Array).size(), (r[1] as Array).size()])
-	rpc_id(pid, "cl_extracted", r[0], r[1])
+	var gained: Array = game.bg.extract(pid)
+	print("[BG] %s extracted with %d item(s) picked up" % [_name_of(pid), gained.size()])
+	rpc_id(pid, "cl_extracted", gained)
 
 @rpc("authority", "call_remote", "reliable")
-func cl_extracted(gained: Array, s: Array) -> void:
-	game.bg_extracted(gained, s)
+func cl_extracted(gained: Array) -> void:
+	game.bg_extracted(gained)
 
 @rpc("authority", "call_remote", "reliable")
 func cl_bg_note(txt: String) -> void:

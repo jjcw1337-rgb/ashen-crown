@@ -48,7 +48,7 @@ var playing := false
 ## player in a raid, and that player's stash as the server last reported it.
 var bg: Battlegrounds
 var bg_mode := false
-var bg_stash: Array = []
+var bg_raid := {}               # the round as the raid server last said (Net.cl_bg_raid): state, t, open portals...
 ## Characters and the stash in Nakama (cloud_saves.gd), in builds with BuildEnv.cloud() on; null otherwise.
 var cloud: CloudSaves
 var coop_server: CoopServer     # the online co-op server's logic (coop_server.gd), only on a `--server --coop` run
@@ -154,6 +154,7 @@ func _ready() -> void:
 	await _play_intro()
 	# straight from the intro to the title: the camp builds behind it, with no loading screen or zone banner
 	_boot_quiet = true
+	_bury_lost_raiders()
 	ui.show_title()
 	await load_zone(0, "town", "start")
 	_boot_quiet = false
@@ -397,10 +398,10 @@ func zone_music() -> void:
 
 ## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
-	return cur_zone == "lair" and not (world != null and (world.fort or world.run == 1))
+	return cur_zone == Battlegrounds.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
 
 func _zone_env(kind: String) -> void:
-	var inside := kind == "lair" and not (world.fort or world.run == 1)
+	var inside := kind == Battlegrounds.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
 	var snowy := is_snowy() and not inside
 	var ashen := difficulty >= 2 and not inside
 	RenderingServer.global_shader_parameter_set("snow_amt", 1.0 if snowy else 0.0)
@@ -435,6 +436,12 @@ func _zone_env(kind: String) -> void:
 		sun.visible = false
 		hero.light.light_energy = 2.6
 		hero.light.omni_range = 17.0
+		if kind == Battlegrounds.ZONE:
+			# the Hollow Crypt is darker: a smaller circle round the hero, the torches and candles do the rest
+			env.ambient_light_energy = 0.55
+			env.tonemap_exposure = 1.25
+			hero.light.light_energy = 2.0
+			hero.light.omni_range = 11.0
 	else:
 		env.background_mode = Environment.BG_SKY
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
@@ -1269,31 +1276,36 @@ func start_join(ip: String) -> void:
 		net.shutdown()
 		on_net_failed("No answer from %s. Check the host's game is running and Windows Firewall allowed it." % ip)
 
-## Battlegrounds from the title screen: a fresh hero of `cls` (not saved; a raid's character is its own) joins the
-## raid server at `addr` ("host" or "host:port").
-func start_battlegrounds(addr: String, cls: String) -> void:
+## Battlegrounds from the title screen: the character `id` (one of the player's own; what it carries in, it risks)
+## joins the raid server at `addr` ("host" or "host:port"). Its save is marked in_raid until it extracts, so closing
+## the game mid-raid counts as dying (_bury_lost_raiders). Dying costs every item it wore and carried, and its gold
+## (bg_strip); it keeps its levels, stats and talents. The camp's stash isn't carried, so it is never lost.
+func start_battlegrounds(addr: String, id: String) -> void:
 	while _busy:
 		await get_tree().process_frame
 	Sfx.play("click")
 	net.stop_listening()
+	char_id = id
+	if id == "" or not load_game():
+		ui.message("Pick a character for the crypt first", Color(1, 0.6, 0.4))
+		char_id = ""
+		return
 	ui.hide_title()
 	ui.close_all()
 	playing = true
 	bg_mode = true
-	char_id = ""
-	char_name = default_name(cls)
-	net.my_name = char_name
-	hero.set_class(cls)
-	hero.new_character()
-	difficulty = 0
-	tp_link = {}
-	boss_killed = false
+	bg_raid = {}
+	if hero.dead:
+		hero.respawn(hero.global_position)
 	var a: Array = Battlegrounds.parse_address(addr)
 	_save_setting("battlegrounds", "address", addr.strip_edges())
+	_save_setting("battlegrounds", "character", id)
 	if cloud != null and not await cloud.ensure():
+		bg_mode = false
 		on_net_failed("Could not sign in to your account (%s)." % cloud.nk.last_error)
 		return
-	loading_lbl.text = "Joining the Battlegrounds at %s..." % a[0]
+	save_game()             # (marked in_raid from here on)
+	loading_lbl.text = "Descending into %s..." % Battlegrounds.TITLE
 	loading.visible = true
 	if net.join(a[0], int(a[1])) != OK:
 		on_net_failed("Could not reach the Battlegrounds server.")
@@ -1303,19 +1315,89 @@ func start_battlegrounds(addr: String, cls: String) -> void:
 		net.shutdown()
 		on_net_failed("No answer from the Battlegrounds server at %s." % a[0])
 
-## The server let us out of the raid with `gained`; `s` is the whole stash now.
-func bg_extracted(gained: Array, s: Array) -> void:
-	bg_stash = s
-	Battlegrounds.cache_stash(s)
+## The server let us out: what we carry is ours, saved to the character as it is.
+func bg_extracted(gained: Array) -> void:
+	bg_mode = false
+	save_game()
 	ui.big_message("Extracted!")
-	ui.message("%d item%s to your stash (%d in it)" % [gained.size(), "" if gained.size() == 1 else "s", s.size()], Color(0.6, 1.0, 0.6))
+	ui.message("%s made it out with %d new item%s" % [char_name, gained.size(), "" if gained.size() == 1 else "s"], Color(0.6, 1.0, 0.6))
 	Sfx.play("portal")
 	await get_tree().create_timer(2.0).timeout
 	_leave_battlegrounds()
 
-func _leave_battlegrounds() -> void:
-	if not bg_mode:
+## The local hero fell in the crypt: everything on them goes to the server to drop where they fell.
+func _bg_fell() -> void:
+	var items := []
+	for slot in hero.equipment:
+		if hero.equipment[slot] != null:
+			items.append(hero.equipment[slot])
+	for it in hero.inventory + hero.belt:
+		if it != null:
+			items.append(it)
+	if hero.gold > 0:
+		items.append(Items.gold(hero.gold))
+	if net.is_client():
+		net.send_bg_died(items)
+	ui.big_message("%s has fallen" % char_name)
+	ui.message("Everything %s wore and carried lies where they fell. Their strength remains." % char_name, Color(1, 0.45, 0.35), 6.0)
+
+## What a hero keeps after dying in the crypt: levels, stats, talents, the camp's stash, and nothing else but a
+## plain weapon of their class (so they can walk back into the world). The save is written at once.
+static func strip_save(h: Dictionary) -> Dictionary:
+	var cls := str(h.get("cls", "knight"))
+	var eq := {}
+	for slot in Items.EQUIP_SLOTS:
+		eq[slot] = null
+	eq["weapon"] = Items.make(str(Data.CLASSES.get(cls, {}).get("weapon", "hand_axe" if cls == "demon" else "short_sword")))
+	var inv := []
+	inv.resize(40)
+	h["equipment"] = eq
+	h["inventory"] = inv
+	h["belt"] = [null, null, null, null]
+	h["gold"] = 0
+	return h
+
+func bg_strip() -> void:
+	if char_id == "":
 		return
+	if hero.dead:
+		hero.respawn(hero.global_position)
+	var h := strip_save(hero.to_save())
+	hero.equipment = h["equipment"]
+	hero.inventory = h["inventory"]
+	hero.belt = h["belt"]
+	hero.gold = 0
+	hero.refresh_gear()
+	hero.recalc()
+	bg_mode = false
+	save_game()
+	print("[BG] character ", char_id, " died in the crypt and lost everything it carried")
+
+## Characters whose game closed while they were in a raid died there: they lose what they carried.
+func _bury_lost_raiders() -> void:
+	if _testing():
+		return
+	for c in list_characters():
+		var p := char_dir + str(c["id"]) + ".json"
+		var d = JSON.parse_string(FileAccess.get_file_as_string(p))
+		if d is Dictionary and bool(d.get("in_raid", false)):
+			d["hero"] = strip_save(d.get("hero", {}))
+			d["in_raid"] = false
+			var f := FileAccess.open(p, FileAccess.WRITE)
+			if f:
+				f.store_string(JSON.stringify(d))
+				f.close()
+			if cloud != null:
+				cloud.push(str(c["id"]), d)
+			ui.message("%s fell in %s and lost everything they carried" % [str(c["name"]), Battlegrounds.TITLE], Color(1, 0.5, 0.4), 6.0)
+
+func _leave_battlegrounds() -> void:
+	if not bg_mode and char_id == "" and not playing:
+		return
+	if hero.dead and bg_mode:
+		bg_strip()
+	bg_mode = false
+	bg_raid = {}
 	await exit_to_title()
 	ui.open_battlegrounds()
 
@@ -1355,6 +1437,7 @@ func save_path() -> String:
 func _cloud_start() -> void:
 	await get_tree().process_frame
 	if await cloud.sync() and ui.title_panel.visible and not playing:
+		_bury_lost_raiders()
 		ui.show_title()
 
 func save_game() -> void:
@@ -1362,7 +1445,7 @@ func save_game() -> void:
 		return
 	_store_progress()
 	_store_harvest()
-	var d := {"hero": hero.to_save(), "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed, "difficulty": difficulty,
+	var d := {"hero": hero.to_save(), "in_raid": bg_mode, "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed, "difficulty": difficulty,
 		"max_run": max_run, "runs": run_progress, "quests": quests.to_save(), "harvest": {"t": played_s, "zones": harvest_saved}, "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
 	DirAccess.make_dir_recursive_absolute(char_dir)
 	var f := FileAccess.open(save_path(), FileAccess.WRITE)
@@ -1672,7 +1755,9 @@ func _interact(t: Inter) -> void:
 				Sfx.play("bonfire_open", -10.0, 0.8)
 				ui.open_furnace(t)
 		"extract":
-			if bg_mode and net.is_client() and not hero.dead:
+			if not bool(t.data.get("open", false)):
+				ui.message("The portal is dark. It opens later in the raid.", Color(0.8, 0.8, 0.9))
+			elif bg_mode and net.is_client() and not hero.dead:
 				ui.message("Extracting...", Color(0.6, 0.85, 1.0))
 				net.request_extract()
 		"lanista":
@@ -1990,12 +2075,13 @@ func hitstop(t: float) -> void:
 
 func _on_hero_died() -> void:
 	death_t = 2.0
+	if bg_mode:
+		_bg_fell()
 	ui.set_boss(null)
 
 func respawn() -> void:
 	if bg_mode:
-		# no coming back in a raid: what you carried lies where you fell
-		ui.message("You fell. Everything you carried is lost.", Color(1, 0.5, 0.4))
+		# no coming back from the crypt
 		_leave_battlegrounds()
 		return
 	hero.gold = int(hero.gold * 0.9)
@@ -2122,7 +2208,58 @@ func _update_hover() -> void:
 	else:
 		ui.hide_target()
 
+## Dev cheat (not in production builds, or with the dev tools): typing "maxout" while playing makes the current
+## character as strong as it gets: level 99, its stat points spread over its class's stats, every talent point spent
+## (the class's auto build), a million gold, full potions and a bag of the best gear (equip what you like). Saved.
+var _typed := ""
+func _cheat_keys(ev: InputEvent) -> void:
+	if not (ev is InputEventKey and ev.pressed and not ev.echo) or not playing or hero == null:
+		return
+	var ch := String.chr(ev.unicode) if ev.unicode > 0 else ""
+	if ch == "":
+		return
+	_typed = (_typed + ch.to_lower()).right(12)
+	if _typed.ends_with("maxout") and (dev_tools_on() or BuildEnv.env() != "production"):
+		_typed = ""
+		max_out()
+
+func max_out() -> void:
+	hero.set_level(99)
+	var c: Dictionary = Data.CLASSES.get(hero.cls, {})
+	var tot := float(int(c.get("str", 1)) + int(c.get("dex", 1)) + int(c.get("vit", 1)) + int(c.get("ene", 1)))
+	var pts := hero.stat_points
+	hero.str_ += int(pts * int(c.get("str", 1)) / tot)
+	hero.dex += int(pts * int(c.get("dex", 1)) / tot)
+	hero.vit += int(pts * int(c.get("vit", 1)) / tot)
+	hero.ene += pts - int(pts * int(c.get("str", 1)) / tot) - int(pts * int(c.get("dex", 1)) / tot) - int(pts * int(c.get("vit", 1)) / tot)
+	hero.stat_points = 0
+	hero.talents = Talents.auto_build(hero.cls, hero.free_talent_points(), hero.talents)
+	hero._talents_changed()
+	hero.gold += 1000000
+	hero.belt = [Items.potion("hp_potion"), Items.potion("hp_potion"), Items.potion("mp_potion"), Items.potion("rejuv")]
+	for b in hero.belt:
+		b["count"] = 20
+	var r := RandomNumberGenerator.new()
+	r.randomize()
+	var n := 0
+	for i in 60:
+		if n >= 16:
+			break
+		var it := Items.random_drop(99, 2000.0, r, true)
+		if Items.is_material(it) or int(it.get("rarity", 0)) < 2:
+			continue
+		if hero.add_to_inventory(it):
+			n += 1
+	hero.recalc()
+	hero.life = hero.max_life
+	hero.mana = hero.max_mana
+	ui.refresh()
+	save_game()
+	ui.big_message("MAXED OUT")
+	ui.message("Level 99, every talent, a million gold and %d pieces of the best gear in your bag" % n, Color(1.0, 0.85, 0.4), 6.0)
+
 func _unhandled_input(ev: InputEvent) -> void:
+	_cheat_keys(ev)
 	if not playing:
 		return
 	if ev is InputEventMouseButton:
@@ -2267,6 +2404,11 @@ func _click_world() -> void:
 
 # ---------------------------------------------------------------- loop
 func _process(delta: float) -> void:
+	if bg_mode:
+		Battlegrounds.sync_proxies(self)
+		Battlegrounds.hud(self, delta)
+	elif ui != null and ui.root.get_node_or_null("bg_hud") != null:
+		ui.root.get_node("bg_hud").visible = false
 	_t += delta
 	var real_dt := delta / maxf(Engine.time_scale, 0.01)
 	_watchdog(real_dt)
