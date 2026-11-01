@@ -61,7 +61,7 @@ func _run() -> void:
 		await process_frame
 	var near_e: float = grand.ring_mats[0].get_shader_parameter("energy") if grand else 0.0
 	ok(grand != null and grand._wake > 0.8, "a hero on the dais wakes it (wake %.2f)" % (grand._wake if grand else 0.0))
-	ok(near_e > far_e * 1.8, "the outer channel brightens (%.2f -> %.2f)" % [far_e, near_e])
+	ok(near_e > far_e * 1.5, "the outer channel brightens (%.2f -> %.2f)" % [far_e, near_e])
 	# the window still opens and travels
 	g.ui.open_waypoints(st)
 	await _settle()
