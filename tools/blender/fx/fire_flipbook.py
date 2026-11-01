@@ -18,7 +18,7 @@ RES = int(argv[1]) if len(argv) > 1 else 96
 FRAMES = int(argv[2]) if len(argv) > 2 else 64
 PX = int(argv[3]) if len(argv) > 3 else 256
 SEED = int(argv[4]) if len(argv) > 4 else 3
-WARM = 50            # frames for the fire to rise and settle before recording
+WARM = 76            # frames for the fire to rise and settle before recording
 os.makedirs(OUT, exist_ok=True)
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -55,19 +55,19 @@ ds.use_collision_border_right = False
 ds.use_collision_border_left = False
 ds.use_collision_border_top = False
 ds.use_collision_border_bottom = True
-ds.vorticity = 0.35
+ds.vorticity = 0.12
 ds.alpha = 0.6                 # buoyancy from density
 ds.beta = 5.0                  # buoyancy from heat: hot gas rises hard
 ds.use_dissolve_smoke = True
 ds.dissolve_speed = 18
 ds.burning_rate = 0.32
 ds.flame_smoke = 0.35
-ds.flame_vorticity = 1.3
+ds.flame_vorticity = 0.6
 ds.flame_ignition = 1.2
 ds.flame_max_temp = 3.0
-ds.use_noise = True       # wavelet upres: sub-voxel licks
+ds.use_noise = False      # smooth sheets of flame (the upres mottles them); resolution carries the edges
 ds.noise_scale = 2
-ds.noise_strength = 1.8
+ds.noise_strength = 1.2
 fm = src.modifiers[0]
 fs = fm.flow_settings
 fs.flow_type = "BOTH"
@@ -148,7 +148,19 @@ nt.links.new(flame.outputs["Fac"], heat.inputs["Value"])
 nt.links.new(heat.outputs["Result"], ramp.inputs["Fac"])
 nt.links.new(ramp.outputs["Color"], vol.inputs["Emission Color"])
 nt.links.new(edge.outputs["Result"], strength.inputs[0])
-nt.links.new(strength.outputs[0], vol.inputs["Emission Strength"])
+gen = nt.nodes.new("ShaderNodeNewGeometry")     # world position: the floor is z = 0
+sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+foot = nt.nodes.new("ShaderNodeMapRange")
+foot.interpolation_type = "SMOOTHSTEP"
+foot.inputs["From Min"].default_value = 0.06
+foot.inputs["From Max"].default_value = 0.36
+footmul = nt.nodes.new("ShaderNodeMath")
+footmul.operation = "MULTIPLY"
+nt.links.new(gen.outputs["Position"], sep.inputs["Vector"])
+nt.links.new(sep.outputs["Z"], foot.inputs["Value"])
+nt.links.new(strength.outputs[0], footmul.inputs[0])
+nt.links.new(foot.outputs["Result"], footmul.inputs[1])
+nt.links.new(footmul.outputs[0], vol.inputs["Emission Strength"])
 nt.links.new(dens.outputs["Fac"], dmul.inputs[0])
 nt.links.new(dmul.outputs[0], vol.inputs["Density"])
 vol.inputs["Color"].default_value = (0.0, 0.0, 0.0, 1.0)
@@ -170,7 +182,7 @@ cam.rotation_euler = (1.5708, 0, 0)
 scn.camera = cam
 scn.render.engine = "CYCLES"
 scn.cycles.device = "CPU"
-scn.cycles.samples = 96
+scn.cycles.samples = 48
 scn.cycles.use_denoising = True
 scn.cycles.volume_step_rate = 0.5
 scn.cycles.volume_max_steps = 256

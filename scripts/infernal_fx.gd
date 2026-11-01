@@ -21,9 +21,9 @@ const MOLTEN := Color(1.0, 0.42, 0.07)
 const WHITEHOT := Color(1.0, 0.86, 0.62)
 const SMOKE := Color(0.05, 0.034, 0.038)
 
-## Simulated fire (tools/blender/fx/fire_flipbook.py, packed by tools/fx_flipbook.sh): 64 frames, 8 x 8.
+## Simulated fire (tools/blender/fx/fire_flipbook.py, packed by tools/fx_flipbook.sh): 36 frames, 6 x 6.
 const FIRE_FLIPBOOK := "res://assets/textures/fx/fire_flipbook.png"
-const FLIP_GRID := Vector2(8, 8)
+const FLIP_GRID := Vector2(6, 6)
 const FLIP_FPS := 30.0
 
 ## Preview tools can force a tier (-1 = from the game's graphics setting).
@@ -643,7 +643,7 @@ const FLIPFIRE_SHADER := """
 shader_type spatial;
 render_mode unshaded, blend_premul_alpha, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
 uniform sampler2D flip_tex : source_color, filter_linear_mipmap;
-uniform vec2 grid = vec2(8.0, 8.0);
+uniform vec2 grid = vec2(6.0, 6.0);
 uniform float frames_per_life = 18.0;
 uniform float hot = 1.0;
 uniform float tint = 0.25;
@@ -667,7 +667,7 @@ vec3 frame_at(float f, vec2 uv) {
 void fragment() {
 	vec2 uv = UV;
 	if (v_rnd > 0.5) { uv.x = 1.0 - uv.x; }
-	float f = v_rnd * 63.0 + v_age * frames_per_life;
+	float f = v_rnd * (grid.x * grid.y - 1.0) + v_age * frames_per_life;
 	float f0 = floor(f);
 	vec3 c = mix(frame_at(f0, uv), frame_at(f0 + 1.0, uv), f - f0);
 	float fade = smoothstep(0.0, 0.12, v_age) * (1.0 - smoothstep(0.55, 1.0, v_age));
