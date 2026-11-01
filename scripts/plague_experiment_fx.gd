@@ -111,8 +111,8 @@ class Vat extends Node3D:
 		# the fluid floods out
 		Fx.burst(self, g + Vector3(0, 0.8, 0), PlagueExperimentFx.BILE, 80, 7.0, 0.09, 0.9, true, -9.0, 80.0)
 		Fx.burst(self, g + Vector3(0, 0.5, 0), Color(0.4, 0.55, 0.25, 0.4), 30, 3.5, 0.7, 1.6, false, 0.5, 85.0)
-		Fx.flash(self, g + Vector3(0, 1.0, 0), PlagueExperimentFx.BILE, 9.0, 0.5, r * 1.6)
-		Fx.ring(self, g, r, PlagueExperimentFx.HAZARD, 0.7, 0.6)
+		Fx.flash(self, g + Vector3(0, 1.0, 0), PlagueExperimentFx.BILE, 3.5, 0.5, r * 1.4)
+		Fx.ring(self, g, r * 0.5, PlagueExperimentFx.BILE * Color(0.7, 0.7, 0.7), 0.6, 0.3)
 		if vat != null:
 			var tw := vat.create_tween()
 			tw.tween_property(vat, "scale", Vector3(1.15, 0.35, 1.15), 0.12)
@@ -120,7 +120,7 @@ class Vat extends Node3D:
 		if boil != null:
 			boil.emitting = false
 		lamp.omni_range = r * 1.3
-		lamp.light_energy = 1.4
+		lamp.light_energy = 1.0
 		# the spore rain over the whole zone
 		rain = GPUParticles3D.new()
 		rain.amount = int(clampf(r * r * 3.0, 60.0, 260.0))
@@ -305,20 +305,20 @@ void fragment() {
 	float d = length(lp) * 1.04 / max(rad, 0.01);
 	float ang = atan(lp.y, lp.x);
 	// the warning rim: a hazard band with ticks marching round it, sharp at its outer edge
-	float band = smoothstep(1.0, 0.985, d) * smoothstep(0.93, 0.95, d);
-	float ticks = step(0.5, fract(ang * 18.0 / 6.28318 - TIME * 0.6));
-	float rim = band * (0.55 + 0.45 * ticks);
+	float band = smoothstep(1.0, 0.993, d) * smoothstep(0.972, 0.982, d);
+	float ticks = smoothstep(0.42, 0.5, fract(ang * 24.0 / 6.28318 - TIME * 0.5));
+	float rim = band * (0.45 + 0.55 * ticks);
 	// the flood: veined contamination spreading from the middle to the rim
 	float n = fbm(lp * 4.0 + seed);
-	float veins = pow(1.0 - abs(fbm(lp * 7.0 - seed + vec2(TIME * 0.03, 0.0)) * 2.0 - 1.0), 10.0);
+	float veins = pow(1.0 - abs(fbm(lp * 5.0 - seed + vec2(TIME * 0.03, 0.0)) * 2.0 - 1.0), 16.0) * smoothstep(0.35, 0.7, fbm(lp * 2.0 + seed * 1.7));
 	float front = flood * (0.95 + (n - 0.5) * 0.12);
 	float wet = smoothstep(front, front - 0.05, d) * step(d, 0.95);
 	float pre = smoothstep(1.0, 0.0, d) * 0.1 * (1.0 - flood);
 	vec3 col = mix(vec3(0.05, 0.07, 0.03), vec3(0.14, 0.22, 0.06), n);
-	ALBEDO = mix(vec3(0.04), col, wet);
+	ALBEDO = mix(vec3(0.04), col * 0.8, wet);
 	ROUGHNESS = mix(0.8, 0.08, wet);
 	SPECULAR = mix(0.2, 0.8, wet);
-	EMISSION = vec3(0.6, 0.95, 0.25) * (rim * 1.2 + veins * wet * 0.5 + pre);
+	EMISSION = vec3(0.6, 0.95, 0.25) * (rim * 0.75 + veins * wet * 0.28 + pre);
 	ALPHA = clamp(rim + wet * 0.85 + pre, 0.0, 1.0) * fade;
 }
 """

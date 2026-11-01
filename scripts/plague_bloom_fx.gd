@@ -151,7 +151,7 @@ class Bloom extends Node3D:
 
 ## A snared foe: roots burst up and coil round its feet, and a tendril snaps from the bloom to it.
 static func lash(bloom: Node, e: Node3D) -> void:
-	if not (bloom is Bloom) or not is_instance_valid(e):
+	if not is_instance_valid(bloom) or not (bloom is Bloom) or not is_instance_valid(e):
 		return
 	var b := bloom as Bloom
 	var at := e.global_position

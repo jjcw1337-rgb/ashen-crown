@@ -160,15 +160,15 @@ class Swarm extends Node3D:
 			Sfx.play_at("drip", target, -16.0, 2.4)
 
 static func redirect(node: Node, _to: Vector3) -> void:
-	if node is Swarm and is_instance_valid(node):
+	if is_instance_valid(node) and node is Swarm:
 		(node as Swarm).scatter_t = maxf((node as Swarm).scatter_t, 0.25)    # a ripple through it as it turns
 
 static func scatter(node: Node) -> void:
-	if node is Swarm and is_instance_valid(node):
+	if is_instance_valid(node) and node is Swarm:
 		(node as Swarm).scatter_t = 1.5
 
 static func go_home(node: Node, h: Hero) -> void:
-	if node is Swarm and is_instance_valid(node):
+	if is_instance_valid(node) and node is Swarm:
 		var s := node as Swarm
 		s.home_t = 0.0
 		s.home_node = h
@@ -176,7 +176,7 @@ static func go_home(node: Node, h: Hero) -> void:
 
 ## A bite: a few flies peel off onto the foe, a fleck of green.
 static func bite(node: Node, e: Node3D) -> void:
-	if not (node is Swarm) or not is_instance_valid(e):
+	if not is_instance_valid(node) or not (node is Swarm) or not is_instance_valid(e):
 		return
 	var hgt: float = float(e.get("height")) if e.get("height") != null else 1.0
 	Fx.burst((node as Swarm), e.global_position + Vector3(randf_range(-0.2, 0.2), hgt * randf_range(0.8, 1.6), randf_range(-0.2, 0.2)), Color(0.55, 0.9, 0.3), 4, 0.8, 0.03, 0.35, true, -2.0)

@@ -164,7 +164,7 @@ static func _shell_shader() -> Shader:
 	_ssh = Shader.new()
 	_ssh.code = """
 shader_type spatial;
-render_mode unshaded, blend_add, cull_back, depth_draw_never;
+render_mode unshaded, blend_add, cull_back, depth_draw_never, shadows_disabled;
 uniform float fill = 0.0;
 uniform float amt = 1.0;
 varying vec3 lp;
@@ -180,7 +180,7 @@ void fragment() {
 	float veins = pow(1.0 - abs(noise(lp * 5.0 + vec3(0.0, -TIME * 1.5, 0.0)) * 2.0 - 1.0), 8.0);
 	vec3 glass = vec3(0.75, 0.85, 0.9);
 	vec3 serum = vec3(0.95, 0.25, 0.18);
-	ALBEDO = mix(glass, serum, fill) * (rim * 0.5 + veins * (0.15 + fill * 0.5));
+	ALBEDO = mix(glass, serum, fill) * (rim * 0.35 + veins * rim * (0.2 + fill * 0.6)) * amt;
 }
 """
 	return _ssh

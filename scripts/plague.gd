@@ -468,7 +468,7 @@ func _cloud(at: Vector3, r: float, dur: float, src: String) -> void:
 func _end_cloud(c: Dictionary) -> void:
 	clouds.erase(c)
 	var n = c["node"]
-	if n is PlagueVialFx.Pool and is_instance_valid(n):
+	if is_instance_valid(n) and n is PlagueVialFx.Pool:
 		(n as PlagueVialFx.Pool).end()
 		return
 	if is_instance_valid(n):
