@@ -129,9 +129,11 @@ static func _glb_model(id: String, spec: Dictionary) -> Node3D:
 	var body := ps.instantiate() as Node3D
 	body.name = "model"
 	root.add_child(body)
+	var li := 0
 	for lp in spec.get("lamps", []):
 		var lamp := OmniLight3D.new()
-		lamp.name = "lamp"
+		lamp.name = "lamp%d" % li
+		li += 1
 		lamp.light_color = Color(1.0, 0.72, 0.38)
 		lamp.light_energy = float(lp[1])
 		lamp.omni_range = 6.0

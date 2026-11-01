@@ -75,12 +75,35 @@ func moor(p: Vector3, y: float) -> void:
 	target = 0.0
 	yaw = y
 	global_position = Vector3(p.x, 0.0, p.z)
+	var spot := global_position
+	# the moorings are spaced for the Gull: a longer boat eases out along her heading until she can swing
+	# right round there without her hull touching the pier or jetty (her probes, scaled to her size)
+	if kl > 1.01:
+		for i in 60:
+			if _swing_clear(global_position):
+				break
+			global_position += forward() * 0.5
+	p = global_position
+	var out := spot.distance_to(p)     # how far she lies out from the mooring: the hero still reaches her from the deck
 	_float(0.0)
 	if inter == null or not is_instance_valid(inter):
 		inter = game.world._inter("boat", str(spec["name"]), Vector3(p.x, 0, p.z), 4.2 * kl, null, {"boat": id})
 		inter.set_meta("pick", 3.6 * kl)
 		inter.set_meta("pick_y", 1.2)
 	inter.global_position = Vector3(p.x, 0.0, p.z)
+	inter.radius = 4.2 * kl + out
+
+## Whether she could turn through every heading at p and stay clear (clearance >= 0) the whole way.
+func _swing_clear(p: Vector3) -> bool:
+	var y0 := yaw
+	var ok := true
+	for k in 12:
+		yaw = y0 + TAU * k / 12.0
+		if _clearance(p) < 0.0:
+			ok = false
+			break
+	yaw = y0
+	return ok
 
 # ---------------------------------------------------------------- a partner's boat (co-op)
 ## A partner sailing: his boat as his game sends it (Net._boat_packet, in his state packet), drawn under his
@@ -149,7 +172,7 @@ func dock_near() -> Dictionary:
 		return {}
 	var p := Vector2(global_position.x, global_position.z)
 	var best := {}
-	var bd := DOCK_REACH
+	var bd := DOCK_REACH * kl          # a longer boat lands from further out, before her hull reaches the jetty
 	for d in docks:
 		var dd := p.distance_to(d["pos"])
 		if dd < bd:
