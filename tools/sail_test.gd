@@ -55,7 +55,7 @@ func _run() -> void:
 	print("[S] coast: boat %s moored %s at %s, clickable %s" % [b != null, not b.sailing, b.global_position.round(), b.inter != null])
 	g._interact(b.inter)
 	await frames(2)
-	print("[S] boarded: sailing %s, hero aboard %s, hero on deck %s" % [g.sailing(), g.hero.aboard, g.hero.global_position.distance_to(b.global_transform * BoatRide.DECK) < 0.1])
+	print("[S] boarded: sailing %s, hero aboard %s, hero on deck %s" % [g.sailing(), g.hero.aboard, g.hero.global_position.distance_to(b.global_transform * b.DECK) < 0.1])
 	# the real keys aboard (staging's WASD and dodge roll must not move the hero): W sails, A turns her,
 	# Space heaves to and never rolls him, the left click steers and never swings
 	var y0 := b.yaw
@@ -64,7 +64,7 @@ func _run() -> void:
 	await create_timer(1.5).timeout
 	key(KEY_A, false)
 	var spd := b.speed
-	var on_deck: bool = g.hero.global_position.distance_to(b.global_transform * BoatRide.DECK) < 0.3
+	var on_deck: bool = g.hero.global_position.distance_to(b.global_transform * b.DECK) < 0.3
 	key(KEY_W, false)
 	key(KEY_SPACE, true)
 	g.dodge_roll()
@@ -82,7 +82,7 @@ func _run() -> void:
 		var m: Vector4 = g.isle_mooring(isle, Vector2.ZERO, true)
 		var r := sail_to(b, Vector2(m.x, m.z))
 		times.append(r[0])
-		print("[S] dock -> %-20s %5.1f s, arrived %s, least water under her %.1f m (draft %.1f)" % [isle["name"], r[0], r[1], r[2], BoatRide.DRAFT])
+		print("[S] dock -> %-20s %5.1f s, arrived %s, least water under her %.1f m (draft %.1f)" % [isle["name"], r[0], r[1], r[2], b.DRAFT])
 	# straight at the headland's shore: she stops in deep enough water and can back off again
 	b.global_position = Vector3(-6, 0, 30)
 	b.yaw = atan2(-1.0, 0.0)            # heading east, at the beach south of the pier
@@ -93,7 +93,7 @@ func _run() -> void:
 		step(b)
 	var ground := Coast.ground(Vector2(b.global_position.x, b.global_position.z))
 	var oc: Ocean = g.world.get_node("Ocean")
-	print("[S] charged the shore for 10 s: stopped at (%.1f, %.1f), ground under her %.1f m, sea map depth %.1f, clearance %.1f (afloat %s)" % [b.global_position.x, b.global_position.z, ground, oc.depth_at(b.global_position.x, b.global_position.z), b._clearance(b.global_position), b._clearance(b.global_position) >= BoatRide.DRAFT - 0.2])
+	print("[S] charged the shore for 10 s: stopped at (%.1f, %.1f), ground under her %.1f m, sea map depth %.1f, clearance %.1f (afloat %s)" % [b.global_position.x, b.global_position.z, ground, oc.depth_at(b.global_position.x, b.global_position.z), b._clearance(b.global_position), b._clearance(b.global_position) >= b.DRAFT - 0.2])
 	var xp := b.global_position.x
 	for i in 240:
 		b.drive = {"throttle": -1, "steer": 1.0, "stop": false, "point": null}
