@@ -128,7 +128,7 @@ static func make(parent: Node3D, pos: Vector3, kind := "", size := 1.0, col := C
 	_flames(root, "flames", bk, life, width, height, maxf(3.0, float(P["rate"]) * size * k), 1.0, tint, float(P["jitter"]) * size, size)
 	# the hot core: small, bright, low
 	if float(P["core"]) > 0.0:
-		_flames(root, "core", bk, life * 0.6, width * 0.55, height * 0.5, maxf(2.0, float(P["rate"]) * 0.6 * size * k), 1.35 * float(P["core"]), tint, float(P["jitter"]) * size * 0.5, size)
+		_flames(root, "core", bk, life * 0.6, width * 0.55, height * 0.5, maxf(2.0, float(P["rate"]) * 0.6 * size * k), 0.95 * float(P["core"]), tint, float(P["jitter"]) * size * 0.5, size)
 	if float(P["embers"]) > 0.0:
 		_embers(root, height, maxi(2, int(float(P["embers"]) * size * k)), size)
 	if float(P["sparks"]) > 0.0 and tr >= 1:
@@ -166,7 +166,7 @@ static func _flames(root: Node3D, nm: String, bk: String, life: float, w: float,
 	# every particle is a whole flame and their light adds up: share the brightness out over how many overlap,
 	# so a fire stays orange and yellow and never sums to white
 	var n := maxi(2, int(rate * life))
-	var share := clampf(1.8 / sqrt(float(n)), 0.25, 1.0)
+	var share := clampf(1.45 / sqrt(float(n)), 0.22, 0.9)
 	q.material = flame_mat(bk, snappedf(life, 0.05), snappedf(hot * share, 0.05), snappedf(tint, 0.1))
 	var p := InfernalFx.particles(root, root.global_position if root.is_inside_tree() else root.position, {
 		"amount": n, "life": life, "one_shot": false, "randomness": 0.4,
