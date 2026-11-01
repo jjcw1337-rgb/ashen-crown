@@ -58,6 +58,7 @@ class Bloom extends Node3D:
 	var warn := 0.6
 	var last_pulse := -1
 	var dying := -1.0
+	var size := 1.0
 	func setup(w: World, g: Vector3, radius: float, grow_t: float, active_t: float, every_t: float, warn_t: float) -> void:
 		r = radius
 		grow = grow_t
@@ -83,6 +84,7 @@ class Bloom extends Node3D:
 				(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		body.scale = Vector3(0.05, 0.05, 0.05)
 		body.rotation.y = randf() * TAU
+		size = 1.7    # larger than the 1.1 m model, so it reads from the game camera
 		body.position = Vector3(0, -0.3, 0)
 		lamp = OmniLight3D.new()
 		lamp.light_color = PlagueBloomFx.SPORE
@@ -114,7 +116,7 @@ class Bloom extends Node3D:
 		if gk < 1.0:
 			var e := 1.0 - pow(1.0 - gk, 3.0)
 			s = e * (1.0 + 0.18 * sin(gk * PI))
-			body.scale = Vector3(s * (1.0 + 0.15 * (1.0 - gk)), s * (0.6 + 0.4 * gk) * 1.1, s * (1.0 + 0.15 * (1.0 - gk)))
+			body.scale = Vector3(s * (1.0 + 0.15 * (1.0 - gk)), s * (0.6 + 0.4 * gk) * 1.1, s * (1.0 + 0.15 * (1.0 - gk))) * size
 			body.position.y = lerpf(-0.3, 0.0, e)
 			lamp.light_energy = gk * 0.7
 			return
@@ -127,8 +129,8 @@ class Bloom extends Node3D:
 		rmat.set_shader_parameter("warn", w)
 		var breathe := 1.0 + 0.04 * sin(age * 2.6)
 		var swell := 1.0 + 0.12 * w * w
-		body.scale = Vector3(breathe * swell, (2.0 - breathe) * swell * 1.0, breathe * swell)
-		lamp.light_energy = 0.55 + 0.9 * w * w
+		body.scale = Vector3(breathe * swell, (2.0 - breathe) * swell * 1.0, breathe * swell) * size
+		lamp.light_energy = 0.35 + 0.5 * w * w
 		var n := int(floor(since / every))
 		if n > last_pulse and since >= every * float(n) and n >= 1:
 			last_pulse = n
@@ -136,10 +138,10 @@ class Bloom extends Node3D:
 	func _pulse() -> void:
 		body.scale *= 0.88
 		var p := global_position
-		Fx.burst(self, p + Vector3(0, 0.9, 0), PlagueBloomFx.SPORE, 44, 3.2, 0.05, 1.2, true, -1.5, 55.0)
+		Fx.burst(self, p + Vector3(0, 1.2, 0), PlagueBloomFx.SPORE * Color(0.8, 0.8, 0.8), 44, 3.2, 0.05, 1.2, true, -1.5, 55.0)
 		Fx.burst(self, p + Vector3(0, 0.5, 0), Color(PlagueBloomFx.SPORE.r * 0.6, PlagueBloomFx.SPORE.g * 0.6, 0.2, 0.35), 18, 2.2, 0.5, 1.4, false, 0.4, 85.0)
 		Fx.ring(self, p, r, Color(PlagueBloomFx.SPORE.r * 0.8, PlagueBloomFx.SPORE.g * 0.8, 0.25), 0.45, 0.35)
-		Fx.flash(self, p + Vector3(0, 1.0, 0), PlagueBloomFx.SPORE, 2.5, 0.25, r * 1.4)
+		Fx.flash(self, p + Vector3(0, 1.0, 0), PlagueBloomFx.SPORE, 0.9, 0.25, r * 1.2)
 	func wither() -> void:
 		if dying < 0.0:
 			dying = 0.0
@@ -202,7 +204,7 @@ void fragment() {
 	float ang = atan(lp.y, lp.x);
 	// roots: dark ridges running outward, branching, reaching as far as `spread`
 	float rad = 1.0 - abs(fbm(vec2(ang * 3.0 + seed, d * 2.5)) * 2.0 - 1.0);
-	float roots = pow(rad, 9.0) * smoothstep(spread * 1.0 + 0.02, spread * 0.85, d);
+	float roots = pow(rad, 6.0) * smoothstep(spread * 1.0 + 0.02, spread * 0.85, d);
 	float mid = smoothstep(0.45, 0.0, d);
 	// the rim of its reach, always faintly there once grown, and the warning ring drawing in from it
 	float rim = smoothstep(0.02, 0.0, abs(d - 0.96)) * smoothstep(0.7, 1.0, spread);
@@ -211,8 +213,8 @@ void fragment() {
 	ALBEDO = col;
 	ROUGHNESS = 0.35;
 	SPECULAR = 0.6;
-	EMISSION = vec3(0.75, 0.9, 0.3) * (roots * 0.12 + rim * 0.5 + ring * (0.9 + warn));
-	ALPHA = clamp(roots * 0.9 + mid * 0.55 * spread + rim * 0.7 + ring, 0.0, 1.0) * fade;
+	EMISSION = vec3(0.75, 0.9, 0.3) * (roots * 0.22 + rim * 0.45 + ring * (0.8 + warn));
+	ALPHA = clamp(roots * 1.0 + mid * 0.7 * spread + rim * 0.7 + ring, 0.0, 1.0) * fade;
 }
 """
 	return _rsh

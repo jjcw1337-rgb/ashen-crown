@@ -8,8 +8,8 @@ extends RefCounted
 ## glass-dust motes inside, and a cool light that halos what's in it. It billows out from his censer (the emitters'
 ## reach grows over ROLL_T) and at the end thins from the rim inward. Budgets by the graphics preset.
 
-const COL := Color(0.8, 0.8, 0.88)
-const DEEP := Color(0.58, 0.56, 0.68)
+const COL := Color(0.66, 0.66, 0.74)
+const DEEP := Color(0.5, 0.49, 0.6)
 const ROLL_T := 0.6
 
 class Fog extends Node3D:
@@ -27,11 +27,11 @@ class Fog extends Node3D:
 			q = mini(q, 1)
 		var k: float = [0.45, 0.7, 1.0, 1.25][q]
 		# ground roll: big flattened puffs hugging the floor
-		layers.append(_layer(int(28 * k), 2.6, 3.2, 0.25, 0.12, PlagueFogFx.DEEP, 0.32, Vector3(0, 0.35, 0), 0.15))
+		layers.append(_layer(int(34 * k), 2.8, 3.8, 0.25, 0.12, PlagueFogFx.DEEP, 0.42, Vector3(0, 0.4, 0), 0.15))
 		# the body: the cloud itself
-		layers.append(_layer(int(38 * k), 2.2, 2.8, 0.9, 0.18, PlagueFogFx.COL, 0.24, Vector3(0, 1.1, 0), 0.3))
+		layers.append(_layer(int(46 * k), 2.8, 4.2, 0.9, 0.18, PlagueFogFx.COL, 0.36, Vector3(0, 1.2, 0), 0.3))
 		# wisps curling off the top
-		layers.append(_layer(int(18 * k), 1.0, 1.6, 1.8, 0.35, PlagueFogFx.COL.lightened(0.1), 0.14, Vector3(0, 1.9, 0), 0.6))
+		layers.append(_layer(int(22 * k), 1.4, 2.2, 1.8, 0.35, PlagueFogFx.COL.lightened(0.1), 0.2, Vector3(0, 2.1, 0), 0.6))
 		# glints: glass dust catching the light
 		var glint := Fx.aura(self, Color(0.95, 0.95, 1.0, 0.8), int(14 * k), 0.2, 0.018, 2.5, 0.05, radius * 0.7, 180.0, Vector3(0, 1.0, 0))
 		glint.name = "glints"
@@ -89,13 +89,15 @@ class Fog extends Node3D:
 		var q := QuadMesh.new()
 		q.size = Vector2.ONE
 		var qm := StandardMaterial3D.new()
-		qm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		# lit by the scene (it takes the zone's dusk instead of glowing white in it)
 		qm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		qm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
 		qm.vertex_color_use_as_albedo = true
 		qm.albedo_texture = PlagueVialFx.wisp_tex()
-		qm.proximity_fade_enabled = true
-		qm.proximity_fade_distance = 0.6
+		qm.roughness = 1.0
+		qm.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+		qm.emission_enabled = true
+		qm.emission = col * 0.12
 		q.material = qm
 		p.draw_pass_1 = q
 		p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -153,9 +155,10 @@ void fragment() {
 	vec2 q = lp * 2.4;
 	float n = fbm(q + vec2(TIME * 0.07, TIME * 0.05)) * 0.6 + fbm(q * 2.3 - vec2(TIME * 0.11, -TIME * 0.06)) * 0.4;
 	float edge = spread * (0.9 + (n - 0.5) * 0.25);
-	float inside = smoothstep(edge, edge - 0.25, d);
-	ALBEDO = mix(col.rgb * 0.75, col.rgb, n);
-	ALPHA = inside * (0.35 + 0.4 * n) * fade;
+	float inside = smoothstep(edge, edge - 0.35, d);
+	float breakup = smoothstep(0.3, 0.75, n);
+	ALBEDO = mix(col.rgb * 0.45, col.rgb * 0.7, n);
+	ALPHA = inside * (0.06 + 0.28 * breakup) * fade;
 }
 """
 	return _bsh
