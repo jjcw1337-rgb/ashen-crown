@@ -21,6 +21,7 @@ const HALF := 30.0              # the map is 60 x 60 m
 const ZOMBIES := 9              # kept alive on the map (server)
 const RESPAWN_T := 5.0          # seconds between respawns while below ZOMBIES
 const EXTRACT_R := 4.5          # how close to a portal the server accepts an extraction
+const CHEST_REFILL := 45.0      # seconds after a chest is opened before it fills again (when nobody is near it)
 const STASH_PATH := "user://bg_server/stash.json"
 const ID_PATH := "user://bg_id.txt"
 const CACHE_PATH := "user://bg_stash_cache.json"
@@ -37,6 +38,7 @@ var stash_path := STASH_PATH
 var nk: NakamaClient            # server: Nakama, when configured (stash there instead of the file)
 var nk_key := ""                # its runtime http_key (the server's environment, never in a build)
 var _spawn_t := 0.0
+var _opened := {}               # server: chest Inter -> seconds since it was opened
 
 # ---------------------------------------------------------------- the map
 ## The simplest raid map: a walled ruin in the moor, a crossroads of trodden paths, broken walls and graves for
@@ -172,6 +174,23 @@ func _process(delta: float) -> void:
 				if not near:
 					game.spawn_enemy("zombie", game.world.free_spot_near(p, 2.0), game.world.level + 1, false, "", 700 + randi() % 1000)
 					break
+	# chests fill again: the server runs for days, raids are minutes. (Players already in the raid keep seeing it
+	# opened until they leave; anyone joining after sees it full.)
+	for t in game.world.interactables:
+		if not is_instance_valid(t) or t.kind != "chest":
+			continue
+		if not t.used:
+			_opened.erase(t)
+			continue
+		_opened[t] = float(_opened.get(t, 0.0)) + delta
+		if _opened[t] >= CHEST_REFILL:
+			var near := false
+			for h in game.net.puppets():
+				if (h.global_position - t.global_position).length() < 20.0:
+					near = true
+			if not near:
+				t.used = false
+				_opened.erase(t)
 	# a player who fell drops everything they picked up this raid, for anyone to take
 	for pid in game.net.players.keys():
 		var h = game.net.players[pid]["hero"]
