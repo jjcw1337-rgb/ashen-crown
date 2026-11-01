@@ -49,6 +49,10 @@ class Vat extends Node3D:
 		zmat.set_shader_parameter("rad", 1.0)
 		zmat.set_shader_parameter("fade", 1.0)
 		zmat.set_shader_parameter("seed", randf() * 40.0)
+		zmat.set_shader_parameter("rot", randf() * TAU)
+		zmat.set_shader_parameter("blight", PlagueVialFx._tex("res://assets/textures/plague/blight_albedo.png"))
+		zmat.set_shader_parameter("blight_n", PlagueVialFx._tex("res://assets/textures/plague/blight_normal.png"))
+		zmat.set_shader_parameter("ringtex", PlagueVialFx._tex("res://assets/textures/plague/ring_albedo.png"))
 		zone.material_override = zmat
 		add_child(zone)
 		zone.position = Vector3(0, -g.y, 0)
@@ -282,6 +286,9 @@ static func spew(lab: Dictionary, from: Vector3, toward: Vector3, warn: float, l
 		Sfx.play_at("blight_burst", from, -3.0, 0.6))
 
 static var _zsh: Shader
+## The quarantine on the ground: its boundary is the Meshy ring of fungal growth (ring_albedo, remapped so its band
+## lies thin along the zone's edge, its spore caps pulsing), there from the moment the vat lands; after the burst
+## the Meshy mould patch (blight_albedo + its Blender-baked normals) floods out from the middle to the ring.
 static func _zone_shader() -> Shader:
 	if _zsh != null:
 		return _zsh
@@ -293,33 +300,44 @@ uniform float flood = 0.0;
 uniform float rad = 1.0;
 uniform float fade = 1.0;
 uniform float seed = 0.0;
+uniform float rot = 0.0;
+uniform sampler2D blight : source_color, filter_linear_mipmap;
+uniform sampler2D blight_n : hint_normal, filter_linear_mipmap;
+uniform sampler2D ringtex : source_color, filter_linear_mipmap;
 varying vec2 lp;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p) {
 	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
 }
-float fbm(vec2 p) { float v = 0.0; float a = 0.5; for (int i = 0; i < 5; i++) { v += a * noise(p); p *= 2.05; a *= 0.5; } return v; }
 void vertex() { lp = UV * 2.0 - 1.0; }
 void fragment() {
-	float d = length(lp) * 1.04 / max(rad, 0.01);
-	float ang = atan(lp.y, lp.x);
-	// the warning rim: a hazard band with ticks marching round it, sharp at its outer edge
-	float band = smoothstep(1.0, 0.993, d) * smoothstep(0.972, 0.982, d);
-	float ticks = smoothstep(0.42, 0.5, fract(ang * 24.0 / 6.28318 - TIME * 0.5));
-	float rim = band * (0.45 + 0.55 * ticks);
-	// the flood: veined contamination spreading from the middle to the rim
-	float n = fbm(lp * 4.0 + seed);
-	float veins = pow(1.0 - abs(fbm(lp * 5.0 - seed + vec2(TIME * 0.03, 0.0)) * 2.0 - 1.0), 16.0) * smoothstep(0.35, 0.7, fbm(lp * 2.0 + seed * 1.7));
-	float front = flood * (0.95 + (n - 0.5) * 0.12);
-	float wet = smoothstep(front, front - 0.05, d) * step(d, 0.95);
-	float pre = smoothstep(1.0, 0.0, d) * 0.1 * (1.0 - flood);
-	vec3 col = mix(vec3(0.05, 0.07, 0.03), vec3(0.14, 0.22, 0.06), n);
-	ALBEDO = mix(vec3(0.04), col * 0.8, wet);
-	ROUGHNESS = mix(0.8, 0.08, wet);
-	SPECULAR = mix(0.2, 0.8, wet);
-	EMISSION = vec3(0.6, 0.95, 0.25) * (rim * 0.75 + veins * wet * 0.28 + pre);
-	ALPHA = clamp(rim + wet * 0.85 + pre, 0.0, 1.0) * fade;
+	float c = cos(rot); float s = sin(rot);
+	vec2 q = vec2(c * lp.x - s * lp.y, s * lp.x + c * lp.y) * 1.04 / max(rad, 0.01);
+	float d = length(q);
+	// the ring: radii 0.9..1.0 of the zone read from the painting's band (radii 0.6..0.97 of its image)
+	vec2 dir = q / max(d, 0.0001);
+	float band = clamp((d - 0.9) / 0.1, 0.0, 1.0);
+	vec4 rg = texture(ringtex, 0.5 + dir * mix(0.6, 0.97, band) * 0.5);
+	float in_band = step(0.9, d) * step(d, 1.0);
+	float ra = rg.a * in_band;
+	float caps = smoothstep(0.55, 0.85, rg.g - rg.r) * ra;
+	// the flood: the mould patch spreading out to the ring after the burst
+	vec2 uv = q * 0.5 / 0.92 + 0.5;
+	vec4 bl = texture(blight, uv);
+	float reach = flood * 0.95 + (noise(q * 5.0 + seed) - 0.5) * 0.08;
+	float wet = bl.a * smoothstep(reach, reach - 0.06, d) * step(d, 0.94);
+	vec3 n = texture(blight_n, uv).rgb;
+	NORMAL_MAP = mix(vec3(0.5, 0.5, 1.0), n, wet);
+	NORMAL_MAP_DEPTH = 1.4;
+	float lum = dot(bl.rgb, vec3(0.3, 0.55, 0.15));
+	float pust = smoothstep(0.35, 0.65, lum) * wet;
+	vec3 col = mix(rg.rgb * 0.85, bl.rgb * 0.9, wet / max(wet + ra, 0.001));
+	ALBEDO = col;
+	ROUGHNESS = mix(0.7, 0.12, wet);
+	SPECULAR = 0.7;
+	EMISSION = vec3(0.55, 0.95, 0.3) * (caps * (0.7 + 0.5 * sin(TIME * 3.0 + q.x * 9.0)) + pust * 0.3);
+	ALPHA = clamp(max(ra * 0.95, wet), 0.0, 1.0) * fade;
 }
 """
 	return _zsh

@@ -253,18 +253,30 @@ class Flight:
 		slosh.step(node, delta)
 		return a >= 1.0
 
-# ---------------------------------------------------------------- the landing ring
-## Where the vial will land, for everyone: a thin rim in the recipe's colour with an inner ring closing in on it
-## as the vial falls (`dur` = the flight).
+# ---------------------------------------------------------------- the landing mark
+## Where the vial will land, for everyone, without a UI ring: a ghost of the splash it will make (the Meshy puddle's
+## own silhouette, faint, in the mixture's colour) firming up as the vial falls, and the vial's soft shadow darkening
+## and tightening under it (`dur` = the flight).
+const PUDDLE_ALBEDO := "res://assets/textures/plague/puddle_albedo.png"
+const PUDDLE_NORMAL := "res://assets/textures/plague/puddle_normal.png"
+const SPLASH_BOOK := "res://assets/textures/fx/vial_splash.png"     # tools/blender/plague/splash_flipbook.py, 5 x 4
+const VAPOUR_BOOK := "res://assets/textures/fx/vapour.png"          # tools/blender/plague/vapour_flipbook.py, 6 x 6
+
+static func _tex(path: String) -> Texture2D:
+	return load(path) if ResourceLoader.exists(path) else null
+
 static func landing_ring(root: Node3D, w: World, at: Vector3, r: float, ri: int, dur: float) -> void:
-	var m := _ground_disc(w, at, r * 1.02, 10, 40, 0.05)
+	var m := _ground_disc(w, at, r * 1.15, 10, 40, 0.05)
 	var sh := ShaderMaterial.new()
 	sh.shader = _ring_shader()
 	sh.set_shader_parameter("col", recipe(ri)["liq"])
 	sh.set_shader_parameter("prog", 0.0)
+	sh.set_shader_parameter("rot", randf() * TAU)
+	sh.set_shader_parameter("mask", _tex(PUDDLE_ALBEDO))
 	m.material_override = sh
 	root.add_child(m)
 	m.global_position = Vector3(at.x, 0.0, at.z)
+	m.set_meta("rot", sh.get_shader_parameter("rot"))
 	var tw := m.create_tween()
 	tw.tween_method(func(v: float) -> void: sh.set_shader_parameter("prog", v), 0.0, 1.0, dur)
 	tw.tween_callback(m.queue_free)
@@ -276,19 +288,27 @@ static func _ring_shader() -> Shader:
 	_rsh = Shader.new()
 	_rsh.code = """
 shader_type spatial;
-render_mode unshaded, blend_add, depth_draw_never, cull_disabled;
+render_mode unshaded, blend_mix, depth_draw_never, cull_disabled;
 uniform vec4 col : source_color;
 uniform float prog = 0.0;
+uniform float rot = 0.0;
+uniform sampler2D mask : source_color, filter_linear_mipmap;
 varying vec2 lp;
 void vertex() { lp = UV * 2.0 - 1.0; }
 void fragment() {
+	float c = cos(rot); float s = sin(rot);
+	vec2 uv = vec2(c * lp.x - s * lp.y, s * lp.x + c * lp.y) * 0.5 + 0.5;
+	float ghost = texture(mask, uv).a;
 	float d = length(lp);
-	float rim = smoothstep(0.018, 0.0, abs(d - 0.97));
-	float inner = smoothstep(0.014, 0.0, abs(d - (1.0 - prog) * 0.97)) * 0.55;
-	float fill = smoothstep(1.0, 0.2, d) * 0.05 * prog;
-	float dash = smoothstep(0.35, 0.5, fract(atan(lp.y, lp.x) * 12.0 / 3.14159 + TIME * 0.3)) * 0.5 + 0.5;
-	ALBEDO = col.rgb * 0.7;
-	ALPHA = clamp((rim * dash * 0.7 + inner + fill) * smoothstep(0.0, 0.08, prog + 0.02), 0.0, 1.0);
+	// the vial's shadow: wide and faint while it's high, small and dark as it comes down
+	float sr = mix(0.5, 0.12, prog);
+	float shadow = smoothstep(sr, sr * 0.2, d) * mix(0.15, 0.55, prog);
+	// the ghost of the splash: its silhouette firming up, edges first
+	float g = ghost * smoothstep(0.0, 1.0, prog) * 0.32;
+	float edge = ghost * (1.0 - smoothstep(0.0, 0.25, ghost)) * 0.0;
+	vec3 tint = col.rgb * 0.55;
+	ALBEDO = mix(vec3(0.0), tint, g / max(g + shadow, 0.001));
+	ALPHA = clamp(g + shadow + edge, 0.0, 0.8) * smoothstep(0.0, 0.1, prog + 0.02);
 }
 """
 	return _rsh
@@ -377,7 +397,7 @@ static func shatter(root: Node3D, w: World, at: Vector3, r: float, ri: int, dir:
 	cork.floor_y = gy + 0.03
 	cork.life = 2.2
 	# the liquid: a crown thrown up off the ground, droplets, a fine mist
-	_crown(root, pos, col, r)
+	_splash(root, pos, col, r)
 	_droplets(root, pos + Vector3(0, 0.12, 0), col, fwd, r)
 	var mist := Fx.burst(root, pos + Vector3(0, 0.25, 0), (rc["vapour"] as Color) * Color(1, 1, 1, 0.55), 22, 1.6, 0.35, 0.9, false, 0.6, 85.0)
 	mist.name = "vial_mist"
@@ -385,63 +405,74 @@ static func shatter(root: Node3D, w: World, at: Vector3, r: float, ri: int, dir:
 	if light:
 		Fx.flash(root, pos + Vector3(0, 0.6, 0), col, 3.5, 0.3, r * 1.8)
 
-## The splash's crown: a thin sheet of liquid flaring up and out from the impact and breaking into fingers.
-static func _crown(root: Node3D, pos: Vector3, col: Color, r: float) -> void:
+## The splash: a real liquid simulation (Blender FLIP, tools/blender/plague/splash_flipbook.py: the burst vial's
+## contents thrown out and up into a crown of fingers) played as a flipbook on a camera-facing card, in the
+## mixture's colour. Falls back to droplets only without the book.
+static func _splash(root: Node3D, pos: Vector3, col: Color, r: float) -> void:
+	var book := _tex(SPLASH_BOOK)
+	if book == null:
+		return
 	var m := MeshInstance3D.new()
-	var cm := CylinderMesh.new()
-	cm.top_radius = 1.0
-	cm.bottom_radius = 0.55
-	cm.height = 1.0
-	cm.radial_segments = 40
-	cm.rings = 6
-	cm.cap_top = false
-	cm.cap_bottom = false
-	m.mesh = cm
+	var q := QuadMesh.new()
+	var size := clampf(r * 0.95, 1.6, 3.0)
+	q.size = Vector2(size, size)
+	q.center_offset = Vector3(0, size * 0.32, 0)
+	m.mesh = q
 	var sh := ShaderMaterial.new()
-	sh.shader = _crown_shader()
-	sh.set_shader_parameter("col", col)
+	sh.shader = _flip_shader()
+	sh.set_shader_parameter("book", book)
+	sh.set_shader_parameter("grid", Vector2(5, 4))
+	sh.set_shader_parameter("frames", 20.0)
 	sh.set_shader_parameter("t", 0.0)
+	sh.set_shader_parameter("tint", col)
+	sh.set_shader_parameter("flip", 1.0 if randf() < 0.5 else -1.0)
 	m.material_override = sh
 	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(m)
-	m.global_position = pos + Vector3(0, 0.12, 0)
-	var size := clampf(r * 0.32, 0.5, 1.1)
-	m.scale = Vector3(size * 0.2, 0.05, size * 0.2)
-	var tw := m.create_tween().set_parallel(true)
-	tw.tween_property(m, "scale", Vector3(size, size * 0.42, size), 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tw.tween_method(func(v: float) -> void: sh.set_shader_parameter("t", v), 0.0, 1.0, 0.55)
-	tw.chain().tween_callback(m.queue_free)
+	m.global_position = pos + Vector3(0, 0.02, 0)
+	var tw := m.create_tween()
+	tw.tween_method(func(v: float) -> void: sh.set_shader_parameter("t", v), 0.0, 1.0, 0.7)
+	tw.tween_callback(m.queue_free)
 
-static var _csh: Shader
-static func _crown_shader() -> Shader:
-	if _csh != null:
-		return _csh
-	_csh = Shader.new()
-	_csh.code = """
+static var _fsh: Shader
+## A flipbook on a card that turns to face the camera about its vertical axis (so the splash stands on the ground).
+static func _flip_shader() -> Shader:
+	if _fsh != null:
+		return _fsh
+	_fsh = Shader.new()
+	_fsh.code = """
 shader_type spatial;
 render_mode blend_mix, cull_disabled, depth_draw_never, specular_schlick_ggx;
-uniform vec4 col : source_color;
+uniform sampler2D book : source_color, filter_linear_mipmap;
+uniform vec2 grid = vec2(5.0, 4.0);
+uniform float frames = 20.0;
 uniform float t = 0.0;
-float h(float x) { return fract(sin(x * 91.7) * 43758.5); }
+uniform vec4 tint : source_color = vec4(0.4, 0.9, 0.2, 1.0);
+uniform float flip = 1.0;
+void vertex() {
+	// face the camera, upright
+	vec3 cam = (INV_VIEW_MATRIX[3].xyz - NODE_POSITION_WORLD);
+	cam.y = 0.0;
+	vec3 z = normalize(cam + vec3(0.0001));
+	vec3 x = normalize(cross(vec3(0.0, 1.0, 0.0), z));
+	vec3 wp = NODE_POSITION_WORLD + x * VERTEX.x * flip + vec3(0.0, 1.0, 0.0) * VERTEX.y;
+	VERTEX = (inverse(MODEL_MATRIX) * vec4(wp, 1.0)).xyz;
+	NORMAL = (inverse(MODEL_MATRIX) * vec4(z, 0.0)).xyz;
+}
 void fragment() {
-	float ang = UV.x * 40.0;
-	float fid = floor(ang);
-	float fingers = mix(h(fid), h(fid + 1.0), smoothstep(0.0, 1.0, fract(ang)));
-	// the sheet's top edge tears into fingers that break off as it ages
-	float top = 1.0 - t * (0.4 + 0.7 * fingers);
-	float y = 1.0 - UV.y;
-	if (y > top) { discard; }
-	float holes = step(0.82 - t * 0.5, h(fid * 7.3 + floor(y * 9.0)));
-	if (holes > 0.5 && y > 0.25) { discard; }
-	float f = pow(1.0 - clamp(abs(dot(NORMAL, VIEW)), 0.0, 1.0), 2.0);
-	ALBEDO = col.rgb * 0.5;
-	EMISSION = col.rgb * (0.6 + f * 0.8);
-	ROUGHNESS = 0.06;
-	SPECULAR = 0.9;
-	ALPHA = (0.55 + f * 0.4) * (1.0 - smoothstep(0.6, 1.0, t)) * smoothstep(0.0, 0.08, y);
+	float f = min(floor(t * frames), frames - 1.0);
+	vec2 cell = vec2(mod(f, grid.x), floor(f / grid.x));
+	vec4 c = texture(book, (cell + UV) / grid);
+	// the sim was rendered lime: keep its light and shape, take the mixture's colour
+	float lum = dot(c.rgb, vec3(0.3, 0.55, 0.15));
+	ALBEDO = tint.rgb * lum * 1.1;
+	EMISSION = tint.rgb * lum * 0.35;
+	ROUGHNESS = 0.08;
+	SPECULAR = 0.8;
+	ALPHA = c.a * (1.0 - smoothstep(0.75, 1.0, t));
 }
 """
-	return _csh
+	return _fsh
 
 ## Droplets of the liquid: stretched along their flight, falling back.
 static func _droplets(root: Node3D, pos: Vector3, col: Color, fwd: Vector3, r: float) -> void:
@@ -537,6 +568,9 @@ class Pool extends Node3D:
 		mat.set_shader_parameter("fade", 1.0)
 		mat.set_shader_parameter("dry", 0.0)
 		mat.set_shader_parameter("seed", randf() * 100.0)
+		mat.set_shader_parameter("rot", randf() * TAU)
+		mat.set_shader_parameter("albedo", PlagueVialFx._tex(PlagueVialFx.PUDDLE_ALBEDO))
+		mat.set_shader_parameter("nrm", PlagueVialFx._tex(PlagueVialFx.PUDDLE_NORMAL))
 		disc.material_override = mat
 		add_child(disc)
 		disc.position = Vector3(0, -at.y, 0)
@@ -562,8 +596,8 @@ class Pool extends Node3D:
 		var vc: Color = rc["vapour"]
 		var g := Gradient.new()
 		g.set_color(0, Color(vc.r, vc.g, vc.b, 0.0))
-		g.add_point(0.25, Color(vc.r, vc.g, vc.b, 0.22))
-		g.add_point(0.7, Color(vc.r * 0.9, vc.g * 0.9, vc.b * 0.9, 0.12))
+		g.add_point(0.25, Color(vc.r, vc.g, vc.b, 0.4))
+		g.add_point(0.7, Color(vc.r * 0.9, vc.g * 0.9, vc.b * 0.9, 0.25))
 		g.set_color(g.get_point_count() - 1, Color(vc.r, vc.g, vc.b, 0.0))
 		var gt := GradientTexture1D.new()
 		gt.gradient = g
@@ -576,14 +610,33 @@ class Pool extends Node3D:
 		pm.scale_curve = sct
 		wisps.process_material = pm
 		var q := QuadMesh.new()
-		q.size = Vector2(0.9, 0.9)
-		var qm := StandardMaterial3D.new()
-		qm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		qm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		qm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-		qm.vertex_color_use_as_albedo = true
-		qm.albedo_texture = PlagueVialFx.wisp_tex()
-		q.material = qm
+		q.size = Vector2(1.3, 1.3)
+		var book := PlagueVialFx._tex(PlagueVialFx.VAPOUR_BOOK)
+		if book != null:
+			# Mantaflow vapour (tools/blender/plague/vapour_flipbook.py): each puff plays the book from its own frame
+			var vm := StandardMaterial3D.new()
+			vm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			vm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+			vm.particles_anim_h_frames = 6
+			vm.particles_anim_v_frames = 6
+			vm.particles_anim_loop = true
+			vm.vertex_color_use_as_albedo = true
+			vm.albedo_texture = book
+			vm.roughness = 1.0
+			vm.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+			q.material = vm
+			pm.anim_speed_min = 0.6
+			pm.anim_speed_max = 1.0
+			pm.anim_offset_min = 0.0
+			pm.anim_offset_max = 1.0
+		else:
+			var qm := StandardMaterial3D.new()
+			qm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			qm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			qm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+			qm.vertex_color_use_as_albedo = true
+			qm.albedo_texture = PlagueVialFx.wisp_tex()
+			q.material = qm
 		wisps.draw_pass_1 = q
 		wisps.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		wisps.position = Vector3(0, 0.25, 0)
@@ -619,6 +672,10 @@ class Pool extends Node3D:
 				queue_free()
 
 static var _psh: Shader
+## The pool: the Meshy puddle painting (tools/blender/plague/ground_decal.py: alpha keyed off its black, a normal map
+## baked from its relief in Blender), turned at random per throw, revealed from the impact outward along the
+## painting's own splatter (`grow`), retinted to the mixture, with a slow animated shimmer on its wet surface and
+## the glow in its core breathing. `fade` shrinks it back, `dry` leaves a dark stain of its shape.
 static func _pool_shader() -> Shader:
 	if _psh != null:
 		return _psh
@@ -632,69 +689,49 @@ uniform float grow = 1.0;
 uniform float fade = 1.0;
 uniform float dry = 0.0;
 uniform float seed = 0.0;
+uniform float rot = 0.0;
+uniform sampler2D albedo : source_color, filter_linear_mipmap;
+uniform sampler2D nrm : hint_normal, filter_linear_mipmap;
 varying vec2 lp;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p) {
 	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
 }
-float fbm(vec2 p) {
-	float v = 0.0; float a = 0.5;
-	for (int i = 0; i < 4; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; }
-	return v;
-}
-// the liquid's height: slow swell, veins and the bubbles' domes (bub = the dome, rim = its bright edge)
-float surf(vec2 p, out float veins, out float bub, out float rim) {
-	vec2 q = p * 2.6 + seed;
-	float sw = fbm(q + vec2(TIME * 0.12, -TIME * 0.08));
-	float vn = 1.0 - abs(fbm(q * 1.9 + vec2(-TIME * 0.04, TIME * 0.06)) * 2.0 - 1.0);
-	veins = pow(vn, 14.0);
-	bub = 0.0;
-	rim = 0.0;
-	for (int k = 0; k < 2; k++) {
-		float sc = 6.0 + float(k) * 5.0;
-		vec2 c = p * sc + seed + float(k) * 17.0;
-		vec2 ci = floor(c);
-		vec2 cf = fract(c) - 0.5;
-		float hsh = hash(ci);
-		if (hsh < 0.62) { continue; }
-		vec2 off = (vec2(hash(ci + 3.1), hash(ci + 7.7)) - 0.5) * 0.55;
-		float ph = fract(TIME * (0.25 + hsh * 0.45) + hsh * 9.0);
-		float rad = (0.06 + 0.3 * ph) * (0.6 + 0.6 * hash(ci + 1.3));
-		float dd = length((cf - off) * vec2(1.0, 0.85 + 0.3 * hsh));
-		float alive = 1.0 - smoothstep(0.82, 0.9, ph);
-		bub = max(bub, smoothstep(rad, rad * 0.3, dd) * alive);
-		rim = max(rim, smoothstep(0.05, 0.0, abs(dd - rad * 0.85)) * alive);
-	}
-	return sw * 0.6 + veins * 0.2 + bub * 0.45;
-}
 void vertex() { lp = UV * 2.0 - 1.0; }
 void fragment() {
-	float d = length(lp) * 1.12;
-	float ang = atan(lp.y, lp.x);
-	// the creeping edge: fingers that run out first, then fill in
-	float fing = fbm(vec2(ang * 2.2, seed)) * 0.22 + fbm(lp * 5.0 + seed) * 0.1;
-	float edge = grow * (0.8 + fing);
-	float inside = smoothstep(edge, edge - 0.05, d);
-	float halo = smoothstep(edge * 1.12 + 0.05, edge * 0.92, d);
-	float veins; float bub; float rim;
-	float ex = surf(lp + vec2(0.012, 0.0), veins, bub, rim);
-	float ez = surf(lp + vec2(0.0, 0.012), veins, bub, rim);
-	float hgt = surf(lp, veins, bub, rim);
-	vec3 n = normalize(vec3(-(ex - hgt) * 6.0, 1.0, -(ez - hgt) * 6.0));
-	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
-	float wet = inside * fade;
-	// a scum line where the liquid meets the ground
-	float scum = smoothstep(0.035, 0.0, abs(d - edge + 0.03)) * (0.5 + 0.5 * noise(vec2(ang * 9.0, seed)));
-	vec3 body = mix(deep.rgb * 0.35, deep.rgb * 0.9, hgt);
-	body = mix(body, liq.rgb * 0.3 + vec3(0.03), scum * 0.5);
-	ALBEDO = mix(vec3(0.03, 0.03, 0.025), body, wet);
-	ROUGHNESS = mix(0.75, 0.03 + bub * 0.04, wet);
-	SPECULAR = mix(0.2, 0.9, wet);
-	EMISSION = liq.rgb * (0.02 + veins * 0.42 + rim * 0.4 + scum * 0.1) * wet;
-	// the dark wet ground round it, and the stain left when it has dried
-	float stain = max(halo * 0.35 * fade, dry * smoothstep(edge * 0.9, edge * 0.5, d) * 0.5);
-	ALPHA = clamp(max(wet * (0.88 + 0.12 * hgt), stain), 0.0, 1.0);
+	float c = cos(rot); float s = sin(rot);
+	vec2 q = vec2(c * lp.x - s * lp.y, s * lp.x + c * lp.y) * 1.12;
+	vec2 uv = q * 0.5 + 0.5;
+	vec4 a = texture(albedo, uv);
+	float d = length(q);
+	// revealed from the middle out; the splatter's droplets at the rim arrive last
+	float reach = grow * 1.05 + (noise(q * 6.0 + seed) - 0.5) * 0.12;
+	float shown = smoothstep(reach, reach - 0.08, d);
+	float shrink = smoothstep(fade * 1.1, fade * 1.1 - 0.15, d);
+	float m = a.a * shown * shrink;
+	// the painting's own colour, moved to the mixture: keep its light and dark, take the mixture's hue
+	float lum = dot(a.rgb, vec3(0.3, 0.55, 0.15));
+	float core = smoothstep(0.35, 0.7, lum);
+	// green keeps the painting's own olive; amber and violet take its light and dark in their hue
+	float gray = lum;
+	vec3 hued = mix(deep.rgb * 0.5, liq.rgb * 0.55, smoothstep(0.05, 0.5, gray));
+	float own = clamp(1.0 - distance(liq.rgb, vec3(0.42, 0.95, 0.22)) * 3.0, 0.0, 1.0);
+	vec3 col = mix(hued, a.rgb * 0.8, own * 0.85);
+	col = mix(col, a.rgb * 0.8, 0.2 * smoothstep(0.55, 0.9, lum));    // keep its foam and sheen
+	// a slow shimmer on the wet surface on top of the baked relief
+	vec3 n = texture(nrm, uv).rgb;
+	float sh = noise(q * 9.0 + vec2(TIME * 0.35, -TIME * 0.27) + seed);
+	NORMAL_MAP = normalize(n + vec3((sh - 0.5) * 0.12, (noise(q * 9.0 - vec2(TIME * 0.3, TIME * 0.2)) - 0.5) * 0.12, 0.0));
+	NORMAL_MAP_DEPTH = 1.6;
+	ALBEDO = col;
+	ROUGHNESS = mix(0.18, 0.04, core);
+	SPECULAR = 0.85;
+	EMISSION = liq.rgb * core * (0.12 + 0.06 * sin(TIME * 2.4 + seed)) * shrink;
+	// the dark stain its shape leaves as it dries
+	float stain = a.a * dry * 0.55;
+	ALPHA = clamp(max(m, stain), 0.0, 1.0);
+	ALBEDO = mix(ALBEDO, vec3(0.03, 0.035, 0.02), (1.0 - m) * step(0.001, stain));
 }
 """
 	return _psh
