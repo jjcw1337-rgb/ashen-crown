@@ -72,6 +72,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `demon.gd`, `demon_mocap_rig.gd`, `demon_skills.gd`, `demon_fx.gd` | Demon class: the Meshy magma brute on the mocap system with the magma shader and his own wing/tail/cloth rig (falls back to the knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader); his six skills (the fists, the charge, the slam, the boulder, the grip, the wrath); their effects (lava on the ground, fissures, boulders, meteors) |
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
 | `plague.gd` | Plague Doctor class: body (mocap, whole-body skill clips), Toxic Flask, Volatile Mixture, Pestilent Trap, The Last Epidemic, poison and infection, co-op replay |
+| `dragon.gd`, `dragon_skills.gd` | The three dragon classes (`wyrm` Obsidian Wyrm, `serpent` Frost Serpent, `wyvern` Storm Wyvern): Meshy bodies posed in code every frame (`Dragon.pose`, handed over by `Anim.pose`); no skills yet (`DragonSkills` is the empty, ready skills script and plays their attack sounds) |
 | `enemy.gd`, `projectile.gd`, `feral.gd` | Monsters/AI and missiles (host-authoritative in co-op); the Feral's baked-animation body |
 | `via.gd`, `aurelia.gd`, `games.gd`, `roman.gd` | A2: the Imperial Road (wild), the city of Aurelia and its arena (lair), the arena's games (the act's boss fight), and the Roman architecture they're built from |
 | `lion.gd` | The arena lion: a Meshy model on a quadruped skeleton, posed in code (no baked animations) |
@@ -288,6 +289,37 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   5. Look: build it the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep
      working), `Hero._build_rig`. Glyphs in `ui.gd` `SkillGlyph`, talents (`Talents.TREES`/`AUTO`), the class
      picker (`ClassStage.CLASSES`/`ACCENTS`/`EMBLEMS`/`SIGNATURE`/`SKILL_SHOW`, `_fidget`).
+- **The dragons** (`scripts/dragon.gd` `Dragon`, classes `wyrm` / `serpent` / `wyvern`; added 2026-11-01 on
+  `test-dragons`): the Obsidian Wyrm (four legs, wings), the Frost Serpent (long, wingless, four short legs) and the
+  Storm Wyvern (two legs, wings as forelimbs). Models: Meshy 7.1 (text-to-3D for the wyrm and serpent, a Meshy concept
+  image then image-to-3D for the wyvern so it has four limbs, not six), remeshed to ~31k triangles, rigged in Blender
+  with a chain skeleton (`spine_*`, `neck_*`, `head_0/1`, `jaw_0`, `tail_*`, `leg_<FL|FR|HL|HR|L|R>_0..2`, winged:
+  `arm_<L|R>_0/1`, `fing<N>_<L|R>_0/1`; `_L` at the model's -x) heat-skinned through a voxel proxy, 2K JPEG
+  textures plus a glow map, real-world metres (wyrm 10 m long, serpent 12 m, wyvern 6.3 m tall; `Dragon.KINDS`
+  `"scale"` shrinks them to ~4.6 / 5 / 2.8 m in play). `assets/models/dragons/*.glb` also carry baked Idle /
+  Flap(Swim) / Roar clips that the game ignores; full 4K FBX/GLB and the source sculpts are outside the repo.
+  **No baked animation in play**: like the lion, `Dragon.pose` turns every bone from its rest each frame from the
+  hero's state (`Anim.pose` hands it any rig with the `"dragon"` meta, local hero and co-op puppet alike): breathing
+  and looking about; a diagonal trot (quad, serpent) or striding run (biped) on the hero's `phase` (the rig's
+  `stride` meta slows it for long legs), bob/sway/lean, the serpent undulating head to tail; wings folded at rest,
+  half open and beating at a sprint (`_wing(P, bone, lower, back)`); the **tail** always moving and more than the
+  Demon's (a wag down the chain into an S, speed and size drifting on slow noise, lifted at a run, swinging with
+  the stride, a flick or curl every `FLICK_EVERY` s, a lash when hit). The **basic attack** is the hero's three-swipe
+  combo: `swipe1` a foreclaw rake (the wyvern's wing claw), `swipe2` a lunging bite (jaw snaps on the impact frame),
+  `swipe3` a full spin sweeping the tail round (the finisher's 181° arc); any other attack style plays a roar with
+  wings flared, so a future skill animates before it has a pose. Block = hunkered behind the wings (the serpent
+  coils), death = it rolls onto its side (`own_death` meta). Footfalls `<kind>_step` and the wyvern's `wyvern_flap`
+  play where the body is. The hero side: `Hero.is_dragon()`; no starting weapon, damage from `Data.CLASSES`
+  `"claws"`/`"claw_speed"` (`Data.unarmed`) when nothing is equipped (a found weapon still counts, unseen: grips,
+  shield mount and amulet hang off a hidden node in `J`), `Hero.reach` = `Dragon.reach`, `radius` from `KINDS`, no
+  sword trail. **Adding skills**: Data.SKILLS entries with `"cls": "wyrm"` (etc.) and an `aim`, then handle them in
+  `DragonSkills` (`cast`/`impact`/...), effects in a `DragonFx` added to `SkillFx.play`, a pose per new style in
+  `Dragon.pose`'s attack `match`, `SKILL_SHOW` entries for the picker. Class picker: `ClassStage.CLASSES` spreads
+  the three round the ring (never side by side, wrap included), `Dragon.stage_scale`/`stage_yaw` shrink and turn
+  them on their plinths (and on the title's Continue dais), banner emblem 7 (claw marks), signature "Tail Spin".
+  Sounds: `tools/audio/dragon_sfx.py` derives `<kind>_roar/step/claw/bite/tail`, `death_<kind>` and `wyvern_flap`
+  from the game's own recordings (replace any with an ElevenLabs take later under the same name). Test:
+  `tools/dragon_test.gd` (`--fixed-fps 60`).
 - **The Wraith's body**: the Meshy horned, chained wraith (concept D) on the shared mocap system
   (`Wraith.build_mocap`, `assets/models/wraith_mocap.glb`; falls back to the code-built robe without it). He has no
   legs and never walks: `tools/blender/wraith/prep_wraith_mocap.py` cuts the skeletal legs and feet out of the mesh
