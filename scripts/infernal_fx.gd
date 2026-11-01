@@ -659,6 +659,7 @@ uniform vec2 grid = vec2(6.0, 6.0);
 uniform float frames_per_life = 18.0;
 uniform float hot = 1.0;
 uniform float tint = 0.25;
+uniform float cool = 0.0;     // the blue spirit-fire: keeps red and green low so overlapping flames sum to blue, not white
 uniform vec3 crimson : source_color = vec3(0.78, 0.035, 0.05);
 uniform vec3 molten : source_color = vec3(1.0, 0.42, 0.07);
 uniform vec3 whitehot : source_color = vec3(1.0, 0.86, 0.62);
@@ -690,6 +691,7 @@ void fragment() {
 	// a touch toward hellfire: the dim edges go blood-red, the hearts stay molten
 	vec3 hell = mix(crimson * 1.6, molten * 1.3, smoothstep(0.25, 0.8, lum)) * lum;
 	c = mix(c, hell, tint * (1.0 - smoothstep(0.6, 1.0, lum)));
+	c *= mix(vec3(1.0), vec3(0.42, 0.7, 1.0), cool);
 	ALBEDO = c * hot * fade * COLOR.a;
 	ALPHA = clamp(lum * 0.12 * fade, 0.0, 1.0);
 }
