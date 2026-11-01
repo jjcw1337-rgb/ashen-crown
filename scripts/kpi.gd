@@ -1,7 +1,9 @@
 class_name Kpi
 ## The official performance KPIs (docs/nightly/KPIS.md): fixed, scripted scenarios measured the same way every time,
 ## in any build (an exported game too):
-##   AshenCrown -- --kpi <scenario> <out.json> [--quality 0-3] [--secs N]
+##   AshenCrown -- --kpi <scenario> <out.json> [--quality 0-3] [--secs N] [--class C] [--skill id|none] [--trace]
+##   (--class: the hero (default knight); --skill: cast only that skill (none: only the weapon); --trace: the JSON
+##   also lists every frame's time and when each cast went off, to line stutters up with what caused them)
 ##   godot --headless --path . -- --server --kpi server <out.json>       (the dedicated server's tick)
 ## Scenarios (`SCENARIOS`): camp, moor, fight, boss, arena, crypt, server. Each loads its zone (timed: load_ms), stages
 ## the scene (the hero immortal), settles `SETTLE` s (shaders compile, AI wakes), then drives it for `secs` measuring
@@ -63,7 +65,12 @@ static func start(game) -> bool:
 	g.ui.hide_title()
 	g.playing = true
 	g.difficulty = int(spec["run"])
-	g.hero.set_class("knight")
+	var ci := a.find("--class")
+	g.hero.set_class(a[ci + 1] if ci >= 0 and ci + 1 < a.size() else "knight")
+	var ki := a.find("--skill")
+	st["skill"] = a[ki + 1] if ki >= 0 and ki + 1 < a.size() else ""
+	st["trace"] = a.has("--trace")
+	st["casts"] = []
 	g.hero.new_character()
 	g.hero.set_level(20)
 	g.test_immortal = true
@@ -186,8 +193,13 @@ static func _drive(delta: float) -> void:
 				h.cmd_target(tgt)
 			if float(st["t"]) >= float(st["next_skill"]):
 				st["next_skill"] = float(st["t"]) + 1.2
+				h.mana = h.max_mana          # (what's measured is the frame, not the mana)
 				for s in h.skill_list():
+					if str(st["skill"]) != "" and str(s["id"]) != str(st["skill"]):
+						continue
 					if h.use_skill(str(s["id"]), tgt.global_position):
+						if st["phase"] == "measure":
+							(st["casts"] as Array).append([str(s["id"]), (st["frames"] as Array).size()])
 						break
 	g.cam_target = h.global_position
 
@@ -259,7 +271,11 @@ static func _finish() -> void:
 		"load_ms": int(st.get("load_ms", 0)),
 		"gpu_name": RenderingServer.get_video_adapter_name(),
 		"resolution": str(g.get_viewport().get_visible_rect().size),
+		"class": str(g.hero.cls), "skill": str(st.get("skill", "")),
 	}
+	if bool(st.get("trace", false)):
+		r["trace_frames"] = fr.map(func(f): return snappedf(float(f), 0.1))
+		r["trace_casts"] = st["casts"]
 	var f := FileAccess.open(out, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(r, " "))

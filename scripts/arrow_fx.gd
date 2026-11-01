@@ -289,14 +289,10 @@ static func fire_light(t: float, energy: float, rng: float, shadow: bool) -> Omn
 	lt.light_energy = energy
 	lt.omni_range = rng
 	lt.omni_attenuation = 1.0
-	# its shadow comes on a frame after it is lit: a shadow map's first frame can still hold another light's
-	# texels (seen as a blocky patch on lit smoke for one frame)
+	# its shadow: a cheap map a frame after it is lit, within the effects' shadow budget (Fx.effect_shadow)
 	lt.shadow_enabled = false
 	if shadow:
-		lt.tree_entered.connect(func():
-			lt.get_tree().create_timer(0.04, false).timeout.connect(func():
-				if is_instance_valid(lt):
-					lt.shadow_enabled = true), CONNECT_ONE_SHOT)
+		Fx.effect_shadow(lt)
 	lt.shadow_bias = 0.08
 	lt.shadow_normal_bias = 1.5
 	lt.light_size = 0.15

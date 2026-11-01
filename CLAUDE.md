@@ -1103,6 +1103,9 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   and `SkillSpec.strike(h, id, e, extra)` (`DemonSkills.impact` "fists" is the example). If a skill's `"hit"` moves,
   move its clip's blow to match (`Demon.SHOTS`-style keys). `tools/skill_spec_test.gd` (in the gate) validates every
   entry's fields and plays Molten Fists by its data; `tools/demon_test.gd` checks the wind-up and the dodge cancel.
+  **Performance**: run `bash tools/skill_perf.sh <class> <skill>` on every new or redone skill (PASS: no new
+  stutters, at most 20% slower than the weapon alone in the 24-monster fight; docs/nightly/KPIS.md "Skills"). An
+  effect light with shadows goes through `Fx.effect_shadow` (cheap maps, at most 2 at once), never `shadow_enabled = true`.
 - **Attack pace** (every class, new ones too): `Data.ATTACK_PACE` (1.2 = attacks, skill swings and casts take 20%
   longer) multiplies `Hero.atk_dur` in `_start_attack` and the casts' own times in `use_skill`; a special class can set
   `"attack_pace"` in `Data.CLASSES` (`Data.attack_pace(cls)`). Attacks whose rate the swing sets (the basic attack, skills

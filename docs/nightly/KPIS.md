@@ -70,6 +70,26 @@ Targets are where we want a mid-range PC to be; the Mac is the yardstick that st
   `python3 tools/kpi_dashboard.py deploy/staging/grafana/dashboards/kpis.json` and `sh deploy/staging/deploy.sh --backend`.
 - Setup (once, done 2026-11-01): `sh deploy/staging/kpi_setup.sh` (passwords made on the server, the database, the role).
 
+## Skills
+
+Every new or redone skill is measured before it ships: `bash tools/skill_perf.sh <class> <skill id>` runs the
+`fight` scenario twice in a real window (High, 1600x900): the class using only its weapon, then casting only that
+skill every 1.2 s (`--kpi fight --class C --skill id --trace`), and compares them. **PASS**: no new stutters (frames
+of 100 ms or more) and the average frame at most **20%** slower than the weapon alone. `--trace` puts every frame's
+time and each cast's frame in the JSON, so a stutter can be lined up with what caused it (e.g. "1.1 s after each
+cast" = where the arrow lands).
+
+Found this way (2026-11-01): Fire Arrow made 14 stutters a minute in the fight, each about 1 s after the cast,
+where the arrow lands: every shot lit new shadow-casting lights, and a new omni light with shadows renders the
+scene round it into a cube map (6 passes). Fix with nothing taken from the look: effect lights' shadows go through
+`Fx.effect_shadow` (dual-paraboloid maps, 2 passes, and at most `Fx.EFFECT_SHADOWS` = 2 at once across every effect
+and every player). After: 0 stutters, +13.5% frame time (PASS).
+
+Rules for skill effects (CLAUDE.md "Skill design"): a light that casts shadows uses `Fx.effect_shadow`; effects that
+repeat share meshes, materials and textures (made once, cached) instead of building new ones each cast; a partner's
+copy (the puppet) draws the same effect, so four players casting is four times the cost: keep `skill_perf` well inside
+its budget.
+
 ## Adding a scenario or a metric
 
 A scenario: an entry in `Kpi.SCENARIOS`, its staging in `Kpi._stage` and driving in `Kpi._drive`, then add it to the
