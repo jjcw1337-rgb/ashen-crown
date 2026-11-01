@@ -118,6 +118,17 @@ static func build(w: World) -> void:
 	var bf := model("bonfire")
 	w._place(bf, Vector3(CENTER.x, 0, CENTER.y))
 	Props.fire(bf, Vector3(0, 0.3, 0), 1.15, Color(1.0, 0.5, 0.18), true, true)
+	# the heart of the camp's light (graphics plan, phase 1): reaches the shops, glows in the mist, always shadowed
+	for n in bf.find_children("*", "OmniLight3D", true, false):
+		var fl: OmniLight3D = n
+		fl.light_energy *= 1.6
+		fl.set_meta("base", fl.light_energy)
+		fl.omni_range = 15.0
+		fl.omni_attenuation = 1.15
+		fl.light_volumetric_fog_energy = 3.0
+		fl.shadow_blur = 1.4
+		fl.set_meta("shadow_pri", true)
+		fl.add_to_group(Grade.SHADOW_GROUP)
 	w.add_circle(Vector3(CENTER.x, 0, CENTER.y), 1.4)
 	# click it to burn what you don't want (UI.open_burn)
 	w._inter("bonfire", "Bonfire", Vector3(CENTER.x, 0, CENTER.y), 2.6)
@@ -131,7 +142,14 @@ static func build(w: World) -> void:
 	var chest := Props.stash_chest(null, Vector3.ZERO, -15.0)
 	w._inter("stash", "Stash", Vector3(4.2, 0, 3.2), 1.6, chest)
 	w.solid(chest)
-	w.add_waypoint("town", Vector3(-8, 0, 6))
+	var wp := w.add_waypoint("town", Vector3(-8, 0, 6))
+	# old mossy stone, not the clean pale stone: it was the brightest thing on screen at dusk (graphics plan, phase 1)
+	var clean := Props.stone_clean()
+	var dark := Mats.world(Color(0.26, 0.26, 0.27), Color(0.17, 0.17, 0.18), 0.92, 1.3, 0.5, Props.MOSS)
+	for n in wp.find_children("*", "MeshInstance3D", true, false):
+		var mi: MeshInstance3D = n
+		if mi.material_override == clean:     # Mats.world caches, so it's the same material instance
+			mi.material_override = dark
 
 	# --- the shops round the ring, each keeper in front of their stall
 	for s in SHOPS:
@@ -285,8 +303,15 @@ static func _local(w: World, at: Vector2, off: Vector3) -> Vector3:
 static func _glow(w: World, at: Vector2, off: Vector3, col: Color, energy: float, rng_m: float) -> void:
 	var l := OmniLight3D.new()
 	l.light_color = col
-	l.light_energy = energy
-	l.omni_range = rng_m
+	l.light_energy = energy * 1.3
+	l.omni_range = rng_m * 1.25
+	l.omni_attenuation = 1.3
+	l.light_volumetric_fog_energy = 2.0
+	l.shadow_blur = 1.2
+	# a living glow (coals, a cauldron): it flickers with the fires, and may cast shadows (Grade)
+	l.add_to_group("flicker")
+	l.set_meta("base", l.light_energy)
+	l.add_to_group(Grade.SHADOW_GROUP)
 	w.props_root.add_child(l)
 	l.position = _local(w, at, off)
 
@@ -305,10 +330,16 @@ static func _lantern(w: World, pos: Vector3, lit: bool) -> void:
 	core.position = Vector3(0, 0.24, 0)
 	if lit:
 		var l := OmniLight3D.new()
-		l.light_color = Color(1.0, 0.7, 0.4)
-		l.light_energy = 1.4
-		l.omni_range = 6.5
-		l.omni_attenuation = 1.4
+		l.light_color = Color(1.0, 0.68, 0.38)
+		l.light_energy = 1.9
+		l.omni_range = 8.0
+		l.omni_attenuation = 1.3
+		l.light_volumetric_fog_energy = 2.0
+		l.shadow_blur = 1.2
+		# a candle: a slow, gentle flicker (Game's flicker loop), and shadows when it's among the nearest (Grade)
+		l.add_to_group("flicker")
+		l.set_meta("base", l.light_energy)
+		l.add_to_group(Grade.SHADOW_GROUP)
 		ln.add_child(l)
 		l.position = Vector3(0, 0.25, 0)
 
