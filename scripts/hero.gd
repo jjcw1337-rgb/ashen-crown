@@ -335,7 +335,7 @@ func skill_cost(id: String) -> float:
 	return float(Data.skill_def(id).get("mana", 0)) * (1.0 - talent("cost:" + id) / 100.0)
 
 func skill_cd(id: String) -> float:
-	return float(Data.skill_def(id).get("cd", 0.0)) * (1.0 - talent("cd:" + id) / 100.0) * (Battlegrounds.CD_MULT if game.bg_mode else 1.0)
+	return float(Data.skill_def(id).get("cd", 0.0)) * (1.0 - talent("cd:" + id) / 100.0)
 
 func _build_rig() -> void:
 	if is_wraith():
@@ -1240,8 +1240,6 @@ func _start_attack(style: String, skill := "", secs := 0.0) -> void:
 	if secs > 0.0:
 		atk_dur = secs / aspd
 	atk_dur *= Data.attack_pace(cls)     # every class's pace (Data.ATTACK_PACE)
-	if game.bg_mode and not puppet:
-		atk_dur *= Battlegrounds.ATTACK_PACE     # the crypt's slower, heavier fights
 	impact_done = false
 	trail_pts.clear()
 	trail_col = ClassSkills.trail_color(cls, skill)
@@ -1312,7 +1310,7 @@ func show_damage(dmg: float) -> void:
 	dmg_stack.add(dmg)
 
 func dmg_mult(id: String) -> float:
-	return (1.0 + (talent("dmg") + talent("dmg:" + id)) / 100.0) * pace_mult(id) * (Battlegrounds.HIT_MULT if game.bg_mode else 1.0)
+	return (1.0 + (talent("dmg") + talent("dmg:" + id)) / 100.0) * pace_mult(id)
 
 ## Attacks are slower by the class's pace (Data.ATTACK_PACE); the ones whose rate the swing itself sets
 ## (the basic attack, skills with no cooldown) hit that much harder, so their damage per second stays put.
