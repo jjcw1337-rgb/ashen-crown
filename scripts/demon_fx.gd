@@ -102,35 +102,28 @@ static func _wrath_on(h: Hero, rain: float) -> void:
 	h.rig.add_child(l)
 	h.fxs["wrath"]["light"] = l
 
+## A meteor: the Meshy meteorite (pitted iron and basalt, molten cracks, a white-hot melted face) plunging from the
+## sky, its seams blazing, trailing simulated fire and smoke (the comet sim, puff by puff); a mark closes in under
+## one falling at a player. It lands with DemonHurlFx.impact: its real pieces, the simulated impact cloud, a crater.
 static func _meteor(h: Hero, root: Node3D, ev: Dictionary) -> void:
 	var at: Vector3 = ev["p"]
 	var fall: float = float(ev.get("x", DemonSkills.WRATH_FALL))
 	var k: int = int(ev.get("n", 0))
-	var m := DemonKitFx.model(DemonKitFx.BOULDER)
-	var n := Node3D.new()
-	root.add_child(n)
-	if m != null:
-		DemonKitFx.heat_model(m, 2.2)
-		m.scale = Vector3.ONE * 0.9
-		m.position = Vector3(0, -0.4, 0)
-		n.add_child(m)
-		InfernalFx.fire(n, n.global_position, 1.2, 60.0, InfernalFx.tier(h.game), true, true)
-	else:
-		boulder(n, 0.42)
+	var n := DemonHurlFx.rock(root, DemonKitFx.METEOR, 0.95, 2.6)
 	var from := at + Vector3(cos(k * 2.4) * 3.0, 15.0, sin(k * 2.4) * 3.0 + 2.0)
 	n.global_position = from
 	var mark = null
 	if fall >= DemonSkills.WRATH_FALL_PVP - 0.01:
-		mark = DemonKitFx.target_mark(root, h.game.world, at, DemonSkills.METEOR_R, InfernalFx.CRIMSON)
+		mark = DemonKitFx.target_mark(root, h.game.world, at, DemonSkills.METEOR_R, Color(0.6, 0.18, 0.06))
 	var ms: Array = h.fxs.get("meteors", [])
-	ms.append({"node": n, "from": from, "to": at, "t": 0.0, "dur": fall, "mark": mark})
+	ms.append({"node": n, "from": from, "to": at, "t": 0.0, "dur": fall, "mark": mark, "trail": 0.0, "last": from})
 	h.fxs["meteors"] = ms
 	if h.fxs.has("wrath"):
 		h.fxs["wrath"]["until"] = maxf(float(h.fxs["wrath"]["until"]), fall + WRATH_SLACK)
 	if h.puppet:
-		Sfx.play_at("fireball", at, -10.0, 0.7)
+		Sfx.play_at("fireball", at, -10.0, 0.6)
 	else:
-		Sfx.play("fireball", -9.0, 0.7)
+		Sfx.play("fireball", -9.0, 0.6)
 
 ## The grip lets go: the victim is back on the ground (dropped, or smashed into it).
 static func _end_grip(h: Hero, smashed: bool) -> void:
@@ -190,8 +183,17 @@ static func update(h: Hero, delta: float) -> void:
 			var u := clampf(float(b["t"]) / maxf(float(b["dur"]), 0.01), 0.0, 1.0)
 			var from: Vector3 = b["from"]
 			var to: Vector3 = b["to"]
-			(n as Node3D).global_position = from.lerp(to, u)
-			(n as Node3D).rotation += Vector3(delta * 6.0, delta * 2.0, 0.0)
+			var p := from.lerp(to, u)
+			var vel: Vector3 = (p - (b["last"] as Vector3)) / maxf(delta, 0.001)
+			b["last"] = p
+			(n as Node3D).global_position = p
+			var sp = (n as Node).get_meta("spin") if (n as Node).has_meta("spin") else null
+			if sp != null and is_instance_valid(sp):
+				(sp as Node3D).rotation += Vector3(delta * 5.0, delta * 1.5, 0.0)
+			b["trail"] = float(b["trail"]) - delta
+			if float(b["trail"]) <= 0.0 and u < 0.97:
+				b["trail"] = DemonHurlFx.TRAIL_EVERY
+				DemonHurlFx.trail(h, root, p, vel, 1.8)
 			var mk = b.get("mark")
 			if mk != null and is_instance_valid(mk[0]):
 				(mk[1] as ShaderMaterial).set_shader_parameter("k", u)
@@ -200,10 +202,9 @@ static func update(h: Hero, delta: float) -> void:
 				(n as Node).queue_free()
 				if mk != null and is_instance_valid(mk[0]):
 					(mk[0] as Node).queue_free()
-				crater(root, to, DemonSkills.METEOR_R)
-				DemonKitFx.debris(root, to + Vector3(0, 0.3, 0), 4, Vector3.UP, 4.0, 0.15)
-				Sfx.play_at("boom", to, -4.0, 1.05)
-				SkillFx.shake(h, 0.22)
+				DemonHurlFx.impact(h, to, DemonKitFx.METEOR_PIECES, 0.95, DemonSkills.METEOR_R, 1.15)
+				Sfx.play_at("boom", to, -3.0, 0.95)
+				Sfx.play_at("impact_bone", to, -8.0, 0.5)
 		if bs.is_empty():
 			h.fxs.erase("meteors")
 	if h.fxs.has("grip"):
