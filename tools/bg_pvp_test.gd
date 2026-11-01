@@ -95,6 +95,10 @@ func _player() -> void:
 		g.test_immortal = true
 		var foe = g.net.puppets()[0]
 		check(await until(func(): return _proxy() != null, 10.0), "they are a target for my blows (a stand-in)")
+		# a skill first: its effects go to the other player through the server (Net.pl_fx, relayed)
+		g.hero.mana = g.hero.max_mana
+		var sk: String = str(g.hero.skill_list()[0]["id"])
+		check(g.hero.use_skill(sk, foe.global_position), "cast %s at them" % sk)
 		var life_seen: Array = []
 		for i in 60:
 			if not is_instance_valid(foe) or foe.dead:
@@ -147,6 +151,7 @@ func _player() -> void:
 		var h: Dictionary = d.get("hero", {}) if d is Dictionary else {}
 		var inv: Array = (h.get("inventory", []) as Array).filter(func(x): return x != null)
 		check(int(h.get("level", 0)) == 8 and inv.is_empty() and int(h.get("gold", -1)) == 0, "kept my level, lost my things")
+		check(g.net.fx_got > 0, "I saw the other player's skill effects (%d events, through the server)" % g.net.fx_got)
 	g.net.shutdown()
 	await secs(1.0)
 
