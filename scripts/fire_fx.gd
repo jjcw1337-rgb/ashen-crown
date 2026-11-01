@@ -155,9 +155,13 @@ static func _flames(root: Node3D, nm: String, bk: String, life: float, w: float,
 	var q := QuadMesh.new()
 	q.size = Vector2(w, h)
 	q.center_offset = Vector3(0, h * 0.42, 0)
-	q.material = flame_mat(bk, snappedf(life, 0.05), hot, snappedf(tint, 0.1))
+	# every particle is a whole flame and their light adds up: share the brightness out over how many overlap,
+	# so a fire stays orange and yellow and never sums to white
+	var n := maxi(2, int(rate * life))
+	var share := clampf(1.8 / sqrt(float(n)), 0.25, 1.0)
+	q.material = flame_mat(bk, snappedf(life, 0.05), snappedf(hot * share, 0.05), snappedf(tint, 0.1))
 	var p := InfernalFx.particles(root, root.global_position if root.is_inside_tree() else root.position, {
-		"amount": maxi(2, int(rate * life)), "life": life, "one_shot": false, "randomness": 0.4,
+		"amount": n, "life": life, "one_shot": false, "randomness": 0.4,
 		"shape": "sphere", "r": maxf(jitter, 0.01), "dir": Vector3.UP, "spread": 8.0,
 		"vel": [size * 0.05, size * 0.35], "gravity": size * 0.6, "scale": [0.8, 1.15], "angle": true,
 		"turb": size * 0.4, "mesh": q,
