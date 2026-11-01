@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write     # the screenshots are pushed to the temporary branch dragon-shots (artifacts can't be fetched from the cloud workspace)
 
 concurrency:
   group: dragon-check-${{ github.ref }}
@@ -45,13 +45,21 @@ jobs:
       - name: Screenshots
         continue-on-error: true
         run: |
-          apt-get update -qq && apt-get install -y -qq xvfb libgl1-mesa-dri libglx-mesa0 mesa-utils > /dev/null 2>&1 || true
+          apt-get update -qq && apt-get install -y -qq xvfb libgl1-mesa-dri libglx-mesa0 git > /dev/null 2>&1 || true
           mkdir -p shots
-          timeout 400 xvfb-run -a -s "-screen 0 1600x900x24" godot --rendering-driver opengl3 --path . -s tools/class_shot.gd -- shots 2>&1 | tail -20 || true
           for c in wyrm serpent wyvern; do
-            timeout 240 xvfb-run -a -s "-screen 0 1600x900x24" godot --rendering-driver opengl3 --path . -- --shot shots/game_$c.png --zone town --class $c 2>&1 | tail -5 || true
+            timeout 300 xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --path . -s tools/dragon_shots.gd -- shots $c 2>&1 | grep -E "\[DS\]|SCRIPT ERROR" || true
           done
+          timeout 500 xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --path . -s tools/dragon_shots.gd -- shots picker 2>&1 | grep -E "\[DS\]|SCRIPT ERROR" || true
           ls -la shots
+
+      - name: Publish screenshots to the dragon-shots branch
+        continue-on-error: true
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          cd shots && git init -q && git checkout -q -b dragon-shots
+          git -c user.name=ci -c user.email=ci@localhost add -A && git -c user.name=ci -c user.email=ci@localhost commit -qm "dragon screenshots ${GITHUB_SHA}"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" dragon-shots
 
       - uses: actions/upload-artifact@v4
         if: always()

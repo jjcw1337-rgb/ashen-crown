@@ -124,6 +124,10 @@ const WEAPON_PROFILES := {
 	"demon": {"motion": "back", "store": "back"},
 	# the plague doctor's cane rides across his back too (his coat's belt is full of vials)
 	"plague": {"motion": "back", "store": "back"},
+	# the dragons hold nothing (an equipped weapon hangs off a hidden joint): the default motion, out of sight
+	"wyrm": {"motion": "back", "store": "back"},
+	"serpent": {"motion": "back", "store": "back"},
+	"wyvern": {"motion": "back", "store": "back"},
 }
 
 const VENDORS := [

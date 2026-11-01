@@ -75,11 +75,13 @@ func _run() -> void:
 		if Dragon.is_dragon(ring[i]) and Dragon.is_dragon(ring[(i + 1) % n]):
 			apart = false
 	check(apart, "no two dragons stand side by side in the ring %s" % str(ring))
+	# the bank read from its script (the Sfx autoload isn't known while a -s tool compiles)
+	var bank: Dictionary = load("res://scripts/sfx_bank.gd").BANK
 	for c in KINDS:
 		for s in ["_step", "_claw", "_bite", "_tail", "_roar"]:
-			check(Sfx.BANK.has(c + s), "sound %s%s in the bank" % [c, s])
-		check(Sfx.BANK.has("death_" + c), "sound death_%s in the bank" % c)
-	check(Sfx.BANK.has("wyvern_flap"), "sound wyvern_flap in the bank")
+			check(bank.has(c + s), "sound %s%s in the bank" % [c, s])
+		check(bank.has("death_" + c), "sound death_%s in the bank" % c)
+	check(bank.has("wyvern_flap"), "sound wyvern_flap in the bank")
 
 	var first := true
 	for c in KINDS:
@@ -107,6 +109,7 @@ func _run() -> void:
 			while g._busy:
 				await process_frame
 		g.test_immortal = true
+		g.playing = false        # Game._process would overwrite blocking, sprint and WASD from the real keyboard
 		var home: Vector3 = h.global_position
 		# standing: the tail is never still
 		await wait(0.5)

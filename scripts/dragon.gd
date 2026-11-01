@@ -418,8 +418,12 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 	# --- sounds: footfalls (each pair landing), the wyvern's wing beats at a sprint
 	var step := int(floor(ph / PI))
 	if m > 0.25 and step != int(mem.get("step", step)) and rig.is_inside_tree():
-		var at := rig.global_position
-		Sfx.play_at(c + "_step", at, -4.0 + 4.0 * run, randf_range(0.92, 1.06))
-		if gait == "biped" and run > 0.5 and step % 2 == 0:
-			Sfx.play_at("wyvern_flap", at, -6.0, randf_range(0.95, 1.05))
+		# the Sfx autoload looked up at run time: Anim (which every tool loads) reaches this script, and a -s tool
+		# compiles before autoloads exist
+		var sfx: Node = rig.get_tree().root.get_node_or_null("Sfx")
+		if sfx != null:
+			var at := rig.global_position
+			sfx.call("play_at", c + "_step", at, -4.0 + 4.0 * run, randf_range(0.92, 1.06))
+			if gait == "biped" and run > 0.5 and step % 2 == 0:
+				sfx.call("play_at", "wyvern_flap", at, -6.0, randf_range(0.95, 1.05))
 	mem["step"] = step
