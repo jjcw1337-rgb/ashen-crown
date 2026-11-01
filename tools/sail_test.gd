@@ -11,6 +11,12 @@ func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
 	_run()
+func key(k: Key, down: bool) -> void:
+	var e := InputEventKey.new()
+	e.keycode = k
+	e.physical_keycode = k
+	e.pressed = down
+	Input.parse_input_event(e)
 func frames(n: int) -> void:
 	for i in n:
 		await process_frame
@@ -50,6 +56,21 @@ func _run() -> void:
 	g._interact(b.inter)
 	await frames(2)
 	print("[S] boarded: sailing %s, hero aboard %s, hero on deck %s" % [g.sailing(), g.hero.aboard, g.hero.global_position.distance_to(b.global_transform * BoatRide.DECK) < 0.1])
+	# the real keys aboard (staging's WASD and dodge roll must not move the hero): W sails, A turns her,
+	# Space heaves to and never rolls him, the left click steers and never swings
+	var y0 := b.yaw
+	key(KEY_W, true)
+	key(KEY_A, true)
+	await create_timer(1.5).timeout
+	key(KEY_A, false)
+	var spd := b.speed
+	var on_deck: bool = g.hero.global_position.distance_to(b.global_transform * BoatRide.DECK) < 0.3
+	key(KEY_W, false)
+	key(KEY_SPACE, true)
+	g.dodge_roll()
+	await create_timer(0.3).timeout
+	print("[S] keys aboard: W under way %s (%.1f m/s), A turned her %s, hero still at the tiller %s, Space rolled him %s, swinging %s" % [spd > 0.5, spd, absf(wrapf(b.yaw - y0, -PI, PI)) > 0.05, on_deck, g.hero.roll_t >= 0.0, g.hero.atk_t >= 0.0])
+	key(KEY_SPACE, false)
 	b.set_process(false)
 	var start := b.global_transform
 	var times := []
