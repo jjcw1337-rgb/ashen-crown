@@ -11,7 +11,7 @@ extends Node3D
 ## `SOLIDS` lists the colliders (local x, z, radius) that World.add_waypoint turns into circles.
 
 const DIR := "res://assets/models/waypoint/"
-const RUNE := Color(0.12, 0.5, 1.0)     # deep cyan: the fx shader multiplies it by energy, so pale tints clip to white
+const RUNE := Color(0.04, 0.3, 1.0)     # deep cyan: the fx shader multiplies it by energy, so pale tints clip to white
 const DAIS_R := 4.85          # outer step radius
 const TOP_Y := 0.36           # walking height of the inner dais
 
@@ -27,14 +27,15 @@ const SOLIDS := [
 	[1.25, -6.07, 0.6], [3.05, -5.4, 0.6], [4.55, -4.35, 0.6], [5.62, -2.62, 0.75],
 ]
 const CRY_SCALE := 0.72      # crystal.glb is 3 m tall with a 2 m socket: fit the socket inside the inner channel
-const CRY_LIFT := 0.5        # and float the crystal (and its shards) higher than modelled, over the light column
+const CRY_LIFT := 0.35       # and float the crystal (and its shards) higher than modelled, over the light column
+const CRY_GROW := 1.45       # the crystal and its shards bigger than the socket's scale: the centrepiece must read
 const BRAZIER_SCALE := 1.15
 const WALL_R := 6.2
 const WALL_A0 := 205.0
 const WALL_STEP := 16.25
 
-const IDLE := 0.3            # rune glow with nobody near (a soft cyan: the old stone's white blaze read as UI)
-const NEAR := 0.85           # rune glow with a hero on the dais
+const IDLE := 0.22           # rune glow with nobody near (a soft cyan: the old stone's white blaze read as UI)
+const NEAR := 0.55           # rune glow with a hero on the dais
 const WAKE_R := 11.0         # a hero inside this starts waking it; fully awake at 3.5 m
 
 var crystal: Node3D
@@ -99,7 +100,7 @@ func _build() -> void:
 	var iron := Mats.mat(Color(0.12, 0.11, 0.1), 0.55, 0.85)
 	var statue_m := Mats.world(Color(0.34, 0.33, 0.31), Color(0.2, 0.2, 0.19), 0.9, 1.7, 0.4, Props.MOSS)
 	rune_mat = Mats.glow_unique(RUNE, 1.1)
-	beam_mat = Mats.glow_unique(Color(0.22, 0.58, 1.0), 0.6, 0.6)
+	beam_mat = Mats.glow_unique(Color(0.05, 0.3, 1.0), 0.45, 0.6)
 
 	# --- the dais: the Blender model (steps, flagstone floor, the channels' floor) under the game's stone, else
 	# the blockout's three steps
@@ -182,7 +183,7 @@ func _build() -> void:
 				piece.get_parent().remove_child(piece)
 				var host: Node3D = crystal if nm == "crystal" else shards
 				host.position = at
-				host.scale = Vector3.ONE * CRY_SCALE
+				host.scale = Vector3.ONE * CRY_SCALE * CRY_GROW
 				host.add_child(piece)
 				piece.position = Vector3.ZERO
 				for g in piece.find_children("*", "GeometryInstance3D", true, false):
@@ -199,6 +200,13 @@ func _build() -> void:
 							m2.emission_energy_multiplier = 0.55
 							m2.roughness = 0.12
 							mi.material_override = m2
+		for g in cry.find_children("*", "MeshInstance3D", true, false):
+			var smi: MeshInstance3D = g
+			var sb := smi.get_active_material(0)
+			if sb is StandardMaterial3D and smi.material_override == null:
+				var sm2: StandardMaterial3D = (sb as StandardMaterial3D).duplicate()
+				sm2.albedo_color = Color(0.62, 0.64, 0.7)
+				smi.material_override = sm2
 		_cry_y = crystal.position.y
 		_sh_y = shards.position.y
 		if dais:
@@ -247,9 +255,9 @@ func _build() -> void:
 					Vector2(0.36, 1.12), Vector2(0.0, 1.1)], 16, "wp_brazier_bowl"), iron, Vector3.ZERO)
 		# blue spirit-fire (Props.fire's flames start warm white, so these are their own): a dense core, licking
 		# tongues, a few sparks, and a small light on the stones
-		Fx.aura(b, Color(0.22, 0.55, 1.0), 18, 0.9, 0.15, 0.55, 1.8, 0.1, 12.0, Vector3(0, fire_y, 0))
-		Fx.aura(b, Color(0.05, 0.25, 0.9), 14, 1.3, 0.26, 0.8, 1.2, 0.18, 20.0, Vector3(0, fire_y + 0.04, 0))
-		Fx.aura(b, Color(0.4, 0.75, 1.0), 6, 1.8, 0.04, 1.6, 0.8, 0.2, 30.0, Vector3(0, fire_y + 0.14, 0))
+		Fx.aura(b, Color(0.02, 0.2, 0.85), 20, 0.9, 0.16, 0.55, 1.8, 0.12, 12.0, Vector3(0, fire_y, 0))
+		Fx.aura(b, Color(0.0, 0.1, 0.6), 14, 1.3, 0.28, 0.8, 1.2, 0.2, 20.0, Vector3(0, fire_y + 0.04, 0))
+		Fx.aura(b, Color(0.1, 0.4, 1.0), 6, 1.8, 0.04, 1.6, 0.8, 0.2, 30.0, Vector3(0, fire_y + 0.14, 0))
 		var bl := OmniLight3D.new()
 		bl.light_color = Color(0.35, 0.6, 1.0)
 		bl.light_energy = 0.8
@@ -360,7 +368,7 @@ func _process(delta: float) -> void:
 		var ph := 0.5 + 0.5 * sin(_t * 2.2 - i * 0.9)
 		ring_mats[i].set_shader_parameter("energy", lerpf(IDLE, NEAR, on) * (0.8 + 0.3 * ph) + _flash * 0.8)
 	rune_mat.set_shader_parameter("energy", lerpf(IDLE * 0.8, NEAR * 0.85, smoothstep(0.3, 1.0, _wake)) * (0.85 + 0.2 * pulse_w) + _flash * 0.6)
-	beam_mat.set_shader_parameter("energy", lerpf(0.35, 0.85, _wake) + _flash * 1.0)
+	beam_mat.set_shader_parameter("energy", lerpf(0.25, 0.55, _wake) + _flash * 0.8)
 	_spin += delta * lerpf(0.3, 1.3, _wake) + delta * _flash * 4.0
 	crystal.rotation.y = _spin
 	var bob := sin(_t * 1.1) * lerpf(0.1, 0.18, _wake)
