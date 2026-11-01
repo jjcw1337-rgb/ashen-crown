@@ -766,8 +766,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   sounds (`Sfx.counts`) and the fort voice. The camp's song is `music_town` (jj's pick: a dark forest sanctuary, harp over a low
   string drone with a wooden flute; candidate take 13). Ambience: wind, drips in the crypt, and in Act I outside the camp (moor and fort) `forest`, soft
   trees in a breeze (`Sfx.play_music(kind, amb)`, picked in `Game.load_zone`).
-- **The Mournwater Coast and its islands** (Act I, west of the camp through its west gate; on `staging` since 2026-11-01.
-  Still to come: sea sounds, co-op sailing (partners don't see each other's boats yet)). `coast.gd` (`Coast`, zone `"coast"`): a headland with the open sea on
+- **The Mournwater Coast and its islands** (Act I, west of the camp through its west gate; on `staging` since 2026-11-01). `coast.gd` (`Coast`, zone `"coast"`): a headland with the open sea on
   three sides (the mainland's shore is a parabola round its tip, `shore_x`), the pier at the tip (`DOCK` = the origin,
   the boat's mooring), the shipwright's shed (`SHED`), the path back to the camp (`EXIT`). The islands are data in
   `isles.gd` (`Isles.ISLANDS`: id, name, bearing from the dock, `sail` = metres of open water from the dock to the end of
@@ -785,7 +784,18 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   the normal), with talus stones under them (`Isles.shore_rocks`). At sea `Birds` are gulls (`sea`: pale, long black-
   tipped wings, gliding, some wheeling over the hero) and fish leap with a splash (`Birds._fish`). The coast's corner map
   is a painted sea chart of the whole sea (`Game._sea_chart`, cached; `Minimap.chart`: no fog, a wider view while
-  sailing). `tools/sea_life_shot.gd -- outprefix [q]` screenshots the chart, gulls, a fish and the Bleak Isle. The five are 250 m across,
+  sailing). `tools/sea_life_shot.gd -- outprefix [q]` screenshots the chart, gulls, a fish and the Bleak Isle. **Sounds** (made in code by
+  `tools/audio/make_sea.py`, built by `build_sfx.py` like any take; replace them under the same names later): `surf`
+  is the sea zones' ambience bed, loudest on the beach and fading inland and out at sea (`Game._sea_sounds`); under
+  sail `BoatRide._sounds` plays the `sea` loop (louder with speed), `hull_creak` (more as she pitches and rolls) and
+  `hull_slap` at speed; gulls cry (`gull`, `Birds._gull_calls`), a fish lands with `splash`; Osric's hammer knocks
+  with `mallet` (his clips' `"strike"`, `"sparks": false`). `tools/sea_sound_test.gd`. **Co-op**: a sailing player's
+  boat rides at the end of his state packet (`Net._boat_packet`: aboard, x, z, yaw, speed; no new RPC), and each
+  partner draws it under his puppet with him at the tiller (`BoatRide.puppet_update`, a BoatRide with `puppet` on:
+  glides to the sent place, rides the local waves, wake and creaks, no sea loop, no docking); it goes when he steps
+  ashore. Each game moors its own boat at the docks. Boarding at an island takes the party out to sea with every
+  owner aboard his own boat, 9 m apart by peer id (`Game._party_rank`); a partner with no boat is set down on the
+  pier. `tools/sail_mp_test.gd` (host + join). The five are 250 m across,
   164 m of water (~22 s at the boat's 8 m/s) from the dock, 14.5 m channels apart. Out at sea (the coast zone) every
   island is drawn at full size (`Isles.dress(..., full = false)`: ground at 2 m, trees, landmark, jetty); stepping off at
   its jetty loads its own zone `"isle_<id>"` (`Isles.build_zone`: the island at the origin, same ground at 1 m, grass,
