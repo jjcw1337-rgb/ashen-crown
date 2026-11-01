@@ -253,10 +253,10 @@ func _build() -> void:
 					Vector2(0.24, 0.95), Vector2(0.0, 0.95)], 10, "wp_brazier_col"), stone, Vector3.ZERO)
 			Models.P(b, Geo.lathe([Vector2(0.12, 0.95), Vector2(0.42, 1.08), Vector2(0.5, 1.22), Vector2(0.44, 1.22),
 					Vector2(0.36, 1.12), Vector2(0.0, 1.1)], 16, "wp_brazier_bowl"), iron, Vector3.ZERO)
-		# blue spirit-fire (Props.fire's flames start warm white, so these are their own): a dense core, licking
-		# tongues, a few sparks, and a small light on the stones
-		Fx.aura(b, Color(0.02, 0.2, 0.85), 20, 0.9, 0.16, 0.55, 1.8, 0.12, 12.0, Vector3(0, fire_y, 0))
-		Fx.aura(b, Color(0.0, 0.1, 0.6), 14, 1.3, 0.28, 0.8, 1.2, 0.2, 20.0, Vector3(0, fire_y + 0.04, 0))
+		# blue spirit-fire (Props.fire's flames start warm white, so these are their own): a core and licking tongues,
+		# alpha-blended (additive ones pile up into white where they overlap), glowing sparks, a small light
+		Fx.aura(b, Color(0.3, 0.62, 1.0, 0.9), 18, 0.9, 0.17, 0.55, 1.8, 0.12, 12.0, Vector3(0, fire_y, 0), false)
+		Fx.aura(b, Color(0.06, 0.28, 0.95, 0.75), 12, 1.3, 0.28, 0.8, 1.2, 0.2, 20.0, Vector3(0, fire_y + 0.04, 0), false)
 		Fx.aura(b, Color(0.1, 0.4, 1.0), 6, 1.8, 0.04, 1.6, 0.8, 0.2, 30.0, Vector3(0, fire_y + 0.14, 0))
 		var bl := OmniLight3D.new()
 		bl.light_color = Color(0.35, 0.6, 1.0)
