@@ -63,6 +63,7 @@ var rival: Enemy = null
 # Volley, Winter Howl): slower on its feet. Burning is ticked by whoever set it (take_damage routes to the host);
 # a chill from a partner reaches the host through Net.send_enemy_chill.
 var burn_t := 0.0
+var burn_look := ""            # who draws the burn (Enemy.ignite)
 var burn_dps := 0.0
 var burn_tick := 0.0
 var chill_t := 0.0
@@ -221,6 +222,7 @@ var _drained := false
 var _drain_col := Color(0.25, 1.0, 0.2)
 ## Damage numbers in this colour, and no blood (set around a Drain Life tick). Alpha 0 = normal.
 var dmg_tint := Color(0, 0, 0, 0)
+var seared := false            # a burning arrow's hit: the wound is seared, no blood (Archer.update)
 ## a damage tick (the plague doctor's poison): the number shows, but no white flash and no flinch
 var soft_hit := false
 
@@ -253,12 +255,15 @@ func set_soul_lit(on: bool) -> void:
 	_soul_lit = on
 	_set_flash(0.0)
 
-func ignite(dps: float, t: float) -> void:
+## `look` names who draws the burn: "" = the Demon's ember flames (DemonFx.ignite, here and as it ticks);
+## an arrow kind (ArrowFx.burn, the archer's own body flames) draws its own and these are skipped.
+func ignite(dps: float, t: float, look := "") -> void:
 	if dead:
 		return
 	burn_dps = maxf(burn_dps if burn_t > 0.0 else 0.0, dps)
 	burn_t = maxf(burn_t, t)
-	if game and game.world:
+	burn_look = look
+	if game and game.world and look == "":
 		DemonFx.ignite(game.world.fx_root, self)
 
 func chill(k: float, t: float) -> void:
@@ -279,8 +284,15 @@ func _statuses(delta: float) -> void:
 		burn_tick -= delta
 		if burn_tick <= 0.0:
 			burn_tick = 0.5
+			# a burn drawn by its source (the Fire Arrow's flames) ticks as fire: amber numbers, no blood, no flash
+			if burn_look != "":
+				dmg_tint = Color(1.0, 0.6, 0.25)
+				soft_hit = true          # no flash, no flinch on each tick
 			take_damage(0.0, burn_dps * 0.5, global_position, 0.0, false)
-			if game and game.world and randf() < 0.5:
+			if burn_look != "":
+				dmg_tint = Color(0, 0, 0, 0)
+				soft_hit = false
+			if game and game.world and randf() < 0.5 and burn_look == "":
 				DemonFx.ignite(game.world.fx_root, self)
 	if chill_t > 0.0:
 		chill_t -= delta
@@ -340,7 +352,7 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 		if dmg_tint.a > 0.0:
 			c2 = dmg_tint
 		Fx.number(game.world.fx_root, global_position + Vector3(0, height * 1.9 + 0.3, 0), str(int(total)) + ("!" if crit else ""), c2, crit)
-		if dmg_tint.a <= 0.0:
+		if dmg_tint.a <= 0.0 and not seared:
 			Fx.blood(game.world.fx_root, global_position + Vector3(0, height * 1.0, 0), def.get("blood", Color(0.5, 0.0, 0.0)))
 		_hit_sound(phys, knockback, crit)
 		return total
@@ -360,7 +372,7 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 	if dmg_tint.a > 0.0:
 		col = dmg_tint
 	Fx.number(game.world.fx_root, global_position + Vector3(0, height * 1.9 + 0.3, 0), str(int(total)) + ("!" if crit else ""), col, crit)
-	if dmg_tint.a <= 0.0:
+	if dmg_tint.a <= 0.0 and not seared:
 		Fx.blood(game.world.fx_root, global_position + Vector3(0, height * 1.0, 0), def.get("blood", Color(0.5, 0.0, 0.0)))
 	_hit_sound(phys, knockback, crit)
 	if fire > 0.0:

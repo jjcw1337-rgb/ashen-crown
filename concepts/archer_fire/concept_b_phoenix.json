@@ -1,0 +1,16 @@
+{
+  "id": "01a19469-1b1c-7512-8315-26358312c8e1",
+  "type": "text-to-image",
+  "ai_model": "nano-banana-2",
+  "prompt": "Game VFX concept art, Diablo IV / Path of Exile 2 quality, high three-quarter isometric ARPG camera looking down on a dark misty oak forest moor at dusk. A hooded northern ranger in a crimson hood and wolf-fur cowl, dark leather, a carved recurve bow, has just released a fire arrow: his whole body leans into the follow-through, back foot planted, bow arm extended, string hand flung back past his ear, cloak whipping. At the bow, a burst of embers and a ring of heat-distorted air. The arrow streaks across the frame toward three hulking undead ghouls, lighting the grass, stones and fog beneath its path with warm moving light, and pierces straight through the first ghoul in a spray of sparks and burning fragments, leaving it alight. The projectile: a phoenix arrow, the flame around the arrow shaped like folded fiery wings of feathers that unfurl behind it, white-gold core, orange and crimson feathers of fire edged with violet, a sweeping trail of glowing feather-shaped embers and smoke, heat shimmer, a bright flash where it enters the ghoul and a cone of fire bursting out of its back. Professional layered particle effects, volumetric light, no flat colours.",
+  "status": "SUCCEEDED",
+  "progress": 100,
+  "created_at": 1793491278630,
+  "started_at": 1793491278637,
+  "finished_at": 1793491293685,
+  "expires_at": 1793750493685,
+  "image_urls": [
+    "https://assets.meshy.ai/8fd76281-d576-493e-b9d7-513b7c3809be/uploads/image_01a19469-1b1c-7512-8315-26358312c8e1_0.png?Expires=1793750493&Signature=iGsvVf3eCMENbfFfefYR931gCE3CVwEWWSHJyyuuUiFa871DnTfKXE1FfNOuqs07-Hcb0T2Jbtd9umGYEYuMnHCL~Q5wFrRNOLC9LsKFu6W8z-ViRSaOJMw-FxS1R-yS2equCWtttCxECdj9vLLCVLB8XGOufFrrS~V0nEdZa1jQ~U~T0UD4SnN5IOk4mZfdrgSBVOERSDNSgA21-CG~WuziCZw7ibXdEwEtKju15UoSDkRAP2EbNN1wZ4Cy2f3bw6lyeQeCA8W-66cig81ErnnC2nqBeg~mii~-YUhkU~dhC4KevdgZVdLccry-rfIKqAnlM8-Ux4W49KkJbhnDVw__&Key-Pair-Id=K1VGYTHIYLM9UM"
+  ],
+  "consumed_credits": 6
+}

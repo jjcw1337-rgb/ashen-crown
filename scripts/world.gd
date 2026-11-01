@@ -69,6 +69,8 @@ var fx_root: Node3D
 var stone_xf: Array = []
 var rock_xf := {}               # variant -> Array of transforms
 var theme := {}
+## Tools can stage their own zone: kind -> Callable(world) built instead of the game's (tools/fire_range.gd's test range).
+static var custom_zones := {}
 
 func _init() -> void:
 	props_root = Models.N(self, "Props")
@@ -963,6 +965,9 @@ func build(act_i: int, kind_s: String, seed_v: int) -> void:
 	hill_noise.seed = seed_v + 11
 	hill_noise.frequency = 0.03
 	hill_noise.fractal_octaves = 4
+	if custom_zones.has(kind):
+		(custom_zones[kind] as Callable).call(self)
+		return
 	match kind:
 		Battlegrounds.ZONE: Battlegrounds.build(self)
 		"town": _build_town()

@@ -221,7 +221,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `Data.CLASSES` until then): with a bow (`Hero.has_bow`; bows are `Data.BASES` with `"cls": "archer"`, only he can
   equip them) his attack shoots (`Archer.shoot` from
   `Hero.swipe_attack`/`free_attack`; `Hero.reach` is `Archer.RANGE`). His skills are fire, cold and lightning (ids kept):
-  Fire Arrow (`pierce`: through a line, sets them burning, `Enemy.ignite`), Frost Volley (`volley`: a rain on the cursor,
+  Fire Arrow (`pierce`: through a line, sets them burning, `Enemy.ignite`; its look is real simulated fire, below), Frost Volley (`volley`: a rain on the cursor,
   hits every 0.2 s and chills, `Enemy.chill`, slower on their feet; a partner's chill reaches the host through
   `Net.send_enemy_chill`), Storm Snare (`snare`: holds the first on it, lightning arcs into the nearest others,
   `Fx.bolt`), Spirit Beast (`beast`: commands his wolf, below). Arrows are Meshy models (`assets/models/arrows/`
@@ -241,7 +241,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   northern ranger (wolf-fur cowl, dark leather, quiver) on the knight's mocap system (`Knight.build_mocap(glb, opts)`,
   `knight_mocap_rig.gd`): Meshy library clips for idle/walk/run and, with the bow out, the aimed stand and walk
   (`combat_idle`, `walk_aim`); the bow attack, Fire Arrow and Frost Volley play the `shoot` clip whole-body (`Archer.SHOT`:
-  its draw squeezed in before Anim's release frame, the body turned side-on, `yaw`); Every shot draws a fresh arrow from the quiver: the standing shot plays Meshy's "Draw and Shoot from Back" (`shoot_back`) squeezed along `SHOT.keys` (reach, grab, arrow out, nock, raise, full draw, release on Anim's impact frame, follow-through; `KnightMocapRig.shot_time`), turned side-on (`yaw`; the aiming stand has `stand_yaw`). Shooting on the move: he keeps walking at `Archer.SHOOT_MOVE` (36%) of his pace (`Hero._process`; a shot at a clicked foe still plants him) in the aimed walk (`walk_clip`, timed to his speed, `w_aimwalk`), and only his right arm takes the reach to the quiver from `reach_clip` (a filtered Blend2 over `reach_bones`, weighted by `reach`). `Archer.pose_bow` shows the arrow in his hand from `GRAB` to `NOCK` (`_hand_arrow`: point first into the quiver `QUIVER`, then swung onto the bow) and, while he shoots, solves the bow onto his hands: grip in his left fist, the draw line on his right fingers (`FINGERS`), limbs upright with a `CANT`, so the string always meets the hand. Colours: `Archer.COLORS` ("crimson"; also teal, verdant, royal, "" = Meshy's own) swaps the albedo for `assets/textures/ranger/ranger_<name>.jpg` (`Archer.dye`), made by `tools/archer_colors.py` (texture dumped from the glb, regions from `tools/blender/archer/region_uv.py`: the face, hands, fur and straps keep their colour). Storm Snare and Spirit Beast are
+  its draw squeezed in before Anim's release frame, the body turned side-on, `yaw`); Every shot draws a fresh arrow from the quiver: the standing shot plays `shoot_quick` (Meshy's "Archery Shot 1" + "Archery Shot 3" joined by `prep_ranger_mocap.py`, 1.67 s, near its own pace: reach over the shoulder, grab, arrow out, nock, draw to the cheek, a short hold, release on Anim's impact frame with the string hand flung back, back to the ready stance) along `SHOT.keys` (`KnightMocapRig.shot_time`), turned side-on (`yaw` -90, like the aiming stand's `stand_yaw`); the clip has its own loose, so `_shot_body`'s fling, recoil and follow-through only go over the aimed walk (`SHOT.body_stand`). The old 7.8 s "Draw and Shoot from Back" (`shoot_back`) stays in the glb. Compared and left out (Meshy 223, 229, 226, 234/690): near copies of 222/224, a held aim, and a "Walk Forward While Shooting" that holds a half draw and never looses. Shooting on the move: he keeps walking at `Archer.SHOOT_MOVE` (36%) of his pace (`Hero._process`; a shot at a clicked foe still plants him) in the aimed walk (`walk_clip`, timed to his speed, `w_aimwalk`), and only his right arm takes the reach to the quiver from `reach_clip` (a filtered Blend2 over `reach_bones`, weighted by `reach`). `Archer.pose_bow` shows the arrow in his hand from `GRAB` to `NOCK` (out of the quiver at `DRAWN`; `_hand_arrow`: point first into the quiver `QUIVER`, then swung onto the bow) and, while he shoots, solves the bow onto his hands: grip in his left fist, the draw line on his right fingers (`FINGERS`), limbs upright with a `CANT`, so the string always meets the hand. Colours: `Archer.COLORS` ("crimson"; also teal, verdant, royal, "" = Meshy's own) swaps the albedo for `assets/textures/ranger/ranger_<name>.jpg` (`Archer.dye`), made by `tools/archer_colors.py` (texture dumped from the glb, regions from `tools/blender/archer/region_uv.py`: the face, hands, fur and straps keep their colour). Storm Snare and Spirit Beast are
   the game's cast pose over the upper body. He holds the equipped bow in his LEFT hand (`J["grip_bow"]`,
   `Archer.BOW_HOLD` per bow kind, `Hero._weapon_hand`); bows are drawn by `Models.enemy_weapon` (`item_model`
   had none). `Archer.pose_bow` (every frame after the pose, the puppet's too) turns the bow from hanging in his
@@ -254,6 +254,42 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   procedural body dressed as a hunter (`Archer.build_placeholder`, `Archer.body_gear` kept on every gear change; its bow in `J["grip_l"]`/`J["bow_l"]`). Preview: `tools/mocap_knight_clip.gd -- outdir
   run|attack|shootwalk 34|game|side|close|closeback frames archer [longbow]`. Talent icons still to paint (`tools/talent_icons.py`).
   `tools/archer_test.gd` checks it (run it with `--fixed-fps 60`; it counts frames).
+  **Arrow effects** (`scripts/arrow_fx.gd`, `ArrowFx`; the quality standard every Archer skill must meet is
+  `docs/archer_vfx_standard.md`: photoreal, simulated, proved in Forward+): data-driven per arrow kind
+  (`ArrowFx.PRESETS`; `"war"` is the plain arrow). Fire Arrow is the `"fire"` preset, **real fire**: Mantaflow
+  sims (`tools/blender/fx/fire_sims.py`: a licking flame loop, a fireball, a smoke puff; Cycles, 256 px frames)
+  packed by `tools/fx_flipbook.py` into 8x8 flipbooks `assets/textures/fx/real_*.png` (R = flame, G = flame x
+  temperature; smoke as an RGB lightmap + opacity) plus a procedural scorch decal (albedo, normal, ember emission).
+  `FIRE_SHADER` colours the sim's flame by a blackbody at its own temperature (`ArrowFx.blackbody`, Kelvin);
+  `SMOKE_SHADER` relights the smoke in `light()` with the scene's real lights and shadows; `STREAK_SHADER` embers
+  and sparks cool along the blackbody curve, sparks collide and bounce; `HAZE_SHADER` heat distortion (Forward+);
+  `HEAT_SHADER` overlays the arrow (glowing head, charred shaft). The flight: sim flames wrapped round the head and
+  blown back (local particles), the flame's tail as one continuous strip (`_ribbon`/`_strip`: the head's path
+  every `RIBBON_STEP`, `RIBBON_FIRE_SHADER` lays two offset frames of the sim flame along it and tears it with
+  noise toward the tail, `RIBBON_SMOKE_SHADER` the lit smoke strip behind rising and widening with age), lit smoke
+  puffs, embers, sparks and haze emitted in the world from emitters `fly` keeps on the head (left to burn out by
+  `end_flight`), a flickering light with shadows (≤ `LIGHT_CAP`). Its timers run on `ArrowFx.now()` (game
+  seconds, so slow offline renders keep real motion).
+  `release`, `draw_charge` (the nocked arrow burning in his hands), `pierce` (a gout of fire out of a foe's back),
+  `burn` (the sim's flames rising from every joint and bone of a burning foe's skeleton, `_burn_points` re-reads
+  them as he moves; sooty smoke; `Enemy.ignite(dps, t, look)`: a look other than "" keeps the Demon's ember flames
+  off, and its ticks are amber with no blood or flash; the arrow's own hit is `Enemy.seared`: no blood), `finish`
+  (three turned, mirrored, staggered instances of the fireball sim, a white-hot core, tongues of flame, the light
+  flash dying to the glow, sparks, embers, a smoke column `_smoke_column`, a Decal scorch) and the ground's reaction
+  by `ArrowFx.surface` (grass smoulders, stone sparks, dirt dust, wood catches along its grain `_plank_burn` (meta
+  `wood_grain`), `"surfaces"` in the preset; a zone may answer with a `surface_fn` meta). All from the one "loose" event,
+  on the caster and his puppet alike. Web / Low (`ArrowFx.cheap`): half the particles, no haze or light shadows;
+  Compatibility: no soft particles or haze, the scorch as a quad. The old Phoenix look (wings of painted feathers,
+  `phoenix_*.png`) is retired; its textures stay. The shot's body (`KnightMocapRig._shot_body`, on for `SHOT`
+  "body"): procedural turns over the clip (the spine winding up through the full draw, a breath taken and held,
+  the back set (draw shoulder back, bow shoulder down), weight on the back foot, a tremor at full draw, the bow arm's
+  recoil kick, the string hand flung back past the ear, the weight rolling onto the front foot in the
+  follow-through, the head steady on the mark), lighter while walking, before `pose_bow` solves the bow.
+  **Proof range** (`tools/fire_range.gd` + `tools/fire_range_zone.gd`, through `World.custom_zones`): five lanes
+  (grass, stone, dirt, wood, dark) at dusk with the real ranger and zombies, recorded in Forward+ on lavapipe
+  (`--rendering-driver vulkan --rendering-method forward_plus`, `--fixed-fps 30`; modes game, follow, impact,
+  surfaces, anim, still); the moor is too heavy for the cloud machine. `tools/fire_arrow_clip.gd` (the moor, GL)
+  and `tools/arrow_fx_lab.gd` remain for quick looks.
 - **The Plague Doctor** (`scripts/plague.gd`, `Plague`; class `"plague"`, one `Plague` per hero in `Hero.pd`): the Meshy
   plague doctor (concept 1 of four in the session's picks: beaked mask with green-lit goggles, buckled greatcoat split
   front and back, bandolier and belt of green/amber/violet vials, pouches, instrument roll, brass censer) on the knight's
