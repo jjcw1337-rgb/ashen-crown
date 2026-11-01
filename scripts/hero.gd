@@ -191,6 +191,7 @@ var net_phase_rate := 0.0
 var net_st := {}
 var net_buff := false
 var net_boat_st: Variant = null      # a partner sailing: Vector4(x, z, yaw, speed) of his boat (Net._boat_packet)
+var net_boat_id := "gull"            # and which boat she is (Data.BOATS)
 var net_boat: BoatRide               # the boat drawn under his puppet (BoatRide.puppet_update)
 var _net_last_t := 0.0
 ## Skill effects that linger (SkillFx: the Siphon tether, Drain Life's beams, Eternal Night, phantoms, arrows
@@ -1752,6 +1753,9 @@ func apply_net_state(p: PackedFloat32Array) -> void:
 	max_life = maxf(p[13], 1.0)
 	net_buff = p[14] > 0.5
 	net_boat_st = Vector4(p[16], p[17], p[18], p[19]) if p.size() >= 20 and p[15] > 0.5 else null
+	var bi := int(p[20]) if p.size() >= 21 else 0
+	var bk: Array = Data.BOATS.keys()
+	net_boat_id = str(bk[bi]) if bi >= 0 and bi < bk.size() else "gull"
 	if was_dead and not dead:
 		rig.rotation.x = 0.0
 		rig.position.y = 0.0

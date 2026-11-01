@@ -63,7 +63,7 @@ func _host() -> void:
 	await g.start_host()
 	await idle()
 	g.ui.close_all()
-	g.hero.boats = ["gull"]
+	g.hero.boats = ["gull", "sloop"]   # the host sails the Ember Sloop (an imported boat), the partner the Gull
 	g.hero.sailed = true
 	var t0 := Time.get_ticks_msec()
 	while g.net.players.is_empty() and Time.get_ticks_msec() - t0 < 60000:
@@ -112,7 +112,8 @@ func _join() -> void:
 	while Time.get_ticks_msec() - t0 < 30000 and (host_p.net_boat == null or Vector2(host_p.net_boat.global_position.x, host_p.net_boat.global_position.z).distance_to(Vector2(Coast.MOOR.x, Coast.MOOR.z)) < 25.0):
 		await wait(5)
 	var nb: BoatRide = host_p.net_boat
-	var deck := nb.global_transform * BoatRide.DECK if nb else Vector3.ZERO
+	var deck := nb.global_transform * nb.DECK if nb else Vector3.ZERO
+	print("[C3b] the host's boat is his own: '%s' (the sloop %s)" % [nb.id if nb else "", nb != null and nb.id == "sloop"])
 	print("[C3] the host's boat under him: %s, %.0f m out, him at its tiller %s (%.2f m), riding the swell y %.2f" % [nb != null,
 		Vector2(nb.global_position.x, nb.global_position.z).distance_to(Vector2(Coast.MOOR.x, Coast.MOOR.z)) if nb else -1.0,
 		host_p.global_position.distance_to(deck) < 0.3 if nb else false, host_p.global_position.distance_to(deck) if nb else -1.0, nb.global_position.y if nb else 0.0])

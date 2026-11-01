@@ -815,8 +815,17 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `ForestCamp._keeper` loaded at run time, hammering the hull on its trestles, `Coast.HULL_AT`; the procedural
   humanoid without the glb) at his boathouse (`Coast._boatyard`), an `Inter` "vendor" with role "shipwright": `Game._shipwright_talk`
   (dialogue) opens `BoatShop` (`boat_shop.gd`, `ui.boat_panel`: portrait, the boat turning on the water, name, price, text,
-  how to sail, Buy). Boats are `Data.BOATS` (`gull`: 400 gold, speed 8); owning one is `Hero.boats` (saved), bought with
-  `Game.buy_boat`. The boat's model is `Boat.model(id)` (`boat.gd`: lofted clinker hull with its own plank shader, deck,
+  how to sail, Buy). Boats are `Data.BOATS` (`gull`: 400 gold, speed 8; `sloop`, the Ember Sloop: 1500 gold, speed 9, a
+  14 m Meshy model); owning one is `Hero.boats` (saved), bought with `Game.buy_boat`; Osric offers every boat, cheapest
+  first, and the docks hold the dearest one owned (`Hero.best_boat`, swapped at once on a purchase). **Imported boats**:
+  an entry with `"glb"` (a model prepared by `tools/blender/prep_boat.py -- in.glb out.glb <length m> --draft m --bow
+  +x|-x|+y|-y [--tris N] [--tex px] [--shot png]`: bow to Godot -z, waterline y = 0; it prints the numbers) plus
+  `"length"`, `"beam"`, `"sheer"`, `"draft"`, `"deck"` (the helm spot) and `"lamps"`; `Boat.model` loads it (the Gull
+  built in code if the file is missing, so a better model is a one-path swap), `Boat.dims(id)` gives the size, and
+  `BoatRide` scales by length and beam against the Gull (`kl`, `kb`): the shallow-water probes, helm, wake, spray,
+  click area, docking reach and the sailing camera; a longer boat eases out from the Gull-sized moorings until she can
+  swing round clear of the pier or jetty (`_swing_clear`). In co-op the boat's index in `Data.BOATS` rides at the end
+  of `Net._boat_packet` (`Hero.net_boat_id`), so partners draw the right boat. `tools/sloop_test.gd`. The boat's model is `Boat.model(id)` (`boat.gd`: lofted clinker hull with its own plank shader, deck,
   mast, gaff main and jib in the cloth shader, rigging, rudder, lantern).
   `tools/boat_shop_test.gd`, `tools/boat_shop_shot.gd`. **Sailing** (`boat_ride.gd`, `BoatRide`; Game: `_add_boat`,
   `_boat_clicked`, `_sail_input`, `try_land`/`land_boat`, `_sail_camera`): every sea zone has a boat, moored off the
@@ -833,7 +842,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   GPUParticles. The camera eases to a view over her port quarter looking past the bow (`_sail_camera`, `sail_blend`).
   First time aboard, a controls guide (`Hero.sailed`, saved). `tools/sail_test.gd` (sails every route with her own
   physics: 21-23 s each; grounding, unsticking, the sea's edge, waves, landing, boarding at an island, back to the
-  pier), `tools/sail_shots.gd -- outprefix [q] [isle]`. Tests: `tools/ocean_test.gd`; screenshots `tools/ocean_shots.gd -- outprefix [q] [only]`
+  pier), `tools/sail_shots.gd -- outprefix [q] [isle] [boat id]`. Tests: `tools/ocean_test.gd`; screenshots `tools/ocean_shots.gd -- outprefix [q] [only]`
   (Forward+ screenshots need a Vulkan driver: `apt-get install mesa-vulkan-drivers` gives lavapipe, slow but correct).
   Note: a first import of the project needs `godot --headless --editor --quit-after 2000` (plain `--quit` can abort the
   scan before the class cache is written).

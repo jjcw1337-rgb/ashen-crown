@@ -2011,7 +2011,7 @@ func _add_boat(zone: String, spawn: String) -> void:
 		for isle in Isles.ISLANDS:
 			var m := isle_mooring(isle, Vector2.ZERO, true)
 			b.docks.append({"name": isle["name"], "kind": "isle", "id": isle["id"], "pos": Vector2(m.x, m.z), "yaw": m.w})
-		if spawn.begins_with("sail_from_") and not hero.owns_boat("gull"):
+		if spawn.begins_with("sail_from_") and hero.boats.is_empty():
 			# a partner brought along by the party's trip with no boat of his own: he's set down on the pier
 			b.moor(Coast.MOOR, PI * 0.5)
 			var dp: Vector3 = world.spawns.get("dock", Vector3(2, 0, 0))
@@ -2022,7 +2022,11 @@ func _add_boat(zone: String, spawn: String) -> void:
 			var m := isle_mooring(isle, Vector2.ZERO, true)
 			# the whole party sails out together: each his own boat, the others a few lengths further out ahead
 			var r := _party_rank()
-			var off := Vector3(-sin(m.w), 0, -cos(m.w)) * 9.0 * float(r)
+			# spaced for the longest boat any of them may sail (each game knows only its own)
+			var gap := 9.0
+			for bid in Data.BOATS:
+				gap = maxf(gap, 9.0 * float(Boat.dims(str(bid))["length"]) / Boat.LENGTH)
+			var off := Vector3(-sin(m.w), 0, -cos(m.w)) * gap * float(r)
 			b.moor(Vector3(m.x, 0, m.z) + off, m.w)
 			b.board(hero)
 			sail_blend = 1.0

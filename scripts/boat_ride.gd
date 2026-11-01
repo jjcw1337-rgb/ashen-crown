@@ -122,10 +122,13 @@ static func puppet_update(h: Hero, delta: float) -> void:
 		return
 	var st: Vector4 = h.net_boat_st
 	var b := h.net_boat
+	if b != null and is_instance_valid(b) and b.id != h.net_boat_id:
+		b.queue_free()            # he sails another boat now (bought a better one)
+		b = null
 	if b == null or not is_instance_valid(b) or b.get_parent() != w:
 		b = BoatRide.new()
 		w.add_child(b)
-		b.setup(h.game, "gull")
+		b.setup(h.game, h.net_boat_id)
 		b.name = "partner_boat"
 		b.puppet = true
 		b.sailing = true
