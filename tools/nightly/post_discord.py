@@ -1,5 +1,6 @@
 """Posts the nightly lab's morning report to the Game Factory Discord channel (run by tools/nightly/run.sh).
     python post_discord.py <out dir> <report.md> [failed steps] [--dry]
+    python post_discord.py --text "a short note"      (run.sh: a run that couldn't start or was cut off)
 Uses the bot's REST API with the token from ~/.claude/channels/discord/.env (never printed or logged); no gateway
 connection, so it doesn't disturb the Game Factory session's own bot connection. Messages are split under Discord's
 2000 characters; images (the mode GIF, then the best PNGs, resized to JPEG) go in a follow-up message, at most 10.
@@ -79,6 +80,9 @@ def images(out):
 
 
 def main():
+    if sys.argv[1] == "--text":
+        send(token(), sys.argv[2][:1900])
+        return
     out, report = sys.argv[1], sys.argv[2]
     args = [a for a in sys.argv[3:] if a != "--dry"]
     failed = (args[0] if args else "").strip()

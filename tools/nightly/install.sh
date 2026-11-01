@@ -25,6 +25,7 @@ for spec in mode:20:0 perf:0:30 triage:5:0; do
 done
 # the telemetry watcher (watch.py): alerts and hotfix runs, every 5 minutes
 install -m 644 "$HERE/watch.py" "$RUNNER/watch.py"
+install -m 644 "$HERE/post_discord.py" "$RUNNER/post_discord.py"     # (run.sh's notes, whatever the checkout holds)
 W=$AGENTS/com.gamefactory.ashen-watch.plist
 cat > "$W" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
