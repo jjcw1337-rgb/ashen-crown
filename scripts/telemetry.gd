@@ -185,6 +185,8 @@ func _read_log() -> void:
 		var at := ""
 		if i + 1 < lines.size() and lines[i + 1].strip_edges().begins_with("at:"):
 			at = lines[i + 1].strip_edges().substr(3).strip_edges()
+		if at.contains("rendering/dummy/"):
+			continue       # (a headless server has no renderer: meshes asked about there are noise, not bugs)
 		error_event(kind, msg, at)
 
 ## Reports one error (the log reader calls it; game code may too for things worth knowing that aren't errors).
@@ -258,12 +260,17 @@ func _check_last_run() -> void:
 			newest = "user://logs/" + str(names.back())
 	var tail := ""
 	var last := ""
+	var crashed := false
 	if newest != "":
 		var lines := FileAccess.get_file_as_string(newest).split("\n")
 		tail = "\n".join(lines.slice(maxi(0, lines.size() - 80)))
 		for l in lines:
-			if l.contains("crashed") or l.begins_with("SCRIPT ERROR") or l.begins_with("ERROR"):
+			if l.contains("crashed") or l.contains("handle_crash") or l.contains("Program crashed with signal"):
+				crashed = true
+			if l.contains("crashed") or l.trim_prefix("USER ").begins_with("SCRIPT ERROR") or l.trim_prefix("USER ").begins_with("ERROR"):
 				last = l.strip_edges()
+	if server and not crashed:
+		return       # (a server stopped by systemd for a deploy never says goodbye either: only a real crash counts)
 	crumbs = d.get("crumbs", [])
 	error_event("crash", "the game closed without shutting down" + (": " + last if last != "" else ""), "", tail)
 	var ev: Dictionary = errors.back()
