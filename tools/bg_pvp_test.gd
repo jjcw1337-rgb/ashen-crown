@@ -128,8 +128,9 @@ func _player() -> void:
 		await secs(3.0)
 	else:
 		g.test_immortal = false
-		var l0: float = g.hero.life
-		check(await until(func(): return g.hero.life < l0, 60.0), "I'm being hit by the other player")
+		# (against full life: a slow start can find the attacker already at work, even done)
+		var l0: float = g.hero.max_life
+		check(await until(func(): return g.hero.life < l0 or g.hero.dead, 60.0), "I'm being hit by the other player")
 		check(await until(func(): return g.hero.dead, 60.0), "and I fell")
 		await secs(3.0)
 		g.respawn()
