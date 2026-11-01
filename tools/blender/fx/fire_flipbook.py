@@ -19,6 +19,15 @@ FRAMES = int(argv[2]) if len(argv) > 2 else 64
 PX = int(argv[3]) if len(argv) > 3 else 256
 SEED = int(argv[4]) if len(argv) > 4 else 3
 WARM = 76            # frames for the fire to rise and settle before recording
+# FIRE_KIND: body (a full fire: campfires, braziers), tongue (a tall thin flame: torches, weapons, burning foes),
+# spread (low and wide: burning ground, buildings). Each sets the domain, the fuel and the framing.
+KIND = os.environ.get("FIRE_KIND", "body")
+SHAPE = {
+    # domain (x, y, z) m, fuel radius, fuel scale, fuel height, camera (ortho, centre z), frame aspect (w / h)
+    "body":   {"dom": (0.9, 0.3, 1.8), "r": 0.095, "fs": (1.7, 0.45, 0.55), "fz": 0.1, "cam": (1.15, 0.56), "aspect": 0.5},
+    "tongue": {"dom": (0.5, 0.2, 1.6), "r": 0.05, "fs": (1.0, 1.0, 0.8), "fz": 0.08, "cam": (1.1, 0.53), "aspect": 0.5},
+    "spread": {"dom": (1.8, 0.35, 1.0), "r": 0.1, "fs": (7.0, 0.6, 0.35), "fz": 0.06, "cam": (1.6, 0.38), "aspect": 2.0},
+}[KIND]
 os.makedirs(OUT, exist_ok=True)
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -29,18 +38,18 @@ scn.render.fps = 30
 
 # --- the fuel (a lumpy little bed at the foot) and its domain, made by Blender's own Quick Smoke (a domain built
 # by hand never took up the flow in a background bake), then reshaped: 0.9 x 0.3 x 1.8 m, open but for the floor
-bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=0.095, location=(0, 0, 0.1))
+bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=SHAPE["r"], location=(0, 0, SHAPE["fz"]))
 src = bpy.context.object
 src.name = "Fuel"
-src.scale = (1.7, 0.45, 0.55)      # a line of fuel, thin in depth: separate tongues
+src.scale = SHAPE["fs"]            # (body: a line of fuel, thin in depth: separate tongues)
 bpy.ops.object.transform_apply(scale=True)
 src.select_set(True)
 bpy.context.view_layer.objects.active = src
 bpy.ops.object.quick_smoke(style="BOTH")
 dom = [o for o in bpy.data.objects if o != src and o.modifiers][0]
 dom.name = "Domain"
-dom.location = (0, 0, 0.9)
-dom.dimensions = (0.9, 0.3, 1.8)   # a thin slab: seen side-on the fire is a sheet with dark gaps, not a solid mass
+dom.location = (0, 0, SHAPE["dom"][2] * 0.5)
+dom.dimensions = SHAPE["dom"]      # a thin slab: seen side-on the fire is a sheet with dark gaps, not a solid mass
 mod = dom.modifiers[0]
 ds = mod.domain_settings
 ds.resolution_max = RES
@@ -174,10 +183,10 @@ src.hide_render = True
 # --- camera and render
 cam_data = bpy.data.cameras.new("Cam")
 cam_data.type = "ORTHO"
-cam_data.ortho_scale = 1.15
+cam_data.ortho_scale = SHAPE["cam"][0]
 cam = bpy.data.objects.new("Cam", cam_data)
 scn.collection.objects.link(cam)
-cam.location = (0, -4.0, 0.56)
+cam.location = (0, -4.0, SHAPE["cam"][1])
 cam.rotation_euler = (1.5708, 0, 0)
 scn.camera = cam
 scn.render.engine = "CYCLES"
@@ -187,8 +196,8 @@ scn.cycles.use_denoising = True
 scn.cycles.volume_step_rate = 0.5
 scn.cycles.volume_max_steps = 256
 scn.render.film_transparent = False      # RGB is the fire's light on black (it adds); no alpha
-scn.render.resolution_x = PX // 2
-scn.render.resolution_y = PX
+scn.render.resolution_x = int(PX * SHAPE["aspect"]) if SHAPE["aspect"] <= 1.0 else PX
+scn.render.resolution_y = PX if SHAPE["aspect"] <= 1.0 else int(PX / SHAPE["aspect"])
 scn.render.resolution_percentage = 100
 scn.render.image_settings.file_format = "PNG"
 scn.render.image_settings.color_mode = "RGB"

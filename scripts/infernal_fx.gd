@@ -393,7 +393,10 @@ static func particles(root: Node3D, pos: Vector3, d: Dictionary) -> GPUParticles
 		p.draw_pass_1 = q
 	p.visibility_aabb = AABB(Vector3(-6, -2, -6), Vector3(12, 8, 12))
 	root.add_child(p)
-	p.global_position = pos
+	if p.is_inside_tree():
+		p.global_position = pos
+	else:
+		p.position = pos
 	p.emitting = true
 	if p.one_shot:
 		Fx._free_later(p, p.lifetime + 0.6)
