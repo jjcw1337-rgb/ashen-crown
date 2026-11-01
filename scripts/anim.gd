@@ -19,6 +19,7 @@ static func kf(t: float, keys: Array) -> float:
 static func impact_at(style: String) -> float:
 	match style:
 		"over": return 0.5
+		"chop": return 0.55
 		"bear_maul": return Bear.MAUL_HIT
 		"bear_roar": return Bear.ROAR_AT
 		"back": return 0.48
@@ -239,6 +240,27 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 				leg_l += kf(a, [[0, 0.0], [0.3, 0.4], [0.47, 0.5], [0.7, -0.3], [1, 0.0]])
 				leg_r -= kf(a, [[0, 0.0], [0.3, 0.2], [0.47, 0.3], [0.7, -0.4], [1, 0.0]])
 				head_z += kf(a, [[0, 0.0], [0.2, 0.3], [0.45, -0.2], [1, 0.0]])
+			"chop":
+				# felling a tree (Harvest): both hands on the haft, the axe hauled back over the right shoulder with
+				# the body wound round (..0.4), the hips and shoulders whip through and the head bites the trunk
+				# at waist height (0.55), a jolt back off the wood (..0.68), and the axe drawn out for the next (..1)
+				shr.x = kf(a, [[0, 0.9], [0.4, 2.55], [0.55, 1.25], [0.62, 1.4], [0.8, 1.1], [1, 0.9]])
+				shr.y = kf(a, [[0, 0.0], [0.4, -0.75], [0.55, 0.35], [0.62, 0.25], [1, 0.0]])
+				shr.z = kf(a, [[0, 0.15], [0.4, 0.55], [0.55, 0.05], [1, 0.15]])
+				elr = kf(a, [[0, 0.7], [0.4, 1.75], [0.55, 0.25], [0.65, 0.45], [1, 0.7]])
+				shl.x = kf(a, [[0, 0.85], [0.4, 2.2], [0.55, 1.2], [0.62, 1.3], [1, 0.85]])
+				shl.z = kf(a, [[0, 0.35], [0.4, 0.85], [0.55, 0.5], [1, 0.35]])
+				ell = kf(a, [[0, 0.9], [0.4, 1.6], [0.55, 0.55], [1, 0.9]])
+				ty += kf(a, [[0, 0.0], [0.4, -0.7], [0.55, 0.4], [0.62, 0.32], [1, 0.0]])
+				tx += kf(a, [[0, 0.05], [0.4, -0.06], [0.55, 0.28], [0.65, 0.18], [1, 0.05]])
+				hip_turn += kf(a, [[0, 0.0], [0.4, -0.25], [0.55, 0.2], [1, 0.0]])
+				hy -= kf(a, [[0, 0.02], [0.4, 0.0], [0.55, 0.07], [0.7, 0.05], [1, 0.02]]) * h
+				knee_l -= kf(a, [[0, 0.15], [0.55, 0.4], [1, 0.15]])
+				knee_r -= kf(a, [[0, 0.15], [0.55, 0.35], [1, 0.15]])
+				leg_l += kf(a, [[0, 0.2], [0.55, 0.3], [1, 0.2]])
+				leg_r -= kf(a, [[0, 0.15], [0.55, 0.1], [1, 0.15]])
+				grip_p = kf(a, [[0, 0.2], [0.4, 0.9], [0.55, -0.2], [1, 0.2]])
+				head_x = kf(a, [[0, 0.15], [0.4, 0.05], [0.55, 0.25], [1, 0.15]])
 			"over":
 				shr.x = kf(a, [[0, 0.3], [0.35, 3.3], [0.52, 0.45], [1, 0.3]])
 				shr.z = kf(a, [[0, 0.1], [0.35, 0.55], [0.52, -0.3], [1, 0.1]])

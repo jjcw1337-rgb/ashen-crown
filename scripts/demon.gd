@@ -54,6 +54,8 @@ const SHOTS := {
 	"swipe3": {"style": "swipe3", "clip": "slam", "keys": [[0.0, 0.6], [0.47, 2.75], [1.0, 3.0]]},
 	"over": {"style": "over", "clip": "smash", "keys": [[0.0, 0.7], [0.5, 1.58], [0.75, 2.0], [1.0, 2.7]]},
 	"back": {"style": "back", "clip": "claw", "keys": [[0.0, 0.7], [0.48, 1.33], [0.75, 1.7], [1.0, 2.3]]},
+	# felling a tree (Harvest): Meshy's Charged Axe Chop is his "smash", the blow into the trunk at 0.55
+	"chop": {"style": "chop", "clip": "smash", "keys": [[0.0, 0.7], [0.55, 1.58], [0.8, 2.0], [1.0, 2.7]]},
 	"thrust": {"style": "thrust", "clip": "hurl", "keys": [[0.0, 0.5], [0.52, 1.75], [0.8, 2.3], [1.0, 3.3]]},
 	# his skills (DemonSkills): the punch, the charge (the clip loops through the run), the slam, the throw (the
 	# boulder leaves at the release), the grab (seized at 0.25, held up, smashed at 0.5), the roar and the stomp

@@ -73,6 +73,8 @@ const UNLOCK_ALL_ACTS := true
 var admin_name := AdminKey.holder()
 var dev_tools := UNLOCK_ALL_ACTS and (OS.has_feature("editor") or admin_name != "")
 var run_progress := {}       # per run: its waypoints and whether its boss is dead
+var played_s := 0.0          # seconds this character has been played (saved); the clock trees regrow on (Harvest)
+var harvest_saved := {}      # "<run>:<act>:<zone>" -> Harvest.to_save() (the felled trees and when they regrow)
 var tp_link := {}
 var xp_bonus_t := 0.0
 var shops := {}
@@ -885,6 +887,28 @@ func start_a2() -> void:
 	await load_zone(cur_act, "town", "start")
 	run_banner()
 
+## The zone's felled trees into the save's record (the host's forest is the one that counts in co-op).
+func _harvest_key() -> String:
+	return "%d:%d:%s" % [difficulty, cur_act, str(cur_zone)]
+
+func _store_harvest() -> void:
+	if world == null or net.is_client():
+		return
+	var h := Harvest.of(world)
+	if h == null:
+		return
+	var d := h.to_save()
+	if d.is_empty():
+		harvest_saved.erase(_harvest_key())
+	else:
+		harvest_saved[_harvest_key()] = d
+
+func _restore_harvest() -> void:
+	var h := Harvest.of(world)
+	if h == null or net.is_client():
+		return
+	h.from_save(harvest_saved.get(_harvest_key(), {}), played_s)
+
 func _store_progress() -> void:
 	run_progress[str(difficulty)] = {"waypoints": waypoints_known.duplicate(), "boss": boss_killed}
 
@@ -926,6 +950,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if world:
+		_store_harvest()
 		world.queue_free()
 		world = null
 		hovered = null
@@ -940,6 +965,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	world.run = difficulty                 # A2 builds its own road and Aurelia
 	add_child(world)
 	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair"].find(zone) * 7)
+	_restore_harvest()
 	_end_underworld_now()
 	_zone_env(zone)
 	_grass_zone(zone)
@@ -1195,6 +1221,8 @@ func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
 		difficulty = 0
 		max_run = 0
 		run_progress = {}
+		played_s = 0.0
+		harvest_saved = {}
 		quests.from_save({})
 		waypoints_known = ["town"]
 		boss_killed = false
@@ -1330,8 +1358,9 @@ func save_game() -> void:
 	if char_id == "" and not _testing():
 		return
 	_store_progress()
+	_store_harvest()
 	var d := {"hero": hero.to_save(), "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed, "difficulty": difficulty,
-		"max_run": max_run, "runs": run_progress, "quests": quests.to_save(), "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
+		"max_run": max_run, "runs": run_progress, "quests": quests.to_save(), "harvest": {"t": played_s, "zones": harvest_saved}, "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
 	DirAccess.make_dir_recursive_absolute(char_dir)
 	var f := FileAccess.open(save_path(), FileAccess.WRITE)
 	if f:
@@ -1361,6 +1390,9 @@ func load_game() -> bool:
 		max_run = 2
 	run_progress = d.get("runs", {})
 	quests.from_save(d.get("quests", {}))
+	var hv: Dictionary = d.get("harvest", {}) if d.get("harvest") is Dictionary else {}
+	played_s = float(hv.get("t", 0.0))
+	harvest_saved = (hv.get("zones", {}) as Dictionary).duplicate(true) if hv.get("zones") is Dictionary else {}
 	return true
 
 ## Every saved character, the last played first: [{id, name, cls, level, difficulty, act, played}].
@@ -1459,8 +1491,8 @@ func _stock_shops() -> void:
 	var lvl := maxi(hero.level, 1) + 1
 	var r := RandomNumberGenerator.new()
 	r.randomize()
-	var smith := []
-	for i in 14:
+	var smith := [Items.make("woodsman_axe")]     # a spare felling axe, always on the smith's rack
+	for i in 13:
 		var b := Items.pick_base(lvl + 2, r, "weapon" if i < 9 else "shield")
 		smith.append(Items.generate(b, lvl, 1 if r.randf() < 0.4 else 0, r))
 	var armor := []
@@ -1628,6 +1660,14 @@ func _vendor_talk(t: Inter) -> void:
 
 func _interact(t: Inter) -> void:
 	match t.kind:
+		"tree":
+			# a harvestable tree (Harvest): walk up, and the hero sets to it with an axe
+			hero.start_chop(t)
+		"furnace":
+			# Halvar's furnace (Furnace): temper a weapon over felled wood
+			if t is Furnace:
+				Sfx.play("bonfire_open", -10.0, 0.8)
+				ui.open_furnace(t)
 		"extract":
 			if bg_mode and net.is_client() and not hero.dead:
 				ui.message("Extracting...", Color(0.6, 0.85, 1.0))
@@ -2067,6 +2107,12 @@ func _update_hover() -> void:
 			col = Color(0.85, 0.66, 0.38)
 		ui.target_bar.visible = true
 		ui.show_target(hovered.display_name, hovered.life / hovered.max_life, col)
+	elif hovered is Harvest.HTree:
+		var tr: Harvest.HTree = hovered
+		if tr.state == "stand":
+			ui.show_target("%s  ·  %s" % [tr.label, "Chop" if hero.chop_axe()[0] != "" else "Needs an axe"], tr.hp / tr.max_hp, Color(0.78, 0.62, 0.4))
+		else:
+			ui.show_target("%s stump" % tr.label, 0.0, Color(0.55, 0.5, 0.42))
 	elif hovered is Inter:
 		ui.show_target(hovered.label, 1.0, Color(0.85, 0.75, 0.5))
 		ui.target_bar.visible = false
@@ -2224,6 +2270,8 @@ func _process(delta: float) -> void:
 	if world == null:
 		return
 	xp_bonus_t = maxf(0.0, xp_bonus_t - delta)
+	if playing and not paused:
+		played_s += delta
 	exit_grace = maxf(0.0, exit_grace - delta)
 	_drop_stale()
 	_update_grade(real_dt)

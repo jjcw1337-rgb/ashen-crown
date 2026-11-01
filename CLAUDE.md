@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `grass_test`, `collision_test`, `aim_test`, `plague_test` (`--fixed-fps 60`), `hoard_test`, `coop_fx_test` (every skill's effects reach a puppet, in one process), `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), `bg_test` (the Battlegrounds: a server and a client, `-- --server --port 24611 server` and `-- client 24611`), and the co-op pairs `mp_test`, `mp_boss_test` and `plague_mp_test` (run one copy
+`det_test`, `woodcut_test` (`--fixed-fps 60`), `temper_test`, `woodcut_mp_test` (host + join), `grass_test`, `collision_test`, `aim_test`, `plague_test` (`--fixed-fps 60`), `hoard_test`, `coop_fx_test` (every skill's effects reach a puppet, in one process), `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), `bg_test` (the Battlegrounds: a server and a client, `-- --server --port 24611 server` and `-- client 24611`), and the co-op pairs `mp_test`, `mp_boss_test` and `plague_mp_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -81,6 +81,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `hoard.gd` | King Grubb's fight (Act I boss): Gilded Bombs, the three burst sacks, the gold scramble (piles reaching him heal him; piles a hero takes hurt him) |
 | `goblin.gd`, `sculpt.gd` | Goblin models: King Grubb is the imported mutant (`Goblin.MUTANT`: joint layout + glb, skinned onto the game's skeleton); the Gold Grabbers (and Grubb's fallback) are code-sculpted (`Sculpt` melts SDF shapes into one skinned mesh). `Goblin.after_pose` adds ears, jaw, crown wobble, belly jiggle, sacks and the goblin gaits |
 | `ground_item.gd`, `inter.gd` | Loot on the ground; interactables (chests, shrines, waypoints, portals, NPCs) |
+| `harvest.gd`, `wood.gd` | Woodcutting: Act I's harvestable trees (`Harvest`, `Harvest.HTree`), chopping, felling, stumps, respawns; wood made in code (logs, end grain, notches, chips and debris) |
+| `furnace.gd`, `furnace_ui.gd` | Halvar's furnace in the Act I camp: the heat model and weapon tempering (`Furnace`); its window (`FurnaceUI`) |
 | `items.gd` | Item rolls, `empower` (A2/A3 multipliers), enchanting, tooltips |
 | `net.gd` | LAN co-op over ENet (UDP 24567, discovery 24568); RPC layer; `server` = a dedicated host with no player (Battlegrounds) |
 | `coop_server.gd` | Online co-op: the story game hosted by a dedicated server (see "Online co-op") |
@@ -687,6 +689,49 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   inventory; drag an item onto the flames or right-click it to burn it for good (`UI.burn_request`, `Game.burned`: the
   `burn_item` sound and a flare); rare, unique and material items ask first. A click on an inventory item plays
   `inv_click`. `tools/bonfire_test.gd`, `tools/bonfire_shot.gd`.
+- **Woodcutting** (`scripts/harvest.gd` `Harvest`, visuals `scripts/wood.gd` `Wood`; Act I's moor): `Harvest.pick`
+  takes up to `CAP` (24) trees out of `World._build_wild`'s MultiMesh groups on its own seed (the same on every peer;
+  8-42 m off the road, `SPACING` apart, never by the arrival point; Ferals never perch on them since they're gone from
+  the groups before `_feral_packs`), `HEARTWOODS` of them Ashen Heartwood from the dead trees; the rest stay scenery.
+  `Harvest.build` makes each a `Harvest.HTree` (an `Inter`, kind `"tree"`, in `world.interactables`, so hovering,
+  clicking and walking up are the usual interaction; `Game._interact` -> `Hero.start_chop`), keeps the footprint World
+  already had for it (`World.obstacle_at`; a stump shrinks it, regrowth restores it) and cuts its mesh in two at the
+  cut (`Harvest.split_mesh`) for the stump and the falling trunk. Kinds and numbers: `Harvest.KINDS` (Moor Oak 7
+  blows / 3-4 logs / 8 min, Old Pine 4 / 2-3 / 6 min, Ashen Heartwood 14 / 1-2 / 25 min). Chopping (`Hero.chop_*`):
+  the hero needs an axe (`Hero.chop_axe`: the `woodsman_axe` tool every hero gets in the last bag cell, sold by the
+  smith, or a combat axe, `Data.CHOP_POWER`), puts his weapon away and swings style `"chop"` (an attack with
+  `atk_skill` `"chop"`; Anim's procedural chop for every body, whole-body clips where a body has them: the Demon's
+  Charged Axe Chop, the Wraith's slam with a spectral axe, the Plague Doctor's censer slam; per class
+  `Data.CHOP_PROFILES`, a missing class gets `DEFAULT_CHOP`), one blow per swing on its impact frame
+  (`Harvest.strike_from`); moving, a skill, a target or a blow taken stops him (`stop_chop`). **The host owns the
+  trees**: a partner's blow is `Net.request_chop` -> `sv_chop`, and `Harvest.strike` refuses it beyond `REACH`, faster
+  than `STRIKE_GAP` or at a felled tree; what happens goes to everyone as `Net.cl_tree` events (`hit`, `fell`,
+  `heal`, `regrow`; `play_event`), joiners get `cl_trees` in the snapshot; the logs are ordinary host ground items
+  (`Game.drop_item`, one pickup each). Wounds heal after `HEAL_AFTER`; stumps regrow on the host character's played
+  time (`Game.played_s`, saved) after the kind's respawn, only with no hero within `REGROW_CLEAR`; stumps are saved
+  with the character (`Game.harvest_saved`, `"harvest"` in the save, keyed `run:act:zone`). Off in the Battlegrounds.
+  Sounds: `Harvest.snd` uses `axe_chop`, `bark_crack`, `tree_creak`, `tree_fall`, `tree_thud`, `leaves_rustle`,
+  `log_pickup` when they're in the bank and existing sounds pitched to fit until then (`SOUND_STAND_IN`).
+  Resources: `Data.BASES` slot `"resource"` (`oak_log`, `pine_log`, `heartwood`: `"stack"`, `"fuel"`), stacked by
+  `Hero.add_to_inventory` (`Items.stack_cap`), counted and taken with `Hero.count_of`/`take_items`; slot `"tool"`
+  for the axe. New resources (ore, coal) are BASES entries. Tests: `tools/woodcut_test.gd` (`--fixed-fps 60`),
+  `tools/woodcut_mp_test.gd` (host + join); screenshots `tools/woodcut_shots.gd -- outdir [class]` (xvfb).
+- **Weapon tempering** (`scripts/furnace.gd` `Furnace`, window `scripts/furnace_ui.gd` `FurnaceUI`): Halvar's furnace
+  stands beside his forge in the Act I camp (`Furnace.place` from `ForestCamp.build`; Inter kind `"furnace"` ->
+  `UI.open_furnace`, shop_mode `"furnace"`: right-click a weapon in the bag to put it before the fire, a log to load
+  it, Shift for five). **Weapons only** (armour keeps the gold enchanting), `Items.TEMPER_MAX` (+5) levels, each
+  +`TEMPER_ED`% (6) enhanced damage and +1 damage (`Items.stat_sum`'s `"temper"`). The heat model (`Furnace.step`):
+  `dT/dt = (P - LOSS (T - AMBIENT)) / MASS`, at most `SLOTS` (3) logs burning, in the order loaded, each for its
+  `"burn"`; the fire can't pass the best fuel's `"max_temp"` (pine 1040, oak 1240, Heartwood 1400 = `MAX_T`); the
+  bellows (held) give `BELLOWS_HEAT` more heat and burn twice as fast; it cools once the wood is gone. A level
+  (`Items.temper_cost`): its band (`TEMPER_BANDS` 600/850/1050/1250/1350 °C), a charge of logs (from +4 with Ashen
+  Heartwood, so oak first to raise the fire, then the Heartwood), the smith's fee, and a soak that only runs while
+  the fire is at the band; Quench after the soak = the level, before it = nothing (the weapon is safe, the charge is
+  spent and burns on in `spent`). Closing the window mid-temper is a quench before time. Each player's own (nothing
+  crosses the network). Visuals: flame cards and coals shaded by the heat (`FLAME_SHADER`, `COALS_SHADER`,
+  `heat_color`), the weapon glowing in the mouth (`HOT_METAL_SHADER`), embers, sparks, chimney smoke, heat haze
+  (screen texture; not on the web), the bellows working; the roar is `furnace_roar` when it exists (the wind pitched
+  down until then). Test: `tools/temper_test.gd`.
 - **Birds** (`scripts/birds.gd`, Act I outdoors, added by `Game.load_zone`): flocks of dark swept-wing silhouettes cross
   the sky round the hero (flapping, gliding, banking, shadows), and every 25-50 s a flock bursts out of the trees near
   him with `birds_flutter`. Cosmetic and local (not synced). Screenshot: `tools/birds_shot.gd`.

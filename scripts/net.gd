@@ -10,7 +10,7 @@ const MAX_CLIENTS := 3
 const STYLES := ["over", "back", "side", "thrust", "bow", "cast", "claw", "slam", "bite", "smash", "lob", "scoop", "burst", "cackle", "swipe1", "swipe2", "swipe3", "cleave", "feral_lunge", "feral_swipe", "perch", "descend", "skirm_lunge", "reaver_cleave", "stalk_hook", "bear_roar", "bear_maul", "sloth_walk", "sloth_run", "sloth_rise", "sloth_look", "sloth_stare", "sloth_roar", "sloth_drop", "sloth_sniff", "sloth_sweep", "sloth_slam", "sloth_pounce",
 	"rend", "siphon", "wstep", "grasp", "phantom", "night_rise", "night_scream", "night_hold", "night_fall",
 	"pd_flask", "pd_volatile", "pd_trap", "pd_slam", "pd_dome", "pd_inspect",
-	"fists", "icharge", "cslam", "hurl", "grip", "wrath_roar", "wrath_stomp"]
+	"fists", "icharge", "cslam", "hurl", "grip", "wrath_roar", "wrath_stomp", "chop"]
 const SEND_RATE := 0.05
 const ALLY_COLORS := [Color(0.45, 0.8, 1.0), Color(0.5, 1.0, 0.5), Color(1.0, 0.6, 0.9)]
 
@@ -489,6 +489,12 @@ func _send_snapshot(pid: int) -> void:
 		var e = enemies[id]
 		if is_instance_valid(e) and e.boss and e.aggro and not e.dead:
 			rpc_id(pid, "cl_boss_aggro", id)
+	# the felled and the wounded trees (Harvest)
+	var hv := Harvest.of(game.world)
+	if hv != null:
+		var snap := hv.snapshot()
+		if not snap.is_empty():
+			rpc_id(pid, "cl_trees", snap)
 
 # ---------------------------------------------------------------- enemies
 func on_spawn(e: Enemy) -> void:
@@ -851,6 +857,46 @@ func cl_inter(idx: int) -> void:
 	var t = game.world.interactables[idx]
 	if is_instance_valid(t) and not t.used:
 		game.use_inter_remote(t)
+
+# ---------------------------------------------------------------- woodcutting (Harvest; the host owns the trees)
+func request_chop(id: int, power: float) -> void:
+	rpc_id(1, "sv_chop", id, power)
+
+## Host: a partner's axe blow. The host checks it (Harvest.strike: the tree stands, the partner is by it, not
+## too quick), applies it and tells everyone.
+@rpc("any_peer", "call_remote", "reliable")
+func sv_chop(id: int, power: float) -> void:
+	# a dedicated server hosting the story game owns the trees just like a player host
+	if not is_host or game.world == null:
+		return
+	var pid := multiplayer.get_remote_sender_id()
+	var h := Harvest.of(game.world)
+	var ph = players.get(pid, {}).get("hero")
+	if h == null or not is_instance_valid(ph):
+		return
+	h.strike(id, pid, ph.global_position, power)
+
+## Host -> everyone: what happened to a tree ("hit", "fell", "heal", "regrow").
+func send_tree(id: int, ev: String, data: Dictionary) -> void:
+	if players.is_empty():
+		return
+	rpc("cl_tree", id, ev, data)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_tree(id: int, ev: String, data: Dictionary) -> void:
+	if loading or game.world == null:
+		return
+	var h := Harvest.of(game.world)
+	if h != null:
+		h.play_event(id, ev, data)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_trees(d: Dictionary) -> void:
+	if loading or game.world == null:
+		return
+	var h := Harvest.of(game.world)
+	if h != null:
+		h.apply_snapshot(d)
 
 func request_portal(pos: Vector3) -> void:
 	rpc_id(1, "sv_portal", pos)

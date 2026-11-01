@@ -99,6 +99,7 @@ var shop_who: Label
 var shop_role: Label
 var shop_greet: Label
 var shop_face: PanelContainer  # holds the trader's live portrait
+var furnace_ui: FurnaceUI      # the furnace window (furnace_ui.gd), opened at Halvar's furnace
 var trade_with: Inter = null   # the NPC whose window (dialog, trade, stash) is open: walking off closes it
 var plates: Control            # VendorUI.Plates: nameplates over the town's people
 var stash_panel: PanelContainer
@@ -168,6 +169,9 @@ func setup(g: Node) -> void:
 	_build_shop()
 	_build_stash()
 	_build_burn()
+	furnace_ui = FurnaceUI.new()
+	root.add_child(furnace_ui)
+	furnace_ui.build(self)
 	_build_vote()
 	_build_waypoints()
 	_build_dialog()
@@ -1772,6 +1776,8 @@ func _inv_click(idx: int, ev: InputEventMouseButton) -> void:
 			refresh()
 		elif shop_mode == "burn":
 			burn_request(idx)
+		elif shop_mode == "furnace":
+			furnace_ui.bag_click(idx, ev.shift_pressed)
 		elif shop_mode == "stash":
 			for i in hero.stash.size():
 				if hero.stash[i] == null:
@@ -2268,7 +2274,7 @@ func _build_shop() -> void:
 	vb.add_child(_label("Left-click to buy  ·  Right-click your own items to sell  ·  Walk away to close", 13, DIM))
 
 const SHOP_KINDS := {"weapon": "Weapons", "shield": "Shields", "armor": "Armour", "helm": "Armour", "gloves": "Armour",
-	"boots": "Armour", "belt": "Armour", "ring": "Jewellery", "amulet": "Jewellery", "potion": "Potions"}
+	"boots": "Armour", "belt": "Armour", "ring": "Jewellery", "amulet": "Jewellery", "potion": "Potions", "tool": "Tools", "resource": "Goods"}
 
 static func shop_kind(it: Dictionary) -> String:
 	return str(SHOP_KINDS.get(str(Data.BASES[it["base"]]["slot"]), "Goods"))
@@ -2278,6 +2284,8 @@ func shop_cost(it: Dictionary) -> int:
 
 ## The trade window, headed by the trader (who, when there is one: their portrait, name and trade).
 func open_shop(mode: String, title: String, items: Array, who: Inter = null, greet := "") -> void:
+	if furnace_ui != null:
+		furnace_ui.visible = false
 	shop_mode = mode
 	shop_items = items
 	shop_title.text = title
@@ -2421,6 +2429,8 @@ func _build_stash() -> void:
 		stash_cells.append(c)
 
 func open_stash() -> void:
+	if furnace_ui != null:
+		furnace_ui.visible = false
 	shop_mode = "stash"
 	burn_panel.visible = false
 	stash_panel.visible = true
@@ -2757,7 +2767,22 @@ class FireIcon extends Control:
 					draw_line(r, r + Vector2(cos(ang), sin(ang)) * s * 0.16, Color(0.55, 0.9, 1.0, glow), 2.0)
 				draw_circle(r, s * 0.05, Color(0.8, 0.95, 1.0, glow))
 
+## Halvar's furnace: the furnace window beside the bag (FurnaceUI); right-clicks in the bag feed it.
+func open_furnace(f: Furnace) -> void:
+	ench_panel.visible = false
+	burn_panel.visible = false
+	stash_panel.visible = false
+	shop_panel.visible = false
+	char_panel.visible = false
+	shop_mode = "furnace"
+	trade_with = f
+	furnace_ui.open(f)
+	inv_panel.visible = true
+	refresh()
+
 func open_burn() -> void:
+	if furnace_ui != null:
+		furnace_ui.visible = false
 	shop_mode = "burn"
 	ench_panel.visible = false
 	_bonfire_select("burn")
@@ -3531,6 +3556,8 @@ func _build_enchant() -> void:
 	vb.add_child(ench_gold)
 
 func open_enchant(title: String) -> void:
+	if furnace_ui != null:
+		furnace_ui.visible = false
 	close_all()
 	(ench_panel.get_node("vb").get_child(0).get_node("title") as Label).text = title + " · Enchanting"
 	ench_panel.visible = true
@@ -4269,21 +4296,21 @@ func toggle(panel: Control) -> void:
 func _walked_off() -> void:
 	if trade_with == null:
 		return
-	var open := shop_panel.visible or stash_panel.visible or burn_panel.visible or dialog_panel.visible or ench_panel.visible
+	var open := shop_panel.visible or stash_panel.visible or burn_panel.visible or furnace_ui.visible or dialog_panel.visible or ench_panel.visible
 	if not open or not is_instance_valid(trade_with) or hero == null:
 		trade_with = null
 		return
 	var d: Vector3 = hero.global_position - trade_with.global_position
 	if Vector2(d.x, d.z).length() > trade_with.radius + 3.0:
 		trade_with = null
-		for p in [shop_panel, stash_panel, burn_panel, dialog_panel, ench_panel, inv_panel]:
+		for p in [shop_panel, stash_panel, burn_panel, furnace_ui, dialog_panel, ench_panel, inv_panel]:
 			p.visible = false
 		shop_mode = ""
 		tooltip.visible = false
 
 func close_all() -> bool:
 	var any := close_skill_picker()
-	for p in [inv_panel, char_panel, shop_panel, stash_panel, burn_panel, wp_panel, dialog_panel, ench_panel, test_panel, skills_panel, talent_panel, quest_panel]:
+	for p in [inv_panel, char_panel, shop_panel, stash_panel, burn_panel, furnace_ui, wp_panel, dialog_panel, ench_panel, test_panel, skills_panel, talent_panel, quest_panel]:
 		if p.visible:
 			p.visible = false
 			any = true
@@ -4292,7 +4319,7 @@ func close_all() -> bool:
 	return any
 
 func any_panel_open() -> bool:
-	return inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible or quest_panel.visible
+	return inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or furnace_ui.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible or quest_panel.visible
 
 func message(t: String, col := Color(1, 1, 1), dur := 2.5) -> void:
 	msg_lbl.text = t

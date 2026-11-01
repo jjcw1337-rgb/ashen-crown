@@ -266,6 +266,14 @@ func add_box(p: Vector3, half: Vector2, yaw: float) -> void:
 	obstacles.append([Vector2(p.x, p.z), -1.0, half, yaw])
 	_bucket(obstacles.size() - 1, Vector2(p.x, p.z), half.length())
 
+## The index of the circle footprint centred at `c` (within 5 cm), or -1. Harvest finds its trees' this way.
+func obstacle_at(c: Vector2) -> int:
+	for i in _near(c):
+		var o: Array = obstacles[i]
+		if float(o[1]) > 0.0 and (o[0] as Vector2).distance_to(c) < 0.05:
+			return i
+	return -1
+
 ## Registers a prop's own footprint (see Props.footprint) where the prop stands.
 func solid(node: Node3D) -> Node3D:
 	if not node.has_meta("footprint"):
@@ -1513,6 +1521,15 @@ func _build_wild() -> void:
 						if not groups.has("bush"):
 							groups["bush"] = []
 						groups["bush"].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.8, 1.2)), Vector3(pb.x, height_at(pb.x, pb.y) - 0.15, pb.y)))
+	# Act I: a few of the trees can be felled (Harvest); they come out of the groups and get their own nodes
+	var harvest_specs: Array = []
+	if oak_forest and act == 0:
+		var hm := {}
+		for k3 in 3:
+			hm["oak%d" % k3] = oak_meshes[k3]
+			hm["pine%d" % k3] = pine_meshes[k3]
+			hm["dead%d" % k3] = dt_meshes[k3]
+		harvest_specs = Harvest.pick(self, groups, hm)
 	# a share of the trees near the road burn in A3
 	for key in groups.keys():
 		if key.begins_with("pine") or key.begins_with("dead"):
@@ -1591,6 +1608,7 @@ func _build_wild() -> void:
 		spawns[k[0]] = Vector3(rp.x, 0, rp.y)
 	spawns["from_town"] = Vector3(0, 0, -6)
 	spawns["from_lair"] = Vector3(end_p.x, 0, end_p.y + 4.5)
+	Harvest.build(self, harvest_specs)
 
 # ---------------------------------------------------------------- dungeon: the crypt and Grubb's Hoard
 var floor_rects: Array = []

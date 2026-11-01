@@ -514,6 +514,7 @@ func new_character() -> void:
 	belt[0]["count"] = 4
 	belt[1]["count"] = 4
 	belt[2]["count"] = 3
+	inventory[39] = Items.make("woodsman_axe")     # every hero in the Wilds carries a felling axe (Harvest)
 	recalc()
 	life = max_life
 	mana = max_mana
@@ -728,7 +729,7 @@ func _carry_weapon(delta: float) -> void:
 			weapon_node.reparent(dest, true)
 		_set_hilt(not in_hand and store == "hilt")
 	# hidden in the scabbard; on the back it stays in view
-	weapon_node.visible = (in_hand or store != "hilt") and not (pd != null and pd.hands_busy)   # the plague doctor puts his cane away to throw
+	weapon_node.visible = (in_hand or store != "hilt") and not (pd != null and pd.hands_busy) and _chop_axe == null   # the plague doctor puts his cane away to throw; the felling axe replaces it
 	# ease into the hold (identity in the hand; the back mount's own rest)
 	var k := 1.0 - exp(-delta * 16.0)
 	weapon_node.transform = weapon_node.transform.interpolate_with(Transform3D.IDENTITY, k)
@@ -789,6 +790,7 @@ static func _hidden_mat() -> StandardMaterial3D:
 func cmd_move(p: Vector3, direct := false) -> void:
 	if dead or charge_t >= 0.0:
 		return
+	stop_chop()
 	end_drain()
 	target = null
 	_set_goal(p, direct)
@@ -890,6 +892,98 @@ func free_attack(aim: Vector3) -> void:
 ## Right-click: the next swipe of the combo toward the cursor. Pressing again late in a swipe queues
 ## the next one, which cuts off that swipe's recovery so the three flow together; the finisher
 ## (a full spin that hits all round) always plays out, and the chain starts over after a pause.
+# ---------------------------------------------------------------- woodcutting (Harvest)
+var chop_tree = null              # the Harvest.HTree he's felling
+var chop_power := 0.0
+var _chop_axe: Node3D = null      # the felling axe in his hand while he chops (none when his weapon is the axe)
+var _chop_axe_base := ""
+
+## Starts felling a tree he has walked up to (Game._interact "tree"). False, with a word why, when he can't.
+func start_chop(t) -> bool:
+	if dead or not is_instance_valid(t) or str(t.state) != "stand":
+		return false
+	if game.bg_mode:
+		return false
+	var ax := chop_axe()
+	if str(ax[0]) == "":
+		game.ui.message("You need an axe to fell trees. Halvar the smith sells them.", Color(1, 0.6, 0.35))
+		Sfx.play("deny")
+		return false
+	chop_tree = t
+	chop_power = float(ax[1])
+	target = null
+	moving = false
+	path = PackedVector3Array()
+	var w = equipment.get("weapon")
+	_show_chop_axe(not (w != null and str(w["base"]) == str(ax[0])), str(ax[0]))
+	if atk_t < 0.0:
+		_chop_swing()
+	return true
+
+## One swing of the axe at the trunk: turned square to it, the class's own swing time (Data.CHOP_PROFILES).
+func _chop_swing() -> void:
+	var d: Vector3 = (chop_tree as Node3D).global_position - global_position
+	d.y = 0.0
+	if d.length() > 0.05:
+		_face(d.normalized())
+	var prof := Data.chop_profile(cls)
+	_start_attack("chop", "chop")
+	atk_dur = float(prof["swing"])
+	Sfx.play_synced("swing_heavy", Anim.impact_at("chop") * atk_dur - 0.05, -7.0, 0.82)
+
+func _chop_ok() -> bool:
+	if dead or not is_instance_valid(chop_tree) or str(chop_tree.state) != "stand":
+		return false
+	var tp: Vector3 = (chop_tree as Node3D).global_position
+	return Vector2(tp.x - global_position.x, tp.z - global_position.z).length() <= float(chop_tree.radius) + 0.8
+
+func _chop_impact() -> void:
+	if _chop_ok():
+		Harvest.strike_from(self, int(chop_tree.id), chop_power)
+
+func _chop_next() -> void:
+	if _chop_ok():
+		_chop_swing()
+	else:
+		stop_chop()
+
+## Puts the axe away (moving, a skill, a blow taken, the tree down).
+func stop_chop() -> void:
+	if chop_tree == null and _chop_axe == null:
+		return
+	if atk_skill == "chop":
+		atk_t = -1.0
+		atk_skill = ""
+	chop_tree = null
+	_show_chop_axe(false, "")
+
+## The felling axe in his weapon hand (sized for his body; the Wraith's is a spectral one), his own weapon away.
+func _show_chop_axe(on: bool, base: String) -> void:
+	if rig == null:
+		return
+	if on and _chop_axe != null and _chop_axe_base == base:
+		return
+	if _chop_axe != null:
+		if is_instance_valid(_chop_axe):
+			_chop_axe.queue_free()
+		_chop_axe = null
+		_chop_axe_base = ""
+	if on and base != "":
+		var J: Dictionary = rig.get_meta("j")
+		var hand: Node3D = J.get("grip_r", null)
+		if hand == null:
+			return
+		var prof := Data.chop_profile(cls)
+		_chop_axe = Models.item_model(Items.make(base))
+		_chop_axe.scale = Vector3.ONE * float(prof["axe_scale"])
+		if prof.get("spectral", false):
+			for mi in _chop_axe.find_children("*", "MeshInstance3D", true, false):
+				(mi as MeshInstance3D).material_overlay = Mats.glow(Color(0.45, 0.9, 1.0), 1.1, 0.0, 0.8)
+		hand.add_child(_chop_axe)
+		_chop_axe_base = base
+	if weapon_node != null and is_instance_valid(weapon_node) and puppet:
+		weapon_node.visible = _chop_axe == null
+
 func swipe_attack(aim: Vector3, keep_target := false) -> void:
 	if dead or charge_t >= 0.0 or drain_t >= 0.0 or daze_t > 0.0:
 		return
@@ -974,6 +1068,8 @@ func _face_smooth(d: Vector3, delta: float) -> void:
 func cmd_target(t) -> void:
 	if dead or charge_t >= 0.0:
 		return
+	if t != chop_tree:
+		stop_chop()
 	end_drain()
 	target = t
 	if is_instance_valid(t):
@@ -1007,6 +1103,7 @@ func cmd_wasd(dir: Vector3) -> void:
 		wasd_heading = Vector3.ZERO
 	if dir.length() > 0.1:
 		end_drain()
+		stop_chop()
 		if not (is_instance_valid(target) and target is Enemy):
 			target = null
 		path = PackedVector3Array()
@@ -1035,6 +1132,7 @@ func can_act() -> bool:
 	return not dead and atk_t < 0.0 and charge_t < 0.0 and drain_t < 0.0
 
 func use_skill(id: String, aim: Vector3) -> bool:
+	stop_chop()
 	if dead or charge_t >= 0.0 or daze_t > 0.0:
 		return false
 	if atk_t >= 0.0 and atk_skill != "":
@@ -1198,6 +1296,7 @@ func _hit_enemy(e, mult: float, knock: float = 0.0, src := "", flat := 0.0) -> v
 	game.add_shake(0.15 if not r["crit"] else 0.3)
 
 func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String = "phys") -> void:
+	stop_chop()
 	if dead:
 		return
 	if puppet:
@@ -1492,6 +1591,8 @@ func _process(delta: float) -> void:
 		st["atk"] = 0.6
 		st["style"] = "cast"
 	if not puppet:
+		if _chop_axe != null and not is_instance_valid(chop_tree):
+			stop_chop()
 		carry.update(self, delta)
 		st.merge(carry.anim_state(), true)
 		_carry_weapon(delta)
@@ -1633,6 +1734,7 @@ func _puppet_process(delta: float) -> void:
 	move_amt = st.get("move", 0.0)
 	block_amt = st.get("block", 0.0)
 	atk_t = 0.0 if st.get("atk", -1.0) >= 0.0 else -1.0
+	_show_chop_axe(atk_t >= 0.0 and str(st.get("style", "")) == "chop", "woodsman_axe")
 	Anim.pose(rig, st)
 	if is_archer():
 		Archer.pose_bow(self, st)
@@ -1674,12 +1776,18 @@ func _update_attack(delta: float) -> void:
 		_swipe(swipe_aim, swipe_keep)
 		return
 	if atk_t >= atk_dur:
+		var was_chop := atk_skill == "chop"
 		atk_t = -1.0
 		atk_skill = ""
 		if swipe and atk_style == "swipe3":
 			swipe_n = 0
+		if was_chop:
+			_chop_next()
 
 func _impact() -> void:
+	if atk_skill == "chop":
+		_chop_impact()
+		return
 	var fwd := aim_dir()
 	# a skill (or the archer's shot): its class's script deals it
 	if ClassSkills.impact(self):
@@ -1791,6 +1899,12 @@ func add_to_inventory(it: Dictionary) -> bool:
 		stats_changed.emit()
 		it["count"] = n
 		return n <= 0
+	if Items.stack_cap(it["base"]) > 1:
+		# resources (wood): onto matching stacks first, then empty cells, each up to the base's "stack"
+		var left := _stack_into(inventory, it, Items.stack_cap(it["base"]), int(it.get("count", 1)), false)
+		stats_changed.emit()
+		it["count"] = left
+		return left <= 0
 	for i in inventory.size():
 		if inventory[i] == null:
 			inventory[i] = it
@@ -1830,13 +1944,63 @@ func stack_potions() -> void:
 				it["count"] = n
 				inventory[i] = it
 
+## How many of a base the inventory holds, across all its stacks.
+func count_of(base_id: String) -> int:
+	var n := 0
+	for s in inventory:
+		if s != null and s["base"] == base_id:
+			n += int(s.get("count", 1))
+	return n
+
+## Takes n of a base out of the inventory (smallest stacks first). False, and nothing taken, if there aren't enough.
+func take_items(base_id: String, n: int) -> bool:
+	if n <= 0:
+		return true
+	if count_of(base_id) < n:
+		return false
+	var cells := []
+	for i in inventory.size():
+		if inventory[i] != null and inventory[i]["base"] == base_id:
+			cells.append(i)
+	cells.sort_custom(func(x, y): return int(inventory[x].get("count", 1)) < int(inventory[y].get("count", 1)))
+	for i in cells:
+		var c := int(inventory[i].get("count", 1))
+		var k := mini(c, n)
+		n -= k
+		if k >= c:
+			inventory[i] = null
+		else:
+			inventory[i]["count"] = c - k
+		if n <= 0:
+			break
+	stats_changed.emit()
+	return true
+
+## The best thing he carries to chop with: [base id, power] (an equipped or carried combat axe, or the
+## woodsman's axe), or ["", 0.0] with none (Data.CHOP_POWER).
+func chop_axe() -> Array:
+	var best := ["", 0.0]
+	var cands := [equipment.get("weapon")] + inventory
+	for it in cands:
+		if it == null:
+			continue
+		var bid: String = it["base"]
+		var pw := 0.0
+		if bid == "woodsman_axe":
+			pw = float(Data.BASES[bid].get("chop", 1.0))
+		elif Data.CHOP_POWER.has(bid):
+			pw = float(Data.CHOP_POWER[bid])
+		if pw > float(best[1]):
+			best = [bid, pw]
+	return best
+
 ## Drops inventory cell `from` onto cell `to`: potions of the same kind merge (up to a full
 ## stack), anything else swaps.
 func move_in_inventory(from: int, to: int) -> void:
 	var a = inventory[from]
 	var b = inventory[to]
-	if a != null and b != null and a["base"] == b["base"] and Data.BASES[a["base"]]["slot"] == "potion":
-		var add := mini(int(a.get("count", 1)), INV_STACK - int(b.get("count", 1)))
+	if a != null and b != null and a["base"] == b["base"] and Items.stack_cap(a["base"]) > 1:
+		var add := mini(int(a.get("count", 1)), Items.stack_cap(a["base"]) - int(b.get("count", 1)))
 		b["count"] = int(b.get("count", 1)) + add
 		a["count"] = int(a.get("count", 1)) - add
 		if a["count"] <= 0:
@@ -1850,7 +2014,7 @@ func equip_from_inventory(idx: int) -> void:
 	var it = inventory[idx]
 	if it == null:
 		return
-	if Items.is_material(it):
+	if Items.is_material(it) or Items.is_resource(it) or Items.is_tool_item(it):
 		return
 	if not Items.is_equip(it):
 		# potions: as many as fit go to the belt, the rest stay here
@@ -1894,7 +2058,7 @@ func unequip(slot: String) -> void:
 
 func to_save() -> Dictionary:
 	return {"cls": cls, "level": level, "xp": xp, "str": str_, "dex": dex, "vit": vit, "ene": ene, "points": stat_points, "gold": gold,
-		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "talents": talents}
+		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "talents": talents, "axe_given": true}
 
 func from_save(d: Dictionary) -> void:
 	set_class(str(d.get("cls", "knight")))
@@ -1913,6 +2077,12 @@ func from_save(d: Dictionary) -> void:
 			equipment[s] = null
 	inventory = d.get("inventory", [])
 	inventory.resize(40)
+	# characters from before woodcutting get their felling axe once (in the last free cell)
+	if not d.get("axe_given", false) and count_of("woodsman_axe") == 0:
+		for i in range(inventory.size() - 1, -1, -1):
+			if inventory[i] == null:
+				inventory[i] = Items.make("woodsman_axe")
+				break
 	stack_potions()
 	belt = d.get("belt", [null, null, null, null])
 	belt.resize(4)

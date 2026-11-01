@@ -34,6 +34,8 @@ const SHOTS := {
 	"night_rise": {"style": "night_rise", "clip": "cast", "keys": [[0.0, 0.0], [1.0, 0.45]]},
 	"night_scream": {"style": "night_scream", "clip": "scream", "keys": [[0.0, 0.75], [0.45, 1.25], [1.0, 1.9]]},
 	"night_hold": {"style": "night_hold", "clip": "cast", "keys": [[0.0, 0.8], [1.0, 1.45]]},
+	# felling a tree (Harvest): the spectral axe hacked down two-handed, from his slam
+	"chop": {"style": "chop", "clip": "slam", "keys": [[0.0, 0.35], [0.3, 1.1], [0.55, 1.63], [0.75, 2.3], [1.0, 3.0]]},
 	"night_fall": {"style": "night_fall", "clip": "slam", "keys": [[0.0, 0.5], [0.25, 1.1], [0.5, 1.63], [0.75, 2.3], [1.0, 3.0]]},
 }
 

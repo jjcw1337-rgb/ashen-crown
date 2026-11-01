@@ -214,6 +214,9 @@ static func build(w: World) -> void:
 		if s.has("hold"):
 			hold(kp.model, s["hold"])
 			kp.set_meta("hold", s["hold"])
+	# Halvar's furnace beside his forge, where weapons are tempered over felled wood (Furnace)
+	var fp: Vector3 = _local(w, SHOPS[1]["at"], Vector3(5.2, 0, 0.5))
+	Furnace.place(w, fp, face(Vector2(fp.x, fp.z), CENTER))
 	# the stalls' own light: the forge's coals, the alchemist's cauldron, a lantern on the others
 	_glow(w, SHOPS[1]["at"], Vector3(0.9, 1.4, -0.6), Color(1.0, 0.45, 0.12), 2.6, 7.0)
 	_glow(w, SHOPS[0]["at"], Vector3(-1.3, 0.9, 0.4), Color(0.4, 1.0, 0.35), 1.6, 6.0)
@@ -239,7 +242,7 @@ static func build(w: World) -> void:
 	# woodpiles with a chopping stump), else the old procedural crates, barrels and log piles
 	var sets := has_piece("supply_pile") and has_piece("woodpile")
 	if sets:
-		for c in [["supply_pile", Vector2(-9.2, -16.0), 0.9], ["supply_pile", Vector2(16.2, -8.4), 1.0],
+		for c in [["supply_pile", Vector2(-9.2, -16.0), 0.9], ["supply_pile", Vector2(17.8, -4.6), 1.0],
 				["supply_pile", Vector2(19.2, 1.8), 0.95], ["supply_pile", Vector2(-4.2, gate_z + 4.3), 0.85],
 				["supply_pile", Vector2(-18.0, 4.2), 0.9], ["woodpile", Vector2(9.2, -16.2), 1.0],
 				["woodpile", Vector2(6.2, 13.4), 0.9]]:
@@ -254,7 +257,7 @@ static func build(w: World) -> void:
 		piece(w, "weapon_rack", Vector2(12.2, 8.8), face(Vector2(12.2, 8.8), CENTER))
 		piece(w, "hide_rack", Vector2(-14.8, -1.6), face(Vector2(-14.8, -1.6), CENTER) + 0.3)
 	else:
-		for c in [["crate", Vector2(-9.5, -15.5)], ["barrel", Vector2(-15.8, -8.8)], ["barrel", Vector2(15.6, -8.6)], ["logs", Vector2(9.0, -15.5)],
+		for c in [["crate", Vector2(-9.5, -15.5)], ["barrel", Vector2(-15.8, -8.8)], ["barrel", Vector2(17.6, -4.9)], ["logs", Vector2(9.0, -15.5)],
 				["crate", Vector2(18.8, 1.4)], ["crate", Vector2(19.4, 2.2)], ["barrel", Vector2(-18.4, 4.0)], ["crate", Vector2(-3.5, gate_z + 4.5)],
 				["barrel", Vector2(-4.6, gate_z + 4.0)], ["logs", Vector2(6, 13)], ["crate", Vector2(-6.5, 13.5)], ["barrel", Vector2(-1.5, 16)]]:
 			var cp: Vector2 = c[1]

@@ -21,7 +21,7 @@ static func pick_base(ilvl: int, rng: RandomNumberGenerator, slot_filter: String
 	for k in Data.BASES.keys():
 		var b: Dictionary = Data.BASES[k]
 		var slot: String = b["slot"]
-		if slot in ["potion", "gold", "material"]:
+		if slot in ["potion", "gold", "material", "resource", "tool"]:
 			continue
 		if slot_filter != "" and slot != slot_filter:
 			continue
@@ -162,7 +162,36 @@ static func stat_sum(it: Dictionary) -> Dictionary:
 	var en := int(it.get("ench", 0))
 	if en > 0:
 		d["life"] = d.get("life", 0) + enchant_life(it, en)
+	var tp := int(it.get("temper", 0))
+	if tp > 0:
+		# the hardened edge: a share more damage, and a little more even on the lightest blade
+		d["ed"] = d.get("ed", 0) + tp * TEMPER_ED
+		d["dmg"] = d.get("dmg", 0) + tp
 	return d
+
+# ---------------------------------------------------------------- weapon tempering (Furnace)
+## A weapon held in the furnace's heat and quenched: each level adds TEMPER_ED% enhanced damage and +1 damage, up
+## to TEMPER_MAX.
+## Level n needs the fire at TEMPER_BANDS[n - 1] °C or hotter, held for the soak; the furnace must be charged with
+## the logs (and, from +4, Ashen Heartwood) and the smith's fee in gold first (temper_cost).
+const TEMPER_MAX := 5
+const TEMPER_ED := 6
+const TEMPER_BANDS := [600.0, 850.0, 1050.0, 1250.0, 1350.0]
+const TEMPER_BAND_NAMES := ["Cherry red", "Orange", "Yellow", "White", "Searing white"]
+
+static func can_temper(it) -> bool:
+	return it != null and Data.BASES[it["base"]]["slot"] == "weapon" and int(it.get("temper", 0)) < TEMPER_MAX
+
+## What the next level costs: {level, logs, heart, gold, soak (seconds), temp (°C), band}. Better and higher-level
+## weapons need more wood, a longer soak and more gold.
+static func temper_cost(it: Dictionary) -> Dictionary:
+	var n := int(it.get("temper", 0)) + 1
+	var il := float(it.get("ilvl", 1)) * float(it.get("power", 1.0)) ** 0.25
+	var k := 1.0 + il / 30.0
+	return {"level": n, "logs": int(ceil((4.0 + 4.0 * n) * k * (1.0 + 0.15 * int(it.get("rarity", 0))))),
+		"heart": 2 * maxi(0, n - 3), "gold": maxi(25, int(price(it) * 0.2 * n)),
+		"soak": (8.0 + 3.0 * (n - 1)) * (1.0 + il / 40.0), "temp": TEMPER_BANDS[clampi(n - 1, 0, TEMPER_MAX - 1)],
+		"band": TEMPER_BAND_NAMES[clampi(n - 1, 0, TEMPER_MAX - 1)]}
 
 # ---------------------------------------------------------------- armor enchanting
 const ENCHANT_SLOTS := ["helm", "armor", "gloves", "boots", "belt", "shield"]
@@ -208,7 +237,28 @@ static func sell_price(it: Dictionary) -> int:
 	return maxi(1, price(it) / 5)
 
 static func is_equip(it: Dictionary) -> bool:
-	return not (Data.BASES[it["base"]]["slot"] in ["potion", "gold", "material"])
+	return not (Data.BASES[it["base"]]["slot"] in ["potion", "gold", "material", "resource", "tool"])
+
+## A gathered resource (wood now; ore, coal later): stacks, never worn, fuel or crafting stock.
+static func is_resource(it) -> bool:
+	return it != null and Data.BASES[it["base"]]["slot"] == "resource"
+
+## A tool (the woodsman's axe): carried, never equipped.
+static func is_tool_item(it) -> bool:
+	return it != null and Data.BASES[it["base"]]["slot"] == "tool"
+
+## How many of a base share one inventory cell: potions INV_STACK, resources their "stack", else 1.
+static func stack_cap(base_id: String) -> int:
+	var b: Dictionary = Data.BASES[base_id]
+	if b["slot"] == "potion":
+		return 20
+	return int(b.get("stack", 1))
+
+## n of a resource, as one item (a stack may be split over cells when it's put in the inventory).
+static func resource(base_id: String, n: int = 1) -> Dictionary:
+	var it := make(base_id, 0, 1)
+	it["count"] = n
+	return it
 
 ## A crafting material (the Hollow Sloths' drops): one space, kept, never worn or drunk.
 static func is_material(it) -> bool:
@@ -230,10 +280,11 @@ static func tooltip(it: Dictionary, hero_level: int = 99, mode: String = "") -> 
 	var lines := []
 	var col: Color = Data.RARITY_COLOR[int(it.get("rarity", 0))]
 	var b: Dictionary = Data.BASES[it["base"]]
-	if b["slot"] == "material":
-		col = b["color"]
+	if b["slot"] in ["material", "resource"]:
+		col = b["color"].lerp(Color.WHITE, 0.35)
 	var en := int(it.get("ench", 0))
-	lines.append([("+%d " % en if en > 0 else "") + it["name"], col])
+	var tp := int(it.get("temper", 0))
+	lines.append([("+%d " % (en + tp) if en + tp > 0 else "") + it["name"], col])
 	if int(it.get("rarity", 0)) > 0:
 		lines.append([b["name"], col])
 	if float(it.get("power", 1.0)) > 1.0:
@@ -262,6 +313,16 @@ static func tooltip(it: Dictionary, hero_level: int = 99, mode: String = "") -> 
 	if b["slot"] == "material":
 		lines.append(["Crafting Material", Color(0.75, 0.7, 0.6)])
 		lines.append([b["lore"], Color(0.7, 0.66, 0.58)])
+	if b["slot"] == "resource":
+		lines.append(["Resource  ·  %d / %d" % [int(it.get("count", 1)), int(b.get("stack", 1))], Color(0.75, 0.7, 0.6)])
+		if b.has("fuel"):
+			lines.append(["Furnace fuel: %s (up to %d°C)" % [b["fuel"]["name"], int(b["fuel"]["max_temp"])], Color(1.0, 0.62, 0.3)])
+		lines.append([b["lore"], Color(0.7, 0.66, 0.58)])
+	if b["slot"] == "tool":
+		lines.append(["Tool  ·  click a marked tree to chop it", Color(0.75, 0.7, 0.6)])
+		lines.append([b["lore"], Color(0.7, 0.66, 0.58)])
+	if b.get("kind", "") == "axe" and b["slot"] == "weapon":
+		lines.append(["Can fell trees", Color(0.7, 0.66, 0.58)])
 	var req: int = it.get("req", 1)
 	if req > 1:
 		lines.append(["Required Level: %d" % req, Color(1.0, 0.3, 0.3) if req > hero_level else white])
@@ -270,12 +331,16 @@ static func tooltip(it: Dictionary, hero_level: int = 99, mode: String = "") -> 
 		lines.append([fmt % a[1], blue])
 	if en > 0:
 		lines.append(["Enchanted +%d: +%d%% defense, +%d life" % [en, en * 15, enchant_life(it, en)], Color(0.55, 0.75, 1.0)])
+	if tp > 0:
+		lines.append(["Tempered +%d%s: +%d%% damage, +%d damage" % [tp, " (max)" if tp >= TEMPER_MAX else "", tp * TEMPER_ED, tp], Color(1.0, 0.62, 0.28)])
+	elif b["slot"] == "weapon":
+		lines.append(["Untempered  ·  a furnace can harden it", Color(0.62, 0.55, 0.48)])
 	match mode:
 		"buy": lines.append(["Cost: %d gold" % price(it), Color(1.0, 0.85, 0.4)])
 		"sell": lines.append(["Sell value: %d gold   (Right-click to sell)" % sell_price(it), Color(1.0, 0.85, 0.4)])
 		"gamble": lines.append(["Gamble: %d gold" % (price(it) * 2), Color(1.0, 0.85, 0.4)])
 		"inv":
-			if is_material(it):
+			if is_material(it) or is_resource(it) or is_tool_item(it):
 				lines.append(["Drag to move  ·  Ctrl-click to drop", Color(0.6, 0.6, 0.6)])
 			elif is_equip(it):
 				lines.append(["Left-click to equip  ·  Ctrl-click to drop", Color(0.6, 0.6, 0.6)])
