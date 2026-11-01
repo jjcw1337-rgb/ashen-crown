@@ -8,6 +8,7 @@ each with its own test gate, push, deploy and Discord report (`tools/nightly/run
 | `mode` | 20:00, 3.5 h | A new multiplayer mode or map on the staging server, playable the same night | `modes/LOG.md` |
 | `perf` | 00:30, 3 h | Faster and smaller: a big structural win, then as many small ones as the night allows; the download size every night | `perf/LOG.md` |
 | `triage` | 05:00, 2 h | What players hit (errors, crashes, slow spots from the telemetry, `TELEMETRY.md`), worst first, at most 3 issues and 2 spots: reproduced from where they were and what they did, fixed | `triage/LOG.md` |
+| `hotfix` | on an alert | Started by the telemetry watcher (`tools/nightly/watch.py`, every 5 min) on one serious new issue: a crash, an error that hit 2+ players or 10+ times, a slow spot; at most 3 a day, 2 h apart | `triage/LOG.md` |
 
 **The loop**: each job reads its log first (the Lessons at the top, then one short row per attempt: focus, result,
 kept or not, next idea, a link to the detailed write-up), works, then adds its rows and rewrites the Lessons. Around

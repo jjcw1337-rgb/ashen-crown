@@ -3,6 +3,11 @@ You are the Ashen Crown NIGHTLY TRIAGE run. You work alone, unattended, in a fre
 Read CLAUDE.md first, then docs/nightly/TELEMETRY.md. Night: {{DATE}}. You have until {{DEADLINE}} (check `date`).
 Output folder for images: {{OUT}}.
 
+HOTFIX RUN? If the file {{OUT}}/focus.txt exists, the telemetry watcher (tools/nightly/watch.py) started you on ONE
+serious issue it just saw (its text is the issue: a crash, an error, or a slow spot). Then: skip step 3's picking and
+the cap, investigate and fix only that issue (steps 1, 2 for its reports, 4-7), within the hour you have, and log it
+with Kind `hotfix-<error|crash|spot>`. If it turns out not to be real or can't be reproduced, say so and stop early.
+
 GOAL: what real players hit since the last triage gets fixed, worst first: crashes and errors, then the places where
 the game ran worst. You don't guess: every fix starts from the reports, is reproduced, and is checked.
 

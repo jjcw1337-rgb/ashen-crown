@@ -13,9 +13,9 @@ import sys
 
 JOB, DATE, OUT, BASE, FAILED = sys.argv[1:6]
 SERVER_PER_NIGHT = 24.0 / 30.0 / 3      # the staging droplet, $24/month, shared by the three jobs
-TITLE = {"perf": "performance", "mode": "new mode", "triage": "triage"}[JOB]
-HEAD = {"perf": "## ⚡ Performance", "mode": "## 🚀 New tonight", "triage": "## 🩺 What players hit, and what's fixed"}[JOB]
-LOGS = {"perf": "docs/nightly/perf/LOG.md", "mode": "docs/nightly/modes/LOG.md", "triage": "docs/nightly/triage/LOG.md"}[JOB]
+TITLE = {"perf": "performance", "mode": "new mode", "triage": "triage", "hotfix": "hotfix"}[JOB]
+HEAD = {"perf": "## ⚡ Performance", "mode": "## 🚀 New tonight", "triage": "## 🩺 What players hit, and what's fixed", "hotfix": "## 🛠️ The issue, and the fix"}[JOB]
+LOGS = {"perf": "docs/nightly/perf/LOG.md", "mode": "docs/nightly/modes/LOG.md", "triage": "docs/nightly/triage/LOG.md", "hotfix": "docs/nightly/triage/LOG.md"}[JOB]
 
 
 def load(name, default):
@@ -81,7 +81,7 @@ if JOB == "mode":
 def section():
     """The job's summary, or a plain account of why there is none: skipped on purpose, never ran, or ran and ended
     without writing one (then its exit state and the last thing it said)."""
-    text = (load("%s_summary.md" % JOB, "") or "").strip()
+    text = (load("%s_summary.md" % JOB, "") or (load("triage_summary.md", "") if JOB == "hotfix" else "") or "").strip()
     if text:
         return text
     if skipped is not None:

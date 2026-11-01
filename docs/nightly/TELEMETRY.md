@@ -46,6 +46,20 @@ the `tm_issue` view at start, and grants Grafana's read-only role SELECT on them
 Lines with ERROR / SCRIPT ERROR / panic / a JSON `"level":"error"` also get `level="error"`. In Grafana: Explore →
 Logs, e.g. `{unit="ashen-crown-bg.service"} |= "SCRIPT ERROR"`.
 
+## Alerts and hotfix runs (`tools/nightly/watch.py`)
+
+Every 5 minutes (launchd `com.gamefactory.ashen-watch` on the Game Factory Mac; the Mac isn't reachable from the
+internet, so it asks the server rather than being called) the watcher reads the telemetry and:
+- **alerts** the Discord channel at once: any crash, an error never seen before, an error spike (50+ events of one issue
+  in an hour), a slow spot (5+ minutes of play in one 20 m square averaging under 30 fps in the last hour, once a day
+  per place);
+- starts a **hotfix run** (`tools/nightly/run.sh hotfix`: the triage job on that one issue, 1 h, its focus in
+  `hotfix_focus.json`; the KPI benchmark only for a slow spot) when an alert is serious (a crash; a new error that hit
+  2+ players or 10+ times; a slow spot) and that issue was never investigated. Caps: one run every 2 h, 3 a day, never
+  while a nightly job holds the lock (it tries again next check). Everything else waits for the 05:00 triage.
+State: `~/Library/Application Support/ashen-nightly/watch.json`; log: `~/Library/Logs/ashen-nightly/watch.log`.
+Developer runs (build `dev`, env `local`) are ignored. `python3 tools/nightly/watch.py --dry` shows what it would do.
+
 ## The triage job
 
 `tools/nightly/triage_prompt.md`, 05:00, 2 h: reads `docs/nightly/triage/LOG.md` first, then the last day's issues and

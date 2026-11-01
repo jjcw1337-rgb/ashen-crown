@@ -87,7 +87,7 @@ def main():
     target = open(os.path.join(out, "target.txt")).read().strip() if os.path.exists(os.path.join(out, "target.txt")) else "?"
     itch = open(os.path.join(out, "itch.txt")).read().strip() if os.path.exists(os.path.join(out, "itch.txt")) else ""
     base = os.path.basename(report)
-    job = "game mode" if base.endswith("-mode.md") else ("triage" if base.endswith("-triage.md") else "performance")
+    job = {"mode": "game mode", "triage": "triage", "hotfix": "hotfix"}.get(base.rsplit("-", 1)[-1][:-3], "performance")
     head = "<@103232622510997504> <@1453436059252687012> 🌙 **Nightly %s report**\n" % job
     if target == "staging":
         head += "It passed every test and is on `staging`: " + (

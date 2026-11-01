@@ -29,11 +29,14 @@ case $JOB in
   perf) PROMPT=tools/nightly/perf_prompt.md; LIMIT=10800; JOBLOG=docs/nightly/perf/LOG.md ;;
   mode) PROMPT=tools/nightly/mode_prompt.md; LIMIT=12600; JOBLOG=docs/nightly/modes/LOG.md ;;
   triage) PROMPT=tools/nightly/triage_prompt.md; LIMIT=7200; JOBLOG=docs/nightly/triage/LOG.md ;;
+  # started by tools/nightly/watch.py on a serious alert: the triage job on that one issue ($STATE/hotfix_focus.json)
+  hotfix) PROMPT=tools/nightly/triage_prompt.md; LIMIT=3600; JOBLOG=docs/nightly/triage/LOG.md ;;
   *) echo "unknown job $JOB"; exit 2 ;;
 esac
 DATE=$(date +%Y-%m-%d)
 SMOKE=${NIGHTLY_SMOKE:-0}
 [ "$SMOKE" = 1 ] && DATE="$DATE-smoke"
+[ "$JOB" = hotfix ] && DATE="$DATE-$(date +%H%M)"      # (several a day)
 MAIN=/Users/blaine/dev/ashen-crown
 WT=/Users/blaine/dev/ashen-crown-nightly
 STATE="/Users/blaine/Library/Application Support/ashen-nightly"
@@ -102,8 +105,15 @@ if [ -f "$STATE/skip_${JOB}_once" ]; then
   rm -f "$STATE/skip_${JOB}_once"; SKIP=1
 fi
 
+# a hotfix run's one issue (tools/nightly/watch.py); it measures the KPIs only for a slow spot
+BENCH=1
+if [ "$JOB" = hotfix ]; then
+  python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["what"])' "$STATE/hotfix_focus.json" > "$OUT/focus.txt" 2>/dev/null || echo "(no focus found)" > "$OUT/focus.txt"
+  grep -q "^slow spot" "$OUT/focus.txt" || BENCH=0
+fi
+
 # 2. the runner's benchmark of the starting point
-if [ "$SMOKE" != 1 ] && [ $SKIP = 0 ]; then
+if [ "$SMOKE" != 1 ] && [ $SKIP = 0 ] && [ $BENCH = 1 ]; then
   status bench running "before"; bash tools/nightly/bench.sh "$OUT/bench" before
   python3 -I tools/nightly/kpi_push.py "$OUT/bench/before.json" "$DATE" "$JOB" before "$BASE" || fail kpi "push to the KPI store"
   status bench done "before"
@@ -136,7 +146,7 @@ fi
 
 # 4. the benchmark again: the scoreboard row in the job's log, and no shipping a slower game
 SLOWER=0
-if [ "$SMOKE" != 1 ] && [ $SKIP = 0 ]; then
+if [ "$SMOKE" != 1 ] && [ $SKIP = 0 ] && [ $BENCH = 1 ]; then
   status bench running "after"
   git clean -qfdX; "$G" --headless --path . --import > "$OUT/import_after.log" 2>&1     # (fresh, so new import settings count)
   bash tools/nightly/bench.sh "$OUT/bench" after
