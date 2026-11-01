@@ -172,8 +172,9 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   three chests and a champion with bowmen. The walls come from `World.crypt_shell` (shared with the crypt). **Rounds**
   of `RAID_SECS` (15 min): two of the four portals open at `PORTALS_AT` (5 min), joining closes at `JOIN_CLOSE`, the
   crypt collapses at the end (everyone inside dies) and the dungeon resets (`new_round`). The state reaches players
-  through `Net.cl_bg_raid` (the HUD clock, `Battlegrounds.hud`). **Combat is slower and heavier** while
-  `Game.bg_mode` (Hero: `ATTACK_PACE`, `HIT_MULT`, `CD_MULT`, `MOVE_MULT`, no life regeneration). **PvP**: every other
+  through `Net.cl_bg_raid` (the HUD clock, `Battlegrounds.hud`). **Attacks are the same as everywhere**
+  (timing, damage, cooldowns: one standard, jj 2026-11-01); while `Game.bg_mode` only walking is slower (`MOVE_MULT`) and
+  life doesn't regenerate. **PvP**: every other
   player is an invisible stand-in `Enemy` with `pvp_pid` on each client (`sync_proxies`), so any attack or skill
   that hits monsters hits players; `Enemy.take_damage` sends `Net.sv_pvp_hit`, the server scales it (`PVP_MULT`) and
   deals it (`Net.hit_player`); kills are announced. **Real characters**: the Battlegrounds screen picks one of the
@@ -181,7 +182,10 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   extracts with stays in its inventory. **Death** costs every item worn and carried, the belt and the gold
   (`Game.bg_strip` / `strip_save`: levels, stats, talents and the camp's stash are kept; a plain class weapon is
   given back), dropped where it fell (`Net.sv_bg_died`); a character whose game closed mid-raid is stripped the next
-  time the game starts (`Game._bury_lost_raiders`). Joining uses a one-time Nakama ticket on staging (see "Staging
+  time the game starts (`Game._bury_lost_raiders`). **Spectating**: fallen, the player stays connected and
+  watches the living (`Game.spectate_start` / `spectate_next`, `UI.spectate_panel` in the HUD layer: the camera follows
+  `spectate_hero()`, Tab or the arrow keys switch; a watched player who falls is held 2.5 s, one who leaves is passed at
+  once), until "Leave the Crypt" or the round's end (4 s after `bg_raid` turns "reset"). Joining uses a one-time Nakama ticket on staging (see "Staging
   and accounts"). Tests: `tools/bg_test.gd` (server `--raid-fast`: 150 s rounds) and `tools/bg_pvp_test.gd`.
   Dev cheat (non-production builds or dev tools): type `maxout` while playing (`Game.max_out`: level 99, stats,
   every talent, a million gold, potions, a bag of the best gear).
@@ -851,8 +855,17 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `ForestCamp._keeper` loaded at run time, hammering the hull on its trestles, `Coast.HULL_AT`; the procedural
   humanoid without the glb) at his boathouse (`Coast._boatyard`), an `Inter` "vendor" with role "shipwright": `Game._shipwright_talk`
   (dialogue) opens `BoatShop` (`boat_shop.gd`, `ui.boat_panel`: portrait, the boat turning on the water, name, price, text,
-  how to sail, Buy). Boats are `Data.BOATS` (`gull`: 400 gold, speed 8); owning one is `Hero.boats` (saved), bought with
-  `Game.buy_boat`. The boat's model is `Boat.model(id)` (`boat.gd`: lofted clinker hull with its own plank shader, deck,
+  how to sail, Buy). Boats are `Data.BOATS` (`gull`: 400 gold, speed 8; `sloop`, the Ember Sloop: 1500 gold, speed 9, a
+  14 m Meshy model); owning one is `Hero.boats` (saved), bought with `Game.buy_boat`; Osric offers every boat, cheapest
+  first, and the docks hold the dearest one owned (`Hero.best_boat`, swapped at once on a purchase). **Imported boats**:
+  an entry with `"glb"` (a model prepared by `tools/blender/prep_boat.py -- in.glb out.glb <length m> --draft m --bow
+  +x|-x|+y|-y [--tris N] [--tex px] [--shot png]`: bow to Godot -z, waterline y = 0; it prints the numbers) plus
+  `"length"`, `"beam"`, `"sheer"`, `"draft"`, `"deck"` (the helm spot) and `"lamps"`; `Boat.model` loads it (the Gull
+  built in code if the file is missing, so a better model is a one-path swap), `Boat.dims(id)` gives the size, and
+  `BoatRide` scales by length and beam against the Gull (`kl`, `kb`): the shallow-water probes, helm, wake, spray,
+  click area, docking reach and the sailing camera; a longer boat eases out from the Gull-sized moorings until she can
+  swing round clear of the pier or jetty (`_swing_clear`). In co-op the boat's index in `Data.BOATS` rides at the end
+  of `Net._boat_packet` (`Hero.net_boat_id`), so partners draw the right boat. `tools/sloop_test.gd`. The boat's model is `Boat.model(id)` (`boat.gd`: lofted clinker hull with its own plank shader, deck,
   mast, gaff main and jib in the cloth shader, rigging, rudder, lantern).
   `tools/boat_shop_test.gd`, `tools/boat_shop_shot.gd`. **Sailing** (`boat_ride.gd`, `BoatRide`; Game: `_add_boat`,
   `_boat_clicked`, `_sail_input`, `try_land`/`land_boat`, `_sail_camera`): every sea zone has a boat, moored off the
@@ -869,7 +882,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   GPUParticles. The camera eases to a view over her port quarter looking past the bow (`_sail_camera`, `sail_blend`).
   First time aboard, a controls guide (`Hero.sailed`, saved). `tools/sail_test.gd` (sails every route with her own
   physics: 21-23 s each; grounding, unsticking, the sea's edge, waves, landing, boarding at an island, back to the
-  pier), `tools/sail_shots.gd -- outprefix [q] [isle]`. Tests: `tools/ocean_test.gd`; screenshots `tools/ocean_shots.gd -- outprefix [q] [only]`
+  pier), `tools/sail_shots.gd -- outprefix [q] [isle] [boat id]`. Tests: `tools/ocean_test.gd`; screenshots `tools/ocean_shots.gd -- outprefix [q] [only]`
   (Forward+ screenshots need a Vulkan driver: `apt-get install mesa-vulkan-drivers` gives lavapipe, slow but correct).
   Note: a first import of the project needs `godot --headless --editor --quit-after 2000` (plain `--quit` can abort the
   scan before the class cache is written).
@@ -1072,6 +1085,14 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 - **Skill picker** (`UI._choose_skill`, click a bar slot): the bar's own iron frame and sockets, one card per skill
   (`_picker_card`: equipped glow, the key it's on now, mana, locked level). Esc / click outside closes
   (`close_skill_picker`). Screenshot: `tools/picker_shot.gd`.
+- **Skill design: the Path of Exile way** (jj, 2026-11-01; the base for every new skill, so they all play alike):
+  a main skill has **no cooldown**; what limits it is its **use time** (its `DUR`/`atk_dur`, times `Data.ATTACK_PACE`,
+  shortened by attack speed) and its mana. A heavy skill gets a long, readable **wind-up** (the impact late in the
+  swing, `Anim.impact_at`, with its tell drawn through the cast's fx event) and hits harder to pay for the wait (about
+  the damage per second of a quick skill); the dodge roll cancels a swing that hasn't landed (`Dodge.start`). Cooldowns
+  are for utility (movement, warcries, summons, ultimates). Attacks follow the same rules in every scenario: the
+  story game, co-op and the Battlegrounds (no crypt-only attack timing, damage or cooldowns). The model: Molten
+  Fists (`DemonSkills.DUR`, 2 s, the blow at 1.5 s, 300% weapon damage). `tools/demon_test.gd` checks it.
 - **Attack pace** (every class, new ones too): `Data.ATTACK_PACE` (1.2 = attacks, skill swings and casts take 20%
   longer) multiplies `Hero.atk_dur` in `_start_attack` and the casts' own times in `use_skill`; a special class can set
   `"attack_pace"` in `Data.CLASSES` (`Data.attack_pace(cls)`). Attacks whose rate the swing sets (the basic attack, skills

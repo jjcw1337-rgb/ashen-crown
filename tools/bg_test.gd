@@ -112,6 +112,23 @@ func _client() -> void:
 	check(_save().get("in_raid", false), "the save says in_raid")
 	check(await until(func(): return not g.bg_raid.is_empty(), 10.0), "the raid's clock arrived (%s)" % str(g.bg_raid.get("state", "?")))
 	await secs(1.0)
+	# one standard for attacks: the same timing, damage and cooldowns in the crypt as in the story game
+	var same := true
+	for sk in Data.skills_known(g.hero.cls):
+		var sid := str(sk["id"]) if sk is Dictionary else str(sk)
+		var inside := [g.hero.skill_cd(sid), g.hero.dmg_mult(sid)]
+		g.bg_mode = false
+		var outside := [g.hero.skill_cd(sid), g.hero.dmg_mult(sid)]
+		g.bg_mode = true
+		same = same and is_equal_approx(inside[0], outside[0]) and is_equal_approx(inside[1], outside[1])
+	g.hero._start_attack("swipe1")
+	var dur_in: float = g.hero.atk_dur
+	g.bg_mode = false
+	g.hero._start_attack("swipe1")
+	var dur_out: float = g.hero.atk_dur
+	g.bg_mode = true
+	g.hero.atk_t = g.hero.atk_dur
+	check(same and is_equal_approx(dur_in, dur_out), "attacks are the same in the crypt as outside (swing %.2f s)" % dur_in)
 	var z = _nearest_enemy()
 	check(z != null, "a monster nearby")
 	if z:

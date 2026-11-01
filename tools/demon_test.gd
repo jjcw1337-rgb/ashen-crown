@@ -55,9 +55,23 @@ func _run() -> void:
 	var l0 := lives(en)
 	h.mana = h.max_mana
 	check(h.use_skill("fists", h.skill_aim("fists", en[1].global_position)), "Molten Fists cast")
-	await wait(1.2)
+	check(h.skill_cd("fists") == 0.0 and h.atk_dur > 1.8, "a heavy blow: no cooldown, a %.2f s use time" % h.atk_dur)
+	await wait(1.0)
+	check(lives(en) >= l0 - 0.5, "nothing struck during the wind-up")
+	await wait(1.0)
 	check(lives(en) < l0 - 1.0, "Molten Fists hurt the pack (%d)" % int(l0 - lives(en)))
 	check(en.filter(func(e): return is_instance_valid(e) and e.burn_t > 0.0).size() >= 2, "and set them alight")
+	# ... and the dodge roll cancels the wind-up: no blow
+	en = await pack(home + Vector3(0, 0, -2.2), 3)
+	h.global_position = home
+	h._face(Vector3(0, 0, -1))
+	l0 = lives(en)
+	h.mana = h.max_mana
+	h.use_skill("fists", h.skill_aim("fists", en[1].global_position))
+	await wait(0.5)
+	check(Dodge.start(h, Vector3(1, 0, 0)), "dodged out of the wind-up")
+	await wait(1.6)
+	check(lives(en) >= l0 - 0.5, "the dodge cancelled the blow")
 	# Infernal Charge: he covers ground, bowls them and leaves lava that keeps burning them
 	en = await pack(home + Vector3(0, 0, -5.0), 3)
 	h.global_position = home

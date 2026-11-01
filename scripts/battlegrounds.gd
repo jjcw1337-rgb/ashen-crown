@@ -10,8 +10,8 @@ extends Node
 ## at the end the crypt collapses and whoever is still inside dies. Then the dungeon resets for the next round.
 ## Joining closes JOIN_CLOSE into a round.
 ##
-## Combat is slower and heavier than the main game (client side, Hero, while Game.bg_mode): ATTACK_PACE, HIT_MULT,
-## CD_MULT, MOVE_MULT, no life regeneration. PvP is on: every other player is an invisible stand-in target on each
+## Attacks, skills, damage and cooldowns are the same as everywhere else (one standard for every scenario); the crypt
+## only slows walking (MOVE_MULT) and stops life regeneration (client side, Hero, while Game.bg_mode). PvP is on: every other player is an invisible stand-in target on each
 ## client (sync_proxies: an Enemy with `pvp_pid`, following that player's puppet), so every skill, swing, arrow and
 ## burn that can hit a monster can hit a player; its take_damage sends Net.sv_pvp_hit, the server scales it (PVP_MULT)
 ## and deals it to that player.
@@ -34,9 +34,6 @@ const RESET_SECS := 20.0        # after the collapse, before the next round
 const EXTRACT_R := 4.0          # how close to an open portal the server accepts an extraction
 const OPEN_PORTALS := 2         # of the four candidate portals
 const PVP_MULT := 0.6           # a player's damage to another player
-const ATTACK_PACE := 1.4        # swings and casts take this much longer in the crypt
-const HIT_MULT := 1.25          # ... and hit this much harder
-const CD_MULT := 1.5            # skill cooldowns
 const MOVE_MULT := 0.85         # walking and running
 const MON_LIFE := 2.2           # monsters' life and damage in the crypt (server)
 const MON_DMG := 1.4

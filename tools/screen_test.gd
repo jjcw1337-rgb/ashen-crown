@@ -66,6 +66,8 @@ func _run() -> void:
 	for nm in hud_bits:
 		check(not (hud_bits[nm] as CanvasItem).is_visible_in_tree(), "title: %s doesn't show" % nm)
 	check(ui.title_panel.is_visible_in_tree(), "title: the title shows")
+	var rev: Label = ui.title_panel.find_child("build_rev", true, false)
+	check(rev != null and rev.is_visible_in_tree() and rev.text.contains(BuildEnv.value("rev")), "title: the build's rev shows in the corner")
 	# a key on the title reaches nothing of the game
 	var e := InputEventKey.new()
 	e.keycode = KEY_I

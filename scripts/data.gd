@@ -145,6 +145,14 @@ const BOATS := {
 	"gull": {"name": "The Gull", "price": 400, "speed": 8.0, "accel": 3.2, "turn": 0.95, "crew": 1,
 		"paint": Color(0.16, 0.3, 0.42),
 		"desc": "A single-masted cutter of tarred oak, seven paces long, built here on the strand. Quick on the wind, steady in a swell, and she'll put you ashore at any jetty on the Mournwater."},
+	# Imported boats: "glb" is a model prepared by tools/blender/prep_boat.py (bow toward -z, waterline y = 0); its
+	# printout gives length, beam, sheer and draft. "deck" is where the hero stands at the helm, "lamps" the lanterns'
+	# lights. Swap the model by changing "glb" (and the sizes); without the file she's drawn as the Gull.
+	"sloop": {"name": "The Ember Sloop", "price": 1500, "speed": 9.0, "accel": 2.6, "turn": 0.8, "crew": 2,
+		"glb": "res://assets/models/boats/sloop.glb", "length": 14.0, "beam": 4.6, "sheer": 1.74, "draft": 1.3,
+		"deck": Vector3(0.6, 1.15, 2.6), "lamps": [[Vector3(1.21, 2.85, 6.73), 1.2], [Vector3(-1.21, 2.85, 6.73), 1.2]],
+		"paint": Color(0.3, 0.06, 0.04),
+		"desc": "A gaff-rigged sloop of black-tarred oak with patched rust-red canvas, fourteen paces stem to stern. Roomier and a knot faster than the Gull, with a cabin aft and lanterns at her stern."},
 }
 
 ## look keys: skin, cloth, cloth2, armor, height, bulk, head, eyes, horns, cape, thin, tail, wings, weapon, shield
@@ -479,7 +487,7 @@ const SKILLS := [
 	{"id": "grasp", "cls": "wraith", "name": "Haunting Grasp", "key": "F", "lvl": 10, "mana": 16, "cd": 10.0, "aim": "point", "range": 10.0, "desc": "Slam the ground: spectral hands burst out of the earth around the cursor, seizing every enemy within 3.5 metres for 110% weapon damage, dragging them inward and holding them fast for 2.5 seconds."},
 	{"id": "phantom", "cls": "wraith", "name": "Phantom Assault", "key": "G", "lvl": 14, "mana": 22, "cd": 14.0, "aim": "facing", "range": 8.0, "desc": "Split into three phantoms that streak through the enemies ahead in a fan, each tearing everything in its path for 120% weapon damage, then strike with your own claws."},
 	{"id": "night", "cls": "wraith", "name": "Eternal Night", "key": "V", "lvl": 18, "mana": 40, "cd": 40.0, "aim": "self", "desc": "Rise and bring down the night over 9 metres: a scream of terror (150% weapon damage, enemies hurled back and frozen with fear), then the dark feeds on everything in it while you hang untouchable above it, and it collapses into your slam for 200%. +40% damage for 12 seconds."},
-	{"id": "fists", "cls": "demon", "name": "Molten Fists", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 3.4, "desc": "A two-fisted punch that cracks the ground open ahead of you: everything in the wedge takes 150% weapon damage plus magma and is set alight."},
+	{"id": "fists", "cls": "demon", "name": "Molten Fists", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 3.4, "desc": "A slow, heavy two-fisted blow: your fists catch fire as you draw back, then crack the ground open ahead of you. Everything in the wedge takes 300% weapon damage plus magma and is set alight. Dodge to cancel it."},
 	{"id": "icharge", "cls": "demon", "name": "Infernal Charge", "key": "E", "lvl": 3, "mana": 12, "cd": 7.0, "aim": "point", "range": 9.0, "desc": "A head-down charge of up to 9 metres: enemies in your way are bowled aside for 120% weapon damage plus magma and stunned, and your hooves leave a trail of lava that burns whoever stands in it for 4 seconds."},
 	{"id": "cslam", "cls": "demon", "name": "Cataclysm Slam", "key": "R", "lvl": 6, "mana": 16, "cd": 10.0, "aim": "facing", "range": 2.0, "desc": "Slam the ground: everything within 3 metres takes 160% weapon damage plus magma and is stunned, then five magma fissures race out 8 metres ahead and erupt along their length in waves of lava bursts for 110% each."},
 	{"id": "hurl", "cls": "demon", "name": "Brimstone Hurl", "key": "F", "lvl": 10, "mana": 18, "cd": 8.0, "aim": "point", "range": 12.0, "desc": "Tear a molten boulder out of the ground and hurl it at the cursor, up to 12 metres: it splashes over 2.6 metres for 180% weapon damage plus magma, throws enemies back, sets them alight and leaves a lava pool that burns for 5 seconds."},

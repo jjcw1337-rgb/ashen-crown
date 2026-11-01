@@ -24,6 +24,7 @@
 set -u
 export PATH="/Users/blaine/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 export HOME=/Users/blaine
+SELF_DIR=$(cd "$(dirname "$0")" && pwd)     # (the runner's own folder: its post_discord.py for notes)
 JOB=${1:-perf}
 case $JOB in
   perf) PROMPT=tools/nightly/perf_prompt.md; LIMIT=10800; JOBLOG=docs/nightly/perf/LOG.md ;;
@@ -67,12 +68,17 @@ echo $$ > $LOCK/pid; echo "$JOB" > $LOCK/job
 trap 'rm -rf "$LOCK"' EXIT
 caffeinate -dimsu -w $$ &
 
+STEP=start
 status() {  # step, state, note
+  STEP=$1
   printf '{"date":"%s","step":"%s","state":"%s","note":"%s","at":"%s"}\n' "$DATE" "$1" "$2" "$3" "$(date -u +%FT%TZ)" > "$STATE/status-$JOB.json"
   echo "--- [$1] $2 $3 ($(date +%T))"
 }
 FAILED=""
 fail() { FAILED="$FAILED $1"; status "$1" failed "$2"; }
+# a short note to Discord when a run can't give its report (it couldn't start, or something killed it)
+note() { [ "$SMOKE" = 1 ] || python3 -I "$SELF_DIR/post_discord.py" --text "⚠️ The $JOB run $DATE $1 (log: ~/Library/Logs/ashen-nightly/$DATE-$JOB.log)" || true; }
+trap 'status "$STEP" interrupted ""; note "was stopped (signal) during $STEP, so there is no report"; exit 1' TERM INT HUP
 
 # run_limited <seconds> <cmd...>: runs it, kills it after the limit
 run_limited() {
@@ -92,7 +98,12 @@ if [ ! -d "$WT/.git" ] && [ ! -f "$WT/.git" ]; then
 fi
 cd "$WT" || exit 1
 git fetch -q origin
-git checkout -q -B "nightly-$DATE-$JOB" origin/staging && git reset -q --hard origin/staging && git clean -qfdx
+# (clean first: files an import left that are now committed would stop the checkout)
+git reset -q --hard; git clean -qfdx
+git checkout -q -f -B "nightly-$DATE-$JOB" origin/staging && git reset -q --hard origin/staging && git clean -qfdx
+if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/staging)" ]; then
+  fail prepare "not on the latest staging"; note "couldn't start: its checkout isn't on the latest staging"; exit 1
+fi
 BASE=$(git rev-parse --short HEAD)
 "$G" --headless --path . --import > "$OUT/import.log" 2>&1     # (from scratch, as CI does: ~1 min)
 status prepare done "staging $BASE"

@@ -214,7 +214,8 @@ func _stage() -> void:
 	var cam := Camera3D.new()
 	cam.fov = 32
 	vp.add_child(cam)
-	cam.look_at_from_position(Vector3(13.0, 5.2, 0.0), Vector3(0, 2.4, 0))
+	var kk := float(Boat.dims(boat_id)["length"]) / Boat.LENGTH   # a bigger boat: the camera stands back
+	cam.look_at_from_position(Vector3(13.0, 5.2, 0.0) * kk, Vector3(0, 2.4, 0) * kk)
 	var spin := func(dt: float) -> void:
 		if is_instance_valid(turn) and panel.visible:
 			turn.rotation.y += dt * 0.35

@@ -31,6 +31,16 @@ var sailed := false
 
 func owns_boat(id: String) -> bool:
 	return boats.has(id)
+
+## The boat he sails: the dearest one he owns (Data.BOATS), or the Gull (moored at the pier before he buys her).
+func best_boat() -> String:
+	var best := "gull"
+	var price := -1
+	for b in boats:
+		if Data.BOATS.has(str(b)) and int(Data.BOATS[str(b)]["price"]) > price:
+			best = str(b)
+			price = int(Data.BOATS[str(b)]["price"])
+	return best
 var equipment := {}
 var inventory: Array = []
 var belt: Array = [null, null, null, null]
@@ -181,6 +191,7 @@ var net_phase_rate := 0.0
 var net_st := {}
 var net_buff := false
 var net_boat_st: Variant = null      # a partner sailing: Vector4(x, z, yaw, speed) of his boat (Net._boat_packet)
+var net_boat_id := "gull"            # and which boat she is (Data.BOATS)
 var net_boat: BoatRide               # the boat drawn under his puppet (BoatRide.puppet_update)
 var _net_last_t := 0.0
 ## Skill effects that linger (SkillFx: the Siphon tether, Drain Life's beams, Eternal Night, phantoms, arrows
@@ -324,7 +335,7 @@ func skill_cost(id: String) -> float:
 	return float(Data.skill_def(id).get("mana", 0)) * (1.0 - talent("cost:" + id) / 100.0)
 
 func skill_cd(id: String) -> float:
-	return float(Data.skill_def(id).get("cd", 0.0)) * (1.0 - talent("cd:" + id) / 100.0) * (Battlegrounds.CD_MULT if game.bg_mode else 1.0)
+	return float(Data.skill_def(id).get("cd", 0.0)) * (1.0 - talent("cd:" + id) / 100.0)
 
 func _build_rig() -> void:
 	if is_wraith():
@@ -1229,8 +1240,6 @@ func _start_attack(style: String, skill := "", secs := 0.0) -> void:
 	if secs > 0.0:
 		atk_dur = secs / aspd
 	atk_dur *= Data.attack_pace(cls)     # every class's pace (Data.ATTACK_PACE)
-	if game.bg_mode and not puppet:
-		atk_dur *= Battlegrounds.ATTACK_PACE     # the crypt's slower, heavier fights
 	impact_done = false
 	trail_pts.clear()
 	trail_col = ClassSkills.trail_color(cls, skill)
@@ -1301,7 +1310,7 @@ func show_damage(dmg: float) -> void:
 	dmg_stack.add(dmg)
 
 func dmg_mult(id: String) -> float:
-	return (1.0 + (talent("dmg") + talent("dmg:" + id)) / 100.0) * pace_mult(id) * (Battlegrounds.HIT_MULT if game.bg_mode else 1.0)
+	return (1.0 + (talent("dmg") + talent("dmg:" + id)) / 100.0) * pace_mult(id)
 
 ## Attacks are slower by the class's pace (Data.ATTACK_PACE); the ones whose rate the swing itself sets
 ## (the basic attack, skills with no cooldown) hit that much harder, so their damage per second stays put.
@@ -1742,6 +1751,9 @@ func apply_net_state(p: PackedFloat32Array) -> void:
 	max_life = maxf(p[13], 1.0)
 	net_buff = p[14] > 0.5
 	net_boat_st = Vector4(p[16], p[17], p[18], p[19]) if p.size() >= 20 and p[15] > 0.5 else null
+	var bi := int(p[20]) if p.size() >= 21 else 0
+	var bk: Array = Data.BOATS.keys()
+	net_boat_id = str(bk[bi]) if bi >= 0 and bi < bk.size() else "gull"
 	if was_dead and not dead:
 		rig.rotation.x = 0.0
 		rig.position.y = 0.0

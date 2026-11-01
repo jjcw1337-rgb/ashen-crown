@@ -283,7 +283,8 @@ func _boat_packet(h: Hero) -> PackedFloat32Array:
 	var b = game.boat
 	if not h.aboard or b == null or not is_instance_valid(b):
 		return PackedFloat32Array()
-	return PackedFloat32Array([1.0, b.global_position.x, b.global_position.z, b.yaw, b.speed])
+	# last: which boat (her index in Data.BOATS; every peer runs the same build), so partners draw the right one
+	return PackedFloat32Array([1.0, b.global_position.x, b.global_position.z, b.yaw, b.speed, float(Data.BOATS.keys().find(b.id))])
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func pl_state(p: PackedFloat32Array) -> void:

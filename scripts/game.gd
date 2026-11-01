@@ -91,6 +91,9 @@ var shot_spawn := ""
 var shot_zone := "town"
 var shot_frames := 0
 var death_t := -1.0
+var spectating := 0             # Battlegrounds: the fallen hero's camera follows this player (peer id; 0 = no one)
+var _spec_lost := 0.0           # ... how long the one watched has been down
+var _spec_over := 0.0           # ... how long since the round ended (then the crypt sends them home)
 var _t := 0.0
 var _busy := false
 
@@ -1789,6 +1792,7 @@ func exit_to_title() -> void:
 	death_t = -1.0
 	ui.death_panel.visible = false
 	ui.victory_panel.visible = false
+	spectate_stop()
 	ui.set_boss(null)
 	tp_link = {}
 	xp_bonus_t = 0.0
@@ -2004,14 +2008,14 @@ func _add_boat(zone: String, spawn: String) -> void:
 		return
 	var b := BoatRide.new()
 	world.add_child(b)
-	b.setup(self, "gull")
+	b.setup(self, hero.best_boat())
 	boat = b
 	if zone == "coast":
 		b.docks.append({"name": "the pier", "kind": "pier", "pos": Vector2(Coast.MOOR.x, Coast.MOOR.z), "yaw": PI * 0.5})
 		for isle in Isles.ISLANDS:
 			var m := isle_mooring(isle, Vector2.ZERO, true)
 			b.docks.append({"name": isle["name"], "kind": "isle", "id": isle["id"], "pos": Vector2(m.x, m.z), "yaw": m.w})
-		if spawn.begins_with("sail_from_") and not hero.owns_boat("gull"):
+		if spawn.begins_with("sail_from_") and hero.boats.is_empty():
 			# a partner brought along by the party's trip with no boat of his own: he's set down on the pier
 			b.moor(Coast.MOOR, PI * 0.5)
 			var dp: Vector3 = world.spawns.get("dock", Vector3(2, 0, 0))
@@ -2022,7 +2026,11 @@ func _add_boat(zone: String, spawn: String) -> void:
 			var m := isle_mooring(isle, Vector2.ZERO, true)
 			# the whole party sails out together: each his own boat, the others a few lengths further out ahead
 			var r := _party_rank()
-			var off := Vector3(-sin(m.w), 0, -cos(m.w)) * 9.0 * float(r)
+			# spaced for the longest boat any of them may sail (each game knows only its own)
+			var gap := 9.0
+			for bid in Data.BOATS:
+				gap = maxf(gap, 9.0 * float(Boat.dims(str(bid))["length"]) / Boat.LENGTH)
+			var off := Vector3(-sin(m.w), 0, -cos(m.w)) * gap * float(r)
 			b.moor(Vector3(m.x, 0, m.z) + off, m.w)
 			b.board(hero)
 			sail_blend = 1.0
@@ -2132,19 +2140,30 @@ func _sail_camera(dt: float, sh: Vector3) -> void:
 	var iso_look := cam_pivot.global_position + Vector3(0, 1.0, 0)
 	# over her port quarter, so the sail doesn't hide the way ahead and he's in view at the tiller
 	var sd := Vector3(cos(sail_cam_yaw), 0, -sin(sail_cam_yaw))
-	var sail_pos := bp - f * 16.0 * zoom - sd * 5.5 * zoom + Vector3(0, 7.0 * zoom, 0)
-	var sail_look := bp + f * 11.0 + sd * 1.0 + Vector3(0, 0.3, 0)
+	# framed for the Gull; a bigger boat (BoatRide.kl, her length against the Gull's) pulls the camera back with her
+	var bk: float = boat.kl
+	var sail_pos := bp + (-f * 16.0 * zoom - sd * 5.5 * zoom + Vector3(0, 7.0 * zoom, 0)) * bk
+	var sail_look := bp + (f * 11.0 + sd * 1.0 + Vector3(0, 0.3, 0)) * bk
 	cam.global_position = iso_pos.lerp(sail_pos, k) + sh
 	cam.look_at(iso_look.lerp(sail_look, k), Vector3.UP)
 
 ## Osric Saltmarrow, the shipwright on the Mournwater Coast: a word about the isles, then his boat
 ## (BoatShop). Once you own her, he tells you where she's moored.
 func _shipwright_talk(t: Inter) -> void:
-	var owned := hero.owns_boat("gull")
+	var owned := not hero.boats.is_empty()
 	var txt := "The Mournwater, they call it. Five isles out there, each a fair sail: the Verdant Isle with its great oak, the old ruins on their terraces, the Lost Isle with its black stone, the Bleak Isle where the fog never lifts, and the Merchant's Reach, empty since the night its people left. No bridge, no ferry. A boat, or nothing. I've built a good one."
 	if owned:
 		txt = "She's lying alongside the pier, ready when you are. Mind the rocks off the Bleak Isle, and bring her back in one piece."
-	ui.open_dialog(t.label, txt, [["See the boat" if not owned else "Look her over", func(): ui.boat_shop.open(t, "gull")], ["Leave", func(): pass]])
+	# one button per boat in Data.BOATS, cheapest first
+	var ids: Array = Data.BOATS.keys()
+	ids.sort_custom(func(a, b): return int(Data.BOATS[a]["price"]) < int(Data.BOATS[b]["price"]))
+	var btns: Array = []
+	for id in ids:
+		var bid := str(id)
+		var nm := str(Data.BOATS[bid]["name"])
+		btns.append([("Look over " if hero.owns_boat(bid) else "See ") + nm, func(): ui.boat_shop.open(t, bid)])
+	btns.append(["Leave", func(): pass])
+	ui.open_dialog(t.label, txt, btns)
 
 ## Buys a boat (Data.BOATS) from the shipwright: pays, owns it from now on (saved with the character).
 func buy_boat(id: String) -> bool:
@@ -2159,6 +2178,12 @@ func buy_boat(id: String) -> bool:
 	ui.big_message("%s is yours" % spec["name"])
 	ui.message("She's moored at the end of the pier. Click her to go aboard.", Color(0.75, 0.88, 1.0), 4.0)
 	save_game()
+	# a better boat takes the old one's place at the dock (not while he's out sailing)
+	if boat != null and is_instance_valid(boat) and not hero.aboard and boat.id != hero.best_boat():
+		boat.queue_free()
+		if boat.inter != null and is_instance_valid(boat.inter):
+			boat.inter.queue_free()
+		_add_boat(cur_zone, "")
 	return true
 
 func _interact(t: Inter) -> void:
@@ -2438,6 +2463,7 @@ func on_enemy_killed(e: Enemy) -> void:
 func on_local_respawn() -> void:
 	death_t = -1.0
 	ui.death_panel.visible = false
+	spectate_stop()
 
 ## Co-op: the host's game reports the boss fell.
 func boss_down_remote(e: Enemy) -> void:
@@ -2507,6 +2533,64 @@ func _on_hero_died() -> void:
 	if bg_mode:
 		_bg_fell()
 	ui.set_boss(null)
+
+## Battlegrounds: fallen in the crypt, the hero watches the living (the camera follows them; Tab or the arrow keys
+## switch) until they leave. Whoever they watch falls, the camera stays over the body a moment and moves on; whoever
+## leaves, it moves on at once. When the round ends the crypt sends them home.
+func spectate_start() -> void:
+	spectating = 0
+	_spec_over = 0.0
+	spectate_next(1)
+	ui.spectate_panel.visible = true
+	Telemetry.crumb("spectate", {"watching": ui.spectate_name()})
+
+func spectate_stop() -> void:
+	spectating = 0
+	ui.spectate_panel.visible = false
+
+## The living players one could watch, in a fixed order.
+func spectate_targets() -> Array:
+	var ids: Array = net.players.keys()
+	ids.sort()
+	return ids.filter(func(pid):
+		var h = net.players[pid]["hero"]
+		return is_instance_valid(h) and not h.dead and h.visible and h.net_has)
+
+func spectate_next(dir: int) -> void:
+	var ids := spectate_targets()
+	var i := ids.find(spectating)
+	if ids.is_empty():
+		spectating = 0
+	elif i < 0:
+		spectating = int(ids[0])
+	else:
+		spectating = int(ids[posmod(i + dir, ids.size())])
+	_spec_lost = 0.0
+	ui.update_spectate()
+
+## The hero being watched (null when no one is).
+func spectate_hero() -> Node3D:
+	if spectating == 0 or not bg_mode or not net.players.has(spectating):
+		return null
+	var h = net.players[spectating]["hero"]
+	return h if is_instance_valid(h) else null
+
+func _update_spectate(dt: float) -> void:
+	if not ui.spectate_panel.visible:
+		return
+	var h := spectate_hero()
+	if h == null or h.dead or not h.visible:
+		_spec_lost += dt
+		if h == null or _spec_lost > 2.5 or spectating == 0:
+			spectate_next(1)
+	if str(bg_raid.get("state", "")) == "reset":
+		_spec_over += dt
+		if _spec_over > 4.0:
+			ui.message("The crypt has collapsed: the round is over", Color(1, 0.6, 0.4))
+			spectate_stop()
+			respawn()
+			return
+	ui.update_spectate()
 
 func respawn() -> void:
 	if bg_mode:
@@ -2728,6 +2812,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 	if ev is InputEventKey and ev.pressed and not ev.echo:
 		if paused and ev.keycode != KEY_ESCAPE:
 			return       # (paused: only Esc, which resumes)
+		if ui.spectate_panel.visible and ev.keycode in [KEY_TAB, KEY_LEFT, KEY_RIGHT]:
+			spectate_next(-1 if ev.keycode == KEY_LEFT or (ev.keycode == KEY_TAB and ev.shift_pressed) else 1)
+			return
 		match ev.keycode:
 			KEY_ESCAPE:
 				if not ui.close_all():
@@ -2959,13 +3046,20 @@ func _process(delta: float) -> void:
 	if death_t > 0.0:
 		death_t -= delta
 		if death_t <= 0.0 and playing:
-			ui.death_panel.visible = true
+			if bg_mode:
+				spectate_start()
+			else:
+				ui.death_panel.visible = true
+	_update_spectate(real_dt)
 	if hero and world:
 		var look_ahead := Vector3.ZERO
 		if playing and not hero.dead and shot_path == "":
 			var mp := get_viewport().get_mouse_position() / get_viewport().get_visible_rect().size - Vector2(0.5, 0.5)
 			look_ahead = Vector3(mp.x, 0, mp.y) * 2.0
 		var goal: Vector3 = hero.global_position + look_ahead
+		var watched := spectate_hero()
+		if watched != null:
+			goal = watched.global_position
 		var fw := 0.0
 		if focus_node != null:
 			focus_t += real_dt
@@ -2985,7 +3079,7 @@ func _process(delta: float) -> void:
 		_sail_camera(real_dt, sh)
 		if playing:
 			_sea_sounds()
-		RenderingServer.global_shader_parameter_set("player_pos", hero.global_position)
+		RenderingServer.global_shader_parameter_set("player_pos", watched.global_position if watched != null else hero.global_position)
 		if grass_field:
 			grass_field.center = cam_target
 			grass_field.cam_pos = cam.global_position
