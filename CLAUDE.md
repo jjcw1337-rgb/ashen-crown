@@ -97,9 +97,20 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   (`Props.footprint(root, radius_or_half)`) and are registered with `world.solid(node)` after placing (it reads the node's
   position, yaw and scale). Use `add_circle`/`add_box` only for things with no prop node. Movers call `world.move(pos, d, radius)`,
   which slides against the exact footprints; `blocked` (a padded 1 m grid) is only for A* and spawn spots.
-- **Aiming**: Space and the skill keys fire the way the hero faces, with a light assist (`Hero.aim_ahead`). Every skill in
-  `Data.SKILLS` has `"aim"`: `"facing"` (plus `"range"`), `"self"` or `"point"` (the cursor); `Hero.skill_aim` applies it.
-  Give a new skill an `aim`.
+- **Aiming** (Path of Exile style): **the mouse pointer is the source of truth; WASD only moves.** `Game` writes the
+  pointer's point (the enemy under it, else the ground) to `Hero.cursor` every frame, and every action aims from it:
+  Space (`Game._space_aim`), the skill keys (`Game.cast_skill` → `Hero.skill_aim`) and mouse binds. Every skill in
+  `Data.SKILLS` has `"aim"`: `"point"` (lands on the pointer; the skill clamps to its own range), `"facing"` (the old
+  name, now meaning *directional*: from the hero toward the pointer, out to its `"range"`; the pointer itself when it's
+  nearer, so a beam or tether latches on what's under it) or `"self"` (centred on him, no turn). Only short melee
+  skills (range < `Hero.MELEE_RANGE` 5 m) and Space get help: a foe within `AIM_CONE_MELEE` (20°) of the pointer's
+  line (`Hero._assist_pick`); ranged directional skills go exactly where the pointer says. Setting `atk_aim` also fixes
+  `Hero.atk_dir` (`aim_dir()`), the direction at the moment of aiming: **skill code reads `aim_dir()` for "ahead",
+  never the rig's facing** (`facing()` is the body, for blocking's "from the front" and effects), so a blow, arrow or
+  lunge keeps the pointer's line while he walks on or turns. The body only shows the aim: snapped to it as an action
+  starts, held on `atk_dir` while he moves mid-action, turned to the pointer while blocking, and to his walk
+  otherwise. WASD's heading eases at `TURN_RATE` (28 rad/s) from the keys themselves. Skills that root him (the
+  Demon's charge, slam, throw, grip, wrath) still do. `tools/aim_test.gd` (`--fixed-fps 60`). Give a new skill an `aim`.
 - **Runs** (Act I, A2, A3) are `Data.RUNS` multipliers (`Game.run_mult`). `Items.empower` scales only flat stats; percentages
   (`Items.PCT_STATS`) stay as rolled. Re-run the balance sim after changing any of them.
 
@@ -325,7 +336,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `Demon.WALK_BLEND` (2.6 m/s), and `DemonMocapRig._rate` plays the run at his real ground speed (0.77x at 4.8 m/s,
   heavy, no sliding). The rig eases the speed the clips are blended by over ~0.3 s when he sets off (`ease_speed`:
   standing crossfades into the stride; it drops at once when he stops) and lags the hero's snap turn on the body
-  (`_vis_yaw`, visual only, up to 0.6 rad), so a start is a heavy push-off rather than a snap.
+  (`_vis_yaw`, visual only, up to 0.6 rad; none while he attacks or casts, so the body shows the aim at once), so a start is a heavy push-off rather than a snap.
   `scripts/demon_mocap_rig.gd` (`Knight.build_mocap` opts `"script"`, `"scale"`) lays the moving parts over the clips
   every frame, all springs: the wings fold and breathe at rest, half open and flex with the walk, spread and sweep back
   at a run, fly wide for a cast or a roar, beat on the slams and stomps, sag in death (`_wings`: fold / lift / sweep

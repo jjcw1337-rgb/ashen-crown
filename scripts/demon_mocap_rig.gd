@@ -112,12 +112,15 @@ func sync_pose(st: Dictionary) -> void:
 		st = st.duplicate()
 		st["speed"] = ease_speed
 	super(st)
-	# the body turns heavily: it lags the hero's snap turn and catches up in a beat (visual only)
+	# the body turns heavily: it lags the hero's snap turn and catches up in a beat (visual only). Not while
+	# he attacks or casts: then the body shows the aim (the pointer's direction) at once, so a blow never
+	# looks as if it leaves sideways out of a body still turning
 	if body_root != null and dead_t < 0.0:
 		var yaw := global_rotation.y if is_inside_tree() else rotation.y
 		var dt2 := clampf(float(st.get("time", 0.0)) - _vis_t, 0.0, 0.1) if _vis_t >= 0.0 else 0.0
 		_vis_t = float(st.get("time", 0.0))
-		if _vis_yaw == INF or dt2 <= 0.0:
+		var acting := float(st.get("atk", -1.0)) >= 0.0
+		if _vis_yaw == INF or dt2 <= 0.0 or acting:
 			_vis_yaw = yaw
 		else:
 			_vis_yaw = lerp_angle(_vis_yaw, yaw, 1.0 - exp(-dt2 * 9.0))

@@ -218,8 +218,11 @@ static func impact(h: Hero) -> bool:
 ## An arrow from the bow toward at (turned by yaw radians), flying flat at chest height.
 static func _loose(h: Hero, at: Vector3, pierce: bool, mult: float, src: String, yaw: float) -> void:
 	var from: Vector3 = h.global_position + Vector3(0, 1.35, 0)
-	var dir := (at - h.global_position) * Vector3(1, 0, 1)
-	dir = dir.normalized() if dir.length() > 0.1 else -h.rig.global_transform.basis.z
+	# the shot's own aim (taken from the pointer when the draw began), so walking on while he draws
+	# doesn't swing it; a different point (none today) gets its own direction
+	var dir := h.aim_dir()
+	if not at.is_equal_approx(h.atk_aim):
+		dir = h.dir_to(at)
 	dir = dir.rotated(Vector3.UP, yaw)
 	from += dir * 0.6
 	# off the bow in his hand, where the nocked arrow lay

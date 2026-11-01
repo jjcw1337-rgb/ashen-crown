@@ -119,7 +119,7 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 			_start(h, "siphon", "siphon")
 		"step":
 			var dist := minf(to.length(), STEP_RANGE)
-			var dir := to.normalized() if to.length() > 0.5 else h.facing()
+			var dir := to.normalized() if to.length() > 0.5 else h.aim_dir()
 			if dist < 0.5:
 				dist = 4.0
 			# walk the way there in steps that slide round anything solid, so the landing is a real spot
@@ -192,7 +192,7 @@ static func impact(h: Hero) -> bool:
 				h.game.hitstop(0.05)
 		"phantom":
 			# his own strike, after the phantoms have gone
-			var fwd := h.facing()
+			var fwd := h.aim_dir()
 			h.fx("phantom", "strike", {"y": h.rig.global_rotation.y})
 			for e in h.game.enemies_near(h.global_position, 3.1):
 				var to: Vector3 = e.global_position - h.global_position
@@ -208,7 +208,7 @@ static func impact(h: Hero) -> bool:
 ## Spectral Rend's rake: the right claw on the first strike, the left on the second. Souls torn out heal him
 ## as their wisps arrive (WraithFx flies them; the heal waits the same time here).
 static func _rend_hit(h: Hero, first: bool) -> void:
-	var fwd := h.facing()
+	var fwd := h.aim_dir()
 	var full := h.talent("rend_full") > 0.0
 	var souls := PackedVector3Array()
 	for e in h.game.enemies_near(h.global_position, 3.3):
@@ -308,7 +308,7 @@ static func update(h: Hero, delta: float) -> void:
 			w["lunge_a"] = a
 			var d := (f1 - f0) * lunge
 			if d > 0.0:
-				var fwd := h.facing()
+				var fwd := h.aim_dir()
 				var np: Vector3 = h.game.world.move(h.global_position, fwd * d, h.radius)
 				h.global_position = np
 		if a >= 0.72 and not bool(w.get("rend2", false)):
@@ -349,7 +349,7 @@ static func _blink(h: Hero) -> void:
 ## event's effect: WraithFx raises them (h.fxs["phantoms"]) and flies them, here and on every partner's game;
 ## only here do they tear what they pass through.
 static func _launch_phantoms(h: Hero) -> void:
-	h.fx("phantom", "split", {"d": h.facing(), "n": 3 + int(h.talent("phantoms"))})
+	h.fx("phantom", "split", {"d": h.aim_dir(), "n": 3 + int(h.talent("phantoms"))})
 
 static func _update_phantoms(h: Hero) -> void:
 	if not h.fxs.has("phantoms"):
