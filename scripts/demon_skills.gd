@@ -22,8 +22,8 @@ extends RefCounted
 ##    foes round him (one every WRATH_EVERY s, WRATH_R out) while he fights on with +40% damage.
 
 ## Each attack's length in seconds (before Data.ATTACK_PACE; Molten Fists also by attack speed)
-## Molten Fists is a heavy blow the Path of Exile way (jj, 2026-11-01): no cooldown, a 2 s use time (1.67 x the pace 1.2)
-## with a 1.5 s wind-up the foes can read, and double the damage of a quick punch; the dodge roll cancels it.
+## Molten Fists is a heavy blow the Path of Exile way (jj, 2026-11-01): its "use" (2 s), "hit" (0.75) and damage are in
+## its Data.SKILLS entry (SkillSpec); DUR["fists"] is only the fallback.
 const DUR := {"fists": 1.67, "icharge": 0.75, "cslam": 1.2, "hurl": 1.1, "grip": 1.7, "wrath_roar": 1.3, "wrath_stomp": 0.8}
 ## The attack style each skill starts with
 const STYLE := {"fists": "fists", "icharge": "icharge", "cslam": "cslam", "hurl": "hurl", "grip": "grip", "wrath": "wrath_roar"}
@@ -31,8 +31,8 @@ const WRATH_STAGES := ["wrath_roar", "wrath_stomp"]
 ## Old saves: the skills these replaced, so their bindings carry over
 const OLD_IDS := {"hellclaw": "fists", "summon": "icharge", "phase": "cslam", "pact": "hurl"}
 
-const FISTS_R := 3.4           # how far ahead the cracks reach
-const FISTS_HALF := 42.0       # half the wedge's angle (degrees)
+const FISTS_R := 3.4           # how far ahead the cracks reach (= its data's area "r"; the effects draw with it)
+const FISTS_HALF := 42.0       # half the wedge's angle (degrees; = its data's area "angle" / 2)
 const CHARGE_RANGE := 9.0
 const CHARGE_SPEED := 16.0
 const CHARGE_HIT_R := 1.9
@@ -149,20 +149,14 @@ static func impact(h: Hero) -> bool:
 	var w: Dictionary = h.dm
 	match h.atk_skill:
 		"fists":
-			var fwd := h.aim_dir()
+			# its area, damage and burn are its data (Data.SKILLS, SkillSpec); the magma is his own part on top
 			var wide := h.talent("fists_wide") > 0.0
 			var reach := FISTS_R + (1.0 if wide else 0.0)
 			var lit := []
-			for e in h.game.enemies_near(h.global_position, reach + 1.2):
-				var to: Vector3 = e.global_position - h.global_position
-				to.y = 0
-				if to.length() - e.radius > reach:
-					continue
-				if to.length() < 0.6 or fwd.dot(to.normalized()) > cos(deg_to_rad(FISTS_HALF + (12.0 if wide else 0.0))):
-					h._hit_enemy(e, 3.0, 0.5, "fists", magma(h, 0.5))
-					if is_instance_valid(e) and not e.dead:
-						e.ignite(magma(h, 0.24) * h.dmg_mult("fists"), 6.0 if wide else 3.0)
-						lit.append(e)
+			for e in SkillSpec.targets(h, "fists", {"r_add": 1.0 if wide else 0.0, "angle_add": 24.0 if wide else 0.0}):
+				SkillSpec.strike(h, "fists", e, magma(h, 0.5), {"dot_secs": 2.0 if wide else 1.0})
+				if is_instance_valid(e) and not e.dead:
+					lit.append(e)
 			h.fx("fists", "impact", {"y": h.rig.global_rotation.y, "r": reach, "t": lit})
 		"icharge":
 			pass      # the charge itself moves and hits in update

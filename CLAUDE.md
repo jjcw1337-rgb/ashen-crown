@@ -91,6 +91,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `build_env.gd`, `nakama_client.gd`, `cloud_saves.gd` | Which backend a build uses; the Nakama REST client; characters kept in Nakama (see "Staging and accounts") |
 | `battlegrounds.gd` | Battlegrounds prototype: the raid map, the dedicated server's raid logic (respawns, carried loot, extraction, the stash), the client's id and cached stash |
 | `kpi.gd` | The official performance KPIs: scripted scenarios measured frame by frame (`--kpi`), see docs/nightly/KPIS.md |
+| `skill_spec.gd` | The skill format (`SkillSpec`): a skill's timing, damage, area and damage over time read from its `Data.SKILLS` entry |
 | `skill_fx.gd`, `knight_fx.gd`, `archer_fx.gd` | Co-op skill effects: `SkillFx` plays every class's skill events on the caster and on his puppet for partners (see "Co-op skill effects"); the knight's and archer's effect handlers (the Wraith's, Demon's and Warlock's are in their `*_fx.gd`) |
 | `ui.gd`, `hud_bar.gd`, `icon_renderer.gd` | All UI built in code |
 | `vendor_ui.gd` | Nameplates over the town's people and the trader's live portrait in the trade window |
@@ -1056,7 +1057,16 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   the damage per second of a quick skill); the dodge roll cancels a swing that hasn't landed (`Dodge.start`). Cooldowns
   are for utility (movement, warcries, summons, ultimates). Attacks follow the same rules in every scenario: the
   story game, co-op and the Battlegrounds (no crypt-only attack timing, damage or cooldowns). The model: Molten
-  Fists (`DemonSkills.DUR`, 2 s, the blow at 1.5 s, 300% weapon damage). `tools/demon_test.gd` checks it.
+  Fists (2 s, the blow at 1.5 s, 300% weapon damage). **The format** (`scripts/skill_spec.gd`, `SkillSpec`; every
+  field is optional and listed at its top): a skill's entry in `Data.SKILLS` carries `"style"` (its animation),
+  `"use"` (seconds, final: no `ATTACK_PACE` on top), `"hit"` (0..1 of use: the impact frame, `Anim.impact_at` reads it),
+  `"speed"` ("attack"/"cast"), `"lock"`, `"cancel"` (false: no dodging out), `"dmg"` (% weapon) or `"base"` +
+  `"per_lvl"` (a spell's own), `"type"`, `"knock"`, `"area"` (wedge / circle / line / single), `"dot"` (burn / chill /
+  slow, one per source, refreshed) and `"tags"`. The timing applies by itself (`Hero.use_skill` ->
+  `SkillSpec.apply_timing`, `Dodge.can_roll`); the damage when the skill's impact code calls `SkillSpec.targets(h, id)`
+  and `SkillSpec.strike(h, id, e, extra)` (`DemonSkills.impact` "fists" is the example). If a skill's `"hit"` moves,
+  move its clip's blow to match (`Demon.SHOTS`-style keys). `tools/skill_spec_test.gd` (in the gate) validates every
+  entry's fields and plays Molten Fists by its data; `tools/demon_test.gd` checks the wind-up and the dodge cancel.
 - **Attack pace** (every class, new ones too): `Data.ATTACK_PACE` (1.2 = attacks, skill swings and casts take 20%
   longer) multiplies `Hero.atk_dur` in `_start_attack` and the casts' own times in `use_skill`; a special class can set
   `"attack_pace"` in `Data.CLASSES` (`Data.attack_pace(cls)`). Attacks whose rate the swing sets (the basic attack, skills

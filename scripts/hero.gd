@@ -1205,6 +1205,7 @@ func use_skill(id: String, aim: Vector3) -> bool:
 	_face(aim - global_position)
 	# the class's skills script starts it (ClassSkills.of: KnightSkills, WraithSkills, DemonSkills, ...)
 	ClassSkills.cast(self, id, aim)
+	SkillSpec.apply_timing(self, id)      # (a "use" in the skill's data sets its length)
 	# the cast itself, seen by everyone (SkillFx: the class draws it, or the default puff shows it)
 	fx(id, "cast", {"p": atk_aim})
 	return true
