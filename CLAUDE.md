@@ -439,7 +439,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   string drone with a wooden flute; candidate take 13). Ambience: wind, drips in the crypt, and in Act I outside the camp (moor and fort) `forest`, soft
   trees in a breeze (`Sfx.play_music(kind, amb)`, picked in `Game.load_zone`).
 - **The Mournwater Coast and its islands** (Act I, west of the camp through its west gate; branch `test-ocean`, work in
-  progress: boat, shipwright and sailing come next). `coast.gd` (`Coast`, zone `"coast"`): a headland with the open sea on
+  progress: the visual pass, sounds and co-op come next). `coast.gd` (`Coast`, zone `"coast"`): a headland with the open sea on
   three sides (the mainland's shore is a parabola round its tip, `shore_x`), the pier at the tip (`DOCK` = the origin,
   the boat's mooring), the shipwright's shed (`SHED`), the path back to the camp (`EXIT`). The islands are data in
   `isles.gd` (`Isles.ISLANDS`: id, name, bearing from the dock, `sail` = metres of open water from the dock to the end of
@@ -464,8 +464,23 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   (dialogue) opens `BoatShop` (`boat_shop.gd`, `ui.boat_panel`: portrait, the boat turning on the water, name, price, text,
   how to sail, Buy). Boats are `Data.BOATS` (`gull`: 400 gold, speed 8); owning one is `Hero.boats` (saved), bought with
   `Game.buy_boat`. The boat's model is `Boat.model(id)` (`boat.gd`: lofted clinker hull with its own plank shader, deck,
-  mast, gaff main and jib in the cloth shader, rigging, rudder, lantern), also moored at the pier (`Coast.MOOR`).
-  `tools/boat_shop_test.gd`, `tools/boat_shop_shot.gd`. Tests: `tools/ocean_test.gd`; screenshots `tools/ocean_shots.gd -- outprefix [q] [only]`
+  mast, gaff main and jib in the cloth shader, rigging, rudder, lantern).
+  `tools/boat_shop_test.gd`, `tools/boat_shop_shot.gd`. **Sailing** (`boat_ride.gd`, `BoatRide`; Game: `_add_boat`,
+  `_boat_clicked`, `_sail_input`, `try_land`/`land_boat`, `_sail_camera`): every sea zone has a boat, moored off the
+  coast's pier end (`Coast.MOOR`) or at the island's jetty (`Game.isle_mooring`), an `Inter` "boat" (bigger pick area via
+  metas `pick`/`pick_y`). Clicking her aboard (`Hero.aboard`: his own moving stops, she places him at the tiller,
+  `BoatRide.DECK`) on the coast; on an island it loads the coast with spawn `sail_from_<id>` (she's off that jetty with him
+  at the tiller). Controls: W builds speed and holds it (cruise control), S eases off then backs, Space heaves to, A/D
+  steer, the held left mouse sails toward the point on the water (`Game.water_pt`); skills, Space's swing, exits and
+  right mouse are off while sailing; E (or the `UI.sail_prompt` button) steps ashore when `dock_near()` (within
+  `DOCK_REACH`, slower than `DOCK_SPEED`): at the pier she moors and he's on the deck, at an island its zone loads
+  (spawn `jetty`). She rides `Ocean.surface_y` (bow/stern/sides: height, pitch, roll, heel in turns), can't ground
+  (`_clearance`: probes vs the sea map's depth, sea rocks and decks as graded obstacles; she only moves to deeper water
+  from where she is, sliding along shores), the sea's edge (`sea_rect`) turns her back, wake and bow spray are
+  GPUParticles. The camera eases to a view over her port quarter looking past the bow (`_sail_camera`, `sail_blend`).
+  First time aboard, a controls guide (`Hero.sailed`, saved). `tools/sail_test.gd` (sails every route with her own
+  physics: 21-23 s each; grounding, unsticking, the sea's edge, waves, landing, boarding at an island, back to the
+  pier), `tools/sail_shots.gd -- outprefix [q] [isle]`. Tests: `tools/ocean_test.gd`; screenshots `tools/ocean_shots.gd -- outprefix [q] [only]`
   (Forward+ screenshots need a Vulkan driver: `apt-get install mesa-vulkan-drivers` gives lavapipe, slow but correct).
   Note: a first import of the project needs `godot --headless --editor --quit-after 2000` (plain `--quit` can abort the
   scan before the class cache is written).
