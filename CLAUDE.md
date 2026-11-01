@@ -325,6 +325,17 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   mixtures rotate (`RECIPES`, `Plague.recipe`, sent as the 6th field of the "throw" event). Everyone sees a landing
   ring for the flight (`landing_ring`); the shatter flings the real shards and the cork (`Debris`), a splash crown,
   droplets and mist; the pool creeps out, bubbles, glows in its veins and dries to a stain (`_pool_shader`).
+  **Rebuilt on Meshy and Blender (2026-11-01, evening)**: the pool is a Meshy top-down painting
+  (`assets/textures/plague/puddle_albedo.png` + `puddle_normal.png`) made into a decal by
+  `tools/blender/plague/ground_decal.py -- painting.png out_prefix [px] [relief]` (alpha keyed off black, a normal map
+  baked in Blender from a displaced copy), revealed from the impact out and retinted per mixture (`_pool_shader`);
+  the splash is a Blender FLIP liquid simulation (`tools/blender/plague/splash_flipbook.py -- outdir res frames px`:
+  a core and a ring of thrown gobbets, per-object velocities since per-normal velocity is ignored in a background
+  bake; the first 20 frames packed 5 x 4 into `assets/textures/fx/vial_splash.png`) on an upright camera-facing card
+  (`_splash`, `_flip_shader`); the pool's vapour is a Mantaflow smoke flipbook (`tools/blender/plague/vapour_flipbook.py`,
+  36 frames 6 x 6 in `assets/textures/fx/vapour.png`) on the particles; the landing mark is the splash's ghost (the
+  puddle's alpha) and the vial's shadow (`landing_ring`). The Last Experiment's ground uses the same decals:
+  `blight_*` (the flood) and `ring_*` (its boundary, its band remapped thin along the edge) in `_zone_shader`.
   His skills draw no weapon trail (`Hero._update_trail`). Frames: `tools/plague_vial_clip.gd -- outdir
   close|hand|game|fight [secs] [throws] [quality]` (xvfb, `--fixed-fps 30`; ~5-7 s a frame on the cloud).
 - **Adding a class** (nothing in `hero.gd` names a class's skills; `ClassSkills` hands them to the class's script):
