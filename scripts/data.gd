@@ -124,6 +124,10 @@ const WEAPON_PROFILES := {
 	"demon": {"motion": "back", "store": "back"},
 	# the plague doctor's cane rides across his back too (his coat's belt is full of vials)
 	"plague": {"motion": "back", "store": "back"},
+	# the dragons hold nothing (an equipped weapon hangs off a hidden joint): the default motion, out of sight
+	"wyrm": {"motion": "back", "store": "back"},
+	"serpent": {"motion": "back", "store": "back"},
+	"wyvern": {"motion": "back", "store": "back"},
 }
 
 const VENDORS := [
@@ -512,7 +516,22 @@ const CLASSES := {
 		"desc": "A beaked physician of the cursed years, belted with vials and a smoking censer. Fights by preparation: poison clouds, fused fire, traps that wait, and an epidemic that spreads from foe to foe."},
 	"warlock": {"voice": "gnome", "name": "Warlock", "str": 10, "dex": 10, "vit": 10, "ene": 10,
 		"desc": "A hooded sorcerer bound by a fel pact. Drains the life from foes in a forking green beam, rots them with blight and chains them where they stand."},
+	# the dragons (scripts/dragon.gd): no skills yet, only the basic attack (claw, bite, tail spin); "claws" is the
+	# damage and speed of their natural weapons when nothing is equipped (they start with none)
+	"wyrm": {"voice": "wyrm", "name": "Obsidian Wyrm", "str": 26, "dex": 12, "vit": 26, "ene": 12, "claws": [3, 8], "claw_speed": 1.0,
+		"desc": "A heavy, low-slung dragon of black volcanic scale, ember-tipped spines and blood-red wings. Rakes with its foreclaws, bites, and spins to sweep its long tail through everything around it."},
+	"serpent": {"voice": "serpent", "name": "Frost Serpent", "str": 20, "dex": 22, "vit": 20, "ene": 14, "claws": [3, 7], "claw_speed": 1.1,
+		"desc": "A long, wingless dragon of pale ice-blue scale with crystal antlers and a ridge of ice shards. Swims over the ground, strikes with claw and fang and lashes its tail in a full turn."},
+	"wyvern": {"voice": "wyvern", "name": "Storm Wyvern", "str": 22, "dex": 20, "vit": 22, "ene": 12, "claws": [3, 7], "claw_speed": 1.1,
+		"desc": "A rearing two-legged dragon whose wings are its forelimbs, with lightning veined through the membranes. Strikes with its wing claws, bites, and whips its barbed tail round."},
 }
+
+## A class's damage and speed with no weapon equipped: the dragons' claws and teeth, bare hands for the rest.
+static func unarmed(cls: String) -> Array:
+	return CLASSES[cls].get("claws", [1, 3]) if CLASSES.has(cls) else [1, 3]
+
+static func unarmed_speed(cls: String) -> float:
+	return float(CLASSES[cls].get("claw_speed", 1.2)) if CLASSES.has(cls) else 1.2
 
 static func skills_for(cls: String) -> Array:
 	var out := []

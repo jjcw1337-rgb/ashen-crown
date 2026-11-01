@@ -77,7 +77,8 @@ static func fx(h: Hero, ev: Dictionary) -> void:
 	Fx.burst(root, h.global_position + Vector3(0, 0.15, 0), Color(0.55, 0.5, 0.42, 0.55), 10, 1.6, 0.12, 0.45, false, 0.6)
 	SkillFx.snd(h, "swing_light", -4.0, 0.7)
 
-## After the pose: the body tumbles forward once round its middle (the Wraith, who has no legs, swoops low instead).
+## After the pose: the body tumbles forward once round its middle (the Wraith, who has no legs, swoops low instead;
+## a dragon lunges low).
 ## The puppet's roll runs on its own clock here.
 static func pose(h: Hero, delta: float) -> void:
 	if h.puppet and h.roll_t >= 0.0:
@@ -98,6 +99,11 @@ static func pose(h: Hero, delta: float) -> void:
 	if h.is_wraith():
 		h.rig.rotation.x = -0.5 * sin(PI * s)
 		h.rig.position.y = 0.2 - 0.25 * sin(PI * s)
+		return
+	if h.is_dragon():
+		# a dragon is far too long to tumble: it lunges low, nose down, and rises out of it
+		h.rig.rotation.x = -0.12 * sin(PI * s)
+		h.rig.position = Vector3(0, -0.15 * sin(PI * s), 0)
 		return
 	var a := -TAU * smoothstep(0.05, 0.9, s)
 	var p := Vector3(0, PIVOT, 0)

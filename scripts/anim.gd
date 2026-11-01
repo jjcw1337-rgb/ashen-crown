@@ -108,6 +108,9 @@ static func kick(D: Dictionary, key: String, impulse: float) -> void:
 
 ## st: time, phase, move, atk (-1 or 0..1), style, block (0..1), hit (0..1)
 static func pose(rig: Node3D, st: Dictionary) -> void:
+	if rig.has_meta("dragon"):
+		Dragon.pose(rig, st)      # the dragon classes pose their own skeleton (scripts/dragon.gd)
+		return
 	var J: Dictionary = rig.get_meta("j")
 	if rig.has_meta("crawler"):
 		_pose_crawler(rig, J, st, rig.get_meta("h"))

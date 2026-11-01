@@ -54,6 +54,8 @@ Windows SmartScreen may warn that the app is unrecognised (it isn't code-signed)
   - *Pestilent Trap* (R): kneel and set a brass canister (up to 2). The first enemy to step on it is stunned and it vents a poison cloud. If that enemy was infected, the cloud spreads the infection.
   - *The Last Epidemic* (F): smash your censer and raise a miasma dome for 8 seconds. Enemies inside are poisoned, slowed and infected; an infected enemy that dies passes it to the two nearest (up to 6 times). The dome collapses with a final blow. Co-op partners see your flasks, clouds, traps and dome too.
 
+- **Dragons** (new, on the preview branch): the **Obsidian Wyrm** (four legs and wings), the **Frost Serpent** (long and wingless) and the **Storm Wyvern** (two legs, wings for forelimbs). No skills yet: left-click is a three-blow combo (claw, bite, then a spin that sweeps the tail round), right-click blocks. They fight with their own claws and teeth.
+
 Every class has four skills on Q E R F, unlocking at levels 1, 3, 6 and 10. Your class is saved with your character, and co-op partners see it.
 
 **Talents** (press **N**): every class has three talent trees, each with seven talents in four rows, ending in a capstone. You get a talent point every level from level 2; left-click a talent to learn a rank, right-click to take it back. A row opens once you've spent enough points above it in that tree (3, 6, then 10 for the capstone). **Reset** gives every point back for free, and **Auto-assign** spends your points on a suggested build. Characters from before talents arrived got a build picked for their class and level; reset it if you want your own.
