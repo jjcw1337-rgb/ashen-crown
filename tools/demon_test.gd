@@ -1,9 +1,13 @@
 extends SceneTree
-## Demon class: his six skills (Molten Fists, Infernal Charge, Cataclysm Slam, Brimstone Hurl, Hellgrip, Wrath of
-## the Pit) each dealing damage and leaving what they should, the old saves' bindings carried over, his talents,
-## save/load and the class swap. Prints [D] lines ("FAIL" marks a check that failed).
+## Demon class: his six skills (Molten Fists, Infernal Charge, Fault of the Pit, Brimstone Hurl, Hellgrip, Wrath of
+## the Pit) each doing its own job (the Brand and its use, the charge's wind-up, run, stop and skid, the fault's
+## warning, eruption and molten life, Hurl's charges, the chain's hook, drag, smash, miss and boss pull, the
+## Crucible's damage taken and stored, its recast and eruption, Pit-born), the old saves' bindings carried over,
+## his talents, save/load and the class swap. Prints [D] lines ("FAIL" marks a check that failed).
 var g
 var fails := 0
+var DS        # DemonSkills and BrandFx, loaded at run time (a static reference compiles them before the Sfx autoload)
+var BF
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
@@ -20,6 +24,12 @@ func lives(en: Array) -> float:
 		if is_instance_valid(e):
 			t += e.life
 	return t
+## Until his last skill is over (every stage), so the next one can start.
+func idle(h) -> void:
+	for i in 400:
+		if h.atk_t < 0.0 and not h.dm.has("next_style") and not h.dm.has("chain") and not h.dm.has("charge"):
+			return
+		await process_frame
 func pack(at: Vector3, n: int, lvl := 20) -> Array:
 	for e in g.enemies_near(at, 80.0):
 		e.queue_free()
@@ -35,6 +45,8 @@ func pack(at: Vector3, n: int, lvl := 20) -> Array:
 	await process_frame
 	return out
 func _run() -> void:
+	DS = load("res://scripts/demon_skills.gd")
+	BF = load("res://scripts/brand_fx.gd")
 	while g.world == null or g._busy:
 		await process_frame
 	await g.start_game(false, "demon")
@@ -49,16 +61,20 @@ func _run() -> void:
 	h.recalc()
 	g.test_immortal = true
 	var home: Vector3 = h.global_position
-	# Molten Fists: the wedge ahead is hit and set alight
+	# Molten Fists: the wedge ahead is hit and set alight; a Branded foe takes more and loses the Brand
 	var en: Array = await pack(home + Vector3(0, 0, -2.2), 3)
 	h._face(Vector3(0, 0, -1))
 	var l0 := lives(en)
 	h.mana = h.max_mana
+	DS.brand(h, en[1])
+	await wait(0.1)
+	check(DS.branded(h, en[1]) and BF.has(en[1]), "a Branded foe carries the mark (seen)")
 	check(h.use_skill("fists", h.skill_aim("fists", en[1].global_position)), "Molten Fists cast")
 	await wait(1.2)
 	check(lives(en) < l0 - 1.0, "Molten Fists hurt the pack (%d)" % int(l0 - lives(en)))
 	check(en.filter(func(e): return is_instance_valid(e) and e.burn_t > 0.0).size() >= 2, "and set them alight")
-	# Infernal Charge: he covers ground, bowls them and leaves lava that keeps burning them
+	check(not DS.branded(h, en[1]), "and used the Brand up")
+	# Infernal Charge: the wind-up shows the line, then he runs it, bowling lesser foes aside
 	en = await pack(home + Vector3(0, 0, -5.0), 3)
 	h.global_position = home
 	h._face(Vector3(0, 0, -1))
@@ -67,46 +83,73 @@ func _run() -> void:
 	for k in h.cds.keys():
 		h.cds[k] = 0.0
 	check(h.use_skill("icharge", home + Vector3(0, 0, -8.0)), "Infernal Charge cast")
-	await wait(1.3)
+	check(h.atk_style == "icharge_wind" and h.fxs.has("hellrunner"), "the wind-up first, the path burning on the ground")
+	var moved_in_wind: float = 0.0
+	await wait(0.2)
+	moved_in_wind = home.distance_to(h.global_position)
+	check(moved_in_wind < 0.3, "he hasn't moved during the wind-up (%.2f m)" % moved_in_wind)
+	await wait(1.4)
 	var went: float = home.distance_to(h.global_position)
-	check(went > 4.0, "the charge carried him %.1f m" % went)
-	var l1 := lives(en)
-	check(l1 < l0 - 1.0, "and bowled the pack (%d)" % int(l0 - l1))
-	check(h.dm.has("lava"), "lava lies on the ground (%d patches)" % (h.dm["lava"] as Array).size())
-	var decals: int = g.world.fx_root.get_children().filter(func(c): return c is MeshInstance3D and c.mesh == DemonFx._disc_mesh()).size()
-	check(decals >= 4, "and is seen: %d lava decals under his trail" % decals)
-	for e in en:
-		if is_instance_valid(e):
-			e.global_position = (h.dm["lava"][0] as Dictionary)["p"]
-	await wait(1.2)
-	check(lives(en) < l1 - 1.0, "the trail burns whoever stands in it (%d)" % int(l1 - lives(en)))
-	await wait(4.0)
-	check(not h.dm.has("lava"), "and cools away")
-	# Cataclysm Slam: the ring, then the fissures erupt further out
+	check(went > 6.0, "the charge carried him %.1f m (through the lesser foes)" % went)
+	check(lives(en) < l0 - 1.0, "and bowled the pack (%d)" % int(l0 - lives(en)))
+	check(not h.dm.has("charge") and h.atk_t < 0.0, "the skid ended it")
+	# ... and a champion stops it: staggered and Branded
+	en = await pack(home + Vector3(0, 0, -5.0), 1)
+	en[0].champion = true
 	h.global_position = home
-	en = await pack(home + Vector3(0, 0, -2.0), 2)
-	var far_en: Array = []
-	for i in 2:
-		var e = g.spawn_enemy("zombie", home + Vector3(-1.0 + i * 2.0, 0, -6.0), 20)
+	h._face(Vector3(0, 0, -1))
+	for k in h.cds.keys():
+		h.cds[k] = 0.0
+	h.mana = h.max_mana
+	check(h.use_skill("icharge", home + Vector3(0, 0, -9.0)), "a second charge at a champion")
+	var saw_skid := false
+	for i in 90:
+		await process_frame
+		if h.atk_style == "icharge_skid":
+			saw_skid = true
+	went = home.distance_to(h.global_position)
+	check(went < 5.2 and went > 2.5, "it stopped him at the champion (%.1f m)" % went)
+	check(saw_skid, "with the skid")
+	check(is_instance_valid(en[0]) and DS.branded(h, en[0]), "and Branded it")
+	# Fault of the Pit: a line across his aim erupts after its warning, then stays molten, burning and slowing
+	h.global_position = home
+	en = await pack(home + Vector3(0, 0, -3.0), 3)
+	var off_en: Array = await pack(home + Vector3(0, 0, 1.5), 1)
+	en = []
+	for i in 3:
+		var e = g.spawn_enemy("zombie", home + Vector3(-2.0 + i * 2.0, 0, -3.0), 20)
 		e.aggro = false
 		e.scripted = 99.0
 		e.max_life = 5000.0
 		e.life = 5000.0
-		far_en.append(e)
+		en.append(e)
 	h._face(Vector3(0, 0, -1))
 	l0 = lives(en)
-	var f0 := lives(far_en)
+	var o0 := lives(off_en)
 	h.mana = h.max_mana
 	for k in h.cds.keys():
 		h.cds[k] = 0.0
-	check(h.use_skill("cslam", h.global_position + Vector3(0, 0, -2.0)), "Cataclysm Slam cast")
-	await wait(1.0)
-	check(lives(en) < l0 - 1.0, "the slam hurt the near pack (%d)" % int(l0 - lives(en)))
-	check(h.dm.has("fissures") or lives(far_en) < f0 - 1.0, "fissures race out")
-	await wait(2.0)
-	check(lives(far_en) < f0 - 1.0, "and their eruptions reached the far pack (%d)" % int(f0 - lives(far_en)))
-	check(not h.dm.has("fissures"), "and the fissures are spent")
-	# Brimstone Hurl: the boulder lands on the aim point, splashes and leaves a pool
+	check(h.use_skill("cslam", h.global_position + Vector3(0, 0, -3.0)), "Fault of the Pit cast")
+	var l_warn := l0
+	for i in 200:
+		await process_frame
+		if h.dm.has("fault"):
+			break
+	check(h.dm.has("fault") and not bool(h.dm["fault"]["erupted"]), "the fault opens with a warning first")
+	l_warn = lives(en)
+	check(l_warn > l0 - 1.0, "nobody hurt during the warning")
+	await wait(0.6)
+	var l_er := lives(en)
+	check(l_er < l0 - 1.0, "the eruption hurt everyone on the line (%d)" % int(l0 - l_er))
+	check(en.filter(func(e): return is_instance_valid(e) and DS.branded(h, e)).size() == 3, "and Branded them")
+	check(lives(off_en) > o0 - 1.0, "not the one behind him")
+	check(h.fxs.has("fault") and (h.fxs["fault"]["plates"] as Array).size() > 0, "obsidian plates heaved up (%d)" % (h.fxs["fault"]["plates"] as Array).size() if h.fxs.has("fault") else 0)
+	await wait(1.2)
+	check(lives(en) < l_er - 1.0, "the molten fault keeps burning them (%d)" % int(l_er - lives(en)))
+	check(en.any(func(e): return is_instance_valid(e) and e.slow_t > 0.0), "and slows them")
+	await wait(4.0)
+	check(not h.dm.has("fault"), "then cools away")
+	# Brimstone Hurl: two charges, the boulder lands at the aim, the core Brands, shards fly
 	en = await pack(home + Vector3(0, 0, -7.0), 3)
 	h.global_position = home
 	h._face(Vector3(0, 0, -1))
@@ -114,36 +157,84 @@ func _run() -> void:
 	h.mana = h.max_mana
 	for k in h.cds.keys():
 		h.cds[k] = 0.0
+	h.dm.erase("hurl_ch")
+	h.dm.erase("hurl_rc")
+	check(DS.charges(h) == 2, "two charges")
 	check(h.use_skill("hurl", en[1].global_position), "Brimstone Hurl cast")
-	await wait(0.95)
+	await wait(0.75)
 	check(h.dm.has("boulders") or lives(en) < l0, "a boulder is in the air")
-	await wait(1.4)
-	check(lives(en) < l0 - 1.0, "it splashed on the pack (%d)" % int(l0 - lives(en)))
-	check(h.dm.has("lava") and (h.dm["lava"] as Array).any(func(p): return str(p["s"]) == "hurl"), "and left a pool")
-	# Hellgrip: one foe seized, lifted, smashed; the rest shocked
-	en = await pack(home + Vector3(0, 0, -2.2), 3)
+	check(h.fxs.has("shatter") and (h.fxs["shatter"] as Array).size() > 0, "with its landing mark on the ground")
+	await wait(0.8)
+	check(lives(en) < l0 - 1.0, "it landed on the pack (%d)" % int(l0 - lives(en)))
+	check(DS.branded(h, en[1]), "the direct hit is Branded")
+	check(DS.charges(h) == 1 and h.cds["hurl"] <= DS.HURL_GAP, "one charge left, ready again at once")
+	h.mana = h.max_mana
+	await wait(0.6)
+	check(h.use_skill("hurl", en[0].global_position), "the second throw")
+	await wait(1.3)
+	check(DS.charges(h) == 0 and h.cds["hurl"] > 1.0, "no charges: recharging (%.1f s)" % h.cds["hurl"])
+	check(not h.use_skill("hurl", en[0].global_position), "a third is refused")
+	await idle(h)
+	# Hellgrip: the chain hooks the first foe in its line, drags it in, hoists it and smashes it
+	en = await pack(home + Vector3(0, 0, -6.0), 1)
+	var behind: Array = await pack(home + Vector3(0, 0, -7.2), 1)
+	en.append(g.spawn_enemy("zombie", home + Vector3(0, 0, -6.0), 20))
+	for e in g.enemies_near(home, 30.0):
+		e.aggro = false
+		e.scripted = 99.0
+		e.max_life = 5000.0
+		e.life = 5000.0
+	var first = null
+	for e in g.enemies_near(home + Vector3(0, 0, -6.0), 0.5):
+		first = e
 	h.global_position = home
 	h._face(Vector3(0, 0, -1))
-	l0 = lives(en)
-	var v = DemonSkills.grip_pick(h, en[1].global_position)
-	check(v != null, "Hellgrip finds a foe ahead")
-	var vl: float = v.life
+	var vd0: float = home.distance_to(first.global_position)
+	var vl: float = first.life
 	h.mana = h.max_mana
 	for k in h.cds.keys():
 		h.cds[k] = 0.0
-	check(h.use_skill("grip", en[1].global_position), "Hellgrip cast")
-	await wait(0.9)
-	var lifted: bool = is_instance_valid(v) and v.rig.position.y > 0.8
-	check(lifted, "the foe is hoisted up (%.2f m)" % (v.rig.position.y if is_instance_valid(v) else 0.0))
-	await wait(1.6)
-	check(is_instance_valid(v) and v.life < vl - 1.0 and v.rig.position.y < 0.05, "smashed down (%d) and back on the ground" % int(vl - v.life))
-	check(lives(en) - (v.life if is_instance_valid(v) else 0.0) < l0 - vl - 0.5, "the shockwave hit the others")
-	check(is_instance_valid(v) and v.burn_t > 0.0, "and it burns")
+	check(h.use_skill("grip", home + Vector3(0, 0, -6.0)), "Hellgrip cast (no foe needed: the chain is a skillshot)")
+	var hooked := false
+	var min_d := 99.0
+	var max_y := 0.0
+	for i in 180:
+		await process_frame
+		if h.dm.has("chain") and str(h.dm["chain"]["state"]) == "drag":
+			hooked = true
+		if is_instance_valid(first):
+			min_d = minf(min_d, home.distance_to(first.global_position))
+			max_y = maxf(max_y, first.rig.position.y)
+	check(hooked, "the chain hooked a foe")
+	check(min_d < vd0 - 3.0, "and dragged it in (%.1f -> %.1f m)" % [vd0, min_d])
+	check(max_y > 0.8, "hoisted it (%.2f m)" % max_y)
+	check(is_instance_valid(first) and first.life < vl - 1.0 and first.rig.position.y < 0.05, "smashed it down (%d) and back on the ground" % int(vl - first.life))
+	await idle(h)
+	check(h.atk_t < 0.0 and not h.dm.has("chain") and not h.fxs.has("chain") and not h.fxs.has("grip"), "and it's over (nothing left of it)")
+	await idle(h)
+	# a miss: no foe, the chain comes back empty
 	for e in g.enemies_near(home, 80.0):
 		e.queue_free()
 	await process_frame
-	check(not h.use_skill("grip", home + Vector3(0, 0, -2.0)), "no foe in reach: Hellgrip is refused")
-	# Wrath of the Pit: the roar and the stomp, then meteors for 7 s, +40% damage meanwhile
+	for k in h.cds.keys():
+		h.cds[k] = 0.0
+	h.mana = h.max_mana
+	check(h.use_skill("grip", home + Vector3(0, 0, -6.0)), "a cast at nothing")
+	await wait(1.6)
+	check(h.atk_t < 0.0 and not h.dm.has("chain") and not h.dm.has("grip_victim"), "the empty chain came back")
+	await idle(h)
+	# a boss drags him instead
+	en = await pack(home + Vector3(0, 0, -6.0), 1)
+	en[0].boss = true
+	h.global_position = home
+	for k in h.cds.keys():
+		h.cds[k] = 0.0
+	h.mana = h.max_mana
+	h.use_skill("grip", home + Vector3(0, 0, -6.0))
+	await wait(1.0)
+	check(home.distance_to(h.global_position) > 3.0 and en[0].global_position.distance_to(home + Vector3(0, 0, -6.0)) < 1.2, "a boss stays put and he is dragged to it (%.1f m)" % home.distance_to(h.global_position))
+	await idle(h)
+	# Wrath of the Pit: the Crucible takes half and stores it, nothing stops him; the eruption; then Pit-born
 	en = await pack(home + Vector3(0, 0, -4.0), 4)
 	h.global_position = home
 	h._face(Vector3(0, 0, -1))
@@ -152,18 +243,43 @@ func _run() -> void:
 	for k in h.cds.keys():
 		h.cds[k] = 0.0
 	check(h.use_skill("wrath", home), "Wrath of the Pit cast")
-	await wait(3.0)
-	check(h.dm.has("wrath") and float(h.dm["wrath"]["rain"]) > 0.0, "the rain has begun (%.1f s left)" % (float(h.dm["wrath"]["rain"]) if h.dm.has("wrath") else 0.0))
+	check(DS.in_crucible(h), "the Crucible holds him")
+	await wait(0.4)
+	g.test_immortal = false
+	h.life = h.max_life
+	var lb: float = h.life
+	h.take_hit(200.0, home + Vector3(0, 0, -2), "melee", "fire")
+	var took: float = lb - h.life
+	var h_heat: float = float(h.dm["wrath"]["heat"]) if h.dm.has("wrath") else 0.0
+	h.daze_t = 1.0
+	await process_frame
+	await process_frame
+	g.test_immortal = true
+	check(took > 1.0 and took <= 200.0 * (1.0 - h.res / 100.0) * 0.5 + 1.0, "it took half (%d of a 200 blow)" % int(took))
+	check(h_heat > 1.0, "and stored it as heat (%d)" % int(h_heat))
+	check(h.daze_t <= 0.0, "nothing stuns him in it")
+	check(h.use_skill("wrath", home), "pressing V again ends it early")
+	await wait(0.9)
+	check(lives(en) < l0 - 1.0, "the eruption hurt the pack (%d)" % int(l0 - lives(en)))
+	check(en.all(func(e): return not is_instance_valid(e) or e.stun_t > 0.0 or e.dead), "and froze them with fear")
+	check(h.dm.has("wrath") and float(h.dm["wrath"]["rain"]) > 0.0, "Pit-born: the rain has begun (%.1f s left)" % (float(h.dm["wrath"]["rain"]) if h.dm.has("wrath") else 0.0))
 	check(h.buff_t > 0.0, "and his damage is up (%.1f s)" % h.buff_t)
 	await wait(4.0)
 	var meteors: int = int(h.dm["wrath"]["n"]) if h.dm.has("wrath") else 0
 	check(meteors >= 6, "meteors fell (%d so far)" % meteors)
-	check(lives(en) < l0 - 1.0, "and hurt the pack (%d)" % int(l0 - lives(en)))
 	await wait(4.0)
 	check(not h.dm.has("wrath"), "the wrath ends by itself")
+	# a Crucible left alone erupts by itself
+	for k in h.cds.keys():
+		h.cds[k] = 0.0
+	h.mana = h.max_mana
+	h.use_skill("wrath", home)
+	await wait(3.6)
+	check(h.dm.has("wrath") and float(h.dm["wrath"]["rain"]) > 0.0, "a Crucible left alone erupts by itself")
+	await wait(7.0)
 	# old saves: the four old skills' bindings carry over
 	var b := {"q": "hellclaw", "e": "summon", "r": "phase", "f": "pact", "lmb": "attack", "rmb": "block"}
-	DemonSkills.migrate_binds(b)
+	DS.migrate_binds(b)
 	check(b["q"] == "fists" and b["e"] == "icharge" and b["r"] == "cslam" and b["f"] == "hurl", "old bindings migrated: %s" % str(b))
 	var old: Dictionary = h.to_save()
 	old["binds"] = {"q": "hellclaw", "e": "summon", "r": "phase", "f": "pact", "g": "", "v": "", "lmb": "attack", "rmb": "block"}
@@ -176,7 +292,7 @@ func _run() -> void:
 	h.set_level(60)
 	h.auto_talents()
 	check(h.talent("fists_wide") == 1.0 and h.talent("hurl_twin") == 1.0 and h.talent("wrath_double") == 1.0, "the auto build takes all three capstones")
-	check(h.skill_cd("icharge") < 7.0 and h.skill_cost("icharge") < 12.0, "Stampede and Cheap Fury apply (cd %.1f, cost %.1f)" % [h.skill_cd("icharge"), h.skill_cost("icharge")])
+	check(h.skill_cd("icharge") < 9.0 and h.skill_cost("icharge") < 12.0, "Stampede and Cheap Fury apply (cd %.1f, cost %.1f)" % [h.skill_cd("icharge"), h.skill_cost("icharge")])
 	# save/load and the class swap
 	g.save_game()
 	await g.travel(0, "town", "start")

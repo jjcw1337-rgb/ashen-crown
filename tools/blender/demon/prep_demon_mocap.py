@@ -32,7 +32,11 @@ NAMES = {"idle": ("idle", None), "slow_orc_walk": ("walk", None), "run_02": ("ru
          "charged_axe_chop": ("smash", (60, 134)), "grip_and_throw_down": ("grab_throw", (12, 108)),
          "crouch_charge_and_throw": ("hurl", (96, 184)), "charged_spell_cast": ("cast", None),
          "zombie_scream": ("roar", None), "angry_ground_stomp": ("stomp", None), "hit_reaction": ("hit", None),
-         "falling_down": ("death", None)}
+         "falling_down": ("death", None),
+         # the kit overhaul (Nov 2026): Hellrunner's skid, the Chain of the Pit's throw and haul, Shatterstone's
+         # second throw, the Crucible's knee (clips task 01a1989b-8b0a-7744-897d-fda3dbb552e6: 531, 239, 421, 365)
+         "sprint_and_sudden_stop": ("skid", (22, 47)), "crouch_pull_and_throw": ("chain", None),
+         "over_shoulder_throw": ("hurl2", None), "kneel_on_one_knee_and_stand": ("kneel", None)}
 LOOPS = ["idle", "walk", "run", "combat_idle", "charge"]
 def key(n):
     return n.split("|")[-1].strip().lower().replace(" ", "_")

@@ -68,6 +68,14 @@ const SHOTS := {
 	"grip": {"style": "grip", "clip": "grab_throw", "keys": [[0.0, 0.2], [0.25, 1.2], [0.5, 3.08], [0.7, 3.4], [1.0, 4.0]]},
 	"wrath_roar": {"style": "wrath_roar", "clip": "roar", "keys": [[0.0, 0.0], [0.5, 1.25], [1.0, 2.75]]},
 	"wrath_stomp": {"style": "wrath_stomp", "clip": "stomp", "keys": [[0.0, 0.0], [0.5, 0.62], [1.0, 1.3]]},
+	# the kit overhaul's stages (DemonSkills.STAGES): Hellrunner's paw and skid, Shatterstone's second throw, the
+	# Chain of the Pit's fling and haul, the Crucible's knee
+	"icharge_wind": {"style": "icharge_wind", "clip": "stomp", "keys": [[0.0, 0.0], [0.7, 0.5], [1.0, 0.64]]},
+	"icharge_skid": {"style": "icharge_skid", "clip": "skid", "keys": [[0.0, 0.0], [1.0, 1.04]]},
+	"hurl2": {"style": "hurl2", "clip": "hurl2", "keys": [[0.0, 0.5], [0.52, 3.25], [1.0, 4.1]]},
+	"grip_throw": {"style": "grip_throw", "clip": "chain", "keys": [[0.0, 0.2], [0.5, 1.6], [1.0, 2.3]]},
+	"grip_haul": {"style": "grip_haul", "clip": "chain", "keys": [[0.0, 2.4], [1.0, 3.6]]},
+	"crucible": {"style": "crucible", "clip": "kneel", "keys": [[0.0, 0.0], [0.2, 0.12], [1.0, 0.36]]},
 	# the preview tool's names for the roar, the stomp and the grab
 	"roar": {"style": "roar", "clip": "roar", "keys": [[0.0, 0.0], [0.5, 1.25], [1.0, 2.75]]},
 	"stomp": {"style": "stomp", "clip": "stomp", "keys": [[0.0, 0.0], [0.5, 0.62], [1.0, 1.3]]},

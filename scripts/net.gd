@@ -10,7 +10,8 @@ const MAX_CLIENTS := 3
 const STYLES := ["over", "back", "side", "thrust", "bow", "cast", "claw", "slam", "bite", "smash", "lob", "scoop", "burst", "cackle", "swipe1", "swipe2", "swipe3", "cleave", "feral_lunge", "feral_swipe", "perch", "descend", "skirm_lunge", "reaver_cleave", "stalk_hook", "bear_roar", "bear_maul", "sloth_walk", "sloth_run", "sloth_rise", "sloth_look", "sloth_stare", "sloth_roar", "sloth_drop", "sloth_sniff", "sloth_sweep", "sloth_slam", "sloth_pounce",
 	"rend", "siphon", "wstep", "grasp", "phantom", "night_rise", "night_scream", "night_hold", "night_fall",
 	"pd_flask", "pd_volatile", "pd_trap", "pd_slam", "pd_dome", "pd_inspect",
-	"fists", "icharge", "cslam", "hurl", "grip", "wrath_roar", "wrath_stomp", "chop"]
+	"fists", "icharge", "cslam", "hurl", "grip", "wrath_roar", "wrath_stomp", "chop",
+	"icharge_wind", "icharge_skid", "hurl2", "grip_throw", "grip_haul", "crucible"]
 const SEND_RATE := 0.05
 const ALLY_COLORS := [Color(0.45, 0.8, 1.0), Color(0.5, 1.0, 0.5), Color(1.0, 0.6, 0.9)]
 
@@ -828,6 +829,21 @@ func send_pvp_hit(target_pid: int, amount: float, from: Vector3) -> void:
 func sv_pvp_hit(target_pid: int, amount: float, from: Vector3) -> void:
 	if server and game.bg != null:
 		game.bg.pvp_hit(multiplayer.get_remote_sender_id(), target_pid, amount, from)
+
+## PvP crowd control (PvpStatus): the local hero's skill did more than hurt another player's stand-in.
+func send_pvp_status(target_pid: int, kind: String, secs: float, data: Dictionary) -> void:
+	if active and not server:
+		rpc_id(1, "sv_pvp_status", target_pid, kind, secs, data)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_pvp_status(target_pid: int, kind: String, secs: float, data: Dictionary) -> void:
+	if server and game.bg != null:
+		game.bg.pvp_status(multiplayer.get_remote_sender_id(), target_pid, kind, secs, data)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_pvp_status(kind: String, secs: float, data: Dictionary) -> void:
+	if not loading:
+		PvpStatus.apply(game.hero, kind, secs, data)
 
 ## The local hero fell in a raid: everything they had, for the server to drop where they fell.
 func send_bg_died(items: Array) -> void:

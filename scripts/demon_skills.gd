@@ -1,65 +1,88 @@
 class_name DemonSkills
 extends RefCounted
-## The Demon's skills: their casts, the frames their blows land on, what runs every frame (the lava he leaves on the
-## ground, the fissures, the meteors, the foe in his grip) and their state on the hero (`Hero.dm`, cleared by `clear`).
-## Hero.use_skill, _impact and _process call in. Every skill is a whole-body clip of his (Demon.SHOTS: the clip and
-## how the attack's progress 0..1 maps onto its seconds, so the blow lands on Anim.impact_at's frame). Nothing here
-## draws: every effect is an fx event (`Hero.fx`, SkillFx) that DemonFx plays on his own game and on his puppet on
-## every partner's; the damage, the burning, the stuns and his own movement stay here, on the caster's game.
-##  - Molten Fists (Q, "fists"): the two-fisted punch; the ground cracks open ahead of him (a wedge of FISTS_R) and
-##    everything in it is hit and set alight.
-##  - Infernal Charge (E, "icharge"): the head-down charge up to CHARGE_RANGE at CHARGE_SPEED; everything in his
-##    way is bowled aside (damage, a knockback, a short stun), and his hooves leave a trail of lava (TRAIL_DUR s,
-##    ticking on whoever stands in it).
-##  - Cataclysm Slam (R, "cslam"): the ground slam: a ring round the blow, then FISSURES magma fissures race out
-##    ahead in a fan and, FISSURE_DELAY later, erupt along their length in waves of lava bursts.
-##  - Brimstone Hurl (F, "hurl"): a molten boulder torn out of the ground and thrown at the aim point: it lands
-##    HURL_FLIGHT s later, splashes over HURL_R (damage, a knockback, fire) and leaves a lava pool (POOL_DUR s).
-##  - Hellgrip (G, "grip"): the foe ahead is seized (GRIP_RANGE), lifted through the clip's hold and smashed into
-##    the ground: his heaviest single blow, it burns, and a shockwave (GRIP_SHOCK_R) hits whoever stands round it.
-##  - Wrath of the Pit (V, "wrath"): the ultimate, two stages chained as attacks: the roar (wings wide, his cracks
-##    going white-hot; terror round him) and the stomp (a ring of lava), then for WRATH_DUR s meteors fall on the
-##    foes round him (one every WRATH_EVERY s, WRATH_R out) while he fights on with +40% damage.
+## The Demon's skills: one job each (PvP first, PvE kept strong). Casts, the frames their blows land on, what runs
+## every frame, and their state on the hero (`Hero.dm`, cleared by `clear`). Hero.use_skill, _impact and _process call
+## in. Every skill is whole-body clips of his (Demon.SHOTS: the clip and how the attack's progress 0..1 maps onto its
+## seconds); a skill with stages chains them (`_next`), each stage its own style. Nothing here draws: every effect is
+## an fx event (`Hero.fx`, SkillFx) that DemonFx plays on his game and on his puppet on every partner's; the damage,
+## the statuses and his own movement stay here, on the caster's game.
+##
+## The kit (tuning in Data.SKILLS, PvP overrides in each entry's "pvp"):
+##  - Molten Fists (Q, "fists", burst finisher): the wedge punch; a Branded target takes more and loses the Brand.
+##  - Infernal Charge (E, "icharge", engage / mobility): "icharge_wind" (paws the ground; the burning line shows
+##    everyone the path) -> "icharge" (the run, CHARGE_SPEED, up to CHARGE_RANGE) -> "icharge_skid" (the stop, open
+##    to punishment). Stops on the first champion, boss or player: staggered and Branded. Others are bowled aside.
+##  - Fault of the Pit (R, "cslam", area control): the slam splits a line FAULT_LEN long FAULT_AHEAD ahead, across
+##    the aim; after FAULT_WARN it erupts (damage, thrown up, Branded) and stays molten FAULT_LIFE s (burns, slows).
+##  - Brimstone Hurl (F, "hurl", ranged pressure): HURL_CHARGES charges; "hurl"/"hurl2" alternate; the boulder lands
+##    at the aim after its flight (the shadow shows where): core HURL_CORE (full damage + Brand), edge HURL_R (half),
+##    then it shatters into SHARDS burning pieces.
+##  - Hellgrip (G, "grip", pick / pull): "grip_throw" flings the chain (CHAIN_LEN at CHAIN_SPEED, the first body in
+##    its line is hooked; monsters block it) -> "grip_haul" (the victim dragged to him, or he to a boss) -> "grip"
+##    (hoisted and smashed). A miss hauls back an empty chain (the recovery). Branded: CHAIN_REFUND of the cooldown back.
+##  - Wrath of the Pit (V, "wrath", defensive counter): "crucible" (wings folded, up to CRUCIBLE_MAX s, recast to end:
+##    CRUCIBLE_DR less damage taken, nothing moves or stops him, the damage stored as heat) -> "wrath_roar" (the
+##    eruption round him: damage + the heat, terror) -> PIT_DUR s of +damage and meteors.
 
-## Each attack's length in seconds (before Data.ATTACK_PACE; Molten Fists also by attack speed)
-const DUR := {"fists": 0.8, "icharge": 0.75, "cslam": 1.2, "hurl": 1.1, "grip": 1.7, "wrath_roar": 1.3, "wrath_stomp": 0.8}
+## Each stage's length in seconds (before Data.ATTACK_PACE, and the crypt's pace in the Battlegrounds; Molten Fists
+## also by attack speed). The charge's run is set by its distance.
+const DUR := {"fists": 0.8, "icharge_wind": 0.32, "icharge": 0.6, "icharge_skid": 0.38, "cslam": 1.15, "hurl": 0.95,
+	"hurl2": 1.0, "grip_throw": 0.55, "grip_haul": 0.45, "grip": 1.25, "crucible": 2.0, "wrath_roar": 1.1}
 ## The attack style each skill starts with
-const STYLE := {"fists": "fists", "icharge": "icharge", "cslam": "cslam", "hurl": "hurl", "grip": "grip", "wrath": "wrath_roar"}
-const WRATH_STAGES := ["wrath_roar", "wrath_stomp"]
+const STYLE := {"fists": "fists", "icharge": "icharge_wind", "cslam": "cslam", "hurl": "hurl", "grip": "grip_throw", "wrath": "crucible"}
+const STAGES := ["icharge_wind", "icharge", "icharge_skid", "grip_throw", "grip_haul", "grip", "crucible", "wrath_roar"]
 ## Old saves: the skills these replaced, so their bindings carry over
 const OLD_IDS := {"hellclaw": "fists", "summon": "icharge", "phase": "cslam", "pact": "hurl"}
 
 const FISTS_R := 3.4           # how far ahead the cracks reach
 const FISTS_HALF := 42.0       # half the wedge's angle (degrees)
+const BRAND_DUR := 4.0
+const BRAND_BONUS := 0.3       # Molten Fists on a Branded target (PvE; the PvP share is Data's)
+
 const CHARGE_RANGE := 9.0
+const CHARGE_MIN := 3.0
 const CHARGE_SPEED := 16.0
-const CHARGE_HIT_R := 1.9
-const TRAIL_STEP := 1.1        # a lava patch every so far along the charge
-const TRAIL_DUR := 4.0
-const TRAIL_R := 1.3
+const CHARGE_HIT_R := 1.5
 const HAZARD_TICK := 0.4
-const SLAM_R := 3.0
-const FISSURES := 5
-const FISSURE_LEN := 8.0
-const FISSURE_HALF := 55.0     # the fan's half-angle (degrees)
-const FISSURE_DELAY := 0.55    # from the slam to the first eruption
-const FISSURE_WAVE := 0.12     # between the eruptions along a fissure
-const FISSURE_STEP := 1.5      # between bursts along a fissure
-const FISSURE_R := 1.7
-const HURL_RANGE := 12.0
-const HURL_FLIGHT := 0.6
+
+const FAULT_AHEAD := 3.0       # from him to the fault's middle
+const FAULT_LEN := 7.0
+const FAULT_W := 1.4
+const FAULT_WARN := 0.4        # the glowing crack before the eruption
+const FAULT_LIFE := 4.0        # molten after it
+const FAULT_SLOW := 0.35
+
+const HURL_RANGE := 14.0
+const HURL_MIN := 3.0
+const HURL_FLIGHT := 0.55      # + HURL_PER_M a metre: a long throw is slower to land and easier to step out of
+const HURL_PER_M := 0.025
+const HURL_CORE := 1.3
 const HURL_R := 2.6
-const POOL_DUR := 5.0
-const POOL_R := 2.2
-const GRIP_RANGE := 3.6
+const HURL_CHARGES := 2
+const HURL_GAP := 0.55         # between two throws
+const SHARDS := 4
+const SHARD_R := 0.9
+
+const CHAIN_LEN := 7.5
+const CHAIN_SPEED := 24.0
+const CHAIN_HIT_W := 0.55
+const CHAIN_REFUND := 0.3
 const GRIP_SHOCK_R := 2.6
 const GRIP_LIFT := 2.1         # how high the victim is held
-const WRATH_DUR := 7.0
+const HOLD_IN := 1.5           # where a dragged victim ends up in front of him
+
+const CRUCIBLE_MAX := 2.0
+const CRUCIBLE_MIN := 0.35     # before a recast can end it
+const CRUCIBLE_DR := 0.5
+const HEAT_SHARE := 0.5        # of the damage stored, added to the eruption
+const HEAT_CAP := 0.3          # of his maximum life
+const ROAR_R := 6.0
+const PIT_DUR := 6.0
 const WRATH_EVERY := 0.45
 const WRATH_R := 9.0
-const WRATH_FALL := 0.55       # a meteor's time in the air
+const WRATH_FALL := 0.55       # a meteor's time in the air (PvE)
+const WRATH_FALL_PVP := 0.8    # ... and at a player, with its glowing circle
 const METEOR_R := 2.3
-const ROAR_R := 6.0
 
 static func active(h: Hero) -> bool:
 	return h.is_demon()
@@ -69,45 +92,82 @@ static func active(h: Hero) -> bool:
 static func magma(h: Hero, k: float) -> float:
 	return (16.0 + h.level * 4.5 + (h.dmg_min + h.dmg_max) * 0.35) * k
 
-## Can he be told to walk right now? The charge, the slam, the throw, the grip and the wrath's stages root him.
+static func pvp(id: String, key: String, def: float) -> float:
+	return float((Data.skill_def(id).get("pvp", {}) as Dictionary).get(key, def))
+
+## A blow of one of his skills: against a player (a Battlegrounds stand-in) its PvP share applies, and the Pit-born
+## bonus is the PvP one.
+static func _hit(h: Hero, e, mult: float, knock: float, src: String, flat: float) -> void:
+	if PvpStatus.is_player(e):
+		var share := pvp(src, "dmg", 1.0)
+		if h.buff_t > 0.0 and h.dm.has("pit"):
+			share *= (1.0 + pvp("wrath", "bonus", 0.2)) / h.buff_mult()
+		mult *= share
+		flat *= share
+		knock = 0.0
+	h._hit_enemy(e, mult, knock, src, flat)
+
+## Is this one too big to be stopped or dragged (bosses, the Sloths)?
+static func immovable(e) -> bool:
+	return bool(e.boss) or e.get("sloth") != null
+
+## Can he be told to walk right now? Everything but the fists roots him.
 static func rooted(h: Hero) -> bool:
 	return h.atk_t >= 0.0 and h.atk_skill in ["icharge", "cslam", "hurl", "grip", "wrath"]
 
-## The foe Hellgrip seizes: the nearest in the arc ahead within GRIP_RANGE (the one aimed at first).
-static func grip_pick(h: Hero, aim: Vector3):
-	var best = null
-	var bd := 99.0
-	var fwd := (aim - h.global_position) * Vector3(1, 0, 1)
-	fwd = fwd.normalized() if fwd.length() > 0.3 else h.aim_dir()
-	for e in h.game.enemies_near(h.global_position, GRIP_RANGE + 1.0):
-		var to: Vector3 = e.global_position - h.global_position
-		to.y = 0
-		var d: float = to.length() - e.radius
-		if d > GRIP_RANGE:
-			continue
-		if to.length() > 0.5 and fwd.dot(to.normalized()) < cos(deg_to_rad(70.0)):
-			continue
-		var score: float = d + Vector2(e.global_position.x - aim.x, e.global_position.z - aim.z).length() * 0.5
-		if score < bd:
-			bd = score
-			best = e
-	return best
-
-## ClassSkills: Hellgrip needs a foe to seize before anything is spent.
-static func can_cast(h: Hero, id: String, aim: Vector3) -> bool:
-	if id == "grip" and grip_pick(h, aim) == null:
-		h.game.ui.message("No enemy in reach", Color(0.8, 0.8, 0.8))
-		return false
+static func can_cast(_h: Hero, _id: String, _aim: Vector3) -> bool:
 	return true
 
-static func _start(h: Hero, style: String, skill: String) -> void:
+static func _start(h: Hero, style: String, skill: String, secs := 0.0) -> void:
 	h._start_attack(style, skill)
-	var d: float = DUR[style] * Data.attack_pace(h.cls)
+	var d: float = (secs if secs > 0.0 else float(DUR[style])) * Data.attack_pace(h.cls)
+	if h.game.bg_mode and not h.puppet:
+		d *= Battlegrounds.ATTACK_PACE
 	if skill == "fists":
 		d /= h.aspd
 	h.atk_dur = d
 	h.moving = false
 	h.path = PackedVector3Array()
+
+# ---------------------------------------------------------------- the Brand
+## Brands a foe (Charge, Fault, Hurl). Monsters: kept here; a player: the server tells them (they see it on
+## themselves) and every game draws it on their puppet from the fx event.
+static func brand(h: Hero, e) -> void:
+	if e == null or not is_instance_valid(e) or e.dead:
+		return
+	var b: Dictionary = h.dm.get("brand", {})
+	b[e.get_instance_id()] = h.anim_time + BRAND_DUR
+	h.dm["brand"] = b
+	if PvpStatus.is_player(e):
+		PvpStatus.send(h.game, e, "brand", BRAND_DUR)
+		h.fx("fists", "brand", {"pid": int(e.pvp_pid), "x": BRAND_DUR})
+	else:
+		h.fx("fists", "brand", {"t": [e], "x": BRAND_DUR})
+
+static func branded(h: Hero, e) -> bool:
+	if e == null or not is_instance_valid(e):
+		return false
+	var b: Dictionary = h.dm.get("brand", {})
+	return float(b.get(e.get_instance_id(), -1.0)) > h.anim_time
+
+static func _unbrand(h: Hero, e) -> void:
+	var b: Dictionary = h.dm.get("brand", {})
+	b.erase(e.get_instance_id())
+
+## A status on a foe: a monster takes it here (stun, slow), a player through the server (PvpStatus).
+static func _cc(h: Hero, e, kind: String, pve_secs: float, pvp_secs: float, data := {}) -> void:
+	if e == null or not is_instance_valid(e) or e.dead:
+		return
+	if PvpStatus.is_player(e):
+		if pvp_secs > 0.0:
+			PvpStatus.send(h.game, e, kind, pvp_secs, data)
+		return
+	match kind:
+		"slow":
+			e.slow(pve_secs, float(data.get("k", 0.35)))
+		_:
+			if pve_secs > 0.0:
+				e.stun(pve_secs)
 
 # ---------------------------------------------------------------- casts
 static func cast(h: Hero, id: String, aim: Vector3) -> void:
@@ -118,140 +178,399 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 			_start(h, "fists", "fists")
 		"icharge":
 			var dir := to.normalized() if to.length() > 0.5 else h.aim_dir()
-			w["charge"] = {"dir": dir, "a": 0.0, "dist": minf(maxf(to.length(), 3.0), CHARGE_RANGE), "hit": {}, "laid": 0.0, "ps": PackedVector3Array()}
-			_start(h, "icharge", "icharge")
-			h.fx("icharge", "start", {"d": dir})
+			var dist := clampf(to.length(), CHARGE_MIN, CHARGE_RANGE)
+			# where he would end up (walls cut it short), so the line everyone sees is the truth
+			var end: Vector3 = h.game.world.move(h.global_position, dir * dist, h.radius)
+			end.y = h.game.world.height_at(end.x, end.z)
+			dist = maxf(1.0, (end - h.global_position).length())
+			w["charge"] = {"dir": dir, "dist": dist, "done": 0.0, "hit": {}, "stop": false}
+			_start(h, "icharge_wind", "icharge")
+			h.fx("icharge", "wind", {"p": h.global_position, "q": end, "d": dir, "x": h.atk_dur})
 		"cslam":
 			_start(h, "cslam", "cslam")
 		"hurl":
 			var at := h.global_position + to.limit_length(HURL_RANGE)
-			if to.length() < 1.5:
-				at = h.global_position + h.aim_dir() * 4.0
+			if to.length() < HURL_MIN:
+				at = h.global_position + h.aim_dir() * HURL_MIN
 			at.y = h.game.world.height_at(at.x, at.z)
 			w["hurl_at"] = at
-			_start(h, "hurl", "hurl")
+			var second := bool(w.get("hurl_alt", false))
+			w["hurl_alt"] = not second
+			_start(h, "hurl2" if second else "hurl", "hurl")
+			_spend_charge(h)
 		"grip":
-			w["grip_victim"] = grip_pick(h, aim)
+			w.erase("chain")
+			w["grip_victim"] = null
 			w["grip_held"] = false
-			_start(h, "grip", "grip")
+			w["grip_grabbed"] = false
+			_start(h, "grip_throw", "grip")
 		"wrath":
 			end_wrath(h, false)
-			w["wrath"] = {"stage": 0, "t": 0.0, "rain": -1.0, "next": 0.0, "n": 0}
-			_start(h, "wrath_roar", "wrath")
+			w["wrath"] = {"stage": 0, "t": 0.0, "heat": 0.0, "rain": -1.0, "next": 0.0, "n": 0, "pvp_n": 0}
+			_start(h, "crucible", "wrath", CRUCIBLE_MAX)
+			h.fx("wrath", "crucible", {"x": h.atk_dur})
+
+## Hellgrip and the Crucible: pressing the key again mid-skill (Hero.use_skill asks first). True when it was taken.
+static func recast(h: Hero, id: String) -> bool:
+	if id == "wrath" and in_crucible(h) and h.atk_t >= CRUCIBLE_MIN * Data.attack_pace(h.cls):
+		_erupt_now(h)
+		return true
+	return false
+
+# ---------------------------------------------------------------- Brimstone Hurl's charges
+static func charges(h: Hero) -> int:
+	return int(h.dm.get("hurl_ch", max_charges(h)))
+
+static func max_charges(h: Hero) -> int:
+	return HURL_CHARGES + (1 if h.talent("hurl_twin") > 0.0 else 0)
+
+static func _spend_charge(h: Hero) -> void:
+	var n := charges(h) - 1
+	h.dm["hurl_ch"] = n
+	if not h.dm.has("hurl_rc"):
+		h.dm["hurl_rc"] = h.skill_cd("hurl")
+	# another charge left: only the short gap; none: the cooldown until the next one is back
+	h.cds["hurl"] = HURL_GAP if n > 0 else float(h.dm["hurl_rc"])
+
+static func _recharge(h: Hero, delta: float) -> void:
+	if not h.dm.has("hurl_rc"):
+		return
+	var rc: float = float(h.dm["hurl_rc"]) - delta
+	if rc <= 0.0:
+		var n := mini(charges(h) + 1, max_charges(h))
+		h.dm["hurl_ch"] = n
+		if n >= max_charges(h):
+			h.dm.erase("hurl_rc")
+		else:
+			h.dm["hurl_rc"] = h.skill_cd("hurl")
+		if h.cds.get("hurl", 0.0) > HURL_GAP:
+			h.cds["hurl"] = 0.0
+	else:
+		h.dm["hurl_rc"] = rc
 
 # ---------------------------------------------------------------- the blows
 ## Called from Hero._impact on the attack's impact frame; true when it was one of his.
 static func impact(h: Hero) -> bool:
 	if not active(h):
 		return false
-	var w: Dictionary = h.dm
-	match h.atk_skill:
+	match h.atk_style:
 		"fists":
-			var fwd := h.aim_dir()
-			var wide := h.talent("fists_wide") > 0.0
-			var reach := FISTS_R + (1.0 if wide else 0.0)
-			var lit := []
-			for e in h.game.enemies_near(h.global_position, reach + 1.2):
-				var to: Vector3 = e.global_position - h.global_position
-				to.y = 0
-				if to.length() - e.radius > reach:
-					continue
-				if to.length() < 0.6 or fwd.dot(to.normalized()) > cos(deg_to_rad(FISTS_HALF + (12.0 if wide else 0.0))):
-					h._hit_enemy(e, 1.5, 0.5, "fists", magma(h, 0.25))
-					if is_instance_valid(e) and not e.dead:
-						e.ignite(magma(h, 0.12) * h.dmg_mult("fists"), 6.0 if wide else 3.0)
-						lit.append(e)
-			h.fx("fists", "impact", {"y": h.rig.global_rotation.y, "r": reach, "t": lit})
-		"icharge":
-			pass      # the charge itself moves and hits in update
+			_fists(h)
+		"icharge_wind", "icharge", "icharge_skid", "grip_haul", "crucible":
+			pass       # moved by update
 		"cslam":
-			var at := h.global_position + h.aim_dir() * 1.2
-			at.y = h.game.world.height_at(at.x, at.z)
-			var any := false
-			for e in h.game.enemies_near(at, SLAM_R + 1.0):
-				var to: Vector3 = e.global_position - at
-				to.y = 0
-				if to.length() - e.radius <= SLAM_R:
-					h._hit_enemy(e, 1.6, 0.8, "cslam", magma(h, 0.8))
-					if is_instance_valid(e) and not e.dead:
-						e.stun(0.8)
-					any = true
-			# the fissures race out ahead in a fan; their eruptions come in waves (update)
-			var fwd := h.aim_dir()
-			var lines: Array = []
-			var ps := PackedVector3Array()
-			for i in FISSURES:
-				var ang := deg_to_rad(-FISSURE_HALF + 2.0 * FISSURE_HALF * float(i) / (FISSURES - 1))
-				var dir := fwd.rotated(Vector3.UP, ang)
-				var pts := PackedVector3Array()
-				var p := at
-				var k := 0
-				while k * FISSURE_STEP < FISSURE_LEN:
-					var q: Vector3 = h.game.world.move(p, dir * FISSURE_STEP, 0.3)
-					var moved := q - p
-					moved.y = 0
-					if moved.length() < FISSURE_STEP * 0.4:
-						break
-					q.y = h.game.world.height_at(q.x, q.z)
-					pts.append(q)
-					p = q
-					k += 1
-				if pts.is_empty():
-					continue
-				lines.append({"pts": pts, "hit": {}})
-				ps.append_array(pts)
-			w["fissures"] = {"lines": lines, "t": 0.0, "wave": 0, "next": FISSURE_DELAY}
-			h.fx("cslam", "impact", {"p": at, "y": h.rig.global_rotation.y, "ps": ps, "n": lines.size(), "x": any})
-			SkillFx.hitstop(h, 0.05 if any else 0.0)
-		"hurl":
-			var at: Vector3 = w.get("hurl_at", h.global_position + h.aim_dir() * 4.0)
-			var hand := SkillFx.hand(h, true) if h.rig != null else h.global_position + Vector3(0, 1.8, 0)
-			var twin := h.talent("hurl_twin") > 0.0
-			var targets: Array = [at]
-			if twin:
-				var side := h.aim_dir().rotated(Vector3.UP, PI * 0.5) * 2.2
-				var at2 := at + side
-				at2.y = h.game.world.height_at(at2.x, at2.z)
-				targets.append(at2)
-			var flight := HURL_FLIGHT + at.distance_to(h.global_position) * 0.03
-			var bs: Array = w.get("boulders", [])
-			for t in targets:
-				bs.append({"at": t, "t": flight})
-			w["boulders"] = bs
-			var ps := PackedVector3Array()
-			for t in targets:
-				ps.append(t)
-			h.fx("hurl", "throw", {"p": hand, "ps": ps, "x": flight})
+			_fault_open(h)
+		"hurl", "hurl2":
+			_throw(h)
+		"grip_throw":
+			_fling_chain(h)
 		"grip":
 			_grip_smash(h)
-		"wrath":
-			_wrath_impact(h)
+		"wrath_roar":
+			_eruption(h)
 		_:
-			return false
+			return h.atk_skill in STYLE
 	return true
+
+static func _fists(h: Hero) -> void:
+	var fwd := h.aim_dir()
+	var wide := h.talent("fists_wide") > 0.0
+	var reach := FISTS_R + (1.0 if wide else 0.0)
+	var lit := []
+	for e in h.game.enemies_near(h.global_position, reach + 1.2):
+		var to: Vector3 = e.global_position - h.global_position
+		to.y = 0
+		if to.length() - e.radius > reach:
+			continue
+		if to.length() < 0.6 or fwd.dot(to.normalized()) > cos(deg_to_rad(FISTS_HALF + (12.0 if wide else 0.0))):
+			var mult := 1.5
+			if branded(h, e):
+				mult *= 1.0 + (pvp("fists", "brand_bonus", BRAND_BONUS) if PvpStatus.is_player(e) else BRAND_BONUS)
+				_unbrand(h, e)
+				if PvpStatus.is_player(e):
+					h.fx("fists", "consume", {"pid": int(e.pvp_pid)})
+				else:
+					h.fx("fists", "consume", {"t": [e]})
+			_hit(h, e, mult, 0.5, "fists", magma(h, 0.25))
+			if is_instance_valid(e) and not e.dead:
+				var dps: float = magma(h, 0.12) * h.dmg_mult("fists")
+				if PvpStatus.is_player(e):
+					PvpStatus.send(h.game, e, "burn", 6.0 if wide else 3.0, {"dps": dps})
+				else:
+					e.ignite(dps, 6.0 if wide else 3.0)
+				lit.append(e)
+	h.fx("fists", "impact", {"y": h.rig.global_rotation.y, "r": reach, "t": lit.filter(func(x) -> bool: return not PvpStatus.is_player(x))})
+
+# ---------------------------------------------------------------- Infernal Charge
+static func _update_charge(h: Hero, delta: float) -> void:
+	var w: Dictionary = h.dm
+	var c: Dictionary = w["charge"]
+	if h.dead or h.atk_skill != "icharge":
+		w.erase("charge")
+		h.fx("icharge", "end", {"p": h.global_position})
+		return
+	if h.atk_style != "icharge" or bool(c["stop"]):
+		return
+	var dir: Vector3 = c["dir"]
+	var left: float = float(c["dist"]) - float(c["done"])
+	var d := minf(CHARGE_SPEED * delta, left)
+	if d <= 0.0:
+		return
+	var np: Vector3 = h.game.world.move(h.global_position, dir * d, h.radius)
+	var moved := np - h.global_position
+	moved.y = 0
+	h.global_position = np
+	h._face(dir)
+	c["done"] = float(c["done"]) + d
+	for e in h.game.enemies_near(h.global_position + dir * 0.4, CHARGE_HIT_R + 0.8):
+		if (c["hit"] as Dictionary).has(e.get_instance_id()):
+			continue
+		var to: Vector3 = e.global_position - h.global_position
+		to.y = 0
+		if to.length() - e.radius > CHARGE_HIT_R or (to.length() > 0.3 and dir.dot(to.normalized()) < -0.2):
+			continue
+		c["hit"][e.get_instance_id()] = true
+		var big: bool = PvpStatus.is_player(e) or e.champion or immovable(e)
+		_hit(h, e, 1.2, 0.0 if big else 2.6, "icharge", magma(h, 0.5))
+		if is_instance_valid(e) and not e.dead:
+			_cc(h, e, "stagger", 1.0 if big else 0.5, pvp("icharge", "stagger", 0.5))
+			if big:
+				brand(h, e)
+		h.fx("icharge", "hit", {"p": e.global_position + Vector3(0, 0.8 * e.height, 0), "d": dir, "x": big})
+		if big:
+			c["stop"] = true
+			SkillFx.hitstop(h, 0.06)
+			break
+	if moved.length() < d * 0.3:
+		c["stop"] = true      # a wall
+	if bool(c["stop"]) or float(c["done"]) >= float(c["dist"]) - 0.01:
+		c["stop"] = true
+		h.atk_t = h.atk_dur   # the run ends now: the skid follows (_next)
+
+# ---------------------------------------------------------------- Fault of the Pit
+static func _fault_open(h: Hero) -> void:
+	var fwd := h.aim_dir()
+	var side := fwd.cross(Vector3.UP).normalized()
+	var mid := h.global_position + fwd * FAULT_AHEAD
+	var half := FAULT_LEN * 0.5
+	var a: Vector3 = mid - side * half
+	var b: Vector3 = mid + side * half
+	a.y = h.game.world.height_at(a.x, a.z)
+	b.y = h.game.world.height_at(b.x, b.z)
+	mid.y = h.game.world.height_at(mid.x, mid.z)
+	var life := FAULT_LIFE + h.talent("trail_dur")
+	h.dm["fault"] = {"a": a, "b": b, "t": 0.0, "erupted": false, "life": life, "tick": 0.0, "hit": {}}
+	h.fx("cslam", "impact", {"p": h.global_position + fwd * 1.1, "q": mid, "ps": PackedVector3Array([a, b]), "y": h.rig.global_rotation.y, "x": FAULT_WARN, "r": life})
+	SkillFx.hitstop(h, 0.03)
+
+static func _seg_dist(p: Vector3, a: Vector3, b: Vector3) -> float:
+	var ab := Vector2(b.x - a.x, b.z - a.z)
+	var ap := Vector2(p.x - a.x, p.z - a.z)
+	var t := clampf(ap.dot(ab) / maxf(ab.length_squared(), 0.0001), 0.0, 1.0)
+	return (ap - ab * t).length()
+
+static func _update_fault(h: Hero, delta: float) -> void:
+	var f: Dictionary = h.dm["fault"]
+	f["t"] = float(f["t"]) + delta
+	var a: Vector3 = f["a"]
+	var b: Vector3 = f["b"]
+	if not bool(f["erupted"]):
+		if float(f["t"]) < FAULT_WARN:
+			return
+		f["erupted"] = true
+		var struck := []
+		for e in h.game.enemies_near((a + b) * 0.5, FAULT_LEN * 0.5 + 1.5):
+			if _seg_dist(e.global_position, a, b) - e.radius <= FAULT_W * 0.5:
+				struck.append(e)
+				_hit(h, e, 1.4, 0.6, "cslam", magma(h, 0.7))
+				if is_instance_valid(e) and not e.dead:
+					_cc(h, e, "knockup", 0.7, pvp("cslam", "knockup", 0.35))
+					brand(h, e)
+		h.fx("cslam", "erupt", {"ps": PackedVector3Array([a, b]), "t": struck.filter(func(x) -> bool: return not PvpStatus.is_player(x)),
+			"x": not struck.is_empty()})
+		f["tick"] = HAZARD_TICK
+		return
+	var left: float = float(f["life"]) - (float(f["t"]) - FAULT_WARN)
+	if left <= 0.0:
+		h.dm.erase("fault")
+		return
+	f["tick"] = float(f["tick"]) - delta
+	if float(f["tick"]) > 0.0:
+		return
+	f["tick"] = HAZARD_TICK
+	for e in h.game.enemies_near((a + b) * 0.5, FAULT_LEN * 0.5 + 1.5):
+		if _seg_dist(e.global_position, a, b) - e.radius * 0.6 <= FAULT_W * 0.5:
+			var dmg: float = magma(h, 0.22) * h.buff_mult() * h.dmg_mult("cslam") * (pvp("cslam", "dmg", 1.0) if PvpStatus.is_player(e) else 1.0)
+			e.take_damage(0.0, dmg, e.global_position, 0.0, false)
+			if is_instance_valid(e) and not e.dead:
+				_cc(h, e, "slow", HAZARD_TICK + 0.35, HAZARD_TICK + 0.35, {"k": pvp("cslam", "slow", FAULT_SLOW)})
+
+# ---------------------------------------------------------------- Brimstone Hurl
+static func _throw(h: Hero) -> void:
+	var at: Vector3 = h.dm.get("hurl_at", h.global_position + h.aim_dir() * 4.0)
+	var hand := SkillFx.hand(h, true) if h.rig != null else h.global_position + Vector3(0, 1.8, 0)
+	var flight := HURL_FLIGHT + at.distance_to(h.global_position) * HURL_PER_M
+	var bs: Array = h.dm.get("boulders", [])
+	bs.append({"at": at, "t": flight})
+	h.dm["boulders"] = bs
+	h.fx("hurl", "throw", {"p": hand, "q": at, "x": flight, "n": 1 if h.atk_style == "hurl2" else 0})
+
+static func _splash(h: Hero, at: Vector3) -> void:
+	var lit := []
+	for e in h.game.enemies_near(at, HURL_R + 0.8):
+		var to: Vector3 = e.global_position - at
+		to.y = 0
+		var d: float = to.length() - e.radius
+		if d > HURL_R:
+			continue
+		var core := d <= HURL_CORE
+		_hit(h, e, 1.8 if core else 0.9, 1.4 if core else 0.6, "hurl", magma(h, 1.0 if core else 0.5))
+		if is_instance_valid(e) and not e.dead:
+			if core:
+				brand(h, e)
+				var dps: float = magma(h, 0.1) * h.dmg_mult("hurl")
+				if PvpStatus.is_player(e):
+					PvpStatus.send(h.game, e, "burn", 3.0, {"dps": dps})
+				else:
+					e.ignite(dps, 3.0)
+					lit.append(e)
+	# the shards: four burning pieces skitter out and catch whoever stands where they stop
+	var dirs := PackedVector3Array()
+	var base := randf() * TAU
+	for i in SHARDS:
+		var ang := base + TAU * float(i) / SHARDS + randf_range(-0.3, 0.3)
+		var p := at + Vector3(cos(ang), 0, sin(ang)) * randf_range(1.8, 2.4)
+		p = h.game.world.move(at, p - at, 0.2)
+		p.y = h.game.world.height_at(p.x, p.z)
+		dirs.append(p)
+		for e in h.game.enemies_near(p, SHARD_R + 0.6):
+			var to: Vector3 = e.global_position - p
+			to.y = 0
+			if to.length() - e.radius <= SHARD_R:
+				_hit(h, e, 0.25, 0.0, "hurl", magma(h, 0.15))
+	h.fx("hurl", "splash", {"p": at, "ps": dirs, "t": lit})
+	SkillFx.hitstop(h, 0.04 if not lit.is_empty() else 0.0)
+
+# ---------------------------------------------------------------- Hellgrip
+static func _fling_chain(h: Hero) -> void:
+	var from := h.global_position + Vector3(0, 1.3, 0)
+	var dir := h.aim_dir()
+	h.dm["chain"] = {"from": from, "dir": dir, "len": 0.0, "state": "out", "victim": null, "t": 0.0}
+	h.fx("grip", "fling", {"p": from, "d": dir, "x": CHAIN_LEN / CHAIN_SPEED, "r": CHAIN_LEN})
+
+static func _update_chain(h: Hero, delta: float) -> void:
+	var w: Dictionary = h.dm
+	var c: Dictionary = w["chain"]
+	if h.dead or h.atk_skill != "grip":
+		w.erase("chain")
+		return
+	c["t"] = float(c["t"]) + delta
+	match str(c["state"]):
+		"out":
+			var l0: float = float(c["len"])
+			var l1 := minf(l0 + CHAIN_SPEED * delta, CHAIN_LEN)
+			c["len"] = l1
+			var dir: Vector3 = c["dir"]
+			var base := h.global_position
+			var hook = null
+			var bd := 99.0
+			for e in h.game.enemies_near(base + dir * (l1 * 0.5), l1 * 0.5 + 1.5):
+				var to: Vector3 = e.global_position - base
+				to.y = 0
+				var along := to.dot(dir)
+				if along < l0 - 0.6 or along > l1 + e.radius:
+					continue
+				var off := (to - dir * along).length()
+				if off - e.radius > CHAIN_HIT_W:
+					continue
+				if along < bd:
+					bd = along
+					hook = e
+			# the chain stops on stone too
+			var tip := base + dir * l1
+			var free: Vector3 = h.game.world.move(base, dir * l1, 0.2)
+			var wall := (free - base).length() < l1 - 0.3
+			if hook != null:
+				_hooked(h, c, hook)
+			elif wall or l1 >= CHAIN_LEN:
+				c["state"] = "back"
+				h.fx("grip", "miss", {"p": tip if not wall else free})
+				_next_now(h, "grip_haul", 0.5)
+		"drag":
+			var v = c["victim"]
+			if v == null or not is_instance_valid(v) or v.dead:
+				c["state"] = "back"
+				return
+			var u: float = clampf(float(c["dt"]) + delta / maxf(float(c["dur"]), 0.05), 0.0, 1.0)
+			c["dt"] = u
+			var k := 1.0 - pow(1.0 - u, 2.0)
+			if bool(c["self"]):
+				# he is dragged to it
+				var goal: Vector3 = (c["goal"] as Vector3)
+				var want: Vector3 = (c["start"] as Vector3).lerp(goal, k)
+				h.global_position = h.game.world.move(h.global_position, (want - h.global_position) * Vector3(1, 0, 1), h.radius)
+			elif not PvpStatus.is_player(v) and not bool(v.remote):
+				var want2: Vector3 = (c["start"] as Vector3).lerp(c["goal"], k)
+				v.global_position = h.game.world.move(v.global_position, (want2 - v.global_position) * Vector3(1, 0, 1), v.radius)
+
+static func _hooked(h: Hero, c: Dictionary, e) -> void:
+	c["state"] = "drag"
+	c["victim"] = e
+	c["dt"] = 0.0
+	var dur: float = float(DUR["grip_haul"]) * Data.attack_pace(h.cls) * (Battlegrounds.ATTACK_PACE if h.game.bg_mode else 1.0)
+	c["dur"] = dur
+	var me := h.global_position
+	var to: Vector3 = (e.global_position - me) * Vector3(1, 0, 1)
+	var dir := to.normalized() if to.length() > 0.1 else h.aim_dir()
+	# bosses, and monsters a partner's game doesn't own, drag him instead
+	var self_pull: bool = immovable(e) or (not PvpStatus.is_player(e) and bool(e.remote))
+	c["self"] = self_pull
+	if self_pull:
+		c["start"] = me
+		c["goal"] = e.global_position - dir * (e.radius + h.radius + 0.6)
+	else:
+		c["start"] = e.global_position
+		c["goal"] = me + dir * HOLD_IN
+		if PvpStatus.is_player(e):
+			# one hard status for the whole hold: dragged over the haul, then held till the smash
+			PvpStatus.send(h.game, e, "pull", pvp("grip", "hold", 1.1), {"m": dur})
+	if not PvpStatus.is_player(e):
+		e.stun(dur + 1.4)
+	if branded(h, e):
+		h.cds["grip"] = h.cds.get("grip", 0.0) * (1.0 - CHAIN_REFUND)
+		_unbrand(h, e)
+	h.dm["grip_victim"] = e
+	h.fx("grip", "hook", {"t": [] if PvpStatus.is_player(e) else [e], "pid": int(e.pvp_pid) if PvpStatus.is_player(e) else 0,
+		"p": e.global_position + Vector3(0, e.height * 0.6, 0), "x": dur, "n": 1 if self_pull else 0})
+	_next_now(h, "grip_haul", 0.0)
 
 ## Hellgrip's smash: the held foe is driven into the ground and set alight; a shockwave hits the rest.
 static func _grip_smash(h: Hero) -> void:
 	var w: Dictionary = h.dm
 	var v = w.get("grip_victim")
-	var at := h.global_position + h.aim_dir() * 1.6
+	var at := h.global_position + h.aim_dir() * HOLD_IN
 	at.y = h.game.world.height_at(at.x, at.z)
 	var held: bool = v != null and is_instance_valid(v) and not v.dead
 	if held:
 		at = v.global_position
-		h._hit_enemy(v, 3.2, 0.3, "grip", magma(h, 1.6))
+		at.y = h.game.world.height_at(at.x, at.z)
+		_hit(h, v, 3.2, 0.3, "grip", magma(h, 1.6))
 		if is_instance_valid(v) and not v.dead:
-			v.ignite(magma(h, 0.2) * h.dmg_mult("grip"), 4.0)
-			v.stun(0.6)
+			var dps: float = magma(h, 0.2) * h.dmg_mult("grip")
+			if PvpStatus.is_player(v):
+				PvpStatus.send(h.game, v, "burn", 3.0, {"dps": dps})
+			else:
+				v.ignite(dps, 4.0)
+				v.stun(0.6)
 	for e in h.game.enemies_near(at, GRIP_SHOCK_R + 0.8):
 		if e == v:
 			continue
 		var to: Vector3 = e.global_position - at
 		to.y = 0
 		if to.length() - e.radius <= GRIP_SHOCK_R:
-			h._hit_enemy(e, 0.7, 1.5, "grip", magma(h, 0.4))
+			_hit(h, e, 0.7, 1.5, "grip", magma(h, 0.4))
 	w["grip_held"] = false
-	h.fx("grip", "smash", {"p": at, "t": [v] if held else [], "x": held})
+	h.fx("grip", "smash", {"p": at, "t": [v] if held and not PvpStatus.is_player(v) else [], "x": held})
 	if held:
 		SkillFx.hitstop(h, 0.07)
 
@@ -259,46 +578,66 @@ static func _grip_smash(h: Hero) -> void:
 static func wrath_active(h: Hero) -> bool:
 	return h.dm.has("wrath")
 
+static func in_crucible(h: Hero) -> bool:
+	return h.dm.has("wrath") and h.atk_skill == "wrath" and h.atk_style == "crucible" and h.atk_t >= 0.0
+
+## Hero.take_hit asks: the Crucible takes CRUCIBLE_DR of the blow and stores what gets through as heat.
+static func absorb(h: Hero, dmg: float) -> float:
+	if not in_crucible(h):
+		return dmg
+	var left := dmg * (1.0 - CRUCIBLE_DR)
+	var n: Dictionary = h.dm["wrath"]
+	n["heat"] = minf(float(n["heat"]) + left, h.max_life * HEAT_CAP / HEAT_SHARE)
+	h.fx("wrath", "heat", {"x": clampf(float(n["heat"]) * HEAT_SHARE / maxf(h.max_life * HEAT_CAP, 1.0), 0.0, 1.0)})
+	return left
+
 static func end_wrath(h: Hero, finished: bool) -> void:
 	var w: Dictionary = h.dm
+	w.erase("pit")
 	if not w.has("wrath"):
 		return
 	w.erase("wrath")
 	h.fx("wrath", "end", {"x": finished})
 
-static func _wrath_impact(h: Hero) -> void:
+static func _erupt_now(h: Hero) -> void:
+	_start(h, "wrath_roar", "wrath")
+	(h.dm["wrath"] as Dictionary)["stage"] = 1
+
+static func _eruption(h: Hero) -> void:
 	var w: Dictionary = h.dm
 	if not w.has("wrath"):
 		return
-	match h.atk_style:
-		"wrath_roar":
-			# the terror: everything near him is hurt, thrown back and frozen
-			h.fx("wrath", "roar")
-			for e in h.game.enemies_near(h.global_position, ROAR_R):
-				h._hit_enemy(e, 1.0, 1.8, "wrath", magma(h, 0.8))
-				if is_instance_valid(e) and not e.dead:
-					e.stun(1.5)
-		"wrath_stomp":
-			# the stomp: a ring of lava, and the rain begins
-			var at := h.global_position
-			h.buff_t = 8.0 + h.talent("buff_dur")
-			var n: Dictionary = w["wrath"]
-			n["rain"] = WRATH_DUR + h.talent("wrath_dur")
-			n["next"] = 0.3
-			h.fx("wrath", "stomp", {"x": float(n["rain"])})
-			for e in h.game.enemies_near(at, 4.5):
-				var to: Vector3 = e.global_position - at
-				to.y = 0
-				if to.length() - e.radius <= 4.0:
-					h._hit_enemy(e, 1.2, 1.0, "wrath", magma(h, 0.6))
+	var n: Dictionary = w["wrath"]
+	var heat: float = minf(float(n["heat"]) * HEAT_SHARE, h.max_life * HEAT_CAP)
+	var at := h.global_position
+	var struck := []
+	for e in h.game.enemies_near(at, ROAR_R + 0.6):
+		var to: Vector3 = e.global_position - at
+		to.y = 0
+		if to.length() - e.radius > ROAR_R:
+			continue
+		struck.append(e)
+		_hit(h, e, 1.0, 1.8, "wrath", magma(h, 0.8) + heat)
+		if is_instance_valid(e) and not e.dead:
+			_cc(h, e, "fear", 1.5, pvp("wrath", "fear", 0.75))
+	h.buff_t = PIT_DUR + h.talent("buff_dur")
+	w["pit"] = true
+	n["rain"] = PIT_DUR + h.talent("wrath_dur")
+	n["next"] = 0.35
+	h.fx("wrath", "erupt", {"p": at, "x": float(n["rain"]), "r": clampf(heat / maxf(h.max_life * HEAT_CAP, 1.0), 0.0, 1.0),
+		"t": struck.filter(func(x) -> bool: return not PvpStatus.is_player(x))})
 
-## A meteor: aimed at a foe within WRATH_R (the one struck least recently), else at a spot near him; the strike
-## is dealt when it lands. Partners get the same spot in the event, so the sky and the crater agree everywhere.
+## A meteor: aimed at a foe within WRATH_R (the one struck least recently), else near him. At a player (PvP) it
+## falls slower under a glowing circle, and only "meteors" of them per cast.
 static func _call_meteor(h: Hero) -> void:
 	var w: Dictionary = h.dm
 	var n: Dictionary = w["wrath"]
 	var foes: Array = h.game.enemies_near(h.global_position, WRATH_R)
+	var cap := int(pvp("wrath", "meteors", 3.0))
+	if int(n["pvp_n"]) >= cap:
+		foes = foes.filter(func(x) -> bool: return not PvpStatus.is_player(x))
 	var at: Vector3
+	var fall := WRATH_FALL
 	if foes.is_empty():
 		var ang := randf() * TAU
 		var r := randf_range(2.5, WRATH_R * 0.7)
@@ -310,21 +649,24 @@ static func _call_meteor(h: Hero) -> void:
 		last[pick.get_instance_id()] = float(n["t"])
 		n["last"] = last
 		at = pick.global_position + Vector3(randf_range(-0.6, 0.6), 0, randf_range(-0.6, 0.6))
+		if PvpStatus.is_player(pick):
+			n["pvp_n"] = int(n["pvp_n"]) + 1
+			fall = WRATH_FALL_PVP
 	at.y = h.game.world.height_at(at.x, at.z)
 	var k: int = int(n["n"])
 	n["n"] = k + 1
 	var ms: Array = w.get("meteors", [])
-	ms.append({"at": at, "t": WRATH_FALL})
+	ms.append({"at": at, "t": fall})
 	w["meteors"] = ms
-	h.fx("wrath", "meteor", {"p": at, "n": k, "x": WRATH_FALL})
+	h.fx("wrath", "meteor", {"p": at, "n": k, "x": fall})
 
 static func _meteor_land(h: Hero, at: Vector3) -> void:
 	for e in h.game.enemies_near(at, METEOR_R + 0.8):
 		var to: Vector3 = e.global_position - at
 		to.y = 0
 		if to.length() - e.radius <= METEOR_R:
-			h._hit_enemy(e, 1.1, 1.2, "wrath", magma(h, 0.55))
-			if is_instance_valid(e) and not e.dead:
+			_hit(h, e, 1.1, 1.2, "wrath", magma(h, 0.55))
+			if is_instance_valid(e) and not e.dead and not PvpStatus.is_player(e):
 				e.ignite(magma(h, 0.1) * h.dmg_mult("wrath"), 3.0)
 
 # ---------------------------------------------------------------- every frame
@@ -332,25 +674,26 @@ static func update(h: Hero, delta: float) -> void:
 	if not active(h):
 		return
 	var w: Dictionary = h.dm
-	var a: float = (h.atk_t / h.atk_dur) if h.atk_t >= 0.0 else -1.0
-	# Infernal Charge: he goes through the wind-up's end and the clip, laying lava, bowling foes aside
+	_recharge(h, delta)
+	_stages(h)
 	if w.has("charge"):
-		_update_charge(h, a, delta)
-	# Hellgrip: the foe is seized a quarter of the way in and held up until the smash
-	if a >= 0.0 and h.atk_skill == "grip":
-		if a >= 0.25 and not bool(w.get("grip_held", false)) and a < Anim.impact_at("grip"):
-			w["grip_held"] = true
-			var v = w.get("grip_victim")
-			if v == null or not is_instance_valid(v) or v.dead:
-				v = grip_pick(h, h.aim_ahead(GRIP_RANGE))
-				w["grip_victim"] = v
-			if v != null:
-				v.stun(2.0)
-				h.fx("grip", "grab", {"t": [v], "x": (Anim.impact_at("grip") - 0.25) * h.atk_dur})
-			else:
-				h.fx("grip", "grab", {"t": [], "x": 0.0})
-	elif w.has("grip_victim") and h.atk_t < 0.0:
+		_update_charge(h, delta)
+	if w.has("chain"):
+		_update_chain(h, delta)
+	if w.has("fault"):
+		_update_fault(h, delta)
+	if w.has("grip_victim") and h.atk_skill != "grip":
 		w.erase("grip_victim")
+	# Hellgrip: the victim is held up over his head until the smash (shown by DemonFx)
+	if h.atk_skill == "grip" and h.atk_style == "grip" and not bool(w.get("grip_grabbed", false)) and h.atk_t >= 0.0:
+		w["grip_held"] = true
+		w["grip_grabbed"] = true
+		var v = w.get("grip_victim")
+		if v != null and is_instance_valid(v) and not v.dead:
+			if not PvpStatus.is_player(v):
+				v.stun(2.0)
+			h.fx("grip", "grab", {"t": [] if PvpStatus.is_player(v) else [v], "pid": int(v.pvp_pid) if PvpStatus.is_player(v) else 0,
+				"x": Anim.impact_at("grip") * h.atk_dur})
 	# boulders in the air land where they were thrown
 	if w.has("boulders"):
 		var bs: Array = w["boulders"]
@@ -361,57 +704,6 @@ static func update(h: Hero, delta: float) -> void:
 				_splash(h, b["at"])
 		if bs.is_empty():
 			w.erase("boulders")
-	# the fissures erupt in waves out from the slam
-	if w.has("fissures"):
-		var f: Dictionary = w["fissures"]
-		f["next"] = float(f["next"]) - delta
-		if float(f["next"]) <= 0.0:
-			var wave: int = int(f["wave"])
-			var ps := PackedVector3Array()
-			var more := false
-			for ln in f["lines"]:
-				var pts: PackedVector3Array = ln["pts"]
-				if wave < pts.size():
-					more = true
-					var p: Vector3 = pts[wave]
-					ps.append(p)
-					for e in h.game.enemies_near(p, FISSURE_R + 0.8):
-						if (ln["hit"] as Dictionary).has(e.get_instance_id()):
-							continue
-						var to: Vector3 = e.global_position - p
-						to.y = 0
-						if to.length() - e.radius <= FISSURE_R:
-							ln["hit"][e.get_instance_id()] = true
-							h._hit_enemy(e, 1.1, 0.9, "cslam", magma(h, 0.5))
-							if is_instance_valid(e) and not e.dead:
-								e.ignite(magma(h, 0.08) * h.dmg_mult("cslam"), 2.5)
-			if not ps.is_empty():
-				h.fx("cslam", "erupt", {"ps": ps, "n": wave})
-			f["wave"] = wave + 1
-			f["next"] = FISSURE_WAVE
-			if not more:
-				w.erase("fissures")
-	# the lava on the ground (the charge's trail, the boulders' pools) burns whoever stands in it
-	if w.has("lava"):
-		var lv: Array = w["lava"]
-		for patch in lv.duplicate():
-			patch["t"] = float(patch["t"]) - delta
-			patch["tick"] = float(patch["tick"]) - delta
-			if float(patch["t"]) <= 0.0:
-				lv.erase(patch)
-				continue
-			if float(patch["tick"]) > 0.0:
-				continue
-			patch["tick"] = HAZARD_TICK
-			var p: Vector3 = patch["p"]
-			var r: float = patch["r"]
-			for e in h.game.enemies_near(p, r + 0.8):
-				var to: Vector3 = e.global_position - p
-				to.y = 0
-				if to.length() - e.radius * 0.5 <= r:
-					e.take_damage(0.0, magma(h, 0.2) * h.buff_mult() * h.dmg_mult(str(patch["s"])), p, 0.0, false)
-		if lv.is_empty():
-			w.erase("lava")
 	# meteors in the air
 	if w.has("meteors"):
 		var ms: Array = w["meteors"]
@@ -422,90 +714,96 @@ static func update(h: Hero, delta: float) -> void:
 				_meteor_land(h, m["at"])
 		if ms.is_empty():
 			w.erase("meteors")
+	# the Crucible: nothing moves or stops him
+	if in_crucible(h):
+		h.daze_t = 0.0
+		h.shove = Vector3.ZERO
+		h.knock_v = Vector3.ZERO
 	_update_wrath(h, delta)
+	if w.has("brand"):
+		var b: Dictionary = w["brand"]
+		for k in b.keys():
+			if float(b[k]) <= h.anim_time:
+				b.erase(k)
 
-## The charge: from a little into the attack to its end he covers the distance at CHARGE_SPEED (less where
-## something solid stops him), bowling foes aside and laying lava every TRAIL_STEP.
-static func _update_charge(h: Hero, a: float, delta: float) -> void:
+## Chained stages: when one stage's clip ends, the next starts (the charge's run, then its skid; the chain's haul,
+## then the smash; the Crucible, then the eruption).
+static func _stages(h: Hero) -> void:
 	var w: Dictionary = h.dm
-	var c: Dictionary = w["charge"]
-	if a < 0.0 or h.atk_skill != "icharge" or h.dead:
-		w.erase("charge")
-		_lay_trail(h, c, true)
-		h.fx("icharge", "end")
+	var nxt: String = w.get("next_style", "")
+	if nxt != "" and h.atk_t >= 0.0:
 		return
-	var t0 := 0.1
-	var t1 := 0.85
-	var f0 := clampf((float(c["a"]) - t0) / (t1 - t0), 0.0, 1.0)
-	var f1 := clampf((a - t0) / (t1 - t0), 0.0, 1.0)
-	c["a"] = a
-	var d := (f1 - f0) * float(c["dist"])
-	if d > 0.0:
-		var dir: Vector3 = c["dir"]
-		var np: Vector3 = h.game.world.move(h.global_position, dir * d, h.radius)
-		var moved := np - h.global_position
-		moved.y = 0
-		h.global_position = np
-		h._face(dir)
-		c["laid"] = float(c["laid"]) + moved.length()
-		if float(c["laid"]) >= TRAIL_STEP:
-			c["laid"] = 0.0
-			var p := h.global_position
-			p.y = h.game.world.height_at(p.x, p.z)
-			# (a PackedVector3Array is copied out of a Dictionary: append to a copy and put it back)
-			var laid: PackedVector3Array = c["ps"]
-			laid.append(p)
-			c["ps"] = laid
-			var lv: Array = w.get("lava", [])
-			lv.append({"p": p, "r": TRAIL_R, "t": TRAIL_DUR + h.talent("trail_dur"), "tick": 0.3, "s": "icharge"})
-			w["lava"] = lv
-			if laid.size() % 2 == 0:
-				_lay_trail(h, c, false)
-		for e in h.game.enemies_near(h.global_position, CHARGE_HIT_R + 0.6):
-			if (c["hit"] as Dictionary).has(e.get_instance_id()):
-				continue
-			var to: Vector3 = e.global_position - h.global_position
-			to.y = 0
-			if to.length() - e.radius <= CHARGE_HIT_R:
-				c["hit"][e.get_instance_id()] = true
-				h._hit_enemy(e, 1.2, 2.6, "icharge", magma(h, 0.5))
-				if is_instance_valid(e) and not e.dead:
-					e.stun(0.5)
-				h.fx("icharge", "hit", {"p": e.global_position + Vector3(0, 0.8 * e.height, 0), "d": dir})
-		if moved.length() < d * 0.3 and f1 < 1.0:
-			# something solid: the charge ends here
-			c["dist"] = 0.0
-	if a >= t1 and not bool(c.get("done", false)):
-		c["done"] = true
-		_lay_trail(h, c, true)
-
-## The lava patches laid since the last word go out to the fx (in twos, and whatever is left at the end).
-static func _lay_trail(h: Hero, c: Dictionary, _final: bool) -> void:
-	var ps: PackedVector3Array = c["ps"]
-	if ps.is_empty():
+	if nxt != "":
+		w.erase("next_style")
+		if h.dead:
+			return
+		_begin_stage(h, nxt)
 		return
-	h.fx("icharge", "trail", {"ps": ps, "x": TRAIL_DUR + h.talent("trail_dur")})
-	c["ps"] = PackedVector3Array()
+	if h.atk_t >= 0.0 or h.atk_skill != "":
+		return
 
-## A boulder lands: the splash and its pool.
-static func _splash(h: Hero, at: Vector3) -> void:
-	var lit := []
-	for e in h.game.enemies_near(at, HURL_R + 0.8):
-		var to: Vector3 = e.global_position - at
-		to.y = 0
-		if to.length() - e.radius <= HURL_R:
-			h._hit_enemy(e, 1.8, 1.2, "hurl", magma(h, 1.0))
-			if is_instance_valid(e) and not e.dead:
-				e.ignite(magma(h, 0.1) * h.dmg_mult("hurl"), 3.0)
-				lit.append(e)
-	var lv: Array = h.dm.get("lava", [])
-	var dur := POOL_DUR + h.talent("trail_dur")
-	lv.append({"p": at, "r": POOL_R, "t": dur, "tick": 0.5, "s": "hurl"})
-	h.dm["lava"] = lv
-	h.fx("hurl", "splash", {"p": at, "x": dur, "t": lit})
-	SkillFx.hitstop(h, 0.05 if not lit.is_empty() else 0.0)
+## Queue the stage after this one (it starts when this stage's clip ends); `now` ends this one at once.
+static func _next_now(h: Hero, style: String, _hold: float) -> void:
+	h.dm["next_style"] = style
+	h.atk_t = h.atk_dur
 
-## The wrath's stages, chained as attacks; then the rain, which runs while he fights on.
+static func _begin_stage(h: Hero, style: String) -> void:
+	match style:
+		"icharge":
+			var c: Dictionary = h.dm.get("charge", {})
+			if c.is_empty():
+				return
+			_start(h, "icharge", "icharge", float(c["dist"]) / CHARGE_SPEED / Data.attack_pace(h.cls) / (Battlegrounds.ATTACK_PACE if h.game.bg_mode else 1.0) + 0.02)
+			h.fx("icharge", "run", {"d": c["dir"]})
+		"icharge_skid":
+			_start(h, "icharge_skid", "icharge")
+			h.fx("icharge", "skid", {"p": h.global_position, "d": h.dm.get("charge", {}).get("dir", h.aim_dir())})
+		"grip_haul":
+			var c: Dictionary = h.dm.get("chain", {})
+			var dur: float = float(c.get("dur", DUR["grip_haul"])) if str(c.get("state", "")) == "drag" else 0.5
+			_start(h, "grip_haul", "grip", dur / Data.attack_pace(h.cls) / (Battlegrounds.ATTACK_PACE if h.game.bg_mode else 1.0))
+		"grip":
+			var v = h.dm.get("grip_victim")
+			h.dm.erase("chain")
+			if v == null or not is_instance_valid(v) or v.dead:
+				return
+			_start(h, "grip", "grip")
+		"wrath_roar":
+			_erupt_now(h)
+
+## Hero._update_attack ended a stage: what follows it (called through ClassSkills when the attack finishes).
+static func stage_done(h: Hero, style: String, skill: String) -> void:
+	if h.dead:
+		return
+	match style:
+		"icharge_wind":
+			if skill == "icharge":
+				h.dm["next_style"] = "icharge"
+		"icharge":
+			h.dm["next_style"] = "icharge_skid"
+		"icharge_skid":
+			h.dm.erase("charge")
+			h.fx("icharge", "end", {"p": h.global_position})
+		"grip_throw":
+			var c: Dictionary = h.dm.get("chain", {})
+			if not c.is_empty() and str(c["state"]) == "out":
+				# the clip ended with the chain still out (it hooks nothing now): hauled back empty
+				c["state"] = "back"
+				h.fx("grip", "miss", {"p": h.global_position + (c["dir"] as Vector3) * float(c["len"])})
+				h.dm["next_style"] = "grip_haul"
+			elif c.is_empty():
+				h.fx("grip", "end", {})
+		"grip_haul":
+			var c2: Dictionary = h.dm.get("chain", {})
+			if str(c2.get("state", "")) == "drag":
+				h.dm["next_style"] = "grip"
+			else:
+				h.dm.erase("chain")
+				h.fx("grip", "end", {})
+		"crucible":
+			h.dm["next_style"] = "wrath_roar"
+
+## The wrath's rain, which runs while he fights on.
 static func _update_wrath(h: Hero, delta: float) -> void:
 	var w: Dictionary = h.dm
 	if not w.has("wrath"):
@@ -515,20 +813,10 @@ static func _update_wrath(h: Hero, delta: float) -> void:
 		end_wrath(h, false)
 		return
 	n["t"] = float(n["t"]) + delta
-	var stage: int = n["stage"]
-	if stage < WRATH_STAGES.size():
-		if h.atk_t >= 0.0 and h.atk_skill != "wrath":
-			end_wrath(h, false)      # cut short by another skill
-			return
-		if h.atk_t < 0.0:
-			stage += 1
-			if stage < WRATH_STAGES.size():
-				n["stage"] = stage
-				_start(h, WRATH_STAGES[stage], "wrath")
-			else:
-				n["stage"] = stage
+	if float(n["rain"]) < 0.0:
+		if h.atk_skill != "wrath" and not w.has("next_style"):
+			end_wrath(h, false)       # cut short (death, a zone change) before the eruption
 		return
-	# the rain
 	var rain: float = float(n["rain"])
 	if rain <= 0.0:
 		end_wrath(h, true)
@@ -542,19 +830,24 @@ static func _update_wrath(h: Hero, delta: float) -> void:
 			_call_meteor(h)
 
 # ---------------------------------------------------------------- housekeeping
-## Everything of his that lingers: the lava on the ground, fissures, boulders and meteors in the air, the grip,
-## the wrath (a class change, a new character, a zone change, death).
+## Everything of his that lingers: the fault, the chain, boulders and meteors in the air, the grip, the wrath
+## (a class change, a new character, a zone change, death). Hurl's charges stay while he is still the Demon.
 static func clear(h: Hero) -> void:
 	var w: Dictionary = h.dm
 	end_wrath(h, false)
 	if w.has("charge"):
 		w.erase("charge")
-		h.fx("icharge", "end")
+		h.fx("icharge", "end", {"p": h.global_position})
 	DemonFx.clear(h)
 	if h.atk_t >= 0.0 and h.atk_skill in STYLE:
 		h.atk_t = -1.0
 		h.atk_skill = ""
+	var keep := {}
+	for k in ["hurl_ch", "hurl_rc", "hurl_alt"]:
+		if w.has(k) and h.is_demon():
+			keep[k] = w[k]
 	w.clear()
+	w.merge(keep)
 
 static func died(h: Hero) -> void:
 	clear(h)
