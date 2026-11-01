@@ -766,8 +766,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   sounds (`Sfx.counts`) and the fort voice. The camp's song is `music_town` (jj's pick: a dark forest sanctuary, harp over a low
   string drone with a wooden flute; candidate take 13). Ambience: wind, drips in the crypt, and in Act I outside the camp (moor and fort) `forest`, soft
   trees in a breeze (`Sfx.play_music(kind, amb)`, picked in `Game.load_zone`).
-- **The Mournwater Coast and its islands** (Act I, west of the camp through its west gate; branch `test-ocean`, work in
-  progress: the visual pass, sounds and co-op come next). `coast.gd` (`Coast`, zone `"coast"`): a headland with the open sea on
+- **The Mournwater Coast and its islands** (Act I, west of the camp through its west gate; on `staging` since 2026-11-01.
+  Still to come: sea sounds, co-op sailing (partners don't see each other's boats yet)). `coast.gd` (`Coast`, zone `"coast"`): a headland with the open sea on
   three sides (the mainland's shore is a parabola round its tip, `shore_x`), the pier at the tip (`DOCK` = the origin,
   the boat's mooring), the shipwright's shed (`SHED`), the path back to the camp (`EXIT`). The islands are data in
   `isles.gd` (`Isles.ISLANDS`: id, name, bearing from the dock, `sail` = metres of open water from the dock to the end of
