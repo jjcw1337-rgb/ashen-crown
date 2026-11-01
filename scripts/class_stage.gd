@@ -663,31 +663,25 @@ func _skill_fx(c: String, h: Hero, home: Vector3) -> void:
 			Fx.burst(root3d, floor_front + Vector3(0, 0.3 * k, 0), col, 24, 4.5 * k, 0.08 * k, 0.5, true, -4.0, 50.0, fwd + Vector3(0, 0.5, 0))
 			Sfx.play("hellclaw", -10.0)
 		"icharge":
-			Fx.burst(root3d, p + Vector3(0, 0.4 * k, 0), col, 30, 4.0 * k, 0.08 * k, 0.5, true, -3.0, 60.0, Vector3(0, 0.6, -1))
-			var d := DemonFx.lava_decal(root3d, p, 1.2 * k, 2.0, 0.7)
-			d.position.y = home.y + 0.04
+			DemonKitFx.smoke(root3d, p, "ash", 1.6 * k, 1.0)
+			DemonKitFx.sparks(root3d, p + Vector3(0, 0.3 * k, 0), Vector3(0, 0.6, -1), 14, 40.0)
 			Sfx.play("charge_dash", -10.0)
 		"cslam":
-			# a fault splitting across in front of him, erupting along its length
-			var fwd2 := Vector3(-sin(yaw), 0, -cos(yaw))
-			var side2 := fwd2.cross(Vector3.UP)
-			var mid2 := floor_front + fwd2 * 0.4 * k
-			DemonFx.lava_strip(root3d, mid2 - side2 * 1.5 * k, mid2 + side2 * 1.5 * k, 0.6 * k, 2.0, 1.0)
-			for u in [-1.0, 0.0, 1.0]:
-				DemonFx.eruption(root3d, mid2 + side2 * u * 1.1 * k, 0.6 * k)
+			DemonKitFx.smoke(root3d, floor_front, "steam", 2.0 * k, 1.6)
+			DemonKitFx.smoke(root3d, floor_front, "ash", 1.6 * k, 1.0)
+			DemonKitFx.clods(root3d, floor_front + Vector3(0, 0.2 * k, 0), 14, 3.0 * k)
 			Sfx.play("slam", -10.0)
 		"hurl":
-			DemonFx.splash(root3d, floor_front, 1.4 * k)
-			var d := DemonFx.lava_decal(root3d, floor_front, 1.2 * k, 2.5, 1.0)
-			d.position.y = home.y + 0.04
+			DemonKitFx.smoke(root3d, floor_front, "impact", 2.6 * k, 1.5)
+			DemonKitFx.clods(root3d, floor_front + Vector3(0, 0.2 * k, 0), 16, 3.5 * k)
 			Sfx.play("boom", -12.0)
 		"grip":
-			Fx.ring(root3d, floor_front, 1.6 * k, col, 0.4, 0.3)
-			Fx.burst(root3d, floor_front + Vector3(0, 0.3 * k, 0), col, 30, 5.0 * k, 0.08 * k, 0.5, true, -4.0, 70.0)
-			Sfx.play("slam", -10.0, 0.9)
+			DemonKitFx.sparks(root3d, floor_front + Vector3(0, 0.5 * k, 0), Vector3.UP, 18, 70.0)
+			DemonKitFx.smoke(root3d, floor_front, "ash", 1.6 * k, 1.0)
+			Sfx.play("impact_metal", -10.0, 0.8)
 		"wrath":
-			Fx.ring(root3d, p, 2.6 * k, col, 0.5, 0.4)
-			Fx.burst(root3d, chest, col, 40, 5.0 * k, 0.1 * k, 0.6, true, -3.0, 120.0)
+			DemonKitFx.smoke(root3d, p, "blast", 3.0 * k, 1.4)
+			DemonKitFx.sparks(root3d, chest, Vector3.UP, 30, 180.0)
 			Sfx.play("roar", -10.0)
 		"drain":
 			Fx.flash(root3d, chest + Vector3(0, -0.3, 0.4) * k, col, 2.5, 1.2, 3.5 * k)
