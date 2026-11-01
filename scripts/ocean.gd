@@ -102,6 +102,14 @@ func set_quality(q: int) -> void:
 	mat.set_shader_parameter("detail", [0.6, 0.85, 1.0, 1.0][q])
 
 ## Keeps the scene's light in the water: where the sun shines from, and how bright the sky is.
+## The water's own colour (a murky isle's green): shallows, the deep and how fast light dies in it.
+func set_tint(shallow: Color, deep: Color, absorb: Vector3) -> void:
+	if mat == null:
+		return
+	mat.set_shader_parameter("shallow_col", shallow)
+	mat.set_shader_parameter("deep_col", deep)
+	mat.set_shader_parameter("absorb", absorb)
+
 func set_light(sun_dir: Vector3, sun_col: Color, sky: Color) -> void:
 	if mat == null:
 		return

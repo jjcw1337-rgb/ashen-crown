@@ -411,6 +411,33 @@ void fragment(){
 	}
 	float cliff = clamp(vcol.g + (1.0 - wnorm.y) * 2.0, 0.0, 1.0);
 	base = mix(base, col_cliff * (0.6 + n2 * 0.5 + (n4 - 0.5) * 0.2), cliff);
+	// sea cliffs (the coast and the isles): layered rock projected on the face, not the ground plane:
+	// strata bands of different stone, blocky joints, ledges that catch the light, lichen up top
+	float ledge = 0.0;
+	if (sea > 0.0 && cliff > 0.02) {
+		vec3 an = abs(wnorm);
+		vec2 q = an.x > an.z ? vec2(wpos.z, wpos.y) : vec2(wpos.x, wpos.y);
+		float wob = fbm(q * vec2(0.035, 0.02)) * 4.0 + fbm(q * 0.3) * 0.7;
+		float lay = wpos.y * 0.42 + wob;
+		float band = floor(lay);
+		float bh = hash21(vec2(band, 3.1));
+		float bf = fract(lay);
+		vec3 rock = col_cliff * mix(0.66, 1.2, bh);
+		rock = mix(rock, rock * vec3(1.1, 1.02, 0.88), step(0.62, hash21(vec2(band, 7.7))) * 0.55);
+		rock *= 0.78 + fbm(q * 0.04 + 4.0) * 0.45;                                   // big tonal patches
+		rock *= 0.86 + fbm(vec2(q.x * 0.7, q.y * 0.06) + 2.0) * 0.28;               // rain streaks down the face
+		float jid = 0.0;
+		vec2 jv = vor(vec2(q.x * 0.16, lay * 0.7), jid);
+		float joint = (1.0 - smoothstep(0.015, 0.07, jv.y - jv.x)) * smoothstep(0.45, 0.7, fbm(q * 0.12 + 5.0));
+		rock *= 0.88 + jid * 0.18 + fbm3(q * 1.3) * 0.22 + (n4 - 0.5) * 0.1;
+		rock *= 1.0 - joint * 0.5;
+		rock *= 1.0 - (1.0 - smoothstep(0.0, 0.07, bf)) * 0.4 * step(0.35, bh);    // a seam under some ledges
+		float lich = smoothstep(0.55, 0.8, fbm(q * 0.25 + 9.0)) * smoothstep(1.0, 4.0, wpos.y) * 0.5;
+		rock = mix(rock, col_a * 0.9, lich);
+		float rk = smoothstep(0.25, 0.7, cliff);
+		base = mix(base, rock, rk);
+		ledge = (smoothstep(0.88, 1.0, bf) * step(0.35, bh) * 0.6 - (1.0 - smoothstep(0.0, 0.07, bf)) * 0.35 * step(0.35, bh) - joint * 0.3) * rk;
+	}
 	float wetf = wet * smoothstep(0.5, 0.72, n2) * (1.0 - cliff) * (0.4 + path * 0.6);
 	base *= 1.0 - wetf * 0.3;
 	float wetb = 0.0;
@@ -509,6 +536,9 @@ void fragment(){
 	float sc = 1.8;
 	float hc = fbm3(p * sc); float hx = fbm3((p + vec2(e, 0.0)) * sc); float hz = fbm3((p + vec2(0.0, e)) * sc);
 	vec3 wn = normalize(wnorm + vec3(hc - hx, 0.0, hc - hz) * (2.0 + path) / e * 0.05 * (1.0 - cover * 0.8));
+	if (ledge != 0.0) {
+		wn = normalize(wn + vec3(0.0, ledge * 0.9, 0.0));
+	}
 	if (cover > 0.0) {
 		// soft wind-blown drift ripples
 		float dd = 0.4;

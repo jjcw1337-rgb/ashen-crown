@@ -56,6 +56,7 @@ static func dress(w: World, isle: Dictionary, o: Vector2, full: bool, rng: Rando
 	Isles.forest(w, isle, o, rng, 700, dead, func(l: Vector2, h: float) -> bool: return rng.randf() < 0.55 and l.distance_to(SPIRE) > 8.0, full, 0.3)
 	_wreck(w, isle, o, rng, full)
 	_camp(w, isle, o, rng, full)
+	_fog_bank(w, isle, o)
 	# the cave mouth under the Spire: a ring of black boulders round a dark hollow
 	var cp := Isles.at(w, isle, o, CAVE)
 	for i in 9:
@@ -149,3 +150,22 @@ static func _camp(w: World, isle: Dictionary, o: Vector2, rng: RandomNumberGener
 	for i in 8:
 		var a := TAU * i / 8.0
 		w._rock(c + Vector3(cos(a) * 1.1, 0, sin(a) * 1.1), 0.35, false)
+
+## The fog that never lifts: a low bank of green-grey mist lying over the whole isle and its shallows,
+## thickest at the waterline, seen from the coast and the boat as well as ashore (a FogVolume: the
+## volumetric fog of the High and Ultra presets; the isle's own zone also has its height fog, Game._isle_mood).
+static func _fog_bank(w: World, isle: Dictionary, o: Vector2) -> void:
+	var c := Isles.at(w, isle, o, Vector2.ZERO)
+	var fv := FogVolume.new()
+	fv.name = "fog_bank"
+	fv.shape = RenderingServer.FOG_VOLUME_SHAPE_ELLIPSOID
+	var rr := float(isle["r"]) * 1.25
+	fv.size = Vector3(rr * 2.0, 22.0, rr * 2.0)
+	var fm := FogMaterial.new()
+	fm.density = 0.07
+	fm.albedo = Color(0.6, 0.68, 0.58)
+	fm.height_falloff = 0.18
+	fm.edge_fade = 0.6
+	fv.material = fm
+	w.props_root.add_child(fv)
+	fv.position = Vector3(c.x, 2.0, c.z)

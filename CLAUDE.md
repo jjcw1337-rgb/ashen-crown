@@ -450,7 +450,14 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   `tools/blender/prep_prop.py`): `store` (the Merchant's Reach storehouses), `beacon` (its tower; the game lights the
   brazier), `wreck` (the Bleak Isle), `mono` (the Lost Isle's Monolith, runes lit by `MONO_SHADER` in `isle_lost.gd` from its
   own texture), `temple` (the Forgotten Ruins: columns `TEMPLE_COLS` solid, floor and top step are decks).
-  `tools/isle_props_shot.gd -- outprefix [q] [isle]` screenshots them. The five are 250 m across,
+  `tools/isle_props_shot.gd -- outprefix [q] [isle]` screenshots them. An island may carry a `"mood"` (the Bleak Isle's): its own
+  water colour (`Ocean.set_tint`), fog, sky, sun and grade in its zone (`Game._isle_mood`, called from `_sea_env`); the
+  Bleak Isle also lies under a FogVolume (`_fog_bank` in `isle_bleak.gd`, seen from the coast too, High/Ultra only). Sea cliffs
+  are layered rock in the terrain shader's `sea` mode (strata bands, sparse joints, rain streaks, lichen, ledges in
+  the normal), with talus stones under them (`Isles.shore_rocks`). At sea `Birds` are gulls (`sea`: pale, long black-
+  tipped wings, gliding, some wheeling over the hero) and fish leap with a splash (`Birds._fish`). The coast's corner map
+  is a painted sea chart of the whole sea (`Game._sea_chart`, cached; `Minimap.chart`: no fog, a wider view while
+  sailing). `tools/sea_life_shot.gd -- outprefix [q]` screenshots the chart, gulls, a fish and the Bleak Isle. The five are 250 m across,
   164 m of water (~22 s at the boat's 8 m/s) from the dock, 14.5 m channels apart. Out at sea (the coast zone) every
   island is drawn at full size (`Isles.dress(..., full = false)`: ground at 2 m, trees, landmark, jetty); stepping off at
   its jetty loads its own zone `"isle_<id>"` (`Isles.build_zone`: the island at the origin, same ground at 1 m, grass,

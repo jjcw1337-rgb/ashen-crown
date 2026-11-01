@@ -49,6 +49,12 @@ const ISLANDS := [
 		"terrain": {"col_a": Color(0.09, 0.1, 0.08), "col_b": Color(0.13, 0.13, 0.11), "col_accent": Color(0.16, 0.17, 0.12),
 			"col_path": Color(0.2, 0.19, 0.17), "col_cliff": Color(0.12, 0.12, 0.13), "wet": 0.5},
 		"lore": "Black rock, dead trees and a fog that never lifts. Ships that put in here stay.",
+		# its own water and air in its zone (Game._isle_mood): murky green water, low fog, a weak sun
+		"mood": {"shallow": Color(0.09, 0.16, 0.12), "deep": Color(0.012, 0.03, 0.026), "absorb": Vector3(0.55, 0.16, 0.36),
+			"fog": Color(0.36, 0.42, 0.35), "fog_density": 0.011, "fog_height": 3.5, "fog_height_density": 0.22,
+			"vol_albedo": Color(0.55, 0.66, 0.52), "vol_density": 0.03, "sat": 0.68, "contrast": 1.12,
+			"sky_top": Color(0.2, 0.24, 0.24), "horizon": Color(0.46, 0.5, 0.44),
+			"sun": Color(0.82, 0.86, 0.78), "sun_energy": 0.62, "ambient": 0.5},
 		"foes": [], "loot": [], "quests": [], "dungeon": ""},
 	{"id": "merchant", "ferns": 350, "name": "The Merchant's Reach", "bearing": 112.0, "sail": 164.0, "r": 125.0, "seed": 505,
 		"beach": 10.0, "cliff": 0.5, "cliff_h": 5.0, "sand": Color(0.6, 0.55, 0.43),
@@ -317,6 +323,14 @@ static func shore_rocks(w: World, isle: Dictionary, o: Vector2, rng: RandomNumbe
 		w._rock(Vector3(p.x, 0, p.z), s, full)
 		if p.y < 0.4:
 			sea_rock(w, Vector2(p.x, p.z), s * 0.5)
+		# under the cliffs, talus: smaller stones the face has shed, lying round the big ones
+		if cl > 0.5:
+			for k in rng.randi_range(1, 3):
+				var tl := l + Vector2(rng.randf_range(-3.5, 3.5), rng.randf_range(-3.5, 3.5))
+				var tp := at(w, isle, o, tl)
+				if tp.y < -0.2:
+					continue
+				w._rock(Vector3(tp.x, 0, tp.z), s * rng.randf_range(0.25, 0.5), full)
 
 ## Moves each named place ("poi_*") that landed on something solid or steep to the nearest open
 ## ground you can walk to from the jetty, so later content placed there is always reachable.

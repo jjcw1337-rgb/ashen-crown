@@ -4571,6 +4571,7 @@ class Minimap extends Control:
 	var view_m := 80.0
 	var _reveal_t := 0.0
 	var has_map := false
+	var chart := false        # the coast's sea chart (Game._sea_chart): a wider view, more so while sailing
 
 	func _init() -> void:
 		var sh := Shader.new()
@@ -4646,7 +4647,9 @@ class Minimap extends Control:
 		if g == null or g.hero == null or g.world == null:
 			return
 		if big:
-			view_m = clampf(maxf(map_rect.size.x, map_rect.size.y) * 0.95, 60.0, 130.0)
+			view_m = clampf(maxf(map_rect.size.x, map_rect.size.y) * 0.95, 60.0, 520.0 if chart else 130.0)
+		elif chart:
+			view_m = lerpf(view_m, 240.0 if g.sailing() else 110.0, clampf(delta * 2.0, 0.0, 1.0))
 		var hp: Vector3 = g.hero.global_position
 		_reveal_t -= delta
 		if _reveal_t <= 0.0:

@@ -534,7 +534,37 @@ func _sea_env() -> void:
 	sun.light_color = Color(1.0, 0.8, 0.6)
 	sun.light_energy = 1.15
 	hero.light.light_energy = 0.7
+	_isle_mood()
 	_ocean_light()
+
+## An island with a "mood" in Isles.ISLANDS (the Bleak Isle) has its own water and air in its zone.
+func _isle_mood() -> void:
+	if not cur_zone.begins_with("isle_"):
+		return
+	var isle := Isles.get_isle(cur_zone.trim_prefix("isle_"))
+	if isle.is_empty() or not isle.has("mood"):
+		return
+	var m: Dictionary = isle["mood"]
+	sky_mat.sky_top_color = m["sky_top"]
+	sky_mat.sky_horizon_color = m["horizon"]
+	sky_mat.ground_horizon_color = m["horizon"]
+	sky_mat.ground_bottom_color = (m["horizon"] as Color).darkened(0.3)
+	env.fog_light_color = m["fog"]
+	env.fog_density = m["fog_density"]
+	env.fog_sky_affect = 0.6
+	env.fog_height = m["fog_height"]
+	env.fog_height_density = m["fog_height_density"]
+	env.volumetric_fog_albedo = m["vol_albedo"]
+	env.volumetric_fog_density = m["vol_density"]
+	env.volumetric_fog_emission = Color(0.01, 0.014, 0.01)
+	env.adjustment_saturation = m["sat"]
+	env.adjustment_contrast = m["contrast"]
+	env.ambient_light_energy = m["ambient"]
+	env.glow_intensity = 0.5
+	sun.light_color = m["sun"]
+	sun.light_energy = m["sun_energy"]
+	if world and world.has_node("Ocean"):
+		(world.get_node("Ocean") as Ocean).set_tint(m["shallow"], m["deep"], m["absorb"])
 
 ## Hands the sea the sun and the sky's colour (Ocean.set_light).
 func _ocean_light() -> void:
@@ -942,6 +972,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	if world.oak_forest and not indoor():
 		var birds := Birds.new()
 		birds.game = self
+		birds.sea = world.sea
 		birds.name = "birds"
 		world.add_child(birds)
 	_add_boat(zone, spawn)
@@ -955,6 +986,10 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 
 ## Photographs the freshly built zone from straight above for the minimap.
 func _capture_map(zone: String) -> void:
+	ui.minimap.chart = false
+	if zone == "coast":
+		_sea_chart()
+		return
 	var b: Rect2 = world.bounds.grow(6.0)
 	if DisplayServer.get_name() == "headless":
 		ui.minimap.set_map(null, b, zone != "town")
@@ -1012,6 +1047,54 @@ func _capture_map(zone: String) -> void:
 		img.generate_mipmaps()
 		tex = ImageTexture.create_from_image(img)
 	ui.minimap.set_map(tex, b, zone != "town")
+
+## The coast's corner map is a sea chart painted from the sea's ground (Coast.ground through the zone's
+## height grid): the deep and the shallows, sand, land shaded by height, cliffs and the isles, from the
+## pier out past all five, with no fog (a chart is already known). Made once a session (2 m a pixel).
+static var _chart_tex: Texture2D
+static var _chart_rect: Rect2
+func _sea_chart() -> void:
+	if _chart_tex == null:
+		var r: Rect2 = world.bounds
+		for isle in Isles.ISLANDS:
+			var ce := Isles.centre(isle)
+			var rr := float(isle["r"]) * 1.2
+			r = r.merge(Rect2(ce - Vector2(rr, rr), Vector2(rr, rr) * 2.0))
+		r = r.grow(20.0)
+		var step := 2.0
+		var w := int(r.size.x / step)
+		var h := int(r.size.y / step)
+		var img := Image.create(w, h, false, Image.FORMAT_RGB8)
+		var hs := PackedFloat32Array()
+		hs.resize(w * h)
+		for y in h:
+			for x in w:
+				hs[y * w + x] = world.ground_h(r.position.x + (x + 0.5) * step, r.position.y + (y + 0.5) * step)
+		for y in h:
+			for x in w:
+				var g: float = hs[y * w + x]
+				var gx: float = hs[y * w + mini(x + 1, w - 1)] - hs[y * w + maxi(x - 1, 0)]
+				var gy: float = hs[mini(y + 1, h - 1) * w + x] - hs[maxi(y - 1, 0) * w + x]
+				var slope: float = sqrt(gx * gx + gy * gy) / (2.0 * step)
+				var c: Color
+				if g < 0.0:
+					# water: pale turquoise shallows to dark deep, a lighter rim right at the shore
+					var dk := clampf(-g / 16.0, 0.0, 1.0)
+					c = Color(0.22, 0.46, 0.46).lerp(Color(0.05, 0.12, 0.17), sqrt(dk))
+					if g > -0.8:
+						c = c.lerp(Color(0.62, 0.7, 0.62), 0.45)
+				elif g < 1.3 and slope < 0.5:
+					c = Color(0.62, 0.56, 0.42)                              # sand
+				else:
+					c = Color(0.26, 0.32, 0.17).lerp(Color(0.42, 0.4, 0.28), clampf(g / 24.0, 0.0, 1.0))
+					c = c.lerp(Color(0.2, 0.19, 0.18), clampf(slope * 0.9, 0.0, 0.85))    # cliffs
+					c = c.darkened(clampf(gx * 0.08, -0.15, 0.25))           # light from the west
+				img.set_pixel(x, y, c)
+		img.generate_mipmaps()
+		_chart_tex = ImageTexture.create_from_image(img)
+		_chart_rect = Rect2(r.position, Vector2(w, h) * step)
+	ui.minimap.set_map(_chart_tex, _chart_rect, false)
+	ui.minimap.chart = true
 
 ## The living grass (Act I, outdoors): its wind for the zone, and its touch on.
 func _grass_zone(zone: String) -> void:
