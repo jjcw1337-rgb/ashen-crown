@@ -164,7 +164,7 @@ static func _shell_shader() -> Shader:
 	_ssh = Shader.new()
 	_ssh.code = """
 shader_type spatial;
-render_mode unshaded, blend_add, cull_back, depth_draw_never, shadows_disabled;
+render_mode unshaded, blend_mix, cull_back, depth_draw_never, shadows_disabled;
 uniform float fill = 0.0;
 uniform float amt = 1.0;
 varying vec3 lp;
@@ -176,11 +176,13 @@ float noise(vec3 p) {
 		mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x), mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z);
 }
 void fragment() {
-	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
+	// only the rim of a glassy skin shows, veined, reddening as the tanks fill: the middle stays clear
+	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 4.0);
 	float veins = pow(1.0 - abs(noise(lp * 5.0 + vec3(0.0, -TIME * 1.5, 0.0)) * 2.0 - 1.0), 8.0);
-	vec3 glass = vec3(0.75, 0.85, 0.9);
-	vec3 serum = vec3(0.95, 0.25, 0.18);
-	ALBEDO = mix(glass, serum, fill) * (rim * 0.35 + veins * rim * (0.2 + fill * 0.6)) * amt;
+	vec3 glass = vec3(0.85, 0.9, 0.95);
+	vec3 serum = vec3(1.0, 0.35, 0.28);
+	ALBEDO = mix(glass, serum, 0.35 + 0.65 * fill);
+	ALPHA = clamp(rim * (0.35 + veins * 0.5 + fill * 0.3), 0.0, 0.7) * amt;
 }
 """
 	return _ssh
