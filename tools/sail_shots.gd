@@ -1,6 +1,6 @@
 extends SceneTree
 ## Screenshots of sailing through the game's own camera (boat_ride.gd, Game._sail_camera):
-##   godot --path . -s tools/sail_shots.gd -- outprefix [quality] [isle]
+##   godot --path . -s tools/sail_shots.gd -- outprefix [quality] [isle] [boat id]
 ## Casting off from the pier, under way, halfway across, coming in to the island's jetty, alongside it
 ## with the landing prompt. The boat sails with her own physics; the clock is stepped so it's repeatable.
 var g
@@ -15,6 +15,7 @@ func shot(out: String, name: String) -> void:
 	print("saved ", name)
 func sail(b: BoatRide, to: Vector2, secs: float, stop_at := 12.0) -> void:
 	var t := 0.0
+	stop_at *= b.kl
 	while t < secs:
 		var d := Vector2(b.global_position.x, b.global_position.z).distance_to(to)
 		b.drive = {"throttle": 0, "steer": 0.0, "stop": d < stop_at, "point": Vector3(to.x, 0, to.y) if d >= stop_at else null}
@@ -27,13 +28,14 @@ func _run() -> void:
 	var out: String = args[0]
 	var q := int(args[1]) if args.size() > 1 else 2
 	var id: String = args[2] if args.size() > 2 else "lost"
+	var boat_id: String = args[3] if args.size() > 3 else "gull"
 	while g.world == null or g._busy:
 		g._intro_skip = true
 		await process_frame
 	await g.start_game(false, "knight")
 	g.set_quality(q)
 	g.ui.close_all()
-	g.hero.boats = ["gull"]
+	g.hero.boats = [boat_id]
 	g.hero.sailed = true
 	await g.load_zone(0, "coast", "dock")
 	var b: BoatRide = g.boat
