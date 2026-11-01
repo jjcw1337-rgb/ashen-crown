@@ -269,6 +269,8 @@ static func fire_on(f: Node3D, on: bool) -> void:
 
 static var _flipbook: Texture2D
 static func flipbook() -> Texture2D:
+	if _flipbook == null:
+		_flipbook = FireFx.book("tongue")      # the game's simulated fire (falls back to the body book)
 	if _flipbook == null and ResourceLoader.exists(FIRE_FLIPBOOK):
 		_flipbook = load(FIRE_FLIPBOOK)
 	return _flipbook

@@ -2799,8 +2799,13 @@ class Flames extends Control:
 		_fire.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var m := ShaderMaterial.new()
 		var sh := Shader.new()
-		sh.code = FIRE_SHADER
+		# the simulated fire's flipbook (FireFx) when it is there: three flames played out of step, side by side
+		var book := FireFx.book("body")
+		sh.code = FIRE_FLIP_SHADER if book != null else FIRE_SHADER
 		m.shader = sh
+		if book != null:
+			m.set_shader_parameter("flip_tex", book)
+			m.set_shader_parameter("grid", FireFx.GRID)
 		_fire.material = m
 		add_child(_fire)
 		_front = Control.new()
@@ -2854,6 +2859,39 @@ class Flames extends Control:
 			var lit := 0.55 + 0.45 * (1.0 - absf(f - 0.5) * 2.0)
 			_front.draw_colored_polygon(pts, Color(0.19, 0.17, 0.155) * lit)
 			_front.draw_arc(Vector2(cx, cy + 2.0), rw * 0.9, PI * 1.15, PI * 1.85, 8, Color(1.0, 0.5, 0.2, 0.35 * lit + flare * 0.3), 2.0)
+
+## The bonfire window's fire from the simulated flipbook: a tall flame in the middle and two smaller ones either
+## side, each at its own speed and frame, the side ones mirrored; all light (added), brighter on a flare.
+const FIRE_FLIP_SHADER := """
+shader_type canvas_item;
+render_mode blend_add;
+uniform sampler2D flip_tex : source_color, filter_linear_mipmap;
+uniform vec2 grid = vec2(6.0, 6.0);
+uniform float flare = 0.0;
+vec3 frame_at(float f, vec2 uv) {
+	float n = grid.x * grid.y;
+	f = mod(f, n);
+	vec2 cell = vec2(mod(f, grid.x), floor(f / grid.x));
+	return texture(flip_tex, (cell + clamp(uv, vec2(0.002), vec2(0.998))) / grid).rgb;
+}
+vec3 flame(vec2 uv, vec2 at, vec2 sz, float speed, float off, bool flip) {
+	vec2 u = (uv - at) / sz + vec2(0.5, 1.0);
+	if (u.x < 0.0 || u.x > 1.0 || u.y < 0.0 || u.y > 1.0) { return vec3(0.0); }
+	if (flip) { u.x = 1.0 - u.x; }
+	float f = TIME * 30.0 * speed + off;
+	float f0 = floor(f);
+	return mix(frame_at(f0, u), frame_at(f0 + 1.0, u), f - f0);
+}
+void fragment() {
+	vec2 uv = UV;
+	float grow = 1.0 + flare * 0.3;
+	vec3 c = flame(uv, vec2(0.5, 0.86), vec2(0.62, 1.05) * grow, 1.0, 0.0, false);
+	c += flame(uv, vec2(0.33, 0.87), vec2(0.42, 0.72) * grow, 0.86, 11.0, true) * 0.75;
+	c += flame(uv, vec2(0.67, 0.87), vec2(0.4, 0.68) * grow, 1.12, 23.0, false) * 0.7;
+	c *= 1.05 + flare * 0.5;
+	COLOR = vec4(c, 1.0);
+}
+"""
 
 const FIRE_SHADER := """
 shader_type canvas_item;
