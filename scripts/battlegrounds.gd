@@ -7,8 +7,9 @@ extends Node
 ## zombies, loot chests and step into an Extraction Portal to leave with what they picked up. The server keeps the
 ## record: every item a player picks up is `carried` for them; extracting moves it into their stash, dying or leaving
 ## drops it on the floor for anyone. Where the stash lives: with ASHEN_NAKAMA_URL and ASHEN_NAKAMA_HTTP_KEY set on
-## the server (staging, production), in Nakama: the player signs in (NakamaClient, their device), sends the session
-## token, the server has Nakama check it, and reads and writes the stash through the server-only RPCs of
+## the server (staging, production), in Nakama: the player signs in (NakamaClient, their device, over HTTPS), asks
+## Nakama for a one-time join ticket and sends only that (this UDP connection isn't encrypted, so never the session);
+## the server redeems it for their user id, and reads and writes the stash through the server-only RPCs of
 ## deploy/nakama/modules/ashen.lua (players can read theirs, never write it). Without them (local runs, tests), in a
 ## file on the server keyed by the player's random per-PC id (`client_id`).
 ## Tests: tools/bg_test.gd (server + client: `-- server` and `-- client`).
@@ -190,9 +191,11 @@ func player_hello(pid: int, uid: String, session := ""):
 	if nk == null:
 		uids[pid] = uid
 		return stash.get(uid, [])
-	var user: String = await nk.verify_session(session) if session != "" else ""
+	# `session` is a one-time join ticket (bg_ticket), never the player's Nakama session: this connection isn't encrypted
+	var t: Dictionary = await nk.server_rpc("bg_ticket_redeem", {"ticket": session}, nk_key) if session != "" else {}
+	var user: String = str(t.get("user_id", ""))
 	if user == "":
-		print("[BG] could not verify a player's account: ", nk.last_error)
+		print("[BG] a player's join ticket was refused ", nk.last_error)
 		return null
 	uids[pid] = "nk:" + user
 	var r: Dictionary = await nk.server_rpc("bg_stash_read", {"user_id": user}, nk_key)

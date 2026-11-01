@@ -63,6 +63,14 @@ func verify_session(session_token: String) -> String:
 	var u = r.get("user", {})
 	return str(u.get("id", "")) if u is Dictionary else ""
 
+## A signed-in player's RPC (with their session), e.g. bg_ticket. {} on an error (see last_error).
+func user_rpc(id: String, payload: Dictionary) -> Dictionary:
+	var r: Dictionary = await _call(HTTPClient.METHOD_POST, "/v2/rpc/%s?unwrap" % id, payload)
+	if r.has("payload") and r["payload"] is String:
+		var v = JSON.parse_string(r["payload"])
+		return v if v is Dictionary else {}
+	return r
+
 ## Server side: one of the game's server-only RPCs (deploy/nakama/modules/ashen.lua), with the runtime http_key.
 func server_rpc(id: String, payload: Dictionary, http_key: String) -> Dictionary:
 	var r: Dictionary = await _call(HTTPClient.METHOD_POST, "/v2/rpc/%s?http_key=%s&unwrap" % [id, http_key.uri_encode()], payload, "-")

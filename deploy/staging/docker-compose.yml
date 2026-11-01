@@ -3,8 +3,10 @@
 # Secrets come from nakama.env next to this file on the server (made by setup.sh, mode 600, never in Git):
 #   POSTGRES_PASSWORD, NAKAMA_SERVER_KEY, NAKAMA_SESSION_KEY, NAKAMA_REFRESH_KEY, NAKAMA_HTTP_KEY, NAKAMA_CONSOLE_PASSWORD
 #   docker compose --env-file nakama.env up -d
-# Ports: 7350 (the game's API, public through the cloud firewall); the console 7351 only on the server itself
-# (reach it with `ssh -L 7351:127.0.0.1:7351 ashen-crown-staging`); PostgreSQL is never published.
+# Ports: the game reaches Nakama only through Caddy's HTTPS on 443 (80 for the certificate's ACME challenge);
+# Nakama's own 7350 is on the server's loopback (the Battlegrounds server on the same box uses it), the console 7351
+# too (`ssh -L 7351:127.0.0.1:7351 ashen-crown-staging`); PostgreSQL is never published.
+# STAGING_HOST (the server's public IP, the certificate's name) is in nakama.env too.
 name: ashen-staging
 services:
   postgres:
@@ -45,7 +47,23 @@ services:
     volumes:
       - ./modules:/nakama/data/modules:ro
     ports:
-      - "7350:7350"
+      - "127.0.0.1:7350:7350"
       - "127.0.0.1:7351:7351"
+  caddy:
+    image: caddy:2.11.7
+    restart: unless-stopped
+    depends_on:
+      - nakama
+    environment:
+      STAGING_HOST: ${STAGING_HOST}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:

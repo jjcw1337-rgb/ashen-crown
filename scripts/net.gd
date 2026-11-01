@@ -136,7 +136,12 @@ func local_ips() -> Array:
 func _on_connected() -> void:
 	rpc_id(1, "sv_hello", my_name, game.hero.net_gear(), game.hero.level)
 	if game.bg_mode:
-		rpc_id(1, "sv_bg_hello", Battlegrounds.client_id(), game.cloud.nk.token if game.cloud != null and game.cloud.signed_in else "")
+		# with accounts on: a one-time join ticket from Nakama (over HTTPS), never the session itself
+		var ticket := ""
+		if game.cloud != null and game.cloud.signed_in:
+			var r: Dictionary = await game.cloud.nk.user_rpc("bg_ticket", {})
+			ticket = str(r.get("ticket", ""))
+		rpc_id(1, "sv_bg_hello", Battlegrounds.client_id(), ticket)
 
 func _on_connect_failed() -> void:
 	shutdown()
