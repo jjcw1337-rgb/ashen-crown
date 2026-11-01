@@ -28,11 +28,12 @@ static func of(cls: String):
 		"archer": return Archer
 		"plague": return PlagueSkills
 		"wyrm", "serpent", "wyvern": return DragonSkills
+		"any": return SharedSkills       # the shared skills (Data.SKILLS "cls": "any")
 	return null
 
 ## Every class's skills script (update/clear/died run on all of them: each looks after its own state).
 static func all() -> Array:
-	return [KnightSkills, WraithSkills, DemonSkills, WarlockSkills, Archer, PlagueSkills, DragonSkills]
+	return [KnightSkills, WraithSkills, DemonSkills, WarlockSkills, Archer, PlagueSkills, DragonSkills, SharedSkills]
 
 ## The class a skill id belongs to ("any" for the common Attack and Block).
 static func owner(id: String) -> String:

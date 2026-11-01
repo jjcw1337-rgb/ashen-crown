@@ -95,7 +95,8 @@ func _run() -> void:
 		_make_puppet()
 		check(puppet.cls == cls and puppet.puppet, "%s: a puppet of him stands beside him" % cls)
 		var root: Node3D = g.world.fx_root
-		for sk in Data.skills_for(cls):
+		# (the shared skills on two kinds of body: the knight's and the legless Wraith's)
+		for sk in Data.skills_for(cls) + (Data.shared_skills() if cls in ["knight", "wraith"] else []):
 			var id: String = sk["id"]
 			var en: Array = await pack(h.global_position + Vector3(0, 0, -3.5), 3)
 			h._face(Vector3(0, 0, -1))

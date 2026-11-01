@@ -508,6 +508,26 @@ const SKILLS := [
 	{"id": "trap", "cls": "plague", "name": "Pestilent Trap", "key": "R", "lvl": 6, "mana": 12, "cd": 5.0, "aim": "point", "range": 10.0, "desc": "Kneel and set a brass canister (up to 2, 30 seconds). The first enemy to step on it is stunned and it vents a poison cloud 3.5 metres wide. An infected enemy that springs it starts an outbreak: the cloud infects everything it touches."},
 	{"id": "epidemic", "cls": "plague", "name": "The Last Epidemic", "key": "F", "lvl": 10, "mana": 30, "cd": 24.0, "aim": "self", "desc": "Smash your censer and raise a miasma dome 9 metres wide for 8 seconds. Inside, enemies are poisoned, slowed and infected; an infected enemy that dies passes it to the two nearest (up to 6 times). The dome collapses with a final blow."},
 	{"id": "covenant", "cls": "warlock", "name": "Fel Covenant", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "aim": "self", "desc": "Seal a pact with what waits beyond: +40% damage for 12 seconds, and Drain Life forks to two more enemies and heals twice as much."},
+	# the shared skills (SharedSkills): "cls": "any", every class can put them on its bar (jj, 2026-11-01)
+	{"id": "earthshatter", "cls": "any", "name": "Earthshatter", "key": "", "lvl": 1, "mana": 8, "cd": 0.0, "aim": "facing", "range": 5.0,
+		"style": "slam", "use": 1.6, "speed": "attack", "dmg": 230, "base": [10, 16], "per_lvl": 2.5, "type": "phys", "knock": 1.2,
+		"area": {"shape": "wedge", "r": 5.0, "angle": 100}, "tags": ["attack", "melee", "slam", "heavy", "area"],
+		"desc": "A heavy two-handed slam: the wedge it will crack shows as you heave, then the ground splits ahead of you for 230% weapon damage plus a part that grows with your level, throwing foes back."},
+	{"id": "frost_nova", "cls": "any", "name": "Frost Nova", "key": "", "lvl": 1, "mana": 10, "cd": 0.0, "aim": "self",
+		"style": "cast", "use": 0.9, "speed": "cast", "base": [12, 18], "per_lvl": 3.5, "type": "cold",
+		"area": {"shape": "circle", "r": 4.0, "at": "self"}, "dot": {"kind": "chill", "k": 0.45, "secs": 3.0}, "tags": ["spell", "cold", "area", "nova"],
+		"desc": "A ring of ice bursts out around you, 4 metres: cold damage, and everything it hits is chilled, slowed for 3 seconds."},
+	{"id": "arc", "cls": "any", "name": "Arc", "key": "", "lvl": 1, "mana": 6, "cd": 0.0, "aim": "facing", "range": 10.0,
+		"style": "cast", "use": 0.7, "speed": "cast", "base": [8, 14], "per_lvl": 2.8, "type": "lightning",
+		"area": {"shape": "single", "r": 10.0}, "tags": ["spell", "lightning", "chain"],
+		"desc": "Lightning leaps from your hand into the nearest foe ahead and on to three more nearby, striking each."},
+	{"id": "flame_wave", "cls": "any", "name": "Flame Wave", "key": "", "lvl": 1, "mana": 9, "cd": 0.0, "aim": "facing", "range": 9.0,
+		"style": "thrust", "use": 1.1, "speed": "cast", "base": [14, 22], "per_lvl": 4.0, "type": "fire",
+		"area": {"shape": "line", "r": 9.0, "w": 2.2}, "dot": {"kind": "burn", "pct": 40, "secs": 3.0}, "tags": ["spell", "fire", "line"],
+		"desc": "A wall of fire rolls out ahead of you, 9 metres: fire damage to everything it passes, and they burn on."},
+	{"id": "war_cry", "cls": "any", "name": "War Cry", "key": "", "lvl": 1, "mana": 12, "cd": 8.0, "aim": "self",
+		"style": "cast", "use": 0.8, "speed": "attack", "tags": ["warcry", "buff"],
+		"desc": "A roar that turns the monsters within 8 metres on you, and fills you with fury: +40% damage for 6 seconds."},
 ]
 
 ## Playable classes. Base attributes at level 1.
@@ -553,6 +573,10 @@ static func unarmed(cls: String) -> Array:
 static func unarmed_speed(cls: String) -> float:
 	return float(CLASSES[cls].get("claw_speed", 1.2)) if CLASSES.has(cls) else 1.2
 
+## The shared skills ("cls": "any" in SKILLS), every class's to use (SharedSkills).
+static func shared_skills() -> Array:
+	return SKILLS.filter(func(s): return s["cls"] == "any")
+
 static func skills_for(cls: String) -> Array:
 	var out := []
 	for s in SKILLS:
@@ -567,9 +591,9 @@ const COMMON_SKILLS := [
 	{"id": "block", "cls": "any", "name": "Block", "key": "", "lvl": 1, "mana": 0, "cd": 0.0, "aim": "self", "hold": true, "desc": "Hold to raise your guard: 80% less damage from the front. With a shield, arrows and missiles from the front are stopped entirely."},
 ]
 
-## Every skill a class can bind: its own skills, then the common ones.
+## Every skill a class can bind: its own skills, the shared ones, then the common ones.
 static func skills_known(cls: String) -> Array:
-	return skills_for(cls) + COMMON_SKILLS
+	return skills_for(cls) + shared_skills() + COMMON_SKILLS
 
 ## Every skill is open from level 1, for every class and any class added later (jj, 2026-11-01); a skill's "lvl" is
 ## kept only for its tooltip's order and in case unlocking by level comes back.

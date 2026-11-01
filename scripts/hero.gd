@@ -262,8 +262,9 @@ var binds := {}
 func default_binds() -> Dictionary:
 	var own := skill_list()
 	var b := {"lmb": "attack", "rmb": own[0]["id"] if not own.is_empty() else "block"}
+	var bar := own + Data.shared_skills()      # (a class with fewer than six of its own fills the rest from the shared ones)
 	for i in BIND_KEYS.size():
-		b[BIND_KEYS[i]] = own[i]["id"] if i < own.size() else ""
+		b[BIND_KEYS[i]] = bar[i]["id"] if i < bar.size() else ""
 	return b
 
 ## Put a skill on a slot. A skill sits on one hotkey at most, so binding it again moves it.
@@ -291,7 +292,7 @@ func _check_binds() -> void:
 	var on_bar := {}
 	for k in BIND_KEYS:
 		on_bar[str(binds.get(k, ""))] = true
-	var spare := skill_list().map(func(s): return str(s["id"])).filter(func(id): return not on_bar.has(id))
+	var spare := (skill_list() + Data.shared_skills()).map(func(s): return str(s["id"])).filter(func(id): return not on_bar.has(id))
 	for k in BIND_KEYS:
 		if str(binds.get(k, "")) == "" and not spare.is_empty():
 			binds[k] = spare.pop_front()
@@ -1187,7 +1188,7 @@ func use_skill(id: String, aim: Vector3) -> bool:
 	if atk_t >= 0.0 and atk_skill != "":
 		return false
 	var sk: Dictionary = {}
-	for s in skill_list():
+	for s in skill_list() + Data.shared_skills():
 		if s["id"] == id:
 			sk = s
 	if sk.is_empty() or (Data.skill_locked(sk, level) and not game.test_allskills):

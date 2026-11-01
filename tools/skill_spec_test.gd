@@ -7,6 +7,11 @@ var fails := 0
 const KEYS := ["id", "cls", "name", "key", "lvl", "mana", "cd", "aim", "range", "desc", "channel", "hold", "style", "use", "hit",
 	"speed", "lock", "cancel", "dmg", "base", "per_lvl", "type", "knock", "area", "dot", "tags"]
 
+## Styles more than one user plays (the weapon swings, monsters' attacks, the shared skills): a skill's "hit" must
+## not retime them.
+const SHARED_STYLES := ["over", "back", "side", "thrust", "cast", "slam", "smash", "claw", "bite", "lob", "cleave",
+	"swipe1", "swipe2", "swipe3", "burst", "cackle", "scoop", "bow", "chop"]
+
 func check(ok: bool, what: String) -> void:
 	if not ok:
 		fails += 1
@@ -16,6 +21,7 @@ func check(ok: bool, what: String) -> void:
 var SS
 var DG
 var AN
+var SH
 
 func _initialize():
 	_run()
@@ -35,6 +41,10 @@ func _validate(s: Dictionary) -> String:
 		return "%s: \"hit\" must be between 0 and 1" % id
 	if s.has("hit") and not s.has("style"):
 		return "%s: \"hit\" needs a \"style\" (the animation it lands in)" % id
+	if s.has("hit") and SHARED_STYLES.has(s["style"]):
+		return "%s: \"hit\" on the shared style \"%s\" would move every user's impact (monsters too): give the skill its own style, or leave \"hit\" out" % [id, s["style"]]
+	if str(s.get("cls", "")) == "any" and not (SH.IDS as Array).has(id) and not ["attack", "block"].has(id):
+		return "%s: a shared skill (\"cls\": \"any\") must be handled in SharedSkills (add it to IDS)" % id
 	if s.has("use") and float(s["use"]) < 0.2:
 		return "%s: \"use\" under 0.2 s" % id
 	if s.has("speed") and not ["attack", "cast"].has(s["speed"]):
@@ -60,6 +70,7 @@ func _run() -> void:
 	SS = load("res://scripts/skill_spec.gd")
 	DG = load("res://scripts/dodge.gd")
 	AN = load("res://scripts/anim.gd")
+	SH = load("res://scripts/shared_skills.gd")
 	get_root().add_child(g)
 	while g.world == null or g._busy or g._intro_playing or not g.ui.title_panel.visible:
 		g._intro_skip = true
@@ -80,8 +91,6 @@ func _run() -> void:
 		h.set_level(1)
 		h.binds = h.default_binds()
 		var own: Array = h.skill_list()
-		if own.is_empty():
-			continue          # (a class still without skills of its own)
 		for s in own:
 			if Data.skill_locked(s, 1):
 				shut.append("%s %s" % [c, s["id"]])
@@ -89,16 +98,17 @@ func _run() -> void:
 		for k in h.BIND_KEYS:
 			if str(h.binds.get(k, "")) != "":
 				filled += 1
-		if filled < mini(6, own.size()):
-			shut.append("%s: %d of %d on the bar" % [c, filled, mini(6, own.size())])
+		var want := mini(6, own.size() + Data.shared_skills().size())
+		if filled < want:
+			shut.append("%s: %d of %d on the bar" % [c, filled, want])
 		# an old save's bar with gaps fills them with the skills not on it
-		h.from_save(h.to_save().merged({"binds": {"lmb": "attack", "Q": str(own[0]["id"])}}, true))
+		h.from_save(h.to_save().merged({"binds": {"lmb": "attack", "Q": str((own + Data.shared_skills())[0]["id"])}}, true))
 		var refill := 0
 		for k in h.BIND_KEYS:
 			if str(h.binds.get(k, "")) != "":
 				refill += 1
-		if refill < mini(6, own.size()):
-			shut.append("%s: an old save's bar kept %d empty" % [c, mini(6, own.size()) - refill])
+		if refill < want:
+			shut.append("%s: an old save's bar kept %d empty" % [c, want - refill])
 	check(shut.is_empty(), "every class has every skill at level 1 and a full bar (%d classes)%s" % [Data.CLASSES.size(), ("\n      " + "\n      ".join(shut)) if not shut.is_empty() else ""])
 	h.set_class("demon")
 	h.set_level(10)
@@ -125,5 +135,31 @@ func _run() -> void:
 	check(not DG.can_roll(h), "\"cancel\": false holds against the dodge roll")
 	SS.over.clear()
 	check(DG.can_roll(h), "and by default the dodge can break it")
+	# the shared skills on two kinds of body (the knight's, the legless Wraith's): each casts, and does what it says
+	for c in ["knight", "wraith"]:
+		h.set_class(c)
+		h.new_character()
+		h.set_level(10)
+		await create_timer(0.3).timeout
+		for id in SH.IDS:
+			h.global_position = home
+			h._face(Vector3(0, 0, -1))
+			var foes := []
+			for i in 3:
+				foes.append(g.spawn_enemy("zombie", home + Vector3(i - 1.0, 0, -2.5 - i * 0.6), 10))
+			await create_timer(0.3).timeout
+			var lives := func(): return foes.reduce(func(t, f): return t + (f.life if is_instance_valid(f) and not f.dead else 0.0), 0.0)
+			var l0b: float = lives.call()
+			h.mana = h.max_mana
+			h.buff_t = 0.0
+			for k in h.cds.keys():
+				h.cds[k] = 0.0
+			var cast_ok: bool = h.use_skill(id, h.skill_aim(id, foes[1].global_position))
+			await create_timer(h.atk_dur + 0.3).timeout
+			var did: bool = h.buff_t > 0.0 if id == "war_cry" else float(lives.call()) < l0b
+			check(cast_ok and did, "%s: %s works (%s)" % [c, id, "buffed" if id == "war_cry" else "%d damage" % int(l0b - float(lives.call()))])
+			for f in foes:
+				if is_instance_valid(f):
+					f.queue_free()
 	print("[K] done, %d failed" % fails)
 	quit()

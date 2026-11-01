@@ -4889,6 +4889,35 @@ class SkillGlyph extends Control:
 					draw_line(c + Vector2(cos(a), sin(a)) * 10, c + Vector2(cos(a), sin(a)) * 19, col, 2.0, true)
 			"charge":
 				draw_colored_polygon(PackedVector2Array([c + Vector2(-14, -8), c + Vector2(4, -8), c + Vector2(4, -14), c + Vector2(16, 0), c + Vector2(4, 14), c + Vector2(4, 8), c + Vector2(-14, 8)]), col)
+			# the shared skills (SharedSkills)
+			"earthshatter":
+				var ec := Color(0.85, 0.6, 0.32) if not dim else Color(0.4, 0.37, 0.35)
+				draw_rect(Rect2(c + Vector2(-16, 6), Vector2(32, 5)), ec.darkened(0.4))
+				draw_polyline(PackedVector2Array([c + Vector2(0, 6), c + Vector2(-4, -2), c + Vector2(2, -7), c + Vector2(-2, -14)]), ec, 2.5, true)
+				draw_polyline(PackedVector2Array([c + Vector2(0, 6), c + Vector2(7, 0), c + Vector2(12, -6)]), ec, 2.0, true)
+				draw_polyline(PackedVector2Array([c + Vector2(0, 6), c + Vector2(-9, 1), c + Vector2(-14, -4)]), ec, 2.0, true)
+			"frost_nova":
+				var ic := Color(0.6, 0.85, 1.0) if not dim else Color(0.4, 0.42, 0.45)
+				draw_arc(c, 15, 0, TAU, 32, ic, 2.5, true)
+				for k in 6:
+					var a := TAU * k / 6.0
+					draw_line(c, c + Vector2(cos(a), sin(a)) * 11, ic.lightened(0.3), 2.0, true)
+			"arc":
+				var lc := Color(0.75, 0.7, 1.0) if not dim else Color(0.4, 0.4, 0.45)
+				draw_polyline(PackedVector2Array([c + Vector2(-15, -12), c + Vector2(-4, -3), c + Vector2(-8, 2), c + Vector2(4, 9), c + Vector2(0, 12), c + Vector2(15, 15)]), lc, 3.0, true)
+				draw_circle(c + Vector2(15, 15), 2.5, lc.lightened(0.4))
+			"flame_wave":
+				var fc := Color(1.0, 0.5, 0.15) if not dim else Color(0.45, 0.38, 0.33)
+				for k in 4:
+					var x := -13.0 + k * 8.5
+					var hgt := 8.0 + k * 3.0
+					draw_colored_polygon(PackedVector2Array([c + Vector2(x - 4, 12), c + Vector2(x, 12 - hgt * 1.6), c + Vector2(x + 4, 12)]), fc.lerp(Color(1, 0.85, 0.4), k / 4.0))
+			"war_cry":
+				var rc := Color(1.0, 0.3, 0.2) if not dim else Color(0.45, 0.35, 0.33)
+				draw_circle(c + Vector2(-4, 0), 8, rc.darkened(0.3))
+				draw_colored_polygon(PackedVector2Array([c + Vector2(-2, -3), c + Vector2(6, -7), c + Vector2(6, 7), c + Vector2(-2, 3)]), Color(0.1, 0.05, 0.05))
+				for k in 3:
+					draw_arc(c + Vector2(4, 0), 7 + k * 5, -0.6, 0.6, 8, rc, 2.0, true)
 			"cry":
 				draw_colored_polygon(PackedVector2Array([c + Vector2(-14, -6), c + Vector2(-4, -6), c + Vector2(8, -14), c + Vector2(8, 14), c + Vector2(-4, 6), c + Vector2(-14, 6)]), col)
 				draw_arc(c + Vector2(8, 0), 10, -0.8, 0.8, 8, col, 2.0, true)

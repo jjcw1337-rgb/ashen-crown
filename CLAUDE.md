@@ -91,6 +91,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `build_env.gd`, `nakama_client.gd`, `cloud_saves.gd` | Which backend a build uses; the Nakama REST client; characters kept in Nakama (see "Staging and accounts") |
 | `battlegrounds.gd` | Battlegrounds prototype: the raid map, the dedicated server's raid logic (respawns, carried loot, extraction, the stash), the client's id and cached stash |
 | `kpi.gd` | The official performance KPIs: scripted scenarios measured frame by frame (`--kpi`), see docs/nightly/KPIS.md |
+| `shared_skills.gd`, `shared_fx.gd` | The shared skills every class can use (`"cls": "any"`): their gameplay and their effects |
 | `skill_spec.gd` | The skill format (`SkillSpec`): a skill's timing, damage, area and damage over time read from its `Data.SKILLS` entry |
 | `skill_fx.gd`, `knight_fx.gd`, `archer_fx.gd` | Co-op skill effects: `SkillFx` plays every class's skill events on the caster and on his puppet for partners (see "Co-op skill effects"); the knight's and archer's effect handlers (the Wraith's, Demon's and Warlock's are in their `*_fx.gd`) |
 | `ui.gd`, `hud_bar.gd`, `icon_renderer.gd` | All UI built in code |
@@ -1106,6 +1107,17 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   **Performance**: run `bash tools/skill_perf.sh <class> <skill>` on every new or redone skill (PASS: no new
   stutters, at most 20% slower than the weapon alone in the 24-monster fight; docs/nightly/KPIS.md "Skills"). An
   effect light with shadows goes through `Fx.effect_shadow` (cheap maps, at most 2 at once), never `shadow_enabled = true`.
+- **Shared skills** (jj, 2026-11-01: class-free skills, every class can use them): `Data.SKILLS` entries with
+  `"cls": "any"` (`Data.shared_skills()`; `skills_known` = the class's own + shared + Attack/Block), played by
+  `SharedSkills` (`scripts/shared_skills.gd`, the ClassSkills interface; `ClassSkills.of("any")`) and drawn by `SharedFx`
+  (`SkillFx.play` hands them there whatever the class). The first five: Earthshatter (heavy slam, wedge), Frost Nova
+  (ring of ice, chills), Arc (chain lightning), Flame Wave (a line of FireFx fire, burns), War Cry (the battle buff and a
+  taunt, 8 s cooldown). They play on shared styles every body has (`slam`, `cast`, `thrust`), so they set `"use"` but
+  never `"hit"` (a shared style's impact is every user's, monsters' too; `skill_spec_test` refuses it). A new shared
+  skill: its entry, its id in `SharedSkills.IDS` and its `impact` case (usually `SkillSpec.targets` + `strike`), its
+  `SharedFx.play` case and a `SkillGlyph` icon; `skill_spec_test` casts each on the knight and the Wraith.
+  **Every skill is open from level 1** (`Data.SKILLS_UNLOCKED`, `Data.skill_locked`), and every hotkey holds a skill
+  (`Hero.default_binds` and `_check_binds` fill the bar from the class's own, then the shared ones).
 - **Attack pace** (every class, new ones too): `Data.ATTACK_PACE` (1.2 = attacks, skill swings and casts take 20%
   longer) multiplies `Hero.atk_dur` in `_start_attack` and the casts' own times in `use_skill`; a special class can set
   `"attack_pace"` in `Data.CLASSES` (`Data.attack_pace(cls)`). Attacks whose rate the swing sets (the basic attack, skills
