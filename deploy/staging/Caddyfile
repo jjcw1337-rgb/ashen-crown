@@ -1,6 +1,7 @@
 # HTTPS in front of Nakama's API (STAGING). The site is the server's public IP ({$STAGING_HOST}): Let's Encrypt
 # issues certificates for IP addresses on its short-lived profile (6-day certificates, renewed by Caddy on its own).
 # Ports 80 (ACME challenge, redirects) and 443. Nakama itself listens on the server's loopback only.
+# /grafana/ is Grafana (the performance KPIs, docs/nightly/KPIS.md), with its own login.
 # default_sni: a client connecting to an IP sends no server name, so Caddy must know which certificate to present.
 {
 	default_sni {$STAGING_HOST}
@@ -12,5 +13,10 @@ https://{$STAGING_HOST} {
 			profile shortlived
 		}
 	}
-	reverse_proxy nakama:7350
+	handle /grafana* {
+		reverse_proxy grafana:3000
+	}
+	handle {
+		reverse_proxy nakama:7350
+	}
 }

@@ -131,10 +131,14 @@ func _ready() -> void:
 	hero.died.connect(_on_hero_died)
 	hero.leveled.connect(_on_level)
 	ui.bind_hero(hero)
-	if BuildEnv.cloud() and not args.has("--server") and shot_path == "":
+	if BuildEnv.cloud() and not args.has("--server") and shot_path == "" and not args.has("--kpi"):
 		cloud = CloudSaves.new(self)
 		add_child(cloud)
 		_cloud_start()
+	if Telemetry.wanted():
+		add_child(Telemetry.new(self))      # player telemetry and error reports (scripts/telemetry.gd)
+	if Kpi.start(self):
+		return       # the official performance KPIs (scripts/kpi.gd): a scripted scenario, measured, then quit
 	if args.has("--server"):
 		# the Battlegrounds' dedicated server: `godot --headless --path . -- --server [--port N]`
 		var pi := args.find("--port")
@@ -309,6 +313,7 @@ func _apply_underworld() -> void:
 			_soul_field.global_position = hero.global_position
 
 func _on_level(l: int) -> void:
+	Telemetry.crumb("level", {"level": l})
 	ui.big_message("Level %d" % l)
 	ui.message("+5 stat points (press C)  ·  +1 talent point (press N)", Color(1, 0.85, 0.4))
 
@@ -966,6 +971,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		world = null
 		hovered = null
 		await get_tree().process_frame
+	Telemetry.crumb("enter", {"to": zone, "run": difficulty})
 	cur_act = act
 	cur_zone = zone
 	World.detail = quality
@@ -1284,6 +1290,7 @@ func start_join(ip: String) -> void:
 func start_battlegrounds(addr: String, id: String) -> void:
 	while _busy:
 		await get_tree().process_frame
+	Telemetry.crumb("raid", {"server": addr})
 	Sfx.play("click")
 	net.stop_listening()
 	char_id = id
@@ -2075,6 +2082,7 @@ func hitstop(t: float) -> void:
 	Engine.time_scale = 0.08
 
 func _on_hero_died() -> void:
+	Telemetry.crumb("died", {"bg": bg_mode})
 	death_t = 2.0
 	if bg_mode:
 		_bg_fell()
@@ -2450,6 +2458,10 @@ func _process(delta: float) -> void:
 	_t += delta
 	var real_dt := delta / maxf(Engine.time_scale, 0.01)
 	_watchdog(real_dt)
+	if net.server:
+		Kpi.server_tick(real_dt)
+	else:
+		Kpi.step(real_dt)
 	if world == null:
 		return
 	xp_bonus_t = maxf(0.0, xp_bonus_t - delta)

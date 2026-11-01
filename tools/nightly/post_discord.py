@@ -1,5 +1,5 @@
 """Posts the nightly lab's morning report to the Game Factory Discord channel (run by tools/nightly/run.sh).
-    python post_discord.py <out dir> <report.md> [--dry]
+    python post_discord.py <out dir> <report.md> [failed steps] [--dry]
 Uses the bot's REST API with the token from ~/.claude/channels/discord/.env (never printed or logged); no gateway
 connection, so it doesn't disturb the Game Factory session's own bot connection. Messages are split under Discord's
 2000 characters; images (the mode GIF, then the best PNGs, resized to JPEG) go in a follow-up message, at most 10.
@@ -80,16 +80,22 @@ def images(out):
 
 def main():
     out, report = sys.argv[1], sys.argv[2]
+    args = [a for a in sys.argv[3:] if a != "--dry"]
+    failed = (args[0] if args else "").strip()
     dry = "--dry" in sys.argv
     text = open(report).read()
     target = open(os.path.join(out, "target.txt")).read().strip() if os.path.exists(os.path.join(out, "target.txt")) else "?"
     itch = open(os.path.join(out, "itch.txt")).read().strip() if os.path.exists(os.path.join(out, "itch.txt")) else ""
-    head = "<@103232622510997504> <@1453436059252687012> 🌙 **Nightly lab report**\n"
+    base = os.path.basename(report)
+    job = "game mode" if base.endswith("-mode.md") else ("triage" if base.endswith("-triage.md") else "performance")
+    head = "<@103232622510997504> <@1453436059252687012> 🌙 **Nightly %s report**\n" % job
     if target == "staging":
-        head += "Tonight's work passed every test and is on `staging`: " + (
+        head += "It passed every test and is on `staging`: " + (
             "the itch app has it now → " + ITCH if itch == "itch-ok" else "it's still building for itch (" + ITCH + ")") + "\n"
     else:
-        head += "⚠️ Tonight's work did NOT pass the tests, so it's parked on `%s` (staging unchanged).\n" % target
+        head += "⚠️ It did NOT pass (tests, or the benchmark found it slower), so it's parked on `%s` (staging unchanged).\n" % target
+    if failed:
+        head += "⚠️ Steps that failed: %s (log: ~/Library/Logs/ashen-nightly/)\n" % failed
     msgs = chunks(head + "\n" + text)
     files = images(out)
     if dry:

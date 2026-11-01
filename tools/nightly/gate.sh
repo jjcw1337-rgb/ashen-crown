@@ -21,7 +21,7 @@ check() {  # name, log, finished-in-time
   fi
 }
 
-for t in playtest coop_fx_test title_test char_test ui_click_test grass_test intro_skip_test controls_test; do
+for t in playtest coop_fx_test title_test char_test ui_click_test grass_test intro_skip_test controls_test telemetry_test; do
   "$G" --headless --path . -s tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done

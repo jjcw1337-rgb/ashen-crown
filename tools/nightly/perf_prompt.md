@@ -28,13 +28,22 @@ per platform on 2026-11-01). Read docs/nightly/perf/SIZE.md. Measure the export 
 is well under 200 MB, make tonight's concept a size reduction at least every other night (see SIZE.md for where the
 megabytes are). Size changes must keep the look: show before/after images of anything you recompress.
 
-1. Learn from the past. Read docs/nightly/perf/CONCEPTS.md, the last few docs/nightly/perf/runs/*.md and
-   docs/nightly/perf/metrics.jsonl. Do not repeat a concept already tried unless you are building on it and say how.
-2. Measure a baseline with the game's own profiler, on the same scenes every night so the numbers stay comparable:
+1. Learn from the past. Read docs/nightly/perf/LOG.md FIRST: its Lessons and every row (yours and the runner's
+   `bench` rows, the scoreboard). Open the linked run write-ups (docs/nightly/perf/runs/*.md) of anything you build
+   on, and docs/nightly/perf/metrics.jsonl for the trend. Don't repeat an attempt marked "no" unless you can say what
+   is different this time; follow up the "Next" ideas of the rows that worked.
+   NOTE: before and after your session the nightly script benchmarks the game itself (tools/nightly/bench.sh: the moor
+   at Medium/High/Ultra and the camp at High) and adds that `bench` row to the log. If the game is slower than when you
+   started, your work does NOT ship. Measure honestly; it will be checked.
+2. Measure with the official KPIs (docs/nightly/KPIS.md: the scenarios camp, moor, fight, boss, arena, crypt, server,
+   and the metrics fps_avg, fps_low1, frame_ms_p99, hitches_per_min, load_ms, gpu_ms, draw_calls, primitives,
+   vram_mb ...). The runner's own "before" run of tonight is in {{OUT}}/bench/before.json; all past nights are in the
+   KPI store: `sh tools/kpi_query.sh latest` or any SQL (`sh tools/kpi_query.sh "SELECT ..."`), or the `grafana` MCP
+   if your session has it. Run a scenario yourself to iterate (each ~30-40 s):
      G=~/Applications/Godot_v4.3.app/Contents/MacOS/Godot
-     $G --path . --resolution 1600x900 -- --shot {{OUT}}/base_q2.png --zone wild --god --perf 12 --quality 2 --grassspot
-   (writes {{OUT}}/base_q2.txt: fps, 1% low, draw calls, primitives, GPU time and GPU busy %). Do the same for
-   --quality 1 and 3, and for the camp (--zone town) at quality 2. `--hide ...` (see CLAUDE.md) isolates costs.
+     $G --path . --resolution 1600x900 -- --kpi fight {{OUT}}/try_fight.json --quality 2
+   (`--secs N` for a shorter run; `--hide ...` in CLAUDE.md isolates costs; the old `--shot x.png --perf 12` hook
+   still works). Pick tonight's targets from the KPIs furthest from their targets in KPIS.md.
 3. Rank the costs the profile shows and pick tonight's concepts, biggest payoff first (one main concept, then more
    as time allows; see GOAL). Ideas, not a list to follow: texture compression / mipmaps /
    sizes, mesh LODs and decimation, draw-call batching (MultiMesh), shadow casters, overdraw, shader cost, culling and
@@ -45,11 +54,13 @@ megabytes are). Size changes must keep the look: show before/after images of any
    breaks something, REVERT it and record that honestly (a failed experiment is still knowledge).
 5. Measure again exactly as in step 2. Make a before/after image for the report (side by side, same frame) when the
    look matters, and a small chart or table of the numbers.
-6. Record:
-   - append one line per concept tried (kept or reverted) to docs/nightly/perf/CONCEPTS.md:
-     | {{DATE}} | concept | before -> after (main number) | yes/no |
-   - write docs/nightly/perf/runs/{{DATE}}.md: what you profiled, the hypothesis, what you changed (files), every
-     measurement before/after, what you'd try next, and anything you learned about where the time goes;
+6. Record (keep it short where it's short, detailed where it's detailed):
+   - docs/nightly/perf/LOG.md: one row per attempt, kept or reverted, in the table:
+     | {{DATE}} | big/small/size | Focus (one line: what you tried) | Result (the numbers) | yes/no/partly | Next | [runs/{{DATE}}.md](runs/{{DATE}}.md) |
+     and REWRITE its Lessons list (at most 8 bullets, most useful first: what works, what doesn't, where the time
+     goes), keeping what's still true, dropping what tonight disproved;
+   - docs/nightly/perf/runs/{{DATE}}.md (the detail the rows link to): what you profiled, each hypothesis, what you
+     changed (files), every measurement before/after, why the failures failed, what you'd try next;
    - append the measurements to docs/nightly/perf/metrics.jsonl, one JSON object per line with keys
      date, phase ("before"/"after"), scene, preset, fps, low1, draw_calls, primitives, gpu_ms, gpu_busy;
    - write {{OUT}}/perf_summary.md: 5-12 lines for the morning report, numbers first: the night's overall

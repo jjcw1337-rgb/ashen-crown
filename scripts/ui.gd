@@ -4360,6 +4360,8 @@ func hide_target() -> void:
 	target_box.visible = false
 
 func set_boss(e) -> void:
+	if e != null and e != boss_ref:
+		Telemetry.crumb("boss", {"kind": str(e.kind)})
 	boss_ref = e
 	boss_bar_box.visible = e != null
 	if e:
