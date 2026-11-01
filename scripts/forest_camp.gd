@@ -150,6 +150,9 @@ static func build(w: World) -> void:
 		var mi: MeshInstance3D = n
 		if mi.material_override == clean:     # Mats.world caches, so it's the same material instance
 			mi.material_override = dark
+		elif mi.name == "rune_ring" and mi.material_override is ShaderMaterial:
+			# the ring and its runes share one glow material (Props.waypoint, its own copy): a soft cyan, not a white blaze
+			(mi.material_override as ShaderMaterial).set_shader_parameter("energy", 0.35)
 
 	# --- the shops round the ring, each keeper in front of their stall
 	for s in SHOPS:

@@ -516,7 +516,9 @@ func _apply_grade() -> void:
 		vm.set_shader_parameter("strength", float(lk.get("vignette", 0.6)))
 		vm.set_shader_parameter("grain", float(lk.get("grain", 0.0)))
 	var rd: Dictionary = lk.get("rim", {})
-	if rd.is_empty():
+	# the OpenGL renderer (Safe Mode, the browser) ignores a light's cull mask, so there the rim would light the
+	# ground round him too: Forward+ only
+	if rd.is_empty() or not is_forward():
 		if rim:
 			rim.visible = false
 		return
