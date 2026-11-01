@@ -1,7 +1,9 @@
 extends SceneTree
 ## Battlegrounds (battlegrounds.gd), two processes on this machine:
 ##   godot --headless --path . -s tools/bg_test.gd -- --server --port 24611 server
-##   godot --headless --path . -s tools/bg_test.gd -- client 24611
+##   godot --headless --path . -s tools/bg_test.gd -- client 24611 [cloud <nakama url> <server key>]
+## With Nakama (the server started with ASHEN_NAKAMA_URL / ASHEN_NAKAMA_HTTP_KEY, the client with `cloud`), the client
+## signs in and the stash is kept in Nakama; the server side then also reads it back from there.
 ## The server is the real dedicated server (Game boots it from --server); this side only reports on it.
 ## The client enters, kills a zombie, opens a chest and picks up the loot, extracts (the server files it in the
 ## stash), then enters again, picks something up and dies: the loot falls where they died and their stash keeps
@@ -20,7 +22,11 @@ func _initialize():
 			port = int(a[i])
 	if role == "client":
 		Battlegrounds.id_path = "user://bg_test_id.txt"
+		DirAccess.remove_absolute(Battlegrounds.id_path)    # a new player every run (a stash in Nakama outlives the run)
 		Battlegrounds.cache_path = "user://bg_test_cache.json"
+		var ci := a.find("cloud")
+		if ci >= 0 and ci + 2 < a.size():
+			BuildEnv.forced = {"cloud": "1", "nakama_url": a[ci + 1], "nakama_key": a[ci + 2]}
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
 	_run()
@@ -76,7 +82,20 @@ func _server() -> void:
 	var got := await until(func(): return g.bg.stash.size() > 0 and (g.bg.stash.values()[0] as Array).size() > 0, 90.0)
 	check(got, "the extraction filed the loot in the stash: %s" % str(g.bg.stash.values()[0].size() if got else 0))
 	var first: int = (g.bg.stash.values()[0] as Array).size() if got else 0
-	check(FileAccess.file_exists(g.bg.stash_path), "the stash is saved on the server")
+	if g.bg.nk != null:
+		var uid: String = g.bg.stash.keys()[0] if got else ""
+		check(uid.begins_with("nk:"), "the player's account was confirmed by Nakama")
+		# (the extraction's write to Nakama finishes just after the server's own copy changes)
+		var n := -1
+		for i in 20:
+			var r: Dictionary = await g.bg.nk.server_rpc("bg_stash_read", {"user_id": uid.substr(3)}, g.bg.nk_key)
+			n = (r["items"] as Array).size() if r.get("items") is Array else 0
+			if n == first:
+				break
+			await secs(0.25)
+		check(n == first, "and Nakama holds the stash (%d)" % n)
+	else:
+		check(FileAccess.file_exists(g.bg.stash_path), "the stash is saved on the server")
 	# second raid: they die with loot
 	check(await until(func(): return not g.net.players.is_empty() and (g.bg.carried.get(g.net.players.keys()[0], []) as Array).size() > 0, 60.0), "back in a second raid, carrying loot")
 	# watch what they carry; when it empties (the death), it must be lying on the ground

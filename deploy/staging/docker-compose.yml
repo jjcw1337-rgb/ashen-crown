@@ -1,0 +1,51 @@
+# Ashen Crown STAGING backend: Nakama + its own PostgreSQL. Production gets its own copy of this on its own server
+# with its own database; nothing here is shared with it.
+# Secrets come from nakama.env next to this file on the server (made by setup.sh, mode 600, never in Git):
+#   POSTGRES_PASSWORD, NAKAMA_SERVER_KEY, NAKAMA_SESSION_KEY, NAKAMA_REFRESH_KEY, NAKAMA_HTTP_KEY, NAKAMA_CONSOLE_PASSWORD
+#   docker compose --env-file nakama.env up -d
+# Ports: 7350 (the game's API, public through the cloud firewall); the console 7351 only on the server itself
+# (reach it with `ssh -L 7351:127.0.0.1:7351 ashen-crown-staging`); PostgreSQL is never published.
+name: ashen-staging
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nakama
+      POSTGRES_USER: nakama
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nakama -d nakama"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  nakama:
+    image: heroiclabs/nakama:3.41.0
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - >
+        /nakama/nakama migrate up --database.address nakama:${POSTGRES_PASSWORD}@postgres:5432/nakama &&
+        exec /nakama/nakama --name ashen-staging
+        --database.address nakama:${POSTGRES_PASSWORD}@postgres:5432/nakama
+        --socket.server_key ${NAKAMA_SERVER_KEY}
+        --session.encryption_key ${NAKAMA_SESSION_KEY}
+        --session.refresh_encryption_key ${NAKAMA_REFRESH_KEY}
+        --session.token_expiry_sec 7200
+        --runtime.http_key ${NAKAMA_HTTP_KEY}
+        --runtime.path /nakama/data/modules
+        --console.username admin --console.password ${NAKAMA_CONSOLE_PASSWORD}
+        --logger.level INFO
+    volumes:
+      - ./modules:/nakama/data/modules:ro
+    ports:
+      - "7350:7350"
+      - "127.0.0.1:7351:7351"
+volumes:
+  pgdata:

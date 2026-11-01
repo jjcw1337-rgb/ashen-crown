@@ -5,9 +5,12 @@ extends Node
 ## no player of its own (Net.server: its hero is hidden, parked off the map and phased, so monsters never see it).
 ## Players pick Battlegrounds on the title screen, connect to its address and spawn at a random point; they kill
 ## zombies, loot chests and step into an Extraction Portal to leave with what they picked up. The server keeps the
-## record: every item a player picks up is `carried` for them; extracting moves it into their stash (saved on the
-## server by the player's id, `client_id`), dying or leaving drops it on the floor for anyone. Not hack-proof (the
-## id is just a random file on the player's PC); Nakama takes over accounts and the stash later.
+## record: every item a player picks up is `carried` for them; extracting moves it into their stash, dying or leaving
+## drops it on the floor for anyone. Where the stash lives: with ASHEN_NAKAMA_URL and ASHEN_NAKAMA_HTTP_KEY set on
+## the server (staging, production), in Nakama: the player signs in (NakamaClient, their device), sends the session
+## token, the server has Nakama check it, and reads and writes the stash through the server-only RPCs of
+## deploy/nakama/modules/ashen.lua (players can read theirs, never write it). Without them (local runs, tests), in a
+## file on the server keyed by the player's random per-PC id (`client_id`).
 ## Tests: tools/bg_test.gd (server + client: `-- server` and `-- client`).
 
 const ZONE := "bg"
@@ -30,6 +33,8 @@ var carried := {}               # server: peer id -> Array of items picked up th
 var uids := {}                  # server: peer id -> player id
 var dead_seen := {}             # server: peer id -> true once their death has dropped their loot
 var stash_path := STASH_PATH
+var nk: NakamaClient            # server: Nakama, when configured (stash there instead of the file)
+var nk_key := ""                # its runtime http_key (the server's environment, never in a build)
 var _spawn_t := 0.0
 
 # ---------------------------------------------------------------- the map
@@ -101,7 +106,14 @@ static func start_server(g: Node, port: int) -> void:
 	if g._testing():
 		bg.stash_path = TEST_STASH
 	bg.load_stash()
+	var nurl := OS.get_environment("ASHEN_NAKAMA_URL")
+	bg.nk_key = OS.get_environment("ASHEN_NAKAMA_HTTP_KEY")
+	if nurl != "" and bg.nk_key != "":
+		bg.nk = NakamaClient.new(nurl, "-")
+		bg.add_child(bg.nk)
+	print("[BG] stash in ", "Nakama at " + nurl if bg.nk != null else "the file " + bg.stash_path)
 	g.net.server = true
+	Engine.max_fps = 60             # headless, the loop would otherwise spin a whole core
 	g.ui.hide_title()
 	g.playing = true
 	g.difficulty = 0
@@ -171,11 +183,26 @@ func _process(delta: float) -> void:
 		elif not h.dead:
 			dead_seen.erase(pid)
 
-func player_hello(pid: int, uid: String) -> Array:
-	uids[pid] = uid
+## A player said who they are. Returns their stash, or null if Nakama couldn't confirm their session.
+func player_hello(pid: int, uid: String, session := ""):
 	carried[pid] = []
 	dead_seen.erase(pid)
-	return stash.get(uid, [])
+	if nk == null:
+		uids[pid] = uid
+		return stash.get(uid, [])
+	var user: String = await nk.verify_session(session) if session != "" else ""
+	if user == "":
+		print("[BG] could not verify a player's account: ", nk.last_error)
+		return null
+	uids[pid] = "nk:" + user
+	var r: Dictionary = await nk.server_rpc("bg_stash_read", {"user_id": user}, nk_key)
+	if not r.has("items"):
+		print("[BG] could not read a stash: ", nk.last_error)
+		return null
+	# (an empty Lua table comes back as {} rather than [])
+	var items: Array = r["items"] if r["items"] is Array else []
+	stash[uids[pid]] = items
+	return items
 
 func picked(pid: int, it: Dictionary) -> void:
 	if not carried.has(pid):
@@ -207,10 +234,17 @@ func extract(pid: int) -> Array:
 	carried[pid] = []
 	if uid == "":
 		return [[], []]
-	var s: Array = stash.get(uid, [])
+	var s: Array = (stash[uid] as Array).duplicate() if stash.get(uid) is Array else []
 	s.append_array(gained)
 	stash[uid] = s
-	save_stash()
+	if nk != null and uid.begins_with("nk:"):
+		var r: Dictionary = await nk.server_rpc("bg_stash_write", {"user_id": uid.substr(3), "items": s}, nk_key)
+		if not r.get("ok", false):
+			# Nakama didn't take it: keep it in the server's file so nothing is lost, and say so in the log
+			print("[BG] stash write to Nakama FAILED (%s); kept in %s" % [nk.last_error, stash_path])
+			save_stash()
+	else:
+		save_stash()
 	return [gained, s]
 
 func _drop_carried(pid: int, at: Vector3) -> void:

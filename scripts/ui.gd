@@ -3188,6 +3188,12 @@ func _build_title() -> void:
 	var q := _iron_button("Quit", 110, 38, 15)
 	q.pressed.connect(func(): get_tree().quit())
 	row.add_child(q)
+	if BuildEnv.env() != "local" and BuildEnv.env() != "production":
+		# which backend this build uses, so a staging build is never mistaken for the live game
+		var envl := _label(BuildEnv.env().to_upper() + " BUILD", 14, Color(1.0, 0.55, 0.3))
+		envl.name = "env_badge"
+		envl.position = Vector2(14, 10)
+		title_panel.add_child(envl)
 	var slots := _label("", 13, Color(0.62, 0.58, 0.5))
 	slots.name = "slots"
 	slots.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -3431,6 +3437,8 @@ func open_battlegrounds() -> void:
 	join_panel.visible = false
 	bg_panel.visible = true
 	bg_addr.text = str(game._load_setting("battlegrounds", "address", ""))
+	if bg_addr.text == "" and BuildEnv.env() != "local":
+		bg_addr.text = BuildEnv.value("bg_server")      # a staging or production build knows its server
 	var last := str(game._load_setting("battlegrounds", "class", "knight"))
 	for i in bg_class.item_count:
 		if bg_class.get_item_metadata(i) == last:

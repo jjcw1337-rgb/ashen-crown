@@ -136,7 +136,7 @@ func local_ips() -> Array:
 func _on_connected() -> void:
 	rpc_id(1, "sv_hello", my_name, game.hero.net_gear(), game.hero.level)
 	if game.bg_mode:
-		rpc_id(1, "sv_bg_hello", Battlegrounds.client_id())
+		rpc_id(1, "sv_bg_hello", Battlegrounds.client_id(), game.cloud.nk.token if game.cloud != null and game.cloud.signed_in else "")
 
 func _on_connect_failed() -> void:
 	shutdown()
@@ -763,11 +763,18 @@ func cl_grant(it: Dictionary, pos: Vector3) -> void:
 # ---------------------------------------------------------------- Battlegrounds (battlegrounds.gd)
 ## Client -> server: who this player is (their stash's id); the server answers with their stash.
 @rpc("any_peer", "call_remote", "reliable")
-func sv_bg_hello(uid: String) -> void:
+func sv_bg_hello(uid: String, session: String) -> void:
 	if not server or game.bg == null:
 		return
 	var pid := multiplayer.get_remote_sender_id()
-	rpc_id(pid, "cl_bg_stash", game.bg.player_hello(pid, uid.substr(0, 64)))
+	var s = await game.bg.player_hello(pid, uid.substr(0, 64), session)
+	if s == null:
+		rpc_id(pid, "cl_bg_note", "The server could not confirm your account. Try again in a moment.")
+		await get_tree().create_timer(0.5).timeout
+		if peer != null:
+			peer.disconnect_peer(pid)
+		return
+	rpc_id(pid, "cl_bg_stash", s)
 
 @rpc("authority", "call_remote", "reliable")
 func cl_bg_stash(s: Array) -> void:
@@ -786,7 +793,7 @@ func sv_extract() -> void:
 	if not game.bg.near_extract(pid):
 		rpc_id(pid, "cl_bg_note", "Stand in the Extraction Portal to leave")
 		return
-	var r: Array = game.bg.extract(pid)
+	var r: Array = await game.bg.extract(pid)
 	print("[BG] %s extracted with %d item(s), stash %d" % [_name_of(pid), (r[0] as Array).size(), (r[1] as Array).size()])
 	rpc_id(pid, "cl_extracted", r[0], r[1])
 

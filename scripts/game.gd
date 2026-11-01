@@ -49,6 +49,8 @@ var playing := false
 var bg: Battlegrounds
 var bg_mode := false
 var bg_stash: Array = []
+## Characters and the stash in Nakama (cloud_saves.gd), in builds with BuildEnv.cloud() on; null otherwise.
+var cloud: CloudSaves
 var paused := false
 var hovered = null
 var ground_pt := Vector3.ZERO
@@ -125,6 +127,10 @@ func _ready() -> void:
 	hero.died.connect(_on_hero_died)
 	hero.leveled.connect(_on_level)
 	ui.bind_hero(hero)
+	if BuildEnv.cloud() and not args.has("--server") and shot_path == "":
+		cloud = CloudSaves.new(self)
+		add_child(cloud)
+		_cloud_start()
 	if args.has("--server"):
 		# the Battlegrounds' dedicated server: `godot --headless --path . -- --server [--port N]`
 		var pi := args.find("--port")
@@ -1157,6 +1163,9 @@ func start_battlegrounds(addr: String, cls: String) -> void:
 	boss_killed = false
 	var a: Array = Battlegrounds.parse_address(addr)
 	_save_setting("battlegrounds", "address", addr.strip_edges())
+	if cloud != null and not await cloud.ensure():
+		on_net_failed("Could not sign in to your account (%s)." % cloud.nk.last_error)
+		return
 	loading_lbl.text = "Joining the Battlegrounds at %s..." % a[0]
 	loading.visible = true
 	if net.join(a[0], int(a[1])) != OK:
@@ -1214,6 +1223,13 @@ func _testing() -> bool:
 func save_path() -> String:
 	return TEST_SAVE_PATH if _testing() else char_dir + char_id + ".json"
 
+## Signs in to Nakama and syncs the characters (the first run uploads every local one); the title screen then
+## shows what came down from other devices.
+func _cloud_start() -> void:
+	await get_tree().process_frame
+	if await cloud.sync() and ui.title_panel.visible and not playing:
+		ui.show_title()
+
 func save_game() -> void:
 	if char_id == "" and not _testing():
 		return
@@ -1224,6 +1240,8 @@ func save_game() -> void:
 	var f := FileAccess.open(save_path(), FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(d))
+	if cloud != null and not _testing():
+		cloud.push(char_id, d)
 
 func load_game() -> bool:
 	if not FileAccess.file_exists(save_path()):
@@ -1310,6 +1328,8 @@ func _adopt_old_save() -> void:
 func delete_character(id: String) -> void:
 	if id != "" and FileAccess.file_exists(char_dir + id + ".json"):
 		DirAccess.remove_absolute(char_dir + id + ".json")
+	if cloud != null:
+		cloud.remove(id)
 
 func new_char_id() -> String:
 	return "%d_%04d" % [int(Time.get_unix_time_from_system()), randi() % 10000]
