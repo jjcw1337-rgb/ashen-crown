@@ -347,7 +347,7 @@ func _bot(fs: Array) -> void:
 	skills.reverse()   # F, R, E, Q: buffs and big spells first
 	for s in skills:
 		var id: String = s["id"]
-		if h.level < int(s["lvl"]) or h.cds[id] > 0.0 or h.mana < float(s["mana"]):
+		if Data.skill_locked(s, h.level) or h.cds[id] > 0.0 or h.mana < float(s["mana"]):
 			continue
 		var want := false
 		match String(s.get("aim", "facing")):

@@ -571,6 +571,13 @@ const COMMON_SKILLS := [
 static func skills_known(cls: String) -> Array:
 	return skills_for(cls) + COMMON_SKILLS
 
+## Every skill is open from level 1, for every class and any class added later (jj, 2026-11-01); a skill's "lvl" is
+## kept only for its tooltip's order and in case unlocking by level comes back.
+const SKILLS_UNLOCKED := true
+
+static func skill_locked(sk: Dictionary, level: int) -> bool:
+	return not SKILLS_UNLOCKED and not sk.is_empty() and level < int(sk.get("lvl", 1))
+
 static func skill_def(id: String) -> Dictionary:
 	for s in SKILLS:
 		if s["id"] == id:

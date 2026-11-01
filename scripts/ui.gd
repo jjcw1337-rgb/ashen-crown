@@ -830,7 +830,7 @@ func _bar_slot(slot: String) -> Control:
 		else:
 			lines = [[sk["name"] + "   (" + where + ")", GOLD], [sk["desc"], Color(0.85, 0.82, 0.75)]]
 			if int(sk["mana"]) > 0 or float(sk["cd"]) > 0.0:
-				lines.append(["Mana: %d   Cooldown: %ss   Unlocks at level %d" % [int(round(hero.skill_cost(id))), str(snappedf(hero.skill_cd(id), 0.1)), sk["lvl"]], Color(0.55, 0.65, 1.0)])
+				lines.append(["Mana: %d   Cooldown: %ss" % [int(round(hero.skill_cost(id))), str(snappedf(hero.skill_cd(id), 0.1))] + (("   Unlocks at level %d" % int(sk["lvl"])) if Data.skill_locked(sk, hero.level) else ""), Color(0.55, 0.65, 1.0)])
 			lines.append(["Click to change  ·  drag to move or swap  ·  drag off the bar to clear", DIM])
 		show_tooltip(lines)
 		tip_owner = p)
@@ -852,7 +852,7 @@ func _bar_slot(slot: String) -> Control:
 ## Start dragging a skill (from a bar slot, or from the skills window when from_slot is "").
 func _skill_drag(src: Control, id: String, from_slot: String) -> Variant:
 	var sk := Data.skill_def(id)
-	if sk.is_empty() or hero == null or (hero.level < int(sk["lvl"]) and not game.test_allskills):
+	if sk.is_empty() or hero == null or (Data.skill_locked(sk, hero.level) and not game.test_allskills):
 		return null
 	_skill_dragged = true
 	_skill_drag_from = from_slot
@@ -1003,7 +1003,7 @@ func close_skill_picker() -> bool:
 ## One skill in the picker (an empty dictionary is the "clear this slot" socket).
 func _picker_card(slot: String, sk: Dictionary) -> Control:
 	var id: String = sk.get("id", "")
-	var locked: bool = not sk.is_empty() and hero.level < int(sk["lvl"]) and not game.test_allskills
+	var locked: bool = Data.skill_locked(sk, hero.level) and not game.test_allskills
 	var current := hero.bound(slot) == id
 	var on_key := ""
 	if id != "":
@@ -1163,7 +1163,7 @@ func _fill_skills_panel() -> void:
 		c.queue_free()
 	for sk in Data.skills_known(hero.cls):
 		var id: String = sk["id"]
-		var locked: bool = hero.level < int(sk["lvl"]) and not game.test_allskills
+		var locked: bool = Data.skill_locked(sk, hero.level) and not game.test_allskills
 		var row := PanelContainer.new()
 		row.add_theme_stylebox_override("panel", _box(Color(0.05, 0.045, 0.04, 0.9), Color(0.32, 0.25, 0.15), 1, 4, 6))
 		row.mouse_entered.connect(func(): _hover_skill = id)
@@ -1233,7 +1233,7 @@ func skills_hotkey(key: String) -> bool:
 	if skills_panel == null or not skills_panel.visible or _hover_skill == "":
 		return false
 	var sk := Data.skill_def(_hover_skill)
-	if sk.is_empty() or (hero.level < int(sk["lvl"]) and not game.test_allskills):
+	if sk.is_empty() or (Data.skill_locked(sk, hero.level) and not game.test_allskills):
 		return true
 	hero.bind(key, _hover_skill)
 	Sfx.play("click")
@@ -4710,7 +4710,7 @@ func _process(delta: float) -> void:
 			if sk.is_empty():
 				cdr.anchor_top = 1.0
 				continue
-			var locked: bool = hero.level < int(sk["lvl"]) and not game.test_allskills
+			var locked: bool = Data.skill_locked(sk, hero.level) and not game.test_allskills
 			var frac: float = 1.0 if locked else clampf(float(hero.cds.get(sk["id"], 0.0)) / maxf(hero.skill_cd(sk["id"]), 0.01), 0.0, 1.0)
 			cdr.anchor_top = 1.0 - frac
 			cdr.color = Color(0, 0, 0, 0.82) if locked else Color(0, 0, 0, 0.6)

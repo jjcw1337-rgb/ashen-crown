@@ -287,6 +287,14 @@ func _check_binds() -> void:
 	for slot in BIND_SLOTS:
 		var id: String = str(binds.get(slot, d[slot]))
 		binds[slot] = id if (id == "" or known.has(id)) else d[slot]
+	# every hotkey holds a skill: an empty one takes the next of the class's skills not on the bar yet
+	var on_bar := {}
+	for k in BIND_KEYS:
+		on_bar[str(binds.get(k, ""))] = true
+	var spare := skill_list().map(func(s): return str(s["id"])).filter(func(id): return not on_bar.has(id))
+	for k in BIND_KEYS:
+		if str(binds.get(k, "")) == "" and not spare.is_empty():
+			binds[k] = spare.pop_front()
 
 func bound(slot: String) -> String:
 	return str(binds.get(slot, ""))
@@ -1167,7 +1175,7 @@ func skill_ready(id: String) -> bool:
 		return false
 	if atk_t >= 0.0 and atk_skill != "":
 		return false
-	return (level >= sk["lvl"] or game.test_allskills) and cds.get(id, 0.0) <= 0.0 and mana >= skill_cost(id)
+	return (not Data.skill_locked(sk, level) or game.test_allskills) and cds.get(id, 0.0) <= 0.0 and mana >= skill_cost(id)
 
 func can_act() -> bool:
 	return not dead and atk_t < 0.0 and charge_t < 0.0 and drain_t < 0.0
@@ -1182,7 +1190,7 @@ func use_skill(id: String, aim: Vector3) -> bool:
 	for s in skill_list():
 		if s["id"] == id:
 			sk = s
-	if sk.is_empty() or (level < sk["lvl"] and not game.test_allskills):
+	if sk.is_empty() or (Data.skill_locked(sk, level) and not game.test_allskills):
 		game.ui.message("Requires level %d" % sk.get("lvl", 1), Color(1, 0.4, 0.3))
 		return false
 	if cds[id] > 0.0:

@@ -72,6 +72,34 @@ func _run() -> void:
 	check(bad.is_empty(), "every skill's fields are valid (%d skills)%s" % [Data.SKILLS.size(), ("\n      " + "\n      ".join(bad)) if not bad.is_empty() else ""])
 	await g.start_game(false)
 	var h = g.hero
+	# every class (and any added later): all its skills open at level 1, and every hotkey on the bar holds one
+	var shut := []
+	for c in Data.CLASSES.keys():
+		h.set_class(c)
+		h.new_character()
+		h.set_level(1)
+		h.binds = h.default_binds()
+		var own: Array = h.skill_list()
+		if own.is_empty():
+			continue          # (a class still without skills of its own)
+		for s in own:
+			if Data.skill_locked(s, 1):
+				shut.append("%s %s" % [c, s["id"]])
+		var filled := 0
+		for k in h.BIND_KEYS:
+			if str(h.binds.get(k, "")) != "":
+				filled += 1
+		if filled < mini(6, own.size()):
+			shut.append("%s: %d of %d on the bar" % [c, filled, mini(6, own.size())])
+		# an old save's bar with gaps fills them with the skills not on it
+		h.from_save(h.to_save().merged({"binds": {"lmb": "attack", "Q": str(own[0]["id"])}}, true))
+		var refill := 0
+		for k in h.BIND_KEYS:
+			if str(h.binds.get(k, "")) != "":
+				refill += 1
+		if refill < mini(6, own.size()):
+			shut.append("%s: an old save's bar kept %d empty" % [c, mini(6, own.size()) - refill])
+	check(shut.is_empty(), "every class has every skill at level 1 and a full bar (%d classes)%s" % [Data.CLASSES.size(), ("\n      " + "\n      ".join(shut)) if not shut.is_empty() else ""])
 	h.set_class("demon")
 	h.set_level(10)
 	g.test_immortal = true
