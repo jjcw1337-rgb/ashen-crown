@@ -3,10 +3,11 @@ extends SceneTree
 ## display (xvfb) and --fixed-fps 30 so the frames are 1/30 s apart whatever the render takes:
 ##   xvfb-run -a godot --rendering-driver opengl3 --path . --resolution 1280x720 --fixed-fps 30 \
 ##     -s tools/demon_skills_clip.gd -- <outdir> [fists|icharge|cslam|hurl|grip|wrath|all] [close|game]
+## (In a container where tool scripts hit "Identifier not found: Sfx", go through tools/_late.gd.)
 ## Writes <outdir>/<skill>_<view>_NNN.png.
 var g
 const SKILLS := ["fists", "icharge", "cslam", "hurl", "grip", "wrath"]
-const SECS := {"fists": 2.2, "icharge": 3.4, "cslam": 4.0, "hurl": 3.4, "grip": 3.4, "wrath": 10.5}
+const SECS := {"fists": 2.2, "icharge": 3.0, "cslam": 5.6, "hurl": 3.2, "grip": 4.0, "wrath": 6.5}
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
@@ -14,7 +15,7 @@ func _initialize():
 func wait(s: float) -> void:
 	await create_timer(s).timeout
 func _run() -> void:
-	var args := OS.get_cmdline_user_args()
+	var args: Array = Array(OS.get_cmdline_user_args()).filter(func(x): return not str(x).begins_with("res://"))
 	var out: String = args[0]
 	var which: String = args[1] if args.size() > 1 else "all"
 	var view: String = args[2] if args.size() > 2 else "close"
@@ -50,7 +51,9 @@ func _run() -> void:
 		var home: Vector3 = h.global_position
 		var foes := []
 		var n := 3 if sk != "wrath" else 5
-		var dist: float = {"fists": 2.6, "icharge": 6.0, "cslam": 4.5, "hurl": 7.5, "grip": 2.6, "wrath": 5.0}[sk]
+		if sk == "grip":
+			n = 1
+		var dist: float = {"fists": 2.6, "icharge": 6.0, "cslam": 3.0, "hurl": 7.5, "grip": 5.5, "wrath": 5.0}[sk]
 		for i in n:
 			var p := home + Vector3(-1.1 * (n - 1) * 0.5 + i * 1.1, 0, -dist - absf(i - (n - 1) * 0.5) * 0.6)
 			if sk == "wrath":
@@ -85,9 +88,10 @@ func _run() -> void:
 					off = Vector3(9.0, 5.5, 1.0)
 					look = c + Vector3(0, 1.4, -3.0)
 				elif sk == "grip":
-					# further back and higher: the foe is hoisted two metres up
-					off = Vector3(5.4, 3.3, -0.6)
-					look = c + Vector3(0, 2.1, -2.0)
+					# from the side, back far enough for the chain's whole reach and the hoist
+					c = home
+					off = Vector3(6.8, 3.6, -2.4)
+					look = c + Vector3(0, 1.5, -2.9)
 				elif sk in ["icharge", "cslam", "hurl"]:
 					off = Vector3(5.2, 3.4, 1.2)
 					look = c + Vector3(-0.3, 0.8, -2.6)
@@ -98,7 +102,7 @@ func _run() -> void:
 			await RenderingServer.frame_post_draw
 			get_root().get_texture().get_image().save_png("%s/%s_%s_%03d.png" % [out, sk, view, f])
 		# back home, whole again
-		DemonSkills.clear(h)
+		load("res://scripts/demon_skills.gd").clear(h)
 		h.global_position = home
 		h.life = h.max_life
 		await wait(0.8)

@@ -144,14 +144,14 @@ func _run() -> void:
 				aim = foe[0].global_position
 				h.global_position = aim + Vector3(2.0, 0, 0)      # back beside it (a charge or a step carried him off)
 			var ok: bool = h.use_skill(sk["id"], aim)
-			await wait((2.2 if cls == "demon" else 1.2) if sk["id"] != "drain" else 0.4)
+			await wait((3.2 if cls == "demon" else 1.2) if sk["id"] != "drain" else 0.4)     # (the Demon's chain: throw, haul, smash)
 			if sk["id"] == "drain":
 				h.end_drain()
 			check(ok, "%s: %s cast" % [cls, sk["name"]])
 		if cls == "wraith":
 			check(h.talent("phantoms") == 1.0 and h.talent("rend_full") == 1.0, "Fourth Rider and Harvest Moon taken")
 		if cls == "demon":
-			check(h.talent("hurl_twin") == 1.0 and h.talent("wrath_double") == 1.0 and h.talent("fists_wide") == 1.0, "Twin Boulders, Meteor Storm and Inferno taken")
+			check(h.talent("hurl_twin") == 1.0 and h.talent("wrath_double") == 1.0 and h.talent("fists_wide") == 1.0, "Brimstone Hoard, Meteor Storm and Inferno taken")
 		await wait(1.0)
 	print("[T] done, %d failed" % fails)
 	quit()

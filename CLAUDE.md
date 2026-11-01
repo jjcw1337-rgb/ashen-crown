@@ -69,7 +69,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `hero.gd`, `knight.gd`, `knight_rig.gd`, `anim.gd` | Player: class (`cls`, `set_class`), stats (`recalc`), combat, the shared skill flow (mana, cooldowns, cancel, animation), gear visuals, animation, co-op puppet mode |
 | `class_skills.gd`, `knight_skills.gd`, `warlock_skills.gd`, `plague_skills.gd` | Every class's skills, one script per class (`ClassSkills.of(cls)`: KnightSkills, WraithSkills, DemonSkills, WarlockSkills, Archer, PlagueSkills); `hero.gd` hands each cast, impact frame, frame update, root check, clear, death and cast sound to it. Template for a new class: `tools/templates/new_class_skills.gd` |
 | `wraith.gd`, `wraith_skills.gd`, `wraith_fx.gd` | Wraith class: the Meshy body on the mocap system with the spectral shader; its six skills (casts, blows, the tether, phantoms, the night); their effects |
-| `demon.gd`, `demon_mocap_rig.gd`, `demon_skills.gd`, `demon_fx.gd`, `demon_fists_fx.gd`, `infernal_fx.gd` | Demon class: the Meshy magma brute on the mocap system with the magma shader and his own wing/tail/cloth rig (falls back to the knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader); his six skills (the fists, the charge, the slam, the boulder, the grip, the wrath); their effects (lava on the ground, fissures, boulders, meteors) |
+| `demon.gd`, `demon_mocap_rig.gd`, `demon_skills.gd`, `demon_fx.gd`, `demon_fists_fx.gd`, `demon_charge_fx.gd`, `demon_fault_fx.gd`, `demon_hurl_fx.gd`, `demon_chain_fx.gd`, `demon_crucible_fx.gd`, `demon_kit_fx.gd`, `brand_fx.gd`, `infernal_fx.gd` | Demon class: the Meshy magma brute on the mocap system with the magma shader and his own wing/tail/cloth rig (falls back to the knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader); his six skills, one job each (the fists, the charge, the fault, the boulder, the chain, the Crucible) and the Brand; each skill's look in its own script |
+| `pvp_status.gd` | Crowd control between players in the Battlegrounds (through the server, with diminishing returns) |
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
 | `plague.gd` | Plague Doctor class: body (mocap, whole-body skill clips), Toxic Flask, Volatile Mixture, Pestilent Trap, The Last Epidemic, poison and infection, co-op replay |
 | `dragon.gd`, `dragon_skills.gd` | The three dragon classes (`wyrm` Obsidian Wyrm, `serpent` Frost Serpent, `wyvern` Storm Wyvern): Meshy bodies posed in code every frame (`Dragon.pose`, handed over by `Anim.pose`); no skills yet (`DragonSkills` is the empty, ready skills script and plays their attack sounds) |
@@ -436,36 +437,62 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   run, a turn, every clip, a hit, death; `--fixed-fps 30`); `demontail tail|game 750 demon` is the tail alone (8 s
   standing, walk, run, charge, a turn, a swing; the `tail` view is a rear three-quarter); `demonsteps 34 270 demon`
   is the first steps (stand, run, stop, run into a turn, stop).
-- **The Demon's skills** (`scripts/demon_skills.gd` `DemonSkills`, effects `scripts/demon_fx.gd`, tuning in
-  `Data.SKILLS`; six on Q E R F G V; a pure magma brute, the summons, Blood Pact, Hellfire Claw and Underworld
-  Phase are gone): Molten Fists (Q: the two-fisted punch cracks the ground open in a wedge ahead, `FISTS_R`, hits
-  and ignites), Infernal Charge (E: the head-down charge up to `CHARGE_RANGE`, moved by `_update_charge` through
-  the clip, bowling foes aside with a knockback and a stun, laying lava every `TRAIL_STEP` that burns `TRAIL_DUR`
-  s), Cataclysm Slam (R: a ring round the blow, then `FISSURES` fissures walked out ahead with `world.move` and
-  erupting in waves, `FISSURE_DELAY`/`FISSURE_WAVE`, each foe once per fissure), Brimstone Hurl (F: a boulder
-  thrown from the hand at the release frame, landing `HURL_FLIGHT` s later: the splash, a knockback, fire, a pool
-  for `POOL_DUR`), Hellgrip (G, level 14: the foe ahead is seized a quarter into the clip, `grip_pick`, stunned
-  and hoisted, smashed at the impact for his heaviest blow plus a shockwave; refused with "No enemy in reach"),
-  Wrath of the Pit (V, level 18, the ultimate: two stages chained as attacks by `_update_wrath`, the roar (terror
-  round him) and the stomp (a lava ring), then `WRATH_DUR` s of meteors, one every `WRATH_EVERY` on the foe struck
-  least recently within `WRATH_R` (`_call_meteor`; the spot goes in the event, so partners see the same sky), with
-  the +40% buff). Every blow adds `magma(h, k)` on top of the weapon, the same curve as the Wraith's spirit-light.
-  Clips through `Demon.SHOTS` (fists = claw, icharge = the looping charge, cslam = slam, hurl = hurl, grip =
-  grab_throw, wrath_roar = roar, wrath_stomp = stomp; `Anim.impact_at` has their frames, `Net.STYLES` the styles).
-  State lives in `Hero.dm` (the charge, `lava` patches ticking every `HAZARD_TICK`, `fissures`, `boulders` and
-  `meteors` in the air, the grip's victim, the wrath); `DemonSkills.clear` drops it all (class change, death, a
-  zone change) and `DemonFx.clear` what is seen. Effects are fx events `DemonFx.play` draws and `DemonFx.update`
-  keeps going on the puppet too (`Hero.fxs`: `icharge` embers, `boulders`/`meteors` flown on a parabola, `grip`
-  lifting the victim's rig, `wrath` ramping the body shader's `wrath` = white-hot cracks and a light); the lava on
-  the ground is `DemonFx.lava_decal` (a disc of `LAVA_SHADER`: cracked rock with magma breathing through, a wedge
-  for the fists, cooling to black over its life) and `lava_strip` for the fissures, `boulder` the molten rock
-  (meteors too), `crater` where one lands. Old saves' bindings of hellclaw/summon/phase/pact become
-  fists/icharge/cslam/hurl (`DemonSkills.OLD_IDS`, `migrate_binds` in `Hero.from_save`); the talent ids (and their
-  painted icons) were kept, their effects now name the new skills (`fists_wide`, `trail_dur`, `hurl_twin`,
-  `wrath_dur`, `wrath_double`). `tools/demon_test.gd` exercises every skill, the migration and the talents;
-  `tools/demon_skills_clip.gd -- outdir [skill|all] [close|game]` renders frames of each (xvfb, `--fixed-fps 30`);
-  `tools/coop_fx_shot.gd` has `demon:grip` and `demon:wrath`. The Underworld grade in `game.gd`
-  (`set_underworld`, `DemonFx.UNDERWORLD_SHADER`, `under_amt`) and the body shader's `phase_amt` stay, unused.
+- **The Demon's skills** (`scripts/demon_skills.gd` `DemonSkills`, tuning in `Data.SKILLS` with a `"pvp"` dict per
+  skill and a `"role"`; overhauled Nov 2026 so each has one job, PvP first; plan doc "demon kit overhaul"): Molten
+  Fists (Q, burst finisher: the wedge punch; a **Branded** foe takes +30% (PvP +20%) and loses the Brand), Infernal
+  Charge (E, engage/mobility: stages `icharge_wind` (paws; the exact path burns on the ground for everyone) ->
+  `icharge` (the run, `CHARGE_SPEED`, up to `CHARGE_RANGE`, walls cut it) -> `icharge_skid` (the punishable stop);
+  bowls lesser monsters aside, **stops on the first champion, boss or player**: staggered and Branded; no lava trail
+  now), Fault of the Pit (R, id `cslam`, area control: the slam splits a line `FAULT_LEN` across the aim
+  `FAULT_AHEAD` out; after `FAULT_WARN` it erupts (damage, thrown up, Branded) and stays molten `FAULT_LIFE` s
+  burning and slowing; no hard wall), Brimstone Hurl (F, ranged pressure: `HURL_CHARGES` charges kept in `h.dm`
+  (`hurl_ch`, `hurl_rc`; `cds["hurl"]` is the gap or the wait for the next charge), throws alternate `hurl`/`hurl2`;
+  landing after `HURL_FLIGHT` + `HURL_PER_M`/m under a mark everyone sees; core `HURL_CORE` full + Brand, edge
+  `HURL_R` half, `SHARDS` burning shards; no pool), Hellgrip (G, pick/pull: `grip_throw` flings a chain skillshot
+  `CHAIN_LEN` at `CHAIN_SPEED`, the first body in its line is hooked (monsters block it) -> `grip_haul` drags it to
+  `HOLD_IN` in front of him (bosses, Sloths and monsters a partner's game doesn't own drag him instead) -> `grip`
+  hoists and smashes; a miss hauls back empty; Branded = `CHAIN_REFUND` of the cooldown back), Wrath of the Pit (V,
+  defensive counter: `crucible` (the kneel clip, up to `CRUCIBLE_MAX` s, V again after `CRUCIBLE_MIN` ends it,
+  `DemonSkills.recast` from `Hero.use_skill`): `Hero.take_hit` asks `DemonSkills.absorb` (takes `CRUCIBLE_DR`,
+  stores what gets through as heat), nothing stuns or moves him (`PvpStatus.unstoppable` too) -> `wrath_roar`, the
+  eruption: damage + `HEAT_SHARE` of the heat (capped `HEAT_CAP` of his life), terror -> `PIT_DUR` s of Pit-born:
+  +40% (PvP +20%) and meteors; in PvP at most `"meteors"` fall on players, slower, under a mark). Stages chain
+  through `DemonSkills.stage_done` (called by `Hero._update_attack` when a Demon attack ends) and `next_style`.
+  Every blow goes through `DemonSkills._hit` (the PvP share on a player's stand-in), statuses through `_cc`
+  (monsters: stun/slow; players: `PvpStatus.send`). The Brand: `DemonSkills.brand/branded` (`h.dm["brand"]`), seen
+  through the fx event `("fists", "brand")` -> `BrandFx` (`scripts/brand_fx.gd`: the sigil under the feet, a brand
+  over the head, motes, a light; on a player through `"pid"`). Clips through `Demon.SHOTS` (the new styles above use
+  the clips `stomp`, `skid`, `hurl2`, `chain`, `kneel`, added to `demon_mocap.glb` by `prep_demon_mocap.py` from
+  Meshy clips 531/239/421/365); `Anim.impact_at` has their frames (0.99 = no blow), `Net.STYLES` the styles;
+  `DemonMocapRig._wings` poses the wings per stage (the Crucible's cocoon, the skid's brake, the eruption) and
+  `_cooling` takes the Crucible's crust (rig meta `crust`). Old saves' bindings of hellclaw/summon/phase/pact become
+  fists/icharge/cslam/hurl (`DemonSkills.OLD_IDS`); the talent ids were kept (`trail_dur` = the fault lasts longer,
+  `hurl_twin` = a third charge). `tools/demon_test.gd` exercises every skill (`--fixed-fps 60`);
+  `tools/demon_pvp_test.gd` (server + Demon + target) checks every status reaches a player through the server and
+  the diminishing returns; `tools/demon_skills_clip.gd -- outdir [skill|all] [close|game]` renders frames of each.
+- **The Demon's skill looks** (each its own script, built from `InfernalFx` and `DemonKitFx` (`demon_kit_fx.gd`:
+  terrain strips and rift cracks, landing marks `TARGET_SHADER`, shock rings, debris, the Meshy props
+  `assets/models/fx/demon/` boulder / fault_plate / hellclaw with stand-ins, `by_pid`/`targets` for players);
+  `DemonFx` routes the events and keeps the grip's hoist, Pit-born's white heat and the meteors): **Hellrunner**
+  `DemonChargeFx` (the path tearing open, horns of fire, snorted smoke, a bow wave of heat haze, cooling hoofprints,
+  horn sparks, skid grooves), `DemonFaultFx` (the slam, the crack pulsing through the warning, obsidian plates
+  heaving up apart, magma between them, a curtain of fire and haze, then the crust cooling and the plates sinking),
+  **Shatterstone** `DemonHurlFx` (the ground torn up, the Meshy boulder tumbling on a high arc trailing fire and
+  smoke over its closing landing mark, the burst, crater and four burning shards skittering out), **Chain of the
+  Pit** `DemonChainFx` (a forearm sigil, a MultiMesh chain whose links cool from white-hot to dull red (`LINK_SHADER`
+  reads each link's heat from its colour), the iron claw, the clamp, the haul, the ring of cracks it sinks into),
+  **Crucible** `DemonCrucibleFx` (wings folded, obsidian crust, the seams glowing brighter with every blow taken,
+  the darkening ring, then the crust bursting off, a fire column, a ring of cracks and a shock of bending air).
+- **PvP crowd control** (`scripts/pvp_status.gd` `PvpStatus`): the caster's game sends a status for a player's
+  stand-in (`PvpStatus.send` -> `Net.sv_pvp_status`), the server checks it like damage (`Battlegrounds.pvp_status`:
+  raid on, both alive, within 30 m; it sets the drag's end point and the fear's source itself and caps burns) and
+  applies **diminishing returns** to hard kinds (`HARD`: stagger, knockup, pull, fear; within `DR_WINDOW` the second
+  lasts half, the third is refused and opens `DR_IMMUNE` s of immunity; `MAX_SECS` cap; soft kinds `SOFT_MAX`), then
+  `Net.cl_pvp_status` to the victim only; `PvpStatus.apply` / `update` (from `Hero._process`, `Hero.cc`) do it on
+  his game (a roll's i-frames, mist and the Crucible ignore hard kinds). Only the Demon's skills send it so far;
+  another class's crowd control stays PvE-only until reviewed for PvP. A tool script that hits "Identifier not found:
+  Sfx" in a fresh container runs through `tools/_late.gd -- res://tools/<script>.gd [args]` (loads it after the
+  autoloads).
 - **Molten Fists' look, "Hellbrand"** (`scripts/demon_fists_fx.gd` `DemonFistsFx`, on the Demon's Q; the gameplay in
   `DemonSkills` is unchanged): the "cast" event starts the gather (hellfire gauntlets on both fists, the body shader's
   `brand` running the magma down his arms, a light between his hands, crimson motes pulled in, his sigil drawing

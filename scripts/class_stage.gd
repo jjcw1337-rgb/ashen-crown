@@ -49,7 +49,7 @@ const SIG_EVERY := 4.5
 const SKILL_SHOW := {"cleave": ["cleave", 0.95], "nova": ["cast", 0.55], "charge": ["swipe3", 0.7], "cry": ["cast", 0.6],
 	"rend": ["rend", 0.8], "siphon": ["siphon", 0.7], "step": ["wstep", 0.75], "grasp": ["grasp", 0.95],
 	"phantom": ["phantom", 1.0], "night": ["night_scream", 0.9],
-	"fists": ["fists", 0.8], "icharge": ["icharge", 0.75], "cslam": ["cslam", 1.2], "hurl": ["hurl", 1.1], "grip": ["grip", 1.7],
+	"fists": ["fists", 0.8], "icharge": ["icharge", 0.75], "cslam": ["cslam", 1.2], "hurl": ["hurl", 1.1], "grip": ["grip_throw", 0.9],
 	"wrath": ["wrath_roar", 1.3],
 	"drain": ["cast", 1.6], "blight": ["cast", 0.45], "shackles": ["cast", 0.5], "covenant": ["cast", 0.6],
 	"pierce": ["bow", 0.9], "volley": ["bow", 0.9], "snare": ["cast", 0.6], "beast": ["cast", 0.6],
@@ -668,10 +668,13 @@ func _skill_fx(c: String, h: Hero, home: Vector3) -> void:
 			d.position.y = home.y + 0.04
 			Sfx.play("charge_dash", -10.0)
 		"cslam":
-			Fx.holy_slam(root3d, p, 1.6 * k)
-			var d := DemonFx.lava_decal(root3d, p, 1.8 * k, 2.0, 0.4)
-			d.position.y = home.y + 0.04
-			DemonFx.eruption(root3d, floor_front, 0.8 * k)
+			# a fault splitting across in front of him, erupting along its length
+			var fwd2 := Vector3(-sin(yaw), 0, -cos(yaw))
+			var side2 := fwd2.cross(Vector3.UP)
+			var mid2 := floor_front + fwd2 * 0.4 * k
+			DemonFx.lava_strip(root3d, mid2 - side2 * 1.5 * k, mid2 + side2 * 1.5 * k, 0.6 * k, 2.0, 1.0)
+			for u in [-1.0, 0.0, 1.0]:
+				DemonFx.eruption(root3d, mid2 + side2 * u * 1.1 * k, 0.6 * k)
 			Sfx.play("slam", -10.0)
 		"hurl":
 			DemonFx.splash(root3d, floor_front, 1.4 * k)
