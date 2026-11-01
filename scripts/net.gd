@@ -10,7 +10,8 @@ const MAX_CLIENTS := 3
 const STYLES := ["over", "back", "side", "thrust", "bow", "cast", "claw", "slam", "bite", "smash", "lob", "scoop", "burst", "cackle", "swipe1", "swipe2", "swipe3", "cleave", "feral_lunge", "feral_swipe", "perch", "descend", "skirm_lunge", "reaver_cleave", "stalk_hook", "bear_roar", "bear_maul", "sloth_walk", "sloth_run", "sloth_rise", "sloth_look", "sloth_stare", "sloth_roar", "sloth_drop", "sloth_sniff", "sloth_sweep", "sloth_slam", "sloth_pounce",
 	"rend", "siphon", "wstep", "grasp", "phantom", "night_rise", "night_scream", "night_hold", "night_fall",
 	"pd_flask", "pd_volatile", "pd_trap", "pd_slam", "pd_dome", "pd_inspect",
-	"fists", "icharge", "cslam", "hurl", "grip", "wrath_roar", "wrath_stomp", "chop"]
+	"fists", "icharge", "cslam", "hurl", "grip", "wrath_roar", "wrath_stomp", "chop",
+	"pd_swarm", "pd_bloom", "pd_fog", "pd_transfuse", "pd_crank"]
 const SEND_RATE := 0.05
 const ALLY_COLORS := [Color(0.45, 0.8, 1.0), Color(0.5, 1.0, 0.5), Color(1.0, 0.6, 0.9)]
 
@@ -829,6 +830,23 @@ func cl_bg_raid(state: String, t: float, open: Array, length: float, portals_at:
 				m.visible = on
 
 ## PvP: the local hero struck another player's stand-in (Battlegrounds.sync_proxies); the server deals it.
+## A status (PvpStatus: slow, snare, harried, reveal, blight) on another player: the server checks it and passes it on.
+func send_pvp_status(target_pid: int, kind: String, secs: float, k: float) -> void:
+	rpc_id(1, "sv_pvp_status", target_pid, kind, secs, k)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_pvp_status(target_pid: int, kind: String, secs: float, k: float) -> void:
+	if server and game.bg != null:
+		game.bg.pvp_status(multiplayer.get_remote_sender_id(), target_pid, kind, secs, k)
+
+func status_player(pid: int, kind: String, secs: float, k: float) -> void:
+	rpc_id(pid, "cl_pvp_status", kind, secs, k)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_pvp_status(kind: String, secs: float, k: float) -> void:
+	if not loading and game.hero != null:
+		PvpStatus.apply(game.hero, kind, secs, k)
+
 func send_pvp_hit(target_pid: int, amount: float, from: Vector3) -> void:
 	rpc_id(1, "sv_pvp_hit", target_pid, amount, from)
 

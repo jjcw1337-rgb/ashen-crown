@@ -71,7 +71,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `wraith.gd`, `wraith_skills.gd`, `wraith_fx.gd` | Wraith class: the Meshy body on the mocap system with the spectral shader; its six skills (casts, blows, the tether, phantoms, the night); their effects |
 | `demon.gd`, `demon_mocap_rig.gd`, `demon_skills.gd`, `demon_fx.gd`, `demon_fists_fx.gd`, `infernal_fx.gd` | Demon class: the Meshy magma brute on the mocap system with the magma shader and his own wing/tail/cloth rig (falls back to the knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader); his six skills (the fists, the charge, the slam, the boulder, the grip, the wrath); their effects (lava on the ground, fissures, boulders, meteors) |
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
-| `plague.gd` | Plague Doctor class: body (mocap, whole-body skill clips), Toxic Flask, Volatile Mixture, Pestilent Trap, The Last Epidemic, poison and infection, co-op replay |
+| `plague.gd`, `plague_*_fx.gd`, `plague_fever.gd`, `pvp_status.gd` | Plague Doctor class: body (mocap, whole-body skill clips), his six skills (Pestilence Vial, Swarmcraft, Corpse Bloom, Fog of the Forgotten, Transfusion, The Last Experiment), poison, Blight and Fever, co-op replay; each skill's look in its own `plague_<skill>_fx.gd`; `PvpStatus` = statuses one player puts on another (slow, snare, harried, reveal, blight) |
 | `dragon.gd`, `dragon_skills.gd` | The three dragon classes (`wyrm` Obsidian Wyrm, `serpent` Frost Serpent, `wyvern` Storm Wyvern): Meshy bodies posed in code every frame (`Dragon.pose`, handed over by `Anim.pose`); no skills yet (`DragonSkills` is the empty, ready skills script and plays their attack sounds) |
 | `dodge.gd` | The dodge roll on Space (every class): direction, distance, i-frames, stamina, the tumble, the co-op event |
 | `enemy.gd`, `projectile.gd`, `feral.gd` | Monsters/AI and missiles (host-authoritative in co-op); the Feral's baked-animation body |
@@ -271,28 +271,48 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `pd_trap` (crouch and place), The Last Epidemic in two stages `pd_slam` (the censer smashed) then `pd_dome` (arms
   raised; `Plague.update` starts it when the first ends), `pd_inspect` (the class stage's fidget: a vial held to the
   light). New styles are appended to `Net.STYLES` and timed in `Anim.impact_at`. Clip strips: `tools/blender/plague/clip_sheet.py`.
-  Skills: Toxic Flask (Q, a lobbed flask, cloud 3 m / 4 s), Volatile Mixture (E, a fuse ring 0.6 s then a 4 m fire
-  blast that burns; **Ignition**: a blast that reaches one of his clouds burns it out at once for its remaining poison),
-  Pestilent Trap (R, up to 2, armed after 0.8 s, the first foe springs it: stun + cloud; **Outbreak**: sprung by an
-  infected foe, its cloud infects), The Last Epidemic (F, a 9 m dome for 8 s: poison, slow, infection; collapses with a
-  last blow). **Statuses live on the caster** (`Plague.poison`, `infected`, `immune`), ticking every 0.5 s through
-  `Enemy.take_damage` on the elemental channel (green numbers, `dmg_tint`, no blood), so a partner's damage reaches the
-  host the usual way and nothing new crosses the network for it. Guards: one poison per source per foe (refreshed, never
-  stacked; sources toxic, trap, epidemic, infection); one infection per foe; a dead carrier passes it to the two nearest,
-  at most `INF_JUMPS` (6) jumps per cast; 4 s immunity after it ends. Every number is a const at the top of plague.gd;
-  talent keys (`cloud_size`, `poison_dmg`, `blast_size`, `ignite_dmg`, `trap_max`, `inf_jumps`, `dome_size` ...) are
+  Skills (the PvP kit of 2026-11-01; design in the project doc "plague kit overhaul plan"): Pestilence Vial (Q, `toxic`,
+  see "Pestilence Vial"), Swarmcraft (E, `swarm`: `PlagueSwarmFx`, a GPU-particle flock of modelled flies with a
+  particle process shader; flies to its point at `SWARM_SPEED`, never homing, hovers `SWARM_T`, recast = sent on
+  (`Plague.can_cast` redirects and refuses the cast, so no cost), `SWARM_REDIRECTS`; bites, Harried, reveal; a
+  puppet's dodge roll through it scatters it; its cooldown is set when it goes home, `_swarm_end`), Corpse Bloom (R,
+  `bloom`: `PlagueBloomFx`, the Meshy `bloom.glb` growing out of the ground over a root/ring shader on its own clock;
+  pulse every `BLOOM_EVERY` after a `BLOOM_WARN` ring; a foe that moved less than `BLOOM_STILL` since the ring began
+  is snared), Fog of the Forgotten (F, `fog`: `PlagueFogFx`, three layers of puffs and a base disc; the hop is
+  `Hero.shove`; `Plague.speed_mult` in `Hero._process`; a puppet inside is hidden from Battlegrounds enemies beyond
+  `FOG_SEE` (`hidden_from`, `_update_visibility`), faded for co-op partners; striking from it sends `reveal`),
+  Transfusion (G, `transfusion`: `PlagueTransfusionFx`, the Meshy `apparatus.glb` on his back, a hose drawn each
+  frame, a shimmer shell; `Hero.take_hit` calls `Plague.absorb`; cleanse is `PvpStatus.cleanse`; the soaked damage goes
+  to `heal_pool` capped at `TRANS_CAP`; any cast ends it early), The Last Experiment (V, `experiment`:
+  `PlagueExperimentFx`, the Meshy `vat.glb` and the Meshy-rigged `homunculus.glb` (clips Zombie_Scream,
+  Slow_Orc_Walk, Idle, Fall_Dead_from_Abdominal_Injury, hips pinned with `ForestCamp._pin_root`); stage 2 is the attack
+  `pd_crank` with `atk_skill` "crank" whose impact bursts it; a stun, another move or walking `>1.5 m` bursts it
+  small, `EXP_R_SMALL`). **Blight** (`_add_blight`): one stack per different skill, Fever at 3 (`PlagueFever`: pips,
+  sweat, halo; PvP: `blight` status with k 3 = heals x0.6 on Transfusion and reveal). Old binds of
+  volatile/trap/epidemic become swarm/bloom/experiment (`Plague.OLD_IDS`, `PlagueSkills.migrate_binds`); talent ids
+  kept, their effects now name the new skills. The Meshy sources (concept images, task ids) are listed in the plan
+  doc. **PvP statuses** (`scripts/pvp_status.gd`): a skill calls `PvpStatus.send(game, enemy, kind, secs, k)`; a
+  player's stand-in goes `Net.sv_pvp_status` -> `Battlegrounds.pvp_status` (distance, ceilings `MAX`/`MAX_K`,
+  diminishing returns per target and kind: 100%, 50%, immune 3 s) -> `Net.cl_pvp_status` -> `PvpStatus.apply` on the
+  hero (`Hero.pvs`, read in `_process` for speed and in `_start_attack` for harried); a monster gets chill / stun.
+  Other classes' crowd control still only reaches monsters (moving them onto `PvpStatus` is a balance decision).
+  Every number is a const at the top of plague.gd;
+  talent keys (`cloud_size`, `poison_dmg`, `swarm_size`, `bloom_size`, `fog_dur`, `trans_cap`, `exp_size` ...) are
   read where the skill is. **Co-op**: the first class whose effects partners see: `Plague._send` → `Net.hero_fx` (the
   host relays; `sv_hero_fx`/`cl_hero_fx`) → `Plague.remote` on the puppet, whose `Plague` is a `ghost()` (builds the same
-  flasks, clouds, traps and dome, deals nothing). His leather is dyed (`Plague.COLORS`, default "oxblood2": an oxblood coat and cape with a black hat,
+  vials, pools, swarm, bloom, fog, apparatus and experiment, deals nothing). His leather is dyed (`Plague.COLORS`, default "oxblood2": an oxblood coat and cape with a black hat,
   gloves and boots; also "oxblood", "plague", "plague2", "ash2", "" = Meshy's black): `Plague.dye` swaps the albedo for
   `assets/textures/plague/coat_<scheme>.jpg`, made by `tools/plague_colors.py` from the albedo and metal maps that
   `tools/blender/plague/dump_textures.py` saves out of the glb and the regions `tools/blender/plague/region_uv.py` finds
   (head and hat above the collar, gloves by the hand bones, boots below the coat's hem): only the dark, grey, non-metal
   leather is tinted. His cane: `Data.BASES` `physician_cane`/`crow_cane` (kind `"cane"`,
   `"cls": "plague"`, `Plague.cane_model`: the Meshy crow-skull cane `assets/models/plague/cane.glb`, `prep_cane.py`).
-  Props: `assets/models/plague/` flask, volatile, trap (Meshy text-to-3D, `act1/prep_prop.py`). Talents: Toxicology,
-  Volatile Arts, Contagion (icons `p_*.png`, `plague_tree*.png`). Tests: `tools/plague_test.gd` (`--fixed-fps 60`),
-  `tools/plague_mp_test.gd` (host + join); screenshots `tools/plague_shots.gd` (`--fixed-fps 10`).
+  Props: `assets/models/plague/` vial and vial_shards (Blender, code), bloom, apparatus, vat (Meshy image-to-3D,
+  `tools/blender/prep_prop.py`), homunculus (Meshy rig + animate, `tools/blender/prep_npc.py`); flask, volatile and
+  trap are the retired skills' props, kept unused. Talents: Toxicology,
+  Vermin and Rot, The Experiment (icons `p_*.png`, `plague_tree*.png`; the painted icons predate the new kit). Tests: `tools/plague_test.gd` (`--fixed-fps 60`),
+  `tools/plague_mp_test.gd` (host + join); screenshots `tools/plague_shots.gd` (`--fixed-fps 10`); the six skills in a
+  row for video: `tools/plague_kit_clip.gd -- outdir [skills|all] [game|close] [quality]` (xvfb, `--fixed-fps 30`).
 - **Pestilence Vial** (the Plague Doctor's Q, id kept as `toxic`; 2026-11-01, branch `test-plague-kit`, first skill of
   the Plague kit overhaul in the project doc "plague kit overhaul plan"): look in `scripts/plague_vial_fx.gd`
   (`PlagueVialFx`), gameplay in `Plague` (`_launch`/`_update_vials`/`_shatter`; pool 2.6 m for 3.5 s as a `clouds`

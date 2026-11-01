@@ -4970,29 +4970,62 @@ class SkillGlyph extends Control:
 				draw_rect(Rect2(c + Vector2(-3.5, -12), Vector2(7, 8)), steel)
 				draw_rect(Rect2(c + Vector2(-4.5, -15), Vector2(9, 3.5)), Color(0.55, 0.35, 0.2))
 				draw_arc(c + Vector2(6, -14), 5.0, PI * 0.5, PI * 1.5, 8, Color(gtox.r, gtox.g, gtox.b, 0.6), 2.0, true)
-			"volatile":
-				# a squat red bottle, its fuse alight
-				var gfire := Plague.EMBER if not dim else Color(0.4, 0.3, 0.28)
-				draw_colored_polygon(PackedVector2Array([c + Vector2(-11, 15), c + Vector2(11, 15), c + Vector2(9, -1), c + Vector2(3, -6), c + Vector2(-3, -6), c + Vector2(-9, -1)]), gfire.darkened(0.2))
-				draw_rect(Rect2(c + Vector2(-3, -12), Vector2(6, 7)), steel)
-				draw_polyline(PackedVector2Array([c + Vector2(0, -12), c + Vector2(5, -15), c + Vector2(9, -13)]), Color(0.85, 0.75, 0.55), 2.0, true)
-				draw_circle(c + Vector2(10, -14), 3.5, Color(1.0, 0.85, 0.3) if not dim else gfire)
-			"trap":
-				# the brass canister with its green window
-				var gbr := Plague.BRASS if not dim else Color(0.38, 0.35, 0.3)
-				draw_rect(Rect2(c + Vector2(-11, -11), Vector2(22, 24)), gbr.darkened(0.3))
-				draw_rect(Rect2(c + Vector2(-13, 11), Vector2(26, 4)), gbr)
-				draw_circle(c + Vector2(0, 1), 6.5, gbr)
-				draw_circle(c + Vector2(0, 1), 4.8, Plague.TOXIC if not dim else Color(0.3, 0.36, 0.3))
-				for k in 3:
-					draw_circle(c + Vector2(-7 + k * 7, -8), 1.4, Color(0.1, 0.08, 0.06))
-			"epidemic":
-				# the plague doctor's beak under a green dome
-				var gm := Plague.TOXIC if not dim else Color(0.32, 0.38, 0.3)
-				draw_arc(c + Vector2(0, 10), 15.0, PI, TAU, 20, gm, 3.0, true)
-				draw_colored_polygon(PackedVector2Array([c + Vector2(-6, -2), c + Vector2(4, -2), c + Vector2(13, 10), c + Vector2(2, 4), c + Vector2(-6, 6)]), steel.darkened(0.35))
-				draw_circle(c + Vector2(-2, 0), 2.2, gm)
-				draw_line(c + Vector2(-15, 10), c + Vector2(15, 10), gm.darkened(0.3), 2.0, true)
+			"swarm":
+				# a cloud of flies boiling out of a little brass reliquary
+				var gsw := Plague.TOXIC if not dim else Color(0.32, 0.38, 0.3)
+				var gbx := Plague.BRASS if not dim else Color(0.38, 0.35, 0.3)
+				draw_rect(Rect2(c + Vector2(-9, 6), Vector2(14, 10)), gbx.darkened(0.25))
+				draw_rect(Rect2(c + Vector2(-10, 4), Vector2(16, 3)), gbx)
+				for k in 11:
+					var fa := float(k) * 2.39
+					var fr := 4.0 + float(k) * 1.15
+					var fp := c + Vector2(3, -4) + Vector2(cos(fa), sin(fa) * 0.75) * fr
+					draw_circle(fp, 1.6, Color(0.08, 0.08, 0.06))
+					draw_line(fp + Vector2(-2.2, -1.2), fp + Vector2(2.2, -1.2), Color(gsw.r, gsw.g, gsw.b, 0.55), 1.0, true)
+			"bloom":
+				# a swollen corpse flower over spreading roots
+				var gbl := Color(0.62, 0.25, 0.32) if not dim else Color(0.36, 0.32, 0.32)
+				var gsac := Plague.TOXIC if not dim else Color(0.32, 0.38, 0.3)
+				for k in 5:
+					var ra := PI * (0.15 + 0.175 * k)
+					draw_line(c + Vector2(0, 10), c + Vector2(cos(ra) * 15.0, 10.0 + sin(ra) * 6.0), Color(0.12, 0.1, 0.1), 2.0, true)
+				for k in 5:
+					var pa := -PI * 0.5 + (k - 2) * 0.55
+					draw_colored_polygon(PackedVector2Array([c + Vector2(0, 6), c + Vector2(cos(pa - 0.25), sin(pa - 0.25)) * 15.0 + Vector2(0, 2), c + Vector2(cos(pa + 0.25), sin(pa + 0.25)) * 15.0 + Vector2(0, 2)]), gbl.darkened(0.15 * (k % 2)))
+				draw_circle(c + Vector2(-4, -2), 4.5, gsac)
+				draw_circle(c + Vector2(4, -3), 4.0, gsac.lightened(0.15))
+				draw_circle(c + Vector2(0, -8), 3.5, gsac.darkened(0.1))
+			"fog":
+				# a censer swinging in pale curls of fog
+				var gfg := Color(0.82, 0.82, 0.9) if not dim else Color(0.42, 0.42, 0.45)
+				for k in 4:
+					draw_arc(c + Vector2(-10 + k * 7, 8 - (k % 2) * 5), 7.0, PI, TAU, 10, Color(gfg.r, gfg.g, gfg.b, 0.7), 2.5, true)
+				draw_line(c + Vector2(0, -16), c + Vector2(0, -6), steel, 1.5, true)
+				draw_circle(c + Vector2(0, -2), 5.0, Plague.BRASS if not dim else steel)
+				draw_circle(c + Vector2(0, -2), 2.0, Color(0.15, 0.12, 0.1))
+			"transfusion":
+				# two glass tanks with serum and the needle
+				var gtr := Color(0.85, 0.2, 0.18) if not dim else Color(0.4, 0.3, 0.3)
+				var gbr2 := Plague.BRASS if not dim else Color(0.38, 0.35, 0.3)
+				for k in 2:
+					var x0 := -11.0 + k * 10.0
+					draw_rect(Rect2(c + Vector2(x0, -12), Vector2(7, 20)), Color(0.75, 0.85, 0.85, 0.35))
+					draw_rect(Rect2(c + Vector2(x0, -4), Vector2(7, 12)), gtr)
+					draw_rect(Rect2(c + Vector2(x0 - 1, -14), Vector2(9, 3)), gbr2)
+					draw_rect(Rect2(c + Vector2(x0 - 1, 8), Vector2(9, 3)), gbr2)
+				draw_line(c + Vector2(6, 2), c + Vector2(15, 14), steel, 2.0, true)
+				draw_line(c + Vector2(15, 14), c + Vector2(19, 18), Color(0.9, 0.9, 0.95), 1.0, true)
+			"experiment":
+				# the vat, a curled shape inside
+				var gvt := Plague.BRASS if not dim else Color(0.38, 0.35, 0.3)
+				var gfl := Plague.MIASMA if not dim else Color(0.3, 0.34, 0.3)
+				draw_rect(Rect2(c + Vector2(-11, -12), Vector2(22, 24)), gfl.darkened(0.2))
+				draw_circle(c + Vector2(0, 1), 5.5, Color(0.8, 0.82, 0.7) if not dim else steel)
+				draw_circle(c + Vector2(2, -1), 1.3, Color(0.1, 0.1, 0.1))
+				for y in [-13, -2, 9]:
+					draw_rect(Rect2(c + Vector2(-13, y), Vector2(26, 3)), gvt)
+				draw_rect(Rect2(c + Vector2(-14, 12), Vector2(28, 4)), gvt.darkened(0.3))
+				draw_arc(c + Vector2(14, 0), 4.0, 0, TAU, 10, gvt, 2.0, true)
 			"snare":
 				# an open iron trap
 				draw_arc(c + Vector2(0, 4), 13, PI * 1.05, PI * 1.95, 14, steel, 3.0, true)

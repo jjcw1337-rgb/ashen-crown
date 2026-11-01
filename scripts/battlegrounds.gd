@@ -267,6 +267,8 @@ func _process(delta: float) -> void:
 	if game == null or not game.net.server or game.world == null or game._busy:
 		return
 	park_hero()
+	for pid in pvp_dr.keys():
+		PvpStatus.dr_tick(pvp_dr[pid], delta)
 	if state == "reset":
 		reset_t -= delta
 		if reset_t <= 0.0:
@@ -348,6 +350,28 @@ func pvp_hit(attacker: int, target: int, amount: float, from: Vector3) -> void:
 		return
 	last_hit[target] = [attacker, raid_t]
 	game.net.hit_player(target, clampf(amount, 0.0, 5000.0) * PVP_MULT, from, "pvp", "phys")
+
+## A player put a status on another (PvpStatus): checked like a hit, clamped to the kind's ceiling, with diminishing
+## returns per target (`pvp_dr`), then passed to the target's game.
+var pvp_dr := {}                 # server: target peer id -> PvpStatus diminishing-returns state
+func pvp_status(attacker: int, target: int, kind: String, secs: float, k: float) -> void:
+	if state != "raid" or attacker == target or not game.net.players.has(attacker) or not game.net.players.has(target):
+		return
+	var a = game.net.players[attacker]["hero"]
+	var t = game.net.players[target]["hero"]
+	if not is_instance_valid(a) or not is_instance_valid(t) or a.dead or t.dead:
+		return
+	if a.global_position.distance_to(t.global_position) > 30.0:
+		return
+	var c := PvpStatus.clamp_status(kind, secs, k)
+	if c.is_empty():
+		return
+	if not pvp_dr.has(target):
+		pvp_dr[target] = {}
+	var sc := PvpStatus.dr_scale(pvp_dr[target], kind)
+	if sc <= 0.0:
+		return
+	game.net.status_player(target, kind, float(c[0]) * sc, float(c[1]))
 
 ## A player fell: everything they had lies where they fell.
 func died(pid: int, items: Array, at: Vector3) -> void:

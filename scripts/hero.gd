@@ -91,6 +91,7 @@ var block_flash := 0.0
 ## the Hollow Sloth's blows (sloth.gd): its sweep throws you back, its slam stuns
 var shove := Vector3.ZERO
 var daze_t := 0.0
+var pvs := {}               # statuses another player put on him in PvP (PvpStatus: slow, snare, harried, reveal, blight)
 var chill_t := 0.0          # Rimeclaw's cold: slowed while it lasts
 var hit_t := 0.0
 var cls := "knight"          # "knight", "wraith", "demon" or "warlock" (Data.CLASSES)
@@ -1231,6 +1232,8 @@ func _start_attack(style: String, skill := "", secs := 0.0) -> void:
 	atk_dur *= Data.attack_pace(cls)     # every class's pace (Data.ATTACK_PACE)
 	if game.bg_mode and not puppet:
 		atk_dur *= Battlegrounds.ATTACK_PACE     # the crypt's slower, heavier fights
+	if not pvs.is_empty():
+		atk_dur *= PvpStatus.act_mult(self)       # harried (PvP)
 	impact_done = false
 	trail_pts.clear()
 	trail_col = ClassSkills.trail_color(cls, skill)
@@ -1352,6 +1355,8 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	var fwd := -rig.global_transform.basis.z
 	var facing := fwd.dot(to_src.normalized()) > cos(deg_to_rad(80.0))
 	var has_shield: bool = equipment.get("shield") != null
+	if pd != null:
+		dmg = pd.absorb(dmg)     # the Plague Doctor's Transfusion soaks part of it into his tanks
 	var shield_pos := global_position + Vector3(0, 1.2, 0) + fwd * 0.5
 	if block_amt > 0.5 and facing:
 		var reduce := maxf(0.05, 0.2 - talent("block_dr") / 100.0)     # Block: 80% less damage from the front
@@ -1537,6 +1542,11 @@ func _process(delta: float) -> void:
 	if chill_t > 0.0:
 		chill_t -= delta
 		speed *= 0.55
+	if not pvs.is_empty():
+		PvpStatus.update(self, delta)
+		speed *= PvpStatus.speed_mult(self)
+	if pd != null:
+		speed *= pd.speed_mult()     # quicker in his own fog, slower with the needle in his arm
 
 	if roll_t >= 0.0:
 		vel = Dodge.step(self, delta)
@@ -2159,6 +2169,7 @@ func from_save(d: Dictionary) -> void:
 	binds = (d.get("binds", {}) as Dictionary).duplicate() if d.get("binds") is Dictionary else {}
 	WraithSkills.migrate_binds(binds)
 	DemonSkills.migrate_binds(binds)
+	PlagueSkills.migrate_binds(binds)
 	# saves from before the Path of Exile controls had Block on right mouse by default: it becomes the first skill
 	if int(d.get("binds_v", 1)) < 2 and str(binds.get("rmb", "")) == "block":
 		binds.erase("rmb")

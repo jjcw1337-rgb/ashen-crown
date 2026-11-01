@@ -92,6 +92,7 @@ func _run() -> void:
 		var h = g.hero
 		h.set_level(20)
 		g.test_immortal = true
+		g.exit_grace = 1e9    # a hop or dash in a skill must not carry him through a zone exit mid-test
 		_make_puppet()
 		check(puppet.cls == cls and puppet.puppet, "%s: a puppet of him stands beside him" % cls)
 		var root: Node3D = g.world.fx_root

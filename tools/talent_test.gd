@@ -14,7 +14,8 @@ const KEYS := ["str", "dex", "vit", "ene", "res", "ls", "regen", "ias", "frw", "
 	"hurl_twin", "wrath_dur", "wrath_double", "drain_heal", "drain_fork", "drain_glut", "blight_size", "blight_twin", "shackle_range",
 	"arrow_split", "snare_dur", "snare_max", "snare_wide", "volley_size", "beast_two", "burn_dmg", "wolf_burn", "chill_pct", "wolf_howl",
 	"frost_shatter", "arc_count",
-	"cloud_size", "cloud_dur", "poison_dmg", "poison_dur", "blast_size", "ignite_dmg", "trap_max", "trap_stun", "inf_jumps", "inf_dur", "dome_size", "dome_dur"]
+	"cloud_size", "cloud_dur", "poison_dmg", "poison_dur", "swarm_size", "swarm_dur", "swarm_redirect", "bloom_size", "bloom_dur", "bloom_snare",
+	"fog_dur", "trans_dr", "trans_cap", "trans_dur", "exp_size", "exp_dur"]
 
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()

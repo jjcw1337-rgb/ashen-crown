@@ -41,7 +41,7 @@ const WHEEL_GAP := 0.08             # seconds between wheel notches that count
 ## signature moves: [pose style, seconds, impact fraction, skill name]
 const SIGNATURE := {"knight": ["cleave", 1.1, 0.5, "Holy Slam"], "wraith": ["rend", 0.95, 0.42, "Spectral Rend"],
 	"demon": ["fists", 0.9, 0.48, "Molten Fists"], "warlock": ["cast", 1.8, 0.2, "Drain Life"], "archer": ["bow", 1.0, 0.55, "Volley"],
-	"plague": ["pd_flask", 1.3, 0.55, "Toxic Flask"],
+	"plague": ["pd_flask", 1.3, 0.55, "Pestilence Vial"],
 	"wyrm": ["swipe3", 1.2, 0.47, "Tail Spin"], "serpent": ["swipe3", 1.1, 0.47, "Tail Spin"], "wyvern": ["swipe3", 1.1, 0.47, "Tail Spin"]}
 const SIG_EVERY := 4.5
 ## Skill previews (hover a skill in the panel, `show_skill`): each skill's pose style and seconds (before the
@@ -53,7 +53,8 @@ const SKILL_SHOW := {"cleave": ["cleave", 0.95], "nova": ["cast", 0.55], "charge
 	"wrath": ["wrath_roar", 1.3],
 	"drain": ["cast", 1.6], "blight": ["cast", 0.45], "shackles": ["cast", 0.5], "covenant": ["cast", 0.6],
 	"pierce": ["bow", 0.9], "volley": ["bow", 0.9], "snare": ["cast", 0.6], "beast": ["cast", 0.6],
-	"toxic": ["pd_flask", 0.85], "volatile": ["pd_volatile", 1.25], "trap": ["pd_trap", 1.0], "epidemic": ["pd_slam", 1.2]}
+	"toxic": ["pd_flask", 0.85], "swarm": ["pd_swarm", 0.8], "bloom": ["pd_bloom", 0.95], "fog": ["pd_fog", 0.6],
+	"transfusion": ["pd_transfuse", 0.8], "experiment": ["pd_slam", 1.2]}
 const SKILL_GAP := 1.1              # rest between repeats of a previewed skill
 ## The sound of choosing each hero: layers of the game's own recordings, [sound, delay s, dB, pitch]
 const PICK_SOUND := {
@@ -730,23 +731,31 @@ func _skill_fx(c: String, h: Hero, home: Vector3) -> void:
 			Fx.burst(root3d, floor_front + Vector3(0, 0.3 * k, 0), col, 34, 1.8 * k, 0.16 * k, 1.2, true, 0.4)
 			Fx.flash(root3d, floor_front + Vector3(0, 0.6 * k, 0), col, 2.5, 0.6, 3.0 * k)
 			Sfx.play("ice_shatter", -10.0, 1.35)
-		"volatile":
-			# it lands, fizzes and blows: fire and poison
-			Fx.flash(root3d, floor_front + Vector3(0, 0.7 * k, 0), Color(1.0, 0.6, 0.2), 4.0, 0.4, 4.0 * k)
-			Fx.burst(root3d, floor_front + Vector3(0, 0.3 * k, 0), Color(1.0, 0.55, 0.15), 40, 5.0 * k, 0.1 * k, 0.5, true, -4.0)
-			Fx.burst(root3d, floor_front + Vector3(0, 0.4 * k, 0), col, 30, 2.0 * k, 0.18 * k, 1.0, true, 0.5)
-			Fx.ring(root3d, floor_front, 1.3 * k, Color(1.0, 0.6, 0.25), 0.4)
-			Sfx.play("boom", -12.0)
-		"trap":
-			Fx.ring(root3d, floor_front, 0.6 * k, col, 0.8)
-			Fx.burst(root3d, floor_front + Vector3(0, 0.1, 0), col, 20, 2.0 * k, 0.07 * k, 0.6, true, -3.0, 25.0)
-			Sfx.play("equip", -10.0, 0.8)
-		"epidemic":
-			# the cane slams down: a plague wave rolls out and a sickly pillar rises
-			Fx.ring(root3d, p, 2.4 * k, col, 0.7)
-			Fx.pillar(root3d, p, col, 0.9)
-			Fx.burst(root3d, p + Vector3(0, 0.4 * k, 0), col, 46, 4.0 * k, 0.14 * k, 0.9, true, 0.3)
-			Sfx.play("blight_burst", -10.0)
+		"swarm":
+			# a dark boil of flies out of his hand, wheeling over the floor in front
+			Fx.burst(root3d, p + Vector3(0, 1.3 * k, 0), Color(0.08, 0.09, 0.06), 60, 2.4 * k, 0.03 * k, 1.4, false, 0.2, 60.0, Vector3(0, 0.3, -1))
+			Fx.burst(root3d, floor_front + Vector3(0, 0.6 * k, 0), Color(0.5, 0.75, 0.3, 0.4), 18, 1.0 * k, 0.12 * k, 1.2, true, 0.0)
+			Sfx.play("drip", -10.0, 0.6)
+		"bloom":
+			# something fleshy splits the floor and breathes out spores
+			Fx.ring(root3d, floor_front, 1.1 * k, Color(0.62, 0.25, 0.32), 0.9)
+			Fx.burst(root3d, floor_front + Vector3(0, 0.3 * k, 0), Color(0.8, 0.95, 0.4), 30, 1.6 * k, 0.05 * k, 1.1, true, 0.6, 30.0)
+			Sfx.play("blight_burst", -10.0, 0.8)
+		"fog":
+			# the censer dashed down: pale fog rolls out over the plinth
+			Fx.burst(root3d, p + Vector3(0, 0.3 * k, 0), Color(0.85, 0.85, 0.92, 0.5), 50, 2.2 * k, 0.4 * k, 1.8, false, 0.15, 85.0)
+			Sfx.play("phase_erupt", -12.0, 1.3)
+		"transfusion":
+			# red serum rises through the tanks on his back
+			Fx.burst(root3d, p + Vector3(0, 1.5 * k, 0.2 * k), Color(0.9, 0.2, 0.15), 20, 0.8 * k, 0.04 * k, 0.9, true, 1.5)
+			Fx.flash(root3d, p + Vector3(0, 1.5 * k, 0), Color(0.9, 0.3, 0.2), 2.0, 0.5, 2.0 * k)
+			Sfx.play("drip", -8.0, 0.5)
+		"experiment":
+			# the vat slammed down: glass and fluid burst, a quarantine ring
+			Fx.ring(root3d, p, 2.4 * k, Plague.MIASMA, 0.8)
+			Fx.burst(root3d, floor_front + Vector3(0, 0.5 * k, 0), Color(0.85, 1.0, 0.9), 20, 3.0 * k, 0.05 * k, 0.5, true, -9.0)
+			Fx.burst(root3d, floor_front + Vector3(0, 0.4 * k, 0), col, 46, 4.0 * k, 0.14 * k, 0.9, true, 0.3)
+			Sfx.play("ice_shatter", -9.0, 0.7)
 
 ## Alive: breathing (Anim's idle), the weight shifting, the head turning to look about, now and then a
 ## glance at you; the chosen one stands a step forward in the light.
