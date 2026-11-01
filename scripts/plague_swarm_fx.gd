@@ -55,6 +55,8 @@ class Swarm extends Node3D:
 	var home_t := -1.0
 	var home_node: Node3D = null
 	var hum_t := 0.0
+	var shadow: MeshInstance3D
+	var world: World
 	func setup(_w: World, from: Vector3, to: Vector3, r: float, quality: int) -> void:
 		radius = r
 		target = from
@@ -81,7 +83,7 @@ class Swarm extends Node3D:
 		flies.emitting = true
 		# the cloud's body: a dark green-black haze that follows the swarm
 		haze = GPUParticles3D.new()
-		haze.amount = 26 if quality >= 2 else 14
+		haze.amount = 34 if quality >= 2 else 20
 		haze.lifetime = 1.6
 		haze.local_coords = false
 		var pm := ParticleProcessMaterial.new()
@@ -90,13 +92,13 @@ class Swarm extends Node3D:
 		pm.gravity = Vector3.ZERO
 		pm.initial_velocity_min = 0.1
 		pm.initial_velocity_max = 0.5
-		pm.scale_min = 1.6
-		pm.scale_max = 2.8
+		pm.scale_min = 1.8
+		pm.scale_max = 3.2
 		pm.angle_min = -180.0
 		pm.angle_max = 180.0
 		var g := Gradient.new()
 		g.set_color(0, Color(0.05, 0.07, 0.04, 0.0))
-		g.add_point(0.35, Color(0.06, 0.08, 0.04, 0.16))
+		g.add_point(0.35, Color(0.04, 0.06, 0.03, 0.32))
 		g.set_color(g.get_point_count() - 1, Color(0.05, 0.07, 0.04, 0.0))
 		var gt := GradientTexture1D.new()
 		gt.gradient = g
@@ -115,6 +117,21 @@ class Swarm extends Node3D:
 		haze.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(haze)
 		haze.global_position = from + Vector3(0, 0.8, 0)
+		# its shadow on the ground: a soft dark blot that follows it, so the swarm's place reads from above
+		shadow = MeshInstance3D.new()
+		var qm2 := QuadMesh.new()
+		qm2.size = Vector2(r * 2.2, r * 2.2)
+		qm2.orientation = PlaneMesh.FACE_Y
+		shadow.mesh = qm2
+		var smat := StandardMaterial3D.new()
+		smat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		smat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		smat.albedo_color = Color(0.0, 0.02, 0.0, 0.45)
+		smat.albedo_texture = PlagueVialFx.wisp_tex()
+		shadow.material_override = smat
+		shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(shadow)
+		world = _w
 	func _process(delta: float) -> void:
 		scatter_t = maxf(scatter_t - delta, 0.0)
 		var home := 0.0
@@ -131,6 +148,10 @@ class Swarm extends Node3D:
 		mat.set_shader_parameter("home", home)
 		if haze != null:
 			haze.global_position = haze.global_position.lerp(target + Vector3(0, 0.8, 0), clampf(delta * 6.0, 0.0, 1.0))
+		if shadow != null:
+			var sp := haze.global_position if haze != null else target
+			shadow.global_position = Vector3(sp.x, (world.height_at(sp.x, sp.z) if world != null else target.y) + 0.06, sp.z)
+			shadow.transparency = clampf(home * 1.5 + scatter_t / 1.5 * 0.6, 0.0, 1.0)
 			if home > 0.0:
 				haze.emitting = false
 		hum_t -= delta
@@ -208,7 +229,7 @@ void process() {
 	vec3 f = normalize(VELOCITY + vec3(0.0, 0.0001, 0.0));
 	vec3 r = normalize(cross(vec3(0.0, 1.0, 0.0), f) + vec3(0.0001, 0.0, 0.0));
 	vec3 u = cross(f, r);
-	float s = 1.0 - home * home * 0.8;
+	float s = 2.6 * (1.0 - home * home * 0.8);    // larger than life, so the swarm reads from the game camera
 	TRANSFORM[0].xyz = r * s;
 	TRANSFORM[1].xyz = u * s;
 	TRANSFORM[2].xyz = f * s;
