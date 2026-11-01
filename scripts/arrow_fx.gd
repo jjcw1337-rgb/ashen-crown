@@ -1,499 +1,579 @@
 class_name ArrowFx
 extends RefCounted
-## The Archer's arrow effects, data-driven per arrow kind (PRESETS), so every bow skill gets the same layered
-## treatment with its own identity (docs/archer_vfx_standard.md): a new skill is mostly a new preset.
+## The Archer's arrow effects, data-driven per arrow kind (PRESETS), so every bow skill gets the same treatment
+## with its own identity (docs/archer_vfx_standard.md): a new skill is mostly a new preset.
 ## Everything here only DRAWS: it is called from ArcherFx (the "loose" event, the draw charge) and from
 ## Archer.update (the flight, each foe pierced, the end of the flight) on the caster's game and on his
 ## puppet's alike, so partners see the same arrow from the one "loose" event. Nothing here touches gameplay.
 ##
+## The fire is SIMULATED, not painted: Mantaflow fire and smoke (tools/blender/fx/fire_sims.py) rendered into
+## flipbooks (tools/fx_flipbook.py, assets/textures/fx/real_*.png). The flame sheets carry the sim's flame (R) and
+## flame x temperature (G); FIRE_SHADER turns them into light through a blackbody curve (Kelvin), so the colour is
+## the sim's own temperature: white-yellow where it is thick and hot, orange, then deep red where it thins. The
+## smoke sheets carry an RGB lightmap (lit from the right / above / the left in Blender) and SMOKE_SHADER relights
+## them in light() with the game's real lights: the sun, the fire's own OmniLights, shadows. Embers and sparks are
+## points of blackbody light cooling as they fly (STREAK_SHADER, stretched along their velocity); the heat haze
+## bends what is behind (HAZE_SHADER, Forward+); the burn mark is a Decal (soot albedo, a blistered normal map, ember
+## cracks that cool); the flight's light casts shadows.
+##
 ## A kind's preset:
 ##   "model"    the Meshy arrow (assets/models/arrows/<model>.glb, Archer._arrow_mesh)
-##   "core"     {col, size, tip}: the hot glow on the head and the spark at the tip
-##   "flames"   [{len, r, energy, speed, scale, core, mid, edge, tip, seed}, ...]: flame sheaths round the shaft
-##              (FLAME_SHADER: scrolling noise, a gradient core -> mid -> edge -> tip, soft edges)
-##   "wings"    {tex, cards, span, tilt, flap, tint, energy}: feather cards each side that unfurl behind the head
-##   "trail"    {len, width, energy, head, mid, tail, smoke}: the ribbon behind it (TRAIL_SHADER, rebuilt from the
-##              last positions every frame, flame at the head fading into smoke at the tail)
-##   "embers"   {tex, amount, life, size, speed, gravity, colors}: textured embers peeling off the wings
-##   "sparks"   {amount, life, size, speed, gravity, col}: hot sparks
-##   "smoke"    {tex, amount, life, size, col}: alpha-blended smoke wisps (none on Low / web)
-##   "light"    {col, energy, range}: the moving light (at most LIGHT_CAP arrows lit at once)
-##   "shimmer"  the heat haze behind the head (Forward+ only)
-##   "release"  {col, embers, light}: the bow flaring as the arrow leaves
-##   "pierce"   {col, embers, sparks, light, scorch}: the entry flash and the cone out of a foe's back
-##   "end"      {col, embers, sparks, light, ring, chunks, flames, smoke, scorch}: the burst where the flight ends
-##   "burn"     {tex, amount, col}: the body flames on a foe set alight (one system per foe)
-##   "draw"     {col, energy}: the fire gathering on the nocked arrow during the draw
-##   "sounds"   {cast, release, flight, pierce, end}: [name, dB, pitch] layers, through SkillFx.snd / Sfx.play_at
+##   "heat"     {head, char}: the arrowhead glowing with heat and the shaft charring behind it (HEAT_SHADER overlay)
+##   "flame"    {amount, life, size, energy, t}: sim flames wrapped round the head and blown back along the shaft
+##   "wisps"    {amount, life, size}: scraps of flame torn off and left behind in the air
+##   "smoke"    {amount, life, size, col, alpha}: the smoke trail, lit by the scene
+##   "embers"   {amount, life, size, t}: glowing embers drifting off on the turbulence
+##   "sparks"   {amount, life, size, speed, t}: hot sparks shed in flight
+##   "light"    {t, energy, range, shadow}: the moving light (Kelvin; at most LIGHT_CAP arrows lit at once)
+##   "haze"     {amount, size, strength}: heat distortion behind the head (Forward+ only, never on Low / web)
+##   "release" / "draw" / "pierce" / "end" / "burn": the moments, below
+##   "surfaces" {grass, stone, dirt, wood, dark}: how the end of the flight meets the ground (ArrowFx.surface)
+##   "sounds"   {cast, release, pierce, end}: [name, dB, pitch] layers, through SkillFx.snd / Sfx.play_at
 
-const TEX := {"feathers": "res://assets/textures/fx/phoenix_feathers.png", "flames": "res://assets/textures/fx/phoenix_flames.png",
-	"smoke": "res://assets/textures/fx/phoenix_smoke.png", "scorch": "res://assets/textures/fx/phoenix_scorch.png",
-	"burst": "res://assets/textures/fx/holy_slam_burst.png"}
-const FRAMES := {"feathers": 8, "flames": 8, "smoke": 4}
+const TEX := {"flame": "res://assets/textures/fx/real_flame.png", "burst_fire": "res://assets/textures/fx/real_burst_fire.png",
+	"burst_smoke": "res://assets/textures/fx/real_burst_smoke.png", "smoke": "res://assets/textures/fx/real_smoke.png",
+	"scorch": "res://assets/textures/fx/real_scorch.png", "scorch_n": "res://assets/textures/fx/real_scorch_n.png",
+	"scorch_e": "res://assets/textures/fx/real_scorch_e.png"}
+## where the source sits in each sim's frame (of the card's height from its middle), so a card's origin is the fire's
+const PIVOT := {"flame": 0.40, "burst_fire": 0.29, "burst_smoke": 0.29, "smoke": 0.38}
 const LIGHT_CAP := 3
-const TRAIL_STEP := 0.22
-
-const GOLD := Color(1.0, 0.86, 0.55)
-const ORANGE := Color(1.0, 0.46, 0.08)
-const CRIMSON := Color(0.85, 0.1, 0.04)
-const VIOLET := Color(0.55, 0.2, 0.95)
+const SUBSTEPS := 4
+const BURST_START := 4.0
+const BURN_LIGHT_CAP := 4
 
 const PRESETS := {
-	## Fire Arrow: the Phoenix (concepts/archer_fire/concept_b_phoenix.png). A white-gold core wrapped in flame
-	## shaped into folded wings of fiery feathers that unfurl behind the head, a sweeping trail of glowing
-	## feather embers and dark smoke, a warm light moving over the ground, a flash where it enters a foe and a cone
-	## of fire out of his back, a phoenix burst where the flight ends.
+	## Fire Arrow: a pitch-soaked arrow on fire. Real flames (the sim) wrapped round the head and blown back along
+	## the shaft, the head glowing and the shaft charring, torn scraps of flame, a trail of lit smoke, embers on the
+	## turbulence and sparks; its light moves over the ground and casts shadows. Through a foe: a gout of fire out of
+	## his back and the burn on him; where the flight ends: a fireball, smoke rolling up, sparks bouncing, embers,
+	## a scorch, and the ground answering (grass smoulders, stone throws sparks, dirt kicks up dust, wood catches).
 	"fire": {
 		"model": "fire",
-		"core": {"col": Color(1.0, 0.85, 0.6), "size": 0.26, "tip": Color(0.8, 0.9, 1.0), "tip_size": 0.07},
-		"flames": [
-			{"len": 1.05, "r": 0.1, "energy": 2.2, "speed": 7.0, "scale": 3.0, "core": Color(1.0, 0.96, 0.82), "mid": Color(1.0, 0.55, 0.1), "edge": Color(0.9, 0.15, 0.03), "tip": Color(0.55, 0.2, 0.9), "seed": 0.0},
-			{"len": 1.35, "r": 0.17, "energy": 1.1, "speed": 4.5, "scale": 2.2, "core": Color(1.0, 0.7, 0.3), "mid": Color(1.0, 0.35, 0.05), "edge": Color(0.7, 0.08, 0.05), "tip": Color(0.5, 0.15, 0.95), "seed": 4.7}],
-		"wings": {"tex": "feathers", "cards": 3, "span": 1.25, "tilt": 30.0, "flap": 7.0, "tint": Color(1.0, 0.9, 0.8), "energy": 1.6},
-		"trail": {"len": 4.6, "width": 0.5, "energy": 1.9, "head": Color(1.0, 0.9, 0.6), "mid": Color(1.0, 0.42, 0.06), "tail": Color(0.5, 0.12, 0.6), "smoke": Color(0.1, 0.06, 0.12)},
-		"embers": {"tex": "feathers", "amount": 36, "life": 1.1, "size": Vector2(0.09, 0.34), "speed": 1.6, "gravity": -0.9,
-			"colors": [Color(1.0, 0.95, 0.75), Color(1.0, 0.55, 0.12), Color(0.85, 0.12, 0.06), Color(0.5, 0.15, 0.9)]},
-		"sparks": {"amount": 24, "life": 0.5, "size": 0.035, "speed": 3.5, "gravity": -7.0, "col": Color(1.0, 0.72, 0.35)},
-		"smoke": {"tex": "smoke", "amount": 14, "life": 1.6, "size": 0.45, "col": Color(0.16, 0.1, 0.18, 0.4)},
-		"light": {"col": Color(1.0, 0.6, 0.25), "energy": 2.6, "range": 7.5},
-		"shimmer": true,
-		"release": {"col": Color(1.0, 0.7, 0.3), "embers": 18, "light": 3.0},
-		"pierce": {"col": Color(1.0, 0.75, 0.35), "embers": 22, "sparks": 30, "light": 4.5, "scorch": true},
-		"end": {"col": Color(1.0, 0.72, 0.3), "embers": 44, "sparks": 40, "light": 7.0, "ring": 3.2, "chunks": true, "flames": true, "smoke": 10, "scorch": true},
-		"burn": {"tex": "flames", "amount": 9, "col": Color(1.0, 0.55, 0.15)},
-		"draw": {"col": Color(1.0, 0.7, 0.3), "energy": 1.8},
+		"heat": {"head": 1.0, "char": 1.0},
+		"flame": {"amount": 12, "life": 0.4, "size": [0.4, 0.7], "energy": 4.0, "t": [1000.0, 2400.0]},
+		"wisps": {"amount": 72, "life": 0.15, "size": [0.36, 0.56]},
+		"smoke": {"amount": 120, "life": 1.7, "size": [0.35, 1.1], "col": Color(0.36, 0.34, 0.33), "alpha": 0.55},
+		"embers": {"amount": 36, "life": [0.6, 1.6], "size": 0.018, "t": [1900.0, 850.0]},
+		"sparks": {"amount": 18, "life": [0.15, 0.4], "size": 0.01, "speed": 3.0, "t": [2400.0, 1100.0]},
+		"light": {"t": 2600.0, "energy": 3.0, "range": 7.5, "shadow": true},
+		"haze": {"amount": 8, "size": 0.75, "strength": 0.022},
+		"release": {"light": 1.2, "sparks": 12},
+		"draw": {"amount": 8, "energy": 3.5},
+		"pierce": {"light": 5.0, "sparks": 26, "embers": 18, "smoke": 4, "fireball": 1.5},
+		"end": {"light": 7.0, "t": 2700.0, "fireball": 3.4, "sparks": 40, "embers": 40, "smoke": 8, "scorch": 2.6},
+		"burn": {"amount": 22, "embers": 16, "smoke": 7, "light": 2.4},
+		## how the end meets the ground: flames left burning (count, life), embers that settle, how sparks bounce,
+		## dust, the smoke's colour, the scorch's size and how long its embers glow, a fire that keeps going
+		"surfaces": {
+			"grass": {"flames": 9, "flame_life": 2.6, "settle": true, "bounce": 0.15, "friction": 0.9, "smoke_col": Color(0.59, 0.57, 0.55), "smoke": 10, "scorch": 1.25, "glow": 4.0, "ring": true},
+			"stone": {"flames": 0, "flame_life": 0.0, "settle": false, "bounce": 0.55, "friction": 0.15, "smoke_col": Color(0.24, 0.22, 0.22), "smoke": 6, "scorch": 0.85, "glow": 0.0, "spark_mul": 1.8, "chips": true},
+			"dirt": {"flames": 3, "flame_life": 1.1, "settle": false, "bounce": 0.3, "friction": 0.6, "smoke_col": Color(0.34, 0.31, 0.28), "smoke": 7, "scorch": 1.0, "glow": 1.5, "dust": Color(0.36, 0.3, 0.23)},
+			"wood": {"flames": 4, "flame_life": 1.6, "settle": true, "bounce": 0.25, "friction": 0.7, "smoke_col": Color(0.42, 0.39, 0.36), "smoke": 8, "scorch": 0.9, "glow": 6.0, "keep": 7.0},
+			"dark": {"flames": 3, "flame_life": 1.2, "settle": false, "bounce": 0.3, "friction": 0.6, "smoke_col": Color(0.28, 0.27, 0.25), "smoke": 7, "scorch": 1.0, "glow": 2.0, "dust": Color(0.12, 0.11, 0.1)},
+		},
 		"sounds": {"cast": [["fuse", -13.0, 1.15]], "release": [["fireball", -4.0, 1.08], ["burn_item", -14.0, 1.25]],
 			"pierce": [["impact_flesh", -4.0, 1.0], ["fire_erupt", -9.0, 1.45]], "end": [["boom", -7.0, 1.15], ["fire_erupt", -4.0, 0.9]]},
 	},
-	## the plain war arrow: a faint streak, sparks on the hit (what the basic attack had)
-	"war": {"model": "war", "core": {"col": Color(0.9, 0.85, 0.7), "size": 0.0, "tip": Color(0, 0, 0), "tip_size": 0.0},
-		"sounds": {"pierce": [["impact_flesh", -6.0, 1.0]]}},
+	## the plain war arrow: no fire; sparks on the hit
+	"war": {"model": "war", "sounds": {"pierce": [["impact_flesh", -6.0, 1.0]]}},
 }
 
 static var _shaders := {}
 static var _tex := {}
-static var _tube_cache := {}
+static var _noise: Texture2D
 static var _lights := 0
+static var _burn_lights := 0
 
 static func preset(kind: String) -> Dictionary:
 	return PRESETS.get(kind, PRESETS["war"])
 
-## Fewer particles, no smoke or haze: the browser build or the Low preset.
+## Fewer particles, no heat haze, no light shadows: the browser build or the Low preset.
 static func cheap(game) -> bool:
 	return OS.has_feature("web") or (game != null and int(game.get("quality")) <= 0)
 
-static func shimmer_ok() -> bool:
+## Forward+ / Mobile (a RenderingDevice): the screen and depth textures exist (haze, soft particles, decals).
+static func rd_ok() -> bool:
 	return RenderingServer.get_rendering_device() != null and not OS.has_feature("web")
+
+static func shimmer_ok() -> bool:
+	return rd_ok()
 
 static func tex(key: String) -> Texture2D:
 	if not _tex.has(key):
 		_tex[key] = load(TEX[key]) if ResourceLoader.exists(TEX[key]) else null
 	return _tex[key]
 
+## A seamless normal-mapped noise for the heat haze.
+static func noise_tex() -> Texture2D:
+	if _noise == null:
+		var nt := NoiseTexture2D.new()
+		var n := FastNoiseLite.new()
+		n.frequency = 0.012
+		n.fractal_octaves = 3
+		nt.noise = n
+		nt.width = 128
+		nt.height = 128
+		nt.seamless = true
+		nt.as_normal_map = true
+		nt.bump_strength = 4.0
+		_noise = nt
+	return _noise
+
 static func shader(key: String) -> Shader:
 	if _shaders.has(key):
 		return _shaders[key]
 	var s := Shader.new()
+	var soft_u := "uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;" if rd_ok() else ""
+	var soft_f := SOFT_FN if rd_ok() else "float soft_k(vec2 suv, vec3 vtx, mat4 ip, float len){ return 1.0; }"
 	match key:
-		"flame": s.code = FLAME_SHADER % Mats.NOISE_LIB
-		"card": s.code = CARD_SHADER
-		"trail": s.code = TRAIL_SHADER % Mats.NOISE_LIB
-		"shimmer": s.code = SHIMMER_SHADER % Mats.NOISE_LIB
+		"fire": s.code = FIRE_SHADER % [soft_u, BLACKBODY, soft_f]
+		"smoke": s.code = SMOKE_SHADER % [soft_u, soft_f]
+		"streak": s.code = STREAK_SHADER % BLACKBODY
+		"haze": s.code = HAZE_SHADER
+		"heat": s.code = HEAT_SHADER % [Mats.NOISE_LIB, BLACKBODY]
 		"scorch": s.code = SCORCH_SHADER
-		"sprite": s.code = SPRITE_SHADER
 	_shaders[key] = s
 	return s
 
+## The colour of a blackbody at k Kelvin (linear, red channel 1), as the shaders' blackbody().
+static func blackbody(k: float) -> Color:
+	var t := k / 100.0
+	var g := clampf(0.39008158 * log(t) - 0.63184144, 0.0, 1.0)
+	var b := 0.0 if k <= 1900.0 else clampf(0.54320679 * log(t - 10.0) - 1.19625409, 0.0, 1.0)
+	return Color(1.0, pow(g, 2.2), pow(b, 2.2))
+
+## Which ground a point is: a zone may answer itself (meta "surface_fn", the proof range), else the paving and
+## earth masks, the grass, indoors.
+static func surface(game, p: Vector3) -> String:
+	var w = game.world
+	if w == null:
+		return "dirt"
+	if w.has_meta("surface_fn"):
+		return str((w.get_meta("surface_fn") as Callable).call(p))
+	if game.has_method("indoor") and game.indoor():
+		return "stone"
+	if w.cobble_at(p.x, p.z) > 0.45 or (int(w.run) == 1 and str(w.kind) == "lair"):
+		return "stone"
+	if w.dirt_at(p.x, p.z) > 0.45:
+		return "dirt"
+	if w.oak_forest and w.grass_ground(p.x, p.z) > 0.35:
+		return "grass"
+	return "dirt"
+
+# ---------------------------------------------------------------- the building blocks
+## Flipbook particles of the sim ("flame", "burst_fire": additive fire; "smoke", "burst_smoke": lit smoke).
+## axis: 0 = the card stands up (world up, leaning with `lean`), 1 = it lies along the emitter's +z (the arrow's tail),
+## 2 = along the particle's own flight (with particle_flag_align_y).
+static func flip_particles(key: String, amount: int, life: float, size: Vector2, axis := 0, energy := 6.0, t := Vector2(1050, 2500)) -> GPUParticles3D:
+	var missing := tex(key) == null and key != "flame"
+	if missing:
+		# a sheet not built yet (tools/fx_flipbook.py): the flame stands in for fire; smoke is left out
+		key = "flame"
+	var p := GPUParticles3D.new()
+	p.amount = maxi(1, amount)
+	p.lifetime = life
+	p.local_coords = false
+	p.fixed_fps = 0
+	p.interpolate = false
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	p.visibility_aabb = AABB(Vector3(-6, -3, -6), Vector3(12, 9, 12))
+	var pm := ParticleProcessMaterial.new()
+	pm.scale_min = size.x
+	pm.scale_max = size.y
+	pm.anim_offset_min = 0.0
+	pm.anim_offset_max = 1.0
+	pm.anim_speed_min = 1.0
+	pm.anim_speed_max = 1.0
+	pm.gravity = Vector3.ZERO
+	p.process_material = pm
+	var q := QuadMesh.new()
+	q.size = Vector2.ONE
+	p.draw_pass_1 = q
+	var fire := key == "flame" or key == "burst_fire"
+	var m := ShaderMaterial.new()
+	m.shader = shader("fire" if fire else "smoke")
+	m.set_shader_parameter("atlas", tex(key))
+	m.set_shader_parameter("pivot", float(PIVOT.get(key, 0.0)))
+	m.set_shader_parameter("loop_anim", 1.0 if key == "flame" else 0.0)
+	if fire:
+		m.set_shader_parameter("energy", energy)
+		m.set_shader_parameter("t_lo", t.x)
+		m.set_shader_parameter("t_hi", t.y)
+		m.set_shader_parameter("axis_mode", float(axis))
+	if missing:
+		m.set_shader_parameter("alpha_mul", 0.0)
+	p.material_override = m
+	return p
+
+## Blackbody points: embers (slow, drifting on turbulence) or sparks (fast, stretched along their flight). They cool
+## from t.x to t.y Kelvin over their life.
+static func streaks(amount: int, life: Vector2, size: float, stretch: float, t: Vector2, energy := 1.0) -> GPUParticles3D:
+	var p := GPUParticles3D.new()
+	p.amount = maxi(1, amount)
+	p.lifetime = life.y
+	p.local_coords = false
+	p.fixed_fps = 0
+	p.interpolate = false
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	p.visibility_aabb = AABB(Vector3(-8, -3, -8), Vector3(16, 10, 16))
+	p.trail_enabled = false
+	var pm := ParticleProcessMaterial.new()
+	pm.lifetime_randomness = 1.0 - life.x / life.y
+	pm.scale_min = size * 0.6
+	pm.scale_max = size * 1.4
+	pm.particle_flag_align_y = true
+	pm.color_ramp = _ramp([Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 0)])
+	p.process_material = pm
+	var q := QuadMesh.new()
+	q.size = Vector2.ONE
+	p.draw_pass_1 = q
+	var m := ShaderMaterial.new()
+	m.shader = shader("streak")
+	m.set_shader_parameter("stretch", stretch)
+	m.set_shader_parameter("t_hot", t.x)
+	m.set_shader_parameter("t_cold", t.y)
+	m.set_shader_parameter("energy", energy)
+	p.material_override = m
+	return p
+
+## Heat haze cards (Forward+ only): what is behind them bends.
+static func haze(amount: int, life: float, size: float, strength: float) -> GPUParticles3D:
+	var p := GPUParticles3D.new()
+	p.amount = maxi(1, amount)
+	p.lifetime = life
+	p.local_coords = false
+	p.fixed_fps = 0
+	p.interpolate = false
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var pm := ParticleProcessMaterial.new()
+	pm.scale_min = size * 0.7
+	pm.scale_max = size * 1.3
+	pm.gravity = Vector3(0, 0.6, 0)
+	pm.color_ramp = _ramp([Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 0)])
+	pm.scale_curve = _curve_tex([[0.0, 0.6], [1.0, 1.4]])
+	p.process_material = pm
+	var q := QuadMesh.new()
+	q.size = Vector2.ONE
+	p.draw_pass_1 = q
+	var m := ShaderMaterial.new()
+	m.shader = shader("haze")
+	m.set_shader_parameter("noise_tex", noise_tex())
+	m.set_shader_parameter("strength", strength)
+	m.render_priority = -20       # drawn before the other see-through things: it bends only the solid scene
+	p.material_override = m
+	return p
+
+## A flickering fire light (Kelvin), its flicker driven by `fly` / the burn's timer.
+static func fire_light(t: float, energy: float, rng: float, shadow: bool) -> OmniLight3D:
+	var lt := OmniLight3D.new()
+	lt.light_color = blackbody(t)
+	lt.light_energy = energy
+	lt.omni_range = rng
+	lt.omni_attenuation = 1.0
+	lt.shadow_enabled = shadow
+	lt.shadow_bias = 0.08
+	lt.shadow_normal_bias = 1.5
+	lt.light_size = 0.15
+	lt.set_meta("base", energy)
+	return lt
+
+static func flicker(t: float, seed_v: float) -> float:
+	return 0.82 + 0.1 * sin(t * 23.0 + seed_v) * sin(t * 7.3 + seed_v * 2.1) + 0.06 * sin(t * 41.0 + seed_v * 3.7) + 0.05 * sin(t * 13.1 + seed_v)
+
 # ---------------------------------------------------------------- the projectile
-## The layered arrow of this kind, ready to be placed and flown (`fly` every frame). Its state is in metas.
+## The burning arrow of this kind, ready to be placed and flown (`fly` every frame). Its state is in metas.
+## The flames on the head ride the arrow (local); the trail (wisps, smoke, embers, sparks, haze) is emitted in the
+## world from emitters that `fly` keeps on the head, so it stays behind in the air and dies off after the flight.
 static func projectile(kind: String, game) -> Node3D:
 	var p := preset(kind)
-	var root: Node3D = Archer._arrow_mesh(str(p.get("model", "war")), p.has("flames"))
+	var root: Node3D = Archer._arrow_mesh(str(p.get("model", "war")), p.has("flame"))
 	root.set_meta("kind", kind)
 	root.set_meta("age", 0.0)
+	if not p.has("flame"):
+		return root
 	var lite := cheap(game)
-	var core: Dictionary = p.get("core", {})
-	if float(core.get("size", 0.0)) > 0.0:
-		var cq := _glow_quad(core["col"], float(core["size"]), 2.6)
-		cq.position = Vector3(0, 0, -0.1)
-		root.add_child(cq)
-		var tq := _glow_quad(core["tip"], float(core["tip_size"]), 4.0)
-		tq.position = Vector3(0, 0, -0.42)
-		tq.name = "Tip"
-		root.add_child(tq)
-	var mats: Array = []
-	for f in p.get("flames", []):
-		var fl := MeshInstance3D.new()
-		fl.mesh = _tube(float(f["len"]), float(f["r"]))
-		var m := ShaderMaterial.new()
-		m.shader = shader("flame")
-		for k in ["energy", "speed", "scale", "seed"]:
-			m.set_shader_parameter(k, float(f[k]))
-		for k in ["core", "mid", "edge", "tip"]:
-			m.set_shader_parameter("c_" + k, f[k])
-		fl.material_override = m
-		fl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		root.add_child(fl)
-		mats.append(m)
-	if p.has("wings"):
-		_wings(root, p["wings"], mats)
-	root.set_meta("mats", mats)
-	if p.has("embers"):
-		var e: Dictionary = p["embers"]
-		var n := int(e["amount"]) / (2 if lite else 1)
-		var pe := _textured_particles(str(e["tex"]), n, float(e["life"]), e["size"], true)
-		var pm := pe.process_material as ParticleProcessMaterial
-		pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-		pm.emission_box_extents = Vector3(0.35, 0.12, 0.3)
-		pm.direction = Vector3(0, 0.6, 1)
-		pm.spread = 55.0
-		pm.initial_velocity_min = float(e["speed"]) * 0.3
-		pm.initial_velocity_max = float(e["speed"])
-		pm.gravity = Vector3(0, float(e["gravity"]), 0)
-		pm.angular_velocity_min = -180.0
-		pm.angular_velocity_max = 180.0
-		pm.damping_min = 1.0
-		pm.damping_max = 2.5
-		pm.color_ramp = _ramp(e["colors"], true)
-		pm.scale_curve = _curve_tex([[0.0, 0.5], [0.15, 1.0], [1.0, 0.25]])
-		pe.position = Vector3(0, 0, 0.35)
-		pe.name = "Embers"
-		root.add_child(pe)
-	if p.has("sparks"):
-		var s: Dictionary = p["sparks"]
-		var ps := Fx.aura(root, s["col"], int(s["amount"]) / (2 if lite else 1), float(s["speed"]), float(s["size"]), float(s["life"]), float(s["gravity"]), 0.12, 70.0, Vector3(0, 0, -0.2))
-		(ps.process_material as ParticleProcessMaterial).direction = Vector3(0, 0.3, 1)
-		(ps.process_material as ParticleProcessMaterial).scale_min = 0.2
-		(ps.process_material as ParticleProcessMaterial).scale_max = 0.6
-		ps.name = "Sparks"
-	if p.has("smoke") and not lite:
-		var sm: Dictionary = p["smoke"]
-		var psm := _textured_particles(str(sm["tex"]), int(sm["amount"]), float(sm["life"]), Vector2.ONE * float(sm["size"]), false)
-		var spm := psm.process_material as ParticleProcessMaterial
+	var div := 2 if lite else 1
+	if p.has("heat"):
+		var hm := ShaderMaterial.new()
+		hm.shader = shader("heat")
+		hm.set_shader_parameter("heat", float(p["heat"]["head"]))
+		hm.set_shader_parameter("char_amt", float(p["heat"]["char"]))
+		for mi in root.find_children("*", "MeshInstance3D", true, false):
+			(mi as MeshInstance3D).material_overlay = hm
+	# the flames wrapped round the head, blown back along the shaft
+	var f: Dictionary = p["flame"]
+	var sz: Array = f["size"]
+	var tt: Array = f["t"]
+	var fl := flip_particles("flame", int(f["amount"]), float(f["life"]), Vector2(sz[0], sz[1]), 1, float(f["energy"]), Vector2(tt[0], tt[1]))
+	fl.local_coords = true
+	fl.name = "Flames"
+	var fpm := fl.process_material as ParticleProcessMaterial
+	fpm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	fpm.emission_box_extents = Vector3(0.02, 0.02, 0.07)
+	fpm.anim_speed_min = 0.35
+	fpm.anim_speed_max = 0.55
+	fpm.color_ramp = _ramp([Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 0.8), Color(1, 1, 1, 0)])
+	fpm.scale_curve = _curve_tex([[0.0, 0.55], [0.3, 1.0], [1.0, 0.75]])
+	fl.position = Vector3(0, 0, -0.5)
+	root.add_child(fl)
+	var trail: Array = []
+	var fx_root: Node3D = game.world.fx_root
+	# torn scraps of flame left in the air, rising as they burn out
+	if p.has("wisps"):
+		var wd: Dictionary = p["wisps"]
+		var ws: Array = wd["size"]
+		# the flame's tail: torn tongues lying along the flight (axis 2: their velocity), dragged back off the head,
+		# overlapping into one tapering tail that burns out within a couple of metres
+		var wi := flip_particles("flame", int(wd["amount"]) / div, float(wd["life"]), Vector2(ws[0], ws[1]), 2, float(f["energy"]) * 0.75, Vector2(tt[0], tt[1] * 0.9))
+		var wpm := wi.process_material as ParticleProcessMaterial
+		wpm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+		wpm.emission_sphere_radius = 0.03
+		wpm.particle_flag_align_y = true
+		wpm.direction = Vector3(0, 0, 1)      # set to the flight's back in `fly`
+		wpm.spread = 6.0
+		wpm.initial_velocity_min = 0.0
+		wpm.initial_velocity_max = 9.0
+		wpm.gravity = Vector3(0, 1.5, 0)
+		wpm.damping_min = 10.0
+		wpm.damping_max = 14.0
+		wpm.anim_speed_min = 0.06
+		wpm.anim_speed_max = 0.12
+		wpm.color_ramp = _ramp([Color(1, 1, 1, 0.8), Color(1, 1, 1, 0.45), Color(1, 1, 1, 0)])
+		wpm.scale_curve = _curve_tex([[0.0, 1.0], [0.5, 0.6], [1.0, 0.2]])
+		wi.name = "Wisps"
+		trail.append(wi)
+	if p.has("smoke"):
+		var sd: Dictionary = p["smoke"]
+		var ss: Array = sd["size"]
+		var sm := flip_particles("smoke", int(sd["amount"]) / div, float(sd["life"]), Vector2(ss[0], ss[1]))
+		var spm := sm.process_material as ParticleProcessMaterial
 		spm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-		spm.emission_sphere_radius = 0.15
-		spm.direction = Vector3(0, 1, 0.6)
-		spm.spread = 35.0
-		spm.initial_velocity_min = 0.3
-		spm.initial_velocity_max = 0.9
-		spm.gravity = Vector3(0, 0.5, 0)
-		spm.angular_velocity_min = -40.0
-		spm.angular_velocity_max = 40.0
-		var sc: Color = sm["col"]
-		spm.color_ramp = _ramp([Color(sc.r, sc.g, sc.b, 0.0), sc, Color(sc.r * 0.8, sc.g * 0.8, sc.b * 0.8, sc.a * 0.6), Color(sc.r, sc.g, sc.b, 0.0)], false)
-		spm.scale_curve = _curve_tex([[0.0, 0.3], [0.4, 1.0], [1.0, 1.6]])
-		psm.position = Vector3(0, 0.1, 0.9)
-		psm.name = "Smoke"
-		root.add_child(psm)
+		spm.emission_sphere_radius = 0.08
+		spm.direction = Vector3.UP
+		spm.spread = 60.0
+		spm.initial_velocity_min = 0.1
+		spm.initial_velocity_max = 0.5
+		spm.gravity = Vector3(0, 0.45, 0)
+		spm.damping_min = 0.5
+		spm.damping_max = 1.0
+		spm.angle_min = -180.0
+		spm.angle_max = 180.0
+		spm.angular_velocity_min = -25.0
+		spm.angular_velocity_max = 25.0
+		spm.anim_offset_max = 0.15
+		spm.lifetime_randomness = 0.35
+		spm.turbulence_enabled = true
+		spm.turbulence_noise_strength = 0.6
+		spm.turbulence_noise_scale = 2.0
+		spm.turbulence_influence_min = 0.05
+		spm.turbulence_influence_max = 0.15
+		var sc: Color = sd["col"]
+		spm.color_ramp = _ramp([Color(1, 1, 1, 0), Color(1, 1, 1, float(sd["alpha"])), Color(1, 1, 1, float(sd["alpha"]) * 0.6), Color(1, 1, 1, 0)])
+		spm.scale_curve = _curve_tex([[0.0, 0.35], [0.35, 0.8], [1.0, 1.25]])
+		var smm := sm.material_override as ShaderMaterial
+		smm.set_shader_parameter("tint", sc)
+		smm.set_shader_parameter("glow", 0.5)
+		sm.name = "Smoke"
+		trail.append(sm)
+	if p.has("embers"):
+		var ed: Dictionary = p["embers"]
+		var el: Array = ed["life"]
+		var et: Array = ed["t"]
+		var em := streaks(int(ed["amount"]) / div, Vector2(el[0], el[1]), float(ed["size"]), 1.6, Vector2(et[0], et[1]), 1.0)
+		var epm := em.process_material as ParticleProcessMaterial
+		epm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+		epm.emission_sphere_radius = 0.12
+		epm.direction = Vector3.UP
+		epm.spread = 180.0
+		epm.initial_velocity_min = 0.3
+		epm.initial_velocity_max = 1.4
+		epm.gravity = Vector3(0, 0.35, 0)
+		epm.damping_min = 0.6
+		epm.damping_max = 1.6
+		epm.turbulence_enabled = true
+		epm.turbulence_noise_strength = 2.5
+		epm.turbulence_noise_scale = 1.4
+		epm.turbulence_noise_speed_random = 0.4
+		epm.turbulence_influence_min = 0.2
+		epm.turbulence_influence_max = 0.5
+		em.name = "Embers"
+		trail.append(em)
+	if p.has("sparks"):
+		var kd: Dictionary = p["sparks"]
+		var kl: Array = kd["life"]
+		var kt: Array = kd["t"]
+		var sp := streaks(int(kd["amount"]) / div, Vector2(kl[0], kl[1]), float(kd["size"]), 7.0, Vector2(kt[0], kt[1]), 1.6)
+		var kpm := sp.process_material as ParticleProcessMaterial
+		kpm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+		kpm.emission_sphere_radius = 0.05
+		kpm.direction = Vector3.UP
+		kpm.spread = 180.0
+		kpm.initial_velocity_min = float(kd["speed"]) * 0.4
+		kpm.initial_velocity_max = float(kd["speed"])
+		kpm.gravity = Vector3(0, -6.0, 0)
+		kpm.damping_min = 1.0
+		kpm.damping_max = 2.0
+		sp.name = "Sparks"
+		trail.append(sp)
+	if p.has("haze") and shimmer_ok() and not lite:
+		var hd: Dictionary = p["haze"]
+		var hz := haze(int(hd["amount"]), 0.45, float(hd["size"]), float(hd["strength"]))
+		hz.name = "Haze"
+		trail.append(hz)
+	# the arrow covers ~1 m a frame: what it sheds in the air (the torn flame and the smoke) is split over SUBSTEPS
+	# emitters that `fly` spreads along the stretch it crossed, so the trail is continuous, not beads a metre apart
+	var spread: Array = []
+	for e in trail:
+		var pe := e as GPUParticles3D
+		if str(pe.name) == "Smoke" or str(pe.name) == "Wisps":
+			pe.amount = maxi(1, pe.amount / SUBSTEPS)
+			for k in SUBSTEPS - 1:
+				var c := pe.duplicate() as GPUParticles3D
+				c.set_meta("sub", float(k + 1) / SUBSTEPS)
+				spread.append(c)
+			pe.set_meta("sub", 1.0)
+	trail.append_array(spread)
+	for e in trail:
+		(e as GPUParticles3D).emitting = false    # `fly` starts them once they are on the head
+		fx_root.add_child(e)
+	root.set_meta("trail", trail)
 	if p.has("light") and _lights < LIGHT_CAP:
 		var l: Dictionary = p["light"]
-		var lt := OmniLight3D.new()
-		lt.light_color = l["col"]
-		lt.light_energy = float(l["energy"])
-		lt.omni_range = float(l["range"])
-		lt.omni_attenuation = 1.4
-		lt.shadow_enabled = false
-		lt.position = Vector3(0, 0.15, 0.2)
+		var lt := fire_light(float(l["t"]), float(l["energy"]), float(l["range"]), bool(l["shadow"]) and not lite)
+		lt.position = Vector3(0, 0.12, -0.2)
 		lt.name = "Light"
 		root.add_child(lt)
 		_lights += 1
 		lt.tree_exited.connect(func(): _lights = maxi(0, _lights - 1))
-	if p.get("shimmer", false) and shimmer_ok() and not lite:
-		var sh := MeshInstance3D.new()
-		var q := QuadMesh.new()
-		q.size = Vector2(1.6, 1.2)
-		sh.mesh = q
-		var m := ShaderMaterial.new()
-		m.shader = shader("shimmer")
-		sh.material_override = m
-		sh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		sh.position = Vector3(0, 0.1, 0.6)
-		sh.name = "Shimmer"
-		root.add_child(sh)
 	return root
 
-## The feather wings: `cards` feathers a side, fanned from the shaft just behind the head, folded along it as the
-## arrow leaves and unfurling over the first stretch of flight (`fly`), beating gently.
-static func _wings(root: Node3D, w: Dictionary, mats: Array) -> void:
-	var t := tex(str(w["tex"]))
-	if t == null:
-		return
-	var piv := Node3D.new()
-	piv.name = "Wings"
-	piv.position = Vector3(0, 0.02, 0.12)
-	root.add_child(piv)
-	var cards: int = int(w["cards"])
-	var frames: int = FRAMES.get(str(w["tex"]), 1)
-	for side in [-1.0, 1.0]:
-		for k in cards:
-			var c := MeshInstance3D.new()
-			var q := QuadMesh.new()
-			var L: float = float(w["span"]) * (1.0 - k * 0.18)
-			q.size = Vector2(L * 0.3, L)
-			q.center_offset = Vector3(0, L * 0.5 - 0.06, 0)
-			c.mesh = q
-			var m := ShaderMaterial.new()
-			m.shader = shader("card")
-			m.set_shader_parameter("tex", t)
-			m.set_shader_parameter("frames", float(frames))
-			m.set_shader_parameter("frame", float((k * 3 + int(side > 0.0) * 2) % frames))
-			m.set_shader_parameter("tint", w["tint"])
-			m.set_shader_parameter("energy", float(w["energy"]) * (1.0 - k * 0.15))
-			m.set_shader_parameter("seed", float(k) * 2.1 + side)
-			c.material_override = m
-			c.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			c.set_meta("side", side)
-			c.set_meta("k", k)
-			piv.add_child(c)
-			mats.append(m)
-
-## Every frame of the flight (Archer.update, both games): the wings unfurl and beat, the trail ribbon is rebuilt
-## behind the head, the light flickers, the haze follows.
-static func fly(a: Dictionary, n: Node3D, delta: float, game) -> void:
+## Every frame of the flight (Archer.update, both games): the trail's emitters follow the head (they emit in the
+## world, so what they shed stays in the air behind it), the head heats and the shaft chars, the light flickers.
+static func fly(_a: Dictionary, n: Node3D, delta: float, _game) -> void:
 	var age: float = float(n.get_meta("age", 0.0)) + delta
 	n.set_meta("age", age)
-	var p := preset(str(n.get_meta("kind", "war")))
+	if not n.has_meta("trail"):
+		return
+	var head: Vector3 = n.global_transform * Vector3(0, 0, -0.42)
+	var prev: Vector3 = n.get_meta("prev_head", head)
+	if not n.has_meta("prev_head"):
+		# the tongues torn off are thrown back along the flight
+		for e in n.get_meta("trail"):
+			var pw := e as GPUParticles3D
+			if is_instance_valid(pw) and str(pw.name).begins_with("Wisps"):
+				(pw.process_material as ParticleProcessMaterial).direction = n.global_transform.basis.z
+	n.set_meta("prev_head", head)
+	for e in n.get_meta("trail"):
+		var pe := e as GPUParticles3D
+		if not is_instance_valid(pe):
+			continue
+		pe.global_position = prev.lerp(head, float(pe.get_meta("sub", 1.0)))
+		if not pe.emitting:
+			pe.emitting = true
 	var t: float = Time.get_ticks_msec() / 1000.0
-	if p.has("wings"):
-		var w: Dictionary = p["wings"]
-		var piv := n.get_node_or_null("Wings") as Node3D
-		if piv != null:
-			var open := smoothstep(0.0, 0.22, age)
-			var flap := sin(age * 25.0) * deg_to_rad(float(w["flap"])) * open
-			var cam := n.get_viewport().get_camera_3d() if n.is_inside_tree() else null
-			for c in piv.get_children():
-				var side: float = float(c.get_meta("side"))
-				var k: int = int(c.get_meta("k"))
-				# fanned: the first feather sweeps furthest out and back, the inner ones higher and closer to the shaft
-				var sweep := lerpf(deg_to_rad(12.0), deg_to_rad(68.0 - k * 17.0), open) + flap * (1.0 - k * 0.3)
-				var tilt := deg_to_rad(float(w["tilt"]) + k * 14.0) * open
-				# the tip direction: back along the shaft (+z), out to the side, lifted by the tilt
-				var d := Vector3(side * sin(sweep) * cos(tilt), sin(tilt), cos(sweep) * cos(tilt)).normalized()
-				# the card turns about its own length to face the camera (an axis billboard), so it never goes edge-on
-				var to_cam := Vector3.UP
-				if cam != null:
-					to_cam = piv.global_transform.basis.inverse() * (cam.global_position - (c as Node3D).global_position).normalized()
-				var x := d.cross(to_cam)
-				if x.length() < 0.01:
-					x = Vector3.RIGHT
-				x = x.normalized()
-				(c as Node3D).basis = Basis(x, d, x.cross(d))
-	if p.has("trail"):
-		_trail(a, n, p["trail"], game)
 	var lt := n.get_node_or_null("Light") as OmniLight3D
 	if lt != null:
-		var l: Dictionary = p["light"]
-		lt.light_energy = float(l["energy"]) * (0.86 + 0.1 * sin(t * 37.0) + 0.07 * sin(t * 23.0 + 1.3)) * smoothstep(0.0, 0.1, age)
-	var sh := n.get_node_or_null("Shimmer") as MeshInstance3D
-	if sh != null:
-		var cam := n.get_viewport().get_camera_3d() if n.is_inside_tree() else null
-		if cam != null:
-			sh.look_at(cam.global_position, Vector3.UP)
+		lt.light_energy = float(lt.get_meta("base")) * flicker(t, float(n.get_instance_id() % 97)) * smoothstep(0.0, 0.06, age)
 
-## The ribbon: the head's last positions (a["pts"], newest first) joined into a camera-facing strip, flame-wide
-## just behind the head and tapering to nothing TRAIL len back, the tail lifted a little (hot gas rises).
-static func _trail(a: Dictionary, n: Node3D, tr: Dictionary, game) -> void:
-	var L: float = float(tr["len"])
-	var pts: Array = a.get("pts", [])
-	var head: Vector3 = n.global_position
-	if pts.is_empty() or (pts[0] as Vector3).distance_to(head) > 0.02:
-		pts.push_front(head)
-	a["pts"] = pts
-	# drop what lies further back than the ribbon reaches
-	var acc := 0.0
-	for i in range(1, pts.size()):
-		acc += (pts[i] as Vector3).distance_to(pts[i - 1])
-		if acc > L + 1.0:
-			pts.resize(i + 1)
-			break
-	var mi := a.get("trail") as MeshInstance3D
-	if mi == null or not is_instance_valid(mi):
-		mi = MeshInstance3D.new()
-		mi.mesh = ImmediateMesh.new()
-		var m := ShaderMaterial.new()
-		m.shader = shader("trail")
-		m.set_shader_parameter("energy", float(tr["energy"]))
-		for k in ["head", "mid", "tail", "smoke"]:
-			m.set_shader_parameter("c_" + k, tr[k])
-		mi.material_override = m
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mi.extra_cull_margin = 16384.0
-		game.world.fx_root.add_child(mi)
-		a["trail"] = mi
-	var cam := n.get_viewport().get_camera_3d() if n.is_inside_tree() else null
-	var cpos: Vector3 = cam.global_position if cam != null else head + Vector3(0, 10, 10)
-	var im := mi.mesh as ImmediateMesh
-	im.clear_surfaces()
-	if pts.size() < 2:
-		return
-	var W: float = float(tr["width"])
-	var age: float = float(n.get_meta("age", 0.0))
-	var reach: float = minf(L, age * 20.0 + 0.4)      # it grows out behind the arrow as it leaves the bow
-	im.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
-	var s := 0.0
-	var tt: float = Time.get_ticks_msec() / 1000.0
-	var done := false
-	for i in range(pts.size() - 1):
-		var p0: Vector3 = pts[i]
-		var p1: Vector3 = pts[i + 1]
-		var seg := p0.distance_to(p1)
-		if seg < 0.001:
-			continue
-		var dir := (p1 - p0) / seg
-		var steps := maxi(1, int(ceil(seg / TRAIL_STEP)))
-		for k in (steps + 1 if i == pts.size() - 2 else steps):
-			var f := float(k) / steps
-			var sk := s + seg * f
-			var u := clampf(sk / reach, 0.0, 1.0)
-			var pos := p0.lerp(p1, f)
-			# the tail drifts up and flutters
-			pos.y += 0.22 * u * u + sin(tt * 9.0 + sk * 2.3) * 0.03 * u
-			var side := dir.cross((cpos - pos).normalized()).normalized()
-			var w := W * (0.35 + 0.65 * smoothstep(0.0, 0.25, u)) * (1.0 - u * u) * 0.5
-			im.surface_set_uv(Vector2(u, 0.0))
-			im.surface_add_vertex(pos - side * w)
-			im.surface_set_uv(Vector2(u, 1.0))
-			im.surface_add_vertex(pos + side * w)
-			if sk >= reach:
-				done = true
-				break
-		if done:
-			break
-		s += seg
-	im.surface_end()
-
-## The flight is over: the trail is left to fade where it lies, the arrow's light and particles die with it.
+## The flight is over: the trail stops shedding and is left to burn out and drift away where it lies.
 static func end_flight(a: Dictionary) -> void:
-	var mi := a.get("trail") as MeshInstance3D
-	if mi != null and is_instance_valid(mi):
-		var m := mi.material_override as ShaderMaterial
-		var tw := mi.create_tween()
-		tw.tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 1.0, 0.0, 0.4)
-		tw.tween_callback(mi.queue_free)
-	a.erase("trail")
+	var n = a.get("node")
+	if n == null or not is_instance_valid(n) or not (n as Node3D).has_meta("trail"):
+		return
+	for e in (n as Node3D).get_meta("trail"):
+		var pe := e as GPUParticles3D
+		if is_instance_valid(pe):
+			pe.emitting = false
+			Fx._free_later(pe, pe.lifetime + 0.3)
+	(n as Node3D).remove_meta("trail")
 
 # ---------------------------------------------------------------- the release
-## The bow flaring as the arrow leaves it: a ring of embers round the bow hand, a brief heat ring, a flash.
+## The arrow leaving the bow: its flames whip round with the shot, a few sparks fly off the string, a breath of
+## smoke, a pop of light on his hands.
 static func release(h: Hero, kind: String, from: Vector3, dir: Vector3) -> void:
 	var p := preset(kind)
 	if not p.has("release"):
 		return
 	var r: Dictionary = p["release"]
 	var root: Node3D = h.game.world.fx_root
-	var col: Color = r["col"]
 	var lite := cheap(h.game)
-	Fx.flash(root, from, col, float(r["light"]), 0.22, 5.0)
-	# embers out of the ring round the bow hand, swept back along the shot
-	var pe := _textured_particles("feathers", int(r["embers"]) / (2 if lite else 1), 0.6, Vector2(0.035, 0.13), true)
-	pe.one_shot = true
-	pe.explosiveness = 0.9
-	var pm := pe.process_material as ParticleProcessMaterial
-	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
-	pm.emission_ring_axis = dir
-	pm.emission_ring_radius = 0.22
-	pm.emission_ring_inner_radius = 0.12
-	pm.emission_ring_height = 0.05
-	pm.direction = -dir
-	pm.spread = 60.0
-	pm.initial_velocity_min = 1.0
-	pm.initial_velocity_max = 2.6
-	pm.radial_velocity_min = 1.5
-	pm.radial_velocity_max = 3.0
-	pm.gravity = Vector3(0, -2.0, 0)
-	pm.angular_velocity_min = -240.0
-	pm.angular_velocity_max = 240.0
-	pm.color_ramp = _ramp([GOLD, ORANGE, CRIMSON, Color(VIOLET.r, VIOLET.g, VIOLET.b, 0.0)], true)
-	pm.scale_curve = _curve_tex([[0.0, 1.0], [1.0, 0.3]])
-	root.add_child(pe)
-	pe.global_position = from
-	pe.emitting = true
-	Fx._free_later(pe, 1.3)
-	# the heat ring: a torus of flame standing on the shot's line, growing and gone in a blink
-	var ring := MeshInstance3D.new()
-	ring.mesh = Geo.torus(0.8, 1.0, 32, 6)
-	var m := ShaderMaterial.new()
-	m.shader = shader("flame")
-	m.set_shader_parameter("energy", 3.0)
-	m.set_shader_parameter("speed", 9.0)
-	m.set_shader_parameter("scale", 2.0)
-	m.set_shader_parameter("c_core", Color(1, 0.95, 0.8))
-	m.set_shader_parameter("c_mid", ORANGE)
-	m.set_shader_parameter("c_edge", CRIMSON)
-	m.set_shader_parameter("c_tip", VIOLET)
-	m.set_shader_parameter("solid", 1.0)
-	ring.material_override = m
-	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(ring)
-	ring.global_position = from
-	ring.look_at(from + dir, Vector3.UP)
-	ring.rotate_object_local(Vector3.RIGHT, PI * 0.5)
-	ring.scale = Vector3.ONE * 0.1
-	var tw := ring.create_tween().set_parallel(true)
-	tw.tween_property(ring, "scale", Vector3(0.55, 0.35, 0.55), 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-	tw.tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 1.0, 0.0, 0.2).set_ease(Tween.EASE_IN)
-	Fx._free_later(ring, 0.24)
-	Fx.burst(root, from, Color(1.0, 0.85, 0.5), 10 if lite else 18, 5.0, 0.05, 0.35, true, -6.0, 40.0, -dir)
+	_pop_light(root, from, 2600.0, float(r["light"]), 0.25, 4.0, false)
+	var sp := streaks(int(r["sparks"]) / (2 if lite else 1), Vector2(0.15, 0.4), 0.013, 6.0, Vector2(2300, 1100), 1.6)
+	var pm := sp.process_material as ParticleProcessMaterial
+	pm.direction = dir + Vector3(0, 0.3, 0)
+	pm.spread = 35.0
+	pm.initial_velocity_min = 2.0
+	pm.initial_velocity_max = 5.0
+	pm.gravity = Vector3(0, -7.0, 0)
+	_one_shot(root, sp, from, 0.6)
+	var sm := flip_particles("smoke", 2 if lite else 3, 1.2, Vector2(0.3, 0.55))
+	var spm := sm.process_material as ParticleProcessMaterial
+	spm.direction = -dir + Vector3(0, 0.6, 0)
+	spm.spread = 30.0
+	spm.initial_velocity_min = 0.3
+	spm.initial_velocity_max = 0.8
+	spm.gravity = Vector3(0, 0.4, 0)
+	spm.angle_max = 360.0
+	spm.color_ramp = _ramp([Color(1, 1, 1, 0), Color(1, 1, 1, 0.35), Color(1, 1, 1, 0)])
+	spm.scale_curve = _curve_tex([[0.0, 0.5], [1.0, 1.3]])
+	(sm.material_override as ShaderMaterial).set_shader_parameter("tint", Color(0.16, 0.15, 0.14))
+	_one_shot(root, sm, from, 1.4)
 	_sounds(h, p, "release")
-	SkillFx.shake(h, 0.12)
+	SkillFx.shake(h, 0.08)
 
 # ---------------------------------------------------------------- the draw
-## The fire gathering on the nocked arrow while he draws (ArcherFx.update, every frame of the shot, on the
-## puppet too): embers spiralling into the head, a glow growing along the shaft, the light in his hand rising.
-## `k` is 0..1 along the draw; the nodes live on the bow's nocked arrow and are cleared at the release.
+## The nocked arrow burning in his hands while he draws (ArcherFx.update, every frame of the shot, on the puppet too):
+## the pitch on the head catches and grows with the draw (`k` 0..1), the flames standing up from it, the light on
+## his hands and face rising. Cleared at the release.
 static func draw_charge(h: Hero, kind: String, k: float) -> void:
 	var w: Node3D = h.weapon_node
 	if w == null or not is_instance_valid(w) or not w.has_meta("nocked"):
 		return
-	var arrow: Node3D = w.get_meta("nocked")
-	var ch := arrow.get_node_or_null("Charge") as Node3D
 	var p := preset(kind)
 	if not p.has("draw"):
 		return
 	var d: Dictionary = p["draw"]
+	var arrow: Node3D = w.get_meta("nocked")
+	var ch := arrow.get_node_or_null("Charge") as Node3D
 	if ch == null:
 		ch = Node3D.new()
 		ch.name = "Charge"
 		arrow.add_child(ch)
-		var fl := MeshInstance3D.new()
-		fl.mesh = _tube(0.75, 0.05)
-		var m := ShaderMaterial.new()
-		m.shader = shader("flame")
-		m.set_shader_parameter("energy", float(d["energy"]))
-		m.set_shader_parameter("speed", 5.0)
-		m.set_shader_parameter("scale", 3.0)
-		m.set_shader_parameter("c_core", Color(1, 0.95, 0.8))
-		m.set_shader_parameter("c_mid", d["col"])
-		m.set_shader_parameter("c_edge", CRIMSON)
-		m.set_shader_parameter("c_tip", VIOLET)
-		fl.material_override = m
-		fl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		fl.name = "Sheath"
+		# the nocked arrow's head (the bow's own arrow mesh: its head toward -z)
+		ch.position = Vector3(0, 0, -0.36)
+		var fl := flip_particles("flame", int(d["amount"]), 0.45, Vector2(0.16, 0.3), 0, float(d["energy"]), Vector2(1000, 2300))
+		fl.local_coords = true      # it rides the arrow as he raises the bow (the cards still stand up the world)
+		var pm := fl.process_material as ParticleProcessMaterial
+		pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+		pm.emission_sphere_radius = 0.03
+		pm.anim_speed_min = 0.4
+		pm.anim_speed_max = 0.6
+		pm.color_ramp = _ramp([Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 0)])
+		fl.name = "Flames"
 		ch.add_child(fl)
-		# embers drawn into the arrowhead
-		var pe := Fx.aura(ch, d["col"], 24 if not cheap(h.game) else 10, 0.0, 0.05, 0.5, 0.0, 0.45, 180.0, Vector3(0, 0, -0.38))
-		pe.local_coords = true
-		var pm := pe.process_material as ParticleProcessMaterial
-		pm.radial_velocity_min = -2.4
-		pm.radial_velocity_max = -1.2
-		pm.angular_velocity_min = 200.0
-		pm.angular_velocity_max = 400.0
-		var lt := OmniLight3D.new()
-		lt.light_color = d["col"]
-		lt.omni_range = 3.0
-		lt.shadow_enabled = false
-		lt.position = Vector3(0, 0, -0.3)
+		var em := streaks(6 if cheap(h.game) else 12, Vector2(0.5, 1.0), 0.02, 1.5, Vector2(1800, 900))
+		var epm := em.process_material as ParticleProcessMaterial
+		epm.direction = Vector3.UP
+		epm.spread = 40.0
+		epm.initial_velocity_min = 0.3
+		epm.initial_velocity_max = 0.9
+		epm.gravity = Vector3(0, 0.6, 0)
+		epm.turbulence_enabled = true
+		epm.turbulence_noise_strength = 2.0
+		epm.turbulence_influence_min = 0.2
+		epm.turbulence_influence_max = 0.4
+		em.name = "Embers"
+		ch.add_child(em)
+		var lt := fire_light(2500.0, 0.7, 2.6, false)
+		lt.position = Vector3(0, 0.15, -0.1)
 		lt.name = "Light"
 		ch.add_child(lt)
-		var tip := _glow_quad(Color(1.0, 0.9, 0.7), 0.16, 3.0)
-		tip.position = Vector3(0, 0, -0.4)
-		tip.name = "Tip"
-		ch.add_child(tip)
 	var kk := clampf(k, 0.0, 1.0)
-	var sheath := ch.get_node("Sheath") as MeshInstance3D
-	(sheath.material_override as ShaderMaterial).set_shader_parameter("alpha_mul", kk)
-	sheath.scale = Vector3(0.3 + 0.9 * kk, 0.3 + 0.9 * kk, 1.0)
-	(ch.get_node("Light") as OmniLight3D).light_energy = 1.6 * kk * (0.9 + 0.1 * sin(Time.get_ticks_msec() * 0.03))
-	(ch.get_node("Tip") as MeshInstance3D).scale = Vector3.ONE * (0.3 + kk)
+	var fl2 := ch.get_node("Flames") as GPUParticles3D
+	fl2.amount_ratio = 0.35 + 0.65 * kk
+	fl2.scale = Vector3.ONE    # (the particles scale themselves; the node stays unscaled)
+	(fl2.material_override as ShaderMaterial).set_shader_parameter("alpha_mul", 0.4 + 0.6 * kk)
+	(ch.get_node("Light") as OmniLight3D).light_energy = 0.7 * (0.35 + 0.65 * kk) * flicker(Time.get_ticks_msec() / 1000.0, 3.0)
 	ch.visible = arrow.visible
 
 static func end_draw(h: Hero) -> void:
@@ -505,292 +585,515 @@ static func end_draw(h: Hero) -> void:
 		ch.queue_free()
 
 # ---------------------------------------------------------------- a foe pierced
-## The arrow goes through: a bright flash where it enters, a cone of fire and feather embers bursting out of
-## the foe's far side along the arrow's line, sparks, a pop of light, a scorch on the ground under him.
+## The arrow goes through: sparks and a splash of burning pitch where it enters, a gout of fire out of his back
+## along the arrow's line rolling up into smoke, embers, a pop of light on him and round him.
 static func pierce(h: Hero, kind: String, e: Node3D, dir: Vector3) -> void:
 	var p := preset(kind)
 	var root: Node3D = h.game.world.fx_root
-	var at: Vector3 = e.global_position + Vector3(0, 0.95 * float(e.get("height")), 0)
+	var at: Vector3 = e.global_position + Vector3(0, 0.9 * float(e.get("height")), 0)
 	if not p.has("pierce"):
 		Fx.sparks(root, at, Color(0.9, 0.85, 0.7))
 		_sounds(h, p, "pierce", at)
 		return
 	var pc: Dictionary = p["pierce"]
-	var col: Color = pc["col"]
 	var lite := cheap(h.game)
+	var div := 2 if lite else 1
 	var r: float = float(e.get("radius"))
-	var entry := at - dir * (r + 0.1)
-	var exit := at + dir * (r + 0.15)
-	Fx.flash(root, at, col, float(pc["light"]), 0.3, 6.0)
-	# the entry flash: a star of light that is gone in a few frames
-	_flash_sprite(root, entry, col, 1.1, 0.16)
-	# the cone out of his back: a flame cone blown open, feather embers and sparks thrown along the line
-	var cone := MeshInstance3D.new()
-	cone.mesh = _tube(1.4, 0.4, true)
-	var m := ShaderMaterial.new()
-	m.shader = shader("flame")
-	m.set_shader_parameter("energy", 3.5)
-	m.set_shader_parameter("speed", 10.0)
-	m.set_shader_parameter("scale", 2.5)
-	m.set_shader_parameter("c_core", Color(1, 0.95, 0.8))
-	m.set_shader_parameter("c_mid", ORANGE)
-	m.set_shader_parameter("c_edge", CRIMSON)
-	m.set_shader_parameter("c_tip", VIOLET)
-	cone.material_override = m
-	cone.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(cone)
-	cone.global_position = exit
-	cone.look_at(exit - dir, Vector3.UP)      # the tube runs toward +z: its mouth away from the foe
-	cone.scale = Vector3(0.2, 0.2, 0.3)
-	var tw := cone.create_tween().set_parallel(true)
-	tw.tween_property(cone, "scale", Vector3(1.0, 1.0, 1.0), 0.22).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-	tw.tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 1.0, 0.0, 0.3).set_ease(Tween.EASE_IN)
-	Fx._free_later(cone, 0.35)
-	var pe := _textured_particles("feathers", int(pc["embers"]) / (2 if lite else 1), 0.8, Vector2(0.05, 0.19), true)
-	pe.one_shot = true
-	pe.explosiveness = 0.95
-	var pm := pe.process_material as ParticleProcessMaterial
+	var entry := at - dir * (r + 0.05)
+	var exit := at + dir * (r + 0.1)
+	_pop_light(root, at, 2700.0, float(pc["light"]), 0.4, 6.0, false)
+	# the gout out of his back: the sim's fireball, small, thrown along the line
+	_fireball(root, exit + dir * 0.25, float(pc["fireball"]), 0.9, dir * 2.2, not lite, false)
+	# sparks out of the entry, back along the line, and out of the exit, forward
+	var sp := streaks(int(pc["sparks"]) / div, Vector2(0.2, 0.55), 0.011, 7.0, Vector2(2400, 1100), 1.8)
+	var pm := sp.process_material as ParticleProcessMaterial
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-	pm.emission_sphere_radius = 0.15
-	pm.direction = dir
-	pm.spread = 22.0
-	pm.initial_velocity_min = 4.0
+	pm.emission_sphere_radius = 0.08
+	pm.direction = dir + Vector3(0, 0.25, 0)
+	pm.spread = 28.0
+	pm.initial_velocity_min = 3.0
 	pm.initial_velocity_max = 9.0
-	pm.gravity = Vector3(0, -3.0, 0)
-	pm.damping_min = 3.0
-	pm.damping_max = 6.0
-	pm.angular_velocity_min = -300.0
-	pm.angular_velocity_max = 300.0
-	pm.color_ramp = _ramp([Color(1, 0.95, 0.8), ORANGE, CRIMSON, Color(VIOLET.r, VIOLET.g, VIOLET.b, 0.0)], true)
-	pm.scale_curve = _curve_tex([[0.0, 0.6], [0.2, 1.0], [1.0, 0.3]])
-	root.add_child(pe)
-	pe.global_position = exit
-	pe.emitting = true
-	Fx._free_later(pe, 1.4)
-	Fx.burst(root, exit, Color(1.0, 0.8, 0.45), int(pc["sparks"]) / (2 if lite else 1), 9.0, 0.05, 0.5, true, -9.0, 25.0, dir)
-	# a little blood-dark smoke behind the burst
-	if not lite:
-		var sm := _textured_particles("smoke", 5, 1.1, Vector2(0.5, 0.5), false)
-		sm.one_shot = true
-		sm.explosiveness = 0.9
-		var spm := sm.process_material as ParticleProcessMaterial
-		spm.direction = dir + Vector3(0, 0.5, 0)
-		spm.spread = 30.0
-		spm.initial_velocity_min = 1.0
-		spm.initial_velocity_max = 2.5
-		spm.gravity = Vector3(0, 0.6, 0)
-		spm.damping_min = 2.0
-		spm.damping_max = 3.0
-		spm.color_ramp = _ramp([Color(0.2, 0.12, 0.2, 0.0), Color(0.15, 0.09, 0.16, 0.55), Color(0.12, 0.08, 0.14, 0.0)], false)
-		spm.scale_curve = _curve_tex([[0.0, 0.4], [1.0, 1.4]])
-		root.add_child(sm)
-		sm.global_position = exit
-		sm.emitting = true
-		Fx._free_later(sm, 1.5)
-	if pc.get("scorch", false):
-		scorch(h.game, e.global_position, dir, 1.6, 0.5)
+	pm.gravity = Vector3(0, -9.0, 0)
+	pm.damping_min = 0.5
+	pm.damping_max = 1.5
+	_one_shot(root, sp, exit, 0.8)
+	var sp2 := streaks(int(pc["sparks"]) / (2 * div), Vector2(0.1, 0.3), 0.012, 5.0, Vector2(2200, 1100), 1.5)
+	var pm2 := sp2.process_material as ParticleProcessMaterial
+	pm2.direction = -dir + Vector3(0, 0.4, 0)
+	pm2.spread = 50.0
+	pm2.initial_velocity_min = 1.5
+	pm2.initial_velocity_max = 4.0
+	pm2.gravity = Vector3(0, -9.0, 0)
+	_one_shot(root, sp2, entry, 0.5)
+	var em := streaks(int(pc["embers"]) / div, Vector2(0.6, 1.4), 0.018, 1.6, Vector2(1900, 850))
+	var epm := em.process_material as ParticleProcessMaterial
+	epm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	epm.emission_sphere_radius = 0.2
+	epm.direction = dir + Vector3(0, 0.6, 0)
+	epm.spread = 50.0
+	epm.initial_velocity_min = 1.0
+	epm.initial_velocity_max = 3.5
+	epm.gravity = Vector3(0, 0.3, 0)
+	epm.damping_min = 1.5
+	epm.damping_max = 3.0
+	epm.turbulence_enabled = true
+	epm.turbulence_noise_strength = 2.5
+	epm.turbulence_influence_min = 0.2
+	epm.turbulence_influence_max = 0.5
+	_one_shot(root, em, exit, 1.6)
+	_smoke_puffs(root, exit + Vector3(0, 0.2, 0), int(pc["smoke"]) / div, Color(0.3, 0.28, 0.27), 0.35, 2.0, Vector2(0.5, 1.0), dir * 0.6)
 	_sounds(h, p, "pierce", at)
 	SkillFx.hitstop(h, 0.03)
 
-## The body flames on a foe set alight by this kind of arrow (one system per foe, gone when the burn ends).
+## A foe set alight: the sim's flames climbing his body, embers going up, smoke off the top, a little light that
+## breathes with the fire (one per foe, at most BURN_LIGHT_CAP lit); when the burn runs out the flames sink, the
+## smoke goes on a moment longer.
 static func burn(game, e: Node3D, kind: String, dur: float) -> void:
 	var p := preset(kind)
 	if not p.has("burn") or not is_instance_valid(e):
 		return
 	var b: Dictionary = p["burn"]
-	var old := e.get_node_or_null("phoenix_burn") as Node3D
+	var old := e.get_node_or_null("fire_burn") as Node3D
 	if old != null:
 		old.set_meta("until", maxf(float(old.get_meta("until", 0.0)), Time.get_ticks_msec() / 1000.0 + dur))
 		return
 	var hgt: float = float(e.get("height"))
 	var rad: float = float(e.get("radius"))
 	var root := Node3D.new()
-	root.name = "phoenix_burn"
-	root.position = Vector3(0, hgt * 0.5, 0)
+	root.name = "fire_burn"
+	# (Enemy.height is about half his standing height: the body runs to ~1.9 x it)
+	root.position = Vector3(0, hgt * 0.8, 0)
 	e.add_child(root)
 	var lite := cheap(game)
-	var fl := _textured_particles(str(b["tex"]), int(b["amount"]) / (2 if lite else 1), 0.6, Vector2(0.2, 0.55), true)
-	fl.local_coords = false
+	var div := 2 if lite else 1
+	var fl := flip_particles("flame", int(b["amount"]) / div, 0.7, Vector2(0.75, 1.25), 0, 4.5, Vector2(950, 2250))
+	(fl.material_override as ShaderMaterial).set_shader_parameter("soft", 0.06)   # flames hug the body
 	var pm := fl.process_material as ParticleProcessMaterial
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	pm.emission_box_extents = Vector3(rad * 0.7, hgt * 0.45, rad * 0.7)
-	pm.direction = Vector3.UP
-	pm.spread = 12.0
-	pm.initial_velocity_min = 0.6
-	pm.initial_velocity_max = 1.4
-	pm.gravity = Vector3(0, 1.8, 0)
-	pm.damping_min = 0.5
-	pm.damping_max = 1.0
-	var bc: Color = b["col"]
-	pm.color_ramp = _ramp([Color(bc.r, bc.g, bc.b, 0.0), Color(1.0, 0.85, 0.55), bc, Color(CRIMSON.r, CRIMSON.g, CRIMSON.b, 0.0)], true)
-	pm.scale_curve = _curve_tex([[0.0, 0.5], [0.3, 1.0], [1.0, 0.2]])
+	pm.emission_box_extents = Vector3(rad * 0.5, hgt * 0.6, rad * 0.5)
+	pm.anim_speed_min = 0.3
+	pm.anim_speed_max = 0.5
+	pm.gravity = Vector3(0, 0.6, 0)
+	pm.color_ramp = _ramp([Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 0.7), Color(1, 1, 1, 0)])
+	pm.scale_curve = _curve_tex([[0.0, 0.6], [0.3, 1.0], [1.0, 0.7]])
 	root.add_child(fl)
-	var em := Fx.aura(root, Color(1.0, 0.7, 0.3), 6 if lite else 12, 1.2, 0.05, 1.4, 0.8, rad * 0.6, 30.0)
-	em.local_coords = false
-	var lt := OmniLight3D.new()
-	lt.light_color = bc
-	lt.light_energy = 0.9
-	lt.omni_range = 3.5
-	lt.shadow_enabled = false
-	root.add_child(lt)
+	var em := streaks(int(b["embers"]) / div, Vector2(0.7, 1.6), 0.017, 1.5, Vector2(1900, 850))
+	var epm := em.process_material as ParticleProcessMaterial
+	epm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	epm.emission_box_extents = Vector3(rad * 0.5, hgt * 0.6, rad * 0.5)
+	epm.direction = Vector3.UP
+	epm.spread = 30.0
+	epm.initial_velocity_min = 0.6
+	epm.initial_velocity_max = 1.8
+	epm.gravity = Vector3(0, 0.8, 0)
+	epm.turbulence_enabled = true
+	epm.turbulence_noise_strength = 2.5
+	epm.turbulence_influence_min = 0.15
+	epm.turbulence_influence_max = 0.4
+	root.add_child(em)
+	var sm := flip_particles("smoke", int(b["smoke"]) / div, 2.0, Vector2(0.5, 1.1))
+	var spm := sm.process_material as ParticleProcessMaterial
+	spm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	spm.emission_box_extents = Vector3(rad * 0.4, 0.1, rad * 0.4)
+	spm.direction = Vector3.UP
+	spm.spread = 15.0
+	spm.initial_velocity_min = 0.4
+	spm.initial_velocity_max = 0.9
+	spm.gravity = Vector3(0, 0.3, 0)
+	spm.angle_max = 360.0
+	spm.angular_velocity_min = -20.0
+	spm.angular_velocity_max = 20.0
+	spm.color_ramp = _ramp([Color(1, 1, 1, 0), Color(1, 1, 1, 0.45), Color(1, 1, 1, 0.25), Color(1, 1, 1, 0)])
+	spm.scale_curve = _curve_tex([[0.0, 0.4], [1.0, 1.4]])
+	(sm.material_override as ShaderMaterial).set_shader_parameter("tint", Color(0.2, 0.19, 0.18))
+	sm.position = Vector3(0, hgt * 0.8, 0)
+	root.add_child(sm)
+	var hz: GPUParticles3D = null
+	if shimmer_ok() and not lite:
+		hz = haze(3, 0.6, 0.9, 0.016)
+		(hz.process_material as ParticleProcessMaterial).emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+		(hz.process_material as ParticleProcessMaterial).emission_box_extents = Vector3(rad * 0.4, hgt * 0.5, rad * 0.4)
+		hz.position = Vector3(0, hgt * 0.6, 0)
+		root.add_child(hz)
+	var lt: OmniLight3D = null
+	if _burn_lights < BURN_LIGHT_CAP:
+		lt = fire_light(2500.0, float(b["light"]), 4.0, false)
+		lt.position = Vector3(0, hgt * 0.2, 0)
+		root.add_child(lt)
+		_burn_lights += 1
+		lt.tree_exited.connect(func(): _burn_lights = maxi(0, _burn_lights - 1))
 	root.set_meta("until", Time.get_ticks_msec() / 1000.0 + dur)
-	root.set_meta("light", lt)
-	root.set_process(false)
-	# counts itself down (the enemy's burn_t is gameplay; this only has to end near the same time)
+	# counts itself down (the enemy's burn_t is gameplay; this only has to end near the same time) and breathes the light
 	var tm := Timer.new()
-	tm.wait_time = 0.25
+	tm.wait_time = 0.05
 	tm.autostart = true
 	root.add_child(tm)
+	var seed_v := float(e.get_instance_id() % 89)
 	tm.timeout.connect(func():
 		if not is_instance_valid(root):
 			return
-		var left: float = float(root.get_meta("until")) - Time.get_ticks_msec() / 1000.0
+		var now := Time.get_ticks_msec() / 1000.0
+		var left: float = float(root.get_meta("until")) - now
+		if lt != null and is_instance_valid(lt):
+			lt.light_energy = float(b["light"]) * flicker(now, seed_v) * clampf(left / 0.6, 0.0, 1.0)
 		if left <= 0.0:
 			fl.emitting = false
 			em.emitting = false
-			lt.light_energy = 0.0
+			if hz != null:
+				hz.emitting = false
 			tm.stop()
-			Fx._free_later(root, 1.5)
+			# the smoke goes on a moment, then all of it is gone
+			var tw := root.create_tween()
+			tw.tween_interval(1.0)
+			tw.tween_callback(func(): sm.emitting = false)
+			Fx._free_later(root, 3.2)
 		else:
-			fl.amount_ratio = clampf(left / 0.8, 0.25, 1.0))
+			fl.amount_ratio = clampf(left / 0.8, 0.3, 1.0))
 
 # ---------------------------------------------------------------- the end of the flight
-## Where the flight ends (its range run out, or a wall): the phoenix burst: a flash and a star of light, the fire
-## swelling open with feather embers thrown out of it, a shock ring over the ground, stone chunks and bouncing
-## sparks, brief flames on the ground, a puff of smoke rising, a scorch, the light dying away.
+## Where the flight ends (its range run out, or a wall): the pitch bursts into a fireball (the sim: fire swelling
+## open and rolling up into smoke), its light flashing over the ground and the foes and dying down to the fire left
+## burning; sparks and embers flung out and falling, smoke rising, and the ground answering in its own way.
 static func finish(h: Hero, kind: String, pos: Vector3, dir: Vector3, wall: bool) -> void:
 	var p := preset(kind)
 	if not p.has("end"):
 		return
 	var en: Dictionary = p["end"]
 	var root: Node3D = h.game.world.fx_root
-	var g: Vector3 = Vector3(pos.x, h.game.world.height_at(pos.x, pos.z), pos.z)
-	var col: Color = en["col"]
+	var gy: float = h.game.world.height_at(pos.x, pos.z)
+	var g := Vector3(pos.x, gy, pos.z)
 	var lite := cheap(h.game)
-	var at := pos - dir * 0.3
-	Fx.flash(root, at, col, float(en["light"]), 0.55, 9.0)
-	_flash_sprite(root, at, Color(1, 0.9, 0.7), 2.4, 0.3)
-	# the fire swelling open: a sphere of flame growing and thinning
-	var ball := MeshInstance3D.new()
-	var sm := SphereMesh.new()
-	sm.radius = 0.5
-	sm.height = 1.0
-	sm.radial_segments = 24
-	sm.rings = 12
-	ball.mesh = sm
-	var m := ShaderMaterial.new()
-	m.shader = shader("flame")
-	m.set_shader_parameter("energy", 3.0)
-	m.set_shader_parameter("speed", 6.0)
-	m.set_shader_parameter("scale", 2.0)
-	m.set_shader_parameter("c_core", Color(1, 0.95, 0.8))
-	m.set_shader_parameter("c_mid", ORANGE)
-	m.set_shader_parameter("c_edge", CRIMSON)
-	m.set_shader_parameter("c_tip", VIOLET)
-	m.set_shader_parameter("solid", 1.0)
-	ball.material_override = m
-	ball.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(ball)
-	ball.global_position = at
-	ball.scale = Vector3.ONE * 0.3
-	var tw := ball.create_tween().set_parallel(true)
-	tw.tween_property(ball, "scale", Vector3(2.6, 3.0, 2.6), 0.45).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-	tw.tween_property(ball, "global_position", at + Vector3(0, 0.9, 0), 0.45).set_ease(Tween.EASE_OUT)
-	tw.tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 1.0, 0.0, 0.5).set_ease(Tween.EASE_IN)
-	Fx._free_later(ball, 0.55)
-	# feather embers flung out of the burst in every direction, fluttering down
-	var pe := _textured_particles("feathers", int(en["embers"]) / (2 if lite else 1), 1.3, Vector2(0.07, 0.26), true)
-	pe.one_shot = true
-	pe.explosiveness = 0.95
-	var pm := pe.process_material as ParticleProcessMaterial
+	var div := 2 if lite else 1
+	var surf := surface(h.game, g)
+	var sf: Dictionary = (p.get("surfaces", {}) as Dictionary).get(surf, {})
+	# the arrow drives into the ground short of where it would have flown on: the fire bursts there, low
+	var at := g + Vector3(0, 0.25, 0) - dir * 0.2
+	# the light: a flash with shadows, dying down to the glow of what is left burning
+	var keep: float = float(sf.get("flame_life", 1.0))
+	var lt := fire_light(float(en["t"]), float(en["light"]), 11.0, not lite)
+	root.add_child(lt)
+	lt.global_position = at + Vector3(0, 0.9, 0)
+	var seed_v := randf() * 50.0
+	var start := Time.get_ticks_msec() / 1000.0
+	var base: float = float(en["light"])
+	var tl := lt.create_tween()
+	tl.tween_method(func(v: float):
+		var now := Time.get_ticks_msec() / 1000.0
+		var age := now - start
+		var flash := exp(-age * 5.0)
+		var glow := 0.22 * clampf(1.0 - (age - 0.3) / maxf(keep + 0.6, 0.3), 0.0, 1.0)
+		lt.light_energy = base * (flash + glow) * flicker(now, seed_v)
+		lt.light_color = blackbody(lerpf(float(en["t"]) + 300.0, float(en["t"]) - 350.0, clampf(age / 1.2, 0.0, 1.0))), 0.0, 1.0, keep + 1.2)
+	tl.tween_callback(lt.queue_free)
+	_fireball(root, at, float(en["fireball"]), 1.6, Vector3(0, 0.8, 0), not lite, true)
+	# sparks: flung out and up, falling, bouncing or skittering on the ground by what it is
+	var spark_n: int = int(float(en["sparks"]) * float(sf.get("spark_mul", 1.0))) / div
+	var sp := streaks(spark_n, Vector2(0.4, 1.3), 0.011, 6.0, Vector2(2400, 1000), 1.8)
+	var pm := sp.process_material as ParticleProcessMaterial
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-	pm.emission_sphere_radius = 0.3
-	pm.direction = Vector3.UP
-	pm.spread = 180.0
+	pm.emission_sphere_radius = 0.2
+	pm.direction = Vector3(dir.x * 0.5, 1.0, dir.z * 0.5)
+	pm.spread = 75.0
 	pm.initial_velocity_min = 2.5
-	pm.initial_velocity_max = 7.0
-	pm.gravity = Vector3(0, -2.5, 0)
-	pm.damping_min = 2.0
-	pm.damping_max = 4.0
-	pm.angular_velocity_min = -300.0
-	pm.angular_velocity_max = 300.0
-	pm.color_ramp = _ramp([Color(1, 0.95, 0.8), ORANGE, CRIMSON, Color(VIOLET.r, VIOLET.g, VIOLET.b, 0.0)], true)
-	pm.scale_curve = _curve_tex([[0.0, 0.7], [0.15, 1.0], [1.0, 0.3]])
-	root.add_child(pe)
-	pe.global_position = at
-	pe.emitting = true
-	Fx._free_later(pe, 1.9)
-	# sparks that fall and bounce on the ground
-	var sp := Fx.burst(root, at, Color(1.0, 0.82, 0.45), int(en["sparks"]) / (2 if lite else 1), 9.0, 0.06, 0.9, true, -12.0, 100.0, Vector3.UP)
-	var spm := sp.process_material as ParticleProcessMaterial
-	spm.collision_mode = ParticleProcessMaterial.COLLISION_HIDE_ON_CONTACT
-	spm.damping_min = 1.0
-	spm.damping_max = 3.0
-	if float(en.get("ring", 0.0)) > 0.0:
-		Fx.ring(root, g, float(en["ring"]), Color(1.0, 0.55, 0.2), 0.45, 0.15)
-	if en.get("chunks", false) and not lite:
+	pm.initial_velocity_max = 8.5
+	pm.gravity = Vector3(0, -9.8, 0)
+	pm.damping_min = 0.2
+	pm.damping_max = 1.0
+	_collide(pm, float(sf.get("bounce", 0.3)), float(sf.get("friction", 0.5)), 0.01)
+	var sp_node := _one_shot(root, sp, at, 1.6)
+	_ground_collider(sp_node, g)
+	# embers: drifting up on the heat and floating down; on grass and wood they settle and glow on the ground
+	var em := streaks(int(en["embers"]) / div, Vector2(1.0, 2.6 if sf.get("settle", false) else 1.8), 0.018, 1.4, Vector2(1900, 800))
+	var epm := em.process_material as ParticleProcessMaterial
+	epm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	epm.emission_sphere_radius = 0.4
+	epm.direction = Vector3.UP
+	epm.spread = 70.0
+	epm.initial_velocity_min = 1.0
+	epm.initial_velocity_max = 4.0
+	epm.gravity = Vector3(0, -1.6 if sf.get("settle", false) else 0.2, 0)
+	epm.damping_min = 1.0
+	epm.damping_max = 2.5
+	epm.turbulence_enabled = true
+	epm.turbulence_noise_strength = 2.5
+	epm.turbulence_noise_scale = 1.6
+	epm.turbulence_influence_min = 0.15
+	epm.turbulence_influence_max = 0.45
+	if sf.get("settle", false):
+		_collide(epm, 0.0, 1.0, 0.012)
+	var em_node := _one_shot(root, em, at, 3.0)
+	if sf.get("settle", false):
+		_ground_collider(em_node, g)
+	# smoke rolling up and drifting off, its colour from what burns
+	_smoke_puffs(root, at + Vector3(0, 0.4, 0), int(sf.get("smoke", en["smoke"])) / div, sf.get("smoke_col", Color(0.13, 0.12, 0.11)), 0.55, 3.6, Vector2(0.9, 2.0), Vector3(0, 0.5, 0))
+	# dust thrown up from dry ground, low and spreading
+	if sf.has("dust"):
+		var dust := flip_particles("smoke", 6 / div, 1.6, Vector2(0.8, 1.6))
+		var dpm := dust.process_material as ParticleProcessMaterial
+		dpm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
+		dpm.emission_ring_axis = Vector3.UP
+		dpm.emission_ring_radius = 0.6
+		dpm.emission_ring_inner_radius = 0.2
+		dpm.emission_ring_height = 0.1
+		dpm.direction = Vector3(0, 0.25, 0)
+		dpm.spread = 180.0
+		dpm.flatness = 0.8
+		dpm.radial_velocity_min = 1.5
+		dpm.radial_velocity_max = 3.5
+		dpm.gravity = Vector3(0, -0.3, 0)
+		dpm.damping_min = 2.0
+		dpm.damping_max = 3.0
+		dpm.angle_max = 360.0
+		dpm.anim_offset_max = 0.2
+		dpm.color_ramp = _ramp([Color(1, 1, 1, 0), Color(1, 1, 1, 0.55), Color(1, 1, 1, 0)])
+		dpm.scale_curve = _curve_tex([[0.0, 0.5], [1.0, 1.4]])
+		(dust.material_override as ShaderMaterial).set_shader_parameter("tint", sf["dust"])
+		_one_shot(root, dust, g + Vector3(0, 0.15, 0), 2.0)
+	if sf.get("chips", false) and not lite:
 		Fx._slam_chunks(root, g)
-	if en.get("flames", false):
-		var f := Props.fire(root, g + Vector3(0, 0.05, 0), 1.3, ORANGE, false, false, not lite)
-		var ft := f.create_tween()
-		ft.tween_interval(0.9)
-		ft.tween_callback(func():
-			for c in f.get_children():
-				if c is GPUParticles3D:
-					(c as GPUParticles3D).emitting = false)
-		Fx._free_later(f, 3.5)
-	if int(en.get("smoke", 0)) > 0 and not lite:
-		var smk := _textured_particles("smoke", int(en["smoke"]), 2.2, Vector2(1.1, 1.1), false)
-		smk.one_shot = true
-		smk.explosiveness = 0.8
-		var kpm := smk.process_material as ParticleProcessMaterial
-		kpm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-		kpm.emission_sphere_radius = 0.4
-		kpm.direction = Vector3.UP
-		kpm.spread = 40.0
-		kpm.initial_velocity_min = 0.8
-		kpm.initial_velocity_max = 2.2
-		kpm.gravity = Vector3(0, 0.7, 0)
-		kpm.damping_min = 1.0
-		kpm.damping_max = 2.0
-		kpm.angular_velocity_min = -30.0
-		kpm.angular_velocity_max = 30.0
-		kpm.color_ramp = _ramp([Color(0.3, 0.18, 0.2, 0.0), Color(0.16, 0.1, 0.17, 0.6), Color(0.12, 0.09, 0.14, 0.35), Color(0.1, 0.08, 0.12, 0.0)], false)
-		kpm.scale_curve = _curve_tex([[0.0, 0.3], [0.5, 1.0], [1.0, 1.6]])
-		root.add_child(smk)
-		smk.global_position = at
-		smk.emitting = true
-		Fx._free_later(smk, 2.8)
-	if en.get("scorch", false):
-		scorch(h.game, g, dir, 3.2, 1.2)
-	GrassField.impulse(g, 2.5, 0.7, 0.4)
+	# flames left on the ground (grass smoulders in a ring, wood catches, dirt burns out at once, stone not at all)
+	var nfl: int = int(sf.get("flames", 0)) / div
+	if nfl > 0:
+		var gf := flip_particles("flame", nfl, float(sf.get("flame_life", 1.0)), Vector2(0.45, 1.0), 0, 3.5, Vector2(950, 2200))
+		var gpm := gf.process_material as ParticleProcessMaterial
+		gpm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING if sf.get("ring", false) else ParticleProcessMaterial.EMISSION_SHAPE_BOX
+		gpm.emission_ring_axis = Vector3.UP
+		gpm.emission_ring_radius = 1.1
+		gpm.emission_ring_inner_radius = 0.3
+		gpm.emission_ring_height = 0.0
+		gpm.emission_box_extents = Vector3(0.45, 0.0, 0.45)
+		gpm.anim_speed_min = 0.25 * float(sf.get("flame_life", 1.0))
+		gpm.anim_speed_max = 0.4 * float(sf.get("flame_life", 1.0))
+		gpm.lifetime_randomness = 0.5
+		gpm.color_ramp = _ramp([Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 0.6), Color(1, 1, 1, 0)])
+		gpm.scale_curve = _curve_tex([[0.0, 0.4], [0.2, 1.0], [1.0, 0.25]])
+		gf.explosiveness = 0.85
+		var gfn := _one_shot(root, gf, Vector3(g.x, g.y + 0.02, g.z), float(sf.get("flame_life", 1.0)) + 0.4)
+		gfn.global_position = Vector3(g.x, g.y - 0.05, g.z)
+	# wood catches: a small fire keeps going where the arrow struck, with its own light and smoke
+	if float(sf.get("keep", 0.0)) > 0.0:
+		_keep_burning(h.game, root, g + dir * 0.2, float(sf["keep"]), lite)
+	# the burn mark: soot, a blistered normal, ember cracks cooling
+	_scorch(h.game, root, g, dir, float(en["scorch"]) * float(sf.get("scorch", 1.0)), float(sf.get("glow", 1.0)))
+	# the heat bending the air over it
+	if shimmer_ok() and not lite:
+		var hz := haze(5, 1.1, 1.6, 0.024)
+		var hpm := hz.process_material as ParticleProcessMaterial
+		hpm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+		hpm.emission_sphere_radius = 0.5
+		hpm.gravity = Vector3(0, 1.4, 0)
+		hz.explosiveness = 0.6
+		_one_shot(root, hz, at + Vector3(0, 0.5, 0), 1.4)
+	GrassField.impulse(g, 2.8 if surf == "grass" else 2.2, 0.9 if surf == "grass" else 0.6, 0.5)
 	_sounds(h, p, "end", at)
-	if wall:
-		SkillFx.shake(h, 0.1)
+	SkillFx.shake(h, 0.14 if wall else 0.1)
 
-## A burn streak on the ground along dir (the painted scorch, phoenix_scorch.png): its embers glow and go out,
-## the soot fades over a few seconds.
-static func scorch(game, g: Vector3, dir: Vector3, length: float, width: float) -> void:
-	var t := tex("scorch")
-	if t == null:
+## The sim's fireball: the fire layer (additive, its own temperature) over the smoke layer (lit by the scene),
+## played once over `life` seconds, `size` metres across, drifting by `drift` m/s; with `second`, a smaller
+## mirrored one a beat later so the shape is never the same twice.
+static func _fireball(root: Node3D, at: Vector3, size: float, life: float, drift: Vector3, smoke: bool, second: bool) -> void:
+	if tex("burst_fire") == null:
+		return
+	smoke = smoke and tex("burst_smoke") != null
+	for k in (2 if second else 1):
+		var s := size * (1.0 if k == 0 else 0.62)
+		var off := Vector3(randf_range(-0.25, 0.25), 0.1, randf_range(-0.25, 0.25)) * float(k) * size * 0.3
+		var delay := 0.07 * k
+		var flip := randf() < 0.5
+		if smoke:
+			var sq := _flip_card("burst_smoke", s, flip)
+			var sm := sq.material_override as ShaderMaterial
+			sm.set_shader_parameter("tint", Color(0.28, 0.27, 0.25))
+			sm.set_shader_parameter("density", 0.95)
+			sm.set_shader_parameter("glow", 1.0)
+			root.add_child(sq)
+			sq.global_position = at + off
+			_play_card(sq, life * 1.5, delay, drift * 0.6)
+		var fq := _flip_card("burst_fire", s, flip)
+		var fm := fq.material_override as ShaderMaterial
+		fm.set_shader_parameter("energy", 0.9)
+		fm.render_priority = 1      # the fire over its own smoke
+		fm.set_shader_parameter("t_lo", 950.0)
+		fm.set_shader_parameter("t_hi", 2200.0)
+		root.add_child(fq)
+		fq.global_position = at + off
+		_play_card(fq, life * 1.5, delay, drift * 0.6)
+
+## One camera-facing card of a sim sequence (a MeshInstance3D, its frame set by `_play_card`).
+static func _flip_card(key: String, size: float, flip: bool) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2.ONE
+	mi.mesh = q
+	mi.scale = Vector3.ONE * size
+	var fire := key == "flame" or key == "burst_fire"
+	var m := ShaderMaterial.new()
+	m.shader = shader("fire" if fire else "smoke")
+	m.set_shader_parameter("atlas", tex(key))
+	m.set_shader_parameter("pivot", float(PIVOT.get(key, 0.0)))
+	m.set_shader_parameter("loop_anim", 0.0)
+	m.set_shader_parameter("flip", 1.0 if flip else 0.0)
+	m.set_shader_parameter("frame", 0.0)
+	if fire:
+		m.set_shader_parameter("axis_mode", 0.0)
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.extra_cull_margin = 4.0
+	return mi
+
+static func _play_card(mi: MeshInstance3D, life: float, delay: float, drift: Vector3) -> void:
+	var m := mi.material_override as ShaderMaterial
+	mi.visible = delay <= 0.0
+	var tw := mi.create_tween().set_parallel(true)
+	if delay > 0.0:
+		tw.tween_callback(func(): mi.visible = true).set_delay(delay)
+	# the sim's first frames are the gout still round as it leaves the emitter: start once it has burst open
+	tw.tween_method(func(v: float): m.set_shader_parameter("frame", v), BURST_START, 63.0, life).set_delay(delay)
+	tw.tween_property(mi, "global_position", mi.global_position + drift * life, life).set_delay(delay).set_ease(Tween.EASE_OUT)
+	tw.tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 1.0, 0.0, life * 0.25).set_delay(delay + life * 0.75)
+	Fx._free_later(mi, delay + life + 0.05)
+
+## A few puffs of smoke (the sim's), lit by the scene, rising and spreading.
+static func _smoke_puffs(root: Node3D, at: Vector3, n: int, col: Color, alpha: float, life: float, size: Vector2, push: Vector3) -> void:
+	if n <= 0:
+		return
+	var sm := flip_particles("smoke", n, life, size)
+	var pm := sm.process_material as ParticleProcessMaterial
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	pm.emission_sphere_radius = 0.35
+	pm.direction = (Vector3.UP + push).normalized()
+	pm.spread = 35.0
+	pm.initial_velocity_min = 0.5
+	pm.initial_velocity_max = 1.4
+	pm.gravity = Vector3(0, 0.35, 0)
+	pm.damping_min = 0.4
+	pm.damping_max = 0.9
+	pm.angle_max = 360.0
+	pm.angular_velocity_min = -18.0
+	pm.angular_velocity_max = 18.0
+	pm.lifetime_randomness = 0.3
+	pm.anim_offset_max = 0.1
+	pm.turbulence_enabled = true
+	pm.turbulence_noise_strength = 0.8
+	pm.turbulence_noise_scale = 2.5
+	pm.turbulence_influence_min = 0.03
+	pm.turbulence_influence_max = 0.1
+	pm.color_ramp = _ramp([Color(1, 1, 1, 0), Color(1, 1, 1, alpha), Color(1, 1, 1, alpha * 0.55), Color(1, 1, 1, 0)])
+	pm.scale_curve = _curve_tex([[0.0, 0.45], [0.4, 0.85], [1.0, 1.3]])
+	sm.explosiveness = 0.75
+	(sm.material_override as ShaderMaterial).set_shader_parameter("tint", col)
+	(sm.material_override as ShaderMaterial).set_shader_parameter("glow", 0.7)
+	_one_shot(root, sm, at, life + 0.3)
+
+## Wood catches: a little fire burning on where it struck for `secs`, its light breathing, smoke going up.
+static func _keep_burning(_game, root: Node3D, at: Vector3, secs: float, lite: bool) -> void:
+	var n := Node3D.new()
+	root.add_child(n)
+	n.global_position = at
+	var fl := flip_particles("flame", 4 if lite else 7, 0.9, Vector2(0.5, 0.95), 0, 3.5, Vector2(950, 2200))
+	var pm := fl.process_material as ParticleProcessMaterial
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = Vector3(0.18, 0.02, 0.12)
+	pm.anim_speed_min = 0.3
+	pm.anim_speed_max = 0.45
+	pm.color_ramp = _ramp([Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 0.7), Color(1, 1, 1, 0)])
+	pm.scale_curve = _curve_tex([[0.0, 0.5], [0.25, 1.0], [1.0, 0.6]])
+	n.add_child(fl)
+	var sm := flip_particles("smoke", 3 if lite else 6, 2.4, Vector2(0.45, 1.0))
+	var spm := sm.process_material as ParticleProcessMaterial
+	spm.direction = Vector3.UP
+	spm.spread = 12.0
+	spm.initial_velocity_min = 0.5
+	spm.initial_velocity_max = 0.9
+	spm.gravity = Vector3(0.15, 0.25, 0)
+	spm.angle_max = 360.0
+	spm.color_ramp = _ramp([Color(1, 1, 1, 0), Color(1, 1, 1, 0.35), Color(1, 1, 1, 0.2), Color(1, 1, 1, 0)])
+	spm.scale_curve = _curve_tex([[0.0, 0.4], [1.0, 1.5]])
+	(sm.material_override as ShaderMaterial).set_shader_parameter("tint", Color(0.17, 0.16, 0.15))
+	sm.position = Vector3(0, 0.45, 0)
+	n.add_child(sm)
+	var em := streaks(6 if lite else 10, Vector2(0.8, 1.8), 0.022, 1.4, Vector2(1800, 850))
+	var epm := em.process_material as ParticleProcessMaterial
+	epm.direction = Vector3.UP
+	epm.spread = 25.0
+	epm.initial_velocity_min = 0.6
+	epm.initial_velocity_max = 1.6
+	epm.gravity = Vector3(0, 0.5, 0)
+	epm.turbulence_enabled = true
+	epm.turbulence_noise_strength = 2.0
+	epm.turbulence_influence_min = 0.15
+	epm.turbulence_influence_max = 0.35
+	em.position = Vector3(0, 0.2, 0)
+	n.add_child(em)
+	var lt := fire_light(2500.0, 1.4, 4.5, false)
+	lt.position = Vector3(0, 0.45, 0)
+	n.add_child(lt)
+	var start := Time.get_ticks_msec() / 1000.0
+	var tw := n.create_tween()
+	tw.tween_method(func(v: float):
+		var now := Time.get_ticks_msec() / 1000.0
+		var left := secs - (now - start)
+		var k := clampf(left / 1.5, 0.0, 1.0)
+		lt.light_energy = 1.1 * flicker(now, 7.0) * k
+		fl.amount_ratio = maxf(0.2, k), 0.0, 1.0, secs)
+	tw.tween_callback(func():
+		fl.emitting = false
+		em.emitting = false
+		sm.emitting = false)
+	Fx._free_later(n, secs + 2.8)
+
+## The burn mark: a Decal (Forward+ / Mobile) projected on whatever is there (ground, grass, planks): soot, a
+## blistered char normal, and ember cracks (`glow` seconds to cool from orange to dark). Compatibility: a lit quad.
+static func _scorch(_game, root: Node3D, g: Vector3, dir: Vector3, size: float, glow: float) -> void:
+	var alb := tex("scorch")
+	if alb == null:
+		return
+	var yaw := atan2(-dir.z, dir.x) + randf_range(-0.4, 0.4)
+	if rd_ok():
+		var d := Decal.new()
+		d.size = Vector3(size * 1.25, 0.6, size)
+		d.texture_albedo = alb
+		d.texture_normal = tex("scorch_n")
+		d.texture_emission = tex("scorch_e") if glow > 0.0 else null
+		d.emission_energy = 0.0
+		d.albedo_mix = 1.0
+		d.normal_fade = 0.3
+		d.upper_fade = 0.4
+		d.lower_fade = 0.4
+		d.cull_mask = 1
+		root.add_child(d)
+		d.global_position = g + Vector3(0, 0.1, 0)
+		d.rotation.y = yaw
+		var tw := d.create_tween().set_parallel(true)
+		if glow > 0.0:
+			# the cracks cool: bright at once, fading over `glow` seconds
+			tw.tween_method(func(v: float): d.emission_energy = 5.0 * v * v, 1.0, 0.0, glow).set_ease(Tween.EASE_OUT)
+		tw.tween_property(d, "albedo_mix", 0.0, 4.0).set_delay(maxf(glow, 1.5) + 4.0)
+		Fx._free_later(d, maxf(glow, 1.5) + 8.2)
 		return
 	var mi := MeshInstance3D.new()
 	var q := QuadMesh.new()
-	q.size = Vector2(length, width)
+	q.size = Vector2(size * 1.25, size)
 	q.orientation = PlaneMesh.FACE_Y
 	mi.mesh = q
 	var m := ShaderMaterial.new()
 	m.shader = shader("scorch")
-	m.set_shader_parameter("tex", t)
+	m.set_shader_parameter("tex", alb)
+	m.set_shader_parameter("ntex", tex("scorch_n"))
+	m.set_shader_parameter("etex", tex("scorch_e"))
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	game.world.fx_root.add_child(mi)
-	mi.global_position = Vector3(g.x, game.world.height_at(g.x, g.z) + 0.05, g.z)
-	mi.rotation.y = atan2(-dir.z, dir.x)
-	var tw := mi.create_tween().set_parallel(true)
-	tw.tween_method(func(v: float): m.set_shader_parameter("glow", v), 1.6, 0.0, 2.2).set_ease(Tween.EASE_IN)
-	tw.tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 1.0, 0.0, 6.0).set_delay(1.5)
-	Fx._free_later(mi, 7.6)
+	root.add_child(mi)
+	mi.global_position = Vector3(g.x, g.y + 0.04, g.z)
+	mi.rotation.y = yaw
+	var tw2 := mi.create_tween().set_parallel(true)
+	tw2.tween_method(func(v: float): m.set_shader_parameter("glow", v), 1.0 if glow > 0.0 else 0.0, 0.0, maxf(glow, 0.1))
+	tw2.tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 1.0, 0.0, 4.0).set_delay(maxf(glow, 1.5) + 4.0)
+	Fx._free_later(mi, maxf(glow, 1.5) + 8.2)
+
+## kept for callers of the old API: a burn mark along dir
+static func scorch(game, g: Vector3, dir: Vector3, length: float, _width: float) -> void:
+	_scorch(game, game.world.fx_root, g, dir, length, 1.5)
 
 # ---------------------------------------------------------------- sounds
 ## The preset's layers for a moment: flat on the caster, positional from the puppet or from a place.
@@ -806,135 +1109,47 @@ static func sounds(h: Hero, kind: String, when: String) -> void:
 	_sounds(h, preset(kind), when)
 
 # ---------------------------------------------------------------- pieces
-## A tapered tube along +z (the arrow's tail side), UV.y 0 at its narrow head, 1 at its open end; `cone` opens
-## wide at the far end instead of tapering back in.
-static func _tube(length: float, r: float, cone := false) -> Mesh:
-	var key := "%.2f|%.2f|%d" % [length, r, int(cone)]
-	if _tube_cache.has(key):
-		return _tube_cache[key]
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var rings := 10
-	var segs := 12
-	var prof := []
-	for i in rings + 1:
-		var t := float(i) / rings
-		var rr: float
-		if cone:
-			rr = r * (0.12 + 0.88 * pow(t, 0.8))
-		else:
-			rr = r * (0.15 + 0.85 * sin(clampf(t * 1.25, 0.0, 1.0) * PI) * (1.0 - 0.3 * t) + 0.1 * (1.0 - t))
-			if t > 0.8:
-				rr *= (1.0 - t) / 0.2 * 0.9 + 0.1
-		prof.append([Vector3(0, 0, -0.1 + length * t), rr, t])
-	for i in rings:
-		for j in segs:
-			var a0 := TAU * j / segs
-			var a1 := TAU * (j + 1) / segs
-			var v := []
-			for q in [[i, a0], [i + 1, a0], [i + 1, a1], [i, a1]]:
-				var pr: Array = prof[q[0]]
-				var ang: float = q[1]
-				var n := Vector3(cos(ang), sin(ang), 0)
-				v.append([(pr[0] as Vector3) + n * float(pr[1]), n, Vector2(float(j) / segs if q[1] == a0 else float(j + 1) / segs, float(pr[2]))])
-			for idx in [0, 1, 2, 0, 2, 3]:
-				st.set_normal(v[idx][1])
-				st.set_uv(v[idx][2])
-				st.add_vertex(v[idx][0])
-	var mesh := st.commit()
-	_tube_cache[key] = mesh
-	return mesh
-
-static func _glow_quad(col: Color, size: float, energy: float) -> MeshInstance3D:
-	var mi := MeshInstance3D.new()
-	var q := QuadMesh.new()
-	q.size = Vector2(size, size)
-	mi.mesh = q
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	m.albedo_texture = Mats.soft_dot()
-	m.albedo_color = Color(col.r * energy, col.g * energy, col.b * energy, 1.0)
-	m.disable_receive_shadows = true
-	m.no_depth_test = false
-	mi.material_override = m
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	return mi
-
-## A starburst sprite (the Holy Slam burst, tinted) standing up to the camera, flaring and gone.
-static func _flash_sprite(root: Node3D, pos: Vector3, col: Color, size: float, dur: float) -> void:
-	var t := tex("burst")
-	if t == null:
-		return
-	var mi := MeshInstance3D.new()
-	var q := QuadMesh.new()
-	q.size = Vector2(1, 1)
-	mi.mesh = q
-	var m := ShaderMaterial.new()
-	m.shader = shader("sprite")
-	m.set_shader_parameter("tex", t)
-	m.set_shader_parameter("tint", Color(col.r, col.g, col.b, 1.0))
-	m.set_shader_parameter("energy", 1.8)
-	mi.material_override = m
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(mi)
-	mi.global_position = pos
-	mi.scale = Vector3.ONE * size * 0.3
-	var tw := mi.create_tween().set_parallel(true)
-	tw.tween_property(mi, "scale", Vector3.ONE * size, dur * 0.4).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
-	tw.tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 1.0, 0.0, dur).set_ease(Tween.EASE_IN)
-	Fx._free_later(mi, dur + 0.05)
-
-## Particles drawn with one of the painted strips (a random frame each), additive or alpha-blended.
-static func _textured_particles(key: String, amount: int, life: float, size: Vector2, additive: bool) -> GPUParticles3D:
-	var p := GPUParticles3D.new()
-	p.amount = maxi(1, amount)
-	p.lifetime = life
-	p.local_coords = false
-	var pm := ParticleProcessMaterial.new()
-	var frames: int = FRAMES.get(key, 1)
-	pm.anim_offset_min = 0.0
-	pm.anim_offset_max = 1.0
-	pm.anim_speed_min = 0.0
-	pm.anim_speed_max = 0.0
-	pm.scale_min = 0.7
-	pm.scale_max = 1.2
-	p.process_material = pm
-	var q := QuadMesh.new()
-	q.size = size
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD if additive else BaseMaterial3D.BLEND_MODE_MIX
-	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-	m.billboard_keep_scale = true
-	m.particles_anim_h_frames = frames
-	m.particles_anim_v_frames = 1
-	m.particles_anim_loop = false
-	m.vertex_color_use_as_albedo = true
-	m.albedo_color = Color(2.2, 2.2, 2.2) if additive else Color.WHITE
-	var t := tex(key)
-	if t != null:
-		m.albedo_texture = t
-	else:
-		m.albedo_texture = Mats.soft_dot()
-	m.disable_receive_shadows = true
-	q.material = m
-	p.draw_pass_1 = q
-	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+## A one-shot burst of these particles at pos, freed after `secs`.
+static func _one_shot(root: Node3D, p: GPUParticles3D, pos: Vector3, secs: float) -> GPUParticles3D:
+	p.one_shot = true
+	if p.explosiveness <= 0.0:
+		p.explosiveness = 0.92
+	root.add_child(p)
+	p.global_position = pos
+	p.emitting = true
+	Fx._free_later(p, secs + p.lifetime)
 	return p
 
-static func _ramp(cols: Array, fade_out: bool) -> GradientTexture1D:
+static func _pop_light(root: Node3D, pos: Vector3, t: float, energy: float, dur: float, rng: float, shadow: bool) -> void:
+	var lt := fire_light(t, energy, rng, shadow)
+	root.add_child(lt)
+	lt.global_position = pos + Vector3(0, 0.3, 0)
+	var tw := lt.create_tween()
+	tw.tween_property(lt, "light_energy", 0.0, dur).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
+	tw.tween_callback(lt.queue_free)
+
+## Particles that land: bounce and friction, a collision box under the ground (`_ground_collider`).
+static func _collide(pm: ParticleProcessMaterial, bounce: float, friction: float, _radius: float) -> void:
+	pm.collision_mode = ParticleProcessMaterial.COLLISION_RIGID
+	pm.collision_bounce = bounce
+	pm.collision_friction = friction
+	pm.collision_use_scale = false
+	pm.particle_flag_damping_as_friction = false
+
+## The ground under a burst as a particle collider (its top at the ground's height), freed with the particles.
+static func _ground_collider(p: GPUParticles3D, g: Vector3) -> void:
+	p.collision_base_size = 0.01
+	var c := GPUParticlesCollisionBox3D.new()
+	c.size = Vector3(14, 2, 14)
+	p.add_child(c)
+	c.global_position = Vector3(g.x, g.y - 1.0 + 0.02, g.z)
+
+static func _ramp(cols: Array) -> GradientTexture1D:
 	var g := Gradient.new()
 	g.set_color(0, cols[0])
 	g.set_color(1, cols[cols.size() - 1])
 	for i in range(1, cols.size() - 1):
 		g.add_point(float(i) / (cols.size() - 1), cols[i])
-	if fade_out:
-		var last: Color = cols[cols.size() - 1]
-		g.set_color(g.get_point_count() - 1, Color(last.r, last.g, last.b, 0.0))
 	var gt := GradientTexture1D.new()
 	gt.gradient = g
 	return gt
@@ -948,155 +1163,294 @@ static func _curve_tex(pts: Array) -> CurveTexture:
 	return ct
 
 # ---------------------------------------------------------------- shaders
-## A sheath of fire round a shaft (a tube, UV.y from the head to the tail): two octaves of noise scrolling
-## toward the tail, a heat value from them shaded core -> mid -> edge -> tip (violet), soft at the sides.
-const FLAME_SHADER := """
-shader_type spatial;
-render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
-%s
-uniform float energy = 3.0;
-uniform float speed = 6.0;
-uniform float scale = 3.0;
-uniform float seed = 0.0;
-uniform float alpha_mul = 1.0;
-uniform float solid = 0.0;
-uniform vec4 c_core : source_color = vec4(1.0, 0.95, 0.8, 1.0);
-uniform vec4 c_mid : source_color = vec4(1.0, 0.5, 0.1, 1.0);
-uniform vec4 c_edge : source_color = vec4(0.85, 0.12, 0.04, 1.0);
-uniform vec4 c_tip : source_color = vec4(0.55, 0.2, 0.9, 1.0);
-void vertex(){
-	float w = sin(UV.y * 11.0 - TIME * speed * 1.6 + seed + UV.x * 6.283) * 0.08 * UV.y;
-	VERTEX += NORMAL * w * length(VERTEX.xy);
-}
-void fragment(){
-	vec2 p = vec2(UV.x * 3.0 + seed, UV.y * scale - TIME * speed * 0.35 + seed);
-	float n = fbm3(p);
-	float n2 = fbm3(p * 2.3 + vec2(3.1, -TIME * speed * 0.25));
-	float along = UV.y;
-	float body = 1.0 - smoothstep(0.55, 1.0, along);
-	float heat = clamp((n * 0.75 + n2 * 0.45) * 1.5 - 0.25 - along * 0.55, 0.0, 1.0) * body;
-	float rim = clamp(abs(dot(NORMAL, VIEW)), 0.0, 1.0);
-	heat *= mix(0.35 + 0.65 * pow(rim, 0.7), 1.0, solid);
-	vec3 col = mix(c_tip.rgb, c_edge.rgb, smoothstep(0.0, 0.28, heat));
-	col = mix(col, c_mid.rgb, smoothstep(0.25, 0.62, heat));
-	col = mix(col, c_core.rgb, smoothstep(0.62, 0.95, heat));
-	float a = clamp(heat * 1.4, 0.0, 1.0) * alpha_mul;
-	ALBEDO = col * energy * a;
-	ALPHA = a;
+## Kelvin -> linear colour (red 1): the curve fitted to Planck's law for 1000-6600 K.
+const BLACKBODY := """
+vec3 blackbody(float k){
+	float t = k / 100.0;
+	float g = clamp(0.39008158 * log(t) - 0.63184144, 0.0, 1.0);
+	float b = k <= 1900.0 ? 0.0 : clamp(0.54320679 * log(t - 10.0) - 1.19625409, 0.0, 1.0);
+	return pow(vec3(1.0, g, b), vec3(2.2));
 }
 """
 
-## A painted feather / flame card from a strip of frames, lit HDR with a flicker, its root faded.
-const CARD_SHADER := """
+## Soft intersections: fade where the card meets the scene (the depth buffer, Forward+ / Mobile).
+const SOFT_FN := """
+float soft_k(vec2 suv, vec3 vtx, mat4 ip, float len){
+	float d = texture(depth_tex, suv).r;
+	vec4 v = ip * vec4(suv * 2.0 - 1.0, d, 1.0);
+	float scene = -v.z / v.w;
+	return clamp((scene + vtx.z) / max(len, 0.001), 0.0, 1.0);
+}
+"""
+
+## The sim's fire, one flipbook frame blended into the next. R = flame, G = flame x temperature: the light is the
+## flame's (linearised), its colour a blackbody at the sim's own temperature (t_lo..t_hi Kelvin), brighter with the
+## fourth-ish power of it so the thick hot core goes white-yellow through the tonemapper and the thin edges deep red.
+## The card stands up the world (axis_mode 0, leaning by `lean`) or lies along the emitter's +z (1: the arrow's
+## flames blown back); seen down its axis it turns to the screen so it never goes edge-on. Additive, soft where it
+## meets the ground or a body.
+const FIRE_SHADER := """
 shader_type spatial;
-render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
-uniform sampler2D tex : source_color, filter_linear_mipmap;
-uniform float frames = 8.0;
+render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
+uniform sampler2D atlas : filter_linear_mipmap, repeat_disable;
+uniform float grid = 8.0;
+uniform float loop_anim = 1.0;
 uniform float frame = 0.0;
-uniform float energy = 2.0;
-uniform float seed = 0.0;
+uniform float pivot = 0.43;
+uniform float energy = 6.0;
+uniform float t_lo = 1050.0;
+uniform float t_hi = 2500.0;
+uniform float axis_mode = 0.0;
+uniform vec3 lean = vec3(0.0);
+uniform float flip = 0.0;
 uniform float alpha_mul = 1.0;
-uniform vec4 tint : source_color = vec4(1.0);
+uniform float soft = 0.25;
+%s
+%s
+%s
+varying float v_frame;
+varying vec4 v_col;
+varying float v_flip;
 void vertex(){
-	// the barbs ripple along the feather
-	VERTEX.x += sin(TIME * 11.0 + seed + UV.y * 7.0) * 0.025 * (1.0 - UV.y);
+	float s = length(MODEL_MATRIX[0].xyz);
+	vec3 c = MODEL_MATRIX[3].xyz;
+	vec3 up = axis_mode > 1.5 ? normalize(MODEL_MATRIX[1].xyz) : (axis_mode > 0.5 ? normalize(MODEL_MATRIX[2].xyz) : normalize(vec3(0.0, 1.0, 0.0) + lean));
+	vec3 to_cam = normalize(INV_VIEW_MATRIX[3].xyz - c);
+	vec3 side = cross(up, to_cam);
+	float sl = length(side);
+	float k = smoothstep(0.1, 0.4, sl);
+	vec3 side_n = normalize(mix(INV_VIEW_MATRIX[0].xyz, sl > 0.0001 ? side / sl : INV_VIEW_MATRIX[0].xyz, k));
+	vec3 up_n = normalize(mix(INV_VIEW_MATRIX[1].xyz, up, k));
+	vec3 n = normalize(cross(side_n, up_n));
+	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(vec4(side_n * s, 0.0), vec4(up_n * s, 0.0), vec4(n * s, 0.0), vec4(c, 1.0));
+	VERTEX.y += pivot;
+	v_frame = INSTANCE_CUSTOM.z * grid * grid + frame;
+	v_col = COLOR;
+	float h = fract(sin(float(INSTANCE_ID) * 12.9898 + c.x * 3.1) * 43758.5453);
+	v_flip = flip > 0.5 ? 1.0 : step(0.5, h);
+}
+vec2 cell(float i, vec2 uv){
+	return (vec2(mod(i, grid), floor(i / grid)) + uv) / grid;
 }
 void fragment(){
-	vec2 uv = vec2((UV.x + frame) / frames, UV.y);
-	vec4 t = texture(tex, uv);
-	float flick = 0.82 + 0.18 * sin(TIME * 21.0 + seed + UV.y * 5.0) * sin(TIME * 13.0 + seed * 1.7);
-	float a = t.a * alpha_mul * smoothstep(1.0, 0.8, UV.y);
-	ALBEDO = t.rgb * tint.rgb * energy * flick * a;
-	ALPHA = a;
+	vec2 uv = vec2(mix(UV.x, 1.0 - UV.x, v_flip), UV.y);
+	float total = grid * grid;
+	float f0 = floor(v_frame);
+	float fr = v_frame - f0;
+	float a0 = loop_anim > 0.5 ? mod(f0, total) : clamp(f0, 0.0, total - 1.0);
+	float a1 = loop_anim > 0.5 ? mod(f0 + 1.0, total) : clamp(f0 + 1.0, 0.0, total - 1.0);
+	vec2 v = mix(texture(atlas, cell(a0, uv)).rg, texture(atlas, cell(a1, uv)).rg, fr);
+	// thin wisps fade out instead of glowing as a sheet; the hot mean temperature (G/R) drops toward the edges
+	float r = smoothstep(0.03, 1.0, v.r);
+	float lin = pow(r, 2.4);
+	float tm = clamp(v.g / max(v.r, 0.004), 0.0, 1.0);
+	float kel = mix(t_lo, t_hi, clamp(tm * 1.05, 0.0, 1.0) * smoothstep(0.05, 0.95, r));
+	float lum = lin * energy * pow(kel / 1500.0, 2.5);
+	float a = v_col.a * alpha_mul * soft_k(SCREEN_UV, VERTEX, INV_PROJECTION_MATRIX, soft);
+	ALBEDO = blackbody(kel) * lum * v_col.rgb;
+	ALPHA = clamp(a, 0.0, 1.0);
 }
 """
 
-## The ribbon behind the arrow (UV.x 0 at the head, 1 at the tail; UV.y across): fire at the head thinning into
-## smoke at the tail, its edges eaten by noise so it never reads as a flat band.
-const TRAIL_SHADER := """
+## The sim's smoke relit in the game: the sheet holds how the smoke looked lit from the right (R), above (G) and the
+## left (B), and its opacity (A). light() turns each real light's direction (in the card's frame) into a mix of
+## them, so the sun, the sky and the fire's own OmniLights light it, with their shadows; light from behind scatters
+## through it. Alpha blended, soft where it meets things.
+const SMOKE_SHADER := """
 shader_type spatial;
-render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
-%s
-uniform float energy = 2.5;
+render_mode blend_mix, depth_draw_never, cull_disabled, specular_disabled;
+uniform sampler2D atlas : filter_linear_mipmap, repeat_disable;
+uniform float grid = 8.0;
+uniform float loop_anim = 0.0;
+uniform float frame = 0.0;
+uniform float pivot = 0.39;
+uniform vec4 tint : source_color = vec4(0.14, 0.13, 0.12, 1.0);
+uniform float density = 1.0;
 uniform float alpha_mul = 1.0;
-uniform vec4 c_head : source_color = vec4(1.0, 0.9, 0.6, 1.0);
-uniform vec4 c_mid : source_color = vec4(1.0, 0.42, 0.06, 1.0);
-uniform vec4 c_tail : source_color = vec4(0.5, 0.12, 0.6, 1.0);
-uniform vec4 c_smoke : source_color = vec4(0.1, 0.06, 0.12, 1.0);
-varying vec3 wpos;
-void vertex(){ wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+uniform float lm_gain = 3.0;
+uniform float wrap = 0.45;
+uniform float flip = 0.0;
+uniform float soft = 0.5;
+// the fire under young smoke lights it from inside and below (blackbody), fading as the puff ages
+uniform vec4 glow_col : source_color = vec4(1.0, 0.36, 0.06, 1.0);
+uniform float glow = 0.0;
+%s
+%s
+varying float v_frame;
+varying vec4 v_col;
+varying float v_spin;
+varying float v_age;
+varying vec3 v_lm;
+varying float v_flip;
+void vertex(){
+	float s = length(MODEL_MATRIX[0].xyz);
+	vec3 c = MODEL_MATRIX[3].xyz;
+	float sp = INSTANCE_CUSTOM.x;
+	vec3 r = INV_VIEW_MATRIX[0].xyz;
+	vec3 u = INV_VIEW_MATRIX[1].xyz;
+	vec3 r2 = r * cos(sp) + u * sin(sp);
+	vec3 u2 = -r * sin(sp) + u * cos(sp);
+	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(vec4(r2 * s, 0.0), vec4(u2 * s, 0.0), vec4(INV_VIEW_MATRIX[2].xyz * s, 0.0), vec4(c, 1.0));
+	VERTEX.y += pivot;
+	v_frame = INSTANCE_CUSTOM.z * grid * grid + frame;
+	v_col = COLOR;
+	v_spin = sp;
+	v_age = clamp(max(INSTANCE_CUSTOM.y, frame / 24.0), 0.0, 1.0);
+	float h = fract(sin(float(INSTANCE_ID) * 78.233 + c.z * 1.7) * 43758.5453);
+	v_flip = flip > 0.5 ? 1.0 : step(0.5, h);
+}
+vec2 cell(float i, vec2 uv){
+	return (vec2(mod(i, grid), floor(i / grid)) + uv) / grid;
+}
 void fragment(){
-	float along = UV.x;
-	float across = abs(UV.y - 0.5) * 2.0;
-	// tongues of flame licking back along the ribbon, breaking its edges up
-	vec2 np = vec2(along * 6.0 + wpos.x * 0.7 + wpos.z * 0.7, UV.y * 2.5 + wpos.y);
-	float n = fbm3(np + vec2(-TIME * 2.5, TIME * 0.7));
-	float n2 = vnoise(np * 3.0 + vec2(-TIME * 5.0, 0.0));
-	float edge = 1.0 - smoothstep(0.15, 0.85, across + (n - 0.45) * 1.1 + along * 0.35);
-	float fire = pow(1.0 - along, 1.4) * (0.4 + 0.8 * n2) * edge;
-	float heat = clamp(fire * 1.5, 0.0, 1.0);
-	vec3 fl = mix(c_tail.rgb, c_mid.rgb, smoothstep(0.08, 0.4, heat));
-	fl = mix(fl, c_head.rgb, smoothstep(0.45, 0.95, heat));
-	float smoke = edge * (1.0 - pow(1.0 - along, 2.5)) * (0.25 + 0.45 * n) * (1.0 - along * along);
-	float a = clamp(heat * 0.85 + smoke * 0.5, 0.0, 1.0) * alpha_mul;
-	float k = clamp(heat / max(heat + smoke * 0.5, 0.001), 0.0, 1.0);
-	vec3 col = mix(c_smoke.rgb, fl * energy * (0.6 + 0.4 * heat), k);
-	ALBEDO = col;
-	ALPHA = a;
+	vec2 uv = vec2(mix(UV.x, 1.0 - UV.x, v_flip), UV.y);
+	float total = grid * grid;
+	float f0 = floor(v_frame);
+	float fr = v_frame - f0;
+	float a0 = loop_anim > 0.5 ? mod(f0, total) : clamp(f0, 0.0, total - 1.0);
+	float a1 = loop_anim > 0.5 ? mod(f0 + 1.0, total) : clamp(f0 + 1.0, 0.0, total - 1.0);
+	vec4 lm = mix(texture(atlas, cell(a0, uv)), texture(atlas, cell(a1, uv)), fr);
+	vec3 l = pow(lm.rgb, vec3(2.2)) * lm_gain;
+	// the sheet's left and right swap with the mirror
+	v_lm = v_flip > 0.5 ? l.bgr : l;
+	ALBEDO = tint.rgb * v_col.rgb;
+	// the sim's domain walls never show: the sheet fades out toward a circle inside the card
+	float rm = 1.0 - smoothstep(0.3, 0.5, length(UV - vec2(0.5)));
+	float under = (1.0 - clamp(l.g, 0.0, 1.0)) * (0.4 + 0.6 * UV.y);
+	EMISSION = glow_col.rgb * glow * pow(1.0 - v_age, 3.0) * under * lm.a * rm;
+	ALPHA = clamp(lm.a * rm * density * v_col.a * alpha_mul * soft_k(SCREEN_UV, VERTEX, INV_PROJECTION_MATRIX, soft), 0.0, 1.0);
+	NORMAL = vec3(0.0, 0.0, 1.0);
+}
+void light(){
+	float cs = cos(v_spin);
+	float sn = sin(v_spin);
+	vec2 l2 = vec2(LIGHT.x * cs + LIGHT.y * sn, -LIGHT.x * sn + LIGHT.y * cs);
+	float lit = v_lm.r * max(l2.x, 0.0) + v_lm.b * max(-l2.x, 0.0) + v_lm.g * max(l2.y, 0.0)
+		+ (0.12 + 0.3 * (1.0 - v_lm.g)) * max(-l2.y, 0.0);
+	float avg = (v_lm.r + v_lm.g + v_lm.b) / 3.0;
+	lit += avg * (max(LIGHT.z, 0.0) * 0.6 + max(-LIGHT.z, 0.0) * wrap);
+	DIFFUSE_LIGHT += LIGHT_COLOR * ATTENUATION * lit / PI;
 }
 """
 
-## The heat haze: the scene behind the card bent by drifting noise, strongest at the centre (Forward+ only).
-const SHIMMER_SHADER := """
+## Embers and sparks: a point of blackbody light (a hot core in a soft glow) stretched along its velocity, cooling
+## from t_hot to t_cold Kelvin over its life (dimming as it goes, the way a spark goes red and out).
+const STREAK_SHADER := """
 shader_type spatial;
-render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
+render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
+uniform float stretch = 4.0;
+uniform float energy = 1.0;
+uniform float t_hot = 2200.0;
+uniform float t_cold = 900.0;
 %s
+varying float v_age;
+varying float v_rand;
+varying float v_a;
+void vertex(){
+	float s = length(MODEL_MATRIX[0].xyz);
+	vec3 c = MODEL_MATRIX[3].xyz;
+	vec3 ax = MODEL_MATRIX[1].xyz;
+	ax = length(ax) > 0.00001 ? normalize(ax) : vec3(0.0, 1.0, 0.0);
+	vec3 to_cam = normalize(INV_VIEW_MATRIX[3].xyz - c);
+	vec3 side = cross(ax, to_cam);
+	float sl = length(side);
+	vec3 side_n = sl > 0.05 ? side / sl : INV_VIEW_MATRIX[0].xyz;
+	// seen end-on a streak is a dot
+	float len = mix(1.0, stretch, smoothstep(0.05, 0.5, sl));
+	vec3 n = normalize(cross(side_n, ax));
+	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(vec4(side_n * s, 0.0), vec4(ax * s * len, 0.0), vec4(n * s, 0.0), vec4(c, 1.0));
+	v_age = clamp(INSTANCE_CUSTOM.y, 0.0, 1.0);
+	v_rand = fract(sin(float(INSTANCE_ID) * 91.7) * 43758.5453);
+	v_a = COLOR.a;
+}
+void fragment(){
+	vec2 p = UV * 2.0 - 1.0;
+	float r2 = p.x * p.x + p.y * p.y;
+	float glow = exp(-r2 * 5.0);
+	float core = exp(-r2 * 30.0);
+	float kel = mix(t_hot, t_cold, pow(clamp(v_age, 0.0, 1.0), 0.6)) * (0.85 + 0.3 * v_rand);
+	float lum = energy * 4.0 * pow(kel / 1500.0, 3.0);
+	ALBEDO = blackbody(kel) * lum * (glow * 0.3 + core * 1.3);
+	ALPHA = clamp(v_a * (glow * 0.6 + core), 0.0, 1.0);
+}
+"""
+
+## Heat haze: the solid scene behind the card bent by two drifting layers of a normal-mapped noise, strongest in the
+## middle, fading in and out with the particle (drawn before the other see-through things, render_priority -20).
+const HAZE_SHADER := """
+shader_type spatial;
+render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
-uniform float strength = 0.014;
-uniform float alpha_mul = 1.0;
-void fragment(){
-	float d = 1.0 - smoothstep(0.1, 0.5, distance(UV, vec2(0.5)));
-	vec2 off = vec2(fbm3(UV * 5.0 + vec2(0.0, TIME * 3.5)) - 0.5, fbm3(UV * 5.0 + vec2(7.0, TIME * 2.9)) - 0.5) * strength * d;
-	ALBEDO = texture(screen_tex, SCREEN_UV + off).rgb;
-	ALPHA = d * alpha_mul * 0.9;
-}
-"""
-
-## A camera-facing additive sprite whose brightness is its alpha (painted on black), never showing its square.
-const SPRITE_SHADER := """
-shader_type spatial;
-render_mode unshaded, blend_add, depth_draw_never, depth_test_disabled, cull_disabled, shadows_disabled;
-uniform sampler2D tex : source_color, filter_linear_mipmap;
-uniform vec4 tint : source_color = vec4(1.0);
-uniform float energy = 1.5;
-uniform float alpha_mul = 1.0;
+uniform sampler2D noise_tex : hint_normal, filter_linear, repeat_enable;
+uniform float strength = 0.02;
+varying float v_a;
+varying float v_seed;
 void vertex(){
-	mat4 mv = VIEW_MATRIX * MODEL_MATRIX;
-	vec3 right = vec3(INV_VIEW_MATRIX[0].xyz) * length(MODEL_MATRIX[0].xyz);
-	vec3 up = vec3(INV_VIEW_MATRIX[1].xyz) * length(MODEL_MATRIX[1].xyz);
-	vec3 wp = MODEL_MATRIX[3].xyz + right * VERTEX.x + up * VERTEX.y;
-	POSITION = PROJECTION_MATRIX * VIEW_MATRIX * vec4(wp, 1.0);
+	float s = length(MODEL_MATRIX[0].xyz);
+	vec3 c = MODEL_MATRIX[3].xyz;
+	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(vec4(INV_VIEW_MATRIX[0].xyz * s, 0.0), vec4(INV_VIEW_MATRIX[1].xyz * s, 0.0), vec4(INV_VIEW_MATRIX[2].xyz * s, 0.0), vec4(c, 1.0));
+	v_a = COLOR.a;
+	v_seed = fract(sin(float(INSTANCE_ID) * 17.31) * 4375.85);
 }
 void fragment(){
-	vec4 t = texture(tex, UV);
-	float a = max(t.r, max(t.g, t.b)) * alpha_mul;
-	ALBEDO = t.rgb * tint.rgb * energy * a;
-	ALPHA = a;
+	float d = 1.0 - smoothstep(0.12, 0.5, distance(UV, vec2(0.5)));
+	vec2 n1 = texture(noise_tex, UV * 0.9 + vec2(v_seed, -TIME * 0.9)).xy * 2.0 - 1.0;
+	vec2 n2 = texture(noise_tex, UV * 1.9 + vec2(-v_seed * 3.0, -TIME * 1.7)).xy * 2.0 - 1.0;
+	float k = d * v_a;
+	vec2 off = (n1 + n2 * 0.6) * strength * k;
+	ALBEDO = textureLod(screen_tex, SCREEN_UV + off, 0.0).rgb;
+	ALPHA = smoothstep(0.0, 0.25, k);
 }
 """
 
-## The burn streak laid on the ground: soot alpha-blended, its embers emissive while `glow` lasts.
+## Over the arrow (material_overlay, the Meshy arrow: its head toward -z, tip at z -0.62): the head glowing with
+## heat (blackbody, mottled), the shaft behind it charred and blistered black with embers in the cracks.
+const HEAT_SHADER := """
+shader_type spatial;
+render_mode blend_mix, depth_draw_never, cull_back, specular_disabled;
+%s
+%s
+uniform float heat = 1.0;
+uniform float char_amt = 1.0;
+uniform float tip_z = -0.62;
+uniform float head_z = -0.5;
+uniform float char_len = 0.3;
+varying vec3 mp;
+void vertex(){ mp = VERTEX; }
+void fragment(){
+	float n = fbm(mp.xz * 60.0 + mp.y * 40.0);
+	float n2 = vnoise(mp.xy * 120.0 + mp.z * 90.0);
+	float along = mp.z - tip_z;
+	float hl = head_z - tip_z;
+	float head = 1.0 - smoothstep(hl - 0.02, hl + 0.03, along);
+	float sootk = (1.0 - smoothstep(0.0, char_len, along - hl)) * (1.0 - head) * char_amt;
+	float soot = clamp(sootk * (0.55 + 0.7 * n), 0.0, 1.0);
+	float t = mix(780.0, 1180.0, heat * (0.55 + 0.45 * n)) * (0.95 + 0.1 * sin(TIME * 9.0 + n * 6.0));
+	float hot = head * heat * smoothstep(0.25, 0.75, n + 0.25 * (1.0 - along / max(hl, 0.01)));
+	float speck = sootk * step(0.78, n2) * 0.8;
+	ALBEDO = vec3(0.025, 0.021, 0.018);
+	ROUGHNESS = 0.95;
+	EMISSION = blackbody(t) * (hot * 2.2 * pow(t / 1000.0, 4.0) + speck * 1.2);
+	ALPHA = clamp(max(soot, hot * 0.9), 0.0, 1.0);
+}
+"""
+
+## Compatibility's scorch (no decals there): a lit quad with the soot, its normal and the cooling ember cracks.
 const SCORCH_SHADER := """
 shader_type spatial;
-render_mode blend_mix, depth_draw_never, cull_disabled, shadows_disabled, unshaded;
+render_mode blend_mix, depth_draw_never, cull_disabled, specular_disabled;
 uniform sampler2D tex : source_color, filter_linear_mipmap;
-uniform float glow = 1.5;
+uniform sampler2D ntex : hint_normal, filter_linear_mipmap;
+uniform sampler2D etex : source_color, filter_linear_mipmap;
+uniform float glow = 1.0;
 uniform float alpha_mul = 1.0;
 void fragment(){
 	vec4 t = texture(tex, UV);
-	float ember = clamp((t.r - 0.35) * 2.0, 0.0, 1.0) * glow;
-	float pulse = 0.85 + 0.15 * sin(TIME * 6.0 + UV.x * 20.0);
-	ALBEDO = t.rgb * 0.5 + t.rgb * ember * 2.5 * pulse;
+	vec4 e = texture(etex, UV);
+	ALBEDO = t.rgb;
+	ROUGHNESS = 1.0;
+	NORMAL_MAP = texture(ntex, UV).rgb;
+	EMISSION = e.rgb * glow * glow * 5.0;
 	ALPHA = t.a * alpha_mul;
 }
 """

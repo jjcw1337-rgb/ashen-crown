@@ -280,7 +280,14 @@ func _statuses(delta: float) -> void:
 		burn_tick -= delta
 		if burn_tick <= 0.0:
 			burn_tick = 0.5
+			# a burn drawn by its source (the Fire Arrow's flames) ticks as fire: amber numbers, no blood, no flash
+			if burn_look != "":
+				dmg_tint = Color(1.0, 0.6, 0.25)
+				soft_hit = true          # no flash, no flinch on each tick
 			take_damage(0.0, burn_dps * 0.5, global_position, 0.0, false)
+			if burn_look != "":
+				dmg_tint = Color(0, 0, 0, 0)
+				soft_hit = false
 			if game and game.world and randf() < 0.5 and burn_look == "":
 				DemonFx.ignite(game.world.fx_root, self)
 	if chill_t > 0.0:

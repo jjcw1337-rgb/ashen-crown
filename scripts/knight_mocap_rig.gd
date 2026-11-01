@@ -476,6 +476,12 @@ const SHOT_BODY := {
 	"recoil": [[0.7, 0.0], [0.74, 1.0], [0.82, 0.35], [0.95, 0.0]],
 	"fling": [[0.7, 0.0], [0.76, 1.0], [0.9, 0.55], [1.0, 0.0]],
 	"hold": [[0.55, 0.0], [0.64, 1.0], [0.72, 1.0], [0.74, 0.0]],
+	# a breath drawn in as the bow comes up, held through the aim, let out after the release
+	"breath": [[0.36, 0.0], [0.5, 1.0], [0.72, 0.85], [0.84, -0.4], [1.0, 0.0]],
+	# the back set: the draw shoulder blade pulled back toward the spine, the bow shoulder pressed down and out
+	"set": [[0.42, 0.0], [0.6, 1.0], [0.72, 1.0], [0.78, 0.2], [0.95, 0.0]],
+	# the follow-through: the weight rolling onto the front foot after the release, the body staying in the shot
+	"follow": [[0.71, 0.0], [0.8, 1.0], [0.9, 0.7], [1.0, 0.0]],
 }
 const SHOT_BONES := {"twist": ["Spine", "Spine01", "Spine02"], "recoil": ["LeftArm", "LeftForeArm"],
 	"fling": ["RightArm", "RightForeArm", "RightHand"], "head": ["Head"]}
@@ -493,13 +499,16 @@ func _shot_body(st: Dictionary, a: float, shooting: bool, stepping: bool, dt: fl
 	var recoil := curve_at(SHOT_BODY["recoil"], a) * w
 	var fling := curve_at(SHOT_BODY["fling"], a) * w
 	var hold := curve_at(SHOT_BODY["hold"], a) * w
+	var breath := curve_at(SHOT_BODY["breath"], a) * w
+	var bset := curve_at(SHOT_BODY["set"], a) * w
+	var follow := curve_at(SHOT_BODY["follow"], a) * w * (0.4 if stepping else 1.0)
 	# the full draw: a tremor of effort in the arms and a breath held in the chest
 	var t: float = st.get("time", 0.0)
 	var tremor := hold * (sin(t * 31.0) * 0.6 + sin(t * 47.0) * 0.4) * 0.012
 	# turns in the rig frame: the archer stands side-on (body_root yaw), so "toward the draw" is about the body's y
 	var yaw_b := Basis(Vector3.UP, body_root.rotation.y) if body_root != null else Basis()
 	var spine_q := Quaternion(yaw_b * Vector3.UP, deg_to_rad(-9.0) * twist)   # wound up toward the string hand
-	var chest_q := Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(3.0) * lean + deg_to_rad(-4.0) * recoil)
+	var chest_q := Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(3.0) * lean + deg_to_rad(-4.0) * recoil - deg_to_rad(2.5) * breath + deg_to_rad(3.5) * follow)
 	_add_turn("Spine", spine_q * Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(2.0) * lean))
 	_add_turn("Spine01", spine_q)
 	_add_turn("Spine02", spine_q * chest_q)
@@ -508,18 +517,23 @@ func _shot_body(st: Dictionary, a: float, shooting: bool, stepping: bool, dt: fl
 	# the bow arm (left): kicks up and back as the string lets go
 	_add_turn("LeftArm", Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(-14.0) * recoil + tremor) * Quaternion(yaw_b * Vector3.UP, deg_to_rad(6.0) * recoil))
 	_add_turn("LeftForeArm", Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(-6.0) * recoil))
+	# the back set at full draw: the draw shoulder pulled back and down, the bow shoulder pressed down, not hunched
+	_add_turn("RightShoulder", Quaternion(yaw_b * Vector3.UP, deg_to_rad(-7.0) * bset) * Quaternion(yaw_b * Vector3.BACK, deg_to_rad(-4.0) * bset))
+	_add_turn("LeftShoulder", Quaternion(yaw_b * Vector3.BACK, deg_to_rad(5.0) * bset) * Quaternion(yaw_b * Vector3.UP, deg_to_rad(-4.0) * bset))
 	# the string hand (right): flung back past the ear, the elbow swinging out and back
 	_add_turn("RightArm", Quaternion(yaw_b * Vector3.UP, deg_to_rad(-22.0) * fling) * Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(-8.0) * fling + tremor))
 	_add_turn("RightForeArm", Quaternion(yaw_b * Vector3.UP, deg_to_rad(-16.0) * fling) * Quaternion(yaw_b * Vector3.BACK, deg_to_rad(10.0) * fling))
 	_add_turn("RightHand", Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(18.0) * fling))
 	# the weight on the back foot: the hips settle back and down, and come forward with the release
-	if lean > 0.001 or recoil > 0.001:
+	# (and the follow-through rolls it forward onto the front foot, the front knee giving a little)
+	if lean > 0.001 or recoil > 0.001 or follow > 0.001:
 		var hb := skel.find_bone("Hips")
 		if hb >= 0:
-			var back: Vector3 = R.inverse() * (yaw_b * Vector3(0, -0.035 * lean + 0.012 * recoil, 0.045 * lean - 0.03 * recoil)) / maxf(s_scale, 1e-6)
+			var back: Vector3 = R.inverse() * (yaw_b * Vector3(0, -0.035 * lean + 0.012 * recoil - 0.02 * follow, 0.045 * lean - 0.03 * recoil - 0.05 * follow)) / maxf(s_scale, 1e-6)
 			skel.set_bone_pose_position(hb, skel.get_bone_pose_position(hb) + back)
-			_add_turn("LeftUpLeg", Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(-3.0) * lean))
-			_add_turn("RightUpLeg", Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(4.0) * lean))
+			_add_turn("LeftUpLeg", Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(-3.0) * lean + deg_to_rad(-5.0) * follow))
+			_add_turn("LeftLeg", Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(6.0) * follow))
+			_add_turn("RightUpLeg", Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(4.0) * lean - deg_to_rad(2.0) * follow))
 
 ## Adds a turn given in the rig frame to a bone's pose (converted into the bone's parent's frame).
 func _add_turn(nm: String, q_rig: Quaternion) -> void:
