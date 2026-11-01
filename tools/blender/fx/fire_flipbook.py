@@ -20,14 +20,17 @@ PX = int(argv[3]) if len(argv) > 3 else 256
 SEED = int(argv[4]) if len(argv) > 4 else 3
 WARM = 76            # frames for the fire to rise and settle before recording
 # FIRE_KIND: body (a full fire: campfires, braziers), tongue (a tall thin flame: torches, weapons, burning foes),
-# spread (low and wide: burning ground, buildings). Each sets the domain, the fuel and the framing.
+# spread (low and wide: burning ground, buildings), spirit (the waypoint's blue spirit-fire: the body fire a little
+# wider and calmer, no soot, rendered violet / electric blue / cyan-white). Each sets the domain, the fuel and the framing.
 KIND = os.environ.get("FIRE_KIND", "body")
 SHAPE = {
     # domain (x, y, z) m, fuel radius, fuel scale, fuel height, camera (ortho, centre z), frame aspect (w / h)
     "body":   {"dom": (0.9, 0.3, 1.8), "r": 0.095, "fs": (1.7, 0.45, 0.55), "fz": 0.1, "cam": (1.15, 0.56), "aspect": 0.5},
     "tongue": {"dom": (0.5, 0.2, 1.6), "r": 0.05, "fs": (1.0, 1.0, 0.8), "fz": 0.08, "cam": (1.1, 0.53), "aspect": 0.5},
     "spread": {"dom": (1.8, 0.35, 1.0), "r": 0.1, "fs": (7.0, 0.6, 0.35), "fz": 0.06, "cam": (1.6, 0.38), "aspect": 2.0},
+    "spirit": {"dom": (0.9, 0.3, 1.8), "r": 0.095, "fs": (1.9, 0.45, 0.5), "fz": 0.1, "cam": (1.15, 0.56), "aspect": 0.5},
 }[KIND]
+SPIRIT = KIND == "spirit"
 os.makedirs(OUT, exist_ok=True)
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -75,8 +78,10 @@ ds.flame_vorticity = 0.6
 ds.flame_ignition = 1.2
 ds.flame_max_temp = 3.0
 ds.use_noise = False      # smooth sheets of flame (the upres mottles them); resolution carries the edges
-ds.noise_scale = 2
-ds.noise_strength = 1.2
+if SPIRIT:
+    # the body fire's gas (crisp tongues with dark gaps, as approved), a touch calmer, and no soot
+    ds.flame_smoke = 0.0
+    ds.vorticity = 0.1
 fm = src.modifiers[0]
 fs = fm.flow_settings
 fs.flow_type = "BOTH"
@@ -91,7 +96,7 @@ fs.velocity_normal = 1.4
 # --- turbulence keeps the silhouette from ever repeating
 bpy.ops.object.effector_add(type="TURBULENCE", location=(0, 0, 0.8))
 tb = bpy.context.object
-tb.field.strength = 3.0
+tb.field.strength = 3.0 if not SPIRIT else 2.6
 tb.field.size = 0.35
 tb.field.flow = 0.5
 tb.field.noise = 0.6
@@ -130,12 +135,22 @@ dens.attribute_name = "density"
 ramp = nt.nodes.new("ShaderNodeValToRGB")
 cr = ramp.color_ramp
 cr.elements[0].position = 0.0
-cr.elements[0].color = (0.32, 0.02, 0.0, 1.0)
-cr.elements[1].position = 1.0
-cr.elements[1].color = (1.0, 0.66, 0.14, 1.0)
-for pos, col in [(0.35, (0.9, 0.16, 0.0, 1.0)), (0.7, (1.0, 0.4, 0.03, 1.0))]:
-    e = cr.elements.new(pos)
-    e.color = col
+if SPIRIT:
+    # blue spirit-fire (target: the Meshy concept, wp_concepts/bluefire): violet at the cooling edges and tips,
+    # electric blue through the body, a near-white cyan heart
+    cr.elements[0].color = (0.16, 0.02, 0.42, 1.0)
+    cr.elements[1].position = 1.0
+    cr.elements[1].color = (0.82, 0.95, 1.0, 1.0)
+    for pos, col in [(0.25, (0.22, 0.08, 0.9, 1.0)), (0.5, (0.08, 0.3, 1.0, 1.0)), (0.75, (0.25, 0.62, 1.0, 1.0)), (0.9, (0.55, 0.85, 1.0, 1.0))]:
+        e = cr.elements.new(pos)
+        e.color = col
+else:
+    cr.elements[0].color = (0.32, 0.02, 0.0, 1.0)
+    cr.elements[1].position = 1.0
+    cr.elements[1].color = (1.0, 0.66, 0.14, 1.0)
+    for pos, col in [(0.35, (0.9, 0.16, 0.0, 1.0)), (0.7, (1.0, 0.4, 0.03, 1.0))]:
+        e = cr.elements.new(pos)
+        e.color = col
 # a sharp edge: the flame's light is a steep ramp of its field, so the tongues have crisp outlines like real fire
 edge = nt.nodes.new("ShaderNodeMapRange")
 edge.interpolation_type = "SMOOTHERSTEP"

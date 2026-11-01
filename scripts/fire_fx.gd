@@ -18,6 +18,7 @@ const BOOKS := {
 	"tongue": "res://assets/textures/fx/fire_tongue.png",
 	"spread": "res://assets/textures/fx/fire_spread.png",
 	"smoke": "res://assets/textures/fx/smoke_body.png",
+	"spirit": "res://assets/textures/fx/fire_spirit.png",   # blue spirit-fire (FIRE_KIND=spirit), already coloured
 }
 const LEGACY_BOOK := "res://assets/textures/fx/fire_flipbook.png"
 const GRID := Vector2(6, 6)          # frames per book unless GRIDS says otherwise
@@ -36,6 +37,9 @@ const PRESETS := {
 	"ground":   {"book": "spread", "rate": 7.0, "life": 0.7, "w": 1.5, "h": 0.75, "back": 0.5, "core": 0.6, "embers": 8.0, "sparks": 0.1, "smoke": 0.8, "light": 2.0, "range": 6.5, "haze": false, "jitter": 0.35},
 	"magic":    {"book": "tongue", "rate": 12.0, "life": 0.5, "w": 0.95, "h": 1.6, "back": 0.3, "core": 1.0, "embers": 10.0, "sparks": 0.3, "smoke": 0.0, "light": 2.0, "range": 6.0, "haze": false, "jitter": 0.15},
 	"weapon":   {"book": "tongue", "rate": 14.0, "life": 0.42, "w": 0.9, "h": 1.5, "back": 0.0, "core": 0.0, "embers": 8.0, "sparks": 0.0, "smoke": 0.0, "light": 0.0, "range": 0.0, "haze": false, "jitter": 0.1},
+	# the camp waypoint's blue spirit-fire braziers: the spirit book plays as rendered (violet tips, electric blue,
+	# a cyan-white heart), blue embers and sparks, a cold light, no soot
+	"spirit":   {"book": "spirit", "rate": 8.0, "life": 0.65, "w": 0.9, "h": 1.1, "back": 0.5, "core": 1.0, "embers": 10.0, "sparks": 0.18, "smoke": 0.0, "light": 2.0, "range": 6.5, "haze": false, "jitter": 0.14, "pal": "spirit"},
 	"burning":  {"book": "tongue", "rate": 12.0, "life": 0.5, "w": 1.1, "h": 1.7, "back": 0.3, "core": 0.0, "embers": 8.0, "sparks": 0.1, "smoke": 0.5, "light": 0.0, "range": 0.0, "haze": false, "jitter": 0.2},
 }
 ## Flames per preset scale with the graphics budget (InfernalFx.tier: Low, Medium, High, Ultra).
@@ -118,6 +122,9 @@ static func make(parent: Node3D, pos: Vector3, kind := "", size := 1.0, col := C
 	var k: float = TIER_K[tr]
 	var bk: String = P["book"]
 	var tint := _tint_for(col)
+	var pal: String = P.get("pal", "")
+	if pal == "spirit":
+		tint = 0.0       # the spirit book is already blue: no pull toward hellfire
 	var height: float = float(P["h"]) * size
 	var width: float = float(P["w"]) * size
 	var life: float = float(P["life"]) * (0.85 + 0.15 * size)
@@ -130,9 +137,9 @@ static func make(parent: Node3D, pos: Vector3, kind := "", size := 1.0, col := C
 	if float(P["core"]) > 0.0:
 		_flames(root, "core", bk, life * 0.6, width * 0.55, height * 0.5, maxf(2.0, float(P["rate"]) * 0.6 * size * k), 0.95 * float(P["core"]), tint, float(P["jitter"]) * size * 0.5, size)
 	if float(P["embers"]) > 0.0:
-		_embers(root, height, maxi(2, int(float(P["embers"]) * size * k)), size)
+		_embers(root, height, maxi(2, int(float(P["embers"]) * size * k)), size, pal)
 	if float(P["sparks"]) > 0.0 and tr >= 1:
-		_sparks(root, height, float(P["sparks"]) * size * k)
+		_sparks(root, height, float(P["sparks"]) * size * k, pal)
 	if smoke and float(P["smoke"]) > 0.0 and tr >= 1:
 		_smoke(root, height, float(P["smoke"]) * size * k, size)
 	if bool(P["haze"]) and game != null and InfernalFx.haze_ok(game) and size >= 0.9:
@@ -142,7 +149,7 @@ static func make(parent: Node3D, pos: Vector3, kind := "", size := 1.0, col := C
 	if light and float(P["light"]) > 0.0:
 		var l := OmniLight3D.new()
 		l.name = "FireLight"
-		l.light_color = col.lerp(Color(1.0, 0.5, 0.18), 0.4)
+		l.light_color = col if pal == "spirit" else col.lerp(Color(1.0, 0.5, 0.18), 0.4)
 		l.light_energy = float(P["light"]) * size
 		l.omni_range = float(P["range"]) * size
 		l.omni_attenuation = 1.3
@@ -179,21 +186,31 @@ static func _flames(root: Node3D, nm: String, bk: String, life: float, w: float,
 	p.preprocess = life
 
 ## Embers that detach and drift up on the heat, wandering.
-static func _embers(root: Node3D, h: float, n: int, size: float) -> void:
+## Ember and spark colours by palette ("" = natural fire, "spirit" = the blue spirit-fire's sparkle).
+const EMBER_COLS := {
+	"": [[0.0, Color(1.0, 0.86, 0.62)], [0.25, Color(1.0, 0.55, 0.12)], [0.75, Color(0.9, 0.18, 0.03)], [1.0, Color(0.6, 0.05, 0.0, 0.0)]],
+	"spirit": [[0.0, Color(0.85, 0.95, 1.0)], [0.25, Color(0.35, 0.65, 1.0)], [0.75, Color(0.25, 0.15, 0.95)], [1.0, Color(0.2, 0.05, 0.6, 0.0)]],
+}
+const SPARK_COLS := {
+	"": [[0.0, Color(1.0, 0.95, 0.75)], [0.4, Color(1.0, 0.6, 0.15)], [1.0, Color(1.0, 0.25, 0.0, 0.0)]],
+	"spirit": [[0.0, Color(0.9, 0.97, 1.0)], [0.4, Color(0.3, 0.6, 1.0)], [1.0, Color(0.3, 0.1, 0.9, 0.0)]],
+}
+
+static func _embers(root: Node3D, h: float, n: int, size: float, pal := "") -> void:
 	var e := InfernalFx.particles(root, root.position, {"amount": n, "life": 2.0, "one_shot": false, "randomness": 0.7,
 		"shape": "sphere", "r": 0.18 * size, "dir": Vector3.UP, "spread": 25.0, "vel": [0.6 * size + 0.3, 1.8 * size + 0.4],
 		"gravity": 0.5, "damping": [0.3, 0.8], "scale": [0.4, 1.0], "size": clampf(0.04 * size, 0.02, 0.06), "turb": 1.4,
-		"colors": [[0.0, InfernalFx.WHITEHOT], [0.25, Color(1.0, 0.55, 0.12)], [0.75, Color(0.9, 0.18, 0.03)], [1.0, Color(0.6, 0.05, 0.0, 0.0)]]})
+		"colors": EMBER_COLS.get(pal, EMBER_COLS[""])})
 	e.name = "embers"
 	e.position = Vector3(0, h * 0.35, 0)
 	e.preprocess = 2.0
 
 ## Now and then a pop of sparks flying out.
-static func _sparks(root: Node3D, h: float, k: float) -> void:
+static func _sparks(root: Node3D, h: float, k: float, pal := "") -> void:
 	var s := InfernalFx.particles(root, root.position, {"amount": maxi(3, int(10 * k)), "life": 0.7, "one_shot": false,
 		"explosive": 0.85, "randomness": 0.6, "shape": "sphere", "r": 0.1, "dir": Vector3.UP, "spread": 55.0,
 		"vel": [2.0, 4.5], "gravity": -6.0, "scale": [0.3, 0.8], "size": 0.03,
-		"colors": [[0.0, Color(1.0, 0.95, 0.75)], [0.4, Color(1.0, 0.6, 0.15)], [1.0, Color(1.0, 0.25, 0.0, 0.0)]]})
+		"colors": SPARK_COLS.get(pal, SPARK_COLS[""])})
 	s.name = "sparks"
 	s.position = Vector3(0, h * 0.3, 0)
 
