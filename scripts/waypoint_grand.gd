@@ -257,7 +257,7 @@ func _build() -> void:
 		# blue / cyan-white, played on flame particles so no two flames are in step), blue embers and sparks, and a
 		# cold flickering light on the stones
 		if ResourceLoader.exists(FireFx.BOOKS["spirit"]):
-			FireFx.make(b, Vector3(0, fire_y - 0.06, 0), "spirit", 0.62, Color(0.3, 0.55, 1.0), true, false, false)
+			FireFx.make(b, Vector3(0, fire_y - 0.06, 0), "spirit", 0.85, Color(0.3, 0.55, 1.0), true, false, false)
 		else:
 			# without the spirit book the simulated fire would be the orange body book: keep the particle flames
 			Fx.aura(b, Color(0.3, 0.62, 1.0, 0.9), 18, 0.9, 0.17, 0.55, 1.8, 0.12, 12.0, Vector3(0, fire_y, 0), false)
