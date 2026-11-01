@@ -21,6 +21,11 @@ const MOLTEN := Color(1.0, 0.42, 0.07)
 const WHITEHOT := Color(1.0, 0.86, 0.62)
 const SMOKE := Color(0.05, 0.034, 0.038)
 
+## Simulated fire (tools/blender/fx/fire_flipbook.py, packed by tools/fx_flipbook.sh): 64 frames, 8 x 8.
+const FIRE_FLIPBOOK := "res://assets/textures/fx/fire_flipbook.png"
+const FLIP_GRID := Vector2(8, 8)
+const FLIP_FPS := 30.0
+
 ## Preview tools can force a tier (-1 = from the game's graphics setting).
 static var force_tier := -1
 
@@ -80,7 +85,7 @@ static func shader(key: String) -> Shader:
 		var s := Shader.new()
 		s.code = {"flame": FLAME_SHADER, "glow": GLOW_SHADER, "smoke": SMOKE_SHADER, "sigil": SIGIL_SHADER,
 			"rift": RIFT_SHADER, "shard": SHARD_SHADER, "wave": WAVE_SHADER, "haze": HAZE_SHADER,
-			"tongue": TONGUE_SHADER}[key]
+			"tongue": TONGUE_SHADER, "flipfire": FLIPFIRE_SHADER}[key]
 		_shaders[key] = s
 	return _shaders[key]
 
@@ -214,8 +219,10 @@ static func fire(parent: Node3D, pos: Vector3, size := 0.8, rate := 40.0, tr := 
 	var q := QuadMesh.new()
 	q.size = Vector2(size * 0.7, size * 1.0)
 	q.center_offset = Vector3(0, size * 0.42, 0)
-	q.material = tongue_mat()
-	var tongues := particles(n, pos, {"amount": maxi(4, int(rate * 0.5 * life * [0.5, 0.75, 1.0, 1.25][tr])), "life": life,
+	q.material = tongue_mat(life)
+	# each simulated-fire particle is a whole flame, so far fewer of them than procedural tongues
+	var per := 0.16 if flipbook() != null else 0.5
+	var tongues := particles(n, pos, {"amount": maxi(3, int(rate * per * life * [0.5, 0.75, 1.0, 1.25][tr])), "life": life,
 		"one_shot": false, "randomness": 0.5, "shape": "sphere", "r": size * 0.16, "dir": Vector3.UP, "spread": 12.0,
 		"vel": [size * 0.3, size * 1.0], "gravity": size * 1.6, "damping": [0.0, 0.6], "scale": [0.55, 1.15],
 		"grow": [0.55, 1.0], "angle": true, "turb": size * 1.6, "mesh": q,
@@ -225,7 +232,7 @@ static func fire(parent: Node3D, pos: Vector3, size := 0.8, rate := 40.0, tr := 
 	var q2 := QuadMesh.new()
 	q2.size = Vector2(size * 0.35, size * 0.42)
 	q2.center_offset = Vector3(0, size * 0.1, 0)
-	var core_mat := tongue_mat()
+	var core_mat := tongue_mat(0.22)
 	core_mat.set_shader_parameter("hot", 1.05)
 	q2.material = core_mat
 	var core := particles(n, pos, {"amount": maxi(3, int(rate * 0.35 * [0.5, 0.75, 1.0, 1.0][tr] * 0.15)), "life": 0.22,
@@ -260,8 +267,23 @@ static func fire_on(f: Node3D, on: bool) -> void:
 		if c is GPUParticles3D:
 			(c as GPUParticles3D).emitting = on
 
-static func tongue_mat() -> ShaderMaterial:
+static var _flipbook: Texture2D
+static func flipbook() -> Texture2D:
+	if _flipbook == null and ResourceLoader.exists(FIRE_FLIPBOOK):
+		_flipbook = load(FIRE_FLIPBOOK)
+	return _flipbook
+
+## A flame tongue: the simulated fire's flipbook when it is there, else the procedural flame. life = the
+## particle's lifetime (the flipbook plays at FLIP_FPS through it).
+static func tongue_mat(life := 0.6) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
+	var fb := flipbook()
+	if fb != null:
+		m.shader = shader("flipfire")
+		m.set_shader_parameter("flip_tex", fb)
+		m.set_shader_parameter("grid", FLIP_GRID)
+		m.set_shader_parameter("frames_per_life", FLIP_FPS * life)
+		return _palette(m)
 	m.shader = shader("tongue")
 	m.set_shader_parameter("noise_tex", noise())
 	return _palette(m)
@@ -610,6 +632,51 @@ void fragment() {
 	float a = clamp(c * (1.0 - pow(uv.y, 3.0)), 0.0, 1.0) * fade * COLOR.a;
 	ALBEDO = col * a;
 	ALPHA = a * 0.22 * (1.0 - c1);
+}
+"""
+
+## Simulated fire played from its flipbook on a flame particle: each particle starts at its own frame, plays at
+## the sim's speed through its life (blending frame to frame), is flipped at random, fades in and burns out. The
+## frames are the fire's light on black, so it is all light (premultiplied, almost no alpha). `hot` scales it;
+## `tint` pulls it toward the Demon's hellfire.
+const FLIPFIRE_SHADER := """
+shader_type spatial;
+render_mode unshaded, blend_premul_alpha, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
+uniform sampler2D flip_tex : source_color, filter_linear_mipmap;
+uniform vec2 grid = vec2(8.0, 8.0);
+uniform float frames_per_life = 18.0;
+uniform float hot = 1.0;
+uniform float tint = 0.25;
+uniform vec3 crimson : source_color = vec3(0.78, 0.035, 0.05);
+uniform vec3 molten : source_color = vec3(1.0, 0.42, 0.07);
+uniform vec3 whitehot : source_color = vec3(1.0, 0.86, 0.62);
+varying float v_age;
+varying float v_rnd;
+void vertex() {
+	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);
+	MODELVIEW_MATRIX = MODELVIEW_MATRIX * mat4(vec4(length(MODEL_MATRIX[0].xyz), 0.0, 0.0, 0.0), vec4(0.0, length(MODEL_MATRIX[1].xyz), 0.0, 0.0), vec4(0.0, 0.0, length(MODEL_MATRIX[2].xyz), 0.0), vec4(0.0, 0.0, 0.0, 1.0));
+	v_age = INSTANCE_CUSTOM.y;
+	v_rnd = fract(INSTANCE_CUSTOM.x * 0.1591549 + 0.5);
+}
+vec3 frame_at(float f, vec2 uv) {
+	float n = grid.x * grid.y;
+	f = mod(f, n);
+	vec2 cell = vec2(mod(f, grid.x), floor(f / grid.x));
+	return texture(flip_tex, (cell + uv) / grid).rgb;
+}
+void fragment() {
+	vec2 uv = UV;
+	if (v_rnd > 0.5) { uv.x = 1.0 - uv.x; }
+	float f = v_rnd * 63.0 + v_age * frames_per_life;
+	float f0 = floor(f);
+	vec3 c = mix(frame_at(f0, uv), frame_at(f0 + 1.0, uv), f - f0);
+	float fade = smoothstep(0.0, 0.12, v_age) * (1.0 - smoothstep(0.55, 1.0, v_age));
+	float lum = max(c.r, max(c.g, c.b));
+	// a touch toward hellfire: the dim edges go blood-red, the hearts stay molten
+	vec3 hell = mix(crimson * 1.6, molten * 1.3, smoothstep(0.25, 0.8, lum)) * lum;
+	c = mix(c, hell, tint * (1.0 - smoothstep(0.6, 1.0, lum)));
+	ALBEDO = c * hot * fade * COLOR.a;
+	ALPHA = clamp(lum * 0.12 * fade, 0.0, 1.0);
 }
 """
 

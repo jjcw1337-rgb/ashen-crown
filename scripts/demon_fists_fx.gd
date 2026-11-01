@@ -224,7 +224,7 @@ static func _fire_heat(f, v: float) -> void:
 	for c in (f as Node).get_children():
 		if c is GPUParticles3D and (c as GPUParticles3D).draw_pass_1 != null:
 			var m = ((c as GPUParticles3D).draw_pass_1 as PrimitiveMesh).material if (c as GPUParticles3D).draw_pass_1 is PrimitiveMesh else null
-			if m is ShaderMaterial and (m as ShaderMaterial).shader == InfernalFx.shader("tongue"):
+			if m is ShaderMaterial and ((m as ShaderMaterial).shader == InfernalFx.shader("tongue") or (m as ShaderMaterial).shader == InfernalFx.shader("flipfire")):
 				(m as ShaderMaterial).set_shader_parameter("hot", v * (1.1 if c.name == "core" else 1.0))
 
 ## The magma in his cracks runs down into his fists and burns white round them (the body shader).
