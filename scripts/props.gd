@@ -130,7 +130,15 @@ static func multimesh(parent: Node3D, mesh: Mesh, xforms: Array, shadows := true
 	return mmi
 
 # ---------------------------------------------------------------- fire & lights
-static func fire(parent: Node3D, pos: Vector3, s: float = 1.0, col: Color = Color(1.0, 0.55, 0.2), light := true, shadow := false, smoke := true) -> Node3D:
+## A fire: real, simulated flames (FireFx). kind picks its look (torch, campfire, bonfire, brazier, building, ground,
+## magic, weapon, burning; "" guesses from the size). The old particle fire is fire_legacy (kept for comparisons).
+static var use_legacy_fire := false
+static func fire(parent: Node3D, pos: Vector3, s: float = 1.0, col: Color = Color(1.0, 0.55, 0.2), light := true, shadow := false, smoke := true, kind := "") -> Node3D:
+	if use_legacy_fire:
+		return fire_legacy(parent, pos, s, col, light, shadow, smoke)
+	return FireFx.make(parent, pos, kind, s, col, light, shadow, smoke)
+
+static func fire_legacy(parent: Node3D, pos: Vector3, s: float = 1.0, col: Color = Color(1.0, 0.55, 0.2), light := true, shadow := false, smoke := true) -> Node3D:
 	var root := Node3D.new()
 	root.position = pos
 	parent.add_child(root)

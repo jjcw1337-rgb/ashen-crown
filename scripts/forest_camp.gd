@@ -144,7 +144,7 @@ static func build(w: World) -> void:
 	# --- the heart of the camp: the bonfire, seats, stash and waypoint
 	var bf := model("bonfire")
 	w._place(bf, Vector3(CENTER.x, 0, CENTER.y))
-	Props.fire(bf, Vector3(0, 0.3, 0), 1.15, Color(1.0, 0.5, 0.18), true, true)
+	Props.fire(bf, Vector3(0, 0.3, 0), 1.15, Color(1.0, 0.5, 0.18), true, true, true, "bonfire")
 	# the heart of the camp's light (graphics plan, phase 1): reaches the shops, glows in the mist, always shadowed
 	for n in bf.find_children("*", "OmniLight3D", true, false):
 		var fl: OmniLight3D = n
@@ -251,7 +251,7 @@ static func build(w: World) -> void:
 		# a cookfire for the camp's folk, a weapon rack by the armoury, hides drying by the alchemist
 		var cf := piece(w, "cookfire", Vector2(-3.8, 11.8), rng.randf() * TAU)
 		if cf:
-			Props.fire(cf, Vector3(0, 0.15, 0), 0.55, Color(1.0, 0.5, 0.2), true, false)
+			Props.fire(cf, Vector3(0, 0.15, 0), 0.55, Color(1.0, 0.5, 0.2), true, false, true, "campfire")
 			for n in cf.find_children("*", "OmniLight3D", true, false):
 				(n as OmniLight3D).add_to_group(Grade.SHADOW_GROUP)
 		piece(w, "weapon_rack", Vector2(12.2, 8.8), face(Vector2(12.2, 8.8), CENTER))

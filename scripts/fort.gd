@@ -276,7 +276,7 @@ static func _bonfire(w: World, p: Vector3) -> void:
 		var a := TAU * i / 7.0
 		Models.seg(g, Vector3(cos(a) * 0.85, 0.05, sin(a) * 0.85), Vector3(cos(a) * 0.1, 1.1, sin(a) * 0.1), 0.09, 0.05, wd, 6)
 	w._place(g, p)
-	Props.fire(g, Vector3(0, 0.45, 0), 2.6, Color(1.0, 0.5, 0.18), true, false)
+	Props.fire(g, Vector3(0, 0.45, 0), 2.6, Color(1.0, 0.5, 0.18), true, false, true, "bonfire")
 	w.solid(g)
 
 static func _gong(w: World, p: Vector3) -> void:
@@ -807,7 +807,7 @@ static func _brazier(w: World, p: Vector3) -> void:
 		Models.seg(g, Vector3(cos(a) * 0.45, 0, sin(a) * 0.45), Vector3(cos(a) * 0.2, 1.0, sin(a) * 0.2), 0.04, 0.04, iron, 5)
 	Models.P(g, Geo.cyl(0.48, 0.3, 0.4, 14), Goblin.gold_m(), Vector3(0, 1.15, 0))
 	w._place(g, p)
-	Props.fire(g, Vector3(0, 1.35, 0), 1.6, Color(1.0, 0.55, 0.2), true, false)
+	Props.fire(g, Vector3(0, 1.35, 0), 1.6, Color(1.0, 0.55, 0.2), true, false, true, "brazier")
 	w.solid(g)
 
 # ---------------------------------------------------------------- the outer yard

@@ -203,7 +203,7 @@ func _gate() -> void:
 		for sx: int in [-1, 1]:
 			var tp := Vector3(sx * 3.6, 2.6, -8.3)
 			Models.P(root3d, Geo.cyl(0.06, 0.03, 0.6, 6), Mats.mat(Color(0.08, 0.07, 0.07), 0.5, 0.7), tp + Vector3(0, -0.3, 0), Vector3(sx * -20, 0, 0))
-			Props.fire(root3d, tp + Vector3(0, 0.05, 0.1), 0.45, Color(1.0, 0.55, 0.2), false, false, true)
+			Props.fire(root3d, tp + Vector3(0, 0.05, 0.1), 0.45, Color(1.0, 0.55, 0.2), false, false, true, "torch")
 			var tl := OmniLight3D.new()
 			tl.light_color = Color(1.0, 0.6, 0.3)
 			tl.light_energy = 1.4
@@ -399,7 +399,7 @@ func _dais(at: Vector3, col: Color, side: String) -> void:
 		Models.P(root3d, Geo.cyl(0.08, 0.12, 1.3, 8), Mats.mat(Color(0.08, 0.07, 0.07), 0.5, 0.7), b + Vector3(0, 0.65, 0))
 		Models.P(root3d, Geo.cyl(0.36, 0.14, 0.3, 12), Mats.mat(Color(0.1, 0.09, 0.08), 0.45, 0.75), b + Vector3(0, 1.42, 0))
 		var fcol := Color(1.0, 0.55, 0.2) if side == "continue" else Color(0.45, 0.75, 1.0)
-		Props.fire(root3d, b + Vector3(0, 1.55, 0), 0.65, fcol, false, false, true)
+		Props.fire(root3d, b + Vector3(0, 1.55, 0), 0.65, fcol, false, false, true, "brazier")
 		var l := OmniLight3D.new()
 		l.light_color = fcol.lightened(0.15)
 		l.light_energy = 1.4

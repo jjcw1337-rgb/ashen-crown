@@ -369,7 +369,7 @@ func _set_fires() -> void:
 		if cur_zone == "wild" and r.randf() < 0.35:
 			continue
 		var with_light := lit < (8 if quality >= 2 else 4)
-		Props.fire(world.fx_root, pos, sz, Color(1.0, 0.45, 0.12), with_light, false, true)
+		Props.fire(world.fx_root, pos, sz, Color(1.0, 0.45, 0.12), with_light, false, true, "building" if sz >= 1.0 else "ground")
 		if with_light:
 			lit += 1
 		if r.randf() < 0.45:
@@ -386,7 +386,7 @@ func _set_fires() -> void:
 			_: p = Vector3(b.end.x + r.randf_range(8, 22), 0, lerpf(b.position.y, b.end.y, r.randf()))
 		p.y = world.height_at(p.x, p.z)
 		weather.make_smoke(world.fx_root, p, r.randf_range(1.6, 2.6))
-		Props.fire(world.fx_root, p + Vector3(0, 0.6, 0), 2.2, Color(1.0, 0.42, 0.1), false, false, false)
+		Props.fire(world.fx_root, p + Vector3(0, 0.6, 0), 2.2, Color(1.0, 0.42, 0.1), false, false, false, "building")
 
 ## Snow over every outdoor area, falling snow, colder light. (A2 was winter until it became the Imperial
 ## Road and Aurelia, which are warm; nothing is snowy now, kept for a later act.)
@@ -2633,7 +2633,11 @@ func _process(delta: float) -> void:
 		var lt := l as OmniLight3D
 		var b: float = lt.get_meta("base", 1.0)
 		var id := float(lt.get_instance_id() % 100)
-		lt.light_energy = b * (0.85 + 0.1 * sin(_t * 9.0 + id) + 0.07 * sin(_t * 23.0 + id * 2.3))
+		if lt.has_meta("fire"):
+			# a real fire's light: slow breathing, quicker licks and a ragged flutter, never in step with another
+			lt.light_energy = b * (0.8 + 0.09 * sin(_t * 3.1 + id) + 0.07 * sin(_t * 8.7 + id * 1.7) + 0.05 * sin(_t * 17.3 + id * 2.9) + 0.03 * sin(_t * 31.0 + id * 4.1))
+		else:
+			lt.light_energy = b * (0.85 + 0.1 * sin(_t * 9.0 + id) + 0.07 * sin(_t * 23.0 + id * 2.3))
 	if shot_path != "" and not _busy and world:
 		shot_frames += 1
 		if shot_frames == 50:
