@@ -8,6 +8,9 @@ extends RefCounted
 const STEP := 3.4                         # height of one terrace
 const TEMPLE := Vector2(-6.0, 0.0)        # island-local
 const COLOSSUS := Vector2(52.0, -34.0)
+# the Meshy temple's columns (its own frame: x, z; measured from the model) and the altar between them
+const TEMPLE_COLS := [Vector2(-7.25, -4.75), Vector2(-3.75, -4.75), Vector2(2.25, -4.75), Vector2(6.75, -4.75),
+	Vector2(-7.25, 0.25), Vector2(6.75, 0.25), Vector2(-7.25, 5.25), Vector2(-3.75, 5.25), Vector2(2.25, 5.25), Vector2(6.75, 5.25)]
 const STAIR := [Vector2(126.0, 0.0), Vector2(90.0, 0.0), Vector2(60.0, 2.0), Vector2(30.0, 0.0), Vector2(8.0, 0.0)]
 
 static func _base(l: Vector2, s: float, rr: float, n: FastNoiseLite) -> float:
@@ -33,7 +36,32 @@ static func pads(isle: Dictionary, n: FastNoiseLite) -> Array:
 
 static func dress(w: World, isle: Dictionary, o: Vector2, full: bool, rng: RandomNumberGenerator) -> void:
 	var tp := Isles.at(w, isle, o, TEMPLE)
-	# the temple: a peristyle of columns on a stepped platform, half of them standing
+	var top := 1.35
+	var mt := Isles.prop("temple")
+	if mt:
+		# the Meshy temple (21 m across, its floor 1.9 m up its steps): its columns and altar are solid,
+		# the floor and the top step a deck to walk on
+		var ty := Isles.yaw(isle, 0.0)
+		w._place(mt, tp)
+		mt.position.y -= 0.15
+		mt.rotation.y = ty
+		top = 1.75
+		if full:
+			var b := Basis(Vector3.UP, ty)
+			for c in TEMPLE_COLS:
+				var cv: Vector2 = c
+				var cw: Vector3 = mt.position + b * Vector3(cv.x, 0, cv.y)
+				w.add_circle(cw, 0.85)
+			var aw: Vector3 = mt.position + b * Vector3(-0.75, 0, 2.0)
+			w.add_circle(aw, 1.0)
+			w.add_deck(Vector2(tp.x, tp.z), Vector2(9.6, 9.6), ty, tp.y + 1.15)
+			w.add_deck(Vector2(tp.x, tp.z), Vector2(8.4, 8.0), ty, tp.y + 1.75)
+	else:
+		top = _temple(w, isle, o, rng, tp)
+	_colossus_and_terraces(w, isle, o, full, rng, tp, top)
+
+## Without the Meshy temple: a peristyle of columns on a stepped platform, half of them standing.
+static func _temple(w: World, isle: Dictionary, o: Vector2, rng: RandomNumberGenerator, tp: Vector3) -> float:
 	var plat := Models.N(null, "temple_platform")
 	for k in 3:
 		Models.P(plat, Geo.box(22.0 - k * 1.6, 0.45, 15.0 - k * 1.6), Roman.marble(), Vector3(0, 0.22 + k * 0.45, 0))
@@ -54,6 +82,9 @@ static func dress(w: World, isle: Dictionary, o: Vector2, full: bool, rng: Rando
 			cols += 1
 			if broken > 0.0 and rng.randf() < 0.6:
 				Roman.drum(w, Isles.at(w, isle, o, lp + Vector2(rng.randf_range(-2.5, 2.5), rng.randf_range(2.0, 4.0))), 0.42, 1.3)
+	return top
+
+static func _colossus_and_terraces(w: World, isle: Dictionary, o: Vector2, full: bool, rng: RandomNumberGenerator, tp: Vector3, top: float) -> void:
 	# the colossus: its empty plinth on the seaward terrace and the figure fallen down the slope
 	var cp := Isles.at(w, isle, o, COLOSSUS)
 	var pl := Props.footprint(Models.N(null, "colossus_plinth"), Vector2(2.6, 2.6))

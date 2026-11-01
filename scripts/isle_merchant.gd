@@ -61,7 +61,11 @@ static func _post(w: World, isle: Dictionary, o: Vector2, rng: RandomNumberGener
 	for hs in houses:
 		var lp: Vector2 = YARD + hs[0]
 		var p := Isles.at(w, isle, o, lp)
-		var m := Fort.model("hut")
+		var m := Isles.prop("store")
+		var mk := 1.0
+		if m == null:
+			m = Fort.model("hut")
+			mk = 1.25
 		var holder := Node3D.new()
 		holder.name = "storehouse"
 		if m == null:
@@ -70,9 +74,12 @@ static func _post(w: World, isle: Dictionary, o: Vector2, rng: RandomNumberGener
 			holder.add_child(m)
 		w._place(holder, p)
 		holder.rotation.y = Isles.yaw(isle, float(hs[1]) + PI * 0.5)
-		holder.scale = Vector3.ONE * 1.25
+		holder.scale = Vector3.ONE * mk
 		if full:
-			w.add_circle(p, 2.6)
+			if mk == 1.0:
+				w.add_box(p, Vector2(3.0, 3.1), holder.rotation.y)
+			else:
+				w.add_circle(p, 2.6)
 	# the counter where the factor kept his books (a vendor stands here later)
 	var cp := Isles.at(w, isle, o, YARD + Vector2(-5, 0))
 	var counter := Props.footprint(Models.N(null, "counter"), Vector2(1.8, 0.5))
@@ -131,6 +138,19 @@ static func _post(w: World, isle: Dictionary, o: Vector2, rng: RandomNumberGener
 ## The beacon on the headland: a stone tower with a brazier on top, still burning.
 static func _beacon(w: World, isle: Dictionary, o: Vector2, rng: RandomNumberGenerator, full: bool) -> void:
 	var p := Isles.at(w, isle, o, BEACON)
+	var mt := Isles.prop("beacon")
+	if mt:
+		# the Meshy tower on its rocks (15 m to the brazier's rim); the game lights its fire
+		var gm := Props.footprint(Models.N(null, "beacon"), 3.6)
+		gm.add_child(mt)
+		w._place(gm, p)
+		gm.position.y -= 0.4
+		gm.rotation.y = Isles.yaw(isle, 0.0)
+		Props.fire(gm, Vector3(0, 14.3, 0), 1.5, Color(1.0, 0.55, 0.2), true, false, true)
+		if full:
+			w.solid(gm)
+			w.spawns["poi_beacon"] = p + Vector3(6.5, 0, 0)
+		return
 	var g := Props.footprint(Models.N(null, "beacon"), 2.6)
 	var sm := Props.stone_clean()
 	Models.P(g, Geo.cyl(2.2, 2.7, 11.0, 12), sm, Vector3(0, 5.5, 0))

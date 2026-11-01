@@ -26,8 +26,15 @@ func _run() -> void:
 	for it in w.interactables:
 		if str(it.data.get("role", "")) == "shipwright":
 			osric = it
+	# at his work: the hero out of his reach, the keeper at the hull until he's swinging
+	g.hero.global_position = osric.global_position + Vector3(4.5, 0, 6.0)
+	for i in 400:
+		await process_frame
+		if osric.anim and osric.anim.current_animation == "Heavy_Hammer_Swing" and osric.anim.current_animation_position > 0.9:
+			break
+	await shot(out, "working", 1)
 	g.hero.global_position = w.spawns["shipwright"] + Vector3(-2.0, 0, 2.5)
-	await shot(out, "boatyard", 16)
+	await shot(out, "boatyard", 40)
 	g.hero.global_position = Vector3(9.0, 1.05, 0.0)
 	await shot(out, "moored", 10)
 	g.hero.gold = 520

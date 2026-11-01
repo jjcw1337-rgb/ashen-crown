@@ -244,6 +244,17 @@ static func yaw(isle: Dictionary, local_yaw: float) -> float:
 
 ## Everything that is the same out at sea and on the island: trees, rocks, the landmark, the jetty.
 ## `full` adds what only its own zone has: grass, small props, the places to explore.
+## An island's Meshy landmark (assets/models/isles/<name>.glb, prepared by tools/blender/prep_prop.py:
+## base on the ground, front toward +z), or null without the file (the builders keep their stand-ins).
+const PROP_DIR := "res://assets/models/isles/%s.glb"
+static var _props := {}
+static func prop(name: String) -> Node3D:
+	var path := PROP_DIR % name
+	if not _props.has(name):
+		_props[name] = load(path) if ResourceLoader.exists(path) else null
+	var ps: PackedScene = _props[name]
+	return ps.instantiate() if ps else null
+
 static func dress(w: World, isle: Dictionary, o: Vector2, full: bool) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(isle["seed"]) * 13 + 1

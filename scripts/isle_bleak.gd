@@ -87,6 +87,19 @@ static func dress(w: World, isle: Dictionary, o: Vector2, full: bool, rng: Rando
 ## mast snapped and lying across the sand.
 static func _wreck(w: World, isle: Dictionary, o: Vector2, rng: RandomNumberGenerator, full: bool) -> void:
 	var p := Isles.at(w, isle, o, WRECK)
+	var mw := Isles.prop("wreck")
+	if mw:
+		# the Meshy wreck, 20 m from stem to stern, heeled over and settled into the sand
+		var gw := Props.footprint(Models.N(null, "wreck"), Vector2(9.4, 2.8))
+		gw.add_child(mw)
+		w._place(gw, Vector3(p.x, maxf(p.y, -0.6) - 0.7, p.z))
+		gw.position.y = maxf(p.y, -0.6) - 0.7
+		gw.rotation = Vector3(0, Isles.yaw(isle, 0.4), deg_to_rad(6))
+		if full:
+			w.solid(gw)
+		else:
+			Isles.sea_rock(w, Vector2(p.x, p.z), 6.0)
+		return
 	var g := Models.N(w.props_root, "wreck")
 	var wd := Props.wood_dark()
 	Models.seg(g, Vector3(-9, 0.2, 0), Vector3(9, 0.6, 0), 0.35, 0.3, wd, 6)

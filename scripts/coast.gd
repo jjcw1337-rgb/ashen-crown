@@ -19,6 +19,8 @@ const DOCK := Vector2(0.0, 0.0)         # the end of the pier (where boats tie u
 const PIER_ROOT := Vector2(17.0, 0.0)
 const SHED := Vector2(25.0, -10.0)      # the shipwright's boathouse
 const SHED_YAW := 0.35                  # it opens toward the path and the pier (+z of its frame turned by this)
+const HULL_AT := Vector2(-7.0, 2.5)    # the hull on its trestles, from the shed
+const OSRIC := "res://assets/models/npc/osric.glb"
 const MOOR := Vector3(-5.6, 0.0, -2.3)  # where a boat lies off the pier's end, bow out to sea (open water every way)
 const EXIT := Vector2(68.0, 0.0)        # the path back to the camp
 
@@ -162,7 +164,7 @@ static func _headland(w: World) -> void:
 	w.dirt_blobs.append([PIER_ROOT + Vector2(3, 0), 5.0, 0.8])
 	_pier(w)
 	_boatyard(w)
-	_trestle_hull(w, SHED + Vector2(-7.0, 2.5))
+	_trestle_hull(w, SHED + HULL_AT)
 	# boats pulled up on the beach and nets drying on racks
 	for bp in [Vector2(20.5, 9.0), Vector2(22.0, -19.0)]:
 		_rowboat(w, bp, rng.randf_range(-0.5, 0.5) + PI * 0.5)
@@ -329,14 +331,26 @@ static func _boatyard(w: World) -> void:
 	w._place(sign, sp)
 	sign.rotation.y = SHED_YAW - 0.4
 	w.solid(sign)
-	# Osric, in front of his boathouse
+	# Osric: at the hull on its trestles beside his boathouse, mallet in hand, looking out to sea between blows
 	var V: Dictionary = Data.VENDORS[w.act]
-	var op: Vector3 = g.position + front * Vector3(-0.6, 0, 3.4)
-	var look := {"skin": Color(0.74, 0.55, 0.43), "cloth": Color(0.13, 0.2, 0.3), "cloth2": Color(0.32, 0.22, 0.14), "head": "human",
-		"hair": Color(0.62, 0.6, 0.56), "beard": Color(0.66, 0.64, 0.6), "bulk": 1.12, "height": 1.02}
-	var osric := w._npc(V["shipwright"], look, op, "shipwright", SHED_YAW + PI)
-	osric.radius = 2.0
-	w.spawns["shipwright"] = op + front * Vector3(0, 0, 2.0)
+	if ResourceLoader.exists(OSRIC):
+		var hp: Vector2 = SHED + HULL_AT
+		var op2 := hp + Vector2(2.05, 0.4)
+		var fc: GDScript = load("res://scripts/forest_camp.gd")    # at run time: a static reference compiles it before Sfx exists
+		var osric: Inter = fc._keeper(w, "osric", V["shipwright"], "shipwright", op2, -PI * 0.5,
+			{"idle": "Idle_4", "work": ["Heavy_Hammer_Swing", "Heavy_Hammer_Swing", "Long_Breathe_and_Look_Around"], "talk": "Talk_Passionately"})
+		var hold := {"bone": "RightHand", "item": "war_hammer", "rot": Vector3(0, 0, 90), "pos": Vector3(0.0, 0.08, 0.0)}
+		fc.hold(osric.model, hold)
+		osric.set_meta("hold", hold)
+		osric.radius = 2.2
+		w.spawns["shipwright"] = Vector3(op2.x + 2.2, 0, op2.y)
+	else:
+		var op: Vector3 = g.position + front * Vector3(-0.6, 0, 3.4)
+		var look := {"skin": Color(0.74, 0.55, 0.43), "cloth": Color(0.13, 0.2, 0.3), "cloth2": Color(0.32, 0.22, 0.14), "head": "human",
+			"hair": Color(0.62, 0.6, 0.56), "beard": Color(0.66, 0.64, 0.6), "bulk": 1.12, "height": 1.02}
+		var osric := w._npc(V["shipwright"], look, op, "shipwright", SHED_YAW + PI)
+		osric.radius = 2.0
+		w.spawns["shipwright"] = op + front * Vector3(0, 0, 2.0)
 	# the boat itself (for sale, or his once bought) lies alongside the pier: Game._add_boat (BoatRide)
 
 ## A rowboat pulled up on the sand, tipped a little.

@@ -445,7 +445,12 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   `isles.gd` (`Isles.ISLANDS`: id, name, bearing from the dock, `sail` = metres of open water from the dock to the end of
   its jetty, radius, beach/cliff, colours, and empty `foes`/`loot`/`quests`/`dungeon` for later), each with its own
   builder script `isle_<id>.gd` (`relief` = its inland shape, `pads` = flat spots, `dress` = trees, landmark, props,
-  named spots `poi_*`); a new island is a table entry, a script and a line in `ISLE_SCRIPTS`. The five are 250 m across,
+  named spots `poi_*`); a new island is a table entry, a script and a line in `ISLE_SCRIPTS`. Landmarks are Meshy props in `assets/models/isles/`
+  (`Isles.prop(name)`, null without the file, so each builder keeps its procedural stand-in; prepared by
+  `tools/blender/prep_prop.py`): `store` (the Merchant's Reach storehouses), `beacon` (its tower; the game lights the
+  brazier), `wreck` (the Bleak Isle), `mono` (the Lost Isle's Monolith, runes lit by `MONO_SHADER` in `isle_lost.gd` from its
+  own texture), `temple` (the Forgotten Ruins: columns `TEMPLE_COLS` solid, floor and top step are decks).
+  `tools/isle_props_shot.gd -- outprefix [q] [isle]` screenshots them. The five are 250 m across,
   164 m of water (~22 s at the boat's 8 m/s) from the dock, 14.5 m channels apart. Out at sea (the coast zone) every
   island is drawn at full size (`Isles.dress(..., full = false)`: ground at 2 m, trees, landmark, jetty); stepping off at
   its jetty loads its own zone `"isle_<id>"` (`Isles.build_zone`: the island at the origin, same ground at 1 m, grass,
@@ -459,8 +464,11 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   floating), a baked depth/shore map (`bake`: turquoise shallows, calm water inshore, surf rolling onto every beach,
   foam at rocks and posts), Forward+ refraction and depth (Medium+), the `LITE` variant on Low and OpenGL; global
   `ocean_t`. Light: `Game._sea_env` (golden evening, low sun over the sea, clear air). `World.get_meta("sea_rocks")`
-  lists rocks in the water for boats. **The shipwright**: Osric Saltmarrow (`Data.VENDORS[0]["shipwright"]`, a procedural
-  humanoid for now) at his boathouse (`Coast._boatyard`), an `Inter` "vendor" with role "shipwright": `Game._shipwright_talk`
+  lists rocks in the water for boats. **The shipwright**: Osric Saltmarrow (`Data.VENDORS[0]["shipwright"]`, the Meshy
+  `assets/models/npc/osric.glb`: concept, image-to-3D, Meshy rig and library clips Idle_4 / Heavy_Hammer_Swing /
+  Long_Breathe_and_Look_Around / Talk_Passionately / Wave_One_Hand, cleaned by `prep_npc.py`; a camp keeper through
+  `ForestCamp._keeper` loaded at run time, hammering the hull on its trestles, `Coast.HULL_AT`; the procedural
+  humanoid without the glb) at his boathouse (`Coast._boatyard`), an `Inter` "vendor" with role "shipwright": `Game._shipwright_talk`
   (dialogue) opens `BoatShop` (`boat_shop.gd`, `ui.boat_panel`: portrait, the boat turning on the water, name, price, text,
   how to sail, Buy). Boats are `Data.BOATS` (`gull`: 400 gold, speed 8); owning one is `Hero.boats` (saved), bought with
   `Game.buy_boat`. The boat's model is `Boat.model(id)` (`boat.gd`: lofted clinker hull with its own plank shader, deck,

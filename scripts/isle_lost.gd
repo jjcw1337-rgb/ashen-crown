@@ -31,11 +31,20 @@ static func dress(w: World, isle: Dictionary, o: Vector2, full: bool, rng: Rando
 	var mp := Isles.at(w, isle, o, MONO)
 	# the Monolith: a tapering black spire, its faces cut with glowing runes
 	var mono := Props.footprint(Models.N(null, "monolith"), Vector2(2.4, 2.0))
-	var mat := ForestCamp._rune_material() if ForestCamp.ok() else Props.stone()
-	var dark := Mats.world(Color(0.07, 0.07, 0.08), Color(0.03, 0.03, 0.04), 0.6, 1.4, 0.0)
-	Models.P(mono, Geo.box(6.0, 1.2, 5.0), dark, Vector3(0, 0.6, 0))
-	Models.P(mono, Geo.cyl(1.9, 2.6, 18.0, 4), mat, Vector3(0, 10.2, 0), Vector3(0, 45, 0))
-	Models.P(mono, Geo.cyl(0.05, 1.9, 4.5, 4), mat, Vector3(0, 21.4, 0), Vector3(0, 45, 0))
+	var mm := Isles.prop("mono")
+	if mm:
+		# the Meshy monolith, 24 m on its broken plinth; its painted runes glow (RUNE_SHADER)
+		mono.set_meta("footprint", {"at": Vector3.ZERO, "half": Vector2(4.6, 4.6)})
+		mono.add_child(mm)
+		for mi in mm.find_children("*", "MeshInstance3D", true, false):
+			var me: MeshInstance3D = mi
+			me.material_override = _rune_mat(me.mesh.surface_get_material(0))
+	else:
+		var mat := ForestCamp._rune_material() if ForestCamp.ok() else Props.stone()
+		var dark := Mats.world(Color(0.07, 0.07, 0.08), Color(0.03, 0.03, 0.04), 0.6, 1.4, 0.0)
+		Models.P(mono, Geo.box(6.0, 1.2, 5.0), dark, Vector3(0, 0.6, 0))
+		Models.P(mono, Geo.cyl(1.9, 2.6, 18.0, 4), mat, Vector3(0, 10.2, 0), Vector3(0, 45, 0))
+		Models.P(mono, Geo.cyl(0.05, 1.9, 4.5, 4), mat, Vector3(0, 21.4, 0), Vector3(0, 45, 0))
 	w._place(mono, mp)
 	mono.rotation.y = Isles.yaw(isle, 0.2)
 	var glow := OmniLight3D.new()
@@ -78,3 +87,37 @@ static func dress(w: World, isle: Dictionary, o: Vector2, full: bool, rng: Rando
 		w.spawns["poi_monolith"] = mp + Vector3(6.0, 0, 0)
 		w.spawns["poi_arch"] = Isles.at(w, isle, o, ARCH * 0.82)      # the cliff top over the arch
 		w.spawns["poi_cave"] = Isles.at(w, isle, o, CAVE)
+
+## The Meshy monolith's material with its runes lit: the cyan strokes of its own texture glow and breathe,
+## brighter at night's distance (seen from the dock across the sea), the stone keeps its normal map.
+static func _rune_mat(src: Material) -> ShaderMaterial:
+	var sh := Shader.new()
+	sh.code = MONO_SHADER
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	if src is BaseMaterial3D:
+		var b := src as BaseMaterial3D
+		m.set_shader_parameter("albedo_tex", b.albedo_texture)
+		if b.normal_texture:
+			m.set_shader_parameter("normal_tex", b.normal_texture)
+			m.set_shader_parameter("use_normal", 1.0)
+	return m
+
+const MONO_SHADER := """
+shader_type spatial;
+uniform sampler2D albedo_tex : source_color, filter_linear_mipmap_anisotropic;
+uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap_anisotropic;
+uniform float use_normal = 0.0;
+void fragment() {
+	vec3 c = texture(albedo_tex, UV).rgb;
+	float rune = smoothstep(0.04, 0.16, (c.g + c.b) * 0.5 - c.r) * smoothstep(0.12, 0.3, c.g);
+	ALBEDO = mix(c * 0.8, c, rune);
+	ROUGHNESS = 0.78;
+	if (use_normal > 0.5) {
+		NORMAL_MAP = texture(normal_tex, UV).rgb;
+	}
+	float pulse = 0.72 + 0.28 * sin(TIME * 0.9 + UV.y * 9.0);
+	float far = clamp(length(VERTEX) / 120.0, 0.0, 1.0);
+	EMISSION = vec3(0.3, 1.0, 0.95) * rune * (3.0 + far * 5.0) * pulse;
+}
+"""
