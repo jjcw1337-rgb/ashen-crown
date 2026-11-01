@@ -870,8 +870,9 @@ void fragment() {
 	float fine = (1.0 - smoothstep(0.0, w * 0.7, e2)) * 0.6;
 	float wig = (texture(noise_tex, vec2(r * 1.7 + seed, a * 0.2)).r - 0.5) * 0.35;
 	float dm = min(min(abs(a + 0.52 - wig), abs(a - wig * 0.8)), abs(a - 0.52 - wig)) * (0.35 + r);
-	float wm = 0.085 * (1.0 - 0.5 * r);
-	float main_ = 1.0 - smoothstep(wm * 0.25, wm, dm);
+	float wm = 0.12 * (1.0 - 0.45 * r);
+	float main_ = 1.0 - smoothstep(wm * 0.15, wm, dm);
+	float glowband = (1.0 - smoothstep(wm, wm * 4.0, dm)) * 0.35;
 	float lip = 1.0 - smoothstep(wm, wm * 3.2, dm);
 	float near = exp(-dm * 9.0);
 	float rv = 1.0 - smoothstep(front - 0.07, front, r);
@@ -879,8 +880,9 @@ void fragment() {
 	float cells = max(crack, fine) * rv * mask;
 	float mn = main_ * rv * mask;
 	float hm = mn * heat;
-	float hc = cells * heat * (0.04 + 0.5 * near);
-	vec3 em = crimson * 2.4 * hm + molten * 3.0 * hm * hm + whitehot * 4.0 * pow(hm, 3.0) * (1.0 - r * 0.85);
+	float hc = cells * heat * (0.02 + 0.25 * near);
+	vec3 em = crimson * 2.0 * hm + molten * 2.4 * hm * hm + whitehot * 2.0 * pow(hm, 3.0) * (1.0 - r * 0.85);
+	em += crimson * 0.9 * glowband * rv * mask * heat;
 	em += crimson * 1.6 * hc + molten * 1.4 * hc * hc;
 	em += molten * 3.0 * fr * heat * mask * max(main_, crack);
 	float cool = (1.0 - heat) * max(mn, cells * near) * smoothstep(0.0, 0.35, life) * (0.55 + 0.45 * sin(TIME * 5.0 + r * 23.0 + a * 9.0));
