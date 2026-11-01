@@ -44,12 +44,14 @@ func pack(at: Vector3, n: int, lvl := 5) -> Array:
 	await process_frame
 	return out
 
-## The sum of every bone's turn away from its rest (radians): how much the body is posed right now.
+## The sum of the leg bones' turns away from their rest (radians): how hard the legs are working right now.
 func posed(h) -> float:
 	var sk: Skeleton3D = h.rig.get_meta("drg_sk")
 	var info: Dictionary = h.rig.get_meta("drg_info")
 	var tot := 0.0
 	for b in info:
+		if not str(b).begins_with("leg_"):
+			continue
 		var e: Array = info[b]
 		tot += (sk.get_bone_pose_rotation(int(e[0])) * (e[1] as Quaternion).inverse()).get_angle()
 	return tot
@@ -128,7 +130,7 @@ func _run() -> void:
 		h.direct_dir = Vector3.ZERO
 		h.sprint = false
 		check(went > 4.0, "it ran %.1f m" % went)
-		check(walk_pose > rest_pose * 1.05 or run_pose > rest_pose * 1.2, "legs and tail work harder moving (rest %.2f walk %.2f run %.2f)" % [rest_pose, walk_pose, run_pose])
+		check(walk_pose > rest_pose * 1.05 or run_pose > rest_pose * 1.2, "the legs work harder moving (rest %.2f walk %.2f run %.2f)" % [rest_pose, walk_pose, run_pose])
 		await wait(0.6)
 		# the basic attack: three swipes (claw, bite, tail spin) on a pack in front
 		home = h.global_position

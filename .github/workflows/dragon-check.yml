@@ -48,9 +48,8 @@ jobs:
           apt-get update -qq && apt-get install -y -qq xvfb libgl1-mesa-dri libglx-mesa0 git > /dev/null 2>&1 || true
           mkdir -p shots
           for c in wyrm serpent wyvern; do
-            timeout 300 xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --path . -s tools/dragon_shots.gd -- shots $c 2>&1 | grep -E "\[DS\]|SCRIPT ERROR" || true
+            timeout 900 xvfb-run -a -s "-screen 0 1024x576x24" godot --rendering-driver opengl3 --path . -s tools/dragon_shots.gd -- shots $c 2>&1 | grep -E "\[DS\]|SCRIPT ERROR" || true
           done
-          timeout 500 xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --path . -s tools/dragon_shots.gd -- shots picker 2>&1 | grep -E "\[DS\]|SCRIPT ERROR" || true
           ls -la shots
 
       - name: Publish screenshots to the dragon-shots branch

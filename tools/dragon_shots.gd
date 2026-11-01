@@ -43,6 +43,7 @@ func _run() -> void:
 		quit()
 		return
 	await g.start_game(false, what)
+	g.apply_quality(0)           # Low: software GL in CI is slow
 	g.ui.close_all()
 	g.playing = false            # keep the real keyboard off the hero
 	g.test_immortal = true
