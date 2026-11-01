@@ -848,7 +848,10 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `tools/damage_stack_clip.gd -- outdir`.
 - Developer tools (`Game.dev_tools`): unlock-all-acts (`UNLOCK_ALL_ACTS`) and the F8 testing panel (`test_immortal`, `test_onehit`, `test_stamina`, `test_allskills`, `test_fast` (super speed, `TEST_FAST` times as fast) in `game.gd`, and a level setter, `Hero.set_level`). On only when running from the Godot editor or when this PC holds a valid **admin key** (`AdminKey`, `scripts/admin_key.gd`): `user://admin.key`, signed with the owner's private key; the game checks it against the public key built into the code, so nobody can forge one. Off for everyone else, in every build (live and preview). Make a key: `tools/admin_key.gd` (needs the private key, which is never in the repo). `UNLOCK_ALL_ACTS = false` turns the tools off everywhere.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
-- Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file).
+- Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file). Since 2026-10-31 it is Blaine's
+  new trailer (60 s, 1280x720, Theora ~2.4 Mbit/s + Vorbis, 17.6 MB; encoded with ffmpeg on the staging server:
+  `-vf scale=1280:720 -c:v libtheora -b:v 2400k -maxrate 3600k -bufsize 6000k -c:a libvorbis -q:a 3 -ar 44100`).
+  The originals and the previous intro are kept on Blaine's Mac in ~/Documents/Game Factory/Trailers/.
 - CI is `.github/workflows/deploy.yml` (container `barichello/godot-ci:4.3`). If it fails, the
   site keeps the last good build; read the failed step in the Actions tab.
 - **Preview builds**: push a branch named `test-*` (`git push origin HEAD:test-something`) and
