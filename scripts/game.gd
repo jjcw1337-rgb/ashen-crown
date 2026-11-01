@@ -44,6 +44,11 @@ var shake := 0.0
 var cur_act := 0
 var cur_zone := "town"
 var playing := false
+## Battlegrounds (battlegrounds.gd): the server's raid logic (only on a `--server` run), whether this game is a
+## player in a raid, and that player's stash as the server last reported it.
+var bg: Battlegrounds
+var bg_mode := false
+var bg_stash: Array = []
 var paused := false
 var hovered = null
 var ground_pt := Vector3.ZERO
@@ -120,6 +125,11 @@ func _ready() -> void:
 	hero.died.connect(_on_hero_died)
 	hero.leveled.connect(_on_level)
 	ui.bind_hero(hero)
+	if args.has("--server"):
+		# the Battlegrounds' dedicated server: `godot --headless --path . -- --server [--port N]`
+		var pi := args.find("--port")
+		await Battlegrounds.start_server(self, int(args[pi + 1]) if pi >= 0 and pi + 1 < args.size() else Net.PORT)
+		return
 	if shot_path != "":
 		ui.hide_title()
 		playing = true
@@ -720,6 +730,7 @@ func zone_title(act: int, zone: String) -> String:
 		"town": return a["town"] + tag
 		"wild": return a["wild"] + tag
 		"lair": return ("Throne of the Ashen King" if difficulty >= 2 else a["lair"]) + tag
+		Battlegrounds.ZONE: return Battlegrounds.TITLE
 	return ""
 
 ## The current run's multipliers on Act I (Data.RUNS).
@@ -1037,7 +1048,7 @@ func target_for(e: Node3D) -> Hero:
 	var best: Hero = hero
 	var bd := INF
 	for h in all_heroes():
-		if h.dead or (h.puppet and not h.net_has):
+		if h.dead or (h.puppet and not h.net_has) or (net.server and h == hero):
 			continue
 		var d: float = h.global_position.distance_squared_to(e.global_position)
 		if d < bd:
@@ -1127,7 +1138,60 @@ func start_join(ip: String) -> void:
 		net.shutdown()
 		on_net_failed("No answer from %s. Check the host's game is running and Windows Firewall allowed it." % ip)
 
+## Battlegrounds from the title screen: a fresh hero of `cls` (not saved; a raid's character is its own) joins the
+## raid server at `addr` ("host" or "host:port").
+func start_battlegrounds(addr: String, cls: String) -> void:
+	while _busy:
+		await get_tree().process_frame
+	Sfx.play("click")
+	net.stop_listening()
+	ui.hide_title()
+	ui.close_all()
+	playing = true
+	bg_mode = true
+	char_id = ""
+	char_name = default_name(cls)
+	net.my_name = char_name
+	hero.set_class(cls)
+	hero.new_character()
+	difficulty = 0
+	tp_link = {}
+	boss_killed = false
+	var a: Array = Battlegrounds.parse_address(addr)
+	_save_setting("battlegrounds", "address", addr.strip_edges())
+	loading_lbl.text = "Joining the Battlegrounds at %s..." % a[0]
+	loading.visible = true
+	if net.join(a[0], int(a[1])) != OK:
+		on_net_failed("Could not reach the Battlegrounds server.")
+		return
+	await get_tree().create_timer(8.0).timeout
+	if bg_mode and net.is_client() and loading.visible and not _busy and cur_zone != Battlegrounds.ZONE:
+		net.shutdown()
+		on_net_failed("No answer from the Battlegrounds server at %s." % a[0])
+
+## The server let us out of the raid with `gained`; `s` is the whole stash now.
+func bg_extracted(gained: Array, s: Array) -> void:
+	bg_stash = s
+	Battlegrounds.cache_stash(s)
+	ui.big_message("Extracted!")
+	ui.message("%d item%s to your stash (%d in it)" % [gained.size(), "" if gained.size() == 1 else "s", s.size()], Color(0.6, 1.0, 0.6))
+	Sfx.play("portal")
+	await get_tree().create_timer(2.0).timeout
+	_leave_battlegrounds()
+
+func _leave_battlegrounds() -> void:
+	if not bg_mode:
+		return
+	await exit_to_title()
+	ui.open_battlegrounds()
+
 func on_net_failed(msg: String) -> void:
+	if bg_mode:
+		ui.big_message("Left the Battlegrounds")
+		ui.message(msg, Color(1, 0.6, 0.4))
+		loading.visible = false
+		_leave_battlegrounds()
+		return
 	ui.big_message("Co-op ended")
 	ui.message(msg, Color(1, 0.6, 0.4))
 	loading.visible = false
@@ -1261,6 +1325,7 @@ func default_name(cls: String) -> String:
 ## Back to the title screen to pick another character (the pause menu's "Save and Exit to Title").
 func exit_to_title() -> void:
 	save_game()
+	bg_mode = false
 	if paused:
 		toggle_pause()
 	if net.active:
@@ -1449,6 +1514,10 @@ func _vendor_talk(t: Inter) -> void:
 
 func _interact(t: Inter) -> void:
 	match t.kind:
+		"extract":
+			if bg_mode and net.is_client() and not hero.dead:
+				ui.message("Extracting...", Color(0.6, 0.85, 1.0))
+				net.request_extract()
 		"lanista":
 			ui.trade_with = t
 			# Varro, by Aurelia's arena: his games are A2's boss fight (games.gd)
@@ -1613,6 +1682,9 @@ func _make_portal(p: Vector3, dir: String) -> Inter:
 	return it
 
 func cast_town_portal() -> void:
+	if bg_mode:
+		ui.message("No portals out of the Battlegrounds: find an Extraction Portal", Color(1.0, 0.8, 0.4))
+		return
 	if cur_zone == "town":
 		ui.message("You are already in town", Color(0.6, 0.7, 1.0))
 		return
@@ -1764,6 +1836,11 @@ func _on_hero_died() -> void:
 	ui.set_boss(null)
 
 func respawn() -> void:
+	if bg_mode:
+		# no coming back in a raid: what you carried lies where you fell
+		ui.message("You fell. Everything you carried is lost.", Color(1, 0.5, 0.4))
+		_leave_battlegrounds()
+		return
 	hero.gold = int(hero.gold * 0.9)
 	if net.active:
 		var ally := net.alive_ally()

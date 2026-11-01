@@ -121,6 +121,10 @@ var join_panel: PanelContainer
 var join_list: VBoxContainer
 var join_ip: LineEdit
 var join_hint: Label
+var bg_panel: PanelContainer      # the Battlegrounds screen (open_battlegrounds): class, server address, the stash
+var bg_class: OptionButton
+var bg_addr: LineEdit
+var bg_stash_list: VBoxContainer
 var _join_refresh := 0.0
 var death_panel: Control
 var victory_panel: Control
@@ -175,6 +179,7 @@ func setup(g: Node) -> void:
 	_build_tooltip()
 	_build_title()
 	_build_join()
+	_build_battlegrounds()
 	_build_enchant()
 	_build_death()
 	_build_victory()
@@ -3176,6 +3181,10 @@ func _build_title() -> void:
 	jb.name = "join"
 	jb.pressed.connect(func(): open_join())
 	row.add_child(jb)
+	var bgb := _iron_button("Battlegrounds", 170, 38, 15)
+	bgb.name = "battlegrounds"
+	bgb.pressed.connect(func(): open_battlegrounds())
+	row.add_child(bgb)
 	var q := _iron_button("Quit", 110, 38, 15)
 	q.pressed.connect(func(): get_tree().quit())
 	row.add_child(q)
@@ -3190,6 +3199,7 @@ func _build_title() -> void:
 		# browsers can't use the LAN co-op networking, and there's nothing to quit to
 		hb.visible = false
 		jb.visible = false
+		bgb.visible = false
 		q.visible = false
 	# a fade for the move into a choice (under the picker and the list, which are built on top)
 	_title_fade = ColorRect.new()
@@ -3350,6 +3360,95 @@ func _build_join() -> void:
 		game.net.stop_listening()
 		title_panel.visible = true)
 	vb.add_child(back)
+
+## The Battlegrounds screen (battlegrounds.gd): pick a class, type the raid server's address, Enter; the stash below
+## is what you have extracted (as the server last reported it).
+func _build_battlegrounds() -> void:
+	bg_panel = PanelContainer.new()
+	bg_panel.anchor_left = 0.5
+	bg_panel.anchor_right = 0.5
+	bg_panel.anchor_top = 0.5
+	bg_panel.anchor_bottom = 0.5
+	bg_panel.offset_left = -320
+	bg_panel.offset_right = 320
+	bg_panel.offset_top = -270
+	bg_panel.offset_bottom = 270
+	bg_panel.visible = false
+	root.add_child(bg_panel)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 10)
+	bg_panel.add_child(vb)
+	var t := _label("The Battlegrounds", 28, GOLD, true)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(t)
+	var sub := _label("Enter the raid, kill, loot, and reach an Extraction Portal to keep what you found. Fall, and it stays where you fell.", 14, Color(0.75, 0.7, 0.62))
+	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vb.add_child(sub)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	vb.add_child(row)
+	row.add_child(_label("Class", 16))
+	bg_class = OptionButton.new()
+	for c in Data.CLASSES.keys():
+		bg_class.add_item(str(Data.CLASSES[c].get("name", c)))
+		bg_class.set_item_metadata(bg_class.item_count - 1, c)
+	bg_class.custom_minimum_size = Vector2(180, 36)
+	row.add_child(bg_class)
+	vb.add_child(_label("Server address (host or host:port):", 14, Color(0.7, 0.66, 0.58)))
+	var row2 := HBoxContainer.new()
+	row2.add_theme_constant_override("separation", 8)
+	vb.add_child(row2)
+	bg_addr = LineEdit.new()
+	bg_addr.placeholder_text = "127.0.0.1"
+	bg_addr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bg_addr.custom_minimum_size = Vector2(0, 40)
+	bg_addr.text_submitted.connect(func(_t): _bg_go())
+	row2.add_child(bg_addr)
+	var go := Button.new()
+	go.name = "enter"
+	go.text = "Enter"
+	go.custom_minimum_size = Vector2(100, 40)
+	go.pressed.connect(func(): _bg_go())
+	row2.add_child(go)
+	vb.add_child(_label("Your stash", 18, GOLD))
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(0, 200)
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	vb.add_child(sc)
+	bg_stash_list = VBoxContainer.new()
+	bg_stash_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(bg_stash_list)
+	var back := Button.new()
+	back.text = "Back"
+	back.custom_minimum_size = Vector2(0, 40)
+	back.pressed.connect(func():
+		bg_panel.visible = false
+		title_panel.visible = true)
+	vb.add_child(back)
+
+func open_battlegrounds() -> void:
+	title_panel.visible = false
+	join_panel.visible = false
+	bg_panel.visible = true
+	bg_addr.text = str(game._load_setting("battlegrounds", "address", ""))
+	var last := str(game._load_setting("battlegrounds", "class", "knight"))
+	for i in bg_class.item_count:
+		if bg_class.get_item_metadata(i) == last:
+			bg_class.select(i)
+	for c in bg_stash_list.get_children():
+		c.queue_free()
+	var st: Array = game.bg_stash if not game.bg_stash.is_empty() else Battlegrounds.cached_stash()
+	if st.is_empty():
+		bg_stash_list.add_child(_label("Empty. Extract with loot to fill it.", 14, Color(0.6, 0.57, 0.5)))
+	for it in st:
+		var nm := "%d gold" % int(it.get("count", 0)) if str(it.get("base", "")) == "gold" else str(it.get("name", it.get("base", "?")))
+		bg_stash_list.add_child(_label(nm, 15, Data.RARITY_COLOR[clampi(int(it.get("rarity", 0)), 0, Data.RARITY_COLOR.size() - 1)]))
+
+func _bg_go() -> void:
+	var cls: String = str(bg_class.get_item_metadata(bg_class.selected)) if bg_class.selected >= 0 else "knight"
+	game._save_setting("battlegrounds", "class", cls)
+	bg_panel.visible = false
+	game.start_battlegrounds(bg_addr.text if bg_addr.text.strip_edges() != "" else "127.0.0.1", cls)
 
 func open_join() -> void:
 	Sfx.play("click")

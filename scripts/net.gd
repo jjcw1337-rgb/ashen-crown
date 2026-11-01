@@ -17,6 +17,9 @@ var game: Node
 var peer: ENetMultiplayerPeer
 var active := false
 var is_host := false
+## A dedicated server (Battlegrounds, `-- --server`): the host has no player of its own, so it never streams its
+## hero, isn't in the roster partners see, and refuses party travel (Battlegrounds.gd).
+var server := false
 var my_name := "Crusader"
 var players := {}          # peer id -> {"name": String, "hero": Hero}
 var enemies := {}          # net id -> Enemy
@@ -55,10 +58,10 @@ func is_client() -> bool:
 	return active and not is_host
 
 # ---------------------------------------------------------------- hosting / joining
-func host() -> int:
+func host(port := PORT, max_clients := MAX_CLIENTS) -> int:
 	shutdown()
 	peer = ENetMultiplayerPeer.new()
-	var err := peer.create_server(PORT, MAX_CLIENTS)
+	var err := peer.create_server(port, max_clients)
 	if err != OK:
 		peer = null
 		return err
@@ -71,10 +74,10 @@ func host() -> int:
 	_update_status()
 	return OK
 
-func join(ip: String) -> int:
+func join(ip: String, port := PORT) -> int:
 	shutdown()
 	peer = ENetMultiplayerPeer.new()
-	var err := peer.create_client(ip, PORT)
+	var err := peer.create_client(ip, port)
 	if err != OK:
 		peer = null
 		return err
@@ -131,6 +134,8 @@ func local_ips() -> Array:
 
 func _on_connected() -> void:
 	rpc_id(1, "sv_hello", my_name, game.hero.net_gear(), game.hero.level)
+	if game.bg_mode:
+		rpc_id(1, "sv_bg_hello", Battlegrounds.client_id())
 
 func _on_connect_failed() -> void:
 	shutdown()
@@ -144,6 +149,8 @@ func _on_peer_disconnected(pid: int) -> void:
 	if not players.has(pid):
 		return
 	var n: String = players[pid]["name"]
+	if server and game.bg != null and is_instance_valid(players[pid]["hero"]):
+		game.bg.player_left(pid, players[pid]["hero"].global_position)
 	_remove_player(pid)
 	# a trip waiting on them: theirs is called off, otherwise it goes on without their answer
 	if is_host and not vote.is_empty():
@@ -232,10 +239,12 @@ func _process(delta: float) -> void:
 		_update_party_ui()
 		return
 	_send_t = SEND_RATE
-	if players.is_empty() or game.world == null or game._busy or loading:
+	# (a client of a dedicated server has no partners listed yet, but the server still needs its position)
+	if (players.is_empty() and not (is_client() and game.bg_mode)) or game.world == null or game._busy or loading:
 		_update_party_ui()
 		return
-	rpc("pl_state", _hero_packet(game.hero))
+	if not server:
+		rpc("pl_state", _hero_packet(game.hero))
 	if is_host:
 		var arr := PackedFloat32Array()
 		for id in enemies.keys():
@@ -306,12 +315,15 @@ func sv_hello(nm: String, gear: Dictionary, _lvl: int) -> void:
 	if not is_host:
 		return
 	var pid := multiplayer.get_remote_sender_id()
-	var roster := [[1, my_name, game.hero.net_gear()]]
+	var roster := [] if server else [[1, my_name, game.hero.net_gear()]]
 	for op in players:
 		roster.append([op, players[op]["name"], players[op]["hero"].net_gear()])
 		rpc_id(op, "cl_player_join", pid, nm, gear)
 	_add_player(pid, nm, gear)
-	rpc_id(pid, "cl_welcome", game.cur_act, game.cur_zone, game.hero.global_position, game.tp_link, game.boss_killed, roster, game.difficulty)
+	var at: Vector3 = game.bg.spawn_point() if server and game.bg != null else game.hero.global_position
+	rpc_id(pid, "cl_welcome", game.cur_act, game.cur_zone, at, game.tp_link, game.boss_killed, roster, game.difficulty)
+	if server:
+		print("[BG] %s joined (%d in the raid)" % [nm, players.size()])
 	game.ui.message(nm + " joined the game", Color(0.5, 1.0, 0.5))
 	Sfx.play("portal")
 	_update_status()
@@ -323,7 +335,10 @@ func cl_welcome(act: int, zone: String, pos: Vector3, tp: Dictionary, bk: bool, 
 		_add_player(int(r[0]), str(r[1]), r[2])
 	game.tp_link = tp
 	game.boss_killed = bk
-	game.ui.message("Joined %s's game" % players.get(1, {"name": "the host"})["name"], Color(0.5, 1.0, 0.5))
+	if game.bg_mode:
+		game.ui.message("Joined the Battlegrounds", Color(0.5, 1.0, 0.5))
+	else:
+		game.ui.message("Joined %s's game" % players.get(1, {"name": "the host"})["name"], Color(0.5, 1.0, 0.5))
 	_update_status()
 	_client_goto(act, zone, "start", pos)
 
@@ -389,7 +404,7 @@ func request_switch(d: int, zone := "town", spawn := "") -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func sv_switch(d: int, zone: String, spawn: String) -> void:
-	if is_host and not game._busy:
+	if is_host and not server and not game._busy:
 		game.switch_run(d, zone, spawn)
 
 func request_a2() -> void:
@@ -397,7 +412,7 @@ func request_a2() -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func sv_a2() -> void:
-	if is_host and game.boss_killed and not game._busy:
+	if is_host and not server and game.boss_killed and not game._busy:
 		game.start_a2()
 
 func request_travel(act: int, zone: String, spawn: String, at, clear_tp := false) -> void:
@@ -409,7 +424,7 @@ func request_travel(act: int, zone: String, spawn: String, at, clear_tp := false
 
 @rpc("any_peer", "call_remote", "reliable")
 func sv_travel(act: int, zone: String, spawn: String, at: Vector3, clear_tp: bool) -> void:
-	if not is_host or game._busy:
+	if not is_host or server or game._busy:
 		return
 	var pid := multiplayer.get_remote_sender_id()
 	if players.has(pid):
@@ -714,6 +729,8 @@ func sv_pickup(id: int) -> void:
 	var pid := multiplayer.get_remote_sender_id()
 	var it: Dictionary = g.item
 	var pos: Vector3 = g.global_position
+	if server and game.bg != null:
+		game.bg.picked(pid, it)
 	item_gone(g)
 	if game.hovered == g:
 		game.hovered = null
@@ -741,6 +758,44 @@ func cl_remove_item(id: int) -> void:
 @rpc("authority", "call_remote", "reliable")
 func cl_grant(it: Dictionary, pos: Vector3) -> void:
 	game.receive_item(it, pos)
+
+# ---------------------------------------------------------------- Battlegrounds (battlegrounds.gd)
+## Client -> server: who this player is (their stash's id); the server answers with their stash.
+@rpc("any_peer", "call_remote", "reliable")
+func sv_bg_hello(uid: String) -> void:
+	if not server or game.bg == null:
+		return
+	var pid := multiplayer.get_remote_sender_id()
+	rpc_id(pid, "cl_bg_stash", game.bg.player_hello(pid, uid.substr(0, 64)))
+
+@rpc("authority", "call_remote", "reliable")
+func cl_bg_stash(s: Array) -> void:
+	game.bg_stash = s
+	Battlegrounds.cache_stash(s)
+
+func request_extract() -> void:
+	rpc_id(1, "sv_extract")
+
+## The server checks the player stands at an Extraction Portal, files their loot and lets them out.
+@rpc("any_peer", "call_remote", "reliable")
+func sv_extract() -> void:
+	if not server or game.bg == null:
+		return
+	var pid := multiplayer.get_remote_sender_id()
+	if not game.bg.near_extract(pid):
+		rpc_id(pid, "cl_bg_note", "Stand in the Extraction Portal to leave")
+		return
+	var r: Array = game.bg.extract(pid)
+	print("[BG] %s extracted with %d item(s), stash %d" % [_name_of(pid), (r[0] as Array).size(), (r[1] as Array).size()])
+	rpc_id(pid, "cl_extracted", r[0], r[1])
+
+@rpc("authority", "call_remote", "reliable")
+func cl_extracted(gained: Array, s: Array) -> void:
+	game.bg_extracted(gained, s)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_bg_note(txt: String) -> void:
+	game.ui.message(txt, Color(1.0, 0.8, 0.4))
 
 # ---------------------------------------------------------------- chests, shrines, portals
 func inter_used(t: Inter) -> void:
@@ -779,7 +834,7 @@ func request_portal(pos: Vector3) -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func sv_portal(pos: Vector3) -> void:
-	if is_host and game.world and game.cur_zone != "town":
+	if is_host and not server and game.world and game.cur_zone != "town":
 		game.open_town_portal_at(pos)
 
 func portal_created(t: Inter) -> void:
@@ -821,7 +876,7 @@ func ask_trip(act: int, zone: String, spawn: String, at, clear_tp := false) -> v
 
 @rpc("any_peer", "call_remote", "reliable")
 func sv_trip(act: int, zone: String, spawn: String, at: Vector3, clear_tp: bool) -> void:
-	if is_host and not game._busy:
+	if is_host and not server and not game._busy:
 		_start_vote(multiplayer.get_remote_sender_id(), act, zone, spawn, at, clear_tp)
 
 func _name_of(pid: int) -> String:

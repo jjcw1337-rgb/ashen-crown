@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `grass_test`, `collision_test`, `aim_test`, `plague_test` (`--fixed-fps 60`), `hoard_test`, `coop_fx_test` (every skill's effects reach a puppet, in one process), `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test`, `mp_boss_test` and `plague_mp_test` (run one copy
+`det_test`, `grass_test`, `collision_test`, `aim_test`, `plague_test` (`--fixed-fps 60`), `hoard_test`, `coop_fx_test` (every skill's effects reach a puppet, in one process), `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), `bg_test` (the Battlegrounds: a server and a client, `-- --server --port 24611 server` and `-- client 24611`), and the co-op pairs `mp_test`, `mp_boss_test` and `plague_mp_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -81,7 +81,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `goblin.gd`, `sculpt.gd` | Goblin models: King Grubb is the imported mutant (`Goblin.MUTANT`: joint layout + glb, skinned onto the game's skeleton); the Gold Grabbers (and Grubb's fallback) are code-sculpted (`Sculpt` melts SDF shapes into one skinned mesh). `Goblin.after_pose` adds ears, jaw, crown wobble, belly jiggle, sacks and the goblin gaits |
 | `ground_item.gd`, `inter.gd` | Loot on the ground; interactables (chests, shrines, waypoints, portals, NPCs) |
 | `items.gd` | Item rolls, `empower` (A2/A3 multipliers), enchanting, tooltips |
-| `net.gd` | LAN co-op over ENet (UDP 24567, discovery 24568); RPC layer |
+| `net.gd` | LAN co-op over ENet (UDP 24567, discovery 24568); RPC layer; `server` = a dedicated host with no player (Battlegrounds) |
+| `battlegrounds.gd` | Battlegrounds prototype: the raid map, the dedicated server's raid logic (respawns, carried loot, extraction, the stash), the client's id and cached stash |
 | `skill_fx.gd`, `knight_fx.gd`, `archer_fx.gd` | Co-op skill effects: `SkillFx` plays every class's skill events on the caster and on his puppet for partners (see "Co-op skill effects"); the knight's and archer's effect handlers (the Wraith's, Demon's and Warlock's are in their `*_fx.gd`) |
 | `ui.gd`, `hud_bar.gd`, `icon_renderer.gd` | All UI built in code |
 | `vendor_ui.gd` | Nameplates over the town's people and the trader's live portrait in the trade window |
@@ -132,6 +133,23 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   in `Data.SKILLS` beside a puppet and fails if a skill sends no event, the puppet shows nothing, a lingering effect
   doesn't reach it, or replaying the events on the puppet hurts a monster or changes its life or mana; the
   `mp_test` host+join pair counts the events each side receives from the other ("[H8]"/"[C7]").
+- **Battlegrounds** (`scripts/battlegrounds.gd`, `Battlegrounds`; prototype, phase 1): an extraction raid on a
+  **dedicated server**. The server is the game itself run headless: `godot --headless --path . -- --server [--port N]`
+  (`Game._ready` -> `Battlegrounds.start_server`; default UDP 24567, up to `MAX_PLAYERS` 16). It hosts zone `"bg"`
+  (`Battlegrounds.build`: a 60 m walled ruin, broken walls and graves, two chests, an Extraction Portal north and
+  south, Inter kind `"extract"`) through the normal co-op layer with `Net.server` on: its own hero is hidden, parked off
+  the map and phased (`park_hero`, skipped by `Game.target_for`), it never streams its hero, isn't in the roster
+  players get, and refuses travel, portals and trips; a joiner arrives at the free-est of the map's `bg_spawns`
+  (`spawn_point`). Zombies are kept at `ZOMBIES`, respawning away from players. Players: the title's Battlegrounds
+  button (`UI.open_battlegrounds`: class, server address `host[:port]`, the stash) -> `Game.start_battlegrounds`, a
+  fresh unsaved hero (`bg_mode`; `char_id` is empty, so nothing is saved). The server keeps the record: every item a
+  player picks up (`Net.sv_pickup`) is `carried[pid]`; at an Extraction Portal (`Net.sv_extract`, the server checks
+  the player stands within `EXTRACT_R`) it joins their stash, saved on the server in `user://bg_server/stash.json`
+  under the player's id (`client_id`, a random id in `user://bg_id.txt`, sent by `Net.sv_bg_hello`; not hack-proof,
+  Nakama takes accounts over later); dying or disconnecting drops it on the ground (`_drop_carried`). A death ends the
+  raid (`Game.respawn` in `bg_mode` -> back to the Battlegrounds screen). The client caches the stash the server last
+  sent (`user://bg_stash_cache.json`). Not yet: PvP damage, bringing stash items in, raid timers, several raids per
+  server, Steam/Nakama, WebSocket for the browser. `tools/bg_test.gd` runs the whole loop with a server and a client.
 - **Browser build (WebGL)** is a test build only and is fragile:
   - it is exported with **Godot 4.5.1** in CI (the desktop builds use 4.3): Godot 4.3's WebGL renderer
     blanks the whole 3D view in busy scenes (many objects near lights). Keep code working in both versions:

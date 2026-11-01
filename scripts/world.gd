@@ -896,6 +896,7 @@ func build(act_i: int, kind_s: String, seed_v: int) -> void:
 	hill_noise.frequency = 0.03
 	hill_noise.fractal_octaves = 4
 	match kind:
+		Battlegrounds.ZONE: Battlegrounds.build(self)
 		"town": _build_town()
 		"wild": Via.build(self) if run == 1 else _build_wild()
 		"lair":
