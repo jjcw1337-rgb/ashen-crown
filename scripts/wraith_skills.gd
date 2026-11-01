@@ -81,6 +81,13 @@ static func siphon_pick(h: Hero, aim: Vector3):
 			break
 	return best
 
+## ClassSkills: Soul Siphon needs a foe to latch onto before anything is spent.
+static func can_cast(h: Hero, id: String, aim: Vector3) -> bool:
+	if id == "siphon" and siphon_pick(h, aim) == null:
+		h.game.ui.message("No enemy in reach", Color(0.8, 0.8, 0.8))
+		return false
+	return true
+
 static func _start(h: Hero, style: String, skill: String) -> void:
 	h._start_attack(style, skill)
 	var d: float = DUR[style] * Data.attack_pace(h.cls)
@@ -457,6 +464,20 @@ static func clear(h: Hero) -> void:
 		h.atk_skill = ""
 	w.clear()
 	h.veil_t = 0.0
+
+static func died(h: Hero) -> void:
+	clear(h)
+
+## The casts' sounds, timed to their impact frame (`at` seconds from now; ClassSkills.sound).
+static func sound(h: Hero, skill: String, at: float) -> bool:
+	match skill:
+		"rend": Sfx.play_synced("reap_swing", at, -2.0, 1.05)
+		"siphon": Sfx.play_synced("shade_in", at, -6.0, 0.8)
+		"step": Sfx.play_synced("shade_out", 0.35 * h.atk_dur, -4.0, 1.1)
+		"grasp": Sfx.play_synced("slam", at, -2.0, 0.9)
+		"phantom": Sfx.play_synced("reap_swing", at, -3.0, 0.9)
+		_: return false
+	return true
 
 ## Old saves bound the skills these replaced: the binding carries over.
 static func migrate_binds(binds: Dictionary) -> void:

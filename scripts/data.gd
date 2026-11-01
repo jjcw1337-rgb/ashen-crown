@@ -463,19 +463,21 @@ const ATTACK_PACE := 1.2
 static func attack_pace(cls: String) -> float:
 	return float(CLASSES[cls].get("attack_pace", ATTACK_PACE)) if CLASSES.has(cls) else ATTACK_PACE
 
+## Every playable class. "voice": the hurt/death sounds' suffix (hurt_<voice>, death_<voice>; "knight" when absent).
+## A new class also needs its skills (SKILLS, with "cls"), a skills script (ClassSkills.of) and its effects (SkillFx.play).
 const CLASSES := {
 	"knight": {"name": "Knight", "str": 20, "dex": 15, "vit": 25, "ene": 10,
 		"desc": "A crusader in steel. Sword and shield, heavy blows, holy fire and a rallying cry."},
-	"wraith": {"name": "Wraith", "str": 15, "dex": 22, "vit": 18, "ene": 28,
+	"wraith": {"voice": "wraith", "name": "Wraith", "str": 15, "dex": 22, "vit": 18, "ene": 28,
 		"desc": "A horned spirit in chains that never touches the ground. Tears souls out with spectral claws, drains them down a tether, steps through shadow, drags foes into the earth's grasp and brings down the night."},
-	"demon": {"name": "Demon", "str": 24, "dex": 14, "vit": 24, "ene": 18,
+	"demon": {"voice": "demon", "name": "Demon", "str": 24, "dex": 14, "vit": 24, "ene": 18,
 		"desc": "A horned, winged brute of charcoal hide with magma burning through the cracks. Cracks the ground with his fists, charges through his foes on a trail of lava, hurls molten boulders and calls meteors down from the pit."},
 	# the bow class (Jace's): its name is his to choose; "Archer" until then
 	"archer": {"name": "Archer", "str": 14, "dex": 26, "vit": 18, "ene": 14, "weapon": "short_bow",
 		"desc": "A red-hooded ranger with a carved recurve bow and his dire wolf at his side. Shoots on the move: fire arrows that burn through a line, frost volleys that chill, storm snares that chain lightning."},
 	"plague": {"name": "Plague Doctor", "str": 14, "dex": 18, "vit": 18, "ene": 24, "weapon": "physician_cane",
 		"desc": "A beaked physician of the cursed years, belted with vials and a smoking censer. Fights by preparation: poison clouds, fused fire, traps that wait, and an epidemic that spreads from foe to foe."},
-	"warlock": {"name": "Warlock", "str": 10, "dex": 10, "vit": 10, "ene": 10,
+	"warlock": {"voice": "gnome", "name": "Warlock", "str": 10, "dex": 10, "vit": 10, "ene": 10,
 		"desc": "A hooded sorcerer bound by a fel pact. Drains the life from foes in a forking green beam, rots them with blight and chains them where they stand."},
 }
 

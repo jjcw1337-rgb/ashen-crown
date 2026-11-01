@@ -93,6 +93,13 @@ static func grip_pick(h: Hero, aim: Vector3):
 			best = e
 	return best
 
+## ClassSkills: Hellgrip needs a foe to seize before anything is spent.
+static func can_cast(h: Hero, id: String, aim: Vector3) -> bool:
+	if id == "grip" and grip_pick(h, aim) == null:
+		h.game.ui.message("No enemy in reach", Color(0.8, 0.8, 0.8))
+		return false
+	return true
+
 static func _start(h: Hero, style: String, skill: String) -> void:
 	h._start_attack(style, skill)
 	var d: float = DUR[style] * Data.attack_pace(h.cls)
@@ -548,6 +555,13 @@ static func clear(h: Hero) -> void:
 		h.atk_t = -1.0
 		h.atk_skill = ""
 	w.clear()
+
+static func died(h: Hero) -> void:
+	clear(h)
+
+## His casts' sounds are played by his skills and effects themselves (DemonFx), none at the cast's start.
+static func sound(_h: Hero, _skill: String, _at: float) -> bool:
+	return false
 
 ## Old saves bound the skills these replaced: the binding carries over.
 static func migrate_binds(binds: Dictionary) -> void:

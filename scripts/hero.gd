@@ -95,6 +95,7 @@ var drain_tick := 0.0
 var drain_main = null        # the enemy the beam is latched onto (the beams themselves are fxs["drain"], WarlockFx)
 var drain_heal := 0.0        # healing gathered since the last "+N" number
 var drain_heal_t := 0.0
+var drain_victims: Array = []  # Drain Life's victims this frame: the main one, then its forks (WarlockSkills)
 var covenant_t := 0.0        # Warlock: Fel Covenant (Drain Life forks further and heals double)
 var bolts: Array = []        # Warlock's Blight Bolts in flight: [{node, dir, left}] (flown by WarlockFx.update, burst here)
 ## The archer (archer.gd): arrows in flight, volleys raining down, snares lying in wait, the spirit beasts
@@ -359,13 +360,8 @@ func set_class(c: String) -> void:
 	if changed:
 		talents = {}
 		tfx = {}
-	WraithSkills.clear(self)
-	DemonSkills.clear(self)
-	_clear_warlock()
-	Archer.clear(self)
-	if pd != null:
-		pd.clear()
-		pd = null
+	ClassSkills.clear(self)
+	pd = null                 # the plague doctor's Plague object goes with his body (a new one comes with the rig)
 	SkillFx.clear(self)
 	if rig != null:
 		rig.queue_free()
@@ -505,9 +501,7 @@ func new_character() -> void:
 	for k in cds.keys():
 		cds[k] = 0.0
 	buff_t = 0.0
-	WraithSkills.clear(self)
-	DemonSkills.clear(self)
-	_clear_warlock()
+	ClassSkills.clear(self)
 	SkillFx.clear(self)
 	equipment = {}
 	for s in Items.EQUIP_SLOTS:
@@ -1059,17 +1053,8 @@ func use_skill(id: String, aim: Vector3) -> bool:
 		game.ui.message("Not enough mana", Color(0.4, 0.5, 1.0))
 		Sfx.play("deny")
 		return false
-	var foe = null
-	if id == "drain":
-		foe = _drain_pick(aim)
-		if foe == null:
-			game.ui.message("No enemy in reach", Color(0.8, 0.8, 0.8))
-			return false
-	if id == "siphon" and WraithSkills.siphon_pick(self, aim) == null:
-		game.ui.message("No enemy in reach", Color(0.8, 0.8, 0.8))
-		return false
-	if id == "grip" and DemonSkills.grip_pick(self, aim) == null:
-		game.ui.message("No enemy in reach", Color(0.8, 0.8, 0.8))
+	# the class's own checks (a foe to latch onto or seize, ...) before anything is spent
+	if not ClassSkills.can_cast(self, id, aim):
 		return false
 	# cancel a basic swing (or a Drain Life channel) so the skill fires right away
 	end_drain()
@@ -1079,48 +1064,8 @@ func use_skill(id: String, aim: Vector3) -> bool:
 	cds[id] = skill_cd(id)
 	atk_aim = aim
 	_face(aim - global_position)
-	match id:
-		"cleave":
-			# Holy Slam lands on the cursor (up to SLAM_RANGE away): he leaps far enough that the
-			# blade, which strikes about SLAM_REACH in front of him, comes down right there
-			var to := (aim - global_position) * Vector3(1, 0, 1)
-			var dist := minf(to.length(), SLAM_RANGE)
-			slam_reach = minf(dist, SLAM_REACH)
-			slam_leap = dist - slam_reach
-			_start_attack("cleave", "cleave")
-		"nova":
-			_start_attack("cast", "nova")
-			atk_dur = 0.55 * Data.attack_pace(cls)
-		"charge":
-			var d := aim - global_position
-			d.y = 0
-			charge_dir = d.normalized() if d.length() > 0.1 else aim_dir()
-			charge_t = 0.0
-			charge_hit = {}
-			path = PackedVector3Array()
-			moving = false
-		"cry":
-			_start_attack("cast", "cry")
-			atk_dur = 0.6 * Data.attack_pace(cls)
-		"rend", "siphon", "step", "grasp", "phantom", "night":
-			WraithSkills.cast(self, id, aim)
-		"fists", "icharge", "cslam", "hurl", "grip", "wrath":
-			DemonSkills.cast(self, id, aim)
-		"drain":
-			_drain_start(foe)
-		"blight":
-			_start_attack("cast", "blight")
-			atk_dur = 0.45 * Data.attack_pace(cls)
-		"shackles":
-			_start_attack("cast", "shackles")
-			atk_dur = 0.5 * Data.attack_pace(cls)
-		"covenant":
-			_start_attack("cast", "covenant")
-			atk_dur = 0.6 * Data.attack_pace(cls)
-		"pierce", "volley", "snare", "beast":
-			Archer.cast(self, id, aim)
-		"toxic", "volatile", "trap", "epidemic":
-			Plague.cast(self, id, aim)
+	# the class's skills script starts it (ClassSkills.of: KnightSkills, WraithSkills, DemonSkills, ...)
+	ClassSkills.cast(self, id, aim)
 	# the cast itself, seen by everyone (SkillFx: the class draws it, or the default puff shows it)
 	fx(id, "cast", {"p": atk_aim})
 	return true
@@ -1144,29 +1089,21 @@ func drink(slot: int) -> void:
 	Fx.burst(game.world.fx_root, global_position + Vector3(0, 1.2, 0), b["color"], 14, 1.5, 0.12, 0.8, true, 1.0)
 	stats_changed.emit()
 
-func _start_attack(style: String, skill := "") -> void:
+## Starts an attack or a skill's motion. `secs` (optional) is the attack's length in seconds before attack speed
+## and the class's pace (else 0.62, or the swipe's own length for a weapon swing).
+func _start_attack(style: String, skill := "", secs := 0.0) -> void:
 	atk_style = style
 	atk_skill = skill
 	atk_t = 0.0
 	atk_dur = 0.62 / aspd
 	if SWIPE_DUR.has(style) and skill == "":
 		atk_dur = SWIPE_DUR[style] / aspd
-	if skill == "cleave":
-		atk_dur = 0.95 / aspd      # Holy Slam: crouch, leap, slam, hold the blow, rise
+	if secs > 0.0:
+		atk_dur = secs / aspd
 	atk_dur *= Data.attack_pace(cls)     # every class's pace (Data.ATTACK_PACE)
 	impact_done = false
 	trail_pts.clear()
-	trail_col = Color(1.0, 0.85, 0.5) if skill == "cleave" else Color(0.85, 0.9, 1.0)
-	if is_archer():
-		trail_col = Archer.HUNTER
-	elif is_plague():
-		trail_col = Plague.TOXIC
-	if is_wraith():
-		trail_col = WraithFx.SPIRIT
-	elif is_demon():
-		trail_col = DemonFx.EMBER
-	elif is_warlock():
-		trail_col = Warlock.FEL
+	trail_col = ClassSkills.trail_color(cls, skill)
 	var w = equipment.get("weapon")
 	if w != null and w.get("rarity", 0) == 3 and Models.palette(w)["glow"] != null:
 		trail_col = Models.palette(w)["glow"]
@@ -1178,27 +1115,10 @@ func _start_attack(style: String, skill := "") -> void:
 func _attack_sound(skill: String) -> void:
 	# when this attack's impact frame comes (it scales with attack speed)
 	var at := Anim.impact_at(atk_style) * atk_dur
-	if atk_style == "bow":
-		# the archer: the string's twang on the release (Volley's flight a little lower)
-		Sfx.play_synced("bow", at, -3.0, 0.85 if skill == "volley" else (0.92 if skill == "pierce" else 1.0))
+	# a skill's (or the bow's) own sound: the class's skills script
+	if ClassSkills.sound(self, skill, at):
 		return
 	match skill:
-		"cleave": Sfx.play_synced("cleave_swing", at, -2.0)
-		"rend": Sfx.play_synced("reap_swing", at, -2.0, 1.05)
-		"siphon": Sfx.play_synced("shade_in", at, -6.0, 0.8)
-		"step": Sfx.play_synced("shade_out", 0.35 * atk_dur, -4.0, 1.1)
-		"grasp": Sfx.play_synced("slam", at, -2.0, 0.9)
-		"phantom": Sfx.play_synced("reap_swing", at, -3.0, 0.9)
-		"nova":
-			Sfx.play_synced("holy_nova", at, 0.0)
-			Sfx.duck(-8.0, 1.0)
-		"blight": Sfx.play_synced("blight_cast", at, -2.0)
-		"toxic": Sfx.play_synced("swing_light", at - 0.05, -4.0, 0.85)
-		"volatile":
-			Sfx.play_synced("fuse", at * 0.5, -6.0, 1.2)
-			Sfx.play_synced("swing", at - 0.05, -3.0, 0.8)
-		"trap": Sfx.play_synced("equip", at, -4.0, 0.8)
-		"epidemic": Sfx.play_synced("swing_heavy", at - 0.08, -3.0, 0.75)
 		"":
 			# the whoosh peaks just before the blade lands
 			if atk_style == "swipe3":
@@ -1218,13 +1138,7 @@ func _swing_sound() -> String:
 
 ## Hurt and death voices per body: the knight, the gnome (higher), the wraith (a hiss), the demon (a growl).
 func _voice(what: String) -> String:
-	if is_warlock():
-		return what + "_gnome"
-	if is_wraith():
-		return what + "_wraith"
-	if is_demon():
-		return what + "_demon"
-	return what + "_knight"
+	return what + "_" + str(Data.CLASSES.get(cls, {}).get("voice", "knight"))
 
 func _face(d: Vector3) -> void:
 	d.y = 0
@@ -1367,9 +1281,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	if life <= 0.0:
 		life = 0.0
 		dead = true
-		end_drain()
-		WraithSkills.clear(self)
-		DemonSkills.clear(self)
+		ClassSkills.died(self)
 		SkillFx.clear(self)
 		dead_t = 0.0
 		atk_t = -1.0
@@ -1390,13 +1302,7 @@ func _process(delta: float) -> void:
 	for k in cds.keys():
 		cds[k] = maxf(0.0, cds[k] - delta)
 	buff_t = maxf(0.0, buff_t - delta)
-	covenant_t = maxf(0.0, covenant_t - delta)
-	WraithSkills.update(self, delta)
-	DemonSkills.update(self, delta)
-	Archer.update(self, delta)
-	if pd != null:
-		pd.update(delta)
-	_update_blights(delta)
+	ClassSkills.update(self, delta)     # every class's lingering skills (pools, the tether, lava, arrows, clouds...)
 	aura.emitting = buff_t > 0.0
 	hit_t = maxf(0.0, hit_t - delta * 4.0)
 	block_flash = maxf(0.0, block_flash - delta)
@@ -1483,12 +1389,12 @@ func _process(delta: float) -> void:
 		speed *= 0.55
 
 	if charge_t >= 0.0:
-		_update_charge(delta)
+		KnightSkills.update_charge(self, delta)
 	else:
 		if atk_t >= 0.0:
 			_update_attack(delta)
 		if drain_t >= 0.0:
-			_update_drain(delta)
+			WarlockSkills.update_drain(self, delta)
 		# pursue target (an attack already in progress keeps its rhythm)
 		if target != null and (not is_instance_valid(target) or target.is_queued_for_deletion()):
 			target = null
@@ -1536,7 +1442,7 @@ func _process(delta: float) -> void:
 			else:
 				vel = dv.normalized() * speed
 	var stride := 1.3 if running else 1.0
-	if WraithSkills.rooted(self) or DemonSkills.rooted(self):
+	if ClassSkills.rooted(self):
 		vel = Vector3.ZERO
 	if vel.length() > 0.01:
 		var np: Vector3 = game.world.move(global_position, vel * delta)
@@ -1596,7 +1502,7 @@ func _process(delta: float) -> void:
 		Archer.pose_bow(self, st)
 	last_pose = st
 	_hover()
-	_drain_victims_changed()
+	WarlockSkills.drain_victims_changed(self)
 	SkillFx.update(self, delta)
 	_breathe(delta)
 	_apply_shield_pose()
@@ -1775,14 +1681,8 @@ func _update_attack(delta: float) -> void:
 
 func _impact() -> void:
 	var fwd := aim_dir()
-	if Archer.impact(self):
-		return
-	if Plague.impact(self):
-		return
-	if WraithSkills.impact(self):
-		stats_changed.emit()
-		return
-	if DemonSkills.impact(self):
+	# a skill (or the archer's shot): its class's script deals it
+	if ClassSkills.impact(self):
 		stats_changed.emit()
 		return
 	match atk_skill:
@@ -1813,250 +1713,21 @@ func _impact() -> void:
 					_hit_enemy(best, 1.0, 0.15)
 					fx("attack", "hit", {"p": best.global_position + Vector3(0, 1.1 * best.height, 0)})
 					hit_any = true
-		"cleave":
-			# Holy Slam: the slam lands just ahead; everything around the blow is hit and thrown back
-			var at := global_position + fwd * slam_reach
-			at.y = game.world.height_at(at.x, at.z)
-			var any := false
-			var ps := PackedVector3Array()
-			for e in game.enemies_near(at, 3.6):
-				var to: Vector3 = e.global_position - at
-				to.y = 0
-				if to.length() - e.radius <= 2.6:
-					_hit_enemy(e, 1.6, 0.6)     # knocked back a little
-					if is_instance_valid(e) and not e.dead:
-						e.stun(1.0)
-					ps.append(e.global_position + Vector3(0, 1.0, 0))
-					any = true
-			fx("cleave", "slam", {"p": at, "ps": ps, "x": any})
-		"nova":
-			var nd := 18.0 + level * 5.0 + (dmg_min + dmg_max) * 0.4
-			fx("nova", "impact")
-			nd *= buff_mult() * dmg_mult("nova")
-			var burned := 0
-			for e in game.enemies_near(global_position, 7.0):
-				e.take_damage(0.0, nd, global_position, 1.2, false)
-				burned += 1
-			if talent("nova_heal") > 0.0 and burned > 0:
-				life = minf(max_life, life + max_life * talent("nova_heal") / 100.0 * mini(burned, 5))
-		"cry":
-			buff_t = 12.0 + talent("buff_dur")
-			if talent("cry_heal") > 0.0:
-				life = minf(max_life, life + max_life * talent("cry_heal") / 100.0)
-			fx("cry", "impact")
-			for e in game.enemies_near(global_position, 6.0):
-				e.stun(2.0)
-		"blight":
-			var dir := fwd      # toward the pointer as it was when he cast
-			# Twin Skulls: two, a little apart
-			fx("blight", "bolt", {"d": dir, "x": talent("blight_twin") > 0.0})
-		"shackles":
-			var reach_s := 7.0 + talent("shackle_range")
-			var bind_t := 2.5 + talent("shackle_dur")
-			var bound: Array = game.enemies_near(global_position, reach_s)
-			fx("shackles", "impact", {"r": reach_s, "x": bind_t, "t": bound})
-			for e in bound:
-				_hit_enemy(e, 0.8, 0.0)
-				if not e.dead:
-					e.stun(bind_t)
-		"covenant":
-			buff_t = 12.0 + talent("buff_dur")
-			covenant_t = buff_t
-			fx("covenant", "impact")
 	stats_changed.emit()
 
-# ---------------------------------------------------------------- warlock skills
-const DRAIN_RANGE := 11.0     # how far away a beam can latch on
-const DRAIN_LEASH := 13.0     # a latched victim that gets further away than this breaks free
-const DRAIN_FORK := 5.5       # forks reach enemies this close to the main victim
-const DRAIN_MIN := 1.0        # a tap of Q still channels this long
-
-## The enemy Drain Life latches onto: the one nearest the aim point, else the nearest in reach.
-func _drain_pick(aim: Vector3):
-	var best = null
-	var bd := 3.0
-	for e in game.enemies_near(aim, 3.0):
-		var d: float = Vector2(e.global_position.x - aim.x, e.global_position.z - aim.z).length()
-		if d < bd and e.global_position.distance_to(global_position) <= DRAIN_RANGE:
-			bd = d
-			best = e
-	if best == null:
-		best = _drain_nearest(global_position, DRAIN_RANGE, null)
-	return best
-
-func _drain_nearest(p: Vector3, r: float, skip):
-	var best = null
-	var bd := r
-	for e in game.enemies_near(p, r):
-		if e == skip:
-			continue
-		var d: float = e.global_position.distance_to(p)
-		if d < bd:
-			bd = d
-			best = e
-	return best
-
-func _drain_valid(e) -> bool:
-	return e != null and is_instance_valid(e) and not e.dead and e.global_position.distance_to(global_position) <= DRAIN_LEASH
-
-## The main victim first, then the enemies the beam forks to (nearest the main victim).
-func _drain_victims() -> Array:
-	if not _drain_valid(drain_main):
-		return []
-	var mp: Vector3 = drain_main.global_position
-	var near: Array = game.enemies_near(mp, DRAIN_FORK).filter(func(e): return e != drain_main)
-	near.sort_custom(func(a, b): return a.global_position.distance_to(mp) < b.global_position.distance_to(mp))
-	var forks := (5 if covenant_t > 0.0 else 3) + int(talent("drain_fork"))
-	return [drain_main] + near.slice(0, forks)
-
-func _drain_start(foe) -> void:
-	drain_t = 0.0
-	drain_tick = 0.1
-	drain_main = foe
-	target = null
-	path = PackedVector3Array()
-	moving = false
-	drain_heal = 0.0
-	drain_heal_t = 0.0
-	_face(foe.global_position - global_position)
-	drain_victims = [foe]
-	fx("drain", "start", {"t": drain_victims})
-	game.add_shake(0.08)
-
+# ---------------------------------------------------------------- class skills kept on the hero
+## Called from other scripts and tests; the skills themselves live in WarlockSkills.
 func end_drain() -> void:
-	var was := drain_t >= 0.0
-	drain_t = -1.0
-	drain_main = null
-	drain_victims = []
-	if was:
-		fx("drain", "end")
-	_show_drain_heal()
+	WarlockSkills.end_drain(self)
 
-## Healing from the beam shows as one green "+N" about once a second rather than every tick.
-func _show_drain_heal() -> void:
-	if drain_heal >= 1.0 and game and game.world:
-		Fx.number(game.world.fx_root, global_position + Vector3(0, 2.3, 0), "+%d" % int(drain_heal), Color(0.45, 1.0, 0.4))
-	drain_heal = 0.0
-	drain_heal_t = 0.0
+func _drain_victims() -> Array:
+	return WarlockSkills.drain_victims(self)
 
-## Drain Life: every 0.3 s each victim loses life and the Warlock gains some of it back.
-## If the main victim dies the beam jumps to the nearest enemy still in reach.
-func _update_drain(delta: float) -> void:
-	drain_t += delta
-	if not _drain_valid(drain_main):
-		var from: Vector3 = drain_main.global_position if drain_main != null and is_instance_valid(drain_main) else global_position
-		drain_main = _drain_nearest(from, DRAIN_FORK, null)
-		if not _drain_valid(drain_main):
-			drain_main = _drain_nearest(global_position, DRAIN_RANGE, null)
-		if drain_main == null:
-			end_drain()
-			return
-	if drain_t >= DRAIN_MIN and not game.skill_held("drain"):
-		end_drain()
-		return
-	_face_smooth(drain_main.global_position - global_position, delta)
-	drain_tick -= delta
-	if drain_tick > 0.0:
-		return
-	drain_tick = 0.3
-	if drain_t >= DRAIN_MIN:
-		# past the first second the channel costs mana (about 6.5 a second)
-		if mana < 2.0:
-			game.ui.message("Not enough mana", Color(0.4, 0.5, 1.0))
-			end_drain()
-			return
-		mana -= 2.0 * (1.0 - talent("cost:drain") / 100.0)
-	var dmg := (6.0 + level * 2.4 + (dmg_min + dmg_max) * 0.6) * 0.3 * buff_mult() * dmg_mult("drain")
-	var heal := 0.0
-	_drain_victims_changed()
-	var victims := drain_victims
-	for i in victims.size():
-		var e = victims[i]
-		e.dmg_tint = Color(0.55, 1.0, 0.45)
-		# the main victim is dragged a little toward the Warlock
-		var dealt: float = e.take_damage(dmg * (1.0 if i == 0 else 0.6), 0.0, global_position, -0.25 if i == 0 else 0.0, false)
-		e.dmg_tint = Color(0, 0, 0, 0)
-		heal += dealt * (0.3 if i == 0 else 0.15)
-	fx("drain", "tick")
-	if covenant_t > 0.0:
-		heal *= 2.0
-	heal *= 1.0 + talent("drain_heal") / 100.0
-	# Soul Glut: what would heal past full life fills mana instead
-	if talent("drain_glut") > 0.0 and life + heal > max_life:
-		mana = minf(max_mana, mana + (life + heal - max_life) * talent("drain_glut") / 100.0)
-	life = minf(max_life, life + heal)
-	drain_heal += heal
-	drain_heal_t += 0.3
-	if drain_heal_t >= 0.9:
-		_show_drain_heal()
-	stats_changed.emit()
-
-## The beam's victims this frame (the main one and its forks); when the set changes, everyone is told
-## (a "victims" event, never more often than the enemies move in and out of the fork's reach).
-var drain_victims: Array = []
-func _drain_victims_changed() -> void:
-	if drain_t < 0.0:
-		return
-	var now := _drain_victims()
-	if now != drain_victims:
-		drain_victims = now
-		fx("drain", "victims", {"t": now})
-
-## Blight Bolt bursts where it lands (WarlockFx.update flies it): a plague pool that rots whatever stands in it.
 func _blight_burst(p: Vector3) -> void:
-	var g := Vector3(p.x, game.world.height_at(p.x, p.z), p.z)
-	var rad := 3.0 * (1.0 + talent("blight_size") / 100.0)
-	var dur := 4.0 + talent("blight_dur")
-	fx("blight", "burst", {"p": g, "r": rad, "x": dur})
-	blights.append({"pos": g, "t": dur, "tick": 0.5, "r": rad})
-	game.add_shake(0.18)
-	var nd := (14.0 + level * 4.0 + (dmg_min + dmg_max) * 0.35) * buff_mult() * dmg_mult("blight")
-	for e in game.enemies_near(g, rad):
-		e.take_damage(nd, 0.0, g, 0.8, false)
-
-## Plague pools rot whatever stands in them every half second.
-func _update_blights(delta: float) -> void:
-	for bl in blights.duplicate():
-		bl["t"] -= delta
-		bl["tick"] -= delta
-		if bl["t"] <= 0.0:
-			blights.erase(bl)
-			continue
-		if bl["tick"] <= 0.0:
-			bl["tick"] = 0.5
-			var nd := (4.0 + level * 1.3 + (dmg_min + dmg_max) * 0.12) * buff_mult() * dmg_mult("blight")
-			for e in game.enemies_near(bl["pos"], float(bl.get("r", 3.0))):
-				e.take_damage(nd, 0.0, bl["pos"], 0.0, false)
+	WarlockSkills.blight_burst(self, p)
 
 func _clear_warlock() -> void:
-	end_drain()
-	WarlockFx.clear(self)
-	blights.clear()
-	covenant_t = 0.0
-
-func _update_charge(delta: float) -> void:
-	charge_t += delta
-	var dist := 18.0 * delta
-	var np: Vector3 = game.world.move(global_position, charge_dir * dist)
-	var moved := np - global_position
-	moved.y = 0
-	global_position = np
-	_face(charge_dir)
-	phase += delta * 20.0
-	for e in game.enemies_near(global_position, 1.6):
-		if not charge_hit.has(e.get_instance_id()):
-			charge_hit[e.get_instance_id()] = true
-			_hit_enemy(e, 1.3, 2.5, "charge")
-			e.stun(0.8)
-			# Relentless: each enemy smashed takes time off the other cooldowns
-			if talent("charge_cdr") > 0.0:
-				for k in cds:
-					if k != "charge":
-						cds[k] = maxf(0.0, cds[k] - talent("charge_cdr"))
-			fx("charge", "hit", {"p": e.global_position, "x": charge_hit.size() == 1})
-	if charge_t > 0.5 or moved.length() < dist * 0.3:
-		charge_t = -1.0
-		fx("charge", "end")
+	WarlockSkills.clear(self)
 
 func _update_trail(active: bool) -> void:
 	var im: ImmediateMesh = trail.mesh
