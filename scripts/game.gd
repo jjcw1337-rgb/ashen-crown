@@ -1647,7 +1647,7 @@ func _sail_camera(dt: float, sh: Vector3) -> void:
 	# over her port quarter, so the sail doesn't hide the way ahead and he's in view at the tiller
 	var sd := Vector3(cos(sail_cam_yaw), 0, -sin(sail_cam_yaw))
 	var sail_pos := bp - f * 16.0 * zoom - sd * 5.5 * zoom + Vector3(0, 7.0 * zoom, 0)
-	var sail_look := bp + f * 16.0 + sd * 1.0 + Vector3(0, 0.6, 0)
+	var sail_look := bp + f * 11.0 + sd * 1.0 + Vector3(0, 0.3, 0)
 	cam.global_position = iso_pos.lerp(sail_pos, k) + sh
 	cam.look_at(iso_look.lerp(sail_look, k), Vector3.UP)
 
