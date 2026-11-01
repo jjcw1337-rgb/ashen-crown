@@ -25,6 +25,9 @@ static func play(h: Hero, ev: Dictionary) -> void:
 	if h == null or not is_instance_valid(h) or h.game == null or h.game.world == null:
 		return
 	var sk: String = str(ev.get("s", ""))
+	if sk == "roll":
+		Dodge.fx(h, ev)       # the dodge roll, every class's
+		return
 	var cls: String = str(Data.skill_def(sk).get("cls", "any"))
 	if cls == "any":
 		cls = h.cls

@@ -88,6 +88,9 @@ var cls := "knight"          # "knight", "wraith", "demon" or "warlock" (Data.CL
 var cds := {}
 var wr := {}                 # Wraith: the skills' state (WraithSkills: the tether, phantoms, the night, the claws)
 var veil_t := 0.0            # Wraith: seconds he is mist, and blows pass through him (Shadowstep, Eternal Night)
+var roll_t := -1.0          # the dodge roll on Space (Dodge): seconds into it, -1 when not rolling
+var roll_dir := Vector3.FORWARD
+var roll_cd := 0.0
 var dm := {}                 # Demon: the skills' state (DemonSkills: the charge, lava on the ground, fissures, boulders, the grip, the wrath)
 var phased := false          # (the Underworld's grade in game.gd reads it; no skill sets it now)
 var drain_t := -1.0          # Warlock: Drain Life channel time (-1 = not channelling)
@@ -228,9 +231,11 @@ const BIND_KEYS := ["Q", "E", "R", "F", "G", "V"]
 const BIND_SLOTS := ["lmb", "rmb", "Q", "E", "R", "F", "G", "V"]
 var binds := {}
 
+## Path of Exile style: left mouse attacks, right mouse is the class's first skill (also on Q); Block is in the
+## skills window (K) for anyone who wants it on a slot.
 func default_binds() -> Dictionary:
-	var b := {"lmb": "attack", "rmb": "block"}
 	var own := skill_list()
+	var b := {"lmb": "attack", "rmb": own[0]["id"] if not own.is_empty() else "block"}
 	for i in BIND_KEYS.size():
 		b[BIND_KEYS[i]] = own[i]["id"] if i < own.size() else ""
 	return b
@@ -1307,6 +1312,9 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 		return
 	if game.test_immortal or phased:
 		return
+	if Dodge.dodging(self):
+		Dodge.dodged(self)
+		return
 	if veil_t > 0.0:
 		# the Wraith as mist: the blow goes through him
 		Fx.number(game.world.fx_root, global_position + Vector3(0, 2.2, 0), "Mist", WraithFx.SPIRIT)
@@ -1382,6 +1390,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	if life <= 0.0:
 		life = 0.0
 		dead = true
+		Dodge.cancel(self)
 		ClassSkills.died(self)
 		SkillFx.clear(self)
 		dead_t = 0.0
@@ -1403,6 +1412,7 @@ func _process(delta: float) -> void:
 	for k in cds.keys():
 		cds[k] = maxf(0.0, cds[k] - delta)
 	buff_t = maxf(0.0, buff_t - delta)
+	roll_cd = maxf(0.0, roll_cd - delta)
 	ClassSkills.update(self, delta)     # every class's lingering skills (pools, the tether, lava, arrows, clouds...)
 	aura.emitting = buff_t > 0.0
 	hit_t = maxf(0.0, hit_t - delta * 4.0)
@@ -1490,7 +1500,9 @@ func _process(delta: float) -> void:
 		chill_t -= delta
 		speed *= 0.55
 
-	if charge_t >= 0.0:
+	if roll_t >= 0.0:
+		vel = Dodge.step(self, delta)
+	elif charge_t >= 0.0:
 		KnightSkills.update_charge(self, delta)
 	else:
 		if atk_t >= 0.0:
@@ -1606,6 +1618,7 @@ func _process(delta: float) -> void:
 		Archer.pose_bow(self, st)
 	last_pose = st
 	_hover()
+	Dodge.pose(self, delta)
 	WarlockSkills.drain_victims_changed(self)
 	SkillFx.update(self, delta)
 	_breathe(delta)
@@ -1700,6 +1713,7 @@ func apply_net_state(p: PackedFloat32Array) -> void:
 
 ## The zone changed under a puppet: its lingering effects belonged to the old one.
 func net_zone_reset() -> void:
+	Dodge.cancel(self)
 	visible = false
 	net_has = false
 	SkillFx.clear(self)
@@ -1742,6 +1756,7 @@ func _puppet_process(delta: float) -> void:
 	if is_archer():
 		Archer.pose_bow(self, st)
 	_hover()
+	Dodge.pose(self, delta)
 	Archer.update(self, delta)
 	SkillFx.update(self, delta)
 	_apply_shield_pose()
@@ -1871,6 +1886,7 @@ func _update_trail(active: bool) -> void:
 	im.surface_end()
 
 func respawn(p: Vector3) -> void:
+	Dodge.cancel(self)
 	dead = false
 	dead_t = 0.0
 	rig.rotation.x = 0.0
@@ -2061,7 +2077,7 @@ func unequip(slot: String) -> void:
 
 func to_save() -> Dictionary:
 	return {"cls": cls, "level": level, "xp": xp, "str": str_, "dex": dex, "vit": vit, "ene": ene, "points": stat_points, "gold": gold,
-		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "talents": talents, "axe_given": true}
+		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "binds_v": 2, "talents": talents, "axe_given": true}
 
 func from_save(d: Dictionary) -> void:
 	set_class(str(d.get("cls", "knight")))
@@ -2094,6 +2110,9 @@ func from_save(d: Dictionary) -> void:
 	binds = (d.get("binds", {}) as Dictionary).duplicate() if d.get("binds") is Dictionary else {}
 	WraithSkills.migrate_binds(binds)
 	DemonSkills.migrate_binds(binds)
+	# saves from before the Path of Exile controls had Block on right mouse by default: it becomes the first skill
+	if int(d.get("binds_v", 1)) < 2 and str(binds.get("rmb", "")) == "block":
+		binds.erase("rmb")
 	_check_binds()
 	# a save from before talents gets a build picked for its class and level
 	if d.get("talents") is Dictionary:

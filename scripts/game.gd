@@ -105,6 +105,7 @@ func _ready() -> void:
 			difficulty = int(args[i + 1])
 	quality = _initial_quality()
 	set_sound(bool(_load_setting("audio", "sound_on", true)))
+	click_move = bool(_load_setting("controls", "click_move", false))
 	_setup_env()
 	weather = Weather.new()
 	weather.name = "Weather"
@@ -2272,6 +2273,12 @@ func _unhandled_input(ev: InputEvent) -> void:
 				# clicking the ground, an item or an NPC still walks there
 				if hero.bound("lmb") not in ["attack", ""] and (hovered is Enemy or Input.is_key_pressed(KEY_SHIFT)):
 					_use_bind("lmb", true)
+				elif not click_move and hero.bound("lmb") == "attack" and not (hovered is GroundItem or hovered is Inter) \
+						and (wasd_dir().length() > 0.1 or not (hovered is Enemy)):
+					# Path of Exile controls: the click attacks toward the pointer where he stands (or as the
+					# keys carry him); a foe clicked while standing still is walked up to and struck
+					hero.target = null
+					hero.swipe_attack(_attack_aim())
 				else:
 					_click_world()
 		elif ev.button_index == MOUSE_BUTTON_RIGHT:
@@ -2293,6 +2300,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 				ui.toggle(ui.char_panel)
 			KEY_T:
 				cast_town_portal()
+			KEY_SPACE:
+				dodge_roll()
 			KEY_1, KEY_2, KEY_3, KEY_4:
 				hero.drink(ev.keycode - KEY_1)
 			KEY_Q, KEY_E, KEY_R, KEY_F, KEY_G, KEY_V:
@@ -2333,6 +2342,35 @@ func _input(ev: InputEvent) -> void:
 	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_RIGHT and not ev.pressed:
 		rmb_held = false
 
+## Controls: Path of Exile 2's by default (WASD moves, left click attacks toward the pointer, right click a skill,
+## Space rolls); `click_move` (pause menu, saved) brings back clicking the ground to walk there.
+var click_move := false
+var roll_sprint := false
+
+## The movement keys as a flat direction on the ground (W = up the screen).
+func wasd_dir() -> Vector3:
+	var v := Vector3.ZERO
+	if Input.is_key_pressed(KEY_W): v.z -= 1
+	if Input.is_key_pressed(KEY_S): v.z += 1
+	if Input.is_key_pressed(KEY_A): v.x -= 1
+	if Input.is_key_pressed(KEY_D): v.x += 1
+	return v.normalized() if v.length() > 0.1 else Vector3.ZERO
+
+## Space: roll the way the keys point, or toward the pointer with no key held.
+func dodge_roll() -> void:
+	if hero == null or paused or ui.any_panel_open():
+		return
+	var d := wasd_dir()
+	if d.length() < 0.1:
+		_update_hover()
+		d = hero.dir_to(ground_pt)
+	if Dodge.start(hero, d):
+		roll_sprint = true
+
+func set_click_move(on: bool) -> void:
+	click_move = on
+	_save_setting("controls", "click_move", on)
+
 func cast_slot(i: int) -> void:
 	cast_skill(hero.bound(Hero.BIND_KEYS[i]))
 
@@ -2353,9 +2391,9 @@ func skill_held(id: String) -> bool:
 func _cursor_aim() -> Vector3:
 	return hovered.global_position if hovered is Enemy else ground_pt
 
-## Space's swing: at the foe under the pointer, else at a foe close to the pointer's line within reach,
+## The left click's swing: at the foe under the pointer, else at a foe close to the pointer's line within reach,
 ## else toward the pointer (the same melee help a short directional skill gets, Hero.skill_aim).
-func _space_aim() -> Vector3:
+func _attack_aim() -> Vector3:
 	if hovered is Enemy:
 		return hovered.global_position
 	var dir := hero.dir_to(ground_pt)
@@ -2430,15 +2468,11 @@ func _process(delta: float) -> void:
 		for slot in Hero.BIND_SLOTS:
 			if slot != "lmb" and slot_held(slot):
 				_use_bind(slot, false)
-		hero.sprint = Input.is_key_pressed(KEY_SHIFT)
-		if Input.is_key_pressed(KEY_SPACE):
-			# swing toward the pointer, whichever way he is walking
-			hero.swipe_attack(_space_aim())
-		var wasd := Vector3.ZERO
-		if Input.is_key_pressed(KEY_W): wasd.z -= 1
-		if Input.is_key_pressed(KEY_S): wasd.z += 1
-		if Input.is_key_pressed(KEY_A): wasd.x -= 1
-		if Input.is_key_pressed(KEY_D): wasd.x += 1
+		# Shift sprints; so does Space held on after a dodge roll (Path of Exile 2)
+		if not Input.is_key_pressed(KEY_SPACE):
+			roll_sprint = false
+		hero.sprint = Input.is_key_pressed(KEY_SHIFT) or (roll_sprint and hero.roll_t < 0.0)
+		var wasd := wasd_dir()
 		hero.cmd_wasd(wasd)
 		if lmb_held and not hero.dead:
 			lmb_repeat -= delta
@@ -2446,6 +2480,10 @@ func _process(delta: float) -> void:
 				lmb_repeat = 0.12
 				if hero.bound("lmb") not in ["attack", ""] and (hovered is Enemy or Input.is_key_pressed(KEY_SHIFT)):
 					_use_bind("lmb", false)
+				elif click_move == false and hero.bound("lmb") == "attack" and (wasd_dir().length() > 0.1 or not (hovered is Enemy)) \
+						and not (hovered is GroundItem or hovered is Inter) and hero.target == null:
+					# held: keep swinging toward the pointer (the keys move him)
+					hero.swipe_attack(_attack_aim())
 				elif hovered is Enemy:
 					if hero.target != hovered:
 						hero.cmd_target(hovered)

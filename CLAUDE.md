@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `woodcut_test` (`--fixed-fps 60`), `temper_test`, `woodcut_mp_test` (host + join), `grass_test`, `collision_test`, `aim_test`, `plague_test` (`--fixed-fps 60`), `hoard_test`, `coop_fx_test` (every skill's effects reach a puppet, in one process), `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), `bg_test` (the Battlegrounds: a server and a client, `-- --server --port 24611 server` and `-- client 24611`), and the co-op pairs `mp_test`, `mp_boss_test` and `plague_mp_test` (run one copy
+`det_test`, `woodcut_test` (`--fixed-fps 60`), `temper_test`, `woodcut_mp_test` (host + join), `grass_test`, `collision_test`, `aim_test`, `plague_test` (`--fixed-fps 60`), `hoard_test`, `coop_fx_test` (every skill's effects reach a puppet, in one process), `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), `bg_test` (the Battlegrounds: a server and a client, `-- --server --port 24611 --raid-fast server` and `-- client 24611`), `bg_pvp_test` (a server and two players, `a` and `b`), `controls_test` (WASD, the left click, the dodge roll, every class), and the co-op pairs `mp_test`, `mp_boss_test` and `plague_mp_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -72,6 +72,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `demon.gd`, `demon_mocap_rig.gd`, `demon_skills.gd`, `demon_fx.gd` | Demon class: the Meshy magma brute on the mocap system with the magma shader and his own wing/tail/cloth rig (falls back to the knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader); his six skills (the fists, the charge, the slam, the boulder, the grip, the wrath); their effects (lava on the ground, fissures, boulders, meteors) |
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
 | `plague.gd` | Plague Doctor class: body (mocap, whole-body skill clips), Toxic Flask, Volatile Mixture, Pestilent Trap, The Last Epidemic, poison and infection, co-op replay |
+| `dodge.gd` | The dodge roll on Space (every class): direction, distance, i-frames, stamina, the tumble, the co-op event |
 | `enemy.gd`, `projectile.gd`, `feral.gd` | Monsters/AI and missiles (host-authoritative in co-op); the Feral's baked-animation body |
 | `via.gd`, `aurelia.gd`, `games.gd`, `roman.gd` | A2: the Imperial Road (wild), the city of Aurelia and its arena (lair), the arena's games (the act's boss fight), and the Roman architecture they're built from |
 | `lion.gd` | The arena lion: a Meshy model on a quadruped skeleton, posed in code (no baked animations) |
@@ -101,9 +102,18 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   (`Props.footprint(root, radius_or_half)`) and are registered with `world.solid(node)` after placing (it reads the node's
   position, yaw and scale). Use `add_circle`/`add_box` only for things with no prop node. Movers call `world.move(pos, d, radius)`,
   which slides against the exact footprints; `blocked` (a padded 1 m grid) is only for A* and spawn spots.
+- **Controls** (Path of Exile 2 style, every class; `tools/controls_test.gd`): WASD moves (`Game.wasd_dir`), left
+  click attacks toward the pointer where he stands (or as the keys carry him; a foe clicked while standing still is
+  walked up to and struck; items, chests and NPCs are still walked to), right mouse is a skill (a new character's
+  first class skill; old saves' Block there becomes it, `binds_v`), and **Space is the dodge roll** (`scripts/dodge.gd`
+  `Dodge`: the way the keys point, else toward the pointer; `DIST` 3.8 m in `DUR` 0.5 s; blows miss for the first
+  `IFRAME` s, PvP included; it drops a swing not yet landed and a channel; costs `STAMINA`; holding Space on after
+  it sprints, as Shift does). Partners see it through the `"roll"` fx event (`SkillFx.play` hands it to `Dodge.fx`;
+  `Dodge.pose` tumbles the body, the Wraith swoops low). The pause menu's Controls button brings back
+  click-to-move (`Game.click_move`, saved in settings).
 - **Aiming** (Path of Exile style): **the mouse pointer is the source of truth; WASD only moves.** `Game` writes the
   pointer's point (the enemy under it, else the ground) to `Hero.cursor` every frame, and every action aims from it:
-  Space (`Game._space_aim`), the skill keys (`Game.cast_skill` → `Hero.skill_aim`) and mouse binds. Every skill in
+  the left click's attack (`Game._attack_aim`), the skill keys (`Game.cast_skill` → `Hero.skill_aim`) and mouse binds. Every skill in
   `Data.SKILLS` has `"aim"`: `"point"` (lands on the pointer; the skill clamps to its own range), `"facing"` (the old
   name, now meaning *directional*: from the hero toward the pointer, out to its `"range"`; the pointer itself when it's
   nearer, so a beam or tether latches on what's under it) or `"self"` (centred on him, no turn). Only short melee
@@ -835,7 +845,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   the smith; `tools/vendor_shots.gd -- outdir [role]` screenshots a trader.
 - **Skill bar and bindings** (every class, including new ones): the bar has a big slot for each mouse button and six
   hotkeys (Q E R F G V); any skill can go on any of them (`Hero.binds`, saved per character; `Hero.default_binds`:
-  left mouse `attack`, right mouse `block`, the class's first four skills on Q-F). `attack` and `block` are
+  left mouse `attack`, right mouse the class's first skill, the class's first four skills on Q-F). `attack` and `block` are
   `Data.COMMON_SKILLS` (`Data.skills_known(cls)` = class skills + common). Input goes through `Game._use_bind`
   (held buttons recast when ready; `Game.skill_held(id)` for Block and Drain Life's channel). Click a bar slot or
   open the skills window (K) to rebind, or drag: a skill from the skills window onto a slot, one slot onto another

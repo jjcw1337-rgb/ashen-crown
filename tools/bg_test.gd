@@ -103,6 +103,7 @@ func _client() -> void:
 	var id: String = g.char_id
 	var path: String = g.char_dir + id + ".json"
 	var inv0: int = _inv_count()
+	var gold0: int = g.hero.gold
 	check(FileAccess.file_exists(path), "made a character (%d items)" % inv0)
 	g.test_immortal = true
 	g.test_onehit = true
@@ -140,7 +141,8 @@ func _client() -> void:
 	check(await until(func(): return not g.bg_mode, 15.0), "extracted")
 	var sv := _save()
 	check(FileAccess.file_exists(path) and not sv.get("in_raid", true), "the character is safe and saved (in_raid off)")
-	check(held > inv0 and _count_saved(sv) >= held, "and keeps what it found (%d -> %d items)" % [inv0, held])
+	var sgold: int = int((sv.get("hero", {}) as Dictionary).get("gold", 0))
+	check((held > inv0 or sgold > gold0) and _count_saved(sv) >= held and sgold >= gold0, "and keeps what it found (%d -> %d items, %d -> %d gold)" % [inv0, held, gold0, sgold])
 	# back in, and die
 	await until(func(): return not g._busy and g.ui.bg_panel.visible, 20.0)
 	await g.start_battlegrounds("%s:%d" % [host, port], id)
@@ -148,7 +150,9 @@ func _client() -> void:
 	await secs(2.0)
 	g.hero.set_level(12)
 	g.test_immortal = false
-	g.hero.take_hit(999999.0, g.hero.global_position + Vector3(1, 0, 0))
+	for i in 10:      # (a shield can block a blow by chance)
+		if not g.hero.dead:
+			g.hero.take_hit(999999.0, g.hero.global_position + Vector3(1, 0, 0))
 	check(g.hero.dead, "died")
 	await secs(3.0)
 	g.respawn()

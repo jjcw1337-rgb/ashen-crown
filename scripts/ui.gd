@@ -682,7 +682,7 @@ func _build_hud() -> void:
 	hint_lbl.offset_right = 400
 	hint_lbl.offset_top = -bh - 52
 	hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint_lbl.text = "Left / right mouse and Q E R F G V: your skills (K to set them)  ·  N: talents  ·  J: quests  ·  Space: swing  ·  Shift: sprint  ·  1-4: potions  ·  I/C: inventory/stats  ·  T: portal  ·  Tab: map"
+	hint_lbl.text = "WASD: move  ·  Left mouse: attack  ·  Right mouse, Q E R F G V: skills (K to set them)  ·  Space: dodge roll (hold to sprint)  ·  N: talents  ·  J: quests  ·  1-4: potions  ·  I/C: inventory/stats  ·  T: portal  ·  Tab: map"
 	root.add_child(hint_lbl)
 	minimap = Minimap.new()
 	minimap.ui = self
@@ -2971,8 +2971,8 @@ func _build_pause() -> void:
 	pause_panel.anchor_bottom = 0.5
 	pause_panel.offset_left = -170
 	pause_panel.offset_right = 170
-	pause_panel.offset_top = -250
-	pause_panel.offset_bottom = 250
+	pause_panel.offset_top = -280
+	pause_panel.offset_bottom = 280
 	pause_panel.visible = false
 	pause_panel.process_mode = Node.PROCESS_MODE_ALWAYS
 	root.add_child(pause_panel)
@@ -3003,6 +3003,13 @@ func _build_pause() -> void:
 		update_sound_btn())
 	vb.add_child(sound_btn)
 	update_sound_btn()
+	var ctl := Button.new()
+	var ctl_text := func(): ctl.text = "Controls: " + ("click to move (classic)" if game.click_move else "WASD + click to attack")
+	ctl_text.call()
+	ctl.pressed.connect(func():
+		game.set_click_move(not game.click_move)
+		ctl_text.call())
+	vb.add_child(ctl)
 	if game.dev_tools:
 		var kit := Button.new()
 		kit.text = "Testing panel (F8)"
@@ -3033,7 +3040,7 @@ func _build_test_panel() -> void:
 	test_panel.offset_left = 20
 	test_panel.offset_top = 60
 	test_panel.offset_right = 330
-	test_panel.offset_bottom = 440
+	test_panel.offset_bottom = 490
 	test_panel.visible = false
 	test_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	root.add_child(test_panel)
@@ -3042,6 +3049,10 @@ func _build_test_panel() -> void:
 	test_panel.add_child(vb)
 	vb.add_child(_label("Testing", 22, GOLD, true))
 	vb.add_child(_label(("Admin: " + game.admin_name) if game.admin_name != "" else "Admin: editor", 12, Color(0.55, 0.85, 1.0)))
+	var mx := Button.new()
+	mx.text = "Max out this character"
+	mx.pressed.connect(func(): game.max_out())
+	vb.add_child(mx)
 	var imm := CheckButton.new()
 	imm.text = "Immortal (take no damage)"
 	imm.button_pressed = game.test_immortal
