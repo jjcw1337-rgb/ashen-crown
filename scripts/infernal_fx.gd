@@ -212,12 +212,12 @@ static func fire(parent: Node3D, pos: Vector3, size := 0.8, rate := 40.0, tr := 
 	n.global_position = pos
 	var life := 0.32 + size * 0.28
 	var q := QuadMesh.new()
-	q.size = Vector2(size * 0.5, size * 0.62)
-	q.center_offset = Vector3(0, size * 0.2, 0)
+	q.size = Vector2(size * 0.7, size * 1.0)
+	q.center_offset = Vector3(0, size * 0.42, 0)
 	q.material = tongue_mat()
-	var tongues := particles(n, pos, {"amount": maxi(8, int(rate * 1.4 * life * [0.5, 0.75, 1.0, 1.25][tr])), "life": life,
+	var tongues := particles(n, pos, {"amount": maxi(4, int(rate * 0.5 * life * [0.5, 0.75, 1.0, 1.25][tr])), "life": life,
 		"one_shot": false, "randomness": 0.5, "shape": "sphere", "r": size * 0.16, "dir": Vector3.UP, "spread": 12.0,
-		"vel": [size * 0.8, size * 2.2], "gravity": size * 2.2, "damping": [0.0, 0.6], "scale": [0.55, 1.15],
+		"vel": [size * 0.3, size * 1.0], "gravity": size * 1.6, "damping": [0.0, 0.6], "scale": [0.55, 1.15],
 		"grow": [0.55, 1.0], "angle": true, "turb": size * 1.6, "mesh": q,
 		"colors": [[0.0, Color(1, 1, 1, 0.0)], [0.08, Color(1, 1, 1, 1.0)], [1.0, Color(1, 1, 1, 1.0)]]})
 	tongues.name = "tongues"
@@ -590,32 +590,26 @@ void vertex() {
 	v_age = INSTANCE_CUSTOM.y;
 	v_rnd = INSTANCE_CUSTOM.x * 1.7;
 }
+float fbm(vec2 p) {
+	return texture(noise_tex, p * 0.25).r * 0.55 + texture(noise_tex, p * 0.5 + 3.1).r * 0.3 + texture(noise_tex, p + 7.7).r * 0.15;
+}
 void fragment() {
+	// a flame the way real fire moves: fractal noise racing upward pushes the edge of a soft column outward, more
+	// and more toward the top, so tongues stretch, pinch off and burn out; the colour is a black-body ramp of the
+	// heat (red, orange, yellow, a pale heart) and the flame is mostly light (premultiplied, low alpha)
 	vec2 uv = vec2(UV.x, 1.0 - UV.y);
-	float t = TIME;
-	vec2 p = uv * vec2(0.55, 0.8) + vec2(v_rnd, -t * 1.1 - v_age * 0.6);
-	vec2 w1 = vec2(texture(noise_tex, p * 0.7).r, texture(noise_tex, p * 0.7 + vec2(5.2, 1.3)).r) - 0.5;
-	vec2 p2 = p * 1.1 + w1 * 1.1 + vec2(0.0, -t * 0.9);
-	float n = texture(noise_tex, p2).r;
-	float n2 = texture(noise_tex, p2 * 2.3 + vec2(1.7, -t * 2.0)).r;
-	float x = (uv.x - 0.5) * 2.0 + w1.x * 1.1 * uv.y + sin(t * 7.0 + v_rnd * 3.0) * 0.12 * uv.y;
-	float y = uv.y + w1.y * 0.25;
-	float width = mix(0.8, 0.38, clamp(y, 0.0, 1.0));
-	float body = 1.0 - smoothstep(width * 0.15, width, abs(x));
-	body *= smoothstep(0.0, 0.16, y) * (1.0 - smoothstep(0.5, 1.0, y));
-	float er = n * 0.92 + n2 * 0.08;
-	float dens = clamp(body * 1.6 - (1.0 - er) * (0.5 + v_age * 0.85 + y * 0.5), 0.0, 1.0);
-	if (dens <= 0.002) { discard; }
-	float heat = clamp(dens * (1.2 - y * 0.95) * (1.0 - v_age * 0.8) * hot, 0.0, 1.2);
-	// a real flame's colours, kept below white: deep red at the cooling edge, orange, yellow, a pale glint deep inside
-	vec3 col = mix(vec3(0.0), crimson * 0.9, smoothstep(0.05, 0.3, heat));
-	col = mix(col, molten * 1.15, smoothstep(0.3, 0.65, heat));
-	col = mix(col, vec3(1.0, 0.62, 0.18) * 1.3, smoothstep(0.65, 0.95, heat));
-	col = mix(col, whitehot * 1.45, smoothstep(0.95, 1.2, heat) * 0.6);
-	float a = smoothstep(0.0, 0.6, dens) * COLOR.a;
-	float soot = smoothstep(0.35, 1.0, y + v_age * 0.7) * (1.0 - smoothstep(0.25, 0.6, heat));
+	float t = TIME * (1.0 + 0.25 * fract(v_rnd * 3.7)) + v_rnd * 13.0;
+	vec2 q = vec2(uv.x - 0.5, uv.y * 2.0 - 0.25);
+	float n = (fbm(vec2(q.x * 1.5, q.y * 1.2) + vec2(v_rnd, -t * 1.6)) - 0.5) * 1.8 + 0.5;
+	n = clamp(n, 0.0, 1.0);
+	float c = 1.0 - 16.0 * pow(max(0.0, length(q * vec2(1.8 + q.y * 1.5, 0.75)) - n * max(0.0, q.y + 0.25)), 1.2);
+	float fade = 1.0 - smoothstep(0.35, 1.0, v_age);
+	float c1 = clamp(n * c * (1.5 - pow(1.25 * uv.y, 4.0)) * hot * fade, 0.0, 1.0);
+	// kept low: many flames overlap, and their light adds up (it must stay orange, never clip to white)
+	vec3 col = vec3(1.0 * c1, 0.55 * pow(c1, 2.4), 0.18 * pow(c1, 6.0)) * 0.62;
+	float a = clamp(c * (1.0 - pow(uv.y, 3.0)), 0.0, 1.0) * fade * COLOR.a;
 	ALBEDO = col * a;
-	ALPHA = a * mix(0.2 + 0.35 * soot, 0.3, smoothstep(0.3, 0.9, heat));
+	ALPHA = a * 0.22 * (1.0 - c1);
 }
 """
 
@@ -764,10 +758,10 @@ void fragment() {
 	float line = 1.0 - smoothstep(-aa, aa, d);
 	float halo = exp(-max(d, 0.0) * 26.0);
 	float flick = 0.8 + 0.2 * sin(TIME * 23.0 + r * 31.0 + seed) * sin(TIME * 7.0 + an * 40.0);
-	vec3 hot = mix(crimson * 3.0, molten * 3.2, 0.3 + 0.4 * flick * smoothstep(0.3, 1.0, draw));
-	hot = mix(hot, whitehot * 6.5, flare);
+	vec3 hot = mix(crimson * 1.5, molten * 1.4, 0.25 + 0.35 * flick * smoothstep(0.3, 1.0, draw));
+	hot = mix(hot, whitehot * 2.6, flare);
 	float burn = smoothstep(0.0, 0.55, life);
-	vec3 col = hot * line * burn + crimson * (0.9 + 1.4 * flare) * halo * 0.55 * burn;
+	vec3 col = hot * line * burn + crimson * (0.5 + 0.8 * flare) * halo * 0.35 * burn;
 	float ember = (1.0 - burn) * line * smoothstep(0.0, 0.2, life) * (0.5 + 0.5 * sin(TIME * 9.0 + r * 40.0 + an * 70.0));
 	col += crimson * 1.6 * ember;
 	float scorch = (1.0 - smoothstep(0.82, 1.0, r)) * 0.5 * smoothstep(0.0, 0.35, draw) * smoothstep(0.0, 0.25, life);
