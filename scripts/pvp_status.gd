@@ -20,10 +20,13 @@ extends RefCounted
 const HARD := ["stagger", "knockup", "pull", "fear"]
 const DR_WINDOW := 8.0
 const DR_IMMUNE := 3.0
-const MAX_SECS := 2.5          # no single status the server passes lasts longer
+const MAX_SECS := 2.5          # no hard status the server passes lasts longer
+const SOFT_MAX := 6.0          # nor a slow, burn or Brand
 const BURN_TICK := 0.5
 const FEAR_SPEED := 3.2
 const KNOCKUP_H := 1.1
+## Tests: every status that landed on this game's hero, [kind, seconds] (tools/demon_pvp_test.gd)
+static var landed: Array = []
 
 ## Caster's game: a status for the player behind this stand-in, through the server.
 static func send(game, e, kind: String, secs: float, data := {}) -> void:
@@ -38,9 +41,9 @@ static func is_player(e) -> bool:
 ## Server: the diminishing returns for one target. Returns the seconds to apply (0 = refused).
 ## dr: {target: {"t0": raid time of the window's first, "n": hard statuses in it, "imm": immune until}}
 static func diminish(dr: Dictionary, target: int, kind: String, secs: float, now: float) -> float:
-	secs = clampf(secs, 0.0, MAX_SECS)
 	if not kind in HARD:
-		return secs
+		return clampf(secs, 0.0, SOFT_MAX)
+	secs = clampf(secs, 0.0, MAX_SECS)
 	var d: Dictionary = dr.get(target, {"t0": -99.0, "n": 0, "imm": -1.0})
 	if now < float(d["imm"]):
 		return 0.0
@@ -68,6 +71,7 @@ static func apply(h: Hero, kind: String, secs: float, data: Dictionary) -> void:
 	if kind in HARD and (Dodge.dodging(h) or h.veil_t > 0.0 or unstoppable(h)):
 		return
 	var cc: Dictionary = h.cc
+	landed.append([kind, secs])
 	match kind:
 		"stagger":
 			h.daze_t = maxf(h.daze_t, secs)
