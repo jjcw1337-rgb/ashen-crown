@@ -15,3 +15,6 @@ cache is 570 MB. Things to check: textures embedded in the .glb files (resolutio
 both S3TC and ETC2/ASTC copies of every texture end up in each platform's pack, mesh density (decimation, LODs),
 unused assets still exported, audio format and sample rates, the intro video's bitrate, the export's own
 compression.
+
+NOT A TARGET: assets/intro.ogv (Blaine's trailer, 1080p, 85 MB) is deliberately full quality ("just put up good
+shit"); never recompress or shrink it. Count it separately when reporting the download size.

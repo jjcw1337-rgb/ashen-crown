@@ -160,8 +160,23 @@ func _ready() -> void:
 const INTRO_PATH := "res://assets/intro.ogv"
 var _intro_playing := false
 var _intro_skip := false
+var _intro_t := 0.0             # seconds the intro has played
+var _intro_armed := -100.0      # when the first skip press came (a second one within INTRO_CONFIRM skips)
+const INTRO_CONFIRM := 3.0
 
-## The trailer plays full screen when the game opens; any key or click skips it.
+## A press meant to skip the intro: Esc, Space, Enter, a click or a gamepad's A/Start. Anything else (volume and
+## media keys, letters, modifiers) is ignored, so turning the sound up never skips it.
+static func _is_skip_press(ev: InputEvent) -> bool:
+	if ev is InputEventKey:
+		return ev.pressed and not ev.echo and ev.keycode in [KEY_ESCAPE, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
+	if ev is InputEventMouseButton:
+		return ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT
+	if ev is InputEventJoypadButton:
+		return ev.pressed and ev.button_index in [JOY_BUTTON_A, JOY_BUTTON_START]
+	return false
+
+## The trailer plays full screen when the game opens. Skipping takes two deliberate presses (_is_skip_press):
+## the first shows "press again to skip", a second within INTRO_CONFIRM seconds skips; other keys do nothing.
 ## Left out of the browser build (too big a download for a test page) and headless runs.
 func _play_intro() -> void:
 	if OS.has_feature("web") or DisplayServer.get_name() == "headless" or not ResourceLoader.exists(INTRO_PATH):
@@ -183,7 +198,7 @@ func _play_intro() -> void:
 	vp.volume = 1.0 if sound_on else 0.0
 	box.add_child(vp)
 	var hint := Label.new()
-	hint.text = "Press any key to skip"
+	hint.text = "Esc / Space to skip"
 	hint.add_theme_font_size_override("font_size", 16)
 	hint.add_theme_color_override("font_color", Color(0.85, 0.75, 0.6, 0.0))
 	hint.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
@@ -194,13 +209,16 @@ func _play_intro() -> void:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	layer.add_child(hint)
 	_intro_skip = false
+	_intro_armed = -100.0
+	_intro_t = 0.0
 	_intro_playing = true
 	vp.play()
-	var t := 0.0
 	while vp.is_playing() and not _intro_skip:
 		await get_tree().process_frame
-		t += get_process_delta_time()
-		hint.add_theme_color_override("font_color", Color(0.85, 0.75, 0.6, clampf((t - 1.5) * 0.8, 0.0, 0.55)))
+		_intro_t += get_process_delta_time()
+		var armed := _intro_t - _intro_armed < INTRO_CONFIRM
+		hint.text = "Press again to skip" if armed else "Esc / Space to skip"
+		hint.add_theme_color_override("font_color", Color(0.95, 0.85, 0.65, 0.9) if armed else Color(0.85, 0.75, 0.6, clampf((_intro_t - 1.5) * 0.8, 0.0, 0.45)))
 	_intro_playing = false
 	vp.stop()
 	# a short fade from black into the title screen
@@ -2116,9 +2134,13 @@ func _unhandled_input(ev: InputEvent) -> void:
 				ui.minimap.set_big(not ui.minimap.big)
 
 func _input(ev: InputEvent) -> void:
-	if _intro_playing and ((ev is InputEventKey and ev.pressed and not ev.echo) or (ev is InputEventMouseButton and ev.pressed)):
-		_intro_skip = true
-		get_viewport().set_input_as_handled()
+	if _intro_playing:
+		if _is_skip_press(ev) and _intro_t > 0.5:
+			if _intro_t - _intro_armed < INTRO_CONFIRM:
+				_intro_skip = true
+			else:
+				_intro_armed = _intro_t
+		get_viewport().set_input_as_handled()      # nothing reaches the game behind the intro
 		return
 	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed:
 		lmb_held = false
