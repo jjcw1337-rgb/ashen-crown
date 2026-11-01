@@ -17,6 +17,9 @@ static func kf(t: float, keys: Array) -> float:
 
 ## Fraction of an attack animation at which the blow lands.
 static func impact_at(style: String) -> float:
+	var sh := SkillSpec.style_hit(style)      # a skill's "hit" in its data (SkillSpec) wins
+	if sh >= 0.0:
+		return sh
 	match style:
 		"over": return 0.5
 		"chop": return 0.55
