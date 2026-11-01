@@ -1,7 +1,7 @@
 extends SceneTree
 ## Battlegrounds (battlegrounds.gd), two processes on this machine:
 ##   godot --headless --path . -s tools/bg_test.gd -- --server --port 24611 server
-##   godot --headless --path . -s tools/bg_test.gd -- client 24611 [cloud <nakama url> <server key>]
+##   godot --headless --path . -s tools/bg_test.gd -- client 24611 [addr <host>] [cloud <nakama url> <server key>]
 ## With Nakama (the server started with ASHEN_NAKAMA_URL / ASHEN_NAKAMA_HTTP_KEY, the client with `cloud`), the client
 ## signs in and the stash is kept in Nakama; the server side then also reads it back from there.
 ## The server is the real dedicated server (Game boots it from --server); this side only reports on it.
@@ -12,6 +12,7 @@ extends SceneTree
 var g
 var role := "client"
 var port := 24611
+var host := "127.0.0.1"       # `addr <host>`: a server elsewhere (the staging server)
 var fails := 0
 
 func _initialize():
@@ -24,6 +25,9 @@ func _initialize():
 		Battlegrounds.id_path = "user://bg_test_id.txt"
 		DirAccess.remove_absolute(Battlegrounds.id_path)    # a new player every run (a stash in Nakama outlives the run)
 		Battlegrounds.cache_path = "user://bg_test_cache.json"
+		var ai := a.find("addr")
+		if ai >= 0 and ai + 1 < a.size():
+			host = a[ai + 1]
 		var ci := a.find("cloud")
 		if ci >= 0 and ci + 2 < a.size():
 			BuildEnv.forced = {"cloud": "1", "nakama_url": a[ci + 1], "nakama_key": a[ci + 2]}
@@ -129,7 +133,7 @@ func _client() -> void:
 	await secs(2.0)
 	g.test_immortal = true
 	g.test_onehit = true
-	await g.start_battlegrounds("127.0.0.1:%d" % port, "knight")
+	await g.start_battlegrounds("%s:%d" % [host, port], "knight")
 	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "entered the Battlegrounds")
 	check(g.bg_mode and g.net.is_client() and not g.net.players.has(1), "as a raid player, with no host player in the roster")
 	await secs(1.5)
@@ -162,7 +166,7 @@ func _client() -> void:
 	var stash0: int = g.bg_stash.size()
 	# second raid: pick something up, then die
 	await until(func(): return not g._busy, 20.0)
-	await g.start_battlegrounds("127.0.0.1:%d" % port, "wraith")
+	await g.start_battlegrounds("%s:%d" % [host, port], "wraith")
 	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "entered again as a wraith")
 	await secs(1.5)
 	var ch2 = _nearest("chest", true)

@@ -82,6 +82,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `ground_item.gd`, `inter.gd` | Loot on the ground; interactables (chests, shrines, waypoints, portals, NPCs) |
 | `items.gd` | Item rolls, `empower` (A2/A3 multipliers), enchanting, tooltips |
 | `net.gd` | LAN co-op over ENet (UDP 24567, discovery 24568); RPC layer; `server` = a dedicated host with no player (Battlegrounds) |
+| `build_env.gd`, `nakama_client.gd`, `cloud_saves.gd` | Which backend a build uses; the Nakama REST client; characters kept in Nakama (see "Staging and accounts") |
 | `battlegrounds.gd` | Battlegrounds prototype: the raid map, the dedicated server's raid logic (respawns, carried loot, extraction, the stash), the client's id and cached stash |
 | `skill_fx.gd`, `knight_fx.gd`, `archer_fx.gd` | Co-op skill effects: `SkillFx` plays every class's skill events on the caster and on his puppet for partners (see "Co-op skill effects"); the knight's and archer's effect handlers (the Wraith's, Demon's and Warlock's are in their `*_fx.gd`) |
 | `ui.gd`, `hud_bar.gd`, `icon_renderer.gd` | All UI built in code |
@@ -150,6 +151,23 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   raid (`Game.respawn` in `bg_mode` -> back to the Battlegrounds screen). The client caches the stash the server last
   sent (`user://bg_stash_cache.json`). Not yet: PvP damage, bringing stash items in, raid timers, several raids per
   server, Steam/Nakama, WebSocket for the browser. `tools/bg_test.gd` runs the whole loop with a server and a client.
+- **Staging and accounts** (`deploy/staging/README.md`): one DigitalOcean droplet runs the staging backend (Nakama
+  3.41 + its own PostgreSQL in Docker behind Caddy's HTTPS on an IP certificate, and the Battlegrounds server as a
+  systemd service); production will get its own server and database. Which backend a build talks to is
+  `BuildEnv` (`scripts/build_env.gd`: local by default; `tools/ci/write_build_env.sh` rewrites it for staging in CI;
+  `user://env.cfg` overrides it on a dev machine; the title shows a "STAGING BUILD" badge). `NakamaClient`
+  (`scripts/nakama_client.gd`) is a small REST client: device sign-in, storage, user and server RPCs. In cloud builds
+  (`BuildEnv.cloud()`) **characters live in Nakama** (`CloudSaves`, `scripts/cloud_saves.gd`): the local files stay
+  the working copy; the first start uploads them (the migration), later starts bring down newer copies from other
+  devices (by the save's `played`), every `save_game` is pushed, deletes are removed; offline it plays from the files.
+  The Battlegrounds stash is the game server's (`deploy/nakama/modules/ashen.lua`): players can read theirs, never
+  write or delete it (before-hooks on WriteStorageObjects/DeleteStorageObjects for `battlegrounds` and `bg_tickets`;
+  the server writes through the `bg_stash_*` RPCs with the runtime http_key). Joining a raid the client never sends
+  its Nakama session over the game's unencrypted UDP: it gets a one-time 60 s ticket (`bg_ticket`, HTTPS) and the
+  server redeems it (`bg_ticket_redeem`). `.github/workflows/staging.yml`: pushes to the `staging` branch build all
+  three platforms against staging and upload them to Steam's password-protected `staging` beta branch
+  (`tools/ci/steam_upload.sh`, refuses the default branch). Tests: `tools/nakama_check.gd`, `tools/cloud_test.gd`
+  (incl. forged stashes, replayed and planted tickets), `bg_test` with `cloud`.
 - **Browser build (WebGL)** is a test build only and is fragile:
   - it is exported with **Godot 4.5.1** in CI (the desktop builds use 4.3): Godot 4.3's WebGL renderer
     blanks the whole 3D view in busy scenes (many objects near lights). Keep code working in both versions:
