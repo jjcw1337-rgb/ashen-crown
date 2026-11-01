@@ -191,6 +191,25 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 			h._start_attack("cast", "beast")
 			h.atk_dur = 0.6
 
+## ClassSkills: nothing to check before a shot.
+static func can_cast(_h: Hero, _id: String, _aim: Vector3) -> bool:
+	return true
+
+## Nothing of his roots him.
+static func rooted(_h: Hero) -> bool:
+	return false
+
+## His wolf and arrows stay through death (the wolf rises again on its own, keep_companions).
+static func died(_h: Hero) -> void:
+	pass
+
+## The string's twang on the release (Volley's flight a little lower); `at` = seconds to the impact frame.
+static func sound(h: Hero, skill: String, at: float) -> bool:
+	if h.atk_style != "bow":
+		return false
+	Sfx.play_synced("bow", at, -3.0, 0.85 if skill == "volley" else (0.92 if skill == "pierce" else 1.0))
+	return true
+
 ## The release (Hero._impact): true when it was the archer's.
 static func impact(h: Hero) -> bool:
 	if not h.is_archer():

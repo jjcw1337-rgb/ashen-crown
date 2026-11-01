@@ -62,7 +62,8 @@ shared preview), give the preview build's link, and go to `main` only when Blain
 | `data.gd` | **Tuning**: classes (`CLASSES`), skills per class (`SKILLS`, `skills_for`), monsters, items, uniques, acts, vendors |
 | `talents.gd` | Talent trees (`Talents.TREES`: three per class), row rules, the auto build for old saves (`AUTO`) |
 | `world.gd` | Zone builder: terrain, roads, buildings, trees/grass (MultiMesh chunks), spawns, `burn_points` |
-| `hero.gd`, `knight.gd`, `knight_rig.gd`, `anim.gd` | Player: class (`cls`, `set_class`), stats (`recalc`), combat, skills, gear visuals, animation, co-op puppet mode |
+| `hero.gd`, `knight.gd`, `knight_rig.gd`, `anim.gd` | Player: class (`cls`, `set_class`), stats (`recalc`), combat, the shared skill flow (mana, cooldowns, cancel, animation), gear visuals, animation, co-op puppet mode |
+| `class_skills.gd`, `knight_skills.gd`, `warlock_skills.gd`, `plague_skills.gd` | Every class's skills, one script per class (`ClassSkills.of(cls)`: KnightSkills, WraithSkills, DemonSkills, WarlockSkills, Archer, PlagueSkills); `hero.gd` hands each cast, impact frame, frame update, root check, clear, death and cast sound to it. Template for a new class: `tools/templates/new_class_skills.gd` |
 | `wraith.gd`, `wraith_skills.gd`, `wraith_fx.gd` | Wraith class: the Meshy body on the mocap system with the spectral shader; its six skills (casts, blows, the tether, phantoms, the night); their effects |
 | `demon.gd`, `demon_mocap_rig.gd`, `demon_skills.gd`, `demon_fx.gd` | Demon class: the Meshy magma brute on the mocap system with the magma shader and his own wing/tail/cloth rig (falls back to the knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader); his six skills (the fists, the charge, the slam, the boulder, the grip, the wrath); their effects (lava on the ground, fissures, boulders, meteors) |
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
@@ -223,10 +224,22 @@ shared preview), give the preview build's link, and go to `main` only when Blain
   Props: `assets/models/plague/` flask, volatile, trap (Meshy text-to-3D, `act1/prep_prop.py`). Talents: Toxicology,
   Volatile Arts, Contagion (icons `p_*.png`, `plague_tree*.png`). Tests: `tools/plague_test.gd` (`--fixed-fps 60`),
   `tools/plague_mp_test.gd` (host + join); screenshots `tools/plague_shots.gd` (`--fixed-fps 10`).
-- **Adding a class**: add it to `Data.CLASSES`, give it four (up to six: Q E R F G V) `SKILLS` entries with its `cls`, build its look the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep working), handle its skill ids in `Hero.use_skill` / `_impact`, and add glyphs in `ui.gd` `SkillGlyph`. Keep the gameplay
-  and the effects apart: the skill code deals the damage and calls `Hero.fx(id, event, data)` for everything seen,
-  and a `<Class>Fx.play(h, ev)` handler draws it (add the class to the `match` in `SkillFx.play`); the cast's event
-  comes for free, and `tools/coop_fx_test.gd` fails any skill that shows partners nothing (see "Co-op skill effects").
+- **Adding a class** (nothing in `hero.gd` names a class's skills; `ClassSkills` hands them to the class's script):
+  1. `Data.CLASSES`: name, starting stats, `desc`, optional `weapon`, `voice` (hurt/death sound suffix), `attack_pace`, `hud`.
+  2. `Data.SKILLS`: four (up to six: Q E R F G V) entries with its `cls`, each with an `aim`.
+  3. Skills: copy `tools/templates/new_class_skills.gd` to `scripts/<class>_skills.gd` (uncomment its `class_name`)
+     and add it to `ClassSkills.of` and `ClassSkills.all`. Its static `can_cast`/`cast`/`impact`/`update`/`rooted`/
+     `clear`/`died`/`sound` are the whole contract; skill state goes on the hero in one dictionary (like `Hero.wr`,
+     `Hero.dm`) or one object (like `Hero.pd`), so hero.gd doesn't grow. Start motions with
+     `h._start_attack(style, id, seconds)`; "ahead" is `h.aim_dir()`. Weapon-trail colour: `ClassSkills.trail_color`.
+     Run `godot --headless --editor --quit` after adding the class_name.
+  4. Effects: a `<Class>Fx.play(h, ev)` handler (add the class to the `match` in `SkillFx.play`). Keep the gameplay
+     and the effects apart: the skill code deals the damage and calls `Hero.fx(id, event, data)` for everything seen;
+     the cast's event comes for free, and `tools/coop_fx_test.gd` fails any skill that shows partners nothing (see
+     "Co-op skill effects").
+  5. Look: build it the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep
+     working), `Hero._build_rig`. Glyphs in `ui.gd` `SkillGlyph`, talents (`Talents.TREES`/`AUTO`), the class
+     picker (`ClassStage.CLASSES`/`ACCENTS`/`EMBLEMS`/`SIGNATURE`/`SKILL_SHOW`, `_fidget`).
 - **The Wraith's body**: the Meshy horned, chained wraith (concept D) on the shared mocap system
   (`Wraith.build_mocap`, `assets/models/wraith_mocap.glb`; falls back to the code-built robe without it). He has no
   legs and never walks: `tools/blender/wraith/prep_wraith_mocap.py` cuts the skeletal legs and feet out of the mesh
@@ -353,7 +366,7 @@ shared preview), give the preview build's link, and go to `main` only when Blain
   `tools/demon_skills_clip.gd -- outdir [skill|all] [close|game]` renders frames of each (xvfb, `--fixed-fps 30`);
   `tools/coop_fx_shot.gd` has `demon:grip` and `demon:wrath`. The Underworld grade in `game.gd`
   (`set_underworld`, `DemonFx.UNDERWORLD_SHADER`, `under_amt`) and the body shader's `phase_amt` stay, unused.
-- **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `_update_drain`, and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. The beams, sigil, hand light and hum are the `"drain"` fx events' effect (`WarlockFx.play`, state in `Hero.fxs["drain"]`, drawn by `WarlockFx.update` after the pose on the caster and on his puppet; `"start"`, `"victims"` when the fork set changes, `"tick"`, `"end"`), so partners see the beam on him too.
+- **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `WarlockSkills.update_drain` (all of Drain Life is in `warlock_skills.gd`), and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. The beams, sigil, hand light and hum are the `"drain"` fx events' effect (`WarlockFx.play`, state in `Hero.fxs["drain"]`, drawn by `WarlockFx.update` after the pose on the caster and on his puppet; `"start"`, `"victims"` when the fork set changes, `"tick"`, `"end"`), so partners see the beam on him too.
 - **King Grubb** (Act I boss, `hoard.gd`) is host-authoritative. Every visible part of the fight (piles, bombs, burst
   sacks, shouts, a grabber's `carry_on`/`carry_off`) is an Enemy fx event string handled in `Hoard.fx`, so partners see it;
   damage, healing and gold happen only on the host. Grabbers reach the fight through `Enemy.hoard` (`Hoard.steer`).
