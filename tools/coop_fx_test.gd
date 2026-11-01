@@ -137,6 +137,8 @@ func _run() -> void:
 			h._clear_warlock()
 			h.blights.clear()
 			DemonSkills.clear(h)        # his lava on the ground would burn the fresh pack
+			if h.pd != null:
+				h.pd.clear()  # the Plague Doctor's clouds and dome linger where he cast them, over the fresh pack
 			var en2: Array = await pack(far + OFF + Vector3(0, 0, -2.5), 3)
 			var l0 := lives(en2)
 			puppet.life = 50.0

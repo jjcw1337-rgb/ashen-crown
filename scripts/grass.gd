@@ -71,6 +71,52 @@ const BIOMES := {
 
 const VARIANTS := 2
 
+## The Blender clumps (tools/blender/grass/build_clumps.py: modelled blades on the Meshy texture atlas,
+## tools/grass_atlas.py) are used for every species that has one; without them the code-built clumps
+## below are the fallback. Both bend the same way: the shader reads its data per vertex either way.
+const GLB := "res://assets/models/grass/%s.glb"
+const ATLAS := "res://assets/textures/grass/atlas.png"
+static var _glb := {}
+
+## The species' clump from its Blender glb (object "<species>_<variant>_<lod>"), or null without the file.
+static func glb_mesh(sp: String, v: int, l: int) -> Mesh:
+	if not _glb.has(sp):
+		var meshes := {}
+		if ResourceLoader.exists(GLB % sp) and ResourceLoader.exists(ATLAS):
+			var scene := (load(GLB % sp) as PackedScene).instantiate()
+			for mi in scene.find_children("*", "MeshInstance3D", true, false):
+				meshes[String(mi.name)] = _plain((mi as MeshInstance3D).mesh)
+			scene.free()
+		_glb[sp] = meshes
+	var m: Dictionary = _glb[sp]
+	return m.get("%s_%d_%d" % [sp, v, l], null)
+
+## The touch field's newest texture, handed to every grass material (GrassField calls this each frame).
+static var _field: Texture2D = null
+static func set_field(tex: Texture2D) -> void:
+	if tex == _field:
+		return
+	_field = tex
+	for ms in _mats.values():
+		for m in ms:
+			(m as ShaderMaterial).set_shader_parameter("grass_field", tex)
+
+## The imported clump without the extras Godot's importer adds by default (its .import files are git-ignored,
+## so CI imports with defaults): no automatic LODs, which can stitch thin blades together at a distance (the
+## clumps carry their own LOD), and no tangents (the grass has no normal map).
+static func _plain(m: Mesh) -> Mesh:
+	if m == null:
+		return null
+	var out := ArrayMesh.new()
+	for i in m.get_surface_count():
+		var arr := m.surface_get_arrays(i)
+		arr[Mesh.ARRAY_TANGENT] = null
+		out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	return out
+
+static func textured(sp: String) -> bool:
+	return glb_mesh(sp, 0, 0) != null
+
 static var _meshes := {}
 static var _shader: Shader = null
 static var _mats := {}
@@ -159,7 +205,8 @@ static func scatter(parent: Node3D, area: Rect2, ctx: Object, colors: Dictionary
 				arr.append_array([b.x.x, b.y.x, b.z.x, x, b.x.y, b.y.y, b.z.y, y, b.x.z, b.y.z, b.z.z, z,
 					clampf(shade + rng.randf_range(-0.08, 0.08), 0.0, 1.0), clampf(dry + rng.randf_range(-0.1, 0.1), 0.0, 1.0), rng.randf(), 0.0])
 				count += 1
-	var mat := material(colors)
+	var mats := material(colors)
+	var tmats := material(colors, true)
 	var lod: Vector2 = LOD_BAND[quality]
 	var fade: Vector2 = FADE[quality]
 	var half := CHUNK * 0.75
@@ -170,12 +217,13 @@ static func scatter(parent: Node3D, area: Rect2, ctx: Object, colors: Dictionary
 			var mm := MultiMesh.new()
 			mm.transform_format = MultiMesh.TRANSFORM_3D
 			mm.use_custom_data = true
-			mm.mesh = mesh(parts[2], int(parts[3]), l)
+			var gm := glb_mesh(parts[2], int(parts[3]), l)
+			mm.mesh = gm if gm != null else mesh(parts[2], int(parts[3]), l)
 			mm.instance_count = arr.size() / 16
 			mm.buffer = arr
 			var mmi := MultiMeshInstance3D.new()
 			mmi.multimesh = mm
-			mmi.material_override = mat[l]
+			mmi.material_override = tmats[l] if gm != null else mats[l]
 			mmi.position = Vector3.ZERO
 			# shadows only from the near, detailed grass, and only on Ultra (as before): grass shading grass on
 			# lower presets darkens the field more than it grounds it, and costs a second pass
@@ -228,11 +276,11 @@ static func _pick(mix: Dictionary, rng: RandomNumberGenerator, keys: Array) -> S
 
 # ---------------------------------------------------------------- materials
 ## The two materials (LOD0, LOD1) for a zone's grass colours.
-static func material(colors: Dictionary) -> Array:
+static func material(colors: Dictionary, tex := false) -> Array:
 	var base: Color = colors.get("base_col", Color(0.12, 0.16, 0.06))
 	var tip: Color = colors.get("tip_col", Color(0.27, 0.32, 0.13))
 	var dryc: Color = colors.get("dry_col", Color(0.36, 0.35, 0.18))
-	var key := "%s|%s|%s|%d" % [base.to_html(), tip.to_html(), dryc.to_html(), quality]
+	var key := "%s|%s|%s|%d|%s" % [base.to_html(), tip.to_html(), dryc.to_html(), quality, tex]
 	if _mats.has(key):
 		return _mats[key]
 	if _shader == null:
@@ -249,6 +297,11 @@ static func material(colors: Dictionary) -> Array:
 		m.set_shader_parameter("lod_band", LOD_BAND[quality])
 		m.set_shader_parameter("fade", FADE[quality])
 		m.set_shader_parameter("wind_mult", float(colors.get("wind", 1.0)))
+		if _field:
+			m.set_shader_parameter("grass_field", _field)
+		if tex:
+			m.set_shader_parameter("textured", true)
+			m.set_shader_parameter("atlas", load(ATLAS))
 		out.append(m)
 	_mats[key] = out
 	return out
@@ -454,7 +507,13 @@ uniform float lod_side = 0.0;
 uniform vec2 lod_band = vec2(30.0, 35.0);
 uniform vec2 fade = vec2(44.0, 60.0);
 uniform bool debug_touch = false;
-global uniform sampler2D grass_field : filter_linear, repeat_disable;
+// textured: a Blender clump on the Meshy atlas (UV = atlas, UV2 = (flex, height), COLOR = (dry, phase, lush,
+// 1 blade / 0.5 card)); otherwise a code-built clump (UV.y = height, UV2 = (flex, phase), COLOR = (dry, bright, lush, kind))
+uniform bool textured = false;
+uniform sampler2D atlas : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
+// the touch field (GrassField): a material uniform, not a global sampler: in the OpenGL renderer a global
+// sampler that changes every frame got crossed with the atlas, painting the field's colours on the grass
+uniform sampler2D grass_field : filter_linear, repeat_disable;
 global uniform vec4 grass_field_rect;
 global uniform vec3 grass_cam;
 global uniform vec2 wind_dir;
@@ -475,14 +534,21 @@ float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); 
 float vn(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
 	return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), u.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), u.x), u.y); }
 void vertex(){
-	hgt = UV.y;
 	vc = COLOR;
+	float flex = UV2.x;
+	float ph;
+	if (textured) {
+		hgt = UV2.y;
+		ph = COLOR.g;
+		vc.g = fract(COLOR.g * 7.31 + 0.2) * 0.5 + 0.25;   // brightness per blade, from its phase
+	} else {
+		hgt = UV.y;
+		ph = UV2.y;
+	}
 	vec3 o = MODEL_MATRIX[3].xyz;
 	shade = INSTANCE_CUSTOM.x;
 	dryx = INSTANCE_CUSTOM.y;
 	rnd = INSTANCE_CUSTOM.z;
-	float flex = UV2.x;
-	float ph = UV2.y;
 	// distance from the game camera (a global, so the shadow pass agrees): far clumps shrink away by
 	// their random value, and LOD0/LOD1 hand each clump over at its own distance inside the band
 	float dist = length(grass_cam - o);
@@ -538,7 +604,42 @@ void fragment(){
 	// would point it at the ground and leave every other blade dark
 	if (!FRONT_FACING) { NORMAL = -NORMAL; }
 	vec3 c;
-	if (vc.a < 0.75) {
+	float alpha = 1.0;
+	if (textured) {
+		// a Blender clump on the Meshy atlas: the painted blade, seed head, flower or leaf, then the field's
+		// own variation on top (dry patches, shade under trees, roots, gusts, pressing)
+		vec4 t = texture(atlas, UV);
+		alpha = t.a;
+		bool blade = vc.a > 0.75;
+		if (!blade && vc.b < 0.25 && (snow_amt > 0.5 || ash_amt > 0.5) && hgt > 0.7) { discard; }
+		c = t.rgb * 0.82;
+		float patch = vn(wpos.xz * 0.09 + 3.1) * 0.7 + vn(wpos.xz * 0.7) * 0.3;
+		float d = clamp(dryx * 0.8 + smoothstep(0.62, 0.9, patch) * 0.2, 0.0, 1.0) * (1.0 - vc.r);
+		float lum = dot(c, vec3(0.3, 0.55, 0.15));
+		vec3 straw = lum * dry_col / max(dot(dry_col, vec3(0.3, 0.55, 0.15)), 0.05);
+		c = mix(c, straw, d * (blade ? 0.75 : 0.35));
+		// lush species are darker and bluer
+		c = mix(c, c * vec3(0.78, 0.92, 0.88), vc.b * 0.5);
+		if (blade) {
+			c *= 0.85 + vc.g * 0.3;
+			c *= mix(0.6, 1.0, smoothstep(0.0, 0.45, hgt));
+		}
+		c *= 0.9 + rnd * 0.18;
+		c *= 1.0 - shade * 0.42;
+		c *= 1.0 + (gust - 0.5) * 0.14 * hgt;
+		c = mix(c, c * vec3(1.12, 1.1, 0.95), clamp(press, 0.0, 1.0) * 0.35 * hgt);
+		if (ash_amt > 0.0) {
+			c = mix(c, mix(vec3(0.06, 0.05, 0.04), vec3(0.3, 0.27, 0.23), hgt), ash_amt * 0.92);
+		}
+		if (snow_amt > 0.0) {
+			c = mix(c, vec3(0.42, 0.38, 0.26), snow_amt * 0.6);
+			c = mix(c, vec3(0.86, 0.9, 0.96), snow_amt * smoothstep(0.75, 1.0, hgt) * 0.75);
+		}
+		c = mix(c, vec3(dot(c, vec3(0.3, 0.55, 0.15))), 0.12);
+		ROUGHNESS = mix(0.72, 0.9, d + vc.r * 0.5);
+		SPECULAR = 0.14;
+		BACKLIGHT = c * mix(0.2, 0.5, hgt) * (blade ? 1.0 : 0.6);
+	} else if (vc.a < 0.75) {
 		// petals and seed heads keep their own colour
 		if (vc.a < 0.25 && (snow_amt > 0.5 || ash_amt > 0.5)) { discard; }
 		c = vc.rgb * (0.85 + rnd * 0.25);
@@ -578,6 +679,10 @@ void fragment(){
 	}
 	if (debug_touch) { c = mix(c, vec3(1.0, 0.0, 0.0), clamp(press * 2.0, 0.0, 1.0)); }
 	ALBEDO = c;
+	// cut-out cards (heads, flowers, leaves) keep their painted outline; MSAA softens its edge
+	ALPHA = alpha;
+	ALPHA_SCISSOR_THRESHOLD = 0.5;
+	ALPHA_ANTIALIASING_EDGE = 0.3;
 	AO = mix(0.55, 1.0, smoothstep(0.0, 0.6, hgt));
 	AO_LIGHT_AFFECT = 0.55;
 }

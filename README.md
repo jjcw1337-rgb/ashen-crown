@@ -47,6 +47,13 @@ Windows SmartScreen may warn that the app is unrecognised (it isn't code-signed)
   - *Soul Shackles* (R): chains of fel fire bind every enemy within 7 metres for 2.5 seconds.
   - *Fel Covenant* (F): +40% damage for 12 seconds; Drain Life forks to two more enemies and heals twice as much.
 
+- **Plague Doctor**: a plague physician of the cursed years in a beaked leather mask with green-lit goggles, a buckled oxblood-red leather greatcoat under a black hat, gloves and boots, a belt and bandolier of glass vials and a smoking brass censer, with a crow-skull cane. He fights by preparation: poison, fire and traps. (Model, cane and props made with [Meshy](https://www.meshy.ai), prepared in Blender; every skill has its own motion-captured move.)
+  - His cane combo is his own: *Crow's Peck* hooks the crow-skull handle up into them and leaves a short poison, *Vial Flick* is a wide swing that flings poison drops across everyone it strikes, and the *Censer Slam* finisher drives the cane into the ground and cracks a vial into a small poison cloud.
+  - *Toxic Flask* (Q): lob a vial that shatters into a poison cloud. Enemies in it are poisoned and keep rotting for a few seconds after they leave. Clouds of the same kind don't stack.
+  - *Volatile Mixture* (E): throw a bottle with a lit fuse. A warning ring, then a fire blast that hurls enemies back and sets them burning. If the blast reaches one of your poison clouds, the cloud ignites and burns out all its poison at once.
+  - *Pestilent Trap* (R): kneel and set a brass canister (up to 2). The first enemy to step on it is stunned and it vents a poison cloud. If that enemy was infected, the cloud spreads the infection.
+  - *The Last Epidemic* (F): smash your censer and raise a miasma dome for 8 seconds. Enemies inside are poisoned, slowed and infected; an infected enemy that dies passes it to the two nearest (up to 6 times). The dome collapses with a final blow. Co-op partners see your flasks, clouds, traps and dome too.
+
 Every class has four skills on Q E R F, unlocking at levels 1, 3, 6 and 10. Your class is saved with your character, and co-op partners see it.
 
 **Talents** (press **N**): every class has three talent trees, each with seven talents in four rows, ending in a capstone. You get a talent point every level from level 2; left-click a talent to learn a rank, right-click to take it back. A row opens once you've spent enough points above it in that tree (3, 6, then 10 for the capstone). **Reset** gives every point back for free, and **Auto-assign** spends your points on a suggested build. Characters from before talents arrived got a build picked for their class and level; reset it if you want your own.

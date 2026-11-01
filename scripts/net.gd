@@ -9,6 +9,7 @@ const DISCO_PORT := 24568
 const MAX_CLIENTS := 3
 const STYLES := ["over", "back", "side", "thrust", "bow", "cast", "claw", "slam", "bite", "smash", "lob", "scoop", "burst", "cackle", "swipe1", "swipe2", "swipe3", "cleave", "feral_lunge", "feral_swipe", "perch", "descend", "skirm_lunge", "reaver_cleave", "stalk_hook", "bear_roar", "bear_maul", "sloth_walk", "sloth_run", "sloth_rise", "sloth_look", "sloth_stare", "sloth_roar", "sloth_drop", "sloth_sniff", "sloth_sweep", "sloth_slam", "sloth_pounce",
 	"rend", "siphon", "wstep", "grasp", "phantom", "night_rise", "night_scream", "night_hold", "night_fall",
+	"pd_flask", "pd_volatile", "pd_trap", "pd_slam", "pd_dome", "pd_inspect",
 	"fists", "icharge", "cslam", "hurl", "grip", "wrath_roar", "wrath_stomp"]
 const SEND_RATE := 0.05
 const ALLY_COLORS := [Color(0.45, 0.8, 1.0), Color(0.5, 1.0, 0.5), Color(1.0, 0.6, 0.9)]
@@ -495,8 +496,10 @@ func cl_enemy_states(arr: PackedFloat32Array) -> void:
 			continue
 		e.apply_net_state(arr[o + 1], arr[o + 2], arr[o + 3], arr[o + 4], arr[o + 5], arr[o + 6], STYLES[clampi(int(arr[o + 7]), 0, STYLES.size() - 1)], arr[o + 8], arr[o + 9])
 
+## A partner's hit on a monster, for the host to apply. A quiet damage tick (Enemy.soft_hit: the plague doctor's
+## poison) travels as knock -1: no flash, no flinch, a green number.
 func send_enemy_hit(e: Enemy, phys: float, fire: float, from: Vector3, knock: float, crit: bool) -> void:
-	rpc_id(1, "sv_enemy_hit", e.net_id, phys, fire, from, knock, crit)
+	rpc_id(1, "sv_enemy_hit", e.net_id, phys, fire, from, -1.0 if e.soft_hit else knock, crit)
 
 @rpc("any_peer", "call_remote", "reliable")
 func sv_enemy_hit(id: int, phys: float, fire: float, from: Vector3, knock: float, crit: bool) -> void:
@@ -504,7 +507,14 @@ func sv_enemy_hit(id: int, phys: float, fire: float, from: Vector3, knock: float
 		return
 	var e = enemies[id]
 	if is_instance_valid(e) and not e.dead:
-		e.take_damage(phys, fire, from, knock, crit)
+		if knock < 0.0:
+			e.soft_hit = true
+			e.dmg_tint = Plague.POISON_TINT
+			e.take_damage(phys, fire, from, 0.0, crit)
+			e.soft_hit = false
+			e.dmg_tint = Color(0, 0, 0, 0)
+		else:
+			e.take_damage(phys, fire, from, knock, crit)
 
 func send_enemy_chill(e: Enemy, k: float, t: float) -> void:
 	rpc_id(1, "sv_enemy_chill", e.net_id, k, t)
@@ -537,6 +547,40 @@ func cl_enemy_die(id: int) -> void:
 		game.quests.on_kill(e)       # a partner's quests count the party's kills
 		if e.boss:
 			game.boss_down_remote(e)
+
+## A hero's visible moment (the plague doctor's flasks, traps and dome: Plague._send), for every other player to
+## replay on their puppet of him (Plague.remote: visuals only). A partner sends it to the host, who replays it and
+## passes it on.
+func hero_fx(ev: String) -> void:
+	if not active:
+		return
+	if is_host:
+		if not players.is_empty():
+			rpc("cl_hero_fx", multiplayer.get_unique_id(), ev)
+	else:
+		rpc_id(1, "sv_hero_fx", ev)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_hero_fx(ev: String) -> void:
+	if not is_host or ev.length() > 200:
+		return
+	var pid := multiplayer.get_remote_sender_id()
+	_play_hero_fx(pid, ev)
+	rpc("cl_hero_fx", pid, ev)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_hero_fx(pid: int, ev: String) -> void:
+	if pid != multiplayer.get_unique_id():
+		_play_hero_fx(pid, ev)
+
+func _play_hero_fx(pid: int, ev: String) -> void:
+	if not players.has(pid) or not is_instance_valid(players[pid]["hero"]):
+		return
+	var h: Hero = players[pid]["hero"]
+	if h.is_plague():
+		if h.pd == null:
+			h.pd = Plague.new(h)
+		h.pd.remote(ev)
 
 func enemy_fx(e: Enemy, ev: String) -> void:
 	if is_host and not players.is_empty():

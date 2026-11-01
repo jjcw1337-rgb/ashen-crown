@@ -31,12 +31,19 @@ func _run() -> void:
 		var lods := {}
 		var clumps := 0
 		var painted := 0
+		var modelled := 0
+		var chunks := 0
 		for n in g.get_tree().get_nodes_in_group("grass"):
 			if n.has_meta("grass3d"):
 				var nm := String(n.name)
 				var sp := nm.split("_")[3].rstrip("0123456789")
 				species[sp] = true
 				lods[int(n.get_meta("grass3d"))] = true
+				chunks += 1
+				# the Blender clumps (on the Meshy atlas) are drawn with the textured material
+				var mat := (n as GeometryInstance3D).material_override as ShaderMaterial
+				if mat and bool(mat.get_shader_parameter("textured")):
+					modelled += 1
 				if int(n.get_meta("grass3d")) == 0:
 					clumps += (n as MultiMeshInstance3D).multimesh.instance_count
 			else:
@@ -48,6 +55,7 @@ func _run() -> void:
 		check(species.size() >= 4, "%s: species %s" % [zone, species.keys()])
 		check(lods.has(0) and lods.has(1), "%s: both levels of detail" % zone)
 		check(painted == 0, "%s: no painted clumps left (%d)" % [zone, painted])
+		check(modelled == chunks, "%s: Blender clumps on the Meshy textures (%d of %d chunks)" % [zone, modelled, chunks])
 		check(g.grass_field.enabled, "%s: touch field on" % zone)
 		if zone == "wild":
 			await _moor_checks(w)

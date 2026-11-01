@@ -1,0 +1,16 @@
+{
+  "id": "01a19321-2ba1-74e4-94a4-b75785c28532",
+  "type": "image-to-image",
+  "ai_model": "nano-banana-2",
+  "prompt": "Keep this exact screen: the same ruined cathedral hall, the same heroes with exactly the same designs and colours, the same coloured light shafts, banners, plinths, candles, the title 'Choose your path' and the same iron and gold info panel at the bottom with the same text. Painterly dark fantasy ARPG game menu, high detail, 16:9. Change the layout so the plinths stand on a great round turning stone platform, like a slowly rotating wheel or turntable in the cathedral, the Knight at the front centre facing the viewer and the other heroes curving away round the circle behind him. Add two large ornate curved navigation arrow buttons on the left and right edges pointing round the circle: dark iron with gold trim and a glowing gold gem.",
+  "status": "SUCCEEDED",
+  "progress": 100,
+  "created_at": 1793469787514,
+  "started_at": 1793469787525,
+  "finished_at": 1793469806731,
+  "expires_at": 1793729006731,
+  "image_urls": [
+    "https://assets.meshy.ai/8fd76281-d576-493e-b9d7-513b7c3809be/uploads/image_01a19321-2ba1-74e4-94a4-b75785c28532_0.png?Expires=1793729006&Signature=X1k~wdT975qkbP0wTjRy3n7xqti6kcskyscWBiZx4~JB8HbFeGRyVI9KZo2jASalCgFwWyZGtirJwNptenhgNwzFmE-JYzOKTduYlvKTd4eKK4WqyR3~mCPEDg0Yf6cROL72GP6~XlkEYcxwKGG2rtzMB-5-cEtcYfOiNGEYhL9tt~RgVwMrybq2p8V9RnvRxWjEs0fvJSE12wE~GmiMZn2GsQBUZQ1EX10xtmmZOPO5YM-1XaUAh4Cf-LehBeNpQe3lcY5yRy4TgHeRyDaU0-vktP7gSo5fQp4R4herjmdH3rIrLylXSbESscvvR~MzqamNuSy0sTWg2VKYjgFNFg__&Key-Pair-Id=K1VGYTHIYLM9UM"
+  ],
+  "consumed_credits": 6
+}

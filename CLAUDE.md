@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `grass_test`, `collision_test`, `aim_test`, `hoard_test`, `coop_fx_test` (every skill's effects reach a puppet, in one process), `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test` and `mp_boss_test` (run one copy
+`det_test`, `grass_test`, `collision_test`, `aim_test`, `plague_test` (`--fixed-fps 60`), `hoard_test`, `coop_fx_test` (every skill's effects reach a puppet, in one process), `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), and the co-op pairs `mp_test`, `mp_boss_test` and `plague_mp_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -50,7 +50,9 @@ Screenshots need a display: `xvfb-run -a godot --rendering-driver opengl3 --path
 The moor's road is `World.road_style()`: the paved Old Kingsroad (2) by default; `--road 0|1|3` shows the old broad
 road, the wagon trail and the moor trails for comparison. `tools/zone_overview.gd -- out.png [--road N]` renders a high view of it.
 
-Run the relevant tests before pushing. A push to `main` publishes to everyone in ~5 minutes.
+Run the relevant tests before pushing. A push to `main` publishes to everyone in ~5 minutes, so **Claude never pushes
+to `main` on its own**: push your work to a `test-*` branch (`git push origin HEAD:test-something`, or `test-all` for the
+shared preview), give the preview build's link, and go to `main` only when Blaine and jj have both said so.
 
 ## Code map (`scripts/`)
 
@@ -64,6 +66,7 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
 | `wraith.gd`, `wraith_skills.gd`, `wraith_fx.gd` | Wraith class: the Meshy body on the mocap system with the spectral shader; its six skills (casts, blows, the tether, phantoms, the night); their effects |
 | `demon.gd`, `demon_mocap_rig.gd`, `demon_skills.gd`, `demon_fx.gd` | Demon class: the Meshy magma brute on the mocap system with the magma shader and his own wing/tail/cloth rig (falls back to the knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader); his six skills (the fists, the charge, the slam, the boulder, the grip, the wrath); their effects (lava on the ground, fissures, boulders, meteors) |
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
+| `plague.gd` | Plague Doctor class: body (mocap, whole-body skill clips), Toxic Flask, Volatile Mixture, Pestilent Trap, The Last Epidemic, poison and infection, co-op replay |
 | `enemy.gd`, `projectile.gd`, `feral.gd` | Monsters/AI and missiles (host-authoritative in co-op); the Feral's baked-animation body |
 | `via.gd`, `aurelia.gd`, `games.gd`, `roman.gd` | A2: the Imperial Road (wild), the city of Aurelia and its arena (lair), the arena's games (the act's boss fight), and the Roman architecture they're built from |
 | `lion.gd` | The arena lion: a Meshy model on a quadruped skeleton, posed in code (no baked animations) |
@@ -170,6 +173,45 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   procedural body dressed as a hunter (`Archer.build_placeholder`, `Archer.body_gear` kept on every gear change; its bow in `J["grip_l"]`/`J["bow_l"]`). Preview: `tools/mocap_knight_clip.gd -- outdir
   run|attack|shootwalk 34|game|side|close|closeback frames archer [longbow]`. Talent icons still to paint (`tools/talent_icons.py`).
   `tools/archer_test.gd` checks it (run it with `--fixed-fps 60`; it counts frames).
+- **The Plague Doctor** (`scripts/plague.gd`, `Plague`; class `"plague"`, one `Plague` per hero in `Hero.pd`): the Meshy
+  plague doctor (concept 1 of four in the session's picks: beaked mask with green-lit goggles, buckled greatcoat split
+  front and back, bandolier and belt of green/amber/violet vials, pouches, instrument roll, brass censer) on the knight's
+  mocap system like the ranger: `assets/models/plague_doctor.glb` from `tools/blender/plague/prep_plague_mocap.py --
+  rigged.glb out.glb 60000 clips_a.glb clips_b.glb clips_c.glb` (Meshy task ids and the 26 clip ids are at its top).
+  **Whole-body clips per attack style** (new, any mocap body can use them): `Knight.build_mocap` opts `"acts"`
+  `{style: {clip, keys, frac}}` adds one AnimationNodeAnimation + TimeSeek per style behind a Transition (`act_pick`) and
+  a Blend2 (`act_mix`) over everything; `knight_mocap_rig.gd` seeks the clip to the attack's progress along `keys`
+  (`"frac": true` = clip times as fractions of the clip's length), turns the procedural layer off and pins the hips over
+  his spot (library clips step about). `Plague.ACTS`: his own cane combo (`swipe1/2/3` = `peck`, `flick`, `censer_slam`: Meshy 221, 242, 128; each blow's
+  effect is `Plague.cane_blow`, called by `Hero._swipe_impact` with the foes struck: Crow's Peck poisons them for 2 s,
+  Vial Flick fans drops across the arc and poisons everyone struck for 3 s, Censer Slam cracks a vial on the ground
+  ahead in a 2 m cloud for 2.5 s; poison source `"cane"`, scaled by `dmg:attack`), Toxic
+  Flask `pd_flask` (over-shoulder throw), Volatile Mixture `pd_volatile` (crouch charge and throw), Pestilent Trap
+  `pd_trap` (crouch and place), The Last Epidemic in two stages `pd_slam` (the censer smashed) then `pd_dome` (arms
+  raised; `Plague.update` starts it when the first ends), `pd_inspect` (the class stage's fidget: a vial held to the
+  light). New styles are appended to `Net.STYLES` and timed in `Anim.impact_at`. Clip strips: `tools/blender/plague/clip_sheet.py`.
+  Skills: Toxic Flask (Q, a lobbed flask, cloud 3 m / 4 s), Volatile Mixture (E, a fuse ring 0.6 s then a 4 m fire
+  blast that burns; **Ignition**: a blast that reaches one of his clouds burns it out at once for its remaining poison),
+  Pestilent Trap (R, up to 2, armed after 0.8 s, the first foe springs it: stun + cloud; **Outbreak**: sprung by an
+  infected foe, its cloud infects), The Last Epidemic (F, a 9 m dome for 8 s: poison, slow, infection; collapses with a
+  last blow). **Statuses live on the caster** (`Plague.poison`, `infected`, `immune`), ticking every 0.5 s through
+  `Enemy.take_damage` on the elemental channel (green numbers, `dmg_tint`, no blood), so a partner's damage reaches the
+  host the usual way and nothing new crosses the network for it. Guards: one poison per source per foe (refreshed, never
+  stacked; sources toxic, trap, epidemic, infection); one infection per foe; a dead carrier passes it to the two nearest,
+  at most `INF_JUMPS` (6) jumps per cast; 4 s immunity after it ends. Every number is a const at the top of plague.gd;
+  talent keys (`cloud_size`, `poison_dmg`, `blast_size`, `ignite_dmg`, `trap_max`, `inf_jumps`, `dome_size` ...) are
+  read where the skill is. **Co-op**: the first class whose effects partners see: `Plague._send` → `Net.hero_fx` (the
+  host relays; `sv_hero_fx`/`cl_hero_fx`) → `Plague.remote` on the puppet, whose `Plague` is a `ghost()` (builds the same
+  flasks, clouds, traps and dome, deals nothing). His leather is dyed (`Plague.COLORS`, default "oxblood2": an oxblood coat and cape with a black hat,
+  gloves and boots; also "oxblood", "plague", "plague2", "ash2", "" = Meshy's black): `Plague.dye` swaps the albedo for
+  `assets/textures/plague/coat_<scheme>.jpg`, made by `tools/plague_colors.py` from the albedo and metal maps that
+  `tools/blender/plague/dump_textures.py` saves out of the glb and the regions `tools/blender/plague/region_uv.py` finds
+  (head and hat above the collar, gloves by the hand bones, boots below the coat's hem): only the dark, grey, non-metal
+  leather is tinted. His cane: `Data.BASES` `physician_cane`/`crow_cane` (kind `"cane"`,
+  `"cls": "plague"`, `Plague.cane_model`: the Meshy crow-skull cane `assets/models/plague/cane.glb`, `prep_cane.py`).
+  Props: `assets/models/plague/` flask, volatile, trap (Meshy text-to-3D, `act1/prep_prop.py`). Talents: Toxicology,
+  Volatile Arts, Contagion (icons `p_*.png`, `plague_tree*.png`). Tests: `tools/plague_test.gd` (`--fixed-fps 60`),
+  `tools/plague_mp_test.gd` (host + join); screenshots `tools/plague_shots.gd` (`--fixed-fps 10`).
 - **Adding a class**: add it to `Data.CLASSES`, give it four (up to six: Q E R F G V) `SKILLS` entries with its `cls`, build its look the way `wraith.gd` does (reuse `Knight.build` for the skeleton so animation and co-op keep working), handle its skill ids in `Hero.use_skill` / `_impact`, and add glyphs in `ui.gd` `SkillGlyph`. Keep the gameplay
   and the effects apart: the skill code deals the damage and calls `Hero.fx(id, event, data)` for everything seen,
   and a `<Class>Fx.play(h, ev)` handler draws it (add the class to the `match` in `SkillFx.play`); the cast's event
@@ -355,14 +397,28 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   `_sway_hair` swings; faces Meshy fused between parts that move apart (cloak/leg, cloak/arm, arm/hips) are cut, and
   cloak shreds left beside the A-pose arms are dropped. `--debug` renders the A-pose coloured by main bone.
   The earlier armoured knight (bare head, red tabard) is kept as `knight_statue.glb` for the arena statues.
+  **Shield arm** (any mocap body): with a shield on (`Hero.refresh_gear` sets the rig's `shield` meta) the left arm
+  (`KnightMocapRig.SHIELD_ARM`) always takes Anim's pose (`w_shield`): the shield at his side, up across the chest at a
+  run, raised to block. The motion capture's empty-handed arm swing left it hanging by his knee and flapping about.
 - **Act I trees and grass** (`World.oak_forest`, set by `game.gd` when `difficulty == 0`; A2/A3 keep the old mix): three
   Meshy oaks `assets/models/trees/oakN.glb` (prepared by `tools/blender/prep_tree.py`: trunk on the origin, ~6 m, 1k
   textures) built by `Flora.oak_model(k)` with `MESHY_TREE_SHADER` (wind sway by height, snow/ash, see-through near the
   player) plus the game's leaf clusters (`OAK_LEAVES`); the moor is ~40% oaks with groves off the road. Grass is
   the **living 3D grass** (`scripts/grass.gd` `Grass`, `scripts/grass_field.gd` `GrassField`; Act I's camp, moor and
   fort, i.e. whenever `oak_forest`; A2/A3 keep the old blade clumps): seven species built in code (`Grass.SPECIES`:
-  meadow, tall seed-head grass, tussock, dry straw, moss with clover, broad-leaved weeds, sparse verge grass;
-  curved tapered blades with rounded normals, two variants, two LODs) mixed by biomes (`Grass.BIOMES`: meadow,
+  meadow, tall seed-head grass, tussock, dry straw, moss with clover, broad-leaved weeds, sparse verge grass)
+  **modelled in Blender on Meshy textures**: four Meshy botanical sheets (green blades, dry straw, seed heads and
+  wildflowers, broad leaves; `meshy.py draw "... laid flat side by side ..." --cutout`, ~6 credits each, the prompts
+  are in the commit) are cut by `tools/grass_atlas.py <dir> assets/textures/grass` into `atlas.png` (2048x1024, 32
+  cells of 128x512: blades unrolled to the full cell width so they stay opaque, heads/flowers/leaves kept as
+  cut-outs; mipmaps on) and `atlas.json`; `blender -b --python tools/blender/grass/build_clumps.py --
+  assets/textures/grass/atlas.json assets/models/grass` models each species' clumps (folded blades with a raised
+  midrib, sheaths, twists, snapped straw, crossed seed-head cards, leaf rosettes; two variants, two LODs; objects
+  `<species>_<variant>_<lod>`) into `assets/models/grass/<species>.glb`. Per vertex: UV = atlas, UV2 = (flex, height
+  along the plant), COLOR = (dry, sway phase, lush, 1 blade / 0.5 card). `Grass.glb_mesh` loads them (stripping the
+  importer's automatic LODs and tangents, since the `.import` files are git-ignored) and the shader's `textured`
+  mode draws them; species without a glb fall back to the code-built clumps (`Grass.mesh`, curved tapered blades).
+  `tools/grass_closeup.gd -- out.png [lod] [dist]` renders every species side by side. Mixed by biomes (`Grass.BIOMES`: meadow,
   woodland, dry, verge, trampled, ruins). A zone answers `grass_ground(x, z)` (0 bare .. 1), `grass_height` and
   `grass_biome` (weights; World's: verges by the road, undergrowth near `tree_pts`, dry patches and round the
   Sloths' clearings, trodden in the fort and camp), and `Grass.scatter` fills MultiMesh chunks (`CHUNK` m, per
@@ -371,7 +427,8 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   `wind_strength`, `wind_gust`, `wind_phase`: gust fronts rolling along the wind, sway per clump, flutter;
   `GrassField.WIND` profiles per zone set in `Game._grass_zone`, blended by `set_wind(profile, secs)`, drifting
   on their own) and by **touch**: `GrassField` is a GPU spring simulation following the camera (two ping-pong
-  SubViewports, 256 px over 64 m, RG bend / BA velocity in 8 bits, global `grass_field` + `grass_field_rect`);
+  SubViewports, 256 px over 64 m, RG bend / BA velocity in 8 bits; its texture goes to the grass materials,
+  `Grass.set_field`, and where it lies is the global `grass_field_rect`);
   every mover from `Game._grass_movers` (hero, partners, monsters, pets, demons) presses a capsule along its real
   path (size from its `radius`, harder when sprinting or dashing, a slow flattening when standing), an attack's
   impact frame (`Anim.impact_at`, so every peer sees it) throws an arc in front (`GrassField.swing`; slams and
@@ -383,7 +440,8 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   nodes, meta `grass3d`). Tests: `tools/grass_test.gd` (headless: species, LODs, no painted clumps, field on/off,
   movers, swings, rings, wind); `tools/grass_lab.gd -- outdir [quality] [zoomin]` (needs a display: biome bands,
   scripted walkers that walk, sprint, stop, turn and dash, a big beast, swings, a slam, wind changes; saves frames
-  and checks the field lines up and returns fully to rest). Performance from any build:
+  and checks the field lines up and returns fully to rest; Mesa's llvmpipe software renderer, the only one in the
+  cloud workspace, tints some clumps in rainbow colours there, so judge colours on a real GPU). Performance from any build:
   `AshenCrown -- --shot out.png --zone wild --god --perf 12 --quality 2 --grassspot` writes `out.txt` (fps, 1% low,
   draw calls, primitives, GPU). The painted clumps (`Flora.GRASS_TOP`, `_camera_card`) are no longer placed;
   `Flora.flower_card` still uses `_camera_card` for the Sunstar Blooms.
@@ -566,13 +624,33 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   everyone has said Join. A member leaving mid-vote is dropped from it (theirs is called off). The host is the party
   leader (♛ on the party list) and can remove a member (✕, `UI.confirm_kick`, `Net.kick`). `tools/mp_test.gd`
   (host + join) checks it; `tools/vote_shot.gd` screenshots the window.
-- **New Character screen** (`UI._build_class_picker`, `scripts/class_stage.gd` `ClassStage`): every class stands live
-  on a torch-lit stage in its own world, as co-op puppets (`Hero.puppet`, driven through `net_st`/`net_pos`/`net_yaw`)
-  in its starting gear: idle they breathe and look about (`_idle`), under the mouse each fidgets its own annoying way
-  (`_fidget`), and the chosen one steps into the light and does its signature move every 4.5 s with its effects
-  (`SIGNATURE`, `_signature`). Choosing a hero plays its own sound (`ClassStage.PICK_SOUND`: layers of the game's recordings, `pick_sound`), and the screen has its own theme, `music_select` (music_town's candidate take 14; `Game.zone_music()` brings the zone's song back when it closes). Below, in the inventory's iron frame: name, story, stats, skills in the bar's sockets,
-  the name and Play. The stage is built when the picker opens and freed when it closes. A new class needs a
-  `ClassStage.CLASSES`/`ACCENTS`/`SIGNATURE` entry and its `_fidget` case. `tools/class_shot.gd -- outdir [frames]`.
+- **New Character screen** (`UI._build_class_picker`, `scripts/class_stage.gd` `ClassStage`): a **focused carousel** in a
+  ruined cathedral (`scripts/class_cathedral.gd` `ClassCathedral`, all in code; concept `concepts/class_screen/arrows_b_focus.png`; the stage fills the whole screen behind the title and the panel, its camera's frustum shifted and widened by `ClassStage._frame` so the heroes sit in the band between them (`band`), with soft fades over it, `UI.STAGE_FADE_SHADER`):
+  the chosen hero stands large in the middle, front and close, on the biggest plinth with its shaft blazing; the ones
+  either side stand back, smaller and dimmer; the outer ones further back, fading into the gloom; the rest wait unseen.
+  `ClassCathedral.build_hall` is the still set (floor, back wall with pointed windows, pillars, rubble, candelabras,
+  ash); each class gets a **stand** (`build_stand` under one Node3D in `ClassStage.stands`: hexagonal plinth with runes
+  glowing in the class colour, the coloured light shaft, a tattered banner with its emblem, candles, its spot and rim
+  lights), and the carousel moves the stand with its hero, so any number of classes in `ClassStage.CLASSES` works and
+  the ring wraps round. Slots are by distance from the middle (`SLOT_X/Z/SCALE/LIGHT`, interpolated across the glide;
+  `VISIBLE` = where a slot fades out; the hero node is scaled with its stand, so every lift and effect in a move is
+  multiplied by `_k(cls)`). Turning: the two arrows at the stage's edges (`UI.ClassArrow`: Meshy-painted iron chevron
+  `assets/textures/ui/arrow_left.png`, flipped for the right one, with the gem's glow `arrow_gem.png` added on hover;
+  hover brightens and grows it, pressed dips it, a key press flashes it; it `accept_event`s), the mouse wheel over the
+  stage, Left/Right or A/D (`UI._class_key`, not while the name field has focus), or a click on a side hero: `turn(dir)`
+  / `go_to(cls)` glide the ring one slot (`TURN_T`, eased; rapid turns queue into one longer glide from where the ring is,
+  never a snap; `snap_to` opens on the knight), the hero that will arrive is `chosen` at once (`picked`, its `PICK_SOUND`,
+  the panel follows) and its signature move starts once it has arrived. Nameplates follow the feet (`feet_at`) and fade
+  with the slot (`plate_alpha`); `class_at` picks only the visible heroes at their scale. Hidden slots' heroes and lights
+  are off (WebGL's light budget). Idle they breathe and look about (`_idle`), under the mouse the front three fidget
+  (`_fidget`), the chosen one does its signature move every 4.5 s with its effects (`SIGNATURE`, `_signature`). Choosing
+  a hero plays its own sound (`ClassStage.PICK_SOUND`, `pick_sound`), and the screen has its own theme, `music_select`
+  (`Game.zone_music()` brings the zone's song back when it closes). Below, in the inventory's iron frame: name, story,
+  stats, skills in the bar's sockets, the name and Play. The stage is built when the picker opens and freed when it
+  closes. A new class needs only a `ClassStage.CLASSES`/`ACCENTS`/`EMBLEMS`/`SIGNATURE` entry and its `_fidget` case (it
+  gets its own stand automatically) and a `SKILL_SHOW` entry per skill (hover a skill in the panel: the centred hero
+  performs it on the stage, `show_skill`). Tests: `tools/class_carousel_test.gd` (`--fixed-fps 60`: turning, wrapping,
+  queued turns, clicks, keys, wheel, feet on plinths, skill previews); `tools/class_shot.gd -- outdir [frames]`.
 - **Title screen** (`UI._build_title`, `scripts/title_stage.gd` `TitleStage`): the Gate of the Ashen Crown at dusk in
   its own World3D: a ruined cathedral gate with the dusk showing through its arch (`BACKDROP_SHADER`), broken arcades,
   the fallen stone king and a giant crown in the ash, fog banks, falling ash, embers, braziers and torches, heat
