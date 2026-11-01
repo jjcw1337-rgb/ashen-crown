@@ -91,6 +91,9 @@ var shot_spawn := ""
 var shot_zone := "town"
 var shot_frames := 0
 var death_t := -1.0
+var spectating := 0             # Battlegrounds: the fallen hero's camera follows this player (peer id; 0 = no one)
+var _spec_lost := 0.0           # ... how long the one watched has been down
+var _spec_over := 0.0           # ... how long since the round ended (then the crypt sends them home)
 var _t := 0.0
 var _busy := false
 
@@ -1789,6 +1792,7 @@ func exit_to_title() -> void:
 	death_t = -1.0
 	ui.death_panel.visible = false
 	ui.victory_panel.visible = false
+	spectate_stop()
 	ui.set_boss(null)
 	tp_link = {}
 	xp_bonus_t = 0.0
@@ -2459,6 +2463,7 @@ func on_enemy_killed(e: Enemy) -> void:
 func on_local_respawn() -> void:
 	death_t = -1.0
 	ui.death_panel.visible = false
+	spectate_stop()
 
 ## Co-op: the host's game reports the boss fell.
 func boss_down_remote(e: Enemy) -> void:
@@ -2528,6 +2533,64 @@ func _on_hero_died() -> void:
 	if bg_mode:
 		_bg_fell()
 	ui.set_boss(null)
+
+## Battlegrounds: fallen in the crypt, the hero watches the living (the camera follows them; Tab or the arrow keys
+## switch) until they leave. Whoever they watch falls, the camera stays over the body a moment and moves on; whoever
+## leaves, it moves on at once. When the round ends the crypt sends them home.
+func spectate_start() -> void:
+	spectating = 0
+	_spec_over = 0.0
+	spectate_next(1)
+	ui.spectate_panel.visible = true
+	Telemetry.crumb("spectate", {"watching": ui.spectate_name()})
+
+func spectate_stop() -> void:
+	spectating = 0
+	ui.spectate_panel.visible = false
+
+## The living players one could watch, in a fixed order.
+func spectate_targets() -> Array:
+	var ids: Array = net.players.keys()
+	ids.sort()
+	return ids.filter(func(pid):
+		var h = net.players[pid]["hero"]
+		return is_instance_valid(h) and not h.dead and h.visible and h.net_has)
+
+func spectate_next(dir: int) -> void:
+	var ids := spectate_targets()
+	var i := ids.find(spectating)
+	if ids.is_empty():
+		spectating = 0
+	elif i < 0:
+		spectating = int(ids[0])
+	else:
+		spectating = int(ids[posmod(i + dir, ids.size())])
+	_spec_lost = 0.0
+	ui.update_spectate()
+
+## The hero being watched (null when no one is).
+func spectate_hero() -> Node3D:
+	if spectating == 0 or not bg_mode or not net.players.has(spectating):
+		return null
+	var h = net.players[spectating]["hero"]
+	return h if is_instance_valid(h) else null
+
+func _update_spectate(dt: float) -> void:
+	if not ui.spectate_panel.visible:
+		return
+	var h := spectate_hero()
+	if h == null or h.dead or not h.visible:
+		_spec_lost += dt
+		if h == null or _spec_lost > 2.5 or spectating == 0:
+			spectate_next(1)
+	if str(bg_raid.get("state", "")) == "reset":
+		_spec_over += dt
+		if _spec_over > 4.0:
+			ui.message("The crypt has collapsed: the round is over", Color(1, 0.6, 0.4))
+			spectate_stop()
+			respawn()
+			return
+	ui.update_spectate()
 
 func respawn() -> void:
 	if bg_mode:
@@ -2749,6 +2812,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 	if ev is InputEventKey and ev.pressed and not ev.echo:
 		if paused and ev.keycode != KEY_ESCAPE:
 			return       # (paused: only Esc, which resumes)
+		if ui.spectate_panel.visible and ev.keycode in [KEY_TAB, KEY_LEFT, KEY_RIGHT]:
+			spectate_next(-1 if ev.keycode == KEY_LEFT or (ev.keycode == KEY_TAB and ev.shift_pressed) else 1)
+			return
 		match ev.keycode:
 			KEY_ESCAPE:
 				if not ui.close_all():
@@ -2980,13 +3046,20 @@ func _process(delta: float) -> void:
 	if death_t > 0.0:
 		death_t -= delta
 		if death_t <= 0.0 and playing:
-			ui.death_panel.visible = true
+			if bg_mode:
+				spectate_start()
+			else:
+				ui.death_panel.visible = true
+	_update_spectate(real_dt)
 	if hero and world:
 		var look_ahead := Vector3.ZERO
 		if playing and not hero.dead and shot_path == "":
 			var mp := get_viewport().get_mouse_position() / get_viewport().get_visible_rect().size - Vector2(0.5, 0.5)
 			look_ahead = Vector3(mp.x, 0, mp.y) * 2.0
 		var goal: Vector3 = hero.global_position + look_ahead
+		var watched := spectate_hero()
+		if watched != null:
+			goal = watched.global_position
 		var fw := 0.0
 		if focus_node != null:
 			focus_t += real_dt
@@ -3006,7 +3079,7 @@ func _process(delta: float) -> void:
 		_sail_camera(real_dt, sh)
 		if playing:
 			_sea_sounds()
-		RenderingServer.global_shader_parameter_set("player_pos", hero.global_position)
+		RenderingServer.global_shader_parameter_set("player_pos", watched.global_position if watched != null else hero.global_position)
 		if grass_field:
 			grass_field.center = cam_target
 			grass_field.cam_pos = cam.global_position

@@ -138,6 +138,10 @@ var bg_class: OptionButton       # the Battlegrounds screen's hero picker (chara
 var bg_addr: LineEdit
 var _join_refresh := 0.0
 var death_panel: Control
+var spectate_panel: Control      # Battlegrounds: the fallen hero watching the living (Game.spectate_*)
+var _spec_name: Label
+var _spec_hint: Label
+var _spec_btns: Array = []
 var victory_panel: Control
 var boss_bar_box: VBoxContainer
 var boss_bar: ProgressBar
@@ -207,6 +211,7 @@ func setup(g: Node) -> void:
 	_build_battlegrounds()
 	_build_enchant()
 	_build_death()
+	_build_spectate()
 	_build_victory()
 
 func bind_hero(h: Hero) -> void:
@@ -4359,6 +4364,83 @@ func _build_death() -> void:
 		death_panel.visible = false
 		game.respawn())
 	vb.add_child(b)
+
+## The Battlegrounds' death screen: the world dimmed red, who you're watching with arrows to switch, and the way out.
+## In the HUD's layer, so it is only ever seen in play.
+func _build_spectate() -> void:
+	spectate_panel = Control.new()
+	spectate_panel.name = "spectate"
+	spectate_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	spectate_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	spectate_panel.visible = false
+	hud.add_child(spectate_panel)
+	var tint := ColorRect.new()
+	tint.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tint.color = Color(0.14, 0.0, 0.0, 0.25)
+	tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	spectate_panel.add_child(tint)
+	var head := VBoxContainer.new()
+	head.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	head.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	head.offset_top = 92
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	spectate_panel.add_child(head)
+	var t := _label("YOU HAVE FALLEN", 40, Color(0.85, 0.14, 0.08), true)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	head.add_child(t)
+	var s := _label("Everything you carried lies where you fell. Your hero lives on.", 15, Color(0.85, 0.75, 0.68))
+	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	head.add_child(s)
+	var box := PanelContainer.new()
+	box.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	box.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	box.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	box.offset_bottom = -225          # (above the action bar, the experience bar and the keys' hint line)
+	spectate_panel.add_child(box)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 8)
+	box.add_child(vb)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 14)
+	vb.add_child(row)
+	_spec_btns = []
+	for d in [-1, 1]:
+		var b := Button.new()
+		b.text = "◀" if d < 0 else "▶"
+		b.custom_minimum_size = Vector2(44, 40)
+		var dir: int = d
+		b.pressed.connect(func(): game.spectate_next(dir))
+		_spec_btns.append(b)
+	row.add_child(_spec_btns[0])
+	_spec_name = _label("", 20, GOLD, true)
+	_spec_name.custom_minimum_size = Vector2(300, 0)
+	_spec_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	row.add_child(_spec_name)
+	row.add_child(_spec_btns[1])
+	_spec_hint = _label("Tab or ← → to watch someone else", 13, DIM)
+	_spec_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(_spec_hint)
+	var leave := Button.new()
+	leave.name = "leave"
+	leave.text = "Leave the Crypt"
+	leave.custom_minimum_size = Vector2(0, 42)
+	leave.pressed.connect(func():
+		game.spectate_stop()
+		game.respawn())
+	vb.add_child(leave)
+
+## The name of the player being watched ("" for no one).
+func spectate_name() -> String:
+	return str(game.net.players[game.spectating]["name"]) if game.spectate_hero() != null else ""
+
+func update_spectate() -> void:
+	var n: int = game.spectate_targets().size()
+	var nm := spectate_name()
+	_spec_name.text = ("Watching  %s" % nm) if nm != "" else "No one left alive to watch"
+	for b in _spec_btns:
+		(b as Button).disabled = n < 2
+	_spec_hint.visible = n >= 2
 
 func _build_victory() -> void:
 	victory_panel = _fullscreen_panel(Color(0.0, 0.0, 0.0, 0.6))

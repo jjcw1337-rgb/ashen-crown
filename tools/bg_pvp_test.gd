@@ -6,7 +6,7 @@ extends SceneTree
 ## Two real characters enter the crypt. On a's screen b is an invisible stand-in target (Battlegrounds.sync_proxies);
 ## a walks up to b and swings at it: b's life drops through the server (Net.sv_pvp_hit, PVP_MULT) until b falls.
 ## b's gear drops, the server announces who killed whom, and a picks b's things up. b keeps its level but loses
-## everything it carried.
+## everything it carried. Fallen, b spectates a (the camera on a) until a leaves, then leaves the crypt.
 
 var g
 var role := "a"
@@ -132,8 +132,16 @@ func _player() -> void:
 		var l0: float = g.hero.max_life
 		check(await until(func(): return g.hero.life < l0 or g.hero.dead, 60.0), "I'm being hit by the other player")
 		check(await until(func(): return g.hero.dead, 60.0), "and I fell")
-		await secs(3.0)
-		g.respawn()
+		# fallen, I watch the one still alive (Game.spectate_*), until they leave too
+		check(await until(func(): return g.ui.spectate_panel.visible, 6.0) and not g.ui.death_panel.visible, "I'm spectating (not the plain death screen)")
+		check(g.ui.spectate_name() == "Attacker", "watching the Attacker (%s)" % g.ui.spectate_name())
+		await secs(1.5)
+		var att = g.spectate_hero()
+		check(att != null and g.cam_target.distance_to(att.global_position) < 3.0, "the camera follows them")
+		check(await until(func(): return g.net.puppets().is_empty(), 40.0), "they left")
+		await secs(0.5)
+		check(g.spectating == 0 and str(g.ui._spec_name.text).begins_with("No one"), "no one left to watch: it says so")
+		(g.ui.spectate_panel.find_child("leave", true, false) as Button).pressed.emit()
 		check(await until(func(): return not g.bg_mode and not g._busy, 20.0), "the raid is over for me")
 		var d = JSON.parse_string(FileAccess.get_file_as_string(path))
 		var h: Dictionary = d.get("hero", {}) if d is Dictionary else {}

@@ -181,7 +181,10 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   extracts with stays in its inventory. **Death** costs every item worn and carried, the belt and the gold
   (`Game.bg_strip` / `strip_save`: levels, stats, talents and the camp's stash are kept; a plain class weapon is
   given back), dropped where it fell (`Net.sv_bg_died`); a character whose game closed mid-raid is stripped the next
-  time the game starts (`Game._bury_lost_raiders`). Joining uses a one-time Nakama ticket on staging (see "Staging
+  time the game starts (`Game._bury_lost_raiders`). **Spectating**: fallen, the player stays connected and
+  watches the living (`Game.spectate_start` / `spectate_next`, `UI.spectate_panel` in the HUD layer: the camera follows
+  `spectate_hero()`, Tab or the arrow keys switch; a watched player who falls is held 2.5 s, one who leaves is passed at
+  once), until "Leave the Crypt" or the round's end (4 s after `bg_raid` turns "reset"). Joining uses a one-time Nakama ticket on staging (see "Staging
   and accounts"). Tests: `tools/bg_test.gd` (server `--raid-fast`: 150 s rounds) and `tools/bg_pvp_test.gd`.
   Dev cheat (non-production builds or dev tools): type `maxout` while playing (`Game.max_out`: level 99, stats,
   every talent, a million gold, potions, a bag of the best gear).
