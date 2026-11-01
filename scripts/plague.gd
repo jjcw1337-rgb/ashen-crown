@@ -894,7 +894,7 @@ func _trans_end(heal: float) -> void:
 	PlagueTransfusionFx.finish(trans["node"], heal > 0.5)
 	trans = {}
 	if not ghost() and heal > 0.0:
-		h.heal_pool += heal * (0.6 if PvpStatus.strength(h, "blight") >= 3.0 else 1.0)
+		h.heal_pool += heal
 		Sfx.play("potion", -6.0, 0.8)
 
 # ---------------------------------------------------------------- V The Last Experiment

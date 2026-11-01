@@ -1476,6 +1476,8 @@ func _process(delta: float) -> void:
 	if heal_pool > 0.0:
 		var h := minf(heal_pool, delta * 30.0 * (1.0 + level * 0.05))
 		heal_pool -= h
+		if not pvs.is_empty() and PvpStatus.strength(self, "blight") >= 3.0:
+			h *= 0.6     # Feverish (the Plague Doctor's Fever, PvP): healing -40%
 		life = minf(max_life, life + h)
 	if mana_pool > 0.0:
 		var m := minf(mana_pool, delta * 20.0)
