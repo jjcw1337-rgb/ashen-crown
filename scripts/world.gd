@@ -1362,7 +1362,7 @@ func _crypt_entrance(p: Vector3) -> void:
 		Models.P(br, Geo.cyl(0.08, 0.15, 1.0, 8), Props.iron(), Vector3(0, 0.5, 0))
 		Models.P(br, Geo.lathe([Vector2(0.05, 0.0), Vector2(0.35, 0.1), Vector2(0.4, 0.3), Vector2(0.0, 0.2)], 12, "brazier"), Props.iron(), Vector3(0, 1.0, 0))
 		_place(br, p + Vector3(x, 0, 2.2))
-		Props.fire(br, Vector3(0, 1.3, 0), 1.0, Color(1.0, 0.45, 0.15), true, true)
+		Props.fire(br, Vector3(0, 1.3, 0), 1.0, Color(1.0, 0.45, 0.15), true, true, true, "brazier")
 		add_circle(p + Vector3(x, 0, 2.2), 0.5)
 	add_box(p + Vector3(0, 0, -2.0), Vector2(4.6, 3.0), 0.0)
 	exits.append({"pos": p + Vector3(0, 0, 1.2), "radius": 1.6, "to": "lair", "label": act_name("lair")})
@@ -1656,7 +1656,7 @@ func _build_lair() -> void:
 				Models.P(br, Geo.cyl(0.1, 0.2, 1.1, 8), Props.iron(), Vector3(0, 0.55, 0))
 				Models.P(br, Geo.lathe([Vector2(0.05, 0.0), Vector2(0.4, 0.1), Vector2(0.45, 0.32), Vector2(0.0, 0.22)], 12, "brazier2"), Props.iron(), Vector3(0, 1.1, 0))
 				_place(br, bp)
-				Props.fire(br, Vector3(0, 1.45, 0), 1.1, Color(1.0, 0.42, 0.15), true, corner.y < 0)
+				Props.fire(br, Vector3(0, 1.45, 0), 1.1, Color(1.0, 0.42, 0.15), true, corner.y < 0, true, "brazier")
 				add_circle(bp, 0.5)
 			boss_spawn = {"kind": act_name("boss"), "pos": Vector3(c.x, 0, c.y - 3)}
 			continue
@@ -1879,4 +1879,4 @@ func _wall_torch(p: Vector3, shadow: bool) -> void:
 	Models.P(g, Geo.box(0.12, 0.3, 0.1), Props.iron(), Vector3(0, 2.2, 0.0))
 	Models.seg(g, Vector3(0, 2.1, 0), Vector3(0, 2.5, 0.3), 0.03, 0.04, Props.wood_dark(), 6)
 	_place(g, p)
-	Props.fire(g, Vector3(0, 2.62, 0.34), 0.6, Color(1.0, 0.5, 0.2), true, shadow, false)
+	Props.fire(g, Vector3(0, 2.62, 0.34), 0.6, Color(1.0, 0.5, 0.2), true, shadow, false, "torch")

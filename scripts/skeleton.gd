@@ -119,7 +119,7 @@ static func build(variant: String, _weapon := "") -> Node3D:
 		var w := Models.item_model(Items.make_unique(v["weapon"]))
 		(J["grip_r"] as Node3D).add_child(w)
 		J["weapon"] = w
-		Props.fire(w, Vector3(0, 0, -0.55), 0.4, v["ember"], false, false, false)
+		Props.fire(w, Vector3(0, 0, -0.55), 0.4, v["ember"], false, false, false, "weapon")
 	else:
 		var lb := longbow(v)
 		(J["grip_l"] as Node3D).add_child(lb)
@@ -626,7 +626,7 @@ static func _cloth_and_fx(J: Dictionary, v: Dictionary) -> void:
 		l.position = Vector3(0, 0.08, -0.16)
 		head.add_child(l)
 		if not v.get("king", false):
-			Props.fire(head, Vector3(0, 0.21, 0.02), 0.24, v["ember"], false, false, true)
+			Props.fire(head, Vector3(0, 0.21, 0.02), 0.24, v["ember"], false, false, true, "magic")
 		var em := GPUParticles3D.new()
 		em.amount = 16
 		em.lifetime = 1.8

@@ -117,7 +117,7 @@ static func build(w: World) -> void:
 	# --- the heart of the camp: the bonfire, seats, stash and waypoint
 	var bf := model("bonfire")
 	w._place(bf, Vector3(CENTER.x, 0, CENTER.y))
-	Props.fire(bf, Vector3(0, 0.3, 0), 1.15, Color(1.0, 0.5, 0.18), true, true)
+	Props.fire(bf, Vector3(0, 0.3, 0), 1.15, Color(1.0, 0.5, 0.18), true, true, true, "bonfire")
 	w.add_circle(Vector3(CENTER.x, 0, CENTER.y), 1.4)
 	# click it to burn what you don't want (UI.open_burn)
 	w._inter("bonfire", "Bonfire", Vector3(CENTER.x, 0, CENTER.y), 2.6)

@@ -253,7 +253,7 @@ static func _temple(w: World, c: Vector2) -> void:
 	var altar := Props.footprint(Models.N(null, "altar"), Vector2(1.0, 0.7))
 	Models.P(altar, Geo.box(2.0, 1.1, 1.4), m, Vector3(0, 0.55, 0))
 	w.solid(w._place(altar, Vector3(c.x + 16.0, 0, c.y)))
-	Props.fire(altar, Vector3(0, 1.2, 0), 1.2, Color(1.0, 0.6, 0.25), true, false)
+	Props.fire(altar, Vector3(0, 1.2, 0), 1.2, Color(1.0, 0.6, 0.25), true, false, true, "campfire")
 	w.cobble_blobs.append([c + Vector2(12, 0), 9.0, 1.0])
 	for sz: int in [-1, 1]:
 		Roman.statue(w, Vector3(c.x + 14.0, 0, c.y + sz * 6.0), -PI * 0.5, 1.2)
@@ -295,7 +295,7 @@ static func _brazier(w: World, p: Vector3) -> void:
 	Models.P(g, Geo.cyl(0.25, 0.35, 1.0, 10), Roman.marble(), Vector3(0, 0.5, 0))
 	Models.P(g, Geo.cyl(0.6, 0.3, 0.45, 14), Roman.bronze(), Vector3(0, 1.2, 0))
 	w._place(g, p)
-	Props.fire(g, Vector3(0, 1.45, 0), 1.8, Color(1.0, 0.55, 0.2), true, false)
+	Props.fire(g, Vector3(0, 1.45, 0), 1.8, Color(1.0, 0.55, 0.2), true, false, true, "brazier")
 	w.solid(g)
 
 ## Varro the lanista by the arena's gate, two of his bandits standing guard: he offers you the games.

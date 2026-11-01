@@ -77,7 +77,7 @@ func _dress(w: World) -> void:
 			for k in 4:
 				var a := TAU * (k + 0.5) / 4.0 + r.randf_range(-0.3, 0.3)
 				var rock := _piece(w, "fire_rock", a, r.randf_range(6.5, 10.0), 1.8 * r.randf_range(0.8, 1.3), 1.0, r)
-				Props.fire(rock, Vector3(0, 1.0, 0), 0.8, Color(1.0, 0.45, 0.12), k == 0, true)
+				Props.fire(rock, Vector3(0, 1.0, 0), 0.8, Color(1.0, 0.45, 0.12), k == 0, true, true, "brazier")
 			var em := Fx.aura(self, Color(1.0, 0.45, 0.08, 0.9), 140, 0.8, 0.1, 3.5, 0.5, CLEAR * 0.8, 30.0, Vector3(0, 0.3, 0), false)
 			(em.process_material as ParticleProcessMaterial).emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
 			(em.process_material as ParticleProcessMaterial).emission_box_extents = Vector3(CLEAR * 0.8, 0.1, CLEAR * 0.8)

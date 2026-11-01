@@ -127,7 +127,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 				var v = vs[0]
 				h.fxs["grip"] = {"victim": v, "lift": 0.0, "until": float(ev.get("x", 0.8)) + GRIP_SLACK, "t": 0.0}
 				Fx.sparks(root, SkillFx.chest_of(v, 0.6), EMBER)
-				var fl := Props.fire(v, Vector3(0, 0.5 * float(v.get("height")), 0), 0.3, EMBER, false, false, false)
+				var fl := Props.fire(v, Vector3(0, 0.5 * float(v.get("height")), 0), 0.3 * float(v.get("height")) + 0.2, EMBER, false, false, false, "burning")
 				fl.name = "GripFire"
 			SkillFx.snd(h, "growl", -4.0, 0.75)
 		["grip", "smash"]:
@@ -586,7 +586,7 @@ static func ember_aura() -> GPUParticles3D:
 static func ignite(root: Node3D, target: Node3D) -> void:
 	if not is_instance_valid(target):
 		return
-	var f := Props.fire(target, Vector3(0, 0.9 * float(target.get("height")), 0), 0.35, EMBER, false, false, false)
+	var f := Props.fire(target, Vector3(0, 0.25 * float(target.get("height")), 0), 0.45 * float(target.get("height")) + 0.2, EMBER, false, false, false, "burning")
 	SkillFx.free_later(f, 1.6)
 
 # ---------------------------------------------------------------- the Underworld
