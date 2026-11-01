@@ -219,6 +219,7 @@ var _drained := false
 var _drain_col := Color(0.25, 1.0, 0.2)
 ## Damage numbers in this colour, and no blood (set around a Drain Life tick). Alpha 0 = normal.
 var dmg_tint := Color(0, 0, 0, 0)
+var seared := false            # a burning arrow's hit: the wound is seared, no blood (Archer.update)
 ## a damage tick (the plague doctor's poison): the number shows, but no white flash and no flinch
 var soft_hit := false
 
@@ -341,7 +342,7 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 		if dmg_tint.a > 0.0:
 			c2 = dmg_tint
 		Fx.number(game.world.fx_root, global_position + Vector3(0, height * 1.9 + 0.3, 0), str(int(total)) + ("!" if crit else ""), c2, crit)
-		if dmg_tint.a <= 0.0:
+		if dmg_tint.a <= 0.0 and not seared:
 			Fx.blood(game.world.fx_root, global_position + Vector3(0, height * 1.0, 0), def.get("blood", Color(0.5, 0.0, 0.0)))
 		_hit_sound(phys, knockback, crit)
 		return total
@@ -361,7 +362,7 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 	if dmg_tint.a > 0.0:
 		col = dmg_tint
 	Fx.number(game.world.fx_root, global_position + Vector3(0, height * 1.9 + 0.3, 0), str(int(total)) + ("!" if crit else ""), col, crit)
-	if dmg_tint.a <= 0.0:
+	if dmg_tint.a <= 0.0 and not seared:
 		Fx.blood(game.world.fx_root, global_position + Vector3(0, height * 1.0, 0), def.get("blood", Color(0.5, 0.0, 0.0)))
 	_hit_sound(phys, knockback, crit)
 	if fire > 0.0:

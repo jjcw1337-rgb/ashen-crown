@@ -183,13 +183,20 @@ shared preview), give the preview build's link, and go to `main` only when Blain
   `SMOKE_SHADER` relights the smoke in `light()` with the scene's real lights and shadows; `STREAK_SHADER` embers
   and sparks cool along the blackbody curve, sparks collide and bounce; `HAZE_SHADER` heat distortion (Forward+);
   `HEAT_SHADER` overlays the arrow (glowing head, charred shaft). The flight: sim flames wrapped round the head and
-  blown back (local particles), torn flame, lit smoke, embers, sparks and haze emitted in the world from emitters
-  `fly` keeps on the head (left to burn out by `end_flight`), a flickering light with shadows (≤ `LIGHT_CAP`).
+  blown back (local particles), the flame's tail as one continuous strip (`_ribbon`/`_strip`: the head's path
+  every `RIBBON_STEP`, `RIBBON_FIRE_SHADER` lays two offset frames of the sim flame along it and tears it with
+  noise toward the tail, `RIBBON_SMOKE_SHADER` the lit smoke strip behind rising and widening with age), lit smoke
+  puffs, embers, sparks and haze emitted in the world from emitters `fly` keeps on the head (left to burn out by
+  `end_flight`), a flickering light with shadows (≤ `LIGHT_CAP`). Its timers run on `ArrowFx.now()` (game
+  seconds, so slow offline renders keep real motion).
   `release`, `draw_charge` (the nocked arrow burning in his hands), `pierce` (a gout of fire out of a foe's back),
-  `burn` (the sim's flames climbing a burning foe, `Enemy.ignite(dps, t, look)`: a look other than "" keeps the
-  Demon's ember flames off), `finish` (fireball, light flash dying to the glow, sparks, embers, smoke, a Decal
-  scorch) and the ground's reaction by `ArrowFx.surface` (grass smoulders, stone sparks, dirt dust, wood keeps
-  burning, `"surfaces"` in the preset; a zone may answer with a `surface_fn` meta). All from the one "loose" event,
+  `burn` (the sim's flames rising from every joint and bone of a burning foe's skeleton, `_burn_points` re-reads
+  them as he moves; sooty smoke; `Enemy.ignite(dps, t, look)`: a look other than "" keeps the Demon's ember flames
+  off, and its ticks are amber with no blood or flash; the arrow's own hit is `Enemy.seared`: no blood), `finish`
+  (three turned, mirrored, staggered instances of the fireball sim, a white-hot core, tongues of flame, the light
+  flash dying to the glow, sparks, embers, a smoke column `_smoke_column`, a Decal scorch) and the ground's reaction
+  by `ArrowFx.surface` (grass smoulders, stone sparks, dirt dust, wood catches along its grain `_plank_burn` (meta
+  `wood_grain`), `"surfaces"` in the preset; a zone may answer with a `surface_fn` meta). All from the one "loose" event,
   on the caster and his puppet alike. Web / Low (`ArrowFx.cheap`): half the particles, no haze or light shadows;
   Compatibility: no soft particles or haze, the scorch as a quad. The old Phoenix look (wings of painted feathers,
   `phoenix_*.png`) is retired; its textures stay. The shot's body (`KnightMocapRig._shot_body`, on for `SHOT`

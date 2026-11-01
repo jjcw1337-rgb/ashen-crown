@@ -71,6 +71,40 @@ def crop(f, box):
     return f[a:b, c:d]
 
 
+def blur(a, sigma):
+    """A separable Gaussian blur (numpy only) over the first two axes."""
+    r = int(sigma * 3) + 1
+    k = np.exp(-0.5 * (np.arange(-r, r + 1) / sigma) ** 2)
+    k /= k.sum()
+    out = a
+    for ax in (0, 1):
+        pad = [(0, 0)] * a.ndim
+        pad[ax] = (r, r)
+        b = np.pad(out, pad, mode="edge")
+        acc = np.zeros_like(out)
+        for i, w in enumerate(k):
+            sl = [slice(None)] * a.ndim
+            sl[ax] = slice(i, i + out.shape[ax])
+            acc += w * b[tuple(sl)]
+        out = acc
+    return out
+
+
+def denoise(f, fire):
+    """Cycles leaves grain in thin smoke and stray specks of flame: smooth it (premultiplied, so the thin edges
+    don't amplify the noise) and drop the specks."""
+    f = f.copy()
+    if fire:
+        f[..., :2] = blur(f[..., :2], 1.0)
+        f[..., :2] *= np.clip((f[..., 0:1] - 0.03) / 0.05, 0.0, 1.0)
+        return f
+    a = blur(f[..., 3:4], 1.4)
+    rgb = blur(f[..., :3] * f[..., 3:4], 1.4)
+    f[..., :3] = np.where(a > 0.004, rgb / np.maximum(a, 0.004), 0.0)
+    f[..., 3:4] = a
+    return f
+
+
 def pack(frames, name, grid=8, fire=False, src_v=None):
     n = grid * grid
     frames = frames[:n]
@@ -80,7 +114,7 @@ def pack(frames, name, grid=8, fire=False, src_v=None):
     atlas = np.zeros((grid * CELL, grid * CELL, 4), np.float32)
     win = window(CELL)
     for i, f in enumerate(frames):
-        f = resize(f, CELL)
+        f = denoise(resize(f, CELL), fire)
         if fire:
             f = f.copy()
             f[..., 2] = 0.0
@@ -179,14 +213,14 @@ def scorch(n=512):
 if __name__ == "__main__":
     fl = load("flame_fire_*.png")
     # where each sim's source sits in its frame (of the height from the top): the flame's stick at z 0.12 of 1.8,
-    # the fireball at 1.0 of 4.8, the smoke's gout at 0.5 of 4.4
+    # the fireball at 1.0 of 5.6, the smoke's gout at 0.5 of 4.4
     if len(fl) >= 80:
         pack(loop(fl), "real_flame.png", fire=True, src_v=1.0 - 0.12 / 1.8)
     bf = load("burst_fire_*.png")
     bs = load("burst_smoke_*.png")
     if bf and bs:
         # the fire and its smoke share one window, so the two layers line up
-        box = crop_box(bs + bf, 1.0 - 1.0 / 4.8)
+        box = crop_box(bs + bf, 1.0 - 1.0 / 5.6)
         pack([crop(f, box) for f in bf], "real_burst_fire.png", fire=True)
         pack([crop(f, box) for f in bs], "real_burst_smoke.png")
     sm = load("smoke_smoke_*.png")

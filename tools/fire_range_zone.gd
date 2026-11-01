@@ -29,6 +29,7 @@ static func build(w: World) -> void:
 		if lane_at(z) == "wood" and x > X0 and x < X1 and absf(z - float(LANES["wood"])) < HALF:
 			y += 0.1
 		return y
+	w.set_meta("wood_grain", Vector3(0, 0, 1))     # the planks run across the lanes
 	w.set_meta("surface_fn", func(p: Vector3) -> String: return lane_at(p.z) if p.x > X0 - 1.0 else "grass")
 	# the terrain's own flagstones and earth for the stone and dirt lanes, packed earth under the planks and the char
 	w.cobble_lines.append([Vector2(X0, LANES["stone"]), Vector2(X1, LANES["stone"]), HALF + 0.4])

@@ -138,7 +138,7 @@ func _run() -> void:
 	get_root().add_child(cam)
 	match mode:
 		"game":
-			g.zoom = 1.3      # a touch further out than the default, so the whole 18 m flight stays in frame
+			g.zoom = 1.15     # a touch further out than the default
 			await _take(out, "game", lane, sk, "stand", null)
 			await _take(out, "game", lane, sk, "walk", null)
 		"follow":
@@ -159,7 +159,8 @@ func _run() -> void:
 			cam.current = true
 			cam.fov = 42
 			var at := Vector3(16.5, 0.7, z)
-			cam.global_transform = Transform3D(Basis(), at + Vector3(-3.2, 2.0, 5.4)).looking_at(at + Vector3(0.6, 0, 0), Vector3.UP)
+			var sd := -1.0 if lane == "wood" else 1.0
+			cam.global_transform = Transform3D(Basis(), at + Vector3(-3.2, 2.0, 5.4 * sd)).looking_at(at + Vector3(0.6, 0, 0), Vector3.UP)
 			for f in 45:
 				if f == 2:
 					AF.pierce(h, "fire", foes[2], Vector3.RIGHT)
@@ -228,6 +229,17 @@ func _take(out: String, mode: String, lane: String, sk: String, take: String, ca
 		match mode:
 			"game":
 				g.cam.current = true
+				# the camera looks ahead of him down the lane (the game's own focus), so the flight's end is in frame
+				if not g.has_meta("look_ahead"):
+					var mk := Node3D.new()
+					g.world.add_child(mk)
+					g.set_meta("look_ahead", mk)
+				var mk2: Node3D = g.get_meta("look_ahead")
+				mk2.global_position = h.global_position + Vector3(7.5, -0.6, 0)
+				g.focus_node = mk2
+				g.focus_len = 9999.0
+				g.focus_t = maxf(g.focus_t, 1.0)
+				g.focus_zoom = 1.0
 			"follow":
 				cam.current = true
 				var focus: Vector3 = h.global_position + Vector3(0.8, 1.3, 0)

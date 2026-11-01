@@ -28,7 +28,7 @@ os.makedirs(OUT, exist_ok=True)
 # frame windows: (first frame rendered, count); the flame renders N + 16 frames for the loop crossfade
 SIMS = {
     "flame": {"frames": (40, 80), "end": 125, "size": (0.9, 0.9, 1.8), "res": RES},
-    "burst": {"frames": (2, 64), "end": 70, "size": (4.4, 4.4, 4.8), "res": RES},
+    "burst": {"frames": (2, 64), "end": 70, "size": (5.0, 5.0, 5.6), "res": RES},
     "smoke": {"frames": (2, 64), "end": 70, "size": (3.2, 3.2, 4.4), "res": RES},
 }
 
@@ -136,19 +136,19 @@ def build(kind):
     elif kind == "burst":
         # a fireball: fuel thrown out of a small sphere for a few frames, then it burns open and rolls up into smoke
         d.flame_smoke = 2.2
-        d.flame_vorticity = 1.3
-        d.vorticity = 0.4
+        d.flame_vorticity = 1.7
+        d.vorticity = 0.6
         d.burning_rate = 0.8
         d.dissolve_speed = 60
         d.flame_smoke_color = (0.12, 0.11, 0.1)
-        bpy.ops.mesh.primitive_ico_sphere_add(radius=0.3, subdivisions=4, location=(0, 0, 1.0))
+        bpy.ops.mesh.primitive_ico_sphere_add(radius=0.3, subdivisions=5, location=(0, 0, 1.0))
         em = bpy.context.active_object
         # a lumpy gout, not a ball: the emitter displaced by noise
         tx = bpy.data.textures.new("lumps", "CLOUDS")
         tx.noise_scale = 0.18
         dm = em.modifiers.new("Lumps", "DISPLACE")
         dm.texture = tx
-        dm.strength = 0.22
+        dm.strength = 0.35
         fm = em.modifiers.new("Fluid", "FLUID")
         fm.fluid_type = "FLOW"
         f = fm.flow_settings
@@ -163,6 +163,14 @@ def build(kind):
         f.use_initial_velocity = True
         f.velocity_normal = 6.0
         f.velocity_coord = (0.0, 0.0, 1.5)
+        # the fuel comes out in clots, not an even shell: a noise texture drives how much each spot emits
+        tx2 = bpy.data.textures.new("clots", "CLOUDS")
+        tx2.noise_scale = 0.12
+        tx2.contrast = 2.2
+        f.use_texture = True
+        f.noise_texture = tx2
+        f.texture_map_type = "AUTO"
+        f.texture_size = 0.5
         # the gout bursts open: the emitting shell swells over five frames, then it is spent
         for fr, k in ((1, 0.6), (2, 1.3), (3, 2.0), (4, 2.6), (5, 3.0), (6, 0.001)):
             em.scale = (k, k, k * 0.85)

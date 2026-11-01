@@ -485,7 +485,9 @@ static func update(h: Hero, delta: float) -> void:
 						stop = true
 						break
 					continue
+				e.seared = a["pierce"]      # the burning arrow sears the wound: fire, not a spray of blood
 				h._hit_enemy(e, a["mult"] * shatter(h, e), 0.25 if not a["pierce"] else 0.5, a["src"])
+				e.seared = false
 				# Fire Arrow sets what it passes through alight (Pyre: longer and hotter)
 				if a["pierce"]:
 					var avg: float = (h.dmg_min + h.dmg_max) * 0.5

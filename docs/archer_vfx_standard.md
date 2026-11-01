@@ -12,7 +12,8 @@ Fire and smoke come from fluid simulations, the way studios use EmberGen or Houd
   Blender 4.5 and renders them with Cycles, orthographic from the front, 256 px per frame:
   `blender -b --python tools/blender/fx/fire_sims.py -- <framesdir> flame|burst|smoke|all [res=96] [samples=24] [px=256]`
   - **flame**: a burning stick (licking flames, little smoke), 80 frames after it has settled;
-  - **burst**: a fireball (fuel thrown out of a sphere for 5 frames, burning open and rolling up into smoke), 64 frames;
+  - **burst**: a fireball (fuel thrown out of a noise-displaced sphere whose emitting shell swells over 5 frames,
+    its fuel in clots from a noise texture, burning open and rolling up into smoke), 64 frames, resolution 112;
   - **smoke**: a gout of smoke rising and rolling open, 64 frames.
   Fire frames hold the volume's emission as data: R = flame, G = flame x temperature (G/R is the mean temperature
   along the ray); smoke in front absorbs the fire. Smoke frames are a white scattering volume lit by three
@@ -22,7 +23,8 @@ Fire and smoke come from fluid simulations, the way studios use EmberGen or Houd
   `real_burst_fire.png`, `real_burst_smoke.png`, `real_smoke.png` (mipmaps on, lossless: they are data); it also
   makes the burn mark procedurally (`real_scorch.png` soot + coverage, `real_scorch_n.png` a blistered char
   normal map, `real_scorch_e.png` ember cracks in a blackbody colour). It prints each sheet's pivot (where the
-  source sits), which goes into `ArrowFx.PIVOT`.
+  source sits), which goes into `ArrowFx.PIVOT`, and smooths Cycles' grain out of the thin smoke (premultiplied) and
+  drops stray specks of flame.
 
 The run times on the 2-core cloud machine (domain res 80, 16 samples): about 3-4 min per bake, 6-25 s per frame.
 
@@ -58,13 +60,17 @@ The run times on the 2-core cloud machine (domain res 80, 16 samples): about 3-4
 
 1. A projectile built from simulated or physically-shaded layers wrapped round the real arrow model (preset
    `"flame"`, `"heat"`), never a tube or a flat card.
-2. A trail of what the effect sheds in the air (torn flame, lit smoke, embers, sparks), emitted in the world from
-   emitters that follow the head (`fly`), left to burn out after the flight, never cut off.
+2. A trail that is one continuous thing, never a row of identical sprites: the flame's tail as a strip along the
+   head's path (`_ribbon`: the sim flame laid along it, two offset frames, torn by noise toward the tail) and the
+   lit smoke strip behind it, plus what is shed in the air (smoke puffs, embers, sparks) from emitters that follow
+   the head (`fly`), left to burn out after the flight, never cut off. Timers run on `ArrowFx.now()` (game time).
 3. Real light: a moving light with shadows (≤ `LIGHT_CAP` arrows lit), a flash on every impact, light that decays.
 4. The draw: the effect visible on the nocked arrow before the release (`draw_charge`, tied to the attack's
    progress so it plays standing, walking and on the puppet).
-5. The release (`release`), each foe struck (`pierce`) and the status on him (`burn`), the end of the flight
-   (`finish`) with the ground's own reaction.
+5. The release (`release`), each foe struck (`pierce`, no blood: the wound is seared) and the status on him
+   (`burn`: fire rising from his skeleton's joints and bones, not one patch), the end of the flight (`finish`:
+   several turned and staggered instances of the burst sim, a white-hot core, a smoke column) with the ground's own
+   reaction (wood catches along its grain, `_plank_burn`).
 6. Whole-body animation: the shot layer in `KnightMocapRig._shot_body` (wind-up, breath, back set, held draw with
    a tremor, recoil, the string hand flung back, the weight rolling forward in the follow-through), standing,
    walking and on the co-op puppet, never breaking `Archer.pose_bow`.
