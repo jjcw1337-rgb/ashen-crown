@@ -29,6 +29,8 @@ const HAND_EMBERS := [8, 14, 22, 26]
 const MOTES := [0, 12, 18, 24]
 
 static var _warm_world := 0
+## Preview tools: the gather holds at full burn (the fists stay alight) until cleared.
+static var hold := false
 
 static func play(h: Hero, ev: Dictionary) -> bool:
 	match str(ev["e"]):
@@ -104,11 +106,9 @@ static func _hand(h: Hero, root: Node3D, tr: int, right: bool) -> Dictionary:
 	var n := Node3D.new()
 	root.add_child(n)
 	n.global_position = SkillFx.hand(h, right)
-	var dark := InfernalFx.flame_mat(0.95, 0.9, 1.5)
-	var hot := InfernalFx.flame_mat(0.15, 1.4, 2.0)
-	var f1 := InfernalFx.flame(n, n.global_position, Vector2(0.62, 0.95), dark)
-	var f2 := InfernalFx.flame(n, n.global_position, Vector2(0.36, 0.6), hot)
-	var core_mat := InfernalFx.glow_mat(InfernalFx.MOLTEN, 2.6, 2.4)
+	# living fire wreathing the fist: world-space tongues, so a swing streams it back off the hand
+	var fire := InfernalFx.fire(n, n.global_position + Vector3(0, -0.1, 0), 0.55, 70.0, tr)
+	var core_mat := InfernalFx.glow_mat(InfernalFx.MOLTEN, 1.2, 2.8)
 	var core := InfernalFx.glow(n, n.global_position, 0.5, core_mat)
 	var em := InfernalFx.particles(n, n.global_position, {"amount": HAND_EMBERS[tr], "life": 0.5, "one_shot": false,
 		"shape": "sphere", "r": 0.12, "dir": Vector3.UP, "spread": 40.0, "vel": [0.6, 1.6], "gravity": 2.0,
@@ -120,8 +120,7 @@ static func _hand(h: Hero, root: Node3D, tr: int, right: bool) -> Dictionary:
 			"shape": "sphere", "r": 0.85, "dir": Vector3.UP, "spread": 180.0, "vel": [0.0, 0.2], "radial": [-16.0, -11.0],
 			"scale": [0.5, 1.0], "size": 0.05,
 			"colors": [[0.0, Color(InfernalFx.CRIMSON, 0.0)], [0.45, InfernalFx.BLOODFIRE], [1.0, InfernalFx.MOLTEN]]})
-	return {"node": n, "right": right, "dark": dark, "hot": hot, "core": core, "core_mat": core_mat, "f1": f1, "f2": f2,
-		"em": em, "motes": motes}
+	return {"node": n, "right": right, "fire": fire, "core": core, "core_mat": core_mat, "em": em, "motes": motes}
 
 # ---------------------------------------------------------------- every frame
 static func update(h: Hero, delta: float) -> void:
@@ -140,14 +139,16 @@ static func update(h: Hero, delta: float) -> void:
 	var flare := 0.0
 	match str(st["stage"]):
 		"gather":
-			if mine:
+			if hold:
+				k = 1.0
+			elif mine:
 				k = smoothstep(0.0, 0.36, a)
 				if not bool(st["whoosh"]) and a >= 0.34:
 					st["whoosh"] = true
 					SkillFx.snd(h, "swing_heavy", -4.0, 0.78)
 			elif float(st["t"]) > 0.2:
 				st["stage"] = "fade"          # cut short (a hit, a dodge, another skill)
-			if float(st["t"]) > 1.6:
+			if float(st["t"]) > 1.6 and not hold:
 				st["stage"] = "fade"          # a partner's copy whose impact never came
 		"release":
 			st["rel_t"] = float(st.get("rel_t", 0.0)) + delta
@@ -174,17 +175,11 @@ static func update(h: Hero, delta: float) -> void:
 			hr = p
 		else:
 			hl = p
-		var s := (0.25 + 0.75 * k) * (1.0 + 0.45 * flare)
-		(hd["f1"] as Node3D).scale = Vector3(0.62 * s, 0.95 * s, 1.0)
-		(hd["f1"] as Node3D).position = Vector3(0, -0.14 * s, 0)
-		(hd["f2"] as Node3D).scale = Vector3(0.36 * s, 0.6 * s, 1.0)
-		(hd["f2"] as Node3D).position = Vector3(0, -0.07 * s, 0)
-		(hd["dark"] as ShaderMaterial).set_shader_parameter("alpha", clampf(k * 1.3, 0.0, 1.0))
-		(hd["hot"] as ShaderMaterial).set_shader_parameter("alpha", clampf(k * 1.5, 0.0, 1.0))
-		(hd["hot"] as ShaderMaterial).set_shader_parameter("heat", 0.9 + 0.8 * k + 1.6 * flare)
+		InfernalFx.fire_on(hd["fire"], k > 0.1)
+		_fire_heat(hd["fire"], 0.6 + 0.4 * k + 0.4 * flare)
 		(hd["core"] as Node3D).scale = Vector3.ONE * (0.3 + 0.35 * k + 0.6 * flare)
 		(hd["core_mat"] as ShaderMaterial).set_shader_parameter("alpha", clampf(k * 1.2 + flare, 0.0, 1.0))
-		(hd["core_mat"] as ShaderMaterial).set_shader_parameter("energy", 2.2 + 1.5 * k + 3.0 * flare)
+		(hd["core_mat"] as ShaderMaterial).set_shader_parameter("energy", 1.0 + 0.6 * k + 1.0 * flare)
 		(hd["em"] as GPUParticles3D).emitting = k > 0.08
 		if hd["motes"] != null:
 			(hd["motes"] as GPUParticles3D).emitting = str(st["stage"]) == "gather" and k > 0.05
@@ -193,7 +188,7 @@ static func update(h: Hero, delta: float) -> void:
 		var mid := (hl + hr) * 0.5 if hands.size() == 2 and hl.y > -50.0 else h.global_position + Vector3(0, 1.2, 0)
 		(l as OmniLight3D).global_position = mid
 		var fl := 0.85 + 0.15 * sin(h.anim_time * 31.0) * sin(h.anim_time * 11.7)
-		(l as OmniLight3D).light_energy = (0.4 + 2.0 * k + 3.0 * flare) * fl
+		(l as OmniLight3D).light_energy = (0.3 + 1.3 * k + 1.6 * flare) * fl
 		(l as OmniLight3D).light_color = InfernalFx.BLOODFIRE.lerp(InfernalFx.MOLTEN, clampf(k * 0.6 + flare, 0.0, 1.0))
 		if k <= 0.0 and str(st["stage"]) != "gather":
 			(l as Node).queue_free()
@@ -223,6 +218,15 @@ static func update(h: Hero, delta: float) -> void:
 	if not st.has("hands") and not st.has("sigil") and not st.has("light"):
 		h.fxs.erase("fists")
 
+static func _fire_heat(f, v: float) -> void:
+	if f == null or not is_instance_valid(f):
+		return
+	for c in (f as Node).get_children():
+		if c is GPUParticles3D and (c as GPUParticles3D).draw_pass_1 != null:
+			var m = ((c as GPUParticles3D).draw_pass_1 as PrimitiveMesh).material if (c as GPUParticles3D).draw_pass_1 is PrimitiveMesh else null
+			if m is ShaderMaterial and (m as ShaderMaterial).shader == InfernalFx.shader("tongue"):
+				(m as ShaderMaterial).set_shader_parameter("hot", v * (1.1 if c.name == "core" else 1.0))
+
 ## The magma in his cracks runs down into his fists and burns white round them (the body shader).
 static func _brand_body(h: Hero, k: float, hl: Vector3, hr: Vector3) -> void:
 	if h.rig == null or not h.rig.has_meta("demon_mats"):
@@ -244,9 +248,9 @@ static func _drop_hands(st: Dictionary, now: bool) -> void:
 			(hd["em"] as GPUParticles3D).emitting = false
 			if hd["motes"] != null:
 				(hd["motes"] as GPUParticles3D).emitting = false
-			for key in ["f1", "f2", "core"]:
-				(hd[key] as Node3D).visible = false
-			Fx._free_later(n, 0.6)
+			InfernalFx.fire_on(hd["fire"], false)
+			(hd["core"] as Node3D).visible = false
+			Fx._free_later(n, 1.2)
 	st.erase("hands")
 
 static func _drop_sigil(st: Dictionary) -> void:
@@ -303,18 +307,18 @@ static func _release(h: Hero, ev: Dictionary) -> void:
 	if hands.size() == 2 and is_instance_valid(hands[0]["node"]) and is_instance_valid(hands[1]["node"]):
 		fist = ((hands[0]["node"] as Node3D).global_position + (hands[1]["node"] as Node3D).global_position) * 0.5
 	# the flash at the fists: a white-gold star over a wide blood-red bloom
-	var f1 := InfernalFx.glow_mat(InfernalFx.WHITEHOT, 3.2, 1.7, 1.2)
+	var f1 := InfernalFx.glow_mat(InfernalFx.WHITEHOT, 2.0, 2.2, 0.7)
 	var g1 := InfernalFx.glow(root, fist, 0.6, f1)
 	var tw1 := g1.create_tween().set_parallel(true)
-	tw1.tween_property(g1, "scale", Vector3.ONE * 3.4, 0.14).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
+	tw1.tween_property(g1, "scale", Vector3.ONE * 1.9, 0.12).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_EXPO)
 	InfernalFx.tween_param(g1, f1, "alpha", 1.0, 0.0, 0.2)
 	Fx._free_later(g1, 0.25)
-	var f2 := InfernalFx.glow_mat(InfernalFx.BLOODFIRE, 2.0, 1.3)
+	var f2 := InfernalFx.glow_mat(InfernalFx.BLOODFIRE, 1.4, 1.8)
 	var g2 := InfernalFx.glow(root, fist, 1.0, f2)
-	g2.create_tween().tween_property(g2, "scale", Vector3.ONE * 5.0, 0.3).set_ease(Tween.EASE_OUT)
-	InfernalFx.tween_param(g2, f2, "alpha", 0.8, 0.0, 0.32)
+	g2.create_tween().tween_property(g2, "scale", Vector3.ONE * 3.2, 0.3).set_ease(Tween.EASE_OUT)
+	InfernalFx.tween_param(g2, f2, "alpha", 0.5, 0.0, 0.3)
 	Fx._free_later(g2, 0.36)
-	Fx.flash(root, fist, InfernalFx.WHITEHOT, 5.0, 0.16, 6.0)
+	Fx.flash(root, fist, InfernalFx.MOLTEN, 3.0, 0.16, 5.0)
 	# a light running out along the rift, then dying to crimson
 	var sw := OmniLight3D.new()
 	sw.light_color = InfernalFx.MOLTEN
@@ -364,22 +368,23 @@ static func _release(h: Hero, ev: Dictionary) -> void:
 	if hz != null:
 		InfernalFx.tween_param(wave, hz, "life", 1.0, 0.0, 0.42)
 	Fx._free_later(wave, 0.5)
-	# tongues of hellfire licking up along the fissures
-	var tm := InfernalFx.flame_mat(0.7, 1.35, 1.7)
+	# fire bursting out of the fissures: living fires that flare and burn out
 	for i in TONGUES[tr]:
 		var lane: float = [-0.52, 0.0, 0.52][i % 3] + randf_range(-0.08, 0.08)
 		var u := randf_range(0.18, 0.92)
 		var ang := yaw - lane * half
 		var p := pos + Vector3(-sin(ang), 0, -cos(ang)) * (0.25 + u * reach)
-		p.y = world.height_at(p.x, p.z) - 0.05
-		var sz := Vector2(randf_range(0.45, 0.75), randf_range(0.85, 1.5)) * (1.2 - 0.45 * u)
-		var fm := InfernalFx.flame(root, p, Vector2(0.01, 0.01), tm)
-		var twf := fm.create_tween()
+		p.y = world.height_at(p.x, p.z)
+		var sz := randf_range(0.7, 1.15) * (1.15 - 0.4 * u)
+		var fr := InfernalFx.fire(root, p, sz, 45.0, tr, true, i % 2 == 0)
+		InfernalFx.fire_on(fr, false)
+		var twf := fr.create_tween()
 		twf.tween_interval(0.02 + u * 0.15)
-		twf.tween_property(fm, "scale", Vector3(sz.x, sz.y, 1.0), 0.08).set_ease(Tween.EASE_OUT)
-		twf.tween_interval(randf_range(0.1, 0.3))
-		twf.tween_property(fm, "scale", Vector3(sz.x * 0.5, 0.01, 1.0), 0.22).set_ease(Tween.EASE_IN)
-		twf.tween_callback(fm.queue_free)
+		twf.tween_callback(func(): InfernalFx.fire_on(fr, true))
+		twf.tween_interval(randf_range(0.25, 0.5))
+		twf.tween_callback(func(): InfernalFx.fire_on(fr, false))
+		twf.tween_interval(1.0)
+		twf.tween_callback(fr.queue_free)
 	# smoke rolling out low, lit from below
 	var mid := pos + fwd * reach * 0.5 + Vector3(0, 0.35, 0)
 	InfernalFx.smoke(root, mid, SMOKE_N[tr], Vector3(reach * 0.32, 0.15, reach * 0.32), (fwd + Vector3(0, 0.45, 0)).normalized(), 1.5, 1.8, 1.2, 0.75)
@@ -503,16 +508,15 @@ static func _brand(h: Hero, root: Node3D, e, from: Vector3, tr: int) -> void:
 	g.create_tween().tween_property(g, "scale", Vector3.ONE * 1.9, 0.18).set_ease(Tween.EASE_OUT)
 	InfernalFx.tween_param(g, gm, "alpha", 1.0, 0.0, 0.2)
 	Fx._free_later(g, 0.24)
-	# a lick of hellfire up the body
+	# fire catching on the body (it rides along with the foe)
 	if e is Node3D and not bool(e.get("dead")):
-		var fm := InfernalFx.flame_mat(0.6, 1.3, 1.8)
 		var height: float = float(e.get("height")) if e.get("height") != null else 1.0
-		var f := InfernalFx.flame(e, (e as Node3D).global_position + Vector3(0, 0.1, 0), Vector2(0.01, 0.01), fm)
-		var twf := f.create_tween()
-		twf.tween_property(f, "scale", Vector3(0.75, height * 1.5, 1.0), 0.06)
-		twf.tween_interval(0.12)
-		twf.tween_method(func(v: float): fm.set_shader_parameter("alpha", v), 1.0, 0.0, 0.3)
-		twf.tween_callback(f.queue_free)
+		var bf := InfernalFx.fire(e, (e as Node3D).global_position + Vector3(0, height * 0.5, 0), height * 0.9, 40.0, tr, true, true)
+		var twb := bf.create_tween()
+		twb.tween_interval(0.35)
+		twb.tween_callback(func(): InfernalFx.fire_on(bf, false))
+		twb.tween_interval(1.0)
+		twb.tween_callback(bf.queue_free)
 	# the molten flash in place of the white one (it shows only while the hit's own flash is on)
 	var fmat = e.get("flash_mat")
 	if fmat != null and float(e.get("flash_t")) > 0.0:

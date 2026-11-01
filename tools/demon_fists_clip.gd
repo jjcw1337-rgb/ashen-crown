@@ -6,6 +6,7 @@ extends SceneTree
 ##  close: a three-quarter view from his right into a standing pack, one cast (the default)
 ##  front: low, from in front of him (the fangs and the gauntlets face the camera)
 ##  game:  the game's own camera, one cast, no HUD
+##  fire:  close on his burning fists (the gather held) and a fire on the ground beside him: the fire alone
 ##  fight: the game's camera with the HUD, a pack that fights back, `casts` casts in a row (the gameplay video)
 ## tier forces InfernalFx's budget (default 2 = High; the OpenGL renderer has no heat haze). Writes <outdir>/f_NNN.png.
 var g
@@ -71,6 +72,14 @@ func _run() -> void:
 	h._face(Vector3(0, 0, -1))
 	# a moment to settle (and for InfernalFx.warm to compile its shaders)
 	await wait(0.6)
+	if view == "fire":
+		DemonFistsFx.hold = true
+		for e in foes:
+			e.queue_free()
+		foes.clear()
+		InfernalFx.fire(g.world.fx_root, home + Vector3(1.6, g.world.height_at(home.x + 1.6, home.z - 1.0) - home.y, -1.0), 1.1, 50.0, tier)
+		h.use_skill("fists", home + Vector3(0, 0, -3))
+		casts = 0
 	var frames: int = int(secs * 30)
 	var gap: int = 26 if view == "fight" else 999
 	var next_cast := 8
@@ -97,6 +106,11 @@ func _run() -> void:
 				cam.current = true
 				var c: Vector3 = h.global_position
 				cam.global_transform = Transform3D(Basis(), c + Vector3(4.4, 2.5, -1.4)).looking_at(c + Vector3(0, 1.0, -2.0))
+			"fire":
+				cam.current = true
+				var c3: Vector3 = h.global_position
+				cam.fov = 40
+				cam.global_transform = Transform3D(Basis(), c3 + Vector3(3.4, 2.3, -3.6)).looking_at(c3 + Vector3(0.8, 1.2, -0.6))
 			"front":
 				cam.current = true
 				var c2: Vector3 = h.global_position

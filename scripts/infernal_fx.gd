@@ -79,7 +79,8 @@ static func shader(key: String) -> Shader:
 	if not _shaders.has(key):
 		var s := Shader.new()
 		s.code = {"flame": FLAME_SHADER, "glow": GLOW_SHADER, "smoke": SMOKE_SHADER, "sigil": SIGIL_SHADER,
-			"rift": RIFT_SHADER, "shard": SHARD_SHADER, "wave": WAVE_SHADER, "haze": HAZE_SHADER}[key]
+			"rift": RIFT_SHADER, "shard": SHARD_SHADER, "wave": WAVE_SHADER, "haze": HAZE_SHADER,
+			"tongue": TONGUE_SHADER}[key]
 		_shaders[key] = s
 	return _shaders[key]
 
@@ -99,7 +100,7 @@ static func _palette(m: ShaderMaterial) -> ShaderMaterial:
 static func warm(parent: Node3D, game) -> void:
 	if parent == null or not parent.is_inside_tree():
 		return
-	var mats := [flame_mat(), glow_mat(MOLTEN), smoke_mat(), sigil_mat(), rift_mat(), shard_mat(), shard_mat(true), wave_mat()]
+	var mats := [flame_mat(), tongue_mat(), glow_mat(MOLTEN), smoke_mat(), sigil_mat(), rift_mat(), shard_mat(), shard_mat(true), wave_mat()]
 	if haze_ok(game):
 		mats.append(haze_mat())
 	for m in mats:
@@ -200,6 +201,71 @@ static func flame(root: Node3D, pos: Vector3, size: Vector2, mat: ShaderMaterial
 	mi.scale = Vector3(size.x, size.y, 1.0)
 	return mi
 
+## Living fire: no fixed shape. A stream of short-lived flame tongues (particles) born in a small volume, each one
+## its own warped, eroding wisp that rises, stretches, twists, splits and burns out from white-gold through molten
+## and crimson to a black, smoking tip; turbulence pushes them about, so the silhouette never repeats. Soot rises
+## off the top (blend mix), a few embers spin away. World-space particles: moved (a fist swinging), the fire
+## streams back off it. size = the fire's height in metres; rate = tongues per second.
+static func fire(parent: Node3D, pos: Vector3, size := 0.8, rate := 40.0, tr := 2, soot := true, embers := true) -> Node3D:
+	var n := Node3D.new()
+	parent.add_child(n)
+	n.global_position = pos
+	var life := 0.32 + size * 0.28
+	var q := QuadMesh.new()
+	q.size = Vector2(size * 0.5, size * 0.62)
+	q.center_offset = Vector3(0, size * 0.2, 0)
+	q.material = tongue_mat()
+	var tongues := particles(n, pos, {"amount": maxi(8, int(rate * 1.4 * life * [0.5, 0.75, 1.0, 1.25][tr])), "life": life,
+		"one_shot": false, "randomness": 0.5, "shape": "sphere", "r": size * 0.16, "dir": Vector3.UP, "spread": 12.0,
+		"vel": [size * 0.8, size * 2.2], "gravity": size * 2.2, "damping": [0.0, 0.6], "scale": [0.55, 1.15],
+		"grow": [0.55, 1.0], "angle": true, "turb": size * 1.6, "mesh": q,
+		"colors": [[0.0, Color(1, 1, 1, 0.0)], [0.08, Color(1, 1, 1, 1.0)], [1.0, Color(1, 1, 1, 1.0)]]})
+	tongues.name = "tongues"
+	# a hot, tight churn at the root (fewer, smaller, brighter)
+	var q2 := QuadMesh.new()
+	q2.size = Vector2(size * 0.35, size * 0.42)
+	q2.center_offset = Vector3(0, size * 0.1, 0)
+	var core_mat := tongue_mat()
+	core_mat.set_shader_parameter("hot", 1.05)
+	q2.material = core_mat
+	var core := particles(n, pos, {"amount": maxi(3, int(rate * 0.35 * [0.5, 0.75, 1.0, 1.0][tr] * 0.15)), "life": 0.22,
+		"one_shot": false, "randomness": 0.4, "shape": "sphere", "r": size * 0.1, "dir": Vector3.UP, "spread": 25.0,
+		"vel": [size * 0.6, size * 1.4], "gravity": size, "scale": [0.6, 1.1], "angle": true, "mesh": q2,
+		"colors": [[0.0, Color(1, 1, 1, 0.0)], [0.15, Color(1, 1, 1, 1.0)], [1.0, Color(1, 1, 1, 1.0)]]})
+	core.name = "core"
+	if soot and tr >= 1:
+		var q3 := QuadMesh.new()
+		q3.size = Vector2(size * 0.5, size * 0.5)
+		q3.material = smoke_mat(0.5, 0.65)
+		var s := particles(n, pos + Vector3(0, size * 0.6, 0), {"amount": maxi(3, int(rate * 0.18 * [0.0, 0.6, 1.0, 1.2][tr])),
+			"life": 0.9, "one_shot": false, "randomness": 0.5, "shape": "sphere", "r": size * 0.15, "dir": Vector3.UP,
+			"spread": 18.0, "vel": [size * 1.0, size * 1.8], "gravity": size * 0.6, "damping": [0.5, 1.0], "scale": [0.6, 1.2],
+			"grow": [0.5, 1.7], "angle": true, "spin": 40.0, "turb": size * 1.2, "mesh": q3,
+			"colors": [[0.0, Color(1, 1, 1, 0.0)], [0.25, Color(1, 1, 1, 0.75)], [1.0, Color(1, 1, 1, 0.0)]]})
+		s.name = "soot"
+	if embers:
+		var e := particles(n, pos + Vector3(0, size * 0.3, 0), {"amount": maxi(3, int(rate * 0.25 * [0.4, 0.7, 1.0, 1.2][tr])),
+			"life": 0.8, "one_shot": false, "randomness": 0.6, "shape": "sphere", "r": size * 0.2, "dir": Vector3.UP,
+			"spread": 35.0, "vel": [size * 1.5, size * 3.5], "gravity": size * 1.5, "damping": [0.3, 1.0],
+			"scale": [0.4, 1.0], "size": clampf(size * 0.06, 0.025, 0.07), "turb": size * 3.0,
+			"colors": [[0.0, WHITEHOT], [0.3, MOLTEN], [0.75, BLOODFIRE], [1.0, Color(CRIMSON, 0.0)]]})
+		e.name = "embers"
+	return n
+
+## Turns a fire on or off (off: the tongues already alive burn out, nothing new is born).
+static func fire_on(f: Node3D, on: bool) -> void:
+	if f == null or not is_instance_valid(f):
+		return
+	for c in f.get_children():
+		if c is GPUParticles3D:
+			(c as GPUParticles3D).emitting = on
+
+static func tongue_mat() -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = shader("tongue")
+	m.set_shader_parameter("noise_tex", noise())
+	return _palette(m)
+
 ## A soft glow facing the camera (hit flashes, the cores of the fists).
 static func glow(root: Node3D, pos: Vector3, size: float, mat: ShaderMaterial) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
@@ -269,6 +335,14 @@ static func particles(root: Node3D, pos: Vector3, d: Dictionary) -> GPUParticles
 	if d.has("angle"):
 		pm.angle_min = -180.0
 		pm.angle_max = 180.0
+	if d.has("turb"):
+		pm.turbulence_enabled = true
+		pm.turbulence_noise_strength = float(d["turb"])
+		pm.turbulence_noise_scale = 2.2
+		pm.turbulence_noise_speed_random = 0.4
+		pm.turbulence_noise_speed = Vector3(0.0, 0.6, 0.0)
+		pm.turbulence_influence_min = 0.05
+		pm.turbulence_influence_max = 0.18
 	if d.has("spin"):
 		pm.angular_velocity_min = -float(d["spin"])
 		pm.angular_velocity_max = float(d["spin"])
@@ -496,6 +570,55 @@ void fragment() {
 }
 """
 
+## A flame tongue (fire's particles): camera-facing, standing on its particle. The noise warps itself (two passes,
+## scrolling up), the tongue sways and erodes from its edges and its top as it rises and ages, so it breaks into
+## licks and wisps. Heat (young, low, dense) runs a ramp from white-gold through molten and crimson to black: the
+## old, high, thin parts are soot that darkens what is behind them (premultiplied), the hot heart adds light.
+const TONGUE_SHADER := """
+shader_type spatial;
+render_mode unshaded, blend_premul_alpha, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
+uniform sampler2D noise_tex : repeat_enable, filter_linear_mipmap;
+uniform float hot = 1.0;
+uniform vec3 crimson : source_color = vec3(0.78, 0.035, 0.05);
+uniform vec3 molten : source_color = vec3(1.0, 0.42, 0.07);
+uniform vec3 whitehot : source_color = vec3(1.0, 0.86, 0.62);
+varying float v_age;
+varying float v_rnd;
+void vertex() {
+	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);
+	MODELVIEW_MATRIX = MODELVIEW_MATRIX * mat4(vec4(length(MODEL_MATRIX[0].xyz), 0.0, 0.0, 0.0), vec4(0.0, length(MODEL_MATRIX[1].xyz), 0.0, 0.0), vec4(0.0, 0.0, length(MODEL_MATRIX[2].xyz), 0.0), vec4(0.0, 0.0, 0.0, 1.0));
+	v_age = INSTANCE_CUSTOM.y;
+	v_rnd = INSTANCE_CUSTOM.x * 1.7;
+}
+void fragment() {
+	vec2 uv = vec2(UV.x, 1.0 - UV.y);
+	float t = TIME;
+	vec2 p = uv * vec2(0.55, 0.8) + vec2(v_rnd, -t * 1.1 - v_age * 0.6);
+	vec2 w1 = vec2(texture(noise_tex, p * 0.7).r, texture(noise_tex, p * 0.7 + vec2(5.2, 1.3)).r) - 0.5;
+	vec2 p2 = p * 1.1 + w1 * 1.1 + vec2(0.0, -t * 0.9);
+	float n = texture(noise_tex, p2).r;
+	float n2 = texture(noise_tex, p2 * 2.3 + vec2(1.7, -t * 2.0)).r;
+	float x = (uv.x - 0.5) * 2.0 + w1.x * 1.1 * uv.y + sin(t * 7.0 + v_rnd * 3.0) * 0.12 * uv.y;
+	float y = uv.y + w1.y * 0.25;
+	float width = mix(0.8, 0.38, clamp(y, 0.0, 1.0));
+	float body = 1.0 - smoothstep(width * 0.15, width, abs(x));
+	body *= smoothstep(0.0, 0.16, y) * (1.0 - smoothstep(0.5, 1.0, y));
+	float er = n * 0.92 + n2 * 0.08;
+	float dens = clamp(body * 1.6 - (1.0 - er) * (0.5 + v_age * 0.85 + y * 0.5), 0.0, 1.0);
+	if (dens <= 0.002) { discard; }
+	float heat = clamp(dens * (1.2 - y * 0.95) * (1.0 - v_age * 0.8) * hot, 0.0, 1.2);
+	// a real flame's colours, kept below white: deep red at the cooling edge, orange, yellow, a pale glint deep inside
+	vec3 col = mix(vec3(0.0), crimson * 0.9, smoothstep(0.05, 0.3, heat));
+	col = mix(col, molten * 1.15, smoothstep(0.3, 0.65, heat));
+	col = mix(col, vec3(1.0, 0.62, 0.18) * 1.3, smoothstep(0.65, 0.95, heat));
+	col = mix(col, whitehot * 1.45, smoothstep(0.95, 1.2, heat) * 0.6);
+	float a = smoothstep(0.0, 0.6, dens) * COLOR.a;
+	float soot = smoothstep(0.35, 1.0, y + v_age * 0.7) * (1.0 - smoothstep(0.25, 0.6, heat));
+	ALBEDO = col * a;
+	ALPHA = a * mix(0.2 + 0.35 * soot, 0.3, smoothstep(0.3, 0.9, heat));
+}
+"""
+
 const GLOW_SHADER := """
 shader_type spatial;
 render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
@@ -608,25 +731,34 @@ void fragment() {
 		d = min(d, gd * 0.17 - 0.008);
 	}
 	vec2 qi = rot(q, -spin * 1.6);
-	float hs = clamp(draw * 1.5 - 0.35, 0.0, 1.0) * 7.0;
-	float hd = big;
-	for (int i = 0; i < 7; i++) {
-		float fi = float(i);
-		if (fi < hs) {
-			float a0 = 6.2831853 * fi / 7.0 + 1.5708;
-			float a1 = 6.2831853 * (fi + 3.0) / 7.0 + 1.5708;
-			vec2 p0 = 0.585 * vec2(cos(a0), sin(a0));
-			vec2 p1 = 0.585 * vec2(cos(a1), sin(a1));
-			hd = min(hd, seg(qi, p0, mix(p0, p1, clamp(hs - fi, 0.0, 1.0))));
-		}
-	}
-	d = min(d, hd - 0.009);
-	if (draw > 0.75) {
-		float k = smoothstep(0.75, 1.0, draw);
-		float lens = max(length(q - vec2(0.13, 0.0)), length(q + vec2(0.13, 0.0))) - 0.215;
-		float slit = max(length(q - vec2(0.205, 0.0)), length(q + vec2(0.205, 0.0))) - 0.218;
-		d = min(d, mix(big, min(abs(lens) - 0.008, slit), k));
-		d = min(d, mix(big, abs(r - 0.3) - 0.006, k));
+	float ri = length(qi);
+	float ai = atan(qi.y, qi.x);
+	// a ring of fangs pointing inward off the inner ring, growing in as it draws
+	float fk = clamp(draw * 1.6 - 0.45, 0.0, 1.0);
+	float NF = 11.0;
+	float cf = fract(ai / 6.2831853 * NF + 0.5) - 0.5;
+	float tl = 0.15 * fk;
+	float tooth = (0.6 - ri) / max(tl, 1e-4);
+	float fang = (tooth > 0.0 && tooth < 1.0) ? abs(cf) - 0.36 * (1.0 - tooth) : big;
+	d = min(d, fang * ri * 6.2831853 / NF);
+	// an inverted triangle, its strokes drawn one by one
+	float ts = clamp(draw * 1.8 - 0.7, 0.0, 1.0) * 3.0;
+	vec2 t0 = vec2(0.0, -0.46);
+	vec2 t1 = vec2(0.4, 0.23);
+	vec2 t2 = vec2(-0.4, 0.23);
+	float td = big;
+	if (ts > 0.0) { td = min(td, seg(qi, t1, mix(t1, t2, clamp(ts, 0.0, 1.0)))); }
+	if (ts > 1.0) { td = min(td, seg(qi, t2, mix(t2, t0, clamp(ts - 1.0, 0.0, 1.0)))); }
+	if (ts > 2.0) { td = min(td, seg(qi, t0, mix(t0, t1, clamp(ts - 2.0, 0.0, 1.0)))); }
+	d = min(d, td - 0.008);
+	// two horns curling up off the triangle's top corners
+	float hk = smoothstep(0.6, 0.9, draw);
+	if (hk > 0.0) {
+		vec2 hp = vec2(abs(qi.x), qi.y);
+		float hr = abs(length(hp - vec2(0.2, 0.23)) - 0.22);
+		float hang = atan(hp.y - 0.23, hp.x - 0.2);
+		float harc = (hang > 0.0 && hang < 2.6 * hk) ? hr - 0.009 * (1.0 - hang / 2.8) : big;
+		d = min(d, harc);
 	}
 	float aa = max(fwidth(r) * 1.2, 0.002);
 	float line = 1.0 - smoothstep(-aa, aa, d);
@@ -677,7 +809,7 @@ void fragment() {
 	float fine = (1.0 - smoothstep(0.0, w * 0.7, e2)) * 0.6;
 	float wig = (texture(noise_tex, vec2(r * 1.7 + seed, a * 0.2)).r - 0.5) * 0.35;
 	float dm = min(min(abs(a + 0.52 - wig), abs(a - wig * 0.8)), abs(a - 0.52 - wig)) * (0.35 + r);
-	float wm = 0.05 * (1.0 - 0.55 * r);
+	float wm = 0.085 * (1.0 - 0.5 * r);
 	float main_ = 1.0 - smoothstep(wm * 0.25, wm, dm);
 	float lip = 1.0 - smoothstep(wm, wm * 3.2, dm);
 	float near = exp(-dm * 9.0);
@@ -686,7 +818,7 @@ void fragment() {
 	float cells = max(crack, fine) * rv * mask;
 	float mn = main_ * rv * mask;
 	float hm = mn * heat;
-	float hc = cells * heat * (0.15 + 0.85 * near);
+	float hc = cells * heat * (0.04 + 0.5 * near);
 	vec3 em = crimson * 2.4 * hm + molten * 3.0 * hm * hm + whitehot * 4.0 * pow(hm, 3.0) * (1.0 - r * 0.85);
 	em += crimson * 1.6 * hc + molten * 1.4 * hc * hc;
 	em += molten * 3.0 * fr * heat * mask * max(main_, crack);
