@@ -63,7 +63,7 @@ const PRESETS := {
 		"haze": {"amount": 8, "size": 0.75, "strength": 0.022},
 		"release": {"light": 1.2, "sparks": 12},
 		"draw": {"amount": 8, "energy": 3.5},
-		"pierce": {"light": 7.0, "sparks": 34, "embers": 26, "smoke": 6, "fireball": 2.4, "jet": 14},
+		"pierce": {"light": 7.0, "sparks": 34, "embers": 26, "smoke": 6, "fireball": 2.4, "jet": 10},
 		"end": {"light": 10.0, "t": 2700.0, "range": 15.0, "fireball": 3.4, "sparks": 40, "embers": 40, "smoke": 8, "scorch": 2.6},
 		"burn": {"amount": 30, "embers": 16, "smoke": 9, "light": 2.6},
 		## how the end meets the ground: flames left burning (count, life), embers that settle, how sparks bounce,
@@ -289,7 +289,14 @@ static func fire_light(t: float, energy: float, rng: float, shadow: bool) -> Omn
 	lt.light_energy = energy
 	lt.omni_range = rng
 	lt.omni_attenuation = 1.0
-	lt.shadow_enabled = shadow
+	# its shadow comes on a frame after it is lit: a shadow map's first frame can still hold another light's
+	# texels (seen as a blocky patch on lit smoke for one frame)
+	lt.shadow_enabled = false
+	if shadow:
+		lt.tree_entered.connect(func():
+			lt.get_tree().create_timer(0.04, false).timeout.connect(func():
+				if is_instance_valid(lt):
+					lt.shadow_enabled = true), CONNECT_ONE_SHOT)
 	lt.shadow_bias = 0.08
 	lt.shadow_normal_bias = 1.5
 	lt.light_size = 0.15
@@ -749,19 +756,20 @@ static func pierce(h: Hero, kind: String, e: Node3D, dir: Vector3) -> void:
 	# the gout out of his back: the sim's fireball thrown along the line, and a jet of flame torn out of the wound
 	# ahead of it (the flame sim's tongues flying along the arrow's line, stretched by their speed)
 	_fireball(root, exit + dir * 0.45, float(pc["fireball"]), 1.05, dir * 3.0, not lite, not lite)
-	var jt := flip_particles("flame", int(pc.get("jet", 0)) / div, 0.38, Vector2(0.55, 1.1), 2, 4.2, Vector2(1300, 2900))
+	var jt := flip_particles("flame", int(pc.get("jet", 0)) / div, 0.26, Vector2(0.7, 1.3), 2, 4.2, Vector2(1300, 2900))
 	var jpm := jt.process_material as ParticleProcessMaterial
 	jpm.particle_flag_align_y = true
 	jpm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
 	jpm.emission_sphere_radius = 0.12
 	jpm.direction = dir + Vector3(0, 0.12, 0)
 	jpm.spread = 16.0
-	jpm.initial_velocity_min = 4.0
-	jpm.initial_velocity_max = 9.0
+	jpm.initial_velocity_min = 3.0
+	jpm.initial_velocity_max = 6.0
 	jpm.damping_min = 3.0
 	jpm.damping_max = 5.0
-	jpm.color_ramp = _ramp([Color(1, 1, 1, 1), Color(1, 1, 1, 0.8), Color(1, 1, 1, 0)])
-	jpm.scale_curve = _curve_tex([[0.0, 0.5], [0.25, 1.0], [1.0, 0.7]])
+	# one tearing tongue, not a spray of chunks: each card swells out of the wound and is gone before it flies clear
+	jpm.color_ramp = _ramp([Color(1, 1, 1, 1), Color(1, 1, 1, 0.55), Color(1, 1, 1, 0)])
+	jpm.scale_curve = _curve_tex([[0.0, 0.6], [0.3, 1.0], [1.0, 0.45]])
 	jt.explosiveness = 0.9
 	_one_shot(root, jt, exit, 0.6)
 	# sparks out of the entry, back along the line, and out of the exit, forward
@@ -1206,6 +1214,7 @@ static func _flip_card(key: String, size: float, flip: bool) -> MeshInstance3D:
 	m.set_shader_parameter("loop_anim", 0.0)
 	m.set_shader_parameter("flip", 1.0 if flip else 0.0)
 	m.set_shader_parameter("frame", 0.0)
+	m.set_shader_parameter("particles", 0.0)
 	if fire:
 		m.set_shader_parameter("axis_mode", 0.0)
 	mi.material_override = m
@@ -1564,6 +1573,8 @@ uniform float soft = 0.25;
 // the burst's flame (a filled ball in the sim's first frames) given the inside of a fireball: turbulent tongues
 // and holes carved by drifting noise that eat in as it ages (it tears open), hot filaments and cooler lobes
 uniform float detail = 0.0;
+// 1 on particles (INSTANCE_CUSTOM carries their animation), 0 on a lone card (MeshInstance3D: no custom data)
+uniform float particles = 1.0;
 uniform float erode_from = 4.0;
 uniform float erode_span = 14.0;
 %s
@@ -1590,7 +1601,7 @@ void vertex(){
 	vec3 ud = -side_n * sin(spin) + up_n * cos(spin);
 	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(vec4(sd * s, 0.0), vec4(ud * s, 0.0), vec4(n * s, 0.0), vec4(c, 1.0));
 	VERTEX.y += pivot;
-	v_frame = INSTANCE_CUSTOM.z * grid * grid + frame;
+	v_frame = (particles > 0.5 ? INSTANCE_CUSTOM.z * grid * grid : 0.0) + frame;
 	v_col = COLOR;
 	float h = fract(sin(float(INSTANCE_ID) * 12.9898 + c.x * 3.1) * 43758.5453);
 	v_flip = flip > 0.5 ? 1.0 : step(0.5, h);
@@ -1655,6 +1666,8 @@ uniform float soot = 0.45;
 // the fire under young smoke lights it from inside and below (blackbody), fading as the puff ages
 uniform vec4 glow_col : source_color = vec4(1.0, 0.36, 0.06, 1.0);
 uniform float glow = 0.0;
+// 1 on particles (INSTANCE_CUSTOM: spin, age, animation), 0 on a lone card (MeshInstance3D: no custom data)
+uniform float particles = 1.0;
 %s
 %s
 %s
@@ -1667,17 +1680,18 @@ varying float v_flip;
 void vertex(){
 	float s = length(MODEL_MATRIX[0].xyz);
 	vec3 c = MODEL_MATRIX[3].xyz;
-	float sp = INSTANCE_CUSTOM.x;
+	vec4 cu = particles > 0.5 ? INSTANCE_CUSTOM : vec4(0.0);
+	float sp = cu.x;
 	vec3 r = INV_VIEW_MATRIX[0].xyz;
 	vec3 u = INV_VIEW_MATRIX[1].xyz;
 	vec3 r2 = r * cos(sp) + u * sin(sp);
 	vec3 u2 = -r * sin(sp) + u * cos(sp);
 	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(vec4(r2 * s, 0.0), vec4(u2 * s, 0.0), vec4(INV_VIEW_MATRIX[2].xyz * s, 0.0), vec4(c, 1.0));
 	VERTEX.y += pivot;
-	v_frame = INSTANCE_CUSTOM.z * grid * grid + frame;
+	v_frame = cu.z * grid * grid + frame;
 	v_col = COLOR;
 	v_spin = sp;
-	v_age = clamp(max(INSTANCE_CUSTOM.y, frame / 24.0), 0.0, 1.0);
+	v_age = clamp(max(cu.y, frame / 24.0), 0.0, 1.0);
 	float h = fract(sin(float(INSTANCE_ID) * 78.233 + c.z * 1.7) * 43758.5453);
 	v_flip = flip > 0.5 ? 1.0 : step(0.5, h);
 }
@@ -1717,10 +1731,11 @@ void light(){
 	float sn = sin(v_spin);
 	vec2 l2 = vec2(LIGHT.x * cs + LIGHT.y * sn, -LIGHT.x * sn + LIGHT.y * cs);
 	float lit = v_lm.r * max(l2.x, 0.0) + v_lm.b * max(-l2.x, 0.0) + v_lm.g * max(l2.y, 0.0)
-		+ (0.12 + 0.3 * (1.0 - v_lm.g)) * max(-l2.y, 0.0);
+		+ (0.12 + 0.3 * (1.0 - clamp(v_lm.g, 0.0, 1.0))) * max(-l2.y, 0.0);
 	float avg = (v_lm.r + v_lm.g + v_lm.b) / 3.0;
 	lit += avg * (max(LIGHT.z, 0.0) * 0.6 + max(-LIGHT.z, 0.0) * wrap);
-	DIFFUSE_LIGHT += LIGHT_COLOR * ATTENUATION * lit / PI;
+	// (never below zero: a bright lightmap texel lit from underneath must not darken the smoke to black)
+	DIFFUSE_LIGHT += LIGHT_COLOR * ATTENUATION * max(lit, 0.0) / PI;
 }
 """
 
@@ -1774,7 +1789,7 @@ void fragment(){
 const HAZE_SHADER := """
 shader_type spatial;
 render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
-uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
+uniform sampler2D screen_tex : hint_screen_texture, filter_linear;
 uniform sampler2D noise_tex : hint_normal, filter_linear, repeat_enable;
 uniform float strength = 0.02;
 %s
