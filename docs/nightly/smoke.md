@@ -1,1 +1,2 @@
 - smoke 2026-10-31-smoke (perf)
+- smoke 2026-10-31-smoke (mode)
