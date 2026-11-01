@@ -496,12 +496,14 @@ func _shot_body(st: Dictionary, a: float, shooting: bool, stepping: bool, dt: fl
 	var w := shot_body_w * (0.55 if stepping else 1.0)
 	var twist := curve_at(SHOT_BODY["twist"], a) * w
 	var lean := curve_at(SHOT_BODY["lean"], a) * w * (0.0 if stepping else 1.0)
-	var recoil := curve_at(SHOT_BODY["recoil"], a) * w
-	var fling := curve_at(SHOT_BODY["fling"], a) * w
+	# a clip with its own loose (SHOT "body_stand") keeps only the layers it lacks while he stands
+	var bs: Dictionary = {} if stepping else shot.get("body_stand", {})
+	var recoil := curve_at(SHOT_BODY["recoil"], a) * w * float(bs.get("recoil", 1.0))
+	var fling := curve_at(SHOT_BODY["fling"], a) * w * float(bs.get("fling", 1.0))
 	var hold := curve_at(SHOT_BODY["hold"], a) * w
 	var breath := curve_at(SHOT_BODY["breath"], a) * w
 	var bset := curve_at(SHOT_BODY["set"], a) * w
-	var follow := curve_at(SHOT_BODY["follow"], a) * w * (0.4 if stepping else 1.0)
+	var follow := curve_at(SHOT_BODY["follow"], a) * w * (0.4 if stepping else float(bs.get("follow", 1.0)))
 	# the full draw: a tremor of effort in the arms and a breath held in the chest
 	var t: float = st.get("time", 0.0)
 	var tremor := hold * (sin(t * 31.0) * 0.6 + sin(t * 47.0) * 0.4) * 0.012

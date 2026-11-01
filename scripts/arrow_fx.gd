@@ -63,7 +63,7 @@ const PRESETS := {
 		"haze": {"amount": 8, "size": 0.75, "strength": 0.022},
 		"release": {"light": 1.2, "sparks": 12},
 		"draw": {"amount": 8, "energy": 3.5},
-		"pierce": {"light": 5.0, "sparks": 26, "embers": 18, "smoke": 4, "fireball": 1.5},
+		"pierce": {"light": 7.0, "sparks": 34, "embers": 26, "smoke": 6, "fireball": 2.4, "jet": 14},
 		"end": {"light": 10.0, "t": 2700.0, "range": 15.0, "fireball": 3.4, "sparks": 40, "embers": 40, "smoke": 8, "scorch": 2.6},
 		"burn": {"amount": 30, "embers": 16, "smoke": 9, "light": 2.6},
 		## how the end meets the ground: flames left burning (count, life), embers that settle, how sparks bounce,
@@ -143,7 +143,7 @@ static func shader(key: String) -> Shader:
 	var soft_u := "uniform sampler2D depth_tex : hint_depth_texture, filter_nearest;" if rd_ok() else ""
 	var soft_f := SOFT_FN if rd_ok() else "float soft_k(vec2 suv, vec3 vtx, mat4 ip, float len){ return 1.0; }"
 	match key:
-		"fire": s.code = FIRE_SHADER % [soft_u, BLACKBODY, soft_f]
+		"fire": s.code = FIRE_SHADER % [soft_u, BLACKBODY, soft_f, Mats.NOISE_LIB]
 		"smoke": s.code = SMOKE_SHADER % [soft_u, soft_f, Mats.NOISE_LIB]
 		"streak": s.code = STREAK_SHADER % BLACKBODY
 		"haze": s.code = HAZE_SHADER % Mats.NOISE_LIB
@@ -746,8 +746,24 @@ static func pierce(h: Hero, kind: String, e: Node3D, dir: Vector3) -> void:
 	var entry := at - dir * (r + 0.05)
 	var exit := at + dir * (r + 0.1)
 	_pop_light(root, at, 2700.0, float(pc["light"]), 0.4, 6.0, false)
-	# the gout out of his back: the sim's fireball, small, thrown along the line
-	_fireball(root, exit + dir * 0.25, float(pc["fireball"]), 0.9, dir * 2.2, not lite, not lite)
+	# the gout out of his back: the sim's fireball thrown along the line, and a jet of flame torn out of the wound
+	# ahead of it (the flame sim's tongues flying along the arrow's line, stretched by their speed)
+	_fireball(root, exit + dir * 0.45, float(pc["fireball"]), 1.05, dir * 3.0, not lite, not lite)
+	var jt := flip_particles("flame", int(pc.get("jet", 0)) / div, 0.38, Vector2(0.55, 1.1), 2, 4.2, Vector2(1300, 2900))
+	var jpm := jt.process_material as ParticleProcessMaterial
+	jpm.particle_flag_align_y = true
+	jpm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	jpm.emission_sphere_radius = 0.12
+	jpm.direction = dir + Vector3(0, 0.12, 0)
+	jpm.spread = 16.0
+	jpm.initial_velocity_min = 4.0
+	jpm.initial_velocity_max = 9.0
+	jpm.damping_min = 3.0
+	jpm.damping_max = 5.0
+	jpm.color_ramp = _ramp([Color(1, 1, 1, 1), Color(1, 1, 1, 0.8), Color(1, 1, 1, 0)])
+	jpm.scale_curve = _curve_tex([[0.0, 0.5], [0.25, 1.0], [1.0, 0.7]])
+	jt.explosiveness = 0.9
+	_one_shot(root, jt, exit, 0.6)
 	# sparks out of the entry, back along the line, and out of the exit, forward
 	var sp := streaks(int(pc["sparks"]) / div, Vector2(0.2, 0.55), 0.011, 7.0, Vector2(2400, 1100), 1.8)
 	var pm := sp.process_material as ParticleProcessMaterial
@@ -1091,18 +1107,24 @@ static func _fireball(root: Node3D, at: Vector3, size: float, life: float, drift
 		var spin: float = float(lb[3]) + randf_range(-0.25, 0.25)
 		var flip := randf() < 0.5
 		if smoke:
+			# the smoke comes through the flame a beat later (the first instant of a fireball is all fire), fading in
+			# rather than standing there as a lit cloud
 			var sq := _flip_card("burst_smoke", sz * 1.1, flip)
 			var sm := sq.material_override as ShaderMaterial
 			sm.set_shader_parameter("tint", Color(0.3, 0.285, 0.27))
 			sm.set_shader_parameter("density", 0.9)
-			sm.set_shader_parameter("glow", 1.4)
+			sm.set_shader_parameter("glow", 0.9)
 			root.add_child(sq)
 			sq.global_position = at + off
-			_play_card(sq, life * 1.6, delay, drift * 0.6)
+			_play_card(sq, life * 1.6, delay + 0.07, drift * 0.6)
+			var sfade := sq.create_tween()
+			sm.set_shader_parameter("density", 0.0)
+			sfade.tween_method(func(v: float): sm.set_shader_parameter("density", v), 0.0, 0.9, 0.22).set_delay(delay + 0.07)
 		var fq := _flip_card("burst_fire", sz, flip)
 		var fm := fq.material_override as ShaderMaterial
 		fm.set_shader_parameter("energy", 0.6 if k == 0 else 0.45)
 		fm.set_shader_parameter("spin", spin)
+		fm.set_shader_parameter("detail", 1.0)
 		fm.render_priority = 1      # the fire over its own smoke
 		fm.set_shader_parameter("t_lo", 950.0)
 		fm.set_shader_parameter("t_hi", 2200.0)
@@ -1130,19 +1152,44 @@ static func _fireball(root: Node3D, at: Vector3, size: float, life: float, drift
 		tpm.scale_curve = _curve_tex([[0.0, 0.6], [0.3, 1.0], [1.0, 0.5]])
 		tg.explosiveness = 0.85
 		_one_shot(root, tg, at - Vector3(0, size * 0.1, 0), 0.8)
-	# the white-hot core: the first instant of the burst, hotter than anything after, gone in a tenth of a second
-	var cq := _flip_card("burst_fire", size * 0.4, randf() < 0.5)
+	# the white-hot core: the first instant of the burst, hotter than anything after, gone in a fifth of a second:
+	# a small knot of the burst's fire carved fine, and the flame sim's tongues spat out of it in a star
+	var cq := _flip_card("burst_fire", size * 0.34, randf() < 0.5)
 	var cm := cq.material_override as ShaderMaterial
-	cm.set_shader_parameter("energy", 1.1)
-	cm.set_shader_parameter("t_lo", 1800.0)
-	cm.set_shader_parameter("t_hi", 3600.0)
+	cm.set_shader_parameter("energy", 1.0)
+	cm.set_shader_parameter("t_lo", 1900.0)
+	cm.set_shader_parameter("t_hi", 3900.0)
+	cm.set_shader_parameter("detail", 1.0)
+	cm.set_shader_parameter("erode_from", 1.0)
+	cm.set_shader_parameter("erode_span", 9.0)
 	cm.render_priority = 2
 	root.add_child(cq)
 	cq.global_position = at
 	var ctw := cq.create_tween().set_parallel(true)
-	ctw.tween_method(func(v: float): cm.set_shader_parameter("frame", v), 2.0, 9.0, 0.16)
-	ctw.tween_method(func(v: float): cm.set_shader_parameter("alpha_mul", v), 1.0, 0.0, 0.16).set_ease(Tween.EASE_IN)
-	Fx._free_later(cq, 0.2)
+	ctw.tween_method(func(v: float): cm.set_shader_parameter("frame", v), 2.0, 10.0, 0.2)
+	ctw.tween_method(func(v: float): cm.set_shader_parameter("alpha_mul", v), 1.0, 0.0, 0.2).set_ease(Tween.EASE_IN)
+	Fx._free_later(cq, 0.25)
+	if tex("flame") != null:
+		var nt := 7 if second else 5
+		var a0 := randf() * TAU
+		for i in nt:
+			var tq := _flip_card("flame", size * randf_range(0.22, 0.34), randf() < 0.5)
+			var tm := tq.material_override as ShaderMaterial
+			tm.set_shader_parameter("loop_anim", 1.0)
+			tm.set_shader_parameter("energy", 3.2)
+			tm.set_shader_parameter("t_lo", 1500.0)
+			tm.set_shader_parameter("t_hi", 3400.0)
+			tm.set_shader_parameter("spin", a0 + TAU * (float(i) + randf_range(-0.3, 0.3)) / float(nt))
+			tm.set_shader_parameter("frame", randf() * 64.0)
+			tm.render_priority = 2
+			root.add_child(tq)
+			tq.global_position = at
+			var f0: float = randf() * 64.0
+			var ttw := tq.create_tween().set_parallel(true)
+			ttw.tween_method(func(v: float): tm.set_shader_parameter("frame", v), f0, f0 + 6.0, 0.24)
+			ttw.tween_property(tq, "scale", tq.scale * 1.7, 0.24).set_ease(Tween.EASE_OUT)
+			ttw.tween_method(func(v: float): tm.set_shader_parameter("alpha_mul", v), 1.0, 0.0, 0.24).set_ease(Tween.EASE_IN)
+			Fx._free_later(tq, 0.3)
 
 ## One camera-facing card of a sim sequence (a MeshInstance3D, its frame set by `_play_card`).
 static func _flip_card(key: String, size: float, flip: bool) -> MeshInstance3D:
@@ -1514,6 +1561,12 @@ uniform float flip = 0.0;
 uniform float spin = 0.0;
 uniform float alpha_mul = 1.0;
 uniform float soft = 0.25;
+// the burst's flame (a filled ball in the sim's first frames) given the inside of a fireball: turbulent tongues
+// and holes carved by drifting noise that eat in as it ages (it tears open), hot filaments and cooler lobes
+uniform float detail = 0.0;
+uniform float erode_from = 4.0;
+uniform float erode_span = 14.0;
+%s
 %s
 %s
 %s
@@ -1523,7 +1576,9 @@ varying float v_flip;
 void vertex(){
 	float s = length(MODEL_MATRIX[0].xyz);
 	vec3 c = MODEL_MATRIX[3].xyz;
-	vec3 up = axis_mode > 1.5 ? normalize(MODEL_MATRIX[1].xyz) : (axis_mode > 0.5 ? normalize(MODEL_MATRIX[2].xyz) : normalize(vec3(0.0, 1.0, 0.0) + lean));
+	// (a particle aligned to a velocity that has died away has no axis: it stands up rather than turning to NaN)
+	vec3 ax = axis_mode > 1.5 ? MODEL_MATRIX[1].xyz : MODEL_MATRIX[2].xyz;
+	vec3 up = axis_mode > 0.5 ? (length(ax) > 1e-5 ? normalize(ax) : vec3(0.0, 1.0, 0.0)) : normalize(vec3(0.0, 1.0, 0.0) + lean);
 	vec3 to_cam = normalize(INV_VIEW_MATRIX[3].xyz - c);
 	vec3 side = cross(up, to_cam);
 	float sl = length(side);
@@ -1553,8 +1608,22 @@ void fragment(){
 	vec2 v = mix(texture(atlas, cell(a0, uv)).rg, texture(atlas, cell(a1, uv)).rg, fr);
 	// thin wisps fade out instead of glowing as a sheet; the hot mean temperature (G/R) drops toward the edges
 	float r = smoothstep(0.03, 1.0, v.r);
-	float lin = pow(r, 2.4);
 	float tm = clamp(v.g / max(v.r, 0.004), 0.0, 1.0);
+	if (detail > 0.0) {
+		// noise rolling outward from the middle (the burst's own billows) at two scales
+		vec2 c = uv - vec2(0.5, 0.5 - pivot * 0.5);
+		vec2 q = c * (1.0 - 0.012 * v_frame);
+		float n1 = fbm(q * 6.0 + vec2(flip * 7.0, -v_frame * 0.06));
+		float n2 = fbm(q * 15.0 + vec2(3.1 + flip * 5.0, -v_frame * 0.11));
+		float er = clamp((v_frame - erode_from) / erode_span, 0.0, 1.0);
+		float cut = 0.18 + 0.5 * er;
+		float body = r * (0.55 + 0.9 * n1) + (n2 - 0.5) * 0.45;
+		float carved = r * smoothstep(cut - 0.12, cut + 0.18, body);
+		r = mix(r, carved, detail);
+		// filaments burn hotter than the lobes round them
+		tm = clamp(tm * mix(1.0, 0.55 + 0.9 * n2 + 0.25 * (n1 - 0.5), detail), 0.0, 1.0);
+	}
+	float lin = pow(r, 2.4);
 	float kel = mix(t_lo, t_hi, clamp(tm * 1.05, 0.0, 1.0) * smoothstep(0.05, 0.95, r));
 	float lum = lin * energy * pow(kel / 1500.0, 2.5);
 	float a = v_col.a * alpha_mul * soft_k(SCREEN_UV, VERTEX, INV_PROJECTION_MATRIX, soft);
@@ -1629,11 +1698,15 @@ void fragment(){
 	// soot gathers at the top of a puff, the underside is the paler, fire-lit smoke
 	ALBEDO = tint.rgb * v_col.rgb * mix(1.0 - soot, 1.0 + soot * 0.4, smoothstep(0.15, 0.85, UV.y));
 	// the sim's domain walls never show: the sheet fades out toward a circle inside the card
-	float rm = 1.0 - smoothstep(0.3, 0.5, length(UV - vec2(0.5)));
-	// the thin edges break up into wisps (noise drifting with the sequence)
-	// (fbm, low frequency and a soft threshold: thresholded high-frequency value noise shows its square cells)
+	// (the circle's edge itself is wobbled by noise, so a big puff's outline is never a clean disc or a card's side)
 	float br = fbm(uv * 5.0 + vec2(v_frame * 0.05, v_spin * 3.0));
-	rm *= smoothstep(0.0, 0.6, lm.a * 1.6 - (br - 0.5) * 0.7 * (1.0 - lm.a));
+	float bw = fbm(uv * 2.5 + vec2(v_spin * 1.7, v_frame * 0.03));
+	float rm = 1.0 - smoothstep(0.2, 0.47, length(UV - vec2(0.5)) + (bw - 0.5) * 0.16);
+	// the thin edges break up into wisps (noise drifting with the sequence): erosion eats the thin smoke first
+	// (fbm, low frequency and a soft threshold: thresholded high-frequency value noise shows its square cells)
+	rm *= smoothstep(0.0, 0.6, lm.a * 1.6 - (br - 0.5) * 0.9 * (1.0 - lm.a) - 0.08);
+	// and a card the camera is nearly inside fades rather than slicing the view
+	rm *= smoothstep(0.6, 2.0, -VERTEX.z);
 	float under = (1.0 - clamp(l.g, 0.0, 1.0)) * (0.4 + 0.6 * UV.y);
 	EMISSION = glow_col.rgb * glow * pow(1.0 - v_age, 3.0) * under * lm.a * rm;
 	ALPHA = clamp(lm.a * rm * density * v_col.a * alpha_mul * soft_k(SCREEN_UV, VERTEX, INV_PROJECTION_MATRIX, soft), 0.0, 1.0);

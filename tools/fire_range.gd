@@ -92,7 +92,7 @@ func _stage(lane: String) -> Array:
 	await process_frame
 	var foes := []
 	for k in FOES.size():
-		foes.append(_foe(Vector3(FOES[k], 0, z - 0.4 + (k - 1) * 0.12)))   # on the line from his bow hand (his left, -z)
+		foes.append(_foe(Vector3(FOES[k], 0, z + (k - 1) * 0.12)))   # on his line (the quick shot looses from in front of him)
 	for k in h.cds.keys():
 		h.cds[k] = 0.0
 	h.mana = h.max_mana
@@ -210,6 +210,21 @@ func _run() -> void:
 			await _snap("%s/range_overview.png" % out)
 	quit()
 
+## The string against the drawing hand, the grip against the bow hand (metres), while he shoots: the nocked
+## arrow's nock should sit on his fingers from the nock to the release, the grip in his left fist throughout.
+func _hands(h, f: int, take: String) -> void:
+	var w: Node3D = h.weapon_node
+	if w == null or not is_instance_valid(w) or not w.has_meta("strands") or h.rig == null:
+		return
+	var AR: GDScript = load("res://scripts/archer.gd")
+	var J: Dictionary = h.rig.get_meta("j")
+	var kind: String = AR.call("bow_key", Data.BASES[h.equipment["weapon"]["base"]]["kind"])
+	var sp: Dictionary = (AR.get("BOW_SPEC") as Dictionary)[kind]
+	var fing: Vector3 = (J["at_hand_r"] as Node3D).global_transform * (AR.get("FINGERS") as Vector3)
+	var nk: Vector3 = w.global_transform * ((sp["rest"] as Vector3) + (w.get_meta("draw_off", Vector3.ZERO) as Vector3))
+	var gp: Vector3 = w.global_transform * (sp["grip"] as Vector3)
+	print("[hands] %s f%d atk %.2f style %s  nock-fingers %.3f  grip-lefthand %.3f" % [take, f, (h.atk_t / maxf(h.atk_dur, 0.001)) if h.atk_t >= 0.0 else -1.0, h.atk_style, nk.distance_to(fing), gp.distance_to((J["at_hand_l"] as Node3D).global_position)])
+
 ## One take: stage the lane, cast at 0.4 s, record secs of frames from the take's camera.
 func _take(out: String, mode: String, lane: String, sk: String, take: String, cam: Camera3D, secs := 3.4) -> void:
 	var h = g.hero
@@ -265,6 +280,11 @@ func _take(out: String, mode: String, lane: String, sk: String, take: String, ca
 				var hp: Vector3 = h.global_position + Vector3(0, 1.15, 0)
 				var off := Vector3(0.2, 0.25, 4.2) if take == "side" else Vector3(2.8, 0.6, 2.9)
 				cam.global_transform = Transform3D(Basis(), hp + off).looking_at(hp + Vector3(0.35, 0, 0), Vector3.UP)
+				_hands(h, f, take)
+		if f == cast_at + 1 or (f > cast_at and not h.arrows.is_empty() and not h.has_meta("arrow_logged")):
+			if not h.arrows.is_empty() and is_instance_valid(h.arrows[0]["node"]):
+				h.set_meta("arrow_logged", true)
+				print("[arrow] %s %s f%d from %s dir %s hero %s" % [mode, take, f, str((h.arrows[0]["node"] as Node3D).global_position), str(h.arrows[0]["dir"]), str(h.global_position)])
 		await process_frame
 		await RenderingServer.frame_post_draw
 		# the frame's cost: from the end of the last save to the end of this draw (the PNG write left out)
@@ -272,6 +292,11 @@ func _take(out: String, mode: String, lane: String, sk: String, take: String, ca
 		get_root().get_texture().get_image().save_png("%s/%s_%s_%s_%03d.png" % [out, mode, lane, take, f])
 		last = Time.get_ticks_usec()
 	h.direct_dir = Vector3.ZERO
+	if h.has_meta("arrow_logged"):
+		h.remove_meta("arrow_logged")
+	for e in g.world.enemies_root.get_children():
+		if is_instance_valid(e):
+			print("[foe] %s %s at %s life %.0f/%.0f" % [mode, take, str(e.global_position), float(e.get("life")), float(e.get("max_life"))])
 	# frame cost: the frames before the cast against the frames with the arrow in flight / the burst
 	var pre := 0.0
 	for i in range(2, cast_at):

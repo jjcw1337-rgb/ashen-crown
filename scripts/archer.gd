@@ -27,20 +27,28 @@ const HUNTER := Color(0.62, 0.85, 0.75)     # the class's colour: pale spirit-gr
 ## through), his casts (Snare Trap, Spirit Beast) as the game's own moves laid over the upper body. The bow is the
 ## game's (whatever is equipped), held in his LEFT hand like the clips (J "grip_bow", `BOW_HOLD`).
 const RANGER_GLB := "res://assets/models/archer_ranger.glb"
-const SHOT := {"style": "bow", "clip": "shoot_back",
-	# "Draw and Shoot from Back" (7.8 s) squeezed into the attack, by its phases: reach over the shoulder (0.2 s),
-	# the hand at the quiver (0.8), the arrow out (1.6), at the bow and nocked (2.2), the bow raised (3.1),
-	# full draw (5.0), the release (6.8, on Anim's impact frame 0.72), the arms coming down (7.35)
-	"keys": [[0.0, 0.2], [0.16, 0.8], [0.28, 1.6], [0.38, 2.2], [0.46, 3.1], [0.62, 5.0], [0.72, 6.8], [1.0, 7.35]],
-	"yaw": -56.0, "stand_yaw": -90.0, "idle_side": true, "body": true,
+const SHOT := {"style": "bow", "clip": "shoot_quick",
+	# Meshy's "Archery Shot 1" + "Archery Shot 3" joined (1.67 s, tools/blender/archer/prep_ranger_mocap.py), at close
+	# to its own pace: from the ready stance the right hand reaches over the shoulder (0.38 s at the quiver), pulls
+	# the arrow (0.47), nocks it (0.6), draws to the cheek (0.98), holds, looses on Anim's impact frame 0.72 (1.03:
+	# the string hand flies back, the bow arm drops) and comes back to the ready stance (1.67). The old 7.8 s
+	# "Draw and Shoot from Back" ("shoot_back") stays in the glb.
+	"keys": [[0.0, 0.04], [0.18, 0.38], [0.25, 0.47], [0.34, 0.6], [0.62, 0.98], [0.72, 1.03], [1.0, 1.667]],
+	# the clip's full draw is side-on like the aiming stand ("combat_idle" is the same stance)
+	"yaw": -90.0, "stand_yaw": -90.0, "idle_side": true, "body": true,
+	# the clip has its own loose, recoil and follow-through: the procedural ones only go over the aimed walk
+	"body_stand": {"fling": 0.0, "recoil": 0.0, "follow": 0.0},
 	"walk_clip": "walk_aim", "walk_speed": 0.82,
 	# on the move: only his right arm reaches back for the arrow (over the aimed walk), then draws to his cheek
-	"reach_clip": "shoot_back", "reach_bones": ["RightShoulder", "RightArm", "RightForeArm", "RightHand"],
-	"reach_keys": [[0.0, 0.2], [0.16, 0.8], [0.3, 1.6], [1.0, 1.6]],
+	# (Meshy's "Walk Forward While Shooting" was tried: it holds a half draw throughout and never looses)
+	"reach_clip": "shoot_quick", "reach_bones": ["RightShoulder", "RightArm", "RightForeArm", "RightHand"],
+	"reach_keys": [[0.0, 0.06], [0.16, 0.38], [0.26, 0.47], [0.36, 0.58], [1.0, 0.58]],
 	"reach": [[0.0, 0.0], [0.07, 1.0], [0.3, 1.0], [0.44, 0.0]]}
-## when the hand closes on an arrow in the quiver and when it's on the string (of the shot's progress), standing and moving
-const GRAB := 0.15
-const NOCK := 0.38
+## when the hand closes on an arrow in the quiver, when the arrow leaves it, and when it's on the string (of the
+## shot's progress), standing and moving
+const GRAB := 0.17
+const DRAWN := 0.24
+const NOCK := 0.34
 const NOCK_MOVING := 0.42
 const QUIVER := Vector3(0.25, 1.0, -0.24)     # the quiver's bottom on his back, in his body's frame (the glb faces +z)
 ## how fast he steps while he looses arrows (of his normal pace): slowed to a careful, aimed walk
@@ -611,8 +619,10 @@ static func pose_bow_on(rig: Node3D, w: Node3D, kind: String, st: Dictionary) ->
 	var solve := 0.0
 	var on_string := 0.0
 	if drawing:
-		solve = _curve([[0.0, 0.0], [0.08, 1.0], [imp + 0.05, 1.0], [imp + 0.22, 0.0]], a)
-		on_string = _curve([[nock_at - 0.06, 0.0], [nock_at, 1.0]], a)
+		# after the loose the string hand flies back (the clip's follow-through): the bow keeps upright on a line
+		# back to his chest and eases into his hand's own hold by the end of the attack, never swinging flat
+		solve = _curve([[0.0, 0.0], [0.08, 1.0], [imp + 0.05, 1.0], [1.0, 0.0]], a)
+		on_string = _curve([[nock_at - 0.06, 0.0], [nock_at, 1.0], [imp + 0.02, 1.0], [imp + 0.1, 0.0]], a)
 	if not w.has_meta("base_xf"):
 		w.set_meta("base_xf", w.transform)
 	var base_xf: Transform3D = w.get_meta("base_xf")
@@ -636,7 +646,7 @@ static func pose_bow_on(rig: Node3D, w: Node3D, kind: String, st: Dictionary) ->
 			var held: Transform3D = w.global_transform
 			var k := smoothstep(0.0, 1.0, solve)
 			w.global_transform = Transform3D(held.basis.get_rotation_quaternion().slerp(aimed.basis.get_rotation_quaternion(), k), held.origin.lerp(aimed.origin, k)).scaled_local(held.basis.get_scale())
-	_hand_arrow(rig, w, fingers, (J["grip_bow"] as Node3D).global_position, carrying, _curve([[0.27, 0.0], [nock_at, 1.0]], a))
+	_hand_arrow(rig, w, fingers, (J["grip_bow"] as Node3D).global_position, carrying, _curve([[DRAWN, 0.0], [nock_at, 1.0]], a))
 	# the nock: on his fingers while drawn, else a spring (a vector, so it settles back from any side)
 	var off: Vector3 = w.get_meta("draw_off", Vector3.ZERO)
 	var vel: Vector3 = w.get_meta("draw_vel", Vector3.ZERO)
