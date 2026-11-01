@@ -75,6 +75,48 @@ func moor(p: Vector3, y: float) -> void:
 		inter.set_meta("pick_y", 1.2)
 	inter.global_position = Vector3(p.x, 0.0, p.z)
 
+# ---------------------------------------------------------------- a partner's boat (co-op)
+## A partner sailing: his boat as his game sends it (Net._boat_packet, in his state packet), drawn under his
+## puppet and gliding to where he says she is; she rides this game's own waves, leaves her wake and creaks,
+## but deals with nothing (no docking, no clicking, no sea loop: that's the sailor's own).
+var puppet := false
+var net_to := Vector3.ZERO
+var net_yaw := 0.0
+
+static func puppet_update(h: Hero, delta: float) -> void:
+	var w: World = h.game.world if h.game else null
+	if h.net_boat_st == null or w == null or not w.sea or h.dead:
+		if h.net_boat and is_instance_valid(h.net_boat):
+			h.net_boat.queue_free()
+		h.net_boat = null
+		return
+	var st: Vector4 = h.net_boat_st
+	var b := h.net_boat
+	if b == null or not is_instance_valid(b) or b.get_parent() != w:
+		b = BoatRide.new()
+		w.add_child(b)
+		b.setup(h.game, "gull")
+		b.name = "partner_boat"
+		b.puppet = true
+		b.sailing = true
+		b.global_position = Vector3(st.x, 0.0, st.y)
+		b.yaw = st.z
+		b._float(0.0)
+		h.net_boat = b
+	b.net_to = Vector3(st.x, 0.0, st.y)
+	b.net_yaw = st.z
+	b.speed = st.w
+	b._place_hero(h)
+
+func _follow_net(delta: float) -> void:
+	var p := Vector3(global_position.x, 0.0, global_position.z)
+	if p.distance_to(net_to) > 12.0:
+		p = net_to
+	else:
+		p = p.lerp(net_to, clampf(delta * 8.0, 0.0, 1.0))
+	global_position = Vector3(p.x, global_position.y, p.z)
+	yaw = lerp_angle(yaw, net_yaw, clampf(delta * 8.0, 0.0, 1.0))
+
 ## The hero steps aboard and takes the tiller.
 func board(hero: Hero) -> void:
 	sailing = true
@@ -111,11 +153,13 @@ func dock_near() -> Dictionary:
 func _process(delta: float) -> void:
 	if game == null or game.world == null:
 		return
-	if sailing:
+	if puppet:
+		_follow_net(delta)
+	elif sailing:
 		_sail(delta)
 	_float(delta)
 	_effects(delta)
-	if sailing and game.hero:
+	if sailing and game.hero and not puppet:
 		_place_hero(game.hero)
 
 func _place_hero(hero: Hero) -> void:
@@ -250,7 +294,8 @@ func _float(delta: float) -> void:
 	basis = Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, _pitch) * Basis(Vector3.BACK, _roll)
 
 # ---------------------------------------------------------------- wake and spray
-func _effects(_delta: float) -> void:
+func _effects(delta: float) -> void:
+	_sounds(delta)
 	var v := absf(speed)
 	_wake.emitting = v > 0.6
 	_wake.amount_ratio = clampf(v / 8.0, 0.15, 1.0)
@@ -260,6 +305,43 @@ func _effects(_delta: float) -> void:
 	_spray.amount_ratio = clampf((speed - 3.0) / 5.0, 0.2, 1.0)
 	_spray.global_position = global_position + forward() * 3.6 + Vector3(0, 0.3, 0)
 	_spray.global_rotation = Vector3(0, yaw, 0)
+
+## Under sail: the open sea round her (the `sea` bed, louder with speed), her planks creaking as she works
+## in the swell (more as she pitches and rolls) and the bow slapping into the waves at speed. The loop is
+## the Sfx autoload's child, so it's freed with her (_exit_tree).
+var _sea_loop: AudioStreamPlayer
+var _creak_t := 1.5
+var _slap_t := 2.0
+func _sounds(dt: float) -> void:
+	if not sailing:
+		if _sea_loop:
+			_sea_loop.volume_db -= dt * 30.0
+			if _sea_loop.volume_db < -60.0:
+				_end_loop()
+		return
+	if _sea_loop == null and not puppet:
+		_sea_loop = Sfx.start_loop("sea", -40.0)
+	if _sea_loop:
+		var want := -16.0 + clampf(absf(speed) / 8.0, 0.0, 1.0) * 7.0
+		_sea_loop.volume_db = move_toward(_sea_loop.volume_db, want, dt * 20.0)
+	var work := absf(_pitch) * 9.0 + absf(_roll) * 7.0 + absf(speed) / 8.0
+	_creak_t -= dt * (0.5 + work)
+	if _creak_t <= 0.0:
+		_creak_t = randf_range(2.0, 5.0)
+		Sfx.play_at("hull_creak", global_position + Vector3(0, 0.6, 0), -12.0 + clampf(work * 3.0, 0.0, 6.0), randf_range(0.88, 1.12))
+	if speed > 2.0:
+		_slap_t -= dt * (speed / 8.0)
+		if _slap_t <= 0.0:
+			_slap_t = randf_range(1.4, 3.6)
+			Sfx.play_at("hull_slap", global_position + forward() * 3.0, -10.0 + (speed - 2.0) * 0.8, randf_range(0.9, 1.1))
+
+func _end_loop() -> void:
+	if _sea_loop and is_instance_valid(_sea_loop):
+		_sea_loop.queue_free()
+	_sea_loop = null
+
+func _exit_tree() -> void:
+	_end_loop()
 
 static func _foam_mat() -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()

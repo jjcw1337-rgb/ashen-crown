@@ -338,7 +338,8 @@ static func _boatyard(w: World) -> void:
 		var op2 := hp + Vector2(2.05, 0.4)
 		var fc: GDScript = load("res://scripts/forest_camp.gd")    # at run time: a static reference compiles it before Sfx exists
 		var osric: Inter = fc._keeper(w, "osric", V["shipwright"], "shipwright", op2, -PI * 0.5,
-			{"idle": "Idle_4", "work": ["Heavy_Hammer_Swing", "Heavy_Hammer_Swing", "Long_Breathe_and_Look_Around"], "talk": "Talk_Passionately"})
+			{"idle": "Idle_4", "work": ["Heavy_Hammer_Swing", "Heavy_Hammer_Swing", "Long_Breathe_and_Look_Around"], "talk": "Talk_Passionately",
+				"strike": "mallet", "sparks": false})
 		var hold := {"bone": "RightHand", "item": "war_hammer", "rot": Vector3(0, 0, 90), "pos": Vector3(0.0, 0.08, 0.0)}
 		fc.hold(osric.model, hold)
 		osric.set_meta("hold", hold)

@@ -180,6 +180,8 @@ var net_yaw := 0.0
 var net_phase_rate := 0.0
 var net_st := {}
 var net_buff := false
+var net_boat_st: Variant = null      # a partner sailing: Vector4(x, z, yaw, speed) of his boat (Net._boat_packet)
+var net_boat: BoatRide               # the boat drawn under his puppet (BoatRide.puppet_update)
 var _net_last_t := 0.0
 ## Skill effects that linger (SkillFx: the Siphon tether, Drain Life's beams, Eternal Night, phantoms, arrows
 ## in flight), on the local hero and on a puppet alike; started and ended by fx events, moved by SkillFx.update.
@@ -1739,6 +1741,7 @@ func apply_net_state(p: PackedFloat32Array) -> void:
 	life = p[12]
 	max_life = maxf(p[13], 1.0)
 	net_buff = p[14] > 0.5
+	net_boat_st = Vector4(p[16], p[17], p[18], p[19]) if p.size() >= 20 and p[15] > 0.5 else null
 	if was_dead and not dead:
 		rig.rotation.x = 0.0
 		rig.position.y = 0.0
@@ -1750,6 +1753,10 @@ func apply_net_state(p: PackedFloat32Array) -> void:
 ## The zone changed under a puppet: its lingering effects belonged to the old one.
 func net_zone_reset() -> void:
 	Dodge.cancel(self)
+	net_boat_st = null
+	if net_boat and is_instance_valid(net_boat):
+		net_boat.queue_free()
+	net_boat = null
 	visible = false
 	net_has = false
 	SkillFx.clear(self)
@@ -1765,6 +1772,7 @@ func _puppet_process(delta: float) -> void:
 	var k := clampf(delta * 14.0, 0.0, 1.0)
 	global_position = global_position.lerp(net_pos, k)
 	rig.rotation.y = lerp_angle(rig.rotation.y, net_yaw, k)
+	BoatRide.puppet_update(self, delta)      # a partner at sea: his boat, and him at its tiller
 	aura.emitting = net_buff
 	if dead:
 		var f := clampf(dead_t / 0.7, 0.0, 1.0)

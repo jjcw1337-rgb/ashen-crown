@@ -24,6 +24,7 @@ var _hand_y := 0.0
 var _hand_vy := 0.0
 var _hand_top := -1e9
 var _strike_cd := 0.0
+var _fall := 0.0
 
 func _animate(delta: float) -> void:
 	var near := false
@@ -114,12 +115,15 @@ func _strikes(delta: float) -> void:
 		_hand_vy = vy
 		return
 	_hand_top = maxf(_hand_top - delta * 0.5, y)
+	# the fastest fall of the last moment (a high frame rate eases through the stop over several frames)
+	_fall = vy if vy < _fall else move_toward(_fall, 0.0, delta * 8.0)
 	# falling fast a moment ago, now stopped or rising, and well below the top of the swing
-	if _hand_vy < -1.2 and vy > -0.2 and _hand_top - y > 0.25 and _strike_cd <= 0.0:
+	if (_hand_vy < -1.2 or _fall < -1.2) and vy > -0.2 and _hand_top - y > 0.25 and _strike_cd <= 0.0:
 		_strike_cd = 0.35
+		_fall = 0.0
 		var at: Vector3 = _hand.global_position
 		Sfx.play_at(str(clips["strike"]), at, -2.0, randf_range(0.97, 1.08))
-		if game_fx() != null:
+		if game_fx() != null and clips.get("sparks", true):
 			Fx.sparks(game_fx(), at + Vector3(0, 0.05, 0), Color(1.0, 0.7, 0.3))
 	_hand_vy = vy
 

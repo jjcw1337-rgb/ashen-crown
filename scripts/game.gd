@@ -408,9 +408,27 @@ func zone_music() -> void:
 	if world == null:
 		return
 	if world.sea:
-		Sfx.play_music("wild", "wind")      # the coast and the islands: the sea's own sounds come later
+		Sfx.play_music("wild", "surf")      # the coast and the islands: surf on the beaches (Game._sea_sounds fades it)
 		return
 	Sfx.play_music("fort" if cur_zone == "lair" and world.fort else cur_zone, "forest" if world.oak_forest and cur_zone != "town" and not indoor() else "")
+
+## In a sea zone the surf bed follows the shore: full on the beach, fading inland and out at sea (the boat's
+## own `sea` bed takes over out there, BoatRide._sounds).
+func _sea_sounds() -> void:
+	if world == null or not world.sea or Sfx.ambience == null:
+		return
+	var p := hero.global_position
+	var d := 0.0
+	var oc: Ocean = world.get_node_or_null("Ocean")
+	if oc and oc.depth_at(p.x, p.z) > 0.3:
+		d = oc.shore_at(p.x, p.z)                                 # out on the water: how far from land
+	elif cur_zone.begins_with("isle_"):
+		var isle := Isles.get_isle(Isles.id_of(cur_zone))
+		d = maxf(0.0, float(isle.get("r", 100.0)) - Vector2(p.x, p.z).length() - 10.0)   # inland
+	else:
+		d = maxf(0.0, absf(p.x - Coast.shore_x(p.z)) - 10.0)
+	var want := -4.0 - clampf((d - 8.0) / 70.0, 0.0, 1.0) * 18.0
+	Sfx.ambience.volume_db = move_toward(Sfx.ambience.volume_db, want, get_process_delta_time() * 6.0)
 
 ## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
@@ -1993,10 +2011,19 @@ func _add_boat(zone: String, spawn: String) -> void:
 		for isle in Isles.ISLANDS:
 			var m := isle_mooring(isle, Vector2.ZERO, true)
 			b.docks.append({"name": isle["name"], "kind": "isle", "id": isle["id"], "pos": Vector2(m.x, m.z), "yaw": m.w})
-		if spawn.begins_with("sail_from_"):
+		if spawn.begins_with("sail_from_") and not hero.owns_boat("gull"):
+			# a partner brought along by the party's trip with no boat of his own: he's set down on the pier
+			b.moor(Coast.MOOR, PI * 0.5)
+			var dp: Vector3 = world.spawns.get("dock", Vector3(2, 0, 0))
+			hero.global_position = Vector3(dp.x, world.height_at(dp.x, dp.z), dp.z)
+			cam_target = hero.global_position
+		elif spawn.begins_with("sail_from_"):
 			var isle := Isles.get_isle(spawn.trim_prefix("sail_from_"))
 			var m := isle_mooring(isle, Vector2.ZERO, true)
-			b.moor(Vector3(m.x, 0, m.z), m.w)
+			# the whole party sails out together: each his own boat, the others a few lengths further out ahead
+			var r := _party_rank()
+			var off := Vector3(-sin(m.w), 0, -cos(m.w)) * 9.0 * float(r)
+			b.moor(Vector3(m.x, 0, m.z) + off, m.w)
 			b.board(hero)
 			sail_blend = 1.0
 			sail_cam_yaw = b.yaw
@@ -2007,6 +2034,17 @@ func _add_boat(zone: String, spawn: String) -> void:
 		var isle := Isles.get_isle(Isles.id_of(zone))
 		var m := isle_mooring(isle, Vector2.ZERO, false)
 		b.moor(Vector3(m.x, 0, m.z), m.w)
+
+## This player's place in the party (0 = the lowest peer id), so things placed per player don't overlap.
+func _party_rank() -> int:
+	if net == null or not net.active or multiplayer.multiplayer_peer == null:
+		return 0
+	var me := multiplayer.get_unique_id()
+	var r := 0
+	for pid in net.players.keys():
+		if int(pid) < me:
+			r += 1
+	return r
 
 ## Where a boat lies at an island's jetty (alongside its end), bow out toward the dock: x, z and her
 ## yaw in w. `coast`: in the coast's frame; else in the island's own zone (the island at the origin).
@@ -2945,6 +2983,8 @@ func _process(delta: float) -> void:
 		var sh := Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake * shake * 0.35
 		cam.position = CAM_OFFSET * zoom * lerpf(1.0, focus_zoom, fw) + sh
 		_sail_camera(real_dt, sh)
+		if playing:
+			_sea_sounds()
 		RenderingServer.global_shader_parameter_set("player_pos", hero.global_position)
 		if grass_field:
 			grass_field.center = cam_target

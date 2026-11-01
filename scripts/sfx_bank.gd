@@ -103,4 +103,11 @@ const BANK := {
 	"wyvern_roar": [1, "sfx", 0.0],
 	"wyvern_step": [1, "sfx", 0.0],
 	"wyvern_tail": [1, "sfx", 0.48],
+	"gull": [4, "sfx", 0.0],
+	"hull_creak": [4, "sfx", 0.0],
+	"hull_slap": [3, "sfx", 0.0],
+	"mallet": [4, "sfx", 0.0],
+	"sea": [1, "ambience", 0.0],
+	"splash": [3, "sfx", 0.0],
+	"surf": [2, "ambience", 0.0],
 }
