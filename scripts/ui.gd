@@ -87,6 +87,9 @@ var char_panel: PanelContainer
 var char_labels := {}
 var plus_btns: Array = []
 var shop_panel: PanelContainer
+## The shipwright's window (boat_shop.gd): the boat, its price, how to sail it, Buy.
+var boat_shop: BoatShop
+var boat_panel: PanelContainer
 var shop_title: Label
 var shop_grid: GridContainer
 var shop_items: Array = []
@@ -162,6 +165,8 @@ func setup(g: Node) -> void:
 	_build_inventory()
 	_build_character()
 	_build_shop()
+	boat_shop = BoatShop.new()
+	boat_panel = boat_shop.build(self)
 	_build_stash()
 	_build_burn()
 	_build_vote()
@@ -3986,21 +3991,21 @@ func toggle(panel: Control) -> void:
 func _walked_off() -> void:
 	if trade_with == null:
 		return
-	var open := shop_panel.visible or stash_panel.visible or burn_panel.visible or dialog_panel.visible or ench_panel.visible
+	var open := shop_panel.visible or stash_panel.visible or burn_panel.visible or dialog_panel.visible or ench_panel.visible or boat_panel.visible
 	if not open or not is_instance_valid(trade_with) or hero == null:
 		trade_with = null
 		return
 	var d: Vector3 = hero.global_position - trade_with.global_position
 	if Vector2(d.x, d.z).length() > trade_with.radius + 3.0:
 		trade_with = null
-		for p in [shop_panel, stash_panel, burn_panel, dialog_panel, ench_panel, inv_panel]:
+		for p in [shop_panel, stash_panel, burn_panel, dialog_panel, ench_panel, inv_panel, boat_panel]:
 			p.visible = false
 		shop_mode = ""
 		tooltip.visible = false
 
 func close_all() -> bool:
 	var any := close_skill_picker()
-	for p in [inv_panel, char_panel, shop_panel, stash_panel, burn_panel, wp_panel, dialog_panel, ench_panel, test_panel, skills_panel, talent_panel, quest_panel]:
+	for p in [inv_panel, char_panel, shop_panel, stash_panel, burn_panel, wp_panel, dialog_panel, ench_panel, test_panel, skills_panel, talent_panel, quest_panel, boat_panel]:
 		if p.visible:
 			p.visible = false
 			any = true
@@ -4009,7 +4014,7 @@ func close_all() -> bool:
 	return any
 
 func any_panel_open() -> bool:
-	return inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible or quest_panel.visible
+	return inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible or quest_panel.visible or boat_panel.visible
 
 func message(t: String, col := Color(1, 1, 1), dur := 2.5) -> void:
 	msg_lbl.text = t
@@ -4126,6 +4131,8 @@ func refresh() -> void:
 		char_labels["gf"].text = "%d%%" % hero.gf
 
 func _process(delta: float) -> void:
+	if boat_shop:
+		boat_shop.tick(delta)
 	_update_drag(delta)
 	_walked_off()
 	if class_stage != null and class_stage.is_visible_in_tree():

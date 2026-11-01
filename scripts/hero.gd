@@ -22,6 +22,11 @@ var ene := 10
 var stat_points := 0
 var talents := {}            # talent id -> ranks taken (Talents); a point per level from level 2
 var gold := 120
+## Boats this character owns (Data.BOATS ids; bought from the shipwright on the Mournwater Coast, saved).
+var boats: Array = []
+
+func owns_boat(id: String) -> bool:
+	return boats.has(id)
 var equipment := {}
 var inventory: Array = []
 var belt: Array = [null, null, null, null]
@@ -2330,7 +2335,7 @@ func unequip(slot: String) -> void:
 
 func to_save() -> Dictionary:
 	return {"cls": cls, "level": level, "xp": xp, "str": str_, "dex": dex, "vit": vit, "ene": ene, "points": stat_points, "gold": gold,
-		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "talents": talents}
+		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "talents": talents, "boats": boats}
 
 func from_save(d: Dictionary) -> void:
 	set_class(str(d.get("cls", "knight")))
@@ -2342,6 +2347,7 @@ func from_save(d: Dictionary) -> void:
 	ene = int(d.get("ene", 10))
 	stat_points = int(d.get("points", 0))
 	gold = int(d.get("gold", 0))
+	boats = (d.get("boats", []) as Array).filter(func(b): return Data.BOATS.has(str(b))) if d.get("boats") is Array else []
 	show_helm = bool(d.get("show_helm", true))
 	equipment = d.get("equipment", {})
 	for s in Items.EQUIP_SLOTS:

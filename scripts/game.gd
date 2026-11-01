@@ -1495,6 +1495,9 @@ func _open_chest(t: Inter) -> void:
 ## A camp vendor's own talk: the elder's news, a trader's greeting and Trade.
 func _vendor_talk(t: Inter) -> void:
 	var role: String = t.data.get("role", "")
+	if role == "shipwright":
+		_shipwright_talk(t)
+		return
 	if role == "elder":
 		var txt := "The crypt lies at the far end of Cairnfell Moor. Bone archers and the restless dead guard the way. Raise your shield against their arrows: a good block turns them aside. And Grubb guards his gold like his life: rip open one of his sacks and his goblins come running for it. Get to the gold before they bring it back to him."
 		if difficulty == 1 and not boss_killed:
@@ -1512,6 +1515,30 @@ func _vendor_talk(t: Inter) -> void:
 			btns.append(["Enchant armor", func(): ui.open_enchant(t.label)])
 		btns.append(["Leave", func(): pass])
 		ui.open_dialog(t.label, lines.get(role, ""), btns)
+
+## Osric Saltmarrow, the shipwright on the Mournwater Coast: a word about the isles, then his boat
+## (BoatShop). Once you own her, he tells you where she's moored.
+func _shipwright_talk(t: Inter) -> void:
+	var owned := hero.owns_boat("gull")
+	var txt := "The Mournwater, they call it. Five isles out there, each a fair sail: the Verdant Isle with its great oak, the old ruins on their terraces, the Lost Isle with its black stone, the Bleak Isle where the fog never lifts, and the Merchant's Reach, empty since the night its people left. No bridge, no ferry. A boat, or nothing. I've built a good one."
+	if owned:
+		txt = "She's lying alongside the pier, ready when you are. Mind the rocks off the Bleak Isle, and bring her back in one piece."
+	ui.open_dialog(t.label, txt, [["See the boat" if not owned else "Look her over", func(): ui.boat_shop.open(t, "gull")], ["Leave", func(): pass]])
+
+## Buys a boat (Data.BOATS) from the shipwright: pays, owns it from now on (saved with the character).
+func buy_boat(id: String) -> bool:
+	var spec: Dictionary = Data.BOATS[id]
+	var price := int(spec["price"])
+	if hero.owns_boat(id) or hero.gold < price:
+		return false
+	hero.gold -= price
+	hero.boats.append(id)
+	hero.stats_changed.emit()
+	Sfx.play("gold")
+	ui.big_message("%s is yours" % spec["name"])
+	ui.message("She's moored at the end of the pier. Click her to go aboard.", Color(0.75, 0.88, 1.0), 4.0)
+	save_game()
+	return true
 
 func _interact(t: Inter) -> void:
 	match t.kind:

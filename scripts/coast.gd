@@ -17,7 +17,9 @@ const SHORE_K := 0.012        # how fast the shore curls back east with distance
 const BOUNDS := Rect2(-10, -55, 82, 110)
 const DOCK := Vector2(0.0, 0.0)         # the end of the pier (where boats tie up)
 const PIER_ROOT := Vector2(17.0, 0.0)
-const SHED := Vector2(25.0, -10.0)      # the shipwright's shed (his stall: Stage 3)
+const SHED := Vector2(25.0, -10.0)      # the shipwright's boathouse
+const SHED_YAW := 0.35                  # it opens toward the path and the pier (+z of its frame turned by this)
+const MOOR := Vector3(5.0, 0.0, -3.4)   # where a boat lies alongside the pier (north side), bow out to sea
 const EXIT := Vector2(68.0, 0.0)        # the path back to the camp
 
 static var _n: FastNoiseLite
@@ -159,19 +161,8 @@ static func _headland(w: World) -> void:
 	w.dirt_blobs.append([SHED + Vector2(0, 4), 7.0, 0.9])
 	w.dirt_blobs.append([PIER_ROOT + Vector2(3, 0), 5.0, 0.8])
 	_pier(w)
-	# the shipwright's shed: a hut with an awning, a hull on trestles beside it (his stall: Stage 3)
-	var shed := Fort.model("hut")
-	var holder := Node3D.new()
-	holder.name = "shed"
-	if shed == null:
-		Props.hide_tent(holder, Vector3.ZERO, 0.0, 3.6, 3.6, 2.8)
-	else:
-		holder.add_child(shed)
-	w._place(holder, Vector3(SHED.x, 0, SHED.y))
-	holder.rotation.y = PI * 0.5 + 0.5
-	holder.scale = Vector3.ONE * 1.35
-	w.add_circle(Vector3(SHED.x, 0, SHED.y), 2.7)
-	_trestle_hull(w, SHED + Vector2(-2.0, 7.5))
+	_boatyard(w)
+	_trestle_hull(w, SHED + Vector2(-7.0, 2.5))
 	# boats pulled up on the beach and nets drying on racks
 	for bp in [Vector2(20.5, 9.0), Vector2(22.0, -19.0)]:
 		_rowboat(w, bp, rng.randf_range(-0.5, 0.5) + PI * 0.5)
@@ -278,6 +269,82 @@ static func _pier(w: World) -> void:
 	Models.seg(lamp, Vector3(DOCK.x + 0.5, deck, DOCK.y - 1.45), Vector3(DOCK.x + 0.5, deck + 2.1, DOCK.y - 1.45), 0.08, 0.07, wdd, 6)
 	# walkers can stand on the pier (the sea check would stop them otherwise)
 	w.add_deck(mid, Vector2((len + 1.0) * 0.5, 1.5), 0.0, deck + 0.05)
+
+## Osric Saltmarrow's boatyard: an open timber boathouse (posts, a plank roof, a back wall hung with
+## tools, nets and oars), his workbench and a painted sign, a lantern; Osric in front of it (Inter
+## "vendor", role "shipwright": he talks, then shows the boat, Game._vendor_talk / BoatShop); and the
+## boat he sells lying alongside the pier, where a bought one waits too.
+static func _boatyard(w: World) -> void:
+	var g := Props.footprint(Models.N(null, "boathouse"), Vector2(3.6, 2.6))
+	var wd := Props.wood()
+	var wdd := Props.wood_dark()
+	for c in [Vector2(-3.4, -2.4), Vector2(3.4, -2.4), Vector2(-3.4, 2.4), Vector2(3.4, 2.4), Vector2(0, -2.4)]:
+		var hgt := 3.2 if c.y > 0.0 else 4.1
+		Models.seg(g, Vector3(c.x, 0, c.y), Vector3(c.x, hgt, c.y), 0.13, 0.11, wdd, 6)
+	# the roof slopes down to the front, planks overlapping
+	for k in 9:
+		var z := -2.7 + k * 0.68
+		var y := 4.25 - (z + 2.7) * 0.2
+		Models.P(g, Geo.box(7.6, 0.08, 0.86), wd if k % 3 else wdd, Vector3(0, y, z), Vector3(-11.5, 0, 0))
+	Models.P(g, Geo.box(7.2, 0.2, 0.22), wdd, Vector3(0, 4.05, -2.4))
+	Models.P(g, Geo.box(7.2, 0.2, 0.22), wdd, Vector3(0, 3.1, 2.4))
+	# the back wall: vertical boards, oars racked on it, a net, tools on pegs
+	for k in 14:
+		Models.P(g, Geo.box(0.5, 3.9, 0.06), wd if k % 4 else wdd, Vector3(-3.25 + k * 0.5, 1.95, -2.5))
+	for k in 4:
+		Models.seg(g, Vector3(-2.8 + k * 0.32, 0.3, -2.4), Vector3(-2.6 + k * 0.32, 3.2, -2.4), 0.03, 0.03, wd, 5)
+		Models.P(g, Geo.box(0.16, 0.6, 0.03), wd, Vector3(-2.6 + k * 0.32, 2.95, -2.38))
+	var net := Mats.world(Color(0.42, 0.37, 0.28), Color(0.3, 0.27, 0.2), 0.95, 3.0)
+	Models.P(g, Geo.box(2.2, 1.6, 0.04), net, Vector3(1.5, 2.4, -2.42), Vector3(0, 0, 4))
+	for k in 3:
+		Models.seg(g, Vector3(-0.6 + k * 0.35, 2.2, -2.42), Vector3(-0.6 + k * 0.35, 1.5, -2.3), 0.035, 0.05, Props.iron(), 5)
+	# the workbench with a half-shaped plank, a mallet, a pot of tar
+	Models.P(g, Geo.box(2.4, 0.12, 0.8), wd, Vector3(1.6, 0.9, -1.6))
+	for c in [Vector2(0.5, -1.9), Vector2(2.7, -1.9), Vector2(0.5, -1.3), Vector2(2.7, -1.3)]:
+		Models.seg(g, Vector3(c.x, 0, c.y), Vector3(c.x, 0.86, c.y), 0.05, 0.05, wdd, 5)
+	Models.P(g, Geo.box(1.8, 0.05, 0.22), wd, Vector3(1.5, 0.99, -1.55), Vector3(0, 8, 0))
+	Models.P(g, Geo.cyl(0.07, 0.07, 0.24, 8), wdd, Vector3(2.4, 1.05, -1.75), Vector3(0, 0, 90))
+	Models.P(g, Geo.cyl(0.16, 0.13, 0.25, 10), Props.iron(), Vector3(0.75, 1.08, -1.75))
+	Props.barrel(g, Vector3(-2.6, 0, 1.6))
+	Props.crate(g, Vector3(-1.9, 0, 1.9), 1.0)
+	# a lantern hung from the front beam
+	Models.seg(g, Vector3(0.0, 3.1, 2.4), Vector3(0.0, 2.65, 2.4), 0.012, 0.012, Props.iron(), 4)
+	w._place(g, Vector3(SHED.x, 0, SHED.y))
+	g.rotation.y = SHED_YAW
+	w.solid(g)
+	var front := Basis(Vector3.UP, SHED_YAW)
+	var lamp_p: Vector3 = g.position + front * Vector3(0.0, 2.5, 2.4)
+	Props.fire(w.props_root, lamp_p, 0.22, Color(1.0, 0.7, 0.35), true, false, false)
+	# the sign on a post by the path: a board with a little ship painted on it
+	var sp: Vector3 = g.position + front * Vector3(4.6, 0, 3.6)
+	var sign := Props.footprint(Models.N(null, "sign"), 0.15)
+	Models.seg(sign, Vector3.ZERO, Vector3(0, 2.3, 0), 0.07, 0.06, wdd, 6)
+	Models.P(sign, Geo.box(1.3, 0.75, 0.07), wd, Vector3(0, 1.9, 0.08))
+	var mini := Boat.model("gull")
+	sign.add_child(mini)
+	mini.scale = Vector3.ONE * 0.075
+	mini.position = Vector3(0, 1.66, 0.14)
+	mini.rotation.y = PI * 0.5
+	mini.get_node("lamp").queue_free()
+	w._place(sign, sp)
+	sign.rotation.y = SHED_YAW - 0.4
+	w.solid(sign)
+	# Osric, in front of his boathouse
+	var V: Dictionary = Data.VENDORS[w.act]
+	var op: Vector3 = g.position + front * Vector3(-0.6, 0, 3.4)
+	var look := {"skin": Color(0.74, 0.55, 0.43), "cloth": Color(0.13, 0.2, 0.3), "cloth2": Color(0.32, 0.22, 0.14), "head": "human",
+		"hair": Color(0.62, 0.6, 0.56), "beard": Color(0.66, 0.64, 0.6), "bulk": 1.12, "height": 1.02}
+	var osric := w._npc(V["shipwright"], look, op, "shipwright", SHED_YAW + PI)
+	osric.radius = 2.0
+	w.spawns["shipwright"] = op + front * Vector3(0, 0, 2.0)
+	# the boat for sale, lying alongside the pier
+	var boat := Boat.model("gull")
+	boat.name = "moored_boat"
+	w.props_root.add_child(boat)
+	boat.position = MOOR
+	boat.rotation.y = PI * 0.5
+	w.set_meta("moored_boat", boat)
+	Isles.sea_rock(w, Vector2(MOOR.x, MOOR.z), 1.4)
 
 ## A rowboat pulled up on the sand, tipped a little.
 static func _rowboat(w: World, p: Vector2, yaw: float) -> void:

@@ -125,11 +125,21 @@ const WEAPON_PROFILES := {
 }
 
 const VENDORS := [
-	{"smith": "Halvar Emberhammer", "armor": "Hedda Ironhand", "alch": "Agnes Grimwood", "gamble": "Tarrow the Dice", "stash": "Stash", "elder": "Captain Roth"},
+	{"smith": "Halvar Emberhammer", "armor": "Hedda Ironhand", "alch": "Agnes Grimwood", "gamble": "Tarrow the Dice", "stash": "Stash", "elder": "Captain Roth", "shipwright": "Osric Saltmarrow"},
 	{"smith": "Kadir Forgebrand", "armor": "Saphra", "alch": "Iskander the Wise", "gamble": "Jamal Two-Coins", "stash": "Stash", "elder": "Vizier Hasun"},
 	{"smith": "Ombo Stonejaw", "armor": "Teyla of the Reeds", "alch": "Mother Ashka", "gamble": "Quill", "stash": "Stash", "elder": "Archivist Nel"},
 	{"smith": "Brother Halvard", "armor": "Seraph Aldwen", "alch": "Lumen the Pure", "gamble": "The Faceless", "stash": "Stash", "elder": "High Paladin Corin"},
 ]
+
+## Boats the shipwright on the Mournwater Coast sells (coast.gd, boat.gd, boat_ride.gd). One today; more
+## boats, faster hulls or upgrades are new entries here. speed: cruising m/s (the island routes are
+## planned for 8: Isles.ISLANDS "sail" / speed ~ the crossing's seconds), accel: m/s per second,
+## turn: radians per second at speed, crew: how many it carries (co-op: each player sails their own).
+const BOATS := {
+	"gull": {"name": "The Gull", "price": 400, "speed": 8.0, "accel": 3.2, "turn": 0.95, "crew": 1,
+		"paint": Color(0.16, 0.3, 0.42),
+		"desc": "A single-masted cutter of tarred oak, seven paces long, built here on the strand. Quick on the wind, steady in a swell, and she'll put you ashore at any jetty on the Mournwater."},
+}
 
 ## look keys: skin, cloth, cloth2, armor, height, bulk, head, eyes, horns, cape, thin, tail, wings, weapon, shield
 const ENEMIES := {

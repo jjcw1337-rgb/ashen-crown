@@ -459,7 +459,13 @@ Run the relevant tests before pushing. A push to `main` publishes to everyone in
   floating), a baked depth/shore map (`bake`: turquoise shallows, calm water inshore, surf rolling onto every beach,
   foam at rocks and posts), Forward+ refraction and depth (Medium+), the `LITE` variant on Low and OpenGL; global
   `ocean_t`. Light: `Game._sea_env` (golden evening, low sun over the sea, clear air). `World.get_meta("sea_rocks")`
-  lists rocks in the water for boats. Tests: `tools/ocean_test.gd`; screenshots `tools/ocean_shots.gd -- outprefix [q] [only]`
+  lists rocks in the water for boats. **The shipwright**: Osric Saltmarrow (`Data.VENDORS[0]["shipwright"]`, a procedural
+  humanoid for now) at his boathouse (`Coast._boatyard`), an `Inter` "vendor" with role "shipwright": `Game._shipwright_talk`
+  (dialogue) opens `BoatShop` (`boat_shop.gd`, `ui.boat_panel`: portrait, the boat turning on the water, name, price, text,
+  how to sail, Buy). Boats are `Data.BOATS` (`gull`: 400 gold, speed 8); owning one is `Hero.boats` (saved), bought with
+  `Game.buy_boat`. The boat's model is `Boat.model(id)` (`boat.gd`: lofted clinker hull with its own plank shader, deck,
+  mast, gaff main and jib in the cloth shader, rigging, rudder, lantern), also moored at the pier (`Coast.MOOR`).
+  `tools/boat_shop_test.gd`, `tools/boat_shop_shot.gd`. Tests: `tools/ocean_test.gd`; screenshots `tools/ocean_shots.gd -- outprefix [q] [only]`
   (Forward+ screenshots need a Vulkan driver: `apt-get install mesa-vulkan-drivers` gives lavapipe, slow but correct).
   Note: a first import of the project needs `godot --headless --editor --quit-after 2000` (plain `--quit` can abort the
   scan before the class cache is written).

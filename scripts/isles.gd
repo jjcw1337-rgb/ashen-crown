@@ -315,7 +315,7 @@ static func _settle_places(w: World) -> void:
 		if not str(k).begins_with("poi_"):
 			continue
 		var p: Vector3 = w.spawns[k]
-		if not w.is_blocked(p.x, p.z) and w.find_path(st, p).size() > 1:
+		if not w.is_blocked(p.x, p.z) and w.find_path(st, p).size() > 0:
 			continue
 		var best := p
 		var found := false
@@ -323,7 +323,7 @@ static func _settle_places(w: World) -> void:
 			for i in 16:
 				var a := TAU * i / 16.0
 				var q := p + Vector3(cos(a), 0, sin(a)) * ring
-				if w.is_blocked(q.x, q.z) or w.find_path(st, q).size() < 2:
+				if w.is_blocked(q.x, q.z) or w.find_path(st, q).size() < 1:
 					continue
 				best = Vector3(q.x, w.height_at(q.x, q.z), q.z)
 				found = true
