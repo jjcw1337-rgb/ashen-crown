@@ -30,7 +30,8 @@ static var _warm_world := 0
 static func shader(key: String) -> Shader:
 	if not _shaders.has(key):
 		var s := Shader.new()
-		s.code = {"glass": GLASS_SHADER, "drop": DROP_SHADER, "bubble": BUBBLE_SHADER, "splat": SPLAT_SHADER}[key]
+		s.code = {"glass": GLASS_SHADER, "drop": DROP_SHADER, "bubble": BUBBLE_SHADER, "splat": SPLAT_SHADER,
+			"miasma": MIASMA_SHADER, "dome_rim": DOME_RIM_SHADER}[key]
 		_shaders[key] = s
 	return _shaders[key]
 
@@ -54,7 +55,7 @@ static func warm(h: Hero) -> void:
 		return
 	_warm_world = h.game.world.get_instance_id()
 	InfernalFx.warm(h.game.world.fx_root, h.game)
-	for k in ["glass", "drop", "bubble", "splat"]:
+	for k in ["glass", "drop", "bubble", "splat", "miasma", "dome_rim"]:
 		var mi := MeshInstance3D.new()
 		mi.mesh = InfernalFx.quad()
 		mi.material_override = _mat(k)
@@ -144,6 +145,79 @@ static func spores(root: Node3D, at: Vector3, amount: int, reach := 0.8) -> void
 	InfernalFx.particles(root, at, {"amount": amount, "life": 1.3, "explosive": 0.6, "shape": "sphere", "r": 0.3,
 		"dir": Vector3.UP, "spread": 120.0, "vel": [0.2, reach], "gravity": 0.15, "damping": [0.4, 0.8], "turb": 0.4,
 		"scale": [0.5, 1.2], "size": 0.06, "colors": [[0.0, Color(SPORE, 0.0)], [0.2, SPORE], [0.7, Color(LIME, 0.6)], [1.0, Color(LIME, 0.0)]]})
+
+## A poison cloud of radius r hanging over the ground round `at` (its nodes go under `root`, which sits at `at`):
+## layers of rolling miasma that follow the terrain (MIASMA_SHADER: domain-warped noise, darker where it is dense,
+## the curls' crests catching the colour, a ragged edge with tendrils creeping past it), noise-eroded fumes rolling
+## up off it and spores drifting in it. It fades in; miasma_end thins it away. (It was ~400 soft round sprites.)
+static func miasma(root: Node3D, at: Vector3, r: float, col: Color) -> void:
+	var tr := _tier(root)
+	var w = _world(root)
+	# [disc radius, height over the ground, peak alpha, drift speed, noise scale (1/m)]: a dense ground layer, and
+	# from Medium up a thinner one at knee height that drifts faster, so the fog has depth round the legs in it
+	var layers := [[r * 1.25, 0.06, 0.72, 1.0, 0.11]]
+	if tr >= 1:
+		layers.append([r * 1.1, 0.6, 0.34, 1.7, 0.075])
+	for i in layers.size():
+		var ly: Array = layers[i]
+		var m := _mat("miasma")
+		m.set_shader_parameter("noise_tex", InfernalFx.noise())
+		m.set_shader_parameter("col", Color(col.r * 0.62, col.g * 0.72, col.b * 0.42))
+		m.set_shader_parameter("deep", Color(col.r * 0.14, col.g * 0.24, col.b * 0.1))
+		m.set_shader_parameter("density", ly[2])
+		m.set_shader_parameter("speed", ly[3])
+		m.set_shader_parameter("scale", ly[4])
+		m.set_shader_parameter("seed", randf() * 10.0)
+		m.set_shader_parameter("fade", 0.0)
+		var mi := MeshInstance3D.new()
+		mi.mesh = InfernalFx.disc_mesh(w, at, ly[0], 40 if i == 0 else 32, 6 if i == 0 else 4, ly[1])
+		mi.material_override = m
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.name = "miasma%d" % i
+		root.add_child(mi)
+		InfernalFx.tween_param(mi, m, "fade", 0.0, 1.0, 0.45).set_ease(Tween.EASE_OUT)
+	var vis := AABB(Vector3(-r - 2.0, -1.0, -r - 2.0), Vector3(r * 2.0 + 4.0, 6.0, r * 2.0 + 4.0))
+	if tr >= 1:
+		var fu := ElementalFx._dust(root, at + Vector3(0, 0.3, 0), Color(col.r * 0.42, col.g * 0.55, col.b * 0.28),
+			clampf(r * 0.55, 1.4, 2.6), 0.38, {"amount": maxi(4, int(clampf(r * r * 1.0, 8.0, 60.0) * [0.0, 0.6, 0.85, 1.0][tr])),
+			"life": 3.0, "one_shot": false, "explosive": 0.0, "shape": "ring", "r": r * 0.75, "r_in": 0.0, "dir": Vector3.UP,
+			"spread": 60.0, "vel": [0.1, 0.3], "gravity": 0.06, "damping": [0.1, 0.3], "scale": [0.8, 1.3], "grow": [0.6, 1.6],
+			"spin": 10.0})
+		fu.visibility_aabb = vis
+	var sp := InfernalFx.particles(root, at + Vector3(0, 0.3, 0), {"amount": maxi(3, int(clampf(r * 4.0, 6.0, 40.0) * [0.4, 0.6, 0.85, 1.0][tr])),
+		"life": 2.4, "one_shot": false, "explosive": 0.0, "shape": "ring", "r": r * 0.85, "r_in": 0.0, "dir": Vector3.UP,
+		"spread": 30.0, "vel": [0.1, 0.35], "gravity": 0.05, "damping": [0.2, 0.4], "turb": 0.3, "scale": [0.4, 1.0], "size": 0.05,
+		"colors": [[0.0, Color(SPORE, 0.0)], [0.25, Color(SPORE, 0.8)], [0.75, Color(LIME, 0.5)], [1.0, Color(LIME, 0.0)]]})
+	sp.visibility_aabb = vis
+
+## The cloud thinning away over t seconds: its miasma fades, its fumes and spores stop. Safe to call twice.
+static func miasma_end(root: Node3D, t := 0.7) -> void:
+	if root == null or not is_instance_valid(root) or root.has_meta("miasma_end"):
+		return
+	root.set_meta("miasma_end", true)
+	for ch in root.get_children():
+		if ch is GPUParticles3D:
+			(ch as GPUParticles3D).emitting = false
+		elif ch is MeshInstance3D and String(ch.name).begins_with("miasma"):
+			var m := (ch as MeshInstance3D).material_override as ShaderMaterial
+			if m != null:
+				InfernalFx.tween_param(ch, m, "fade", float(m.get_shader_parameter("fade")), 0.0, t)
+
+## The Last Epidemic's foot: a band of sickly light round the dome where it meets the ground (noise-broken, flowing
+## round), in place of a flat green torus. Named "edge" so the collapse takes it away with the shell.
+static func dome_rim(root: Node3D, at: Vector3, r: float, col: Color) -> MeshInstance3D:
+	var m := _mat("dome_rim")
+	m.set_shader_parameter("noise_tex", InfernalFx.noise())
+	m.set_shader_parameter("col", col)
+	m.set_shader_parameter("fade", 0.0)
+	var mi := MeshInstance3D.new()
+	mi.mesh = InfernalFx.wedge_mesh(_world(root), at, 0.0, maxf(r - 0.7, 0.1), r + 0.3, PI, 72, 2, 0.08)
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.name = "edge"
+	root.add_child(mi)
+	InfernalFx.tween_param(mi, m, "fade", 0.0, 1.0, 0.5).set_ease(Tween.EASE_OUT)
+	return mi
 
 ## Alchemist's fire: InfernalFx's flame, orange at the skin, green-white at the heart.
 static func alch_flame_mat(dark := 0.65, heat := 1.25) -> ShaderMaterial:
@@ -400,5 +474,60 @@ void fragment() {
 	SPECULAR = 0.85;
 	EMISSION = col.rgb * (0.06 + 0.5 * rim + 0.1 * drops) * life;
 	ALPHA = clamp(m * 0.88 * life * smoothstep(1.0, 0.9, r), 0.0, 1.0);
+}
+"""
+
+## A layer of a poison cloud's fog (on InfernalFx.disc_mesh: UV centre 0.5, rim 0.5 out): domain-warped noise laid in
+## world space (scale per metre), rolling slowly; darker where it is dense, the crests of its curls catching the
+## colour; a ragged edge at 0.8 of the disc with thin tendrils creeping past it. fade 0..1 brings it in and out.
+const MIASMA_SHADER := """
+shader_type spatial;
+render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
+uniform sampler2D noise_tex : repeat_enable, filter_linear_mipmap;
+uniform vec4 col : source_color = vec4(0.34, 0.85, 0.14, 1.0);
+uniform vec4 deep : source_color = vec4(0.07, 0.28, 0.03, 1.0);
+uniform float density = 0.75;
+uniform float speed = 1.0;
+uniform float scale = 0.11;
+uniform float seed = 0.0;
+uniform float fade = 0.0;
+varying vec2 wxz;
+void vertex() { wxz = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xz; }
+void fragment() {
+	float r = length(UV - vec2(0.5)) * 2.0;
+	float t = TIME * 0.03 * speed;
+	vec2 p = wxz * scale + vec2(seed, seed * 0.7);
+	// blurred lookups (mip levels), a gentle warp: gas is soft at hand's breadth, its shapes a metre or two across
+	vec2 q = vec2(textureLod(noise_tex, p * 0.5 + vec2(t, -t * 0.7), 2.5).r,
+		textureLod(noise_tex, p * 0.5 + vec2(5.2 - t * 0.6, 1.3 + t), 2.5).r) - 0.5;
+	float n = textureLod(noise_tex, p * 0.55 + q * 0.3 + vec2(t * 0.4, t * 0.25), 2.0).r;
+	float n2 = textureLod(noise_tex, p * 1.3 + q * 0.2 - vec2(t * 1.1, t * 0.5), 1.5).r;
+	float dens = n * 0.65 + n2 * 0.35;
+	float edge = 0.8 + (n - 0.5) * 0.4;
+	float body = smoothstep(edge, edge - 0.5, r);
+	float fog = body * (0.35 + 0.65 * smoothstep(0.25, 0.75, dens + (0.8 - r) * 0.2));
+	float tendril = smoothstep(0.55, 0.75, n2) * smoothstep(1.0, 0.75, r) * (1.0 - body);
+	float a = max(fog, tendril * 0.3);
+	ALBEDO = mix(deep.rgb, col.rgb, 0.3 + 0.4 * smoothstep(0.3, 0.8, dens));
+	ALPHA = clamp(a * density * fade, 0.0, 1.0);
+}
+"""
+
+## The Last Epidemic's foot (on InfernalFx.wedge_mesh round the full circle: UV.x round it, UV.y out across the band):
+## a band of sickly light, brightest a little inside the dome's edge, broken by noise that flows slowly round.
+const DOME_RIM_SHADER := """
+shader_type spatial;
+render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
+uniform sampler2D noise_tex : repeat_enable, filter_linear_mipmap;
+uniform vec4 col : source_color = vec4(0.55, 1.0, 0.25, 1.0);
+uniform float fade = 0.0;
+void fragment() {
+	float t = TIME * 0.04;
+	float n = texture(noise_tex, vec2(UV.x * 7.0 + t, UV.y * 0.5 - t * 0.6)).r;
+	float n2 = texture(noise_tex, vec2(UV.x * 23.0 - t * 2.0, UV.y * 1.3 + t)).r;
+	float band = smoothstep(0.0, 0.62, UV.y) * smoothstep(1.0, 0.66, UV.y);
+	float a = band * (0.3 + 0.7 * smoothstep(0.3, 0.72, n)) * (0.75 + 0.5 * n2);
+	ALBEDO = col.rgb * (0.7 + 0.6 * band);
+	ALPHA = clamp(a * 0.6 * fade, 0.0, 1.0);
 }
 """

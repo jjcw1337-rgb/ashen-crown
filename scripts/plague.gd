@@ -436,50 +436,13 @@ func _cloud(at: Vector3, r: float, dur: float, src: String, infect: bool) -> voi
 	var node := _cloud_node(at, r, dur, TOXIC if src != "epidemic" else MIASMA)
 	clouds.append({"node": node, "pos": at, "r": r, "t": dur, "src": src, "infect": infect, "tick": 0.0})
 
-## A low drifting green fog: a ground ring of particles that hangs and churns, a faint light inside.
+## A low rolling poison fog (PlagueFx.miasma: churning layers on the ground, fumes rolling off it, spores), a faint
+## light inside. It thins away at its end (PlagueFx.miasma_end), or sooner when _end_cloud ends it.
 func _cloud_node(at: Vector3, r: float, dur: float, col: Color) -> Node3D:
 	var root := Node3D.new()
 	h.game.world.fx_root.add_child(root)
 	root.global_position = at
-	var p := GPUParticles3D.new()
-	p.amount = int(clampf(r * r * 6.0, 32.0, 420.0))
-	p.lifetime = 1.8
-	p.preprocess = 0.6
-	var pm := ParticleProcessMaterial.new()
-	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
-	pm.emission_ring_axis = Vector3.UP
-	pm.emission_ring_radius = r * 0.85
-	pm.emission_ring_inner_radius = 0.0
-	pm.emission_ring_height = 0.4
-	pm.direction = Vector3.UP
-	pm.spread = 80.0
-	pm.initial_velocity_min = 0.1
-	pm.initial_velocity_max = 0.4
-	pm.gravity = Vector3(0, 0.15, 0)
-	pm.scale_min = 1.0
-	pm.scale_max = 2.0
-	var grad := Gradient.new()
-	grad.set_color(0, Color(col.r, col.g, col.b, 0.0))
-	var fog := Color(col.r * 0.6, col.g * 0.75, col.b * 0.45)
-	grad.add_point(0.2, Color(fog.r, fog.g, fog.b, 0.7))
-	grad.add_point(0.7, Color(fog.r * 0.8, fog.g * 0.8, fog.b * 0.8, 0.5))
-	grad.set_color(grad.get_point_count() - 1, Color(fog.r * 0.6, fog.g * 0.7, fog.b * 0.5, 0.0))
-	var gt := GradientTexture1D.new()
-	gt.gradient = grad
-	pm.color_ramp = gt
-	p.process_material = pm
-	var q := QuadMesh.new()
-	q.size = Vector2(1.1, 1.1) * clampf(r / 3.0, 1.0, 1.8)
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-	mat.vertex_color_use_as_albedo = true
-	mat.albedo_texture = _soft_tex()
-	q.material = mat
-	p.draw_pass_1 = q
-	p.position = Vector3(0, 0.35, 0)
-	root.add_child(p)
+	PlagueFx.miasma(root, at, r, col)
 	var l := OmniLight3D.new()
 	l.light_color = col
 	l.light_energy = 0.8
@@ -489,29 +452,15 @@ func _cloud_node(at: Vector3, r: float, dur: float, col: Color) -> Node3D:
 	Fx._free_later(root, dur + 2.0)
 	var tw := root.create_tween()
 	tw.tween_interval(maxf(dur - 0.6, 0.0))
-	tw.tween_callback(func() -> void: p.emitting = false)
+	tw.tween_callback(func() -> void: PlagueFx.miasma_end(root, 0.8))
 	tw.tween_property(l, "light_energy", 0.0, 0.6)
 	return root
-
-static var _soft: Texture2D
-static func _soft_tex() -> Texture2D:
-	if _soft != null:
-		return _soft
-	var img := Image.create(32, 32, false, Image.FORMAT_RGBA8)
-	for y in 32:
-		for x in 32:
-			var d := Vector2(x - 15.5, y - 15.5).length() / 15.5
-			img.set_pixel(x, y, Color(1, 1, 1, smoothstep(1.0, 0.25, d)))
-	_soft = ImageTexture.create_from_image(img)
-	return _soft
 
 func _end_cloud(c: Dictionary) -> void:
 	clouds.erase(c)
 	var n = c["node"]
 	if is_instance_valid(n):
-		for ch in (n as Node3D).get_children():
-			if ch is GPUParticles3D:
-				(ch as GPUParticles3D).emitting = false
+		PlagueFx.miasma_end(n as Node3D, 0.8)
 		Fx._free_later(n, 2.0)
 
 func _update_clouds(delta: float) -> void:
@@ -773,7 +722,8 @@ func _dome_pulse() -> void:
 	for e in h.game.enemies_near(g, float(dome["r"])):
 		_infect(e, 0)
 
-## The dome: a translucent green shell (a sphere cap, rim brighter, slowly churning) over a ring of fog.
+## The dome: a translucent green shell (a sphere cap, rim brighter, mist churning up it) over a floor of miasma,
+## a band of sickly light where it meets the ground.
 func _dome_node(at: Vector3, r: float, dur: float) -> Node3D:
 	var root := _cloud_node(at, r * 0.95, dur, MIASMA)
 	var m := MeshInstance3D.new()
@@ -792,21 +742,7 @@ func _dome_node(at: Vector3, r: float, dur: float) -> Node3D:
 	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	m.name = "shell"
 	root.add_child(m)
-	var edge := MeshInstance3D.new()
-	var tm := TorusMesh.new()
-	tm.inner_radius = r - 0.12
-	tm.outer_radius = r + 0.12
-	tm.rings = 64
-	edge.mesh = tm
-	edge.scale = Vector3(1, 0.25, 1)
-	edge.position = Vector3(0, 0.05, 0)
-	var em := StandardMaterial3D.new()
-	em.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	em.albedo_color = Color(0.55, 1.0, 0.25)
-	edge.material_override = em
-	edge.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	edge.name = "edge"
-	root.add_child(edge)
+	PlagueFx.dome_rim(root, at, r, Color(0.55, 1.0, 0.25))
 	var tw := m.create_tween()
 	tw.tween_method(func(v: float) -> void: sh.set_shader_parameter("amt", v), 0.0, 1.0, 0.5)
 	return root
@@ -830,11 +766,11 @@ float noise(vec3 p) {
 		mix(mix(n3(i + vec3(0,0,1)), n3(i + vec3(1,0,1)), f.x), mix(n3(i + vec3(0,1,1)), n3(i + vec3(1,1,1)), f.x), f.y), f.z);
 }
 void fragment() {
-	float rim = pow(1.0 - abs(dot(NORMAL, VIEW)), 2.5);
+	float rim = pow(1.0 - abs(dot(NORMAL, VIEW)), 3.5);
 	float churn = noise(lp * 1.3 + vec3(0.0, TIME * 0.6, TIME * 0.3)) * 0.6 + 0.4;
 	float base = smoothstep(0.0, 0.6, lp.y) * 0.3 + 0.7;
 	ALBEDO = mix(col.rgb * 0.55, col.rgb * 1.5 + vec3(0.08, 0.12, 0.0), rim);
-	ALPHA = clamp((rim * 0.6 + 0.14) * churn * base * amt, 0.0, 0.85);
+	ALPHA = clamp((rim * 0.45 + 0.08) * churn * base * amt, 0.0, 0.7);
 }
 """
 	return _dsh
