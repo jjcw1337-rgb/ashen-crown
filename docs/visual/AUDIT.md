@@ -133,7 +133,9 @@ target to target with a flash and sparks on each; War Cry burns a war sigil into
 a wave of dust and ash out to the edge of the cry. **The Warlock's three generic effects** went the same way (`WarlockFx`):
 Blight Bolt's burst is a ring of fel fire with a pale flare, sickly smoke, splashing blight and souls rising; Soul
 Shackles turns his sigil under him and pulls the dark in from the edge of its reach; Fel Covenant raises a crown of fel
-fire round him with souls spiralling up (fel fire: InfernalFx's flame in his palette).
+fire round him with souls spiralling up (fel fire: InfernalFx's flame in his palette). **The Wraith's** 20 generic bursts and
+8 rings became his own: spirit light streaking out as curling wisps, shadow as soft rolling smoke, every ring a ripple
+of soul-mist over the ground (`WraithFx._spirit_burst`, `_soul_ring`).
 
 The bosses cost 6 credits (concept) + 30 (model) each: 108. The camp pieces 90 (three concepts, two edits, two models).
 Total so far: 198 of the 2,614 monthly credits. `a2_arena_test` (the whole games) and `a3_test`
@@ -151,7 +153,7 @@ Total so far: 198 of the 2,614 monthly credits. `a2_arena_test` (the whole games
 | S6 | Two act bosses and the gladiators have no model | Data.ENEMIES `"mesh"` names with no glb | **Meshy models (stage 3)**, testing |
 | S7 | Oak and pine models are crumpled low-poly shards | Model sheets; on screen hundreds of times | In play the leaf clusters hide it (oak_compare.gd); a procedural rebuild lost. P2 |
 | S8 | Characters read as dark blobs on dark ground | Colour maps 0.14-0.24; camp frame median luminance 0.12, p90 0.19; the knight's plate at 5% reflectance | Rim light in every zone, metal lift on the knight (stage 2); grading needs real-GPU review |
-| S9 | Generic recoloured skill effects | Knight Nova/Cry/Charge, Warlock, shared skills, most Wraith effects use `Fx.burst/ring/pillar` | Knight done (`HolyFx`, stage 2), shared skills and the Warlock's three (`ElementalFx`, `WarlockFx`, stage 3); the Wraith P2 |
+| S9 | Generic recoloured skill effects | Knight Nova/Cry/Charge, Warlock, shared skills, most Wraith effects use `Fx.burst/ring/pillar` | Knight done (`HolyFx`, stage 2), shared skills, the Warlock and the Wraith (`ElementalFx`, `WarlockFx`, `WraithFx`, stage 3); generic `Fx` still serves monsters and items |
 | S10 | Always-on fire shadows outside the budget | Fort: 12 shadowed omni lights | Fixed (stage 1) |
 | S11 | Decimation facets on round props | Clay views: flask, mixture, items, lair rocks | Bottles re-shaded (stage 2); shard rocks need a rebuild |
 | S12 | Model textures uncompressed in video memory | Lossy WebP decodes to RGBA8: 1.0-1.9 GB VRAM | Decision (below) |
@@ -232,7 +234,7 @@ Scores 1-5 against the D4/PoE2 bar at the game camera (detail per asset in the c
 | 5 | Hero readability | Dark heroes on dark ground | Rim light in every zone and the knight's steel (done); per-zone grade and reflection probes near fires (to do, real GPU) | Code |
 | 6 | LODs for Meshy models | Monsters and props draw in full at any distance | Re-bake from Meshy's full-detail output (needs regeneration: the originals expired) | Credits per model |
 | 7 | ~~Camp lantern and palisade~~ **done (stage 3)** | Shard soups in the hub | Meshy + re-bake | 90 credits |
-| 8 | Wraith effects (~~shared, Warlock~~ done, stage 3) | Generic bursts and rings | Custom shaders and flipbooks, as HolyFx / ElementalFx | Code |
+| 8 | ~~Warlock, shared and Wraith effects~~ **done (stage 3)** | Generic bursts and rings | ElementalFx, WarlockFx fel fire, WraithFx wisps and soul-mist | Code |
 | 9 | Ground materials and decals | The largest area on screen | Camp plan phase 2 (tiling PBR sets, height blending, decals) | Code + textures |
 | 10 | A2/A3 grass and Aurelia's architecture | Act II looks older than Act I | Living grass in A2/A3; Meshy Roman set pieces | Credits + code |
 | 11 | Procedural pines, rocks, small props | Code-built next to Meshy | Meshy kits | Credits |
