@@ -78,6 +78,7 @@ func _run() -> void:
 	b.speed = 0.0
 	print("[L] alongside the Verdant Isle's jetty: dock '%s'" % b.dock_near().get("name", ""))
 	b.set_process(true)
+	g.hero.set_level(10)      # (the Verdant Isle asks for level 10)
 	g.try_land()
 	while g._busy or g.cur_zone != "isle_verdant":
 		await process_frame

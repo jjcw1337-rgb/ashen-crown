@@ -2014,7 +2014,7 @@ func _add_boat(zone: String, spawn: String) -> void:
 		b.docks.append({"name": "the pier", "kind": "pier", "pos": Vector2(Coast.MOOR.x, Coast.MOOR.z), "yaw": PI * 0.5})
 		for isle in Isles.ISLANDS:
 			var m := isle_mooring(isle, Vector2.ZERO, true)
-			b.docks.append({"name": isle["name"], "kind": "isle", "id": isle["id"], "pos": Vector2(m.x, m.z), "yaw": m.w})
+			b.docks.append({"name": isle["name"], "kind": "isle", "id": isle["id"], "pos": Vector2(m.x, m.z), "yaw": m.w, "level": int(isle.get("level", 0))})
 		if spawn.begins_with("sail_from_") and hero.boats.is_empty():
 			# a partner brought along by the party's trip with no boat of his own: he's set down on the pier
 			b.moor(Coast.MOOR, PI * 0.5)
@@ -2096,7 +2096,7 @@ func _sail_input() -> void:
 		pt = water_pt
 	boat.drive = {"throttle": thr, "steer": steer, "stop": Input.is_key_pressed(KEY_SPACE), "point": pt}
 	var d := boat.dock_near()
-	ui.set_sail_prompt(("Step ashore at " + str(d["name"])) if not d.is_empty() else "")
+	ui.set_sail_prompt(_ashore_prompt(d))
 
 ## Steps ashore where she is, if she's at a dock and slow (E, or the prompt's button).
 func try_land() -> bool:
@@ -2106,8 +2106,22 @@ func try_land() -> bool:
 	if d.is_empty():
 		ui.message("Bring her alongside a jetty first, and slow", Color(0.75, 0.88, 1.0))
 		return false
+	var need := int(d.get("level", 0))
+	if hero.level < need and not test_allskills:
+		ui.message("%s is for heroes of level %d and up (you're %d)" % [d["name"], need, hero.level], Color(1.0, 0.6, 0.35))
+		Sfx.play("deny")
+		return false
 	land_boat(d)
 	return true
+
+## The sail prompt at a dock: where, and the level it asks for.
+func _ashore_prompt(d: Dictionary) -> String:
+	if d.is_empty():
+		return ""
+	var need := int(d.get("level", 0))
+	if need > 0 and hero.level < need and not test_allskills:
+		return "%s (level %d: you're %d)" % [d["name"], need, hero.level]
+	return "Step ashore at " + str(d["name"])
 
 func land_boat(d: Dictionary) -> void:
 	ui.set_sail_prompt("")
