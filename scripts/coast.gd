@@ -290,8 +290,9 @@ static func _beach(w: World) -> void:
 	# the tide line: rock pools in the wash, driftwood and kelp on the sand, the length of the strand
 	var z2 := BOUNDS.position.y + 6.0
 	while z2 < BOUNDS.end.y - 6.0:
-		if absf(z2) > 12.0:
-			var sx := shore_x(z2)
+		var sx := shore_x(z2)
+		# (where the shore bends out past the strand's ends it's beyond the walkable ground: nothing there)
+		if absf(z2) > 12.0 and sx < BOUNDS.end.x - 6.0:
 			match rng.randi() % 4:
 				0: _put(w, "rock_pools", sx - rng.randf_range(0.0, 2.0), z2, rng.randf() * TAU, rng.randf_range(0.9, 1.4), 0.0)
 				1: _put(w, "driftwood", sx + rng.randf_range(1.5, 4.0), z2, rng.randf() * TAU, rng.randf_range(0.8, 1.2), 0.0)
