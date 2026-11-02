@@ -83,9 +83,13 @@ func _run() -> void:
 	check(shroom_hurt, "and their clouds hurt whoever stands in them")
 	var gold: Array = g.world.interactables.filter(func(t): return t.kind == "chest" and t.data.get("gold", false))
 	check(g.chest_sealed(gold[0]), "the golden chest sealed while he lives")
+	var home: Vector3 = her.global_position
+	her.global_position = gold[0].global_position + Vector3(70.0, 0, 0)
+	check(g.chest_sealed(gold[0]), "still sealed with him lured 70 m off (Codex's audit)")
+	her.global_position = home
 	her.take_damage(99999.0, 0.0, her.global_position, 0.0, false)
 	await secs(3.5)
 	check(not g.chest_sealed(gold[0]), "he fell: the chest's seal is broken")
-	check(her.brain._shrooms().is_empty(), "and his mushrooms withered")
+	check(g.world.enemies_root.get_children().filter(func(e): return e.kind == "spore_shroom" and not e.dead).is_empty(), "and his mushrooms withered")
 	print("[B] done, %d failed" % fails)
 	quit()

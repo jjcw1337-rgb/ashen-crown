@@ -40,6 +40,7 @@ static func play(h: Hero, ev: Dictionary) -> void:
 		"demon": done = DemonFx.play(h, ev)
 		"warlock": done = WarlockFx.play(h, ev)
 		"archer": done = ArcherFx.play(h, ev)
+		"doug": done = DougFx.play(h, ev)
 	if not done:
 		done = _common(h, ev)
 	if not done:
@@ -82,6 +83,7 @@ static func update(h: Hero, delta: float) -> void:
 	DemonFx.update(h, delta)
 	WarlockFx.update(h, delta)
 	ArcherFx.update(h, delta)
+	DougFx.update(h, delta)
 
 ## Everything lingering is gone (death, a class change, a zone change).
 static func clear(h: Hero) -> void:
@@ -90,6 +92,7 @@ static func clear(h: Hero) -> void:
 	WarlockFx.clear(h)
 	ArcherFx.clear(h)
 	KnightFx.clear(h)
+	DougFx.clear(h)
 	h.fxs.clear()
 
 # ---------------------------------------------------------------- helpers for the handlers

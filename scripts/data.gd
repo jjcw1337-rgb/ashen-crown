@@ -124,6 +124,8 @@ const WEAPON_PROFILES := {
 	"demon": {"motion": "back", "store": "back"},
 	# the plague doctor's cane rides across his back too (his coat's belt is full of vials)
 	"plague": {"motion": "back", "store": "back"},
+	# Doug tucks his drumstick in his belt (it's a snack too)
+	"doug": {"motion": "back", "store": "back"},
 	# the dragons hold nothing (an equipped weapon hangs off a hidden joint): the default motion, out of sight
 	"wyrm": {"motion": "back", "store": "back"},
 	"serpent": {"motion": "back", "store": "back"},
@@ -225,14 +227,14 @@ const ENEMIES := {
 	"ice_troll": {"mesh": "ice_troll", "name": "Hrimgar the Frostbound", "rig": "humanoid", "life": 1400, "dmg": [24, 38], "speed": 3.2, "range": 3.0, "xp": 1400,
 		"ai": "melee", "atk": "slam", "atk_time": 1.7, "armor": 22, "radius": 1.3, "boss": true, "aggro": 18.0, "blood": Color(0.55, 0.8, 1.0),
 		"intro": {"title": "HRIMGAR", "sub": "THE FROSTBOUND", "line": "He's been standing in that cave for three hundred years. He'd like a word about the draught.", "color": Color(0.55, 0.85, 1.0)},
-		"look": {"height": 3.4, "eyes": Color(0.6, 0.95, 1.0)}},
+		"look": {"height": 1.9, "eyes": Color(0.6, 0.95, 1.0)}},          # x a man's 1.8 m: 3.4 m
 	"spore_shroom": {"prop": "fungus", "name": "Poison Mushroom", "rig": "crawler", "life": 80, "dmg": [5, 8], "speed": 0.0, "range": 3.0, "xp": 12,
 		"ai": "melee", "atk": "slam", "atk_time": 1.0, "armor": 0, "radius": 0.7, "blood": Color(0.35, 0.6, 0.2),
 		"look": {"height": 1.2, "prop_scale": 1.3, "eyes": Color(0.5, 1.0, 0.4)}},
 	"hermit": {"mesh": "hermit", "name": "Old Mossbeard", "rig": "humanoid", "life": 900, "dmg": [14, 22], "speed": 3.0, "range": 9.0, "xp": 1100,
 		"ai": "ranged", "atk": "cast", "atk_time": 1.4, "armor": 10, "radius": 0.6, "boss": true, "aggro": 14.0, "proj": "poison", "blood": Color(0.35, 0.55, 0.2),
 		"intro": {"title": "OLD MOSSBEARD", "sub": "THE THORN HERMIT", "line": "Hasn't had visitors in years. Doesn't plan on letting this lot leave.", "color": Color(0.6, 1.0, 0.45)},
-		"look": {"height": 1.45, "eyes": Color(0.5, 1.0, 0.4)}},
+		"look": {"height": 0.82, "eyes": Color(0.5, 1.0, 0.4)}},         # 1.5 m, hunched
 	"dwarf": {"mesh": "dwarf", "name": "Drunken Dwarf", "rig": "humanoid", "life": 340, "dmg": [16, 26], "speed": 3.9, "range": 1.8, "xp": 260,
 		"ai": "melee", "atk": "smash", "atk_time": 1.1, "armor": 18, "radius": 0.55, "blood": Color(0.5, 0.02, 0.02),
 		"look": {"height": 1.3, "eyes": Color(0.3, 0.6, 1.0), "weapon": "club"}},
@@ -364,6 +366,7 @@ const BASES := {
 	"rejuv": {"name": "Rejuvenation Potion", "slot": "potion", "kind": "potion", "lvl": 1, "price": 60, "rejuv": 0.4, "color": Color(0.6, 0.1, 0.9)},
 	"gold": {"name": "Gold", "slot": "gold", "kind": "gold", "lvl": 1, "price": 0},
 	# the plague doctor's cane ("cls": only he carries it; Plague.cane_model draws it)
+"roast_drumstick": {"name": "Roast Drumstick", "slot": "weapon", "kind": "club", "cls": "doug", "dmg": [3, 7], "speed": 1.2, "lvl": 1, "price": 30, "shape": {"len": 0.55, "w": 0.12}},
 "physician_cane": {"name": "Physician's Cane", "slot": "weapon", "kind": "cane", "cls": "plague", "dmg": [3, 7], "speed": 1.1, "lvl": 1, "price": 35},
 "crow_cane": {"name": "Crow-Skull Cane", "slot": "weapon", "kind": "cane", "cls": "plague", "dmg": [8, 16], "speed": 1.1, "lvl": 12, "price": 210},
 # bows: the archer's weapons ("cls": only he can draw them)
@@ -542,6 +545,21 @@ const SKILLS := [
 	{"id": "trap", "cls": "plague", "name": "Pestilent Trap", "key": "R", "lvl": 6, "mana": 12, "cd": 5.0, "tags": ["trap"], "aim": "point", "range": 10.0, "desc": "Kneel and set a brass canister (up to 2, 30 seconds). The first enemy to step on it is stunned and it vents a poison cloud 3.5 metres wide. An infected enemy that springs it starts an outbreak: the cloud infects everything it touches."},
 	{"id": "epidemic", "cls": "plague", "name": "The Last Epidemic", "key": "F", "lvl": 10, "mana": 30, "cd": 24.0, "tags": ["ultimate"], "aim": "self", "desc": "Smash your censer and raise a miasma dome 9 metres wide for 8 seconds. Inside, enemies are poisoned, slowed and infected; an infected enemy that dies passes it to the two nearest (up to 6 times). The dome collapses with a final blow."},
 	{"id": "covenant", "cls": "warlock", "name": "Fel Covenant", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "tags": ["buff"], "aim": "self", "desc": "Seal a pact with what waits beyond: +40% damage for 12 seconds, and Drain Life forks to two more enemies and heals twice as much."},
+	# Doug (doug_skills.gd, docs/characters/doug.md): the trickster; every tool readable, every tool answerable
+	{"id": "pie", "cls": "doug", "name": "Cream Pie", "key": "", "lvl": 1, "mana": 6, "cd": 0.0, "use": 0.9, "hit": 0.5, "style": "pie", "speed": "attack", "dmg": 120, "type": "phys", "aim": "point", "range": 12.0, "tags": ["projectile", "attack"],
+		"desc": "Lob a cream pie at the cursor (12 m): a splat for 120% weapon damage and the target is Pied: monsters blinded for 2 seconds, a player's screen creamed at the edges and their aim assist gone for 1.5 seconds. The same target can't be Pied again for 6 seconds."},
+	{"id": "peels", "cls": "doug", "name": "Banana Peels", "key": "Q", "lvl": 1, "mana": 9, "cd": 7.0, "use": 0.8, "hit": 0.55, "style": "peels", "aim": "facing", "range": 6.0, "tags": ["trap"],
+		"desc": "Toss three banana peels in a fan ahead (they land 3 to 6 metres out and last 8 seconds; at most 6 down). Whoever steps on one slips: a player is knocked down for 0.7 seconds and slides on, a monster is stunned for 1 second. A dodge roll over a peel doesn't slip."},
+	{"id": "slide", "cls": "doug", "name": "Pratfall Slide", "key": "E", "lvl": 3, "mana": 10, "cd": 5.0, "use": 0.7, "hit": 0.2, "style": "slide", "dmg": 90, "knock": 3.0, "aim": "facing", "range": 7.0, "tags": ["movement"],
+		"desc": "Belly-slide 7 metres the way you face, honking: foes in the way take 90% weapon damage and are shoved aside. You pop up with a ta-da."},
+	{"id": "doppel", "cls": "doug", "name": "Doppel-Doug", "key": "R", "lvl": 6, "mana": 14, "cd": 14.0, "use": 0.4, "hit": 0.5, "style": "doppel", "aim": "point", "range": 12.0, "tags": ["buff", "summon"],
+		"desc": "Duck behind a puff of confetti: you turn invisible for 1.8 seconds while a balloon double of you runs off toward the cursor, waving. Struck, the double pops in a confetti burst that slows whoever is near for 1.5 seconds."},
+	{"id": "juggle", "cls": "doug", "name": "Pin Juggle", "key": "F", "lvl": 10, "mana": 16, "cd": 0.0, "use": 1.4, "hit": 0.35, "style": "juggle", "dmg": 60, "type": "fire", "aim": "point", "range": 12.0, "tags": ["projectile", "fire"],
+		"desc": "Throw five flaming juggling pins in quick succession at the cursor; each bounces on to two more foes. 60% weapon damage as fire each."},
+	{"id": "bounce", "cls": "doug", "name": "Big Top Bounce", "key": "G", "lvl": 14, "mana": 18, "cd": 10.0, "use": 1.3, "hit": 0.78, "style": "bounce", "dmg": 180, "knock": 2.0, "aim": "point", "range": 10.0, "tags": ["movement", "cc"], "cancel": false,
+		"desc": "Slam down a trampoline and bounce up to 10 metres to the cursor, landing in a belly-flop: 180% weapon damage in 3 metres and foes are launched for 0.8 seconds. A shadow and a whistle mark where you'll land."},
+	{"id": "car", "cls": "doug", "name": "Clown Car", "key": "V", "lvl": 20, "mana": 40, "cd": 60.0, "use": 0.6, "hit": 0.5, "style": "car", "dmg": 140, "aim": "self", "tags": ["ultimate"],
+		"desc": "A tiny clown car screeches in and you drive it for 5 seconds: fast, unstoppable, ramming foes for 140% weapon damage and knocking them flying. Then it bursts in confetti and six mini clowns tumble out, sprint at the nearest foes and pie them."},
 	# the shared skills (SharedSkills): "cls": "any", every class can put them on its bar (jj, 2026-11-01)
 	{"id": "earthshatter", "cls": "any", "name": "Earthshatter", "key": "", "lvl": 1, "mana": 8, "cd": 0.0, "aim": "facing", "range": 5.0,
 		"style": "slam", "use": 1.6, "speed": "attack", "dmg": 230, "base": [10, 16], "per_lvl": 2.5, "type": "phys", "knock": 1.2,
@@ -582,6 +600,8 @@ const CLASSES := {
 	# the bow class (Jace's): its name is his to choose; "Archer" until then
 	"archer": {"name": "Archer", "str": 14, "dex": 26, "vit": 18, "ene": 14, "weapon": "short_bow",
 		"desc": "A red-hooded ranger with a carved recurve bow and his dire wolf at his side. Shoots on the move: fire arrows that burn through a line, frost volleys that chill, storm snares that chain lightning."},
+	"doug": {"name": "Doug", "str": 18, "dex": 22, "vit": 18, "ene": 16, "weapon": "roast_drumstick",
+		"desc": "A washed-up circus brawler with a roast drumstick and a bag of tricks. Every gag is a weapon: pies that blind, peels that trip, a double that runs the other way, and a clown car nobody wants to see coming."},
 	"plague": {"name": "Plague Doctor", "str": 14, "dex": 18, "vit": 18, "ene": 24, "weapon": "physician_cane",
 		"desc": "A beaked physician of the cursed years, belted with vials and a smoking censer. Fights by preparation: poison clouds, fused fire, traps that wait, and an epidemic that spreads from foe to foe."},
 	"warlock": {"voice": "gnome", "name": "Warlock", "str": 10, "dex": 10, "vit": 10, "ene": 10,

@@ -143,6 +143,7 @@ static func _dinos(w: World, isle: Dictionary, o: Vector2) -> void:
 	# the tunnel's mouth, half lost in the jungle (where the drunken dwarves are: later its own cave)
 	_prop(w, isle, o, "tunnel", TUNNEL, 2.2)
 	w.spawns["poi_tunnel"] = Isles.at(w, isle, o, TUNNEL)
+	DwarfGame.camp(w, isle, o, TUNNEL)
 	# the nest in the glade: babies, and their mother waiting in the brush beside it
 	var glade: Vector2 = CLEARINGS[2][0]
 	add.call("trike_baby", glade + Vector2(1.5, 2.5), 3, -2, 1110)

@@ -1590,6 +1590,39 @@ func _panel(title: String, left: bool, w: int, h: int) -> PanelContainer:
 	vb.add_child(_divider(22))
 	return p
 
+var _pie_overlay: ColorRect
+
+## A cream pie in the face (DougSkills; Hero.take_hit "pied"): cream splattered over the screen's edges, fading.
+func pie_face(secs: float) -> void:
+	if _pie_overlay == null:
+		_pie_overlay = ColorRect.new()
+		_pie_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_pie_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var m := ShaderMaterial.new()
+		var sh := Shader.new()
+		sh.code = """shader_type canvas_item;
+uniform float amt = 1.0;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) { vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
+void fragment() {
+	vec2 c = (UV - 0.5) * vec2(1.6, 1.0);
+	float edge = smoothstep(0.32, 0.75, length(c) + (noise(UV * 7.0) - 0.5) * 0.35);
+	float blob = smoothstep(0.55, 0.7, noise(UV * 4.0 + 3.0)) * smoothstep(0.15, 0.45, length(c));
+	float a = clamp(edge + blob * 0.8, 0.0, 1.0) * amt;
+	COLOR = vec4(vec3(1.0, 0.97, 0.88) * (0.92 + noise(UV * 30.0) * 0.08), a * 0.95);
+}"""
+		m.shader = sh
+		_pie_overlay.material = m
+		top.add_child(_pie_overlay)
+	_pie_overlay.visible = true
+	var m2 := _pie_overlay.material as ShaderMaterial
+	m2.set_shader_parameter("amt", 1.0)
+	var tw := _pie_overlay.create_tween()
+	tw.tween_interval(secs * 0.6)
+	tw.tween_method(func(v: float): m2.set_shader_parameter("amt", v), 1.0, 0.0, secs * 0.4)
+	tw.tween_callback(func(): _pie_overlay.visible = false)
+
 ## A window's close: a gold ✕ that brightens and grows a touch under the mouse.
 func _close_button() -> Button:
 	var x := Button.new()
@@ -3290,6 +3323,10 @@ func _build_test_panel() -> void:
 	test_panel.add_child(vb)
 	vb.add_child(_label("Testing", 22, GOLD, true))
 	vb.add_child(_label(("Admin: " + game.admin_name) if game.admin_name != "" else "Admin: editor", 12, Color(0.55, 0.85, 1.0)))
+	var l20 := _iron_button("Go to level 20", 280, 40, 16)
+	l20.name = "level20"
+	l20.pressed.connect(func(): game.go_level_20())
+	vb.add_child(l20)
 	var mx := Button.new()
 	mx.text = "Max out this character"
 	mx.pressed.connect(func(): game.max_out())
@@ -5297,6 +5334,60 @@ class SkillGlyph extends Control:
 					var x := -11.0 + k * 7.3
 					draw_line(c + Vector2(x + 3, -16), c + Vector2(x, 8), Color(0.55, 0.4, 0.25) if not dim else steel, 2.5, true)
 					draw_colored_polygon(PackedVector2Array([c + Vector2(x - 0.5, 12), c + Vector2(x - 3.5, 6), c + Vector2(x + 2.5, 6)]), steel)
+			"pie":
+				# a cream pie in its tin, a cherry on the swirl
+				var cream := Color(1.0, 0.96, 0.86) if not dim else Color(0.5, 0.48, 0.44)
+				draw_colored_polygon(PackedVector2Array([c + Vector2(-15, 4), c + Vector2(15, 4), c + Vector2(11, 12), c + Vector2(-11, 12)]), steel)
+				draw_circle(c + Vector2(0, 2), 12.0, cream)
+				draw_circle(c + Vector2(-4, -4), 6.0, cream.lightened(0.1))
+				draw_circle(c + Vector2(4, -6), 5.0, cream)
+				draw_circle(c + Vector2(1, -12), 3.2, Color(0.85, 0.1, 0.12) if not dim else steel)
+			"peels":
+				# a banana peel lying open, its four flaps out
+				var ban := Color(1.0, 0.86, 0.2) if not dim else Color(0.5, 0.46, 0.3)
+				for k in 4:
+					var a2 := -PI * 0.5 + (k - 1.5) * 0.9
+					draw_line(c + Vector2(0, 4), c + Vector2(cos(a2), sin(a2) + 0.6) * 15.0 + Vector2(0, 4), ban, 5.0, true)
+				draw_circle(c + Vector2(0, 5), 4.5, ban.darkened(0.15))
+				draw_line(c + Vector2(0, 5), c + Vector2(0, 13), Color(0.35, 0.25, 0.1), 3.0, true)
+			"slide":
+				# a belly-slide: a round body low over speed lines
+				var yel := Doug.ACCENT if not dim else Color(0.5, 0.46, 0.3)
+				for k in 3:
+					draw_line(c + Vector2(-16, -4 + k * 6), c + Vector2(-4, -4 + k * 6), Color(0.8, 0.75, 0.6, 0.8), 2.0, true)
+				draw_circle(c + Vector2(6, 4), 9.0, yel)
+				draw_circle(c + Vector2(14, -2), 4.5, Color(0.95, 0.85, 0.8) if not dim else steel)
+				draw_circle(c + Vector2(17, -2), 1.8, Color(0.9, 0.1, 0.1) if not dim else steel)
+			"doppel":
+				# two of him: one solid, one a shiny balloon outline
+				var yel2 := Doug.ACCENT if not dim else Color(0.5, 0.46, 0.3)
+				draw_circle(c + Vector2(-7, 4), 8.0, yel2)
+				draw_circle(c + Vector2(-7, -8), 5.0, Color(0.95, 0.85, 0.8) if not dim else steel)
+				draw_arc(c + Vector2(8, 4), 8.0, 0, TAU, 20, yel2.lightened(0.4), 2.0, true)
+				draw_arc(c + Vector2(8, -8), 5.0, 0, TAU, 16, yel2.lightened(0.4), 2.0, true)
+				draw_line(c + Vector2(8, 12), c + Vector2(10, 17), yel2.lightened(0.4), 1.5, true)
+			"juggle":
+				# three pins in the air, one of them alight
+				for k in 3:
+					var pc := c + Vector2(-11 + k * 11, -6 + absf(k - 1) * 8)
+					draw_line(pc + Vector2(0, -7), pc + Vector2(0, 7), Color(0.95, 0.95, 0.95) if not dim else steel, 4.0, true)
+					draw_circle(pc + Vector2(0, -6), 3.0, Color(0.9, 0.15, 0.15) if not dim else steel)
+				draw_circle(c + Vector2(0, -14), 3.0, Color(1.0, 0.6, 0.15) if not dim else steel)
+			"bounce":
+				# a trampoline and a curve up off it
+				draw_arc(c + Vector2(0, 13), 12.0, PI, TAU, 16, Color(0.85, 0.2, 0.2) if not dim else steel, 3.0, true)
+				draw_line(c + Vector2(-12, 13), c + Vector2(12, 13), Color(1.0, 0.85, 0.2) if not dim else steel, 3.0, true)
+				draw_arc(c + Vector2(4, 4), 13.0, PI * 1.1, PI * 1.9, 14, Color(1.0, 1.0, 1.0, 0.8), 2.0, true)
+				draw_circle(c + Vector2(13, -5), 4.0, Doug.ACCENT if not dim else steel)
+			"car":
+				# the tiny clown car: a bubble body on big wheels, a horn
+				var red := Color(0.85, 0.15, 0.15) if not dim else Color(0.45, 0.32, 0.3)
+				draw_circle(c + Vector2(0, 0), 12.0, red)
+				draw_rect(Rect2(c + Vector2(-15, 0), Vector2(30, 8)), red.darkened(0.1))
+				draw_circle(c + Vector2(-9, 10), 5.0, Color(0.1, 0.1, 0.1))
+				draw_circle(c + Vector2(9, 10), 5.0, Color(0.1, 0.1, 0.1))
+				draw_circle(c + Vector2(-3, -4), 4.0, Color(0.6, 0.8, 1.0) if not dim else steel)
+				draw_circle(c + Vector2(13, -8), 2.5, Color(1.0, 0.85, 0.2) if not dim else steel)
 			"toxic":
 				# a round flask of green poison, a wisp rising from it
 				var gtox := Plague.TOXIC if not dim else Color(0.32, 0.38, 0.3)

@@ -28,6 +28,7 @@ var boats: Array = []
 var aboard := false
 ## He has sailed before (the controls guide shows the first time only; saved).
 var sailed := false
+var dwarves := ""              # the Verdant Isle's drunken dwarves (DwarfGame): "" not met, "won", "lost", "fought"
 
 func owns_boat(id: String) -> bool:
 	return boats.has(id)
@@ -174,6 +175,8 @@ var atk_target = null
 var stamina := 100.0
 var max_stamina := 100.0
 var stamina_rest := 0.0
+var hidden_t := 0.0            # Doug's Doppel-Doug: monsters can't see him while it runs (Enemy's hero_dead)
+var pied_t := 0.0              # a cream pie in the face (DougSkills, PvP): aim assist off, the screen creamed
 ## seconds since this hero last fought (struck, was struck, attacked or cast; jj, 2026-11-02): out of combat
 ## stamina lasts and refills better and better, up to CALM_MAX times after CALM_RAMP more seconds (calm())
 var combat_t := 999.0
@@ -223,6 +226,9 @@ func is_warlock() -> bool:
 func is_archer() -> bool:
 	return cls == "archer"
 
+func is_doug() -> bool:
+	return cls == "doug"
+
 func is_plague() -> bool:
 	return cls == "plague"
 
@@ -268,7 +274,9 @@ var binds := {}
 func default_binds() -> Dictionary:
 	var own := skill_list()
 	var b := {"lmb": "attack", "rmb": own[0]["id"] if not own.is_empty() else "block"}
-	var bar := own + Data.shared_skills()      # (a class with fewer than six of its own fills the rest from the shared ones)
+	# (a class with fewer than six of its own fills the rest from the shared ones; one with seven, Doug, has its first
+	# on the right mouse button and the other six on the hotkeys)
+	var bar := (own.slice(1) if own.size() > BIND_KEYS.size() else own) + Data.shared_skills()
 	for i in BIND_KEYS.size():
 		b[BIND_KEYS[i]] = bar[i]["id"] if i < bar.size() else ""
 	return b
@@ -361,6 +369,8 @@ func _build_rig() -> void:
 		rig = Warlock.build(warlock_gear())
 	elif is_archer():
 		rig = Archer.build_body()
+	elif is_doug():
+		rig = Doug.build_body()
 	elif is_plague():
 		rig = Plague.build_body()
 		if pd == null:
@@ -897,7 +907,7 @@ func _assist_pick(axis: Vector3, dist: float, cone: float):
 ## line, else straight along it. Used when a skill needs to find its foe again mid-cast.
 func aim_ahead(dist: float) -> Vector3:
 	var axis := aim_dir()
-	if dist < MELEE_RANGE:
+	if dist < MELEE_RANGE and pied_t <= 0.0:          # (a pie in the face: no help aiming)
 		var best = _assist_pick(axis, dist, AIM_CONE_MELEE)
 		if best != null:
 			return best.global_position
@@ -1434,6 +1444,9 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 		game.add_shake(0.2)
 	show_damage(dmg)
 	game.ui.flash_damage()
+	# Doug in his clown car is unstoppable: blows land, their stuns and slows don't
+	if DougSkills.driving(self) and kind in ["sweep", "quake", "chill", "freeze", "shock", "root", "slip"]:
+		kind = "melee"
 	# the Hollow Sloths' blows: thrown back, stunned, chilled, frozen solid, shocked
 	match kind:
 		"sweep":
@@ -1452,6 +1465,18 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 			chill_t = maxf(chill_t, 4.0)
 			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Frozen", Color(0.6, 0.9, 1.0))
 			Fx.burst(game.world.fx_root, global_position + Vector3(0, 1.0, 0), Color(0.8, 0.95, 1.0), 30, 1.5, 0.15, 1.0, true, -1.0)
+		"slip":
+			# a banana peel (DougSkills): down for a moment, sliding on the way he was going
+			if not DougSkills.driving(self):
+				daze_t = maxf(daze_t, 0.7)
+				var dir := facing()
+				shove = dir * 6.0
+				Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Slipped!", Color(1.0, 0.9, 0.3))
+		"pied":
+			pied_t = 1.5
+			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Pied!", Color(1.0, 0.97, 0.88))
+			if not puppet and game.ui.has_method("pie_face"):
+				game.ui.pie_face(1.5)
 		"root":
 			daze_t = maxf(daze_t, 1.2)
 			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Rooted", Color(0.55, 1.0, 0.4))
@@ -1542,6 +1567,8 @@ func _process(delta: float) -> void:
 	# stamina: sprint drains it, resting refills it; running dry leaves you winded
 	running = sprint and wants_move and not exhausted and block_amt < 0.5 and charge_t < 0.0
 	combat_t += delta
+	hidden_t = maxf(0.0, hidden_t - delta)
+	pied_t = maxf(0.0, pied_t - delta)
 	_engaged_t -= delta
 	if _engaged_t <= 0.0:
 		_engaged_t = 0.5
@@ -1563,7 +1590,7 @@ func _process(delta: float) -> void:
 		exhausted = false
 	if exhausted and stamina >= max_stamina * 0.3:
 		exhausted = false
-	var speed := 4.8 * (1.0 + frw / 100.0) * (Battlegrounds.MOVE_MULT if game.bg_mode else 1.0)
+	var speed := 4.8 * (1.0 + frw / 100.0) * (Battlegrounds.MOVE_MULT if game.bg_mode else 1.0) * DougSkills.car_mult(self)
 	# the archer runs 10% faster while his Spirit Beast is at his side
 	if is_archer() and beasts.any(func(b) -> bool: return is_instance_valid(b) and not b.dead):
 		speed *= 1.1
@@ -1713,7 +1740,7 @@ func _process(delta: float) -> void:
 	_breathe(delta)
 	_apply_shield_pose()
 	# no sword-swing streak off a bow, nor off the Wraith's and the Demon's skills (their clips, not weapon swings)
-	_update_trail(((atk_t >= 0.0 and not ((is_wraith() or is_demon()) and atk_skill != "")) or charge_t >= 0.0) and not has_bow() and not is_dragon())
+	_update_trail(((atk_t >= 0.0 and not ((is_wraith() or is_demon() or is_doug()) and atk_skill != "")) or charge_t >= 0.0) and not has_bow() and not is_dragon())
 
 ## The Wraith floats a hand's breadth off the ground, bobbing slowly and leaning into motion.
 func _hover() -> void:
@@ -1858,7 +1885,10 @@ func _puppet_process(delta: float) -> void:
 	Archer.update(self, delta)
 	SkillFx.update(self, delta)
 	_apply_shield_pose()
-	_update_trail(atk_t >= 0.0 and not has_bow() and not is_dragon())
+	# a partner's swing in his class's colour (white before), and none on Doug's throws and tricks
+	if trail_pts.is_empty():
+		trail_col = ClassSkills.trail_color(cls, "")
+	_update_trail(atk_t >= 0.0 and not has_bow() and not is_dragon() and not (is_doug() and str(st.get("style", "")) in Doug.SKILL_STYLES))
 
 func _apply_shield_pose() -> void:
 	if shield_node == null or not is_instance_valid(shield_node):
@@ -2215,7 +2245,7 @@ func unequip(slot: String) -> void:
 
 func to_save() -> Dictionary:
 	return {"cls": cls, "level": level, "xp": xp, "str": str_, "dex": dex, "vit": vit, "ene": ene, "points": stat_points, "gold": gold,
-		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "binds_v": 2, "talents": talents, "axe_given": true, "boats": boats, "sailed": sailed}
+		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "binds_v": 2, "talents": talents, "axe_given": true, "boats": boats, "sailed": sailed, "dwarves": dwarves}
 
 func from_save(d: Dictionary) -> void:
 	set_class(str(d.get("cls", "knight")))
@@ -2229,6 +2259,7 @@ func from_save(d: Dictionary) -> void:
 	gold = int(d.get("gold", 0))
 	boats = (d.get("boats", []) as Array).filter(func(b): return Data.BOATS.has(str(b))) if d.get("boats") is Array else []
 	sailed = bool(d.get("sailed", false))
+	dwarves = str(d.get("dwarves", ""))
 	show_helm = bool(d.get("show_helm", true))
 	equipment = d.get("equipment", {})
 	for s in Items.EQUIP_SLOTS:

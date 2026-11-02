@@ -7,6 +7,8 @@ extends SceneTree
 ## a walks up to b and swings at it: b's life drops through the server (Net.sv_pvp_hit, PVP_MULT) until b falls.
 ## b's gear drops, the server announces who killed whom, and a picks b's things up. b keeps its level but loses
 ## everything it carried. Fallen, b spectates a (the camera on a) until a leaves, then leaves the crypt.
+## With "doug" after the port on both players' lines, a plays Doug: his first skill is the Cream Pie, and b checks it
+## was Pied by it (the crowd control crossing to another player: DougSkills._cc -> Net.send_pvp_effect).
 
 var g
 var role := "a"
@@ -80,7 +82,8 @@ func _player() -> void:
 	DirAccess.make_dir_recursive_absolute(g.char_dir)
 	for fn in DirAccess.get_files_at(g.char_dir):
 		DirAccess.remove_absolute(g.char_dir + fn)
-	g.hero.set_class("knight" if role == "a" else "wraith")
+	var doug := OS.get_cmdline_user_args().has("doug")
+	g.hero.set_class(("doug" if doug else "knight") if role == "a" else "wraith")
 	g.hero.new_character()
 	g.hero.set_level(8)
 	g.char_id = g.new_char_id()
@@ -141,6 +144,8 @@ func _player() -> void:
 		g.test_immortal = false
 		# (against full life: a slow start can find the attacker already at work, even done)
 		var l0: float = g.hero.max_life
+		if doug:
+			check(await until(func(): return g.hero.pied_t > 0.0, 60.0), "Doug's cream pie Pied me (through the server)")
 		check(await until(func(): return g.hero.life < l0 or g.hero.dead, 60.0), "I'm being hit by the other player")
 		check(await until(func(): return g.hero.dead, 60.0), "and I fell")
 		# fallen, I watch the one still alive (Game.spectate_*), until they leave too

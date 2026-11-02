@@ -140,6 +140,35 @@ const TREES := {
 			{"id": "l_eternal", "name": "Eternal Covenant", "row": 3, "max": 1, "icon": "covenant", "fx": {"buff_dur": 6}, "text": "Fel Covenant lasts {buff_dur} seconds longer."},
 		]},
 	],
+	"doug": [
+		{"name": "Slapstick", "desc": "The drumstick and the pie: closer, harder, messier.", "talents": [
+			{"id": "d_drum", "name": "Extra Gravy", "row": 0, "max": 3, "icon": "t_fist", "fx": {"dmg:attack": 10}, "text": "Drumstick Smack deals {dmg:attack}% more damage."},
+			{"id": "d_belly", "name": "Big Belly", "row": 0, "max": 3, "icon": "t_heart", "fx": {"vit": 3}, "text": "+{vit} vitality."},
+			{"id": "d_cream", "name": "Double Cream", "row": 1, "max": 3, "icon": "pie", "fx": {"dmg:pie": 12}, "text": "Cream Pie deals {dmg:pie}% more damage."},
+			{"id": "d_arm", "name": "Pitcher's Arm", "row": 1, "max": 3, "icon": "t_fist", "fx": {"dex": 3}, "text": "+{dex} dexterity."},
+			{"id": "d_cheap", "name": "Day-Old Pies", "row": 2, "max": 2, "icon": "pie", "fx": {"cost:pie": 20}, "text": "Cream Pie costs {cost:pie}% less mana."},
+			{"id": "d_slip", "name": "Ripe Peels", "row": 2, "max": 3, "icon": "peels", "fx": {"cd:peels": 10}, "text": "Banana Peels recharge {cd:peels}% faster."},
+			{"id": "d_sauce", "name": "Secret Sauce", "row": 3, "max": 1, "icon": "pie", "fx": {"dmg": 8}, "text": "All your damage +{dmg}%."},
+		]},
+		{"name": "Showmanship", "desc": "Misdirection: the slide, the double, the juggling act.", "talents": [
+			{"id": "d_slide", "name": "Greased Belly", "row": 0, "max": 3, "icon": "slide", "fx": {"cd:slide": 10}, "text": "Pratfall Slide recharges {cd:slide}% faster."},
+			{"id": "d_wits", "name": "Quick Wits", "row": 0, "max": 3, "icon": "t_eye", "fx": {"ene": 3}, "text": "+{ene} energy."},
+			{"id": "d_double", "name": "Understudy", "row": 1, "max": 3, "icon": "doppel", "fx": {"cd:doppel": 10}, "text": "Doppel-Doug recharges {cd:doppel}% faster."},
+			{"id": "d_pins", "name": "Hot Pins", "row": 1, "max": 3, "icon": "juggle", "fx": {"dmg:juggle": 12}, "text": "Pin Juggle deals {dmg:juggle}% more damage."},
+			{"id": "d_patter", "name": "Stage Patter", "row": 2, "max": 2, "icon": "juggle", "fx": {"cost:juggle": 15}, "text": "Pin Juggle costs {cost:juggle}% less mana."},
+			{"id": "d_nimble", "name": "Light on His Feet", "row": 2, "max": 3, "icon": "t_boot", "fx": {"frw": 3}, "text": "You move {frw}% faster."},
+			{"id": "d_encore", "name": "Encore", "row": 3, "max": 1, "icon": "doppel", "fx": {"cd:slide": 20}, "text": "Pratfall Slide recharges another {cd:slide}% faster."},
+		]},
+		{"name": "Big Top", "desc": "The grand finale: the bounce and the clown car.", "talents": [
+			{"id": "d_spring", "name": "New Springs", "row": 0, "max": 3, "icon": "bounce", "fx": {"cd:bounce": 10}, "text": "Big Top Bounce recharges {cd:bounce}% faster."},
+			{"id": "d_tough", "name": "Thick Skin", "row": 0, "max": 3, "icon": "t_heart", "fx": {"vit": 3}, "text": "+{vit} vitality."},
+			{"id": "d_flop", "name": "Belly Flop", "row": 1, "max": 3, "icon": "bounce", "fx": {"dmg:bounce": 12}, "text": "Big Top Bounce deals {dmg:bounce}% more damage."},
+			{"id": "d_horn", "name": "Loud Horn", "row": 1, "max": 3, "icon": "car", "fx": {"dmg:car": 12}, "text": "Clown Car deals {dmg:car}% more damage."},
+			{"id": "d_tune", "name": "Tuned Engine", "row": 2, "max": 2, "icon": "car", "fx": {"cd:car": 10}, "text": "Clown Car recharges {cd:car}% faster."},
+			{"id": "d_crowd", "name": "Crowd Pleaser", "row": 2, "max": 3, "icon": "t_star", "fx": {"str": 3}, "text": "+{str} strength."},
+			{"id": "d_finale", "name": "Grand Finale", "row": 3, "max": 1, "icon": "car", "fx": {"dmg": 6, "cd:car": 15}, "text": "All your damage +{dmg}% and Clown Car recharges {cd:car}% faster."},
+		]},
+	],
 	"plague": [
 		{"name": "Toxicology", "desc": "Poison: Toxic Flask, longer and crueller clouds.", "talents": [
 			{"id": "p_dose", "name": "Stronger Dose", "row": 0, "max": 3, "icon": "toxic", "fx": {"dmg:toxic": 10}, "text": "Toxic Flask deals {dmg:toxic}% more damage."},
@@ -203,6 +232,8 @@ const TREES := {
 ## The build an old save gets (and the window's Auto button follows): talents in order, each taken to
 ## its maximum while points last and its row is open.
 const AUTO := {
+	"doug": ["d_drum", "d_belly", "d_cream", "d_arm", "d_cheap", "d_slip", "d_sauce", "d_slide", "d_wits", "d_double", "d_pins",
+		"d_patter", "d_nimble", "d_encore", "d_spring", "d_tough", "d_flop", "d_horn", "d_tune", "d_crowd", "d_finale"],
 	"plague": ["p_dose", "p_study", "p_venom", "p_cloud", "p_linger", "p_thrift", "p_miasma", "p_charge", "p_steady", "p_blast", "p_quick", "p_ignite",
 		"p_cane", "p_inferno", "p_spring", "p_hardy", "p_snare", "p_spread", "p_cache", "p_fever", "p_last"],
 	"knight": ["k_zeal", "k_heavy", "k_radiance", "k_fervor", "k_steel", "k_purify", "k_consecrate", "k_vigor", "k_tough", "k_resolve", "k_wall", "k_guard", "k_wind", "k_unbroken",

@@ -2025,12 +2025,25 @@ func _open_chest(t: Inter) -> void:
 ## chest's sv_inter) and each client agree, a late joiner too (a dead boss isn't in its list).
 func chest_sealed(t: Inter) -> bool:
 	var guard := str(t.data.get("guard", ""))
-	if guard == "" or world == null:
+	if guard == "" or world == null or t.data.get("unsealed", false):
 		return false
-	for e in world.enemies_root.get_children():
-		if e is Enemy and not e.dead and e.kind == guard and e.global_position.distance_to(t.global_position) < 40.0:
-			return true
-	return false
+	if net.active and not net.is_host:
+		# the server decides (Net.sv_inter); a player who joined after the guard fell never saw it happen
+		for e in world.enemies_root.get_children():
+			if e is Enemy and not e.dead and e.kind == guard:
+				return true
+		return false
+	return true
+
+## A boss's death breaks the seal on the chests it guards, wherever it falls (luring it off doesn't open them), on
+## every peer: the host's death path and a client's Net.cl_enemy_die both reach Enemy.die_visual. A new round's zone
+## starts sealed again.
+func guard_fell(kind: String) -> void:
+	if world == null:
+		return
+	for c in world.interactables:
+		if c is Inter and str(c.data.get("guard", "")) == kind:
+			c.data["unsealed"] = true
 
 ## A stairway down (BgFloors._stair): a fade, and the hero at the floor below's arrival stair. The hero's position
 ## is streamed like any move, so the server and the others see him go.
@@ -2440,6 +2453,9 @@ func _interact(t: Inter) -> void:
 				net.inter_used(t)
 		"descend":
 			_descend(t)
+		"dwarves":
+			if not t.used:
+				DwarfGame.talk(self, t)
 		"bell":
 			# the antechamber's bell: the server starts the countdown (Net.sv_inter -> use_inter_remote)
 			Sfx.play("anvil", -2.0, 0.6)
@@ -2898,6 +2914,85 @@ func _cheat_keys(ev: InputEvent) -> void:
 	if _typed.ends_with("maxout") and (dev_tools_on() or BuildEnv.env() != "production"):
 		_typed = ""
 		max_out()
+
+## Admin (the F8 testing panel, only with dev tools: the signed admin key or the editor; Blaine's progression spec):
+## this character to level 20 with its stats spent and its talents auto-built, every skill it has at 20, and a solid
+## class baseline of level-20 gear for PvP testing (rare items on every slot, the class's own weapon). Safe to press
+## again: its own pieces (marked "boost") stay, any other equipped item moves to the bag (kept equipped if the bag
+## is full, never destroyed), and the same gear is never handed out twice.
+const BOOST_SLOTS := ["weapon", "armor", "helm", "gloves", "boots", "belt", "ring1", "ring2", "amulet"]
+
+func go_level_20() -> void:
+	if not dev_tools:
+		return
+	if hero.level < 20:
+		hero.set_level(20)
+	var c: Dictionary = Data.CLASSES.get(hero.cls, {})
+	var tot := float(int(c.get("str", 1)) + int(c.get("dex", 1)) + int(c.get("vit", 1)) + int(c.get("ene", 1)))
+	var pts := hero.stat_points
+	var a := int(pts * int(c.get("str", 1)) / tot)
+	var b := int(pts * int(c.get("dex", 1)) / tot)
+	var v := int(pts * int(c.get("vit", 1)) / tot)
+	hero.str_ += a
+	hero.dex += b
+	hero.vit += v
+	hero.ene += pts - a - b - v
+	hero.stat_points = 0
+	hero.talents = Talents.auto_build(hero.cls, hero.free_talent_points(), hero.talents)
+	hero._talents_changed()
+	var r := RandomNumberGenerator.new()
+	r.seed = hash(hero.cls + ":boost20")       # (the same baseline every time)
+	var slots := BOOST_SLOTS.duplicate()
+	if hero.cls == "knight":
+		slots.append("shield")
+	var given := 0
+	for slot in slots:
+		var cur = hero.equipment.get(slot)
+		if cur is Dictionary and bool((cur as Dictionary).get("boost", false)):
+			continue
+		var base := _boost_base(slot)
+		if base == "":
+			continue
+		var it := Items.generate(base, 20, 2, r)
+		it["boost"] = true
+		if cur is Dictionary and not (cur as Dictionary).is_empty():
+			if not hero.add_to_inventory(cur):
+				continue          # (no room for what's there: it stays on)
+		hero.equipment[slot] = it
+		given += 1
+	hero.refresh_gear()
+	hero.recalc()
+	hero.life = hero.max_life
+	hero.mana = hero.max_mana
+	if char_id != "":
+		save_game()
+	ui.refresh()
+	ui.message("Level 20: talents built, %d piece%s of level-20 gear on" % [given, "" if given == 1 else "s"], Color(0.6, 1.0, 0.6))
+
+## The best base for a slot at level 20 that this class can wear (its own weapon kind: bows for the ranger, canes for
+## the plague doctor, the drumstick for Doug...).
+func _boost_base(slot: String) -> String:
+	var want := "ring" if slot in ["ring1", "ring2"] else slot
+	var mine: String = str(Data.CLASSES.get(hero.cls, {}).get("weapon", ""))
+	var kind := str(Data.BASES.get(mine, {}).get("kind", "")) if mine != "" else ""
+	var held = hero.equipment.get("weapon")
+	if kind == "" and held is Dictionary:
+		kind = str(Data.BASES.get(held["base"], {}).get("kind", ""))     # no weapon of its own (the knight): the kind in hand
+	var best := ""
+	var bl := -1
+	for k in Data.BASES:
+		var bd: Dictionary = Data.BASES[k]
+		if str(bd.get("slot", "")) != want or int(bd.get("lvl", 1)) > 20:
+			continue
+		var owner := str(bd.get("cls", ""))
+		if owner != "" and owner != hero.cls:
+			continue
+		if want == "weapon" and kind != "" and str(bd.get("kind", "")) != kind:
+			continue
+		if int(bd.get("lvl", 1)) > bl:
+			bl = int(bd.get("lvl", 1))
+			best = k
+	return best
 
 func max_out() -> void:
 	hero.set_level(99)

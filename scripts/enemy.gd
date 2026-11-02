@@ -440,6 +440,7 @@ func die_visual() -> void:
 	_set_flash(0.0)
 	if boss:
 		Sfx.play("boss_die", 0.0, randf_range(0.85, 1.15))
+		game.guard_fell(kind)
 	else:
 		Sfx.play_at("kill_" + material(), global_position + Vector3(0, height, 0), -1.0)
 	Fx.splat(game.world.fx_root, global_position, def.get("blood", Color(0.4, 0, 0)), 0.6 + radius)
@@ -644,7 +645,7 @@ func _process(delta: float) -> void:
 		hoard.update(delta)
 	var vel := Vector3.ZERO
 	# a Demon phased into the Underworld cannot be seen
-	var hero_dead: bool = hero.dead or hero.get("phased") == true
+	var hero_dead: bool = hero.dead or hero.get("phased") == true or float(hero.get("hidden_t") if hero.get("hidden_t") != null else 0.0) > 0.0
 	if sloth != null:
 		vel = sloth.update(delta, hero, to, dist, hero_dead)
 	elif brain != null:

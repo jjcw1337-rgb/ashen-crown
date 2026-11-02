@@ -185,8 +185,9 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   (`open_gates`: bars rise, footprints moved off) -> `"reset"`; the state reaches clients as `cl_bg_raid`
   `"lobby:<s>"`/`"prep:<s>"`/`"raid"`/`"reset"` and the HUD says what's happening. **Three floors**
   (`scripts/bg_floors.gd`, `BgFloors`): the Ossuary (floor 1, `build`), the Frozen Depths (Hrimgar the Frostbound,
-  `ice_troll`) and the Overgrown Vault (Old Mossbeard, `hermit`, and the golden chest: `Game.chest_sealed` while he
-  lives, refused in `Net.sv_inter`), one map `FLOOR_GAP` apart, rooms joined by wide ways and narrow shortcuts,
+  `ice_troll`) and the Overgrown Vault (Old Mossbeard, `hermit`, and the golden chest: `Game.chest_sealed` until he
+  dies, wherever he is: a boss's death, `Enemy.die_visual` -> `Game.guard_fell`, unseals the chests whose `"guard"`
+  it is on every peer; refused in `Net.sv_inter`; the bosses' brains are `scripts/bg_boss.gd`, `BgBoss`), one map `FLOOR_GAP` apart, rooms joined by wide ways and narrow shortcuts,
   stairways down (Inter `"descend"`, `Game._descend`), portals on every floor (two open on the Ossuary, one below),
   Meshy dressing in `assets/models/bg/`. `World.crypt_shell(themes)` colours each floor's walls.
   `tools/bg_floors_shots.gd` screenshots them. The state reaches players
@@ -368,6 +369,23 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   Props: `assets/models/plague/` flask, volatile, trap (Meshy text-to-3D, `act1/prep_prop.py`). Talents: Toxicology,
   Volatile Arts, Contagion (icons `p_*.png`, `plague_tree*.png`). Tests: `tools/plague_test.gd` (`--fixed-fps 60`),
   `tools/plague_mp_test.gd` (host + join); screenshots `tools/plague_shots.gd` (`--fixed-fps 10`).
+- **Doug** (`scripts/doug.gd`, `doug_skills.gd` `DougSkills`, `doug_fx.gd` `DougFx`; design `docs/characters/doug.md`;
+  Blaine's tier-1 character and the pilot of the character workflow, `docs/character_workflow.md`): the stubby circus
+  brawler. Body: Meshy concept edited from Blaine's reference, image-to-3D, Meshy auto-rig + library clips merged by
+  `tools/blender/doug/prep_doug_mocap.py` into `assets/models/doug.glb` on the knight's mocap system (`Doug.ACTS`:
+  his drumstick combo and each skill's whole-body clip); props (pie, banana, pin, trampoline, car, drumstick) are
+  Meshy in `assets/models/doug/` (checked with `tools/blender/prop_sheet.py`; the car's jester rider cut away by
+  `tools/blender/cut_above.py`). Sounds: `doug_*` (ElevenLabs: splat, slip, honk, slide whistle, boing, pop, klaxon,
+  belly-flop; auto-ranked takes until someone picks on the Sound Picks page). Seven skills (his first, Cream Pie, on the right mouse button: a class with
+  seven puts `own[0]` on RMB and the rest on Q-V, `Hero.default_binds`): Cream Pie (lobbed; Pied: monsters stunned
+  and slowed, a player creamed, `UI.pie_face`, and no aim assist, `Hero.pied_t`; once per target per 6 s), Banana
+  Peels (slip: `Hero.take_hit "slip"`), Pratfall Slide, Doppel-Doug (`Hero.hidden_t`: monsters lose him, partners
+  see him fade; a balloon double runs off and pops), Pin Juggle (pins ricochet), Big Top Bounce (an arc to the
+  cursor, a launching belly-flop), Clown Car (5 s, `DougSkills.car_mult`, unstoppable: `driving`; six mini clowns pie
+  the nearest foes). PvP crowd control goes through `Net.send_pvp_effect` (server-checked, a zero-damage hit of
+  that kind). Talents: Slapstick, Showmanship, Big Top (icons `d_*`, `doug_tree*`, painted with Meshy). Tests:
+  `tools/doug_test.gd` (`--fixed-fps 60`), `tools/bg_pvp_test.gd` with `doug` on the players' lines (the pie Pies
+  another player through the server).
 - **Adding a class** (nothing in `hero.gd` names a class's skills; `ClassSkills` hands them to the class's script):
   1. `Data.CLASSES`: name, starting stats, `desc`, optional `weapon`, `voice` (hurt/death sound suffix), `attack_pace`, `hud`.
   2. `Data.SKILLS`: four (up to six: Q E R F G V) entries with its `cls`, each with an `aim`.
