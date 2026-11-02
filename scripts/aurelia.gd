@@ -377,7 +377,7 @@ static func _colosseum(w: World) -> void:
 		_podium(root, podium, n, gap)
 	# stands: four stepped tiers between the podium and the outer wall; low and broken on the south
 	var tiers: Array = [[], [], [], []]
-	var tier_m := Roman._own(Geo.box(1.0, 1.0, 1.0), Roman.tuff())
+	var tier_m := Roman._own(Geo.box(1.0, 1.0, 1.0), Roman.seats())
 	for k in 4:
 		var kk := float(k) / 3.0
 		var rx := lerpf(FLOOR_RX * 1.04 + 1.8, OUTER_RX - 3.0, kk)
@@ -465,7 +465,7 @@ static func _colosseum(w: World) -> void:
 	# the patron's box over the champion's gate: a dais with columns and a red canopy
 	var cg := floor_pt(GATES["champion"], 1.25)
 	var box := Models.N(root, "patron_box")
-	Models.P(box, Geo.box(9.0, 0.5, 4.0), Roman.marble(), Vector3(0, PODIUM_H + 2.2, 0))
+	Models.P(box, Geo.box(9.0, 0.5, 4.0), Roman.seats(), Vector3(0, PODIUM_H + 2.2, 0))
 	for sx: int in [-1, 1]:
 		for sz: int in [-1, 1]:
 			Models.P(box, Geo.cyl(0.22, 0.25, 3.2, 10), Roman.marble(), Vector3(sx * 4.0, PODIUM_H + 4.0, sz * 1.6))

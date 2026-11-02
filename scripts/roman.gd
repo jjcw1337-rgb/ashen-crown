@@ -9,6 +9,14 @@ static func marble() -> Material:
 	return Mats.world(Color(0.84, 0.8, 0.72), Color(0.66, 0.62, 0.55), 0.82, 1.7, 0.22, Color(0.3, 0.34, 0.18))
 static func marble_clean() -> Material:
 	return Mats.world(Color(0.92, 0.9, 0.85), Color(0.78, 0.75, 0.7), 0.6, 2.2, 0.05, Color(0.3, 0.34, 0.18))
+## The arena's stands (visual overhaul): travertine seat slabs on the tops, ashlar courses on the risers, joints laid
+## in world space (STANDS_SHADER), in place of the blotchy tuff; the see-through near the hero as every prop has.
+static var _seats: ShaderMaterial
+static func seats() -> Material:
+	if _seats == null:
+		_seats = ShaderMaterial.new()
+		_seats.shader = Mats.custom("roman_seats", STANDS_SHADER)
+	return _seats
 static func tuff() -> Material:
 	return Mats.world(Color(0.56, 0.53, 0.47), Color(0.42, 0.4, 0.36), 0.92, 1.3, 0.35, Color(0.25, 0.3, 0.14))
 static func brick() -> Material:
@@ -435,3 +443,63 @@ static func ruin_wall(w: World, a: Vector2, b: Vector2, h := 1.6) -> void:
 	w._place(g, Vector3(mid.x, 0, mid.y))
 	g.rotation.y = atan2(-d.y, d.x)
 	w.add_box(Vector3(mid.x, 0, mid.y), Vector2(0.4, d.length() * 0.5), atan2(d.x, d.y))
+
+## STANDS_SHADER: seats() on the arena's tier boxes (any box: joints in world space, so stretched boxes keep square
+## blocks). Tops: seat slabs 1.25 x 0.85 m in staggered rows; sides: ashlar courses 0.55 m high; cream travertine,
+## no two blocks the same shade, grime low on each riser, dark joints.
+const STANDS_SHADER := """
+shader_type spatial;
+render_mode diffuse_burley, specular_schlick_ggx;
+global uniform vec3 player_pos;
+global uniform float occlude_k;
+varying vec3 wp;
+varying vec3 wn;
+float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float vn(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), u.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), u.x), u.y); }
+float bayer2(vec2 a){ a = floor(a); return fract(a.x / 2.0 + a.y * a.y * 0.75); }
+float dith(vec2 a){ return bayer2(0.5 * a) * 0.25 + bayer2(a) + 0.03125; }
+void vertex(){
+	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
+void fragment(){
+	{
+		vec3 d = wp - player_pos;
+		float h = wp.y - player_pos.y;
+		float along = d.z - occlude_k * (h - 1.0);
+		float cover = (1.0 - smoothstep(1.6, 3.2, abs(along))) * (1.0 - smoothstep(2.2, 3.6, abs(d.x)));
+		cover *= step(0.9, h) * step(0.2, d.z);
+		if (cover * 0.9 > dith(FRAGCOORD.xy)) { discard; }
+	}
+	vec3 an = abs(wn);
+	float joint = 0.0;
+	float id = 0.0;
+	if (an.y > 0.6) {
+		vec2 q = wp.xz / vec2(1.25, 0.85);
+		q.x += h21(vec2(floor(q.y), 3.1)) * 0.9;
+		vec2 f = fract(q);
+		id = h21(floor(q));
+		float e = min(min(f.x, 1.0 - f.x) * 1.25, min(f.y, 1.0 - f.y) * 0.85);
+		joint = 1.0 - smoothstep(0.012, 0.035, e);
+	} else {
+		float hc = an.x > an.z ? wp.z : wp.x;
+		vec2 q = vec2(hc / 1.15, wp.y / 0.55);
+		float row = floor(q.y);
+		q.x += h21(vec2(row, 7.7)) * 0.7 + mod(row, 2.0) * 0.5;
+		vec2 f = fract(q);
+		id = h21(floor(q) + 13.0);
+		float e = min(min(f.x, 1.0 - f.x) * 1.15, min(f.y, 1.0 - f.y) * 0.55);
+		joint = 1.0 - smoothstep(0.01, 0.03, e);
+	}
+	vec3 c = mix(vec3(0.6, 0.55, 0.46), vec3(0.76, 0.71, 0.61), id);
+	float n = vn(wp.xz * 3.0 + vec2(wp.y * 2.0)) * 0.6 + vn(wp.xz * 11.0 + vec2(wp.y * 5.0, -wp.y * 3.0)) * 0.4;
+	c *= 0.8 + n * 0.32;
+	float grime = (1.0 - smoothstep(0.0, 1.2, mod(wp.y, 1.7))) * (1.0 - an.y) * 0.28;
+	c *= 1.0 - grime;
+	c = mix(c, c * 0.42, joint);
+	ALBEDO = c;
+	ROUGHNESS = 0.88;
+	AO = 1.0 - joint * 0.5;
+}
+"""
