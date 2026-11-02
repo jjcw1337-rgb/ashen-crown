@@ -121,3 +121,12 @@ holding all ten should be hard work. That's the number to tune from your feedbac
 - Meshy: **0 credits** (no new models).
 - ElevenLabs: **0 credits** (no new sounds; reused the arena horn, roars, the bonfire whoosh, the burn sound).
 - (The nightly script adds the Claude cost.)
+
+### Build cost (filled in by the nightly script)
+
+| Tool | Cost |
+|---|---|
+| Claude (this mode, 119 turns, 61.2 min) | $9.57 |
+| Meshy | 0 credits |
+| ElevenLabs | 0 credits |
+| Staging server (share of the night) | $0.27 |

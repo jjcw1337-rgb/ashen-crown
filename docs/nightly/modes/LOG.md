@@ -28,3 +28,4 @@ Rows with Mode `bench` are the runner's benchmark of the night's result (a mode 
 | Date | Mode | Pitch | Result | Verdict | Next | Details |
 |---|---|---|---|---|---|---|
 | 2026-11-01 | The Last Flame | Co-op horde defence: hold the last fire against ten waves of the dead, on the online co-op server | playable (nightly_vigil_test 38/38, vigil_coop_test server+2 green) | | Next: play it as two and tune (flame life, counts); a best-wave record; music; maybe endless mode or wave modifiers | [2026-11-01-last-flame](<2026-11-01-last-flame/README.md>) |
+| 2026-11-01 | bench | Runner's KPI benchmark of the night's result (avg fps) | camp 13→13, moor Medium 41→41, moor 21→21, moor Ultra 7→7, fight 20→20, boss 42→42, arena 86→84, crypt 104→95; server tick p99 107→111 ms, camp 143M→143M tris, download 371→372 MB | shipped | | `docs/nightly/perf/metrics.jsonl` |
