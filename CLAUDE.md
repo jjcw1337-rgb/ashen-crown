@@ -490,7 +490,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   renders just those for a quick look) as premultiplied EXR (fire is light added on top, even with no smoke) and packed
   by `python3 tools/fx_smokebook.py outdir assets/textures/fx/demon/smoke_<kind>.png <cell px>` (rolls the light off,
   fades every frame out at its edges, cross-fades a loop's extra frames into its start, prints the `BOOKS` line); the
-  books import with `fix_alpha_border` off and mipmaps on. Impact, ash and blast were rendered from the game camera's
+  books import lossless (`compress/mode=0`: lossy WebP rewrites the colour under clear pixels in 16 px blocks, which
+  premultiplied blending adds to the scene as pale boxes) with `fix_alpha_border` off and mipmaps on. Impact, ash and blast were rendered from the game camera's
   own 44 degrees and are held facing the camera (`SMOKE_SHADER` mode 1, anchored where the sim's origin sits in the
   frame and drawn nearer the camera so the cloud's near half doesn't sink into the ground); steam stands upright
   (mode 0); the comet lies along the rock's flight (mode 2, `aim_smoke`). Preview one in-engine:

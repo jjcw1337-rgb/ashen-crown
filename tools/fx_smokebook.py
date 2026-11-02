@@ -11,8 +11,9 @@ shader reads it as source_color) and laid out left to right, top to bottom. A lo
 Every pixel with light keeps at least 1/255 of alpha (WebP may rewrite the colour under fully clear pixels).
 A book that lies along a flight (mode 2, the comet) is shaped into a tail: narrow at its head (the anchor), widening
 behind it and fading out toward its end, so the smoke never fills the card.
-Prints the DemonKitFx.BOOKS entry. Import the atlas with fix_alpha_border off (it would overwrite the light under
-clear pixels), mipmaps on.
+Prints the DemonKitFx.BOOKS entry. Import the atlas lossless (compress/mode=0: lossy WebP rewrites the colour under
+clear pixels, which premultiplied blending adds as pale boxes), with fix_alpha_border off (it would overwrite the light
+under clear pixels) and mipmaps on.
 """
 import json
 import math
