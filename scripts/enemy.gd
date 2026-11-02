@@ -56,6 +56,8 @@ var enraged := false
 var hoard: Hoard = null
 ## The Hollow Sloth's brain (sloth.gd), when this is one
 var sloth: Sloth = null
+## The Battlegrounds bosses' brain (bg_boss.gd): Hrimgar, Mossbeard and his poison mushrooms
+var brain: BgBoss = null
 var _sloth_phase := 0.0
 ## Factions (Data.ENEMIES "faction"): goblins and the undead fight each other on sight (and both fight you).
 var rival: Enemy = null
@@ -137,6 +139,8 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 	var look: Dictionary = def["look"]
 	height = look.get("height", look.get("size", 1.0))
 	rig = build_rig(k, Feral.variant_at(global_position))
+	if kind in ["ice_troll", "hermit", "spore_shroom"]:
+		brain = BgBoss.new(self)
 	if rig.has_meta("feral"):
 		slot_a = randf_range(-1.6, 1.6)
 		lunge_cd = randf_range(0.3, 3.0)
@@ -467,6 +471,7 @@ func die_visual() -> void:
 	_set_flash(0.0)
 	if boss:
 		Sfx.play("boss_die", 0.0, randf_range(0.85, 1.15))
+		game.guard_fell(kind)
 	else:
 		Sfx.play_at("kill_" + material(), global_position + Vector3(0, height, 0), -1.0)
 	Fx.splat(game.world.fx_root, global_position, def.get("blood", Color(0.4, 0, 0)), 0.6 + radius)
@@ -512,6 +517,9 @@ func special_fx(ev: String) -> void:
 		return
 	if ev.begins_with("sloth"):
 		Sloth.fx(self, ev)
+		return
+	if ev.begins_with("bb_"):
+		BgBoss.fx(self, ev)
 		return
 	var col := Color(0.4, 1.0, 0.3) if def.get("nova", "") == "poison" else Color(1.0, 0.4, 0.1)
 	match ev:
@@ -668,9 +676,11 @@ func _process(delta: float) -> void:
 		hoard.update(delta)
 	var vel := Vector3.ZERO
 	# a Demon phased into the Underworld cannot be seen
-	var hero_dead: bool = hero.dead or hero.get("phased") == true
+	var hero_dead: bool = hero.dead or hero.get("phased") == true or float(hero.get("hidden_t") if hero.get("hidden_t") != null else 0.0) > 0.0
 	if sloth != null:
 		vel = sloth.update(delta, hero, to, dist, hero_dead)
+	elif brain != null:
+		vel = brain.update(delta, hero, to, dist, hero_dead)
 	elif stun_t > 0.0:
 		stun_t -= delta
 	elif atk_t >= 0.0:
@@ -748,6 +758,17 @@ static func build_rig(kind: String, variant := 1) -> Node3D:
 		return Trike.build(str(d["mesh"]))
 	if d.get("mesh", "") == "sloth":
 		return Sloth.build(str(d.get("variant", "")), look.get("skin", Color(0.52, 0.56, 0.47)))
+	if d.has("prop"):
+		# a thing that grows rather than walks (the hermit's mushrooms): a Meshy prop, pulsing (pose_rig)
+		var pr := Node3D.new()
+		pr.set_meta("static_prop", true)
+		var m := BgFloors.prop(str(d["prop"]))
+		if m == null:
+			m = Models.crawler(look)
+		m.name = "body"
+		m.scale = Vector3.ONE * float(look.get("prop_scale", 1.0))
+		pr.add_child(m)
+		return pr
 	if d.get("mesh", "") == "wolf" and ResourceLoader.exists(SpiritBeast.WOLF_GLB):
 		return Lion.build(SpiritBeast.WOLF_GLB, 1.0)
 	if d.has("mesh") and MeshyMonster.ok(d["mesh"]):
@@ -775,6 +796,12 @@ static func pose_rig(r: Node3D, st: Dictionary, height: float) -> void:
 		Bear.pose(r, st, height)
 	elif r.has_meta("sloth"):
 		Sloth.pose(r, st, height)
+	elif r.has_meta("static_prop"):
+		var b := r.get_node_or_null("body") as Node3D
+		if b != null:
+			var t := float(st.get("time", 0.0))
+			var k := 1.0 + sin(t * 2.6) * 0.04
+			b.scale = Vector3(k, 2.0 - k, k) * b.scale.length() / sqrt(3.0)
 	else:
 		Anim.pose(r, st)
 

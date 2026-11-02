@@ -252,9 +252,7 @@ static func arc(h: Hero, root: Node3D, ps: PackedVector3Array, d: Vector3) -> vo
 		if delay <= 0.0:
 			_leap(root, a2, b2, tr, i == 0)
 		else:
-			root.get_tree().create_timer(delay, false).timeout.connect(func():
-				if is_instance_valid(root):
-					_leap(root, a2, b2, tr, false))
+			Fx.later(root, delay, func(): _leap(root, a2, b2, tr, false))
 
 static func _leap(root: Node3D, a: Vector3, b: Vector3, tr: int, first: bool) -> void:
 	bolt(root, a, b, 0.3, 0.09 if first else 0.075, tr)

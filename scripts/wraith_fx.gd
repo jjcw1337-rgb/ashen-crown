@@ -104,10 +104,9 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			SkillFx.snd(h, "shade_in", -2.0)
 			SkillFx.shake(h, 0.15)
 			# the shade left behind caves in a moment later
-			root.get_tree().create_timer(SHADE_DELAY, false).timeout.connect(func():
-				if is_instance_valid(root):
-					shade_collapse(root, from)
-					Sfx.play_at("shade_implode", from, -1.0))
+			Fx.later(root, SHADE_DELAY, func():
+				shade_collapse(root, from)
+				Sfx.play_at("shade_implode", from, -1.0))
 		["step", "strike"]:
 			var yaw: float = float(ev["y"])
 			rake(root, pos, yaw, 2.6, true)
@@ -1082,13 +1081,8 @@ static func set_night(n: Node3D, k: float) -> void:
 ## The scream of the night: three rings of terror racing out, a burst of pale shrieking shapes.
 static func scream(root: Node3D, pos: Vector3, radius: float) -> void:
 	_soul_ring(root, pos, radius, SPIRIT.darkened(0.3), 0.5, 0.3)
-	var tree := root.get_tree()
-	tree.create_timer(0.1, false).timeout.connect(func():
-		if is_instance_valid(root):
-			_soul_ring(root, pos, radius * 0.85, VIOLET, 0.55, 0.9))
-	tree.create_timer(0.2, false).timeout.connect(func():
-		if is_instance_valid(root):
-			_soul_ring(root, pos, radius * 1.05, SPIRIT.darkened(0.55), 0.5, 0.15))
+	Fx.later(root, 0.1, func(): _soul_ring(root, pos, radius * 0.85, VIOLET, 0.55, 0.9))
+	Fx.later(root, 0.2, func(): _soul_ring(root, pos, radius * 1.05, SPIRIT.darkened(0.55), 0.5, 0.15))
 	_spirit_burst(root, pos + Vector3(0, 1.5, 0), Color(0.75, 0.9, 1.0, 0.7), 34, 10.0, 0.22, 0.5, true, 0.0, 180.0)
 	_spirit_burst(root, pos + Vector3(0, 0.5, 0), VIOLET, 40, 6.0, 0.12, 0.8, true, 1.5, 90.0)
 	var mi := MeshInstance3D.new()

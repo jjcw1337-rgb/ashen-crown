@@ -1,6 +1,6 @@
 # Ashen Crown: visual quality audit and overhaul
 
-Nov 1-2, 2026 · on `test-visual-overhaul` (from `staging` 1fb8d09, staging merged in up to df8961c) · jj's brief: a complete visual overhaul toward
+Nov 1-2, 2026 · on `test-visual-overhaul` (from `staging` 1fb8d09, staging merged in up to 83ddb14) · jj's brief: a complete visual overhaul toward
 Diablo IV / Path of Exile 2 / Guild Wars 2, every asset inspected, Meshy and Blender with no limit, a measured
 baseline first.
 
@@ -11,12 +11,13 @@ palisade, the shared skills', Warlock's and Wraith's own effects, the monsters' 
 flagstones, pebbles and fallen leaves, Meshy rocks, kerbstones, clutter, Roman pieces and A2's aqueduct, the living
 grass in Acts II and III, new telegraphs, the Plague Doctor's own effects and clouds, and the last generic accents
 of the Demon, Warlock and Archer) are done, tested headless and committed on `test-visual-overhaul`, merged with
-staging up to df8961c. Nothing is approved yet: every change still needs jj's look on a real GPU (the preview
+staging up to 83ddb14. Nothing is approved yet: every change still needs jj's look on a real GPU (the preview
 build). Meshy spent by the overhaul: 1,188 credits (balance 863).
 
 ## Summary
 
-- **The camp drew 150 M triangles a frame at High; it now draws 11.7 M** (draw calls 3,891 → 2,841). Two causes:
+- **The camp drew 150 M triangles a frame at High; it now draws 9.7 M** (draw calls 3,967 → 2,961; 11.9 M with the
+  overhaul alone, 9.7 M with staging's matching multimesh fix, section 1). Two causes:
   the character sheet's portrait, a hidden 61-pixel view, re-rendered the whole world and its shadow maps every
   frame (66 M), and the camp's trees and palisade were single multimeshes the size of the map, so nothing could be
   culled and every tree went into every shadow pass, including all six faces of each shadowed lantern. The Mac's
@@ -96,6 +97,8 @@ drop a notch (`Grass.scatter`'s quality).
 <!-- /perf:q2 -->
 
 The camp: with the overhaul alone (measured before the second merge) it drew 11.9 M; staging's nightly found and fixed the same unculled multimeshes independently the same night (its KPI on the Mac: 143.8 M → 15.3 M); with both, 9.7 M here.
+
+The coast was measured before staging built it out (83ddb14 brought the hamlet, the wreck, the beacon and the rock pools), so neither column has those props. The nightly KPIs have no coast scenario; `frame_stats.gd` measures it as it is now.
 
 Video memory rose 26-314 MB per zone (the A2 camp most, Act III next): every Meshy model's colour, normal and roughness maps decode to uncompressed RGBA8 (5.3 MB per 1K map with mipmaps). VRAM compression would cut them about four times and grow the download; that is the open decision for jj and Blaine (texture import, section 2).
 
@@ -329,6 +332,18 @@ would be ~3,600, so the rest goes by the roadmap's order.
 - The fps gain is measured in primitives and draw calls; the KPI suite on the Mac is the confirmation.
 - sloth_test and fallen_test each failed one random AI check once (the slam's stun, all three Fallen attacks) and
   pass on rerun, the same as on staging.
+- Found on staging, not touched by the overhaul:
+  - In debug runs (the editor, `godot --path .`, every headless test), `UI._make_theme` stops at `ui.gd:275`:
+    `bn`/`bh`/`bp`/`bd` are inferred as StyleBoxFlat from `_box(...)` and then given the iron socket's
+    StyleBoxTexture, so the function returns nothing and the whole UI falls back to Godot's default theme. Release
+    exports skip that type check, so players see the iron buttons. Fix: `var bn: StyleBox = ...` (and the other three).
+  - The coast's new Meshy props (the hamlet, the wreck, the beacon; `Coast._put`) keep their glb's own materials, so
+    unlike every other Meshy prop they don't dither away round the hero when they stand between him and the camera.
+  - `sloop_test`: the Ember Sloop doesn't get back from the Verdant Isle to the pier within 60 s. It fails on staging
+    df8961c itself and still does with 83ddb14's coast work merged in. `talent_test` fails four checks (the removed
+    wyrm class, stale numbers), as staging's own commits say.
+  - A crate's turn and which oak a Feral clings to use Godot's global random numbers, so they change from launch to
+    launch (in co-op only the host spawns monsters, so the players still agree).
 - Texture compression (VRAM vs download) is still a decision for jj and Blaine.
 - Stage 4 to check in play: the Meshy boulders stand taller than the old flattened rocks (a knee-high boulder is
   0.5-0.7 m) and the kerbs are a darker granite, also on A2's Roman road (dark basalt suits it, but judge it); the

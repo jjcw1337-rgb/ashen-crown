@@ -229,8 +229,8 @@ static func _rend_hit(h: Hero, first: bool) -> void:
 	if not souls.is_empty():
 		h.fx("rend", "souls", {"ps": souls})
 		for i in souls.size():
-			h.get_tree().create_timer(WraithFx.wisp_time(i), false).timeout.connect(func():
-				if is_instance_valid(h) and not h.dead:
+			Fx.later(h, WraithFx.wisp_time(i), func():
+				if not h.dead:
 					Sfx.play("soul_return", -9.0)
 					h.life = minf(h.max_life, h.life + h.max_life * (0.02 + h.talent("rend_heal") / 100.0))
 					h.stats_changed.emit())
@@ -345,9 +345,8 @@ static func _blink(h: Hero) -> void:
 	h.moving = false
 	h.veil_t = maxf(h.veil_t, VEIL_STEP + h.talent("veil"))
 	# the shade left behind caves in a moment later (the "blink" event collapses it at the same time)
-	var tree := h.get_tree()
-	tree.create_timer(WraithFx.SHADE_DELAY, false).timeout.connect(func():
-		if not is_instance_valid(h) or h.game.world == null:
+	Fx.later(h, WraithFx.SHADE_DELAY, func():
+		if h.game.world == null:
 			return
 		for e in h.game.enemies_near(from, 2.6):
 			h._hit_enemy(e, 0.8, 0.8, "step", spirit(h, 0.4)))
@@ -386,8 +385,8 @@ static func _update_tether(h: Hero, delta: float) -> void:
 		if v != null and is_instance_valid(v) and v.dead and not h.dead:
 			# the soul leaves the body and comes to him
 			h.fx("siphon", "soul", {"p": v.global_position + Vector3(0, 0.9 * v.height, 0)})
-			h.get_tree().create_timer(WraithFx.wisp_time(0), false).timeout.connect(func():
-				if is_instance_valid(h) and not h.dead:
+			Fx.later(h, WraithFx.wisp_time(0), func():
+				if not h.dead:
 					Sfx.play("soul_return", -6.0)
 					h.life = minf(h.max_life, h.life + h.max_life * 0.06)
 					h.stats_changed.emit())

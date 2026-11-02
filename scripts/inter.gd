@@ -26,6 +26,40 @@ var _hand_top := -1e9
 var _strike_cd := 0.0
 var _fall := 0.0
 
+var _walk_to := Vector3.INF
+var _patrol_i := 0
+
+## A keeper who gets about (clips "patrol": {"points": [Vector3...], "walk": clip, "speed": m/s, "face": [yaw per point],
+## "chance", "works": [clips per point]}; Osric between his
+## hull and the pier with a plank): after a spell of work, off to the next point at a walk, turning the way he goes;
+## a hero coming near stops him, and he turns and talks as the others do. Cosmetic and local to each game.
+func _patrol(delta: float, near: bool) -> bool:
+	var pt: Dictionary = clips.get("patrol", {})
+	if pt.is_empty():
+		return false
+	var pts: Array = pt.get("points", [])
+	if _walk_to == Vector3.INF or near:
+		return false
+	var to := _walk_to - global_position
+	to.y = 0
+	if to.length() < 0.15:
+		global_position = Vector3(_walk_to.x, global_position.y, _walk_to.z)
+		_walk_to = Vector3.INF
+		_clip_t = 0.0
+		home_yaw = float(pt.get("face", [])[_patrol_i]) if (pt.get("face", []) as Array).size() > _patrol_i else model.rotation.y
+		return false
+	var step := minf(float(pt.get("speed", 1.1)) * delta, to.length())
+	global_position += to.normalized() * step
+	if game_world_height != null:
+		global_position.y = game_world_height.call(global_position.x, global_position.z)
+	model.rotation.y = lerp_angle(model.rotation.y, atan2(to.x, to.z), delta * 4.0)
+	var walk := str(pt.get("walk", ""))
+	if walk != "" and anim.has_animation(walk) and anim.current_animation != walk:
+		anim.play(walk, 0.35)
+	return true
+
+var game_world_height: Variant = null
+
 func _animate(delta: float) -> void:
 	var near := false
 	var want := home_yaw
@@ -38,12 +72,17 @@ func _animate(delta: float) -> void:
 			near = true
 			if not stay:
 				want = atan2(d.x, d.z)       # Meshy models face +z
+	if _patrol(delta, near):
+		return
 	model.rotation.y = lerp_angle(model.rotation.y, want, delta * (3.0 if near else 1.2))
 	_clip_t -= delta
 	if not (stay and near):
 		_talked = maxf(0.0, _talked - delta)
 	var cur := anim.current_animation
 	var works: Array = clips.get("work", []) if clips.get("work") is Array else [clips.get("work", "")]
+	var by_spot: Array = (clips.get("patrol", {}) as Dictionary).get("works", [])
+	if by_spot.size() > _patrol_i:
+		works = by_spot[_patrol_i]        # a keeper on a round has the work of the spot he's at
 	# walking up interrupts the work: greet once, then wait (idle) while the hero shops
 	if near and cur in works and clips.has("talk") and _talked <= 0.0:
 		_clip_t = 0.0
@@ -57,6 +96,14 @@ func _animate(delta: float) -> void:
 		pass
 	elif not works.is_empty() and works[0] != "" and randf() < 0.8:
 		next = works[randi() % works.size()]
+	# a keeper on a round: now and then, off to the next spot instead
+	var pt: Dictionary = clips.get("patrol", {})
+	if not near and not pt.is_empty() and randf() < float(pt.get("chance", 0.35)):
+		var pts: Array = pt.get("points", [])
+		if pts.size() > 1:
+			_patrol_i = (_patrol_i + 1) % pts.size()
+			_walk_to = pts[_patrol_i]
+			return
 	if next == "" or not anim.has_animation(next):
 		return
 	anim.play(next, 0.45)

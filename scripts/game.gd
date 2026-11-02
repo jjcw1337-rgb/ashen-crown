@@ -47,7 +47,14 @@ var playing := false
 ## Battlegrounds (battlegrounds.gd): the server's raid logic (only on a `--server` run), whether this game is a
 ## player in a raid, and that player's stash as the server last reported it.
 var bg: Battlegrounds
-var bg_mode := false
+var bg_mode := false:
+	set(v):
+		var was := bg_mode
+		bg_mode = v
+		# the Battlegrounds' gear rules come and go with the raid (Hero.pvp_scaled)
+		if was != v and hero != null and is_instance_valid(hero):
+			hero.recalc()
+			hero.life = hero.max_life
 var net_joining := false     # a co-op join sent, no welcome yet (on_net_failed then goes back to the co-op screen)
 var bg_home_run := -1        # in a raid: the character's own act (Net.cl_welcome swaps to the raid's, saves keep this)
 var bg_raid := {}               # the round as the raid server last said (Net.cl_bg_raid): state, t, open portals...
@@ -116,6 +123,8 @@ func _ready() -> void:
 			shot_zone = args[i + 1]
 		if args[i] == "--run" and i + 1 < args.size():
 			difficulty = int(args[i + 1])
+		if args[i] == "--render-scale" and i + 1 < args.size():
+			render_scale_arg = float(args[i + 1])
 	quality = _initial_quality()
 	set_sound(bool(_load_setting("audio", "sound_on", true)))
 	click_move = bool(_load_setting("controls", "click_move", false))
@@ -129,6 +138,7 @@ func _ready() -> void:
 	add_child(grass_field)
 	_setup_camera()
 	_setup_post()
+	get_window().size_changed.connect(apply_render_scale)
 	quests = Quests.new(self)
 	ui = UI.new()
 	add_child(ui)
@@ -817,6 +827,31 @@ func apply_quality(q: int) -> void:
 	Grass.apply_quality(self, q)
 	if world != null and world.has_node("Ocean"):
 		(world.get_node("Ocean") as Ocean).set_quality(q)
+	apply_render_scale()
+
+## How many pixels the 3D view may draw at most on Low and Medium (High and Ultra draw every pixel). The UI is
+## always drawn at the window's full size. A Retina Mac's window has four times the pixels of its size in points
+## and the game drew the 3D into all of them: an M5 Pro in the camp ran a steady 21 fps on Medium and 29 on Low
+## (telemetry, triage 2026-11-02) where a 1080p screen runs 79 / 94. A 1080p window on Medium is under its cap (unchanged).
+const RENDER_PIXEL_CAP := [1600 * 900, 1920 * 1080]
+var render_scale_arg := -1.0     # --render-scale N: a fixed 3D scale (KPI comparisons; 2.0 = a Retina screen's cost)
+
+## The 3D view's resolution for the preset and the window, upscaled with FSR 1 (bilinear in Compatibility).
+func apply_render_scale() -> void:
+	var vp := get_viewport()
+	if vp == null or DisplayServer.get_name() == "headless":
+		return
+	var px := float(get_window().size.x * get_window().size.y)
+	var s := 1.0
+	if render_scale_arg > 0.0:
+		s = render_scale_arg
+	elif quality < RENDER_PIXEL_CAP.size() and px > RENDER_PIXEL_CAP[quality]:
+		s = clampf(sqrt(RENDER_PIXEL_CAP[quality] / px), 0.5, 1.0)
+		if s > 0.9:
+			s = 1.0    # (a few percent isn't worth the softening)
+	vp.scaling_3d_scale = s
+	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if s < 1.0 and is_forward() else Viewport.SCALING_3D_MODE_BILINEAR
+	vp.fsr_sharpness = 0.3
 
 ## Directional shadow cascades fitted to what the camera can see (visual overhaul, stage 1; docs/visual/AUDIT.md).
 ## The isometric camera looks down from ~24 m: nothing nearer than ~10 m or farther than ~35 m (45 m zoomed out) is
@@ -2072,6 +2107,20 @@ func use_inter_remote(t: Inter) -> void:
 				who = str(net.players[pid]["name"])
 			bg.start_prep(who)
 
+## A class unique (Data.UNIQUES with "cls": the hard-won level-20 rewards with the raid's item effects) for one of
+## the classes of the heroes near (a raid's players, the party, or the hero), so what drops is someone's to wear.
+func _drop_class_unique(at: Vector3) -> void:
+	var want := []
+	for hh in get_tree().get_nodes_in_group("hero") + net.puppets():
+		if hh is Hero and is_instance_valid(hh) and not (net.server and hh == hero) and hh.global_position.distance_to(at) < 40.0:
+			want.append(hh.cls)
+	var pool := Data.UNIQUES.keys().filter(func(k): return Data.UNIQUES[k].has("cls") and (want.is_empty() or want.has(Data.UNIQUES[k]["cls"])))
+	if pool.is_empty():
+		pool = Data.UNIQUES.keys().filter(func(k): return Data.UNIQUES[k].has("cls"))
+	var it := Items.make_unique(pool[rng.randi() % pool.size()])
+	drop_item(it, at)
+	ui.message("%s!" % it["name"], Color(0.85, 0.66, 0.38))
+
 func _open_chest(t: Inter) -> void:
 	t.used = true
 	Sfx.play("equip")
@@ -2083,6 +2132,9 @@ func _open_chest(t: Inter) -> void:
 		return
 	var n := 7 if gold else rng.randi_range(2, 4)
 	for i in n:
+		if gold and i == 0:
+			_drop_class_unique(t.global_position)     # the golden chest's own reward: a class unique
+			continue
 		_drop_loot_roll(t.global_position, world.level, gold and i < 3)
 
 ## A chest a boss guards (data "guard": its Data.ENEMIES kind; the Battlegrounds' golden chest): sealed while that
@@ -2090,12 +2142,25 @@ func _open_chest(t: Inter) -> void:
 ## chest's sv_inter) and each client agree, a late joiner too (a dead boss isn't in its list).
 func chest_sealed(t: Inter) -> bool:
 	var guard := str(t.data.get("guard", ""))
-	if guard == "" or world == null:
+	if guard == "" or world == null or t.data.get("unsealed", false):
 		return false
-	for e in world.enemies_root.get_children():
-		if e is Enemy and not e.dead and e.kind == guard and e.global_position.distance_to(t.global_position) < 40.0:
-			return true
-	return false
+	if net.active and not net.is_host:
+		# the server decides (Net.sv_inter); a player who joined after the guard fell never saw it happen
+		for e in world.enemies_root.get_children():
+			if e is Enemy and not e.dead and e.kind == guard:
+				return true
+		return false
+	return true
+
+## A boss's death breaks the seal on the chests it guards, wherever it falls (luring it off doesn't open them), on
+## every peer: the host's death path and a client's Net.cl_enemy_die both reach Enemy.die_visual. A new round's zone
+## starts sealed again.
+func guard_fell(kind: String) -> void:
+	if world == null:
+		return
+	for c in world.interactables:
+		if c is Inter and str(c.data.get("guard", "")) == kind:
+			c.data["unsealed"] = true
 
 ## A stairway down (BgFloors._stair): a fade, and the hero at the floor below's arrival stair. The hero's position
 ## is streamed like any move, so the server and the others see him go.
@@ -2505,6 +2570,9 @@ func _interact(t: Inter) -> void:
 				net.inter_used(t)
 		"descend":
 			_descend(t)
+		"dwarves":
+			if not t.used:
+				DwarfGame.talk(self, t)
 		"bell":
 			# the antechamber's bell: the server starts the countdown (Net.sv_inter -> use_inter_remote)
 			Sfx.play("anvil", -2.0, 0.6)
@@ -2652,6 +2720,8 @@ func on_enemy_killed(e: Enemy) -> void:
 		for i in 3:
 			drop_item(Items.gold(int(rng.randf_range(40, 70) * (1.0 + e.level * 0.6))), e.global_position)
 		ui.message("%s is slain" % e.display_name, Color(0.55, 0.9, 0.95))
+	if e.def.get("class_unique", false):
+		_drop_class_unique(e.global_position)
 	if e.def.has("boss_drop"):
 		var bu := Items.make_unique(e.def["boss_drop"])
 		if difficulty >= 1:
@@ -2963,6 +3033,85 @@ func _cheat_keys(ev: InputEvent) -> void:
 	if _typed.ends_with("maxout") and (dev_tools_on() or BuildEnv.env() != "production"):
 		_typed = ""
 		max_out()
+
+## Admin (the F8 testing panel, only with dev tools: the signed admin key or the editor; Blaine's progression spec):
+## this character to level 20 with its stats spent and its talents auto-built, every skill it has at 20, and a solid
+## class baseline of level-20 gear for PvP testing (rare items on every slot, the class's own weapon). Safe to press
+## again: its own pieces (marked "boost") stay, any other equipped item moves to the bag (kept equipped if the bag
+## is full, never destroyed), and the same gear is never handed out twice.
+const BOOST_SLOTS := ["weapon", "armor", "helm", "gloves", "boots", "belt", "ring1", "ring2", "amulet"]
+
+func go_level_20() -> void:
+	if not dev_tools:
+		return
+	if hero.level < 20:
+		hero.set_level(20)
+	var c: Dictionary = Data.CLASSES.get(hero.cls, {})
+	var tot := float(int(c.get("str", 1)) + int(c.get("dex", 1)) + int(c.get("vit", 1)) + int(c.get("ene", 1)))
+	var pts := hero.stat_points
+	var a := int(pts * int(c.get("str", 1)) / tot)
+	var b := int(pts * int(c.get("dex", 1)) / tot)
+	var v := int(pts * int(c.get("vit", 1)) / tot)
+	hero.str_ += a
+	hero.dex += b
+	hero.vit += v
+	hero.ene += pts - a - b - v
+	hero.stat_points = 0
+	hero.talents = Talents.auto_build(hero.cls, hero.free_talent_points(), hero.talents)
+	hero._talents_changed()
+	var r := RandomNumberGenerator.new()
+	r.seed = hash(hero.cls + ":boost20")       # (the same baseline every time)
+	var slots := BOOST_SLOTS.duplicate()
+	if hero.cls == "knight":
+		slots.append("shield")
+	var given := 0
+	for slot in slots:
+		var cur = hero.equipment.get(slot)
+		if cur is Dictionary and bool((cur as Dictionary).get("boost", false)):
+			continue
+		var base := _boost_base(slot)
+		if base == "":
+			continue
+		var it := Items.generate(base, 20, 2, r)
+		it["boost"] = true
+		if cur is Dictionary and not (cur as Dictionary).is_empty():
+			if not hero.add_to_inventory(cur):
+				continue          # (no room for what's there: it stays on)
+		hero.equipment[slot] = it
+		given += 1
+	hero.refresh_gear()
+	hero.recalc()
+	hero.life = hero.max_life
+	hero.mana = hero.max_mana
+	if char_id != "":
+		save_game()
+	ui.refresh()
+	ui.message("Level 20: talents built, %d piece%s of level-20 gear on" % [given, "" if given == 1 else "s"], Color(0.6, 1.0, 0.6))
+
+## The best base for a slot at level 20 that this class can wear (its own weapon kind: bows for the ranger, canes for
+## the plague doctor, the drumstick for Doug...).
+func _boost_base(slot: String) -> String:
+	var want := "ring" if slot in ["ring1", "ring2"] else slot
+	var mine: String = str(Data.CLASSES.get(hero.cls, {}).get("weapon", ""))
+	var kind := str(Data.BASES.get(mine, {}).get("kind", "")) if mine != "" else ""
+	var held = hero.equipment.get("weapon")
+	if kind == "" and held is Dictionary:
+		kind = str(Data.BASES.get(held["base"], {}).get("kind", ""))     # no weapon of its own (the knight): the kind in hand
+	var best := ""
+	var bl := -1
+	for k in Data.BASES:
+		var bd: Dictionary = Data.BASES[k]
+		if str(bd.get("slot", "")) != want or int(bd.get("lvl", 1)) > 20:
+			continue
+		var owner := str(bd.get("cls", ""))
+		if owner != "" and owner != hero.cls:
+			continue
+		if want == "weapon" and kind != "" and str(bd.get("kind", "")) != kind:
+			continue
+		if int(bd.get("lvl", 1)) > bl:
+			bl = int(bd.get("lvl", 1))
+			best = k
+	return best
 
 func max_out() -> void:
 	hero.set_level(99)

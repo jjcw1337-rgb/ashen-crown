@@ -86,6 +86,8 @@ func _player() -> void:
 		await secs(3.0)
 		var pal = g.net.puppets()[0]
 		g.hero.global_position = g.world.free_spot_near(pal.global_position, 2.0)
+		if g.hero.level < int(Data.skill_def("war_cry")["lvl"]):
+			g.hero.set_level(int(Data.skill_def("war_cry")["lvl"]))      # (War Cry opens at its level)
 		g.hero.mana = g.hero.max_mana
 		for k in g.hero.cds.keys():
 			g.hero.cds[k] = 0.0

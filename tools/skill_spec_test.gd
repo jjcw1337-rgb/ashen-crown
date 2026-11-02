@@ -96,9 +96,14 @@ func _run() -> void:
 		h.set_level(1)
 		h.binds = h.default_binds()
 		var own: Array = h.skill_list()
+		# the progression overhaul: the first skill from level 1, every skill by 20, every ultimate at 20
 		for s in own:
-			if Data.skill_locked(s, 1):
-				shut.append("%s %s" % [c, s["id"]])
+			if s == own[0] and Data.skill_locked(s, 1):
+				shut.append("%s %s locked at 1" % [c, s["id"]])
+			if Data.skill_locked(s, 20):
+				shut.append("%s %s still locked at 20" % [c, s["id"]])
+			if "ultimate" in s.get("tags", []) and int(s["lvl"]) != 20:
+				shut.append("%s %s (ultimate) at %d" % [c, s["id"], int(s["lvl"])])
 		var filled := 0
 		for k in h.BIND_KEYS:
 			if str(h.binds.get(k, "")) != "":
@@ -114,7 +119,7 @@ func _run() -> void:
 				refill += 1
 		if refill < want:
 			shut.append("%s: an old save's bar kept %d empty" % [c, want - refill])
-	check(shut.is_empty(), "every class has every skill at level 1 and a full bar (%d classes)%s" % [Data.CLASSES.size(), ("\n      " + "\n      ".join(shut)) if not shut.is_empty() else ""])
+	check(shut.is_empty(), "every class starts with its first skill, has all by 20 (ultimates at 20) and a full bar (%d classes)%s" % [Data.CLASSES.size(), ("\n      " + "\n      ".join(shut)) if not shut.is_empty() else ""])
 	h.set_class("demon")
 	h.set_level(10)
 	g.test_immortal = true
@@ -144,7 +149,7 @@ func _run() -> void:
 	for c in ["knight", "wraith"]:
 		h.set_class(c)
 		h.new_character()
-		h.set_level(10)
+		h.set_level(16)          # (Earthshatter, the last shared skill, opens at 16)
 		await create_timer(0.3).timeout
 		for id in SH.IDS:
 			h.global_position = home

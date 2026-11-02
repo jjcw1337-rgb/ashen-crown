@@ -155,8 +155,28 @@ func _sample() -> void:
 		"frame_p99": snappedf(float(fr[mini(n - 1, int(n * 0.99))]), 0.1), "hitches": hitches, "enemies": near.size(),
 		"boss": boss, "partners": game.net.puppets().size() if game.net.active else 0, "dead": h.dead,
 		"vram_mb": roundi(Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1e6),
-		"res": "%dx%d" % [get_viewport().get_visible_rect().size.x, get_viewport().get_visible_rect().size.y]})
+		"res": _res()})
 	_queue(samples, s)
+
+## The window in real pixels, the screen's scale and the 3D view's (Game.apply_render_scale): "3232x1800@2.0 3d0.50".
+## (Until 2026-11-02 it was the UI's size in points, which hid a Retina screen's four times the pixels.)
+func _res() -> String:
+	var w := get_window().size
+	return "%dx%d@%.1f 3d%.2f" % [w.x, w.y, DisplayServer.screen_get_scale(), get_viewport().scaling_3d_scale]
+
+## How many bytes of a log chunk can be read now: whole lines only (the engine may be halfway through writing the
+## last one), and not an error whose "at:" line isn't written yet. Both wait for the next read. Reading them early
+## split one engine error into two made-up issues on the servers (triage 2026-11-02: an "at:" cut in two, and an
+## error with no "at:" that slipped past the headless renderer's filter).
+static func whole_lines(buf: PackedByteArray) -> int:
+	var end := buf.rfind(10) + 1
+	if end <= 0:
+		return 0
+	var start := buf.rfind(10, end - 2) + 1 if end >= 2 else 0
+	var last := buf.slice(start, end).get_string_from_utf8().strip_edges().trim_prefix("USER ")
+	if last.begins_with("ERROR:") or last.begins_with("SCRIPT ERROR:"):
+		return start
+	return end
 
 ## New lines of Godot's own log: every error becomes an event (fingerprinted, counted).
 func _read_log() -> void:
@@ -169,9 +189,12 @@ func _read_log() -> void:
 	if len == log_pos:
 		return
 	f.seek(log_pos)
-	var text := f.get_buffer(mini(len - log_pos, 256 * 1024)).get_string_from_utf8()
-	log_pos = len
-	var lines := text.split("\n")
+	var buf := f.get_buffer(mini(len - log_pos, 256 * 1024))
+	var end := whole_lines(buf)
+	if end <= 0:
+		return
+	log_pos += end
+	var lines := buf.slice(0, end).get_string_from_utf8().split("\n")
 	for i in lines.size():
 		var l := lines[i].strip_edges().trim_prefix("USER ")     # ("USER ERROR:" / "USER SCRIPT ERROR:": from scripts)
 		var kind := ""

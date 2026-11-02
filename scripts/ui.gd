@@ -259,13 +259,30 @@ func _make_theme() -> Theme:
 	bp.shadow_size = 0
 	var bd := _box(Color(0.08, 0.07, 0.06), Color(0.25, 0.22, 0.18), 2, 2, 8)
 	bd.shadow_size = 0
+	# every button is the action bar's iron socket by default (Blaine: "no plain boxes"; _iron_button is the same)
+	var sock := _scaled_tex(BAR_TEX["slot"], 0.3)
+	var iron := func(mod: Color) -> StyleBoxTexture:
+		var sb := StyleBoxTexture.new()
+		sb.texture = sock
+		for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
+			sb.set_texture_margin(side, 9)
+		sb.content_margin_left = 14
+		sb.content_margin_right = 14
+		sb.content_margin_top = 6
+		sb.content_margin_bottom = 6
+		sb.modulate_color = mod
+		return sb
+	bn = iron.call(Color.WHITE)
+	bh = iron.call(Color(1.25, 1.15, 1.0))
+	bp = iron.call(Color(0.85, 0.8, 0.75))
+	bd = iron.call(Color(0.5, 0.48, 0.46, 0.85))
 	t.set_stylebox("normal", "Button", bn)
 	t.set_stylebox("hover", "Button", bh)
 	t.set_stylebox("pressed", "Button", bp)
 	t.set_stylebox("disabled", "Button", bd)
 	t.set_stylebox("focus", "Button", _box(Color(0, 0, 0, 0), Color(0.9, 0.75, 0.45), 1, 2, 8))
-	t.set_color("font_color", "Button", GOLD)
-	t.set_color("font_hover_color", "Button", Color(1.0, 0.9, 0.65))
+	t.set_color("font_color", "Button", Color(0.96, 0.82, 0.5))
+	t.set_color("font_hover_color", "Button", Color(1.0, 0.92, 0.65))
 	t.set_color("font_disabled_color", "Button", Color(0.4, 0.37, 0.32))
 	t.set_font("font", "Button", font_title)
 	t.set_font_size("font_size", "Button", 17)
@@ -1482,16 +1499,31 @@ func _fill_quests() -> void:
 		for q in qs.current() if not pass_done else qs.line().filter(func(x): return qs.status(x["id"]) == "done"):
 			var id: String = q["id"]
 			var s: String = qs.status(id)
+			# each quest on its own inset card: a gold edge for the act's main quest, dimmer when done
+			var card := PanelContainer.new()
+			var csb := StyleBoxFlat.new()
+			csb.bg_color = Color(0.035, 0.03, 0.03, 0.85)
+			csb.border_color = (GOLD if q.get("main", false) else Color(0.55, 0.45, 0.3)).darkened(0.45 if s == "done" else 0.0)
+			csb.border_width_left = 4
+			csb.border_width_top = 1
+			csb.border_width_right = 1
+			csb.border_width_bottom = 1
+			csb.content_margin_left = 14
+			csb.content_margin_right = 10
+			csb.content_margin_top = 8
+			csb.content_margin_bottom = 10
+			card.add_theme_stylebox_override("panel", csb)
+			quest_list.add_child(card)
 			var box := VBoxContainer.new()
 			box.add_theme_constant_override("separation", 3)
-			quest_list.add_child(box)
+			card.add_child(box)
 			var tl := _label(("◆  " if q.get("main", false) else "") + str(q["name"]) + ("   (done)" if s == "done" else ""), 19, GOLD if s != "done" else DIM, true)
 			box.add_child(tl)
 			var who: String = Data.VENDORS[0].get(q["giver"], "")
 			box.add_child(_label(("Main quest  ·  " if q.get("main", false) else "") + "From " + who, 12, DIM))
 			var story := _label(str(q["done"] if s != "active" else q["busy"]), 14)
 			story.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			story.custom_minimum_size = Vector2(500, 0)
+			story.custom_minimum_size = Vector2(470, 0)
 			box.add_child(story)
 			if s != "done":
 				var c: Array = qs.counts(id)
@@ -1505,7 +1537,7 @@ func _fill_quests() -> void:
 					box.add_child(_label("✔  Return to " + who, 14, Color(1.0, 0.82, 0.45)))
 				var rw := _label("Reward: " + qs.reward_text(q), 13, DIM)
 				rw.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-				rw.custom_minimum_size = Vector2(500, 0)
+				rw.custom_minimum_size = Vector2(470, 0)
 				box.add_child(rw)
 			shown += 1
 	if shown == 0:
@@ -1513,6 +1545,15 @@ func _fill_quests() -> void:
 		none.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		none.custom_minimum_size = Vector2(500, 0)
 		quest_list.add_child(none)
+	# what's ahead, under the list (the log is never a bare frame)
+	var dv := _divider(24)
+	dv.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	quest_list.add_child(dv)
+	var hint := _label("More work turns up as you go: a gold ! over someone in the camp has a job for you, a ? is ready to hand in. The tracker under the map keeps the current ones in sight.", 13, Color(0.6, 0.56, 0.48))
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.custom_minimum_size = Vector2(470, 0)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	quest_list.add_child(hint)
 
 func _fill_tracker() -> void:
 	if quest_tracker == null:
@@ -1589,6 +1630,39 @@ func _panel(title: String, left: bool, w: int, h: int) -> PanelContainer:
 	hb.add_child(x)
 	vb.add_child(_divider(22))
 	return p
+
+var _pie_overlay: ColorRect
+
+## A cream pie in the face (DougSkills; Hero.take_hit "pied"): cream splattered over the screen's edges, fading.
+func pie_face(secs: float) -> void:
+	if _pie_overlay == null:
+		_pie_overlay = ColorRect.new()
+		_pie_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_pie_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var m := ShaderMaterial.new()
+		var sh := Shader.new()
+		sh.code = """shader_type canvas_item;
+uniform float amt = 1.0;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) { vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
+void fragment() {
+	vec2 c = (UV - 0.5) * vec2(1.6, 1.0);
+	float edge = smoothstep(0.32, 0.75, length(c) + (noise(UV * 7.0) - 0.5) * 0.35);
+	float blob = smoothstep(0.55, 0.7, noise(UV * 4.0 + 3.0)) * smoothstep(0.15, 0.45, length(c));
+	float a = clamp(edge + blob * 0.8, 0.0, 1.0) * amt;
+	COLOR = vec4(vec3(1.0, 0.97, 0.88) * (0.92 + noise(UV * 30.0) * 0.08), a * 0.95);
+}"""
+		m.shader = sh
+		_pie_overlay.material = m
+		top.add_child(_pie_overlay)
+	_pie_overlay.visible = true
+	var m2 := _pie_overlay.material as ShaderMaterial
+	m2.set_shader_parameter("amt", 1.0)
+	var tw := _pie_overlay.create_tween()
+	tw.tween_interval(secs * 0.6)
+	tw.tween_method(func(v: float): m2.set_shader_parameter("amt", v), 1.0, 0.0, secs * 0.4)
+	tw.tween_callback(func(): _pie_overlay.visible = false)
 
 ## A window's close: a gold ✕ that brightens and grows a touch under the mouse.
 func _close_button() -> Button:
@@ -2562,7 +2636,7 @@ func _build_stash() -> void:
 							Sfx.play("pickup")
 							break
 					tooltip.visible = false
-					refresh(), func(p, on): _hover(p, on, "stash"))
+					refresh(), func(p, on): _hover(p, on, "stash"), "", true)     # the bag's iron sockets
 		grid.add_child(c)
 		stash_cells.append(c)
 
@@ -3292,6 +3366,10 @@ func _build_test_panel() -> void:
 	test_panel.add_child(vb)
 	vb.add_child(_label("Testing", 22, GOLD, true))
 	vb.add_child(_label(("Admin: " + game.admin_name) if game.admin_name != "" else "Admin: editor", 12, Color(0.55, 0.85, 1.0)))
+	var l20 := _iron_button("Go to level 20", 280, 40, 16)
+	l20.name = "level20"
+	l20.pressed.connect(func(): game.go_level_20())
+	vb.add_child(l20)
 	var mx := Button.new()
 	mx.text = "Max out this character"
 	mx.pressed.connect(func(): game.max_out())
@@ -4428,6 +4506,9 @@ func _char_line(c: Dictionary) -> String:
 	return "%s, level %d %s" % [nm, int(c["level"]), Data.CLASSES.get(c["cls"], {"name": "Knight"})["name"]]
 
 ## The saved characters: play one, delete one (asks twice), or make a new one.
+## The Characters screen (the title's list of saves): the game's own frame (Blaine: "no plain boxes"), a card per
+## character in its class's colour (ClassStage.ACCENTS: a lit edge, the name, level, class and act, when last played)
+## with iron Play / Delete (Delete asks once), and New Character / Back below.
 func _build_characters() -> void:
 	chars_panel = Control.new()
 	chars_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -4435,22 +4516,28 @@ func _build_characters() -> void:
 	title_panel.add_child(chars_panel)
 	var dim := ColorRect.new()
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0.01, 0.01, 0.015, 0.95)
+	dim.color = Color(0.01, 0.01, 0.015, 0.82)
 	chars_panel.add_child(dim)
+	var frame := PanelContainer.new()
+	frame.anchor_left = 0.5
+	frame.anchor_right = 0.5
+	frame.anchor_top = 0.5
+	frame.anchor_bottom = 0.5
+	frame.offset_left = -430
+	frame.offset_right = 430
+	frame.offset_top = -330
+	frame.offset_bottom = 330
+	_ornate(frame, 0.3, 26)
+	chars_panel.add_child(frame)
 	var vb := VBoxContainer.new()
-	vb.anchor_left = 0.5
-	vb.anchor_right = 0.5
-	vb.anchor_top = 0.5
-	vb.anchor_bottom = 0.5
-	vb.offset_left = -380
-	vb.offset_right = 380
-	vb.offset_top = -300
-	vb.offset_bottom = 300
-	vb.add_theme_constant_override("separation", 16)
-	chars_panel.add_child(vb)
-	var t := _label("Characters", 40, GOLD, true)
+	vb.add_theme_constant_override("separation", 10)
+	frame.add_child(vb)
+	var t := _label("CHARACTERS", 34, GOLD, true)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(t)
+	var dv := _divider(26)
+	dv.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	vb.add_child(dv)
 	chars_sub = _label("", 15, Color(0.75, 0.7, 0.62))
 	chars_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(chars_sub)
@@ -4460,20 +4547,16 @@ func _build_characters() -> void:
 	vb.add_child(sc)
 	chars_list = VBoxContainer.new()
 	chars_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	chars_list.add_theme_constant_override("separation", 8)
+	chars_list.add_theme_constant_override("separation", 10)
 	sc.add_child(chars_list)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 14)
+	row.add_theme_constant_override("separation", 18)
 	vb.add_child(row)
-	var nb := Button.new()
-	nb.text = "New Character"
-	nb.custom_minimum_size = Vector2(200, 42)
+	var nb := _iron_button("New Character", 220, 46, 17)
 	nb.pressed.connect(func(): open_class_picker())
 	row.add_child(nb)
-	var back := Button.new()
-	back.text = "Back"
-	back.custom_minimum_size = Vector2(160, 42)
+	var back := _iron_button("Back", 160, 46, 17)
 	back.pressed.connect(func(): chars_panel.visible = false)
 	row.add_child(back)
 
@@ -4481,40 +4564,56 @@ func open_characters() -> void:
 	Sfx.play("click")
 	for c in chars_list.get_children():
 		c.queue_free()
-	var accents := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1), "warlock": Color(0.45, 1.0, 0.35), "archer": Color(0.55, 0.85, 0.45)}
 	var all: Array = game.list_characters()
 	chars_sub.text = "%d saved, each with its own save. Play any of them, or make a new one." % all.size()
 	var first := true
 	for c in all:
+		var acc: Color = ClassStage.ACCENTS.get(c["cls"], GOLD)
 		var card := PanelContainer.new()
-		card.add_theme_stylebox_override("panel", _box(Color(0.06, 0.05, 0.05, 0.96), accents.get(c["cls"], GOLD), 2, 6, 10))
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.045, 0.04, 0.04, 0.92)
+		sb.border_color = acc.darkened(0.35) if not first else acc
+		sb.border_width_left = 5
+		sb.border_width_top = 1
+		sb.border_width_bottom = 1
+		sb.border_width_right = 1
+		sb.corner_radius_top_left = 3
+		sb.corner_radius_bottom_left = 3
+		sb.content_margin_left = 18
+		sb.content_margin_right = 12
+		sb.content_margin_top = 10
+		sb.content_margin_bottom = 10
+		sb.shadow_color = Color(acc.r, acc.g, acc.b, 0.22 if first else 0.0)
+		sb.shadow_size = 8
+		card.add_theme_stylebox_override("panel", sb)
 		chars_list.add_child(card)
 		var hb := HBoxContainer.new()
 		hb.add_theme_constant_override("separation", 12)
 		card.add_child(hb)
 		var info := VBoxContainer.new()
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info.add_theme_constant_override("separation", 2)
 		hb.add_child(info)
-		info.add_child(_label(str(c["name"]) if str(c["name"]) != "" else "Unnamed", 22, accents.get(c["cls"], GOLD), true))
+		info.add_child(_label(str(c["name"]) if str(c["name"]) != "" else "Unnamed", 24, acc, true))
 		var run: String = Data.RUNS[int(c["difficulty"])]["name"] if int(c["difficulty"]) < Data.RUNS.size() else ""
-		info.add_child(_label("Level %d %s  ·  %s" % [int(c["level"]), Data.CLASSES.get(c["cls"], {"name": "Knight"})["name"], run], 14, Color(0.75, 0.7, 0.62)))
+		info.add_child(_label("Level %d %s  ·  %s" % [int(c["level"]), Data.CLASSES.get(c["cls"], {"name": "Knight"})["name"], run], 15, Color(0.82, 0.76, 0.66)))
 		var when := _ago(int(c["played"]))
 		info.add_child(_label(("Last played  ·  " if first else "Played ") + when if when != "" else "", 12, GOLD if first else Color(0.6, 0.57, 0.5)))
 		first = false
 		var id: String = c["id"]
-		var play := Button.new()
-		play.text = "Play"
-		play.custom_minimum_size = Vector2(110, 40)
+		var play := _iron_button("Play", 120, 44, 17)
+		play.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		play.pressed.connect(func():
 			chars_panel.visible = false
 			game.start_game(true, "knight", id))
 		hb.add_child(play)
-		var del := Button.new()
-		del.text = "Delete"
-		del.custom_minimum_size = Vector2(110, 40)
+		var del := _iron_button("Delete", 110, 44, 15)
+		del.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		del.add_theme_color_override("font_color", Color(0.85, 0.5, 0.42))
 		del.pressed.connect(func():
 			if del.text == "Delete":
 				del.text = "Sure?"
+				del.add_theme_color_override("font_color", Color(1.0, 0.35, 0.3))
 				return
 			game.delete_character(id)
 			open_characters()
@@ -4941,6 +5040,23 @@ func _process(delta: float) -> void:
 			cdr.anchor_top = 1.0 - frac
 			cdr.color = Color(0, 0, 0, 0.82) if locked else Color(0, 0, 0, 0.6)
 			(c.get_node("hole/glyph") as SkillGlyph).dim = locked or hero.mana < hero.skill_cost(sk["id"])
+			# a locked skill waits on the bar with the level it opens at
+			var ll: Label = c.get_node_or_null("hole/lock")
+			if locked and ll == null:
+				ll = Label.new()
+				ll.name = "lock"
+				ll.set_anchors_preset(Control.PRESET_FULL_RECT)
+				ll.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				ll.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+				ll.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				ll.add_theme_font_size_override("font_size", 13)
+				ll.add_theme_color_override("font_color", Color(1.0, 0.82, 0.45))
+				ll.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+				ll.add_theme_constant_override("outline_size", 4)
+				c.get_node("hole").add_child(ll)
+			if ll != null:
+				ll.visible = locked
+				ll.text = "Lv %d" % int(sk.get("lvl", 1))
 	if msg_t > 0.0:
 		msg_t -= delta
 		msg_lbl.modulate.a = clampf(msg_t, 0.0, 1.0)
@@ -5306,6 +5422,60 @@ class SkillGlyph extends Control:
 					var x := -11.0 + k * 7.3
 					draw_line(c + Vector2(x + 3, -16), c + Vector2(x, 8), Color(0.55, 0.4, 0.25) if not dim else steel, 2.5, true)
 					draw_colored_polygon(PackedVector2Array([c + Vector2(x - 0.5, 12), c + Vector2(x - 3.5, 6), c + Vector2(x + 2.5, 6)]), steel)
+			"pie":
+				# a cream pie in its tin, a cherry on the swirl
+				var cream := Color(1.0, 0.96, 0.86) if not dim else Color(0.5, 0.48, 0.44)
+				draw_colored_polygon(PackedVector2Array([c + Vector2(-15, 4), c + Vector2(15, 4), c + Vector2(11, 12), c + Vector2(-11, 12)]), steel)
+				draw_circle(c + Vector2(0, 2), 12.0, cream)
+				draw_circle(c + Vector2(-4, -4), 6.0, cream.lightened(0.1))
+				draw_circle(c + Vector2(4, -6), 5.0, cream)
+				draw_circle(c + Vector2(1, -12), 3.2, Color(0.85, 0.1, 0.12) if not dim else steel)
+			"peels":
+				# a banana peel lying open, its four flaps out
+				var ban := Color(1.0, 0.86, 0.2) if not dim else Color(0.5, 0.46, 0.3)
+				for k in 4:
+					var a2 := -PI * 0.5 + (k - 1.5) * 0.9
+					draw_line(c + Vector2(0, 4), c + Vector2(cos(a2), sin(a2) + 0.6) * 15.0 + Vector2(0, 4), ban, 5.0, true)
+				draw_circle(c + Vector2(0, 5), 4.5, ban.darkened(0.15))
+				draw_line(c + Vector2(0, 5), c + Vector2(0, 13), Color(0.35, 0.25, 0.1), 3.0, true)
+			"slide":
+				# a belly-slide: a round body low over speed lines
+				var yel := Doug.ACCENT if not dim else Color(0.5, 0.46, 0.3)
+				for k in 3:
+					draw_line(c + Vector2(-16, -4 + k * 6), c + Vector2(-4, -4 + k * 6), Color(0.8, 0.75, 0.6, 0.8), 2.0, true)
+				draw_circle(c + Vector2(6, 4), 9.0, yel)
+				draw_circle(c + Vector2(14, -2), 4.5, Color(0.95, 0.85, 0.8) if not dim else steel)
+				draw_circle(c + Vector2(17, -2), 1.8, Color(0.9, 0.1, 0.1) if not dim else steel)
+			"doppel":
+				# two of him: one solid, one a shiny balloon outline
+				var yel2 := Doug.ACCENT if not dim else Color(0.5, 0.46, 0.3)
+				draw_circle(c + Vector2(-7, 4), 8.0, yel2)
+				draw_circle(c + Vector2(-7, -8), 5.0, Color(0.95, 0.85, 0.8) if not dim else steel)
+				draw_arc(c + Vector2(8, 4), 8.0, 0, TAU, 20, yel2.lightened(0.4), 2.0, true)
+				draw_arc(c + Vector2(8, -8), 5.0, 0, TAU, 16, yel2.lightened(0.4), 2.0, true)
+				draw_line(c + Vector2(8, 12), c + Vector2(10, 17), yel2.lightened(0.4), 1.5, true)
+			"juggle":
+				# three pins in the air, one of them alight
+				for k in 3:
+					var pc := c + Vector2(-11 + k * 11, -6 + absf(k - 1) * 8)
+					draw_line(pc + Vector2(0, -7), pc + Vector2(0, 7), Color(0.95, 0.95, 0.95) if not dim else steel, 4.0, true)
+					draw_circle(pc + Vector2(0, -6), 3.0, Color(0.9, 0.15, 0.15) if not dim else steel)
+				draw_circle(c + Vector2(0, -14), 3.0, Color(1.0, 0.6, 0.15) if not dim else steel)
+			"bounce":
+				# a trampoline and a curve up off it
+				draw_arc(c + Vector2(0, 13), 12.0, PI, TAU, 16, Color(0.85, 0.2, 0.2) if not dim else steel, 3.0, true)
+				draw_line(c + Vector2(-12, 13), c + Vector2(12, 13), Color(1.0, 0.85, 0.2) if not dim else steel, 3.0, true)
+				draw_arc(c + Vector2(4, 4), 13.0, PI * 1.1, PI * 1.9, 14, Color(1.0, 1.0, 1.0, 0.8), 2.0, true)
+				draw_circle(c + Vector2(13, -5), 4.0, Doug.ACCENT if not dim else steel)
+			"car":
+				# the tiny clown car: a bubble body on big wheels, a horn
+				var red := Color(0.85, 0.15, 0.15) if not dim else Color(0.45, 0.32, 0.3)
+				draw_circle(c + Vector2(0, 0), 12.0, red)
+				draw_rect(Rect2(c + Vector2(-15, 0), Vector2(30, 8)), red.darkened(0.1))
+				draw_circle(c + Vector2(-9, 10), 5.0, Color(0.1, 0.1, 0.1))
+				draw_circle(c + Vector2(9, 10), 5.0, Color(0.1, 0.1, 0.1))
+				draw_circle(c + Vector2(-3, -4), 4.0, Color(0.6, 0.8, 1.0) if not dim else steel)
+				draw_circle(c + Vector2(13, -8), 2.5, Color(1.0, 0.85, 0.2) if not dim else steel)
 			"toxic":
 				# a round flask of green poison, a wisp rising from it
 				var gtox := Plague.TOXIC if not dim else Color(0.32, 0.38, 0.3)

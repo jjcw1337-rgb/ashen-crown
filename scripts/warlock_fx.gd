@@ -728,7 +728,7 @@ static func shackle_cast(root: Node3D, pos: Vector3, radius: float) -> void:
 	sg.global_position = pos + Vector3(0, 0.06, 0)
 	var ts := sg.create_tween()
 	ts.tween_property(sg, "rotation:y", -1.6, 0.8)
-	root.get_tree().create_timer(0.55, false).timeout.connect(func(): sigil_fade(sg))
+	Fx.later(sg, 0.55, func(): sigil_fade(sg))
 	InfernalFx.particles(root, pos + Vector3(0, 0.6, 0), {"amount": [10, 16, 24, 32][tr], "life": 0.55, "explosive": 0.9,
 		"shape": "ring", "r": radius * 0.9, "r_in": radius * 0.6, "dir": Vector3.UP, "spread": 20.0, "vel": [0.2, 0.6],
 		"radial": [-26.0, -20.0], "damping": [1.0, 2.0], "scale": [0.8, 1.3], "size": 0.9, "grow": [1.2, 0.3], "angle": true,
@@ -748,7 +748,7 @@ static func covenant(root: Node3D, pos: Vector3) -> void:
 	sg.global_position = pos + Vector3(0, 0.06, 0)
 	var ts := sg.create_tween()
 	ts.tween_property(sg, "rotation:y", 1.2, 1.4)
-	root.get_tree().create_timer(1.0, false).timeout.connect(func(): sigil_fade(sg))
+	Fx.later(sg, 1.0, func(): sigil_fade(sg))
 	fel_ring(root, pos, 1.0, [7, 10, 13, 16][tr], 1.8, 2.8, 0.95, 0.15)
 	fel_ring(root, pos, 2.3, [0, 6, 9, 12][tr], 0.6, 1.1, 0.7, 0.25)
 	InfernalFx.particles(root, pos + Vector3(0, 0.3, 0), {"amount": [14, 22, 32, 44][tr], "life": 1.6, "explosive": 0.6,

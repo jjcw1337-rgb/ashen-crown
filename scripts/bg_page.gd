@@ -378,7 +378,10 @@ func _fill_board() -> void:
 	for k in mini(sch.size(), _rows.size()):
 		var r: Dictionary = sch[k]
 		var l: Label = _rows[k]
-		if r["open"]:
+		if r["open"] and float(r["left"]) > Battlegrounds.RAID_SECS - Battlegrounds.LOBBY_MAX:
+			l.text = "Raid %s  ·  gathering in the antechamber  ·  join now" % r["name"]
+			l.add_theme_color_override("font_color", Color(0.95, 0.85, 0.55))
+		elif r["open"]:
 			l.text = "Raid %s  ·  %s left  ·  open" % [r["name"], _clock(float(r["left"]))]
 			l.add_theme_color_override("font_color", Color(0.7, 0.95, 0.7))
 		elif r["state"] == "raid":

@@ -262,4 +262,25 @@ SPEC += [
     dict(name="mallet", src="made", hit=0, label="wooden mallet knocking on wood"),
 ]
 
+# Doug the clown (docs/characters/doug.md; DougSkills.sound / DougFx): slapstick, but real and weighty, not cartoon beeps
+SPEC += [
+    dict(name="doug_splat", src="eleven", n=4, dur=0.8, hit=0, label="a cream pie splatting into a face",
+         prompt="a cream pie smashed into someone's face, a wet soft squelching splat of whipped cream and crust" + DRY),
+    dict(name="doug_slip", src="eleven", n=4, dur=1.0, hit=0, label="someone slipping and falling on the ground",
+         prompt="someone stepping on a banana peel, a quick squeaky skid of a boot and a heavy thud as they fall on their back" + DRY),
+    dict(name="doug_honk", src="eleven", n=4, dur=0.8, hit=0, label="a clown bicycle horn honking",
+         prompt="a clown's rubber bulb bicycle horn squeezed twice, honk honk, brassy and loud" + DRY),
+    dict(name="doug_whistle", src="eleven", n=4, dur=1.0, hit=0, label="a slide whistle rising",
+         prompt="a slide whistle swooping quickly upward, a comedic rising whistle" + DRY),
+    dict(name="doug_boing", src="eleven", n=4, dur=0.8, hit=0, label="a trampoline spring boing",
+         prompt="a heavy man landing on a trampoline and springing up, a deep twangy springy boing of canvas and springs" + DRY),
+    dict(name="doug_pop", src="eleven", n=4, dur=0.7, hit=0, label="a balloon popping",
+         prompt="a big rubber balloon popping loudly with a little paper rustle of confetti after" + DRY,
+         prompt_b="one sharp loud bang of a party balloon bursting, a short crisp pop" + DRY),
+    dict(name="doug_klaxon", src="eleven", n=4, dur=1.3, hit=0, label="an old car horn klaxon",
+         prompt="a tiny old clown car's klaxon horn, ah-oo-gah, tinny and silly, with a small engine putter" + DRY),
+    dict(name="doug_flop", src="eleven", n=4, dur=0.8, hit=0.05, label="a heavy body flopping onto the ground",
+         prompt="a heavy round man belly-flopping onto hard ground from a height, a fleshy smack and a deep thud with dust" + DRY),
+]
+
 BY_NAME = {s["name"]: s for s in SPEC}

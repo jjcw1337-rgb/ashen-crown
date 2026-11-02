@@ -10,7 +10,8 @@ const MAX_CLIENTS := 3
 const STYLES := ["over", "back", "side", "thrust", "bow", "cast", "claw", "slam", "bite", "smash", "lob", "scoop", "burst", "cackle", "swipe1", "swipe2", "swipe3", "cleave", "feral_lunge", "feral_swipe", "perch", "descend", "skirm_lunge", "reaver_cleave", "stalk_hook", "bear_roar", "bear_maul", "sloth_walk", "sloth_run", "sloth_rise", "sloth_look", "sloth_stare", "sloth_roar", "sloth_drop", "sloth_sniff", "sloth_sweep", "sloth_slam", "sloth_pounce",
 	"rend", "siphon", "wstep", "grasp", "phantom", "night_rise", "night_scream", "night_hold", "night_fall",
 	"pd_flask", "pd_volatile", "pd_trap", "pd_slam", "pd_dome", "pd_inspect",
-	"fists", "icharge", "cslam", "hurl", "grip", "wrath_roar", "wrath_stomp", "chop"]
+	"fists", "icharge", "cslam", "hurl", "grip", "wrath_roar", "wrath_stomp", "chop",
+	"pie", "peels", "slide", "doppel", "juggle", "bounce", "car"]
 const SEND_RATE := 0.05
 const ALLY_COLORS := [Color(0.45, 0.8, 1.0), Color(0.5, 1.0, 0.5), Color(1.0, 0.6, 0.9)]
 
@@ -914,6 +915,24 @@ func send_pvp_hit(target_pid: int, amount: float, from: Vector3) -> void:
 func sv_pvp_hit(target_pid: int, amount: float, from: Vector3) -> void:
 	if server and game.bg != null:
 		game.bg.pvp_hit(multiplayer.get_remote_sender_id(), target_pid, amount, from)
+
+## PvP crowd control (Doug's slips, pies and launches): the local hero's skill caught another player's stand-in;
+## the server checks the raid is on and both are playing, then hands it to that player as a zero-damage hit of
+## that kind (Hero.take_hit "slip", "pied", "quake", "sweep").
+const PVP_EFFECTS := ["slip", "pied", "quake", "sweep", "chill"]
+
+func send_pvp_effect(target_pid: int, kind: String, from: Vector3) -> void:
+	if active and not is_host and PVP_EFFECTS.has(kind):
+		rpc_id(1, "sv_pvp_effect", target_pid, kind, from)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_pvp_effect(target_pid: int, kind: String, from: Vector3) -> void:
+	var by := multiplayer.get_remote_sender_id()
+	if not server or game.bg == null or game.bg.state != "raid" or not PVP_EFFECTS.has(kind):
+		return
+	if by == target_pid or not players.has(by) or not players.has(target_pid):
+		return
+	hit_player(target_pid, 0.0, from, kind, "phys")
 
 ## War Cry (SharedSkills): the battle buff for the teammates near the one who roared. Co-op partners only: the
 ## Battlegrounds has no teams yet (everyone there is an enemy), so nobody else gets it there.

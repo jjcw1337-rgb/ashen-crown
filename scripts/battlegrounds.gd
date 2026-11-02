@@ -181,6 +181,14 @@ static func build(w: World) -> void:
 			var tx := lerpf(r.position.x + 2.0, r.end.x - 2.0, 0.25 + k * 0.5)
 			w._wall_torch(Vector3(tx, 0, r.position.y + 0.15), false)
 		w._candles(Vector3(r.position.x + 1.0, 0, c.y), true)
+		# a warm fill over each room (the torches alone left the Ossuary too dark to read from the game camera)
+		var fill := OmniLight3D.new()
+		fill.light_color = Color(1.0, 0.72, 0.45)
+		fill.light_energy = 0.75
+		fill.omni_range = maxf(r.size.x, r.size.y) * 0.8
+		fill.shadow_enabled = false
+		fill.position = Vector3(c.x, 3.4, c.y)
+		w.props_root.add_child(fill)
 		for k in w.rng.randi_range(1, 3):
 			w._bones(Vector3(w.rng.randf_range(r.position.x + 1, r.end.x - 1), 0, w.rng.randf_range(r.position.y + 1, r.end.y - 1)))
 		match kind:
@@ -216,6 +224,14 @@ static func build(w: World) -> void:
 	for k in 4:
 		w._wall_torch(Vector3(lerpf(hall.position.x + 4.0, hall.end.x - 4.0, k / 3.0), 0, hall.position.y + 0.15), k % 2 == 0)
 	w._candles(Vector3(hc.x, 0, hc.y), true)
+	for k in 3:
+		var hl := OmniLight3D.new()
+		hl.light_color = Color(1.0, 0.7, 0.42)
+		hl.light_energy = 0.9
+		hl.omni_range = 13.0
+		hl.shadow_enabled = false
+		hl.position = Vector3(hc.x + cos(TAU * k / 3.0) * 7.0, 3.6, hc.y + sin(TAU * k / 3.0) * 7.0)
+		w.props_root.add_child(hl)
 	w.enemy_spawns.append({"kind": "fallen_reaver", "pos": Vector3(hc.x, 0, hc.y), "count": 1, "champ": true, "pack": 690, "level": MON_LEVEL + 2})
 	w.enemy_spawns.append({"kind": "skel_archer", "pos": Vector3(hc.x, 0, hc.y + 6.0), "count": 2, "champ": false, "pack": 690, "level": MON_LEVEL})
 	w.crypt_shell(BgFloors.themes())

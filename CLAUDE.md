@@ -186,8 +186,9 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   (`open_gates`: bars rise, footprints moved off) -> `"reset"`; the state reaches clients as `cl_bg_raid`
   `"lobby:<s>"`/`"prep:<s>"`/`"raid"`/`"reset"` and the HUD says what's happening. **Three floors**
   (`scripts/bg_floors.gd`, `BgFloors`): the Ossuary (floor 1, `build`), the Frozen Depths (Hrimgar the Frostbound,
-  `ice_troll`) and the Overgrown Vault (Old Mossbeard, `hermit`, and the golden chest: `Game.chest_sealed` while he
-  lives, refused in `Net.sv_inter`), one map `FLOOR_GAP` apart, rooms joined by wide ways and narrow shortcuts,
+  `ice_troll`) and the Overgrown Vault (Old Mossbeard, `hermit`, and the golden chest: `Game.chest_sealed` until he
+  dies, wherever he is: a boss's death, `Enemy.die_visual` -> `Game.guard_fell`, unseals the chests whose `"guard"`
+  it is on every peer; refused in `Net.sv_inter`; the bosses' brains are `scripts/bg_boss.gd`, `BgBoss`), one map `FLOOR_GAP` apart, rooms joined by wide ways and narrow shortcuts,
   stairways down (Inter `"descend"`, `Game._descend`), portals on every floor (two open on the Ossuary, one below),
   Meshy dressing in `assets/models/bg/`. `World.crypt_shell(themes)` colours each floor's walls.
   `tools/bg_floors_shots.gd` screenshots them. The state reaches players
@@ -369,6 +370,23 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   Props: `assets/models/plague/` flask, volatile, trap (Meshy text-to-3D, `act1/prep_prop.py`). Talents: Toxicology,
   Volatile Arts, Contagion (icons `p_*.png`, `plague_tree*.png`). Tests: `tools/plague_test.gd` (`--fixed-fps 60`),
   `tools/plague_mp_test.gd` (host + join); screenshots `tools/plague_shots.gd` (`--fixed-fps 10`).
+- **Doug** (`scripts/doug.gd`, `doug_skills.gd` `DougSkills`, `doug_fx.gd` `DougFx`; design `docs/characters/doug.md`;
+  Blaine's tier-1 character and the pilot of the character workflow, `docs/character_workflow.md`): the stubby circus
+  brawler. Body: Meshy concept edited from Blaine's reference, image-to-3D, Meshy auto-rig + library clips merged by
+  `tools/blender/doug/prep_doug_mocap.py` into `assets/models/doug.glb` on the knight's mocap system (`Doug.ACTS`:
+  his drumstick combo and each skill's whole-body clip); props (pie, banana, pin, trampoline, car, drumstick) are
+  Meshy in `assets/models/doug/` (checked with `tools/blender/prop_sheet.py`; the car's jester rider cut away by
+  `tools/blender/cut_above.py`). Sounds: `doug_*` (ElevenLabs: splat, slip, honk, slide whistle, boing, pop, klaxon,
+  belly-flop; auto-ranked takes until someone picks on the Sound Picks page). Seven skills (his first, Cream Pie, on the right mouse button: a class with
+  seven puts `own[0]` on RMB and the rest on Q-V, `Hero.default_binds`): Cream Pie (lobbed; Pied: monsters stunned
+  and slowed, a player creamed, `UI.pie_face`, and no aim assist, `Hero.pied_t`; once per target per 6 s), Banana
+  Peels (slip: `Hero.take_hit "slip"`), Pratfall Slide, Doppel-Doug (`Hero.hidden_t`: monsters lose him, partners
+  see him fade; a balloon double runs off and pops), Pin Juggle (pins ricochet), Big Top Bounce (an arc to the
+  cursor, a launching belly-flop), Clown Car (5 s, `DougSkills.car_mult`, unstoppable: `driving`; six mini clowns pie
+  the nearest foes). PvP crowd control goes through `Net.send_pvp_effect` (server-checked, a zero-damage hit of
+  that kind). Talents: Slapstick, Showmanship, Big Top (icons `d_*`, `doug_tree*`, painted with Meshy). Tests:
+  `tools/doug_test.gd` (`--fixed-fps 60`), `tools/bg_pvp_test.gd` with `doug` on the players' lines (the pie Pies
+  another player through the server).
 - **Adding a class** (nothing in `hero.gd` names a class's skills; `ClassSkills` hands them to the class's script):
   1. `Data.CLASSES`: name, starting stats, `desc`, optional `weapon`, `voice` (hurt/death sound suffix), `attack_pace`, `hud`.
   2. `Data.SKILLS`: four (up to six: Q E R F G V) entries with its `cls`, each with an `aim`.
@@ -1096,6 +1114,19 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   each cell, red when you can't afford it. `UI.trade_with` is the NPC whose window is open: walking more than 3 m
   past their `radius` closes it (`UI._walked_off`, the stash too). `tools/vendor_test.gd` checks all of it with
   the smith; `tools/vendor_shots.gd -- outdir [role]` screenshots a trader.
+- **Progression and the Battlegrounds' gear rules** (Blaine's progression overhaul, `docs/queue_progression_overhaul.md`):
+  skills unlock by level (`Data.skill_locked`, each skill's `"lvl"`; `Data.SKILLS_UNLOCKED = true` opens all again):
+  a class's skills Q 1, E 3, R 5, F 9, G 14, every ultimate at 20 (Eternal Night, Wrath of the Pit, The Last Epidemic,
+  Clown Car); the shared ones War Cry 6, Frost Nova 8, Arc 11, Earthshatter 16. A locked skill waits on the bar greyed
+  with "Lv N", can't be bound (`Hero.bind` refuses it; one already on the bar may move) or cast, and is announced when
+  reached (`Hero._announce_unlocks`); the F8 panel's All skills opens everything. In a raid (`Hero.pvp_scaled`: on
+  while `Game.bg_mode`, whose setter recalcs the hero) gear counts for less (`Data.PVP_GEAR_SHARE` of flat stats,
+  `PVP_ARMOR_SHARE` of defence, `PVP_GEAR_CAP` on percentages: +5% run speed at most) and the weapon's damage is the
+  level's (`Data.pvp_damage`, the weapon adding up to ~20%). The class uniques (`Data.UNIQUES` with `"cls"`, level
+  20, boss_only: Hrimgar, Mossbeard and the golden chest drop one for a class near, `Game._drop_class_unique`) carry
+  the raid's item effects: `"roll"` (a free dodge roll every N s, `Hero.free_roll`) or `"ward"` (a % of life that
+  soaks blows and refills out of combat, `Hero.ward`). `tools/pvp_sim.gd` (classes at levels 1/5/10/20, fresh vs
+  geared, Monte Carlo duels), `tools/skill_unlock_test.gd`, `tools/pvp_items_test.gd`.
 - **Skill bar and bindings** (every class, including new ones): the bar has a big slot for each mouse button and six
   hotkeys (Q E R F G V); any skill can go on any of them (`Hero.binds`, saved per character; `Hero.default_binds`:
   left mouse `attack`, right mouse the class's first skill, the class's first four skills on Q-F). `attack` and `block` are
@@ -1262,6 +1293,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   scenarios (camp, moor, fight, boss, arena, crypt, server; `Kpi.SCENARIOS`) run in any build with
   `-- --kpi <scenario> out.json [--quality N] [--secs N]` (the server: `-- --server --kpi server out.json`), measuring
   fps, 1% low, p99 frame time, hitches, load time, main thread, GPU, draw calls, triangles, memory; then quit.
+  Low and Medium cap the 3D view's pixels on big or Retina screens (`Game.apply_render_scale`, FSR 1); `--render-scale N`
+  fixes the 3D scale (2.0 = a Retina screen's cost on a 1080p one).
   `tools/nightly/bench.sh` runs the suite (plus the download size), `tools/nightly/kpi_push.py` stores it in the KPI
   database on the staging server, Grafana draws it (https://<staging>/grafana/), `sh tools/kpi_query.sh latest` reads it.
 - **Instancing and shadows** (nightly 2026-11-02): `Props.multimesh` splits instances spread wider than 24 m into

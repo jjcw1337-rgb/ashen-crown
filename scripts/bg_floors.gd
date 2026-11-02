@@ -209,6 +209,12 @@ static func _creep(w: World, a: Vector2, b: Vector2) -> void:
 					m.scale = Vector3.ONE * w.rng.randf_range(0.35, 0.6) * (0.6 + fade * 0.6)
 					w._place(m, Vector3(at.x + off.x, 0, at.y + off.y))
 					m.rotation.y = w.rng.randf() * TAU
+					# the Meshy thicket is a flat tangle: a second one across it makes a clump from any side
+					var m2 := prop("brambles")
+					if m2 != null:
+						m2.scale = m.scale * 0.85
+						w._place(m2, m.position)
+						m2.rotation.y = m.rotation.y + PI * 0.5
 			d += w.rng.randf_range(2.2, 3.4)
 		t_all += length
 
@@ -296,10 +302,12 @@ static func _dress(w: World, r: Rect2, n: int, kind: String) -> void:
 				mm.rotation.y = w.rng.randf() * TAU
 				if i % 3 != 2:
 					w.add_circle(mp, 1.2 * k)
+			if i % 2 == 1:
+				continue                          # one light for every two caps (Codex's audit: ten was a lot over the room's own)
 			var l := OmniLight3D.new()
-			l.light_color = Color(0.4, 1.0, 0.55) if i % 2 == 0 else Color(0.7, 0.45, 1.0)
-			l.light_energy = 1.6
-			l.omni_range = 7.5
+			l.light_color = Color(0.4, 1.0, 0.55) if i % 4 == 0 else Color(0.7, 0.45, 1.0)
+			l.light_energy = 2.0
+			l.omni_range = 9.5
 			l.shadow_enabled = false
 			l.position = mp + Vector3(0, 2.6, 0)
 			w.props_root.add_child(l)
