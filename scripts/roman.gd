@@ -275,7 +275,13 @@ static func statue(w: World, p: Vector3, yaw: float, s := 1.25, broken := false)
 	Models.P(g, Geo.box(1.1, 0.3, 0.04), Mats.mat(Color(0.3, 0.27, 0.24), 0.9), Vector3(0, 0.95, 0.81))
 	var mm := marble_clean()
 	var fig: Node3D
-	if ResourceLoader.exists(STATUE_GLB):
+	var emperor := _part("statue")
+	if not emperor.is_empty():
+		# a Roman emperor in weathered marble (Meshy, visual overhaul): cuirass, cloak, his arm raised in address,
+		# facing the plinth's inscription (+z); scaled to the old figure's height
+		fig = Node3D.new()
+		_add_part(fig, emperor, Vector3.ONE * (1.8 * s / maxf((emperor[2] as AABB).size.y, 0.1)))
+	elif ResourceLoader.exists(STATUE_GLB):
 		# the Meshy crusader (the knight in plate) carved in marble, in his rest pose
 		fig = Node3D.new()
 		var body: Node3D = (load(STATUE_GLB) as PackedScene).instantiate()
