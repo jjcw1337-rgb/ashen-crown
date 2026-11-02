@@ -183,6 +183,8 @@ func _on_peer_disconnected(pid: int) -> void:
 	if server and game.bg != null and is_instance_valid(players[pid]["hero"]):
 		game.bg.player_left(pid, players[pid]["hero"].global_position)
 	_remove_player(pid)
+	if server:
+		print("[%s] %s left (%d playing)" % ["COOP" if coop_server else "BG", n, players.size()])
 	# a trip waiting on them: theirs is called off, otherwise it goes on without their answer
 	if is_host and not vote.is_empty():
 		if int(vote["from"]) == pid:
