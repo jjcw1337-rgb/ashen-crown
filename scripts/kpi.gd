@@ -394,6 +394,7 @@ static func _env_off() -> void:
 	var k := a[i + 1]
 	var env: Environment = g.env
 	if k.contains("ssao"): env.ssao_enabled = false
+	if k.contains("aoon"): env.ssao_enabled = true
 	if k.contains("ssil"): env.ssil_enabled = false
 	if k.contains("vfog"): env.volumetric_fog_enabled = false
 	if k.contains("glow"): env.glow_enabled = false
