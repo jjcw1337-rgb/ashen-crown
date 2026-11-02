@@ -615,11 +615,13 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `sparks`, `clods`, landing marks, shock rings, lights; the Meshy props in `assets/models/fx/demon/`.
 - **PvP crowd control** (`scripts/pvp_status.gd` `PvpStatus`): the caster's game sends a status for a player's
   stand-in (`PvpStatus.send` -> `Net.sv_pvp_status`), the server checks it like damage (`Battlegrounds.pvp_status`:
-  raid on, both alive, within 30 m; it sets the drag's end point and the fear's source itself and caps burns) and
+  raid on, both alive, within 30 m; it sets the drag's end point and the fear's source itself, caps burns and scales
+  them like a hit: `PVP_MULT` and Blaine's class against class `Data.pvp_scale`) and
   applies **diminishing returns** to hard kinds (`HARD`: stagger, knockup, pull, fear; within `DR_WINDOW` the second
   lasts half, the third is refused and opens `DR_IMMUNE` s of immunity; `MAX_SECS` cap; soft kinds `SOFT_MAX`), then
   `Net.cl_pvp_status` to the victim only; `PvpStatus.apply` / `update` (from `Hero._process`, `Hero.cc`) do it on
-  his game (a roll's i-frames, mist and the Crucible ignore hard kinds). Only the Demon's skills send it so far
+  his game (a roll's i-frames, mist and the Crucible ignore hard kinds; tenacity, `Hero.cc_k`, shortens the hard kinds
+  and slows). Only the Demon's skills send it so far
   (Doug's slips and pies take their own path, `Net.send_pvp_effect`: a zero-damage hit, no diminishing returns);
   another class's crowd control stays PvE-only until reviewed for PvP. A tool script that hits "Identifier not found:
   Sfx" in a fresh container runs through `tools/_late.gd -- res://tools/<script>.gd [args]` (loads it after the
