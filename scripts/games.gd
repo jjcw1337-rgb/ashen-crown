@@ -669,6 +669,7 @@ func _card_xf(kind: String, feet: Vector3, s: float, max_h := 9.0) -> Transform3
 
 ## Draws every kind (idle and cheering, front and three-quarter) into the atlas. Runs once per game.
 func _draw_atlas() -> void:
+	set_meta("atlas_t0", Time.get_ticks_msec())
 	var kinds: Array = crowd_kinds() + crowd_bosses()
 	var vp := SubViewport.new()
 	vp.own_world_3d = true
@@ -723,7 +724,8 @@ func _draw_atlas() -> void:
 					"style": "cast" if not rig.has_meta("lion") and not rig.has_meta("feral") else "feral_swipe", "hit": 0.0}
 				Enemy.pose_rig(rig, st, h)
 				vp.render_target_update_mode = SubViewport.UPDATE_ONCE
-				await RenderingServer.frame_post_draw
+				# one drawn frame is enough (the pose is set before it): the second wait made the atlas take 5.5 s
+				# of stuttering arena instead of 3.7 (nightly 2026-11-02; the cards come out the same)
 				await RenderingServer.frame_post_draw
 				var img := vp.get_texture().get_image()
 				img.convert(Image.FORMAT_RGBA8)
@@ -733,6 +735,10 @@ func _draw_atlas() -> void:
 		await get_tree().process_frame
 	vp.queue_free()
 	_atlas = ImageTexture.create_from_image(atlas)
+	var dai := OS.get_cmdline_user_args().find("--dump-atlas")
+	if dai >= 0:
+		atlas.save_png(OS.get_cmdline_user_args()[dai + 1])
+		print("[ATLAS] ", kinds.size(), " kinds in ", Time.get_ticks_msec() - int(get_meta("atlas_t0", 0)), " ms")
 	_atlas_kinds = kinds
 	_atlas_size = sizes
 
