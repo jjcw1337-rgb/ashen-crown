@@ -2,7 +2,8 @@ extends SceneTree
 ## The living grass in the game: Act I's camp, moor and fort get the 3D grass (several species, both
 ## LODs, woodland undergrowth near the trees, none on the road); the touch field is on outdoors and
 ## follows the camera; the hero, partners, monsters and pets touch it; an attack's impact frame throws an
-## arc; Fx rings shove it; A2 keeps its own grass and the field is off there. Prints [G] lines.
+## arc; Fx rings shove it; A2 and A3 grow it too (visual overhaul, in their own colours) with the field on, and
+## nothing grows in the crypt. Prints [G] lines.
 ##   godot --headless --path . -s tools/grass_test.gd
 var g
 var fails := 0
@@ -59,16 +60,18 @@ func _run() -> void:
 		check(g.grass_field.enabled, "%s: touch field on" % zone)
 		if zone == "wild":
 			await _moor_checks(w)
-	# A2 keeps its own grass, and the field is off there
-	g.difficulty = 1
-	await g.load_zone(0, "wild", "start")
-	await process_frame
-	var any3d := false
-	for n in g.get_tree().get_nodes_in_group("grass"):
-		if n.has_meta("grass3d"):
-			any3d = true
-	check(not any3d, "A2 road: keeps its own grass")
-	check(not g.grass_field.enabled, "A2 road: touch field off")
+	# A2's road and A3's moor grow the living grass too (in their own colours), with the touch field on
+	for d in [1, 2]:
+		g.difficulty = d
+		await g.load_zone(0, "wild", "start")
+		await process_frame
+		var n3d := 0
+		for n in g.get_tree().get_nodes_in_group("grass"):
+			if n.has_meta("grass3d"):
+				n3d += 1
+		check(n3d > 0, "A%d moor/road: the living grass (%d chunks)" % [d + 1, n3d])
+		check(g.grass_field.enabled, "A%d moor/road: touch field on" % (d + 1))
+	g.difficulty = 0
 	print("[G] %s" % ("all passed" if fails == 0 else "%d FAILED" % fails))
 	quit()
 
