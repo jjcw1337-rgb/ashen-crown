@@ -1442,8 +1442,8 @@ func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
 	ui.refresh()
 
 ## Co-op from the title screen. Your last character is used if you have one.
-func start_host() -> void:
-	await start_game(not list_characters().is_empty())
+func start_host(id := "") -> void:
+	await start_game(not list_characters().is_empty(), "knight", id)
 	var err := net.host()
 	if err != OK:
 		ui.big_message("Could not host")
@@ -1451,7 +1451,7 @@ func start_host() -> void:
 	else:
 		ui.message("Hosting! Your partner can now pick Join Co-op Game", Color(0.5, 1.0, 0.5))
 
-func start_join(ip: String) -> void:
+func start_join(ip: String, id := "") -> void:
 	while _busy:
 		await get_tree().process_frame
 	Sfx.play("click")
@@ -1459,7 +1459,7 @@ func start_join(ip: String) -> void:
 	ui.hide_title()
 	playing = true
 	var chars := list_characters()
-	char_id = str(chars[0]["id"]) if not chars.is_empty() else new_char_id()
+	char_id = id if id != "" else (str(chars[0]["id"]) if not chars.is_empty() else new_char_id())
 	if not load_game():
 		char_name = default_name(hero.cls)
 		hero.new_character()
@@ -1527,7 +1527,7 @@ func bg_refused(why: String, secs: float) -> void:
 		var want: Array = bg_retry.duplicate()
 		get_tree().create_timer(secs + 1.5, false).timeout.connect(func():
 			# still waiting on the Battlegrounds screen, nothing else started meanwhile
-			if bg_retry == want and not playing and ui.bg_panel.visible:
+			if bg_retry == want and not playing and (ui.bg_panel.visible or (ui.title_panel.visible and ui.home.mode == "bg")):
 				ui.message("The next raid is open", Color(0.6, 1.0, 0.6))
 				start_battlegrounds(str(want[0]), str(want[1])))
 

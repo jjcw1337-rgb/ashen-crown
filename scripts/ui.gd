@@ -136,6 +136,7 @@ var menu_shade: ColorRect         # under a menu screen opened over the title: d
 var bg_panel: PanelContainer      # the Battlegrounds screen (open_battlegrounds): class, server address, the stash
 var bg_class: OptionButton       # the Battlegrounds screen's hero picker (character ids as metadata)
 var bg_addr: LineEdit
+var home: TitleHome               # the title's controls (title_home.gd): the character sidebar, the modes and Play
 var bg_status: Label             # the Battlegrounds screen's wait for the next raid (Game.bg_refused), counting down
 var _join_refresh := 0.0
 var death_panel: Control
@@ -3290,6 +3291,7 @@ func _build_title() -> void:
 	head.name = "title_head"
 	head.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	head.offset_top = 34
+	head.offset_right = -TitleHome.W - 22      # (centred in the room left of the character sidebar)
 	head.add_theme_constant_override("separation", 2)
 	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_panel.add_child(head)
@@ -3383,6 +3385,15 @@ func _build_title() -> void:
 		jb.visible = false
 		bgb.visible = false
 		q.visible = false
+	# the controls, WoW-style (title_home.gd): they replace the two cards and the row of buttons, kept hidden for the
+	# title's own API (_title_choose, the cards' state)
+	cont.visible = false
+	ng.visible = false
+	row.visible = false
+	slots.visible = false
+	home = TitleHome.new()
+	title_panel.add_child(home)
+	home.setup(self)
 	# a fade for the move into a choice (under the picker and the list, which are built on top)
 	_title_fade = ColorRect.new()
 	_title_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -3606,7 +3617,19 @@ func _build_battlegrounds() -> void:
 		game.bg_retry = [])          # (stop waiting for the next raid)
 	vb.add_child(back)
 
+## The Battlegrounds is a mode of the home screen now (TitleHome): its tab, with the character that went in last.
 func open_battlegrounds() -> void:
+	join_panel.visible = false
+	if home != null and title_panel.visible:
+		var last := str(game._load_setting("battlegrounds", "character", ""))
+		if last != "" and not game.list_characters().filter(func(c): return str(c["id"]) == last).is_empty():
+			home.select(last)
+		home.set_mode("bg")
+		return
+	_open_bg_panel()
+
+## The old Battlegrounds screen (a server address, a hero): kept for a local test against another server.
+func _open_bg_panel() -> void:
 	join_panel.visible = false
 	bg_panel.visible = true
 	bg_addr.text = str(game._load_setting("battlegrounds", "address", ""))
@@ -4225,6 +4248,7 @@ func show_title() -> void:
 	(title_panel.find_child("slots", true, false) as Label).text = "" if chars.is_empty() \
 		else "Every character has its own save. Making a new one never overwrites the others."
 	title_stage.reset()
+	home.refresh(chars)
 	_title_hover("")
 	_title_fade.color = Color(0, 0, 0, 0)
 	_title_busy = false
