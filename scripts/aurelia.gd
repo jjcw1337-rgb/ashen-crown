@@ -347,6 +347,13 @@ static func _colosseum(w: World) -> void:
 	# the podium wall round the sand, in short straight runs
 	var n := 72
 	var life: float = GATES["life"]
+	# the Meshy podium (visual overhaul): a section of marble ashlar with a moulded cornice, a plinth and a relief of
+	# crossed swords spans three runs; the runs of a section with a gap in it (beside the Gate of Life) stay code-built
+	var podium := Roman._part("podium")
+	var gap := {}
+	for i in n:
+		if absf(angle_difference(TAU * (i + 0.5) / n, life)) < 0.13:
+			gap[i / 3] = true
 	for i in n:
 		var a0 := TAU * i / n
 		var a1 := TAU * (i + 1) / n
@@ -357,12 +364,15 @@ static func _colosseum(w: World) -> void:
 		var p1 := floor_pt(a1, 1.04)
 		var d := p1 - p0
 		var mid := (p0 + p1) * 0.5
-		var seg := Models.N(root, "podium")
-		Models.P(seg, Geo.box(d.length() + 0.08, PODIUM_H, 1.2), Roman.marble(), Vector3(0, PODIUM_H * 0.5, 0))
-		Models.P(seg, Geo.box(d.length() + 0.1, 0.5, 1.25), Roman.red_cloth(), Vector3(0, PODIUM_H - 0.6, 0.0))
-		seg.position = Vector3(mid.x, 0, mid.y)
-		seg.rotation.y = atan2(-d.y, d.x)
+		if podium.is_empty() or gap.has(i / 3):
+			var seg := Models.N(root, "podium")
+			Models.P(seg, Geo.box(d.length() + 0.08, PODIUM_H, 1.2), Roman.marble(), Vector3(0, PODIUM_H * 0.5, 0))
+			Models.P(seg, Geo.box(d.length() + 0.1, 0.5, 1.25), Roman.red_cloth(), Vector3(0, PODIUM_H - 0.6, 0.0))
+			seg.position = Vector3(mid.x, 0, mid.y)
+			seg.rotation.y = atan2(-d.y, d.x)
 		w.add_box(Vector3(mid.x, 0, mid.y), Vector2(0.7, d.length() * 0.5 + 0.05), atan2(d.x, d.y))
+	if not podium.is_empty():
+		_podium(root, podium, n, gap)
 	# stands: four stepped tiers between the podium and the outer wall; low and broken on the south
 	var tiers: Array = [[], [], [], []]
 	var tier_m := Roman._own(Geo.box(1.0, 1.0, 1.0), Roman.tuff())
@@ -394,6 +404,11 @@ static func _colosseum(w: World) -> void:
 	var arch_m := Roman._own(Roman.arch_mesh(4.6, 5.2, 2.2, 2.8, 4.2), Roman.marble())
 	var cap_m := Roman._own(Geo.box(4.6, 1.1, 2.4), Roman.marble())
 	var caps: Array = []
+	# the Meshy arcade bay (visual overhaul): a round arch between travertine piers with engaged half-columns under an
+	# entablature, each bay as wide as the step to the next plus one pier (so every pier is shared), its columns turned
+	# to the game camera's side (south)
+	var arcade := Roman._part("arcade")
+	var meshy_xf: Array = []
 	var nb := 50
 	for i in nb:
 		var a := TAU * (i + 0.5) / nb
@@ -412,11 +427,16 @@ static func _colosseum(w: World) -> void:
 			storeys = 1
 		for s in storeys:
 			(bays[s] as Array).append(Transform3D(bs, Vector3(p.x, s * 5.2, p.y)))
+			if not arcade.is_empty():
+				meshy_xf.append([Transform3D(bs, Vector3(p.x, s * 5.2, p.y)), p.distance_to(outer_pt(TAU * (i + 1.5) / nb)), sin(a) > 0.0])
 		if storeys == 3:
 			caps.append(Transform3D(bs, Vector3(p.x, 15.6 + 0.55, p.y)))
 		w.add_box(Vector3(p.x, 0, p.y), Vector2(1.2, tang.length() / 0.02 * TAU / nb * 0.5 + 0.1), atan2(tang.x, tang.y))
-	for s in 3:
-		Props.multimesh(root, arch_m, bays[s])
+	if not arcade.is_empty():
+		_arcade(root, arcade, meshy_xf)
+	else:
+		for s in 3:
+			Props.multimesh(root, arch_m, bays[s])
 	Props.multimesh(root, cap_m, caps)
 	# rubble along the fallen south side
 	for k in 26:
@@ -456,6 +476,45 @@ static func _colosseum(w: World) -> void:
 			continue
 		var p := floor_pt(a, 0.93)
 		_brazier(w, Vector3(p.x, 0, p.y))
+
+## The Meshy podium sections, each over three of the n runs (not the groups in `gap`): as long as its three runs'
+## chord (plus a hand's breadth, so no seam opens), PODIUM_H tall, the runs' 1.2 m deep, its relief facing the sand.
+static func _podium(root: Node3D, e: Array, n: int, gap: Dictionary) -> void:
+	var bb: AABB = e[2]
+	var c := bb.get_center()
+	var centre := Transform3D(Basis(), Vector3(-c.x, -bb.position.y, -c.z)) * (e[3] as Transform3D)
+	var fx: Array = []
+	for g in n / 3:
+		if gap.has(g):
+			continue
+		var p0 := floor_pt(TAU * g * 3 / n, 1.04)
+		var p1 := floor_pt(TAU * (g * 3 + 3) / n, 1.04)
+		var d := p1 - p0
+		var mid := (p0 + p1) * 0.5
+		var k := Basis.from_scale(Vector3((d.length() + 0.12) / maxf(bb.size.x, 0.001), PODIUM_H / maxf(bb.size.y, 0.001), 1.2 / maxf(bb.size.z, 0.001)))
+		fx.append(Transform3D(Basis(Vector3.UP, atan2(-d.y, d.x)) * k, Vector3(mid.x, 0, mid.y)) * centre)
+	var mmi := Props.multimesh(root, e[0], fx)
+	mmi.material_override = e[1]
+
+## The Meshy arcade bays: xs holds [the bay's turn and foot, the step to the next bay, on the south half]. Each is as
+## wide as the step plus one pier (ARCADE_PIER of the model's width), 5.2 m tall like the storeys it stacks into and the
+## piers' 2.2 m deep; its face (the columns) is turned toward the south, where the game camera looks from: the inside of
+## the north half, the outside of the south half.
+const ARCADE_PIER := 0.265
+static func _arcade(root: Node3D, e: Array, xs: Array) -> void:
+	var bb: AABB = e[2]
+	var c := bb.get_center()
+	var centre := Transform3D(Basis(), Vector3(-c.x, -bb.position.y, -c.z)) * (e[3] as Transform3D)
+	var flip := Basis(Vector3.UP, PI)
+	var fx: Array = []
+	for x in xs:
+		var t: Transform3D = x[0]
+		var wide := float(x[1]) / (1.0 - ARCADE_PIER)
+		var k := Basis.from_scale(Vector3(wide / maxf(bb.size.x, 0.001), 5.2 / maxf(bb.size.y, 0.001), 2.2 / maxf(bb.size.z, 0.001)))
+		var turn := flip if bool(x[2]) else Basis()      # the model's columns are on its +z side
+		fx.append(t * Transform3D(turn * k, Vector3.ZERO) * centre)
+	var mmi := Props.multimesh(root, e[0], fx)
+	mmi.material_override = e[1]
 
 # ---------------------------------------------------------------- outside the walls, and the gangs
 static func _trees(w: World) -> void:
