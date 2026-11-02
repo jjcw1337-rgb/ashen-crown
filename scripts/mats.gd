@@ -447,7 +447,7 @@ void fragment(){
 		float pdome = pkeep * clamp(1.0 - (pd * pd) / (prad * prad), 0.0, 1.0);
 		float pfoot = pkeep * (1.0 - smoothstep(prad, prad * 1.5, pd)) * step(prad, pd);
 		vec3 stone = mix(col_path * 1.25, vec3(0.36, 0.35, 0.33), 0.35 + 0.45 * hash21(vec2(pid, 5.5)));
-		stone *= 0.8 + 0.25 * pdome + (n4 - 0.5) * 0.15;
+		stone *= 0.7 + 0.22 * pdome + (n4 - 0.5) * 0.15;
 		base = mix(base, base * 0.75, pfoot * path);
 		base = mix(base, stone, smoothstep(0.0, 0.25, pdome) * path);
 		pebg = step(pd, prad) * pkeep * (-2.0 * po / (prad * prad)) * 0.018 * 7.0 * path;
