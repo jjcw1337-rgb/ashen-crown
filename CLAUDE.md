@@ -1135,7 +1135,10 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   (`Hero._item_effects`, `dash_t`). **Rewards**: random uniques are rare (`Items.random_drop`); each boss has its own
   (`Data.BOSS_LOOT`, `Game._boss_loot`: the first kill drops one, then `BOSS_LOOT_CHANCE` + `BOSS_LOOT_LUCK` a dry
   kill, `Hero.boss_luck` saved); the bonfire's Reforge (`UI.reforge_request`, `Items.reforge`) rerolls a magic or rare
-  item's weakest affix for one Sloth material.
+  item's weakest affix for one Sloth material. **Invisibility**: the Veilmother's Locket (`"phial"`) gives a Shadow
+  Phial each raid (`Game.give_raid_phials`); drunk, `Hero.invis_t` (6 s): monsters lose him (`hidden_t`), partners
+  see a shimmer within 4 m (bit 2 of the state's 15th number, `Hero._show_invis`), any blow or cast ends it
+  (`break_invis`). PvP burns and chills reach other players (`Net.sv_pvp_dot`, the "chill" effect; `Hero.burn_t`).
   `tools/items_rework_test.gd`; re-run `tools/balance.sh` after changing any of it.
 - **The Battlegrounds sandbox** (`scripts/sandbox.gd` `Sandbox`, zone `"sandbox"` "The Proving Crypt";
   `scripts/bot_brain.gd` `BotBrain`): the admins' testing arena, opened from the Escape menu's Admin column

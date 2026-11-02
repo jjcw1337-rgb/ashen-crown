@@ -363,6 +363,8 @@ const BASES := {
 
 	"hp_potion": {"name": "Healing Potion", "slot": "potion", "kind": "potion", "lvl": 1, "price": 12, "heal": 60, "color": Color(0.9, 0.05, 0.05)},
 	"mp_potion": {"name": "Mana Potion", "slot": "potion", "kind": "potion", "lvl": 1, "price": 12, "mana": 40, "color": Color(0.1, 0.25, 1.0)},
+	# the Veilmother's Locket's raid potion (Hero.drink "invis": unseen for that long; breaks on a blow, given or taken)
+	"shadow_phial": {"name": "Shadow Phial", "slot": "potion", "kind": "potion", "lvl": 1, "price": 0, "invis": 6.0, "color": Color(0.4, 0.32, 0.62)},
 	"rejuv": {"name": "Rejuvenation Potion", "slot": "potion", "kind": "potion", "lvl": 1, "price": 60, "rejuv": 0.4, "color": Color(0.6, 0.1, 0.9)},
 	"gold": {"name": "Gold", "slot": "gold", "kind": "gold", "lvl": 1, "price": 0},
 	# the plague doctor's cane ("cls": only he carries it; Plague.cane_model draws it)
@@ -458,6 +460,7 @@ const STAT_LABEL := {
 	"chill": "Your blows chill foes, slowing them %d%%",
 	"kill_heal": "Heal %d%% of your life on each kill",
 	"dash": "+%d%% speed for 2 seconds after a dodge roll",
+	"phial": "Begin each raid with %d Shadow Phial: unseen for 6 seconds",
 }
 
 ## Which affixes can roll on which slot class.
@@ -505,6 +508,10 @@ const UNIQUES := {
 		"metal": Color(0.15, 0.15, 0.12), "trim": Color(0.75, 0.6, 0.3), "glow": Color(0.5, 1.0, 0.3), "gem": Color(0.5, 1.0, 0.3)},
 	"lucky_nose": {"name": "The Lucky Nose", "base": "amulet", "lvl": 20, "cls": "doug", "boss_only": true, "stats": [["roll", 6], ["life", 25], ["str", 6]],
 		"metal": Color(0.9, 0.75, 0.3), "trim": Color(1.0, 0.85, 0.2), "glow": Color(1.0, 0.2, 0.2), "gem": Color(1.0, 0.1, 0.1)},
+	# Blaine's "start each battleground with a potion that grants invisibility" (evaluated: 20 s outlasts most duels,
+	# so 6): Hrimgar's and Mossbeard's, level 20
+	"veil_locket": {"name": "Veilmother's Locket", "base": "amulet", "lvl": 20, "boss_only": true, "stats": [["phial", 1], ["dex", 8], ["res", 10]],
+		"metal": Color(0.25, 0.22, 0.32), "trim": Color(0.7, 0.62, 0.9), "glow": Color(0.6, 0.5, 1.0), "gem": Color(0.55, 0.4, 1.0)},
 	"emberfang": {"name": "Emberfang", "base": "falchion", "lvl": 6, "stats": [["burn", 25], ["ed", 80], ["fire", 8], ["ias", 15], ["ls", 3]],
 		"metal": Color(0.25, 0.08, 0.04), "trim": Color(0.95, 0.55, 0.15), "glow": Color(1.0, 0.4, 0.05), "gem": Color(1.0, 0.3, 0.0)},
 	"wardens_wall": {"name": "The Warden's Wall", "base": "kite_shield", "lvl": 7, "stats": [["ten", 20], ["edef", 90], ["block", 12], ["res", 15], ["life", 25]],
@@ -711,13 +718,15 @@ const BOSS_LOOT := {
 	"sloth_storm": ["stormstride", "skullsplitter"],
 	"sekhmun": ["sunwarden", "dawnbreaker"],
 	"malgoroth": ["ashen_king", "cinderbrand"],
+	"ice_troll": ["veil_locket"],
+	"hermit": ["veil_locket"],
 }
 ## The uniques' signature effects (the items rework): one per unique, everywhere (not only in a raid); two items
 ## with the same effect don't stack, the stronger counts (Hero.recalc). roll: a free dodge roll every N s; ward: N% of
 ## life as a shield that refills out of combat; burn: weapon blows set foes burning for N% of the blow a second for
 ## 3 s; chill: weapon blows slow foes by N% for 2 s; kill_heal: N% of life back on a kill; dash: N% faster for 2 s
 ## after a dodge roll.
-const ITEM_EFFECTS := ["roll", "ward", "burn", "chill", "kill_heal", "dash"]
+const ITEM_EFFECTS := ["roll", "ward", "burn", "chill", "kill_heal", "dash", "phial"]
 ## The utility affixes: at most one of them on an item.
 const UTILITY := ["frw", "stam", "cdr", "pot", "ten"]
 ## Rares roll this many affixes at most (magic items 1-2).
@@ -735,16 +744,23 @@ const PVP_GEAR_CAP := {"res": 15, "ls": 4, "ias": 20, "frw": 5, "block": 15, "ed
 ## what a class deals to another player, and what it takes from one, tuned with tools/duel_sim.gd (bot duels at
 ## level 20, geared, every pairing). Only player-against-player blows; monsters and PvE are untouched.
 const PVP_CLASS := {
-	"wraith": {"dmg": 0.8, "taken": 1.2},
-	"doug": {"dmg": 1.5, "taken": 0.8},
-	"warlock": {"dmg": 1.3, "taken": 0.85},
-	"plague": {"dmg": 1.3, "taken": 0.9},
-	"demon": {"dmg": 1.15, "taken": 1.0},
-	"knight": {"dmg": 0.92, "taken": 1.0},
+	# [at level 1, at level 20] (straight between); a single number holds at every level
+	"wraith": {"dmg": [1.0, 0.8], "taken": [1.0, 1.2]},
+	"doug": {"dmg": [0.85, 1.5], "taken": [1.0, 0.8]},
+	"warlock": {"dmg": [1.15, 1.3], "taken": [0.95, 0.85]},
+	"plague": {"dmg": [0.6, 1.3], "taken": [1.1, 0.9]},
+	"demon": {"dmg": [1.25, 1.15], "taken": 1.0},
+	"knight": {"dmg": [1.05, 0.92], "taken": 1.0},
 }
 
-static func pvp_scale(attacker_cls: String, target_cls: String) -> float:
-	return float(PVP_CLASS.get(attacker_cls, {}).get("dmg", 1.0)) * float(PVP_CLASS.get(target_cls, {}).get("taken", 1.0))
+static func _pvp_k(cls: String, key: String, level: int) -> float:
+	var v = PVP_CLASS.get(cls, {}).get(key, 1.0)
+	if v is Array:
+		return lerpf(float(v[0]), float(v[1]), clampf((level - 1) / 19.0, 0.0, 1.0))
+	return float(v)
+
+static func pvp_scale(attacker_cls: String, target_cls: String, attacker_lvl := 20, target_lvl := 20) -> float:
+	return _pvp_k(attacker_cls, "dmg", attacker_lvl) * _pvp_k(target_cls, "taken", target_lvl)
 
 ## A hero's weapon damage (Hero.recalc): the level's (about the best base a character of that level could wield),
 ## times the weapon's quality, 0.9 (a base far below the level) to 1.05 (the best there is) by its base damage against

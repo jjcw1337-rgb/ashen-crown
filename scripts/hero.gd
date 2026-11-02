@@ -65,6 +65,8 @@ var ls := 0.0
 var res := 0
 var frw := 0
 var boss_luck := {}         # boss kind -> its kills since its last unique (-1/absent: never killed; Game._boss_loot)
+var invis_t := 0.0          # a Shadow Phial: unseen (monsters lose him, other players see a faint shimmer up close); any blow ends it
+var net_invis := false      # a partner's, from his state (Net._hero_packet)
 var burn_t := 0.0           # set burning by another player (PvP: a Fire Arrow, magma, a unique's burn): take_hit "burn"
 var burn_dps := 0.0
 var _burn_tick := 0.0
@@ -1030,6 +1032,7 @@ func skill_aim(id: String, at: Vector3) -> Vector3:
 ## Swing toward a point without needing a target (Space). Works while moving.
 func free_attack(aim: Vector3) -> void:
 	Hero.striker = self          # (whoever acts now strikes: a sandbox stand-in never takes its own hero's blows)
+	break_invis()
 	if not can_act():
 		return
 	if has_bow():
@@ -1139,6 +1142,7 @@ func _show_chop_axe(on: bool, base: String) -> void:
 
 func swipe_attack(aim: Vector3, keep_target := false) -> void:
 	Hero.striker = self          # (whoever acts now strikes: a sandbox stand-in never takes its own hero's blows)
+	break_invis()
 	if dead or charge_t >= 0.0 or drain_t >= 0.0 or daze_t > 0.0:
 		return
 	if has_bow():
@@ -1287,6 +1291,7 @@ func can_act() -> bool:
 
 func use_skill(id: String, aim: Vector3) -> bool:
 	Hero.striker = self          # (whoever acts now strikes: a sandbox stand-in never takes its own hero's blows)
+	break_invis()
 	stop_chop()
 	if dead or charge_t >= 0.0 or daze_t > 0.0:
 		return false
@@ -1336,6 +1341,12 @@ func drink(slot: int) -> void:
 		heal_pool += b["heal"] * (1.0 + level * 0.06) * (1.0 + float(stats.get("pot", 0)) / 100.0)
 	if b.has("mana"):
 		mana_pool += b["mana"] * (1.0 + level * 0.05)
+	if b.has("invis"):
+		invis_t = float(b["invis"])
+		hidden_t = maxf(hidden_t, invis_t)
+		Sfx.play("ice_shatter", -10.0, 0.6)
+		if _mine():
+			game.ui.message("Unseen for %d seconds" % int(invis_t), Color(0.7, 0.6, 1.0))
 	if b.has("rejuv"):
 		life = minf(max_life, life + max_life * b["rejuv"])
 		mana = minf(max_mana, mana + max_mana * b["rejuv"])
@@ -1480,6 +1491,12 @@ func _hit_enemy(e, mult: float, knock: float = 0.0, src := "", flat := 0.0) -> v
 
 const BURN_SECS := 3.0
 
+## Seen again (a Shadow Phial's invisibility ends: he struck, cast or was struck).
+func break_invis() -> void:
+	if invis_t > 0.0:
+		invis_t = 0.0
+		hidden_t = 0.0
+
 ## The uniques' effects on a blow (Data.ITEM_EFFECTS): burning and chilling on weapon blows, life on a kill.
 func _item_effects(e, dealt: float, src: String) -> void:
 	if not is_instance_valid(e) or dealt <= 0.0:
@@ -1504,6 +1521,8 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 		if game.net.is_host:
 			game.net.hit_player(peer_id, dmg, from, kind, element)
 		return
+	if dmg > 0.0:
+		break_invis()
 	if kind == "burn":
 		# set alight by another player: `dmg` is the burn a second, for BURN_SECS (ticks as fire, resist counts)
 		burn_dps = maxf(burn_dps if burn_t > 0.0 else 0.0, minf(dmg, 80.0))
@@ -1640,6 +1659,8 @@ func _process(delta: float) -> void:
 		cds[k] = maxf(0.0, cds[k] - delta)
 	buff_t = maxf(0.0, buff_t - delta)
 	dash_t = maxf(0.0, dash_t - delta)
+	invis_t = maxf(0.0, invis_t - delta)
+	_show_invis(invis_t > 0.0, _mine())
 	if burn_t > 0.0 and not dead:
 		burn_t -= delta
 		_burn_tick -= delta
@@ -1940,6 +1961,26 @@ func apply_net_gear(gear: Dictionary) -> void:
 			equipment[s] = null
 	refresh_gear()
 
+## Invisibility drawn: on his own screen he's a ghost of himself; on a partner's he's gone, but for a faint shimmer
+## within 4 m. (The bodies' materials vary by class, so it's done with each mesh's transparency.)
+var _invis_shown := -1.0
+func _show_invis(on: bool, own: bool) -> void:
+	var want := 0.0
+	if on:
+		want = 0.65
+		if not own and game != null and game.hero != null:
+			want = 0.9 if game.hero.global_position.distance_to(global_position) < 4.0 else 1.0
+	if is_equal_approx(want, _invis_shown) or rig == null:
+		return
+	_invis_shown = want
+	for m in rig.find_children("*", "GeometryInstance3D", true, false):
+		(m as GeometryInstance3D).transparency = want
+	if light:
+		light.visible = want < 1.0
+	for c in get_children():
+		if c is Label3D:
+			(c as Label3D).visible = want < 0.95
+
 func apply_net_state(p: PackedFloat32Array) -> void:
 	if p.size() < 15:
 		return
@@ -1961,7 +2002,8 @@ func apply_net_state(p: PackedFloat32Array) -> void:
 	dead_t = p[11]
 	life = p[12]
 	max_life = maxf(p[13], 1.0)
-	net_buff = p[14] > 0.5
+	net_buff = int(p[14]) & 1 != 0
+	net_invis = int(p[14]) & 2 != 0
 	net_boat_st = Vector4(p[16], p[17], p[18], p[19]) if p.size() >= 20 and p[15] > 0.5 else null
 	var bi := int(p[20]) if p.size() >= 21 else 0
 	var bk: Array = Data.BOATS.keys()
@@ -1997,7 +2039,8 @@ func _puppet_process(delta: float) -> void:
 	global_position = global_position.lerp(net_pos, k)
 	rig.rotation.y = lerp_angle(rig.rotation.y, net_yaw, k)
 	BoatRide.puppet_update(self, delta)      # a partner at sea: his boat, and him at its tiller
-	aura.emitting = net_buff
+	aura.emitting = net_buff and not net_invis
+	_show_invis(net_invis, false)
 	if dead:
 		var f := clampf(dead_t / 0.7, 0.0, 1.0)
 		var fall := clampf((dead_t - 0.35) / 0.6, 0.0, 1.0)

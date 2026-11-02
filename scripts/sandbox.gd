@@ -111,9 +111,9 @@ static func outfit(g: Node, h: Hero, cls: String, lvl: int, gear: String) -> voi
 			h.equipment[slot] = Items.generate(base, lvl, 2, rng)
 	h.talents = Talents.auto_build(cls, lvl - 1)
 	h._talents_changed()
-	h.belt = [Items.potion("hp_potion"), Items.potion("hp_potion"), Items.potion("mp_potion"), Items.potion("rejuv")]
+	h.belt = [Items.potion("hp_potion"), Items.potion("hp_potion"), Items.potion("mp_potion"), Items.potion("shadow_phial") if int(h.stats.get("phial", 0)) > 0 else Items.potion("rejuv")]
 	for b in h.belt:
-		b["count"] = 10
+		b["count"] = 3          # (a raid's kit: ten each outhealed every level-1 duel)
 	h.refresh_gear()
 	h.recalc()
 	h.life = h.max_life
@@ -218,7 +218,7 @@ func pick_for(h: Hero) -> Enemy:
 			continue
 		var d: float = e.global_position.distance_squared_to(h.global_position)
 		if e.sandbox_hero != null:
-			if not _hostile(h, e.sandbox_hero) or e.sandbox_hero.dead:
+			if not _hostile(h, e.sandbox_hero) or e.sandbox_hero.dead or e.sandbox_hero.invis_t > 0.0:
 				continue
 			if d < hd:
 				hd = d

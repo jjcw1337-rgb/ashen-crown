@@ -128,6 +128,28 @@ func _run() -> void:
 		tries += 1
 	check(g.BOSS_LOOT_CHANCE + g.BOSS_LOOT_LUCK * 3 >= 0.75, "three dry kills later the chance is %d%%" % int((g.BOSS_LOOT_CHANCE + g.BOSS_LOOT_LUCK * 3) * 100))
 	boss.queue_free()
+	# the Veilmother's Locket: a Shadow Phial each raid; drunk, unseen for 6 s until a blow
+	for s2 in Items.EQUIP_SLOTS:
+		h.equipment[s2] = null
+	h.equipment["amulet"] = Items.make_unique("veil_locket")
+	h.recalc()
+	h.belt = [null, null, null, null]
+	g.give_raid_phials()
+	g.give_raid_phials()
+	var ph := -1
+	for i in 4:
+		if h.belt[i] is Dictionary and h.belt[i]["base"] == "shadow_phial":
+			ph = i
+	check(ph >= 0 and int(h.belt[ph]["count"]) == 1, "the locket puts one Shadow Phial in the belt for a raid (never two)")
+	h.drink(ph)
+	check(h.invis_t > 5.0 and h.hidden_t > 5.0, "drunk: unseen for %.0f s (monsters lose him)" % h.invis_t)
+	var pk: PackedFloat32Array = g.net._hero_packet(h)
+	check(int(pk[14]) & 2 != 0, "and partners are told (the state's unseen bit)")
+	h.block_chance = 0.0
+	h.take_hit(5.0, h.global_position + Vector3(0, 0, -2))
+	check(h.invis_t == 0.0, "a blow ends it")
+	h.equipment["amulet"] = null
+	h.recalc()
 	# the bonfire's Reforge: the weakest affix rerolled, the others kept
 	var rr := Items.make("ring", 2, 20)
 	rr["affixes"] = [["str", 4], ["life", 1], ["res", 6]]

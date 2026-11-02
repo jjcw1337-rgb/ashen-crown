@@ -595,7 +595,7 @@ func pvp_hit(attacker: int, target: int, amount: float, from: Vector3) -> void:
 	if a.global_position.distance_to(t.global_position) > 30.0:
 		return
 	last_hit[target] = [attacker, raid_t]
-	game.net.hit_player(target, clampf(amount, 0.0, 5000.0) * PVP_MULT * Data.pvp_scale(a.cls, t.cls), from, "pvp", "phys")
+	game.net.hit_player(target, clampf(amount, 0.0, 5000.0) * PVP_MULT * Data.pvp_scale(a.cls, t.cls, a.level, t.level), from, "pvp", "phys")
 
 ## A player fell: everything they had lies where they fell.
 func died(pid: int, items: Array, at: Vector3) -> void:

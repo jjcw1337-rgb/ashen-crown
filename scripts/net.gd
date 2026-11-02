@@ -299,7 +299,7 @@ func _hero_packet(h: Hero) -> PackedFloat32Array:
 	return PackedFloat32Array([h.global_position.x, h.global_position.y, h.global_position.z, h.rig.rotation.y,
 		h.phase, st.get("move", 0.0), st.get("atk", -1.0), float(maxi(0, STYLES.find(st.get("style", "over")))),
 		st.get("block", 0.0), st.get("hit", 0.0), 1.0 if h.dead else 0.0, h.dead_t, h.life, h.max_life,
-		1.0 if h.buff_t > 0.0 else 0.0]) + _boat_packet(h)
+		(1.0 if h.buff_t > 0.0 else 0.0) + (2.0 if h.invis_t > 0.0 else 0.0)]) + _boat_packet(h)     # (bit 1: unseen)
 
 ## A sailing player's boat rides along at the end of his state (aboard, x, z, yaw, speed); partners draw it
 ## under his puppet (BoatRide.puppet_update). Older builds read only the first 15 numbers.
@@ -365,6 +365,8 @@ func sv_hello(nm: String, gear: Dictionary, _lvl: int) -> void:
 		roster.append([op, players[op]["name"], players[op]["hero"].net_gear()])
 		rpc_id(op, "cl_player_join", pid, nm, gear)
 	_add_player(pid, nm, gear)
+	if players.has(pid) and is_instance_valid(players[pid]["hero"]):
+		players[pid]["hero"].level = clampi(_lvl, 1, 99)      # (the raid's PvP class balance is by level, Data.pvp_scale)
 	var at: Vector3 = game.hero.global_position
 	if server:
 		at = game.bg.spawn_point() if game.bg != null else (game.coop_server.spawn_point() if game.coop_server != null else at)
@@ -393,6 +395,7 @@ func cl_welcome(act: int, zone: String, pos: Vector3, tp: Dictionary, bk: bool, 
 	game.boss_killed = bk
 	if game.bg_mode:
 		game.ui.message("Joined the Battlegrounds", Color(0.5, 1.0, 0.5))
+		game.give_raid_phials()
 	elif not players.has(1):
 		game.ui.message("Joined the online co-op server", Color(0.5, 1.0, 0.5))
 	else:

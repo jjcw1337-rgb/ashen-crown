@@ -2999,6 +2999,34 @@ func _cheat_keys(ev: InputEvent) -> void:
 ## class baseline of level-20 gear for PvP testing (rare items on every slot, the class's own weapon). Safe to press
 ## again: its own pieces (marked "boost") stay, any other equipped item moves to the bag (kept equipped if the bag
 ## is full, never destroyed), and the same gear is never handed out twice.
+## The Veilmother's Locket ("phial"): a Shadow Phial at the start of each raid, in the belt (or the bag), never more
+## than the locket gives.
+func give_raid_phials() -> void:
+	var n := int(hero.stats.get("phial", 0))
+	if n <= 0:
+		return
+	var have := 0
+	for b in hero.belt:
+		if b is Dictionary and b["base"] == "shadow_phial":
+			have += int(b.get("count", 1))
+	if have >= n:
+		return
+	var it := Items.potion("shadow_phial")
+	it["count"] = n - have
+	for i in hero.belt.size():
+		if hero.belt[i] is Dictionary and hero.belt[i]["base"] == "shadow_phial":
+			hero.belt[i]["count"] = n
+			ui.refresh()
+			return
+	for i in hero.belt.size():
+		if hero.belt[i] == null:
+			hero.belt[i] = it
+			ui.refresh()
+			ui.message("A Shadow Phial in your belt (the Veilmother's Locket)", Color(0.7, 0.6, 1.0))
+			return
+	hero.add_to_inventory(it)
+	ui.refresh()
+
 ## A boss's own loot (the items rework: rewards from hard content, not tiny drop chances; Data.BOSS_LOOT): its first
 ## kill by this character always drops one of its uniques (its "boss_drop" if it has one); after that each kill has
 ## BOSS_LOOT_CHANCE, and every kill without one raises the next by BOSS_LOOT_LUCK (Hero.boss_luck, saved).
