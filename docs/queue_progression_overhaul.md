@@ -146,3 +146,49 @@ Still to do / needs playtesting:
   - 6 s invisibility against real players;
   - the act multipliers in Acts II-III by hand (the sim's bands pass);
   - the Plague Doctor and the warlock in real raids.
+
+## Final write-up (2026-11-02, evening; first pass, for playtesting)
+
+**What changed**
+- Skills unlock by level: Q 1, E 3, R 5, F 9, G 14, every ultimate at 20; the shared skills War Cry 6, Frost Nova 8,
+  Arc 11, Earthshatter 16. Locked skills are grey on the bar with "Lv N", can't be bound or cast, and are announced
+  when reached.
+- Items reworked for the whole game (`docs/queue_items_rework.md`):
+  - weapons hit for the level's damage;
+  - rolls are about a quarter of their old size, rares have 2-3 affixes;
+  - percentages are capped (+5% run speed at most);
+  - utility affixes;
+  - every unique has one signature effect;
+  - boss loot tables replace tiny drop chances;
+  - the bonfire's Reforge;
+  - Acts II-III items are x1.6 / x2.4 (were x5 / x25), with monsters retuned by the balance sim (0 deaths, 8 flags).
+- PvP extras:
+  - Shadow Phial (6 s unseen, from the level-20 Veilmother's Locket);
+  - the class uniques' free roll and ward;
+  - burns and chills reach players;
+  - per-class PvP multipliers by level (`Data.PVP_CLASS`).
+- Admin: Go to level 20 (+10,000 gold) in the Escape menu's Admin column, for admins only. The admin role lives in
+  Nakama and the raid server enforces it. Also the Battlegrounds sandbox.
+
+**Representative numbers** (`tools/pvp_sim.gd -- moving`, raid rules; knight shown, the others within ~25%):
+
+| level | fresh: life / armour / damage | geared: life / armour / damage | gear's power | geared wins, equal skill | much better fresh player wins |
+|---|---|---|---|---|---|
+| 1 | 124 / 3 / 3-8 | 131 / 12 / 3-9 | x1.0-1.3 | 41-95% | 98-100% |
+| 5 | 164 / 4 / 6-12 | 175 / 14 / 7-15 | x1.1-1.4 | 78-98% | 88-100% |
+| 10 | 214 / 6 / 11-20 | 236 / 22 / 15-28 | x1.3-1.6 | 89-99% | 79-99% |
+| 20 | 326 / 8 / 20-36 | 365 / 27 / 26-49 | x1.4-1.8 | 94-99% | 71-97% |
+
+Bot duels (`tools/duel_sim.gd`, real fights in the sandbox): geared beats fresh of its class 5-8 of 8 at every
+level. Class against class, share of pairings won: level 5 25-75%, level 10 20-71%, level 20 35-64% (the noise at
+8 duels a pairing is about +-20 points).
+
+**Needs playtesting**
+- Class balance with people: bots don't bait, kite round pillars or read animations. Watch the Wraith at 5-10, Doug
+  at 10, and the warlock and the demon at 20.
+- Level-1 fights are long (one skill, ~100 life, 50-90 s bot duels); a raid at level 1 may feel slow.
+- At level 1 gear barely matters (x1.0-1.3): is that the intended "progression feel"?
+- The 6 s Shadow Phial against real players. Is the shimmer readable? Is it too strong at a portal?
+- Acts II-III by hand: the sim's bands pass, but an act's feel was its x5 / x25 numbers.
+- Old characters' items after their one-time rebuild: much weaker on purpose. Check that nothing looks broken.
+- The admin role: grant it to both accounts (`tools/admin_role.sh`) once they send their account ids.
