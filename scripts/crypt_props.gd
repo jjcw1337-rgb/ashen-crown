@@ -400,12 +400,16 @@ void fragment(){
 		cover *= step(0.9, h) * step(0.2, d.z);
 		if (cover * 0.9 > dith(FRAGCOORD.xy)) { discard; }
 	}
-	// world-space mapping, the side that faces the normal (every wall block is axis-aligned, give or take a degree)
+	// world-space mapping, the side that faces the normal (every wall block is axis-aligned, give or take a degree):
+	// u runs to the right of someone facing the wall, v down the wall (the image's top at the top), so the normal
+	// map's tangent frame is t (right) and up
 	vec3 an = abs(wnorm);
 	vec2 uv;
-	if (an.y > 0.6) { uv = wpos.xz; }
-	else if (an.x > an.z) { uv = vec2(wpos.z * sign(wnorm.x), wpos.y); }
-	else { uv = vec2(-wpos.x * sign(wnorm.z), wpos.y); }
+	vec3 t;
+	vec3 bt;
+	if (an.y > 0.6) { uv = wpos.xz; t = vec3(1.0, 0.0, 0.0); bt = vec3(0.0, 0.0, -1.0); }
+	else if (an.x > an.z) { uv = vec2(-wpos.z * sign(wnorm.x), -wpos.y); t = vec3(0.0, 0.0, -sign(wnorm.x)); bt = vec3(0.0, 1.0, 0.0); }
+	else { uv = vec2(wpos.x * sign(wnorm.z), -wpos.y); t = vec3(sign(wnorm.z), 0.0, 0.0); bt = vec3(0.0, 1.0, 0.0); }
 	uv *= tile;
 	vec3 col = texture(albedo_tex, uv).rgb * tint;
 	// slow variation across the room so no two blocks read the same, grime toward the floor, moss in the damp
@@ -416,10 +420,7 @@ void fragment(){
 	col = mix(col, moss_col * (0.75 + big * 0.5), clamp(mossf, 0.0, 0.85));
 	ALBEDO = col;
 	vec3 nm = texture(normal_tex, uv).rgb * 2.0 - 1.0;
-	// the map's tangent frame is the world mapping's: build it from the face
 	vec3 wn = normalize(wnorm);
-	vec3 t = an.y > 0.6 ? vec3(1.0, 0.0, 0.0) : (an.x > an.z ? vec3(0.0, 0.0, sign(wnorm.x)) : vec3(-sign(wnorm.z), 0.0, 0.0));
-	vec3 bt = cross(wn, t);
 	vec3 n = normalize(t * nm.x + bt * nm.y + wn * nm.z * 1.4);
 	NORMAL = (VIEW_MATRIX * vec4(n, 0.0)).xyz;
 	ROUGHNESS = roughness - mossf * 0.1;
@@ -446,6 +447,91 @@ static func wall_material() -> Material:
 		m = Mats.world(Color(0.36, 0.34, 0.31), Color(0.24, 0.23, 0.21), 0.92, 2.2, 0.3, Color(0.14, 0.16, 0.09))
 	_cache["wall"] = m
 	return m
+
+const FLOOR_SHADER := """
+shader_type spatial;
+render_mode blend_mix, cull_back, diffuse_burley, specular_schlick_ggx;
+uniform sampler2D albedo_tex : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform float tile = 0.33;         // texture repeats per metre (3 m flagstone tiles)
+uniform float roughness = 0.9;
+uniform vec3 tint : source_color = vec3(1.0);
+varying vec3 wpos;
+float hash21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
+float vnoise(vec2 p){ vec2 i=floor(p); vec2 f=fract(p); vec2 u=f*f*(3.0-2.0*f);
+	return mix(mix(hash21(i),hash21(i+vec2(1.0,0.0)),u.x), mix(hash21(i+vec2(0.0,1.0)),hash21(i+vec2(1.0,1.0)),u.x), u.y); }
+float fbm3(vec2 p){ float v=0.0; float a=0.5; for(int i=0;i<3;i++){ v+=a*vnoise(p); p=p*2.03+vec2(1.7,9.2); a*=0.5; } return v; }
+void vertex(){
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment(){
+	vec2 uv = wpos.xz * tile;
+	vec3 col = texture(albedo_tex, uv).rgb * tint;
+	// damp, dark patches and lighter dust across the floor, slow enough never to repeat with the stone
+	float big = fbm3(wpos.xz * 0.09 + 3.0);
+	float damp = smoothstep(0.55, 0.8, fbm3(wpos.xz * 0.21 + 11.0));
+	col *= 0.78 + big * 0.42;
+	col = mix(col, col * vec3(0.55, 0.6, 0.62), damp * 0.7);
+	ALBEDO = col;
+	vec3 nm = texture(normal_tex, uv).rgb * 2.0 - 1.0;
+	vec3 n = normalize(vec3(nm.x, nm.z * 1.3, -nm.y));      // the map's up is the floor's -z (the texture's v runs down the image)
+	NORMAL = (VIEW_MATRIX * vec4(n, 0.0)).xyz;
+	ROUGHNESS = roughness - damp * 0.45;
+	METALLIC = 0.0;
+}
+"""
+
+## The Hollow Crypt's flagstone floor: quads over the floor cells (World's 1 m grid), a hair above the terrain,
+## under the flagstone textures (TEX floor_albedo / floor_normal); nothing without them (the terrain's own crypt
+## floor shows then). One mesh per room and corridor (World.floor_rects), not one for the whole crypt: the OpenGL
+## renderer lights an instance by its nearest eight lights, and the crypt has torches in every room.
+static func floor(w: World) -> void:
+	if not (ResourceLoader.exists(TEX + "floor_albedo.png") and ResourceLoader.exists(TEX + "floor_normal.png")):
+		return
+	var sm := ShaderMaterial.new()
+	var sh := Shader.new()
+	sh.code = FLOOR_SHADER
+	sm.shader = sh
+	sm.set_shader_parameter("albedo_tex", load(TEX + "floor_albedo.png"))
+	sm.set_shader_parameter("normal_tex", load(TEX + "floor_normal.png"))
+	sm.set_shader_parameter("tile", 0.33)
+	sm.set_shader_parameter("tint", Vector3(0.9, 0.9, 0.88))
+	var y := 0.015
+	var h := World.CELL * 0.5 + 0.02
+	var done := {}       # cell -> true (a cell under two rects is drawn once)
+	for ri in w.floor_rects.size():
+		var r: Rect2 = w.floor_rects[ri]
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var n := 0
+		var i0 := maxi(0, int(floor((r.position.x - w.origin.x) / World.CELL)) - 1)
+		var i1 := mini(w.gw - 1, int(ceil((r.end.x - w.origin.x) / World.CELL)) + 1)
+		var j0 := maxi(0, int(floor((r.position.y - w.origin.y) / World.CELL)) - 1)
+		var j1 := mini(w.gh - 1, int(ceil((r.end.y - w.origin.y) / World.CELL)) + 1)
+		for j in range(j0, j1 + 1):
+			for i in range(i0, i1 + 1):
+				var key := Vector2i(i, j)
+				if done.has(key):
+					continue
+				var cx: float = w.origin.x + (i + 0.5) * World.CELL
+				var cz: float = w.origin.y + (j + 0.5) * World.CELL
+				if not r.has_point(Vector2(cx, cz)):
+					continue
+				done[key] = true
+				var vs := [Vector3(cx - h, y, cz - h), Vector3(cx + h, y, cz - h), Vector3(cx + h, y, cz + h), Vector3(cx - h, y, cz + h)]
+				for k in [0, 1, 2, 0, 2, 3]:
+					st.set_normal(Vector3.UP)
+					st.set_uv(Vector2(vs[k].x, vs[k].z))
+					st.add_vertex(vs[k])
+				n += 1
+		if n == 0:
+			continue
+		var mi := MeshInstance3D.new()
+		mi.mesh = st.commit()
+		mi.material_override = sm
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.name = "crypt_floor_%d" % ri
+		w.props_root.add_child(mi)
 
 # ---------------------------------------------------------------- the Extraction Portal
 const PORTAL_SHADER := """
@@ -535,6 +621,7 @@ static func dress(w: World) -> void:
 	var hall: Rect2 = w.get_meta("bg_hall")
 	var rng := RandomNumberGenerator.new()
 	rng.seed = WALL_SEED + 1
+	floor(w)
 	# rubble: chips of the walls' stone along the room edges (MultiMesh, no collision: ankle-high)
 	var xfs := {}
 	var rects: Array = rooms.values()
@@ -618,10 +705,10 @@ static func floor_seal() -> Node3D:
 	if not ResourceLoader.exists(TEX + "seal.png"):
 		return null
 	var d := Decal.new()
-	var tex: Texture2D = load(TEX + "seal.png")
-	d.texture_albedo = tex
-	d.texture_emission = tex
-	d.emission_energy = 0.35
+	d.texture_albedo = load(TEX + "seal.png")
+	if ResourceLoader.exists(TEX + "seal_emit.png"):
+		d.texture_emission = load(TEX + "seal_emit.png")     # only the runes glow (the blue of the painting, cut out)
+		d.emission_energy = 1.6
 	d.size = Vector3(11.0, 1.2, 11.0)
 	d.cull_mask = 1
 	d.albedo_mix = 0.9

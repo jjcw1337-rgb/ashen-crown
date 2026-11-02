@@ -17,6 +17,8 @@ func _initialize():
 		only = a[oi + 1].split(",")
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
+	g._intro_skip = true          # (the trailer would play a minute first)
+	g.set_quality(int(OS.get_cmdline_user_args()[OS.get_cmdline_user_args().find("quality") + 1]) if OS.get_cmdline_user_args().has("quality") else 0)
 	_run()
 
 func _snap(name: String, frames := 8) -> void:
@@ -70,6 +72,7 @@ func _run() -> void:
 		var m = p.get_node_or_null("Model")
 		if m:
 			m.visible = true
+	Battlegrounds.sync_gates(g)
 	# shaders compile on the first frames: let the scene settle before the first still
 	for f in 20:
 		await process_frame
@@ -99,9 +102,13 @@ func _run() -> void:
 	_place(Vector3(hall.get_center().x, 0, hall.get_center().y))
 	await _snap("hall")
 	if only.is_empty() or only.has("overview"):
+		# the whole crypt from high above, lit to read (the raid's own dark would show nothing from up here)
 		g.ui.root.visible = false
 		var cam: Camera3D = g.get_viewport().get_camera_3d()
 		g.set_process(false)
+		g.env.ambient_light_energy = 2.5
+		g.env.fog_enabled = false
+		g.env.volumetric_fog_enabled = false
 		cam.global_transform = Transform3D(Basis(), Vector3(0, 95, 70)).looking_at(Vector3(0, 0, -2))
 		cam.fov = 55
 		await _snap("overview", 4)

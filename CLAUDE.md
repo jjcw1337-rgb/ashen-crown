@@ -169,7 +169,23 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   room per side holds a candidate Extraction Portal (Inter `"extract"`, hidden until open), the other is a treasure
   room and the only way into the hall from that side; a ring of corridors with one link missing; crypt rooms with
   sarcophagi, chests, few but tough monsters (`MON_LIFE`, `MON_DMG`, level `MON_LEVEL`); the hall has a pillar ring,
-  three chests and a champion with bowmen. The walls come from `World.crypt_shell` (shared with the crypt). **Rounds**
+  three chests and a champion with bowmen. The walls come from `World.crypt_shell` (shared with the crypt). **The
+  look** (`scripts/crypt_props.gd` `CryptProps`): Meshy props re-baked onto clean UVs by
+  `tools/blender/battlegrounds/rebake_crypt_prop.py` into `assets/models/crypt/` (sarcophagus, pillar, archway, bones,
+  sconce, brazier, ossuary niche; `prep_all.sh` rebuilds them from the raw Meshy downloads; `inspect_glb.py`,
+  `components.py` to look at a raw model). World's shared crypt helpers (`_pillar`, `_sarcophagus`, `_bones`,
+  `_wall_torch`) draw them when the files are there (A3's crypt too) with the same footprints and the same rolls on
+  `rng`; in the Hollow Crypt (`theme.name == "bg"`) `crypt_shell` hands its wall blocks to `CryptProps.walls`, which
+  turns cells into tomb alcoves with sarcophagi (each room's north wall), ossuary niches (candles in some), the hall's
+  three statue alcoves (the knight statue in crypt stone) and wall braziers, closing the rock behind them; the walls and
+  the flagstone floor (`CryptProps.floor`, a mesh over the floor cells) use Meshy-drawn textures made tileable and
+  normal-mapped in Blender (`make_tile_textures.py`, `assets/textures/crypt/`); the Extraction Portals stand in rune
+  archways whose runes light when the portal opens (`Battlegrounds.sync_gates`, `CryptProps.set_runes`) with
+  `portal_glow` inside; `dress` adds rubble, corner cobwebs and the hall's floor seal (a Decal). **Everything visual
+  is on the same layout**: no footprint changes, no new interactable, no call added to `w.rng`
+  (`tools/bg_layout_fingerprint.gd` prints a hash of the layout; it must not change: the staging server builds it
+  from the same rolls). Stills: `tools/crypt_shots.gd -- outdir`, a walk: `tools/crypt_clip.gd -- outdir [frames]`
+  (`--fixed-fps 30`). **Rounds**
   of `RAID_SECS` (15 min): two of the four portals open at `PORTALS_AT` (5 min), joining closes at `JOIN_CLOSE`, the
   crypt collapses at the end (everyone inside dies) and the dungeon resets (`new_round`). The state reaches players
   through `Net.cl_bg_raid` (the HUD clock, `Battlegrounds.hud`). **Combat is slower and heavier** while
@@ -1035,9 +1051,16 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   rune channels the glow sits in; Meshy crystal, brazier, guardian, banner, torch, pillar re-baked by `camp/rebake_prop.py`, the crystal
   split and the modelled flames cut by `waypoint/split_parts.py`; each missing model falls back to its code blockout); wakes as a
   hero nears, flares on arrival and when the window opens; `add_waypoint(id, p, cobble, true)`, colliders in `SOLIDS`; `-- --old-waypoint` shows the old
-  stone). The window's Battlegrounds tab lists `Data.WAYPOINT_BATTLEGROUNDS` (Enter -> `Game.waypoint_battleground`: save, title's
-  Battlegrounds window; not from co-op). Tests: `tools/waypoint_grand_test.gd`, `tools/waypoint_test.gd`
-  (rules), `tools/waypoint_shot.gd -- out.png [run]` (screenshot).
+  stone). The window's **Battlegrounds tab** shows `Data.WAYPOINT_BATTLEGROUNDS` (the Hollow Crypt: its Meshy painting
+  `wp_bg_crypt.png` on the banner, a card laid out like a route stop with the round's numbers from `Battlegrounds`'
+  constants, the stakes in plain words, who goes down with what at stake, the server and whether it answers: an
+  ENet probe dropped on the handshake, `WaypointPanel._probe_*`). Descend -> `Game.waypoint_battleground`: a last word
+  on the stakes (dialog), then `_descend` (the dais flares, `WaypointGrand.pulse`) and `start_battlegrounds` with the
+  character playing against `Game.bg_server_address()` (the address last used, else the build's), the crypt's
+  painting behind the loading words (`set_loading_art`). `bg_from_waypoint`: extracted, fallen or cut off, the raid
+  ends back on this dais (`_leave_battlegrounds` -> `_bg_home_camp`) instead of the title's Battlegrounds window (a
+  raid from the title still ends there); not from co-op. Tests: `tools/waypoint_grand_test.gd`, `tools/waypoint_test.gd`
+  (rules), `tools/waypoint_shot.gd -- out.png [run | bg]` (screenshot; `bg` the Battlegrounds tab).
 - **Inventory (I)** (`UI._build_inventory`, jj's "Classic"): Meshy art in the action bar's iron and bronze
   (`assets/textures/ui/inv_*.png`, cut and cleaned from Meshy concepts in `exports/ui/inventory/`): a NinePatchRect
   frame (`INV_SCALE`, corners `INV_PATCH` texture px, the middle bands mirror-symmetric so they tile seamlessly,
