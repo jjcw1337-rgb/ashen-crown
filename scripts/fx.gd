@@ -110,12 +110,100 @@ static func aura(parent: Node3D, col: Color, amount := 24, speed := 0.6, size :=
 	parent.add_child(p)
 	return p
 
+## Streaks: particles stretched along their own flight (aligned to their velocity, the quad turning round that axis
+## to face the camera), for sparks and blood droplets (visual overhaul: both were the same round soft dots as every
+## burst). size = the streak's width; it is `stretch` times as long.
+static var _streak_tex: GradientTexture2D
+static var _streak_mats := {}
+
+static func _streak_mat(additive: bool) -> StandardMaterial3D:
+	var key := "add" if additive else "mix"
+	if _streak_mats.has(key):
+		return _streak_mats[key]
+	if _streak_tex == null:
+		var g := Gradient.new()
+		g.set_color(0, Color(1, 1, 1, 1))
+		g.set_color(1, Color(1, 1, 1, 0))
+		_streak_tex = GradientTexture2D.new()
+		_streak_tex.gradient = g
+		_streak_tex.fill = GradientTexture2D.FILL_RADIAL
+		_streak_tex.fill_from = Vector2(0.5, 0.5)
+		_streak_tex.fill_to = Vector2(0.5, 0.0)
+		_streak_tex.width = 32
+		_streak_tex.height = 32
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	if additive:
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		m.albedo_color = Color(2.4, 2.4, 2.4)
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
+	m.billboard_keep_scale = true
+	m.vertex_color_use_as_albedo = true
+	m.albedo_texture = _streak_tex
+	m.disable_receive_shadows = true
+	_streak_mats[key] = m
+	return m
+
+static func streaks(root: Node3D, pos: Vector3, colors: Array, amount: int, speed: float, size: float, stretch: float, life: float, additive: bool, gravity: float, spread := 180.0, dir := Vector3.UP, damping := 0.0) -> GPUParticles3D:
+	var p := GPUParticles3D.new()
+	p.one_shot = true
+	p.explosiveness = 0.96
+	p.amount = amount
+	p.lifetime = life
+	p.local_coords = false
+	var pm := ParticleProcessMaterial.new()
+	pm.direction = dir
+	pm.spread = spread
+	pm.initial_velocity_min = speed * 0.35
+	pm.initial_velocity_max = speed
+	pm.gravity = Vector3(0, gravity, 0)
+	pm.damping_min = damping * 0.6
+	pm.damping_max = damping
+	pm.particle_flag_align_y = true
+	pm.scale_min = 0.6
+	pm.scale_max = 1.2
+	var c := Curve.new()
+	c.add_point(Vector2(0.0, 1.0))
+	c.add_point(Vector2(1.0, 0.25))
+	var ct := CurveTexture.new()
+	ct.curve = c
+	pm.scale_curve = ct
+	var g := Gradient.new()
+	g.set_offset(0, colors[0][0])
+	g.set_color(0, colors[0][1])
+	g.set_offset(1, colors[colors.size() - 1][0])
+	g.set_color(1, colors[colors.size() - 1][1])
+	for i in range(1, colors.size() - 1):
+		g.add_point(colors[i][0], colors[i][1])
+	var gt := GradientTexture1D.new()
+	gt.gradient = g
+	pm.color_ramp = gt
+	p.process_material = pm
+	var q := QuadMesh.new()
+	q.size = Vector2(size, size * stretch)
+	q.material = _streak_mat(additive)
+	p.draw_pass_1 = q
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(p)
+	p.global_position = pos
+	p.emitting = true
+	_free_later(p, life + 0.5)
+	return p
+
+## Sparks: hot streaks flung out, cooling white to the colour to dark red as they fall, and a short flash.
 static func sparks(root: Node3D, pos: Vector3, col := Color(1.0, 0.8, 0.4)) -> void:
-	burst(root, pos, col, 22, 6.0, 0.07, 0.35, true, -9.0)
+	streaks(root, pos, [[0.0, Color(1.0, 0.97, 0.88, 1.0)], [0.25, Color(col.r, col.g, col.b, 1.0)], [1.0, Color(0.7, 0.18, 0.04, 0.0)]],
+		20, 7.5, 0.035, 5.0, 0.42, true, -11.0, 180.0, Vector3.UP, 2.0)
+	burst(root, pos, col, 5, 1.2, 0.09, 0.18, true, 0.0)
 	flash(root, pos, col, 1.5, 0.12)
 
+## Blood: droplets thrown out as short streaks that arc down, and a few round drops; darker as they fly.
 static func blood(root: Node3D, pos: Vector3, col: Color) -> void:
-	burst(root, pos, Color(col.r, col.g, col.b, 1.0), 14, 3.0, 0.1, 0.6, false, -9.0)
+	var c := Color(col.r, col.g, col.b, 1.0)
+	streaks(root, pos, [[0.0, c.lightened(0.15)], [0.6, c], [1.0, Color(c.r * 0.5, c.g * 0.5, c.b * 0.5, 0.0)]],
+		12, 4.2, 0.045, 3.2, 0.55, false, -12.0, 75.0, Vector3.UP, 0.5)
+	burst(root, pos, c, 6, 2.2, 0.08, 0.55, false, -10.0)
 
 static func flash(root: Node3D, pos: Vector3, col: Color, energy: float, dur: float, rng: float = 4.0) -> void:
 	var l := OmniLight3D.new()
