@@ -90,6 +90,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `coop_server.gd` | Online co-op: the story game hosted by a dedicated server (see "Online co-op") |
 | `build_env.gd`, `nakama_client.gd`, `cloud_saves.gd` | Which backend a build uses; the Nakama REST client; characters kept in Nakama (see "Staging and accounts") |
 | `battlegrounds.gd` | Battlegrounds prototype: the raid map, the dedicated server's raid logic (respawns, carried loot, extraction, the stash), the client's id and cached stash |
+| `vigil.gd` | The Last Flame (zone `"vigil"`): the co-op horde defence under the Act I camp, its sanctum, waves, flame and HUD (see "The Last Flame") |
 | `kpi.gd` | The official performance KPIs: scripted scenarios measured frame by frame (`--kpi`), see docs/nightly/KPIS.md |
 | `shared_skills.gd`, `shared_fx.gd` | The shared skills every class can use (`"cls": "any"`): their gameplay and their effects |
 | `skill_spec.gd` | The skill format (`SkillSpec`): a skill's timing, damage, area and damage over time read from its `Data.SKILLS` entry |
@@ -191,6 +192,23 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   and accounts"). Tests: `tools/bg_test.gd` (server `--raid-fast`: 150 s rounds) and `tools/bg_pvp_test.gd`.
   Dev cheat (non-production builds or dev tools): type `maxout` while playing (`Game.max_out`: level 99, stats,
   every talent, a million gold, potions, a bag of the best gear).
+- **The Last Flame** (`scripts/vigil.gd`, `Vigil`, zone `"vigil"`; nightly mode 2026-11-01, `docs/nightly/modes/2026-11-01-last-flame/`):
+  a co-op horde defence. The Act I camp's Vigil Gate (Inter `"vigil_gate"` at `ForestCamp.VIGIL_GATE`, `travel`, so the
+  party's ready check takes everyone; the way back is `"vigil_exit"` to the camp's `from_vigil`) leads to an indoor
+  sanctum (`Vigil.build`: a 32 m hall on `crypt_shell`, three breach rooms N/E/W with red portals, the altar at
+  `CENTER`). Clicking the altar (Inter `"vigil"`) kindles a vigil: `WAVES` (ten; champions on 5 and 10 with a boss bar
+  on every screen, the Forsaken Bear on 8 and 10) come out of the breaches (`SPAWN_GAP`, at most `MAX_ALIVE` on the
+  floor), counts and the flame's life scaled by players (`PER_PLAYER`) and level (the party's average, `Net.vigil_hi`).
+  Monsters go for the flame through `Enemy.taunt` (the `Vigil.Flame` node: what Enemy reads of a target) unless a hero
+  is nearer; monster missiles hit it through the `"objective"` group (`projectile.gd`). A wave held mends it (`MEND`)
+  and lays gold (an item every other wave) by it; all ten: a unique each. Clicking it with a log from the moor feeds it
+  (`FUEL`: oak 8%, pine 5%, Ashen Heartwood 25%). The flame out = lost (the wave crumbles, no xp); either way it relights
+  after `END_SECS`. Deaths rise by the altar (`Game.respawn`). Host-authoritative: state `Net.vigil_state`/`cl_vigil`
+  (twice a second), events `vigil_event`/`cl_vigil_fx`, a partner's kindling `request_vigil`/`sv_vigil`, feeding
+  `vigil_feed`; it runs on a player host and on the online co-op server alike. Tests: `tools/nightly_vigil_test.gd`
+  (solo, in the gate), `tools/vigil_coop_test.gd` (the co-op server and two players: `-- --server --coop --port 24661
+  server`, `-- a 24661`, `-- b 24661`); balance probe `tools/vigil_sim.gd -- [class] [level] [secs]`; screenshots
+  `tools/vigil_shots.gd -- outdir [frames] [class]` (needs a display).
 - **Online co-op** (`scripts/coop_server.gd`, `CoopServer`): the story game hosted by a dedicated server
   (`-- --server --coop --port 24570`, staging systemd `ashen-crown-coop`), so friends co-op over the internet with no
   router setup: the title's "Online Co-op" (non-local builds) joins `BuildEnv.value("coop_server")` with the

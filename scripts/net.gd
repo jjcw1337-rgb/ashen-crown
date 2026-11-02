@@ -694,6 +694,49 @@ func sv_games() -> void:
 	if is_host and game.world != null and game.world.has_meta("games"):
 		game.world.get_meta("games").begin()
 
+## The Last Flame (vigil.gd): the host's round state and events to everyone, a partner's kindling and level.
+func vigil_state(args: Array) -> void:
+	if is_host and not players.is_empty():
+		rpc("cl_vigil", args)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_vigil(args: Array) -> void:
+	if not loading and game.world != null and game.world.has_meta("vigil"):
+		game.world.get_meta("vigil").apply(args)
+
+func vigil_event(ev: String) -> void:
+	if is_host and not players.is_empty():
+		rpc("cl_vigil_fx", ev)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_vigil_fx(ev: String) -> void:
+	if not loading and game.world != null and game.world.has_meta("vigil"):
+		game.world.get_meta("vigil").fx(ev)
+
+func request_vigil() -> void:
+	rpc_id(1, "sv_vigil")
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_vigil() -> void:
+	if is_host and game.world != null and game.world.has_meta("vigil"):
+		game.world.get_meta("vigil").begin()
+
+func vigil_feed(frac: float) -> void:
+	rpc_id(1, "sv_vigil_feed", frac)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_vigil_feed(frac: float) -> void:
+	if is_host and game.world != null and game.world.has_meta("vigil"):
+		game.world.get_meta("vigil").feed(clampf(frac, 0.0, 0.25))
+
+func vigil_hi(lvl: int) -> void:
+	rpc_id(1, "sv_vigil_hi", lvl)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_vigil_hi(lvl: int) -> void:
+	if is_host and game.world != null and game.world.has_meta("vigil"):
+		game.world.get_meta("vigil").levels[multiplayer.get_remote_sender_id()] = clampi(lvl, 1, 99)
+
 ## Host: put a partner's knight somewhere (onto the arena's sand when its gate drops).
 func place_player(pid: int, pos: Vector3) -> void:
 	rpc_id(pid, "cl_place", pos)

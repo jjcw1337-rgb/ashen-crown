@@ -438,10 +438,10 @@ func _sea_sounds() -> void:
 
 ## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
-	return cur_zone == Battlegrounds.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
+	return cur_zone == Battlegrounds.ZONE or cur_zone == Vigil.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
 
 func _zone_env(kind: String) -> void:
-	var inside := kind == Battlegrounds.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
+	var inside := kind == Battlegrounds.ZONE or kind == Vigil.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
 	var snowy := is_snowy() and not inside
 	var ashen := difficulty >= 2 and not inside
 	RenderingServer.global_shader_parameter_set("snow_amt", 1.0 if snowy else 0.0)
@@ -482,6 +482,14 @@ func _zone_env(kind: String) -> void:
 			env.tonemap_exposure = 1.25
 			hero.light.light_energy = 2.0
 			hero.light.omni_range = 11.0
+		elif kind == Vigil.ZONE:
+			# the Last Flame's sanctum: warm, the altar's fire the heart of it, the breaches glowing red
+			env.ambient_light_color = Color(0.5, 0.44, 0.42)
+			env.ambient_light_energy = 0.75
+			env.tonemap_exposure = 1.35
+			env.fog_light_color = Color(0.12, 0.07, 0.05)
+			hero.light.light_energy = 2.2
+			hero.light.omni_range = 13.0
 	else:
 		env.background_mode = Environment.BG_SKY
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
@@ -972,6 +980,7 @@ func zone_title(act: int, zone: String) -> String:
 		"lair": return ("Throne of the Ashen King" if difficulty >= 2 else a["lair"]) + tag
 		"coast": return str(a.get("coast", "The Coast")) + tag
 		Battlegrounds.ZONE: return Battlegrounds.TITLE
+		Vigil.ZONE: return Vigil.TITLE
 	if zone.begins_with("isle_"):
 		return str(Isles.get_isle(Isles.id_of(zone)).get("name", "An Island")) + tag
 	return ""
@@ -2239,6 +2248,37 @@ func _interact(t: Inter) -> void:
 			elif bg_mode and net.is_client() and not hero.dead:
 				ui.message("Extracting...", Color(0.6, 0.85, 1.0))
 				net.request_extract()
+		"vigil_gate":
+			# the camp's Vigil Gate: down to the Last Flame (vigil.gd); the party's ready check takes everyone
+			Sfx.play("portal")
+			travel(0, Vigil.ZONE, "start")
+		"vigil_exit":
+			Sfx.play("portal")
+			travel(0, "town", "from_vigil")
+		"vigil":
+			# the Last Flame: kindle a vigil (the host runs it)
+			var vg = world.get_meta("vigil") if world.has_meta("vigil") else null
+			if vg == null:
+				return
+			if vg.state in ["count", "wave", "break"]:
+				# feed it a log from the moor (woodcutting, harvest.gd): it burns higher
+				for lb in Vigil.FUEL:
+					if hero.count_of(lb) > 0 and hero.take_items(lb, 1):
+						var frac: float = Vigil.FUEL[lb]
+						ui.message("You feed the flame %s (+%d%%)" % [Data.BASES[lb]["name"], int(frac * 100.0)], Color(1.0, 0.75, 0.45))
+						if net.is_client():
+							net.vigil_feed(frac)
+						else:
+							vg.feed(frac)
+						return
+				ui.message("Hold the flame! (Logs from the moor feed it: click it with one in your bag.)", Color(1.0, 0.75, 0.45))
+			elif vg.state != "idle":
+				ui.message("The flame is not ready yet", Color(1.0, 0.75, 0.45))
+			elif net.is_client():
+				net.vigil_hi(int(hero.level))
+				net.request_vigil()
+			else:
+				vg.begin()
 		"lanista":
 			ui.trade_with = t
 			# Varro, by Aurelia's arena: his games are A2's boss fight (games.gd)
@@ -2635,6 +2675,11 @@ func respawn() -> void:
 		_leave_battlegrounds()
 		return
 	hero.gold = int(hero.gold * 0.9)
+	if cur_zone == Vigil.ZONE and world != null:
+		# the Last Flame: the fallen rise by the altar and fight on
+		hero.respawn(Vigil.respawn_at(world))
+		ui.message("You rise by the Last Flame", Color(1.0, 0.75, 0.45))
+		return
 	if net.active:
 		var ally := net.alive_ally()
 		if ally:
