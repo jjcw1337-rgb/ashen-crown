@@ -79,6 +79,10 @@ var net_id := 0
 ## (Battlegrounds.sync_proxies keeps it on their puppet); a blow on it goes to that player through the server.
 var pvp_pid := 0
 var pvp_hidden := false    # that player is hidden in a Plague Doctor's fog: not picked by the pointer or aim help
+## ... or the stand-in for something another player made that can be broken (`PvpObjects`: a Corpse Bloom, a vat, a
+## creature): its id in its owner's game and the owner's peer id. Blows on it count on the owner's game.
+var pvp_obj := 0
+var pvp_owner := 0
 var remote := false
 var net_pos := Vector3.ZERO
 var net_yaw := 0.0
@@ -322,6 +326,10 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 		Fx.number(game.world.fx_root, global_position + Vector3(0, 2.2, 0), str(int(total0 * Battlegrounds.PVP_MULT)) + ("!" if crit else ""), Color(1.0, 0.4, 0.35), crit)
 		Fx.blood(game.world.fx_root, global_position + Vector3(0, 1.0, 0), Color(0.5, 0.0, 0.0))
 		return total0 * Battlegrounds.PVP_MULT
+	if pvp_obj > 0:
+		# another player's thing: a blow, counted on its owner's game
+		PvpObjects.struck(self, from)
+		return 0.0
 	aggro = true
 	if sloth != null:
 		sloth.on_hit(from)
@@ -527,8 +535,8 @@ func _fx(ev: String) -> void:
 func _process(delta: float) -> void:
 	if game == null or game.hero == null or game.world == null or not is_inside_tree():
 		return
-	if pvp_pid > 0:
-		return          # a player's stand-in (Battlegrounds.sync_proxies moves it)
+	if pvp_pid > 0 or pvp_obj > 0:
+		return          # a player's stand-in (Battlegrounds.sync_proxies moves it), or a thing of a player's (its ghost does)
 	anim_time += delta
 	if flash_t > 0.0:
 		flash_t -= delta
@@ -612,8 +620,11 @@ func _process(delta: float) -> void:
 	if hoard != null and hoard.boss == self and aggro:
 		hoard.update(delta)
 	var vel := Vector3.ZERO
-	# a Demon phased into the Underworld cannot be seen
+	# a Demon phased into the Underworld cannot be seen, nor a Plague Doctor in his fog from beyond its reach
+	# (Plague.hidden_from_monster; bosses and the Sloths see through it)
 	var hero_dead: bool = hero.dead or hero.get("phased") == true
+	if not hero_dead and not boss and sloth == null and hero is Hero and hero.get("pd") != null:
+		hero_dead = hero.pd.hidden_from_monster(global_position)
 	if sloth != null:
 		vel = sloth.update(delta, hero, to, dist, hero_dead)
 	elif stun_t > 0.0:

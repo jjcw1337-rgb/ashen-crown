@@ -154,6 +154,10 @@ var reveal_t := 0.0           # he attacked from his fog: seen for this long
 var trans := {}               # {t, soaked, node}
 var lab := {}                 # {stage, node, pos, r, t, tick, start, creature}
 var crank_from := Vector3.ZERO
+## PvP: his bloom, vat and creature can be broken by other players (`PvpObjects`); each has an id here ("oid" in its
+## entry, the creature's "coid" in `lab`), sent with the event that makes it, and its blows left ("left"/"cleft"); a
+## ghost keeps a stand-in on each ("proxy"/"cproxy").
+var next_oid := 0
 
 func _init(hero: Hero) -> void:
 	h = hero
@@ -196,7 +200,10 @@ func remote(ev: String) -> void:
 			_swarm_end(false)
 		"bloom":
 			if a.size() >= 3:
-				_bloom_at(_pv(a[1]), float(a[2]))
+				_bloom_at(_pv(a[1]), float(a[2]), int(a[3]) if a.size() >= 4 else 0)
+		"obj":
+			if a.size() >= 3:
+				_obj_left(int(a[1]), int(a[2]))
 		"fog":
 			if a.size() >= 3:
 				_fog_at(_pv(a[1]), float(a[2]))
@@ -209,10 +216,10 @@ func remote(ev: String) -> void:
 				_trans_end(float(a[1]))
 		"vat":
 			if a.size() >= 3:
-				_vat_at(_pv(a[1]), float(a[2]))
+				_vat_at(_pv(a[1]), float(a[2]), int(a[3]) if a.size() >= 4 else 0)
 		"burst":
 			if a.size() >= 2:
-				_exp_burst(float(a[1]))
+				_exp_burst(float(a[1]), int(a[2]) if a.size() >= 3 else 0)
 		"spew":
 			if a.size() >= 3 and not lab.is_empty():
 				PlagueExperimentFx.spew(lab, _pv(a[1]), _pv(a[2]), SPEW_WARN, SPEW_LEN, SPEW_HALF)
@@ -505,7 +512,7 @@ func _poison_dps(src: String) -> float:
 
 ## Poisons a foe from one source: refreshed, never stacked.
 func _poison(e: Enemy, src: String, t: float) -> void:
-	if ghost():
+	if ghost() or e.pvp_obj > 0:
 		return
 	var id := e.get_instance_id()
 	if not poison.has(id):
@@ -567,7 +574,7 @@ func _tint(e: Enemy, on: bool) -> void:
 # ---------------------------------------------------------------- Blight and Fever
 ## One stack per DIFFERENT skill of his (refreshed by the same one); three = Feverish.
 func _add_blight(e: Enemy, src: String) -> void:
-	if ghost() or e == null or e.dead:
+	if ghost() or e == null or e.dead or e.pvp_obj > 0:
 		return
 	var id := e.get_instance_id()
 	if not blight.has(id):
@@ -731,17 +738,22 @@ func _plant(at: Vector3) -> void:
 	var w: World = h.game.world
 	var g := Vector3(at.x, w.height_at(at.x, at.z), at.z)
 	var r := BLOOM_R * (1.0 + h.talent("bloom_size") / 100.0)
-	_send("bloom|%s|%.2f" % [_v(g), r])
+	var oid := _new_oid()
+	_send("bloom|%s|%.2f|%d" % [_v(g), r, oid])
 	_reveal_if_fogged()
-	_bloom_at(g, r)
+	_bloom_at(g, r, oid)
 
-func _bloom_at(g: Vector3, r: float) -> void:
+func _bloom_at(g: Vector3, r: float, oid := 0) -> void:
 	var w: World = h.game.world
 	var node := PlagueBloomFx.Bloom.new()
 	w.fx_root.add_child(node)
 	node.global_position = g
 	node.setup(w, g, r, BLOOM_GROW, BLOOM_T + h.talent("bloom_dur"), BLOOM_EVERY, BLOOM_WARN)
-	blooms.append({"node": node, "pos": g, "r": r, "age": 0.0, "life": BLOOM_GROW + BLOOM_T + h.talent("bloom_dur"), "next": BLOOM_GROW + BLOOM_EVERY - BLOOM_WARN, "marks": {}, "warned": false})
+	var b := {"node": node, "pos": g, "r": r, "age": 0.0, "life": BLOOM_GROW + BLOOM_T + h.talent("bloom_dur"), "next": BLOOM_GROW + BLOOM_EVERY - BLOOM_WARN, "marks": {}, "warned": false,
+		"oid": oid, "left": int(PvpObjects.HITS["bloom"])}
+	if ghost():
+		b["proxy"] = PvpObjects.proxy(h.game, h, oid, "bloom", int(b["left"]), g)
+	blooms.append(b)
 	Sfx.play_at("impact_metal", g, -10.0, 0.7)
 	Sfx.play_at("drip", g, -6.0, 0.5)
 
@@ -751,6 +763,7 @@ func _update_blooms(delta: float) -> void:
 		b["age"] = float(b["age"]) + delta
 		if float(b["age"]) >= float(b["life"]) or not is_instance_valid(node):
 			blooms.erase(b)
+			PvpObjects.drop(b.get("proxy"))
 			if is_instance_valid(node):
 				node.wither()
 			continue
@@ -782,7 +795,7 @@ func _update_blooms(delta: float) -> void:
 			var was = was_at.get(e.get_instance_id(), null)
 			if was is Vector3 and (was as Vector3).distance_to(e.global_position) < BLOOM_STILL:
 				PvpStatus.send(h.game, e, "snare", BLOOM_SNARE + h.talent("bloom_snare"), 1.0)
-				if e.pvp_pid <= 0:
+				if e.pvp_pid <= 0 and e.pvp_obj <= 0:
 					PlagueBloomFx.lash(node, e)     # (a player's roots are his own game's, PvpStatusFx)
 
 # ---------------------------------------------------------------- F Fog of the Forgotten
@@ -852,6 +865,16 @@ func hidden_from(viewer: Hero) -> bool:
 	if PvpStatus.has(h, "reveal"):
 		return false
 	return viewer.global_position.distance_to(h.global_position) > FOG_SEE
+
+## For a monster at `at` (Enemy._process, on the game running the monsters): it can't see him in his fog and loses
+## track of him, as of a Demon in the Underworld, unless it's within FOG_SEE, he struck from the fog a moment ago or
+## he's marked (reveal). Bosses and the Hollow Sloths see through it (the Enemy decides).
+func hidden_from_monster(at: Vector3) -> bool:
+	if fogs.is_empty() or reveal_t > 0.0 or not _in_fog(h.global_position):
+		return false
+	if PvpStatus.has(h, "reveal"):
+		return false
+	return Vector2(at.x - h.global_position.x, at.z - h.global_position.z).length() > FOG_SEE
 
 func _update_visibility() -> void:
 	if not ghost() or h.rig == null or h.game == null:
@@ -927,15 +950,16 @@ func _vat_cast(at: Vector3) -> void:
 	var w: World = h.game.world
 	var g := Vector3(at.x, w.height_at(at.x, at.z), at.z)
 	var r := EXP_R * (1.0 + h.talent("exp_size") / 100.0)
-	_send("vat|%s|%.2f" % [_v(g), r])
+	var oid := _new_oid()
+	_send("vat|%s|%.2f|%d" % [_v(g), r, oid])
 	_reveal_if_fogged()
-	_vat_at(g, r)
+	_vat_at(g, r, oid)
 	# stage 2: cranking it (an attack of its own, so a stun or another skill interrupts it)
 	crank_from = h.global_position
 	h._start_attack("pd_crank", "crank")
 	h.atk_dur = float(DUR["crank"]) * (PvpStatus.act_mult(h) if not h.pvs.is_empty() else 1.0)
 
-func _vat_at(g: Vector3, r: float) -> void:
+func _vat_at(g: Vector3, r: float, oid := 0) -> void:
 	if not lab.is_empty():
 		_exp_end()
 	var w: World = h.game.world
@@ -943,7 +967,10 @@ func _vat_at(g: Vector3, r: float) -> void:
 	w.fx_root.add_child(node)
 	node.global_position = g
 	node.setup(w, g, r)
-	lab = {"stage": 1, "node": node, "pos": g, "r": r, "t": 0.0, "tick": 0.0, "spew": SPEW_EVERY * 0.5}
+	lab = {"stage": 1, "node": node, "pos": g, "r": r, "t": 0.0, "tick": 0.0, "spew": SPEW_EVERY * 0.5,
+		"oid": oid, "left": int(PvpObjects.HITS["vat"])}
+	if ghost():
+		lab["proxy"] = PvpObjects.proxy(h.game, h, oid, "vat", int(lab["left"]), g)
 	h.game.add_shake(0.25 if not ghost() else 0.08)
 	Sfx.play_at("slam", g, -2.0, 0.85)
 	Sfx.play_at("impact_metal", g, -4.0, 0.6)
@@ -955,18 +982,26 @@ func _exp_finish() -> void:
 	_exp_burst_send(float(lab["r"]))
 
 func _exp_burst_send(r: float) -> void:
-	_send("burst|%.2f" % r)
-	_exp_burst(r)
+	var coid := _new_oid()
+	_send("burst|%.2f|%d" % [r, coid])
+	_exp_burst(r, coid)
 
-func _exp_burst(r: float) -> void:
+func _exp_burst(r: float, coid := 0) -> void:
 	if lab.is_empty() or int(lab["stage"]) != 1:
 		return
 	lab["stage"] = 2
 	lab["r"] = r
 	lab["t"] = EXP_T + h.talent("exp_dur")
 	lab["tick"] = 0.0
+	# the vat is gone: the creature out of it is what can be struck now
+	PvpObjects.drop(lab.get("proxy"))
+	lab.erase("proxy")
+	lab["coid"] = coid
+	lab["cleft"] = int(PvpObjects.HITS["creature"])
 	var node: PlagueExperimentFx.Vat = lab["node"]
 	node.burst(r)
+	if ghost():
+		lab["cproxy"] = PvpObjects.proxy(h.game, h, coid, "creature", int(lab["cleft"]), node.c_pos)
 	h.game.add_shake(0.45 if not ghost() else 0.12)
 	Sfx.play_at("ice_shatter", lab["pos"], 0.0, 0.7)
 	Sfx.play_at("phase_erupt", lab["pos"], -2.0, 0.6)
@@ -1004,8 +1039,11 @@ func _update_exp(delta: float) -> void:
 		return
 	var pos: Vector3 = lab["pos"]
 	var r: float = lab["r"]
-	node.creature_step(delta, _foes(pos, r), pos, r)
+	node.creature_step(delta, _creature_foes(pos, r), pos, r)
 	if ghost():
+		var cp = lab.get("cproxy")
+		if cp != null and is_instance_valid(cp):
+			(cp as Node3D).global_position = node.c_pos
 		return
 	lab["tick"] = float(lab["tick"]) - delta
 	if float(lab["tick"]) <= 0.0:
@@ -1019,7 +1057,7 @@ func _update_exp(delta: float) -> void:
 	lab["spew"] = float(lab["spew"]) - delta
 	if float(lab["spew"]) <= 0.0:
 		lab["spew"] = SPEW_EVERY
-		var foes := _foes(pos, r)
+		var foes := _creature_foes(pos, r)
 		var from: Vector3 = node.creature_pos()
 		if not foes.is_empty():
 			foes.sort_custom(func(a, b) -> bool: return a.global_position.distance_to(from) < b.global_position.distance_to(from))
@@ -1045,9 +1083,112 @@ func _exp_end() -> void:
 	if lab.is_empty():
 		return
 	var node = lab["node"]
+	PvpObjects.drop(lab.get("proxy"))
+	PvpObjects.drop(lab.get("cproxy"))
 	if is_instance_valid(node):
 		(node as PlagueExperimentFx.Vat).collapse()
 	lab = {}
+
+## PvP: the vat broken while he cranks it: the experiment fails (no blast, no quarantine), the crank stops.
+func _exp_fail() -> void:
+	if lab.is_empty() or int(lab["stage"]) != 1:
+		return
+	if not ghost() and h.atk_t >= 0.0 and h.atk_skill == "crank":
+		h.atk_t = -1.0
+	var node = lab["node"]
+	var at: Vector3 = lab["pos"]
+	PvpObjects.drop(lab.get("proxy"))
+	lab = {}
+	if is_instance_valid(node):
+		(node as PlagueExperimentFx.Vat).fail()
+	Sfx.play_at("ice_shatter", at, -2.0, 0.9)
+
+## What the creature lumbers after: the foes in the zone; on another player's screen (a ghost in the Battlegrounds)
+## that player too, so it comes for him on his own screen as it does on its owner's (its spews come from there).
+func _creature_foes(pos: Vector3, r: float) -> Array:
+	var out := _foes(pos, r).filter(func(e) -> bool: return e.pvp_obj <= 0)
+	if ghost() and h.game != null and bool(h.game.get("bg_mode")) and h.game.hero != null and is_instance_valid(h.game.hero) \
+			and not h.game.hero.dead and h.game.hero.global_position.distance_to(pos) <= r:
+		out.append(h.game.hero)
+	return out
+
+# ---------------------------------------------------------------- PvP: his things can be broken (PvpObjects)
+func _new_oid() -> int:
+	next_oid += 1
+	return next_oid
+
+## Where his thing `oid` is (the server checks a blow's reach against its own ghost of him), or null.
+func obj_pos(oid: int) -> Variant:
+	if oid <= 0:
+		return null
+	for b in blooms:
+		if int(b.get("oid", 0)) == oid:
+			return b["pos"]
+	if not lab.is_empty() and is_instance_valid(lab.get("node")):
+		if int(lab["stage"]) == 1 and int(lab.get("oid", 0)) == oid:
+			return lab["pos"]
+		if int(lab["stage"]) == 2 and int(lab.get("coid", 0)) == oid:
+			return (lab["node"] as PlagueExperimentFx.Vat).c_pos
+	return null
+
+## Another player's blow on one of his things (through the server, `Net.cl_pvp_obj_hit`, which lets each player's
+## blows through once per `PvpObjects.GAP`): everyone is told how many are left, and the last one breaks it on every
+## game.
+func obj_hit(oid: int, _attacker: int) -> void:
+	if ghost() or not (obj_pos(oid) is Vector3):
+		return
+	var left := _obj_count(oid) - 1
+	_send("obj|%d|%d" % [oid, left])
+	_obj_left(oid, left)
+
+func _obj_count(oid: int) -> int:
+	for b in blooms:
+		if int(b.get("oid", 0)) == oid:
+			return int(b["left"])
+	if not lab.is_empty():
+		if int(lab["stage"]) == 1 and int(lab.get("oid", 0)) == oid:
+			return int(lab["left"])
+		if int(lab["stage"]) == 2 and int(lab.get("coid", 0)) == oid:
+			return int(lab["cleft"])
+	return 0
+
+## A thing of his struck (`left` blows to go), on his game and on every ghost of him: it flinches, the stand-ins take
+## the count, and at none left it breaks: the bloom dies, the vat bursts with the experiment failed, the creature
+## collapses and the quarantine ends.
+func _obj_left(oid: int, left: int) -> void:
+	for b in blooms.duplicate():
+		if int(b.get("oid", 0)) != oid:
+			continue
+		b["left"] = left
+		PvpObjects.set_left(b.get("proxy"), left)
+		var node = b["node"]
+		if left > 0:
+			if is_instance_valid(node):
+				(node as PlagueBloomFx.Bloom).hurt()
+		else:
+			blooms.erase(b)
+			if is_instance_valid(node):
+				(node as PlagueBloomFx.Bloom).kill()
+		return
+	if lab.is_empty():
+		return
+	var vat = lab["node"]
+	if int(lab["stage"]) == 1 and int(lab.get("oid", 0)) == oid:
+		lab["left"] = left
+		PvpObjects.set_left(lab.get("proxy"), left)
+		if left > 0:
+			if is_instance_valid(vat):
+				(vat as PlagueExperimentFx.Vat).hurt_vat()
+		else:
+			_exp_fail()
+	elif int(lab["stage"]) == 2 and int(lab.get("coid", 0)) == oid:
+		lab["cleft"] = left
+		PvpObjects.set_left(lab.get("cproxy"), left)
+		if left > 0:
+			if is_instance_valid(vat):
+				(vat as PlagueExperimentFx.Vat).hurt_creature()
+		else:
+			_exp_end()
 
 # ---------------------------------------------------------------- every frame
 ## Standing about with the cane away for a while, he takes out a vial and peers at it ("pd_inspect", 3.2 s), every
@@ -1147,6 +1288,7 @@ func clear() -> void:
 		for x in arr:
 			if is_instance_valid(x["node"]):
 				(x["node"] as Node3D).queue_free()
+			PvpObjects.drop(x.get("proxy"))
 		arr.clear()
 	if not swarm.is_empty() and is_instance_valid(swarm["node"]):
 		(swarm["node"] as Node3D).queue_free()
@@ -1157,6 +1299,9 @@ func clear() -> void:
 	trans = {}
 	if not lab.is_empty() and is_instance_valid(lab["node"]):
 		(lab["node"] as Node3D).queue_free()
+	if not lab.is_empty():
+		PvpObjects.drop(lab.get("proxy"))
+		PvpObjects.drop(lab.get("cproxy"))
 	lab = {}
 	for id in poison.keys():
 		_tint(poison[id]["e"], false)

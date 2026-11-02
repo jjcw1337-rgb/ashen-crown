@@ -6,7 +6,7 @@ extends RefCounted
 ## built from the Plague Doctor's own Meshy and Blender assets, so it reads as his doing:
 ##   snare    the Meshy thorned roots (roots.glb) burst up round his feet and hold them, sinking when he's free
 ##   harried  a knot of the Meshy flies (the swarm's fly and flock shader) buzzing round his head and shoulders
-##   slow     a sick green mist of the Mantaflow vapour clinging round his feet
+##   slow     a sick green mist round his feet: the fog's wisp simulation rolling low, the vapour curling up
 ##   reveal   the Meshy eye sigil over his head: he can be seen through Fog of the Forgotten
 ##   blight   the Meshy Blight marks over his head, one per stack; at three they burst into Fever (PlagueFever)
 ## `sync` does nothing while nothing changed (the hero keeps what is shown in `Hero.pvs_shown`).
@@ -88,7 +88,14 @@ static func _end(h: Hero, nm: String, linger: float) -> void:
 	if n == null:
 		return
 	n.name = nm + "_gone"
-	for p in n.find_children("*", "GPUParticles3D", true, false):
+	var parts := n.find_children("*", "GPUParticles3D", true, false)
+	if n is GPUParticles3D:
+		parts.append(n)
+		# the harried flies scatter off him (the swarm's own scatter), not just vanish
+		var sm := (n as GPUParticles3D).process_material as ShaderMaterial
+		if sm != null:
+			sm.set_shader_parameter("scatter", 1.0)
+	for p in parts:
 		(p as GPUParticles3D).emitting = false
 	if linger <= 0.0:
 		n.queue_free()
@@ -132,27 +139,38 @@ static func _snare(h: Hero) -> void:
 static func _harried(h: Hero) -> void:
 	var p := GPUParticles3D.new()
 	p.name = "pvs_harried"
-	p.amount = 26
+	p.amount = 34
 	p.lifetime = 30.0
 	p.explosiveness = 0.9
 	p.local_coords = true
 	p.visibility_aabb = AABB(Vector3(-3, -1, -3), Vector3(6, 5, 6))
 	var mat := ShaderMaterial.new()
 	mat.shader = PlagueSwarmFx._process_shader()
-	mat.set_shader_parameter("target", Vector3(0, 0.45, 0))
-	mat.set_shader_parameter("radius", 0.55)
+	# they burst out at his chest (the node sits 1.35 m up) and wheel in a band from the shoulders to over the hat,
+	# 0.45-1.1 m out from him (the body is ~0.4 m across)
+	mat.set_shader_parameter("target", Vector3(0, -0.45, 0))
+	mat.set_shader_parameter("radius", 0.65)
+	mat.set_shader_parameter("core", 0.45)
+	mat.set_shader_parameter("tall", 0.75)
 	mat.set_shader_parameter("scatter", 0.0)
 	mat.set_shader_parameter("home", 0.0)
 	p.process_material = mat
 	p.draw_pass_1 = PlagueSwarmFx._fly_mesh()
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	h.add_child(p)
+	p.position = Vector3(0, 1.35, 0)
 	p.emitting = true
+	# a thin dark haze of the swarm's vapour round his head, so it reads from the game camera too
+	var hz := PlagueSmoke.vapour(p, Color(0.06, 0.08, 0.04, 0.4), 7, 0.9, 1.2, 0.08, 0.5, Vector3(0, 0.25, 0), Color(0.03, 0.06, 0.015))
+	hz.name = "haze"
 
-## Slowed: a sick green mist clinging round his feet.
+## Slowed: a sick green mist clinging round his feet: a low bank of the fog's wisp simulation rolling round his
+## boots, the vapour curling up off it to his knees.
 static func _slow(h: Hero) -> void:
-	var v := PlagueSmoke.vapour(h, Color(0.5, 0.72, 0.28, 0.4), 9, 0.7, 1.1, 0.12, h.radius + 0.15, Vector3(0, 0.15, 0), Color(0.04, 0.08, 0.02))
+	var v := PlagueSmoke.vapour(h, Color(0.48, 0.7, 0.26, 0.55), 10, 1.3, 1.6, 0.04, h.radius + 0.3, Vector3(0, 0.12, 0), Color(0.06, 0.12, 0.025), PlagueSmoke.WISP, true)
 	v.name = "pvs_slow"
+	var up := PlagueSmoke.vapour(v, Color(0.5, 0.74, 0.28, 0.4), 8, 0.6, 1.1, 0.25, h.radius + 0.1, Vector3(0, 0.15, 0), Color(0.04, 0.08, 0.02))
+	up.name = "curl"
 
 ## Revealed: the eye sigil over his head (seen through Fog of the Forgotten).
 static func _reveal(h: Hero) -> void:
@@ -168,12 +186,17 @@ static func _reveal(h: Hero) -> void:
 	var m := MeshInstance3D.new()
 	m.name = "pvs_reveal"
 	var q := QuadMesh.new()
-	q.size = Vector2(0.42, 0.42)
+	q.size = Vector2(0.52, 0.52)
 	m.mesh = q
 	m.material_override = _eye_mat
 	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	h.add_child(m)
+	# over the Blight marks (2.5 m), so the two read apart when both are on him
 	m.position = Vector3(0, 3.0, 0)
 	m.scale = Vector3.ONE * 0.2
 	var tw := m.create_tween()
 	tw.tween_property(m, "scale", Vector3.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	# then it hangs there, bobbing slowly like the marks
+	var bob := m.create_tween().set_loops()
+	bob.tween_property(m, "position:y", 3.08, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	bob.tween_property(m, "position:y", 2.96, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)

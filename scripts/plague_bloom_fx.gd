@@ -77,6 +77,7 @@ class Bloom extends Node3D:
 	var pulse_t := 0.0
 	var dying := -1.0
 	var size := 1.0
+	var hit_t := 9.0     # since a player last struck it (PvP, `hurt`): it recoils and wobbles back
 	func setup(world: World, g: Vector3, radius: float, grow_t: float, active_t: float, every_t: float, warn_t: float) -> void:
 		w = world
 		r = radius
@@ -147,7 +148,7 @@ class Bloom extends Node3D:
 		if gk < 1.0:
 			var e := 1.0 - pow(1.0 - gk, 3.0)
 			s = e * (1.0 + 0.18 * sin(gk * PI))
-			body.scale = Vector3(s * (1.0 + 0.15 * (1.0 - gk)), s * (0.6 + 0.4 * gk) * 1.1, s * (1.0 + 0.15 * (1.0 - gk))) * size
+			body.scale = Vector3(s * (1.0 + 0.15 * (1.0 - gk)), s * (0.6 + 0.4 * gk) * 1.1, s * (1.0 + 0.15 * (1.0 - gk))) * size * _recoil(delta)
 			body.position.y = lerpf(-0.3, 0.0, e)
 			lamp.light_energy = gk * 0.7
 			return
@@ -160,12 +161,40 @@ class Bloom extends Node3D:
 		rmat.set_shader_parameter("warn", wk)
 		var breathe := 1.0 + 0.04 * sin(age * 2.6)
 		var swell := 1.0 + 0.12 * wk * wk
-		body.scale = Vector3(breathe * swell, (2.0 - breathe) * swell * 1.0, breathe * swell) * size
+		body.scale = Vector3(breathe * swell, (2.0 - breathe) * swell * 1.0, breathe * swell) * size * _recoil(delta)
 		lamp.light_energy = 0.35 + 0.5 * wk * wk + 1.2 * pulse_t
 		var n := int(floor(since / every))
 		if n > last_pulse and since >= every * float(n) and n >= 1:
 			last_pulse = n
 			_pulse()
+	## The squash of a blow, ringing out (1 when it hasn't been struck).
+	func _recoil(delta: float) -> Vector3:
+		hit_t += delta
+		var f := exp(-hit_t * 5.5) * cos(hit_t * 21.0)
+		return Vector3(1.0 + 0.16 * f, 1.0 - 0.24 * f, 1.0 + 0.16 * f)
+	## Struck by a player (PvP, PvpObjects): it recoils, bleeds dark sap and spores, its pustules flare.
+	func hurt() -> void:
+		if dying >= 0.0:
+			return
+		hit_t = 0.0
+		pulse_t = maxf(pulse_t, 0.5)
+		var p := global_position + Vector3(0, 0.9 * size * 0.6, 0)
+		Fx.burst(self, p, Color(0.2, 0.26, 0.07, 0.95), 22, 3.0, 0.06, 0.7, false, -9.0, 65.0)
+		Fx.burst(self, p + Vector3(0, 0.3, 0), Color(PlagueBloomFx.SPORE.r, PlagueBloomFx.SPORE.g, PlagueBloomFx.SPORE.b, 0.8), 14, 2.0, 0.04, 0.8, true, -1.0, 80.0)
+		PlagueSmoke.puffs(self, p, PlagueSmoke.SPORE, Color(0.6, 0.72, 0.38, 0.45), 4, 0.9, 0.8, 0.8, 0.2, 0.4, 0.0)
+		Sfx.play_at("impact_flesh", p, -5.0, randf_range(0.7, 0.85))
+	## Killed by players (PvP): its sacs tear open in a last, harmless gasp of spores and it collapses fast.
+	func kill() -> void:
+		if dying >= 0.0:
+			return
+		hit_t = 0.0
+		var p := global_position
+		PlagueSmoke.spore_card(self, p + Vector3(0, 1.2, 0), Color(0.62, 0.7, 0.42, 1.0), 2.0, 0.85, 0.25)
+		Fx.burst(self, p + Vector3(0, 1.0, 0), Color(0.2, 0.26, 0.07, 0.95), 40, 4.0, 0.07, 0.9, false, -9.0, 70.0)
+		Fx.flash(self, p + Vector3(0, 1.0, 0), PlagueBloomFx.SPORE, 0.6, 0.2, r * 0.8)
+		Sfx.play_at("blight_burst", p, -6.0, 0.6)
+		wither()
+		dying = 0.5     # faster than its own end
 	## The sacs burst: the spore simulation thrown up off them, its puffs rolling out over the whole reach, glinting
 	## motes, the pustules in the root mat flashing.
 	func _pulse() -> void:

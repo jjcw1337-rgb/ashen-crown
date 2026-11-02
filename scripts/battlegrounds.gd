@@ -223,6 +223,7 @@ func new_round() -> void:
 	died_items.clear()
 	dead_wait.clear()
 	last_hit.clear()
+	pvp_obj_last.clear()
 	await game.load_zone(0, ZONE, "start")
 	for e in game.world.enemies_root.get_children():
 		if e is Enemy:
@@ -351,6 +352,24 @@ func pvp_hit(attacker: int, target: int, amount: float, from: Vector3) -> void:
 	last_hit[target] = [attacker, raid_t]
 	game.net.hit_player(target, clampf(amount, 0.0, 5000.0) * PVP_MULT, from, "pvp", "phys")
 
+## A player struck something another player made (PvpObjects: a Corpse Bloom, a vat, a creature): checked like a hit
+## (both in the raid, the attacker alive and within reach of it where the server's own ghost of the owner has it), then
+## counted by the owner's game.
+var pvp_obj_last := {}           # server: "attacker:owner:id" -> when his last blow on it counted (PvpObjects.allow)
+func pvp_obj_hit(attacker: int, owner_pid: int, oid: int, _from: Vector3) -> void:
+	if state != "raid" or attacker == owner_pid or not game.net.players.has(attacker) or not game.net.players.has(owner_pid):
+		return
+	var a = game.net.players[attacker]["hero"]
+	var o = game.net.players[owner_pid]["hero"]
+	if not is_instance_valid(a) or not is_instance_valid(o) or a.dead:
+		return
+	var at = PvpObjects.where(o, oid)
+	if not (at is Vector3) or a.global_position.distance_to(at) > PvpObjects.REACH:
+		return
+	if not PvpObjects.allow(pvp_obj_last, attacker, owner_pid, oid, Time.get_ticks_msec() / 1000.0):
+		return
+	game.net.obj_hit_player(owner_pid, oid, attacker)
+
 ## A player put a status on another (PvpStatus): checked like a hit, clamped to the kind's ceiling, with diminishing
 ## returns per target (`pvp_dr`), then passed to the target's game.
 var pvp_dr := {}                 # server: target peer id -> PvpStatus diminishing-returns state
@@ -447,6 +466,7 @@ static func sync_proxies(g: Node) -> void:
 		var h = g.net.players[pid]["hero"]
 		if is_instance_valid(h) and h.net_has and not h.dead:
 			want[pid] = h
+	PvpObjects.prune(g, want)
 	for e in g.world.enemies_root.get_children():
 		if e is Enemy and e.pvp_pid > 0:
 			if not want.has(e.pvp_pid):

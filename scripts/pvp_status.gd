@@ -103,8 +103,8 @@ static func cleanse(h: Hero) -> int:
 ## A skill's status on a foe: a player's stand-in goes to the server; a monster gets the nearest thing it has
 ## (slow = chill, snare = a short stun, harried = a light chill). Returns true when it went to a player.
 static func send(game: Node, e: Enemy, kind: String, secs: float, k: float) -> bool:
-	if e == null or not is_instance_valid(e) or e.dead:
-		return false
+	if e == null or not is_instance_valid(e) or e.dead or e.pvp_obj > 0:
+		return false      # (a player's thing, PvpObjects, only counts blows)
 	if e.pvp_pid > 0:
 		if game.net != null and game.net.active:
 			game.net.send_pvp_status(e.pvp_pid, kind, secs, k)

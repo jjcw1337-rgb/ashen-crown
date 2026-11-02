@@ -7,6 +7,8 @@ extends SceneTree
 ## (Net.sv_pvp_status -> Battlegrounds.pvp_status, with diminishing returns) and b's own game roots him and shows
 ## it (PvpStatusFx); then a's swarm harries b and Blights him. b's game sends what is on him in his state packet, so
 ## a sees the roots, the flies and the Blight marks on b's puppet, and nothing doubled on the stand-in a strikes.
+## Then b breaks a's things (PvpObjects): a second bloom with his blows on its stand-in, and a's vat while a cranks it
+## (the experiment fails).
 ## Prints [SERVER]/[A]/[B] lines.
 var role := "a"
 var host := "127.0.0.1"
@@ -108,6 +110,26 @@ func _doctor() -> void:
 	check(await until(func(): return is_instance_valid(foe) and foe.get_node_or_null("pd_blight") != null, 15.0), "his Blight marks show over him")
 	var p = _proxy()
 	check(p != null and p.get_node_or_null("pd_blight") == null and p.get_node_or_null("pd_fever") == null, "and nothing of it is doubled on the stand-in I strike")
+	# my things can be broken (PvpObjects): he strikes a second bloom till it dies, then my vat while I crank it
+	await secs(3.0)
+	await until(func(): return h.atk_t < 0.0, 3.0)
+	var n0: int = h.pd.next_oid
+	check(_use(h, "bloom", foe.global_position + Vector3(-1.4, 0, 1.0)), "a second Corpse Bloom, for him to break")
+	await until(func(): return h.pd.blooms.any(func(b) -> bool: return int(b.get("oid", 0)) > n0), 3.0)
+	var b2id: int = n0 + 1
+	var b2t := Time.get_ticks_msec()
+	check(h.pd.blooms.any(func(b) -> bool: return int(b.get("oid", 0)) == b2id), "it's planted (id %d)" % b2id)
+	check(await until(func(): return not h.pd.blooms.any(func(b) -> bool: return int(b.get("oid", 0)) == b2id), 12.0) and Time.get_ticks_msec() - b2t < int(Plague.BLOOM_GROW + Plague.BLOOM_T) * 1000,
+		"his blows break it (through the server) before its time (%.1f s)" % ((Time.get_ticks_msec() - b2t) / 1000.0))
+	await until(func(): return h.atk_t < 0.0, 3.0)
+	await secs(0.5)
+	check(_use(h, "experiment", foe.global_position + Vector3(2.5, 0, 0)), "The Last Experiment set down beside him")
+	var burst := [false]
+	var failed := await until(func():
+		if not h.pd.lab.is_empty() and int(h.pd.lab["stage"]) == 2:
+			burst[0] = true
+		return h.pd.lab.is_empty(), 12.0)
+	check(failed and not burst[0], "he breaks the vat while I crank it: the experiment fails, no quarantine")
 	await secs(4.0)
 
 func _patient() -> void:
@@ -116,7 +138,31 @@ func _patient() -> void:
 	check(await until(func(): return h.get_node_or_null("pvs_snare") != null, 1.0), "and I see the roots holding my feet")
 	check(await until(func(): return PvpStatus.has(h, "harried") and h.get_node_or_null("pvs_harried") != null, 30.0), "his flies harry me, and I see them round my head")
 	check(await until(func(): return PvpStatus.strength(h, "blight") >= 2.0 and h.get_node_or_null("pd_blight") != null, 30.0), "two of his skills Blight me, and I see the marks")
+	# his things on my screen are stand-ins I can strike: his second bloom, then his vat while he cranks it
+	check(await _strike("bloom", 2, 40.0), "I break his second Corpse Bloom with my blows")
+	check(await _strike("vat", 1, 30.0), "and his vat while he cranks it")
 	await until(func(): return g.net.puppets().is_empty(), 30.0)
+
+## Strikes the doctor's `kind` (the newest stand-in of it on this screen, its id at least `min_id`) as a weapon's
+## blow would, once per PvpObjects.GAP, until it breaks; true when it did.
+func _strike(kind: String, min_id: int, t: float) -> bool:
+	var end := Time.get_ticks_msec() + int(t * 1000.0)
+	var e = null
+	while Time.get_ticks_msec() < end and e == null:
+		for x in g.world.enemies_root.get_children():
+			if x is Enemy and x.pvp_obj >= min_id and x.has_meta("pvp_kind") and str(x.get_meta("pvp_kind")) == kind and not x.is_queued_for_deletion():
+				e = x
+		await process_frame
+	if e == null:
+		print("[%s] no %s to strike" % [role.to_upper(), kind])
+		return false
+	print("[%s] striking his %s (%s, %d blows)" % [role.to_upper(), kind, e.display_name, int(e.life)])
+	while Time.get_ticks_msec() < end:
+		if not is_instance_valid(e) or e.is_queued_for_deletion():
+			return true
+		e.take_damage(25.0, 0.0, g.hero.global_position, 0.0, false)
+		await secs(PvpObjects.GAP + 0.15)
+	return false
 
 func _use(h: Hero, id: String, at: Vector3) -> bool:
 	h.cds[id] = 0.0

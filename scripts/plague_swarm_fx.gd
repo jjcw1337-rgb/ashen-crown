@@ -209,6 +209,8 @@ static func _process_shader() -> Shader:
 shader_type particles;
 uniform vec3 target;
 uniform float radius = 3.0;
+uniform float core = 0.0;
+uniform float tall = 1.3;
 uniform float scatter = 0.0;
 uniform float home = 0.0;
 uniform vec3 home_pos;
@@ -232,10 +234,11 @@ void process() {
 	// its own looping orbit round the swarm's point: a lumpy, breathing cloud, densest in the middle
 	float t = TIME * (0.6 + h * 0.9) + h * 60.0;
 	float rr = radius * (0.15 + 0.85 * pow(k, 1.5));    // dense in the middle, thinning to its edge
-	vec3 orbit = target + vec3(
-		sin(t * 1.3 + h * 7.0) * rr * (0.55 + 0.45 * sin(t * 0.37 + k * 5.0)),
-		0.45 + h * 1.3 + sin(t * 2.1 + k * 3.0) * 0.35,
+	vec2 ox = vec2(sin(t * 1.3 + h * 7.0) * rr * (0.55 + 0.45 * sin(t * 0.37 + k * 5.0)),
 		cos(t * 1.1 + k * 11.0) * rr * (0.55 + 0.45 * cos(t * 0.41 + h * 4.0)));
+	// a hollow core: the knot harrying a man flies round his head and shoulders, not inside his body
+	ox += normalize(ox + vec2(0.0001)) * core;
+	vec3 orbit = target + vec3(ox.x, 0.45 + h * tall + sin(t * 2.1 + k * 3.0) * 0.35, ox.y);
 	vec3 want = mix(orbit, home_pos + (vec3(h, k, fract(h * 9.0)) - 0.5) * 0.15 * (1.0 - home), home);
 	vec3 acc = (want - p) * mix(7.0, 14.0, home) - VELOCITY * 1.8;
 	// buzz: each fly jitters on its own

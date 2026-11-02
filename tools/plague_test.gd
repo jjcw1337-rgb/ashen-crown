@@ -36,6 +36,117 @@ func _clear_foes() -> void:
 		e.queue_free()
 	await process_frame
 
+## PvP (PvpObjects): other players can break his bloom, his vat while he cranks it, and the creature; their blows are
+## counted on his game (the server lets each player's through once per GAP), and on another player's screen each is
+## a stand-in to strike that follows the count and goes when it breaks.
+func _pvp_objects(h: Hero, op: Vector3) -> void:
+	for i in 120:
+		if h.daze_t <= 0.0 and h.atk_t < 0.0:
+			break
+		await process_frame        # (the stun that interrupted the last crank)
+	await _cast(h, "bloom", op)
+	var bo: Dictionary = h.pd.blooms[0] if not h.pd.blooms.is_empty() else {}
+	var boid: int = int(bo.get("oid", 0))
+	var full: int = int(PvpObjects.HITS["bloom"])
+	check(boid > 0 and int(bo.get("left", 0)) == full, "his bloom can be struck in PvP (id %d, %d blows)" % [boid, int(bo.get("left", 0))])
+	var bnode: Node = bo.get("node")
+	h.pd.obj_hit(boid, 7)
+	check(int(bo["left"]) == full - 1 and is_instance_valid(bnode) and float(bnode.get("hit_t")) < 0.1, "a blow counts and it recoils (%d left)" % int(bo["left"]))
+	for k in full - 1:
+		h.pd.obj_hit(boid, 8 + k)
+	check(h.pd.blooms.is_empty() and is_instance_valid(bnode) and float(bnode.get("dying")) >= 0.0, "the last blow kills it before its time: it withers away")
+	var last := {}
+	var a1 := PvpObjects.allow(last, 7, 3, 1, 10.0)
+	var a2 := PvpObjects.allow(last, 7, 3, 1, 10.1)
+	var a3 := PvpObjects.allow(last, 8, 3, 1, 10.1)
+	var a4 := PvpObjects.allow(last, 7, 3, 1, 10.0 + PvpObjects.GAP)
+	check(a1 and not a2 and a3 and a4, "the server lets one player's blows on it through once per %.1f s, each player's apart" % PvpObjects.GAP)
+	# the vat while he cranks it: broken, the experiment fails (no burst, no quarantine) and his crank stops
+	h.cds["experiment"] = 0.0
+	h.mana = h.max_mana
+	h.use_skill("experiment", op)
+	for i in 120:
+		await process_frame
+		if h.atk_skill == "crank" and h.atk_t >= 0.0:
+			break
+	await frames(10)
+	var void_id: int = int(h.pd.lab.get("oid", 0))
+	check(void_id > 0 and int(h.pd.lab.get("stage", 0)) == 1, "his vat can be struck while he cranks it (id %d)" % void_id)
+	var vnode: Node = h.pd.lab.get("node")
+	for k in int(PvpObjects.HITS["vat"]):
+		h.pd.obj_hit(void_id, 20 + k)
+	check(h.pd.lab.is_empty() and not (h.atk_t >= 0.0 and h.atk_skill == "crank"), "broken, the experiment fails and his crank stops")
+	check(is_instance_valid(vnode) and float(vnode.get("dying")) >= 0.0 and float(vnode.get("burst_t")) < 0.0, "its glass bursts, but no quarantine floods out")
+	await frames(30)
+	# the creature: killed, the quarantine ends
+	await _cast(h, "experiment", op)
+	var coid: int = int(h.pd.lab.get("coid", 0))
+	check(coid > 0 and int(h.pd.lab.get("stage", 0)) == 2 and int(h.pd.lab.get("cleft", 0)) == int(PvpObjects.HITS["creature"]), "the creature out of it can be struck (id %d)" % coid)
+	for k in int(PvpObjects.HITS["creature"]):
+		h.pd.obj_hit(coid, 40 + k)
+	check(h.pd.lab.is_empty(), "killed, the quarantine ends")
+	await frames(10)
+	h.pd.clear()
+	# another player's screen: a ghost of him in the Battlegrounds puts a stand-in on each of his things
+	var pup := Hero.new()
+	pup.puppet = true
+	pup.peer_id = 77
+	pup.name = "Ally77"
+	g.add_child(pup)
+	pup.setup(g)
+	pup.apply_net_gear(h.net_gear())
+	pup.global_position = h.global_position + Vector3(3, 0, 0)
+	pup.net_has = true
+	if pup.pd == null:
+		pup.pd = Plague.new(pup)
+	pup.pd.remote("bloom|%s|3.50|5" % Plague._v(op))
+	await frames(2)
+	check(_stand_in(5) == null, "in co-op his partners get no stand-ins (nothing of his is theirs to break)")
+	pup.pd.clear()
+	g.net.players[77] = {"hero": pup, "name": "Rival"}
+	g.bg_mode = true
+	pup.pd.remote("bloom|%s|3.50|6" % Plague._v(op))
+	await frames(2)
+	var sp = _stand_in(6)
+	check(sp != null and sp.pvp_owner == 77 and sp.pvp_pid == 0 and is_equal_approx(sp.life, float(full)) and not sp.rig.visible,
+		"in the Battlegrounds his bloom has an unseen stand-in to strike (%s)" % (sp.display_name if sp != null else "none"))
+	var o := Vector3(op.x, op.y + 12.0, op.z + 6.0)
+	check(sp != null and g.pick_enemy(o, (op + Vector3(0, 0.8, 0) - o).normalized()) == sp, "the pointer picks it like a monster")
+	pup.pd.remote("obj|6|1")
+	await frames(1)
+	check(sp != null and is_instance_valid(sp) and is_equal_approx(sp.life, 1.0), "it follows the blows left he sends")
+	pup.pd.remote("obj|6|0")
+	await frames(2)
+	check(not is_instance_valid(sp) or sp.is_queued_for_deletion(), "and goes with the bloom when it breaks")
+	check(pup.pd.blooms.is_empty(), "the bloom dies there too")
+	pup.pd.remote("vat|%s|8.00|9" % Plague._v(op))
+	await frames(2)
+	var vs = _stand_in(9)
+	var had_vat: bool = vs != null
+	pup.pd.remote("burst|8.00|10")
+	await frames(2)
+	var cs = _stand_in(10)
+	check(had_vat and (not is_instance_valid(vs) or vs.is_queued_for_deletion()) and cs != null, "his vat has one while he cranks, and the creature once it's out")
+	pup.pd.remote("obj|10|0")
+	await frames(2)
+	check(pup.pd.lab.is_empty() and (not is_instance_valid(cs) or cs.is_queued_for_deletion()), "killed, its quarantine ends there too")
+	pup.pd.remote("bloom|%s|3.50|11" % Plague._v(op))
+	await frames(2)
+	g.net.players.erase(77)
+	await frames(2)
+	var gone = _stand_in(11)
+	check(gone == null or gone.is_queued_for_deletion(), "a stand-in goes when its owner leaves")
+	g.bg_mode = false
+	pup.pd.clear()
+	pup.queue_free()
+	await _clear_foes()
+
+func _stand_in(oid: int):
+	for e in g.world.enemies_root.get_children():
+		if e is Enemy and e.pvp_obj == oid and not e.is_queued_for_deletion():
+			return e
+	return null
+
 ## Which whole-body clip the rig is playing now ("" when none).
 func _act(h) -> String:
 	var r = h.rig
@@ -207,6 +318,16 @@ func _run() -> void:
 	var hop: float = Vector2(h.global_position.x - fp0.x, h.global_position.z - fp0.z).length()
 	check(hop > 2.5, "he hops back from the pointer (%.1f m)" % hop)
 	check(h.pd._in_fog(h.global_position) and h.pd.speed_mult() > 1.1, "and moves faster in it (x%.2f)" % h.pd.speed_mult())
+	# monsters lose track of him in it from beyond its reach (as of a Demon in the Underworld)
+	var far_pos: Vector3 = h.global_position + fwd * 9.0
+	check(h.pd.hidden_from_monster(far_pos) and not h.pd.hidden_from_monster(h.global_position + fwd * 2.0), "monsters beyond %.1f m can't see him in it; nearer ones can" % Plague.FOG_SEE)
+	var mz := _foe(g.world.free_spot_near(far_pos, 0.6), false)
+	mz.aggro = true
+	await frames(3)
+	check(not mz.aggro, "a monster after him loses track of him")
+	h.pd._reveal_self()
+	check(not h.pd.hidden_from_monster(far_pos), "until he strikes from it (seen for %.0f s)" % Plague.FOG_REVEAL)
+	mz.queue_free()
 	h.pd.clear()
 
 	# Transfusion: soaks part of each blow, cleanses, heals at most its cap afterwards
@@ -285,6 +406,7 @@ func _run() -> void:
 	check(not h.pd.lab.is_empty() and int(h.pd.lab["stage"]) == 2 and is_equal_approx(float(h.pd.lab["r"]), Plague.EXP_R_SMALL), "a stun while he cranks bursts it early and small (%.1f m)" % float(h.pd.lab.get("r", 0.0)))
 	await _clear_foes()
 	h.pd.clear()
+	await _pvp_objects(h, g.world.free_spot_near(h.global_position + fwd * 4.0, 1.0))
 
 	# old binds of the retired skills become the new ones
 	var ob := {"E": "volatile", "R": "trap", "F": "epidemic", "Q": "toxic"}

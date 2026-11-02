@@ -18,6 +18,9 @@ extends RefCounted
 ## ghost of the Meshy bile-spray painting on the ground, filling from its mouth over SPEW_WARN with a bright front
 ## (`spew`, `FAN_SHADER`), then a gout of bile along it that leaves the painting there wet and drying.
 ## The end (`collapse`): it falls dead, the spores rise and drain back into its body, the stain dries and fades.
+## PvP (PvpObjects): struck, the vat rocks and spits bile through a crack (`hurt_vat`) and the creature recoils and
+## bleeds bile (`hurt_creature`); a vat broken while he cranks it fails (`fail`): its glass bursts and the fluid
+## spills small, the creature flops out dead and sinks, and no quarantine comes.
 ## None of it is an area blow (Fx.ring): it never scatters his own swarm.
 
 const VAT_GLB := "res://assets/models/plague/vat.glb"
@@ -51,6 +54,8 @@ class Vat extends Node3D:
 	var shake := 0.0
 	var burst_t := -1.0
 	var dying := -1.0
+	var hit_t := 9.0      # since a player last struck the vat (PvP): it rocks on its feet
+	var c_hit_t := 9.0    # ... or the creature: it recoils
 	func setup(world: World, g: Vector3, radius: float) -> void:
 		w = world
 		r = radius
@@ -104,7 +109,12 @@ class Vat extends Node3D:
 		shake = 0.0
 		zmat.set_shader_parameter("rad", radius / maxf(zone_r(), 0.01))
 		var g := global_position
-		# the vat's own glass flies apart: its cylinder's curved panes, flung out from where each sat
+		_shards(g, 1.0)
+		# the fluid bursts out: the simulated wave, droplets, a breath of its vapour, a flash
+		_wave(g)
+		_burst_rest(g)
+	## The vat's own glass flies apart: its cylinder's curved panes, flung out from where each sat (`k` = how hard).
+	func _shards(g: Vector3, k: float) -> void:
 		if ResourceLoader.exists(PlagueExperimentFx.SHARDS_GLB):
 			var src: Node3D = (load(PlagueExperimentFx.SHARDS_GLB) as PackedScene).instantiate()
 			var gm := PlagueVialFx.glass_mat_2side(Color(0.7, 0.95, 0.75))
@@ -121,13 +131,12 @@ class Vat extends Node3D:
 				d.global_position = g + Vector3(loc.x, loc.y + PlagueExperimentFx.GLASS_LIFT, loc.z)
 				d.rotation.y = turn
 				var out := Vector3(loc.x, 0, loc.z).normalized() if Vector2(loc.x, loc.z).length() > 0.001 else Vector3.RIGHT
-				d.vel = out.rotated(Vector3.UP, randf_range(-0.35, 0.35)) * randf_range(4.0, 9.0) + Vector3(0, randf_range(2.0, 5.5), 0)
+				d.vel = out.rotated(Vector3.UP, randf_range(-0.35, 0.35)) * randf_range(4.0, 9.0) * k + Vector3(0, randf_range(2.0, 5.5) * k, 0)
 				d.spin = Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)).normalized() * randf_range(5.0, 14.0)
 				d.floor_y = g.y + 0.04
 				d.life = randf_range(1.8, 2.8)
 			src.free()
-		# the fluid bursts out: the simulated wave, droplets, a breath of its vapour, a flash
-		_wave(g)
+	func _burst_rest(g: Vector3) -> void:
 		Fx.burst(self, g + Vector3(0, 0.8, 0), PlagueExperimentFx.BILE, 60, 7.0, 0.08, 0.9, true, -9.0, 80.0)
 		PlagueSmoke.puffs(self, g + Vector3(0, 0.6, 0), PlagueSmoke.VAPOUR, Color(0.55, 0.72, 0.35, 0.5), 14, 1.6, 1.6, r * 0.9, 0.5, 0.6, 0.0, Vector3.UP, true)
 		Fx.flash(self, g + Vector3(0, 1.0, 0), PlagueExperimentFx.BILE, 3.5, 0.5, r * 1.4)
@@ -273,6 +282,55 @@ class Vat extends Node3D:
 			_play("Idle")
 		creature.global_position = c_pos
 		creature.rotation.y = c_yaw + PI
+	## Struck by a player while he cranks it (PvP): it rocks on its clawed feet, the glass cracks and spits bile and
+	## glass dust, the light stutters.
+	func hurt_vat() -> void:
+		if dying >= 0.0 or vat == null:
+			return
+		hit_t = 0.0
+		var g := global_position
+		var side := Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized()
+		var at := g + side * 0.42 + Vector3(0, randf_range(0.55, 0.95), 0)
+		Fx.burst(self, at, PlagueExperimentFx.BILE, 26, 3.4, 0.06, 0.6, true, -9.0, 30.0, (side + Vector3(0, 0.4, 0)).normalized())
+		Fx.burst(self, at, Color(0.85, 0.95, 0.9, 0.9), 12, 2.6, 0.03, 0.45, true, -6.0, 70.0)
+		PlagueSmoke.puffs(self, at, PlagueSmoke.VAPOUR, Color(0.86, 0.9, 0.86, 0.5), 3, 0.5, 0.7, 1.2, 0.05, 0.9, 30.0)
+		lamp.light_energy = 0.15
+		Sfx.play_at("ice_shatter", at, -9.0, 1.35)
+		Sfx.play_at("impact_metal", g, -8.0, 0.75)
+	## The creature struck (PvP): it recoils and bleeds bile.
+	func hurt_creature() -> void:
+		if dying >= 0.0 or creature == null:
+			return
+		c_hit_t = 0.0
+		var at := c_pos + Vector3(0, 1.0, 0)
+		Fx.burst(self, at, PlagueExperimentFx.BILE, 24, 3.0, 0.07, 0.6, true, -9.0, 75.0)
+		Fx.burst(self, at, Color(0.16, 0.2, 0.05, 0.95), 14, 2.4, 0.07, 0.6, false, -9.0, 75.0)
+		Sfx.play_at("impact_flesh", at, -4.0, randf_range(0.6, 0.75))
+	## Broken while he cranked it (PvP): the experiment fails. Its glass bursts (gentler than the real thing), the fluid
+	## spills in a small wave, the creature flops out dead and sinks, and no quarantine comes.
+	func fail() -> void:
+		if dying >= 0.0:
+			return
+		shake = 0.0
+		var g := global_position
+		_shards(g, 0.55)
+		var r0 := r
+		r = 4.5        # the wave at its smallest
+		_wave(g)
+		r = r0
+		Fx.burst(self, g + Vector3(0, 0.7, 0), PlagueExperimentFx.BILE, 30, 4.0, 0.08, 0.8, true, -9.0, 80.0)
+		PlagueSmoke.puffs(self, g + Vector3(0, 0.6, 0), PlagueSmoke.VAPOUR, Color(0.62, 0.68, 0.52, 0.5), 8, 1.2, 1.4, 2.2, 0.4, 0.5, 0.0)
+		if vat != null:
+			var tw := vat.create_tween()
+			tw.tween_property(vat, "scale", Vector3(1.1, 0.35, 1.1), 0.12)
+			tw.tween_property(vat, "scale", Vector3(1.0, 0.25, 1.0), 0.3)
+		if boil != null:
+			boil.emitting = false
+		_spawn_creature()
+		if creature != null:
+			creature.scale = Vector3.ONE * PlagueExperimentFx.CREATURE_SCALE * 0.85
+			_play("Fall_Dead_from_Abdominal_Injury")
+		dying = 0.0
 	func collapse() -> void:
 		if dying >= 0.0:
 			return
@@ -294,6 +352,15 @@ class Vat extends Node3D:
 			vat.position = Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)) * 0.03 * shake * shake
 			vat.rotation.z = sin(age * 40.0) * 0.03 * shake
 			lamp.light_energy = 0.5 + shake * (0.6 + 0.6 * sin(age * (10.0 + 30.0 * shake)))
+		hit_t += delta
+		c_hit_t += delta
+		if vat != null and hit_t < 1.2 and dying < 0.0:
+			# rocked by a blow, ringing out
+			var rk := exp(-hit_t * 4.0) * sin(hit_t * 19.0)
+			vat.rotation.x = rk * 0.12
+		if creature != null and c_hit_t < 1.0 and dying < 0.0:
+			var ck := exp(-c_hit_t * 6.0) * cos(c_hit_t * 20.0)
+			creature.scale = Vector3(1.0 + 0.12 * ck, 1.0 - 0.18 * ck, 1.0 + 0.12 * ck) * PlagueExperimentFx.CREATURE_SCALE
 		if burst_t >= 0.0:
 			burst_t += delta
 			zmat.set_shader_parameter("flood", 1.0 - pow(1.0 - clampf(burst_t / 0.7, 0.0, 1.0), 2.0))
