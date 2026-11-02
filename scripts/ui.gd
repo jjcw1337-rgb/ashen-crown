@@ -259,13 +259,30 @@ func _make_theme() -> Theme:
 	bp.shadow_size = 0
 	var bd := _box(Color(0.08, 0.07, 0.06), Color(0.25, 0.22, 0.18), 2, 2, 8)
 	bd.shadow_size = 0
+	# every button is the action bar's iron socket by default (Blaine: "no plain boxes"; _iron_button is the same)
+	var sock := _scaled_tex(BAR_TEX["slot"], 0.3)
+	var iron := func(mod: Color) -> StyleBoxTexture:
+		var sb := StyleBoxTexture.new()
+		sb.texture = sock
+		for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
+			sb.set_texture_margin(side, 9)
+		sb.content_margin_left = 14
+		sb.content_margin_right = 14
+		sb.content_margin_top = 6
+		sb.content_margin_bottom = 6
+		sb.modulate_color = mod
+		return sb
+	bn = iron.call(Color.WHITE)
+	bh = iron.call(Color(1.25, 1.15, 1.0))
+	bp = iron.call(Color(0.85, 0.8, 0.75))
+	bd = iron.call(Color(0.5, 0.48, 0.46, 0.85))
 	t.set_stylebox("normal", "Button", bn)
 	t.set_stylebox("hover", "Button", bh)
 	t.set_stylebox("pressed", "Button", bp)
 	t.set_stylebox("disabled", "Button", bd)
 	t.set_stylebox("focus", "Button", _box(Color(0, 0, 0, 0), Color(0.9, 0.75, 0.45), 1, 2, 8))
-	t.set_color("font_color", "Button", GOLD)
-	t.set_color("font_hover_color", "Button", Color(1.0, 0.9, 0.65))
+	t.set_color("font_color", "Button", Color(0.96, 0.82, 0.5))
+	t.set_color("font_hover_color", "Button", Color(1.0, 0.92, 0.65))
 	t.set_color("font_disabled_color", "Button", Color(0.4, 0.37, 0.32))
 	t.set_font("font", "Button", font_title)
 	t.set_font_size("font_size", "Button", 17)
@@ -1482,16 +1499,31 @@ func _fill_quests() -> void:
 		for q in qs.current() if not pass_done else qs.line().filter(func(x): return qs.status(x["id"]) == "done"):
 			var id: String = q["id"]
 			var s: String = qs.status(id)
+			# each quest on its own inset card: a gold edge for the act's main quest, dimmer when done
+			var card := PanelContainer.new()
+			var csb := StyleBoxFlat.new()
+			csb.bg_color = Color(0.035, 0.03, 0.03, 0.85)
+			csb.border_color = (GOLD if q.get("main", false) else Color(0.55, 0.45, 0.3)).darkened(0.45 if s == "done" else 0.0)
+			csb.border_width_left = 4
+			csb.border_width_top = 1
+			csb.border_width_right = 1
+			csb.border_width_bottom = 1
+			csb.content_margin_left = 14
+			csb.content_margin_right = 10
+			csb.content_margin_top = 8
+			csb.content_margin_bottom = 10
+			card.add_theme_stylebox_override("panel", csb)
+			quest_list.add_child(card)
 			var box := VBoxContainer.new()
 			box.add_theme_constant_override("separation", 3)
-			quest_list.add_child(box)
+			card.add_child(box)
 			var tl := _label(("◆  " if q.get("main", false) else "") + str(q["name"]) + ("   (done)" if s == "done" else ""), 19, GOLD if s != "done" else DIM, true)
 			box.add_child(tl)
 			var who: String = Data.VENDORS[0].get(q["giver"], "")
 			box.add_child(_label(("Main quest  ·  " if q.get("main", false) else "") + "From " + who, 12, DIM))
 			var story := _label(str(q["done"] if s != "active" else q["busy"]), 14)
 			story.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			story.custom_minimum_size = Vector2(500, 0)
+			story.custom_minimum_size = Vector2(470, 0)
 			box.add_child(story)
 			if s != "done":
 				var c: Array = qs.counts(id)
@@ -1505,7 +1537,7 @@ func _fill_quests() -> void:
 					box.add_child(_label("✔  Return to " + who, 14, Color(1.0, 0.82, 0.45)))
 				var rw := _label("Reward: " + qs.reward_text(q), 13, DIM)
 				rw.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-				rw.custom_minimum_size = Vector2(500, 0)
+				rw.custom_minimum_size = Vector2(470, 0)
 				box.add_child(rw)
 			shown += 1
 	if shown == 0:
@@ -1513,6 +1545,15 @@ func _fill_quests() -> void:
 		none.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		none.custom_minimum_size = Vector2(500, 0)
 		quest_list.add_child(none)
+	# what's ahead, under the list (the log is never a bare frame)
+	var dv := _divider(24)
+	dv.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	quest_list.add_child(dv)
+	var hint := _label("More work turns up as you go: a gold ! over someone in the camp has a job for you, a ? is ready to hand in. The tracker under the map keeps the current ones in sight.", 13, Color(0.6, 0.56, 0.48))
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.custom_minimum_size = Vector2(470, 0)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	quest_list.add_child(hint)
 
 func _fill_tracker() -> void:
 	if quest_tracker == null:
@@ -2593,7 +2634,7 @@ func _build_stash() -> void:
 							Sfx.play("pickup")
 							break
 					tooltip.visible = false
-					refresh(), func(p, on): _hover(p, on, "stash"))
+					refresh(), func(p, on): _hover(p, on, "stash"), "", true)     # the bag's iron sockets
 		grid.add_child(c)
 		stash_cells.append(c)
 
@@ -4463,6 +4504,9 @@ func _char_line(c: Dictionary) -> String:
 	return "%s, level %d %s" % [nm, int(c["level"]), Data.CLASSES.get(c["cls"], {"name": "Knight"})["name"]]
 
 ## The saved characters: play one, delete one (asks twice), or make a new one.
+## The Characters screen (the title's list of saves): the game's own frame (Blaine: "no plain boxes"), a card per
+## character in its class's colour (ClassStage.ACCENTS: a lit edge, the name, level, class and act, when last played)
+## with iron Play / Delete (Delete asks once), and New Character / Back below.
 func _build_characters() -> void:
 	chars_panel = Control.new()
 	chars_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -4470,22 +4514,28 @@ func _build_characters() -> void:
 	title_panel.add_child(chars_panel)
 	var dim := ColorRect.new()
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0.01, 0.01, 0.015, 0.95)
+	dim.color = Color(0.01, 0.01, 0.015, 0.82)
 	chars_panel.add_child(dim)
+	var frame := PanelContainer.new()
+	frame.anchor_left = 0.5
+	frame.anchor_right = 0.5
+	frame.anchor_top = 0.5
+	frame.anchor_bottom = 0.5
+	frame.offset_left = -430
+	frame.offset_right = 430
+	frame.offset_top = -330
+	frame.offset_bottom = 330
+	_ornate(frame, 0.3, 26)
+	chars_panel.add_child(frame)
 	var vb := VBoxContainer.new()
-	vb.anchor_left = 0.5
-	vb.anchor_right = 0.5
-	vb.anchor_top = 0.5
-	vb.anchor_bottom = 0.5
-	vb.offset_left = -380
-	vb.offset_right = 380
-	vb.offset_top = -300
-	vb.offset_bottom = 300
-	vb.add_theme_constant_override("separation", 16)
-	chars_panel.add_child(vb)
-	var t := _label("Characters", 40, GOLD, true)
+	vb.add_theme_constant_override("separation", 10)
+	frame.add_child(vb)
+	var t := _label("CHARACTERS", 34, GOLD, true)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(t)
+	var dv := _divider(26)
+	dv.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	vb.add_child(dv)
 	chars_sub = _label("", 15, Color(0.75, 0.7, 0.62))
 	chars_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(chars_sub)
@@ -4495,20 +4545,16 @@ func _build_characters() -> void:
 	vb.add_child(sc)
 	chars_list = VBoxContainer.new()
 	chars_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	chars_list.add_theme_constant_override("separation", 8)
+	chars_list.add_theme_constant_override("separation", 10)
 	sc.add_child(chars_list)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 14)
+	row.add_theme_constant_override("separation", 18)
 	vb.add_child(row)
-	var nb := Button.new()
-	nb.text = "New Character"
-	nb.custom_minimum_size = Vector2(200, 42)
+	var nb := _iron_button("New Character", 220, 46, 17)
 	nb.pressed.connect(func(): open_class_picker())
 	row.add_child(nb)
-	var back := Button.new()
-	back.text = "Back"
-	back.custom_minimum_size = Vector2(160, 42)
+	var back := _iron_button("Back", 160, 46, 17)
 	back.pressed.connect(func(): chars_panel.visible = false)
 	row.add_child(back)
 
@@ -4516,40 +4562,56 @@ func open_characters() -> void:
 	Sfx.play("click")
 	for c in chars_list.get_children():
 		c.queue_free()
-	var accents := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1), "warlock": Color(0.45, 1.0, 0.35), "archer": Color(0.55, 0.85, 0.45)}
 	var all: Array = game.list_characters()
 	chars_sub.text = "%d saved, each with its own save. Play any of them, or make a new one." % all.size()
 	var first := true
 	for c in all:
+		var acc: Color = ClassStage.ACCENTS.get(c["cls"], GOLD)
 		var card := PanelContainer.new()
-		card.add_theme_stylebox_override("panel", _box(Color(0.06, 0.05, 0.05, 0.96), accents.get(c["cls"], GOLD), 2, 6, 10))
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.045, 0.04, 0.04, 0.92)
+		sb.border_color = acc.darkened(0.35) if not first else acc
+		sb.border_width_left = 5
+		sb.border_width_top = 1
+		sb.border_width_bottom = 1
+		sb.border_width_right = 1
+		sb.corner_radius_top_left = 3
+		sb.corner_radius_bottom_left = 3
+		sb.content_margin_left = 18
+		sb.content_margin_right = 12
+		sb.content_margin_top = 10
+		sb.content_margin_bottom = 10
+		sb.shadow_color = Color(acc.r, acc.g, acc.b, 0.22 if first else 0.0)
+		sb.shadow_size = 8
+		card.add_theme_stylebox_override("panel", sb)
 		chars_list.add_child(card)
 		var hb := HBoxContainer.new()
 		hb.add_theme_constant_override("separation", 12)
 		card.add_child(hb)
 		var info := VBoxContainer.new()
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info.add_theme_constant_override("separation", 2)
 		hb.add_child(info)
-		info.add_child(_label(str(c["name"]) if str(c["name"]) != "" else "Unnamed", 22, accents.get(c["cls"], GOLD), true))
+		info.add_child(_label(str(c["name"]) if str(c["name"]) != "" else "Unnamed", 24, acc, true))
 		var run: String = Data.RUNS[int(c["difficulty"])]["name"] if int(c["difficulty"]) < Data.RUNS.size() else ""
-		info.add_child(_label("Level %d %s  ·  %s" % [int(c["level"]), Data.CLASSES.get(c["cls"], {"name": "Knight"})["name"], run], 14, Color(0.75, 0.7, 0.62)))
+		info.add_child(_label("Level %d %s  ·  %s" % [int(c["level"]), Data.CLASSES.get(c["cls"], {"name": "Knight"})["name"], run], 15, Color(0.82, 0.76, 0.66)))
 		var when := _ago(int(c["played"]))
 		info.add_child(_label(("Last played  ·  " if first else "Played ") + when if when != "" else "", 12, GOLD if first else Color(0.6, 0.57, 0.5)))
 		first = false
 		var id: String = c["id"]
-		var play := Button.new()
-		play.text = "Play"
-		play.custom_minimum_size = Vector2(110, 40)
+		var play := _iron_button("Play", 120, 44, 17)
+		play.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		play.pressed.connect(func():
 			chars_panel.visible = false
 			game.start_game(true, "knight", id))
 		hb.add_child(play)
-		var del := Button.new()
-		del.text = "Delete"
-		del.custom_minimum_size = Vector2(110, 40)
+		var del := _iron_button("Delete", 110, 44, 15)
+		del.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		del.add_theme_color_override("font_color", Color(0.85, 0.5, 0.42))
 		del.pressed.connect(func():
 			if del.text == "Delete":
 				del.text = "Sure?"
+				del.add_theme_color_override("font_color", Color(1.0, 0.35, 0.3))
 				return
 			game.delete_character(id)
 			open_characters()
