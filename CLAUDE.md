@@ -71,7 +71,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `wraith.gd`, `wraith_skills.gd`, `wraith_fx.gd` | Wraith class: the Meshy body on the mocap system with the spectral shader; its six skills (casts, blows, the tether, phantoms, the night); their effects (his own particles and rings: `WraithFx._spirit_burst` streaking wisps / shadow smoke, `_soul_ring` soul-mist; never the generic `Fx.burst`/`ring`) |
 | `demon.gd`, `demon_mocap_rig.gd`, `demon_skills.gd`, `demon_fx.gd`, `demon_fists_fx.gd`, `infernal_fx.gd` | Demon class: the Meshy magma brute on the mocap system with the magma shader and his own wing/tail/cloth rig (falls back to the knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader); his six skills (the fists, the charge, the slam, the boulder, the grip, the wrath); their effects (lava on the ground, fissures, boulders, meteors) |
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) and fel fire (`WarlockFx.fel_flame_mat` / `fel_ring`: InfernalFx's flame in his palette) for Blight Bolt's burst, Soul Shackles and Fel Covenant |
-| `plague.gd` | Plague Doctor class: body (mocap, whole-body skill clips), Toxic Flask, Volatile Mixture, Pestilent Trap, The Last Epidemic, poison and infection, co-op replay |
+| `plague.gd`, `plague_fx.gd` | Plague Doctor class: body (mocap, whole-body skill clips), Toxic Flask, Volatile Mixture, Pestilent Trap, The Last Epidemic, poison and infection, co-op replay; his effects (`PlagueFx`: glass slivers, glossy gobbets, wet stains with bubbles, fumes, spores, alchemist's fire) |
 | `dragon.gd`, `dragon_skills.gd` | The three dragon classes (`wyrm` Obsidian Wyrm, `serpent` Frost Serpent, `wyvern` Storm Wyvern): Meshy bodies posed in code every frame (`Dragon.pose`, handed over by `Anim.pose`); no skills yet (`DragonSkills` is the empty, ready skills script and plays their attack sounds) |
 | `dodge.gd` | The dodge roll on Space (every class): direction, distance, i-frames, stamina, the tumble, the co-op event |
 | `enemy.gd`, `projectile.gd`, `feral.gd` | Monsters/AI and missiles (host-authoritative in co-op); the Feral's baked-animation body |
@@ -628,7 +628,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   textures) built by `Flora.oak_model(k)` with `MESHY_TREE_SHADER` (wind sway by height, snow/ash, see-through near the
   player) plus the game's leaf clusters (`OAK_LEAVES`); the moor is ~40% oaks with groves off the road. Grass is
   the **living 3D grass** (`scripts/grass.gd` `Grass`, `scripts/grass_field.gd` `GrassField`; Act I's camp, moor and
-  fort, i.e. whenever `oak_forest`; A2/A3 keep the old blade clumps): seven species built in code (`Grass.SPECIES`:
+  fort, i.e. whenever `oak_forest`, and A2's road and Aurelia in their own sun-dried colours, `World.living_grass`;
+  A3 keeps the old blade clumps): seven species built in code (`Grass.SPECIES`:
   meadow, tall seed-head grass, tussock, dry straw, moss with clover, broad-leaved weeds, sparse verge grass)
   **modelled in Blender on Meshy textures**: four Meshy botanical sheets (green blades, dry straw, seed heads and
   wildflowers, broad leaves; `meshy.py draw "... laid flat side by side ..." --cutout`, ~6 credits each, the prompts
@@ -1221,14 +1222,22 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   fix on staging, `Hero._trail_shader`; its UVs are clamped before `pow()`, whose NaN on a hair-negative UV drew
   black specks). Each class has its own visual language (`HolyFx` knight, `InfernalFx`/`DemonFx` demon, `WarlockFx`
   fel fire, `WraithFx._spirit_burst`/`_soul_ring`, `ArrowFx` archer, `ElementalFx` for the shared skills and the
-  monsters' slams, novas and summonings): the knight's, the Wraith's and the shared skills use no generic
-  `Fx.burst`/`ring`/`pillar` now; the Demon, the Plague Doctor and the Archer still mix a few in as accents. Give a
-  new skill shapes of its own, not a recoloured burst. Hits throw streaks (`Fx.streaks`: sparks, blood). Decals on the
+  monsters' slams, novas and summonings, `PlagueFx` the Plague Doctor's glass, liquid and fumes): no hero's skill uses
+  the generic `Fx.burst`/`ring`/`flash`/`pillar` now (`SkillFx._default` keeps them as the fallback for a new class's
+  undrawn skills; the Demon's accents are `DemonFx.embers`/`flare`/`fire_wave`, the Archer's marks
+  `ArcherFx.hunter_mark`). Give a new skill shapes of its own, not a recoloured burst. Telegraphs (`Fx.telegraph`,
+  `arc_telegraph`) are a rim, a faint wash and a fill sweeping out to meet the rim on the impact frame (added light). Hits throw streaks (`Fx.streaks`: sparks, blood). Decals on the
   ground sit 0.06-0.08 m up (the road's surface is above `height_at`). `special_shots.gd` frames monsters' heavy
   blows; `shader_check`-style runs (draw each new material once under xvfb) catch shader compile errors that the
   headless tests can't. Candidates are judged in the game renderer, not in model sheets:
   `oak_compare.gd` (oaks as the game builds them, with leaf clusters) and `body_compare.gd` (two copies of the mocap
   knight); the procedural oak (`tools/blender/trees/oak_gen.py`) lost to the Meshy oaks there and was not adopted.
+  The ground: the cobbles are `Mats.TERRAIN_SHADER`'s `cobble()` (domed, chipped, worn flagstones; judge changes in
+  `terrain_lab.gd`, a strip of road without a zone). Every zone's scattered rocks and the old roads' kerbs are Meshy
+  (`assets/models/rocks/`, `Props.meshy_rock`/`boulder`/`seat`, `World.kerb`), and the crate, barrel and log pile
+  (`assets/models/props/`, `Props._clutter_into`); all re-baked on clean UVs, with the procedural versions as the
+  fallback. World generation draws from `World.rng`: a visual change must keep its calls (count and order) or every
+  rock, tree, footprint and spawn after it moves (and co-op peers must agree).
 - **Performance KPIs** (`scripts/kpi.gd` `Kpi`, `docs/nightly/KPIS.md`): the official numbers. Scripted, deterministic
   scenarios (camp, moor, fight, boss, arena, crypt, server; `Kpi.SCENARIOS`) run in any build with
   `-- --kpi <scenario> out.json [--quality N] [--secs N]` (the server: `-- --server --kpi server out.json`), measuring
