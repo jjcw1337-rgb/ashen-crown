@@ -292,8 +292,10 @@ static func _plaza(w: World) -> void:
 
 static func _brazier(w: World, p: Vector3) -> void:
 	var g := Props.footprint(Models.N(null, "brazier"), 0.5)
-	Models.P(g, Geo.cyl(0.25, 0.35, 1.0, 10), Roman.marble(), Vector3(0, 0.5, 0))
-	Models.P(g, Geo.cyl(0.6, 0.3, 0.45, 14), Roman.bronze(), Vector3(0, 1.2, 0))
+	# the Meshy brazier (visual overhaul): a hammered bronze bowl of charcoal on a fluted marble pedestal, 1.45 m to its rim
+	if not Roman._set_piece(g, "brazier", 1.45, "h"):
+		Models.P(g, Geo.cyl(0.25, 0.35, 1.0, 10), Roman.marble(), Vector3(0, 0.5, 0))
+		Models.P(g, Geo.cyl(0.6, 0.3, 0.45, 14), Roman.bronze(), Vector3(0, 1.2, 0))
 	w._place(g, p)
 	Props.fire(g, Vector3(0, 1.45, 0), 1.8, Color(1.0, 0.55, 0.2), true, false, true, "brazier")
 	w.solid(g)
