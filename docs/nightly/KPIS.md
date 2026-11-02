@@ -43,6 +43,8 @@ The nightly benchmark runs every scenario at **High** (preset 2), the moor also 
 | `load_ms` | Entering the zone: `Game.load_zone` start to ready (for `server`: engine start to the crypt being up) | **≤ 3000** |
 | `cpu_process_peak_ms` | Godot's `TIME_PROCESS`: the slowest frame's main-thread process time in each second, averaged | ≤ 16 |
 | `cpu_physics_peak_ms` | The same for the physics step | ≤ 4 |
+| `script_ms` | Every node's `_process` in a frame (average), timed between two probe nodes processed first and last (`scripts/kpi_probe.gd`). `cpu_process_peak_ms` includes drawing and the wait for the GPU, so this is the scripts' real cost | ≤ 8 |
+| `physics_ms`, `render_cpu_ms` | The same for `_physics_process`; the renderer's CPU time (viewport render + frame setup) | |
 | `gpu_ms` | GPU time per frame (`viewport_get_measured_render_time_gpu`); far below the frame time = the CPU is the limit | ≤ 12 |
 | `draw_calls` | Draw calls per frame (average) | ≤ 2000 |
 | `primitives` | Triangles drawn per frame, all passes (average) | ≤ 10 M |
@@ -89,6 +91,15 @@ Rules for skill effects (CLAUDE.md "Skill design"): a light that casts shadows u
 repeat share meshes, materials and textures (made once, cached) instead of building new ones each cast; a partner's
 copy (the puppet) draws the same effect, so four players casting is four times the cost: keep `skill_perf` well inside
 its budget.
+
+## Finding what costs (profiling flags, any scenario)
+
+`--census` (writes `<out>.census.txt`: every visible mesh by triangles x instances, shadow casting, visibility range;
+every light; every SubViewport), `--hide name,a,b` / `--hide Props#10-40` (hide parts to see what they cost),
+`--noshadow omni,dir`, `--envoff ssao,ssil,vfog,msaa,glow,half,softmed,softlow,atlas2k,terrainflat,terrainnofd,plainomni`,
+`--mmnoshadow N`, `--mmchunk N` (0 = MultiMesh chunking off), `--notwins` (no oak shadow twins), and for the spot
+scenario `--pos oakN`. Comparing looks: run both sides with `--fixed-fps 30` (time-driven scenes come out the same
+frame) and compare against two identical runs, not against zero (particles, AI and the crowd differ every run).
 
 ## Adding a scenario or a metric
 

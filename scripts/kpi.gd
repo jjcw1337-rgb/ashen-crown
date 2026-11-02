@@ -403,6 +403,13 @@ static func _env_off() -> void:
 	if k.contains("softmed"): RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM)
 	if k.contains("softlow"): RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_LOW)
 	if k.contains("atlas2k"): RenderingServer.directional_shadow_atlas_set_size(2048, true)
+	if k.contains("plainomni"):
+		for l in g.world.find_children("*", "OmniLight3D", true, false):
+			if not (l as Light3D).is_in_group(Grade.SHADOW_GROUP):
+				(l as Light3D).visible = false
+	if k.contains("terrainnofd"):
+		var sh: Shader = Mats.shader("terrain")
+		sh.code = sh.code.replace("float hc = fbm3(p * sc); float hx = fbm3((p + vec2(e, 0.0)) * sc); float hz = fbm3((p + vec2(0.0, e)) * sc);", "float hc = 0.5; float hx = 0.5; float hz = 0.5;")
 	if k.contains("terrainflat"):
 		for t in g.world.find_children("Terrain*", "MeshInstance3D", true, false):
 			var sm := StandardMaterial3D.new()
