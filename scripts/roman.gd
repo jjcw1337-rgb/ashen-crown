@@ -57,6 +57,11 @@ static func column(w: World, p: Vector3, h := 4.5, r := 0.32, broken := 0.0, m: 
 		m = marble()
 	var g := Props.footprint(Models.N(null, "column"), r * 1.35)
 	var sh := h * (1.0 - broken)
+	if _meshy_column(g, h, r, broken):
+		w._place(g, p)
+		g.rotation.y = w.rng.randf() * TAU
+		w.solid(g)
+		return g
 	Models.P(g, Geo.box(r * 2.7, 0.3, r * 2.7), m, Vector3(0, 0.15, 0))
 	Models.P(g, Geo.cyl(r * 1.15, r * 1.25, 0.22, 14), m, Vector3(0, 0.41, 0))
 	Models.P(g, Geo.cyl(r * 0.88, r, sh, 14), m, Vector3(0, 0.52 + sh * 0.5, 0))
@@ -70,9 +75,61 @@ static func column(w: World, p: Vector3, h := 4.5, r := 0.32, broken := 0.0, m: 
 	w.solid(g)
 	return g
 
+## Meshy pieces (`assets/models/roman/`: column, broken, drum; visual overhaul 2026-11-02, photographic concepts,
+## image-to-3D, re-baked onto clean UVs): weathered travertine with fluting, chips and moss, in place of the stacked
+## boxes and cylinders. [] without the files (the code-built pieces stay).
+const ROMAN_DIR := "res://assets/models/roman/%s.glb"
+static var _meshy := {}
+
+static func _part(kind: String) -> Array:
+	if not _meshy.has(kind):
+		_meshy[kind] = Props._meshy_model(ROMAN_DIR % kind)
+	return _meshy[kind]
+
+static func _add_part(g: Node3D, e: Array, k: Vector3, turn := Basis(), lift := 0.0) -> void:
+	var aabb: AABB = e[2]
+	var c := aabb.get_center()
+	var mi := MeshInstance3D.new()
+	mi.mesh = e[0]
+	mi.material_override = e[1]
+	mi.transform = Transform3D(Basis.from_scale(k) * turn, Vector3(0, lift, 0)) * Transform3D(Basis(), Vector3(-c.x, -aabb.position.y, -c.z)) * (e[3] as Transform3D)
+	g.add_child(mi)
+
+## A whole column scaled evenly to the code-built one's height (plinth and base 0.52, the shaft h, capital and
+## abacus 0.52: its top meets a colonnade's beam; at these heights its shaft is the code-built one's 2r across); a
+## broken one is the stump, as wide as the plinth and as tall as what still stands.
+static func _meshy_column(g: Node3D, h: float, r: float, broken: float) -> bool:
+	if broken <= 0.0:
+		var e := _part("column")
+		if e.is_empty():
+			return false
+		var k: float = (h + 1.04) / maxf((e[2] as AABB).size.y, 0.001)
+		_add_part(g, e, Vector3.ONE * k)
+		return true
+	var b := _part("broken")
+	if b.is_empty():
+		return false
+	var bb: AABB = b[2]
+	var kx: float = r * 2.8 / maxf(maxf(bb.size.x, bb.size.z), 0.001)
+	var ky: float = (0.72 + h * (1.0 - broken)) / maxf(bb.size.y, 0.001)
+	_add_part(g, b, Vector3(kx, ky, kx))
+	return true
+
 ## A column drum lying where it fell.
 static func drum(w: World, p: Vector3, r := 0.32, l := 1.1) -> void:
 	var g := Props.footprint(Models.N(null, "drum"), Vector2(l * 0.5, r))
+	var e := _part("drum")
+	if not e.is_empty():
+		# lying with its axis along x like the code-built one, l long and 2r across, sunk a little
+		var bb: AABB = e[2]
+		var turn := Basis() if bb.size.x >= bb.size.z else Basis(Vector3.UP, PI * 0.5)
+		var long := maxf(bb.size.x, bb.size.z)
+		var across := maxf(minf(bb.size.x, bb.size.z), bb.size.y)
+		_add_part(g, e, Vector3(l / long, r * 2.0 / across, r * 2.0 / across), turn, -r * 0.15)
+		w._place(g, p)
+		g.rotation.y = w.rng.randf() * TAU
+		w.solid(g)
+		return
 	Models.P(g, Geo.cyl(r, r, l, 14), marble(), Vector3(0, r * 0.85, 0), Vector3(0, 0, 90))
 	w._place(g, p)
 	g.rotation.y = w.rng.randf() * TAU
