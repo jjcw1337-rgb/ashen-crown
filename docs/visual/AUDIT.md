@@ -135,7 +135,11 @@ Blight Bolt's burst is a ring of fel fire with a pale flare, sickly smoke, splas
 Shackles turns his sigil under him and pulls the dark in from the edge of its reach; Fel Covenant raises a crown of fel
 fire round him with souls spiralling up (fel fire: InfernalFx's flame in his palette). **The Wraith's** 20 generic bursts and
 8 rings became his own: spirit light streaking out as curling wisps, shadow as soft rolling smoke, every ring a ripple
-of soul-mist over the ground (`WraithFx._spirit_burst`, `_soul_ring`).
+of soul-mist over the ground (`WraithFx._spirit_burst`, `_soul_ring`). **Every hit** throws streaks now (sparks cooling as
+they fall, blood droplets arcing down: `Fx.streaks`), and **the monsters' heavy blows** have their own shapes too: a
+boss's slam and the bear's maul crack the ground with rock spikes and dust (`ElementalFx.ground_slam`), a nova is a
+ring of hellfire, or sick green fire, racing out with a heat ripple (`fire_nova`), a summoning burns a circle and raises
+smoke (`summon_circle`).
 
 The bosses cost 6 credits (concept) + 30 (model) each: 108. The camp pieces 90 (three concepts, two edits, two models).
 Total so far: 198 of the 2,614 monthly credits. `a2_arena_test` (the whole games) and `a3_test`
@@ -272,12 +276,20 @@ would be ~3,600, so the rest goes by the roadmap's order.
 
 ## 9. Remaining problems and risks
 
-- Everything is judged on the software renderer; brightness and the rim light's strength need jj's real-GPU look.
-- The detail normal maps follow the colour map's detail, which can emboss painted patterns; checked on the zombie,
-  to be checked in game on the heroes.
-- Without regenerated sources, existing Meshy models can't get LODs; until then culling and draw distances carry
-  the performance.
-- The fps gain from stage 1 is measured in primitives and draw calls; the KPI on the Mac is the confirmation.
+- Everything is judged on the software renderer: brightness, the rim light's strength, the knight's new steel and
+  the new effects at full speed need jj's look on a real GPU (the preview build).
+- The new bosses keep the monsters' A-pose rig, skinned by distance: Aurelius's skirt of strips and the Ashen King's
+  mantle stretch a little in big swings; their weapons are the game's (scimitar). Baked clips (Meshy rig + library)
+  would be the next step for the act bosses.
+- Meshy characters still have no LODs (their UV atlases); the re-baked camp props do. Distance culling and the
+  multimesh chunks carry the rest.
+- The camp's new palisade stands 4.2 m (was 3.6); it reads as sturdier, but check it against the gatehouse in play.
+- The detail normal maps follow each colour map's detail, which can emboss painted patterns; checked in a lineup,
+  to be checked on the heroes in play.
+- The fps gain is measured in primitives and draw calls; the KPI suite on the Mac is the confirmation.
+- sloth_test and fallen_test each failed one random AI check once (the slam's stun, all three Fallen attacks) and
+  pass on rerun, the same as on staging.
+- Texture compression (VRAM vs download) is still a decision for jj and Blaine.
 
 ## 10. Production checklist
 

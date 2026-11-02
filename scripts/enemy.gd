@@ -522,16 +522,14 @@ func special_fx(ev: String) -> void:
 		"nova_tele":
 			Fx.telegraph(game.world.fx_root, global_position, 7.0, atk_dur * Anim.impact_at("cast"), col)
 		"slam":
-			Fx.ring(game.world.fx_root, global_position, 4.5, Color(1.0, 0.5, 0.2), 0.45)
-			Fx.burst(game.world.fx_root, global_position + Vector3(0, 0.3, 0), Color(0.45, 0.4, 0.35, 0.8), 40, 6.0, 0.35, 0.9, false, -4.0, 80.0)
+			ElementalFx.ground_slam(game, game.world.fx_root, global_position, 4.5)
 			Sfx.play("slam")
 			game.add_shake(0.6)
 		"summon":
-			Fx.ring(game.world.fx_root, global_position, 5.0, Color(0.7, 0.2, 1.0), 0.6)
+			ElementalFx.summon_circle(game, game.world.fx_root, global_position, 3.2)
 			Sfx.play("summon")
 		"nova":
-			Fx.ring(game.world.fx_root, global_position, 7.0, col, 0.6)
-			Fx.burst(game.world.fx_root, global_position + Vector3(0, 1, 0), col, 50, 8.0, 0.2, 0.7, true, 0.0)
+			ElementalFx.fire_nova(game, game.world.fx_root, global_position, 7.0, col)
 			Sfx.play("nova")
 			game.add_shake(0.4)
 		"bear_tele":
@@ -558,8 +556,7 @@ func special_fx(ev: String) -> void:
 			else:
 				Bear.sound("bear_maul", global_position)
 			var paws := global_position - rig.global_transform.basis.z * 1.6 * radius
-			Fx.ring(game.world.fx_root, paws, 2.6, Color(0.45, 0.4, 0.33), 0.4)
-			Fx.burst(game.world.fx_root, paws + Vector3(0, 0.2, 0), Color(0.38, 0.33, 0.28, 0.8), 30, 4.5, 0.3, 0.8, false, -4.0, 80.0)
+			ElementalFx.ground_slam(game, game.world.fx_root, paws, 1.3 + radius)
 			if game.hero.global_position.distance_to(global_position) < 10.0:
 				game.add_shake(0.45)
 		"enrage":
