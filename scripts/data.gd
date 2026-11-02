@@ -50,14 +50,16 @@ const WAYPOINT_GROUPS := [
 ]
 
 ## Battlegrounds the waypoint window offers (its "Battlegrounds" tab group; shown once this has an entry).
-## Each card hands off to the Battlegrounds screen (Game.waypoint_battleground: saves, back to the title's
-## Battlegrounds window, a fresh raid hero as from the title). A new battleground is one entry here.
-##   id · name · kind (its mode, shown under the name) · lines (what the card says) · players (most at once)
+## Each card is a way down from the camp's waypoint with the character playing (Game.waypoint_battleground: a word
+## on the stakes, the dais flares, the raid server is joined; the raid ends back on the dais). The raid's numbers
+## (round length, when the portals open, how many raiders) come from Battlegrounds' constants, never from here.
+##   id · name · kind (its mode, under the name) · art (the Meshy painting on the window's banner, 640x480) · wide
+##   (the same painting at 16:9, behind the loading words on the way down) · lines (what the card says of the place)
 const WAYPOINT_BATTLEGROUNDS := [
-	{"id": "raid", "name": "The Extraction Raid", "kind": "Extraction", "players": 16,
-		"lines": ["A walled ruin of broken walls and graves, held by the restless dead.",
-			"Loot what you can and reach an Extraction Portal to keep it in your Battlegrounds stash.",
-			"Fall, and what you carried stays on the ground."]},
+	{"id": "crypt", "name": "The Hollow Crypt", "kind": "Extraction raid",
+		"art": "res://assets/textures/ui/wp_bg_crypt.png", "wide": "res://assets/textures/ui/wp_bg_crypt_wide.jpg",
+		"lines": ["An ossuary of twelve chambers round a great pillared hall, under the old kingdom. Few monsters, but hard ones, and the richest chests are in the hall.",
+			"Other raiders are hunting down there too. Reach an Extraction Portal once they open and everything you carry comes home."]},
 ]
 
 const WAYPOINT_ACTS := [
@@ -115,6 +117,13 @@ static func check_waypoints() -> Array:
 			ids[id] = true
 			if not WAYPOINT_ZONES.has(str(p.get("zone", ""))):
 				errs.append(tag + ": waypoint '%s' leads to unknown zone '%s'" % [id, p.get("zone", "")])
+	for b in WAYPOINT_BATTLEGROUNDS:
+		var btag := "battleground '%s'" % str(b.get("id", "?"))
+		if str(b.get("id", "")) == "" or str(b.get("name", "")) == "":
+			errs.append(btag + ": needs an id and a name")
+		for key in ["art", "wide"]:
+			if b.has(key) and not ResourceLoader.exists(b[key]):
+				errs.append(btag + ": %s not found: %s" % [key, str(b[key])])
 	return errs
 
 ## How each character draws and puts away its weapon (WeaponCarry; the motion itself lives in Anim).
