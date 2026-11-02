@@ -81,6 +81,7 @@ func _run() -> void:
 	check(h.ward_max > 0.0 and h.ward >= h.ward_max * 0.95, "Oathkeeper's ward is up (%d of %d)" % [int(h.ward), int(h.ward_max)])
 	var l0: float = h.life
 	g.test_immortal = false
+	h.block_chance = 0.0        # (his shield might block it instead)
 	h.take_hit(h.ward_max * 0.5, h.global_position + Vector3(0, 0, -2), "pvp", "fire")
 	check(is_equal_approx(h.life, l0) and h.ward < h.ward_max, "a blow smaller than it is soaked (life %d -> %d, ward %d)" % [int(l0), int(h.life), int(h.ward)])
 	h.combat_t = 999.0

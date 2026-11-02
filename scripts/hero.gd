@@ -1026,6 +1026,7 @@ func skill_aim(id: String, at: Vector3) -> Vector3:
 
 ## Swing toward a point without needing a target (Space). Works while moving.
 func free_attack(aim: Vector3) -> void:
+	Hero.striker = self          # (whoever acts now strikes: a sandbox stand-in never takes its own hero's blows)
 	if not can_act():
 		return
 	if has_bow():
@@ -1134,6 +1135,7 @@ func _show_chop_axe(on: bool, base: String) -> void:
 		weapon_node.visible = _chop_axe == null
 
 func swipe_attack(aim: Vector3, keep_target := false) -> void:
+	Hero.striker = self          # (whoever acts now strikes: a sandbox stand-in never takes its own hero's blows)
 	if dead or charge_t >= 0.0 or drain_t >= 0.0 or daze_t > 0.0:
 		return
 	if has_bow():
@@ -1281,6 +1283,7 @@ func can_act() -> bool:
 	return not dead and atk_t < 0.0 and charge_t < 0.0 and drain_t < 0.0
 
 func use_skill(id: String, aim: Vector3) -> bool:
+	Hero.striker = self          # (whoever acts now strikes: a sandbox stand-in never takes its own hero's blows)
 	stop_chop()
 	if dead or charge_t >= 0.0 or daze_t > 0.0:
 		return false
@@ -1454,6 +1457,7 @@ func calm() -> float:
 	return lerpf(1.0, CALM_MAX, clampf((combat_t - COMBAT_SECS) / CALM_RAMP, 0.0, 1.0))
 
 func _hit_enemy(e, mult: float, knock: float = 0.0, src := "", flat := 0.0) -> void:
+	Hero.striker = self          # (whoever acts now strikes: a sandbox stand-in never takes its own hero's blows)
 	if not is_instance_valid(e) or e.dead:
 		return
 	combat_t = 0.0

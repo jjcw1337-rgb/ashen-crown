@@ -731,6 +731,20 @@ const PVP_ARMOR_SHARE := 1.0
 const PVP_GEAR_FLAT := ["str", "dex", "vit", "ene", "life", "mana", "fire", "dmg", "regen"]
 const PVP_GEAR_CAP := {"res": 15, "ls": 4, "ias": 20, "frw": 5, "block": 15, "ed": 15}
 
+## Class against class in PvP (the raid's pvp hits, Battlegrounds.pvp_hit, and the sandbox's, Enemy.take_damage):
+## what a class deals to another player, and what it takes from one, tuned with tools/duel_sim.gd (bot duels at
+## level 20, geared, every pairing). Only player-against-player blows; monsters and PvE are untouched.
+const PVP_CLASS := {
+	"wraith": {"dmg": 0.8, "taken": 1.2},
+	"doug": {"dmg": 1.35, "taken": 0.85},
+	"warlock": {"dmg": 1.5, "taken": 0.8},
+	"demon": {"dmg": 1.15, "taken": 1.0},
+	"knight": {"dmg": 0.92, "taken": 1.0},
+}
+
+static func pvp_scale(attacker_cls: String, target_cls: String) -> float:
+	return float(PVP_CLASS.get(attacker_cls, {}).get("dmg", 1.0)) * float(PVP_CLASS.get(target_cls, {}).get("taken", 1.0))
+
 ## A hero's weapon damage (Hero.recalc): the level's (about the best base a character of that level could wield),
 ## times the weapon's quality, 0.9 (a base far below the level) to 1.05 (the best there is) by its base damage against
 ## it (an A2/A3 weapon's base damage over its act multiplier `power`); then the weapon's Enhanced Damage and +Damage,

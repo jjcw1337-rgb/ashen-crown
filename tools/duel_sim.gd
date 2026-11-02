@@ -111,8 +111,8 @@ func _report() -> void:
 		var a: String = p[0]
 		var b: String = p[1]
 		var r: Dictionary = results[key]
-		var n := float(r["a"] + r["b"] + r["draw"])
-		var wa := (r["a"] + 0.5 * r["draw"]) / maxf(1.0, n)
+		var n: float = float(r["a"] + r["b"] + r["draw"])
+		var wa: float = (float(r["a"]) + 0.5 * float(r["draw"])) / maxf(1.0, n)
 		if a.split(" ")[0] == b.split(" ")[0]:
 			# the same class, geared against fresh
 			if wa < 0.8:

@@ -353,7 +353,7 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 		var who: Hero = Hero.striker
 		if who == sandbox_hero or sandbox_hero.dead:
 			return 0.0
-		var dealt := (phys + fire) * Battlegrounds.PVP_MULT
+		var dealt := (phys + fire) * Battlegrounds.PVP_MULT * Data.pvp_scale(who.cls if who != null else "", sandbox_hero.cls)
 		var l0 := sandbox_hero.life
 		sandbox_hero.take_hit(dealt, from, "pvp", "phys")
 		var landed := maxf(0.0, l0 - sandbox_hero.life)

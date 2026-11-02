@@ -81,11 +81,13 @@ var max_run := 0             # highest of those reached; any of them can be pick
 ## go back to unlocking them by beating each final boss. Only takes effect where dev_tools is on.
 const UNLOCK_ALL_ACTS := true
 ## Developer tools (unlock-all-acts and the Escape menu's Admin column): only for the admins. On when running from
-## the Godot editor, in a staging build (its itch page is private to the two admins), or when this PC holds a valid
-## admin key (AdminKey: signed with the owner's private key, so it can't be made up or shared by editing a file).
+## the Godot editor, in a staging build (its itch page is private to the two admins), for an account with the admin
+## role (Nakama; CloudSaves turns it on after signing in), or when this PC holds a valid admin key (AdminKey: signed with the owner's private key, so it can't be made up or shared by editing a file).
 ## Off for everyone else in every production build.
 var admin_name := AdminKey.holder()
 var dev_tools := UNLOCK_ALL_ACTS and (OS.has_feature("editor") or admin_name != "" or BuildEnv.env() == "staging")
+var account_id := ""            # this player's Nakama account (CloudSaves), shown in the Admin column to be made an admin
+var account_admin := false      # the account has the admin role (Nakama, tools/admin_role.sh): the admin tools on
 var run_progress := {}       # per run: its waypoints and whether its boss is dead
 var played_s := 0.0          # seconds this character has been played (saved); the clock trees regrow on (Harvest)
 var harvest_saved := {}      # "<run>:<act>:<zone>" -> Harvest.to_save() (the felled trees and when they regrow)

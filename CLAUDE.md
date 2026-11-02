@@ -1280,6 +1280,18 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   and `mode` (04:30), each on a fresh `staging` with its own log (`docs/nightly/perf/LOG.md`, `docs/nightly/modes/LOG.md`:
   lessons, then one row per attempt), the KPI benchmark before and after (slower = not shipped), the gate, a push to
   `staging` and a Discord report. `bash tools/nightly/install.sh` installs or updates them.
+- **The admin role** (Nakama, `deploy/nakama/modules/ashen.lua`: `admin_status`, `admin_check`, `admin_set`; the
+  "admins" collection only the server writes): `CloudSaves.ensure` asks after signing in and an admin account gets
+  the dev tools in any build (`Game.account_admin`; the Admin column shows the account id). Grant it:
+  `sh tools/admin_role.sh <account id> on "name"` (runs on the staging server with Nakama's runtime key, which never
+  leaves it). The Battlegrounds server turns away a non-admin wearing "Go to level 20" gear (items marked `"boost"`,
+  `Battlegrounds.gear_ok`, every `GEAR_CHECK` s; without Nakama the per-PC ids in `user://bg_server/admins.json`).
+  `tools/bg_admin_test.gd` (server + client). Saves stay the player's own (client-written), so this stops honest
+  clients and casual edits, not a modified game.
+- **Class against class in PvP**: `Data.PVP_CLASS` (what each class deals to and takes from another player; only PvP
+  blows, `Data.pvp_scale` in `Battlegrounds.pvp_hit` and the sandbox's stand-ins), tuned with `tools/duel_sim.gd`
+  (`-- levels=20 rounds=6 mirror`: real bot duels in the sandbox, every pairing, win rates and kill times; flags a
+  pairing past 70/30 and geared not beating fresh).
 - Developer tools (`Game.dev_tools`): unlock-all-acts (`UNLOCK_ALL_ACTS`) and the **Admin column of the Escape menu** (`UI._build_admin`, `ui.test_panel`; F8 just opens the menu): Go to level 20 (`Game.go_level_20`: talents, level-20 gear, +10,000 gold each press), Max out, the switches `test_immortal`, `test_onehit`, `test_stamina`, `test_allskills`, `test_fast` (super speed, `TEST_FAST` times as fast) in `game.gd`, and a level setter (`Hero.set_level`). On when running from the Godot editor, in a **staging build** (`BuildEnv.env() == "staging"`: its itch page is private to the two admins), or when this PC holds a valid **admin key** (`AdminKey`, `scripts/admin_key.gd`): `user://admin.key`, signed with the owner's private key; the game checks it against the public key built into the code, so nobody can forge one. Off for everyone else in production builds. Make a key: `tools/admin_key.gd` (needs the private key, which is never in the repo and isn't on the Game Factory Mac). `UNLOCK_ALL_ACTS = false` turns the tools off everywhere.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file). Since 2026-10-31 it is Blaine's

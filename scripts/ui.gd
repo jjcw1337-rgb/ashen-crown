@@ -3482,7 +3482,9 @@ func _build_admin(parent: Control) -> VBoxContainer:
 	vb.visibility_changed.connect(func():
 		if not vb.visible:
 			return
-		who.text = game.admin_name if game.admin_name != "" else ("staging build" if BuildEnv.env() == "staging" else "editor")
+		who.text = game.admin_name if game.admin_name != "" else ("admin account" if game.account_admin else ("staging build" if BuildEnv.env() == "staging" else "editor"))
+		if game.account_id != "":
+			who.text += "  ·  account " + game.account_id
 		sbx.text = "Leave the sandbox" if game.sandbox != null else "Battlegrounds sandbox (bots, PvP)"
 		for f in syncs:
 			f.call()

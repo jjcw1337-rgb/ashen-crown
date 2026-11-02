@@ -21,6 +21,7 @@ var _side := 1.0
 
 ## One frame of play. `pick` (Callable: hero -> Enemy) finds what to fight.
 func think(h: Hero, pick: Callable, delta: float) -> void:
+	Hero.striker = h
 	_dodge_cd -= delta
 	_pot_cd -= delta
 	_think -= delta

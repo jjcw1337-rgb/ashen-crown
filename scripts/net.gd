@@ -91,6 +91,8 @@ var welcomed := false
 func join_failure(fallback: String) -> String:
 	if game.bg_wait_until > Time.get_ticks_msec():
 		return "The crypt is closing. The next raid opens in %s." % game.bg_wait_text()
+	if game.bg_refusal == "boosted":
+		return "Only admins can raid in \"Go to level 20\" gear. Take it off, or pick another character."
 	if game.bg_refusal != "":
 		return "The raid server couldn't confirm your account. Try again in a moment."
 	if reached and not welcomed:
@@ -882,6 +884,15 @@ func sv_bg_hello(uid: String, ticket: String) -> void:
 			peer.disconnect_peer(pid)
 		return
 	game.bg.broadcast(pid)
+
+## Server: turn a player away now (why: "boosted" = admin gear without the admin role).
+func bg_refuse(pid: int, why: String) -> void:
+	if not server:
+		return
+	rpc_id(pid, "cl_bg_refused", why, 0.0)
+	await get_tree().create_timer(0.5).timeout
+	if peer != null:
+		peer.disconnect_peer(pid)
 
 ## The round: "raid" or "reset", seconds into it, the open portals, its length, when the portals open.
 @rpc("authority", "call_remote", "reliable")
