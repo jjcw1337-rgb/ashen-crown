@@ -473,7 +473,7 @@ void fragment(){
 		lcol = mix(lcol, vec3(0.4, 0.21, 0.09), step(0.85, hash21(vec2(lid, 1.7))));
 		lcol = mix(lcol, vec3(0.15, 0.11, 0.07), step(0.65, hash21(vec2(lid, 6.6))));
 		float rib = (1.0 - smoothstep(0.0, 0.015, abs(lr.y))) * step(abs(lr.x), llen * 0.85);
-		base = mix(base, lcol * (0.8 + n4 * 0.35) * (1.0 - rib * 0.3), leaf * 0.9);
+		base = mix(base, lcol * (0.68 + n4 * 0.3) * (1.0 - rib * 0.3), leaf * 0.9);
 	}
 	float tid = 0.0;
 	float tm = 1.0;
