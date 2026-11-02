@@ -373,6 +373,17 @@ static func cypresses(w: World, at: Array) -> void:
 		var s := w.rng.randf_range(0.8, 1.25)
 		xf.append(Transform3D(Basis(Vector3.UP, w.rng.randf() * TAU).scaled(Vector3(s, s * w.rng.randf_range(0.9, 1.25), s)), Vector3(q.x, w.height_at(q.x, q.z) - 0.1, q.z)))
 		w.add_circle(Vector3(q.x, 0, q.z), 0.45 * s)
+	var e := _part("cypress")
+	if not e.is_empty():
+		# the Meshy cypress (visual overhaul): dense foliage in soft clumps on a short trunk, the lathe cone's 6.3 m
+		var bb: AABB = e[2]
+		var c := bb.get_center()
+		var fit := Transform3D(Basis.from_scale(Vector3.ONE * 6.3 / maxf(bb.size.y, 0.001)), Vector3.ZERO) * Transform3D(Basis(), Vector3(-c.x, -bb.position.y, -c.z)) * (e[3] as Transform3D)
+		var fx: Array = []
+		for t in xf:
+			fx.append((t as Transform3D) * fit)
+		w.mm_chunked(e[0], fx, true, 32.0, 0.0, e[1])     # chunked, so each chunk is culled and kept out of far shadow passes
+		return
 	Props.multimesh(w.props_root, _own(cypress_mesh(), foliage()), xf)
 
 ## A low ruined wall of brick on a tuff footing from a to b, uneven along its top.
