@@ -1128,7 +1128,14 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   multipliers to match. Items carry `"gen"` (`Data.ITEM_GEN`); an older one is rebuilt once on load
   (`Items.upgrade` from `Hero.from_save`: affixes rescaled, rares trimmed to their best three, uniques remade from
   `Data.UNIQUES` keeping enchant and temper, A2/A3 strengths moved by `Data.OLD_POWER`). Enchanting and tempering are
-  scaled to match (`Items.ENCHANT_DEF`, `TEMPER_ED`). Level-20 gear is worth about x1.45 over none (damage x life).
+  scaled to match (`Items.ENCHANT_DEF`, `TEMPER_ED`). Level-20 gear is worth about x1.6 over none (damage x life).
+  **Utility affixes** (`Data.UTILITY`, at most one per item): run speed, `stam` (dodge stamina, `Hero.roll_cost`),
+  `cdr` (`skill_cd`), `pot` (`drink`), `ten` (stuns and slows, `Hero.cc_k`). **Unique effects** (`Data.ITEM_EFFECTS`,
+  one per unique, everywhere, the strongest of each counts): roll, ward, burn, chill, kill_heal, dash
+  (`Hero._item_effects`, `dash_t`). **Rewards**: random uniques are rare (`Items.random_drop`); each boss has its own
+  (`Data.BOSS_LOOT`, `Game._boss_loot`: the first kill drops one, then `BOSS_LOOT_CHANCE` + `BOSS_LOOT_LUCK` a dry
+  kill, `Hero.boss_luck` saved); the bonfire's Reforge (`UI.reforge_request`, `Items.reforge`) rerolls a magic or rare
+  item's weakest affix for one Sloth material.
   `tools/items_rework_test.gd`; re-run `tools/balance.sh` after changing any of it.
 - **The Battlegrounds sandbox** (`scripts/sandbox.gd` `Sandbox`, zone `"sandbox"` "The Proving Crypt";
   `scripts/bot_brain.gd` `BotBrain`): the admins' testing arena, opened from the Escape menu's Admin column

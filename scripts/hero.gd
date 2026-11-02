@@ -64,6 +64,8 @@ var dmg_stack: DamageStack     # the stacking red damage number over the head
 var ls := 0.0
 var res := 0
 var frw := 0
+var boss_luck := {}         # boss kind -> its kills since its last unique (-1/absent: never killed; Game._boss_loot)
+var dash_t := 0.0           # a unique's "dash": faster for a moment after a dodge roll (Dodge.start)
 var regen := 0.0
 var mf := 0
 var gf := 0
@@ -180,7 +182,7 @@ var pied_t := 0.0              # a cream pie in the face (DougSkills, PvP): aim 
 ## seconds since this hero last fought (struck, was struck, attacked or cast; jj, 2026-11-02): out of combat
 ## stamina lasts and refills better and better, up to CALM_MAX times after CALM_RAMP more seconds (calm())
 var combat_t := 999.0
-# the Battlegrounds' item effects (Data.PVP_EFFECTS, on the class uniques): a free dodge roll every pvp_roll_s seconds,
+# the uniques' roll and ward effects (Data.ITEM_EFFECTS; everywhere since the items rework): a free dodge roll every pvp_roll_s seconds,
 # and a ward (absorbs blows before life; refills out of combat)
 var pvp_roll_s := 0
 var free_roll_t := 0.0
@@ -372,7 +374,15 @@ func skill_cost(id: String) -> float:
 	return float(Data.skill_def(id).get("mana", 0)) * (1.0 - talent("cost:" + id) / 100.0)
 
 func skill_cd(id: String) -> float:
-	return float(Data.skill_def(id).get("cd", 0.0)) * (1.0 - talent("cd:" + id) / 100.0)
+	return float(Data.skill_def(id).get("cd", 0.0)) * (1.0 - talent("cd:" + id) / 100.0) * (1.0 - float(stats.get("cdr", 0)) / 100.0)
+
+## A dodge roll's stamina (Dodge.STAMINA, less an item's "stam").
+func roll_cost() -> float:
+	return Dodge.STAMINA * (1.0 - float(stats.get("stam", 0)) / 100.0)
+
+## How long a stun, slow or root lasts on this hero (1 = in full; items' "ten" shorten it).
+func cc_k() -> float:
+	return 1.0 - float(stats.get("ten", 0)) / 100.0
 
 func _build_rig() -> void:
 	if is_wraith():
@@ -607,7 +617,8 @@ func recalc() -> void:
 			continue
 		var ss := Items.stat_sum(it)
 		for k in ss.keys():
-			stats[k] = stats.get(k, 0) + ss[k]
+			# a unique's effect counts once, the strongest (Data.ITEM_EFFECTS); stats add up
+			stats[k] = maxi(int(stats.get(k, 0)), int(ss[k])) if k in Data.ITEM_EFFECTS else stats.get(k, 0) + ss[k]
 		def_sum += Items.defense_of(it)
 		if s == "shield":
 			shield_block = it.get("block", 0)
@@ -662,8 +673,8 @@ func recalc() -> void:
 	regen = 0.4 + stats.get("regen", 0)
 	mf = stats.get("mf", 0)
 	gf = stats.get("gf", 0)
-	pvp_roll_s = int(stats.get("roll", 0)) if pvp else 0
-	ward_max = max_life * float(stats.get("ward", 0)) / 100.0 if pvp else 0.0
+	pvp_roll_s = int(stats.get("roll", 0))
+	ward_max = max_life * float(stats.get("ward", 0)) / 100.0
 	ward = minf(ward, ward_max)
 	life = minf(life, max_life)
 	mana = minf(mana, max_mana)
@@ -1316,7 +1327,7 @@ func drink(slot: int) -> void:
 	var it: Dictionary = belt[slot]
 	var b: Dictionary = Data.BASES[it["base"]]
 	if b.has("heal"):
-		heal_pool += b["heal"] * (1.0 + level * 0.06)
+		heal_pool += b["heal"] * (1.0 + level * 0.06) * (1.0 + float(stats.get("pot", 0)) / 100.0)
 	if b.has("mana"):
 		mana_pool += b["mana"] * (1.0 + level * 0.05)
 	if b.has("rejuv"):
@@ -1454,10 +1465,26 @@ func _hit_enemy(e, mult: float, knock: float = 0.0, src := "", flat := 0.0) -> v
 	var dealt: float = e.take_damage(r["phys"], r["fire"], global_position, knock, r["crit"])
 	if ls > 0.0:
 		life = minf(max_life, life + dealt * ls / 100.0)
+	_item_effects(e, dealt, src)
 	if _mine():
 		if r["crit"]:
 			game.hitstop(0.05)
 		game.add_shake(0.15 if not r["crit"] else 0.3)
+
+## The uniques' effects on a blow (Data.ITEM_EFFECTS): burning and chilling on weapon blows, life on a kill.
+func _item_effects(e, dealt: float, src: String) -> void:
+	if not is_instance_valid(e) or dealt <= 0.0:
+		return
+	if src == "attack":
+		var burn := float(stats.get("burn", 0))
+		if burn > 0.0 and not e.dead:
+			e.ignite(dealt * burn / 100.0, 3.0)
+		var chill := float(stats.get("chill", 0))
+		if chill > 0.0 and not e.dead:
+			e.chill(chill / 100.0, 2.0)
+	var kh := float(stats.get("kill_heal", 0))
+	if kh > 0.0 and e.dead:
+		life = minf(max_life, life + max_life * kh / 100.0)
 
 func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String = "phys") -> void:
 	stop_chop()
@@ -1544,33 +1571,33 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 			if away.length() > 0.01:
 				shove = away.normalized() * 11.0
 		"quake":
-			daze_t = maxf(daze_t, 1.1)
+			daze_t = maxf(daze_t, 1.1 * cc_k())
 			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Stunned", Color(0.95, 0.8, 0.5))
 		"chill":
-			chill_t = maxf(chill_t, 2.5)
+			chill_t = maxf(chill_t, 2.5 * cc_k())
 			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Chilled", Color(0.55, 0.85, 1.0))
 		"freeze":
-			daze_t = maxf(daze_t, 1.8)
-			chill_t = maxf(chill_t, 4.0)
+			daze_t = maxf(daze_t, 1.8 * cc_k())
+			chill_t = maxf(chill_t, 4.0 * cc_k())
 			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Frozen", Color(0.6, 0.9, 1.0))
 			Fx.burst(game.world.fx_root, global_position + Vector3(0, 1.0, 0), Color(0.8, 0.95, 1.0), 30, 1.5, 0.15, 1.0, true, -1.0)
 		"slip":
 			# a banana peel (DougSkills): down for a moment, sliding on the way he was going
 			if not DougSkills.driving(self):
-				daze_t = maxf(daze_t, 0.7)
+				daze_t = maxf(daze_t, 0.7 * cc_k())
 				var dir := facing()
 				shove = dir * 6.0
 				Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Slipped!", Color(1.0, 0.9, 0.3))
 		"pied":
-			pied_t = 1.5
+			pied_t = 1.5 * cc_k()
 			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Pied!", Color(1.0, 0.97, 0.88))
 			if _mine() and game.ui.has_method("pie_face"):
 				game.ui.pie_face(1.5)
 		"root":
-			daze_t = maxf(daze_t, 1.2)
+			daze_t = maxf(daze_t, 1.2 * cc_k())
 			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Rooted", Color(0.55, 1.0, 0.4))
 		"shock":
-			daze_t = maxf(daze_t, 0.45)
+			daze_t = maxf(daze_t, 0.45 * cc_k())
 			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Shocked", Color(0.8, 0.6, 1.0))
 	if life <= 0.0:
 		life = 0.0
@@ -1598,6 +1625,7 @@ func _process(delta: float) -> void:
 	for k in cds.keys():
 		cds[k] = maxf(0.0, cds[k] - delta)
 	buff_t = maxf(0.0, buff_t - delta)
+	dash_t = maxf(0.0, dash_t - delta)
 	roll_cd = maxf(0.0, roll_cd - delta)
 	ClassSkills.update(self, delta)     # every class's lingering skills (pools, the tether, lava, arrows, clouds...)
 	aura.emitting = buff_t > 0.0
@@ -1684,7 +1712,7 @@ func _process(delta: float) -> void:
 		exhausted = false
 	if exhausted and stamina >= max_stamina * 0.3:
 		exhausted = false
-	var speed := 4.8 * (1.0 + frw / 100.0) * (Battlegrounds.MOVE_MULT if game.bg_mode else 1.0) * DougSkills.car_mult(self)
+	var speed := 4.8 * (1.0 + frw / 100.0 + (float(stats.get("dash", 0)) / 100.0 if dash_t > 0.0 else 0.0)) * (Battlegrounds.MOVE_MULT if game.bg_mode else 1.0) * DougSkills.car_mult(self)
 	# the archer runs 10% faster while his Spirit Beast is at his side
 	if is_archer() and beasts.any(func(b) -> bool: return is_instance_valid(b) and not b.dead):
 		speed *= 1.1
@@ -2342,7 +2370,7 @@ func unequip(slot: String) -> void:
 
 func to_save() -> Dictionary:
 	return {"cls": cls, "level": level, "xp": xp, "str": str_, "dex": dex, "vit": vit, "ene": ene, "points": stat_points, "gold": gold,
-		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "binds_v": 2, "talents": talents, "axe_given": true, "boats": boats, "sailed": sailed, "dwarves": dwarves}
+		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "binds_v": 2, "talents": talents, "axe_given": true, "boats": boats, "sailed": sailed, "dwarves": dwarves, "boss_luck": boss_luck}
 
 func from_save(d: Dictionary) -> void:
 	set_class(str(d.get("cls", "knight")))
@@ -2357,6 +2385,7 @@ func from_save(d: Dictionary) -> void:
 	boats = (d.get("boats", []) as Array).filter(func(b): return Data.BOATS.has(str(b))) if d.get("boats") is Array else []
 	sailed = bool(d.get("sailed", false))
 	dwarves = str(d.get("dwarves", ""))
+	boss_luck = (d.get("boss_luck", {}) as Dictionary).duplicate() if d.get("boss_luck") is Dictionary else {}
 	show_helm = bool(d.get("show_helm", true))
 	equipment = d.get("equipment", {})
 	for s in Items.EQUIP_SLOTS:

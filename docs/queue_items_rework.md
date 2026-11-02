@@ -111,4 +111,16 @@ Nothing is deleted. This covers the stash and the Battlegrounds stash as well as
   A2/A3 boss).
 - Also built: the Battlegrounds sandbox (Blaine: "do the sim first") for testing classes and items by hand against
   bots and monsters.
-- Next: steps 2 (utility affixes), 3 (unique effects), 4 (sources); then the class pass with the sandbox's bots.
+- Steps 2-4 done, same day:
+  - **Utility affixes**: `stam`, `cdr`, `pot`, `ten` (Hero.roll_cost, skill_cd, drink, cc_k), at most one per item
+    with `frw`, capped.
+  - **Unique effects**: `Data.ITEM_EFFECTS` roll, ward, burn, chill, kill_heal, dash (Hero._item_effects, dash_t).
+    They work everywhere, the strongest of each counts, and every unique has one. Uniques were remade (`ITEM_GEN` 3).
+  - **Sources**: random uniques 1.2% -> 0.3% (bosses' rolls 18% -> 4%). `Data.BOSS_LOOT` tables: the first kill
+    drops one, then 35% + 15% a dry kill (`Hero.boss_luck`).
+  - **Crafting**: the bonfire's **Reforge** (Items.reforge): one Sloth material rerolls a magic or rare item's
+    weakest affix.
+  - Rolls trimmed again (ed 0.2, dmg 0.25, core stats 0.2): level-20 gear x1.62 power over none.
+- Not done: the 20 s invisibility potion (needs networked invisibility; a 6 s version to evaluate); burn and chill
+  don't tick on another player in a raid yet (the stand-ins don't run status effects); the class pass with the
+  sandbox bots.

@@ -53,10 +53,10 @@ func _run() -> void:
 	h.inventory[0] = null
 	h.equipment["amulet"] = nose
 	h.recalc()
-	check(h.pvp_roll_s == 0, "outside a raid the Nose's free roll is off")
+	check(h.pvp_roll_s == 6 and h.free_roll(), "the Nose's free dodge roll every %d s (everywhere since the items rework)" % h.pvp_roll_s)
 	h.pvp_force = true
 	h.recalc()
-	check(h.pvp_roll_s == 6 and h.free_roll(), "in a raid: a free dodge roll every %d s" % h.pvp_roll_s)
+	check(h.pvp_roll_s == 6 and h.free_roll(), "in a raid too")
 	h.stamina = 0.0
 	h.free_roll_t = 0.0
 	check(DG.start(h, Vector3(1, 0, 0)), "he rolls with no stamina at all")
@@ -88,7 +88,7 @@ func _run() -> void:
 	check(h.ward >= h.ward_max * 0.95, "and it comes back out of combat")
 	h.pvp_force = false
 	h.recalc()
-	check(h.ward_max == 0.0, "no ward outside a raid")
+	check(h.ward_max > 0.0, "the ward works outside a raid too (the items rework)")
 	# a class unique for a class near
 	for gi in g.world.items_root.get_children():
 		gi.queue_free()

@@ -2673,24 +2673,13 @@ func on_enemy_killed(e: Enemy) -> void:
 		# a Hollow Sloth's own material
 		drop_item(Items.make(e.def["drop"], 0, 1), e.global_position)
 	if e.def.get("trophy", false):
-		# the Hollow Sloth: a unique for certain, and a heap of gold
-		var cands := Data.UNIQUES.keys().filter(func(k): return Data.UNIQUES[k]["lvl"] <= e.level + 3 and not Data.UNIQUES[k].get("boss_only", false))
-		if cands.size() > 0:
-			var su := Items.make_unique(cands[rng.randi() % cands.size()])
-			if difficulty >= 1:
-				Items.empower(su, power_mult())
-			drop_item(su, e.global_position)
+		# the Hollow Sloth: a heap of gold (its unique comes from its loot table, below)
 		for i in 3:
 			drop_item(Items.gold(int(rng.randf_range(40, 70) * (1.0 + e.level * 0.6))), e.global_position)
 		ui.message("%s is slain" % e.display_name, Color(0.55, 0.9, 0.95))
 	if e.def.get("class_unique", false):
 		_drop_class_unique(e.global_position)
-	if e.def.has("boss_drop"):
-		var bu := Items.make_unique(e.def["boss_drop"])
-		if difficulty >= 1:
-			Items.empower(bu, power_mult())
-		drop_item(bu, e.global_position)
-		ui.message("%s dropped %s!" % [e.display_name, bu["name"]], Color(0.85, 0.66, 0.38))
+	_boss_loot(e)
 	if e.boss:
 		boss_killed = true
 		ui.set_boss(null)
@@ -3008,6 +2997,29 @@ func _cheat_keys(ev: InputEvent) -> void:
 ## class baseline of level-20 gear for PvP testing (rare items on every slot, the class's own weapon). Safe to press
 ## again: its own pieces (marked "boost") stay, any other equipped item moves to the bag (kept equipped if the bag
 ## is full, never destroyed), and the same gear is never handed out twice.
+## A boss's own loot (the items rework: rewards from hard content, not tiny drop chances; Data.BOSS_LOOT): its first
+## kill by this character always drops one of its uniques (its "boss_drop" if it has one); after that each kill has
+## BOSS_LOOT_CHANCE, and every kill without one raises the next by BOSS_LOOT_LUCK (Hero.boss_luck, saved).
+const BOSS_LOOT_CHANCE := 0.35
+const BOSS_LOOT_LUCK := 0.15
+
+func _boss_loot(e: Enemy) -> void:
+	var table: Array = Data.BOSS_LOOT.get(e.kind, [])
+	if table.is_empty() or sandbox != null:
+		return
+	var misses := int(hero.boss_luck.get(e.kind, -1))
+	var chance := 1.0 if misses < 0 else BOSS_LOOT_CHANCE + BOSS_LOOT_LUCK * misses
+	if rng.randf() >= chance:
+		hero.boss_luck[e.kind] = misses + 1
+		return
+	hero.boss_luck[e.kind] = 0
+	var uid: String = str(e.def["boss_drop"]) if misses < 0 and e.def.has("boss_drop") else str(table[rng.randi() % table.size()])
+	var bu := Items.make_unique(uid)
+	if difficulty >= 1:
+		Items.empower(bu, power_mult())
+	drop_item(bu, e.global_position)
+	ui.message("%s dropped %s!" % [e.display_name, bu["name"]], Color(0.85, 0.66, 0.38))
+
 ## The admins' Battlegrounds sandbox (Sandbox; the Escape menu's Admin column): the character is saved and set aside
 ## (char_id cleared, so nothing in there is saved) and comes back exactly as it was on leaving.
 var _sandbox_char := ""

@@ -65,6 +65,16 @@ static func generate(base_id: String, ilvl: int, rarity: int, rng: RandomNumberG
 		it["def"] = int(round(it["def"] * rng.randf_range(0.9, 1.2)))
 	var pool: Array = Data.AFFIX_SLOTS.get(slot, []).duplicate()
 	pool.shuffle()
+	# at most one utility affix (run speed, dodge cost, cooldowns, potions, crowd control) on an item
+	var util_seen := false
+	var kept: Array = []
+	for st in pool:
+		if st in Data.UTILITY:
+			if util_seen:
+				continue
+			util_seen = true
+		kept.append(st)
+	pool = kept
 	if rarity == 1:
 		var n := rng.randi_range(1, 2)
 		var prefix := ""
@@ -113,13 +123,17 @@ static func scaled(stat: String, v) -> int:
 static func upgrade(it):
 	if not (it is Dictionary) or int(it.get("gen", 1)) >= Data.ITEM_GEN or not it.has("base") or not Data.BASES.has(it["base"]):
 		return it
+	var was := int(it.get("gen", 1))
+	if was >= 2 and not it.has("unique"):
+		it["gen"] = Data.ITEM_GEN        # (already the rework's sizes: only uniques change after gen 2)
+		return it
 	if it.has("unique") and Data.UNIQUES.has(it["unique"]):
 		var u := make_unique(it["unique"])
 		for k in ["ench", "temper", "count"]:
 			if it.has(k):
 				u[k] = it[k]
 		if float(it.get("power", 1.0)) > 1.0:
-			empower(u, new_power(float(it["power"])))
+			empower(u, new_power(float(it["power"])) if was < 2 else float(it["power"]))
 		return u
 	# an A2/A3 item: its old act strength (x5, x25) becomes the act's new one (Data.OLD_POWER)
 	var power := float(it.get("power", 1.0))
@@ -141,6 +155,32 @@ static func upgrade(it):
 	it["affixes"] = aff
 	it["gen"] = Data.ITEM_GEN
 	return it
+
+static func can_reforge(it) -> bool:
+	return it is Dictionary and int(it.get("rarity", 0)) in [1, 2] and not (it.get("affixes", []) as Array).is_empty()
+
+## The bonfire's Reforge: the affix that rolled lowest for its range is replaced by a new roll of a stat the item
+## doesn't have (nor the one replaced) (from its slot's pool, one utility affix at most), at the item's level and act strength. Returns the
+## new affix as its label.
+static func reforge(it: Dictionary, rng: RandomNumberGenerator) -> String:
+	var aff: Array = it["affixes"]
+	var worst := 0
+	for i in aff.size():
+		if _roll_share(aff[i], it) < _roll_share(aff[worst], it):
+			worst = i
+	var have := aff.map(func(a): return a[0])       # (the old stat is left out too: a reroll is something new)
+	var keep := have.duplicate()
+	keep.remove_at(worst)
+	var has_util := keep.any(func(st): return st in Data.UTILITY)
+	var pool: Array = (Data.AFFIX_SLOTS.get(slot_class(it["base"]), []) as Array).filter(func(st): return not (st in have) and not (has_util and st in Data.UTILITY))
+	if pool.is_empty():
+		return ""
+	var na := roll_affix(pool[rng.randi() % pool.size()], int(it.get("ilvl", 1)), rng)
+	var p := float(it.get("power", 1.0))
+	if p > 1.0 and not (na[0] in PCT_STATS):
+		na[1] = int(round(float(na[1]) * p))
+	aff[worst] = na
+	return str(Data.STAT_LABEL.get(na[0], na[0] + " %d")) % int(na[1])
 
 ## An old act strength (x5, x25) as the items rework's (Data.OLD_POWER); new ones pass through.
 static func new_power(p: float) -> float:
@@ -172,7 +212,7 @@ static func upgrade_all(lists: Array) -> void:
 static func random_drop(ilvl: int, mf: float, rng: RandomNumberGenerator, boss := false) -> Dictionary:
 	var m := 1.0 + mf / 100.0
 	var r := rng.randf()
-	var uq := (0.18 if boss else 0.012) * m
+	var uq := (0.04 if boss else 0.003) * m      # (the items rework: uniques come from bosses' tables, Data.BOSS_LOOT)
 	if r < uq:
 		var cands := []
 		for k in Data.UNIQUES.keys():
@@ -197,7 +237,7 @@ static func random_drop(ilvl: int, mf: float, rng: RandomNumberGenerator, boss :
 ## A2 loot: multiplies weapon damage, armour and every affix on an item.
 ## Bonuses that are percentages or chances. empower leaves them as rolled: multiplying them
 ## made A2/A3 items with 100%+ resist (immunity), 100%+ life steal or 25x run speed.
-const PCT_STATS := ["ed", "edef", "ias", "ls", "res", "block", "gf", "mf", "frw"]
+const PCT_STATS := ["ed", "edef", "ias", "ls", "res", "block", "gf", "mf", "frw", "stam", "cdr", "pot", "ten"]
 
 ## A2/A3 loot: base damage, defense and every flat bonus times mult.
 static func empower(it: Dictionary, mult: float) -> Dictionary:

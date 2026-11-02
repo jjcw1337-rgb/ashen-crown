@@ -56,7 +56,12 @@ func _run() -> void:
 	check(h.life < l0, "the bot closes in and hits you (%d -> %d life in %.1f s)" % [int(l0), int(h.life), t / 60.0])
 	h.life = h.max_life
 	g.test_immortal = true
-	# your blows reach it, its own don't
+	# your blows reach it, its own don't (its brain paused, any roll it was in finished)
+	sb.bots[0]["brain"].react = 9999.0
+	sb.bots[0]["brain"]._think = 9999.0
+	await frames(90)
+	b.life = b.max_life
+	b.ward = 0.0
 	var bl0: float = b.life
 	HS.striker = h
 	var dealt: float = sb.bots[0]["proxy"].take_damage(40.0, 0.0, h.global_position, 0.0, false)
@@ -65,6 +70,7 @@ func _run() -> void:
 	var own: float = sb.bots[0]["proxy"].take_damage(40.0, 0.0, b.global_position, 0.0, false)
 	check(own == 0.0, "and its own blows never land on it")
 	# it falls and stands up again
+	b.block_chance = 0.0        # (the knight's shield would block it)
 	b.take_hit(1e6, h.global_position, "pvp", "phys")
 	check(b.dead, "it can fall")
 	t = 0
@@ -73,6 +79,8 @@ func _run() -> void:
 		t += 1
 	check(not b.dead and b.life == b.max_life, "and stands up again (%.1f s)" % (t / 60.0))
 	check(sb.log_lines.size() > 0, "the kill is in the log: %s" % str(sb.log_lines))
+	sb.bots[0]["brain"].react = 0.18
+	sb.bots[0]["brain"]._think = 0.0
 	# monsters go for a bot when it's nearer
 	b.global_position = Vector3(10, 0, -10)
 	h.global_position = Vector3(-12, 0, 12)

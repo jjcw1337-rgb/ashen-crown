@@ -1945,6 +1945,8 @@ func _inv_click(idx: int, ev: InputEventMouseButton) -> void:
 			refresh()
 		elif shop_mode == "burn":
 			burn_request(idx)
+		elif shop_mode == "reforge":
+			reforge_request(idx)
 		elif shop_mode == "furnace":
 			furnace_ui.bag_click(idx, ev.shift_pressed)
 		elif shop_mode == "stash":
@@ -2068,7 +2070,10 @@ func _finish_drag(forced: Array = []) -> void:
 		"equip":
 			hero.equip_from_inventory(idx)
 		"fire":
-			burn_request(idx)
+			if shop_mode == "reforge":
+				reforge_request(idx)
+			else:
+				burn_request(idx)
 	refresh()
 
 # ---------------------------------------------------------------- character
@@ -2779,6 +2784,7 @@ const BURN_HEARTH := Rect2(52, 112, 256, 260)
 const BONFIRE_OPTIONS := [
 	["burn", "Burn", "Throw unwanted gear on the fire. Drag it onto the flames or right-click it in your bag."],
 	["enchant", "Enchant", "Bind runes into your worn armour over the flames: more defense and life, up to +10."],
+	["reforge", "Reforge", "Spend a Cinderheart, Everfrost or Stormglass: the weakest affix of a magic or rare item is rerolled. Right-click it in your bag or drag it onto the flames."],
 ]
 const BONFIRE_SOCKETS := 6
 var burn_hint: Label
@@ -2931,6 +2937,11 @@ func _bonfire_option(id: String) -> void:
 		"burn":
 			_bonfire_select("burn")
 			shop_mode = "burn"
+			burn_hint.text = "Drag an item onto the fire, or right-click it in your bag. It burns for good."
+		"reforge":
+			_bonfire_select("reforge")
+			shop_mode = "reforge"
+			burn_hint.text = "Drag a magic or rare item onto the fire, or right-click it: one Sloth material rerolls its weakest affix."
 		"enchant":
 			var fire = trade_with
 			open_enchant("Bonfire")
@@ -2956,6 +2967,17 @@ class FireIcon extends Control:
 					var b := c + Vector2(0, s * 0.3)
 					draw_colored_polygon(PackedVector2Array([b + Vector2(-w, 0), b + Vector2(-w * 0.9 + sw * 0.3, -h * 0.55),
 						b + Vector2(sw, -h * 1.6), b + Vector2(w * 0.9 + sw * 0.3, -h * 0.55), b + Vector2(w, 0)]), cols[k])
+			"reforge":
+				# an anvil with a hammer over it, sparks off the blow
+				draw_rect(Rect2(c + Vector2(-s * 0.3, s * 0.02), Vector2(s * 0.6, s * 0.12)), Color(0.42, 0.4, 0.38))
+				draw_rect(Rect2(c + Vector2(-s * 0.12, s * 0.14), Vector2(s * 0.24, s * 0.16)), Color(0.36, 0.34, 0.32))
+				var sw := sin(_t * 4.0) * 0.25
+				var hp := c + Vector2(s * 0.08, -s * 0.18)
+				draw_line(hp, hp + Vector2(cos(-0.9 + sw), sin(-0.9 + sw)) * s * 0.3, Color(0.55, 0.38, 0.2), 3.0)
+				draw_rect(Rect2(hp + Vector2(-s * 0.09, -s * 0.06), Vector2(s * 0.18, s * 0.12)), Color(0.75, 0.6, 0.35))
+				var glow2 := 0.5 + 0.5 * sin(_t * 8.0)
+				for k in 3:
+					draw_circle(c + Vector2(-s * 0.1 + k * s * 0.1, -s * 0.02 - glow2 * s * 0.08), s * 0.025, Color(1.0, 0.7, 0.3, glow2))
 			"enchant":
 				var pts := PackedVector2Array([c + Vector2(-s * 0.32, -s * 0.3), c + Vector2(s * 0.32, -s * 0.3), c + Vector2(s * 0.26, s * 0.12),
 					c + Vector2(0, s * 0.36), c + Vector2(-s * 0.26, s * 0.12)])
@@ -3006,6 +3028,35 @@ func burn_request(idx: int) -> void:
 			["Keep it", func(): pass]])
 		return
 	_burn(idx, it)
+
+## The bonfire's Reforge (the items rework: rewards from effort): a magic or rare item's weakest affix rerolled for
+## one Sloth material from the bag (Items.reforge).
+func reforge_request(idx: int) -> void:
+	var it = hero.inventory[idx]
+	if it == null:
+		return
+	tooltip.visible = false
+	if not Items.can_reforge(it):
+		message("Only magic and rare items can be reforged", Color(1, 0.5, 0.35))
+		Sfx.play("deny")
+		return
+	var mat := -1
+	for i in hero.inventory.size():
+		if Items.is_material(hero.inventory[i]):
+			mat = i
+			break
+	if mat < 0:
+		message("You need a Cinderheart, Everfrost or Stormglass (the Hollow Sloths carry them)", Color(1, 0.5, 0.35))
+		Sfx.play("deny")
+		return
+	var spent: String = hero.inventory[mat]["name"]
+	hero.inventory[mat] = null
+	var got := Items.reforge(it, game.rng)
+	hero.recalc()
+	game.burned(it)
+	(burn_fire as Flames).flare = 1.0
+	message("%s reforged with the %s: %s" % [it["name"], spent, got], Color(1.0, 0.8, 0.45))
+	refresh()
 
 func _burn(idx: int, it: Dictionary) -> void:
 	if hero.inventory[idx] != it:

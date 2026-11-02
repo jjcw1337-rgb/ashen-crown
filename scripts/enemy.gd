@@ -274,6 +274,10 @@ func ignite(dps: float, t: float, look := "") -> void:
 		DemonFx.ignite(game.world.fx_root, self)
 
 func chill(k: float, t: float) -> void:
+	if sandbox_hero != null:
+		if Hero.striker != sandbox_hero and not sandbox_hero.dead:
+			sandbox_hero.chill_t = maxf(sandbox_hero.chill_t, t * sandbox_hero.cc_k())
+		return
 	if remote:
 		game.net.send_enemy_chill(self, k, t)
 	if boss:
@@ -313,9 +317,9 @@ func stun(t: float) -> void:
 	if sandbox_hero != null:
 		if Hero.striker != sandbox_hero and not sandbox_hero.dead:
 			if t < 0.0:
-				sandbox_hero.chill_t = maxf(sandbox_hero.chill_t, -t)
+				sandbox_hero.chill_t = maxf(sandbox_hero.chill_t, -t * sandbox_hero.cc_k())
 			else:
-				sandbox_hero.daze_t = maxf(sandbox_hero.daze_t, minf(t, 1.5))
+				sandbox_hero.daze_t = maxf(sandbox_hero.daze_t, minf(t, 1.5) * sandbox_hero.cc_k())
 		return
 	if t < 0.0:
 		# a slow rides the stun RPC as a negative time (the Wraith's Soul Siphon), so the RPC set stays as it is
@@ -333,7 +337,7 @@ func stun(t: float) -> void:
 func slow(t: float, amt: float) -> void:
 	if sandbox_hero != null:
 		if Hero.striker != sandbox_hero and not sandbox_hero.dead:
-			sandbox_hero.chill_t = maxf(sandbox_hero.chill_t, t)
+			sandbox_hero.chill_t = maxf(sandbox_hero.chill_t, t * sandbox_hero.cc_k())
 		return
 	if remote:
 		game.net.send_enemy_stun(self, -t)
