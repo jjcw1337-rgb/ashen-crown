@@ -1961,8 +1961,10 @@ static func _trail_shader() -> Shader:
 		_trail_sh.code = """shader_type spatial;
 render_mode unshaded, blend_add, cull_disabled, depth_draw_never, shadows_disabled;
 void fragment() {
-	float age = UV.x;
-	float edge = UV.y;
+	// clamped: the strip's interpolation can dip a hair below 0 at the hilt edge, and pow() of a negative is NaN,
+	// which the framebuffer shows as black specks along the trail
+	float age = clamp(UV.x, 0.0, 1.0);
+	float edge = clamp(UV.y, 0.0, 1.0);
 	float body = pow(edge, 1.3) * 0.5;
 	float rim = smoothstep(0.78, 1.0, edge) * 1.25;
 	float fade = pow(clamp(1.0 - age, 0.0, 1.0), 1.7);
