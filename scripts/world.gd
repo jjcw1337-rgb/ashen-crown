@@ -1825,7 +1825,12 @@ func crypt_shell() -> void:
 				wall_xf.append(Transform3D(Basis(Vector3.UP, rng.randf_range(-0.04, 0.04)).scaled(Vector3(1.0, hh, 1.0)), Vector3(wx, hh * 0.5, wz)))
 			else:
 				top_xf.append(Transform3D(Basis().scaled(Vector3(1.0, 0.2, 1.0)), Vector3(wx, 3.0, wz)))
-	var wm := Mats.world(Color(0.4, 0.38, 0.35), Color(0.28, 0.27, 0.25), 0.9, 2.2, 0.25, Color(0.14, 0.16, 0.09))
+	var wm: Material = Mats.world(Color(0.4, 0.38, 0.35), Color(0.28, 0.27, 0.25), 0.9, 2.2, 0.25, Color(0.14, 0.16, 0.09))
+	if str(theme.get("name", "")) == "bg":
+		# the Hollow Crypt: some wall cells become niches, tombs, statues and braziers (the rolls above are made
+		# whatever is drawn), the rest the textured crypt stone
+		wall_xf = CryptProps.walls(self, wall_xf)
+		wm = CryptProps.wall_material()
 	Props.multimesh(props_root, Geo.box(1.02, 1.0, 1.02), wall_xf).material_override = wm
 	Props.multimesh(props_root, Geo.box(1.0, 1.0, 1.0), top_xf, false).material_override = Mats.world(Color(0.05, 0.05, 0.05), Color(0.03, 0.03, 0.03), 1.0, 1.0, 0.0, Props.MOSS, true)
 	_flush_stones(Props.stone())
@@ -1917,32 +1922,51 @@ func _treasure_chest(p: Vector3, yaw: float) -> void:
 	g.rotation_degrees.y = yaw
 	solid(g)
 
+## The crypt's props (A3's crypt and the Hollow Crypt): the Meshy pieces in assets/models/crypt/ when they are there
+## (CryptProps), the old code-built ones otherwise. Footprints and the rolls on `rng` are the same either way.
 func _pillar(p: Vector3, h: float) -> void:
 	var g := Models.N(null, "pillar")
-	var sm := Props.stone_clean()
-	Models.P(g, Geo.box(1.0, 0.4, 1.0), sm, Vector3(0, 0.2, 0))
-	Models.P(g, Geo.cyl(0.36, 0.4, h - 0.8, 12), sm, Vector3(0, h * 0.5, 0))
-	Models.P(g, Geo.box(1.0, 0.4, 1.0), sm, Vector3(0, h - 0.2, 0))
+	var mm := CryptProps.pillar(h)
+	if mm != null:
+		g.add_child(mm)
+	else:
+		var sm := Props.stone_clean()
+		Models.P(g, Geo.box(1.0, 0.4, 1.0), sm, Vector3(0, 0.2, 0))
+		Models.P(g, Geo.cyl(0.36, 0.4, h - 0.8, 12), sm, Vector3(0, h * 0.5, 0))
+		Models.P(g, Geo.box(1.0, 0.4, 1.0), sm, Vector3(0, h - 0.2, 0))
 	_place(g, p)
 	add_circle(p, 0.55)
 
 func _sarcophagus(p: Vector3, yaw: float) -> void:
 	var g := Props.footprint(Models.N(null, "sarc"), Vector2(0.6, 1.2))
-	var sm := Props.stone_clean()
-	Models.P(g, Geo.box(1.1, 0.8, 2.3), sm, Vector3(0, 0.4, 0))
-	var lid := Models.P(g, Geo.box(1.2, 0.2, 2.4), sm, Vector3(0.15, 0.9, 0.1), Vector3(0, 8, 4))
-	Models.P(g, Geo.sph(0.12, 8), Mats.world(Color(0.75, 0.7, 0.6), Color(0.6, 0.55, 0.45), 0.7, 3.0, 0.0, Props.MOSS, true), Vector3(-0.3, 0.12, 1.4))
+	var mm := CryptProps.sarcophagus()
+	if mm != null:
+		g.add_child(mm)
+	else:
+		var sm := Props.stone_clean()
+		Models.P(g, Geo.box(1.1, 0.8, 2.3), sm, Vector3(0, 0.4, 0))
+		var lid := Models.P(g, Geo.box(1.2, 0.2, 2.4), sm, Vector3(0.15, 0.9, 0.1), Vector3(0, 8, 4))
+		Models.P(g, Geo.sph(0.12, 8), Mats.world(Color(0.75, 0.7, 0.6), Color(0.6, 0.55, 0.45), 0.7, 3.0, 0.0, Props.MOSS, true), Vector3(-0.3, 0.12, 1.4))
 	_place(g, p)
 	g.rotation_degrees.y = yaw
 	solid(g)
 
 func _bones(p: Vector3) -> void:
 	var g := Models.N(null, "bones")
-	var bm := Mats.world(Color(0.72, 0.68, 0.58), Color(0.55, 0.5, 0.4), 0.7, 3.0, 0.0, Props.MOSS, false)
+	# the same seven rolls whichever bones are drawn (the server's layout depends on what follows them)
+	var rolls := []
 	for i in 6:
-		var b := Models.P(g, Geo.cyl(0.025, 0.025, rng.randf_range(0.3, 0.5), 5), bm, Vector3(rng.randf_range(-0.4, 0.4), 0.03, rng.randf_range(-0.4, 0.4)), Vector3(90, rng.randf() * 360.0, 0))
-	if rng.randf() < 0.6:
-		Models.P(g, Geo.sph(0.11, 8), bm, Vector3(0.1, 0.1, 0.0), Vector3.ZERO, Vector3(0.9, 1.0, 1.1))
+		rolls.append([rng.randf_range(0.3, 0.5), rng.randf_range(-0.4, 0.4), rng.randf_range(-0.4, 0.4), rng.randf() * 360.0])
+	var skull := rng.randf() < 0.6
+	var mm := CryptProps.bones(deg_to_rad(float(rolls[0][3])))
+	if mm != null:
+		g.add_child(mm)
+	else:
+		var bm := Mats.world(Color(0.72, 0.68, 0.58), Color(0.55, 0.5, 0.4), 0.7, 3.0, 0.0, Props.MOSS, false)
+		for r in rolls:
+			Models.P(g, Geo.cyl(0.025, 0.025, float(r[0]), 5), bm, Vector3(float(r[1]), 0.03, float(r[2])), Vector3(90, float(r[3]), 0))
+		if skull:
+			Models.P(g, Geo.sph(0.11, 8), bm, Vector3(0.1, 0.1, 0.0), Vector3.ZERO, Vector3(0.9, 1.0, 1.1))
 	_place(g, p)
 
 func _candles(p: Vector3, on_floor: bool) -> void:
@@ -1970,6 +1994,14 @@ func _candles(p: Vector3, on_floor: bool) -> void:
 
 func _wall_torch(p: Vector3, shadow: bool) -> void:
 	var g := Models.N(null, "sconce")
+	var mm := CryptProps.sconce()
+	if mm != null:
+		# the Meshy iron sconce, its back plate on the wall behind it (-z), the torch burning in its cup
+		mm.position = Vector3(0, 2.1, 0.0)
+		g.add_child(mm)
+		_place(g, p)
+		Props.fire(g, Vector3(0, 2.1, 0) + CryptProps.SCONCE_CUP, 0.6, Color(1.0, 0.5, 0.2), true, shadow, false, "torch")
+		return
 	Models.P(g, Geo.box(0.12, 0.3, 0.1), Props.iron(), Vector3(0, 2.2, 0.0))
 	Models.seg(g, Vector3(0, 2.1, 0), Vector3(0, 2.5, 0.3), 0.03, 0.04, Props.wood_dark(), 6)
 	_place(g, p)

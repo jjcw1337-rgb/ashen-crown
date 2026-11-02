@@ -12,7 +12,7 @@ run() {  # name  args...
 	local name=$1; shift
 	if [ -n "$ONLY" ] && [ "$ONLY" != "$name" ]; then return; fi
 	echo "=== $name"
-	blender -b --python "$S" -- "$RAW/$name.glb" "$OUT/$2.glb" "${@:3}" 2>&1 | grep -E "PROP|EXPORTED|BAKED|Error|error" || true
+	blender -b --python "$S" -- "$RAW/$name.glb" "$OUT/$1.glb" "$2" "$3" "${@:4}" 2>&1 | grep -E "PROP|EXPORTED|BAKED|Error|error" || true
 }
 # name          out           size    tris  options
 run sarc        sarcophagus   x=2.3   9000  --tex 1024
