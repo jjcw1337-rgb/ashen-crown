@@ -4,6 +4,8 @@
 # exported as one glb whose AnimationPlayer holds every clip by a clean name. Same steps as the knight's
 # tools/blender/knight/prep_knight_mocap.py, without the knight's cloak and scabbard.
 #   blender -b --python prep_ranger_mocap.py -- <rigged.glb> <out.glb> <tris> <clips.glb> [<clips.glb> ...]
+# Meshy: rig task 01a18daf-9298-7071-8ac4-201a57eb6b99; clips_a 0,30,14,16,509,228,231,224,222,150; clips_b
+# 189,158,98,230; clips_c 223,229,225,226,227,234,690 (task 01a1987d-29e6-717e-bb8b-cc284635ef0a, 21 credits)
 import bpy, sys
 a = sys.argv[sys.argv.index("--") + 1:]
 RIG, OUT, TRIS, CLIPS = a[0], a[1], int(a[2]), a[3:]
@@ -13,7 +15,12 @@ NAMES = {"idle": "idle", "casual_walk": "walk", "run_02": "run", "run_2": "run",
          "walk_forward_with_bow_aimed": "walk_aim", "archery_aim_with_lateral_scan": "combat_idle",
          "archery_shot": "shoot", "draw_and_shoot_from_back": "shoot_back", "hit_reaction_with_bow": "hit",
          "dying_backwards": "death", "roll_dodge": "roll", "run_and_shoot": "run_shoot",
-         "walk_backward_with_bow_aimed": "walk_back"}
+         "walk_backward_with_bow_aimed": "walk_back",
+         # the quick shot (Meshy 225 "Archery Shot 1": reach over the shoulder, nock, draw to the cheek, 1 s; and 227
+         # "Archery Shot 3": the loose, the string hand flung back, back to the ready stance, 0.67 s), joined below
+         # into "shoot_quick". (Compared and left out: 223/229 are near copies of 222/224, 226 only holds the aim, and
+         # 234/690 "Walk Forward While Shooting" hold a half draw the whole way and never loose.)
+         "archery_shot_1": "shoot1", "archery_shot_3": "shoot3"}
 def key(n):
     n = n.split("|")[-1].strip().lower().replace(" ", "_")
     return n
@@ -51,7 +58,35 @@ for ac in list(bpy.data.actions):
     tr.strips.new(nm, int(ac.frame_range[0]), ac)
     tr.mute = True
     n += 1
-print("clips", n, sorted(seen))
+# Archery Shot 3 starts on Archery Shot 1's last pose: one action, the draw then the loose
+if "shoot1" in seen and "shoot3" in seen:
+    a1, a3 = bpy.data.actions["shoot1"], bpy.data.actions["shoot3"]
+    off = a1.frame_range[1] - a3.frame_range[0]
+    q = a1.copy()
+    q.name = "shoot_quick"
+    for fc in q.fcurves:
+        src = a3.fcurves.find(fc.data_path, index=fc.array_index)
+        if src is None:
+            continue
+        for kp in src.keyframe_points:
+            if kp.co[0] <= a3.frame_range[0]:
+                continue
+            fc.keyframe_points.insert(kp.co[0] + off, kp.co[1], options={"FAST"})
+        fc.update()
+    for nm_ in ("shoot1", "shoot3"):
+        for tr in list(arm.animation_data.nla_tracks):
+            if tr.name == nm_:
+                arm.animation_data.nla_tracks.remove(tr)
+        bpy.data.actions.remove(bpy.data.actions[nm_])
+        seen.discard(nm_)
+    q.use_fake_user = True
+    tr = arm.animation_data.nla_tracks.new()
+    tr.name = "shoot_quick"
+    tr.strips.new("shoot_quick", int(q.frame_range[0]), q)
+    tr.mute = True
+    seen.add("shoot_quick")
+    print("shoot_quick", q.frame_range[:])
+print("clips", len(seen), sorted(seen))
 # the bow Meshy fused into his right hand goes (he holds the game's own bows, in his left hand, as the bow clips do)
 import os
 exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "bow_select.py")).read())

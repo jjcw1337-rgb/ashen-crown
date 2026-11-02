@@ -2,6 +2,36 @@ class_name Fx
 extends RefCounted
 ## One-shot visual effects. All nodes are parented to `root` (the zone's FX node).
 
+## Effect lights that cast shadows (a skill's fire, a burst): at most EFFECT_SHADOWS at once across every effect and
+## every player, each on a dual-paraboloid map (2 passes, not a cube's 6). A new shadow-casting light would otherwise
+## re-render the scene round it, and that was Fire Arrow's stutter (docs/nightly/KPIS.md "skills"). The rest light
+## the scene unshadowed. Call it before the light enters the tree, in place of `shadow_enabled = true`.
+const EFFECT_SHADOWS := 2
+
+static func effect_shadow(l: OmniLight3D) -> void:
+	l.omni_shadow_mode = OmniLight3D.SHADOW_DUAL_PARABOLOID
+	l.shadow_enabled = false
+	l.tree_entered.connect(func():
+		# (a frame later: a shadow map's first frame can still hold another light's texels)
+		later(l, 0.04, func():
+			if l.is_inside_tree() and l.get_tree().get_nodes_in_group("fx_shadow").size() < EFFECT_SHADOWS:
+				l.add_to_group("fx_shadow")
+				l.shadow_enabled = true), CONNECT_ONE_SHOT)
+
+## fn() in t seconds (game time), only if `node` still exists then. Use this, not a timer's lambda that captures a
+## node and checks is_instance_valid: when the node is freed first, Godot logs "Lambda capture at index 0 was freed"
+## as it calls the lambda, before the check runs (the servers reported it from effects on a puppet that had gone:
+## triage 2026-11-02). Here the timer holds only a weak reference; fn is called (and its captures read) only while
+## the node lives.
+static func later(node: Node, t: float, fn: Callable) -> void:
+	if node == null or not is_instance_valid(node) or not node.is_inside_tree():
+		return
+	var w: WeakRef = weakref(node)
+	node.get_tree().create_timer(t, false).timeout.connect(func():
+		var n: Node = w.get_ref() as Node
+		if n != null and is_instance_valid(n):
+			fn.call())
+
 static func _free_later(n: Node, t: float) -> void:
 	n.get_tree().create_timer(t, false).timeout.connect(n.queue_free)
 

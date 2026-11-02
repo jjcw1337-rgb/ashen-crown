@@ -663,12 +663,32 @@ static func lay_floor(w: World) -> void:
 	sm.set_shader_parameter("tint", Vector3(0.9, 0.9, 0.88))
 	var y := 0.015
 	var h := World.CELL * 0.5 + 0.02
+	# the Ossuary's rooms and ways only (the floors below keep their own ground), over their bounding box
+	var rects: Array = []
+	for r in w.floor_rects:
+		var rr: Rect2 = r
+		if BgFloors.floor_of(Vector3(rr.get_center().x, 0.0, rr.get_center().y)) == 1:
+			rects.append(rr)
+	if rects.is_empty():
+		return
+	var bb: Rect2 = rects[0]
+	for r in rects:
+		bb = bb.merge(r)
+	var i0 := maxi(0, int(floor((bb.position.x - w.origin.x) / World.CELL)))
+	var i1 := mini(w.gw - 1, int(ceil((bb.end.x - w.origin.x) / World.CELL)))
+	var j0 := maxi(0, int(floor((bb.position.y - w.origin.y) / World.CELL)))
+	var j1 := mini(w.gh - 1, int(ceil((bb.end.y - w.origin.y) / World.CELL)))
 	var tiles := {}      # Vector2i tile -> SurfaceTool
-	for j in w.gh:
-		for i in w.gw:
+	for j in range(j0, j1 + 1):
+		for i in range(i0, i1 + 1):
 			var cx: float = w.origin.x + (i + 0.5) * World.CELL
 			var cz: float = w.origin.y + (j + 0.5) * World.CELL
-			if not w.is_floor(cx, cz):
+			var inside := false
+			for r in rects:
+				if (r as Rect2).has_point(Vector2(cx, cz)):
+					inside = true
+					break
+			if not inside:
 				continue
 			var key := Vector2i(floori(cx / TILE), floori(cz / TILE))
 			if not tiles.has(key):

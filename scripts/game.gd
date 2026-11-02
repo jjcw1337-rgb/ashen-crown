@@ -48,15 +48,26 @@ var playing := false
 ## Battlegrounds (battlegrounds.gd): the server's raid logic (only on a `--server` run), whether this game is a
 ## player in a raid, and that player's stash as the server last reported it.
 var bg: Battlegrounds
-var bg_mode := false
+var bg_mode := false:
+	set(v):
+		var was := bg_mode
+		bg_mode = v
+		# the Battlegrounds' gear rules come and go with the raid (Hero.pvp_scaled)
+		if was != v and hero != null and is_instance_valid(hero):
+			hero.recalc()
+			hero.life = hero.max_life
 var net_joining := false     # a co-op join sent, no welcome yet (on_net_failed then goes back to the co-op screen)
 var bg_home_run := -1        # in a raid: the character's own act (Net.cl_welcome swaps to the raid's, saves keep this)
 var bg_raid := {}               # the round as the raid server last said (Net.cl_bg_raid): state, t, open portals...
 var bg_from_waypoint := false   # the raid was taken from the camp's waypoint: it ends back on the dais, not on the title
 var bg_gained := -1             # ... items brought out of it (-1: no extraction; the news told back at the camp)
+var bg_wait_until := 0         # turned away late in a round: when (ticks msec) the next raid lets players in
+var bg_refusal := ""           # why the raid server last turned us away ("closed", "refused")
+var bg_retry := []             # [addr, character id] to rejoin with when the wait is over
 ## Characters and the stash in Nakama (cloud_saves.gd), in builds with BuildEnv.cloud() on; null otherwise.
 var cloud: CloudSaves
 var coop_server: CoopServer     # the online co-op server's logic (coop_server.gd), only on a `--server --coop` run
+var sandbox: Sandbox = null     # the admins' Battlegrounds sandbox (sandbox.gd) while one is open
 var paused := false
 var hovered = null
 var ground_pt := Vector3.ZERO
@@ -72,11 +83,14 @@ var max_run := 0             # highest of those reached; any of them can be pick
 ## TESTING: unlock Act I, A2 and A3 at the camp waypoint from the start. Set to false to
 ## go back to unlocking them by beating each final boss. Only takes effect where dev_tools is on.
 const UNLOCK_ALL_ACTS := true
-## Developer tools (unlock-all-acts and the F8 testing panel): only for the owner. On when running from
-## the Godot editor, or when this PC holds a valid admin key (AdminKey: signed with the owner's private
-## key, so it can't be made up or shared by editing a file). Off for everyone else in every build.
+## Developer tools (unlock-all-acts and the Escape menu's Admin column): only for the admins. On when running from
+## the Godot editor (or a local debug run), for an account with the admin role (Nakama, tools/admin_role.sh;
+## CloudSaves turns it on after signing in), or when this PC holds a valid admin key (AdminKey: signed with the owner's private key, so it can't be made up or shared by editing a file).
+## Off for everyone else in every production build.
 var admin_name := AdminKey.holder()
-var dev_tools := UNLOCK_ALL_ACTS and (OS.has_feature("editor") or admin_name != "")
+var dev_tools := UNLOCK_ALL_ACTS and (OS.has_feature("editor") or admin_name != "" or (BuildEnv.env() == "local" and OS.has_feature("debug")))
+var account_id := ""            # this player's Nakama account (CloudSaves), shown in the Admin column to be made an admin
+var account_admin := false      # the account has the admin role (Nakama, tools/admin_role.sh): the admin tools on
 var run_progress := {}       # per run: its waypoints and whether its boss is dead
 var played_s := 0.0          # seconds this character has been played (saved); the clock trees regrow on (Harvest)
 var harvest_saved := {}      # "<run>:<act>:<zone>" -> Harvest.to_save() (the felled trees and when they regrow)
@@ -116,6 +130,8 @@ func _ready() -> void:
 			shot_zone = args[i + 1]
 		if args[i] == "--run" and i + 1 < args.size():
 			difficulty = int(args[i + 1])
+		if args[i] == "--render-scale" and i + 1 < args.size():
+			render_scale_arg = float(args[i + 1])
 	quality = _initial_quality()
 	set_sound(bool(_load_setting("audio", "sound_on", true)))
 	click_move = bool(_load_setting("controls", "click_move", false))
@@ -129,6 +145,7 @@ func _ready() -> void:
 	add_child(grass_field)
 	_setup_camera()
 	_setup_post()
+	get_window().size_changed.connect(apply_render_scale)
 	quests = Quests.new(self)
 	ui = UI.new()
 	add_child(ui)
@@ -438,10 +455,10 @@ func _sea_sounds() -> void:
 
 ## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
-	return cur_zone == Battlegrounds.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
+	return cur_zone == Battlegrounds.ZONE or cur_zone == Vigil.ZONE or cur_zone == Sandbox.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
 
 func _zone_env(kind: String) -> void:
-	var inside := kind == Battlegrounds.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
+	var inside := kind == Battlegrounds.ZONE or kind == Vigil.ZONE or kind == Sandbox.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
 	var snowy := is_snowy() and not inside
 	var ashen := difficulty >= 2 and not inside
 	RenderingServer.global_shader_parameter_set("snow_amt", 1.0 if snowy else 0.0)
@@ -477,13 +494,19 @@ func _zone_env(kind: String) -> void:
 		hero.light.light_energy = 2.6
 		hero.light.omni_range = 17.0
 		if kind == Battlegrounds.ZONE:
-			# the Hollow Crypt is darker: a smaller circle round the hero, the torches and candles do the rest. (Lifted
-			# a little on Nov 2 with the Meshy crypt: its darker stone and flagstones left the rooms between the
-			# torch pools black; 0.55 / 1.25 / 2.0 before)
-			env.ambient_light_energy = 0.85
-			env.tonemap_exposure = 1.4
-			hero.light.light_energy = 2.3
+			# the Hollow Crypt is darker: a smaller circle round the hero, the torches and candles do the rest
+			env.ambient_light_energy = 0.55
+			env.tonemap_exposure = 1.25
+			hero.light.light_energy = 2.0
 			hero.light.omni_range = 11.0
+		elif kind == Vigil.ZONE:
+			# the Last Flame's sanctum: warm, the altar's fire the heart of it, the breaches glowing red
+			env.ambient_light_color = Color(0.5, 0.44, 0.42)
+			env.ambient_light_energy = 0.75
+			env.tonemap_exposure = 1.35
+			env.fog_light_color = Color(0.12, 0.07, 0.05)
+			hero.light.light_energy = 2.2
+			hero.light.omni_range = 13.0
 	else:
 		env.background_mode = Environment.BG_SKY
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
@@ -741,10 +764,19 @@ func apply_quality(q: int) -> void:
 	quality = clampi(q, 0, max_quality())
 	q = quality
 	var forward := is_forward()
-	env.ssao_enabled = q >= 1 and forward
+	# ambient occlusion: indoors from Medium, outdoors only on Ultra. Godot's SSAO only darkens ambient light, and the
+	# outdoor zones are lit by the sun, the moon and fires: without it the camp, the moor and the arena come out the
+	# same (fixed-step screenshots: brightness within 0.1-1%, differences no bigger than between two identical runs)
+	# while it cost ~7 ms of the GPU frame at High; in the crypt it shows (4.7% darker corners), so indoors keep it
+	# (nightly 2026-11-02, docs/nightly/perf/runs/2026-11-02.md)
+	env.ssao_enabled = forward and (q >= 3 or (q >= 1 and indoor()))
 	env.ssao_radius = 1.2
 	env.ssao_intensity = 2.2
-	env.ssil_enabled = q >= 2 and forward
+	# screen-space indirect light: Ultra only. At High (medium quality, half size) it cost 6-8 ms of the GPU frame
+	# (the crypt: 26.6 -> 18.4 ms) and changed nothing that shows: fixed-step screenshots of the camp, moor, crypt,
+	# fort and arena with and without it differ no more than two identical runs, brightness within 0.5% (nightly
+	# 2026-11-02, docs/nightly/perf/runs/2026-11-02.md)
+	env.ssil_enabled = q >= 3 and forward
 	env.ssil_intensity = 0.8
 	env.ssr_enabled = q >= 3 and forward
 	env.volumetric_fog_enabled = q >= 2 and forward
@@ -785,6 +817,31 @@ func apply_quality(q: int) -> void:
 	Grass.apply_quality(self, q)
 	if world != null and world.has_node("Ocean"):
 		(world.get_node("Ocean") as Ocean).set_quality(q)
+	apply_render_scale()
+
+## How many pixels the 3D view may draw at most on Low and Medium (High and Ultra draw every pixel). The UI is
+## always drawn at the window's full size. A Retina Mac's window has four times the pixels of its size in points
+## and the game drew the 3D into all of them: an M5 Pro in the camp ran a steady 21 fps on Medium and 29 on Low
+## (telemetry, triage 2026-11-02) where a 1080p screen runs 79 / 94. A 1080p window on Medium is under its cap (unchanged).
+const RENDER_PIXEL_CAP := [1600 * 900, 1920 * 1080]
+var render_scale_arg := -1.0     # --render-scale N: a fixed 3D scale (KPI comparisons; 2.0 = a Retina screen's cost)
+
+## The 3D view's resolution for the preset and the window, upscaled with FSR 1 (bilinear in Compatibility).
+func apply_render_scale() -> void:
+	var vp := get_viewport()
+	if vp == null or DisplayServer.get_name() == "headless":
+		return
+	var px := float(get_window().size.x * get_window().size.y)
+	var s := 1.0
+	if render_scale_arg > 0.0:
+		s = render_scale_arg
+	elif quality < RENDER_PIXEL_CAP.size() and px > RENDER_PIXEL_CAP[quality]:
+		s = clampf(sqrt(RENDER_PIXEL_CAP[quality] / px), 0.5, 1.0)
+		if s > 0.9:
+			s = 1.0    # (a few percent isn't worth the softening)
+	vp.scaling_3d_scale = s
+	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if s < 1.0 and is_forward() else Viewport.SCALING_3D_MODE_BILINEAR
+	vp.fsr_sharpness = 0.3
 
 func max_quality() -> int:
 	return 1 if OS.has_feature("web") else 3
@@ -998,6 +1055,8 @@ func zone_title(act: int, zone: String) -> String:
 		"lair": return ("Throne of the Ashen King" if difficulty >= 2 else a["lair"]) + tag
 		"coast": return str(a.get("coast", "The Coast")) + tag
 		Battlegrounds.ZONE: return Battlegrounds.TITLE
+		Vigil.ZONE: return Vigil.TITLE
+		Sandbox.ZONE: return Sandbox.TITLE
 	if zone.begins_with("isle_"):
 		return str(Isles.get_isle(Isles.id_of(zone)).get("name", "An Island")) + tag
 	return ""
@@ -1012,12 +1071,16 @@ func xp_mult() -> float:
 func loot_mult() -> float:
 	return run_mult("loot")
 
+## How much stronger this act's items are (Items.empower; Data.RUNS "power").
+func power_mult() -> float:
+	return run_mult("power")
+
 ## How a run compares to Act I, in words, for banners and the victory panel.
 func run_note(d: int) -> String:
 	if d <= 0:
 		return "Monsters and loot at their normal strength."
 	var x := func(v: float) -> String: return ("%d" % int(round(v))) if v >= 10.0 else ("%.1f" % v).trim_suffix(".0")
-	return "Monsters have %s times the life and %s times the damage of Act I. Every item they drop is %s times stronger." % [x.call(run_mult("life", d)), x.call(run_mult("dmg", d)), x.call(run_mult("loot", d))]
+	return "Monsters have %s times the life and %s times the damage of Act I. Every item they drop is %s times stronger." % [x.call(run_mult("life", d)), x.call(run_mult("dmg", d)), x.call(run_mult("power", d))]
 
 func run_name(d: int = -1) -> String:
 	if d < 0:
@@ -1369,8 +1432,8 @@ func _check_ambushes() -> void:
 				break
 
 func _spring_ambush(am: Dictionary) -> void:
-	ui.big_message("Ambush!")
-	Sfx.play("battle_cry", -6.0, 0.8)
+	ui.big_message(str(am.get("msg", "Ambush!")))
+	Sfx.play(str(am.get("sound", "battle_cry")), -6.0, float(am.get("pitch", 0.8)))
 	add_shake(0.2)
 	var land: Vector3 = am["land"]
 	for es in am["spawns"]:
@@ -1390,10 +1453,14 @@ func all_heroes() -> Array:
 	var out := [hero]
 	if net.active:
 		out.append_array(net.puppets())
+	if sandbox != null:
+		out.append_array(sandbox.bot_heroes())
 	return out
 
 ## Monsters go after the nearest knight that is still standing.
 func target_for(e: Node3D) -> Hero:
+	if sandbox != null:
+		return sandbox.nearest_hero(e.global_position)
 	if not net.active:
 		return hero
 	var best: Hero = hero
@@ -1460,8 +1527,8 @@ func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
 	ui.refresh()
 
 ## Co-op from the title screen. Your last character is used if you have one.
-func start_host() -> void:
-	await start_game(not list_characters().is_empty())
+func start_host(id := "") -> void:
+	await start_game(not list_characters().is_empty(), "knight", id)
 	var err := net.host()
 	if err != OK:
 		ui.big_message("Could not host")
@@ -1469,7 +1536,7 @@ func start_host() -> void:
 	else:
 		ui.message("Hosting! Your partner can now pick Join Co-op Game", Color(0.5, 1.0, 0.5))
 
-func start_join(ip: String) -> void:
+func start_join(ip: String, id := "") -> void:
 	while _busy:
 		await get_tree().process_frame
 	Sfx.play("click")
@@ -1477,7 +1544,7 @@ func start_join(ip: String) -> void:
 	ui.hide_title()
 	playing = true
 	var chars := list_characters()
-	char_id = str(chars[0]["id"]) if not chars.is_empty() else new_char_id()
+	char_id = id if id != "" else (str(chars[0]["id"]) if not chars.is_empty() else new_char_id())
 	if not load_game():
 		char_name = default_name(hero.cls)
 		hero.new_character()
@@ -1491,7 +1558,7 @@ func start_join(ip: String) -> void:
 	await get_tree().create_timer(8.0).timeout
 	if net.is_client() and net.players.is_empty() and loading.visible and not _busy:
 		net.shutdown()
-		on_net_failed("No answer from %s. Check the host's game is running and Windows Firewall allowed it." % ip)
+		on_net_failed(net.join_failure("No answer from %s. Check the host's game is running and Windows Firewall allowed it." % ip))
 
 ## Battlegrounds from the title screen: the character `id` (one of the player's own; what it carries in, it risks)
 ## joins the raid server at `addr` ("host" or "host:port"). Its save is marked in_raid until it extracts, so closing
@@ -1501,6 +1568,9 @@ func start_battlegrounds(addr: String, id: String) -> void:
 	while _busy:
 		await get_tree().process_frame
 	Telemetry.crumb("raid", {"server": addr, "from": "waypoint" if bg_from_waypoint else "title"})
+	bg_retry = [addr, id]
+	bg_refusal = ""
+	bg_wait_until = 0
 	Sfx.play("click")
 	net.stop_listening()
 	char_id = id
@@ -1536,7 +1606,24 @@ func start_battlegrounds(addr: String, id: String) -> void:
 	await get_tree().create_timer(8.0).timeout
 	if bg_mode and net.is_client() and loading.visible and not _busy and cur_zone != Battlegrounds.ZONE:
 		net.shutdown()
-		on_net_failed("No answer from the Battlegrounds server at %s." % a[0])
+		on_net_failed(net.join_failure("No answer from the Battlegrounds server at %s." % a[0]))
+
+## The raid server turned us away (Net.cl_bg_refused): too late into the round, or the account. For a closed raid,
+## wait out the rest of it on the Battlegrounds screen (UI.bg_status counts down) and rejoin by ourselves.
+func bg_refused(why: String, secs: float) -> void:
+	bg_refusal = why
+	bg_wait_until = Time.get_ticks_msec() + int((secs + 1.5) * 1000.0) if why == "closed" else 0
+	if why == "closed" and not bg_retry.is_empty():
+		var want: Array = bg_retry.duplicate()
+		get_tree().create_timer(secs + 1.5, false).timeout.connect(func():
+			# still waiting on the Battlegrounds screen, nothing else started meanwhile
+			if bg_retry == want and not playing and (ui.bg_panel.visible or (ui.title_panel.visible and ui.bg_page.visible)):
+				ui.message("The next raid is open", Color(0.6, 1.0, 0.6))
+				start_battlegrounds(str(want[0]), str(want[1])))
+
+func bg_wait_text() -> String:
+	var s := maxi(0, (bg_wait_until - Time.get_ticks_msec()) / 1000)
+	return "%d:%02d" % [s / 60, s % 60]
 
 ## The painting behind the loading screen's words: the Hollow Crypt's on the way down into it (Data.WAYPOINT_BATTLEGROUNDS
 ## "wide"), black for every other zone, as it always was.
@@ -1719,7 +1806,7 @@ func on_net_failed(msg: String) -> void:
 		ui.open_join()
 		return
 	if bg_mode:
-		ui.big_message("Left the Battlegrounds")
+		ui.big_message("The crypt is closing" if bg_wait_until > Time.get_ticks_msec() else "Left the Battlegrounds")
 		ui.message(msg, Color(1, 0.6, 0.4))
 		loading.visible = false
 		_leave_battlegrounds()
@@ -1732,7 +1819,7 @@ func on_net_failed(msg: String) -> void:
 		if hero.dead:
 			hero.respawn(hero.global_position)
 
-## Testing switches (F8 panel, only while dev_tools is on). They change nothing else
+## Testing switches (the Escape menu's Admin column, only while dev_tools is on). They change nothing else
 ## and are never saved.
 var test_immortal := false
 var test_onehit := false
@@ -1818,12 +1905,21 @@ func list_characters() -> Array:
 		var h: Dictionary = d.get("hero", {})
 		out.append({"id": fn.get_basename(), "name": str(d.get("name", "")), "cls": str(h.get("cls", "knight")),
 			"level": int(h.get("level", 1)), "difficulty": int(d.get("difficulty", 0)), "act": int(d.get("act", 0)),
-			"played": int(d.get("played", 0))})
+			"played": int(d.get("played", 0)), "gold": int(h.get("gold", 0)),
+			"carried": _count_items(h.get("equipment", {})) + _count_items(h.get("inventory", [])) + _count_items(h.get("belt", []))})
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["played"]) > int(b["played"]))
 	return out
 
 ## What a saved character wears, for the title screen's figure: Hero.net_gear()'s shape (equipment plus
 ## "_cls" and "_helm"), read from the save without changing it. {} when the save can't be read.
+## How many items a saved equipment Dictionary or inventory/belt Array holds (empty slots don't count).
+static func _count_items(v) -> int:
+	var n := 0
+	for it in (v.values() if v is Dictionary else (v if v is Array else [])):
+		if it is Dictionary and not (it as Dictionary).is_empty():
+			n += 1
+	return n
+
 func character_gear(id: String) -> Dictionary:
 	var path := char_dir + id + ".json"
 	if id == "" or not FileAccess.file_exists(path):
@@ -1873,7 +1969,7 @@ func default_name(cls: String) -> String:
 
 ## The waypoint window's Battlegrounds card (Data.WAYPOINT_BATTLEGROUNDS): the way down into the Hollow Crypt from
 ## the camp, with the character playing. A last word on what is at stake (everything worn and carried; levels,
-## talents and the stash are safe), then `_descend`: the dais flares, the sigil's sound, and start_battlegrounds
+## talents and the stash are safe), then `_waypoint_descend`: the dais flares, the sigil's sound, and start_battlegrounds
 ## joins the raid server (bg_server_address) with this character, the crypt's painting behind the loading words.
 ## The raid ends back on this dais (_leave_battlegrounds -> _bg_home_camp). Not from co-op (the party's host
 ## would lose a player mid-act), not from a raid, and never while a zone is still loading.
@@ -1886,11 +1982,11 @@ func waypoint_battleground(_id: String) -> void:
 	var nm := char_name
 	ui.open_dialog(Battlegrounds.TITLE,
 		"%s goes down with everything they wear and carry, and it is all at stake. Reach an open Extraction Portal and all of it, and whatever they find, comes home. Fall down there and every item, the belt and the gold stay on the crypt floor for others to take.\n\nLevels, stats, talents and the camp's stash are safe whatever happens.\n\nDescend into %s?" % [nm, Battlegrounds.TITLE],
-		[["Descend", func(): _descend()], ["Not yet", func(): pass]])
+		[["Descend", func(): _waypoint_descend()], ["Not yet", func(): pass]])
 
 ## The trip down: the character is saved as he stands, the grand waypoint flares, the sigil's sound, a breath, and
 ## the raid server is joined (start_battlegrounds).
-func _descend() -> void:
+func _waypoint_descend() -> void:
 	if bg_mode or _busy or not playing or net.active or char_id == "":
 		return
 	ui.close_all()
@@ -1914,16 +2010,26 @@ func _descend() -> void:
 		return
 	start_battlegrounds(bg_server_address(), char_id)
 
-## The raid server a trip from the waypoint joins: the address the Battlegrounds screen last used, if any (a LAN or
-## test server), else a staging or production build's own server (BuildEnv), else this machine.
+## The raid server a trip from the waypoint joins: a LAN or test server last picked on the Battlegrounds page, else
+## this build's own raid server (local: this machine) at the port of the raid open now, as the page's Enter does
+## (Battlegrounds.best_raid: one server per raid, each on its own clock).
 func bg_server_address() -> String:
+	var own: String = (str(BuildEnv.value("bg_server")) if BuildEnv.env() != "local" else "127.0.0.1").split(":")[0]
 	var a := str(_load_setting("battlegrounds", "address", "")).strip_edges()
-	if a == "" and BuildEnv.env() != "local":
-		a = str(BuildEnv.value("bg_server"))
-	return a if a != "" else "127.0.0.1"
+	if a != "" and str(Battlegrounds.parse_address(a)[0]) != own:
+		return a
+	return "%s:%d" % [own, int(Battlegrounds.best_raid(Time.get_unix_time_from_system()).get("port", Net.PORT))]
 
 ## Back to the title screen to pick another character (the pause menu's "Save and Exit to Title").
 func exit_to_title() -> void:
+	if sandbox != null:
+		# out of the sandbox first: the character as it was outside
+		sandbox.shutdown()
+		sandbox = null
+		char_id = _sandbox_char
+		_sandbox_char = ""
+		if char_id != "":
+			load_game()
 	if bg_mode and not hero.dead:
 		bg_strip()           # leaving a raid without extracting is dying there (it saves)
 	else:
@@ -1935,7 +2041,7 @@ func exit_to_title() -> void:
 	bg_gained = -1
 	net_joining = false
 	# nothing of the character that was playing carries on: its death or victory screen still to come, its portal,
-	# its experience bonus, the F8 switches
+	# its experience bonus, the admin switches
 	death_t = -1.0
 	ui.death_panel.visible = false
 	ui.victory_panel.visible = false
@@ -2104,16 +2210,97 @@ func use_inter_remote(t: Inter) -> void:
 		_pick_flower(t)
 	elif t.kind == "chest":
 		_open_chest(t)
+	elif t.kind == "bell":
+		Sfx.play_at("anvil", t.global_position, 0.0, 0.6)
+		if net.server and bg != null:
+			var who := "Someone"
+			var pid := multiplayer.get_remote_sender_id()
+			if net.players.has(pid):
+				who = str(net.players[pid]["name"])
+			bg.start_prep(who)
+
+## A class unique (Data.UNIQUES with "cls": the hard-won level-20 rewards with the raid's item effects) for one of
+## the classes of the heroes near (a raid's players, the party, or the hero), so what drops is someone's to wear.
+func _drop_class_unique(at: Vector3) -> void:
+	var want := []
+	for hh in get_tree().get_nodes_in_group("hero") + net.puppets():
+		if hh is Hero and is_instance_valid(hh) and not (net.server and hh == hero) and hh.global_position.distance_to(at) < 40.0:
+			want.append(hh.cls)
+	var pool := Data.UNIQUES.keys().filter(func(k): return Data.UNIQUES[k].has("cls") and (want.is_empty() or want.has(Data.UNIQUES[k]["cls"])))
+	if pool.is_empty():
+		pool = Data.UNIQUES.keys().filter(func(k): return Data.UNIQUES[k].has("cls"))
+	var it := Items.make_unique(pool[rng.randi() % pool.size()])
+	drop_item(it, at)
+	ui.message("%s!" % it["name"], Color(0.85, 0.66, 0.38))
 
 func _open_chest(t: Inter) -> void:
 	t.used = true
 	Sfx.play("equip")
-	Fx.burst(world.fx_root, t.global_position + Vector3(0, 0.8, 0), Color(1, 0.85, 0.5), 24, 3.0, 0.1, 0.8, true, -4.0)
+	var gold := bool(t.data.get("gold", false))
+	Fx.burst(world.fx_root, t.global_position + Vector3(0, 0.8, 0), Color(1, 0.85, 0.5), 60 if gold else 24, 5.0 if gold else 3.0, 0.1, 0.8, true, -4.0)
+	if gold:
+		Fx.pillar(world.fx_root, t.global_position, Color(1.0, 0.8, 0.3), 1.6)
 	if net.is_client():
 		return
-	var n := rng.randi_range(2, 4)
+	var n := 7 if gold else rng.randi_range(2, 4)
 	for i in n:
-		_drop_loot_roll(t.global_position, world.level, false)
+		if gold and i == 0:
+			_drop_class_unique(t.global_position)     # the golden chest's own reward: a class unique
+			continue
+		_drop_loot_roll(t.global_position, world.level, gold and i < 3)
+
+## A chest a boss guards (data "guard": its Data.ENEMIES kind; the Battlegrounds' golden chest): sealed while that
+## boss lives within 40 m. Every peer works it out from the monsters it has, so the server (which refuses a sealed
+## chest's sv_inter) and each client agree, a late joiner too (a dead boss isn't in its list).
+func chest_sealed(t: Inter) -> bool:
+	var guard := str(t.data.get("guard", ""))
+	if guard == "" or world == null or t.data.get("unsealed", false):
+		return false
+	if net.active and not net.is_host:
+		# the server decides (Net.sv_inter); a player who joined after the guard fell never saw it happen
+		for e in world.enemies_root.get_children():
+			if e is Enemy and not e.dead and e.kind == guard:
+				return true
+		return false
+	return true
+
+## A boss's death breaks the seal on the chests it guards, wherever it falls (luring it off doesn't open them), on
+## every peer: the host's death path and a client's Net.cl_enemy_die both reach Enemy.die_visual. A new round's zone
+## starts sealed again.
+func guard_fell(kind: String) -> void:
+	if world == null:
+		return
+	for c in world.interactables:
+		if c is Inter and str(c.data.get("guard", "")) == kind:
+			c.data["unsealed"] = true
+
+## A stairway down (BgFloors._stair): a fade, and the hero at the floor below's arrival stair. The hero's position
+## is streamed like any move, so the server and the others see him go.
+func _descend(t: Inter) -> void:
+	if hero.dead or _busy:
+		return
+	var to: Vector3 = t.data.get("to", hero.global_position)
+	Sfx.play("portal")
+	var fade := ColorRect.new()
+	fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fade.color = Color(0, 0, 0, 0)
+	ui.top.add_child(fade)
+	var tw := create_tween()
+	tw.tween_property(fade, "color", Color(0, 0, 0, 1), 0.35)
+	await get_tree().create_timer(0.4).timeout
+	var p := world.free_spot_near(to + Vector3(randf_range(-1.5, 1.5), 0, randf_range(-1.0, 1.0)), 1.5)
+	hero.global_position = p
+	hero.target = null
+	hero.path = PackedVector3Array()
+	hero.moving = false
+	cam_target = p
+	cam_pivot.position = p
+	var f := int(t.data.get("floor", 2))
+	ui.big_message(BgFloors.NAMES.get(f, "Deeper"))
+	var tw2 := create_tween()
+	tw2.tween_property(fade, "color", Color(0, 0, 0, 0), 0.6)
+	tw2.tween_callback(fade.queue_free)
 
 ## A camp vendor's own talk: the elder's news, a trader's greeting and Trade.
 func _vendor_talk(t: Inter) -> void:
@@ -2161,7 +2348,7 @@ func _add_boat(zone: String, spawn: String) -> void:
 		b.docks.append({"name": "the pier", "kind": "pier", "pos": Vector2(Coast.MOOR.x, Coast.MOOR.z), "yaw": PI * 0.5})
 		for isle in Isles.ISLANDS:
 			var m := isle_mooring(isle, Vector2.ZERO, true)
-			b.docks.append({"name": isle["name"], "kind": "isle", "id": isle["id"], "pos": Vector2(m.x, m.z), "yaw": m.w})
+			b.docks.append({"name": isle["name"], "kind": "isle", "id": isle["id"], "pos": Vector2(m.x, m.z), "yaw": m.w, "level": int(isle.get("level", 0))})
 		if spawn.begins_with("sail_from_") and hero.boats.is_empty():
 			# a partner brought along by the party's trip with no boat of his own: he's set down on the pier
 			b.moor(Coast.MOOR, PI * 0.5)
@@ -2243,7 +2430,7 @@ func _sail_input() -> void:
 		pt = water_pt
 	boat.drive = {"throttle": thr, "steer": steer, "stop": Input.is_key_pressed(KEY_SPACE), "point": pt}
 	var d := boat.dock_near()
-	ui.set_sail_prompt(("Step ashore at " + str(d["name"])) if not d.is_empty() else "")
+	ui.set_sail_prompt(_ashore_prompt(d))
 
 ## Steps ashore where she is, if she's at a dock and slow (E, or the prompt's button).
 func try_land() -> bool:
@@ -2253,8 +2440,22 @@ func try_land() -> bool:
 	if d.is_empty():
 		ui.message("Bring her alongside a jetty first, and slow", Color(0.75, 0.88, 1.0))
 		return false
+	var need := int(d.get("level", 0))
+	if hero.level < need and not test_allskills:
+		ui.message("%s is for heroes of level %d and up (you're %d)" % [d["name"], need, hero.level], Color(1.0, 0.6, 0.35))
+		Sfx.play("deny")
+		return false
 	land_boat(d)
 	return true
+
+## The sail prompt at a dock: where, and the level it asks for.
+func _ashore_prompt(d: Dictionary) -> String:
+	if d.is_empty():
+		return ""
+	var need := int(d.get("level", 0))
+	if need > 0 and hero.level < need and not test_allskills:
+		return "%s (level %d: you're %d)" % [d["name"], need, hero.level]
+	return "Step ashore at " + str(d["name"])
 
 func land_boat(d: Dictionary) -> void:
 	ui.set_sail_prompt("")
@@ -2349,6 +2550,37 @@ func _interact(t: Inter) -> void:
 			elif bg_mode and net.is_client() and not hero.dead:
 				ui.message("Extracting...", Color(0.6, 0.85, 1.0))
 				net.request_extract()
+		"vigil_gate":
+			# the camp's Vigil Gate: down to the Last Flame (vigil.gd); the party's ready check takes everyone
+			Sfx.play("portal")
+			travel(0, Vigil.ZONE, "start")
+		"vigil_exit":
+			Sfx.play("portal")
+			travel(0, "town", "from_vigil")
+		"vigil":
+			# the Last Flame: kindle a vigil (the host runs it)
+			var vg = world.get_meta("vigil") if world.has_meta("vigil") else null
+			if vg == null:
+				return
+			if vg.state in ["count", "wave", "break"]:
+				# feed it a log from the moor (woodcutting, harvest.gd): it burns higher
+				for lb in Vigil.FUEL:
+					if hero.count_of(lb) > 0 and hero.take_items(lb, 1):
+						var frac: float = Vigil.FUEL[lb]
+						ui.message("You feed the flame %s (+%d%%)" % [Data.BASES[lb]["name"], int(frac * 100.0)], Color(1.0, 0.75, 0.45))
+						if net.is_client():
+							net.vigil_feed(frac)
+						else:
+							vg.feed(frac)
+						return
+				ui.message("Hold the flame! (Logs from the moor feed it: click it with one in your bag.)", Color(1.0, 0.75, 0.45))
+			elif vg.state != "idle":
+				ui.message("The flame is not ready yet", Color(1.0, 0.75, 0.45))
+			elif net.is_client():
+				net.vigil_hi(int(hero.level))
+				net.request_vigil()
+			else:
+				vg.begin()
 		"lanista":
 			ui.trade_with = t
 			# Varro, by Aurelia's arena: his games are A2's boss fight (games.gd)
@@ -2441,9 +2673,26 @@ func _interact(t: Inter) -> void:
 		"chest":
 			if t.used:
 				return
+			if chest_sealed(t):
+				ui.message("Thorns bind it shut. Old Mossbeard's magic holds while he lives.", Color(0.6, 1.0, 0.5))
+				Sfx.play("deny")
+				return
 			_open_chest(t)
 			if net.active:
 				net.inter_used(t)
+		"descend":
+			_descend(t)
+		"dwarves":
+			if not t.used:
+				DwarfGame.talk(self, t)
+		"bell":
+			# the antechamber's bell: the server starts the countdown (Net.sv_inter -> use_inter_remote)
+			Sfx.play("anvil", -2.0, 0.6)
+			if bg_mode and net.is_client():
+				if str(bg_raid.get("state", "")).begins_with("lobby"):
+					net.inter_used(t)
+				else:
+					ui.message("The raid is already under way", Color(0.8, 0.8, 0.9))
 
 func travel_waypoint(dest: Dictionary) -> void:
 	Sfx.play("portal")
@@ -2573,22 +2822,13 @@ func on_enemy_killed(e: Enemy) -> void:
 		# a Hollow Sloth's own material
 		drop_item(Items.make(e.def["drop"], 0, 1), e.global_position)
 	if e.def.get("trophy", false):
-		# the Hollow Sloth: a unique for certain, and a heap of gold
-		var cands := Data.UNIQUES.keys().filter(func(k): return Data.UNIQUES[k]["lvl"] <= e.level + 3 and not Data.UNIQUES[k].get("boss_only", false))
-		if cands.size() > 0:
-			var su := Items.make_unique(cands[rng.randi() % cands.size()])
-			if difficulty >= 1:
-				Items.empower(su, loot_mult())
-			drop_item(su, e.global_position)
+		# the Hollow Sloth: a heap of gold (its unique comes from its loot table, below)
 		for i in 3:
 			drop_item(Items.gold(int(rng.randf_range(40, 70) * (1.0 + e.level * 0.6))), e.global_position)
 		ui.message("%s is slain" % e.display_name, Color(0.55, 0.9, 0.95))
-	if e.def.has("boss_drop"):
-		var bu := Items.make_unique(e.def["boss_drop"])
-		if difficulty >= 1:
-			Items.empower(bu, loot_mult())
-		drop_item(bu, e.global_position)
-		ui.message("%s dropped %s!" % [e.display_name, bu["name"]], Color(0.85, 0.66, 0.38))
+	if e.def.get("class_unique", false):
+		_drop_class_unique(e.global_position)
+	_boss_loot(e)
 	if e.boss:
 		boss_killed = true
 		ui.set_boss(null)
@@ -2629,7 +2869,8 @@ func boss_down_remote(e: Enemy) -> void:
 func on_boss_aggro(e: Enemy) -> void:
 	net.boss_aggro(e)
 	ui.set_boss(e)
-	ui.big_message(e.display_name)
+	if not Data.ENEMIES.get(e.kind, {}).has("intro"):     # (a boss with an intro card is named by the card)
+		ui.big_message(e.display_name)
 	Sfx.play("roar")
 	add_shake(0.5)
 
@@ -2638,7 +2879,7 @@ func _drop_loot_roll(at: Vector3, lvl: int, good: bool) -> void:
 	if good or r < 0.3:
 		var it := Items.random_drop(lvl, hero.mf + (100 if good else 0), rng, good)
 		if difficulty >= 1:
-			Items.empower(it, loot_mult())
+			Items.empower(it, power_mult())
 		drop_item(it, at)
 	elif r < 0.62:
 		drop_item(Items.gold(int(rng.randf_range(4, 12) * (1.0 + lvl * 0.6))), at)
@@ -2677,7 +2918,9 @@ func hitstop(t: float) -> void:
 func _on_hero_died() -> void:
 	Telemetry.crumb("died", {"bg": bg_mode})
 	death_t = 2.0
-	if bg_mode:
+	if sandbox != null:
+		sandbox.hero_died(hero)
+	elif bg_mode:
 		_bg_fell()
 	ui.set_boss(null)
 
@@ -2740,11 +2983,20 @@ func _update_spectate(dt: float) -> void:
 	ui.update_spectate()
 
 func respawn() -> void:
+	if sandbox != null:
+		# the sandbox: back on your feet at once, nothing lost
+		hero.respawn(sandbox.spawn_point())
+		return
 	if bg_mode:
 		# no coming back from the crypt
 		_leave_battlegrounds()
 		return
 	hero.gold = int(hero.gold * 0.9)
+	if cur_zone == Vigil.ZONE and world != null:
+		# the Last Flame: the fallen rise by the altar and fight on
+		hero.respawn(Vigil.respawn_at(world))
+		ui.message("You rise by the Last Flame", Color(1.0, 0.75, 0.45))
+		return
 	if net.active:
 		var ally := net.alive_ally()
 		if ally:
@@ -2889,7 +3141,189 @@ func _cheat_keys(ev: InputEvent) -> void:
 		_typed = ""
 		max_out()
 
+## Admin (the Escape menu's Admin column, only with dev tools; Blaine's progression spec): this character to level 20
+## (and 10,000 gold each press) with its stats spent and its talents auto-built, every skill it has at 20, and a solid
+## class baseline of level-20 gear for PvP testing (rare items on every slot, the class's own weapon). Safe to press
+## again: its own pieces (marked "boost") stay, any other equipped item moves to the bag (kept equipped if the bag
+## is full, never destroyed), and the same gear is never handed out twice.
+## The Veilmother's Locket ("phial"): a Shadow Phial at the start of each raid, in the belt (or the bag), never more
+## than the locket gives.
+func give_raid_phials() -> void:
+	var n := int(hero.stats.get("phial", 0))
+	if n <= 0:
+		return
+	var have := 0
+	for b in hero.belt:
+		if b is Dictionary and b["base"] == "shadow_phial":
+			have += int(b.get("count", 1))
+	if have >= n:
+		return
+	var it := Items.potion("shadow_phial")
+	it["count"] = n - have
+	for i in hero.belt.size():
+		if hero.belt[i] is Dictionary and hero.belt[i]["base"] == "shadow_phial":
+			hero.belt[i]["count"] = n
+			ui.refresh()
+			return
+	for i in hero.belt.size():
+		if hero.belt[i] == null:
+			hero.belt[i] = it
+			ui.refresh()
+			ui.message("A Shadow Phial in your belt (the Veilmother's Locket)", Color(0.7, 0.6, 1.0))
+			return
+	hero.add_to_inventory(it)
+	ui.refresh()
+
+## A boss's own loot (the items rework: rewards from hard content, not tiny drop chances; Data.BOSS_LOOT): its first
+## kill by this character always drops one of its uniques (its "boss_drop" if it has one); after that each kill has
+## BOSS_LOOT_CHANCE, and every kill without one raises the next by BOSS_LOOT_LUCK (Hero.boss_luck, saved).
+const BOSS_LOOT_CHANCE := 0.35
+const BOSS_LOOT_LUCK := 0.15
+
+func _boss_loot(e: Enemy) -> void:
+	var table: Array = Data.BOSS_LOOT.get(e.kind, [])
+	if table.is_empty() or sandbox != null:
+		return
+	var misses := int(hero.boss_luck.get(e.kind, -1))
+	var chance := 1.0 if misses < 0 else BOSS_LOOT_CHANCE + BOSS_LOOT_LUCK * misses
+	if rng.randf() >= chance:
+		hero.boss_luck[e.kind] = misses + 1
+		return
+	hero.boss_luck[e.kind] = 0
+	var uid: String = str(e.def["boss_drop"]) if misses < 0 and e.def.has("boss_drop") else str(table[rng.randi() % table.size()])
+	var bu := Items.make_unique(uid)
+	if difficulty >= 1:
+		Items.empower(bu, power_mult())
+	drop_item(bu, e.global_position)
+	ui.message("%s dropped %s!" % [e.display_name, bu["name"]], Color(0.85, 0.66, 0.38))
+
+## The admins' Battlegrounds sandbox (Sandbox; the Escape menu's Admin column): the character is saved and set aside
+## (char_id cleared, so nothing in there is saved) and comes back exactly as it was on leaving.
+var _sandbox_char := ""
+
+func open_sandbox() -> void:
+	if not dev_tools or sandbox != null or _busy:
+		return
+	if net.active:
+		ui.message("Leave the party first: the sandbox is played alone", Color(1, 0.6, 0.4))
+		return
+	if bg_mode:
+		ui.message("Not from inside a raid", Color(1, 0.6, 0.4))
+		return
+	if paused:
+		toggle_pause()
+	save_game()
+	_sandbox_char = char_id
+	char_id = ""
+	sandbox = Sandbox.new(self)
+	sandbox.pick_me["cls"] = hero.cls
+	sandbox.pick_bot["cls"] = hero.cls
+	add_child(sandbox)
+	await load_zone(0, Sandbox.ZONE, "start")
+	Sandbox.outfit(self, hero, hero.cls, 20, "geared")
+	ui.refresh()
+	ui.big_message(Sandbox.TITLE)
+	ui.message("Your character is saved and waits outside; nothing here is kept", Color(0.6, 0.85, 1.0))
+
+func close_sandbox() -> void:
+	if sandbox == null or _busy:
+		return
+	sandbox.shutdown()
+	sandbox = null
+	char_id = _sandbox_char
+	_sandbox_char = ""
+	if char_id != "" and load_game():
+		hero.refresh_gear()
+		hero.recalc()
+		hero.life = hero.max_life
+		hero.mana = hero.max_mana
+	if hero.dead:
+		hero.respawn(hero.global_position)
+	death_t = -1.0
+	await load_zone(difficulty, "town", "start")
+	ui.refresh()
+
+const BOOST_SLOTS := ["weapon", "armor", "helm", "gloves", "boots", "belt", "ring1", "ring2", "amulet"]
+
+func go_level_20() -> void:
+	if not dev_tools:
+		return
+	hero.boosted = true       # (saved: the raid server lets only admins raid with a boosted character)
+	if hero.level < 20:
+		hero.set_level(20)
+	var c: Dictionary = Data.CLASSES.get(hero.cls, {})
+	var tot := float(int(c.get("str", 1)) + int(c.get("dex", 1)) + int(c.get("vit", 1)) + int(c.get("ene", 1)))
+	var pts := hero.stat_points
+	var a := int(pts * int(c.get("str", 1)) / tot)
+	var b := int(pts * int(c.get("dex", 1)) / tot)
+	var v := int(pts * int(c.get("vit", 1)) / tot)
+	hero.str_ += a
+	hero.dex += b
+	hero.vit += v
+	hero.ene += pts - a - b - v
+	hero.stat_points = 0
+	hero.talents = Talents.auto_build(hero.cls, hero.free_talent_points(), hero.talents)
+	hero._talents_changed()
+	var r := RandomNumberGenerator.new()
+	r.seed = hash(hero.cls + ":boost20")       # (the same baseline every time)
+	var slots := BOOST_SLOTS.duplicate()
+	if hero.cls == "knight":
+		slots.append("shield")
+	var given := 0
+	for slot in slots:
+		var cur = hero.equipment.get(slot)
+		if cur is Dictionary and bool((cur as Dictionary).get("boost", false)):
+			continue
+		var base := _boost_base(slot)
+		if base == "":
+			continue
+		var it := Items.generate(base, 20, 2, r)
+		it["boost"] = true
+		if cur is Dictionary and not (cur as Dictionary).is_empty():
+			if not hero.add_to_inventory(cur):
+				continue          # (no room for what's there: it stays on)
+		hero.equipment[slot] = it
+		given += 1
+	hero.gold += 10000
+	hero.refresh_gear()
+	hero.recalc()
+	hero.life = hero.max_life
+	hero.mana = hero.max_mana
+	if char_id != "":
+		save_game()
+	ui.refresh()
+	ui.message("Level 20: talents built, %d piece%s of level-20 gear on, +10,000 gold" % [given, "" if given == 1 else "s"], Color(0.6, 1.0, 0.6))
+
+## The best base for a slot at level 20 that this class can wear (its own weapon kind: bows for the ranger, canes for
+## the plague doctor, the drumstick for Doug...).
+func _boost_base(slot: String, h: Hero = null, max_lvl := 20) -> String:
+	if h == null:
+		h = hero
+	var want := "ring" if slot in ["ring1", "ring2"] else slot
+	var mine: String = str(Data.CLASSES.get(h.cls, {}).get("weapon", ""))
+	var kind := str(Data.BASES.get(mine, {}).get("kind", "")) if mine != "" else ""
+	var held = h.equipment.get("weapon")
+	if kind == "" and held is Dictionary:
+		kind = str(Data.BASES.get(held["base"], {}).get("kind", ""))     # no weapon of its own (the knight): the kind in hand
+	var best := ""
+	var bl := -1
+	for k in Data.BASES:
+		var bd: Dictionary = Data.BASES[k]
+		if str(bd.get("slot", "")) != want or int(bd.get("lvl", 1)) > max_lvl:
+			continue
+		var owner := str(bd.get("cls", ""))
+		if owner != "" and owner != h.cls:
+			continue
+		if want == "weapon" and kind != "" and str(bd.get("kind", "")) != kind:
+			continue
+		# (a tie goes to the class's own weapon: Doug's drumstick over a slower club)
+		if int(bd.get("lvl", 1)) > bl or (int(bd.get("lvl", 1)) == bl and owner == h.cls):
+			bl = int(bd.get("lvl", 1))
+			best = k
+	return best
+
 func max_out() -> void:
+	hero.boosted = true
 	hero.set_level(99)
 	var c: Dictionary = Data.CLASSES.get(hero.cls, {})
 	var tot := float(int(c.get("str", 1)) + int(c.get("dex", 1)) + int(c.get("vit", 1)) + int(c.get("ene", 1)))
@@ -2996,8 +3430,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 				ui.message("Sound " + ("on" if sound_on else "off"), Color(0.8, 0.85, 1.0))
 				ui.update_sound_btn()
 			KEY_F8:
-				if dev_tools:
-					ui.toggle(ui.test_panel)
+				if dev_tools and not paused:
+					toggle_pause()          # (the admin tools are in the Escape menu)
 			KEY_M:
 				ui.minimap.visible = not ui.minimap.visible
 			KEY_TAB:

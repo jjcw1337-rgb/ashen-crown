@@ -56,6 +56,8 @@ var enraged := false
 var hoard: Hoard = null
 ## The Hollow Sloth's brain (sloth.gd), when this is one
 var sloth: Sloth = null
+## The Battlegrounds bosses' brain (bg_boss.gd): Hrimgar, Mossbeard and his poison mushrooms
+var brain: BgBoss = null
 var _sloth_phase := 0.0
 ## Factions (Data.ENEMIES "faction"): goblins and the undead fight each other on sight (and both fight you).
 var rival: Enemy = null
@@ -63,6 +65,7 @@ var rival: Enemy = null
 # Volley, Winter Howl): slower on its feet. Burning is ticked by whoever set it (take_damage routes to the host);
 # a chill from a partner reaches the host through Net.send_enemy_chill.
 var burn_t := 0.0
+var burn_look := ""            # who draws the burn (Enemy.ignite)
 var burn_dps := 0.0
 var burn_tick := 0.0
 var chill_t := 0.0
@@ -78,6 +81,9 @@ var net_id := 0
 ## Battlegrounds PvP: this is no monster but the invisible stand-in for player `pvp_pid` on this client
 ## (Battlegrounds.sync_proxies keeps it on their puppet); a blow on it goes to that player through the server.
 var pvp_pid := 0
+## The admins' sandbox (Sandbox): the invisible stand-in for this hero (a bot, or the player); blows on it are dealt
+## to them as a raid's PvP is (Battlegrounds.PVP_MULT), stuns and slows reach them, its own hero's never land.
+var sandbox_hero: Hero = null
 var remote := false
 var net_pos := Vector3.ZERO
 var net_yaw := 0.0
@@ -136,6 +142,8 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 	var look: Dictionary = def["look"]
 	height = look.get("height", look.get("size", 1.0))
 	rig = build_rig(k, Feral.variant_at(global_position))
+	if kind in ["ice_troll", "hermit", "spore_shroom"]:
+		brain = BgBoss.new(self)
 	if rig.has_meta("feral"):
 		slot_a = randf_range(-1.6, 1.6)
 		lunge_cd = randf_range(0.3, 3.0)
@@ -221,6 +229,7 @@ var _drained := false
 var _drain_col := Color(0.25, 1.0, 0.2)
 ## Damage numbers in this colour, and no blood (set around a Drain Life tick). Alpha 0 = normal.
 var dmg_tint := Color(0, 0, 0, 0)
+var seared := false            # a burning arrow's hit: the wound is seared, no blood (Archer.update)
 ## a damage tick (the plague doctor's poison): the number shows, but no white flash and no flinch
 var soft_hit := false
 
@@ -253,15 +262,33 @@ func set_soul_lit(on: bool) -> void:
 	_soul_lit = on
 	_set_flash(0.0)
 
-func ignite(dps: float, t: float) -> void:
+## `look` names who draws the burn: "" = the Demon's ember flames (DemonFx.ignite, here and as it ticks);
+## an arrow kind (ArrowFx.burn, the archer's own body flames) draws its own and these are skipped.
+func ignite(dps: float, t: float, look := "") -> void:
 	if dead:
+		return
+	# a player's stand-in: the burn goes to them (the sandbox's hero, or a raid's player through the server)
+	if sandbox_hero != null:
+		if Hero.striker != sandbox_hero and not sandbox_hero.dead:
+			sandbox_hero.take_hit(dps * Battlegrounds.PVP_MULT, global_position, "burn", "fire")
+		return
+	if pvp_pid > 0:
+		game.net.send_pvp_dot(pvp_pid, dps * Battlegrounds.PVP_MULT, global_position)
 		return
 	burn_dps = maxf(burn_dps if burn_t > 0.0 else 0.0, dps)
 	burn_t = maxf(burn_t, t)
-	if game and game.world:
+	burn_look = look
+	if game and game.world and look == "":
 		DemonFx.ignite(game.world.fx_root, self)
 
 func chill(k: float, t: float) -> void:
+	if pvp_pid > 0:
+		game.net.send_pvp_effect(pvp_pid, "chill", global_position)
+		return
+	if sandbox_hero != null:
+		if Hero.striker != sandbox_hero and not sandbox_hero.dead:
+			sandbox_hero.chill_t = maxf(sandbox_hero.chill_t, t * sandbox_hero.cc_k())
+		return
 	if remote:
 		game.net.send_enemy_chill(self, k, t)
 	if boss:
@@ -279,8 +306,15 @@ func _statuses(delta: float) -> void:
 		burn_tick -= delta
 		if burn_tick <= 0.0:
 			burn_tick = 0.5
+			# a burn drawn by its source (the Fire Arrow's flames) ticks as fire: amber numbers, no blood, no flash
+			if burn_look != "":
+				dmg_tint = Color(1.0, 0.6, 0.25)
+				soft_hit = true          # no flash, no flinch on each tick
 			take_damage(0.0, burn_dps * 0.5, global_position, 0.0, false)
-			if game and game.world and randf() < 0.5:
+			if burn_look != "":
+				dmg_tint = Color(0, 0, 0, 0)
+				soft_hit = false
+			if game and game.world and randf() < 0.5 and burn_look == "":
 				DemonFx.ignite(game.world.fx_root, self)
 	if chill_t > 0.0:
 		chill_t -= delta
@@ -291,6 +325,13 @@ func _statuses(delta: float) -> void:
 				f.queue_free()
 
 func stun(t: float) -> void:
+	if sandbox_hero != null:
+		if Hero.striker != sandbox_hero and not sandbox_hero.dead:
+			if t < 0.0:
+				sandbox_hero.chill_t = maxf(sandbox_hero.chill_t, -t * sandbox_hero.cc_k())
+			else:
+				sandbox_hero.daze_t = maxf(sandbox_hero.daze_t, minf(t, 1.5) * sandbox_hero.cc_k())
+		return
 	if t < 0.0:
 		# a slow rides the stun RPC as a negative time (the Wraith's Soul Siphon), so the RPC set stays as it is
 		slow(-t, 0.5)
@@ -305,6 +346,10 @@ func stun(t: float) -> void:
 
 ## Slowed to (1 - amt) of its pace for t seconds (host-side, like every movement).
 func slow(t: float, amt: float) -> void:
+	if sandbox_hero != null:
+		if Hero.striker != sandbox_hero and not sandbox_hero.dead:
+			sandbox_hero.chill_t = maxf(sandbox_hero.chill_t, t * sandbox_hero.cc_k())
+		return
 	if remote:
 		game.net.send_enemy_stun(self, -t)
 		return
@@ -314,6 +359,19 @@ func slow(t: float, amt: float) -> void:
 func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit: bool) -> float:
 	if dead:
 		return 0.0
+	if sandbox_hero != null:
+		# the sandbox: a hero, hit as in a raid (never by its own blows)
+		var who: Hero = Hero.striker
+		if who == sandbox_hero or sandbox_hero.dead:
+			return 0.0
+		var dealt := (phys + fire) * Battlegrounds.PVP_MULT * Data.pvp_scale(who.cls if who != null else "", sandbox_hero.cls, who.level if who != null else 20, sandbox_hero.level)
+		var l0 := sandbox_hero.life
+		sandbox_hero.take_hit(dealt, from, "pvp", "phys")
+		var landed := maxf(0.0, l0 - sandbox_hero.life)
+		if game.sandbox != null:
+			game.sandbox.note_hit(who, sandbox_hero, landed)
+		Fx.number(game.world.fx_root, global_position + Vector3(0, 2.2, 0), str(int(landed)) + ("!" if crit else ""), Color(1.0, 0.4, 0.35), crit)
+		return landed
 	if pvp_pid > 0:
 		# another player: the server scales it and deals it to them; the number shows here at once
 		var total0 := phys + fire
@@ -340,7 +398,7 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 		if dmg_tint.a > 0.0:
 			c2 = dmg_tint
 		Fx.number(game.world.fx_root, global_position + Vector3(0, height * 1.9 + 0.3, 0), str(int(total)) + ("!" if crit else ""), c2, crit)
-		if dmg_tint.a <= 0.0:
+		if dmg_tint.a <= 0.0 and not seared:
 			Fx.blood(game.world.fx_root, global_position + Vector3(0, height * 1.0, 0), def.get("blood", Color(0.5, 0.0, 0.0)))
 		_hit_sound(phys, knockback, crit)
 		return total
@@ -360,7 +418,7 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 	if dmg_tint.a > 0.0:
 		col = dmg_tint
 	Fx.number(game.world.fx_root, global_position + Vector3(0, height * 1.9 + 0.3, 0), str(int(total)) + ("!" if crit else ""), col, crit)
-	if dmg_tint.a <= 0.0:
+	if dmg_tint.a <= 0.0 and not seared:
 		Fx.blood(game.world.fx_root, global_position + Vector3(0, height * 1.0, 0), def.get("blood", Color(0.5, 0.0, 0.0)))
 	_hit_sound(phys, knockback, crit)
 	if fire > 0.0:
@@ -424,6 +482,7 @@ func die_visual() -> void:
 	_set_flash(0.0)
 	if boss:
 		Sfx.play("boss_die", 0.0, randf_range(0.85, 1.15))
+		game.guard_fell(kind)
 	else:
 		Sfx.play_at("kill_" + material(), global_position + Vector3(0, height, 0), -1.0)
 	Fx.splat(game.world.fx_root, global_position, def.get("blood", Color(0.4, 0, 0)), 0.6 + radius)
@@ -470,6 +529,9 @@ func special_fx(ev: String) -> void:
 	if ev.begins_with("sloth"):
 		Sloth.fx(self, ev)
 		return
+	if ev.begins_with("bb_"):
+		BgBoss.fx(self, ev)
+		return
 	var col := Color(0.4, 1.0, 0.3) if def.get("nova", "") == "poison" else Color(1.0, 0.4, 0.1)
 	match ev:
 		"slam_tele":
@@ -493,15 +555,28 @@ func special_fx(ev: String) -> void:
 			game.add_shake(0.4)
 		"bear_tele":
 			# the danger zone: a ring where the paws will land
-			Fx.telegraph(game.world.fx_root, global_position - rig.global_transform.basis.z * 1.6, 1.9, atk_dur * Bear.MAUL_HIT, Color(0.6, 1.0, 0.4))
+			# (scaled by its body: the bear is radius 1; the tyrant's jaws reach far further)
+			Fx.telegraph(game.world.fx_root, global_position - rig.global_transform.basis.z * 1.6 * radius, 1.9 * radius, atk_dur * Anim.impact_at("bear_maul"), Color(0.6, 1.0, 0.4))
 		"bear_roar":
-			Bear.sound("bear_roar", global_position + Vector3(0, 2.0, 0))
+			# each roarer its own voice; a boss with an "intro" introduces itself (BossCard, on every game it reaches)
+			if kind == "trex":
+				Sfx.play_at("trex_roar", global_position + Vector3(0, 4.0, 0), 2.0, randf_range(0.95, 1.02))
+			elif kind in ["trike", "trike_baby"]:
+				Sfx.play_at("trike_bellow", global_position + Vector3(0, 2.0, 0), 0.0, 1.6 if kind == "trike_baby" else randf_range(0.95, 1.05))
+			else:
+				Bear.sound("bear_roar", global_position + Vector3(0, 2.0, 0))
+			if def.has("intro") and is_instance_valid(game.hero) and game.hero.global_position.distance_to(global_position) < 34.0:
+				BossCard.play(game, self)
 			Fx.burst(game.world.fx_root, global_position + Vector3(0, 2.4, 0) - rig.global_transform.basis.z * 0.9, Color(0.75, 0.8, 0.75, 0.35), 18, 1.6, 0.35, 0.9, false, 0.4, 35.0, -rig.global_transform.basis.z)
 			if game.hero.global_position.distance_to(global_position) < 16.0:
 				game.add_shake(0.25)
 		"bear_maul":
-			Bear.sound("bear_maul", global_position)
-			var paws := global_position - rig.global_transform.basis.z * 1.6
+			if kind == "trex":
+				Sfx.play_at("raptor_bite", global_position, 3.0, 0.55)       # (the raptor's snap, an octave down: his jaws)
+				Sfx.play_at("trex_stomp", global_position, 0.0, 0.8)
+			else:
+				Bear.sound("bear_maul", global_position)
+			var paws := global_position - rig.global_transform.basis.z * 1.6 * radius
 			Fx.ring(game.world.fx_root, paws, 2.6, Color(0.45, 0.4, 0.33), 0.4)
 			Fx.burst(game.world.fx_root, paws + Vector3(0, 0.2, 0), Color(0.38, 0.33, 0.28, 0.8), 30, 4.5, 0.3, 0.8, false, -4.0, 80.0)
 			if game.hero.global_position.distance_to(global_position) < 10.0:
@@ -526,8 +601,8 @@ func _fx(ev: String) -> void:
 func _process(delta: float) -> void:
 	if game == null or game.hero == null or game.world == null or not is_inside_tree():
 		return
-	if pvp_pid > 0:
-		return          # a player's stand-in (Battlegrounds.sync_proxies moves it)
+	if pvp_pid > 0 or sandbox_hero != null:
+		return          # a player's stand-in (Battlegrounds.sync_proxies / Sandbox moves it)
 	anim_time += delta
 	if flash_t > 0.0:
 		flash_t -= delta
@@ -612,9 +687,11 @@ func _process(delta: float) -> void:
 		hoard.update(delta)
 	var vel := Vector3.ZERO
 	# a Demon phased into the Underworld cannot be seen
-	var hero_dead: bool = hero.dead or hero.get("phased") == true
+	var hero_dead: bool = hero.dead or hero.get("phased") == true or float(hero.get("hidden_t") if hero.get("hidden_t") != null else 0.0) > 0.0
 	if sloth != null:
 		vel = sloth.update(delta, hero, to, dist, hero_dead)
+	elif brain != null:
+		vel = brain.update(delta, hero, to, dist, hero_dead)
 	elif stun_t > 0.0:
 		stun_t -= delta
 	elif atk_t >= 0.0:
@@ -622,6 +699,8 @@ func _process(delta: float) -> void:
 	else:
 		if not aggro and f_calm <= 0.0 and dist < def.get("aggro", 12.0) and not hero_dead and game.world.los(global_position, hero.global_position):
 			aggro = true
+			if kind == "raptor":
+				Sfx.play_at("raptor_call", global_position + Vector3(0, 1.0, 0), -2.0, randf_range(0.92, 1.1))
 			if boss:
 				game.on_boss_aggro(self)
 			for e in game.enemies_near(global_position, 8.0):
@@ -661,7 +740,7 @@ func _process(delta: float) -> void:
 		move_amt = move_toward(move_amt, clampf(vel.length() / maxf(speed, 0.1), 0.0, 1.0), delta * 5.0)
 		var was := phase
 		phase += delta * vel.length() * (1.6 / maxf(height, 0.5)) * (-1.0 if f_state in ["back", "out"] else 1.0) * (float(rig.get_meta("stride")) if rig.has_meta("stride") else 1.0)
-		if boss and rig.has_meta("goblin") and floorf(phase / PI) != floorf(was / PI) and move_amt > 0.4:
+		if boss and (rig.has_meta("goblin") or rig.has_meta("dino")) and floorf(phase / PI) != floorf(was / PI) and move_amt > 0.4:
 			_footstep()
 	else:
 		move_amt = move_toward(move_amt, 0.0, delta * 5.0)
@@ -684,8 +763,23 @@ static func build_rig(kind: String, variant := 1) -> Node3D:
 		return Lion.build()
 	if d.get("mesh", "") == "bear" and Bear.ok():
 		return Bear.build()
+	if Theropod.ok(str(d.get("mesh", ""))):
+		return Theropod.build(str(d["mesh"]))
+	if Trike.ok(str(d.get("mesh", ""))):
+		return Trike.build(str(d["mesh"]))
 	if d.get("mesh", "") == "sloth":
 		return Sloth.build(str(d.get("variant", "")), look.get("skin", Color(0.52, 0.56, 0.47)))
+	if d.has("prop"):
+		# a thing that grows rather than walks (the hermit's mushrooms): a Meshy prop, pulsing (pose_rig)
+		var pr := Node3D.new()
+		pr.set_meta("static_prop", true)
+		var m := BgFloors.prop(str(d["prop"]))
+		if m == null:
+			m = Models.crawler(look)
+		m.name = "body"
+		m.scale = Vector3.ONE * float(look.get("prop_scale", 1.0))
+		pr.add_child(m)
+		return pr
 	if d.get("mesh", "") == "wolf" and ResourceLoader.exists(SpiritBeast.WOLF_GLB):
 		return Lion.build(SpiritBeast.WOLF_GLB, 1.0)
 	if d.has("mesh") and MeshyMonster.ok(d["mesh"]):
@@ -705,10 +799,20 @@ static func pose_rig(r: Node3D, st: Dictionary, height: float) -> void:
 		Feral.pose(r, st, height)
 	elif r.has_meta("lion"):
 		Lion.pose(r, st, height)
+	elif r.has_meta("dino"):
+		Theropod.pose(r, st, height)
+	elif r.has_meta("trike"):
+		Trike.pose(r, st, height)
 	elif r.has_meta("bear"):
 		Bear.pose(r, st, height)
 	elif r.has_meta("sloth"):
 		Sloth.pose(r, st, height)
+	elif r.has_meta("static_prop"):
+		var b := r.get_node_or_null("body") as Node3D
+		if b != null:
+			var t := float(st.get("time", 0.0))
+			var k := 1.0 + sin(t * 2.6) * 0.04
+			b.scale = Vector3(k, 2.0 - k, k) * b.scale.length() / sqrt(3.0)
 	else:
 		Anim.pose(r, st)
 
@@ -716,9 +820,15 @@ static func pose_rig(r: Node3D, st: Dictionary, height: float) -> void:
 ## little if you're close.
 func _footstep() -> void:
 	var side := 1.0 if int(floorf(phase / PI)) % 2 == 0 else -1.0
-	var foot := global_position + rig.global_transform.basis.x * side * 0.35
-	Fx.burst(game.world.fx_root, foot + Vector3(0, 0.08, 0), Color(0.38, 0.33, 0.28, 0.6), 8, 1.2, 0.2, 0.6, false, -1.0, 70.0)
-	if game.hero.global_position.distance_to(global_position) < 7.0:
+	var big := kind == "trex"          # (the Tyrant: the ground shakes under every step, and you hear it coming)
+	var foot := global_position + rig.global_transform.basis.x * side * (0.35 * (radius if big else 1.0))
+	Fx.burst(game.world.fx_root, foot + Vector3(0, 0.08, 0), Color(0.38, 0.33, 0.28, 0.6), 18 if big else 8, 2.4 if big else 1.2, 0.35 if big else 0.2, 0.8 if big else 0.6, false, -1.0, 70.0)
+	var d: float = game.hero.global_position.distance_to(global_position)
+	if big:
+		Sfx.play_at("trex_stomp", foot, -3.0, randf_range(0.9, 1.05))
+		if d < 22.0:
+			game.add_shake(0.18 * (1.0 - d / 22.0) + 0.04)
+	elif d < 7.0:
 		game.add_shake(0.06)
 
 ## The radius it collides with props and walls at: a boss's real bulk (so a 3.5 m King Grubb
@@ -1017,7 +1127,7 @@ func _impact(hero: Node3D, dist: float) -> void:
 					continue
 				var to_h: Vector3 = h.global_position - global_position
 				to_h.y = 0
-				if to_h.length() < 3.0 + radius * 0.5 and fwd.dot(to_h.normalized()) > 0.2:
+				if to_h.length() < 1.3 + radius * 2.2 and fwd.dot(to_h.normalized()) > 0.2:
 					h.take_hit(_roll(), global_position, "maul")
 		"feral_lunge":
 			# the claws come down where he lands
@@ -1030,7 +1140,7 @@ func _shoot(at: Vector3, pkind: String) -> void:
 	var from := global_position + Vector3(0, height * 1.35, 0) + (-rig.global_transform.basis.z) * 0.5
 	pr.launch(game, pkind, from, at + Vector3(0, 1.1, 0), _roll())
 	game.net.projectile(pkind, from, at + Vector3(0, 1.1, 0))
-	Sfx.play_at("bow" if pkind in ["arrow", "dart"] else "fireball", global_position, -2.0, randf_range(0.9, 1.1))
+	Sfx.play_at("troll_cast" if kind == "troll_shaman" else ("bow" if pkind in ["arrow", "dart"] else "fireball"), global_position, -2.0, randf_range(0.9, 1.1))
 
 # ---------------------------------------------------------------- the Feral (feral.gd)
 ## Clinging head-down to a trunk until someone comes close, then down it in a skitter, and the rest of

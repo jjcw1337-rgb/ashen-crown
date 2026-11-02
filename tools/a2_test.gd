@@ -40,7 +40,7 @@ func _run() -> void:
 	var powered := 0
 	var total := 0
 	for gi in g.world.items_root.get_children():
-		if gi is GroundItem and Data.BASES[gi.item["base"]]["slot"] not in ["gold", "potion"]:
+		if gi.get("item") is Dictionary and Data.BASES[gi.item["base"]]["slot"] not in ["gold", "potion"]:
 			total += 1
 			if float(gi.item.get("power", 1.0)) == 5.0:
 				powered += 1

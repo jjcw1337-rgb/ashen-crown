@@ -31,6 +31,7 @@ static func start(g: Node, port: int) -> void:
 	await g.load_zone(0, "town", "start")
 	cs.park_hero()
 	print("[COOP] server ", "up on UDP port %d" % port if err == OK else "FAILED to open port %d (error %d)" % [port, err])
+	ServerUpdate.watch(g, "[COOP]", func() -> bool: return g.net.players.is_empty())
 
 ## The server's own hero: hidden, off the map and phased, so monsters never see it (kept so every frame).
 func park_hero() -> void:

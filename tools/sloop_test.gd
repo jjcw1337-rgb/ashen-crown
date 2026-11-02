@@ -43,7 +43,7 @@ func _run() -> void:
 	g.ui.close_all()
 	g.hero.boats = []
 	g.hero.sailed = true
-	g.hero.gold = 5000
+	g.hero.gold = int(Data.BOATS["gull"]["price"]) + int(Data.BOATS["sloop"]["price"]) + 3100
 	print("[L] glb exists %s, dims %s" % [ResourceLoader.exists(str(Data.BOATS["sloop"]["glb"])), Boat.dims("sloop")])
 	var m := Boat.model("sloop")
 	print("[L] Boat.model(sloop): imported %s, lamps %d" % [m.get_node_or_null("model") != null, m.find_children("lamp*", "OmniLight3D", true, false).size()])
@@ -78,6 +78,7 @@ func _run() -> void:
 	b.speed = 0.0
 	print("[L] alongside the Verdant Isle's jetty: dock '%s'" % b.dock_near().get("name", ""))
 	b.set_process(true)
+	g.hero.set_level(10)      # (the Verdant Isle asks for level 10)
 	g.try_land()
 	while g._busy or g.cur_zone != "isle_verdant":
 		await process_frame

@@ -66,7 +66,7 @@ func _run() -> void:
 	await g.load_zone(0, "wild", "start")
 	await _clear_foes()
 	var h = g.hero
-	h.level = 12
+	h.level = 20          # (The Last Epidemic, his ultimate, opens at 20)
 	h.recalc()
 	h.mana = h.max_mana
 	check(h.cls == "plague" and h.pd != null, "a new character can be a Plague Doctor")

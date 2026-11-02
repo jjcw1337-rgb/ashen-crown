@@ -1,5 +1,6 @@
 extends SceneTree
-## Checks the F8 testing switches: immortal blocks damage, one-hit kill kills, nothing else changes.
+## Checks the admin testing switches (the Escape menu's Admin column): immortal blocks damage, one-hit kill kills,
+## nothing else changes; Go to level 20 gives 10,000 gold.
 var g
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
@@ -15,8 +16,14 @@ func _run() -> void:
 	var h = g.hero
 	var lvl: int = h.level
 	var dmg := [h.dmg_min, h.dmg_max]
-	g.ui.toggle(g.ui.test_panel)
-	print("[T] panel visible: ", g.ui.test_panel.visible)
+	g.dev_tools = true
+	g.toggle_pause()
+	print("[T] admin column visible: ", g.ui.test_panel.visible, ", menu ", g.ui.pause_panel.size)
+	var lit := 0
+	for b in g.ui.test_panel.find_children("*", "Button", true, false):
+		lit += 1
+	print("[T] admin buttons: ", lit)
+	g.toggle_pause()
 	g.test_immortal = true
 	var l0: float = h.life
 	h.take_hit(50.0, h.global_position + Vector3(1, 0, 0))
@@ -69,4 +76,7 @@ func _run() -> void:
 	print("[T] set level 20: level=", h.level, " stat points +", h.stat_points - pts, " life=", int(h.life), "/", int(h.max_life))
 	h.set_level(5)
 	print("[T] set level 5: level=", h.level)
+	var gold0: int = h.gold
+	g.go_level_20()
+	print("[T] go to level 20: level=", h.level, " gold +", h.gold - gold0)
 	quit()

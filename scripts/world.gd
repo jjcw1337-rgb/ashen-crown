@@ -69,6 +69,8 @@ var fx_root: Node3D
 var stone_xf: Array = []
 var rock_xf := {}               # variant -> Array of transforms
 var theme := {}
+## Tools can stage their own zone: kind -> Callable(world) built instead of the game's (tools/fire_range.gd's test range).
+static var custom_zones := {}
 
 func _init() -> void:
 	props_root = Models.N(self, "Props")
@@ -969,8 +971,13 @@ func build(act_i: int, kind_s: String, seed_v: int) -> void:
 	hill_noise.seed = seed_v + 11
 	hill_noise.frequency = 0.03
 	hill_noise.fractal_octaves = 4
+	if custom_zones.has(kind):
+		(custom_zones[kind] as Callable).call(self)
+		return
 	match kind:
 		Battlegrounds.ZONE: Battlegrounds.build(self)
+		Vigil.ZONE: Vigil.build(self)
+		Sandbox.ZONE: Sandbox.build(self)
 		"town": _build_town()
 		"wild": Via.build(self) if run == 1 else _build_wild()
 		"coast": Coast.build(self)
@@ -1797,45 +1804,74 @@ func _build_lair() -> void:
 
 ## The crypt's stone shell around `floor_rects`: everything that isn't floor is solid rock, wall blocks along the
 ## floor's edges, a dark top over the rock, and the crypt floor. Used by the crypt and the Battlegrounds dungeon.
-func crypt_shell() -> void:
+## The rock round a crypt's floor_rects: everything not floor is solid, wall blocks along the floor's edges, dark
+## caps over the rock near the floor (the void further out is left empty: the camera never sees it). Floors far
+## apart (the Battlegrounds' three) each get their own walls; `themes` [{"rect": Rect2, "a": Color, "b": Color,
+## "moss": Color}] colours the walls inside a rect (the frozen floor's ice-white stone, the overgrown one's mossy).
+func crypt_shell(themes := []) -> void:
 	_rasterize()
-	# everything that is not floor is solid rock
+	# the floor, rasterized once (is_floor per cell and per neighbour was rects x cells x 9)
+	var fl := PackedByteArray()
+	fl.resize(gw * gh)
+	fl.fill(0)
+	for r in floor_rects:
+		var rr: Rect2 = r
+		var x0 := clampi(int(floor((rr.position.x - origin.x) / CELL)), 0, gw - 1)
+		var x1 := clampi(int(ceil((rr.end.x - origin.x) / CELL)), 0, gw)
+		var y0 := clampi(int(floor((rr.position.y - origin.y) / CELL)), 0, gh - 1)
+		var y1 := clampi(int(ceil((rr.end.y - origin.y) / CELL)), 0, gh)
+		for y in range(y0, y1):
+			for xx in range(x0, x1):
+				if rr.has_point(Vector2(origin.x + (xx + 0.5) * CELL, origin.y + (y + 0.5) * CELL)):
+					fl[y * gw + xx] = 1
+	var at := func(xx: int, y: int) -> int:
+		return fl[y * gw + xx] if xx >= 0 and y >= 0 and xx < gw and y < gh else 0
 	rock.resize(gw * gh)
 	rock.fill(0)
-	for y in gh:
-		for xx in gw:
-			var wx := origin.x + (xx + 0.5) * CELL
-			var wz := origin.y + (y + 0.5) * CELL
-			if not is_floor(wx, wz):
-				rock[y * gw + xx] = 1
-				blocked[y * gw + xx] = 1
-				astar.set_point_solid(Vector2i(xx, y), true)
-	# wall blocks along floor edges
-	var wall_xf := []
+	var wall_xf := {}             # theme index (-1 = the plain stone) -> transforms
 	var top_xf := []
 	for y in gh:
 		for xx in gw:
+			if fl[y * gw + xx] == 1:
+				continue
+			rock[y * gw + xx] = 1
+			blocked[y * gw + xx] = 1
+			astar.set_point_solid(Vector2i(xx, y), true)
 			var wx := origin.x + (xx + 0.5) * CELL
 			var wz := origin.y + (y + 0.5) * CELL
-			if is_floor(wx, wz):
-				continue
 			var edge := false
-			for dy in range(-1, 2):
-				for dx in range(-1, 2):
-					if is_floor(wx + dx, wz + dy):
-						edge = true
+			var near := false
+			for dy in range(-4, 5):
+				for dx in range(-4, 5):
+					if at.call(xx + dx, y + dy) == 1:
+						near = true
+						if absi(dx) <= 1 and absi(dy) <= 1:
+							edge = true
 			if edge:
 				var hh := rng.randf_range(2.8, 3.4)
-				wall_xf.append(Transform3D(Basis(Vector3.UP, rng.randf_range(-0.04, 0.04)).scaled(Vector3(1.0, hh, 1.0)), Vector3(wx, hh * 0.5, wz)))
-			else:
+				var ti := -1
+				for k in themes.size():
+					if (themes[k]["rect"] as Rect2).has_point(Vector2(wx, wz)):
+						ti = k
+				if not wall_xf.has(ti):
+					wall_xf[ti] = []
+				wall_xf[ti].append(Transform3D(Basis(Vector3.UP, rng.randf_range(-0.04, 0.04)).scaled(Vector3(1.0, hh, 1.0)), Vector3(wx, hh * 0.5, wz)))
+			elif near:
 				top_xf.append(Transform3D(Basis().scaled(Vector3(1.0, 0.2, 1.0)), Vector3(wx, 3.0, wz)))
-	if str(theme.get("name", "")) == "bg":
-		# the Hollow Crypt: some wall cells become niches, tombs, statues and braziers (the rolls above are made
-		# whatever is drawn), the rest the textured crypt stone, in tiles
-		CryptProps.wall_meshes(self, CryptProps.walls(self, wall_xf))
-	else:
-		var wm := Mats.world(Color(0.4, 0.38, 0.35), Color(0.28, 0.27, 0.25), 0.9, 2.2, 0.25, Color(0.14, 0.16, 0.09))
-		Props.multimesh(props_root, Geo.box(1.02, 1.0, 1.02), wall_xf).material_override = wm
+	for ti in wall_xf:
+		if ti < 0 and str(theme.get("name", "")) == "bg":
+			# the Hollow Crypt's Ossuary (floor 1; the floors below keep their themes): some wall cells become
+			# niches, tombs, statues and braziers (the rolls above are made whatever is drawn), the rest the
+			# textured crypt stone
+			CryptProps.wall_meshes(self, CryptProps.walls(self, wall_xf[ti]))
+			continue
+		var wm: Material
+		if ti < 0:
+			wm = Mats.world(Color(0.4, 0.38, 0.35), Color(0.28, 0.27, 0.25), 0.9, 2.2, 0.25, Color(0.14, 0.16, 0.09))
+		else:
+			var th: Dictionary = themes[ti]
+			wm = Mats.world(th["a"], th["b"], 0.9, 2.2, 0.25, th.get("moss", Color(0.14, 0.16, 0.09)))
+		Props.multimesh(props_root, Geo.box(1.02, 1.0, 1.02), wall_xf[ti]).material_override = wm
 	Props.multimesh(props_root, Geo.box(1.0, 1.0, 1.0), top_xf, false).material_override = Mats.world(Color(0.05, 0.05, 0.05), Color(0.03, 0.03, 0.03), 1.0, 1.0, 0.0, Props.MOSS, true)
 	_flush_stones(Props.stone())
 	_build_terrain(CRYPT_TERRAIN)
@@ -2022,8 +2058,8 @@ func _wall_torch(p: Vector3, shadow: bool) -> void:
 		g.add_child(mm)
 		_place(g, p)
 		var f := Props.fire(g, Vector3(0, 2.1, 0) + CryptProps.SCONCE_CUP, 0.6, Color(1.0, 0.5, 0.2), true, shadow, false, "torch")
-		if str(theme.get("name", "")) == "bg":
-			CryptProps.torch_light(f)
+		if str(theme.get("name", "")) == "bg" and BgFloors.floor_of(p) == 1:
+			CryptProps.torch_light(f)      # (the Ossuary's; the floors below keep Blaine's light)
 		return
 	Models.P(g, Geo.box(0.12, 0.3, 0.1), Props.iron(), Vector3(0, 2.2, 0.0))
 	Models.seg(g, Vector3(0, 2.1, 0), Vector3(0, 2.5, 0.3), 0.03, 0.04, Props.wood_dark(), 6)

@@ -509,6 +509,7 @@ func _attack(delta: float) -> Vector3:
 func _strike(mult: float) -> void:
 	if not _valid(target):
 		return
+	Hero.striker = master        # (a sandbox stand-in never takes its own hero's wolf)
 	var to: Vector3 = target.global_position - global_position
 	to.y = 0
 	var fwd := Vector3(-sin(heading), 0, -cos(heading))

@@ -305,6 +305,7 @@ func sync_pose(st: Dictionary) -> void:
 	w_shield = lerpf(w_shield, sh_t, k)
 	if w_up > 0.002 or w_low > 0.002 or w_shield > 0.002:
 		_apply_procedural()
+	_shot_body(st, a, shooting, stepping, dt)
 	_reach_hilt(st)
 	sync()   # the cloak (knight_rig.gd)
 	_follow()
@@ -457,6 +458,94 @@ func _reach_hilt(st: Dictionary) -> void:
 	var fo_l := (up_g.inverse() * fo_g).get_rotation_quaternion()
 	skel.set_bone_pose_rotation(ua, skel.get_bone_pose_rotation(ua).slerp(up_l, w))
 	skel.set_bone_pose_rotation(fa, skel.get_bone_pose_rotation(fa).slerp(fo_l, w))
+
+# ---------------------------------------------------------------- the shot's body (the archer)
+## Procedural layers over the shot clip for a bow skill with `shot_body` in its SHOT (the Fire Arrow and every
+## bow shot, Archer.SHOT "body"): the whole body takes part. Each is a curve over the attack's progress a
+## (release at Anim.impact_at("bow"), 0.72), eased, laid on the bones AFTER the clips as extra turns in each
+## bone's local frame, so the string still meets the hand (Archer.pose_bow solves the bow after this).
+##   twist    the spine winds up toward the draw side through the full draw, then unwinds through the release
+##   lean     the weight settles on the back foot (hips back and down a little) as he holds the draw
+##   recoil   the bow arm kicks up and back on the release and comes down
+##   fling    the string hand flies back past the ear on the release, the elbow opening
+##   head     the head holds steady on the mark, then eases with the follow-through
+## Standing it goes on the shot clip; walking (the aimed walk) only the arms' release and a lighter twist.
+const SHOT_BODY := {
+	"twist": [[0.38, 0.0], [0.62, 1.0], [0.72, 1.0], [0.8, -0.35], [1.0, 0.0]],
+	"lean": [[0.3, 0.0], [0.6, 1.0], [0.72, 1.0], [0.9, 0.0]],
+	"recoil": [[0.7, 0.0], [0.74, 1.0], [0.82, 0.35], [0.95, 0.0]],
+	"fling": [[0.7, 0.0], [0.76, 1.0], [0.9, 0.55], [1.0, 0.0]],
+	"hold": [[0.55, 0.0], [0.64, 1.0], [0.72, 1.0], [0.74, 0.0]],
+	# a breath drawn in as the bow comes up, held through the aim, let out after the release
+	"breath": [[0.36, 0.0], [0.5, 1.0], [0.72, 0.85], [0.84, -0.4], [1.0, 0.0]],
+	# the back set: the draw shoulder blade pulled back toward the spine, the bow shoulder pressed down and out
+	"set": [[0.42, 0.0], [0.6, 1.0], [0.72, 1.0], [0.78, 0.2], [0.95, 0.0]],
+	# the follow-through: the weight rolling onto the front foot after the release, the body staying in the shot
+	"follow": [[0.71, 0.0], [0.8, 1.0], [0.9, 0.7], [1.0, 0.0]],
+}
+const SHOT_BONES := {"twist": ["Spine", "Spine01", "Spine02"], "recoil": ["LeftArm", "LeftForeArm"],
+	"fling": ["RightArm", "RightForeArm", "RightHand"], "head": ["Head"]}
+var shot_body_w := 0.0
+
+func _shot_body(st: Dictionary, a: float, shooting: bool, stepping: bool, dt: float) -> void:
+	var on: bool = (shooting or stepping) and a >= 0.0 and shot.get("body", false)
+	var k := 1.0 - exp(-dt * 16.0) if dt > 0.0 else 1.0
+	shot_body_w = lerpf(shot_body_w, 1.0 if on else 0.0, k)
+	if shot_body_w < 0.003:
+		return
+	var w := shot_body_w * (0.55 if stepping else 1.0)
+	var twist := curve_at(SHOT_BODY["twist"], a) * w
+	var lean := curve_at(SHOT_BODY["lean"], a) * w * (0.0 if stepping else 1.0)
+	# a clip with its own loose (SHOT "body_stand") keeps only the layers it lacks while he stands
+	var bs: Dictionary = {} if stepping else shot.get("body_stand", {})
+	var recoil := curve_at(SHOT_BODY["recoil"], a) * w * float(bs.get("recoil", 1.0))
+	var fling := curve_at(SHOT_BODY["fling"], a) * w * float(bs.get("fling", 1.0))
+	var hold := curve_at(SHOT_BODY["hold"], a) * w
+	var breath := curve_at(SHOT_BODY["breath"], a) * w
+	var bset := curve_at(SHOT_BODY["set"], a) * w
+	var follow := curve_at(SHOT_BODY["follow"], a) * w * (0.4 if stepping else float(bs.get("follow", 1.0)))
+	# the full draw: a tremor of effort in the arms and a breath held in the chest
+	var t: float = st.get("time", 0.0)
+	var tremor := hold * (sin(t * 31.0) * 0.6 + sin(t * 47.0) * 0.4) * 0.012
+	# turns in the rig frame: the archer stands side-on (body_root yaw), so "toward the draw" is about the body's y
+	var yaw_b := Basis(Vector3.UP, body_root.rotation.y) if body_root != null else Basis()
+	var spine_q := Quaternion(yaw_b * Vector3.UP, deg_to_rad(-9.0) * twist)   # wound up toward the string hand
+	var chest_q := Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(3.0) * lean + deg_to_rad(-4.0) * recoil - deg_to_rad(2.5) * breath + deg_to_rad(3.5) * follow)
+	_add_turn("Spine", spine_q * Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(2.0) * lean))
+	_add_turn("Spine01", spine_q)
+	_add_turn("Spine02", spine_q * chest_q)
+	# the head: steady on the mark through the hold, a small nod of recoil at the release
+	_add_turn("Head", Quaternion(yaw_b * Vector3.UP, deg_to_rad(9.0) * -twist * 0.6) * Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(5.0) * recoil + tremor * 0.3))
+	# the bow arm (left): kicks up and back as the string lets go
+	_add_turn("LeftArm", Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(-14.0) * recoil + tremor) * Quaternion(yaw_b * Vector3.UP, deg_to_rad(6.0) * recoil))
+	_add_turn("LeftForeArm", Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(-6.0) * recoil))
+	# the back set at full draw: the draw shoulder pulled back and down, the bow shoulder pressed down, not hunched
+	_add_turn("RightShoulder", Quaternion(yaw_b * Vector3.UP, deg_to_rad(-7.0) * bset) * Quaternion(yaw_b * Vector3.BACK, deg_to_rad(-4.0) * bset))
+	_add_turn("LeftShoulder", Quaternion(yaw_b * Vector3.BACK, deg_to_rad(5.0) * bset) * Quaternion(yaw_b * Vector3.UP, deg_to_rad(-4.0) * bset))
+	# the string hand (right): flung back past the ear, the elbow swinging out and back
+	_add_turn("RightArm", Quaternion(yaw_b * Vector3.UP, deg_to_rad(-22.0) * fling) * Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(-8.0) * fling + tremor))
+	_add_turn("RightForeArm", Quaternion(yaw_b * Vector3.UP, deg_to_rad(-16.0) * fling) * Quaternion(yaw_b * Vector3.BACK, deg_to_rad(10.0) * fling))
+	_add_turn("RightHand", Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(18.0) * fling))
+	# the weight on the back foot: the hips settle back and down, and come forward with the release
+	# (and the follow-through rolls it forward onto the front foot, the front knee giving a little)
+	if lean > 0.001 or recoil > 0.001 or follow > 0.001:
+		var hb := skel.find_bone("Hips")
+		if hb >= 0:
+			var back: Vector3 = R.inverse() * (yaw_b * Vector3(0, -0.035 * lean + 0.012 * recoil - 0.02 * follow, 0.045 * lean - 0.03 * recoil - 0.05 * follow)) / maxf(s_scale, 1e-6)
+			skel.set_bone_pose_position(hb, skel.get_bone_pose_position(hb) + back)
+			_add_turn("LeftUpLeg", Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(-3.0) * lean + deg_to_rad(-5.0) * follow))
+			_add_turn("LeftLeg", Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(6.0) * follow))
+			_add_turn("RightUpLeg", Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(4.0) * lean - deg_to_rad(2.0) * follow))
+
+## Adds a turn given in the rig frame to a bone's pose (converted into the bone's parent's frame).
+func _add_turn(nm: String, q_rig: Quaternion) -> void:
+	var i := skel.find_bone(nm)
+	if i < 0:
+		return
+	var p: int = parent_of[i]
+	var pg: Basis = (R * skel.get_bone_global_pose(p).basis.orthonormalized()) if p >= 0 else R
+	var q_local: Quaternion = (pg.inverse() * Basis(q_rig) * pg).get_rotation_quaternion()
+	skel.set_bone_pose_rotation(i, q_local * skel.get_bone_pose_rotation(i))
 
 # ---------------------------------------------------------------- the float (the Wraith)
 ## The glide: no steps, the body carried on its travel. It leans into the direction it moves by its speed (and a

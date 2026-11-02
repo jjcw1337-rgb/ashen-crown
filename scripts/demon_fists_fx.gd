@@ -18,7 +18,6 @@ extends RefCounted
 ## `update`, timing itself out if the impact never comes) and h.fxs["fists_stag"] (the staggering bodies).
 ## Budgets by InfernalFx.tier: the counts below are [Low, Medium, High, Ultra].
 
-const IMPACT := 0.48
 const SIGIL_R := 1.6
 const SHARDS := [5, 8, 11, 13]
 const FRAGS := [0, 3, 4, 5]
@@ -142,13 +141,13 @@ static func update(h: Hero, delta: float) -> void:
 			if hold:
 				k = 1.0
 			elif mine:
-				k = smoothstep(0.0, 0.36, a)
-				if not bool(st["whoosh"]) and a >= 0.34:
+				k = smoothstep(0.0, Anim.impact_at("fists") * 0.75, a)
+				if not bool(st["whoosh"]) and a >= Anim.impact_at("fists") - 0.1:
 					st["whoosh"] = true
 					SkillFx.snd(h, "swing_heavy", -4.0, 0.78)
 			elif float(st["t"]) > 0.2:
 				st["stage"] = "fade"          # cut short (a hit, a dodge, another skill)
-			if float(st["t"]) > 1.6 and not hold:
+			if float(st["t"]) > 3.0 and not hold:
 				st["stage"] = "fade"          # a partner's copy whose impact never came
 		"release":
 			st["rel_t"] = float(st.get("rel_t", 0.0)) + delta
@@ -200,7 +199,7 @@ static func update(h: Hero, delta: float) -> void:
 		var m: ShaderMaterial = st["sig_mat"]
 		var draw: float = float(st.get("draw", 0.0))
 		if str(st["stage"]) == "gather" and mine:
-			draw = maxf(draw, clampf(a / (IMPACT - 0.06), 0.0, 1.0))
+			draw = maxf(draw, clampf(a / (Anim.impact_at("fists") - 0.06), 0.0, 1.0))
 		elif str(st["stage"]) == "release":
 			draw = 1.0
 		st["draw"] = draw

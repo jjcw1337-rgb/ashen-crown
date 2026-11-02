@@ -375,7 +375,7 @@ func _shatter(at: Vector3, r: float) -> void:
 	Sfx.play_at("ice_shatter", at, -3.0, 1.35)
 	Sfx.play_at("blight_burst", at, -6.0, 1.2)
 	if not ghost():
-		var dmg := _base(12.0, 3.0, 0.24, "toxic")
+		var dmg := _base(12.0, 1.65, 0.24, "toxic")
 		for e in h.game.enemies_near(at, r):
 			_damage(e, dmg, at, true)
 	_cloud(at, r, CLOUD_T + h.talent("cloud_dur"), "toxic", false)
@@ -412,7 +412,7 @@ func _explode(at: Vector3, r: float) -> void:
 	Sfx.play_at("boom", at, -1.0)
 	Sfx.play_at("ice_shatter", at, -8.0, 0.9)
 	h.game.add_shake(0.35)
-	var fire := _base(24.0, 6.5, 0.62, "volatile") if not ghost() else 0.0
+	var fire := _base(16.0, 2.2, 0.5, "volatile") if not ghost() else 0.0     # (24, 6.5, 0.62 before the PvP pass)
 	for e in h.game.enemies_near(at, r):
 		if e.dead or ghost():
 			continue
@@ -538,14 +538,15 @@ func _update_clouds(delta: float) -> void:
 			if bool(c["infect"]):
 				_infect(e, 0)
 
-## What a second of each source's poison does (Toxic Flask's cloud, the trap's, the dome's, the infection's).
+## What a second of each source's poison does (Toxic Flask's cloud, the trap's, the dome's, the infection's). The
+## per-level parts of all his damage were cut to 0.55 of what they were in the PvP pass (they grew to twice anyone's).
 func _poison_dps(src: String) -> float:
 	match src:
-		"toxic": return _base(9.0, 2.3, 0.16, "toxic")
-		"trap": return _base(10.0, 2.5, 0.18, "trap")
-		"epidemic": return _base(9.0, 2.3, 0.26, "epidemic")
-		"infection": return _base(4.5, 1.3, 0.15, "epidemic")
-		"cane": return _base(3.0, 1.0, 0.1, "attack")
+		"toxic": return _base(9.0, 1.26, 0.16, "toxic")
+		"trap": return _base(10.0, 1.38, 0.18, "trap")
+		"epidemic": return _base(4.0, 0.6, 0.1, "epidemic")        # (9, 2.3, 0.26 before the PvP pass: one Epidemic did ~600, more than a geared level-20 player has)
+		"infection": return _base(3.0, 0.45, 0.08, "epidemic")
+		"cane": return _base(3.0, 0.55, 0.1, "attack")
 	return 0.0
 
 ## Poisons a foe from one source: refreshed, never stacked (a second cloud of the same skill does nothing more).
@@ -728,7 +729,7 @@ func _spring_at(tp: Dictionary, r: float, outbreak: bool, _by) -> void:
 	h.game.add_shake(0.15)
 	for e in h.game.enemies_near(pos, r):
 		if not e.dead and not ghost():
-			_damage(e, _base(14.0, 3.5, 0.24, "trap"), pos, true)
+			_damage(e, _base(14.0, 1.93, 0.24, "trap"), pos, true)
 			e.stun(0.8 + h.talent("trap_stun"))
 	_cloud(pos, r, TRAP_CLOUD_T + h.talent("cloud_dur"), "trap", outbreak)
 	if outbreak:
@@ -768,7 +769,7 @@ func _dome_at(g: Vector3, r: float, dur: float) -> void:
 	h.game.add_shake(0.45 if not ghost() else 0.15)
 	for e in h.game.enemies_near(g, r):
 		if not e.dead:
-			_damage(e, _base(18.0, 5.0, 0.4, "epidemic"), g, true)
+			_damage(e, _base(12.0, 1.5, 0.3, "epidemic"), g, true)
 
 ## Stage 2's impact: arms raised, the dome swells and every foe inside is marked.
 func _dome_pulse() -> void:
@@ -862,7 +863,7 @@ func _update_dome(delta: float) -> void:
 		h.game.add_shake(0.3 if not ghost() else 0.1)
 		for e in h.game.enemies_near(g, r):
 			if not e.dead:
-				_damage(e, _base(25.0, 7.0, 0.5, "epidemic"), g, true)
+				_damage(e, _base(16.0, 2.0, 0.35, "epidemic"), g, true)
 		var n = dome["node"]
 		if is_instance_valid(n):
 			for part in ["shell", "edge"]:

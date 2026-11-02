@@ -81,6 +81,20 @@ func _player() -> void:
 	check(await until(func(): return g.net.is_client() and g.cur_zone == "town" and not g._busy and not g.net.loading, 30.0), "joined the co-op server's camp")
 	check(not g.net.players.has(1), "no host player in the party (the server has none)")
 	check(await until(func(): return g.net.puppets().size() == 1 and g.net.puppets()[0].net_has, 60.0), "the partner is here")
+	# War Cry is a team skill: a roars beside b, and b's own game gets the battle buff (Net.send_team_buff)
+	if role == "a":
+		await secs(3.0)
+		var pal = g.net.puppets()[0]
+		g.hero.global_position = g.world.free_spot_near(pal.global_position, 2.0)
+		if g.hero.level < int(Data.skill_def("war_cry")["lvl"]):
+			g.hero.set_level(int(Data.skill_def("war_cry")["lvl"]))      # (War Cry opens at its level)
+		g.hero.mana = g.hero.max_mana
+		for k in g.hero.cds.keys():
+			g.hero.cds[k] = 0.0
+		check(g.hero.use_skill("war_cry", g.hero.global_position), "roared a War Cry beside the partner")
+		check(await until(func(): return g.hero.buff_t > 0.0, 3.0), "and got its fury (when the roar lands)")
+	else:
+		check(await until(func(): return g.hero.buff_t > 0.0, 20.0), "the partner's War Cry gave me its fury")
 	if role == "a":
 		await secs(6.0)        # (b is still finding its feet in the camp)
 		g.travel(0, "wild", "from_town")
