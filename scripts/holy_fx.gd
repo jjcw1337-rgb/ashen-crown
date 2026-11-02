@@ -178,6 +178,21 @@ static func motes(root: Node3D, pos: Vector3, r: float, amount: int, life := 1.1
 		"turb": 0.6, "grow": [1.0, 0.2],
 		"colors": [[0.0, Color(RADIANT, 0.0)], [0.12, RADIANT], [0.55, GOLD], [1.0, Color(SUNFIRE, 0.0)]]})
 
+## A level gained (any class; it was the generic pillar): a tall shaft of gold light rising round the hero and fading
+## slowly, motes spiralling up round him, a soft glow at his chest, the light on everything round him. Slower and
+## quieter than the knight's skills, and without their seal and ring of fire, so it never reads as one of them.
+static func level_up(h: Hero, root: Node3D, pos: Vector3) -> void:
+	warm(h)
+	var tr := InfernalFx.tier(h.game if h != null else null)
+	var m := column_mat()
+	var col := _piece(root, column(), m, pos, Vector3(1.1, 0.1, 1.1), 2.1)
+	var tw := col.create_tween()
+	tw.tween_property(col, "scale", Vector3(1.1, 9.0, 1.1), 0.4).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	InfernalFx.tween_param(col, m, "life", 1.0, 0.0, 1.5, 0.45).set_ease(Tween.EASE_IN)
+	sunburst(root, pos + Vector3(0, 1.3, 0), 1.8, 0.6, 1.5, 0.8)
+	motes(root, pos, 1.3, [16, 26, 38, 50][tr], 1.8, 0.6, Vector2(1.4, 3.2))
+	Fx.flash(root, pos + Vector3(0, 2.0, 0), GOLD, 3.5, 1.4, 8.0)
+
 # ---------------------------------------------------------------- the knight's skills
 ## Holy Nova (E): the seal flares under him, a sunburst at his chest, a ring of holy fire races out to the edge of
 ## the 7 m blast with a ripple ahead of it, motes rise where it passed, the grass is laid down outward.

@@ -630,7 +630,7 @@ func add_xp(v: int) -> void:
 		recalc()
 		life = max_life
 		mana = max_mana
-		Fx.pillar(game.world.fx_root, global_position, Color(1.0, 0.85, 0.4))
+		HolyFx.level_up(self, game.world.fx_root, global_position)
 		Sfx.play("levelup")
 		leveled.emit(level)
 	stats_changed.emit()
@@ -651,7 +651,7 @@ func set_level(n: int) -> void:
 	life = max_life
 	mana = max_mana
 	if up and game.world:
-		Fx.pillar(game.world.fx_root, global_position, Color(1.0, 0.85, 0.4))
+		HolyFx.level_up(self, game.world.fx_root, global_position)
 		Sfx.play("levelup")
 	leveled.emit(level)
 	stats_changed.emit()

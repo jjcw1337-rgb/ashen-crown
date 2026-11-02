@@ -3,7 +3,7 @@ extends SceneTree
 ## standing in it, seen from the game camera, without loading a zone: for judging those effects in a minute.
 ## Needs a display (xvfb + software Vulkan is fine) and a fixed frame rate, so the effect's time is exact:
 ##   xvfb-run -a godot --path . --rendering-driver vulkan --resolution 960x540 --fixed-fps 30 \
-##     -s tools/visual_audit/fx_lab.gd -- out_prefix [cloud|dome|death] [tier] [seconds ...]
+##     -s tools/visual_audit/fx_lab.gd -- out_prefix [cloud|dome|death|levelup] [tier] [seconds ...]
 ## Writes out_prefix_<cloud|dome>_<seconds>.png (default 0.6, 1.5 and 3.0 s after it appears; tier 2 = High).
 ## Scripts are loaded at run time (they need the Sfx autoload).
 const CAM_OFFSET := Vector3(0, 17.0, 16.5)
@@ -104,9 +104,12 @@ func _run() -> void:
 	var fx := Node3D.new()
 	root3.add_child(fx)
 	fx.global_position = Vector3.ZERO
-	if what == "death":
+	if what == "death" or what == "levelup":
 		var FX: GDScript = load("res://scripts/fx.gd")
-		for k in 3:
+		var HF: GDScript = load("res://scripts/holy_fx.gd")
+		if what == "levelup":
+			HF.call("level_up", null, fx, Vector3(1.0, 0.0, 0.4))
+		for k in (3 if what == "death" else 0):
 			var at := Vector3(-2.0 + k * 2.0, 0.0, 1.2 - k * 0.6)
 			var col: Color = [Color(0.4, 0.0, 0.0), Color(0.35, 0.03, 0.02), Color(0.15, 0.35, 0.05)][k]
 			FX.call("splat", fx, at, col, 0.6 + 0.4)

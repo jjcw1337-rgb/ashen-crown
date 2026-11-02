@@ -486,7 +486,6 @@ static func pillar(root: Node3D, pos: Vector3, col: Color, dur: float = 1.4) -> 
 	burst(root, pos + Vector3(0, 0.5, 0), col, 40, 4.0, 0.12, 1.2, true, 2.0, 40.0)
 	flash(root, pos + Vector3(0, 2, 0), col, 4.0, dur, 9.0)
 
-## Blood splat decal left on the floor.
 ## A splash on the ground (a kill's blood, a stain of oil): a ragged pool with rays and drops past its edge that runs
 ## out in a moment, wet and glossy, darker where it is deep, laid over the ground's bumps (SPLAT_SHADER); it dries matte
 ## and soaks away over the last 14 of its 40 seconds. (It was a flat ten-sided disc.)
