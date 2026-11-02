@@ -315,6 +315,8 @@ static func build(w: World) -> void:
 	for op in [Vector2(-7.5, -18.5), Vector2(8.5, -19), Vector2(-18.5, -9.5), Vector2(19.5, -4), Vector2(-9, 15.5), Vector2(10, 14.5)]:
 		if _near_shop(op, 4.5):
 			continue
+		if grand_waypoint() and op.y > WP_AT.z and op.y - WP_AT.z < 14.0 and absf(op.x - WP_AT.x) < 9.0:
+			continue      # the camera side of the grand waypoint stays open: a crown there hid the dais and its fire bowl
 		oaks[k % 3].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(1.15, 1.35)), Vector3(op.x, w.height_at(op.x, op.y), op.y)))
 		w.add_circle(Vector3(op.x, 0, op.y), 0.8)
 		var la := rng.randf() * TAU

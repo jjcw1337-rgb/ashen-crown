@@ -497,6 +497,14 @@ func _bg_card(b: Dictionary) -> Control:
 				Sfx.play("deny")
 				return
 			_descend(str(b["id"]), icon))
+	# every line of text wraps (the name, its plaque and the tag excepted): an unwrapped line sets the card's
+	# minimum width, and wider than its column the card was clipped, text and button cut off at the right
+	for n in card.find_children("*", "Label", true, false):
+		var lb: Label = n
+		if lb.get_parent() == nrow or lb == tag or lb.autowrap_mode != TextServer.AUTOWRAP_OFF:
+			continue
+		lb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lb.custom_minimum_size.x = 60.0
 	return card
 
 ## Down we go: the sigil flashes, the window closes and Game asks its last word (then the dais flares).
