@@ -101,7 +101,12 @@ and at fresh 0.9 vs geared 0.45):
 fresh -> geared: knight life 326 -> 374, armour 9 -> 33, damage 18-34 -> 23-43; Doug 320 -> 357, 18-34 -> 19-37.
 
 Still to do / needs playtesting:
-- Class against class: the sim's bot measures melee classes too low (it doesn't play the knight's combo or the
+- Plague Doctor (done, the one class change): his damage had a per-level part growing to twice anyone's (a Toxic
+  Flask cloud ~60 a second at 19, every source stacking) and one Last Epidemic did ~600, more than a geared level-20
+  player's ehp. Per-level parts x0.55, Volatile Mixture (16, 2.2, 0.5), the Epidemic's slam / collapse / dome /
+  infection cut, its cooldown 24 -> 45 s like the other ultimates. Moving-target sim (`pvp_sim.gd -- moving`):
+  level 10 39 -> 24 dps, level 20 121 -> 64 (45 of it without the Epidemic).
+- Class against class otherwise: the sim's bot measures melee classes too low (it doesn't play the knight's combo or the
   demon's charges well) and the Warlock and Plague Doctor far too high against a target that never leaves their beams
   and clouds (190-270 dps at 20 against 25-50). A moving-target sim before retuning class numbers; until then no class
   numbers were changed. Warlock and Plague at 20 are the first thing to watch in playtests.

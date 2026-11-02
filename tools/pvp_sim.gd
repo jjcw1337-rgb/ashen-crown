@@ -21,6 +21,9 @@ var g
 var classes: Array = CLASSES
 var levels: Array = LEVELS
 var out_path := ""
+var skip: Array = []    # skip=id,id: the bot leaves those skills alone (to see what one skill adds)
+var moving := false     # "moving": the foe strafes round a 4 m circle at 3.2 m/s like a player, so clouds, traps and
+						# ground effects must be aimed and kept up, and melee has to keep up with him
 var rows := {}      # "cls:lvl:gear" -> {ehp, dps, life, armor}
 var flags := 0
 
@@ -32,6 +35,10 @@ func _initialize():
 			levels = Array(a.substr(7).split(",")).map(func(x): return int(x))
 		elif a.begins_with("out="):
 			out_path = a.substr(4)
+		elif a.begins_with("skip="):
+			skip = Array(a.substr(5).split(","))
+		elif a == "moving":
+			moving = true
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
 	_run()
@@ -116,9 +123,15 @@ func _measure(cls: String, lvl: int, gear: String) -> void:
 	foe.scripted = 999.0
 	await frames(2)
 	var t := 0.0
+	var centre: Vector3 = foe.global_position + Vector3(0, 0, -3.0)
 	while t < FIGHT_S:
 		await process_frame
 		t += 1.0 / 30.0
+		if moving:
+			var a := t * 3.2 / 4.0
+			var p := centre + Vector3(cos(a) * 4.0, 0, sin(a) * 4.0)
+			p.y = g.world.height_at(p.x, p.z)
+			foe.global_position = p
 		_bot(foe)
 	var dealt: float = 1.0e7 - foe.life
 	var dps: float = dealt / FIGHT_S * Battlegrounds.PVP_MULT
@@ -142,13 +155,17 @@ func _bot(foe) -> void:
 	skills.reverse()
 	for s in skills:
 		var id: String = s["id"]
-		if Data.skill_locked(s, h.level) or h.cds.get(id, 0.0) > 0.0 or h.mana < h.skill_cost(id):
+		if id in skip or Data.skill_locked(s, h.level) or h.cds.get(id, 0.0) > 0.0 or h.mana < h.skill_cost(id):
 			continue
 		h._face(foe.global_position - h.global_position)
 		if h.use_skill(id, h.skill_aim(id, foe.global_position)):
 			return
-	# the weapon: a swing (or a shot) at the foe where he stands, no walking about
+	# the weapon: a swing (or a shot) at the foe where he stands; a melee class out of reach walks after him
 	h._face(foe.global_position - h.global_position)
+	if moving and nd > h.reach() + 0.6:
+		if h.target != foe:
+			h.cmd_target(foe)
+		return
 	h.free_attack(foe.global_position)
 
 ## Who wins: A deals dps_a x skill_a a second (+-30%), B likewise; first to empty the other's ehp.
