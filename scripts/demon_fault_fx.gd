@@ -47,7 +47,7 @@ static func _slam(h: Hero, ev: Dictionary) -> void:
 	var warn: float = float(ev.get("x", DemonSkills.FAULT_WARN))
 	var life: float = float(ev.get("r", DemonSkills.FAULT_LIFE))
 	# the blow
-	DemonKitFx.decal(root, p, "crush", Vector2(2.2, 2.2), randf() * TAU, 3.0, 0.8)
+	DemonKitFx.decal(root, p, "crush", Vector2(2.2, 2.2), randf() * TAU, 3.0, 0.3)
 	DemonKitFx.smoke(root, p, "ash", 2.0, 1.1)
 	DemonKitFx.clods(root, p + Vector3(0, 0.2, 0), [10, 14, 20, 24][tr], 3.6)
 	DemonKitFx.pieces(root, world, p + Vector3(0, 0.15, 0), DemonKitFx.BOULDER_PIECES, 0.2, 3.0, 0.0, 1.4, 1.2)

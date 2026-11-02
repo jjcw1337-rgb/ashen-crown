@@ -6,9 +6,10 @@ extends RefCounted
 ##  The tear ("cast"): his hand rips into the ground: the earth there is crushed in (a Meshy-painted mark), clods and
 ##  torn chunks of ground fly up, a puff of simulated dust.
 ##  The throw ("throw" {p: the hand, q: where it lands, x: the flight, n: which throw}): the Meshy boulder (cracked
-##  basalt, lava in its seams) tumbles on a high arc, its seams glowing, shedding a trail of simulated smoke and fire
-##  (the comet sim, puff by puff) and a few sparks; a light rides with it. On the ground where it will land a mark
-##  closes in and fills as it falls, for everyone (the counterplay).
+##  basalt, lava in its seams) tumbles on a high arc, its seams glowing, dragging a trail of simulated fire and smoke
+##  (the comet sim, one looping card lying along its flight) and leaving soot hanging in the air behind it, a few
+##  sparks; a light rides with it. On the ground where it will land a mark closes in and fills as it falls, for
+##  everyone (the counterplay).
 ##  The landing ("splash" {p, ps: where the shards stop, t: the foes struck}): it breaks into its real pieces (the
 ##  same rock cut into Voronoi chunks in Blender), their broken faces molten and cooling as they bounce away; the
 ##  simulated impact cloud (a hot flash, then dirt and ash thrown out and up, a skirt of dust racing along the ground);
@@ -17,7 +18,9 @@ extends RefCounted
 ## State: h.fxs["shatter"] (each boulder in the air with its mark and trail), flown by `update`.
 
 const SIZE := 0.82
-const TRAIL_EVERY := 0.05
+const TRAIL_LEN := 3.0       # the boulder's comet trail, metres
+const PUFF_EVERY := 0.07     # soot left hanging behind a flying rock
+const IMPACT_TINT := Color(0.86, 0.8, 0.72, 0.92)   # the dust a shade darker and warmer: the moor's dusk, not daylight
 
 static func play(h: Hero, ev: Dictionary) -> bool:
 	match str(ev["e"]):
@@ -37,7 +40,7 @@ static func _tear(h: Hero) -> void:
 	var tr := InfernalFx.tier(h.game)
 	var p := h.global_position + h.facing() * 0.7 + h.facing().cross(Vector3.UP) * 0.35
 	p.y = world.height_at(p.x, p.z)
-	DemonKitFx.decal(root, p, "crush", Vector2(1.6, 1.6), randf() * TAU, 3.0, 0.6)
+	DemonKitFx.decal(root, p, "crush", Vector2(1.6, 1.6), randf() * TAU, 3.0, 0.2)
 	var tw := root.create_tween()
 	tw.tween_interval(0.18)
 	tw.tween_callback(func():
@@ -58,7 +61,8 @@ static func _throw(h: Hero, ev: Dictionary) -> void:
 	var mk := DemonKitFx.target_mark(root, world, to, DemonSkills.HURL_R, Color(0.6, 0.18, 0.06))
 	var bs: Array = h.fxs.get("shatter", [])
 	bs.append({"node": n, "from": from, "to": to, "t": 0.0, "dur": flight, "mark": mk[0], "mark_mat": mk[1], "trail": 0.0,
-		"spin": Vector3(randf_range(5.0, 8.0), randf_range(-3.0, 3.0), randf_range(-2.0, 2.0)), "last": from})
+		"spin": Vector3(randf_range(5.0, 8.0), randf_range(-3.0, 3.0), randf_range(-2.0, 2.0)), "last": from,
+		"comet": trail(root, from, (to - from).normalized() + Vector3(0, 0.6, 0), TRAIL_LEN)})
 	h.fxs["shatter"] = bs
 	DemonKitFx.clods(root, from, 8, 2.5, (to - from).normalized())
 	SkillFx.snd(h, "cleave_swing", -2.0, 0.6)
@@ -87,16 +91,25 @@ static func rock(root: Node3D, path: String, size: float, heat: float) -> Node3D
 	n.add_child(l)
 	return n
 
-## Puffs of the comet sim left behind a flying rock (each a card of fire and smoke torn back), sparks shed now and then.
-static func trail(h: Hero, root: Node3D, at: Vector3, vel: Vector3, size: float) -> void:
-	var c := DemonKitFx.smoke(root, at - Vector3(0, size * 0.5, 0), "comet", size, 0.55, false, true)
-	# the book's trail streams toward -x: flip it so it streams back from the rock's way across the screen
-	var cam := h.get_viewport().get_camera_3d()
-	if cam != null:
-		var right := cam.global_transform.basis.x
-		(c.material_override as ShaderMaterial).set_shader_parameter("flip", -1.0 if vel.dot(right) < 0.0 else 1.0)
-	if randf() < 0.35:
-		DemonKitFx.sparks(root, at, -vel, 3, 30.0, Vector2(1.0, 3.0), 0.35)
+## The trail a burning rock drags: the comet sim (fire at the rock, smoke torn back by its flight) looping on one card
+## that lies along the way it flies; `fly_trail` keeps it on the rock, `end_trail` lets it go.
+static func trail(root: Node3D, at: Vector3, dir: Vector3, length: float) -> MeshInstance3D:
+	return DemonKitFx.smoke(root, at, "comet", length, 1.2, true, Color.WHITE, dir)
+
+## Every frame of a rock's flight (b: its state): the trail on it, soot left hanging in the air behind, a few sparks.
+static func fly_trail(root: Node3D, b: Dictionary, p: Vector3, vel: Vector3, delta: float, length: float) -> void:
+	DemonKitFx.aim_smoke(b.get("comet"), p, vel)
+	b["trail"] = float(b["trail"]) - delta
+	if float(b["trail"]) > 0.0:
+		return
+	b["trail"] = PUFF_EVERY
+	DemonKitFx.smoke(root, p - vel.normalized() * length * 0.15, "ash", length * 0.42, 1.4, false, Color(0.5, 0.46, 0.43, 0.8))
+	if randf() < 0.5:
+		DemonKitFx.sparks(root, p, -vel, 3, 30.0, Vector2(1.0, 3.0), 0.35)
+
+static func end_trail(b: Dictionary) -> void:
+	DemonKitFx.smoke_out(b.get("comet"), 0.12)
+	b.erase("comet")
 
 static func _land(h: Hero, ev: Dictionary) -> void:
 	var at: Vector3 = ev["p"]
@@ -124,7 +137,7 @@ static func impact(h: Hero, at: Vector3, pieces_path: String, size: float, r: fl
 	var root: Node3D = world.fx_root
 	var tr := InfernalFx.tier(h.game)
 	DemonKitFx.pieces(root, world, at + Vector3(0, size * 0.35, 0), pieces_path, size, 6.5 * k, 3.2, 2.8, 0.9, Vector3.ZERO, tr >= 2)
-	DemonKitFx.smoke(root, at - Vector3(0, 0.2, 0), "impact", r * 1.9 * k, 1.7)
+	DemonKitFx.smoke(root, at, "impact", r * 2.0 * k, 1.9, false, IMPACT_TINT)
 	DemonKitFx.decal(root, at, "crater", Vector2(r * 1.9, r * 1.9) * k, randf() * TAU, 6.0, 3.0)
 	DemonKitFx.flash_light(root, at + Vector3(0, 1.0, 0), Color(1.0, 0.55, 0.2), 5.0 * k, 8.0 * k, 0.45)
 	DemonKitFx.shock_ring(root, h.game, at, r * 1.4 * k, 0.32)
@@ -143,10 +156,11 @@ static func _shard(h: Hero, root: Node3D, world, from: Vector3, to: Vector3, i: 
 	tw.tween_interval(dur)
 	tw.tween_callback(func():
 		DemonKitFx.smoke(root, to, "ash", 1.1, 0.8)
-		DemonKitFx.decal(root, to, "crush", Vector2(0.9, 0.9), randf() * TAU, 2.5, 1.0)
+		DemonKitFx.decal(root, to, "crush", Vector2(0.9, 0.9), randf() * TAU, 2.5, 0.25)
 		DemonKitFx.clods(root, to + Vector3(0, 0.1, 0), 5, 2.0))
 
 static func _drop(b: Dictionary) -> void:
+	end_trail(b)
 	for key in ["node", "mark"]:
 		var n = b.get(key)
 		if n != null and is_instance_valid(n):
@@ -176,10 +190,7 @@ static func update(h: Hero, delta: float) -> void:
 		var sp = (n as Node).get_meta("spin") if (n as Node).has_meta("spin") else null
 		if sp != null and is_instance_valid(sp):
 			(sp as Node3D).rotation += (b["spin"] as Vector3) * delta
-		b["trail"] = float(b["trail"]) - delta
-		if float(b["trail"]) <= 0.0 and u < 0.97:
-			b["trail"] = TRAIL_EVERY
-			trail(h, root, p, vel, 1.3)
+		fly_trail(root, b, p, vel, delta, TRAIL_LEN)
 		(b["mark_mat"] as ShaderMaterial).set_shader_parameter("k", u)
 		if u >= 1.0 and float(b["t"]) > float(b["dur"]) + 0.4:
 			_drop(b)          # a landing that never came (a partner's lost event)

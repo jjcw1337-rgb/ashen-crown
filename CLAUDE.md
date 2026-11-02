@@ -470,19 +470,35 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `hurl_twin` = a third charge). `tools/demon_test.gd` exercises every skill (`--fixed-fps 60`);
   `tools/demon_pvp_test.gd` (server + Demon + target) checks every status reaches a player through the server and
   the diminishing returns; `tools/demon_skills_clip.gd -- outdir [skill|all] [close|game]` renders frames of each.
-- **The Demon's skill looks** (each its own script, built from `InfernalFx` and `DemonKitFx` (`demon_kit_fx.gd`:
-  terrain strips and rift cracks, landing marks `TARGET_SHADER`, shock rings, debris, the Meshy props
-  `assets/models/fx/demon/` boulder / fault_plate / hellclaw with stand-ins, `by_pid`/`targets` for players);
-  `DemonFx` routes the events and keeps the grip's hoist, Pit-born's white heat and the meteors): **Hellrunner**
-  `DemonChargeFx` (the path tearing open, horns of fire, snorted smoke, a bow wave of heat haze, cooling hoofprints,
-  horn sparks, skid grooves), `DemonFaultFx` (the slam, the crack pulsing through the warning, obsidian plates
-  heaving up apart, magma between them, a curtain of fire and haze, then the crust cooling and the plates sinking),
-  **Shatterstone** `DemonHurlFx` (the ground torn up, the Meshy boulder tumbling on a high arc trailing fire and
-  smoke over its closing landing mark, the burst, crater and four burning shards skittering out), **Chain of the
-  Pit** `DemonChainFx` (a forearm sigil, a MultiMesh chain whose links cool from white-hot to dull red (`LINK_SHADER`
-  reads each link's heat from its colour), the iron claw, the clamp, the haul, the ring of cracks it sinks into),
-  **Crucible** `DemonCrucibleFx` (wings folded, obsidian crust, the seams glowing brighter with every blow taken,
-  the darkening ring, then the crust bursting off, a fire column, a ring of cracks and a shock of bending air).
+- **The Demon's skill looks** (each skill its own script, none of it Molten Fists' hellfire; built from `DemonKitFx`
+  (`demon_kit_fx.gd`); `DemonFx` routes the events and keeps the grip's hoist, Pit-born's white heat and the meteors):
+  **Hellrunner** `DemonChargeFx` (the ground crushed where he paws, a scorched furrow burning along the exact path,
+  the Meshy ram's skull as a flickering ghost of fire leading him, ash and sparks at every hoofstrike, a shock on the
+  champion that stops him, a ploughed skid), `DemonFaultFx` (the slam's crush, a gouge pulsing hotter through the
+  warning, then the Meshy lava fissure rising along the line with the Meshy obsidian plates tilting up beside it, dust,
+  simulated steam boiling off it while it stays molten, everything sinking back at the end), **Shatterstone**
+  `DemonHurlFx` (the ground torn up, the Meshy boulder tumbling on its arc dragging the comet sim and leaving soot in
+  the air, its landing mark closing in; the landing: the same rock cut into Voronoi pieces with molten faces, the
+  impact sim, a Meshy-painted crater, shards skittering out; `DemonHurlFx.impact` is the wrath's meteors' landing too,
+  with the Meshy meteorite), **Chain of the Pit** `DemonChainFx` (the Meshy forged chain laid section by section, hot
+  near his arm, the Meshy iron claw, sparks grinding off it, the smash into the ground in dust), **Crucible**
+  `DemonCrucibleFx` (the Meshy obsidian cocoon growing up round him, its veins and the ground under him glowing with
+  every blow stored, then bursting outward in its Voronoi pieces with the blast sim, a crater and a shock ring).
+  The pieces (`DemonKitFx`): **simulated smoke** (`smoke(root, pos, kind, size, dur, loop, tint, axis)`, size = the
+  cloud's width in metres): Mantaflow sims rendered in Cycles by `tools/blender/fx/smoke_flipbook.py`
+  (`SMOKE_KIND=impact|comet|steam|ash|blast blender -b --python ... -- outdir res frames px samples`; `ONLY_FRAMES=1,5,9`
+  renders just those for a quick look) as premultiplied EXR (fire is light added on top, even with no smoke) and packed
+  by `python3 tools/fx_smokebook.py outdir assets/textures/fx/demon/smoke_<kind>.png <cell px>` (rolls the light off,
+  fades every frame out at its edges, cross-fades a loop's extra frames into its start, prints the `BOOKS` line); the
+  books import with `fix_alpha_border` off and mipmaps on. Impact, ash and blast were rendered from the game camera's
+  own 44 degrees and are held facing the camera (`SMOKE_SHADER` mode 1, anchored where the sim's origin sits in the
+  frame and drawn nearer the camera so the cloud's near half doesn't sink into the ground); steam stands upright
+  (mode 0); the comet lies along the rock's flight (mode 2, `aim_smoke`). Flow particles' size is in simulation
+  cells (below 1 they leave speckles); the Principled Volume multiplies Density by the density grid itself, and its
+  colour grid comes weighted by density, so the script feeds a constant density and colour per kind. **Ground marks**
+  (`decal`: Meshy-painted crater / furrow / crush with glow masks made by `tools/fx_glow_mask.py`), **real pieces**
+  (`pieces`: Meshy models cut into Voronoi chunks by `tools/blender/fx/fracture_rock.py`, thrown, bouncing, cooling),
+  `sparks`, `clods`, landing marks, shock rings, lights; the Meshy props in `assets/models/fx/demon/`.
 - **PvP crowd control** (`scripts/pvp_status.gd` `PvpStatus`): the caster's game sends a status for a player's
   stand-in (`PvpStatus.send` -> `Net.sv_pvp_status`), the server checks it like damage (`Battlegrounds.pvp_status`:
   raid on, both alive, within 30 m; it sets the drag's end point and the fear's source itself and caps burns) and

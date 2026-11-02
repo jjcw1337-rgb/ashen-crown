@@ -41,7 +41,7 @@ Windows SmartScreen may warn that the app is unrecognised (it isn't code-signed)
   - *Fault of the Pit* (R): splits the ground in a line across your aim; after a glowing warning it erupts, throws enemies up and Brands them, and stays molten for 4 seconds.
   - *Brimstone Hurl* (F): two charges; lob a molten boulder that lands under a mark, Brands a direct hit and shatters into burning shards.
   - *Hellgrip* (G): hurl a chain with an iron claw; the first enemy it hooks is dragged in and smashed. Bosses drag you to them.
-  - *Wrath of the Pit* (V): fold your wings and crust over in obsidian (half damage, unstoppable), then burst out, terrifying everyone near you, and burn white-hot for 6 seconds.
+  - *Wrath of the Pit* (V): kneel inside a cage of obsidian crystals that glows hotter with every blow you take (half damage, unstoppable), then burst it apart, terrifying everyone near you, and burn white-hot for 6 seconds while meteors fall.
 
 Every class has four skills on Q E R F, unlocking at levels 1, 3, 6 and 10. Your class is saved with your character, and co-op partners see it.
 

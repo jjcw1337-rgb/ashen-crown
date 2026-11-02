@@ -102,7 +102,7 @@ static func _erupt(h: Hero, ev: Dictionary) -> void:
 	if n == 0:
 		DemonKitFx.sparks(root, at + Vector3(0, 1.0, 0), Vector3.UP, 30, 180.0)
 	# the ring of fire and smoke blown out, the shock, the flash, the crater
-	DemonKitFx.smoke(root, at - Vector3(0, 0.3, 0), "blast", r * 0.9 + heat * 1.2, 1.4)
+	DemonKitFx.smoke(root, at, "blast", r * 1.7 + heat * 1.6, 1.7)
 	DemonKitFx.shock_ring(root, h.game, at, r * 1.15, 0.38)
 	DemonKitFx.flash_light(root, at + Vector3(0, 1.5, 0), Color(1.0, 0.8, 0.6), 6.0 + 4.0 * heat, r * 2.0, 0.6)
 	DemonKitFx.decal(root, at, "crater", Vector2(r * 1.3, r * 1.3), randf() * TAU, 6.0, 2.0 + 2.0 * heat)

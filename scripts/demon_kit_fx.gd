@@ -2,10 +2,11 @@ class_name DemonKitFx
 extends RefCounted
 ## The pieces the Demon's overhauled skills are made of. None of it is Molten Fists' (no hellfire tongues, rift
 ## cracks or obsidian fangs): each skill has its own look out of these.
-##  - Simulated smoke (`smoke`): Blender Mantaflow sims rendered as RGBA flipbooks (tools/blender/fx/smoke_flipbook.py,
-##    packed by tools/fx_smokebook.sh into assets/textures/fx/demon/smoke_<kind>.png): impact (a rock hitting the
-##    ground), comet (a burning rock's trail), steam, ash (a hoof's puff), blast (the Crucible's ring). One shot or
-##    looping, on camera-facing cards (or one stretched along a flight).
+##  - Simulated smoke (`smoke`): Blender Mantaflow sims rendered as premultiplied flipbooks
+##    (tools/blender/fx/smoke_flipbook.py, packed by tools/fx_smokebook.py into assets/textures/fx/demon/smoke_<kind>.png):
+##    impact (a rock hitting the ground), comet (a burning rock's trail), steam, ash (a hoof's puff), blast (the
+##    Crucible's ring). The ground ones were rendered from the game camera's own 44 deg and are held facing the camera,
+##    so the card shows the cloud as the camera would see it in 3D; steam stands upright; the comet lies along its flight.
 ##  - Ground marks (`decal`): Meshy-painted top-down textures projected on the terrain by Godot Decals (crater,
 ##    furrow, crush), each with a glow mask for its hot part (made from the painting by tools/fx_glow_mask.py).
 ##  - Real pieces (`pieces`): the Meshy boulder broken into Voronoi chunks in Blender (fracture_rock.py), the cocoon
@@ -28,13 +29,15 @@ const HORNS := DIR + "horns.glb"
 const COCOON := DIR + "cocoon.glb"
 const COCOON_PIECES := DIR + "cocoon_pieces.glb"
 const TEX := "res://assets/textures/fx/demon/"
-## smoke books: file, grid (cols, rows), frames, cell aspect (w / h)
+## smoke books (the lines tools/fx_smokebook.py prints): file, grid (cols, rows), frames, cell aspect (w / h), where
+## the sim's origin sits in a frame (u, v from the bottom left: the card's anchor), the cloud's width as a fraction of
+## the frame's, how the card is held (0 upright, turning round the vertical; 1 facing the camera; 2 along a direction)
 const BOOKS := {
-	"impact": ["smoke_impact.png", Vector2(8, 6), 48, 1.0],
-	"comet": ["smoke_comet.png", Vector2(6, 6), 36, 2.0],
-	"steam": ["smoke_steam.png", Vector2(6, 6), 36, 1.0],
-	"ash": ["smoke_ash.png", Vector2(8, 4), 32, 1.0],
-	"blast": ["smoke_blast.png", Vector2(8, 5), 40, 1.6],
+	"impact": ["smoke_impact.png", Vector2(8, 6), 48, 1.2, Vector2(0.5, 0.417), 0.795, 1],
+	"comet": ["smoke_comet.png", Vector2(6, 6), 36, 2.0, Vector2(0.883, 0.5), 1.0, 2],
+	"steam": ["smoke_steam.png", Vector2(6, 6), 36, 1.0, Vector2(0.5, 0.019), 0.923, 0],
+	"ash": ["smoke_ash.png", Vector2(8, 4), 32, 1.25, Vector2(0.5, 0.338), 0.76, 1],
+	"blast": ["smoke_blast.png", Vector2(8, 5), 40, 1.3, Vector2(0.5, 0.4), 0.833, 1],
 }
 
 static var _scenes := {}
@@ -122,15 +125,21 @@ static func tex(name: String) -> Texture2D:
 	return _tex[name]
 
 # ---------------------------------------------------------------- simulated smoke
-## A simulated smoke flipbook on a camera-facing card. size = its height in metres (the width follows the book's
-## cell aspect); dur = how long the one shot plays (loop: seconds per pass); a looping card lives until freed.
-## anchor_bottom: the card stands on pos (a cloud off the ground) rather than centred on it. Returns the card.
-static func smoke(root: Node3D, pos: Vector3, kind: String, size: float, dur: float, loop := false, anchor_bottom := true, tint := Color.WHITE) -> MeshInstance3D:
+## A simulated smoke flipbook on a card at pos (the sim's origin: where the rock hit, the puff's foot, the rock in
+## flight). size = the cloud's width in metres; dur = how long the one shot plays (loop: seconds per pass; a looping
+## card lives until freed or faded with `smoke_out`); tint darkens or colours it; axis = the way a "along" card (the
+## comet) points, kept up to date with `aim_smoke`. Returns the card.
+static func smoke(root: Node3D, pos: Vector3, kind: String, size: float, dur: float, loop := false, tint := Color.WHITE, axis := Vector3.RIGHT) -> MeshInstance3D:
 	var b: Array = BOOKS[kind]
 	var t := tex(str(b[0]))
 	if _smoke_shader == null:
 		_smoke_shader = Shader.new()
 		_smoke_shader.code = SMOKE_SHADER
+	var aspect: float = b[3]
+	var anchor: Vector2 = b[4]
+	var mode: int = b[6]
+	var w: float = size / float(b[5])
+	var hgt: float = w / aspect
 	var m := ShaderMaterial.new()
 	m.shader = _smoke_shader
 	m.set_shader_parameter("book", t)
@@ -140,17 +149,22 @@ static func smoke(root: Node3D, pos: Vector3, kind: String, size: float, dur: fl
 	m.set_shader_parameter("tint", tint)
 	m.set_shader_parameter("dur", dur)
 	m.set_shader_parameter("offset", randf())
-	m.set_shader_parameter("flip", 1.0 if randf() < 0.5 else -1.0)
+	m.set_shader_parameter("mode", mode)
+	m.set_shader_parameter("axis", axis)
+	# (an along card's head must lead; the others may be mirrored for variety)
+	m.set_shader_parameter("flip", 1.0 if mode == 2 or randf() < 0.5 else -1.0)
+	if mode == 1:
+		# held facing the camera, the cloud's near half would sink into the ground: drawn nearer the camera instead
+		# (shrunk to keep its size on screen), far enough that the frame's bottom clears the ground
+		m.set_shader_parameter("push", anchor.y * hgt * 1.1 + 0.15)
 	var mi := MeshInstance3D.new()
 	var q := QuadMesh.new()
-	var w: float = size * float(b[3])
-	q.size = Vector2(w, size)
-	if anchor_bottom:
-		q.center_offset = Vector3(0, size * 0.5, 0)
+	q.size = Vector2(w, hgt)
+	q.center_offset = Vector3((0.5 - anchor.x) * w, (0.5 - anchor.y) * hgt, 0)
 	mi.mesh = q
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mi.extra_cull_margin = size
+	mi.extra_cull_margin = maxf(w, hgt)
 	root.add_child(mi)
 	mi.global_position = pos
 	if t == null:
@@ -161,6 +175,14 @@ static func smoke(root: Node3D, pos: Vector3, kind: String, size: float, dur: fl
 		tw.tween_method(func(v: float): m.set_shader_parameter("prog", v), 0.0, 1.0, dur)
 		tw.tween_callback(mi.queue_free)
 	return mi
+
+## Keeps an along card (the comet) on its rock: where it is, and the way it is going.
+static func aim_smoke(mi, pos: Vector3, axis: Vector3) -> void:
+	if mi == null or not is_instance_valid(mi):
+		return
+	(mi as Node3D).global_position = pos
+	if axis.length() > 0.01:
+		((mi as MeshInstance3D).material_override as ShaderMaterial).set_shader_parameter("axis", axis.normalized())
 
 ## Fades a looping smoke card out over dur and frees it.
 static func smoke_out(mi, dur: float) -> void:
@@ -408,7 +430,7 @@ static func flash_light(root: Node3D, at: Vector3, col: Color, energy: float, rn
 ## random offset, round and round. Camera-facing round the vertical; frames blend into each other.
 const SMOKE_SHADER := """
 shader_type spatial;
-render_mode unshaded, blend_premul_alpha, depth_draw_never, cull_disabled, shadows_disabled;
+render_mode unshaded, blend_premul_alpha, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
 uniform sampler2D book : source_color, filter_linear_mipmap, repeat_disable;
 uniform vec2 grid = vec2(8.0, 6.0);
 uniform float frames = 48.0;
@@ -419,19 +441,42 @@ uniform float offset = 0.0;
 uniform float flip = 1.0;
 uniform float fade = 1.0;
 uniform vec4 tint : source_color = vec4(1.0);
+uniform int mode = 0;
+uniform vec3 axis = vec3(1.0, 0.0, 0.0);
+uniform float push = 0.0;
 vec4 cell(float i, vec2 uv) {
 	float c = mod(i, grid.x);
 	float r = floor(i / grid.x);
 	return texture(book, (vec2(c, r) + uv) / grid);
 }
 void vertex() {
-	// face the camera round the vertical axis
-	vec3 cam = (inverse(VIEW_MATRIX) * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-	vec3 o = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-	vec3 to = normalize(vec3(cam.x - o.x, 0.0, cam.z - o.z));
-	vec3 side = normalize(cross(vec3(0.0, 1.0, 0.0), to));
-	vec3 sc = vec3(length(MODEL_MATRIX[0].xyz), length(MODEL_MATRIX[1].xyz), length(MODEL_MATRIX[2].xyz));
-	vec3 w = o + side * VERTEX.x * sc.x + vec3(0.0, 1.0, 0.0) * VERTEX.y * sc.y;
+	vec3 cam = INV_VIEW_MATRIX[3].xyz;
+	vec3 o = MODEL_MATRIX[3].xyz;
+	float sc = length(MODEL_MATRIX[0].xyz);
+	vec3 side;
+	vec3 up;
+	if (mode == 1) {
+		// facing the camera (the book was rendered from the game camera's elevation)
+		side = INV_VIEW_MATRIX[0].xyz;
+		up = INV_VIEW_MATRIX[1].xyz;
+	} else if (mode == 2) {
+		// lying along the flight, turned to the camera round it
+		vec3 to = normalize(cam - o);
+		vec3 d = normalize(axis);
+		side = d - to * dot(d, to);
+		side = length(side) > 0.001 ? normalize(side) : INV_VIEW_MATRIX[0].xyz;
+		up = normalize(cross(to, side));
+	} else {
+		// upright, turning round the vertical
+		vec3 to = normalize(vec3(cam.x - o.x, 0.0, cam.z - o.z));
+		side = normalize(cross(vec3(0.0, 1.0, 0.0), to));
+		up = vec3(0.0, 1.0, 0.0);
+	}
+	vec3 w = o + side * VERTEX.x * sc + up * VERTEX.y * sc;
+	if (push > 0.0) {
+		// nearer the camera along its own sight lines: the same place and size on screen, clear of the ground
+		w = cam + (w - cam) * max(0.05, 1.0 - push / max(length(cam - o), 0.01));
+	}
 	POSITION = PROJECTION_MATRIX * VIEW_MATRIX * vec4(w, 1.0);
 }
 void fragment() {
@@ -445,8 +490,14 @@ void fragment() {
 	float i0 = floor(f);
 	float i1 = loop ? mod(i0 + 1.0, frames) : min(i0 + 1.0, frames - 1.0);
 	vec4 a = mix(cell(i0, uv), cell(i1, uv), fract(f));
-	float edge = smoothstep(0.0, 0.04, uv.x) * smoothstep(1.0, 0.96, uv.x) * smoothstep(0.0, 0.03, uv.y) * smoothstep(1.0, 0.97, uv.y);
-	float k = fade * edge;
+	// (the packer fades every frame out at its edges; this only guards the atlas's neighbours under mipmaps)
+	float edge = smoothstep(0.0, 0.015, uv.x) * smoothstep(1.0, 0.985, uv.x) * smoothstep(0.0, 0.015, uv.y) * smoothstep(1.0, 0.985, uv.y);
+	float k = fade * edge * tint.a;
+	if (!loop) {
+		k *= 1.0 - smoothstep(0.86, 1.0, prog);
+	}
+	// premultiplied: smoke is colour x alpha, fire's light sits above it (no fog: the engine's fog mixes its colour
+	// into clear pixels too, which premultiplied blending turns into a milky sheet over the whole card)
 	ALBEDO = a.rgb * tint.rgb * k;
 	ALPHA = a.a * k;
 }
@@ -455,7 +506,7 @@ void fragment() {
 ## The charge's apparition: a glowing, flickering ghost of the model (additive, fresnel-edged, heat-shimmering).
 const GHOST_SHADER := """
 shader_type spatial;
-render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
+render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
 uniform vec4 col : source_color = vec4(1.0, 0.35, 0.06, 1.0);
 uniform float energy = 1.5;
 uniform float alpha = 1.0;

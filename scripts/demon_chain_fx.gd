@@ -135,7 +135,7 @@ static func _smash(h: Hero, ev: Dictionary) -> void:
 	var at: Vector3 = ev["p"]
 	at.y = world.height_at(at.x, at.z)
 	var held: bool = bool(ev.get("x", false))
-	DemonKitFx.decal(root, at, "crush", Vector2(DemonSkills.GRIP_SHOCK_R * 2.0, DemonSkills.GRIP_SHOCK_R * 2.0), randf() * TAU, 5.0, 1.6 if held else 0.6)
+	DemonKitFx.decal(root, at, "crush", Vector2(DemonSkills.GRIP_SHOCK_R * 2.0, DemonSkills.GRIP_SHOCK_R * 2.0), randf() * TAU, 5.0, 0.5 if held else 0.2)
 	DemonKitFx.smoke(root, at, "impact", DemonSkills.GRIP_SHOCK_R * (1.6 if held else 1.0), 1.5)
 	DemonKitFx.pieces(root, world, at + Vector3(0, 0.2, 0), DemonKitFx.BOULDER_PIECES, 0.32 if held else 0.2, 5.5, 1.2, 2.2, 1.0, Vector3.ZERO, tr >= 2)
 	DemonKitFx.clods(root, at + Vector3(0, 0.2, 0), [12, 18, 26, 32][tr], 5.0)

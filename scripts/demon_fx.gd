@@ -25,6 +25,7 @@ const BLOOD := Color(0.85, 0.04, 0.08)
 const SOUL := Color(0.62, 0.42, 1.0)
 const GRIP_SLACK := 1.5          # a partner's held foe is let go this long after the hold if the smash is lost
 const WRATH_SLACK := 1.5
+const METEOR_TRAIL := 4.5        # a meteor's comet trail, metres
 
 static var _lava_shader: Shader
 static var _disc: ArrayMesh
@@ -103,7 +104,7 @@ static func _wrath_on(h: Hero, rain: float) -> void:
 	h.fxs["wrath"]["light"] = l
 
 ## A meteor: the Meshy meteorite (pitted iron and basalt, molten cracks, a white-hot melted face) plunging from the
-## sky, its seams blazing, trailing simulated fire and smoke (the comet sim, puff by puff); a mark closes in under
+## sky, its seams blazing, dragging simulated fire and smoke (the comet sim along its fall); a mark closes in under
 ## one falling at a player. It lands with DemonHurlFx.impact: its real pieces, the simulated impact cloud, a crater.
 static func _meteor(h: Hero, root: Node3D, ev: Dictionary) -> void:
 	var at: Vector3 = ev["p"]
@@ -116,7 +117,8 @@ static func _meteor(h: Hero, root: Node3D, ev: Dictionary) -> void:
 	if fall >= DemonSkills.WRATH_FALL_PVP - 0.01:
 		mark = DemonKitFx.target_mark(root, h.game.world, at, DemonSkills.METEOR_R, Color(0.6, 0.18, 0.06))
 	var ms: Array = h.fxs.get("meteors", [])
-	ms.append({"node": n, "from": from, "to": at, "t": 0.0, "dur": fall, "mark": mark, "trail": 0.0, "last": from})
+	ms.append({"node": n, "from": from, "to": at, "t": 0.0, "dur": fall, "mark": mark, "trail": 0.0, "last": from,
+		"comet": DemonHurlFx.trail(root, from, (at - from).normalized(), METEOR_TRAIL)})
 	h.fxs["meteors"] = ms
 	if h.fxs.has("wrath"):
 		h.fxs["wrath"]["until"] = maxf(float(h.fxs["wrath"]["until"]), fall + WRATH_SLACK)
@@ -190,15 +192,13 @@ static func update(h: Hero, delta: float) -> void:
 			var sp = (n as Node).get_meta("spin") if (n as Node).has_meta("spin") else null
 			if sp != null and is_instance_valid(sp):
 				(sp as Node3D).rotation += Vector3(delta * 5.0, delta * 1.5, 0.0)
-			b["trail"] = float(b["trail"]) - delta
-			if float(b["trail"]) <= 0.0 and u < 0.97:
-				b["trail"] = DemonHurlFx.TRAIL_EVERY
-				DemonHurlFx.trail(h, root, p, vel, 1.8)
+			DemonHurlFx.fly_trail(root, b, p, vel, delta, METEOR_TRAIL)
 			var mk = b.get("mark")
 			if mk != null and is_instance_valid(mk[0]):
 				(mk[1] as ShaderMaterial).set_shader_parameter("k", u)
 			if u >= 1.0:
 				bs.erase(b)
+				DemonHurlFx.end_trail(b)
 				(n as Node).queue_free()
 				if mk != null and is_instance_valid(mk[0]):
 					(mk[0] as Node).queue_free()
@@ -250,6 +250,7 @@ static func clear(h: Hero) -> void:
 	_end_wrath(h, false)
 	if h.fxs.has("meteors"):
 		for b in h.fxs["meteors"]:
+			DemonHurlFx.end_trail(b)
 			if is_instance_valid(b["node"]):
 				(b["node"] as Node).queue_free()
 			var mk = b.get("mark")

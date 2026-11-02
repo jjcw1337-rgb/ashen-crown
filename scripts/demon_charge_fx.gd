@@ -75,7 +75,7 @@ static func _wind(h: Hero, ev: Dictionary) -> void:
 	# the paw and the snort
 	var hoof := p + h.facing() * 0.4
 	hoof.y = world.height_at(hoof.x, hoof.z)
-	DemonKitFx.decal(root, hoof, "crush", Vector2(0.9, 0.9), randf() * TAU, 2.4, 0.4)
+	DemonKitFx.decal(root, hoof, "crush", Vector2(0.9, 0.9), randf() * TAU, 2.4, 0.15)
 	DemonKitFx.smoke(root, hoof, "ash", 1.1, 0.9)
 	DemonKitFx.clods(root, hoof + Vector3(0, 0.1, 0), [5, 8, 10, 12][tr], 2.4)
 	DemonKitFx.smoke(root, DemonKitFx.head(h) + h.facing() * 0.45 - Vector3(0, 0.5, 0), "ash", 0.8, 0.8)
@@ -241,4 +241,4 @@ static func _hoofstrike(h: Hero, root: Node3D, world, n: int) -> void:
 	DemonKitFx.clods(root, p + Vector3(0, 0.08, 0), 4, 2.2, -h.facing() + Vector3.UP)
 	if n % 2 == 0:
 		DemonKitFx.sparks(root, p + Vector3(0, 0.05, 0), -h.facing() + Vector3(0, 0.6, 0), 4, 35.0, Vector2(2.0, 5.0), 0.3)
-		DemonKitFx.decal(root, p, "crush", Vector2(0.55, 0.55), randf() * TAU, 2.0, 0.3)
+		DemonKitFx.decal(root, p, "crush", Vector2(0.55, 0.55), randf() * TAU, 2.0, 0.12)
