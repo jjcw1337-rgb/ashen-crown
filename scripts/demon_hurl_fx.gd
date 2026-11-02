@@ -103,7 +103,7 @@ static func fly_trail(root: Node3D, b: Dictionary, p: Vector3, vel: Vector3, del
 	if float(b["trail"]) > 0.0:
 		return
 	b["trail"] = PUFF_EVERY
-	DemonKitFx.smoke(root, p - vel.normalized() * length * 0.15, "ash", length * 0.42, 1.4, false, Color(0.5, 0.46, 0.43, 0.8))
+	DemonKitFx.smoke(root, p - vel.normalized() * length * 0.15, "ash", length * 0.3, 1.2, false, Color(0.85, 0.8, 0.76, 0.45))
 	if randf() < 0.5:
 		DemonKitFx.sparks(root, p, -vel, 3, 30.0, Vector2(1.0, 3.0), 0.35)
 

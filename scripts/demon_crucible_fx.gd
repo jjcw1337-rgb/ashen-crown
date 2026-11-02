@@ -51,7 +51,7 @@ static func _begin(h: Hero, ev: Dictionary) -> void:
 	tw.tween_property(cage, "scale", Vector3(SCALE_XZ, SCALE_Y * 1.06, SCALE_XZ), 0.28).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 	tw.tween_property(cage, "scale", Vector3(SCALE_XZ, SCALE_Y, SCALE_XZ), 0.12)
 	var mark := DemonKitFx.decal(root, at, "crush", Vector2(3.4, 3.4), randf() * TAU, float(ev.get("x", DemonSkills.CRUCIBLE_MAX)) + 3.0, 0.3)
-	DemonKitFx.smoke(root, at, "ash", 2.6, 1.2)
+	DemonKitFx.smoke(root, at, "ash", 1.7, 1.1, false, Color(0.7, 0.66, 0.62, 0.8))
 	DemonKitFx.clods(root, at + Vector3(0, 0.2, 0), [8, 12, 16, 20][tr], 3.0)
 	var l := OmniLight3D.new()
 	l.light_color = Color(0.9, 0.18, 0.05)
@@ -102,7 +102,7 @@ static func _erupt(h: Hero, ev: Dictionary) -> void:
 	if n == 0:
 		DemonKitFx.sparks(root, at + Vector3(0, 1.0, 0), Vector3.UP, 30, 180.0)
 	# the ring of fire and smoke blown out, the shock, the flash, the crater
-	DemonKitFx.smoke(root, at, "blast", r * 1.7 + heat * 1.6, 1.7)
+	DemonKitFx.smoke(root, at, "blast", r * 1.25 + heat * 1.2, 1.5, false, Color(1, 1, 1, 0.85))
 	DemonKitFx.shock_ring(root, h.game, at, r * 1.15, 0.38)
 	DemonKitFx.flash_light(root, at + Vector3(0, 1.5, 0), Color(1.0, 0.8, 0.6), 6.0 + 4.0 * heat, r * 2.0, 0.6)
 	DemonKitFx.decal(root, at, "crater", Vector2(r * 1.3, r * 1.3), randf() * TAU, 6.0, 2.0 + 2.0 * heat)

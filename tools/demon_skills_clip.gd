@@ -32,7 +32,7 @@ func _run() -> void:
 	h.recalc()
 	h.mana = h.max_mana
 	g.test_immortal = true
-	g.zoom = 0.62
+	g.zoom = 0.62 if view == "close" else 0.9     # (the game view as a player sees it, the pack in the frame)
 	g.ui.visible = false     # just the scene
 	(g.vignette.material as ShaderMaterial).set_shader_parameter("strength", 0.0)
 	# software GL under xvfb: the Low preset, no shadows and no multisampling make the frames bearable

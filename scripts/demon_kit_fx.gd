@@ -44,6 +44,8 @@ const BOOKS := {
 ## how much of the books' daylight the smoke keeps in the game's dusk (fire keeps all of its own); steam rising off
 ## lava and the comet's smoke are lit from inside by their fire
 const SMOKE_LIGHT := {"impact": 0.5, "ash": 0.5, "blast": 0.5, "steam": 0.7, "comet": 0.6}
+## how strong each book's fire shows (the Crucible's burst is a big sheet of flame: it is held back)
+const FIRE_GAIN := {"blast": 0.6, "impact": 0.9}
 
 static var _scenes := {}
 static var _tex := {}
@@ -160,12 +162,14 @@ static func smoke(root: Node3D, pos: Vector3, kind: String, size: float, dur: fl
 	m.set_shader_parameter("mode", mode)
 	m.set_shader_parameter("axis", axis)
 	m.set_shader_parameter("smoke_light", float(SMOKE_LIGHT.get(kind, 0.5)))
+	m.set_shader_parameter("fire_gain", float(FIRE_GAIN.get(kind, 1.0)))
 	# (an along card's head must lead; the others may be mirrored for variety)
 	m.set_shader_parameter("flip", 1.0 if mode == 2 or randf() < 0.5 else -1.0)
 	if mode == 1:
 		# held facing the camera, the cloud's near half would sink into the ground: drawn nearer the camera instead
-		# (shrunk to keep its size on screen), far enough that the frame's bottom clears the ground
-		m.set_shader_parameter("push", anchor.y * hgt * 1.1 + 0.15)
+		# (shrunk to keep its size on screen), far enough that the frame's bottom clears the ground for a camera
+		# looking down as low as 30 degrees (the game's is 44)
+		m.set_shader_parameter("push", anchor.y * hgt * 1.75 + 0.3)
 	var mi := MeshInstance3D.new()
 	var q := QuadMesh.new()
 	q.size = Vector2(w, hgt)
@@ -441,6 +445,10 @@ static func target_mark(root: Node3D, world, at: Vector3, r: float, col: Color) 
 
 ## A ring of air bending outward (heat haze from High; on Low/Medium a faint dust ring instead).
 static func shock_ring(root: Node3D, game, at: Vector3, r: float, dur: float) -> void:
+	# only as bending air: without the heat haze (below High, the web) a coloured ring is just a flat band in the air,
+	# and the dust, the crater and the shards already carry the blow
+	if not InfernalFx.haze_ok(game):
+		return
 	var mi := MeshInstance3D.new()
 	var tm := TorusMesh.new()
 	tm.inner_radius = 0.82
@@ -449,11 +457,7 @@ static func shock_ring(root: Node3D, game, at: Vector3, r: float, dur: float) ->
 	tm.ring_segments = 6
 	mi.mesh = tm
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var hz: ShaderMaterial
-	if InfernalFx.haze_ok(game):
-		hz = InfernalFx.haze_mat(0.05, false)
-	else:
-		hz = InfernalFx.glow_mat(Color(0.55, 0.45, 0.38), 0.6, 1.2)
+	var hz: ShaderMaterial = InfernalFx.haze_mat(0.05, false)
 	mi.material_override = hz
 	root.add_child(mi)
 	mi.global_position = at + Vector3(0, 0.3, 0)
@@ -498,6 +502,7 @@ uniform int mode = 0;
 uniform vec3 axis = vec3(1.0, 0.0, 0.0);
 uniform float push = 0.0;
 uniform float smoke_light = 0.5;
+uniform float fire_gain = 1.0;
 vec4 cell(float i, vec2 uv) {
 	float c = mod(i, grid.x);
 	float r = floor(i / grid.x);
@@ -560,7 +565,7 @@ void fragment() {
 	// brighter than lit smoke can be is fire.
 	vec3 fire = max(a.rgb - vec3(0.42 * a.a), vec3(0.0));
 	vec3 smoke = a.rgb - fire;
-	ALBEDO = (smoke * smoke_light + fire) * tint.rgb * k;
+	ALBEDO = (smoke * smoke_light + fire * fire_gain) * tint.rgb * k;
 	ALPHA = a.a * k;
 }
 """
@@ -573,9 +578,10 @@ uniform sampler2D albedo_tex : source_color, filter_linear_mipmap, repeat_disabl
 uniform sampler2D glow_tex : source_color, filter_linear_mipmap, repeat_disable;
 uniform float glow = 1.0;
 uniform float alpha = 1.0;
+uniform float tone = 0.5;      // the paintings are lit bright; scorched, broken earth is darker than the road
 void fragment() {
 	vec4 t = texture(albedo_tex, UV);
-	ALBEDO = t.rgb;
+	ALBEDO = t.rgb * tone;
 	ALPHA = t.a * alpha;
 	ROUGHNESS = 0.95;
 	EMISSION = texture(glow_tex, UV).rgb * glow;

@@ -50,7 +50,7 @@ static func _wind(h: Hero, ev: Dictionary) -> void:
 	var d := (q - p) * Vector3(1, 0, 1)
 	var mid := p + d * 0.5
 	mid.y = world.height_at(mid.x, mid.z)
-	var fur := DemonKitFx.decal(root, mid, "furrow", Vector2(d.length() + 1.2, 1.5), atan2(-d.z, d.x), wind + 2.6, 1.6)
+	var fur := DemonKitFx.decal(root, mid, "furrow", Vector2(d.length() + 1.2, 1.5), atan2(-d.z, d.x), wind + 2.6, 5.0)
 	fur.scale = Vector3(0.02, 1, 1)
 	var tw := fur.create_tween()
 	tw.tween_property(fur, "scale", Vector3.ONE, wind * 0.8).set_ease(Tween.EASE_OUT)
@@ -155,7 +155,7 @@ static func _skid(h: Hero, ev: Dictionary) -> void:
 	st["stage"] = "skid"
 	# the furrow his hooves plough as he brakes
 	var back := p - d * 1.2
-	DemonKitFx.decal(root, back, "furrow", Vector2(3.0, 1.3), atan2(-d.z, d.x), 3.5, 1.0)
+	DemonKitFx.decal(root, back, "furrow", Vector2(3.0, 1.3), atan2(-d.z, d.x), 3.5, 2.5)
 	var front := p + d * 1.0
 	DemonKitFx.smoke(root, front, "ash", 1.7, 1.2)
 	DemonKitFx.smoke(root, front + d.cross(Vector3.UP) * 0.7, "ash", 1.1, 1.1)
@@ -232,13 +232,15 @@ static func update(h: Hero, delta: float) -> void:
 			(l as OmniLight3D).global_position = h.global_position + Vector3(0, 1.6, 0) + fwd * 0.9
 			(l as OmniLight3D).light_energy = 1.8 * (0.85 + 0.15 * sin(h.anim_time * 27.0))
 
-## A hoofstrike: a puff of simulated ash and dust, clods, a few sparks, a scuffed mark.
+## A hoofstrike: his burning hoofprint, a puff of simulated ash and dust, clods, a few sparks.
 static func _hoofstrike(h: Hero, root: Node3D, world, n: int) -> void:
 	var side := h.facing().cross(Vector3.UP).normalized()
 	var p := h.global_position + side * (0.22 if n % 2 == 0 else -0.22) - h.facing() * 0.3
 	p.y = world.height_at(p.x, p.z)
 	DemonKitFx.smoke(root, p, "ash", 0.85, 0.9, false, Color(1, 1, 1, 0.85))
 	DemonKitFx.clods(root, p + Vector3(0, 0.08, 0), 4, 2.2, -h.facing() + Vector3.UP)
+	# his cloven hoofprint burned into the ground (a Meshy painting), the heat in it dying over a few seconds
+	var f := h.facing()
+	DemonKitFx.decal(root, p, "hoof", Vector2(0.55, 0.55), atan2(-f.x, -f.z), 3.2, 2.4)
 	if n % 2 == 0:
 		DemonKitFx.sparks(root, p + Vector3(0, 0.05, 0), -h.facing() + Vector3(0, 0.6, 0), 4, 35.0, Vector2(2.0, 5.0), 0.3)
-		DemonKitFx.decal(root, p, "crush", Vector2(0.55, 0.55), randf() * TAU, 2.0, 0.12)

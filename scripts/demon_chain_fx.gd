@@ -16,9 +16,9 @@ extends RefCounted
 ## State: h.fxs["chain"], kept by `update`.
 
 const SEG := 1.2                 # one chain section's length (assets/models/fx/demon/chain.glb, laid along x)
-const SEG_SCALE := 0.62          # its size in play
+const SEG_SCALE := 0.78          # its size in play (thick enough to read from the game camera: a skillshot to dodge)
 const MAX_SEGS := 16
-const CLAW_SIZE := 0.55
+const CLAW_SIZE := 0.7
 
 static func play(h: Hero, ev: Dictionary) -> bool:
 	match str(ev["e"]):
@@ -253,7 +253,8 @@ static func _lay(st: Dictionary, a: Vector3, b: Vector3, t: float, taut: bool) -
 		# each section turned a quarter about the chain from the last, so the links read as interlocked
 		s.basis = Basis(axis, y, z).rotated(axis, PI * 0.5 * float(i % 2)).scaled(Vector3.ONE * SEG_SCALE)
 		s.global_position = p
-		var heat := clampf(1.0 - u * 2.2, 0.0, 1.0) * 2.4 + (0.6 if taut else 0.0) * (0.6 + 0.4 * sin(t * 12.0 + u * 9.0))
+		# a dull forge-red the whole way (the chain reads on dark ground), white-hot by his arm, throbbing when taut
+		var heat := 0.55 + clampf(1.0 - u * 2.2, 0.0, 1.0) * 2.4 + (0.6 if taut else 0.0) * (0.6 + 0.4 * sin(t * 12.0 + u * 9.0))
 		DemonKitFx.set_heat(s, heat)
 
 static func clear(h: Hero) -> void:

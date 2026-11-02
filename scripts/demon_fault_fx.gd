@@ -5,8 +5,9 @@ extends RefCounted
 ##
 ##  The slam ("impact" {p: the blow, q: the fault's middle, ps: [a, b] its ends, x: the warning, r: how long it
 ##  stays molten}): the ground under his fists is crushed in (a Meshy-painted mark), clods and dust (simulated ash)
-##  burst up, a shock runs through the earth; a scorched gouge splits open along the line from the middle to both
-##  ends, its embers pulsing hotter through the warning so everyone sees exactly where it will go.
+##  burst up, a shock runs through the earth; the ground splits along the line from the middle to both ends (a
+##  Meshy-painted fault line, a lava seam in broken earth), its seam pulsing hotter through the warning so everyone
+##  sees exactly where it will go.
 ##  The eruption ("erupt" {ps, t, x}): the fault heaves up out of the ground: the Meshy lava fissure (black basalt,
 ##  a crack of flowing lava) rises along the line, obsidian slabs (the Meshy plates) tilt up apart on both sides,
 ##  chunks of rock are flung up, a wall of simulated steam and gas boils off the lava, dust billows along it (the
@@ -56,7 +57,7 @@ static func _slam(h: Hero, ev: Dictionary) -> void:
 	# the line splitting open: a scorched gouge torn from the middle out to both ends
 	var d := (b - a) * Vector3(1, 0, 1)
 	var yaw := atan2(-d.z, d.x)
-	var gouge := DemonKitFx.decal(root, mid, "furrow", Vector2(d.length() + 0.6, DemonSkills.FAULT_W * 1.3), yaw, warn + life + 1.0, 0.4)
+	var gouge := DemonKitFx.decal(root, mid, "faultline", Vector2(d.length() + 0.6, DemonSkills.FAULT_W * 1.3), yaw, warn + life + 1.0, 0.4)
 	gouge.scale = Vector3(0.05, 1, 1)
 	gouge.create_tween().tween_property(gouge, "scale", Vector3.ONE, warn * 0.6).set_ease(Tween.EASE_OUT)
 	h.fxs["fault"] = {"a": a, "b": b, "gouge": gouge, "t": 0.0, "warn": warn, "life": life, "until": warn + life + 2.5,
@@ -257,7 +258,7 @@ static func update(h: Hero, delta: float) -> void:
 			var k := clampf(t / maxf(float(st["warn"]), 0.05), 0.0, 1.0)
 			var g = st.get("gouge")
 			if g != null and is_instance_valid(g):
-				DemonKitFx.set_mark_glow(g, 0.4 + 2.6 * k + 0.8 * sin(t * (18.0 + 30.0 * k)))
+				DemonKitFx.set_mark_glow(g, 0.5 + 3.2 * k + 0.9 * sin(t * (18.0 + 30.0 * k)))
 			if t > float(st["warn"]) + 0.6:
 				st["stage"] = "molten"     # a partner who never got the eruption
 				st["t"] = 0.0

@@ -498,7 +498,15 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   particles' size is in simulation cells (below 1 they leave speckles); the Principled Volume multiplies Density by
   the density grid itself, and its colour grid comes weighted by density, so the script feeds a constant density and
   colour per kind; too fast a dissolve or turbulence on the flame's source puts a fire out. Any premultiplied or
-  additive card needs `fog_disabled`: Godot's fog paints its clear pixels too (a milky sheet over the card). **Ground marks**
+  additive card needs `fog_disabled`: Godot's fog paints its clear pixels too (a milky sheet over the card). The
+  books were lit like daylight, so in the shader whatever is brighter than lit smoke can be counts as fire: the smoke
+  takes `SMOKE_LIGHT[kind]` of it (the dusk), the fire `FIRE_GAIN[kind]`; camera-facing cards are pushed toward the
+  camera far enough to clear the ground for cameras down to 30 degrees, upright ones fade at their sides. The
+  Fault's Meshy fissure is a square tile cut per pixel to a jagged band round its crack (`DemonFaultFx.CRACK_SHADER`);
+  shock rings show only as heat haze (High and up, Forward+), never as a coloured band. Captures: the Compatibility
+  renderer is what `--rendering-driver opengl3` shows (as the web build does); Forward+ in the cloud workspace needs
+  `apt-get install mesa-vulkan-drivers` (lavapipe) and `--rendering-driver vulkan`. `tools/demon_skills_clip.gd` takes
+  a skill, `all` or a list (`hurl,wrath`) and `close|game` (the game view at zoom 0.9). **Ground marks**
   (`decal`: Meshy-painted crater / furrow / crush with glow masks made by `tools/fx_glow_mask.py`, on a mesh laid
   over the terrain, since the Compatibility renderer (web, OpenGL fallback) draws no Decals; `set_mark_glow`), **real pieces**
   (`pieces`: Meshy models cut into Voronoi chunks by `tools/blender/fx/fracture_rock.py`, thrown, bouncing, cooling),

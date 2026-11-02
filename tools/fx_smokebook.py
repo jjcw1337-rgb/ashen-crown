@@ -25,7 +25,7 @@ import numpy as np
 from PIL import Image
 
 KNEE = 0.6
-EDGE = 0.06
+EDGE = float(os.environ.get("SMOKEBOOK_EDGE", "0.06"))   # how far in from each side a frame fades out
 
 
 def read_exr(path):
