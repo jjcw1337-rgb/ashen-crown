@@ -190,7 +190,7 @@ static func miasma(root: Node3D, at: Vector3, r: float, col: Color) -> void:
 		"colors": [[0.0, Color(SPORE, 0.0)], [0.25, Color(SPORE, 0.8)], [0.75, Color(LIME, 0.5)], [1.0, Color(LIME, 0.0)]]})
 	sp.visibility_aabb = vis
 
-## The cloud thinning away over t seconds: its miasma fades, its fumes and spores stop. Safe to call twice.
+## The cloud thinning away over t seconds: its miasma and its light fade, its fumes and spores stop. Safe to call twice.
 static func miasma_end(root: Node3D, t := 0.7) -> void:
 	if root == null or not is_instance_valid(root) or root.has_meta("miasma_end"):
 		return
@@ -202,6 +202,8 @@ static func miasma_end(root: Node3D, t := 0.7) -> void:
 			var m := (ch as MeshInstance3D).material_override as ShaderMaterial
 			if m != null:
 				InfernalFx.tween_param(ch, m, "fade", float(m.get_shader_parameter("fade")), 0.0, t)
+		elif ch is OmniLight3D:
+			ch.create_tween().tween_property(ch, "light_energy", 0.0, t)
 
 ## The Last Epidemic's foot: a band of sickly light round the dome where it meets the ground (noise-broken, flowing
 ## round), in place of a flat green torus. Named "edge" so the collapse takes it away with the shell.
