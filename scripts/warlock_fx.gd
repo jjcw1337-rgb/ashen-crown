@@ -517,11 +517,57 @@ static func bolt_node(root: Node3D) -> Node3D:
 	n.add_child(l)
 	return n
 
+## Fel fire: InfernalFx's hellfire flame with the Warlock's palette (a black shell, deep green, fel, pale at the core).
+static func fel_flame_mat(dark := 0.7, heat := 1.15) -> ShaderMaterial:
+	var m := InfernalFx.flame_mat(dark, heat, 1.2)
+	m.set_shader_parameter("crimson", DEEP)
+	m.set_shader_parameter("molten", FEL)
+	m.set_shader_parameter("whitehot", PALE)
+	return m
+
+## n fel flames standing round pos on a ring of radius r (heights h0..h1), licking up and dying over `life`.
+static func fel_ring(root: Node3D, pos: Vector3, r: float, n: int, h0: float, h1: float, life: float, delay_max := 0.08) -> void:
+	for i in n:
+		var a := TAU * (float(i) + randf_range(-0.3, 0.3)) / n
+		var at := pos + Vector3(cos(a), 0, sin(a)) * r * randf_range(0.85, 1.05)
+		var hh := randf_range(h0, h1)
+		var m := fel_flame_mat()
+		var f := InfernalFx.flame(root, at + Vector3(0, hh * 0.42, 0), Vector2(hh * 0.55, hh), m)
+		f.scale = Vector3(hh * 0.55, hh * 0.15, 1.0)
+		var d0 := randf_range(0.0, delay_max)
+		var tw := f.create_tween()
+		tw.tween_interval(d0)
+		tw.tween_property(f, "scale", Vector3(hh * 0.55, hh, 1.0), 0.12).set_ease(Tween.EASE_OUT)
+		InfernalFx.tween_param(f, m, "alpha", 1.0, 0.0, life * 0.6, d0 + life * 0.4)
+		_free_later(f, d0 + life + 0.1)
+
+## Blight Bolt bursting: a ring of fel fire licks up round the blast, a pale flare at its heart, sickly smoke rolls
+## out, gobbets of blight splash down and three souls wail up out of it (the generic ring and bursts it was).
 static func blight_burst(root: Node3D, pos: Vector3, radius: float) -> void:
-	Fx.ring(root, pos, radius, FEL, 0.4, 0.2)
-	Fx.burst(root, pos + Vector3(0, 0.4, 0), FEL, 40, 6.0, 0.14, 0.6, true, -4.0, 70.0)
-	Fx.burst(root, pos + Vector3(0, 0.5, 0), Color(0.08, 0.16, 0.05, 0.8), 20, 2.0, 0.4, 0.9, false, 0.5)
+	var tr := InfernalFx.tier(root.get_tree().current_scene if root.is_inside_tree() else null)
+	fel_ring(root, pos, radius * 0.6, [6, 8, 11, 14][tr], 0.9, 1.6, 0.65)
+	var g := InfernalFx.glow(root, pos + Vector3(0, 0.7, 0), 2.0, InfernalFx.glow_mat(PALE, 2.6, 2.4, 0.7))
+	var tg := g.create_tween()
+	tg.set_parallel(true)
+	tg.tween_property(g, "scale", Vector3.ONE * 3.0, 0.3).set_ease(Tween.EASE_OUT)
+	InfernalFx.tween_param(g, g.material_override as ShaderMaterial, "alpha", 1.0, 0.0, 0.3)
+	_free_later(g, 0.35)
 	Fx.flash(root, pos + Vector3(0, 1.0, 0), FEL, 3.0, 0.35, 7.0)
+	InfernalFx.particles(root, pos + Vector3(0, 0.5, 0), {"amount": [5, 7, 10, 14][tr], "life": 1.5, "explosive": 0.9,
+		"shape": "sphere", "r": radius * 0.3, "dir": Vector3.UP, "spread": 80.0, "vel": [0.6, 1.8], "radial": [1.0, 2.0],
+		"gravity": 0.25, "damping": [1.0, 1.6], "scale": [0.8, 1.4], "size": 1.3, "grow": [0.5, 1.6], "angle": true, "spin": 20.0,
+		"add": false, "colors": [[0.0, Color(0.06, 0.14, 0.04, 0.0)], [0.12, Color(0.07, 0.16, 0.05, 0.7)], [0.7, Color(0.05, 0.1, 0.04, 0.35)], [1.0, Color(0.04, 0.08, 0.03, 0.0)]]})
+	InfernalFx.particles(root, pos + Vector3(0, 0.4, 0), {"amount": [8, 12, 18, 24][tr], "life": 0.8, "explosive": 1.0,
+		"shape": "sphere", "r": 0.3, "dir": Vector3.UP, "spread": 70.0, "vel": [3.0, 6.5], "gravity": -12.0,
+		"scale": [0.5, 1.1], "size": 0.09, "add": false, "colors": [[0.0, Color(0.2, 0.55, 0.12)], [1.0, Color(0.06, 0.2, 0.04)]]})
+	for k in 3:
+		var soul := InfernalFx.glow(root, pos + Vector3(randf_range(-0.6, 0.6), 0.6, randf_range(-0.6, 0.6)), 0.7, InfernalFx.glow_mat(PALE, 1.8, 3.2, 0.0))
+		var ts := soul.create_tween()
+		ts.set_parallel(true)
+		ts.tween_property(soul, "global_position:y", pos.y + randf_range(2.6, 3.6), 1.1).set_ease(Tween.EASE_OUT)
+		ts.tween_property(soul, "scale", Vector3(0.35, 1.1, 0.35), 1.1)
+		InfernalFx.tween_param(soul, soul.material_override as ShaderMaterial, "alpha", 1.0, 0.0, 0.8, 0.3)
+		_free_later(soul, 1.15)
 
 ## A plague pool: a soft, ragged green stain glowing brightest just inside its edge, with
 ## bubbles rising off it.
@@ -648,14 +694,39 @@ static func shackle(target: Node3D, dur: float) -> void:
 	tw.parallel().tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 1.0, 0.0, 0.4).set_delay(maxf(0.0, dur - 0.4))
 	_free_later(n, dur + 0.05)
 
+## Soul Shackles' cast: his sigil flares under him and turns, the dark is pulled in from the edge of its reach
+## (shadow and fel sparks sucked toward him) and the air shudders (the generic ring and burst it was).
 static func shackle_cast(root: Node3D, pos: Vector3, radius: float) -> void:
-	Fx.ring(root, pos, radius, DEEP.lightened(0.2), 0.45, 0.15)
-	Fx.burst(root, pos + Vector3(0, 1.0, 0), FEL, 30, 4.0, 0.1, 0.5, true, 0.0)
-	Fx.flash(root, pos + Vector3(0, 1.2, 0), FEL, 3.0, 0.35, 8.0)
+	var tr := InfernalFx.tier(root.get_tree().current_scene if root.is_inside_tree() else null)
+	var sg := sigil(root, 1.7)
+	sg.global_position = pos + Vector3(0, 0.06, 0)
+	var ts := sg.create_tween()
+	ts.tween_property(sg, "rotation:y", -1.6, 0.8)
+	root.get_tree().create_timer(0.55, false).timeout.connect(func(): sigil_fade(sg))
+	InfernalFx.particles(root, pos + Vector3(0, 0.6, 0), {"amount": [10, 16, 24, 32][tr], "life": 0.55, "explosive": 0.9,
+		"shape": "ring", "r": radius * 0.9, "r_in": radius * 0.6, "dir": Vector3.UP, "spread": 20.0, "vel": [0.2, 0.6],
+		"radial": [-26.0, -20.0], "damping": [1.0, 2.0], "scale": [0.8, 1.3], "size": 0.9, "grow": [1.2, 0.3], "angle": true,
+		"add": false, "colors": [[0.0, Color(0.02, 0.06, 0.02, 0.0)], [0.2, Color(0.02, 0.06, 0.02, 0.55)], [1.0, Color(0.01, 0.03, 0.01, 0.0)]]})
+	InfernalFx.particles(root, pos + Vector3(0, 0.9, 0), {"amount": [12, 18, 26, 36][tr], "life": 0.5, "explosive": 0.85,
+		"shape": "ring", "r": radius * 0.85, "r_in": radius * 0.5, "dir": Vector3.UP, "spread": 30.0, "vel": [0.2, 0.8],
+		"radial": [-30.0, -22.0], "damping": [0.5, 1.0], "scale": [0.4, 0.9], "size": 0.06,
+		"colors": [[0.0, Color(FEL, 0.0)], [0.25, FEL], [1.0, Color(PALE, 0.0)]]})
+	HolyFx.shockwave(root, root.get_tree().current_scene if root.is_inside_tree() else null, pos, radius, 0.4, 0.02)
+	Fx.flash(root, pos + Vector3(0, 1.2, 0), FEL, 2.4, 0.35, 8.0)
 
-## Fel Covenant: a column of green fire and a sigil burning outward.
+## Fel Covenant: his sigil burns big under him, a crown of fel fire roars up round him and souls spiral up through
+## it (the generic pillar, ring and burst it was).
 static func covenant(root: Node3D, pos: Vector3) -> void:
-	Fx.pillar(root, pos, FEL, 1.0)
-	Fx.ring(root, pos, 6.0, FEL, 0.6, 0.25)
-	Fx.burst(root, pos + Vector3(0, 0.2, 0), PALE, 50, 5.0, 0.1, 0.9, true, 2.5, 30.0)
+	var tr := InfernalFx.tier(root.get_tree().current_scene if root.is_inside_tree() else null)
+	var sg := sigil(root, 2.6)
+	sg.global_position = pos + Vector3(0, 0.06, 0)
+	var ts := sg.create_tween()
+	ts.tween_property(sg, "rotation:y", 1.2, 1.4)
+	root.get_tree().create_timer(1.0, false).timeout.connect(func(): sigil_fade(sg))
+	fel_ring(root, pos, 1.0, [7, 10, 13, 16][tr], 1.8, 2.8, 0.95, 0.15)
+	fel_ring(root, pos, 2.3, [0, 6, 9, 12][tr], 0.6, 1.1, 0.7, 0.25)
+	InfernalFx.particles(root, pos + Vector3(0, 0.3, 0), {"amount": [14, 22, 32, 44][tr], "life": 1.6, "explosive": 0.6,
+		"shape": "ring", "r": 1.2, "r_in": 0.4, "dir": Vector3.UP, "spread": 10.0, "vel": [1.6, 3.2], "radial": [-1.2, -0.6],
+		"gravity": 0.6, "damping": [0.4, 0.8], "scale": [0.4, 1.0], "size": 0.07, "turb": 0.9,
+		"colors": [[0.0, Color(PALE, 0.0)], [0.12, PALE], [0.6, FEL], [1.0, Color(DEEP, 0.0)]]})
 	Fx.flash(root, pos + Vector3(0, 1.5, 0), FEL, 4.0, 0.6, 9.0)

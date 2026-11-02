@@ -1,7 +1,8 @@
 class_name SharedFx
 extends RefCounted
 ## What the shared skills (SharedSkills) look and sound like, for the caster and his puppet alike (SkillFx.play
-## hands their events here, whatever the hero's class). Draws only.
+## hands their events here, whatever the hero's class). Draws only. Each element's look is ElementalFx's (the
+## visual overhaul: they were the generic Fx burst and ring in four colours).
 
 const EARTH := Color(0.85, 0.6, 0.32)
 const ICE := Color(0.6, 0.85, 1.0)
@@ -21,10 +22,8 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 				"impact":
 					var d: Vector3 = ev["d"]
 					var p: Vector3 = ev["p"]
-					for i in 4:
-						var at := p + d * (1.0 + i * 1.2)
-						Fx.burst(root, at + Vector3(0, 0.1, 0), Color(0.45, 0.36, 0.26, 0.8), 14, 3.0 + i, 0.18, 0.7, false, -7.0, 50.0, Vector3.UP)
-					Fx.ring(root, p + d * 2.2 + Vector3(0, 0.05, 0), 3.0, EARTH, 0.45)
+					var area: Dictionary = Data.skill_def("earthshatter").get("area", {})
+					ElementalFx.earthshatter(h, root, p, d, float(area.get("r", 5.0)), float(area.get("angle", 100.0)) * 0.5)
 					SkillFx.snd(h, "slam", -2.0, 0.8)
 					SkillFx.snd(h, "boom", -9.0, 0.7)
 					SkillFx.shake(h, 0.35)
@@ -34,12 +33,11 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			match e:
 				"cast":
 					SkillFx.snd(h, "spirit_dart", -10.0, 0.7)
-					Fx.burst(root, SkillFx.hand(h, true), ICE, 10, 1.2, 0.08, 0.4)
+					InfernalFx.particles(root, SkillFx.hand(h, true), {"amount": 10, "life": 0.5, "shape": "sphere", "r": 0.12,
+						"dir": Vector3.UP, "spread": 180.0, "vel": [0.2, 0.6], "radial": [-3.0, -2.0], "scale": [0.4, 0.9], "size": 0.05,
+						"colors": [[0.0, Color(ElementalFx.ICE_PALE, 0.0)], [0.3, ElementalFx.ICE_PALE], [1.0, Color(ElementalFx.ICE_DEEP, 0.0)]]})
 				"impact":
-					var p: Vector3 = ev["p"] + Vector3(0, 0.05, 0)
-					Fx.ring(root, p, float(ev["r"]), ICE, 0.5)
-					Fx.ring(root, p, float(ev["r"]) * 0.6, ICE.lightened(0.3), 0.35)
-					Fx.burst(root, p + Vector3(0, 0.4, 0), ICE, 40, 6.0, 0.1, 0.6, true, -2.0, 90.0, Vector3.UP)
+					ElementalFx.frost_nova(h, root, ev["p"], float(ev["r"]))
 					SkillFx.snd(h, "ice_shatter", -3.0, 1.0)
 					SkillFx.shake(h, 0.12)
 				_:
@@ -47,14 +45,11 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 		"arc":
 			match e:
 				"cast":
-					Fx.burst(root, SkillFx.hand(h, true), STORM, 8, 1.5, 0.06, 0.3)
+					var hand := SkillFx.hand(h, true)
+					ElementalFx.bolt(root, hand, hand + Vector3(randf_range(-0.3, 0.3), 0.35, randf_range(-0.3, 0.3)), 0.18, 0.03, 1)
 				"impact":
 					var ps: PackedVector3Array = ev["ps"]
-					for i in ps.size() - 1:
-						Fx.bolt(root, ps[i], ps[i + 1], STORM, 0.25)
-						Fx.burst(root, ps[i + 1], STORM, 10, 3.0, 0.06, 0.3)
-					if ps.size() < 2:
-						Fx.bolt(root, ps[0], ps[0] + (ev["d"] as Vector3) * 6.0, STORM, 0.2)
+					ElementalFx.arc(h, root, ps, ev["d"])
 					SkillFx.snd(h, "thunder_strike", -8.0, 1.35)
 				_:
 					return false
@@ -63,9 +58,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 				"cast":
 					pass
 				"impact":
-					var p: Vector3 = ev["p"] + Vector3(0, 0.05, 0)
-					Fx.ring(root, p, SharedSkills.CRY_R, CRY, 0.6)
-					Fx.burst(root, p + Vector3(0, 1.4, 0), CRY, 24, 4.0, 0.1, 0.5, true, 0.0, 180.0, Vector3.UP)
+					ElementalFx.war_cry(h, root, ev["p"], SharedSkills.CRY_R)
 					SkillFx.snd(h, "battle_cry", -2.0, 1.0)
 					SkillFx.shake(h, 0.2)
 				_:

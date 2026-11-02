@@ -4,11 +4,12 @@ Nov 1-2, 2026 · on `test-visual-overhaul` (from `staging` 1fb8d09) · jj's brie
 Diablo IV / Path of Exile 2 / Guild Wars 2, every asset inspected, Meshy and Blender with no limit, a measured
 baseline first.
 
-**Status (Nov 2, ~midnight):** stage 1 (rendering foundation), stage 2 (the knight's holy skill effects, the weapon
-trail and hit flash every class uses, the rim light in every zone, steel that reflects on the armoured knight, detail
+**Status (Nov 2, ~midnight):** stage 1 (rendering foundation), stage 2 (the knight's holy skill effects, the hit
+flash every monster uses, the rim light in every zone, steel that reflects on the armoured knight, detail
 normal maps for 27 models) and stage 3 (Meshy models for Aurelius, the arena gladiators and the Ashen King) are done,
-tested headless and committed on `test-visual-overhaul`. Nothing is approved yet: every change still needs jj's look
-on a real GPU (the preview build). Meshy spent so far: 108 of the 2,614 monthly credits.
+and the camp's lantern and palisade rebuilt, tested headless and committed on `test-visual-overhaul` (merged with
+staging's 21 newer commits). Nothing is approved yet: every change still needs jj's look on a real GPU (the preview
+build). Meshy spent so far: 198 of the 2,614 monthly credits.
 
 ## Summary
 
@@ -31,7 +32,8 @@ on a real GPU (the preview build). Meshy spent so far: 108 of the 2,614 monthly 
 - **The armoured knight read as a black blob** because Meshy painted his plate at 5% reflectance (a metal's colour
   is its reflectance). Lifted to dark steel where the metal map says metal; cloth untouched (stage 2).
 - **Every class's swing drew a flat white sheet and every struck foe turned into a white paper cut-out** (the
-  weapon trail at 55-90% opacity across its whole width; the hit flash flat and unshaded). Both redone (stage 2).
+  weapon trail at 55-90% opacity across its whole width; the hit flash flat and unshaded). The flash is redone
+  (stage 2); the trail was fixed on staging the same night (00e1d19) and the branch takes that version.
 - The Meshy heroes, monsters, NPCs and camp stalls are good designs (mostly 3-4 of 5). Their common weaknesses are
   value (near-black albedo: the median colour map is 0.24, the armoured knight 0.20, the dragons 0.16) and reading
   against dark ground, which the lighting has to solve.
@@ -100,7 +102,7 @@ What changed (commit "Visual overhaul stage 1"):
 | Change | Where | What it fixes |
 |---|---|---|
 | **Holy visual language for the knight** | `scripts/holy_fx.gd` (`HolyFx`), `knight_fx.gd` | Holy Nova, Battle Cry and Charge were `Fx.ring/burst/pillar` in gold. Now: a sacred seal drawn on the ground (rings, 48 ticks, 16 rays, four crosses), a gold-and-white holy fire ring, a streaked light column, a screen-space shockwave (Forward+ only), sunbursts, rising motes and a glinting trail behind the charge. Compiled once per zone (`HolyFx.warm`); co-op events unchanged |
-| **Weapon trail** (every class) | `Hero.TRAIL_SHADER` | Additive at 55-90% across its whole width: a flat white band in Forward+. Now a hot thin edge at the tip, a streaked body thinning toward the hilt, a quadratic tail |
+| **Weapon trail** (every class) | `Hero._trail_shader` (staging 00e1d19) | Additive at 55-90% across its whole width: a flat white band in Forward+. Fixed the same way on staging the same night (a hot edge at the tip, a soft body fading toward the hilt and with age, streaks, Catmull-Rom smoothing); the overhaul's own version was dropped in the merge for staging's |
 | **Hit flash** (every monster) | `Enemy.FLASH_SHADER`, `Enemy.flash_color` | Flat unshaded white at 60% turned the struck into cut-outs. Now rim-weighted (the facing middle under half as bright) and fading over its 0.12 s; Molten Fists' molten flash and Drain Life's coloured one go through `flash_color` |
 | **Rim light in every zone** | `Grade.RIMS`, `Game._rim_kind` | Dusk, inside, day and ash rims (the camp keeps its own), so the hero reads on dark ground |
 | **Steel that reflects** | `tools/visual_audit/metal_lift.py` | The armoured knight's plate (both bodies), the Fallen Reaver's iron and the Pestilent Trap: metal reflectance 0.26 → 0.50 (knight) / 0.42, metal roughness -0.1 |
@@ -119,9 +121,23 @@ The oaks drop from P1 to P2 (a Meshy regeneration with a modelled canopy, when t
 | Aurelius, Champion of the Arena (A2 boss) | `meshy.py draw` concept → `image` (A-pose, 60k) → `act1/prep_monster.py` (30k) → `act1/rig_monster.py` (13 joints, `crotch` hint: his skirt of strips hangs between the legs) → `layout_to_gd.py champion` | Lion-faced bronze cuirass and pauldron, crimson crest and pteruges; 2K textures. Kept out of the patron's box he fights under |
 | Gladiator (A2 arena) | the same, 20k, 1K | Bronze helm, manica, loincloth, greaves; joins the arena's crowd cards by itself |
 | The Ashen King (A3 boss) | the same, 30k, 2K, + `emission_from_albedo.py` | Charred plate whose painted ember cracks and eyes now glow (an emission map, strength 4); skull face, spiked crown, ermine mantle. `Data.ENEMIES["ashen_king"]` gets `"mesh"` (the code-built king stays as the fallback) |
+| Camp lantern (hung all over the camp) | concept (its chain edited out, so it hangs from its ring) → image-to-3D → `camp/rebake_prop.py` (clean UVs, 2k tris, 512 px) | Intact glass and a riveted iron frame; was shattered glass shards and spikes (256 px) |
+| Camp palisade (34 sections round the ring) | concept (a second one: the first had gaps between the logs) → image-to-3D → `rebake_prop.py` (5k tris, 1K) | Ten tight, mossy logs in two rope bands, unevenly sharpened; 415 UV islands instead of 1,323, so the importer can make LODs; 4.2 m tall (was 3.6) |
 
-Each costs 6 credits (concept) + 30 (model): 108 credits for the three. `a2_arena_test` (the whole games) and `a3_test`
-(the Ashen King's fight and drop) pass with them.
+Also in stage 3, without Meshy: **the shared skills' own looks** (`scripts/elemental_fx.gd`, `ElementalFx`). Every
+class can use Earthshatter, Frost Nova, Arc and War Cry, and they were the generic burst and ring in four colours. Now
+Earthshatter cracks the ground through its wedge (a crack decal running out from the blow, rock spikes heaving up and
+sinking back, chunks, pebbles, a rolling dust cloud); Frost Nova spreads frost over the ground with a bright edge and
+bursts a ring of ice crystals that shatter; Arc is jagged, branching lightning struck again every few frames, leaping
+target to target with a flash and sparks on each; War Cry burns a war sigil into the ground, ripples the air and rolls
+a wave of dust and ash out to the edge of the cry. **The Warlock's three generic effects** went the same way (`WarlockFx`):
+Blight Bolt's burst is a ring of fel fire with a pale flare, sickly smoke, splashing blight and souls rising; Soul
+Shackles turns his sigil under him and pulls the dark in from the edge of its reach; Fel Covenant raises a crown of fel
+fire round him with souls spiralling up (fel fire: InfernalFx's flame in his palette).
+
+The bosses cost 6 credits (concept) + 30 (model) each: 108. The camp pieces 90 (three concepts, two edits, two models).
+Total so far: 198 of the 2,614 monthly credits. `a2_arena_test` (the whole games) and `a3_test`
+(the Ashen King's fight and drop) pass with the new bosses.
 
 ## 2. Systemic findings, ranked
 
@@ -135,7 +151,7 @@ Each costs 6 credits (concept) + 30 (model): 108 credits for the three. `a2_aren
 | S6 | Two act bosses and the gladiators have no model | Data.ENEMIES `"mesh"` names with no glb | **Meshy models (stage 3)**, testing |
 | S7 | Oak and pine models are crumpled low-poly shards | Model sheets; on screen hundreds of times | In play the leaf clusters hide it (oak_compare.gd); a procedural rebuild lost. P2 |
 | S8 | Characters read as dark blobs on dark ground | Colour maps 0.14-0.24; camp frame median luminance 0.12, p90 0.19; the knight's plate at 5% reflectance | Rim light in every zone, metal lift on the knight (stage 2); grading needs real-GPU review |
-| S9 | Generic recoloured skill effects | Knight Nova/Cry/Charge, Warlock, shared skills, most Wraith effects use `Fx.burst/ring/pillar` | Knight done (`HolyFx`, stage 2); the rest P2 |
+| S9 | Generic recoloured skill effects | Knight Nova/Cry/Charge, Warlock, shared skills, most Wraith effects use `Fx.burst/ring/pillar` | Knight done (`HolyFx`, stage 2), shared skills and the Warlock's three (`ElementalFx`, `WarlockFx`, stage 3); the Wraith P2 |
 | S10 | Always-on fire shadows outside the budget | Fort: 12 shadowed omni lights | Fixed (stage 1) |
 | S11 | Decimation facets on round props | Clay views: flask, mixture, items, lair rocks | Bottles re-shaded (stage 2); shard rocks need a rebuild |
 | S12 | Model textures uncompressed in video memory | Lossy WebP decodes to RGBA8: 1.0-1.9 GB VRAM | Decision (below) |
@@ -215,8 +231,8 @@ Scores 1-5 against the D4/PoE2 bar at the game camera (detail per asset in the c
 | 4 | ~~Detail normals for the 27 flat models~~ **done (stage 2)** | Plastic shading | Generated, checked in a lineup, committed | Free |
 | 5 | Hero readability | Dark heroes on dark ground | Rim light in every zone and the knight's steel (done); per-zone grade and reflection probes near fires (to do, real GPU) | Code |
 | 6 | LODs for Meshy models | Monsters and props draw in full at any distance | Re-bake from Meshy's full-detail output (needs regeneration: the originals expired) | Credits per model |
-| 7 | Camp lantern and palisade | Shard soups in the hub | Meshy + re-bake | ~72 credits |
-| 8 | Warlock, shared and Wraith effects | Generic bursts and rings | Custom shaders and flipbooks | Code |
+| 7 | ~~Camp lantern and palisade~~ **done (stage 3)** | Shard soups in the hub | Meshy + re-bake | 90 credits |
+| 8 | Wraith effects (~~shared, Warlock~~ done, stage 3) | Generic bursts and rings | Custom shaders and flipbooks, as HolyFx / ElementalFx | Code |
 | 9 | Ground materials and decals | The largest area on screen | Camp plan phase 2 (tiling PBR sets, height blending, decals) | Code + textures |
 | 10 | A2/A3 grass and Aurelia's architecture | Act II looks older than Act I | Living grass in A2/A3; Meshy Roman set pieces | Credits + code |
 | 11 | Procedural pines, rocks, small props | Code-built next to Meshy | Meshy kits | Credits |

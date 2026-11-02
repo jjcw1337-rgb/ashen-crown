@@ -70,7 +70,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `class_skills.gd`, `knight_skills.gd`, `warlock_skills.gd`, `plague_skills.gd` | Every class's skills, one script per class (`ClassSkills.of(cls)`: KnightSkills, WraithSkills, DemonSkills, WarlockSkills, Archer, PlagueSkills); `hero.gd` hands each cast, impact frame, frame update, root check, clear, death and cast sound to it. Template for a new class: `tools/templates/new_class_skills.gd` |
 | `wraith.gd`, `wraith_skills.gd`, `wraith_fx.gd` | Wraith class: the Meshy body on the mocap system with the spectral shader; its six skills (casts, blows, the tether, phantoms, the night); their effects |
 | `demon.gd`, `demon_mocap_rig.gd`, `demon_skills.gd`, `demon_fx.gd`, `demon_fists_fx.gd`, `infernal_fx.gd` | Demon class: the Meshy magma brute on the mocap system with the magma shader and his own wing/tail/cloth rig (falls back to the knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader); his six skills (the fists, the charge, the slam, the boulder, the grip, the wrath); their effects (lava on the ground, fissures, boulders, meteors) |
-| `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
+| `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) and fel fire (`WarlockFx.fel_flame_mat` / `fel_ring`: InfernalFx's flame in his palette) for Blight Bolt's burst, Soul Shackles and Fel Covenant |
 | `plague.gd` | Plague Doctor class: body (mocap, whole-body skill clips), Toxic Flask, Volatile Mixture, Pestilent Trap, The Last Epidemic, poison and infection, co-op replay |
 | `dragon.gd`, `dragon_skills.gd` | The three dragon classes (`wyrm` Obsidian Wyrm, `serpent` Frost Serpent, `wyvern` Storm Wyvern): Meshy bodies posed in code every frame (`Dragon.pose`, handed over by `Anim.pose`); no skills yet (`DragonSkills` is the empty, ready skills script and plays their attack sounds) |
 | `dodge.gd` | The dodge roll on Space (every class): direction, distance, i-frames, stamina, the tumble, the co-op event |
@@ -92,7 +92,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `battlegrounds.gd` | Battlegrounds prototype: the raid map, the dedicated server's raid logic (respawns, carried loot, extraction, the stash), the client's id and cached stash |
 | `vigil.gd` | The Last Flame (zone `"vigil"`): the co-op horde defence under the Act I camp, its sanctum, waves, flame and HUD (see "The Last Flame") |
 | `kpi.gd` | The official performance KPIs: scripted scenarios measured frame by frame (`--kpi`), see docs/nightly/KPIS.md |
-| `shared_skills.gd`, `shared_fx.gd` | The shared skills every class can use (`"cls": "any"`): their gameplay and their effects |
+| `shared_skills.gd`, `shared_fx.gd`, `elemental_fx.gd` | The shared skills every class can use (`"cls": "any"`): their gameplay and their effects (`ElementalFx`: Earthshatter's crack and rock spikes, Frost Nova's frost and ice crystals, Arc's branching lightning, War Cry's sigil and dust wave) |
 | `skill_spec.gd` | The skill format (`SkillSpec`): a skill's timing, damage, area and damage over time read from its `Data.SKILLS` entry |
 | `skill_fx.gd`, `knight_fx.gd`, `archer_fx.gd` | Co-op skill effects: `SkillFx` plays every class's skill events on the caster and on his puppet for partners (see "Co-op skill effects"); the knight's and archer's effect handlers (the Wraith's, Demon's and Warlock's are in their `*_fx.gd`) |
 | `holy_fx.gd` | The knight's visual language (`HolyFx`, like `InfernalFx` for the Demon): the seal drawn on the ground, holy fire rings, the light column, the shockwave ripple, sunbursts and motes; Holy Nova, Battle Cry and Charge are built from it |
@@ -1064,7 +1064,9 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `oak_forest` and act 0; A2/A3 keep the old camp): a ring palisade with a gatehouse, rune stones outside
   (`RUNE_SHADER` glows their runes), a bonfire, tents and lantern-hung oaks inside, the old forest beyond, and a
   dusk/mist mood (`Game._zone_env`, `theme.forest_camp`). Everything is Meshy (concept image, then image-to-3D),
-  prepared in Blender: props by `tools/blender/prep_prop.py` into `assets/models/camp/`, trees by `prep_tree.py`.
+  prepared in Blender: props by `tools/blender/prep_prop.py` into `assets/models/camp/`, trees by `prep_tree.py`. The
+  lantern and the palisade section were re-made in the visual overhaul (2026-11-02: new Meshy models re-baked onto
+  clean UVs by `tools/blender/camp/rebake_prop.py`, so the importer can make LODs; the palisade is 4.2 m tall).
   The shopkeepers are Meshy characters rigged by Meshy and animated from its clip library (`meshy.py rig` /
   `animate` / `library`), cleaned by `tools/blender/prep_npc.py` into `assets/models/npc/`; `Inter._animate`
   plays their work clips, turns them to face the hero and has them talk when he comes near (clips listed in
@@ -1214,9 +1216,9 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `metal_lift.py` gives Meshy's near-black metal its reflectance back (a metal's colour IS its reflectance: the
   armoured knight's plate reflected 5%; lifted where the metal map says metal, cloth untouched: knight_mocap,
   knight_armored, fallen_reaver, the trap); `emission_from_albedo.py` turns painted embers into an emission map (the
-  Ashen King's cracks and eyes, KHR_materials_emissive_strength). The weapon trail (`Hero.TRAIL_SHADER`: hot edge,
-  streaked body, dying tail) and the hit flash (`Enemy.FLASH_SHADER`: rim-weighted, fading; `Enemy.flash_color`
-  for a coloured one) replaced flat white sheets. Candidates are judged in the game renderer, not in model sheets:
+  Ashen King's cracks and eyes, KHR_materials_emissive_strength). The hit flash (`Enemy.FLASH_SHADER`: rim-weighted,
+  fading; `Enemy.flash_color` for a coloured one) replaced flat white cut-outs (the swing trail got the same kind of
+  fix on staging, `Hero._trail_shader`). Candidates are judged in the game renderer, not in model sheets:
   `oak_compare.gd` (oaks as the game builds them, with leaf clusters) and `body_compare.gd` (two copies of the mocap
   knight); the procedural oak (`tools/blender/trees/oak_gen.py`) lost to the Meshy oaks there and was not adopted.
 - **Performance KPIs** (`scripts/kpi.gd` `Kpi`, `docs/nightly/KPIS.md`): the official numbers. Scripted, deterministic
