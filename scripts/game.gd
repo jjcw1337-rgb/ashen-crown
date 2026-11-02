@@ -81,11 +81,11 @@ var max_run := 0             # highest of those reached; any of them can be pick
 ## go back to unlocking them by beating each final boss. Only takes effect where dev_tools is on.
 const UNLOCK_ALL_ACTS := true
 ## Developer tools (unlock-all-acts and the Escape menu's Admin column): only for the admins. On when running from
-## the Godot editor, in a staging build (its itch page is private to the two admins), for an account with the admin
-## role (Nakama; CloudSaves turns it on after signing in), or when this PC holds a valid admin key (AdminKey: signed with the owner's private key, so it can't be made up or shared by editing a file).
+## the Godot editor (or a local debug run), for an account with the admin role (Nakama, tools/admin_role.sh;
+## CloudSaves turns it on after signing in), or when this PC holds a valid admin key (AdminKey: signed with the owner's private key, so it can't be made up or shared by editing a file).
 ## Off for everyone else in every production build.
 var admin_name := AdminKey.holder()
-var dev_tools := UNLOCK_ALL_ACTS and (OS.has_feature("editor") or admin_name != "" or BuildEnv.env() == "staging")
+var dev_tools := UNLOCK_ALL_ACTS and (OS.has_feature("editor") or admin_name != "" or (BuildEnv.env() == "local" and OS.has_feature("debug")))
 var account_id := ""            # this player's Nakama account (CloudSaves), shown in the Admin column to be made an admin
 var account_admin := false      # the account has the admin role (Nakama, tools/admin_role.sh): the admin tools on
 var run_progress := {}       # per run: its waypoints and whether its boss is dead
@@ -3169,7 +3169,8 @@ func _boost_base(slot: String, h: Hero = null, max_lvl := 20) -> String:
 			continue
 		if want == "weapon" and kind != "" and str(bd.get("kind", "")) != kind:
 			continue
-		if int(bd.get("lvl", 1)) > bl:
+		# (a tie goes to the class's own weapon: Doug's drumstick over a slower club)
+		if int(bd.get("lvl", 1)) > bl or (int(bd.get("lvl", 1)) == bl and owner == h.cls):
 			bl = int(bd.get("lvl", 1))
 			best = k
 	return best
