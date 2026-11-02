@@ -81,6 +81,7 @@ var _flash := 0.0            # the arrival / activation burst, decaying
 var _spin := 0.0
 var _arrival_checked := false
 var hearts: Array[ShaderMaterial] = []   # the braziers' white-hot hearts (glow), flickering
+var fire_lights: Array[Node3D] = []      # the braziers' fire lights: they wander with the flame (see _process)
 var _cry_y := 3.0            # the crystal's resting height (from its model when there is one)
 var _sh_y := 3.0
 
@@ -451,15 +452,17 @@ func _build() -> void:
 			var fl := fire.get_node_or_null("FireLight")
 			if fl:
 				fl.add_to_group(Grade.SHADOW_GROUP)
+				fl.set_meta("rest", (fl as Node3D).position)
+				fire_lights.append(fl)
 			# the white-hot heart down in the bowl, breathing with the fire (see _process)
 			var heart := MeshInstance3D.new()
 			heart.mesh = InfernalFx.quad()
-			var hm := InfernalFx.glow_mat(Color(0.32, 0.62, 1.0), 1.1, 2.6)
+			var hm := InfernalFx.glow_mat(Color(0.1, 0.38, 1.0), 0.45, 3.0)
 			heart.material_override = hm
 			heart.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			heart.extra_cull_margin = 2.0
-			heart.position = Vector3(0, fire_y + 0.06, 0)
-			heart.scale = Vector3.ONE * 0.75
+			heart.position = Vector3(0, fire_y + 0.02, 0)      # low: the bowl's rim hides its lower half
+			heart.scale = Vector3.ONE * 0.5
 			b.add_child(heart)
 			hearts.append(hm)
 		else:
@@ -693,9 +696,20 @@ func _process(delta: float) -> void:
 	shards.scale = Vector3.ONE * CRY_SCALE * CRY_GROW * lerpf(1.0, 1.2, _wake) * (1.0 + _flash * 0.3)
 	light.light_energy = float(light.get_meta("base")) * lerpf(0.6, 1.25, _wake) * (0.9 + 0.15 * pulse_w) + _flash * 3.0
 	motes.amount_ratio = lerpf(0.35, 1.0, _wake)
+	# the fire's light wanders a couple of centimetres with its flicker (Game's flicker loop sets its energy), rising
+	# as the flame flares, so what it lights in and around the bowl casts shadows that crawl like a real fire's
+	for i in fire_lights.size():
+		var lt := fire_lights[i]
+		if not is_instance_valid(lt):
+			continue
+		var base_e: float = float(lt.get_meta("base")) if lt.has_meta("base") else 1.0
+		var e: float = (lt as OmniLight3D).light_energy / maxf(base_e, 0.001)
+		var rest: Vector3 = lt.get_meta("rest")
+		lt.position = rest + Vector3(0.02 * sin(_t * 5.3 + i * 2.1) * (0.6 + 0.4 * e),
+				0.04 * (e - 0.8), 0.02 * sin(_t * 4.1 + i * 3.7 + 1.0) * (0.6 + 0.4 * e))
 	for i in hearts.size():
 		var fl := 0.8 + 0.12 * sin(_t * 7.3 + i * 1.9) + 0.08 * sin(_t * 13.1 + i * 4.3)
-		hearts[i].set_shader_parameter("energy", 1.1 * fl + _flash * 0.6)
+		hearts[i].set_shader_parameter("energy", 0.45 * fl + _flash * 0.3)
 
 ## The rune floor: a plane over the dais's top sampling tools/waypoint_runes.py's masks (R the outer rim ring and
 ## the inner ring, G the great ring, B the ornate band), each band with its own energy and turn. A stroke is lit
