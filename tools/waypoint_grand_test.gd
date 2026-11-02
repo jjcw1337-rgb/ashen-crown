@@ -5,8 +5,14 @@ extends SceneTree
 ## hero comes near, the travel window still opens and travels, and the Battlegrounds card hands off
 ## to the title's Battlegrounds window (and refuses from co-op).
 ## godot --headless --path . -s tools/waypoint_grand_test.gd
+## (WaypointGrand is loaded at run time, like aurelia.gd in its tools: a static reference compiles the game's
+## scripts, and their Sfx, before the autoload exists.)
 var g
+var WG: GDScript
 var fails := 0
+
+func _is_grand(n: Node) -> bool:
+	return n.get_script() == WG
 func ok(cond: bool, what: String) -> void:
 	print("[G] ", "ok   " if cond else "FAIL ", what)
 	if not cond:
@@ -32,6 +38,7 @@ func _stone():
 func _run() -> void:
 	while g.world == null or g._busy or g._intro_playing:
 		await process_frame
+	WG = load("res://scripts/waypoint_grand.gd")
 	await g.start_game(false, "knight")
 	await _settle()
 	ok(g.cur_zone == "town", "started in the camp")
@@ -40,12 +47,12 @@ func _run() -> void:
 	var grand = null
 	if st:
 		for c in st.get_children():
-			if c is WaypointGrand:
+			if _is_grand(c):
 				grand = c
 	ok(grand != null, "the camp's waypoint is the grand dais")
 	var p: Vector3 = st.global_position if st else Vector3.ZERO
 	# colliders: braziers, statues and the socket block; the arrival spot and the front of the dais don't
-	for s in WaypointGrand.SOLIDS:
+	for s in WG.SOLIDS:
 		ok(g.world.solid_at(p.x + s[0], p.z + s[1]), "solid at (%.1f, %.1f)" % [s[0], s[1]])
 	var arrive: Vector3 = g.world.spawns.get("waypoint_town", Vector3.ZERO)
 	ok(not g.world.solid_at(arrive.x, arrive.z), "the arrival spot is clear")
@@ -93,7 +100,7 @@ func _run() -> void:
 	var moor_grand := false
 	if moor_stone:
 		for c in moor_stone.get_children():
-			moor_grand = moor_grand or c is WaypointGrand
+			moor_grand = moor_grand or _is_grand(c)
 	ok(moor_stone != null and not moor_grand, "the moor keeps its own stone")
 	g.waypoint_go(0, "town")
 	await _settle()

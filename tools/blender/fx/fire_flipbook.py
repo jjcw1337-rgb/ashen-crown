@@ -1,6 +1,7 @@
 """Simulates a real fire with Mantaflow and renders it as flipbook frames for the game's flames (InfernalFx).
 
     blender -b --python tools/blender/fx/fire_flipbook.py -- <outdir> [res] [frames] [px] [seed]
+    (env: FIRE_KIND=body|tongue|spread|spirit, RENDER_ONLY=1 re-renders from the baked cache, START_FRAME=n)
 
 A small fuel source at the foot of a tall gas domain burns with vorticity and noise, buffeted by a turbulence
 field, so the tongues lick, pinch off and tear away as real flames do. Rendered side-on with an orthographic
@@ -237,7 +238,8 @@ scn.view_settings.view_transform = "Standard"
 world = bpy.data.worlds.new("W")
 world.color = (0, 0, 0)
 scn.world = world
-for i in range(FRAMES):
+# START_FRAME=n renders from frame n on (with RENDER_ONLY=1: finish a render that was cut short)
+for i in range(int(os.environ.get("START_FRAME", "0")), FRAMES):
     scn.frame_set(WARM + 1 + i)
     scn.render.filepath = os.path.join(OUT, "fire_%03d.png" % i)
     bpy.ops.render.render(write_still=True)
