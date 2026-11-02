@@ -45,7 +45,7 @@ var wander_t := 0.0
 var wander_to := Vector3.ZERO
 var home := Vector3.ZERO
 var meshes: Array = []
-var flash_mat: StandardMaterial3D
+var flash_mat: ShaderMaterial
 var special := ""
 var summon_t := 8.0
 var slam_t := 5.0
@@ -161,11 +161,12 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 	if champ:
 		rig.scale = Vector3.ONE * 1.15
 	_collect_meshes(rig)
-	flash_mat = StandardMaterial3D.new()
-	flash_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	flash_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	flash_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	flash_mat.albedo_color = Color(1, 1, 1, 0)
+	if _flash_shader == null:
+		_flash_shader = Shader.new()
+		_flash_shader.code = FLASH_SHADER
+	flash_mat = ShaderMaterial.new()
+	flash_mat.shader = _flash_shader
+	flash_mat.set_shader_parameter("col", Color(1, 1, 1, 0))
 	if champ:
 		var rimm := Mats.glow(Color(0.35, 0.55, 1.0), 1.2, 0.0, 1.0)
 		for m in meshes:
@@ -203,18 +204,48 @@ func _collect_meshes(n: Node) -> void:
 	for c in n.get_children():
 		_collect_meshes(c)
 
+## The hit flash: light added over the body for FLASH_T, strongest at the silhouette's rim and under half as strong
+## where the surface faces the camera, so the body keeps its shape and reads as struck (the old flat, unshaded white
+## at 60% turned every foe into a paper cut-out for those frames); it fades as it goes.
+const FLASH_SHADER := """
+shader_type spatial;
+render_mode unshaded, blend_add, depth_draw_never, shadows_disabled, cull_back;
+uniform vec4 col : source_color = vec4(1.0, 0.95, 0.9, 0.0);
+void fragment() {
+	float f = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
+	ALBEDO = col.rgb;
+	ALPHA = clamp(col.a * (0.38 + 1.1 * f * f), 0.0, 1.0);
+}
+"""
+const FLASH_T := 0.12
+const FLASH_WHITE := Color(1, 0.95, 0.9, 0.6)
+static var _flash_shader: Shader
+var _flash_col := FLASH_WHITE      # this hit's flash colour and peak strength (alpha)
+var _flash_on := false
+
 func _set_flash(v: float) -> void:
-	flash_mat.albedo_color = Color(1, 0.95, 0.9, v * 0.6)
+	if v >= 1.0:
+		_flash_col = FLASH_WHITE
+	flash_mat.set_shader_parameter("col", Color(_flash_col.r, _flash_col.g, _flash_col.b, v * _flash_col.a))
 	if champion:
 		return
+	var on := v > 0.01
+	if on == _flash_on and not (v <= 0.0):
+		return
+	_flash_on = on
 	var rest: Material = soul_mat() if _soul_lit else (drain_mat() if _drained else (Feral.rim_mat() if rig.has_meta("feral") else null))
 	for m in meshes:
 		if is_instance_valid(m):
-			(m as MeshInstance3D).material_overlay = flash_mat if v > 0.01 else rest
+			(m as MeshInstance3D).material_overlay = flash_mat if on else rest
+
+## This hit's flash in another colour (alpha = its strength), e.g. Molten Fists' molten flash.
+func flash_color(c: Color) -> void:
+	_flash_col = c
+	flash_mat.set_shader_parameter("col", c)
 
 ## A softer, coloured hit flash (Drain Life ticks), so a held beam doesn't strobe the victim white.
 func drain_flash(col: Color) -> void:
-	flash_mat.albedo_color = Color(col.r, col.g, col.b, 0.3)
+	flash_color(Color(col.r, col.g, col.b, 0.3))
 
 ## Held in a Warlock's Drain Life beam: a green rim-light for as long as the beam holds on.
 static var _drain_mats := {}
@@ -545,6 +576,9 @@ func _process(delta: float) -> void:
 		flash_t -= delta
 		if flash_t <= 0.0:
 			_set_flash(0.0)
+		else:
+			var k := clampf(flash_t / FLASH_T, 0.0, 1.0)
+			flash_mat.set_shader_parameter("col", Color(_flash_col.r, _flash_col.g, _flash_col.b, _flash_col.a * (0.3 + 0.7 * k)))
 	if dead:
 		dead_t += delta
 		var f := clampf(dead_t / 0.6, 0.0, 1.0)

@@ -600,12 +600,13 @@ var _grade_t := 0.0
 
 func _apply_grade() -> void:
 	var lk := Grade.look(grade_look)
-	env.adjustment_color_correction = Grade.lut(grade_look) if not lk.is_empty() else null
+	env.adjustment_color_correction = Grade.lut(grade_look) if Grade.grades(lk) else null
 	if vignette:
 		var vm := vignette.material as ShaderMaterial
 		vm.set_shader_parameter("strength", float(lk.get("vignette", 0.6)))
 		vm.set_shader_parameter("grain", float(lk.get("grain", 0.0)))
-	var rd: Dictionary = lk.get("rim", {})
+	# the rim: the look's own (the camp), else the zone's kind (Grade.RIMS) so he reads against the ground everywhere
+	var rd: Dictionary = lk.get("rim", Grade.RIMS.get(_rim_kind(), {}))
 	# the OpenGL renderer (Safe Mode, the browser) ignores a light's cull mask, so there the rim would light the
 	# ground round him too: Forward+ only
 	if rd.is_empty() or not is_forward():
@@ -624,6 +625,18 @@ func _apply_grade() -> void:
 	rim.light_energy = rd["energy"]
 	rim.omni_range = rd["range"]
 	_grade_t = 0.0
+
+## Which of Grade.RIMS lights the hero's edge in this zone (when its look has no rim of its own).
+func _rim_kind() -> String:
+	if world == null:
+		return "dusk"
+	if not sun.visible:
+		return "inside"
+	if difficulty >= 2:
+		return "ash"
+	if difficulty == 1 or world.sea:
+		return "day"
+	return "dusk"
 
 ## Every frame: keeps the rim light behind the hero (away from the camera, above his shoulders); every
 ## Grade.PICK_EVERY seconds re-picks which lights cast shadows and tags the hero's meshes for the rim.
@@ -772,7 +785,7 @@ func apply_quality(q: int) -> void:
 	RenderingServer.environment_set_ssil_quality(RenderingServer.ENV_SSIL_QUALITY_HIGH if q >= 3 else RenderingServer.ENV_SSIL_QUALITY_MEDIUM, true, 0.5, 4, 50.0, 300.0)
 	RenderingServer.environment_set_volumetric_fog_volume_size(160 if q >= 3 else 96, 128 if q >= 3 else 64)
 	# LOD switches are kept under a pixel of error (1.0) and half a pixel on Ultra. 0 on Ultra turned LODs off
-	# altogether: every 70k-triangle hero, statue and tree drew in full however small on screen (and in every shadow)
+	# altogether for every model that has them (the statues, the grass's own LODs aside)
 	get_viewport().mesh_lod_threshold = 0.5 if q >= 3 else 1.0
 	if sun:
 		# smooth hand-over between cascades (High and Ultra), then the cascades fitted to the camera

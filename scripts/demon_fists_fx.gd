@@ -517,9 +517,8 @@ static func _brand(h: Hero, root: Node3D, e, from: Vector3, tr: int) -> void:
 		twb.tween_interval(1.0)
 		twb.tween_callback(bf.queue_free)
 	# the molten flash in place of the white one (it shows only while the hit's own flash is on)
-	var fmat = e.get("flash_mat")
-	if fmat != null and float(e.get("flash_t")) > 0.0:
-		(fmat as StandardMaterial3D).albedo_color = Color(1.0, 0.3, 0.06, 0.85)
+	if e.has_method("flash_color") and float(e.get("flash_t")) > 0.0:
+		e.flash_color(Color(1.0, 0.3, 0.06, 0.85))
 	# the stagger: its body thrown back and springing home (visual only)
 	var ss: Array = h.fxs.get("fists_stag", [])
 	for s in ss.duplicate():

@@ -488,12 +488,11 @@ func setup(g: Node) -> void:
 	trail = MeshInstance3D.new()
 	trail.mesh = ImmediateMesh.new()
 	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var tm := StandardMaterial3D.new()
-	tm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	tm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	tm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	tm.vertex_color_use_as_albedo = true
-	tm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	if _trail_shader == null:
+		_trail_shader = Shader.new()
+		_trail_shader.code = TRAIL_SHADER
+	var tm := ShaderMaterial.new()
+	tm.shader = _trail_shader
 	trail.material_override = tm
 	trail.top_level = true
 	add_child(trail)
@@ -1944,14 +1943,40 @@ func _update_trail(active: bool) -> void:
 	if trail_pts.size() < 2:
 		return
 	im.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
-	for i in trail_pts.size():
-		var f := 1.0 - float(i) / trail_pts.size()
-		var c := Color(trail_col.r, trail_col.g, trail_col.b, f * 0.55)
+	var n := trail_pts.size()
+	var c := Color(trail_col.r, trail_col.g, trail_col.b, 1.0)
+	for i in n:
+		var age := float(i) / float(n - 1)
 		im.surface_set_color(c)
+		im.surface_set_uv(Vector2(age, 0.0))
 		im.surface_add_vertex(trail_pts[i][0])
-		im.surface_set_color(Color(c.r, c.g, c.b, f * 0.9))
+		im.surface_set_color(c)
+		im.surface_set_uv(Vector2(age, 1.0))
 		im.surface_add_vertex(trail_pts[i][1])
 	im.surface_end()
+
+## The weapon trail: a smear of light behind the blade, not a sheet. Across it (UV.y: 0 at the hilt end, 1 at the tip)
+## a hot thin edge rides the tip and the body thins toward the hilt; along the swing (UV.x: 0 at the blade now, 1 at
+## the oldest point) it dies away quadratically, broken into fine streaks. The class's colour comes in COLOR.
+## (Visual overhaul: the old trail was additive at 55-90% across its whole width, a flat white band in Forward+.)
+const TRAIL_SHADER := """
+shader_type spatial;
+render_mode unshaded, blend_add, cull_disabled, depth_draw_never, shadows_disabled;
+uniform float energy = 1.6;
+void fragment() {
+	float age = clamp(UV.x, 0.0, 1.0);
+	float across = clamp(UV.y, 0.0, 1.0);
+	float life = (1.0 - age) * (1.0 - age);
+	float edge = smoothstep(0.72, 0.95, across) * (1.0 - 0.55 * smoothstep(0.95, 1.0, across));
+	float body = smoothstep(0.0, 0.92, across);
+	float streak = 0.62 + 0.38 * sin(across * 53.0 + 1.3) * sin(across * 21.0 - age * 4.0);
+	float head = smoothstep(0.0, 0.08, age);      // the newest sliver sits on the blade: let the steel show
+	float a = (edge * 0.8 + body * 0.22 * streak) * life * mix(0.45, 1.0, head);
+	ALBEDO = COLOR.rgb * energy * (1.0 + 0.7 * edge);
+	ALPHA = clamp(a, 0.0, 1.0);
+}
+"""
+static var _trail_shader: Shader
 
 func respawn(p: Vector3) -> void:
 	if not puppet and game != null and game.hero == self:
