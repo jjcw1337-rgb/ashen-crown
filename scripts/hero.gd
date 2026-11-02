@@ -174,6 +174,12 @@ var atk_target = null
 var stamina := 100.0
 var max_stamina := 100.0
 var stamina_rest := 0.0
+## seconds since this hero last fought (struck, was struck, attacked or cast; jj, 2026-11-02): out of combat
+## stamina lasts and refills better and better, up to CALM_MAX times after CALM_RAMP more seconds (calm())
+var combat_t := 999.0
+const COMBAT_SECS := 5.0
+const CALM_RAMP := 10.0
+const CALM_MAX := 5.0
 var sprint := false
 ## The knight can keep a helm equipped (its stats) but not draw it (inventory toggle).
 var show_helm := true
@@ -1335,9 +1341,26 @@ func pace_mult(id: String) -> float:
 ## src: the skill doing the hitting (talent bonuses); by default the attack in progress.
 ## flat: damage on top of the weapon roll (a spell's part by level, e.g. the Wraith's spirit-light), scaled by the
 ## buffs and the skill's talents like the rest, in the same number.
+var _engaged_t := 0.0
+
+## A monster awake and after this hero close by (its fight is on even before a blow lands).
+func _engaged() -> bool:
+	if game == null or game.world == null:
+		return false
+	for e in game.world.enemies_root.get_children():
+		if e is Enemy and not e.dead and e.aggro and (e.global_position - global_position).length_squared() < 196.0:
+			return true
+	return false
+
+## How rested the hero is: 1 in combat (and for COMBAT_SECS after), rising to CALM_MAX over CALM_RAMP s out of it.
+## Sprinting drains stamina that many times slower and it refills that many times faster.
+func calm() -> float:
+	return lerpf(1.0, CALM_MAX, clampf((combat_t - COMBAT_SECS) / CALM_RAMP, 0.0, 1.0))
+
 func _hit_enemy(e, mult: float, knock: float = 0.0, src := "", flat := 0.0) -> void:
 	if not is_instance_valid(e) or e.dead:
 		return
+	combat_t = 0.0
 	if src == "":
 		src = atk_skill if atk_skill != "" else "attack"
 	var r := roll_damage(mult * dmg_mult(src))
@@ -1354,6 +1377,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	stop_chop()
 	if dead:
 		return
+	combat_t = 0.0
 	if puppet:
 		if game.net.is_host:
 			game.net.hit_player(peer_id, dmg, from, kind, element)
@@ -1518,8 +1542,15 @@ func _process(delta: float) -> void:
 	var wants_move := direct_dir.length() > 0.1 or (moving and not path.is_empty())
 	# stamina: sprint drains it, resting refills it; running dry leaves you winded
 	running = sprint and wants_move and not exhausted and block_amt < 0.5 and charge_t < 0.0
+	combat_t += delta
+	_engaged_t -= delta
+	if _engaged_t <= 0.0:
+		_engaged_t = 0.5
+		if _engaged():
+			combat_t = 0.0
+	var rested := calm()
 	if running:
-		stamina = maxf(0.0, stamina - delta * 14.0)
+		stamina = maxf(0.0, stamina - delta * 14.0 / rested)
 		stamina_rest = 0.0
 		if stamina <= 0.0:
 			exhausted = true
@@ -1527,7 +1558,7 @@ func _process(delta: float) -> void:
 	else:
 		stamina_rest += delta
 		if stamina_rest > 0.6:
-			stamina = minf(max_stamina, stamina + delta * (16.0 if not wants_move else 9.0))
+			stamina = minf(max_stamina, stamina + delta * (16.0 if not wants_move else 9.0) * rested)
 	if game.test_stamina:
 		stamina = max_stamina
 		exhausted = false

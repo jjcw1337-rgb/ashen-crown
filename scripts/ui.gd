@@ -4794,7 +4794,8 @@ func _process(delta: float) -> void:
 			xp_bar.detail = _xp_detail()
 			_xp_bonus_on = game.xp_bonus_t > 0.0
 		stamina_bar.value = hero.stamina / maxf(hero.max_stamina, 1.0)
-		stamina_bar.detail = "%d / %d" % [int(hero.stamina), int(hero.max_stamina)]
+		var rest: float = hero.calm()
+		stamina_bar.detail = ("Rested ×%.1f   " % rest if rest > 1.05 else "") + "%d / %d" % [int(hero.stamina), int(hero.max_stamina)]
 		if hero.exhausted:
 			stamina_bar.title = "WINDED"
 			stamina_bar.col_lo = Color(0.45, 0.08, 0.02)
