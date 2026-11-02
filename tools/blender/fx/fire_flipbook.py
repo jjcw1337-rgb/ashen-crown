@@ -41,11 +41,28 @@ scn.render.fps = 30
 
 # --- the fuel (a lumpy little bed at the foot) and its domain, made by Blender's own Quick Smoke (a domain built
 # by hand never took up the flow in a background bake), then reshaped: 0.9 x 0.3 x 1.8 m, open but for the floor
-bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=SHAPE["r"], location=(0, 0, SHAPE["fz"]))
-src = bpy.context.object
-src.name = "Fuel"
-src.scale = SHAPE["fs"]            # (body: a line of fuel, thin in depth: separate tongues)
-bpy.ops.object.transform_apply(scale=True)
+if KIND == "spirit":
+    # a bed of coals: four small lumps at different heights, so separate tongues rise and lick from separate points
+    lumps = []
+    for (x, y, z, r) in [(-0.13, 0.01, 0.09, 0.05), (-0.04, -0.015, 0.12, 0.06), (0.05, 0.015, 0.1, 0.055), (0.14, -0.01, 0.085, 0.045)]:
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=r, location=(x, y, z))
+        o = bpy.context.object
+        o.scale = (1.2, 0.8, 0.7)
+        bpy.ops.object.transform_apply(scale=True)
+        lumps.append(o)
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in lumps:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = lumps[0]
+    bpy.ops.object.join()
+    src = bpy.context.object
+    src.name = "Fuel"
+else:
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=SHAPE["r"], location=(0, 0, SHAPE["fz"]))
+    src = bpy.context.object
+    src.name = "Fuel"
+    src.scale = SHAPE["fs"]            # (body: a line of fuel, thin in depth: separate tongues)
+    bpy.ops.object.transform_apply(scale=True)
 src.select_set(True)
 bpy.context.view_layer.objects.active = src
 bpy.ops.object.quick_smoke(style="BOTH")
@@ -154,7 +171,7 @@ else:
 # a sharp edge: the flame's light is a steep ramp of its field, so the tongues have crisp outlines like real fire
 edge = nt.nodes.new("ShaderNodeMapRange")
 edge.interpolation_type = "SMOOTHERSTEP"
-edge.inputs["From Min"].default_value = 0.42
+edge.inputs["From Min"].default_value = 0.42 if not SPIRIT else 0.5     # spirit: crisper tongue outlines
 edge.inputs["From Max"].default_value = 0.78
 edge.inputs["To Min"].default_value = 0.0
 edge.inputs["To Max"].default_value = 1.0
@@ -208,8 +225,8 @@ scn.render.engine = "CYCLES"
 scn.cycles.device = "CPU"
 scn.cycles.samples = 48
 scn.cycles.use_denoising = True
-scn.cycles.volume_step_rate = 0.5
-scn.cycles.volume_max_steps = 256
+scn.cycles.volume_step_rate = 0.5 if not SPIRIT else 0.2     # spirit (res 128): finer steps, no banding
+scn.cycles.volume_max_steps = 256 if not SPIRIT else 1024
 scn.render.film_transparent = False      # RGB is the fire's light on black (it adds); no alpha
 scn.render.resolution_x = int(PX * SHAPE["aspect"]) if SHAPE["aspect"] <= 1.0 else PX
 scn.render.resolution_y = PX if SHAPE["aspect"] <= 1.0 else int(PX / SHAPE["aspect"])

@@ -39,10 +39,13 @@ const PRESETS := {
 	"weapon":   {"book": "tongue", "rate": 14.0, "life": 0.42, "w": 0.9, "h": 1.5, "back": 0.0, "core": 0.0, "embers": 8.0, "sparks": 0.0, "smoke": 0.0, "light": 0.0, "range": 0.0, "haze": false, "jitter": 0.1},
 	# the camp waypoint's blue spirit-fire braziers: the spirit book plays as rendered (violet tips, electric blue,
 	# a cyan-white heart), blue embers and sparks, a cold light, no soot
-	# Overlapping flames add their light, and the tonemapper bleaches what passes 1 to white: no hot core layer,
-	# "hot" 0.5 per flame and "cool" (the shader keeps red and green low) so where they pile up they sum to blue.
-	# Few, big flames (overlapping ones blur each other's tongues into a cloud), no back layer.
-	"spirit":   {"book": "spirit", "rate": 6.0, "life": 0.8, "w": 0.9, "h": 1.2, "back": 0.0, "core": 0.0, "embers": 12.0, "sparks": 0.18, "smoke": 0.0, "light": 2.0, "range": 6.5, "haze": false, "jitter": 0.09, "pal": "spirit", "hot": 0.75, "cool": 1.0},
+	# "anchored": a few long-lived flames standing in the bowl ("count", whatever the graphics tier), each playing a
+	# long run of the simulation at full strength (brief "fades"), never wrapping past the book's end ("seamless"),
+	# so the simulated tongues read whole instead of many short faded flames blurring into a cloud. Overlapping
+	# light adds and the tonemapper bleaches what passes 1: no hot core layer, "hot" per flame and "cool" (the shader
+	# keeps red and green low, and cuts each flame's faint haze) so they sum to blue with dark gaps between tongues.
+	"spirit":   {"book": "spirit", "rate": 0.0, "life": 1.3, "w": 0.9, "h": 1.2, "back": 0.0, "core": 0.0, "embers": 14.0, "sparks": 0.2, "smoke": 0.0, "light": 2.0, "range": 6.5, "haze": false, "jitter": 0.035, "pal": "spirit", "hot": 0.8, "cool": 1.0,
+		"anchored": true, "count": 3, "fades": Vector2(0.1, 0.86), "seamless": true},
 	"burning":  {"book": "tongue", "rate": 12.0, "life": 0.5, "w": 1.1, "h": 1.7, "back": 0.3, "core": 0.0, "embers": 8.0, "sparks": 0.1, "smoke": 0.5, "light": 0.0, "range": 0.0, "haze": false, "jitter": 0.2},
 }
 ## Flames per preset scale with the graphics budget (InfernalFx.tier: Low, Medium, High, Ultra).
@@ -82,8 +85,8 @@ static func book(name: String) -> Texture2D:
 	return _books[name]
 
 ## A flame material for a book (shared per book and look, so fires batch). life = the particle's lifetime.
-static func flame_mat(bk: String, life: float, hot: float, tint: float, cool := 0.0) -> ShaderMaterial:
-	var key := "%s_%.2f_%.2f_%.2f_%.2f" % [bk, life, hot, tint, cool]
+static func flame_mat(bk: String, life: float, hot: float, tint: float, cool := 0.0, fades := Vector2(0.12, 0.55), seamless := false) -> ShaderMaterial:
+	var key := "%s_%.2f_%.2f_%.2f_%.2f_%.2f_%.2f_%s" % [bk, life, hot, tint, cool, fades.x, fades.y, seamless]
 	if _mats.has(key):
 		return _mats[key]
 	var tex := book(bk)
@@ -100,6 +103,9 @@ static func flame_mat(bk: String, life: float, hot: float, tint: float, cool := 
 		m.set_shader_parameter("hot", hot)
 		m.set_shader_parameter("tint", tint)
 		m.set_shader_parameter("cool", cool)
+		m.set_shader_parameter("fade_in", fades.x)
+		m.set_shader_parameter("fade_out", fades.y)
+		m.set_shader_parameter("seamless", 1.0 if seamless else 0.0)
 		m.set_shader_parameter("crimson", InfernalFx.CRIMSON)
 		m.set_shader_parameter("molten", InfernalFx.MOLTEN)
 		m.set_shader_parameter("whitehot", InfernalFx.WHITEHOT)
@@ -137,7 +143,10 @@ static func make(parent: Node3D, pos: Vector3, kind := "", size := 1.0, col := C
 		_flames(root, "back", bk, life * 1.3, width * 1.35, height * 1.15, maxf(2.0, float(P["rate"]) * float(P["back"]) * 0.6 * size * k), 0.5 * float(P.get("hot", 1.0)), tint, float(P["jitter"]) * size * 1.4, size, float(P.get("cool", 0.0)))
 	# the main flames
 	var hot := float(P.get("hot", 1.0))
-	_flames(root, "flames", bk, life, width, height, maxf(3.0, float(P["rate"]) * size * k), hot, tint, float(P["jitter"]) * size, size, float(P.get("cool", 0.0)))
+	if bool(P.get("anchored", false)):
+		_anchored(root, bk, life, width, height, int(P.get("count", 3)), hot, tint, float(P["jitter"]) * size, float(P.get("cool", 0.0)), P.get("fades", Vector2(0.1, 0.86)), bool(P.get("seamless", true)))
+	else:
+		_flames(root, "flames", bk, life, width, height, maxf(3.0, float(P["rate"]) * size * k), hot, tint, float(P["jitter"]) * size, size, float(P.get("cool", 0.0)))
 	# the hot core: small, bright, low
 	if float(P["core"]) > 0.0:
 		_flames(root, "core", bk, life * 0.6, width * 0.55, height * 0.5, maxf(2.0, float(P["rate"]) * 0.6 * size * k), 0.95 * float(P["core"]), tint, float(P["jitter"]) * size * 0.5, size, float(P.get("cool", 0.0)))
@@ -188,6 +197,24 @@ static func _flames(root: Node3D, nm: String, bk: String, life: float, w: float,
 		"colors": [[0.0, Color(1, 1, 1, 1)], [1.0, Color(1, 1, 1, 1)]]})
 	p.name = nm
 	p.position = Vector3.ZERO
+	p.preprocess = life
+
+## A few long-lived flames standing still on their spot (no drift or turbulence: the simulation is the motion),
+## emitted evenly so they take over from one another; each plays a long, unbroken run of the book.
+static func _anchored(root: Node3D, bk: String, life: float, w: float, h: float, count: int, hot: float, tint: float, jitter: float, cool: float, fades: Vector2, seamless: bool) -> void:
+	var q := QuadMesh.new()
+	q.size = Vector2(w, h)
+	q.center_offset = Vector3(0, h * 0.42, 0)
+	var share := clampf(1.45 / sqrt(float(maxi(count, 1))), 0.22, 0.9)
+	q.material = flame_mat(bk, snappedf(life, 0.05), snappedf(hot * share, 0.05), snappedf(tint, 0.1), cool, fades, seamless)
+	var p := InfernalFx.particles(root, root.global_position if root.is_inside_tree() else root.position, {
+		"amount": maxi(1, count), "life": life, "one_shot": false, "randomness": 0.15,
+		"shape": "sphere", "r": maxf(jitter, 0.005), "dir": Vector3.UP, "spread": 0.0,
+		"vel": [0.0, 0.0], "gravity": 0.0, "scale": [0.9, 1.08], "angle": true, "mesh": q,
+		"colors": [[0.0, Color(1, 1, 1, 1)], [1.0, Color(1, 1, 1, 1)]]})
+	p.name = "flames"
+	p.position = Vector3.ZERO
+	p.local_coords = true          # they stand in the bowl even if it moves
 	p.preprocess = life
 
 ## Embers that detach and drift up on the heat, wandering.

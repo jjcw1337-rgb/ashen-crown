@@ -50,6 +50,7 @@ var _wake := 0.0             # 0 asleep .. 1 a hero on the dais (smoothed)
 var _flash := 0.0            # the arrival / activation burst, decaying
 var _spin := 0.0
 var _arrival_checked := false
+var hearts: Array[ShaderMaterial] = []   # the braziers' white-hot hearts (glow), flickering
 var _cry_y := 3.0            # the crystal's resting height (from its model when there is one)
 var _sh_y := 3.0
 
@@ -257,7 +258,22 @@ func _build() -> void:
 		# blue / cyan-white, played on flame particles so no two flames are in step), blue embers and sparks, and a
 		# cold flickering light on the stones
 		if ResourceLoader.exists(FireFx.BOOKS["spirit"]):
-			FireFx.make(b, Vector3(0, fire_y - 0.06, 0), "spirit", 0.85, Color(0.3, 0.55, 1.0), true, false, false)
+			var fire := FireFx.make(b, Vector3(0, fire_y - 0.06, 0), "spirit", 0.85, Color(0.3, 0.55, 1.0), true, false, false)
+			# the fire's cold light may cast shadows (Grade gives the nearest lights the preset's shadow budget)
+			var fl := fire.get_node_or_null("FireLight")
+			if fl:
+				fl.add_to_group(Grade.SHADOW_GROUP)
+			# the white-hot heart down in the bowl, breathing with the fire (see _process)
+			var heart := MeshInstance3D.new()
+			heart.mesh = InfernalFx.quad()
+			var hm := InfernalFx.glow_mat(Color(0.32, 0.62, 1.0), 1.1, 2.6)
+			heart.material_override = hm
+			heart.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			heart.extra_cull_margin = 2.0
+			heart.position = Vector3(0, fire_y + 0.06, 0)
+			heart.scale = Vector3.ONE * 0.75
+			b.add_child(heart)
+			hearts.append(hm)
 		else:
 			# without the spirit book the simulated fire would be the orange body book: keep the particle flames
 			Fx.aura(b, Color(0.3, 0.62, 1.0, 0.9), 18, 0.9, 0.17, 0.55, 1.8, 0.12, 12.0, Vector3(0, fire_y, 0), false)
@@ -384,3 +400,6 @@ func _process(delta: float) -> void:
 	shards.scale = Vector3.ONE * lerpf(1.0, 1.25, _wake) * (1.0 + _flash * 0.3)
 	light.light_energy = float(light.get_meta("base")) * lerpf(0.6, 1.25, _wake) * (0.9 + 0.15 * pulse_w) + _flash * 3.0
 	motes.amount_ratio = lerpf(0.35, 1.0, _wake)
+	for i in hearts.size():
+		var fl := 0.8 + 0.12 * sin(_t * 7.3 + i * 1.9) + 0.08 * sin(_t * 13.1 + i * 4.3)
+		hearts[i].set_shader_parameter("energy", 1.1 * fl + _flash * 0.6)
