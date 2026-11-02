@@ -16,8 +16,8 @@ extends RefCounted
 ## State: h.fxs["hellrunner"] (the furrow, the skull, the light), kept by `update`, timing itself out on a partner's
 ## game if the end is lost.
 
-const PRINT_EVERY := 0.95
-const SKULL := 1.25
+const PRINT_EVERY := 1.3
+const SKULL := 1.0
 
 static func play(h: Hero, ev: Dictionary) -> bool:
 	match str(ev["e"]):
@@ -50,7 +50,7 @@ static func _wind(h: Hero, ev: Dictionary) -> void:
 	var d := (q - p) * Vector3(1, 0, 1)
 	var mid := p + d * 0.5
 	mid.y = world.height_at(mid.x, mid.z)
-	var fur := DemonKitFx.decal(root, mid, "furrow", Vector2(d.length() + 1.2, 1.5), atan2(-d.z, d.x), wind + 2.6, 0.2)
+	var fur := DemonKitFx.decal(root, mid, "furrow", Vector2(d.length() + 1.2, 1.5), atan2(-d.z, d.x), wind + 2.6, 1.6)
 	fur.scale = Vector3(0.02, 1, 1)
 	var tw := fur.create_tween()
 	tw.tween_property(fur, "scale", Vector3.ONE, wind * 0.8).set_ease(Tween.EASE_OUT)
@@ -60,7 +60,7 @@ static func _wind(h: Hero, ev: Dictionary) -> void:
 	var skull := Node3D.new()
 	root.add_child(skull)
 	var sm := DemonKitFx.model(DemonKitFx.HORNS)
-	var gm := DemonKitFx.ghost_mat(Color(1.0, 0.32, 0.06), 1.3)
+	var gm := DemonKitFx.ghost_mat(Color(1.0, 0.32, 0.06), 0.8)
 	if sm != null:
 		for mi in sm.find_children("*", "MeshInstance3D", true, false):
 			(mi as MeshInstance3D).material_override = gm
@@ -76,9 +76,9 @@ static func _wind(h: Hero, ev: Dictionary) -> void:
 	var hoof := p + h.facing() * 0.4
 	hoof.y = world.height_at(hoof.x, hoof.z)
 	DemonKitFx.decal(root, hoof, "crush", Vector2(0.9, 0.9), randf() * TAU, 2.4, 0.15)
-	DemonKitFx.smoke(root, hoof, "ash", 1.1, 0.9)
+	DemonKitFx.smoke(root, hoof, "ash", 0.9, 0.9)
 	DemonKitFx.clods(root, hoof + Vector3(0, 0.1, 0), [5, 8, 10, 12][tr], 2.4)
-	DemonKitFx.smoke(root, DemonKitFx.head(h) + h.facing() * 0.45 - Vector3(0, 0.5, 0), "ash", 0.8, 0.8)
+	DemonKitFx.smoke(root, DemonKitFx.head(h) + h.facing() * 0.45 - Vector3(0, 0.5, 0), "ash", 0.55, 0.8, false, Color(0.7, 0.66, 0.62, 0.8))
 	h.fxs["hellrunner"] = {"furrow": fur, "skull": skull, "skull_mat": gm, "em": em, "until": wind + 3.0, "laid": 0.0,
 		"last": h.global_position, "stage": "wind"}
 	SkillFx.snd(h, "growl", -4.0, 0.68)
@@ -109,7 +109,7 @@ static func _run(h: Hero, ev: Dictionary) -> void:
 	l.shadow_enabled = false
 	root.add_child(l)
 	st["light"] = l
-	(st["skull_mat"] as ShaderMaterial).set_shader_parameter("energy", 2.0)
+	(st["skull_mat"] as ShaderMaterial).set_shader_parameter("energy", 1.2)
 	SkillFx.snd(h, "charge_dash", -1.0, 0.75)
 
 static func _hit(h: Hero, ev: Dictionary) -> void:
@@ -121,7 +121,7 @@ static func _hit(h: Hero, ev: Dictionary) -> void:
 	DemonKitFx.sparks(root, p, d + Vector3(0, 0.3, 0), [10, 16, 22, 28][tr] + (12 if big else 0), 38.0, Vector2(5.0, 12.0))
 	var gp := p
 	gp.y = h.game.world.height_at(p.x, p.z)
-	DemonKitFx.smoke(root, gp, "ash", 2.0 if big else 1.3, 1.0)
+	DemonKitFx.smoke(root, gp, "ash", 1.5 if big else 1.0, 1.0)
 	DemonKitFx.clods(root, gp + Vector3(0, 0.2, 0), [6, 9, 12, 14][tr], 3.5, d + Vector3.UP)
 	if big:
 		var st: Dictionary = h.fxs.get("hellrunner", {})
@@ -155,11 +155,11 @@ static func _skid(h: Hero, ev: Dictionary) -> void:
 	st["stage"] = "skid"
 	# the furrow his hooves plough as he brakes
 	var back := p - d * 1.2
-	DemonKitFx.decal(root, back, "furrow", Vector2(3.0, 1.3), atan2(-d.z, d.x), 3.5, 0.6)
+	DemonKitFx.decal(root, back, "furrow", Vector2(3.0, 1.3), atan2(-d.z, d.x), 3.5, 1.0)
 	var front := p + d * 1.0
-	DemonKitFx.smoke(root, front, "ash", 2.2, 1.2)
-	DemonKitFx.smoke(root, front + d.cross(Vector3.UP) * 0.7, "ash", 1.6, 1.1)
-	DemonKitFx.smoke(root, front - d.cross(Vector3.UP) * 0.7, "ash", 1.6, 1.1)
+	DemonKitFx.smoke(root, front, "ash", 1.7, 1.2)
+	DemonKitFx.smoke(root, front + d.cross(Vector3.UP) * 0.7, "ash", 1.1, 1.1)
+	DemonKitFx.smoke(root, front - d.cross(Vector3.UP) * 0.7, "ash", 1.1, 1.1)
 	DemonKitFx.clods(root, front + Vector3(0, 0.15, 0), [10, 16, 22, 26][tr], 4.0, d + Vector3(0, 0.6, 0), 40.0)
 	var hand := SkillFx.hand(h, true)
 	DemonKitFx.sparks(root, Vector3(hand.x, p.y + 0.1, hand.z), d + Vector3(0, 0.5, 0), [8, 12, 16, 20][tr], 30.0, Vector2(3.0, 7.0))
@@ -237,7 +237,7 @@ static func _hoofstrike(h: Hero, root: Node3D, world, n: int) -> void:
 	var side := h.facing().cross(Vector3.UP).normalized()
 	var p := h.global_position + side * (0.22 if n % 2 == 0 else -0.22) - h.facing() * 0.3
 	p.y = world.height_at(p.x, p.z)
-	DemonKitFx.smoke(root, p, "ash", 1.3, 0.9)
+	DemonKitFx.smoke(root, p, "ash", 0.85, 0.9, false, Color(1, 1, 1, 0.85))
 	DemonKitFx.clods(root, p + Vector3(0, 0.08, 0), 4, 2.2, -h.facing() + Vector3.UP)
 	if n % 2 == 0:
 		DemonKitFx.sparks(root, p + Vector3(0, 0.05, 0), -h.facing() + Vector3(0, 0.6, 0), 4, 35.0, Vector2(2.0, 5.0), 0.3)

@@ -96,15 +96,18 @@ static func _erupt(h: Hero, ev: Dictionary) -> void:
 		var node := DemonKitFx.model(DemonKitFx.FISSURE)
 		if node == null:
 			continue
-		DemonKitFx.heat_model(node, 3.0)
+		_crack_only(node, float(i) * 7.3 + a.x)
 		root.add_child(node)
-		var sx := (len / segs) / 3.6 * 1.05
-		node.basis = Basis(Vector3.UP, yaw).scaled(Vector3(sx, 0.85, DemonSkills.FAULT_W / 3.2 * 1.35))
-		var rest := c - Vector3(0, 0.55, 0)
-		node.global_position = c - Vector3(0, 1.4, 0)
+		# the tile's crack runs along its z: laid along the fault, only its top at the ground's level
+		var along := (len / segs) / 3.2 * 1.12
+		var across := DemonSkills.FAULT_W * 1.15 / 1.5
+		node.basis = Basis(Vector3.UP, yaw) * Basis(Vector3.UP, PI * 0.5) * Basis.from_scale(Vector3(across, 0.85, along))
+		var rest := c - Vector3(0, 0.8, 0)
+		node.global_position = c - Vector3(0, 1.5, 0)
 		var tw := node.create_tween()
 		tw.tween_interval(0.02 * i)
-		tw.tween_property(node, "global_position", rest, 0.13).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+		tw.tween_property(node, "global_position", c - Vector3(0, 0.55, 0), 0.12).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+		tw.tween_property(node, "global_position", rest, 0.4).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
 		plates.append({"node": node, "rest": rest, "h": 1.4, "heat": 3.0})
 	# obsidian slabs tilting up apart along both sides
 	var rng := RandomNumberGenerator.new()
@@ -122,7 +125,7 @@ static func _erupt(h: Hero, ev: Dictionary) -> void:
 		DemonKitFx.heat_model(node2, 1.6)
 		root.add_child(node2)
 		var tilt := Basis(dir, -lane * rng.randf_range(0.45, 0.8)) * Basis(Vector3.UP, yaw + rng.randf_range(-0.35, 0.35))
-		node2.basis = tilt.scaled(Vector3(rng.randf_range(0.6, 0.9), hgt, rng.randf_range(0.7, 1.0)))
+		node2.basis = tilt * Basis.from_scale(Vector3(rng.randf_range(0.6, 0.9), hgt, rng.randf_range(0.7, 1.0)))
 		var rest2 := pp - Vector3(0, hgt * 0.15, 0)
 		node2.global_position = pp - Vector3(0, hgt * 1.1, 0)
 		var tw2 := node2.create_tween()
@@ -139,8 +142,9 @@ static func _erupt(h: Hero, ev: Dictionary) -> void:
 	var steam: Array = []
 	for k in STEAM[tr]:
 		var c3: Vector3 = a + d * ((float(k) + 0.5) / float(STEAM[tr]))
-		c3.y = world.height_at(c3.x, c3.z) + 0.2
-		steam.append(DemonKitFx.smoke(root, c3, "steam", randf_range(2.2, 2.8), randf_range(2.2, 2.8), true))
+		c3 += side * randf_range(-0.25, 0.25)
+		c3.y = world.height_at(c3.x, c3.z) - 0.3      # (the sim's source line sits in the crack, out of sight)
+		steam.append(DemonKitFx.smoke(root, c3, "steam", randf_range(1.3, 1.7), randf_range(2.2, 2.8), true, Color(1.0, 0.94, 0.88, 0.6)))
 	st["steam"] = steam
 	DemonKitFx.clods(root, (a + b) * 0.5 + Vector3(0, 0.3, 0), [16, 24, 32, 40][tr], 5.0)
 	var l := OmniLight3D.new()
@@ -176,6 +180,67 @@ static func _thrown(root: Node3D, e: Node3D, tr: int) -> void:
 		tw.tween_property(rig, "position:y", y0 + 0.9, 0.18).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 		tw.tween_property(rig, "position:y", y0, 0.2).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
 
+## The Meshy fissure is a square tile of broken ground with a lava crack down its middle; only the crack is wanted.
+## Its materials become CRACK_SHADER: the tile's own texture and lava glow, cut away outside a jagged band round the
+## crack that narrows to nothing at both ends (per pixel, so no straight edge and none of the tile's sides show).
+static func _crack_only(n: Node3D, seed: float) -> void:
+	if _crack_shader == null:
+		_crack_shader = Shader.new()
+		_crack_shader.code = CRACK_SHADER
+	for mi in n.find_children("*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		for i in m.get_surface_override_material_count():
+			var base = m.get_active_material(i)
+			var sm := ShaderMaterial.new()
+			sm.shader = _crack_shader
+			if base is BaseMaterial3D and (base as BaseMaterial3D).albedo_texture != null:
+				sm.set_shader_parameter("albedo_tex", (base as BaseMaterial3D).albedo_texture)
+			sm.set_shader_parameter("seed", seed)
+			sm.set_shader_parameter("heat", 3.0)
+			m.set_surface_override_material(i, sm)
+
+static var _crack_shader: Shader
+const CRACK_SHADER := """
+shader_type spatial;
+render_mode cull_disabled;
+uniform sampler2D albedo_tex : source_color, filter_linear_mipmap;
+uniform vec4 heat_col : source_color = vec4(1.0, 0.42, 0.07, 1.0);
+uniform float heat = 3.0;
+uniform float half_w = 0.75;
+uniform float half_l = 1.58;
+uniform float seed = 0.0;
+varying vec3 lp;
+void vertex() {
+	lp = VERTEX;
+}
+float hash(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+float vnoise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+void fragment() {
+	// a band round the crack (the tile's z), wandering in width, jagged, closing at both ends
+	float end = half_l - abs(lp.z);
+	float taper = clamp(end / 0.7, 0.0, 1.0);
+	float w = half_w * (0.7 + 0.6 * vnoise(vec2(lp.z * 1.3 + seed, seed))) * (0.12 + 0.88 * taper);
+	float jag = 0.22 * (vnoise(vec2(lp.x * 4.0 + seed, lp.z * 4.0)) - 0.5) + 0.08 * (vnoise(vec2(lp.x * 13.0, lp.z * 13.0 + seed)) - 0.5);
+	float edge = w + jag - abs(lp.x);
+	if (edge < 0.0) {
+		discard;
+	}
+	vec4 t = texture(albedo_tex, UV);
+	// scorched dark toward the torn edge, where it meets the ground
+	float rim = smoothstep(0.0, 0.3, edge);
+	ALBEDO = t.rgb * mix(0.35, 1.0, rim);
+	ROUGHNESS = 0.88;
+	EMISSION = t.rgb * heat_col.rgb * heat * mix(0.25, 1.0, rim);
+}
+"""
+
 ## Every frame: the warning's embers pulse, the lava breathes, and at the end it all sinks.
 static func update(h: Hero, delta: float) -> void:
 	if not h.fxs.has("fault"):
@@ -192,7 +257,7 @@ static func update(h: Hero, delta: float) -> void:
 			var k := clampf(t / maxf(float(st["warn"]), 0.05), 0.0, 1.0)
 			var g = st.get("gouge")
 			if g != null and is_instance_valid(g):
-				(g as Decal).emission_energy = 0.4 + 2.6 * k + 0.8 * sin(t * (18.0 + 30.0 * k))
+				DemonKitFx.set_mark_glow(g, 0.4 + 2.6 * k + 0.8 * sin(t * (18.0 + 30.0 * k)))
 			if t > float(st["warn"]) + 0.6:
 				st["stage"] = "molten"     # a partner who never got the eruption
 				st["t"] = 0.0

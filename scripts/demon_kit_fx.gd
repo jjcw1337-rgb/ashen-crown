@@ -7,8 +7,9 @@ extends RefCounted
 ##    impact (a rock hitting the ground), comet (a burning rock's trail), steam, ash (a hoof's puff), blast (the
 ##    Crucible's ring). The ground ones were rendered from the game camera's own 44 deg and are held facing the camera,
 ##    so the card shows the cloud as the camera would see it in 3D; steam stands upright; the comet lies along its flight.
-##  - Ground marks (`decal`): Meshy-painted top-down textures projected on the terrain by Godot Decals (crater,
-##    furrow, crush), each with a glow mask for its hot part (made from the painting by tools/fx_glow_mask.py).
+##  - Ground marks (`decal`): Meshy-painted top-down textures (crater, furrow, crush) on a mesh laid over the terrain
+##    (not a Decal: the Compatibility renderer draws none), each with a glow mask for its hot part (made from the
+##    painting by tools/fx_glow_mask.py).
 ##  - Real pieces (`pieces`): the Meshy boulder broken into Voronoi chunks in Blender (fracture_rock.py), the cocoon
 ##    broken the same way: thrown with gravity, bouncing, their molten insides cooling.
 ##  - Sparks (`sparks`): metal-spark streaks stretched along their flight.
@@ -34,16 +35,21 @@ const TEX := "res://assets/textures/fx/demon/"
 ## the frame's, how the card is held (0 upright, turning round the vertical; 1 facing the camera; 2 along a direction)
 const BOOKS := {
 	"impact": ["smoke_impact.png", Vector2(8, 6), 48, 1.2, Vector2(0.5, 0.417), 0.795, 1],
-	"comet": ["smoke_comet.png", Vector2(6, 6), 36, 2.0, Vector2(0.883, 0.5), 1.0, 2],
+	"comet": ["smoke_comet.png", Vector2(6, 6), 36, 2.0, Vector2(0.882, 0.5), 1.0, 2],
 	"steam": ["smoke_steam.png", Vector2(6, 6), 36, 1.0, Vector2(0.5, 0.019), 0.923, 0],
-	"ash": ["smoke_ash.png", Vector2(8, 4), 32, 1.25, Vector2(0.5, 0.338), 0.76, 1],
-	"blast": ["smoke_blast.png", Vector2(8, 5), 40, 1.3, Vector2(0.5, 0.4), 0.833, 1],
+	"ash": ["smoke_ash.png", Vector2(6, 6), 32, 1.25, Vector2(0.5, 0.338), 0.76, 1],
+	"blast": ["smoke_blast.png", Vector2(8, 5), 40, 1.25, Vector2(0.5, 0.378), 0.729, 1],
 }
+
+## how much of the books' daylight the smoke keeps in the game's dusk (fire keeps all of its own); steam rising off
+## lava and the comet's smoke are lit from inside by their fire
+const SMOKE_LIGHT := {"impact": 0.5, "ash": 0.5, "blast": 0.5, "steam": 0.7, "comet": 0.6}
 
 static var _scenes := {}
 static var _tex := {}
 static var _target_shader: Shader
 static var _smoke_shader: Shader
+static var _mark_shader: Shader
 static var _ghost_shader: Shader
 
 # ---------------------------------------------------------------- bodies
@@ -117,6 +123,8 @@ static func set_heat(n: Node3D, heat: float) -> void:
 			var c = m.get_surface_override_material(i)
 			if c is StandardMaterial3D:
 				(c as StandardMaterial3D).emission_energy_multiplier = heat
+			elif c is ShaderMaterial:
+				(c as ShaderMaterial).set_shader_parameter("heat", heat)
 
 static func tex(name: String) -> Texture2D:
 	if not _tex.has(name):
@@ -151,6 +159,7 @@ static func smoke(root: Node3D, pos: Vector3, kind: String, size: float, dur: fl
 	m.set_shader_parameter("offset", randf())
 	m.set_shader_parameter("mode", mode)
 	m.set_shader_parameter("axis", axis)
+	m.set_shader_parameter("smoke_light", float(SMOKE_LIGHT.get(kind, 0.5)))
 	# (an along card's head must lead; the others may be mirrored for variety)
 	m.set_shader_parameter("flip", 1.0 if mode == 2 or randf() < 0.5 else -1.0)
 	if mode == 1:
@@ -194,27 +203,71 @@ static func smoke_out(mi, dur: float) -> void:
 	tw.tween_callback((mi as Node).queue_free)
 
 # ---------------------------------------------------------------- ground marks
-## A Meshy-painted mark projected on the ground (and anything standing on it, a little): size x by z metres,
-## turned by yaw, its hot part glowing `glow` and cooling, gone after `life` s (fading over the last third).
-static func decal(root: Node3D, pos: Vector3, name: String, size: Vector2, yaw: float, life: float, glow := 2.0) -> Decal:
-	var d := Decal.new()
-	d.texture_albedo = tex(name + ".png")
-	d.texture_emission = tex(name + "_glow.png")
-	d.size = Vector3(size.x, 1.6, size.y)
-	d.emission_energy = glow
-	d.upper_fade = 0.3
-	d.lower_fade = 0.3
-	d.cull_mask = 1
-	root.add_child(d)
-	d.global_position = pos + Vector3(0, 0.3, 0)
-	d.rotation.y = yaw
-	var tw := d.create_tween()
-	tw.tween_property(d, "emission_energy", glow * 0.25, life * 0.6).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(d, "modulate", Color(1, 1, 1, 1), life * 0.66)
-	tw.tween_property(d, "emission_energy", 0.0, life * 0.34)
-	tw.parallel().tween_property(d, "modulate", Color(1, 1, 1, 0), life * 0.34)
-	tw.tween_callback(d.queue_free)
-	return d
+## A Meshy-painted mark on the ground: size x by z metres, turned by yaw, its hot part glowing `glow` and cooling,
+## gone after `life` s (fading over the last third). Not a Decal: the Compatibility renderer (the web build, the
+## OpenGL fallback) draws no decals, and some of these marks are what an opponent reads (the charge's path, the
+## fault's warning). It is a mesh laid over the ground instead, every vertex at the terrain's height. Drive its glow
+## with `set_mark_glow`.
+static func decal(root: Node3D, pos: Vector3, name: String, size: Vector2, yaw: float, life: float, glow := 2.0) -> MeshInstance3D:
+	var mi := ground_mark(root, pos, name, size, yaw, glow)
+	var m: ShaderMaterial = mi.material_override
+	var tw := mi.create_tween()
+	tw.tween_method(func(v: float): m.set_shader_parameter("glow", v), glow, glow * 0.25, life * 0.6).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(life * 0.06)
+	tw.tween_method(func(v: float): m.set_shader_parameter("glow", v * glow * 0.25); m.set_shader_parameter("alpha", v), 1.0, 0.0, life * 0.34)
+	tw.tween_callback(mi.queue_free)
+	return mi
+
+static func set_mark_glow(mark, energy: float) -> void:
+	if mark != null and is_instance_valid(mark) and mark is MeshInstance3D:
+		((mark as MeshInstance3D).material_override as ShaderMaterial).set_shader_parameter("glow", energy)
+
+## The mesh of a ground mark: a grid over the rectangle following the terrain (the world fx_root hangs from; flat
+## where there is none, as on the class picker's stage), a little above it.
+static func ground_mark(root: Node3D, pos: Vector3, name: String, size: Vector2, yaw: float, glow: float) -> MeshInstance3D:
+	if _mark_shader == null:
+		_mark_shader = Shader.new()
+		_mark_shader.code = MARK_SHADER
+	var world = root.get_parent()
+	var has_h: bool = world != null and world.has_method("height_at")
+	var nx := clampi(int(size.x / 0.3) + 1, 2, 48)
+	var nz := clampi(int(size.y / 0.3) + 1, 2, 48)
+	var b := Basis(Vector3.UP, yaw)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for j in nz + 1:
+		for i in nx + 1:
+			var u := float(i) / nx
+			var v := float(j) / nz
+			var lp := Vector3((u - 0.5) * size.x, 0.0, (v - 0.5) * size.y)
+			var wp := pos + b * lp
+			lp.y = (float(world.height_at(wp.x, wp.z)) if has_h else pos.y) - pos.y + 0.04
+			st.set_normal(Vector3.UP)
+			st.set_uv(Vector2(u, v))
+			st.add_vertex(lp)
+	for j in nz:
+		for i in nx:
+			var k := j * (nx + 1) + i
+			st.add_index(k)
+			st.add_index(k + 1)
+			st.add_index(k + nx + 1)
+			st.add_index(k + 1)
+			st.add_index(k + nx + 2)
+			st.add_index(k + nx + 1)
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	var m := ShaderMaterial.new()
+	m.shader = _mark_shader
+	m.render_priority = -1          # under smoke and sparks
+	m.set_shader_parameter("albedo_tex", tex(name + ".png"))
+	m.set_shader_parameter("glow_tex", tex(name + "_glow.png"))
+	m.set_shader_parameter("glow", glow)
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+	mi.global_position = pos
+	mi.rotation.y = yaw
+	return mi
 
 # ---------------------------------------------------------------- real pieces
 static var _piece_sets := {}
@@ -444,6 +497,7 @@ uniform vec4 tint : source_color = vec4(1.0);
 uniform int mode = 0;
 uniform vec3 axis = vec3(1.0, 0.0, 0.0);
 uniform float push = 0.0;
+uniform float smoke_light = 0.5;
 vec4 cell(float i, vec2 uv) {
 	float c = mod(i, grid.x);
 	float r = floor(i / grid.x);
@@ -493,13 +547,38 @@ void fragment() {
 	// (the packer fades every frame out at its edges; this only guards the atlas's neighbours under mipmaps)
 	float edge = smoothstep(0.0, 0.015, uv.x) * smoothstep(1.0, 0.985, uv.x) * smoothstep(0.0, 0.015, uv.y) * smoothstep(1.0, 0.985, uv.y);
 	float k = fade * edge * tint.a;
+	if (mode == 0) {
+		// an upright sheet (steam): its sides fade away so no card's edge stands in the air
+		k *= smoothstep(0.0, 0.22, uv.x) * smoothstep(1.0, 0.78, uv.x);
+	}
 	if (!loop) {
 		k *= 1.0 - smoothstep(0.86, 1.0, prog);
 	}
 	// premultiplied: smoke is colour x alpha, fire's light sits above it (no fog: the engine's fog mixes its colour
-	// into clear pixels too, which premultiplied blending turns into a milky sheet over the whole card)
-	ALBEDO = a.rgb * tint.rgb * k;
+	// into clear pixels too, which premultiplied blending turns into a milky sheet over the whole card). The books
+	// were lit like daylight: the smoke takes the scene's light (smoke_light), the fire keeps its own. Whatever is
+	// brighter than lit smoke can be is fire.
+	vec3 fire = max(a.rgb - vec3(0.42 * a.a), vec3(0.0));
+	vec3 smoke = a.rgb - fire;
+	ALBEDO = (smoke * smoke_light + fire) * tint.rgb * k;
 	ALPHA = a.a * k;
+}
+"""
+
+## A ground mark: the Meshy painting lit like the ground under it, its hot part glowing on top.
+const MARK_SHADER := """
+shader_type spatial;
+render_mode blend_mix, depth_draw_never, cull_disabled;
+uniform sampler2D albedo_tex : source_color, filter_linear_mipmap, repeat_disable;
+uniform sampler2D glow_tex : source_color, filter_linear_mipmap, repeat_disable;
+uniform float glow = 1.0;
+uniform float alpha = 1.0;
+void fragment() {
+	vec4 t = texture(albedo_tex, UV);
+	ALBEDO = t.rgb;
+	ALPHA = t.a * alpha;
+	ROUGHNESS = 0.95;
+	EMISSION = texture(glow_tex, UV).rgb * glow;
 }
 """
 
@@ -511,9 +590,11 @@ uniform vec4 col : source_color = vec4(1.0, 0.35, 0.06, 1.0);
 uniform float energy = 1.5;
 uniform float alpha = 1.0;
 void fragment() {
-	float fr = pow(1.0 - abs(dot(NORMAL, VIEW)), 2.2);
-	float flick = 0.75 + 0.25 * sin(TIME * 23.0 + VERTEX.y * 9.0) * sin(TIME * 7.0);
-	ALBEDO = col.rgb * energy * (0.25 + 1.6 * fr) * flick * alpha;
+	// a ghost: its silhouette burns, its body is all but clear, licked by moving heat
+	float fr = pow(1.0 - abs(dot(NORMAL, VIEW)), 2.6);
+	float lick = 0.6 + 0.4 * sin(TIME * 13.0 + VERTEX.y * 7.0 + VERTEX.x * 5.0) * sin(TIME * 5.0 + VERTEX.z * 6.0);
+	float flick = 0.8 + 0.2 * sin(TIME * 23.0 + VERTEX.y * 9.0) * sin(TIME * 7.0);
+	ALBEDO = col.rgb * energy * (0.06 + 1.2 * fr * lick) * flick * alpha;
 }
 """
 

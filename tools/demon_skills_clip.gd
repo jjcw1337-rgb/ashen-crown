@@ -2,7 +2,7 @@ extends SceneTree
 ## Frames of each Demon skill cast into a pack on the moor, for the preview video and contact sheet. Needs a
 ## display (xvfb) and --fixed-fps 30 so the frames are 1/30 s apart whatever the render takes:
 ##   xvfb-run -a godot --rendering-driver opengl3 --path . --resolution 1280x720 --fixed-fps 30 \
-##     -s tools/demon_skills_clip.gd -- <outdir> [fists|icharge|cslam|hurl|grip|wrath|all] [close|game]
+##     -s tools/demon_skills_clip.gd -- <outdir> [fists|icharge|cslam|hurl|grip|wrath|all, or a list: hurl,wrath] [close|game]
 ## (In a container where tool scripts hit "Identifier not found: Sfx", go through tools/_late.gd.)
 ## Writes <outdir>/<skill>_<view>_NNN.png.
 var g
@@ -42,7 +42,7 @@ func _run() -> void:
 	var close := Camera3D.new()
 	close.fov = 38
 	get_root().add_child(close)
-	var skills: Array = SKILLS if which == "all" else [which]
+	var skills: Array = SKILLS if which == "all" else Array(which.split(","))
 	for sk in skills:
 		# a pack standing ahead of him (-z), not yet roused
 		for e in g.enemies_near(h.global_position, 60.0):

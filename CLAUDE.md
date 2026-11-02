@@ -493,10 +493,14 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   books import with `fix_alpha_border` off and mipmaps on. Impact, ash and blast were rendered from the game camera's
   own 44 degrees and are held facing the camera (`SMOKE_SHADER` mode 1, anchored where the sim's origin sits in the
   frame and drawn nearer the camera so the cloud's near half doesn't sink into the ground); steam stands upright
-  (mode 0); the comet lies along the rock's flight (mode 2, `aim_smoke`). Flow particles' size is in simulation
-  cells (below 1 they leave speckles); the Principled Volume multiplies Density by the density grid itself, and its
-  colour grid comes weighted by density, so the script feeds a constant density and colour per kind. **Ground marks**
-  (`decal`: Meshy-painted crater / furrow / crush with glow masks made by `tools/fx_glow_mask.py`), **real pieces**
+  (mode 0); the comet lies along the rock's flight (mode 2, `aim_smoke`). Preview one in-engine:
+  `tools/smoke_book_shot.gd -- outprefix kind [size] [secs]` (xvfb, `--fixed-fps 30`, through `_late.gd`). Flow
+  particles' size is in simulation cells (below 1 they leave speckles); the Principled Volume multiplies Density by
+  the density grid itself, and its colour grid comes weighted by density, so the script feeds a constant density and
+  colour per kind; too fast a dissolve or turbulence on the flame's source puts a fire out. Any premultiplied or
+  additive card needs `fog_disabled`: Godot's fog paints its clear pixels too (a milky sheet over the card). **Ground marks**
+  (`decal`: Meshy-painted crater / furrow / crush with glow masks made by `tools/fx_glow_mask.py`, on a mesh laid
+  over the terrain, since the Compatibility renderer (web, OpenGL fallback) draws no Decals; `set_mark_glow`), **real pieces**
   (`pieces`: Meshy models cut into Voronoi chunks by `tools/blender/fx/fracture_rock.py`, thrown, bouncing, cooling),
   `sparks`, `clods`, landing marks, shock rings, lights; the Meshy props in `assets/models/fx/demon/`.
 - **PvP crowd control** (`scripts/pvp_status.gd` `PvpStatus`): the caster's game sends a status for a player's

@@ -206,19 +206,19 @@ elif KIND == "comet":
 	ds.alpha = 0.1
 	ds.beta = 0.6
 	ds.dissolve_speed = 20       # (faster, and the heat goes before the fuel can burn: the fire goes out)
-	ds.burning_rate = 1.6
+	ds.burning_rate = 1.35
 	ds.flame_smoke = 1.0
 	ds.flame_vorticity = 1.0
 	ds.flame_smoke_color = (0.1, 0.08, 0.07)
 	ds.noise_strength = 1.6
-	bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=0.2, location=(1.3, 0, 0.85))
+	bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=0.24, location=(1.3, 0, 0.85))
 	src = bpy.context.object
 	sm = src.modifiers.new("Fluid", "FLUID")
 	sm.fluid_type = "FLOW"
 	fs = sm.flow_settings
 	fs.flow_type = "BOTH"
 	fs.flow_behavior = "INFLOW"
-	fs.fuel_amount = 1.4
+	fs.fuel_amount = 1.8
 	fs.temperature = 2.6
 	fs.density = 0.45
 	fs.use_initial_velocity = True
@@ -369,15 +369,16 @@ for pos, col in [(0.35, (0.9, 0.16, 0.0, 1.0)), (0.7, (1.0, 0.42, 0.04, 1.0))]:
 	e = cr.elements.new(pos)
 	e.color = col
 heat = nt.nodes.new("ShaderNodeMapRange")
-heat.inputs["From Min"].default_value = 0.3
+heat.inputs["From Min"].default_value = 0.15 if KIND == "comet" else 0.3
 heat.inputs["From Max"].default_value = 1.0
 nt.links.new(flame.outputs["Fac"], heat.inputs["Value"])
 nt.links.new(heat.outputs["Result"], ramp.inputs["Fac"])
 nt.links.new(ramp.outputs["Color"], vol.inputs["Emission Color"])
 edge = nt.nodes.new("ShaderNodeMapRange")
 edge.interpolation_type = "SMOOTHERSTEP"
-edge.inputs["From Min"].default_value = 0.32
-edge.inputs["From Max"].default_value = 0.7
+# (the comet's flame is torn thin by its wind: a lower threshold keeps it alight in every frame)
+edge.inputs["From Min"].default_value = 0.18 if KIND == "comet" else 0.32
+edge.inputs["From Max"].default_value = 0.55 if KIND == "comet" else 0.7
 nt.links.new(flame.outputs["Fac"], edge.inputs["Value"])
 emul = nt.nodes.new("ShaderNodeMath")
 emul.operation = "MULTIPLY"

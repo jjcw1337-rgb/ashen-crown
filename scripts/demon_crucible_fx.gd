@@ -176,7 +176,7 @@ static func update(h: Hero, delta: float) -> void:
 			DemonKitFx.set_heat(cage, (0.6 + 4.0 * shown) * flick)
 		var mark = st.get("mark")
 		if mark != null and is_instance_valid(mark):
-			(mark as Decal).emission_energy = (0.3 + 3.0 * shown) * flick
+			DemonKitFx.set_mark_glow(mark, (0.3 + 3.0 * shown) * flick)
 		if h.rig != null and h.rig.has_meta("demon_mats"):
 			for m in h.rig.get_meta("demon_mats"):
 				(m as ShaderMaterial).set_shader_parameter("wrath", 0.1 + 0.6 * shown)
