@@ -692,6 +692,8 @@ void fragment() {
 	vec3 hell = mix(crimson * 1.6, molten * 1.3, smoothstep(0.25, 0.8, lum)) * lum;
 	c = mix(c, hell, tint * (1.0 - smoothstep(0.6, 1.0, lum)));
 	c *= mix(vec3(1.0), vec3(0.42, 0.7, 1.0), cool);
+	// and its faint haze is cut away, so dark gaps open between the tongues (crisp flames, not a glowing cloud)
+	c *= mix(1.0, smoothstep(0.1, 0.32, lum), cool);
 	ALBEDO = c * hot * fade * COLOR.a;
 	ALPHA = clamp(lum * 0.12 * fade, 0.0, 1.0);
 }

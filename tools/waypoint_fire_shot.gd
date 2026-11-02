@@ -52,7 +52,7 @@ func _run() -> void:
 		cam.fov = 40.0
 	cam.look_at(focus, Vector3.UP)
 	cam.current = true
-	for f in 40:
+	for f in 160:      # the zone's name banner fades first
 		await process_frame
 	for i in frames:
 		for f in step:

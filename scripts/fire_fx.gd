@@ -41,7 +41,8 @@ const PRESETS := {
 	# a cyan-white heart), blue embers and sparks, a cold light, no soot
 	# Overlapping flames add their light, and the tonemapper bleaches what passes 1 to white: no hot core layer,
 	# "hot" 0.5 per flame and "cool" (the shader keeps red and green low) so where they pile up they sum to blue.
-	"spirit":   {"book": "spirit", "rate": 9.0, "life": 0.7, "w": 0.95, "h": 1.15, "back": 0.4, "core": 0.0, "embers": 12.0, "sparks": 0.18, "smoke": 0.0, "light": 2.0, "range": 6.5, "haze": false, "jitter": 0.14, "pal": "spirit", "hot": 0.5, "cool": 1.0},
+	# Few, big flames (overlapping ones blur each other's tongues into a cloud), no back layer.
+	"spirit":   {"book": "spirit", "rate": 6.0, "life": 0.8, "w": 0.9, "h": 1.2, "back": 0.0, "core": 0.0, "embers": 12.0, "sparks": 0.18, "smoke": 0.0, "light": 2.0, "range": 6.5, "haze": false, "jitter": 0.09, "pal": "spirit", "hot": 0.75, "cool": 1.0},
 	"burning":  {"book": "tongue", "rate": 12.0, "life": 0.5, "w": 1.1, "h": 1.7, "back": 0.3, "core": 0.0, "embers": 8.0, "sparks": 0.1, "smoke": 0.5, "light": 0.0, "range": 0.0, "haze": false, "jitter": 0.2},
 }
 ## Flames per preset scale with the graphics budget (InfernalFx.tier: Low, Medium, High, Ultra).
