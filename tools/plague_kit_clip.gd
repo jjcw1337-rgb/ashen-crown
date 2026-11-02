@@ -4,7 +4,8 @@ extends SceneTree
 ##   xvfb-run -a godot --rendering-driver opengl3 --path . --resolution 1280x720 --fixed-fps 30 \
 ##     -s tools/plague_kit_clip.gd -- <outdir> [skills,comma,separated|all] [view game|close] [quality]
 ## Each skill gets its own fresh pack and its own seconds (`PLAN`); frames are numbered straight through
-## (<outdir>/f_NNNN.png) and <outdir>/segments.txt lists where each skill starts, for titles.
+## (<outdir>/f_NNNN.png) and <outdir>/segments.txt lists where each skill starts, for titles. "fever" (not in
+## "all") is Blight and Fever on one foe: vial, swarm and bloom in turn, Blight marks stacking, then the Fever.
 var g
 
 ## skill -> [seconds, foes, foes fight back]
@@ -15,6 +16,7 @@ const PLAN := {
 	"fog": [4.0, 3, true],
 	"transfusion": [4.0, 4, true],
 	"experiment": [10.5, 5, true],
+	"fever": [7.0, 1, false],
 }
 
 func _initialize():
@@ -31,7 +33,7 @@ func _run() -> void:
 	var which: String = args[1] if args.size() > 1 else "all"
 	var view: String = args[2] if args.size() > 2 else "game"
 	var quality: int = int(args[3]) if args.size() > 3 else 0
-	var skills: Array = PLAN.keys() if which == "all" else Array(which.split(","))
+	var skills: Array = PLAN.keys().filter(func(k): return k != "fever") if which == "all" else Array(which.split(","))
 	while g.world == null or g._busy or g._intro_playing:
 		g._intro_skip = true
 		await process_frame
@@ -75,7 +77,7 @@ func _run() -> void:
 		var n: int = plan[1]
 		var dist := 6.5 if sk != "transfusion" and sk != "fog" else 2.2
 		for i in n:
-			var a := -0.7 + 1.4 * float(i) / maxf(n - 1, 1)
+			var a := 0.0 if n == 1 else -0.7 + 1.4 * float(i) / maxf(n - 1, 1)
 			var p: Vector3 = home + Vector3(sin(a) * dist, 0, -cos(a) * dist) + Vector3(0, 0, -0.6 * (i % 2))
 			p = g.world.free_spot_near(p, 0.5)
 			var e = g.spawn_enemy("zombie" if i % 3 != 2 else "fallen", p, 24)
@@ -123,6 +125,14 @@ func _run() -> void:
 				"experiment":
 					if f == 6:
 						_use(h, "experiment", center + Vector3(0, 0, 1.0))
+				"fever":
+					# three different skills on the one foe: a Blight mark each, then the Fever
+					# each as soon as the last move has finished (a cast mid-throw is refused)
+					if f >= 6 and fever_step < 3 and h.atk_t < 0.0:
+						var ids := ["toxic", "swarm", "bloom"]
+						var at: Vector3 = aim + (Vector3(-1.6, 0, 0.6) if fever_step == 2 else Vector3.ZERO)
+						if _use(h, ids[fever_step], at):
+							fever_step += 1
 			if view == "close":
 				cam.current = true
 				var c: Vector3 = center.lerp(h.global_position, 0.4)
@@ -131,6 +141,10 @@ func _run() -> void:
 					# a self-buff: in on him
 					c = h.global_position
 					off = Vector3(3.4, 3.0, 3.0)
+				elif sk == "fever":
+					# in on the foe who gathers the Blight
+					c = aim
+					off = Vector3(3.6, 3.8, 3.4)
 				cam.global_transform = Transform3D(Basis(), c + off).looking_at(c + Vector3(0, 0.6, 0))
 			else:
 				g.cam.current = true
@@ -141,8 +155,10 @@ func _run() -> void:
 	seg.close()
 	quit()
 
-func _use(h, id: String, at: Vector3) -> void:
+var fever_step := 0
+
+func _use(h, id: String, at: Vector3) -> bool:
 	h.cds[id] = 0.0
 	h.mana = h.max_mana
 	h.cursor = at
-	h.use_skill(id, h.skill_aim(id, at))
+	return h.use_skill(id, h.skill_aim(id, at))

@@ -287,13 +287,16 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   less than `BLOOM_STILL` since the ring began is snared and caught by the Meshy `roots.glb` bursting up round it,
   `lash`; planted with the Meshy `syringe.glb`), Fog of the Forgotten (F, `fog`: `PlagueFogFx`, the Meshy
   `censer.glb` held (`HELD` "censer") then dashed down to lie smoking at its heart, three layers of puffs each
-  playing the fog simulation once, a ground layer from the Meshy painting `fog_base_albedo` (blurred); the hop is
+  playing the fog simulation from where it has rolled out (`PlagueSmoke.FOG` puffs start 35% in: its first frames
+  are a tight ball that reads as bubbles), a lit ground layer from the Meshy painting `fog_base_albedo` (its wisps
+  kept, alpha from their brightness, two copies turning against each other; a bright flat plate is what to avoid); the hop is
   `Hero.shove`; `Plague.speed_mult` in `Hero._process`; a puppet inside is hidden from Battlegrounds enemies beyond
   `FOG_SEE` (`hidden_from`; `_update_visibility` sets `Hero.fog_hidden`, which `_puppet_process` applies to the whole
   puppet with its name tag and map dot, and `Battlegrounds.sync_proxies` copies to its stand-in's `Enemy.pvp_hidden`
   so it can't be clicked or auto-targeted, `Game.pick_enemy`/`Hero._assist_pick`), faded for co-op partners;
   striking from it sends `reveal`), Transfusion (G, `transfusion`: `PlagueTransfusionFx`, the Meshy `apparatus.glb`
-  on his back, a hose drawn each frame, a shell of glass whose veins are the Meshy painting `glass_veins_mask`
+  on his back, a hose drawn each frame (a camera-facing strip tiled with the Meshy painting `hose_albedo`: braided
+  leather and brass with glass windows of serum), a shell of glass whose veins are the Meshy painting `glass_veins_mask`
   (triplanar, mirror-tiled, filling with serum), steam and the heal column from the vapour book; `Hero.take_hit` calls
   `Plague.absorb`; cleanse is `PvpStatus.cleanse`; the soaked damage goes to `heal_pool` capped at `TRANS_CAP`; any
   cast ends it early), The Last Experiment (V, `experiment`: `PlagueExperimentFx`, the Meshy `vat.glb` and the
@@ -306,12 +309,15 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `SPEW_WARN`, then the wet splatter drying); stage 2 is the attack `pd_crank` with `atk_skill` "crank" whose impact
   bursts it; a stun, another move or walking `>1.5 m` bursts it small, `EXP_R_SMALL`). **Blight** (`_add_blight`):
   one stack per different skill, Fever at 3 (`PlagueFever`: the Meshy blight mark `blight_mark.png` wheeling over the
-  head per stack; Fever sweats the vapour book, glows, a halo; PvP: `blight` status with k 3 = heals x0.6 on
+  head per stack, bursting into the Fever at 3; `stacks`/`fever` take the old node out of the tree before freeing it:
+  a node only queued for freeing keeps its name, the new one would be renamed and never found again; Fever sweats the vapour book, glows, and the Meshy ring of fever `fever_ring_albedo` throbs on the
+  ground round its feet; PvP: `blight` status with k 3 = heals x0.6 on
   Transfusion and reveal). **Smoke** (`scripts/plague_smoke.gd`, `PlagueSmoke`): the kit's Mantaflow flipbooks,
-  `VAPOUR` (`vapour.png`, looping), `FOG` (`fog_puff.png`, 8 x 4) and `SPORE` (`spore_burst.png`, 6 x 4), made by
-  `tools/blender/plague/smoke_flipbook.py -- spore|fog outdir` and packed by `tools/flipbook_pack.py -- frames out.png
-  --cols N --cell px --level L` (crops round the frame's centre to what the smoke fills, brightens it to a base the
-  game tints); `puffs` (one-shot burst, `flat` = rolled out level), `vapour` (continuous, `path`/`disc` for another
+  `VAPOUR` (`vapour.png`, looping), `FOG` (`fog_puff.png`, 8 x 4: dust and rolls), `SPORE` (`spore_burst.png`, 6 x 4)
+  and `WISP` (`fog_wisp.png`, 8 x 4: a flat bank of fog torn into wisps, the fog's body), made by
+  `tools/blender/plague/smoke_flipbook.py -- spore|fog|wisp outdir` and packed by `tools/flipbook_pack.py -- frames
+  out.png --cols N --cell px --level L [--alpha-gamma G] [--vignette V]` (crops round the frame's centre to what the
+  smoke fills, brightens it to a base the game tints, fills out thin edges, fades cells out before their border); `puffs` (one-shot burst, `flat` = rolled out level), `vapour` (continuous, `path`/`disc` for another
   book over an area), `spore_card` (the whole sim once on a camera-facing card); materials are shared. Old binds of
   volatile/trap/epidemic become swarm/bloom/experiment (`Plague.OLD_IDS`, `PlagueSkills.migrate_binds`); talent ids
   kept, their effects now name the new skills. The Meshy sources (concept images, task ids) are listed in the plan
@@ -336,9 +342,11 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   censer's ash slab cut off first with `tools/blender/trim_below.py`), homunculus (Meshy rig + animate,
   `tools/blender/prep_npc.py`); flask, volatile and trap are the retired skills' props, kept unused. Ground paintings
   in `assets/textures/plague/` (`*_albedo` + `*_normal` from `ground_decal.py`, mipmapped). Talents: Toxicology,
-  Vermin and Rot, The Experiment (icons `p_*.png`, `plague_tree*.png`; the painted icons predate the new kit). Tests: `tools/plague_test.gd` (`--fixed-fps 60`),
+  Vermin and Rot, The Experiment (icons `p_*.png`, `plague_tree*.png`, painted with Meshy by `tools/talent_icons.py`; the last two trees' grids were repainted for the new kit). Tests: `tools/plague_test.gd` (`--fixed-fps 60`),
   `tools/plague_mp_test.gd` (host + join); screenshots `tools/plague_shots.gd` (`--fixed-fps 10`); the six skills in a
-  row for video: `tools/plague_kit_clip.gd -- outdir [skills|all] [game|close] [quality]` (xvfb, `--fixed-fps 30`).
+  row for video: `tools/plague_kit_clip.gd -- outdir [skills|all] [game|close] [quality]` (xvfb, `--fixed-fps 30`;
+  ~1.9 s a frame at 640x360 and ~5-6 s at 1280x720 on the cloud's llvmpipe, ~3-5 GB of memory: render one at a time,
+  and split a 720p run of all six into two, each under the 2 h limit of a background job).
 - **Pestilence Vial** (the Plague Doctor's Q, id kept as `toxic`; 2026-11-01, branch `test-plague-kit`, first skill of
   the Plague kit overhaul in the project doc "plague kit overhaul plan"): look in `scripts/plague_vial_fx.gd`
   (`PlagueVialFx`), gameplay in `Plague` (`_launch`/`_update_vials`/`_shatter`; pool 2.6 m for 3.5 s as a `clouds`

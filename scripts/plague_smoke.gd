@@ -12,7 +12,10 @@ extends RefCounted
 const VAPOUR := "res://assets/textures/fx/vapour.png"
 const FOG := "res://assets/textures/fx/fog_puff.png"
 const SPORE := "res://assets/textures/fx/spore_burst.png"
-const GRIDS := {VAPOUR: Vector2i(6, 6), FOG: Vector2i(8, 4), SPORE: Vector2i(6, 4)}
+## a long, flat bank of fog torn into wisps as it spreads over the floor (smoke_flipbook.py wisp, recorded late, its
+## cells faded out towards their edges): Fog of the Forgotten's body
+const WISP := "res://assets/textures/fx/fog_wisp.png"
+const GRIDS := {VAPOUR: Vector2i(6, 6), FOG: Vector2i(8, 4), SPORE: Vector2i(6, 4), WISP: Vector2i(8, 4)}
 ## the spore simulation's card: metres of card per metre of simulation (the camera's 2.1 m ortho frame times the
 ## pack's 0.583 crop), the card's centre and the burst's source above the simulation's floor
 const SPORE_CARD := 1.224

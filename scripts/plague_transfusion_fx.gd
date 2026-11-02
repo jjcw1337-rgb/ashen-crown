@@ -15,6 +15,7 @@ extends RefCounted
 
 const APP_GLB := "res://assets/models/plague/apparatus.glb"
 const VEINS_TEX := "res://assets/textures/plague/glass_veins_mask.png"
+const HOSE_TEX := "res://assets/textures/plague/hose_albedo.png"
 const SERUM := Color(0.9, 0.18, 0.14)
 
 static func attach(h: Hero) -> Node3D:
@@ -141,13 +142,22 @@ class Hose extends MeshInstance3D:
 	var from_node: Node3D
 	var to_node: Node3D
 	var t := 0.0
+	var textured := false
 	func _ready() -> void:
 		mesh = ImmediateMesh.new()
 		var m := StandardMaterial3D.new()
 		m.vertex_color_use_as_albedo = true
 		m.roughness = 0.3
 		m.emission_enabled = true
-		m.emission = PlagueTransfusionFx.SERUM * 0.35
+		var tex := PlagueVialFx._tex(PlagueTransfusionFx.HOSE_TEX)
+		if tex != null:
+			# the Meshy painting of a braided leather-and-brass hose with glass windows of serum, tiled along it
+			m.albedo_texture = tex
+			m.texture_repeat = true
+			m.emission = PlagueTransfusionFx.SERUM * 0.08
+			textured = true
+		else:
+			m.emission = PlagueTransfusionFx.SERUM * 0.35
 		material_override = m
 		cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	func _process(delta: float) -> void:
@@ -162,6 +172,8 @@ class Hose extends MeshInstance3D:
 		im.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
 		var n := 14
 		var cam := get_viewport().get_camera_3d()
+		# the painting is 8:1, the hose 2.4 cm thick: a tile every 19 cm along it
+		var tiles := a.distance_to(b) / (0.024 * 8.0)
 		for i in n + 1:
 			var u := float(i) / n
 			var p := a.lerp(b, u) + Vector3(0, -sin(u * PI) * 0.18, 0)
@@ -170,9 +182,13 @@ class Hose extends MeshInstance3D:
 				side = (cam.global_position - p).cross(b - a).normalized() * 0.012
 			var pulse := 0.5 + 0.5 * sin(u * 18.0 - t * 14.0)
 			var c := Color(0.35, 0.22, 0.12).lerp(PlagueTransfusionFx.SERUM, pulse * 0.8)
+			if textured:
+				c = Color(1, 1, 1).lerp(Color(1.0, 0.62, 0.56), pulse * 0.6)     # the serum's pulse running along it
 			im.surface_set_color(c)
+			im.surface_set_uv(Vector2(u * tiles, 0.0))
 			im.surface_add_vertex(p - side)
 			im.surface_set_color(c)
+			im.surface_set_uv(Vector2(u * tiles, 1.0))
 			im.surface_add_vertex(p + side)
 		im.surface_end()
 

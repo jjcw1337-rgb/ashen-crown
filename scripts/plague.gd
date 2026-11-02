@@ -561,6 +561,7 @@ func _tint(e: Enemy, on: bool) -> void:
 		var a := PlagueSmoke.vapour(e, Color(TOXIC.r, TOXIC.g, TOXIC.b, 0.4), 7, 0.55, 1.1, 0.45, 0.25 * e.radius + 0.12, Vector3(0, e.height * 0.9, 0), TOXIC * 0.15)
 		a.name = "pd_poison"
 	elif not on and f != null:
+		e.remove_child(f)      # at once, so a haze put back this frame takes the name
 		f.queue_free()
 
 # ---------------------------------------------------------------- Blight and Fever
@@ -582,6 +583,7 @@ func _add_blight(e: Enemy, src: String) -> void:
 	if srcs.size() >= 3 and float(b["fever"]) <= 0.0:
 		b["fever"] = FEVER_T
 		srcs.clear()
+		PlagueFever.stacks(e, 0)      # the marks are spent: they burst into the Fever
 		PlagueFever.fever(e, FEVER_T)
 		Sfx.play_at("blight_burst", e.global_position, -6.0, 0.7)
 		if e.pvp_pid > 0:

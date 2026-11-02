@@ -2,8 +2,10 @@
 # fire: Blender's Quick Smoke domain reshaped, open borders but the floor, a drifting turbulence field), rendered from
 # the game camera's angle with alpha, then packed with ffmpeg's tile filter:
 #   spore  Corpse Bloom's pulse: a burst of spores thrown up off the bloom's sacs and drifting apart (one shot)
-#   fog    Fog of the Forgotten: one heavy pale puff pushed down onto the floor so it rolls out across the ground
-#          and thins (one shot; each fog particle plays it over its life)
+#   fog    one heavy pale puff pushed down onto the floor so it rolls out across the ground and thins (one shot;
+#          dust and impact rolls)
+#   wisp   Fog of the Forgotten's body: a long, flat, heavy bank of fog torn by turbulence into wisps as it spreads
+#          over the floor; recorded late (`skip`), when it is wide and ragged rather than a ball, for fog sprites
 #   blender -b --python tools/blender/plague/smoke_flipbook.py -- <kind> <outdir> [res] [frames] [px]
 # Pack the frames with tools/flipbook_pack.py (crops to what the smoke fills, then tiles).
 import bpy, sys, os, math
@@ -19,6 +21,10 @@ P = {
 		"src_r": 0.28, "src_z": 0.3, "src_sz": 0.8, "vel": (0.0, 0.0, -0.5), "normal": 1.2, "density": 1.2,
 		"alpha": 0.02, "beta": 0.12, "vort": 0.45, "noise": 2.0, "dissolve": 40, "burst": 8,
 		"col": (0.86, 0.85, 0.92), "dens_mul": 6.0, "cam_scale": 2.3, "cam_z": 0.35, "turb": 1.6},
+	"wisp": {"res": 84, "frames": 32, "px": 224, "warm": 26, "dom": (3.4, 3.4, 1.2), "domz": 0.58,
+		"src_r": 0.5, "src_z": 0.22, "src_sz": 0.3, "src_sx": 1.9, "vel": (0.0, 0.0, -0.25), "normal": 1.1, "density": 1.4,
+		"alpha": 0.015, "beta": 0.08, "vort": 0.8, "noise": 2.6, "dissolve": 70, "burst": 14,
+		"col": (0.86, 0.85, 0.92), "dens_mul": 6.0, "cam_scale": 3.0, "cam_z": 0.3, "turb": 2.4, "turb_size": 0.28},
 }[KIND]
 RES = int(a[2]) if len(a) > 2 else P["res"]
 FRAMES = int(a[3]) if len(a) > 3 else P["frames"]
@@ -29,7 +35,7 @@ bpy.ops.wm.read_factory_settings(use_empty=True)
 sc = bpy.context.scene
 bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=P["src_r"], location=(0, 0, P["src_z"]))
 src = bpy.context.active_object
-src.scale = (1.0, 1.0, P["src_sz"])
+src.scale = (P.get("src_sx", 1.0), 1.0, P["src_sz"])
 bpy.ops.object.transform_apply(scale=True)
 src.select_set(True)
 bpy.context.view_layer.objects.active = src
@@ -72,7 +78,7 @@ src.hide_render = True
 bpy.ops.object.effector_add(type="TURBULENCE", location=(0, 0, P["src_z"] + 0.2))
 tb = bpy.context.active_object
 tb.field.strength = P["turb"]
-tb.field.size = 0.35
+tb.field.size = P.get("turb_size", 0.35)
 tb.field.flow = 0.4
 tb.keyframe_insert("location", frame=1)
 tb.location = (0.35, 0.25, P["src_z"] + 0.5)

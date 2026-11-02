@@ -48,11 +48,11 @@ class Fog extends Node3D:
 			q = mini(q, 1)
 		var k: float = [0.55, 0.75, 1.0, 1.25][q]
 		# ground roll: big flattened puffs hugging the floor
-		layers.append(_layer(int(34 * k), 3.4, 5.0, 0.25, 0.12, PlagueFogFx.DEEP, 0.7, Vector3(0, 0.4, 0), 0.15))
+		layers.append(_layer(int(34 * k), 3.6, 5.2, 0.25, 0.12, PlagueFogFx.DEEP, 0.55, Vector3(0, 0.4, 0), 0.15))
 		# the body: the cloud itself
-		layers.append(_layer(int(46 * k), 2.8, 4.4, 0.9, 0.18, PlagueFogFx.COL, 0.6, Vector3(0, 1.2, 0), 0.3))
+		layers.append(_layer(int(46 * k), 3.0, 4.6, 0.9, 0.18, PlagueFogFx.COL, 0.42, Vector3(0, 1.2, 0), 0.3))
 		# wisps curling off the top
-		layers.append(_layer(int(22 * k), 1.4, 2.4, 1.8, 0.35, PlagueFogFx.COL.lightened(0.1), 0.32, Vector3(0, 2.1, 0), 0.6))
+		layers.append(_layer(int(22 * k), 1.6, 2.4, 1.8, 0.35, PlagueFogFx.COL.lightened(0.1), 0.22, Vector3(0, 2.1, 0), 0.6))
 		# glints: glass dust catching the light
 		var glint := Fx.aura(self, Color(0.95, 0.95, 1.0, 0.8), int(14 * k), 0.2, 0.018, 2.5, 0.05, radius * 0.7, 180.0, Vector3(0, 1.0, 0))
 		glint.name = "glints"
@@ -86,8 +86,8 @@ class Fog extends Node3D:
 			tw.tween_property(censer, "position", Vector3.ZERO, 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 			var smoke := PlagueSmoke.vapour(censer, Color(0.86, 0.86, 0.93, 0.5), 7, 0.6, 1.8, 0.5, 0.06, Vector3(0, 0.15, 0))
 			smoke.name = "smoke"
-		# the burst as it hits: a roll of the fog simulation out across the ground, and brass glints
-		PlagueSmoke.puffs(self, g + Vector3(0, 0.3, 0), PlagueSmoke.FOG, Color(0.86, 0.86, 0.92, 0.6), 12, 2.4, 1.4, 6.0, 0.3, 0.0, 0.0, Vector3.UP, true, Color(0, 0, 0), 0.35)
+		# the burst as it hits: wisps of the fog-bank simulation thrown out level across the ground, and brass glints
+		PlagueSmoke.puffs(self, g + Vector3(0, 0.3, 0), PlagueSmoke.WISP, Color(0.86, 0.86, 0.92, 0.6), 10, 3.2, 1.5, 6.0, 0.3, 0.0, 0.0, Vector3.UP, true)
 		Fx.burst(self, g + Vector3(0, 0.3, 0), Plague.BRASS, 8, 3.0, 0.03, 0.4, true, -9.0)
 	func _layer(n: int, smin: float, smax: float, rise: float, vel: float, col: Color, alpha: float, at: Vector3, life_k: float) -> GPUParticles3D:
 		var p := GPUParticles3D.new()
@@ -121,17 +121,14 @@ class Fog extends Node3D:
 		var gt := GradientTexture1D.new()
 		gt.gradient = g
 		pm.color_ramp = gt
-		# each puff plays the rolling-fog simulation over its life from where the puff has already rolled out (its
-		# first frames are a tight ball that would read as bubbles), spreading and fraying to its end
-		pm.anim_offset_min = 0.3
-		pm.anim_offset_max = 0.45
-		pm.anim_speed_min = 0.55
-		pm.anim_speed_max = 0.65
+		# each puff plays the fog-bank simulation over its life: a fluffy bank, then spreading out thin and soft into
+		# its neighbours
+		PlagueSmoke.anim(pm, true)
 		p.process_material = pm
 		var q := QuadMesh.new()
 		q.size = Vector2.ONE
 		# lit by the scene (it takes the zone's dusk instead of glowing white in it)
-		q.material = PlagueSmoke.mat(PlagueSmoke.FOG, true, col * 0.12)
+		q.material = PlagueSmoke.mat(PlagueSmoke.WISP, true, col * 0.12)
 		p.draw_pass_1 = q
 		p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		p.position = at
@@ -198,7 +195,7 @@ void fragment() {
 	ALBEDO = col.rgb * (0.55 + 0.3 * n);
 	ROUGHNESS = 1.0;
 	EMISSION = col.rgb * 0.03 * n;
-	ALPHA = inside * n * n * 0.4 * fade;
+	ALPHA = inside * (0.08 + 0.28 * n) * fade;
 }
 """
 	return _bsh
