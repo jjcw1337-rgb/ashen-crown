@@ -170,7 +170,7 @@ static func _sync_chunks(first: MultiMeshInstance3D) -> void:
 		mi.visibility_range_fade_mode = first.visibility_range_fade_mode
 		mi.visible = first.visible
 		for m in first.get_meta_list():
-			if m != "mm_chunks":
+			if m != "mm_chunks" and m != "shadow_twin":
 				mi.set_meta(m, first.get_meta(m))
 		for gname in first.get_groups():
 			mi.add_to_group(gname)
@@ -186,7 +186,35 @@ static func _multimesh_one(parent: Node3D, mesh: Mesh, xforms: Array, shadows: b
 	mmi.multimesh = mm
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mmi)
+	# a mesh with a cheaper shadow caster (Flora.shadow_twin): it casts the shadow from a shadows-only twin
+	var twin: Mesh = mesh.get_meta("shadow_mesh") if shadows and mesh != null and mesh.has_meta("shadow_mesh") else null
+	if twin != null:
+		var mm2 := MultiMesh.new()
+		mm2.transform_format = MultiMesh.TRANSFORM_3D
+		mm2.mesh = twin
+		mm2.instance_count = xforms.size()
+		mm2.buffer = mm.buffer
+		var sh := MultiMeshInstance3D.new()
+		sh.multimesh = mm2
+		sh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+		mmi.add_child(sh)
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mmi.set_meta("shadow_twin", sh)
+		_sync_twin.call_deferred(mmi)
 	return mmi
+
+## A twin follows its tree's visibility range (set by the caller after this) and drops out if the caller turned the
+## tree's shadow off.
+static func _sync_twin(mmi: MultiMeshInstance3D) -> void:
+	if not is_instance_valid(mmi) or not mmi.has_meta("shadow_twin"):
+		return
+	var sh: MultiMeshInstance3D = mmi.get_meta("shadow_twin")
+	sh.visibility_range_begin = mmi.visibility_range_begin
+	sh.visibility_range_end = mmi.visibility_range_end
+	sh.visibility_range_begin_margin = mmi.visibility_range_begin_margin
+	sh.visibility_range_end_margin = mmi.visibility_range_end_margin
+	sh.visibility_range_fade_mode = mmi.visibility_range_fade_mode
+	sh.layers = mmi.layers
 
 # ---------------------------------------------------------------- fire & lights
 ## A fire: real, simulated flames (FireFx). kind picks its look (torch, campfire, bonfire, brazier, building, ground,
