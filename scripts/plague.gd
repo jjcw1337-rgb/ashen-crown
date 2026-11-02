@@ -303,12 +303,13 @@ func cane_blow(style: String, struck: Array) -> void:
 			for e in struck:
 				if not e.dead:
 					_poison(e, "cane", PECK_POISON)
-					Fx.burst(root, e.global_position + Vector3(0, 1.1 * e.height, 0), TOXIC, 6, 1.6, 0.06, 0.4, true, -2.0)
+					PlagueFx.peck(root, e.global_position + Vector3(0, 1.1 * e.height, 0))
 		"swipe2", "back":
 			# the drops fan out across the swing, whether they find anyone or not
+			var fan := []
 			for k in 5:
-				var d := fwd.rotated(Vector3.UP, (k - 2) * 0.32)
-				Fx.burst(root, h.global_position + Vector3(0, 1.2, 0) + d * 0.7, TOXIC, 5, 4.5, 0.05, 0.45, true, -9.0, 8.0, d + Vector3(0, 0.25, 0))
+				fan.append(fwd.rotated(Vector3.UP, (k - 2) * 0.32))
+			PlagueFx.flick(root, h.global_position + Vector3(0, 1.2, 0), fan)
 			Sfx.play_at("drip", h.global_position, -6.0, 1.3)
 			for e in struck:
 				if not e.dead:
@@ -316,8 +317,7 @@ func cane_blow(style: String, struck: Array) -> void:
 		"swipe3", "thrust":
 			var at: Vector3 = h.global_position + fwd * 1.3
 			at.y = h.game.world.height_at(at.x, at.z)
-			Fx.burst(root, at + Vector3(0, 0.15, 0), Color(0.8, 1.0, 0.85), 10, 3.0, 0.04, 0.35, true, -9.0)   # glass
-			Fx.burst(root, at + Vector3(0, 0.3, 0), TOXIC, 18, 2.5, 0.14, 0.6, true, 0.3, 70.0)
+			PlagueFx.vial_crack(root, at)
 			Sfx.play_at("ice_shatter", at, -6.0, 1.5)
 			_cloud(at, SLAM_CLOUD_R, SLAM_CLOUD_T, "cane", false)
 			_send("cloud|%s|%.2f|%.2f|cane" % [_v(at), SLAM_CLOUD_R, SLAM_CLOUD_T])
@@ -371,7 +371,7 @@ func _update_flasks(delta: float) -> void:
 ## Toxic Flask lands: glass, a splash, and the cloud.
 func _shatter(at: Vector3, r: float) -> void:
 	var root: Node3D = h.game.world.fx_root
-	Fx.burst(root, at + Vector3(0, 0.2, 0), Color(0.8, 1.0, 0.85), 14, 3.5, 0.05, 0.4, true, -9.0)   # glass
+	PlagueFx.flask_burst(root, at, r)
 	Sfx.play_at("ice_shatter", at, -3.0, 1.35)
 	Sfx.play_at("blight_burst", at, -6.0, 1.2)
 	if not ghost():
@@ -405,10 +405,7 @@ func _update_fuses(delta: float) -> void:
 
 func _explode(at: Vector3, r: float) -> void:
 	var root: Node3D = h.game.world.fx_root
-	Fx.burst(root, at + Vector3(0, 0.4, 0), EMBER, 40, 7.0, 0.22, 0.7, true, -3.0)
-	Fx.burst(root, at + Vector3(0, 0.6, 0), Color(0.25, 0.2, 0.18), 18, 2.5, 0.4, 1.4, false, 1.2)   # smoke
-	Fx.flash(root, at + Vector3(0, 1.0, 0), EMBER, 8.0, 0.35, 9.0)
-	Fx.ring(root, at, r, EMBER, 0.45)
+	PlagueFx.volatile_blast(root, at, r)
 	Sfx.play_at("boom", at, -1.0)
 	Sfx.play_at("ice_shatter", at, -8.0, 0.9)
 	h.game.add_shake(0.35)
@@ -426,8 +423,7 @@ func _explode(at: Vector3, r: float) -> void:
 			continue
 		var left := float(c["t"]) / TICK
 		var burn := _poison_dps(str(c["src"])) * TICK * left * (1.0 + h.talent("ignite_dmg") / 100.0)
-		Fx.burst(root, cp + Vector3(0, 0.5, 0), EMBER, 30, 4.0, 0.25, 0.8, true, 1.5, 90.0)
-		Fx.flash(root, cp + Vector3(0, 0.8, 0), Color(1.0, 0.7, 0.2), 5.0, 0.3, float(c["r"]) * 2.0)
+		PlagueFx.cloud_ignites(root, cp, float(c["r"]))
 		Sfx.play_at("fire_erupt", cp, -2.0)
 		for e in h.game.enemies_near(cp, float(c["r"])):
 			if not e.dead and not ghost():
@@ -624,7 +620,7 @@ func _infect(e: Enemy, gen: int) -> void:
 	var mark := Fx.aura(e, Color(0.7, 1.0, 0.3), 6, 0.2, 0.1, 0.7, 0.8, 0.1, 20.0, Vector3(0, e.height * 2.0 + 0.2, 0))
 	mark.name = "pd_infected"
 	var root: Node3D = h.game.world.fx_root
-	Fx.burst(root, e.global_position + Vector3(0, e.height, 0), Color(0.7, 1.0, 0.3), 8, 1.5, 0.08, 0.6, true, 0.5)
+	PlagueFx.infect(root, e.global_position + Vector3(0, e.height, 0))
 
 func _cure(id: int, e) -> void:
 	infected.erase(id)
@@ -689,7 +685,7 @@ func _place_trap(g: Vector3) -> void:
 	n.add_child(l)
 	n.create_tween().tween_property(l, "light_energy", 0.7, TRAP_ARM)
 	traps.append({"node": n, "pos": g, "t": TRAP_LIFE, "arm": TRAP_ARM})
-	Fx.ring(w.fx_root, g, 0.7, BRASS, 0.35)
+	PlagueFx.trap_set(w.fx_root, g)
 	Sfx.play_at("impact_metal", g, -9.0, 1.2)
 
 func _update_traps(delta: float) -> void:
@@ -721,8 +717,7 @@ func _spring_at(tp: Dictionary, r: float, outbreak: bool, _by) -> void:
 	traps.erase(tp)
 	var pos: Vector3 = tp["pos"]
 	var root: Node3D = h.game.world.fx_root
-	Fx.burst(root, pos + Vector3(0, 0.3, 0), TOXIC, 30, 5.0, 0.12, 0.7, true, -2.0, 70.0)
-	Fx.flash(root, pos + Vector3(0, 0.6, 0), TOXIC, 4.0, 0.3, 5.0)
+	PlagueFx.trap_burst(root, pos, r)
 	Sfx.play_at("blight_burst", pos, -1.0, 0.9)
 	Sfx.play_at("impact_metal", pos, -5.0, 0.7)
 	h.game.add_shake(0.15)
@@ -732,7 +727,7 @@ func _spring_at(tp: Dictionary, r: float, outbreak: bool, _by) -> void:
 			e.stun(0.8 + h.talent("trap_stun"))
 	_cloud(pos, r, TRAP_CLOUD_T + h.talent("cloud_dur"), "trap", outbreak)
 	if outbreak:
-		Fx.ring(root, pos, r, Color(0.7, 1.0, 0.3), 0.6)
+		PlagueFx.wave(root, pos, r)
 	var n: Node3D = tp["node"]
 	if is_instance_valid(n):
 		var tw := n.create_tween()
@@ -758,10 +753,7 @@ func _dome_at(g: Vector3, r: float, dur: float) -> void:
 	var root: Node3D = h.game.world.fx_root
 	var n := _dome_node(g, r, dur)
 	dome = {"node": n, "pos": g, "r": r, "t": dur, "tick": 0.0}
-	Fx.burst(root, g + Vector3(0, 0.3, 0), BRASS, 12, 4.0, 0.05, 0.5, true, -9.0)   # the censer's brass
-	Fx.burst(root, g + Vector3(0, 0.4, 0), TOXIC, 50, 8.0, 0.2, 0.8, true, -1.0, 80.0)
-	Fx.ring(root, g, r, MIASMA, 0.8, 0.5)
-	Fx.flash(root, g + Vector3(0, 1.0, 0), TOXIC, 9.0, 0.5, r * 1.5)
+	PlagueFx.censer_smash(root, g, r)
 	Sfx.play_at("slam", g, 0.0)
 	Sfx.play_at("phase_erupt", g, -2.0, 0.8)
 	Sfx.duck(-9.0, 1.6)
@@ -776,7 +768,7 @@ func _dome_pulse() -> void:
 		return
 	_send("pulse")
 	var g: Vector3 = dome["pos"]
-	Fx.ring(h.game.world.fx_root, g, float(dome["r"]), Color(0.7, 1.0, 0.3), 0.6, 0.8)
+	PlagueFx.wave(h.game.world.fx_root, g, float(dome["r"]))
 	Sfx.play_at("covenant", g, -4.0, 0.7)
 	for e in h.game.enemies_near(g, float(dome["r"])):
 		_infect(e, 0)
@@ -856,8 +848,7 @@ func _update_dome(delta: float) -> void:
 	if float(dome["t"]) <= 0.0:
 		# the collapse: everything inside takes one last blow
 		var root: Node3D = h.game.world.fx_root
-		Fx.burst(root, g + Vector3(0, 2.0, 0), TOXIC, 60, 9.0, 0.2, 0.7, true, -6.0)
-		Fx.flash(root, g + Vector3(0, 1.0, 0), TOXIC, 7.0, 0.4, r * 1.4)
+		PlagueFx.collapse(root, g, r)
 		Sfx.play_at("shade_implode", g, -1.0, 0.8)
 		h.game.add_shake(0.3 if not ghost() else 0.1)
 		for e in h.game.enemies_near(g, r):
@@ -947,6 +938,7 @@ func _hands() -> void:
 func update(delta: float) -> void:
 	if h.game == null or h.game.world == null:
 		return
+	PlagueFx.warm(h)       # his effects' shaders, once per zone (a first throw would hitch)
 	_hands()
 	# the ultimate's second stage follows the first
 	if ghost():

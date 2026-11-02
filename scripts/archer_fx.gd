@@ -60,7 +60,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			root.add_child(n)
 			n.global_position = g + Vector3(0, 0.03, 0)
 			h.snares.append({"node": n, "pos": g, "t": 20.0})
-			Fx.ring(root, g, 0.9, Archer.HUNTER, 0.4)
+			trap_set(root, g)
 			Sfx.play_at("impact_metal", g, -8.0, 1.3)
 		["snare", "spring"]:
 			var pos: Vector3 = ev["p"]
@@ -68,7 +68,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			var from := pos + Vector3(0, 0.4, 0)
 			for e in ev.get("t", []):
 				Fx.bolt(root, from, e.global_position + Vector3(0, e.height * 0.9, 0), Archer.STORM)
-			Fx.flash(root, from, Archer.STORM, 4.0, 0.25, 6.0)
+			_light(root, from, Archer.STORM, 4.0, 0.25, 6.0)
 			Sfx.play_at("impact_metal", pos, -4.0, 1.6)
 			# the trap that sprang: the one lying there
 			var best = null
@@ -88,7 +88,10 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 					tw.chain().tween_interval(0.8)
 					tw.chain().tween_callback(n.queue_free)
 			Fx.sparks(root, pos + Vector3(0, 0.3, 0), Color(0.9, 0.85, 0.7))
-			Fx.ring(root, pos, r, Archer.HUNTER, 0.35)
+			ElementalFx._dust(root, pos + Vector3(0, 0.15, 0), ElementalFx.DUST_DARK, 1.0, 0.5, {"amount": 6, "life": 1.0,
+				"explosive": 1.0, "shape": "ring", "r": 0.3, "r_in": 0.1, "dir": Vector3.UP, "spread": 25.0, "vel": [0.2, 0.5],
+				"radial": [r * 1.5, r * 2.2], "damping": [2.4, 3.2], "scale": [0.6, 1.1], "grow": [0.5, 1.5]})
+			hunter_mark(root, pos, r * 0.6, Archer.STORM)
 			Sfx.play_at("impact_metal", pos, 0.0, 0.8)
 			SkillFx.shake(h, 0.1)
 		["beast", "impact"]:
@@ -106,9 +109,9 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 				else:
 					b.command("hold", null, aim)
 			if foe != null:
-				Fx.ring(root, foe.global_position, 1.2, Archer.HUNTER, 0.4)
+				hunter_mark(root, foe.global_position, 1.1, Archer.HUNTER)
 			elif not home:
-				Fx.ring(root, aim, 1.5, Archer.HUNTER, 0.5)
+				hunter_mark(root, aim, 1.3, Archer.HUNTER)
 			SkillFx.snd(h, "lion_roar", -4.0, 1.25)
 			SkillFx.shake(h, 0.15)
 		_:
@@ -117,6 +120,75 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 
 ## Arrows, volleys and snares move in Archer.update (the puppet's too). Here: the fire gathering on the nocked
 ## arrow through the draw of a Fire Arrow shot (from the attack's progress, so the puppet shows it too).
+# ---------------------------------------------------------------- the hunter's own marks (visual overhaul)
+## The hunter's mark on the ground (a command to his wolf, a sprung snare): three claw rakes torn across a pale ring,
+## glowing in col, drawn in a blink and fading. In place of the generic ring.
+static func hunter_mark(root: Node3D, pos: Vector3, r: float, col: Color, life := 0.9) -> void:
+	if _claw_shader == null:
+		_claw_shader = Shader.new()
+		_claw_shader.code = CLAW_SHADER
+	var m := ShaderMaterial.new()
+	m.shader = _claw_shader
+	m.set_shader_parameter("col", col)
+	m.set_shader_parameter("seed", randf() * 6.28)
+	var w = root.get_tree().current_scene.world if root.is_inside_tree() and "world" in root.get_tree().current_scene else null
+	var mi := ElementalFx._piece(root, InfernalFx.disc_mesh(w, pos, r, 32, 3, 0.07), m, pos, life + 0.1)
+	InfernalFx.tween_param(mi, m, "draw", 0.0, 1.0, 0.12).set_ease(Tween.EASE_OUT)
+	InfernalFx.tween_param(mi, m, "life", 1.0, 0.0, life * 0.6, life * 0.4)
+
+## A snare set down: its jaws clack, a little dust kicked up, glints off the steel.
+static func trap_set(root: Node3D, g: Vector3) -> void:
+	InfernalFx.particles(root, g + Vector3(0, 0.12, 0), {"amount": 6, "life": 0.35, "explosive": 1.0, "shape": "sphere",
+		"r": 0.15, "dir": Vector3.UP, "spread": 60.0, "vel": [0.8, 1.8], "gravity": -9.0, "scale": [0.4, 0.9], "size": 0.04,
+		"colors": [[0.0, Color(0.95, 0.97, 1.0)], [1.0, Color(Archer.STORM, 0.0)]]})
+	ElementalFx._dust(root, g + Vector3(0, 0.1, 0), ElementalFx.DUST_DARK, 0.7, 0.35, {"amount": 3, "life": 0.8,
+		"explosive": 1.0, "shape": "ring", "r": 0.35, "r_in": 0.2, "dir": Vector3.UP, "spread": 20.0, "vel": [0.1, 0.3],
+		"radial": [1.0, 2.0], "damping": [2.0, 3.0], "scale": [0.6, 1.0], "grow": [0.5, 1.3]})
+
+static func _light(root: Node3D, pos: Vector3, col: Color, energy: float, life: float, reach: float) -> void:
+	var l := OmniLight3D.new()
+	l.light_color = col
+	l.light_energy = energy
+	l.omni_range = reach
+	l.shadow_enabled = false
+	root.add_child(l)
+	l.global_position = pos
+	var tw := l.create_tween()
+	tw.tween_property(l, "light_energy", 0.0, life).set_ease(Tween.EASE_IN)
+	tw.tween_callback(l.queue_free)
+
+static var _claw_shader: Shader
+## InfernalFx.disc_mesh UVs (centre 0.5, rim 0.5 out): a thin ring and three curved rakes across it, drawn in (draw
+## 0..1, the rakes sweeping across), glowing, fading out (life 1..0).
+const CLAW_SHADER := """
+shader_type spatial;
+render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
+uniform vec4 col : source_color = vec4(0.62, 0.85, 0.75, 1.0);
+uniform float draw = 0.0;
+uniform float life = 1.0;
+uniform float seed = 0.0;
+void fragment() {
+	vec2 d = (UV - vec2(0.5)) * 2.0;
+	float r = length(d);
+	float ring = smoothstep(0.06, 0.0, abs(r - 0.88)) * 0.5;
+	float cs = cos(seed); float sn = sin(seed);
+	vec2 q = vec2(cs * d.x - sn * d.y, sn * d.x + cs * d.y);
+	float rake = 0.0;
+	for (int i = 0; i < 3; i++) {
+		float off = (float(i) - 1.0) * 0.26;
+		float bow = q.x * q.x * 0.35;                       // each rake curves like a swipe
+		float dist = abs(q.y - off - bow + 0.1);
+		float along = q.x * 0.5 + 0.5;
+		float w = 0.035 * (1.0 - abs(q.x) * 0.8);           // thick in the middle, tapering to points
+		float on = step(along, draw * 1.15) * step(abs(q.x), 0.85);
+		rake = max(rake, smoothstep(w, 0.0, dist) * on);
+	}
+	float a = (ring + rake * 1.3) * life;
+	ALBEDO = col.rgb * a * 1.6;
+	ALPHA = clamp(a, 0.0, 1.0);
+}
+"""
+
 static func update(h: Hero, _delta: float) -> void:
 	var a := SkillFx.atk(h)
 	var sty := SkillFx.style(h)

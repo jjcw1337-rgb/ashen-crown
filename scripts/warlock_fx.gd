@@ -403,6 +403,19 @@ static func beam(root: Node3D, w: float) -> Beam:
 	root.add_child(b)
 	return b
 
+## The fel light popping on what's round a blow and dying (no sprite: the blows draw their own glows).
+static func flash_light(root: Node3D, pos: Vector3, col: Color, energy: float, life: float, reach: float) -> void:
+	var l := OmniLight3D.new()
+	l.light_color = col
+	l.light_energy = energy
+	l.omni_range = reach
+	l.shadow_enabled = false
+	root.add_child(l)
+	l.global_position = pos
+	var tw := l.create_tween()
+	tw.tween_property(l, "light_energy", 0.0, life).set_ease(Tween.EASE_IN)
+	tw.tween_callback(l.queue_free)
+
 ## A green light riding the caster's hand while the beam is up.
 static func hand_light(root: Node3D) -> OmniLight3D:
 	var l := OmniLight3D.new()
@@ -416,12 +429,23 @@ static func hand_light(root: Node3D) -> OmniLight3D:
 ## Life torn out of a victim: a puff of motes streaming toward the caster.
 static func siphon(root: Node3D, at: Vector3, toward: Vector3) -> void:
 	var d := toward - at
-	Fx.burst(root, at, Color(0.5, 1.0, 0.4, 0.9), 7, 3.2, 0.08, 0.35, true, 0.0, 25.0, d.normalized() if d.length() > 0.1 else Vector3.UP)
+	InfernalFx.particles(root, at, {"amount": 7, "life": 0.4, "explosive": 0.9, "shape": "sphere", "r": 0.15,
+		"dir": d.normalized() if d.length() > 0.1 else Vector3.UP, "spread": 22.0, "vel": [2.6, 4.0], "damping": [1.0, 2.0],
+		"scale": [0.5, 1.0], "size": 0.07, "grow": [1.0, 0.3], "turb": 0.3,
+		"colors": [[0.0, Color(PALE, 0.0)], [0.2, PALE], [0.7, FEL], [1.0, Color(FEL, 0.0)]]})
 
 ## The latch: a flash where the beam first bites.
 static func latch(root: Node3D, at: Vector3) -> void:
-	Fx.burst(root, at, FEL, 16, 3.0, 0.1, 0.4, true, 0.0)
-	Fx.flash(root, at, FEL, 2.0, 0.25, 4.0)
+	var g := InfernalFx.glow(root, at, 0.9, InfernalFx.glow_mat(PALE, 2.4, 2.4, 0.4))
+	var tw := g.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(g, "scale", Vector3.ONE * 1.6, 0.25).set_ease(Tween.EASE_OUT)
+	InfernalFx.tween_param(g, g.material_override as ShaderMaterial, "alpha", 1.0, 0.0, 0.25)
+	_free_later(g, 0.3)
+	InfernalFx.particles(root, at, {"amount": 12, "life": 0.45, "explosive": 1.0, "shape": "sphere", "r": 0.1,
+		"dir": Vector3.UP, "spread": 180.0, "vel": [1.5, 3.0], "damping": [2.0, 3.0], "scale": [0.5, 1.0], "size": 0.06,
+		"colors": [[0.0, PALE], [0.6, FEL], [1.0, Color(DEEP, 0.0)]]})
+	flash_light(root, at, FEL, 2.0, 0.25, 4.0)
 
 ## The fel sigil that turns on the ground under a channelling Warlock.
 static func sigil(root: Node3D, radius: float) -> Node3D:
@@ -486,7 +510,9 @@ static func _set_alpha(v: float, mats: Array) -> void:
 
 ## Released: the stolen life left in the palm flares and scatters.
 static func release(root: Node3D, at: Vector3) -> void:
-	Fx.burst(root, at, Color(0.6, 1.0, 0.5, 0.9), 18, 2.5, 0.08, 0.45, true, 1.0)
+	InfernalFx.particles(root, at, {"amount": 18, "life": 0.7, "explosive": 0.9, "shape": "sphere", "r": 0.12,
+		"dir": Vector3.UP, "spread": 120.0, "vel": [0.8, 2.2], "gravity": 0.8, "damping": [1.0, 1.6], "turb": 0.4,
+		"scale": [0.4, 1.0], "size": 0.07, "colors": [[0.0, PALE], [0.5, FEL], [1.0, Color(FEL, 0.0)]]})
 
 ## Blight Bolt in flight: a pale-green skull of fire trailing fel flame.
 static func bolt_node(root: Node3D) -> Node3D:
@@ -552,7 +578,7 @@ static func blight_burst(root: Node3D, pos: Vector3, radius: float) -> void:
 	tg.tween_property(g, "scale", Vector3.ONE * 3.0, 0.3).set_ease(Tween.EASE_OUT)
 	InfernalFx.tween_param(g, g.material_override as ShaderMaterial, "alpha", 1.0, 0.0, 0.3)
 	_free_later(g, 0.35)
-	Fx.flash(root, pos + Vector3(0, 1.0, 0), FEL, 3.0, 0.35, 7.0)
+	flash_light(root, pos + Vector3(0, 1.0, 0), FEL, 3.0, 0.35, 7.0)
 	InfernalFx.particles(root, pos + Vector3(0, 0.5, 0), {"amount": [5, 7, 10, 14][tr], "life": 1.5, "explosive": 0.9,
 		"shape": "sphere", "r": radius * 0.3, "dir": Vector3.UP, "spread": 80.0, "vel": [0.6, 1.8], "radial": [1.0, 2.0],
 		"gravity": 0.25, "damping": [1.0, 1.6], "scale": [0.8, 1.4], "size": 1.3, "grow": [0.5, 1.6], "angle": true, "spin": 20.0,
@@ -712,7 +738,7 @@ static func shackle_cast(root: Node3D, pos: Vector3, radius: float) -> void:
 		"radial": [-30.0, -22.0], "damping": [0.5, 1.0], "scale": [0.4, 0.9], "size": 0.06,
 		"colors": [[0.0, Color(FEL, 0.0)], [0.25, FEL], [1.0, Color(PALE, 0.0)]]})
 	HolyFx.shockwave(root, root.get_tree().current_scene if root.is_inside_tree() else null, pos, radius, 0.4, 0.02)
-	Fx.flash(root, pos + Vector3(0, 1.2, 0), FEL, 2.4, 0.35, 8.0)
+	flash_light(root, pos + Vector3(0, 1.2, 0), FEL, 2.4, 0.35, 8.0)
 
 ## Fel Covenant: his sigil burns big under him, a crown of fel fire roars up round him and souls spiral up through
 ## it (the generic pillar, ring and burst it was).
@@ -729,4 +755,4 @@ static func covenant(root: Node3D, pos: Vector3) -> void:
 		"shape": "ring", "r": 1.2, "r_in": 0.4, "dir": Vector3.UP, "spread": 10.0, "vel": [1.6, 3.2], "radial": [-1.2, -0.6],
 		"gravity": 0.6, "damping": [0.4, 0.8], "scale": [0.4, 1.0], "size": 0.07, "turb": 0.9,
 		"colors": [[0.0, Color(PALE, 0.0)], [0.12, PALE], [0.6, FEL], [1.0, Color(DEEP, 0.0)]]})
-	Fx.flash(root, pos + Vector3(0, 1.5, 0), FEL, 4.0, 0.6, 9.0)
+	flash_light(root, pos + Vector3(0, 1.5, 0), FEL, 4.0, 0.6, 9.0)
