@@ -88,6 +88,10 @@ var reached := false
 var welcomed := false
 
 func join_failure(fallback: String) -> String:
+	if game.bg_wait_until > Time.get_ticks_msec():
+		return "The crypt is closing. The next raid opens in %s." % game.bg_wait_text()
+	if game.bg_refusal != "":
+		return "The raid server couldn't confirm your account. Try again in a moment."
 	if reached and not welcomed:
 		return "That server runs a different version of the game than yours (%s · %s). Update the game (in the itch app: Update), then try again." % [BuildEnv.env(), BuildEnv.value("rev")]
 	return fallback
@@ -825,7 +829,8 @@ func sv_bg_hello(uid: String, ticket: String) -> void:
 	var pid := multiplayer.get_remote_sender_id()
 	var r = await game.bg.player_hello(pid, uid.substr(0, 64), ticket)
 	if r != "ok":
-		rpc_id(pid, "cl_bg_note", "This raid is closing: try again in a minute, for the next one." if r == "closed" else "The server could not confirm your account. Try again in a moment.")
+		# turned away: say why, and when the next raid lets players in (the client counts down and rejoins)
+		rpc_id(pid, "cl_bg_refused", r, game.bg.secs_to_next() if r == "closed" else 0.0)
 		await get_tree().create_timer(0.5).timeout
 		if peer != null:
 			peer.disconnect_peer(pid)
@@ -899,6 +904,12 @@ func sv_extract() -> void:
 @rpc("authority", "call_remote", "reliable")
 func cl_extracted(gained: Array) -> void:
 	game.bg_extracted(gained)
+
+## The raid server turned us away: "closed" (too late into the round: `secs` until the next one lets players in;
+## Game.bg_refused shows a countdown and rejoins then) or "refused" (the account couldn't be confirmed).
+@rpc("authority", "call_remote", "reliable")
+func cl_bg_refused(why: String, secs: float) -> void:
+	game.bg_refused(why, secs)
 
 @rpc("authority", "call_remote", "reliable")
 func cl_bg_note(txt: String) -> void:

@@ -136,6 +136,7 @@ var menu_shade: ColorRect         # under a menu screen opened over the title: d
 var bg_panel: PanelContainer      # the Battlegrounds screen (open_battlegrounds): class, server address, the stash
 var bg_class: OptionButton       # the Battlegrounds screen's hero picker (character ids as metadata)
 var bg_addr: LineEdit
+var bg_status: Label             # the Battlegrounds screen's wait for the next raid (Game.bg_refused), counting down
 var _join_refresh := 0.0
 var death_panel: Control
 var spectate_panel: Control      # Battlegrounds: the fallen hero watching the living (Game.spectate_*)
@@ -3587,10 +3588,16 @@ func _build_battlegrounds() -> void:
 	go.custom_minimum_size = Vector2(150, 40)
 	go.pressed.connect(func(): _bg_go())
 	row2.add_child(go)
+	bg_status = _label("", 16, Color(0.6, 0.85, 1.0), true)
+	bg_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bg_status.visible = false
+	vb.add_child(bg_status)
 	var back := Button.new()
 	back.text = "Back"
 	back.custom_minimum_size = Vector2(0, 40)
-	back.pressed.connect(func(): bg_panel.visible = false)
+	back.pressed.connect(func():
+		bg_panel.visible = false
+		game.bg_retry = [])          # (stop waiting for the next raid)
 	vb.add_child(back)
 
 func open_battlegrounds() -> void:
@@ -4656,6 +4663,11 @@ func refresh() -> void:
 		char_labels["gf"].text = "%d%%" % hero.gf
 
 func _process(delta: float) -> void:
+	if bg_status != null and bg_panel.visible:
+		var waiting: bool = game.bg_wait_until > Time.get_ticks_msec() and not game.bg_retry.is_empty()
+		bg_status.visible = waiting
+		if waiting:
+			bg_status.text = "The next raid opens in %s: you'll be let in then." % game.bg_wait_text()
 	if boat_shop:
 		boat_shop.tick(delta)
 	_update_drag(delta)

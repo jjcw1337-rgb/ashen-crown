@@ -51,6 +51,9 @@ var bg_mode := false
 var net_joining := false     # a co-op join sent, no welcome yet (on_net_failed then goes back to the co-op screen)
 var bg_home_run := -1        # in a raid: the character's own act (Net.cl_welcome swaps to the raid's, saves keep this)
 var bg_raid := {}               # the round as the raid server last said (Net.cl_bg_raid): state, t, open portals...
+var bg_wait_until := 0         # turned away late in a round: when (ticks msec) the next raid lets players in
+var bg_refusal := ""           # why the raid server last turned us away ("closed", "refused")
+var bg_retry := []             # [addr, character id] to rejoin with when the wait is over
 ## Characters and the stash in Nakama (cloud_saves.gd), in builds with BuildEnv.cloud() on; null otherwise.
 var cloud: CloudSaves
 var coop_server: CoopServer     # the online co-op server's logic (coop_server.gd), only on a `--server --coop` run
@@ -1471,6 +1474,9 @@ func start_battlegrounds(addr: String, id: String) -> void:
 	while _busy:
 		await get_tree().process_frame
 	Telemetry.crumb("raid", {"server": addr})
+	bg_retry = [addr, id]
+	bg_refusal = ""
+	bg_wait_until = 0
 	Sfx.play("click")
 	net.stop_listening()
 	char_id = id
@@ -1502,6 +1508,23 @@ func start_battlegrounds(addr: String, id: String) -> void:
 	if bg_mode and net.is_client() and loading.visible and not _busy and cur_zone != Battlegrounds.ZONE:
 		net.shutdown()
 		on_net_failed(net.join_failure("No answer from the Battlegrounds server at %s." % a[0]))
+
+## The raid server turned us away (Net.cl_bg_refused): too late into the round, or the account. For a closed raid,
+## wait out the rest of it on the Battlegrounds screen (UI.bg_status counts down) and rejoin by ourselves.
+func bg_refused(why: String, secs: float) -> void:
+	bg_refusal = why
+	bg_wait_until = Time.get_ticks_msec() + int((secs + 1.5) * 1000.0) if why == "closed" else 0
+	if why == "closed" and not bg_retry.is_empty():
+		var want: Array = bg_retry.duplicate()
+		get_tree().create_timer(secs + 1.5, false).timeout.connect(func():
+			# still waiting on the Battlegrounds screen, nothing else started meanwhile
+			if bg_retry == want and not playing and ui.bg_panel.visible:
+				ui.message("The next raid is open", Color(0.6, 1.0, 0.6))
+				start_battlegrounds(str(want[0]), str(want[1])))
+
+func bg_wait_text() -> String:
+	var s := maxi(0, (bg_wait_until - Time.get_ticks_msec()) / 1000)
+	return "%d:%02d" % [s / 60, s % 60]
 
 ## The server let us out: what we carry is ours, saved to the character as it is.
 ## The crypt never let us in (sign-in failed before the character was marked in_raid): back to the Battlegrounds
@@ -1625,7 +1648,7 @@ func on_net_failed(msg: String) -> void:
 		ui.open_join()
 		return
 	if bg_mode:
-		ui.big_message("Left the Battlegrounds")
+		ui.big_message("The crypt is closing" if bg_wait_until > Time.get_ticks_msec() else "Left the Battlegrounds")
 		ui.message(msg, Color(1, 0.6, 0.4))
 		loading.visible = false
 		_leave_battlegrounds()

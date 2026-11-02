@@ -369,6 +369,12 @@ func player_left(pid: int, at: Vector3) -> void:
 	died_items.erase(pid)
 	dead_wait.erase(pid)
 
+## Seconds until a new player can get in again: what is left of this round (if joining has closed) and the reset.
+func secs_to_next() -> float:
+	if state == "reset":
+		return maxf(0.0, reset_t)
+	return maxf(0.0, secs(RAID_SECS) - raid_t) + secs(RESET_SECS)
+
 func near_open_extract(pid: int) -> bool:
 	if not game.net.players.has(pid) or state != "raid":
 		return false

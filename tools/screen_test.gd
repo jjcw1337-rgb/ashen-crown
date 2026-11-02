@@ -97,6 +97,28 @@ func _run() -> void:
 	check(btns.size() > 0 and _in_front(btns[0]), "Battlegrounds: the dialog is on top and its button takes the click")
 	check(not str(ui.dialog_text.text).contains("forever"), "Battlegrounds: the dialog states today's rule")
 	ui.dialog_panel.visible = false
+	# turned away late in a round (Net.cl_bg_refused): the screen counts down to the next raid and rejoins by itself
+	g.bg_retry = ["127.0.0.1:1", str(g.list_characters()[0]["id"])]
+	g.bg_refused("closed", 1.0)
+	await frames(3)
+	check(ui.bg_status.visible and ui.bg_status.text.contains("next raid opens"), "Battlegrounds: turned away, it counts down to the next raid (%s)" % ui.bg_status.text)
+	check(g.net.join_failure("x").contains("next raid opens"), "and says so instead of 'the host left'")
+	var tried := false
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 4500 and not tried:
+		tried = g.playing or g.loading.visible
+		await process_frame
+	check(tried, "and when the wait is over it goes in by itself")
+	g.bg_retry = []
+	while g._busy or g.playing:
+		if g.net.active:
+			g.net.shutdown()
+		g.bg_mode = false
+		await process_frame
+		if g.playing and not g._busy:
+			await g.exit_to_title()
+	ui.open_battlegrounds()
+	await frames(2)
 	(ui.bg_panel.find_children("*", "Button", true, false).filter(func(b): return b.text == "Back")[0] as Button).pressed.emit()
 	await frames(2)
 	check(not ui.bg_panel.visible and not ui.menu_shade.visible and ui.title_panel.visible, "Battlegrounds: Back is the title again")
