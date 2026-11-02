@@ -4,7 +4,7 @@ extends RefCounted
 ## hands their events here, whatever the hero's class). Draws only. Each element's look is ElementalFx's (the
 ## visual overhaul: they were the generic Fx burst and ring in four colours).
 
-const EARTH := Color(0.85, 0.6, 0.32)
+const EARTH := Color(1.0, 0.5, 0.18)        # the slam's warning wedge: a hot earthy orange
 const ICE := Color(0.6, 0.85, 1.0)
 const STORM := Color(0.75, 0.7, 1.0)
 const CRY := Color(1.0, 0.3, 0.2)
