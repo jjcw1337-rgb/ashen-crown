@@ -22,7 +22,7 @@ const BOOKS := {
 }
 const LEGACY_BOOK := "res://assets/textures/fx/fire_flipbook.png"
 const GRID := Vector2(6, 6)          # frames per book unless GRIDS says otherwise
-const GRIDS := {"body": Vector2(8, 8)}   # the body book holds 64 frames
+const GRIDS := {"body": Vector2(8, 8), "spirit": Vector2(8, 8)}   # these books hold 64 frames (spirit: 256 x 512 each)
 const FPS := 30.0
 
 ## Each kind of fire: its book, how many flames per second (per metre of size), their life, how wide and tall a
