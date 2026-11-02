@@ -159,6 +159,15 @@ A = {
 	"props/crate.glb": ((4, 4, 4, 4, 0, 4, 4, 4), "P3", "", "In-game testing", "Stage 4: an iron-strapped oak crate (1.2k tris, 512 px) for the code-built one."),
 	"props/barrel.glb": ((4, 4, 4, 4, 0, 4, 4, 4), "P3", "", "In-game testing", "Stage 4: an oak barrel with rusted hoops (1.2k tris)."),
 	"props/logs.glb": ((4, 4, 4, 4, 0, 4, 4, 4), "P3", "", "In-game testing", "Stage 4: a stack of six cut logs (1.8k tris) for the cylinder pile."),
+	"roman/column.glb": ((4, 4, 4, 4, 0, 4, 4, 4), "P3", "", "In-game testing", "Stage 4: a weathered travertine Doric column (2.4k tris, 1K) for Roman.column."),
+	"roman/broken.glb": ((4, 4, 4, 4, 0, 4, 4, 4), "P3", "", "In-game testing", "Stage 4: a broken column stump (1.8k tris)."),
+	"roman/drum.glb": ((4, 4, 4, 4, 0, 4, 4, 4), "P3", "", "In-game testing", "Stage 4: a fallen column drum (1k tris)."),
+	"bg/brambles.glb": ((3, 4, 3, 3, 0, 2, 3, 3), "P3", "", "Inspected", "Staging's Overgrown Vault (Nov 2): a dark thorny dead tree, 8k tris, 1K. Strong silhouette; near-black, so it needs the vault's light to read. No LODs (Meshy UVs)."),
+	"bg/frozen_pillar.glb": ((3, 3, 3, 3, 0, 2, 3, 3), "P3", "", "Inspected", "Staging's Frozen Depths: an ice pillar on a rubble base, 8k tris. Reads as blobby ice up close; fine at the game camera under the ice shader."),
+	"bg/fungus.glb": ((3, 4, 3, 3, 0, 2, 3, 3), "P3", "", "Inspected", "Staging's Overgrown Vault: giant glowing blue mushrooms with violet roots, 5k tris. Saturated, reads well in the dark."),
+	"bg/gold_chest.glb": ((4, 4, 4, 4, 0, 2, 4, 3), "P3", "", "Inspected", "Staging's golden chest behind Old Mossbeard: ornate gilded relief and iron bands, 20k tris (heavy for a prop, but there is one)."),
+	"bg/ice_crystals.glb": ((3, 4, 3, 3, 0, 2, 3, 3), "P3", "", "Inspected", "Staging's Frozen Depths: a cluster of large ice crystals, 7k tris; more stylised than the game's other ice."),
+	"bg/mushrooms.glb": ((3, 3, 3, 3, 0, 2, 3, 3), "P3", "B", "Inspected", "Staging's Overgrown Vault: pale mushrooms, 9k tris, standing on Meshy's round ground patch (the disc shows unless sunk into the floor; cut it in Blender if it does)."),
 }
 
 # Built in code or not a .glb: the systems the audit covered as a whole (see docs/visual/AUDIT.md)
@@ -171,7 +180,7 @@ P = [
 	("procedural trees (Flora.pine/dead_tree/bush/fern)", "environment", (2, 2, 2, 2, 0, 2, 3, 3), "P2", "M R", "Needs improvement", "Code-built pines (3.7-4.5k tris each, ~1,500 on the coast), dead trees, bushes and ferns: tube-and-card trees next to Meshy assets."),
 	("A2/A3 grass (Flora grass clumps)", "environment", (3, 3, 3, 3, 3, 3, 3, 3), "P2", "R", "In-game testing", "Stage 4: A2's road and city and Act III's zones now grow Act I's living 3D grass (species, biomes, wind and touch), A2 in its own sun-dried colours and A3 charred short by the grass shader's ash response, in place of the old blade clumps (15 M triangles on the Imperial Road)."),
 	("rocks (Props.rock_mesh)", "environment", (4, 4, 4, 4, 0, 4, 4, 4), "P3", "M T", "In-game testing", "Were 120-triangle faceted noise spheres. Stage 4: every zone's scattered rocks are three Meshy granite boulders (rocks/boulder_a-c) and the old roads' kerbs a Meshy kerbstone laid along the road (Props.meshy_rock, World.kerb); the world's random numbers are drawn in the same order, so nothing moved. The isles' spires and arches keep the procedural rock."),
-	("Roman architecture (Roman.*)", "environment", (3, 3, 2, 2, 0, 3, 3, 4), "P2", "M T", "Needs improvement", "A2's Aurelia, aqueducts, colonnades, arena: code-built boxes and cylinders with procedural marble/tuff/brick."),
+	("Roman architecture (Roman.*)", "environment", (3, 3, 3, 3, 0, 3, 3, 4), "P2", "M T", "Needs improvement", "A2's Aurelia, aqueducts, colonnades, arena: code-built boxes and cylinders with procedural marble/tuff/brick. Stage 4: the columns, stumps and drums are Meshy travertine (roman/column, broken, drum; Roman._meshy_column), 42 in Aurelia; the arches, aqueduct, tombs, walls and the triumphal arch are still code-built."),
 	("small props (Props.crate/barrel/log_pile/pot/...)", "environment", (3, 3, 3, 3, 0, 4, 4, 4), "P3", "M", "In-game testing", "Stage 4: the crate, barrel and log pile are Meshy models (props/crate, barrel, logs) at the old sizes and footprints (Props._clutter_into), wherever they stand (the fort's yards, the coast, the isles, A2, the boats). Pots, the cauldron and other code-built clutter remain."),
 	("waypoint (Props.waypoint)", "environment", (3, 3, 3, 3, 0, 3, 3, 4), "P3", "M", "Inspected", "Procedural stone ring; retuned in the camp plan."),
 	("ocean (Ocean)", "environment", (4, 4, 4, 4, 4, 3, 4, 3), "P4", "", "Inspected", "Wave simulation and shading for the coast and isles."),

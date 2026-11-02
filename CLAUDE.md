@@ -1245,8 +1245,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   The ground: the cobbles are `Mats.TERRAIN_SHADER`'s `cobble()` (domed, chipped, worn flagstones; judge changes in
   `terrain_lab.gd`, a strip of road without a zone). Every zone's scattered rocks and the old roads' kerbs are Meshy
   (`assets/models/rocks/`, `Props.meshy_rock`/`boulder`/`seat`, `World.kerb`), and the crate, barrel and log pile
-  (`assets/models/props/`, `Props._clutter_into`); all re-baked on clean UVs, with the procedural versions as the
-  fallback. World generation draws from `World.rng`: a visual change must keep its calls (count and order) or every
+  (`assets/models/props/`, `Props._clutter_into`), and A2's columns, stumps and drums (`assets/models/roman/`,
+  `Roman._meshy_column`, `Roman.drum`); all re-baked on clean UVs, with the procedural versions as the fallback. World generation draws from `World.rng`: a visual change must keep its calls (count and order) or every
   rock, tree, footprint and spawn after it moves (and co-op peers must agree).
 - **Performance KPIs** (`scripts/kpi.gd` `Kpi`, `docs/nightly/KPIS.md`): the official numbers. Scripted, deterministic
   scenarios (camp, moor, fight, boss, arena, crypt, server; `Kpi.SCENARIOS`) run in any build with

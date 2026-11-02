@@ -11,7 +11,7 @@ palisade, the shared skills', Warlock's and Wraith's own effects, the monsters' 
 flagstones, Meshy rocks, kerbstones and clutter, A2's living grass, new telegraphs, the Plague Doctor's own effects
 and the last generic accents of the Demon, Warlock and Archer) are done, tested headless and committed on
 `test-visual-overhaul` (merged with staging's 21 newer commits). Nothing is approved yet: every change still needs
-jj's look on a real GPU (the preview build). Meshy spent by the overhaul: 570 credits (balance 1,481).
+jj's look on a real GPU (the preview build). Meshy spent by the overhaul: 678 credits (balance 1,373).
 
 ## Summary
 
@@ -160,15 +160,16 @@ The bosses cost 6 credits (concept) + 30 (model) each: 108. The camp pieces 90 (
 | **Worn flagstones** (every cobbled road and yard) | `Mats.TERRAIN_SHADER` (`cobble()`), judged in `tools/visual_audit/terrain_lab.gd` | The cobbles were flat polygons with an even dark line round each (crazy paving). Now each stone is domed, set a little askew, its edges chipped; granite in warm and cool greys with grain; crowns polished lighter where feet and wheels wear them; moss creeping in from the joints and lichen rosettes; some stones split by a crack, a few gone (a muddy hole); joints that open up in stretches. The normal comes from the same height the colour uses (about 9 cm joint to crown) |
 | **Meshy rocks and kerbstones** (every zone's scattered rocks, the kingsroad's and the Imperial Road's kerbs) | `assets/models/rocks/` (3 granite boulders, a kerb), `Props.meshy_rock` / `boulder` / `seat`, `World.kerb` | The rocks were 120-triangle faceted noise spheres in a procedural stone shader. Now photographic Meshy concepts → image-to-3D → `rebake_prop.py` (1,500 / 600 triangles, 512 px, clean UVs): a lumpy glacial erratic, a split slate outcrop, a mossy fieldstone, a chipped granite kerb laid along the road. Their own shader keeps the zones' snow and A3's soot (`Props.MESHY_PROP_SHADER`), each rock a slightly different shade. The world's random numbers are drawn in the same order, so every rock, footprint and spawn stays where it was |
 | **Meshy crates, barrels and log piles** (the fort's yards, the coast, the islands, A2, the boats) | `assets/models/props/`, `Props._clutter_into` | The code-built boxes, lathe barrels and cylinder logs (up to seven parts each) are one Meshy model each (1,200-1,800 triangles, 512 px) at the old sizes and footprints |
+| **Meshy Roman columns, stumps and drums** (A2's road and Aurelia, the Forgotten Ruins, the Verdant Isle) | `assets/models/roman/`, `Roman._meshy_column`, `Roman.drum` | Stacked boxes and cylinders in a procedural marble shader. Now weathered travertine with fluting, chips and moss (2,400 / 1,800 / 1,000 triangles): a whole column scaled to the code-built one's height, so its top still meets a colonnade's beam; a stump as wide as the plinth and as tall as what stands; a drum lying where it fell. Aurelia has 42 columns, the road 14 whole and 23 broken |
 | **Living grass in Acts II and III** | `World.living_grass`, `Grass.scatter` | The Imperial Road, Aurelia and Act III's zones had the old blade clumps (15 M triangles on the road). They grow Act I's living 3D grass now (seven species, biomes, wind, touch): A2 in its sun-dried colours, Act III charred short under the ash by the grass shader's own ash response |
 | **Telegraphs** (every warning on the ground: slams, cleaves, bombs, fuses) | `Fx.telegraph` / `arc_telegraph` (`TELEGRAPH_SHADER`) | A solid unshaded disc or fan (Earthshatter's was a cream wedge brighter than anything on screen). Now a crisp glowing rim, a faint wash, and the fill sweeping out with a bright front that meets the rim as the blow lands; added light, so the ground shows through |
 | **The Plague Doctor's own language** | `scripts/plague_fx.gd` (`PlagueFx`) | His 18 generic bursts, rings and flashes: slivers of the flask's glass tumbling out, glossy gobbets of poison on arcs, a wet stain splashed over the ground with rays and drops and bubbles rising off it, the gas as rolling fumes, spores off the infected, a jet of gas out of a sprung trap, the dome's gas rushing in and blown out at its collapse; Volatile Mixture is alchemist's fire (orange to green-white), sparks, soot, the bottle's glass, an air ripple and a burning stain |
 | **The Demon's, Warlock's and Archer's last generic accents** | `DemonFx.embers` / `flare` / `fire_wave`, `WarlockFx`, `ArcherFx.hunter_mark` | The Demon's 37 generic bursts, rings, flashes, slams and his charge's aura: embers cooling along his palette, the low soot lit from below, a flare, a standing wave of hellfire racing out (Hellbrand's crescent all the way round), the fissures' spouts as real flames. The Warlock's siphon and latch: life motes streaming to him, a fel flare. The Archer: the hunter's mark (three claw rakes on a ring) for his wolf's commands and the sprung snare, ice splinters where a volley arrow strikes, spirit light rising when the wolf returns. No class's skills use `Fx.burst`/`ring`/`flash` now (the generic fallback for a new class's undrawn skills stays) |
 
 Credits for stage 4: the rocks 264 (a first text-to-3D set at 30 each came back stylised, with neon moss and a white
-kerb, and was dropped; then four photographic concepts at 6 and four models at 30), the clutter 108 (three concepts,
-three models). Meshy spent by the overhaul: 570 credits; the plan's balance is 1,481 (staging's own models the same
-night took the rest).
+kerb, and was dropped; then four photographic concepts at 6 and four models at 30), the clutter 108 and the Roman
+pieces 108 (three concepts, three models each). Meshy spent by the overhaul: 678 credits; the plan's balance is 1,373
+(staging's own models the same night took the rest).
 
 ## 2. Systemic findings, ranked
 
@@ -186,7 +187,7 @@ night took the rest).
 | S10 | Always-on fire shadows outside the budget | Fort: 12 shadowed omni lights | Fixed (stage 1) |
 | S11 | Decimation facets on round props | Clay views: flask, mixture, items, lair rocks | Bottles re-shaded (stage 2); the zones' rocks are Meshy boulders now (stage 4); the sloth lairs' rocks remain |
 | S12 | Model textures uncompressed in video memory | Lossy WebP decodes to RGBA8: 1.0-1.9 GB VRAM | Decision (below) |
-| S13 | A2/A3 keep the old grass and code-built architecture | 15 M grass triangles on the Imperial Road; Roman.* boxes | A2's and A3's grass is the living grass (stage 4); the Roman architecture remains (P2) |
+| S13 | A2/A3 keep the old grass and code-built architecture | 15 M grass triangles on the Imperial Road; Roman.* boxes | A2's and A3's grass is the living grass and the columns are Meshy (stage 4); the arches, aqueduct, tombs and walls remain code-built (P2) |
 | S14 | Ground is one procedural shader | No material textures or decals (camp plan phase 2 not started) | The cobbles are worn flagstones (stage 4); material textures and decals for the meadows and dirt remain (P2) |
 
 Measured and **not** a problem: texture gutters. Meshy fills the space between islands with averaged colour, so
@@ -224,14 +225,14 @@ share again. Basis Universal sits between. Not changed; worth measuring before A
 
 | Kind | Count | Notes |
 |---|---|---|
-| 3D models (.glb) | 117 | At the audit 101 (8 hero bodies + statue, 3 dragons, 1 boss, 22 monsters, 6 NPCs, 18 camp, 5 fort, 5 isles, 1 boat, 6 lairs, 5 trees, 7 grass species, 4 title, 3 materials, 4 Plague Doctor props, bow, 3 arrows, debris; 2.04 M triangles, 290 MB); since then the three Meshy bosses (stage 3) and the 13 staging added (Verdant Isle dinosaurs and props, the dwarf, the troll tamer, the two Battlegrounds bosses): 2.41 M triangles |
+| 3D models (.glb) | 133 | At the audit 101 (8 hero bodies + statue, 3 dragons, 1 boss, 22 monsters, 6 NPCs, 18 camp, 5 fort, 5 isles, 1 boat, 6 lairs, 5 trees, 7 grass species, 4 title, 3 materials, 4 Plague Doctor props, bow, 3 arrows, debris; 2.04 M triangles, 290 MB); since then the overhaul's three bosses (stage 3) and its ten rocks, props and Roman pieces (stage 4), and the 19 staging added the same night (Verdant Isle dinosaurs and props, the dwarf, the troll tamer, the Battlegrounds bosses and the crypt floors' set pieces): 2.48 M triangles |
 | Loose textures | 191 | fx flipbooks 18, grass atlas 15, UI 26, talent icons 120, items 3, Plague dyes 5, ranger 4 |
 | Code-built visuals | ~30 systems | terrain, roads, procedural trees/bushes/ferns, rocks, Roman architecture, small props, waypoint, ocean, weather, the humanoid body (3 bosses/elites and the unreachable legacy acts), sculpted goblins |
 | Effects | 14 scripts | Every class's own language: `HolyFx` (knight), `InfernalFx`/`DemonFx`/`DemonFistsFx`, `WarlockFx`, `WraithFx`, `PlagueFx`, `ArrowFx`/`ArcherFx`, `ElementalFx` (shared skills, monsters' blows), `FireFx` (every fire); `Fx` keeps the generic pieces a few monsters and items use, the hit streaks and the telegraphs |
 | Animations | mocap heroes (14-27 clips), Meshy monsters code-posed on `Goblin.imported_rig`, Feral/NPCs/dragons with baked clips | |
 
 The full list with every asset's numbers, scores, priority, actions and status is
-[`checklist.csv`](checklist.csv) (146 rows: every model, the 13 that staging added the same night included, and the code-built systems).
+[`checklist.csv`](checklist.csv) (162 rows: every model, the 19 that staging added the same night and the 10 the overhaul made included, and the code-built systems).
 
 ## 5. Quality by category
 
@@ -247,7 +248,7 @@ Scores 1-5 against the D4/PoE2 bar at the game camera (detail per asset in the c
 | Fort, isles, lairs, title (20) | 3.2 | Solid Meshy architecture | Flat normals (fort, lairs); facets on rocks |
 | Trees (5) | 2.6 | The dead tree | Oaks and old pine: crumpled shard canopies |
 | Grass (7) | 3.9 | Living 3D grass with wind and touch | A2/A3 still on the old clumps |
-| Environment (code) | 3.0 → 3.2 | Ocean, roads, the worn flagstones, Meshy rocks, kerbs and clutter (stage 4) | Meadow and dirt without material textures or decals, procedural pines, Roman boxes |
+| Environment (code) | 3.0 → 3.2 | Ocean, roads, the worn flagstones, Meshy rocks, kerbs, clutter and columns (stage 4) | Meadow and dirt without material textures or decals, procedural pines, Roman arches and walls |
 | Effects | 3.3 → 3.7 | Fire, Fire Arrow, the Demon; every class's own language (stages 2-4) | The generic Fx a few monsters and items still share; everything still to be judged at full speed on a real GPU |
 | UI and screens | 3.6 | D4-style HUD and frames, the title | Character close-ups expose dark/flat textures |
 | Rendering | 3.0 | Full Forward+ feature set, presets | Was the performance problem (fixed in part); grading, reflections |
@@ -265,7 +266,7 @@ Scores 1-5 against the D4/PoE2 bar at the game camera (detail per asset in the c
 | 7 | ~~Camp lantern and palisade~~ **done (stage 3)** | Shard soups in the hub | Meshy + re-bake | 90 credits |
 | 8 | ~~Warlock, shared and Wraith effects~~ **done (stage 3)** | Generic bursts and rings | ElementalFx, WarlockFx fel fire, WraithFx wisps and soul-mist | Code |
 | 9 | Ground materials and decals | The largest area on screen | **Cobbles done (stage 4)**; next: tiling PBR sets for the meadows and dirt, height blending, decals (camp plan phase 2) | Code + textures |
-| 10 | A2/A3 grass and Aurelia's architecture | Act II looks older than Act I | **A2's and A3's living grass done (stage 4)**; Meshy Roman set pieces | Credits + code |
+| 10 | A2/A3 grass and Aurelia's architecture | Act II looks older than Act I | **A2's and A3's living grass and the Meshy columns done (stage 4)**; next: the arches, aqueduct bays, tombs and the triumphal arch | Credits + code |
 | 11 | Procedural pines, rocks, small props | Code-built next to Meshy | **Rocks, kerbs, crates, barrels and log piles done (stage 4)**; pines, pots and the rest of the clutter | Credits |
 | 14 | ~~The Demon's, Plague Doctor's and Archer's generic accents~~ **done (stage 4)** | The last generic bursts on heroes | `PlagueFx`; `DemonFx.embers`/`flare`/`fire_wave`; `ArcherFx.hunter_mark` | Code |
 | 12 | Material items, Plague Doctor props, lair rocks | Facets and flat normals | Smooth normals / regenerate | Small |
