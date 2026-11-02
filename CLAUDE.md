@@ -1235,6 +1235,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   scenarios (camp, moor, fight, boss, arena, crypt, server; `Kpi.SCENARIOS`) run in any build with
   `-- --kpi <scenario> out.json [--quality N] [--secs N]` (the server: `-- --server --kpi server out.json`), measuring
   fps, 1% low, p99 frame time, hitches, load time, main thread, GPU, draw calls, triangles, memory; then quit.
+  Low and Medium cap the 3D view's pixels on big or Retina screens (`Game.apply_render_scale`, FSR 1); `--render-scale N`
+  fixes the 3D scale (2.0 = a Retina screen's cost on a 1080p one).
   `tools/nightly/bench.sh` runs the suite (plus the download size), `tools/nightly/kpi_push.py` stores it in the KPI
   database on the staging server, Grafana draws it (https://<staging>/grafana/), `sh tools/kpi_query.sh latest` reads it.
 - **Instancing and shadows** (nightly 2026-11-02): `Props.multimesh` splits instances spread wider than 24 m into
