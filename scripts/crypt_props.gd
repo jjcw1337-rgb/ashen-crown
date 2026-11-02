@@ -10,9 +10,11 @@ extends RefCounted
 ##
 ## Battlegrounds only: `walls` turns some of World.crypt_shell's wall blocks (the transforms it rolled; given back
 ## minus the cells used) into ossuary niches, tomb alcoves with sarcophagi, statue alcoves and braziers in the hall;
-## `wall_material` is the textured crypt stone (tools/blender/battlegrounds/make_wall_textures.py); `portal_glow` is
-## the Extraction Portal's light inside its rune archway (`archway`); `dress` adds the rubble, cobwebs and the hall's
-## floor seal (no collision, own RNG).
+## `wall_meshes` draws the rest in tiles under `wall_material`, the textured crypt stone
+## (tools/blender/battlegrounds/make_tile_textures.py), and `lay_floor` the flagstones; `chest` and `candles` are the
+## raid's chests and floor candles (World._chest, World._candles, on their old footprints and rolls); `torch_light`
+## makes a wall torch light the floor; `portal_glow` is the Extraction Portal's light inside its rune archway
+## (`archway`); `dress` adds the rubble, cobwebs, the dust in the air and the hall's floor seal (no collision, own RNG).
 
 const DIR := "res://assets/models/crypt/"
 const TEX := "res://assets/textures/crypt/"
@@ -25,6 +27,12 @@ const NICHE_H := 1.96                         # niche.glb: 1 m wide, 0.67 deep
 const NICHE_D := 0.67
 const SCONCE_CUP := Vector3(0.0, 0.46, 0.06)  # where the torch flame stands in sconce.glb (its own frame)
 const BRAZIER_TOP := 0.5
+const TORCH_ENERGY := 2.4                     # the Hollow Crypt's wall torches (torch_light)
+const TORCH_RANGE := 8.5
+const TILE := 12.0                            # floor and wall meshes are cut into tiles this size (lights per mesh)
+const CANDLE_WICKS := [Vector3(-0.2638, 0.271, -0.0086), Vector3(-0.1733, 0.2579, -0.0072), Vector3(-0.0988, 0.2816, -0.0115),
+	Vector3(-0.0542, 0.2228, 0.0349), Vector3(-0.0033, 0.3058, -0.0115), Vector3(0.0543, 0.2242, 0.0351),
+	Vector3(0.0991, 0.2933, -0.0109), Vector3(0.1736, 0.2645, -0.0106), Vector3(0.2563, 0.2685, -0.0101)]
 
 static var _cache := {}
 
@@ -90,6 +98,17 @@ static func bones(yaw: float) -> Node3D:
 static func sconce() -> Node3D:
 	return model("sconce")
 
+## A wall torch's light in the Hollow Crypt: a warm pool that reaches the floor in front of its wall. The torch
+## preset at the sconce's size lit 3.9 m, a patch of wall, and left the rooms to the hero's own light.
+static func torch_light(fire: Node3D) -> void:
+	var l := fire.get_node_or_null("FireLight") as OmniLight3D
+	if l == null:
+		return
+	l.light_energy = TORCH_ENERGY
+	l.omni_range = TORCH_RANGE
+	l.set_meta("base", TORCH_ENERGY)
+	l.position.z += 0.35          # out from the wall: the pool lands on the floor, not only on the stones behind it
+
 static func brazier() -> Node3D:
 	return model("brazier")
 
@@ -120,6 +139,42 @@ static func set_runes(arch: Node3D, energy: float) -> void:
 ## An ossuary niche: 1 m wide, its shelves of bones facing +z.
 static func niche() -> Node3D:
 	return model("niche")
+
+## A row of nine melted candles on a stone slab (candles.glb: Meshy, its modelled flames cut away by
+## tools/blender/battlegrounds/cut_flames.py, which wrote CANDLE_WICKS), each wick burning FireFx's candle flame,
+## one light for the row. The row runs along x, its short candles toward +z.
+static func candles() -> Node3D:
+	var m := model("candles")
+	if m == null:
+		return null
+	var root := Models.N(null, "candles")
+	root.add_child(m)
+	for wk in CANDLE_WICKS:
+		FireFx.make(root, (wk as Vector3) + Vector3(0, 0.004, 0), "candle", 0.16, Color(1.0, 0.72, 0.35), false, false, false)
+	var l := OmniLight3D.new()
+	l.light_color = Color(1.0, 0.66, 0.32)
+	l.light_energy = 0.95
+	l.omni_range = 4.2
+	l.omni_attenuation = 1.3
+	l.position = Vector3(0, 0.55, 0.25)
+	l.add_to_group("flicker")
+	l.set_meta("base", 0.95)
+	l.set_meta("fire", 0.3)
+	root.add_child(l)
+	return root
+
+## The Hollow Crypt's chest: the Meshy iron-bound chest (chest.glb, prepared at its game size, 1 m long), its
+## skull lock toward +z, under the same footprint node World._chest gave the old stash chest (0.68 x 0.42 at 0.75
+## scale), so the collision the server builds is unchanged.
+static func chest(yaw_deg: float) -> Node3D:
+	var m := model("chest")
+	if m == null:
+		return null
+	var root := Props.footprint(Models.N(null, "stash", Vector3.ZERO, Vector3(0, yaw_deg, 0)), Vector2(0.68, 0.42))
+	root.scale = Vector3.ONE * 0.75
+	m.scale = Vector3.ONE / 0.75
+	root.add_child(m)
+	return root
 
 ## A dead king in crypt stone: the Meshy knight statue (Roman.STATUE_GLB) under the crypt's dark stone.
 static func statue(h: float) -> Node3D:
@@ -483,9 +538,9 @@ void fragment(){
 
 ## The Hollow Crypt's flagstone floor: quads over the floor cells (World's 1 m grid), a hair above the terrain,
 ## under the flagstone textures (TEX floor_albedo / floor_normal); nothing without them (the terrain's own crypt
-## floor shows then). One mesh per room and corridor (World.floor_rects), not one for the whole crypt: the OpenGL
-## renderer lights an instance by its nearest eight lights, and the crypt has torches in every room.
-static func floor(w: World) -> void:
+## floor shows then). In tiles of TILE metres, one mesh each, like the walls (wall_meshes): the OpenGL renderer
+## lights an instance by at most eight lights, and the hall alone has more than that.
+static func lay_floor(w: World) -> void:
 	if not (ResourceLoader.exists(TEX + "floor_albedo.png") and ResourceLoader.exists(TEX + "floor_normal.png")):
 		return
 	var sm := ShaderMaterial.new()
@@ -498,47 +553,53 @@ static func floor(w: World) -> void:
 	sm.set_shader_parameter("tint", Vector3(0.9, 0.9, 0.88))
 	var y := 0.015
 	var h := World.CELL * 0.5 + 0.02
-	var done := {}       # cell -> true (a cell under two rects is drawn once)
-	for ri in w.floor_rects.size():
-		var r: Rect2 = w.floor_rects[ri]
-		var st := SurfaceTool.new()
-		st.begin(Mesh.PRIMITIVE_TRIANGLES)
-		var n := 0
-		var i0 := maxi(0, int(floor((r.position.x - w.origin.x) / World.CELL)) - 1)
-		var i1 := mini(w.gw - 1, int(ceil((r.end.x - w.origin.x) / World.CELL)) + 1)
-		var j0 := maxi(0, int(floor((r.position.y - w.origin.y) / World.CELL)) - 1)
-		var j1 := mini(w.gh - 1, int(ceil((r.end.y - w.origin.y) / World.CELL)) + 1)
-		for j in range(j0, j1 + 1):
-			for i in range(i0, i1 + 1):
-				var key := Vector2i(i, j)
-				if done.has(key):
-					continue
-				var cx: float = w.origin.x + (i + 0.5) * World.CELL
-				var cz: float = w.origin.y + (j + 0.5) * World.CELL
-				if not r.has_point(Vector2(cx, cz)):
-					continue
-				done[key] = true
-				var vs := [Vector3(cx - h, y, cz - h), Vector3(cx + h, y, cz - h), Vector3(cx + h, y, cz + h), Vector3(cx - h, y, cz + h)]
-				for k in [0, 1, 2, 0, 2, 3]:
-					st.set_normal(Vector3.UP)
-					st.set_uv(Vector2(vs[k].x, vs[k].z))
-					st.add_vertex(vs[k])
-				n += 1
-		if n == 0:
-			continue
+	var tiles := {}      # Vector2i tile -> SurfaceTool
+	for j in w.gh:
+		for i in w.gw:
+			var cx: float = w.origin.x + (i + 0.5) * World.CELL
+			var cz: float = w.origin.y + (j + 0.5) * World.CELL
+			if not w.is_floor(cx, cz):
+				continue
+			var key := Vector2i(floori(cx / TILE), floori(cz / TILE))
+			if not tiles.has(key):
+				var nst := SurfaceTool.new()
+				nst.begin(Mesh.PRIMITIVE_TRIANGLES)
+				tiles[key] = nst
+			var st: SurfaceTool = tiles[key]
+			var vs := [Vector3(cx - h, y, cz - h), Vector3(cx + h, y, cz - h), Vector3(cx + h, y, cz + h), Vector3(cx - h, y, cz + h)]
+			for k in [0, 1, 2, 0, 2, 3]:
+				st.set_normal(Vector3.UP)
+				st.set_uv(Vector2(vs[k].x, vs[k].z))
+				st.add_vertex(vs[k])
+	for key in tiles:
 		var mi := MeshInstance3D.new()
-		mi.mesh = st.commit()
+		mi.mesh = (tiles[key] as SurfaceTool).commit()
 		mi.material_override = sm
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mi.name = "crypt_floor_%d" % ri
+		mi.name = "crypt_floor_%d_%d" % [key.x, key.y]
 		w.props_root.add_child(mi)
+
+## The plain wall blocks (what `walls` leaves) in tiles of TILE metres, one MultiMesh each, under the crypt stone:
+## one MultiMesh round the whole crypt took only eight of its torches in the OpenGL renderer.
+static func wall_meshes(w: World, wall_xf: Array) -> void:
+	var tiles := {}
+	for xf in wall_xf:
+		var o: Vector3 = (xf as Transform3D).origin
+		var key := Vector2i(floori(o.x / TILE), floori(o.z / TILE))
+		if not tiles.has(key):
+			tiles[key] = []
+		(tiles[key] as Array).append(xf)
+	var mesh := Geo.box(1.02, 1.0, 1.02)
+	var wm := wall_material()
+	for key in tiles:
+		Props.multimesh(w.props_root, mesh, tiles[key]).material_override = wm
 
 # ---------------------------------------------------------------- the Extraction Portal
 const PORTAL_SHADER := """
 shader_type spatial;
 render_mode unshaded, blend_add, cull_disabled, depth_draw_never, shadows_disabled;
 uniform vec3 col : source_color = vec3(0.3, 0.55, 1.0);
-uniform float energy = 1.6;
+uniform float energy = 1.0;
 float hash21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
 float vnoise(vec2 p){ vec2 i=floor(p); vec2 f=fract(p); vec2 u=f*f*(3.0-2.0*f);
 	return mix(mix(hash21(i),hash21(i+vec2(1.0,0.0)),u.x), mix(hash21(i+vec2(0.0,1.0)),hash21(i+vec2(1.0,1.0)),u.x), u.y); }
@@ -546,12 +607,15 @@ void fragment(){
 	vec2 p = UV * 2.0 - 1.0;
 	float r = length(p);
 	float a = atan(p.y, p.x);
+	// (energy above ~1 summed to a white oval: the swirl is the portal, the core only a cold heart in it)
 	float swirl = vnoise(vec2(a * 2.2 + TIME * 0.7 + r * 4.0, r * 6.0 - TIME * 1.3));
 	float swirl2 = vnoise(vec2(a * 3.7 - TIME * 1.1, r * 9.0 + TIME * 0.6));
+	float arms = smoothstep(0.35, 0.85, vnoise(vec2(a * 1.6 - r * 5.0 + TIME * 1.6, r * 2.0)));
 	float edge = 1.0 - smoothstep(0.78, 1.0, r);
-	float core = exp(-r * r * 3.0);
-	float v = edge * (0.35 + 0.65 * swirl) * (0.6 + 0.4 * swirl2) + core * 0.8;
-	vec3 c = mix(col, vec3(0.8, 0.92, 1.0), core * 0.9 + swirl2 * 0.15);
+	float rim = smoothstep(0.55, 0.92, r) * edge;
+	float core = exp(-r * r * 5.0);
+	float v = edge * (0.2 + 0.55 * swirl * swirl2 + 0.45 * arms) + rim * 0.5 + core * 0.45;
+	vec3 c = mix(col * 0.8, vec3(0.75, 0.9, 1.0), core * 0.6 + arms * 0.2);
 	ALBEDO = c * v * energy;
 	ALPHA = clamp(v, 0.0, 1.0) * edge;
 }
@@ -621,7 +685,7 @@ static func dress(w: World) -> void:
 	var hall: Rect2 = w.get_meta("bg_hall")
 	var rng := RandomNumberGenerator.new()
 	rng.seed = WALL_SEED + 1
-	floor(w)
+	lay_floor(w)
 	# rubble: chips of the walls' stone along the room edges (MultiMesh, no collision: ankle-high)
 	var xfs := {}
 	var rects: Array = rooms.values()
@@ -653,7 +717,7 @@ static func dress(w: World) -> void:
 	if seal:
 		var hc := hall.get_center()
 		w.props_root.add_child(seal)
-		seal.position = Vector3(hc.x, 0.0, hc.y)
+		seal.position = Vector3(hc.x, 0.03, hc.y)
 	# cobwebs where a wall meets a corner, hanging in the torchlight
 	var web := cobweb_mesh()
 	if web != null:
@@ -670,6 +734,72 @@ static func dress(w: World) -> void:
 		if not wxf.is_empty():
 			var mmi := Props.multimesh(w.props_root, web, wxf, false)
 			mmi.material_override = cobweb_material()
+	# dust hanging in the air of every room and the hall, seen where the light catches it
+	for r in rects:
+		dust(w, r)
+
+## Dust in a room's air: motes drifting slowly, lit like everything else, so they show in the torchlight and the
+## hero's light and vanish in the dark between.
+static func dust(w: World, r: Rect2) -> void:
+	var p := GPUParticles3D.new()
+	p.name = "dust"
+	p.amount = int(clampf(r.size.x * r.size.y * 0.22, 30.0, 200.0))
+	p.lifetime = 10.0
+	p.preprocess = 10.0
+	p.visibility_aabb = AABB(Vector3(-r.size.x * 0.5 - 1.0, -1.6, -r.size.y * 0.5 - 1.0), Vector3(r.size.x + 2.0, 4.4, r.size.y + 2.0))
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = Vector3(r.size.x * 0.5, 1.25, r.size.y * 0.5)
+	pm.direction = Vector3(0, 1, 0)
+	pm.spread = 180.0
+	pm.initial_velocity_min = 0.02
+	pm.initial_velocity_max = 0.07
+	pm.gravity = Vector3(0, -0.004, 0)
+	pm.turbulence_enabled = true
+	pm.turbulence_noise_strength = 0.35
+	pm.turbulence_noise_scale = 4.0
+	pm.turbulence_noise_speed = Vector3(0.04, 0.015, 0.04)
+	pm.scale_min = 0.45
+	pm.scale_max = 1.25
+	var g := Gradient.new()
+	g.set_color(0, Color(1, 1, 1, 0))
+	g.set_color(1, Color(1, 1, 1, 0))
+	g.add_point(0.2, Color(1, 1, 1, 1))
+	g.add_point(0.8, Color(1, 1, 1, 1))
+	var gt := GradientTexture1D.new()
+	gt.gradient = g
+	pm.color_ramp = gt
+	p.process_material = pm
+	var q := QuadMesh.new()
+	q.size = Vector2(0.03, 0.03)
+	q.material = dust_material()
+	p.draw_pass_1 = q
+	p.position = Vector3(r.get_center().x, 1.5, r.get_center().y)
+	w.props_root.add_child(p)
+
+static func dust_material() -> Material:
+	if _cache.has("dust"):
+		return _cache["dust"]
+	var dot := GradientTexture2D.new()
+	dot.width = 32
+	dot.height = 32
+	dot.fill = GradientTexture2D.FILL_RADIAL
+	dot.fill_from = Vector2(0.5, 0.5)
+	dot.fill_to = Vector2(1.0, 0.5)
+	var dg := Gradient.new()
+	dg.set_color(0, Color(1, 1, 1, 1))
+	dg.set_color(1, Color(1, 1, 1, 0))
+	dot.gradient = dg
+	var m := StandardMaterial3D.new()
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.vertex_color_use_as_albedo = true
+	m.albedo_color = Color(0.9, 0.84, 0.76, 0.5)
+	m.albedo_texture = dot
+	m.roughness = 1.0
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_VERTEX
+	_cache["dust"] = m
+	return m
 
 ## A cobweb: a triangular card spanning a corner (its texture TEX cobweb.png, Meshy; none without it).
 static func cobweb_mesh() -> Mesh:
@@ -700,18 +830,57 @@ static func cobweb_material() -> Material:
 	_cache["web"] = m
 	return m
 
-## The great hall's floor seal: a Decal of the Meshy-painted stone seal (TEX seal.png), its runes faintly lit.
+const SEAL_SHADER := """
+shader_type spatial;
+render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_burley, specular_schlick_ggx;
+uniform sampler2D albedo_tex : source_color, filter_linear_mipmap_anisotropic;
+uniform sampler2D emit_tex : source_color, filter_linear_mipmap;
+uniform float energy = 1.8;
+float hash21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
+float vnoise(vec2 p){ vec2 i=floor(p); vec2 f=fract(p); vec2 u=f*f*(3.0-2.0*f);
+	return mix(mix(hash21(i),hash21(i+vec2(1.0,0.0)),u.x), mix(hash21(i+vec2(0.0,1.0)),hash21(i+vec2(1.0,1.0)),u.x), u.y); }
+void fragment(){
+	vec4 a = texture(albedo_tex, UV);
+	ALBEDO = a.rgb * 0.8;
+	ALPHA = a.a;
+	vec2 p = UV * 2.0 - 1.0;
+	float r = length(p);
+	// the runes breathe, and a slow wave of light runs out from the skull through the rings
+	float wave = smoothstep(0.18, 0.0, abs(r - fract(TIME * 0.12) * 1.1));
+	float flick = 0.8 + 0.2 * vnoise(vec2(atan(p.y, p.x) * 3.0, TIME * 0.7));
+	float pulse = (0.7 + 0.3 * sin(TIME * 0.9)) * flick + wave * 0.9;
+	EMISSION = texture(emit_tex, UV).rgb * energy * pulse;
+	ROUGHNESS = 0.8;
+}
+"""
+
+## The great hall's floor seal: the Meshy-painted stone seal (TEX seal.png, its edge cut out in the alpha) laid on the
+## flagstones, its runes lit (seal_emit.png: the painting's blue alone), breathing, a wave of light running out from
+## the skull now and then. A quad on the flat floor rather than a Decal: the OpenGL renderer draws no decals.
 static func floor_seal() -> Node3D:
 	if not ResourceLoader.exists(TEX + "seal.png"):
 		return null
-	var d := Decal.new()
-	d.texture_albedo = load(TEX + "seal.png")
+	var q := QuadMesh.new()
+	q.size = Vector2(11.0, 11.0)
+	q.orientation = PlaneMesh.FACE_Y
+	var sm := ShaderMaterial.new()
+	var sh := Shader.new()
+	sh.code = SEAL_SHADER
+	sm.shader = sh
+	sm.set_shader_parameter("albedo_tex", load(TEX + "seal.png"))
 	if ResourceLoader.exists(TEX + "seal_emit.png"):
-		d.texture_emission = load(TEX + "seal_emit.png")     # only the runes glow (the blue of the painting, cut out)
-		d.emission_energy = 1.6
-	d.size = Vector3(11.0, 1.2, 11.0)
-	d.cull_mask = 1
-	d.albedo_mix = 0.9
-	d.normal_fade = 0.3
-	d.position.y = 0.3
-	return d
+		sm.set_shader_parameter("emit_tex", load(TEX + "seal_emit.png"))
+	var mi := MeshInstance3D.new()
+	mi.mesh = q
+	mi.material_override = sm
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.position.y = 0.03
+	mi.name = "seal"
+	var l := OmniLight3D.new()
+	l.light_color = Color(RUNE.r, RUNE.g, RUNE.b)
+	l.light_energy = 0.9
+	l.omni_range = 7.5
+	l.omni_attenuation = 1.6
+	l.position = Vector3(0, 0.6, 0)
+	mi.add_child(l)
+	return mi

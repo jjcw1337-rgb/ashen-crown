@@ -172,16 +172,22 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   three chests and a champion with bowmen. The walls come from `World.crypt_shell` (shared with the crypt). **The
   look** (`scripts/crypt_props.gd` `CryptProps`): Meshy props re-baked onto clean UVs by
   `tools/blender/battlegrounds/rebake_crypt_prop.py` into `assets/models/crypt/` (sarcophagus, pillar, archway, bones,
-  sconce, brazier, ossuary niche; `prep_all.sh` rebuilds them from the raw Meshy downloads; `inspect_glb.py`,
-  `components.py` to look at a raw model). World's shared crypt helpers (`_pillar`, `_sarcophagus`, `_bones`,
+  sconce, brazier, ossuary niche, the iron-bound chest, a row of candles; `prep_all.sh` rebuilds them from the raw
+  Meshy downloads, `--solid` for props Meshy made of single sheets; `cut_flames.py` cut the candles' modelled flames
+  and wrote their wicks, `CryptProps.CANDLE_WICKS`; `inspect_glb.py`, `components.py` to look at a raw model). World's shared crypt helpers (`_pillar`, `_sarcophagus`, `_bones`,
   `_wall_torch`) draw them when the files are there (A3's crypt too) with the same footprints and the same rolls on
   `rng`; in the Hollow Crypt (`theme.name == "bg"`) `crypt_shell` hands its wall blocks to `CryptProps.walls`, which
   turns cells into tomb alcoves with sarcophagi (each room's north wall), ossuary niches (candles in some), the hall's
-  three statue alcoves (the knight statue in crypt stone) and wall braziers, closing the rock behind them; the walls and
-  the flagstone floor (`CryptProps.floor`, a mesh over the floor cells) use Meshy-drawn textures made tileable and
-  normal-mapped in Blender (`make_tile_textures.py`, `assets/textures/crypt/`); the Extraction Portals stand in rune
-  archways whose runes light when the portal opens (`Battlegrounds.sync_gates`, `CryptProps.set_runes`) with
-  `portal_glow` inside; `dress` adds rubble, corner cobwebs and the hall's floor seal (a Decal). **Everything visual
+  three statue alcoves (the knight statue in crypt stone) and wall braziers, closing the rock behind them; the walls
+  (`CryptProps.wall_meshes`) and the flagstone floor (`CryptProps.lay_floor`, quads over the floor cells) use
+  Meshy-drawn textures made tileable and normal-mapped in Blender (`make_tile_textures.py`, `assets/textures/crypt/`),
+  both cut into `TILE` (12 m) meshes, since the OpenGL renderer lights a mesh by at most eight lights; `_chest` is the
+  Meshy chest (`CryptProps.chest`, on the old chest's footprint node) and floor `_candles` the Meshy candles burning
+  FireFx candle flames (the same rolls as before); the wall torches light a warm pool to the floor
+  (`CryptProps.torch_light`, `TORCH_ENERGY`/`TORCH_RANGE`); the Extraction Portals stand in rune archways whose runes
+  light when the portal opens (`Battlegrounds.sync_gates`, `CryptProps.set_runes`) with `portal_glow` inside; `dress`
+  adds rubble, corner cobwebs, lit dust drifting in every room (`dust`) and the hall's floor seal (a quad with
+  `SEAL_SHADER`: its runes breathe and a wave of light runs out from the skull; not a Decal, which OpenGL can't draw). **Everything visual
   is on the same layout**: no footprint changes, no new interactable, no call added to `w.rng`
   (`tools/bg_layout_fingerprint.gd` prints a hash of the layout; it must not change: the staging server builds it
   from the same rolls). Stills: `tools/crypt_shots.gd -- outdir`, a walk: `tools/crypt_clip.gd -- outdir [frames]`

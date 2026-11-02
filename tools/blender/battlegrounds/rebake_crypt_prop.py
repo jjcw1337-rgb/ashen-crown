@@ -8,9 +8,11 @@
 #                    flame bulb in front of it (y), which the game's FireFx replaces
 #   --tint r,g,b     multiply the baked colour (the ossuary niche came out of Meshy as pale clean stone; the crypt is
 #                    dark and mossy)
+#   --solid f        thicken the remeshed copy inward by f x the prop's size first (parts Meshy made as single sheets,
+#                    like the chest's sides, collapse to nothing otherwise)
 #
 #   blender -b --python rebake_crypt_prop.py -- <in.glb> <out.glb> <size: h=2 | w=1.6 | x=3> <triangles> [--tex 1024]
-#        [--yaw deg] [--cut m] [--cut-above m] [--keep axis,m] [--xy f] [--tint r,g,b] [--samples 4] [--voxel 0.006]
+#        [--yaw deg] [--cut m] [--cut-above m] [--keep axis,m] [--xy f] [--tint r,g,b] [--solid f] [--samples 4] [--voxel 0.006]
 # size: h= scales to that height, w= its widest side, x= its length along x (metres, after yaw); "keep" leaves an
 # already prepared prop exactly where and as big as it is (only the surface and textures are rebuilt).
 # --cut removes everything below that height (metres, after scaling): Meshy's ground patches under a prop.
@@ -92,6 +94,12 @@ lo.select_set(True); bpy.context.view_layer.objects.active = lo
 # remesh gives a smooth closed skin that unwraps into large islands; the bake puts the detail back.
 # --voxel is the voxel size as a fraction of the prop's size (0 = skip; thin parts thinner than a voxel are lost)
 VOX = float(opt("--voxel", "0.006"))
+# --solid f thickens the copy inward by f x the prop's size before the remesh: Meshy models some parts as single
+# sheets (the chest's sides), whose one-voxel shells the smoothing and the decimation then collapse to nothing
+SOLID = float(opt("--solid", "0"))
+if SOLID > 0:
+    so = lo.modifiers.new("solid", "SOLIDIFY"); so.thickness = SOLID * size; so.offset = -1.0
+    bpy.ops.object.modifier_apply(modifier="solid")
 if VOX > 0:
     rm = lo.modifiers.new("remesh", "REMESH"); rm.mode = "VOXEL"; rm.voxel_size = VOX * size; rm.adaptivity = 0.0
     bpy.ops.object.modifier_apply(modifier="remesh")

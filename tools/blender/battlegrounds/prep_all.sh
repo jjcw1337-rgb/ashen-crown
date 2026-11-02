@@ -22,3 +22,4 @@ run bones       bones         w=1.3   5000  --tex 1024 --voxel 0.004
 run sconce      sconce        h=0.55  3000  --tex 512 --keep y,-0.16
 run brazier     brazier       w=1.2   5000  --tex 1024
 run niche       niche         x=1.0   6000  --tex 1024 --tint 0.62,0.64,0.62
+run chest2      chest         x=1.0   9000  --tex 1024 --solid 0.02

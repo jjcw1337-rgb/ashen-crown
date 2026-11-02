@@ -1413,8 +1413,12 @@ func _shrine(p: Vector3, kind_s: String) -> void:
 	add_circle(p, 0.9)
 
 func _chest(p: Vector3) -> void:
-	var c := Props.stash_chest(null, Vector3.ZERO, rng.randf_range(-40, 40))
-	c.scale = Vector3.ONE * 0.75
+	var yaw := rng.randf_range(-40, 40)
+	# the Hollow Crypt's chests are the Meshy iron-bound chest (CryptProps.chest) on the same footprint
+	var c: Node3D = CryptProps.chest(yaw) if str(theme.get("name", "")) == "bg" else null
+	if c == null:
+		c = Props.stash_chest(null, Vector3.ZERO, yaw)
+		c.scale = Vector3.ONE * 0.75
 	_inter("chest", "Chest", p, 1.4, c)
 	solid(c)
 
@@ -1825,13 +1829,13 @@ func crypt_shell() -> void:
 				wall_xf.append(Transform3D(Basis(Vector3.UP, rng.randf_range(-0.04, 0.04)).scaled(Vector3(1.0, hh, 1.0)), Vector3(wx, hh * 0.5, wz)))
 			else:
 				top_xf.append(Transform3D(Basis().scaled(Vector3(1.0, 0.2, 1.0)), Vector3(wx, 3.0, wz)))
-	var wm: Material = Mats.world(Color(0.4, 0.38, 0.35), Color(0.28, 0.27, 0.25), 0.9, 2.2, 0.25, Color(0.14, 0.16, 0.09))
 	if str(theme.get("name", "")) == "bg":
 		# the Hollow Crypt: some wall cells become niches, tombs, statues and braziers (the rolls above are made
-		# whatever is drawn), the rest the textured crypt stone
-		wall_xf = CryptProps.walls(self, wall_xf)
-		wm = CryptProps.wall_material()
-	Props.multimesh(props_root, Geo.box(1.02, 1.0, 1.02), wall_xf).material_override = wm
+		# whatever is drawn), the rest the textured crypt stone, in tiles
+		CryptProps.wall_meshes(self, CryptProps.walls(self, wall_xf))
+	else:
+		var wm := Mats.world(Color(0.4, 0.38, 0.35), Color(0.28, 0.27, 0.25), 0.9, 2.2, 0.25, Color(0.14, 0.16, 0.09))
+		Props.multimesh(props_root, Geo.box(1.02, 1.0, 1.02), wall_xf).material_override = wm
 	Props.multimesh(props_root, Geo.box(1.0, 1.0, 1.0), top_xf, false).material_override = Mats.world(Color(0.05, 0.05, 0.05), Color(0.03, 0.03, 0.03), 1.0, 1.0, 0.0, Props.MOSS, true)
 	_flush_stones(Props.stone())
 	_build_terrain(CRYPT_TERRAIN)
@@ -1970,6 +1974,23 @@ func _bones(p: Vector3) -> void:
 	_place(g, p)
 
 func _candles(p: Vector3, on_floor: bool) -> void:
+	if on_floor and str(theme.get("name", "")) == "bg" and CryptProps.has("candles"):
+		# the Hollow Crypt's: the Meshy candles (CryptProps.candles) along the nearest wall, on the same rolls as the
+		# wax sticks below (the server's layout depends on what follows them)
+		var turn := 0.0
+		for i in 5:
+			turn += rng.randf_range(0.12, 0.35)
+			turn += rng.randf_range(-0.25, 0.25)
+			turn += rng.randf_range(-0.25, 0.25)
+		var cg := CryptProps.candles()
+		_place(cg, p)
+		if not is_floor(p.x - 1.6, p.z):
+			cg.rotation.y = PI * 0.5           # against the west wall, the row along it, its front to the room
+		elif not is_floor(p.x + 1.6, p.z):
+			cg.rotation.y = -PI * 0.5
+		else:
+			cg.rotation.y = turn * 2.0
+		return
 	var g := Models.N(null, "candles")
 	var wax := Mats.mat(Color(0.85, 0.8, 0.65), 0.6, 0.0, Color(1.0, 0.7, 0.3), 0.1)
 	var n := 5 if on_floor else 1
@@ -2000,7 +2021,9 @@ func _wall_torch(p: Vector3, shadow: bool) -> void:
 		mm.position = Vector3(0, 2.1, 0.0)
 		g.add_child(mm)
 		_place(g, p)
-		Props.fire(g, Vector3(0, 2.1, 0) + CryptProps.SCONCE_CUP, 0.6, Color(1.0, 0.5, 0.2), true, shadow, false, "torch")
+		var f := Props.fire(g, Vector3(0, 2.1, 0) + CryptProps.SCONCE_CUP, 0.6, Color(1.0, 0.5, 0.2), true, shadow, false, "torch")
+		if str(theme.get("name", "")) == "bg":
+			CryptProps.torch_light(f)
 		return
 	Models.P(g, Geo.box(0.12, 0.3, 0.1), Props.iron(), Vector3(0, 2.2, 0.0))
 	Models.seg(g, Vector3(0, 2.1, 0), Vector3(0, 2.5, 0.3), 0.03, 0.04, Props.wood_dark(), 6)
