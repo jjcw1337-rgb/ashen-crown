@@ -155,8 +155,14 @@ func _sample() -> void:
 		"frame_p99": snappedf(float(fr[mini(n - 1, int(n * 0.99))]), 0.1), "hitches": hitches, "enemies": near.size(),
 		"boss": boss, "partners": game.net.puppets().size() if game.net.active else 0, "dead": h.dead,
 		"vram_mb": roundi(Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1e6),
-		"res": "%dx%d" % [get_viewport().get_visible_rect().size.x, get_viewport().get_visible_rect().size.y]})
+		"res": _res()})
 	_queue(samples, s)
+
+## The window in real pixels, the screen's scale and the 3D view's (Game.apply_render_scale): "3232x1800@2.0 3d0.50".
+## (Until 2026-11-02 it was the UI's size in points, which hid a Retina screen's four times the pixels.)
+func _res() -> String:
+	var w := get_window().size
+	return "%dx%d@%.1f 3d%.2f" % [w.x, w.y, DisplayServer.screen_get_scale(), get_viewport().scaling_3d_scale]
 
 ## How many bytes of a log chunk can be read now: whole lines only (the engine may be halfway through writing the
 ## last one), and not an error whose "at:" line isn't written yet. Both wait for the next read. Reading them early
