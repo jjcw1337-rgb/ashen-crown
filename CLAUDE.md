@@ -797,7 +797,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
     `crowd_cheer`, `portcullis`, `lion_roar`.
   - **Roman architecture** (`roman.gd`): materials (marble, tuff, brick, tile, bronze), `arch_mesh` (an extruded
     wall with a round opening, used by the aqueduct, the colosseum's arcade, gates), columns, colonnades, tombs,
-    milestones, statues (a Meshy Roman emperor in marble, `assets/models/roman/statue.glb`; the earlier Meshy knight `knight_statue.glb` carved in marble, `Roman.STATUE_GLB`, is the fallback), fountains, the triumphal arch, cypresses
+    milestones, statues (a Meshy Roman emperor in marble, `assets/models/roman/statue.glb`; the earlier Meshy knight `knight_statue.glb` carved in marble, `Roman.STATUE_GLB`, is the fallback), fountains, the triumphal arch, cypresses (the Meshy cypress in `World.mm_chunked` chunks)
     (MultiMesh), ruined walls. Repeating pieces go through `Props.multimesh` with their own mesh copy
     (`Roman._own`: Geo's meshes are cached and shared, never set a material on them).
   - **Monsters**: bandits (`bandit`, `bandit_archer`: the Meshy bandit on `MeshyMonster`, faction "bandit"),
