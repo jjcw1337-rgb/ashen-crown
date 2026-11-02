@@ -2,7 +2,7 @@ extends SceneTree
 ## One simulated smoke book (DemonKitFx.smoke) played on bare ground under the game camera, saved at a few moments:
 ## checks how a card stands, where it is anchored and how it blends. Needs a display and fixed frames:
 ##   xvfb-run -a godot --rendering-driver opengl3 --path . --resolution 960x540 --fixed-fps 30 \
-##     -s tools/_late.gd -- res://tools/smoke_book_shot.gd <outprefix> <kind> [size m] [secs per pass]
+##     -s tools/_late.gd -- res://tools/smoke_book_shot.gd <outprefix> <kind> [size m] [secs per pass] [zoom]
 ## Writes <outprefix>_<kind>_<frame>.png at 0.1 s steps through the book (a loop: through one pass).
 
 func _initialize():
@@ -54,7 +54,8 @@ func _run() -> void:
 	var cam := Camera3D.new()
 	cam.fov = 50.0
 	root.add_child(cam)
-	var off := Vector3(0, 17.0, 16.5) * 0.62
+	var zoom: float = float(args[4]) if args.size() > 4 else 0.62
+	var off := Vector3(0, 17.0, 16.5) * zoom
 	cam.global_transform = Transform3D(Basis(), off).looking_at(Vector3(0, 1.0, 0), Vector3.UP)
 	cam.current = true
 	var kfx = load("res://scripts/demon_kit_fx.gd")

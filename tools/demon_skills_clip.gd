@@ -3,6 +3,7 @@ extends SceneTree
 ## display (xvfb) and --fixed-fps 30 so the frames are 1/30 s apart whatever the render takes:
 ##   xvfb-run -a godot --rendering-driver opengl3 --path . --resolution 1280x720 --fixed-fps 30 \
 ##     -s tools/demon_skills_clip.gd -- <outdir> [fists|icharge|cslam|hurl|grip|wrath|all, or a list: hurl,wrath] [close|game]
+##     [quality: 0 Low (default: software GL is slow) .. 3; 2+ turns the sun's shadows back on]
 ## (In a container where tool scripts hit "Identifier not found: Sfx", go through tools/_late.gd.)
 ## Writes <outdir>/<skill>_<view>_NNN.png.
 var g
@@ -19,6 +20,7 @@ func _run() -> void:
 	var out: String = args[0]
 	var which: String = args[1] if args.size() > 1 else "all"
 	var view: String = args[2] if args.size() > 2 else "close"
+	var quality: int = int(args[3]) if args.size() > 3 else 0     # (a GPU or Forward+ through lavapipe: 2 = High)
 	while g.world == null or g._busy or g._intro_playing:
 		g._intro_skip = true
 		await process_frame
@@ -36,8 +38,8 @@ func _run() -> void:
 	g.ui.visible = false     # just the scene
 	(g.vignette.material as ShaderMaterial).set_shader_parameter("strength", 0.0)
 	# software GL under xvfb: the Low preset, no shadows and no multisampling make the frames bearable
-	g.apply_quality(0)
-	g.sun.shadow_enabled = false
+	g.apply_quality(quality)
+	g.sun.shadow_enabled = quality >= 2
 	get_root().msaa_3d = Viewport.MSAA_DISABLED
 	var close := Camera3D.new()
 	close.fov = 38
