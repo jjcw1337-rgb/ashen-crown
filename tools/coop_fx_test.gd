@@ -158,5 +158,23 @@ func _run() -> void:
 		puppet.queue_free()
 		puppet = null
 	g.net.fx_tap = Callable()
+	# PvP statuses ride in a player's state packet: his puppet on everyone else's screen shows them (PvpStatusFx)
+	_make_puppet()
+	var hh: Hero = g.hero
+	hh.pvs.clear()
+	PvpStatus.apply(hh, "snare", 1.0, 1.0)
+	PvpStatus.apply(hh, "harried", 2.0, 0.25)
+	PvpStatus.apply(hh, "blight", 4.0, 3.0)
+	puppet.apply_net_state(g.net._hero_packet(hh))
+	await process_frame
+	await process_frame
+	check(puppet.get_node_or_null("pvs_snare") != null and puppet.get_node_or_null("pvs_harried") != null and puppet.get_node_or_null("pd_fever") != null, "a player's PvP statuses show on his puppet (rooted, harried, Feverish)")
+	hh.pvs.clear()
+	puppet.apply_net_state(g.net._hero_packet(hh))
+	await process_frame
+	await process_frame
+	check(puppet.get_node_or_null("pvs_snare") == null and puppet.get_node_or_null("pvs_harried") == null and puppet.get_node_or_null("pd_fever") == null, "and leave it when they end")
+	puppet.queue_free()
+	puppet = null
 	print("[X] done, %d failed" % fails)
 	quit()

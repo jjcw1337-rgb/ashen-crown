@@ -4734,7 +4734,28 @@ class SkillGlyph extends Control:
 		var h := get_tree().get_first_node_in_group("hero") as Hero
 		return h != null and h.has_bow()
 
+	## A skill's painted icon (tools/skill_icons.py: Meshy, assets/textures/skills/<id>.png), when it has one; the
+	## Plague Doctor's cane has its own for "attack".
+	static var _painted := {}
+	static func painted(sid: String) -> Texture2D:
+		if not _painted.has(sid):
+			var path := "res://assets/textures/skills/%s.png" % sid
+			_painted[sid] = load(path) if sid != "" and ResourceLoader.exists(path) else null
+		return _painted[sid]
+
+	func _icon_id() -> String:
+		if id == "attack" and is_inside_tree():
+			var h := get_tree().get_first_node_in_group("hero") as Hero
+			if h != null and h.is_plague():
+				return "plague_attack"
+		return id
+
 	func _draw() -> void:
+		var tex := SkillGlyph.painted(_icon_id())
+		if tex != null:
+			# the painted icon fills the socket's hole, greyed while the skill is out of reach
+			draw_texture_rect(tex, Rect2(Vector2.ZERO, size), false, Color(0.42, 0.42, 0.45) if dim else Color(1, 1, 1))
+			return
 		var c := size * 0.5
 		# glyphs are drawn for a ~40 px box around the centre; scale them to whatever box this is
 		var fit := minf(size.x, size.y) / 40.0

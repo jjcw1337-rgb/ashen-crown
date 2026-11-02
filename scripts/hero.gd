@@ -93,6 +93,9 @@ var shove := Vector3.ZERO
 var daze_t := 0.0
 var fog_hidden := false     # a puppet hidden from this game by the Plague Doctor's Fog (Plague._update_visibility)
 var pvs := {}               # statuses another player put on him in PvP (PvpStatus: slow, snare, harried, reveal, blight)
+var pvs_shown := -1         # what PvpStatusFx shows of them on him (bits | blight << 4)
+var net_pvs_bits := 0       # a puppet: the statuses his game says he has (PvpStatusFx bits, in his state packet)
+var net_pvs_blight := 0     # and his Blight stacks
 var chill_t := 0.0          # Rimeclaw's cold: slowed while it lasts
 var hit_t := 0.0
 var cls := "knight"          # "knight", "wraith", "demon" or "warlock" (Data.CLASSES)
@@ -1550,6 +1553,8 @@ func _process(delta: float) -> void:
 	if not pvs.is_empty():
 		PvpStatus.update(self, delta)
 		speed *= PvpStatus.speed_mult(self)
+	if not pvs.is_empty() or pvs_shown > 0:
+		PvpStatusFx.sync(self, PvpStatusFx.bits_of(self), PvpStatusFx.blight_of(self))
 	if pd != null:
 		speed *= pd.speed_mult()     # quicker in his own fog, slower with the needle in his arm
 
@@ -1758,6 +1763,9 @@ func apply_net_state(p: PackedFloat32Array) -> void:
 	max_life = maxf(p[13], 1.0)
 	net_buff = p[14] > 0.5
 	net_boat_st = Vector4(p[16], p[17], p[18], p[19]) if p.size() >= 20 and p[15] > 0.5 else null
+	if p.size() >= 22:
+		net_pvs_bits = int(p[20])
+		net_pvs_blight = int(p[21])
 	if was_dead and not dead:
 		rig.rotation.x = 0.0
 		rig.position.y = 0.0
@@ -1790,6 +1798,8 @@ func _puppet_process(delta: float) -> void:
 	rig.rotation.y = lerp_angle(rig.rotation.y, net_yaw, k)
 	BoatRide.puppet_update(self, delta)      # a partner at sea: his boat, and him at its tiller
 	aura.emitting = net_buff
+	if net_pvs_bits != 0 or net_pvs_blight != 0 or pvs_shown > 0:
+		PvpStatusFx.sync(self, 0 if dead else net_pvs_bits, 0 if dead else net_pvs_blight)    # PvP statuses on him
 	if dead:
 		var f := clampf(dead_t / 0.7, 0.0, 1.0)
 		var fall := clampf((dead_t - 0.35) / 0.6, 0.0, 1.0)

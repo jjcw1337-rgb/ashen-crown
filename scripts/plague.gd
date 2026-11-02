@@ -577,14 +577,17 @@ func _add_blight(e: Enemy, src: String) -> void:
 	var had := srcs.size()
 	srcs[src] = BLIGHT_T
 	if srcs.size() != had:
-		PlagueFever.stacks(e, srcs.size())
 		if e.pvp_pid > 0:
+			# a player: his own game shows it (PvpStatusFx, after the server's say), on his puppet for everyone
 			PvpStatus.send(h.game, e, "blight", BLIGHT_T, float(srcs.size()))
+		else:
+			PlagueFever.stacks(e, srcs.size())
 	if srcs.size() >= 3 and float(b["fever"]) <= 0.0:
 		b["fever"] = FEVER_T
 		srcs.clear()
-		PlagueFever.stacks(e, 0)      # the marks are spent: they burst into the Fever
-		PlagueFever.fever(e, FEVER_T)
+		if e.pvp_pid <= 0:
+			PlagueFever.stacks(e, 0)      # the marks are spent: they burst into the Fever
+			PlagueFever.fever(e, FEVER_T)
 		Sfx.play_at("blight_burst", e.global_position, -6.0, 0.7)
 		if e.pvp_pid > 0:
 			PvpStatus.send(h.game, e, "blight", FEVER_T, 3.0)
@@ -608,7 +611,7 @@ func _update_blight(delta: float) -> void:
 			srcs[s] = float(srcs[s]) - delta
 			if float(srcs[s]) <= 0.0:
 				srcs.erase(s)
-		if srcs.size() != n:
+		if srcs.size() != n and e.pvp_pid <= 0:
 			PlagueFever.stacks(e, srcs.size())
 		if srcs.is_empty() and float(b["fever"]) <= 0.0:
 			blight.erase(id)
@@ -779,7 +782,8 @@ func _update_blooms(delta: float) -> void:
 			var was = was_at.get(e.get_instance_id(), null)
 			if was is Vector3 and (was as Vector3).distance_to(e.global_position) < BLOOM_STILL:
 				PvpStatus.send(h.game, e, "snare", BLOOM_SNARE + h.talent("bloom_snare"), 1.0)
-				PlagueBloomFx.lash(node, e)
+				if e.pvp_pid <= 0:
+					PlagueBloomFx.lash(node, e)     # (a player's roots are his own game's, PvpStatusFx)
 
 # ---------------------------------------------------------------- F Fog of the Forgotten
 func _fog_cast(away_from: Vector3) -> void:

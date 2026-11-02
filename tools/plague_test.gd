@@ -228,6 +228,27 @@ func _run() -> void:
 	g.test_immortal = true
 	h.life = h.max_life
 
+	# PvP statuses on a player: shown on him (PvpStatusFx), and in his state packet for his puppet everywhere else
+	h.pvs.clear()
+	PvpStatus.apply(h, "snare", 1.0, 1.0)
+	PvpStatus.apply(h, "harried", 2.0, 0.25)
+	PvpStatus.apply(h, "slow", 2.0, 0.3)
+	PvpStatus.apply(h, "reveal", 2.0, 1.0)
+	PvpStatus.apply(h, "blight", 6.0, 2.0)
+	await frames(2)
+	check(h.get_node_or_null("pvs_snare") != null and h.get_node_or_null("pvs_harried") != null and h.get_node_or_null("pvs_slow") != null and h.get_node_or_null("pvs_reveal") != null, "rooted, harried, slowed and revealed show on him")
+	var bm: Node = h.get_node_or_null("pd_blight")
+	check(bm != null and bm.get_child_count() == 2, "with his Blight marks (%d)" % (bm.get_child_count() if bm != null else -1))
+	var pk: PackedFloat32Array = g.net._hero_packet(h)
+	var want_bits: int = PvpStatusFx.SNARE | PvpStatusFx.HARRIED | PvpStatusFx.SLOW | PvpStatusFx.REVEAL
+	check(pk.size() >= 22 and int(pk[20]) == want_bits and int(pk[21]) == 2, "his state packet carries them for his puppet (%s)" % [pk.slice(20)])
+	PvpStatus.apply(h, "blight", 4.0, 3.0)
+	await frames(2)
+	check(h.get_node_or_null("pd_fever") != null and h.get_node_or_null("pd_blight") == null, "at three the marks burst into Fever")
+	h.pvs.clear()
+	await frames(2)
+	check(h.get_node_or_null("pvs_snare") == null and h.get_node_or_null("pvs_harried") == null and h.get_node_or_null("pvs_reveal") == null and h.get_node_or_null("pd_fever") == null, "and it all goes when they end")
+
 	# The Last Experiment: the vat, the crank, the burst, the quarantine and its creature
 	var ring := []
 	var espot: Vector3 = g.world.free_spot_near(h.global_position + fwd * 5.0, 1.0)

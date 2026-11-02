@@ -276,14 +276,15 @@ func _hero_packet(h: Hero) -> PackedFloat32Array:
 	return PackedFloat32Array([h.global_position.x, h.global_position.y, h.global_position.z, h.rig.rotation.y,
 		h.phase, st.get("move", 0.0), st.get("atk", -1.0), float(maxi(0, STYLES.find(st.get("style", "over")))),
 		st.get("block", 0.0), st.get("hit", 0.0), 1.0 if h.dead else 0.0, h.dead_t, h.life, h.max_life,
-		1.0 if h.buff_t > 0.0 else 0.0]) + _boat_packet(h)
+		1.0 if h.buff_t > 0.0 else 0.0]) + _boat_packet(h) + PackedFloat32Array([float(PvpStatusFx.bits_of(h)), float(PvpStatusFx.blight_of(h))])
 
-## A sailing player's boat rides along at the end of his state (aboard, x, z, yaw, speed); partners draw it
-## under his puppet (BoatRide.puppet_update). Older builds read only the first 15 numbers.
+## A sailing player's boat rides along after his state (aboard, x, z, yaw, speed; zeros ashore); partners draw it
+## under his puppet (BoatRide.puppet_update). Then the PvP statuses on him (PvpStatusFx bits, Blight stacks), so
+## everyone sees them on his puppet. Older builds read only the first 15 numbers (and the boat when aboard).
 func _boat_packet(h: Hero) -> PackedFloat32Array:
 	var b = game.boat
 	if not h.aboard or b == null or not is_instance_valid(b):
-		return PackedFloat32Array()
+		return PackedFloat32Array([0.0, 0.0, 0.0, 0.0, 0.0])
 	return PackedFloat32Array([1.0, b.global_position.x, b.global_position.z, b.yaw, b.speed])
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
