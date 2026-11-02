@@ -78,8 +78,9 @@ static func _grow(from: float) -> CurveTexture:
 
 ## A one-shot burst of `n` puffs at `pos` (world), thrown out up to `speed` and slowing (they come to rest about
 ## speed / 2 m out), each about `size` m and growing, living `life` s; `rise` lifts (or with a minus, settles) them.
-## `flat` throws them out level all round instead (a roll across the ground); `emit` gives them a glow of their own.
-static func puffs(root: Node3D, pos: Vector3, path: String, col: Color, n: int, size: float, life: float, speed: float, radius := 0.2, rise := 0.0, spread := 75.0, dir := Vector3.UP, flat := false, emit := Color(0, 0, 0)) -> GPUParticles3D:
+## `flat` throws them out level all round instead (a roll across the ground); `emit` gives them a glow of their own;
+## `from` starts each puff that far into its simulation (past a tight first ball that reads as a blob).
+static func puffs(root: Node3D, pos: Vector3, path: String, col: Color, n: int, size: float, life: float, speed: float, radius := 0.2, rise := 0.0, spread := 75.0, dir := Vector3.UP, flat := false, emit := Color(0, 0, 0), from := 0.0) -> GPUParticles3D:
 	var p := GPUParticles3D.new()
 	p.amount = maxi(n, 1)
 	p.lifetime = life
@@ -111,6 +112,13 @@ static func puffs(root: Node3D, pos: Vector3, path: String, col: Color, n: int, 
 	pm.angular_velocity_max = 20.0
 	pm.color_ramp = _ramp(col, 0.12, 0.6)
 	anim(pm, true)
+	if from <= 0.0 and path == FOG:
+		from = 0.35       # the fog simulation starts as a tight ball pushed at the floor: start where it has rolled out
+	if from > 0.0:
+		pm.anim_offset_min = from
+		pm.anim_offset_max = from
+		pm.anim_speed_min = 1.0 - from
+		pm.anim_speed_max = 1.0 - from
 	p.process_material = pm
 	var q := QuadMesh.new()
 	q.size = Vector2.ONE

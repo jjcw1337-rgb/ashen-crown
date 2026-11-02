@@ -403,7 +403,7 @@ void fragment() {
 	float across = abs(UV.x - 0.5) * 2.0;
 	float cone = smoothstep(1.02, 0.92, across / max(along, 0.001)) * smoothstep(0.0, 0.03, along);
 	float filled = smoothstep(fill + 0.03, fill - 0.03, along);
-	float front = smoothstep(0.07, 0.0, abs(along - fill)) * step(0.001, fill) * (1.0 - wet) * cone;
+	float front = smoothstep(0.1, 0.0, abs(along - fill)) * step(0.001, fill) * (1.0 - wet) * cone * (0.45 + 0.55 * a.a);
 	float ghost = (cone * 0.22 + a.a * 0.38) * filled * (1.0 - wet);
 	float splat = a.a * wet;
 	NORMAL_MAP = mix(vec3(0.5, 0.5, 1.0), texture(fan_n, pv).rgb, splat);
@@ -411,7 +411,7 @@ void fragment() {
 	ALBEDO = mix(col.rgb * 0.55, a.rgb * 0.9, wet);
 	ROUGHNESS = mix(0.6, 0.06, wet);
 	SPECULAR = 0.85;
-	EMISSION = col.rgb * (front * 1.4 + ghost * 0.45) + a.rgb * splat * 0.12;
+	EMISSION = col.rgb * (front * 0.9 + ghost * 0.45) + a.rgb * splat * 0.12;
 	ALPHA = clamp(ghost + front * 0.9 + splat, 0.0, 1.0) * fade;
 }
 """
@@ -449,8 +449,9 @@ void fragment() {
 	float f0 = floor(ft);
 	vec4 c = mix(cell(f0, UV), cell(min(f0 + 1.0, 23.0), UV), fract(ft));
 	float lum = dot(c.rgb, vec3(0.3, 0.55, 0.15));
-	ALBEDO = mix(c.rgb, tint.rgb * lum * 1.2, 0.35);
-	EMISSION = tint.rgb * lum * 0.3;
+	// the simulation's own render (its light and highlights), glowing a little so the burst reads at night
+	ALBEDO = c.rgb * 0.85;
+	EMISSION = c.rgb * 0.55 + tint.rgb * lum * 0.12;
 	ROUGHNESS = 0.08;
 	SPECULAR = 0.8;
 	ALPHA = c.a * (1.0 - smoothstep(0.7, 1.0, t));

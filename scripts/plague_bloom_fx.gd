@@ -173,7 +173,7 @@ class Bloom extends Node3D:
 		pulse_t = 1.0
 		var p := global_position
 		PlagueSmoke.spore_card(self, p + Vector3(0, 1.45, 0), Color(0.82, 0.95, 0.5, 1.0), 2.4, 1.0, 0.55)
-		PlagueSmoke.puffs(self, p + Vector3(0, 0.45, 0), PlagueSmoke.SPORE, Color(0.75, 0.9, 0.45, 0.65), 14, 1.3, 1.1, r * 2.0, 0.35, 0.25, 0.0, Vector3.UP, true, Color(0.2, 0.3, 0.08))
+		PlagueSmoke.puffs(self, p + Vector3(0, 0.45, 0), PlagueSmoke.SPORE, Color(0.75, 0.9, 0.45, 0.6), 14, 1.7, 1.2, r * 2.0, 0.35, 0.25, 0.0, Vector3.UP, true, Color(0.2, 0.3, 0.08), 0.35)
 		Fx.burst(self, p + Vector3(0, 1.2, 0), PlagueBloomFx.SPORE * Color(0.8, 0.8, 0.8), 44, 3.2, 0.05, 1.2, true, -1.5, 55.0)
 		Fx.flash(self, p + Vector3(0, 1.0, 0), PlagueBloomFx.SPORE, 0.9, 0.25, r * 1.2)
 	func wither() -> void:
@@ -293,7 +293,7 @@ void fragment() {
 	float pr = smoothstep(0.06, 0.22, wr.g - max(wr.r, wr.b)) * warn_a;
 	float wl = dot(wr.rgb, vec3(0.3, 0.55, 0.15));
 	float breathe = 0.8 + 0.2 * sin(TIME * 2.6 + d * 4.0);
-	float glow = pm * (0.4 * breathe + 0.9 * warn * warn + 2.2 * pulse) + pr * (1.2 + 1.8 * warn) + warn_a * (0.08 + 0.32 * warn) * (0.4 + 1.4 * wl);
+	float glow = pm * (0.4 * breathe + 0.9 * warn * warn + 2.2 * pulse) + pr * (1.2 + 1.8 * warn) + warn_a * (0.14 + 0.42 * warn) * (0.4 + 1.4 * wl);
 	EMISSION = vec3(0.75, 0.95, 0.3) * glow;
 	ALPHA = clamp(max(mat_a, ring_a), 0.0, 1.0) * fade;
 }

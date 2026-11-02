@@ -110,11 +110,12 @@ static func glass_mat() -> ShaderMaterial:
 	return _glass
 
 static var _gsh2: Shader
-## The same glass with both faces drawn, in `tint` (the vat's thin curved panes show their backs as they tumble).
+## The same glass with both faces drawn, in `tint` (the vat's thin curved panes show their backs as they tumble), its
+## edges catching more light so the big panes read as they fly.
 static func glass_mat_2side(tint: Color) -> ShaderMaterial:
 	if _gsh2 == null:
 		_gsh2 = Shader.new()
-		_gsh2.code = _glass_shader().code.replace("cull_back", "cull_disabled")
+		_gsh2.code = _glass_shader().code.replace("cull_back", "cull_disabled").replace("EMISSION = tint.rgb * f * 0.25;", "EMISSION = tint.rgb * (f * 0.7 + 0.06);")
 	var m := ShaderMaterial.new()
 	m.shader = _gsh2
 	m.set_shader_parameter("tint", tint)

@@ -105,7 +105,15 @@ func _run() -> void:
 						_use(h, "swarm", center + Vector3(2.5, 0, 1.0))
 				"bloom":
 					if f == 6:
-						_use(h, "bloom", center)
+						# beside the middle foe, who stands still, so its roots get him in plain view of the camera
+						var mid: Vector3 = center
+						var best := 1e9
+						for e in live:
+							var dd: float = (e.global_position - center).length()
+							if dd < best:
+								best = dd
+								mid = e.global_position
+						_use(h, "bloom", mid + Vector3(-1.7, 0, 0.5))
 				"fog":
 					if f == 8:
 						_use(h, "fog", center)
@@ -118,7 +126,12 @@ func _run() -> void:
 			if view == "close":
 				cam.current = true
 				var c: Vector3 = center.lerp(h.global_position, 0.4)
-				cam.global_transform = Transform3D(Basis(), c + Vector3(6.5, 4.2, 5.5)).looking_at(c + Vector3(0, 0.6, 0))
+				var off := Vector3(5.5, 6.0, 5.0)
+				if sk == "transfusion":
+					# a self-buff: in on him
+					c = h.global_position
+					off = Vector3(3.4, 3.0, 3.0)
+				cam.global_transform = Transform3D(Basis(), c + off).looking_at(c + Vector3(0, 0.6, 0))
 			else:
 				g.cam.current = true
 			await process_frame

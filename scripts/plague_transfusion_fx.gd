@@ -208,8 +208,8 @@ void fragment() {
 	float pulse = 0.65 + 0.35 * sin(TIME * 5.0 - lp.y * 5.0);
 	vec3 glass = vec3(0.85, 0.9, 0.95);
 	vec3 serum = vec3(1.0, 0.26, 0.2);
-	ALBEDO = mix(glass, serum, clamp(0.25 + vein * (0.5 + 0.5 * fill) * pulse + fill * 0.3, 0.0, 1.0));
-	float a = rim * (0.22 + 0.25 * fill) + vein * (0.12 + 0.5 * fill) * pulse * (0.35 + 0.65 * rim) + crack * rim * 0.3;
+	ALBEDO = mix(glass, serum, clamp(0.2 + vein * 1.2 * pulse + fill * 0.3, 0.0, 1.0));
+	float a = rim * (0.2 + 0.25 * fill) + vein * (0.3 + 0.5 * fill) * pulse * (0.5 + 0.5 * rim) + crack * rim * 0.3;
 	ALPHA = clamp(a, 0.0, 0.8) * amt;
 }
 """

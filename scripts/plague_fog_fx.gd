@@ -5,10 +5,11 @@ extends RefCounted
 ## Not a poison cloud: pale grey with a faint lavender, like smelling salts and incense, moving in slow curls. He
 ## dashes his censer down (the Meshy censer, assets/models/plague/censer.glb, held in his hand until then) and it
 ## lies there smoking while the fog billows out of it. Every puff of the fog is the Mantaflow simulation of one heavy
-## puff hitting the floor and rolling out (PlagueSmoke.FOG, played once over each puff's life), in three layers: a
-## heavy ground roll, the body, thin wisps curling off the top. Under them a soft ground layer from the Meshy cloud
-## painting (fog_base, blurred), two copies turning slowly through each other so it never sits still, thinning at the
-## rim so the edge reads; faint glinting glass-dust motes inside, and a cool light that halos what's in it. It
+## puff hitting the floor and rolling out (PlagueSmoke.FOG, played over each puff's life from where it has already
+## rolled out), in three layers: a heavy ground roll, the body, thin wisps curling off the top. Under them a ground
+## layer from the Meshy cloud painting (fog_base: its wisps kept, alpha from their brightness), two copies turning
+## against each other into churning tendrils, lit by the scene, thinning at the rim so the edge reads; faint glinting
+## glass-dust motes inside, and a cool light that halos what's in it. It
 ## billows out from the censer (the emitters' reach grows over ROLL_T) and at the end thins from the rim inward.
 ## Budgets by the graphics preset.
 
@@ -45,13 +46,13 @@ class Fog extends Node3D:
 		var q := clampi(quality, 0, 3)
 		if OS.has_feature("web"):
 			q = mini(q, 1)
-		var k: float = [0.45, 0.7, 1.0, 1.25][q]
+		var k: float = [0.55, 0.75, 1.0, 1.25][q]
 		# ground roll: big flattened puffs hugging the floor
-		layers.append(_layer(int(34 * k), 2.8, 3.8, 0.25, 0.12, PlagueFogFx.DEEP, 0.5, Vector3(0, 0.4, 0), 0.15))
+		layers.append(_layer(int(34 * k), 3.4, 5.0, 0.25, 0.12, PlagueFogFx.DEEP, 0.7, Vector3(0, 0.4, 0), 0.15))
 		# the body: the cloud itself
-		layers.append(_layer(int(46 * k), 2.8, 4.2, 0.9, 0.18, PlagueFogFx.COL, 0.42, Vector3(0, 1.2, 0), 0.3))
+		layers.append(_layer(int(46 * k), 2.8, 4.4, 0.9, 0.18, PlagueFogFx.COL, 0.6, Vector3(0, 1.2, 0), 0.3))
 		# wisps curling off the top
-		layers.append(_layer(int(22 * k), 1.4, 2.2, 1.8, 0.35, PlagueFogFx.COL.lightened(0.1), 0.26, Vector3(0, 2.1, 0), 0.6))
+		layers.append(_layer(int(22 * k), 1.4, 2.4, 1.8, 0.35, PlagueFogFx.COL.lightened(0.1), 0.32, Vector3(0, 2.1, 0), 0.6))
 		# glints: glass dust catching the light
 		var glint := Fx.aura(self, Color(0.95, 0.95, 1.0, 0.8), int(14 * k), 0.2, 0.018, 2.5, 0.05, radius * 0.7, 180.0, Vector3(0, 1.0, 0))
 		glint.name = "glints"
@@ -86,7 +87,7 @@ class Fog extends Node3D:
 			var smoke := PlagueSmoke.vapour(censer, Color(0.86, 0.86, 0.93, 0.5), 7, 0.6, 1.8, 0.5, 0.06, Vector3(0, 0.15, 0))
 			smoke.name = "smoke"
 		# the burst as it hits: a roll of the fog simulation out across the ground, and brass glints
-		PlagueSmoke.puffs(self, g + Vector3(0, 0.3, 0), PlagueSmoke.FOG, Color(0.86, 0.86, 0.92, 0.7), 12, 2.0, 1.4, 6.0, 0.3, 0.0, 0.0, Vector3.UP, true)
+		PlagueSmoke.puffs(self, g + Vector3(0, 0.3, 0), PlagueSmoke.FOG, Color(0.86, 0.86, 0.92, 0.6), 12, 2.4, 1.4, 6.0, 0.3, 0.0, 0.0, Vector3.UP, true, Color(0, 0, 0), 0.35)
 		Fx.burst(self, g + Vector3(0, 0.3, 0), Plague.BRASS, 8, 3.0, 0.03, 0.4, true, -9.0)
 	func _layer(n: int, smin: float, smax: float, rise: float, vel: float, col: Color, alpha: float, at: Vector3, life_k: float) -> GPUParticles3D:
 		var p := GPUParticles3D.new()
@@ -120,8 +121,12 @@ class Fog extends Node3D:
 		var gt := GradientTexture1D.new()
 		gt.gradient = g
 		pm.color_ramp = gt
-		# each puff plays the rolling-fog simulation once over its life: dense, then rolling out and fraying
-		PlagueSmoke.anim(pm, true)
+		# each puff plays the rolling-fog simulation over its life from where the puff has already rolled out (its
+		# first frames are a tight ball that would read as bubbles), spreading and fraying to its end
+		pm.anim_offset_min = 0.3
+		pm.anim_offset_max = 0.45
+		pm.anim_speed_min = 0.55
+		pm.anim_speed_max = 0.65
 		p.process_material = pm
 		var q := QuadMesh.new()
 		q.size = Vector2.ONE
@@ -158,7 +163,7 @@ class Fog extends Node3D:
 				return
 		bmat.set_shader_parameter("spread", roll * (0.4 + 0.6 * f))
 		bmat.set_shader_parameter("fade", f)
-		lamp.light_energy = 0.55 * roll * f
+		lamp.light_energy = 0.4 * roll * f
 
 ## A partner standing in a co-op partner's fog is drawn faded (in the Battlegrounds, enemies are hidden instead).
 static func ghostly(rig: Node3D, on: bool) -> void:
@@ -174,7 +179,7 @@ static func _base_shader() -> Shader:
 	_bsh = Shader.new()
 	_bsh.code = """
 shader_type spatial;
-render_mode unshaded, blend_mix, depth_draw_never, cull_disabled;
+render_mode blend_mix, depth_draw_never, cull_disabled, specular_disabled;
 uniform vec4 col : source_color;
 uniform float spread = 1.0;
 uniform float fade = 1.0;
@@ -184,13 +189,16 @@ vec2 turn(vec2 p, float a) { return vec2(cos(a) * p.x - sin(a) * p.y, sin(a) * p
 void vertex() { lp = UV * 2.0 - 1.0; }
 void fragment() {
 	float d = length(lp) * 1.1;
+	// the painting's wisps, two copies turning against each other: tendrils crossing and churning, lit by the scene
 	vec4 c1 = texture(cloud, turn(lp, TIME * 0.035) * 0.48 + 0.5);
 	vec4 c2 = texture(cloud, turn(lp * 1.15, -TIME * 0.028 + 1.7) * 0.48 + 0.5 + vec2(sin(TIME * 0.11), cos(TIME * 0.09)) * 0.02);
-	float n = dot(c1.rgb, vec3(0.33)) * c1.a * 0.6 + dot(c2.rgb, vec3(0.33)) * c2.a * 0.4;
-	float edge = spread * (0.92 + (n - 0.5) * 0.3);
-	float inside = smoothstep(edge, edge - 0.3, d);
-	ALBEDO = col.rgb * mix(0.5, 0.95, n);
-	ALPHA = inside * (0.05 + 0.4 * smoothstep(0.15, 0.9, n)) * fade;
+	float n = clamp(c1.a * 0.65 + c2.a * 0.55, 0.0, 1.0);
+	float edge = spread * (0.95 + (n - 0.5) * 0.3);
+	float inside = smoothstep(edge, edge - 0.5, d);
+	ALBEDO = col.rgb * (0.55 + 0.3 * n);
+	ROUGHNESS = 1.0;
+	EMISSION = col.rgb * 0.03 * n;
+	ALPHA = inside * n * n * 0.4 * fade;
 }
 """
 	return _bsh
