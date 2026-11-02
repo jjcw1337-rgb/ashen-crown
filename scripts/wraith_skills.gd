@@ -59,7 +59,8 @@ static func active(h: Hero) -> bool:
 ## The spirit-light in his blows: a part by level on top of the weapon (the same curve as the other classes' spells),
 ## so the skills keep their weight while the weapon is still small. k is the skill's share of it.
 static func spirit(h: Hero, k: float) -> float:
-	return (16.0 + h.level * 4.5 + (h.dmg_min + h.dmg_max) * 0.35) * k
+	# (the items rework: a little less from the level and more from the weapon, so gear shows; 4.5 / 0.35 before)
+	return (16.0 + h.level * 3.6 + (h.dmg_min + h.dmg_max) * 0.6) * k
 
 ## Can he be told to walk right now? The blink, the slam and the night root him.
 static func rooted(h: Hero) -> bool:

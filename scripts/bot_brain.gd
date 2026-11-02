@@ -19,6 +19,9 @@ var _last := Vector3.INF
 var _vel := Vector3.ZERO
 var _side := 1.0
 
+func _init() -> void:
+	_think = randf() * react        # (bots spawned together don't all act on the same frame)
+
 ## One frame of play. `pick` (Callable: hero -> Enemy) finds what to fight.
 func think(h: Hero, pick: Callable, delta: float) -> void:
 	Hero.striker = h

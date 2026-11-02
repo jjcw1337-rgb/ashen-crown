@@ -736,8 +736,9 @@ const PVP_GEAR_CAP := {"res": 15, "ls": 4, "ias": 20, "frw": 5, "block": 15, "ed
 ## level 20, geared, every pairing). Only player-against-player blows; monsters and PvE are untouched.
 const PVP_CLASS := {
 	"wraith": {"dmg": 0.8, "taken": 1.2},
-	"doug": {"dmg": 1.35, "taken": 0.85},
-	"warlock": {"dmg": 1.5, "taken": 0.8},
+	"doug": {"dmg": 1.5, "taken": 0.8},
+	"warlock": {"dmg": 1.3, "taken": 0.85},
+	"plague": {"dmg": 1.3, "taken": 0.9},
 	"demon": {"dmg": 1.15, "taken": 1.0},
 	"knight": {"dmg": 0.92, "taken": 1.0},
 }

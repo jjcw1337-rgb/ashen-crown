@@ -65,6 +65,9 @@ var ls := 0.0
 var res := 0
 var frw := 0
 var boss_luck := {}         # boss kind -> its kills since its last unique (-1/absent: never killed; Game._boss_loot)
+var burn_t := 0.0           # set burning by another player (PvP: a Fire Arrow, magma, a unique's burn): take_hit "burn"
+var burn_dps := 0.0
+var _burn_tick := 0.0
 var dash_t := 0.0           # a unique's "dash": faster for a moment after a dodge roll (Dodge.start)
 var regen := 0.0
 var mf := 0
@@ -1475,6 +1478,8 @@ func _hit_enemy(e, mult: float, knock: float = 0.0, src := "", flat := 0.0) -> v
 			game.hitstop(0.05)
 		game.add_shake(0.15 if not r["crit"] else 0.3)
 
+const BURN_SECS := 3.0
+
 ## The uniques' effects on a blow (Data.ITEM_EFFECTS): burning and chilling on weapon blows, life on a kill.
 func _item_effects(e, dealt: float, src: String) -> void:
 	if not is_instance_valid(e) or dealt <= 0.0:
@@ -1498,6 +1503,11 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	if puppet:
 		if game.net.is_host:
 			game.net.hit_player(peer_id, dmg, from, kind, element)
+		return
+	if kind == "burn":
+		# set alight by another player: `dmg` is the burn a second, for BURN_SECS (ticks as fire, resist counts)
+		burn_dps = maxf(burn_dps if burn_t > 0.0 else 0.0, minf(dmg, 80.0))
+		burn_t = BURN_SECS
 		return
 	if (game.test_immortal and _mine()) or phased:
 		return
@@ -1630,6 +1640,12 @@ func _process(delta: float) -> void:
 		cds[k] = maxf(0.0, cds[k] - delta)
 	buff_t = maxf(0.0, buff_t - delta)
 	dash_t = maxf(0.0, dash_t - delta)
+	if burn_t > 0.0 and not dead:
+		burn_t -= delta
+		_burn_tick -= delta
+		if _burn_tick <= 0.0:
+			_burn_tick = 0.5
+			take_hit(burn_dps * 0.5, global_position, "burnt", "fire")
 	roll_cd = maxf(0.0, roll_cd - delta)
 	ClassSkills.update(self, delta)     # every class's lingering skills (pools, the tether, lava, arrows, clouds...)
 	aura.emitting = buff_t > 0.0

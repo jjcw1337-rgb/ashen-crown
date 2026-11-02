@@ -16,6 +16,7 @@ var rounds := 4
 var cap := 60.0
 var gears: Array = ["geared"]
 var mirror := false        # also each class geared against itself fresh
+var b_first := false       # "b_first": spawn the second side first (to rule out an order bias)
 var out_path := ""
 var results := {}          # "a|b|lvl|gear" -> {wins_a, wins_b, draws, secs}
 
@@ -33,6 +34,8 @@ func _initialize():
 			gears = ["geared", "fresh"] if a.substr(5) == "both" else [a.substr(5)]
 		elif a == "mirror":
 			mirror = true
+		elif a == "b_first":
+			b_first = true
 		elif a.begins_with("out="):
 			out_path = a.substr(4)
 	SB = load("res://scripts/sandbox.gd")
@@ -82,8 +85,14 @@ func _pair(sb, ca: String, ga: String, cb: String, gb: String, lvl: int) -> void
 		sb.clear_monsters()
 		await frames(3)
 		# sides swap every round, so neither always starts on the same spot
-		var a = sb.spawn_bot(ca, lvl, ga)
-		var b = sb.spawn_bot(cb, lvl, gb)
+		var a
+		var b
+		if b_first or k % 2 == 1:          # (the spawn order alternates too: in a burst duel who acts first matters)
+			b = sb.spawn_bot(cb, lvl, gb)
+			a = sb.spawn_bot(ca, lvl, ga)
+		else:
+			a = sb.spawn_bot(ca, lvl, ga)
+			b = sb.spawn_bot(cb, lvl, gb)
 		var pa := Vector3(-4.5, 0, -2) if k % 2 == 0 else Vector3(4.5, 0, -2)
 		a.global_position = g.world.free_spot_near(pa, 1.0)
 		b.global_position = g.world.free_spot_near(Vector3(-pa.x, 0, -2), 1.0)

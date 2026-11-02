@@ -267,6 +267,14 @@ func set_soul_lit(on: bool) -> void:
 func ignite(dps: float, t: float, look := "") -> void:
 	if dead:
 		return
+	# a player's stand-in: the burn goes to them (the sandbox's hero, or a raid's player through the server)
+	if sandbox_hero != null:
+		if Hero.striker != sandbox_hero and not sandbox_hero.dead:
+			sandbox_hero.take_hit(dps * Battlegrounds.PVP_MULT, global_position, "burn", "fire")
+		return
+	if pvp_pid > 0:
+		game.net.send_pvp_dot(pvp_pid, dps * Battlegrounds.PVP_MULT, global_position)
+		return
 	burn_dps = maxf(burn_dps if burn_t > 0.0 else 0.0, dps)
 	burn_t = maxf(burn_t, t)
 	burn_look = look
@@ -274,6 +282,9 @@ func ignite(dps: float, t: float, look := "") -> void:
 		DemonFx.ignite(game.world.fx_root, self)
 
 func chill(k: float, t: float) -> void:
+	if pvp_pid > 0:
+		game.net.send_pvp_effect(pvp_pid, "chill", global_position)
+		return
 	if sandbox_hero != null:
 		if Hero.striker != sandbox_hero and not sandbox_hero.dead:
 			sandbox_hero.chill_t = maxf(sandbox_hero.chill_t, t * sandbox_hero.cc_k())
