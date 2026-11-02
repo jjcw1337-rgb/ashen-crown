@@ -3,8 +3,12 @@
 #   sh deploy/staging/deploy.sh [ssh-host]        (default ssh host alias: ashen-crown-staging)
 # 1. the Nakama module, compose file, Caddyfile and Grafana's provisioning -> /opt/ashen-crown/staging/backend,
 #    `docker compose up -d` (Nakama, PostgreSQL, Caddy for HTTPS, Grafana for the KPIs; kpi_setup.sh once first)
-# 2. the game (git archive of HEAD, no .godot cache) -> /opt/ashen-crown/staging/game, imported with Godot 4.3
-# 3. restarts the Battlegrounds (UDP 24567) and online co-op (UDP 24570) services and waits for both "server up".
+# 2. the game (git archive of HEAD, no .godot cache) -> its own release folder /opt/ashen-crown/staging/releases/<rev>-<time>,
+#    imported with Godot 4.3; then the `game` link is switched to it (atomically)
+# 3. NO restart (Blaine 2026-11-02: a deploy kicked players out of a raid and a co-op game): each running server keeps
+#    its release and moves to the new one by itself when nobody would be hurt (ServerUpdate: a raid empty or between
+#    rounds, co-op empty), systemd bringing it back. Servers that aren't running are started.
+#    --now restarts them at once (emergencies only; say so in Discord first).
 # Use --backend to do only step 1.
 set -eu
 # How many Battlegrounds raids run (Battlegrounds.RAIDS, staggered on the clock): 1 = raid I only (ashen-crown-bg);
@@ -12,7 +16,9 @@ set -eu
 # give the droplet the memory for them first; set Battlegrounds.LIVE_RAIDS to match so clients pick among them).
 BG_RAIDS=${BG_RAIDS:-1}
 ONLY_BACKEND=0
+NOW=0
 [ "${1:-}" = "--backend" ] && { ONLY_BACKEND=1; shift; }
+[ "${1:-}" = "--now" ] && { NOW=1; shift; }
 HOST=${1:-ashen-crown-staging}
 ROOT=$(git rev-parse --show-toplevel)
 REV=$(git -C "$ROOT" rev-parse --short HEAD)
@@ -42,20 +48,43 @@ COPYFILE_DISABLE=1 tar -C "$ROOT/deploy" -czf - nakama/modules staging/docker-co
   # (Loki and Alloy read their config at start)
   sudo docker compose --env-file nakama.env restart loki alloy > /dev/null 2>&1 || true'
 [ $ONLY_BACKEND = 1 ] && exit 0
-EXTRA=""
-[ "$BG_RAIDS" -ge 2 ] && EXTRA="ashen-crown-bg-raid@1"
-[ "$BG_RAIDS" -ge 3 ] && EXTRA="$EXTRA ashen-crown-bg-raid@2"
-WANT=$(( BG_RAIDS + 1 ))
+UNITS="ashen-crown-bg ashen-crown-coop"
+[ "$BG_RAIDS" -ge 2 ] && UNITS="$UNITS ashen-crown-bg-raid@1"
+[ "$BG_RAIDS" -ge 3 ] && UNITS="$UNITS ashen-crown-bg-raid@2"
+REL="$REV-$(date +%s)"
 git -C "$ROOT" archive --format=tar HEAD | ssh "$HOST" "set -e
-  sudo rm -rf /opt/ashen-crown/staging/game.new && sudo mkdir -p /opt/ashen-crown/staging/game.new
-  sudo tar -xf - -C /opt/ashen-crown/staging/game.new
-  echo $REV | sudo tee /opt/ashen-crown/staging/game.new/DEPLOYED_REV > /dev/null
-  sudo chown -R ashen:ashen /opt/ashen-crown/staging/game.new
-  sudo -u ashen /opt/ashen-crown/godot/godot --headless --path /opt/ashen-crown/staging/game.new --import > /tmp/ashen-import.log 2>&1 || true
-  sudo systemctl stop ashen-crown-bg ashen-crown-coop ashen-crown-bg-raid@1 ashen-crown-bg-raid@2 2>/dev/null || true
-  sudo rm -rf /opt/ashen-crown/staging/game && sudo mv /opt/ashen-crown/staging/game.new /opt/ashen-crown/staging/game
-  sudo systemctl daemon-reload && sudo systemctl enable --now ashen-crown-bg ashen-crown-coop $EXTRA > /dev/null
-  [ -n \"$EXTRA\" ] || sudo systemctl disable ashen-crown-bg-raid@1 ashen-crown-bg-raid@2 > /dev/null 2>&1 || true
-  sudo systemctl restart ashen-crown-bg ashen-crown-coop $EXTRA
-  for i in \$(seq 1 120); do sleep 2; n=\$(sudo journalctl -u 'ashen-crown-*' --since '-4 min' --no-pager | grep -c 'server up' || true); [ \$n -ge $WANT ] && break; done
-  sudo journalctl -u 'ashen-crown-*' --since '-4 min' --no-pager | grep '\[BG\]\|\[COOP\]' | grep 'server up\|on the clock\|FAILED' | tail -6"
+  S=/opt/ashen-crown/staging
+  sudo mkdir -p \$S/releases
+  # (once: the old single game folder becomes a release, and \$S/game a link)
+  if [ -d \$S/game ] && [ ! -L \$S/game ]; then
+    old=\$(cat \$S/game/DEPLOYED_REV 2>/dev/null || echo old)-0
+    sudo mv \$S/game \$S/releases/\$old && sudo ln -sfn \$S/releases/\$old \$S/game
+  fi
+  sudo mkdir -p \$S/releases/$REL.tmp
+  sudo tar -xf - -C \$S/releases/$REL.tmp
+  echo $REV | sudo tee \$S/releases/$REL.tmp/DEPLOYED_REV > /dev/null
+  sudo chown -R ashen:ashen \$S/releases/$REL.tmp
+  sudo -u ashen /opt/ashen-crown/godot/godot --headless --path \$S/releases/$REL.tmp --import > /tmp/ashen-import.log 2>&1 || true
+  sudo mv \$S/releases/$REL.tmp \$S/releases/$REL
+  sudo ln -sfn \$S/releases/$REL \$S/game.next && sudo mv -Tf \$S/game.next \$S/game
+  sudo systemctl daemon-reload
+  sudo systemctl enable $UNITS > /dev/null 2>&1
+  for u in ashen-crown-bg-raid@1 ashen-crown-bg-raid@2; do
+    case ' $UNITS ' in *\" \$u \"*) ;; *) sudo systemctl disable --now \$u > /dev/null 2>&1 || true ;; esac
+  done
+  started=''
+  for u in $UNITS; do
+    if [ $NOW = 1 ]; then sudo systemctl restart \$u; started=\"\$started \$u\"
+    elif ! systemctl is-active -q \$u; then sudo systemctl start \$u; started=\"\$started \$u\"
+    else echo \"\$u: running, moves to $REV by itself when nobody is playing on it\"; fi
+  done
+  if [ -n \"\$started\" ]; then
+    want=\$(echo \$started | wc -w)
+    for i in \$(seq 1 120); do sleep 2; n=\$(sudo journalctl -u 'ashen-crown-*' --since '-4 min' --no-pager | grep -c 'server up' || true); [ \$n -ge \$want ] && break; done
+    sudo journalctl -u 'ashen-crown-*' --since '-4 min' --no-pager | grep '\[BG\]\|\[COOP\]' | grep 'server up\|on the clock\|FAILED' | tail -6
+  fi
+  # old releases: keep the newest three and any a server still runs
+  cd \$S/releases && for r in \$(ls -1t | grep -v '\.tmp$' | tail -n +4); do
+    pgrep -f \"releases/\$r \" > /dev/null || pgrep -f \"releases/\$r\$\" > /dev/null || sudo rm -rf \$r
+  done
+  echo \"live: \$(readlink \$S/game)\""

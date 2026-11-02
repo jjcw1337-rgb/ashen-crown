@@ -258,6 +258,8 @@ static func start_server(g: Node, port: int) -> void:
 		print("[BG] raid %s on the clock: %d s into its period" % [RAID_NAMES[bg.raid_idx], int(bg.raid_t)])
 	print("[BG] accounts through ", "Nakama at " + nurl if bg.nk != null else "the per-PC id (no Nakama)")
 	print("[BG] server ", "up on UDP port %d" % port if err == OK else "FAILED to open port %d (error %d)" % [port, err])
+	# a new deploy waits for a quiet moment: nobody in, or between rounds (the crypt has just collapsed)
+	ServerUpdate.watch(g, "[BG]", func() -> bool: return g.net.players.is_empty() or bg.state == "reset")
 
 ## A raid of several (`--raid N`, real time): its rounds follow the clock.
 func aligned() -> bool:

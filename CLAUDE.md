@@ -1004,6 +1004,12 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   characters; what they'd risk), the live raid board, Enter the Crypt (asks first), Back / Esc. Every panel is
   `UI._ornate(panel, k, pad)` (the inventory's iron and gold frame at scale k) and every button `UI._iron_button`;
   `open_dialog` is an ornate panel over a vignette. `tools/screen_test.gd` checks it.
+- **Deploys never kick players** (Blaine 2026-11-02): `deploy/staging/deploy.sh` puts each deploy in its own
+  `/opt/ashen-crown/staging/releases/<rev>-<time>` and switches the `game` link; the services start the release the
+  link points at, resolved (`ExecStart` via `readlink -f`), and `ServerUpdate` (`scripts/server_update.gd`, every 20 s)
+  moves a running server to a new live release only when nobody would be hurt (raid: empty or between rounds; co-op:
+  empty), telling its players once (`Net.cl_bg_note`, no new RPC). `deploy.sh --now` restarts at once (emergencies;
+  announce it). `tools/server_update_test.sh` (a co-op server, two players, the link moved under them).
 - **Stamina out of combat** (jj 2026-11-02): `Hero.calm()` is 1 in a fight (a blow struck or taken, or an awake
   monster within 14 m, `_engaged`) and for `COMBAT_SECS` after, then rises to `CALM_MAX` (5) over `CALM_RAMP`;
   sprinting drains that many times slower and stamina refills that many times faster ("Rested ×N" on the bar).

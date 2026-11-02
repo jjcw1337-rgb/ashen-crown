@@ -163,7 +163,10 @@ static func _prop(w: World, isle: Dictionary, o: Vector2, name: String, l: Vecto
 	var p := Isles.at(w, isle, o, l)
 	w._place(m, p)
 	m.rotation.y = Isles.yaw(isle, yaw)
-	var r := {"troll_hut": 2.0, "troll_totem": 0.35, "raptor_pen": 0.0, "egg_nest": 1.2, "tunnel": 0.0}.get(name, 0.8) as float
-	if r > 0.0:
-		w.add_circle(p, r)
+	# footprints from the models' sizes (the glbs' bounds; fixed numbers, so a headless server collides the same)
+	var fp: Variant = {"troll_hut": 2.6, "troll_totem": 0.4, "egg_nest": 1.4, "raptor_pen": Vector2(3.0, 2.9), "tunnel": Vector2(2.9, 3.1)}.get(name, 0.8)
+	if fp is Vector2:
+		w.add_box(p, fp, m.rotation.y)
+	else:
+		w.add_circle(p, float(fp))
 

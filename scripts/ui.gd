@@ -3342,7 +3342,8 @@ func _build_title() -> void:
 	title_stage.hovering.connect(_title_hover)
 	title_stage.clicked.connect(_title_choose)
 	# while the class picker or the character list covers it, the stage stops drawing
-	title_stage.covered = func() -> bool: return (class_panel != null and class_panel.visible) or (chars_panel != null and chars_panel.visible)
+	title_stage.covered = func() -> bool: return (class_panel != null and class_panel.visible) or (chars_panel != null and chars_panel.visible) \
+		or (bg_page != null and bg_page.visible)
 	var shade := ColorRect.new()
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE

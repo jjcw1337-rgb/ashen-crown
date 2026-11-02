@@ -2,10 +2,11 @@
     python3 -I fetch_requests.py <hours> > requests.txt
 Reads the channel's last messages with the bot's REST API (token from ~/.claude/channels/discord/.env, never printed)
 and prints those of the two admins from the last <hours> hours, oldest first: time, who, text (attachments named).
-Read only: it never posts."""
+Read only: it never posts. Links and token-like strings are redacted (redact) before anything is written."""
 import datetime
 import json
 import os
+import re
 import sys
 import urllib.request
 
@@ -20,6 +21,13 @@ def token():
             if line.startswith("DISCORD_BOT_TOKEN="):
                 return line.split("=", 1)[1].strip().strip('"')
     raise SystemExit("no token")
+
+
+def redact(text):
+    """Links down to their site (one-time secret links, signed URLs and invites carry secrets in the path) and any
+    long token-like run of characters (keys pasted by mistake) replaced, so nothing secret reaches the audit."""
+    text = re.sub(r"(https?://[^/\s]+)[^\s]*", r"\1/<link removed>", text)
+    return re.sub(r"[A-Za-z0-9_\-]{24,}", "<token removed>", text)
 
 
 def main():
@@ -41,7 +49,7 @@ def main():
             who = ADMINS.get(m["author"]["id"])
             if who:
                 att = " ".join("[attachment %s]" % a["filename"] for a in m.get("attachments", []))
-                out.append((t, who, (m.get("content", "") + " " + att).strip()))
+                out.append((t, who, redact((m.get("content", "") + " " + att).strip())))
         before = page[-1]["id"]
         if stop:
             break

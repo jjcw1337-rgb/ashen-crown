@@ -10,9 +10,12 @@ Wants=network-online.target
 [Service]
 User=ashen
 Group=ashen
-WorkingDirectory=/opt/ashen-crown/staging/game
+WorkingDirectory=/opt/ashen-crown/staging
+# the release the `game` link points at when it starts, resolved, so a later deploy never changes the files under it;
+# ServerUpdate (scripts/server_update.gd) watches the link and moves to a new release when nobody is playing
+Environment=ASHEN_LIVE_DIR=/opt/ashen-crown/staging/game
 EnvironmentFile=/opt/ashen-crown/staging/bg.env
-ExecStart=/opt/ashen-crown/godot/godot --headless --path /opt/ashen-crown/staging/game -- --server --raid %i
+ExecStart=/bin/sh -c 'exec /opt/ashen-crown/godot/godot --headless --path "$$(readlink -f /opt/ashen-crown/staging/game)" -- --server --raid %i'
 Restart=always
 RestartSec=3
 StandardOutput=journal
