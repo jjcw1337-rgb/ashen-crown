@@ -44,8 +44,9 @@ const BOOKS := {
 ## how much of the books' daylight the smoke keeps in the game's dusk (fire keeps all of its own); steam rising off
 ## lava and the comet's smoke are lit from inside by their fire
 const SMOKE_LIGHT := {"impact": 0.5, "ash": 0.5, "blast": 0.5, "steam": 0.7, "comet": 0.6}
-## how strong each book's fire shows (the Crucible's burst is a big sheet of flame: it is held back)
-const FIRE_GAIN := {"blast": 0.6, "impact": 0.9}
+## each book's fire, per channel: the Crucible's burst is a big sheet of flame, held back and deepened toward the
+## Pit's red; the impact's flash toward molten rock
+const FIRE_GAIN := {"blast": Color(0.72, 0.4, 0.22), "impact": Color(0.92, 0.74, 0.56)}
 
 static var _scenes := {}
 static var _tex := {}
@@ -162,7 +163,8 @@ static func smoke(root: Node3D, pos: Vector3, kind: String, size: float, dur: fl
 	m.set_shader_parameter("mode", mode)
 	m.set_shader_parameter("axis", axis)
 	m.set_shader_parameter("smoke_light", float(SMOKE_LIGHT.get(kind, 0.5)))
-	m.set_shader_parameter("fire_gain", float(FIRE_GAIN.get(kind, 1.0)))
+	var fg: Color = FIRE_GAIN.get(kind, Color.WHITE)
+	m.set_shader_parameter("fire_gain", Vector3(fg.r, fg.g, fg.b))
 	# (an along card's head must lead; the others may be mirrored for variety)
 	m.set_shader_parameter("flip", 1.0 if mode == 2 or randf() < 0.5 else -1.0)
 	if mode == 1:
@@ -502,7 +504,7 @@ uniform int mode = 0;
 uniform vec3 axis = vec3(1.0, 0.0, 0.0);
 uniform float push = 0.0;
 uniform float smoke_light = 0.5;
-uniform float fire_gain = 1.0;
+uniform vec3 fire_gain = vec3(1.0);
 vec4 cell(float i, vec2 uv) {
 	float c = mod(i, grid.x);
 	float r = floor(i / grid.x);
