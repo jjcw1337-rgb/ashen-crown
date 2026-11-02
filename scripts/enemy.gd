@@ -470,7 +470,7 @@ func die_visual() -> void:
 	else:
 		Sfx.play_at("kill_" + material(), global_position + Vector3(0, height, 0), -1.0)
 	Fx.splat(game.world.fx_root, global_position, def.get("blood", Color(0.4, 0, 0)), 0.6 + radius)
-	Fx.burst(game.world.fx_root, global_position + Vector3(0, height * 0.8, 0), def.get("blood", Color(0.4, 0, 0)), 26, 4.0, 0.14, 0.8, false, -9.0)
+	Fx.gore(game.world.fx_root, global_position + Vector3(0, height * 0.7, 0), def.get("blood", Color(0.4, 0, 0)), radius)
 
 func apply_net_state(x: float, z: float, yaw: float, mv: float, ph: float, atk: float, style: String, hit: float, lf: float) -> void:
 	var now := Time.get_ticks_msec() / 1000.0

@@ -1,9 +1,9 @@
 extends SceneTree
-## The Plague Doctor's poison cloud or the Last Epidemic's dome on a strip of moor road at night, with four figures
+## The Plague Doctor's poison cloud, the Last Epidemic's dome or three kills' blood on a strip of moor road at night, with four figures
 ## standing in it, seen from the game camera, without loading a zone: for judging those effects in a minute.
 ## Needs a display (xvfb + software Vulkan is fine) and a fixed frame rate, so the effect's time is exact:
 ##   xvfb-run -a godot --path . --rendering-driver vulkan --resolution 960x540 --fixed-fps 30 \
-##     -s tools/visual_audit/fx_lab.gd -- out_prefix [cloud|dome] [tier] [seconds ...]
+##     -s tools/visual_audit/fx_lab.gd -- out_prefix [cloud|dome|death] [tier] [seconds ...]
 ## Writes out_prefix_<cloud|dome>_<seconds>.png (default 0.6, 1.5 and 3.0 s after it appears; tier 2 = High).
 ## Scripts are loaded at run time (they need the Sfx autoload).
 const CAM_OFFSET := Vector3(0, 17.0, 16.5)
@@ -100,10 +100,28 @@ func _run() -> void:
 	cam.basis = Basis.looking_at(Vector3(0, 0.3, 0) - cam.position, Vector3.UP)
 	for f in 3:
 		await process_frame
-	# the effect, built as plague.gd builds it
+	# the effect, built as plague.gd builds it (or a kill's blood: Fx.splat and Fx.gore, as enemy.gd's death)
 	var fx := Node3D.new()
 	root3.add_child(fx)
 	fx.global_position = Vector3.ZERO
+	if what == "death":
+		var FX: GDScript = load("res://scripts/fx.gd")
+		for k in 3:
+			var at := Vector3(-2.0 + k * 2.0, 0.0, 1.2 - k * 0.6)
+			var col: Color = [Color(0.4, 0.0, 0.0), Color(0.35, 0.03, 0.02), Color(0.15, 0.35, 0.05)][k]
+			FX.call("splat", fx, at, col, 0.6 + 0.4)
+			FX.call("gore", fx, at + Vector3(0, 1.2, 0), col, 0.4)
+		var t0 := 0.0
+		for want in times:
+			while t0 + 0.0001 < float(want):
+				await process_frame
+				t0 += 1.0 / 30.0
+			await RenderingServer.frame_post_draw
+			var path0 := "%s_%s_%s.png" % [prefix, what, str(want)]
+			get_root().get_texture().get_image().save_png(path0)
+			print("[FXLAB] ", path0)
+		quit()
+		return
 	var r := 3.0 if what == "cloud" else 9.0
 	var col: Color = PL.get_script_constant_map()["TOXIC" if what == "cloud" else "MIASMA"]
 	PF.call("miasma", fx, Vector3.ZERO, r, col)

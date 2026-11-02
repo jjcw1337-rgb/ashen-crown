@@ -487,20 +487,70 @@ static func pillar(root: Node3D, pos: Vector3, col: Color, dur: float = 1.4) -> 
 	flash(root, pos + Vector3(0, 2, 0), col, 4.0, dur, 9.0)
 
 ## Blood splat decal left on the floor.
+## A splash on the ground (a kill's blood, a stain of oil): a ragged pool with rays and drops past its edge that runs
+## out in a moment, wet and glossy, darker where it is deep, laid over the ground's bumps (SPLAT_SHADER); it dries matte
+## and soaks away over the last 14 of its 40 seconds. (It was a flat ten-sided disc.)
 static func splat(root: Node3D, pos: Vector3, col: Color, size: float = 0.8) -> void:
+	var g = root.get_tree().current_scene if root.is_inside_tree() else null
+	var w = g.world if g != null and "world" in g else null
+	var m := ShaderMaterial.new()
+	m.shader = _splat_shader()
+	m.set_shader_parameter("noise_tex", InfernalFx.noise())
+	m.set_shader_parameter("col", Color(col.r * 0.78, col.g * 0.72, col.b * 0.72))
+	m.set_shader_parameter("deep", Color(col.r * 0.3, col.g * 0.26, col.b * 0.26))
+	m.set_shader_parameter("seed", randf() * 10.0)
 	var mi := MeshInstance3D.new()
-	mi.mesh = Geo.cyl(1.0, 1.0, 0.005, 10)
-	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(col.r * 0.5, col.g * 0.5, col.b * 0.5, 0.85)
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.roughness = 0.25
+	mi.mesh = InfernalFx.disc_mesh(w, pos, size * randf_range(0.85, 1.2) * 1.6, 28, 3, 0.06)
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(mi)
-	mi.global_position = pos + Vector3(0, 0.03, 0)
-	mi.scale = Vector3(size * randf_range(0.7, 1.3), 1, size * randf_range(0.7, 1.3))
-	mi.rotation.y = randf() * TAU
-	_free_later(mi, 40.0)
+	mi.global_position = pos
+	InfernalFx.tween_param(mi, m, "spread", 0.0, 1.0, 0.18).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	InfernalFx.tween_param(mi, m, "life", 1.0, 0.0, 14.0, 26.0)
+	_free_later(mi, 40.5)
+
+static var _splat_sh: Shader
+static func _splat_shader() -> Shader:
+	if _splat_sh == null:
+		_splat_sh = Shader.new()
+		_splat_sh.code = SPLAT_SHADER
+	return _splat_sh
+
+## A kill's spray: droplets flung up and out as streaks that arc down (more from a bigger body), a few heavier drops.
+static func gore(root: Node3D, pos: Vector3, col: Color, big := 0.5) -> void:
+	var c := Color(col.r, col.g, col.b, 1.0)
+	streaks(root, pos, [[0.0, c.lightened(0.12)], [0.55, c], [1.0, Color(c.r * 0.45, c.g * 0.45, c.b * 0.45, 0.0)]],
+		int(clampf(18.0 + big * 20.0, 18.0, 40.0)), 5.2, 0.05, 3.0, 0.7, false, -12.0, 85.0, Vector3.UP, 0.4)
+	burst(root, pos, c, 8, 2.6, 0.09, 0.6, false, -11.0)
+
+## SPLAT_SHADER: on InfernalFx.disc_mesh (UV centre 0.5, rim 0.5 out). spread 0..1 runs it out, life 1..0 soaks it away.
+const SPLAT_SHADER := """
+shader_type spatial;
+render_mode blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
+uniform sampler2D noise_tex : repeat_enable, filter_linear_mipmap;
+uniform vec4 col : source_color = vec4(0.25, 0.02, 0.02, 1.0);
+uniform vec4 deep : source_color = vec4(0.09, 0.01, 0.01, 1.0);
+uniform float spread = 0.0;
+uniform float life = 1.0;
+uniform float seed = 0.0;
+void fragment() {
+	vec2 d = UV - vec2(0.5);
+	float r = length(d) * 2.0;
+	float a = atan(d.y, d.x);
+	float n = texture(noise_tex, UV * 1.6 + vec2(seed, 0.0)).r;
+	float n2 = texture(noise_tex, UV * 6.5 + vec2(0.3, seed)).r;
+	float rays = pow(abs(sin(a * 5.0 + seed * 3.0 + n * 4.0)), 18.0);
+	float edge = (0.45 + (n - 0.5) * 0.35 + rays * 0.35) * spread;
+	float pool = smoothstep(edge + 0.012, edge - 0.03, r);
+	float drops = smoothstep(0.78, 0.86, n2) * step(edge, r) * smoothstep(edge * 1.5 + 0.02, edge, r) * spread;
+	float m = max(pool, drops);
+	float thick = smoothstep(edge, edge * 0.35, r);
+	ALBEDO = mix(col.rgb, deep.rgb, clamp(thick * 0.7 + (n2 - 0.5) * 0.2, 0.0, 1.0));
+	ROUGHNESS = mix(0.12, 0.55, 1.0 - life);
+	SPECULAR = 0.7;
+	ALPHA = clamp(m * 0.92 * min(life * 1.5, 1.0) * smoothstep(1.0, 0.92, r), 0.0, 1.0);
+}
+"""
 
 ## Swirling blue town portal model.
 static func portal_model(col := Color(0.3, 0.55, 1.0)) -> Node3D:

@@ -83,7 +83,10 @@ static func fx(h: Hero, ev: Dictionary) -> void:
 		var d: Vector3 = ev.get("d", h.facing())
 		h.roll_dir = d
 	var root: Node3D = h.game.world.fx_root
-	Fx.burst(root, h.global_position + Vector3(0, 0.15, 0), Color(0.55, 0.5, 0.42, 0.55), 10, 1.6, 0.12, 0.45, false, 0.6)
+	# dust kicked up off the ground: the noise-eroded wisps of the shared skills' dust, not soft dots
+	ElementalFx._dust(root, h.global_position + Vector3(0, 0.15, 0), Color(0.55, 0.5, 0.42), 0.8, 0.42, {"amount": 4,
+		"life": 0.6, "explosive": 0.9, "shape": "sphere", "r": 0.2, "dir": Vector3.UP, "spread": 70.0, "vel": [0.3, 0.9],
+		"damping": [1.5, 2.5], "scale": [0.7, 1.1], "grow": [0.5, 1.4]})
 	SkillFx.snd(h, "swing_light", -4.0, 0.7)
 
 ## After the pose: the body tumbles forward once round its middle (the Wraith, who has no legs, swoops low instead;
