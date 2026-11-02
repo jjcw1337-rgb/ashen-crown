@@ -1452,6 +1452,9 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 			chill_t = maxf(chill_t, 4.0)
 			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Frozen", Color(0.6, 0.9, 1.0))
 			Fx.burst(game.world.fx_root, global_position + Vector3(0, 1.0, 0), Color(0.8, 0.95, 1.0), 30, 1.5, 0.15, 1.0, true, -1.0)
+		"root":
+			daze_t = maxf(daze_t, 1.2)
+			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Rooted", Color(0.55, 1.0, 0.4))
 		"shock":
 			daze_t = maxf(daze_t, 0.45)
 			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Shocked", Color(0.8, 0.6, 1.0))
