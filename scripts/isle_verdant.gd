@@ -120,6 +120,12 @@ static func _dinos(w: World, isle: Dictionary, o: Vector2) -> void:
 	add.call("raptor", Vector2(66.0, -20.0), 3, 0, 1101)
 	add.call("raptor", Vector2(34.0, 26.0), 4, 1, 1102, true)
 	add.call("raptor", CLEARINGS[0][0], 4, 1, 1103)
+	# the troll camp in the hollow: beast-tamers round their fire, with the raptors they keep
+	add.call("troll_shaman", CLEARINGS[0][0] + Vector2(2.0, 1.5), 2, 1, 1103)
+	add.call("troll_shaman", Vector2(34.0, 26.0), 1, 1, 1102)
+	var fire := Isles.at(w, isle, o, CLEARINGS[0][0])
+	Props.fire(w.props_root, fire, 1.6, Color(1.0, 0.55, 0.2), true)
+	w.add_circle(fire, 0.9)
 	# the nest in the glade: babies, and their mother waiting in the brush beside it
 	var glade: Vector2 = CLEARINGS[2][0]
 	add.call("trike_baby", glade, 3, -2, 1110)
