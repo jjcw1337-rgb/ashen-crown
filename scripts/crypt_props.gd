@@ -29,6 +29,7 @@ const SCONCE_CUP := Vector3(0.0, 0.46, 0.06)  # where the torch flame stands in 
 const BRAZIER_TOP := 0.5
 const TORCH_ENERGY := 2.4                     # the Hollow Crypt's wall torches (torch_light)
 const TORCH_RANGE := 8.5
+const PILLAR_SKIN := 0.31                     # pillar.glb's shaft: 0.30 m from its axis to each flat face
 const TILE := 12.0                            # floor and wall meshes are cut into tiles this size (lights per mesh)
 const CANDLE_WICKS := [Vector3(-0.2638, 0.271, -0.0086), Vector3(-0.1733, 0.2579, -0.0072), Vector3(-0.0988, 0.2816, -0.0115),
 	Vector3(-0.0542, 0.2228, 0.0349), Vector3(-0.0033, 0.3058, -0.0115), Vector3(0.0543, 0.2242, 0.0351),
@@ -75,6 +76,7 @@ static func pillar(h: float) -> Node3D:
 		return null
 	var k := h / PILLAR_H
 	m.scale = Vector3(minf(k, 1.0), k, minf(k, 1.0))
+	see_through(m)
 	return m
 
 ## A sarcophagus lying along z (World._sarcophagus' box footprint is 1.2 x 2.4 with the length along z).
@@ -83,6 +85,7 @@ static func sarcophagus() -> Node3D:
 	if m == null:
 		return null
 	m.rotation.y = PI * 0.5
+	see_through(m)
 	return m
 
 static func bones(yaw: float) -> Node3D:
@@ -118,23 +121,102 @@ static func archway() -> Node3D:
 	var m := model("archway")
 	if m == null:
 		return null
+	see_through(m, true)
 	set_runes(m, 0.0)
 	return m
 
+## Lights a gate's runes (the blue Meshy painted into its arch, picked out of the colour by SEE_SHADER), 0 = dark.
 static func set_runes(arch: Node3D, energy: float) -> void:
-	for mi in arch.find_children("*", "MeshInstance3D", true, false):
-		var mat := (mi as MeshInstance3D).get_active_material(0)
-		if mat is StandardMaterial3D:
-			var sm := mat as StandardMaterial3D
-			if not sm.has_meta("runes"):
-				# one material per gate (the imported one is shared by every instance)
-				sm = sm.duplicate()
-				sm.set_meta("runes", true)
-				(mi as MeshInstance3D).material_override = sm
+	for n in arch.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		for si in mi.get_surface_override_material_count():
+			var sm := mi.get_surface_override_material(si) as ShaderMaterial
+			if sm != null:
+				sm.set_shader_parameter("rune_energy", energy)
+
+# ---------------------------------------------------------------- the see-through
+const SEE_SHADER := """
+shader_type spatial;
+render_mode blend_mix, cull_back, diffuse_burley, specular_schlick_ggx;
+global uniform vec3 player_pos;
+global uniform float occlude_k;
+uniform sampler2D albedo_tex : source_color, filter_linear_mipmap_anisotropic;
+uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap_anisotropic;
+uniform sampler2D mr_tex : hint_default_white, filter_linear_mipmap;
+uniform vec4 albedo : source_color = vec4(1.0);
+uniform float roughness = 1.0;
+uniform float metallic = 0.0;
+uniform float normal_depth = 1.0;
+uniform float use_normal = 1.0;
+uniform vec3 rune_col : source_color = vec3(0.3, 0.55, 1.0);
+uniform float rune_energy = 0.0;
+varying vec3 wpos;
+float bayer2(vec2 a){ a = floor(a); return fract(a.x / 2.0 + a.y * a.y * 0.75); }
+float dith(vec2 a){ return bayer2(0.5 * a) * 0.25 + bayer2(a) + 0.03125; }
+void vertex(){
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment(){
+	// the see-through near the player, as the walls and the code-built props have (Mats PROP_SHADER)
+	vec3 d = wpos - player_pos;
+	float h = wpos.y - player_pos.y;
+	float along = d.z - occlude_k * (h - 1.0);
+	float cover = (1.0 - smoothstep(1.6, 3.2, abs(along))) * (1.0 - smoothstep(2.2, 3.6, abs(d.x)));
+	cover *= step(0.9, h) * step(0.2, d.z);
+	if (cover * 0.9 > dith(FRAGCOORD.xy)) { discard; }
+	vec3 c = texture(albedo_tex, UV).rgb;
+	ALBEDO = c * albedo.rgb;
+	vec4 mr = texture(mr_tex, UV);
+	ROUGHNESS = mr.g * roughness;
+	METALLIC = mr.b * metallic;
+	if (use_normal > 0.5) {
+		NORMAL_MAP = texture(normal_tex, UV).rgb;
+		NORMAL_MAP_DEPTH = normal_depth;
+	}
+	if (rune_energy > 0.0) {
+		// the runes Meshy painted blue into the stone light up
+		float rune = smoothstep(0.05, 0.16, c.b - max(c.r, c.g));
+		EMISSION = rune_col * rune * rune_energy * (0.85 + 0.15 * sin(TIME * 2.3 + wpos.y * 3.0));
+	}
+}
+"""
+
+## Gives a Meshy prop the see-through near the player that the crypt's walls and code-built props have: its
+## imported materials (albedo, normal and the glTF metal-rough map) redrawn by SEE_SHADER. The tall pieces needed it:
+## a hall pillar between the camera and the hero hid him. `own` = materials of its own (a gate's runes are lit
+## one gate at a time); otherwise shared by every prop drawn from the same imported material.
+static func see_through(root: Node3D, own := false) -> void:
+	for n in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.mesh == null:
+			continue
+		for si in mi.mesh.get_surface_count():
+			var src := mi.get_active_material(si) as StandardMaterial3D
+			if src == null:
+				continue
+			var key := "see_%d" % src.get_instance_id()
+			var sm: ShaderMaterial = null
+			if not own and _cache.has(key):
+				sm = _cache[key]
 			else:
-				sm = (mi as MeshInstance3D).material_override as StandardMaterial3D
-			sm.emission_enabled = energy > 0.0
-			sm.emission_energy_multiplier = energy
+				sm = ShaderMaterial.new()
+				if not _cache.has("see_shader"):
+					var sh := Shader.new()
+					sh.code = SEE_SHADER
+					_cache["see_shader"] = sh
+				sm.shader = _cache["see_shader"]
+				sm.set_shader_parameter("albedo_tex", src.albedo_texture)
+				sm.set_shader_parameter("albedo", src.albedo_color)
+				sm.set_shader_parameter("normal_tex", src.normal_texture)
+				sm.set_shader_parameter("use_normal", 1.0 if src.normal_enabled and src.normal_texture != null else 0.0)
+				sm.set_shader_parameter("normal_depth", src.normal_scale)
+				sm.set_shader_parameter("mr_tex", src.roughness_texture if src.roughness_texture != null else src.metallic_texture)
+				sm.set_shader_parameter("roughness", src.roughness)
+				sm.set_shader_parameter("metallic", src.metallic)
+				sm.set_shader_parameter("rune_col", Vector3(RUNE.r, RUNE.g, RUNE.b))
+				if not own:
+					_cache[key] = sm
+			mi.set_surface_override_material(si, sm)
 
 ## An ossuary niche: 1 m wide, its shelves of bones facing +z.
 static func niche() -> Node3D:
@@ -174,6 +256,26 @@ static func chest(yaw_deg: float) -> Node3D:
 	root.scale = Vector3.ONE * 0.75
 	m.scale = Vector3.ONE / 0.75
 	root.add_child(m)
+	# its weathered grey wood a shade lighter, and a faint warm glint over it: in the raid's dark the loot sat unseen
+	for n in m.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		var src := mi.get_active_material(0) as StandardMaterial3D
+		if src == null:
+			continue
+		var key := "chest_%d" % src.get_instance_id()
+		if not _cache.has(key):
+			var lit: StandardMaterial3D = src.duplicate()
+			lit.albedo_color = Color(1.3, 1.24, 1.16)
+			_cache[key] = lit
+		mi.set_surface_override_material(0, _cache[key])
+	var l := OmniLight3D.new()
+	l.name = "Glint"
+	l.light_color = Color(1.0, 0.78, 0.45)
+	l.light_energy = 0.6
+	l.omni_range = 2.6
+	l.omni_attenuation = 1.4
+	l.position = Vector3(0, 0.95, 0.35)
+	m.add_child(l)
 	return root
 
 ## A dead king in crypt stone: the Meshy knight statue (Roman.STATUE_GLB) under the crypt's dark stone.
@@ -712,12 +814,13 @@ static func dress(w: World) -> void:
 			(xfs[v] as Array).append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s * rng.randf_range(0.8, 1.5), s * 0.7, s)), Vector3(p.x, w.height_at(p.x, p.z) + s * 0.1, p.z)))
 	for v in xfs:
 		Props.multimesh(w.props_root, Props.rock_mesh(60 + int(v), 0.3), xfs[v], false).material_override = Mats.world(Color(0.33, 0.31, 0.29), Color(0.2, 0.19, 0.18), 0.95, 2.0, 0.2, Props.MOSS)
-	# the hall's floor seal under the champion
+	# the hall's floor seal under the champion, and torches on its pillars
 	var seal := floor_seal()
 	if seal:
 		var hc := hall.get_center()
 		w.props_root.add_child(seal)
 		seal.position = Vector3(hc.x, 0.03, hc.y)
+	hall_torches(w, hall)
 	# cobwebs where a wall meets a corner, hanging in the torchlight
 	var web := cobweb_mesh()
 	if web != null:
@@ -737,6 +840,28 @@ static func dress(w: World) -> void:
 	# dust hanging in the air of every room and the hall, seen where the light catches it
 	for r in rects:
 		dust(w, r)
+
+## Torches in sconces on every other pillar of the hall's ring (Battlegrounds.build's twelve, 11.5 m out), on the
+## face that looks most toward the seal: the middle of the hall had only the seal's glow, and the pillars stood black
+## against the north wall's torches. The sconces sit on the pillar's skin (PILLAR_SKIN), so no footprint grows.
+static func hall_torches(w: World, hall: Rect2) -> void:
+	if not has("sconce") or not has("pillar"):
+		return
+	var hc := hall.get_center()
+	for i in range(0, 12, 2):
+		var a := TAU * i / 12.0
+		var p := Vector3(hc.x + cos(a) * 11.5, 0.0, hc.y + sin(a) * 11.5)
+		var inward := Vector3(-cos(a), 0.0, -sin(a))
+		var face := Vector3(signf(inward.x), 0.0, 0.0) if absf(inward.x) > absf(inward.z) else Vector3(0.0, 0.0, signf(inward.z))
+		var g := Node3D.new()
+		g.name = "pillar_torch"
+		w.props_root.add_child(g)
+		g.position = Vector3(p.x, w.height_at(p.x, p.z), p.z) + face * PILLAR_SKIN
+		g.rotation.y = _yaw(face)
+		var mm := sconce()
+		mm.position = Vector3(0, 2.1, 0)
+		g.add_child(mm)
+		torch_light(Props.fire(g, Vector3(0, 2.1, 0) + SCONCE_CUP, 0.6, Color(1.0, 0.5, 0.2), true, false, false, "torch"))
 
 ## Dust in a room's air: motes drifting slowly, lit like everything else, so they show in the torchlight and the
 ## hero's light and vanish in the dark between.
@@ -835,7 +960,7 @@ shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_burley, specular_schlick_ggx;
 uniform sampler2D albedo_tex : source_color, filter_linear_mipmap_anisotropic;
 uniform sampler2D emit_tex : source_color, filter_linear_mipmap;
-uniform float energy = 1.8;
+uniform float energy = 1.35;
 float hash21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
 float vnoise(vec2 p){ vec2 i=floor(p); vec2 f=fract(p); vec2 u=f*f*(3.0-2.0*f);
 	return mix(mix(hash21(i),hash21(i+vec2(1.0,0.0)),u.x), mix(hash21(i+vec2(0.0,1.0)),hash21(i+vec2(1.0,1.0)),u.x), u.y); }

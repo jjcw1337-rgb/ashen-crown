@@ -18,7 +18,6 @@ func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
 	g._intro_skip = true          # (the trailer would play a minute first)
-	g.set_quality(int(OS.get_cmdline_user_args()[OS.get_cmdline_user_args().find("quality") + 1]) if OS.get_cmdline_user_args().has("quality") else 0)
 	_run()
 
 func _snap(name: String, frames := 8) -> void:
@@ -55,6 +54,8 @@ func _place(p: Vector3) -> void:
 func _run() -> void:
 	while g.world == null or g._busy or g._intro_playing:
 		await process_frame
+	# (the quality once the game has its environment: set before, it failed on a missing one)
+	g.set_quality(int(OS.get_cmdline_user_args()[OS.get_cmdline_user_args().find("quality") + 1]) if OS.get_cmdline_user_args().has("quality") else 0)
 	await g.start_game(false, "knight")
 	while g._busy:
 		await process_frame

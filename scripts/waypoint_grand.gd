@@ -284,6 +284,7 @@ func _build() -> void:
 			if nm == "crystal" or nm == "shards":
 				var piece: Node3D = n
 				piece.get_parent().remove_child(piece)
+				piece.owner = null      # (it belonged to the imported scene it leaves: Godot warned on every load)
 				if nm == "crystal" and cry_rune:
 					piece.queue_free()     # the new crystal stands in its place
 					continue
