@@ -116,7 +116,66 @@ static func _collect(n: Node, xf: Transform3D, groups: Dictionary, mats: Diction
 	for c in n.get_children():
 		_collect(c, t, groups, mats, false, deindex)
 
+## Instances spread wider than MM_CHUNK are split into MM_CHUNK-metre cells, one MultiMeshInstance3D each, so that
+## culling works per cell: a MultiMesh is culled (and picks its LOD) as one box, so a forest in one MultiMesh was drawn
+## whole into every pass that touched any of it (each shadowed lamp's six cube faces drew every tree in the zone:
+## ~100 M of the camp's 133 M primitives a frame, nightly 2026-11-02). The first cell is returned; the others copy
+## its material_override, shadow and visibility settings once the caller has set them up (`_sync_chunks`).
+static var MM_CHUNK := 16.0 if not OS.get_cmdline_user_args().has("--mmchunk") else float(OS.get_cmdline_user_args()[OS.get_cmdline_user_args().find("--mmchunk") + 1])
 static func multimesh(parent: Node3D, mesh: Mesh, xforms: Array, shadows := true) -> MultiMeshInstance3D:
+	if xforms.size() > 1 and MM_CHUNK > 0.0:
+		var lo := Vector2(INF, INF)
+		var hi := Vector2(-INF, -INF)
+		for t in xforms:
+			var o: Vector3 = (t as Transform3D).origin
+			lo = Vector2(minf(lo.x, o.x), minf(lo.y, o.z))
+			hi = Vector2(maxf(hi.x, o.x), maxf(hi.y, o.z))
+		if hi.x - lo.x > MM_CHUNK * 1.5 or hi.y - lo.y > MM_CHUNK * 1.5:
+			var cells := {}
+			for t in xforms:
+				var o: Vector3 = (t as Transform3D).origin
+				var k := Vector2i(floori(o.x / MM_CHUNK), floori(o.z / MM_CHUNK))
+				if not cells.has(k):
+					cells[k] = []
+				(cells[k] as Array).append(t)
+			if cells.size() > 1:
+				var first: MultiMeshInstance3D = null
+				var rest: Array = []
+				for k in cells:
+					var c := _multimesh_one(parent, mesh, cells[k], shadows)
+					if first == null:
+						first = c
+					else:
+						rest.append(c)
+				first.set_meta("mm_chunks", rest)
+				_sync_chunks.call_deferred(first)
+				return first
+	return _multimesh_one(parent, mesh, xforms, shadows)
+
+static func _sync_chunks(first: MultiMeshInstance3D) -> void:
+	if not is_instance_valid(first):
+		return
+	for c in first.get_meta("mm_chunks", []):
+		var mi: MultiMeshInstance3D = c
+		if not is_instance_valid(mi):
+			continue
+		mi.material_override = first.material_override
+		mi.material_overlay = first.material_overlay
+		mi.cast_shadow = first.cast_shadow
+		mi.layers = first.layers
+		mi.visibility_range_begin = first.visibility_range_begin
+		mi.visibility_range_end = first.visibility_range_end
+		mi.visibility_range_begin_margin = first.visibility_range_begin_margin
+		mi.visibility_range_end_margin = first.visibility_range_end_margin
+		mi.visibility_range_fade_mode = first.visibility_range_fade_mode
+		mi.visible = first.visible
+		for m in first.get_meta_list():
+			if m != "mm_chunks":
+				mi.set_meta(m, first.get_meta(m))
+		for gname in first.get_groups():
+			mi.add_to_group(gname)
+
+static func _multimesh_one(parent: Node3D, mesh: Mesh, xforms: Array, shadows: bool) -> MultiMeshInstance3D:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.mesh = mesh
