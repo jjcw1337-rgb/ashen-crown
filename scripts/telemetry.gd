@@ -158,6 +158,20 @@ func _sample() -> void:
 		"res": "%dx%d" % [get_viewport().get_visible_rect().size.x, get_viewport().get_visible_rect().size.y]})
 	_queue(samples, s)
 
+## How many bytes of a log chunk can be read now: whole lines only (the engine may be halfway through writing the
+## last one), and not an error whose "at:" line isn't written yet. Both wait for the next read. Reading them early
+## split one engine error into two made-up issues on the servers (triage 2026-11-02: an "at:" cut in two, and an
+## error with no "at:" that slipped past the headless renderer's filter).
+static func whole_lines(buf: PackedByteArray) -> int:
+	var end := buf.rfind(10) + 1
+	if end <= 0:
+		return 0
+	var start := buf.rfind(10, end - 2) + 1 if end >= 2 else 0
+	var last := buf.slice(start, end).get_string_from_utf8().strip_edges().trim_prefix("USER ")
+	if last.begins_with("ERROR:") or last.begins_with("SCRIPT ERROR:"):
+		return start
+	return end
+
 ## New lines of Godot's own log: every error becomes an event (fingerprinted, counted).
 func _read_log() -> void:
 	var f := FileAccess.open(LOG_FILE, FileAccess.READ)
@@ -169,9 +183,12 @@ func _read_log() -> void:
 	if len == log_pos:
 		return
 	f.seek(log_pos)
-	var text := f.get_buffer(mini(len - log_pos, 256 * 1024)).get_string_from_utf8()
-	log_pos = len
-	var lines := text.split("\n")
+	var buf := f.get_buffer(mini(len - log_pos, 256 * 1024))
+	var end := whole_lines(buf)
+	if end <= 0:
+		return
+	log_pos += end
+	var lines := buf.slice(0, end).get_string_from_utf8().split("\n")
 	for i in lines.size():
 		var l := lines[i].strip_edges().trim_prefix("USER ")     # ("USER ERROR:" / "USER SCRIPT ERROR:": from scripts)
 		var kind := ""

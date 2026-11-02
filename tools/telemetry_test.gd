@@ -62,6 +62,11 @@ func _run() -> void:
 	var mine: Array = t.errors.filter(func(e): return str(e["message"]).contains("telemetry test error"))
 	check(mine.size() == 1 and int(mine[0]["count"]) == 2, "an error from the log, fingerprinted: one issue, counted twice (%d)" % (mine[0]["count"] if mine.size() else 0))
 	check(mine.size() == 1 and mine[0]["crumbs"].back()["k"] == "boss" and mine[0]["context"].has("gpu"), "with the breadcrumbs and the PC")
+	# the log read while the engine is still writing: half a line, or an error whose "at:" isn't there yet, waits
+	var wl := func(s: String) -> int: return TM.whole_lines(s.to_utf8_buffer())
+	check(wl.call("a\nb\n") == 4 and wl.call("a\nb") == 2 and wl.call("half") == 0, "the log is read in whole lines")
+	check(wl.call("a\nERROR: x\n") == 2 and wl.call("ERROR: x\n") == 0 and wl.call("ERROR: x\n   at: f (a.h:1)\n") == 26,
+		"an error waits for its at: line")
 	# a performance sample
 	t.frames.clear()
 	for i in 120:
