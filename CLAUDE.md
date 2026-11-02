@@ -375,7 +375,9 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   in `assets/textures/plague/` (`*_albedo` + `*_normal` from `ground_decal.py`, mipmapped). Talents: Toxicology,
   Vermin and Rot, The Experiment (icons `p_*.png`, `plague_tree*.png`, painted with Meshy by `tools/talent_icons.py`; the last two trees' grids were repainted for the new kit). Tests: `tools/plague_test.gd` (`--fixed-fps 60`),
   `tools/plague_mp_test.gd` (host + join); screenshots `tools/plague_shots.gd` (`--fixed-fps 10`); the six skills in a
-  row for video: `tools/plague_kit_clip.gd -- outdir [skills|all] [game|close] [quality]` (xvfb, `--fixed-fps 30`;
+  row for video: `tools/plague_kit_clip.gd -- outdir [skills|all] [game|close] [quality]` (`fever`, `pvp` and `break`
+  are extra segments: Blight and Fever on a foe, his statuses on another player, that player breaking his bloom and
+  vat; xvfb, `--fixed-fps 30`;
   ~1.9 s a frame at 640x360 and ~5-6 s at 1280x720 on the cloud's llvmpipe, ~3-5 GB of memory: render one at a time,
   and split a 720p run of all six into two, each under the 2 h limit of a background job).
 - **Pestilence Vial** (the Plague Doctor's Q, id kept as `toxic`; 2026-11-01, branch `test-plague-kit`, first skill of

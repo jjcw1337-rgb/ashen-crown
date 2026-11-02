@@ -767,6 +767,7 @@ func _update_blooms(delta: float) -> void:
 			if is_instance_valid(node):
 				node.wither()
 			continue
+		PvpObjects.keep_on(b.get("proxy"), b["pos"])
 		var age: float = b["age"]
 		if not bool(b.get("warned", false)):
 			if age >= float(b["next"]):
@@ -1023,6 +1024,7 @@ func _update_exp(delta: float) -> void:
 		lab["t"] = float(lab["t"]) + delta
 		node.charge(clampf(float(lab["t"]) / float(DUR["crank"]), 0.0, 1.0))
 		if ghost():
+			PvpObjects.keep_on(lab.get("proxy"), lab["pos"])
 			return
 		# interrupted: a stun, another move, or walking away from the vat
 		var cranking: bool = h.atk_t >= 0.0 and h.atk_skill == "crank"
@@ -1041,9 +1043,7 @@ func _update_exp(delta: float) -> void:
 	var r: float = lab["r"]
 	node.creature_step(delta, _creature_foes(pos, r), pos, r)
 	if ghost():
-		var cp = lab.get("cproxy")
-		if cp != null and is_instance_valid(cp):
-			(cp as Node3D).global_position = node.c_pos
+		PvpObjects.keep_on(lab.get("cproxy"), node.c_pos)
 		return
 	lab["tick"] = float(lab["tick"]) - delta
 	if float(lab["tick"]) <= 0.0:

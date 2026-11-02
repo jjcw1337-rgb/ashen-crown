@@ -58,6 +58,11 @@ static func set_left(e, left: int) -> void:
 	if left <= 0:
 		drop(e)
 
+## Keeps a stand-in on its thing (every frame on the ghost: a skill that pulls or throws monsters moves it too).
+static func keep_on(e, at: Vector3) -> void:
+	if e != null and is_instance_valid(e):
+		(e as Node3D).global_position = at
+
 static func drop(e) -> void:
 	if e != null and is_instance_valid(e):
 		(e as Enemy).dead = true
