@@ -199,14 +199,14 @@ share again. Basis Universal sits between. Not changed; worth measuring before A
 
 | Kind | Count | Notes |
 |---|---|---|
-| 3D models (.glb) | 101 | 8 hero bodies + statue, 3 dragons, 1 boss, 22 monsters, 6 NPCs, 18 camp, 5 fort, 5 isles, 1 boat, 6 lairs, 5 trees, 7 grass species, 4 title, 3 materials, 4 Plague Doctor props, bow, 3 arrows, debris. 2.04 M triangles, 290 MB |
+| 3D models (.glb) | 117 | At the audit 101 (8 hero bodies + statue, 3 dragons, 1 boss, 22 monsters, 6 NPCs, 18 camp, 5 fort, 5 isles, 1 boat, 6 lairs, 5 trees, 7 grass species, 4 title, 3 materials, 4 Plague Doctor props, bow, 3 arrows, debris; 2.04 M triangles, 290 MB); since then the three Meshy bosses (stage 3) and the 13 staging added (Verdant Isle dinosaurs and props, the dwarf, the troll tamer, the two Battlegrounds bosses): 2.41 M triangles |
 | Loose textures | 191 | fx flipbooks 18, grass atlas 15, UI 26, talent icons 120, items 3, Plague dyes 5, ranger 4 |
 | Code-built visuals | ~30 systems | terrain, roads, procedural trees/bushes/ferns, rocks, Roman architecture, small props, waypoint, ocean, weather, the humanoid body (3 bosses/elites and the unreachable legacy acts), sculpted goblins |
 | Effects | 11 scripts | FireFx and ArrowFx/InfernalFx/DemonFx (custom shaders, flipbooks) vs KnightFx/WarlockFx/SharedFx/Fx (generic) |
 | Animations | mocap heroes (14-27 clips), Meshy monsters code-posed on `Goblin.imported_rig`, Feral/NPCs/dragons with baked clips | |
 
 The full list with every asset's numbers, scores, priority, actions and status is
-[`checklist.csv`](checklist.csv) (132 rows).
+[`checklist.csv`](checklist.csv) (146 rows: every model, the 13 that staging added the same night included, and the code-built systems).
 
 ## 5. Quality by category
 

@@ -1,17 +1,4 @@
 asset,category,kind,tris,texture,uv_islands,uv_coverage,normal_tilt,albedo,geometry,silhouette,texture_q,material,animation,lod,consistency,performance,overall,priority,actions,status,notes
-isles/verdant/egg_nest.glb,isles,glb,7999,,,,,,,,,,,,,,,,,Not inspected,added after the audit
-isles/verdant/raptor_pen.glb,isles,glb,10000,,,,,,,,,,,,,,,,,Not inspected,added after the audit
-isles/verdant/troll_hut.glb,isles,glb,12000,,,,,,,,,,,,,,,,,Not inspected,added after the audit
-isles/verdant/troll_totem.glb,isles,glb,6000,,,,,,,,,,,,,,,,,Not inspected,added after the audit
-isles/verdant/tunnel.glb,isles,glb,11999,,,,,,,,,,,,,,,,,Not inspected,added after the audit
-monsters/dino/baby_trike.glb,monsters,glb,15000,,,,,,,,,,,,,,,,,Not inspected,added after the audit
-monsters/dino/raptor.glb,monsters,glb,29998,,,,,,,,,,,,,,,,,Not inspected,added after the audit
-monsters/dino/trex.glb,monsters,glb,44999,,,,,,,,,,,,,,,,,Not inspected,added after the audit
-monsters/dino/triceratops.glb,monsters,glb,29999,,,,,,,,,,,,,,,,,Not inspected,added after the audit
-monsters/dwarf.glb,monsters,glb,22000,,,,,,,,,,,,,,,,,Not inspected,added after the audit
-monsters/hermit.glb,monsters,glb,28000,,,,,,,,,,,,,,,,,Not inspected,added after the audit
-monsters/ice_troll.glb,monsters,glb,40000,,,,,,,,,,,,,,,,,Not inspected,added after the audit
-monsters/troll_shaman.glb,monsters,glb,22000,,,,,,,,,,,,,,,,,Not inspected,added after the audit
 "culling and LOD (multimesh chunks, LODs)",rendering,code,,,,,,,,,,,,2,3,2,2.3,P1,O B,In-game testing,Camp chunked and the hidden portrait stopped (stage 1). No Meshy model has LODs (UV atlas).
 "lighting and grade (Game._zone_env, Grade)",rendering,code,,,,,,,,,,3,,3,3,3,3.0,P1,S,In-game testing,Low contrast and lifted blacks (fog); the hero is hard to read on dark ground. Rim light now in every zone (stage 2); grading per zone needs a real-GPU pass.
 "shadows (sun cascades, omni budget)",rendering,code,,,,,,,,,,4,,4,4,4,4.0,P1,O,In-game testing,"Cascades fitted to the camera, fire shadows under the budget (stage 1)."
@@ -31,6 +18,7 @@ grubb_mutant.glb,bosses,glb,80268,2048,1198,71.6,5.9,0.279,4,5,3,2,3,2,4,3,3.2,P
 plague skills (Plague),vfx,code,,,,,,,3,3,3,3,3,4,3,4,3.2,P2,S T,Inspected,"Flask, mixture, trap, epidemic effects in plague.gd."
 knight skills (KnightFx),vfx,code,,,,,,,4,4,3,3,3,4,4,4,3.6,P2,S,In-game testing,"Stage 2: Holy Nova, Battle Cry and Charge rebuilt from the knight's own visual language (HolyFx: a sacred seal drawn on the ground, gold-and-white holy fire rings, a streaked light column, a screen-space shockwave, sunbursts, motes, a glinting charge trail), so the default class no longer looks like everyone's recoloured bursts. Needs a real-GPU look at speed."
 "weapon trail and hit flash (Hero, Enemy)",vfx,code,,,,,,,,3,3,4,3,4,4,4,3.6,P2,S,In-game testing,"Every class's swing and every struck foe. The trail was additive at 55-90% across its whole width (a flat white band in Forward+); staging fixed it the same night (Hero._trail_shader, 00e1d19: hot edge, soft body, Catmull-Rom). The hit flash was flat unshaded white (paper cut-outs); now rim-weighted and fading, so the body keeps its shape (Enemy.FLASH_SHADER, stage 2)."
+isles/verdant/egg_nest.glb,isles,glb,7999,1024,2526,46.3,13.5,0.286,2,3,3,2,,2,3,3,2.6,P3,B,Needs improvement,"Raptor nest: the decimation left a crumpled shard soup (2,526 islands); reads as twigs from afar, poorly up close."
 small props (Props.crate/barrel/log_pile/pot/...),environment,code,,,,,,,2,2,2,2,,3,3,4,2.6,P3,M,Needs improvement,Code-built clutter where no Meshy set piece replaced it.
 monsters/archer.glb,monsters,glb,24000,1024,1301,68.5,7.1,0.289,3,3,3,2,3,2,3,3,2.8,P3,T,In-game testing,Bone Archer: flat normals (1.6 deg) -> generated.
 monsters/fallen.glb,monsters,glb,18000,1024,584,69.9,7.1,0.219,3,3,3,2,3,2,3,3,2.8,P3,T,In-game testing,Plain red imp (base Fallen): flat normals -> generated. Low detail next to its three variants.
@@ -57,6 +45,7 @@ lairs/fire_tree.glb,lairs,glb,9000,1024,425,68.9,7.1,0.145,3,4,3,2,,2,4,4,3.1,P3
 lairs/ice_crystals.glb,lairs,glb,6000,1024,534,65.3,7.1,0.434,3,4,3,2,,2,4,4,3.1,P3,T,In-game testing,Ice crystals: weak normals -> generated.
 lairs/storm_stone.glb,lairs,glb,5000,1024,395,64.8,7.1,0.237,3,4,3,2,,2,4,4,3.1,P3,T,In-game testing,Storm rune stone: flat normals -> generated.
 lairs/storm_tree.glb,lairs,glb,9000,1024,2363,43.5,7.1,0.254,3,4,3,2,,2,4,4,3.1,P3,T,In-game testing,Storm tree: flat normals -> generated.
+monsters/dino/trex.glb,monsters,glb,44999,2048,775,58.5,6.4,0.273,4,4,3,3,3,2,4,2,3.1,P3,O,Inspected,"Gorehide the Tyrant: bony, spiked-tail T-rex; strong silhouette. 45k tris is heavy for a roaming boss (no LOD)."
 plague/flask.glb,plague,glb,3000,512,301,66.9,7.2,0.284,3,4,3,2,,2,4,4,3.1,P3,B T,In-game testing,Toxic Flask: faceted round glass; flat normals -> generated.
 plague/volatile.glb,plague,glb,3000,512,478,62.2,7.2,0.416,3,4,3,2,,2,4,4,3.1,P3,B T,In-game testing,Volatile Mixture: faceted; flat normals -> generated.
 roads (World.road_style),environment,code,,,,,,,3,3,3,3,,3,3,4,3.1,P3,T,Inspected,The paved Old Kingsroad and trails: procedural.
@@ -84,6 +73,13 @@ shared skills (SharedFx),vfx,code,,,,,,,4,4,3,3,3,4,4,4,3.6,P3,S,In-game testing
 warlock skills (WarlockFx),vfx,code,,,,,,,4,4,3,3,3,4,4,4,3.6,P3,S,In-game testing,"Drain Life's beam was already custom. Stage 3: Blight Bolt's burst (a ring of fel fire, a pale flare, sickly smoke, splashing blight, souls rising), Soul Shackles' cast (his sigil turning under him, shadow and fel sparks pulled in from the edge of its reach, the air shuddering) and Fel Covenant (a big sigil, a crown of fel fire roaring up round him, souls spiralling up) replace the generic ring, burst and pillar; fel fire is InfernalFx's flame in the Warlock's palette."
 wraith skills (WraithFx),vfx,code,,,,,,,4,4,3,3,3,4,4,4,3.6,P3,S,In-game testing,"Had one custom shader (the night floor) and 20 generic bursts and 8 rings. Stage 3: his spirit light streaks out as curling wisps (quads stretched along their flight, cyan to violet), shadow rolls as soft smoke, and every ring is a ripple of soul-mist racing over the ground (WraithFx._spirit_burst, _soul_ring), so none of his skills uses the shared shapes."
 legacy acts 2-4 monsters,monsters,code,,,,,,,2,2,2,2,2,2,2,3,2.1,P4,,Inspected,"raider, mummy, scarab, sekhmun, fetish, spider, lizardman, vael, imp, hell_knight, doom_caster, malgoroth: code-built; their acts (Data.ACTS 1-3) are not reachable."
+isles/verdant/raptor_pen.glb,isles,glb,10000,1024,3196,47.7,16.2,0.334,3,4,3,3,,2,4,3,3.1,P4,,Inspected,Stake pen: good.
+isles/verdant/troll_hut.glb,isles,glb,12000,1024,5831,54.2,17.7,0.35,3,4,3,3,,2,4,3,3.1,P4,,Inspected,Thatched troll hut: shard-like thatch but reads as a hut. 12k tris.
+isles/verdant/tunnel.glb,isles,glb,11999,1024,2959,57.2,13.6,0.22,3,4,3,3,,2,4,3,3.1,P4,,Inspected,"Vine-hung rock tunnel: faceted rock up close, fine in play."
+monsters/dino/raptor.glb,monsters,glb,29998,2048,1256,63.9,7.0,0.201,4,4,3,3,3,2,4,3,3.2,P4,,Inspected,"Feathered raptor (Verdant Isle packs): detailed, dark (colour map 0.20); posed in code (theropod.gd). 30k tris, 2K."
+monsters/dino/triceratops.glb,monsters,glb,29999,2048,360,62.7,4.6,0.232,4,4,3,3,3,2,4,3,3.2,P4,T,Inspected,Mother triceratops: good; weak normal map (4.6 deg).
+monsters/dwarf.glb,monsters,glb,22000,1024,4347,59.5,10.6,0.298,4,4,3,3,3,2,4,3,3.2,P4,,Inspected,"The Drunken Dwarf: hammer, fur cape, braided beard; reads well. 22k tris."
+monsters/troll_shaman.glb,monsters,glb,22000,1024,2012,64.0,7.1,0.261,4,4,3,3,3,2,4,3,3.2,P4,,Inspected,"Troll Beast-Tamer: feathered headdress, tribal straps; dark at game distance. 22k tris."
 camp/alchemy.glb,camp,glb,24000,1024,4042,56.1,13.8,0.308,4,4,3,3,,2,4,3,3.3,P4,,Inspected,"Alchemist's stall (herbs, potion shelves, cauldron): good."
 camp/armory.glb,camp,glb,22000,1024,2444,56.8,7.3,0.289,4,4,3,3,,2,4,3,3.3,P4,,Inspected,Armory stall: good.
 camp/forge.glb,camp,glb,24000,1024,2692,59.5,7.8,0.209,4,4,3,3,,2,4,3,3.3,P4,,Inspected,Forge: good.
@@ -94,6 +90,7 @@ camp/wagon.glb,camp,glb,22000,1024,2134,58.8,7.8,0.235,4,4,3,3,,2,4,3,3.3,P4,,In
 fort/hall.glb,fort,glb,19239,1024,2715,58.0,10.6,0.19,4,4,3,3,,2,4,3,3.3,P4,,Inspected,Longhouse: good.
 isles/beacon.glb,isles,glb,15000,1024,1730,61.4,9.9,0.276,4,4,3,3,,2,4,3,3.3,P4,,Inspected,Lighthouse tower: good.
 isles/temple.glb,isles,glb,20000,1024,5465,62.1,13.3,0.366,4,4,3,3,,2,4,3,3.3,P4,,Inspected,Overgrown temple: good.
+isles/verdant/troll_totem.glb,isles,glb,6000,1024,2128,47.2,9.7,0.299,3,4,3,3,,2,4,4,3.3,P4,,Inspected,Feathered totem: good.
 isles/wreck.glb,isles,glb,20000,1024,3487,55.0,11.0,0.237,4,4,3,3,,2,4,3,3.3,P4,,Inspected,Shipwreck: good.
 plague/cane.glb,plague,glb,5999,1024,411,60.6,7.1,0.316,4,4,3,2,,2,4,4,3.3,P4,T,In-game testing,Plague Doctor's cane: flat normals -> generated.
 plague/trap.glb,plague,glb,4000,1024,626,56.0,7.1,0.419,3,4,3,3,,2,4,4,3.3,P4,T,In-game testing,Pestilent Trap: flat normals -> generated; its iron lifted to 0.42 (metal_lift.py).
@@ -114,12 +111,14 @@ camp/woodpile.glb,camp,glb,9000,1024,719,64.2,21.4,0.204,4,4,3,3,,2,4,4,3.4,P4,,
 fx/rock_chunks.glb,fx,glb,648,0,,,,,3,3,3,3,,4,4,4,3.4,P4,,Inspected,Untextured debris chunks for slams (coloured in code).
 isles/mono.glb,isles,glb,8000,1024,985,62.8,4.8,0.223,4,4,3,3,,2,4,4,3.4,P4,,Inspected,Rune monolith: good.
 isles/store.glb,isles,glb,12000,1024,3044,53.3,7.7,0.167,4,4,3,3,,2,4,4,3.4,P4,,Inspected,Timber store house: good.
+monsters/dino/baby_trike.glb,monsters,glb,15000,2048,198,61.6,5.8,0.372,4,4,3,3,3,2,4,4,3.4,P4,,Inspected,"Baby triceratops: charming, clean (198 UV islands). 15k tris."
 monsters/fallen_reaver.glb,monsters,glb,20000,1024,2542,65.3,6.7,0.248,4,4,3,4,3,2,4,3,3.4,P4,,In-game testing,"Armoured demon brute: good; its dark iron lifted to 0.42 (metal_lift.py, stage 2)."
 monsters/feral1.glb,monsters,glb,24921,1024,1150,63.6,9.5,0.28,4,4,3,3,4,2,4,3,3.4,P4,,Inspected,Feral crawler (baked clips): good; five colour/costume variants.
 monsters/feral2.glb,monsters,glb,24791,1024,1509,64.4,10.2,0.25,4,4,3,3,4,2,4,3,3.4,P4,,Inspected,Feral variant (red).
 monsters/feral3.glb,monsters,glb,24779,1024,1786,65.6,11.0,0.265,4,4,3,3,4,2,4,3,3.4,P4,,Inspected,Feral variant.
 monsters/feral4.glb,monsters,glb,24994,1024,1025,65.6,10.6,0.317,4,4,3,3,4,2,4,3,3.4,P4,,Inspected,Feral variant (blue-grey).
 monsters/feral5.glb,monsters,glb,24847,1024,1612,62.8,10.6,0.244,4,4,3,3,4,2,4,3,3.4,P4,,Inspected,Feral variant.
+monsters/hermit.glb,monsters,glb,28000,1024,4506,61.7,9.5,0.286,4,5,3,3,3,2,4,3,3.4,P4,,Inspected,"Old Mossbeard, the thorn hermit (Battlegrounds boss): mushroom cap and moss beard, a memorable silhouette. 28k tris."
 npc/grisold.glb,npc,glb,30989,1024,577,69.0,5.2,0.231,4,4,3,3,4,2,4,3,3.4,P4,,Inspected,Blacksmith: good; baked idle/talk clips.
 npc/hedda.glb,npc,glb,31118,1024,639,67.3,7.3,0.217,4,4,3,3,4,2,4,3,3.4,P4,,Inspected,Armourer: good.
 npc/maeve.glb,npc,glb,30875,1024,2424,62.1,10.4,0.239,4,4,3,3,4,2,4,3,3.4,P4,,Inspected,"Hooded alchemist: good, very dark."
@@ -129,6 +128,7 @@ npc/tarrow.glb,npc,glb,29885,1024,1967,60.5,7.1,0.293,4,4,3,3,4,2,4,3,3.4,P4,,In
 ranger_bow.glb,misc,glb,8999,1024,320,50.9,3.2,0.255,4,4,3,3,,2,4,4,3.4,P4,,Inspected,The ranger's bow: fine.
 title/crown.glb,title,glb,15999,1024,476,66.9,3.6,0.189,4,4,3,3,,2,4,4,3.4,P4,,Inspected,The crown: fine.
 weather (Weather),environment,code,,,,,,,3,3,3,3,3,4,4,4,3.4,P4,,Inspected,Snow and ash particles.
+monsters/ice_troll.glb,monsters,glb,40000,2048,1452,68.3,7.3,0.36,4,5,4,3,3,2,4,3,3.5,P4,,Inspected,"Hrimgar the Frostbound (Battlegrounds boss): ice crystals down the back, strong. 40k tris, 2K."
 title screen (TitleStage),screens,code,,,,,,,4,4,4,3,3,3,4,3,3.5,P4,,Inspected,The Gate of the Ashen Crown at dusk.
 title/colossus.glb,title,glb,22874,2048,405,58.2,6.5,0.194,4,5,4,3,,2,4,3,3.6,P4,,Inspected,Crowned king bust: excellent.
 "HUD and windows (UI, Meshy frames)",ui,code,,,,,,,,4,4,,3,,4,4,3.8,P4,,Inspected,"D4-style HUD, globes, Meshy-painted frames, skill and talent icons."
