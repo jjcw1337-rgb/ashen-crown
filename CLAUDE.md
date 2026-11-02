@@ -628,8 +628,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   textures) built by `Flora.oak_model(k)` with `MESHY_TREE_SHADER` (wind sway by height, snow/ash, see-through near the
   player) plus the game's leaf clusters (`OAK_LEAVES`); the moor is ~40% oaks with groves off the road. Grass is
   the **living 3D grass** (`scripts/grass.gd` `Grass`, `scripts/grass_field.gd` `GrassField`; Act I's camp, moor and
-  fort, i.e. whenever `oak_forest`, and A2's road and Aurelia in their own sun-dried colours, `World.living_grass`;
-  A3 keeps the old blade clumps): seven species built in code (`Grass.SPECIES`:
+  fort, i.e. whenever `oak_forest`; since the visual overhaul A2 and A3 too, `World.living_grass`, in the zone's own
+  colours, A3's charred by the shader's `ash_amt`; the old blade clumps remain only as the fallback): seven species built in code (`Grass.SPECIES`:
   meadow, tall seed-head grass, tussock, dry straw, moss with clover, broad-leaved weeds, sparse verge grass)
   **modelled in Blender on Meshy textures**: four Meshy botanical sheets (green blades, dry straw, seed heads and
   wildflowers, broad leaves; `meshy.py draw "... laid flat side by side ..." --cutout`, ~6 credits each, the prompts
