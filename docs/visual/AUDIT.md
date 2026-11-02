@@ -1,17 +1,18 @@
 # Ashen Crown: visual quality audit and overhaul
 
-Nov 1-2, 2026 · on `test-visual-overhaul` (from `staging` 1fb8d09) · jj's brief: a complete visual overhaul toward
+Nov 1-2, 2026 · on `test-visual-overhaul` (from `staging` 1fb8d09, staging merged in up to df8961c) · jj's brief: a complete visual overhaul toward
 Diablo IV / Path of Exile 2 / Guild Wars 2, every asset inspected, Meshy and Blender with no limit, a measured
 baseline first.
 
-**Status (Nov 2, early morning):** stage 1 (rendering foundation), stage 2 (the knight's holy skill effects, the hit
+**Status (Nov 2, morning):** stage 1 (rendering foundation), stage 2 (the knight's holy skill effects, the hit
 flash every monster uses, the rim light in every zone, steel that reflects on the armoured knight, detail normal maps
 for 27 models), stage 3 (Meshy models for Aurelius, the arena gladiators and the Ashen King, the camp's lantern and
 palisade, the shared skills', Warlock's and Wraith's own effects, the monsters' heavy blows) and stage 4 (worn
-flagstones, Meshy rocks, kerbstones and clutter, A2's living grass, new telegraphs, the Plague Doctor's own effects
-and the last generic accents of the Demon, Warlock and Archer) are done, tested headless and committed on
-`test-visual-overhaul` (merged with staging's 21 newer commits). Nothing is approved yet: every change still needs
-jj's look on a real GPU (the preview build). Meshy spent by the overhaul: 1,008 credits (balance 1,043).
+flagstones, pebbles and fallen leaves, Meshy rocks, kerbstones, clutter, Roman pieces and A2's aqueduct, the living
+grass in Acts II and III, new telegraphs, the Plague Doctor's own effects and clouds, and the last generic accents
+of the Demon, Warlock and Archer) are done, tested headless and committed on `test-visual-overhaul`, merged with
+staging up to df8961c. Nothing is approved yet: every change still needs jj's look on a real GPU (the preview
+build). Meshy spent by the overhaul: 1,008 credits (balance 1,043).
 
 ## Summary
 
@@ -244,16 +245,16 @@ Scores 1-5 against the D4/PoE2 bar at the game camera (detail per asset in the c
 
 | Category | Mean | What's good | What holds it back |
 |---|---|---|---|
-| Heroes (8) | 3.3 | Strong, distinct designs (demon, gnome, plague doctor, wraith); motion capture | Near-black albedo, weak or flat normals (gnome, armoured knight), no LODs, 45-70k tris |
-| Bosses (3) | 2.5 | King Grubb | Aurelius and the Ashen King are code-built placeholders |
-| Monsters (22) | 3.1 | Bear, Sloths, Ferals, Fallen variants | Flat normals (zombie, fallen, goblin guard, archer, sloths); gladiators missing; code-posed A-poses |
+| Heroes (8) | 3.3 → 3.4 | Strong, distinct designs (demon, gnome, plague doctor, wraith); motion capture; the armoured knight's steel and the rim light (stage 2) | Dark colour maps on some, no LODs, 45-70k tris |
+| Bosses (3) | 2.5 → 3.5 | King Grubb; Aurelius and the Ashen King as Meshy models on the monster rig, the King's glowing cracks (stage 3) | The A-pose rig stretches skirts and the mantle in big swings; no baked animations |
+| Monsters (22, 32 with staging's) | 3.1 → 3.2 | Bear, Sloths, Ferals, Fallen variants; detail normals where Meshy's were flat (stage 2); the gladiators (stage 3) | Code-posed A-poses; no LODs |
 | NPCs (6) | 3.4 | Six distinct traders with clips | Dark; no LODs |
-| Camp (18) | 3.2 | Stalls, gate, re-baked set pieces | Palisade and lantern are shard soups (512/256 px) |
+| Camp (18) | 3.2 → 3.4 | Stalls, gate, re-baked set pieces; the palisade and lantern re-made and re-baked (stage 3) | Dark ground at night (the fallen leaves help) |
 | Fort, isles, lairs, title (20) | 3.2 | Solid Meshy architecture | Flat normals (fort, lairs); facets on rocks |
-| Trees (5) | 2.6 | The dead tree | Oaks and old pine: crumpled shard canopies |
-| Grass (7) | 3.9 | Living 3D grass with wind and touch | A2/A3 still on the old clumps |
-| Environment (code) | 3.0 → 3.2 | Ocean, roads, the worn flagstones, Meshy rocks, kerbs, clutter and Roman set pieces (stage 4) | Meadow and dirt without material textures or decals, procedural pines, Aurelia's buildings, aqueduct and walls |
-| Effects | 3.3 → 3.7 | Fire, Fire Arrow, the Demon; every class's own language (stages 2-4) | The generic Fx a few monsters and items still share; everything still to be judged at full speed on a real GPU |
+| Trees (5) | 2.6 → 2.9 | The dead tree; the oaks read as full trees in play under the game's leaf clusters | The old pine's shard canopy; the procedural pines |
+| Grass (7) | 3.9 | Living 3D grass with wind and touch, now in Acts II and III too (stage 4) | Nothing major |
+| Environment (code) | 3.0 → 3.3 | Ocean, roads, the worn flagstones, pebbles and fallen leaves, Meshy rocks, kerbs, clutter, Roman set pieces and the aqueduct (stage 4) | Meadows without material textures or decals, procedural pines, Aurelia's buildings and walls, the colosseum |
+| Effects | 3.3 → 3.7 | Fire, Fire Arrow, the Demon; every class's own language, the Plague Doctor's clouds as ground fog (stages 2-4) | The generic Fx a few monsters and items still share; everything still to be judged at full speed on a real GPU |
 | UI and screens | 3.6 | D4-style HUD and frames, the title | Character close-ups expose dark/flat textures |
 | Rendering | 3.0 | Full Forward+ feature set, presets | Was the performance problem (fixed in part); grading, reflections |
 
