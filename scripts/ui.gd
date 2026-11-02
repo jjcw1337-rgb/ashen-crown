@@ -4969,6 +4969,23 @@ func _process(delta: float) -> void:
 			cdr.anchor_top = 1.0 - frac
 			cdr.color = Color(0, 0, 0, 0.82) if locked else Color(0, 0, 0, 0.6)
 			(c.get_node("hole/glyph") as SkillGlyph).dim = locked or hero.mana < hero.skill_cost(sk["id"])
+			# a locked skill waits on the bar with the level it opens at
+			var ll: Label = c.get_node_or_null("hole/lock")
+			if locked and ll == null:
+				ll = Label.new()
+				ll.name = "lock"
+				ll.set_anchors_preset(Control.PRESET_FULL_RECT)
+				ll.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				ll.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+				ll.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				ll.add_theme_font_size_override("font_size", 13)
+				ll.add_theme_color_override("font_color", Color(1.0, 0.82, 0.45))
+				ll.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+				ll.add_theme_constant_override("outline_size", 4)
+				c.get_node("hole").add_child(ll)
+			if ll != null:
+				ll.visible = locked
+				ll.text = "Lv %d" % int(sk.get("lvl", 1))
 	if msg_t > 0.0:
 		msg_t -= delta
 		msg_lbl.modulate.a = clampf(msg_t, 0.0, 1.0)

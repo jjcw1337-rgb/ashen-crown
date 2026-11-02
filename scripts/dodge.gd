@@ -15,7 +15,7 @@ const PIVOT := 0.75        # height the body tumbles round (m)
 
 static func can_roll(h: Hero) -> bool:
 	return not h.dead and h.roll_t < 0.0 and h.roll_cd <= 0.0 and h.charge_t < 0.0 and h.daze_t <= 0.0 \
-		and not ClassSkills.rooted(h) and not SkillSpec.uncancellable(h) and (h.stamina >= STAMINA or h.game.test_stamina)
+		and not ClassSkills.rooted(h) and not SkillSpec.uncancellable(h) and (h.stamina >= STAMINA or h.game.test_stamina or h.free_roll())
 
 ## Starts a roll along dir (flat). False if he can't roll now.
 static func start(h: Hero, dir: Vector3) -> bool:
@@ -37,7 +37,9 @@ static func start(h: Hero, dir: Vector3) -> bool:
 	h.blocking = false
 	h.roll_t = 0.0
 	h.roll_dir = dir
-	if not h.game.test_stamina:
+	if h.free_roll():
+		h.free_roll_t = float(h.pvp_roll_s)      # an item's free roll (the Battlegrounds): no stamina, then it recharges
+	elif not h.game.test_stamina:
 		h.stamina -= STAMINA
 		h.stamina_rest = 0.0
 	h.rig.rotation.y = atan2(-dir.x, -dir.z)

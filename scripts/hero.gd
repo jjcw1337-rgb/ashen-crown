@@ -180,6 +180,14 @@ var pied_t := 0.0              # a cream pie in the face (DougSkills, PvP): aim 
 ## seconds since this hero last fought (struck, was struck, attacked or cast; jj, 2026-11-02): out of combat
 ## stamina lasts and refills better and better, up to CALM_MAX times after CALM_RAMP more seconds (calm())
 var combat_t := 999.0
+# the Battlegrounds' item effects (Data.PVP_EFFECTS, on the class uniques): a free dodge roll every pvp_roll_s seconds,
+# and a ward (absorbs blows before life; refills out of combat)
+var pvp_roll_s := 0
+var free_roll_t := 0.0
+var ward := 0.0
+var ward_max := 0.0
+func free_roll() -> bool:
+	return pvp_roll_s > 0 and free_roll_t <= 0.0
 const COMBAT_SECS := 5.0
 const CALM_RAMP := 10.0
 const CALM_MAX := 5.0
@@ -284,6 +292,12 @@ func default_binds() -> Dictionary:
 ## Put a skill on a slot. A skill sits on one hotkey at most, so binding it again moves it.
 func bind(slot: String, id: String) -> void:
 	if not BIND_SLOTS.has(slot):
+		return
+	# a locked skill can't go on the bar (one already there may move between slots: it waits there greyed)
+	var sk := Data.skill_def(id) if id != "" else {}
+	if not sk.is_empty() and Data.skill_locked(sk, level) and not (game != null and game.test_allskills) and not binds.values().has(id):
+		if game and game.ui and not puppet:
+			game.ui.message("%s unlocks at level %d" % [sk["name"], int(sk["lvl"])], Color(1, 0.55, 0.4))
 		return
 	if id != "" and BIND_KEYS.has(slot):
 		for k in BIND_KEYS:
@@ -414,6 +428,10 @@ func set_class(c: String) -> void:
 		return
 	var changed := c != cls
 	cls = c
+	# whatever the last one was doing is over (a cast left running carried over to the new body)
+	atk_t = -1.0
+	atk_skill = ""
+	impact_done = true
 	if changed or binds.is_empty():
 		binds = default_binds()
 	if changed:
@@ -593,6 +611,17 @@ func recalc() -> void:
 		def_sum += Items.defense_of(it)
 		if s == "shield":
 			shield_block = it.get("block", 0)
+	# the Battlegrounds: level and skills carry a character, gear only helps (Blaine's progression overhaul): its
+	# flat stats count for a third, its percentages are capped low, and the weapon's damage gives way to the level's
+	var pvp := pvp_scaled()
+	if pvp:
+		for k in stats.keys():
+			if k in Data.PVP_GEAR_FLAT:
+				stats[k] = int(round(float(stats[k]) * Data.PVP_GEAR_SHARE))
+		for k in Data.PVP_GEAR_CAP:
+			if stats.has(k):
+				stats[k] = mini(int(stats[k]), int(Data.PVP_GEAR_CAP[k]))
+		def_sum = int(round(def_sum * Data.PVP_ARMOR_SHARE))
 	for k in ["str", "dex", "vit", "res", "ls", "regen", "ias", "frw", "block", "mf"]:
 		if tfx.has(k):
 			stats[k] = stats.get(k, 0) + (tfx[k] if k == "regen" else int(tfx[k]))
@@ -605,6 +634,8 @@ func recalc() -> void:
 	stamina = minf(stamina, max_stamina)
 	var w = equipment.get("weapon")
 	var wd: Array = Items.damage_of(w) if w != null else Data.unarmed(cls)    # a dragon's claws and teeth
+	if pvp:
+		wd = Data.pvp_damage(level, wd)
 	var k := 1.0 + st_total / 100.0
 	dmg_min = maxi(1, int(wd[0] * k))
 	dmg_max = maxi(dmg_min, int(wd[1] * k))
@@ -621,9 +652,17 @@ func recalc() -> void:
 	regen = 0.4 + stats.get("regen", 0)
 	mf = stats.get("mf", 0)
 	gf = stats.get("gf", 0)
+	pvp_roll_s = int(stats.get("roll", 0)) if pvp else 0
+	ward_max = max_life * float(stats.get("ward", 0)) / 100.0 if pvp else 0.0
+	ward = minf(ward, ward_max)
 	life = minf(life, max_life)
 	mana = minf(mana, max_mana)
 	stats_changed.emit()
+
+## The Battlegrounds' rules for gear (recalc): on while this game is in a raid (Game.bg_mode); `pvp_force` for tools.
+var pvp_force := false
+func pvp_scaled() -> bool:
+	return pvp_force or (game != null and game.bg_mode and not puppet)
 
 func total_str() -> int: return str_ + stats.get("str", 0)
 func total_dex() -> int: return dex + stats.get("dex", 0)
@@ -643,7 +682,21 @@ func add_xp(v: int) -> void:
 		Fx.pillar(game.world.fx_root, global_position, Color(1.0, 0.85, 0.4))
 		Sfx.play("levelup")
 		leveled.emit(level)
+		_announce_unlocks()
 	stats_changed.emit()
+
+## The skills that open at this level light up on the bar (they wait there greyed till then): say which.
+func _announce_unlocks() -> void:
+	if game == null or game.ui == null or puppet or Data.SKILLS_UNLOCKED:
+		return
+	var names := []
+	for s in Data.skills_known(cls):
+		if int(s.get("lvl", 1)) == level:
+			names.append(s["name"])
+	if names.is_empty():
+		return
+	game.ui.big_message("New skill: " + ", ".join(names))
+	game.ui.refresh_skill_slots()
 
 ## Testing panel: jump straight to a level. Going up grants the usual 5 stat points per level.
 func set_level(n: int) -> void:
@@ -1429,6 +1482,12 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	else:
 		dmg *= 1.0 - res / 100.0
 	dmg = maxf(1.0, dmg)
+	if ward > 0.0:
+		var soak := minf(ward, dmg)
+		ward -= soak
+		dmg = maxf(0.0, dmg - soak)
+		if ward <= 0.0:
+			Sfx.play("ice_shatter", -8.0, 1.4)
 	life -= dmg
 	hit_t = 1.0
 	if kind == "maul":
@@ -1567,6 +1626,9 @@ func _process(delta: float) -> void:
 	# stamina: sprint drains it, resting refills it; running dry leaves you winded
 	running = sprint and wants_move and not exhausted and block_amt < 0.5 and charge_t < 0.0
 	combat_t += delta
+	free_roll_t = maxf(0.0, free_roll_t - delta)
+	if ward_max > 0.0 and combat_t > COMBAT_SECS:
+		ward = minf(ward_max, ward + ward_max * 0.25 * delta)     # the ward back over 4 s out of combat
 	hidden_t = maxf(0.0, hidden_t - delta)
 	pied_t = maxf(0.0, pied_t - delta)
 	_engaged_t -= delta
@@ -2213,6 +2275,8 @@ func equip_from_inventory(idx: int) -> void:
 		stats_changed.emit()
 		return
 	var only: String = str(Data.BASES[it["base"]].get("cls", ""))
+	if it.has("unique") and Data.UNIQUES.has(it["unique"]):
+		only = str(Data.UNIQUES[it["unique"]].get("cls", only))     # a class unique (Blaine's overhaul)
 	if only != "" and only != cls:
 		game.ui.message("Only the %s can use that" % Data.CLASSES[only]["name"], Color(1, 0.4, 0.3))
 		Sfx.play("deny")

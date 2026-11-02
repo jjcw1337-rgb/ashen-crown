@@ -47,7 +47,14 @@ var playing := false
 ## Battlegrounds (battlegrounds.gd): the server's raid logic (only on a `--server` run), whether this game is a
 ## player in a raid, and that player's stash as the server last reported it.
 var bg: Battlegrounds
-var bg_mode := false
+var bg_mode := false:
+	set(v):
+		var was := bg_mode
+		bg_mode = v
+		# the Battlegrounds' gear rules come and go with the raid (Hero.pvp_scaled)
+		if was != v and hero != null and is_instance_valid(hero):
+			hero.recalc()
+			hero.life = hero.max_life
 var net_joining := false     # a co-op join sent, no welcome yet (on_net_failed then goes back to the co-op screen)
 var bg_home_run := -1        # in a raid: the character's own act (Net.cl_welcome swaps to the raid's, saves keep this)
 var bg_raid := {}               # the round as the raid server last said (Net.cl_bg_raid): state, t, open portals...
@@ -2016,6 +2023,20 @@ func use_inter_remote(t: Inter) -> void:
 				who = str(net.players[pid]["name"])
 			bg.start_prep(who)
 
+## A class unique (Data.UNIQUES with "cls": the hard-won level-20 rewards with the raid's item effects) for one of
+## the classes of the heroes near (a raid's players, the party, or the hero), so what drops is someone's to wear.
+func _drop_class_unique(at: Vector3) -> void:
+	var want := []
+	for hh in get_tree().get_nodes_in_group("hero") + net.puppets():
+		if hh is Hero and is_instance_valid(hh) and not (net.server and hh == hero) and hh.global_position.distance_to(at) < 40.0:
+			want.append(hh.cls)
+	var pool := Data.UNIQUES.keys().filter(func(k): return Data.UNIQUES[k].has("cls") and (want.is_empty() or want.has(Data.UNIQUES[k]["cls"])))
+	if pool.is_empty():
+		pool = Data.UNIQUES.keys().filter(func(k): return Data.UNIQUES[k].has("cls"))
+	var it := Items.make_unique(pool[rng.randi() % pool.size()])
+	drop_item(it, at)
+	ui.message("%s!" % it["name"], Color(0.85, 0.66, 0.38))
+
 func _open_chest(t: Inter) -> void:
 	t.used = true
 	Sfx.play("equip")
@@ -2027,6 +2048,9 @@ func _open_chest(t: Inter) -> void:
 		return
 	var n := 7 if gold else rng.randi_range(2, 4)
 	for i in n:
+		if gold and i == 0:
+			_drop_class_unique(t.global_position)     # the golden chest's own reward: a class unique
+			continue
 		_drop_loot_roll(t.global_position, world.level, gold and i < 3)
 
 ## A chest a boss guards (data "guard": its Data.ENEMIES kind; the Battlegrounds' golden chest): sealed while that
@@ -2612,6 +2636,8 @@ func on_enemy_killed(e: Enemy) -> void:
 		for i in 3:
 			drop_item(Items.gold(int(rng.randf_range(40, 70) * (1.0 + e.level * 0.6))), e.global_position)
 		ui.message("%s is slain" % e.display_name, Color(0.55, 0.9, 0.95))
+	if e.def.get("class_unique", false):
+		_drop_class_unique(e.global_position)
 	if e.def.has("boss_drop"):
 		var bu := Items.make_unique(e.def["boss_drop"])
 		if difficulty >= 1:

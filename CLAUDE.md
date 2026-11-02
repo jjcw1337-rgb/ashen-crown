@@ -1106,6 +1106,19 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   each cell, red when you can't afford it. `UI.trade_with` is the NPC whose window is open: walking more than 3 m
   past their `radius` closes it (`UI._walked_off`, the stash too). `tools/vendor_test.gd` checks all of it with
   the smith; `tools/vendor_shots.gd -- outdir [role]` screenshots a trader.
+- **Progression and the Battlegrounds' gear rules** (Blaine's progression overhaul, `docs/queue_progression_overhaul.md`):
+  skills unlock by level (`Data.skill_locked`, each skill's `"lvl"`; `Data.SKILLS_UNLOCKED = true` opens all again):
+  a class's skills Q 1, E 3, R 5, F 9, G 14, every ultimate at 20 (Eternal Night, Wrath of the Pit, The Last Epidemic,
+  Clown Car); the shared ones War Cry 6, Frost Nova 8, Arc 11, Earthshatter 16. A locked skill waits on the bar greyed
+  with "Lv N", can't be bound (`Hero.bind` refuses it; one already on the bar may move) or cast, and is announced when
+  reached (`Hero._announce_unlocks`); the F8 panel's All skills opens everything. In a raid (`Hero.pvp_scaled`: on
+  while `Game.bg_mode`, whose setter recalcs the hero) gear counts for less (`Data.PVP_GEAR_SHARE` of flat stats,
+  `PVP_ARMOR_SHARE` of defence, `PVP_GEAR_CAP` on percentages: +5% run speed at most) and the weapon's damage is the
+  level's (`Data.pvp_damage`, the weapon adding up to ~20%). The class uniques (`Data.UNIQUES` with `"cls"`, level
+  20, boss_only: Hrimgar, Mossbeard and the golden chest drop one for a class near, `Game._drop_class_unique`) carry
+  the raid's item effects: `"roll"` (a free dodge roll every N s, `Hero.free_roll`) or `"ward"` (a % of life that
+  soaks blows and refills out of combat, `Hero.ward`). `tools/pvp_sim.gd` (classes at levels 1/5/10/20, fresh vs
+  geared, Monte Carlo duels), `tools/skill_unlock_test.gd`, `tools/pvp_items_test.gd`.
 - **Skill bar and bindings** (every class, including new ones): the bar has a big slot for each mouse button and six
   hotkeys (Q E R F G V); any skill can go on any of them (`Hero.binds`, saved per character; `Hero.default_binds`:
   left mouse `attack`, right mouse the class's first skill, the class's first four skills on Q-F). `attack` and `block` are

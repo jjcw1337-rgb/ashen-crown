@@ -224,14 +224,14 @@ const ENEMIES := {
 		"look": {"height": 2.3, "eyes": Color(1.0, 0.6, 0.15)}},
 	# the Battlegrounds' bosses (Blaine's overhaul, docs/queue_battlegrounds_overhaul.md): Meshy, rigged by rig_monster.py;
 	# their fights (abilities, arenas, the hermit's chest) are the overhaul's to build on these entries
-	"ice_troll": {"mesh": "ice_troll", "name": "Hrimgar the Frostbound", "rig": "humanoid", "life": 1400, "dmg": [24, 38], "speed": 3.2, "range": 3.0, "xp": 1400,
+	"ice_troll": {"mesh": "ice_troll", "class_unique": true, "name": "Hrimgar the Frostbound", "rig": "humanoid", "life": 1400, "dmg": [24, 38], "speed": 3.2, "range": 3.0, "xp": 1400,
 		"ai": "melee", "atk": "slam", "atk_time": 1.7, "armor": 22, "radius": 1.3, "boss": true, "aggro": 18.0, "blood": Color(0.55, 0.8, 1.0),
 		"intro": {"title": "HRIMGAR", "sub": "THE FROSTBOUND", "line": "He's been standing in that cave for three hundred years. He'd like a word about the draught.", "color": Color(0.55, 0.85, 1.0)},
 		"look": {"height": 1.9, "eyes": Color(0.6, 0.95, 1.0)}},          # x a man's 1.8 m: 3.4 m
 	"spore_shroom": {"prop": "fungus", "name": "Poison Mushroom", "rig": "crawler", "life": 80, "dmg": [5, 8], "speed": 0.0, "range": 3.0, "xp": 12,
 		"ai": "melee", "atk": "slam", "atk_time": 1.0, "armor": 0, "radius": 0.7, "blood": Color(0.35, 0.6, 0.2),
 		"look": {"height": 1.2, "prop_scale": 1.3, "eyes": Color(0.5, 1.0, 0.4)}},
-	"hermit": {"mesh": "hermit", "name": "Old Mossbeard", "rig": "humanoid", "life": 900, "dmg": [14, 22], "speed": 3.0, "range": 9.0, "xp": 1100,
+	"hermit": {"mesh": "hermit", "class_unique": true, "name": "Old Mossbeard", "rig": "humanoid", "life": 900, "dmg": [14, 22], "speed": 3.0, "range": 9.0, "xp": 1100,
 		"ai": "ranged", "atk": "cast", "atk_time": 1.4, "armor": 10, "radius": 0.6, "boss": true, "aggro": 14.0, "proj": "poison", "blood": Color(0.35, 0.55, 0.2),
 		"intro": {"title": "OLD MOSSBEARD", "sub": "THE THORN HERMIT", "line": "Hasn't had visitors in years. Doesn't plan on letting this lot leave.", "color": Color(0.6, 1.0, 0.45)},
 		"look": {"height": 0.82, "eyes": Color(0.5, 1.0, 0.4)}},         # 1.5 m, hunched
@@ -445,6 +445,8 @@ const STAT_LABEL := {
 	"ias": "+%d%% Attack Speed", "ls": "%d%% Life Stolen per Hit", "def": "+%d Defense", "edef": "+%d%% Enhanced Defense",
 	"res": "All Resistances +%d", "block": "+%d%% Chance to Block", "gf": "%d%% Extra Gold", "mf": "%d%% Better Chance of Magic Items",
 	"regen": "Replenish %d Life per second", "frw": "+%d%% Faster Run/Walk",
+	"roll": "Battlegrounds: a free dodge roll (no stamina) every %d seconds",
+	"ward": "Battlegrounds: a ward of %d%% of your life, back out of combat",
 }
 
 ## Which affixes can roll on which slot class.
@@ -475,6 +477,23 @@ const RARE_B := {
 
 ## Unique items with fixed bases, stats and a signature look.
 const UNIQUES := {
+	# the class uniques (Blaine's progression overhaul): level 20, only the bosses of the Battlegrounds and the golden
+	# chest give them (boss_only), each with one of the raid's item effects (a free roll or a ward: Hero.pvp_roll_s,
+	# Hero.ward) and small stats; one class each ("cls": only that class may wear it)
+	"oathkeeper": {"name": "Oathkeeper's Plate", "base": "plate_mail", "lvl": 20, "cls": "knight", "boss_only": true, "stats": [["ward", 15], ["vit", 10], ["res", 10]],
+		"metal": Color(0.8, 0.8, 0.85), "trim": Color(1.0, 0.85, 0.4), "glow": Color(1.0, 0.9, 0.5), "gem": Color(0.9, 0.1, 0.1)},
+	"ninth_bell": {"name": "Shroud of the Ninth Bell", "base": "amulet", "lvl": 20, "cls": "wraith", "boss_only": true, "stats": [["roll", 6], ["dex", 10], ["mana", 20]],
+		"metal": Color(0.3, 0.35, 0.45), "trim": Color(0.6, 0.9, 1.0), "glow": Color(0.5, 0.9, 1.0), "gem": Color(0.5, 0.9, 1.0)},
+	"brimfire": {"name": "Brimfire Girdle", "base": "war_belt", "lvl": 20, "cls": "demon", "boss_only": true, "stats": [["ward", 12], ["str", 12], ["life", 20]],
+		"metal": Color(0.2, 0.08, 0.05), "trim": Color(1.0, 0.45, 0.1), "glow": Color(1.0, 0.35, 0.05), "gem": Color(1.0, 0.25, 0.0)},
+	"covenant_signet": {"name": "Signet of the Covenant", "base": "ring", "lvl": 20, "cls": "warlock", "boss_only": true, "stats": [["roll", 6], ["mana", 25], ["vit", 6]],
+		"metal": Color(0.3, 0.2, 0.4), "trim": Color(0.5, 1.0, 0.4), "glow": Color(0.4, 1.0, 0.3), "gem": Color(0.5, 1.0, 0.3)},
+	"windrunner": {"name": "Windrunner Treads", "base": "greaves", "lvl": 20, "cls": "archer", "boss_only": true, "stats": [["roll", 6], ["frw", 5], ["dex", 8]],
+		"metal": Color(0.3, 0.35, 0.25), "trim": Color(0.7, 0.9, 0.5), "glow": Color(0.6, 1.0, 0.5), "gem": Color(0.6, 1.0, 0.5)},
+	"plaguewarden": {"name": "Plaguewarden's Cowl", "base": "great_helm", "lvl": 20, "cls": "plague", "boss_only": true, "stats": [["ward", 12], ["res", 10], ["ene", 8]],
+		"metal": Color(0.15, 0.15, 0.12), "trim": Color(0.75, 0.6, 0.3), "glow": Color(0.5, 1.0, 0.3), "gem": Color(0.5, 1.0, 0.3)},
+	"lucky_nose": {"name": "The Lucky Nose", "base": "amulet", "lvl": 20, "cls": "doug", "boss_only": true, "stats": [["roll", 6], ["life", 25], ["str", 6]],
+		"metal": Color(0.9, 0.75, 0.3), "trim": Color(1.0, 0.85, 0.2), "glow": Color(1.0, 0.2, 0.2), "gem": Color(1.0, 0.1, 0.1)},
 	"emberfang": {"name": "Emberfang", "base": "falchion", "lvl": 6, "stats": [["ed", 80], ["fire", 8], ["ias", 15], ["ls", 3]],
 		"metal": Color(0.25, 0.08, 0.04), "trim": Color(0.95, 0.55, 0.15), "glow": Color(1.0, 0.4, 0.05), "gem": Color(1.0, 0.3, 0.0)},
 	"wardens_wall": {"name": "The Warden's Wall", "base": "kite_shield", "lvl": 7, "stats": [["edef", 90], ["block", 12], ["res", 15], ["life", 25]],
@@ -516,43 +535,43 @@ const RARITY_NAME := ["Normal", "Magic", "Rare", "Unique"]
 const SKILLS := [
 	{"id": "cleave", "cls": "knight", "name": "Holy Slam", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "point", "range": 6.0, "desc": "Leap at the cursor and bring the sword down in a burst of white light: 160% weapon damage to everything around the blow, knocking them back and stunning them for 1 second."},
 	{"id": "nova", "cls": "knight", "name": "Holy Nova", "key": "E", "lvl": 3, "mana": 14, "cd": 0.0, "use": 1.0, "power": 0.37, "aim": "self", "desc": "A ring of holy fire bursts outward, burning enemies within 7 metres."},
-	{"id": "charge", "cls": "knight", "name": "Charge", "key": "R", "lvl": 6, "mana": 10, "cd": 4.0, "tags": ["movement"], "aim": "facing", "range": 9.0, "desc": "Dash toward the cursor, smashing through enemies and knocking them back."},
-	{"id": "cry", "cls": "knight", "name": "Battle Cry", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "tags": ["warcry", "buff"], "aim": "self", "desc": "Rally yourself: +40% damage and +50% defense for 12 seconds. Stuns nearby foes."},
+	{"id": "charge", "cls": "knight", "name": "Charge", "key": "R", "lvl": 5, "mana": 10, "cd": 4.0, "tags": ["movement"], "aim": "facing", "range": 9.0, "desc": "Dash toward the cursor, smashing through enemies and knocking them back."},
+	{"id": "cry", "cls": "knight", "name": "Battle Cry", "key": "F", "lvl": 9, "mana": 20, "cd": 20.0, "tags": ["warcry", "buff"], "aim": "self", "desc": "Rally yourself: +40% damage and +50% defense for 12 seconds. Stuns nearby foes."},
 	{"id": "rend", "cls": "wraith", "name": "Spectral Rend", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 4.5, "desc": "Lunge at the foe ahead and tear through it with elongated spectral claws: two rakes for 90% weapon damage each. Every soul the claws tear out flies back and heals you."},
 	{"id": "siphon", "cls": "wraith", "name": "Soul Siphon", "key": "E", "lvl": 3, "mana": 12, "cd": 6.0, "tags": ["cc", "sustain"], "aim": "facing", "range": 9.0, "desc": "Reach out and hook a spectral tether into an enemy: for 2.5 seconds it stands rigid while the tether drains it (about 180% weapon damage in all) and heals you a third of what it takes, and it is slowed after. A soul torn loose heals you more. The tether holds while you fight on."},
-	{"id": "step", "cls": "wraith", "name": "Shadow Step", "key": "R", "lvl": 6, "mana": 10, "cd": 5.0, "tags": ["movement"], "aim": "point", "range": 9.0, "desc": "Come apart into mist and re-form at the cursor, spinning into a claw strike round where you land for 130% weapon damage. For a moment after, blows pass through you. The shade you left behind collapses and hurts."},
-	{"id": "grasp", "cls": "wraith", "name": "Haunting Grasp", "key": "F", "lvl": 10, "mana": 16, "cd": 10.0, "tags": ["cc"], "aim": "point", "range": 10.0, "desc": "Slam the ground: spectral hands burst out of the earth around the cursor, seizing every enemy within 3.5 metres for 110% weapon damage, dragging them inward and holding them fast for 2.5 seconds."},
+	{"id": "step", "cls": "wraith", "name": "Shadow Step", "key": "R", "lvl": 5, "mana": 10, "cd": 5.0, "tags": ["movement"], "aim": "point", "range": 9.0, "desc": "Come apart into mist and re-form at the cursor, spinning into a claw strike round where you land for 130% weapon damage. For a moment after, blows pass through you. The shade you left behind collapses and hurts."},
+	{"id": "grasp", "cls": "wraith", "name": "Haunting Grasp", "key": "F", "lvl": 9, "mana": 16, "cd": 10.0, "tags": ["cc"], "aim": "point", "range": 10.0, "desc": "Slam the ground: spectral hands burst out of the earth around the cursor, seizing every enemy within 3.5 metres for 110% weapon damage, dragging them inward and holding them fast for 2.5 seconds."},
 	{"id": "phantom", "cls": "wraith", "name": "Phantom Assault", "key": "G", "lvl": 14, "mana": 22, "cd": 0.0, "use": 1.8, "power": 0.58, "aim": "facing", "range": 8.0, "desc": "Split into three phantoms that streak through the enemies ahead in a fan, each tearing everything in its path for 120% weapon damage, then strike with your own claws."},
-	{"id": "night", "cls": "wraith", "name": "Eternal Night", "key": "V", "lvl": 18, "mana": 40, "cd": 40.0, "tags": ["ultimate"], "aim": "self", "desc": "Rise and bring down the night over 9 metres: a scream of terror (150% weapon damage, enemies hurled back and frozen with fear), then the dark feeds on everything in it while you hang untouchable above it, and it collapses into your slam for 200%. +40% damage for 12 seconds."},
+	{"id": "night", "cls": "wraith", "name": "Eternal Night", "key": "V", "lvl": 20, "mana": 40, "cd": 40.0, "tags": ["ultimate"], "aim": "self", "desc": "Rise and bring down the night over 9 metres: a scream of terror (150% weapon damage, enemies hurled back and frozen with fear), then the dark feeds on everything in it while you hang untouchable above it, and it collapses into your slam for 200%. +40% damage for 12 seconds."},
 	{"id": "fists", "cls": "demon", "name": "Molten Fists", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 3.4,
 		"style": "fists", "use": 2.0, "hit": 0.75, "speed": "attack", "dmg": 300, "type": "phys", "knock": 0.5,
 		"area": {"shape": "wedge", "r": 3.4, "angle": 84}, "dot": {"kind": "burn", "pct": 25, "secs": 3}, "tags": ["attack", "melee", "slam", "heavy", "fire"], "desc": "A slow, heavy two-fisted blow: your fists catch fire as you draw back, then crack the ground open ahead of you. Everything in the wedge takes 300% weapon damage plus magma and is set alight. Dodge to cancel it."},
 	{"id": "icharge", "cls": "demon", "name": "Infernal Charge", "key": "E", "lvl": 3, "mana": 12, "cd": 7.0, "tags": ["movement"], "aim": "point", "range": 9.0, "desc": "A head-down charge of up to 9 metres: enemies in your way are bowled aside for 120% weapon damage plus magma and stunned, and your hooves leave a trail of lava that burns whoever stands in it for 4 seconds."},
-	{"id": "cslam", "cls": "demon", "name": "Cataclysm Slam", "key": "R", "lvl": 6, "mana": 16, "cd": 0.0, "use": 2.2, "power": 0.26, "aim": "facing", "range": 2.0, "desc": "Slam the ground: everything within 3 metres takes 160% weapon damage plus magma and is stunned, then five magma fissures race out 8 metres ahead and erupt along their length in waves of lava bursts for 110% each."},
-	{"id": "hurl", "cls": "demon", "name": "Brimstone Hurl", "key": "F", "lvl": 10, "mana": 18, "cd": 0.0, "use": 1.6, "power": 0.18, "aim": "point", "range": 12.0, "desc": "Tear a molten boulder out of the ground and hurl it at the cursor, up to 12 metres: it splashes over 2.6 metres for 180% weapon damage plus magma, throws enemies back, sets them alight and leaves a lava pool that burns for 5 seconds."},
+	{"id": "cslam", "cls": "demon", "name": "Cataclysm Slam", "key": "R", "lvl": 5, "mana": 16, "cd": 0.0, "use": 2.2, "power": 0.26, "aim": "facing", "range": 2.0, "desc": "Slam the ground: everything within 3 metres takes 160% weapon damage plus magma and is stunned, then five magma fissures race out 8 metres ahead and erupt along their length in waves of lava bursts for 110% each."},
+	{"id": "hurl", "cls": "demon", "name": "Brimstone Hurl", "key": "F", "lvl": 9, "mana": 18, "cd": 0.0, "use": 1.6, "power": 0.18, "aim": "point", "range": 12.0, "desc": "Tear a molten boulder out of the ground and hurl it at the cursor, up to 12 metres: it splashes over 2.6 metres for 180% weapon damage plus magma, throws enemies back, sets them alight and leaves a lava pool that burns for 5 seconds."},
 	{"id": "grip", "cls": "demon", "name": "Hellgrip", "key": "G", "lvl": 14, "mana": 20, "cd": 12.0, "tags": ["cc"], "aim": "facing", "range": 3.6, "desc": "Seize the enemy ahead, hoist it over your head and smash it into the ground for 320% weapon damage plus magma, leaving it burning; the shockwave hits everything round it for 70% and throws it back."},
-	{"id": "wrath", "cls": "demon", "name": "Wrath of the Pit", "key": "V", "lvl": 18, "mana": 40, "cd": 45.0, "tags": ["ultimate"], "aim": "self", "desc": "Roar with your wings spread (enemies within 6 metres take 100% weapon damage, are hurled back and frozen with fear) and stomp (120% over 4 metres): for 7 seconds your cracks blaze white-hot, meteors rain on the enemies round you (110% plus magma each, burning) and you deal +40% damage."},
+	{"id": "wrath", "cls": "demon", "name": "Wrath of the Pit", "key": "V", "lvl": 20, "mana": 40, "cd": 45.0, "tags": ["ultimate"], "aim": "self", "desc": "Roar with your wings spread (enemies within 6 metres take 100% weapon damage, are hurled back and frozen with fear) and stomp (120% over 4 metres): for 7 seconds your cracks blaze white-hot, meteors rain on the enemies round you (110% plus magma each, burning) and you deal +40% damage."},
 	{"id": "drain", "cls": "warlock", "channel": true, "name": "Drain Life", "key": "Q", "lvl": 1, "mana": 6, "cd": 0.0, "aim": "facing", "range": 11.0, "desc": "Latch a green beam onto an enemy and pull the life out of it. The beam forks to up to 3 enemies near your target and everything it drains heals you. Hold Q to keep draining (costs mana each second)."},
 	{"id": "blight", "cls": "warlock", "name": "Blight Bolt", "key": "E", "lvl": 3, "mana": 12, "cd": 0.0, "use": 1.0, "power": 0.59, "aim": "facing", "range": 15.0, "desc": "Hurl a howling skull of blight. It bursts where it lands and leaves a plague pool that rots enemies standing in it for 4 seconds."},
-	{"id": "shackles", "cls": "warlock", "name": "Soul Shackles", "key": "R", "lvl": 6, "mana": 16, "cd": 8.0, "tags": ["cc"], "aim": "self", "desc": "Chains of fel fire snap out to every enemy within 7 metres, damaging them and binding them in place for 2.5 seconds."},
+	{"id": "shackles", "cls": "warlock", "name": "Soul Shackles", "key": "R", "lvl": 5, "mana": 16, "cd": 8.0, "tags": ["cc"], "aim": "self", "desc": "Chains of fel fire snap out to every enemy within 7 metres, damaging them and binding them in place for 2.5 seconds."},
 	# the archer: his attack is the bow (Hero._bow_attack); the arrows are Hero.arrows
 	{"id": "pierce", "cls": "archer", "name": "Fire Arrow", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 16.0, "desc": "A burning arrow that tears through every enemy in a line for 130% weapon damage and sets them alight: they burn for 3 seconds."},
 	{"id": "volley", "cls": "archer", "name": "Frost Volley", "key": "E", "lvl": 3, "mana": 14, "cd": 0.0, "use": 1.1, "aim": "point", "range": 14.0, "desc": "Loose a flight of frost arrows into the sky: they rain on the cursor for over a second, hitting everything within 4 metres again and again and chilling them (40% slower)."},
-	{"id": "snare", "cls": "archer", "name": "Storm Snare", "key": "R", "lvl": 6, "mana": 10, "cd": 6.0, "tags": ["cc", "trap"], "aim": "point", "range": 10.0, "desc": "Set a storm-charged trap (up to 2): the first enemies to cross it are held fast and hurt, and lightning bursts from it into the 3 nearest others, stunning them."},
-	{"id": "beast", "cls": "archer", "name": "Spirit Beast", "key": "F", "lvl": 10, "mana": 12, "cd": 8.0, "tags": ["command", "summon"], "aim": "point", "range": 18.0, "desc": "Your Spirit Beast hunts at your side from the start (and you run 10% faster with it). Command it: on an enemy it pounces and fights it, on open ground it holds there, on yourself it comes back. Each command rouses you both: +40% damage for 12 seconds."},
+	{"id": "snare", "cls": "archer", "name": "Storm Snare", "key": "R", "lvl": 5, "mana": 10, "cd": 6.0, "tags": ["cc", "trap"], "aim": "point", "range": 10.0, "desc": "Set a storm-charged trap (up to 2): the first enemies to cross it are held fast and hurt, and lightning bursts from it into the 3 nearest others, stunning them."},
+	{"id": "beast", "cls": "archer", "name": "Spirit Beast", "key": "F", "lvl": 9, "mana": 12, "cd": 8.0, "tags": ["command", "summon"], "aim": "point", "range": 18.0, "desc": "Your Spirit Beast hunts at your side from the start (and you run 10% faster with it). Command it: on an enemy it pounces and fights it, on open ground it holds there, on yourself it comes back. Each command rouses you both: +40% damage for 12 seconds."},
 	{"id": "toxic", "cls": "plague", "name": "Toxic Flask", "key": "Q", "lvl": 1, "mana": 7, "cd": 0.0, "aim": "point", "range": 12.0, "desc": "Pull a vial from your belt and lob it: it shatters into a poison cloud 3 metres wide for 4 seconds. Anything in it is poisoned and keeps rotting for 3 seconds after it leaves. Clouds of the same kind don't stack."},
 	{"id": "volatile", "cls": "plague", "name": "Volatile Mixture", "key": "E", "lvl": 3, "mana": 15, "cd": 0.0, "use": 1.3, "aim": "point", "range": 11.0, "desc": "Throw a bottle with a lit fuse. A warning ring, then a fire blast 4 metres wide that hurls enemies back and sets them burning. A blast that reaches your poison clouds ignites them, burning out all their remaining poison at once."},
-	{"id": "trap", "cls": "plague", "name": "Pestilent Trap", "key": "R", "lvl": 6, "mana": 12, "cd": 5.0, "tags": ["trap"], "aim": "point", "range": 10.0, "desc": "Kneel and set a brass canister (up to 2, 30 seconds). The first enemy to step on it is stunned and it vents a poison cloud 3.5 metres wide. An infected enemy that springs it starts an outbreak: the cloud infects everything it touches."},
-	{"id": "epidemic", "cls": "plague", "name": "The Last Epidemic", "key": "F", "lvl": 10, "mana": 30, "cd": 24.0, "tags": ["ultimate"], "aim": "self", "desc": "Smash your censer and raise a miasma dome 9 metres wide for 8 seconds. Inside, enemies are poisoned, slowed and infected; an infected enemy that dies passes it to the two nearest (up to 6 times). The dome collapses with a final blow."},
-	{"id": "covenant", "cls": "warlock", "name": "Fel Covenant", "key": "F", "lvl": 10, "mana": 20, "cd": 20.0, "tags": ["buff"], "aim": "self", "desc": "Seal a pact with what waits beyond: +40% damage for 12 seconds, and Drain Life forks to two more enemies and heals twice as much."},
+	{"id": "trap", "cls": "plague", "name": "Pestilent Trap", "key": "R", "lvl": 5, "mana": 12, "cd": 5.0, "tags": ["trap"], "aim": "point", "range": 10.0, "desc": "Kneel and set a brass canister (up to 2, 30 seconds). The first enemy to step on it is stunned and it vents a poison cloud 3.5 metres wide. An infected enemy that springs it starts an outbreak: the cloud infects everything it touches."},
+	{"id": "epidemic", "cls": "plague", "name": "The Last Epidemic", "key": "F", "lvl": 20, "mana": 30, "cd": 24.0, "tags": ["ultimate"], "aim": "self", "desc": "Smash your censer and raise a miasma dome 9 metres wide for 8 seconds. Inside, enemies are poisoned, slowed and infected; an infected enemy that dies passes it to the two nearest (up to 6 times). The dome collapses with a final blow."},
+	{"id": "covenant", "cls": "warlock", "name": "Fel Covenant", "key": "F", "lvl": 9, "mana": 20, "cd": 20.0, "tags": ["buff"], "aim": "self", "desc": "Seal a pact with what waits beyond: +40% damage for 12 seconds, and Drain Life forks to two more enemies and heals twice as much."},
 	# Doug (doug_skills.gd, docs/characters/doug.md): the trickster; every tool readable, every tool answerable
 	{"id": "pie", "cls": "doug", "name": "Cream Pie", "key": "", "lvl": 1, "mana": 6, "cd": 0.0, "use": 0.9, "hit": 0.5, "style": "pie", "speed": "attack", "dmg": 120, "type": "phys", "aim": "point", "range": 12.0, "tags": ["projectile", "attack"],
 		"desc": "Lob a cream pie at the cursor (12 m): a splat for 120% weapon damage and the target is Pied: monsters blinded for 2 seconds, a player's screen creamed at the edges and their aim assist gone for 1.5 seconds. The same target can't be Pied again for 6 seconds."},
-	{"id": "peels", "cls": "doug", "name": "Banana Peels", "key": "Q", "lvl": 1, "mana": 9, "cd": 7.0, "use": 0.8, "hit": 0.55, "style": "peels", "aim": "facing", "range": 6.0, "tags": ["trap"],
+	{"id": "peels", "cls": "doug", "name": "Banana Peels", "key": "Q", "lvl": 2, "mana": 9, "cd": 7.0, "use": 0.8, "hit": 0.55, "style": "peels", "aim": "facing", "range": 6.0, "tags": ["trap"],
 		"desc": "Toss three banana peels in a fan ahead (they land 3 to 6 metres out and last 8 seconds; at most 6 down). Whoever steps on one slips: a player is knocked down for 0.7 seconds and slides on, a monster is stunned for 1 second. A dodge roll over a peel doesn't slip."},
-	{"id": "slide", "cls": "doug", "name": "Pratfall Slide", "key": "E", "lvl": 3, "mana": 10, "cd": 5.0, "use": 0.7, "hit": 0.2, "style": "slide", "dmg": 90, "knock": 3.0, "aim": "facing", "range": 7.0, "tags": ["movement"],
+	{"id": "slide", "cls": "doug", "name": "Pratfall Slide", "key": "E", "lvl": 4, "mana": 10, "cd": 5.0, "use": 0.7, "hit": 0.2, "style": "slide", "dmg": 90, "knock": 3.0, "aim": "facing", "range": 7.0, "tags": ["movement"],
 		"desc": "Belly-slide 7 metres the way you face, honking: foes in the way take 90% weapon damage and are shoved aside. You pop up with a ta-da."},
-	{"id": "doppel", "cls": "doug", "name": "Doppel-Doug", "key": "R", "lvl": 6, "mana": 14, "cd": 14.0, "use": 0.4, "hit": 0.5, "style": "doppel", "aim": "point", "range": 12.0, "tags": ["buff", "summon"],
+	{"id": "doppel", "cls": "doug", "name": "Doppel-Doug", "key": "R", "lvl": 7, "mana": 14, "cd": 14.0, "use": 0.4, "hit": 0.5, "style": "doppel", "aim": "point", "range": 12.0, "tags": ["buff", "summon"],
 		"desc": "Duck behind a puff of confetti: you turn invisible for 1.8 seconds while a balloon double of you runs off toward the cursor, waving. Struck, the double pops in a confetti burst that slows whoever is near for 1.5 seconds."},
 	{"id": "juggle", "cls": "doug", "name": "Pin Juggle", "key": "F", "lvl": 10, "mana": 16, "cd": 0.0, "use": 1.4, "hit": 0.35, "style": "juggle", "dmg": 60, "type": "fire", "aim": "point", "range": 12.0, "tags": ["projectile", "fire"],
 		"desc": "Throw five flaming juggling pins in quick succession at the cursor; each bounces on to two more foes. 60% weapon damage as fire each."},
@@ -561,19 +580,19 @@ const SKILLS := [
 	{"id": "car", "cls": "doug", "name": "Clown Car", "key": "V", "lvl": 20, "mana": 40, "cd": 60.0, "use": 0.6, "hit": 0.5, "style": "car", "dmg": 140, "aim": "self", "tags": ["ultimate"],
 		"desc": "A tiny clown car screeches in and you drive it for 5 seconds: fast, unstoppable, ramming foes for 140% weapon damage and knocking them flying. Then it bursts in confetti and six mini clowns tumble out, sprint at the nearest foes and pie them."},
 	# the shared skills (SharedSkills): "cls": "any", every class can put them on its bar (jj, 2026-11-01)
-	{"id": "earthshatter", "cls": "any", "name": "Earthshatter", "key": "", "lvl": 1, "mana": 8, "cd": 0.0, "aim": "facing", "range": 5.0,
+	{"id": "earthshatter", "cls": "any", "name": "Earthshatter", "key": "", "lvl": 16, "mana": 8, "cd": 0.0, "aim": "facing", "range": 5.0,
 		"style": "slam", "use": 1.6, "speed": "attack", "dmg": 230, "base": [10, 16], "per_lvl": 2.5, "type": "phys", "knock": 1.2,
 		"area": {"shape": "wedge", "r": 5.0, "angle": 100}, "tags": ["attack", "melee", "slam", "heavy", "area"],
 		"desc": "A heavy two-handed slam: the wedge it will crack shows as you heave, then the ground splits ahead of you for 230% weapon damage plus a part that grows with your level, throwing foes back."},
-	{"id": "frost_nova", "cls": "any", "name": "Frost Nova", "key": "", "lvl": 1, "mana": 10, "cd": 0.0, "aim": "self",
+	{"id": "frost_nova", "cls": "any", "name": "Frost Nova", "key": "", "lvl": 8, "mana": 10, "cd": 0.0, "aim": "self",
 		"style": "cast", "use": 0.9, "speed": "cast", "base": [12, 18], "per_lvl": 3.5, "type": "cold",
 		"area": {"shape": "circle", "r": 4.0, "at": "self"}, "dot": {"kind": "chill", "k": 0.45, "secs": 3.0}, "tags": ["spell", "cold", "area", "nova"],
 		"desc": "A ring of ice bursts out around you, 4 metres: cold damage, and everything it hits is chilled, slowed for 3 seconds."},
-	{"id": "arc", "cls": "any", "name": "Arc", "key": "", "lvl": 1, "mana": 6, "cd": 0.0, "aim": "facing", "range": 10.0,
+	{"id": "arc", "cls": "any", "name": "Arc", "key": "", "lvl": 11, "mana": 6, "cd": 0.0, "aim": "facing", "range": 10.0,
 		"style": "cast", "use": 0.7, "speed": "cast", "base": [8, 14], "per_lvl": 2.8, "type": "lightning",
 		"area": {"shape": "single", "r": 10.0}, "tags": ["spell", "lightning", "chain"],
 		"desc": "Lightning leaps from your hand into the nearest foe ahead and on to three more nearby, striking each."},
-	{"id": "war_cry", "cls": "any", "name": "War Cry", "key": "", "lvl": 1, "mana": 12, "cd": 8.0, "aim": "self",
+	{"id": "war_cry", "cls": "any", "name": "War Cry", "key": "", "lvl": 6, "mana": 12, "cd": 8.0, "aim": "self",
 		"style": "cast", "use": 0.8, "speed": "attack", "tags": ["warcry", "buff"],
 		"desc": "A roar that rallies your team: you and every ally within 8 metres deal +40% damage for 6 seconds, and the monsters near turn on you. In the Battlegrounds it is yours alone (no teams there yet)."},
 ]
@@ -645,9 +664,30 @@ const COMMON_SKILLS := [
 static func skills_known(cls: String) -> Array:
 	return skills_for(cls) + shared_skills() + COMMON_SKILLS
 
-## Every skill is open from level 1, for every class and any class added later (jj, 2026-11-01); a skill's "lvl" is
-## kept only for its tooltip's order and in case unlocking by level comes back.
-const SKILLS_UNLOCKED := true
+## Skills unlock by level (Blaine's progression overhaul, docs/queue_progression_overhaul.md): each skill's "lvl";
+## a class's skills Q 1, E 3, R 5, F 9, G 14 and every ultimate at 20, the shared ones spread between (War Cry 6,
+## Frost Nova 8, Arc 11, Earthshatter 16). A locked skill shows greyed with its level, can't be bound or cast.
+## true opens every skill from level 1 again (jj's unlock-all, 2026-11-01); the F8 panel's "All skills" does it for
+## testing (Game.test_allskills).
+const SKILLS_UNLOCKED := false
+
+## The Battlegrounds' gear rules (Hero.recalc, Hero.pvp_scaled; Blaine's progression overhaul: "character level and
+## skills provide most of a player's power, gear smaller but meaningful advantages, with exciting PvP utility"). Flat
+## stats from gear count for PVP_GEAR_SHARE; percentages are capped (PVP_GEAR_CAP: +5% run speed is a standout); the
+## weapon's damage is the level's (pvp_damage), the weapon adding up to ~20% by how good it is for that level.
+const PVP_GEAR_SHARE := 0.2
+const PVP_ARMOR_SHARE := 0.12       # the gear's defence (armour's damage cut was the biggest single gap)
+const PVP_GEAR_FLAT := ["str", "dex", "vit", "ene", "life", "mana", "fire", "dmg", "regen"]
+const PVP_GEAR_CAP := {"res": 15, "ls": 4, "ias": 20, "frw": 5, "block": 15}
+
+## The level's weapon damage in the Battlegrounds (about the best base a character of that level can wield), scaled
+## from 0.85 (a weapon far below the level) to 1.05 (the best there is) by the weapon's own damage against it.
+static func pvp_damage(level: int, wd: Array) -> Array:
+	var lo := 2.5 + 0.55 * level
+	var hi := 6.0 + 0.95 * level
+	var q := clampf((float(wd[0]) + float(wd[1])) / (lo + hi), 0.0, 1.3)
+	var m := 0.85 + 0.15 * q
+	return [maxi(1, int(round(lo * m))), maxi(2, int(round(hi * m)))]
 
 static func skill_locked(sk: Dictionary, level: int) -> bool:
 	return not SKILLS_UNLOCKED and not sk.is_empty() and level < int(sk.get("lvl", 1))

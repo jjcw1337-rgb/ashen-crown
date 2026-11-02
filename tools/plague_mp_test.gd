@@ -55,7 +55,7 @@ func _run() -> void:
 	g.playing = false
 	await secs(4.0)
 	var me = g.hero
-	me.level = 12
+	me.level = 20          # (The Last Epidemic, his ultimate, opens at 20)
 	me.recalc()
 	var other = g.net.puppets()[0] if g.net.puppets().size() > 0 else null
 	check(other != null and other.is_plague() and other.rig.has_meta("plague"), "the other player shows as a plague doctor on his own body")
