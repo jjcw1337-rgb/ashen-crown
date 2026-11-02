@@ -7,7 +7,7 @@ const MARGIN := 30.0
 
 var act := 0
 var oak_forest := false     # Act I moor: oak groves and an oak forest beyond the edges
-var living_grass := false   # the living 3D grass (Grass): Act I, and A2's road and city in its own sun-dried colours
+var living_grass := false   # the living 3D grass (Grass): Act I in its colours, A2 and A3 in the zone's (A3's ash chars it)
 var kind := "town"
 var level := 1
 var rng := RandomNumberGenerator.new()
@@ -598,8 +598,8 @@ func terrain_patch(r: Rect2, step: float, tcol: Dictionary, nm := "Terrain", flo
 ## Grass, wildflowers and ferns use their own random numbers so a denser graphics setting
 ## never shifts anything gameplay-related (co-op players can use different settings).
 func _scatter_grass(count: int, colors: Dictionary, height: float, outside := true) -> void:
-	# Act I and A2: the living 3D grass (grass.gd): species and biomes, wind and touch (A2 in the zone's own colours;
-	# it was the old blade clumps there: 15 M triangles on the Imperial Road)
+	# The living 3D grass (grass.gd): species and biomes, wind and touch; Act I in its own colours, A2 and A3 in the
+	# zone's (they were the old blade clumps: 15 M triangles on the Imperial Road; A3's ash chars it in the shader)
 	if oak_forest or living_grass:
 		var a := bounds.grow(MARGIN * 0.6 if outside else 0.0)
 		_grass_dry.seed = int(bounds.size.x * 31.0) + count

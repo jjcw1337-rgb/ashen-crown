@@ -445,8 +445,9 @@ void fragment(){
 	float cm = 1.0;
 	float ch = 0.0;
 	float cwear = 0.0;
+	float cgone = 0.0;
 	if (cob > 0.01) {
-		float ce0 = 0.0; float cgone = 0.0; float ccrack = 0.0;
+		float ce0 = 0.0; float ccrack = 0.0;
 		ch = cobble(p, cid, ce0, cgone, ccrack);
 		cm = smoothstep(0.03, 0.12, ce0) * (1.0 - cgone);
 		// granite in a spread of greys, some warmer or cooler, with specks of grain
@@ -470,7 +471,7 @@ void fragment(){
 		// the joints and the holes where a stone is gone: dark packed dirt with moss and grass in it
 		vec3 gap = mix(col_path * 0.36, col_a * 0.55, smoothstep(0.35, 0.7, n2 + (vnoise(p * 12.0) - 0.5) * 0.45));
 		gap *= 0.72 + vnoise(p * 30.0) * 0.38;
-		vec3 hole = mix(col_path * 0.7, col_a * 0.8, smoothstep(0.4, 0.75, vnoise(p * 6.0) + n2 * 0.3)) * (0.8 + n4 * 0.35);
+		vec3 hole = mix(col_path * 0.95, col_a * 1.1, smoothstep(0.4, 0.75, vnoise(p * 6.0) + n2 * 0.3)) * (0.85 + n4 * 0.3);
 		gap = mix(gap, hole, cgone * smoothstep(0.0, 0.12, ce0 + 0.1));
 		base = mix(base, mix(gap, stonec, cm), cob);
 	}
@@ -623,7 +624,7 @@ void fragment(){
 		vec2 ta = vor((p + vec2(ex, 0.0)) * 1.3, tidx); vec2 tb = vor((p + vec2(0.0, ex)) * 1.3, tidx);
 		wn = normalize(wn + vec3(tm - smoothstep(0.02, 0.09, ta.y - ta.x), 0.0, tm - smoothstep(0.02, 0.09, tb.y - tb.x)) * 3.0);
 	}
-	AO = mix(1.0, 0.55, (1.0 - smoothstep(0.0, 0.42, ch)) * cob);
+	AO = mix(1.0, 0.55, (1.0 - smoothstep(0.0, 0.42, mix(ch, 0.45, cgone))) * cob);   // a hole is mud, not a pit
 	NORMAL = normalize((VIEW_MATRIX * vec4(wn, 0.0)).xyz);
 	if (cracks > 0.0) {
 		float v = abs(fbm(p * 0.22 + 3.0) - 0.5);
