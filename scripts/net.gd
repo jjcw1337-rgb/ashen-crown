@@ -978,6 +978,8 @@ func sv_inter(idx: int) -> void:
 	var t = game.world.interactables[idx]
 	if not is_instance_valid(t) or t.used:
 		return
+	if t.kind == "chest" and game.chest_sealed(t):
+		return          # (a boss's chest, its boss alive here: the server's word, whatever the client thought)
 	game.use_inter_remote(t)
 	var pid := multiplayer.get_remote_sender_id()
 	for op in players:

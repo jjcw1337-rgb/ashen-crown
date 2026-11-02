@@ -143,6 +143,13 @@ static func build(w: World) -> void:
 				w.floor_rects.append(Rect2(c.x - 1.5, minf(c.y, 0.0), 3.0, absf(c.y)))      # straight down/up into the hall
 			else:
 				w.floor_rects.append(Rect2(minf(c.x, 0.0), c.y - 1.5, absf(c.x), 3.0))      # straight across
+	# the floors below (bg_floors.gd): the stairs down from the great hall, and from one crypt room off the ring
+	var down := [Vector3(6.0, 0, -8.0)]
+	var crypts := rooms.keys().filter(func(c) -> bool: return kinds[c] == "" or kinds[c] == "treasure")
+	if not crypts.is_empty():
+		var cr: Rect2 = rooms[crypts[w.rng.randi() % crypts.size()]]
+		down.append(Vector3(cr.get_center().x + 3.0, 0, cr.get_center().y - 2.5))
+	BgFloors.build(w, down)
 	var bb: Rect2 = w.floor_rects[0]
 	for r in w.floor_rects:
 		bb = bb.merge(r)
@@ -199,7 +206,7 @@ static func build(w: World) -> void:
 	w._candles(Vector3(hc.x, 0, hc.y), true)
 	w.enemy_spawns.append({"kind": "fallen_reaver", "pos": Vector3(hc.x, 0, hc.y), "count": 1, "champ": true, "pack": 690, "level": MON_LEVEL + 2})
 	w.enemy_spawns.append({"kind": "skel_archer", "pos": Vector3(hc.x, 0, hc.y + 6.0), "count": 2, "champ": false, "pack": 690, "level": MON_LEVEL})
-	w.crypt_shell()
+	w.crypt_shell(BgFloors.themes())
 	for p in portals:
 		var it: Inter = w._inter("extract", "Extraction Portal", p, 1.8, Fx.portal_model(), {"open": false})
 		var m := it.get_node_or_null("Model")
@@ -336,9 +343,19 @@ func _process(delta: float) -> void:
 		_sync_t = 10.0
 		broadcast()
 	if open.is_empty() and raid_t >= secs(PORTALS_AT):
-		var idx := range(portal_list(game.world).size())
-		idx.shuffle()
-		open = idx.slice(0, OPEN_PORTALS)
+		# OPEN_PORTALS on the Ossuary, one on each floor below
+		var pl := portal_list(game.world)
+		var by_floor := {}
+		for i in pl.size():
+			var f := int(pl[i].data.get("floor", 1))
+			if not by_floor.has(f):
+				by_floor[f] = []
+			by_floor[f].append(i)
+		open = []
+		for f in by_floor:
+			var ids: Array = by_floor[f]
+			ids.shuffle()
+			open.append_array(ids.slice(0, OPEN_PORTALS if f == 1 else 1))
 		_announce("The Extraction Portals are open")
 		broadcast()
 	if raid_t >= secs(RAID_SECS):
