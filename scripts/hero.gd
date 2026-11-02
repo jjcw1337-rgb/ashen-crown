@@ -494,12 +494,8 @@ func setup(g: Node) -> void:
 	trail = MeshInstance3D.new()
 	trail.mesh = ImmediateMesh.new()
 	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var tm := StandardMaterial3D.new()
-	tm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	tm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	tm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	tm.vertex_color_use_as_albedo = true
-	tm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var tm := ShaderMaterial.new()
+	tm.shader = _trail_shader()
 	trail.material_override = tm
 	trail.top_level = true
 	add_child(trail)
@@ -1954,6 +1950,30 @@ func _blight_burst(p: Vector3) -> void:
 func _clear_warlock() -> void:
 	WarlockSkills.clear(self)
 
+static var _trail_sh: Shader
+
+## The swing's trail (was a flat additive ribbon that read as a white paper blade): UV.x = age along the swing
+## (0 = the blade now), UV.y = from the hilt (0) to the tip (1); a hot thin edge at the tip, a soft body fading toward
+## the hilt and with age, faint streaks running back along it, in the class's colour (vertex colour; alpha = strength).
+static func _trail_shader() -> Shader:
+	if _trail_sh == null:
+		_trail_sh = Shader.new()
+		_trail_sh.code = """shader_type spatial;
+render_mode unshaded, blend_add, cull_disabled, depth_draw_never, shadows_disabled;
+void fragment() {
+	float age = UV.x;
+	float edge = UV.y;
+	float body = pow(edge, 1.3) * 0.5;
+	float rim = smoothstep(0.78, 1.0, edge) * 1.25;
+	float fade = pow(clamp(1.0 - age, 0.0, 1.0), 1.7);
+	float streak = 0.72 + 0.28 * sin(edge * 34.0 + age * 9.0);
+	float a = (body + rim) * fade * streak * COLOR.a;
+	vec3 c = mix(COLOR.rgb, vec3(1.0, 0.97, 0.9), smoothstep(0.88, 1.0, edge) * 0.55);
+	ALBEDO = c * a;
+	ALPHA = clamp(a, 0.0, 1.0);
+}"""
+	return _trail_sh
+
 func _update_trail(active: bool) -> void:
 	var im: ImmediateMesh = trail.mesh
 	im.clear_surfaces()
@@ -1974,14 +1994,28 @@ func _update_trail(active: bool) -> void:
 			trail_pts.pop_back()
 	if trail_pts.size() < 2:
 		return
+	# smoothed through the samples (Catmull-Rom, SUB steps between each pair), so a fast swing is an arc, not facets
+	const SUB := 3
+	var n: int = trail_pts.size()
+	var total := float((n - 1) * SUB)
+	var c := Color(trail_col.r, trail_col.g, trail_col.b, 0.85)
 	im.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
-	for i in trail_pts.size():
-		var f := 1.0 - float(i) / trail_pts.size()
-		var c := Color(trail_col.r, trail_col.g, trail_col.b, f * 0.55)
-		im.surface_set_color(c)
-		im.surface_add_vertex(trail_pts[i][0])
-		im.surface_set_color(Color(c.r, c.g, c.b, f * 0.9))
-		im.surface_add_vertex(trail_pts[i][1])
+	for i in n - 1:
+		for k in SUB + (1 if i == n - 2 else 0):
+			var t := float(k) / SUB
+			var a0: Array = trail_pts[maxi(i - 1, 0)]
+			var a1: Array = trail_pts[i]
+			var a2: Array = trail_pts[i + 1]
+			var a3: Array = trail_pts[mini(i + 2, n - 1)]
+			var base: Vector3 = (a1[0] as Vector3).cubic_interpolate(a2[0], a0[0], a3[0], t)
+			var tip: Vector3 = (a1[1] as Vector3).cubic_interpolate(a2[1], a0[1], a3[1], t)
+			var age := float(i * SUB + k) / total
+			im.surface_set_color(c)
+			im.surface_set_uv(Vector2(age, 0.0))
+			im.surface_add_vertex(base)
+			im.surface_set_color(c)
+			im.surface_set_uv(Vector2(age, 1.0))
+			im.surface_add_vertex(tip)
 	im.surface_end()
 
 func respawn(p: Vector3) -> void:
