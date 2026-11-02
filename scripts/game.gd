@@ -760,10 +760,19 @@ func apply_quality(q: int) -> void:
 	quality = clampi(q, 0, max_quality())
 	q = quality
 	var forward := is_forward()
-	env.ssao_enabled = q >= 1 and forward
+	# ambient occlusion: indoors from Medium, outdoors only on Ultra. Godot's SSAO only darkens ambient light, and the
+	# outdoor zones are lit by the sun, the moon and fires: without it the camp, the moor and the arena come out the
+	# same (fixed-step screenshots: brightness within 0.1-1%, differences no bigger than between two identical runs)
+	# while it cost ~7 ms of the GPU frame at High; in the crypt it shows (4.7% darker corners), so indoors keep it
+	# (nightly 2026-11-02, docs/nightly/perf/runs/2026-11-02.md)
+	env.ssao_enabled = forward and (q >= 3 or (q >= 1 and indoor()))
 	env.ssao_radius = 1.2
 	env.ssao_intensity = 2.2
-	env.ssil_enabled = q >= 2 and forward
+	# screen-space indirect light: Ultra only. At High (medium quality, half size) it cost 6-8 ms of the GPU frame
+	# (the crypt: 26.6 -> 18.4 ms) and changed nothing that shows: fixed-step screenshots of the camp, moor, crypt,
+	# fort and arena with and without it differ no more than two identical runs, brightness within 0.5% (nightly
+	# 2026-11-02, docs/nightly/perf/runs/2026-11-02.md)
+	env.ssil_enabled = q >= 3 and forward
 	env.ssil_intensity = 0.8
 	env.ssr_enabled = q >= 3 and forward
 	env.volumetric_fog_enabled = q >= 2 and forward

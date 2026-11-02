@@ -386,7 +386,80 @@ static func oak_model(k: int, glb := "", leaf_n := -1) -> ArrayMesh:
 		_leaf_cluster(leaf, c + (c - crown).normalized() * 0.15, crown, rng, rng.randi_range(8, 11), float(spec[4]))
 	leaf.commit(out)
 	out.surface_set_material(out.get_surface_count() - 1, leaf_mat(LEAVES, spec[0], spec[1], spec[2]))
+	var tw := shadow_twin(out, h)
+	if tw:
+		out.set_meta("shadow_mesh", tw)
 	_cache[key] = out
+	return out
+
+## The mesh that casts a Meshy oak's shadow (Props.multimesh draws it shadows-only beside the tree, whose own shadow
+## is then off): the same triangles swaying the same way, cheaper to draw into the four shadow cascades. The leaf cards
+## cut their shape from a baked mask (FOLIAGE_SHADOW_SHADER) instead of FOLIAGE_SHADER's procedural leaves, the part
+## that cost: the oaks' shadows were ~8 ms of the moor's GPU frame at High, ~2 ms now (nightly 2026-11-02). The trunk
+## is welded to positions only (a quarter of the vertices) under a shader with no fragment work. One difference: the
+## shadow no longer thins where the tree is seen through near the player (it was dithered away with the tree).
+## (Tried and not kept: twins for the pines, ferns and bushes; no gain.)
+static var no_twins := OS.get_cmdline_user_args().has("--notwins")      # (for comparisons)
+static func shadow_twin(m: ArrayMesh, h: float) -> ArrayMesh:
+	if no_twins:
+		return null
+	var im := ImporterMesh.new()
+	var cheaper := false
+	for si in m.get_surface_count():
+		var arr: Array = m.surface_get_arrays(si)
+		var mat: Material = m.surface_get_material(si)
+		var use: Material = mat
+		var sh: Shader = (mat as ShaderMaterial).shader if mat is ShaderMaterial else null
+		if sh == _shader("meshy_tree", MESHY_TREE_SHADER):
+			if not _mats.has("treeshadow%.2f" % h):
+				var tm := ShaderMaterial.new()
+				tm.shader = _shader("meshy_tree_shadow", MESHY_TREE_SHADOW_SHADER)
+				tm.set_shader_parameter("height", h)
+				_mats["treeshadow%.2f" % h] = tm
+			use = _mats["treeshadow%.2f" % h]
+			# positions only, welded (Meshy's mesh is split at every UV seam: 20 k vertices for 8 k triangles); welded,
+			# the simplifier can also make LODs of it, which the importer couldn't
+			if arr[Mesh.ARRAY_INDEX] != null:
+				arr = weld_positions(arr)
+		elif sh == _shader("leaf", FOLIAGE_SHADER):
+			use = foliage_shadow_mat(int((mat as ShaderMaterial).get_shader_parameter("kind")))
+		cheaper = cheaper or use != mat
+		im.add_surface(Mesh.PRIMITIVE_TRIANGLES, arr, [], {}, use)
+	if not cheaper:
+		return null
+	im.generate_lods(25.0, 60.0, [])
+	return im.get_mesh()
+
+static func foliage_shadow_mat(kind: int) -> ShaderMaterial:
+	var key := "leafshadow%d" % kind
+	if not _mats.has(key):
+		var m := ShaderMaterial.new()
+		m.shader = _shader("leaf_shadow", FOLIAGE_SHADOW_SHADER)
+		m.set_shader_parameter("mask", load("res://assets/textures/fx/foliage_mask_%d.png" % kind))
+		_mats[key] = m
+	return _mats[key]
+
+## A surface's positions only, welded (vertices at the same spot merged): what a shadow caster needs.
+static func weld_positions(arr: Array) -> Array:
+	var vs: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var ix: PackedInt32Array = arr[Mesh.ARRAY_INDEX]
+	var map := {}
+	var nv := PackedVector3Array()
+	var ni := PackedInt32Array()
+	ni.resize(ix.size())
+	for i in ix.size():
+		var p: Vector3 = vs[ix[i]]
+		var key := Vector3i(roundi(p.x * 2000.0), roundi(p.y * 2000.0), roundi(p.z * 2000.0))
+		var j: int = map.get(key, -1)
+		if j < 0:
+			j = nv.size()
+			map[key] = j
+			nv.append(p)
+		ni[i] = j
+	var out := []
+	out.resize(Mesh.ARRAY_MAX)
+	out[Mesh.ARRAY_VERTEX] = nv
+	out[Mesh.ARRAY_INDEX] = ni
 	return out
 
 # ---------------------------------------------------------------- undergrowth
@@ -757,6 +830,56 @@ void fragment(){
 	SPECULAR = 0.25;
 	if (use_normal) { NORMAL_MAP = texture(normal_tex, UV).rgb; }
 	if (!FRONT_FACING) { NORMAL = -NORMAL; }
+}
+"""
+
+## MESHY_TREE_SHADER's shadow caster (shadow_twin): the same vertex sway, nothing in the fragment.
+const MESHY_TREE_SHADOW_SHADER := """
+shader_type spatial;
+render_mode cull_disabled, unshaded;
+uniform float height = 6.0;
+void vertex(){
+	vec3 o = MODEL_MATRIX[3].xyz;
+	float ph = o.x * 0.21 + o.z * 0.17;
+	float hy = clamp(VERTEX.y / height, 0.0, 1.0);
+	float s = hy * hy * clamp(length(VERTEX.xz) * 0.5 + 0.4, 0.0, 1.4);
+	float w = sin(TIME * 0.9 + ph) * 0.6 + sin(TIME * 2.1 + ph * 1.7) * 0.25;
+	float flutter = sin(TIME * 5.0 + VERTEX.x * 3.0 + VERTEX.z * 2.0 + ph * 3.0) * 0.015;
+	VERTEX.x += (w * 0.12 + flutter) * s;
+	VERTEX.z += (w * 0.07 + flutter) * s;
+}
+void fragment(){
+	ALBEDO = vec3(0.0);
+}
+"""
+
+## FOLIAGE_SHADER's shadow caster (shadow_twin): the same sway and the same cut-out, read from the baked mask
+## (tools/bake_foliage_mask.gd) instead of worked out per texel: the procedural leaf shapes in every texel of every
+## shadow cascade were ~8 ms of the moor's GPU frame at High (nightly 2026-11-02). Burnt-away leaves (ash) cut the same.
+const FOLIAGE_SHADOW_SHADER := """
+shader_type spatial;
+render_mode cull_disabled, unshaded;
+uniform sampler2D mask : filter_linear, repeat_disable;
+global uniform float ash_amt;
+varying vec3 wp;
+float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float vn(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), u.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), u.x), u.y); }
+void vertex(){
+	vec3 o = MODEL_MATRIX[3].xyz;
+	float ph = o.x * 0.21 + o.z * 0.17;
+	float s = COLOR.a;
+	float w = sin(TIME * 0.9 + ph) * 0.6 + sin(TIME * 2.1 + ph * 1.7) * 0.25;
+	float flutter = sin(TIME * 6.0 + VERTEX.x * 9.0 + VERTEX.z * 7.0 + ph * 3.0) * 0.02;
+	VERTEX.x += (w * 0.12 + flutter) * s;
+	VERTEX.z += (w * 0.07 + flutter) * s;
+	VERTEX.y += flutter * s * 0.5;
+	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment(){
+	if (texture(mask, UV).r < 0.5) { discard; }
+	if (ash_amt > 0.0 && vn(wp.xz * 1.1 + wp.y * 0.9 + 3.0) < 0.72 * ash_amt) { discard; }
+	ALBEDO = vec3(0.0);
 }
 """
 

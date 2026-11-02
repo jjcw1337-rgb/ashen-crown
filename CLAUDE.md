@@ -1256,6 +1256,13 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   fps, 1% low, p99 frame time, hitches, load time, main thread, GPU, draw calls, triangles, memory; then quit.
   `tools/nightly/bench.sh` runs the suite (plus the download size), `tools/nightly/kpi_push.py` stores it in the KPI
   database on the staging server, Grafana draws it (https://<staging>/grafana/), `sh tools/kpi_query.sh latest` reads it.
+- **Instancing and shadows** (nightly 2026-11-02): `Props.multimesh` splits instances spread wider than 24 m into
+  16 m cells (a MultiMesh is culled as one box: one forest-wide MultiMesh was drawn whole into every shadow pass);
+  it returns the first cell and the others copy its settings (deferred). A mesh with a `shadow_mesh` meta casts its
+  shadow from a shadows-only twin MultiMesh (`Flora.shadow_twin`: the Meshy oaks, their leaf cards cut from the baked
+  `assets/textures/fx/foliage_mask_<kind>.png`, `tools/bake_foliage_mask.gd`; rebake if `FOLIAGE_SHADER`'s
+  needles/leaves/fern change). SSIL is Ultra only, SSAO outdoors Ultra only (indoors from Medium; `Game.apply_quality`
+  reads `indoor()`): they cost ~7 ms each and showed nothing there.
 - **Nightly lab** (`tools/nightly/`, `docs/nightly/README.md`): two launchd jobs on the Game Factory Mac, `perf` (01:00)
   and `mode` (04:30), each on a fresh `staging` with its own log (`docs/nightly/perf/LOG.md`, `docs/nightly/modes/LOG.md`:
   lessons, then one row per attempt), the KPI benchmark before and after (slower = not shipped), the gate, a push to
