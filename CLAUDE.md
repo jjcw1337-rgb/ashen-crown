@@ -1243,7 +1243,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `oak_compare.gd` (oaks as the game builds them, with leaf clusters) and `body_compare.gd` (two copies of the mocap
   knight); the procedural oak (`tools/blender/trees/oak_gen.py`) lost to the Meshy oaks there and was not adopted.
   The ground: the cobbles are `Mats.TERRAIN_SHADER`'s `cobble()` (domed, chipped, worn flagstones; judge changes in
-  `terrain_lab.gd`, a strip of road without a zone). Every zone's scattered rocks and the old roads' kerbs are Meshy
+  `terrain_lab.gd`, a strip of road without a zone); the dirt has pebbles and grit (`ground_detail`, off on Low) and Act
+  I's forest floor fallen oak leaves in drifts (`litter`, set in `World.terrain_patch` when `oak_forest`). Every zone's scattered rocks and the old roads' kerbs are Meshy
   (`assets/models/rocks/`, `Props.meshy_rock`/`boulder`/`seat`, `World.kerb`), and the crate, barrel and log pile
   (`assets/models/props/`, `Props._clutter_into`), and A2's columns, stumps, drums, tombs, milestones, fountains and
   triumphal arch (`assets/models/roman/`, `Roman._meshy_column`, `_set_piece`); all re-baked on clean UVs, with the

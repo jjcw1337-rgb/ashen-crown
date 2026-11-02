@@ -586,6 +586,9 @@ func terrain_patch(r: Rect2, step: float, tcol: Dictionary, nm := "Terrain", flo
 	mat.shader = Mats.shader("terrain")
 	for k in tcol.keys():
 		mat.set_shader_parameter(k, tcol[k])
+	# the ground's small detail: pebbles and grit in the dirt from Medium up, fallen leaves in Act I's oak woods
+	mat.set_shader_parameter("ground_detail", 1.0 if detail >= 1 else 0.0)
+	mat.set_shader_parameter("litter", 1.0 if oak_forest and detail >= 1 else 0.0)
 	mesh.surface_set_material(0, mat)
 	var mi := MeshInstance3D.new()
 	mi.name = nm

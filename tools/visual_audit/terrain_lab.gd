@@ -46,7 +46,8 @@ func _run() -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = M.call("shader", "terrain")
 	var cols := {"col_a": Color(0.15, 0.2, 0.08), "col_b": Color(0.21, 0.23, 0.11), "col_accent": Color(0.28, 0.3, 0.13),
-		"col_path": Color(0.25, 0.21, 0.16), "col_cliff": Color(0.3, 0.3, 0.28), "wet": 0.3, "cob_shade": 0.72}
+		"col_path": Color(0.25, 0.21, 0.16), "col_cliff": Color(0.3, 0.3, 0.28), "wet": 0.3, "cob_shade": 0.72,
+		"litter": 1.0}
 	for k in cols:
 		mat.set_shader_parameter(k, cols[k])
 	mi.material_override = mat

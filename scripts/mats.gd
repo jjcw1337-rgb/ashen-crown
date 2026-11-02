@@ -330,6 +330,9 @@ uniform float tiles = 0.0;
 uniform float cob_shade = 1.0;
 uniform float wet = 0.0;
 uniform float ripples = 0.0;
+// the ground's small detail (World.terrain_patch): pebbles and grit in the dirt; fallen oak leaves on the floor
+uniform float ground_detail = 1.0;
+uniform float litter = 0.0;
 // the coast (coast.gd): sand round the sea (y = 0), wet sand at the waterline, the seabed under water
 uniform float sea = 0.0;
 uniform vec3 col_sand : source_color = vec3(0.6, 0.53, 0.4);
@@ -430,6 +433,48 @@ void fragment(){
 	float edge = smoothstep(0.2, 0.5, path) * (1.0 - smoothstep(0.5, 0.95, path));
 	base = mix(base, pathc, path);
 	base = mix(base, base * vec3(0.85, 0.82, 0.7), edge * 0.5);
+	// stones and grit in the trodden dirt: pebbles half sunk in the soil, each domed, lit on its crown and shadowed at
+	// its foot, more of them toward the path's edges than down its trodden middle; a speckle of light and dark grains
+	vec2 pebg = vec2(0.0);
+	if (ground_detail > 0.0 && path > 0.02) {
+		float pid; vec2 pc;
+		vec2 pq = p * 7.0;
+		vorc(pq, pid, pc);
+		vec2 po = pq - pc;
+		float pd = length(po) + (vnoise(pq * 3.1) - 0.5) * 0.09;
+		float prad = 0.12 + 0.2 * hash21(vec2(pid, 3.1)) * hash21(vec2(pid, 4.2));
+		float pkeep = step(1.0 - mix(0.5, 0.16, smoothstep(0.55, 0.95, path)) * (0.4 + 0.8 * n3), hash21(vec2(pid, 7.7)));
+		float pdome = pkeep * clamp(1.0 - (pd * pd) / (prad * prad), 0.0, 1.0);
+		float pfoot = pkeep * (1.0 - smoothstep(prad, prad * 1.5, pd)) * step(prad, pd);
+		vec3 stone = mix(col_path * 1.25, vec3(0.36, 0.35, 0.33), 0.35 + 0.45 * hash21(vec2(pid, 5.5)));
+		stone *= 0.8 + 0.25 * pdome + (n4 - 0.5) * 0.15;
+		base = mix(base, base * 0.75, pfoot * path);
+		base = mix(base, stone, smoothstep(0.0, 0.25, pdome) * path);
+		pebg = step(pd, prad) * pkeep * (-2.0 * po / (prad * prad)) * 0.018 * 7.0 * path;
+		float gr = vnoise(p * 38.0);
+		base *= 1.0 + (smoothstep(0.78, 0.92, gr) * 0.12 - (1.0 - smoothstep(0.08, 0.22, gr)) * 0.12) * path;
+	}
+	if (litter > 0.0) {
+		// fallen oak leaves on the forest floor, lying in drifts, fewer on the paths: lobed, each turned its own way,
+		// brown, a few russet, some dark and rotting, a darker midrib
+		float lid; vec2 lc;
+		vec2 lq = p * 3.0;
+		vorc(lq, lid, lc);
+		vec2 lo = lq - lc;
+		float la = hash21(vec2(lid, 3.3)) * 6.2832;
+		vec2 ld = vec2(cos(la), sin(la));
+		vec2 lr = vec2(dot(lo, ld), dot(lo, vec2(-ld.y, ld.x)));
+		float llen = 0.16 + 0.22 * hash21(vec2(lid, 5.1));
+		float lw = llen * (0.42 + 0.1 * sin(lr.x / llen * 9.0));
+		float leaf = 1.0 - smoothstep(0.8, 1.0, length(vec2(lr.x / llen, lr.y / lw)));
+		float drifts = 0.05 + 0.5 * smoothstep(0.45, 0.72, fbm(p * 0.35 + 11.0)) + 0.15 * smoothstep(0.5, 0.75, n2);
+		leaf *= step(1.0 - litter * drifts, hash21(vec2(lid, 8.8))) * (1.0 - path * 0.6);
+		vec3 lcol = mix(vec3(0.24, 0.16, 0.08), vec3(0.36, 0.24, 0.12), hash21(vec2(lid, 2.2)));
+		lcol = mix(lcol, vec3(0.4, 0.21, 0.09), step(0.85, hash21(vec2(lid, 1.7))));
+		lcol = mix(lcol, vec3(0.15, 0.11, 0.07), step(0.65, hash21(vec2(lid, 6.6))));
+		float rib = (1.0 - smoothstep(0.0, 0.015, abs(lr.y))) * step(abs(lr.x), llen * 0.85);
+		base = mix(base, lcol * (0.8 + n4 * 0.35) * (1.0 - rib * 0.3), leaf * 0.9);
+	}
 	float tid = 0.0;
 	float tm = 1.0;
 	if (tiles > 0.0) {
@@ -618,6 +663,9 @@ void fragment(){
 		float hb = cobble(p + vec2(0.0, ce), i1, i2, i3, i4);
 		wn = normalize(wn + vec3(ch - ha, 0.0, ch - hb) * (0.09 / ce) * cob * (1.0 - cover * 0.5));
 		ROUGHNESS = mix(ROUGHNESS, mix(0.82, 0.6, cwear), cob * cm);
+	}
+	if (pebg.x != 0.0 || pebg.y != 0.0) {
+		wn = normalize(wn + vec3(-pebg.x, 0.0, -pebg.y) * (1.0 - cob) * (1.0 - cover * 0.8));
 	}
 	if (tiles > 0.0 && path > 0.5) {
 		float ex = 0.03; float tidx;
