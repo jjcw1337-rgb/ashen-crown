@@ -92,7 +92,8 @@ func _run() -> void:
 			for mi in cc.get_children():
 				if mi is MeshInstance3D and str(mi.name).ends_with("_l0"):
 					tris += (mi as MeshInstance3D).mesh.get_faces().size() / 3
-			ok(tris > 2000 and tris <= 14000, "%s LOD0 is %d triangles" % [cc.get_parent().name, tris])
+			# full heaps (jj: no reduction in quality): ~50-65 pieces a bowl, LOD1 beyond the LOD0 distance
+			ok(tris > 2000 and tris <= 20000, "%s LOD0 is %d triangles" % [cc.get_parent().name, tris])
 	# the glow follows the fire's light
 	var c0: BrazierCoals = coals[0] if coals.size() > 0 else null
 	if c0 != null and c0.fire_light != null:

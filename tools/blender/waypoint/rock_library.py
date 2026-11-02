@@ -5,7 +5,7 @@
 # that scripts/brazier_coals.gd reads:
 #
 #   blender -b --python rock_library.py -- <workdir> <out.glb> [--rocks a.glb b.glb ...] [--crystal c.glb]
-#          [--stage1] [--stage3] [--tex 1024] [--ctex 512] [--seed 7] [--bowl brazier.glb] [--bowl-scale 1.15] [--sheet out.png]
+#          [--stage1] [--stage3] [--physics] [--tex 1024] [--ctex 512] [--seed 7] [--bowl brazier.glb] [--bowl-scale 1.15] [--sheet out.png]
 #
 # Stage 3 (--stage3): only the piles and the export, from the library the last stage 2 saved as <workdir>/library.blend.
 # Stage 1 (--stage1, or when workdir has no solids yet): each Meshy model (a triangle soup split along its UV seams)
@@ -788,6 +788,109 @@ def settle(pile_i, stones, crystals, bowl, rnd):
     scene.frame_set(1)
     return out
 
+# --- a geometric settle (stage 3's default; --physics uses the rigid-body settle above): Blender's rigid-body
+# solver let most stones fall straight through the passive bowl mesh in this headless setup (run 3 kept 2-6 of 25;
+# a lathe bowl did no better), so the piles are made by dropping each stone onto the real bowl and the stones
+# already there.
+def settle_geometric(pile_i, stones, crystals, rnd, bowl):
+    """Drops each stone straight down at the lowest of a few candidate spots until one of its points touches the
+    real bowl mesh or a stone already there (ray casts from its vertices against a BVH of both), so nothing floats
+    and nothing sinks into another from above. Stones are scaled up a little (the bowl is 75 cm across)."""
+    from mathutils.bvhtree import BVHTree
+    lip = DISH_LIP_R * BOWL_SCALE
+    rim = DISH_RIM_Z * BOWL_SCALE
+    bowl_v = [bowl.matrix_world @ v.co for v in bowl.data.vertices]
+    bowl_p = [tuple(pl.vertices) for pl in bowl.data.polygons]
+    acc_v = list(bowl_v)
+    acc_p = list(bowl_p)
+    bvh = BVHTree.FromPolygons(acc_v, acc_p)
+    down = Vector((0, 0, -1))
+    def surface(x, y):
+        hit = bvh.ray_cast(Vector((x, y, rim + 1.0)), down)
+        return hit[0].z if hit[0] is not None else None
+    def add_to_bvh(o, m):
+        nonlocal bvh
+        base = len(acc_v)
+        acc_v.extend([m @ v.co for v in o.data.vertices])
+        acc_p.extend([tuple(base + i for i in pl.vertices) for pl in o.data.polygons])
+        bvh = BVHTree.FromPolygons(acc_v, acc_p)
+    out = []
+    cry_xy = []
+    for k, c in enumerate(crystals):
+        if k == 0:
+            r = rnd.uniform(0.0, 0.07); a = rnd.uniform(0, 2 * math.pi)
+            tilt = rnd.uniform(0.05, 0.22)
+        else:
+            r = rnd.uniform(0.11, 0.2); a = rnd.uniform(0, 2 * math.pi)
+            for _ in range(20):
+                if all(math.hypot(r * math.cos(a) - q[0], r * math.sin(a) - q[1]) > 0.1 for q in cry_xy):
+                    break
+                r = rnd.uniform(0.1, 0.21); a = rnd.uniform(0, 2 * math.pi)
+            tilt = rnd.uniform(0.25, 0.55)
+        x, y = r * math.cos(a), r * math.sin(a)
+        cry_xy.append((x, y))
+        fz = surface(x, y)
+        fz = fz if fz is not None else DISH_FLOOR_Z * BOWL_SCALE
+        # the crystals rise out of the heap (the stones are scaled up too): the centrepiece biggest
+        cs = rnd.uniform(1.55, 1.75) if k == 0 else rnd.uniform(1.3, 1.45)
+        loc = Vector((x, y, fz + (0.03 if k == 0 else 0.05) + float(c["base"]) * cs))
+        lean_axis = Vector((-math.sin(a), math.cos(a), 0.0))
+        m = Matrix.Translation(loc) @ Matrix.Rotation(tilt, 4, lean_axis) @ Matrix.Rotation(rnd.uniform(0, 2 * math.pi), 4, "Z") \
+            @ Matrix.Scale(cs, 4)
+        out.append((c, m))
+        add_to_bvh(c, m)
+    n_stones = 0
+    for s in sorted(stones, key=lambda o: -float(o["radius"])):
+        is_frag = s.name.startswith("frag")
+        sc = rnd.uniform(1.15, 1.3) if is_frag else rnd.uniform(1.3, 1.5)
+        # only vertices that belong to a face: the fracture leaves a couple of loose vertices metres away on every
+        # piece (harmless on screen, but they wreck any measure of the stone, and they are why the rigid-body
+        # settle's convex hulls threw the stones out)
+        used = sorted({i for pl in s.data.polygons for i in pl.vertices})
+        V = np.array([s.data.vertices[i].co[:] for i in used], dtype=np.float64) * sc
+        rot = Matrix.Rotation(rnd.uniform(0, 2 * math.pi), 4, "Z") @ Matrix.Rotation(rnd.uniform(0, 2 * math.pi), 4, "X") \
+            @ Matrix.Rotation(rnd.uniform(0, 2 * math.pi), 4, "Y")
+        R = np.array(rot.to_3x3())
+        Vr = V @ R.T
+        # the points that can touch: the lowest ones plus a spread of the rest
+        order = np.argsort(Vr[:, 2])
+        idx = np.unique(np.concatenate([order[:24], order[::max(1, len(order) // 48)]]))
+        pts = Vr[idx]
+        ext = float(np.max(np.linalg.norm(Vr[:, :2], axis=1)))
+        top = float(np.max(Vr[:, 2]))
+        best = None
+        for _ in range(40):
+            rr = math.sqrt(rnd.random()) * max(0.01, lip - 0.01 - ext)
+            a = rnd.uniform(0, 2 * math.pi)
+            x, y = rr * math.cos(a), rr * math.sin(a)
+            if any(math.hypot(x - q[0], y - q[1]) < ext * 0.6 + 0.03 for q in cry_xy):
+                continue
+            oz = -1e9
+            ok = True
+            for (vx, vy, vz) in pts:
+                hz = surface(x + vx, y + vy)
+                if hz is None:
+                    ok = False
+                    break
+                oz = max(oz, hz - vz)
+            if not ok:
+                continue
+            oz -= 0.002                       # settled a hair into what it rests on
+            if oz + top > rim + 0.045:        # the heap may crown a little over the rim, no more
+                continue
+            score = oz + 0.025 * (rr / lip) + rnd.uniform(0.0, 0.006)
+            if best is None or score < best[0]:
+                best = (score, x, y, oz)
+        if best is None:
+            continue
+        _, x, y, oz = best
+        m = Matrix.Translation(Vector((x, y, oz))) @ rot @ Matrix.Scale(sc, 4)
+        out.append((s, m))
+        add_to_bvh(s, m)
+        n_stones += 1
+    log("pile", pile_i, "dropped", len(out), "pieces (%d stones round %d crystals)" % (n_stones, len(crystals)))
+    return out
+
 # ============================================================================ stage 2
 def stage2():
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -1050,14 +1153,17 @@ def stage3(final):
     piles = []
     for k in range(N_PILES):
         prnd = random.Random(SEED * 100 + k)
-        n_rock = min(len(rocks), prnd.randint(8, 10)); n_frag = min(len(frags), prnd.randint(14, 18))
+        n_rock = min(len(rocks), prnd.randint(30, 36)); n_frag = min(len(frags), prnd.randint(28, 34))
         chosen = prnd.sample(rocks, n_rock) + prnd.sample(frags, n_frag)
         # crystals: the centrepiece is a chunk of the Meshy cluster (one per pile while they last, then a
         # procedural cluster) with 1-2 single prisms round it; no two piles share a centrepiece
         centres = chunks + clusters
         pick = [centres[k % len(centres)]] if centres else []
         pick += prnd.sample(prisms, min(len(prisms), prnd.randint(1, 2)))
-        res = settle(k, [p["lo0"] for p in chosen], [p["lo0"] for p in pick], bowl, prnd)
+        if "--physics" in argv:
+            res = settle(k, [p["lo0"] for p in chosen], [p["lo0"] for p in pick], bowl, prnd)
+        else:
+            res = settle_geometric(k, [p["lo0"] for p in chosen], [p["lo0"] for p in pick], prnd, bowl)
         piles.append(res)
     bpy.data.objects.remove(bowl, do_unlink=True)
     # --- export: the library under `lib` at the origin, the piles as Empties

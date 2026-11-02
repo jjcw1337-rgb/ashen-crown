@@ -447,6 +447,7 @@ func _build() -> void:
 	for i in 4:
 		var a := TAU * i / 4.0 + PI * 0.25
 		var b := Models.N(self, "brazier", Vector3(cos(a) * 3.9, 0.24, sin(a) * 3.9))
+		b.name = "brazier%d" % i      # unique (siblings sharing a name get generated ones, and code looks them up by name)
 		var fire_y := 1.16
 		var bm := _put(b, "brazier", Vector3.ZERO, rad_to_deg(-a) - 90.0, BRAZIER_SCALE)
 		if bm:
