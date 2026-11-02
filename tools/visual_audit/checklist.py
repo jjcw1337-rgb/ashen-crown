@@ -166,6 +166,7 @@ A = {
 	"roman/tomb1.glb": ((4, 4, 4, 4, 0, 4, 4, 4), "P3", "", "In-game testing", "Stage 4: a round drum mausoleum with a grassy mound and an inscription (2.5k tris)."),
 	"roman/mile.glb": ((4, 4, 4, 4, 0, 4, 4, 4), "P3", "", "In-game testing", "Stage 4: an inscribed milestone on a tuff base (1.2k tris)."),
 	"roman/fountain.glb": ((4, 4, 4, 4, 0, 4, 4, 4), "P3", "", "In-game testing", "Stage 4: a round marble basin and a pedestal with a bronze bowl (2.5k tris); the game adds the water."),
+	"roman/statue.glb": ((4, 4, 4, 4, 0, 4, 4, 4), "P3", "", "In-game testing", "Stage 4: a Roman emperor in weathered marble (cuirass, cloak, arm raised; 5k tris, 1K) for A2's statues, in place of the medieval crusader carved in marble."),
 	"roman/arch.glb": ((4, 4, 4, 4, 0, 4, 4, 4), "P3", "", "In-game testing", "Stage 4: the triumphal arch over the road into Aurelia: relief panels, engaged columns, an inscribed attic, a bronze chariot group (5k tris, 1K); deeper than the code-built one (6.9 m against 3.6), its pier collision unchanged."),
 	"bg/brambles.glb": ((3, 4, 3, 3, 0, 2, 3, 3), "P3", "", "Inspected", "Staging's Overgrown Vault (Nov 2): a dark thorny dead tree, 8k tris, 1K. Strong silhouette; near-black, so it needs the vault's light to read. No LODs (Meshy UVs)."),
 	"bg/frozen_pillar.glb": ((3, 3, 3, 3, 0, 2, 3, 3), "P3", "", "Inspected", "Staging's Frozen Depths: an ice pillar on a rubble base, 8k tris. Reads as blobby ice up close; fine at the game camera under the ice shader."),
