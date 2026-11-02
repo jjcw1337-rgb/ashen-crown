@@ -26,7 +26,7 @@ const SOLIDS := [
 	# banner poles (two a side, BANNERS), the torches in the wall's gap, the fire bowls flanking the approach
 	# (FIRE_BOWLS), the crystal's socket
 	[2.1, -5.3, 0.2], [-2.1, -5.3, 0.2], [3.45, -4.55, 0.2], [-3.45, -4.55, 0.2],
-	[0.8, -6.0, 0.2], [-0.8, -6.0, 0.2], [4.7, 4.3, 0.5], [-4.7, 4.3, 0.5], [0.0, 0.0, 0.65],
+	[0.8, -6.0, 0.2], [-0.8, -6.0, 0.2], [4.7, 4.3, 0.55], [-4.7, 4.3, 0.55], [0.0, 0.0, 0.65],
 	# the broken back wall (WALL_R, WALL_A0 + i * WALL_STEP; gaps at 1, 4 and 7) and its two end pillars
 	[-5.62, -2.62, 0.75], [-3.05, -5.4, 0.6], [-1.25, -6.07, 0.6],
 	[1.25, -6.07, 0.6], [3.05, -5.4, 0.6], [5.62, -2.62, 0.75],
@@ -35,7 +35,7 @@ const GUARDIAN_AT := Vector3(4.9, 0.0, -4.5)
 const BANNERS := [[2.1, -5.3, 1.0], [3.45, -4.55, 0.9]]     # x, z, scale (mirrored each side)
 const FIRE_BOWLS := Vector3(4.7, 0.0, 4.3)
 const TORCH_AT := Vector3(0.8, 0.0, -6.0)
-const BOWL_SCALE := 1.32
+const BOWL_SCALE := 0.92
 const CRY_SCALE := 0.72      # crystal.glb is 3 m tall with a 2 m socket: fit the socket inside the inner channel
 const CRY_GROW := 2.08       # the crystal and its shards bigger than the socket's scale: the centrepiece must read
                              # (the crystal piece is 2 m tall as modelled: 0.72 * 2.08 = 3 m, the picture's size)
@@ -106,6 +106,23 @@ static func _glow_quad(parent: Node3D, pos: Vector3, size: float, mat: ShaderMat
 	mi.position = pos
 	mi.scale = Vector3.ONE * size
 	return mi
+
+## The rune crystal's glass (CRYSTAL_SHADER on the model's own texture) on every mesh under `piece`.
+func _crystal_glass(piece: Node3D, is_shard: bool) -> void:
+	for g in piece.find_children("*", "GeometryInstance3D", true, false):
+		(g as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for g in piece.find_children("*", "MeshInstance3D", true, false):
+		var mi: MeshInstance3D = g
+		var base := mi.get_active_material(0)
+		var cmat := ShaderMaterial.new()
+		cmat.shader = _shader("crystal", CRYSTAL_SHADER)
+		if base is StandardMaterial3D and (base as StandardMaterial3D).albedo_texture:
+			cmat.set_shader_parameter("tex", (base as StandardMaterial3D).albedo_texture)
+		cmat.set_shader_parameter("noise_tex", InfernalFx.noise())
+		cmat.set_shader_parameter("cells_tex", InfernalFx.cells())
+		cmat.set_shader_parameter("shard", 1.0 if is_shard else 0.0)
+		mi.material_override = cmat
+		crystal_mats.append(cmat)
 
 static func _glb(name: String) -> Node3D:
 	var path := DIR + name + ".glb"
@@ -247,9 +264,17 @@ func _build() -> void:
 	# orbiting shards; the dais's plain socket hides under it)
 	var cm := Mats.mat(Color(0.06, 0.16, 0.45), 0.08, 0.3, Color(0.12, 0.42, 1.0), 0.65)
 	var cry := _glb("crystal")
+	# the rune crystal itself: Meshy's second model made for the picture (crystal_rune.glb, 3 m tall, centred,
+	# tools/blender/waypoint/prep_crystal.py); without it the first model's crystal piece
+	var cry_rune := _glb("crystal_rune")
 	crystal = Models.N(self, "crystal", Vector3(0, CRY_Y, 0))
 	shards = Models.N(self, "shards", Vector3(0, CRY_Y - 0.3, 0))
 	var socket_top := TOP_Y + 0.4
+	if cry_rune:
+		crystal.add_child(cry_rune)
+		cry_rune.position = Vector3.ZERO
+		crystal.scale = Vector3(1.15, 1.0, 1.15)     # the picture's crystal is a little broader than Meshy's
+		_crystal_glass(cry_rune, false)
 	if cry:
 		var holder := Models.N(self, "crystal_model", Vector3(0, TOP_Y - 0.02, 0))
 		holder.scale = Vector3.ONE * CRY_SCALE
@@ -259,25 +284,14 @@ func _build() -> void:
 			if nm == "crystal" or nm == "shards":
 				var piece: Node3D = n
 				piece.get_parent().remove_child(piece)
+				if nm == "crystal" and cry_rune:
+					piece.queue_free()     # the new crystal stands in its place
+					continue
 				var host: Node3D = crystal if nm == "crystal" else shards
 				host.scale = Vector3.ONE * CRY_SCALE * CRY_GROW
 				host.add_child(piece)
 				piece.position = Vector3.ZERO
-				for g in piece.find_children("*", "GeometryInstance3D", true, false):
-					(g as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-				# the rune crystal: dark faceted glass with the light inside it (CRYSTAL_SHADER on Meshy's texture)
-				for g in piece.find_children("*", "MeshInstance3D", true, false):
-					var mi: MeshInstance3D = g
-					var base := mi.get_active_material(0)
-					var cmat := ShaderMaterial.new()
-					cmat.shader = _shader("crystal", CRYSTAL_SHADER)
-					if base is StandardMaterial3D and (base as StandardMaterial3D).albedo_texture:
-						cmat.set_shader_parameter("tex", (base as StandardMaterial3D).albedo_texture)
-					cmat.set_shader_parameter("noise_tex", InfernalFx.noise())
-					cmat.set_shader_parameter("cells_tex", InfernalFx.cells())
-					cmat.set_shader_parameter("shard", 1.0 if nm == "shards" else 0.0)
-					mi.material_override = cmat
-					crystal_mats.append(cmat)
+				_crystal_glass(piece, nm == "shards")
 			elif nm == "socket":
 				socket_top = TOP_Y - 0.02 + _bounds(n).end.y * CRY_SCALE
 		for g in cry.find_children("*", "MeshInstance3D", true, false):
@@ -331,8 +345,7 @@ func _build() -> void:
 		m.set_shader_parameter("col_a", RUNE)
 		m.set_shader_parameter("col_b", RUNE_CORE)
 		# the crystal's zone along the column (0 bottom .. 1 top): the shaft dims there so the glass reads
-		var k := CRY_SCALE * CRY_GROW
-		m.set_shader_parameter("dip", Vector2((CRY_Y - 1.0 * k - socket_top) / col_h, (CRY_Y + 1.0 * k - socket_top) / col_h))
+		m.set_shader_parameter("dip", Vector2((CRY_Y - 1.5 - socket_top) / col_h, (CRY_Y + 1.5 - socket_top) / col_h))
 		var mi := MeshInstance3D.new()
 		mi.mesh = cyl
 		mi.material_override = m
@@ -395,15 +408,16 @@ func _build() -> void:
 		q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		q.extra_cull_margin = 2.0
 		var a := TAU * i / ARCS
-		q.position = Vector3(cos(a) * 0.4, randf_range(-0.9, 0.9), sin(a) * 0.4)
+		var ck := 1.0 / crystal.scale.x      # the arcs are sized in metres, whatever the host's scale
+		q.position = Vector3(cos(a) * 0.6, randf_range(-1.3, 1.3), sin(a) * 0.6) * ck
 		q.rotation = Vector3(randf_range(-0.5, 0.5), -a + PI * 0.5, randf_range(-0.6, 0.6))
-		q.scale = Vector3(1.25, 1.0, 1.0)
+		q.scale = Vector3(1.9, 1.5, 1.0) * ck
 		crystal.add_child(q)
 		arcs.append({"m": am, "n": q, "t": randf() * 1.5, "hold": 0.0})
 	# the socket's blaze: a glow in the socket's mouth and a hot core in the crystal's heart
 	var foot := _glow_quad(self, Vector3(0, socket_top + 0.05, 0), 1.3, InfernalFx.glow_mat(Color(0.4, 0.7, 1.0), 1.0, 2.6))
 	glow_mats.append(foot.material_override)
-	var cry_heart := _glow_quad(crystal, Vector3.ZERO, 2.6 / (CRY_SCALE * CRY_GROW), InfernalFx.glow_mat(Color(0.3, 0.6, 1.0), 0.55, 3.2))
+	var cry_heart := _glow_quad(crystal, Vector3.ZERO, 2.6 / crystal.scale.x, InfernalFx.glow_mat(Color(0.3, 0.6, 1.0), 0.55, 3.2))
 	glow_mats.append(cry_heart.material_override)
 	# sparks rising inside the column and motes drifting round the crystal
 	column_sparks = Fx.aura(self, Color(0.5, 0.8, 1.0), 48, 3.2, 0.045, 2.4, 1.2, 0.18, 8.0, Vector3(0, socket_top + 0.2, 0))
@@ -544,20 +558,25 @@ func _build() -> void:
 		for d in [[-3.2, -6.4, 0.0], [3.6, -6.6, 1.2], [6.1, -1.4, 0.6]]:
 			Models.P(self, Geo.cyl(0.34, 0.36, 0.7, 10), stone, Vector3(d[0], 0.34, d[1]), Vector3(90, rad_to_deg(d[2]), 0))
 
-	# --- two fire bowls flanking the approach: the brazier's stone column and iron bowl with a real fire
+	# --- two fire bowls flanking the approach: Meshy's iron bowl of coals on a rune-carved stone pedestal
+	# (firebowl.glb, 1.25 m as prepared by camp/rebake_prop.py h=1.25), else the brazier's column, with a real fire
 	for sx in [-1.0, 1.0]:
 		var fb := Models.N(self, "firebowl", Vector3(FIRE_BOWLS.x * sx, 0, FIRE_BOWLS.z))
 		var bowl_y := 1.16 * BOWL_SCALE
-		var fbm := _put(fb, "brazier", Vector3.ZERO, 180.0 + 20.0 * sx, BOWL_SCALE)
+		var fbm := _put(fb, "firebowl", Vector3.ZERO, 25.0 * sx, BOWL_SCALE)
 		if fbm:
-			bowl_y = _bounds(fbm).end.y * BOWL_SCALE - 0.08
+			bowl_y = _bounds(fbm).end.y * BOWL_SCALE - 0.14 * BOWL_SCALE     # the fire sits on the coals, under the rim
 		else:
+			fbm = _put(fb, "brazier", Vector3.ZERO, 180.0 + 20.0 * sx, BOWL_SCALE)
+		if fbm and not ResourceLoader.exists(DIR + "firebowl.glb"):
+			bowl_y = _bounds(fbm).end.y * BOWL_SCALE - 0.08
+		elif fbm == null:
 			Models.P(fb, Geo.box(0.9, 0.3, 0.9), stone_d, Vector3(0, 0.15, 0))
 			Models.P(fb, Geo.cyl(0.2, 0.3, 1.0, 10), stone, Vector3(0, 0.8, 0))
 			Models.P(fb, Geo.lathe([Vector2(0.12, 1.3), Vector2(0.5, 1.42), Vector2(0.58, 1.58), Vector2(0.5, 1.58),
 					Vector2(0.42, 1.46), Vector2(0.0, 1.44)], 16, "wp_bowl"), iron, Vector3.ZERO)
 			bowl_y = 1.5
-		var wf := Props.fire(fb, Vector3(0, bowl_y, 0), 0.8, Color(1.0, 0.55, 0.2), true, false, true, "brazier")
+		var wf := Props.fire(fb, Vector3(0, bowl_y, 0), 1.0, Color(1.0, 0.55, 0.2), true, false, true, "brazier")
 		var wl := wf.get_node_or_null("FireLight")
 		if wl:
 			# the picture's warm light spills far over the wet paving: a bigger light than a brazier's, like the
@@ -684,7 +703,7 @@ func _process(delta: float) -> void:
 			am.set_shader_parameter("seed", randf() * 20.0)
 			var q: Node3D = arc["n"]
 			var a := randf() * TAU
-			q.position = Vector3(cos(a) * 0.4, randf_range(-0.85, 0.85), sin(a) * 0.4)
+			q.position = Vector3(cos(a) * 0.6, randf_range(-1.25, 1.25), sin(a) * 0.6) / crystal.scale.x
 			q.rotation = Vector3(randf_range(-0.5, 0.5), -a + PI * 0.5, randf_range(-0.7, 0.7))
 			arc["hold"] = randf_range(0.14, 0.4)
 			arc["t"] = randf_range(0.3, 1.8) / lerpf(0.6, 1.6, _wake) * (0.25 if _flash > 0.3 else 1.0)
@@ -827,7 +846,7 @@ void fragment() {
 	if (shard > 0.5) {
 		EMISSION = glow * (0.5 + veins * 0.9 + fres * 0.6) * e + core * veins * 0.3 * e;
 	} else {
-		EMISSION = glow * (veins * 3.2 + fres * 1.2 + heart * 0.4 + 0.06) * e + core * (crawl * 1.8 + veins * (0.6 + heart * 1.0)) * e;
+		EMISSION = glow * (veins * 2.6 + fres * 1.2 + heart * 0.4 + 0.06) * e + core * (crawl * 1.5 + veins * (0.45 + heart * 0.8)) * e;
 	}
 }
 """

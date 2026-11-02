@@ -1041,15 +1041,20 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   inner ring, G the great ring, B the ornate band; lossless, mipmaps) on a plane over the floor with
   `WaypointGrand.RUNE_FLOOR_SHADER` (each stroke lit from its heart out through a halo from the mask's blurred mips, the
   groove round it darkened, bands lit outer to inner with the wake, pulse rings running out from the socket, the outer
-  and inner rings turning slowly); **the crystal** (3 m, `CRY_Y` 3.35) wears `CRYSTAL_SHADER` on Meshy's texture (dark
-  faceted glass, its cracks and rune the light inside, energy crawling along cell borders, a cold rim) with `ARCS`
+  and inner rings turning slowly); **the crystal** is a second Meshy model made for the picture (`crystal_rune.glb`:
+  a Meshy concept of a sapphire hexagonal bipyramid with carved glowing runes, image-to-3D, then
+  `tools/blender/waypoint/prep_crystal.py` (planar decimate keeps the facets sharp, one UV island a facet, the
+  colour, normal, roughness and metal baked onto it, origin at its centre, 3 m tall); the first model's socket and
+  orbiting shards stay, its crystal piece is the fallback) at `CRY_Y` 3.35, wearing `CRYSTAL_SHADER` on its texture
+  (dark faceted glass, its cracks and rune the light inside, energy crawling along cell borders, a cold rim) with `ARCS`
   arc quads (`ARC_SHADER`: a bolt that strikes, holds a moment, moves on) and hangs in **the column of light**
   (`COLUMN_SHADER` core and sheath on capless cylinders to `COLUMN_TOP`, dimmed where the crystal hangs, `BOLTS_SHADER`
   lightning wandering up; FogVolumes for the shaft in the air on High/Ultra, Forward+ only); **the stone is wet**
   (`wet_stone`: `Mats.PROP_SHADER` plus puddles and damp, whose mirrors are faked from the column's axis and the
   fires in `mirrors`, `_set_mirrors` in `_ready`, so the paving catches the blue and the orange on every preset); a low
-  cold light (`light_low`) rakes the steps, the statues and the hero; two fire bowls (`FIRE_BOWLS`, the brazier
-  model with a real "brazier" fire) flank the approach, two torches stand in the back wall's gap (`TORCH_AT`), four
+  cold light (`light_low`) rakes the steps, the statues and the hero; two fire bowls (`FIRE_BOWLS`: `firebowl.glb`,
+  Meshy's iron bowl of coals on a rune-carved stone pedestal, `camp/rebake_prop.py h=1.25`, with a real "brazier"
+  fire and a bonfire-sized light; the brazier model without it) flank the approach, two torches stand in the back wall's gap (`TORCH_AT`), four
   banners (`BANNERS`), the guardians (`GUARDIAN_AT`) in the wall's breaks; mist (InfernalFx's smoke shader, pale)
   creeps over the steps, sparks rise in the column, motes drift. The four braziers' blue fire (`FireFx` "spirit") and
   the bowls' coals are other work: leave the brazier loop alone. `tools/waypoint_lab.gd -- outdir [frames] [step]
