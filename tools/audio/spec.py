@@ -198,6 +198,23 @@ SPEC = [
          prompt="a large arena crowd erupting into a huge roaring cheer and applause, then settling, no music"),
     dict(name="portcullis", src="eleven", n=4, dur=2.5, hit=0, label="a heavy gate opening",
          prompt="a heavy iron portcullis gate being hauled up by chains, rattling chains and grinding iron, ending in a clank" + DRY),
+    # ---------------------------------------------------------------- the Verdant Isle (island 1, the dinosaurs)
+    dict(name="raptor_call", src="eleven", n=3, dur=1.3, hit=0, label="a raptor dinosaur screeching",
+         prompt="a velociraptor's shrill hunting screech followed by fast clicking barks, a predator calling its pack" + DRY),
+    dict(name="raptor_bite", src="eleven", n=3, dur=0.5, hit=0, label="an animal's jaws snapping shut",
+         prompt="a raptor's toothed jaws snapping shut on prey, a fast hard bite with a crunch" + DRY),
+    dict(name="trex_roar", src="eleven", n=3, dur=3.5, hit=0, label="a huge dinosaur roaring",
+         prompt="a gigantic tyrannosaurus rex roar, a deep rumbling bellow rising to a terrifying scream, heavy breath and rattling throat" + DRY),
+    dict(name="trex_stomp", src="eleven", n=3, dur=1.0, hit=0, label="a giant footstep thud",
+         prompt="a giant dinosaur footstep, one massive deep thud that shakes the ground, earth and pebbles rattling" + DRY),
+    dict(name="trike_bellow", src="eleven", n=3, dur=2.0, hit=0, label="a large animal bellowing",
+         prompt="a triceratops' deep honking bellow, a huge horned herbivore giving an angry warning call" + DRY),
+    dict(name="troll_cast", src="eleven", n=3, dur=1.0, hit=0.3, label="a creature hissing and spitting",
+         prompt="a jungle troll shaman's guttural hissing chant ending in a wet spit of poison" + DRY),
+    dict(name="boss_sting", src="eleven", n=3, dur=2.0, hit=0, label="a dramatic cinematic impact",
+         prompt="a punchy cinematic boss reveal stinger for an action game, a huge bass impact, a fast whoosh and a ringing metallic hit" + DRY),
+    dict(name="dwarf_burp", src="eleven", n=3, dur=1.2, hit=0, label="a loud burp",
+         prompt="a loud long drunken belch from a burly dwarf, comedic" + DRY),
     dict(name="lion_roar", src="eleven", n=4, dur=2.5, hit=0, label="a lion roaring",
          prompt="a big male lion roaring loudly and angrily, close" + DRY),
     # the camp's song: first an eerie piano (Blaine; takes 0-2), then soft and uplifting (takes 3-11), then for
@@ -243,6 +260,27 @@ SPEC += [
     dict(name="hull_creak", src="made", hit=0, label="wooden boat creaking"),
     dict(name="hull_slap", src="made", hit=0, label="water slapping a boat hull"),
     dict(name="mallet", src="made", hit=0, label="wooden mallet knocking on wood"),
+]
+
+# Doug the clown (docs/characters/doug.md; DougSkills.sound / DougFx): slapstick, but real and weighty, not cartoon beeps
+SPEC += [
+    dict(name="doug_splat", src="eleven", n=4, dur=0.8, hit=0, label="a cream pie splatting into a face",
+         prompt="a cream pie smashed into someone's face, a wet soft squelching splat of whipped cream and crust" + DRY),
+    dict(name="doug_slip", src="eleven", n=4, dur=1.0, hit=0, label="someone slipping and falling on the ground",
+         prompt="someone stepping on a banana peel, a quick squeaky skid of a boot and a heavy thud as they fall on their back" + DRY),
+    dict(name="doug_honk", src="eleven", n=4, dur=0.8, hit=0, label="a clown bicycle horn honking",
+         prompt="a clown's rubber bulb bicycle horn squeezed twice, honk honk, brassy and loud" + DRY),
+    dict(name="doug_whistle", src="eleven", n=4, dur=1.0, hit=0, label="a slide whistle rising",
+         prompt="a slide whistle swooping quickly upward, a comedic rising whistle" + DRY),
+    dict(name="doug_boing", src="eleven", n=4, dur=0.8, hit=0, label="a trampoline spring boing",
+         prompt="a heavy man landing on a trampoline and springing up, a deep twangy springy boing of canvas and springs" + DRY),
+    dict(name="doug_pop", src="eleven", n=4, dur=0.7, hit=0, label="a balloon popping",
+         prompt="a big rubber balloon popping loudly with a little paper rustle of confetti after" + DRY,
+         prompt_b="one sharp loud bang of a party balloon bursting, a short crisp pop" + DRY),
+    dict(name="doug_klaxon", src="eleven", n=4, dur=1.3, hit=0, label="an old car horn klaxon",
+         prompt="a tiny old clown car's klaxon horn, ah-oo-gah, tinny and silly, with a small engine putter" + DRY),
+    dict(name="doug_flop", src="eleven", n=4, dur=0.8, hit=0.05, label="a heavy body flopping onto the ground",
+         prompt="a heavy round man belly-flopping onto hard ground from a height, a fleshy smack and a deep thud with dust" + DRY),
 ]
 
 BY_NAME = {s["name"]: s for s in SPEC}

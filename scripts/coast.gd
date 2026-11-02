@@ -14,7 +14,7 @@ extends RefCounted
 
 const TIP := 14.0             # the headland's shore at its tip (x), in front of the dock
 const SHORE_K := 0.012        # how fast the shore curls back east with distance from the tip
-const BOUNDS := Rect2(-10, -55, 82, 110)
+const BOUNDS := Rect2(-10, -92, 82, 184)      # (the beach runs a long way both sides of the headland: jj, 2026-11-02)
 const DOCK := Vector2(0.0, 0.0)         # the end of the pier (where boats tie up)
 const PIER_ROOT := Vector2(17.0, 0.0)
 const SHED := Vector2(25.0, -10.0)      # the shipwright's boathouse
@@ -164,6 +164,7 @@ static func _headland(w: World) -> void:
 	w.dirt_blobs.append([PIER_ROOT + Vector2(3, 0), 5.0, 0.8])
 	_pier(w)
 	_boatyard(w)
+	_beach(w)
 	_trestle_hull(w, SHED + HULL_AT)
 	# boats pulled up on the beach and nets drying on racks
 	for bp in [Vector2(20.5, 9.0), Vector2(22.0, -19.0)]:
@@ -190,6 +191,9 @@ static func _headland(w: World) -> void:
 		var x := shore_x(z) + rng.randf_range(-5.0, 2.0)
 		if absf(z) < 14.0 and x < 22.0:
 			continue
+		# (on the waterline and out in it, never on the dry sand: the beach is for walking)
+		if x > shore_x(z) - 0.8:
+			x = shore_x(z) - rng.randf_range(0.8, 4.0)
 		var s := rng.randf_range(0.7, 2.2)
 		var hy := w.height_at(x, z)
 		if hy < -2.0:
@@ -227,6 +231,76 @@ static func _headland(w: World) -> void:
 			w.tree_pts.append(q)
 	for k in 5:
 		w.mm_chunked(kinds[k], xf[k], true, 32.0, 0.0)
+
+## The beach (jj: "redo the entire beach, bay, ocean ... let players run the beach"): Meshy pieces in
+## assets/models/coast/ along a strand that runs the length of the headland on both sides. A fishing hamlet north of
+## the dock (huts on stilts, drying racks), the wreck of a fishing boat on the south strand, sea stacks out in the
+## bay, rock pools on the waterline, driftwood and kelp at the tide line, a beacon burning on the point, crates on the
+## pier. Pieces without their glb are skipped (the old procedural coast stays as it was).
+const PROP_DIR := "res://assets/models/coast/%s.glb"
+static var _props := {}
+
+static func prop(name: String) -> Node3D:
+	if not _props.has(name):
+		var path := PROP_DIR % name
+		_props[name] = load(path) if ResourceLoader.exists(path) else null
+	var ps: PackedScene = _props[name]
+	return ps.instantiate() if ps else null
+
+## A piece on the ground at (x, z) (its own height), turned and scaled; `solid` r > 0 gives it a footprint.
+static func _put(w: World, name: String, x: float, z: float, yaw: float, sc: float, solid := 0.0) -> Node3D:
+	var m := prop(name)
+	if m == null:
+		return null
+	m.scale = Vector3.ONE * sc
+	w._place(m, Vector3(x, 0, z))
+	m.rotation.y = yaw
+	if solid > 0.0 and BOUNDS.has_point(Vector2(x, z)):
+		w.add_circle(Vector3(x, 0, z), solid * sc)
+	return m
+
+static func _beach(w: World) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 8086
+	# the hamlet north of the dock: three huts on stilts facing the sea, drying racks between them
+	var huts := [Vector2(34.0, -30.0), Vector2(40.0, -44.0), Vector2(30.0, -56.0)]
+	for i in huts.size():
+		var hp: Vector2 = huts[i]
+		_put(w, "fishing_hut", hp.x, hp.y, PI * 0.5 + rng.randf_range(-0.25, 0.25), 1.0, 2.3)
+		_put(w, "drying_rack", hp.x - 4.0, hp.y + 4.0, PI * 0.5 + rng.randf_range(-0.4, 0.4), 1.0, 0.9)
+	# the wreck on the south strand, half in the sand
+	var wz := 46.0
+	_put(w, "wreck", shore_x(wz) + 3.5, wz, 0.4, 1.0, 2.4)
+	# sea stacks out in the bay, both sides of the point
+	for z in [-70.0, -38.0, 30.0, 64.0]:
+		_put(w, "sea_stack", shore_x(z) - rng.randf_range(14.0, 24.0), z + rng.randf_range(-4.0, 4.0), rng.randf() * TAU, rng.randf_range(1.0, 1.5), 0.0)
+	# the beacon on its rock off the north side of the point
+	var bz := -16.0
+	var beacon := _put(w, "beacon", shore_x(bz) - 3.0, bz, -PI * 0.5, 1.0, 1.6)
+	if beacon != null:
+		var l := OmniLight3D.new()
+		l.light_color = Color(1.0, 0.62, 0.28)
+		l.light_energy = 2.4
+		l.omni_range = 16.0
+		l.position = Vector3(0, 6.2, 0)
+		l.add_to_group("flicker")
+		l.set_meta("base", 2.4)
+		beacon.add_child(l)
+		Props.fire(beacon, Vector3(0, 6.0, 0), 0.9, Color(1.0, 0.55, 0.2), false, false, false)
+	# the tide line: rock pools in the wash, driftwood and kelp on the sand, the length of the strand
+	var z2 := BOUNDS.position.y + 6.0
+	while z2 < BOUNDS.end.y - 6.0:
+		var sx := shore_x(z2)
+		# (where the shore bends out past the strand's ends it's beyond the walkable ground: nothing there)
+		if absf(z2) > 12.0 and sx < BOUNDS.end.x - 6.0:
+			match rng.randi() % 4:
+				0: _put(w, "rock_pools", sx - rng.randf_range(0.0, 2.0), z2, rng.randf() * TAU, rng.randf_range(0.9, 1.4), 0.0)
+				1: _put(w, "driftwood", sx + rng.randf_range(1.5, 4.0), z2, rng.randf() * TAU, rng.randf_range(0.8, 1.2), 0.0)
+				2: _put(w, "kelp", sx + rng.randf_range(0.5, 2.5), z2, rng.randf() * TAU, rng.randf_range(0.8, 1.3), 0.0)
+		z2 += rng.randf_range(9.0, 15.0)
+	# crates and barrels on the pier's root and the boatyard's edge
+	_put(w, "crates", PIER_ROOT.x + 2.5, PIER_ROOT.y - 3.2, 0.3, 1.0, 1.0)
+	_put(w, "crates", SHED.x - 5.0, SHED.y + 7.0, -0.6, 0.9, 1.0)
 
 ## Trees along the mainland's shore all round the bay, so the coast reads as forest from the sea.
 static func _far_shore(w: World) -> void:
@@ -337,9 +411,17 @@ static func _boatyard(w: World) -> void:
 		var hp: Vector2 = SHED + HULL_AT
 		var op2 := hp + Vector2(2.05, 0.4)
 		var fc: GDScript = load("res://scripts/forest_camp.gd")    # at run time: a static reference compiles it before Sfx exists
+		# jj: the new Meshy Osric with full movement: hammering at the hull, then now and then down to the pier's root
+		# at a walk to pick his gear up off the boards and wave at the water, and back (Inter "patrol"; a hero coming
+		# near stops him where he is, and he turns to talk)
+		var pier_spot := PIER_ROOT + Vector2(3.2, 1.6)
 		var osric: Inter = fc._keeper(w, "osric", V["shipwright"], "shipwright", op2, -PI * 0.5,
-			{"idle": "Idle_4", "work": ["Heavy_Hammer_Swing", "Heavy_Hammer_Swing", "Long_Breathe_and_Look_Around"], "talk": "Talk_Passionately",
-				"strike": "mallet", "sparks": false})
+			{"idle": "Idle", "work": ["Heavy_Hammer_Swing", "Heavy_Hammer_Swing", "Heavy_Hammer_Swing"], "talk": "Talk_Passionately",
+				"strike": "mallet", "sparks": false,
+				"patrol": {"points": [Vector3(op2.x, 0, op2.y), Vector3(pier_spot.x, 0, pier_spot.y)], "walk": "Casual_Walk",
+					"speed": 1.15, "face": [-PI * 0.5, -PI * 0.5], "chance": 0.3,
+					"works": [["Heavy_Hammer_Swing", "Heavy_Hammer_Swing", "Heavy_Hammer_Swing"], ["Male_Bend_Over_Pick_Up", "Big_Wave_Hello", "Talk_with_Hands_Open"]]}})
+		osric.game_world_height = Callable(w, "height_at")
 		var hold := {"bone": "RightHand", "item": "war_hammer", "rot": Vector3(0, 0, 90), "pos": Vector3(0.0, 0.08, 0.0)}
 		fc.hold(osric.model, hold)
 		osric.set_meta("hold", hold)

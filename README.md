@@ -36,10 +36,10 @@ Windows SmartScreen may warn that the app is unrecognised (it isn't code-signed)
   - *Eternal Night* (V, level 18): rise and bring down the night: a scream of terror, the dark feeding on everything in it while you hang untouchable above, and its collapse into your slam. +40% damage after.
 
 - **Demon**: a horned, winged magma brute. One job per skill, built for PvP:
-  - *Molten Fists* (Q): a two-fisted punch that cracks the ground open in a wedge and sets it alight. Branded enemies take more.
+  - *Molten Fists* (Q): a slow, heavy two-fisted blow (your fists catch fire as you draw back; dodge to cancel it) that cracks the ground open in a wedge and sets it alight. Branded enemies take more.
   - *Infernal Charge* (E): paws the ground (the path burns where everyone can see it), then charges; it stops on the first champion or player, staggering and Branding them.
   - *Fault of the Pit* (R): splits the ground in a line across your aim; after a glowing warning it erupts, throws enemies up and Brands them, and stays molten for 4 seconds.
-  - *Brimstone Hurl* (F): two charges; lob a molten boulder that lands under a mark, Brands a direct hit and shatters into burning shards.
+  - *Brimstone Hurl* (F): lob a molten boulder that lands under a mark, Brands a direct hit and shatters into burning shards. No cooldown: throw as fast as the throw allows.
   - *Hellgrip* (G): hurl a chain with an iron claw; the first enemy it hooks is dragged in and smashed. Bosses drag you to them.
   - *Wrath of the Pit* (V): kneel inside a cage of obsidian crystals that glows hotter with every blow you take (half damage, unstoppable), then burst it apart, terrifying everyone near you, and burn white-hot for 6 seconds while meteors fall.
 

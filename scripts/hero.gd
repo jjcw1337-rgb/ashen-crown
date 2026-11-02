@@ -28,6 +28,7 @@ var boats: Array = []
 var aboard := false
 ## He has sailed before (the controls guide shows the first time only; saved).
 var sailed := false
+var dwarves := ""              # the Verdant Isle's drunken dwarves (DwarfGame): "" not met, "won", "lost", "fought"
 
 func owns_boat(id: String) -> bool:
 	return boats.has(id)
@@ -175,6 +176,14 @@ var atk_target = null
 var stamina := 100.0
 var max_stamina := 100.0
 var stamina_rest := 0.0
+var hidden_t := 0.0            # Doug's Doppel-Doug: monsters can't see him while it runs (Enemy's hero_dead)
+var pied_t := 0.0              # a cream pie in the face (DougSkills, PvP): aim assist off, the screen creamed
+## seconds since this hero last fought (struck, was struck, attacked or cast; jj, 2026-11-02): out of combat
+## stamina lasts and refills better and better, up to CALM_MAX times after CALM_RAMP more seconds (calm())
+var combat_t := 999.0
+const COMBAT_SECS := 5.0
+const CALM_RAMP := 10.0
+const CALM_MAX := 5.0
 var sprint := false
 ## The knight can keep a helm equipped (its stats) but not draw it (inventory toggle).
 var show_helm := true
@@ -217,6 +226,9 @@ func is_warlock() -> bool:
 
 func is_archer() -> bool:
 	return cls == "archer"
+
+func is_doug() -> bool:
+	return cls == "doug"
 
 func is_plague() -> bool:
 	return cls == "plague"
@@ -263,8 +275,11 @@ var binds := {}
 func default_binds() -> Dictionary:
 	var own := skill_list()
 	var b := {"lmb": "attack", "rmb": own[0]["id"] if not own.is_empty() else "block"}
+	# (a class with fewer than six of its own fills the rest from the shared ones; one with seven, Doug, has its first
+	# on the right mouse button and the other six on the hotkeys)
+	var bar := (own.slice(1) if own.size() > BIND_KEYS.size() else own) + Data.shared_skills()
 	for i in BIND_KEYS.size():
-		b[BIND_KEYS[i]] = own[i]["id"] if i < own.size() else ""
+		b[BIND_KEYS[i]] = bar[i]["id"] if i < bar.size() else ""
 	return b
 
 ## Put a skill on a slot. A skill sits on one hotkey at most, so binding it again moves it.
@@ -288,6 +303,14 @@ func _check_binds() -> void:
 	for slot in BIND_SLOTS:
 		var id: String = str(binds.get(slot, d[slot]))
 		binds[slot] = id if (id == "" or known.has(id)) else d[slot]
+	# every hotkey holds a skill: an empty one takes the next of the class's skills not on the bar yet
+	var on_bar := {}
+	for k in BIND_KEYS:
+		on_bar[str(binds.get(k, ""))] = true
+	var spare := (skill_list() + Data.shared_skills()).map(func(s): return str(s["id"])).filter(func(id): return not on_bar.has(id))
+	for k in BIND_KEYS:
+		if str(binds.get(k, "")) == "" and not spare.is_empty():
+			binds[k] = spare.pop_front()
 
 func bound(slot: String) -> String:
 	return str(binds.get(slot, ""))
@@ -336,7 +359,7 @@ func skill_cost(id: String) -> float:
 	return float(Data.skill_def(id).get("mana", 0)) * (1.0 - talent("cost:" + id) / 100.0)
 
 func skill_cd(id: String) -> float:
-	return float(Data.skill_def(id).get("cd", 0.0)) * (1.0 - talent("cd:" + id) / 100.0) * (Battlegrounds.CD_MULT if game.bg_mode else 1.0)
+	return float(Data.skill_def(id).get("cd", 0.0)) * (1.0 - talent("cd:" + id) / 100.0)
 
 func _build_rig() -> void:
 	if is_wraith():
@@ -347,6 +370,8 @@ func _build_rig() -> void:
 		rig = Warlock.build(warlock_gear())
 	elif is_archer():
 		rig = Archer.build_body()
+	elif is_doug():
+		rig = Doug.build_body()
 	elif is_plague():
 		rig = Plague.build_body()
 		if pd == null:
@@ -480,12 +505,8 @@ func setup(g: Node) -> void:
 	trail = MeshInstance3D.new()
 	trail.mesh = ImmediateMesh.new()
 	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var tm := StandardMaterial3D.new()
-	tm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	tm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	tm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	tm.vertex_color_use_as_albedo = true
-	tm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var tm := ShaderMaterial.new()
+	tm.shader = _trail_shader()
 	trail.material_override = tm
 	trail.top_level = true
 	add_child(trail)
@@ -887,7 +908,7 @@ func _assist_pick(axis: Vector3, dist: float, cone: float):
 ## line, else straight along it. Used when a skill needs to find its foe again mid-cast.
 func aim_ahead(dist: float) -> Vector3:
 	var axis := aim_dir()
-	if dist < MELEE_RANGE:
+	if dist < MELEE_RANGE and pied_t <= 0.0:          # (a pie in the face: no help aiming)
 		var best = _assist_pick(axis, dist, AIM_CONE_MELEE)
 		if best != null:
 			return best.global_position
@@ -1168,7 +1189,7 @@ func skill_ready(id: String) -> bool:
 		return false
 	if atk_t >= 0.0 and atk_skill != "":
 		return false
-	return (level >= sk["lvl"] or game.test_allskills) and cds.get(id, 0.0) <= 0.0 and mana >= skill_cost(id)
+	return (not Data.skill_locked(sk, level) or game.test_allskills) and cds.get(id, 0.0) <= 0.0 and mana >= skill_cost(id)
 
 func can_act() -> bool:
 	return not dead and atk_t < 0.0 and charge_t < 0.0 and drain_t < 0.0
@@ -1182,10 +1203,10 @@ func use_skill(id: String, aim: Vector3) -> bool:
 	if atk_t >= 0.0 and atk_skill != "":
 		return false
 	var sk: Dictionary = {}
-	for s in skill_list():
+	for s in skill_list() + Data.shared_skills():
 		if s["id"] == id:
 			sk = s
-	if sk.is_empty() or (level < sk["lvl"] and not game.test_allskills):
+	if sk.is_empty() or (Data.skill_locked(sk, level) and not game.test_allskills):
 		game.ui.message("Requires level %d" % sk.get("lvl", 1), Color(1, 0.4, 0.3))
 		return false
 	if cds[id] > 0.0:
@@ -1208,6 +1229,7 @@ func use_skill(id: String, aim: Vector3) -> bool:
 	_face(aim - global_position)
 	# the class's skills script starts it (ClassSkills.of: KnightSkills, WraithSkills, DemonSkills, ...)
 	ClassSkills.cast(self, id, aim)
+	SkillSpec.apply_timing(self, id)      # (a "use" in the skill's data sets its length)
 	# the cast itself, seen by everyone (SkillFx: the class draws it, or the default puff shows it)
 	fx(id, "cast", {"p": atk_aim})
 	return true
@@ -1243,8 +1265,6 @@ func _start_attack(style: String, skill := "", secs := 0.0) -> void:
 	if secs > 0.0:
 		atk_dur = secs / aspd
 	atk_dur *= Data.attack_pace(cls)     # every class's pace (Data.ATTACK_PACE)
-	if game.bg_mode and not puppet:
-		atk_dur *= Battlegrounds.ATTACK_PACE     # the crypt's slower, heavier fights
 	impact_done = false
 	trail_pts.clear()
 	trail_col = ClassSkills.trail_color(cls, skill)
@@ -1315,7 +1335,9 @@ func show_damage(dmg: float) -> void:
 	dmg_stack.add(dmg)
 
 func dmg_mult(id: String) -> float:
-	return (1.0 + (talent("dmg") + talent("dmg:" + id)) / 100.0) * pace_mult(id) * (Battlegrounds.HIT_MULT if game.bg_mode else 1.0)
+	# "power" in the skill's data scales all it deals (its weapon part, its own part, its burns): tuning a skill the
+	# Path of Exile way (its use time sets its rate) without touching its code
+	return (1.0 + (talent("dmg") + talent("dmg:" + id)) / 100.0) * pace_mult(id) * float(Data.skill_def(id).get("power", 1.0))
 
 ## Attacks are slower by the class's pace (Data.ATTACK_PACE); the ones whose rate the swing itself sets
 ## (the basic attack, skills with no cooldown) hit that much harder, so their damage per second stays put.
@@ -1328,9 +1350,26 @@ func pace_mult(id: String) -> float:
 ## src: the skill doing the hitting (talent bonuses); by default the attack in progress.
 ## flat: damage on top of the weapon roll (a spell's part by level, e.g. the Wraith's spirit-light), scaled by the
 ## buffs and the skill's talents like the rest, in the same number.
+var _engaged_t := 0.0
+
+## A monster awake and after this hero close by (its fight is on even before a blow lands).
+func _engaged() -> bool:
+	if game == null or game.world == null:
+		return false
+	for e in game.world.enemies_root.get_children():
+		if e is Enemy and not e.dead and e.aggro and (e.global_position - global_position).length_squared() < 196.0:
+			return true
+	return false
+
+## How rested the hero is: 1 in combat (and for COMBAT_SECS after), rising to CALM_MAX over CALM_RAMP s out of it.
+## Sprinting drains stamina that many times slower and it refills that many times faster.
+func calm() -> float:
+	return lerpf(1.0, CALM_MAX, clampf((combat_t - COMBAT_SECS) / CALM_RAMP, 0.0, 1.0))
+
 func _hit_enemy(e, mult: float, knock: float = 0.0, src := "", flat := 0.0) -> void:
 	if not is_instance_valid(e) or e.dead:
 		return
+	combat_t = 0.0
 	if src == "":
 		src = atk_skill if atk_skill != "" else "attack"
 	var r := roll_damage(mult * dmg_mult(src))
@@ -1347,6 +1386,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	stop_chop()
 	if dead:
 		return
+	combat_t = 0.0
 	if puppet:
 		if game.net.is_host:
 			game.net.hit_player(peer_id, dmg, from, kind, element)
@@ -1409,6 +1449,9 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 		game.add_shake(0.2)
 	show_damage(dmg)
 	game.ui.flash_damage()
+	# Doug in his clown car is unstoppable: blows land, their stuns and slows don't
+	if DougSkills.driving(self) and kind in ["sweep", "quake", "chill", "freeze", "shock", "root", "slip"]:
+		kind = "melee"
 	# the Hollow Sloths' blows: thrown back, stunned, chilled, frozen solid, shocked
 	match kind:
 		"sweep":
@@ -1427,6 +1470,21 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 			chill_t = maxf(chill_t, 4.0)
 			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Frozen", Color(0.6, 0.9, 1.0))
 			Fx.burst(game.world.fx_root, global_position + Vector3(0, 1.0, 0), Color(0.8, 0.95, 1.0), 30, 1.5, 0.15, 1.0, true, -1.0)
+		"slip":
+			# a banana peel (DougSkills): down for a moment, sliding on the way he was going
+			if not DougSkills.driving(self):
+				daze_t = maxf(daze_t, 0.7)
+				var dir := facing()
+				shove = dir * 6.0
+				Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Slipped!", Color(1.0, 0.9, 0.3))
+		"pied":
+			pied_t = 1.5
+			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Pied!", Color(1.0, 0.97, 0.88))
+			if not puppet and game.ui.has_method("pie_face"):
+				game.ui.pie_face(1.5)
+		"root":
+			daze_t = maxf(daze_t, 1.2)
+			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Rooted", Color(0.55, 1.0, 0.4))
 		"shock":
 			daze_t = maxf(daze_t, 0.45)
 			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Shocked", Color(0.8, 0.6, 1.0))
@@ -1514,8 +1572,17 @@ func _process(delta: float) -> void:
 	var wants_move := direct_dir.length() > 0.1 or (moving and not path.is_empty())
 	# stamina: sprint drains it, resting refills it; running dry leaves you winded
 	running = sprint and wants_move and not exhausted and block_amt < 0.5 and charge_t < 0.0
+	combat_t += delta
+	hidden_t = maxf(0.0, hidden_t - delta)
+	pied_t = maxf(0.0, pied_t - delta)
+	_engaged_t -= delta
+	if _engaged_t <= 0.0:
+		_engaged_t = 0.5
+		if _engaged():
+			combat_t = 0.0
+	var rested := calm()
 	if running:
-		stamina = maxf(0.0, stamina - delta * 14.0)
+		stamina = maxf(0.0, stamina - delta * 14.0 / rested)
 		stamina_rest = 0.0
 		if stamina <= 0.0:
 			exhausted = true
@@ -1523,13 +1590,13 @@ func _process(delta: float) -> void:
 	else:
 		stamina_rest += delta
 		if stamina_rest > 0.6:
-			stamina = minf(max_stamina, stamina + delta * (16.0 if not wants_move else 9.0))
+			stamina = minf(max_stamina, stamina + delta * (16.0 if not wants_move else 9.0) * rested)
 	if game.test_stamina:
 		stamina = max_stamina
 		exhausted = false
 	if exhausted and stamina >= max_stamina * 0.3:
 		exhausted = false
-	var speed := 4.8 * (1.0 + frw / 100.0) * (Battlegrounds.MOVE_MULT if game.bg_mode else 1.0)
+	var speed := 4.8 * (1.0 + frw / 100.0) * (Battlegrounds.MOVE_MULT if game.bg_mode else 1.0) * DougSkills.car_mult(self)
 	# the archer runs 10% faster while his Spirit Beast is at his side
 	if is_archer() and beasts.any(func(b) -> bool: return is_instance_valid(b) and not b.dead):
 		speed *= 1.1
@@ -1683,7 +1750,7 @@ func _process(delta: float) -> void:
 	_breathe(delta)
 	_apply_shield_pose()
 	# no sword-swing streak off a bow, nor off the Wraith's and the Demon's skills (their clips, not weapon swings)
-	_update_trail(((atk_t >= 0.0 and not ((is_wraith() or is_demon()) and atk_skill != "")) or charge_t >= 0.0) and not has_bow() and not is_dragon())
+	_update_trail(((atk_t >= 0.0 and not ((is_wraith() or is_demon() or is_doug()) and atk_skill != "")) or charge_t >= 0.0) and not has_bow() and not is_dragon())
 
 ## The Wraith floats a hand's breadth off the ground, bobbing slowly and leaning into motion.
 func _hover() -> void:
@@ -1828,7 +1895,10 @@ func _puppet_process(delta: float) -> void:
 	Archer.update(self, delta)
 	SkillFx.update(self, delta)
 	_apply_shield_pose()
-	_update_trail(atk_t >= 0.0 and not has_bow() and not is_dragon())
+	# a partner's swing in his class's colour (white before), and none on Doug's throws and tricks
+	if trail_pts.is_empty():
+		trail_col = ClassSkills.trail_color(cls, "")
+	_update_trail(atk_t >= 0.0 and not has_bow() and not is_dragon() and not (is_doug() and str(st.get("style", "")) in Doug.SKILL_STYLES))
 
 func _apply_shield_pose() -> void:
 	if shield_node == null or not is_instance_valid(shield_node):
@@ -1927,6 +1997,30 @@ func _blight_burst(p: Vector3) -> void:
 func _clear_warlock() -> void:
 	WarlockSkills.clear(self)
 
+static var _trail_sh: Shader
+
+## The swing's trail (was a flat additive ribbon that read as a white paper blade): UV.x = age along the swing
+## (0 = the blade now), UV.y = from the hilt (0) to the tip (1); a hot thin edge at the tip, a soft body fading toward
+## the hilt and with age, faint streaks running back along it, in the class's colour (vertex colour; alpha = strength).
+static func _trail_shader() -> Shader:
+	if _trail_sh == null:
+		_trail_sh = Shader.new()
+		_trail_sh.code = """shader_type spatial;
+render_mode unshaded, blend_add, cull_disabled, depth_draw_never, shadows_disabled;
+void fragment() {
+	float age = UV.x;
+	float edge = UV.y;
+	float body = pow(edge, 1.3) * 0.5;
+	float rim = smoothstep(0.78, 1.0, edge) * 1.25;
+	float fade = pow(clamp(1.0 - age, 0.0, 1.0), 1.7);
+	float streak = 0.72 + 0.28 * sin(edge * 34.0 + age * 9.0);
+	float a = (body + rim) * fade * streak * COLOR.a;
+	vec3 c = mix(COLOR.rgb, vec3(1.0, 0.97, 0.9), smoothstep(0.88, 1.0, edge) * 0.55);
+	ALBEDO = c * a;
+	ALPHA = clamp(a, 0.0, 1.0);
+}"""
+	return _trail_sh
+
 func _update_trail(active: bool) -> void:
 	var im: ImmediateMesh = trail.mesh
 	im.clear_surfaces()
@@ -1947,14 +2041,28 @@ func _update_trail(active: bool) -> void:
 			trail_pts.pop_back()
 	if trail_pts.size() < 2:
 		return
+	# smoothed through the samples (Catmull-Rom, SUB steps between each pair), so a fast swing is an arc, not facets
+	const SUB := 3
+	var n: int = trail_pts.size()
+	var total := float((n - 1) * SUB)
+	var c := Color(trail_col.r, trail_col.g, trail_col.b, 0.85)
 	im.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
-	for i in trail_pts.size():
-		var f := 1.0 - float(i) / trail_pts.size()
-		var c := Color(trail_col.r, trail_col.g, trail_col.b, f * 0.55)
-		im.surface_set_color(c)
-		im.surface_add_vertex(trail_pts[i][0])
-		im.surface_set_color(Color(c.r, c.g, c.b, f * 0.9))
-		im.surface_add_vertex(trail_pts[i][1])
+	for i in n - 1:
+		for k in SUB + (1 if i == n - 2 else 0):
+			var t := float(k) / SUB
+			var a0: Array = trail_pts[maxi(i - 1, 0)]
+			var a1: Array = trail_pts[i]
+			var a2: Array = trail_pts[i + 1]
+			var a3: Array = trail_pts[mini(i + 2, n - 1)]
+			var base: Vector3 = (a1[0] as Vector3).cubic_interpolate(a2[0], a0[0], a3[0], t)
+			var tip: Vector3 = (a1[1] as Vector3).cubic_interpolate(a2[1], a0[1], a3[1], t)
+			var age := float(i * SUB + k) / total
+			im.surface_set_color(c)
+			im.surface_set_uv(Vector2(age, 0.0))
+			im.surface_add_vertex(base)
+			im.surface_set_color(c)
+			im.surface_set_uv(Vector2(age, 1.0))
+			im.surface_add_vertex(tip)
 	im.surface_end()
 
 func respawn(p: Vector3) -> void:
@@ -2152,7 +2260,7 @@ func unequip(slot: String) -> void:
 
 func to_save() -> Dictionary:
 	return {"cls": cls, "level": level, "xp": xp, "str": str_, "dex": dex, "vit": vit, "ene": ene, "points": stat_points, "gold": gold,
-		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "binds_v": 2, "talents": talents, "axe_given": true, "boats": boats, "sailed": sailed}
+		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "binds_v": 2, "talents": talents, "axe_given": true, "boats": boats, "sailed": sailed, "dwarves": dwarves}
 
 func from_save(d: Dictionary) -> void:
 	set_class(str(d.get("cls", "knight")))
@@ -2166,6 +2274,7 @@ func from_save(d: Dictionary) -> void:
 	gold = int(d.get("gold", 0))
 	boats = (d.get("boats", []) as Array).filter(func(b): return Data.BOATS.has(str(b))) if d.get("boats") is Array else []
 	sailed = bool(d.get("sailed", false))
+	dwarves = str(d.get("dwarves", ""))
 	show_helm = bool(d.get("show_helm", true))
 	equipment = d.get("equipment", {})
 	for s in Items.EQUIP_SLOTS:

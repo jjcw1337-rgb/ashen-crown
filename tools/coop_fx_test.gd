@@ -95,7 +95,8 @@ func _run() -> void:
 		_make_puppet()
 		check(puppet.cls == cls and puppet.puppet, "%s: a puppet of him stands beside him" % cls)
 		var root: Node3D = g.world.fx_root
-		for sk in Data.skills_for(cls):
+		# (the shared skills on two kinds of body: the knight's and the legless Wraith's)
+		for sk in Data.skills_for(cls) + (Data.shared_skills() if cls in ["knight", "wraith"] else []):
 			var id: String = sk["id"]
 			var en: Array = await pack(h.global_position + Vector3(0, 0, -3.5), 3)
 			h._face(Vector3(0, 0, -1))
@@ -153,6 +154,20 @@ func _run() -> void:
 			h.end_drain()
 			WraithSkills.clear(h)
 			DemonSkills.clear(h)
+		# the dodge roll (jj: "I never saw the roll in PvP"): his partner sees the puppet tumble
+		h.global_position = g.world.free_spot_near(h.global_position, 1.0)
+		for e in g.world.enemies_root.get_children():
+			e.queue_free()
+		await wait(0.6)
+		var rolled := false
+		var tumble := 0.0
+		if load("res://scripts/dodge.gd").start(h, Vector3(1, 0, 0)):
+			var t0 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - t0 < 450:
+				await process_frame
+				rolled = rolled or puppet.roll_t >= 0.0
+				tumble = maxf(tumble, absf(puppet.rig.rotation.x) + (puppet.rig.position - Vector3.ZERO).length())
+		check(rolled and tumble > 0.2, "%s: the dodge roll reached the puppet and it tumbled (%.2f)" % [cls, tumble])
 		SkillFx.clear(puppet)
 		puppet.queue_free()
 		puppet = null

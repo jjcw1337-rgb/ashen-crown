@@ -8,15 +8,17 @@ extends RefCounted
 ## the statuses and his own movement stay here, on the caster's game.
 ##
 ## The kit (tuning in Data.SKILLS, PvP overrides in each entry's "pvp"):
-##  - Molten Fists (Q, "fists", burst finisher): the wedge punch; a Branded target takes more and loses the Brand.
+##  - Molten Fists (Q, "fists", burst finisher): the heavy wedge punch on the skill format (its timing, area, damage
+##    and burn are its Data.SKILLS entry, SkillSpec); a Branded target takes more and loses the Brand.
 ##  - Infernal Charge (E, "icharge", engage / mobility): "icharge_wind" (paws the ground; the burning line shows
 ##    everyone the path) -> "icharge" (the run, CHARGE_SPEED, up to CHARGE_RANGE) -> "icharge_skid" (the stop, open
 ##    to punishment). Stops on the first champion, boss or player: staggered and Branded. Others are bowled aside.
 ##  - Fault of the Pit (R, "cslam", area control): the slam splits a line FAULT_LEN long FAULT_AHEAD ahead, across
 ##    the aim; after FAULT_WARN it erupts (damage, thrown up, Branded) and stays molten FAULT_LIFE s (burns, slows).
-##  - Brimstone Hurl (F, "hurl", ranged pressure): HURL_CHARGES charges; "hurl"/"hurl2" alternate; the boulder lands
-##    at the aim after its flight (the shadow shows where): core HURL_CORE (full damage + Brand), edge HURL_R (half),
-##    then it shatters into SHARDS burning pieces.
+##  - Brimstone Hurl (F, "hurl", ranged pressure): no cooldown, its "use" time is its limit (the Path of Exile way);
+##    "hurl"/"hurl2" alternate; the boulder lands at the aim after its flight (the shadow shows where): core HURL_CORE
+##    (full damage + Brand), edge HURL_R (half), then it shatters into SHARDS burning pieces. Twin Boulders
+##    (hurl_twin) throws a second one TWIN_GAP beside the first.
 ##  - Hellgrip (G, "grip", pick / pull): "grip_throw" flings the chain (CHAIN_LEN at CHAIN_SPEED, the first body in
 ##    its line is hooked; monsters block it) -> "grip_haul" (the victim dragged to him, or he to a boss) -> "grip"
 ##    (hoisted and smashed). A miss hauls back an empty chain (the recovery). Branded: CHAIN_REFUND of the cooldown back.
@@ -24,9 +26,11 @@ extends RefCounted
 ##    CRUCIBLE_DR less damage taken, nothing moves or stops him, the damage stored as heat) -> "wrath_roar" (the
 ##    eruption round him: damage + the heat, terror) -> PIT_DUR s of +damage and meteors.
 
-## Each stage's length in seconds (before Data.ATTACK_PACE, and the crypt's pace in the Battlegrounds; Molten Fists
-## also by attack speed). The charge's run is set by its distance.
-const DUR := {"fists": 0.8, "icharge_wind": 0.32, "icharge": 0.6, "icharge_skid": 0.38, "cslam": 1.15, "hurl": 0.95,
+## Each stage's length in seconds (before Data.ATTACK_PACE; the charge's run is set by its distance). A skill with a
+## "use" in its Data.SKILLS entry (SkillSpec) takes that instead: Molten Fists is a heavy blow the Path of Exile way
+## (jj, 2026-11-01: its "use" 2 s, "hit" 0.75 and damage are its data; DUR["fists"] is only the fallback), and so are
+## Fault of the Pit and Brimstone Hurl (their "use" and "power").
+const DUR := {"fists": 1.67, "icharge_wind": 0.32, "icharge": 0.6, "icharge_skid": 0.38, "cslam": 1.15, "hurl": 0.95,
 	"hurl2": 1.0, "grip_throw": 0.55, "grip_haul": 0.45, "grip": 1.25, "crucible": 2.0, "wrath_roar": 1.1}
 ## The attack style each skill starts with
 const STYLE := {"fists": "fists", "icharge": "icharge_wind", "cslam": "cslam", "hurl": "hurl", "grip": "grip_throw", "wrath": "crucible"}
@@ -34,8 +38,8 @@ const STAGES := ["icharge_wind", "icharge", "icharge_skid", "grip_throw", "grip_
 ## Old saves: the skills these replaced, so their bindings carry over
 const OLD_IDS := {"hellclaw": "fists", "summon": "icharge", "phase": "cslam", "pact": "hurl"}
 
-const FISTS_R := 3.4           # how far ahead the cracks reach
-const FISTS_HALF := 42.0       # half the wedge's angle (degrees)
+const FISTS_R := 3.4           # how far ahead the cracks reach (= its data's area "r"; the effects draw with it)
+const FISTS_HALF := 42.0       # half the wedge's angle (degrees; = its data's area "angle" / 2)
 const BRAND_DUR := 4.0
 const BRAND_BONUS := 0.3       # Molten Fists on a Branded target (PvE; the PvP share is Data's)
 
@@ -58,8 +62,8 @@ const HURL_FLIGHT := 0.55      # + HURL_PER_M a metre: a long throw is slower to
 const HURL_PER_M := 0.025
 const HURL_CORE := 1.3
 const HURL_R := 2.6
-const HURL_CHARGES := 2
-const HURL_GAP := 0.55         # between two throws
+const TWIN_GAP := 2.2         # Twin Boulders: the second lands this far to the side of the first ...
+const TWIN_LATE := 0.12        # ... and this much later
 const SHARDS := 4
 const SHARD_R := 0.9
 
@@ -120,9 +124,9 @@ static func can_cast(_h: Hero, _id: String, _aim: Vector3) -> bool:
 
 static func _start(h: Hero, style: String, skill: String, secs := 0.0) -> void:
 	h._start_attack(style, skill)
+	# (the same timing everywhere, the Battlegrounds included; a skill with a "use" in its data is retimed by
+	# SkillSpec.apply_timing once its cast is done)
 	var d: float = (secs if secs > 0.0 else float(DUR[style])) * Data.attack_pace(h.cls)
-	if h.game.bg_mode and not h.puppet:
-		d *= Battlegrounds.ATTACK_PACE
 	if skill == "fists":
 		d /= h.aspd
 	h.atk_dur = d
@@ -197,7 +201,6 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 			var second := bool(w.get("hurl_alt", false))
 			w["hurl_alt"] = not second
 			_start(h, "hurl2" if second else "hurl", "hurl")
-			_spend_charge(h)
 		"grip":
 			w.erase("chain")
 			w["grip_victim"] = null
@@ -216,37 +219,6 @@ static func recast(h: Hero, id: String) -> bool:
 		_erupt_now(h)
 		return true
 	return false
-
-# ---------------------------------------------------------------- Brimstone Hurl's charges
-static func charges(h: Hero) -> int:
-	return int(h.dm.get("hurl_ch", max_charges(h)))
-
-static func max_charges(h: Hero) -> int:
-	return HURL_CHARGES + (1 if h.talent("hurl_twin") > 0.0 else 0)
-
-static func _spend_charge(h: Hero) -> void:
-	var n := charges(h) - 1
-	h.dm["hurl_ch"] = n
-	if not h.dm.has("hurl_rc"):
-		h.dm["hurl_rc"] = h.skill_cd("hurl")
-	# another charge left: only the short gap; none: the cooldown until the next one is back
-	h.cds["hurl"] = HURL_GAP if n > 0 else float(h.dm["hurl_rc"])
-
-static func _recharge(h: Hero, delta: float) -> void:
-	if not h.dm.has("hurl_rc"):
-		return
-	var rc: float = float(h.dm["hurl_rc"]) - delta
-	if rc <= 0.0:
-		var n := mini(charges(h) + 1, max_charges(h))
-		h.dm["hurl_ch"] = n
-		if n >= max_charges(h):
-			h.dm.erase("hurl_rc")
-		else:
-			h.dm["hurl_rc"] = h.skill_cd("hurl")
-		if h.cds.get("hurl", 0.0) > HURL_GAP:
-			h.cds["hurl"] = 0.0
-	else:
-		h.dm["hurl_rc"] = rc
 
 # ---------------------------------------------------------------- the blows
 ## Called from Hero._impact on the attack's impact frame; true when it was one of his.
@@ -272,34 +244,43 @@ static func impact(h: Hero) -> bool:
 			return h.atk_skill in STYLE
 	return true
 
+## Molten Fists on the skill format (jj): its area, damage and burn are its data (Data.SKILLS, SkillSpec); the magma
+## is his own part on top; a Branded foe takes BRAND_BONUS more (a player: its "pvp" share) and loses the Brand.
 static func _fists(h: Hero) -> void:
-	var fwd := h.aim_dir()
 	var wide := h.talent("fists_wide") > 0.0
 	var reach := FISTS_R + (1.0 if wide else 0.0)
 	var lit := []
-	for e in h.game.enemies_near(h.global_position, reach + 1.2):
-		var to: Vector3 = e.global_position - h.global_position
-		to.y = 0
-		if to.length() - e.radius > reach:
-			continue
-		if to.length() < 0.6 or fwd.dot(to.normalized()) > cos(deg_to_rad(FISTS_HALF + (12.0 if wide else 0.0))):
-			var mult := 1.5
-			if branded(h, e):
-				mult *= 1.0 + (pvp("fists", "brand_bonus", BRAND_BONUS) if PvpStatus.is_player(e) else BRAND_BONUS)
-				_unbrand(h, e)
-				if PvpStatus.is_player(e):
-					h.fx("fists", "consume", {"pid": int(e.pvp_pid)})
-				else:
-					h.fx("fists", "consume", {"t": [e]})
-			_hit(h, e, mult, 0.5, "fists", magma(h, 0.25))
-			if is_instance_valid(e) and not e.dead:
-				var dps: float = magma(h, 0.12) * h.dmg_mult("fists")
-				if PvpStatus.is_player(e):
-					PvpStatus.send(h.game, e, "burn", 6.0 if wide else 3.0, {"dps": dps})
-				else:
-					e.ignite(dps, 6.0 if wide else 3.0)
-				lit.append(e)
-	h.fx("fists", "impact", {"y": h.rig.global_rotation.y, "r": reach, "t": lit.filter(func(x) -> bool: return not PvpStatus.is_player(x))})
+	for e in SkillSpec.targets(h, "fists", {"r_add": 1.0 if wide else 0.0, "angle_add": 24.0 if wide else 0.0}):
+		var k := 1.0
+		if branded(h, e):
+			k += pvp("fists", "brand_bonus", BRAND_BONUS) if PvpStatus.is_player(e) else BRAND_BONUS
+			_unbrand(h, e)
+			if PvpStatus.is_player(e):
+				h.fx("fists", "consume", {"pid": int(e.pvp_pid)})
+			else:
+				h.fx("fists", "consume", {"t": [e]})
+		_strike(h, "fists", e, magma(h, 0.5), {"mult": k, "dot_secs": 2.0 if wide else 1.0})
+		if is_instance_valid(e) and not e.dead and not PvpStatus.is_player(e):
+			lit.append(e)
+	h.fx("fists", "impact", {"y": h.rig.global_rotation.y, "r": reach, "t": lit})
+
+## One foe struck by a skill on the skill format (SkillSpec: its "dmg", "knock", "type" and "dot" are its data; `extra`
+## his magma). A player's stand-in goes through _hit (the PvP share, no knockback) and its burn through the server
+## (PvpStatus, capped); a monster through SkillSpec.strike. opts: SkillSpec.strike's ("mult", "dot_secs").
+static func _strike(h: Hero, id: String, e, extra: float, opts := {}) -> void:
+	if not is_instance_valid(e) or e.dead:
+		return
+	if not PvpStatus.is_player(e):
+		SkillSpec.strike(h, id, e, extra, opts)
+		return
+	var d := SkillSpec.of(id)
+	var k := float(opts.get("mult", 1.0))
+	_hit(h, e, float(d.get("dmg", 0.0)) / 100.0 * k, 0.0, id, (extra + SkillSpec.spell_damage(h, id)) * k)
+	var dt: Dictionary = d.get("dot", {})
+	if str(dt.get("kind", "")) == "burn" and is_instance_valid(e) and not e.dead:
+		var secs := float(dt.get("secs", 3.0))
+		PvpStatus.send(h.game, e, "burn", secs * float(opts.get("dot_secs", 1.0)),
+			{"dps": SkillSpec.expected(h, id, extra) * k * float(dt.get("pct", 25.0)) / 100.0 / secs})
 
 # ---------------------------------------------------------------- Infernal Charge
 static func _update_charge(h: Hero, delta: float) -> void:
@@ -412,8 +393,16 @@ static func _throw(h: Hero) -> void:
 	var flight := HURL_FLIGHT + at.distance_to(h.global_position) * HURL_PER_M
 	var bs: Array = h.dm.get("boulders", [])
 	bs.append({"at": at, "t": flight})
-	h.dm["boulders"] = bs
 	h.fx("hurl", "throw", {"p": hand, "q": at, "x": flight, "n": 1 if h.atk_style == "hurl2" else 0})
+	if h.talent("hurl_twin") > 0.0:
+		# Twin Boulders: a second one torn loose with it, landing beside the first (on the side of the throwing arm)
+		var side := (at - h.global_position).cross(Vector3.UP) * Vector3(1, 0, 1)
+		side = side.normalized() if side.length() > 0.1 else h.aim_dir().cross(Vector3.UP)
+		var at2: Vector3 = h.game.world.move(at, side * (TWIN_GAP if h.atk_style == "hurl" else -TWIN_GAP), 0.3)
+		at2.y = h.game.world.height_at(at2.x, at2.z)
+		bs.append({"at": at2, "t": flight + TWIN_LATE})
+		h.fx("hurl", "throw", {"p": hand, "q": at2, "x": flight + TWIN_LATE, "n": 1 if h.atk_style == "hurl2" else 0})
+	h.dm["boulders"] = bs
 
 static func _splash(h: Hero, at: Vector3) -> void:
 	var lit := []
@@ -517,7 +506,7 @@ static func _hooked(h: Hero, c: Dictionary, e) -> void:
 	c["state"] = "drag"
 	c["victim"] = e
 	c["dt"] = 0.0
-	var dur: float = float(DUR["grip_haul"]) * Data.attack_pace(h.cls) * (Battlegrounds.ATTACK_PACE if h.game.bg_mode else 1.0)
+	var dur: float = float(DUR["grip_haul"]) * Data.attack_pace(h.cls)
 	c["dur"] = dur
 	var me := h.global_position
 	var to: Vector3 = (e.global_position - me) * Vector3(1, 0, 1)
@@ -674,7 +663,6 @@ static func update(h: Hero, delta: float) -> void:
 	if not active(h):
 		return
 	var w: Dictionary = h.dm
-	_recharge(h, delta)
 	_stages(h)
 	if w.has("charge"):
 		_update_charge(h, delta)
@@ -753,7 +741,7 @@ static func _begin_stage(h: Hero, style: String) -> void:
 			var c: Dictionary = h.dm.get("charge", {})
 			if c.is_empty():
 				return
-			_start(h, "icharge", "icharge", float(c["dist"]) / CHARGE_SPEED / Data.attack_pace(h.cls) / (Battlegrounds.ATTACK_PACE if h.game.bg_mode else 1.0) + 0.02)
+			_start(h, "icharge", "icharge", float(c["dist"]) / CHARGE_SPEED / Data.attack_pace(h.cls) + 0.02)
 			h.fx("icharge", "run", {"d": c["dir"]})
 		"icharge_skid":
 			_start(h, "icharge_skid", "icharge")
@@ -761,7 +749,7 @@ static func _begin_stage(h: Hero, style: String) -> void:
 		"grip_haul":
 			var c: Dictionary = h.dm.get("chain", {})
 			var dur: float = float(c.get("dur", DUR["grip_haul"])) if str(c.get("state", "")) == "drag" else 0.5
-			_start(h, "grip_haul", "grip", dur / Data.attack_pace(h.cls) / (Battlegrounds.ATTACK_PACE if h.game.bg_mode else 1.0))
+			_start(h, "grip_haul", "grip", dur / Data.attack_pace(h.cls))
 		"grip":
 			var v = h.dm.get("grip_victim")
 			h.dm.erase("chain")
@@ -831,7 +819,8 @@ static func _update_wrath(h: Hero, delta: float) -> void:
 
 # ---------------------------------------------------------------- housekeeping
 ## Everything of his that lingers: the fault, the chain, boulders and meteors in the air, the grip, the wrath
-## (a class change, a new character, a zone change, death). Hurl's charges stay while he is still the Demon.
+## (a class change, a new character, a zone change, death). Which arm throws the next boulder stays while he is
+## still the Demon.
 static func clear(h: Hero) -> void:
 	var w: Dictionary = h.dm
 	end_wrath(h, false)
@@ -842,12 +831,10 @@ static func clear(h: Hero) -> void:
 	if h.atk_t >= 0.0 and h.atk_skill in STYLE:
 		h.atk_t = -1.0
 		h.atk_skill = ""
-	var keep := {}
-	for k in ["hurl_ch", "hurl_rc", "hurl_alt"]:
-		if w.has(k) and h.is_demon():
-			keep[k] = w[k]
+	var alt = w.get("hurl_alt")
 	w.clear()
-	w.merge(keep)
+	if alt != null and h.is_demon():
+		w["hurl_alt"] = alt
 
 static func died(h: Hero) -> void:
 	clear(h)

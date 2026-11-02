@@ -1,7 +1,7 @@
 extends SceneTree
 ## Demon class: his six skills (Molten Fists, Infernal Charge, Fault of the Pit, Brimstone Hurl, Hellgrip, Wrath of
 ## the Pit) each doing its own job (the Brand and its use, the charge's wind-up, run, stop and skid, the fault's
-## warning, eruption and molten life, Hurl's charges, the chain's hook, drag, smash, miss and boss pull, the
+## warning, eruption and molten life, Hurl's use time and Twin Boulders, the chain's hook, drag, smash, miss and boss pull, the
 ## Crucible's damage taken and stored, its recast and eruption, Pit-born), the old saves' bindings carried over,
 ## his talents, save/load and the class swap. Prints [D] lines ("FAIL" marks a check that failed).
 var g
@@ -70,10 +70,24 @@ func _run() -> void:
 	await wait(0.1)
 	check(DS.branded(h, en[1]) and BF.has(en[1]), "a Branded foe carries the mark (seen)")
 	check(h.use_skill("fists", h.skill_aim("fists", en[1].global_position)), "Molten Fists cast")
-	await wait(1.2)
+	check(h.skill_cd("fists") == 0.0 and h.atk_dur > 1.8, "a heavy blow: no cooldown, a %.2f s use time" % h.atk_dur)
+	await wait(1.0)
+	check(lives(en) >= l0 - 0.5, "nothing struck during the wind-up")
+	await wait(1.0)
 	check(lives(en) < l0 - 1.0, "Molten Fists hurt the pack (%d)" % int(l0 - lives(en)))
 	check(en.filter(func(e): return is_instance_valid(e) and e.burn_t > 0.0).size() >= 2, "and set them alight")
 	check(not DS.branded(h, en[1]), "and used the Brand up")
+	# ... and the dodge roll cancels the wind-up: no blow
+	en = await pack(home + Vector3(0, 0, -2.2), 3)
+	h.global_position = home
+	h._face(Vector3(0, 0, -1))
+	l0 = lives(en)
+	h.mana = h.max_mana
+	h.use_skill("fists", h.skill_aim("fists", en[1].global_position))
+	await wait(0.5)
+	check(Dodge.start(h, Vector3(1, 0, 0)), "dodged out of the wind-up")
+	await wait(1.6)
+	check(lives(en) >= l0 - 0.5, "the dodge cancelled the blow")
 	# Infernal Charge: the wind-up shows the line, then he runs it, bowling lesser foes aside
 	en = await pack(home + Vector3(0, 0, -5.0), 3)
 	h.global_position = home
@@ -149,7 +163,8 @@ func _run() -> void:
 	check(en.any(func(e): return is_instance_valid(e) and e.slow_t > 0.0), "and slows them")
 	await wait(4.0)
 	check(not h.dm.has("fault"), "then cools away")
-	# Brimstone Hurl: two charges, the boulder lands at the aim, the core Brands, shards fly
+	# Brimstone Hurl: a main skill the Path of Exile way (no cooldown, its data's use time is the limit); the boulder
+	# lands at the aim, the core Brands, shards fly
 	en = await pack(home + Vector3(0, 0, -7.0), 3)
 	h.global_position = home
 	h._face(Vector3(0, 0, -1))
@@ -157,23 +172,53 @@ func _run() -> void:
 	h.mana = h.max_mana
 	for k in h.cds.keys():
 		h.cds[k] = 0.0
-	h.dm.erase("hurl_ch")
-	h.dm.erase("hurl_rc")
-	check(DS.charges(h) == 2, "two charges")
 	check(h.use_skill("hurl", en[1].global_position), "Brimstone Hurl cast")
-	await wait(0.75)
-	check(h.dm.has("boulders") or lives(en) < l0, "a boulder is in the air")
+	check(h.skill_cd("hurl") == 0.0 and is_equal_approx(h.atk_dur, SkillSpec.use_time(h, "hurl")), "no cooldown, its data's use time (%.2f s)" % h.atk_dur)
+	var thrown := false
+	for i in 150:
+		await process_frame
+		if not (h.dm.get("boulders", []) as Array).is_empty():
+			thrown = true
+			break
+	check(thrown, "a boulder is in the air")
 	check(h.fxs.has("shatter") and (h.fxs["shatter"] as Array).size() > 0, "with its landing mark on the ground")
-	await wait(0.8)
+	await wait(1.0)
 	check(lives(en) < l0 - 1.0, "it landed on the pack (%d)" % int(l0 - lives(en)))
 	check(DS.branded(h, en[1]), "the direct hit is Branded")
-	check(DS.charges(h) == 1 and h.cds["hurl"] <= DS.HURL_GAP, "one charge left, ready again at once")
+	await idle(h)
 	h.mana = h.max_mana
-	await wait(0.6)
-	check(h.use_skill("hurl", en[0].global_position), "the second throw")
-	await wait(1.3)
-	check(DS.charges(h) == 0 and h.cds["hurl"] > 1.0, "no charges: recharging (%.1f s)" % h.cds["hurl"])
-	check(not h.use_skill("hurl", en[0].global_position), "a third is refused")
+	check(h.use_skill("hurl", en[0].global_position), "and he throws again once the first throw is done")
+	await idle(h)
+	await wait(1.0)
+	# Twin Boulders (the capstone): a second boulder lands beside the first
+	h.talents["d_legion"] = 1
+	h._talents_changed()
+	en = await pack(home + Vector3(0, 0, -7.0), 1)
+	var twin_en: Array = []          # out of the first boulder's reach, in the second's on either side
+	for x in [-DS.TWIN_GAP - 2.0, DS.TWIN_GAP + 2.0]:
+		var e = g.spawn_enemy("zombie", home + Vector3(x, 0, -7.0), 20)
+		e.aggro = false
+		e.scripted = 99.0
+		e.max_life = 5000.0
+		e.life = 5000.0
+		twin_en.append(e)
+	h.global_position = home
+	h._face(Vector3(0, 0, -1))
+	var tw0 := lives(twin_en)
+	h.mana = h.max_mana
+	check(h.use_skill("hurl", home + Vector3(0, 0, -7.0)), "Twin Boulders: a cast")
+	var gap := 0.0
+	for i in 150:
+		await process_frame
+		var bs: Array = h.dm.get("boulders", [])
+		if bs.size() >= 2:
+			gap = (bs[0]["at"] as Vector3).distance_to(bs[1]["at"])
+			break
+	check(absf(gap - DS.TWIN_GAP) < 0.3, "two boulders in the air, %.1f m apart" % gap)
+	await wait(1.2)
+	check(lives(twin_en) < tw0 - 1.0, "the second landed beside the first (%d)" % int(tw0 - lives(twin_en)))
+	h.talents.erase("d_legion")
+	h._talents_changed()
 	await idle(h)
 	# Hellgrip: the chain hooks the first foe in its line, drags it in, hoists it and smashes it
 	en = await pack(home + Vector3(0, 0, -6.0), 1)

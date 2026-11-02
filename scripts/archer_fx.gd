@@ -13,17 +13,27 @@ extends RefCounted
 static func play(h: Hero, ev: Dictionary) -> bool:
 	var root: Node3D = h.game.world.fx_root
 	match [str(ev["s"]), str(ev["e"])]:
-		["pierce", "cast"], ["volley", "cast"], ["snare", "cast"], ["beast", "cast"]:
+		["pierce", "cast"]:
+			# the fire wakes on the cast: a low fuse under the draw, the charge (update) from here on
+			h.fxs["fire_cast"] = Time.get_ticks_msec() / 1000.0
+			ArrowFx.sounds(h, "fire", "cast")
+		["volley", "cast"], ["snare", "cast"], ["beast", "cast"]:
 			pass
 		["attack", "loose"], ["pierce", "loose"]:
 			var from: Vector3 = ev["p"]
 			var dir: Vector3 = ev["d"]
-			var n := Archer._arrow_mesh(str(ev.get("k", "war")))
+			var kind := str(ev.get("k", "war"))
+			# the layered arrow of its kind (ArrowFx.PRESETS: the Phoenix for Fire Arrow), flown by Archer.update
+			var n := ArrowFx.projectile(kind, h.game)
 			root.add_child(n)
 			n.global_position = from
 			n.look_at(from + dir, Vector3.UP)
 			h.arrows.append({"node": n, "dir": dir, "left": Archer.RANGE + 5.0, "pierce": bool(ev.get("x", false)), "hit": {},
-				"mult": float(ev.get("m", 1.0)), "src": str(ev["s"])})
+				"mult": float(ev.get("m", 1.0)), "src": str(ev["s"]), "kind": kind, "pts": []})
+			ArrowFx.end_draw(h)
+			h.fxs.erase("draw_fire")
+			h.fxs.erase("fire_cast")
+			ArrowFx.release(h, kind, from, dir)
 		["volley", "impact"]:
 			var g: Vector3 = ev["p"]
 			var r: float = float(ev.get("r", Archer.VOLLEY_R))
@@ -105,9 +115,24 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			return false
 	return true
 
-## Arrows, volleys and snares move in Archer.update (the puppet's too).
-static func update(_h: Hero, _delta: float) -> void:
-	pass
+## Arrows, volleys and snares move in Archer.update (the puppet's too). Here: the fire gathering on the nocked
+## arrow through the draw of a Fire Arrow shot (from the attack's progress, so the puppet shows it too).
+static func update(h: Hero, _delta: float) -> void:
+	var a := SkillFx.atk(h)
+	var sty := SkillFx.style(h)
+	var skill: String = h.atk_skill if not h.puppet else str(h.net_st.get("skill", ""))
+	if sty == "bow" and a >= 0.0 and a < Anim.impact_at("bow") and (skill == "pierce" or (h.puppet and _puppet_fire(h))):
+		# the charge grows from the nock to the full draw
+		var k := clampf((a - Archer.GRAB) / (Anim.impact_at("bow") - 0.08 - Archer.GRAB), 0.0, 1.0)
+		ArrowFx.draw_charge(h, "fire", k)
+		h.fxs["draw_fire"] = true
+	elif h.fxs.has("draw_fire"):
+		ArrowFx.end_draw(h)
+		h.fxs.erase("draw_fire")
+
+## A puppet's shot has no skill id on the wire: the Fire Arrow's "cast" event marks the next shot his.
+static func _puppet_fire(h: Hero) -> bool:
+	return h.fxs.has("fire_cast") and Time.get_ticks_msec() / 1000.0 - float(h.fxs["fire_cast"]) < 2.5
 
 static func clear(h: Hero) -> void:
 	Archer.clear(h)

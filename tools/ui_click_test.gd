@@ -105,6 +105,13 @@ func _run() -> void:
 		for ix in range(1, 8):
 			for iy in range(1, 8):
 				var pt := r.position + r.size * Vector2(ix / 8.0, iy / 8.0)
+				if not p.visible:
+					# (a click on its button or its close shut it, as it should: open it again for the next point)
+					if nm == "dialog":
+						g.ui.open_dialog("Varro", "Fight for me.", [["Later", func(): pass]])
+					else:
+						p.visible = true
+					await wait(2)
 				await _click(pt)
 				n += int(reached)
 		p.visible = false

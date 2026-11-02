@@ -15,7 +15,7 @@ const PIVOT := 0.75        # height the body tumbles round (m)
 
 static func can_roll(h: Hero) -> bool:
 	return not h.dead and h.roll_t < 0.0 and h.roll_cd <= 0.0 and h.charge_t < 0.0 and h.daze_t <= 0.0 \
-		and not ClassSkills.rooted(h) and (h.stamina >= STAMINA or h.game.test_stamina)
+		and not ClassSkills.rooted(h) and not SkillSpec.uncancellable(h) and (h.stamina >= STAMINA or h.game.test_stamina)
 
 ## Starts a roll along dir (flat). False if he can't roll now.
 static func start(h: Hero, dir: Vector3) -> bool:
@@ -61,12 +61,21 @@ static func _ease(s: float) -> float:
 static func dodging(h: Hero) -> bool:
 	return h.roll_t >= 0.0 and h.roll_t < IFRAME
 
-## A blow that went past him.
+## A blow that went past him: "Dodged" over him on every screen (an fx event, so the one who swung sees why it
+## missed; jj: "a lot of missed attacks in PvP, I never saw the roll").
 static func dodged(h: Hero) -> void:
-	Fx.number(h.game.world.fx_root, h.global_position + Vector3(0, 2.2, 0), "Dodged", Color(0.85, 0.9, 1.0))
+	var now := Time.get_ticks_msec()
+	if now - int(h.get_meta("dodged_at", 0)) < 300:
+		return                    # (a pack's blows in one roll: one "Dodged", one event)
+	h.set_meta("dodged_at", now)
+	h.fx("roll", "dodged", {})
 
-## The event's effect (on the roller and on his puppet): dust where he set off, the sound, the tumble.
+## The event's effect (on the roller and on his puppet): dust where he set off, the sound, the tumble; "Dodged".
 static func fx(h: Hero, ev: Dictionary) -> void:
+	if str(ev.get("e", "")) == "dodged":
+		Fx.number(h.game.world.fx_root, h.global_position + Vector3(0, 2.2, 0), "Dodged", Color(0.85, 0.9, 1.0))
+		SkillFx.snd(h, "swing_light", -8.0, 1.4)
+		return
 	if str(ev.get("e", "")) != "start":
 		return
 	if h.puppet:
