@@ -1,4 +1,17 @@
 asset,category,kind,tris,texture,uv_islands,uv_coverage,normal_tilt,albedo,geometry,silhouette,texture_q,material,animation,lod,consistency,performance,overall,priority,actions,status,notes
+isles/verdant/egg_nest.glb,isles,glb,7999,,,,,,,,,,,,,,,,,Not inspected,added after the audit
+isles/verdant/raptor_pen.glb,isles,glb,10000,,,,,,,,,,,,,,,,,Not inspected,added after the audit
+isles/verdant/troll_hut.glb,isles,glb,12000,,,,,,,,,,,,,,,,,Not inspected,added after the audit
+isles/verdant/troll_totem.glb,isles,glb,6000,,,,,,,,,,,,,,,,,Not inspected,added after the audit
+isles/verdant/tunnel.glb,isles,glb,11999,,,,,,,,,,,,,,,,,Not inspected,added after the audit
+monsters/dino/baby_trike.glb,monsters,glb,15000,,,,,,,,,,,,,,,,,Not inspected,added after the audit
+monsters/dino/raptor.glb,monsters,glb,29998,,,,,,,,,,,,,,,,,Not inspected,added after the audit
+monsters/dino/trex.glb,monsters,glb,44999,,,,,,,,,,,,,,,,,Not inspected,added after the audit
+monsters/dino/triceratops.glb,monsters,glb,29999,,,,,,,,,,,,,,,,,Not inspected,added after the audit
+monsters/dwarf.glb,monsters,glb,22000,,,,,,,,,,,,,,,,,Not inspected,added after the audit
+monsters/hermit.glb,monsters,glb,28000,,,,,,,,,,,,,,,,,Not inspected,added after the audit
+monsters/ice_troll.glb,monsters,glb,40000,,,,,,,,,,,,,,,,,Not inspected,added after the audit
+monsters/troll_shaman.glb,monsters,glb,22000,,,,,,,,,,,,,,,,,Not inspected,added after the audit
 "culling and LOD (multimesh chunks, LODs)",rendering,code,,,,,,,,,,,,2,3,2,2.3,P1,O B,In-game testing,Camp chunked and the hidden portrait stopped (stage 1). No Meshy model has LODs (UV atlas).
 "lighting and grade (Game._zone_env, Grade)",rendering,code,,,,,,,,,,3,,3,3,3,3.0,P1,S,In-game testing,Low contrast and lifted blacks (fog); the hero is hard to read on dark ground. Rim light now in every zone (stage 2); grading per zone needs a real-GPU pass.
 "shadows (sun cascades, omni budget)",rendering,code,,,,,,,,,,4,,4,4,4,4.0,P1,O,In-game testing,"Cascades fitted to the camera, fire shadows under the budget (stage 1)."
@@ -123,7 +136,7 @@ archer skills (ArrowFx),vfx,code,,,,,,,4,4,4,4,4,3,4,3,3.8,P4,,Inspected,Fire/Fr
 "demon skills (DemonFx, DemonFistsFx, InfernalFx)",vfx,code,,,,,,,4,4,4,4,4,3,4,3,3.8,P4,,Inspected,"Lava, fissures, meteors, Hellbrand fists: custom shaders and flipbooks."
 fire (FireFx),vfx,code,,,,,,,4,4,4,4,4,3,4,3,3.8,P4,,Inspected,Every fire: Mantaflow flipbooks on layered particles. The benchmark.
 ocean (Ocean),environment,code,,,,,,,4,4,4,4,4,3,4,3,3.8,P4,,Inspected,Wave simulation and shading for the coast and isles.
-camp/palisade.glb,camp,glb,2400,512,1323,36.5,9.7,0.238,4,4,4,3,,4,4,4,3.9,P4,,In-game testing,"Camp palisade section (34 round the ring), re-made (stage 3): ten tight, mossy, unevenly sharpened logs in two rope bands (Meshy), re-baked onto clean UVs (415 islands, was 1,323; 1K, was 512; 5k tris) so the importer can make LODs. 4.2 m tall (was 3.6). Chunked for culling (stage 1)."
+camp/palisade.glb,camp,glb,5000,1024,415,63.5,20.0,0.262,4,4,4,3,,4,4,4,3.9,P4,,In-game testing,"Camp palisade section (34 round the ring), re-made (stage 3): ten tight, mossy, unevenly sharpened logs in two rope bands (Meshy), re-baked onto clean UVs (415 islands, was 1,323; 1K, was 512; 5k tris) so the importer can make LODs. 4.2 m tall (was 3.6). Chunked for culling (stage 1)."
 grass/dry.glb,grass,glb,952,0,,,,,4,4,4,4,4,4,4,3,3.9,P4,,Inspected,"Living 3D grass species (Blender clumps on Meshy atlas, two LODs, wind and touch): good."
 grass/meadow.glb,grass,glb,944,0,,,,,4,4,4,4,4,4,4,3,3.9,P4,,Inspected,Grass species.
 grass/moss.glb,grass,glb,440,0,,,,,4,4,4,4,4,4,4,3,3.9,P4,,Inspected,Grass species.
@@ -131,4 +144,4 @@ grass/sparse.glb,grass,glb,338,0,,,,,4,4,4,4,4,4,4,3,3.9,P4,,Inspected,Grass spe
 grass/tall.glb,grass,glb,822,0,,,,,4,4,4,4,4,4,4,3,3.9,P4,,Inspected,Grass species.
 grass/tussock.glb,grass,glb,1202,0,,,,,4,4,4,4,4,4,4,3,3.9,P4,,Inspected,Grass species.
 grass/weed.glb,grass,glb,188,0,,,,,4,4,4,4,4,4,4,3,3.9,P4,,Inspected,Grass species.
-camp/lantern.glb,camp,glb,1200,256,507,45.6,10.6,0.236,4,4,4,4,,4,4,4,4.0,P4,,In-game testing,"Hanging lantern (used all over the camp), re-made (stage 3): a Meshy concept (chain edited out so it hangs from its ring), image-to-3D, re-baked onto clean UVs by camp/rebake_prop.py (191 islands, was 507; 512 px, was 256; 2k tris). Was shattered glass shards and spikes."
+camp/lantern.glb,camp,glb,2000,512,191,67.4,11.3,0.193,4,4,4,4,,4,4,4,4.0,P4,,In-game testing,"Hanging lantern (used all over the camp), re-made (stage 3): a Meshy concept (chain edited out so it hangs from its ring), image-to-3D, re-baked onto clean UVs by camp/rebake_prop.py (191 islands, was 507; 512 px, was 256; 2k tris). Was shattered glass shards and spikes."

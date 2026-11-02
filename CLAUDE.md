@@ -1218,7 +1218,15 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   knight_armored, fallen_reaver, the trap); `emission_from_albedo.py` turns painted embers into an emission map (the
   Ashen King's cracks and eyes, KHR_materials_emissive_strength). The hit flash (`Enemy.FLASH_SHADER`: rim-weighted,
   fading; `Enemy.flash_color` for a coloured one) replaced flat white cut-outs (the swing trail got the same kind of
-  fix on staging, `Hero._trail_shader`). Candidates are judged in the game renderer, not in model sheets:
+  fix on staging, `Hero._trail_shader`; its UVs are clamped before `pow()`, whose NaN on a hair-negative UV drew
+  black specks). Each class has its own visual language (`HolyFx` knight, `InfernalFx`/`DemonFx` demon, `WarlockFx`
+  fel fire, `WraithFx._spirit_burst`/`_soul_ring`, `ArrowFx` archer, `ElementalFx` for the shared skills and the
+  monsters' slams, novas and summonings): the knight's, the Wraith's and the shared skills use no generic
+  `Fx.burst`/`ring`/`pillar` now; the Demon, the Plague Doctor and the Archer still mix a few in as accents. Give a
+  new skill shapes of its own, not a recoloured burst. Hits throw streaks (`Fx.streaks`: sparks, blood). Decals on the
+  ground sit 0.06-0.08 m up (the road's surface is above `height_at`). `special_shots.gd` frames monsters' heavy
+  blows; `shader_check`-style runs (draw each new material once under xvfb) catch shader compile errors that the
+  headless tests can't. Candidates are judged in the game renderer, not in model sheets:
   `oak_compare.gd` (oaks as the game builds them, with leaf clusters) and `body_compare.gd` (two copies of the mocap
   knight); the procedural oak (`tools/blender/trees/oak_gen.py`) lost to the Meshy oaks there and was not adopted.
 - **Performance KPIs** (`scripts/kpi.gd` `Kpi`, `docs/nightly/KPIS.md`): the official numbers. Scripted, deterministic

@@ -157,7 +157,7 @@ Total so far: 198 of the 2,614 monthly credits. `a2_arena_test` (the whole games
 | S6 | Two act bosses and the gladiators have no model | Data.ENEMIES `"mesh"` names with no glb | **Meshy models (stage 3)**, testing |
 | S7 | Oak and pine models are crumpled low-poly shards | Model sheets; on screen hundreds of times | In play the leaf clusters hide it (oak_compare.gd); a procedural rebuild lost. P2 |
 | S8 | Characters read as dark blobs on dark ground | Colour maps 0.14-0.24; camp frame median luminance 0.12, p90 0.19; the knight's plate at 5% reflectance | Rim light in every zone, metal lift on the knight (stage 2); grading needs real-GPU review |
-| S9 | Generic recoloured skill effects | Knight Nova/Cry/Charge, Warlock, shared skills, most Wraith effects use `Fx.burst/ring/pillar` | Knight done (`HolyFx`, stage 2), shared skills, the Warlock and the Wraith (`ElementalFx`, `WarlockFx`, `WraithFx`, stage 3); generic `Fx` still serves monsters and items |
+| S9 | Generic recoloured skill effects | Knight Nova/Cry/Charge, Warlock, shared skills, most Wraith effects use `Fx.burst/ring/pillar` | Knight done (`HolyFx`, stage 2), shared skills, the Warlock's big three and the Wraith (`ElementalFx`, `WarlockFx`, `WraithFx`, stage 3); the Demon, Plague Doctor and Archer still use a few generic bursts as accents (P3) |
 | S10 | Always-on fire shadows outside the budget | Fort: 12 shadowed omni lights | Fixed (stage 1) |
 | S11 | Decimation facets on round props | Clay views: flask, mixture, items, lair rocks | Bottles re-shaded (stage 2); shard rocks need a rebuild |
 | S12 | Model textures uncompressed in video memory | Lossy WebP decodes to RGBA8: 1.0-1.9 GB VRAM | Decision (below) |
