@@ -220,6 +220,16 @@ const ENEMIES := {
 	"troll_shaman": {"mesh": "troll_shaman", "faction": "troll", "name": "Troll Beast-Tamer", "rig": "humanoid", "life": 70, "dmg": [7, 12], "speed": 3.4, "range": 10.0, "xp": 48,
 		"ai": "ranged", "atk": "cast", "atk_time": 1.3, "armor": 5, "radius": 0.5, "proj": "poison", "blood": Color(0.25, 0.4, 0.3),
 		"look": {"height": 2.3, "eyes": Color(1.0, 0.6, 0.15)}},
+	# the Battlegrounds' bosses (Blaine's overhaul, docs/queue_battlegrounds_overhaul.md): Meshy, rigged by rig_monster.py;
+	# their fights (abilities, arenas, the hermit's chest) are the overhaul's to build on these entries
+	"ice_troll": {"mesh": "ice_troll", "name": "Hrimgar the Frostbound", "rig": "humanoid", "life": 1400, "dmg": [24, 38], "speed": 3.2, "range": 3.0, "xp": 1400,
+		"ai": "melee", "atk": "slam", "atk_time": 1.7, "armor": 22, "radius": 1.3, "boss": true, "aggro": 18.0, "blood": Color(0.55, 0.8, 1.0),
+		"intro": {"title": "HRIMGAR", "sub": "THE FROSTBOUND", "line": "He's been standing in that cave for three hundred years. He'd like a word about the draught.", "color": Color(0.55, 0.85, 1.0)},
+		"look": {"height": 3.4, "eyes": Color(0.6, 0.95, 1.0)}},
+	"hermit": {"mesh": "hermit", "name": "Old Mossbeard", "rig": "humanoid", "life": 900, "dmg": [14, 22], "speed": 3.0, "range": 9.0, "xp": 1100,
+		"ai": "ranged", "atk": "cast", "atk_time": 1.4, "armor": 10, "radius": 0.6, "boss": true, "aggro": 14.0, "proj": "poison", "blood": Color(0.35, 0.55, 0.2),
+		"intro": {"title": "OLD MOSSBEARD", "sub": "THE THORN HERMIT", "line": "Hasn't had visitors in years. Doesn't plan on letting this lot leave.", "color": Color(0.6, 1.0, 0.45)},
+		"look": {"height": 1.45, "eyes": Color(0.5, 1.0, 0.4)}},
 	"dwarf": {"mesh": "dwarf", "name": "Drunken Dwarf", "rig": "humanoid", "life": 340, "dmg": [16, 26], "speed": 3.9, "range": 1.8, "xp": 260,
 		"ai": "melee", "atk": "smash", "atk_time": 1.1, "armor": 18, "radius": 0.55, "blood": Color(0.5, 0.02, 0.02),
 		"look": {"height": 1.3, "eyes": Color(0.3, 0.6, 1.0), "weapon": "club"}},
