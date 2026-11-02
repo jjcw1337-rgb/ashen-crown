@@ -194,6 +194,213 @@ void fragment(){
 }
 """
 
+## The see-through for the Meshy buildings and props that keep their glb's own material (the camp's palisade, gate
+## and tents, the fort's walls, towers and hall, the coast's hamlet, the islands' landmarks, the lairs, the crypt's
+## dressing): `World.build` hands the finished zone here. Every static mesh tall enough to stand between the camera
+## and the hero, on a plain opaque StandardMaterial3D, gets SEE_THROUGH_SHADER with the same textures and numbers, so
+## it looks the same and dithers away round the hero as the code-built props do (Mats.PROP_SHADER). One copy per
+## material, shared by every instance of it, so nothing batches worse; a multimesh gets a copy of its mesh with the
+## new materials. Skinned bodies, glowing, see-through and unshaded materials and every ShaderMaterial (the code-built
+## props, trees, rocks, clutter and Roman pieces dither already) are left alone. Visual only: no random numbers, so the
+## zone's layout is the same.
+static var _see_mats := {}       # one see_through() walk's copies (cleared after it)
+static var _see_meshes := {}
+const SEE_MIN_H := 1.5         # metres: anything lower can't hide the hero
+## `-- --no-see-through` leaves the glb materials as they were (before/after comparisons)
+static var see_through_off := OS.get_cmdline_user_args().has("--no-see-through")
+
+static func see_through(root: Node) -> int:
+	if see_through_off:
+		return 0
+	var n := 0
+	var stack: Array[Node] = [root]
+	while not stack.is_empty():
+		var node: Node = stack.pop_back()
+		if node is Skeleton3D or node.has_meta("keep_material"):
+			continue
+		if node is MeshInstance3D:
+			n += _see_mesh(node as MeshInstance3D)
+		elif node is MultiMeshInstance3D:
+			n += _see_multimesh(node as MultiMeshInstance3D)
+		for c in node.get_children():
+			stack.append(c)
+	# the copies live on in the nodes that use them; the cache must not keep this zone's materials, textures and
+	# meshes alive after it is freed (it held every visited zone's glb textures in video memory: +134 MB in the fort)
+	_see_mats.clear()
+	_see_meshes.clear()
+	return n
+
+static func _see_mesh(mi: MeshInstance3D) -> int:
+	if mi.mesh == null or mi.skin != null:
+		return 0
+	if (mi.global_transform * mi.mesh.get_aabb()).size.y < SEE_MIN_H:
+		return 0
+	if mi.material_override != null:
+		var mo := _see_mat(mi.material_override)
+		if mo == null:
+			return 0
+		mi.material_override = mo
+		return 1
+	var k := 0
+	for si in mi.mesh.get_surface_count():
+		if mi.get_surface_override_material(si) != null:
+			continue
+		var m := _see_mat(mi.mesh.surface_get_material(si))
+		if m != null:
+			mi.set_surface_override_material(si, m)
+			k += 1
+	return k
+
+static func _see_multimesh(mmi: MultiMeshInstance3D) -> int:
+	var mm := mmi.multimesh
+	if mm == null or mm.mesh == null or mm.instance_count == 0:
+		return 0
+	if (mmi.global_transform * mm.get_aabb()).size.y < SEE_MIN_H:
+		return 0
+	if mmi.material_override != null:
+		var mo := _see_mat(mmi.material_override)
+		if mo == null:
+			return 0
+		mmi.material_override = mo
+		return 1
+	if not _see_meshes.has(mm.mesh):
+		_see_meshes[mm.mesh] = _see_mesh_copy(mm.mesh)
+	var copy: Mesh = _see_meshes[mm.mesh]
+	if copy == null:
+		return 0
+	mm.mesh = copy
+	return 1
+
+static func _see_mesh_copy(src: Mesh) -> Mesh:
+	var am := src as ArrayMesh
+	if am == null:
+		return null
+	var mats := []
+	var any := false
+	for si in am.get_surface_count():
+		var m := _see_mat(am.surface_get_material(si))
+		mats.append(m)
+		any = any or m != null
+	if not any:
+		return null
+	var out := am.duplicate() as ArrayMesh
+	for si in out.get_surface_count():
+		if mats[si] != null:
+			out.surface_set_material(si, mats[si])
+	return out
+
+## The SEE_THROUGH_SHADER copy of a plain opaque StandardMaterial3D, or null for anything it can't stand in for.
+static func _see_mat(src: Material) -> ShaderMaterial:
+	var b := src as StandardMaterial3D
+	if b == null:
+		return null
+	if _see_mats.has(b):
+		return _see_mats[b]
+	var plain := b.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED and b.shading_mode == BaseMaterial3D.SHADING_MODE_PER_PIXEL \
+		and not b.emission_enabled and b.billboard_mode == BaseMaterial3D.BILLBOARD_DISABLED and not b.vertex_color_use_as_albedo \
+		and b.cull_mode != BaseMaterial3D.CULL_FRONT and not b.detail_enabled and not b.refraction_enabled and not b.rim_enabled \
+		and not b.clearcoat_enabled and not b.anisotropy_enabled and not b.subsurf_scatter_enabled and not b.backlight_enabled \
+		and not b.heightmap_enabled and not b.grow and not b.use_point_size and not b.proximity_fade_enabled \
+		and b.distance_fade_mode == BaseMaterial3D.DISTANCE_FADE_DISABLED and not b.uv1_triplanar
+	var m: ShaderMaterial = null
+	if plain:
+		m = ShaderMaterial.new()
+		var two := b.cull_mode == BaseMaterial3D.CULL_DISABLED
+		m.shader = Mats.custom("see_through_2side" if two else "see_through",
+			SEE_THROUGH_SHADER.replace("cull_back", "cull_disabled") if two else SEE_THROUGH_SHADER)
+		m.set_shader_parameter("albedo", b.albedo_color)
+		if b.albedo_texture != null:
+			m.set_shader_parameter("albedo_tex", b.albedo_texture)
+			m.set_shader_parameter("use_albedo_tex", true)
+		if b.normal_enabled and b.normal_texture != null:
+			m.set_shader_parameter("normal_tex", b.normal_texture)
+			m.set_shader_parameter("use_normal", true)
+			m.set_shader_parameter("normal_scale", b.normal_scale)
+		m.set_shader_parameter("roughness", b.roughness)
+		if b.roughness_texture != null:
+			m.set_shader_parameter("rough_tex", b.roughness_texture)
+			m.set_shader_parameter("rough_mask", _channel(b.roughness_texture_channel))
+			m.set_shader_parameter("use_rough", true)
+		m.set_shader_parameter("metallic", b.metallic)
+		m.set_shader_parameter("specular", b.metallic_specular)
+		if b.metallic_texture != null:
+			m.set_shader_parameter("metal_tex", b.metallic_texture)
+			m.set_shader_parameter("metal_mask", _channel(b.metallic_texture_channel))
+			m.set_shader_parameter("use_metal", true)
+		if b.ao_enabled and b.ao_texture != null:
+			m.set_shader_parameter("ao_tex", b.ao_texture)
+			m.set_shader_parameter("ao_mask", _channel(b.ao_texture_channel))
+			m.set_shader_parameter("ao_light_affect", b.ao_light_affect)
+			m.set_shader_parameter("use_ao", true)
+		m.set_shader_parameter("uv1_scale", b.uv1_scale)
+		m.set_shader_parameter("uv1_offset", b.uv1_offset)
+	_see_mats[b] = m
+	return m
+
+static func _channel(c: int) -> Vector4:
+	match c:
+		BaseMaterial3D.TEXTURE_CHANNEL_RED: return Vector4(1, 0, 0, 0)
+		BaseMaterial3D.TEXTURE_CHANNEL_GREEN: return Vector4(0, 1, 0, 0)
+		BaseMaterial3D.TEXTURE_CHANNEL_BLUE: return Vector4(0, 0, 1, 0)
+		BaseMaterial3D.TEXTURE_CHANNEL_ALPHA: return Vector4(0, 0, 0, 1)
+	return Vector4(1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0, 0)
+
+## StandardMaterial3D's own sums (albedo x texture, roughness and metallic from their channels x the factors, the
+## normal map at its scale, AO) with the see-through on top; keep the see-through block in step with PROP_SHADER's.
+const SEE_THROUGH_SHADER := """
+shader_type spatial;
+render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_burley, specular_schlick_ggx;
+uniform vec4 albedo : source_color = vec4(1.0);
+uniform sampler2D albedo_tex : source_color, filter_linear_mipmap, repeat_enable;
+uniform bool use_albedo_tex = false;
+uniform sampler2D normal_tex : hint_roughness_normal, filter_linear_mipmap, repeat_enable;
+uniform bool use_normal = false;
+uniform float normal_scale = 1.0;
+uniform float roughness = 1.0;
+uniform sampler2D rough_tex : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform vec4 rough_mask = vec4(0.0, 1.0, 0.0, 0.0);
+uniform bool use_rough = false;
+uniform float metallic = 0.0;
+uniform float specular = 0.5;
+uniform sampler2D metal_tex : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform vec4 metal_mask = vec4(0.0, 0.0, 1.0, 0.0);
+uniform bool use_metal = false;
+uniform sampler2D ao_tex : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform vec4 ao_mask = vec4(1.0, 0.0, 0.0, 0.0);
+uniform float ao_light_affect = 0.0;
+uniform bool use_ao = false;
+uniform vec3 uv1_scale = vec3(1.0);
+uniform vec3 uv1_offset = vec3(0.0);
+global uniform vec3 player_pos;
+global uniform float occlude_k;
+uniform float occlude = 1.0;
+varying vec3 wp;
+float bayer2(vec2 a){ a = floor(a); return fract(a.x / 2.0 + a.y * a.y * 0.75); }
+float dith(vec2 a){ return bayer2(0.5 * a) * 0.25 + bayer2(a) + 0.03125; }
+void vertex(){
+	UV = UV * uv1_scale.xy + uv1_offset.xy;
+	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment(){
+	if (occlude > 0.5) {
+		vec3 d = wp - player_pos;
+		float h = wp.y - player_pos.y;
+		float along = d.z - occlude_k * (h - 1.0);
+		float cover = (1.0 - smoothstep(1.6, 3.2, abs(along))) * (1.0 - smoothstep(2.2, 3.6, abs(d.x)));
+		cover *= step(0.9, h) * step(0.2, d.z);
+		if (cover * 0.9 > dith(FRAGCOORD.xy)) { discard; }
+	}
+	vec3 c = albedo.rgb;
+	if (use_albedo_tex) { c *= texture(albedo_tex, UV).rgb; }
+	ALBEDO = c;
+	ROUGHNESS = use_rough ? dot(texture(rough_tex, UV), rough_mask) * roughness : roughness;
+	METALLIC = use_metal ? dot(texture(metal_tex, UV), metal_mask) * metallic : metallic;
+	SPECULAR = specular;
+	if (use_normal) { NORMAL_MAP = texture(normal_tex, UV).rgb; NORMAL_MAP_DEPTH = normal_scale; }
+	if (use_ao) { AO = dot(texture(ao_tex, UV), ao_mask); AO_LIGHT_AFFECT = ao_light_affect; }
+}
+"""
+
 ## Wood and hide can burn through in A3 (holes with glowing edges).
 static func _breakable(m: ShaderMaterial) -> Material:
 	m.set_shader_parameter("breakable", 1.0)

@@ -1286,7 +1286,14 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   gate towers (`Aurelia._city_wall`: the wall 5.8 m tall where the boxes were 7.3, collision unchanged);
   all re-baked on clean UVs, with the
   procedural versions as the fallback. Meshy props draw with `Props.MESHY_PROP_SHADER`, which has the same see-through
-  near the hero as `Mats.PROP_SHADER` (keep it when changing either). World generation draws from `World.rng`: a visual change must keep its calls (count and order) or every
+  near the hero as `Mats.PROP_SHADER` (keep it when changing either). The glb pieces placed with their own material
+  (the camp, fort, coast, islands, lairs, the crypt's dressing) get it from `Props.see_through(world)` at the end of
+  `World.build`: every static mesh 1.5 m or taller on a plain opaque StandardMaterial3D (surface, override or a
+  multimesh's mesh) is given `SEE_THROUGH_SHADER`, StandardMaterial3D's own sums plus the see-through, one copy per
+  material; skinned, glowing, see-through and shader materials are left alone, and a node with meta `keep_material` is
+  skipped with its children. Its caches are cleared after each walk (held across zones they kept every visited zone's
+  textures in video memory). `-- --no-see-through` turns it off for comparisons; `tools/visual_audit/see_through_check.gd
+  -- town lair coast` lists what dithers in each zone and what tall mesh still can't. World generation draws from `World.rng`: a visual change must keep its calls (count and order) or every
   rock, tree, footprint and spawn after it moves (and co-op peers must agree). Check with
   `tools/visual_audit/layout_dump.gd` (one zone per process) and diff against the old build.
 - **Performance KPIs** (`scripts/kpi.gd` `Kpi`, `docs/nightly/KPIS.md`): the official numbers. Scripted, deterministic
