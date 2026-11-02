@@ -1035,9 +1035,29 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   rune channels the glow sits in; Meshy crystal, brazier, guardian, banner, torch, pillar re-baked by `camp/rebake_prop.py`, the crystal
   split and the modelled flames cut by `waypoint/split_parts.py`; each missing model falls back to its code blockout); wakes as a
   hero nears, flares on arrival and when the window opens; `add_waypoint(id, p, cobble, true)`, colliders in `SOLIDS`; `-- --old-waypoint` shows the old
-  stone). The window's Battlegrounds tab lists `Data.WAYPOINT_BATTLEGROUNDS` (Enter -> `Game.waypoint_battleground`: save, title's
-  Battlegrounds window; not from co-op). Tests: `tools/waypoint_grand_test.gd`, `tools/waypoint_test.gd`
-  (rules), `tools/waypoint_shot.gd -- out.png [run]` (screenshot).
+  stone). Its look is jj's concept picture made real (2026-11-01): **the rune lettering** on the flagstones is
+  `assets/textures/waypoint/rune_rings.png`, drawn by `tools/waypoint_runes.py` (an Elder-Futhark-like alphabet, ring
+  lines, an octagram and sigils laid in rings at the dais's radii, one band per channel: R the outer rim ring and the
+  inner ring, G the great ring, B the ornate band; lossless, mipmaps) on a plane over the floor with
+  `WaypointGrand.RUNE_FLOOR_SHADER` (each stroke lit from its heart out through a halo from the mask's blurred mips, the
+  groove round it darkened, bands lit outer to inner with the wake, pulse rings running out from the socket, the outer
+  and inner rings turning slowly); **the crystal** (3 m, `CRY_Y` 3.35) wears `CRYSTAL_SHADER` on Meshy's texture (dark
+  faceted glass, its cracks and rune the light inside, energy crawling along cell borders, a cold rim) with `ARCS`
+  arc quads (`ARC_SHADER`: a bolt that strikes, holds a moment, moves on) and hangs in **the column of light**
+  (`COLUMN_SHADER` core and sheath on capless cylinders to `COLUMN_TOP`, dimmed where the crystal hangs, `BOLTS_SHADER`
+  lightning wandering up; FogVolumes for the shaft in the air on High/Ultra, Forward+ only); **the stone is wet**
+  (`wet_stone`: `Mats.PROP_SHADER` plus puddles and damp, whose mirrors are faked from the column's axis and the
+  fires in `mirrors`, `_set_mirrors` in `_ready`, so the paving catches the blue and the orange on every preset); a low
+  cold light (`light_low`) rakes the steps, the statues and the hero; two fire bowls (`FIRE_BOWLS`, the brazier
+  model with a real "brazier" fire) flank the approach, two torches stand in the back wall's gap (`TORCH_AT`), four
+  banners (`BANNERS`), the guardians (`GUARDIAN_AT`) in the wall's breaks; mist (InfernalFx's smoke shader, pale)
+  creeps over the steps, sparks rise in the column, motes drift. The four braziers' blue fire (`FireFx` "spirit") and
+  the bowls' coals are other work: leave the brazier loop alone. `tools/waypoint_lab.gd -- outdir [frames] [step]
+  [game|ref|close|high] [quality]` renders it alone on a slab under the camp's dusk from the game's camera in a few
+  minutes (`--fixed-fps 30`; `--rendering-driver vulkan --rendering-method forward_plus` with lavapipe shows the
+  High look: glow, volumetric fog). The window's Battlegrounds tab lists `Data.WAYPOINT_BATTLEGROUNDS` (Enter ->
+  `Game.waypoint_battleground`: save, title's Battlegrounds window; not from co-op). Tests: `tools/waypoint_grand_test.gd`
+  (it loads WaypointGrand at run time), `tools/waypoint_test.gd` (rules), `tools/waypoint_shot.gd -- out.png [run]` (screenshot).
 - **Inventory (I)** (`UI._build_inventory`, jj's "Classic"): Meshy art in the action bar's iron and bronze
   (`assets/textures/ui/inv_*.png`, cut and cleaned from Meshy concepts in `exports/ui/inventory/`): a NinePatchRect
   frame (`INV_SCALE`, corners `INV_PATCH` texture px, the middle bands mirror-symmetric so they tile seamlessly,

@@ -26,21 +26,21 @@ const SOLIDS := [
 	# banner poles (two a side, BANNERS), the torches in the wall's gap, the fire bowls flanking the approach
 	# (FIRE_BOWLS), the crystal's socket
 	[2.1, -5.3, 0.2], [-2.1, -5.3, 0.2], [3.45, -4.55, 0.2], [-3.45, -4.55, 0.2],
-	[0.8, -6.0, 0.2], [-0.8, -6.0, 0.2], [5.2, 3.2, 0.5], [-5.2, 3.2, 0.5], [0.0, 0.0, 0.65],
+	[0.8, -6.0, 0.2], [-0.8, -6.0, 0.2], [4.7, 4.3, 0.5], [-4.7, 4.3, 0.5], [0.0, 0.0, 0.65],
 	# the broken back wall (WALL_R, WALL_A0 + i * WALL_STEP; gaps at 1, 4 and 7) and its two end pillars
 	[-5.62, -2.62, 0.75], [-3.05, -5.4, 0.6], [-1.25, -6.07, 0.6],
 	[1.25, -6.07, 0.6], [3.05, -5.4, 0.6], [5.62, -2.62, 0.75],
 ]
 const GUARDIAN_AT := Vector3(4.9, 0.0, -4.5)
 const BANNERS := [[2.1, -5.3, 1.0], [3.45, -4.55, 0.9]]     # x, z, scale (mirrored each side)
-const FIRE_BOWLS := Vector3(5.2, 0.0, 3.2)
+const FIRE_BOWLS := Vector3(4.7, 0.0, 4.3)
 const TORCH_AT := Vector3(0.8, 0.0, -6.0)
 const BOWL_SCALE := 1.32
 const CRY_SCALE := 0.72      # crystal.glb is 3 m tall with a 2 m socket: fit the socket inside the inner channel
 const CRY_GROW := 2.08       # the crystal and its shards bigger than the socket's scale: the centrepiece must read
                              # (the crystal piece is 2 m tall as modelled: 0.72 * 2.08 = 3 m, the picture's size)
 const CRY_Y := 3.35          # the crystal's heart: its foot a metre and a half over the socket, in the column
-const COLUMN_TOP := 11.0     # the column of light fades out up here (off the top of the game's frame)
+const COLUMN_TOP := 14.0     # the column of light fades out up here (off the top of the game's frame)
 const ARCS := 8              # lightning arcs crawling over the crystal
 const BRAZIER_SCALE := 1.15
 const WALL_R := 6.2
@@ -58,6 +58,7 @@ var shards: Node3D
 var rune_mat: ShaderMaterial           # glyphs, spokes and the socket ring
 var rune_floor: ShaderMaterial         # the lettering rings on the flagstones (RUNE_FLOOR_SHADER)
 var ring_mats: Array[ShaderMaterial] = []   # outer, middle, inner channel: they light one after another
+var edge_mats: Array[ShaderMaterial] = []   # the lower steps' lit lips
 var _wave := -1.0            # the pulse ring running out over the runes: its radius (m), < 0 none
 var _wave_t := 2.0           # seconds to the next pulse
 var crystal_mats: Array[ShaderMaterial] = []   # the crystal's and the shards' glass (CRYSTAL_SHADER)
@@ -91,6 +92,19 @@ static func _shader(key: String, code: String) -> Shader:
 		s.code = code
 		_shaders[key] = s
 	return _shaders[key]
+
+## A soft glow sprite (InfernalFx's glow quad) placed in the parent's own frame (we're built before we're in the tree,
+## so InfernalFx.glow's global placing can't be used).
+static func _glow_quad(parent: Node3D, pos: Vector3, size: float, mat: ShaderMaterial) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = InfernalFx.quad()
+	mi.material_override = mat
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.extra_cull_margin = 2.0
+	parent.add_child(mi)
+	mi.position = pos
+	mi.scale = Vector3.ONE * size
+	return mi
 
 static func _glb(name: String) -> Node3D:
 	var path := DIR + name + ".glb"
@@ -135,7 +149,7 @@ static func build() -> WaypointGrand:
 func _build() -> void:
 	var stone := wet_stone(Color(0.27, 0.27, 0.28), Color(0.16, 0.16, 0.17), 0.92, 1.3, 0.45, Props.MOSS, true, 0.55)
 	var stone_d := Mats.world(Color(0.19, 0.19, 0.2), Color(0.12, 0.12, 0.13), 0.9, 2.2, 0.2, Props.MOSS)
-	var floor_m := wet_stone(Color(0.22, 0.22, 0.24), Color(0.14, 0.14, 0.16), 0.75, 2.6, 0.1, Props.MOSS, false, 0.8)
+	var floor_m := wet_stone(Color(0.26, 0.26, 0.28), Color(0.16, 0.16, 0.18), 0.75, 2.6, 0.1, Props.MOSS, false, 0.8)
 	var iron := Mats.mat(Color(0.12, 0.11, 0.1), 0.55, 0.85)
 	var statue_m := Mats.world(Color(0.34, 0.33, 0.31), Color(0.2, 0.2, 0.19), 0.9, 1.7, 0.4, Props.MOSS)
 	rune_mat = Mats.glow_unique(RUNE, 1.1)
@@ -187,6 +201,13 @@ func _build() -> void:
 		var ring := Models.P(self, Geo.torus(rr[0] - rr[1], rr[0] - (0.012 if dais else 0.0), 72, 4), rm, Vector3(0, groove_y, 0))
 		ring.scale = Vector3(1, 0.25, 1)
 		ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# the two lower steps' edges lit faintly (the picture's steps glow along their lips)
+	for er in [[4.13, 0.245], [4.83, 0.125]]:
+		var em := Mats.glow_unique(RUNE, IDLE * 0.5)
+		edge_mats.append(em)
+		var edge := Models.P(self, Geo.torus(er[0] - 0.03, er[0], 96, 4), em, Vector3(0, er[1], 0))
+		edge.scale = Vector3(1, 0.2, 1)
+		edge.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# the rune lettering: rings of glowing glyphs and ornament on the flagstones (tools/waypoint_runes.py draws
 	# them, one band per channel), lit from inside their carved strokes by RUNE_FLOOR_SHADER
 	if ResourceLoader.exists(RUNES_TEX):
@@ -373,17 +394,15 @@ func _build() -> void:
 		q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		q.extra_cull_margin = 2.0
 		var a := TAU * i / ARCS
-		q.position = Vector3(cos(a) * 0.5, randf_range(-0.9, 0.9), sin(a) * 0.5)
+		q.position = Vector3(cos(a) * 0.4, randf_range(-0.9, 0.9), sin(a) * 0.4)
 		q.rotation = Vector3(randf_range(-0.5, 0.5), -a + PI * 0.5, randf_range(-0.6, 0.6))
-		q.scale = Vector3(1.6, 1.3, 1.0)
+		q.scale = Vector3(1.25, 1.0, 1.0)
 		crystal.add_child(q)
 		arcs.append({"m": am, "n": q, "t": randf() * 1.5, "hold": 0.0})
 	# the socket's blaze: a glow in the socket's mouth and a hot core in the crystal's heart
-	var foot := InfernalFx.glow(self, Vector3(0, socket_top + 0.05, 0), 1.3, InfernalFx.glow_mat(Color(0.4, 0.7, 1.0), 1.0, 2.6))
-	foot.extra_cull_margin = 1.0
+	var foot := _glow_quad(self, Vector3(0, socket_top + 0.05, 0), 1.3, InfernalFx.glow_mat(Color(0.4, 0.7, 1.0), 1.0, 2.6))
 	glow_mats.append(foot.material_override)
-	var cry_heart := InfernalFx.glow(crystal, Vector3.ZERO, 2.6 / (CRY_SCALE * CRY_GROW), InfernalFx.glow_mat(Color(0.3, 0.6, 1.0), 0.55, 3.2))
-	cry_heart.position = Vector3.ZERO
+	var cry_heart := _glow_quad(crystal, Vector3.ZERO, 2.6 / (CRY_SCALE * CRY_GROW), InfernalFx.glow_mat(Color(0.3, 0.6, 1.0), 0.55, 3.2))
 	glow_mats.append(cry_heart.material_override)
 	# sparks rising inside the column and motes drifting round the crystal
 	column_sparks = Fx.aura(self, Color(0.5, 0.8, 1.0), 48, 3.2, 0.045, 2.4, 1.2, 0.18, 8.0, Vector3(0, socket_top + 0.2, 0))
@@ -558,13 +577,13 @@ func _build() -> void:
 	motes = Fx.aura(self, Color(0.2, 0.5, 1.0), 44, 0.3, 0.06, 4.5, 0.12, 3.0, 20.0, Vector3(0, TOP_Y + 0.1, 0))
 	# low mist creeping over the steps and the paving round the dais: big slow soft puffs (InfernalFx's smoke
 	# shader in a cold grey-blue, lit faintly from the column), a veil rather than smoke
-	var mm := InfernalFx.smoke_mat(0.35, 0.3)
-	mm.set_shader_parameter("smoke", Color(0.5, 0.6, 0.72))
+	var mm := InfernalFx.smoke_mat(0.35, 0.4)
+	mm.set_shader_parameter("smoke", Color(0.5, 0.58, 0.7))
 	mm.set_shader_parameter("glow_col", Color(0.2, 0.45, 1.0))
 	var mq := QuadMesh.new()
-	mq.size = Vector2(3.4, 3.4)
+	mq.size = Vector2(4.2, 4.2)
 	mq.material = mm
-	mist = InfernalFx.particles(self, Vector3(0, 0.35, 0), {"amount": 26, "life": 11.0, "one_shot": false, "explosive": 0.0,
+	mist = InfernalFx.particles(self, Vector3(0, 0.35, 0), {"amount": 34, "life": 11.0, "one_shot": false, "explosive": 0.0,
 		"randomness": 0.6, "shape": "ring", "r": 5.6, "r_in": 2.4, "dir": Vector3(1, 0.05, 0), "spread": 180.0,
 		"vel": [0.12, 0.3], "gravity": 0.01, "damping": [0.02, 0.06], "scale": [0.8, 1.3], "grow": [0.7, 1.25],
 		"angle": true, "spin": 3.0, "mesh": mq,
@@ -609,6 +628,8 @@ func _process(delta: float) -> void:
 		var ph := 0.5 + 0.5 * sin(_t * 2.2 - i * 0.9)
 		ring_mats[i].set_shader_parameter("energy", lerpf(IDLE, NEAR, on) * (0.8 + 0.3 * ph) + _flash * 0.8)
 	rune_mat.set_shader_parameter("energy", lerpf(IDLE * 0.8, NEAR * 0.85, smoothstep(0.3, 1.0, _wake)) * (0.85 + 0.2 * pulse_w) + _flash * 0.6)
+	for i in edge_mats.size():
+		edge_mats[i].set_shader_parameter("energy", lerpf(0.09, 0.26, _wake) * (0.85 + 0.15 * sin(_t * 1.6 + i * 2.0)) + _flash * 0.5)
 	if rune_floor:
 		# the lettering: lit always (the camp's centrepiece), brighter band by band as a hero comes, outer first
 		var names := ["e_outer", "e_great", "e_ornate", "e_inner"]
@@ -652,7 +673,7 @@ func _process(delta: float) -> void:
 			am.set_shader_parameter("seed", randf() * 20.0)
 			var q: Node3D = arc["n"]
 			var a := randf() * TAU
-			q.position = Vector3(cos(a) * 0.5, randf_range(-0.85, 0.85), sin(a) * 0.5)
+			q.position = Vector3(cos(a) * 0.4, randf_range(-0.85, 0.85), sin(a) * 0.4)
 			q.rotation = Vector3(randf_range(-0.5, 0.5), -a + PI * 0.5, randf_range(-0.7, 0.7))
 			arc["hold"] = randf_range(0.14, 0.4)
 			arc["t"] = randf_range(0.3, 1.8) / lerpf(0.6, 1.6, _wake) * (0.25 if _flash > 0.3 else 1.0)
@@ -669,7 +690,7 @@ func _process(delta: float) -> void:
 	crystal.position.y = _cry_y + bob
 	shards.rotation.y = -_spin * 1.6
 	shards.position.y = _sh_y + bob
-	shards.scale = Vector3.ONE * lerpf(1.0, 1.25, _wake) * (1.0 + _flash * 0.3)
+	shards.scale = Vector3.ONE * CRY_SCALE * CRY_GROW * lerpf(1.0, 1.2, _wake) * (1.0 + _flash * 0.3)
 	light.light_energy = float(light.get_meta("base")) * lerpf(0.6, 1.25, _wake) * (0.9 + 0.15 * pulse_w) + _flash * 3.0
 	motes.amount_ratio = lerpf(0.35, 1.0, _wake)
 	for i in hearts.size():
@@ -731,7 +752,7 @@ void fragment() {
 	float wave = exp(-pow((r - wave_r) / wave_w, 2.0)) * step(0.0, wave_r);
 	e = (e * shimmer + wave * 1.4);
 	float mk = dot(m, e);
-	float halo = dot(h1, e) * 0.45 + dot(h2, e) * 0.22;
+	float halo = dot(h1, e) * 0.4 + dot(h2, e) * 0.12;
 	// colour: the heart of a stroke pale and bright, the halo round it deep blue and never white
 	vec3 col = mix(glow, core, smoothstep(0.35, 1.0, mk)) * mk * 1.25 + glow * halo;
 	float lit = mk * 1.25 + halo;
@@ -784,7 +805,7 @@ void fragment() {
 	if (shard > 0.5) {
 		EMISSION = glow * (0.5 + veins * 0.9 + fres * 0.6) * e + core * veins * 0.3 * e;
 	} else {
-		EMISSION = glow * (veins * 1.7 + fres * 0.8 + heart * 0.35 + 0.04) * e + core * (crawl * 1.3 + veins * heart * 0.9) * e;
+		EMISSION = glow * (veins * 2.6 + fres * 1.1 + heart * 0.35 + 0.05) * e + core * (crawl * 1.6 + veins * (0.4 + heart * 0.9)) * e;
 	}
 }
 """
@@ -809,11 +830,11 @@ void fragment() {
 	float streak = smoothstep(0.3, 0.85, n1 * 0.6 + n2 * 0.5);
 	float facing = abs(dot(NORMAL, VIEW));
 	float body = pow(facing, 1.4);
-	float top_fade = 1.0 - smoothstep(0.6, 1.0, h);
+	float top_fade = 1.0 - smoothstep(0.62, 1.0, h);
 	float bot_fade = smoothstep(0.0, 0.05, h);
-	float a = (0.25 + 0.75 * streak) * body * top_fade * bot_fade * energy * 0.6 * (1.0 - 0.7 * in_dip);
+	float a = (0.25 + 0.75 * streak) * body * top_fade * bot_fade * energy * 0.6 * (1.0 - 0.82 * in_dip);
 	vec3 c = mix(col_a, col_b, clamp(streak * 0.5 + 0.4 * pow(facing, 4.0) * (1.0 - h * 0.6), 0.0, 1.0));
-	ALBEDO = c * (0.8 + 0.5 * energy);
+	ALBEDO = c * (0.65 + 0.4 * energy);
 	ALPHA = clamp(a, 0.0, 1.0);
 }
 """
@@ -834,8 +855,8 @@ float bolt(vec2 uv, float id, out float core) {
 	float w = (texture(noise_tex, vec2(h * 1.8 + id * 3.1, tick * 0.173)).r - 0.5) * 0.3
 		+ (texture(noise_tex, vec2(h * 7.5 + id * 7.7, tick * 0.29)).r - 0.5) * 0.09;
 	float du = abs(fract(uv.x - u0 - w + 0.5) - 0.5) * 3.14;
-	core = exp(-du * du / 0.0016);
-	float g = exp(-du / 0.14);
+	core = exp(-du * du / 0.0036);
+	float g = exp(-du / 0.18);
 	float gate = smoothstep(0.44, 0.52, texture(noise_tex, vec2(TIME * 1.9 + id * 5.3, id * 0.37)).r);
 	float tall = 1.0 - smoothstep(0.6, 1.0, h);
 	return (core * 2.2 + g * 0.7) * gate * tall;
@@ -874,7 +895,7 @@ void fragment() {
 	float df = abs(p.y - yf);
 	float fork = exp(-df * df / 0.0015) * smoothstep(0.45, 0.5, p.x) * smoothstep(0.9, 0.55, p.x) * 0.7;
 	float a = (core + g * 0.3 + fork) * ends * life;
-	ALBEDO = mix(col_a, col_b, clamp(core + fork, 0.0, 1.0)) * 2.0;
+	ALBEDO = mix(col_a, col_b, clamp((core + fork) * 0.7, 0.0, 1.0)) * 1.3;
 	ALPHA = clamp(a, 0.0, 1.0);
 }
 """
@@ -909,7 +930,7 @@ float fire_refl(vec3 p, vec3 R, vec4 f) {
 	code = code.replace("	ALBEDO = col;\n	ROUGHNESS = mix(clamp(roughness + (n2 - 0.5) * 0.2, 0.05, 1.0), 0.6, snowc);", """	float wetn = fbm(wpos.xz * puddle_scale + 7.3);
 	float puddle = smoothstep(0.54, 0.6, wetn) * wet;
 	float damp = smoothstep(0.3, 0.56, wetn) * wet;
-	col *= 1.0 - 0.3 * damp - 0.35 * puddle;
+	col *= 1.0 - 0.22 * damp - 0.3 * puddle;
 	ALBEDO = col;
 	float rgh = mix(clamp(roughness + (n2 - 0.5) * 0.2, 0.05, 1.0), 0.6, snowc);
 	rgh = mix(rgh, rgh * 0.75, damp);
