@@ -3,8 +3,14 @@ extends RefCounted
 ## round the back, a forest so thick the light comes through green. Landmark: the Eldest, a colossal
 ## oak on a knoll in the middle, ringed by old rune stones round a mossy altar; you see its crown from
 ## the dock. Hidden clearings in the woods: a fern hollow with a ring of stones, an overgrown shrine.
+## Island 1 of the level zones (level 10, Blaine 2026-11-01): the dinosaur island. Raptor packs along the path and
+## in the hollow, a triceratops nest in the glade (the babies, and their mother in the brush beside it), and Gorehide
+## the Tyrant in the domain round the Eldest.
 
 const KNOLL := Vector2(-18.0, 10.0)          # island-local (u toward the dock, v across)
+## Gorehide's domain: a wide open ground beyond the knoll, ringed by the forest (the boss arena; its pits later)
+const DOMAIN := Vector2(-62.0, -22.0)
+const DOMAIN_R := 26.0
 const CLEARINGS := [[Vector2(42.0, -48.0), 13.0], [Vector2(-58.0, 52.0), 11.0], [Vector2(30.0, 55.0), 10.0]]
 const PATH := [Vector2(126.0, 0.0), Vector2(95.0, 6.0), Vector2(62.0, -4.0), Vector2(30.0, 8.0), Vector2(2.0, 9.0), Vector2(-10.0, 10.0)]
 
@@ -13,6 +19,9 @@ static func relief(isle: Dictionary, l: Vector2, s: float, rr: float, n: FastNoi
 	hills += 2.2 * n.get_noise_2dv(l * 2.7 + Vector2(40, 10))
 	# the knoll under the Eldest
 	hills += 6.0 * (1.0 - smoothstep(8.0, 30.0, l.distance_to(KNOLL)))
+	# Gorehide's domain: levelled to a broad floor (the arena), easing back into the hills at its edge
+	var dk := smoothstep(DOMAIN_R * 0.75, DOMAIN_R * 1.3, l.distance_to(DOMAIN))
+	hills = lerpf(3.0, hills, dk)
 	return maxf(hills, 0.4)
 
 static func pads(isle: Dictionary, n: FastNoiseLite) -> Array:
@@ -25,12 +34,14 @@ static func dress(w: World, isle: Dictionary, o: Vector2, full: bool, rng: Rando
 		var m := 1e9
 		for i in PATH.size() - 1:
 			m = minf(m, l.distance_to(Geometry2D.get_closest_point_to_segment(l, PATH[i], PATH[i + 1])))
+		# (and the way on from the knoll into the domain)
+		m = minf(m, l.distance_to(Geometry2D.get_closest_point_to_segment(l, KNOLL + Vector2(-10.0, -6.0), DOMAIN + Vector2(DOMAIN_R * 0.6, DOMAIN_R * 0.35))) - 0.6)
 		return m
 	var open := func(l: Vector2, h: float) -> bool:
 		for c in CLEARINGS:
 			if l.distance_to(c[0]) < float(c[1]):
 				return false
-		return l.distance_to(KNOLL) > 13.0 and float(path_d.call(l)) > 3.2
+		return l.distance_to(KNOLL) > 13.0 and l.distance_to(DOMAIN) > DOMAIN_R and float(path_d.call(l)) > 3.2
 	var oaks := [[Flora.oak_model(1), 3.0, 1.0, 1.55], [Flora.oak_model(2), 3.0, 0.95, 1.5], [Flora.oak_model(3), 3.0, 1.0, 1.6],
 		[Flora.pine(3), 0.8, 0.9, 1.3], [Flora.bush(2), 1.6, 0.9, 1.6], [Flora.bush(5), 1.4, 0.8, 1.4]]
 	Isles.forest(w, isle, o, rng, 2600, oaks, open, full)
@@ -69,6 +80,7 @@ static func dress(w: World, isle: Dictionary, o: Vector2, full: bool, rng: Rando
 		w.spawns["poi_eldest"] = ap + Vector3(2.0, 0, 0)
 		_clearings(w, isle, o, rng)
 		_path(w, isle, o)
+		_dinos(w, isle, o)
 
 ## The hidden clearings: a fern hollow with a ring of fallen stones, an overgrown shrine of broken
 ## columns, a still glade (each a named spot for later: treasure, a quest, a guardian).
@@ -92,3 +104,26 @@ static func _path(w: World, isle: Dictionary, o: Vector2) -> void:
 		var a := Isles.at(w, isle, o, PATH[i])
 		var b := Isles.at(w, isle, o, PATH[i + 1])
 		w.dirt_lines.append([Vector2(a.x, a.z), Vector2(b.x, b.z), 2.6])
+	# on from the knoll into Gorehide's domain
+	var k := Isles.at(w, isle, o, KNOLL + Vector2(-10.0, -6.0))
+	var d := Isles.at(w, isle, o, DOMAIN + Vector2(DOMAIN_R * 0.6, DOMAIN_R * 0.35))
+	w.dirt_lines.append([Vector2(k.x, k.z), Vector2(d.x, d.z), 3.4])
+
+## The island's dinosaurs (Data.ENEMIES raptor, trike, trike_baby, trex): packs and their places; the host spawns
+## them (Game.load_zone, World.enemy_spawns). Levels from the island's own (Isles "level").
+static func _dinos(w: World, isle: Dictionary, o: Vector2) -> void:
+	var lv := int(isle.get("level", 10))
+	var add := func(kind: String, l: Vector2, n: int, plus: int, pack: int, champ := false):
+		w.enemy_spawns.append({"kind": kind, "pos": Isles.at(w, isle, o, l), "count": n, "champ": champ, "pack": pack, "level": lv + plus})
+	# raptors: in the woods beside the path as it climbs, and a bigger pack in the hollow
+	add.call("raptor", Vector2(96.0, 22.0), 3, 0, 1100)
+	add.call("raptor", Vector2(66.0, -20.0), 3, 0, 1101)
+	add.call("raptor", Vector2(34.0, 26.0), 4, 1, 1102, true)
+	add.call("raptor", CLEARINGS[0][0], 4, 1, 1103)
+	# the nest in the glade: babies, and their mother waiting in the brush beside it
+	var glade: Vector2 = CLEARINGS[2][0]
+	add.call("trike_baby", glade, 3, -2, 1110)
+	add.call("trike", glade + Vector2(9.0, 7.0), 1, 1, 1111)
+	# the Tyrant: the domain round the Eldest
+	add.call("trex", DOMAIN, 1, 2, 1120)
+
