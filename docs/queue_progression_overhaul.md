@@ -192,3 +192,22 @@ level. Class against class, share of pairings won: level 5 25-75%, level 10 20-7
 - Acts II-III by hand: the sim's bands pass, but an act's feel was its x5 / x25 numbers.
 - Old characters' items after their one-time rebuild: much weaker on purpose. Check that nothing looks broken.
 - The admin role: grant it to both accounts (`tools/admin_role.sh`) once they send their account ids.
+
+### Correction (2026-11-02, late afternoon)
+
+A Codex audit found that the sandbox and `pvp_sim.gd` gave level 5 and 10 "geared" bots level-20 bases and didn't
+play by raid rules. The level 1/5/10 numbers above are replaced by these:
+
+- **Gear's power over fresh** (`pvp_sim.gd -- moving`): x1.0-1.3 at level 1, x1.1-1.4 at 5, x1.2-1.5 at 10, x1.4-1.8
+  at 20. Knight fresh -> geared at 10: life 214 -> 236, armour 6 -> 19, damage 11-20 -> 15-26.
+- **Geared beats fresh of its class** (bot duels): 6-0 or 5-1 at every level for every class, with these exceptions:
+  - level 1: the knight 0-0 (draws), the demon 3-3;
+  - level 20: the Wraith and the demon 4-2.
+- **Class against class** (share of pairings won, 6 duels a pairing, noise about +-20 points): level 5 29-75%
+  (demon 75, archer 29); level 20 38-66% (warlock 66, demon 38).
+- Fixed along the way:
+  - an act's strength no longer scales the uniques' effects;
+  - two free rolls take the quicker recharge;
+  - "Go to level 20" marks the character (`Hero.boosted`) for the raid server;
+  - a class's own weapon wins a tie;
+  - the staging-wide admin access is gone (the admin role went to jj's and Blaine's accounts).
