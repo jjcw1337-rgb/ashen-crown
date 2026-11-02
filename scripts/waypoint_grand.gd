@@ -266,12 +266,12 @@ func _build() -> void:
 			# the white-hot heart down in the bowl, breathing with the fire (see _process)
 			var heart := MeshInstance3D.new()
 			heart.mesh = InfernalFx.quad()
-			var hm := InfernalFx.glow_mat(Color(0.32, 0.62, 1.0), 1.1, 2.6)
+			var hm := InfernalFx.glow_mat(Color(0.1, 0.38, 1.0), 0.45, 3.0)
 			heart.material_override = hm
 			heart.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			heart.extra_cull_margin = 2.0
-			heart.position = Vector3(0, fire_y + 0.06, 0)
-			heart.scale = Vector3.ONE * 0.75
+			heart.position = Vector3(0, fire_y + 0.02, 0)      # low: the bowl's rim hides its lower half
+			heart.scale = Vector3.ONE * 0.5
 			b.add_child(heart)
 			hearts.append(hm)
 		else:
@@ -402,4 +402,4 @@ func _process(delta: float) -> void:
 	motes.amount_ratio = lerpf(0.35, 1.0, _wake)
 	for i in hearts.size():
 		var fl := 0.8 + 0.12 * sin(_t * 7.3 + i * 1.9) + 0.08 * sin(_t * 13.1 + i * 4.3)
-		hearts[i].set_shader_parameter("energy", 1.1 * fl + _flash * 0.6)
+		hearts[i].set_shader_parameter("energy", 0.45 * fl + _flash * 0.3)

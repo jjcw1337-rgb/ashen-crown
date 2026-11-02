@@ -44,7 +44,7 @@ const PRESETS := {
 	# so the simulated tongues read whole instead of many short faded flames blurring into a cloud. Overlapping
 	# light adds and the tonemapper bleaches what passes 1: no hot core layer, "hot" per flame and "cool" (the shader
 	# keeps red and green low, and cuts each flame's faint haze) so they sum to blue with dark gaps between tongues.
-	"spirit":   {"book": "spirit", "rate": 0.0, "life": 1.3, "w": 0.9, "h": 1.2, "back": 0.0, "core": 0.0, "embers": 14.0, "sparks": 0.2, "smoke": 0.0, "light": 2.0, "range": 6.5, "haze": false, "jitter": 0.035, "pal": "spirit", "hot": 0.8, "cool": 1.0,
+	"spirit":   {"book": "spirit", "rate": 0.0, "life": 1.3, "w": 0.95, "h": 1.35, "back": 0.0, "core": 0.0, "embers": 14.0, "sparks": 0.2, "smoke": 0.0, "light": 2.0, "range": 6.5, "haze": false, "jitter": 0.035, "pal": "spirit", "hot": 0.6, "cool": 1.0,
 		"anchored": true, "count": 3, "fades": Vector2(0.1, 0.86), "seamless": true},
 	"burning":  {"book": "tongue", "rate": 12.0, "life": 0.5, "w": 1.1, "h": 1.7, "back": 0.3, "core": 0.0, "embers": 8.0, "sparks": 0.1, "smoke": 0.5, "light": 0.0, "range": 0.0, "haze": false, "jitter": 0.2},
 }
