@@ -13,9 +13,13 @@ waitfor() { local p=$1 n=$2; for i in $(seq 1 "$n"); do kill -0 "$p" 2>/dev/null
 
 check() {  # name, log, finished-in-time
   local name=$1 log=$2 ok=$3 f e
+  # (a test script that doesn't compile at all prints "Failed to load script" and no result lines, not "Parse
+  # Error": that's a red too, or a broken test reads as green, as playtest did until 2026-11-02. Many tests print a
+  # "Compile Error ... Sfx" for a class they reference before the autoload exists and still run: those aren't red.)
   f=$(grep -c 'FAIL' "$log"); e=$(grep -c 'Parse Error' "$log")
+  if [ "$(grep -c '^\[' "$log")" = 0 ] && grep -q 'Failed to load script' "$log"; then e=$((e + 1)); fi
   if [ "$ok" != 0 ] || [ "$f" -gt 0 ] || [ "$e" -gt 0 ]; then
-    echo "RED   $name (fails $f, parse errors $e, timed out $ok)"; grep -m5 'FAIL\|Parse Error' "$log"; BAD=1
+    echo "RED   $name (fails $f, parse errors $e, timed out $ok)"; grep -m5 'FAIL\|Parse Error\|Failed to load script' "$log"; BAD=1
   else
     echo "GREEN $name"
   fi

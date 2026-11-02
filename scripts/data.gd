@@ -523,11 +523,16 @@ const UNIQUES := {
 ## Multipliers on Act I: monster life (and armor), the final boss's life, monster damage,
 ## the flat stats on items they drop (Items.empower) and experience. Tuned with
 ## tools/balance_sim.gd (see BALANCE.md).
+## "power": how much stronger the act's items are (Items.empower). Since the items rework (level and skills carry a
+## character, gear helps) it's modest, and so are the monsters' life and damage multipliers: the act's monsters are
+## also higher level. "loot" is how much more and better loot drops; "xp" the experience.
 const RUNS := [
-	{"name": "Act I", "life": 1.0, "boss_life": 1.0, "dmg": 1.0, "loot": 1.0, "xp": 1.0},
-	{"name": "A2", "life": 6.0, "boss_life": 4.0, "dmg": 5.0, "loot": 5.0, "xp": 5.0},
-	{"name": "A3", "life": 24.0, "boss_life": 10.0, "dmg": 15.0, "loot": 25.0, "xp": 25.0},
+	{"name": "Act I", "life": 1.0, "boss_life": 1.0, "dmg": 1.0, "loot": 1.0, "xp": 1.0, "power": 1.0},
+	{"name": "A2", "life": 2.2, "boss_life": 3.1, "dmg": 0.9, "loot": 5.0, "xp": 5.0, "power": 1.6},
+	{"name": "A3", "life": 4.6, "boss_life": 1.5, "dmg": 0.85, "loot": 25.0, "xp": 25.0, "power": 2.4},
 ]
+## The items rework moved A2/A3 items from these act strengths to RUNS "power" (Items.upgrade).
+const OLD_POWER := {5: 1.6, 25: 2.4}
 
 const RARITY_COLOR := [Color(0.92, 0.92, 0.92), Color(0.45, 0.55, 1.0), Color(1.0, 0.95, 0.35), Color(0.82, 0.66, 0.38)]
 const RARITY_NAME := ["Normal", "Magic", "Rare", "Unique"]
@@ -671,23 +676,44 @@ static func skills_known(cls: String) -> Array:
 ## testing (Game.test_allskills).
 const SKILLS_UNLOCKED := false
 
-## The Battlegrounds' gear rules (Hero.recalc, Hero.pvp_scaled; Blaine's progression overhaul: "character level and
-## skills provide most of a player's power, gear smaller but meaningful advantages, with exciting PvP utility"). Flat
-## stats from gear count for PVP_GEAR_SHARE; percentages are capped (PVP_GEAR_CAP: +5% run speed is a standout); the
-## weapon's damage is the level's (pvp_damage), the weapon adding up to ~20% by how good it is for that level.
-const PVP_GEAR_SHARE := 0.2
-const PVP_ARMOR_SHARE := 0.12       # the gear's defence (armour's damage cut was the biggest single gap)
-const PVP_GEAR_FLAT := ["str", "dex", "vit", "ene", "life", "mana", "fire", "dmg", "regen"]
-const PVP_GEAR_CAP := {"res": 15, "ls": 4, "ias": 20, "frw": 5, "block": 15}
+## Item power (Blaine's progression overhaul, then "not 'cut' but full rework", docs/queue_items_rework.md): character
+## level and skills give most of a player's power, gear a smaller but meaningful part, in PvE and PvP alike.
+## Items made under these rules carry "gen": ITEM_GEN; older ones are rebuilt once on load (Items.upgrade).
+const ITEM_GEN := 2
+## Every affix rolls Data.AFFIXES' range times its scale here (Items.roll_affix), and an old item's affixes are
+## rescaled by the same (Items.upgrade). Gold and Magic Find buy no power, so they keep their size.
+const AFFIX_SCALE := {"ed": 0.3, "dmg": 0.35, "fire": 0.35, "str": 0.25, "dex": 0.25, "vit": 0.25, "ene": 0.25,
+	"life": 0.25, "mana": 0.33, "ias": 0.4, "ls": 0.4, "def": 0.12, "edef": 0.15, "res": 0.45, "block": 0.5,
+	"regen": 0.4, "frw": 0.25}
+## Base defence (armour, helms, shields...) counts for this share (Items.defense_of).
+const GEAR_ARMOR := 0.05
+## Caps on the totals across all gear (Hero.recalc): +5% run speed is a standout.
+const GEAR_CAP := {"frw": 5, "ias": 25, "res": 25, "ls": 4, "block": 15}
+## Rares roll this many affixes at most (magic items 1-2).
+const RARE_AFFIXES := [2, 3]
 
-## The level's weapon damage in the Battlegrounds (about the best base a character of that level can wield), scaled
-## from 0.85 (a weapon far below the level) to 1.05 (the best there is) by the weapon's own damage against it.
-static func pvp_damage(level: int, wd: Array) -> Array:
+## The Battlegrounds on top of that (Hero.pvp_scaled): the same items (the shares are 1 since the rework; they're
+## the knobs if a raid needs gear to count for less than PvE), percentages under PVP_GEAR_CAP, act multipliers
+## ignored (the weapon at its Act I strength).
+const PVP_GEAR_SHARE := 1.0
+const PVP_ARMOR_SHARE := 1.0
+const PVP_GEAR_FLAT := ["str", "dex", "vit", "ene", "life", "mana", "fire", "dmg", "regen"]
+const PVP_GEAR_CAP := {"res": 15, "ls": 4, "ias": 20, "frw": 5, "block": 15, "ed": 15}
+
+## A hero's weapon damage (Hero.recalc): the level's (about the best base a character of that level could wield),
+## times the weapon's quality, 0.9 (a base far below the level) to 1.05 (the best there is) by its base damage against
+## it (an A2/A3 weapon's base damage over its act multiplier `power`); then the weapon's Enhanced Damage and +Damage,
+## and `mult` (its act strength; 1 in a raid; < 0 = `power`).
+static func weapon_damage(level: int, base_wd: Array, power: float, ed: int, flat: int, mult := -1.0) -> Array:
 	var lo := 2.5 + 0.55 * level
 	var hi := 6.0 + 0.95 * level
-	var q := clampf((float(wd[0]) + float(wd[1])) / (lo + hi), 0.0, 1.3)
-	var m := 0.85 + 0.15 * q
-	return [maxi(1, int(round(lo * m))), maxi(2, int(round(hi * m)))]
+	var q := clampf((float(base_wd[0]) + float(base_wd[1])) / maxf(0.01, power) / (lo + hi), 0.0, 1.0)
+	var m := (0.9 + 0.15 * q) * (power if mult < 0.0 else mult) * (1.0 + ed / 100.0)
+	return [maxi(1, int(round(lo * m)) + flat), maxi(2, int(round(hi * m)) + flat)]
+
+## (kept for tools/pvp_sim.gd and pvp_items_test: the raid's weapon damage of a plain weapon)
+static func pvp_damage(level: int, wd: Array) -> Array:
+	return weapon_damage(level, wd, 1.0, 0, 0)
 
 static func skill_locked(sk: Dictionary, level: int) -> bool:
 	return not SKILLS_UNLOCKED and not sk.is_empty() and level < int(sk.get("lvl", 1))

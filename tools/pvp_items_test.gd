@@ -1,7 +1,6 @@
 extends SceneTree
-## The Battlegrounds' gear rules and item effects (Blaine's progression overhaul; Data.PVP_*, Hero.pvp_scaled):
-## gear's flat stats count for a fifth in a raid and its percentages are capped (+5% run speed at most), the weapon's
-## damage is the level's; the class uniques only fit their class, and in a raid their effects work: a ward that soaks
+## The Battlegrounds' gear rules and item effects (Blaine's progression overhaul and the items rework; Data.GEAR_CAP,
+## Data.PVP_*, Hero.pvp_scaled): percentages are capped (+5% run speed at most), the weapon's damage is the level's; the class uniques only fit their class, and in a raid their effects work: a ward that soaks
 ## blows and comes back out of combat, a free dodge roll that costs no stamina and recharges; outside a raid nothing
 ## changes. A boss's class unique is for a class near it.
 var g
@@ -35,13 +34,10 @@ func _run() -> void:
 	boots["affixes"] = [["frw", 15], ["res", 15]]
 	h.equipment["boots"] = boots
 	h.recalc()
-	var life_pve: float = h.max_life
-	var arm_pve: int = h.armor
-	check(h.frw >= 15, "outside a raid the boots' +15%% run speed counts (%d)" % h.frw)
+	check(h.frw == 5, "the boots' +15%% run speed is capped at +5%% everywhere (the item rules: %d)" % h.frw)
 	h.pvp_force = true
 	h.recalc()
-	check(h.frw == 5, "in a raid it's capped at +5%% (%d)" % h.frw)
-	check(h.max_life < life_pve and h.armor < arm_pve, "and gear's life and armour count for less (%d -> %d life, %d -> %d armour)" % [int(life_pve), int(h.max_life), arm_pve, h.armor])
+	check(h.frw == 5 and h.res <= 15, "in a raid too, and resist at 15 (%d, %d)" % [h.frw, h.res])
 	var d: Array = Data.pvp_damage(20, [3, 7])
 	var d2: Array = Data.pvp_damage(20, [30, 50])
 	check(float(d2[1]) / float(d[1]) < 1.3 and d[0] > 3, "the weapon's damage is the level's: a starting weapon %s, the best %s" % [str(d), str(d2)])

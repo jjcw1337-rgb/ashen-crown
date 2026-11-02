@@ -1111,14 +1111,37 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   a class's skills Q 1, E 3, R 5, F 9, G 14, every ultimate at 20 (Eternal Night, Wrath of the Pit, The Last Epidemic,
   Clown Car); the shared ones War Cry 6, Frost Nova 8, Arc 11, Earthshatter 16. A locked skill waits on the bar greyed
   with "Lv N", can't be bound (`Hero.bind` refuses it; one already on the bar may move) or cast, and is announced when
-  reached (`Hero._announce_unlocks`); the F8 panel's All skills opens everything. In a raid (`Hero.pvp_scaled`: on
-  while `Game.bg_mode`, whose setter recalcs the hero) gear counts for less (`Data.PVP_GEAR_SHARE` of flat stats,
-  `PVP_ARMOR_SHARE` of defence, `PVP_GEAR_CAP` on percentages: +5% run speed at most) and the weapon's damage is the
-  level's (`Data.pvp_damage`, the weapon adding up to ~20%). The class uniques (`Data.UNIQUES` with `"cls"`, level
+  reached (`Hero._announce_unlocks`); the Admin column's Unlock all skills opens everything. In a raid
+  (`Hero.pvp_scaled`: on while `Game.bg_mode`, whose setter recalcs the hero) the act multipliers are ignored and the
+  stricter `Data.PVP_GEAR_CAP` applies (the items rule everywhere else, below). The class uniques (`Data.UNIQUES` with `"cls"`, level
   20, boss_only: Hrimgar, Mossbeard and the golden chest drop one for a class near, `Game._drop_class_unique`) carry
   the raid's item effects: `"roll"` (a free dodge roll every N s, `Hero.free_roll`) or `"ward"` (a % of life that
   soaks blows and refills out of combat, `Hero.ward`). `tools/pvp_sim.gd` (classes at levels 1/5/10/20, fresh vs
   geared, Monte Carlo duels), `tools/skill_unlock_test.gd`, `tools/pvp_items_test.gd`.
+- **Items** (the items rework, `docs/queue_items_rework.md`; Blaine: level and skills carry a character, gear helps,
+  in PvE and PvP alike): every affix rolls `Data.AFFIXES` times `Data.AFFIX_SCALE` (`Items.roll_affix`; Gold and
+  Magic Find unscaled), rares roll `Data.RARE_AFFIXES` (2-3), base defence counts for `Data.GEAR_ARMOR`
+  (`Items.defense_of`), percentages are capped across all gear (`Data.GEAR_CAP`: +5% run speed, 25% attack speed and
+  resist, 4% life steal), and a weapon hits for the level's damage times its quality 0.9-1.05, then its Enhanced
+  Damage and +Damage (`Data.weapon_damage`, `Hero.recalc`; tooltips show "Weapon damage at level N"). Acts II-III
+  make items `Data.RUNS` `"power"` stronger (x1.6, x2.4; `Items.empower`, `Game.power_mult`), with modest monster
+  multipliers to match. Items carry `"gen"` (`Data.ITEM_GEN`); an older one is rebuilt once on load
+  (`Items.upgrade` from `Hero.from_save`: affixes rescaled, rares trimmed to their best three, uniques remade from
+  `Data.UNIQUES` keeping enchant and temper, A2/A3 strengths moved by `Data.OLD_POWER`). Enchanting and tempering are
+  scaled to match (`Items.ENCHANT_DEF`, `TEMPER_ED`). Level-20 gear is worth about x1.45 over none (damage x life).
+  `tools/items_rework_test.gd`; re-run `tools/balance.sh` after changing any of it.
+- **The Battlegrounds sandbox** (`scripts/sandbox.gd` `Sandbox`, zone `"sandbox"` "The Proving Crypt";
+  `scripts/bot_brain.gd` `BotBrain`): the admins' testing arena, opened from the Escape menu's Admin column
+  (`Game.open_sandbox` / `close_sandbox`; the character is saved and set aside, `char_id` cleared so nothing inside is
+  saved, and loaded back on leaving). Local and offline: the admin becomes any class at level 1/5/10/20, fresh or
+  geared (`Sandbox.outfit`), spawns bots (`Hero.bot`: a full hero played by a `BotBrain` through the same calls as
+  the mouse: `use_skill`, `cmd_target`, `free_attack`, `Dodge.start`, `drink`; `bot_hold` is its held button) and
+  monster packs. PvP is the raid's: each hero has an invisible stand-in (`Enemy.sandbox_hero`) that takes every
+  skill and blow and deals it to the hero at `Battlegrounds.PVP_MULT` through `take_hit`, forwards stuns and slows,
+  and never takes its own hero's blows (`Hero.striker`, set at the top of each hero's `_process` and by a summon
+  before it strikes). Monsters go for the nearest hero (`Game.target_for`, `all_heroes`). A bot's screen effects,
+  messages and the testing switches are the player's only (`Hero._mine`). The panel's meters (`note_hit`) give
+  damage a second over 5 s, totals and kill times. `tools/sandbox_test.gd` (`--fixed-fps 60`), `tools/sandbox_shot.gd`.
 - **Skill bar and bindings** (every class, including new ones): the bar has a big slot for each mouse button and six
   hotkeys (Q E R F G V); any skill can go on any of them (`Hero.binds`, saved per character; `Hero.default_binds`:
   left mouse `attack`, right mouse the class's first skill, the class's first four skills on Q-F). `attack` and `block` are

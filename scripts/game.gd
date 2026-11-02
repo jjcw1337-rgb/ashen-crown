@@ -64,6 +64,7 @@ var bg_retry := []             # [addr, character id] to rejoin with when the wa
 ## Characters and the stash in Nakama (cloud_saves.gd), in builds with BuildEnv.cloud() on; null otherwise.
 var cloud: CloudSaves
 var coop_server: CoopServer     # the online co-op server's logic (coop_server.gd), only on a `--server --coop` run
+var sandbox: Sandbox = null     # the admins' Battlegrounds sandbox (sandbox.gd) while one is open
 var paused := false
 var hovered = null
 var ground_pt := Vector3.ZERO
@@ -449,10 +450,10 @@ func _sea_sounds() -> void:
 
 ## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
-	return cur_zone == Battlegrounds.ZONE or cur_zone == Vigil.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
+	return cur_zone == Battlegrounds.ZONE or cur_zone == Vigil.ZONE or cur_zone == Sandbox.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
 
 func _zone_env(kind: String) -> void:
-	var inside := kind == Battlegrounds.ZONE or kind == Vigil.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
+	var inside := kind == Battlegrounds.ZONE or kind == Vigil.ZONE or kind == Sandbox.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
 	var snowy := is_snowy() and not inside
 	var ashen := difficulty >= 2 and not inside
 	RenderingServer.global_shader_parameter_set("snow_amt", 1.0 if snowy else 0.0)
@@ -1026,6 +1027,7 @@ func zone_title(act: int, zone: String) -> String:
 		"coast": return str(a.get("coast", "The Coast")) + tag
 		Battlegrounds.ZONE: return Battlegrounds.TITLE
 		Vigil.ZONE: return Vigil.TITLE
+		Sandbox.ZONE: return Sandbox.TITLE
 	if zone.begins_with("isle_"):
 		return str(Isles.get_isle(Isles.id_of(zone)).get("name", "An Island")) + tag
 	return ""
@@ -1040,12 +1042,16 @@ func xp_mult() -> float:
 func loot_mult() -> float:
 	return run_mult("loot")
 
+## How much stronger this act's items are (Items.empower; Data.RUNS "power").
+func power_mult() -> float:
+	return run_mult("power")
+
 ## How a run compares to Act I, in words, for banners and the victory panel.
 func run_note(d: int) -> String:
 	if d <= 0:
 		return "Monsters and loot at their normal strength."
 	var x := func(v: float) -> String: return ("%d" % int(round(v))) if v >= 10.0 else ("%.1f" % v).trim_suffix(".0")
-	return "Monsters have %s times the life and %s times the damage of Act I. Every item they drop is %s times stronger." % [x.call(run_mult("life", d)), x.call(run_mult("dmg", d)), x.call(run_mult("loot", d))]
+	return "Monsters have %s times the life and %s times the damage of Act I. Every item they drop is %s times stronger." % [x.call(run_mult("life", d)), x.call(run_mult("dmg", d)), x.call(run_mult("power", d))]
 
 func run_name(d: int = -1) -> String:
 	if d < 0:
@@ -1417,10 +1423,14 @@ func all_heroes() -> Array:
 	var out := [hero]
 	if net.active:
 		out.append_array(net.puppets())
+	if sandbox != null:
+		out.append_array(sandbox.bot_heroes())
 	return out
 
 ## Monsters go after the nearest knight that is still standing.
 func target_for(e: Node3D) -> Hero:
+	if sandbox != null:
+		return sandbox.nearest_hero(e.global_position)
 	if not net.active:
 		return hero
 	var best: Hero = hero
@@ -1865,6 +1875,14 @@ func default_name(cls: String) -> String:
 
 ## Back to the title screen to pick another character (the pause menu's "Save and Exit to Title").
 func exit_to_title() -> void:
+	if sandbox != null:
+		# out of the sandbox first: the character as it was outside
+		sandbox.shutdown()
+		sandbox = null
+		char_id = _sandbox_char
+		_sandbox_char = ""
+		if char_id != "":
+			load_game()
 	if bg_mode and not hero.dead:
 		bg_strip()           # leaving a raid without extracting is dying there (it saves)
 	else:
@@ -2660,7 +2678,7 @@ func on_enemy_killed(e: Enemy) -> void:
 		if cands.size() > 0:
 			var su := Items.make_unique(cands[rng.randi() % cands.size()])
 			if difficulty >= 1:
-				Items.empower(su, loot_mult())
+				Items.empower(su, power_mult())
 			drop_item(su, e.global_position)
 		for i in 3:
 			drop_item(Items.gold(int(rng.randf_range(40, 70) * (1.0 + e.level * 0.6))), e.global_position)
@@ -2670,7 +2688,7 @@ func on_enemy_killed(e: Enemy) -> void:
 	if e.def.has("boss_drop"):
 		var bu := Items.make_unique(e.def["boss_drop"])
 		if difficulty >= 1:
-			Items.empower(bu, loot_mult())
+			Items.empower(bu, power_mult())
 		drop_item(bu, e.global_position)
 		ui.message("%s dropped %s!" % [e.display_name, bu["name"]], Color(0.85, 0.66, 0.38))
 	if e.boss:
@@ -2723,7 +2741,7 @@ func _drop_loot_roll(at: Vector3, lvl: int, good: bool) -> void:
 	if good or r < 0.3:
 		var it := Items.random_drop(lvl, hero.mf + (100 if good else 0), rng, good)
 		if difficulty >= 1:
-			Items.empower(it, loot_mult())
+			Items.empower(it, power_mult())
 		drop_item(it, at)
 	elif r < 0.62:
 		drop_item(Items.gold(int(rng.randf_range(4, 12) * (1.0 + lvl * 0.6))), at)
@@ -2762,7 +2780,9 @@ func hitstop(t: float) -> void:
 func _on_hero_died() -> void:
 	Telemetry.crumb("died", {"bg": bg_mode})
 	death_t = 2.0
-	if bg_mode:
+	if sandbox != null:
+		sandbox.hero_died(hero)
+	elif bg_mode:
 		_bg_fell()
 	ui.set_boss(null)
 
@@ -2825,6 +2845,10 @@ func _update_spectate(dt: float) -> void:
 	ui.update_spectate()
 
 func respawn() -> void:
+	if sandbox != null:
+		# the sandbox: back on your feet at once, nothing lost
+		hero.respawn(sandbox.spawn_point())
+		return
 	if bg_mode:
 		# no coming back from the crypt
 		_leave_battlegrounds()
@@ -2984,6 +3008,52 @@ func _cheat_keys(ev: InputEvent) -> void:
 ## class baseline of level-20 gear for PvP testing (rare items on every slot, the class's own weapon). Safe to press
 ## again: its own pieces (marked "boost") stay, any other equipped item moves to the bag (kept equipped if the bag
 ## is full, never destroyed), and the same gear is never handed out twice.
+## The admins' Battlegrounds sandbox (Sandbox; the Escape menu's Admin column): the character is saved and set aside
+## (char_id cleared, so nothing in there is saved) and comes back exactly as it was on leaving.
+var _sandbox_char := ""
+
+func open_sandbox() -> void:
+	if not dev_tools or sandbox != null or _busy:
+		return
+	if net.active:
+		ui.message("Leave the party first: the sandbox is played alone", Color(1, 0.6, 0.4))
+		return
+	if bg_mode:
+		ui.message("Not from inside a raid", Color(1, 0.6, 0.4))
+		return
+	if paused:
+		toggle_pause()
+	save_game()
+	_sandbox_char = char_id
+	char_id = ""
+	sandbox = Sandbox.new(self)
+	sandbox.pick_me["cls"] = hero.cls
+	sandbox.pick_bot["cls"] = hero.cls
+	add_child(sandbox)
+	await load_zone(0, Sandbox.ZONE, "start")
+	Sandbox.outfit(self, hero, hero.cls, 20, "geared")
+	ui.refresh()
+	ui.big_message(Sandbox.TITLE)
+	ui.message("Your character is saved and waits outside; nothing here is kept", Color(0.6, 0.85, 1.0))
+
+func close_sandbox() -> void:
+	if sandbox == null or _busy:
+		return
+	sandbox.shutdown()
+	sandbox = null
+	char_id = _sandbox_char
+	_sandbox_char = ""
+	if char_id != "" and load_game():
+		hero.refresh_gear()
+		hero.recalc()
+		hero.life = hero.max_life
+		hero.mana = hero.max_mana
+	if hero.dead:
+		hero.respawn(hero.global_position)
+	death_t = -1.0
+	await load_zone(difficulty, "town", "start")
+	ui.refresh()
+
 const BOOST_SLOTS := ["weapon", "armor", "helm", "gloves", "boots", "belt", "ring1", "ring2", "amulet"]
 
 func go_level_20() -> void:
@@ -3036,11 +3106,13 @@ func go_level_20() -> void:
 
 ## The best base for a slot at level 20 that this class can wear (its own weapon kind: bows for the ranger, canes for
 ## the plague doctor, the drumstick for Doug...).
-func _boost_base(slot: String) -> String:
+func _boost_base(slot: String, h: Hero = null) -> String:
+	if h == null:
+		h = hero
 	var want := "ring" if slot in ["ring1", "ring2"] else slot
-	var mine: String = str(Data.CLASSES.get(hero.cls, {}).get("weapon", ""))
+	var mine: String = str(Data.CLASSES.get(h.cls, {}).get("weapon", ""))
 	var kind := str(Data.BASES.get(mine, {}).get("kind", "")) if mine != "" else ""
-	var held = hero.equipment.get("weapon")
+	var held = h.equipment.get("weapon")
 	if kind == "" and held is Dictionary:
 		kind = str(Data.BASES.get(held["base"], {}).get("kind", ""))     # no weapon of its own (the knight): the kind in hand
 	var best := ""
@@ -3050,7 +3122,7 @@ func _boost_base(slot: String) -> String:
 		if str(bd.get("slot", "")) != want or int(bd.get("lvl", 1)) > 20:
 			continue
 		var owner := str(bd.get("cls", ""))
-		if owner != "" and owner != hero.cls:
+		if owner != "" and owner != h.cls:
 			continue
 		if want == "weapon" and kind != "" and str(bd.get("kind", "")) != kind:
 			continue

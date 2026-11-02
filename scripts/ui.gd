@@ -3372,6 +3372,15 @@ func _build_admin(parent: Control) -> VBoxContainer:
 	l20.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	l20.pressed.connect(func(): game.go_level_20())
 	vb.add_child(l20)
+	var sbx := _iron_button("Battlegrounds sandbox", 340, 40, 17)
+	sbx.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	sbx.pressed.connect(func():
+		if game.sandbox != null:
+			game.toggle_pause()
+			game.close_sandbox()
+		else:
+			game.open_sandbox())
+	vb.add_child(sbx)
 	var mx := _iron_button("Max out (level 99, gold, gear)", 340, 38, 16)
 	mx.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	mx.pressed.connect(func(): game.max_out())
@@ -3423,6 +3432,7 @@ func _build_admin(parent: Control) -> VBoxContainer:
 		if not vb.visible:
 			return
 		who.text = game.admin_name if game.admin_name != "" else ("staging build" if BuildEnv.env() == "staging" else "editor")
+		sbx.text = "Leave the sandbox" if game.sandbox != null else "Battlegrounds sandbox (bots, PvP)"
 		for f in syncs:
 			f.call()
 		if hero:
@@ -3914,7 +3924,7 @@ func _refresh_join() -> void:
 func _build_enchant() -> void:
 	ench_panel = _panel("Enchant Armor", true, 560, 600)
 	var vb: VBoxContainer = ench_panel.get_node("vb")
-	var intro := _label("Pay to bind runes into your worn armor. Each level adds 15% defense and extra life. Up to +10.", 14, DIM)
+	var intro := _label("Pay to bind runes into your worn armor. Each level adds %d%% defense and extra life. Up to +10." % int(round(Items.ENCHANT_DEF * 100)), 14, DIM)
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	intro.custom_minimum_size = Vector2(520, 0)
 	vb.add_child(intro)

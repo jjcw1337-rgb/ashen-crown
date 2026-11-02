@@ -88,7 +88,7 @@ func _run() -> void:
 	await wait(60)
 	var picked := 0
 	for gi in g.world.items_root.get_children():
-		if gi is GroundItem:
+		if gi.get("item") is Dictionary:      # (a ground item; "is GroundItem" would compile its Sfx before the autoload)
 			g._pickup(gi)
 			picked += 1
 	print("[9] picked up ", picked, " gold=", h.gold)

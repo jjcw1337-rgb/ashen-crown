@@ -296,7 +296,7 @@ func bind(slot: String, id: String) -> void:
 	# a locked skill can't go on the bar (one already there may move between slots: it waits there greyed)
 	var sk := Data.skill_def(id) if id != "" else {}
 	if not sk.is_empty() and Data.skill_locked(sk, level) and not (game != null and game.test_allskills) and not binds.values().has(id):
-		if game and game.ui and not puppet:
+		if game and game.ui and _mine():
 			game.ui.message("%s unlocks at level %d" % [sk["name"], int(sk["lvl"])], Color(1, 0.55, 0.4))
 		return
 	if id != "" and BIND_KEYS.has(slot):
@@ -304,7 +304,7 @@ func bind(slot: String, id: String) -> void:
 			if binds.get(k, "") == id:
 				binds[k] = ""
 	binds[slot] = id
-	if game and game.ui and not puppet:
+	if game and game.ui and _mine():
 		game.ui.refresh_skill_slots()
 
 ## Keep only skills this class knows; fill anything missing from the defaults.
@@ -364,7 +364,7 @@ func auto_talents() -> void:
 func _talents_changed() -> void:
 	tfx = Talents.sum(cls, talents)
 	recalc()
-	if game and game.ui and not puppet:
+	if game and game.ui and _mine():
 		game.ui.refresh_skill_slots()     # mana costs on the bar
 
 ## Mana and cooldown after talents.
@@ -449,7 +449,7 @@ func set_class(c: String) -> void:
 	_build_rig()
 	_tint_aura()
 	refresh_gear()
-	if not puppet and game and game.ui:
+	if _mine() and game and game.ui:
 		game.ui.refresh_skill_slots()
 
 func _tint_aura() -> void:
@@ -508,7 +508,7 @@ func wraith_gear() -> Dictionary:
 
 func setup(g: Node) -> void:
 	game = g
-	if not puppet:
+	if not puppet and not bot:
 		add_to_group("hero")
 	_build_rig()
 	light = OmniLight3D.new()
@@ -611,8 +611,12 @@ func recalc() -> void:
 		def_sum += Items.defense_of(it)
 		if s == "shield":
 			shield_block = it.get("block", 0)
-	# the Battlegrounds: level and skills carry a character, gear only helps (Blaine's progression overhaul): its
-	# flat stats count for a third, its percentages are capped low, and the weapon's damage gives way to the level's
+	# the item rules (Data: level and skills carry a character, gear helps): percentages capped across all gear
+	for k in Data.GEAR_CAP:
+		if stats.has(k):
+			stats[k] = mini(int(stats[k]), int(Data.GEAR_CAP[k]))
+	# the Battlegrounds on top: gear's flat stats and defence count for less, its percentages are capped lower, and
+	# the weapon is at its Act I strength
 	var pvp := pvp_scaled()
 	if pvp:
 		for k in stats.keys():
@@ -633,9 +637,15 @@ func recalc() -> void:
 	max_stamina = 70.0 + vt_total * 0.6 + level * 2.0
 	stamina = minf(stamina, max_stamina)
 	var w = equipment.get("weapon")
-	var wd: Array = Items.damage_of(w) if w != null else Data.unarmed(cls)    # a dragon's claws and teeth
+	# the weapon hits for the level's damage times its quality, then its Enhanced Damage, +Damage and act strength
+	# (Data.weapon_damage); bare hands are a dragon's claws and teeth
+	var wbase: Array = w["dmg"] if w != null and w.has("dmg") else Data.unarmed(cls)
+	var wss: Dictionary = Items.stat_sum(w) if w != null else {}
+	var wed := int(wss.get("ed", 0))
+	var wpow := float(w.get("power", 1.0)) if w != null else 1.0
 	if pvp:
-		wd = Data.pvp_damage(level, wd)
+		wed = mini(wed, int(Data.PVP_GEAR_CAP.get("ed", 999)))
+	var wd: Array = Data.weapon_damage(level, wbase, wpow, wed, int(wss.get("dmg", 0)), 1.0 if pvp else wpow)
 	var k := 1.0 + st_total / 100.0
 	dmg_min = maxi(1, int(wd[0] * k))
 	dmg_max = maxi(dmg_min, int(wd[1] * k))
@@ -658,6 +668,19 @@ func recalc() -> void:
 	life = minf(life, max_life)
 	mana = minf(mana, max_mana)
 	stats_changed.emit()
+
+## A sandbox bot (Sandbox, the admins' Battlegrounds sandbox): a full hero of its own class, level and gear, played
+## by a BotBrain instead of the mouse. Its screen effects, messages and the testing switches are the player's only
+## (_mine); `bot_hold` stands in for a held left mouse button.
+var bot := false
+var bot_hold := false
+## The hero whose turn it is (set at the top of each hero's _process; a summon sets its master before it strikes):
+## a sandbox stand-in never takes its own hero's blows.
+static var striker: Hero = null
+
+## The local player's hero (not a partner's puppet, not a sandbox bot): screen shake, hitstop, messages, the UI.
+func _mine() -> bool:
+	return not puppet and not bot
 
 ## The Battlegrounds' rules for gear (recalc): on while this game is in a raid (Game.bg_mode); `pvp_force` for tools.
 var pvp_force := false
@@ -687,7 +710,7 @@ func add_xp(v: int) -> void:
 
 ## The skills that open at this level light up on the bar (they wait there greyed till then): say which.
 func _announce_unlocks() -> void:
-	if game == null or game.ui == null or puppet or Data.SKILLS_UNLOCKED:
+	if game == null or game.ui == null or not _mine() or Data.SKILLS_UNLOCKED:
 		return
 	var names := []
 	for s in Data.skills_known(cls):
@@ -1172,7 +1195,7 @@ func _swipe_impact() -> void:
 		pd.cane_blow(atk_style, struck)      # the plague doctor's blows each leave something of his own
 	if fin:
 		fx("attack", "finisher", {"r": rng, "x": any})
-		if any:
+		if any and _mine():
 			game.hitstop(0.06)
 
 func _face_smooth(d: Vector3, delta: float) -> void:
@@ -1257,13 +1280,16 @@ func use_skill(id: String, aim: Vector3) -> bool:
 		if s["id"] == id:
 			sk = s
 	if sk.is_empty() or (Data.skill_locked(sk, level) and not game.test_allskills):
-		game.ui.message("Requires level %d" % sk.get("lvl", 1), Color(1, 0.4, 0.3))
+		if _mine():
+			game.ui.message("Requires level %d" % sk.get("lvl", 1), Color(1, 0.4, 0.3))
 		return false
 	if cds[id] > 0.0:
-		game.ui.message("%s is recharging" % sk["name"], Color(0.8, 0.8, 0.8))
+		if _mine():
+			game.ui.message("%s is recharging" % sk["name"], Color(0.8, 0.8, 0.8))
 		return false
 	if mana < skill_cost(id):
-		game.ui.message("Not enough mana", Color(0.4, 0.5, 1.0))
+		if _mine():
+			game.ui.message("Not enough mana", Color(0.4, 0.5, 1.0))
 		Sfx.play("deny")
 		return false
 	# the class's own checks (a foe to latch onto or seize, ...) before anything is spent
@@ -1428,9 +1454,10 @@ func _hit_enemy(e, mult: float, knock: float = 0.0, src := "", flat := 0.0) -> v
 	var dealt: float = e.take_damage(r["phys"], r["fire"], global_position, knock, r["crit"])
 	if ls > 0.0:
 		life = minf(max_life, life + dealt * ls / 100.0)
-	if r["crit"]:
-		game.hitstop(0.05)
-	game.add_shake(0.15 if not r["crit"] else 0.3)
+	if _mine():
+		if r["crit"]:
+			game.hitstop(0.05)
+		game.add_shake(0.15 if not r["crit"] else 0.3)
 
 func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String = "phys") -> void:
 	stop_chop()
@@ -1441,7 +1468,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 		if game.net.is_host:
 			game.net.hit_player(peer_id, dmg, from, kind, element)
 		return
-	if game.test_immortal or phased:
+	if (game.test_immortal and _mine()) or phased:
 		return
 	if Dodge.dodging(self):
 		Dodge.dodged(self)
@@ -1466,7 +1493,8 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 		hit_t = 0.35
 		Sfx.play("block", 0.0, randf_range(0.9, 1.1))
 		Fx.sparks(game.world.fx_root, shield_pos, Color(1.0, 0.85, 0.5))
-		game.add_shake(0.12)
+		if _mine():
+			game.add_shake(0.12)
 		if dmg <= 0.5:
 			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.2, 0), "Blocked", Color(0.8, 0.85, 1.0))
 			return
@@ -1500,9 +1528,11 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	if not burn:
 		Sfx.play("hero_hit", -3.0, randf_range(0.9, 1.1))
 		Fx.blood(game.world.fx_root, global_position + Vector3(0, 1.2, 0), Color(0.6, 0.02, 0.02))
-		game.add_shake(0.2)
+		if _mine():
+			game.add_shake(0.2)
 	show_damage(dmg)
-	game.ui.flash_damage()
+	if _mine():
+		game.ui.flash_damage()
 	# Doug in his clown car is unstoppable: blows land, their stuns and slows don't
 	if DougSkills.driving(self) and kind in ["sweep", "quake", "chill", "freeze", "shock", "root", "slip"]:
 		kind = "melee"
@@ -1534,7 +1564,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 		"pied":
 			pied_t = 1.5
 			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Pied!", Color(1.0, 0.97, 0.88))
-			if not puppet and game.ui.has_method("pie_face"):
+			if _mine() and game.ui.has_method("pie_face"):
 				game.ui.pie_face(1.5)
 		"root":
 			daze_t = maxf(daze_t, 1.2)
@@ -1564,6 +1594,7 @@ func _process(delta: float) -> void:
 		if pd != null:
 			pd.update(delta)       # a partner plague doctor's flasks and clouds (shown only)
 		return
+	Hero.striker = self
 	for k in cds.keys():
 		cds[k] = maxf(0.0, cds[k] - delta)
 	buff_t = maxf(0.0, buff_t - delta)
@@ -1642,7 +1673,8 @@ func _process(delta: float) -> void:
 		stamina_rest = 0.0
 		if stamina <= 0.0:
 			exhausted = true
-			game.ui.message("Out of stamina", Color(1.0, 0.8, 0.3))
+			if _mine():
+				game.ui.message("Out of stamina", Color(1.0, 0.8, 0.3))
 	else:
 		stamina_rest += delta
 		if stamina_rest > 0.6:
@@ -1711,9 +1743,10 @@ func _process(delta: float) -> void:
 						path = PackedVector3Array()
 					if target is Enemy:
 						# left-click on a foe: the sword combo; held, it keeps chaining at him
-						if atk_t < 0.0 or game.lmb_held:
-							swipe_attack(tp, game.lmb_held)
-							if atk_t >= 0.0 and not game.lmb_held:
+						var held: bool = bot_hold if bot else game.lmb_held
+						if atk_t < 0.0 or held:
+							swipe_attack(tp, held)
+							if atk_t >= 0.0 and not held:
 								target = null
 					elif atk_t < 0.0:
 						var t = target
@@ -2342,6 +2375,8 @@ func from_save(d: Dictionary) -> void:
 	belt.resize(4)
 	stash = d.get("stash", [])
 	stash.resize(60)
+	# items from before the items rework are rebuilt once under the new rules (Items.upgrade; nothing is deleted)
+	Items.upgrade_all([equipment, inventory, belt, stash])
 	binds = (d.get("binds", {}) as Dictionary).duplicate() if d.get("binds") is Dictionary else {}
 	WraithSkills.migrate_binds(binds)
 	DemonSkills.migrate_binds(binds)
@@ -2357,7 +2392,7 @@ func from_save(d: Dictionary) -> void:
 	else:
 		talents = Talents.auto_build(cls, level - 1)
 	tfx = Talents.sum(cls, talents)
-	if game and game.ui and not puppet:
+	if game and game.ui and _mine():
 		game.ui.refresh_skill_slots()
 	recalc()
 	life = max_life
