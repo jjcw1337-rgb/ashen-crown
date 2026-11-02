@@ -76,6 +76,10 @@ const CITY_TERRAIN := {
 # ---------------------------------------------------------------- the city wall and gate
 static func _city_wall(w: World) -> void:
 	var m := Roman.tuff()
+	# the Meshy wall and gate towers (visual overhaul): a section of tuff and travertine ashlar with a string course and
+	# merlons over each run, a square tower of the same stone with a corbelled crown and arrow slits each side of the gate
+	var wall := Roman._part("wall")
+	var tower := Roman._part("tower")
 	for sx: int in [-1, 1]:
 		var x0 := sx * 4.5
 		var x1 := sx * 70.0
@@ -85,18 +89,28 @@ static func _city_wall(w: World) -> void:
 			var xb := x0 + (x1 - x0) * (i + 1) / n
 			var g := Models.N(null, "city_wall")
 			var len := absf(xb - xa)
-			Models.P(g, Geo.box(len + 0.05, 6.5, 2.2), m, Vector3(0, 3.0, 0))
-			for k in int(len / 1.5):
-				Models.P(g, Geo.box(0.8, 0.8, 2.3), m, Vector3(-len * 0.5 + 0.75 + k * 1.5, 6.65, 0))
+			if not wall.is_empty():
+				# as long as the run and a hand's breadth (no seam), as deep as the old wall; 5.8 m tall with its merlons (the old
+				# one was 7.3: the section's own blocks would stretch past recognition)
+				var bb: AABB = wall[2]
+				Roman._add_part(g, wall, Vector3((len + 0.12) / maxf(bb.size.x, 0.001), 5.8 / maxf(bb.size.y, 0.001), 2.2 / maxf(bb.size.z, 0.001)))
+			else:
+				Models.P(g, Geo.box(len + 0.05, 6.5, 2.2), m, Vector3(0, 3.0, 0))
+				for k in int(len / 1.5):
+					Models.P(g, Geo.box(0.8, 0.8, 2.3), m, Vector3(-len * 0.5 + 0.75 + k * 1.5, 6.65, 0))
 			w._place(g, Vector3((xa + xb) * 0.5, 0, WALL_Z))
 			w.add_box(Vector3((xa + xb) * 0.5, 0, WALL_Z), Vector2(len * 0.5, 1.1), PI * 0.5)
 		# a gate tower each side
 		var t := Props.footprint(Models.N(null, "gate_tower"), Vector2(2.6, 2.6))
-		Models.P(t, Geo.box(5.2, 9.5, 5.2), m, Vector3(0, 4.5, 0))
-		Models.P(t, Geo.box(5.6, 0.4, 5.6), Roman.marble(), Vector3(0, 9.3, 0))
-		for k in 4:
-			Models.P(t, Geo.box(0.9, 0.9, 0.9), m, Vector3(-1.9 + k * 1.27, 9.9, 2.4))
-		Models.P(t, Geo.box(0.6, 1.4, 0.1), Mats.mat(Color(0.05, 0.04, 0.03), 0.9), Vector3(0, 6.5, 2.62))
+		if not tower.is_empty():
+			var tb: AABB = tower[2]
+			Roman._add_part(t, tower, Vector3(5.4 / maxf(tb.size.x, 0.001), 10.4 / maxf(tb.size.y, 0.001), 5.4 / maxf(tb.size.z, 0.001)))
+		else:
+			Models.P(t, Geo.box(5.2, 9.5, 5.2), m, Vector3(0, 4.5, 0))
+			Models.P(t, Geo.box(5.6, 0.4, 5.6), Roman.marble(), Vector3(0, 9.3, 0))
+			for k in 4:
+				Models.P(t, Geo.box(0.9, 0.9, 0.9), m, Vector3(-1.9 + k * 1.27, 9.9, 2.4))
+			Models.P(t, Geo.box(0.6, 1.4, 0.1), Mats.mat(Color(0.05, 0.04, 0.03), 0.9), Vector3(0, 6.5, 2.62))
 		w.solid(w._place(t, Vector3(sx * 6.0, 0, WALL_Z)))
 		w.solid(Props.banner(w.props_root, Vector3(sx * 3.4, 0, WALL_Z + 2.4), Color(0.55, 0.06, 0.05), Color(0.85, 0.65, 0.25)))
 	var arch := Models.N(null, "city_gate")

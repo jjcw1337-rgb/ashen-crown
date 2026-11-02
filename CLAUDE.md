@@ -1251,7 +1251,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   ruined (`Roman._bays`, widths in `AQ_W` so the piers meet the old collision), and the colosseum's outer arcade
   (`Aurelia._arcade`, each bay the step to the next plus one shared pier) and the arena's podium wall (`Aurelia._podium`,
   one section over three runs; the runs beside the Gate of Life stay code-built) and its braziers (`Aurelia._brazier`); the
-  stands draw with `Roman.seats()` (travertine seat slabs and ashlar courses, joints in world space);
+  stands draw with `Roman.seats()` (travertine seat slabs and ashlar courses, joints in world space); the city wall and
+  gate towers (`Aurelia._city_wall`: the wall 5.8 m tall where the boxes were 7.3, collision unchanged);
   all re-baked on clean UVs, with the
   procedural versions as the fallback. Meshy props draw with `Props.MESHY_PROP_SHADER`, which has the same see-through
   near the hero as `Mats.PROP_SHADER` (keep it when changing either). World generation draws from `World.rng`: a visual change must keep its calls (count and order) or every
