@@ -3,12 +3,16 @@
 #   <out>_normal.png  a tangent-space normal map baked in Blender from the painting's relief: a densely subdivided
 #                     plane displaced by the painting's brightness, baked (selected to active) onto a flat plane
 #   blender -b --python tools/blender/plague/ground_decal.py -- <painting.png> <out prefix> [px 1024] [relief 0.04]
+#                                                               [key black|chroma]
+# key chroma keys by colourfulness instead of brightness, for paintings whose background is a grey floor rather than
+# black (the bile spray): grey goes, the coloured liquid and its bright highlights stay.
 import bpy, sys, os
 import numpy as np
 a = sys.argv[sys.argv.index("--") + 1:]
 SRC, OUT = a[0], a[1]
 PX = int(a[2]) if len(a) > 2 else 1024
 RELIEF = float(a[3]) if len(a) > 3 else 0.04
+KEY = a[4] if len(a) > 4 else "black"
 bpy.ops.wm.read_factory_settings(use_empty=True)
 img = bpy.data.images.load(os.path.abspath(SRC))
 img.scale(PX, PX)
@@ -18,6 +22,9 @@ lum = rgb @ np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
 mx = rgb.max(axis=2)
 # alpha: the black background keyed out, with a soft shoulder so splatter edges stay crisp but not jagged
 alpha = np.clip((mx - 0.035) / 0.12, 0.0, 1.0)
+if KEY == "chroma":
+	chroma = mx - rgb.min(axis=2)
+	alpha = np.maximum(np.clip((chroma - 0.04) / 0.1, 0.0, 1.0), np.clip((lum - 0.45) / 0.2, 0.0, 1.0))
 alpha = alpha * alpha * (3.0 - 2.0 * alpha)
 out = np.dstack([rgb, alpha]).astype(np.float32)
 al = bpy.data.images.new("albedo", PX, PX, alpha=True)

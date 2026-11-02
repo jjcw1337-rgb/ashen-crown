@@ -4,45 +4,67 @@ extends RefCounted
 ##
 ## The flies are one GPUParticles3D run by a particle shader (`SWARM_PROCESS`): each fly has its own orbit round the
 ## swarm's point (`target`), so the swarm stretches, twists and folds as it travels, thins at its edges (its
-## boundary stays readable) and turns as one body. Each fly is a little mesh made in code (`_fly_mesh`: a glossy
-## chitin body, a head with green-lit eyes, two veined translucent wings) whose wings beat in the vertex shader
-## (`FLY_SHADER`), and which faces where it flies. A dark haze of soft particles gives the cloud its body. `scatter`
-## blows it apart for a moment, `go_home` spirals it back to the Plague Doctor's hand and frees it. Counts by the
-## graphics preset: `COUNTS` (the browser build is capped at Medium).
+## boundary stays readable) and turns as one body. Each fly is the Meshy fly (assets/models/plague/fly.glb: concept,
+## image-to-3D, decimated to 900 triangles by tools/blender/prep_prop.py) drawn with its own painted texture in
+## `MODEL_FLY_SHADER`: whatever of it reaches out past the body's sides beats as wings in the vertex shader, and the
+## painting's green eyes glow; it faces where it flies. A dark haze of the Mantaflow vapour (PlagueSmoke) gives the
+## cloud its body. `scatter` blows it apart for a moment, `go_home` spirals it back to the Plague Doctor's hand and
+## frees it. He releases it from the Meshy reliquary (reliquary.glb: a gothic brass box, its lid thrown open), the
+## same flies pouring out of it. Counts by the graphics preset: `COUNTS` (the browser build is capped at Medium).
 
-const COUNTS := [300, 800, 1500, 3000]
+const COUNTS := [400, 900, 1600, 3000]
 const FLY := Color(0.06, 0.07, 0.05)
 const EYE := Color(0.5, 1.0, 0.25)
+const FLY_GLB := "res://assets/models/plague/fly.glb"
+const RELIQUARY_GLB := "res://assets/models/plague/reliquary.glb"
 
-## Swarmcraft's brass reliquary in his hand while he releases it: a small riveted box with its lid open.
+## Swarmcraft's reliquary in his hand while he releases it: the Meshy box, lid open, a sick light inside and the
+## flies pouring out of it.
 static func reliquary() -> Node3D:
 	var root := Node3D.new()
-	var brass := StandardMaterial3D.new()
-	brass.albedo_color = Color(0.72, 0.52, 0.24)
-	brass.metallic = 1.0
-	brass.roughness = 0.35
-	var box := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = Vector3(0.09, 0.07, 0.07)
-	box.mesh = bm
-	box.material_override = brass
-	root.add_child(box)
-	var lid := MeshInstance3D.new()
-	var lm := BoxMesh.new()
-	lm.size = Vector3(0.095, 0.012, 0.075)
-	lid.mesh = lm
-	lid.material_override = brass
-	lid.position = Vector3(0, 0.05, -0.04)
-	lid.rotation = Vector3(-1.1, 0, 0)
-	root.add_child(lid)
+	if ResourceLoader.exists(RELIQUARY_GLB):
+		var m: Node3D = (load(RELIQUARY_GLB) as PackedScene).instantiate()
+		root.add_child(m)
+		m.position = Vector3(0, -0.045, 0)
+	else:
+		var brass := StandardMaterial3D.new()
+		brass.albedo_color = Color(0.72, 0.52, 0.24)
+		brass.metallic = 1.0
+		brass.roughness = 0.35
+		var box := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3(0.09, 0.07, 0.07)
+		box.mesh = bm
+		box.material_override = brass
+		root.add_child(box)
 	var glow := OmniLight3D.new()
 	glow.light_color = EYE
-	glow.light_energy = 0.5
-	glow.omni_range = 0.6
-	glow.position = Vector3(0, 0.06, 0)
+	glow.light_energy = 0.22
+	glow.omni_range = 0.45
+	glow.position = Vector3(0, 0.07, 0.03)
 	root.add_child(glow)
-	var pour := Fx.aura(root, Color(0.05, 0.06, 0.04, 0.9), 30, 0.8, 0.012, 0.5, 1.5, 0.02, 30.0, Vector3(0, 0.05, 0), false)
+	# the flies themselves boiling up out of it
+	var pour := GPUParticles3D.new()
+	pour.amount = 26
+	pour.lifetime = 0.8
 	pour.local_coords = false
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	pm.emission_sphere_radius = 0.03
+	pm.direction = Vector3.UP
+	pm.spread = 40.0
+	pm.initial_velocity_min = 0.5
+	pm.initial_velocity_max = 1.4
+	pm.gravity = Vector3(0, 0.4, 0)
+	pm.angle_min = -180.0
+	pm.angle_max = 180.0
+	pm.scale_min = 1.4
+	pm.scale_max = 2.0
+	pour.process_material = pm
+	pour.draw_pass_1 = _fly_mesh()
+	pour.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(pour)
+	pour.position = Vector3(0, 0.04, 0)
 	return root
 
 class Swarm extends Node3D:
@@ -98,21 +120,18 @@ class Swarm extends Node3D:
 		pm.angle_max = 180.0
 		var g := Gradient.new()
 		g.set_color(0, Color(0.05, 0.07, 0.04, 0.0))
-		g.add_point(0.35, Color(0.04, 0.06, 0.03, 0.32))
+		g.add_point(0.35, Color(0.06, 0.09, 0.04, 0.55))
 		g.set_color(g.get_point_count() - 1, Color(0.05, 0.07, 0.04, 0.0))
 		var gt := GradientTexture1D.new()
 		gt.gradient = g
 		pm.color_ramp = gt
+		# the Mantaflow vapour, darkened, with a faint sick-green glow: a churning body for the cloud that reads
+		# against a dark floor
+		PlagueSmoke.anim(pm, false)
 		haze.process_material = pm
 		var q := QuadMesh.new()
-		q.size = Vector2(1.2, 1.2)
-		var qm := StandardMaterial3D.new()
-		qm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		qm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		qm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-		qm.vertex_color_use_as_albedo = true
-		qm.albedo_texture = PlagueVialFx.wisp_tex()
-		q.material = qm
+		q.size = Vector2(1.4, 1.4)
+		q.material = PlagueSmoke.mat(PlagueSmoke.VAPOUR, false, Color(0.05, 0.1, 0.025))
 		haze.draw_pass_1 = q
 		haze.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(haze)
@@ -212,7 +231,7 @@ void process() {
 	vec3 p = TRANSFORM[3].xyz;
 	// its own looping orbit round the swarm's point: a lumpy, breathing cloud, densest in the middle
 	float t = TIME * (0.6 + h * 0.9) + h * 60.0;
-	float rr = radius * (0.25 + 0.75 * pow(k, 0.7));
+	float rr = radius * (0.15 + 0.85 * pow(k, 1.5));    // dense in the middle, thinning to its edge
 	vec3 orbit = target + vec3(
 		sin(t * 1.3 + h * 7.0) * rr * (0.55 + 0.45 * sin(t * 0.37 + k * 5.0)),
 		0.45 + h * 1.3 + sin(t * 2.1 + k * 3.0) * 0.35,
@@ -229,7 +248,7 @@ void process() {
 	vec3 f = normalize(VELOCITY + vec3(0.0, 0.0001, 0.0));
 	vec3 r = normalize(cross(vec3(0.0, 1.0, 0.0), f) + vec3(0.0001, 0.0, 0.0));
 	vec3 u = cross(f, r);
-	float s = 2.6 * (1.0 - home * home * 0.8);    // larger than life, so the swarm reads from the game camera
+	float s = 4.0 * (1.0 - home * home * 0.8);    // larger than life (the 4.5 cm fly at ~18 cm), so the swarm reads from the game camera
 	TRANSFORM[0].xyz = r * s;
 	TRANSFORM[1].xyz = u * s;
 	TRANSFORM[2].xyz = f * s;
@@ -238,10 +257,31 @@ void process() {
 	return _psh
 
 static var _fly: Mesh
-## One fly, ~6 cm: body and head (COLOR.r = 0, eyes COLOR.g = 1), two wings (COLOR.r = 1, side in COLOR.b).
+## One fly: the Meshy model with `MODEL_FLY_SHADER` (its painted texture, wings beating); without the model, one
+## made in code (~6 cm: body and head (COLOR.r = 0, eyes COLOR.g = 1), two wings (COLOR.r = 1, side in COLOR.b)).
 static func _fly_mesh() -> Mesh:
 	if _fly != null:
 		return _fly
+	if ResourceLoader.exists(FLY_GLB):
+		var src: Node3D = (load(FLY_GLB) as PackedScene).instantiate()
+		var mis := src.find_children("*", "MeshInstance3D", true, false)
+		if not mis.is_empty():
+			var mi := mis[0] as MeshInstance3D
+			var am := mi.mesh.duplicate() as ArrayMesh
+			if am != null:
+				var albedo: Texture2D = null
+				var m0 := mi.get_active_material(0)
+				if m0 is BaseMaterial3D:
+					albedo = (m0 as BaseMaterial3D).albedo_texture
+				var sm := ShaderMaterial.new()
+				sm.shader = _model_fly_shader()
+				sm.set_shader_parameter("albedo", albedo)
+				for i in am.get_surface_count():
+					am.surface_set_material(i, sm)
+				_fly = am
+		src.free()
+		if _fly != null:
+			return _fly
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	# body: an ellipsoid along +z (the way it flies), a smaller head in front
@@ -285,6 +325,40 @@ static func _ellipsoid(st: SurfaceTool, c: Vector3, r: Vector3, col: Color) -> v
 				st.set_normal(pv[1])
 				st.set_uv(Vector2.ZERO)
 				st.add_vertex(pv[0])
+
+static var _msh: Shader
+## The Meshy fly (4.5 cm, head toward +z, body ~1 cm wide): its painting; everything past the body's sides above its
+## belly is wing, beating about the body's long axis on each fly's own phase; the painting's green eyes glow.
+static func _model_fly_shader() -> Shader:
+	if _msh != null:
+		return _msh
+	_msh = Shader.new()
+	_msh.code = """
+shader_type spatial;
+render_mode cull_disabled, specular_schlick_ggx;
+uniform sampler2D albedo : source_color, filter_linear_mipmap;
+varying float wing;
+void vertex() {
+	float side = VERTEX.x < 0.0 ? -1.0 : 1.0;
+	wing = smoothstep(0.005, 0.011, abs(VERTEX.x)) * smoothstep(-0.006, -0.001, VERTEX.y);
+	float a = sin(TIME * 95.0 + INSTANCE_CUSTOM.x * 60.0) * 0.95 * side * wing;
+	vec2 p = vec2(VERTEX.x - side * 0.005, VERTEX.y - 0.002);
+	float ca = cos(a); float sa = sin(a);
+	VERTEX.xy = vec2(p.x * ca - p.y * sa + side * 0.005, p.x * sa + p.y * ca + 0.002);
+	NORMAL.xy = vec2(NORMAL.x * ca - NORMAL.y * sa, NORMAL.x * sa + NORMAL.y * ca);
+}
+void fragment() {
+	vec4 c = texture(albedo, UV);
+	float eye = smoothstep(0.04, 0.16, c.g - max(c.r, c.b));
+	ALBEDO = c.rgb * mix(1.0, 1.35, wing);
+	// the eyes glow, and a faint sheen of the same sick green on the body, so the swarm sparkles in the dark
+	EMISSION = vec3(0.35, 0.9, 0.18) * (eye * 2.2 + 0.035);
+	METALLIC = mix(0.3, 0.0, wing);
+	ROUGHNESS = mix(0.32, 0.18, wing);
+	SPECULAR = 0.7;
+}
+"""
+	return _msh
 
 static var _fsh: Shader
 static func _fly_shader() -> Shader:

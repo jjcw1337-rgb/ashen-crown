@@ -78,6 +78,7 @@ var net_id := 0
 ## Battlegrounds PvP: this is no monster but the invisible stand-in for player `pvp_pid` on this client
 ## (Battlegrounds.sync_proxies keeps it on their puppet); a blow on it goes to that player through the server.
 var pvp_pid := 0
+var pvp_hidden := false    # that player is hidden in a Plague Doctor's fog: not picked by the pointer or aim help
 var remote := false
 var net_pos := Vector3.ZERO
 var net_yaw := 0.0

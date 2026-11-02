@@ -454,6 +454,7 @@ static func sync_proxies(g: Node) -> void:
 			else:
 				var h = want[e.pvp_pid]
 				e.global_position = h.global_position
+				e.pvp_hidden = bool(h.fog_hidden)
 				want.erase(e.pvp_pid)
 	for pid in want:
 		var e := Enemy.new()

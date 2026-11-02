@@ -3,8 +3,13 @@
 # packed by tools/fx_flipbook.sh). The liquid renders as glossy green with alpha (film transparent), so the game
 # blends it normally.
 #   blender -b --python tools/blender/plague/splash_flipbook.py -- <outdir> [res 64] [frames 36] [px 192] [seed 3]
-# RENDER_ONLY=1 reuses the bake in <outdir>/cache.
+# RENDER_ONLY=1 reuses the bake in <outdir>/cache. KIND=wave makes The Last Experiment's burst instead: the vat's
+# whole column of fluid (0.42 m across, 1 m tall) let go at once with a ring of gobbets thrown out by the glass,
+# collapsing into a wave that rolls out across the ground (assets/textures/fx/vat_wave.png).
 import bpy, sys, os, math, random
+KIND = os.environ.get("KIND", "splash")
+WAVE = KIND == "wave"
+K = 2.4 if WAVE else 1.0      # the wave's scene is this much bigger
 a = sys.argv[sys.argv.index("--") + 1:]
 OUT = os.path.abspath(a[0])
 RES = int(a[1]) if len(a) > 1 else 64
@@ -18,10 +23,10 @@ bpy.ops.wm.read_factory_settings(use_empty=True)
 sc = bpy.context.scene
 
 # the domain: 1.6 x 1.6 x 0.8 m over the floor
-bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 0.45))
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 0.45 * K))
 dom = bpy.context.active_object
 dom.name = "domain"
-dom.scale = (1.8, 1.8, 0.9)
+dom.scale = (1.8 * K, 1.8 * K, 0.9 * K)
 bpy.ops.object.transform_apply(scale=True)
 m = dom.modifiers.new("fluid", "FLUID")
 m.fluid_type = "DOMAIN"
@@ -47,7 +52,7 @@ ds.use_collision_border_top = False
 ds.surface_tension = 0.02
 ds.timesteps_max = 12
 ds.cfl_condition = 2.0
-ds.time_scale = 0.45           # slow motion: more frames of the crown in the flipbook
+ds.time_scale = 0.45 if not WAVE else 0.6     # slow motion: more frames of the crown in the flipbook
 
 # the liquid: the vial's contents at the moment the glass bursts on the ground: a core falling onto the spot and
 # a ring of gobbets thrown out and up (each its own flow object with its own velocity; per-normal initial velocity
@@ -65,8 +70,26 @@ def gob(name, loc, r, vel):
     fs.velocity_coord = vel
     o.hide_render = True
     return o
+if WAVE:
+    # the vat's column of fluid, standing where the glass was, and the glass bursting outward throws gobbets
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.42, depth=1.0, location=(0, 0, 0.52), vertices=32)
+    col = bpy.context.active_object
+    col.name = "column"
+    cf = col.modifiers.new("fluid", "FLUID")
+    cf.fluid_type = "FLOW"
+    cf.flow_settings.flow_type = "LIQUID"
+    cf.flow_settings.flow_behavior = "GEOMETRY"
+    cf.flow_settings.use_initial_velocity = True
+    cf.flow_settings.velocity_coord = (0.0, 0.0, -0.3)
+    col.hide_render = True
+    for i in range(18):
+        t = 2 * math.pi * i / 18 + random.uniform(-0.12, 0.12)
+        z = random.uniform(0.2, 0.95)
+        out = random.uniform(2.5, 4.5)
+        gob("burst%d" % i, (math.cos(t) * 0.44, math.sin(t) * 0.44, z), random.uniform(0.06, 0.1),
+            (math.cos(t) * out, math.sin(t) * out, random.uniform(0.8, 2.6)))
 gob("core", (0, 0, 0.14), 0.1, (0.0, 0.0, -2.5))
-N = 14
+N = 14 if not WAVE else 0
 for i in range(N):
     t = 2 * math.pi * i / N + random.uniform(-0.15, 0.15)
     rr = random.uniform(0.07, 0.11)
@@ -74,7 +97,7 @@ for i in range(N):
     up = random.uniform(1.4, 3.0)
     gob("gob%d" % i, (math.cos(t) * 0.12, math.sin(t) * 0.12, 0.12), random.uniform(0.035, 0.055),
         (math.cos(t) * out, math.sin(t) * out, up))
-for i in range(8):
+for i in range(8 if not WAVE else 0):
     t = random.uniform(0, 2 * math.pi)
     gob("spit%d" % i, (math.cos(t) * 0.06, math.sin(t) * 0.06, 0.2), random.uniform(0.02, 0.03),
         (math.cos(t) * random.uniform(0.8, 1.6), math.sin(t) * random.uniform(0.8, 1.6), random.uniform(3.0, 4.2)))
@@ -104,17 +127,17 @@ b.inputs["Emission Strength"].default_value = 0.18
 dom.data.materials.append(mat)
 
 # camera: orthographic, side-on, a little from above (as the game camera sees the splash)
-bpy.ops.object.camera_add(location=(0, -2.6, 1.9))
+bpy.ops.object.camera_add(location=(0, -2.6 * K, 1.9 * K))
 cam = bpy.context.active_object
 cam.data.type = "ORTHO"
-cam.data.ortho_scale = 2.0
+cam.data.ortho_scale = 2.0 * K
 cam.rotation_euler = (math.radians(55), 0, 0)
 sc.camera = cam
-bpy.ops.object.light_add(type="AREA", location=(1.0, -1.2, 2.0))
-bpy.context.active_object.data.energy = 120
-bpy.context.active_object.data.size = 1.5
-bpy.ops.object.light_add(type="POINT", location=(-1.0, 1.0, 0.6))
-bpy.context.active_object.data.energy = 40
+bpy.ops.object.light_add(type="AREA", location=(1.0 * K, -1.2 * K, 2.0 * K))
+bpy.context.active_object.data.energy = 120 * K * K
+bpy.context.active_object.data.size = 1.5 * K
+bpy.ops.object.light_add(type="POINT", location=(-1.0 * K, 1.0 * K, 0.6 * K))
+bpy.context.active_object.data.energy = 40 * K * K
 w = bpy.data.worlds.new("w")
 sc.world = w
 w.use_nodes = True

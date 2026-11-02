@@ -158,6 +158,9 @@ func _run() -> void:
 	h.use_skill("swarm", sspot)
 	h.use_skill("swarm", sspot + Vector3(-4, 0, 0))
 	check(int(h.pd.swarm["left"]) == 0, "but only twice")
+	# an area blow on it (anyone's slam or nova, Fx.ring) blows it apart for a moment
+	Fx.ring(g.world.fx_root, h.pd.swarm["pos"], 2.0, Color(1, 1, 1))
+	check(float(h.pd.swarm["scatter"]) > 0.0, "an area blow on it scatters it (%.1f s)" % float(h.pd.swarm["scatter"]))
 	await frames(int(Plague.SWARM_T * 60.0))
 	check(h.pd.swarm.is_empty() and h.cds["swarm"] > 1.0, "it goes home and the cooldown starts (%.1f s)" % h.cds["swarm"])
 
@@ -165,12 +168,17 @@ func _run() -> void:
 	var bspot: Vector3 = es.global_position
 	var lb: float = es.life
 	es.stun_t = 0.0
+	var blows := [0]
+	var count_blow := func(_p: Vector3, _r: float) -> void: blows[0] += 1
+	Fx.area_listeners.append(count_blow)
 	seen = await _cast(h, "bloom", bspot)
 	check(seen == ["pd_bloom"], "Corpse Bloom plays its kneel %s" % [seen])
 	check(h.pd.blooms.size() == 1, "the bloom is planted")
 	await frames(int((Plague.BLOOM_GROW + Plague.BLOOM_EVERY + 0.2) * 60.0))
 	check(es.life < lb, "its pulse hurts (%.0f -> %.0f)" % [lb, es.life])
 	check(es.stun_t > 0.0, "and its roots hold a foe who stood still (%.2f s)" % es.stun_t)
+	check(blows[0] == 0, "its pulse is no area blow (it would scatter his own swarm)")
+	Fx.area_listeners.erase(count_blow)
 
 	# Fever: three different skills on one foe
 	h.pd.blight.erase(es.get_instance_id())
@@ -224,9 +232,14 @@ func _run() -> void:
 		var a := TAU * k / 6.0
 		ring.append(_foe(g.world.free_spot_near(espot + Vector3(cos(a), 0, sin(a)) * 3.0, 0.6)))
 	var le: float = (ring[0] as Enemy).life
+	var eblows := [0]
+	var count_eblow := func(_p: Vector3, _r: float) -> void: eblows[0] += 1
+	Fx.area_listeners.append(count_eblow)
 	seen = await _cast(h, "experiment", espot)
 	check(seen == ["pd_slam", "pd_crank"], "The Last Experiment plays both stages, the vat slammed then cranked %s" % [seen])
 	check(not h.pd.lab.is_empty() and int(h.pd.lab["stage"]) == 2 and is_equal_approx(float(h.pd.lab["r"]), Plague.EXP_R), "the full quarantine bursts open (%.1f m)" % float(h.pd.lab.get("r", 0.0)))
+	check(eblows[0] == 0, "neither the vat's landing nor its burst is an area blow")
+	Fx.area_listeners.erase(count_eblow)
 	await frames(60)
 	check((ring[0] as Enemy).life < le, "it hurts everyone inside (%.0f -> %.0f)" % [le, (ring[0] as Enemy).life])
 	check((ring[1] as Enemy).chill_t > 0.0, "and slows them")

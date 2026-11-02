@@ -272,23 +272,47 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   raised; `Plague.update` starts it when the first ends), `pd_inspect` (the class stage's fidget: a vial held to the
   light). New styles are appended to `Net.STYLES` and timed in `Anim.impact_at`. Clip strips: `tools/blender/plague/clip_sheet.py`.
   Skills (the PvP kit of 2026-11-01; design in the project doc "plague kit overhaul plan"): Pestilence Vial (Q, `toxic`,
-  see "Pestilence Vial"), Swarmcraft (E, `swarm`: `PlagueSwarmFx`, a GPU-particle flock of modelled flies with a
-  particle process shader; flies to its point at `SWARM_SPEED`, never homing, hovers `SWARM_T`, recast = sent on
-  (`Plague.can_cast` redirects and refuses the cast, so no cost), `SWARM_REDIRECTS`; bites, Harried, reveal; a
-  puppet's dodge roll through it scatters it; its cooldown is set when it goes home, `_swarm_end`), Corpse Bloom (R,
-  `bloom`: `PlagueBloomFx`, the Meshy `bloom.glb` growing out of the ground over a root/ring shader on its own clock;
-  pulse every `BLOOM_EVERY` after a `BLOOM_WARN` ring; a foe that moved less than `BLOOM_STILL` since the ring began
-  is snared), Fog of the Forgotten (F, `fog`: `PlagueFogFx`, three layers of puffs and a base disc; the hop is
+  see "Pestilence Vial"), Swarmcraft (E, `swarm`: `PlagueSwarmFx`, a GPU-particle flock of the Meshy fly (`fly.glb`,
+  decimated to 900 triangles; `_model_fly_shader` draws its painting, beats whatever reaches past the body's sides as
+  wings and lights its green eyes) run by a particle process shader, a haze of the vapour book, released from the
+  Meshy `reliquary.glb` in his hand with the same flies pouring out; flies to its point at `SWARM_SPEED`, never
+  homing, hovers `SWARM_T`, recast = sent on (`Plague.can_cast` redirects and refuses the cast, so no cost),
+  `SWARM_REDIRECTS`; bites, Harried, reveal; a puppet's dodge roll through it scatters it, and so does any area blow:
+  `Fx.ring` and `Fx.holy_slam` call `Fx.area_hit`, which tells `Fx.area_listeners` (the swarm listens while out,
+  `Plague._area_hit`; his own bloom pulse and vat are deliberately not area blows); its cooldown is set when it goes
+  home, `_swarm_end`), Corpse Bloom (R, `bloom`: `PlagueBloomFx`, the Meshy `bloom.glb` growing out of the ground
+  over the Meshy root-mat painting `bloom_roots_*` inside the painted ring of roots `bloom_ring_*` at the reach's
+  edge, the same ring drawing in from the edge on its own clock (`_root_shader`); the pulse is the spore simulation
+  (`PlagueSmoke.spore_card` and `puffs`); pulse every `BLOOM_EVERY` after a `BLOOM_WARN` ring; a foe that moved
+  less than `BLOOM_STILL` since the ring began is snared and caught by the Meshy `roots.glb` bursting up round it,
+  `lash`; planted with the Meshy `syringe.glb`), Fog of the Forgotten (F, `fog`: `PlagueFogFx`, the Meshy
+  `censer.glb` held (`HELD` "censer") then dashed down to lie smoking at its heart, three layers of puffs each
+  playing the fog simulation once, a ground layer from the Meshy painting `fog_base_albedo` (blurred); the hop is
   `Hero.shove`; `Plague.speed_mult` in `Hero._process`; a puppet inside is hidden from Battlegrounds enemies beyond
-  `FOG_SEE` (`hidden_from`, `_update_visibility`), faded for co-op partners; striking from it sends `reveal`),
-  Transfusion (G, `transfusion`: `PlagueTransfusionFx`, the Meshy `apparatus.glb` on his back, a hose drawn each
-  frame, a shimmer shell; `Hero.take_hit` calls `Plague.absorb`; cleanse is `PvpStatus.cleanse`; the soaked damage goes
-  to `heal_pool` capped at `TRANS_CAP`; any cast ends it early), The Last Experiment (V, `experiment`:
-  `PlagueExperimentFx`, the Meshy `vat.glb` and the Meshy-rigged `homunculus.glb` (clips Zombie_Scream,
-  Slow_Orc_Walk, Idle, Fall_Dead_from_Abdominal_Injury, hips pinned with `ForestCamp._pin_root`); stage 2 is the attack
-  `pd_crank` with `atk_skill` "crank" whose impact bursts it; a stun, another move or walking `>1.5 m` bursts it
-  small, `EXP_R_SMALL`). **Blight** (`_add_blight`): one stack per different skill, Fever at 3 (`PlagueFever`: pips,
-  sweat, halo; PvP: `blight` status with k 3 = heals x0.6 on Transfusion and reveal). Old binds of
+  `FOG_SEE` (`hidden_from`; `_update_visibility` sets `Hero.fog_hidden`, which `_puppet_process` applies to the whole
+  puppet with its name tag and map dot, and `Battlegrounds.sync_proxies` copies to its stand-in's `Enemy.pvp_hidden`
+  so it can't be clicked or auto-targeted, `Game.pick_enemy`/`Hero._assist_pick`), faded for co-op partners;
+  striking from it sends `reveal`), Transfusion (G, `transfusion`: `PlagueTransfusionFx`, the Meshy `apparatus.glb`
+  on his back, a hose drawn each frame, a shell of glass whose veins are the Meshy painting `glass_veins_mask`
+  (triplanar, mirror-tiled, filling with serum), steam and the heal column from the vapour book; `Hero.take_hit` calls
+  `Plague.absorb`; cleanse is `PvpStatus.cleanse`; the soaked damage goes to `heal_pool` capped at `TRANS_CAP`; any
+  cast ends it early), The Last Experiment (V, `experiment`: `PlagueExperimentFx`, the Meshy `vat.glb` and the
+  Meshy-rigged `homunculus.glb` (clips Zombie_Scream, Slow_Orc_Walk, Idle, Fall_Dead_from_Abdominal_Injury, hips
+  pinned with `ForestCamp._pin_root`); the burst flings the vat's own glass (`vat_shards.glb`,
+  `tools/blender/plague/vat_glass.py`: its cylinder cut into 24 curved panes) and plays the FLIP wave
+  (`assets/textures/fx/vat_wave.png`, `KIND=wave splash_flipbook.py`, on a card drawn over what's near, `_wave`); each
+  spew is the Meshy bile-spray painting `bile_fan_*` (keyed by colour, `ground_decal.py ... chroma`) on a
+  terrain-following fan (`_ground_fan`, `_fan_shader`: a ghost filling from the mouth with a bright front over
+  `SPEW_WARN`, then the wet splatter drying); stage 2 is the attack `pd_crank` with `atk_skill` "crank" whose impact
+  bursts it; a stun, another move or walking `>1.5 m` bursts it small, `EXP_R_SMALL`). **Blight** (`_add_blight`):
+  one stack per different skill, Fever at 3 (`PlagueFever`: the Meshy blight mark `blight_mark.png` wheeling over the
+  head per stack; Fever sweats the vapour book, glows, a halo; PvP: `blight` status with k 3 = heals x0.6 on
+  Transfusion and reveal). **Smoke** (`scripts/plague_smoke.gd`, `PlagueSmoke`): the kit's Mantaflow flipbooks,
+  `VAPOUR` (`vapour.png`, looping), `FOG` (`fog_puff.png`, 8 x 4) and `SPORE` (`spore_burst.png`, 6 x 4), made by
+  `tools/blender/plague/smoke_flipbook.py -- spore|fog outdir` and packed by `tools/flipbook_pack.py -- frames out.png
+  --cols N --cell px --level L` (crops round the frame's centre to what the smoke fills, brightens it to a base the
+  game tints); `puffs` (one-shot burst, `flat` = rolled out level), `vapour` (continuous, `path`/`disc` for another
+  book over an area), `spore_card` (the whole sim once on a camera-facing card); materials are shared. Old binds of
   volatile/trap/epidemic become swarm/bloom/experiment (`Plague.OLD_IDS`, `PlagueSkills.migrate_binds`); talent ids
   kept, their effects now name the new skills. The Meshy sources (concept images, task ids) are listed in the plan
   doc. **PvP statuses** (`scripts/pvp_status.gd`): a skill calls `PvpStatus.send(game, enemy, kind, secs, k)`; a
@@ -307,9 +331,11 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   (head and hat above the collar, gloves by the hand bones, boots below the coat's hem): only the dark, grey, non-metal
   leather is tinted. His cane: `Data.BASES` `physician_cane`/`crow_cane` (kind `"cane"`,
   `"cls": "plague"`, `Plague.cane_model`: the Meshy crow-skull cane `assets/models/plague/cane.glb`, `prep_cane.py`).
-  Props: `assets/models/plague/` vial and vial_shards (Blender, code), bloom, apparatus, vat (Meshy image-to-3D,
-  `tools/blender/prep_prop.py`), homunculus (Meshy rig + animate, `tools/blender/prep_npc.py`); flask, volatile and
-  trap are the retired skills' props, kept unused. Talents: Toxicology,
+  Props: `assets/models/plague/` vial and vial_shards (Blender, code), vat_shards (Blender, `vat_glass.py`), bloom,
+  apparatus, vat, fly, reliquary, roots, syringe, censer (Meshy image-to-3D, `tools/blender/prep_prop.py`; the
+  censer's ash slab cut off first with `tools/blender/trim_below.py`), homunculus (Meshy rig + animate,
+  `tools/blender/prep_npc.py`); flask, volatile and trap are the retired skills' props, kept unused. Ground paintings
+  in `assets/textures/plague/` (`*_albedo` + `*_normal` from `ground_decal.py`, mipmapped). Talents: Toxicology,
   Vermin and Rot, The Experiment (icons `p_*.png`, `plague_tree*.png`; the painted icons predate the new kit). Tests: `tools/plague_test.gd` (`--fixed-fps 60`),
   `tools/plague_mp_test.gd` (host + join); screenshots `tools/plague_shots.gd` (`--fixed-fps 10`); the six skills in a
   row for video: `tools/plague_kit_clip.gd -- outdir [skills|all] [game|close] [quality]` (xvfb, `--fixed-fps 30`).

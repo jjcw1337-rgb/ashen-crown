@@ -79,10 +79,11 @@ const ACTS := {
 	"pd_inspect": {"clip": "inspect", "frac": true, "keys": [[0.0, 0.1], [1.0, 0.75]]},
 }
 ## what his right hand holds while a move plays (from these points until the release; "vial" = Pestilence Vial's glass
-## vial with its sloshing liquid, PlagueVialFx.vial, in the next recipe's colour; "reliquary" = Swarmcraft's brass box,
-## "seed" = Corpse Bloom's seed-syringe), and the moves that need both hands (the cane is put away while they play)
+## vial with its sloshing liquid, PlagueVialFx.vial, in the next recipe's colour; "reliquary" = Swarmcraft's Meshy
+## reliquary, "seed" = Corpse Bloom's Meshy seed-syringe, "censer" = Fog of the Forgotten's Meshy censer until he dashes
+## it down), and the moves that need both hands (the cane is put away while they play)
 const HELD := {"pd_flask": [0.08, 0.55, "vial"], "pd_inspect": [0.1, 0.9, "vial"], "pd_swarm": [0.05, 0.85, "reliquary"],
-	"pd_bloom": [0.1, 0.6, "seed"]}
+	"pd_bloom": [0.1, 0.6, "seed"], "pd_fog": [0.04, 0.45, "censer"]}
 const HANDS_FREE := ["pd_flask", "pd_swarm", "pd_bloom", "pd_fog", "pd_transfuse", "pd_slam", "pd_crank", "pd_inspect"]
 var held: Node3D = null
 var held_path := ""
@@ -551,13 +552,13 @@ func _damage(e: Enemy, amount: float, from: Vector3, knock: bool) -> void:
 	e.soft_hit = false
 	e.dmg_tint = Color(0, 0, 0, 0)
 
-## A poisoned foe trails a thin green haze (their own child: it goes when they do).
+## A poisoned foe trails a thin green haze (the Mantaflow vapour; their own child: it goes when they do).
 func _tint(e: Enemy, on: bool) -> void:
 	if not is_instance_valid(e):
 		return
 	var f := e.get_node_or_null("pd_poison")
 	if on and f == null and not e.dead:
-		var a := Fx.aura(e, TOXIC, 10, 0.35, 0.06, 0.9, 0.5, 0.25 * e.radius + 0.15, 50.0, Vector3(0, e.height * 0.9, 0))
+		var a := PlagueSmoke.vapour(e, Color(TOXIC.r, TOXIC.g, TOXIC.b, 0.4), 7, 0.55, 1.1, 0.45, 0.25 * e.radius + 0.12, Vector3(0, e.height * 0.9, 0), TOXIC * 0.15)
 		a.name = "pd_poison"
 	elif not on and f != null:
 		f.queue_free()
@@ -629,6 +630,12 @@ func _swarm_start(from: Vector3, to: Vector3) -> void:
 	node.setup(w, from, to, SWARM_R * (1.0 + h.talent("swarm_size") / 100.0), _quality())
 	swarm = {"node": node, "pos": from, "to": to, "t": SWARM_T + h.talent("swarm_dur"), "left": SWARM_REDIRECTS + int(h.talent("swarm_redirect")),
 		"tick": 0.0, "scatter": 0.0, "r": SWARM_R * (1.0 + h.talent("swarm_size") / 100.0)}
+	# any area blow (a nova, a slam, a shockwave ring) that reaches it scatters it: on the caster's game, which plays
+	# every partner's and foe's effects too
+	if not ghost():
+		var cb := Callable(self, "_area_hit")
+		if not Fx.area_listeners.has(cb):
+			Fx.area_listeners.append(cb)
 	Sfx.play_at("drip", from, -4.0, 0.6)
 
 func _swarm_redirect(at: Vector3) -> void:
@@ -689,6 +696,17 @@ func _update_swarm(delta: float) -> void:
 		_add_blight(e, "swarm")
 		PlagueSwarmFx.bite(node, e)
 
+## An area blow somewhere (Fx.area_hit): if it reaches the swarm, the swarm scatters for SWARM_SCATTER.
+func _area_hit(pos: Vector3, radius: float) -> void:
+	if ghost() or swarm.is_empty() or float(swarm["scatter"]) > 0.0:
+		return
+	var sp: Vector3 = swarm["pos"]
+	if Vector2(sp.x - pos.x, sp.z - pos.z).length() > radius + float(swarm["r"]) * 0.6:
+		return
+	swarm["scatter"] = SWARM_SCATTER
+	PlagueSwarmFx.scatter(swarm["node"])
+	_send("swarm_scatter")
+
 ## The swarm goes home: back into the reliquary (or just thins away for a partner), and Swarmcraft's cooldown starts.
 func _swarm_end(send: bool) -> void:
 	if swarm.is_empty():
@@ -697,6 +715,7 @@ func _swarm_end(send: bool) -> void:
 	if is_instance_valid(node):
 		PlagueSwarmFx.go_home(node, h)
 	swarm = {}
+	Fx.area_listeners.erase(Callable(self, "_area_hit"))
 	if send:
 		_send("swarm_end")
 	if not ghost() and h.cds.has("swarm"):
@@ -838,7 +857,7 @@ func _update_visibility() -> void:
 			hide = hidden_from(h.game.hero)
 		else:
 			fade = true
-	h.rig.visible = not hide
+	h.fog_hidden = hide       # Hero._puppet_process: the whole puppet (body, name tag, minimap dot) goes
 	if h.rig.has_meta("fog_fade") != fade:
 		if fade:
 			h.rig.set_meta("fog_fade", true)
@@ -1085,6 +1104,9 @@ func _hands() -> void:
 				"seed":
 					held = PlagueBloomFx.seed_syringe()
 					held.position = Vector3(0, -0.05, -0.02)
+				"censer":
+					held = PlagueFogFx.censer_in_hand()
+					held.position = Vector3(0, -0.05, -0.02)
 			if held != null:
 				(J["at_hand_r"] as Node3D).add_child(held)
 	if held_slosh != null and held != null and is_instance_valid(held):
@@ -1123,6 +1145,7 @@ func clear() -> void:
 	if not swarm.is_empty() and is_instance_valid(swarm["node"]):
 		(swarm["node"] as Node3D).queue_free()
 	swarm = {}
+	Fx.area_listeners.erase(Callable(self, "_area_hit"))
 	if not trans.is_empty() and is_instance_valid(trans.get("node")):
 		PlagueTransfusionFx.finish(trans["node"], false)
 	trans = {}
@@ -1138,8 +1161,7 @@ func clear() -> void:
 			PlagueFever.stacks(e, 0)
 	blight.clear()
 	reveal_t = 0.0
-	if h.rig != null and is_instance_valid(h.rig):
-		h.rig.visible = true
+	h.fog_hidden = false
 
 ## The effect budget by the graphics preset (0 Low .. 3 Ultra; the browser build is capped at Medium).
 func _quality() -> int:

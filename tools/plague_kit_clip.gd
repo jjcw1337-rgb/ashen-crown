@@ -53,6 +53,7 @@ func _run() -> void:
 		get_root().msaa_3d = Viewport.MSAA_DISABLED
 	var cam := Camera3D.new()
 	cam.fov = 40
+	cam.near = 3.5      # the close view sits ~9.5 m off: cut the bushes between it and him
 	get_root().add_child(cam)
 	var seg := FileAccess.open(out + "/segments.txt", FileAccess.WRITE)
 	var fno := 0

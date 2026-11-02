@@ -6,11 +6,15 @@ extends RefCounted
 ## brass frame with two glass serum tanks, copper tubes, gauges, a harness and a needle on a hose), strapped to his
 ## back for the length of the skill: it unfolds onto him, the hose runs to his left forearm (`Hose`, redrawn each
 ## frame between the two bones), and as blows land the serum in the tanks rises and glows (`soak`: the tank lights
-## and the shimmer round him grow with how full they are). A glassy shimmer (`SHELL_SHADER`: fresnel with flowing
-## veins, sparking where hits land) shows everyone he is soaking damage. The end vents steam, drains the tubes and
-## folds the apparatus away (`finish`); a healing pulse rises through him when what he soaked comes back.
+## and the shimmer round him grow with how full they are). A glassy shimmer shows everyone he is soaking damage
+## (`SHELL_SHADER`: a fresnel rim of glass over the Meshy painting of red veins in cracked glass, glass_veins, laid
+## round him triplanar and mirror-tiled, crawling slowly upward, the veins filling with serum and pulsing as the tanks
+## fill; sparks where hits land). Steam is the Mantaflow vapour (PlagueSmoke): a hiss of it as the needle goes in, a
+## vent of it at the end as the tubes drain and the apparatus folds away (`finish`), and a column of it, red, rising
+## through him as what he soaked comes back as healing.
 
 const APP_GLB := "res://assets/models/plague/apparatus.glb"
+const VEINS_TEX := "res://assets/textures/plague/glass_veins_mask.png"
 const SERUM := Color(0.9, 0.18, 0.14)
 
 static func attach(h: Hero) -> Node3D:
@@ -62,6 +66,7 @@ static func attach(h: Hero) -> Node3D:
 	mat.shader = _shell_shader()
 	mat.set_shader_parameter("fill", 0.0)
 	mat.set_shader_parameter("amt", 0.0)
+	mat.set_shader_parameter("veins", PlagueVialFx._tex(VEINS_TEX))
 	shell.material_override = mat
 	shell.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	h.add_child(shell)
@@ -69,9 +74,10 @@ static func attach(h: Hero) -> Node3D:
 	root.set_meta("shell", shell)
 	var tw2 := shell.create_tween()
 	tw2.tween_method(func(v: float) -> void: mat.set_shader_parameter("amt", v), 0.0, 1.0, 0.25)
-	# the needle going in: a hiss and a burst of steam at his arm
+	# the needle going in: a hiss and a burst of steam at his arm, and off the apparatus's valves
 	if J.has("at_hand_l"):
-		Fx.burst(h.game.world.fx_root, (J["at_hand_l"] as Node3D).global_position, Color(0.9, 0.9, 0.95, 0.6), 12, 1.2, 0.12, 0.5, false, 0.5)
+		PlagueSmoke.puffs(h.game.world.fx_root, (J["at_hand_l"] as Node3D).global_position, PlagueSmoke.VAPOUR, Color(0.92, 0.92, 0.96, 0.55), 6, 0.45, 0.8, 1.2, 0.05, 0.6, 60.0)
+	PlagueSmoke.puffs(h.game.world.fx_root, torso.global_position + Vector3(0, 0.2, 0), PlagueSmoke.VAPOUR, Color(0.92, 0.92, 0.96, 0.45), 5, 0.6, 0.9, 1.0, 0.1, 0.8, 40.0)
 	return root
 
 ## The tanks fill (0..1 of what they can hold): the serum glows brighter, the shimmer thickens, a spark of glass.
@@ -92,8 +98,12 @@ static func finish(root: Node, healed: bool) -> void:
 	if root == null or not is_instance_valid(root):
 		return
 	var r := root as Node3D
-	Fx.burst(r, r.global_position + Vector3(0, 0.3, 0), Color(0.92, 0.92, 0.95, 0.55), 26, 1.8, 0.3, 1.0, false, 0.8, 50.0)
+	# the vent: the apparatus blows off its steam as it folds away (in the world, so it outlives the apparatus)
+	var vroot := _world_fx(r)
+	PlagueSmoke.puffs(vroot, r.global_position + Vector3(0, 0.3, 0), PlagueSmoke.VAPOUR, Color(0.92, 0.92, 0.96, 0.6), 12, 0.9, 1.3, 2.2, 0.2, 0.9, 55.0)
 	if healed:
+		# what he soaked comes back: a column of red vapour rising through him, sparks, a flash
+		PlagueSmoke.puffs(vroot, r.global_position + Vector3(0, -0.7, 0), PlagueSmoke.VAPOUR, Color(1.0, 0.42, 0.36, 0.55), 12, 0.75, 1.1, 1.0, 0.3, 2.6, 18.0)
 		Fx.burst(r, r.global_position + Vector3(0, -0.6, 0), SERUM.lightened(0.3), 24, 1.2, 0.06, 0.9, true, 2.5)
 		Fx.flash(r, r.global_position, SERUM, 2.5, 0.4, 2.5)
 	var app: Node3D = r.get_node_or_null("app")
@@ -116,6 +126,15 @@ static func finish(root: Node, healed: bool) -> void:
 			tw2.tween_method(func(v: float) -> void: mat.set_shader_parameter("amt", v), 1.0, 0.0, 0.35)
 			tw2.tween_callback((shell as Node).queue_free)
 	Fx._free_later(r, 0.8)
+
+## The world's effects root above a node on the hero (or the node itself).
+static func _world_fx(n: Node) -> Node3D:
+	var p := n
+	while p != null and not (p is Hero):
+		p = p.get_parent()
+	if p != null and (p as Hero).game != null and (p as Hero).game.world != null:
+		return (p as Hero).game.world.fx_root
+	return n as Node3D
 
 ## The hose from the apparatus to his forearm: a sagging tube redrawn every frame, serum pulsing along it.
 class Hose extends MeshInstance3D:
@@ -167,22 +186,31 @@ shader_type spatial;
 render_mode unshaded, blend_mix, cull_back, depth_draw_never, shadows_disabled;
 uniform float fill = 0.0;
 uniform float amt = 1.0;
+uniform sampler2D veins : filter_linear_mipmap;
 varying vec3 lp;
-void vertex() { lp = VERTEX; }
-float hash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
-float noise(vec3 p) {
-	vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 * f);
-	return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x), mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
-		mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x), mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z);
+varying vec3 ln;
+void vertex() { lp = VERTEX; ln = NORMAL; }
+// mirrored tiling (a triangle wave), so the painting's edges meet themselves without a seam
+vec2 mirror(vec2 uv) { return 1.0 - abs(1.0 - mod(uv, 2.0)); }
+// the painting laid round him from three sides, blended by which way the skin faces
+vec4 tri(vec3 p, vec3 n) {
+	vec3 w = pow(abs(n), vec3(4.0));
+	w /= (w.x + w.y + w.z + 0.0001);
+	return texture(veins, mirror(p.zy)) * w.x + texture(veins, mirror(p.xz)) * w.y + texture(veins, mirror(p.xy)) * w.z;
 }
 void fragment() {
-	// only the rim of a glassy skin shows, veined, reddening as the tanks fill: the middle stays clear
-	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 4.0);
-	float veins = pow(1.0 - abs(noise(lp * 5.0 + vec3(0.0, -TIME * 1.5, 0.0)) * 2.0 - 1.0), 8.0);
+	// the rim of a glassy skin, and the painted veins in it crawling slowly upward, filling with serum (pulsing)
+	// as the tanks fill: the middle stays nearly clear so he reads through it
+	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
+	vec4 v = tri(lp * 0.8 + vec3(0.0, -TIME * 0.1, 0.0), ln);
+	float vein = v.r;
+	float crack = v.g;
+	float pulse = 0.65 + 0.35 * sin(TIME * 5.0 - lp.y * 5.0);
 	vec3 glass = vec3(0.85, 0.9, 0.95);
-	vec3 serum = vec3(1.0, 0.35, 0.28);
-	ALBEDO = mix(glass, serum, 0.35 + 0.65 * fill);
-	ALPHA = clamp(rim * (0.35 + veins * 0.5 + fill * 0.3), 0.0, 0.7) * amt;
+	vec3 serum = vec3(1.0, 0.26, 0.2);
+	ALBEDO = mix(glass, serum, clamp(0.25 + vein * (0.5 + 0.5 * fill) * pulse + fill * 0.3, 0.0, 1.0));
+	float a = rim * (0.22 + 0.25 * fill) + vein * (0.12 + 0.5 * fill) * pulse * (0.35 + 0.65 * rim) + crack * rim * 0.3;
+	ALPHA = clamp(a, 0.0, 0.8) * amt;
 }
 """
 	return _ssh

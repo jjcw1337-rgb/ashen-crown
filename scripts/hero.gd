@@ -91,6 +91,7 @@ var block_flash := 0.0
 ## the Hollow Sloth's blows (sloth.gd): its sweep throws you back, its slam stuns
 var shove := Vector3.ZERO
 var daze_t := 0.0
+var fog_hidden := false     # a puppet hidden from this game by the Plague Doctor's Fog (Plague._update_visibility)
 var pvs := {}               # statuses another player put on him in PvP (PvpStatus: slow, snare, harried, reveal, blight)
 var chill_t := 0.0          # Rimeclaw's cold: slowed while it lasts
 var hit_t := 0.0
@@ -860,6 +861,8 @@ func _assist_pick(axis: Vector3, dist: float, cone: float):
 	var best = null
 	var bs := INF
 	for e in game.enemies_near(global_position, dist):
+		if e.pvp_hidden:
+			continue     # a player hidden in the Plague Doctor's fog: no aim help onto him
 		var d: Vector3 = e.global_position - global_position
 		d.y = 0
 		var dl := d.length()
@@ -1779,7 +1782,7 @@ func net_zone_reset() -> void:
 	beasts.clear()
 
 func _puppet_process(delta: float) -> void:
-	visible = net_has
+	visible = net_has and not fog_hidden
 	if not net_has:
 		return
 	var k := clampf(delta * 14.0, 0.0, 1.0)

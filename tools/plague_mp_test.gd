@@ -1,11 +1,16 @@
 extends SceneTree
-## Co-op for the Plague Doctor: what one player throws, sets and raises, the other sees on their puppet of him
-## (Net.hero_fx, Plague.remote), and the puppet's copy never deals damage. Both players are plague doctors here:
-## the host casts first, then the partner (whose events go through the host).
+## Co-op for the Plague Doctor: everything one player throws, releases, plants, drops, straps on and raises, the
+## other sees on their puppet of him (Net.hero_fx, Plague.remote), and the puppet's copy never deals anything (no
+## poison, no Blight). Both players are plague doctors here: the host casts his six skills first, then the partner
+## (whose events go through the host).
 ## Run one copy with "-- host" and another with "-- join". Prints [PM] lines.
 var g
 var role := "host"
 var fails := 0
+
+## each skill, where it goes (metres ahead; transfusion is on himself) and how long to let it play out
+const CASTS := [["toxic", 6.0, 1.8], ["swarm", 6.0, 1.6], ["bloom", 4.0, 1.6], ["fog", 3.0, 1.6],
+	["transfusion", 0.0, 1.2], ["experiment", 4.0, 4.8]]
 
 func _initialize():
 	role = "join" if OS.get_cmdline_user_args().has("join") else "host"
@@ -55,7 +60,7 @@ func _run() -> void:
 	g.playing = false
 	await secs(4.0)
 	var me = g.hero
-	me.level = 12
+	me.level = 24
 	me.recalc()
 	var other = g.net.puppets()[0] if g.net.puppets().size() > 0 else null
 	check(other != null and other.is_plague() and other.rig.has_meta("plague"), "the other player shows as a plague doctor on his own body")
@@ -64,7 +69,7 @@ func _run() -> void:
 	if role == "host":
 		await _cast_all(me)
 	else:
-		await secs(9.0)
+		await secs(_cast_time() + 4.0)
 		await _cast_all(me)
 	while not watched:
 		await wait(5)
@@ -72,33 +77,70 @@ func _run() -> void:
 	print("[PM] %s done, %d failed" % [role, fails])
 	quit(1 if fails > 0 else 0)
 
-## Casts Toxic Flask, Pestilent Trap and The Last Epidemic a few metres off, with waits between.
+func _cast_time() -> float:
+	var t := 0.0
+	for c in CASTS:
+		t += float(c[2])
+	return t
+
+## Casts the six a few metres off, with waits between, and checks each went up on his own screen.
 func _cast_all(h) -> void:
-	var fwd: Vector3 = -h.rig.global_transform.basis.z
-	var mine := {"toxic": false, "trap": false, "epidemic": false}
-	for id in ["toxic", "trap", "epidemic"]:
+	var mine := {}
+	for c in CASTS:
+		var id: String = c[0]
+		var fwd: Vector3 = -h.rig.global_transform.basis.z
 		h.cds[id] = 0.0
 		h.mana = h.max_mana
-		var at: Vector3 = h.global_position + fwd * (6.0 if id == "toxic" else 3.0)
-		h.use_skill(id, at)
-		await secs(2.6)
-		mine[id] = h.pd != null and not (h.pd.clouds if id == "toxic" else (h.pd.traps if id == "trap" else [h.pd.dome] if not h.pd.dome.is_empty() else [])).is_empty()
-	check(mine.values().all(func(v) -> bool: return v), "my own cloud, trap and dome went up %s" % [mine])
+		var at: Vector3 = h.global_position + fwd * float(c[1])
+		h.use_skill(id, h.skill_aim(id, at))
+		var t0 := Time.get_ticks_msec()
+		var up := false
+		while Time.get_ticks_msec() - t0 < int(float(c[2]) * 1000.0):
+			up = up or _has(h.pd, id)
+			await wait(2)
+		mine[id] = up
+	check(mine.values().all(func(v) -> bool: return v), "my own six went up %s" % [mine])
 
-## Watches the other player's puppet for the same: a cloud, a trap and the dome, shown only.
+## What one of his skills leaves in his `Plague` while it plays.
+func _has(pd, id: String) -> bool:
+	if pd == null:
+		return false
+	match id:
+		"toxic":
+			return not pd.vial_flights.is_empty() or not pd.clouds.is_empty()
+		"swarm":
+			return not pd.swarm.is_empty()
+		"bloom":
+			return not pd.blooms.is_empty()
+		"fog":
+			return not pd.fogs.is_empty()
+		"transfusion":
+			return not pd.trans.is_empty()
+		"experiment":
+			return not pd.lab.is_empty()
+	return false
+
+## Watches the other player's puppet for the same six, shown only.
 var watched := false
 func _watch(other) -> void:
-	var saw := {"cloud": false, "trap": false, "dome": false}
+	var saw := {}
+	for c in CASTS:
+		saw[c[0]] = false
+	var burst := false
 	var t0 := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t0 < 24000 and not (saw["cloud"] and saw["trap"] and saw["dome"]):
+	var limit := int((_cast_time() * 2.0 + 20.0) * 1000.0)
+	while Time.get_ticks_msec() - t0 < limit and not (saw.values().all(func(v) -> bool: return v) and burst):
 		if other != null and other.pd != null:
-			saw["cloud"] = saw["cloud"] or not other.pd.clouds.is_empty()
-			saw["trap"] = saw["trap"] or not other.pd.traps.is_empty()
-			saw["dome"] = saw["dome"] or not other.pd.dome.is_empty()
-		await wait(5)
-	check(saw["cloud"], "I see the other's Toxic Flask cloud")
-	check(saw["trap"], "I see the other's Pestilent Trap")
-	check(saw["dome"], "I see the other's Last Epidemic dome")
+			for id in saw.keys():
+				saw[id] = saw[id] or _has(other.pd, id)
+			burst = burst or (not other.pd.lab.is_empty() and int(other.pd.lab.get("stage", 0)) == 2)
+		await wait(3)
+	check(saw["toxic"], "I see the other's Pestilence Vial")
+	check(saw["swarm"], "I see the other's swarm")
+	check(saw["bloom"], "I see the other's Corpse Bloom")
+	check(saw["fog"], "I see the other's fog")
+	check(saw["transfusion"], "I see the other's Transfusion apparatus")
+	check(saw["experiment"] and burst, "I see the other's Last Experiment, vat and burst")
 	var pd = other.pd if other != null else null
-	check(pd != null and pd.ghost() and pd.poison.is_empty() and pd.infected.is_empty(), "the copy on my screen only shows: it poisons and infects nothing (pd %s, ghost %s, poisoned %d, infected %d)" % [pd != null, pd.ghost() if pd else false, pd.poison.size() if pd else -1, pd.infected.size() if pd else -1])
+	check(pd != null and pd.ghost() and pd.poison.is_empty() and pd.blight.is_empty(), "the copy on my screen only shows: it poisons and blights nothing (pd %s, ghost %s, poisoned %d, blighted %d)" % [pd != null, pd.ghost() if pd else false, pd.poison.size() if pd else -1, pd.blight.size() if pd else -1])
 	watched = true
