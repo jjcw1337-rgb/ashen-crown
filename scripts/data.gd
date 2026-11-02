@@ -521,13 +521,9 @@ const SKILLS := [
 		"style": "cast", "use": 0.7, "speed": "cast", "base": [8, 14], "per_lvl": 2.8, "type": "lightning",
 		"area": {"shape": "single", "r": 10.0}, "tags": ["spell", "lightning", "chain"],
 		"desc": "Lightning leaps from your hand into the nearest foe ahead and on to three more nearby, striking each."},
-	{"id": "flame_wave", "cls": "any", "name": "Flame Wave", "key": "", "lvl": 1, "mana": 9, "cd": 0.0, "aim": "facing", "range": 9.0,
-		"style": "thrust", "use": 1.1, "speed": "cast", "base": [14, 22], "per_lvl": 4.0, "type": "fire",
-		"area": {"shape": "line", "r": 9.0, "w": 2.2}, "dot": {"kind": "burn", "pct": 40, "secs": 3.0}, "tags": ["spell", "fire", "line"],
-		"desc": "A wall of fire rolls out ahead of you, 9 metres: fire damage to everything it passes, and they burn on."},
 	{"id": "war_cry", "cls": "any", "name": "War Cry", "key": "", "lvl": 1, "mana": 12, "cd": 8.0, "aim": "self",
 		"style": "cast", "use": 0.8, "speed": "attack", "tags": ["warcry", "buff"],
-		"desc": "A roar that turns the monsters within 8 metres on you, and fills you with fury: +40% damage for 6 seconds."},
+		"desc": "A roar that rallies your team: you and every ally within 8 metres deal +40% damage for 6 seconds, and the monsters near turn on you. In the Battlegrounds it is yours alone (no teams there yet)."},
 ]
 
 ## Playable classes. Base attributes at level 1.

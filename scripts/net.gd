@@ -838,6 +838,20 @@ func sv_pvp_hit(target_pid: int, amount: float, from: Vector3) -> void:
 	if server and game.bg != null:
 		game.bg.pvp_hit(multiplayer.get_remote_sender_id(), target_pid, amount, from)
 
+## War Cry (SharedSkills): the battle buff for the teammates near the one who roared. Co-op partners only: the
+## Battlegrounds has no teams yet (everyone there is an enemy), so nobody else gets it there.
+func send_team_buff(secs: float, at: Vector3) -> void:
+	if active and not players.is_empty() and not game.bg_mode:
+		rpc("cl_team_buff", secs, at)
+
+@rpc("any_peer", "call_remote", "reliable")
+func cl_team_buff(secs: float, at: Vector3) -> void:
+	if server or game.bg_mode or game.world == null or game.hero == null or game.hero.dead or loading:
+		return
+	if game.hero.global_position.distance_to(at) <= SharedSkills.CRY_R:
+		game.hero.buff_t = maxf(game.hero.buff_t, secs)
+		game.ui.message("%s's War Cry: +40%% damage" % _name_of(multiplayer.get_remote_sender_id()), Color(1.0, 0.5, 0.35))
+
 ## The local hero fell in a raid: everything they had, for the server to drop where they fell.
 func send_bg_died(items: Array) -> void:
 	rpc_id(1, "sv_bg_died", items)

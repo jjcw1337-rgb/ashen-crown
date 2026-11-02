@@ -4906,12 +4906,6 @@ class SkillGlyph extends Control:
 				var lc := Color(0.75, 0.7, 1.0) if not dim else Color(0.4, 0.4, 0.45)
 				draw_polyline(PackedVector2Array([c + Vector2(-15, -12), c + Vector2(-4, -3), c + Vector2(-8, 2), c + Vector2(4, 9), c + Vector2(0, 12), c + Vector2(15, 15)]), lc, 3.0, true)
 				draw_circle(c + Vector2(15, 15), 2.5, lc.lightened(0.4))
-			"flame_wave":
-				var fc := Color(1.0, 0.5, 0.15) if not dim else Color(0.45, 0.38, 0.33)
-				for k in 4:
-					var x := -13.0 + k * 8.5
-					var hgt := 8.0 + k * 3.0
-					draw_colored_polygon(PackedVector2Array([c + Vector2(x - 4, 12), c + Vector2(x, 12 - hgt * 1.6), c + Vector2(x + 4, 12)]), fc.lerp(Color(1, 0.85, 0.4), k / 4.0))
 			"war_cry":
 				var rc := Color(1.0, 0.3, 0.2) if not dim else Color(0.45, 0.35, 0.33)
 				draw_circle(c + Vector2(-4, 0), 8, rc.darkened(0.3))

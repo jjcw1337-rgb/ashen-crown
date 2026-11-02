@@ -1118,9 +1118,9 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 - **Shared skills** (jj, 2026-11-01: class-free skills, every class can use them): `Data.SKILLS` entries with
   `"cls": "any"` (`Data.shared_skills()`; `skills_known` = the class's own + shared + Attack/Block), played by
   `SharedSkills` (`scripts/shared_skills.gd`, the ClassSkills interface; `ClassSkills.of("any")`) and drawn by `SharedFx`
-  (`SkillFx.play` hands them there whatever the class). The first five: Earthshatter (heavy slam, wedge), Frost Nova
-  (ring of ice, chills), Arc (chain lightning), Flame Wave (a line of FireFx fire, burns), War Cry (the battle buff and a
-  taunt, 8 s cooldown). They play on shared styles every body has (`slam`, `cast`, `thrust`), so they set `"use"` but
+  (`SkillFx.play` hands them there whatever the class). The four: Earthshatter (heavy slam, wedge), Frost Nova
+  (ring of ice, chills), Arc (chain lightning), War Cry (the team skill: the battle buff for him and every co-op
+  partner within 8 m, `Net.send_team_buff`, and a taunt; 8 s cooldown; Flame Wave was cut, jj 2026-11-01). They play on shared styles every body has (`slam`, `cast`, `thrust`), so they set `"use"` but
   never `"hit"` (a shared style's impact is every user's, monsters' too; `skill_spec_test` refuses it). A new shared
   skill: its entry, its id in `SharedSkills.IDS` and its `impact` case (usually `SkillSpec.targets` + `strike`), its
   `SharedFx.play` case and a `SkillGlyph` icon; `skill_spec_test` casts each on the knight and the Wraith.

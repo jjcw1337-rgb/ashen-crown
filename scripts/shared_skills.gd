@@ -8,10 +8,11 @@ extends RefCounted
 ##  - Earthshatter: a heavy slam; the ground cracks in a wide wedge ahead (the wedge is shown through the wind-up).
 ##  - Frost Nova: a ring of ice bursts out round him, chilling what it hits.
 ##  - Arc: lightning into the nearest foe ahead that jumps on to ARC_JUMPS more.
-##  - Flame Wave: a wall of fire rolls ahead along a line and leaves what it passes burning.
-##  - War Cry (the one with a cooldown, utility): the battle buff for CRY_BUFF s and the monsters near turn on him.
+##  - War Cry (the team skill, utility: a cooldown): the battle buff for CRY_BUFF s for him and every teammate within
+##    CRY_R (co-op partners, through Net.send_team_buff: each partner's own game buffs its hero if it stands near; the
+##    Battlegrounds has no teams yet, so there it is his alone), and the monsters near turn on him.
 
-const IDS := ["earthshatter", "frost_nova", "arc", "flame_wave", "war_cry"]
+const IDS := ["earthshatter", "frost_nova", "arc", "war_cry"]
 const ARC_JUMPS := 3
 const ARC_JUMP_R := 5.0
 const CRY_R := 8.0
@@ -58,6 +59,7 @@ static func impact(h: Hero) -> bool:
 			h.fx(id, "impact", {"ps": pts, "d": h.aim_dir()})
 		"war_cry":
 			h.buff_t = maxf(h.buff_t, CRY_BUFF)
+			h.game.net.send_team_buff(CRY_BUFF, h.global_position)
 			for e in h.game.enemies_near(h.global_position, CRY_R):
 				if not e.dead and not e.remote:
 					e.taunt = h
