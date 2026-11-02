@@ -82,6 +82,8 @@ static func _load(spec: Dictionary) -> void:
 	await g.load_zone(0, spec["zone"], "start")
 	st["load_ms"] = Time.get_ticks_msec() - t0
 	_stage()
+	_hide_parts()
+	_no_shadows()
 	st["phase"] = "settle"
 	RenderingServer.viewport_set_measure_render_time(g.get_viewport().get_viewport_rid(), true)
 
@@ -96,6 +98,8 @@ static func step(delta: float) -> void:
 			st["phase"] = "measure"
 			st["t"] = 0.0
 			st["t0"] = Time.get_ticks_usec()
+			if OS.get_cmdline_user_args().has("--census"):
+				_census()
 		return
 	(st["frames"] as Array).append(delta * 1000.0)
 	st["proc"] = float(st["proc"]) + Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
@@ -232,6 +236,143 @@ static func _run_road(delta: float, speed: float) -> void:
 	if d2.length() > 0.001:
 		h.rig.rotation.y = atan2(-d2.x, -d2.y)
 	h.global_position = np
+
+# ---------------------------------------------------------------- the census (a profiling aid)
+
+## --census: what the frame is made of, written next to out.json as .census.txt: every visible mesh (grouped by
+## its mesh) with its triangles, instances, shadow casting and visibility range, and every light with shadows.
+## --hide a,b,c: hides every node whose name contains one of them (to measure what a part costs).
+static func _census() -> void:
+	var rows := {}
+	var lights: Array = []
+	var cam: Camera3D = g.get_viewport().get_camera_3d()
+	var cp: Vector3 = cam.global_position if cam else Vector3.ZERO
+	var stack: Array = [g.get_tree().root]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		for c in n.get_children():
+			stack.append(c)
+		if n is Light3D:
+			var l: Light3D = n
+			if l.is_visible_in_tree():
+				lights.append("%s %s shadow=%s range=%.1f dist=%.1f path=%s" % [l.get_class(), l.name, l.shadow_enabled,
+					l.get("omni_range") if l is OmniLight3D else (l.get("spot_range") if l is SpotLight3D else 0.0),
+					l.global_position.distance_to(cp), str(l.get_path()).right(90)])
+			continue
+		if not (n is GeometryInstance3D) or not (n as Node3D).is_visible_in_tree():
+			continue
+		var mesh: Mesh = null
+		var inst := 1
+		if n is MeshInstance3D:
+			mesh = (n as MeshInstance3D).mesh
+		elif n is MultiMeshInstance3D and (n as MultiMeshInstance3D).multimesh:
+			var mm: MultiMesh = (n as MultiMeshInstance3D).multimesh
+			mesh = mm.mesh
+			inst = mm.visible_instance_count if mm.visible_instance_count >= 0 else mm.instance_count
+		elif n is GPUParticles3D:
+			mesh = (n as GPUParticles3D).draw_pass_1
+			inst = (n as GPUParticles3D).amount
+		elif n is CPUParticles3D:
+			mesh = (n as CPUParticles3D).mesh
+			inst = (n as CPUParticles3D).amount
+		if mesh == null:
+			continue
+		var tris := 0
+		if mesh is PrimitiveMesh:
+			var arr: Array = (mesh as PrimitiveMesh).get_mesh_arrays()
+			tris = ((arr[Mesh.ARRAY_INDEX] as PackedInt32Array).size() if arr[Mesh.ARRAY_INDEX] != null else (arr[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()) / 3
+		if mesh is ArrayMesh:
+			for si in mesh.get_surface_count():
+				var il: int = (mesh as ArrayMesh).surface_get_array_index_len(si)
+				tris += (il if il > 0 else (mesh as ArrayMesh).surface_get_array_len(si)) / 3
+		var gi: GeometryInstance3D = n
+		var key := "%s|%s" % [mesh.resource_path if mesh.resource_path != "" else str(n.name).rstrip("0123456789@"), str(tris)]
+		var r: Dictionary = rows.get(key, {"tris": tris, "n": 0, "inst": 0, "shadow": 0, "vis": 0, "near": 1e9, "path": str(n.get_path()).right(100)})
+		r["n"] = int(r["n"]) + 1
+		r["inst"] = int(r["inst"]) + inst
+		if gi.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
+			r["shadow"] = int(r["shadow"]) + inst
+		if gi.visibility_range_end > 0.0:
+			r["vis"] = int(r["vis"]) + 1
+		r["near"] = minf(float(r["near"]), (gi as Node3D).global_position.distance_to(cp))
+		rows[key] = r
+	var keys: Array = rows.keys()
+	keys.sort_custom(func(a, b): return int(rows[a]["tris"]) * int(rows[a]["inst"]) > int(rows[b]["tris"]) * int(rows[b]["inst"]))
+	var lines: PackedStringArray = ["total_tris instances shadow_inst vis_ranged nearest_m tris_each  key  path"]
+	var total := 0
+	for k in keys:
+		var r: Dictionary = rows[k]
+		total += int(r["tris"]) * int(r["inst"])
+	lines.append("TOTAL %d" % total)
+	for k in keys.slice(0, 120):
+		var r: Dictionary = rows[k]
+		lines.append("%10d %6d %6d %4d %6.1f %8d  %s  %s" % [int(r["tris"]) * int(r["inst"]), int(r["inst"]), int(r["shadow"]), int(r["vis"]), float(r["near"]), int(r["tris"]), k, r["path"]])
+	lines.append("")
+	for v in g.get_tree().root.find_children("*", "SubViewport", true, false):
+		var sv: SubViewport = v
+		lines.append("VIEWPORT %s size=%s update=%d own_world=%s world=%s disable3d=%s" % [str(sv.get_path()).right(110), str(sv.size), sv.render_target_update_mode, sv.own_world_3d, str(sv.find_world_3d()), sv.disable_3d])
+	lines.append("MAIN world=%s" % str(g.get_viewport().find_world_3d()))
+	lines.append("LIGHTS %d" % lights.size())
+	lines.append_array(PackedStringArray(lights))
+	var f := FileAccess.open(out.get_basename() + ".census.txt", FileAccess.WRITE)
+	if f:
+		f.store_string("\n".join(lines))
+		f.close()
+
+static func _hide_parts() -> void:
+	var a := OS.get_cmdline_user_args()
+	var i := a.find("--hide")
+	if i < 0 or i + 1 >= a.size():
+		return
+	var pats := a[i + 1].split(",")
+	if pats[0].contains("#"):      # Props#10-20: children 10..20 of the world's node named Props
+		var pr := pats[0].split("#")
+		var par: Node = g.world.find_child(pr[0], true, false)
+		var ab := pr[1].split("-")
+		var kids := par.get_children()
+		for ci in range(int(ab[0]), mini(int(ab[1]) + 1, kids.size())):
+			if kids[ci] is Node3D:
+				(kids[ci] as Node3D).visible = false
+				var ms: Array = []
+				for m in kids[ci].find_children("*", "GeometryInstance3D", true, false):
+					var mm = m.get("mesh") if m is MeshInstance3D else (m.multimesh.mesh if m is MultiMeshInstance3D and m.multimesh else null)
+					ms.append("%s:%s:%s:%s" % [m.name, m.get_class(), mm.resource_path.get_file() if mm else "", (m.multimesh.instance_count if m is MultiMeshInstance3D and m.multimesh else 1)])
+				if kids[ci] is MultiMeshInstance3D and kids[ci].multimesh and kids[ci].multimesh.mesh:
+					var mmm: Mesh = kids[ci].multimesh.mesh
+					var info: Array = []
+					for si in mmm.get_surface_count():
+						info.append([mmm.surface_get_array_index_len(si) if mmm is ArrayMesh else -1, mmm.surface_get_array_len(si) if mmm is ArrayMesh else -1])
+					ms.append("MM %s %s inst=%d vis=%d surf=%s lods=%s cs=%d aabb=%s mat=%s" % [mmm.get_class(), mmm.resource_path, kids[ci].multimesh.instance_count, kids[ci].multimesh.visible_instance_count, str(info), str(RenderingServer.mesh_get_surface_count(mmm.get_rid())), kids[ci].cast_shadow, str(kids[ci].get_aabb().size), str(kids[ci].material_override)])
+				print("[KPI]  ", ci, " ", kids[ci].name, " ", kids[ci].get_class(), " ", (kids[ci] as Node3D).global_position, " ", ms.slice(0, 6))
+		print("[KPI] hid ", pr, " of ", kids.size())
+		return
+	var stack: Array = [g.world]
+	var hidden := 0
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		var hit := false
+		for p in pats:
+			if p != "" and str(n.name).contains(p):
+				hit = true
+		if hit and n is Node3D:
+			(n as Node3D).visible = false
+			hidden += 1
+			continue
+		for c in n.get_children():
+			stack.append(c)
+	print("[KPI] hid ", hidden, " nodes matching ", pats)
+
+## --noshadow omni,dir: (profiling) turns those lights' shadows off.
+static func _no_shadows() -> void:
+	var a := OS.get_cmdline_user_args()
+	var i := a.find("--noshadow")
+	if i < 0 or i + 1 >= a.size():
+		return
+	var kinds := a[i + 1]
+	for l in g.find_children("*", "Light3D", true, false):
+		if (l is DirectionalLight3D and kinds.contains("dir")) or (not (l is DirectionalLight3D) and kinds.contains("omni")):
+			(l as Light3D).shadow_enabled = false
+			(l as Light3D).remove_from_group(Grade.SHADOW_GROUP)
 
 # ---------------------------------------------------------------- the numbers
 
