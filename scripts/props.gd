@@ -17,6 +17,168 @@ const IRON := Color(0.22, 0.22, 0.23)
 
 static var _rocks := {}
 
+## Meshy rocks (`assets/models/rocks/`, visual overhaul 2026-11-02: a photographic Meshy concept each, image-to-3D,
+## re-baked onto clean UVs at 512 px by `tools/blender/camp/rebake_prop.py`): three granite boulders for every zone's
+## scattered rocks (`World._rock`) and the old roads' kerbstone (`World.kerb`). Each entry is
+## [mesh, material, height, fix]: `fix` seats the model (sunk a little into the ground; the kerb turned to lie along
+## local z). [] without the file, and the procedural `rock_mesh` stays.
+const ROCK_DIR := "res://assets/models/rocks/%s.glb"
+const BOULDERS := ["boulder_a", "boulder_b", "boulder_c"]
+static var _meshy_rocks := {}
+
+static func meshy_rock(kind: String) -> Array:
+	if _meshy_rocks.has(kind):
+		return _meshy_rocks[kind]
+	var out := []
+	var e := _meshy_model(ROCK_DIR % kind)
+	if not e.is_empty():
+		var aabb: AABB = e[2]
+		var h := aabb.size.y
+		var fix := Transform3D(Basis(), Vector3(0, -0.12 * h - aabb.position.y, 0))
+		if kind == "kerb":
+			# modelled lying along x: turned onto z (the road's way) and half sunk, as kerbs are set
+			fix = Transform3D(Basis(Vector3.UP, PI * 0.5), Vector3(0, -0.45 * h - aabb.position.y, 0))
+		out = [e[0], e[1], h, fix * (e[3] as Transform3D)]
+	_meshy_rocks[kind] = out
+	return out
+
+## A re-baked Meshy model's first mesh: [mesh, material (MESHY_PROP_SHADER on its textures: snow and A3's soot like
+## the procedural props), its bounds after the node's own transform, that transform], or [] without the file.
+static func _meshy_model(path: String) -> Array:
+	if not ResourceLoader.exists(path):
+		return []
+	var out := []
+	var inst: Node = (load(path) as PackedScene).instantiate()
+	var mi := _first_mesh(inst)
+	if mi != null and mi.mesh != null:
+		var local := Transform3D.IDENTITY
+		var n: Node = mi
+		while n != inst and n is Node3D:
+			local = (n as Node3D).transform * local
+			n = n.get_parent()
+		var src := mi.get_active_material(0) as BaseMaterial3D
+		var m := ShaderMaterial.new()
+		m.shader = Mats.custom("meshy_prop", MESHY_PROP_SHADER)
+		if src != null:
+			m.set_shader_parameter("albedo_tex", src.albedo_texture)
+			if src.normal_texture != null:
+				m.set_shader_parameter("normal_tex", src.normal_texture)
+				m.set_shader_parameter("use_normal", true)
+			if src.roughness_texture != null:
+				m.set_shader_parameter("rough_tex", src.roughness_texture)
+				m.set_shader_parameter("use_rough", true)
+		out = [mi.mesh, m, local * mi.mesh.get_aabb(), local]
+	inst.free()
+	return out
+
+## Meshy clutter (`assets/models/props/`: crate, barrel, logs; visual overhaul 2026-11-02, made like the rocks): the
+## crate, barrel and log pile below are these models when the files exist, at the old props' sizes and footprints.
+const CLUTTER_DIR := "res://assets/models/props/%s.glb"
+static var _clutter := {}
+
+## Puts the clutter model `kind` under root, scaled evenly so that its `axis` ("w": the wider of x and z, "h": height,
+## "z": its length along z, turned to lie that way if it was modelled along x) is `size` metres, standing on root's
+## origin. False without the file (the caller builds the procedural prop).
+static func _clutter_into(root: Node3D, kind: String, size: float, axis: String) -> bool:
+	if not _clutter.has(kind):
+		_clutter[kind] = _meshy_model(CLUTTER_DIR % kind)
+	var e: Array = _clutter[kind]
+	if e.is_empty():
+		return false
+	var aabb: AABB = e[2]
+	var turn := Basis()
+	var ext := aabb.size
+	if axis == "z" and aabb.size.x > aabb.size.z:
+		turn = Basis(Vector3.UP, PI * 0.5)
+		ext = Vector3(aabb.size.z, aabb.size.y, aabb.size.x)
+	var k := size / maxf(0.001, {"w": maxf(ext.x, ext.z), "h": ext.y, "z": ext.z}[axis])
+	var c := aabb.get_center()
+	var mi := MeshInstance3D.new()
+	mi.name = kind
+	mi.mesh = e[0]
+	mi.material_override = e[1]
+	mi.transform = Transform3D(turn.scaled(Vector3.ONE * k), Vector3.ZERO) * Transform3D(Basis(), Vector3(-c.x, -aabb.position.y, -c.z)) * (e[3] as Transform3D)
+	root.add_child(mi)
+	return true
+
+static func _first_mesh(n: Node) -> MeshInstance3D:
+	if n is MeshInstance3D:
+		return n
+	for c in n.get_children():
+		var r := _first_mesh(c)
+		if r != null:
+			return r
+	return null
+
+## The boulder for a procedural variant (0-7), or [] without the Meshy rocks.
+static func boulder(v: int) -> Array:
+	var have := []
+	for k in BOULDERS:
+		var r := meshy_rock(k)
+		if not r.is_empty():
+			have.append(r)
+	return have[v % have.size()] if not have.is_empty() else []
+
+## Instance transforms for a Meshy rock. `World._rock`'s transforms scale along the world's axes after the turn
+## (Basis.scaled: harmless on the round procedural rock, a shear on a real one), so each is rebuilt as the same turn
+## with the same sizes along the rock's own axes, then seated by the rock's `fix`.
+static func seat(xforms: Array, fix: Transform3D, world_scaled := true) -> Array:
+	var out := []
+	for t in xforms:
+		var x: Transform3D = t
+		if world_scaled:
+			var c0 := x.basis.x
+			var c2 := x.basis.z
+			var yaw := atan2(c2.x, c0.x)
+			var sx := Vector2(c0.x, c2.x).length()
+			var sz := Vector2(c0.z, c2.z).length()
+			x.basis = Basis(Vector3.UP, yaw) * Basis.from_scale(Vector3(sx, x.basis.y.length(), sz))
+		out.append(x * fix)
+	return out
+
+const MESHY_PROP_SHADER := """
+shader_type spatial;
+render_mode diffuse_burley, specular_schlick_ggx;
+uniform sampler2D albedo_tex : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D rough_tex : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform bool use_normal = false;
+uniform bool use_rough = false;
+uniform vec3 tint : source_color = vec3(1.0);
+global uniform float snow_amt;
+global uniform float ash_amt;
+varying vec3 wn;
+varying vec3 wp;
+varying float tone;
+float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float vn(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), u.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), u.x), u.y); }
+void vertex(){
+	wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	tone = h21(MODEL_MATRIX[3].xz * 0.37 + 1.3);
+}
+void fragment(){
+	vec3 c = texture(albedo_tex, UV).rgb * tint;
+	c *= 0.86 + tone * 0.26;                        // no two rocks quite the same shade
+	float r = use_rough ? texture(rough_tex, UV).g : 0.85;
+	if (snow_amt > 0.0) {
+		float s = snow_amt * smoothstep(0.35, 0.8, wn.y + (vn(wp.xz * 3.0) - 0.5) * 0.4);
+		c = mix(c, vec3(0.85, 0.88, 0.92), s);
+		r = mix(r, 0.6, s);
+	}
+	if (ash_amt > 0.0) {
+		c *= mix(vec3(1.0), vec3(0.34, 0.32, 0.31), ash_amt * 0.85);       // soot
+		float a = ash_amt * smoothstep(0.5, 0.85, wn.y + (vn(wp.xz * 4.0) - 0.5) * 0.3) * 0.7;
+		c = mix(c, vec3(0.36, 0.34, 0.32), a);                               // grey ash settled on top
+	}
+	ALBEDO = c;
+	ROUGHNESS = r;
+	SPECULAR = 0.35;
+	if (use_normal) { NORMAL_MAP = texture(normal_tex, UV).rgb; }
+}
+"""
+
 ## Wood and hide can burn through in A3 (holes with glowing edges).
 static func _breakable(m: ShaderMaterial) -> Material:
 	m.set_shader_parameter("breakable", 1.0)
@@ -345,6 +507,8 @@ static func cauldron(parent: Node3D, pos: Vector3, liquid: Color) -> Node3D:
 
 static func crate(parent: Node3D, pos: Vector3, s: float = 1.0) -> Node3D:
 	var root := Models.N(parent, "crate", pos, Vector3(0, randf_range(-20, 20), 0))
+	if _clutter_into(root, "crate", 0.74 * s, "w"):
+		return footprint(root, Vector2(0.37, 0.37) * s)
 	var wm := wood()
 	var dm := wood_dark()
 	Models.P(root, Geo.box(0.7 * s, 0.6 * s, 0.7 * s), wm, Vector3(0, 0.3 * s, 0))
@@ -357,6 +521,8 @@ static func crate(parent: Node3D, pos: Vector3, s: float = 1.0) -> Node3D:
 
 static func barrel(parent: Node3D, pos: Vector3) -> Node3D:
 	var root := Models.N(parent, "barrel", pos, Vector3(0, randf() * 360.0, 0))
+	if _clutter_into(root, "barrel", 0.86, "h"):
+		return footprint(root, 0.34)
 	Models.P(root, Geo.lathe([Vector2(0.0, 0.0), Vector2(0.27, 0.0), Vector2(0.33, 0.4), Vector2(0.27, 0.8), Vector2(0.0, 0.8)], 16, "barrel"), wood())
 	for y in [0.1, 0.4, 0.7]:
 		Models.P(root, Geo.torus(0.28 + (0.04 if y == 0.4 else 0.0), 0.31 + (0.04 if y == 0.4 else 0.0), 18, 4), iron(), Vector3(0, y, 0))
@@ -364,6 +530,8 @@ static func barrel(parent: Node3D, pos: Vector3) -> Node3D:
 
 static func log_pile(parent: Node3D, pos: Vector3) -> Node3D:
 	var root := Models.N(parent, "logs", pos, Vector3(0, randf() * 360.0, 0))
+	if _clutter_into(root, "logs", 1.1, "z"):
+		return footprint(root, Vector2(0.42, 0.7))
 	var wm := wood()
 	for i in 6:
 		var row := 0 if i < 3 else (1 if i < 5 else 2)

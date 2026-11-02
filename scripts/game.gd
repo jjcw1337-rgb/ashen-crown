@@ -1167,6 +1167,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	world.oak_forest = difficulty == 0     # Act I: the moor is an oak forest (A2/A3 keep their own look)
 	world.fort = difficulty == 0           # Act I: the lair is Grubb's goblin fort, outdoors (A3 keeps the crypt)
 	world.run = difficulty                 # A2 builds its own road and Aurelia
+	world.living_grass = difficulty <= 1   # the living grass in Act I and A2 (A3's scorched ground keeps the old)
 	add_child(world)
 	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair", "coast"].find(zone) * 7 + (zone.hash() % 997 if zone.begins_with("isle_") else 0))
 	_restore_harvest()
@@ -1346,7 +1347,7 @@ func _sea_chart() -> void:
 func _grass_zone(zone: String) -> void:
 	if grass_field == null or world == null:
 		return
-	grass_field.enabled = world.oak_forest and not indoor() and not net.server
+	grass_field.enabled = (world.oak_forest or world.living_grass) and not indoor() and not net.server
 	var w := "default"
 	if indoor():
 		w = "calm"

@@ -7,6 +7,7 @@ const MARGIN := 30.0
 
 var act := 0
 var oak_forest := false     # Act I moor: oak groves and an oak forest beyond the edges
+var living_grass := false   # the living 3D grass (Grass): Act I, and A2's road and city in its own sun-dried colours
 var kind := "town"
 var level := 1
 var rng := RandomNumberGenerator.new()
@@ -68,6 +69,7 @@ var items_root: Node3D
 var fx_root: Node3D
 var stone_xf: Array = []
 var rock_xf := {}               # variant -> Array of transforms
+var kerb_xf: Array = []         # the Meshy kerbstones along the old roads (World.kerb)
 var theme := {}
 ## Tools can stage their own zone: kind -> Callable(world) built instead of the game's (tools/fire_range.gd's test range).
 static var custom_zones := {}
@@ -596,12 +598,13 @@ func terrain_patch(r: Rect2, step: float, tcol: Dictionary, nm := "Terrain", flo
 ## Grass, wildflowers and ferns use their own random numbers so a denser graphics setting
 ## never shifts anything gameplay-related (co-op players can use different settings).
 func _scatter_grass(count: int, colors: Dictionary, height: float, outside := true) -> void:
-	# Act I: the living 3D grass (grass.gd): species and biomes, wind and touch
-	if oak_forest:
+	# Act I and A2: the living 3D grass (grass.gd): species and biomes, wind and touch (A2 in the zone's own colours;
+	# it was the old blade clumps there: 15 M triangles on the Imperial Road)
+	if oak_forest or living_grass:
 		var a := bounds.grow(MARGIN * 0.6 if outside else 0.0)
 		_grass_dry.seed = int(bounds.size.x * 31.0) + count
 		_grass_dry.frequency = 0.035
-		Grass.scatter(props_root, a, self, Grass.ACT1, detail, int(bounds.size.x * 1000.0) + count)
+		Grass.scatter(props_root, a, self, Grass.ACT1 if oak_forest else colors, detail, int(bounds.size.x * 1000.0) + count)
 		return
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(bounds.size.x * 1000.0) + count
@@ -727,6 +730,8 @@ func grass_biome(x: float, z: float) -> Dictionary:
 		dry = maxf(dry, 1.0 - smoothstep(SlothLair.CLEAR, SlothLair.CLEAR * 2.2, d))
 	if fort:
 		dry = maxf(dry, 0.35)
+	if run == 1:
+		dry = maxf(dry, 0.45)      # A2's summer: the meadows sun-dried
 	var trod := 0.6 if kind == "town" else (0.3 if fort else 0.0)
 	return {"meadow": maxf(0.1, 1.0 - verge * 0.8 - wood * 0.75 - dry * 0.7 - trod * 0.6), "verge": verge, "woodland": wood, "dry": dry, "trampled": trod}
 
@@ -874,7 +879,27 @@ func _flush_stones(mat: Material) -> void:
 				part.append(stone_xf[i])
 			mm_chunked(Props.rock_mesh(40 + v, 0.22), part, true, 32.0, 0.0, mat)
 	for v in rock_xf.keys():
-		mm_chunked(Props.rock_mesh(v, 0.38), rock_xf[v], true, 32.0, 0.0, Props.stone())
+		var b := Props.boulder(int(v))
+		if b.is_empty():
+			mm_chunked(Props.rock_mesh(v, 0.38), rock_xf[v], true, 32.0, 0.0, Props.stone())
+		else:
+			mm_chunked(b[0], Props.seat(rock_xf[v], b[3]), true, 32.0, 0.0, b[1])
+	if not kerb_xf.is_empty():
+		var k := Props.meshy_rock("kerb")
+		mm_chunked(k[0], Props.seat(kerb_xf, k[3], false), true, 32.0, 0.0, k[1])
+
+## A kerbstone beside an old road (the moor's kingsroad, the Imperial Road), at kp, turned to yaw, kh/kl its height and
+## length factors: the Meshy kerb laid along the road (`kerb_xf`), or without it the procedural rock squashed into one
+## (`rock_xf` variant v, `kw` wide: the old look). The callers draw v, yaw, kh and kl from the zone's rng in the same
+## order as before, so nothing after them moves.
+func kerb(v: int, kp: Vector2, yaw: float, kh: float, kl: float, kw: float) -> void:
+	var y := height_at(kp.x, kp.y) + 0.02
+	if not Props.meshy_rock("kerb").is_empty():
+		kerb_xf.append(Transform3D(Basis(Vector3.UP, yaw) * Basis.from_scale(Vector3(1.0, kh / 0.32, kl)), Vector3(kp.x, y, kp.y)))
+		return
+	if not rock_xf.has(v):
+		rock_xf[v] = []
+	rock_xf[v].append(Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3(kw, kh, kl)), Vector3(kp.x, y, kp.y)))
 
 func _rock(p: Vector3, s: float, collide := true) -> void:
 	var v := rng.randi_range(0, 7)
@@ -1287,10 +1312,9 @@ func _lay_road(style: int) -> void:
 						if rng.randf() < 0.55:
 							var kp: Vector2 = c + n * s * 2.95
 							var v := rng.randi_range(0, 7)
-							if not rock_xf.has(v):
-								rock_xf[v] = []
-							var kb := Basis(Vector3.UP, atan2(dir.x, dir.y) + rng.randf_range(-0.15, 0.15)).scaled(Vector3(0.5, rng.randf_range(0.25, 0.4), rng.randf_range(0.8, 1.1)))
-							rock_xf[v].append(Transform3D(kb, Vector3(kp.x, height_at(kp.x, kp.y) + 0.02, kp.y)))
+							var yaw := atan2(dir.x, dir.y) + rng.randf_range(-0.15, 0.15)
+							var kh := rng.randf_range(0.25, 0.4)
+							kerb(v, kp, yaw, kh, rng.randf_range(0.8, 1.1), 0.5)
 					u += 1.1
 				dist += seg
 				if dist > next_mile and i > 2 and i < path_poly.size() - 4:
