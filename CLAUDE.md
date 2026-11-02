@@ -1094,10 +1094,18 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   the damage per second of a quick skill); the dodge roll cancels a swing that hasn't landed (`Dodge.start`). Cooldowns
   are for utility (movement, warcries, summons, ultimates). Attacks follow the same rules in every scenario: the
   story game, co-op and the Battlegrounds (no crypt-only attack timing, damage or cooldowns). The model: Molten
-  Fists (2 s, the blow at 1.5 s, 300% weapon damage). **The format** (`scripts/skill_spec.gd`, `SkillSpec`; every
+  Fists (2 s, the blow at 1.5 s, 300% weapon damage). **Every skill follows it** (2026-11-01): Holy Nova, Phantom
+  Assault, Cataclysm Slam, Brimstone Hurl, Blight Bolt, Frost Volley and Volatile Mixture lost their cooldowns for a
+  `"use"` time and a `"power"` (a multiplier on all the skill deals, `Hero.dmg_mult`) set from measurements so their
+  damage per second matches their class's quick skill (heavy ones 1.2x, area ones 0.9x): `tools/skill_dps.gd -- out.json
+  [level] [class ...]` casts every skill at a durable dummy and reports damage per cast and per second of its cycle. A
+  cooldown is allowed only with a utility tag (`"tags"`: movement, warcry, buff, cc, trap, summon, command, ultimate,
+  sustain; `skill_spec_test` refuses one without): the charges and steps, the cries and buffs, the holds and tethers
+  (Soul Siphon, Haunting Grasp, Hellgrip, Soul Shackles, Storm Snare: no lock-spam in PvP), traps, Spirit Beast, the
+  ultimates. **The format** (`scripts/skill_spec.gd`, `SkillSpec`; every
   field is optional and listed at its top): a skill's entry in `Data.SKILLS` carries `"style"` (its animation),
   `"use"` (seconds, final: no `ATTACK_PACE` on top), `"hit"` (0..1 of use: the impact frame, `Anim.impact_at` reads it),
-  `"speed"` ("attack"/"cast"), `"lock"`, `"cancel"` (false: no dodging out), `"dmg"` (% weapon) or `"base"` +
+  `"speed"` ("attack"/"cast"), `"lock"`, `"cancel"` (false: no dodging out), `"power"` (all its damage x), `"dmg"` (% weapon) or `"base"` +
   `"per_lvl"` (a spell's own), `"type"`, `"knock"`, `"area"` (wedge / circle / line / single), `"dot"` (burn / chill /
   slow, one per source, refreshed) and `"tags"`. The timing applies by itself (`Hero.use_skill` ->
   `SkillSpec.apply_timing`, `Dodge.can_roll`); the damage when the skill's impact code calls `SkillSpec.targets(h, id)`

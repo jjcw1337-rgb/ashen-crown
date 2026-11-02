@@ -1320,7 +1320,9 @@ func show_damage(dmg: float) -> void:
 	dmg_stack.add(dmg)
 
 func dmg_mult(id: String) -> float:
-	return (1.0 + (talent("dmg") + talent("dmg:" + id)) / 100.0) * pace_mult(id)
+	# "power" in the skill's data scales all it deals (its weapon part, its own part, its burns): tuning a skill the
+	# Path of Exile way (its use time sets its rate) without touching its code
+	return (1.0 + (talent("dmg") + talent("dmg:" + id)) / 100.0) * pace_mult(id) * float(Data.skill_def(id).get("power", 1.0))
 
 ## Attacks are slower by the class's pace (Data.ATTACK_PACE); the ones whose rate the swing itself sets
 ## (the basic attack, skills with no cooldown) hit that much harder, so their damage per second stays put.

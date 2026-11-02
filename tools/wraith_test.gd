@@ -117,9 +117,10 @@ func _run() -> void:
 	h.mana = h.max_mana
 	l0 = lives(en)
 	ok = h.use_skill("phantom", h.skill_aim("phantom", en[1].global_position))
-	await wait(0.45)
+	var pdur: float = h.atk_dur      # (its use time is its data's; the phantoms split off 0.3 into it)
+	await wait(pdur * 0.3 + 0.15)
 	check(ok and h.fxs.has("phantoms") and (h.fxs["phantoms"] as Array).size() == 3, "three phantoms split off him")
-	await wait(1.4)
+	await wait(pdur * 0.7 + 1.0)
 	check(lives(en) < l0 and not h.fxs.has("phantoms"), "they tore through the pack (%d) and are gone" % int(l0 - lives(en)))
 	# --- Eternal Night: four stages, the dark, the scream's fear, the ticks, the collapse, the buff
 	en = await pack(h, 3, h.global_position + Vector3(0, 0, -3.0))

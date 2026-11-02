@@ -114,7 +114,7 @@ func _run() -> void:
 	for k in h.cds.keys():
 		h.cds[k] = 0.0
 	check(h.use_skill("cslam", h.global_position + Vector3(0, 0, -2.0)), "Cataclysm Slam cast")
-	await wait(1.0)
+	await wait(h.atk_dur * Anim.impact_at("cslam") + 0.3)      # (its use time is its data's: the blow lands then)
 	check(lives(en) < l0 - 1.0, "the slam hurt the near pack (%d)" % int(l0 - lives(en)))
 	check(h.dm.has("fissures") or lives(far_en) < f0 - 1.0, "fissures race out")
 	await wait(2.0)
