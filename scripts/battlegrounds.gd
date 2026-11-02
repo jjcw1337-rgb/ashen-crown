@@ -22,15 +22,27 @@ extends Node
 ## all drops where they fell for anyone to take (Net.sv_bg_died). A save written while in a raid says so ("in_raid");
 ## a character whose game closed in a raid has died there the next time the game starts (Game._bury_lost_raiders).
 ## Tests: tools/bg_test.gd (server + client), tools/bg_pvp_test.gd (server + two players); servers started with
-## `--raid-fast` run the round ten times faster.
+## `--raid-fast` run the round eight times faster.
+##
+## Several raids at once (Blaine, 2026-11-01): RAIDS servers, one per raid (`--server --raid N`: port RAID_PORTS[N]),
+## each running its rounds on the wall clock, raid N's starting N/RAIDS of a PERIOD after raid 0's (`phase`), so a
+## fresh raid opens about every 7 minutes and one is always open; a restarted server falls back into its slot. A client
+## needs no lobby server for it: `schedule()` works out every raid's state from the clock, `best_raid()` picks the one
+## with the most time left that still takes joiners (or the next to open, whose server then counts the wait down).
+## LIVE_RAIDS is how many are deployed (the rest wait for their servers and ports).
 
 const ZONE := "bg"
 const TITLE := "The Hollow Crypt"
 const MAX_PLAYERS := 16
-const RAID_SECS := 900.0        # a round: 15 minutes
+const RAID_SECS := 1200.0       # a round: 20 minutes
 const PORTALS_AT := 300.0       # the Extraction Portals open 5 minutes in
-const JOIN_CLOSE := 600.0       # nobody new joins in the last 5 minutes
+const JOIN_CLOSE := 900.0       # nobody new joins in the last 5 minutes
 const RESET_SECS := 20.0        # after the collapse, before the next round
+const RAIDS := 3                # raids run side by side, staggered on the clock (phase)
+const RAID_PORTS := [24567, 24571, 24572]
+const LIVE_RAIDS := 1           # deployed so far (staging: one until its servers and firewall ports are up)
+const PERIOD := RAID_SECS + RESET_SECS
+const RAID_NAMES := ["I", "II", "III"]
 const EXTRACT_R := 4.0          # how close to an open portal the server accepts an extraction
 const OPEN_PORTALS := 2         # of the four candidate portals
 const PVP_MULT := 0.6           # a player's damage to another player
@@ -45,6 +57,7 @@ static var fast := false        # tests: `--raid-fast` = rounds in seconds
 
 var game: Node
 var raid_t := 0.0               # server: seconds into the round
+var raid_idx := -1              # server: which of the RAIDS this is (`--raid N`), -1 = a lone raid on its own time
 var state := "raid"             # server: "raid" | "reset"
 var reset_t := 0.0
 var open: Array = []            # server: indices (in the portal list) of the open Extraction Portals
@@ -58,7 +71,33 @@ var nk_key := ""
 var _sync_t := 0.0
 
 static func secs(n: float) -> float:
-	return n / 6.0 if fast else n       # (tests: a 150 s round, portals at 50 s, joining closes at 100 s)
+	return n / 8.0 if fast else n       # (tests: a 150 s round, portals at 37.5 s, joining closes at 112.5 s)
+
+## Seconds into raid i's current period (0 .. PERIOD: a round, then its reset) at unix time `now`.
+static func phase(i: int, now: float) -> float:
+	return fposmod(now - float(i) * PERIOD / float(RAIDS), PERIOD)
+
+## Every live raid's state now, from the clock: {i, name, port, state ("raid"/"reset"), left (s of the round),
+## open (takes joiners), opens_in (s until it next does)}.
+static func schedule(now: float, n := LIVE_RAIDS) -> Array:
+	var out := []
+	for i in mini(n, RAIDS):
+		var ph := phase(i, now)
+		var raid := ph < RAID_SECS
+		out.append({"i": i, "name": RAID_NAMES[i], "port": RAID_PORTS[i], "state": "raid" if raid else "reset",
+			"left": maxf(0.0, RAID_SECS - ph), "open": raid and ph < JOIN_CLOSE,
+			"opens_in": 0.0 if raid and ph < JOIN_CLOSE else PERIOD - ph})
+	return out
+
+## The raid to send a player to: the open one with the most time left, else the one that opens soonest.
+static func best_raid(now: float, n := LIVE_RAIDS) -> Dictionary:
+	var best := {}
+	for r in schedule(now, n):
+		if r["open"] and (best.is_empty() or not best["open"] or float(r["left"]) > float(best["left"])):
+			best = r
+		elif not r["open"] and (best.is_empty() or (not best["open"] and float(r["opens_in"]) < float(best["opens_in"]))):
+			best = r
+	return best
 
 # ---------------------------------------------------------------- the map
 ## The Hollow Crypt. Cell (i, j) of a 4x4 grid; the middle 2x2 is the great hall.
@@ -188,8 +227,14 @@ static func portal_list(w: World) -> Array:
 # ---------------------------------------------------------------- server
 ## Game._ready with `-- --server [--port N]`: the dedicated server. No title, no player of its own.
 static func start_server(g: Node, port: int) -> void:
-	fast = OS.get_cmdline_user_args().has("--raid-fast")
+	var args := OS.get_cmdline_user_args()
+	fast = args.has("--raid-fast")
 	var bg := Battlegrounds.new()
+	var ri := args.find("--raid")
+	if ri >= 0 and ri + 1 < args.size():
+		bg.raid_idx = clampi(int(args[ri + 1]), 0, RAIDS - 1)
+		if not args.has("--port"):
+			port = RAID_PORTS[bg.raid_idx]
 	bg.name = "Battlegrounds"
 	bg.game = g
 	g.add_child(bg)
@@ -209,12 +254,26 @@ static func start_server(g: Node, port: int) -> void:
 	# hosting first, so the zone's monsters are registered with the network as they spawn
 	var err: int = g.net.host(port, MAX_PLAYERS)
 	await bg.new_round()
+	if bg.aligned():
+		print("[BG] raid %s on the clock: %d s into its period" % [RAID_NAMES[bg.raid_idx], int(bg.raid_t)])
 	print("[BG] accounts through ", "Nakama at " + nurl if bg.nk != null else "the per-PC id (no Nakama)")
 	print("[BG] server ", "up on UDP port %d" % port if err == OK else "FAILED to open port %d (error %d)" % [port, err])
+
+## A raid of several (`--raid N`, real time): its rounds follow the clock.
+func aligned() -> bool:
+	return raid_idx >= 0 and not fast
 
 func new_round() -> void:
 	state = "raid"
 	raid_t = 0.0
+	if aligned():
+		var ph := phase(raid_idx, Time.get_unix_time_from_system())
+		if ph >= RAID_SECS:
+			# (started in its reset: wait it out, then the round begins on time)
+			state = "reset"
+			reset_t = PERIOD - ph
+		else:
+			raid_t = ph
 	open = []
 	carried.clear()
 	died_items.clear()
@@ -288,6 +347,10 @@ func _process(delta: float) -> void:
 				game.net.hit_player(pid, 999999.0, h.global_position, "collapse", "phys")
 		state = "reset"
 		reset_t = secs(RESET_SECS)
+		if aligned():
+			reset_t = PERIOD - phase(raid_idx, Time.get_unix_time_from_system())
+			if reset_t > PERIOD * 0.5:
+				reset_t = 0.5        # (the clock is a hair behind the round: start the next one now)
 		broadcast()
 		return
 	# a player who fell: their client sends what they had (sv_bg_died); if it never comes, what they picked up drops

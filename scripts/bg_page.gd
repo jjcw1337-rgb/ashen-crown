@@ -27,6 +27,9 @@ var _status: Label
 var _enter: Button
 var _addr: LineEdit
 var _glow: ColorRect
+var _board: VBoxContainer
+var _rows := []                  # one Label per live raid
+var _board_t := 0.0
 
 func setup(u) -> void:
 	ui = u
@@ -200,7 +203,7 @@ func _build_champion() -> void:
 	pc.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	pc.offset_left = -560
 	pc.offset_right = -48
-	pc.offset_top = -430
+	pc.offset_top = -430 - 24 * Battlegrounds.LIVE_RAIDS
 	pc.offset_bottom = -40
 	ui._ornate(pc, 0.26, 18)
 	add_child(pc)
@@ -240,6 +243,16 @@ func _build_champion() -> void:
 	var sp := Control.new()
 	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vb.add_child(sp)
+	# the raids running now (Battlegrounds.schedule, from the clock): time left, open or not
+	_board = VBoxContainer.new()
+	_board.name = "raids"
+	_board.add_theme_constant_override("separation", 2)
+	vb.add_child(_board)
+	for i in Battlegrounds.LIVE_RAIDS:
+		var r: Label = ui._label("", 16, Color(0.86, 0.82, 0.74))
+		r.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_board.add_child(r)
+		_rows.append(r)
 	_status = ui._label("", 16, Color(0.62, 0.85, 1.0), true)
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -342,10 +355,38 @@ func _process(delta: float) -> void:
 	(_glow.material as ShaderMaterial).set_shader_parameter("pulse", 0.5 + 0.5 * sin(_t * 1.6) * (0.7 + 0.3 * sin(_t * 0.37)))
 	_enter.modulate = Color(1.0, 1.0, 1.0).lerp(Color(1.15, 1.05, 0.95), 0.5 + 0.5 * sin(_t * 2.2)) if not _enter.disabled else Color(0.6, 0.6, 0.6)
 	var waiting: bool = game.bg_wait_until > Time.get_ticks_msec() and not game.bg_retry.is_empty()
+	_board_t -= delta
+	if _board_t <= 0.0:
+		_board_t = 0.25
+		_fill_board()
 	if waiting:
-		_status.text = "A raid is under way. The next opens in %s, and you'll be let in then." % game.bg_wait_text()
+		_status.text = "The raid you chose is closing. The next opens in %s, and you'll be let in then." % game.bg_wait_text()
+	elif _addr.text.strip_edges() != "":
+		_status.text = "Up to %d heroes in each raid." % Battlegrounds.MAX_PLAYERS
 	else:
-		_status.text = "Raids run back to back. Up to %d heroes in each." % Battlegrounds.MAX_PLAYERS
+		var b: Dictionary = Battlegrounds.best_raid(Time.get_unix_time_from_system())
+		_status.text = ("You'll join Raid %s, %s left." % [b["name"], _clock(float(b["left"]))]) if b.get("open", false) \
+			else ("Every raid is in its last minutes. Raid %s opens in %s." % [b["name"], _clock(float(b["opens_in"]))])
+
+static func _clock(t: float) -> String:
+	var s := int(ceilf(t))
+	return "%d:%02d" % [s / 60, s % 60]
+
+## The raids now: name, time left, whether it takes joiners.
+func _fill_board() -> void:
+	var sch: Array = Battlegrounds.schedule(Time.get_unix_time_from_system())
+	for k in mini(sch.size(), _rows.size()):
+		var r: Dictionary = sch[k]
+		var l: Label = _rows[k]
+		if r["open"]:
+			l.text = "Raid %s  ·  %s left  ·  open" % [r["name"], _clock(float(r["left"]))]
+			l.add_theme_color_override("font_color", Color(0.7, 0.95, 0.7))
+		elif r["state"] == "raid":
+			l.text = "Raid %s  ·  %s left  ·  closed, next in %s" % [r["name"], _clock(float(r["left"])), _clock(float(r["opens_in"]))]
+			l.add_theme_color_override("font_color", Color(0.85, 0.6, 0.45))
+		else:
+			l.text = "Raid %s  ·  resetting, opens in %s" % [r["name"], _clock(float(r["opens_in"]))]
+			l.add_theme_color_override("font_color", Color(0.65, 0.65, 0.7))
 
 func _unhandled_key_input(ev: InputEvent) -> void:
 	if visible and ev.is_pressed() and (ev as InputEventKey).keycode == KEY_ESCAPE and not ui.dialog_panel.visible:
@@ -359,7 +400,9 @@ func enter() -> void:
 	var nm := _name.text
 	var addr := _addr.text.strip_edges()
 	if addr == "":
-		addr = BuildEnv.value("bg_server") if BuildEnv.env() != "local" else "127.0.0.1"
+		# this build's raid server, at the port of the best raid now (Battlegrounds.best_raid)
+		var host: String = (BuildEnv.value("bg_server") if BuildEnv.env() != "local" else "127.0.0.1").split(":")[0]
+		addr = "%s:%d" % [host, int(Battlegrounds.best_raid(Time.get_unix_time_from_system()).get("port", Net.PORT))]
 	var id := sel
 	Sfx.play("click")
 	ui.open_dialog("Enter the Crypt?", "%s goes in with everything they wear and carry. Fall, and it stays on the crypt floor." % nm,

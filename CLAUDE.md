@@ -173,8 +173,13 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   room and the only way into the hall from that side; a ring of corridors with one link missing; crypt rooms with
   sarcophagi, chests, few but tough monsters (`MON_LIFE`, `MON_DMG`, level `MON_LEVEL`); the hall has a pillar ring,
   three chests and a champion with bowmen. The walls come from `World.crypt_shell` (shared with the crypt). **Rounds**
-  of `RAID_SECS` (15 min): two of the four portals open at `PORTALS_AT` (5 min), joining closes at `JOIN_CLOSE`, the
-  crypt collapses at the end (everyone inside dies) and the dungeon resets (`new_round`). The state reaches players
+  of `RAID_SECS` (20 min): two of the four portals open at `PORTALS_AT` (5 min), joining closes at `JOIN_CLOSE` (15 min), the
+  crypt collapses at the end (everyone inside dies) and the dungeon resets (`new_round`). **Several raids** (Blaine
+  2026-11-01): one server per raid, `--server --raid N` (port `RAID_PORTS[N]`), each running its rounds on the wall
+  clock a third of a `PERIOD` after the last (`phase`), so one is always open; clients need no lobby: `schedule()` and
+  `best_raid()` work every raid's state out from the clock (the Battlegrounds page's board, and Enter goes to the best
+  one). `LIVE_RAIDS` is how many are deployed (staging: 1 until UDP 24571/24572 are open and the droplet has room;
+  `BG_RAIDS=3 sh deploy/staging/deploy.sh` then starts `ashen-crown-bg-raid@1/@2`). `tools/raid_schedule_test.gd`. The state reaches players
   through `Net.cl_bg_raid` (the HUD clock, `Battlegrounds.hud`). **Attacks are the same as everywhere**
   (timing, damage, cooldowns: one standard, jj 2026-11-01); while `Game.bg_mode` only walking is slower (`MOVE_MULT`) and
   life doesn't regenerate. **PvP**: every other
@@ -991,6 +996,23 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   gets its own stand automatically) and a `SKILL_SHOW` entry per skill (hover a skill in the panel: the centred hero
   performs it on the stage, `show_skill`). Tests: `tools/class_carousel_test.gd` (`--fixed-fps 60`: turning, wrapping,
   queued turns, clicks, keys, wheel, feet on plinths, skill previews); `tools/class_shot.gd -- outdir [frames]`.
+- **Home screen and the Battlegrounds page** (Blaine 2026-11-01, "no plain boxes"): over the title's gate, `TitleHome`
+  (`scripts/title_home.gd`): the character sidebar (class colour on each card, delete on the card, Create New
+  Character), the modes Story / Online Co-op / LAN as iron tabs and one big Play, a Battlegrounds card with its key art
+  (`assets/textures/ui/bg_crypt.jpg`, Meshy) and Quit Game. The card opens `BgPage` (`scripts/bg_page.gd`, `UI.bg_page`,
+  `UI.open_battlegrounds`): the art full screen, Fight / Loot / Extract, the death rule, the champion (arrows cycle the
+  characters; what they'd risk), the live raid board, Enter the Crypt (asks first), Back / Esc. Every panel is
+  `UI._ornate(panel, k, pad)` (the inventory's iron and gold frame at scale k) and every button `UI._iron_button`;
+  `open_dialog` is an ornate panel over a vignette. `tools/screen_test.gd` checks it.
+- **Stamina out of combat** (jj 2026-11-02): `Hero.calm()` is 1 in a fight (a blow struck or taken, or an awake
+  monster within 14 m, `_engaged`) and for `COMBAT_SECS` after, then rises to `CALM_MAX` (5) over `CALM_RAMP`;
+  sprinting drains that many times slower and stamina refills that many times faster ("Rested ×N" on the bar).
+  `tools/stamina_test.gd`.
+- **The Codex standards audit** (Blaine 2026-11-01, `tools/audit/`): a read-only run of ChatGPT's Codex CLI on a clean
+  worktree of `origin/staging` (`~/dev/ashen-crown-audit`) with the admins' Discord requests since the last audit;
+  it checks requests vs delivered, asset quality, architecture, performance, tests and process against
+  `audit_prompt.md` and posts the findings to the channel. launchd `com.gamefactory.ashen-audit` (install.sh):
+  19:40, 23:30, 2:30, 7:30, 12:50, 16:20. It never edits or runs the game; log `~/Library/Logs/ashen-nightly/audit.log`.
 - **Title screen** (`UI._build_title`, `scripts/title_stage.gd` `TitleStage`): the Gate of the Ashen Crown at dusk in
   its own World3D: a ruined cathedral gate with the dusk showing through its arch (`BACKDROP_SHADER`), broken arcades,
   the fallen stone king and a giant crown in the ash, fog banks, falling ash, embers, braziers and torches, heat

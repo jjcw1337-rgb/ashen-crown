@@ -1,0 +1,22 @@
+# The Battlegrounds dedicated server (STAGING): the game run headless from the checked-out staging branch with
+# Godot 4.3 (the same engine version as the builds). Installed by setup.sh to /etc/systemd/system/.
+# Its environment (ASHEN_NAKAMA_URL, ASHEN_NAKAMA_HTTP_KEY) is /opt/ashen-crown/staging/bg.env, mode 600.
+# Raid %i of Battlegrounds.RAIDS: instances 1 and 2 (UDP 24571, 24572; open them in the cloud firewall first).
+[Unit]
+Description=Ashen Crown Battlegrounds raid %i server (staging)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=ashen
+Group=ashen
+WorkingDirectory=/opt/ashen-crown/staging/game
+EnvironmentFile=/opt/ashen-crown/staging/bg.env
+ExecStart=/opt/ashen-crown/godot/godot --headless --path /opt/ashen-crown/staging/game -- --server --raid %i
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
