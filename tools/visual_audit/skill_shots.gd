@@ -2,8 +2,9 @@ extends SceneTree
 ## Frames of any class's skills cast into a pack on the moor, for before/after comparisons of skill effects.
 ## Needs a display and --fixed-fps 30 (frames 1/30 s apart whatever the render takes):
 ##   xvfb-run -a godot --path . --rendering-driver vulkan --resolution 960x540 --fixed-fps 30 \
-##     -s tools/visual_audit/skill_shots.gd -- outdir class skill[,skill...] [--quality 2] [--every 3] [--secs 1.6] [--view game|close]
-## Writes outdir/<skill>_<NNN>.png every --every frames from the cast. The game view keeps the HUD off and the
+##     -s tools/visual_audit/skill_shots.gd -- outdir class skill[:secs][,skill[:secs]...] [--quality 2] [--every 3] [--secs 1.6] [--view game|close]
+## Writes outdir/<skill>_<NNN>.png every --every frames from the cast, for --secs seconds (or the skill's own :secs:
+## a thrown bottle with a fuse needs longer than a slam). The game view keeps the HUD off and the
 ## real camera (zoomed in a little); the close view watches from his right, in front.
 var g
 
@@ -47,7 +48,9 @@ func _run() -> void:
 	var close := Camera3D.new()
 	close.fov = 40
 	get_root().add_child(close)
-	for sk in skills:
+	for spec in skills:
+		var sk := spec.get_slice(":", 0)
+		var sk_secs := float(spec.get_slice(":", 1)) if spec.contains(":") else secs
 		for e in g.enemies_near(h.global_position, 60.0):
 			e.queue_free()
 		await process_frame
@@ -67,7 +70,7 @@ func _run() -> void:
 			h.cds[k] = 0.0
 		h.mana = h.max_mana
 		var aim: Vector3 = foes[1].global_position
-		var frames := int(secs * 30.0)
+		var frames := int(sk_secs * 30.0)
 		var cast_at := 4
 		for f in frames + cast_at:
 			if f == cast_at:
