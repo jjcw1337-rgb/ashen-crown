@@ -1211,7 +1211,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   it returns the first cell and the others copy its settings (deferred). A mesh with a `shadow_mesh` meta casts its
   shadow from a shadows-only twin MultiMesh (`Flora.shadow_twin`: the Meshy oaks, their leaf cards cut from the baked
   `assets/textures/fx/foliage_mask_<kind>.png`, `tools/bake_foliage_mask.gd`; rebake if `FOLIAGE_SHADER`'s
-  needles/leaves/fern change). SSIL is Ultra only (it cost 6-8 ms at High and showed nothing).
+  needles/leaves/fern change). SSIL is Ultra only, SSAO outdoors Ultra only (indoors from Medium; `Game.apply_quality`
+  reads `indoor()`): they cost ~7 ms each and showed nothing there.
 - **Nightly lab** (`tools/nightly/`, `docs/nightly/README.md`): two launchd jobs on the Game Factory Mac, `perf` (01:00)
   and `mode` (04:30), each on a fresh `staging` with its own log (`docs/nightly/perf/LOG.md`, `docs/nightly/modes/LOG.md`:
   lessons, then one row per attempt), the KPI benchmark before and after (slower = not shipped), the gate, a push to
