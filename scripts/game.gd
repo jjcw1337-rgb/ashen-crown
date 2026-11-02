@@ -3101,6 +3101,7 @@ const BOOST_SLOTS := ["weapon", "armor", "helm", "gloves", "boots", "belt", "rin
 func go_level_20() -> void:
 	if not dev_tools:
 		return
+	hero.boosted = true       # (saved: the raid server lets only admins raid with a boosted character)
 	if hero.level < 20:
 		hero.set_level(20)
 	var c: Dictionary = Data.CLASSES.get(hero.cls, {})
@@ -3148,7 +3149,7 @@ func go_level_20() -> void:
 
 ## The best base for a slot at level 20 that this class can wear (its own weapon kind: bows for the ranger, canes for
 ## the plague doctor, the drumstick for Doug...).
-func _boost_base(slot: String, h: Hero = null) -> String:
+func _boost_base(slot: String, h: Hero = null, max_lvl := 20) -> String:
 	if h == null:
 		h = hero
 	var want := "ring" if slot in ["ring1", "ring2"] else slot
@@ -3161,7 +3162,7 @@ func _boost_base(slot: String, h: Hero = null) -> String:
 	var bl := -1
 	for k in Data.BASES:
 		var bd: Dictionary = Data.BASES[k]
-		if str(bd.get("slot", "")) != want or int(bd.get("lvl", 1)) > 20:
+		if str(bd.get("slot", "")) != want or int(bd.get("lvl", 1)) > max_lvl:
 			continue
 		var owner := str(bd.get("cls", ""))
 		if owner != "" and owner != h.cls:
@@ -3174,6 +3175,7 @@ func _boost_base(slot: String, h: Hero = null) -> String:
 	return best
 
 func max_out() -> void:
+	hero.boosted = true
 	hero.set_level(99)
 	var c: Dictionary = Data.CLASSES.get(hero.cls, {})
 	var tot := float(int(c.get("str", 1)) + int(c.get("dex", 1)) + int(c.get("vit", 1)) + int(c.get("ene", 1)))

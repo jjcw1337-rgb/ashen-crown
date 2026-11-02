@@ -150,6 +150,28 @@ func _run() -> void:
 	check(h.invis_t == 0.0, "a blow ends it")
 	h.equipment["amulet"] = null
 	h.recalc()
+	# an act's strength never scales a unique's effect; two free rolls take the quicker recharge
+	var a3 := Items.empower(Items.make_unique("stormstride"), float(Data.RUNS[2]["power"]))
+	var dash := 0
+	for af in a3["affixes"]:
+		if af[0] == "dash":
+			dash = int(af[1])
+	check(dash == 25, "an A3 Stormstride's dash stays 25%% (%d)" % dash)
+	var r1 := Items.make("ring", 2, 20)
+	r1["affixes"] = [["roll", 8]]
+	var r2 := Items.make("ring", 2, 20)
+	r2["affixes"] = [["roll", 6]]
+	h.equipment["ring1"] = r1
+	h.equipment["ring2"] = r2
+	h.recalc()
+	check(h.pvp_roll_s == 6, "two free rolls: the quicker recharge counts (%d s)" % h.pvp_roll_s)
+	h.equipment["ring1"] = null
+	h.equipment["ring2"] = null
+	h.recalc()
+	# "Go to level 20" marks the character, for the raid server
+	h.boosted = false
+	g.go_level_20()
+	check(h.boosted and h.net_gear().get("_boosted", false), "Go to level 20 marks the character, and its state says so")
 	# the bonfire's Reforge: the weakest affix rerolled, the others kept
 	var rr := Items.make("ring", 2, 20)
 	rr["affixes"] = [["str", 4], ["life", 1], ["res", 6]]

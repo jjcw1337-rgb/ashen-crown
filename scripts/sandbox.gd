@@ -103,7 +103,7 @@ static func outfit(g: Node, h: Hero, cls: String, lvl: int, gear: String) -> voi
 		for slot in Items.EQUIP_SLOTS:
 			if slot == "shield" and cls != "knight":
 				continue
-			var base: String = g._boost_base(slot, h) if slot != "shield" else "kite_shield"
+			var base: String = g._boost_base(slot, h, lvl) if slot != "shield" else ("kite_shield" if lvl >= 6 else "buckler")
 			if base == "" or not Data.BASES.has(base):
 				continue
 			rng.seed = hash(slot) + lvl

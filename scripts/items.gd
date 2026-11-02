@@ -146,7 +146,7 @@ static func upgrade(it):
 		it["power"] = np
 	var aff: Array = []
 	for a in it.get("affixes", []):
-		var flat: bool = not (a[0] in PCT_STATS)
+		var flat: bool = flat_stat(a[0])
 		var v: float = float(a[1]) / (power if flat else 1.0)
 		aff.append([a[0], int(round(scaled(a[0], v) * (np if flat else 1.0)))])
 	if int(it.get("rarity", 0)) == 2 and aff.size() > Data.RARE_AFFIXES[1]:
@@ -177,7 +177,7 @@ static func reforge(it: Dictionary, rng: RandomNumberGenerator) -> String:
 		return ""
 	var na := roll_affix(pool[rng.randi() % pool.size()], int(it.get("ilvl", 1)), rng)
 	var p := float(it.get("power", 1.0))
-	if p > 1.0 and not (na[0] in PCT_STATS):
+	if p > 1.0 and flat_stat(na[0]):
 		na[1] = int(round(float(na[1]) * p))
 	aff[worst] = na
 	return str(Data.STAT_LABEL.get(na[0], na[0] + " %d")) % int(na[1])
@@ -194,7 +194,7 @@ static func _roll_share(a: Array, it: Dictionary) -> float:
 	for d in Data.AFFIXES:
 		if d[0] == a[0]:
 			var top: float = (float(d[3]) + float(d[4]) * int(it.get("ilvl", 1))) * float(Data.AFFIX_SCALE.get(a[0], 1.0))
-			return float(a[1]) / maxf(1.0, top * (float(it.get("power", 1.0)) if not (a[0] in PCT_STATS) else 1.0))
+			return float(a[1]) / maxf(1.0, top * (float(it.get("power", 1.0)) if flat_stat(a[0]) else 1.0))
 	return 0.0
 
 ## Every item of a character's save rebuilt under the item rules (Hero.from_save): the worn ones, the bag, the belt,
@@ -239,6 +239,11 @@ static func random_drop(ilvl: int, mf: float, rng: RandomNumberGenerator, boss :
 ## made A2/A3 items with 100%+ resist (immunity), 100%+ life steal or 25x run speed.
 const PCT_STATS := ["ed", "edef", "ias", "ls", "res", "block", "gf", "mf", "frw", "stam", "cdr", "pot", "ten"]
 
+## Does an act's strength (empower) multiply this affix? Not percentages, not the uniques' effects (seconds and
+## shares: an A3 Stormstride's dash stays 25%, its roll's recharge stays as it is).
+static func flat_stat(stat: String) -> bool:
+	return not (stat in PCT_STATS) and not (stat in Data.ITEM_EFFECTS)
+
 ## A2/A3 loot: base damage, defense and every flat bonus times mult.
 static func empower(it: Dictionary, mult: float) -> Dictionary:
 	if it.get("base", "") in ["gold"] or Data.BASES[it["base"]]["slot"] == "potion":
@@ -249,7 +254,7 @@ static func empower(it: Dictionary, mult: float) -> Dictionary:
 		it["def"] = int(round(it["def"] * mult))
 	var aff: Array = []
 	for a in it.get("affixes", []):
-		aff.append([a[0], a[1] if a[0] in PCT_STATS else int(round(float(a[1]) * mult))])
+		aff.append([a[0], a[1] if not flat_stat(a[0]) else int(round(float(a[1]) * mult))])
 	it["affixes"] = aff
 	it["power"] = mult
 	return it

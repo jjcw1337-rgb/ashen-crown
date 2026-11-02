@@ -566,13 +566,16 @@ static func _local_admin(uid: String) -> bool:
 	var d = JSON.parse_string(f.get_as_text())
 	return d is Array and (d as Array).has(uid)
 
-## May this player wear what they wear? "Go to level 20" gear (marked "boost") is for admins only.
+## May this player raid as they are? A character "Go to level 20" made (Hero.boosted, sent with its gear) and its
+## gear (marked "boost") are for admins only.
 func gear_ok(pid: int) -> bool:
 	if bool(admins.get(pid, false)) or not game.net.players.has(pid):
 		return true
 	var h = game.net.players[pid]["hero"]
 	if not is_instance_valid(h):
 		return true
+	if h.boosted:
+		return false          # a character "Go to level 20" made, whatever it wears now
 	for slot in Items.EQUIP_SLOTS:
 		var it = h.equipment.get(slot)
 		if it is Dictionary and bool(it.get("boost", false)):

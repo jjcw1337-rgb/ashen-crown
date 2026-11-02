@@ -64,6 +64,7 @@ var dmg_stack: DamageStack     # the stacking red damage number over the head
 var ls := 0.0
 var res := 0
 var frw := 0
+var boosted := false        # "Go to level 20" was used on this character (saved; the raid server lets only admins in with it)
 var boss_luck := {}         # boss kind -> its kills since its last unique (-1/absent: never killed; Game._boss_loot)
 var invis_t := 0.0          # a Shadow Phial: unseen (monsters lose him, other players see a faint shimmer up close); any blow ends it
 var net_invis := false      # a partner's, from his state (Net._hero_packet)
@@ -622,8 +623,14 @@ func recalc() -> void:
 			continue
 		var ss := Items.stat_sum(it)
 		for k in ss.keys():
-			# a unique's effect counts once, the strongest (Data.ITEM_EFFECTS); stats add up
-			stats[k] = maxi(int(stats.get(k, 0)), int(ss[k])) if k in Data.ITEM_EFFECTS else stats.get(k, 0) + ss[k]
+			# a unique's effect counts once, the strongest (Data.ITEM_EFFECTS; a free roll's is the quickest recharge);
+			# stats add up
+			if k == "roll":
+				stats[k] = int(ss[k]) if int(stats.get(k, 0)) <= 0 else mini(int(stats[k]), int(ss[k]))
+			elif k in Data.ITEM_EFFECTS:
+				stats[k] = maxi(int(stats.get(k, 0)), int(ss[k]))
+			else:
+				stats[k] = stats.get(k, 0) + ss[k]
 		def_sum += Items.defense_of(it)
 		if s == "shield":
 			shield_block = it.get("block", 0)
@@ -701,7 +708,11 @@ func _mine() -> bool:
 ## The Battlegrounds' rules for gear (recalc): on while this game is in a raid (Game.bg_mode); `pvp_force` for tools.
 var pvp_force := false
 func pvp_scaled() -> bool:
-	return pvp_force or (game != null and game.bg_mode and not puppet)
+	return pvp_force or (game != null and (game.bg_mode or game.sandbox != null) and not puppet)
+
+## The raid's rules for movement and regeneration: in a raid, and in the admins' sandbox (which plays like one).
+func raid_rules() -> bool:
+	return game != null and (game.bg_mode or game.sandbox != null)
 
 func total_str() -> int: return str_ + stats.get("str", 0)
 func total_dex() -> int: return dex + stats.get("dex", 0)
@@ -837,6 +848,7 @@ func net_gear() -> Dictionary:
 	var g: Dictionary = equipment.duplicate()
 	g["_cls"] = cls
 	g["_helm"] = show_helm
+	g["_boosted"] = boosted
 	return g
 
 ## Describes the equipped armour so the skinned body can be rebuilt to match.
@@ -1704,7 +1716,7 @@ func _process(delta: float) -> void:
 		var m := minf(mana_pool, delta * 20.0)
 		mana_pool -= m
 		mana = minf(max_mana, mana + m)
-	if not game.bg_mode:            # (no life regeneration in the crypt: potions and care)
+	if not raid_rules():            # (no life regeneration in the crypt, nor in the sandbox: potions and care)
 		life = minf(max_life, life + regen * delta)
 	mana = minf(max_mana, mana + (1.0 + ene * 0.06) * delta)
 
@@ -1753,7 +1765,7 @@ func _process(delta: float) -> void:
 		exhausted = false
 	if exhausted and stamina >= max_stamina * 0.3:
 		exhausted = false
-	var speed := 4.8 * (1.0 + frw / 100.0 + (float(stats.get("dash", 0)) / 100.0 if dash_t > 0.0 else 0.0)) * (Battlegrounds.MOVE_MULT if game.bg_mode else 1.0) * DougSkills.car_mult(self)
+	var speed := 4.8 * (1.0 + frw / 100.0 + (float(stats.get("dash", 0)) / 100.0 if dash_t > 0.0 else 0.0)) * (Battlegrounds.MOVE_MULT if raid_rules() else 1.0) * DougSkills.car_mult(self)
 	# the archer runs 10% faster while his Spirit Beast is at his side
 	if is_archer() and beasts.any(func(b) -> bool: return is_instance_valid(b) and not b.dead):
 		speed *= 1.1
@@ -1954,6 +1966,8 @@ func apply_net_gear(gear: Dictionary) -> void:
 	equipment.erase("_cls")
 	show_helm = bool(equipment.get("_helm", true))
 	equipment.erase("_helm")
+	boosted = bool(equipment.get("_boosted", false))
+	equipment.erase("_boosted")
 	if c != cls:
 		set_class(c)
 	for s in Items.EQUIP_SLOTS:
@@ -2433,7 +2447,7 @@ func unequip(slot: String) -> void:
 
 func to_save() -> Dictionary:
 	return {"cls": cls, "level": level, "xp": xp, "str": str_, "dex": dex, "vit": vit, "ene": ene, "points": stat_points, "gold": gold,
-		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "binds_v": 2, "talents": talents, "axe_given": true, "boats": boats, "sailed": sailed, "dwarves": dwarves, "boss_luck": boss_luck}
+		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "binds_v": 2, "talents": talents, "axe_given": true, "boats": boats, "sailed": sailed, "dwarves": dwarves, "boss_luck": boss_luck, "boosted": boosted}
 
 func from_save(d: Dictionary) -> void:
 	set_class(str(d.get("cls", "knight")))
@@ -2449,6 +2463,7 @@ func from_save(d: Dictionary) -> void:
 	sailed = bool(d.get("sailed", false))
 	dwarves = str(d.get("dwarves", ""))
 	boss_luck = (d.get("boss_luck", {}) as Dictionary).duplicate() if d.get("boss_luck") is Dictionary else {}
+	boosted = bool(d.get("boosted", false))
 	show_helm = bool(d.get("show_helm", true))
 	equipment = d.get("equipment", {})
 	for s in Items.EQUIP_SLOTS:
