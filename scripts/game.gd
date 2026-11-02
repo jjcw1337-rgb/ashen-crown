@@ -750,7 +750,11 @@ func apply_quality(q: int) -> void:
 	env.ssao_enabled = q >= 1 and forward
 	env.ssao_radius = 1.2
 	env.ssao_intensity = 2.2
-	env.ssil_enabled = q >= 2 and forward
+	# screen-space indirect light: Ultra only. At High (medium quality, half size) it cost 6-8 ms of the GPU frame
+	# (the crypt: 26.6 -> 18.4 ms) and changed nothing that shows: fixed-step screenshots of the camp, moor, crypt,
+	# fort and arena with and without it differ no more than two identical runs, brightness within 0.5% (nightly
+	# 2026-11-02, docs/nightly/perf/runs/2026-11-02.md)
+	env.ssil_enabled = q >= 3 and forward
 	env.ssil_intensity = 0.8
 	env.ssr_enabled = q >= 3 and forward
 	env.volumetric_fog_enabled = q >= 2 and forward

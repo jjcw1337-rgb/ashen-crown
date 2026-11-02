@@ -400,6 +400,11 @@ static func _env_off() -> void:
 	if k.contains("dfog"): env.fog_enabled = false
 	if k.contains("msaa"): g.get_viewport().msaa_3d = Viewport.MSAA_DISABLED
 	if k.contains("half"): g.get_viewport().scaling_3d_scale = 0.5
+	if k.contains("terrainflat"):
+		for t in g.world.find_children("Terrain*", "MeshInstance3D", true, false):
+			var sm := StandardMaterial3D.new()
+			sm.albedo_color = Color(0.25, 0.28, 0.15)
+			(t as MeshInstance3D).material_override = sm
 
 ## --mmnoshadow N: (profiling) MultiMeshes whose mesh has more than N triangles cast no shadow.
 static func _mm_no_shadow() -> void:
