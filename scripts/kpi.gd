@@ -400,6 +400,9 @@ static func _env_off() -> void:
 	if k.contains("dfog"): env.fog_enabled = false
 	if k.contains("msaa"): g.get_viewport().msaa_3d = Viewport.MSAA_DISABLED
 	if k.contains("half"): g.get_viewport().scaling_3d_scale = 0.5
+	if k.contains("softmed"): RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM)
+	if k.contains("softlow"): RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_LOW)
+	if k.contains("atlas2k"): RenderingServer.directional_shadow_atlas_set_size(2048, true)
 	if k.contains("terrainflat"):
 		for t in g.world.find_children("Terrain*", "MeshInstance3D", true, false):
 			var sm := StandardMaterial3D.new()
