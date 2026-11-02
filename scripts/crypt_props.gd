@@ -501,6 +501,14 @@ static func _statue_alcove(w: World, wall_xf: Array, cells: Array, dir: Vector3,
 	_lintel(cells, wall_xf, dir, 2.75, extra)
 	if rng.randf() < 0.7:
 		Props.fire(root, Vector3(0.55, 0.3, 0.42), 0.28, Color(1.0, 0.72, 0.35), true, false, false, "candle")
+	# a cold light falling on the dead king from under the lintel, the seal's blue (the alcove read as a black hole)
+	var l := OmniLight3D.new()
+	l.light_color = Color(0.55, 0.68, 1.0)
+	l.light_energy = 0.9
+	l.omni_range = 3.6
+	l.omni_attenuation = 1.5
+	l.position = Vector3(0, 2.5, 0.9)
+	root.add_child(l)
 
 ## A brazier burning in a two-cell alcove of the hall's wall.
 static func _brazier_alcove(w: World, wall_xf: Array, cells: Array, dir: Vector3, taken: Dictionary, extra: Array, _rng: RandomNumberGenerator) -> void:
@@ -840,6 +848,28 @@ static func dress(w: World) -> void:
 	# dust hanging in the air of every room and the hall, seen where the light catches it
 	for r in rects:
 		dust(w, r)
+	void_frame(w)
+
+## Black beyond the crypt's rock, level with the rock's black tops: the ground the terrain runs on past the map's
+## edge showed as grey stone at the edge of the screen in the corner rooms.
+static func void_frame(w: World) -> void:
+	var b := w.bounds
+	var far := 160.0
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = Color(0.0, 0.0, 0.0)
+	for r in [Rect2(b.position.x - far, b.position.y - far, b.size.x + far * 2.0, far), Rect2(b.position.x - far, b.end.y, b.size.x + far * 2.0, far),
+			Rect2(b.position.x - far, b.position.y, far, b.size.y), Rect2(b.end.x, b.position.y, far, b.size.y)]:
+		var rr: Rect2 = r
+		var pm := PlaneMesh.new()
+		pm.size = rr.size
+		var mi := MeshInstance3D.new()
+		mi.mesh = pm
+		mi.material_override = m
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.position = Vector3(rr.get_center().x, 3.1, rr.get_center().y)
+		mi.name = "void"
+		w.props_root.add_child(mi)
 
 ## Torches in sconces on every other pillar of the hall's ring (Battlegrounds.build's twelve, 11.5 m out), on the
 ## face that looks most toward the seal: the middle of the hall had only the seal's glow, and the pillars stood black

@@ -189,12 +189,14 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   (`SEE_SHADER`: their own textures plus the near-player see-through, so a pillar never hides the hero); the
   Extraction Portals stand in rune archways whose painted runes light when the portal opens
   (`Battlegrounds.sync_gates`, `CryptProps.set_runes`) with `portal_glow` inside; `dress` adds rubble, corner cobwebs,
-  lit dust drifting in every room (`dust`) and the hall's floor seal (a quad with `SEAL_SHADER`: its runes breathe and
-  a wave of light runs out from the skull; not a Decal, which OpenGL can't draw). **Everything visual
+  lit dust drifting in every room (`dust`), black beyond the rock (`void_frame`; the terrain ran on past the map's
+  edge) and the hall's floor seal (a quad with `SEAL_SHADER`: its runes breathe and a wave of light runs out from the
+  skull; not a Decal, which OpenGL can't draw); the dead kings in the hall's statue alcoves stand in a cold light.
+  The raid's fill light was lifted a little with it (`Game._zone_env`: ambient 0.85, exposure 1.4, hero light 2.3). **Everything visual
   is on the same layout**: no footprint changes, no new interactable, no call added to `w.rng`
   (`tools/bg_layout_fingerprint.gd` prints a hash of the layout; it must not change: the staging server builds it
-  from the same rolls). Stills: `tools/crypt_shots.gd -- outdir`, a walk: `tools/crypt_clip.gd -- outdir [frames]`
-  (`--fixed-fps 30`). **Rounds**
+  from the same rolls). Stills: `tools/crypt_shots.gd -- outdir [quality N] [only a,b]`, a walk: `tools/crypt_clip.gd -- outdir [frames]`
+  (`--fixed-fps 30`; it holds WASD keys, since the game reads the keys every frame). **Rounds**
   of `RAID_SECS` (15 min): two of the four portals open at `PORTALS_AT` (5 min), joining closes at `JOIN_CLOSE`, the
   crypt collapses at the end (everyone inside dies) and the dungeon resets (`new_round`). The state reaches players
   through `Net.cl_bg_raid` (the HUD clock, `Battlegrounds.hud`). **Combat is slower and heavier** while
