@@ -1248,7 +1248,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   (`assets/models/props/`, `Props._clutter_into`), and A2's columns, stumps, drums, tombs, milestones, fountains and
   triumphal arch (`assets/models/roman/`, `Roman._meshy_column`, `_set_piece`); all re-baked on clean UVs, with the
   procedural versions as the fallback. World generation draws from `World.rng`: a visual change must keep its calls (count and order) or every
-  rock, tree, footprint and spawn after it moves (and co-op peers must agree).
+  rock, tree, footprint and spawn after it moves (and co-op peers must agree). Check with
+  `tools/visual_audit/layout_dump.gd` (one zone per process) and diff against the old build.
 - **Performance KPIs** (`scripts/kpi.gd` `Kpi`, `docs/nightly/KPIS.md`): the official numbers. Scripted, deterministic
   scenarios (camp, moor, fight, boss, arena, crypt, server; `Kpi.SCENARIOS`) run in any build with
   `-- --kpi <scenario> out.json [--quality N] [--secs N]` (the server: `-- --server --kpi server out.json`), measuring
