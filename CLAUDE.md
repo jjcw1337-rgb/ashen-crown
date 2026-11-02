@@ -1247,8 +1247,10 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   I's forest floor fallen oak leaves in drifts (`litter`, set in `World.terrain_patch` when `oak_forest`). Every zone's scattered rocks and the old roads' kerbs are Meshy
   (`assets/models/rocks/`, `Props.meshy_rock`/`boulder`/`seat`, `World.kerb`), and the crate, barrel and log pile
   (`assets/models/props/`, `Props._clutter_into`), and A2's columns, stumps, drums, tombs, milestones, fountains and
-  triumphal arch (`assets/models/roman/`, `Roman._meshy_column`, `_set_piece`); all re-baked on clean UVs, with the
-  procedural versions as the fallback. World generation draws from `World.rng`: a visual change must keep its calls (count and order) or every
+  triumphal arch (`assets/models/roman/`, `Roman._meshy_column`, `_set_piece`), and the aqueduct's bays, standing and
+  ruined (`Roman._bays`, widths in `AQ_W` so the piers meet the old collision); all re-baked on clean UVs, with the
+  procedural versions as the fallback. Meshy props draw with `Props.MESHY_PROP_SHADER`, which has the same see-through
+  near the hero as `Mats.PROP_SHADER` (keep it when changing either). World generation draws from `World.rng`: a visual change must keep its calls (count and order) or every
   rock, tree, footprint and spawn after it moves (and co-op peers must agree). Check with
   `tools/visual_audit/layout_dump.gd` (one zone per process) and diff against the old build.
 - **Performance KPIs** (`scripts/kpi.gd` `Kpi`, `docs/nightly/KPIS.md`): the official numbers. Scripted, deterministic

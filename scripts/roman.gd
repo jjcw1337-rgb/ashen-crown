@@ -185,6 +185,13 @@ static func aqueduct(w: World, a: Vector2, b: Vector2, gaps := 0.12, clear := Ve
 	var low_m := _own(arch_mesh(5.6, 8.2, 2.0, 4.0, 6.6), tuff())
 	var high_m := _own(arch_mesh(5.6, 3.6, 1.6, 2.6, 2.7), tuff())
 	var chan_m := _own(Geo.box(5.6, 0.9, 1.8), brick())
+	# the Meshy bays (visual overhaul): a standing two-tier bay with its channel, and a ruined one whose upper tier
+	# has fallen (the broken bays); the same random numbers decide which bay is which
+	var bay := _part("aqueduct")
+	var ruin := _part("aqueduct_ruin")
+	var meshy := not bay.is_empty() and not ruin.is_empty()
+	var bay_x: Array = []
+	var ruin_x: Array = []
 	for i in n:
 		var c := a + dir * (5.6 * (i + 0.5))
 		var hy := w.height_at(c.x, c.y)
@@ -198,20 +205,48 @@ static func aqueduct(w: World, a: Vector2, b: Vector2, gaps := 0.12, clear := Ve
 				drum(w, Vector3(c.x + w.rng.randf_range(-3, 3), 0, c.y + w.rng.randf_range(-2.5, 2.5)), 0.5, 1.2)
 			continue
 		var base := Basis(Vector3.UP, yaw)
-		low.append(Transform3D(base, Vector3(c.x, hy - 1.0, c.y)))
 		var broken := w.rng.randf() < 0.18 and not keep
-		if not broken:
-			high.append(Transform3D(base, Vector3(c.x, hy - 1.0 + 8.2, c.y)))
-			chan.append(Transform3D(base, Vector3(c.x, hy - 1.0 + 8.2 + 3.6 + 0.45, c.y)))
+		if meshy:
+			(ruin_x if broken else bay_x).append(Transform3D(base, Vector3(c.x, hy - 0.8, c.y)))
+		else:
+			low.append(Transform3D(base, Vector3(c.x, hy - 1.0, c.y)))
+			if not broken:
+				high.append(Transform3D(base, Vector3(c.x, hy - 1.0 + 8.2, c.y)))
+				chan.append(Transform3D(base, Vector3(c.x, hy - 1.0 + 8.2 + 3.6 + 0.45, c.y)))
 		# the piers between the arches are solid (0.8 m each side of a bay's 4 m opening)
 		for s in [-1, 1]:
 			var pp: Vector2 = c + dir * s * 2.4
 			w.add_box(Vector3(pp.x, 0, pp.y), Vector2(1.0, 0.42), atan2(dir.x, dir.y))
 	var root := Models.N(w.props_root, "aqueduct")
 	root.set_meta("roman", "aqueduct")
+	if meshy:
+		_bays(root, "aqueduct", bay_x)
+		_bays(root, "aqueduct_ruin", ruin_x)
+		return
 	Props.multimesh(root, low_m, low)
 	Props.multimesh(root, high_m, high)
 	Props.multimesh(root, chan_m, chan)
+
+## The Meshy bays' widths: each is scaled evenly so that its piers' inner faces stand ~1.8 m from the bay's centre
+## (the piers' collision starts at 1.98 m) and every pier is shared with the next bay 5.6 m on, as a real aqueduct's
+## are (the two copies a few centimetres apart, so they never flicker).
+const AQ_W := {"aqueduct": 8.45, "aqueduct_ruin": 8.04}
+
+## Instances of the Meshy aqueduct bay `kind` at xs (each a bay's turn and foot), its depth fitted to the piers' 2 m.
+static func _bays(root: Node3D, kind: String, xs: Array) -> void:
+	var e := _part(kind)
+	if xs.is_empty() or e.is_empty():
+		return
+	var bb: AABB = e[2]
+	var c := bb.get_center()
+	var k := float(AQ_W[kind]) / maxf(bb.size.x, 0.001)
+	var fit := Transform3D(Basis.from_scale(Vector3(k, k, 2.0 / maxf(bb.size.z, 0.001))), Vector3.ZERO) \
+		* Transform3D(Basis(), Vector3(-c.x, -bb.position.y, -c.z)) * (e[3] as Transform3D)
+	var fx: Array = []
+	for t in xs:
+		fx.append((t as Transform3D) * fit)
+	var mmi := Props.multimesh(root, e[0], fx)
+	mmi.material_override = e[1]
 
 ## A roadside tomb: a marble house-tomb with a pediment and pilasters, or a round drum tomb with an
 ## earth cap (style 0/1).
