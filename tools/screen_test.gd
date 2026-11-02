@@ -82,13 +82,20 @@ func _run() -> void:
 	check(home.is_visible_in_tree() and home.sel != "", "home: the sidebar lists the characters and one is chosen")
 	check(_in_front(home.get_node("sidebar").find_child("char_" + home.sel, true, false)), "home: a character's card takes the click")
 	check(_in_front(home.get_node("sidebar").find_child("create", true, false)), "home: Create New Character takes the click")
-	ui.open_battlegrounds()
+	check(_in_front(home.get_node("bg_card")), "home: the Battlegrounds card takes the click")
+	check(_in_front(home.get_node("quit")) and home.get_node("quit").size.x >= 180, "home: a real Quit button (%s)" % home.get_node("quit").size)
+	(home.get_node("bg_card") as Button).pressed.emit()
 	await frames(2)
-	check(home.mode == "bg" and ui.title_panel.is_visible_in_tree() and not ui.bg_panel.visible, "Battlegrounds: a mode of the home screen, over the gate")
-	check(_in_front(home._play) and home._play.text == "Enter the Crypt", "Battlegrounds: its Play button takes the click")
+	var page = ui.bg_page
+	check(page.visible and ui.title_panel.is_visible_in_tree() and not ui.bg_panel.visible, "Battlegrounds: its own page over the title")
+	check(_in_front(page._enter) and page._enter.text == "Enter the Crypt" and not page._enter.disabled, "Battlegrounds: Enter the Crypt takes the click")
 	check(not ui.quest_tracker.is_visible_in_tree() and not ui.hud.is_visible_in_tree(), "Battlegrounds: no HUD, no quest tracker")
-	check(not home._note.text.contains("PERMANENT") and home._note.text.to_lower().contains("levels are kept"), "Battlegrounds: it states today's rule in one line (items lost, levels kept)")
-	home.play()
+	var words := ""
+	for l in page.find_children("*", "Label", true, false):
+		words += (l as Label).text.to_lower() + " "
+	check(words.contains("death costs everything you carry") and words.contains("levels, talents and camp stash are kept"), "Battlegrounds: it states the rule (items lost, levels kept)")
+	check(page.sel != "" and page._name.text != "", "Battlegrounds: a champion chosen (%s)" % page._name.text)
+	page.enter()
 	await frames(2)
 	check(ui.dialog_panel.is_visible_in_tree(), "Battlegrounds: Enter asks first")
 	var btns: Array = ui.dialog_btns.get_children()
@@ -99,7 +106,7 @@ func _run() -> void:
 	g.bg_retry = ["127.0.0.1:1", home.sel]
 	g.bg_refused("closed", 1.0)
 	await frames(3)
-	check(home._status.visible and home._status.text.contains("next raid opens"), "Battlegrounds: turned away, it counts down to the next raid (%s)" % home._status.text)
+	check(page.visible and page._status.text.contains("next opens"), "Battlegrounds: turned away, it counts down to the next raid (%s)" % page._status.text)
 	check(g.net.join_failure("x").contains("next raid opens"), "and says so instead of 'the host left'")
 	var tried := false
 	var t0 := Time.get_ticks_msec()
@@ -116,8 +123,12 @@ func _run() -> void:
 		if g.playing and not g._busy:
 			await g.exit_to_title()
 	await frames(2)
-	home.set_mode("story")
-	check(ui.title_panel.visible and not ui.menu_shade.visible and home.mode == "story", "Battlegrounds: back to the title, Story again")
+	if not page.visible:
+		ui.open_battlegrounds()
+		await frames(2)
+	(page.get_node("back") as Button).pressed.emit()
+	await frames(2)
+	check(ui.title_panel.visible and not page.visible and not ui.menu_shade.visible and _in_front(home._play), "Battlegrounds: Back to the home screen")
 	# the co-op screen the same way
 	ui.open_join()
 	await frames(2)

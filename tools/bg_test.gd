@@ -161,7 +161,7 @@ func _client() -> void:
 	var sgold: int = int((sv.get("hero", {}) as Dictionary).get("gold", 0))
 	check((held > inv0 or sgold > gold0) and _count_saved(sv) >= held and sgold >= gold0, "and keeps what it found (%d -> %d items, %d -> %d gold)" % [inv0, held, gold0, sgold])
 	# back in, and die
-	await until(func(): return not g._busy and g.ui.title_panel.visible and g.ui.home.mode == "bg", 20.0)      # (back on the home screen, its Battlegrounds mode)
+	await until(func(): return not g._busy and g.ui.title_panel.visible and g.ui.bg_page.visible, 20.0)      # (back on the Battlegrounds page)
 	await g.start_battlegrounds("%s:%d" % [host, port], id)
 	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "went back in")
 	await secs(2.0)

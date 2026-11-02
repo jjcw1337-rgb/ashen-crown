@@ -142,13 +142,13 @@ const VENDORS := [
 ## planned for 8: Isles.ISLANDS "sail" / speed ~ the crossing's seconds), accel: m/s per second,
 ## turn: radians per second at speed, crew: how many it carries (co-op: each player sails their own).
 const BOATS := {
-	"gull": {"name": "The Gull", "price": 400, "speed": 8.0, "accel": 3.2, "turn": 0.95, "crew": 1,
+	"gull": {"name": "The Gull", "price": 1000000, "speed": 8.0, "accel": 3.2, "turn": 0.95, "crew": 1,
 		"paint": Color(0.16, 0.3, 0.42),
 		"desc": "A single-masted cutter of tarred oak, seven paces long, built here on the strand. Quick on the wind, steady in a swell, and she'll put you ashore at any jetty on the Mournwater."},
 	# Imported boats: "glb" is a model prepared by tools/blender/prep_boat.py (bow toward -z, waterline y = 0); its
 	# printout gives length, beam, sheer and draft. "deck" is where the hero stands at the helm, "lamps" the lanterns'
 	# lights. Swap the model by changing "glb" (and the sizes); without the file she's drawn as the Gull.
-	"sloop": {"name": "The Ember Sloop", "price": 1500, "speed": 9.0, "accel": 2.6, "turn": 0.8, "crew": 2,
+	"sloop": {"name": "The Ember Sloop", "price": 10000000, "speed": 45.0, "accel": 13.0, "turn": 0.8, "crew": 2,
 		"glb": "res://assets/models/boats/sloop.glb", "length": 14.0, "beam": 4.6, "sheer": 1.74, "draft": 1.3,
 		"deck": Vector3(0.6, 1.15, 2.6), "lamps": [[Vector3(1.21, 2.85, 6.73), 1.2], [Vector3(-1.21, 2.85, 6.73), 1.2]],
 		"paint": Color(0.3, 0.06, 0.04),
@@ -212,6 +212,7 @@ const ENEMIES := {
 		"look": {"skin": Color(0.27, 0.3, 0.17), "shell": Color(0.4, 0.22, 0.1), "legs": 2, "height": 0.77, "eyes": Color(1.0, 0.72, 0.2)}},
 	"trex": {"mesh": "trex", "name": "Gorehide the Tyrant", "rig": "crawler", "life": 950, "dmg": [18, 30], "speed": 4.2, "range": 4.0, "xp": 900,
 		"ai": "bear", "atk": "bear_maul", "atk_time": 1.6, "armor": 16, "radius": 2.4, "boss": true, "aggro": 22.0, "blood": Color(0.45, 0.04, 0.02),
+		"intro": {"title": "GOREHIDE", "sub": "THE TYRANT", "line": "Ate the last three tamers who tried to saddle him. Kept the saddle.", "color": Color(1.0, 0.55, 0.15)},
 		"look": {"skin": Color(0.12, 0.14, 0.1), "shell": Color(0.08, 0.09, 0.07), "legs": 2, "height": 2.66, "eyes": Color(1.0, 0.55, 0.15)}},
 	"trike": {"mesh": "trike", "name": "Mother Triceratops", "rig": "crawler", "life": 420, "dmg": [12, 20], "speed": 3.4, "range": 3.0, "xp": 300,
 		"ai": "bear", "atk": "bear_maul", "atk_time": 1.5, "armor": 14, "radius": 1.6, "aggro": 16.0, "blood": Color(0.4, 0.05, 0.03),

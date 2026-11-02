@@ -11,6 +11,9 @@ const KNOLL := Vector2(-18.0, 10.0)          # island-local (u toward the dock, 
 ## Gorehide's domain: a wide open ground beyond the knoll, ringed by the forest (the boss arena; its pits later)
 const DOMAIN := Vector2(-62.0, -22.0)
 const DOMAIN_R := 26.0
+## a second, smaller troll camp beside the path; the dwarves' tunnel, hidden deep in the jungle off the path
+const CAMP2 := Vector2(40.0, 30.0)
+const TUNNEL := Vector2(82.0, -64.0)
 const CLEARINGS := [[Vector2(42.0, -48.0), 13.0], [Vector2(-58.0, 52.0), 11.0], [Vector2(30.0, 55.0), 10.0]]
 const PATH := [Vector2(126.0, 0.0), Vector2(95.0, 6.0), Vector2(62.0, -4.0), Vector2(30.0, 8.0), Vector2(2.0, 9.0), Vector2(-10.0, 10.0)]
 
@@ -41,7 +44,8 @@ static func dress(w: World, isle: Dictionary, o: Vector2, full: bool, rng: Rando
 		for c in CLEARINGS:
 			if l.distance_to(c[0]) < float(c[1]):
 				return false
-		return l.distance_to(KNOLL) > 13.0 and l.distance_to(DOMAIN) > DOMAIN_R and float(path_d.call(l)) > 3.2
+		return l.distance_to(KNOLL) > 13.0 and l.distance_to(DOMAIN) > DOMAIN_R and l.distance_to(CAMP2) > 9.0 and l.distance_to(TUNNEL) > 4.0 \
+			and float(path_d.call(l)) > 3.2
 	var oaks := [[Flora.oak_model(1), 3.0, 1.0, 1.55], [Flora.oak_model(2), 3.0, 0.95, 1.5], [Flora.oak_model(3), 3.0, 1.0, 1.6],
 		[Flora.pine(3), 0.8, 0.9, 1.3], [Flora.bush(2), 1.6, 0.9, 1.6], [Flora.bush(5), 1.4, 0.8, 1.4]]
 	Isles.forest(w, isle, o, rng, 2600, oaks, open, full)
@@ -122,14 +126,44 @@ static func _dinos(w: World, isle: Dictionary, o: Vector2) -> void:
 	add.call("raptor", CLEARINGS[0][0], 4, 1, 1103)
 	# the troll camp in the hollow: beast-tamers round their fire, with the raptors they keep
 	add.call("troll_shaman", CLEARINGS[0][0] + Vector2(2.0, 1.5), 2, 1, 1103)
-	add.call("troll_shaman", Vector2(34.0, 26.0), 1, 1, 1102)
-	var fire := Isles.at(w, isle, o, CLEARINGS[0][0])
+	add.call("troll_shaman", CAMP2, 1, 1, 1102)
+	var c0: Vector2 = CLEARINGS[0][0]
+	var fire := Isles.at(w, isle, o, c0)
 	Props.fire(w.props_root, fire, 1.6, Color(1.0, 0.55, 0.2), true)
 	w.add_circle(fire, 0.9)
+	# the camps (Meshy props, assets/models/isles/verdant/): huts facing the fire, totems, the raptors' pen
+	_prop(w, isle, o, "troll_hut", c0 + Vector2(7.5, 4.0), 1.9)
+	_prop(w, isle, o, "troll_hut", c0 + Vector2(-7.0, 5.5), 1.9)
+	_prop(w, isle, o, "troll_totem", c0 + Vector2(3.5, -6.5), 0.4)
+	_prop(w, isle, o, "troll_totem", c0 + Vector2(-4.5, -5.5), 0.4)
+	_prop(w, isle, o, "raptor_pen", c0 + Vector2(0.0, 10.0), 0.0)
+	_prop(w, isle, o, "troll_hut", CAMP2 + Vector2(3.0, 3.0), 1.9)
+	_prop(w, isle, o, "troll_totem", CAMP2 + Vector2(-2.5, -1.5), 0.4)
+	Props.fire(w.props_root, Isles.at(w, isle, o, CAMP2), 1.1, Color(1.0, 0.55, 0.2), true)
+	# the tunnel's mouth, half lost in the jungle (where the drunken dwarves are: later its own cave)
+	_prop(w, isle, o, "tunnel", TUNNEL, 2.2)
+	w.spawns["poi_tunnel"] = Isles.at(w, isle, o, TUNNEL)
 	# the nest in the glade: babies, and their mother waiting in the brush beside it
 	var glade: Vector2 = CLEARINGS[2][0]
-	add.call("trike_baby", glade, 3, -2, 1110)
-	add.call("trike", glade + Vector2(9.0, 7.0), 1, 1, 1111)
+	add.call("trike_baby", glade + Vector2(1.5, 2.5), 3, -2, 1110)
+	_prop(w, isle, o, "egg_nest", glade, 0.0)
+	# their mother isn't to be seen until you come near them: then she crashes out of the brush (World.ambushes)
+	var bush := Isles.at(w, isle, o, glade + Vector2(13.0, 9.0))
+	w.ambushes.append({"pos": Isles.at(w, isle, o, glade), "radius": 7.0, "done": false, "land": Isles.at(w, isle, o, glade + Vector2(4.0, 3.0)),
+		"msg": "The mother!", "sound": "trike_bellow", "pitch": 0.9,
+		"spawns": [{"kind": "trike", "pos": bush, "count": 1, "level": lv + 1, "champ": false, "pack": 1111}]})
 	# the Tyrant: the domain round the Eldest
 	add.call("trex", DOMAIN, 1, 2, 1120)
+
+## One of the island's Meshy props at an island-local spot, turned to `yaw` (island-local), solid; nothing without the file.
+static func _prop(w: World, isle: Dictionary, o: Vector2, name: String, l: Vector2, yaw: float) -> void:
+	var m := Isles.prop("verdant/" + name)
+	if m == null:
+		return
+	var p := Isles.at(w, isle, o, l)
+	w._place(m, p)
+	m.rotation.y = Isles.yaw(isle, yaw)
+	var r := {"troll_hut": 2.0, "troll_totem": 0.35, "raptor_pen": 0.0, "egg_nest": 1.2, "tunnel": 0.0}.get(name, 0.8) as float
+	if r > 0.0:
+		w.add_circle(p, r)
 

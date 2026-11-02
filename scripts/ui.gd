@@ -137,6 +137,7 @@ var bg_panel: PanelContainer      # the Battlegrounds screen (open_battlegrounds
 var bg_class: OptionButton       # the Battlegrounds screen's hero picker (character ids as metadata)
 var bg_addr: LineEdit
 var home: TitleHome               # the title's controls (title_home.gd): the character sidebar, the modes and Play
+var bg_page: BgPage               # the Battlegrounds' own page over the title (bg_page.gd)
 var bg_status: Label             # the Battlegrounds screen's wait for the next raid (Game.bg_refused), counting down
 var _join_refresh := 0.0
 var death_panel: Control
@@ -1606,6 +1607,43 @@ const INV_EQUIP := {
 	"gloves": [Rect2(26, 182, 72, 46), "Gloves"], "boots": [Rect2(356, 182, 72, 46), "Boots"],
 	"ring1": [Rect2(132, 192, 38, 38), "Ring"], "belt": [Rect2(185, 192, 84, 38), "Belt"], "ring2": [Rect2(284, 192, 38, 38), "Ring"]}
 static var _inv_frame_tex: Texture2D
+static var _ornate_cache := {}
+static var _frame_cache := {}
+
+## The inventory's iron-and-gold frame at scale k (for a NinePatchRect; its patch margin is INV_PATCH * k).
+func _ornate_frame(k: float) -> Texture2D:
+	if not _frame_cache.has(k):
+		_frame_cache[k] = _scaled_tex(INV_TEX["frame"], k)
+	return _frame_cache[k]
+
+## Any panel in the game's own frame (Blaine: "no plain boxes"): the inventory's iron inside, its iron-and-gold frame
+## round it (the corners at their own size, the edges tiled), at scale k of the painted art; `pad` past the trim.
+## Used for the title's sidebar, the dialogs, the Battlegrounds page.
+func _ornate(panel: PanelContainer, k := 0.3, pad := 16) -> void:
+	if not _ornate_cache.has(k):
+		var fr := StyleBoxTexture.new()
+		fr.texture = _scaled_tex(INV_TEX["frame"], k)
+		var pm := float(INV_PATCH) * k
+		fr.texture_margin_left = pm
+		fr.texture_margin_right = pm
+		fr.texture_margin_top = pm
+		fr.texture_margin_bottom = pm
+		fr.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE_FIT
+		fr.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_TILE_FIT
+		fr.draw_center = false
+		_ornate_cache[k] = [fr, _scaled_tex(INV_TEX["iron"], k), 178.0 * k]
+	var c: Array = _ornate_cache[k]
+	var trim: float = c[2]
+	var sb := StyleBoxEmpty.new()
+	sb.content_margin_left = trim + pad
+	sb.content_margin_right = trim + pad
+	sb.content_margin_top = trim + pad * 0.6
+	sb.content_margin_bottom = trim + pad * 0.6
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.draw.connect(func():
+		var r := Rect2(Vector2.ZERO, panel.size)
+		panel.draw_texture_rect(c[1], r.grow(-trim * 0.7), true)
+		panel.draw_style_box(c[0], r))
 
 ## A texture at a fraction of its size (the frame and its pieces are drawn at their pixel size in a NinePatchRect).
 static func _scaled_tex(path: String, k: float) -> Texture2D:
@@ -3038,18 +3076,47 @@ func _build_dialog() -> void:
 	dialog_panel.offset_top = -170
 	dialog_panel.offset_bottom = 120
 	dialog_panel.visible = false
+	# behind it, the world dimmed to a vignette while it asks
+	var dim := ColorRect.new()
+	dim.name = "dialog_dim"
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dm := ShaderMaterial.new()
+	var dsh := Shader.new()
+	dsh.code = "shader_type canvas_item; void fragment(){ float v = smoothstep(0.2, 0.85, length(UV - vec2(0.5))); COLOR = vec4(0.0, 0.0, 0.0, 0.5 + v * 0.35); }"
+	dm.shader = dsh
+	dim.material = dm
+	dim.visible = false
+	modals.add_child(dim)
+	dialog_panel.visibility_changed.connect(func(): dim.visible = dialog_panel.visible)
 	modals.add_child(dialog_panel)
+	dialog_panel.offset_left = -360
+	dialog_panel.offset_right = 360
+	dialog_panel.offset_top = -190
+	dialog_panel.offset_bottom = 150
+	_ornate(dialog_panel, 0.3, 20)
 	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 14)
+	vb.add_theme_constant_override("separation", 16)
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	dialog_panel.add_child(vb)
-	dialog_name = _label("", 24, GOLD, true)
+	dialog_name = _label("", 30, GOLD, true)
+	dialog_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dialog_name.add_theme_constant_override("outline_size", 8)
 	vb.add_child(dialog_name)
-	dialog_text = _label("", 17)
+	var rule := TextureRect.new()
+	rule.texture = load("res://assets/textures/ui/sheet_divider.png")
+	rule.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rule.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	rule.custom_minimum_size = Vector2(0, 40)
+	vb.add_child(rule)
+	dialog_text = _label("", 18, Color(0.88, 0.84, 0.76))
 	dialog_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	dialog_text.custom_minimum_size = Vector2(600, 0)
+	dialog_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dialog_text.custom_minimum_size = Vector2(540, 0)
 	vb.add_child(dialog_text)
 	dialog_btns = HBoxContainer.new()
-	dialog_btns.add_theme_constant_override("separation", 10)
+	dialog_btns.alignment = BoxContainer.ALIGNMENT_CENTER
+	dialog_btns.add_theme_constant_override("separation", 18)
 	vb.add_child(dialog_btns)
 
 func open_dialog(nm: String, text: String, buttons: Array) -> void:
@@ -3058,8 +3125,7 @@ func open_dialog(nm: String, text: String, buttons: Array) -> void:
 	for c in dialog_btns.get_children():
 		c.queue_free()
 	for b in buttons:
-		var btn := Button.new()
-		btn.text = b[0]
+		var btn := _iron_button(str(b[0]), 200, 50, 19)
 		var cb: Callable = b[1]
 		btn.pressed.connect(func():
 			dialog_panel.visible = false
@@ -3394,6 +3460,9 @@ func _build_title() -> void:
 	home = TitleHome.new()
 	title_panel.add_child(home)
 	home.setup(self)
+	bg_page = BgPage.new()
+	title_panel.add_child(bg_page)
+	bg_page.setup(self)
 	# a fade for the move into a choice (under the picker and the list, which are built on top)
 	_title_fade = ColorRect.new()
 	_title_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -3617,14 +3686,11 @@ func _build_battlegrounds() -> void:
 		game.bg_retry = [])          # (stop waiting for the next raid)
 	vb.add_child(back)
 
-## The Battlegrounds is a mode of the home screen now (TitleHome): its tab, with the character that went in last.
+## The Battlegrounds' own page over the title (BgPage), with the character that went in last.
 func open_battlegrounds() -> void:
 	join_panel.visible = false
-	if home != null and title_panel.visible:
-		var last := str(game._load_setting("battlegrounds", "character", ""))
-		if last != "" and not game.list_characters().filter(func(c): return str(c["id"]) == last).is_empty():
-			home.select(last)
-		home.set_mode("bg")
+	if bg_page != null and title_panel.visible:
+		bg_page.open()
 		return
 	_open_bg_panel()
 
@@ -3972,7 +4038,9 @@ func _build_class_picker() -> void:
 	back.pressed.connect(func():
 		Sfx.play("click")
 		class_panel.visible = false
-		_close_class_stage())
+		_close_class_stage()
+		# the whole title as it should be (its fade, camera, stage, music, the 3D switch), never half of it
+		show_title())
 	rv.add_child(back)
 	_show_class("knight")
 
@@ -4208,6 +4276,8 @@ func open_class_picker() -> void:
 
 func show_title() -> void:
 	title_panel.visible = true
+	if bg_page:
+		bg_page.visible = false
 	if class_panel:
 		class_panel.visible = false
 		_close_class_stage()

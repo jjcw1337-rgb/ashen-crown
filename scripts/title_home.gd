@@ -5,14 +5,15 @@ extends Control
 ##    delete on its card (asks first); "Create New Character" at the bottom of the list
 ##  - bottom centre, how to play it: Story · Battlegrounds · Online Co-op · LAN, and one big Play (LAN: Host / Join);
 ##    Battlegrounds says in one line what death costs there, and counts down when a raid turned us away
-##  - bottom left: Quit
+##  - bottom left: the Battlegrounds' card (its key art; opens its own page, BgPage), and Quit
+## Panels are UI._ornate (the inventory's iron and gold frame), buttons UI._iron_button: no plain boxes (Blaine).
 ## Play hands the chosen character to the game: Story = UI._title_choose("continue") on it, Battlegrounds =
 ## Game.start_battlegrounds (after one confirm), Online Co-op = Game.start_join on the co-op server, LAN = host or
 ## the join screen. UI keeps the old cards (hidden) so its title API and tests stay as they were.
 
-const W := 360.0                 # the sidebar's width
-const MODES := [["story", "Story"], ["bg", "Battlegrounds"], ["online", "Online Co-op"], ["lan", "LAN"]]
-const NOTE := {"story": "Your journey through the acts, alone.", "bg": "Death in the crypt costs everything you carry. Levels are kept.",
+const W := 420.0                 # the sidebar's width
+const MODES := [["story", "Story"], ["online", "Online Co-op"], ["lan", "LAN"]]
+const NOTE := {"story": "Your journey through the acts, alone.",
 	"online": "Play the story together, on the co-op server.", "lan": "Host a game, or join one on your network."}
 
 var ui
@@ -26,6 +27,10 @@ var _play: Button
 var _join: Button
 var _note: Label
 var _status: Label
+var _bg_card: Button
+var _bg_art: TextureRect
+var _bg_t := 0.0
+var _bg_hot := 0.0
 
 func setup(u) -> void:
 	ui = u
@@ -34,14 +39,14 @@ func setup(u) -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_sidebar()
 	_build_play()
-	var quit: Button = ui._iron_button("Quit", 110, 38, 15)
+	_build_bg_card()
+	var quit: Button = ui._iron_button("Quit Game", 200, 52, 19)
+	quit.name = "quit"
 	quit.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	quit.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	quit.position = Vector2(24, -62)
-	quit.offset_top = -62
-	quit.offset_bottom = -24
-	quit.offset_left = 24
-	quit.offset_right = 134
+	quit.offset_top = -80
+	quit.offset_bottom = -28
+	quit.offset_left = 40
+	quit.offset_right = 240
 	quit.pressed.connect(func(): get_tree().quit())
 	quit.visible = not OS.has_feature("web")
 	add_child(quit)
@@ -53,25 +58,31 @@ func _build_sidebar() -> void:
 	side.anchor_right = 1.0
 	side.anchor_top = 0.0
 	side.anchor_bottom = 1.0
-	side.offset_left = -W - 22
-	side.offset_right = -22
-	side.offset_top = 28
-	side.offset_bottom = -28
-	side.add_theme_stylebox_override("panel", ui._box(Color(0.03, 0.025, 0.02, 0.86), Color(0.45, 0.35, 0.2, 0.9), 1, 4, 14))
+	side.offset_left = -W - 18
+	side.offset_right = -18
+	side.offset_top = 18
+	side.offset_bottom = -18
+	ui._ornate(side, 0.2, 8)
 	add_child(side)
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 10)
 	side.add_child(vb)
 	var head := HBoxContainer.new()
 	vb.add_child(head)
-	var t: Label = ui._label("CHARACTERS", 20, ui.GOLD, true)
+	var t: Label = ui._label("CHARACTERS", 22, ui.GOLD, true)
+	var tf := FontVariation.new()
+	tf.base_font = ui.font_title
+	tf.spacing_glyph = 3
+	t.add_theme_font_override("font", tf)
 	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(t)
 	_count = ui._label("", 14, ui.DIM)
 	head.add_child(_count)
-	var rule := ColorRect.new()
-	rule.color = Color(0.45, 0.35, 0.2, 0.6)
-	rule.custom_minimum_size = Vector2(0, 1)
+	var rule := TextureRect.new()
+	rule.texture = load("res://assets/textures/ui/sheet_divider.png")
+	rule.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rule.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	rule.custom_minimum_size = Vector2(0, 30)
 	vb.add_child(rule)
 	var sc := ScrollContainer.new()
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -81,7 +92,7 @@ func _build_sidebar() -> void:
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_list.add_theme_constant_override("separation", 6)
 	sc.add_child(_list)
-	var make: Button = ui._iron_button("Create New Character", int(W - 28), 46, 17)
+	var make: Button = ui._iron_button("Create New Character", int(W - 96), 54, 19)
 	make.name = "create"
 	make.pressed.connect(func(): ui._title_choose("new"))
 	vb.add_child(make)
@@ -112,11 +123,17 @@ func _build_play() -> void:
 			continue           # (the co-op server is the staging/production builds')
 		if m[0] in ["bg", "lan"] and OS.has_feature("web"):
 			continue           # (no raw UDP in a browser)
-		var b := Button.new()
-		b.text = m[1]
+		var b: Button = ui._iron_button(m[1], 160, 42, 17)
 		b.toggle_mode = true
-		b.custom_minimum_size = Vector2(128, 34)
-		b.add_theme_font_size_override("font_size", 15)
+		b.focus_mode = Control.FOCUS_NONE
+		b.add_theme_color_override("font_color", Color(0.72, 0.64, 0.5))
+		b.add_theme_color_override("font_pressed_color", Color(1.0, 0.88, 0.55))
+		b.add_theme_color_override("font_hover_pressed_color", Color(1.0, 0.92, 0.65))
+		# the chosen one lit gold (the socket brightened), the others dim iron
+		var on := (b.get_theme_stylebox("pressed") as StyleBoxTexture).duplicate() as StyleBoxTexture
+		on.modulate_color = Color(1.45, 1.22, 0.82)
+		b.add_theme_stylebox_override("pressed", on)
+		b.add_theme_stylebox_override("hover_pressed", on)
 		var id: String = m[0]
 		b.pressed.connect(func(): set_mode(id))
 		row.add_child(b)
@@ -125,15 +142,17 @@ func _build_play() -> void:
 	prow.alignment = BoxContainer.ALIGNMENT_CENTER
 	prow.add_theme_constant_override("separation", 10)
 	box.add_child(prow)
-	_play = ui._iron_button("Play", 300, 58, 26)
+	_play = ui._iron_button("Play", 360, 68, 30)
+	_play.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_play.add_theme_constant_override("outline_size", 6)
 	_play.name = "play"
 	_play.pressed.connect(play)
 	prow.add_child(_play)
-	_join = ui._iron_button("Join", 150, 58, 22)
+	_join = ui._iron_button("Join", 160, 68, 24)
 	_join.pressed.connect(func(): ui.open_join())
 	_join.visible = false
 	prow.add_child(_join)
-	_note = ui._label("", 14, Color(0.78, 0.72, 0.64))
+	_note = ui._label("", 16, Color(0.78, 0.72, 0.64))
 	_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_note)
 	set_mode("story")
@@ -158,7 +177,7 @@ func _card(c: Dictionary) -> Control:
 	var id := str(c["id"])
 	var b := Button.new()
 	b.name = "char_" + id
-	b.custom_minimum_size = Vector2(W - 34, 72)
+	b.custom_minimum_size = Vector2(W - 96, 78)
 	b.focus_mode = Control.FOCUS_NONE
 	b.set_meta("id", id)
 	var mine := id == sel
@@ -168,8 +187,8 @@ func _card(c: Dictionary) -> Control:
 	b.pressed.connect(func(): select(id))
 	var vb := VBoxContainer.new()
 	vb.set_anchors_preset(Control.PRESET_FULL_RECT)
-	vb.offset_left = 14
-	vb.offset_top = 8
+	vb.offset_left = 20
+	vb.offset_top = 9
 	vb.offset_right = -40
 	vb.add_theme_constant_override("separation", 0)
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -178,7 +197,17 @@ func _card(c: Dictionary) -> Control:
 	nm.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(nm)
 	var cls: String = Data.CLASSES.get(c["cls"], {"name": "Knight"})["name"]
-	var l1: Label = ui._label("Level %d %s" % [int(c["level"]), cls], 14, Color(0.86, 0.8, 0.7))
+	var acc: Color = ClassStage.ACCENTS.get(str(c["cls"]), ui.GOLD)
+	var strip := ColorRect.new()
+	strip.color = acc
+	strip.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+	strip.offset_left = 4
+	strip.offset_right = 8
+	strip.offset_top = 6
+	strip.offset_bottom = -6
+	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(strip)
+	var l1: Label = ui._label("Level %d %s" % [int(c["level"]), cls], 15, acc.lerp(Color(0.9, 0.85, 0.75), 0.35))
 	l1.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(l1)
 	var ago: String = ui._ago(int(c["played"]))
@@ -209,9 +238,13 @@ func _card(c: Dictionary) -> Control:
 	return b
 
 func _card_box(hot: bool, chosen := false) -> StyleBoxFlat:
-	var bg: Color = Color(0.13, 0.1, 0.06, 0.95) if chosen else (Color(0.08, 0.065, 0.045, 0.92) if hot else Color(0.05, 0.04, 0.03, 0.85))
-	var edge: Color = ui.GOLD if chosen else (Color(0.5, 0.4, 0.25) if hot else Color(0.25, 0.2, 0.13))
-	return ui._box(bg, edge, 2 if chosen else 1, 4, 0)
+	var bg: Color = Color(0.16, 0.115, 0.06, 0.96) if chosen else (Color(0.1, 0.08, 0.055, 0.94) if hot else Color(0.05, 0.042, 0.032, 0.9))
+	var edge: Color = ui.GOLD if chosen else (Color(0.55, 0.43, 0.26) if hot else Color(0.24, 0.19, 0.12))
+	var sb: StyleBoxFlat = ui._box(bg, edge, 2 if chosen else 1, 3, 0)
+	if chosen:
+		sb.shadow_color = Color(1.0, 0.7, 0.3, 0.25)
+		sb.shadow_size = 8
+	return sb
 
 ## Stand this character on the dais (the figure Play takes in).
 func select(id: String) -> void:
@@ -231,8 +264,6 @@ func set_mode(m: String) -> void:
 	if not _modes.has(m):
 		m = "story"
 	mode = m
-	if m != "bg":
-		game.bg_retry = []          # (no longer waiting for the next raid)
 	for k in _modes:
 		(_modes[k] as Button).set_pressed_no_signal(k == m)
 	_update()
@@ -240,18 +271,23 @@ func set_mode(m: String) -> void:
 func _update() -> void:
 	var none := sel == ""
 	_play.disabled = none
-	_play.text = {"story": "Play", "bg": "Enter the Crypt", "online": "Join Co-op", "lan": "Host"}.get(mode, "Play")
+	_play.text = {"story": "Play", "online": "Join Co-op", "lan": "Host"}.get(mode, "Play")
 	_join.visible = mode == "lan"
 	_note.text = "Create a character to begin." if none else NOTE.get(mode, "")
-	_note.add_theme_color_override("font_color", Color(1.0, 0.5, 0.38) if mode == "bg" and not none else Color(0.78, 0.72, 0.64))
 
-func _process(_d: float) -> void:
+func _process(delta: float) -> void:
 	if not is_visible_in_tree():
 		return
-	var waiting: bool = game.bg_wait_until > Time.get_ticks_msec() and not game.bg_retry.is_empty()
-	_status.visible = waiting
-	if waiting:
-		_status.text = "The next raid opens in %s. You'll be let in then." % game.bg_wait_text()
+	_status.visible = false
+	# the Battlegrounds card breathes, brighter under the mouse
+	if _bg_card != null and _bg_art != null:
+		_bg_t += delta
+		var hot := _bg_card.is_hovered()
+		_bg_hot = move_toward(_bg_hot, 1.0 if hot else 0.0, delta * 5.0)
+		var k := 1.04 + 0.03 * _bg_hot + sin(_bg_t * 0.3) * 0.01
+		_bg_art.pivot_offset = _bg_art.size * Vector2(0.62, 0.4)
+		_bg_art.scale = Vector2(k, k)
+		_bg_art.modulate = Color(0.78, 0.78, 0.8).lerp(Color(1.08, 1.06, 1.1), _bg_hot)
 
 ## Play the chosen character the chosen way.
 func play() -> void:
@@ -260,18 +296,86 @@ func play() -> void:
 	match mode:
 		"story":
 			ui._title_choose("continue")
-		"bg":
-			var nm := ""
-			for c in game.list_characters():
-				if str(c["id"]) == sel:
-					nm = str(c["name"])
-			var addr := str(game._load_setting("battlegrounds", "address", ""))
-			if addr == "":
-				addr = BuildEnv.value("bg_server") if BuildEnv.env() != "local" else "127.0.0.1"
-			var id := sel
-			ui.open_dialog("Enter the Crypt?", "%s goes in with everything they wear and carry. Fall, and it stays on the crypt floor." % nm,
-				[["Enter", func(): game.start_battlegrounds(addr, id)], ["Not yet", func(): pass]])
 		"online":
 			game.start_join(BuildEnv.value("coop_server"), sel)
 		"lan":
 			game.start_host(sel)
+
+## Bottom left: the Battlegrounds, its own way in (a card of its key art in the iron and gold frame; BgPage).
+func _build_bg_card() -> void:
+	if OS.has_feature("web"):
+		return                       # (no raw UDP in a browser)
+	_bg_card = Button.new()
+	_bg_card.name = "bg_card"
+	_bg_card.focus_mode = Control.FOCUS_NONE
+	_bg_card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	for st in ["normal", "hover", "pressed", "focus", "disabled"]:
+		_bg_card.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	_bg_card.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_bg_card.offset_left = 34
+	_bg_card.offset_right = 34 + 400
+	_bg_card.offset_top = -100 - 240
+	_bg_card.offset_bottom = -100
+	_bg_card.pressed.connect(func(): ui.open_battlegrounds())
+	add_child(_bg_card)
+	var clip := Control.new()
+	clip.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	clip.offset_left = 16
+	clip.offset_top = 16
+	clip.offset_right = -16
+	clip.offset_bottom = -16
+	clip.clip_contents = true
+	clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bg_card.add_child(clip)
+	_bg_art = TextureRect.new()
+	_bg_art.texture = load(BgPage.ART)
+	_bg_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_bg_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_bg_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_bg_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	clip.add_child(_bg_art)
+	var shade := ColorRect.new()
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sm := ShaderMaterial.new()
+	var sh := Shader.new()
+	sh.code = "shader_type canvas_item; void fragment(){ float a = (1.0 - smoothstep(0.0, 0.75, UV.x)) * 0.8 + smoothstep(0.45, 1.0, UV.y) * 0.65; COLOR = vec4(0.01, 0.008, 0.012, clamp(a, 0.0, 0.92)); }"
+	sm.shader = sh
+	shade.material = sm
+	clip.add_child(shade)
+	var vb := VBoxContainer.new()
+	vb.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vb.offset_left = 34
+	vb.offset_top = 24
+	vb.offset_right = -30
+	vb.offset_bottom = -30
+	vb.alignment = BoxContainer.ALIGNMENT_END
+	vb.add_theme_constant_override("separation", 0)
+	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	clip.add_child(vb)
+	var eb: Label = ui._label("BATTLEGROUNDS", 14, Color(0.62, 0.78, 1.0), true)
+	var ef := FontVariation.new()
+	ef.base_font = ui.font_title
+	ef.spacing_glyph = 3
+	eb.add_theme_font_override("font", ef)
+	eb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(eb)
+	var t: Label = ui._label(Battlegrounds.TITLE, 30, ui.GOLD, true)
+	t.add_theme_constant_override("outline_size", 8)
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(t)
+	var l: Label = ui._label("PvP extraction raids  ·  Enter  ▸", 15, Color(0.88, 0.82, 0.72))
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(l)
+	# the frame over it all
+	var fr := NinePatchRect.new()
+	fr.texture = ui._ornate_frame(0.13)
+	for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
+		fr.set_patch_margin(side, int(ui.INV_PATCH * 0.13))
+	fr.axis_stretch_horizontal = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
+	fr.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
+	fr.draw_center = false
+	fr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_bg_card.add_child(fr)
+

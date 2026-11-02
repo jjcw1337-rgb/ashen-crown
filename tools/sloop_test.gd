@@ -43,7 +43,7 @@ func _run() -> void:
 	g.ui.close_all()
 	g.hero.boats = []
 	g.hero.sailed = true
-	g.hero.gold = 5000
+	g.hero.gold = int(Data.BOATS["gull"]["price"]) + int(Data.BOATS["sloop"]["price"]) + 3100
 	print("[L] glb exists %s, dims %s" % [ResourceLoader.exists(str(Data.BOATS["sloop"]["glb"])), Boat.dims("sloop")])
 	var m := Boat.model("sloop")
 	print("[L] Boat.model(sloop): imported %s, lamps %d" % [m.get_node_or_null("model") != null, m.find_children("lamp*", "OmniLight3D", true, false).size()])

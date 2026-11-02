@@ -1351,8 +1351,8 @@ func _check_ambushes() -> void:
 				break
 
 func _spring_ambush(am: Dictionary) -> void:
-	ui.big_message("Ambush!")
-	Sfx.play("battle_cry", -6.0, 0.8)
+	ui.big_message(str(am.get("msg", "Ambush!")))
+	Sfx.play(str(am.get("sound", "battle_cry")), -6.0, float(am.get("pitch", 0.8)))
 	add_shake(0.2)
 	var land: Vector3 = am["land"]
 	for es in am["spawns"]:
@@ -1527,7 +1527,7 @@ func bg_refused(why: String, secs: float) -> void:
 		var want: Array = bg_retry.duplicate()
 		get_tree().create_timer(secs + 1.5, false).timeout.connect(func():
 			# still waiting on the Battlegrounds screen, nothing else started meanwhile
-			if bg_retry == want and not playing and (ui.bg_panel.visible or (ui.title_panel.visible and ui.home.mode == "bg")):
+			if bg_retry == want and not playing and (ui.bg_panel.visible or (ui.title_panel.visible and ui.bg_page.visible)):
 				ui.message("The next raid is open", Color(0.6, 1.0, 0.6))
 				start_battlegrounds(str(want[0]), str(want[1])))
 
@@ -1756,12 +1756,21 @@ func list_characters() -> Array:
 		var h: Dictionary = d.get("hero", {})
 		out.append({"id": fn.get_basename(), "name": str(d.get("name", "")), "cls": str(h.get("cls", "knight")),
 			"level": int(h.get("level", 1)), "difficulty": int(d.get("difficulty", 0)), "act": int(d.get("act", 0)),
-			"played": int(d.get("played", 0))})
+			"played": int(d.get("played", 0)), "gold": int(h.get("gold", 0)),
+			"carried": _count_items(h.get("equipment", {})) + _count_items(h.get("inventory", [])) + _count_items(h.get("belt", []))})
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["played"]) > int(b["played"]))
 	return out
 
 ## What a saved character wears, for the title screen's figure: Hero.net_gear()'s shape (equipment plus
 ## "_cls" and "_helm"), read from the save without changing it. {} when the save can't be read.
+## How many items a saved equipment Dictionary or inventory/belt Array holds (empty slots don't count).
+static func _count_items(v) -> int:
+	var n := 0
+	for it in (v.values() if v is Dictionary else (v if v is Array else [])):
+		if it is Dictionary and not (it as Dictionary).is_empty():
+			n += 1
+	return n
+
 func character_gear(id: String) -> Dictionary:
 	var path := char_dir + id + ".json"
 	if id == "" or not FileAccess.file_exists(path):
@@ -2559,7 +2568,8 @@ func boss_down_remote(e: Enemy) -> void:
 func on_boss_aggro(e: Enemy) -> void:
 	net.boss_aggro(e)
 	ui.set_boss(e)
-	ui.big_message(e.display_name)
+	if not Data.ENEMIES.get(e.kind, {}).has("intro"):     # (a boss with an intro card is named by the card)
+		ui.big_message(e.display_name)
 	Sfx.play("roar")
 	add_shake(0.5)
 

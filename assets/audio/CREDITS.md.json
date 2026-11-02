@@ -106,6 +106,18 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "boss_sting": [
+  {
+   "detail": "a punchy cinematic boss reveal stinger for an action game, a huge bass impact, a fast whoosh and a ringing metallic hit, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a punchy cinematic boss reveal stinger for an action game, a huge bass impact, a fast whoosh and a ringing metallic hit, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "bow": [
   {
    "detail": "a bowstring released, an arrow shot whizzing away, close mic, dry, isolated sound effect, no music",
@@ -305,6 +317,18 @@
    "detail": "bookPlace3.ogg",
    "license": "CC0 1.0",
    "source": "Kenney rpg-audio (kenney.nl)"
+  }
+ ],
+ "dwarf_burp": [
+  {
+   "detail": "a loud long drunken belch from a burly dwarf, comedic, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a loud long drunken belch from a burly dwarf, comedic, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
   }
  ],
  "equip": [
@@ -695,6 +719,30 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "raptor_bite": [
+  {
+   "detail": "a raptor's toothed jaws snapping shut on prey, a fast hard bite with a crunch, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a raptor's toothed jaws snapping shut on prey, a fast hard bite with a crunch, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "raptor_call": [
+  {
+   "detail": "a velociraptor's shrill hunting screech followed by fast clicking barks, a predator calling its pack, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a velociraptor's shrill hunting screech followed by fast clicking barks, a predator calling its pack, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "reap_swing": [
   {
    "detail": "a ghostly scythe swung in a wide arc, cold airy spectral whoosh, close mic, dry, isolated sound effect, no music",
@@ -854,6 +902,54 @@
   },
   {
    "detail": "a bolt of lightning striking the ground close by, sharp electric crack and a short rumble, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "trex_roar": [
+  {
+   "detail": "a gigantic tyrannosaurus rex roar, a deep rumbling bellow rising to a terrifying scream, heavy breath and rattling throat, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a gigantic tyrannosaurus rex roar, a deep rumbling bellow rising to a terrifying scream, heavy breath and rattling throat, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "trex_stomp": [
+  {
+   "detail": "a giant dinosaur footstep, one massive deep thud that shakes the ground, earth and pebbles rattling, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a giant dinosaur footstep, one massive deep thud that shakes the ground, earth and pebbles rattling, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "trike_bellow": [
+  {
+   "detail": "a triceratops' deep honking bellow, a huge horned herbivore giving an angry warning call, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a triceratops' deep honking bellow, a huge horned herbivore giving an angry warning call, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "troll_cast": [
+  {
+   "detail": "a jungle troll shaman's guttural hissing chant ending in a wet spit of poison, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a jungle troll shaman's guttural hissing chant ending in a wet spit of poison, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }
