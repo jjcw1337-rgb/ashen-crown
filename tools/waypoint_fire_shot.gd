@@ -2,7 +2,8 @@ extends SceneTree
 ## Close-up frames of the camp waypoint's blue spirit-fire braziers (FireFx "spirit"), to judge the fire's look and
 ## movement. Needs a display:
 ##   xvfb-run -a godot --rendering-driver opengl3 --path . -s tools/waypoint_fire_shot.gd -- outdir [frames] [step] [view]
-## view: close (one brazier, ~2.5 m off) | pair (two braziers and the crystal behind). Saves outdir/fire_NN.png.
+## view: close (one brazier, ~2.5 m off) | pair (two braziers and the crystal behind) | game (the game's own camera,
+## the hero on the waypoint's arrival spot: a clip of the waypoint as players see it). Saves outdir/fire_NN.png.
 var g
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
@@ -37,6 +38,19 @@ func _run() -> void:
 	braz.sort_custom(func(x, y): return x.global_position.z > y.global_position.z)   # front ones first
 	var b: Node3D = braz[0]
 	g.hero.global_position = grand.global_position + Vector3(0, 0, 9)   # out of the way, but near enough to wake it
+	if view == "game":
+		g.hero.global_position = g.world.spawns.get("waypoint_town", grand.global_position + Vector3(0, 0, 3.2))
+		g.ui.visible = false
+		for f in 45:
+			await process_frame
+		for i in frames:
+			for f in step:
+				await process_frame
+			await RenderingServer.frame_post_draw
+			get_root().get_texture().get_image().save_png("%s/fire_%02d.png" % [out, i])
+			print("[F] saved frame ", i)
+		quit()
+		return
 	var cam := Camera3D.new()
 	get_root().add_child(cam)
 	var focus := b.global_position + Vector3(0, 1.45, 0)
