@@ -79,11 +79,12 @@ var max_run := 0             # highest of those reached; any of them can be pick
 ## TESTING: unlock Act I, A2 and A3 at the camp waypoint from the start. Set to false to
 ## go back to unlocking them by beating each final boss. Only takes effect where dev_tools is on.
 const UNLOCK_ALL_ACTS := true
-## Developer tools (unlock-all-acts and the F8 testing panel): only for the owner. On when running from
-## the Godot editor, or when this PC holds a valid admin key (AdminKey: signed with the owner's private
-## key, so it can't be made up or shared by editing a file). Off for everyone else in every build.
+## Developer tools (unlock-all-acts and the Escape menu's Admin column): only for the admins. On when running from
+## the Godot editor, in a staging build (its itch page is private to the two admins), or when this PC holds a valid
+## admin key (AdminKey: signed with the owner's private key, so it can't be made up or shared by editing a file).
+## Off for everyone else in every production build.
 var admin_name := AdminKey.holder()
-var dev_tools := UNLOCK_ALL_ACTS and (OS.has_feature("editor") or admin_name != "")
+var dev_tools := UNLOCK_ALL_ACTS and (OS.has_feature("editor") or admin_name != "" or BuildEnv.env() == "staging")
 var run_progress := {}       # per run: its waypoints and whether its boss is dead
 var played_s := 0.0          # seconds this character has been played (saved); the clock trees regrow on (Harvest)
 var harvest_saved := {}      # "<run>:<act>:<zone>" -> Harvest.to_save() (the felled trees and when they regrow)
@@ -1714,7 +1715,7 @@ func on_net_failed(msg: String) -> void:
 		if hero.dead:
 			hero.respawn(hero.global_position)
 
-## Testing switches (F8 panel, only while dev_tools is on). They change nothing else
+## Testing switches (the Escape menu's Admin column, only while dev_tools is on). They change nothing else
 ## and are never saved.
 var test_immortal := false
 var test_onehit := false
@@ -1873,7 +1874,7 @@ func exit_to_title() -> void:
 	bg_raid = {}
 	net_joining = false
 	# nothing of the character that was playing carries on: its death or victory screen still to come, its portal,
-	# its experience bonus, the F8 switches
+	# its experience bonus, the admin switches
 	death_t = -1.0
 	ui.death_panel.visible = false
 	ui.victory_panel.visible = false
@@ -2978,8 +2979,8 @@ func _cheat_keys(ev: InputEvent) -> void:
 		_typed = ""
 		max_out()
 
-## Admin (the F8 testing panel, only with dev tools: the signed admin key or the editor; Blaine's progression spec):
-## this character to level 20 with its stats spent and its talents auto-built, every skill it has at 20, and a solid
+## Admin (the Escape menu's Admin column, only with dev tools; Blaine's progression spec): this character to level 20
+## (and 10,000 gold each press) with its stats spent and its talents auto-built, every skill it has at 20, and a solid
 ## class baseline of level-20 gear for PvP testing (rare items on every slot, the class's own weapon). Safe to press
 ## again: its own pieces (marked "boost") stay, any other equipped item moves to the bag (kept equipped if the bag
 ## is full, never destroyed), and the same gear is never handed out twice.
@@ -3023,6 +3024,7 @@ func go_level_20() -> void:
 				continue          # (no room for what's there: it stays on)
 		hero.equipment[slot] = it
 		given += 1
+	hero.gold += 10000
 	hero.refresh_gear()
 	hero.recalc()
 	hero.life = hero.max_life
@@ -3030,7 +3032,7 @@ func go_level_20() -> void:
 	if char_id != "":
 		save_game()
 	ui.refresh()
-	ui.message("Level 20: talents built, %d piece%s of level-20 gear on" % [given, "" if given == 1 else "s"], Color(0.6, 1.0, 0.6))
+	ui.message("Level 20: talents built, %d piece%s of level-20 gear on, +10,000 gold" % [given, "" if given == 1 else "s"], Color(0.6, 1.0, 0.6))
 
 ## The best base for a slot at level 20 that this class can wear (its own weapon kind: bows for the ranger, canes for
 ## the plague doctor, the drumstick for Doug...).
@@ -3164,8 +3166,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 				ui.message("Sound " + ("on" if sound_on else "off"), Color(0.8, 0.85, 1.0))
 				ui.update_sound_btn()
 			KEY_F8:
-				if dev_tools:
-					ui.toggle(ui.test_panel)
+				if dev_tools and not paused:
+					toggle_pause()          # (the admin tools are in the Escape menu)
 			KEY_M:
 				ui.minimap.visible = not ui.minimap.visible
 			KEY_TAB:

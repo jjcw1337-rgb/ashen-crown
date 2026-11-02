@@ -1,5 +1,5 @@
 extends SceneTree
-## Screenshot of the F8 testing panel. Needs a display (xvfb).
+## Screenshot of the Escape menu with its Admin column. Needs a display (xvfb).
 var g
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
@@ -11,7 +11,8 @@ func _run() -> void:
 		await process_frame
 	await g.start_game(false)
 	g.ui.close_all()
-	g.ui.toggle(g.ui.test_panel)
+	g.dev_tools = true
+	g.toggle_pause()
 	await create_timer(1.0).timeout
 	get_root().get_texture().get_image().save_png(out + "/test_panel.png")
 	quit()

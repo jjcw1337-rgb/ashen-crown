@@ -123,7 +123,7 @@ var pause_panel: PanelContainer
 var gfx_btn: Button
 var title_panel: Control
 var sound_btn: Button
-var test_panel: PanelContainer
+var test_panel: VBoxContainer          # the Escape menu's Admin column (dev tools)
 var join_panel: PanelContainer
 var join_list: VBoxContainer
 var join_ip: LineEdit
@@ -205,7 +205,6 @@ func setup(g: Node) -> void:
 	_build_waypoints()
 	_build_dialog()
 	_build_pause()
-	_build_test_panel()
 	_build_skills_panel()
 	_build_talent_panel()
 	_build_quests()
@@ -251,14 +250,6 @@ func _make_theme() -> Theme:
 	t.default_font_size = 16
 	t.set_stylebox("panel", "PanelContainer", _box(PANEL_BG, BORDER, 2, 2, 14))
 	t.set_stylebox("panel", "Panel", _box(PANEL_BG, BORDER, 2, 2, 0))
-	var bn := _box(Color(0.13, 0.1, 0.07), Color(0.5, 0.38, 0.22), 2, 2, 8)
-	bn.shadow_size = 0
-	var bh := _box(Color(0.22, 0.16, 0.09), Color(0.8, 0.62, 0.34), 2, 2, 8)
-	bh.shadow_size = 0
-	var bp := _box(Color(0.08, 0.06, 0.04), Color(0.8, 0.62, 0.34), 2, 2, 8)
-	bp.shadow_size = 0
-	var bd := _box(Color(0.08, 0.07, 0.06), Color(0.25, 0.22, 0.18), 2, 2, 8)
-	bd.shadow_size = 0
 	# every button is the action bar's iron socket by default (Blaine: "no plain boxes"; _iron_button is the same)
 	var sock := _scaled_tex(BAR_TEX["slot"], 0.3)
 	var iron := func(mod: Color) -> StyleBoxTexture:
@@ -272,10 +263,10 @@ func _make_theme() -> Theme:
 		sb.content_margin_bottom = 6
 		sb.modulate_color = mod
 		return sb
-	bn = iron.call(Color.WHITE)
-	bh = iron.call(Color(1.25, 1.15, 1.0))
-	bp = iron.call(Color(0.85, 0.8, 0.75))
-	bd = iron.call(Color(0.5, 0.48, 0.46, 0.85))
+	var bn: StyleBoxTexture = iron.call(Color.WHITE)
+	var bh: StyleBoxTexture = iron.call(Color(1.25, 1.15, 1.0))
+	var bp: StyleBoxTexture = iron.call(Color(0.85, 0.8, 0.75))
+	var bd: StyleBoxTexture = iron.call(Color(0.5, 0.48, 0.46, 0.85))
 	t.set_stylebox("normal", "Button", bn)
 	t.set_stylebox("hover", "Button", bh)
 	t.set_stylebox("pressed", "Button", bp)
@@ -3268,10 +3259,14 @@ func _build_pause() -> void:
 	pause_panel.visibility_changed.connect(func(): dim.visible = pause_panel.visible)
 	modals.add_child(pause_panel)
 	_ornate(pause_panel, 0.22, 10)
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 28)
+	pause_panel.add_child(cols)
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 6)
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
-	pause_panel.add_child(vb)
+	vb.custom_minimum_size = Vector2(380, 0)
+	cols.add_child(vb)
 	var t := _label("PAUSED", 34, GOLD, true)
 	var tfv := FontVariation.new()
 	tfv.base_font = font_title
@@ -3326,13 +3321,6 @@ func _build_pause() -> void:
 	fps.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	fps.pressed.connect(func(): show_fps = not show_fps)
 	vb.add_child(fps)
-	if game.dev_tools:
-		var kit := _iron_button("Testing panel (F8)", 320, 38, 16)
-		kit.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		kit.pressed.connect(func():
-			game.toggle_pause()
-			toggle(test_panel))
-		vb.add_child(kit)
 	vb.add_child(_divider(18))
 	var to_title := _iron_button("Save and Exit to Title", 320, 42, 17)
 	to_title.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -3346,92 +3334,100 @@ func _build_pause() -> void:
 		get_tree().quit())
 	save.visible = not OS.has_feature("web")
 	vb.add_child(save)
+	# the admins' tools beside it (Game.dev_tools: the editor, a signed admin key or a staging build); the menu
+	# widens for them
+	test_panel = _build_admin(cols)
+	pause_panel.visibility_changed.connect(func():
+		if not pause_panel.visible:
+			return
+		test_panel.visible = game.dev_tools
+		var hw := 450 if game.dev_tools else 230
+		pause_panel.offset_left = -hw
+		pause_panel.offset_right = hw)
 
-## F8 testing panel: a few switches and the level, nothing else in the game changes.
-func _build_test_panel() -> void:
-	test_panel = PanelContainer.new()
-	test_panel.anchor_left = 0.0
-	test_panel.anchor_top = 0.0
-	test_panel.offset_left = 20
-	test_panel.offset_top = 60
-	test_panel.offset_right = 330
-	test_panel.offset_bottom = 490
-	test_panel.visible = false
-	test_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	modals.add_child(test_panel)
+## The Escape menu's Admin column (only where Game.dev_tools is on): Go to level 20 with 10,000 gold, Max out, the
+## testing switches and the level. Nothing else in the game changes; the switches aren't saved.
+func _build_admin(parent: Control) -> VBoxContainer:
 	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 10)
-	test_panel.add_child(vb)
-	vb.add_child(_label("Testing", 22, GOLD, true))
-	vb.add_child(_label(("Admin: " + game.admin_name) if game.admin_name != "" else "Admin: editor", 12, Color(0.55, 0.85, 1.0)))
-	var l20 := _iron_button("Go to level 20", 280, 40, 16)
+	vb.add_theme_constant_override("separation", 6)
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	vb.custom_minimum_size = Vector2(380, 0)
+	vb.visible = false
+	parent.add_child(vb)
+	var t := _label("ADMIN", 34, Color(0.55, 0.85, 1.0), true)
+	var tfv := FontVariation.new()
+	tfv.base_font = font_title
+	tfv.spacing_glyph = 6
+	t.add_theme_font_override("font", tfv)
+	t.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	t.add_theme_constant_override("outline_size", 8)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(t)
+	var who := _label("", 13, Color(0.55, 0.85, 1.0))
+	who.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(who)
+	vb.add_child(_divider(10))
+	var l20 := _iron_button("Go to level 20  (+10,000 gold)", 340, 46, 18)
 	l20.name = "level20"
+	l20.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	l20.pressed.connect(func(): game.go_level_20())
 	vb.add_child(l20)
-	var mx := Button.new()
-	mx.text = "Max out this character"
+	var mx := _iron_button("Max out (level 99, gold, gear)", 340, 38, 16)
+	mx.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	mx.pressed.connect(func(): game.max_out())
 	vb.add_child(mx)
-	var imm := CheckButton.new()
-	imm.text = "Immortal (take no damage)"
-	imm.button_pressed = game.test_immortal
-	imm.toggled.connect(func(on: bool):
-		game.test_immortal = on
-		message("Immortal " + ("ON" if on else "off"), Color(0.6, 1.0, 0.6) if on else Color(0.8, 0.8, 0.8)))
-	vb.add_child(imm)
-	var one := CheckButton.new()
-	one.text = "One-hit kill"
-	one.button_pressed = game.test_onehit
-	one.toggled.connect(func(on: bool):
-		game.test_onehit = on
-		message("One-hit kill " + ("ON" if on else "off"), Color(1.0, 0.7, 0.4) if on else Color(0.8, 0.8, 0.8)))
-	vb.add_child(one)
-	var sta := CheckButton.new()
-	sta.text = "Infinite stamina"
-	sta.button_pressed = game.test_stamina
-	sta.toggled.connect(func(on: bool):
-		game.test_stamina = on
-		message("Infinite stamina " + ("ON" if on else "off"), Color(0.5, 1.0, 0.6) if on else Color(0.8, 0.8, 0.8)))
-	vb.add_child(sta)
-	var allsk := CheckButton.new()
-	allsk.text = "Unlock all skills"
-	allsk.button_pressed = game.test_allskills
-	allsk.toggled.connect(func(on: bool):
-		game.test_allskills = on
-		message("All skills " + ("unlocked" if on else "back to their levels"), Color(0.6, 0.8, 1.0) if on else Color(0.8, 0.8, 0.8)))
-	vb.add_child(allsk)
-	var fast := CheckButton.new()
-	fast.text = "Super speed (run %dx as fast)" % int(game.TEST_FAST)
-	fast.button_pressed = game.test_fast
-	fast.toggled.connect(func(on: bool):
-		game.test_fast = on
-		message("Super speed " + ("ON" if on else "off"), Color(1.0, 0.9, 0.4) if on else Color(0.8, 0.8, 0.8)))
-	vb.add_child(fast)
-	# character level: pick a number and press Set
+	# the switches: one iron button each, lit while on
+	var syncs: Array[Callable] = []
+	for sw in [["test_immortal", "Immortal"], ["test_onehit", "One-hit kill"], ["test_stamina", "Infinite stamina"],
+			["test_allskills", "Unlock all skills"], ["test_fast", "Super speed (%dx)" % int(game.TEST_FAST)]]:
+		var key: String = sw[0]
+		var nm: String = sw[1]
+		var b := _iron_button("", 340, 36, 15)
+		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		var sync := func():
+			var on: bool = game.get(key)
+			b.text = nm + ":  " + ("ON" if on else "off")
+			var col := Color(0.55, 1.0, 0.6) if on else Color(0.96, 0.82, 0.5)
+			b.add_theme_color_override("font_color", col)
+			b.add_theme_color_override("font_hover_color", col.lightened(0.2))
+		b.pressed.connect(func():
+			game.set(key, not bool(game.get(key)))
+			sync.call()
+			message(nm + (" ON" if game.get(key) else " off"), Color(0.6, 1.0, 0.6) if game.get(key) else Color(0.8, 0.8, 0.8)))
+		syncs.append(sync)
+		vb.add_child(b)
+	# the level: pick a number and press Set
 	var lv := HBoxContainer.new()
 	lv.add_theme_constant_override("separation", 8)
+	lv.alignment = BoxContainer.ALIGNMENT_CENTER
 	lv.add_child(_label("Level", 16, Color(0.86, 0.83, 0.77)))
 	var spin := SpinBox.new()
 	spin.min_value = 1
 	spin.max_value = 99
 	spin.step = 1
 	spin.custom_minimum_size = Vector2(90, 0)
-	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lv.add_child(spin)
-	var setb := Button.new()
-	setb.text = "Set"
-	setb.custom_minimum_size = Vector2(60, 0)
+	var setb := _iron_button("Set", 80, 36, 15)
 	setb.pressed.connect(func():
 		spin.apply()
 		hero.set_level(int(spin.value))
+		if game.char_id != "":
+			game.save_game()
 		message("Level set to %d" % hero.level, Color(1.0, 0.85, 0.4)))
 	lv.add_child(setb)
 	vb.add_child(lv)
-	test_panel.visibility_changed.connect(func():
-		if test_panel.visible and hero:
+	var note := _label("Level and gold are saved; the switches are not.", 13, Color(0.7, 0.66, 0.58))
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(note)
+	vb.visibility_changed.connect(func():
+		if not vb.visible:
+			return
+		who.text = game.admin_name if game.admin_name != "" else ("staging build" if BuildEnv.env() == "staging" else "editor")
+		for f in syncs:
+			f.call()
+		if hero:
 			spin.value = hero.level)
-	vb.add_child(_label("Level changes are saved; the switches are not.", 13, Color(0.7, 0.66, 0.58)))
-	vb.add_child(_label("F8 or Esc to close.", 13, Color(0.7, 0.66, 0.58)))
+	return vb
 
 func update_sound_btn() -> void:
 	if sound_btn:
@@ -4829,7 +4825,7 @@ func _walked_off() -> void:
 
 func close_all() -> bool:
 	var any := close_skill_picker()
-	for p in [inv_panel, char_panel, shop_panel, stash_panel, burn_panel, furnace_ui, wp_panel, dialog_panel, ench_panel, test_panel, skills_panel, talent_panel, quest_panel, boat_panel]:
+	for p in [inv_panel, char_panel, shop_panel, stash_panel, burn_panel, furnace_ui, wp_panel, dialog_panel, ench_panel, skills_panel, talent_panel, quest_panel, boat_panel]:
 		if p.visible:
 			p.visible = false
 			any = true
