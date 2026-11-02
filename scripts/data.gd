@@ -745,12 +745,13 @@ const PVP_GEAR_CAP := {"res": 15, "ls": 4, "ias": 20, "frw": 5, "block": 15, "ed
 ## level 20, geared, every pairing). Only player-against-player blows; monsters and PvE are untouched.
 const PVP_CLASS := {
 	# [at level 1, at level 20] (straight between); a single number holds at every level
-	"wraith": {"dmg": [1.0, 0.8], "taken": [1.0, 1.2]},
-	"doug": {"dmg": [0.85, 1.5], "taken": [1.0, 0.8]},
-	"warlock": {"dmg": [1.15, 1.3], "taken": [0.95, 0.85]},
-	"plague": {"dmg": [0.6, 1.3], "taken": [1.1, 0.9]},
-	"demon": {"dmg": [1.25, 1.15], "taken": 1.0},
-	"knight": {"dmg": [1.05, 0.92], "taken": 1.0},
+	"wraith": {"dmg": [0.85, 0.8], "taken": [1.12, 1.2]},
+	"doug": {"dmg": [1.1, 1.45], "taken": [0.9, 0.8]},
+	"warlock": {"dmg": [1.3, 1.3], "taken": [0.88, 0.85]},
+	"plague": {"dmg": [0.6, 1.4], "taken": [1.1, 0.9]},
+	"demon": {"dmg": [1.15, 1.15], "taken": 1.0},
+	"knight": {"dmg": [1.0, 0.95], "taken": 1.0},
+	"archer": {"dmg": [1.0, 0.88], "taken": 1.0},
 }
 
 static func _pvp_k(cls: String, key: String, level: int) -> float:
