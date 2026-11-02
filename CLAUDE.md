@@ -90,6 +90,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `coop_server.gd` | Online co-op: the story game hosted by a dedicated server (see "Online co-op") |
 | `build_env.gd`, `nakama_client.gd`, `cloud_saves.gd` | Which backend a build uses; the Nakama REST client; characters kept in Nakama (see "Staging and accounts") |
 | `battlegrounds.gd` | Battlegrounds prototype: the raid map, the dedicated server's raid logic (respawns, carried loot, extraction, the stash), the client's id and cached stash |
+| `vigil.gd` | The Last Flame (zone `"vigil"`): the co-op horde defence under the Act I camp, its sanctum, waves, flame and HUD (see "The Last Flame") |
 | `kpi.gd` | The official performance KPIs: scripted scenarios measured frame by frame (`--kpi`), see docs/nightly/KPIS.md |
 | `shared_skills.gd`, `shared_fx.gd` | The shared skills every class can use (`"cls": "any"`): their gameplay and their effects |
 | `skill_spec.gd` | The skill format (`SkillSpec`): a skill's timing, damage, area and damage over time read from its `Data.SKILLS` entry |
@@ -173,8 +174,13 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   room and the only way into the hall from that side; a ring of corridors with one link missing; crypt rooms with
   sarcophagi, chests, few but tough monsters (`MON_LIFE`, `MON_DMG`, level `MON_LEVEL`); the hall has a pillar ring,
   three chests and a champion with bowmen. The walls come from `World.crypt_shell` (shared with the crypt). **Rounds**
-  of `RAID_SECS` (15 min): two of the four portals open at `PORTALS_AT` (5 min), joining closes at `JOIN_CLOSE`, the
-  crypt collapses at the end (everyone inside dies) and the dungeon resets (`new_round`). The state reaches players
+  of `RAID_SECS` (20 min): two of the four portals open at `PORTALS_AT` (5 min), joining closes at `JOIN_CLOSE` (15 min), the
+  crypt collapses at the end (everyone inside dies) and the dungeon resets (`new_round`). **Several raids** (Blaine
+  2026-11-01): one server per raid, `--server --raid N` (port `RAID_PORTS[N]`), each running its rounds on the wall
+  clock a third of a `PERIOD` after the last (`phase`), so one is always open; clients need no lobby: `schedule()` and
+  `best_raid()` work every raid's state out from the clock (the Battlegrounds page's board, and Enter goes to the best
+  one). `LIVE_RAIDS` is how many are deployed (staging: 1 until UDP 24571/24572 are open and the droplet has room;
+  `BG_RAIDS=3 sh deploy/staging/deploy.sh` then starts `ashen-crown-bg-raid@1/@2`). `tools/raid_schedule_test.gd`. The state reaches players
   through `Net.cl_bg_raid` (the HUD clock, `Battlegrounds.hud`). **Attacks are the same as everywhere**
   (timing, damage, cooldowns: one standard, jj 2026-11-01); while `Game.bg_mode` only walking is slower (`MOVE_MULT`) and
   life doesn't regenerate. **PvP**: every other
@@ -192,6 +198,23 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   and accounts"). Tests: `tools/bg_test.gd` (server `--raid-fast`: 150 s rounds) and `tools/bg_pvp_test.gd`.
   Dev cheat (non-production builds or dev tools): type `maxout` while playing (`Game.max_out`: level 99, stats,
   every talent, a million gold, potions, a bag of the best gear).
+- **The Last Flame** (`scripts/vigil.gd`, `Vigil`, zone `"vigil"`; nightly mode 2026-11-01, `docs/nightly/modes/2026-11-01-last-flame/`):
+  a co-op horde defence. The Act I camp's Vigil Gate (Inter `"vigil_gate"` at `ForestCamp.VIGIL_GATE`, `travel`, so the
+  party's ready check takes everyone; the way back is `"vigil_exit"` to the camp's `from_vigil`) leads to an indoor
+  sanctum (`Vigil.build`: a 32 m hall on `crypt_shell`, three breach rooms N/E/W with red portals, the altar at
+  `CENTER`). Clicking the altar (Inter `"vigil"`) kindles a vigil: `WAVES` (ten; champions on 5 and 10 with a boss bar
+  on every screen, the Forsaken Bear on 8 and 10) come out of the breaches (`SPAWN_GAP`, at most `MAX_ALIVE` on the
+  floor), counts and the flame's life scaled by players (`PER_PLAYER`) and level (the party's average, `Net.vigil_hi`).
+  Monsters go for the flame through `Enemy.taunt` (the `Vigil.Flame` node: what Enemy reads of a target) unless a hero
+  is nearer; monster missiles hit it through the `"objective"` group (`projectile.gd`). A wave held mends it (`MEND`)
+  and lays gold (an item every other wave) by it; all ten: a unique each. Clicking it with a log from the moor feeds it
+  (`FUEL`: oak 8%, pine 5%, Ashen Heartwood 25%). The flame out = lost (the wave crumbles, no xp); either way it relights
+  after `END_SECS`. Deaths rise by the altar (`Game.respawn`). Host-authoritative: state `Net.vigil_state`/`cl_vigil`
+  (twice a second), events `vigil_event`/`cl_vigil_fx`, a partner's kindling `request_vigil`/`sv_vigil`, feeding
+  `vigil_feed`; it runs on a player host and on the online co-op server alike. Tests: `tools/nightly_vigil_test.gd`
+  (solo, in the gate), `tools/vigil_coop_test.gd` (the co-op server and two players: `-- --server --coop --port 24661
+  server`, `-- a 24661`, `-- b 24661`); balance probe `tools/vigil_sim.gd -- [class] [level] [secs]`; screenshots
+  `tools/vigil_shots.gd -- outdir [frames] [class]` (needs a display).
 - **Online co-op** (`scripts/coop_server.gd`, `CoopServer`): the story game hosted by a dedicated server
   (`-- --server --coop --port 24570`, staging systemd `ashen-crown-coop`), so friends co-op over the internet with no
   router setup: the title's "Online Co-op" (non-local builds) joins `BuildEnv.value("coop_server")` with the
@@ -978,6 +1001,29 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   gets its own stand automatically) and a `SKILL_SHOW` entry per skill (hover a skill in the panel: the centred hero
   performs it on the stage, `show_skill`). Tests: `tools/class_carousel_test.gd` (`--fixed-fps 60`: turning, wrapping,
   queued turns, clicks, keys, wheel, feet on plinths, skill previews); `tools/class_shot.gd -- outdir [frames]`.
+- **Home screen and the Battlegrounds page** (Blaine 2026-11-01, "no plain boxes"): over the title's gate, `TitleHome`
+  (`scripts/title_home.gd`): the character sidebar (class colour on each card, delete on the card, Create New
+  Character), the modes Story / Online Co-op / LAN as iron tabs and one big Play, a Battlegrounds card with its key art
+  (`assets/textures/ui/bg_crypt.jpg`, Meshy) and Quit Game. The card opens `BgPage` (`scripts/bg_page.gd`, `UI.bg_page`,
+  `UI.open_battlegrounds`): the art full screen, Fight / Loot / Extract, the death rule, the champion (arrows cycle the
+  characters; what they'd risk), the live raid board, Enter the Crypt (asks first), Back / Esc. Every panel is
+  `UI._ornate(panel, k, pad)` (the inventory's iron and gold frame at scale k) and every button `UI._iron_button`;
+  `open_dialog` is an ornate panel over a vignette. `tools/screen_test.gd` checks it.
+- **Deploys never kick players** (Blaine 2026-11-02): `deploy/staging/deploy.sh` puts each deploy in its own
+  `/opt/ashen-crown/staging/releases/<rev>-<time>` and switches the `game` link; the services start the release the
+  link points at, resolved (`ExecStart` via `readlink -f`), and `ServerUpdate` (`scripts/server_update.gd`, every 20 s)
+  moves a running server to a new live release only when nobody would be hurt (raid: empty or between rounds; co-op:
+  empty), telling its players once (`Net.cl_bg_note`, no new RPC). `deploy.sh --now` restarts at once (emergencies;
+  announce it). `tools/server_update_test.sh` (a co-op server, two players, the link moved under them).
+- **Stamina out of combat** (jj 2026-11-02): `Hero.calm()` is 1 in a fight (a blow struck or taken, or an awake
+  monster within 14 m, `_engaged`) and for `COMBAT_SECS` after, then rises to `CALM_MAX` (5) over `CALM_RAMP`;
+  sprinting drains that many times slower and stamina refills that many times faster ("Rested ×N" on the bar).
+  `tools/stamina_test.gd`.
+- **The Codex standards audit** (Blaine 2026-11-01, `tools/audit/`): a read-only run of ChatGPT's Codex CLI on a clean
+  worktree of `origin/staging` (`~/dev/ashen-crown-audit`) with the admins' Discord requests since the last audit;
+  it checks requests vs delivered, asset quality, architecture, performance, tests and process against
+  `audit_prompt.md` and posts the findings to the channel. launchd `com.gamefactory.ashen-audit` (install.sh):
+  19:40, 23:30, 2:30, 7:30, 12:50, 16:20. It never edits or runs the game; log `~/Library/Logs/ashen-nightly/audit.log`.
 - **Title screen** (`UI._build_title`, `scripts/title_stage.gd` `TitleStage`): the Gate of the Ashen Crown at dusk in
   its own World3D: a ruined cathedral gate with the dusk showing through its arch (`BACKDROP_SHADER`), broken arcades,
   the fallen stone king and a giant crown in the ash, fog banks, falling ash, embers, braziers and torches, heat

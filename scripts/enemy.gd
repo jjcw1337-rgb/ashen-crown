@@ -536,15 +536,28 @@ func special_fx(ev: String) -> void:
 			game.add_shake(0.4)
 		"bear_tele":
 			# the danger zone: a ring where the paws will land
-			Fx.telegraph(game.world.fx_root, global_position - rig.global_transform.basis.z * 1.6, 1.9, atk_dur * Bear.MAUL_HIT, Color(0.6, 1.0, 0.4))
+			# (scaled by its body: the bear is radius 1; the tyrant's jaws reach far further)
+			Fx.telegraph(game.world.fx_root, global_position - rig.global_transform.basis.z * 1.6 * radius, 1.9 * radius, atk_dur * Anim.impact_at("bear_maul"), Color(0.6, 1.0, 0.4))
 		"bear_roar":
-			Bear.sound("bear_roar", global_position + Vector3(0, 2.0, 0))
+			# each roarer its own voice; a boss with an "intro" introduces itself (BossCard, on every game it reaches)
+			if kind == "trex":
+				Sfx.play_at("trex_roar", global_position + Vector3(0, 4.0, 0), 2.0, randf_range(0.95, 1.02))
+			elif kind in ["trike", "trike_baby"]:
+				Sfx.play_at("trike_bellow", global_position + Vector3(0, 2.0, 0), 0.0, 1.6 if kind == "trike_baby" else randf_range(0.95, 1.05))
+			else:
+				Bear.sound("bear_roar", global_position + Vector3(0, 2.0, 0))
+			if def.has("intro") and is_instance_valid(game.hero) and game.hero.global_position.distance_to(global_position) < 34.0:
+				BossCard.play(game, self)
 			Fx.burst(game.world.fx_root, global_position + Vector3(0, 2.4, 0) - rig.global_transform.basis.z * 0.9, Color(0.75, 0.8, 0.75, 0.35), 18, 1.6, 0.35, 0.9, false, 0.4, 35.0, -rig.global_transform.basis.z)
 			if game.hero.global_position.distance_to(global_position) < 16.0:
 				game.add_shake(0.25)
 		"bear_maul":
-			Bear.sound("bear_maul", global_position)
-			var paws := global_position - rig.global_transform.basis.z * 1.6
+			if kind == "trex":
+				Sfx.play_at("raptor_bite", global_position, 3.0, 0.55)       # (the raptor's snap, an octave down: his jaws)
+				Sfx.play_at("trex_stomp", global_position, 0.0, 0.8)
+			else:
+				Bear.sound("bear_maul", global_position)
+			var paws := global_position - rig.global_transform.basis.z * 1.6 * radius
 			Fx.ring(game.world.fx_root, paws, 2.6, Color(0.45, 0.4, 0.33), 0.4)
 			Fx.burst(game.world.fx_root, paws + Vector3(0, 0.2, 0), Color(0.38, 0.33, 0.28, 0.8), 30, 4.5, 0.3, 0.8, false, -4.0, 80.0)
 			if game.hero.global_position.distance_to(global_position) < 10.0:
@@ -668,6 +681,8 @@ func _process(delta: float) -> void:
 	else:
 		if not aggro and f_calm <= 0.0 and dist < def.get("aggro", 12.0) and not hero_dead and game.world.los(global_position, hero.global_position):
 			aggro = true
+			if kind == "raptor":
+				Sfx.play_at("raptor_call", global_position + Vector3(0, 1.0, 0), -2.0, randf_range(0.92, 1.1))
 			if boss:
 				game.on_boss_aggro(self)
 			for e in game.enemies_near(global_position, 8.0):
@@ -707,7 +722,7 @@ func _process(delta: float) -> void:
 		move_amt = move_toward(move_amt, clampf(vel.length() / maxf(speed, 0.1), 0.0, 1.0), delta * 5.0)
 		var was := phase
 		phase += delta * vel.length() * (1.6 / maxf(height, 0.5)) * (-1.0 if f_state in ["back", "out"] else 1.0) * (float(rig.get_meta("stride")) if rig.has_meta("stride") else 1.0)
-		if boss and rig.has_meta("goblin") and floorf(phase / PI) != floorf(was / PI) and move_amt > 0.4:
+		if boss and (rig.has_meta("goblin") or rig.has_meta("dino")) and floorf(phase / PI) != floorf(was / PI) and move_amt > 0.4:
 			_footstep()
 	else:
 		move_amt = move_toward(move_amt, 0.0, delta * 5.0)
@@ -730,6 +745,10 @@ static func build_rig(kind: String, variant := 1) -> Node3D:
 		return Lion.build()
 	if d.get("mesh", "") == "bear" and Bear.ok():
 		return Bear.build()
+	if Theropod.ok(str(d.get("mesh", ""))):
+		return Theropod.build(str(d["mesh"]))
+	if Trike.ok(str(d.get("mesh", ""))):
+		return Trike.build(str(d["mesh"]))
 	if d.get("mesh", "") == "sloth":
 		return Sloth.build(str(d.get("variant", "")), look.get("skin", Color(0.52, 0.56, 0.47)))
 	if d.get("mesh", "") == "wolf" and ResourceLoader.exists(SpiritBeast.WOLF_GLB):
@@ -751,6 +770,10 @@ static func pose_rig(r: Node3D, st: Dictionary, height: float) -> void:
 		Feral.pose(r, st, height)
 	elif r.has_meta("lion"):
 		Lion.pose(r, st, height)
+	elif r.has_meta("dino"):
+		Theropod.pose(r, st, height)
+	elif r.has_meta("trike"):
+		Trike.pose(r, st, height)
 	elif r.has_meta("bear"):
 		Bear.pose(r, st, height)
 	elif r.has_meta("sloth"):
@@ -762,9 +785,15 @@ static func pose_rig(r: Node3D, st: Dictionary, height: float) -> void:
 ## little if you're close.
 func _footstep() -> void:
 	var side := 1.0 if int(floorf(phase / PI)) % 2 == 0 else -1.0
-	var foot := global_position + rig.global_transform.basis.x * side * 0.35
-	Fx.burst(game.world.fx_root, foot + Vector3(0, 0.08, 0), Color(0.38, 0.33, 0.28, 0.6), 8, 1.2, 0.2, 0.6, false, -1.0, 70.0)
-	if game.hero.global_position.distance_to(global_position) < 7.0:
+	var big := kind == "trex"          # (the Tyrant: the ground shakes under every step, and you hear it coming)
+	var foot := global_position + rig.global_transform.basis.x * side * (0.35 * (radius if big else 1.0))
+	Fx.burst(game.world.fx_root, foot + Vector3(0, 0.08, 0), Color(0.38, 0.33, 0.28, 0.6), 18 if big else 8, 2.4 if big else 1.2, 0.35 if big else 0.2, 0.8 if big else 0.6, false, -1.0, 70.0)
+	var d: float = game.hero.global_position.distance_to(global_position)
+	if big:
+		Sfx.play_at("trex_stomp", foot, -3.0, randf_range(0.9, 1.05))
+		if d < 22.0:
+			game.add_shake(0.18 * (1.0 - d / 22.0) + 0.04)
+	elif d < 7.0:
 		game.add_shake(0.06)
 
 ## The radius it collides with props and walls at: a boss's real bulk (so a 3.5 m King Grubb
@@ -1063,7 +1092,7 @@ func _impact(hero: Node3D, dist: float) -> void:
 					continue
 				var to_h: Vector3 = h.global_position - global_position
 				to_h.y = 0
-				if to_h.length() < 3.0 + radius * 0.5 and fwd.dot(to_h.normalized()) > 0.2:
+				if to_h.length() < 1.3 + radius * 2.2 and fwd.dot(to_h.normalized()) > 0.2:
 					h.take_hit(_roll(), global_position, "maul")
 		"feral_lunge":
 			# the claws come down where he lands
@@ -1076,7 +1105,7 @@ func _shoot(at: Vector3, pkind: String) -> void:
 	var from := global_position + Vector3(0, height * 1.35, 0) + (-rig.global_transform.basis.z) * 0.5
 	pr.launch(game, pkind, from, at + Vector3(0, 1.1, 0), _roll())
 	game.net.projectile(pkind, from, at + Vector3(0, 1.1, 0))
-	Sfx.play_at("bow" if pkind in ["arrow", "dart"] else "fireball", global_position, -2.0, randf_range(0.9, 1.1))
+	Sfx.play_at("troll_cast" if kind == "troll_shaman" else ("bow" if pkind in ["arrow", "dart"] else "fireball"), global_position, -2.0, randf_range(0.9, 1.1))
 
 # ---------------------------------------------------------------- the Feral (feral.gd)
 ## Clinging head-down to a trunk until someone comes close, then down it in a skitter, and the rest of

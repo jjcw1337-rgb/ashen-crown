@@ -154,6 +154,20 @@ func _run() -> void:
 			h.end_drain()
 			WraithSkills.clear(h)
 			DemonSkills.clear(h)
+		# the dodge roll (jj: "I never saw the roll in PvP"): his partner sees the puppet tumble
+		h.global_position = g.world.free_spot_near(h.global_position, 1.0)
+		for e in g.world.enemies_root.get_children():
+			e.queue_free()
+		await wait(0.6)
+		var rolled := false
+		var tumble := 0.0
+		if load("res://scripts/dodge.gd").start(h, Vector3(1, 0, 0)):
+			var t0 := Time.get_ticks_msec()
+			while Time.get_ticks_msec() - t0 < 450:
+				await process_frame
+				rolled = rolled or puppet.roll_t >= 0.0
+				tumble = maxf(tumble, absf(puppet.rig.rotation.x) + (puppet.rig.position - Vector3.ZERO).length())
+		check(rolled and tumble > 0.2, "%s: the dodge roll reached the puppet and it tumbled (%.2f)" % [cls, tumble])
 		SkillFx.clear(puppet)
 		puppet.queue_free()
 		puppet = null

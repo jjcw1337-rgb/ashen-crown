@@ -174,6 +174,12 @@ var atk_target = null
 var stamina := 100.0
 var max_stamina := 100.0
 var stamina_rest := 0.0
+## seconds since this hero last fought (struck, was struck, attacked or cast; jj, 2026-11-02): out of combat
+## stamina lasts and refills better and better, up to CALM_MAX times after CALM_RAMP more seconds (calm())
+var combat_t := 999.0
+const COMBAT_SECS := 5.0
+const CALM_RAMP := 10.0
+const CALM_MAX := 5.0
 var sprint := false
 ## The knight can keep a helm equipped (its stats) but not draw it (inventory toggle).
 var show_helm := true
@@ -488,11 +494,8 @@ func setup(g: Node) -> void:
 	trail = MeshInstance3D.new()
 	trail.mesh = ImmediateMesh.new()
 	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	if _trail_shader == null:
-		_trail_shader = Shader.new()
-		_trail_shader.code = TRAIL_SHADER
 	var tm := ShaderMaterial.new()
-	tm.shader = _trail_shader
+	tm.shader = _trail_shader()
 	trail.material_override = tm
 	trail.top_level = true
 	add_child(trail)
@@ -1334,9 +1337,26 @@ func pace_mult(id: String) -> float:
 ## src: the skill doing the hitting (talent bonuses); by default the attack in progress.
 ## flat: damage on top of the weapon roll (a spell's part by level, e.g. the Wraith's spirit-light), scaled by the
 ## buffs and the skill's talents like the rest, in the same number.
+var _engaged_t := 0.0
+
+## A monster awake and after this hero close by (its fight is on even before a blow lands).
+func _engaged() -> bool:
+	if game == null or game.world == null:
+		return false
+	for e in game.world.enemies_root.get_children():
+		if e is Enemy and not e.dead and e.aggro and (e.global_position - global_position).length_squared() < 196.0:
+			return true
+	return false
+
+## How rested the hero is: 1 in combat (and for COMBAT_SECS after), rising to CALM_MAX over CALM_RAMP s out of it.
+## Sprinting drains stamina that many times slower and it refills that many times faster.
+func calm() -> float:
+	return lerpf(1.0, CALM_MAX, clampf((combat_t - COMBAT_SECS) / CALM_RAMP, 0.0, 1.0))
+
 func _hit_enemy(e, mult: float, knock: float = 0.0, src := "", flat := 0.0) -> void:
 	if not is_instance_valid(e) or e.dead:
 		return
+	combat_t = 0.0
 	if src == "":
 		src = atk_skill if atk_skill != "" else "attack"
 	var r := roll_damage(mult * dmg_mult(src))
@@ -1353,6 +1373,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	stop_chop()
 	if dead:
 		return
+	combat_t = 0.0
 	if puppet:
 		if game.net.is_host:
 			game.net.hit_player(peer_id, dmg, from, kind, element)
@@ -1517,8 +1538,15 @@ func _process(delta: float) -> void:
 	var wants_move := direct_dir.length() > 0.1 or (moving and not path.is_empty())
 	# stamina: sprint drains it, resting refills it; running dry leaves you winded
 	running = sprint and wants_move and not exhausted and block_amt < 0.5 and charge_t < 0.0
+	combat_t += delta
+	_engaged_t -= delta
+	if _engaged_t <= 0.0:
+		_engaged_t = 0.5
+		if _engaged():
+			combat_t = 0.0
+	var rested := calm()
 	if running:
-		stamina = maxf(0.0, stamina - delta * 14.0)
+		stamina = maxf(0.0, stamina - delta * 14.0 / rested)
 		stamina_rest = 0.0
 		if stamina <= 0.0:
 			exhausted = true
@@ -1526,7 +1554,7 @@ func _process(delta: float) -> void:
 	else:
 		stamina_rest += delta
 		if stamina_rest > 0.6:
-			stamina = minf(max_stamina, stamina + delta * (16.0 if not wants_move else 9.0))
+			stamina = minf(max_stamina, stamina + delta * (16.0 if not wants_move else 9.0) * rested)
 	if game.test_stamina:
 		stamina = max_stamina
 		exhausted = false
@@ -1922,6 +1950,30 @@ func _blight_burst(p: Vector3) -> void:
 func _clear_warlock() -> void:
 	WarlockSkills.clear(self)
 
+static var _trail_sh: Shader
+
+## The swing's trail (was a flat additive ribbon that read as a white paper blade): UV.x = age along the swing
+## (0 = the blade now), UV.y = from the hilt (0) to the tip (1); a hot thin edge at the tip, a soft body fading toward
+## the hilt and with age, faint streaks running back along it, in the class's colour (vertex colour; alpha = strength).
+static func _trail_shader() -> Shader:
+	if _trail_sh == null:
+		_trail_sh = Shader.new()
+		_trail_sh.code = """shader_type spatial;
+render_mode unshaded, blend_add, cull_disabled, depth_draw_never, shadows_disabled;
+void fragment() {
+	float age = UV.x;
+	float edge = UV.y;
+	float body = pow(edge, 1.3) * 0.5;
+	float rim = smoothstep(0.78, 1.0, edge) * 1.25;
+	float fade = pow(clamp(1.0 - age, 0.0, 1.0), 1.7);
+	float streak = 0.72 + 0.28 * sin(edge * 34.0 + age * 9.0);
+	float a = (body + rim) * fade * streak * COLOR.a;
+	vec3 c = mix(COLOR.rgb, vec3(1.0, 0.97, 0.9), smoothstep(0.88, 1.0, edge) * 0.55);
+	ALBEDO = c * a;
+	ALPHA = clamp(a, 0.0, 1.0);
+}"""
+	return _trail_sh
+
 func _update_trail(active: bool) -> void:
 	var im: ImmediateMesh = trail.mesh
 	im.clear_surfaces()
@@ -1942,41 +1994,29 @@ func _update_trail(active: bool) -> void:
 			trail_pts.pop_back()
 	if trail_pts.size() < 2:
 		return
+	# smoothed through the samples (Catmull-Rom, SUB steps between each pair), so a fast swing is an arc, not facets
+	const SUB := 3
+	var n: int = trail_pts.size()
+	var total := float((n - 1) * SUB)
+	var c := Color(trail_col.r, trail_col.g, trail_col.b, 0.85)
 	im.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
-	var n := trail_pts.size()
-	var c := Color(trail_col.r, trail_col.g, trail_col.b, 1.0)
-	for i in n:
-		var age := float(i) / float(n - 1)
-		im.surface_set_color(c)
-		im.surface_set_uv(Vector2(age, 0.0))
-		im.surface_add_vertex(trail_pts[i][0])
-		im.surface_set_color(c)
-		im.surface_set_uv(Vector2(age, 1.0))
-		im.surface_add_vertex(trail_pts[i][1])
+	for i in n - 1:
+		for k in SUB + (1 if i == n - 2 else 0):
+			var t := float(k) / SUB
+			var a0: Array = trail_pts[maxi(i - 1, 0)]
+			var a1: Array = trail_pts[i]
+			var a2: Array = trail_pts[i + 1]
+			var a3: Array = trail_pts[mini(i + 2, n - 1)]
+			var base: Vector3 = (a1[0] as Vector3).cubic_interpolate(a2[0], a0[0], a3[0], t)
+			var tip: Vector3 = (a1[1] as Vector3).cubic_interpolate(a2[1], a0[1], a3[1], t)
+			var age := float(i * SUB + k) / total
+			im.surface_set_color(c)
+			im.surface_set_uv(Vector2(age, 0.0))
+			im.surface_add_vertex(base)
+			im.surface_set_color(c)
+			im.surface_set_uv(Vector2(age, 1.0))
+			im.surface_add_vertex(tip)
 	im.surface_end()
-
-## The weapon trail: a smear of light behind the blade, not a sheet. Across it (UV.y: 0 at the hilt end, 1 at the tip)
-## a hot thin edge rides the tip and the body thins toward the hilt; along the swing (UV.x: 0 at the blade now, 1 at
-## the oldest point) it dies away quadratically, broken into fine streaks. The class's colour comes in COLOR.
-## (Visual overhaul: the old trail was additive at 55-90% across its whole width, a flat white band in Forward+.)
-const TRAIL_SHADER := """
-shader_type spatial;
-render_mode unshaded, blend_add, cull_disabled, depth_draw_never, shadows_disabled;
-uniform float energy = 1.6;
-void fragment() {
-	float age = clamp(UV.x, 0.0, 1.0);
-	float across = clamp(UV.y, 0.0, 1.0);
-	float life = (1.0 - age) * (1.0 - age);
-	float edge = smoothstep(0.72, 0.95, across) * (1.0 - 0.55 * smoothstep(0.95, 1.0, across));
-	float body = smoothstep(0.0, 0.92, across);
-	float streak = 0.62 + 0.38 * sin(across * 53.0 + 1.3) * sin(across * 21.0 - age * 4.0);
-	float head = smoothstep(0.0, 0.08, age);      // the newest sliver sits on the blade: let the steel show
-	float a = (edge * 0.8 + body * 0.22 * streak) * life * mix(0.45, 1.0, head);
-	ALBEDO = COLOR.rgb * energy * (1.0 + 0.7 * edge);
-	ALPHA = clamp(a, 0.0, 1.0);
-}
-"""
-static var _trail_shader: Shader
 
 func respawn(p: Vector3) -> void:
 	if not puppet and game != null and game.hero == self:

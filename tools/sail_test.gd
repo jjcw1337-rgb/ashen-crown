@@ -123,6 +123,13 @@ func _run() -> void:
 	var dn := b.dock_near()
 	print("[S] alongside the Verdant Isle's jetty: dock '%s'" % dn.get("name", ""))
 	b.set_process(true)
+	# the island asks for its level (Isles "level", Game.try_land): refused at level 1, ashore at 10
+	g.hero.set_level(1)
+	var refused: bool = not g.try_land() and g.cur_zone == "coast"
+	print("[S] the Verdant Isle refuses a level-1 hero: %s (prompt '%s')" % [refused, g._ashore_prompt(b.dock_near())])
+	if not refused:
+		print("[S] FAIL the level gate let a level-1 hero ashore")
+	g.hero.set_level(10)
 	g.try_land()
 	while g._busy or g.cur_zone != "isle_verdant":
 		await process_frame

@@ -16,6 +16,8 @@ extends RefCounted
 ## pads for buildings (its script's `pads`). Positions: `bearing` (degrees from due west, + south) and
 ## `sail` (metres of open water from the coast's dock to the end of the island's jetty).
 ##
+## Levels (Blaine, 2026-11-01): each island is a level zone; `level` is what a hero must be to step ashore there
+## (Game.try_land): 10, 10, 15, 15, 20 from north round to south. Each will have its boss and a set piece.
 ## Room to grow: every island has `foes` (Data.ENEMIES ids for its packs), `loot` (chests and caches),
 ## `quests` (Quests ids) and `dungeon` (a zone its cave or crypt leads to), all empty for now. The
 ## builder marks named spots (`w.spawns["poi_<name>"]`) for them.
@@ -26,25 +28,25 @@ const ZONE_HALF := 160.0       # half the size of an island's own zone (its grou
 
 ## One entry per island, in the order a player meets them on the map from north round to south.
 const ISLANDS := [
-	{"id": "verdant", "ferns": 1100, "name": "The Verdant Isle", "bearing": -112.0, "sail": 164.0, "r": 125.0, "seed": 101,
+	{"id": "verdant", "level": 10, "ferns": 1100, "name": "The Verdant Isle", "bearing": -112.0, "sail": 164.0, "r": 125.0, "seed": 101,
 		"beach": 13.0, "cliff": 0.35, "cliff_h": 6.0, "sand": Color(0.62, 0.56, 0.41),
 		"terrain": {"col_a": Color(0.13, 0.19, 0.07), "col_b": Color(0.19, 0.24, 0.09), "col_accent": Color(0.26, 0.32, 0.12),
 			"col_path": Color(0.3, 0.25, 0.17), "col_cliff": Color(0.34, 0.33, 0.29), "wet": 0.4},
 		"lore": "Green and silent under a giant oak older than any kingdom. Something tends the clearings.",
 		"foes": [], "loot": [], "quests": [], "dungeon": ""},
-	{"id": "ruins", "ferns": 300, "name": "The Forgotten Ruins", "bearing": -56.0, "sail": 164.0, "r": 125.0, "seed": 202,
+	{"id": "ruins", "level": 10, "ferns": 300, "name": "The Forgotten Ruins", "bearing": -56.0, "sail": 164.0, "r": 125.0, "seed": 202,
 		"beach": 11.0, "cliff": 0.55, "cliff_h": 7.0, "sand": Color(0.66, 0.6, 0.47),
 		"terrain": {"col_a": Color(0.2, 0.22, 0.1), "col_b": Color(0.27, 0.27, 0.15), "col_accent": Color(0.33, 0.33, 0.18),
 			"col_path": Color(0.42, 0.38, 0.3), "col_cliff": Color(0.5, 0.47, 0.41), "wet": 0.2},
 		"lore": "Terraces of a city that knelt to the Ashen King, and a temple still waiting for him.",
 		"foes": [], "loot": [], "quests": [], "dungeon": ""},
-	{"id": "lost", "ferns": 700, "name": "The Lost Isle", "bearing": 0.0, "sail": 164.0, "r": 125.0, "seed": 303,
+	{"id": "lost", "level": 15, "ferns": 700, "name": "The Lost Isle", "bearing": 0.0, "sail": 164.0, "r": 125.0, "seed": 303,
 		"beach": 12.0, "cliff": 1.0, "cliff_h": 17.0, "sand": Color(0.7, 0.66, 0.56),
 		"terrain": {"col_a": Color(0.14, 0.2, 0.12), "col_b": Color(0.2, 0.24, 0.16), "col_accent": Color(0.24, 0.3, 0.2),
 			"col_path": Color(0.36, 0.33, 0.28), "col_cliff": Color(0.42, 0.42, 0.44), "wet": 0.3},
 		"lore": "Sheer cliffs and a monolith carved with the same runes as the camp's stones, still awake.",
 		"foes": [], "loot": [], "quests": [], "dungeon": ""},
-	{"id": "bleak", "ferns": 120, "name": "The Bleak Isle", "bearing": 56.0, "sail": 164.0, "r": 125.0, "seed": 404,
+	{"id": "bleak", "level": 15, "ferns": 120, "name": "The Bleak Isle", "bearing": 56.0, "sail": 164.0, "r": 125.0, "seed": 404,
 		"beach": 9.0, "cliff": 0.8, "cliff_h": 9.0, "sand": Color(0.34, 0.33, 0.32),
 		"terrain": {"col_a": Color(0.09, 0.1, 0.08), "col_b": Color(0.13, 0.13, 0.11), "col_accent": Color(0.16, 0.17, 0.12),
 			"col_path": Color(0.2, 0.19, 0.17), "col_cliff": Color(0.12, 0.12, 0.13), "wet": 0.5},
@@ -56,7 +58,7 @@ const ISLANDS := [
 			"sky_top": Color(0.2, 0.24, 0.24), "horizon": Color(0.46, 0.5, 0.44),
 			"sun": Color(0.82, 0.86, 0.78), "sun_energy": 0.62, "ambient": 0.5},
 		"foes": [], "loot": [], "quests": [], "dungeon": ""},
-	{"id": "merchant", "ferns": 350, "name": "The Merchant's Reach", "bearing": 112.0, "sail": 164.0, "r": 125.0, "seed": 505,
+	{"id": "merchant", "level": 20, "ferns": 350, "name": "The Merchant's Reach", "bearing": 112.0, "sail": 164.0, "r": 125.0, "seed": 505,
 		"beach": 10.0, "cliff": 0.5, "cliff_h": 5.0, "sand": Color(0.6, 0.55, 0.43),
 		"terrain": {"col_a": Color(0.17, 0.2, 0.09), "col_b": Color(0.23, 0.23, 0.12), "col_accent": Color(0.3, 0.29, 0.15),
 			"col_path": Color(0.36, 0.3, 0.21), "col_cliff": Color(0.4, 0.38, 0.33), "wet": 0.35},

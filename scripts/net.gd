@@ -81,8 +81,25 @@ func host(port := PORT, max_clients := MAX_CLIENTS) -> int:
 	_update_status()
 	return OK
 
+## A join that reached the server (`reached`) but was never welcomed (`welcomed`): the server runs a different
+## version of the game. Its RPCs don't match ours (Godot drops every call with "rpc node checksum failed" and the
+## connection just hangs), so the message says to update rather than "no answer".
+var reached := false
+var welcomed := false
+
+func join_failure(fallback: String) -> String:
+	if game.bg_wait_until > Time.get_ticks_msec():
+		return "The crypt is closing. The next raid opens in %s." % game.bg_wait_text()
+	if game.bg_refusal != "":
+		return "The raid server couldn't confirm your account. Try again in a moment."
+	if reached and not welcomed:
+		return "That server runs a different version of the game than yours (%s · %s). Update the game (in the itch app: Update), then try again." % [BuildEnv.env(), BuildEnv.value("rev")]
+	return fallback
+
 func join(ip: String, port := PORT) -> int:
 	shutdown()
+	reached = false
+	welcomed = false
 	peer = ENetMultiplayerPeer.new()
 	var err := peer.create_client(ip, port)
 	if err != OK:
@@ -140,6 +157,7 @@ func local_ips() -> Array:
 	return out
 
 func _on_connected() -> void:
+	reached = true
 	rpc_id(1, "sv_hello", my_name, game.hero.net_gear(), game.hero.level)
 	if game.bg_mode:
 		# with accounts on: a one-time join ticket from Nakama (over HTTPS), never the session itself
@@ -154,8 +172,9 @@ func _on_connect_failed() -> void:
 	game.on_net_failed("Could not connect to that game.")
 
 func _on_server_gone() -> void:
+	var why := join_failure("The host left the game.")
 	shutdown()
-	game.on_net_failed("The host left the game.")
+	game.on_net_failed(why)
 
 func _on_peer_disconnected(pid: int) -> void:
 	if not players.has(pid):
@@ -164,6 +183,8 @@ func _on_peer_disconnected(pid: int) -> void:
 	if server and game.bg != null and is_instance_valid(players[pid]["hero"]):
 		game.bg.player_left(pid, players[pid]["hero"].global_position)
 	_remove_player(pid)
+	if server:
+		print("[%s] %s left (%d playing)" % ["COOP" if coop_server else "BG", n, players.size()])
 	# a trip waiting on them: theirs is called off, otherwise it goes on without their answer
 	if is_host and not vote.is_empty():
 		if int(vote["from"]) == pid:
@@ -353,6 +374,7 @@ func sv_hello(nm: String, gear: Dictionary, _lvl: int) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func cl_welcome(act: int, zone: String, pos: Vector3, tp: Dictionary, bk: bool, roster: Array, diff: int) -> void:
+	welcomed = true
 	if diff != game.difficulty:
 		# the host's (or the raid's) act: keep our own act's waypoints and boss aside, as cl_goto does
 		if game.bg_mode and game.bg_home_run < 0:
@@ -674,6 +696,49 @@ func sv_games() -> void:
 	if is_host and game.world != null and game.world.has_meta("games"):
 		game.world.get_meta("games").begin()
 
+## The Last Flame (vigil.gd): the host's round state and events to everyone, a partner's kindling and level.
+func vigil_state(args: Array) -> void:
+	if is_host and not players.is_empty():
+		rpc("cl_vigil", args)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_vigil(args: Array) -> void:
+	if not loading and game.world != null and game.world.has_meta("vigil"):
+		game.world.get_meta("vigil").apply(args)
+
+func vigil_event(ev: String) -> void:
+	if is_host and not players.is_empty():
+		rpc("cl_vigil_fx", ev)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_vigil_fx(ev: String) -> void:
+	if not loading and game.world != null and game.world.has_meta("vigil"):
+		game.world.get_meta("vigil").fx(ev)
+
+func request_vigil() -> void:
+	rpc_id(1, "sv_vigil")
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_vigil() -> void:
+	if is_host and game.world != null and game.world.has_meta("vigil"):
+		game.world.get_meta("vigil").begin()
+
+func vigil_feed(frac: float) -> void:
+	rpc_id(1, "sv_vigil_feed", frac)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_vigil_feed(frac: float) -> void:
+	if is_host and game.world != null and game.world.has_meta("vigil"):
+		game.world.get_meta("vigil").feed(clampf(frac, 0.0, 0.25))
+
+func vigil_hi(lvl: int) -> void:
+	rpc_id(1, "sv_vigil_hi", lvl)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_vigil_hi(lvl: int) -> void:
+	if is_host and game.world != null and game.world.has_meta("vigil"):
+		game.world.get_meta("vigil").levels[multiplayer.get_remote_sender_id()] = clampi(lvl, 1, 99)
+
 ## Host: put a partner's knight somewhere (onto the arena's sand when its gate drops).
 func place_player(pid: int, pos: Vector3) -> void:
 	rpc_id(pid, "cl_place", pos)
@@ -809,7 +874,8 @@ func sv_bg_hello(uid: String, ticket: String) -> void:
 	var pid := multiplayer.get_remote_sender_id()
 	var r = await game.bg.player_hello(pid, uid.substr(0, 64), ticket)
 	if r != "ok":
-		rpc_id(pid, "cl_bg_note", "This raid is closing: try again in a minute, for the next one." if r == "closed" else "The server could not confirm your account. Try again in a moment.")
+		# turned away: say why, and when the next raid lets players in (the client counts down and rejoins)
+		rpc_id(pid, "cl_bg_refused", r, game.bg.secs_to_next() if r == "closed" else 0.0)
 		await get_tree().create_timer(0.5).timeout
 		if peer != null:
 			peer.disconnect_peer(pid)
@@ -883,6 +949,12 @@ func sv_extract() -> void:
 @rpc("authority", "call_remote", "reliable")
 func cl_extracted(gained: Array) -> void:
 	game.bg_extracted(gained)
+
+## The raid server turned us away: "closed" (too late into the round: `secs` until the next one lets players in;
+## Game.bg_refused shows a countdown and rejoins then) or "refused" (the account couldn't be confirmed).
+@rpc("authority", "call_remote", "reliable")
+func cl_bg_refused(why: String, secs: float) -> void:
+	game.bg_refused(why, secs)
 
 @rpc("authority", "call_remote", "reliable")
 func cl_bg_note(txt: String) -> void:

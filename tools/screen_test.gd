@@ -77,33 +77,62 @@ func _run() -> void:
 	# a message shows over the title
 	ui.message("hello")
 	check(ui.msg_lbl.is_visible_in_tree() and ui.top.get_index() > ui.menus.get_index(), "title: a message is drawn over it")
-	# the Battlegrounds screen over the title
-	ui.open_battlegrounds()
+	# the home screen (TitleHome): the character sidebar, the modes and Play; the Battlegrounds is one of its modes
+	var home = ui.home
+	check(home.is_visible_in_tree() and home.sel != "", "home: the sidebar lists the characters and one is chosen")
+	check(_in_front(home.get_node("sidebar").find_child("char_" + home.sel, true, false)), "home: a character's card takes the click")
+	check(_in_front(home.get_node("sidebar").find_child("create", true, false)), "home: Create New Character takes the click")
+	check(_in_front(home.get_node("bg_card")), "home: the Battlegrounds card takes the click")
+	check(_in_front(home.get_node("quit")) and home.get_node("quit").size.x >= 180, "home: a real Quit button (%s)" % home.get_node("quit").size)
+	(home.get_node("bg_card") as Button).pressed.emit()
 	await frames(2)
-	check(ui.bg_panel.is_visible_in_tree() and ui.title_panel.is_visible_in_tree(), "Battlegrounds: over the title (its backdrop)")
-	check(ui.menu_shade != null and ui.menu_shade.visible, "Battlegrounds: the title is dimmed behind it")
-	var card: Control = ui._title_cards["new"]
-	check(not _in_front(card), "Battlegrounds: the title's cards can't be clicked through it")
-	check(_in_front(ui.bg_panel.find_child("enter", true, false)), "Battlegrounds: Enter takes the click")
+	var page = ui.bg_page
+	check(page.visible and ui.title_panel.is_visible_in_tree() and not ui.bg_panel.visible, "Battlegrounds: its own page over the title")
+	check(_in_front(page._enter) and page._enter.text == "Enter the Crypt" and not page._enter.disabled, "Battlegrounds: Enter the Crypt takes the click")
 	check(not ui.quest_tracker.is_visible_in_tree() and not ui.hud.is_visible_in_tree(), "Battlegrounds: no HUD, no quest tracker")
-	var txt: String = ""
-	for l in ui.bg_panel.find_children("*", "Label", true, false):
-		txt += (l as Label).text + " "
-	check(not txt.contains("PERMANENT") and txt.to_lower().contains("level"), "Battlegrounds: it states today's rule (items lost, levels kept)")
-	ui._bg_go()
+	var words := ""
+	for l in page.find_children("*", "Label", true, false):
+		words += (l as Label).text.to_lower() + " "
+	check(words.contains("death costs everything you carry") and words.contains("levels, talents and camp stash are kept"), "Battlegrounds: it states the rule (items lost, levels kept)")
+	check(page.sel != "" and page._name.text != "", "Battlegrounds: a champion chosen (%s)" % page._name.text)
+	page.enter()
 	await frames(2)
 	check(ui.dialog_panel.is_visible_in_tree(), "Battlegrounds: Enter asks first")
 	var btns: Array = ui.dialog_btns.get_children()
 	check(btns.size() > 0 and _in_front(btns[0]), "Battlegrounds: the dialog is on top and its button takes the click")
 	check(not str(ui.dialog_text.text).contains("forever"), "Battlegrounds: the dialog states today's rule")
 	ui.dialog_panel.visible = false
-	(ui.bg_panel.find_children("*", "Button", true, false).filter(func(b): return b.text == "Back")[0] as Button).pressed.emit()
+	# turned away late in a round (Net.cl_bg_refused): the home screen counts down to the next raid and rejoins by itself
+	g.bg_retry = ["127.0.0.1:1", home.sel]
+	g.bg_refused("closed", 1.0)
+	await frames(3)
+	check(page.visible and page._status.text.contains("next opens"), "Battlegrounds: turned away, it counts down to the next raid (%s)" % page._status.text)
+	check(g.net.join_failure("x").contains("next raid opens"), "and says so instead of 'the host left'")
+	var tried := false
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 4500 and not tried:
+		tried = g.playing or g.loading.visible
+		await process_frame
+	check(tried, "and when the wait is over it goes in by itself")
+	g.bg_retry = []
+	while g._busy or g.playing:
+		if g.net.active:
+			g.net.shutdown()
+		g.bg_mode = false
+		await process_frame
+		if g.playing and not g._busy:
+			await g.exit_to_title()
 	await frames(2)
-	check(not ui.bg_panel.visible and not ui.menu_shade.visible and ui.title_panel.visible, "Battlegrounds: Back is the title again")
+	if not page.visible:
+		ui.open_battlegrounds()
+		await frames(2)
+	(page.get_node("back") as Button).pressed.emit()
+	await frames(2)
+	check(ui.title_panel.visible and not page.visible and not ui.menu_shade.visible and _in_front(home._play), "Battlegrounds: Back to the home screen")
 	# the co-op screen the same way
 	ui.open_join()
 	await frames(2)
-	check(ui.join_panel.is_visible_in_tree() and ui.menu_shade.visible and not _in_front(card), "co-op: over the dimmed title")
+	check(ui.join_panel.is_visible_in_tree() and ui.menu_shade.visible and not _in_front(home._play), "co-op: over the dimmed title (its Play can't be clicked through it)")
 	ui.join_panel.visible = false
 	g.net.stop_listening()
 	await frames(1)

@@ -142,13 +142,13 @@ const VENDORS := [
 ## planned for 8: Isles.ISLANDS "sail" / speed ~ the crossing's seconds), accel: m/s per second,
 ## turn: radians per second at speed, crew: how many it carries (co-op: each player sails their own).
 const BOATS := {
-	"gull": {"name": "The Gull", "price": 400, "speed": 8.0, "accel": 3.2, "turn": 0.95, "crew": 1,
+	"gull": {"name": "The Gull", "price": 1000000, "speed": 8.0, "accel": 3.2, "turn": 0.95, "crew": 1,
 		"paint": Color(0.16, 0.3, 0.42),
 		"desc": "A single-masted cutter of tarred oak, seven paces long, built here on the strand. Quick on the wind, steady in a swell, and she'll put you ashore at any jetty on the Mournwater."},
 	# Imported boats: "glb" is a model prepared by tools/blender/prep_boat.py (bow toward -z, waterline y = 0); its
 	# printout gives length, beam, sheer and draft. "deck" is where the hero stands at the helm, "lamps" the lanterns'
 	# lights. Swap the model by changing "glb" (and the sizes); without the file she's drawn as the Gull.
-	"sloop": {"name": "The Ember Sloop", "price": 1500, "speed": 9.0, "accel": 2.6, "turn": 0.8, "crew": 2,
+	"sloop": {"name": "The Ember Sloop", "price": 10000000, "speed": 45.0, "accel": 13.0, "turn": 0.8, "crew": 2,
 		"glb": "res://assets/models/boats/sloop.glb", "length": 14.0, "beam": 4.6, "sheer": 1.74, "draft": 1.3,
 		"deck": Vector3(0.6, 1.15, 2.6), "lamps": [[Vector3(1.21, 2.85, 6.73), 1.2], [Vector3(-1.21, 2.85, 6.73), 1.2]],
 		"paint": Color(0.3, 0.06, 0.04),
@@ -205,6 +205,37 @@ const ENEMIES := {
 	"bear": {"mesh": "bear", "name": "Forsaken Bear", "rig": "crawler", "life": 130, "dmg": [9, 16], "speed": 3.0, "range": 2.4, "xp": 60,
 		"ai": "bear", "atk": "bear_maul", "atk_time": 1.5, "armor": 8, "radius": 1.0, "aggro": 12.0, "blood": Color(0.35, 0.05, 0.03),
 		"look": {"skin": Color(0.16, 0.15, 0.14), "shell": Color(0.1, 0.1, 0.09), "legs": 4, "size": 1.6, "eyes": Color(0.45, 1.0, 0.4)}},
+	# the Verdant Isle, island 1 (level 10, Blaine's dinosaur island): Meshy models on rigs posed in code (theropod.gd,
+	# trike.gd). look "height" is the hip's height: their strides (Enemy phase) and where numbers float come from it
+	"raptor": {"mesh": "raptor", "name": "Jungle Raptor", "rig": "crawler", "life": 46, "dmg": [6, 11], "speed": 6.2, "range": 1.6, "xp": 34,
+		"ai": "feral", "atk": "feral_swipe", "atk_time": 0.85, "armor": 4, "radius": 0.6, "aggro": 18.0, "blood": Color(0.5, 0.02, 0.02),
+		"look": {"skin": Color(0.27, 0.3, 0.17), "shell": Color(0.4, 0.22, 0.1), "legs": 2, "height": 0.77, "eyes": Color(1.0, 0.72, 0.2)}},
+	"trex": {"mesh": "trex", "name": "Gorehide the Tyrant", "rig": "crawler", "life": 950, "dmg": [18, 30], "speed": 4.2, "range": 4.0, "xp": 900,
+		"ai": "bear", "atk": "bear_maul", "atk_time": 1.6, "armor": 16, "radius": 2.4, "boss": true, "aggro": 22.0, "blood": Color(0.45, 0.04, 0.02),
+		"intro": {"title": "GOREHIDE", "sub": "THE TYRANT", "line": "Ate the last three tamers who tried to saddle him. Kept the saddle.", "color": Color(1.0, 0.55, 0.15)},
+		"look": {"skin": Color(0.12, 0.14, 0.1), "shell": Color(0.08, 0.09, 0.07), "legs": 2, "height": 2.66, "eyes": Color(1.0, 0.55, 0.15)}},
+	"trike": {"mesh": "trike", "name": "Mother Triceratops", "rig": "crawler", "life": 420, "dmg": [12, 20], "speed": 3.4, "range": 3.0, "xp": 300,
+		"ai": "bear", "atk": "bear_maul", "atk_time": 1.5, "armor": 14, "radius": 1.6, "aggro": 16.0, "blood": Color(0.4, 0.05, 0.03),
+		"look": {"skin": Color(0.4, 0.3, 0.18), "shell": Color(0.3, 0.24, 0.14), "legs": 4, "size": 2.2, "height": 2.2, "eyes": Color(0.9, 0.6, 0.2)}},
+	"troll_shaman": {"mesh": "troll_shaman", "faction": "troll", "name": "Troll Beast-Tamer", "rig": "humanoid", "life": 70, "dmg": [7, 12], "speed": 3.4, "range": 10.0, "xp": 48,
+		"ai": "ranged", "atk": "cast", "atk_time": 1.3, "armor": 5, "radius": 0.5, "proj": "poison", "blood": Color(0.25, 0.4, 0.3),
+		"look": {"height": 2.3, "eyes": Color(1.0, 0.6, 0.15)}},
+	# the Battlegrounds' bosses (Blaine's overhaul, docs/queue_battlegrounds_overhaul.md): Meshy, rigged by rig_monster.py;
+	# their fights (abilities, arenas, the hermit's chest) are the overhaul's to build on these entries
+	"ice_troll": {"mesh": "ice_troll", "name": "Hrimgar the Frostbound", "rig": "humanoid", "life": 1400, "dmg": [24, 38], "speed": 3.2, "range": 3.0, "xp": 1400,
+		"ai": "melee", "atk": "slam", "atk_time": 1.7, "armor": 22, "radius": 1.3, "boss": true, "aggro": 18.0, "blood": Color(0.55, 0.8, 1.0),
+		"intro": {"title": "HRIMGAR", "sub": "THE FROSTBOUND", "line": "He's been standing in that cave for three hundred years. He'd like a word about the draught.", "color": Color(0.55, 0.85, 1.0)},
+		"look": {"height": 3.4, "eyes": Color(0.6, 0.95, 1.0)}},
+	"hermit": {"mesh": "hermit", "name": "Old Mossbeard", "rig": "humanoid", "life": 900, "dmg": [14, 22], "speed": 3.0, "range": 9.0, "xp": 1100,
+		"ai": "ranged", "atk": "cast", "atk_time": 1.4, "armor": 10, "radius": 0.6, "boss": true, "aggro": 14.0, "proj": "poison", "blood": Color(0.35, 0.55, 0.2),
+		"intro": {"title": "OLD MOSSBEARD", "sub": "THE THORN HERMIT", "line": "Hasn't had visitors in years. Doesn't plan on letting this lot leave.", "color": Color(0.6, 1.0, 0.45)},
+		"look": {"height": 1.45, "eyes": Color(0.5, 1.0, 0.4)}},
+	"dwarf": {"mesh": "dwarf", "name": "Drunken Dwarf", "rig": "humanoid", "life": 340, "dmg": [16, 26], "speed": 3.9, "range": 1.8, "xp": 260,
+		"ai": "melee", "atk": "smash", "atk_time": 1.1, "armor": 18, "radius": 0.55, "blood": Color(0.5, 0.02, 0.02),
+		"look": {"height": 1.3, "eyes": Color(0.3, 0.6, 1.0), "weapon": "club"}},
+	"trike_baby": {"mesh": "trike_baby", "name": "Baby Triceratops", "rig": "crawler", "life": 60, "dmg": [1, 2], "speed": 2.0, "range": 1.2, "xp": 4,
+		"ai": "bear", "atk": "bear_maul", "atk_time": 1.2, "armor": 2, "radius": 0.5, "aggro": 0.0, "blood": Color(0.45, 0.05, 0.03),
+		"look": {"skin": Color(0.7, 0.52, 0.28), "shell": Color(0.55, 0.4, 0.2), "legs": 4, "size": 0.75, "height": 0.75, "eyes": Color(0.1, 0.08, 0.05)}},
 	"lion": {"mesh": "lion", "name": "Arena Lion", "rig": "crawler", "life": 30, "dmg": [4, 8], "speed": 5.0, "range": 1.9, "xp": 16,
 		"ai": "feral", "atk": "feral_swipe", "atk_time": 0.95, "armor": 3, "radius": 0.8, "aggro": 30.0, "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.55, 0.4, 0.22), "shell": Color(0.3, 0.2, 0.1), "legs": 4, "size": 1.2, "eyes": Color(1.0, 0.75, 0.2)}},

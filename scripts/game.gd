@@ -51,6 +51,9 @@ var bg_mode := false
 var net_joining := false     # a co-op join sent, no welcome yet (on_net_failed then goes back to the co-op screen)
 var bg_home_run := -1        # in a raid: the character's own act (Net.cl_welcome swaps to the raid's, saves keep this)
 var bg_raid := {}               # the round as the raid server last said (Net.cl_bg_raid): state, t, open portals...
+var bg_wait_until := 0         # turned away late in a round: when (ticks msec) the next raid lets players in
+var bg_refusal := ""           # why the raid server last turned us away ("closed", "refused")
+var bg_retry := []             # [addr, character id] to rejoin with when the wait is over
 ## Characters and the stash in Nakama (cloud_saves.gd), in builds with BuildEnv.cloud() on; null otherwise.
 var cloud: CloudSaves
 var coop_server: CoopServer     # the online co-op server's logic (coop_server.gd), only on a `--server --coop` run
@@ -435,10 +438,10 @@ func _sea_sounds() -> void:
 
 ## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
-	return cur_zone == Battlegrounds.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
+	return cur_zone == Battlegrounds.ZONE or cur_zone == Vigil.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
 
 func _zone_env(kind: String) -> void:
-	var inside := kind == Battlegrounds.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
+	var inside := kind == Battlegrounds.ZONE or kind == Vigil.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
 	var snowy := is_snowy() and not inside
 	var ashen := difficulty >= 2 and not inside
 	RenderingServer.global_shader_parameter_set("snow_amt", 1.0 if snowy else 0.0)
@@ -479,6 +482,14 @@ func _zone_env(kind: String) -> void:
 			env.tonemap_exposure = 1.25
 			hero.light.light_energy = 2.0
 			hero.light.omni_range = 11.0
+		elif kind == Vigil.ZONE:
+			# the Last Flame's sanctum: warm, the altar's fire the heart of it, the breaches glowing red
+			env.ambient_light_color = Color(0.5, 0.44, 0.42)
+			env.ambient_light_energy = 0.75
+			env.tonemap_exposure = 1.35
+			env.fog_light_color = Color(0.12, 0.07, 0.05)
+			hero.light.light_energy = 2.2
+			hero.light.omni_range = 13.0
 	else:
 		env.background_mode = Environment.BG_SKY
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
@@ -1022,6 +1033,7 @@ func zone_title(act: int, zone: String) -> String:
 		"lair": return ("Throne of the Ashen King" if difficulty >= 2 else a["lair"]) + tag
 		"coast": return str(a.get("coast", "The Coast")) + tag
 		Battlegrounds.ZONE: return Battlegrounds.TITLE
+		Vigil.ZONE: return Vigil.TITLE
 	if zone.begins_with("isle_"):
 		return str(Isles.get_isle(Isles.id_of(zone)).get("name", "An Island")) + tag
 	return ""
@@ -1394,8 +1406,8 @@ func _check_ambushes() -> void:
 				break
 
 func _spring_ambush(am: Dictionary) -> void:
-	ui.big_message("Ambush!")
-	Sfx.play("battle_cry", -6.0, 0.8)
+	ui.big_message(str(am.get("msg", "Ambush!")))
+	Sfx.play(str(am.get("sound", "battle_cry")), -6.0, float(am.get("pitch", 0.8)))
 	add_shake(0.2)
 	var land: Vector3 = am["land"]
 	for es in am["spawns"]:
@@ -1485,8 +1497,8 @@ func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
 	ui.refresh()
 
 ## Co-op from the title screen. Your last character is used if you have one.
-func start_host() -> void:
-	await start_game(not list_characters().is_empty())
+func start_host(id := "") -> void:
+	await start_game(not list_characters().is_empty(), "knight", id)
 	var err := net.host()
 	if err != OK:
 		ui.big_message("Could not host")
@@ -1494,7 +1506,7 @@ func start_host() -> void:
 	else:
 		ui.message("Hosting! Your partner can now pick Join Co-op Game", Color(0.5, 1.0, 0.5))
 
-func start_join(ip: String) -> void:
+func start_join(ip: String, id := "") -> void:
 	while _busy:
 		await get_tree().process_frame
 	Sfx.play("click")
@@ -1502,7 +1514,7 @@ func start_join(ip: String) -> void:
 	ui.hide_title()
 	playing = true
 	var chars := list_characters()
-	char_id = str(chars[0]["id"]) if not chars.is_empty() else new_char_id()
+	char_id = id if id != "" else (str(chars[0]["id"]) if not chars.is_empty() else new_char_id())
 	if not load_game():
 		char_name = default_name(hero.cls)
 		hero.new_character()
@@ -1516,7 +1528,7 @@ func start_join(ip: String) -> void:
 	await get_tree().create_timer(8.0).timeout
 	if net.is_client() and net.players.is_empty() and loading.visible and not _busy:
 		net.shutdown()
-		on_net_failed("No answer from %s. Check the host's game is running and Windows Firewall allowed it." % ip)
+		on_net_failed(net.join_failure("No answer from %s. Check the host's game is running and Windows Firewall allowed it." % ip))
 
 ## Battlegrounds from the title screen: the character `id` (one of the player's own; what it carries in, it risks)
 ## joins the raid server at `addr` ("host" or "host:port"). Its save is marked in_raid until it extracts, so closing
@@ -1526,6 +1538,9 @@ func start_battlegrounds(addr: String, id: String) -> void:
 	while _busy:
 		await get_tree().process_frame
 	Telemetry.crumb("raid", {"server": addr})
+	bg_retry = [addr, id]
+	bg_refusal = ""
+	bg_wait_until = 0
 	Sfx.play("click")
 	net.stop_listening()
 	char_id = id
@@ -1556,7 +1571,24 @@ func start_battlegrounds(addr: String, id: String) -> void:
 	await get_tree().create_timer(8.0).timeout
 	if bg_mode and net.is_client() and loading.visible and not _busy and cur_zone != Battlegrounds.ZONE:
 		net.shutdown()
-		on_net_failed("No answer from the Battlegrounds server at %s." % a[0])
+		on_net_failed(net.join_failure("No answer from the Battlegrounds server at %s." % a[0]))
+
+## The raid server turned us away (Net.cl_bg_refused): too late into the round, or the account. For a closed raid,
+## wait out the rest of it on the Battlegrounds screen (UI.bg_status counts down) and rejoin by ourselves.
+func bg_refused(why: String, secs: float) -> void:
+	bg_refusal = why
+	bg_wait_until = Time.get_ticks_msec() + int((secs + 1.5) * 1000.0) if why == "closed" else 0
+	if why == "closed" and not bg_retry.is_empty():
+		var want: Array = bg_retry.duplicate()
+		get_tree().create_timer(secs + 1.5, false).timeout.connect(func():
+			# still waiting on the Battlegrounds screen, nothing else started meanwhile
+			if bg_retry == want and not playing and (ui.bg_panel.visible or (ui.title_panel.visible and ui.bg_page.visible)):
+				ui.message("The next raid is open", Color(0.6, 1.0, 0.6))
+				start_battlegrounds(str(want[0]), str(want[1])))
+
+func bg_wait_text() -> String:
+	var s := maxi(0, (bg_wait_until - Time.get_ticks_msec()) / 1000)
+	return "%d:%02d" % [s / 60, s % 60]
 
 ## The server let us out: what we carry is ours, saved to the character as it is.
 ## The crypt never let us in (sign-in failed before the character was marked in_raid): back to the Battlegrounds
@@ -1680,7 +1712,7 @@ func on_net_failed(msg: String) -> void:
 		ui.open_join()
 		return
 	if bg_mode:
-		ui.big_message("Left the Battlegrounds")
+		ui.big_message("The crypt is closing" if bg_wait_until > Time.get_ticks_msec() else "Left the Battlegrounds")
 		ui.message(msg, Color(1, 0.6, 0.4))
 		loading.visible = false
 		_leave_battlegrounds()
@@ -1779,12 +1811,21 @@ func list_characters() -> Array:
 		var h: Dictionary = d.get("hero", {})
 		out.append({"id": fn.get_basename(), "name": str(d.get("name", "")), "cls": str(h.get("cls", "knight")),
 			"level": int(h.get("level", 1)), "difficulty": int(d.get("difficulty", 0)), "act": int(d.get("act", 0)),
-			"played": int(d.get("played", 0))})
+			"played": int(d.get("played", 0)), "gold": int(h.get("gold", 0)),
+			"carried": _count_items(h.get("equipment", {})) + _count_items(h.get("inventory", [])) + _count_items(h.get("belt", []))})
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["played"]) > int(b["played"]))
 	return out
 
 ## What a saved character wears, for the title screen's figure: Hero.net_gear()'s shape (equipment plus
 ## "_cls" and "_helm"), read from the save without changing it. {} when the save can't be read.
+## How many items a saved equipment Dictionary or inventory/belt Array holds (empty slots don't count).
+static func _count_items(v) -> int:
+	var n := 0
+	for it in (v.values() if v is Dictionary else (v if v is Array else [])):
+		if it is Dictionary and not (it as Dictionary).is_empty():
+			n += 1
+	return n
+
 func character_gear(id: String) -> Dictionary:
 	var path := char_dir + id + ".json"
 	if id == "" or not FileAccess.file_exists(path):
@@ -2069,7 +2110,7 @@ func _add_boat(zone: String, spawn: String) -> void:
 		b.docks.append({"name": "the pier", "kind": "pier", "pos": Vector2(Coast.MOOR.x, Coast.MOOR.z), "yaw": PI * 0.5})
 		for isle in Isles.ISLANDS:
 			var m := isle_mooring(isle, Vector2.ZERO, true)
-			b.docks.append({"name": isle["name"], "kind": "isle", "id": isle["id"], "pos": Vector2(m.x, m.z), "yaw": m.w})
+			b.docks.append({"name": isle["name"], "kind": "isle", "id": isle["id"], "pos": Vector2(m.x, m.z), "yaw": m.w, "level": int(isle.get("level", 0))})
 		if spawn.begins_with("sail_from_") and hero.boats.is_empty():
 			# a partner brought along by the party's trip with no boat of his own: he's set down on the pier
 			b.moor(Coast.MOOR, PI * 0.5)
@@ -2151,7 +2192,7 @@ func _sail_input() -> void:
 		pt = water_pt
 	boat.drive = {"throttle": thr, "steer": steer, "stop": Input.is_key_pressed(KEY_SPACE), "point": pt}
 	var d := boat.dock_near()
-	ui.set_sail_prompt(("Step ashore at " + str(d["name"])) if not d.is_empty() else "")
+	ui.set_sail_prompt(_ashore_prompt(d))
 
 ## Steps ashore where she is, if she's at a dock and slow (E, or the prompt's button).
 func try_land() -> bool:
@@ -2161,8 +2202,22 @@ func try_land() -> bool:
 	if d.is_empty():
 		ui.message("Bring her alongside a jetty first, and slow", Color(0.75, 0.88, 1.0))
 		return false
+	var need := int(d.get("level", 0))
+	if hero.level < need and not test_allskills:
+		ui.message("%s is for heroes of level %d and up (you're %d)" % [d["name"], need, hero.level], Color(1.0, 0.6, 0.35))
+		Sfx.play("deny")
+		return false
 	land_boat(d)
 	return true
+
+## The sail prompt at a dock: where, and the level it asks for.
+func _ashore_prompt(d: Dictionary) -> String:
+	if d.is_empty():
+		return ""
+	var need := int(d.get("level", 0))
+	if need > 0 and hero.level < need and not test_allskills:
+		return "%s (level %d: you're %d)" % [d["name"], need, hero.level]
+	return "Step ashore at " + str(d["name"])
 
 func land_boat(d: Dictionary) -> void:
 	ui.set_sail_prompt("")
@@ -2257,6 +2312,37 @@ func _interact(t: Inter) -> void:
 			elif bg_mode and net.is_client() and not hero.dead:
 				ui.message("Extracting...", Color(0.6, 0.85, 1.0))
 				net.request_extract()
+		"vigil_gate":
+			# the camp's Vigil Gate: down to the Last Flame (vigil.gd); the party's ready check takes everyone
+			Sfx.play("portal")
+			travel(0, Vigil.ZONE, "start")
+		"vigil_exit":
+			Sfx.play("portal")
+			travel(0, "town", "from_vigil")
+		"vigil":
+			# the Last Flame: kindle a vigil (the host runs it)
+			var vg = world.get_meta("vigil") if world.has_meta("vigil") else null
+			if vg == null:
+				return
+			if vg.state in ["count", "wave", "break"]:
+				# feed it a log from the moor (woodcutting, harvest.gd): it burns higher
+				for lb in Vigil.FUEL:
+					if hero.count_of(lb) > 0 and hero.take_items(lb, 1):
+						var frac: float = Vigil.FUEL[lb]
+						ui.message("You feed the flame %s (+%d%%)" % [Data.BASES[lb]["name"], int(frac * 100.0)], Color(1.0, 0.75, 0.45))
+						if net.is_client():
+							net.vigil_feed(frac)
+						else:
+							vg.feed(frac)
+						return
+				ui.message("Hold the flame! (Logs from the moor feed it: click it with one in your bag.)", Color(1.0, 0.75, 0.45))
+			elif vg.state != "idle":
+				ui.message("The flame is not ready yet", Color(1.0, 0.75, 0.45))
+			elif net.is_client():
+				net.vigil_hi(int(hero.level))
+				net.request_vigil()
+			else:
+				vg.begin()
 		"lanista":
 			ui.trade_with = t
 			# Varro, by Aurelia's arena: his games are A2's boss fight (games.gd)
@@ -2537,7 +2623,8 @@ func boss_down_remote(e: Enemy) -> void:
 func on_boss_aggro(e: Enemy) -> void:
 	net.boss_aggro(e)
 	ui.set_boss(e)
-	ui.big_message(e.display_name)
+	if not Data.ENEMIES.get(e.kind, {}).has("intro"):     # (a boss with an intro card is named by the card)
+		ui.big_message(e.display_name)
 	Sfx.play("roar")
 	add_shake(0.5)
 
@@ -2653,6 +2740,11 @@ func respawn() -> void:
 		_leave_battlegrounds()
 		return
 	hero.gold = int(hero.gold * 0.9)
+	if cur_zone == Vigil.ZONE and world != null:
+		# the Last Flame: the fallen rise by the altar and fight on
+		hero.respawn(Vigil.respawn_at(world))
+		ui.message("You rise by the Last Flame", Color(1.0, 0.75, 0.45))
+		return
 	if net.active:
 		var ally := net.alive_ally()
 		if ally:
