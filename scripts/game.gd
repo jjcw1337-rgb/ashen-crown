@@ -1461,7 +1461,7 @@ func start_join(ip: String) -> void:
 	await get_tree().create_timer(8.0).timeout
 	if net.is_client() and net.players.is_empty() and loading.visible and not _busy:
 		net.shutdown()
-		on_net_failed("No answer from %s. Check the host's game is running and Windows Firewall allowed it." % ip)
+		on_net_failed(net.join_failure("No answer from %s. Check the host's game is running and Windows Firewall allowed it." % ip))
 
 ## Battlegrounds from the title screen: the character `id` (one of the player's own; what it carries in, it risks)
 ## joins the raid server at `addr` ("host" or "host:port"). Its save is marked in_raid until it extracts, so closing
@@ -1501,7 +1501,7 @@ func start_battlegrounds(addr: String, id: String) -> void:
 	await get_tree().create_timer(8.0).timeout
 	if bg_mode and net.is_client() and loading.visible and not _busy and cur_zone != Battlegrounds.ZONE:
 		net.shutdown()
-		on_net_failed("No answer from the Battlegrounds server at %s." % a[0])
+		on_net_failed(net.join_failure("No answer from the Battlegrounds server at %s." % a[0]))
 
 ## The server let us out: what we carry is ours, saved to the character as it is.
 ## The crypt never let us in (sign-in failed before the character was marked in_raid): back to the Battlegrounds

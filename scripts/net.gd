@@ -81,8 +81,21 @@ func host(port := PORT, max_clients := MAX_CLIENTS) -> int:
 	_update_status()
 	return OK
 
+## A join that reached the server (`reached`) but was never welcomed (`welcomed`): the server runs a different
+## version of the game. Its RPCs don't match ours (Godot drops every call with "rpc node checksum failed" and the
+## connection just hangs), so the message says to update rather than "no answer".
+var reached := false
+var welcomed := false
+
+func join_failure(fallback: String) -> String:
+	if reached and not welcomed:
+		return "That server runs a different version of the game than yours (%s · %s). Update the game (in the itch app: Update), then try again." % [BuildEnv.env(), BuildEnv.value("rev")]
+	return fallback
+
 func join(ip: String, port := PORT) -> int:
 	shutdown()
+	reached = false
+	welcomed = false
 	peer = ENetMultiplayerPeer.new()
 	var err := peer.create_client(ip, port)
 	if err != OK:
@@ -140,6 +153,7 @@ func local_ips() -> Array:
 	return out
 
 func _on_connected() -> void:
+	reached = true
 	rpc_id(1, "sv_hello", my_name, game.hero.net_gear(), game.hero.level)
 	if game.bg_mode:
 		# with accounts on: a one-time join ticket from Nakama (over HTTPS), never the session itself
@@ -154,8 +168,9 @@ func _on_connect_failed() -> void:
 	game.on_net_failed("Could not connect to that game.")
 
 func _on_server_gone() -> void:
+	var why := join_failure("The host left the game.")
 	shutdown()
-	game.on_net_failed("The host left the game.")
+	game.on_net_failed(why)
 
 func _on_peer_disconnected(pid: int) -> void:
 	if not players.has(pid):
@@ -353,6 +368,7 @@ func sv_hello(nm: String, gear: Dictionary, _lvl: int) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func cl_welcome(act: int, zone: String, pos: Vector3, tp: Dictionary, bk: bool, roster: Array, diff: int) -> void:
+	welcomed = true
 	if diff != game.difficulty:
 		# the host's (or the raid's) act: keep our own act's waypoints and boss aside, as cl_goto does
 		if game.bg_mode and game.bg_home_run < 0:
