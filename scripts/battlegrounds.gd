@@ -30,6 +30,15 @@ extends Node
 ## needs no lobby server for it: `schedule()` works out every raid's state from the clock, `best_raid()` picks the one
 ## with the most time left that still takes joiners (or the next to open, whose server then counts the wait down).
 ## LIVE_RAIDS is how many are deployed (the rest wait for their servers and ports).
+##
+## A round (Blaine: "clear queue/lobby flow, player-triggered wave starts with a preparation state and countdown"):
+## "lobby": the players who come wait in the corner rooms behind iron gates (gate_doors), each room with a bell;
+## the first who rings it (Inter "bell", through Net.sv_inter: no new RPC) starts "prep", a PREP_SECS countdown
+## everyone sees; at LOBBY_MAX nobody has rung, it starts by itself. Then "raid": the gates rise and the crypt is
+## open; the Extraction Portals open PORTALS_AT into the round; joining closes at JOIN_CLOSE (a late joiner arrives
+## in a corner room, its gate already up); at RAID_SECS the crypt collapses ("reset") and the next round begins on
+## the clock. The round's 20 minutes include the lobby, so every raid's clock stays aligned. The state reaches
+## players in Net.cl_bg_raid ("lobby:<secs left>", "prep:<secs left>", "raid", "reset").
 
 const ZONE := "bg"
 const TITLE := "The Hollow Crypt"
@@ -38,6 +47,8 @@ const RAID_SECS := 1200.0       # a round: 20 minutes
 const PORTALS_AT := 300.0       # the Extraction Portals open 5 minutes in
 const JOIN_CLOSE := 900.0       # nobody new joins in the last 5 minutes
 const RESET_SECS := 20.0        # after the collapse, before the next round
+const LOBBY_MAX := 75.0         # the antechamber: at most this long before the prep countdown starts by itself
+const PREP_SECS := 15.0         # the bell has rung: the countdown to the gates opening
 const RAIDS := 3                # raids run side by side, staggered on the clock (phase)
 const RAID_PORTS := [24567, 24571, 24572]
 const LIVE_RAIDS := 1           # deployed so far (staging: one until its servers and firewall ports are up)
@@ -58,7 +69,8 @@ static var fast := false        # tests: `--raid-fast` = rounds in seconds
 var game: Node
 var raid_t := 0.0               # server: seconds into the round
 var raid_idx := -1              # server: which of the RAIDS this is (`--raid N`), -1 = a lone raid on its own time
-var state := "raid"             # server: "raid" | "reset"
+var prep_left := 0.0            # server: seconds of the prep countdown left
+var state := "lobby"            # server: "lobby" | "prep" | "raid" | "reset"
 var reset_t := 0.0
 var open: Array = []            # server: indices (in the portal list) of the open Extraction Portals
 var carried := {}               # server: peer id -> Array of items picked up this raid (dropped if they vanish)
@@ -207,6 +219,29 @@ static func build(w: World) -> void:
 	w.enemy_spawns.append({"kind": "fallen_reaver", "pos": Vector3(hc.x, 0, hc.y), "count": 1, "champ": true, "pack": 690, "level": MON_LEVEL + 2})
 	w.enemy_spawns.append({"kind": "skel_archer", "pos": Vector3(hc.x, 0, hc.y + 6.0), "count": 2, "champ": false, "pack": 690, "level": MON_LEVEL})
 	w.crypt_shell(BgFloors.themes())
+	# the antechamber gates and bells (after the walls, so the path grid never counts the gates: they rise later)
+	var gates := []
+	for cell in rooms:
+		if kinds[cell] != "spawn":
+			continue
+		var r: Rect2 = rooms[cell]
+		for f in w.floor_rects:
+			var fr: Rect2 = f
+			if fr == r or rooms.values().has(fr) or not fr.intersects(r) or r.encloses(fr):
+				continue
+			var horiz := fr.size.x > fr.size.y
+			var door: Vector2
+			var half: Vector2
+			if horiz:
+				door = Vector2(r.end.x if fr.end.x > r.end.x + 0.1 else r.position.x, fr.get_center().y)
+				half = Vector2(0.3, fr.size.y * 0.5 + 0.2)
+			else:
+				door = Vector2(fr.get_center().x, r.end.y if fr.end.y > r.end.y + 0.1 else r.position.y)
+				half = Vector2(fr.size.x * 0.5 + 0.2, 0.3)
+			gates.append(_gate(w, door, half))
+		var c := r.get_center()
+		_bell(w, Vector3(c.x + 2.2, 0, c.y - 2.2))
+	w.set_meta("bg_gates", gates)
 	for p in portals:
 		var it: Inter = w._inter("extract", "Extraction Portal", p, 1.8, Fx.portal_model(), {"open": false})
 		var m := it.get_node_or_null("Model")
@@ -214,6 +249,55 @@ static func build(w: World) -> void:
 			m.visible = false
 	w.spawns["start"] = spawns[0] if not spawns.is_empty() else Vector3.ZERO
 	w.set_meta("bg_spawns", spawns)
+
+## An antechamber's iron gate across a doorway (closed: a footprint; Battlegrounds.open_gates lifts it).
+static func _gate(w: World, door: Vector2, half: Vector2) -> Dictionary:
+	var g := Node3D.new()
+	g.name = "gate"
+	var iron := Props.iron()
+	var across := half.x > half.y
+	var width := (half.x if across else half.y) * 2.0
+	var n := int(width / 0.28)
+	for i in n + 1:
+		var o := -width * 0.5 + width * float(i) / float(n)
+		Models.P(g, Geo.box(0.07, 3.0, 0.07), iron, Vector3(o, 1.5, 0) if across else Vector3(0, 1.5, o))
+	for hgt in [0.5, 1.7, 2.9]:
+		Models.P(g, Geo.box(width, 0.08, 0.1) if across else Geo.box(0.1, 0.08, width), iron, Vector3(0, hgt, 0))
+	w._place(g, Vector3(door.x, 0, door.y))
+	w.add_box(Vector3(door.x, 0, door.y), half, 0.0)
+	return {"node": g, "box": w.obstacles.size() - 1, "at": door, "up": false}
+
+## The antechamber's bell: ring it to start the raid's countdown (Game._interact "bell").
+static func _bell(w: World, p: Vector3) -> void:
+	var g := Node3D.new()
+	g.name = "bell"
+	var wood := Props.wood_dark()
+	var brass := Mats.mat(Color(0.75, 0.55, 0.25), 0.35, 0.9)
+	for sx in [-0.55, 0.55]:
+		Models.P(g, Geo.box(0.14, 2.3, 0.14), wood, Vector3(sx, 1.15, 0))
+	Models.P(g, Geo.box(1.3, 0.16, 0.18), wood, Vector3(0, 2.3, 0))
+	Models.P(g, Geo.cyl(0.18, 0.36, 0.5, 14), brass, Vector3(0, 1.95, 0))
+	Models.P(g, Geo.sph(0.07, 8), brass, Vector3(0, 1.62, 0))
+	var it: Inter = w._inter("bell", "Ring the bell (start the raid)", p, 1.6, g, {})
+	Props.footprint(it, 0.5)
+	w.solid(it)
+
+## The gates up (the round's "raid" began): the bars rise, the footprints go (moved far off; World's can't be removed).
+static func open_gates(w: World, animate := true) -> void:
+	if w == null or not w.has_meta("bg_gates"):
+		return
+	for gt in w.get_meta("bg_gates"):
+		if gt["up"]:
+			continue
+		gt["up"] = true
+		(w.obstacles[gt["box"]] as Array)[0] = (gt["at"] as Vector2) + Vector2(0, 5000)
+		var node: Node3D = gt["node"]
+		if not is_instance_valid(node):
+			continue
+		if animate and node.is_inside_tree():
+			node.create_tween().tween_property(node, "position:y", 3.1, 1.6).set_trans(Tween.TRANS_SINE)
+		else:
+			node.position.y = 3.1
 
 ## A corridor 3 m wide from room a to room b: straight when they line up, else an L.
 static func _corridor(w: World, a: Rect2, b: Rect2) -> void:
@@ -268,13 +352,18 @@ static func start_server(g: Node, port: int) -> void:
 	# a new deploy waits for a quiet moment: nobody in, or between rounds (the crypt has just collapsed)
 	ServerUpdate.watch(g, "[BG]", func() -> bool: return g.net.players.is_empty() or bg.state == "reset")
 
+## How long the antechamber waits for a bell (tests' fast rounds keep a lobby long enough for a client to join).
+static func lobby_max() -> float:
+	return 40.0 if fast else LOBBY_MAX
+
 ## A raid of several (`--raid N`, real time): its rounds follow the clock.
 func aligned() -> bool:
 	return raid_idx >= 0 and not fast
 
 func new_round() -> void:
-	state = "raid"
+	state = "lobby"
 	raid_t = 0.0
+	prep_left = 0.0
 	if aligned():
 		var ph := phase(raid_idx, Time.get_unix_time_from_system())
 		if ph >= RAID_SECS:
@@ -283,6 +372,8 @@ func new_round() -> void:
 			reset_t = PERIOD - ph
 		else:
 			raid_t = ph
+			if ph > LOBBY_MAX + PREP_SECS:
+				state = "raid"         # (a server restarted mid-round: the crypt is already open)
 	open = []
 	carried.clear()
 	died_items.clear()
@@ -295,8 +386,10 @@ func new_round() -> void:
 			e.life = e.max_life
 			e.dmg = [int(round(e.dmg[0] * MON_DMG)), int(round(e.dmg[1] * MON_DMG))]
 	park_hero()
+	if state == "raid":
+		open_gates(game.world, false)
 	broadcast()
-	print("[BG] a new raid begins")
+	print("[BG] a new raid begins (%s)" % state)
 
 ## The server's own hero: hidden, off the map and phased, so monsters never see it (kept so every frame).
 func park_hero() -> void:
@@ -322,7 +415,12 @@ func spawn_point() -> Vector3:
 
 ## What every player needs to know about the round: state, seconds into it, the open portals.
 func broadcast(pid := 0) -> void:
-	var args := [state, raid_t, open, secs(RAID_SECS), secs(PORTALS_AT)]
+	var st := state
+	if state == "lobby":
+		st = "lobby:%.1f" % maxf(0.0, lobby_max() - raid_t)
+	elif state == "prep":
+		st = "prep:%.1f" % prep_left
+	var args := [st, raid_t, open, secs(RAID_SECS), secs(PORTALS_AT)]
 	if pid > 0:
 		game.net.rpc_id(pid, "cl_bg_raid", args[0], args[1], args[2], args[3], args[4])
 	elif not game.net.players.is_empty():
@@ -340,9 +438,19 @@ func _process(delta: float) -> void:
 	raid_t += delta
 	_sync_t -= delta
 	if _sync_t <= 0.0:
-		_sync_t = 10.0
+		_sync_t = 10.0 if state == "raid" else 2.0
 		broadcast()
-	if open.is_empty() and raid_t >= secs(PORTALS_AT):
+	if state == "lobby" and raid_t >= lobby_max():
+		start_prep("")
+	if state == "prep":
+		prep_left -= delta
+		if prep_left <= 0.0:
+			state = "raid"
+			open_gates(game.world)
+			_announce("The gates are open. Good hunting.")
+			broadcast()
+		return
+	if state == "raid" and open.is_empty() and raid_t >= secs(PORTALS_AT):
 		# OPEN_PORTALS on the Ossuary, one on each floor below
 		var pl := portal_list(game.world)
 		var by_floor := {}
@@ -389,6 +497,15 @@ func _process(delta: float) -> void:
 			if float(dead_wait[pid]) > 5.0:
 				died(pid, carried.get(pid, []), h.global_position)
 
+## Someone rang an antechamber's bell (or the lobby ran out): the countdown to the gates, for everyone.
+func start_prep(who: String) -> void:
+	if state != "lobby":
+		return
+	state = "prep"
+	prep_left = secs(PREP_SECS)
+	_announce(("%s rang the bell: the gates open in %d seconds" % [who, int(PREP_SECS)]) if who != "" else "The gates open in %d seconds" % int(PREP_SECS))
+	broadcast()
+
 func _announce(txt: String) -> void:
 	print("[BG] ", txt)
 	if not game.net.players.is_empty():
@@ -396,7 +513,7 @@ func _announce(txt: String) -> void:
 
 func player_hello(pid: int, uid: String, ticket := ""):
 	carried[pid] = []
-	if state != "raid" or raid_t > secs(JOIN_CLOSE):
+	if state == "reset" or raid_t > secs(JOIN_CLOSE):
 		return "closed"
 	if nk == null:
 		uids[pid] = uid
@@ -547,6 +664,17 @@ static func hud(g: Node, delta: float) -> void:
 		g.ui.hud.add_child(lbl)
 	lbl.visible = g.bg_mode
 	var left := maxf(0.0, float(r["len"]) - float(r["t"]))
+	var st := str(r["state"])
+	if st.begins_with("lobby") or st.begins_with("prep"):
+		r["wait"] = maxf(0.0, float(r.get("wait", 0.0)) - delta)
+		var w := int(ceilf(float(r["wait"])))
+		if st.begins_with("lobby"):
+			lbl.text = "THE ANTECHAMBER  ·  ring the bell to begin  ·  the gates open by themselves in %d:%02d" % [(w + int(PREP_SECS)) / 60, (w + int(PREP_SECS)) % 60]
+			lbl.add_theme_color_override("font_color", Color(0.95, 0.85, 0.6))
+		else:
+			lbl.text = "THE GATES OPEN IN %d" % w
+			lbl.add_theme_color_override("font_color", Color(1.0, 0.65, 0.3))
+		return
 	var txt := "%s  ·  %d:%02d" % [TITLE.to_upper(), int(left) / 60, int(left) % 60]
 	if (r["open"] as Array).is_empty():
 		var p := maxf(0.0, float(r["portals_at"]) - float(r["t"]))

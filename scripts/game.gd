@@ -1998,6 +1998,14 @@ func use_inter_remote(t: Inter) -> void:
 		_pick_flower(t)
 	elif t.kind == "chest":
 		_open_chest(t)
+	elif t.kind == "bell":
+		Sfx.play_at("anvil", t.global_position, 0.0, 0.6)
+		if net.server and bg != null:
+			var who := "Someone"
+			var pid := multiplayer.get_remote_sender_id()
+			if net.players.has(pid):
+				who = str(net.players[pid]["name"])
+			bg.start_prep(who)
 
 func _open_chest(t: Inter) -> void:
 	t.used = true
@@ -2432,6 +2440,14 @@ func _interact(t: Inter) -> void:
 				net.inter_used(t)
 		"descend":
 			_descend(t)
+		"bell":
+			# the antechamber's bell: the server starts the countdown (Net.sv_inter -> use_inter_remote)
+			Sfx.play("anvil", -2.0, 0.6)
+			if bg_mode and net.is_client():
+				if str(bg_raid.get("state", "")).begins_with("lobby"):
+					net.inter_used(t)
+				else:
+					ui.message("The raid is already under way", Color(0.8, 0.8, 0.9))
 
 func travel_waypoint(dest: Dictionary) -> void:
 	Sfx.play("portal")
