@@ -64,6 +64,7 @@ var bg_retry := []             # [addr, character id] to rejoin with when the wa
 ## Characters and the stash in Nakama (cloud_saves.gd), in builds with BuildEnv.cloud() on; null otherwise.
 var cloud: CloudSaves
 var coop_server: CoopServer     # the online co-op server's logic (coop_server.gd), only on a `--server --coop` run
+var sandbox: Sandbox = null     # the admins' Battlegrounds sandbox (sandbox.gd) while one is open
 var paused := false
 var hovered = null
 var ground_pt := Vector3.ZERO
@@ -79,11 +80,14 @@ var max_run := 0             # highest of those reached; any of them can be pick
 ## TESTING: unlock Act I, A2 and A3 at the camp waypoint from the start. Set to false to
 ## go back to unlocking them by beating each final boss. Only takes effect where dev_tools is on.
 const UNLOCK_ALL_ACTS := true
-## Developer tools (unlock-all-acts and the F8 testing panel): only for the owner. On when running from
-## the Godot editor, or when this PC holds a valid admin key (AdminKey: signed with the owner's private
-## key, so it can't be made up or shared by editing a file). Off for everyone else in every build.
+## Developer tools (unlock-all-acts and the Escape menu's Admin column): only for the admins. On when running from
+## the Godot editor (or a local debug run), for an account with the admin role (Nakama, tools/admin_role.sh;
+## CloudSaves turns it on after signing in), or when this PC holds a valid admin key (AdminKey: signed with the owner's private key, so it can't be made up or shared by editing a file).
+## Off for everyone else in every production build.
 var admin_name := AdminKey.holder()
-var dev_tools := UNLOCK_ALL_ACTS and (OS.has_feature("editor") or admin_name != "")
+var dev_tools := UNLOCK_ALL_ACTS and (OS.has_feature("editor") or admin_name != "" or (BuildEnv.env() == "local" and OS.has_feature("debug")))
+var account_id := ""            # this player's Nakama account (CloudSaves), shown in the Admin column to be made an admin
+var account_admin := false      # the account has the admin role (Nakama, tools/admin_role.sh): the admin tools on
 var run_progress := {}       # per run: its waypoints and whether its boss is dead
 var played_s := 0.0          # seconds this character has been played (saved); the clock trees regrow on (Harvest)
 var harvest_saved := {}      # "<run>:<act>:<zone>" -> Harvest.to_save() (the felled trees and when they regrow)
@@ -448,10 +452,10 @@ func _sea_sounds() -> void:
 
 ## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
-	return cur_zone == Battlegrounds.ZONE or cur_zone == Vigil.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
+	return cur_zone == Battlegrounds.ZONE or cur_zone == Vigil.ZONE or cur_zone == Sandbox.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
 
 func _zone_env(kind: String) -> void:
-	var inside := kind == Battlegrounds.ZONE or kind == Vigil.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
+	var inside := kind == Battlegrounds.ZONE or kind == Vigil.ZONE or kind == Sandbox.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
 	var snowy := is_snowy() and not inside
 	var ashen := difficulty >= 2 and not inside
 	RenderingServer.global_shader_parameter_set("snow_amt", 1.0 if snowy else 0.0)
@@ -1025,6 +1029,7 @@ func zone_title(act: int, zone: String) -> String:
 		"coast": return str(a.get("coast", "The Coast")) + tag
 		Battlegrounds.ZONE: return Battlegrounds.TITLE
 		Vigil.ZONE: return Vigil.TITLE
+		Sandbox.ZONE: return Sandbox.TITLE
 	if zone.begins_with("isle_"):
 		return str(Isles.get_isle(Isles.id_of(zone)).get("name", "An Island")) + tag
 	return ""
@@ -1039,12 +1044,16 @@ func xp_mult() -> float:
 func loot_mult() -> float:
 	return run_mult("loot")
 
+## How much stronger this act's items are (Items.empower; Data.RUNS "power").
+func power_mult() -> float:
+	return run_mult("power")
+
 ## How a run compares to Act I, in words, for banners and the victory panel.
 func run_note(d: int) -> String:
 	if d <= 0:
 		return "Monsters and loot at their normal strength."
 	var x := func(v: float) -> String: return ("%d" % int(round(v))) if v >= 10.0 else ("%.1f" % v).trim_suffix(".0")
-	return "Monsters have %s times the life and %s times the damage of Act I. Every item they drop is %s times stronger." % [x.call(run_mult("life", d)), x.call(run_mult("dmg", d)), x.call(run_mult("loot", d))]
+	return "Monsters have %s times the life and %s times the damage of Act I. Every item they drop is %s times stronger." % [x.call(run_mult("life", d)), x.call(run_mult("dmg", d)), x.call(run_mult("power", d))]
 
 func run_name(d: int = -1) -> String:
 	if d < 0:
@@ -1416,10 +1425,14 @@ func all_heroes() -> Array:
 	var out := [hero]
 	if net.active:
 		out.append_array(net.puppets())
+	if sandbox != null:
+		out.append_array(sandbox.bot_heroes())
 	return out
 
 ## Monsters go after the nearest knight that is still standing.
 func target_for(e: Node3D) -> Hero:
+	if sandbox != null:
+		return sandbox.nearest_hero(e.global_position)
 	if not net.active:
 		return hero
 	var best: Hero = hero
@@ -1714,7 +1727,7 @@ func on_net_failed(msg: String) -> void:
 		if hero.dead:
 			hero.respawn(hero.global_position)
 
-## Testing switches (F8 panel, only while dev_tools is on). They change nothing else
+## Testing switches (the Escape menu's Admin column, only while dev_tools is on). They change nothing else
 ## and are never saved.
 var test_immortal := false
 var test_onehit := false
@@ -1864,6 +1877,14 @@ func default_name(cls: String) -> String:
 
 ## Back to the title screen to pick another character (the pause menu's "Save and Exit to Title").
 func exit_to_title() -> void:
+	if sandbox != null:
+		# out of the sandbox first: the character as it was outside
+		sandbox.shutdown()
+		sandbox = null
+		char_id = _sandbox_char
+		_sandbox_char = ""
+		if char_id != "":
+			load_game()
 	if bg_mode and not hero.dead:
 		bg_strip()           # leaving a raid without extracting is dying there (it saves)
 	else:
@@ -1873,7 +1894,7 @@ func exit_to_title() -> void:
 	bg_raid = {}
 	net_joining = false
 	# nothing of the character that was playing carries on: its death or victory screen still to come, its portal,
-	# its experience bonus, the F8 switches
+	# its experience bonus, the admin switches
 	death_t = -1.0
 	ui.death_panel.visible = false
 	ui.victory_panel.visible = false
@@ -2654,24 +2675,13 @@ func on_enemy_killed(e: Enemy) -> void:
 		# a Hollow Sloth's own material
 		drop_item(Items.make(e.def["drop"], 0, 1), e.global_position)
 	if e.def.get("trophy", false):
-		# the Hollow Sloth: a unique for certain, and a heap of gold
-		var cands := Data.UNIQUES.keys().filter(func(k): return Data.UNIQUES[k]["lvl"] <= e.level + 3 and not Data.UNIQUES[k].get("boss_only", false))
-		if cands.size() > 0:
-			var su := Items.make_unique(cands[rng.randi() % cands.size()])
-			if difficulty >= 1:
-				Items.empower(su, loot_mult())
-			drop_item(su, e.global_position)
+		# the Hollow Sloth: a heap of gold (its unique comes from its loot table, below)
 		for i in 3:
 			drop_item(Items.gold(int(rng.randf_range(40, 70) * (1.0 + e.level * 0.6))), e.global_position)
 		ui.message("%s is slain" % e.display_name, Color(0.55, 0.9, 0.95))
 	if e.def.get("class_unique", false):
 		_drop_class_unique(e.global_position)
-	if e.def.has("boss_drop"):
-		var bu := Items.make_unique(e.def["boss_drop"])
-		if difficulty >= 1:
-			Items.empower(bu, loot_mult())
-		drop_item(bu, e.global_position)
-		ui.message("%s dropped %s!" % [e.display_name, bu["name"]], Color(0.85, 0.66, 0.38))
+	_boss_loot(e)
 	if e.boss:
 		boss_killed = true
 		ui.set_boss(null)
@@ -2722,7 +2732,7 @@ func _drop_loot_roll(at: Vector3, lvl: int, good: bool) -> void:
 	if good or r < 0.3:
 		var it := Items.random_drop(lvl, hero.mf + (100 if good else 0), rng, good)
 		if difficulty >= 1:
-			Items.empower(it, loot_mult())
+			Items.empower(it, power_mult())
 		drop_item(it, at)
 	elif r < 0.62:
 		drop_item(Items.gold(int(rng.randf_range(4, 12) * (1.0 + lvl * 0.6))), at)
@@ -2761,7 +2771,9 @@ func hitstop(t: float) -> void:
 func _on_hero_died() -> void:
 	Telemetry.crumb("died", {"bg": bg_mode})
 	death_t = 2.0
-	if bg_mode:
+	if sandbox != null:
+		sandbox.hero_died(hero)
+	elif bg_mode:
 		_bg_fell()
 	ui.set_boss(null)
 
@@ -2824,6 +2836,10 @@ func _update_spectate(dt: float) -> void:
 	ui.update_spectate()
 
 func respawn() -> void:
+	if sandbox != null:
+		# the sandbox: back on your feet at once, nothing lost
+		hero.respawn(sandbox.spawn_point())
+		return
 	if bg_mode:
 		# no coming back from the crypt
 		_leave_battlegrounds()
@@ -2978,16 +2994,114 @@ func _cheat_keys(ev: InputEvent) -> void:
 		_typed = ""
 		max_out()
 
-## Admin (the F8 testing panel, only with dev tools: the signed admin key or the editor; Blaine's progression spec):
-## this character to level 20 with its stats spent and its talents auto-built, every skill it has at 20, and a solid
+## Admin (the Escape menu's Admin column, only with dev tools; Blaine's progression spec): this character to level 20
+## (and 10,000 gold each press) with its stats spent and its talents auto-built, every skill it has at 20, and a solid
 ## class baseline of level-20 gear for PvP testing (rare items on every slot, the class's own weapon). Safe to press
 ## again: its own pieces (marked "boost") stay, any other equipped item moves to the bag (kept equipped if the bag
 ## is full, never destroyed), and the same gear is never handed out twice.
+## The Veilmother's Locket ("phial"): a Shadow Phial at the start of each raid, in the belt (or the bag), never more
+## than the locket gives.
+func give_raid_phials() -> void:
+	var n := int(hero.stats.get("phial", 0))
+	if n <= 0:
+		return
+	var have := 0
+	for b in hero.belt:
+		if b is Dictionary and b["base"] == "shadow_phial":
+			have += int(b.get("count", 1))
+	if have >= n:
+		return
+	var it := Items.potion("shadow_phial")
+	it["count"] = n - have
+	for i in hero.belt.size():
+		if hero.belt[i] is Dictionary and hero.belt[i]["base"] == "shadow_phial":
+			hero.belt[i]["count"] = n
+			ui.refresh()
+			return
+	for i in hero.belt.size():
+		if hero.belt[i] == null:
+			hero.belt[i] = it
+			ui.refresh()
+			ui.message("A Shadow Phial in your belt (the Veilmother's Locket)", Color(0.7, 0.6, 1.0))
+			return
+	hero.add_to_inventory(it)
+	ui.refresh()
+
+## A boss's own loot (the items rework: rewards from hard content, not tiny drop chances; Data.BOSS_LOOT): its first
+## kill by this character always drops one of its uniques (its "boss_drop" if it has one); after that each kill has
+## BOSS_LOOT_CHANCE, and every kill without one raises the next by BOSS_LOOT_LUCK (Hero.boss_luck, saved).
+const BOSS_LOOT_CHANCE := 0.35
+const BOSS_LOOT_LUCK := 0.15
+
+func _boss_loot(e: Enemy) -> void:
+	var table: Array = Data.BOSS_LOOT.get(e.kind, [])
+	if table.is_empty() or sandbox != null:
+		return
+	var misses := int(hero.boss_luck.get(e.kind, -1))
+	var chance := 1.0 if misses < 0 else BOSS_LOOT_CHANCE + BOSS_LOOT_LUCK * misses
+	if rng.randf() >= chance:
+		hero.boss_luck[e.kind] = misses + 1
+		return
+	hero.boss_luck[e.kind] = 0
+	var uid: String = str(e.def["boss_drop"]) if misses < 0 and e.def.has("boss_drop") else str(table[rng.randi() % table.size()])
+	var bu := Items.make_unique(uid)
+	if difficulty >= 1:
+		Items.empower(bu, power_mult())
+	drop_item(bu, e.global_position)
+	ui.message("%s dropped %s!" % [e.display_name, bu["name"]], Color(0.85, 0.66, 0.38))
+
+## The admins' Battlegrounds sandbox (Sandbox; the Escape menu's Admin column): the character is saved and set aside
+## (char_id cleared, so nothing in there is saved) and comes back exactly as it was on leaving.
+var _sandbox_char := ""
+
+func open_sandbox() -> void:
+	if not dev_tools or sandbox != null or _busy:
+		return
+	if net.active:
+		ui.message("Leave the party first: the sandbox is played alone", Color(1, 0.6, 0.4))
+		return
+	if bg_mode:
+		ui.message("Not from inside a raid", Color(1, 0.6, 0.4))
+		return
+	if paused:
+		toggle_pause()
+	save_game()
+	_sandbox_char = char_id
+	char_id = ""
+	sandbox = Sandbox.new(self)
+	sandbox.pick_me["cls"] = hero.cls
+	sandbox.pick_bot["cls"] = hero.cls
+	add_child(sandbox)
+	await load_zone(0, Sandbox.ZONE, "start")
+	Sandbox.outfit(self, hero, hero.cls, 20, "geared")
+	ui.refresh()
+	ui.big_message(Sandbox.TITLE)
+	ui.message("Your character is saved and waits outside; nothing here is kept", Color(0.6, 0.85, 1.0))
+
+func close_sandbox() -> void:
+	if sandbox == null or _busy:
+		return
+	sandbox.shutdown()
+	sandbox = null
+	char_id = _sandbox_char
+	_sandbox_char = ""
+	if char_id != "" and load_game():
+		hero.refresh_gear()
+		hero.recalc()
+		hero.life = hero.max_life
+		hero.mana = hero.max_mana
+	if hero.dead:
+		hero.respawn(hero.global_position)
+	death_t = -1.0
+	await load_zone(difficulty, "town", "start")
+	ui.refresh()
+
 const BOOST_SLOTS := ["weapon", "armor", "helm", "gloves", "boots", "belt", "ring1", "ring2", "amulet"]
 
 func go_level_20() -> void:
 	if not dev_tools:
 		return
+	hero.boosted = true       # (saved: the raid server lets only admins raid with a boosted character)
 	if hero.level < 20:
 		hero.set_level(20)
 	var c: Dictionary = Data.CLASSES.get(hero.cls, {})
@@ -3023,6 +3137,7 @@ func go_level_20() -> void:
 				continue          # (no room for what's there: it stays on)
 		hero.equipment[slot] = it
 		given += 1
+	hero.gold += 10000
 	hero.refresh_gear()
 	hero.recalc()
 	hero.life = hero.max_life
@@ -3030,34 +3145,38 @@ func go_level_20() -> void:
 	if char_id != "":
 		save_game()
 	ui.refresh()
-	ui.message("Level 20: talents built, %d piece%s of level-20 gear on" % [given, "" if given == 1 else "s"], Color(0.6, 1.0, 0.6))
+	ui.message("Level 20: talents built, %d piece%s of level-20 gear on, +10,000 gold" % [given, "" if given == 1 else "s"], Color(0.6, 1.0, 0.6))
 
 ## The best base for a slot at level 20 that this class can wear (its own weapon kind: bows for the ranger, canes for
 ## the plague doctor, the drumstick for Doug...).
-func _boost_base(slot: String) -> String:
+func _boost_base(slot: String, h: Hero = null, max_lvl := 20) -> String:
+	if h == null:
+		h = hero
 	var want := "ring" if slot in ["ring1", "ring2"] else slot
-	var mine: String = str(Data.CLASSES.get(hero.cls, {}).get("weapon", ""))
+	var mine: String = str(Data.CLASSES.get(h.cls, {}).get("weapon", ""))
 	var kind := str(Data.BASES.get(mine, {}).get("kind", "")) if mine != "" else ""
-	var held = hero.equipment.get("weapon")
+	var held = h.equipment.get("weapon")
 	if kind == "" and held is Dictionary:
 		kind = str(Data.BASES.get(held["base"], {}).get("kind", ""))     # no weapon of its own (the knight): the kind in hand
 	var best := ""
 	var bl := -1
 	for k in Data.BASES:
 		var bd: Dictionary = Data.BASES[k]
-		if str(bd.get("slot", "")) != want or int(bd.get("lvl", 1)) > 20:
+		if str(bd.get("slot", "")) != want or int(bd.get("lvl", 1)) > max_lvl:
 			continue
 		var owner := str(bd.get("cls", ""))
-		if owner != "" and owner != hero.cls:
+		if owner != "" and owner != h.cls:
 			continue
 		if want == "weapon" and kind != "" and str(bd.get("kind", "")) != kind:
 			continue
-		if int(bd.get("lvl", 1)) > bl:
+		# (a tie goes to the class's own weapon: Doug's drumstick over a slower club)
+		if int(bd.get("lvl", 1)) > bl or (int(bd.get("lvl", 1)) == bl and owner == h.cls):
 			bl = int(bd.get("lvl", 1))
 			best = k
 	return best
 
 func max_out() -> void:
+	hero.boosted = true
 	hero.set_level(99)
 	var c: Dictionary = Data.CLASSES.get(hero.cls, {})
 	var tot := float(int(c.get("str", 1)) + int(c.get("dex", 1)) + int(c.get("vit", 1)) + int(c.get("ene", 1)))
@@ -3164,8 +3283,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 				ui.message("Sound " + ("on" if sound_on else "off"), Color(0.8, 0.85, 1.0))
 				ui.update_sound_btn()
 			KEY_F8:
-				if dev_tools:
-					ui.toggle(ui.test_panel)
+				if dev_tools and not paused:
+					toggle_pause()          # (the admin tools are in the Escape menu)
 			KEY_M:
 				ui.minimap.visible = not ui.minimap.visible
 			KEY_TAB:

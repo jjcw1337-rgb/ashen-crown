@@ -70,6 +70,8 @@ static func apply(h: Hero, kind: String, secs: float, data: Dictionary) -> void:
 		return
 	if kind in HARD and (Dodge.dodging(h) or h.veil_t > 0.0 or unstoppable(h)):
 		return
+	if kind in HARD or kind == "slow":
+		secs *= h.cc_k()          # tenacity ("ten" on gear, Blaine's items rework) shortens stuns and slows
 	var cc: Dictionary = h.cc
 	landed.append([kind, secs])
 	match kind:

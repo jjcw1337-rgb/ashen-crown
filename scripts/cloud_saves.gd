@@ -37,6 +37,14 @@ func ensure() -> bool:
 	signed_in = await nk.authenticate_device(device_id)
 	if not signed_in:
 		print("[Cloud] offline: ", nk.last_error)
+	else:
+		# the admin role (ashen.lua admin_status; tools/admin_role.sh grants it): the admin tools in any build
+		var a: Dictionary = await nk.user_rpc("admin_status", {})
+		game.account_id = str(a.get("user_id", ""))
+		print("[Cloud] account ", game.account_id)
+		if bool(a.get("admin", false)):
+			game.account_admin = true
+			game.dev_tools = game.UNLOCK_ALL_ACTS
 	return signed_in
 
 func sync() -> bool:

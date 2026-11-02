@@ -1176,14 +1176,47 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   a class's skills Q 1, E 3, R 5, F 9, G 14, every ultimate at 20 (Eternal Night, Wrath of the Pit, The Last Epidemic,
   Clown Car); the shared ones War Cry 6, Frost Nova 8, Arc 11, Earthshatter 16. A locked skill waits on the bar greyed
   with "Lv N", can't be bound (`Hero.bind` refuses it; one already on the bar may move) or cast, and is announced when
-  reached (`Hero._announce_unlocks`); the F8 panel's All skills opens everything. In a raid (`Hero.pvp_scaled`: on
-  while `Game.bg_mode`, whose setter recalcs the hero) gear counts for less (`Data.PVP_GEAR_SHARE` of flat stats,
-  `PVP_ARMOR_SHARE` of defence, `PVP_GEAR_CAP` on percentages: +5% run speed at most) and the weapon's damage is the
-  level's (`Data.pvp_damage`, the weapon adding up to ~20%). The class uniques (`Data.UNIQUES` with `"cls"`, level
+  reached (`Hero._announce_unlocks`); the Admin column's Unlock all skills opens everything. In a raid
+  (`Hero.pvp_scaled`: on while `Game.bg_mode`, whose setter recalcs the hero) the act multipliers are ignored and the
+  stricter `Data.PVP_GEAR_CAP` applies (the items rule everywhere else, below). The class uniques (`Data.UNIQUES` with `"cls"`, level
   20, boss_only: Hrimgar, Mossbeard and the golden chest drop one for a class near, `Game._drop_class_unique`) carry
   the raid's item effects: `"roll"` (a free dodge roll every N s, `Hero.free_roll`) or `"ward"` (a % of life that
   soaks blows and refills out of combat, `Hero.ward`). `tools/pvp_sim.gd` (classes at levels 1/5/10/20, fresh vs
   geared, Monte Carlo duels), `tools/skill_unlock_test.gd`, `tools/pvp_items_test.gd`.
+- **Items** (the items rework, `docs/queue_items_rework.md`; Blaine: level and skills carry a character, gear helps,
+  in PvE and PvP alike): every affix rolls `Data.AFFIXES` times `Data.AFFIX_SCALE` (`Items.roll_affix`; Gold and
+  Magic Find unscaled), rares roll `Data.RARE_AFFIXES` (2-3), base defence counts for `Data.GEAR_ARMOR`
+  (`Items.defense_of`), percentages are capped across all gear (`Data.GEAR_CAP`: +5% run speed, 25% attack speed and
+  resist, 4% life steal), and a weapon hits for the level's damage times its quality 0.9-1.05, then its Enhanced
+  Damage and +Damage (`Data.weapon_damage`, `Hero.recalc`; tooltips show "Weapon damage at level N"). Acts II-III
+  make items `Data.RUNS` `"power"` stronger (x1.6, x2.4; `Items.empower`, `Game.power_mult`), with modest monster
+  multipliers to match. Items carry `"gen"` (`Data.ITEM_GEN`); an older one is rebuilt once on load
+  (`Items.upgrade` from `Hero.from_save`: affixes rescaled, rares trimmed to their best three, uniques remade from
+  `Data.UNIQUES` keeping enchant and temper, A2/A3 strengths moved by `Data.OLD_POWER`). Enchanting and tempering are
+  scaled to match (`Items.ENCHANT_DEF`, `TEMPER_ED`). Level-20 gear is worth about x1.6 over none (damage x life).
+  **Utility affixes** (`Data.UTILITY`, at most one per item): run speed, `stam` (dodge stamina, `Hero.roll_cost`),
+  `cdr` (`skill_cd`), `pot` (`drink`), `ten` (stuns and slows, `Hero.cc_k`). **Unique effects** (`Data.ITEM_EFFECTS`,
+  one per unique, everywhere, the strongest of each counts): roll, ward, burn, chill, kill_heal, dash
+  (`Hero._item_effects`, `dash_t`). **Rewards**: random uniques are rare (`Items.random_drop`); each boss has its own
+  (`Data.BOSS_LOOT`, `Game._boss_loot`: the first kill drops one, then `BOSS_LOOT_CHANCE` + `BOSS_LOOT_LUCK` a dry
+  kill, `Hero.boss_luck` saved); the bonfire's Reforge (`UI.reforge_request`, `Items.reforge`) rerolls a magic or rare
+  item's weakest affix for one Sloth material. **Invisibility**: the Veilmother's Locket (`"phial"`) gives a Shadow
+  Phial each raid (`Game.give_raid_phials`); drunk, `Hero.invis_t` (6 s): monsters lose him (`hidden_t`), partners
+  see a shimmer within 4 m (bit 2 of the state's 15th number, `Hero._show_invis`), any blow or cast ends it
+  (`break_invis`). PvP burns and chills reach other players (`Net.sv_pvp_dot`, the "chill" effect; `Hero.burn_t`).
+  `tools/items_rework_test.gd`; re-run `tools/balance.sh` after changing any of it.
+- **The Battlegrounds sandbox** (`scripts/sandbox.gd` `Sandbox`, zone `"sandbox"` "The Proving Crypt";
+  `scripts/bot_brain.gd` `BotBrain`): the admins' testing arena, opened from the Escape menu's Admin column
+  (`Game.open_sandbox` / `close_sandbox`; the character is saved and set aside, `char_id` cleared so nothing inside is
+  saved, and loaded back on leaving). Local and offline: the admin becomes any class at level 1/5/10/20, fresh or
+  geared (`Sandbox.outfit`), spawns bots (`Hero.bot`: a full hero played by a `BotBrain` through the same calls as
+  the mouse: `use_skill`, `cmd_target`, `free_attack`, `Dodge.start`, `drink`; `bot_hold` is its held button) and
+  monster packs. PvP is the raid's: each hero has an invisible stand-in (`Enemy.sandbox_hero`) that takes every
+  skill and blow and deals it to the hero at `Battlegrounds.PVP_MULT` through `take_hit`, forwards stuns and slows,
+  and never takes its own hero's blows (`Hero.striker`, set at the top of each hero's `_process` and by a summon
+  before it strikes). Monsters go for the nearest hero (`Game.target_for`, `all_heroes`). A bot's screen effects,
+  messages and the testing switches are the player's only (`Hero._mine`). The panel's meters (`note_hit`) give
+  damage a second over 5 s, totals and kill times. `tools/sandbox_test.gd` (`--fixed-fps 60`), `tools/sandbox_shot.gd`.
 - **Skill bar and bindings** (every class, including new ones): the bar has a big slot for each mouse button and six
   hotkeys (Q E R F G V); any skill can go on any of them (`Hero.binds`, saved per character; `Hero.default_binds`:
   left mouse `attack`, right mouse the class's first skill, the class's first four skills on Q-F). `attack` and `block` are
@@ -1319,7 +1352,19 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   and `mode` (04:30), each on a fresh `staging` with its own log (`docs/nightly/perf/LOG.md`, `docs/nightly/modes/LOG.md`:
   lessons, then one row per attempt), the KPI benchmark before and after (slower = not shipped), the gate, a push to
   `staging` and a Discord report. `bash tools/nightly/install.sh` installs or updates them.
-- Developer tools (`Game.dev_tools`): unlock-all-acts (`UNLOCK_ALL_ACTS`) and the F8 testing panel (`test_immortal`, `test_onehit`, `test_stamina`, `test_allskills`, `test_fast` (super speed, `TEST_FAST` times as fast) in `game.gd`, and a level setter, `Hero.set_level`). On only when running from the Godot editor or when this PC holds a valid **admin key** (`AdminKey`, `scripts/admin_key.gd`): `user://admin.key`, signed with the owner's private key; the game checks it against the public key built into the code, so nobody can forge one. Off for everyone else, in every build (live and preview). Make a key: `tools/admin_key.gd` (needs the private key, which is never in the repo). `UNLOCK_ALL_ACTS = false` turns the tools off everywhere.
+- **The admin role** (Nakama, `deploy/nakama/modules/ashen.lua`: `admin_status`, `admin_check`, `admin_set`; the
+  "admins" collection only the server writes): `CloudSaves.ensure` asks after signing in and an admin account gets
+  the dev tools in any build (`Game.account_admin`; the Admin column shows the account id). Grant it:
+  `sh tools/admin_role.sh <account id> on "name"` (runs on the staging server with Nakama's runtime key, which never
+  leaves it). The Battlegrounds server turns away a non-admin wearing "Go to level 20" gear (items marked `"boost"`,
+  `Battlegrounds.gear_ok`, every `GEAR_CHECK` s; without Nakama the per-PC ids in `user://bg_server/admins.json`).
+  `tools/bg_admin_test.gd` (server + client). Saves stay the player's own (client-written), so this stops honest
+  clients and casual edits, not a modified game.
+- **Class against class in PvP**: `Data.PVP_CLASS` (what each class deals to and takes from another player; only PvP
+  blows, `Data.pvp_scale` in `Battlegrounds.pvp_hit` and the sandbox's stand-ins), tuned with `tools/duel_sim.gd`
+  (`-- levels=20 rounds=6 mirror`: real bot duels in the sandbox, every pairing, win rates and kill times; flags a
+  pairing past 70/30 and geared not beating fresh).
+- Developer tools (`Game.dev_tools`): unlock-all-acts (`UNLOCK_ALL_ACTS`) and the **Admin column of the Escape menu** (`UI._build_admin`, `ui.test_panel`; F8 just opens the menu): Go to level 20 (`Game.go_level_20`: talents, level-20 gear, +10,000 gold each press), Max out, the switches `test_immortal`, `test_onehit`, `test_stamina`, `test_allskills`, `test_fast` (super speed, `TEST_FAST` times as fast) in `game.gd`, and a level setter (`Hero.set_level`). On when running from the Godot editor or a local debug run, for an account with the **admin role** (above; granted 2026-11-02 to jj's and Blaine's accounts, found by their characters in Nakama), or when this PC holds a valid **admin key** (`AdminKey`, `scripts/admin_key.gd`): `user://admin.key`, signed with the owner's private key; the game checks it against the public key built into the code, so nobody can forge one. Off for everyone else in production builds. Make a key: `tools/admin_key.gd` (needs the private key, which is never in the repo and isn't on the Game Factory Mac). `UNLOCK_ALL_ACTS = false` turns the tools off everywhere.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file). Since 2026-10-31 it is Blaine's
   new trailer at full quality (Blaine: no visible compression): 60 s, 1920x1088 (a multiple of 16, so Theora adds no padding rows), Theora 12 Mbit/s + Vorbis q6,

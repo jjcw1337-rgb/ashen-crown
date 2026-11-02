@@ -92,6 +92,8 @@ var welcomed := false
 func join_failure(fallback: String) -> String:
 	if game.bg_wait_until > Time.get_ticks_msec():
 		return "The crypt is closing. The next raid opens in %s." % game.bg_wait_text()
+	if game.bg_refusal == "boosted":
+		return "Only admins can raid in \"Go to level 20\" gear. Take it off, or pick another character."
 	if game.bg_refusal != "":
 		return "The raid server couldn't confirm your account. Try again in a moment."
 	if reached and not welcomed:
@@ -298,7 +300,7 @@ func _hero_packet(h: Hero) -> PackedFloat32Array:
 	return PackedFloat32Array([h.global_position.x, h.global_position.y, h.global_position.z, h.rig.rotation.y,
 		h.phase, st.get("move", 0.0), st.get("atk", -1.0), float(maxi(0, STYLES.find(st.get("style", "over")))),
 		st.get("block", 0.0), st.get("hit", 0.0), 1.0 if h.dead else 0.0, h.dead_t, h.life, h.max_life,
-		1.0 if h.buff_t > 0.0 else 0.0]) + _boat_packet(h)
+		(1.0 if h.buff_t > 0.0 else 0.0) + (2.0 if h.invis_t > 0.0 else 0.0)]) + _boat_packet(h)     # (bit 1: unseen)
 
 ## A sailing player's boat rides along at the end of his state (aboard, x, z, yaw, speed); partners draw it
 ## under his puppet (BoatRide.puppet_update). Older builds read only the first 15 numbers.
@@ -364,6 +366,8 @@ func sv_hello(nm: String, gear: Dictionary, _lvl: int) -> void:
 		roster.append([op, players[op]["name"], players[op]["hero"].net_gear()])
 		rpc_id(op, "cl_player_join", pid, nm, gear)
 	_add_player(pid, nm, gear)
+	if players.has(pid) and is_instance_valid(players[pid]["hero"]):
+		players[pid]["hero"].level = clampi(_lvl, 1, 99)      # (the raid's PvP class balance is by level, Data.pvp_scale)
 	var at: Vector3 = game.hero.global_position
 	if server:
 		at = game.bg.spawn_point() if game.bg != null else (game.coop_server.spawn_point() if game.coop_server != null else at)
@@ -392,6 +396,7 @@ func cl_welcome(act: int, zone: String, pos: Vector3, tp: Dictionary, bk: bool, 
 	game.boss_killed = bk
 	if game.bg_mode:
 		game.ui.message("Joined the Battlegrounds", Color(0.5, 1.0, 0.5))
+		game.give_raid_phials()
 	elif not players.has(1):
 		game.ui.message("Joined the online co-op server", Color(0.5, 1.0, 0.5))
 	else:
@@ -884,6 +889,15 @@ func sv_bg_hello(uid: String, ticket: String) -> void:
 		return
 	game.bg.broadcast(pid)
 
+## Server: turn a player away now (why: "boosted" = admin gear without the admin role).
+func bg_refuse(pid: int, why: String) -> void:
+	if not server:
+		return
+	rpc_id(pid, "cl_bg_refused", why, 0.0)
+	await get_tree().create_timer(0.5).timeout
+	if peer != null:
+		peer.disconnect_peer(pid)
+
 ## The round: "raid" or "reset", seconds into it, the open portals, its length, when the portals open.
 @rpc("authority", "call_remote", "reliable")
 func cl_bg_raid(state: String, t: float, open: Array, length: float, portals_at: float) -> void:
@@ -949,6 +963,21 @@ func sv_pvp_effect(target_pid: int, kind: String, from: Vector3) -> void:
 	if by == target_pid or not players.has(by) or not players.has(target_pid):
 		return
 	hit_player(target_pid, 0.0, from, kind, "phys")
+
+## PvP burning (a Fire Arrow, magma, a unique's burn on another player's stand-in, Enemy.ignite): the server checks
+## as for crowd control and hands it on as a "burn" hit, `dps` a second (capped) for Hero.BURN_SECS.
+func send_pvp_dot(target_pid: int, dps: float, from: Vector3) -> void:
+	if active and not is_host:
+		rpc_id(1, "sv_pvp_dot", target_pid, dps, from)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_pvp_dot(target_pid: int, dps: float, from: Vector3) -> void:
+	var by := multiplayer.get_remote_sender_id()
+	if not server or game.bg == null or game.bg.state != "raid":
+		return
+	if by == target_pid or not players.has(by) or not players.has(target_pid):
+		return
+	hit_player(target_pid, clampf(dps, 0.0, 80.0), from, "burn", "fire")
 
 ## War Cry (SharedSkills): the battle buff for the teammates near the one who roared. Co-op partners only: the
 ## Battlegrounds has no teams yet (everyone there is an enemy), so nobody else gets it there.

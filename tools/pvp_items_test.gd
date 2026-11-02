@@ -1,7 +1,6 @@
 extends SceneTree
-## The Battlegrounds' gear rules and item effects (Blaine's progression overhaul; Data.PVP_*, Hero.pvp_scaled):
-## gear's flat stats count for a fifth in a raid and its percentages are capped (+5% run speed at most), the weapon's
-## damage is the level's; the class uniques only fit their class, and in a raid their effects work: a ward that soaks
+## The Battlegrounds' gear rules and item effects (Blaine's progression overhaul and the items rework; Data.GEAR_CAP,
+## Data.PVP_*, Hero.pvp_scaled): percentages are capped (+5% run speed at most), the weapon's damage is the level's; the class uniques only fit their class, and in a raid their effects work: a ward that soaks
 ## blows and comes back out of combat, a free dodge roll that costs no stamina and recharges; outside a raid nothing
 ## changes. A boss's class unique is for a class near it.
 var g
@@ -35,13 +34,10 @@ func _run() -> void:
 	boots["affixes"] = [["frw", 15], ["res", 15]]
 	h.equipment["boots"] = boots
 	h.recalc()
-	var life_pve: float = h.max_life
-	var arm_pve: int = h.armor
-	check(h.frw >= 15, "outside a raid the boots' +15%% run speed counts (%d)" % h.frw)
+	check(h.frw == 5, "the boots' +15%% run speed is capped at +5%% everywhere (the item rules: %d)" % h.frw)
 	h.pvp_force = true
 	h.recalc()
-	check(h.frw == 5, "in a raid it's capped at +5%% (%d)" % h.frw)
-	check(h.max_life < life_pve and h.armor < arm_pve, "and gear's life and armour count for less (%d -> %d life, %d -> %d armour)" % [int(life_pve), int(h.max_life), arm_pve, h.armor])
+	check(h.frw == 5 and h.res <= 15, "in a raid too, and resist at 15 (%d, %d)" % [h.frw, h.res])
 	var d: Array = Data.pvp_damage(20, [3, 7])
 	var d2: Array = Data.pvp_damage(20, [30, 50])
 	check(float(d2[1]) / float(d[1]) < 1.3 and d[0] > 3, "the weapon's damage is the level's: a starting weapon %s, the best %s" % [str(d), str(d2)])
@@ -57,10 +53,10 @@ func _run() -> void:
 	h.inventory[0] = null
 	h.equipment["amulet"] = nose
 	h.recalc()
-	check(h.pvp_roll_s == 0, "outside a raid the Nose's free roll is off")
+	check(h.pvp_roll_s == 6 and h.free_roll(), "the Nose's free dodge roll every %d s (everywhere since the items rework)" % h.pvp_roll_s)
 	h.pvp_force = true
 	h.recalc()
-	check(h.pvp_roll_s == 6 and h.free_roll(), "in a raid: a free dodge roll every %d s" % h.pvp_roll_s)
+	check(h.pvp_roll_s == 6 and h.free_roll(), "in a raid too")
 	h.stamina = 0.0
 	h.free_roll_t = 0.0
 	check(DG.start(h, Vector3(1, 0, 0)), "he rolls with no stamina at all")
@@ -85,6 +81,7 @@ func _run() -> void:
 	check(h.ward_max > 0.0 and h.ward >= h.ward_max * 0.95, "Oathkeeper's ward is up (%d of %d)" % [int(h.ward), int(h.ward_max)])
 	var l0: float = h.life
 	g.test_immortal = false
+	h.block_chance = 0.0        # (his shield might block it instead)
 	h.take_hit(h.ward_max * 0.5, h.global_position + Vector3(0, 0, -2), "pvp", "fire")
 	check(is_equal_approx(h.life, l0) and h.ward < h.ward_max, "a blow smaller than it is soaked (life %d -> %d, ward %d)" % [int(l0), int(h.life), int(h.ward)])
 	h.combat_t = 999.0
@@ -92,7 +89,7 @@ func _run() -> void:
 	check(h.ward >= h.ward_max * 0.95, "and it comes back out of combat")
 	h.pvp_force = false
 	h.recalc()
-	check(h.ward_max == 0.0, "no ward outside a raid")
+	check(h.ward_max > 0.0, "the ward works outside a raid too (the items rework)")
 	# a class unique for a class near
 	for gi in g.world.items_root.get_children():
 		gi.queue_free()
