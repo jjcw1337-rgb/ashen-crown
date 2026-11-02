@@ -885,7 +885,18 @@ func sv_bg_hello(uid: String, ticket: String) -> void:
 ## The round: "raid" or "reset", seconds into it, the open portals, its length, when the portals open.
 @rpc("authority", "call_remote", "reliable")
 func cl_bg_raid(state: String, t: float, open: Array, length: float, portals_at: float) -> void:
-	game.bg_raid = {"state": state, "t": t, "open": open, "len": length, "portals_at": portals_at}
+	var was := str(game.bg_raid.get("state", ""))
+	var wait := float(state.get_slice(":", 1)) if state.contains(":") else 0.0
+	game.bg_raid = {"state": state, "t": t, "open": open, "len": length, "portals_at": portals_at, "wait": wait}
+	# the antechamber's gates: down in the lobby and the countdown, up once the raid is on (Battlegrounds.open_gates)
+	if state == "raid" and game.world != null:
+		Battlegrounds.open_gates(game.world, was.begins_with("prep"))
+		if was.begins_with("prep") or was.begins_with("lobby"):
+			game.ui.big_message("The gates are open")
+			Sfx.play("portcullis" if Sfx.bank.has("portcullis") else "portal", -2.0)
+	elif state.begins_with("prep") and not was.begins_with("prep"):
+		game.ui.big_message("The gates open in %d" % int(ceilf(wait)))
+		Sfx.play("arena_horn", -4.0)
 	if game.world != null:
 		var ps := Battlegrounds.portal_list(game.world)
 		for i in ps.size():
@@ -978,6 +989,8 @@ func sv_inter(idx: int) -> void:
 	var t = game.world.interactables[idx]
 	if not is_instance_valid(t) or t.used:
 		return
+	if t.kind == "chest" and game.chest_sealed(t):
+		return          # (a boss's chest, its boss alive here: the server's word, whatever the client thought)
 	game.use_inter_remote(t)
 	var pid := multiplayer.get_remote_sender_id()
 	for op in players:

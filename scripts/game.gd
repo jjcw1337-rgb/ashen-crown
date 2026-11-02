@@ -2054,16 +2054,67 @@ func use_inter_remote(t: Inter) -> void:
 		_pick_flower(t)
 	elif t.kind == "chest":
 		_open_chest(t)
+	elif t.kind == "bell":
+		Sfx.play_at("anvil", t.global_position, 0.0, 0.6)
+		if net.server and bg != null:
+			var who := "Someone"
+			var pid := multiplayer.get_remote_sender_id()
+			if net.players.has(pid):
+				who = str(net.players[pid]["name"])
+			bg.start_prep(who)
 
 func _open_chest(t: Inter) -> void:
 	t.used = true
 	Sfx.play("equip")
-	Fx.burst(world.fx_root, t.global_position + Vector3(0, 0.8, 0), Color(1, 0.85, 0.5), 24, 3.0, 0.1, 0.8, true, -4.0)
+	var gold := bool(t.data.get("gold", false))
+	Fx.burst(world.fx_root, t.global_position + Vector3(0, 0.8, 0), Color(1, 0.85, 0.5), 60 if gold else 24, 5.0 if gold else 3.0, 0.1, 0.8, true, -4.0)
+	if gold:
+		Fx.pillar(world.fx_root, t.global_position, Color(1.0, 0.8, 0.3), 1.6)
 	if net.is_client():
 		return
-	var n := rng.randi_range(2, 4)
+	var n := 7 if gold else rng.randi_range(2, 4)
 	for i in n:
-		_drop_loot_roll(t.global_position, world.level, false)
+		_drop_loot_roll(t.global_position, world.level, gold and i < 3)
+
+## A chest a boss guards (data "guard": its Data.ENEMIES kind; the Battlegrounds' golden chest): sealed while that
+## boss lives within 40 m. Every peer works it out from the monsters it has, so the server (which refuses a sealed
+## chest's sv_inter) and each client agree, a late joiner too (a dead boss isn't in its list).
+func chest_sealed(t: Inter) -> bool:
+	var guard := str(t.data.get("guard", ""))
+	if guard == "" or world == null:
+		return false
+	for e in world.enemies_root.get_children():
+		if e is Enemy and not e.dead and e.kind == guard and e.global_position.distance_to(t.global_position) < 40.0:
+			return true
+	return false
+
+## A stairway down (BgFloors._stair): a fade, and the hero at the floor below's arrival stair. The hero's position
+## is streamed like any move, so the server and the others see him go.
+func _descend(t: Inter) -> void:
+	if hero.dead or _busy:
+		return
+	var to: Vector3 = t.data.get("to", hero.global_position)
+	Sfx.play("portal")
+	var fade := ColorRect.new()
+	fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fade.color = Color(0, 0, 0, 0)
+	ui.top.add_child(fade)
+	var tw := create_tween()
+	tw.tween_property(fade, "color", Color(0, 0, 0, 1), 0.35)
+	await get_tree().create_timer(0.4).timeout
+	var p := world.free_spot_near(to + Vector3(randf_range(-1.5, 1.5), 0, randf_range(-1.0, 1.0)), 1.5)
+	hero.global_position = p
+	hero.target = null
+	hero.path = PackedVector3Array()
+	hero.moving = false
+	cam_target = p
+	cam_pivot.position = p
+	var f := int(t.data.get("floor", 2))
+	ui.big_message(BgFloors.NAMES.get(f, "Deeper"))
+	var tw2 := create_tween()
+	tw2.tween_property(fade, "color", Color(0, 0, 0, 0), 0.6)
+	tw2.tween_callback(fade.queue_free)
 
 ## A camp vendor's own talk: the elder's news, a trader's greeting and Trade.
 func _vendor_talk(t: Inter) -> void:
@@ -2436,9 +2487,23 @@ func _interact(t: Inter) -> void:
 		"chest":
 			if t.used:
 				return
+			if chest_sealed(t):
+				ui.message("Thorns bind it shut. Old Mossbeard's magic holds while he lives.", Color(0.6, 1.0, 0.5))
+				Sfx.play("deny")
+				return
 			_open_chest(t)
 			if net.active:
 				net.inter_used(t)
+		"descend":
+			_descend(t)
+		"bell":
+			# the antechamber's bell: the server starts the countdown (Net.sv_inter -> use_inter_remote)
+			Sfx.play("anvil", -2.0, 0.6)
+			if bg_mode and net.is_client():
+				if str(bg_raid.get("state", "")).begins_with("lobby"):
+					net.inter_used(t)
+				else:
+					ui.message("The raid is already under way", Color(0.8, 0.8, 0.9))
 
 func travel_waypoint(dest: Dictionary) -> void:
 	Sfx.play("portal")

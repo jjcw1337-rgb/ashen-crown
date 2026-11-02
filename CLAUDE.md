@@ -180,7 +180,17 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   clock a third of a `PERIOD` after the last (`phase`), so one is always open; clients need no lobby: `schedule()` and
   `best_raid()` work every raid's state out from the clock (the Battlegrounds page's board, and Enter goes to the best
   one). `LIVE_RAIDS` is how many are deployed (staging: 1 until UDP 24571/24572 are open and the droplet has room;
-  `BG_RAIDS=3 sh deploy/staging/deploy.sh` then starts `ashen-crown-bg-raid@1/@2`). `tools/raid_schedule_test.gd`. The state reaches players
+  `BG_RAIDS=3 sh deploy/staging/deploy.sh` then starts `ashen-crown-bg-raid@1/@2`). `tools/raid_schedule_test.gd`. **A round's flow**:
+  `"lobby"` (players wait in the corner rooms behind iron gates, `gate_doors`/`_gate`, each with a bell, Inter `"bell"`
+  through `Net.sv_inter`) -> the first bell (or `LOBBY_MAX`) starts `"prep"` (`PREP_SECS`, `start_prep`) -> `"raid"`
+  (`open_gates`: bars rise, footprints moved off) -> `"reset"`; the state reaches clients as `cl_bg_raid`
+  `"lobby:<s>"`/`"prep:<s>"`/`"raid"`/`"reset"` and the HUD says what's happening. **Three floors**
+  (`scripts/bg_floors.gd`, `BgFloors`): the Ossuary (floor 1, `build`), the Frozen Depths (Hrimgar the Frostbound,
+  `ice_troll`) and the Overgrown Vault (Old Mossbeard, `hermit`, and the golden chest: `Game.chest_sealed` while he
+  lives, refused in `Net.sv_inter`), one map `FLOOR_GAP` apart, rooms joined by wide ways and narrow shortcuts,
+  stairways down (Inter `"descend"`, `Game._descend`), portals on every floor (two open on the Ossuary, one below),
+  Meshy dressing in `assets/models/bg/`. `World.crypt_shell(themes)` colours each floor's walls.
+  `tools/bg_floors_shots.gd` screenshots them. The state reaches players
   through `Net.cl_bg_raid` (the HUD clock, `Battlegrounds.hud`). **Attacks are the same as everywhere**
   (timing, damage, cooldowns: one standard, jj 2026-11-01); while `Game.bg_mode` only walking is slower (`MOVE_MULT`) and
   life doesn't regenerate. **PvP**: every other
