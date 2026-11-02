@@ -58,6 +58,13 @@ static func start(game) -> bool:
 		secs = float(a[si + 1])
 	st = {"secs": secs, "phase": "load", "t": 0.0, "frames": [], "proc": 0.0, "phys": 0.0,
 		"dc": 0.0, "prims": 0.0, "objs": 0.0, "gpu": 0.0, "n": 0, "next_skill": 0.0, "path_i": -1, "boot_ms": Time.get_ticks_msec()}
+	for k in 2:
+		var pr: Node = load("res://scripts/kpi_probe.gd").new()
+		pr.first = k == 0
+		pr.process_priority = -100000 if k == 0 else 100000
+		pr.process_physics_priority = -100000 if k == 0 else 100000
+		pr.name = "KpiProbe%d" % k
+		g.add_child.call_deferred(pr)
 	if sc == "server":
 		return false      # the server starts as usual; `server_tick` measures it
 	var qi := a.find("--quality")
@@ -84,6 +91,8 @@ static func _load(spec: Dictionary) -> void:
 	_stage()
 	_hide_parts()
 	_no_shadows()
+	_env_off()
+	_mm_no_shadow()
 	st["phase"] = "settle"
 	RenderingServer.viewport_set_measure_render_time(g.get_viewport().get_viewport_rid(), true)
 
@@ -98,6 +107,7 @@ static func step(delta: float) -> void:
 			st["phase"] = "measure"
 			st["t"] = 0.0
 			st["t0"] = Time.get_ticks_usec()
+			st["p0"] = [load("res://scripts/kpi_probe.gd").proc_us, load("res://scripts/kpi_probe.gd").phys_us]
 			if OS.get_cmdline_user_args().has("--census"):
 				_census()
 		return
@@ -109,6 +119,7 @@ static func step(delta: float) -> void:
 	st["objs"] = float(st["objs"]) + Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME)
 	if sc != "server":
 		st["gpu"] = float(st["gpu"]) + RenderingServer.viewport_get_measured_render_time_gpu(g.get_viewport().get_viewport_rid())
+		st["rcpu"] = float(st.get("rcpu", 0.0)) + RenderingServer.viewport_get_measured_render_time_cpu(g.get_viewport().get_viewport_rid()) + RenderingServer.get_frame_setup_time_cpu()
 	st["n"] = int(st["n"]) + 1
 	if float(st["t"]) >= float(st["secs"]):
 		_finish()
@@ -146,7 +157,19 @@ static func _stage() -> void:
 		"spot":
 			var a := OS.get_cmdline_user_args()
 			var pi := a.find("--pos")
-			if pi >= 0 and pi + 1 < a.size():
+			if pi >= 0 and pi + 1 < a.size() and a[pi + 1].begins_with("oak"):
+				# --pos oakN: beside the Nth oak that casts its shadow from a twin (comparing tree shadows)
+				var want := int(a[pi + 1].substr(3))
+				var k := 0
+				for mi in g.world.find_children("*", "MultiMeshInstance3D", true, false):
+					if mi.has_meta("shadow_twin") and mi.multimesh.instance_count > 0:
+						if k == want:
+							var o: Vector3 = mi.multimesh.get_instance_transform(0).origin
+							h.global_position = g.world.free_spot_near(o + Vector3(3.5, 0, 3.5), 1.0)
+							print("[KPI] spot at ", h.global_position)
+							break
+						k += 1
+			elif pi >= 0 and pi + 1 < a.size():
 				var xz := a[pi + 1].split(",")
 				h.global_position = g.world.free_spot_near(Vector3(float(xz[0]), 0, float(xz[1])), 0.5)
 			var fi := a.find("--foes")
@@ -362,6 +385,42 @@ static func _hide_parts() -> void:
 			stack.append(c)
 	print("[KPI] hid ", hidden, " nodes matching ", pats)
 
+## --envoff ssao,ssil,vfog,msaa,glow,fog: (profiling) turns those off.
+static func _env_off() -> void:
+	var a := OS.get_cmdline_user_args()
+	var i := a.find("--envoff")
+	if i < 0 or i + 1 >= a.size():
+		return
+	var k := a[i + 1]
+	var env: Environment = g.env
+	if k.contains("ssao"): env.ssao_enabled = false
+	if k.contains("ssil"): env.ssil_enabled = false
+	if k.contains("vfog"): env.volumetric_fog_enabled = false
+	if k.contains("glow"): env.glow_enabled = false
+	if k.contains("dfog"): env.fog_enabled = false
+	if k.contains("msaa"): g.get_viewport().msaa_3d = Viewport.MSAA_DISABLED
+	if k.contains("half"): g.get_viewport().scaling_3d_scale = 0.5
+
+## --mmnoshadow N: (profiling) MultiMeshes whose mesh has more than N triangles cast no shadow.
+static func _mm_no_shadow() -> void:
+	var a := OS.get_cmdline_user_args()
+	var i := a.find("--mmnoshadow")
+	if i < 0 or i + 1 >= a.size():
+		return
+	var lim := int(a[i + 1])
+	var n := 0
+	for mi in g.world.find_children("*", "MultiMeshInstance3D", true, false):
+		var m: Mesh = mi.multimesh.mesh if mi.multimesh else null
+		if m is ArrayMesh:
+			var t := 0
+			for si in m.get_surface_count():
+				var il: int = m.surface_get_array_index_len(si)
+				t += (il if il > 0 else m.surface_get_array_len(si)) / 3
+			if t > lim:
+				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				n += 1
+	print("[KPI] shadows off on ", n, " multimeshes")
+
 ## --noshadow omni,dir: (profiling) turns those lights' shadows off.
 static func _no_shadows() -> void:
 	var a := OS.get_cmdline_user_args()
@@ -402,6 +461,9 @@ static func _finish() -> void:
 		"cpu_process_peak_ms": snappedf(float(st["proc"]) / n, 0.01),
 		"cpu_physics_peak_ms": snappedf(float(st["phys"]) / n, 0.01),
 		"gpu_ms": snappedf(float(st["gpu"]) / n, 0.01),
+		"script_ms": snappedf(float(load("res://scripts/kpi_probe.gd").proc_us - int((st.get("p0", [0, 0]) as Array)[0])) / 1000.0 / n, 0.01),
+		"physics_ms": snappedf(float(load("res://scripts/kpi_probe.gd").phys_us - int((st.get("p0", [0, 0]) as Array)[1])) / 1000.0 / n, 0.01),
+		"render_cpu_ms": snappedf(float(st.get("rcpu", 0.0)) / n, 0.01),
 		"draw_calls": roundi(float(st["dc"]) / n),
 		"primitives": roundi(float(st["prims"]) / n),
 		"objects": roundi(float(st["objs"]) / n),
