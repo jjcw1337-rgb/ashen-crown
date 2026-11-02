@@ -123,6 +123,8 @@ func _ready() -> void:
 			shot_zone = args[i + 1]
 		if args[i] == "--run" and i + 1 < args.size():
 			difficulty = int(args[i + 1])
+		if args[i] == "--render-scale" and i + 1 < args.size():
+			render_scale_arg = float(args[i + 1])
 	quality = _initial_quality()
 	set_sound(bool(_load_setting("audio", "sound_on", true)))
 	click_move = bool(_load_setting("controls", "click_move", false))
@@ -136,6 +138,7 @@ func _ready() -> void:
 	add_child(grass_field)
 	_setup_camera()
 	_setup_post()
+	get_window().size_changed.connect(apply_render_scale)
 	quests = Quests.new(self)
 	ui = UI.new()
 	add_child(ui)
@@ -807,6 +810,31 @@ func apply_quality(q: int) -> void:
 	Grass.apply_quality(self, q)
 	if world != null and world.has_node("Ocean"):
 		(world.get_node("Ocean") as Ocean).set_quality(q)
+	apply_render_scale()
+
+## How many pixels the 3D view may draw at most on Low and Medium (High and Ultra draw every pixel). The UI is
+## always drawn at the window's full size. A Retina Mac's window has four times the pixels of its size in points
+## and the game drew the 3D into all of them: an M5 Pro in the camp ran a steady 21 fps on Medium and 29 on Low
+## (telemetry, triage 2026-11-02) where a 1080p screen runs 79 / 94. A 1080p window on Medium is under its cap (unchanged).
+const RENDER_PIXEL_CAP := [1600 * 900, 1920 * 1080]
+var render_scale_arg := -1.0     # --render-scale N: a fixed 3D scale (KPI comparisons; 2.0 = a Retina screen's cost)
+
+## The 3D view's resolution for the preset and the window, upscaled with FSR 1 (bilinear in Compatibility).
+func apply_render_scale() -> void:
+	var vp := get_viewport()
+	if vp == null or DisplayServer.get_name() == "headless":
+		return
+	var px := float(get_window().size.x * get_window().size.y)
+	var s := 1.0
+	if render_scale_arg > 0.0:
+		s = render_scale_arg
+	elif quality < RENDER_PIXEL_CAP.size() and px > RENDER_PIXEL_CAP[quality]:
+		s = clampf(sqrt(RENDER_PIXEL_CAP[quality] / px), 0.5, 1.0)
+		if s > 0.9:
+			s = 1.0    # (a few percent isn't worth the softening)
+	vp.scaling_3d_scale = s
+	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if s < 1.0 and is_forward() else Viewport.SCALING_3D_MODE_BILINEAR
+	vp.fsr_sharpness = 0.3
 
 func max_quality() -> int:
 	return 1 if OS.has_feature("web") else 3
