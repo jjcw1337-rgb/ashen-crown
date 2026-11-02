@@ -16,6 +16,7 @@ extends RefCounted
 
 const ROCK := Color(0.3, 0.26, 0.22)
 const DUST := Color(0.56, 0.49, 0.4)
+const DUST_DARK := Color(0.24, 0.21, 0.17)
 const ICE_DEEP := Color(0.2, 0.5, 0.92)
 const ICE_PALE := Color(0.8, 0.94, 1.0)
 const STORM_CORE := Color(0.93, 0.95, 1.0)
@@ -43,7 +44,7 @@ static func _mat(key: String) -> ShaderMaterial:
 static func rock_mat() -> StandardMaterial3D:
 	if _rock_mat == null:
 		_rock_mat = StandardMaterial3D.new()
-		_rock_mat.albedo_color = ROCK
+		_rock_mat.albedo_color = Color(0.62, 0.56, 0.5)
 		_rock_mat.roughness = 0.95
 		_rock_mat.albedo_texture = InfernalFx.noise()
 		_rock_mat.uv1_triplanar = true
@@ -89,6 +90,20 @@ static func _piece(root: Node3D, mesh: Mesh, mat: Material, pos: Vector3, life: 
 static func _yaw(d: Vector3) -> float:
 	return atan2(-d.x, -d.z)
 
+## Dust, mist or ash: InfernalFx's noise-eroded smoke (unlit by fire) in `col`, so it rolls as wisps, not as the flat
+## soft blobs a plain particle quad makes. d: the particles() description (no "mesh"/"colors" needed); peak alpha `a`.
+static func _dust(root: Node3D, pos: Vector3, col: Color, size: float, a: float, d: Dictionary) -> GPUParticles3D:
+	var sm := InfernalFx.smoke_mat(0.0, 1.0)
+	sm.set_shader_parameter("smoke", Vector3(col.r, col.g, col.b))
+	var q := QuadMesh.new()
+	q.size = Vector2(size, size)
+	q.material = sm
+	d["mesh"] = q
+	d["colors"] = [[0.0, Color(1, 1, 1, 0.0)], [0.12, Color(1, 1, 1, a)], [0.6, Color(1, 1, 1, a * 0.55)], [1.0, Color(1, 1, 1, 0.0)]]
+	if not d.has("angle"):
+		d["angle"] = true
+	return InfernalFx.particles(root, pos, d)
+
 # ---------------------------------------------------------------- Earthshatter
 ## The ground split through the wedge ahead of p (direction d, radius r, half-angle half in degrees).
 static func earthshatter(h: Hero, root: Node3D, p: Vector3, d: Vector3, r := 5.0, half := 50.0) -> void:
@@ -101,12 +116,11 @@ static func earthshatter(h: Hero, root: Node3D, p: Vector3, d: Vector3, r := 5.0
 	var hr := deg_to_rad(half)
 	# the crack, running out from the blow
 	var cm := _mat("crack")
-	cm.set_shader_parameter("cells_tex", InfernalFx.cells())
 	cm.set_shader_parameter("noise_tex", InfernalFx.noise())
 	cm.set_shader_parameter("rock", ROCK)
 	cm.set_shader_parameter("dust", DUST)
 	cm.set_shader_parameter("seed", randf() * 10.0)
-	var crack := _piece(root, InfernalFx.wedge_mesh(w, p, yaw, 0.5, r * 1.05, hr * 0.92, 20, 12, 0.035), cm, p, 3.4)
+	var crack := _piece(root, InfernalFx.wedge_mesh(w, p, yaw, 0.5, r * 1.05, hr * 0.92, 20, 12, 0.08), cm, p, 3.4)
 	InfernalFx.tween_param(crack, cm, "reveal", 0.0, 1.1, 0.2)
 	InfernalFx.tween_param(crack, cm, "life", 1.0, 0.0, 1.4, 1.9)
 	# rock spikes heaving up along the crack and sinking back, the near ones first
@@ -120,8 +134,8 @@ static func earthshatter(h: Hero, root: Node3D, p: Vector3, d: Vector3, r := 5.0
 		var sh := _piece(root, InfernalFx.shard_mesh(i), rock_mat(), at + Vector3(0, -1.2, 0), 2.2)
 		var up_y: float = root.to_local(at + Vector3(0, -0.05, 0)).y
 		var down_y: float = root.to_local(at + Vector3(0, -1.3, 0)).y
-		var s := randf_range(0.55, 1.15) * lerpf(1.25, 0.8, rr / r)
-		sh.scale = Vector3(s * randf_range(0.8, 1.2), s * randf_range(0.9, 1.4), s * randf_range(0.8, 1.2))
+		var s := randf_range(0.55, 1.1) * lerpf(1.25, 0.8, rr / r)
+		sh.scale = Vector3(s * randf_range(1.4, 2.0), s * randf_range(0.7, 1.1), s * randf_range(1.4, 2.0))
 		var out := Vector3(-sin(a), 0, -cos(a))
 		sh.rotation = Vector3(0, randf() * TAU, 0)
 		sh.rotate(out.cross(Vector3.UP).normalized(), -randf_range(0.15, 0.45))   # leaning away from the blow
@@ -149,10 +163,9 @@ static func earthshatter(h: Hero, root: Node3D, p: Vector3, d: Vector3, r := 5.0
 		InfernalFx.particles(root, at3 + Vector3(0, 0.2, 0), {"amount": [6, 9, 13, 18][tr], "life": 0.7, "explosive": 0.95,
 			"shape": "sphere", "r": 0.6, "dir": Vector3.UP, "spread": 40.0, "vel": [4.0, 8.0], "gravity": -16.0,
 			"scale": [0.5, 1.0], "size": 0.07, "add": false, "colors": [[0.0, ROCK], [1.0, ROCK]]})
-		InfernalFx.particles(root, at3 + Vector3(0, 0.3, 0), {"amount": [4, 6, 9, 12][tr], "life": 1.8, "explosive": 0.8,
+		_dust(root, at3 + Vector3(0, 0.3, 0), DUST_DARK, 1.6, 0.7, {"amount": [4, 6, 9, 12][tr], "life": 1.8, "explosive": 0.8,
 			"shape": "box", "box": Vector3(1.2, 0.2, 1.2), "dir": Vector3.UP, "spread": 70.0, "vel": [0.6, 1.8], "gravity": 0.15,
-			"damping": [0.8, 1.4], "scale": [0.8, 1.4], "size": 1.2, "grow": [0.5, 1.7], "angle": true, "spin": 20.0, "add": false,
-			"colors": [[0.0, Color(DUST, 0.0)], [0.12, Color(DUST, 0.55)], [0.6, Color(DUST, 0.3)], [1.0, Color(DUST, 0.0)]]})
+			"damping": [0.8, 1.4], "scale": [0.8, 1.4], "grow": [0.5, 1.7], "spin": 20.0})
 	GrassField.impulse(p + d * r * 0.5, r * 0.6, 0.7, 0.4)
 
 # ---------------------------------------------------------------- Frost Nova
@@ -166,7 +179,7 @@ static func frost_nova(h: Hero, root: Node3D, p: Vector3, r := 4.0) -> void:
 	fm.set_shader_parameter("pale", ICE_PALE)
 	fm.set_shader_parameter("deep", ICE_DEEP)
 	fm.set_shader_parameter("seed", randf() * 10.0)
-	var frost := _piece(root, InfernalFx.disc_mesh(w, p, r * 1.08, 48, 6, 0.04), fm, p, 3.6)
+	var frost := _piece(root, InfernalFx.disc_mesh(w, p, r * 1.08, 48, 6, 0.07), fm, p, 3.6)
 	InfernalFx.tween_param(frost, fm, "front", 0.0, 1.0, 0.26).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
 	InfernalFx.tween_param(frost, fm, "life", 1.0, 0.0, 1.2, 2.2)
 	# a ring of ice crystals bursting up behind the front, then shattering
@@ -210,10 +223,9 @@ static func frost_nova(h: Hero, root: Node3D, p: Vector3, r := 4.0) -> void:
 	InfernalFx.tween_param(g, g.material_override as ShaderMaterial, "alpha", 1.0, 0.0, 0.3)
 	Fx._free_later(g, 0.35)
 	Fx.flash(root, p + Vector3(0, 1.2, 0), ICE_PALE, 3.0, 0.4, r * 1.6)
-	InfernalFx.particles(root, p + Vector3(0, 0.25, 0), {"amount": [6, 10, 14, 20][tr], "life": 1.6, "explosive": 0.9,
+	_dust(root, p + Vector3(0, 0.25, 0), Color(0.5, 0.62, 0.72), 1.5, 0.45, {"amount": [6, 10, 14, 20][tr], "life": 1.6, "explosive": 0.9,
 		"shape": "ring", "r": 0.8, "r_in": 0.3, "dir": Vector3.UP, "spread": 15.0, "vel": [0.2, 0.6], "radial": [5.0, 8.0],
-		"gravity": -0.2, "damping": [2.5, 3.5], "scale": [0.8, 1.4], "size": 1.3, "grow": [0.6, 1.8], "angle": true, "spin": 15.0,
-		"add": false, "colors": [[0.0, Color(ICE_PALE, 0.0)], [0.1, Color(ICE_PALE, 0.45)], [0.7, Color(ICE_PALE, 0.2)], [1.0, Color(ICE_PALE, 0.0)]]})
+		"gravity": -0.2, "damping": [2.5, 3.5], "scale": [0.8, 1.4], "grow": [0.6, 1.8], "spin": 15.0})
 	InfernalFx.particles(root, p + Vector3(0, 0.6, 0), {"amount": [10, 18, 28, 40][tr], "life": 1.4, "explosive": 0.7,
 		"shape": "ring", "r": r * 0.8, "r_in": 0.4, "dir": Vector3.UP, "spread": 30.0, "vel": [0.1, 0.5], "gravity": 0.2,
 		"scale": [0.3, 0.9], "size": 0.05, "turb": 0.3,
@@ -354,10 +366,9 @@ static func war_cry(h: Hero, root: Node3D, p: Vector3, r := 8.0) -> void:
 	HolyFx.shockwave(root, h.game, p, r + 0.5, 0.5, 0.024)
 	Fx.flash(root, p + Vector3(0, 1.4, 0), WAR_EMBER, 3.2, 0.5, r)
 	# the wave of dust and ash rolling out along the ground to the edge of the cry
-	InfernalFx.particles(root, p + Vector3(0, 0.3, 0), {"amount": [10, 16, 24, 32][tr], "life": 0.95, "explosive": 1.0,
+	_dust(root, p + Vector3(0, 0.3, 0), Color(0.2, 0.17, 0.15), 1.4, 0.7, {"amount": [10, 16, 24, 32][tr], "life": 0.95, "explosive": 1.0,
 		"shape": "ring", "r": 0.9, "r_in": 0.5, "dir": Vector3.UP, "spread": 10.0, "vel": [0.1, 0.4], "radial": [16.0, 22.0],
-		"damping": [6.0, 8.0], "gravity": 0.3, "scale": [0.8, 1.3], "size": 1.1, "grow": [0.5, 1.6], "angle": true, "spin": 30.0,
-		"add": false, "colors": [[0.0, Color(0.3, 0.26, 0.23, 0.0)], [0.1, Color(0.3, 0.26, 0.23, 0.6)], [0.6, Color(0.36, 0.3, 0.26, 0.3)], [1.0, Color(0.4, 0.34, 0.3, 0.0)]]})
+		"damping": [6.0, 8.0], "gravity": 0.3, "scale": [0.8, 1.3], "grow": [0.5, 1.6], "spin": 30.0})
 	# embers rising round him
 	InfernalFx.particles(root, p + Vector3(0, 0.4, 0), {"amount": [10, 16, 24, 34][tr], "life": 1.5, "explosive": 0.75,
 		"shape": "ring", "r": 1.4, "r_in": 0.6, "dir": Vector3.UP, "spread": 25.0, "vel": [1.2, 2.8], "gravity": 0.4,
@@ -372,13 +383,12 @@ static func ground_slam(game, root: Node3D, p: Vector3, r: float) -> void:
 	var tr := InfernalFx.tier(game)
 	var w = game.world if game != null else null
 	var cm := _mat("crack")
-	cm.set_shader_parameter("cells_tex", InfernalFx.cells())
 	cm.set_shader_parameter("noise_tex", InfernalFx.noise())
 	cm.set_shader_parameter("rock", ROCK)
 	cm.set_shader_parameter("dust", DUST)
 	cm.set_shader_parameter("seed", randf() * 10.0)
 	cm.set_shader_parameter("full_circle", 1.0)
-	var crack := _piece(root, InfernalFx.wedge_mesh(w, p, randf() * TAU, 0.35, r, PI, 48, 10, 0.035), cm, p, 3.2)
+	var crack := _piece(root, InfernalFx.wedge_mesh(w, p, randf() * TAU, 0.35, r, PI, 48, 10, 0.08), cm, p, 3.2)
 	InfernalFx.tween_param(crack, cm, "reveal", 0.0, 1.1, 0.16)
 	InfernalFx.tween_param(crack, cm, "life", 1.0, 0.0, 1.3, 1.8)
 	var n: int = [4, 7, 10, 14][tr]
@@ -391,7 +401,7 @@ static func ground_slam(game, root: Node3D, p: Vector3, r: float) -> void:
 		var up_y: float = root.to_local(at + Vector3(0, -0.05, 0)).y
 		var down_y: float = root.to_local(at + Vector3(0, -1.3, 0)).y
 		var s := randf_range(0.5, 1.0)
-		sh.scale = Vector3(s, s * randf_range(0.9, 1.4), s)
+		sh.scale = Vector3(s * randf_range(1.4, 1.9), s * randf_range(0.7, 1.1), s * randf_range(1.4, 1.9))
 		sh.rotation = Vector3(0, randf() * TAU, 0)
 		sh.rotate(out.cross(Vector3.UP).normalized(), -randf_range(0.2, 0.5))
 		var tw := sh.create_tween()
@@ -407,10 +417,9 @@ static func ground_slam(game, root: Node3D, p: Vector3, r: float) -> void:
 			mi.scale = Vector3.ONE * randf_range(0.4, 0.9)
 			var v := Vector3(cos(a2), 0, sin(a2)) * randf_range(2.0, 4.5) + Vector3(0, randf_range(4.0, 7.0), 0)
 			InfernalFx.fly(mi, v, Vector3(randf_range(-12, 12), randf_range(-8, 8), randf_range(-12, 12)), randf_range(0.9, 1.2), -16.0)
-	InfernalFx.particles(root, p + Vector3(0, 0.3, 0), {"amount": [6, 9, 13, 18][tr], "life": 1.6, "explosive": 0.9,
+	_dust(root, p + Vector3(0, 0.3, 0), DUST_DARK, 1.6, 0.75, {"amount": [6, 9, 13, 18][tr], "life": 1.6, "explosive": 0.9,
 		"shape": "ring", "r": 0.8, "r_in": 0.2, "dir": Vector3.UP, "spread": 20.0, "vel": [0.3, 0.8], "radial": [7.0, 11.0],
-		"damping": [3.0, 4.0], "gravity": 0.15, "scale": [0.8, 1.4], "size": 1.2, "grow": [0.5, 1.7], "angle": true, "spin": 20.0,
-		"add": false, "colors": [[0.0, Color(DUST, 0.0)], [0.1, Color(DUST, 0.6)], [0.6, Color(DUST, 0.3)], [1.0, Color(DUST, 0.0)]]})
+		"damping": [3.0, 4.0], "gravity": 0.15, "scale": [0.8, 1.4], "grow": [0.5, 1.7], "spin": 20.0})
 	GrassField.impulse(p, r, 0.75, 0.45)
 
 ## A boss's fire nova: a ring of hellfire racing out to r along the ground, embers flung up, the air shimmering behind.
@@ -469,7 +478,6 @@ static func summon_circle(game, root: Node3D, p: Vector3, r: float, col := Color
 const CRACK_SHADER := """
 shader_type spatial;
 render_mode blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
-uniform sampler2D cells_tex : repeat_enable, filter_linear_mipmap;
 uniform sampler2D noise_tex : repeat_enable, filter_linear_mipmap;
 uniform vec4 rock : source_color = vec4(0.3, 0.26, 0.22, 1.0);
 uniform vec4 dust : source_color = vec4(0.56, 0.49, 0.4, 1.0);
@@ -477,16 +485,36 @@ uniform float reveal = 0.0;
 uniform float life = 1.0;
 uniform float seed = 0.0;
 uniform float full_circle = 0.0;   // 1: a whole ring round the blow (UV.x goes round), six fissures radiating out
+vec2 hash2(vec2 p) {
+	p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+	return fract(sin(p) * 43758.5453);
+}
+// cell borders (F2 - F1): 0 on the cracks between the plates of broken crust
+float crust(vec2 x) {
+	vec2 n = floor(x);
+	vec2 f = fract(x);
+	float d1 = 8.0;
+	float d2 = 8.0;
+	for (int j = -1; j <= 1; j++) {
+		for (int i = -1; i <= 1; i++) {
+			vec2 g = vec2(float(i), float(j));
+			vec2 r = g + hash2(n + g) - f;
+			float d = dot(r, r);
+			if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) { d2 = d; }
+		}
+	}
+	return sqrt(d2) - sqrt(d1);
+}
 void fragment() {
 	vec2 uv = UV;
 	float n = texture(noise_tex, uv * vec2(2.0, 3.0) + vec2(seed, 0.0)).r;
 	float front = smoothstep(reveal + 0.04, reveal - 0.06, uv.y + (n - 0.5) * 0.2);
 	float sides = mix(smoothstep(0.0, 0.18, uv.x) * smoothstep(1.0, 0.82, uv.x), 1.0, full_circle);
 	float edge = sides * smoothstep(1.0, 0.8, uv.y) * smoothstep(0.0, 0.06, uv.y);
-	vec2 cuv = vec2(uv.x * mix(1.7, 6.0, full_circle), uv.y * 3.4);
-	float c = texture(cells_tex, cuv + vec2(seed * 0.37, 0.0)).r;
-	float crack = 1.0 - smoothstep(0.015, 0.06, c);
-	float near = 1.0 - smoothstep(0.0, 0.22, c);
+	vec2 cuv = vec2(uv.x * mix(9.0, 30.0, full_circle), uv.y * 10.0) + vec2(seed * 3.7, 0.0);
+	float c = crust(cuv + (vec2(n, texture(noise_tex, uv * 4.0).r) - 0.5) * 0.6);
+	float crack = 1.0 - smoothstep(0.03, 0.09, c);
+	float near = 1.0 - smoothstep(0.0, 0.3, c);
 	float wander = (texture(noise_tex, vec2(uv.y * 1.3 + seed, 0.37)).r - 0.5) * 0.3;
 	float mid = mix(abs(uv.x - 0.5 + wander), abs(fract(uv.x * 6.0 + wander * 0.4) - 0.5) * 0.6, full_circle);
 	float fissure = 1.0 - smoothstep(0.0, 0.025 + 0.03 * uv.y, mid);
