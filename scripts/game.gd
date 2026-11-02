@@ -771,15 +771,55 @@ func apply_quality(q: int) -> void:
 	RenderingServer.environment_set_ssao_quality(RenderingServer.ENV_SSAO_QUALITY_ULTRA if q >= 3 else RenderingServer.ENV_SSAO_QUALITY_MEDIUM, true, 0.5, 2, 50.0, 300.0)
 	RenderingServer.environment_set_ssil_quality(RenderingServer.ENV_SSIL_QUALITY_HIGH if q >= 3 else RenderingServer.ENV_SSIL_QUALITY_MEDIUM, true, 0.5, 4, 50.0, 300.0)
 	RenderingServer.environment_set_volumetric_fog_volume_size(160 if q >= 3 else 96, 128 if q >= 3 else 64)
-	get_viewport().mesh_lod_threshold = 0.0 if q >= 3 else 1.0
+	# LOD switches are kept under a pixel of error (1.0) and half a pixel on Ultra. 0 on Ultra turned LODs off
+	# altogether: every 70k-triangle hero, statue and tree drew in full however small on screen (and in every shadow)
+	get_viewport().mesh_lod_threshold = 0.5 if q >= 3 else 1.0
 	if sun:
-		sun.directional_shadow_max_distance = 90.0 if q >= 3 else 70.0
+		# smooth hand-over between cascades (High and Ultra), then the cascades fitted to the camera
+		sun.directional_shadow_blend_splits = q >= 2
+		_fit_shadows(true)
 	for g in get_tree().get_nodes_in_group("grass"):
 		if not g.has_meta("grass3d"):
 			(g as MultiMeshInstance3D).visibility_range_end = [32.0, 45.0, 60.0, 95.0][q]
 	Grass.apply_quality(self, q)
 	if world != null and world.has_node("Ocean"):
 		(world.get_node("Ocean") as Ocean).set_quality(q)
+
+## Directional shadow cascades fitted to what the camera can see (visual overhaul, stage 1; docs/visual/AUDIT.md).
+## The isometric camera looks down from ~24 m: nothing nearer than ~10 m or farther than ~35 m (45 m zoomed out) is
+## on screen. Godot's default splits (10/20/50% of 70 m) spent two of the four cascades on empty air in front of the
+## lens and the last on ground past the top of the screen, so one 2048 cascade (2.5 cm a texel) covered the whole play
+## area; Low and Medium's two splits put it all in one cascade 63 m deep (11 cm a texel). Fitted, the hero stands in
+## the middle of his own cascade (2.0 cm on High, 1.0 cm on Ultra, 4.8 cm on Low/Medium), and nothing beyond the view
+## is drawn into the shadow maps. Distances follow the zoom; the sailing camera, which looks out to the horizon, keeps
+## the long default split.
+const SHADOW_FIT_4 := [48.0, 0.3474, 0.6105, 0.7895]   # max distance (m) at zoom 1, then the three split fractions
+const SHADOW_FIT_2 := [46.0, 0.6374]
+var _shadow_hold := false      # the minimap capture sets its own shadow distance for a few frames
+var _shadow_reach := -2.0
+
+func _fit_shadows(force := false) -> void:
+	if sun == null or cam == null or _shadow_hold:
+		return
+	var reach := -1.0              # -1: the sailing camera
+	if sail_blend <= 0.0:
+		reach = snappedf(clampf(cam.position.length() / CAM_OFFSET.length(), 0.6, 2.0), 0.05)
+	if is_equal_approx(reach, _shadow_reach) and not force:
+		return
+	_shadow_reach = reach
+	if reach < 0.0:
+		sun.directional_shadow_max_distance = 90.0 if quality >= 3 else 70.0
+		sun.directional_shadow_split_1 = 0.1
+		sun.directional_shadow_split_2 = 0.2
+		sun.directional_shadow_split_3 = 0.5
+	elif sun.directional_shadow_mode == DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS:
+		sun.directional_shadow_max_distance = float(SHADOW_FIT_4[0]) * reach
+		sun.directional_shadow_split_1 = float(SHADOW_FIT_4[1])
+		sun.directional_shadow_split_2 = float(SHADOW_FIT_4[2])
+		sun.directional_shadow_split_3 = float(SHADOW_FIT_4[3])
+	else:
+		sun.directional_shadow_max_distance = float(SHADOW_FIT_2[0]) * reach
+		sun.directional_shadow_split_1 = float(SHADOW_FIT_2[1])
 
 func max_quality() -> int:
 	return 1 if OS.has_feature("web") else 3
@@ -1208,6 +1248,7 @@ func _capture_map(zone: String) -> void:
 	for gr in grass:
 		(gr as GeometryInstance3D).visibility_range_end = 0.0
 	var old_shadow := sun.directional_shadow_max_distance
+	_shadow_hold = true
 	sun.directional_shadow_max_distance = 400.0
 	add_child(vp)
 	mc.current = true
@@ -1216,6 +1257,7 @@ func _capture_map(zone: String) -> void:
 	var img := vp.get_texture().get_image()
 	vp.queue_free()
 	sun.directional_shadow_max_distance = old_shadow
+	_shadow_hold = false
 	hero.visible = was_hero
 	for a in allies:
 		if is_instance_valid(a):
@@ -3077,6 +3119,7 @@ func _process(delta: float) -> void:
 		var sh := Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake * shake * 0.35
 		cam.position = CAM_OFFSET * zoom * lerpf(1.0, focus_zoom, fw) + sh
 		_sail_camera(real_dt, sh)
+		_fit_shadows()
 		if playing:
 			_sea_sounds()
 		RenderingServer.global_shader_parameter_set("player_pos", watched.global_position if watched != null else hero.global_position)

@@ -46,12 +46,21 @@ static func mesh(path: String) -> Mesh:
 	if _meshes.has(path):
 		return _meshes[path]
 	var sc: Node = (load(path) as PackedScene).instantiate()
-	var out := ArrayMesh.new()
-	for n in sc.find_children("*", "MeshInstance3D", true, false):
-		var mi: MeshInstance3D = n
-		for si in mi.mesh.get_surface_count():
-			out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, mi.mesh.surface_get_arrays(si))
-			out.surface_set_material(out.get_surface_count() - 1, mi.mesh.surface_get_material(si))
+	var mis := sc.find_children("*", "MeshInstance3D", true, false)
+	var out: Mesh
+	if mis.size() == 1:
+		# one mesh (every prepared prop): the imported mesh as it is, with its shadow mesh (the same geometry: node
+		# transforms were never applied here). Meshy's meshes get no LODs from the importer: their thousands of UV
+		# islands leave nothing it can simplify (docs/visual/AUDIT.md)
+		out = (mis[0] as MeshInstance3D).mesh
+	else:
+		var am := ArrayMesh.new()
+		for n in mis:
+			var mi: MeshInstance3D = n
+			for si in mi.mesh.get_surface_count():
+				am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, mi.mesh.surface_get_arrays(si))
+				am.surface_set_material(am.get_surface_count() - 1, mi.mesh.surface_get_material(si))
+		out = am
 	sc.free()
 	_meshes[path] = out
 	return out
@@ -124,7 +133,9 @@ static func build(w: World) -> void:
 		pal_x.append(Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3(1.0, sc, 1.0)), Vector3(p.x, w.height_at(p.x, p.y) - 0.1, p.y)))
 		w.add_box(Vector3(p.x, 0, p.y), Vector2(2.1, 0.55), yaw)
 		a += step
-	Props.multimesh(w.props_root, mesh(DIR + "palisade.glb"), pal_x)
+	# chunked like every other zone's multimeshes (World.mm_chunked): one multimesh round the whole ring can't be
+	# culled, so every log was drawn in every pass, shadow cascade and lantern shadow face
+	w.mm_chunked(mesh(DIR + "palisade.glb"), pal_x, true, 24.0)
 	var gate := model("gate")
 	w._place(gate, Vector3(0, 0, gate_z))
 	gate.scale = Vector3.ONE * 1.15
@@ -153,8 +164,7 @@ static func build(w: World) -> void:
 			continue
 		var p := ring_pt(ra + rng.randf_range(-0.08, 0.08), RADIUS + rng.randf_range(4.5, 7.0))
 		rs.append(Transform3D(Basis(Vector3.UP, face(p, CENTER)).scaled(Vector3.ONE * rng.randf_range(0.85, 1.2)), Vector3(p.x, w.height_at(p.x, p.y) - 0.15, p.y)))
-	var rmm := Props.multimesh(w.props_root, mesh(DIR + "runestone.glb"), rs)
-	rmm.material_override = rune_mat
+	w.mm_chunked(mesh(DIR + "runestone.glb"), rs, true, 24.0, 0.0, rune_mat)
 
 	# --- the heart of the camp: the bonfire, seats, stash and waypoint
 	var bf := model("bonfire")
@@ -315,7 +325,7 @@ static func build(w: World) -> void:
 		k += 1
 	for i in 3:
 		if not oaks[i].is_empty():
-			Props.multimesh(w.props_root, Flora.oak_model(i + 1), oaks[i])
+			w.mm_chunked(Flora.oak_model(i + 1), oaks[i], true, 24.0)
 
 	# --- the old forest outside the wall: oaks, dark pines, dead trees, boulders
 	var outer := [[], [], []]
@@ -341,11 +351,13 @@ static func build(w: World) -> void:
 			outer[i % 3].append(xf)
 		else:
 			pines[i % 3].append(xf)
+	# the forest round the camp in 32 m chunks with the moor's draw distance (World._build_wild), so only the trees
+	# near the view (and near a light, for its shadow) are drawn
 	for i in 3:
-		Props.multimesh(w.props_root, Flora.oak_model(i + 1), outer[i])
-		Props.multimesh(w.props_root, pine_meshes[i], pines[i])
+		w.mm_chunked(Flora.oak_model(i + 1), outer[i], true, 32.0, 90.0)
+		w.mm_chunked(pine_meshes[i], pines[i], true, 32.0, 90.0)
 	if has_dead and not dead.is_empty():
-		Props.multimesh(w.props_root, mesh("res://assets/models/trees/deadtree.glb"), dead)
+		w.mm_chunked(mesh("res://assets/models/trees/deadtree.glb"), dead, true, 32.0, 90.0)
 	for i in 60:
 		var x := rng.randf_range(w.bounds.position.x - 20, w.bounds.end.x + 20)
 		var z := rng.randf_range(w.bounds.position.y - 20, w.bounds.end.y + 10)

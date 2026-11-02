@@ -1187,7 +1187,7 @@ func _build_town() -> void:
 			continue
 		pines[i % 3].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.8, 1.4)), Vector3(x, height_at(x, z) - 0.2, z)))
 	for k in 3:
-		Props.multimesh(props_root, pine_meshes[k], pines[k])
+		mm_chunked(pine_meshes[k], pines[k], true, 32.0, 90.0)
 	for i in 70:
 		var x := rng.randf_range(bounds.position.x - 20, bounds.end.x + 20)
 		var z := rng.randf_range(bounds.position.y - 20, bounds.end.y + 10)
