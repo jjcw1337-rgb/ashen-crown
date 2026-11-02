@@ -72,28 +72,35 @@ are exact: the camp's 149.9 M here matches the Mac's 152.5 M. Frame times in the
 must be measured on real hardware (`--kpi`, the nightly benchmark). Brightness should still be confirmed on jj's
 PC before grading decisions are final.
 
-## 1. Performance: before and after (stage 1)
+## 1. Performance: before and after
 
 High preset, 1600x900, hero at each zone's start, average of 3 frames after 12 to settle (`frame_stats.gd --fast`:
-screen-space effects off, which changes no geometry counts). Primitives are triangles drawn in all passes.
+screen-space effects off, which changes no geometry counts). Primitives are triangles drawn in all passes. Before:
+staging 1fb8d09. After: the overhaul branch on the morning of Nov 2, with staging merged in up to df8961c, so
+staging's own nightly perf work (MultiMesh cells, the oaks' shadow twins) is in the after column too. Stage 4 adds
+the living grass to Acts II and III, about 6 M visible triangles on the Imperial Road at High, so that zone ends
+where it began while its draw calls fall; if the nightly KPIs show it slower than the moor, its grass density can
+drop a notch (`Grass.scatter`'s quality).
 
 <!-- perf:q2 -->
 | Zone | Draw calls before → after | Primitives before → after | of which shadows | VRAM (MB) |
 |---|---|---|---|---|
-| Act I camp | 3,967 → **2,856** | 149.9 M → **11.9 M** (-92%) | 78.3 M → 8.7 M | 1232 → 1221 |
-| A2 Imperial Road | 2,938 → **1,877** | 10.8 M → **4.6 M** (-58%) | 3.0 M → 3.1 M | 1151 → 1141 |
-| A2 camp | 3,013 → **2,679** | 27.4 M → **3.7 M** (-87%) | 16.1 M → 2.5 M | 875 → 865 |
-
-Still to measure: Cairnfell Moor, Grubb's Fort, Mournwater Coast, A2 Aurelia + arena, Battlegrounds crypt.
+| Act I camp | 3,967 → **2,961** | 149.9 M → **9.7 M** (-94%) | 78.3 M → 6.5 M | 1232 → 1258 |
+| Cairnfell Moor | 3,083 → **1,921** | 19.5 M → **8.1 M** (-59%) | 4.1 M → 3.0 M | 1309 → 1374 |
+| Grubb's Fort | 3,913 → **2,353** | 22.9 M → **11.3 M** (-51%) | 6.8 M → 5.8 M | 1325 → 1517 |
+| Mournwater Coast | 2,159 → **1,945** | 14.6 M → **5.6 M** (-62%) | 3.0 M → 2.1 M | 1073 → 1206 |
+| A2 Imperial Road | 2,938 → **2,073** | 10.8 M → **11.0 M** (+2%) | 3.0 M → 3.0 M | 1151 → 1306 |
+| A2 camp | 3,013 → **2,764** | 27.4 M → **4.9 M** (-82%) | 16.1 M → 2.0 M | 875 → 1189 |
+| A2 Aurelia + arena | 2,541 → **1,581** | 5.0 M → **5.6 M** (+12%) | 1.8 M → 2.1 M | 1094 → 1282 |
+| A3 scorched moor | 2,554 → **1,835** | 10.8 M → **8.7 M** (-20%) | 2.3 M → 2.2 M | 1007 → 1282 |
 <!-- /perf:q2 -->
 
-Medium preset (the default on integrated GPUs):
+The camp: with the overhaul alone (measured before the second merge) it drew 11.9 M; staging's nightly found and fixed the same unculled multimeshes independently the same night (its KPI on the Mac: 143.8 M → 15.3 M); with both, 9.7 M here.
+
+Video memory rose 26-314 MB per zone (the A2 camp most, Act III next): every Meshy model's colour, normal and roughness maps decode to uncompressed RGBA8 (5.3 MB per 1K map with mipmaps). VRAM compression would cut them about four times and grow the download; that is the open decision for jj and Blaine (texture import, section 2).
 
 <!-- perf:q1 -->
-| Zone | Draw calls before → after | Primitives before → after |
-|---|---|---|
-
-Still to measure: Act I camp, Cairnfell Moor, Grubb's Fort, Mournwater Coast, A2 Imperial Road, A2 camp, A2 Aurelia + arena, Battlegrounds crypt.
+Medium (the default on integrated GPUs) is measured where frame time means something: the nightly KPIs on the Mac (`docs/nightly/KPIS.md`, `--kpi`). The counts above are High only.
 <!-- /perf:q1 -->
 
 What changed (commit "Visual overhaul stage 1"):
