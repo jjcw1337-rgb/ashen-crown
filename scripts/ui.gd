@@ -450,6 +450,8 @@ func _hover(p: Control, on: bool, mode: String) -> void:
 	show_tooltip(Items.tooltip(it, hero.level if hero else 99, mode))
 	tip_owner = p
 
+const TIP_W := 380.0
+
 func show_tooltip(lines: Array) -> void:
 	for c in tip_box.get_children():
 		tip_box.remove_child(c)      # out now, so the box sizes to the new lines only
@@ -458,6 +460,10 @@ func show_tooltip(lines: Array) -> void:
 	for ln in lines:
 		var l := _label(ln[0], 18 if first else 15, ln[1], first)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		# long lines (a skill's description) wrap at TIP_W rather than stretching the box across the screen
+		if str(ln[0]).length() > 44:
+			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			l.custom_minimum_size.x = TIP_W
 		tip_box.add_child(l)
 		first = false
 	tooltip.visible = true
@@ -4750,7 +4756,10 @@ func _process(delta: float) -> void:
 		if pos.x + sz.x > vs.x - 8:
 			pos.x = mp.x - sz.x - 12
 		if pos.y + sz.y > vs.y - 8:
-			pos.y = vs.y - sz.y - 8
+			pos.y = mp.y - sz.y - 12          # above the pointer (the skill bar sits at the bottom)
+		# whatever happens, inside the screen on every side
+		pos.x = clampf(pos.x, 8.0, maxf(8.0, vs.x - sz.x - 8.0))
+		pos.y = clampf(pos.y, 8.0, maxf(8.0, vs.y - sz.y - 8.0))
 		tooltip.position = pos
 	minimap.queue_redraw()
 
