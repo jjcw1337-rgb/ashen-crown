@@ -49,8 +49,8 @@ const WALL_STEP := 16.25
 
 const IDLE := 0.22           # rune glow with nobody near (a soft cyan: the old stone's white blaze read as UI)
 const NEAR := 0.55           # rune glow with a hero on the dais
-const RUNES_IDLE := 0.55     # the lettering's energy with nobody near (RUNE_FLOOR_SHADER)
-const RUNES_NEAR := 0.82     # and with a hero on the dais
+const RUNES_IDLE := 0.62     # the lettering's energy with nobody near (RUNE_FLOOR_SHADER)
+const RUNES_NEAR := 0.95     # and with a hero on the dais
 const WAKE_R := 11.0         # a hero inside this starts waking it; fully awake at 3.5 m
 
 var crystal: Node3D
@@ -560,7 +560,15 @@ func _build() -> void:
 		var wf := Props.fire(fb, Vector3(0, bowl_y, 0), 0.8, Color(1.0, 0.55, 0.2), true, false, true, "brazier")
 		var wl := wf.get_node_or_null("FireLight")
 		if wl:
-			wl.add_to_group(Grade.SHADOW_GROUP)
+			# the picture's warm light spills far over the wet paving: a bigger light than a brazier's, like the
+			# camp's bonfire (Game's flicker loop keeps the "base" meta)
+			var wol: OmniLight3D = wl
+			wol.light_energy *= 1.7
+			wol.set_meta("base", wol.light_energy)
+			wol.omni_range = 9.5
+			wol.omni_attenuation = 1.2
+			wol.light_volumetric_fog_energy = 2.0
+			wol.add_to_group(Grade.SHADOW_GROUP)
 		mirrors.append([fb.position + Vector3(0, bowl_y + 0.3, 0), Color(1.0, 0.5, 0.18), 1.0])
 
 	# --- two warm iron torches in the wall's gap behind the crystal
@@ -819,7 +827,7 @@ void fragment() {
 	if (shard > 0.5) {
 		EMISSION = glow * (0.5 + veins * 0.9 + fres * 0.6) * e + core * veins * 0.3 * e;
 	} else {
-		EMISSION = glow * (veins * 2.6 + fres * 1.1 + heart * 0.35 + 0.05) * e + core * (crawl * 1.6 + veins * (0.4 + heart * 0.9)) * e;
+		EMISSION = glow * (veins * 3.2 + fres * 1.2 + heart * 0.4 + 0.06) * e + core * (crawl * 1.8 + veins * (0.6 + heart * 1.0)) * e;
 	}
 }
 """
