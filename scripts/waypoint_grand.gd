@@ -846,7 +846,7 @@ void fragment() {
 	if (shard > 0.5) {
 		EMISSION = glow * (0.5 + veins * 0.9 + fres * 0.6) * e + core * veins * 0.3 * e;
 	} else {
-		EMISSION = glow * (veins * 2.6 + fres * 1.2 + heart * 0.4 + 0.06) * e + core * (crawl * 1.5 + veins * (0.45 + heart * 0.8)) * e;
+		EMISSION = glow * (veins * 3.0 + fres * 1.5 + heart * 0.4 + 0.06) * e + core * (crawl * 1.6 + veins * (0.5 + heart * 0.8)) * e;
 	}
 }
 """
