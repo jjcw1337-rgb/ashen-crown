@@ -484,6 +484,10 @@ func _build() -> void:
 			Fx.aura(b, Color(0.3, 0.62, 1.0, 0.9), 18, 0.9, 0.17, 0.55, 1.8, 0.12, 12.0, Vector3(0, fire_y, 0), false)
 			Fx.aura(b, Color(0.06, 0.28, 0.95, 0.75), 12, 1.3, 0.28, 0.8, 1.2, 0.2, 20.0, Vector3(0, fire_y + 0.04, 0), false)
 			Fx.aura(b, Color(0.1, 0.4, 1.0), 6, 1.8, 0.04, 1.6, 0.8, 0.2, 30.0, Vector3(0, fire_y + 0.14, 0))
+		# what burns in the bowl: the fractured stones, crystals and ember bed (scripts/brazier_coals.gd) on the
+		# cleaned brazier model's dish, lit by this fire's own flicker
+		if bm:
+			BrazierCoals.build(b, i, b.get_node_or_null("Fire") as Node3D)
 	# the braziers' blue fire mirrored in the dais's puddles (wet_stone): the fire sits where its node is
 	for n in get_children():
 		if str(n.name).begins_with("brazier"):

@@ -1057,12 +1057,29 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   fire and a bonfire-sized light; the brazier model without it) flank the approach, two torches stand in the back wall's gap (`TORCH_AT`), four
   banners (`BANNERS`), the guardians (`GUARDIAN_AT`) in the wall's breaks; mist (InfernalFx's smoke shader, pale)
   creeps over the steps, sparks rise in the column, motes drift. The four braziers' blue fire (`FireFx` "spirit") and
-  the bowls' coals are other work: leave the brazier loop alone. `tools/waypoint_lab.gd -- outdir [frames] [step]
+  the bowls' coals (below) are their own work. `tools/waypoint_lab.gd -- outdir [frames] [step]
   [game|ref|close|high] [quality]` renders it alone on a slab under the camp's dusk from the game's camera in a few
   minutes (`--fixed-fps 30`; `--rendering-driver vulkan --rendering-method forward_plus` with lavapipe shows the
   High look: glow, volumetric fog). The window's Battlegrounds tab lists `Data.WAYPOINT_BATTLEGROUNDS` (Enter ->
   `Game.waypoint_battleground`: save, title's Battlegrounds window; not from co-op). Tests: `tools/waypoint_grand_test.gd`
   (it loads WaypointGrand at run time), `tools/waypoint_test.gd` (rules), `tools/waypoint_shot.gd -- out.png [run]` (screenshot).
+  **The braziers' coals** (`scripts/brazier_coals.gd`, `BrazierCoals`, one line in WaypointGrand's brazier loop):
+  what burns in each bowl is a pile of fractured dark basalt stones, fragments and sapphire crystals on an ember bed,
+  from `assets/models/waypoint/coals.glb`: a library of unique pieces (`lib/rock_NN|frag_NN|cry_NN` with `_l0`/`_l1`
+  LODs, one baked atlas for the stones and one for the crystals: albedo, normal, AO + roughness, and the crack /
+  vein mask in the emissive map) and four piles settled with rigid-body physics in the real bowl (`arr_K`, Empties
+  whose transforms are the instances, in the brazier node's frame). Built by `tools/blender/waypoint/rock_library.py`
+  from three Meshy models (concepts in `concepts/waypoint_rocks/`): stage 1 bakes Meshy's textures onto watertight
+  solids, stage 2 Voronoi-fractures them (every cut capped with a procedural fresh-break material and roughened),
+  makes the LODs, atlases and bakes, stage 3 (`--stage3`, from `<workdir>/library.blend`) settles the piles and
+  exports. The brazier model itself was cleaned by `tools/blender/waypoint/clean_bowl.py` (Meshy's flame blob cut
+  out of the bowl, the dish closed; the old one is `concepts/waypoint_rocks/backup/brazier_v1.glb`). In the game
+  each pile is merged into one mesh per material and LOD (the LOD1 copy the only shadow caster); the shaders read
+  the flame's own flicker from the fire's `FireLight` every frame, so the energy in the cracks (vertex COLOR.r = a
+  stone's glow weight, most 0; g = phase), the crystal veins and the bed breathe with the flame; sparks and motes
+  from Medium, heat shimmer (`InfernalFx.haze_mat`) on Forward+ High/Ultra. Without the glb a primitive pile stands
+  in. Tests and previews: `tools/coals_test.gd`, `tools/coals_shot.gd -- outdir [frames] [step] [bowl|close|pair|top] [quality]`,
+  `tools/blender/waypoint/coals_preview.py` (the piles in Eevee, no Godot).
 - **Inventory (I)** (`UI._build_inventory`, jj's "Classic"): Meshy art in the action bar's iron and bronze
   (`assets/textures/ui/inv_*.png`, cut and cleaned from Meshy concepts in `exports/ui/inventory/`): a NinePatchRect
   frame (`INV_SCALE`, corners `INV_PATCH` texture px, the middle bands mirror-symmetric so they tile seamlessly,
