@@ -205,7 +205,7 @@ def main():
 	rows.sort(key=lambda r: (r[18], r[17] if r[17] != "" else 9, r[0]))
 	os.makedirs(os.path.dirname(out), exist_ok=True)
 	with open(out, "w", newline="") as f:
-		w = csv.writer(f)
+		w = csv.writer(f, lineterminator="\n")
 		w.writerow(cols)
 		w.writerows(rows)
 	by = {}

@@ -19,6 +19,7 @@ assets/models/**/*_normal.jpg
 assets/models/**/*_albedo.jpg
 assets/models/**/*_metal_rough.jpg
 assets/models/**/*_normal.png
+assets/models/**/*_emission.jpg
 __pycache__/
 assets/models/monsters/feral*_*.jpg
 

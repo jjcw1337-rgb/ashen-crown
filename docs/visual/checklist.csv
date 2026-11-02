@@ -1,0 +1,134 @@
+asset,category,kind,tris,texture,uv_islands,uv_coverage,normal_tilt,albedo,geometry,silhouette,texture_q,material,animation,lod,consistency,performance,overall,priority,actions,status,notes
+"culling and LOD (multimesh chunks, LODs)",rendering,code,,,,,,,,,,,,2,3,2,2.3,P1,O B,In-game testing,Camp chunked and the hidden portrait stopped (stage 1). No Meshy model has LODs (UV atlas).
+"lighting and grade (Game._zone_env, Grade)",rendering,code,,,,,,,,,,3,,3,3,3,3.0,P1,S,In-game testing,Low contrast and lifted blacks (fog); the hero is hard to read on dark ground. Rim light now in every zone (stage 2); grading per zone needs a real-GPU pass.
+"shadows (sun cascades, omni budget)",rendering,code,,,,,,,,,,4,,4,4,4,4.0,P1,O,In-game testing,"Cascades fitted to the camera, fire shadows under the budget (stage 1)."
+procedural trees (Flora.pine/dead_tree/bush/fern),environment,code,,,,,,,2,2,2,2,,2,3,3,2.3,P2,M R,Needs improvement,"Code-built pines (3.7-4.5k tris each, ~1,500 on the coast), dead trees, bushes and ferns: tube-and-card trees next to Meshy assets."
+camp/palisade.glb,camp,glb,2400,512,1323,36.5,9.7,0.238,2,3,2,2,,2,3,3,2.4,P2,M B,In-game testing,"Camp palisade section (34 round the ring): heavily decimated into jagged shards, 512 px texture. Chunked for culling (stage 1); wants a clean model."
+trees/pine_old.glb,trees,glb,18038,1024,6771,57.7,25.5,0.194,2,3,2,2,,2,3,3,2.4,P2,M R,Needs improvement,"Old pine: shard canopy, 18k tris."
+A2/A3 grass (Flora grass clumps),environment,code,,,,,,,2,2,2,2,3,3,3,3,2.5,P2,R,Needs improvement,"A2 and A3 still use the old blade clumps (15 M triangles on the Imperial Road), not Act I's living 3D grass."
+camp/lantern.glb,camp,glb,1200,256,507,45.6,10.6,0.236,2,3,2,2,,2,3,4,2.6,P2,M B,Needs improvement,"Hanging lantern (used all over the camp): shattered glass shards and spikes in the geometry, 256 px texture."
+"texture import (lossy WebP, uncompressed in VRAM)",rendering,code,,,,,,,,,3,,,,3,2,2.7,P2,O,Needs improvement,Model textures decode to RGBA8 in video memory (1.0-1.9 GB); VRAM compression would cut it ~4x but grows the download: a decision.
+monsters/zombie.glb,monsters,glb,24000,1024,1409,67.6,7.1,0.229,3,3,3,2,3,2,3,3,2.8,P2,T A,In-game testing,"Ragged zombie: flat normal map (1.0 deg) -> detail normals generated. Code-posed A-pose rig; 24k tris, no LOD."
+Roman architecture (Roman.*),environment,code,,,,,,,3,3,2,2,,3,3,4,2.9,P2,M T,Needs improvement,"A2's Aurelia, aqueducts, colonnades, arena: code-built boxes and cylinders with procedural marble/tuff/brick."
+generic effects (Fx),vfx,code,,,,,,,3,2,2,2,3,4,3,4,2.9,P2,S T,Needs improvement,burst/ring/pillar/flash/sparks/blood/telegraph: soft-dot particles everyone shares.
+shared skills (SharedFx),vfx,code,,,,,,,3,2,2,2,3,4,3,4,2.9,P2,S T,Needs improvement,Class-free skills on generic bursts and rings.
+terrain (Mats.TERRAIN_SHADER),environment,code,,,,,,,3,3,2,2,,3,3,4,2.9,P2,T S,Needs improvement,"Every zone's ground: fbm noise and Voronoi cobbles in one procedural shader, no material textures or decals (graphics plan phase 2, not started)."
+trees/oak1.glb,trees,glb,7973,1024,5085,66.7,30.8,0.167,2,4,3,3,,2,4,3,3.0,P2,M,Needs improvement,"The moor's oak (hundreds on screen across Act I). Its own canopy is crumpled shards in a model sheet, but in play the game's leaf clusters cover it and it reads as a full, rooted oak. A procedural Blender replacement (tools/blender/trees/oak_gen.py: bark baked from a procedural material, one UV island per branch) was built and compared in the game (oak_compare.gd) and rejected: sparse, oversized, bare limbs. Better fix: Meshy with a modelled canopy."
+trees/oak2.glb,trees,glb,7289,1024,4906,67.3,31.0,0.269,2,4,3,3,,2,4,3,3.0,P2,M,Needs improvement,Autumn oak: same; full in play.
+trees/oak3.glb,trees,glb,9342,1024,4284,61.7,22.3,0.269,2,4,3,3,,2,4,3,3.0,P2,M,Needs improvement,Bent oak: same.
+warlock skills (WarlockFx),vfx,code,,,,,,,3,3,2,2,3,4,3,4,3.0,P2,S T,Needs improvement,Drain Life beam is custom; the rest is generic bursts (10) and rings.
+gnome_warlock.glb,heroes,glb,49601,2048,1356,71.4,5.7,0.198,4,5,3,2,3,2,4,3,3.2,P2,T A,In-game testing,Huge hat and beard: distinct. Flat normal map (1.5 deg) -> detail normals generated (stage 2). No baked clips (code-posed A-pose rig).
+grubb_mutant.glb,bosses,glb,80268,2048,1198,71.6,5.9,0.279,4,5,3,2,3,2,4,3,3.2,P2,T,In-game testing,"King Grubb: crown, belly, cape, key; distinct. Flat normal map (1.5 deg) -> detail normals generated. 80k tris."
+plague skills (Plague),vfx,code,,,,,,,3,3,3,3,3,4,3,4,3.2,P2,S T,Inspected,"Flask, mixture, trap, epidemic effects in plague.gd."
+wraith skills (WraithFx),vfx,code,,,,,,,3,3,3,3,3,4,3,4,3.2,P2,S T,Needs improvement,Mixes one custom shader with 20 generic bursts and 8 rings.
+knight skills (KnightFx),vfx,code,,,,,,,4,4,3,3,3,4,4,4,3.6,P2,S,In-game testing,"Stage 2: Holy Nova, Battle Cry and Charge rebuilt from the knight's own visual language (HolyFx: a sacred seal drawn on the ground, gold-and-white holy fire rings, a streaked light column, a screen-space shockwave, sunbursts, motes, a glinting charge trail), so the default class no longer looks like everyone's recoloured bursts. Needs a real-GPU look at speed."
+"weapon trail and hit flash (Hero, Enemy)",vfx,code,,,,,,,,3,3,4,3,4,4,4,3.6,P2,S,In-game testing,"Every class's swing and every struck foe. The trail was additive at 55-90% across its whole width (a flat white band in Forward+); now a hot thin edge at the tip and a streaked body that dies away (Hero.TRAIL_SHADER). The hit flash was flat unshaded white (paper cut-outs); now rim-weighted and fading, so the body keeps its shape (Enemy.FLASH_SHADER)."
+small props (Props.crate/barrel/log_pile/pot/...),environment,code,,,,,,,2,2,2,2,,3,3,4,2.6,P3,M,Needs improvement,Code-built clutter where no Meshy set piece replaced it.
+monsters/archer.glb,monsters,glb,24000,1024,1301,68.5,7.1,0.289,3,3,3,2,3,2,3,3,2.8,P3,T,In-game testing,Bone Archer: flat normals (1.6 deg) -> generated.
+monsters/fallen.glb,monsters,glb,18000,1024,584,69.9,7.1,0.219,3,3,3,2,3,2,3,3,2.8,P3,T,In-game testing,Plain red imp (base Fallen): flat normals -> generated. Low detail next to its three variants.
+monsters/goblin_guard.glb,monsters,glb,20000,1024,1070,69.6,7.1,0.229,3,3,3,2,3,2,3,3,2.8,P3,T,In-game testing,Goblin guard: flat normals (1.0 deg) -> generated; dark.
+items/cinderheart.glb,items,glb,7000,512,835,61.5,7.2,0.25,2,4,3,2,,2,3,4,2.9,P3,B T,In-game testing,Material item: crumpled decimation shards; flat normals -> generated.
+items/stormglass.glb,items,glb,7000,512,870,64.8,7.2,0.203,2,4,3,2,,2,3,4,2.9,P3,B T,In-game testing,Material item: shards; flat normals -> generated.
+monsters/bandit.glb,monsters,glb,20000,1024,1091,64.0,5.9,0.18,3,3,3,3,3,2,3,3,2.9,P3,,Inspected,Hooded bandit: generic but fine; also the Bandit Bowman.
+rocks (Props.rock_mesh),environment,code,,,,,,,3,3,2,2,,3,3,4,2.9,P3,M T,Needs improvement,Code-built rocks and boulders.
+camp/runestone.glb,camp,glb,3000,512,539,59.9,7.4,0.224,3,3,2,3,,2,4,4,3.0,P3,B,In-game testing,"Rune stone: faceted shards, 512 px; reads fine with its glow. Chunked (stage 1)."
+enemy:grabber,monsters,code,,,,,,,3,4,3,3,3,2,3,3,3.0,P3,M,Inspected,King Grubb's Gold Grabbers: code-sculpted goblins (Sculpt SDF bodies).
+items/everfrost.glb,items,glb,7000,512,540,69.5,7.2,0.517,3,4,3,2,,2,3,4,3.0,P3,B T,In-game testing,Material item: faceted; flat normals -> generated.
+lairs/fire_rock.glb,lairs,glb,5000,1024,426,65.2,7.1,0.141,3,3,3,2,,2,4,4,3.0,P3,T B,In-game testing,"Lava rock: faceted shards, flat normals -> generated."
+lairs/ice_rock.glb,lairs,glb,5000,1024,719,57.1,7.1,0.447,3,3,3,2,,2,4,4,3.0,P3,T B,In-game testing,"Frozen rock: faceted, weak normals -> generated."
+monsters/fallen_skirmisher.glb,monsters,glb,19999,1024,959,59.1,5.3,0.189,3,3,3,3,3,2,4,3,3.0,P3,,Inspected,Horned red imp: fine at game distance.
+dragons/serpent.glb,dragons,glb,31125,2048,1180,64.8,8.2,0.784,4,4,3,3,3,2,3,3,3.1,P3,S T,Inspected,"Frost Serpent: antlered eastern dragon, near-black with cyan emissive; code-posed."
+dragons/wyrm.glb,dragons,glb,31235,2048,563,66.9,7.4,0.159,4,4,3,3,3,2,3,3,3.1,P3,S T,Inspected,Obsidian Wyrm: near-black body (0.16) with red emissive; code-posed; no skills yet.
+dragons/wyvern.glb,dragons,glb,31202,2048,628,66.1,7.6,0.287,4,4,3,3,3,2,3,3,3.1,P3,S T,Inspected,Storm Wyvern: near-black with teal accents; code-posed.
+fort/gate.glb,fort,glb,39999,2048,3969,63.5,5.1,0.292,4,4,3,2,,2,4,3,3.1,P3,T,In-game testing,"Grubb's gatehouse: good; flat normals -> generated. 40k tris, 2K."
+fort/hut.glb,fort,glb,18000,1024,3561,54.7,7.2,0.266,4,4,3,2,,2,4,3,3.1,P3,T,In-game testing,Hut: flat normals -> generated.
+fort/palisade.glb,fort,glb,12000,1024,2019,56.8,7.1,0.184,4,4,3,2,,2,4,3,3.1,P3,T,In-game testing,Stake wall: flat normals -> generated.
+fort/tower.glb,fort,glb,19999,1024,2085,63.3,7.2,0.298,4,4,3,2,,2,4,3,3.1,P3,T,In-game testing,Watchtower: flat normals -> generated.
+knight_statue.glb,misc,glb,70000,2048,1672,71.6,5.5,0.236,4,4,3,2,,3,4,2,3.1,P3,O T,In-game testing,"Arena statues: 70k tris for a static statue (5 in Aurelia), flat normal map (1.9 deg). Detail normals generated (stage 2); decimate to ~15k."
+lairs/fire_tree.glb,lairs,glb,9000,1024,425,68.9,7.1,0.145,3,4,3,2,,2,4,4,3.1,P3,T,In-game testing,Burning dead tree: flat normals -> generated.
+lairs/ice_crystals.glb,lairs,glb,6000,1024,534,65.3,7.1,0.434,3,4,3,2,,2,4,4,3.1,P3,T,In-game testing,Ice crystals: weak normals -> generated.
+lairs/storm_stone.glb,lairs,glb,5000,1024,395,64.8,7.1,0.237,3,4,3,2,,2,4,4,3.1,P3,T,In-game testing,Storm rune stone: flat normals -> generated.
+lairs/storm_tree.glb,lairs,glb,9000,1024,2363,43.5,7.1,0.254,3,4,3,2,,2,4,4,3.1,P3,T,In-game testing,Storm tree: flat normals -> generated.
+plague/flask.glb,plague,glb,3000,512,301,66.9,7.2,0.284,3,4,3,2,,2,4,4,3.1,P3,B T,In-game testing,Toxic Flask: faceted round glass; flat normals -> generated.
+plague/volatile.glb,plague,glb,3000,512,478,62.2,7.2,0.416,3,4,3,2,,2,4,4,3.1,P3,B T,In-game testing,Volatile Mixture: faceted; flat normals -> generated.
+roads (World.road_style),environment,code,,,,,,,3,3,3,3,,3,3,4,3.1,P3,T,Inspected,The paved Old Kingsroad and trails: procedural.
+waypoint (Props.waypoint),environment,code,,,,,,,3,3,3,3,,3,3,4,3.1,P3,M,Inspected,Procedural stone ring; retuned in the camp plan.
+knight_meshy.glb,heroes,glb,33521,2048,1462,64.0,10.3,0.265,4,3,3,3,4,2,3,4,3.2,P3,B T,Inspected,"The plain knight (no armour): the only light-coloured hero, reads well. Generic shirt and shorts; 33k tris."
+monsters/fallen_stalker.glb,monsters,glb,20000,1024,909,66.4,5.2,0.269,4,4,3,3,3,2,4,3,3.2,P3,,Inspected,Long-limbed stalker: good silhouette.
+monsters/hollow_sloth_fire.glb,monsters,glb,42000,1024,4651,63.9,7.2,0.206,4,5,3,2,3,2,4,3,3.2,P3,T,In-game testing,Cinderhide: great elemental variant; flat normals (1.5 deg) -> generated.
+monsters/hollow_sloth_storm.glb,monsters,glb,42000,1024,4838,63.2,7.2,0.271,4,5,3,2,3,2,4,3,3.2,P3,T,In-game testing,Thundermaw: flat normals (1.3 deg) -> generated.
+monsters/lion.glb,monsters,glb,31087,1024,2533,63.5,11.5,0.141,4,4,3,3,3,2,4,3,3.2,P3,,Inspected,"Arena lion: good, dark (0.14)."
+monsters/wolf.glb,monsters,glb,21937,2048,4489,62.0,16.4,0.196,4,4,3,3,3,2,4,3,3.2,P3,,Inspected,Spirit Wolf (pet/summon).
+trees/deadtree.glb,trees,glb,20688,1024,1415,63.7,12.4,0.184,4,4,3,3,,2,4,3,3.3,P3,,In-game testing,"Gnarled dead tree: good; 20k tris is heavy for a forest tree (chunked in the camp, stage 1)."
+knight_armored.glb,heroes,glb,68628,2048,2614,58.9,4.7,0.323,4,4,3,4,3,2,4,3,3.4,P3,T,In-game testing,"Great helm, spiked plate, tattered cloak. Its plate was painted near-black (metal 0.26 sRGB = 5% reflectance), so it read as a dark blob: metal_lift.py raised the metal's reflectance to 0.50 and its roughness 0.51 -> 0.41 (stage 2), and the rim light outlines him. Normal map still weak (4.7 deg)."
+monsters/bear.glb,monsters,glb,24965,2048,2923,49.4,11.4,0.192,4,5,3,3,3,2,4,3,3.4,P3,,Inspected,"Forsaken Bear (antlers, thorns, chains): excellent silhouette."
+monsters/hollow_sloth_ice.glb,monsters,glb,42000,1024,5673,61.3,7.3,0.466,4,5,3,3,3,2,4,3,3.4,P3,T,In-game testing,Rimeclaw: weak normals (2.7 deg) -> generated.
+wraith_mocap.glb,heroes,glb,44998,2048,2189,56.2,8.5,0.24,4,4,3,3,4,2,4,3,3.4,P3,S,Inspected,"Horned, chained wraith on mocap with the spectral shader: strong silhouette; 45k tris."
+archer_ranger.glb,heroes,glb,59996,2048,1085,65.4,7.5,0.263,4,4,4,3,4,2,4,3,3.5,P3,S,Inspected,"Hooded ranger with fur collar and quiver: good sculpt, very dark leathers; 60k tris, 16 clips."
+demon_mocap.glb,heroes,glb,49998,2048,848,67.4,6.7,0.186,4,5,3,3,4,2,4,3,3.5,P3,S,Inspected,"Magma brute (wings, horns, tail, lava cracks): the strongest silhouette in the game; 50k tris."
+knight_mocap.glb,heroes,glb,70000,2048,2537,60.2,4.7,0.323,4,4,3,4,4,2,4,3,3.5,P3,T O,In-game testing,"The armoured knight in play (mocap skeleton): the same metal lift as knight_armored (stage 2), so the plate reads as steel and catches the hero light and the rim. 70k tris, no LOD."
+new character screen (ClassStage),screens,code,,,,,,,4,4,3,3,4,3,4,3,3.5,P3,S,Inspected,Focused carousel of the heroes: close-ups expose the dark textures and flat normals (gnome).
+plague_doctor.glb,heroes,glb,60000,2048,1436,68.4,3.8,0.197,4,5,3,3,4,2,4,3,3.5,P3,S,Inspected,"Beak mask, hat, coat and satchels: strong design, 27 clips; dark (colour map 0.21)."
+monsters/ashen_king.glb,monsters,glb,30000,2048,2567,66.4,6.0,0.249,4,5,4,4,3,2,4,3,3.6,P3,,In-game testing,"A3 boss The Ashen King (stage 3, Meshy): charred plate cracked with embers (emission map from the painted cracks, emission_from_albedo.py), skull face, spiked iron crown, ermine mantle. Was the code-built humanoid. 30k tris, 2K."
+monsters/champion.glb,monsters,glb,30000,2048,1804,65.9,6.0,0.241,4,5,4,4,3,2,4,3,3.6,P3,,In-game testing,"A2 boss Aurelius, Champion of the Arena (stage 3, Meshy): lion-faced bronze cuirass, lion pauldron, crimson crest and pteruges, rigged on the game's 13 joints (rig_monster.py, crotch hint for the skirt). Was the code-built humanoid in red cloth. 30k tris, 2K."
+monsters/gladiator.glb,monsters,glb,20000,1024,1259,65.8,4.1,0.346,4,4,4,4,3,2,4,4,3.6,P3,,In-game testing,"A2 arena Gladiator (stage 3, Meshy): bronze helm, manica, loincloth, greaves. Was the code-built humanoid. 20k tris, 1K."
+legacy acts 2-4 monsters,monsters,code,,,,,,,2,2,2,2,2,2,2,3,2.1,P4,,Inspected,"raider, mummy, scarab, sekhmun, fetish, spider, lizardman, vael, imp, hell_knight, doom_caster, malgoroth: code-built; their acts (Data.ACTS 1-3) are not reachable."
+camp/alchemy.glb,camp,glb,24000,1024,4042,56.1,13.8,0.308,4,4,3,3,,2,4,3,3.3,P4,,Inspected,"Alchemist's stall (herbs, potion shelves, cauldron): good."
+camp/armory.glb,camp,glb,22000,1024,2444,56.8,7.3,0.289,4,4,3,3,,2,4,3,3.3,P4,,Inspected,Armory stall: good.
+camp/forge.glb,camp,glb,24000,1024,2692,59.5,7.8,0.209,4,4,3,3,,2,4,3,3.3,P4,,Inspected,Forge: good.
+camp/gate.glb,camp,glb,20000,1024,3706,55.2,11.4,0.255,4,4,3,3,,2,4,3,3.3,P4,,Inspected,Twin-tower gate: good.
+camp/log_bench.glb,camp,glb,4000,1024,161,57.5,15.9,0.209,4,3,3,3,,2,4,4,3.3,P4,,Inspected,Re-baked set piece: fine.
+camp/tent.glb,camp,glb,9000,1024,1643,58.7,10.4,0.255,4,3,3,3,,2,4,4,3.3,P4,,Inspected,Tent: fine.
+camp/wagon.glb,camp,glb,22000,1024,2134,58.8,7.8,0.235,4,4,3,3,,2,4,3,3.3,P4,,Inspected,Wagon: good.
+fort/hall.glb,fort,glb,19239,1024,2715,58.0,10.6,0.19,4,4,3,3,,2,4,3,3.3,P4,,Inspected,Longhouse: good.
+isles/beacon.glb,isles,glb,15000,1024,1730,61.4,9.9,0.276,4,4,3,3,,2,4,3,3.3,P4,,Inspected,Lighthouse tower: good.
+isles/temple.glb,isles,glb,20000,1024,5465,62.1,13.3,0.366,4,4,3,3,,2,4,3,3.3,P4,,Inspected,Overgrown temple: good.
+isles/wreck.glb,isles,glb,20000,1024,3487,55.0,11.0,0.237,4,4,3,3,,2,4,3,3.3,P4,,Inspected,Shipwreck: good.
+plague/cane.glb,plague,glb,5999,1024,411,60.6,7.1,0.316,4,4,3,2,,2,4,4,3.3,P4,T,In-game testing,Plague Doctor's cane: flat normals -> generated.
+plague/trap.glb,plague,glb,4000,1024,626,56.0,7.1,0.419,3,4,3,3,,2,4,4,3.3,P4,T,In-game testing,Pestilent Trap: flat normals -> generated; its iron lifted to 0.42 (metal_lift.py).
+title/arcade.glb,title,glb,24000,1024,5115,60.2,13.8,0.194,4,4,3,3,,2,4,3,3.3,P4,,Inspected,Ruined gothic arcade: good.
+title/gate.glb,title,glb,40000,2048,3391,55.2,9.6,0.251,4,4,3,3,,2,4,3,3.3,P4,,Inspected,"The Gate of the Ashen Crown: good, 40k tris."
+arrows/fire.glb,arrows,glb,2500,512,750,56.6,5.9,0.218,4,4,3,3,,2,4,4,3.4,P4,,Inspected,Arrow model (Fire Arrow pipeline).
+arrows/frost.glb,arrows,glb,2500,512,601,60.2,5.1,0.397,4,4,3,3,,2,4,4,3.4,P4,,Inspected,Arrow model.
+arrows/war.glb,arrows,glb,2500,512,605,59.2,5.9,0.213,4,4,3,3,,2,4,4,3.4,P4,,Inspected,Arrow model.
+boats/sloop.glb,boats,glb,39465,2048,2404,56.8,9.8,0.231,4,4,4,3,,2,4,3,3.4,P4,,Inspected,"The boat: 2K PNG textures (12 MB), good."
+camp/bonfire.glb,camp,glb,9000,1024,1355,58.7,10.4,0.3,4,4,3,3,,2,4,4,3.4,P4,,Inspected,Stone ring with spit and pot: good.
+camp/cookfire.glb,camp,glb,7991,1024,487,44.8,9.4,0.23,4,4,3,3,,2,4,4,3.4,P4,,Inspected,Re-baked set piece: good.
+camp/hide_rack.glb,camp,glb,7780,1024,1488,38.6,16.5,0.226,4,4,3,3,,2,4,4,3.4,P4,,Inspected,Re-baked set piece: good.
+camp/lantern_post.glb,camp,glb,5969,1024,520,49.5,14.9,0.206,4,4,3,3,,2,4,4,3.4,P4,,Inspected,Re-baked set piece: good.
+camp/stash_chest.glb,camp,glb,6000,1024,275,82.5,11.0,0.154,4,4,3,3,,2,4,4,3.4,P4,,Inspected,Re-baked set piece.
+camp/supply_pile.glb,camp,glb,8998,1024,467,68.1,11.7,0.202,4,4,3,3,,2,4,4,3.4,P4,,Inspected,Re-baked set piece.
+camp/weapon_rack.glb,camp,glb,8995,1024,466,52.0,9.1,0.196,4,4,3,3,,2,4,4,3.4,P4,,Inspected,Re-baked set piece.
+camp/woodpile.glb,camp,glb,9000,1024,719,64.2,21.4,0.204,4,4,3,3,,2,4,4,3.4,P4,,Inspected,Re-baked set piece.
+fx/rock_chunks.glb,fx,glb,648,0,,,,,3,3,3,3,,4,4,4,3.4,P4,,Inspected,Untextured debris chunks for slams (coloured in code).
+isles/mono.glb,isles,glb,8000,1024,985,62.8,4.8,0.223,4,4,3,3,,2,4,4,3.4,P4,,Inspected,Rune monolith: good.
+isles/store.glb,isles,glb,12000,1024,3044,53.3,7.7,0.167,4,4,3,3,,2,4,4,3.4,P4,,Inspected,Timber store house: good.
+monsters/fallen_reaver.glb,monsters,glb,20000,1024,2542,65.3,6.7,0.248,4,4,3,4,3,2,4,3,3.4,P4,,In-game testing,"Armoured demon brute: good; its dark iron lifted to 0.42 (metal_lift.py, stage 2)."
+monsters/feral1.glb,monsters,glb,24921,1024,1150,63.6,9.5,0.28,4,4,3,3,4,2,4,3,3.4,P4,,Inspected,Feral crawler (baked clips): good; five colour/costume variants.
+monsters/feral2.glb,monsters,glb,24791,1024,1509,64.4,10.2,0.25,4,4,3,3,4,2,4,3,3.4,P4,,Inspected,Feral variant (red).
+monsters/feral3.glb,monsters,glb,24779,1024,1786,65.6,11.0,0.265,4,4,3,3,4,2,4,3,3.4,P4,,Inspected,Feral variant.
+monsters/feral4.glb,monsters,glb,24994,1024,1025,65.6,10.6,0.317,4,4,3,3,4,2,4,3,3.4,P4,,Inspected,Feral variant (blue-grey).
+monsters/feral5.glb,monsters,glb,24847,1024,1612,62.8,10.6,0.244,4,4,3,3,4,2,4,3,3.4,P4,,Inspected,Feral variant.
+npc/grisold.glb,npc,glb,30989,1024,577,69.0,5.2,0.231,4,4,3,3,4,2,4,3,3.4,P4,,Inspected,Blacksmith: good; baked idle/talk clips.
+npc/hedda.glb,npc,glb,31118,1024,639,67.3,7.3,0.217,4,4,3,3,4,2,4,3,3.4,P4,,Inspected,Armourer: good.
+npc/maeve.glb,npc,glb,30875,1024,2424,62.1,10.4,0.239,4,4,3,3,4,2,4,3,3.4,P4,,Inspected,"Hooded alchemist: good, very dark."
+npc/osric.glb,npc,glb,31094,1024,963,66.7,7.7,0.208,4,4,3,3,4,2,4,3,3.4,P4,,Inspected,Shipwright: good.
+npc/roth.glb,npc,glb,30821,1024,1303,60.5,6.0,0.2,4,4,3,3,4,2,4,3,3.4,P4,,Inspected,Cloaked veteran: good.
+npc/tarrow.glb,npc,glb,29885,1024,1967,60.5,7.1,0.293,4,4,3,3,4,2,4,3,3.4,P4,,Inspected,"Gambler in red: good, the most colourful NPC."
+ranger_bow.glb,misc,glb,8999,1024,320,50.9,3.2,0.255,4,4,3,3,,2,4,4,3.4,P4,,Inspected,The ranger's bow: fine.
+title/crown.glb,title,glb,15999,1024,476,66.9,3.6,0.189,4,4,3,3,,2,4,4,3.4,P4,,Inspected,The crown: fine.
+weather (Weather),environment,code,,,,,,,3,3,3,3,3,4,4,4,3.4,P4,,Inspected,Snow and ash particles.
+title screen (TitleStage),screens,code,,,,,,,4,4,4,3,3,3,4,3,3.5,P4,,Inspected,The Gate of the Ashen Crown at dusk.
+title/colossus.glb,title,glb,22874,2048,405,58.2,6.5,0.194,4,5,4,3,,2,4,3,3.6,P4,,Inspected,Crowned king bust: excellent.
+"HUD and windows (UI, Meshy frames)",ui,code,,,,,,,,4,4,,3,,4,4,3.8,P4,,Inspected,"D4-style HUD, globes, Meshy-painted frames, skill and talent icons."
+archer skills (ArrowFx),vfx,code,,,,,,,4,4,4,4,4,3,4,3,3.8,P4,,Inspected,Fire/Frost/War arrows: custom shaders and flipbooks. The Fire Arrow benchmark.
+"demon skills (DemonFx, DemonFistsFx, InfernalFx)",vfx,code,,,,,,,4,4,4,4,4,3,4,3,3.8,P4,,Inspected,"Lava, fissures, meteors, Hellbrand fists: custom shaders and flipbooks."
+fire (FireFx),vfx,code,,,,,,,4,4,4,4,4,3,4,3,3.8,P4,,Inspected,Every fire: Mantaflow flipbooks on layered particles. The benchmark.
+ocean (Ocean),environment,code,,,,,,,4,4,4,4,4,3,4,3,3.8,P4,,Inspected,Wave simulation and shading for the coast and isles.
+grass/dry.glb,grass,glb,952,0,,,,,4,4,4,4,4,4,4,3,3.9,P4,,Inspected,"Living 3D grass species (Blender clumps on Meshy atlas, two LODs, wind and touch): good."
+grass/meadow.glb,grass,glb,944,0,,,,,4,4,4,4,4,4,4,3,3.9,P4,,Inspected,Grass species.
+grass/moss.glb,grass,glb,440,0,,,,,4,4,4,4,4,4,4,3,3.9,P4,,Inspected,Grass species.
+grass/sparse.glb,grass,glb,338,0,,,,,4,4,4,4,4,4,4,3,3.9,P4,,Inspected,Grass species.
+grass/tall.glb,grass,glb,822,0,,,,,4,4,4,4,4,4,4,3,3.9,P4,,Inspected,Grass species.
+grass/tussock.glb,grass,glb,1202,0,,,,,4,4,4,4,4,4,4,3,3.9,P4,,Inspected,Grass species.
+grass/weed.glb,grass,glb,188,0,,,,,4,4,4,4,4,4,4,3,3.9,P4,,Inspected,Grass species.

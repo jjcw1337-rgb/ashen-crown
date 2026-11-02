@@ -94,6 +94,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `shared_skills.gd`, `shared_fx.gd` | The shared skills every class can use (`"cls": "any"`): their gameplay and their effects |
 | `skill_spec.gd` | The skill format (`SkillSpec`): a skill's timing, damage, area and damage over time read from its `Data.SKILLS` entry |
 | `skill_fx.gd`, `knight_fx.gd`, `archer_fx.gd` | Co-op skill effects: `SkillFx` plays every class's skill events on the caster and on his puppet for partners (see "Co-op skill effects"); the knight's and archer's effect handlers (the Wraith's, Demon's and Warlock's are in their `*_fx.gd`) |
+| `holy_fx.gd` | The knight's visual language (`HolyFx`, like `InfernalFx` for the Demon): the seal drawn on the ground, holy fire rings, the light column, the shockwave ripple, sunbursts and motes; Holy Nova, Battle Cry and Charge are built from it |
 | `ui.gd`, `hud_bar.gd`, `icon_renderer.gd` | All UI built in code |
 | `vendor_ui.gd` | Nameplates over the town's people and the trader's live portrait in the trade window |
 | `models.gd`, `skeleton.gd`, `flora.gd`, `props.gd`, `geo.gd`, `mats.gd` | Procedural meshes and shaders |
@@ -651,7 +652,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   Previews: `tools/tree_lineup.gd`, `tools/tree_shot.gd`. Meshy 2D: `meshy.py draw --cutout`.
 - **Act I monsters** (Meshy): concept image, image-to-3D, decimate to ~20k triangles in `sources/act1_enemies.blend`,
   then `blender -b --python tools/blender/act1/rig_monster.py -- <decimated.glb> <out.glb> layout.json [tex px] [hints]`
-  (measures the joints; hints `{"sh_z", "sh_x"}` when a hood or helmet spike fools the neck finder) and
+  (measures the joints; hints `{"sh_z", "sh_x"}` when a hood or helmet spike fools the neck finder, `"crotch"` (a
+  fraction of the height) when a loincloth or skirt hangs between the legs) and
   `python3 tools/blender/act1/layout_to_gd.py <kind> layout.json`. They keep their A-pose (arms aimed down like the
   gnome). Previews: `tools/monster_lineup.gd -- out.png kind...`, `tools/monster_shot.gd` (staged on the moor).
 - **The Feral** (`feral.gd`, Act I forest): a Meshy model rigged and animated in Blender (`sources/feral.blend`:
@@ -767,8 +769,11 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   - **Monsters**: bandits (`bandit`, `bandit_archer`: the Meshy bandit on `MeshyMonster`, faction "bandit"),
     the arena lion (`lion.gd`: Meshy model, a 20-bone skeleton from `sources/lion.blend` skinned by surface
     distance like the Feral, posed every frame in code by `Lion.pose`, the Feral's pack AI with its lunge as the
-    pounce and its swipe as the maul; `tools/lion_sheet.gd`), the gladiator and the champion (procedural humanoids
-    until their Meshy models: the concepts are in `exports/act2/`, the key's monthly Meshy cap stopped them).
+    pounce and its swipe as the maul; `tools/lion_sheet.gd`), the gladiator and Aurelius the champion: Meshy models
+    (2026-11-02, the visual overhaul: concept → image-to-3D → `act1/prep_monster.py` → `act1/rig_monster.py` with
+    the `crotch` hint, since a loincloth or skirt fools the leg scan → `MeshyMonster.MODELS`; the gladiator 20k
+    triangles and 1K textures, Aurelius 30k and 2K: lion cuirass, crimson crest and pteruges, no cape). They join the
+    arena's crowd cards by themselves; Aurelius is kept out of the patron's box (`Games.crowd_bosses`).
   - Tests and previews: `tools/a2_arena_test.gd` (road, ambush, Aurelia, the whole games), `tools/via_shots.gd`,
     `tools/aurelia_shots.gd` (`overview` for a top view). Load `aurelia.gd` at run time in a `-s` tool script
     (`load(...)`): a static reference compiles it, and games.gd's `Sfx`, before the autoload exists.
@@ -1144,6 +1149,30 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   but Esc while paused. Leaving for the title (`Game.exit_to_title`) resets what belonged to the character: its death
   and victory screens, portal, XP bonus, F8 switches, a raid (left without extracting = died there, `bg_strip`) and the
   raid's act (`bg_home_run`). `tools/screen_test.gd` checks it (in the nightly gate).
+- **Visual audit and overhaul** (`docs/visual/AUDIT.md`, `docs/visual/checklist.csv`, tools in `tools/visual_audit/`):
+  the ranked roadmap and every asset's scores and status. `frame_stats.gd` measures draw calls and primitives per pass
+  **and per viewport** in any zone and preset (the cloud's software Vulkan runs the real Forward+ renderer: counts are
+  exact, frame times meaningless; `--fast` drops screen-space effects, which add no geometry); `scene_census.gd`
+  lists every zone's geometry; `glb_audit.py` / `uv_report.py` measure models (UV islands, normal-map strength,
+  albedo); `model_sheet.py` + `contact_sheet.py` render Blender sheets; `skill_shots.gd` frames any class's skills.
+  Rules it taught: **a SubViewport sharing the game's world must be switched off explicitly when hidden**
+  (`UPDATE_WHEN_PARENT_VISIBLE` asks the parent viewport, the screen, so the character sheet's portrait rendered the
+  whole scene and its shadows every frame: 66 M of the camp's 150 M primitives); **multimeshes go through
+  `World.mm_chunked`** (one the size of the map is never culled and lands in every shadow pass, six per shadowed omni
+  light); **Meshy models get no LODs** (their thousands of UV islands leave the importer nothing to simplify; re-bake
+  from Meshy's full-detail output, `tools/blender/camp/rebake_prop.py`); shadow-casting fires join `Grade`'s budget
+  (`FireFx.make`); the sun's cascades are fitted to the camera every frame (`Game._fit_shadows`, distances follow the
+  zoom; `_shadow_hold` while the minimap captures); the hero's rim light is in every zone (`Grade.RIMS`, picked by
+  `Game._rim_kind`). `normals_from_albedo.py` gave the 27 models whose Meshy normal map was flat a detail map
+  (island-aware, no seam ridges); `smooth_normals.py` re-shades faceted round props in place (normals only);
+  `metal_lift.py` gives Meshy's near-black metal its reflectance back (a metal's colour IS its reflectance: the
+  armoured knight's plate reflected 5%; lifted where the metal map says metal, cloth untouched: knight_mocap,
+  knight_armored, fallen_reaver, the trap); `emission_from_albedo.py` turns painted embers into an emission map (the
+  Ashen King's cracks and eyes, KHR_materials_emissive_strength). The weapon trail (`Hero.TRAIL_SHADER`: hot edge,
+  streaked body, dying tail) and the hit flash (`Enemy.FLASH_SHADER`: rim-weighted, fading; `Enemy.flash_color`
+  for a coloured one) replaced flat white sheets. Candidates are judged in the game renderer, not in model sheets:
+  `oak_compare.gd` (oaks as the game builds them, with leaf clusters) and `body_compare.gd` (two copies of the mocap
+  knight); the procedural oak (`tools/blender/trees/oak_gen.py`) lost to the Meshy oaks there and was not adopted.
 - **Performance KPIs** (`scripts/kpi.gd` `Kpi`, `docs/nightly/KPIS.md`): the official numbers. Scripted, deterministic
   scenarios (camp, moor, fight, boss, arena, crypt, server; `Kpi.SCENARIOS`) run in any build with
   `-- --kpi <scenario> out.json [--quality N] [--secs N]` (the server: `-- --server --kpi server out.json`), measuring
