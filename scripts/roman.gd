@@ -79,6 +79,8 @@ static func column(w: World, p: Vector3, h := 4.5, r := 0.32, broken := 0.0, m: 
 ## image-to-3D, re-baked onto clean UVs): weathered travertine with fluting, chips and moss, in place of the stacked
 ## boxes and cylinders. [] without the files (the code-built pieces stay).
 const ROMAN_DIR := "res://assets/models/roman/%s.glb"
+const TOMB_TURN := Basis()          # the Meshy tombs' and milestone's fronts (doors, inscriptions) are already +z
+const ARCH_TURN := Basis()          # the arch's way through runs along z, as the code-built arch's
 static var _meshy := {}
 
 static func _part(kind: String) -> Array:
@@ -94,6 +96,18 @@ static func _add_part(g: Node3D, e: Array, k: Vector3, turn := Basis(), lift := 
 	mi.material_override = e[1]
 	mi.transform = Transform3D(Basis.from_scale(k) * turn, Vector3(0, lift, 0)) * Transform3D(Basis(), Vector3(-c.x, -aabb.position.y, -c.z)) * (e[3] as Transform3D)
 	g.add_child(mi)
+
+## A Meshy set piece under g, scaled evenly so that its width (the wider of x and z, axis "w") or its height ("h")
+## is `size` metres, turned by `turn` (its front to +z, the code-built piece's), standing on g's origin. False
+## without the file.
+static func _set_piece(g: Node3D, kind: String, size: float, axis := "w", turn := Basis()) -> bool:
+	var e := _part(kind)
+	if e.is_empty():
+		return false
+	var bb: AABB = e[2]
+	var k: float = size / maxf(maxf(bb.size.x, bb.size.z) if axis == "w" else bb.size.y, 0.001)
+	_add_part(g, e, Vector3.ONE * k, turn)
+	return true
 
 ## A whole column scaled evenly to the code-built one's height (plinth and base 0.52, the shaft h, capital and
 ## abacus 0.52: its top meets a colonnade's beam; at these heights its shaft is the code-built one's 2r across); a
@@ -205,6 +219,11 @@ static func tomb(w: World, p: Vector3, yaw: float, style := 0) -> void:
 	var m := marble()
 	if style == 0:
 		var g := Props.footprint(Models.N(null, "tomb"), Vector2(1.7, 1.7))
+		if _set_piece(g, "tomb0", 3.4, "w", TOMB_TURN):
+			w._place(g, p)
+			g.rotation.y = yaw
+			w.solid(g)
+			return
 		Models.P(g, Geo.box(3.4, 1.0, 3.4), tuff(), Vector3(0, 0.5, 0))
 		Models.P(g, Geo.box(2.8, 2.6, 2.8), m, Vector3(0, 2.3, 0))
 		Models.P(g, Geo.box(3.1, 0.3, 3.1), m, Vector3(0, 3.75, 0))
@@ -220,6 +239,11 @@ static func tomb(w: World, p: Vector3, yaw: float, style := 0) -> void:
 		w.solid(g)
 	else:
 		var g := Props.footprint(Models.N(null, "tomb"), 3.0)
+		if _set_piece(g, "tomb1", 6.2, "w", TOMB_TURN):
+			w._place(g, p)
+			g.rotation.y = yaw
+			w.solid(g)
+			return
 		Models.P(g, Geo.cyl(3.0, 3.1, 0.8, 24), tuff(), Vector3(0, 0.4, 0))
 		Models.P(g, Geo.cyl(2.7, 2.7, 3.2, 24), m, Vector3(0, 2.4, 0))
 		Models.P(g, Geo.cyl(2.85, 2.85, 0.3, 24), m, Vector3(0, 4.1, 0))
@@ -232,9 +256,10 @@ static func tomb(w: World, p: Vector3, yaw: float, style := 0) -> void:
 ## A Roman milestone (miliarium): a squat inscribed column on a square base.
 static func milestone(w: World, p: Vector3, yaw: float) -> void:
 	var g := Props.footprint(Models.N(null, "miliarium"), 0.45)
-	Models.P(g, Geo.box(0.9, 0.35, 0.9), tuff(), Vector3(0, 0.17, 0))
-	Models.P(g, Geo.cyl(0.32, 0.36, 1.6, 12), marble(), Vector3(0, 1.15, 0))
-	Models.P(g, Geo.box(0.42, 0.5, 0.02), Mats.mat(Color(0.3, 0.27, 0.24), 0.9), Vector3(0, 1.3, 0.34))
+	if not _set_piece(g, "mile", 1.95, "h", TOMB_TURN):
+		Models.P(g, Geo.box(0.9, 0.35, 0.9), tuff(), Vector3(0, 0.17, 0))
+		Models.P(g, Geo.cyl(0.32, 0.36, 1.6, 12), marble(), Vector3(0, 1.15, 0))
+		Models.P(g, Geo.box(0.42, 0.5, 0.02), Mats.mat(Color(0.3, 0.27, 0.24), 0.9), Vector3(0, 1.3, 0.34))
 	w._place(g, p)
 	g.rotation = Vector3(w.rng.randf_range(-0.06, 0.06), yaw, w.rng.randf_range(-0.08, 0.08))
 	w.solid(g)
@@ -289,6 +314,12 @@ static func statue(w: World, p: Vector3, yaw: float, s := 1.25, broken := false)
 ## A fountain: a round basin of dark water with a bronze spout on a pillar.
 static func fountain(w: World, p: Vector3) -> void:
 	var g := Props.footprint(Models.N(null, "fountain"), 2.4)
+	if _set_piece(g, "fountain", 5.0, "w"):
+		# still water in the basin (the model is empty)
+		Models.P(g, Geo.cyl(2.0, 2.0, 0.04, 28), Mats.shader_water_mat(Color(0.04, 0.08, 0.08), Color(0.1, 0.18, 0.16)), Vector3(0, 0.45, 0))
+		w._place(g, p)
+		w.solid(g)
+		return
 	Models.P(g, Geo.cyl(2.4, 2.5, 0.7, 28), marble(), Vector3(0, 0.35, 0))
 	Models.P(g, Geo.cyl(2.15, 2.15, 0.05, 28), Mats.shader_water_mat(Color(0.04, 0.08, 0.08), Color(0.1, 0.18, 0.16)), Vector3(0, 0.6, 0))
 	Models.P(g, Geo.cyl(0.35, 0.45, 1.8, 12), marble(), Vector3(0, 1.2, 0))
@@ -302,6 +333,13 @@ static func triumphal_arch(w: World, p: Vector3, yaw: float) -> Node3D:
 	var g := Models.N(null, "triumphal_arch")
 	g.set_meta("roman", "arch")
 	var m := marble()
+	if _set_piece(g, "arch", 13.0, "w", ARCH_TURN):
+		w._place(g, p)
+		g.rotation.y = yaw
+		for sx in [-1, 1]:
+			var oo := Basis(Vector3.UP, yaw) * Vector3(sx * 5.0, 0, 0)
+			w.add_box(p + oo, Vector2(1.5, 1.95), yaw)
+		return g
 	Models.P(g, _own(arch_mesh(13.0, 10.0, 3.6, 6.0, 8.2), m), m)
 	Models.P(g, Geo.box(13.4, 2.6, 3.9), m, Vector3(0, 11.3, 0))
 	Models.P(g, Geo.box(13.8, 0.35, 4.1), m, Vector3(0, 10.05, 0))
