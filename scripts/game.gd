@@ -477,10 +477,12 @@ func _zone_env(kind: String) -> void:
 		hero.light.light_energy = 2.6
 		hero.light.omni_range = 17.0
 		if kind == Battlegrounds.ZONE:
-			# the Hollow Crypt is darker: a smaller circle round the hero, the torches and candles do the rest
-			env.ambient_light_energy = 0.55
-			env.tonemap_exposure = 1.25
-			hero.light.light_energy = 2.0
+			# the Hollow Crypt is darker: a smaller circle round the hero, the torches and candles do the rest. (Lifted
+			# a little on Nov 2 with the Meshy crypt: its darker stone and flagstones left the rooms between the
+			# torch pools black; 0.55 / 1.25 / 2.0 before)
+			env.ambient_light_energy = 0.85
+			env.tonemap_exposure = 1.4
+			hero.light.light_energy = 2.3
 			hero.light.omni_range = 11.0
 	else:
 		env.background_mode = Environment.BG_SKY

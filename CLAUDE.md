@@ -182,12 +182,15 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   (`CryptProps.wall_meshes`) and the flagstone floor (`CryptProps.lay_floor`, quads over the floor cells) use
   Meshy-drawn textures made tileable and normal-mapped in Blender (`make_tile_textures.py`, `assets/textures/crypt/`),
   both cut into `TILE` (12 m) meshes, since the OpenGL renderer lights a mesh by at most eight lights; `_chest` is the
-  Meshy chest (`CryptProps.chest`, on the old chest's footprint node) and floor `_candles` the Meshy candles burning
-  FireFx candle flames (the same rolls as before); the wall torches light a warm pool to the floor
-  (`CryptProps.torch_light`, `TORCH_ENERGY`/`TORCH_RANGE`); the Extraction Portals stand in rune archways whose runes
-  light when the portal opens (`Battlegrounds.sync_gates`, `CryptProps.set_runes`) with `portal_glow` inside; `dress`
-  adds rubble, corner cobwebs, lit dust drifting in every room (`dust`) and the hall's floor seal (a quad with
-  `SEAL_SHADER`: its runes breathe and a wave of light runs out from the skull; not a Decal, which OpenGL can't draw). **Everything visual
+  Meshy chest (`CryptProps.chest`, on the old chest's footprint node, a faint warm glint over it) and floor `_candles`
+  the Meshy candles burning FireFx candle flames (the same rolls as before); the wall torches light a warm pool to the
+  floor (`CryptProps.torch_light`, `TORCH_ENERGY`/`TORCH_RANGE`) and every other hall pillar carries one
+  (`hall_torches`); the tall Meshy pieces (pillars, sarcophagi, archways) are redrawn by `CryptProps.see_through`
+  (`SEE_SHADER`: their own textures plus the near-player see-through, so a pillar never hides the hero); the
+  Extraction Portals stand in rune archways whose painted runes light when the portal opens
+  (`Battlegrounds.sync_gates`, `CryptProps.set_runes`) with `portal_glow` inside; `dress` adds rubble, corner cobwebs,
+  lit dust drifting in every room (`dust`) and the hall's floor seal (a quad with `SEAL_SHADER`: its runes breathe and
+  a wave of light runs out from the skull; not a Decal, which OpenGL can't draw). **Everything visual
   is on the same layout**: no footprint changes, no new interactable, no call added to `w.rng`
   (`tools/bg_layout_fingerprint.gd` prints a hash of the layout; it must not change: the staging server builds it
   from the same rolls). Stills: `tools/crypt_shots.gd -- outdir`, a walk: `tools/crypt_clip.gd -- outdir [frames]`
