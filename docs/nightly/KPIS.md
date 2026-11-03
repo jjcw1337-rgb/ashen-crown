@@ -97,8 +97,12 @@ its budget.
 `--census` (writes `<out>.census.txt`: every visible mesh by triangles x instances, shadow casting, visibility range;
 every light; every SubViewport), `--hide name,a,b` / `--hide Props#10-40` (hide parts to see what they cost),
 `--noshadow omni,dir`, `--envoff ssao,ssil,vfog,msaa,glow,half,softmed,softlow,atlas2k,terrainflat,terrainnofd,plainomni`,
-`--mmnoshadow N`, `--mmchunk N` (0 = MultiMesh chunking off), `--notwins` (no oak shadow twins), and for the spot
-scenario `--pos oakN`. Comparing looks: run both sides with `--fixed-fps 30` (time-driven scenes come out the same
+`--mmnoshadow N`, `--mmchunk N` (0 = MultiMesh chunking off), `--notwins` (no oak shadow twins), `--nocast a,b`
+(geometry whose name contains a or b casts no shadow; `all-mm` = everything not instanced) with `--castlist` (the
+visible meshes and instanced casters by triangles), `--grassshadow lod0|lod1|near|lod1near` (Ultra's grass shadow
+twins), `--envoff` also `sdfgi,ssr,msaa4,grassnopatch,grassflatfrag,grassdegen,grasslod<m>`, and for the spot
+scenario `--pos oakN`. **Check the switch took**: an `--envoff` can be undone by a later `apply_quality` (11-03:
+`sdfgi` didn't stick in `--fixed-fps` runs); if gpu_ms didn't move, the screenshots compare nothing. Comparing looks: run both sides with `--fixed-fps 30` (time-driven scenes come out the same
 frame) and compare against two identical runs, not against zero (particles, AI and the crowd differ every run).
 
 ## Adding a scenario or a metric
