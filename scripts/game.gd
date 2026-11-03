@@ -1441,6 +1441,8 @@ func target_for(e: Node3D) -> Hero:
 		if h.dead or (h.puppet and not h.net_has) or (net.server and h == hero):
 			continue
 		var d: float = h.global_position.distance_squared_to(e.global_position)
+		if h.invis_t > 0.0 or h.net_invis:
+			d += 1e6       # unseen (a Shadow Phial): the monster goes for anyone it can see first
 		if d < bd:
 			bd = d
 			best = h

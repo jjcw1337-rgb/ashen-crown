@@ -73,11 +73,10 @@ func _run() -> void:
 	b.block_chance = 0.0        # (the knight's shield would block it)
 	b.take_hit(1e6, h.global_position, "pvp", "phys")
 	check(b.dead, "it can fall")
-	t = 0
-	while t < 400 and b.dead:
+	var t0 := Time.get_ticks_msec()       # (seconds, not frames: headless runs at whatever rate it can)
+	while Time.get_ticks_msec() - t0 < 8000 and b.dead:
 		await frames(1)
-		t += 1
-	check(not b.dead and b.life == b.max_life, "and stands up again (%.1f s)" % (t / 60.0))
+	check(not b.dead and b.life == b.max_life, "and stands up again (%.1f s)" % ((Time.get_ticks_msec() - t0) / 1000.0))
 	check(sb.log_lines.size() > 0, "the kill is in the log: %s" % str(sb.log_lines))
 	sb.bots[0]["brain"].react = 0.18
 	sb.bots[0]["brain"]._think = 0.0

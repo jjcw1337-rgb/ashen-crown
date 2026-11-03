@@ -944,12 +944,10 @@ func sv_pvp_effect(target_pid: int, kind: String, from: Vector3) -> void:
 	var by := multiplayer.get_remote_sender_id()
 	if not server or game.bg == null or game.bg.state != "raid" or not PVP_EFFECTS.has(kind):
 		return
-	if by == target_pid or not players.has(by) or not players.has(target_pid):
-		return
-	hit_player(target_pid, 0.0, from, kind, "phys")
+	game.bg.pvp_effect(by, target_pid, kind, from)
 
-## PvP burning (a Fire Arrow, magma, a unique's burn on another player's stand-in, Enemy.ignite): the server checks
-## as for crowd control and hands it on as a "burn" hit, `dps` a second (capped) for Hero.BURN_SECS.
+## PvP burning (a Fire Arrow, magma, a unique's burn on another player's stand-in, Enemy.ignite): the attacker's own
+## `dps`; the server checks it like a blow and scales it (Battlegrounds.pvp_burn), a "burn" hit for Hero.BURN_SECS.
 func send_pvp_dot(target_pid: int, dps: float, from: Vector3) -> void:
 	if active and not is_host:
 		rpc_id(1, "sv_pvp_dot", target_pid, dps, from)
@@ -957,11 +955,9 @@ func send_pvp_dot(target_pid: int, dps: float, from: Vector3) -> void:
 @rpc("any_peer", "call_remote", "reliable")
 func sv_pvp_dot(target_pid: int, dps: float, from: Vector3) -> void:
 	var by := multiplayer.get_remote_sender_id()
-	if not server or game.bg == null or game.bg.state != "raid":
+	if not server or game.bg == null:
 		return
-	if by == target_pid or not players.has(by) or not players.has(target_pid):
-		return
-	hit_player(target_pid, clampf(dps, 0.0, 80.0), from, "burn", "fire")
+	game.bg.pvp_burn(by, target_pid, dps, from)
 
 ## War Cry (SharedSkills): the battle buff for the teammates near the one who roared. Co-op partners only: the
 ## Battlegrounds has no teams yet (everyone there is an enemy), so nobody else gets it there.

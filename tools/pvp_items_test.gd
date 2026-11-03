@@ -18,6 +18,12 @@ func check(ok: bool, what: String) -> void:
 func wait(n: int) -> void:
 	for i in n:
 		await process_frame
+## Until the ward is full, or 8 s (it fills over 4 s; seconds, not frames: headless runs at whatever rate it can).
+func fill_ward(h) -> void:
+	var end := Time.get_ticks_msec() + 8000
+	while Time.get_ticks_msec() < end and not (h.ward_max > 0.0 and h.ward >= h.ward_max * 0.95):
+		h.combat_t = 999.0
+		await process_frame
 func _run() -> void:
 	while g.world == null or g._busy:
 		await wait(5)
@@ -77,7 +83,7 @@ func _run() -> void:
 	h.recalc()
 	h.life = h.max_life
 	h.combat_t = 999.0
-	await wait(270)          # (it fills over 4 s out of combat)
+	await fill_ward(h)       # (it fills over 4 s out of combat)
 	check(h.ward_max > 0.0 and h.ward >= h.ward_max * 0.95, "Oathkeeper's ward is up (%d of %d)" % [int(h.ward), int(h.ward_max)])
 	var l0: float = h.life
 	g.test_immortal = false
@@ -85,7 +91,7 @@ func _run() -> void:
 	h.take_hit(h.ward_max * 0.5, h.global_position + Vector3(0, 0, -2), "pvp", "fire")
 	check(is_equal_approx(h.life, l0) and h.ward < h.ward_max, "a blow smaller than it is soaked (life %d -> %d, ward %d)" % [int(l0), int(h.life), int(h.ward)])
 	h.combat_t = 999.0
-	await wait(300)
+	await fill_ward(h)
 	check(h.ward >= h.ward_max * 0.95, "and it comes back out of combat")
 	h.pvp_force = false
 	h.recalc()

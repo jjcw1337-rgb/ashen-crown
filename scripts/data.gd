@@ -697,7 +697,7 @@ const SKILLS_UNLOCKED := false
 ## Item power (Blaine's progression overhaul, then "not 'cut' but full rework", docs/queue_items_rework.md): character
 ## level and skills give most of a player's power, gear a smaller but meaningful part, in PvE and PvP alike.
 ## Items made under these rules carry "gen": ITEM_GEN; older ones are rebuilt once on load (Items.upgrade).
-const ITEM_GEN := 3            # 2: the rework's sizes; 3: the uniques' signature effects (uniques remade again)
+const ITEM_GEN := 4            # 2: the rework's sizes; 3: the uniques' signature effects; 4: effects no longer act-scaled (uniques remade each time)
 ## Every affix rolls Data.AFFIXES' range times its scale here (Items.roll_affix), and an old item's affixes are
 ## rescaled by the same (Items.upgrade). Gold and Magic Find buy no power, so they keep their size.
 const AFFIX_SCALE := {"ed": 0.2, "dmg": 0.25, "fire": 0.35, "str": 0.2, "dex": 0.2, "vit": 0.2, "ene": 0.2,

@@ -1127,7 +1127,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   make items `Data.RUNS` `"power"` stronger (x1.6, x2.4; `Items.empower`, `Game.power_mult`), with modest monster
   multipliers to match. Items carry `"gen"` (`Data.ITEM_GEN`); an older one is rebuilt once on load
   (`Items.upgrade` from `Hero.from_save`: affixes rescaled, rares trimmed to their best three, uniques remade from
-  `Data.UNIQUES` keeping enchant and temper, A2/A3 strengths moved by `Data.OLD_POWER`). Enchanting and tempering are
+  `Data.UNIQUES` keeping enchant and temper, A2/A3 strengths moved by `Data.OLD_POWER`; uniques are remade on every
+  generation bump, so bump `ITEM_GEN` when a unique's numbers change). Enchanting and tempering are
   scaled to match (`Items.ENCHANT_DEF`, `TEMPER_ED`). Level-20 gear is worth about x1.6 over none (damage x life).
   **Utility affixes** (`Data.UTILITY`, at most one per item): run speed, `stam` (dodge stamina, `Hero.roll_cost`),
   `cdr` (`skill_cd`), `pot` (`drink`), `ten` (stuns and slows, `Hero.cc_k`). **Unique effects** (`Data.ITEM_EFFECTS`,
@@ -1138,8 +1139,13 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   item's weakest affix for one Sloth material. **Invisibility**: the Veilmother's Locket (`"phial"`) gives a Shadow
   Phial each raid (`Game.give_raid_phials`); drunk, `Hero.invis_t` (6 s): monsters lose him (`hidden_t`), partners
   see a shimmer within 4 m (bit 2 of the state's 15th number, `Hero._show_invis`), any blow or cast ends it
-  (`break_invis`). PvP burns and chills reach other players (`Net.sv_pvp_dot`, the "chill" effect; `Hero.burn_t`).
-  `tools/items_rework_test.gd`; re-run `tools/balance.sh` after changing any of it.
+  (`break_invis`); on a host or the raid server a partner's unseen bit (`Hero.net_invis`) hides him from monsters too
+  (`Enemy` and `Game.target_for` pick a hero they can see), and the Compatibility renderer (no `transparency`) hides
+  his body instead. PvP burns and chills reach other players (`Net.sv_pvp_dot`, the "chill" effect; `Hero.burn_t`).
+  **Every player-on-player message** (a blow, crowd control, a burn) passes `Battlegrounds.pvp_pair` on the server (a
+  raid on, both alive, within `PVP_RANGE`); the same control from one player on another lands at most every
+  `PVP_EFFECT_GAP` s (`pvp_effect`); a burn is scaled like a blow and counts for the kill (`pvp_burn`).
+  `tools/items_rework_test.gd`, `tools/pvp_server_test.gd`; re-run `tools/balance.sh` after changing any of it.
 - **The Battlegrounds sandbox** (`scripts/sandbox.gd` `Sandbox`, zone `"sandbox"` "The Proving Crypt";
   `scripts/bot_brain.gd` `BotBrain`): the admins' testing arena, opened from the Escape menu's Admin column
   (`Game.open_sandbox` / `close_sandbox`; the character is saved and set aside, `char_id` cleared so nothing inside is
