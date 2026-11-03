@@ -9,6 +9,7 @@ concept itself should be a size reduction until the download is well under 200 M
 | 2026-11-01 | 669 MiB | 736 MiB | 652 MiB | 618 MB (Mac) | baseline, staging-173ef29 (itch uploads) |
 | 2026-11-01 | 704 -> 281 MiB zip (exe 762 -> 336) | 725 -> 302 MiB zip | 275 MiB zip (bin 318) | 682 -> 255 MiB (Mac) | nightly: lossy WebP q0.9 for model textures that imported lossless; local exports (zip -r), intro.ogv (81.5 MiB) included |
 | 2026-11-02 | 390.1 MiB zip (exe 445.3) | 410.8 MiB zip (fresh import) | | 365.0 MiB (Mac) | nightly: no size change tonight (perf concepts); grew 302 -> 411 MiB since 11-01 from the day's new content (dinosaurs, trolls, crypt floors and bosses, NPCs) |
+| 2026-11-03 | 520.7 -> 387.8 MiB zip (exe 576.7 -> 443.9) | 541.5 -> 408.6 MiB zip | | 496.4 -> 363.6 MiB (Mac) | nightly: model textures capped at 1024 px and WebP q0.75 (`[importer_defaults]`), dyes capped; it had grown 411 -> 541 since 11-02 |
 
 Where it goes (2026-11-01): assets 420 MB on disk: models 346 MB (the biggest: knight_statue, knight_mocap,
 grubb_mutant, plague_doctor, knight_armored, archer_ranger, wraith_mocap, title/gate, gnome_warlock, demon_mocap,
@@ -36,3 +37,13 @@ Measured, not yet done: 2048 normal maps as WebP q0.8 are 35% smaller (35-38 dB 
 smaller; most monster textures are already 1024 (capping the 8 that are 2048 saves ~10 MB). Levers for a size night:
 the normal maps (committed `.import` files for the extracted textures, which are git-ignored now), decimating the
 heaviest Meshy bodies offline (with real LODs), the knight bodies' three identical textures.
+
+2026-11-03 (pack 363.6 MiB, Mac, after the night): imported scenes 143.5 MB (5.4 M vertices, all with tangents, 2.5 M
+skinned; `godot --headless --path . -s tools/scene_weight.gd -- out.txt` lists every glb's vertices, triangles,
+attributes and animation keys), intro.ogv 85 MB (not a target), model textures 85 MB (1024 px, q0.75), committed
+textures 55 MB (fx flipbooks lossless by design, the grass atlas, UI, talents), audio 8 MB. Without the intro the Mac
+download is ~325 MiB. Measured, not done: zstd level 19 for the scenes -3% (global setting; not worth it). The scenes
+are the next lever: Godot can't simplify the Meshy meshes (no LODs at import or with `ImporterMesh.generate_lods`),
+so decimate offline in Blender: the densest static props (stash chest 54 k triangles / 91 k vertices, waypoint dais
+44 k / 93 k, title gate 40 k / 85 k, sloop 39 k / 70 k, camp forge and alchemy 24 k / 50 k) and the bodies (player
+classes 60-95 k vertices, monsters 20-60 k).
