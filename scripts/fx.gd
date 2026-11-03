@@ -230,10 +230,22 @@ static func flash(root: Node3D, pos: Vector3, col: Color, energy: float, dur: fl
 	tw.tween_property(l, "light_energy", 0.0, dur)
 	_free_later(l, dur + 0.05)
 
+## Area blows (every nova, shockwave and slam that draws a ring through `ring` or `holy_slam`) are told to whoever
+## listens, on every game that plays the effect: a Callable(pos: Vector3, radius: float). The Plague Doctor's swarm
+## listens while it's out (any area hit scatters it). Listeners that are no longer valid are dropped.
+static var area_listeners: Array[Callable] = []
+static func area_hit(pos: Vector3, radius: float) -> void:
+	for c in area_listeners.duplicate():
+		if c.is_valid():
+			c.call(pos, radius)
+		else:
+			area_listeners.erase(c)
+
 ## Expanding ring on the ground (nova, shockwave, slam).
 static func ring(root: Node3D, pos: Vector3, radius: float, col: Color, dur: float = 0.5, height: float = 0.25) -> void:
 	# every shockwave ring also shoves the grass outward (a bigger ring, a harder shove)
 	GrassField.impulse(pos, radius, clampf(0.35 + radius * 0.06, 0.35, 0.75), clampf(dur * 0.8, 0.25, 0.55))
+	area_hit(pos, radius)
 	var mi := MeshInstance3D.new()
 	mi.mesh = Geo.torus(0.85, 1.0, 48, 4)
 	var m := Mats.glow_unique(col, 3.0, 0.0, 0.0)
@@ -285,6 +297,7 @@ static func _slam_quad(root: Node3D, pos: Vector3, tex_key: String, additive: bo
 
 static func holy_slam(root: Node3D, pos: Vector3, radius: float) -> void:
 	GrassField.impulse(pos, radius * 1.3, 0.9, 0.5)
+	area_hit(pos, radius)
 	var white := Color(1.0, 0.98, 0.92)
 	flash(root, pos + Vector3(0, 0.9, 0), white, 3.0, 0.22, radius * 1.8)
 	var tex_ok := ResourceLoader.exists(SLAM_TEX["burst"])

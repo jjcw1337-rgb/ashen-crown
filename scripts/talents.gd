@@ -17,7 +17,7 @@ extends RefCounted
 ##     phantoms, fists_wide, hurl_twin, wrath_double, drain_heal,
 ##     drain_fork, drain_glut, blight_size, blight_twin, shackle_range, arrow_split, snare_dur, snare_max,
 ##     snare_wide, volley_size, beast_two, burn_dmg, wolf_burn, chill_pct, wolf_howl, frost_shatter, arc_count,
-##     plague: cloud_size cloud_dur poison_dmg poison_dur blast_size ignite_dmg trap_max trap_stun inf_jumps inf_dur dome_size dome_dur
+##     plague: cloud_size cloud_dur poison_dmg poison_dur swarm_size swarm_dur swarm_redirect bloom_size bloom_dur bloom_snare fog_dur trans_dr trans_cap trans_dur exp_size exp_dur
 ## "text" shows the total for the ranks taken: {key} is replaced by the fx value times the rank.
 ## Saves made before talents get a build picked for them (`auto_build`, the class's `AUTO` order).
 
@@ -170,32 +170,32 @@ const TREES := {
 		]},
 	],
 	"plague": [
-		{"name": "Toxicology", "desc": "Poison: Toxic Flask, longer and crueller clouds.", "talents": [
-			{"id": "p_dose", "name": "Stronger Dose", "row": 0, "max": 3, "icon": "toxic", "fx": {"dmg:toxic": 10}, "text": "Toxic Flask deals {dmg:toxic}% more damage."},
+		{"name": "Toxicology", "desc": "Poison: Pestilence Vial, longer and crueller pools.", "talents": [
+			{"id": "p_dose", "name": "Stronger Dose", "row": 0, "max": 3, "icon": "toxic", "fx": {"dmg:toxic": 10}, "text": "Pestilence Vial deals {dmg:toxic}% more damage."},
 			{"id": "p_study", "name": "Studied Hand", "row": 0, "max": 3, "icon": "t_eye", "fx": {"ene": 3}, "text": "+{ene} energy."},
 			{"id": "p_venom", "name": "Virulent Venom", "row": 1, "max": 3, "icon": "t_star", "fx": {"poison_dmg": 8}, "text": "All your poison hurts {poison_dmg}% more."},
-			{"id": "p_cloud", "name": "Heavy Vapour", "row": 1, "max": 3, "icon": "toxic", "fx": {"cloud_size": 10}, "text": "Your poison clouds spread {cloud_size}% wider."},
-			{"id": "p_linger", "name": "Lingering Rot", "row": 2, "max": 3, "icon": "t_hourglass", "fx": {"poison_dur": 1.0}, "text": "Poison keeps working {poison_dur} seconds longer after a foe leaves a cloud."},
-			{"id": "p_thrift", "name": "Measured Doses", "row": 2, "max": 2, "icon": "t_hourglass", "fx": {"cost:toxic": 15}, "text": "Toxic Flask costs {cost:toxic}% less mana."},
-			{"id": "p_miasma", "name": "Standing Miasma", "row": 3, "max": 1, "icon": "toxic", "fx": {"cloud_dur": 2.0}, "text": "Every poison cloud hangs {cloud_dur} seconds longer."},
+			{"id": "p_cloud", "name": "Heavy Vapour", "row": 1, "max": 3, "icon": "toxic", "fx": {"cloud_size": 8}, "text": "Your contaminated pools spread {cloud_size}% wider."},
+			{"id": "p_linger", "name": "Lingering Rot", "row": 2, "max": 3, "icon": "t_hourglass", "fx": {"poison_dur": 0.5}, "text": "Poison keeps working {poison_dur} seconds longer after a foe leaves a pool."},
+			{"id": "p_thrift", "name": "Measured Doses", "row": 2, "max": 2, "icon": "t_hourglass", "fx": {"cost:toxic": 15}, "text": "Pestilence Vial costs {cost:toxic}% less mana."},
+			{"id": "p_miasma", "name": "Standing Miasma", "row": 3, "max": 1, "icon": "toxic", "fx": {"cloud_dur": 1.5}, "text": "Every pool lingers {cloud_dur} seconds longer."},
 		]},
-		{"name": "Volatile Arts", "desc": "Fire and fuses: Volatile Mixture and the ignition of his clouds.", "talents": [
-			{"id": "p_charge", "name": "Bigger Charge", "row": 0, "max": 3, "icon": "volatile", "fx": {"dmg:volatile": 12}, "text": "Volatile Mixture deals {dmg:volatile}% more damage."},
+		{"name": "Vermin and Rot", "desc": "The living plague: Swarmcraft and Corpse Bloom.", "talents": [
+			{"id": "p_charge", "name": "Ravenous Swarm", "row": 0, "max": 3, "icon": "swarm", "fx": {"dmg:swarm": 10}, "text": "Swarmcraft bites {dmg:swarm}% harder."},
 			{"id": "p_steady", "name": "Steady Hands", "row": 0, "max": 3, "icon": "t_fist", "fx": {"dex": 3}, "text": "+{dex} dexterity."},
-			{"id": "p_blast", "name": "Wide Blast", "row": 1, "max": 3, "icon": "volatile", "fx": {"blast_size": 8}, "text": "Volatile Mixture's blast reaches {blast_size}% further."},
-			{"id": "p_quick", "name": "Short Fuse", "row": 1, "max": 3, "icon": "t_hourglass", "fx": {"cd:volatile": 8}, "text": "Volatile Mixture recharges {cd:volatile}% faster."},
-			{"id": "p_ignite", "name": "Flashpoint", "row": 2, "max": 3, "icon": "volatile", "fx": {"ignite_dmg": 20}, "text": "Ignited clouds burn {ignite_dmg}% hotter."},
+			{"id": "p_blast", "name": "Teeming", "row": 1, "max": 3, "icon": "swarm", "fx": {"swarm_size": 6}, "text": "The swarm spreads {swarm_size}% wider."},
+			{"id": "p_quick", "name": "Fertile Soil", "row": 1, "max": 3, "icon": "bloom", "fx": {"cd:bloom": 6}, "text": "Corpse Bloom recharges {cd:bloom}% faster."},
+			{"id": "p_ignite", "name": "Rank Growth", "row": 2, "max": 3, "icon": "bloom", "fx": {"bloom_size": 6, "dmg:bloom": 6}, "text": "Corpse Bloom reaches {bloom_size}% further and its pulses hit {dmg:bloom}% harder."},
 			{"id": "p_cane", "name": "Iron-Shod Cane", "row": 2, "max": 2, "icon": "attack", "fx": {"dmg:attack": 10}, "text": "Your cane strikes {dmg:attack}% harder."},
-			{"id": "p_inferno", "name": "Alchemical Fire", "row": 3, "max": 1, "icon": "volatile", "fx": {"dmg:volatile": 25, "blast_size": 15}, "text": "Volatile Mixture deals {dmg:volatile}% more damage and its blast reaches {blast_size}% further."},
+			{"id": "p_inferno", "name": "The Hive Obeys", "row": 3, "max": 1, "icon": "swarm", "fx": {"swarm_redirect": 1, "swarm_dur": 1.0}, "text": "The swarm can be turned {swarm_redirect} more time and stays {swarm_dur} second longer."},
 		]},
-		{"name": "Contagion", "desc": "Traps and the epidemic: preparation, infection and the dome.", "talents": [
-			{"id": "p_spring", "name": "Hair Trigger", "row": 0, "max": 3, "icon": "trap", "fx": {"dmg:trap": 12}, "text": "Pestilent Trap deals {dmg:trap}% more damage."},
+		{"name": "The Experiment", "desc": "Deception and survival: Fog of the Forgotten, Transfusion and The Last Experiment.", "talents": [
+			{"id": "p_spring", "name": "Dense Fog", "row": 0, "max": 3, "icon": "fog", "fx": {"fog_dur": 0.5}, "text": "Fog of the Forgotten hangs {fog_dur} seconds longer."},
 			{"id": "p_hardy", "name": "Hardened Physician", "row": 0, "max": 3, "icon": "t_heart", "fx": {"life_pct": 4}, "text": "+{life_pct}% maximum life."},
-			{"id": "p_snare", "name": "Choking Gas", "row": 1, "max": 3, "icon": "trap", "fx": {"trap_stun": 0.3}, "text": "Pestilent Trap stuns {trap_stun} seconds longer."},
-			{"id": "p_spread", "name": "Carriers", "row": 1, "max": 3, "icon": "epidemic", "fx": {"inf_jumps": 1}, "text": "Infection can jump {inf_jumps} more times."},
-			{"id": "p_cache", "name": "Second Cache", "row": 2, "max": 1, "icon": "trap", "fx": {"trap_max": 1}, "text": "Keep {trap_max} more Pestilent Trap set."},
-			{"id": "p_fever", "name": "Long Fever", "row": 2, "max": 3, "icon": "t_hourglass", "fx": {"inf_dur": 1.0, "dome_dur": 0.5}, "text": "Infection lasts {inf_dur} seconds longer and the dome {dome_dur} seconds longer."},
-			{"id": "p_last", "name": "Pandemic", "row": 3, "max": 1, "icon": "epidemic", "fx": {"dome_size": 20, "cd:epidemic": 20}, "text": "The Last Epidemic's dome is {dome_size}% wider and it recharges {cd:epidemic}% faster."},
+			{"id": "p_snare", "name": "Strangling Roots", "row": 1, "max": 2, "icon": "bloom", "fx": {"bloom_snare": 0.1}, "text": "Corpse Bloom's roots hold {bloom_snare} seconds longer."},
+			{"id": "p_spread", "name": "Larger Tanks", "row": 1, "max": 3, "icon": "transfusion", "fx": {"trans_cap": 1.5}, "text": "Transfusion heals up to {trans_cap}% more of your life."},
+			{"id": "p_cache", "name": "Quick Needle", "row": 2, "max": 1, "icon": "transfusion", "fx": {"cd:transfusion": 12}, "text": "Transfusion recharges {cd:transfusion}% faster."},
+			{"id": "p_fever", "name": "Long Fever", "row": 2, "max": 3, "icon": "t_hourglass", "fx": {"exp_dur": 0.5}, "text": "The quarantine lasts {exp_dur} seconds longer."},
+			{"id": "p_last", "name": "Magnum Opus", "row": 3, "max": 1, "icon": "experiment", "fx": {"exp_size": 10, "cd:experiment": 15}, "text": "The Last Experiment's quarantine is {exp_size}% wider and it recharges {cd:experiment}% faster."},
 		]},
 	],
 	"archer": [

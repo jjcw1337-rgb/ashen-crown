@@ -24,7 +24,7 @@ func _run() -> void:
 		if "ultimate" in s.get("tags", []):
 			ults.append(s["id"])
 			check(int(s["lvl"]) == 20, "%s (%s's ultimate) opens at 20" % [s["name"], s["cls"]])
-	check(ults.has("night") and ults.has("wrath") and ults.has("epidemic") and ults.has("car"), "the ultimates: %s" % str(ults))
+	check(ults.has("night") and ults.has("wrath") and ults.has("experiment") and ults.has("car"), "the ultimates: %s" % str(ults))
 	for cls in ["knight", "wraith", "demon", "warlock", "archer", "plague", "doug"]:
 		var own := Data.skills_for(cls)
 		check(own.size() > 0 and int(own[0]["lvl"]) == 1, "%s starts with %s" % [cls, own[0]["name"]])

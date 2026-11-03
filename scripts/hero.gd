@@ -110,6 +110,11 @@ var block_flash := 0.0
 ## the Hollow Sloth's blows (sloth.gd): its sweep throws you back, its slam stuns
 var shove := Vector3.ZERO
 var daze_t := 0.0
+var fog_hidden := false     # a puppet hidden from this game by the Plague Doctor's Fog (Plague._update_visibility)
+var pvs := {}               # statuses another player put on him in PvP (PvpStatus: slow, snare, harried, reveal, blight)
+var pvs_shown := -1         # what PvpStatusFx shows of them on him (bits | blight << 4)
+var net_pvs_bits := 0       # a puppet: the statuses his game says he has (PvpStatusFx bits, in his state packet)
+var net_pvs_blight := 0     # and his Blight stacks
 var chill_t := 0.0          # Rimeclaw's cold: slowed while it lasts
 var cc := {}                # crowd control from other players in the Battlegrounds (PvpStatus)
 var hit_t := 0.0
@@ -996,6 +1001,8 @@ func _assist_pick(axis: Vector3, dist: float, cone: float):
 	var best = null
 	var bs := INF
 	for e in game.enemies_near(global_position, dist):
+		if e.pvp_hidden:
+			continue     # a player hidden in the Plague Doctor's fog: no aim help onto him
 		var d: Vector3 = e.global_position - global_position
 		d.y = 0
 		var dl := d.length()
@@ -1384,6 +1391,8 @@ func _start_attack(style: String, skill := "", secs := 0.0) -> void:
 	if secs > 0.0:
 		atk_dur = secs / aspd
 	atk_dur *= Data.attack_pace(cls)     # every class's pace (Data.ATTACK_PACE)
+	if not pvs.is_empty():
+		atk_dur *= PvpStatus.act_mult(self)       # harried (PvP)
 	impact_done = false
 	trail_pts.clear()
 	trail_col = ClassSkills.trail_color(cls, skill)
@@ -1558,6 +1567,8 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	var fwd := -rig.global_transform.basis.z
 	var facing := fwd.dot(to_src.normalized()) > cos(deg_to_rad(80.0))
 	var has_shield: bool = equipment.get("shield") != null
+	if pd != null:
+		dmg = pd.absorb(dmg)     # the Plague Doctor's Transfusion soaks part of it into his tanks
 	var shield_pos := global_position + Vector3(0, 1.2, 0) + fwd * 0.5
 	if block_amt > 0.5 and facing:
 		var reduce := maxf(0.05, 0.2 - talent("block_dr") / 100.0)     # Block: 80% less damage from the front
@@ -1717,6 +1728,8 @@ func _process(delta: float) -> void:
 	if heal_pool > 0.0:
 		var h := minf(heal_pool, delta * 30.0 * (1.0 + level * 0.05))
 		heal_pool -= h
+		if not pvs.is_empty() and PvpStatus.strength(self, "blight") >= 3.0:
+			h *= 0.6     # Feverish (the Plague Doctor's Fever, PvP): healing -40%
 		life = minf(max_life, life + h)
 	if mana_pool > 0.0:
 		var m := minf(mana_pool, delta * 20.0)
@@ -1796,10 +1809,14 @@ func _process(delta: float) -> void:
 	if chill_t > 0.0:
 		chill_t -= delta
 		speed *= 0.55
-	if not cc.is_empty():
-		speed *= PvpStatus.update(self, delta)
+	if not cc.is_empty() or not pvs.is_empty():
+		speed *= PvpStatus.update(self, delta)     # the Demon's and the Plague Doctor's statuses (snare = 0)
 		if PvpStatus.held(self):
 			speed = 0.0
+	if not pvs.is_empty() or pvs_shown > 0 or cc.has("slow"):
+		PvpStatusFx.sync(self, PvpStatusFx.bits_of(self), PvpStatusFx.blight_of(self))
+	if pd != null:
+		speed *= pd.speed_mult()     # quicker in his own fog, slower with the needle in his arm
 
 	if roll_t >= 0.0:
 		vel = Dodge.step(self, delta)
@@ -1926,7 +1943,8 @@ func _process(delta: float) -> void:
 	_breathe(delta)
 	_apply_shield_pose()
 	# no sword-swing streak off a bow, nor off the Wraith's and the Demon's skills (their clips, not weapon swings)
-	_update_trail(((atk_t >= 0.0 and not ((is_wraith() or is_demon() or is_doug()) and atk_skill != "")) or charge_t >= 0.0) and not has_bow() and not is_dragon())
+	# (the Plague Doctor's skills put the cane away too: thrown vials, the censer, the reliquary)
+	_update_trail(((atk_t >= 0.0 and not ((is_wraith() or is_demon() or is_doug() or cls == "plague") and atk_skill != "")) or charge_t >= 0.0) and not has_bow() and not is_dragon())
 
 ## The Wraith floats a hand's breadth off the ground, bobbing slowly and leaning into motion.
 func _hover() -> void:
@@ -2035,6 +2053,8 @@ func apply_net_state(p: PackedFloat32Array) -> void:
 	var bi := int(p[20]) if p.size() >= 21 else 0
 	var bk: Array = Data.BOATS.keys()
 	net_boat_id = str(bk[bi]) if bi >= 0 and bi < bk.size() else "gull"
+	net_pvs_bits = (int(p[14]) >> 2) & 15      # the PvP statuses on him (Net._flags), shown by PvpStatusFx
+	net_pvs_blight = (int(p[14]) >> 6) & 3
 	if was_dead and not dead:
 		rig.rotation.x = 0.0
 		rig.position.y = 0.0
@@ -2059,7 +2079,7 @@ func net_zone_reset() -> void:
 	beasts.clear()
 
 func _puppet_process(delta: float) -> void:
-	visible = net_has
+	visible = net_has and not fog_hidden
 	if not net_has:
 		return
 	var k := clampf(delta * 14.0, 0.0, 1.0)
@@ -2068,6 +2088,8 @@ func _puppet_process(delta: float) -> void:
 	BoatRide.puppet_update(self, delta)      # a partner at sea: his boat, and him at its tiller
 	aura.emitting = net_buff and not net_invis
 	_show_invis(net_invis, false)
+	if net_pvs_bits != 0 or net_pvs_blight != 0 or pvs_shown > 0:
+		PvpStatusFx.sync(self, 0 if dead else net_pvs_bits, 0 if dead else net_pvs_blight)    # PvP statuses on him
 	if dead:
 		var f := clampf(dead_t / 0.7, 0.0, 1.0)
 		var fall := clampf((dead_t - 0.35) / 0.6, 0.0, 1.0)
@@ -2098,10 +2120,11 @@ func _puppet_process(delta: float) -> void:
 	Archer.update(self, delta)
 	SkillFx.update(self, delta)
 	_apply_shield_pose()
-	# a partner's swing in his class's colour (white before), and none on Doug's throws and tricks
+	# a partner's swing in his class's colour (white before), and none on Doug's throws and tricks nor while the
+	# Plague Doctor's hands are on a skill
 	if trail_pts.is_empty():
 		trail_col = ClassSkills.trail_color(cls, "")
-	_update_trail(atk_t >= 0.0 and not has_bow() and not is_dragon() and not (is_doug() and str(st.get("style", "")) in Doug.SKILL_STYLES))
+	_update_trail(atk_t >= 0.0 and not has_bow() and not is_dragon() and not (is_doug() and str(st.get("style", "")) in Doug.SKILL_STYLES) and not (pd != null and pd.hands_busy))
 
 func _apply_shield_pose() -> void:
 	if shield_node == null or not is_instance_valid(shield_node):
@@ -2507,6 +2530,7 @@ func from_save(d: Dictionary) -> void:
 	binds = (d.get("binds", {}) as Dictionary).duplicate() if d.get("binds") is Dictionary else {}
 	WraithSkills.migrate_binds(binds)
 	DemonSkills.migrate_binds(binds)
+	PlagueSkills.migrate_binds(binds)
 	# saves from before the Path of Exile controls had Block on right mouse by default: it becomes the first skill
 	if int(d.get("binds_v", 1)) < 2 and str(binds.get("rmb", "")) == "block":
 		binds.erase("rmb")

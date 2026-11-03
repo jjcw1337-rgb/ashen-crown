@@ -418,6 +418,7 @@ func new_round() -> void:
 	died_items.clear()
 	dead_wait.clear()
 	last_hit.clear()
+	pvp_obj_last.clear()
 	pvp_effect_t.clear()
 	await game.load_zone(0, ZONE, "start")
 	for e in game.world.enemies_root.get_children():
@@ -628,6 +629,24 @@ func pvp_hit(attacker: int, target: int, amount: float, from: Vector3) -> void:
 	last_hit[target] = [attacker, raid_t]
 	game.net.hit_player(target, clampf(amount, 0.0, 5000.0) * PVP_MULT * Data.pvp_scale(a.cls, t.cls, a.level, t.level), from, "pvp", "phys")
 
+## A player struck something another player made (PvpObjects: a Corpse Bloom, a vat, a creature): checked like a hit
+## (both in the raid, the attacker alive and within reach of it where the server's own ghost of the owner has it), then
+## counted by the owner's game.
+var pvp_obj_last := {}           # server: "attacker:owner:id" -> when his last blow on it counted (PvpObjects.allow)
+func pvp_obj_hit(attacker: int, owner_pid: int, oid: int, _from: Vector3) -> void:
+	if state != "raid" or attacker == owner_pid or not game.net.players.has(attacker) or not game.net.players.has(owner_pid):
+		return
+	var a = game.net.players[attacker]["hero"]
+	var o = game.net.players[owner_pid]["hero"]
+	if not is_instance_valid(a) or not is_instance_valid(o) or a.dead:
+		return
+	var at = PvpObjects.where(o, oid)
+	if not (at is Vector3) or a.global_position.distance_to(at) > PvpObjects.REACH:
+		return
+	if not PvpObjects.allow(pvp_obj_last, attacker, owner_pid, oid, Time.get_ticks_msec() / 1000.0):
+		return
+	game.net.obj_hit_player(owner_pid, oid, attacker)
+
 ## Crowd control on another player (Net.PVP_EFFECTS): the same kind from one player on one other at most every
 ## PVP_EFFECT_GAP seconds, so a client sending them in a stream can't keep someone stunned.
 func pvp_effect(attacker: int, target: int, kind: String, from: Vector3) -> void:
@@ -657,6 +676,7 @@ func pvp_status(attacker: int, target: int, kind: String, secs: float, data: Dic
 	var pr := pvp_pair(attacker, target)
 	if pr.is_empty():
 		return
+	secs = PvpStatus.clamp_status(kind, secs, data)    # (the Plague Doctor's kinds: their ceilings)
 	var a: Hero = pr[0]
 	var t: Hero = pr[1]
 	if kind == "pull":
@@ -755,6 +775,7 @@ static func sync_proxies(g: Node) -> void:
 		var h = g.net.players[pid]["hero"]
 		if is_instance_valid(h) and h.net_has and not h.dead:
 			want[pid] = h
+	PvpObjects.prune(g, want)
 	for e in g.world.enemies_root.get_children():
 		if e is Enemy and e.pvp_pid > 0:
 			if not want.has(e.pvp_pid):
@@ -762,6 +783,7 @@ static func sync_proxies(g: Node) -> void:
 			else:
 				var h = want[e.pvp_pid]
 				e.global_position = h.global_position
+				e.pvp_hidden = bool(h.fog_hidden)
 				want.erase(e.pvp_pid)
 	for pid in want:
 		var e := Enemy.new()

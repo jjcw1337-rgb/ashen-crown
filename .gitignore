@@ -30,3 +30,6 @@ assets/models/monsters/feral*_*.jpg
 *.pem
 admin.key
 waveletNoiseTile.bin
+assets/models/**/*_Material_*_baseColor.jpg
+assets/models/**/*_Material_*_metallic-*.jpg
+assets/models/**/*_Material_*_normal.jpg

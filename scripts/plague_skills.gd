@@ -1,12 +1,12 @@
 class_name PlagueSkills
 extends RefCounted
 ## The Plague Doctor's side of ClassSkills (see class_skills.gd). His skills live in plague.gd: the casts and
-## releases are Plague.cast / Plague.impact, and everything that lingers (flasks in the air, clouds, fuses, traps,
-## poison, infection, the dome) belongs to the hero's own Plague object, Hero.pd (made with his body in
+## releases are Plague.cast / Plague.impact, and everything that lingers (vials in the air, pools, the swarm, blooms,
+## fog, the apparatus, the experiment, poison and Blight) belongs to the hero's own Plague object, Hero.pd (made with his body in
 ## Hero._build_rig; a partner's puppet has a "ghost" one that only shows them).
 
-static func can_cast(_h: Hero, _id: String, _aim: Vector3) -> bool:
-	return true
+static func can_cast(h: Hero, id: String, aim: Vector3) -> bool:
+	return Plague.can_cast(h, id, aim)
 
 static func cast(h: Hero, id: String, aim: Vector3) -> void:
 	Plague.cast(h, id, aim)
@@ -34,10 +34,18 @@ static func died(_h: Hero) -> void:
 static func sound(_h: Hero, skill: String, at: float) -> bool:
 	match skill:
 		"toxic": Sfx.play_synced("swing_light", at - 0.05, -4.0, 0.85)
-		"volatile":
-			Sfx.play_synced("fuse", at * 0.5, -6.0, 1.2)
-			Sfx.play_synced("swing", at - 0.05, -3.0, 0.8)
-		"trap": Sfx.play_synced("equip", at, -4.0, 0.8)
-		"epidemic": Sfx.play_synced("swing_heavy", at - 0.08, -3.0, 0.75)
+		"swarm": Sfx.play_synced("swing_light", at - 0.05, -6.0, 0.6)
+		"bloom": Sfx.play_synced("equip", at, -4.0, 0.7)
+		"fog": Sfx.play_synced("swing", at - 0.05, -4.0, 0.9)
+		"transfusion": Sfx.play_synced("equip", at, -6.0, 1.3)
+		"experiment": Sfx.play_synced("swing_heavy", at - 0.08, -3.0, 0.7)
 		_: return false
 	return true
+
+## Old saves' bindings of Volatile Mixture, Pestilent Trap and The Last Epidemic become Swarmcraft, Corpse Bloom and
+## The Last Experiment (Plague.OLD_IDS; Hero.from_save).
+static func migrate_binds(binds: Dictionary) -> void:
+	for k in binds.keys():
+		var id := str(binds[k])
+		if Plague.OLD_IDS.has(id):
+			binds[k] = Plague.OLD_IDS[id]

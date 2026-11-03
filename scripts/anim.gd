@@ -39,6 +39,11 @@ static func impact_at(style: String) -> float:
 		"pd_slam": return 0.6
 		"pd_dome": return 0.7
 		"pd_inspect": return 0.5
+		"pd_swarm": return 0.5
+		"pd_bloom": return 0.55
+		"pd_fog": return 0.45
+		"pd_transfuse": return 0.45
+		"pd_crank": return 0.97
 		"cast": return 0.55
 		"claw": return 0.45
 		"slam": return 0.58

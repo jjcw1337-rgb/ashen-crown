@@ -11,6 +11,7 @@ const STYLES := ["over", "back", "side", "thrust", "bow", "cast", "claw", "slam"
 	"rend", "siphon", "wstep", "grasp", "phantom", "night_rise", "night_scream", "night_hold", "night_fall",
 	"pd_flask", "pd_volatile", "pd_trap", "pd_slam", "pd_dome", "pd_inspect",
 	"fists", "icharge", "cslam", "hurl", "grip", "wrath_roar", "wrath_stomp", "chop",
+	"pd_swarm", "pd_bloom", "pd_fog", "pd_transfuse", "pd_crank",
 	"pie", "peels", "slide", "doppel", "juggle", "bounce", "car",
 	"icharge_wind", "icharge_skid", "hurl2", "grip_throw", "grip_haul", "crucible"]
 const SEND_RATE := 0.05
@@ -300,7 +301,13 @@ func _hero_packet(h: Hero) -> PackedFloat32Array:
 	return PackedFloat32Array([h.global_position.x, h.global_position.y, h.global_position.z, h.rig.rotation.y,
 		h.phase, st.get("move", 0.0), st.get("atk", -1.0), float(maxi(0, STYLES.find(st.get("style", "over")))),
 		st.get("block", 0.0), st.get("hit", 0.0), 1.0 if h.dead else 0.0, h.dead_t, h.life, h.max_life,
-		(1.0 if h.buff_t > 0.0 else 0.0) + (2.0 if h.invis_t > 0.0 else 0.0)]) + _boat_packet(h)     # (bit 1: unseen)
+		_flags(h)]) + _boat_packet(h)
+
+## p[14] of the state: bit 1 his battle buff, 2 unseen (Hero.invis_t), then the PvP statuses on him (PvpStatusFx bits
+## << 2: rooted, harried, slowed, revealed) and his Blight stacks (<< 6), so his puppet shows them on every screen
+## (Hero.apply_net_state). A float holds these small integers exactly.
+func _flags(h: Hero) -> float:
+	return float((1 if h.buff_t > 0.0 else 0) | (2 if h.invis_t > 0.0 else 0) | (PvpStatusFx.bits_of(h) << 2) | (PvpStatusFx.blight_of(h) << 6))
 
 ## A sailing player's boat rides along at the end of his state (aboard, x, z, yaw, speed); partners draw it
 ## under his puppet (BoatRide.puppet_update). Older builds read only the first 15 numbers.
@@ -930,6 +937,25 @@ func send_pvp_hit(target_pid: int, amount: float, from: Vector3) -> void:
 func sv_pvp_hit(target_pid: int, amount: float, from: Vector3) -> void:
 	if server and game.bg != null:
 		game.bg.pvp_hit(multiplayer.get_remote_sender_id(), target_pid, amount, from)
+
+## PvP: the local hero struck another player's thing (PvpObjects: a stand-in with `pvp_obj`); the server checks it
+## and its owner's game counts the blow.
+func send_pvp_obj_hit(owner_pid: int, oid: int, from: Vector3) -> void:
+	if active:
+		rpc_id(1, "sv_pvp_obj_hit", owner_pid, oid, from)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_pvp_obj_hit(owner_pid: int, oid: int, from: Vector3) -> void:
+	if server and game.bg != null:
+		game.bg.pvp_obj_hit(multiplayer.get_remote_sender_id(), owner_pid, oid, from)
+
+func obj_hit_player(owner_pid: int, oid: int, attacker: int) -> void:
+	rpc_id(owner_pid, "cl_pvp_obj_hit", oid, attacker)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_pvp_obj_hit(oid: int, attacker: int) -> void:
+	if not loading and game.hero != null and game.hero.pd != null:
+		game.hero.pd.obj_hit(oid, attacker)
 
 ## PvP crowd control (PvpStatus): the local hero's skill did more than hurt another player's stand-in.
 func send_pvp_status(target_pid: int, kind: String, secs: float, data: Dictionary) -> void:

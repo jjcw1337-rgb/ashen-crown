@@ -3116,7 +3116,7 @@ func pick_enemy(o: Vector3, d: Vector3) -> Enemy:
 	var best: Enemy = null
 	var best_d := 1e9
 	for e in world.enemies_root.get_children():
-		if not (e is Enemy) or e.dead or e.is_queued_for_deletion():
+		if not (e is Enemy) or e.dead or e.is_queued_for_deletion() or e.pvp_hidden:
 			continue
 		var a: Vector3 = e.global_position + Vector3(0, 0.2, 0)
 		var b: Vector3 = e.global_position + Vector3(0, maxf(e.top() - 0.2, 0.5), 0)
