@@ -17,6 +17,9 @@ extends RefCounted
 ##   "dot":    {"kind": "burn", "pct": % of the hit dealt over "secs"} | {"kind": "chill" | "slow", "k": 0..1, "secs"};
 ##             one per source on a foe, refreshed, never stacked
 ##   "tags":   ["attack", "spell", "melee", "slam", "heavy", "fire", ...], for talents and supports to pick skills by
+##   "pvp":    numbers for its blows on players in the Battlegrounds, read by the class's script ("dmg": the share of
+##             what it deals monsters; a status's seconds; the Demon's are listed in DemonSkills)
+##   "role":   its one job in the class's kit, in a few words ("Burst finisher", "Pick / pull"; for design and tooltips)
 ## A class's impact code calls `targets` and `strike` (DemonSkills' Molten Fists is the example).
 
 const TINTS := {"fire": Color(1.0, 0.55, 0.15), "cold": Color(0.55, 0.8, 1.0), "lightning": Color(0.85, 0.75, 1.0),
@@ -109,15 +112,17 @@ static func expected(h: Hero, id: String, extra := 0.0) -> float:
 	return (weapon + extra + (float(b[0]) + float(b[1])) * 0.5 + float(d.get("per_lvl", 0.0)) * h.level) * h.dmg_mult(id)
 
 ## One foe struck: its damage (the weapon's % and/or the spell's own, plus `extra`, a class's own part such as the
-## Demon's magma), in its type's colour, and its damage over time. opts: "knock", "dot_secs" (a multiplier, talents).
+## Demon's magma), in its type's colour, and its damage over time. opts: "knock", "dot_secs" (a multiplier, talents),
+## "mult" (on everything this blow deals and its burn: a bonus on this one foe, e.g. the Demon's Brand).
 static func strike(h: Hero, id: String, e, extra := 0.0, opts := {}) -> void:
 	if not is_instance_valid(e) or e.dead:
 		return
 	var d := of(id)
+	var k := float(opts.get("mult", 1.0))
 	var tint: Color = TINTS.get(str(d.get("type", "phys")), Color(0, 0, 0, 0))
 	if tint.a > 0.0:
 		e.dmg_tint = tint
-	h._hit_enemy(e, float(d.get("dmg", 0.0)) / 100.0, float(opts.get("knock", d.get("knock", 0.0))), id, extra + spell_damage(h, id))
+	h._hit_enemy(e, float(d.get("dmg", 0.0)) / 100.0 * k, float(opts.get("knock", d.get("knock", 0.0))), id, (extra + spell_damage(h, id)) * k)
 	if is_instance_valid(e):
 		e.dmg_tint = Color(0, 0, 0, 0)
 	var dt: Dictionary = d.get("dot", {})
@@ -127,7 +132,7 @@ static func strike(h: Hero, id: String, e, extra := 0.0, opts := {}) -> void:
 	var last := secs * float(opts.get("dot_secs", 1.0))
 	match str(dt.get("kind", "burn")):
 		"burn":
-			e.ignite(expected(h, id, extra) * float(dt.get("pct", 25.0)) / 100.0 / secs, last)
+			e.ignite(expected(h, id, extra) * k * float(dt.get("pct", 25.0)) / 100.0 / secs, last)
 		"chill":
 			e.chill(float(dt.get("k", 0.3)), last)
 		"slow":

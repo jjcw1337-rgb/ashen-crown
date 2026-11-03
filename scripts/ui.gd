@@ -5393,13 +5393,13 @@ class SkillGlyph extends Control:
 				for k in 3:
 					draw_line(c + Vector2(-6, 2 + k * 4), c + Vector2(-19, 6 + k * 4), dhot, 2.5 - k * 0.5, true)
 			"cslam":
-				# a fist's blow with fissures fanning out from it
-				draw_circle(c + Vector2(0, -6), 7, dcol)
+				# a fault split across the ground, plates heaved up along it, fire between
+				draw_line(c + Vector2(-19, 6), c + Vector2(19, 2), dhot, 3.0, true)
 				for k in 5:
-					var a0 := PI * 0.1 + k * PI * 0.2
-					var e := c + Vector2(0, -2) + Vector2(cos(a0), sin(a0)) * 19
-					draw_polyline(PackedVector2Array([c + Vector2(0, -2), c + Vector2(0, -2) + (e - c - Vector2(0, -2)) * 0.5 + Vector2(k - 2, 0) * 1.5, e]), dhot, 2.0, true)
-					draw_circle(e, 2.0, dhot)
+					var x0 := -16.0 + k * 8.0
+					var tip := c + Vector2(x0 + 2.0, -10.0 - (k % 2) * 6.0)
+					draw_colored_polygon(PackedVector2Array([c + Vector2(x0 - 3.0, 5.0 - k * 0.8), tip, c + Vector2(x0 + 5.0, 4.0 - k * 0.8)]), dcol)
+					draw_line(c + Vector2(x0 - 1.0, 4.0 - k * 0.8), tip, dhot, 1.2, true)
 			"hurl":
 				# a molten boulder in flight with an ember trail
 				draw_circle(c + Vector2(6, -6), 9, dcol)
@@ -5409,14 +5409,15 @@ class SkillGlyph extends Control:
 				for k in 3:
 					draw_circle(c + Vector2(-6 - k * 5, 2 + k * 5), 3.0 - k * 0.7, Color(dhot.r, dhot.g, dhot.b, 0.8 - k * 0.2))
 			"grip":
-				# a clawed hand closed round a small figure, smashing down
-				draw_circle(c + Vector2(0, -4), 8, dcol)
-				for k in 4:
-					var a0 := PI * 0.75 + k * PI * 0.17
-					draw_line(c + Vector2(0, -4), c + Vector2(0, -4) + Vector2(cos(a0), sin(a0)) * 15, dcol, 3.0, true)
-				draw_circle(c + Vector2(0, -2), 2.8, dhot)
-				draw_line(c + Vector2(0, 1), c + Vector2(0, 8), dhot, 2.5, true)
-				draw_arc(c + Vector2(0, 14), 12, PI * 1.1, PI * 1.9, 10, dhot, 2.0, true)
+				# a chain thrown out, a hooked claw at its head
+				for k in 6:
+					var pk := c + Vector2(-16 + k * 5.0, 10 - k * 3.6)
+					draw_arc(pk, 2.6, 0, TAU, 10, dhot if k < 2 else dcol.lightened(0.35), 1.6, true)
+				var hc := c + Vector2(13, -12)
+				draw_circle(hc, 4.0, dcol)
+				for k in 3:
+					var a0 := -PI * 0.6 + k * 0.6
+					draw_polyline(PackedVector2Array([hc, hc + Vector2(cos(a0), sin(a0)) * 8.0, hc + Vector2(cos(a0 + 1.2), sin(a0 + 1.2)) * 9.0]), dhot, 2.0, true)
 			"wrath":
 				# a horned head roaring under a rain of meteors
 				var pit := Color(1.0, 0.92, 0.6) if not dim else Color(0.45, 0.42, 0.35)

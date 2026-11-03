@@ -260,6 +260,32 @@ func _wings(a: float, style: String, hit: float, die: bool, g: float, t: float, 
 			"roar", "scream":
 				want_fold = 1.0
 				want_lift = 0.4
+			"wrath_roar":
+				# the Crucible bursts open: flung wide and high, then held spread over the roar
+				want_fold = 1.0
+				want_lift = 0.55 if a < 0.6 else 0.35
+				want_sweep = -0.15
+				stiff = 30.0
+			"crucible":
+				# folded forward round him like a cocoon, hunched in, trembling with the heat
+				want_fold = 0.55
+				want_sweep = -1.05
+				want_lift = 0.32 + sin(t * 23.0) * 0.012
+				stiff = 18.0
+			"icharge_wind":
+				# drawn back and up, ready to drive
+				want_fold = 0.8
+				want_sweep = 0.25
+				want_lift = 0.3
+			"icharge_skid":
+				# thrown forward to brake against the air
+				want_fold = 1.0
+				want_sweep = -0.45
+				want_lift = 0.35
+			"grip_haul":
+				want_fold = 0.9
+				want_sweep = 0.2
+				want_lift = 0.2
 			_:
 				want_fold = 1.0 if big else 0.75
 				# wings go up with the wind-up and beat down through the blow
@@ -290,7 +316,7 @@ func _wings(a: float, style: String, hit: float, die: bool, g: float, t: float, 
 			sp["lift"][1] += beat * 3.0
 		var fold := _spring(sp["fold"], want_fold, stiff * 0.7, 4.2, dt, 1.2)
 		var lift := _spring(sp["lift"], want_lift, stiff * 1.4, 4.0, dt, 1.0)
-		var sweep := _spring(sp["sweep"], want_sweep - turn * sx, 10.0, 3.5, dt, 0.6)
+		var sweep := _spring(sp["sweep"], want_sweep - turn * sx, 10.0, 3.5, dt, 1.2)
 		var closed := 1.0 - clampf(fold, 0.0, 1.0)
 		var ids: Array = wing_bones[side]
 		# the root: folded, the wing sweeps round behind him and droops; lifted, the whole wing rises
@@ -431,6 +457,8 @@ func _cloth(g: float, t: float, dt: float, die: bool, fwd_speed: float, side_spe
 ## Dead: once he has fallen the lava cools to cinders and embers rise off him; alive again, it all comes back.
 func _cooling(_dt: float) -> void:
 	var cool := smoothstep(1.3, 3.4, dead_t) if dead_t >= 0.0 else 0.0
+	if has_meta("crust"):
+		cool = maxf(cool, float(get_meta("crust")))     # Wrath of the Pit's Crucible: an obsidian crust
 	if has_meta("demon_mats"):
 		for m in get_meta("demon_mats"):
 			(m as ShaderMaterial).set_shader_parameter("cool", cool)
