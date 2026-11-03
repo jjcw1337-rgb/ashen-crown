@@ -158,3 +158,12 @@ The kings' numbers to tune from your feedback are at the top of `scripts/gauntle
 - Meshy: **0 credits** (no new models: every king and prop is reused).
 - ElevenLabs: **120 credits** (three 4 s takes of `gauntlet_gong`, 40 each; the top two by `score.py` are in the game).
 - (The nightly script adds the Claude cost.)
+
+### Build cost (filled in by the nightly script)
+
+| Tool | Cost |
+|---|---|
+| Claude (this mode, 1 turns, 0.0 min) | $10.27 |
+| Meshy | 0 credits |
+| ElevenLabs | 120 credits |
+| Staging server (share of the night) | $0.27 |
