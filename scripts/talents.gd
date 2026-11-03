@@ -92,13 +92,13 @@ const TREES := {
 			{"id": "d_cinder", "name": "Cinder Heart", "row": 2, "max": 2, "icon": "t_skull", "fx": {"crit_dmg": 20}, "text": "Critical hits deal {crit_dmg}% more damage."},
 			{"id": "d_inferno", "name": "Inferno", "row": 3, "max": 1, "icon": "fists", "fx": {"fists_wide": 1}, "text": "Molten Fists crack the ground a metre further and wider, and what they light burns twice as long."},
 		]},
-		{"name": "Cataclysm", "desc": "The ground torn open: Infernal Charge, Cataclysm Slam and Brimstone Hurl.", "talents": [
+		{"name": "Cataclysm", "desc": "The ground torn open: Infernal Charge, Fault of the Pit and Brimstone Hurl.", "talents": [
 			{"id": "d_bargain", "name": "Cheap Fury", "row": 0, "max": 3, "icon": "icharge", "fx": {"cost:icharge": 15, "cost:hurl": 10}, "text": "Infernal Charge costs {cost:icharge}% and Brimstone Hurl {cost:hurl}% less mana."},
-			{"id": "d_ferocity", "name": "Ferocity", "row": 0, "max": 3, "icon": "cslam", "fx": {"dmg:cslam": 12, "dmg:hurl": 12}, "text": "Cataclysm Slam and Brimstone Hurl deal {dmg:cslam}% more damage."},
+			{"id": "d_ferocity", "name": "Ferocity", "row": 0, "max": 3, "icon": "cslam", "fx": {"dmg:cslam": 12, "dmg:hurl": 12}, "text": "Fault of the Pit and Brimstone Hurl deal {dmg:cslam}% more damage."},
 			{"id": "d_hellsworn", "name": "Hellsworn", "row": 1, "max": 3, "icon": "t_heart", "fx": {"life_pct": 4}, "text": "+{life_pct}% maximum life."},
-			{"id": "d_pack", "name": "Slow Cooling", "row": 1, "max": 3, "icon": "hurl", "fx": {"trail_dur": 1}, "text": "The charge's lava trail and the boulder's pool burn {trail_dur} seconds longer."},
+			{"id": "d_pack", "name": "Slow Cooling", "row": 1, "max": 3, "icon": "cslam", "fx": {"trail_dur": 1}, "text": "Fault of the Pit stays molten {trail_dur} seconds longer."},
 			{"id": "d_tithe", "name": "Stampede", "row": 2, "max": 2, "icon": "icharge", "fx": {"cd:icharge": 15, "dmg:icharge": 10}, "text": "Infernal Charge recharges {cd:icharge}% faster and hits {dmg:icharge}% harder."},
-			{"id": "d_oath", "name": "Pit Lord", "row": 2, "max": 3, "icon": "wrath", "fx": {"buff_pow": 10}, "text": "Wrath of the Pit's damage bonus is {buff_pow}% higher."},
+			{"id": "d_oath", "name": "Pit Lord", "row": 2, "max": 3, "icon": "wrath", "fx": {"buff_pow": 10}, "text": "Pit-born's damage bonus (after Wrath of the Pit) is {buff_pow}% higher."},
 			{"id": "d_legion", "name": "Twin Boulders", "row": 3, "max": 1, "icon": "hurl", "fx": {"hurl_twin": 1}, "text": "Brimstone Hurl throws a second boulder beside the first."},
 		]},
 		{"name": "The Pit", "desc": "What the pit gives: Hellgrip, Wrath of the Pit and charcoal hide.", "talents": [
@@ -106,7 +106,7 @@ const TREES := {
 			{"id": "d_hide", "name": "Demon Hide", "row": 0, "max": 3, "icon": "t_heart", "fx": {"life_pct": 4}, "text": "+{life_pct}% maximum life."},
 			{"id": "d_rift", "name": "Crushing Grip", "row": 1, "max": 3, "icon": "grip", "fx": {"dmg:grip": 12}, "text": "Hellgrip smashes {dmg:grip}% harder."},
 			{"id": "d_abyss", "name": "Abyssal Ward", "row": 1, "max": 3, "icon": "t_ward", "fx": {"res": 5}, "text": "+{res}% to all resistances."},
-			{"id": "d_erupt", "name": "Long Wrath", "row": 2, "max": 2, "icon": "wrath", "fx": {"wrath_dur": 1, "cd:wrath": 8}, "text": "Wrath of the Pit rains {wrath_dur} seconds longer and recharges {cd:wrath}% faster."},
+			{"id": "d_erupt", "name": "Long Wrath", "row": 2, "max": 2, "icon": "wrath", "fx": {"wrath_dur": 1, "cd:wrath": 8}, "text": "Wrath of the Pit's meteors rain {wrath_dur} seconds longer and it recharges {cd:wrath}% faster."},
 			{"id": "d_hunger", "name": "Hungering Fire", "row": 2, "max": 3, "icon": "t_fang", "fx": {"ls": 1}, "text": "+{ls}% of the damage you deal comes back as life."},
 			{"id": "d_furnace", "name": "Meteor Storm", "row": 3, "max": 1, "icon": "wrath", "fx": {"wrath_double": 1}, "text": "Wrath of the Pit calls two meteors at a time."},
 		]},

@@ -77,6 +77,7 @@ var carried := {}               # server: peer id -> Array of items picked up th
 var died_items := {}            # server: peer id -> true once their death drop was handled
 var dead_wait := {}             # server: peer id -> seconds since they fell, waiting for their death drop
 var last_hit := {}              # server: peer id -> [attacker peer id, raid_t]
+var cc_dr := {}                 # server: peer id -> PvpStatus.diminish's window (crowd control's diminishing returns)
 var uids := {}                  # server: peer id -> who they are (Nakama user, or the per-PC id)
 var nk: NakamaClient            # server: Nakama, to confirm join tickets (staging, production)
 var nk_key := ""
@@ -409,6 +410,7 @@ func new_round() -> void:
 				state = "raid"         # (a server restarted mid-round: the crypt is already open)
 	open = []
 	carried.clear()
+	cc_dr.clear()
 	died_items.clear()
 	dead_wait.clear()
 	last_hit.clear()
@@ -610,6 +612,32 @@ func pvp_hit(attacker: int, target: int, amount: float, from: Vector3) -> void:
 		return
 	last_hit[target] = [attacker, raid_t]
 	game.net.hit_player(target, clampf(amount, 0.0, 5000.0) * PVP_MULT * Data.pvp_scale(a.cls, t.cls, a.level, t.level), from, "pvp", "phys")
+
+## Server: a player's skill put a status on another (PvpStatus): the same checks as damage, then the diminishing
+## returns on hard crowd control, then to the victim alone.
+func pvp_status(attacker: int, target: int, kind: String, secs: float, data: Dictionary) -> void:
+	if state != "raid" or attacker == target or not game.net.players.has(attacker) or not game.net.players.has(target):
+		return
+	var a = game.net.players[attacker]["hero"]
+	var t = game.net.players[target]["hero"]
+	if not is_instance_valid(a) or not is_instance_valid(t) or a.dead or t.dead:
+		return
+	if a.global_position.distance_to(t.global_position) > 30.0:
+		return
+	if kind == "pull":
+		# dragged no further than to the attacker's reach
+		var to: Vector3 = (t.global_position - a.global_position) * Vector3(1, 0, 1)
+		data = {"p": a.global_position + (to.normalized() if to.length() > 0.1 else Vector3.FORWARD) * 1.5,
+			"m": clampf(float(data.get("m", secs)), 0.1, secs)}
+	elif kind == "fear":
+		data = {"p": a.global_position}
+	elif kind == "burn":
+		# (scaled like a hit: PVP_MULT and the class against class balance, Data.pvp_scale)
+		data = {"dps": clampf(float(data.get("dps", 0.0)), 0.0, 400.0) * PVP_MULT * Data.pvp_scale(a.cls, t.cls, a.level, t.level)}
+	var s := PvpStatus.diminish(cc_dr, target, kind, secs, raid_t)
+	if s <= 0.0:
+		return
+	game.net.rpc_id(target, "cl_pvp_status", kind, s, data)
 
 ## A player fell: everything they had lies where they fell.
 func died(pid: int, items: Array, at: Vector3) -> void:

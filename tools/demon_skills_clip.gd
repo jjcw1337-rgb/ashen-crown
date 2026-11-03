@@ -2,11 +2,13 @@ extends SceneTree
 ## Frames of each Demon skill cast into a pack on the moor, for the preview video and contact sheet. Needs a
 ## display (xvfb) and --fixed-fps 30 so the frames are 1/30 s apart whatever the render takes:
 ##   xvfb-run -a godot --rendering-driver opengl3 --path . --resolution 1280x720 --fixed-fps 30 \
-##     -s tools/demon_skills_clip.gd -- <outdir> [fists|icharge|cslam|hurl|grip|wrath|all] [close|game]
+##     -s tools/demon_skills_clip.gd -- <outdir> [fists|icharge|cslam|hurl|grip|wrath|all, or a list: hurl,wrath] [close|game]
+##     [quality: 0 Low (default: software GL is slow) .. 3; 2+ turns the sun's shadows back on]
+## (In a container where tool scripts hit "Identifier not found: Sfx", go through tools/_late.gd.)
 ## Writes <outdir>/<skill>_<view>_NNN.png.
 var g
 const SKILLS := ["fists", "icharge", "cslam", "hurl", "grip", "wrath"]
-const SECS := {"fists": 2.2, "icharge": 3.4, "cslam": 4.0, "hurl": 3.4, "grip": 3.4, "wrath": 10.5}
+const SECS := {"fists": 2.2, "icharge": 3.0, "cslam": 5.6, "hurl": 3.2, "grip": 4.0, "wrath": 6.5}
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
@@ -14,10 +16,11 @@ func _initialize():
 func wait(s: float) -> void:
 	await create_timer(s).timeout
 func _run() -> void:
-	var args := OS.get_cmdline_user_args()
+	var args: Array = Array(OS.get_cmdline_user_args()).filter(func(x): return not str(x).begins_with("res://"))
 	var out: String = args[0]
 	var which: String = args[1] if args.size() > 1 else "all"
 	var view: String = args[2] if args.size() > 2 else "close"
+	var quality: int = int(args[3]) if args.size() > 3 else 0     # (a GPU or Forward+ through lavapipe: 2 = High)
 	while g.world == null or g._busy or g._intro_playing:
 		g._intro_skip = true
 		await process_frame
@@ -31,17 +34,17 @@ func _run() -> void:
 	h.recalc()
 	h.mana = h.max_mana
 	g.test_immortal = true
-	g.zoom = 0.62
+	g.zoom = 0.62 if view == "close" else 0.9     # (the game view as a player sees it, the pack in the frame)
 	g.ui.visible = false     # just the scene
 	(g.vignette.material as ShaderMaterial).set_shader_parameter("strength", 0.0)
 	# software GL under xvfb: the Low preset, no shadows and no multisampling make the frames bearable
-	g.apply_quality(0)
-	g.sun.shadow_enabled = false
+	g.apply_quality(quality)
+	g.sun.shadow_enabled = quality >= 2
 	get_root().msaa_3d = Viewport.MSAA_DISABLED
 	var close := Camera3D.new()
 	close.fov = 38
 	get_root().add_child(close)
-	var skills: Array = SKILLS if which == "all" else [which]
+	var skills: Array = SKILLS if which == "all" else Array(which.split(","))
 	for sk in skills:
 		# a pack standing ahead of him (-z), not yet roused
 		for e in g.enemies_near(h.global_position, 60.0):
@@ -50,7 +53,9 @@ func _run() -> void:
 		var home: Vector3 = h.global_position
 		var foes := []
 		var n := 3 if sk != "wrath" else 5
-		var dist: float = {"fists": 2.6, "icharge": 6.0, "cslam": 4.5, "hurl": 7.5, "grip": 2.6, "wrath": 5.0}[sk]
+		if sk == "grip":
+			n = 1
+		var dist: float = {"fists": 2.6, "icharge": 6.0, "cslam": 3.0, "hurl": 7.5, "grip": 5.5, "wrath": 5.0}[sk]
 		for i in n:
 			var p := home + Vector3(-1.1 * (n - 1) * 0.5 + i * 1.1, 0, -dist - absf(i - (n - 1) * 0.5) * 0.6)
 			if sk == "wrath":
@@ -85,9 +90,10 @@ func _run() -> void:
 					off = Vector3(9.0, 5.5, 1.0)
 					look = c + Vector3(0, 1.4, -3.0)
 				elif sk == "grip":
-					# further back and higher: the foe is hoisted two metres up
-					off = Vector3(5.4, 3.3, -0.6)
-					look = c + Vector3(0, 2.1, -2.0)
+					# from the side, back far enough for the chain's whole reach and the hoist
+					c = home
+					off = Vector3(6.8, 3.6, -2.4)
+					look = c + Vector3(0, 1.5, -2.9)
 				elif sk in ["icharge", "cslam", "hurl"]:
 					off = Vector3(5.2, 3.4, 1.2)
 					look = c + Vector3(-0.3, 0.8, -2.6)
@@ -98,7 +104,7 @@ func _run() -> void:
 			await RenderingServer.frame_post_draw
 			get_root().get_texture().get_image().save_png("%s/%s_%s_%03d.png" % [out, sk, view, f])
 		# back home, whole again
-		DemonSkills.clear(h)
+		load("res://scripts/demon_skills.gd").clear(h)
 		h.global_position = home
 		h.life = h.max_life
 		await wait(0.8)

@@ -12,7 +12,7 @@ var events: Array = []
 var puppet: Hero
 const OFF := Vector3(3.0, 0, 0)
 ## what a partner's copy of each skill must leave in Hero.fxs (the effects that run on)
-const LINGER := {"siphon": "tether", "drain": "drain", "night": "night", "phantom": "phantoms", "hurl": "boulders", "grip": "grip", "wrath": "wrath"}
+const LINGER := {"siphon": "tether", "drain": "drain", "night": "night", "phantom": "phantoms", "hurl": "shatter", "grip": "grip", "icharge": "hellrunner", "cslam": "fault", "wrath": "wrath"}
 
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
@@ -110,7 +110,7 @@ func _run() -> void:
 			var ok: bool = h.use_skill(id, h.skill_aim(id, en[1].global_position))
 			var peak := 0
 			var fxs_seen := {}
-			for i in (60 if LINGER.has(id) and id != "wrath" else (190 if id == "wrath" else 36)):
+			for i in (130 if id == "cslam" else (60 if LINGER.has(id) and id != "wrath" else (190 if id == "wrath" else 36))):     # (the fault stays molten 4 s)
 				await wait(0.05)
 				peak = maxi(peak, root.get_child_count() + g.get_child_count())
 				for k in puppet.fxs.keys():
