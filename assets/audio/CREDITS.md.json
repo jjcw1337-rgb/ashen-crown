@@ -158,6 +158,20 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "chest_raid_loop": [
+  {
+   "detail": "a steady low fire burning inside an open chest in a cold misty crypt, soft roaring flames and crackling embers over a low eerie wind and mist hiss, constant, seamless loop, no music, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "chest_raid_open": [
+  {
+   "detail": "",
+   "license": "?",
+   "source": "?"
+  }
+ ],
  "cleave_swing": [
   {
    "detail": "a huge greatsword cleave in a wide arc, powerful whoosh with a faint steel ring, close mic, dry, isolated sound effect, no music",

@@ -22,6 +22,8 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | cackle | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a huge, fat goblin king's deep, guttural, menacing laugh, a slow low chuckle rumbling up from his belly, gravelly and cruel, not high-pitched, close mic, dry, isolated sound effect, no music |
 | charge_dash | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a heavily armored knight sprinting a few fast steps, steel plate armor clanking and boots pounding the dirt, close mic, dry, isolated sound effect, no music |
 | charge_impact | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | an armored knight slamming shield-first into an enemy, heavy crashing body impact, close mic, dry, isolated sound effect, no music |
+| chest_raid_loop | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a steady low fire burning inside an open chest in a cold misty crypt, soft roaring flames and crackling embers over a low eerie wind and mist hiss, constant, seamless loop, no music, close mic, dry, isolated sound effect, no music |
+| chest_raid_open | 1 | ? | ? |  |
 | cleave_swing | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a huge greatsword cleave in a wide arc, powerful whoosh with a faint steel ring, close mic, dry, isolated sound effect, no music |
 | click | 1 | Kenney ui-audio (kenney.nl) | CC0 1.0 | click5.ogg |
 | coins | 2 | Kenney rpg-audio (kenney.nl) | CC0 1.0 | handleCoins.ogg |

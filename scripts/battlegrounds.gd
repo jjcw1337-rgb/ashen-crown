@@ -49,7 +49,12 @@ const JOIN_CLOSE := 900.0       # nobody new joins in the last 5 minutes
 const RESET_SECS := 20.0        # after the collapse, before the next round
 const LOBBY_MAX := 75.0         # the antechamber: at most this long before the prep countdown starts by itself
 const ADMIN_RESTART := 3.0      # an admin's "restart": seconds until the new round
-const PREP_SECS := 15.0         # the bell has rung: the countdown to the gates opening
+const PREP_SECS := 20.0         # the countdown to the gates opening: the matchup shown, the antechamber's stash open
+const STASH_SLOW := 0.15        # (jj) opening the antechamber's stash: the opener alone is this much slower for the
+                                # whole raid (Hero.stash_slowed, cleared when the raid ends for them)
+const STASH_LOOP_DB := -4.0     # the open raid chest's fire loop at first (it sinks to 20% over 10 s)
+const STASH_CHEST_HALF := Vector2(0.82, 0.64)   # the crypt chest's footprint (half-extents)
+const RAID_MIN := 2             # (jj) this many raiders in the antechamber start the countdown by themselves
 const RAIDS := 3                # raids run side by side, staggered on the clock (phase)
 const RAID_PORTS := [24567, 24571, 24572]
 const LIVE_RAIDS := 1           # deployed so far (staging: one until its servers and firewall ports are up)
@@ -83,6 +88,7 @@ var died_items := {}            # server: peer id -> true once their death drop 
 var dead_wait := {}             # server: peer id -> seconds since they fell, waiting for their death drop
 var last_hit := {}              # server: peer id -> [attacker peer id, raid_t]
 var pvp_effect_t := {}          # server: "attacker:target:kind" -> raid_t of the last control let through
+var stash_user := {}            # server: antechamber stash chest (interactable index) -> the peer id using it
 var cc_dr := {}                 # server: peer id -> PvpStatus.diminish's window (crowd control's diminishing returns)
 var uids := {}                  # server: peer id -> who they are (Nakama user, or the per-PC id)
 var nk: NakamaClient            # server: Nakama, to confirm join tickets (staging, production)
@@ -274,6 +280,7 @@ static func build(w: World) -> void:
 			gates.append(_gate(w, door, half))
 		var c := r.get_center()
 		_bell(w, Vector3(c.x + 2.2, 0, c.y - 2.2))
+		_stash_chest(w, Vector3(c.x - 1.9, 0, c.y - 1.9))
 	w.set_meta("bg_gates", gates)
 	for p in portals:
 		var glow: Node3D = CryptProps.portal_glow() if CryptProps.has("archway") else Fx.portal_model()
@@ -306,6 +313,45 @@ static func _gate(w: World, door: Vector2, half: Vector2) -> Dictionary:
 	w._place(g, Vector3(door.x, 0, door.y))
 	w.add_box(Vector3(door.x, 0, door.y), half, 0.0)
 	return {"node": g, "box": w.obstacles.size() - 1, "at": door, "up": false}
+
+## The antechamber's stash chest (jj): the player's own shared stash (SharedStash, local to their game), open until
+## the gates rise (Game.stash_allowed), to leave behind what they won't risk once they've seen the matchup.
+static func _stash_chest(w: World, p: Vector3) -> void:
+	# every map its own chest (jj): the crypt's (assets/models/crypt/stash_chest.glb), else the camp's
+	var chest: Node3D
+	if CryptProps.has("stash_chest"):
+		chest = Props.footprint(Models.N(null, "stash"), STASH_CHEST_HALF)
+		var crm := CryptProps.model("stash_chest")
+		chest.add_child(crm)
+		crm.rotation.y = deg_to_rad(20.0)
+	elif ForestCamp.has_piece("stash_chest"):
+		chest = Props.footprint(Models.N(null, "stash"), ForestCamp.SET_PIECES["stash_chest"] * 0.9)
+		var cm := ForestCamp.model("stash_chest")
+		chest.add_child(cm)
+		cm.rotation.y = deg_to_rad(20.0)
+	else:
+		chest = Props.stash_chest(null, Vector3.ZERO, 20.0)
+	# (jj: "make the stash a highlight of the area", "the waypoint's parameters") its dais, built like the camp's
+	# grand waypoint (StashDais: Blender-modelled stone tiers and flagstones, ember runes in carved channels, fire
+	# bowls); solid, the chest on its plinth in the middle, opened from the dais's edge
+	var lift := 0.0
+	var reach := 1.6
+	var SD = load("res://scripts/stash_dais.gd")        # (at run time: tool scripts load this file before the autoloads)
+	if SD.has_model():
+		var dais: Node3D = SD.make()
+		dais.position = Vector3(p.x, 0.0, p.z)
+		dais.rotation.y = deg_to_rad(20.0)
+		w.add_child(dais)
+		lift = SD.PLINTH_Y
+		w.add_circle(Vector3(p.x, 0, p.z), SD.SOLID_R)
+		reach = SD.SOLID_R + 0.5
+	var it: Inter = w._inter("stash", "Stash (until the gates rise)", p, reach, chest, {"raid": true})
+	chest.position.y = lift
+	w.solid(chest)
+	it.set_meta("pick_y", 0.6 + lift)
+	it.set_meta("lift", lift)          # (the chest stands this high on its dais: Game.chest_lid, stash_fx follow it)
+	it.set_meta("pick", 1.4)
+
 
 ## The antechamber's bell: ring it to start the raid's countdown (Game._interact "bell").
 static func _bell(w: World, p: Vector3) -> void:
@@ -422,6 +468,7 @@ func new_round() -> void:
 	last_hit.clear()
 	pvp_obj_last.clear()
 	pvp_effect_t.clear()
+	stash_user.clear()
 	await game.load_zone(0, ZONE, "start")
 	for e in game.world.enemies_root.get_children():
 		if e is Enemy:
@@ -490,7 +537,9 @@ func _process(delta: float) -> void:
 	if _sync_t <= 0.0:
 		_sync_t = 10.0 if state == "raid" else 2.0
 		broadcast()
-	if state == "lobby" and raid_t >= lobby_max():
+		if state == "lobby" or state == "prep":
+			send_roster()
+	if state == "lobby" and (raid_t >= lobby_max() or game.net.players.size() >= RAID_MIN):
 		start_prep("")
 	if state == "prep":
 		prep_left -= delta
@@ -583,12 +632,147 @@ func admin_cmd(pid: int, cmd: String) -> void:
 			if state == "raid" and open.is_empty():
 				open_portals()
 
+## The matchup (jj: "you see the classes that you're going against"): every raider's class and level, never a
+## name, to everyone in the antechamber (Net.cl_bg_roster; the client leaves itself out, BgMatchup shows the rest).
+func roster() -> Array:
+	var out := []
+	for pid in game.net.players.keys():
+		var h = game.net.players[pid]["hero"]
+		if is_instance_valid(h) and h.net_has:
+			out.append({"pid": int(pid), "cls": str(h.cls), "lvl": int(h.level)})
+	return out
+
+## Server: a player asks to open an antechamber's stash chest (Net.sv_bg_stash, from Game._interact; the chest's
+## index in the interactables). One player at a time (jj: whoever clicks first; requests arrive here one after
+## another, so the first one in wins): checked (the countdown, alive, standing at it, nobody else at it), then the
+## chest is theirs (stash_user) until they close it, leave or the gates rise, and the price: STASH_SLOW for the
+## rest of the raid on them alone (Net.cl_bg_stash_ok -> Hero.stash_slow) and the chest's fire and smoke for
+## everyone (Net.cl_bg_stash_fx). Anyone else is told it's in use.
+func stash_opened(pid: int, idx: int) -> void:
+	if not (state == "lobby" or state == "prep") or not game.net.players.has(pid):
+		return
+	var h = game.net.players[pid]["hero"]
+	if not is_instance_valid(h) or h.dead or idx < 0 or idx >= game.world.interactables.size():
+		return
+	var t = game.world.interactables[idx]
+	if not is_instance_valid(t) or t.kind != "stash" or h.global_position.distance_to(t.global_position) > t.radius + 2.0:
+		return
+	var who := int(stash_user.get(idx, 0))
+	if who != 0 and who != pid and game.net.players.has(who):
+		game.net.rpc_id(pid, "cl_bg_note", "Someone is already at that stash")
+		return
+	stash_user[idx] = pid
+	game.net.rpc_id(pid, "cl_bg_stash_ok", idx)
+	game.net.rpc("cl_bg_stash_fx", idx)
+
+## Server: they closed it (or left): the chest is free.
+func stash_closed(pid: int) -> void:
+	for idx in stash_user.keys():
+		if int(stash_user[idx]) == pid:
+			stash_user.erase(idx)
+
+## The Sfx autoload, looked up at run time (a static reference would compile this script before the autoload exists
+## in the tool scripts that load it, `-s`).
+static func _sfx() -> Node:
+	return (Engine.get_main_loop() as SceneTree).root.get_node_or_null("Sfx")
+
+## Client: the chest blows out fire and smoke as it opens.
+static func stash_fx(g: Node, idx: int) -> void:
+	if g.world == null or idx < 0 or idx >= g.world.interactables.size():
+		return
+	var t = g.world.interactables[idx]
+	if not is_instance_valid(t):
+		return
+	var lift: float = float(t.get_meta("lift", 0.0))
+	var at: Vector3 = t.global_position + Vector3(0, 0.7 + lift, 0)
+	var root: Node3D = g.world.fx_root
+	if not bool(t.get_meta("lid_open", false)):
+		g.chest_lid(t, true, false)
+	# (jj) once opened it stays open, burning, its fire and mist looping on it until the gates rise (close_stashes)
+	if t.get_node_or_null("stash_loop") == null and _sfx().bank.has("chest_raid_loop") and not _sfx().muted:
+		var lp := AudioStreamPlayer3D.new()
+		lp.name = "stash_loop"
+		lp.bus = "SFX"
+		lp.stream = _sfx()._pick("chest_raid_loop")
+		lp.position = Vector3(0, 0.7 + lift, 0)
+		lp.unit_size = 6.0
+		lp.volume_db = STASH_LOOP_DB + _sfx().volume_db
+		t.add_child(lp)
+		# (jj) it comes in at full volume after the opening's own sound, then sinks to 20% over 10 s and stays there
+		Fx.later(t, 1.6, func():
+			if not is_instance_valid(lp):
+				return
+			lp.play()
+			lp.create_tween().tween_property(lp, "volume_db", STASH_LOOP_DB + _sfx().volume_db + linear_to_db(0.2), 10.0))
+		# the chest burning on: a brazier's fire in it (FireFx, the game's braziers), its light and smoke
+		var fire := Node3D.new()
+		fire.name = "stash_fire"
+		t.add_child(fire)
+		# (its light is the chest's own shadow-casting glow, Game.chest_lid: no second light here)
+		Fx.later(t, 0.8, func():
+			if is_instance_valid(fire):
+				FireFx.make(fire, Vector3(0, 0.62 + lift, 0), "brazier", 0.7, Color(1.0, 0.5, 0.18), false, false, true))
+
+	# (jj: "opening the stash is a huge thing", "make it fire style"), timed to the lid (it lifts 0.26 s in):
+	# the padlock's sparks, then the lid's heave lets the fire out: an orange flash, the spray (a jet of flame
+	# streaks out of the open chest), a fireball, a ring of fire rolling over the floor, burning embers, then a
+	# column of dark smoke. The chest keeps burning (stash_fire) until the gates rise.
+	# The fire is the game's own: the Demon kit's living fire (InfernalFx.fire: simulated flipbook flame tongues)
+	# for the spray, its lit smoke, and the braziers' fire (FireFx) for the chest burning on.
+	Fx.later(t, 0.28, func():
+		Fx.flash(root, at + Vector3(0, 0.4, 0), Color(1.0, 0.42, 0.1), 6.0, 0.7, 7.0)
+		var spray: Node3D = InfernalFx.fire(root, at + Vector3(0, -0.2, 0), 3.2, 260.0, InfernalFx.tier(g))
+		var spray2: Node3D = InfernalFx.fire(root, at + Vector3(0, -0.1, 0), 1.6, 140.0, InfernalFx.tier(g), false, true)
+		# the spray's jet: flame streaks thrown up and out of the open chest
+		Fx.streaks(root, at, [[0.0, Color(1.0, 0.72, 0.3, 1.0)], [0.4, Color(0.95, 0.38, 0.06, 0.9)], [1.0, Color(0.35, 0.06, 0.02, 0.0)]], 60, 6.5, 0.07, 2.6, 0.55, false, -3.0, 24.0)
+		Fx.ring(root, t.global_position + Vector3(0, lift, 0), 1.9, Color(0.7, 0.2, 0.03), 0.5)
+		Fx.burst(root, at + Vector3(0, 0.5, 0), Color(0.9, 0.3, 0.04, 1.0), 26, 2.6, 0.03, 1.6, false, -1.2, 60.0)
+		Fx.later(root, 1.2, func():
+			InfernalFx.fire_on(spray, false)
+			InfernalFx.fire_on(spray2, false))
+		Fx.later(root, 2.6, func():
+			for n in [spray, spray2]:
+				if is_instance_valid(n):
+					n.queue_free()))
+	Fx.later(t, 0.7, func():
+		var sm := InfernalFx.smoke(root, at + Vector3(0, 1.1, 0), 20, Vector3(0.45, 0.2, 0.35), Vector3.UP, 1.4, 3.0, 0.12, 0.75)
+		Fx.later(root, 4.0, func():
+			if is_instance_valid(sm):
+				sm.queue_free()))
+	# the dais: everything flares and a ring of light runs out from the chest (StashDais.burst)
+	for d in g.world.get_children():
+		if d.has_method("burst") and (d as Node3D).global_position.distance_to(t.global_position) < 1.0:
+			d.burst()
+	if g.ui.trade_with == t:
+		g.add_shake(0.45)
+		g.ui.big_message("THE STASH IS OPEN")
+	if not _sfx().bank.has("chest_raid_open"):
+		_sfx().play_at("burn_item", at)        # (chest_lid plays the chest's own sound once it's built)
+
+## Client: the gates rose: every antechamber chest shuts, its fire and its loop stop.
+static func close_stashes(g: Node) -> void:
+	if g.world == null:
+		return
+	for t in g.world.interactables:
+		if is_instance_valid(t) and t.kind == "stash" and t.data.get("raid", false):
+			for nm in ["stash_loop", "stash_fire"]:
+				var n: Node = t.get_node_or_null(nm)
+				if n != null:
+					n.queue_free()
+			if bool(t.get_meta("lid_open", false)):
+				g.chest_lid(t, false)
+
+func send_roster() -> void:
+	if not game.net.players.is_empty():
+		game.net.rpc("cl_bg_roster", roster())
+
 ## Someone rang an antechamber's bell (or the lobby ran out): the countdown to the gates, for everyone.
 func start_prep(who: String) -> void:
 	if state != "lobby":
 		return
 	state = "prep"
 	prep_left = secs(PREP_SECS)
+	send_roster()
 	_announce(("%s rang the bell: the gates open in %d seconds" % [who, int(PREP_SECS)]) if who != "" else "The gates open in %d seconds" % int(PREP_SECS))
 	broadcast()
 
@@ -749,6 +933,7 @@ func died(pid: int, items: Array, at: Vector3) -> void:
 
 ## Leaving without extracting (quit, crash, lost connection): what they picked up stays behind.
 func player_left(pid: int, at: Vector3) -> void:
+	stash_closed(pid)
 	if not died_items.has(pid):
 		for it in carried.get(pid, []):
 			game.drop_item(it, at)
@@ -871,6 +1056,14 @@ static func hud(g: Node, delta: float) -> void:
 	lbl.visible = g.bg_mode
 	var left := maxf(0.0, float(r["len"]) - float(r["t"]))
 	var st := str(r["state"])
+	# the matchup under the clock while the gates are down and the countdown runs (BgMatchup)
+	var mu: BgMatchup = g.ui.hud.get_node_or_null("bg_matchup")
+	if mu == null:
+		mu = BgMatchup.new(g.ui)
+		g.ui.hud.add_child(mu)
+	mu.visible = g.bg_mode and st.begins_with("prep") and not g.bg_roster.is_empty()
+	if mu.visible:
+		mu.set_roster(g.bg_roster, g.multiplayer.get_unique_id())
 	if st.begins_with("lobby") or st.begins_with("prep"):
 		r["wait"] = maxf(0.0, float(r.get("wait", 0.0)) - delta)
 		var w := int(ceilf(float(r["wait"])))
@@ -878,7 +1071,7 @@ static func hud(g: Node, delta: float) -> void:
 			lbl.text = "THE ANTECHAMBER  ·  ring the bell to begin  ·  the gates open by themselves in %d:%02d" % [(w + int(PREP_SECS)) / 60, (w + int(PREP_SECS)) % 60]
 			lbl.add_theme_color_override("font_color", Color(0.95, 0.85, 0.6))
 		else:
-			lbl.text = "THE GATES OPEN IN %d" % w
+			lbl.text = "THE GATES OPEN IN %d  ·  the stash chest is open until then" % w
 			lbl.add_theme_color_override("font_color", Color(1.0, 0.65, 0.3))
 		return
 	var txt := "%s  ·  %d:%02d" % [TITLE.to_upper(), int(left) / 60, int(left) % 60]

@@ -236,6 +236,31 @@ SPEC = [
          prompt="a campfire roaring up, a deep soft whoosh of flames swelling then settling into warm crackling" + DRY),
     # Halvar at his anvil (forest_camp.gd / Inter: each hammer blow on the metal); Kenney metal hits layered with a ring
     dict(name="anvil", src="mix", n=5, dur=1.0, hit=0, label="a hammer striking hot metal on an anvil"),
+    # the Battlegrounds antechamber's stash chest (jj, 2026-11-02): opening it before a raid is a big deal (and costs
+    # 15% speed for the raid): the padlock springs, the lid heaves, fire bursts out (Game.chest_lid, Battlegrounds.stash_fx)
+    # the raid chest's fire, layered under its opening sound in time with Battlegrounds.stash_fx (jj): the burst with
+    # the flash, the gout of flame rising out of it, the embers and smoke after
+    # (jj) while the raid chest stands open, until the gates rise: its fire and the crypt's mist, looped on the chest
+    dict(name="chest_raid_loop", src="eleven", n=3, dur=6.0, hit=0, loop=True, label="an open chest's fire burning in a misty crypt",
+         prompt="a steady low fire burning inside an open chest in a cold misty crypt, soft roaring flames and crackling embers "
+                "over a low eerie wind and mist hiss, constant, seamless loop, no music" + DRY),
+    dict(name="chest_flame_burst", src="eleven", n=1, dur=1.2, hit=0, label="a sudden burst of fire out of a chest",
+         prompt="a sudden violent burst of fire, a sharp deep whoomph of flames igniting all at once" + DRY),
+    dict(name="chest_flame_spray", src="eleven", n=3, dur=2.2, hit=0, label="fire spraying out of a chest as it opens",
+         prompt="fire spraying out under pressure as a lid bursts open, a hissing roaring jet of flame like a flamethrower "
+                "blast, sputtering and crackling" + DRY),
+    dict(name="chest_flame_roar", src="eleven", n=1, dur=2.5, hit=0, label="a gout of flame roaring up",
+         prompt="a column of fire roaring up out of a box, a strong rushing flame roar swelling then dying down" + DRY),
+    dict(name="chest_flame_embers", src="eleven", n=1, dur=3.5, hit=0, label="embers and smoke after the fire",
+         prompt="the last of a fire dying out, crackling embers and popping sparks, a soft hiss of smoke drifting away" + DRY),
+    # (jj: longer, with a misty ambience; the second round of takes)
+    dict(name="chest_raid_open_mist", src="eleven", n=3, dur=4.5, hit=0.35, label="the raid's stash chest opening, longer, misty",
+         prompt="in a cold misty crypt, a heavy iron padlock clanks open, an old wooden chest lid groans and swings back, a deep "
+                "whoosh of fire bursts out, then a low eerie wind and mist hiss slowly fading with distant whispers and soft "
+                "crackling embers, dark fantasy, no music" + DRY),
+    dict(name="chest_raid_open", src="eleven", n=3, dur=2.6, hit=0.35, label="the raid's stash chest unlocked and thrown open in a burst of fire",
+         prompt="a heavy iron padlock snapping open with a loud metallic clank, then a big old wooden chest lid creaking and "
+                "slamming back, then a deep roaring whoosh of fire bursting out and crackling embers, dark fantasy" + DRY),
     dict(name="inv_click", src="eleven", n=4, dur=0.5, hit=0, label="picking up an item",
          prompt="picking up a small metal and leather item in a dark fantasy game inventory, a short soft clink with a leather rustle" + DRY),
     # Act I's birds (birds.gd): a flock bursting up out of the trees

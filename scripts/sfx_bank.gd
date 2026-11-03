@@ -19,6 +19,8 @@ const BANK := {
 	"cackle": [2, "sfx", 0.0],
 	"charge_dash": [1, "sfx", 0.0],
 	"charge_impact": [1, "sfx", 0.0],
+	"chest_raid_loop": [1, "sfx", 0.0],
+	"chest_raid_open": [1, "sfx", 0.35],
 	"cleave_swing": [1, "sfx", 0.3],
 	"click": [1, "ui", 0.0],
 	"coins": [2, "ui", 0.0],

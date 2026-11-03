@@ -9,9 +9,12 @@ extends Node
 ##   - every Game.save_game is pushed, every deleted character removed.
 ## Offline (no connection, the server down) the game plays from the local files and the next start syncs again.
 ## Storage: collection "characters", key = the character id, value = the save; the owner reads and writes it.
+## The shared stash (SharedStash) is collection "stash", key "shared": every save of it is pushed, and the start's
+## sync keeps whichever copy has the higher "rev" (Game reconciles the characters against it afterwards).
 ## tools/cloud_test.gd checks it against a running Nakama.
 
 const COLLECTION := "characters"
+const STASH := "stash"
 
 var game: Node
 var nk: NakamaClient
@@ -79,6 +82,7 @@ func sync() -> bool:
 	if not up.is_empty() and not await nk.write_objects(up):
 		print("[Cloud] upload failed: ", nk.last_error)
 		return false
+	await _sync_stash()
 	last_sync = {"up": up.size(), "down": down}
 	synced = true
 	print("[Cloud] synced %d character(s) up, %d down" % [up.size(), down])
@@ -94,3 +98,27 @@ func remove(id: String) -> void:
 	if id == "" or not await ensure():
 		return
 	await nk.delete_objects([{"collection": COLLECTION, "key": id}])
+
+## The stash: the copy with the higher rev wins (the other side is overwritten with it).
+func _sync_stash() -> void:
+	var st: SharedStash = game.stash
+	if st == null:
+		return
+	var remote := {}
+	for o in await nk.list_objects(STASH):
+		if str(o.get("key", "")) == "shared" and o.get("value") is Dictionary:
+			remote = o["value"]
+	st.fresh()
+	if not remote.is_empty() and int(remote.get("rev", 0)) > st.rev:
+		st.from_dict(remote)
+		st.rev = int(remote.get("rev", 0)) - 1
+		st.save()             # (written to this PC at the cloud's rev)
+		print("[Cloud] stash restored from the account (rev %d)" % st.rev)
+	elif st.rev > int(remote.get("rev", -1)) and st.rev > 0:
+		push_stash(st.to_dict())
+
+func push_stash(d: Dictionary) -> void:
+	if not await ensure():
+		return
+	if not await nk.write_objects([{"collection": STASH, "key": "shared", "value": d}]):
+		print("[Cloud] stash not uploaded: ", nk.last_error)

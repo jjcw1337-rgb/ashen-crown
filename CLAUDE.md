@@ -1150,6 +1150,33 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   (Forward+ screenshots need a Vulkan driver: `apt-get install mesa-vulkan-drivers` gives lavapipe, slow but correct).
   Note: a first import of the project needs `godot --headless --editor --quit-after 2000` (plain `--quit` can abort the
   scan before the class cache is written).
+- **The shared stash** (`scripts/shared_stash.gd` `SharedStash`, `Game.stash`; jj 2026-11-02): one stash for every
+  character on the PC, `TABS` (5) tabs of `SLOTS` (60), in its own file (`user://stash.json`; a tool script's
+  `TEST_PATH`), backed up to Nakama (collection `"stash"`, key `"shared"`, the higher `rev` wins in `CloudSaves.sync`).
+  **No duplicates**: an item going in gets a fresh `"uid"` and the character is saved with it stamped, then the stash,
+  then the character without it (`Game.stash_deposit`); coming out, the character first, then the stash
+  (`stash_withdraw`); `SharedStash.reconcile` takes out of a character anything whose uid is in the stash (every
+  character file at start, `Game._stash_start`, and the one loaded, `_stash_fix_hero`), so a crash between the saves
+  always leaves the stash's copy and nothing else. Every change re-reads the file first when its `rev` moved (`fresh`:
+  a second copy of the game). Old per-character stashes (`Hero.stash`) are stamped, moved in and reconciled away the
+  same way. `Items.upgrade` keeps `uid` and `boost`. Opens at the camp's chest and, in a raid, only before the gates
+  rise (`Game.stash_allowed`). The window (`UI._build_stash`, `UI.StashTab`): the inventory's iron frame, tabs as
+  bronze plaques with their counts (`stash_style` "plaques"; "ribbons" and "gems" kept), click to move.
+  `tools/stash_test.gd`, `tools/stash_shot.gd`.
+- **The raid's antechamber** (jj): the countdown (`PREP_SECS` 20) starts by itself at `RAID_MIN` (2) players; the matchup
+  (`Battlegrounds.roster` -> `Net.cl_bg_roster`, `BgMatchup`: each other raider's class crest, name and level, never a
+  player name) shows under the clock while it runs. Each corner room has the raid's **stash chest** on its **dais**:
+  the chest (`assets/models/crypt/stash_chest.glb`, built from seven Meshy pieces by
+  `tools/blender/camp/assemble_chest.py`: body, `lid` hinged at the back, `lock` with its Blender-made `shackle`,
+  `coals`) and the dais (`StashDais`, `scripts/stash_dais.gd`: the grand waypoint's build at 2/5 size,
+  `tools/blender/camp/build_stash_dais.py`, its wet stone, its rune lettering in embers, the waypoint's fire bowls;
+  wakes as a hero comes, `burst()` on opening). The raid server hands the chest to the first who asks
+  (`Battlegrounds.stash_opened`, one player at a time, `stash_user`); the opener is 15% slower for the rest of the
+  raid (`Hero.stash_slow`, `stash_slowed`, sent as bit 10 of the state; its mark only on the opener's own screen),
+  and every game plays the opening (`Game.chest_lid`: the padlock springs, the lid heaves, a shadow-casting glow;
+  `Battlegrounds.stash_fx`: InfernalFx fire spray, smoke, `chest_raid_open` and the `chest_raid_loop` that sinks to
+  20% over 10 s); it stays open and burning until the gates rise (`close_stashes`). `tools/chest_open_clip.gd`
+  renders it frame by frame; `tools/bg_admin_test.gd` covers the server side.
 - **The camp's bonfire** (`Inter` kind `"bonfire"`, `UI.open_burn`): clicking it roars up (`bonfire_open`) and opens the fire
   window in the inventory's iron frame (a shader fire in a stone hearth, `UI.Flames`/`FIRE_SHADER`) with its options below
   in the bar's sockets (`UI.BONFIRE_OPTIONS`: Burn, Enchant; empty sockets wait for more) beside the

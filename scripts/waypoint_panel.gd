@@ -433,10 +433,7 @@ func _bg_card(b: Dictionary) -> Control:
 	for it in h.inventory + h.belt:
 		if it != null:
 			carried += 1
-	var stashed := 0
-	for it in h.stash:
-		if it != null:
-			stashed += 1
+	var stashed: int = game.stash.count() if game.stash != null else 0      # (the shared stash, SharedStash)
 	var who := HBoxContainer.new()
 	who.add_theme_constant_override("separation", 14)
 	who.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -449,7 +446,7 @@ func _bg_card(b: Dictionary) -> Control:
 	who.add_child(wv)
 	wv.add_child(ui._label("%s  ·  level %d %s" % [game.char_name, h.level, cls_name], 13, GOLD, true))
 	wv.add_child(ui._label("At stake: %d worn, %d in the bag and belt, %d gold" % [worn, carried, h.gold], 11, INK))
-	wv.add_child(ui._label("Safe in the camp's stash: %d item%s" % [stashed, "" if stashed == 1 else "s"], 11, DIM))
+	wv.add_child(ui._label("Safe in the stash (all your characters'): %d item%s" % [stashed, "" if stashed == 1 else "s"], 11, DIM))
 	var sv := VBoxContainer.new()
 	sv.add_theme_constant_override("separation", 0)
 	sv.alignment = BoxContainer.ALIGNMENT_END

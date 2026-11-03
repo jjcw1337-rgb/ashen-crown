@@ -89,8 +89,23 @@ func _run() -> void:
 		check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "on the admin list: in the crypt")
 		await create_timer(6.0).timeout
 		check(g.net.active and g.bg_refusal == "", "and still there after the server's gear check")
+		# the antechamber's stash chest: the server hands it over, it opens, the opener is slowed for the raid
+		var chest = null
+		for it in g.world.interactables:
+			if is_instance_valid(it) and it.kind == "stash" and (chest == null or it.global_position.distance_to(g.hero.global_position) < chest.global_position.distance_to(g.hero.global_position)):
+				chest = it
+		check(chest != null, "a stash chest in the antechamber")
+		if chest != null:
+			g.hero.global_position = g.world.free_spot_near(chest.global_position + Vector3(1.0, 0, 0), 0.5)
+			await create_timer(0.5).timeout
+			g._interact(chest)
+			check(await until(func(): return g.ui.stash_panel.visible, 10.0), "the server gave us the chest: the stash is open")
+			check(g.hero.stash_slowed, "and its opener is slowed for the raid")
+			g.ui.close_all()
+			await create_timer(0.5).timeout
 		g.net.send_bg_admin("gates")
 		check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 20.0), "Open gates: the raid is on")
+		check(not g.stash_allowed() and g.hero.stash_slowed, "the stash is sealed now, and the slow stays")
 		g.net.send_bg_admin("portals")
 		check(await until(func(): return not (g.bg_raid.get("open", []) as Array).is_empty(), 20.0), "Open portals: they're open")
 		g.net.send_bg_admin("restart")

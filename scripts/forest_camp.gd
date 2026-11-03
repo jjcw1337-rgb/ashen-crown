@@ -11,6 +11,8 @@ extends RefCounted
 const CENTER := Vector2(0, -2)
 ## The waypoint stone. grand_waypoint(): the large dais (WaypointGrand), blockout of the waypoint overhaul.
 const WP_AT := Vector3(-8, 0, 6)
+# the bonfire and its benches, off the camp's centre toward the gate: jj's grand waypoint gets its own space (2026-11-02)
+const BONFIRE_AT := Vector2(3.5, -5)
 ## `-- --old-waypoint` shows the old stone instead (before/after shots).
 static func grand_waypoint() -> bool:
 	return not OS.get_cmdline_user_args().has("--old-waypoint")
@@ -33,7 +35,8 @@ const SHOPS := [
 	{"role": "armor", "npc": "hedda", "stall": "armory", "at": Vector2(16, 5), "half": Vector2(1.95, 1.62),
 		"clips": {"idle": "Idle_3", "work": ["Axe_Breathe_and_Look_Around"], "talk": "Talk_with_Left_Hand_on_Hip"},
 		"hold": {"bone": "RightHand", "item": "hand_axe", "rot": Vector3(0, 0, 90), "pos": Vector3(0.0, 0.08, 0.0)}},
-	{"role": "gamble", "npc": "tarrow", "stall": "wagon", "at": Vector2(-15.5, 7), "half": Vector2(1.7, 1.35),
+	# (north-west, past the alchemist, clear of the west gate's track: jj had him away from the grand waypoint)
+	{"role": "gamble", "npc": "tarrow", "stall": "wagon", "at": Vector2(-17, -6.5), "half": Vector2(1.7, 1.35),
 		"clips": {"idle": "Idle_5", "work": ["Stand_and_Chat", "Happy_Sway_Standing"], "talk": "Talk_with_Right_Hand_Open"}},
 ]
 
@@ -123,7 +126,7 @@ static func build(w: World) -> void:
 		w.dirt_blobs.append([p, 5.2, 1.0])
 		w.dirt_blobs.append([p.lerp(CENTER, 0.3), 4.2, 0.95])
 		w.dirt_lines.append([CENTER, p, 2.4])
-	w.cobble_blobs = [[CENTER, 4.2, 0.85], [Vector2(0, gate_z + 1.5), 3.0, 0.8], [Vector2(-8, 6), 6.4 if grand_waypoint() else 2.6, 0.75]]
+	w.cobble_blobs = [[BONFIRE_AT, 4.2, 0.85], [Vector2(0, gate_z + 1.5), 3.0, 0.8], [Vector2(-8, 6), 6.4 if grand_waypoint() else 2.6, 0.75]]
 
 	# --- the palisade: sharpened logs all round, a gap for the gatehouse to the north
 	var pal_x := []
@@ -174,7 +177,7 @@ static func build(w: World) -> void:
 
 	# --- the heart of the camp: the bonfire, seats, stash and waypoint
 	var bf := model("bonfire")
-	w._place(bf, Vector3(CENTER.x, 0, CENTER.y))
+	w._place(bf, Vector3(BONFIRE_AT.x, 0, BONFIRE_AT.y))
 	Props.fire(bf, Vector3(0, 0.3, 0), 1.15, Color(1.0, 0.5, 0.18), true, true, true, "bonfire")
 	# the heart of the camp's light (graphics plan, phase 1): reaches the shops, glows in the mist, always shadowed
 	for n in bf.find_children("*", "OmniLight3D", true, false):
@@ -187,14 +190,14 @@ static func build(w: World) -> void:
 		fl.shadow_blur = 1.4
 		fl.set_meta("shadow_pri", true)
 		fl.add_to_group(Grade.SHADOW_GROUP)
-	w.add_circle(Vector3(CENTER.x, 0, CENTER.y), 1.4)
+	w.add_circle(Vector3(BONFIRE_AT.x, 0, BONFIRE_AT.y), 1.4)
 	# click it to burn what you don't want (UI.open_burn)
-	w._inter("bonfire", "Bonfire", Vector3(CENTER.x, 0, CENTER.y), 2.6)
+	w._inter("bonfire", "Bonfire", Vector3(BONFIRE_AT.x, 0, BONFIRE_AT.y), 2.6)
 	for i in 4:
 		var la := TAU * i / 4.0 + 0.6
-		var sp := Vector2(CENTER.x + cos(la) * 3.6, CENTER.y + sin(la) * 3.6)
+		var sp := Vector2(BONFIRE_AT.x + cos(la) * 3.6, BONFIRE_AT.y + sin(la) * 3.6)
 		# a log bench facing the fire (Meshy), else the old plain log
-		if piece(w, "log_bench", sp, face(sp, CENTER) + rng.randf_range(-0.12, 0.12)) != null:
+		if piece(w, "log_bench", sp, face(sp, BONFIRE_AT) + rng.randf_range(-0.12, 0.12)) != null:
 			continue
 		var lg := Props.footprint(Models.N(null, "seat"), Vector2(0.25, 0.8))
 		Models.P(lg, Geo.cyl(0.22, 0.24, 1.6, 10), Props.wood(), Vector3(0, 0.2, 0), Vector3(90, 0, 0))
@@ -295,7 +298,7 @@ static func build(w: World) -> void:
 			var cp: Vector2 = c[1]
 			piece(w, c[0], cp, face(cp, CENTER) + rng.randf_range(-0.5, 0.5), c[2])
 		# a cookfire for the camp's folk, a weapon rack by the armoury, hides drying by the alchemist
-		var cf := piece(w, "cookfire", Vector2(-3.8, 11.8), rng.randf() * TAU)
+		var cf := piece(w, "cookfire", Vector2(2.5, 12.5), rng.randf() * TAU)     # (clear of the waypoint's fire bowls)
 		if cf:
 			Props.fire(cf, Vector3(0, 0.15, 0), 0.55, Color(1.0, 0.5, 0.2), true, false, true, "campfire")
 			for n in cf.find_children("*", "OmniLight3D", true, false):
@@ -314,7 +317,7 @@ static func build(w: World) -> void:
 				"logs": w.solid(Props.log_pile(w.props_root, p3))
 
 	# --- lantern posts along the paths
-	for lp in [Vector2(-2.6, -9), Vector2(2.6, -15), Vector2(-6.5, -4.5), Vector2(7, -4.5), Vector2(9, 3.5), Vector2(-9.5, 2.5), Vector2(-2.6, gate_z + 7)]:
+	for lp in [Vector2(-2.6, -9), Vector2(2.6, -15), Vector2(-6.5, -4.5), Vector2(8.5, -1.5), Vector2(9, 3.5), Vector2(-9.5, 2.5), Vector2(-2.6, gate_z + 7)]:
 		if grand_waypoint() and lp.distance_to(Vector2(WP_AT.x, WP_AT.z)) < 7.5:
 			continue  # the grand waypoint brings its own torches
 		var lit: bool = lp.y < -8.0 or absf(lp.x) > 8.0

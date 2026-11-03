@@ -59,11 +59,14 @@ var bg_mode := false:
 var net_joining := false     # a co-op join sent, no welcome yet (on_net_failed then goes back to the co-op screen)
 var bg_home_run := -1        # in a raid: the character's own act (Net.cl_welcome swaps to the raid's, saves keep this)
 var bg_raid := {}               # the round as the raid server last said (Net.cl_bg_raid): state, t, open portals...
+var bg_roster: Array = []       # the antechamber's matchup (Net.cl_bg_roster): [{pid, cls, lvl}], this player too
 var bg_from_waypoint := false   # the raid was taken from the camp's waypoint: it ends back on the dais, not on the title
 var bg_gained := -1             # ... items brought out of it (-1: no extraction; the news told back at the camp)
 var bg_wait_until := 0         # turned away late in a round: when (ticks msec) the next raid lets players in
 var bg_refusal := ""           # why the raid server last turned us away ("closed", "refused")
 var bg_retry := []             # [addr, character id] to rejoin with when the wait is over
+## The camp's stash, one for every character on this PC (SharedStash; a tool script's own file under -s).
+var stash: SharedStash
 ## Characters and the stash in Nakama (cloud_saves.gd), in builds with BuildEnv.cloud() on; null otherwise.
 var cloud: CloudSaves
 var coop_server: CoopServer     # the online co-op server's logic (coop_server.gd), only on a `--server --coop` run
@@ -161,9 +164,13 @@ func _ready() -> void:
 	hero.died.connect(_on_hero_died)
 	hero.leveled.connect(_on_level)
 	ui.bind_hero(hero)
+	if not args.has("--server"):
+		stash = SharedStash.new(SharedStash.TEST_PATH if get_tree().get_script() != null else SharedStash.PATH)
 	if BuildEnv.cloud() and not args.has("--server") and shot_path == "" and not args.has("--kpi"):
 		cloud = CloudSaves.new(self)
 		add_child(cloud)
+		if stash != null:
+			stash.pushed = func(d: Dictionary): cloud.push_stash(d)
 		_cloud_start()
 	if Telemetry.wanted():
 		add_child(Telemetry.new(self))      # player telemetry and error reports (scripts/telemetry.gd)
@@ -190,6 +197,7 @@ func _ready() -> void:
 	# straight from the intro to the title: the camp builds behind it, with no loading screen or zone banner
 	_boot_quiet = true
 	_bury_lost_raiders()
+	_stash_start()
 	ui.show_title()
 	await load_zone(0, "town", "start")
 	_boot_quiet = false
@@ -1646,6 +1654,8 @@ func start_battlegrounds(addr: String, id: String) -> void:
 	playing = true
 	bg_mode = true
 	bg_raid = {}
+	bg_roster = []
+	hero.stash_slowed = false     # (the antechamber stash's slow lasts one raid)
 	if hero.dead:
 		hero.respawn(hero.global_position)
 	var a: Array = Battlegrounds.parse_address(addr)
@@ -1815,6 +1825,8 @@ func _leave_battlegrounds() -> void:
 	bg_mode = false
 	_bg_home()
 	bg_raid = {}
+	bg_roster = []
+	hero.stash_slowed = false     # (the antechamber stash's slow lasts one raid)
 	if bg_from_waypoint and char_id != "":
 		bg_from_waypoint = false
 		await _bg_home_camp(fell)
@@ -1899,7 +1911,222 @@ func _cloud_start() -> void:
 	await get_tree().process_frame
 	if await cloud.sync() and ui.title_idle() and not playing:
 		_bury_lost_raiders()
+		_stash_start()
 		ui.show_title()
+
+# ---------------------------------------------------------------- the shared stash (SharedStash)
+## Where the stash opens: the camp's chest, and in the Battlegrounds the antechamber's until the gates rise (jj: a
+## last change of gear once the matchup is known); never once the raid is on, in the sandbox or on a server.
+func stash_allowed() -> bool:
+	if stash == null or sandbox != null or net.server:
+		return false
+	if bg_mode:
+		var st := str(bg_raid.get("state", ""))
+		return st.begins_with("lobby") or st.begins_with("prep")
+	return true
+
+## The bag's item `inv_idx` into the stash's tab (or the first tab with room). Three saves: the character with the
+## item stamped (still in the bag), the stash with it, the character without it. A crash after the first leaves it
+## only in the bag; after the second, in both, stamped alike, and SharedStash.reconcile keeps the stash's copy.
+func stash_deposit(inv_idx: int, tab: int) -> bool:
+	if not stash_allowed() or inv_idx < 0 or inv_idx >= hero.inventory.size():
+		return false
+	var it = hero.inventory[inv_idx]
+	if not (it is Dictionary):
+		return false
+	stash.fresh()
+	var t := tab
+	var slot := stash.free_slot(t)
+	if slot < 0:
+		for k in SharedStash.TABS:
+			slot = stash.free_slot(k)
+			if slot >= 0:
+				t = k
+				break
+	if slot < 0:
+		ui.message("The stash is full", Color(1, 0.6, 0.4))
+		return false
+	SharedStash.stamp(it)
+	save_game()
+	stash.tabs[t][slot] = it
+	if not stash.save():
+		stash.tabs[t][slot] = null
+		ui.message("The stash couldn't be saved", Color(1, 0.5, 0.4))
+		return false
+	hero.inventory[inv_idx] = null
+	save_game()
+	return true
+
+## A stash item into the bag: the character is saved first (with the item), then the stash (without it).
+func stash_withdraw(tab: int, slot: int) -> bool:
+	if not stash_allowed():
+		return false
+	stash.fresh()
+	var it = stash.tabs[tab][slot]
+	if not (it is Dictionary):
+		return false
+	var j := hero.inventory.find(null)
+	if j < 0:
+		ui.message("Your bag is full", Color(1, 0.6, 0.4))
+		return false
+	hero.inventory[j] = it
+	save_game()
+	stash.tabs[tab][slot] = null
+	stash.save()
+	return true
+
+## The loaded hero against the stash: a copy a crash left behind is taken out, and a character's own stash from
+## before the shared one moves in (stamped and saved first, so it can't come in twice).
+func _stash_fix_hero() -> void:
+	if stash == null:
+		return
+	stash.fresh()
+	var h := {"equipment": hero.equipment, "inventory": hero.inventory, "belt": hero.belt, "stash": hero.stash}
+	var n := stash.reconcile(h)
+	var old := hero.stash.filter(func(x): return x is Dictionary)
+	if not old.is_empty():
+		for it in old:
+			if not it.has("uid"):
+				SharedStash.stamp(it)
+		save_game()
+		stash.adopt(hero.stash)
+		n += stash.reconcile(h)
+	if n > 0:
+		hero.recalc()
+		save_game()
+
+## Every character file against the stash, before any is played (start, after a cloud sync): their old stashes
+## move in, and copies a crash left behind come out.
+func _stash_start() -> void:
+	if stash == null or _testing():
+		return
+	stash.fresh()
+	for c in list_characters():
+		var p := char_dir + str(c["id"]) + ".json"
+		var d = JSON.parse_string(FileAccess.get_file_as_string(p))
+		if not (d is Dictionary) or not (d.get("hero") is Dictionary):
+			continue
+		var h: Dictionary = d["hero"]
+		var changed := false
+		var old: Array = h.get("stash", []) if h.get("stash") is Array else []
+		var stamped := false
+		for it in old:
+			if it is Dictionary and not it.has("uid"):
+				SharedStash.stamp(it)
+				stamped = true
+		if stamped:
+			_write_char(p, str(c["id"]), d)
+		if old.any(func(x): return x is Dictionary):
+			stash.adopt(old)
+		if stash.reconcile(h) > 0:
+			changed = true
+		if changed:
+			_write_char(p, str(c["id"]), d)
+
+## A stash chest opening (jj: "the lock really unlocked, opening the stash is a big deal"). The chest's parts split
+## off the Meshy model in Blender: "lock" (the padlock) and "lid" (with its hasp; pivot on the back hinge). Opening:
+## the padlock rattles, springs open with a clank and sparks and drops to hang askew; then the lid heaves back
+## past LID_OPEN and settles, a warm light floods up out of it, motes and a soft beam rise, and the camera bumps for
+## the one who opened it. Shutting: the lid drops, the lock swings back. Chests without the parts only glow.
+const LID_OPEN := -102.0
+func chest_lid(t: Inter, open: bool, mine := true) -> void:
+	if not is_instance_valid(t):
+		return
+	var lid: Node3D = t.find_child("lid", true, false) as Node3D
+	var lock: Node3D = t.find_child("lock", true, false) as Node3D
+	var lift: float = float(t.get_meta("lift", 0.0))         # (a chest on a dais, Battlegrounds._stash_chest)
+	var top: Vector3 = t.global_position + Vector3(0, 0.75 + lift, 0)
+	var root: Node3D = world.fx_root if world != null else t
+	if lock != null:
+		if not lock.has_meta("rest"):
+			lock.set_meta("rest", [lock.position, lock.rotation_degrees])
+		var rest: Array = lock.get_meta("rest")
+		var lt := lock.create_tween()
+		if open:
+			# a rattle, then the shackle springs: it drops and swings open on the hasp
+			for k in 3:
+				lt.tween_property(lock, "rotation_degrees:z", float(rest[1].z) + (9.0 if k % 2 == 0 else -9.0), 0.04)
+			lt.tween_property(lock, "position", (rest[0] as Vector3) + Vector3(0, -0.07, 0.03), 0.08)
+			lt.parallel().tween_property(lock, "rotation_degrees", (rest[1] as Vector3) + Vector3(18, 0, 38), 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		else:
+			lt.tween_property(lock, "position", rest[0], 0.2)
+			lt.parallel().tween_property(lock, "rotation_degrees", rest[1], 0.2)
+		# the shackle (its own part on the rebuilt chest): it springs open on its hinge leg as the lock gives
+		var sh: Node3D = lock.find_child("shackle", true, false) as Node3D
+		if sh != null:
+			sh.create_tween().tween_property(sh, "rotation_degrees:z", 55.0 if open else 0.0, 0.12 if open else 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if lid != null:
+		var tw := lid.create_tween()
+		if open:
+			tw.tween_interval(0.26 if lock != null else 0.0)
+			tw.tween_property(lid, "rotation_degrees:x", LID_OPEN * 1.12, 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			tw.tween_property(lid, "rotation_degrees:x", LID_OPEN, 0.18).set_trans(Tween.TRANS_SINE)
+		else:
+			tw.tween_property(lid, "rotation_degrees:x", 0.0, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	var glow: OmniLight3D = t.get_node_or_null("lid_glow")
+	if open and glow == null:
+		# (jj: "real shadows from the light") the light rises out of the open chest just over its rim, so its walls,
+		# the raised lid and whoever stands at it throw real shadows over the floor; first in the shadow budget
+		glow = OmniLight3D.new()
+		glow.name = "lid_glow"
+		glow.light_color = Color(1.0, 0.5, 0.2)
+		glow.omni_range = 8.0
+		glow.omni_attenuation = 1.1
+		glow.light_energy = 0.0
+		glow.shadow_enabled = true
+		glow.shadow_blur = 1.2
+		glow.shadow_bias = 0.06
+		glow.position = Vector3(0, 1.02 + lift, 0.15)
+		glow.set_meta("shadow_pri", true)
+		glow.add_to_group(Grade.SHADOW_GROUP)
+		t.add_child(glow)
+	if glow != null:
+		var gt := glow.create_tween()
+		if open:
+			gt.tween_interval(0.3)
+			gt.tween_property(glow, "light_energy", 6.0, 0.15)
+			gt.tween_property(glow, "light_energy", 3.0, 0.6)
+			# and it flickers like the fire in it
+			var fl := glow.create_tween().set_loops()
+			fl.tween_interval(1.1)
+			fl.tween_callback(func():
+				if is_instance_valid(glow) and bool(t.get_meta("lid_open", false)):
+					glow.create_tween().tween_property(glow, "light_energy", randf_range(2.5, 3.5), 0.09))
+			fl.tween_interval(0.09)
+			glow.set_meta("flicker", fl)
+		else:
+			if glow.has_meta("flicker"):
+				(glow.get_meta("flicker") as Tween).kill()
+				glow.remove_meta("flicker")
+			gt.tween_property(glow, "light_energy", 0.0, 0.3)
+	if open:
+		# the raid's chest has its own sound, lock, lid and fire in one (jj; "chest_raid_open", tools/audio/spec.py)
+		var raid_snd: bool = bool(t.data.get("raid", false)) and Sfx.bank.has("chest_raid_open")
+		if raid_snd:
+			Sfx.play_at("chest_raid_open", top)
+		else:
+			Sfx.play_at("chest_unlock" if Sfx.bank.has("chest_unlock") else "anvil", top + Vector3(0, -0.2, 0.4), -6.0, 1.25)
+		# the unlock: sparks at the hasp
+		Fx.burst(root, t.global_position + Vector3(0, 0.6 + lift, 0.6), Color(0.95, 0.42, 0.08, 1.0), 14, 2.2, 0.018, 0.45, false, -6.0, 70.0, Vector3(0, 0.4, 1))
+		var raid: bool = bool(t.data.get("raid", false))
+		Fx.later(t, 0.26, func():
+			if not raid_snd:
+				Sfx.play_at("chest_open" if Sfx.bank.has("chest_open") else "portcullis" if Sfx.bank.has("portcullis") else "inv_click", top, -8.0, 1.4)
+			if not raid:
+				# the camp's chest: a warm breath of light (the raid's fire is Battlegrounds.stash_fx)
+				Fx.flash(root, top, Color(1.0, 0.72, 0.35), 3.0, 0.5, 4.0)
+				Fx.burst(root, top, Color(1.0, 0.6, 0.25, 0.8), 16, 1.2, 0.04, 1.2, true, 1.0, 25.0)
+			if mine and hero != null and hero.global_position.distance_to(t.global_position) < 6.0:
+				add_shake(0.18))
+	t.set_meta("lid_open", open)
+
+func _write_char(p: String, id: String, d: Dictionary) -> void:
+	var f := FileAccess.open(p, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(d))
+		f.close()
+	if cloud != null:
+		cloud.push(id, d)
 
 func save_game() -> void:
 	if char_id == "" and not _testing():
@@ -1941,6 +2168,8 @@ func load_game() -> bool:
 	var hv: Dictionary = d.get("harvest", {}) if d.get("harvest") is Dictionary else {}
 	played_s = float(hv.get("t", 0.0))
 	harvest_saved = (hv.get("zones", {}) as Dictionary).duplicate(true) if hv.get("zones") is Dictionary else {}
+	if not bg_mode:
+		_stash_fix_hero()        # (last: it may save, and a save writes everything loaded above)
 	return true
 
 ## Every saved character, the last played first: [{id, name, cls, level, difficulty, act, played}].
@@ -2095,6 +2324,8 @@ func exit_to_title() -> void:
 	_bg_home()
 	bg_mode = false
 	bg_raid = {}
+	bg_roster = []
+	hero.stash_slowed = false     # (the antechamber stash's slow lasts one raid)
 	bg_from_waypoint = false
 	bg_gained = -1
 	net_joining = false
@@ -2668,9 +2899,19 @@ func _interact(t: Inter) -> void:
 		"boat":
 			_boat_clicked()
 		"stash":
+			if bg_mode and t.data.get("raid", false):
+				# the antechamber's chest: the raid server decides who has it (the first to ask); its answer opens it
+				# and puts the slow on this hero (Battlegrounds.stash_opened, Net.cl_bg_stash_ok)
+				if stash_allowed():
+					net.send_bg_stash(world.interactables.find(t))
+				else:
+					ui.message("The gates are up: the stash is sealed", Color(1, 0.6, 0.4))
+				return
 			ui.open_stash()
-			ui.trade_with = t
-			Sfx.play("equip")
+			if ui.stash_panel.visible:
+				ui.trade_with = t
+				Sfx.play("equip")
+				chest_lid(t, true)
 		"bonfire":
 			ui.open_burn()
 			ui.trade_with = t
@@ -3112,6 +3353,22 @@ static func _ray_closest(o: Vector3, d: Vector3, a: Vector3, b: Vector3) -> Vect
 
 ## The monster under a camera ray (nearest first): each is a capsule from its feet to the top
 ## of its head, so a tall boss is clickable all over.
+## The interactable under the mouse ray (origin o, direction d): the one the ray passes closest to, within its
+## "pick" reach (1.1 m) of its "pick_y" point (1 m up). The closest, not the first in the list: a neighbour's reach
+## overlapping a trader's no longer steals the click (jj: Agnes couldn't be clicked from some sides).
+func pick_inter(o: Vector3, d: Vector3) -> Inter:
+	var best: Inter = null
+	var bd := INF
+	for it in world.interactables:
+		if not is_instance_valid(it) or (it.kind == "flower" and it.used):
+			continue
+		var c2: Vector3 = it.global_position + Vector3(0, float(it.get_meta("pick_y")) if it.has_meta("pick_y") else 1.0, 0)
+		var dist := (c2 - o).cross(d).length()
+		if dist < (float(it.get_meta("pick")) if it.has_meta("pick") else 1.1) and dist < bd:
+			bd = dist
+			best = it
+	return best
+
 func pick_enemy(o: Vector3, d: Vector3) -> Enemy:
 	var best: Enemy = null
 	var best_d := 1e9
@@ -3151,13 +3408,7 @@ func _update_hover() -> void:
 					best = g
 					break
 	if best == null:
-		for it in world.interactables:
-			if not is_instance_valid(it) or (it.kind == "flower" and it.used):
-				continue
-			var c2: Vector3 = it.global_position + Vector3(0, float(it.get_meta("pick_y")) if it.has_meta("pick_y") else 1.0, 0)
-			if (c2 - o).cross(d).length() < (float(it.get_meta("pick")) if it.has_meta("pick") else 1.1):
-				best = it
-				break
+		best = pick_inter(o, d)
 	if hovered != best:
 		if is_instance_valid(hovered) and hovered is GroundItem:
 			hovered.set_hover(false, Input.is_key_pressed(KEY_ALT))

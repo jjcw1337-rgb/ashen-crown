@@ -1950,12 +1950,9 @@ func _inv_click(idx: int, ev: InputEventMouseButton) -> void:
 		elif shop_mode == "furnace":
 			furnace_ui.bag_click(idx, ev.shift_pressed)
 		elif shop_mode == "stash":
-			for i in hero.stash.size():
-				if hero.stash[i] == null:
-					hero.stash[i] = it
-					hero.inventory[idx] = null
-					Sfx.play("pickup")
-					break
+			if game.stash_deposit(idx, stash_tab):
+				Sfx.play("pickup")
+			tooltip.visible = false
 			refresh()
 		elif not Items.is_equip(it) and not Items.is_material(it):
 			hero.equip_from_inventory(idx)
@@ -2610,33 +2607,272 @@ func _buy(cell: int) -> void:
 	_refresh_shop()
 	refresh()
 
+## The shared stash (SharedStash, Game.stash: one for every character, never at stake): the inventory's iron and gold
+## frame, a title plate, SharedStash.TABS tabs over a 10 x 6 grid of the bag's sockets, and a count. Three looks for
+## the tabs while jj picks (STASH_STYLES; `stash_style`): bronze plaques, hanging cloth ribbons, rune-gem sockets.
+## A click on a stash item takes it to the bag; a click on a bag item (with the stash open) puts it in this tab.
+const STASH_SIZE := Vector2(600, 548)
+const STASH_K := 0.3                  # the frame at 0.3 of the painted art (the inventory's is INV_SCALE)
+const STASH_GRID := Vector2(70, 140)
+const STASH_STYLES := ["plaques", "ribbons", "gems"]
+const STASH_NUMERALS := ["I", "II", "III", "IV", "V"]
+const STASH_COLORS := [Color(0.62, 0.12, 0.1), Color(0.16, 0.3, 0.62), Color(0.18, 0.46, 0.22), Color(0.42, 0.2, 0.55), Color(0.78, 0.55, 0.16)]
+var stash_style := "plaques"
+var stash_tab := 0
+var stash_tab_row: Control
+var stash_count_lbl: Label
+
+## One tab of the stash, drawn in the chosen style.
+class StashTab extends Control:
+	var ui
+	var idx := 0
+	var hover := false
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_STOP
+		mouse_entered.connect(func():
+			hover = true
+			queue_redraw())
+		mouse_exited.connect(func():
+			hover = false
+			queue_redraw())
+	func _gui_input(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			accept_event()
+			ui.select_stash_tab(idx)
+	func _draw() -> void:
+		var on: bool = ui.stash_tab == idx
+		var st: String = ui.stash_style
+		var f: Font = ui.font_title
+		var num: String = STASH_NUMERALS[idx]
+		var col: Color = STASH_COLORS[idx]
+		var n: int = ui.game.stash.tab_count(idx) if ui.game.stash != null else 0
+		var lit := 1.0 if on else (0.8 if hover else 0.55)
+		match st:
+			"plaques":
+				var r := Rect2(Vector2(2, 4 if on else 8), size - Vector2(4, 8 if on else 12))
+				if on:
+					draw_rect(r.grow(5), Color(1.0, 0.7, 0.3, 0.12))
+					draw_rect(r.grow(2), Color(1.0, 0.75, 0.35, 0.25))
+				draw_texture_rect(ui.stash_plate_tex(), r, false, Color(lit, lit, lit))
+				_text(f, num, r.get_center() + Vector2(0, -3 if n > 0 else 1), 18, Color(1.0, 0.86, 0.55) * Color(lit, lit, lit, 1.0) if on else Color(0.82, 0.68, 0.45, 0.85))
+				if n > 0:
+					_text(ui.font_body, str(n), r.get_center() + Vector2(0, 12), 11, Color(0.95, 0.85, 0.65, 0.75 if on else 0.5))
+				if on:
+					draw_line(Vector2(r.position.x + 14, size.y - 1), Vector2(r.end.x - 14, size.y - 1), Color(1.0, 0.75, 0.35), 2.0)
+			"ribbons":
+				var h := size.y if on else size.y - 10
+				var w := size.x - 10
+				var x0 := 5.0
+				var pts := PackedVector2Array([Vector2(x0, 0), Vector2(x0 + w, 0), Vector2(x0 + w, h), Vector2(x0 + w * 0.5, h - 10), Vector2(x0, h)])
+				var cloth := col.darkened(0.15 if on else 0.45)
+				if hover and not on:
+					cloth = col.darkened(0.3)
+				draw_colored_polygon(pts, cloth)
+				# the weave's shading and the gold stitching down both edges
+				draw_colored_polygon(PackedVector2Array([Vector2(x0, 0), Vector2(x0 + w * 0.35, 0), Vector2(x0 + w * 0.35, h - 6), Vector2(x0, h)]), Color(1, 1, 1, 0.06))
+				var stitch := Color(0.85, 0.66, 0.32, 0.9 if on else 0.5)
+				draw_line(Vector2(x0 + 4, 2), Vector2(x0 + 4, h - 4), stitch, 1.0)
+				draw_line(Vector2(x0 + w - 4, 2), Vector2(x0 + w - 4, h - 4), stitch, 1.0)
+				draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[4], pts[0]]), Color(0, 0, 0, 0.7), 1.5)
+				# the bronze rod it hangs from
+				draw_rect(Rect2(0, -3, size.x, 5), Color(0.55, 0.42, 0.22))
+				draw_rect(Rect2(0, -3, size.x, 2), Color(0.85, 0.68, 0.38))
+				_text(f, num, Vector2(size.x * 0.5, h * 0.42), 17, Color(1.0, 0.9, 0.7) if on else Color(0.9, 0.82, 0.66, 0.75))
+				if n > 0:
+					_text(ui.font_body, str(n), Vector2(size.x * 0.5, h * 0.42 + 15), 11, Color(1, 0.92, 0.75, 0.7))
+			"gems":
+				var c := Vector2(size.x * 0.5, 22)
+				if on:
+					for i in 4:
+						draw_circle(c, 24.0 + i * 3.0, Color(col.r, col.g, col.b, 0.1 - i * 0.02))
+				draw_circle(c, 19, Color(0.05, 0.04, 0.03))
+				draw_arc(c, 18, 0, TAU, 40, Color(0.62, 0.48, 0.25), 3.0, true)
+				draw_arc(c, 15.5, 0, TAU, 40, Color(0.25, 0.18, 0.1), 1.5, true)
+				var g := col.lightened(0.25) if on else col.darkened(0.35 if not hover else 0.1)
+				draw_circle(c, 12.5, g.darkened(0.35))
+				draw_circle(c + Vector2(-1, -1), 10, g)
+				draw_circle(c + Vector2(-4, -4.5), 3.2, Color(1, 1, 1, 0.55 if on else 0.25))
+				# four little prongs holding the stone
+				for k in 4:
+					var a := PI * 0.25 + k * PI * 0.5
+					draw_circle(c + Vector2(cos(a), sin(a)) * 13.0, 2.0, Color(0.78, 0.62, 0.34))
+				_text(f, num, Vector2(size.x * 0.5, 54), 14, Color(1.0, 0.86, 0.55) if on else Color(0.72, 0.62, 0.45, 0.8))
+	func _text(f: Font, t: String, at: Vector2, px: int, c: Color) -> void:
+		if f == null:
+			return
+		var w := f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
+		var p := at + Vector2(-w * 0.5, px * 0.35)
+		draw_string_outline(f, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, px, 4, Color(0, 0, 0, 0.85))
+		draw_string(f, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, px, c)
+
+var _stash_plate: Texture2D
+func stash_plate_tex() -> Texture2D:
+	if _stash_plate == null:
+		_stash_plate = load(INV_TEX["plate"])
+	return _stash_plate
+
 func _build_stash() -> void:
-	stash_panel = _panel("Stash", true, 480, 420)
-	var vb: VBoxContainer = stash_panel.get_node("vb")
-	vb.add_child(_label("Right-click items to move them between stash and inventory", 13, DIM))
+	stash_panel = PanelContainer.new()
+	stash_panel.position = Vector2(24, 36)
+	stash_panel.custom_minimum_size = STASH_SIZE
+	stash_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	stash_panel.visible = false
+	windows.add_child(stash_panel)
+	# in a raid's antechamber the chest is one player's at a time (Battlegrounds.stash_user): closing frees it
+	stash_panel.visibility_changed.connect(func():
+		if not stash_panel.visible:
+			if is_instance_valid(trade_with) and trade_with.kind == "stash" and not game.bg_mode:
+				game.chest_lid(trade_with, false)     # (an antechamber's stays open, burning, until the gates rise)
+			if game.bg_mode:
+				game.net.send_bg_stash_closed())
+	var body := Control.new()
+	body.name = "body"
+	body.custom_minimum_size = STASH_SIZE
+	body.mouse_filter = Control.MOUSE_FILTER_STOP
+	stash_panel.add_child(body)
+	var trim := int(178 * STASH_K)
+	var iron := TextureRect.new()
+	iron.texture = _scaled_tex(INV_TEX["iron"], STASH_K)
+	iron.stretch_mode = TextureRect.STRETCH_TILE
+	iron.position = Vector2(trim, trim)
+	iron.size = STASH_SIZE - Vector2(trim * 2, trim * 2 - 2)
+	iron.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(iron)
+	var frame := NinePatchRect.new()
+	frame.texture = _ornate_frame(STASH_K)
+	var pm := int(INV_PATCH * STASH_K)
+	frame.patch_margin_left = pm
+	frame.patch_margin_right = pm
+	frame.patch_margin_top = pm
+	frame.patch_margin_bottom = pm
+	frame.axis_stretch_horizontal = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
+	frame.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
+	frame.draw_center = false
+	frame.size = STASH_SIZE
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(frame)
+	var plate := TextureRect.new()
+	plate.texture = stash_plate_tex()
+	plate.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	plate.size = Vector2(220, 34)
+	plate.position = Vector2((STASH_SIZE.x - 220) * 0.5, 10)
+	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(plate)
+	var title := _label("STASH", 15, GOLD, true)
+	var tfv := FontVariation.new()
+	tfv.base_font = font_title
+	tfv.spacing_glyph = 3
+	title.add_theme_font_override("font", tfv)
+	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	title.add_theme_constant_override("outline_size", 4)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.position = plate.position
+	title.size = plate.size
+	body.add_child(title)
+	var lfv := FontVariation.new()
+	lfv.base_font = font_body
+	lfv.spacing_glyph = 2
+	var sub := Caption.new()
+	sub.text = "SHARED BY ALL YOUR CHARACTERS  ·  NEVER AT STAKE"
+	sub.font = lfv
+	sub.size_px = 11
+	sub.position = Vector2(0, 50)
+	sub.size = Vector2(STASH_SIZE.x, 14)
+	body.add_child(sub)
+	var x := Button.new()
+	x.text = "✕"
+	x.flat = true
+	x.add_theme_color_override("font_color", Color(0.85, 0.7, 0.42))
+	x.add_theme_color_override("font_hover_color", Color(1.0, 0.85, 0.5))
+	x.add_theme_font_size_override("font_size", 18)
+	x.position = Vector2(STASH_SIZE.x - pm - 30, 13)
+	x.size = Vector2(30, 30)
+	x.pressed.connect(func():
+		stash_panel.visible = false
+		tooltip.visible = false
+		shop_mode = ""
+		Sfx.play("click"))
+	body.add_child(x)
+	stash_tab_row = Control.new()
+	stash_tab_row.position = Vector2(STASH_GRID.x, 70)
+	stash_tab_row.size = Vector2(460, 66)
+	stash_tab_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(stash_tab_row)
+	_layout_stash_tabs()
 	var grid := GridContainer.new()
 	grid.columns = 10
 	grid.add_theme_constant_override("h_separation", 2)
 	grid.add_theme_constant_override("v_separation", 2)
-	vb.add_child(grid)
-	for i in 60:
+	grid.position = STASH_GRID
+	body.add_child(grid)
+	body.add_child(_inset_line(Rect2(STASH_GRID, Vector2(10 * (CELL + 2) - 2, 6 * (CELL + 2) - 2))))
+	for i in SharedStash.SLOTS:
 		var idx := i
 		var c := _slot(Vector2(CELL, CELL), func(ev):
 			if ev.button_index == MOUSE_BUTTON_RIGHT or ev.button_index == MOUSE_BUTTON_LEFT:
-				var it = hero.stash[idx]
-				if it != null:
-					for j in hero.inventory.size():
-						if hero.inventory[j] == null:
-							hero.inventory[j] = it
-							hero.stash[idx] = null
-							Sfx.play("pickup")
-							break
-					tooltip.visible = false
-					refresh(), func(p, on): _hover(p, on, "stash"), "", true)     # the bag's iron sockets
+				if game.stash_withdraw(stash_tab, idx):
+					Sfx.play("pickup")
+				tooltip.visible = false
+				refresh(), func(p, on): _hover(p, on, "stash"), "", true)     # the bag's iron sockets
 		grid.add_child(c)
 		stash_cells.append(c)
+	stash_count_lbl = _label("", 14, Color(0.86, 0.78, 0.6))
+	stash_count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stash_count_lbl.position = Vector2(0, STASH_GRID.y + 6 * (CELL + 2) + 12)
+	stash_count_lbl.size = Vector2(STASH_SIZE.x, 20)
+	body.add_child(stash_count_lbl)
+	var hint := _label("Click an item to move it between the stash and your bag", 12, DIM)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.position = Vector2(0, STASH_GRID.y + 6 * (CELL + 2) + 34)
+	hint.size = Vector2(STASH_SIZE.x, 18)
+	body.add_child(hint)
+
+## The tab row for `stash_style`: plaques side by side, ribbons hanging from a rod, gems in a row.
+func _layout_stash_tabs() -> void:
+	for c in stash_tab_row.get_children():
+		stash_tab_row.remove_child(c)
+		c.queue_free()
+	var n := SharedStash.TABS
+	var w := 460.0
+	for i in n:
+		var t := StashTab.new()
+		t.ui = self
+		t.idx = i
+		match stash_style:
+			"plaques":
+				var tw := (w - 6.0 * (n - 1)) / n
+				t.position = Vector2(i * (tw + 6.0), 14)
+				t.size = Vector2(tw, 50)
+			"ribbons":
+				var tw2 := 64.0
+				var gap := (w - tw2 * n) / (n - 1)
+				t.position = Vector2(i * (tw2 + gap), 6)
+				t.size = Vector2(tw2, 60)
+			_:
+				var tw3 := 64.0
+				var gap3 := (w - tw3 * n) / (n - 1)
+				t.position = Vector2(i * (tw3 + gap3), 0)
+				t.size = Vector2(tw3, 66)
+		stash_tab_row.add_child(t)
+
+func select_stash_tab(i: int) -> void:
+	if i == stash_tab:
+		return
+	stash_tab = i
+	Sfx.play("click")
+	refresh()
+
+func set_stash_style(st: String) -> void:
+	stash_style = st
+	_layout_stash_tabs()
+	refresh()
 
 func open_stash() -> void:
+	if not game.stash_allowed():
+		message("The stash can't be opened here", Color(1, 0.6, 0.4))
+		return
+	game.stash.fresh()
 	if furnace_ui != null:
 		furnace_ui.visible = false
 	shop_mode = "stash"
@@ -5009,9 +5245,13 @@ func refresh() -> void:
 		for k in equip_cells.keys():
 			_set_slot(equip_cells[k], hero.equipment.get(k))
 		gold_lbl.text = "%d" % hero.gold
-	if stash_panel.visible:
-		for i in 60:
-			_set_slot(stash_cells[i], hero.stash[i])
+	if stash_panel.visible and game.stash != null:
+		var tab: Array = game.stash.tabs[stash_tab]
+		for i in SharedStash.SLOTS:
+			_set_slot(stash_cells[i], tab[i])
+		for t in stash_tab_row.get_children():
+			t.queue_redraw()
+		stash_count_lbl.text = "Tab %s: %d / %d    ·    All tabs: %d / %d" % [STASH_NUMERALS[stash_tab], game.stash.tab_count(stash_tab), SharedStash.SLOTS, game.stash.count(), SharedStash.SLOTS * SharedStash.TABS]
 	var free: int = hero.free_talent_points()
 	talent_badge.visible = free > 0 and not talent_panel.visible
 	talent_badge.text = "%d talent point%s to spend  (N)" % [free, "" if free == 1 else "s"]
