@@ -124,3 +124,6 @@
 {"date": "2026-11-03", "phase": "after", "scene": "crypt", "preset": 2, "fps": 96, "low1": 69.6, "draw_calls": 881, "primitives": 434278, "gpu_ms": 5.51, "gpu_busy": 0.53, "load_ms": 2446, "vram_mb": 1207}
 {"date": "2026-11-03", "phase": "after", "scene": "server", "preset": 2, "fps": 28.7, "low1": 10, "draw_calls": 0, "primitives": 0, "gpu_ms": 0, "gpu_busy": 0.0, "load_ms": 1491, "vram_mb": 0}
 {"date": "2026-11-03", "phase": "after", "scene": "download", "mac_zip_mb": 408.6, "pck_mb": 363.6}
+{"date": "2026-11-03", "phase": "after", "note": "after the follow-ups (grass species, dual-paraboloid), single run", "scene": "camp", "preset": 2, "fps": 46.4, "low1": 35.7, "draw_calls": 2393, "primitives": 10329716, "gpu_ms": 21.32, "gpu_busy": 0.99, "load_ms": 2526, "vram_mb": 1253}
+{"date": "2026-11-03", "phase": "after", "note": "after the follow-ups (grass species, dual-paraboloid), single run", "scene": "moor", "preset": 3, "fps": 15.9, "low1": 9.7, "draw_calls": 2506, "primitives": 17075628, "gpu_ms": 61.57, "gpu_busy": 0.98, "load_ms": 2515, "vram_mb": 1790}
+{"date": "2026-11-03", "phase": "after", "note": "after the follow-ups (grass species, dual-paraboloid), single run", "scene": "boss", "preset": 2, "fps": 81.3, "low1": 64.2, "draw_calls": 2512, "primitives": 6954500, "gpu_ms": 10.92, "gpu_busy": 0.89, "load_ms": 2033, "vram_mb": 940}
