@@ -391,11 +391,11 @@ func cane_blow(style: String, struck: Array) -> void:
 			for e in struck:
 				if not e.dead:
 					_poison(e, "cane", PECK_POISON)
-					PlagueFx.peck(root, e.global_position + Vector3(0, 1.1 * e.height, 0))
+					Fx.burst(root, e.global_position + Vector3(0, 1.1 * e.height, 0), TOXIC, 6, 1.6, 0.06, 0.4, true, -2.0)
 		"swipe2", "back":
 			for k in 5:
-				fan.append(fwd.rotated(Vector3.UP, (k - 2) * 0.32))
-			PlagueFx.flick(root, h.global_position + Vector3(0, 1.2, 0), fan)
+				var d := fwd.rotated(Vector3.UP, (k - 2) * 0.32)
+				Fx.burst(root, h.global_position + Vector3(0, 1.2, 0) + d * 0.7, TOXIC, 5, 4.5, 0.05, 0.45, true, -9.0, 8.0, d + Vector3(0, 0.25, 0))
 			Sfx.play_at("drip", h.global_position, -6.0, 1.3)
 			for e in struck:
 				if not e.dead:
@@ -480,7 +480,9 @@ func _end_cloud(c: Dictionary) -> void:
 		(n as PlagueVialFx.Pool).end()
 		return
 	if is_instance_valid(n):
-		PlagueFx.miasma_end(n as Node3D, 0.8)
+		for ch in (n as Node3D).get_children():
+			if ch is GPUParticles3D:
+				(ch as GPUParticles3D).emitting = false
 		Fx._free_later(n, 2.0)
 
 func _update_clouds(delta: float) -> void:
@@ -1264,7 +1266,6 @@ func _hands() -> void:
 func update(delta: float) -> void:
 	if h.game == null or h.game.world == null:
 		return
-	PlagueFx.warm(h)       # his effects' shaders, once per zone (a first throw would hitch)
 	_hands()
 	_update_vials(delta)
 	_update_clouds(delta)
