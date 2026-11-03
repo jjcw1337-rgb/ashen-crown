@@ -157,6 +157,20 @@ func _run() -> void:
 		if af[0] == "dash":
 			dash = int(af[1])
 	check(dash == 25, "an A3 Stormstride's dash stays 25%% (%d)" % dash)
+	# one saved before that fix (gen 3, its dash act-scaled to 60%) is remade on load
+	var old3 := a3.duplicate(true)
+	old3["gen"] = 3
+	for af in old3["affixes"]:
+		if af[0] == "dash":
+			af[1] = 60
+	var fixed = Items.upgrade(old3)
+	var dash2 := 0
+	for af in fixed["affixes"]:
+		if af[0] == "dash":
+			dash2 = int(af[1])
+	check(dash2 == 25 and fixed["gen"] == Data.ITEM_GEN and float(fixed.get("power", 1.0)) == float(Data.RUNS[2]["power"]), "a pre-fix A3 Stormstride (dash 60%%) loads as 25%% and keeps its act strength (%d)" % dash2)
+	var rare3 := {"base": "ring", "rarity": 2, "ilvl": 10, "name": "Ring", "affixes": [["life", 5], ["str", 3]], "gen": 3}
+	check(Items.upgrade(rare3)["affixes"] == [["life", 5], ["str", 3]], "a gen-3 rare is left as it was")
 	var r1 := Items.make("ring", 2, 20)
 	r1["affixes"] = [["roll", 8]]
 	var r2 := Items.make("ring", 2, 20)

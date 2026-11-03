@@ -2017,6 +2017,9 @@ func _show_invis(on: bool, own: bool) -> void:
 	_invis_shown = want
 	for m in rig.find_children("*", "GeometryInstance3D", true, false):
 		(m as GeometryInstance3D).transparency = want
+	# the Compatibility renderer (the browser, Safe Mode) ignores transparency: there someone else's unseen hero is hidden
+	var compat: bool = game != null and not game.is_forward()
+	rig.visible = not (on and not own and (want >= 1.0 or compat))
 	if light:
 		light.visible = want < 1.0
 	for c in get_children():

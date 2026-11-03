@@ -57,6 +57,9 @@ const RAID_NAMES := ["I", "II", "III"]
 const EXTRACT_R := 4.0          # how close to an open portal the server accepts an extraction
 const OPEN_PORTALS := 2         # of the four candidate portals
 const PVP_MULT := 0.6           # a player's damage to another player
+const PVP_RANGE := 30.0         # the server drops a player-on-player blow, burn or control from further away
+const PVP_EFFECT_GAP := 0.8     # the same crowd control from one player on one other, at most this often (s)
+const PVP_BURN_CAP := 140.0     # a burn's damage a second, before PVP_MULT
 const MOVE_MULT := 0.85         # walking and running
 const MON_LIFE := 2.2           # monsters' life and damage in the crypt (server)
 const MON_DMG := 1.4
@@ -77,6 +80,7 @@ var carried := {}               # server: peer id -> Array of items picked up th
 var died_items := {}            # server: peer id -> true once their death drop was handled
 var dead_wait := {}             # server: peer id -> seconds since they fell, waiting for their death drop
 var last_hit := {}              # server: peer id -> [attacker peer id, raid_t]
+var pvp_effect_t := {}          # server: "attacker:target:kind" -> raid_t of the last control let through
 var cc_dr := {}                 # server: peer id -> PvpStatus.diminish's window (crowd control's diminishing returns)
 var uids := {}                  # server: peer id -> who they are (Nakama user, or the per-PC id)
 var nk: NakamaClient            # server: Nakama, to confirm join tickets (staging, production)
@@ -415,6 +419,7 @@ func new_round() -> void:
 	dead_wait.clear()
 	last_hit.clear()
 	pvp_obj_last.clear()
+	pvp_effect_t.clear()
 	await game.load_zone(0, ZONE, "start")
 	for e in game.world.enemies_root.get_children():
 		if e is Enemy:
@@ -602,15 +607,25 @@ func picked(pid: int, it: Dictionary) -> void:
 	(carried[pid] as Array).append(it)
 
 ## A player hit another: the attacker's client sends it, the server checks and deals it (scaled) to the target.
-func pvp_hit(attacker: int, target: int, amount: float, from: Vector3) -> void:
+## The checks every player-on-player message passes on the server (pvp_hit, Net.sv_pvp_effect, Net.sv_pvp_dot): a raid
+## on, two different players, both alive, within PVP_RANGE of each other. [attacker's hero, target's hero], or [].
+func pvp_pair(attacker: int, target: int) -> Array:
 	if state != "raid" or attacker == target or not game.net.players.has(attacker) or not game.net.players.has(target):
-		return
+		return []
 	var a = game.net.players[attacker]["hero"]
 	var t = game.net.players[target]["hero"]
 	if not is_instance_valid(a) or not is_instance_valid(t) or a.dead or t.dead:
+		return []
+	if a.global_position.distance_to(t.global_position) > PVP_RANGE:
+		return []
+	return [a, t]
+
+func pvp_hit(attacker: int, target: int, amount: float, from: Vector3) -> void:
+	var pr := pvp_pair(attacker, target)
+	if pr.is_empty():
 		return
-	if a.global_position.distance_to(t.global_position) > 30.0:
-		return
+	var a: Hero = pr[0]
+	var t: Hero = pr[1]
 	last_hit[target] = [attacker, raid_t]
 	game.net.hit_player(target, clampf(amount, 0.0, 5000.0) * PVP_MULT * Data.pvp_scale(a.cls, t.cls, a.level, t.level), from, "pvp", "phys")
 
@@ -632,18 +647,38 @@ func pvp_obj_hit(attacker: int, owner_pid: int, oid: int, _from: Vector3) -> voi
 		return
 	game.net.obj_hit_player(owner_pid, oid, attacker)
 
+## Crowd control on another player (Net.PVP_EFFECTS): the same kind from one player on one other at most every
+## PVP_EFFECT_GAP seconds, so a client sending them in a stream can't keep someone stunned.
+func pvp_effect(attacker: int, target: int, kind: String, from: Vector3) -> void:
+	if pvp_pair(attacker, target).is_empty():
+		return
+	var key := "%d:%d:%s" % [attacker, target, kind]
+	if pvp_effect_t.has(key) and raid_t - float(pvp_effect_t[key]) < PVP_EFFECT_GAP:
+		return
+	pvp_effect_t[key] = raid_t
+	last_hit[target] = [attacker, raid_t]
+	game.net.hit_player(target, 0.0, from, kind, "phys")
+
+## Burning another player (a Fire Arrow, magma, a unique's burn): `dps` as the attacker dealt it, capped, then
+## scaled like any PvP blow (PVP_MULT and the class pairing); the kill counts for the one who set it.
+func pvp_burn(attacker: int, target: int, dps: float, from: Vector3) -> void:
+	var pr := pvp_pair(attacker, target)
+	if pr.is_empty():
+		return
+	var a: Hero = pr[0]
+	var t: Hero = pr[1]
+	last_hit[target] = [attacker, raid_t]
+	game.net.hit_player(target, clampf(dps, 0.0, PVP_BURN_CAP) * PVP_MULT * Data.pvp_scale(a.cls, t.cls, a.level, t.level), from, "burn", "fire")
+
 ## Server: a player's skill put a status on another (PvpStatus): the same checks as damage, then the diminishing
 ## returns on hard crowd control, then to the victim alone.
 func pvp_status(attacker: int, target: int, kind: String, secs: float, data: Dictionary) -> void:
-	if state != "raid" or attacker == target or not game.net.players.has(attacker) or not game.net.players.has(target):
-		return
-	var a = game.net.players[attacker]["hero"]
-	var t = game.net.players[target]["hero"]
-	if not is_instance_valid(a) or not is_instance_valid(t) or a.dead or t.dead:
-		return
-	if a.global_position.distance_to(t.global_position) > 30.0:
+	var pr := pvp_pair(attacker, target)
+	if pr.is_empty():
 		return
 	secs = PvpStatus.clamp_status(kind, secs, data)    # (the Plague Doctor's kinds: their ceilings)
+	var a: Hero = pr[0]
+	var t: Hero = pr[1]
 	if kind == "pull":
 		# dragged no further than to the attacker's reach
 		var to: Vector3 = (t.global_position - a.global_position) * Vector3(1, 0, 1)
@@ -657,6 +692,7 @@ func pvp_status(attacker: int, target: int, kind: String, secs: float, data: Dic
 	var s := PvpStatus.diminish(cc_dr, target, kind, secs, raid_t)
 	if s <= 0.0:
 		return
+	last_hit[target] = [attacker, raid_t]
 	game.net.rpc_id(target, "cl_pvp_status", kind, s, data)
 
 ## A player fell: everything they had lies where they fell.
