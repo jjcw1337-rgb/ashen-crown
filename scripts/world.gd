@@ -907,12 +907,18 @@ func _place(node: Node3D, p: Vector3) -> Node3D:
 ## A waypoint stone (Data.WAYPOINT_ACTS point `id`) at `p`: the stone, its four pillar colliders, and
 ## where travellers arrive by it ("waypoint_<id>", 3 m in front; the zone's first stone is also
 ## "waypoint"). Any zone builder can place several. `cobble` paves the ground round it.
-func add_waypoint(id: String, p: Vector3, cobble := false) -> Inter:
-	var it := _inter("waypoint", "Waypoint", Vector3(p.x, 0, p.z), 2.4, Props.waypoint(null, Vector3.ZERO), {"wp": id})
-	for i in 4:
-		var a := TAU * i / 4.0 + PI * 0.25
-		add_circle(Vector3(p.x + cos(a) * 1.85, 0, p.z + sin(a) * 1.85), 0.3)
-	var arrive := Vector3(p.x, 0, p.z + 3.0)
+func add_waypoint(id: String, p: Vector3, cobble := false, grand := false) -> Inter:
+	# `grand`: the camp's large waypoint (WaypointGrand, blockout on test-waypoint) with its own colliders
+	var model: Node3D = WaypointGrand.build() if grand else Props.waypoint(null, Vector3.ZERO)
+	var it := _inter("waypoint", "Waypoint", Vector3(p.x, 0, p.z), 3.4 if grand else 2.4, model, {"wp": id})
+	if grand:
+		for s in WaypointGrand.SOLIDS:
+			add_circle(Vector3(p.x + s[0], 0, p.z + s[1]), s[2])
+	else:
+		for i in 4:
+			var a := TAU * i / 4.0 + PI * 0.25
+			add_circle(Vector3(p.x + cos(a) * 1.85, 0, p.z + sin(a) * 1.85), 0.3)
+	var arrive := Vector3(p.x, 0, p.z + (3.2 if grand else 3.0))
 	spawns["waypoint_" + id] = arrive
 	if not spawns.has("waypoint"):
 		spawns["waypoint"] = arrive
@@ -1414,8 +1420,12 @@ func _shrine(p: Vector3, kind_s: String) -> void:
 	add_circle(p, 0.9)
 
 func _chest(p: Vector3) -> void:
-	var c := Props.stash_chest(null, Vector3.ZERO, rng.randf_range(-40, 40))
-	c.scale = Vector3.ONE * 0.75
+	var yaw := rng.randf_range(-40, 40)
+	# the Hollow Crypt's chests are the Meshy iron-bound chest (CryptProps.chest) on the same footprint
+	var c: Node3D = CryptProps.chest(yaw) if str(theme.get("name", "")) == "bg" else null
+	if c == null:
+		c = Props.stash_chest(null, Vector3.ZERO, yaw)
+		c.scale = Vector3.ONE * 0.75
 	_inter("chest", "Chest", p, 1.4, c)
 	solid(c)
 
@@ -1849,6 +1859,12 @@ func crypt_shell(themes := []) -> void:
 			elif near:
 				top_xf.append(Transform3D(Basis().scaled(Vector3(1.0, 0.2, 1.0)), Vector3(wx, 3.0, wz)))
 	for ti in wall_xf:
+		if ti < 0 and str(theme.get("name", "")) == "bg":
+			# the Hollow Crypt's Ossuary (floor 1; the floors below keep their themes): some wall cells become
+			# niches, tombs, statues and braziers (the rolls above are made whatever is drawn), the rest the
+			# textured crypt stone
+			CryptProps.wall_meshes(self, CryptProps.walls(self, wall_xf[ti]))
+			continue
 		var wm: Material
 		if ti < 0:
 			wm = Mats.world(Color(0.4, 0.38, 0.35), Color(0.28, 0.27, 0.25), 0.9, 2.2, 0.25, Color(0.14, 0.16, 0.09))
@@ -1946,35 +1962,71 @@ func _treasure_chest(p: Vector3, yaw: float) -> void:
 	g.rotation_degrees.y = yaw
 	solid(g)
 
+## The crypt's props (A3's crypt and the Hollow Crypt): the Meshy pieces in assets/models/crypt/ when they are there
+## (CryptProps), the old code-built ones otherwise. Footprints and the rolls on `rng` are the same either way.
 func _pillar(p: Vector3, h: float) -> void:
 	var g := Models.N(null, "pillar")
-	var sm := Props.stone_clean()
-	Models.P(g, Geo.box(1.0, 0.4, 1.0), sm, Vector3(0, 0.2, 0))
-	Models.P(g, Geo.cyl(0.36, 0.4, h - 0.8, 12), sm, Vector3(0, h * 0.5, 0))
-	Models.P(g, Geo.box(1.0, 0.4, 1.0), sm, Vector3(0, h - 0.2, 0))
+	var mm := CryptProps.pillar(h)
+	if mm != null:
+		g.add_child(mm)
+	else:
+		var sm := Props.stone_clean()
+		Models.P(g, Geo.box(1.0, 0.4, 1.0), sm, Vector3(0, 0.2, 0))
+		Models.P(g, Geo.cyl(0.36, 0.4, h - 0.8, 12), sm, Vector3(0, h * 0.5, 0))
+		Models.P(g, Geo.box(1.0, 0.4, 1.0), sm, Vector3(0, h - 0.2, 0))
 	_place(g, p)
 	add_circle(p, 0.55)
 
 func _sarcophagus(p: Vector3, yaw: float) -> void:
 	var g := Props.footprint(Models.N(null, "sarc"), Vector2(0.6, 1.2))
-	var sm := Props.stone_clean()
-	Models.P(g, Geo.box(1.1, 0.8, 2.3), sm, Vector3(0, 0.4, 0))
-	var lid := Models.P(g, Geo.box(1.2, 0.2, 2.4), sm, Vector3(0.15, 0.9, 0.1), Vector3(0, 8, 4))
-	Models.P(g, Geo.sph(0.12, 8), Mats.world(Color(0.75, 0.7, 0.6), Color(0.6, 0.55, 0.45), 0.7, 3.0, 0.0, Props.MOSS, true), Vector3(-0.3, 0.12, 1.4))
+	var mm := CryptProps.sarcophagus()
+	if mm != null:
+		g.add_child(mm)
+	else:
+		var sm := Props.stone_clean()
+		Models.P(g, Geo.box(1.1, 0.8, 2.3), sm, Vector3(0, 0.4, 0))
+		var lid := Models.P(g, Geo.box(1.2, 0.2, 2.4), sm, Vector3(0.15, 0.9, 0.1), Vector3(0, 8, 4))
+		Models.P(g, Geo.sph(0.12, 8), Mats.world(Color(0.75, 0.7, 0.6), Color(0.6, 0.55, 0.45), 0.7, 3.0, 0.0, Props.MOSS, true), Vector3(-0.3, 0.12, 1.4))
 	_place(g, p)
 	g.rotation_degrees.y = yaw
 	solid(g)
 
 func _bones(p: Vector3) -> void:
 	var g := Models.N(null, "bones")
-	var bm := Mats.world(Color(0.72, 0.68, 0.58), Color(0.55, 0.5, 0.4), 0.7, 3.0, 0.0, Props.MOSS, false)
+	# the same seven rolls whichever bones are drawn (the server's layout depends on what follows them)
+	var rolls := []
 	for i in 6:
-		var b := Models.P(g, Geo.cyl(0.025, 0.025, rng.randf_range(0.3, 0.5), 5), bm, Vector3(rng.randf_range(-0.4, 0.4), 0.03, rng.randf_range(-0.4, 0.4)), Vector3(90, rng.randf() * 360.0, 0))
-	if rng.randf() < 0.6:
-		Models.P(g, Geo.sph(0.11, 8), bm, Vector3(0.1, 0.1, 0.0), Vector3.ZERO, Vector3(0.9, 1.0, 1.1))
+		rolls.append([rng.randf_range(0.3, 0.5), rng.randf_range(-0.4, 0.4), rng.randf_range(-0.4, 0.4), rng.randf() * 360.0])
+	var skull := rng.randf() < 0.6
+	var mm := CryptProps.bones(deg_to_rad(float(rolls[0][3])))
+	if mm != null:
+		g.add_child(mm)
+	else:
+		var bm := Mats.world(Color(0.72, 0.68, 0.58), Color(0.55, 0.5, 0.4), 0.7, 3.0, 0.0, Props.MOSS, false)
+		for r in rolls:
+			Models.P(g, Geo.cyl(0.025, 0.025, float(r[0]), 5), bm, Vector3(float(r[1]), 0.03, float(r[2])), Vector3(90, float(r[3]), 0))
+		if skull:
+			Models.P(g, Geo.sph(0.11, 8), bm, Vector3(0.1, 0.1, 0.0), Vector3.ZERO, Vector3(0.9, 1.0, 1.1))
 	_place(g, p)
 
 func _candles(p: Vector3, on_floor: bool) -> void:
+	if on_floor and str(theme.get("name", "")) == "bg" and CryptProps.has("candles"):
+		# the Hollow Crypt's: the Meshy candles (CryptProps.candles) along the nearest wall, on the same rolls as the
+		# wax sticks below (the server's layout depends on what follows them)
+		var turn := 0.0
+		for i in 5:
+			turn += rng.randf_range(0.12, 0.35)
+			turn += rng.randf_range(-0.25, 0.25)
+			turn += rng.randf_range(-0.25, 0.25)
+		var cg := CryptProps.candles()
+		_place(cg, p)
+		if not is_floor(p.x - 1.6, p.z):
+			cg.rotation.y = PI * 0.5           # against the west wall, the row along it, its front to the room
+		elif not is_floor(p.x + 1.6, p.z):
+			cg.rotation.y = -PI * 0.5
+		else:
+			cg.rotation.y = turn * 2.0
+		return
 	var g := Models.N(null, "candles")
 	var wax := Mats.mat(Color(0.85, 0.8, 0.65), 0.6, 0.0, Color(1.0, 0.7, 0.3), 0.1)
 	var n := 5 if on_floor else 1
@@ -1999,6 +2051,16 @@ func _candles(p: Vector3, on_floor: bool) -> void:
 
 func _wall_torch(p: Vector3, shadow: bool) -> void:
 	var g := Models.N(null, "sconce")
+	var mm := CryptProps.sconce()
+	if mm != null:
+		# the Meshy iron sconce, its back plate on the wall behind it (-z), the torch burning in its cup
+		mm.position = Vector3(0, 2.1, 0.0)
+		g.add_child(mm)
+		_place(g, p)
+		var f := Props.fire(g, Vector3(0, 2.1, 0) + CryptProps.SCONCE_CUP, 0.6, Color(1.0, 0.5, 0.2), true, shadow, false, "torch")
+		if str(theme.get("name", "")) == "bg" and BgFloors.floor_of(p) == 1:
+			CryptProps.torch_light(f)      # (the Ossuary's; the floors below keep Blaine's light)
+		return
 	Models.P(g, Geo.box(0.12, 0.3, 0.1), Props.iron(), Vector3(0, 2.2, 0.0))
 	Models.seg(g, Vector3(0, 2.1, 0), Vector3(0, 2.5, 0.3), 0.03, 0.04, Props.wood_dark(), 6)
 	_place(g, p)

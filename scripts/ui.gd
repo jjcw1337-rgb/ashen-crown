@@ -3212,6 +3212,10 @@ func _build_waypoints() -> void:
 ## Opened from a waypoint stone (`stone`): walking away from it, or clicking outside the window, closes it.
 func open_waypoints(stone: Node3D = null) -> void:
 	(wp_panel as WaypointPanel).open(stone)
+	if stone:
+		for g in stone.get_children():
+			if g is WaypointGrand:
+				(g as WaypointGrand).pulse()   # the grand waypoint flares as it wakes
 
 func _build_dialog() -> void:
 	dialog_panel = PanelContainer.new()

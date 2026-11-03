@@ -241,6 +241,10 @@ static func build(w: World) -> void:
 		w.props_root.add_child(hl)
 	w.enemy_spawns.append({"kind": "fallen_reaver", "pos": Vector3(hc.x, 0, hc.y), "count": 1, "champ": true, "pack": 690, "level": MON_LEVEL + 2})
 	w.enemy_spawns.append({"kind": "skel_archer", "pos": Vector3(hc.x, 0, hc.y + 6.0), "count": 2, "champ": false, "pack": 690, "level": MON_LEVEL})
+	# the look (CryptProps): the Ossuary's wall cells become niches, tombs, statues and braziers from these rooms;
+	# the rubble, cobwebs and the hall's seal after. Visual only: no footprint, no roll on w.rng, no interactable
+	w.set_meta("bg_rooms", rooms)
+	w.set_meta("bg_hall", hall)
 	w.crypt_shell(BgFloors.themes())
 	# the antechamber gates and bells (after the walls, so the path grid never counts the gates: they rise later)
 	var gates := []
@@ -266,10 +270,17 @@ static func build(w: World) -> void:
 		_bell(w, Vector3(c.x + 2.2, 0, c.y - 2.2))
 	w.set_meta("bg_gates", gates)
 	for p in portals:
-		var it: Inter = w._inter("extract", "Extraction Portal", p, 1.8, Fx.portal_model(), {"open": false})
+		var glow: Node3D = CryptProps.portal_glow() if CryptProps.has("archway") else Fx.portal_model()
+		var it: Inter = w._inter("extract", "Extraction Portal", p, 1.8, glow, {"open": false})
 		var m := it.get_node_or_null("Model")
 		if m:
 			m.visible = false
+		var arch := CryptProps.archway()
+		if arch != null:
+			# the rune gate round the portal's light, there whether or not the portal is open (its runes light with it)
+			arch.name = "Arch"
+			it.add_child(arch)
+	CryptProps.dress(w)
 	w.spawns["start"] = spawns[0] if not spawns.is_empty() else Vector3.ZERO
 	w.set_meta("bg_spawns", spawns)
 
@@ -749,8 +760,23 @@ static func sync_proxies(g: Node) -> void:
 		e.life = 1e9
 		e.rig.visible = false
 
+## Client: an open portal's gate burns with its runes, a closed one stands dark (CryptProps.set_runes; the state
+## comes with Net.cl_bg_raid, which shows and hides the portal's light).
+static func sync_gates(g: Node) -> void:
+	if g.world == null:
+		return
+	for p in portal_list(g.world):
+		var arch: Node3D = p.get_node_or_null("Arch")
+		if arch == null:
+			continue
+		var on: bool = bool(p.data.get("open", false))
+		if not arch.has_meta("lit") or bool(arch.get_meta("lit")) != on:
+			arch.set_meta("lit", on)
+			CryptProps.set_runes(arch, 2.6 if on else 0.0)
+
 ## Client: the raid's clock and portals, top of the screen.
 static func hud(g: Node, delta: float) -> void:
+	sync_gates(g)
 	var r: Dictionary = g.bg_raid
 	if r.is_empty():
 		return

@@ -46,6 +46,20 @@ static func act_info(act: int, run: int) -> Dictionary:
 const WAYPOINT_GROUPS := [
 	{"id": "acts", "name": "Acts"},
 	{"id": "ancient", "name": "Ancient Levels"},
+	{"id": "battlegrounds", "name": "Battlegrounds"},
+]
+
+## Battlegrounds the waypoint window offers (its "Battlegrounds" tab group; shown once this has an entry).
+## Each card is a way down from the camp's waypoint with the character playing (Game.waypoint_battleground: a word
+## on the stakes, the dais flares, the raid server is joined; the raid ends back on the dais). The raid's numbers
+## (round length, when the portals open, how many raiders) come from Battlegrounds' constants, never from here.
+##   id · name · kind (its mode, under the name) · art (the Meshy painting on the window's banner, 640x480) · wide
+##   (the same painting at 16:9, behind the loading words on the way down) · lines (what the card says of the place)
+const WAYPOINT_BATTLEGROUNDS := [
+	{"id": "crypt", "name": "The Hollow Crypt", "kind": "Extraction raid",
+		"art": "res://assets/textures/ui/wp_bg_crypt.png", "wide": "res://assets/textures/ui/wp_bg_crypt_wide.jpg",
+		"lines": ["Three floors under the old kingdom: the Ossuary's twelve chambers round a great pillared hall, the Frozen Depths where Hrimgar the Frostbound waits, and the Overgrown Vault, Old Mossbeard's, with its golden chest. Each round opens in the antechambers behind iron gates: the first bell rung, the gates rise.",
+			"Other raiders are hunting down there too. Reach an Extraction Portal once they open and everything you carry comes home."]},
 ]
 
 const WAYPOINT_ACTS := [
@@ -103,6 +117,13 @@ static func check_waypoints() -> Array:
 			ids[id] = true
 			if not WAYPOINT_ZONES.has(str(p.get("zone", ""))):
 				errs.append(tag + ": waypoint '%s' leads to unknown zone '%s'" % [id, p.get("zone", "")])
+	for b in WAYPOINT_BATTLEGROUNDS:
+		var btag := "battleground '%s'" % str(b.get("id", "?"))
+		if str(b.get("id", "")) == "" or str(b.get("name", "")) == "":
+			errs.append(btag + ": needs an id and a name")
+		for key in ["art", "wide"]:
+			if b.has(key) and not ResourceLoader.exists(b[key]):
+				errs.append(btag + ": %s not found: %s" % [key, str(b[key])])
 	return errs
 
 ## How each character draws and puts away its weapon (WeaponCarry; the motion itself lives in Anim).

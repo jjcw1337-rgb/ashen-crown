@@ -63,6 +63,10 @@ func _run() -> void:
 	me.level = 24          # (every skill open; The Last Experiment, his ultimate, at 20)
 	me.recalc()
 	var other = g.net.puppets()[0] if g.net.puppets().size() > 0 else null
+	# the partner's class change follows his own zone load; give it time to arrive
+	var tc := Time.get_ticks_msec()
+	while other and not (other.is_plague() and other.rig.has_meta("plague")) and Time.get_ticks_msec() - tc < 10000:
+		await wait(5)
 	check(other != null and other.is_plague() and other.rig.has_meta("plague"), "the other player shows as a plague doctor on his own body")
 	# both watch the whole time; the host casts first, the partner once the host is done
 	_watch(other)
