@@ -56,6 +56,7 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | fireball | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a fireball launched, roaring burst of flame whooshing away, close mic, dry, isolated sound effect, no music |
 | forest | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a soft gentle breeze through the leaves of an old forest, branches swaying and leaves rustling softly, calm and peaceful, steady and even, no birds, no music |
 | fuse | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a lit bomb fuse sizzling and hissing with sparks, steady, close mic, dry, isolated sound effect, no music |
+| gauntlet_gong | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a huge bronze temple gong struck once with a heavy mallet in a vast stone hall, deep shimmering roar that swells and rings out, isolated sound effect, no music, no voices |
 | gold | 2 | Kenney rpg-audio (kenney.nl) | CC0 1.0 | handleCoins.ogg |
 | growl | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a rotting zombie's low hungry groan, close mic, dry, isolated sound effect, no music |
 | grubb_mutter | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a huge goblin king's deep, gravelly voice muttering and grumbling to himself about his gold, unintelligible words, slow and menacing, ending in a low dark chuckle, heard from a distance in a wooden fort, isolated sound effect, no music |

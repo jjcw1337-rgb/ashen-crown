@@ -56,6 +56,7 @@ const BANK := {
 	"fireball": [1, "sfx", 0.0],
 	"forest": [2, "ambience", 0.0],
 	"fuse": [1, "sfx", 0.0],
+	"gauntlet_gong": [2, "sfx", 0.0],
 	"gold": [2, "ui", 0.0],
 	"growl": [1, "sfx", 0.0],
 	"grubb_mutter": [2, "ambience", 0.0],
