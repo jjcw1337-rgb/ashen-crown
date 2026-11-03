@@ -8,26 +8,31 @@ Rows with Kind `bench` are the runner's KPI benchmark of the night's result (a f
 
 ## Lessons (rewritten by each run: at most 8 bullets, the most useful first)
 
-- **Know the screen before blaming the scene.** The worst "slow spot" (the camp at 21 fps on an M5 Pro) was a Retina
-  window drawing 4x the pixels; `res` used to be the UI's size in points. It's now `WxH@scale 3dS` (real pixels, the
-  screen's scale, the 3D scale). Compare one spot across players and presets before touching the scene.
-- **This Mac can't open a Retina-sized window** (the KPI tool's window is clamped to the 1080p screen): emulate the
-  pixel cost with `--render-scale 2.0` (4x the pixels) and measure the fix at the scale the cap picks.
-- **Engine errors with callable `''` or a C++ `at:` and no script line are mostly Godot 4.3's own** (BoneAttachment3D's
-  skeleton_updated, the multiplayer path cache's tree_exited, the dummy renderer's `Parameter "m" is null`). Bisect them
-  with a scratch scene of bare nodes before reading game code; most are harmless noise to keep out of the reports.
-- **Check the telemetry itself.** Two of tonight's server issues were made up by the log reader catching lines
-  half-written (an error without its `at:`). It now reads whole lines only; an odd `at:` is a hint to look at the reader.
-- **The servers' journal (`ssh ashen-crown-staging 'sudo journalctl -u ashen-crown-bg ...'`) is the fuller story**:
-  telemetry sends each issue once per session; the journal has every line and the joins/leaves around it (UTC; the
-  tables are UTC too).
+- **Know the screen before blaming the scene.** The worst "slow spot" so far (the camp at 21 fps on an M5 Pro) was a
+  Retina window drawing 4x the pixels; `res` is now `WxH@scale 3dS`. Compare one spot across players and presets
+  first. This Mac's KPI window can't be Retina-sized: emulate with `--render-scale 2.0`. (Confirmed fixed 11-03.)
+- **Look at hitches, not only the average.** The worst play now is stutter at fine averages (archer: 9-45 frames
+  over 100 ms a minute). `--kpi ... --trace` lists every frame; temporary prints of `Kpi.st["frames"].size()` at
+  each step line a hitch up with what ran the frame before (bisected the archer's to Fire Arrow's `finish`). Rare
+  hitches need 5+ runs a variant: one run proves nothing either way. The first use of a shader variant in a process
+  costs 100-700 ms (a scratch scene with a cold cache): repeated KPI runs warm `user://shader_cache` and the
+  pipeline cache and hide it, so clear them to see what a player meets.
+- **Read the crumbs for the order of events.** `raid` -> `enter bg` -> `enter town` 2 s later = a join turned away
+  mid-load; an error right after is code that awaited a load and then talked to a link that was gone. After any
+  `await` in net code, check the connection is still the same one (`Net.still_joined`).
+- **Engine errors with callable `''` or a C++ `at:` and no script line are mostly Godot 4.3's own.** Read the engine
+  source for the one path that can log it (raw.githubusercontent.com/godotengine/godot/4.3-stable/...), then bisect
+  with a scratch scene of bare nodes; most are harmless noise. One player on every build = watch, not chase.
+- **The servers' journal is the fuller story** (`ssh ashen-crown-staging 'sudo journalctl -u ashen-crown-bg|coop
+  --since -24h'`, UTC): it caught a co-op server script error telemetry never sent. Group it with `sed 's/[0-9]+/#/g'
+  | sort | uniq -c`; `Parameter "m" is null` and the exit-leak lines are the dummy renderer's noise.
+- **Check the telemetry itself.** Half-written log lines made up two server issues once; an odd `at:` is a hint to
+  look at the reader.
 - **A timer lambda that captures a node errors when the node is gone, even behind `is_instance_valid`**: use
-  `Fx.later(node, t, fn)` (a weak reference). The servers replay every partner's effects on puppets, so effect code runs
-  there too.
-- **RPC checksum / argument-count errors are a client and a server on different builds** (deploys leave a server with
-  players on its old release): the client already explains it; don't chase them as code bugs.
-- **In zsh, `set -- $a` doesn't split words**: loop over measurements with a function and explicit arguments (a
-  mis-split `--quality` silently ran Ultra and looked like a 6x regression).
+  `Fx.later(node, t, fn)`. Servers replay every partner's effects on puppets, so effect code runs there too.
+- **RPC checksum / argument-count errors are a client and a server on different builds** (deploys leave a server on
+  its old release): the client already explains it. In zsh, loop over measurements with explicit arguments
+  (`set -- $a` doesn't split; a mis-split `--quality` silently ran Ultra).
 
 ## Log
 
@@ -41,3 +46,10 @@ Rows with Kind `bench` are the runner's KPI benchmark of the night's result (a f
 | 2026-11-02 | error | client: `disconnect a nonexistent connection ... skeleton_updated` (28b5fe25d00fd3d0) | not reproduced: engine-side (BoneAttachment3D), one Windows player, every build; a windowed camp run and the gate show none | 1 player, 144 events / 15 sessions | watch for a second player | [runs/2026-11-02.md](runs/2026-11-02.md) |
 | 2026-11-02 | error | client: `Signal 'tree_exited' is already connected` (2bdc80640e965691) | watch: engine-side (multiplayer path cache), one Windows player in co-op / raids; harmless | 1 player, 9 events | watch | [runs/2026-11-02.md](runs/2026-11-02.md) |
 | 2026-11-02 | bench | Runner's KPI benchmark of the night's result (avg fps) | camp 46→46, moor Medium 57→56, moor 37→37, moor Ultra 11→11, fight 34→34, boss 54→53, arena 111→100, crypt 96→96; server tick p99 107→113 ms, camp 15M→15M tris, download 429→429 MB | shipped | | `docs/nightly/perf/metrics.jsonl` |
+| 2026-11-03 | error | client: `RPC 'sv_zone_ready' on yourself is not allowed` (b43c39456b33870a) | fixed: a raid join turned away while the crypt loaded; `_client_goto` (and the raid hello after its ticket) sent to the offline peer after the await. `Net.still_joined` checks the link first; `tools/net_drop_test.gd` reproduces it | 1 player, 1 event | none expected | [runs/2026-11-03.md](runs/2026-11-03.md) |
+| 2026-11-03 | error | client: `disconnect a nonexistent connection ... skeleton_updated` (28b5fe25d00fd3d0) | watch (2nd night): still one Windows player, every build, every session only start -> camp -> camp (3-26 a session); engine source read, 11 scratch cases, carousel and title: none here | 1 player, 150 events / 16 sessions | a second player, or log the attachment's path in a crumb | [runs/2026-11-03.md](runs/2026-11-03.md) |
+| 2026-11-03 | error | servers: `Unable to send packet on channel 1, max channels: 0` (fd6796612eee4c16) | watch: unchanged (a join turned away); 12 lines in 24 h | servers, 30 events | as before | [runs/2026-11-03.md](runs/2026-11-03.md) |
+| 2026-11-03 | error | co-op server (journal only): `StyleBoxTexture` into a `StyleBoxFlat` var, `UI._make_theme` | already fixed in code (532a507), one line on an older build, not seen since | server, 1 line | none | [runs/2026-11-03.md](runs/2026-11-03.md) |
+| 2026-11-03 | spot | archer hitching, Act I moor + fort (wild 6,-24 / 10,-73 / -9,-101; lair), Low, Windows and Mac: 9-45 hitches/min, 1% low 3-14 | watch: reproduced (`--kpi fight --class archer -q 0 --trace`: up to 6/min; knight and bow-only 0); every hitch is the frame after a Fire Arrow `finish`; scorch decal off / emission always set 0 of 4 runs vs 3 of 5, not conclusive, nothing changed | 2 players, 15 samples | lead: first-use shader compiles (a new particle variant costs 450-770 ms cold, in a scratch scene); try a warm-up of the class's effects behind the loading screen, measured with cleared caches | [runs/2026-11-03.md](runs/2026-11-03.md) |
+| 2026-11-03 | spot | last night's Retina camp watch | closed: that Mac reports `@2.0 3d0.53` and 94-118 fps on Low in the camp, Gauntlet and crypt | 1 player, 30+ samples | none | [runs/2026-11-03.md](runs/2026-11-03.md) |
+| 2026-11-03 | bench | Runner's KPI benchmark of the night's result (avg fps) | camp 46→45, moor Medium 89→88, moor 52→52, moor Ultra 15→16, fight 46→46, boss 82→84, arena 77→77, crypt 96→94; server tick p99 94→100 ms, camp 10M→10M tris, download 409→409 MB | shipped | | `docs/nightly/perf/metrics.jsonl` |

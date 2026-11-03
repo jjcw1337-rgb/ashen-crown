@@ -80,6 +80,12 @@ static func _scurve(x: float) -> float:
 	var t := clampf(x, 0.0, 1.0)
 	return t * t * (3.0 - 2.0 * t)
 
+static var _cube := -1
+static func _cube_shadows() -> bool:
+	if _cube < 0:
+		_cube = 1 if OS.get_cmdline_user_args().has("--omnicube") else 0
+	return _cube == 1
+
 ## Shadows for the lights nearest `at`, within the preset's budget; returns how many are shadowed.
 static func pick_shadows(tree: SceneTree, at: Vector3, quality: int) -> int:
 	var lights := tree.get_nodes_in_group(SHADOW_GROUP)
@@ -100,6 +106,9 @@ static func pick_shadows(tree: SceneTree, at: Vector3, quality: int) -> int:
 	for i in ranked.size():
 		var l: Light3D = ranked[i][1]
 		var want := i < budget
+		if want and l is OmniLight3D and not _cube_shadows() and (l as OmniLight3D).omni_shadow_mode != OmniLight3D.SHADOW_DUAL_PARABOLOID:
+			# dual-paraboloid maps: 2 passes instead of a cube's 6 (nightly 2026-11-03: the camp's fires ~1 ms)
+			(l as OmniLight3D).omni_shadow_mode = OmniLight3D.SHADOW_DUAL_PARABOLOID
 		if l.shadow_enabled != want:
 			l.shadow_enabled = want
 		if want:

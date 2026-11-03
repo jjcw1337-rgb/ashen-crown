@@ -1268,6 +1268,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	world.living_grass = true              # the living grass everywhere outdoors (its shader chars it under A3's ash)
 	add_child(world)
 	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair", "coast"].find(zone) * 7 + (zone.hash() % 997 if zone.begins_with("isle_") else 0))
+	var preloads := _preload_monsters()
 	_restore_harvest()
 	_add_ocean(zone)
 	_end_underworld_now()
@@ -1303,6 +1304,8 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 			spawn_enemy(es["kind"], p, int(es["level"]), es["champ"], champ_name, int(es["pack"]))
 	if not world.boss_spawn.is_empty() and not net.is_client():
 		spawn_enemy(boss_kind(), world.boss_spawn["pos"], world.level + 1, false, "", 999)
+	for p in preloads:
+		ResourceLoader.load_threaded_get(p)     # (they are in use: this only closes the threaded requests)
 	if zone == "town":
 		_stock_shops()
 		if not tp_link.is_empty():
@@ -1326,6 +1329,21 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	_start_watch()
 	if playing and shot_path == "":
 		save_game()
+
+## The zone's monsters' models, loaded on worker threads while the minimap is drawn (load_zone): each first load
+## of a kind's model was 23-34 ms on the main thread, ~0.6 s of the moor's arrival (nightly 2026-11-03).
+func _preload_monsters() -> PackedStringArray:
+	var kinds := {}
+	for es in (world.enemy_spawns if not net.is_client() else []):
+		kinds[str(es["kind"])] = true
+	if not world.boss_spawn.is_empty() and not net.is_client():
+		kinds[boss_kind()] = true
+	var out := PackedStringArray()
+	for k in kinds:
+		for p in Enemy.model_paths(k):
+			if not out.has(p) and not ResourceLoader.has_cached(p) and ResourceLoader.load_threaded_request(p, "", true) == OK:
+				out.append(p)
+	return out
 
 ## Photographs the freshly built zone from straight above for the minimap.
 func _capture_map(zone: String) -> void:

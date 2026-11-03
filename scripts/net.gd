@@ -168,8 +168,11 @@ func _on_connected() -> void:
 		# with accounts on: a one-time join ticket from Nakama (over HTTPS), never the session itself
 		var ticket := ""
 		if game.cloud != null and game.cloud.signed_in:
+			var link := peer
 			var r: Dictionary = await game.cloud.nk.user_rpc("bg_ticket", {})
 			ticket = str(r.get("ticket", ""))
+			if not still_joined(link):
+				return
 		rpc_id(1, "sv_bg_hello", Battlegrounds.client_id(), ticket)
 
 func _on_connect_failed() -> void:
@@ -454,6 +457,7 @@ func cl_goto(act: int, zone: String, spawn: String, at: Vector3, tp: Dictionary,
 	_client_goto(act, zone, spawn, null if at == Vector3.INF else at)
 
 func _client_goto(act: int, zone: String, spawn: String, at) -> void:
+	var link := peer   # (the connection this trip belongs to: it can close while the zone loads)
 	loading = true
 	enemies.clear()
 	items.clear()
@@ -465,8 +469,17 @@ func _client_goto(act: int, zone: String, spawn: String, at) -> void:
 	var p: Vector3 = game.hero.global_position + Vector3(1.4, 0, 1.0)
 	game.hero.global_position = game.world.free_spot_near(p, 1.5)
 	game.hero.global_position.y = game.world.height_at(game.hero.global_position.x, game.hero.global_position.z)
+	# turned away or cut off while the zone loaded (a raid join refused): nobody is left to tell, and the game is
+	# already taking the hero home (`Game.on_net_failed`)
+	if not still_joined(link):
+		return
 	loading = false
 	rpc_id(1, "sv_zone_ready")
+
+## Client: still connected through the same link as before an await (not shut down, nor joined elsewhere since).
+func still_joined(link: ENetMultiplayerPeer) -> bool:
+	return active and not is_host and link != null and peer == link \
+		and link.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED
 
 func request_switch(d: int, zone := "town", spawn := "") -> void:
 	rpc_id(1, "sv_switch", d, zone, spawn)

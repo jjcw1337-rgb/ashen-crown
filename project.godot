@@ -47,7 +47,8 @@ wav={
 "compress/mode": 2
 }
 texture={
-"compress/lossy_quality": 0.9,
+"compress/lossy_quality": 0.75,
 "compress/mode": 1,
-"detect_3d/compress_to": 0
+"detect_3d/compress_to": 0,
+"process/size_limit": 1024
 }

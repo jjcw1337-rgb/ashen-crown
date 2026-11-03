@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `woodcut_test` (`--fixed-fps 60`), `temper_test`, `woodcut_mp_test` (host + join), `grass_test`, `collision_test`, `aim_test`, `plague_test` (`--fixed-fps 60`), `hoard_test`, `coop_fx_test` (every skill's effects reach a puppet, in one process), `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), `bg_test` (the Battlegrounds: a server and a client, `-- --server --port 24611 --raid-fast server` and `-- client 24611`), `bg_pvp_test` (a server and two players, `a` and `b`), `plague_pvp_test` (the same three, `-- a N` / `-- b N`: the Plague Doctor's statuses on another player), `controls_test` (WASD, the left click, the dodge roll, every class), and the co-op pairs `mp_test`, `mp_boss_test` and `plague_mp_test` (run one copy
+`det_test`, `woodcut_test` (`--fixed-fps 60`), `temper_test`, `woodcut_mp_test` (host + join), `grass_test`, `collision_test`, `aim_test`, `plague_test` (`--fixed-fps 60`), `hoard_test`, `coop_fx_test` (every skill's effects reach a puppet, in one process), `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), `bg_test` (the Battlegrounds: a server and a client, `-- --server --port 24611 --raid-fast server` and `-- client 24611`), `bg_pvp_test` (a server and two players, `a` and `b`), `plague_pvp_test` (the same three, `-- a N` / `-- b N`: the Plague Doctor's statuses on another player), `controls_test` (WASD, the left click, the dodge roll, every class), `nightly_net_drop_test` (a client's link closing while a zone loads: no RPC after it), and the co-op pairs `mp_test`, `mp_boss_test` and `plague_mp_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -841,10 +841,15 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   build, kept as a reference; its export isn't used. Godot's `.import` files and extracted textures under
   `assets/models/` are git-ignored (regenerated on import); run `godot --headless --editor --quit` after re-exporting.
   Since those `.import` files are made fresh, the textures take `project.godot`'s `[importer_defaults] texture`:
-  **lossy WebP at quality 0.9, 3D detection off** (the default was lossless, 490 MB of the old 618 MB pack; q0.9 is
-  ~41 dB against the source JPGs, which are lossy already). A checkout imported before 2026-11-01 keeps its old
-  lossless `.import` files until they're deleted (`find assets/models -name '*.jpg.import' -o -name '*.png.import' |
-  xargs rm`, then `godot --headless --import`). Give a new texture with a committed `.import` the same settings when it
+  **lossy WebP at quality 0.75, 3D detection off, at most 1024 px** (`process/size_limit`; the default was lossless,
+  490 MB of the old 618 MB pack; q0.9 was ~41 dB against the source JPGs, which are lossy already; q0.75 and the 1024 cap,
+  nightly 2026-11-03, took 133 MiB off the download (541 -> 409) and showed nowhere, not even the class picker's front hero or the
+  title's gate: a hero is ~100 px tall in play, so the 2048 top level was never sampled). **A new texture gets the cap
+  too**: a UI painting or anything meant to be sharper than 1024 needs `process/size_limit=0` in its committed
+  `.import`. A checkout imported before keeps its old `.import` files until they're remade; deleting only the
+  `.import` files is wrong (the textures come back without mipmaps: only the glTF importer's own extraction turns them
+  on), so re-extract: `git clean -fX assets/models && godot --headless --import`. Give a new texture with a committed
+  `.import` the same settings when it
   is a JPG-sourced 3D texture (like `assets/textures/plague/coat_*.jpg`); keep UI and cut-out PNGs lossless.
 - **Knight (no armour)** is a Meshy model (white shirt with a red crusader cross, shorts, leather sandals,
   long hair): `assets/models/knight_meshy.glb`, built by `Knight.build_meshy` on `Knight.MESHY_LAYOUT`. The hero
@@ -911,7 +916,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   (`GrassField.impulse(pos, radius, strength)`). Local and cosmetic: no network traffic. Far grass thins by
   shrinking clumps by their random value and LOD0/LOD1 cross-fade per clump (`Grass.FADE`, `LOD_BAND` per
   preset, using the global `grass_cam` so shadow passes agree); density per preset `QUALITY_DENSITY`; grass
-  casts shadows only on Ultra. `Grass.apply_quality` updates distances (`Game.apply_quality` skips the 3D grass's
+  casts shadows only on Ultra, from a shadows-only twin of each near (LOD0) chunk drawn with the LOD1 clump
+  (`Grass._shadow_twin`, `SHADOW_STYLE`; made on switching to Ultra, freed below it; nightly 2026-11-03: 14 -> 6 ms). `Grass.apply_quality` updates distances (`Game.apply_quality` skips the 3D grass's
   nodes, meta `grass3d`). Tests: `tools/grass_test.gd` (headless: species, LODs, no painted clumps, field on/off,
   movers, swings, rings, wind); `tools/grass_lab.gd -- outdir [quality] [zoomin]` (needs a display: biome bands,
   scripted walkers that walk, sprint, stop, turn and dash, a big beast, swings, a slam, wind changes; saves frames
@@ -1604,7 +1610,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `World.mm_chunked`** (one the size of the map is never culled and lands in every shadow pass, six per shadowed omni
   light); **Meshy models get no LODs** (their thousands of UV islands leave the importer nothing to simplify; re-bake
   from Meshy's full-detail output, `tools/blender/camp/rebake_prop.py`); shadow-casting fires join `Grade`'s budget
-  (`FireFx.make`); the sun's cascades are fitted to the camera every frame (`Game._fit_shadows`, distances follow the
+  (`FireFx.make`; `Grade.pick_shadows` gives budgeted omni lights dual-paraboloid maps, 2 passes instead of a cube's 6:
+  camp +5% fps, nightly 2026-11-03; `--omnicube` for comparisons); the sun's cascades are fitted to the camera every frame (`Game._fit_shadows`, distances follow the
   zoom; `_shadow_hold` while the minimap captures); the hero's rim light is in every zone (`Grade.RIMS`, picked by
   `Game._rim_kind`). `normals_from_albedo.py` gave the 27 models whose Meshy normal map was flat a detail map
   (island-aware, no seam ridges); `smooth_normals.py` re-shades faceted round props in place (normals only);

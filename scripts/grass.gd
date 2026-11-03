@@ -227,14 +227,74 @@ static func scatter(parent: Node3D, area: Rect2, ctx: Object, colors: Dictionary
 			mmi.position = Vector3.ZERO
 			# shadows only from the near, detailed grass, and only on Ultra (as before): grass shading grass on
 			# lower presets darkens the field more than it grounds it, and costs a second pass
-			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if (shadows and l == 0 and quality >= 3) else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			_set_ranges(mmi, l, lod, fade, half)
 			mmi.set_meta("grass3d", l)
 			mmi.add_to_group("grass")
 			mmi.name = "Grass_%s_%s_%s%s_L%d" % [parts[0], parts[1], parts[2], parts[3], l]
 			parent.add_child(mmi)
+			if l == 0 and shadows and not (parts[2] in _no_shadow_species()):
+				mmi.set_meta("shadows", PackedStringArray([parts[2], parts[3]]))
+				if quality >= 3:
+					_add_twin(mmi, arr)
 	print("Grass: %d clumps in %d chunks (preset %d) in %d ms" % [count, buckets.size(), quality, Time.get_ticks_msec() - t0])
 	return count
+
+## The near grass's shadow (Ultra only): a shadows-only twin of each LOD0 chunk. It draws the same clumps with
+## the LOD0 material (same sway, touch and thinning) but, by `SHADOW_STYLE`, from the LOD1 clump (fewer triangles)
+## and/or only out to `SHADOW_END` m from the camera. The visible chunks cast nothing themselves.
+## `--grassshadow lod0|lod1|near|lod1near` picks the style for comparisons (nightly 2026-11-03: the moor on Ultra,
+## grass shadows 14 -> 6 ms with LOD1, no visible change; `near` saves 2 ms more but pops whole chunks' shadows;
+## an opaque twin (no alpha test) saved ~1 ms).
+const SHADOW_STYLE := "lod1"
+const SHADOW_END := 36.0
+static var _shadow_style := ""
+static func shadow_style() -> String:
+	if _shadow_style == "":
+		var a := OS.get_cmdline_user_args()
+		var i := a.find("--grassshadow")
+		_shadow_style = a[i + 1] if i >= 0 and i + 1 < a.size() else SHADOW_STYLE
+	return _shadow_style
+
+## Ground-hugging species cast no shadow even on Ultra: moss (3-7 cm) and the sparse verge grass (10-22 cm, shorter
+## still on verges). Their shadows didn't show (fixed-step shots = run-to-run noise) and cost ~1.9 ms of the moor's
+## 62 ms (nightly 2026-11-03). `--grassnoshadow a,b` (or `none`) overrides it for comparisons.
+const NO_SHADOW_SPECIES := ["moss", "sparse"]
+static func _no_shadow_species() -> Array:
+	var a := OS.get_cmdline_user_args()
+	var i := a.find("--grassnoshadow")
+	return Array(a[i + 1].split(",")) if i >= 0 and i + 1 < a.size() else NO_SHADOW_SPECIES
+
+static func _add_twin(src: MultiMeshInstance3D, arr := PackedFloat32Array()) -> void:
+	if src.has_meta("twin") or src.get_parent() == null:
+		return
+	var sv: PackedStringArray = src.get_meta("shadows")
+	var tw := _shadow_twin(src, arr if not arr.is_empty() else src.multimesh.buffer, PackedStringArray(["", "", sv[0], sv[1]]), LOD_BAND[quality], CHUNK * 0.75)
+	src.get_parent().add_child(tw)
+	src.set_meta("twin", tw)
+
+static func _shadow_twin(src: MultiMeshInstance3D, arr: PackedFloat32Array, parts: PackedStringArray, lod: Vector2, half: float) -> MultiMeshInstance3D:
+	var style := shadow_style()
+	var mm: MultiMesh = src.multimesh
+	if style.begins_with("lod1"):
+		mm = MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_custom_data = true
+		var gm := glb_mesh(parts[2], int(parts[3]), 1)
+		mm.mesh = gm if gm != null else mesh(parts[2], int(parts[3]), 1)
+		mm.instance_count = arr.size() / 16
+		mm.buffer = arr
+	var tw := MultiMeshInstance3D.new()
+	tw.multimesh = mm
+	tw.material_override = src.material_override
+	tw.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+	_set_ranges(tw, 0, lod, Vector2.ZERO, half)
+	if style.ends_with("near"):
+		tw.visibility_range_end = SHADOW_END
+	tw.set_meta("grass3d", 2)
+	tw.add_to_group("grass")
+	tw.name = String(src.name).trim_suffix("_L0") + "_S"
+	return tw
 
 static func _set_ranges(mmi: GeometryInstance3D, l: int, lod: Vector2, fade: Vector2, half: float) -> void:
 	# whole chunks drop out only where the shader has already thinned or swapped every clump in them
@@ -260,8 +320,21 @@ static func apply_quality(root: Node, q: int) -> void:
 	for g in root.get_tree().get_nodes_in_group("grass"):
 		if g.has_meta("grass3d"):
 			var l := int(g.get_meta("grass3d"))
+			if l == 2:       # a shadow twin: only on Ultra (it holds a copy of its chunk's instances)
+				if quality < 3:
+					g.remove_from_group("grass")
+					g.queue_free()
+				else:
+					_set_ranges(g as GeometryInstance3D, 0, lod, fade, CHUNK * 0.75)
+					if shadow_style().ends_with("near"):
+						(g as GeometryInstance3D).visibility_range_end = SHADOW_END
+				continue
+			if l == 0 and g.has_meta("twin") and quality < 3:
+				g.remove_meta("twin")
+			if l == 0 and g.has_meta("shadows") and quality >= 3:
+				_add_twin(g as MultiMeshInstance3D)
 			_set_ranges(g as GeometryInstance3D, l, lod, fade, CHUNK * 0.75)
-			(g as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if (l == 0 and quality >= 3) else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			(g as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 static func _pick(mix: Dictionary, rng: RandomNumberGenerator, keys: Array) -> String:
 	var total := 0.0

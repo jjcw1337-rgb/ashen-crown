@@ -93,6 +93,7 @@ static func _load(spec: Dictionary) -> void:
 	_no_shadows()
 	_env_off()
 	_mm_no_shadow()
+	_no_cast()
 	st["phase"] = "settle"
 	RenderingServer.viewport_set_measure_render_time(g.get_viewport().get_viewport_rid(), true)
 
@@ -385,7 +386,8 @@ static func _hide_parts() -> void:
 			stack.append(c)
 	print("[KPI] hid ", hidden, " nodes matching ", pats)
 
-## --envoff ssao,ssil,vfog,msaa,glow,fog: (profiling) turns those off.
+## --envoff ssao,ssil,vfog,msaa,glow,fog,sdfgi,ssr,msaa4,grass...: (profiling) turns those off. A later apply_quality can
+## turn them back on (sdfgi in --fixed-fps runs, 2026-11-03): check gpu_ms moved before trusting a comparison.
 static func _env_off() -> void:
 	var a := OS.get_cmdline_user_args()
 	var i := a.find("--envoff")
@@ -396,18 +398,43 @@ static func _env_off() -> void:
 	if k.contains("ssao"): env.ssao_enabled = false
 	if k.contains("aoon"): env.ssao_enabled = true
 	if k.contains("ssil"): env.ssil_enabled = false
+	if k.contains("sdfgi"): env.sdfgi_enabled = false
+	if k.contains("ssr"): env.ssr_enabled = false
+	if k.contains("msaa4"): g.get_viewport().msaa_3d = Viewport.MSAA_4X
 	if k.contains("vfog"): env.volumetric_fog_enabled = false
 	if k.contains("glow"): env.glow_enabled = false
 	if k.contains("dfog"): env.fog_enabled = false
-	if k.contains("msaa"): g.get_viewport().msaa_3d = Viewport.MSAA_DISABLED
+	if k.contains("msaa") and not k.contains("msaa4"): g.get_viewport().msaa_3d = Viewport.MSAA_DISABLED
 	if k.contains("half"): g.get_viewport().scaling_3d_scale = 0.5
 	if k.contains("softmed"): RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM)
 	if k.contains("softlow"): RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_LOW)
 	if k.contains("atlas2k"): RenderingServer.directional_shadow_atlas_set_size(2048, true)
+	if k.contains("omnidp"):
+		for l in g.world.find_children("*", "OmniLight3D", true, false):
+			(l as OmniLight3D).omni_shadow_mode = OmniLight3D.SHADOW_DUAL_PARABOLOID
 	if k.contains("plainomni"):
 		for l in g.world.find_children("*", "OmniLight3D", true, false):
 			if not (l as Light3D).is_in_group(Grade.SHADOW_GROUP):
 				(l as Light3D).visible = false
+	if k.contains("grassflatfrag") or k.contains("grassnopatch") or k.contains("grassdegen"):
+		for gi in g.get_tree().get_nodes_in_group("grass"):
+			var m := (gi as GeometryInstance3D).material_override as ShaderMaterial
+			if m and not m.has_meta("kpi_done"):
+				var sh: Shader = m.shader
+				if not sh.has_meta("kpi_done"):
+					if k.contains("grassdegen"):
+						sh.code = sh.code.replace("	VERTEX = o + rel;", "	VERTEX = o;")
+					elif k.contains("grassnopatch"):
+						sh.code = sh.code.replace("float patch = vn(wpos.xz * 0.09 + 3.1) * 0.7 + vn(wpos.xz * 0.7) * 0.3;", "float patch = 0.5;")
+					else:
+						var fi := sh.code.find("void fragment(){")
+						sh.code = sh.code.substr(0, fi) + "void fragment(){ vec4 t = texture(atlas, UV); ALBEDO = vec3(0.2,0.3,0.1) * t.rgb; ALPHA = t.a; ALPHA_SCISSOR_THRESHOLD = 0.5; ALPHA_ANTIALIASING_EDGE = 0.3; }\n"
+					sh.set_meta("kpi_done", true)
+	if k.contains("grasslod"):        # grasslod<near>: the LOD0 -> LOD1 hand-over band from <near> m (5 m wide)
+		var nb := float(k.substr(k.find("grasslod") + 8, 2))
+		for ms in Grass._mats.values():
+			for m in ms:
+				(m as ShaderMaterial).set_shader_parameter("lod_band", Vector2(nb, nb + 5.0))
 	if k.contains("terrainnofd"):
 		var sh: Shader = Mats.shader("terrain")
 		sh.code = sh.code.replace("float hc = fbm3(p * sc); float hx = fbm3((p + vec2(e, 0.0)) * sc); float hz = fbm3((p + vec2(0.0, e)) * sc);", "float hc = 0.5; float hx = 0.5; float hz = 0.5;")
@@ -436,6 +463,66 @@ static func _mm_no_shadow() -> void:
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				n += 1
 	print("[KPI] shadows off on ", n, " multimeshes")
+
+## --nocast a,b: (profiling) geometry whose node name contains a or b casts no shadow; `--nocast all-mm` = every
+## GeometryInstance3D that isn't a MultiMesh. Prints how many and their triangles.
+static func _no_cast() -> void:
+	var a := OS.get_cmdline_user_args()
+	var i := a.find("--nocast")
+	if i < 0 or i + 1 >= a.size():
+		return
+	var pats := a[i + 1].split(",")
+	var n := 0
+	for gi in g.world.find_children("*", "GeometryInstance3D", true, false):
+		var hit := false
+		for p in pats:
+			if p == "all-mm" and not (gi is MultiMeshInstance3D):
+				hit = true
+			elif p != "all-mm" and str(gi.name).contains(p):
+				hit = true
+		if hit and (gi as GeometryInstance3D).cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
+			(gi as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			n += 1
+	print("[KPI] nocast ", n, " ", pats)
+	if a.has("--castlist"):
+		var by := {}
+		for gi in g.world.find_children("*", "MeshInstance3D", true, false):
+			var mi := gi as MeshInstance3D
+			if mi.mesh == null or not mi.is_visible_in_tree():
+				continue
+			var tris := 0
+			for si in mi.mesh.get_surface_count():
+				var il: int = (mi.mesh as ArrayMesh).surface_get_array_index_len(si) if mi.mesh is ArrayMesh else 0
+				tris += il / 3
+			var key := mi.mesh.resource_path.get_file() if mi.mesh.resource_path != "" else str(mi.get_parent().name) + "/" + str(mi.name)
+			key += " cast=%d" % mi.cast_shadow
+			if not by.has(key):
+				by[key] = [0, 0]
+			by[key][0] += tris
+			by[key][1] += 1
+		var ks := by.keys()
+		ks.sort_custom(func(x, y): return int(by[x][0]) > int(by[y][0]))
+		for k in ks.slice(0, 40):
+			print("[KPI] cast ", by[k][0], " x", by[k][1], " ", k)
+		var mmby := {}
+		for gi in g.world.find_children("*", "MultiMeshInstance3D", true, false):
+			var mi := gi as MultiMeshInstance3D
+			if mi.multimesh == null or mi.multimesh.mesh == null or not mi.is_visible_in_tree() or mi.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
+				continue
+			var m: Mesh = mi.multimesh.mesh
+			var tris := 0
+			for si in m.get_surface_count():
+				tris += ((m as ArrayMesh).surface_get_array_index_len(si) if m is ArrayMesh else 0) / 3
+			var mat = mi.material_override if mi.material_override else (m.surface_get_material(0) if m.get_surface_count() > 0 else null)
+			var key := "%s tris=%d cast=%d twin=%s mat=%s" % [m.resource_path.get_file() if m.resource_path != "" else str(m.get_rid().get_id()), tris, mi.cast_shadow, mi.has_meta("shadow_twin"), (mat.shader.resource_path.get_file() + ":" + str(mat.shader.get_rid().get_id())) if mat is ShaderMaterial else str(mat)]
+			if not mmby.has(key):
+				mmby[key] = [0, 0]
+			mmby[key][0] += tris * mi.multimesh.instance_count
+			mmby[key][1] += mi.multimesh.instance_count
+		var mk := mmby.keys()
+		mk.sort_custom(func(x, y): return int(mmby[x][0]) > int(mmby[y][0]))
+		for k in mk.slice(0, 30):
+			print("[KPI] mmcast ", mmby[k][0], " x", mmby[k][1], " ", k)
 
 ## --noshadow omni,dir: (profiling) turns those lights' shadows off.
 static func _no_shadows() -> void:

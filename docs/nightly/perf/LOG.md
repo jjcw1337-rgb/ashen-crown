@@ -8,29 +8,32 @@ benchmark of the night's result, added by the script: the scoreboard; "blocked" 
 
 ## Lessons (rewritten by each run: at most 8 bullets, the most useful first)
 
-- **Measure the GPU, not TIME_PROCESS.** `cpu_process_peak_ms` includes drawing and the wait for the GPU; the KPI now
-  has `script_ms` / `render_cpu_ms`. On the Mac every scene is GPU-bound (moor High, 2026-11-02: scripts 9 ms, render CPU
-  2 ms, GPU 53 ms). The 11-01 "main thread is the limit" reading was wrong.
-- **Switch things off one at a time** (`--hide`, `--hide Props#a-b`, `--noshadow`, `--envoff`, `--mmnoshadow`,
-  `--census`): every win tonight came from a bisect, and two of the three were not where the triangle counts pointed.
-  `Grade.pick_shadows` turns shadows back on every 0.4 s: take lights out of its group to test them.
-- **A MultiMesh is culled as one box.** Spread one over a zone and every shadow pass that touches it draws all of it
-  (the camp: 133 M primitives from 2.6 M triangles). `Props.multimesh` now chunks into 16 m cells; keep big instanced
-  sets chunked.
-- **Shadow passes pay for fragment work.** Procedural alpha (the leaf cards) in four cascades was ~8 ms; triangles and
-  vertices weren't the cost (welding the trunk, dropping its discard: no gain). Bake procedural cut-outs for shadow
-  casters (`Flora.shadow_twin`, `foliage_mask_<kind>.png`); 8-bit masks, the pass is bandwidth bound.
-- **Effects can cost a lot and show nothing.** SSIL at High (6-8 ms) and SSAO outdoors (~7 ms) were invisible:
-  Godot's SSAO/SSIL only touch ambient/indirect light and these scenes are lit directly. Prove "looks the same" with
-  `--fixed-fps 30` screenshots against two identical runs plus mean brightness; it can differ by zone (SSAO shows in
-  the crypt). Shared passes hide costs: SSAO off alone measured ~0 while SSIL was still on.
-- Meshy meshes are seam-split triangle soup (~2.5 vertices a triangle): Godot's LOD generator gives up on them, in
-  the importer and at run time. LODs need welding/simplifying offline (Blender).
-- Remaining GPU on the moor at High (quiet Mac ~16 ms; under load ~31): grass the biggest (fragment, not vertex),
-  the terrain shader (~20% of it), MSAA, sun shadows. Unshadowed lamps, volumetric fog and glow measure ~0.
-- The download is textures (141 MB) and mesh data (110 MB) plus the intro; `[importer_defaults]` was the 11-01 lever.
-  Machine load varies within a night (11-02: a screen share until ~02:30 halved the GPU): compare pairs measured
-  back to back, and re-measure the start commit if the load changes; noise is ~2-3% fps.
+- **The download is the importer's defaults.** The glb-extracted textures (`.import` git-ignored, made fresh in CI)
+  take `[importer_defaults] texture`: lossless -> WebP q0.9 (11-01, -420 MB), then a 1024 px cap and q0.75 (11-03,
+  -133 MiB) showed nowhere: a hero is ~100 px tall in play, ~300 px on the class picker. To re-import, re-extract
+  (`git clean -fX assets/models && godot --headless --import`): deleting only the `.import` files loses the mipmaps.
+- **Measure the GPU, not TIME_PROCESS.** Every scene on the Mac is GPU-bound (scripts 1.5-3.5 ms, GPU 18-22 ms at
+  High). `cpu_process_peak_ms` includes the wait for the GPU. The server KPI's 100 ms "hitches" are macOS throttling
+  a background headless process between ticks (its work is 1-3 ms a tick), not game work.
+- **Switch things off one at a time** (`--hide`, `--noshadow`, `--envoff`, `--mmnoshadow`, `--nocast`, `--castlist`,
+  `--census`, `--grassshadow`), then **check the switch's GPU time moved before trusting its screenshots**: 11-03's
+  `--envoff sdfgi` didn't stick in `--fixed-fps` runs and made an invisible-looking "SDFGI off" that was really 12%
+  darker. `Grade.pick_shadows` re-enables shadows every 0.4 s.
+- **Effects can cost a lot and show nothing, zone by zone.** SSIL at High and SSAO outdoors were invisible (direct
+  light dominates); SDFGI on Ultra is NOT (the moor 12% darker without it). Prove it with fixed-step shots vs two
+  identical runs plus mean brightness over the 3D area (exclude UI and moving monsters).
+- **Shadow passes**: omni shadows as dual-paraboloid maps (2 passes, not 6) were invisible and +5% in the camp; a
+  MultiMesh is culled as one box (keep big instanced sets chunked, `Props.multimesh`); cut-out
+  casters pay per pixel (bake masks, `Flora.shadow_twin`); on Ultra the grass's shadow was 14 ms and LOD1 shadows-only
+  twins halved it. Sun shadows are ~7 ms at High in camp and moor, spread over many casters (monster bodies, props).
+- **Meshy meshes can't be simplified at run time**: neither the importer nor `ImporterMesh.generate_lods` makes LODs,
+  even for the well-welded monster bodies (thousands of UV islands lock the borders). LODs and lighter shadow proxies
+  need offline Blender work: that is where the next big GPU and size wins are (scenes are 143 MB of the pack).
+- **Grass at High (~5.6 ms on the moor)**: 2.3 ms vertex/primitive work, ~1 ms fragment shading, the rest raster
+  under MSAA. Culling zero-scaled clumps per chunk only reaches ~11% (20 m chunks straddle the 5 m LOD band).
+- **Load time is first loads**: a monster model's first load is 23-34 ms on the main thread; loading the zone's
+  models on worker threads during the minimap capture took the moor's arrival 2.25 -> 1.86 s. Compare against your
+  own previous commit, and measured back to back: noise is ~2-3% fps.
 
 ## Log
 
@@ -52,3 +55,16 @@ benchmark of the night's result, added by the script: the scoreboard; "blocked" 
 | 2026-11-02 | small | Crowd atlas: preload the kinds' glbs on threads | build_rig 35-200 ms per kind unchanged (it's the rig, not the file) | no | cache built rigs, or build behind the loading screen | [runs/2026-11-02.md](runs/2026-11-02.md) |
 | 2026-11-02 | big | **Night total, like for like on a quiet Mac** (97521a2 vs the result, both 02:30-02:38) | camp 13.1 -> 46.4 fps, moor M/H/U 41.1/21.0/6.7 -> 57.8/37.6/11.3, fight 20.3 -> 33.6, fort 42.2 -> 54.0, arena 84.5 -> 99.1, crypt 93 -> 95 (vsync); download unchanged 410.8 MiB | yes | the runner's 00:31 "before" was under a screen share's load: compare like for like | [runs/2026-11-02.md](runs/2026-11-02.md) |
 | 2026-11-02 | bench | Runner's KPI benchmark of the night's result (avg fps) | camp 9→47, moor Medium 23→57, moor 13→38, moor Ultra 5→11, fight 12→34, boss 20→54, arena 30→99, crypt 35→96; server tick p99 113→105 ms, camp 144M→15M tris, download 411→411 MB | shipped | | `docs/nightly/perf/metrics.jsonl` |
+| 2026-11-03 | size | Model textures capped at 1024 px (`[importer_defaults]` `process/size_limit`), the Ranger/Plague dyes too (+ mipmaps the coats lacked) | Mac zip 541.5 -> 486.9 MiB; camp VRAM 1513 -> 1261 MB, load 3.4 -> 2.8 s; shots within noise in title, class picker, 3 zones | yes | | [runs/2026-11-03.md](runs/2026-11-03.md) |
+| 2026-11-03 | size | Model textures WebP q0.9 -> q0.75 (q0.8 and q0.7 measured too) | generated textures 161 -> 85 MB; Mac zip 486.9 -> 408.6 MiB, Win exe 576.7 -> 443.9 MiB; invisible at 2-3x | yes | the scenes (143 MB): offline decimation | [runs/2026-11-03.md](runs/2026-11-03.md) |
+| 2026-11-03 | big | Ultra grass shadows from shadows-only twins on the LOD1 clump | moor Ultra 13.9 -> 15.6 fps, GPU 70.7 -> 62.7 ms, 33.6 -> 18.7 M primitives; 40.6 dB vs 39.9 noise | yes | | [runs/2026-11-03.md](runs/2026-11-03.md) |
+| 2026-11-03 | small | Grass twins: shorter shadow range (36 m) / opaque (no alpha test) | -2 ms but chunk shadows pop / -1 ms, square seed-head shadows | no | | [runs/2026-11-03.md](runs/2026-11-03.md) |
+| 2026-11-03 | small | Load the zone's monster models on worker threads during the minimap capture | moor arrival 2.25 -> 1.86 s (3.0 at the night's start), Medium 3.6 -> 2.1, Ultra 5.6 -> 2.9, fort 2.6 -> 2.0 | yes | grass scatter on a thread (0.54 s) | [runs/2026-11-03.md](runs/2026-11-03.md) |
+| 2026-11-03 | big | SDFGI off outdoors on Ultra (13.5 ms of 62) | moor 12% darker: it shows | no | (first look test was void: the switch didn't stick) | [runs/2026-11-03.md](runs/2026-11-03.md) |
+| 2026-11-03 | small | Grass: hide zero-scaled clumps per chunk (sorted instances + visible_instance_count) | only 11% hideable, ~0.25 ms | no | smaller chunks first | [runs/2026-11-03.md](runs/2026-11-03.md) |
+| 2026-11-03 | size | zstd level 19 for imported scenes | 143.5 -> 138.9 MB (-3%), global setting also hits the run-time pipeline cache | no | | [runs/2026-11-03.md](runs/2026-11-03.md) |
+| 2026-11-03 | small | Runtime LODs for monster bodies (ImporterMesh.generate_lods) | no LODs made (UV islands) | no | offline Blender LODs / shadow proxies | [runs/2026-11-03.md](runs/2026-11-03.md) |
+| 2026-11-03 | small | Ultra: no grass shadow twins for moss and sparse verge grass | moor Ultra GPU 62.5 -> 61.6 ms, 18.6 -> 17.1 M primitives, 15.7 -> 15.85 fps; shots = noise | yes | | [runs/2026-11-03.md](runs/2026-11-03.md) |
+| 2026-11-03 | small | Budgeted omni (fire) shadows as dual-paraboloid instead of cube maps (`Grade.pick_shadows`) | camp High 44.1 -> 46.4 fps, GPU 22.4 -> 21.3 ms, 12.2 -> 10.3 M primitives; fort +1.4%; shots = noise. First try set the mode every 0.4 s: a dip (fort 1% low 59 -> 30), fixed by setting it only when it differs | yes | | [runs/2026-11-03.md](runs/2026-11-03.md) |
+| 2026-11-03 | size | **Night total** (runner's 00:30 before vs bench.sh on the result, 02:10, best of 2) | Mac zip 541.5 -> 408.6 MiB (pck 496.4 -> 363.6), Win exe 576.7 -> 443.9; VRAM -160..-370 MB in every scene; loads: moor M/H/U 3.6/2.9/5.6 -> 2.0/2.6/3.1 s, fight 2.6 -> 1.9, crypt 3.2 -> 2.5; fps: Ultra 14.3 -> 15.7, boss 79.4 -> 82.9, arena 78.6 -> 81.7, others flat (camp 44.5, moor High 51.7, fight 46.8) | yes | offline decimation/LODs (scenes 143 MB; monster shadows) | [runs/2026-11-03.md](runs/2026-11-03.md) |
+| 2026-11-03 | bench | Runner's KPI benchmark of the night's result (avg fps) | camp 45→46, moor Medium 88→89, moor 51→51, moor Ultra 14→16, fight 47→48, boss 79→80, arena 79→77, crypt 94→95; server tick p99 99→92 ms, camp 12M→10M tris, download 542→409 MB | shipped | | `docs/nightly/perf/metrics.jsonl` |
