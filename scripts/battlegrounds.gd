@@ -80,6 +80,12 @@ var last_hit := {}              # server: peer id -> [attacker peer id, raid_t]
 var uids := {}                  # server: peer id -> who they are (Nakama user, or the per-PC id)
 var nk: NakamaClient            # server: Nakama, to confirm join tickets (staging, production)
 var nk_key := ""
+## The admins among the players (Nakama's admin role, ashen.lua admin_check; without Nakama the per-PC ids in
+## user://bg_server/admins.json): only they may raid in "Go to level 20" gear (items marked "boost",
+## Game.go_level_20); anyone else wearing it is turned away (gear_ok, checked every GEAR_CHECK seconds).
+var admins := {}
+var _gear_t := 0.0
+const GEAR_CHECK := 2.0
 var _sync_t := 0.0
 
 static func secs(n: float) -> float:
@@ -452,6 +458,13 @@ func _process(delta: float) -> void:
 			await new_round()
 		return
 	raid_t += delta
+	_gear_t -= delta
+	if _gear_t <= 0.0:
+		_gear_t = GEAR_CHECK
+		for pid in game.net.players.keys():
+			if uids.has(pid) and not gear_ok(pid):
+				print("[BG] %s wears admin gear without the admin role: turned away" % str(game.net.players[pid]["name"]))
+				game.net.bg_refuse(pid, "boosted")
 	_sync_t -= delta
 	if _sync_t <= 0.0:
 		_sync_t = 10.0 if state == "raid" else 2.0
@@ -533,6 +546,7 @@ func player_hello(pid: int, uid: String, ticket := ""):
 		return "closed"
 	if nk == null:
 		uids[pid] = uid
+		admins[pid] = _local_admin(uid)
 		return "ok"
 	# `ticket` is a one-time join ticket (bg_ticket), never the player's Nakama session: this connection isn't encrypted
 	var t: Dictionary = await nk.server_rpc("bg_ticket_redeem", {"ticket": ticket}, nk_key) if ticket != "" else {}
@@ -541,7 +555,32 @@ func player_hello(pid: int, uid: String, ticket := ""):
 		print("[BG] a player's join ticket was refused ", nk.last_error)
 		return "refused"
 	uids[pid] = "nk:" + user
+	var a: Dictionary = await nk.server_rpc("admin_check", {"user_id": user}, nk_key)
+	admins[pid] = bool(a.get("admin", false))
 	return "ok"
+
+static func _local_admin(uid: String) -> bool:
+	var f := FileAccess.open("user://bg_server/admins.json", FileAccess.READ)
+	if f == null:
+		return false
+	var d = JSON.parse_string(f.get_as_text())
+	return d is Array and (d as Array).has(uid)
+
+## May this player raid as they are? A character "Go to level 20" made (Hero.boosted, sent with its gear) and its
+## gear (marked "boost") are for admins only.
+func gear_ok(pid: int) -> bool:
+	if bool(admins.get(pid, false)) or not game.net.players.has(pid):
+		return true
+	var h = game.net.players[pid]["hero"]
+	if not is_instance_valid(h):
+		return true
+	if h.boosted:
+		return false          # a character "Go to level 20" made, whatever it wears now
+	for slot in Items.EQUIP_SLOTS:
+		var it = h.equipment.get(slot)
+		if it is Dictionary and bool(it.get("boost", false)):
+			return false
+	return true
 
 func picked(pid: int, it: Dictionary) -> void:
 	if not carried.has(pid):
@@ -559,7 +598,7 @@ func pvp_hit(attacker: int, target: int, amount: float, from: Vector3) -> void:
 	if a.global_position.distance_to(t.global_position) > 30.0:
 		return
 	last_hit[target] = [attacker, raid_t]
-	game.net.hit_player(target, clampf(amount, 0.0, 5000.0) * PVP_MULT, from, "pvp", "phys")
+	game.net.hit_player(target, clampf(amount, 0.0, 5000.0) * PVP_MULT * Data.pvp_scale(a.cls, t.cls, a.level, t.level), from, "pvp", "phys")
 
 ## A player fell: everything they had lies where they fell.
 func died(pid: int, items: Array, at: Vector3) -> void:

@@ -81,6 +81,9 @@ var net_id := 0
 ## Battlegrounds PvP: this is no monster but the invisible stand-in for player `pvp_pid` on this client
 ## (Battlegrounds.sync_proxies keeps it on their puppet); a blow on it goes to that player through the server.
 var pvp_pid := 0
+## The admins' sandbox (Sandbox): the invisible stand-in for this hero (a bot, or the player); blows on it are dealt
+## to them as a raid's PvP is (Battlegrounds.PVP_MULT), stuns and slows reach them, its own hero's never land.
+var sandbox_hero: Hero = null
 var remote := false
 var net_pos := Vector3.ZERO
 var net_yaw := 0.0
@@ -295,6 +298,14 @@ func set_soul_lit(on: bool) -> void:
 func ignite(dps: float, t: float, look := "") -> void:
 	if dead:
 		return
+	# a player's stand-in: the burn goes to them (the sandbox's hero, or a raid's player through the server)
+	if sandbox_hero != null:
+		if Hero.striker != sandbox_hero and not sandbox_hero.dead:
+			sandbox_hero.take_hit(dps * Battlegrounds.PVP_MULT, global_position, "burn", "fire")
+		return
+	if pvp_pid > 0:
+		game.net.send_pvp_dot(pvp_pid, dps * Battlegrounds.PVP_MULT, global_position)
+		return
 	burn_dps = maxf(burn_dps if burn_t > 0.0 else 0.0, dps)
 	burn_t = maxf(burn_t, t)
 	burn_look = look
@@ -302,6 +313,13 @@ func ignite(dps: float, t: float, look := "") -> void:
 		DemonFx.ignite(game.world.fx_root, self)
 
 func chill(k: float, t: float) -> void:
+	if pvp_pid > 0:
+		game.net.send_pvp_effect(pvp_pid, "chill", global_position)
+		return
+	if sandbox_hero != null:
+		if Hero.striker != sandbox_hero and not sandbox_hero.dead:
+			sandbox_hero.chill_t = maxf(sandbox_hero.chill_t, t * sandbox_hero.cc_k())
+		return
 	if remote:
 		game.net.send_enemy_chill(self, k, t)
 	if boss:
@@ -338,6 +356,13 @@ func _statuses(delta: float) -> void:
 				f.queue_free()
 
 func stun(t: float) -> void:
+	if sandbox_hero != null:
+		if Hero.striker != sandbox_hero and not sandbox_hero.dead:
+			if t < 0.0:
+				sandbox_hero.chill_t = maxf(sandbox_hero.chill_t, -t * sandbox_hero.cc_k())
+			else:
+				sandbox_hero.daze_t = maxf(sandbox_hero.daze_t, minf(t, 1.5) * sandbox_hero.cc_k())
+		return
 	if t < 0.0:
 		# a slow rides the stun RPC as a negative time (the Wraith's Soul Siphon), so the RPC set stays as it is
 		slow(-t, 0.5)
@@ -352,6 +377,10 @@ func stun(t: float) -> void:
 
 ## Slowed to (1 - amt) of its pace for t seconds (host-side, like every movement).
 func slow(t: float, amt: float) -> void:
+	if sandbox_hero != null:
+		if Hero.striker != sandbox_hero and not sandbox_hero.dead:
+			sandbox_hero.chill_t = maxf(sandbox_hero.chill_t, t * sandbox_hero.cc_k())
+		return
 	if remote:
 		game.net.send_enemy_stun(self, -t)
 		return
@@ -361,6 +390,19 @@ func slow(t: float, amt: float) -> void:
 func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit: bool) -> float:
 	if dead:
 		return 0.0
+	if sandbox_hero != null:
+		# the sandbox: a hero, hit as in a raid (never by its own blows)
+		var who: Hero = Hero.striker
+		if who == sandbox_hero or sandbox_hero.dead:
+			return 0.0
+		var dealt := (phys + fire) * Battlegrounds.PVP_MULT * Data.pvp_scale(who.cls if who != null else "", sandbox_hero.cls, who.level if who != null else 20, sandbox_hero.level)
+		var l0 := sandbox_hero.life
+		sandbox_hero.take_hit(dealt, from, "pvp", "phys")
+		var landed := maxf(0.0, l0 - sandbox_hero.life)
+		if game.sandbox != null:
+			game.sandbox.note_hit(who, sandbox_hero, landed)
+		Fx.number(game.world.fx_root, global_position + Vector3(0, 2.2, 0), str(int(landed)) + ("!" if crit else ""), Color(1.0, 0.4, 0.35), crit)
+		return landed
 	if pvp_pid > 0:
 		# another player: the server scales it and deals it to them; the number shows here at once
 		var total0 := phys + fire
@@ -587,8 +629,8 @@ func _fx(ev: String) -> void:
 func _process(delta: float) -> void:
 	if game == null or game.hero == null or game.world == null or not is_inside_tree():
 		return
-	if pvp_pid > 0:
-		return          # a player's stand-in (Battlegrounds.sync_proxies moves it)
+	if pvp_pid > 0 or sandbox_hero != null:
+		return          # a player's stand-in (Battlegrounds.sync_proxies / Sandbox moves it)
 	anim_time += delta
 	if flash_t > 0.0:
 		flash_t -= delta

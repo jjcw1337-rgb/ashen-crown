@@ -15,12 +15,12 @@ const PIVOT := 0.75        # height the body tumbles round (m)
 
 static func can_roll(h: Hero) -> bool:
 	return not h.dead and h.roll_t < 0.0 and h.roll_cd <= 0.0 and h.charge_t < 0.0 and h.daze_t <= 0.0 \
-		and not ClassSkills.rooted(h) and not SkillSpec.uncancellable(h) and (h.stamina >= STAMINA or h.game.test_stamina or h.free_roll())
+		and not ClassSkills.rooted(h) and not SkillSpec.uncancellable(h) and (h.stamina >= h.roll_cost() or h.game.test_stamina or h.free_roll())
 
 ## Starts a roll along dir (flat). False if he can't roll now.
 static func start(h: Hero, dir: Vector3) -> bool:
 	if not can_roll(h):
-		if not h.dead and h.stamina < STAMINA and not h.game.test_stamina:
+		if not h.dead and h.stamina < h.roll_cost() and not h.game.test_stamina:
 			h.game.ui.message("Out of stamina", Color(1.0, 0.8, 0.3))
 		return false
 	dir.y = 0
@@ -40,8 +40,10 @@ static func start(h: Hero, dir: Vector3) -> bool:
 	if h.free_roll():
 		h.free_roll_t = float(h.pvp_roll_s)      # an item's free roll (the Battlegrounds): no stamina, then it recharges
 	elif not h.game.test_stamina:
-		h.stamina -= STAMINA
+		h.stamina -= h.roll_cost()
 		h.stamina_rest = 0.0
+	if int(h.stats.get("dash", 0)) > 0:
+		h.dash_t = 2.0          # a unique's burst of speed after the roll
 	h.rig.rotation.y = atan2(-dir.x, -dir.z)
 	h.fx("roll", "start", {"d": dir})
 	return true

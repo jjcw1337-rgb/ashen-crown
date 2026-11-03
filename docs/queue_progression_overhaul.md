@@ -115,3 +115,99 @@ Still to do / needs playtesting:
 - Server-side checks of a raid hero's level and gear against the server's own record (the client is trusted today).
 - PvE: items keep their full power outside the raid (Acts II-III are tuned on empowered gear); the balance sim says
   whether to bring the raid's rules out there.
+
+## Status (2026-11-02, afternoon): the items rework, the sandbox, the admin role, the class pass
+
+- **Items**: reworked for the whole game (`docs/queue_items_rework.md`), not only for raids. Since then:
+  - the morning's raid-only shares are 1;
+  - level-20 gear is worth about x1.6 power over none;
+  - utility affixes and a signature effect on every unique;
+  - boss loot tables with bad-luck protection, and the bonfire's Reforge;
+  - burns and chills reach other players (Net.sv_pvp_dot / "chill").
+- **The invisibility potion**: the Veilmother's Locket (level 20, Hrimgar and Mossbeard) gives a Shadow Phial at the
+  start of each raid (`Game.give_raid_phials`). Drinking it makes you unseen for **6 s** (`Hero.invis_t`):
+  - monsters lose you (`hidden_t`);
+  - other players see a faint shimmer within 4 m (the state's bit 2, `Hero._show_invis`);
+  - any blow, given or taken, and any cast end it.
+
+  20 s was evaluated and cut: duels at level 20 last 5-20 s.
+- **Admin**: the role is in Nakama, written by the server only (`tools/admin_role.sh`). The admin tools appear for an
+  admin account in any build. The raid server turns away non-admins wearing "Go to level 20" gear
+  (`tools/bg_admin_test.gd`). Saves are still client-written, so this stops honest clients, not a modified game.
+- **The sandbox** (Escape -> Admin) and `tools/duel_sim.gd`: real bot duels.
+  - **Level 20, geared** (8 duels a pairing; share of pairings won): knight 58, Wraith 58, Doug 57, Plague 50,
+    demon 45, warlock 41, archer 38. The first reading had the Wraith at 100 and Doug at 13.
+  - The knobs: `Data.PVP_CLASS` (PvP damage dealt and taken per class) and the Wraith's spirit damage (more from the
+    weapon).
+  - Geared beats fresh of its class 7-8 of 8, the Wraith 4 of 8 before his change.
+  - Levels 1, 5, 10: running.
+- **Needs playtesting**:
+  - the bots play well but not like people: no line-of-sight tricks, no baiting;
+  - 6 s invisibility against real players;
+  - the act multipliers in Acts II-III by hand (the sim's bands pass);
+  - the Plague Doctor and the warlock in real raids.
+
+## Final write-up (2026-11-02, evening; first pass, for playtesting)
+
+**What changed**
+- Skills unlock by level: Q 1, E 3, R 5, F 9, G 14, every ultimate at 20; the shared skills War Cry 6, Frost Nova 8,
+  Arc 11, Earthshatter 16. Locked skills are grey on the bar with "Lv N", can't be bound or cast, and are announced
+  when reached.
+- Items reworked for the whole game (`docs/queue_items_rework.md`):
+  - weapons hit for the level's damage;
+  - rolls are about a quarter of their old size, rares have 2-3 affixes;
+  - percentages are capped (+5% run speed at most);
+  - utility affixes;
+  - every unique has one signature effect;
+  - boss loot tables replace tiny drop chances;
+  - the bonfire's Reforge;
+  - Acts II-III items are x1.6 / x2.4 (were x5 / x25), with monsters retuned by the balance sim (0 deaths, 8 flags).
+- PvP extras:
+  - Shadow Phial (6 s unseen, from the level-20 Veilmother's Locket);
+  - the class uniques' free roll and ward;
+  - burns and chills reach players;
+  - per-class PvP multipliers by level (`Data.PVP_CLASS`).
+- Admin: Go to level 20 (+10,000 gold) in the Escape menu's Admin column, for admins only. The admin role lives in
+  Nakama and the raid server enforces it. Also the Battlegrounds sandbox.
+
+**Representative numbers** (`tools/pvp_sim.gd -- moving`, raid rules; knight shown, the others within ~25%):
+
+| level | fresh: life / armour / damage | geared: life / armour / damage | gear's power | geared wins, equal skill | much better fresh player wins |
+|---|---|---|---|---|---|
+| 1 | 124 / 3 / 3-8 | 131 / 12 / 3-9 | x1.0-1.3 | 41-95% | 98-100% |
+| 5 | 164 / 4 / 6-12 | 175 / 14 / 7-15 | x1.1-1.4 | 78-98% | 88-100% |
+| 10 | 214 / 6 / 11-20 | 236 / 22 / 15-28 | x1.3-1.6 | 89-99% | 79-99% |
+| 20 | 326 / 8 / 20-36 | 365 / 27 / 26-49 | x1.4-1.8 | 94-99% | 71-97% |
+
+Bot duels (`tools/duel_sim.gd`, real fights in the sandbox): geared beats fresh of its class 5-8 of 8 at every
+level. Class against class, share of pairings won: level 5 25-75%, level 10 20-71%, level 20 35-64% (the noise at
+8 duels a pairing is about +-20 points).
+
+**Needs playtesting**
+- Class balance with people: bots don't bait, kite round pillars or read animations. Watch the Wraith at 5-10, Doug
+  at 10, and the warlock and the demon at 20.
+- Level-1 fights are long (one skill, ~100 life, 50-90 s bot duels); a raid at level 1 may feel slow.
+- At level 1 gear barely matters (x1.0-1.3): is that the intended "progression feel"?
+- The 6 s Shadow Phial against real players. Is the shimmer readable? Is it too strong at a portal?
+- Acts II-III by hand: the sim's bands pass, but an act's feel was its x5 / x25 numbers.
+- Old characters' items after their one-time rebuild: much weaker on purpose. Check that nothing looks broken.
+- The admin role: grant it to both accounts (`tools/admin_role.sh`) once they send their account ids.
+
+### Correction (2026-11-02, late afternoon)
+
+A Codex audit found that the sandbox and `pvp_sim.gd` gave level 5 and 10 "geared" bots level-20 bases and didn't
+play by raid rules. The level 1/5/10 numbers above are replaced by these:
+
+- **Gear's power over fresh** (`pvp_sim.gd -- moving`): x1.0-1.3 at level 1, x1.1-1.4 at 5, x1.2-1.5 at 10, x1.4-1.8
+  at 20. Knight fresh -> geared at 10: life 214 -> 236, armour 6 -> 19, damage 11-20 -> 15-26.
+- **Geared beats fresh of its class** (bot duels): 6-0 or 5-1 at every level for every class, with these exceptions:
+  - level 1: the knight 0-0 (draws), the demon 3-3;
+  - level 20: the Wraith and the demon 4-2.
+- **Class against class** (share of pairings won, 6 duels a pairing, noise about +-20 points): level 5 29-75%
+  (demon 75, archer 29); level 20 38-66% (warlock 66, demon 38).
+- Fixed along the way:
+  - an act's strength no longer scales the uniques' effects;
+  - two free rolls take the quicker recharge;
+  - "Go to level 20" marks the character (`Hero.boosted`) for the raid server;
+  - a class's own weapon wins a tie;
+  - the staging-wide admin access is gone (the admin role went to jj's and Blaine's accounts).

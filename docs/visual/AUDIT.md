@@ -1,18 +1,18 @@
 # Ashen Crown: visual quality audit and overhaul
 
-Nov 1-2, 2026 · on `test-visual-overhaul` (from `staging` 1fb8d09, staging merged in up to 83ddb14) · jj's brief: a complete visual overhaul toward
+Nov 1-2, 2026 · on `test-visual-overhaul` (from `staging` 1fb8d09, staging merged in up to 9f92572), landed on `staging` at jj's request on the evening of Nov 2 · jj's brief: a complete visual overhaul toward
 Diablo IV / Path of Exile 2 / Guild Wars 2, every asset inspected, Meshy and Blender with no limit, a measured
 baseline first.
 
-**Status (Nov 2, morning):** stage 1 (rendering foundation), stage 2 (the knight's holy skill effects, the hit
+**Status (Nov 2, evening):** stage 1 (rendering foundation), stage 2 (the knight's holy skill effects, the hit
 flash every monster uses, the rim light in every zone, steel that reflects on the armoured knight, detail normal maps
 for 27 models), stage 3 (Meshy models for Aurelius, the arena gladiators and the Ashen King, the camp's lantern and
 palisade, the shared skills', Warlock's and Wraith's own effects, the monsters' heavy blows) and stage 4 (worn
 flagstones, pebbles and fallen leaves, Meshy rocks, kerbstones, clutter, Roman pieces and A2's aqueduct, the living
 grass in Acts II and III, new telegraphs, the Plague Doctor's own effects and clouds, and the last generic accents
-of the Demon, Warlock and Archer) are done, tested headless and committed on `test-visual-overhaul`, merged with
-staging up to 83ddb14. Nothing is approved yet: every change still needs jj's look on a real GPU (the preview
-build). Meshy spent by the overhaul: 1,188 credits (balance 863).
+of the Demon, Warlock and Archer, and the see-through on the Meshy buildings) are done, tested headless (the
+nightly gate included), merged with staging up to 9f92572 and landed on `staging` at jj's request. Every change
+still needs jj's look on a real GPU before its checklist row is "Approved". Meshy spent by the overhaul: 1,188 credits (balance 863).
 
 ## Summary
 
@@ -334,10 +334,6 @@ would be ~3,600, so the rest goes by the roadmap's order.
 - sloth_test and fallen_test each failed one random AI check once (the slam's stun, all three Fallen attacks) and
   pass on rerun, the same as on staging.
 - Found on staging, not touched by the overhaul:
-  - In debug runs (the editor, `godot --path .`, every headless test), `UI._make_theme` stops at `ui.gd:275`:
-    `bn`/`bh`/`bp`/`bd` are inferred as StyleBoxFlat from `_box(...)` and then given the iron socket's
-    StyleBoxTexture, so the function returns nothing and the whole UI falls back to Godot's default theme. Release
-    exports skip that type check, so players see the iron buttons. Fix: `var bn: StyleBox = ...` (and the other three).
   - `sloop_test`: the Ember Sloop doesn't get back from the Verdant Isle to the pier within 60 s. It fails on staging
     df8961c itself and still does with 83ddb14's coast work merged in. `talent_test` fails four checks (the removed
     wyrm class, stale numbers), as staging's own commits say.

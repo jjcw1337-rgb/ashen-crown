@@ -109,22 +109,22 @@ static func style(h: Hero) -> String:
 
 ## A sound of the skill: flat for the caster, from where his puppet stands for partners.
 static func snd(h: Hero, nm: String, db := 0.0, pitch := 1.0) -> void:
-	if h.puppet:
+	if h.puppet or h.bot:
 		Sfx.play_at(nm, h.global_position, db - 2.0, pitch)
 	else:
 		Sfx.play(nm, db, pitch)
 
 ## Screen shake and hitstop belong to the caster's screen only.
 static func shake(h: Hero, v: float) -> void:
-	if not h.puppet:
+	if h._mine():
 		h.game.add_shake(v)
 
 static func hitstop(h: Hero, t: float) -> void:
-	if not h.puppet:
+	if h._mine():
 		h.game.hitstop(t)
 
 static func duck(h: Hero, db: float, hold: float) -> void:
-	if not h.puppet:
+	if h._mine():
 		Sfx.duck(db, hold)
 
 ## A hand of the rig (the mocap bodies carry at_hand_* followers).

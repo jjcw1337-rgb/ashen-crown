@@ -16,6 +16,12 @@ local KEY = "stash"
 local TICKETS = "bg_tickets"
 local SYSTEM_USER = "00000000-0000-0000-0000-000000000000"
 local TICKET_SECS = 60
+-- The admins (Blaine's progression overhaul: "a persistent admin flag or role ... a way to designate our accounts as
+-- admins. Enforce authorization on the server"): one object per admin account, owned by the system user, that only
+-- the server can write (admin_set, http_key; tools/admin_role.sh). admin_status tells a signed-in player whether they
+-- are one (the game shows its admin tools); admin_check tells the game server (the Battlegrounds server refuses a
+-- non-admin carrying "Go to level 20" gear).
+local ADMINS = "admins"
 
 local function server_only(context)
   if context.user_id ~= nil and context.user_id ~= "" then
@@ -77,10 +83,51 @@ local function ticket_redeem(context, payload)
   return nk.json_encode({ user_id = v.user_id })
 end
 
+local function is_admin(user_id)
+  if user_id == nil or user_id == "" then
+    return false
+  end
+  local objs = nk.storage_read({ { collection = ADMINS, key = user_id, user_id = SYSTEM_USER } })
+  return #objs > 0
+end
+
+-- A signed-in player: am I an admin? (and my account id, to be designated one)
+local function admin_status(context, payload)
+  if context.user_id == nil or context.user_id == "" then
+    return '{"admin":false,"user_id":""}'
+  end
+  return nk.json_encode({ admin = is_admin(context.user_id), user_id = context.user_id })
+end
+
+-- The game server: is this account an admin?
+local function admin_check(context, payload)
+  server_only(context)
+  local p = nk.json_decode(payload)
+  return nk.json_encode({ admin = is_admin(p.user_id) })
+end
+
+-- The server (http_key, tools/admin_role.sh): make an account an admin, or not.
+local function admin_set(context, payload)
+  server_only(context)
+  local p = nk.json_decode(payload)
+  if type(p.user_id) ~= "string" or #p.user_id < 8 then
+    error({ "user_id needed", 3 })   -- 3 = INVALID_ARGUMENT
+  end
+  if p.admin then
+    nk.storage_write({ {
+      collection = ADMINS, key = p.user_id, user_id = SYSTEM_USER,
+      value = { name = p.name or "", since = nk.time() }, permission_read = 0, permission_write = 0,
+    } })
+  else
+    nk.storage_delete({ { collection = ADMINS, key = p.user_id, user_id = SYSTEM_USER } })
+  end
+  return nk.json_encode({ user_id = p.user_id, admin = p.admin and true or false })
+end
+
 -- No client writes or deletes in the server's collections.
 local function guard_write(context, payload)
   for _, o in ipairs(payload.objects or {}) do
-    if o.collection == COLLECTION or o.collection == TICKETS then
+    if o.collection == COLLECTION or o.collection == TICKETS or o.collection == ADMINS then
       error({ "the Battlegrounds stash is kept by the game server", 7 })
     end
   end
@@ -89,7 +136,7 @@ end
 
 local function guard_delete(context, payload)
   for _, o in ipairs(payload.object_ids or {}) do
-    if o.collection == COLLECTION or o.collection == TICKETS then
+    if o.collection == COLLECTION or o.collection == TICKETS or o.collection == ADMINS then
       error({ "the Battlegrounds stash is kept by the game server", 7 })
     end
   end
@@ -100,6 +147,9 @@ nk.register_rpc(stash_read, "bg_stash_read")
 nk.register_rpc(stash_write, "bg_stash_write")
 nk.register_rpc(ticket, "bg_ticket")
 nk.register_rpc(ticket_redeem, "bg_ticket_redeem")
+nk.register_rpc(admin_status, "admin_status")
+nk.register_rpc(admin_check, "admin_check")
+nk.register_rpc(admin_set, "admin_set")
 nk.register_req_before(guard_write, "WriteStorageObjects")
 nk.register_req_before(guard_delete, "DeleteStorageObjects")
 

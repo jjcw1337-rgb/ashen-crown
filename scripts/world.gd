@@ -999,6 +999,7 @@ func build(act_i: int, kind_s: String, seed_v: int) -> void:
 	match kind:
 		Battlegrounds.ZONE: Battlegrounds.build(self)
 		Vigil.ZONE: Vigil.build(self)
+		Sandbox.ZONE: Sandbox.build(self)
 		"town": _build_town()
 		"wild": Via.build(self) if run == 1 else _build_wild()
 		"coast": Coast.build(self)
