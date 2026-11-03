@@ -5,7 +5,8 @@ extends SceneTree
 ##   godot --headless --path . -s tools/bg_admin_test.gd -- client 24661
 ## The client goes in with a character in boosted gear and is turned away ("boosted"); then its per-PC id is put on
 ## the server's admin list (user://bg_server/admins.json, the stand-in for Nakama's role without Nakama) and it goes
-## in and stays.
+## in and stays. Then it uses the admin's raid controls (Open gates, Open portals, Restart round: the crypt collapses on
+## it) and gets back into the new round after the server has moved it past the time joining closes.
 var g
 var role := "client"
 var port := 24661
@@ -52,6 +53,13 @@ func _run() -> void:
 		check(await until(func(): return not g.net.players.is_empty(), 60.0), "they came back as an admin")
 		var stayed := await until(func(): return g.net.players.is_empty(), 10.0)
 		check(not stayed, "and stayed")
+		# the admin's raid controls (Escape → Admin in a raid): the gates, the portals, a restart
+		check(await until(func(): return g.bg.state == "raid", 30.0), "an admin's \"Open gates\": the raid is on")
+		check(await until(func(): return not g.bg.open.is_empty(), 20.0), "\"Open portals\": %d open" % g.bg.open.size())
+		check(await until(func(): return g.bg.forced, 20.0), "\"Restart round\": a new round, off the clock")
+		check(await until(func(): return g.bg.state == "lobby" and not g._busy, 20.0), "starting in the antechamber")
+		g.bg.raid_t = Battlegrounds.secs(Battlegrounds.JOIN_CLOSE) + 5.0      # (late in the round: joining has closed)
+		check(await until(func(): return not g.net.players.is_empty(), 60.0), "an admin still gets into a round closed to new players")
 		await until(func(): return g.net.players.is_empty(), 30.0)
 	else:
 		while g._busy:
@@ -81,6 +89,17 @@ func _run() -> void:
 		check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "on the admin list: in the crypt")
 		await create_timer(6.0).timeout
 		check(g.net.active and g.bg_refusal == "", "and still there after the server's gear check")
+		g.net.send_bg_admin("gates")
+		check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 20.0), "Open gates: the raid is on")
+		g.net.send_bg_admin("portals")
+		check(await until(func(): return not (g.bg_raid.get("open", []) as Array).is_empty(), 20.0), "Open portals: they're open")
+		g.net.send_bg_admin("restart")
+		check(await until(func(): return g.hero.dead or not g.net.active, 20.0), "Restart round: the crypt collapsed on him")
+		while g._busy or g.net.active:
+			await process_frame
+		await create_timer(6.0).timeout
+		await g.start_battlegrounds("127.0.0.1:%d" % port, id)
+		check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 40.0), "back in, though joining has closed")
 		g.net.shutdown()
 		DirAccess.remove_absolute(ADMINS)
 	print("[%s] done, %d failed" % ["S" if role == "server" else "C", fails])

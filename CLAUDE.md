@@ -1564,7 +1564,10 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `sh tools/admin_role.sh <account id> on "name"` (runs on the staging server with Nakama's runtime key, which never
   leaves it). The Battlegrounds server turns away a non-admin wearing "Go to level 20" gear (items marked `"boost"`,
   `Battlegrounds.gear_ok`, every `GEAR_CHECK` s; without Nakama the per-PC ids in `user://bg_server/admins.json`).
-  `tools/bg_admin_test.gd` (server + client). Saves stay the player's own (client-written), so this stops honest
+  In a raid the Admin column has the round's controls (`Net.send_bg_admin` -> `Battlegrounds.admin_cmd`, refused
+  without the role): Restart round (the crypt collapses, a new round in `ADMIN_RESTART` s that runs off the clock,
+  `forced`, until it ends), Open gates (skips the antechamber), Open portals; and an admin may join after
+  `JOIN_CLOSE`. `tools/bg_admin_test.gd` (server + client). Saves stay the player's own (client-written), so this stops honest
   clients and casual edits, not a modified game.
 - **Class against class in PvP**: `Data.PVP_CLASS` (what each class deals to and takes from another player; only PvP
   blows, `Data.pvp_scale` in `Battlegrounds.pvp_hit` and the sandbox's stand-ins), tuned with `tools/duel_sim.gd`

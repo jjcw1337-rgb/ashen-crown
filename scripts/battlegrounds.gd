@@ -48,6 +48,7 @@ const PORTALS_AT := 300.0       # the Extraction Portals open 5 minutes in
 const JOIN_CLOSE := 900.0       # nobody new joins in the last 5 minutes
 const RESET_SECS := 20.0        # after the collapse, before the next round
 const LOBBY_MAX := 75.0         # the antechamber: at most this long before the prep countdown starts by itself
+const ADMIN_RESTART := 3.0      # an admin's "restart": seconds until the new round
 const PREP_SECS := 15.0         # the bell has rung: the countdown to the gates opening
 const RAIDS := 3                # raids run side by side, staggered on the clock (phase)
 const RAID_PORTS := [24567, 24571, 24572]
@@ -75,6 +76,7 @@ var raid_idx := -1              # server: which of the RAIDS this is (`--raid N`
 var prep_left := 0.0            # server: seconds of the prep countdown left
 var state := "lobby"            # server: "lobby" | "prep" | "raid" | "reset"
 var reset_t := 0.0
+var forced := false             # server: an admin restarted the round, which runs off the clock until it ends
 var open: Array = []            # server: indices (in the portal list) of the open Extraction Portals
 var carried := {}               # server: peer id -> Array of items picked up this raid (dropped if they vanish)
 var died_items := {}            # server: peer id -> true once their death drop was handled
@@ -396,7 +398,7 @@ static func lobby_max() -> float:
 
 ## A raid of several (`--raid N`, real time): its rounds follow the clock.
 func aligned() -> bool:
-	return raid_idx >= 0 and not fast
+	return raid_idx >= 0 and not fast and not forced
 
 func new_round() -> void:
 	state = "lobby"
@@ -499,29 +501,11 @@ func _process(delta: float) -> void:
 			broadcast()
 		return
 	if state == "raid" and open.is_empty() and raid_t >= secs(PORTALS_AT):
-		# OPEN_PORTALS on the Ossuary, one on each floor below
-		var pl := portal_list(game.world)
-		var by_floor := {}
-		for i in pl.size():
-			var f := int(pl[i].data.get("floor", 1))
-			if not by_floor.has(f):
-				by_floor[f] = []
-			by_floor[f].append(i)
-		open = []
-		for f in by_floor:
-			var ids: Array = by_floor[f]
-			ids.shuffle()
-			open.append_array(ids.slice(0, OPEN_PORTALS if f == 1 else 1))
-		_announce("The Extraction Portals are open")
-		broadcast()
+		open_portals()
 	if raid_t >= secs(RAID_SECS):
 		_announce("The crypt collapses")
-		for pid in game.net.players.keys():
-			var h = game.net.players[pid]["hero"]
-			if is_instance_valid(h) and not h.dead:
-				game.net.hit_player(pid, 999999.0, h.global_position, "collapse", "phys")
-		state = "reset"
-		reset_t = secs(RESET_SECS)
+		collapse()
+		forced = false               # (an admin's round is over: back on the clock)
 		if aligned():
 			reset_t = PERIOD - phase(raid_idx, Time.get_unix_time_from_system())
 			if reset_t > PERIOD * 0.5:
@@ -545,6 +529,60 @@ func _process(delta: float) -> void:
 			if float(dead_wait[pid]) > 5.0:
 				died(pid, carried.get(pid, []), h.global_position)
 
+## The Extraction Portals open: OPEN_PORTALS on the Ossuary, one on each floor below.
+func open_portals() -> void:
+	var pl := portal_list(game.world)
+	var by_floor := {}
+	for i in pl.size():
+		var f := int(pl[i].data.get("floor", 1))
+		if not by_floor.has(f):
+			by_floor[f] = []
+		by_floor[f].append(i)
+	open = []
+	for f in by_floor:
+		var ids: Array = by_floor[f]
+		ids.shuffle()
+		open.append_array(ids.slice(0, OPEN_PORTALS if f == 1 else 1))
+	_announce("The Extraction Portals are open")
+	broadcast()
+
+## The crypt collapses: whoever is still inside dies, and the reset begins.
+func collapse() -> void:
+	for pid in game.net.players.keys():
+		var h = game.net.players[pid]["hero"]
+		if is_instance_valid(h) and not h.dead:
+			game.net.hit_player(pid, 999999.0, h.global_position, "collapse", "phys")
+	state = "reset"
+	reset_t = secs(RESET_SECS)
+
+## An admin's raid controls (Escape → Admin in a raid, Net.sv_bg_admin; refused for anyone without the admin role),
+## for testing without waiting on the clock:
+##   "restart"  the crypt collapses now and a new round begins in ADMIN_RESTART s, off the clock (`forced`) until it ends
+##   "gates"    the antechamber's wait and countdown skipped: the gates open now
+##   "portals"  the Extraction Portals open now
+func admin_cmd(pid: int, cmd: String) -> void:
+	if not bool(admins.get(pid, false)) or not game.net.players.has(pid):
+		return
+	var who := str(game.net.players[pid]["name"])
+	match cmd:
+		"restart":
+			if state == "reset":
+				return
+			_announce("%s restarted the round" % who)
+			collapse()
+			forced = true
+			reset_t = ADMIN_RESTART
+			broadcast()
+		"gates":
+			if state == "lobby" or state == "prep":
+				state = "raid"
+				open_gates(game.world)
+				_announce("%s opened the gates" % who)
+				broadcast()
+		"portals":
+			if state == "raid" and open.is_empty():
+				open_portals()
+
 ## Someone rang an antechamber's bell (or the lobby ran out): the countdown to the gates, for everyone.
 func start_prep(who: String) -> void:
 	if state != "lobby":
@@ -561,12 +599,12 @@ func _announce(txt: String) -> void:
 
 func player_hello(pid: int, uid: String, ticket := ""):
 	carried[pid] = []
-	if state == "reset" or raid_t > secs(JOIN_CLOSE):
+	if state == "reset":
 		return "closed"
 	if nk == null:
 		uids[pid] = uid
 		admins[pid] = _local_admin(uid)
-		return "ok"
+		return "closed" if raid_t > secs(JOIN_CLOSE) and not admins[pid] else "ok"
 	# `ticket` is a one-time join ticket (bg_ticket), never the player's Nakama session: this connection isn't encrypted
 	var t: Dictionary = await nk.server_rpc("bg_ticket_redeem", {"ticket": ticket}, nk_key) if ticket != "" else {}
 	var user: String = str(t.get("user_id", ""))
@@ -576,7 +614,8 @@ func player_hello(pid: int, uid: String, ticket := ""):
 	uids[pid] = "nk:" + user
 	var a: Dictionary = await nk.server_rpc("admin_check", {"user_id": user}, nk_key)
 	admins[pid] = bool(a.get("admin", false))
-	return "ok"
+	# joining closes late in a round, but not for an admin (testing)
+	return "closed" if raid_t > secs(JOIN_CLOSE) and not admins[pid] else "ok"
 
 static func _local_admin(uid: String) -> bool:
 	var f := FileAccess.open("user://bg_server/admins.json", FileAccess.READ)

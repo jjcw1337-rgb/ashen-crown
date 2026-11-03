@@ -3436,6 +3436,25 @@ func _build_admin(parent: Control) -> VBoxContainer:
 		else:
 			game.open_sandbox())
 	vb.add_child(sbx)
+	# in a raid: the round's controls (the server checks the admin role, Battlegrounds.admin_cmd)
+	var raid := VBoxContainer.new()
+	raid.add_theme_constant_override("separation", 4)
+	var rl := _label("Raid (everyone inside sees it)", 13, Color(0.55, 0.85, 1.0))
+	rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	raid.add_child(rl)
+	var rrow := HBoxContainer.new()
+	rrow.add_theme_constant_override("separation", 4)
+	rrow.alignment = BoxContainer.ALIGNMENT_CENTER
+	for c in [["restart", "Restart round"], ["gates", "Open gates"], ["portals", "Open portals"]]:
+		var cmd: String = c[0]
+		var rb := _iron_button(c[1], 112, 36, 14)
+		rb.pressed.connect(func():
+			game.net.send_bg_admin(cmd)
+			if cmd == "restart":
+				game.toggle_pause())
+		rrow.add_child(rb)
+	raid.add_child(rrow)
+	vb.add_child(raid)
 	var mx := _iron_button("Max out (level 99, gold, gear)", 340, 38, 16)
 	mx.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	mx.pressed.connect(func(): game.max_out())
@@ -3490,6 +3509,7 @@ func _build_admin(parent: Control) -> VBoxContainer:
 		if game.account_id != "":
 			who.text += "  ·  account " + game.account_id
 		sbx.text = "Leave the sandbox" if game.sandbox != null else "Battlegrounds sandbox (bots, PvP)"
+		raid.visible = game.bg_mode and game.net.active
 		for f in syncs:
 			f.call()
 		if hero:

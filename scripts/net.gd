@@ -1027,6 +1027,16 @@ func sv_bg_died(items: Array) -> void:
 	if players.has(pid) and is_instance_valid(players[pid]["hero"]):
 		game.bg.died(pid, items.slice(0, 80), players[pid]["hero"].global_position)
 
+## An admin's raid control ("restart", "gates", "portals"; Battlegrounds.admin_cmd checks the role).
+func send_bg_admin(cmd: String) -> void:
+	if active and not server:
+		rpc_id(1, "sv_bg_admin", cmd)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_bg_admin(cmd: String) -> void:
+	if server and game.bg != null:
+		game.bg.admin_cmd(multiplayer.get_remote_sender_id(), cmd)
+
 func request_extract() -> void:
 	rpc_id(1, "sv_extract")
 
