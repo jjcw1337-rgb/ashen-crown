@@ -288,7 +288,7 @@ const ENEMIES := {
 		"blood": Color(0.4, 0.05, 0.02),
 		"look": {"height": 2.0, "eyes": Color(1.0, 0.75, 0.15)}},
 
-	"ashen_king": {"name": "The Ashen King", "rig": "humanoid", "skin": "king", "life": 900, "dmg": [14, 24], "speed": 2.8, "range": 2.9, "xp": 900,
+	"ashen_king": {"mesh": "ashen_king", "name": "The Ashen King", "rig": "humanoid", "skin": "king", "life": 900, "dmg": [14, 24], "speed": 2.8, "range": 2.9, "xp": 900,
 		"ai": "boss", "atk": "over", "atk_time": 1.2, "armor": 18, "radius": 0.95, "boss": true, "summon": "skel_archer", "slam": true, "nova": "fire", "proj": "fireball",
 		"boss_drop": "cinderbrand", "blood": Color(0.25, 0.2, 0.15),
 		"look": {"height": 1.85, "eyes": Color(1.0, 0.35, 0.05)}},

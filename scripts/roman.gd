@@ -9,6 +9,14 @@ static func marble() -> Material:
 	return Mats.world(Color(0.84, 0.8, 0.72), Color(0.66, 0.62, 0.55), 0.82, 1.7, 0.22, Color(0.3, 0.34, 0.18))
 static func marble_clean() -> Material:
 	return Mats.world(Color(0.92, 0.9, 0.85), Color(0.78, 0.75, 0.7), 0.6, 2.2, 0.05, Color(0.3, 0.34, 0.18))
+## The arena's stands (visual overhaul): travertine seat slabs on the tops, ashlar courses on the risers, joints laid
+## in world space (STANDS_SHADER), in place of the blotchy tuff; the see-through near the hero as every prop has.
+static var _seats: ShaderMaterial
+static func seats() -> Material:
+	if _seats == null:
+		_seats = ShaderMaterial.new()
+		_seats.shader = Mats.custom("roman_seats", STANDS_SHADER)
+	return _seats
 static func tuff() -> Material:
 	return Mats.world(Color(0.56, 0.53, 0.47), Color(0.42, 0.4, 0.36), 0.92, 1.3, 0.35, Color(0.25, 0.3, 0.14))
 static func brick() -> Material:
@@ -57,6 +65,11 @@ static func column(w: World, p: Vector3, h := 4.5, r := 0.32, broken := 0.0, m: 
 		m = marble()
 	var g := Props.footprint(Models.N(null, "column"), r * 1.35)
 	var sh := h * (1.0 - broken)
+	if _meshy_column(g, h, r, broken):
+		w._place(g, p)
+		g.rotation.y = w.rng.randf() * TAU
+		w.solid(g)
+		return g
 	Models.P(g, Geo.box(r * 2.7, 0.3, r * 2.7), m, Vector3(0, 0.15, 0))
 	Models.P(g, Geo.cyl(r * 1.15, r * 1.25, 0.22, 14), m, Vector3(0, 0.41, 0))
 	Models.P(g, Geo.cyl(r * 0.88, r, sh, 14), m, Vector3(0, 0.52 + sh * 0.5, 0))
@@ -70,9 +83,75 @@ static func column(w: World, p: Vector3, h := 4.5, r := 0.32, broken := 0.0, m: 
 	w.solid(g)
 	return g
 
+## Meshy pieces (`assets/models/roman/`: column, broken, drum; visual overhaul 2026-11-02, photographic concepts,
+## image-to-3D, re-baked onto clean UVs): weathered travertine with fluting, chips and moss, in place of the stacked
+## boxes and cylinders. [] without the files (the code-built pieces stay).
+const ROMAN_DIR := "res://assets/models/roman/%s.glb"
+const TOMB_TURN := Basis()          # the Meshy tombs' and milestone's fronts (doors, inscriptions) are already +z
+const ARCH_TURN := Basis()          # the arch's way through runs along z, as the code-built arch's
+static var _meshy := {}
+
+static func _part(kind: String) -> Array:
+	if not _meshy.has(kind):
+		_meshy[kind] = Props._meshy_model(ROMAN_DIR % kind)
+	return _meshy[kind]
+
+static func _add_part(g: Node3D, e: Array, k: Vector3, turn := Basis(), lift := 0.0) -> void:
+	var aabb: AABB = e[2]
+	var c := aabb.get_center()
+	var mi := MeshInstance3D.new()
+	mi.mesh = e[0]
+	mi.material_override = e[1]
+	mi.transform = Transform3D(Basis.from_scale(k) * turn, Vector3(0, lift, 0)) * Transform3D(Basis(), Vector3(-c.x, -aabb.position.y, -c.z)) * (e[3] as Transform3D)
+	g.add_child(mi)
+
+## A Meshy set piece under g, scaled evenly so that its width (the wider of x and z, axis "w") or its height ("h")
+## is `size` metres, turned by `turn` (its front to +z, the code-built piece's), standing on g's origin. False
+## without the file.
+static func _set_piece(g: Node3D, kind: String, size: float, axis := "w", turn := Basis()) -> bool:
+	var e := _part(kind)
+	if e.is_empty():
+		return false
+	var bb: AABB = e[2]
+	var k: float = size / maxf(maxf(bb.size.x, bb.size.z) if axis == "w" else bb.size.y, 0.001)
+	_add_part(g, e, Vector3.ONE * k, turn)
+	return true
+
+## A whole column scaled evenly to the code-built one's height (plinth and base 0.52, the shaft h, capital and
+## abacus 0.52: its top meets a colonnade's beam; at these heights its shaft is the code-built one's 2r across); a
+## broken one is the stump, as wide as the plinth and as tall as what still stands.
+static func _meshy_column(g: Node3D, h: float, r: float, broken: float) -> bool:
+	if broken <= 0.0:
+		var e := _part("column")
+		if e.is_empty():
+			return false
+		var k: float = (h + 1.04) / maxf((e[2] as AABB).size.y, 0.001)
+		_add_part(g, e, Vector3.ONE * k)
+		return true
+	var b := _part("broken")
+	if b.is_empty():
+		return false
+	var bb: AABB = b[2]
+	var kx: float = r * 2.8 / maxf(maxf(bb.size.x, bb.size.z), 0.001)
+	var ky: float = (0.72 + h * (1.0 - broken)) / maxf(bb.size.y, 0.001)
+	_add_part(g, b, Vector3(kx, ky, kx))
+	return true
+
 ## A column drum lying where it fell.
 static func drum(w: World, p: Vector3, r := 0.32, l := 1.1) -> void:
 	var g := Props.footprint(Models.N(null, "drum"), Vector2(l * 0.5, r))
+	var e := _part("drum")
+	if not e.is_empty():
+		# lying with its axis along x like the code-built one, l long and 2r across, sunk a little
+		var bb: AABB = e[2]
+		var turn := Basis() if bb.size.x >= bb.size.z else Basis(Vector3.UP, PI * 0.5)
+		var long := maxf(bb.size.x, bb.size.z)
+		var across := maxf(minf(bb.size.x, bb.size.z), bb.size.y)
+		_add_part(g, e, Vector3(l / long, r * 2.0 / across, r * 2.0 / across), turn, -r * 0.15)
+		w._place(g, p)
+		g.rotation.y = w.rng.randf() * TAU
+		w.solid(g)
+		return
 	Models.P(g, Geo.cyl(r, r, l, 14), marble(), Vector3(0, r * 0.85, 0), Vector3(0, 0, 90))
 	w._place(g, p)
 	g.rotation.y = w.rng.randf() * TAU
@@ -114,6 +193,13 @@ static func aqueduct(w: World, a: Vector2, b: Vector2, gaps := 0.12, clear := Ve
 	var low_m := _own(arch_mesh(5.6, 8.2, 2.0, 4.0, 6.6), tuff())
 	var high_m := _own(arch_mesh(5.6, 3.6, 1.6, 2.6, 2.7), tuff())
 	var chan_m := _own(Geo.box(5.6, 0.9, 1.8), brick())
+	# the Meshy bays (visual overhaul): a standing two-tier bay with its channel, and a ruined one whose upper tier
+	# has fallen (the broken bays); the same random numbers decide which bay is which
+	var bay := _part("aqueduct")
+	var ruin := _part("aqueduct_ruin")
+	var meshy := not bay.is_empty() and not ruin.is_empty()
+	var bay_x: Array = []
+	var ruin_x: Array = []
 	for i in n:
 		var c := a + dir * (5.6 * (i + 0.5))
 		var hy := w.height_at(c.x, c.y)
@@ -127,20 +213,48 @@ static func aqueduct(w: World, a: Vector2, b: Vector2, gaps := 0.12, clear := Ve
 				drum(w, Vector3(c.x + w.rng.randf_range(-3, 3), 0, c.y + w.rng.randf_range(-2.5, 2.5)), 0.5, 1.2)
 			continue
 		var base := Basis(Vector3.UP, yaw)
-		low.append(Transform3D(base, Vector3(c.x, hy - 1.0, c.y)))
 		var broken := w.rng.randf() < 0.18 and not keep
-		if not broken:
-			high.append(Transform3D(base, Vector3(c.x, hy - 1.0 + 8.2, c.y)))
-			chan.append(Transform3D(base, Vector3(c.x, hy - 1.0 + 8.2 + 3.6 + 0.45, c.y)))
+		if meshy:
+			(ruin_x if broken else bay_x).append(Transform3D(base, Vector3(c.x, hy - 0.8, c.y)))
+		else:
+			low.append(Transform3D(base, Vector3(c.x, hy - 1.0, c.y)))
+			if not broken:
+				high.append(Transform3D(base, Vector3(c.x, hy - 1.0 + 8.2, c.y)))
+				chan.append(Transform3D(base, Vector3(c.x, hy - 1.0 + 8.2 + 3.6 + 0.45, c.y)))
 		# the piers between the arches are solid (0.8 m each side of a bay's 4 m opening)
 		for s in [-1, 1]:
 			var pp: Vector2 = c + dir * s * 2.4
 			w.add_box(Vector3(pp.x, 0, pp.y), Vector2(1.0, 0.42), atan2(dir.x, dir.y))
 	var root := Models.N(w.props_root, "aqueduct")
 	root.set_meta("roman", "aqueduct")
+	if meshy:
+		_bays(root, "aqueduct", bay_x)
+		_bays(root, "aqueduct_ruin", ruin_x)
+		return
 	Props.multimesh(root, low_m, low)
 	Props.multimesh(root, high_m, high)
 	Props.multimesh(root, chan_m, chan)
+
+## The Meshy bays' widths: each is scaled evenly so that its piers' inner faces stand ~1.8 m from the bay's centre
+## (the piers' collision starts at 1.98 m) and every pier is shared with the next bay 5.6 m on, as a real aqueduct's
+## are (the two copies a few centimetres apart, so they never flicker).
+const AQ_W := {"aqueduct": 8.45, "aqueduct_ruin": 8.04}
+
+## Instances of the Meshy aqueduct bay `kind` at xs (each a bay's turn and foot), its depth fitted to the piers' 2 m.
+static func _bays(root: Node3D, kind: String, xs: Array) -> void:
+	var e := _part(kind)
+	if xs.is_empty() or e.is_empty():
+		return
+	var bb: AABB = e[2]
+	var c := bb.get_center()
+	var k := float(AQ_W[kind]) / maxf(bb.size.x, 0.001)
+	var fit := Transform3D(Basis.from_scale(Vector3(k, k, 2.0 / maxf(bb.size.z, 0.001))), Vector3.ZERO) \
+		* Transform3D(Basis(), Vector3(-c.x, -bb.position.y, -c.z)) * (e[3] as Transform3D)
+	var fx: Array = []
+	for t in xs:
+		fx.append((t as Transform3D) * fit)
+	var mmi := Props.multimesh(root, e[0], fx)
+	mmi.material_override = e[1]
 
 ## A roadside tomb: a marble house-tomb with a pediment and pilasters, or a round drum tomb with an
 ## earth cap (style 0/1).
@@ -148,6 +262,11 @@ static func tomb(w: World, p: Vector3, yaw: float, style := 0) -> void:
 	var m := marble()
 	if style == 0:
 		var g := Props.footprint(Models.N(null, "tomb"), Vector2(1.7, 1.7))
+		if _set_piece(g, "tomb0", 3.4, "w", TOMB_TURN):
+			w._place(g, p)
+			g.rotation.y = yaw
+			w.solid(g)
+			return
 		Models.P(g, Geo.box(3.4, 1.0, 3.4), tuff(), Vector3(0, 0.5, 0))
 		Models.P(g, Geo.box(2.8, 2.6, 2.8), m, Vector3(0, 2.3, 0))
 		Models.P(g, Geo.box(3.1, 0.3, 3.1), m, Vector3(0, 3.75, 0))
@@ -163,6 +282,11 @@ static func tomb(w: World, p: Vector3, yaw: float, style := 0) -> void:
 		w.solid(g)
 	else:
 		var g := Props.footprint(Models.N(null, "tomb"), 3.0)
+		if _set_piece(g, "tomb1", 6.2, "w", TOMB_TURN):
+			w._place(g, p)
+			g.rotation.y = yaw
+			w.solid(g)
+			return
 		Models.P(g, Geo.cyl(3.0, 3.1, 0.8, 24), tuff(), Vector3(0, 0.4, 0))
 		Models.P(g, Geo.cyl(2.7, 2.7, 3.2, 24), m, Vector3(0, 2.4, 0))
 		Models.P(g, Geo.cyl(2.85, 2.85, 0.3, 24), m, Vector3(0, 4.1, 0))
@@ -175,9 +299,10 @@ static func tomb(w: World, p: Vector3, yaw: float, style := 0) -> void:
 ## A Roman milestone (miliarium): a squat inscribed column on a square base.
 static func milestone(w: World, p: Vector3, yaw: float) -> void:
 	var g := Props.footprint(Models.N(null, "miliarium"), 0.45)
-	Models.P(g, Geo.box(0.9, 0.35, 0.9), tuff(), Vector3(0, 0.17, 0))
-	Models.P(g, Geo.cyl(0.32, 0.36, 1.6, 12), marble(), Vector3(0, 1.15, 0))
-	Models.P(g, Geo.box(0.42, 0.5, 0.02), Mats.mat(Color(0.3, 0.27, 0.24), 0.9), Vector3(0, 1.3, 0.34))
+	if not _set_piece(g, "mile", 1.95, "h", TOMB_TURN):
+		Models.P(g, Geo.box(0.9, 0.35, 0.9), tuff(), Vector3(0, 0.17, 0))
+		Models.P(g, Geo.cyl(0.32, 0.36, 1.6, 12), marble(), Vector3(0, 1.15, 0))
+		Models.P(g, Geo.box(0.42, 0.5, 0.02), Mats.mat(Color(0.3, 0.27, 0.24), 0.9), Vector3(0, 1.3, 0.34))
 	w._place(g, p)
 	g.rotation = Vector3(w.rng.randf_range(-0.06, 0.06), yaw, w.rng.randf_range(-0.08, 0.08))
 	w.solid(g)
@@ -193,7 +318,13 @@ static func statue(w: World, p: Vector3, yaw: float, s := 1.25, broken := false)
 	Models.P(g, Geo.box(1.1, 0.3, 0.04), Mats.mat(Color(0.3, 0.27, 0.24), 0.9), Vector3(0, 0.95, 0.81))
 	var mm := marble_clean()
 	var fig: Node3D
-	if ResourceLoader.exists(STATUE_GLB):
+	var emperor := _part("statue")
+	if not emperor.is_empty():
+		# a Roman emperor in weathered marble (Meshy, visual overhaul): cuirass, cloak, his arm raised in address,
+		# facing the plinth's inscription (+z); scaled to the old figure's height
+		fig = Node3D.new()
+		_add_part(fig, emperor, Vector3.ONE * (1.8 * s / maxf((emperor[2] as AABB).size.y, 0.1)))
+	elif ResourceLoader.exists(STATUE_GLB):
 		# the Meshy crusader (the knight in plate) carved in marble, in his rest pose
 		fig = Node3D.new()
 		var body: Node3D = (load(STATUE_GLB) as PackedScene).instantiate()
@@ -232,6 +363,12 @@ static func statue(w: World, p: Vector3, yaw: float, s := 1.25, broken := false)
 ## A fountain: a round basin of dark water with a bronze spout on a pillar.
 static func fountain(w: World, p: Vector3) -> void:
 	var g := Props.footprint(Models.N(null, "fountain"), 2.4)
+	if _set_piece(g, "fountain", 5.0, "w"):
+		# still water in the basin (the model is empty)
+		Models.P(g, Geo.cyl(2.0, 2.0, 0.04, 28), Mats.shader_water_mat(Color(0.04, 0.08, 0.08), Color(0.1, 0.18, 0.16)), Vector3(0, 0.45, 0))
+		w._place(g, p)
+		w.solid(g)
+		return
 	Models.P(g, Geo.cyl(2.4, 2.5, 0.7, 28), marble(), Vector3(0, 0.35, 0))
 	Models.P(g, Geo.cyl(2.15, 2.15, 0.05, 28), Mats.shader_water_mat(Color(0.04, 0.08, 0.08), Color(0.1, 0.18, 0.16)), Vector3(0, 0.6, 0))
 	Models.P(g, Geo.cyl(0.35, 0.45, 1.8, 12), marble(), Vector3(0, 1.2, 0))
@@ -245,6 +382,13 @@ static func triumphal_arch(w: World, p: Vector3, yaw: float) -> Node3D:
 	var g := Models.N(null, "triumphal_arch")
 	g.set_meta("roman", "arch")
 	var m := marble()
+	if _set_piece(g, "arch", 13.0, "w", ARCH_TURN):
+		w._place(g, p)
+		g.rotation.y = yaw
+		for sx in [-1, 1]:
+			var oo := Basis(Vector3.UP, yaw) * Vector3(sx * 5.0, 0, 0)
+			w.add_box(p + oo, Vector2(1.5, 1.95), yaw)
+		return g
 	Models.P(g, _own(arch_mesh(13.0, 10.0, 3.6, 6.0, 8.2), m), m)
 	Models.P(g, Geo.box(13.4, 2.6, 3.9), m, Vector3(0, 11.3, 0))
 	Models.P(g, Geo.box(13.8, 0.35, 4.1), m, Vector3(0, 10.05, 0))
@@ -272,6 +416,17 @@ static func cypresses(w: World, at: Array) -> void:
 		var s := w.rng.randf_range(0.8, 1.25)
 		xf.append(Transform3D(Basis(Vector3.UP, w.rng.randf() * TAU).scaled(Vector3(s, s * w.rng.randf_range(0.9, 1.25), s)), Vector3(q.x, w.height_at(q.x, q.z) - 0.1, q.z)))
 		w.add_circle(Vector3(q.x, 0, q.z), 0.45 * s)
+	var e := _part("cypress")
+	if not e.is_empty():
+		# the Meshy cypress (visual overhaul): dense foliage in soft clumps on a short trunk, the lathe cone's 6.3 m
+		var bb: AABB = e[2]
+		var c := bb.get_center()
+		var fit := Transform3D(Basis.from_scale(Vector3.ONE * 6.3 / maxf(bb.size.y, 0.001)), Vector3.ZERO) * Transform3D(Basis(), Vector3(-c.x, -bb.position.y, -c.z)) * (e[3] as Transform3D)
+		var fx: Array = []
+		for t in xf:
+			fx.append((t as Transform3D) * fit)
+		w.mm_chunked(e[0], fx, true, 32.0, 0.0, e[1])     # chunked, so each chunk is culled and kept out of far shadow passes
+		return
 	Props.multimesh(w.props_root, _own(cypress_mesh(), foliage()), xf)
 
 ## A low ruined wall of brick on a tuff footing from a to b, uneven along its top.
@@ -288,3 +443,63 @@ static func ruin_wall(w: World, a: Vector2, b: Vector2, h := 1.6) -> void:
 	w._place(g, Vector3(mid.x, 0, mid.y))
 	g.rotation.y = atan2(-d.y, d.x)
 	w.add_box(Vector3(mid.x, 0, mid.y), Vector2(0.4, d.length() * 0.5), atan2(d.x, d.y))
+
+## STANDS_SHADER: seats() on the arena's tier boxes (any box: joints in world space, so stretched boxes keep square
+## blocks). Tops: seat slabs 1.25 x 0.85 m in staggered rows; sides: ashlar courses 0.55 m high; cream travertine,
+## no two blocks the same shade, grime low on each riser, dark joints.
+const STANDS_SHADER := """
+shader_type spatial;
+render_mode diffuse_burley, specular_schlick_ggx;
+global uniform vec3 player_pos;
+global uniform float occlude_k;
+varying vec3 wp;
+varying vec3 wn;
+float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float vn(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), u.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), u.x), u.y); }
+float bayer2(vec2 a){ a = floor(a); return fract(a.x / 2.0 + a.y * a.y * 0.75); }
+float dith(vec2 a){ return bayer2(0.5 * a) * 0.25 + bayer2(a) + 0.03125; }
+void vertex(){
+	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
+void fragment(){
+	{
+		vec3 d = wp - player_pos;
+		float h = wp.y - player_pos.y;
+		float along = d.z - occlude_k * (h - 1.0);
+		float cover = (1.0 - smoothstep(1.6, 3.2, abs(along))) * (1.0 - smoothstep(2.2, 3.6, abs(d.x)));
+		cover *= step(0.9, h) * step(0.2, d.z);
+		if (cover * 0.9 > dith(FRAGCOORD.xy)) { discard; }
+	}
+	vec3 an = abs(wn);
+	float joint = 0.0;
+	float id = 0.0;
+	if (an.y > 0.6) {
+		vec2 q = wp.xz / vec2(1.25, 0.85);
+		q.x += h21(vec2(floor(q.y), 3.1)) * 0.9;
+		vec2 f = fract(q);
+		id = h21(floor(q));
+		float e = min(min(f.x, 1.0 - f.x) * 1.25, min(f.y, 1.0 - f.y) * 0.85);
+		joint = 1.0 - smoothstep(0.012, 0.035, e);
+	} else {
+		float hc = an.x > an.z ? wp.z : wp.x;
+		vec2 q = vec2(hc / 1.15, wp.y / 0.55);
+		float row = floor(q.y);
+		q.x += h21(vec2(row, 7.7)) * 0.7 + mod(row, 2.0) * 0.5;
+		vec2 f = fract(q);
+		id = h21(floor(q) + 13.0);
+		float e = min(min(f.x, 1.0 - f.x) * 1.15, min(f.y, 1.0 - f.y) * 0.55);
+		joint = 1.0 - smoothstep(0.01, 0.03, e);
+	}
+	vec3 c = mix(vec3(0.6, 0.55, 0.46), vec3(0.76, 0.71, 0.61), id);
+	float n = vn(wp.xz * 3.0 + vec2(wp.y * 2.0)) * 0.6 + vn(wp.xz * 11.0 + vec2(wp.y * 5.0, -wp.y * 3.0)) * 0.4;
+	c *= 0.8 + n * 0.32;
+	float grime = (1.0 - smoothstep(0.0, 1.2, mod(wp.y, 1.7))) * (1.0 - an.y) * 0.28;
+	c *= 1.0 - grime;
+	c = mix(c, c * 0.42, joint);
+	ALBEDO = c;
+	ROUGHNESS = 0.88;
+	AO = 1.0 - joint * 0.5;
+}
+"""

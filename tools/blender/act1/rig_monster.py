@@ -1,7 +1,8 @@
 # Rigs a Meshy monster (A-pose humanoid) on the game's joints and exports a small skinned glb.
 #   blender -b --python rig_monster.py -- <in.glb> <out.glb> <layout.json> [texture px, default 1024] [hints json]
 # hints override what the measuring gets wrong (a hood or mantle hides the neck): {"sh_z": metres to the
-# top of the shoulders, "sh_x": the shoulder joint's distance from the middle}.
+# top of the shoulders, "sh_x": the shoulder joint's distance from the middle, "crotch": the crotch's height as a
+# fraction of the model's (a loincloth or skirt hanging between the legs fools the scan)}.
 # The input is the decimated Meshy model (feet on z = 0; Meshy faces -y, so it is turned to face +y,
 # which is Godot's -z). Joints are measured from the mesh: the crotch is the lowest height where the
 # legs part, each arm's centre line is traced out to the fingertips, the legs are sliced for knees and
@@ -52,6 +53,9 @@ for zz in np.arange(0.2 * H, 0.7 * H, 0.005 * H):
     if mid.sum() > 3:
         crotch = zz
         break
+# a loincloth or a skirt of strips hangs across the middle below the real crotch: hint it as a fraction of the height
+if "crotch" in HINTS:
+    crotch = float(HINTS["crotch"]) * H
 hip_z = crotch + 0.035 * H
 # --- arms: fingertips are the outermost points; the arm's centre line from slices across x
 xmax = np.abs(x).max()

@@ -68,7 +68,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `world.gd` | Zone builder: terrain, roads, buildings, trees/grass (MultiMesh chunks), spawns, `burn_points` |
 | `hero.gd`, `knight.gd`, `knight_rig.gd`, `anim.gd` | Player: class (`cls`, `set_class`), stats (`recalc`), combat, the shared skill flow (mana, cooldowns, cancel, animation), gear visuals, animation, co-op puppet mode |
 | `class_skills.gd`, `knight_skills.gd`, `warlock_skills.gd`, `plague_skills.gd` | Every class's skills, one script per class (`ClassSkills.of(cls)`: KnightSkills, WraithSkills, DemonSkills, WarlockSkills, Archer, PlagueSkills); `hero.gd` hands each cast, impact frame, frame update, root check, clear, death and cast sound to it. Template for a new class: `tools/templates/new_class_skills.gd` |
-| `wraith.gd`, `wraith_skills.gd`, `wraith_fx.gd` | Wraith class: the Meshy body on the mocap system with the spectral shader; its six skills (casts, blows, the tether, phantoms, the night); their effects |
+| `wraith.gd`, `wraith_skills.gd`, `wraith_fx.gd` | Wraith class: the Meshy body on the mocap system with the spectral shader; its six skills (casts, blows, the tether, phantoms, the night); their effects (his own particles and rings: `WraithFx._spirit_burst` streaking wisps / shadow smoke, `_soul_ring` soul-mist; never the generic `Fx.burst`/`ring`) |
 | `demon.gd`, `demon_mocap_rig.gd`, `demon_skills.gd`, `demon_fx.gd`, `demon_fists_fx.gd`, `demon_charge_fx.gd`, `demon_fault_fx.gd`, `demon_hurl_fx.gd`, `demon_chain_fx.gd`, `demon_crucible_fx.gd`, `demon_kit_fx.gd`, `brand_fx.gd`, `infernal_fx.gd` | Demon class: the Meshy magma brute on the mocap system with the magma shader and his own wing/tail/cloth rig (falls back to the knight body in obsidian plate + horns/wings/tail/spikes with the solid ember-edge shader); his six skills, one job each (the fists, the charge, the fault, the boulder, the chain, the Crucible) and the Brand; each skill's look in its own script |
 | `pvp_status.gd` | Crowd control between players in the Battlegrounds (through the server, with diminishing returns) |
 | `warlock.gd`, `warlock_fx.gd` | Warlock class: the gnome (`Warlock.GNOME`: imported model on `Goblin.imported_rig`, A-pose arms aimed down, swaying hat and beard, fel flame, floating grimoire; falls back to the robed knight body without the glb); skill effects incl. the Drain Life beam (`WarlockFx.Beam`, an ImmediateMesh ribbon redrawn each frame) |
@@ -93,9 +93,10 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `battlegrounds.gd` | Battlegrounds prototype: the raid map, the dedicated server's raid logic (respawns, carried loot, extraction, the stash), the client's id and cached stash |
 | `vigil.gd` | The Last Flame (zone `"vigil"`): the co-op horde defence under the Act I camp, its sanctum, waves, flame and HUD (see "The Last Flame") |
 | `kpi.gd` | The official performance KPIs: scripted scenarios measured frame by frame (`--kpi`), see docs/nightly/KPIS.md |
-| `shared_skills.gd`, `shared_fx.gd` | The shared skills every class can use (`"cls": "any"`): their gameplay and their effects |
+| `shared_skills.gd`, `shared_fx.gd`, `elemental_fx.gd` | The shared skills every class can use (`"cls": "any"`): their gameplay and their effects (`ElementalFx`: Earthshatter's crack and rock spikes, Frost Nova's frost and ice crystals, Arc's branching lightning, War Cry's sigil and dust wave) |
 | `skill_spec.gd` | The skill format (`SkillSpec`): a skill's timing, damage, area and damage over time read from its `Data.SKILLS` entry |
 | `skill_fx.gd`, `knight_fx.gd`, `archer_fx.gd` | Co-op skill effects: `SkillFx` plays every class's skill events on the caster and on his puppet for partners (see "Co-op skill effects"); the knight's and archer's effect handlers (the Wraith's, Demon's and Warlock's are in their `*_fx.gd`) |
+| `holy_fx.gd` | The knight's visual language (`HolyFx`, like `InfernalFx` for the Demon): the seal drawn on the ground, holy fire rings, the light column, the shockwave ripple, sunbursts and motes; Holy Nova, Battle Cry and Charge are built from it |
 | `ui.gd`, `hud_bar.gd`, `icon_renderer.gd` | All UI built in code |
 | `vendor_ui.gd` | Nameplates over the town's people and the trader's live portrait in the trade window |
 | `models.gd`, `skeleton.gd`, `flora.gd`, `props.gd`, `geo.gd`, `mats.gd` | Procedural meshes and shaders |
@@ -860,7 +861,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   textures) built by `Flora.oak_model(k)` with `MESHY_TREE_SHADER` (wind sway by height, snow/ash, see-through near the
   player) plus the game's leaf clusters (`OAK_LEAVES`); the moor is ~40% oaks with groves off the road. Grass is
   the **living 3D grass** (`scripts/grass.gd` `Grass`, `scripts/grass_field.gd` `GrassField`; Act I's camp, moor and
-  fort, i.e. whenever `oak_forest`; A2/A3 keep the old blade clumps): seven species built in code (`Grass.SPECIES`:
+  fort, i.e. whenever `oak_forest`; since the visual overhaul A2 and A3 too, `World.living_grass`, in the zone's own
+  colours, A3's charred by the shader's `ash_amt`; the old blade clumps remain only as the fallback): seven species built in code (`Grass.SPECIES`:
   meadow, tall seed-head grass, tussock, dry straw, moss with clover, broad-leaved weeds, sparse verge grass)
   **modelled in Blender on Meshy textures**: four Meshy botanical sheets (green blades, dry straw, seed heads and
   wildflowers, broad leaves; `meshy.py draw "... laid flat side by side ..." --cutout`, ~6 credits each, the prompts
@@ -907,7 +909,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   Previews: `tools/tree_lineup.gd`, `tools/tree_shot.gd`. Meshy 2D: `meshy.py draw --cutout`.
 - **Act I monsters** (Meshy): concept image, image-to-3D, decimate to ~20k triangles in `sources/act1_enemies.blend`,
   then `blender -b --python tools/blender/act1/rig_monster.py -- <decimated.glb> <out.glb> layout.json [tex px] [hints]`
-  (measures the joints; hints `{"sh_z", "sh_x"}` when a hood or helmet spike fools the neck finder) and
+  (measures the joints; hints `{"sh_z", "sh_x"}` when a hood or helmet spike fools the neck finder, `"crotch"` (a
+  fraction of the height) when a loincloth or skirt hangs between the legs) and
   `python3 tools/blender/act1/layout_to_gd.py <kind> layout.json`. They keep their A-pose (arms aimed down like the
   gnome). Previews: `tools/monster_lineup.gd -- out.png kind...`, `tools/monster_shot.gd` (staged on the moor).
 - **The Feral** (`feral.gd`, Act I forest): a Meshy model rigged and animated in Blender (`sources/feral.blend`:
@@ -1017,14 +1020,17 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
     `crowd_cheer`, `portcullis`, `lion_roar`.
   - **Roman architecture** (`roman.gd`): materials (marble, tuff, brick, tile, bronze), `arch_mesh` (an extruded
     wall with a round opening, used by the aqueduct, the colosseum's arcade, gates), columns, colonnades, tombs,
-    milestones, statues (the earlier Meshy knight `knight_statue.glb` carved in marble, `Roman.STATUE_GLB`), fountains, the triumphal arch, cypresses
+    milestones, statues (a Meshy Roman emperor in marble, `assets/models/roman/statue.glb`; the earlier Meshy knight `knight_statue.glb` carved in marble, `Roman.STATUE_GLB`, is the fallback), fountains, the triumphal arch, cypresses (the Meshy cypress in `World.mm_chunked` chunks)
     (MultiMesh), ruined walls. Repeating pieces go through `Props.multimesh` with their own mesh copy
     (`Roman._own`: Geo's meshes are cached and shared, never set a material on them).
   - **Monsters**: bandits (`bandit`, `bandit_archer`: the Meshy bandit on `MeshyMonster`, faction "bandit"),
     the arena lion (`lion.gd`: Meshy model, a 20-bone skeleton from `sources/lion.blend` skinned by surface
     distance like the Feral, posed every frame in code by `Lion.pose`, the Feral's pack AI with its lunge as the
-    pounce and its swipe as the maul; `tools/lion_sheet.gd`), the gladiator and the champion (procedural humanoids
-    until their Meshy models: the concepts are in `exports/act2/`, the key's monthly Meshy cap stopped them).
+    pounce and its swipe as the maul; `tools/lion_sheet.gd`), the gladiator and Aurelius the champion: Meshy models
+    (2026-11-02, the visual overhaul: concept → image-to-3D → `act1/prep_monster.py` → `act1/rig_monster.py` with
+    the `crotch` hint, since a loincloth or skirt fools the leg scan → `MeshyMonster.MODELS`; the gladiator 20k
+    triangles and 1K textures, Aurelius 30k and 2K: lion cuirass, crimson crest and pteruges, no cape). They join the
+    arena's crowd cards by themselves; Aurelius is kept out of the patron's box (`Games.crowd_bosses`).
   - Tests and previews: `tools/a2_arena_test.gd` (road, ambush, Aurelia, the whole games), `tools/via_shots.gd`,
     `tools/aurelia_shots.gd` (`overview` for a top view). Load `aurelia.gd` at run time in a `-s` tool script
     (`load(...)`): a static reference compiles it, and games.gd's `Sfx`, before the autoload exists.
@@ -1292,7 +1298,9 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `oak_forest` and act 0; A2/A3 keep the old camp): a ring palisade with a gatehouse, rune stones outside
   (`RUNE_SHADER` glows their runes), a bonfire, tents and lantern-hung oaks inside, the old forest beyond, and a
   dusk/mist mood (`Game._zone_env`, `theme.forest_camp`). Everything is Meshy (concept image, then image-to-3D),
-  prepared in Blender: props by `tools/blender/prep_prop.py` into `assets/models/camp/`, trees by `prep_tree.py`.
+  prepared in Blender: props by `tools/blender/prep_prop.py` into `assets/models/camp/`, trees by `prep_tree.py`. The
+  lantern and the palisade section were re-made in the visual overhaul (2026-11-02: new Meshy models re-baked onto
+  clean UVs by `tools/blender/camp/rebake_prop.py`, so the importer can make LODs; the palisade is 4.2 m tall).
   The shopkeepers are Meshy characters rigged by Meshy and animated from its clip library (`meshy.py rig` /
   `animate` / `library`), cleaned by `tools/blender/prep_npc.py` into `assets/models/npc/`; `Inter._animate`
   plays their work clips, turns them to face the hero and has them talk when he comes near (clips listed in
@@ -1539,6 +1547,63 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   but Esc while paused. Leaving for the title (`Game.exit_to_title`) resets what belonged to the character: its death
   and victory screens, portal, XP bonus, F8 switches, a raid (left without extracting = died there, `bg_strip`) and the
   raid's act (`bg_home_run`). `tools/screen_test.gd` checks it (in the nightly gate).
+- **Visual audit and overhaul** (`docs/visual/AUDIT.md`, `docs/visual/checklist.csv`, tools in `tools/visual_audit/`):
+  the ranked roadmap and every asset's scores and status. `frame_stats.gd` measures draw calls and primitives per pass
+  **and per viewport** in any zone and preset (the cloud's software Vulkan runs the real Forward+ renderer: counts are
+  exact, frame times meaningless; `--fast` drops screen-space effects, which add no geometry); `scene_census.gd`
+  lists every zone's geometry; `glb_audit.py` / `uv_report.py` measure models (UV islands, normal-map strength,
+  albedo); `model_sheet.py` + `contact_sheet.py` render Blender sheets; `skill_shots.gd` frames any class's skills.
+  Rules it taught: **a SubViewport sharing the game's world must be switched off explicitly when hidden**
+  (`UPDATE_WHEN_PARENT_VISIBLE` asks the parent viewport, the screen, so the character sheet's portrait rendered the
+  whole scene and its shadows every frame: 66 M of the camp's 150 M primitives); **multimeshes go through
+  `World.mm_chunked`** (one the size of the map is never culled and lands in every shadow pass, six per shadowed omni
+  light); **Meshy models get no LODs** (their thousands of UV islands leave the importer nothing to simplify; re-bake
+  from Meshy's full-detail output, `tools/blender/camp/rebake_prop.py`); shadow-casting fires join `Grade`'s budget
+  (`FireFx.make`); the sun's cascades are fitted to the camera every frame (`Game._fit_shadows`, distances follow the
+  zoom; `_shadow_hold` while the minimap captures); the hero's rim light is in every zone (`Grade.RIMS`, picked by
+  `Game._rim_kind`). `normals_from_albedo.py` gave the 27 models whose Meshy normal map was flat a detail map
+  (island-aware, no seam ridges); `smooth_normals.py` re-shades faceted round props in place (normals only);
+  `metal_lift.py` gives Meshy's near-black metal its reflectance back (a metal's colour IS its reflectance: the
+  armoured knight's plate reflected 5%; lifted where the metal map says metal, cloth untouched: knight_mocap,
+  knight_armored, fallen_reaver, the trap); `emission_from_albedo.py` turns painted embers into an emission map (the
+  Ashen King's cracks and eyes, KHR_materials_emissive_strength). The hit flash (`Enemy.FLASH_SHADER`: rim-weighted,
+  fading; `Enemy.flash_color` for a coloured one) replaced flat white cut-outs (the swing trail got the same kind of
+  fix on staging, `Hero._trail_shader`; its UVs are clamped before `pow()`, whose NaN on a hair-negative UV drew
+  black specks). Each class has its own visual language (`HolyFx` knight, `InfernalFx`/`DemonFx` demon, `WarlockFx`
+  fel fire, `WraithFx._spirit_burst`/`_soul_ring`, `ArrowFx` archer, `ElementalFx` for the shared skills and the
+  monsters' slams, novas and summonings, `PlagueFx` the Plague Doctor's glass, liquid and fumes): no hero's skill uses
+  the generic `Fx.burst`/`ring`/`flash`/`pillar` now (`SkillFx._default` keeps them as the fallback for a new class's
+  undrawn skills; the Demon's accents are `DemonFx.embers`/`flare`/`fire_wave`, the Archer's marks
+  `ArcherFx.hunter_mark`). Give a new skill shapes of its own, not a recoloured burst. Telegraphs (`Fx.telegraph`,
+  `arc_telegraph`) are a rim, a faint wash and a fill sweeping out to meet the rim on the impact frame (added light). Hits throw streaks (`Fx.streaks`: sparks, blood). Decals on the
+  ground sit 0.06-0.08 m up (the road's surface is above `height_at`). `special_shots.gd` frames monsters' heavy
+  blows; `shader_check`-style runs (draw each new material once under xvfb) catch shader compile errors that the
+  headless tests can't. Candidates are judged in the game renderer, not in model sheets:
+  `oak_compare.gd` (oaks as the game builds them, with leaf clusters) and `body_compare.gd` (two copies of the mocap
+  knight); the procedural oak (`tools/blender/trees/oak_gen.py`) lost to the Meshy oaks there and was not adopted.
+  The ground: the cobbles are `Mats.TERRAIN_SHADER`'s `cobble()` (domed, chipped, worn flagstones; judge changes in
+  `terrain_lab.gd`, a strip of road without a zone); the dirt has pebbles and grit (`ground_detail`, off on Low) and Act
+  I's forest floor fallen oak leaves in drifts (`litter`, set in `World.terrain_patch` when `oak_forest`). Every zone's scattered rocks and the old roads' kerbs are Meshy
+  (`assets/models/rocks/`, `Props.meshy_rock`/`boulder`/`seat`, `World.kerb`), and the crate, barrel and log pile
+  (`assets/models/props/`, `Props._clutter_into`), and A2's columns, stumps, drums, tombs, milestones, fountains and
+  triumphal arch (`assets/models/roman/`, `Roman._meshy_column`, `_set_piece`), and the aqueduct's bays, standing and
+  ruined (`Roman._bays`, widths in `AQ_W` so the piers meet the old collision), and the colosseum's outer arcade
+  (`Aurelia._arcade`, each bay the step to the next plus one shared pier) and the arena's podium wall (`Aurelia._podium`,
+  one section over three runs; the runs beside the Gate of Life stay code-built) and its braziers (`Aurelia._brazier`); the
+  stands draw with `Roman.seats()` (travertine seat slabs and ashlar courses, joints in world space); the city wall and
+  gate towers (`Aurelia._city_wall`: the wall 5.8 m tall where the boxes were 7.3, collision unchanged);
+  all re-baked on clean UVs, with the
+  procedural versions as the fallback. Meshy props draw with `Props.MESHY_PROP_SHADER`, which has the same see-through
+  near the hero as `Mats.PROP_SHADER` (keep it when changing either). The glb pieces placed with their own material
+  (the camp, fort, coast, islands, lairs, the crypt's dressing) get it from `Props.see_through(world)` at the end of
+  `World.build`: every static mesh 1.5 m or taller on a plain opaque StandardMaterial3D (surface, override or a
+  multimesh's mesh) is given `SEE_THROUGH_SHADER`, StandardMaterial3D's own sums plus the see-through, one copy per
+  material; skinned, glowing, see-through and shader materials are left alone, and a node with meta `keep_material` is
+  skipped with its children. Its caches are cleared after each walk (held across zones they kept every visited zone's
+  textures in video memory). `-- --no-see-through` turns it off for comparisons; `tools/visual_audit/see_through_check.gd
+  -- town lair coast` lists what dithers in each zone and what tall mesh still can't. World generation draws from `World.rng`: a visual change must keep its calls (count and order) or every
+  rock, tree, footprint and spawn after it moves (and co-op peers must agree). Check with
+  `tools/visual_audit/layout_dump.gd` (one zone per process) and diff against the old build.
 - **Performance KPIs** (`scripts/kpi.gd` `Kpi`, `docs/nightly/KPIS.md`): the official numbers. Scripted, deterministic
   scenarios (camp, moor, fight, boss, arena, crypt, server; `Kpi.SCENARIOS`) run in any build with
   `-- --kpi <scenario> out.json [--quality N] [--secs N]` (the server: `-- --server --kpi server out.json`), measuring

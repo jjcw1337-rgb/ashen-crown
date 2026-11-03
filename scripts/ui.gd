@@ -2127,7 +2127,9 @@ func _build_character() -> void:
 	port.add_child(svc)
 	sheet_view = SubViewport.new()
 	sheet_view.size = Vector2i(160, 160)
-	sheet_view.render_target_update_mode = SubViewport.UPDATE_WHEN_PARENT_VISIBLE
+	# off until the sheet opens (UI._process); no lantern and fire shadow maps of its own for a 61 px portrait
+	sheet_view.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	sheet_view.positional_shadow_atlas_size = 0
 	sheet_view.own_world_3d = false
 	svc.add_child(sheet_view)
 	sheet_cam = Camera3D.new()
@@ -5042,6 +5044,13 @@ func _process(delta: float) -> void:
 			p.visible = a > 0.02
 			p.modulate = Color(1, 1, 1, a)
 			p.position = class_stage.feet_at(c) + Vector2(-80, 8 + 10 * float(class_stage.scales[c]))
+	if sheet_view:
+		# the portrait renders the game's own world: only while the sheet is open. UPDATE_WHEN_PARENT_VISIBLE asks the
+		# parent *viewport* (the screen, always visible), so with the sheet closed it still drew the whole scene and
+		# its shadow passes every frame: 66 M of the camp's 150 M primitives (docs/visual/AUDIT.md)
+		var want := SubViewport.UPDATE_ALWAYS if char_panel and char_panel.is_visible_in_tree() and hero else SubViewport.UPDATE_DISABLED
+		if sheet_view.render_target_update_mode != want:
+			sheet_view.render_target_update_mode = want
 	if char_panel and char_panel.visible and hero:
 		_sheet_camera(delta)
 		if sheet_points.visible:

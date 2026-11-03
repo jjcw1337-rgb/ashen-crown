@@ -317,7 +317,7 @@ static func _release(h: Hero, ev: Dictionary) -> void:
 	g2.create_tween().tween_property(g2, "scale", Vector3.ONE * 3.2, 0.3).set_ease(Tween.EASE_OUT)
 	InfernalFx.tween_param(g2, f2, "alpha", 0.5, 0.0, 0.3)
 	Fx._free_later(g2, 0.36)
-	Fx.flash(root, fist, InfernalFx.MOLTEN, 3.0, 0.16, 5.0)
+	DemonFx.flare(root, fist, 0.9, InfernalFx.MOLTEN, 3.0, 0.16, 5.0)
 	# a light running out along the rift, then dying to crimson
 	var sw := OmniLight3D.new()
 	sw.light_color = InfernalFx.MOLTEN
@@ -398,7 +398,7 @@ static func _release(h: Hero, ev: Dictionary) -> void:
 		"damping": [2.0, 3.0], "scale": [0.5, 1.0], "size": 0.07,
 		"colors": [[0.0, InfernalFx.WHITEHOT], [0.35, InfernalFx.MOLTEN], [1.0, Color(InfernalFx.CRIMSON, 0.0)]]})
 	# earth thrown up out of the cracks
-	Fx.burst(root, pos + fwd * reach * 0.45 + Vector3(0, 0.2, 0), Color(0.2, 0.16, 0.14, 0.75), [8, 12, 16, 18][tr], 3.2, 0.3, 0.7, false, -5.0, 55.0, fwd * 0.4 + Vector3.UP)
+	InfernalFx.smoke(root, pos + fwd * reach * 0.45 + Vector3(0, 0.2, 0), [4, 6, 8, 9][tr], Vector3(reach * 0.3, 0.2, reach * 0.3), (fwd * 0.4 + Vector3.UP).normalized(), 1.4, 1.5)
 	# the foes struck
 	for e in hit:
 		_brand(h, root, e, pos, tr)
@@ -501,7 +501,7 @@ static func _brand(h: Hero, root: Node3D, e, from: Vector3, tr: int) -> void:
 		"dir": (away + Vector3(0, 0.45, 0)).normalized(), "spread": 32.0, "vel": [3.0, 7.0], "gravity": -9.0,
 		"damping": [1.0, 2.0], "scale": [0.5, 1.0], "size": 0.07,
 		"colors": [[0.0, InfernalFx.WHITEHOT], [0.3, InfernalFx.MOLTEN], [1.0, Color(InfernalFx.CRIMSON, 0.0)]]})
-	Fx.burst(root, chest, Color(0.05, 0.03, 0.035, 0.7), 6, 1.4, 0.4, 0.6, false, 0.6, 60.0, away + Vector3.UP)
+	InfernalFx.smoke(root, chest, 3, Vector3(0.2, 0.2, 0.2), (away + Vector3.UP).normalized(), 0.9, 1.0)
 	var gm := InfernalFx.glow_mat(InfernalFx.BLOODFIRE, 2.4, 1.6, 0.6)
 	var g := InfernalFx.glow(root, chest, 0.6, gm)
 	g.create_tween().tween_property(g, "scale", Vector3.ONE * 1.9, 0.18).set_ease(Tween.EASE_OUT)
@@ -517,9 +517,8 @@ static func _brand(h: Hero, root: Node3D, e, from: Vector3, tr: int) -> void:
 		twb.tween_interval(1.0)
 		twb.tween_callback(bf.queue_free)
 	# the molten flash in place of the white one (it shows only while the hit's own flash is on)
-	var fmat = e.get("flash_mat")
-	if fmat != null and float(e.get("flash_t")) > 0.0:
-		(fmat as StandardMaterial3D).albedo_color = Color(1.0, 0.3, 0.06, 0.85)
+	if e.has_method("flash_color") and float(e.get("flash_t")) > 0.0:
+		e.flash_color(Color(1.0, 0.3, 0.06, 0.85))
 	# the stagger: its body thrown back and springing home (visual only)
 	var ss: Array = h.fxs.get("fists_stag", [])
 	for s in ss.duplicate():

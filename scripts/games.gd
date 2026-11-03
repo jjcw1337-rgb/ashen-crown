@@ -601,6 +601,8 @@ static func crowd_kinds() -> Array:
 static func crowd_bosses() -> Array:
 	var out := []
 	for k in Data.ENEMIES:
+		if k == "champion":
+			continue        # Aurelius fights on the sand; he doesn't watch himself from the box
 		if (Data.ENEMIES[k].get("boss", false) or Data.ENEMIES[k].get("trophy", false)) and finished_model(k):
 			out.append(k)
 	return out

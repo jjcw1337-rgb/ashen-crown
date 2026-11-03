@@ -45,7 +45,7 @@ var wander_t := 0.0
 var wander_to := Vector3.ZERO
 var home := Vector3.ZERO
 var meshes: Array = []
-var flash_mat: StandardMaterial3D
+var flash_mat: ShaderMaterial
 var special := ""
 var summon_t := 8.0
 var slam_t := 5.0
@@ -173,11 +173,12 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 	if champ:
 		rig.scale = Vector3.ONE * 1.15
 	_collect_meshes(rig)
-	flash_mat = StandardMaterial3D.new()
-	flash_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	flash_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	flash_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	flash_mat.albedo_color = Color(1, 1, 1, 0)
+	if _flash_shader == null:
+		_flash_shader = Shader.new()
+		_flash_shader.code = FLASH_SHADER
+	flash_mat = ShaderMaterial.new()
+	flash_mat.shader = _flash_shader
+	flash_mat.set_shader_parameter("col", Color(1, 1, 1, 0))
 	if champ:
 		var rimm := Mats.glow(Color(0.35, 0.55, 1.0), 1.2, 0.0, 1.0)
 		for m in meshes:
@@ -215,18 +216,48 @@ func _collect_meshes(n: Node) -> void:
 	for c in n.get_children():
 		_collect_meshes(c)
 
+## The hit flash: light added over the body for FLASH_T, strongest at the silhouette's rim and under half as strong
+## where the surface faces the camera, so the body keeps its shape and reads as struck (the old flat, unshaded white
+## at 60% turned every foe into a paper cut-out for those frames); it fades as it goes.
+const FLASH_SHADER := """
+shader_type spatial;
+render_mode unshaded, blend_add, depth_draw_never, shadows_disabled, cull_back;
+uniform vec4 col : source_color = vec4(1.0, 0.95, 0.9, 0.0);
+void fragment() {
+	float f = 1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0);
+	ALBEDO = col.rgb;
+	ALPHA = clamp(col.a * (0.38 + 1.1 * f * f), 0.0, 1.0);
+}
+"""
+const FLASH_T := 0.12
+const FLASH_WHITE := Color(1, 0.95, 0.9, 0.6)
+static var _flash_shader: Shader
+var _flash_col := FLASH_WHITE      # this hit's flash colour and peak strength (alpha)
+var _flash_on := false
+
 func _set_flash(v: float) -> void:
-	flash_mat.albedo_color = Color(1, 0.95, 0.9, v * 0.6)
+	if v >= 1.0:
+		_flash_col = FLASH_WHITE
+	flash_mat.set_shader_parameter("col", Color(_flash_col.r, _flash_col.g, _flash_col.b, v * _flash_col.a))
 	if champion:
 		return
+	var on := v > 0.01
+	if on == _flash_on and not (v <= 0.0):
+		return
+	_flash_on = on
 	var rest: Material = soul_mat() if _soul_lit else (drain_mat() if _drained else (Feral.rim_mat() if rig.has_meta("feral") else null))
 	for m in meshes:
 		if is_instance_valid(m):
-			(m as MeshInstance3D).material_overlay = flash_mat if v > 0.01 else rest
+			(m as MeshInstance3D).material_overlay = flash_mat if on else rest
+
+## This hit's flash in another colour (alpha = its strength), e.g. Molten Fists' molten flash.
+func flash_color(c: Color) -> void:
+	_flash_col = c
+	flash_mat.set_shader_parameter("col", c)
 
 ## A softer, coloured hit flash (Drain Life ticks), so a held beam doesn't strobe the victim white.
 func drain_flash(col: Color) -> void:
-	flash_mat.albedo_color = Color(col.r, col.g, col.b, 0.3)
+	flash_color(Color(col.r, col.g, col.b, 0.3))
 
 ## Held in a Warlock's Drain Life beam: a green rim-light for as long as the beam holds on.
 static var _drain_mats := {}
@@ -497,7 +528,7 @@ func die_visual() -> void:
 	else:
 		Sfx.play_at("kill_" + material(), global_position + Vector3(0, height, 0), -1.0)
 	Fx.splat(game.world.fx_root, global_position, def.get("blood", Color(0.4, 0, 0)), 0.6 + radius)
-	Fx.burst(game.world.fx_root, global_position + Vector3(0, height * 0.8, 0), def.get("blood", Color(0.4, 0, 0)), 26, 4.0, 0.14, 0.8, false, -9.0)
+	Fx.gore(game.world.fx_root, global_position + Vector3(0, height * 0.7, 0), def.get("blood", Color(0.4, 0, 0)), radius)
 
 func apply_net_state(x: float, z: float, yaw: float, mv: float, ph: float, atk: float, style: String, hit: float, lf: float) -> void:
 	var now := Time.get_ticks_msec() / 1000.0
@@ -552,16 +583,14 @@ func special_fx(ev: String) -> void:
 		"nova_tele":
 			Fx.telegraph(game.world.fx_root, global_position, 7.0, atk_dur * Anim.impact_at("cast"), col)
 		"slam":
-			Fx.ring(game.world.fx_root, global_position, 4.5, Color(1.0, 0.5, 0.2), 0.45)
-			Fx.burst(game.world.fx_root, global_position + Vector3(0, 0.3, 0), Color(0.45, 0.4, 0.35, 0.8), 40, 6.0, 0.35, 0.9, false, -4.0, 80.0)
+			ElementalFx.ground_slam(game, game.world.fx_root, global_position, 4.5)
 			Sfx.play("slam")
 			game.add_shake(0.6)
 		"summon":
-			Fx.ring(game.world.fx_root, global_position, 5.0, Color(0.7, 0.2, 1.0), 0.6)
+			ElementalFx.summon_circle(game, game.world.fx_root, global_position, 3.2)
 			Sfx.play("summon")
 		"nova":
-			Fx.ring(game.world.fx_root, global_position, 7.0, col, 0.6)
-			Fx.burst(game.world.fx_root, global_position + Vector3(0, 1, 0), col, 50, 8.0, 0.2, 0.7, true, 0.0)
+			ElementalFx.fire_nova(game, game.world.fx_root, global_position, 7.0, col)
 			Sfx.play("nova")
 			game.add_shake(0.4)
 		"bear_tele":
@@ -588,8 +617,7 @@ func special_fx(ev: String) -> void:
 			else:
 				Bear.sound("bear_maul", global_position)
 			var paws := global_position - rig.global_transform.basis.z * 1.6 * radius
-			Fx.ring(game.world.fx_root, paws, 2.6, Color(0.45, 0.4, 0.33), 0.4)
-			Fx.burst(game.world.fx_root, paws + Vector3(0, 0.2, 0), Color(0.38, 0.33, 0.28, 0.8), 30, 4.5, 0.3, 0.8, false, -4.0, 80.0)
+			ElementalFx.ground_slam(game, game.world.fx_root, paws, 1.3 + radius)
 			if game.hero.global_position.distance_to(global_position) < 10.0:
 				game.add_shake(0.45)
 		"enrage":
@@ -619,6 +647,9 @@ func _process(delta: float) -> void:
 		flash_t -= delta
 		if flash_t <= 0.0:
 			_set_flash(0.0)
+		else:
+			var k := clampf(flash_t / FLASH_T, 0.0, 1.0)
+			flash_mat.set_shader_parameter("col", Color(_flash_col.r, _flash_col.g, _flash_col.b, _flash_col.a * (0.3 + 0.7 * k)))
 	if dead:
 		dead_t += delta
 		var f := clampf(dead_t / 0.6, 0.0, 1.0)

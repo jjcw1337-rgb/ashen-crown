@@ -99,7 +99,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			var steps := clampi(int(dist / 1.6), 1, 5)
 			for i in range(1, steps):
 				var p := from.lerp(to, float(i) / steps)
-				Fx.burst(root, p + Vector3(0, 1.0, 0), Color(0.3, 0.26, 0.42, 0.55), 8, 1.2, 0.35, 0.5, false, 0.8)
+				_spirit_burst(root, p + Vector3(0, 1.0, 0), Color(0.3, 0.26, 0.42, 0.55), 8, 1.2, 0.35, 0.5, false, 0.8)
 			mist_in(root, to)
 			SkillFx.snd(h, "shade_in", -2.0)
 			SkillFx.shake(h, 0.15)
@@ -172,7 +172,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 						g.set_meta("phase", TAU * i / 4.0)
 						(h.fxs["night"]["ghosts"] as Array).append(g)
 		["night", "tick"]:
-			Fx.burst(root, pos + Vector3(0, 1.2, 0), VIOLET, 10, 6.0, 0.1, 0.4, true, 0.0, 180.0)
+			_spirit_burst(root, pos + Vector3(0, 1.2, 0), VIOLET, 10, 6.0, 0.1, 0.4, true, 0.0, 180.0)
 		["night", "fall"]:
 			collapse(root, pos, 6.5)
 			SkillFx.snd(h, "slam", -2.0, 0.8)
@@ -300,7 +300,7 @@ static func update(h: Hero, delta: float) -> void:
 				ps.erase(p)
 				for m in g.get_meta("mats", []):
 					(m as ShaderMaterial).set_shader_parameter("phase_amt", 1.0)
-				Fx.burst(world.fx_root, np + Vector3(0, 1.0, 0), VIOLET, 12, 2.5, 0.1, 0.4, true, 0.0)
+				_spirit_burst(world.fx_root, np + Vector3(0, 1.0, 0), VIOLET, 12, 2.5, 0.1, 0.4, true, 0.0)
 		if ps.is_empty():
 			h.fxs.erase("phantoms")
 	# the night: the dark comes down through the rise, he glows, the ghosts wheel, he sinks through the fall
@@ -355,6 +355,151 @@ static func clear(h: Hero) -> void:
 		set_claws(h.rig, 0.0)
 	h.fxs.erase("claw_k")
 	h.fxs.erase("claw_shown")
+
+## The Wraith's own particles and rings (visual overhaul): his spirit-light was the generic soft-dot burst and his
+## shock rings the generic glowing torus, the same as every class's. Now spirit light streaks out as curling wisps
+## (quads stretched along their flight, fading cyan to violet), shadow rolls as soft smoke (InfernalFx's smoke, unlit by
+## fire), and a ring is a ripple of soul-mist racing over the ground. Same arguments as Fx.burst / Fx.ring.
+static var _wisp_mat: StandardMaterial3D
+static var _ring_shader: Shader
+
+static func _wisp_material() -> StandardMaterial3D:
+	if _wisp_mat == null:
+		var g := Gradient.new()
+		g.set_color(0, Color(1, 1, 1, 1))
+		g.set_color(1, Color(1, 1, 1, 0))
+		var gt := GradientTexture2D.new()
+		gt.gradient = g
+		gt.fill = GradientTexture2D.FILL_RADIAL
+		gt.fill_from = Vector2(0.5, 0.5)
+		gt.fill_to = Vector2(0.5, 0.0)
+		gt.width = 64
+		gt.height = 64
+		_wisp_mat = StandardMaterial3D.new()
+		_wisp_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_wisp_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_wisp_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		_wisp_mat.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
+		_wisp_mat.billboard_keep_scale = true
+		_wisp_mat.vertex_color_use_as_albedo = true
+		_wisp_mat.albedo_color = Color(2.2, 2.2, 2.2)
+		_wisp_mat.albedo_texture = gt
+		_wisp_mat.disable_receive_shadows = true
+	return _wisp_mat
+
+static func _spirit_burst(root: Node3D, pos: Vector3, col: Color, amount: int = 16, speed: float = 3.0, size: float = 0.12, life: float = 0.5, additive := true, gravity: float = -6.0, spread: float = 180.0, dir := Vector3.UP) -> GPUParticles3D:
+	if not additive:
+		# shadow: soft rolling smoke in the burst's colour
+		var sm := InfernalFx.smoke_mat(0.0, clampf(col.a, 0.2, 1.0))
+		sm.set_shader_parameter("smoke", Vector3(col.r, col.g, col.b))
+		var q := QuadMesh.new()
+		q.size = Vector2(size * 2.2, size * 2.2)
+		q.material = sm
+		return InfernalFx.particles(root, pos, {"amount": maxi(3, amount / 3), "life": life * 1.4, "explosive": 0.9,
+			"shape": "sphere", "r": size, "dir": dir, "spread": spread, "vel": [speed * 0.25, speed * 0.6], "gravity": gravity * 0.3,
+			"damping": [1.0, 1.8], "scale": [0.7, 1.2], "grow": [0.6, 1.5], "angle": true, "spin": 25.0, "mesh": q,
+			"colors": [[0.0, Color(1, 1, 1, 0.0)], [0.15, Color(1, 1, 1, 0.9)], [0.6, Color(1, 1, 1, 0.5)], [1.0, Color(1, 1, 1, 0.0)]]})
+	var p := GPUParticles3D.new()
+	p.one_shot = true
+	p.explosiveness = 0.92
+	p.amount = amount
+	p.lifetime = life * 1.2
+	p.local_coords = false
+	var pm := ParticleProcessMaterial.new()
+	pm.direction = dir
+	pm.spread = spread
+	pm.initial_velocity_min = speed * 0.45
+	pm.initial_velocity_max = speed
+	pm.gravity = Vector3(0, gravity * 0.5 + 0.6, 0)
+	pm.damping_min = speed * 0.6
+	pm.damping_max = speed * 1.1
+	pm.particle_flag_align_y = true
+	pm.turbulence_enabled = true
+	pm.turbulence_noise_strength = 1.4
+	pm.turbulence_noise_scale = 1.6
+	pm.turbulence_influence_min = 0.08
+	pm.turbulence_influence_max = 0.22
+	var c := Curve.new()
+	c.add_point(Vector2(0.0, 0.6))
+	c.add_point(Vector2(0.2, 1.0))
+	c.add_point(Vector2(1.0, 0.0))
+	var ct := CurveTexture.new()
+	ct.curve = c
+	pm.scale_curve = ct
+	pm.scale_min = 0.6
+	pm.scale_max = 1.2
+	var g := Gradient.new()
+	g.set_color(0, Color(PALE.r, PALE.g, PALE.b, 0.0))
+	g.add_point(0.08, Color(PALE.r, PALE.g, PALE.b, 1.0))
+	g.add_point(0.35, Color(col.r, col.g, col.b, 0.9))
+	g.set_color(1, Color(VIOLET.r, VIOLET.g, VIOLET.b, 0.0))
+	var gt := GradientTexture1D.new()
+	gt.gradient = g
+	pm.color_ramp = gt
+	p.process_material = pm
+	var q2 := QuadMesh.new()
+	q2.size = Vector2(size * 0.7, size * 3.2)
+	q2.material = _wisp_material()
+	p.draw_pass_1 = q2
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(p)
+	p.global_position = pos
+	p.emitting = true
+	_free_later(p, p.lifetime + 0.5)
+	return p
+
+## A ripple of soul-mist racing out over the ground from pos to `radius` in `dur` (the ring every Wraith skill used),
+## with the grass shoved and a flash of its light, as Fx.ring had.
+static func _soul_ring(root: Node3D, pos: Vector3, radius: float, col: Color, dur: float = 0.5, height: float = 0.25) -> void:
+	GrassField.impulse(pos, radius, clampf(0.35 + radius * 0.06, 0.35, 0.75), clampf(dur * 0.8, 0.25, 0.55))
+	if _ring_shader == null:
+		_ring_shader = Shader.new()
+		_ring_shader.code = SOUL_RING_SHADER
+	var m := ShaderMaterial.new()
+	m.shader = _ring_shader
+	m.set_shader_parameter("noise_tex", InfernalFx.noise())
+	m.set_shader_parameter("col", col)
+	m.set_shader_parameter("pale", PALE)
+	m.set_shader_parameter("seed", randf() * 10.0)
+	var mi := MeshInstance3D.new()
+	mi.mesh = HolyFx.flat()
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.extra_cull_margin = 4.0
+	root.add_child(mi)
+	mi.global_position = pos + Vector3(0, minf(height, 0.12), 0)
+	mi.scale = Vector3(radius * 2.3, 1.0, radius * 2.3)
+	InfernalFx.tween_param(mi, m, "front", 0.12, 0.92, dur).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	InfernalFx.tween_param(mi, m, "life", 1.0, 0.0, dur).set_ease(Tween.EASE_IN)
+	_free_later(mi, dur + 0.05)
+	Fx.flash(root, pos + Vector3(0, 1, 0), col, 3.0, dur, radius * 1.5)
+
+## The soul-mist ring on a flat quad (UV 0.5 at the centre): a band at `front` eroded into wisps by noise, pale at its
+## leading edge and fading to the skill's colour behind it.
+const SOUL_RING_SHADER := """
+shader_type spatial;
+render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled;
+uniform sampler2D noise_tex : repeat_enable, filter_linear_mipmap;
+uniform vec4 col : source_color = vec4(0.35, 0.85, 1.0, 1.0);
+uniform vec4 pale : source_color = vec4(0.85, 0.95, 1.0, 1.0);
+uniform float front = 0.1;
+uniform float life = 1.0;
+uniform float seed = 0.0;
+void fragment() {
+	vec2 d = UV - vec2(0.5);
+	float r = length(d) * 2.0;
+	float a = atan(d.y, d.x);
+	float n = texture(noise_tex, vec2(a * 0.6 + seed, r * 1.5 - TIME * 0.4)).r;
+	float n2 = texture(noise_tex, vec2(a * 2.1 - seed, r * 3.0)).r;
+	float x = (r - front) / 0.16;
+	float band = exp(-x * x * 2.0) * smoothstep(0.25, 0.7, n + 0.25);
+	float trail = smoothstep(front, front - 0.35, r) * smoothstep(front - 0.5, front - 0.2, r) * 0.35 * smoothstep(0.4, 0.8, n2);
+	float lead = exp(-pow((r - front - 0.03) / 0.04, 2.0));
+	vec3 c = mix(col.rgb, pale.rgb, clamp(lead * 1.2, 0.0, 1.0)) * 2.4;
+	ALBEDO = c;
+	ALPHA = clamp((band + trail + lead * 0.5) * life * smoothstep(1.0, 0.92, r), 0.0, 1.0);
+}
+"""
 
 static func _free_later(n: Node, t: float) -> void:
 	var w: WeakRef = weakref(n)
@@ -529,7 +674,7 @@ static func rake(root: Node3D, pos: Vector3, yaw: float, radius: float, left: bo
 		tw.tween_property(mi, "scale", Vector3(r, 1.0, r), d).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		tw.tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 1.0, 0.0, 0.3).set_delay(0.06)
 		_free_later(mi, 0.45)
-	Fx.burst(root, pos + Vector3(0, 1.1, 0) + dir * radius * 0.6, SPIRIT, 18, 4.5, 0.08, 0.4, true, 0.5, 60.0, dir + Vector3(0, 0.3, 0))
+	_spirit_burst(root, pos + Vector3(0, 1.1, 0) + dir * radius * 0.6, SPIRIT, 18, 4.5, 0.08, 0.4, true, 0.5, 60.0, dir + Vector3(0, 0.3, 0))
 	Fx.flash(root, pos + Vector3(0, 1.2, 0) + dir * 0.8, SPIRIT, 1.6, 0.2, 5.0)
 
 ## A soul torn out of a foe: a pale flame that curves back to the Wraith over dur s (the heal lands then, WraithSkills).
@@ -557,7 +702,7 @@ static func soul_wisp(root: Node3D, from: Vector3, hero: Node3D, dur: float) -> 
 	tw.tween_callback(func():
 		core.visible = false
 		tr.emitting = false
-		Fx.burst(root, n.global_position, SPIRIT, 10, 1.5, 0.08, 0.35, true, 0.0))
+		_spirit_burst(root, n.global_position, SPIRIT, 10, 1.5, 0.08, 0.35, true, 0.0))
 	_free_later(n, dur + 0.8)
 
 # ---------------------------------------------------------------- Soul Siphon: the tether
@@ -685,7 +830,7 @@ static func tether(root: Node3D) -> Tether:
 
 ## The tether's bite: a flash of violet where it sinks in.
 static func latch(root: Node3D, pos: Vector3) -> void:
-	Fx.burst(root, pos, VIOLET, 14, 2.5, 0.09, 0.4, true, 0.0)
+	_spirit_burst(root, pos, VIOLET, 14, 2.5, 0.09, 0.4, true, 0.0)
 	Fx.flash(root, pos, VIOLET, 1.6, 0.25, 3.0)
 
 ## A ring of pale light that races out from a point in the air (hits, the soul leaving).
@@ -707,22 +852,22 @@ static func pulse(root: Node3D, pos: Vector3, col: Color, size: float, dur: floa
 # ---------------------------------------------------------------- Shadowstep: the mist and the shade
 ## He comes apart into mist: dark smoke curling up off him and a cold flash in it.
 static func mist_out(root: Node3D, pos: Vector3) -> void:
-	Fx.burst(root, pos + Vector3(0, 0.9, 0), Color(0.3, 0.26, 0.42, 0.7), 34, 2.0, 0.4, 0.9, false, 0.9, 120.0)
-	Fx.burst(root, pos + Vector3(0, 1.0, 0), SPIRIT, 20, 2.5, 0.09, 0.5, true, 0.0)
+	_spirit_burst(root, pos + Vector3(0, 0.9, 0), Color(0.3, 0.26, 0.42, 0.7), 34, 2.0, 0.4, 0.9, false, 0.9, 120.0)
+	_spirit_burst(root, pos + Vector3(0, 1.0, 0), SPIRIT, 20, 2.5, 0.09, 0.5, true, 0.0)
 	Fx.flash(root, pos + Vector3(0, 1.1, 0), VIOLET, 2.2, 0.3, 5.0)
 
 ## He re-forms: mist drawn in off the ground into the body, a ring of spirit-light, a flash.
 static func mist_in(root: Node3D, pos: Vector3) -> void:
-	Fx.ring(root, pos, 2.2, SPIRIT, 0.32, 0.12)
-	var p := Fx.burst(root, pos + Vector3(0, 0.15, 0), SPIRIT, 30, 4.0, 0.12, 0.6, true, 3.5, 30.0)
+	_soul_ring(root, pos, 2.2, SPIRIT, 0.32, 0.12)
+	var p := _spirit_burst(root, pos + Vector3(0, 0.15, 0), SPIRIT, 30, 4.0, 0.12, 0.6, true, 3.5, 30.0)
 	p.position = pos + Vector3(0, 0.15, 0)
-	Fx.burst(root, pos + Vector3(0, 0.7, 0), Color(0.3, 0.26, 0.42, 0.6), 18, 1.4, 0.4, 0.7, false, 1.2)
+	_spirit_burst(root, pos + Vector3(0, 0.7, 0), Color(0.3, 0.26, 0.42, 0.6), 18, 1.4, 0.4, 0.7, false, 1.2)
 
 ## The shade he left: a dark echo of his shape (an afterimage) standing where he was, which caves in on itself.
 static func shade_collapse(root: Node3D, pos: Vector3) -> void:
-	Fx.ring(root, pos, 2.6, VIOLET, 0.35, 0.3)
-	Fx.burst(root, pos + Vector3(0, 0.8, 0), VIOLET, 28, 5.0, 0.12, 0.45, true, 0.0)
-	Fx.burst(root, pos + Vector3(0, 0.9, 0), Color(0.3, 0.26, 0.42, 0.7), 16, 2.5, 0.45, 0.7, false, 0.6)
+	_soul_ring(root, pos, 2.6, VIOLET, 0.35, 0.3)
+	_spirit_burst(root, pos + Vector3(0, 0.8, 0), VIOLET, 28, 5.0, 0.12, 0.45, true, 0.0)
+	_spirit_burst(root, pos + Vector3(0, 0.9, 0), Color(0.3, 0.26, 0.42, 0.7), 16, 2.5, 0.45, 0.7, false, 0.6)
 	Fx.flash(root, pos + Vector3(0, 1.0, 0), VIOLET, 3.0, 0.3, 6.0)
 
 # ---------------------------------------------------------------- afterimages (Shadowstep, Phantom Assault, Eternal Night)
@@ -828,8 +973,8 @@ static func grasp(root: Node3D, pos: Vector3, radius: float, dur: float) -> Node
 		sink.tween_interval(maxf(dur - 0.45, 0.1))
 		sink.tween_property(h, "position:y", -1.0, 0.45).set_ease(Tween.EASE_IN)
 	n.set_meta("hands", hands)
-	Fx.burst(root, pos + Vector3(0, 0.2, 0), Color(0.08, 0.04, 0.12, 0.85), 30, 3.0, 0.35, 0.8, false, 1.5, 70.0)
-	Fx.burst(root, pos + Vector3(0, 0.3, 0), VIOLET, 30, 4.5, 0.1, 0.6, true, 1.0, 60.0)
+	_spirit_burst(root, pos + Vector3(0, 0.2, 0), Color(0.08, 0.04, 0.12, 0.85), 30, 3.0, 0.35, 0.8, false, 1.5, 70.0)
+	_spirit_burst(root, pos + Vector3(0, 0.3, 0), VIOLET, 30, 4.5, 0.1, 0.6, true, 1.0, 60.0)
 	Fx.flash(root, pos + Vector3(0, 1.0, 0), VIOLET, 2.5, 0.5, radius * 2.5)
 	_free_later(n, dur + 0.1)
 	return n
@@ -877,14 +1022,14 @@ void fragment(){
 # ---------------------------------------------------------------- Phantom Assault
 ## Where a phantom tears through a foe: a pale crescent and a spray.
 static func phantom_hit(root: Node3D, pos: Vector3, dir: Vector3) -> void:
-	Fx.burst(root, pos, PALE, 14, 4.0, 0.08, 0.35, true, 0.0, 70.0, dir)
+	_spirit_burst(root, pos, PALE, 14, 4.0, 0.08, 0.35, true, 0.0, 70.0, dir)
 	Fx.flash(root, pos, VIOLET, 1.4, 0.15, 3.5)
 
 ## The split: a violet flash and a ring where the phantoms leave him.
 static func split(root: Node3D, pos: Vector3) -> void:
 	Fx.flash(root, pos + Vector3(0, 1.2, 0), VIOLET, 3.0, 0.35, 6.0)
-	Fx.burst(root, pos + Vector3(0, 1.0, 0), VIOLET, 26, 3.5, 0.1, 0.5, true, 0.0)
-	Fx.ring(root, pos, 2.0, VIOLET, 0.3, 0.2)
+	_spirit_burst(root, pos + Vector3(0, 1.0, 0), VIOLET, 26, 3.5, 0.1, 0.5, true, 0.0)
+	_soul_ring(root, pos, 2.0, VIOLET, 0.3, 0.2)
 
 # ---------------------------------------------------------------- Eternal Night
 ## The night: the screen's edges close in with violet dark (the vignette's "night", `grade`: the hero's own light
@@ -935,11 +1080,11 @@ static func set_night(n: Node3D, k: float) -> void:
 
 ## The scream of the night: three rings of terror racing out, a burst of pale shrieking shapes.
 static func scream(root: Node3D, pos: Vector3, radius: float) -> void:
-	Fx.ring(root, pos, radius, SPIRIT.darkened(0.3), 0.5, 0.3)
-	Fx.later(root, 0.1, func(): Fx.ring(root, pos, radius * 0.85, VIOLET, 0.55, 0.9))
-	Fx.later(root, 0.2, func(): Fx.ring(root, pos, radius * 1.05, SPIRIT.darkened(0.55), 0.5, 0.15))
-	Fx.burst(root, pos + Vector3(0, 1.5, 0), Color(0.75, 0.9, 1.0, 0.7), 34, 10.0, 0.22, 0.5, true, 0.0, 180.0)
-	Fx.burst(root, pos + Vector3(0, 0.5, 0), VIOLET, 40, 6.0, 0.12, 0.8, true, 1.5, 90.0)
+	_soul_ring(root, pos, radius, SPIRIT.darkened(0.3), 0.5, 0.3)
+	Fx.later(root, 0.1, func(): _soul_ring(root, pos, radius * 0.85, VIOLET, 0.55, 0.9))
+	Fx.later(root, 0.2, func(): _soul_ring(root, pos, radius * 1.05, SPIRIT.darkened(0.55), 0.5, 0.15))
+	_spirit_burst(root, pos + Vector3(0, 1.5, 0), Color(0.75, 0.9, 1.0, 0.7), 34, 10.0, 0.22, 0.5, true, 0.0, 180.0)
+	_spirit_burst(root, pos + Vector3(0, 0.5, 0), VIOLET, 40, 6.0, 0.12, 0.8, true, 1.5, 90.0)
 	var mi := MeshInstance3D.new()
 	mi.mesh = Geo.cone(0.6, 2.6, 24)
 	var m := Mats.glow_unique(SPIRIT, 2.0, 1.0, 0.6)
@@ -957,10 +1102,10 @@ static func scream(root: Node3D, pos: Vector3, radius: float) -> void:
 
 ## The night's collapse: the dark drawn into the slam and thrown out again as a wave of spirit-light.
 static func collapse(root: Node3D, pos: Vector3, radius: float) -> void:
-	Fx.ring(root, pos, radius, VIOLET, 0.5, 0.3)
-	Fx.ring(root, pos, radius * 0.7, PALE, 0.35, 0.15)
-	Fx.burst(root, pos + Vector3(0, 0.3, 0), SPIRIT, 50, 8.0, 0.14, 0.7, true, 1.0, 80.0)
-	Fx.burst(root, pos + Vector3(0, 0.4, 0), Color(0.06, 0.03, 0.1, 0.9), 30, 4.0, 0.5, 0.9, false, 1.0, 90.0)
+	_soul_ring(root, pos, radius, VIOLET, 0.5, 0.3)
+	_soul_ring(root, pos, radius * 0.7, PALE, 0.35, 0.15)
+	_spirit_burst(root, pos + Vector3(0, 0.3, 0), SPIRIT, 50, 8.0, 0.14, 0.7, true, 1.0, 80.0)
+	_spirit_burst(root, pos + Vector3(0, 0.4, 0), Color(0.06, 0.03, 0.1, 0.9), 30, 4.0, 0.5, 0.9, false, 1.0, 90.0)
 	Fx.flash(root, pos + Vector3(0, 1.2, 0), PALE, 5.0, 0.5, radius * 2.0)
 
 ## A soft comet trail that stays in world space behind whatever it is attached to.

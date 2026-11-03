@@ -190,6 +190,15 @@ static func shader(name: String) -> Shader:
 	_shaders[name] = s
 	return s
 
+## A shader of another script's, made once and kept by key (after the global uniforms it may read exist).
+static func custom(key: String, code: String) -> Shader:
+	if not _shaders.has(key):
+		ensure_globals()
+		var s := Shader.new()
+		s.code = code
+		_shaders[key] = s
+	return _shaders[key]
+
 const NOISE_LIB := """
 float hash21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
 // ordered 4x4 dither for the see-through near the player: a steady screen, not per-pixel noise that sparkles
@@ -321,6 +330,9 @@ uniform float tiles = 0.0;
 uniform float cob_shade = 1.0;
 uniform float wet = 0.0;
 uniform float ripples = 0.0;
+// the ground's small detail (World.terrain_patch): pebbles and grit in the dirt; fallen oak leaves on the floor
+uniform float ground_detail = 1.0;
+uniform float litter = 0.0;
 // the coast (coast.gd): sand round the sea (y = 0), wet sand at the waterline, the seabed under water
 uniform float sea = 0.0;
 uniform vec3 col_sand : source_color = vec3(0.6, 0.53, 0.4);
@@ -358,6 +370,41 @@ vec2 vor(vec2 p, out float id){
 	id = hash21(best);
 	return vec2(d1, d2);
 }
+// vor() that also gives the nearest feature point (the stone's centre)
+vec2 vorc(vec2 p, out float id, out vec2 cen){
+	vec2 i = floor(p); vec2 f = fract(p);
+	float d1 = 8.0; float d2 = 8.0; vec2 best = vec2(0.0); cen = vec2(0.0);
+	for (int y = -1; y <= 1; y++) { for (int x = -1; x <= 1; x++) {
+		vec2 g = vec2(float(x), float(y));
+		vec2 o = vec2(hash21(i + g), hash21(i + g + 17.3)) * 0.8 + 0.1;
+		float d = length(g + o - f);
+		if (d < d1) { d2 = d1; d1 = d; best = i + g; cen = i + g + o; } else if (d < d2) { d2 = d; }
+	}}
+	id = hash21(best);
+	return vec2(d1, d2);
+}
+// one cobble of the old roads, as a height (0 in the joints, ~1 on a worn crown): a domed stone with chipped edges,
+// set a little askew, its granite pitted; some split by a crack, a few gone (a muddy hole). e = distance to its edge.
+float cobble(vec2 p, out float id, out float e, out float gone, out float crack){
+	vec2 q = p * 2.6;
+	vec2 cen = vec2(0.0);
+	vec2 v = vorc(q, id, cen);
+	float chip = (vnoise(p * 15.0) - 0.5) * 0.07 + (vnoise(p * 41.0) - 0.5) * 0.025;
+	float loose = max(vnoise(p * 1.3 + 4.1) - 0.5, 0.0) * 0.14;   // stretches where the joints have opened up
+	e = v.y - v.x + chip - loose;
+	float crown = pow(smoothstep(0.02, 0.34, e), 0.6);
+	vec2 tdir = vec2(hash21(vec2(id * 13.1, 2.7)), hash21(vec2(id * 7.3, 9.1))) - 0.5;
+	float h = crown * (0.72 + 0.28 * hash21(vec2(id, 4.4))) + dot(q - cen, tdir) * 0.4 * crown;
+	h += (fbm3(p * 7.0) - 0.5) * 0.14 * crown;
+	float ang = hash21(vec2(id * 5.9, 8.2)) * 6.2832;
+	vec2 cd = vec2(cos(ang), sin(ang));
+	float off = (hash21(vec2(id * 2.3, 6.6)) - 0.5) * 0.3;
+	float cl = abs(dot(q - cen, vec2(-cd.y, cd.x)) + off + (vnoise(q * 7.0) - 0.5) * 0.14);
+	crack = (1.0 - smoothstep(0.004, 0.03, cl)) * step(0.86, hash21(vec2(id * 11.7, 0.4))) * smoothstep(0.06, 0.14, e);
+	h -= crack * 0.3;
+	gone = step(hash21(vec2(id * 3.7, 1.3)), 0.03);
+	return h * (1.0 - gone * 0.85);
+}
 void fragment(){
 	vec2 p = wpos.xz;
 	float n1 = fbm(p * 0.05);
@@ -386,6 +433,48 @@ void fragment(){
 	float edge = smoothstep(0.2, 0.5, path) * (1.0 - smoothstep(0.5, 0.95, path));
 	base = mix(base, pathc, path);
 	base = mix(base, base * vec3(0.85, 0.82, 0.7), edge * 0.5);
+	// stones and grit in the trodden dirt: pebbles half sunk in the soil, each domed, lit on its crown and shadowed at
+	// its foot, more of them toward the path's edges than down its trodden middle; a speckle of light and dark grains
+	vec2 pebg = vec2(0.0);
+	if (ground_detail > 0.0 && path > 0.02) {
+		float pid; vec2 pc;
+		vec2 pq = p * 7.0;
+		vorc(pq, pid, pc);
+		vec2 po = pq - pc;
+		float pd = length(po) + (vnoise(pq * 3.1) - 0.5) * 0.09;
+		float prad = 0.12 + 0.2 * hash21(vec2(pid, 3.1)) * hash21(vec2(pid, 4.2));
+		float pkeep = step(1.0 - mix(0.5, 0.16, smoothstep(0.55, 0.95, path)) * (0.4 + 0.8 * n3), hash21(vec2(pid, 7.7)));
+		float pdome = pkeep * clamp(1.0 - (pd * pd) / (prad * prad), 0.0, 1.0);
+		float pfoot = pkeep * (1.0 - smoothstep(prad, prad * 1.5, pd)) * step(prad, pd);
+		vec3 stone = mix(col_path * 1.25, vec3(0.36, 0.35, 0.33), 0.35 + 0.45 * hash21(vec2(pid, 5.5)));
+		stone *= 0.7 + 0.22 * pdome + (n4 - 0.5) * 0.15;
+		base = mix(base, base * 0.75, pfoot * path);
+		base = mix(base, stone, smoothstep(0.0, 0.25, pdome) * path);
+		pebg = step(pd, prad) * pkeep * (-2.0 * po / (prad * prad)) * 0.018 * 7.0 * path;
+		float gr = vnoise(p * 38.0);
+		base *= 1.0 + (smoothstep(0.78, 0.92, gr) * 0.12 - (1.0 - smoothstep(0.08, 0.22, gr)) * 0.12) * path;
+	}
+	if (litter > 0.0) {
+		// fallen oak leaves on the forest floor, lying in drifts, fewer on the paths: lobed, each turned its own way,
+		// brown, a few russet, some dark and rotting, a darker midrib
+		float lid; vec2 lc;
+		vec2 lq = p * 3.0;
+		vorc(lq, lid, lc);
+		vec2 lo = lq - lc;
+		float la = hash21(vec2(lid, 3.3)) * 6.2832;
+		vec2 ld = vec2(cos(la), sin(la));
+		vec2 lr = vec2(dot(lo, ld), dot(lo, vec2(-ld.y, ld.x)));
+		float llen = 0.16 + 0.22 * hash21(vec2(lid, 5.1));
+		float lw = llen * (0.42 + 0.1 * sin(lr.x / llen * 9.0));
+		float leaf = 1.0 - smoothstep(0.8, 1.0, length(vec2(lr.x / llen, lr.y / lw)));
+		float drifts = 0.05 + 0.5 * smoothstep(0.45, 0.72, fbm(p * 0.35 + 11.0)) + 0.15 * smoothstep(0.5, 0.75, n2);
+		leaf *= step(1.0 - litter * drifts, hash21(vec2(lid, 8.8))) * (1.0 - path * 0.6);
+		vec3 lcol = mix(vec3(0.24, 0.16, 0.08), vec3(0.36, 0.24, 0.12), hash21(vec2(lid, 2.2)));
+		lcol = mix(lcol, vec3(0.4, 0.21, 0.09), step(0.85, hash21(vec2(lid, 1.7))));
+		lcol = mix(lcol, vec3(0.15, 0.11, 0.07), step(0.65, hash21(vec2(lid, 6.6))));
+		float rib = (1.0 - smoothstep(0.0, 0.015, abs(lr.y))) * step(abs(lr.x), llen * 0.85);
+		base = mix(base, lcol * (0.68 + n4 * 0.3) * (1.0 - rib * 0.3), leaf * 0.9);
+	}
 	float tid = 0.0;
 	float tm = 1.0;
 	if (tiles > 0.0) {
@@ -399,12 +488,36 @@ void fragment(){
 	cob *= smoothstep(0.3, 0.55, n5 + vcol.b * 0.3);
 	float cid = 0.0;
 	float cm = 1.0;
+	float ch = 0.0;
+	float cwear = 0.0;
+	float cgone = 0.0;
 	if (cob > 0.01) {
-		vec2 vv2 = vor(p * 2.6, cid);
-		cm = smoothstep(0.03, 0.14, vv2.y - vv2.x);
-		vec3 stonec = mix(vec3(0.22, 0.21, 0.19), vec3(0.36, 0.34, 0.3), cid) * (0.8 + n3 * 0.3 + (n4 - 0.5) * 0.15) * cob_shade;
-		stonec = mix(stonec, col_accent * 0.7, smoothstep(0.62, 0.8, n3) * 0.5);
-		vec3 gap = mix(col_path * 0.45, col_a * 0.6, smoothstep(0.4, 0.7, n2));
+		float ce0 = 0.0; float ccrack = 0.0;
+		ch = cobble(p, cid, ce0, cgone, ccrack);
+		cm = smoothstep(0.03, 0.12, ce0) * (1.0 - cgone);
+		// granite in a spread of greys, some warmer or cooler, with specks of grain
+		float h1 = hash21(vec2(cid * 5.1, 0.7));
+		float h2 = hash21(vec2(cid * 9.7, 3.3));
+		vec3 stonec = mix(vec3(0.2, 0.195, 0.185), vec3(0.37, 0.355, 0.33), cid);
+		stonec *= mix(vec3(1.0), h2 > 0.5 ? vec3(1.09, 1.0, 0.88) : vec3(0.92, 0.97, 1.07), abs(h2 - 0.5) * 1.3);
+		stonec *= 0.82 + n3 * 0.26 + (n4 - 0.5) * 0.12;
+		float grain = vnoise(p * 46.0);
+		stonec *= 0.92 + smoothstep(0.6, 0.92, grain) * 0.24 - smoothstep(0.4, 0.08, grain) * 0.14;
+		// worn crowns: lighter where feet and wheels have polished them
+		cwear = smoothstep(0.45, 0.85, ch) * (0.45 + 0.55 * smoothstep(0.3, 0.7, n2));
+		stonec *= 1.0 + cwear * 0.17;
+		// moss creeping in from the joints, mossy stretches of road, lichen rosettes
+		float mossy = smoothstep(0.58, 0.82, n5 * 0.7 + h1 * 0.5) * (1.0 - cwear);
+		float edgemoss = (1.0 - smoothstep(0.04, 0.17, ce0)) * smoothstep(0.35, 0.65, n2);
+		stonec = mix(stonec, col_accent * 0.72 * (0.8 + n4 * 0.4), clamp(mossy * 0.55 + edgemoss * 0.6, 0.0, 1.0) * (0.55 + 0.45 * vnoise(p * 21.0)));
+		float lichen = smoothstep(0.78, 0.86, vnoise(p * 9.0 + cid * 31.0)) * (1.0 - cwear) * 0.45;
+		stonec = mix(stonec, vec3(0.5, 0.52, 0.45), lichen);
+		stonec *= (1.0 - ccrack * 0.45) * cob_shade;
+		// the joints and the holes where a stone is gone: dark packed dirt with moss and grass in it
+		vec3 gap = mix(col_path * 0.36, col_a * 0.55, smoothstep(0.35, 0.7, n2 + (vnoise(p * 12.0) - 0.5) * 0.45));
+		gap *= 0.72 + vnoise(p * 30.0) * 0.38;
+		vec3 hole = mix(col_path * 0.95, col_a * 1.1, smoothstep(0.4, 0.75, vnoise(p * 6.0) + n2 * 0.3)) * (0.85 + n4 * 0.3);
+		gap = mix(gap, hole, cgone * smoothstep(0.0, 0.12, ce0 + 0.1));
 		base = mix(base, mix(gap, stonec, cm), cob);
 	}
 	float cliff = clamp(vcol.g + (1.0 - wnorm.y) * 2.0, 0.0, 1.0);
@@ -544,18 +657,22 @@ void fragment(){
 		wn = normalize(wn + vec3(d0 - dx, 0.0, d0 - dz) * 1.4 * cover);
 	}
 	if (cob > 0.01) {
-		float ce = 0.03; float idd;
-		vec2 va = vor((p + vec2(ce, 0.0)) * 2.6, idd); vec2 vb = vor((p + vec2(0.0, ce)) * 2.6, idd);
-		float ca = smoothstep(0.03, 0.14, va.y - va.x); float cb = smoothstep(0.03, 0.14, vb.y - vb.x);
-		wn = normalize(wn + vec3(cm - ca, 0.0, cm - cb) * 4.0 * cob * (1.0 - cover * 0.5));
-		ROUGHNESS = mix(ROUGHNESS, 0.75, cob * cm);
+		// the stones' relief (about 9 cm from joint to crown) from the same height the colour used
+		float ce = 0.015; float i1; float i2; float i3; float i4;
+		float ha = cobble(p + vec2(ce, 0.0), i1, i2, i3, i4);
+		float hb = cobble(p + vec2(0.0, ce), i1, i2, i3, i4);
+		wn = normalize(wn + vec3(ch - ha, 0.0, ch - hb) * (0.09 / ce) * cob * (1.0 - cover * 0.5));
+		ROUGHNESS = mix(ROUGHNESS, mix(0.82, 0.6, cwear), cob * cm);
+	}
+	if (pebg.x != 0.0 || pebg.y != 0.0) {
+		wn = normalize(wn + vec3(-pebg.x, 0.0, -pebg.y) * (1.0 - cob) * (1.0 - cover * 0.8));
 	}
 	if (tiles > 0.0 && path > 0.5) {
 		float ex = 0.03; float tidx;
 		vec2 ta = vor((p + vec2(ex, 0.0)) * 1.3, tidx); vec2 tb = vor((p + vec2(0.0, ex)) * 1.3, tidx);
 		wn = normalize(wn + vec3(tm - smoothstep(0.02, 0.09, ta.y - ta.x), 0.0, tm - smoothstep(0.02, 0.09, tb.y - tb.x)) * 3.0);
 	}
-	AO = mix(1.0, 0.6, (1.0 - cm) * cob);
+	AO = mix(1.0, 0.55, (1.0 - smoothstep(0.0, 0.42, mix(ch, 0.45, cgone))) * cob);   // a hole is mud, not a pit
 	NORMAL = normalize((VIEW_MATRIX * vec4(wn, 0.0)).xyz);
 	if (cracks > 0.0) {
 		float v = abs(fbm(p * 0.22 + 3.0) - 0.5);
