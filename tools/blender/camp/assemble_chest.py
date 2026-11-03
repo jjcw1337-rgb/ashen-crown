@@ -24,7 +24,8 @@ S = {
     "lock_body": {"w": 0.22, "yaw": 0},
     "coals": {"w": 1.1, "yaw": 0},
     "moss": {"w": 0.34, "yaw": 0},
-    "hinge": {"w": 0.29, "yaw": 180},
+    "hinge": {"w": 0.29, "yaw": 0},
+    "sigil_b": {"w": 0.2, "yaw": 0},       # (Meshy's seal faces -y, out of the box's front)     # jj's gold wolf seal (optional: only with sigil_b in the parts)
     "tex": 1024,
 }
 for k, v in SPEC.items():
@@ -59,8 +60,10 @@ def load(name):
     ob.parent = None
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     ob.name = name
-    # turn, then size it by its width and set its base centre on the origin
-    ob.rotation_euler.z = math.radians(float(S[name].get("yaw", 0)))
+    # turn, then size it by its width and set its base centre on the origin (glTF imports in quaternion mode, where
+    # rotation_euler is ignored)
+    ob.rotation_mode = "XYZ"
+    ob.rotation_euler = (0, 0, math.radians(float(S[name].get("yaw", 0))))
     bpy.ops.object.transform_apply(rotation=True)
     lo, hi = bounds(ob)
     k = float(S[name]["w"]) / max(hi.x - lo.x, 1e-6)
@@ -203,6 +206,30 @@ uo = bpy.data.objects.new("lid_under", um)
 bpy.context.scene.collection.objects.link(uo)
 hinges.append(uo)
 
+# the gold wolf seals (jj): two on the front either side of the padlock, one on each end, one on the back, each its
+# own part ("seal_N", origin at its centre) so the game can blow them off as the chest opens (Game.chest_lid)
+seals = []
+if find("sigil_b"):
+    seal = load("sigil_b")
+    ss = size(seal)
+    zc = top_p + bs.z * float(S.get("seal_at", 0.56))
+    spots = [(-bs.x * 0.3, -bs.y * 0.5, 0.0), (bs.x * 0.3, -bs.y * 0.5, 0.0),
+             (-bs.x * 0.5, 0.0, -90.0), (bs.x * 0.5, 0.0, 90.0), (0.0, bs.y * 0.5, 180.0)]
+    for i, (x, y, yaw) in enumerate(spots):
+        o = seal if i == 0 else seal.copy()
+        if i > 0:
+            o.data = seal.data.copy()
+            bpy.context.scene.collection.objects.link(o)
+        o.name = "seal_%d" % i
+        # its back flat on the wood: out from the face by half its thickness and a hair
+        out = Vector((math.sin(math.radians(yaw)), -math.cos(math.radians(yaw)), 0.0))
+        if abs(yaw) == 90.0:
+            out = Vector((1.0 if yaw > 0 else -1.0, 0.0, 0.0))
+        o.rotation_mode = "XYZ"
+        o.rotation_euler = (0, 0, math.radians(yaw))
+        o.location = Vector((x, y, zc - ss.z * 0.5)) + out * (ss.y * 0.5 + 0.004)
+        seals.append(o)
+
 if S.get("no_plinth"):
     # (the raid's chest stands on its dais, which has its own stone: no plinth or moss)
     bpy.data.objects.remove(plinth, do_unlink=True)
@@ -214,7 +241,7 @@ else:
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 lid = join([lid] + hinges, "lid")
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-for o in [lid, lock, coals, shackle]:
+for o in [lid, lock, coals, shackle] + seals:
     bpy.ops.object.select_all(action="DESELECT")
     o.select_set(True)
     bpy.context.view_layer.objects.active = o
@@ -222,6 +249,9 @@ for o in [lid, lock, coals, shackle]:
 lo, hi = bounds(lid)
 set_origin(lid, Vector((0, hi.y, lo.z)))                       # the hinge line: the lid's back, underside
 set_origin(lock, lock_at + Vector((0, 0, lsz.z)))              # it hangs from its top
+for o in seals:
+    lo_s, hi_s = bounds(o)
+    set_origin(o, (lo_s + hi_s) * 0.5)
 sl, sh = bounds(shackle)
 set_origin(shackle, Vector((sh.x, (sl.y + sh.y) * 0.5, sl.z))) # it swings open on its right leg
 shackle.parent = lock
@@ -269,6 +299,8 @@ if DEBUG:
     shot("front34", (1.5, -2.2, 1.6))
     shot("back34", (-1.6, 2.0, 1.5))
     shot("top_closed", (0.4, -1.3, 2.6))      # (about the game camera's angle)
+    shot("back", (0.0, 2.6, 0.9))
+    shot("left", (-2.6, 0.0, 0.9))
     for o in [lid, lock, shackle]:
         o.rotation_mode = "XYZ"
     lid.rotation_euler.x = math.radians(-105)      # (the game's Game.LID_OPEN, the same direction in Godot)

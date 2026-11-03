@@ -350,6 +350,40 @@ static func _stash_chest(w: World, p: Vector3) -> void:
 	w.solid(chest)
 	it.set_meta("pick_y", 0.6 + lift)
 	it.set_meta("lift", lift)          # (the chest stands this high on its dais: Game.chest_lid, stash_fx follow it)
+	_dress_seals(it, chest, lift)
+
+## The chest's gold wolf seals (jj's pick; the "seal_N" parts, assemble_chest.py): molten gold that breathes
+## (gold_seal.gdshader) and a warm gold light just in front of the chest that casts real shadows (the hasp, the
+## padlock and the straps over the wood), first in the shadow budget. Game.chest_lid blows them off on opening.
+static func _dress_seals(it: Node3D, chest: Node3D, lift: float) -> void:
+	var seals := chest.find_children("seal_*", "MeshInstance3D", true, false)
+	if seals.is_empty():
+		return
+	var sh := load("res://scripts/gold_seal.gdshader") as Shader
+	for s in seals:
+		var mi: MeshInstance3D = s
+		var src := mi.get_active_material(0) as StandardMaterial3D
+		var sm := ShaderMaterial.new()
+		sm.shader = sh
+		if src != null:
+			sm.set_shader_parameter("albedo_tex", src.albedo_texture)
+			if src.normal_texture != null:
+				sm.set_shader_parameter("normal_tex", src.normal_texture)
+				sm.set_shader_parameter("has_normal", true)
+		sm.set_shader_parameter("phase", randf() * TAU)
+		mi.material_override = sm
+	var gl := OmniLight3D.new()
+	gl.name = "seal_glow"
+	gl.light_color = Color(1.0, 0.68, 0.25)
+	gl.light_energy = 2.4
+	gl.omni_range = 3.6
+	gl.omni_attenuation = 1.4
+	gl.shadow_enabled = true
+	gl.shadow_blur = 1.0
+	gl.position = Vector3(0.0, lift + 0.55, 0.95)
+	gl.set_meta("shadow_pri", true)
+	gl.add_to_group(Grade.SHADOW_GROUP)
+	chest.add_child(gl)
 	it.set_meta("pick", 1.4)
 
 

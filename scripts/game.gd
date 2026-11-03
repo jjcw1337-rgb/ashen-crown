@@ -2127,7 +2127,48 @@ func chest_lid(t: Inter, open: bool, mine := true) -> void:
 				Fx.burst(root, top, Color(1.0, 0.6, 0.25, 0.8), 16, 1.2, 0.04, 1.2, true, 1.0, 25.0)
 			if mine and hero != null and hero.global_position.distance_to(t.global_position) < 6.0:
 				add_shake(0.18))
+	if open:
+		_burst_seals(t)
 	t.set_meta("lid_open", open)
+
+## The gold wolf seals tear off the chest as it opens (jj): each flies out from its face, spinning and climbing,
+## trailing gold sparks, flares and burns out in the air; the seals' light dies with them.
+func _burst_seals(t: Inter) -> void:
+	var seals := t.find_children("seal_*", "MeshInstance3D", true, false)
+	if seals.is_empty() or world == null:
+		return
+	var root: Node3D = world.fx_root
+	var c := t.global_position
+	for i in seals.size():
+		var s: MeshInstance3D = seals[i]
+		var delay := 0.08 + i * 0.05
+		Fx.later(t, delay, func():
+			if not is_instance_valid(s):
+				return
+			var gp := s.global_transform
+			s.get_parent().remove_child(s)
+			root.add_child(s)
+			s.global_transform = gp
+			var sm := s.material_override as ShaderMaterial
+			if sm:
+				sm.set_shader_parameter("energy", 2.6)
+			var out := Vector3(s.global_position.x - c.x, 0, s.global_position.z - c.z)
+			out = out.normalized() if out.length() > 0.01 else Vector3(0, 0, 1)
+			Fx.flash(root, s.global_position, Color(1.0, 0.62, 0.2), 1.6, 0.3, 3.0)
+			Fx.burst(root, s.global_position, Color(1.0, 0.75, 0.3, 1.0), 16, 2.4, 0.025, 0.5, false, -4.0, 50.0, out)
+			Fx.aura(s, Color(0.95, 0.55, 0.12), 14, 0.3, 0.018, 0.45, -0.5, 0.05, 40.0, Vector3.ZERO, false)
+			var v := out * randf_range(3.0, 4.2) + Vector3(0, randf_range(3.2, 4.5), 0)
+			var w := Vector3(randf_range(-9, 9), randf_range(-12, 12), randf_range(-9, 9))
+			InfernalFx.fly(s, v, w, 1.15, -7.0, true)
+			Fx.later(root, 1.0, func():
+				if is_instance_valid(s):
+					Fx.flash(root, s.global_position, Color(1.0, 0.65, 0.2), 4.0, 0.4, 4.0)
+					Fx.burst(root, s.global_position, Color(1.0, 0.7, 0.25, 1.0), 22, 2.0, 0.03, 0.6, false, -3.0, 180.0)))
+	var gl: OmniLight3D = t.find_child("seal_glow", true, false) as OmniLight3D
+	if gl:
+		var tw := gl.create_tween()
+		tw.tween_property(gl, "light_energy", 5.0, 0.12)
+		tw.tween_property(gl, "light_energy", 0.0, 0.9)
 
 func _write_char(p: String, id: String, d: Dictionary) -> void:
 	var f := FileAccess.open(p, FileAccess.WRITE)
