@@ -127,7 +127,9 @@ func _run() -> void:
 		_kill_all(games.foes)
 		await wait(0.3)
 	check(seen.size() == 3 and seen[0].contains("lion") and seen[1].contains("gladiator"), "stages: %s" % [seen])
-	for i in 600:
+	# (by the clock, not frames: "between" lasts 4.5 s, and 600 headless frames can pass in less)
+	var tb := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - tb < 12000:
 		await process_frame
 		if games.state == "boss":
 			break

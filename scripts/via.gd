@@ -115,10 +115,9 @@ static func _lay_road(w: World) -> void:
 				if w.rng.randf() < 0.7:
 					var kp: Vector2 = c + nrm * s * (2.6 if outer else 2.15)
 					var v := w.rng.randi_range(0, 7)
-					if not w.rock_xf.has(v):
-						w.rock_xf[v] = []
-					var kb := Basis(Vector3.UP, atan2(d.x, d.y) + w.rng.randf_range(-0.1, 0.1)).scaled(Vector3(0.45, w.rng.randf_range(0.2, 0.32), w.rng.randf_range(0.8, 1.0)))
-					w.rock_xf[v].append(Transform3D(kb, Vector3(kp.x, w.height_at(kp.x, kp.y) + 0.02, kp.y)))
+					var yaw := atan2(d.x, d.y) + w.rng.randf_range(-0.1, 0.1)
+					var kh := w.rng.randf_range(0.2, 0.32)
+					w.kerb(v, kp, yaw, kh, w.rng.randf_range(0.8, 1.0), 0.45)
 			u += 1.0
 		mile += seg
 		if mile > 28.0 and not outer:

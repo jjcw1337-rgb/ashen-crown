@@ -23,6 +23,8 @@ const HOT := Color(1.0, 0.75, 0.3)
 const CRUST := Color(0.06, 0.04, 0.035)
 const BLOOD := Color(0.85, 0.04, 0.08)
 const SOUL := Color(0.62, 0.42, 1.0)
+## Embers cooling along InfernalFx's palette: white-hot, molten, crimson, gone.
+const EMBER_RAMP := [[0.0, Color(1.0, 0.86, 0.62)], [0.25, Color(1.0, 0.42, 0.07)], [0.7, Color(0.78, 0.035, 0.05)], [1.0, Color(0.78, 0.035, 0.05, 0.0)]]
 const GRIP_SLACK := 1.5          # a partner's held foe is let go this long after the hold if the smash is lost
 const WRATH_SLACK := 1.5
 const METEOR_TRAIL := 4.5        # a meteor's comet trail, metres
@@ -236,7 +238,54 @@ static func update(h: Hero, delta: float) -> void:
 			if l != null and is_instance_valid(l):
 				(l as OmniLight3D).light_energy = 2.2 * k * (0.85 + 0.15 * sin(h.anim_time * 9.0))
 			if k > 0.3 and randf() < delta * 10.0 * k:
-				Fx.burst(root, h.global_position + Vector3(randf_range(-0.5, 0.5), randf_range(0.6, 2.0), randf_range(-0.4, 0.4)), HOT, 2, 1.5, 0.06, 0.6, true, 0.6, 40.0)
+				embers(root, h.global_position + Vector3(randf_range(-0.5, 0.5), randf_range(0.6, 2.0), randf_range(-0.4, 0.4)), 2, Vector2(0.6, 1.5), Vector3.UP, 40.0, 0.6)
+
+# ---------------------------------------------------------------- his accents (visual overhaul)
+## The generic Fx bursts, rings and flashes these skills had are InfernalFx's pieces now, like Hellbrand's: embers
+## cooling along the palette, the low soot lit from below (InfernalFx.smoke), a flare, and a standing wave of hellfire
+## racing out over the ground (the fists' crescent drawn all the way round).
+static func embers(root: Node3D, pos: Vector3, amount: int, vel := Vector2(2.0, 5.0), dir := Vector3.UP, spread := 70.0, life := 0.9) -> void:
+	InfernalFx.particles(root, pos, {"amount": amount, "life": life, "explosive": 0.95, "shape": "sphere", "r": 0.25,
+		"dir": dir, "spread": spread, "vel": [vel.x, vel.y], "gravity": -4.0, "damping": [0.6, 1.4], "turb": 0.5,
+		"scale": [0.35, 1.0], "size": 0.08, "colors": EMBER_RAMP})
+
+## A flare of the fire's light: InfernalFx's glow swelling and fading, and a light on what's round it.
+static func flare(root: Node3D, pos: Vector3, size: float, col: Color, energy: float, life: float, reach: float) -> void:
+	var g := InfernalFx.glow(root, pos, size, InfernalFx.glow_mat(col, 2.4, 2.2, 0.6))
+	var tw := g.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(g, "scale", Vector3.ONE * size * 1.6, life).set_ease(Tween.EASE_OUT)
+	InfernalFx.tween_param(g, g.material_override as ShaderMaterial, "alpha", 1.0, 0.0, life)
+	SkillFx.free_later(g, life + 0.05)
+	var l := OmniLight3D.new()
+	l.light_color = col
+	l.light_energy = energy
+	l.omni_range = reach
+	l.shadow_enabled = false
+	root.add_child(l)
+	l.global_position = pos
+	var tl := l.create_tween()
+	tl.tween_property(l, "light_energy", 0.0, life).set_ease(Tween.EASE_IN)
+	tl.tween_callback(l.queue_free)
+
+## A ring of hellfire standing up off the ground and racing out to radius r (with heat haze from High), shoving the
+## grass as it goes.
+static func fire_wave(game, root: Node3D, pos: Vector3, r: float, dur := 0.32) -> void:
+	GrassField.impulse(pos, r * 1.2, 0.85, 0.5)
+	var wm := InfernalFx.wave_mat()
+	var wave := MeshInstance3D.new()
+	wave.mesh = InfernalFx.arc_mesh(PI)
+	wave.material_override = wm
+	wave.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(wave)
+	wave.global_position = pos + Vector3(0, 0.02, 0)
+	wave.scale = Vector3(0.6, 0.45, 0.6)
+	if game != null and InfernalFx.haze_ok(game):
+		wm.next_pass = InfernalFx.haze_mat(0.03)
+	var tw := wave.create_tween().set_parallel(true)
+	tw.tween_property(wave, "scale", Vector3(r, 0.85, r), dur).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	InfernalFx.tween_param(wave, wm, "life", 1.0, 0.0, dur + 0.06, 0.04)
+	SkillFx.free_later(wave, dur + 0.2)
 
 ## Everything of his that lingers is gone (death, a class change, a zone change).
 static func clear(h: Hero) -> void:
@@ -308,42 +357,37 @@ static func lava_strip(root: Node3D, a: Vector3, b: Vector3, width: float, life:
 
 ## A burst of lava out of a fissure: a pillar of fire, a flash, embers and a short-lived glow on the ground.
 static func eruption(root: Node3D, at: Vector3, r: float) -> void:
-	Fx.burst(root, at + Vector3(0, 0.2, 0), EMBER, 26, 6.5, 0.09, 0.6, true, -5.0, 28.0, Vector3.UP)
-	Fx.burst(root, at + Vector3(0, 0.2, 0), HOT, 10, 4.0, 0.14, 0.4, true, -3.0, 40.0, Vector3.UP)
-	Fx.burst(root, at + Vector3(0, 0.1, 0), Color(0.25, 0.2, 0.17, 0.7), 12, 2.5, 0.35, 0.7, false, -1.5, 60.0, Vector3.UP)
-	Fx.flash(root, at + Vector3(0, 0.7, 0), EMBER, 2.5, 0.25, 5.0)
-	# a short spout of fire (Fx.pillar is a six-metre column: far too much for a crack in the ground)
-	var mi := MeshInstance3D.new()
-	mi.mesh = Geo.cyl(0.9, 0.9, 1.0, 16)
-	var m := Mats.glow_unique(EMBER, 2.2, 1.2, 0.55)
-	mi.material_override = m
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(mi)
-	mi.global_position = at + Vector3(0, 0.9, 0)
-	mi.scale = Vector3(0.12, 0.3, 0.12)
-	var tw := mi.create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(mi, "scale", Vector3(0.26, 1.5, 0.26), 0.12)
-	tw.tween_method(func(v: float): m.set_shader_parameter("alpha_mul", v), 0.8, 0.0, 0.3).set_delay(0.12)
-	SkillFx.free_later(mi, 0.6)
+	embers(root, at + Vector3(0, 0.2, 0), 22, Vector2(3.5, 7.0), Vector3.UP, 28.0, 0.8)
+	InfernalFx.smoke(root, at + Vector3(0, 0.15, 0), 5, Vector3(0.4, 0.1, 0.4), Vector3.UP, 1.2, 1.4)
+	flare(root, at + Vector3(0, 0.7, 0), 1.4, EMBER, 2.5, 0.25, 5.0)
+	# a short spout of hellfire out of the crack: a few tall flames licking up and dying
+	for k in 3:
+		var hh := randf_range(1.0, 1.8) * (1.0 if k == 0 else 0.7)
+		var fm := InfernalFx.flame_mat(0.75, 1.2, 1.4)
+		var f := InfernalFx.flame(root, at + Vector3(randf_range(-0.2, 0.2), hh * 0.42, randf_range(-0.2, 0.2)), Vector2(hh * 0.5, hh), fm)
+		f.scale = Vector3(hh * 0.5, hh * 0.2, 1.0)
+		var tw := f.create_tween()
+		tw.tween_property(f, "scale", Vector3(hh * 0.5, hh, 1.0), 0.1).set_ease(Tween.EASE_OUT)
+		InfernalFx.tween_param(f, fm, "alpha", 1.0, 0.0, 0.35, 0.18)
+		SkillFx.free_later(f, 0.6)
 	lava_decal(root, at, r * 0.8, 1.8, 0.6)
 
 ## A boulder lands: the splash of molten rock, the flash, the ring.
 static func splash(root: Node3D, at: Vector3, r: float) -> void:
-	Fx.ring(root, at + Vector3(0, 0.05, 0), r, EMBER, 0.45, 0.35)
-	Fx.burst(root, at + Vector3(0, 0.3, 0), EMBER, 44, 6.0, 0.1, 0.7, true, -5.0, 75.0)
-	Fx.burst(root, at + Vector3(0, 0.3, 0), HOT, 16, 4.0, 0.16, 0.5, true, -4.0, 60.0)
-	Fx.burst(root, at + Vector3(0, 0.2, 0), Color(0.3, 0.25, 0.2, 0.7), 22, 3.0, 0.4, 0.8, false, -2.0, 70.0)
-	Fx.flash(root, at + Vector3(0, 0.9, 0), HOT, 3.5, 0.3, 7.0)
+	var game = root.get_tree().current_scene if root.is_inside_tree() else null
+	fire_wave(game, root, at, r, 0.3)
+	embers(root, at + Vector3(0, 0.3, 0), 40, Vector2(2.5, 6.0), Vector3.UP, 75.0)
+	InfernalFx.smoke(root, at + Vector3(0, 0.2, 0), 8, Vector3(0.9, 0.2, 0.9), Vector3.UP, 1.6, 1.6)
+	flare(root, at + Vector3(0, 0.9, 0), 2.2, HOT, 3.5, 0.3, 7.0)
 
 ## A meteor's crater: dark rock, molten at the heart, embers rising off it.
 static func crater(root: Node3D, at: Vector3, r: float) -> void:
 	lava_decal(root, at, r, 4.0, 0.7)
-	Fx.ring(root, at + Vector3(0, 0.05, 0), r, EMBER, 0.4, 0.3)
-	Fx.burst(root, at + Vector3(0, 0.3, 0), EMBER, 36, 6.0, 0.09, 0.7, true, -5.0, 70.0)
-	Fx.burst(root, at + Vector3(0, 0.3, 0), HOT, 12, 4.0, 0.15, 0.45, true, -4.0, 50.0)
-	Fx.burst(root, at + Vector3(0, 0.2, 0), Color(0.28, 0.22, 0.18, 0.7), 20, 3.2, 0.4, 0.8, false, -2.0, 70.0)
-	Fx.flash(root, at + Vector3(0, 0.9, 0), HOT, 3.5, 0.3, 7.0)
+	var game = root.get_tree().current_scene if root.is_inside_tree() else null
+	fire_wave(game, root, at, r, 0.28)
+	embers(root, at + Vector3(0, 0.3, 0), 34, Vector2(2.5, 6.0), Vector3.UP, 70.0)
+	InfernalFx.smoke(root, at + Vector3(0, 0.2, 0), 8, Vector3(0.9, 0.2, 0.9), Vector3.UP, 1.6, 1.8)
+	flare(root, at + Vector3(0, 0.9, 0), 2.2, HOT, 3.5, 0.3, 7.0)
 
 ## A lump of molten rock (a boulder, a meteor): dark crust with lava showing, an ember trail behind it.
 static func boulder(root: Node3D, r: float) -> Node3D:

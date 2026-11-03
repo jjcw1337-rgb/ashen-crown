@@ -124,12 +124,100 @@ static func aura(parent: Node3D, col: Color, amount := 24, speed := 0.6, size :=
 	parent.add_child(p)
 	return p
 
+## Streaks: particles stretched along their own flight (aligned to their velocity, the quad turning round that axis
+## to face the camera), for sparks and blood droplets (visual overhaul: both were the same round soft dots as every
+## burst). size = the streak's width; it is `stretch` times as long.
+static var _streak_tex: GradientTexture2D
+static var _streak_mats := {}
+
+static func _streak_mat(additive: bool) -> StandardMaterial3D:
+	var key := "add" if additive else "mix"
+	if _streak_mats.has(key):
+		return _streak_mats[key]
+	if _streak_tex == null:
+		var g := Gradient.new()
+		g.set_color(0, Color(1, 1, 1, 1))
+		g.set_color(1, Color(1, 1, 1, 0))
+		_streak_tex = GradientTexture2D.new()
+		_streak_tex.gradient = g
+		_streak_tex.fill = GradientTexture2D.FILL_RADIAL
+		_streak_tex.fill_from = Vector2(0.5, 0.5)
+		_streak_tex.fill_to = Vector2(0.5, 0.0)
+		_streak_tex.width = 32
+		_streak_tex.height = 32
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	if additive:
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		m.albedo_color = Color(2.4, 2.4, 2.4)
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
+	m.billboard_keep_scale = true
+	m.vertex_color_use_as_albedo = true
+	m.albedo_texture = _streak_tex
+	m.disable_receive_shadows = true
+	_streak_mats[key] = m
+	return m
+
+static func streaks(root: Node3D, pos: Vector3, colors: Array, amount: int, speed: float, size: float, stretch: float, life: float, additive: bool, gravity: float, spread := 180.0, dir := Vector3.UP, damping := 0.0) -> GPUParticles3D:
+	var p := GPUParticles3D.new()
+	p.one_shot = true
+	p.explosiveness = 0.96
+	p.amount = amount
+	p.lifetime = life
+	p.local_coords = false
+	var pm := ParticleProcessMaterial.new()
+	pm.direction = dir
+	pm.spread = spread
+	pm.initial_velocity_min = speed * 0.35
+	pm.initial_velocity_max = speed
+	pm.gravity = Vector3(0, gravity, 0)
+	pm.damping_min = damping * 0.6
+	pm.damping_max = damping
+	pm.particle_flag_align_y = true
+	pm.scale_min = 0.6
+	pm.scale_max = 1.2
+	var c := Curve.new()
+	c.add_point(Vector2(0.0, 1.0))
+	c.add_point(Vector2(1.0, 0.25))
+	var ct := CurveTexture.new()
+	ct.curve = c
+	pm.scale_curve = ct
+	var g := Gradient.new()
+	g.set_offset(0, colors[0][0])
+	g.set_color(0, colors[0][1])
+	g.set_offset(1, colors[colors.size() - 1][0])
+	g.set_color(1, colors[colors.size() - 1][1])
+	for i in range(1, colors.size() - 1):
+		g.add_point(colors[i][0], colors[i][1])
+	var gt := GradientTexture1D.new()
+	gt.gradient = g
+	pm.color_ramp = gt
+	p.process_material = pm
+	var q := QuadMesh.new()
+	q.size = Vector2(size, size * stretch)
+	q.material = _streak_mat(additive)
+	p.draw_pass_1 = q
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(p)
+	p.global_position = pos
+	p.emitting = true
+	_free_later(p, life + 0.5)
+	return p
+
+## Sparks: hot streaks flung out, cooling white to the colour to dark red as they fall, and a short flash.
 static func sparks(root: Node3D, pos: Vector3, col := Color(1.0, 0.8, 0.4)) -> void:
-	burst(root, pos, col, 22, 6.0, 0.07, 0.35, true, -9.0)
+	streaks(root, pos, [[0.0, Color(1.0, 0.97, 0.88, 1.0)], [0.25, Color(col.r, col.g, col.b, 1.0)], [1.0, Color(0.7, 0.18, 0.04, 0.0)]],
+		20, 7.5, 0.035, 5.0, 0.42, true, -11.0, 180.0, Vector3.UP, 2.0)
+	burst(root, pos, col, 5, 1.2, 0.09, 0.18, true, 0.0)
 	flash(root, pos, col, 1.5, 0.12)
 
+## Blood: droplets thrown out as short streaks that arc down, and a few round drops; darker as they fly.
 static func blood(root: Node3D, pos: Vector3, col: Color) -> void:
-	burst(root, pos, Color(col.r, col.g, col.b, 1.0), 14, 3.0, 0.1, 0.6, false, -9.0)
+	var c := Color(col.r, col.g, col.b, 1.0)
+	streaks(root, pos, [[0.0, c.lightened(0.15)], [0.6, c], [1.0, Color(c.r * 0.5, c.g * 0.5, c.b * 0.5, 0.0)]],
+		12, 4.2, 0.045, 3.2, 0.55, false, -12.0, 75.0, Vector3.UP, 0.5)
+	burst(root, pos, c, 6, 2.2, 0.08, 0.55, false, -10.0)
 
 static func flash(root: Node3D, pos: Vector3, col: Color, energy: float, dur: float, rng: float = 4.0) -> void:
 	var l := OmniLight3D.new()
@@ -303,62 +391,76 @@ static func _slam_chunks(root: Node3D, pos: Vector3) -> void:
 
 ## A red disc that fills over `dur` seconds to warn of an incoming area attack.
 static func telegraph(root: Node3D, pos: Vector3, radius: float, dur: float, col := Color(1.0, 0.15, 0.05)) -> void:
-	var outer := MeshInstance3D.new()
-	outer.mesh = Geo.torus(0.94, 1.0, 48, 3)
-	outer.material_override = Mats.glow(col, 2.0)
-	outer.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(outer)
-	outer.global_position = pos + Vector3(0, 0.08, 0)
-	outer.scale = Vector3(radius, 0.3, radius)
-	var fill := MeshInstance3D.new()
-	fill.mesh = Geo.cyl(1.0, 1.0, 0.01, 40)
-	var fm := Mats.glow_unique(col, 0.6)
-	fill.material_override = fm
-	fill.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(fill)
-	fill.global_position = pos + Vector3(0, 0.07, 0)
-	fill.scale = Vector3(0.05, 1, 0.05)
-	var tw := fill.create_tween()
-	tw.tween_property(fill, "scale", Vector3(radius, 1, radius), dur)
-	_free_later(outer, dur)
-	_free_later(fill, dur)
+	_telegraph(root, pos, Vector3.FORWARD, radius, PI + 0.1, dur, col)
 
 ## A wedge of danger on the ground (the Fallen Reaver's cleave): radius metres out from pos along dir, half
 ## degrees each side; it fills outward over dur, the moment the blow lands.
 static func arc_telegraph(root: Node3D, pos: Vector3, dir: Vector3, radius: float, half: float, dur: float, col := Color(1.0, 0.15, 0.05)) -> void:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var n := 24
-	var a0 := -deg_to_rad(half)
-	var a1 := deg_to_rad(half)
-	for i in n:
-		var u0 := lerpf(a0, a1, float(i) / n)
-		var u1 := lerpf(a0, a1, float(i + 1) / n)
-		st.add_vertex(Vector3.ZERO)
-		st.add_vertex(Vector3(sin(u1), 0, -cos(u1)))
-		st.add_vertex(Vector3(sin(u0), 0, -cos(u0)))
-	var fan := st.commit()
-	var yaw := atan2(-dir.x, -dir.z)
-	var edge := MeshInstance3D.new()
-	edge.mesh = fan
-	edge.material_override = Mats.glow_unique(col, 0.35)
-	edge.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(edge)
-	edge.global_position = pos + Vector3(0, 0.06, 0)
-	edge.rotation.y = yaw
-	edge.scale = Vector3(radius, 1, radius)
-	var fill := MeshInstance3D.new()
-	fill.mesh = fan
-	fill.material_override = Mats.glow_unique(col, 1.1)
-	fill.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(fill)
-	fill.global_position = pos + Vector3(0, 0.07, 0)
-	fill.rotation.y = yaw
-	fill.scale = Vector3(0.05, 1, 0.05)
-	var tw := fill.create_tween()
-	tw.tween_property(fill, "scale", Vector3(radius, 1, radius), dur)
-	_free_later(edge, dur + 0.05)
-	_free_later(fill, dur + 0.05)
+	_telegraph(root, pos, dir, radius, deg_to_rad(half), dur, col)
+
+## Both telegraphs (visual overhaul): a crisp glowing rim, the area washed faintly, and the fill sweeping out from the
+## middle with a bright front that meets the rim the moment the blow lands, a faint pulse running through it; added
+## light, so it tints the ground under it instead of covering it with flat paint (it was a solid unshaded disc or fan).
+static var _tele_shader: Shader
+static var _tele_disc: ArrayMesh
+static func _telegraph(root: Node3D, pos: Vector3, dir: Vector3, radius: float, half: float, dur: float, col: Color) -> void:
+	if _tele_shader == null:
+		_tele_shader = Shader.new()
+		_tele_shader.code = TELEGRAPH_SHADER
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var n := 64
+		for i in n:
+			var a0 := TAU * i / n
+			var a1 := TAU * (i + 1) / n
+			st.add_vertex(Vector3.ZERO)
+			st.add_vertex(Vector3(cos(a0), 0, sin(a0)) * 1.02)
+			st.add_vertex(Vector3(cos(a1), 0, sin(a1)) * 1.02)
+		_tele_disc = st.commit()
+	var m := ShaderMaterial.new()
+	m.shader = _tele_shader
+	m.set_shader_parameter("col", col)
+	m.set_shader_parameter("half_angle", half)
+	var mi := MeshInstance3D.new()
+	mi.mesh = _tele_disc
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+	mi.global_position = pos + Vector3(0, 0.07, 0)
+	mi.rotation.y = atan2(-dir.x, -dir.z)
+	mi.scale = Vector3(radius, 1, radius)
+	var tw := mi.create_tween()
+	tw.tween_method(func(v: float): m.set_shader_parameter("progress", v), 0.0, 1.0, maxf(dur, 0.05))
+	tw.tween_method(func(v: float): m.set_shader_parameter("alpha", v), 1.0, 0.0, 0.12)
+	tw.tween_callback(mi.queue_free)
+
+const TELEGRAPH_SHADER := """
+shader_type spatial;
+render_mode unshaded, blend_add, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
+uniform vec4 col : source_color = vec4(1.0, 0.15, 0.05, 1.0);
+uniform float progress = 0.0;
+uniform float half_angle = 3.3;
+uniform float alpha = 1.0;
+varying vec2 lp;
+void vertex() {
+	lp = VERTEX.xz;
+}
+void fragment() {
+	float r = length(lp);
+	float a = abs(atan(lp.x, -lp.y));
+	if (r > 1.0 || a > half_angle) { discard; }
+	float px = fwidth(r) * 1.5;
+	float rim = smoothstep(0.955 - px, 0.985, r);
+	float side = half_angle < 3.1 ? 1.0 - smoothstep(0.0, 0.035 + px, (half_angle - a) * max(r, 0.05)) : 0.0;
+	float outline = max(rim, side);
+	float filled = 1.0 - smoothstep(progress - px, progress + px, r);
+	float front = filled * smoothstep(progress - 0.08, progress, r);
+	float pulse = 0.8 + 0.2 * sin(r * 34.0 - TIME * 7.0);
+	float v = outline * 0.7 + filled * 0.13 * pulse + front * 0.6 + 0.035;
+	ALBEDO = col.rgb * 1.4;
+	ALPHA = clamp(v * alpha, 0.0, 1.0);
+}
+"""
 
 ## A crack of lightning from a to b: a jagged line of short glowing segments that flickers out (Storm Snare).
 static func bolt(root: Node3D, a: Vector3, b: Vector3, col: Color, dur: float = 0.22) -> void:
@@ -411,21 +513,70 @@ static func pillar(root: Node3D, pos: Vector3, col: Color, dur: float = 1.4) -> 
 	burst(root, pos + Vector3(0, 0.5, 0), col, 40, 4.0, 0.12, 1.2, true, 2.0, 40.0)
 	flash(root, pos + Vector3(0, 2, 0), col, 4.0, dur, 9.0)
 
-## Blood splat decal left on the floor.
+## A splash on the ground (a kill's blood, a stain of oil): a ragged pool with rays and drops past its edge that runs
+## out in a moment, wet and glossy, darker where it is deep, laid over the ground's bumps (SPLAT_SHADER); it dries matte
+## and soaks away over the last 14 of its 40 seconds. (It was a flat ten-sided disc.)
 static func splat(root: Node3D, pos: Vector3, col: Color, size: float = 0.8) -> void:
+	var g = root.get_tree().current_scene if root.is_inside_tree() else null
+	var w = g.world if g != null and "world" in g else null
+	var m := ShaderMaterial.new()
+	m.shader = _splat_shader()
+	m.set_shader_parameter("noise_tex", InfernalFx.noise())
+	m.set_shader_parameter("col", Color(col.r * 0.78, col.g * 0.72, col.b * 0.72))
+	m.set_shader_parameter("deep", Color(col.r * 0.3, col.g * 0.26, col.b * 0.26))
+	m.set_shader_parameter("seed", randf() * 10.0)
 	var mi := MeshInstance3D.new()
-	mi.mesh = Geo.cyl(1.0, 1.0, 0.005, 10)
-	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(col.r * 0.5, col.g * 0.5, col.b * 0.5, 0.85)
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.roughness = 0.25
+	mi.mesh = InfernalFx.disc_mesh(w, pos, size * randf_range(0.85, 1.2) * 1.6, 28, 3, 0.06)
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(mi)
-	mi.global_position = pos + Vector3(0, 0.03, 0)
-	mi.scale = Vector3(size * randf_range(0.7, 1.3), 1, size * randf_range(0.7, 1.3))
-	mi.rotation.y = randf() * TAU
-	_free_later(mi, 40.0)
+	mi.global_position = pos
+	InfernalFx.tween_param(mi, m, "spread", 0.0, 1.0, 0.18).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	InfernalFx.tween_param(mi, m, "life", 1.0, 0.0, 14.0, 26.0)
+	_free_later(mi, 40.5)
+
+static var _splat_sh: Shader
+static func _splat_shader() -> Shader:
+	if _splat_sh == null:
+		_splat_sh = Shader.new()
+		_splat_sh.code = SPLAT_SHADER
+	return _splat_sh
+
+## A kill's spray: droplets flung up and out as streaks that arc down (more from a bigger body), a few heavier drops.
+static func gore(root: Node3D, pos: Vector3, col: Color, big := 0.5) -> void:
+	var c := Color(col.r, col.g, col.b, 1.0)
+	streaks(root, pos, [[0.0, c.lightened(0.12)], [0.55, c], [1.0, Color(c.r * 0.45, c.g * 0.45, c.b * 0.45, 0.0)]],
+		int(clampf(18.0 + big * 20.0, 18.0, 40.0)), 5.2, 0.05, 3.0, 0.7, false, -12.0, 85.0, Vector3.UP, 0.4)
+	burst(root, pos, c, 8, 2.6, 0.09, 0.6, false, -11.0)
+
+## SPLAT_SHADER: on InfernalFx.disc_mesh (UV centre 0.5, rim 0.5 out). spread 0..1 runs it out, life 1..0 soaks it away.
+const SPLAT_SHADER := """
+shader_type spatial;
+render_mode blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
+uniform sampler2D noise_tex : repeat_enable, filter_linear_mipmap;
+uniform vec4 col : source_color = vec4(0.25, 0.02, 0.02, 1.0);
+uniform vec4 deep : source_color = vec4(0.09, 0.01, 0.01, 1.0);
+uniform float spread = 0.0;
+uniform float life = 1.0;
+uniform float seed = 0.0;
+void fragment() {
+	vec2 d = UV - vec2(0.5);
+	float r = length(d) * 2.0;
+	float a = atan(d.y, d.x);
+	float n = texture(noise_tex, UV * 1.6 + vec2(seed, 0.0)).r;
+	float n2 = texture(noise_tex, UV * 6.5 + vec2(0.3, seed)).r;
+	float rays = pow(abs(sin(a * 5.0 + seed * 3.0 + n * 4.0)), 18.0);
+	float edge = (0.45 + (n - 0.5) * 0.35 + rays * 0.35) * spread;
+	float pool = smoothstep(edge + 0.012, edge - 0.03, r);
+	float drops = smoothstep(0.78, 0.86, n2) * step(edge, r) * smoothstep(edge * 1.5 + 0.02, edge, r) * spread;
+	float m = max(pool, drops);
+	float thick = smoothstep(edge, edge * 0.35, r);
+	ALBEDO = mix(col.rgb, deep.rgb, clamp(thick * 0.7 + (n2 - 0.5) * 0.2, 0.0, 1.0));
+	ROUGHNESS = mix(0.12, 0.55, 1.0 - life);
+	SPECULAR = 0.7;
+	ALPHA = clamp(m * 0.92 * min(life * 1.5, 1.0) * smoothstep(1.0, 0.92, r), 0.0, 1.0);
+}
+"""
 
 ## Swirling blue town portal model.
 static func portal_model(col := Color(0.3, 0.55, 1.0)) -> Node3D:

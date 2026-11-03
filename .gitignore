@@ -19,6 +19,7 @@ assets/models/**/*_normal.jpg
 assets/models/**/*_albedo.jpg
 assets/models/**/*_metal_rough.jpg
 assets/models/**/*_normal.png
+assets/models/**/*_emission.jpg
 # ... and from the brazier coals library (tools/blender/waypoint/rock_library.py): its AO/roughness and glow masks are PNG
 assets/models/**/*_metal_rough.png
 assets/models/**/*_glow.png

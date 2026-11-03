@@ -24,10 +24,24 @@ const LOOKS := {
 		"rim": {"color": Color(0.55, 0.72, 1.0), "energy": 2.2, "range": 4.5}},
 }
 
+## The hero's rim light in zones whose look doesn't set one (visual overhaul, stage 2): a back light that only lights
+## his own meshes, so he reads against the ground everywhere, not just in the camp. Cool by night and under cloud,
+## violet-grey underground, a faint warm edge by day (A2, the coast's evening). Game._apply_grade picks the kind.
+const RIMS := {
+	"dusk": {"color": Color(0.62, 0.74, 1.0), "energy": 1.8, "range": 4.5},
+	"inside": {"color": Color(0.72, 0.7, 1.0), "energy": 2.0, "range": 4.5},
+	"day": {"color": Color(1.0, 0.9, 0.76), "energy": 1.1, "range": 4.5},
+	"ash": {"color": Color(1.0, 0.62, 0.42), "energy": 1.6, "range": 4.5},
+}
+
 static var _luts := {}
 
 static func look(name: String) -> Dictionary:
 	return LOOKS.get(name, {})
+
+## Whether a look grades the picture (a LUT), as opposed to only setting the vignette or the rim.
+static func grades(lk: Dictionary) -> bool:
+	return lk.has("shadow")
 
 ## A 3D LUT (size³ texels) for the look. Cached per look.
 static func lut(name: String, size := 24) -> Texture3D:

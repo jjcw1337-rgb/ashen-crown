@@ -325,11 +325,12 @@ const OAK_LEAVES := [
 	[Color(0.15, 0.18, 0.08), Color(0.26, 0.28, 0.12), Color(0.36, 0.32, 0.14), 45, 1.0, 1.0],
 ]
 
-static func oak_model(k: int) -> ArrayMesh:
-	var key := "moak%d" % k
+## `glb` and `leaf_n` override the model and the number of leaf clusters (for comparisons, tools/visual_audit/oak_compare.gd).
+static func oak_model(k: int, glb := "", leaf_n := -1) -> ArrayMesh:
+	var key := "moak%d" % k if glb == "" and leaf_n < 0 else "moak%d|%s|%d" % [k, glb, leaf_n]
 	if _cache.has(key):
 		return _cache[key]
-	var path := OAK_GLB % k
+	var path := OAK_GLB % k if glb == "" else glb
 	if not ResourceLoader.exists(path):
 		return oak(9 + k * 3)
 	var scene: Node = (load(path) as PackedScene).instantiate()
@@ -368,7 +369,8 @@ static func oak_model(k: int) -> ArrayMesh:
 	var crown := Vector3(0, h * 0.62, 0)
 	var picks: Array[Vector3] = []
 	var tries := 0
-	while picks.size() < int(spec[3]) and tries < 6000:
+	var want := int(spec[3]) if leaf_n < 0 else leaf_n
+	while picks.size() < want and tries < 6000:
 		tries += 1
 		var v: Vector3 = verts[rng.randi() % verts.size()]
 		if v.y < h * 0.42 or Vector2(v.x, v.z).length() < 0.8:

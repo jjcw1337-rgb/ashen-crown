@@ -168,6 +168,10 @@ static func make(parent: Node3D, pos: Vector3, kind := "", size := 1.0, col := C
 		l.omni_range = float(P["range"]) * size
 		l.omni_attenuation = 1.3
 		l.shadow_enabled = shadow
+		if shadow:
+			# omni shadows are six extra passes each: a shadow-casting fire joins the shadow budget (Grade.pick_shadows,
+			# the nearest 1/2/4/6 lights by preset) instead of always casting, e.g. the fort's dozen cookfires
+			l.add_to_group(Grade.SHADOW_GROUP)
 		l.light_volumetric_fog_energy = 1.5
 		l.distance_fade_enabled = true
 		l.distance_fade_begin = 38.0

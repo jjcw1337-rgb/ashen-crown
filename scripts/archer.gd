@@ -338,7 +338,14 @@ static func _rain(h: Hero, v: Dictionary) -> void:
 		ar.look_at(p, Vector3.FORWARD)
 		var tw := ar.create_tween()
 		tw.tween_property(ar, "global_position", p + Vector3(0, 0.25, 0), 0.18)
-		tw.tween_callback(func(): Fx.burst(root, p + Vector3(0, 0.1, 0), FROST, 5, 1.2, 0.1, 0.45, true, -2.0, 70.0))
+		tw.tween_callback(func():
+			# the arrow strikes: splinters of ice and a breath of frost off the ground
+			InfernalFx.particles(root, p + Vector3(0, 0.12, 0), {"amount": 6, "life": 0.45, "explosive": 1.0, "shape": "sphere",
+				"r": 0.08, "dir": Vector3.UP, "spread": 60.0, "vel": [1.2, 2.6], "gravity": -12.0, "scale": [0.4, 1.0],
+				"size": 0.05, "colors": [[0.0, ElementalFx.ICE_PALE], [1.0, Color(ElementalFx.ICE_DEEP, 0.0)]]})
+			ElementalFx._dust(root, p + Vector3(0, 0.15, 0), Color(0.5, 0.62, 0.72), 0.6, 0.35, {"amount": 2, "life": 0.8,
+				"explosive": 1.0, "shape": "sphere", "r": 0.1, "dir": Vector3.UP, "spread": 70.0, "vel": [0.2, 0.5],
+				"damping": [1.5, 2.2], "scale": [0.7, 1.1], "grow": [0.6, 1.4]}))
 		tw.tween_interval(1.4)
 		tw.tween_callback(ar.queue_free)
 	Sfx.play_at("bow", pos, -10.0, randf_range(0.8, 0.95))
@@ -452,7 +459,14 @@ static func keep_companions(h: Hero, delta: float) -> void:
 	b.setup(h, h.game, k)
 	b.global_position = pos
 	h.beasts.append(b)
-	Fx.burst(h.game.world.fx_root, pos + Vector3(0, 0.6, 0), HUNTER, 30, 3.0, 0.14, 0.8, true, 1.0)
+	# it comes out of the mist: spirit-light rising off where it stands, a breath of pale mist round it
+	var root: Node3D = h.game.world.fx_root
+	InfernalFx.particles(root, pos + Vector3(0, 0.3, 0), {"amount": 24, "life": 1.2, "explosive": 0.8, "shape": "sphere",
+		"r": 0.6, "dir": Vector3.UP, "spread": 25.0, "vel": [0.6, 1.6], "gravity": 0.4, "damping": [0.6, 1.0], "turb": 0.4,
+		"scale": [0.4, 1.0], "size": 0.08, "colors": [[0.0, Color(HUNTER, 0.0)], [0.2, Color(1, 1, 1)], [0.6, HUNTER], [1.0, Color(HUNTER, 0.0)]]})
+	ElementalFx._dust(root, pos + Vector3(0, 0.3, 0), Color(0.5, 0.62, 0.58), 1.3, 0.45, {"amount": 5, "life": 1.4,
+		"explosive": 0.9, "shape": "ring", "r": 0.5, "r_in": 0.2, "dir": Vector3.UP, "spread": 20.0, "vel": [0.2, 0.5],
+		"radial": [1.0, 2.0], "damping": [1.6, 2.4], "scale": [0.7, 1.2], "grow": [0.5, 1.6]})
 
 ## Shatter (Frost): the chilled take 20% more from his arrows.
 static func shatter(h: Hero, e) -> float:
