@@ -92,6 +92,10 @@ func _cast_all(h) -> void:
 	var mine := {}
 	for c in CASTS:
 		var id: String = c[0]
+		# the last move must be over (a cast mid-throw is refused); slow machines take longer than the plan
+		var tw := Time.get_ticks_msec()
+		while h.atk_t >= 0.0 and Time.get_ticks_msec() - tw < 4000:
+			await wait(2)
 		var fwd: Vector3 = -h.rig.global_transform.basis.z
 		h.cds[id] = 0.0
 		h.mana = h.max_mana
