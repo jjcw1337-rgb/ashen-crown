@@ -116,6 +116,7 @@ var pvs_shown := -1         # what PvpStatusFx shows of them on him (bits | blig
 var net_pvs_bits := 0       # a puppet: the statuses his game says he has (PvpStatusFx bits, in his state packet)
 var net_pvs_blight := 0     # and his Blight stacks
 var chill_t := 0.0          # Rimeclaw's cold: slowed while it lasts
+var cc := {}                # crowd control from other players in the Battlegrounds (PvpStatus)
 var hit_t := 0.0
 var cls := "knight"          # "knight", "wraith", "demon" or "warlock" (Data.CLASSES)
 var cds := {}
@@ -1314,6 +1315,8 @@ func use_skill(id: String, aim: Vector3) -> bool:
 	stop_chop()
 	if dead or charge_t >= 0.0 or daze_t > 0.0:
 		return false
+	if atk_t >= 0.0 and atk_skill != "" and is_demon() and DemonSkills.recast(self, id):
+		return true
 	if atk_t >= 0.0 and atk_skill != "":
 		return false
 	var sk: Dictionary = {}
@@ -1592,6 +1595,8 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 		dmg *= 120.0 / (120.0 + a)
 	else:
 		dmg *= 1.0 - res / 100.0
+	if is_demon():
+		dmg = DemonSkills.absorb(self, dmg)      # Wrath of the Pit's Crucible
 	dmg = maxf(1.0, dmg)
 	if ward > 0.0:
 		var soak := minf(ward, dmg)
@@ -1659,6 +1664,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 		life = 0.0
 		dead = true
 		Dodge.cancel(self)
+		PvpStatus.clear(self)
 		ClassSkills.died(self)
 		SkillFx.clear(self)
 		dead_t = 0.0
@@ -1803,10 +1809,11 @@ func _process(delta: float) -> void:
 	if chill_t > 0.0:
 		chill_t -= delta
 		speed *= 0.55
-	if not pvs.is_empty():
-		PvpStatus.update(self, delta)
-		speed *= PvpStatus.speed_mult(self)
-	if not pvs.is_empty() or pvs_shown > 0:
+	if not cc.is_empty() or not pvs.is_empty():
+		speed *= PvpStatus.update(self, delta)     # the Demon's and the Plague Doctor's statuses (snare = 0)
+		if PvpStatus.held(self):
+			speed = 0.0
+	if not pvs.is_empty() or pvs_shown > 0 or cc.has("slow"):
 		PvpStatusFx.sync(self, PvpStatusFx.bits_of(self), PvpStatusFx.blight_of(self))
 	if pd != null:
 		speed *= pd.speed_mult()     # quicker in his own fog, slower with the needle in his arm
@@ -2149,8 +2156,12 @@ func _update_attack(delta: float) -> void:
 		return
 	if atk_t >= atk_dur:
 		var was_chop := atk_skill == "chop"
+		var done_style := atk_style
+		var done_skill := atk_skill
 		atk_t = -1.0
 		atk_skill = ""
+		if is_demon() and done_skill != "":
+			DemonSkills.stage_done(self, done_style, done_skill)
 		if swipe and atk_style == "swipe3":
 			swipe_n = 0
 		if was_chop:
@@ -2281,6 +2292,7 @@ func respawn(p: Vector3) -> void:
 	if not puppet and game != null and game.hero == self:
 		game.on_local_respawn()
 	Dodge.cancel(self)
+	PvpStatus.clear(self)
 	dead = false
 	dead_t = 0.0
 	rig.rotation.x = 0.0

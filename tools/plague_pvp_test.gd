@@ -64,7 +64,7 @@ func _run() -> void:
 func _server() -> void:
 	await until(func(): return g.bg != null and g.net.active and not g._busy, 40.0)
 	check(await until(func(): return g.net.players.size() == 2, 60.0), "both players are in the crypt")
-	check(await until(func(): return not g.bg.pvp_dr.is_empty(), 90.0), "a status passed through the server, counted for diminishing returns")
+	check(await until(func(): return not g.bg.cc_dr.is_empty(), 90.0), "a status passed through the server, counted for diminishing returns")
 	await until(func(): return g.net.players.is_empty(), 120.0)
 
 func _player() -> void:

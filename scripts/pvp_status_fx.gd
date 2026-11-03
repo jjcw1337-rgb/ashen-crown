@@ -22,14 +22,14 @@ static var _eye_mat: StandardMaterial3D
 
 ## The bits of a hero's own statuses (`Hero.pvs`).
 static func bits_of(h: Hero) -> int:
-	if h.pvs.is_empty():
+	if h.pvs.is_empty() and not h.cc.has("slow"):
 		return 0
 	var b := 0
 	if PvpStatus.has(h, "snare"):
 		b |= SNARE
 	if PvpStatus.has(h, "harried"):
 		b |= HARRIED
-	if PvpStatus.has(h, "slow"):
+	if PvpStatus.has(h, "slow") and str(h.cc["slow"].get("src", "")) == "pd":
 		b |= SLOW
 	if PvpStatus.has(h, "reveal"):
 		b |= REVEAL

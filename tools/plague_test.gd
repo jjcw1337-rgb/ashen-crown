@@ -350,7 +350,8 @@ func _run() -> void:
 	h.life = h.max_life
 
 	# PvP statuses on a player: shown on him (PvpStatusFx), and in his state packet for his puppet everywhere else
-	h.pvs.clear()
+	PvpStatus.clear(h)
+	g.test_immortal = false      # (a status doesn't land on an immortal hero)
 	PvpStatus.apply(h, "snare", 1.0, 1.0)
 	PvpStatus.apply(h, "harried", 2.0, 0.25)
 	PvpStatus.apply(h, "slow", 2.0, 0.3)
@@ -367,7 +368,8 @@ func _run() -> void:
 	PvpStatus.apply(h, "blight", 4.0, 3.0)
 	await frames(2)
 	check(h.get_node_or_null("pd_fever") != null and h.get_node_or_null("pd_blight") == null, "at three the marks burst into Fever")
-	h.pvs.clear()
+	PvpStatus.clear(h)
+	g.test_immortal = true
 	await frames(2)
 	check(h.get_node_or_null("pvs_snare") == null and h.get_node_or_null("pvs_harried") == null and h.get_node_or_null("pvs_reveal") == null and h.get_node_or_null("pd_fever") == null, "and it all goes when they end")
 

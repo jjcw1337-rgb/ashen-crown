@@ -57,6 +57,9 @@ static func impact_at(style: String) -> float:
 		"grip": return 0.5
 		"wrath_roar": return 0.5
 		"wrath_stomp": return 0.5
+		"hurl2": return 0.52
+		"grip_throw": return 0.5
+		"icharge_wind", "icharge_skid", "grip_haul", "crucible": return 0.99     # stages with no blow of their own
 		"scoop": return 0.55
 		"burst": return 0.3
 		"cackle": return 0.5
