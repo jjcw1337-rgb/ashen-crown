@@ -2,7 +2,7 @@
 # The Codex standards audit (Blaine, 2026-11-01): a read-only Codex run (ChatGPT's CLI, signed in on this Mac) that
 # checks what the admins asked for on Discord and what was built since the last audit, against the project's
 # standards (tools/audit/audit_prompt.md), and posts its findings to the Game Factory channel. It never edits,
-# builds or runs the game. Scheduled by tools/audit/install.sh around the nightly jobs and twice in the day.
+# builds or runs the game. Scheduled by tools/audit/install.sh at 23:30 and 16:20.
 #   bash tools/audit/audit.sh [--dry]      (--dry: print the report instead of posting it)
 set -u
 CODEX=/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex
