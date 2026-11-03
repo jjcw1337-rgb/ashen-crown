@@ -1,9 +1,10 @@
 extends SceneTree
 ## A connection that closes while a zone loads (triage 2026-11-03, issue b43c39456b33870a: a raid join turned away
 ## mid-load sent `sv_zone_ready` to the offline peer: "RPC 'sv_zone_ready' on yourself is not allowed").
-##   godot --headless --path . -s tools/net_drop_test.gd
+##   godot --headless --path . -s tools/nightly_net_drop_test.gd      (in the nightly gate)
 ## The client's trip (`Net._client_goto`) is started, the link is shut down while the zone loads, and the trip must
-## finish quietly: no RPC afterwards (look for ERROR in the output), the game offline and idle.
+## finish quietly: no RPC afterwards (this session's log, user://logs/godot.log, must not hold the error), the game
+## offline and idle.
 
 var g
 var fails := 0
@@ -50,5 +51,7 @@ func _run() -> void:
 	await wait(30)
 	check(not g._busy and g.cur_zone == "wild", "the zone finished loading")
 	check(not g.net.active and not g.net.loading, "offline and not waiting on a host")
+	var txt := FileAccess.get_file_as_string("user://logs/godot.log")
+	check(txt != "" and not txt.contains("on yourself is not allowed"), "no RPC sent to the closed link")
 	print("[D] done, %d failed" % fails)
 	quit()
