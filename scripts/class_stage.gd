@@ -19,11 +19,11 @@ signal hovering(cls: String)
 
 ## the ring, in order; the knight, the first choice, starts in the middle. The three dragons are spread round it
 ## (never two side by side, the wrap from the last to the first included).
-const CLASSES := ["archer", "wyrm", "wraith", "knight", "serpent", "plague", "demon", "wyvern", "warlock"]
+const CLASSES := ["archer", "wyrm", "wraith", "knight", "doug", "serpent", "plague", "demon", "wyvern", "warlock"]
 const ACCENTS := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1), "warlock": Color(0.45, 1.0, 0.35), "archer": Color(0.92, 0.24, 0.3), "plague": Color(0.6, 0.95, 0.3),
-	"wyrm": Color(1.0, 0.3, 0.12), "serpent": Color(0.55, 0.88, 1.0), "wyvern": Color(0.45, 0.95, 0.85)}
+	"doug": Color(1.0, 0.82, 0.2), "wyrm": Color(1.0, 0.3, 0.12), "serpent": Color(0.55, 0.88, 1.0), "wyvern": Color(0.45, 0.95, 0.85)}
 ## the banner's emblem (ClassCathedral.BANNER_SHADER): cross, hood, horns, hat, arrow, beak, claw marks (the dragons)
-const EMBLEMS := {"knight": 1, "wraith": 2, "demon": 3, "warlock": 4, "archer": 5, "plague": 6, "wyrm": 7, "serpent": 7, "wyvern": 7}
+const EMBLEMS := {"knight": 1, "wraith": 2, "demon": 3, "warlock": 4, "archer": 5, "plague": 6, "doug": 1, "wyrm": 7, "serpent": 7, "wyvern": 7}
 const PLINTH_TOP := 0.78            # feet height on a plinth (the stand is scaled with its slot)
 const PLINTH_R := 0.56
 const STEP := 0.1
@@ -41,7 +41,7 @@ const WHEEL_GAP := 0.08             # seconds between wheel notches that count
 ## signature moves: [pose style, seconds, impact fraction, skill name]
 const SIGNATURE := {"knight": ["cleave", 1.1, 0.5, "Holy Slam"], "wraith": ["rend", 0.95, 0.42, "Spectral Rend"],
 	"demon": ["fists", 0.9, 0.48, "Molten Fists"], "warlock": ["cast", 1.8, 0.2, "Drain Life"], "archer": ["bow", 1.0, 0.55, "Volley"],
-	"plague": ["pd_flask", 1.3, 0.55, "Pestilence Vial"],
+	"plague": ["pd_flask", 1.3, 0.55, "Pestilence Vial"], "doug": ["pie", 0.9, 0.5, "Cream Pie"],
 	"wyrm": ["swipe3", 1.2, 0.47, "Tail Spin"], "serpent": ["swipe3", 1.1, 0.47, "Tail Spin"], "wyvern": ["swipe3", 1.1, 0.47, "Tail Spin"]}
 const SIG_EVERY := 4.5
 ## Skill previews (hover a skill in the panel, `show_skill`): each skill's pose style and seconds (before the
@@ -54,7 +54,9 @@ const SKILL_SHOW := {"cleave": ["cleave", 0.95], "nova": ["cast", 0.55], "charge
 	"drain": ["cast", 1.6], "blight": ["cast", 0.45], "shackles": ["cast", 0.5], "covenant": ["cast", 0.6],
 	"pierce": ["bow", 0.9], "volley": ["bow", 0.9], "snare": ["cast", 0.6], "beast": ["cast", 0.6],
 	"toxic": ["pd_flask", 0.85], "swarm": ["pd_swarm", 0.8], "bloom": ["pd_bloom", 0.95], "fog": ["pd_fog", 0.6],
-	"transfusion": ["pd_transfuse", 0.8], "experiment": ["pd_slam", 1.2]}
+	"transfusion": ["pd_transfuse", 0.8], "experiment": ["pd_slam", 1.2],
+	"pie": ["pie", 0.9], "peels": ["peels", 0.8], "slide": ["slide", 0.7], "doppel": ["doppel", 0.6], "juggle": ["juggle", 1.4],
+	"bounce": ["bounce", 1.3], "car": ["car", 1.0]}
 const SKILL_GAP := 1.1              # rest between repeats of a previewed skill
 ## The sound of choosing each hero: layers of the game's own recordings, [sound, delay s, dB, pitch]
 const PICK_SOUND := {
@@ -64,6 +66,7 @@ const PICK_SOUND := {
 	"warlock": [["blight_cast", 0.0, -2.0, 1.0], ["relic_ting", 0.08, -6.0, 1.3], ["cackle", 0.3, -4.0, 1.55]],
 	"archer": [["bow", 0.0, 0.0, 0.85], ["bow", 0.14, -3.0, 1.05], ["lion_roar", 0.32, -8.0, 1.45]],
 	"plague": [["ice_shatter", 0.0, -4.0, 1.4], ["blight_burst", 0.1, -5.0, 1.15], ["fuse", 0.35, -9.0, 1.0]],
+	"doug": [["arena_horn", 0.0, -6.0, 2.4], ["inv_click", 0.25, -2.0, 0.5], ["arena_horn", 0.4, -8.0, 2.8]],
 	"wyrm": [["wyrm_step", 0.0, -2.0, 0.9], ["wyrm_roar", 0.12, -3.0, 1.0]],
 	"serpent": [["serpent_tail", 0.0, -6.0, 1.1], ["serpent_roar", 0.15, -3.0, 1.0]],
 	"wyvern": [["wyvern_flap", 0.0, -3.0, 1.0], ["wyvern_roar", 0.2, -3.0, 1.0]]}
@@ -808,6 +811,11 @@ func _fidget(c: String, h: Hero, home: Vector3, f: float) -> void:
 			yaw = FACE + sin(f * 2.0) * 0.9
 			st["style"] = "bow"
 			st["atk"] = fmod(f, 0.8) / 0.8
+		"doug":
+			# a bow to the crowd, a chest-pound, a grin: the old act
+			st["style"] = "car" if fmod(f, 6.0) < 3.0 else "juggle"
+			st["atk"] = fmod(f, 3.0) / 3.0
+			yaw = FACE + sin(f * 1.7) * 0.4
 		"plague":
 			# holds a vial up to the light and peers at it, tilting his head, again and again
 			st["style"] = "pd_inspect"
@@ -884,6 +892,13 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 					Fx.burst(root3d, h.global_position + Vector3(0, 1.3, 0.3) * k, col, 6, 9.0 * k, 0.06 * k, 0.45, true, -2.0, 4.0, Vector3((j - 2) * 0.15, 1.0, 0.4))
 				Fx.flash(root3d, h.global_position + Vector3(0, 1.4, 0.4) * k, col, 2.0, 0.3, 3.0 * k)
 				Sfx.play("bow", -10.0)
+			"doug":
+				# the pie lands at the edge of the light: a cream splat and confetti
+				var at4 := Vector3(h.global_position.x, 0.05, h.global_position.z + 1.6 * k)
+				Fx.burst(root3d, at4 + Vector3(0, 0.4 * k, 0), DougFx.CREAM, 30, 3.0 * k, 0.1 * k, 0.6, false, -9.0)
+				for cc in DougFx.CONFETTI:
+					Fx.burst(root3d, at4 + Vector3(0, 0.8 * k, 0), cc, 10, 3.5 * k, 0.05 * k, 1.0, false, -3.0, 180.0)
+				Sfx.play("arena_horn", -10.0, 2.4)
 			"plague":
 				# the flask shatters at the edge of the light: glass and a green cloud
 				var at2 := Vector3(h.global_position.x, 0.05, h.global_position.z + 1.6 * k)   # on the floor in front of the plinth

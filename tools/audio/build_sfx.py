@@ -167,9 +167,16 @@ def write_bank():
              "## Files are assets/audio/sfx/<name>_<take>.wav (sources in assets/audio/CREDITS.md). Don't edit by hand.",
              "## [takes, bus, seconds to the payoff (Sfx.play_synced lands it on an attack's impact frame)]",
              "const BANK := {"]
+    # sounds spec.py doesn't list (added by another tool or by hand) keep the bus and payoff the bank gave them
+    old = {}
+    if os.path.exists(BANK_GD):
+        for m in re.finditer(r'^\t"([a-z0-9_]+)": \[\d+, "(\w+)", ([0-9.]+)\],$', open(BANK_GD).read(), re.M):
+            old[m.group(1)] = (m.group(2), float(m.group(3)))
     for name in sorted(found):
         bus = "ui" if name in UI else ("ambience" if name in AMB else "sfx")
         hit = float(BY_NAME.get(name, {}).get("hit", 0.0))
+        if name not in BY_NAME and name in old:
+            bus, hit = old[name]
         lines.append(f'\t"{name}": [{found[name]}, "{bus}", {hit}],')
     lines.append("}")
     open(BANK_GD, "w").write("\n".join(lines) + "\n")

@@ -28,6 +28,8 @@ static func play(h: Hero, ev: Dictionary) -> void:
 	if sk == "roll":
 		Dodge.fx(h, ev)       # the dodge roll, every class's
 		return
+	if SharedSkills.IDS.has(sk) and SharedFx.play(h, ev):
+		return            # a shared skill: drawn the same whatever the hero's class
 	var cls: String = str(Data.skill_def(sk).get("cls", "any"))
 	if cls == "any":
 		cls = h.cls
@@ -38,6 +40,7 @@ static func play(h: Hero, ev: Dictionary) -> void:
 		"demon": done = DemonFx.play(h, ev)
 		"warlock": done = WarlockFx.play(h, ev)
 		"archer": done = ArcherFx.play(h, ev)
+		"doug": done = DougFx.play(h, ev)
 	if not done:
 		done = _common(h, ev)
 	if not done:
@@ -80,6 +83,7 @@ static func update(h: Hero, delta: float) -> void:
 	DemonFx.update(h, delta)
 	WarlockFx.update(h, delta)
 	ArcherFx.update(h, delta)
+	DougFx.update(h, delta)
 
 ## Everything lingering is gone (death, a class change, a zone change).
 static func clear(h: Hero) -> void:
@@ -88,6 +92,7 @@ static func clear(h: Hero) -> void:
 	WarlockFx.clear(h)
 	ArcherFx.clear(h)
 	KnightFx.clear(h)
+	DougFx.clear(h)
 	h.fxs.clear()
 
 # ---------------------------------------------------------------- helpers for the handlers
@@ -104,22 +109,22 @@ static func style(h: Hero) -> String:
 
 ## A sound of the skill: flat for the caster, from where his puppet stands for partners.
 static func snd(h: Hero, nm: String, db := 0.0, pitch := 1.0) -> void:
-	if h.puppet:
+	if h.puppet or h.bot:
 		Sfx.play_at(nm, h.global_position, db - 2.0, pitch)
 	else:
 		Sfx.play(nm, db, pitch)
 
 ## Screen shake and hitstop belong to the caster's screen only.
 static func shake(h: Hero, v: float) -> void:
-	if not h.puppet:
+	if h._mine():
 		h.game.add_shake(v)
 
 static func hitstop(h: Hero, t: float) -> void:
-	if not h.puppet:
+	if h._mine():
 		h.game.hitstop(t)
 
 static func duck(h: Hero, db: float, hold: float) -> void:
-	if not h.puppet:
+	if h._mine():
 		Sfx.duck(db, hold)
 
 ## A hand of the rig (the mocap bodies carry at_hand_* followers).

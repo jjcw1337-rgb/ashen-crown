@@ -82,6 +82,14 @@ func _process(delta: float) -> void:
 				hero.take_hit(dmg, p - vel.normalized(), "proj", element)
 			_explode(true)
 			return
+	# something the monsters fight for besides the heroes (the Last Flame, vigil.gd)
+	for ob in (get_tree().get_nodes_in_group("objective") if get_tree().has_group("objective") else []):
+		var od: Vector3 = ob.global_position - p
+		if not ob.dead and p.y < 2.6 and Vector2(od.x, od.z).length() < float(ob.radius):
+			if not visual_only:
+				ob.take_hit(dmg, p - vel.normalized(), "proj", element)
+			_explode(true)
+			return
 
 func _explode(hit: bool) -> void:
 	if kind in ["fireball", "poison"]:

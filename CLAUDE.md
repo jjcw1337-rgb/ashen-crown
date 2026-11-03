@@ -90,7 +90,10 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `coop_server.gd` | Online co-op: the story game hosted by a dedicated server (see "Online co-op") |
 | `build_env.gd`, `nakama_client.gd`, `cloud_saves.gd` | Which backend a build uses; the Nakama REST client; characters kept in Nakama (see "Staging and accounts") |
 | `battlegrounds.gd` | Battlegrounds prototype: the raid map, the dedicated server's raid logic (respawns, carried loot, extraction, the stash), the client's id and cached stash |
+| `vigil.gd` | The Last Flame (zone `"vigil"`): the co-op horde defence under the Act I camp, its sanctum, waves, flame and HUD (see "The Last Flame") |
 | `kpi.gd` | The official performance KPIs: scripted scenarios measured frame by frame (`--kpi`), see docs/nightly/KPIS.md |
+| `shared_skills.gd`, `shared_fx.gd` | The shared skills every class can use (`"cls": "any"`): their gameplay and their effects |
+| `skill_spec.gd` | The skill format (`SkillSpec`): a skill's timing, damage, area and damage over time read from its `Data.SKILLS` entry |
 | `skill_fx.gd`, `knight_fx.gd`, `archer_fx.gd` | Co-op skill effects: `SkillFx` plays every class's skill events on the caster and on his puppet for partners (see "Co-op skill effects"); the knight's and archer's effect handlers (the Wraith's, Demon's and Warlock's are in their `*_fx.gd`) |
 | `ui.gd`, `hud_bar.gd`, `icon_renderer.gd` | All UI built in code |
 | `vendor_ui.gd` | Nameplates over the town's people and the trader's live portrait in the trade window |
@@ -170,10 +173,27 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   room and the only way into the hall from that side; a ring of corridors with one link missing; crypt rooms with
   sarcophagi, chests, few but tough monsters (`MON_LIFE`, `MON_DMG`, level `MON_LEVEL`); the hall has a pillar ring,
   three chests and a champion with bowmen. The walls come from `World.crypt_shell` (shared with the crypt). **Rounds**
-  of `RAID_SECS` (15 min): two of the four portals open at `PORTALS_AT` (5 min), joining closes at `JOIN_CLOSE`, the
-  crypt collapses at the end (everyone inside dies) and the dungeon resets (`new_round`). The state reaches players
-  through `Net.cl_bg_raid` (the HUD clock, `Battlegrounds.hud`). **Combat is slower and heavier** while
-  `Game.bg_mode` (Hero: `ATTACK_PACE`, `HIT_MULT`, `CD_MULT`, `MOVE_MULT`, no life regeneration). **PvP**: every other
+  of `RAID_SECS` (20 min): two of the four portals open at `PORTALS_AT` (5 min), joining closes at `JOIN_CLOSE` (15 min), the
+  crypt collapses at the end (everyone inside dies) and the dungeon resets (`new_round`). **Several raids** (Blaine
+  2026-11-01): one server per raid, `--server --raid N` (port `RAID_PORTS[N]`), each running its rounds on the wall
+  clock a third of a `PERIOD` after the last (`phase`), so one is always open; clients need no lobby: `schedule()` and
+  `best_raid()` work every raid's state out from the clock (the Battlegrounds page's board, and Enter goes to the best
+  one). `LIVE_RAIDS` is how many are deployed (staging: 1 until UDP 24571/24572 are open and the droplet has room;
+  `BG_RAIDS=3 sh deploy/staging/deploy.sh` then starts `ashen-crown-bg-raid@1/@2`). `tools/raid_schedule_test.gd`. **A round's flow**:
+  `"lobby"` (players wait in the corner rooms behind iron gates, `gate_doors`/`_gate`, each with a bell, Inter `"bell"`
+  through `Net.sv_inter`) -> the first bell (or `LOBBY_MAX`) starts `"prep"` (`PREP_SECS`, `start_prep`) -> `"raid"`
+  (`open_gates`: bars rise, footprints moved off) -> `"reset"`; the state reaches clients as `cl_bg_raid`
+  `"lobby:<s>"`/`"prep:<s>"`/`"raid"`/`"reset"` and the HUD says what's happening. **Three floors**
+  (`scripts/bg_floors.gd`, `BgFloors`): the Ossuary (floor 1, `build`), the Frozen Depths (Hrimgar the Frostbound,
+  `ice_troll`) and the Overgrown Vault (Old Mossbeard, `hermit`, and the golden chest: `Game.chest_sealed` until he
+  dies, wherever he is: a boss's death, `Enemy.die_visual` -> `Game.guard_fell`, unseals the chests whose `"guard"`
+  it is on every peer; refused in `Net.sv_inter`; the bosses' brains are `scripts/bg_boss.gd`, `BgBoss`), one map `FLOOR_GAP` apart, rooms joined by wide ways and narrow shortcuts,
+  stairways down (Inter `"descend"`, `Game._descend`), portals on every floor (two open on the Ossuary, one below),
+  Meshy dressing in `assets/models/bg/`. `World.crypt_shell(themes)` colours each floor's walls.
+  `tools/bg_floors_shots.gd` screenshots them. The state reaches players
+  through `Net.cl_bg_raid` (the HUD clock, `Battlegrounds.hud`). **Attacks are the same as everywhere**
+  (timing, damage, cooldowns: one standard, jj 2026-11-01); while `Game.bg_mode` only walking is slower (`MOVE_MULT`) and
+  life doesn't regenerate. **PvP**: every other
   player is an invisible stand-in `Enemy` with `pvp_pid` on each client (`sync_proxies`), so any attack or skill
   that hits monsters hits players (and a player's breakable things are stand-ins with `pvp_obj`, `PvpObjects`); `Enemy.take_damage` sends `Net.sv_pvp_hit`, the server scales it (`PVP_MULT`) and
   deals it (`Net.hit_player`); kills are announced. **Real characters**: the Battlegrounds screen picks one of the
@@ -181,10 +201,30 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   extracts with stays in its inventory. **Death** costs every item worn and carried, the belt and the gold
   (`Game.bg_strip` / `strip_save`: levels, stats, talents and the camp's stash are kept; a plain class weapon is
   given back), dropped where it fell (`Net.sv_bg_died`); a character whose game closed mid-raid is stripped the next
-  time the game starts (`Game._bury_lost_raiders`). Joining uses a one-time Nakama ticket on staging (see "Staging
+  time the game starts (`Game._bury_lost_raiders`). **Spectating**: fallen, the player stays connected and
+  watches the living (`Game.spectate_start` / `spectate_next`, `UI.spectate_panel` in the HUD layer: the camera follows
+  `spectate_hero()`, Tab or the arrow keys switch; a watched player who falls is held 2.5 s, one who leaves is passed at
+  once), until "Leave the Crypt" or the round's end (4 s after `bg_raid` turns "reset"). Joining uses a one-time Nakama ticket on staging (see "Staging
   and accounts"). Tests: `tools/bg_test.gd` (server `--raid-fast`: 150 s rounds) and `tools/bg_pvp_test.gd`.
   Dev cheat (non-production builds or dev tools): type `maxout` while playing (`Game.max_out`: level 99, stats,
   every talent, a million gold, potions, a bag of the best gear).
+- **The Last Flame** (`scripts/vigil.gd`, `Vigil`, zone `"vigil"`; nightly mode 2026-11-01, `docs/nightly/modes/2026-11-01-last-flame/`):
+  a co-op horde defence. The Act I camp's Vigil Gate (Inter `"vigil_gate"` at `ForestCamp.VIGIL_GATE`, `travel`, so the
+  party's ready check takes everyone; the way back is `"vigil_exit"` to the camp's `from_vigil`) leads to an indoor
+  sanctum (`Vigil.build`: a 32 m hall on `crypt_shell`, three breach rooms N/E/W with red portals, the altar at
+  `CENTER`). Clicking the altar (Inter `"vigil"`) kindles a vigil: `WAVES` (ten; champions on 5 and 10 with a boss bar
+  on every screen, the Forsaken Bear on 8 and 10) come out of the breaches (`SPAWN_GAP`, at most `MAX_ALIVE` on the
+  floor), counts and the flame's life scaled by players (`PER_PLAYER`) and level (the party's average, `Net.vigil_hi`).
+  Monsters go for the flame through `Enemy.taunt` (the `Vigil.Flame` node: what Enemy reads of a target) unless a hero
+  is nearer; monster missiles hit it through the `"objective"` group (`projectile.gd`). A wave held mends it (`MEND`)
+  and lays gold (an item every other wave) by it; all ten: a unique each. Clicking it with a log from the moor feeds it
+  (`FUEL`: oak 8%, pine 5%, Ashen Heartwood 25%). The flame out = lost (the wave crumbles, no xp); either way it relights
+  after `END_SECS`. Deaths rise by the altar (`Game.respawn`). Host-authoritative: state `Net.vigil_state`/`cl_vigil`
+  (twice a second), events `vigil_event`/`cl_vigil_fx`, a partner's kindling `request_vigil`/`sv_vigil`, feeding
+  `vigil_feed`; it runs on a player host and on the online co-op server alike. Tests: `tools/nightly_vigil_test.gd`
+  (solo, in the gate), `tools/vigil_coop_test.gd` (the co-op server and two players: `-- --server --coop --port 24661
+  server`, `-- a 24661`, `-- b 24661`); balance probe `tools/vigil_sim.gd -- [class] [level] [secs]`; screenshots
+  `tools/vigil_shots.gd -- outdir [frames] [class]` (needs a display).
 - **Online co-op** (`scripts/coop_server.gd`, `CoopServer`): the story game hosted by a dedicated server
   (`-- --server --coop --port 24570`, staging systemd `ashen-crown-coop`), so friends co-op over the internet with no
   router setup: the title's "Online Co-op" (non-local builds) joins `BuildEnv.value("coop_server")` with the
@@ -221,7 +261,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `Data.CLASSES` until then): with a bow (`Hero.has_bow`; bows are `Data.BASES` with `"cls": "archer"`, only he can
   equip them) his attack shoots (`Archer.shoot` from
   `Hero.swipe_attack`/`free_attack`; `Hero.reach` is `Archer.RANGE`). His skills are fire, cold and lightning (ids kept):
-  Fire Arrow (`pierce`: through a line, sets them burning, `Enemy.ignite`), Frost Volley (`volley`: a rain on the cursor,
+  Fire Arrow (`pierce`: through a line, sets them burning, `Enemy.ignite`; its look is real simulated fire, below), Frost Volley (`volley`: a rain on the cursor,
   hits every 0.2 s and chills, `Enemy.chill`, slower on their feet; a partner's chill reaches the host through
   `Net.send_enemy_chill`), Storm Snare (`snare`: holds the first on it, lightning arcs into the nearest others,
   `Fx.bolt`), Spirit Beast (`beast`: commands his wolf, below). Arrows are Meshy models (`assets/models/arrows/`
@@ -241,7 +281,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   northern ranger (wolf-fur cowl, dark leather, quiver) on the knight's mocap system (`Knight.build_mocap(glb, opts)`,
   `knight_mocap_rig.gd`): Meshy library clips for idle/walk/run and, with the bow out, the aimed stand and walk
   (`combat_idle`, `walk_aim`); the bow attack, Fire Arrow and Frost Volley play the `shoot` clip whole-body (`Archer.SHOT`:
-  its draw squeezed in before Anim's release frame, the body turned side-on, `yaw`); Every shot draws a fresh arrow from the quiver: the standing shot plays Meshy's "Draw and Shoot from Back" (`shoot_back`) squeezed along `SHOT.keys` (reach, grab, arrow out, nock, raise, full draw, release on Anim's impact frame, follow-through; `KnightMocapRig.shot_time`), turned side-on (`yaw`; the aiming stand has `stand_yaw`). Shooting on the move: he keeps walking at `Archer.SHOOT_MOVE` (36%) of his pace (`Hero._process`; a shot at a clicked foe still plants him) in the aimed walk (`walk_clip`, timed to his speed, `w_aimwalk`), and only his right arm takes the reach to the quiver from `reach_clip` (a filtered Blend2 over `reach_bones`, weighted by `reach`). `Archer.pose_bow` shows the arrow in his hand from `GRAB` to `NOCK` (`_hand_arrow`: point first into the quiver `QUIVER`, then swung onto the bow) and, while he shoots, solves the bow onto his hands: grip in his left fist, the draw line on his right fingers (`FINGERS`), limbs upright with a `CANT`, so the string always meets the hand. Colours: `Archer.COLORS` ("crimson"; also teal, verdant, royal, "" = Meshy's own) swaps the albedo for `assets/textures/ranger/ranger_<name>.jpg` (`Archer.dye`), made by `tools/archer_colors.py` (texture dumped from the glb, regions from `tools/blender/archer/region_uv.py`: the face, hands, fur and straps keep their colour). Storm Snare and Spirit Beast are
+  its draw squeezed in before Anim's release frame, the body turned side-on, `yaw`); Every shot draws a fresh arrow from the quiver: the standing shot plays `shoot_quick` (Meshy's "Archery Shot 1" + "Archery Shot 3" joined by `prep_ranger_mocap.py`, 1.67 s, near its own pace: reach over the shoulder, grab, arrow out, nock, draw to the cheek, a short hold, release on Anim's impact frame with the string hand flung back, back to the ready stance) along `SHOT.keys` (`KnightMocapRig.shot_time`), turned side-on (`yaw` -90, like the aiming stand's `stand_yaw`); the clip has its own loose, so `_shot_body`'s fling, recoil and follow-through only go over the aimed walk (`SHOT.body_stand`). The old 7.8 s "Draw and Shoot from Back" (`shoot_back`) stays in the glb. Compared and left out (Meshy 223, 229, 226, 234/690): near copies of 222/224, a held aim, and a "Walk Forward While Shooting" that holds a half draw and never looses. Shooting on the move: he keeps walking at `Archer.SHOOT_MOVE` (36%) of his pace (`Hero._process`; a shot at a clicked foe still plants him) in the aimed walk (`walk_clip`, timed to his speed, `w_aimwalk`), and only his right arm takes the reach to the quiver from `reach_clip` (a filtered Blend2 over `reach_bones`, weighted by `reach`). `Archer.pose_bow` shows the arrow in his hand from `GRAB` to `NOCK` (out of the quiver at `DRAWN`; `_hand_arrow`: point first into the quiver `QUIVER`, then swung onto the bow) and, while he shoots, solves the bow onto his hands: grip in his left fist, the draw line on his right fingers (`FINGERS`), limbs upright with a `CANT`, so the string always meets the hand. Colours: `Archer.COLORS` ("crimson"; also teal, verdant, royal, "" = Meshy's own) swaps the albedo for `assets/textures/ranger/ranger_<name>.jpg` (`Archer.dye`), made by `tools/archer_colors.py` (texture dumped from the glb, regions from `tools/blender/archer/region_uv.py`: the face, hands, fur and straps keep their colour). Storm Snare and Spirit Beast are
   the game's cast pose over the upper body. He holds the equipped bow in his LEFT hand (`J["grip_bow"]`,
   `Archer.BOW_HOLD` per bow kind, `Hero._weapon_hand`); bows are drawn by `Models.enemy_weapon` (`item_model`
   had none). `Archer.pose_bow` (every frame after the pose, the puppet's too) turns the bow from hanging in his
@@ -254,6 +294,42 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   procedural body dressed as a hunter (`Archer.build_placeholder`, `Archer.body_gear` kept on every gear change; its bow in `J["grip_l"]`/`J["bow_l"]`). Preview: `tools/mocap_knight_clip.gd -- outdir
   run|attack|shootwalk 34|game|side|close|closeback frames archer [longbow]`. Talent icons still to paint (`tools/talent_icons.py`).
   `tools/archer_test.gd` checks it (run it with `--fixed-fps 60`; it counts frames).
+  **Arrow effects** (`scripts/arrow_fx.gd`, `ArrowFx`; the quality standard every Archer skill must meet is
+  `docs/archer_vfx_standard.md`: photoreal, simulated, proved in Forward+): data-driven per arrow kind
+  (`ArrowFx.PRESETS`; `"war"` is the plain arrow). Fire Arrow is the `"fire"` preset, **real fire**: Mantaflow
+  sims (`tools/blender/fx/fire_sims.py`: a licking flame loop, a fireball, a smoke puff; Cycles, 256 px frames)
+  packed by `tools/fx_flipbook.py` into 8x8 flipbooks `assets/textures/fx/real_*.png` (R = flame, G = flame x
+  temperature; smoke as an RGB lightmap + opacity) plus a procedural scorch decal (albedo, normal, ember emission).
+  `FIRE_SHADER` colours the sim's flame by a blackbody at its own temperature (`ArrowFx.blackbody`, Kelvin);
+  `SMOKE_SHADER` relights the smoke in `light()` with the scene's real lights and shadows; `STREAK_SHADER` embers
+  and sparks cool along the blackbody curve, sparks collide and bounce; `HAZE_SHADER` heat distortion (Forward+);
+  `HEAT_SHADER` overlays the arrow (glowing head, charred shaft). The flight: sim flames wrapped round the head and
+  blown back (local particles), the flame's tail as one continuous strip (`_ribbon`/`_strip`: the head's path
+  every `RIBBON_STEP`, `RIBBON_FIRE_SHADER` lays two offset frames of the sim flame along it and tears it with
+  noise toward the tail, `RIBBON_SMOKE_SHADER` the lit smoke strip behind rising and widening with age), lit smoke
+  puffs, embers, sparks and haze emitted in the world from emitters `fly` keeps on the head (left to burn out by
+  `end_flight`), a flickering light with shadows (≤ `LIGHT_CAP`). Its timers run on `ArrowFx.now()` (game
+  seconds, so slow offline renders keep real motion).
+  `release`, `draw_charge` (the nocked arrow burning in his hands), `pierce` (a gout of fire out of a foe's back),
+  `burn` (the sim's flames rising from every joint and bone of a burning foe's skeleton, `_burn_points` re-reads
+  them as he moves; sooty smoke; `Enemy.ignite(dps, t, look)`: a look other than "" keeps the Demon's ember flames
+  off, and its ticks are amber with no blood or flash; the arrow's own hit is `Enemy.seared`: no blood), `finish`
+  (three turned, mirrored, staggered instances of the fireball sim, a white-hot core, tongues of flame, the light
+  flash dying to the glow, sparks, embers, a smoke column `_smoke_column`, a Decal scorch) and the ground's reaction
+  by `ArrowFx.surface` (grass smoulders, stone sparks, dirt dust, wood catches along its grain `_plank_burn` (meta
+  `wood_grain`), `"surfaces"` in the preset; a zone may answer with a `surface_fn` meta). All from the one "loose" event,
+  on the caster and his puppet alike. Web / Low (`ArrowFx.cheap`): half the particles, no haze or light shadows;
+  Compatibility: no soft particles or haze, the scorch as a quad. The old Phoenix look (wings of painted feathers,
+  `phoenix_*.png`) is retired; its textures stay. The shot's body (`KnightMocapRig._shot_body`, on for `SHOT`
+  "body"): procedural turns over the clip (the spine winding up through the full draw, a breath taken and held,
+  the back set (draw shoulder back, bow shoulder down), weight on the back foot, a tremor at full draw, the bow arm's
+  recoil kick, the string hand flung back past the ear, the weight rolling onto the front foot in the
+  follow-through, the head steady on the mark), lighter while walking, before `pose_bow` solves the bow.
+  **Proof range** (`tools/fire_range.gd` + `tools/fire_range_zone.gd`, through `World.custom_zones`): five lanes
+  (grass, stone, dirt, wood, dark) at dusk with the real ranger and zombies, recorded in Forward+ on lavapipe
+  (`--rendering-driver vulkan --rendering-method forward_plus`, `--fixed-fps 30`; modes game, follow, impact,
+  surfaces, anim, still); the moor is too heavy for the cloud machine. `tools/fire_arrow_clip.gd` (the moor, GL)
+  and `tools/arrow_fx_lab.gd` remain for quick looks.
 - **The Plague Doctor** (`scripts/plague.gd`, `Plague`; class `"plague"`, one `Plague` per hero in `Hero.pd`): the Meshy
   plague doctor (concept 1 of four in the session's picks: beaked mask with green-lit goggles, buckled greatcoat split
   front and back, bandolier and belt of green/amber/violet vials, pouches, instrument roll, brass censer) on the knight's
@@ -405,6 +481,23 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `blight_*` (the flood) and `ring_*` (its boundary, its band remapped thin along the edge) in `_zone_shader`.
   His skills draw no weapon trail (`Hero._update_trail`). Frames: `tools/plague_vial_clip.gd -- outdir
   close|hand|game|fight [secs] [throws] [quality]` (xvfb, `--fixed-fps 30`; ~5-7 s a frame on the cloud).
+- **Doug** (`scripts/doug.gd`, `doug_skills.gd` `DougSkills`, `doug_fx.gd` `DougFx`; design `docs/characters/doug.md`;
+  Blaine's tier-1 character and the pilot of the character workflow, `docs/character_workflow.md`): the stubby circus
+  brawler. Body: Meshy concept edited from Blaine's reference, image-to-3D, Meshy auto-rig + library clips merged by
+  `tools/blender/doug/prep_doug_mocap.py` into `assets/models/doug.glb` on the knight's mocap system (`Doug.ACTS`:
+  his drumstick combo and each skill's whole-body clip); props (pie, banana, pin, trampoline, car, drumstick) are
+  Meshy in `assets/models/doug/` (checked with `tools/blender/prop_sheet.py`; the car's jester rider cut away by
+  `tools/blender/cut_above.py`). Sounds: `doug_*` (ElevenLabs: splat, slip, honk, slide whistle, boing, pop, klaxon,
+  belly-flop; auto-ranked takes until someone picks on the Sound Picks page). Seven skills (his first, Cream Pie, on the right mouse button: a class with
+  seven puts `own[0]` on RMB and the rest on Q-V, `Hero.default_binds`): Cream Pie (lobbed; Pied: monsters stunned
+  and slowed, a player creamed, `UI.pie_face`, and no aim assist, `Hero.pied_t`; once per target per 6 s), Banana
+  Peels (slip: `Hero.take_hit "slip"`), Pratfall Slide, Doppel-Doug (`Hero.hidden_t`: monsters lose him, partners
+  see him fade; a balloon double runs off and pops), Pin Juggle (pins ricochet), Big Top Bounce (an arc to the
+  cursor, a launching belly-flop), Clown Car (5 s, `DougSkills.car_mult`, unstoppable: `driving`; six mini clowns pie
+  the nearest foes). PvP crowd control goes through `Net.send_pvp_effect` (server-checked, a zero-damage hit of
+  that kind). Talents: Slapstick, Showmanship, Big Top (icons `d_*`, `doug_tree*`, painted with Meshy). Tests:
+  `tools/doug_test.gd` (`--fixed-fps 60`), `tools/bg_pvp_test.gd` with `doug` on the players' lines (the pie Pies
+  another player through the server).
 - **Adding a class** (nothing in `hero.gd` names a class's skills; `ClassSkills` hands them to the class's script):
   1. `Data.CLASSES`: name, starting stats, `desc`, optional `weapon`, `voice` (hurt/death sound suffix), `attack_pace`, `hud`.
   2. `Data.SKILLS`: four (up to six: Q E R F G V) entries with its `cls`, each with an `aim`.
@@ -927,8 +1020,17 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `ForestCamp._keeper` loaded at run time, hammering the hull on its trestles, `Coast.HULL_AT`; the procedural
   humanoid without the glb) at his boathouse (`Coast._boatyard`), an `Inter` "vendor" with role "shipwright": `Game._shipwright_talk`
   (dialogue) opens `BoatShop` (`boat_shop.gd`, `ui.boat_panel`: portrait, the boat turning on the water, name, price, text,
-  how to sail, Buy). Boats are `Data.BOATS` (`gull`: 400 gold, speed 8); owning one is `Hero.boats` (saved), bought with
-  `Game.buy_boat`. The boat's model is `Boat.model(id)` (`boat.gd`: lofted clinker hull with its own plank shader, deck,
+  how to sail, Buy). Boats are `Data.BOATS` (`gull`: 400 gold, speed 8; `sloop`, the Ember Sloop: 1500 gold, speed 9, a
+  14 m Meshy model); owning one is `Hero.boats` (saved), bought with `Game.buy_boat`; Osric offers every boat, cheapest
+  first, and the docks hold the dearest one owned (`Hero.best_boat`, swapped at once on a purchase). **Imported boats**:
+  an entry with `"glb"` (a model prepared by `tools/blender/prep_boat.py -- in.glb out.glb <length m> --draft m --bow
+  +x|-x|+y|-y [--tris N] [--tex px] [--shot png]`: bow to Godot -z, waterline y = 0; it prints the numbers) plus
+  `"length"`, `"beam"`, `"sheer"`, `"draft"`, `"deck"` (the helm spot) and `"lamps"`; `Boat.model` loads it (the Gull
+  built in code if the file is missing, so a better model is a one-path swap), `Boat.dims(id)` gives the size, and
+  `BoatRide` scales by length and beam against the Gull (`kl`, `kb`): the shallow-water probes, helm, wake, spray,
+  click area, docking reach and the sailing camera; a longer boat eases out from the Gull-sized moorings until she can
+  swing round clear of the pier or jetty (`_swing_clear`). In co-op the boat's index in `Data.BOATS` rides at the end
+  of `Net._boat_packet` (`Hero.net_boat_id`), so partners draw the right boat. `tools/sloop_test.gd`. The boat's model is `Boat.model(id)` (`boat.gd`: lofted clinker hull with its own plank shader, deck,
   mast, gaff main and jib in the cloth shader, rigging, rudder, lantern).
   `tools/boat_shop_test.gd`, `tools/boat_shop_shot.gd`. **Sailing** (`boat_ride.gd`, `BoatRide`; Game: `_add_boat`,
   `_boat_clicked`, `_sail_input`, `try_land`/`land_boat`, `_sail_camera`): every sea zone has a boat, moored off the
@@ -945,7 +1047,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   GPUParticles. The camera eases to a view over her port quarter looking past the bow (`_sail_camera`, `sail_blend`).
   First time aboard, a controls guide (`Hero.sailed`, saved). `tools/sail_test.gd` (sails every route with her own
   physics: 21-23 s each; grounding, unsticking, the sea's edge, waves, landing, boarding at an island, back to the
-  pier), `tools/sail_shots.gd -- outprefix [q] [isle]`. Tests: `tools/ocean_test.gd`; screenshots `tools/ocean_shots.gd -- outprefix [q] [only]`
+  pier), `tools/sail_shots.gd -- outprefix [q] [isle] [boat id]`. Tests: `tools/ocean_test.gd`; screenshots `tools/ocean_shots.gd -- outprefix [q] [only]`
   (Forward+ screenshots need a Vulkan driver: `apt-get install mesa-vulkan-drivers` gives lavapipe, slow but correct).
   Note: a first import of the project needs `godot --headless --editor --quit-after 2000` (plain `--quit` can abort the
   scan before the class cache is written).
@@ -1034,6 +1136,29 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   gets its own stand automatically) and a `SKILL_SHOW` entry per skill (hover a skill in the panel: the centred hero
   performs it on the stage, `show_skill`). Tests: `tools/class_carousel_test.gd` (`--fixed-fps 60`: turning, wrapping,
   queued turns, clicks, keys, wheel, feet on plinths, skill previews); `tools/class_shot.gd -- outdir [frames]`.
+- **Home screen and the Battlegrounds page** (Blaine 2026-11-01, "no plain boxes"): over the title's gate, `TitleHome`
+  (`scripts/title_home.gd`): the character sidebar (class colour on each card, delete on the card, Create New
+  Character), the modes Story / Online Co-op / LAN as iron tabs and one big Play, a Battlegrounds card with its key art
+  (`assets/textures/ui/bg_crypt.jpg`, Meshy) and Quit Game. The card opens `BgPage` (`scripts/bg_page.gd`, `UI.bg_page`,
+  `UI.open_battlegrounds`): the art full screen, Fight / Loot / Extract, the death rule, the champion (arrows cycle the
+  characters; what they'd risk), the live raid board, Enter the Crypt (asks first), Back / Esc. Every panel is
+  `UI._ornate(panel, k, pad)` (the inventory's iron and gold frame at scale k) and every button `UI._iron_button`;
+  `open_dialog` is an ornate panel over a vignette. `tools/screen_test.gd` checks it.
+- **Deploys never kick players** (Blaine 2026-11-02): `deploy/staging/deploy.sh` puts each deploy in its own
+  `/opt/ashen-crown/staging/releases/<rev>-<time>` and switches the `game` link; the services start the release the
+  link points at, resolved (`ExecStart` via `readlink -f`), and `ServerUpdate` (`scripts/server_update.gd`, every 20 s)
+  moves a running server to a new live release only when nobody would be hurt (raid: empty or between rounds; co-op:
+  empty), telling its players once (`Net.cl_bg_note`, no new RPC). `deploy.sh --now` restarts at once (emergencies;
+  announce it). `tools/server_update_test.sh` (a co-op server, two players, the link moved under them).
+- **Stamina out of combat** (jj 2026-11-02): `Hero.calm()` is 1 in a fight (a blow struck or taken, or an awake
+  monster within 14 m, `_engaged`) and for `COMBAT_SECS` after, then rises to `CALM_MAX` (5) over `CALM_RAMP`;
+  sprinting drains that many times slower and stamina refills that many times faster ("Rested ×N" on the bar).
+  `tools/stamina_test.gd`.
+- **The Codex standards audit** (Blaine 2026-11-01, `tools/audit/`): a read-only run of ChatGPT's Codex CLI on a clean
+  worktree of `origin/staging` (`~/dev/ashen-crown-audit`) with the admins' Discord requests since the last audit;
+  it checks requests vs delivered, asset quality, architecture, performance, tests and process against
+  `audit_prompt.md` and posts the findings to the channel. launchd `com.gamefactory.ashen-audit` (install.sh):
+  19:40, 23:30, 2:30, 7:30, 12:50, 16:20. It never edits or runs the game; log `~/Library/Logs/ashen-nightly/audit.log`.
 - **Title screen** (`UI._build_title`, `scripts/title_stage.gd` `TitleStage`): the Gate of the Ashen Crown at dusk in
   its own World3D: a ruined cathedral gate with the dusk showing through its arch (`BACKDROP_SHADER`), broken arcades,
   the fallen stone king and a giant crown in the ash, fog banks, falling ash, embers, braziers and torches, heat
@@ -1093,6 +1218,52 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   each cell, red when you can't afford it. `UI.trade_with` is the NPC whose window is open: walking more than 3 m
   past their `radius` closes it (`UI._walked_off`, the stash too). `tools/vendor_test.gd` checks all of it with
   the smith; `tools/vendor_shots.gd -- outdir [role]` screenshots a trader.
+- **Progression and the Battlegrounds' gear rules** (Blaine's progression overhaul, `docs/queue_progression_overhaul.md`):
+  skills unlock by level (`Data.skill_locked`, each skill's `"lvl"`; `Data.SKILLS_UNLOCKED = true` opens all again):
+  a class's skills Q 1, E 3, R 5, F 9, G 14, every ultimate at 20 (Eternal Night, Wrath of the Pit, The Last Epidemic,
+  Clown Car); the shared ones War Cry 6, Frost Nova 8, Arc 11, Earthshatter 16. A locked skill waits on the bar greyed
+  with "Lv N", can't be bound (`Hero.bind` refuses it; one already on the bar may move) or cast, and is announced when
+  reached (`Hero._announce_unlocks`); the Admin column's Unlock all skills opens everything. In a raid
+  (`Hero.pvp_scaled`: on while `Game.bg_mode`, whose setter recalcs the hero) the act multipliers are ignored and the
+  stricter `Data.PVP_GEAR_CAP` applies (the items rule everywhere else, below). The class uniques (`Data.UNIQUES` with `"cls"`, level
+  20, boss_only: Hrimgar, Mossbeard and the golden chest drop one for a class near, `Game._drop_class_unique`) carry
+  the raid's item effects: `"roll"` (a free dodge roll every N s, `Hero.free_roll`) or `"ward"` (a % of life that
+  soaks blows and refills out of combat, `Hero.ward`). `tools/pvp_sim.gd` (classes at levels 1/5/10/20, fresh vs
+  geared, Monte Carlo duels), `tools/skill_unlock_test.gd`, `tools/pvp_items_test.gd`.
+- **Items** (the items rework, `docs/queue_items_rework.md`; Blaine: level and skills carry a character, gear helps,
+  in PvE and PvP alike): every affix rolls `Data.AFFIXES` times `Data.AFFIX_SCALE` (`Items.roll_affix`; Gold and
+  Magic Find unscaled), rares roll `Data.RARE_AFFIXES` (2-3), base defence counts for `Data.GEAR_ARMOR`
+  (`Items.defense_of`), percentages are capped across all gear (`Data.GEAR_CAP`: +5% run speed, 25% attack speed and
+  resist, 4% life steal), and a weapon hits for the level's damage times its quality 0.9-1.05, then its Enhanced
+  Damage and +Damage (`Data.weapon_damage`, `Hero.recalc`; tooltips show "Weapon damage at level N"). Acts II-III
+  make items `Data.RUNS` `"power"` stronger (x1.6, x2.4; `Items.empower`, `Game.power_mult`), with modest monster
+  multipliers to match. Items carry `"gen"` (`Data.ITEM_GEN`); an older one is rebuilt once on load
+  (`Items.upgrade` from `Hero.from_save`: affixes rescaled, rares trimmed to their best three, uniques remade from
+  `Data.UNIQUES` keeping enchant and temper, A2/A3 strengths moved by `Data.OLD_POWER`). Enchanting and tempering are
+  scaled to match (`Items.ENCHANT_DEF`, `TEMPER_ED`). Level-20 gear is worth about x1.6 over none (damage x life).
+  **Utility affixes** (`Data.UTILITY`, at most one per item): run speed, `stam` (dodge stamina, `Hero.roll_cost`),
+  `cdr` (`skill_cd`), `pot` (`drink`), `ten` (stuns and slows, `Hero.cc_k`). **Unique effects** (`Data.ITEM_EFFECTS`,
+  one per unique, everywhere, the strongest of each counts): roll, ward, burn, chill, kill_heal, dash
+  (`Hero._item_effects`, `dash_t`). **Rewards**: random uniques are rare (`Items.random_drop`); each boss has its own
+  (`Data.BOSS_LOOT`, `Game._boss_loot`: the first kill drops one, then `BOSS_LOOT_CHANCE` + `BOSS_LOOT_LUCK` a dry
+  kill, `Hero.boss_luck` saved); the bonfire's Reforge (`UI.reforge_request`, `Items.reforge`) rerolls a magic or rare
+  item's weakest affix for one Sloth material. **Invisibility**: the Veilmother's Locket (`"phial"`) gives a Shadow
+  Phial each raid (`Game.give_raid_phials`); drunk, `Hero.invis_t` (6 s): monsters lose him (`hidden_t`), partners
+  see a shimmer within 4 m (bit 2 of the state's 15th number, `Hero._show_invis`), any blow or cast ends it
+  (`break_invis`). PvP burns and chills reach other players (`Net.sv_pvp_dot`, the "chill" effect; `Hero.burn_t`).
+  `tools/items_rework_test.gd`; re-run `tools/balance.sh` after changing any of it.
+- **The Battlegrounds sandbox** (`scripts/sandbox.gd` `Sandbox`, zone `"sandbox"` "The Proving Crypt";
+  `scripts/bot_brain.gd` `BotBrain`): the admins' testing arena, opened from the Escape menu's Admin column
+  (`Game.open_sandbox` / `close_sandbox`; the character is saved and set aside, `char_id` cleared so nothing inside is
+  saved, and loaded back on leaving). Local and offline: the admin becomes any class at level 1/5/10/20, fresh or
+  geared (`Sandbox.outfit`), spawns bots (`Hero.bot`: a full hero played by a `BotBrain` through the same calls as
+  the mouse: `use_skill`, `cmd_target`, `free_attack`, `Dodge.start`, `drink`; `bot_hold` is its held button) and
+  monster packs. PvP is the raid's: each hero has an invisible stand-in (`Enemy.sandbox_hero`) that takes every
+  skill and blow and deals it to the hero at `Battlegrounds.PVP_MULT` through `take_hit`, forwards stuns and slows,
+  and never takes its own hero's blows (`Hero.striker`, set at the top of each hero's `_process` and by a summon
+  before it strikes). Monsters go for the nearest hero (`Game.target_for`, `all_heroes`). A bot's screen effects,
+  messages and the testing switches are the player's only (`Hero._mine`). The panel's meters (`note_hit`) give
+  damage a second over 5 s, totals and kill times. `tools/sandbox_test.gd` (`--fixed-fps 60`), `tools/sandbox_shot.gd`.
 - **Skill bar and bindings** (every class, including new ones): the bar has a big slot for each mouse button and six
   hotkeys (Q E R F G V); any skill can go on any of them (`Hero.binds`, saved per character; `Hero.default_binds`:
   left mouse `attack`, right mouse the class's first skill, the class's first four skills on Q-F). `attack` and `block` are
@@ -1153,6 +1324,45 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 - **Skill picker** (`UI._choose_skill`, click a bar slot): the bar's own iron frame and sockets, one card per skill
   (`_picker_card`: equipped glow, the key it's on now, mana, locked level). Esc / click outside closes
   (`close_skill_picker`). Screenshot: `tools/picker_shot.gd`.
+- **Skill design: the Path of Exile way** (jj, 2026-11-01; the base for every new skill, so they all play alike):
+  a main skill has **no cooldown**; what limits it is its **use time** (its `DUR`/`atk_dur`, times `Data.ATTACK_PACE`,
+  shortened by attack speed) and its mana. A heavy skill gets a long, readable **wind-up** (the impact late in the
+  swing, `Anim.impact_at`, with its tell drawn through the cast's fx event) and hits harder to pay for the wait (about
+  the damage per second of a quick skill); the dodge roll cancels a swing that hasn't landed (`Dodge.start`). Cooldowns
+  are for utility (movement, warcries, summons, ultimates). Attacks follow the same rules in every scenario: the
+  story game, co-op and the Battlegrounds (no crypt-only attack timing, damage or cooldowns). The model: Molten
+  Fists (2 s, the blow at 1.5 s, 300% weapon damage). **Every skill follows it** (2026-11-01): Holy Nova, Phantom
+  Assault, Cataclysm Slam, Brimstone Hurl, Blight Bolt, Frost Volley and Volatile Mixture lost their cooldowns for a
+  `"use"` time and a `"power"` (a multiplier on all the skill deals, `Hero.dmg_mult`) set from measurements so their
+  damage per second matches their class's quick skill (heavy ones 1.2x, area ones 0.9x): `tools/skill_dps.gd -- out.json
+  [level] [class ...]` casts every skill at a durable dummy and reports damage per cast and per second of its cycle. A
+  cooldown is allowed only with a utility tag (`"tags"`: movement, warcry, buff, cc, trap, summon, command, ultimate,
+  sustain; `skill_spec_test` refuses one without): the charges and steps, the cries and buffs, the holds and tethers
+  (Soul Siphon, Haunting Grasp, Hellgrip, Soul Shackles, Storm Snare: no lock-spam in PvP), traps, Spirit Beast, the
+  ultimates. **The format** (`scripts/skill_spec.gd`, `SkillSpec`; every
+  field is optional and listed at its top): a skill's entry in `Data.SKILLS` carries `"style"` (its animation),
+  `"use"` (seconds, final: no `ATTACK_PACE` on top), `"hit"` (0..1 of use: the impact frame, `Anim.impact_at` reads it),
+  `"speed"` ("attack"/"cast"), `"lock"`, `"cancel"` (false: no dodging out), `"power"` (all its damage x), `"dmg"` (% weapon) or `"base"` +
+  `"per_lvl"` (a spell's own), `"type"`, `"knock"`, `"area"` (wedge / circle / line / single), `"dot"` (burn / chill /
+  slow, one per source, refreshed) and `"tags"`. The timing applies by itself (`Hero.use_skill` ->
+  `SkillSpec.apply_timing`, `Dodge.can_roll`); the damage when the skill's impact code calls `SkillSpec.targets(h, id)`
+  and `SkillSpec.strike(h, id, e, extra)` (`DemonSkills.impact` "fists" is the example). If a skill's `"hit"` moves,
+  move its clip's blow to match (`Demon.SHOTS`-style keys). `tools/skill_spec_test.gd` (in the gate) validates every
+  entry's fields and plays Molten Fists by its data; `tools/demon_test.gd` checks the wind-up and the dodge cancel.
+  **Performance**: run `bash tools/skill_perf.sh <class> <skill>` on every new or redone skill (PASS: no new
+  stutters, at most 20% slower than the weapon alone in the 24-monster fight; docs/nightly/KPIS.md "Skills"). An
+  effect light with shadows goes through `Fx.effect_shadow` (cheap maps, at most 2 at once), never `shadow_enabled = true`.
+- **Shared skills** (jj, 2026-11-01: class-free skills, every class can use them): `Data.SKILLS` entries with
+  `"cls": "any"` (`Data.shared_skills()`; `skills_known` = the class's own + shared + Attack/Block), played by
+  `SharedSkills` (`scripts/shared_skills.gd`, the ClassSkills interface; `ClassSkills.of("any")`) and drawn by `SharedFx`
+  (`SkillFx.play` hands them there whatever the class). The four: Earthshatter (heavy slam, wedge), Frost Nova
+  (ring of ice, chills), Arc (chain lightning), War Cry (the team skill: the battle buff for him and every co-op
+  partner within 8 m, `Net.send_team_buff`, and a taunt; 8 s cooldown; Flame Wave was cut, jj 2026-11-01). They play on shared styles every body has (`slam`, `cast`, `thrust`), so they set `"use"` but
+  never `"hit"` (a shared style's impact is every user's, monsters' too; `skill_spec_test` refuses it). A new shared
+  skill: its entry, its id in `SharedSkills.IDS` and its `impact` case (usually `SkillSpec.targets` + `strike`), its
+  `SharedFx.play` case and a `SkillGlyph` icon; `skill_spec_test` casts each on the knight and the Wraith.
+  **Every skill is open from level 1** (`Data.SKILLS_UNLOCKED`, `Data.skill_locked`), and every hotkey holds a skill
+  (`Hero.default_binds` and `_check_binds` fill the bar from the class's own, then the shared ones).
 - **Attack pace** (every class, new ones too): `Data.ATTACK_PACE` (1.2 = attacks, skill swings and casts take 20%
   longer) multiplies `Hero.atk_dur` in `_start_attack` and the casts' own times in `use_skill`; a special class can set
   `"attack_pace"` in `Data.CLASSES` (`Data.attack_pace(cls)`). Attacks whose rate the swing sets (the basic attack, skills
@@ -1175,13 +1385,34 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   scenarios (camp, moor, fight, boss, arena, crypt, server; `Kpi.SCENARIOS`) run in any build with
   `-- --kpi <scenario> out.json [--quality N] [--secs N]` (the server: `-- --server --kpi server out.json`), measuring
   fps, 1% low, p99 frame time, hitches, load time, main thread, GPU, draw calls, triangles, memory; then quit.
+  Low and Medium cap the 3D view's pixels on big or Retina screens (`Game.apply_render_scale`, FSR 1); `--render-scale N`
+  fixes the 3D scale (2.0 = a Retina screen's cost on a 1080p one).
   `tools/nightly/bench.sh` runs the suite (plus the download size), `tools/nightly/kpi_push.py` stores it in the KPI
   database on the staging server, Grafana draws it (https://<staging>/grafana/), `sh tools/kpi_query.sh latest` reads it.
+- **Instancing and shadows** (nightly 2026-11-02): `Props.multimesh` splits instances spread wider than 24 m into
+  16 m cells (a MultiMesh is culled as one box: one forest-wide MultiMesh was drawn whole into every shadow pass);
+  it returns the first cell and the others copy its settings (deferred). A mesh with a `shadow_mesh` meta casts its
+  shadow from a shadows-only twin MultiMesh (`Flora.shadow_twin`: the Meshy oaks, their leaf cards cut from the baked
+  `assets/textures/fx/foliage_mask_<kind>.png`, `tools/bake_foliage_mask.gd`; rebake if `FOLIAGE_SHADER`'s
+  needles/leaves/fern change). SSIL is Ultra only, SSAO outdoors Ultra only (indoors from Medium; `Game.apply_quality`
+  reads `indoor()`): they cost ~7 ms each and showed nothing there.
 - **Nightly lab** (`tools/nightly/`, `docs/nightly/README.md`): two launchd jobs on the Game Factory Mac, `perf` (01:00)
   and `mode` (04:30), each on a fresh `staging` with its own log (`docs/nightly/perf/LOG.md`, `docs/nightly/modes/LOG.md`:
   lessons, then one row per attempt), the KPI benchmark before and after (slower = not shipped), the gate, a push to
   `staging` and a Discord report. `bash tools/nightly/install.sh` installs or updates them.
-- Developer tools (`Game.dev_tools`): unlock-all-acts (`UNLOCK_ALL_ACTS`) and the F8 testing panel (`test_immortal`, `test_onehit`, `test_stamina`, `test_allskills`, `test_fast` (super speed, `TEST_FAST` times as fast) in `game.gd`, and a level setter, `Hero.set_level`). On only when running from the Godot editor or when this PC holds a valid **admin key** (`AdminKey`, `scripts/admin_key.gd`): `user://admin.key`, signed with the owner's private key; the game checks it against the public key built into the code, so nobody can forge one. Off for everyone else, in every build (live and preview). Make a key: `tools/admin_key.gd` (needs the private key, which is never in the repo). `UNLOCK_ALL_ACTS = false` turns the tools off everywhere.
+- **The admin role** (Nakama, `deploy/nakama/modules/ashen.lua`: `admin_status`, `admin_check`, `admin_set`; the
+  "admins" collection only the server writes): `CloudSaves.ensure` asks after signing in and an admin account gets
+  the dev tools in any build (`Game.account_admin`; the Admin column shows the account id). Grant it:
+  `sh tools/admin_role.sh <account id> on "name"` (runs on the staging server with Nakama's runtime key, which never
+  leaves it). The Battlegrounds server turns away a non-admin wearing "Go to level 20" gear (items marked `"boost"`,
+  `Battlegrounds.gear_ok`, every `GEAR_CHECK` s; without Nakama the per-PC ids in `user://bg_server/admins.json`).
+  `tools/bg_admin_test.gd` (server + client). Saves stay the player's own (client-written), so this stops honest
+  clients and casual edits, not a modified game.
+- **Class against class in PvP**: `Data.PVP_CLASS` (what each class deals to and takes from another player; only PvP
+  blows, `Data.pvp_scale` in `Battlegrounds.pvp_hit` and the sandbox's stand-ins), tuned with `tools/duel_sim.gd`
+  (`-- levels=20 rounds=6 mirror`: real bot duels in the sandbox, every pairing, win rates and kill times; flags a
+  pairing past 70/30 and geared not beating fresh).
+- Developer tools (`Game.dev_tools`): unlock-all-acts (`UNLOCK_ALL_ACTS`) and the **Admin column of the Escape menu** (`UI._build_admin`, `ui.test_panel`; F8 just opens the menu): Go to level 20 (`Game.go_level_20`: talents, level-20 gear, +10,000 gold each press), Max out, the switches `test_immortal`, `test_onehit`, `test_stamina`, `test_allskills`, `test_fast` (super speed, `TEST_FAST` times as fast) in `game.gd`, and a level setter (`Hero.set_level`). On when running from the Godot editor or a local debug run, for an account with the **admin role** (above; granted 2026-11-02 to jj's and Blaine's accounts, found by their characters in Nakama), or when this PC holds a valid **admin key** (`AdminKey`, `scripts/admin_key.gd`): `user://admin.key`, signed with the owner's private key; the game checks it against the public key built into the code, so nobody can forge one. Off for everyone else in production builds. Make a key: `tools/admin_key.gd` (needs the private key, which is never in the repo and isn't on the Game Factory Mac). `UNLOCK_ALL_ACTS = false` turns the tools off everywhere.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file). Since 2026-10-31 it is Blaine's
   new trailer at full quality (Blaine: no visible compression): 60 s, 1920x1088 (a multiple of 16, so Theora adds no padding rows), Theora 12 Mbit/s + Vorbis q6,

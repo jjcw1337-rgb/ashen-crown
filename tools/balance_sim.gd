@@ -166,7 +166,7 @@ func _equip(cls: String, lvl: int, ilvl: int, gear_run: int) -> void:
 	# Act I gear times the loot multiplier
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 77 + ilvl
-	var mult: float = g.run_mult("loot", gear_run)
+	var mult: float = g.run_mult("power", gear_run)
 	for slot in Items.EQUIP_SLOTS:
 		if slot == "shield" and cls != "knight":
 			continue
@@ -347,7 +347,7 @@ func _bot(fs: Array) -> void:
 	skills.reverse()   # F, R, E, Q: buffs and big spells first
 	for s in skills:
 		var id: String = s["id"]
-		if h.level < int(s["lvl"]) or h.cds[id] > 0.0 or h.mana < float(s["mana"]):
+		if Data.skill_locked(s, h.level) or h.cds[id] > 0.0 or h.mana < float(s["mana"]):
 			continue
 		var want := false
 		match String(s.get("aim", "facing")):

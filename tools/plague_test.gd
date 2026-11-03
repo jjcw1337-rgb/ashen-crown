@@ -180,7 +180,7 @@ func _run() -> void:
 	await g.load_zone(0, "wild", "start")
 	await _clear_foes()
 	var h = g.hero
-	h.level = 12
+	h.level = 20          # (The Last Epidemic, his ultimate, opens at 20)
 	h.recalc()
 	h.mana = h.max_mana
 	check(h.cls == "plague" and h.pd != null, "a new character can be a Plague Doctor")
@@ -362,7 +362,8 @@ func _run() -> void:
 	check(bm != null and bm.get_child_count() == 2, "with his Blight marks (%d)" % (bm.get_child_count() if bm != null else -1))
 	var pk: PackedFloat32Array = g.net._hero_packet(h)
 	var want_bits: int = PvpStatusFx.SNARE | PvpStatusFx.HARRIED | PvpStatusFx.SLOW | PvpStatusFx.REVEAL
-	check(pk.size() >= 22 and int(pk[20]) == want_bits and int(pk[21]) == 2, "his state packet carries them for his puppet (%s)" % [pk.slice(20)])
+	var fl := int(pk[14]) if pk.size() > 14 else 0
+	check((fl >> 2) & 15 == want_bits and (fl >> 6) & 3 == 2, "his state packet carries them for his puppet (flags %d)" % fl)
 	PvpStatus.apply(h, "blight", 4.0, 3.0)
 	await frames(2)
 	check(h.get_node_or_null("pd_fever") != null and h.get_node_or_null("pd_blight") == null, "at three the marks burst into Fever")

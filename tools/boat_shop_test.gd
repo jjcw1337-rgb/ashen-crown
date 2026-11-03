@@ -41,11 +41,12 @@ func _run() -> void:
 	bs.buy_btn.pressed.emit()
 	await frames(2)
 	print("[B] with 150 gold: owned %s, gold %d (refused, unchanged)" % [g.hero.owns_boat("gull"), g.hero.gold])
-	g.hero.gold = 1000
+	var enough: int = int(Data.BOATS["gull"]["price"]) + 600
+	g.hero.gold = enough
 	bs.refresh()
 	bs.buy_btn.pressed.emit()
 	await frames(2)
-	print("[B] with 1000 gold: owned %s, gold %d (paid %d), button '%s' disabled %s" % [g.hero.owns_boat("gull"), g.hero.gold, 1000 - g.hero.gold, bs.buy_btn.text, bs.buy_btn.disabled])
+	print("[B] with %d gold: owned %s, gold %d (paid %d), button '%s' disabled %s" % [enough, g.hero.owns_boat("gull"), g.hero.gold, enough - g.hero.gold, bs.buy_btn.text, bs.buy_btn.disabled])
 	bs.buy_btn.pressed.emit()
 	print("[B] buying again: gold still %d" % g.hero.gold)
 	g.save_game()

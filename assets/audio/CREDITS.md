@@ -16,6 +16,7 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | bonfire_open | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a campfire roaring up, a deep soft whoosh of flames swelling then settling into warm crackling, close mic, dry, isolated sound effect, no music |
 | boom | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a gunpowder bomb exploding, sharp blast with scattering gold coins, close mic, dry, isolated sound effect, no music |
 | boss_die | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a giant goblin king's final dying roar as he crashes onto a pile of gold coins, close mic, dry, isolated sound effect, no music |
+| boss_sting | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a punchy cinematic boss reveal stinger for an action game, a huge bass impact, a fast whoosh and a ringing metallic hit, close mic, dry, isolated sound effect, no music |
 | bow | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a bowstring released, an arrow shot whizzing away, close mic, dry, isolated sound effect, no music |
 | burn_item | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | an object thrown into a roaring campfire, a soft thump then a burst of flames flaring up and crackling sparks, close mic, dry, isolated sound effect, no music |
 | cackle | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a huge, fat goblin king's deep, guttural, menacing laugh, a slow low chuckle rumbling up from his belly, gravelly and cruel, not high-pitched, close mic, dry, isolated sound effect, no music |
@@ -34,11 +35,20 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | death_wraith | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a wraith dissipating, a fading ghostly wail that trails off into a whisper, close mic, dry, isolated sound effect, no music |
 | deny | 3 | Kenney interface-sounds (kenney.nl) | CC0 1.0 | error_004.ogg |
 | die | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a goblin shrieking as it is killed, a short high-pitched squeal cut off, close mic, dry, isolated sound effect, no music |
+| doug_boing | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a heavy man landing on a trampoline and springing up, a deep twangy springy boing of canvas and springs, close mic, dry, isolated sound effect, no music |
+| doug_flop | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a heavy round man belly-flopping onto hard ground from a height, a fleshy smack and a deep thud with dust, close mic, dry, isolated sound effect, no music |
+| doug_honk | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a clown's rubber bulb bicycle horn squeezed twice, honk honk, brassy and loud, close mic, dry, isolated sound effect, no music |
+| doug_klaxon | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a tiny old clown car's klaxon horn, ah-oo-gah, tinny and silly, with a small engine putter, close mic, dry, isolated sound effect, no music |
+| doug_pop | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | one sharp loud bang of a party balloon bursting, a short crisp pop, close mic, dry, isolated sound effect, no music |
+| doug_slip | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | someone stepping on a banana peel, a quick squeaky skid of a boot and a heavy thud as they fall on their back, close mic, dry, isolated sound effect, no music |
+| doug_splat | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a cream pie smashed into someone's face, a wet soft squelching splat of whipped cream and crust, close mic, dry, isolated sound effect, no music |
+| doug_whistle | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a slide whistle swooping quickly upward, a comedic rising whistle, close mic, dry, isolated sound effect, no music |
 | drain_loop | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a sustained dark magic beam draining life, humming and crackling energy, steady, close mic, dry, isolated sound effect, no music |
 | drain_start | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a dark life-draining beam igniting, crackle of sickly green energy, close mic, dry, isolated sound effect, no music |
 | drain_tick | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a small pulse of life sucked out of a body, soft wet suction, close mic, dry, isolated sound effect, no music |
 | drip | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | water dripping slowly in a stone dungeon, soft drips and quiet cave air, steady, no music |
 | drop | 4 | Kenney rpg-audio (kenney.nl) | CC0 1.0 | dropLeather.ogg |
+| dwarf_burp | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a loud long drunken belch from a burly dwarf, comedic, close mic, dry, isolated sound effect, no music |
 | equip | 4 | Kenney rpg-audio (kenney.nl) | CC0 1.0 | beltHandle1.ogg |
 | fire_erupt | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a ring of fire erupting from the ground, roaring whoosh of flames bursting up, close mic, dry, isolated sound effect, no music |
 | fireball | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a fireball launched, roaring burst of flame whooshing away, close mic, dry, isolated sound effect, no music |
@@ -73,6 +83,8 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | portal | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a magic town portal opening, soft swirling whoosh with a warm shimmer, close mic, dry, isolated sound effect, no music |
 | portcullis | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a heavy iron portcullis gate being hauled up by chains, rattling chains and grinding iron, ending in a clank, close mic, dry, isolated sound effect, no music |
 | potion | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | drinking a potion from a glass vial, cork pop and two quick gulps, close mic, dry, isolated sound effect, no music |
+| raptor_bite | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a raptor's toothed jaws snapping shut on prey, a fast hard bite with a crunch, close mic, dry, isolated sound effect, no music |
+| raptor_call | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a velociraptor's shrill hunting screech followed by fast clicking barks, a predator calling its pack, close mic, dry, isolated sound effect, no music |
 | reap_swing | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a ghostly scythe swung in a wide arc, cold airy spectral whoosh, close mic, dry, isolated sound effect, no music |
 | relic_ting | 3 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | picking up a rare magical gem in a dark fantasy game, one bright clear crystal ting with a shimmering glassy ring that fades, close mic, dry, isolated sound effect, no music |
 | roar | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a huge mutated goblin king's furious roar, close mic, dry, isolated sound effect, no music |
@@ -92,9 +104,9 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | swing_heavy | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a single heavy two-handed axe swung hard through the air, deep weighty whoosh, close mic, dry, isolated sound effect, no music |
 | swing_light | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a single fast sword swing through the air, sharp whoosh, close mic, dry, isolated sound effect, no music |
 | thunder_strike | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a bolt of lightning striking the ground close by, sharp electric crack and a short rumble, close mic, dry, isolated sound effect, no music |
+| trex_roar | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a gigantic tyrannosaurus rex roar, a deep rumbling bellow rising to a terrifying scream, heavy breath and rattling throat, close mic, dry, isolated sound effect, no music |
+| trex_stomp | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a giant dinosaur footstep, one massive deep thud that shakes the ground, earth and pebbles rattling, close mic, dry, isolated sound effect, no music |
+| trike_bellow | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a triceratops' deep honking bellow, a huge horned herbivore giving an angry warning call, close mic, dry, isolated sound effect, no music |
+| troll_cast | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a jungle troll shaman's guttural hissing chant ending in a wet spit of poison, close mic, dry, isolated sound effect, no music |
 | wail | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a terrifying ghost woman screaming, a long piercing shriek, close mic, dry, isolated sound effect, no music |
 | wind | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | cold wind blowing across an empty moor at night, steady, no music |
-
-## Dragon sounds (tools/audio/dragon_sfx.py)
-
-Derived from recordings already listed above (lion_roar, roar, fire_erupt, slam, charge_impact, hellclaw, swing_heavy, swing_light, growl, impact_bone, cleave_swing, death_demon, death_wraith, boss_die, wail, wind, ice_shatter, thunder_strike, birds_flutter, reap_swing) by pitching, filtering and layering; same licences as their sources. Files: `death_serpent_0.wav`, `death_wyrm_0.wav`, `death_wyvern_0.wav`, `serpent_bite_0.wav`, `serpent_claw_0.wav`, `serpent_roar_0.wav`, `serpent_step_0.wav`, `serpent_tail_0.wav`, `wyrm_bite_0.wav`, `wyrm_claw_0.wav`, `wyrm_roar_0.wav`, `wyrm_step_0.wav`, `wyrm_tail_0.wav`, `wyvern_bite_0.wav`, `wyvern_claw_0.wav`, `wyvern_flap_0.wav`, `wyvern_roar_0.wav`, `wyvern_step_0.wav`, `wyvern_tail_0.wav`.

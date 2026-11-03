@@ -453,7 +453,7 @@ func _shatter(at: Vector3, r: float, ri: int, dir: Vector3) -> void:
 	Sfx.play_at("drip", at, -4.0, 0.8)
 	if not ghost():
 		h.game.add_shake(0.06)
-		var dmg := _base(12.0, 3.0, 0.24, "toxic")
+		var dmg := _base(12.0, 1.65, 0.24, "toxic")
 		for e in _foes(at, r * 0.6):
 			_damage(e, dmg, at, true)
 	var pool := PlagueVialFx.Pool.new()
@@ -503,11 +503,12 @@ func _update_clouds(delta: float) -> void:
 			if src == "toxic":
 				_add_blight(e, "toxic")
 
-## What a second of each source's poison does.
+## What a second of each source's poison does. The per-level parts of all his damage are 0.55 of what they were before
+## the PvP pass of 2026-11-02 (they had grown to twice anyone's; the pass cut the old kit's, and the new kit's follow).
 func _poison_dps(src: String) -> float:
 	match src:
-		"toxic": return _base(9.0, 2.3, 0.16, "toxic")
-		"cane": return _base(3.0, 1.0, 0.1, "attack")
+		"toxic": return _base(9.0, 1.26, 0.16, "toxic")
+		"cane": return _base(3.0, 0.55, 0.1, "attack")
 	return 0.0
 
 ## Poisons a foe from one source: refreshed, never stacked.
@@ -699,7 +700,7 @@ func _update_swarm(delta: float) -> void:
 	if float(swarm["tick"]) > 0.0 or float(swarm["scatter"]) > 0.0:
 		return
 	swarm["tick"] = TICK
-	var dmg := _base(5.0, 1.4, 0.1, "swarm") * TICK * 2.0
+	var dmg := _base(5.0, 0.77, 0.1, "swarm") * TICK * 2.0
 	for e in _foes(pos, r):
 		_damage(e, dmg, pos, false)
 		PvpStatus.send(h.game, e, "harried", 0.8, HARRIED)
@@ -789,7 +790,7 @@ func _update_blooms(delta: float) -> void:
 		if ghost():
 			continue
 		var was_at: Dictionary = b["marks"]
-		var dmg := _base(14.0, 3.6, 0.26, "bloom")
+		var dmg := _base(14.0, 1.98, 0.26, "bloom")
 		for e in _foes(pos, float(b["r"])):
 			_damage(e, dmg, pos, false)
 			_add_blight(e, "bloom")
@@ -1008,7 +1009,7 @@ func _exp_burst(r: float, coid := 0) -> void:
 	Sfx.play_at("phase_erupt", lab["pos"], -2.0, 0.6)
 	Sfx.duck(-8.0, 1.4)
 	if not ghost():
-		var dmg := _base(20.0, 5.5, 0.4, "experiment")
+		var dmg := _base(20.0, 3.0, 0.4, "experiment")
 		for e in _foes(lab["pos"], r):
 			_damage(e, dmg, lab["pos"], true)
 			_add_blight(e, "experiment")
@@ -1051,7 +1052,7 @@ func _update_exp(delta: float) -> void:
 		for e in _foes(pos, r):
 			PvpStatus.send(h.game, e, "slow", 0.7, EXP_SLOW)
 			if fmod(float(lab["t"]), EXP_EVERY) < TICK:
-				_damage(e, _base(8.0, 2.2, 0.16, "experiment"), pos, false)
+				_damage(e, _base(8.0, 1.21, 0.16, "experiment"), pos, false)
 				_add_blight(e, "experiment")
 	# the creature spews at the nearest foe: a telegraphed cone, then the hit
 	lab["spew"] = float(lab["spew"]) - delta
@@ -1076,7 +1077,7 @@ func _update_exp(delta: float) -> void:
 			for e in _foes(from2, SPEW_LEN):
 				var to_e: Vector3 = (e.global_position - from2) * Vector3(1, 0, 1)
 				if to_e.length() < 0.3 or absf(dir.signed_angle_to(to_e.normalized(), Vector3.UP)) < SPEW_HALF:
-					_damage(e, _base(16.0, 4.0, 0.3, "experiment"), from2, true)
+					_damage(e, _base(16.0, 2.2, 0.3, "experiment"), from2, true)
 					_poison(e, "toxic", 2.0)
 
 func _exp_end() -> void:

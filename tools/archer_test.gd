@@ -75,7 +75,8 @@ func _run() -> void:
 		if line[k].life < lives[k]:
 			pierced += 1
 	check(pierced == 3, "Fire Arrow went through all three in a line (%d hit)" % pierced)
-	check(line.all(func(e) -> bool: return e.burn_t > 0.0), "and set them all alight (burning %s)" % [line.map(func(e): return snappedf(e.burn_t, 0.1))])
+	# (one the arrow killed outright has nothing left to burn)
+	check(line.all(func(e) -> bool: return e.burn_t > 0.0 or e.dead), "and set them all alight (burning %s, dead %s)" % [line.map(func(e): return snappedf(e.burn_t, 0.1)), line.map(func(e): return e.dead)])
 	for e in line:
 		e.take_damage(99999.0, 0.0, p0, 0.0, false)
 	# Volley: everything in the ring takes several hits

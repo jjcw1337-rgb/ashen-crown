@@ -59,7 +59,8 @@ static func active(h: Hero) -> bool:
 ## The spirit-light in his blows: a part by level on top of the weapon (the same curve as the other classes' spells),
 ## so the skills keep their weight while the weapon is still small. k is the skill's share of it.
 static func spirit(h: Hero, k: float) -> float:
-	return (16.0 + h.level * 4.5 + (h.dmg_min + h.dmg_max) * 0.35) * k
+	# (the items rework: a little less from the level and more from the weapon, so gear shows; 4.5 / 0.35 before)
+	return (16.0 + h.level * 3.6 + (h.dmg_min + h.dmg_max) * 0.6) * k
 
 ## Can he be told to walk right now? The blink, the slam and the night root him.
 static func rooted(h: Hero) -> bool:
@@ -229,8 +230,8 @@ static func _rend_hit(h: Hero, first: bool) -> void:
 	if not souls.is_empty():
 		h.fx("rend", "souls", {"ps": souls})
 		for i in souls.size():
-			h.get_tree().create_timer(WraithFx.wisp_time(i), false).timeout.connect(func():
-				if is_instance_valid(h) and not h.dead:
+			Fx.later(h, WraithFx.wisp_time(i), func():
+				if not h.dead:
 					Sfx.play("soul_return", -9.0)
 					h.life = minf(h.max_life, h.life + h.max_life * (0.02 + h.talent("rend_heal") / 100.0))
 					h.stats_changed.emit())
@@ -345,9 +346,8 @@ static func _blink(h: Hero) -> void:
 	h.moving = false
 	h.veil_t = maxf(h.veil_t, VEIL_STEP + h.talent("veil"))
 	# the shade left behind caves in a moment later (the "blink" event collapses it at the same time)
-	var tree := h.get_tree()
-	tree.create_timer(WraithFx.SHADE_DELAY, false).timeout.connect(func():
-		if not is_instance_valid(h) or h.game.world == null:
+	Fx.later(h, WraithFx.SHADE_DELAY, func():
+		if h.game.world == null:
 			return
 		for e in h.game.enemies_near(from, 2.6):
 			h._hit_enemy(e, 0.8, 0.8, "step", spirit(h, 0.4)))
@@ -386,8 +386,8 @@ static func _update_tether(h: Hero, delta: float) -> void:
 		if v != null and is_instance_valid(v) and v.dead and not h.dead:
 			# the soul leaves the body and comes to him
 			h.fx("siphon", "soul", {"p": v.global_position + Vector3(0, 0.9 * v.height, 0)})
-			h.get_tree().create_timer(WraithFx.wisp_time(0), false).timeout.connect(func():
-				if is_instance_valid(h) and not h.dead:
+			Fx.later(h, WraithFx.wisp_time(0), func():
+				if not h.dead:
 					Sfx.play("soul_return", -6.0)
 					h.life = minf(h.max_life, h.life + h.max_life * 0.06)
 					h.stats_changed.emit())

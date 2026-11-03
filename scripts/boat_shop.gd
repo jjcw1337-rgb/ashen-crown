@@ -144,7 +144,7 @@ func refresh() -> void:
 	var can: bool = hero != null and hero.gold >= price
 	purse.text = "Your gold:  %d" % (hero.gold if hero else 0)
 	name_lbl.text = str(spec["name"])
-	price_lbl.text = "Yours" if owned else "%d gold" % price
+	price_lbl.text = "Yours" if owned else "%s gold" % gold_str(price)
 	price_lbl.add_theme_color_override("font_color", Color(0.6, 0.9, 0.6) if owned else (Color(1.0, 0.85, 0.4) if can else Color(1.0, 0.4, 0.3)))
 	desc.text = str(spec["desc"])
 	stats.text = "Speed %d  ·  Crew %d  ·  Reaches all five isles of the Mournwater" % [int(spec["speed"]), int(spec["crew"])]
@@ -154,8 +154,8 @@ func refresh() -> void:
 		buy_btn.text = "She's yours"
 		buy_btn.disabled = true
 	else:
-		greet.text = "“Looking to cross the Mournwater? Nothing out there but the five isles and whatever lives on them, and the only way there is by boat. I've one finished, the best I've built.”" if can else "“She's not cheap, I'll grant you. Come back with %d gold and she's yours. The isles will keep.”" % price
-		buy_btn.text = "Buy for %d gold" % price
+		greet.text = "“Looking to cross the Mournwater? Nothing out there but the five isles and whatever lives on them, and the only way there is by boat. I've one finished, the best I've built.”" if can else "“She's not cheap, I'll grant you. Come back with %s gold and she's yours. The isles will keep.”" % gold_str(price)
+		buy_btn.text = "Buy for %s gold" % gold_str(price)
 		buy_btn.disabled = false
 
 func _buy() -> void:
@@ -214,7 +214,8 @@ func _stage() -> void:
 	var cam := Camera3D.new()
 	cam.fov = 32
 	vp.add_child(cam)
-	cam.look_at_from_position(Vector3(13.0, 5.2, 0.0), Vector3(0, 2.4, 0))
+	var kk := float(Boat.dims(boat_id)["length"]) / Boat.LENGTH   # a bigger boat: the camera stands back
+	cam.look_at_from_position(Vector3(13.0, 5.2, 0.0) * kk, Vector3(0, 2.4, 0) * kk)
 	var spin := func(dt: float) -> void:
 		if is_instance_valid(turn) and panel.visible:
 			turn.rotation.y += dt * 0.35
@@ -228,3 +229,13 @@ func tick(dt: float) -> void:
 		return
 	if turn and turn.has_meta("spin"):
 		(turn.get_meta("spin") as Callable).call(dt)
+
+## 1000000 -> "1,000,000"
+static func gold_str(n: int) -> String:
+	var t := str(absi(n))
+	var out := ""
+	while t.length() > 3:
+		out = "," + t.substr(t.length() - 3) + out
+		t = t.substr(0, t.length() - 3)
+	return ("-" if n < 0 else "") + t + out
+

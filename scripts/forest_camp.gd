@@ -11,6 +11,7 @@ extends RefCounted
 const CENTER := Vector2(0, -2)
 const RADIUS := 25.0
 const GATE_HALF := 0.23         # half the gap in the ring for the gatehouse (radians)
+const VIGIL_GATE := Vector2(9.5, 13.5)     # the Vigil Gate (vigil.gd), inside the ring by the south-east palisade
 const WEST := PI * 1.5          # the west gate (ring angle): the path to the coast (coast.gd)
 const DIR := "res://assets/models/camp/"
 const STALL_SCALE := 1.45     # the stalls, tents and gatehouse read small from the game's camera at true size
@@ -237,6 +238,21 @@ static func build(w: World) -> void:
 	_glow(w, SHOPS[0]["at"], Vector3(-1.3, 0.9, 0.4), Color(0.4, 1.0, 0.35), 1.6, 6.0)
 	_lantern(w, _local(w, SHOPS[2]["at"], Vector3(2.4, 4.0, 1.9)), true)
 	_lantern(w, _local(w, SHOPS[3]["at"], Vector3(-2.0, 3.6, 2.0)), true)
+	# the Vigil Gate: a portal down to the Last Flame, the co-op horde defence (vigil.gd), between two old stones
+	# (no fire or light of its own: the camp's frame time is a benchmark, docs/nightly/KPIS.md)
+	var vgp := Vector3(VIGIL_GATE.x, 0, VIGIL_GATE.y)
+	var vgm := Fx.portal_model(Color(1.0, 0.45, 0.15))
+	vgm.scale = Vector3.ONE * 1.15
+	var vgi := w._inter("vigil_gate", "The Last Flame (co-op waves)", vgp, 1.8, vgm)
+	vgi.rotation.y = face(VIGIL_GATE, CENTER)
+	for sd in [-1.0, 1.0]:
+		var side: Vector2 = Vector2(cos(vgi.rotation.y), -sin(vgi.rotation.y)) * 1.9 * sd
+		var post := Models.N(null, "vigil_post")
+		Models.P(post, Geo.box(0.55, 2.4, 0.45), Mats.world(Color(0.26, 0.26, 0.27), Color(0.17, 0.17, 0.18), 0.92, 1.3, 0.5, Props.MOSS), Vector3(0, 1.1, 0), Vector3(0, 0, sd * 4.0))
+		Models.P(post, Geo.box(0.3, 0.08, 0.3), Mats.glow(Color(1.0, 0.45, 0.15), 1.6), Vector3(0, 2.33, 0))
+		w._place(post, Vector3(VIGIL_GATE.x + side.x, 0, VIGIL_GATE.y + side.y))
+		post.rotation.y = vgi.rotation.y
+		w.add_circle(post.position, 0.4)
 	# Captain Roth keeps the gate
 	_keeper(w, "roth", V["elder"], "elder", Vector2(5.0, gate_z + 5.0), face(Vector2(5.0, gate_z + 5.0), CENTER),
 		{"idle": "Idle", "work": ["Short_Breathe_and_Look_Around", "Long_Breathe_and_Look_Around"], "talk": "Talk_Passionately"})
@@ -367,6 +383,7 @@ static func build(w: World) -> void:
 	w.spawns["from_wild"] = Vector3(0, 0, gate_z + 4.5)
 	w.spawns["from_coast"] = Vector3(-RADIUS + 4.5, 0, CENTER.y)
 	w.spawns["portal"] = Vector3(4, 0, 8)
+	w.spawns["from_vigil"] = Vector3(VIGIL_GATE.x, 0, VIGIL_GATE.y) + (Vector3(CENTER.x, 0, CENTER.y) - Vector3(VIGIL_GATE.x, 0, VIGIL_GATE.y)).normalized() * 3.0
 	w.spawns["alch"] = Vector3(-11.5, 0, -9)
 	w.spawns["forge"] = Vector3(11.5, 0, -9)
 

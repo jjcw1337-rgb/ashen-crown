@@ -78,13 +78,20 @@ func _server() -> void:
 	check(mons.call() >= 10, "%d monsters in the crypt" % mons.call())
 	var e0 = g.world.enemies_root.get_child(0)
 	check(e0 is Enemy and e0.max_life > Data.ENEMIES[e0.kind]["life"] * 2.0, "they are tougher than outside")
-	check(Battlegrounds.portal_list(g.world).size() == 4, "four candidate portals")
+	check(Battlegrounds.portal_list(g.world).size() == 8, "eight candidate portals: four on the Ossuary, two on each floor below")
+	check(g.world.interactables.filter(func(t): return t.kind == "descend").size() == 3, "three stairways down (two from the Ossuary, one from the Depths)")
+	check(g.world.enemies_root.get_children().any(func(e): return e.kind == "ice_troll") and g.world.enemies_root.get_children().any(func(e): return e.kind == "hermit"), "Hrimgar and Mossbeard in their halls")
+	var gold: Array = g.world.interactables.filter(func(t): return t.kind == "chest" and t.data.get("gold", false))
+	check(gold.size() == 1 and g.chest_sealed(gold[0]), "the golden chest, sealed while Mossbeard lives")
+	check(g.bg.state == "lobby" and g.world.has_meta("bg_gates") and (g.world.get_meta("bg_gates") as Array).size() >= 4 and not g.world.get_meta("bg_gates")[0]["up"], "a round begins in the antechamber, its gates shut (%d gates)" % (g.world.get_meta("bg_gates", []) as Array).size())
 	check(await until(func(): return not g.net.players.is_empty(), 60.0), "a player joined")
-	check(await until(func(): return g.bg.open.size() == Battlegrounds.OPEN_PORTALS, 70.0), "two portals opened on time")
+	check(await until(func(): return g.bg.state == "prep", 30.0), "the player rang the bell: the countdown")
+	check(await until(func(): return g.bg.state == "raid", 20.0) and g.world.get_meta("bg_gates")[0]["up"], "then the gates rose and the raid was on")
+	check(await until(func(): return g.bg.open.size() == Battlegrounds.OPEN_PORTALS + 2, 70.0), "the portals opened on time (two on the Ossuary, one on each floor below)")
 	var items0: int = g.net.items.size()
 	check(await until(func(): return g.net.items.size() >= items0 + 3, 120.0), "the fallen hero's gear lay on the floor (%d items)" % (g.net.items.size() - items0))
 	check(await until(func(): return g.bg.state == "reset", 120.0), "the crypt collapsed at the end of the round")
-	check(await until(func(): return g.bg.state == "raid" and g.bg.raid_t < 5.0, 30.0), "and a new round began")
+	check(await until(func(): return g.bg.state in ["lobby", "raid"] and g.bg.raid_t < 5.0, 30.0), "and a new round began (in its antechamber)")
 
 func _client() -> void:
 	while g._busy:
@@ -111,7 +118,36 @@ func _client() -> void:
 	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "entered the crypt as Testric")
 	check(_save().get("in_raid", false), "the save says in_raid")
 	check(await until(func(): return not g.bg_raid.is_empty(), 10.0), "the raid's clock arrived (%s)" % str(g.bg_raid.get("state", "?")))
+	# the antechamber: behind its gate; ring the bell and the countdown begins for everyone; then the gate rises
+	var gates: Array = g.world.get_meta("bg_gates", [])
+	check(str(g.bg_raid.get("state", "")).begins_with("lobby") and not gates.is_empty() and not gates[0]["up"], "in the antechamber, behind its gate (%s)" % str(g.bg_raid.get("state", "")))
+	var bells: Array = g.world.interactables.filter(func(t): return t.kind == "bell")
+	check(bells.size() == 4, "a bell in each of the four antechambers")
+	var bell = bells[0]
+	for b in bells:
+		if b.global_position.distance_to(g.hero.global_position) < bell.global_position.distance_to(g.hero.global_position):
+			bell = b
+	g._interact(bell)
+	check(await until(func(): return str(g.bg_raid.get("state", "")).begins_with("prep"), 6.0), "rang the bell: the gates open in a moment (%s)" % str(g.bg_raid.get("state", "")))
+	check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 10.0) and gates[0]["up"], "the gates rose and the raid was on")
 	await secs(1.0)
+	# one standard for attacks: the same timing, damage and cooldowns in the crypt as in the story game
+	var same := true
+	for sk in Data.skills_known(g.hero.cls):
+		var sid := str(sk["id"]) if sk is Dictionary else str(sk)
+		var inside := [g.hero.skill_cd(sid), g.hero.dmg_mult(sid)]
+		g.bg_mode = false
+		var outside := [g.hero.skill_cd(sid), g.hero.dmg_mult(sid)]
+		g.bg_mode = true
+		same = same and is_equal_approx(inside[0], outside[0]) and is_equal_approx(inside[1], outside[1])
+	g.hero._start_attack("swipe1")
+	var dur_in: float = g.hero.atk_dur
+	g.bg_mode = false
+	g.hero._start_attack("swipe1")
+	var dur_out: float = g.hero.atk_dur
+	g.bg_mode = true
+	g.hero.atk_t = g.hero.atk_dur
+	check(same and is_equal_approx(dur_in, dur_out), "attacks are the same in the crypt as outside (swing %.2f s)" % dur_in)
 	var z = _nearest_enemy()
 	check(z != null, "a monster nearby")
 	if z:
@@ -144,7 +180,7 @@ func _client() -> void:
 	var sgold: int = int((sv.get("hero", {}) as Dictionary).get("gold", 0))
 	check((held > inv0 or sgold > gold0) and _count_saved(sv) >= held and sgold >= gold0, "and keeps what it found (%d -> %d items, %d -> %d gold)" % [inv0, held, gold0, sgold])
 	# back in, and die
-	await until(func(): return not g._busy and g.ui.bg_panel.visible, 20.0)
+	await until(func(): return not g._busy and g.ui.title_panel.visible and g.ui.bg_page.visible, 20.0)      # (back on the Battlegrounds page)
 	await g.start_battlegrounds("%s:%d" % [host, port], id)
 	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "went back in")
 	await secs(2.0)

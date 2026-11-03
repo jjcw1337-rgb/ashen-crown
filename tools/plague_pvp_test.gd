@@ -84,6 +84,13 @@ func _player() -> void:
 	g.save_game()
 	await g.start_battlegrounds("%s:%d" % [host, port], g.char_id)
 	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "entered the crypt")
+	# a round starts in the antechambers, PvP off behind the gates: ring a bell and wait for the raid
+	await until(func(): return not g.bg_raid.is_empty(), 10.0)
+	if str(g.bg_raid.get("state", "")).begins_with("lobby"):
+		var bells: Array = g.world.interactables.filter(func(t): return t.kind == "bell")
+		if not bells.is_empty():
+			g._interact(bells[0])
+	check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 30.0), "the bell rang and the raid is on")
 	check(await until(func(): return g.net.puppets().size() == 1 and g.net.puppets()[0].net_has, 40.0), "the other player is here")
 	g.test_immortal = true
 	if role == "a":

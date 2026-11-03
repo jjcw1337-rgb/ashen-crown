@@ -6,7 +6,9 @@ extends SceneTree
 ## Two real characters enter the crypt. On a's screen b is an invisible stand-in target (Battlegrounds.sync_proxies);
 ## a walks up to b and swings at it: b's life drops through the server (Net.sv_pvp_hit, PVP_MULT) until b falls.
 ## b's gear drops, the server announces who killed whom, and a picks b's things up. b keeps its level but loses
-## everything it carried.
+## everything it carried. Fallen, b spectates a (the camera on a) until a leaves, then leaves the crypt.
+## With "doug" after the port on both players' lines, a plays Doug: his first skill is the Cream Pie, and b checks it
+## was Pied by it (the crowd control crossing to another player: DougSkills._cc -> Net.send_pvp_effect).
 
 var g
 var role := "a"
@@ -80,7 +82,8 @@ func _player() -> void:
 	DirAccess.make_dir_recursive_absolute(g.char_dir)
 	for fn in DirAccess.get_files_at(g.char_dir):
 		DirAccess.remove_absolute(g.char_dir + fn)
-	g.hero.set_class("knight" if role == "a" else "wraith")
+	var doug := OS.get_cmdline_user_args().has("doug")
+	g.hero.set_class(("doug" if doug else "knight") if role == "a" else "wraith")
 	g.hero.new_character()
 	g.hero.set_level(8)
 	g.char_id = g.new_char_id()
@@ -90,11 +93,22 @@ func _player() -> void:
 	var path: String = g.char_dir + g.char_id + ".json"
 	await g.start_battlegrounds("%s:%d" % [host, port], g.char_id)
 	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "entered the crypt")
+	# a round starts in the antechambers, PvP off behind the gates: ring a bell and wait for the raid
+	await until(func(): return not g.bg_raid.is_empty(), 10.0)
+	if str(g.bg_raid.get("state", "")).begins_with("lobby"):
+		var bells: Array = g.world.interactables.filter(func(t): return t.kind == "bell")
+		if not bells.is_empty():
+			g._interact(bells[0])
+	check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 30.0), "the bell rang and the raid is on")
 	check(await until(func(): return g.net.puppets().size() == 1 and g.net.puppets()[0].net_has, 40.0), "the other player is here")
 	if role == "a":
 		g.test_immortal = true
 		var foe = g.net.puppets()[0]
 		check(await until(func(): return _proxy() != null, 10.0), "they are a target for my blows (a stand-in)")
+		# a skill first: its effects go to the other player through the server (Net.pl_fx, relayed)
+		g.hero.mana = g.hero.max_mana
+		var sk: String = str(g.hero.skill_list()[0]["id"])
+		check(g.hero.use_skill(sk, foe.global_position), "cast %s at them" % sk)
 		var life_seen: Array = []
 		for i in 60:
 			if not is_instance_valid(foe) or foe.dead:
@@ -130,15 +144,26 @@ func _player() -> void:
 		g.test_immortal = false
 		# (against full life: a slow start can find the attacker already at work, even done)
 		var l0: float = g.hero.max_life
+		if doug:
+			check(await until(func(): return g.hero.pied_t > 0.0, 60.0), "Doug's cream pie Pied me (through the server)")
 		check(await until(func(): return g.hero.life < l0 or g.hero.dead, 60.0), "I'm being hit by the other player")
 		check(await until(func(): return g.hero.dead, 60.0), "and I fell")
-		await secs(3.0)
-		g.respawn()
+		# fallen, I watch the one still alive (Game.spectate_*), until they leave too
+		check(await until(func(): return g.ui.spectate_panel.visible, 6.0) and not g.ui.death_panel.visible, "I'm spectating (not the plain death screen)")
+		check(g.ui.spectate_name() == "Attacker", "watching the Attacker (%s)" % g.ui.spectate_name())
+		await secs(1.5)
+		var att = g.spectate_hero()
+		check(att != null and g.cam_target.distance_to(att.global_position) < 3.0, "the camera follows them")
+		check(await until(func(): return g.net.puppets().is_empty(), 40.0), "they left")
+		await secs(0.5)
+		check(g.spectating == 0 and str(g.ui._spec_name.text).begins_with("No one"), "no one left to watch: it says so")
+		(g.ui.spectate_panel.find_child("leave", true, false) as Button).pressed.emit()
 		check(await until(func(): return not g.bg_mode and not g._busy, 20.0), "the raid is over for me")
 		var d = JSON.parse_string(FileAccess.get_file_as_string(path))
 		var h: Dictionary = d.get("hero", {}) if d is Dictionary else {}
 		var inv: Array = (h.get("inventory", []) as Array).filter(func(x): return x != null)
 		check(int(h.get("level", 0)) == 8 and inv.is_empty() and int(h.get("gold", -1)) == 0, "kept my level, lost my things")
+		check(g.net.fx_got > 0, "I saw the other player's skill effects (%d events, through the server)" % g.net.fx_got)
 	g.net.shutdown()
 	await secs(1.0)
 

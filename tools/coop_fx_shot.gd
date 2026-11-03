@@ -8,7 +8,8 @@ extends SceneTree
 var g
 const SHOTS := ["wraith:siphon", "wraith:grasp", "wraith:night", "warlock:drain", "demon:grip", "demon:wrath", "archer:volley"]
 const SECS := {"siphon": 3.6, "grasp": 3.0, "night": 6.6, "phantom": 2.6, "drain": 3.2, "volley": 2.8, "cleave": 2.0,
-	"fists": 2.0, "icharge": 2.6, "cslam": 3.6, "hurl": 3.2, "grip": 3.2, "wrath": 9.0}
+	"fists": 2.0, "icharge": 2.6, "cslam": 3.6, "hurl": 3.2, "grip": 3.2, "wrath": 9.0,
+	"pie": 1.8, "peels": 2.4, "slide": 1.8, "doppel": 3.4, "juggle": 2.6, "bounce": 2.4, "car": 6.4}
 const OFF := Vector3(40.0, 0, 0)
 var off := OFF            # to the puppet's spot, the ground's height there included
 var puppet: Hero
@@ -129,7 +130,7 @@ func _run() -> void:
 		var rec: Array = []
 		var evs: Array = []
 		g.net.fx_tap = func(w: Dictionary): evs.append(w)
-		var frames: int = int(SECS[sk] * 30)
+		var frames: int = int(float(SECS.get(sk, 2.6)) * 30)
 		var aim: Vector3 = pack[n / 2].global_position
 		for f in frames:
 			if f == 6:
