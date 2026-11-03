@@ -409,6 +409,9 @@ static func _env_off() -> void:
 	if k.contains("softmed"): RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM)
 	if k.contains("softlow"): RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_LOW)
 	if k.contains("atlas2k"): RenderingServer.directional_shadow_atlas_set_size(2048, true)
+	if k.contains("omnidp"):
+		for l in g.world.find_children("*", "OmniLight3D", true, false):
+			(l as OmniLight3D).omni_shadow_mode = OmniLight3D.SHADOW_DUAL_PARABOLOID
 	if k.contains("plainomni"):
 		for l in g.world.find_children("*", "OmniLight3D", true, false):
 			if not (l as Light3D).is_in_group(Grade.SHADOW_GROUP):

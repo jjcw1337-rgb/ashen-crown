@@ -1610,7 +1610,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `World.mm_chunked`** (one the size of the map is never culled and lands in every shadow pass, six per shadowed omni
   light); **Meshy models get no LODs** (their thousands of UV islands leave the importer nothing to simplify; re-bake
   from Meshy's full-detail output, `tools/blender/camp/rebake_prop.py`); shadow-casting fires join `Grade`'s budget
-  (`FireFx.make`); the sun's cascades are fitted to the camera every frame (`Game._fit_shadows`, distances follow the
+  (`FireFx.make`; `Grade.pick_shadows` gives budgeted omni lights dual-paraboloid maps, 2 passes instead of a cube's 6:
+  camp +5% fps, nightly 2026-11-03; `--omnicube` for comparisons); the sun's cascades are fitted to the camera every frame (`Game._fit_shadows`, distances follow the
   zoom; `_shadow_hold` while the minimap captures); the hero's rim light is in every zone (`Grade.RIMS`, picked by
   `Game._rim_kind`). `normals_from_albedo.py` gave the 27 models whose Meshy normal map was flat a detail map
   (island-aware, no seam ridges); `smooth_normals.py` re-shades faceted round props in place (normals only);

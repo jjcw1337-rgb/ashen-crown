@@ -22,7 +22,8 @@ benchmark of the night's result, added by the script: the scoreboard; "blocked" 
 - **Effects can cost a lot and show nothing, zone by zone.** SSIL at High and SSAO outdoors were invisible (direct
   light dominates); SDFGI on Ultra is NOT (the moor 12% darker without it). Prove it with fixed-step shots vs two
   identical runs plus mean brightness over the 3D area (exclude UI and moving monsters).
-- **Shadow passes**: a MultiMesh is culled as one box (keep big instanced sets chunked, `Props.multimesh`); cut-out
+- **Shadow passes**: omni shadows as dual-paraboloid maps (2 passes, not 6) were invisible and +5% in the camp; a
+  MultiMesh is culled as one box (keep big instanced sets chunked, `Props.multimesh`); cut-out
   casters pay per pixel (bake masks, `Flora.shadow_twin`); on Ultra the grass's shadow was 14 ms and LOD1 shadows-only
   twins halved it. Sun shadows are ~7 ms at High in camp and moor, spread over many casters (monster bodies, props).
 - **Meshy meshes can't be simplified at run time**: neither the importer nor `ImporterMesh.generate_lods` makes LODs,
@@ -64,4 +65,5 @@ benchmark of the night's result, added by the script: the scoreboard; "blocked" 
 | 2026-11-03 | size | zstd level 19 for imported scenes | 143.5 -> 138.9 MB (-3%), global setting also hits the run-time pipeline cache | no | | [runs/2026-11-03.md](runs/2026-11-03.md) |
 | 2026-11-03 | small | Runtime LODs for monster bodies (ImporterMesh.generate_lods) | no LODs made (UV islands) | no | offline Blender LODs / shadow proxies | [runs/2026-11-03.md](runs/2026-11-03.md) |
 | 2026-11-03 | small | Ultra: no grass shadow twins for moss and sparse verge grass | moor Ultra GPU 62.5 -> 61.6 ms, 18.6 -> 17.1 M primitives, 15.7 -> 15.85 fps; shots = noise | yes | | [runs/2026-11-03.md](runs/2026-11-03.md) |
+| 2026-11-03 | small | Budgeted omni (fire) shadows as dual-paraboloid instead of cube maps (`Grade.pick_shadows`) | camp High 44.1 -> 46.4 fps, GPU 22.4 -> 21.3 ms, 12.2 -> 10.3 M primitives; fort +1.4%; shots = noise. First try set the mode every 0.4 s: a dip (fort 1% low 59 -> 30), fixed by setting it only when it differs | yes | | [runs/2026-11-03.md](runs/2026-11-03.md) |
 | 2026-11-03 | size | **Night total** (runner's 00:30 before vs bench.sh on the result, 02:10, best of 2) | Mac zip 541.5 -> 408.6 MiB (pck 496.4 -> 363.6), Win exe 576.7 -> 443.9; VRAM -160..-370 MB in every scene; loads: moor M/H/U 3.6/2.9/5.6 -> 2.0/2.6/3.1 s, fight 2.6 -> 1.9, crypt 3.2 -> 2.5; fps: Ultra 14.3 -> 15.7, boss 79.4 -> 82.9, arena 78.6 -> 81.7, others flat (camp 44.5, moor High 51.7, fight 46.8) | yes | offline decimation/LODs (scenes 143 MB; monster shadows) | [runs/2026-11-03.md](runs/2026-11-03.md) |
