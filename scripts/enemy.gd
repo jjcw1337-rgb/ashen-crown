@@ -797,6 +797,35 @@ func _process(delta: float) -> void:
 func _pose(st: Dictionary) -> void:
 	pose_rig(rig, st, height)
 
+## The model files a monster kind's body loads (build_rig), so a zone can load them on worker threads before it
+## spawns its monsters (Game.load_zone: each first load was 23-34 ms on the main thread).
+static func model_paths(kind: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	if not Data.ENEMIES.has(kind):
+		return out
+	var d: Dictionary = Data.ENEMIES[kind]
+	var mesh := str(d.get("mesh", ""))
+	match mesh:
+		"feral":
+			for k in 5:
+				out.append(Feral.GLB % (k + 1))
+		"lion":
+			out.append(Lion.GLB)
+		"bear":
+			out.append(Bear.GLB)
+		"sloth":
+			out.append(Sloth.GLB % str(d.get("variant", "")))
+		"wolf":
+			out.append(SpiritBeast.WOLF_GLB)
+		_:
+			if MeshyMonster.MODELS.has(mesh):
+				out.append(str(MeshyMonster.MODELS[mesh]["glb"]))
+	var res := PackedStringArray()
+	for p in out:
+		if ResourceLoader.exists(p):
+			res.append(p)
+	return res
+
 ## A monster kind's body (its Meshy model, sculpted goblin, skeleton or code-built figure), as setup gives
 ## it; also used to draw the arena's crowd (games.gd). variant: the Feral's model.
 static func build_rig(kind: String, variant := 1) -> Node3D:
