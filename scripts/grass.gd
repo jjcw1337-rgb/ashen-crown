@@ -233,7 +233,7 @@ static func scatter(parent: Node3D, area: Rect2, ctx: Object, colors: Dictionary
 			mmi.add_to_group("grass")
 			mmi.name = "Grass_%s_%s_%s%s_L%d" % [parts[0], parts[1], parts[2], parts[3], l]
 			parent.add_child(mmi)
-			if l == 0 and shadows:
+			if l == 0 and shadows and not (parts[2] in _no_shadow_species()):
 				mmi.set_meta("shadows", PackedStringArray([parts[2], parts[3]]))
 				if quality >= 3:
 					_add_twin(mmi, arr)
@@ -255,6 +255,15 @@ static func shadow_style() -> String:
 		var i := a.find("--grassshadow")
 		_shadow_style = a[i + 1] if i >= 0 and i + 1 < a.size() else SHADOW_STYLE
 	return _shadow_style
+
+## Ground-hugging species cast no shadow even on Ultra: moss (3-7 cm) and the sparse verge grass (10-22 cm, shorter
+## still on verges). Their shadows didn't show (fixed-step shots = run-to-run noise) and cost ~1.9 ms of the moor's
+## 62 ms (nightly 2026-11-03). `--grassnoshadow a,b` (or `none`) overrides it for comparisons.
+const NO_SHADOW_SPECIES := ["moss", "sparse"]
+static func _no_shadow_species() -> Array:
+	var a := OS.get_cmdline_user_args()
+	var i := a.find("--grassnoshadow")
+	return Array(a[i + 1].split(",")) if i >= 0 and i + 1 < a.size() else NO_SHADOW_SPECIES
 
 static func _add_twin(src: MultiMeshInstance3D, arr := PackedFloat32Array()) -> void:
 	if src.has_meta("twin") or src.get_parent() == null:
