@@ -1,24 +1,22 @@
 class_name DemonFx
 extends RefCounted
-## Visual effects for the Demon's skills (DemonSkills): lava, cracks, boulders and meteors. Everything one-shot is
-## parented to the zone's FX node; what lingers (the lava on the ground, a boulder or meteor in the air, the foe in
-## his grip, the wrath's white heat) is state in h.fxs that `update` moves every frame, on his own game and on his
-## puppet on every partner's. The colours: his ember orange (EMBER), the white-yellow of molten rock (HOT), the
-## near-black of cooled crust (CRUST).
+## Visual effects for the Demon's skills (DemonSkills). Each skill has its own look in its own script, all built
+## from InfernalFx (his visual language) and DemonKitFx (the pieces they share); this one routes the events and keeps
+## what two skills share: the foe held up by Hellgrip, the white heat and meteors of Wrath of the Pit, the Brand.
+## Everything one-shot is parented to the zone's FX node; what lingers is state in h.fxs that the `update`s move every
+## frame, on his own game and on his puppet on every partner's.
 ##
 ## `play` is the skills' fx events (SkillFx: the same on the caster and on his puppet):
-##  Molten Fists: "cast" (the gather) and "impact" {y: yaw, r: reach, t: the foes set alight}: DemonFistsFx
-##    ("Hellbrand": the hellfire gauntlets, the sigil, the rift, the obsidian fangs)
-##  Infernal Charge: "start" {d} (embers off his hooves, h.fxs["icharge"]), "hit" {p, d}, "trail" {ps: the lava patches,
-##    x: how long they burn}, "end"
-##  Cataclysm Slam: "impact" {p: the blow, y, ps: every fissure point, n: fissures, x: hit any} (the ring and the
-##    fissures racing out), "erupt" {ps: this wave's bursts, n: the wave}
-##  Brimstone Hurl: "throw" {p: from the hand, ps: where each lands, x: the flight} (the boulders, h.fxs["boulders"],
-##    flown by update), "splash" {p, x: the pool's life, t: set alight}
-##  Hellgrip: "grab" {t: [the victim], x: the hold} (the victim lifted off the ground, h.fxs["grip"], until "smash"
-##    or x + a slack on a partner's game), "smash" {p, t, x: held anyone}
-##  Wrath of the Pit: "cast" (the white heat rising in his cracks, h.fxs["wrath"]), "roar", "stomp" {x: the rain's
-##    length}, "meteor" {p: where it lands, n: which, x: its fall} (h.fxs["meteors"], flown by update), "end" {x}
+##  Molten Fists: "cast", "impact" (DemonFistsFx, "Hellbrand"); "brand" {t | pid, x} (BrandFx on whoever his skills
+##    marked), "consume" {t | pid} (the Fists used a Brand up)
+##  Infernal Charge: "wind", "run", "hit", "skid", "end" (DemonChargeFx, "Hellrunner")
+##  Fault of the Pit: "impact", "erupt" (DemonFaultFx)
+##  Brimstone Hurl: "cast", "throw", "splash" (DemonHurlFx, "Shatterstone")
+##  Hellgrip: "cast", "fling", "hook", "miss", "smash", "end" (DemonChainFx, "Chain of the Pit"); "grab" {t | pid, x}
+##    (the victim hoisted over his head, h.fxs["grip"], here)
+##  Wrath of the Pit: "crucible", "heat", "erupt" (DemonCrucibleFx); the white heat after the eruption (h.fxs["wrath"]),
+##    "meteor" {p, n, x} (h.fxs["meteors"]; one falling at a player, x >= WRATH_FALL_PVP, gets a glowing circle),
+##    "end" {x} (here)
 
 const EMBER := Color(1.0, 0.42, 0.06)
 const HOT := Color(1.0, 0.75, 0.3)
@@ -27,6 +25,7 @@ const BLOOD := Color(0.85, 0.04, 0.08)
 const SOUL := Color(0.62, 0.42, 1.0)
 const GRIP_SLACK := 1.5          # a partner's held foe is let go this long after the hold if the smash is lost
 const WRATH_SLACK := 1.5
+const METEOR_TRAIL := 4.5        # a meteor's comet trail, metres
 
 static var _lava_shader: Shader
 static var _disc: ArrayMesh
@@ -35,181 +34,98 @@ static var _rock: Mesh
 
 static func play(h: Hero, ev: Dictionary) -> bool:
 	var root: Node3D = h.game.world.fx_root
-	var pos := h.global_position
-	match [str(ev["s"]), str(ev["e"])]:
-		["fists", "cast"], ["fists", "impact"]:
+	var s := str(ev["s"])
+	var e := str(ev["e"])
+	match s:
+		"fists":
+			match e:
+				"brand":
+					for t in DemonKitFx.targets(h, ev):
+						BrandFx.mark(t, float(ev.get("x", DemonSkills.BRAND_DUR)))
+					return true
+				"consume":
+					for t in DemonKitFx.targets(h, ev):
+						BrandFx.consume(t)
+					return true
 			return DemonFistsFx.play(h, ev)
-		["icharge", "cast"], ["cslam", "cast"], ["hurl", "cast"], ["grip", "cast"]:
-			pass
-		["icharge", "start"]:
-			_end_charge(h)
-			var au := Fx.aura(h.rig, EMBER, 40, 1.8, 0.1, 0.5, 1.2, 0.45, 60.0, Vector3(0, 0.3, 0.3))
-			h.fxs["icharge"] = {"node": au, "until": 1.6}
-			Fx.flash(root, pos + Vector3(0, 1.4, 0), EMBER, 2.0, 0.3, 5.0)
-			SkillFx.snd(h, "charge_dash", -2.0, 0.85)
-			SkillFx.snd(h, "growl", -8.0, 0.8)
-		["icharge", "hit"]:
-			var p: Vector3 = ev["p"]
-			Fx.sparks(root, p, HOT)
-			Fx.burst(root, p, EMBER, 16, 4.0, 0.08, 0.4, true, -3.0, 60.0, (ev.get("d", Vector3.FORWARD) as Vector3) + Vector3(0, 0.6, 0))
-			Sfx.play_at("charge_impact", p, -4.0, 0.9)
-			SkillFx.shake(h, 0.12)
-		["icharge", "trail"]:
-			var ps: PackedVector3Array = ev["ps"]
-			for p in ps:
-				lava_decal(root, p, DemonSkills.TRAIL_R * 1.15, float(ev.get("x", DemonSkills.TRAIL_DUR)), 0.7)
-				Fx.burst(root, p + Vector3(0, 0.1, 0), EMBER, 8, 2.0, 0.07, 0.5, true, -2.0, 50.0)
-			if h.puppet:
-				Sfx.play_at("fire_erupt", pos, -16.0, 1.3)
-			else:
-				Sfx.play("fire_erupt", -14.0, 1.3)
-		["icharge", "end"]:
-			_end_charge(h)
-		["cslam", "impact"]:
-			var at: Vector3 = ev["p"]
-			Fx.holy_slam(root, at, DemonSkills.SLAM_R)
-			lava_decal(root, at, DemonSkills.SLAM_R * 1.05, 3.5, 0.4)
-			Fx.burst(root, at + Vector3(0, 0.2, 0), EMBER, 40, 5.5, 0.08, 0.6, true, -4.0, 70.0)
-			Fx.burst(root, at + Vector3(0, 0.2, 0), Color(0.3, 0.25, 0.2, 0.7), 24, 3.0, 0.35, 0.7, false, -2.0, 60.0)
-			Fx.flash(root, at + Vector3(0, 0.8, 0), EMBER, 3.0, 0.3, 7.0)
-			# the fissures: strips of cracked, glowing rock racing out from the blow along each line
-			var ps: PackedVector3Array = ev.get("ps", PackedVector3Array())
-			var n: int = int(ev.get("n", 1))
-			var per: int = ps.size() / maxi(n, 1)
-			var life := DemonSkills.FISSURE_DELAY + per * DemonSkills.FISSURE_WAVE + 2.2
-			for i in n:
-				var prev := at
-				for k in per:
-					var q: Vector3 = ps[i * per + k]
-					var seg := lava_strip(root, prev, q, 0.45, life, 0.3)
-					var delay := 0.04 * k
-					seg.scale = Vector3(1, 1, 0.01)
-					var tw := seg.create_tween()
-					tw.tween_property(seg, "scale", Vector3(1, 1, 1), 0.12).set_delay(delay)
-					prev = q
-			SkillFx.snd(h, "slam", 0.0, 0.8)
-			SkillFx.snd(h, "fire_erupt", -8.0, 0.7)
-			SkillFx.duck(h, -4.0, 0.8)
-			SkillFx.shake(h, 0.45)
-		["cslam", "erupt"]:
-			var ps: PackedVector3Array = ev["ps"]
-			for p in ps:
-				eruption(root, p, DemonSkills.FISSURE_R)
-			if not ps.is_empty():
-				Sfx.play_at("boom", ps[0], -7.0, 1.1 + 0.08 * (int(ev.get("n", 0)) % 3))
-			SkillFx.shake(h, 0.12)
-		["hurl", "throw"]:
-			var from: Vector3 = ev["p"]
-			var ps: PackedVector3Array = ev["ps"]
-			var flight: float = float(ev.get("x", DemonSkills.HURL_FLIGHT))
-			var bs: Array = h.fxs.get("boulders", [])
-			for to in ps:
-				var b := boulder(root, 0.38)
-				b.global_position = from
-				bs.append({"node": b, "from": from, "to": to, "t": 0.0, "dur": flight})
-			h.fxs["boulders"] = bs
-			Fx.burst(root, from, EMBER, 18, 3.0, 0.08, 0.5, true, -3.0, 90.0)
-			SkillFx.snd(h, "cleave_swing", -3.0, 0.7)
-			SkillFx.snd(h, "fireball", -6.0, 0.8)
-		["hurl", "splash"]:
-			var at: Vector3 = ev["p"]
-			splash(root, at, DemonSkills.HURL_R)
-			lava_decal(root, at, DemonSkills.POOL_R, float(ev.get("x", DemonSkills.POOL_DUR)), 1.0)
-			for e in ev.get("t", []):
-				ignite(root, e)
-			Sfx.play_at("boom", at, -3.0, 0.9)
-			Sfx.play_at("fire_erupt", at, -6.0, 0.9)
-			SkillFx.shake(h, 0.3)
-		["grip", "grab"]:
-			_end_grip(h, false)
-			var vs: Array = ev.get("t", [])
-			if not vs.is_empty():
-				var v = vs[0]
-				h.fxs["grip"] = {"victim": v, "lift": 0.0, "until": float(ev.get("x", 0.8)) + GRIP_SLACK, "t": 0.0}
-				Fx.sparks(root, SkillFx.chest_of(v, 0.6), EMBER)
-				var fl := Props.fire(v, Vector3(0, 0.5 * float(v.get("height")), 0), 0.3 * float(v.get("height")) + 0.2, EMBER, false, false, false, "burning")
-				fl.name = "GripFire"
-			SkillFx.snd(h, "growl", -4.0, 0.75)
-		["grip", "smash"]:
-			var at: Vector3 = ev["p"]
-			var held: bool = bool(ev.get("x", false))
-			_end_grip(h, true)
-			lava_decal(root, at, DemonSkills.GRIP_SHOCK_R * 0.85, 2.5, 0.5)
-			Fx.ring(root, at + Vector3(0, 0.05, 0), DemonSkills.GRIP_SHOCK_R, EMBER, 0.4, 0.3)
-			Fx.burst(root, at + Vector3(0, 0.3, 0), EMBER, 34 if held else 14, 5.0, 0.08, 0.55, true, -4.0, 80.0)
-			Fx.burst(root, at + Vector3(0, 0.2, 0), Color(0.3, 0.25, 0.2, 0.7), 18, 3.0, 0.35, 0.6, false, -2.0, 70.0)
-			Fx.flash(root, at + Vector3(0, 0.8, 0), HOT, 3.0 if held else 1.5, 0.3, 6.0)
-			for e in ev.get("t", []):
-				ignite(root, e)
-			Sfx.play_at("slam", at, -1.0 if held else -6.0, 0.9)
-			if held:
-				Sfx.play_at("hellclaw", at, -6.0, 0.8)
-			SkillFx.shake(h, 0.4 if held else 0.15)
-		["wrath", "cast"]:
-			_end_wrath(h, false)
-			h.fxs["wrath"] = {"k": 0.0, "want": 0.0, "until": 4.0, "rain": 0.0}
-			var l := OmniLight3D.new()
-			l.light_color = HOT
-			l.light_energy = 0.0
-			l.omni_range = 7.0
-			l.shadow_enabled = false
-			l.position = Vector3(0, 1.6, 0)
-			h.rig.add_child(l)
-			h.fxs["wrath"]["light"] = l
-			SkillFx.snd(h, "fire_erupt", -4.0, 0.7)
-		["wrath", "roar"]:
-			Fx.ring(root, pos + Vector3(0, 0.05, 0), DemonSkills.ROAR_R, EMBER, 0.5, 0.4)
-			Fx.burst(root, pos + Vector3(0, 1.6, 0), HOT, 40, 7.0, 0.1, 0.6, true, -1.0, 180.0)
-			Fx.flash(root, pos + Vector3(0, 1.8, 0), HOT, 4.0, 0.5, 9.0)
-			if h.fxs.has("wrath"):
-				h.fxs["wrath"]["want"] = 1.0
-			SkillFx.snd(h, "roar", 0.0, 0.8)
-			SkillFx.duck(h, -8.0, 1.2)
-			SkillFx.shake(h, 0.5)
-			SkillFx.hitstop(h, 0.06)
-		["wrath", "stomp"]:
-			var rain: float = float(ev.get("x", DemonSkills.WRATH_DUR))
-			Fx.holy_slam(root, pos, 4.0)
-			lava_decal(root, pos, 4.2, rain + 1.5, 0.55)
-			Fx.burst(root, pos + Vector3(0, 0.2, 0), EMBER, 50, 6.0, 0.09, 0.7, true, -4.0, 75.0)
-			Fx.flash(root, pos + Vector3(0, 0.8, 0), EMBER, 3.0, 0.35, 8.0)
-			if h.fxs.has("wrath"):
-				h.fxs["wrath"]["until"] = rain + WRATH_SLACK
-				h.fxs["wrath"]["rain"] = rain
-			SkillFx.snd(h, "slam", -1.0, 0.75)
-			SkillFx.snd(h, "boom", -6.0, 0.8)
-			SkillFx.shake(h, 0.4)
-		["wrath", "meteor"]:
-			var at: Vector3 = ev["p"]
-			var fall: float = float(ev.get("x", DemonSkills.WRATH_FALL))
-			var k: int = int(ev.get("n", 0))
-			var m := boulder(root, 0.42)
-			var from := at + Vector3(cos(k * 2.4) * 3.0, 15.0, sin(k * 2.4) * 3.0 + 2.0)
-			m.global_position = from
-			var ms: Array = h.fxs.get("meteors", [])
-			ms.append({"node": m, "from": from, "to": at, "t": 0.0, "dur": fall})
-			h.fxs["meteors"] = ms
-			if h.fxs.has("wrath"):
-				h.fxs["wrath"]["until"] = maxf(float(h.fxs["wrath"]["until"]), fall + WRATH_SLACK)
-			if h.puppet:
-				Sfx.play_at("fireball", at, -10.0, 0.7)
-			else:
-				Sfx.play("fireball", -9.0, 0.7)
-		["wrath", "end"]:
-			_end_wrath(h, bool(ev.get("x", false)))
-		_:
-			return false
-	return true
+		"icharge":
+			return DemonChargeFx.play(h, ev)
+		"cslam":
+			return DemonFaultFx.play(h, ev)
+		"hurl":
+			return DemonHurlFx.play(h, ev)
+		"grip":
+			if e == "grab":
+				_grab(h, ev)
+				return true
+			if e == "smash":
+				_end_grip(h, true)
+			return DemonChainFx.play(h, ev)
+		"wrath":
+			match e:
+				"crucible", "heat":
+					return DemonCrucibleFx.play(h, ev)
+				"erupt":
+					DemonCrucibleFx.play(h, ev)
+					_wrath_on(h, float(ev.get("x", DemonSkills.PIT_DUR)))
+					return true
+				"meteor":
+					_meteor(h, root, ev)
+					return true
+				"end":
+					_end_wrath(h, bool(ev.get("x", false)))
+					return true
+				"cast":
+					return true
+	return false
 
-static func _end_charge(h: Hero) -> void:
-	if not h.fxs.has("icharge"):
+## Hellgrip's hold: the victim hauled up over his head, squirming (a monster's rig, or a player's body).
+static func _grab(h: Hero, ev: Dictionary) -> void:
+	_end_grip(h, false)
+	var vs := DemonKitFx.targets(h, ev)
+	if vs.is_empty():
 		return
-	var c: Dictionary = h.fxs["icharge"]
-	h.fxs.erase("icharge")
-	var n = c["node"]
-	if n != null and is_instance_valid(n):
-		(n as GPUParticles3D).emitting = false
-		SkillFx.free_later(n, 0.8)
+	var v: Node3D = vs[0]
+	h.fxs["grip"] = {"victim": v, "lift": 0.0, "until": float(ev.get("x", 0.8)) + GRIP_SLACK, "t": 0.0}
+	Fx.sparks(h.game.world.fx_root, DemonKitFx.chest(v), EMBER)
+	SkillFx.snd(h, "growl", -4.0, 0.75)
+
+## Pit-born: the white heat in his cracks and the light for the rain's length.
+static func _wrath_on(h: Hero, rain: float) -> void:
+	_end_wrath(h, false)
+	h.fxs["wrath"] = {"k": 0.6, "want": 1.0, "until": rain + WRATH_SLACK, "rain": rain}
+	var l := OmniLight3D.new()
+	l.light_color = HOT
+	l.light_energy = 0.0
+	l.omni_range = 7.0
+	l.shadow_enabled = false
+	l.position = Vector3(0, 1.6, 0)
+	h.rig.add_child(l)
+	h.fxs["wrath"]["light"] = l
+
+## A meteor: the Meshy meteorite (pitted iron and basalt, molten cracks, a white-hot melted face) plunging from the
+## sky, its seams blazing, dragging simulated fire and smoke (the comet sim along its fall); a mark closes in under
+## one falling at a player. It lands with DemonHurlFx.impact: its real pieces, the simulated impact cloud, a crater.
+static func _meteor(h: Hero, root: Node3D, ev: Dictionary) -> void:
+	var at: Vector3 = ev["p"]
+	var fall: float = float(ev.get("x", DemonSkills.WRATH_FALL))
+	var k: int = int(ev.get("n", 0))
+	var n := DemonHurlFx.rock(root, DemonKitFx.METEOR, 0.95, 2.6)
+	var from := at + Vector3(cos(k * 2.4) * 3.0, 15.0, sin(k * 2.4) * 3.0 + 2.0)
+	n.global_position = from
+	var mark = null
+	if fall >= DemonSkills.WRATH_FALL_PVP - 0.01:
+		mark = DemonKitFx.target_mark(root, h.game.world, at, DemonSkills.METEOR_R, Color(0.6, 0.18, 0.06))
+	var ms: Array = h.fxs.get("meteors", [])
+	ms.append({"node": n, "from": from, "to": at, "t": 0.0, "dur": fall, "mark": mark, "trail": 0.0, "last": from,
+		"comet": DemonHurlFx.trail(root, from, (at - from).normalized(), METEOR_TRAIL)})
+	h.fxs["meteors"] = ms
+	if h.fxs.has("wrath"):
+		h.fxs["wrath"]["until"] = maxf(float(h.fxs["wrath"]["until"]), fall + WRATH_SLACK)
+	if h.puppet:
+		Sfx.play_at("fireball", at, -10.0, 0.6)
+	else:
+		Sfx.play("fireball", -9.0, 0.6)
 
 ## The grip lets go: the victim is back on the ground (dropped, or smashed into it).
 static func _end_grip(h: Hero, smashed: bool) -> void:
@@ -223,9 +139,6 @@ static func _end_grip(h: Hero, smashed: bool) -> void:
 		if rig != null and is_instance_valid(rig):
 			rig.position.y = 0.0
 			rig.rotation.z = 0.0
-		var fl: Node = v.get_node_or_null("GripFire")
-		if fl != null:
-			fl.queue_free()
 		if not smashed:
 			v.set_meta("gripped", false)
 
@@ -249,23 +162,20 @@ static func _set_heat(h: Hero, k: float) -> void:
 	for m in h.rig.get_meta("demon_mats"):
 		(m as ShaderMaterial).set_shader_parameter("wrath", k)
 
-## Every frame after the pose (the caster's and the puppet's): the charge's embers, the boulders and meteors in
-## the air, the foe held up, the wrath's heat.
+## Every frame after the pose (the caster's and the puppet's).
 static func update(h: Hero, delta: float) -> void:
 	if not h.is_demon():
 		return
 	DemonFistsFx.update(h, delta)
+	DemonChargeFx.update(h, delta)
+	DemonFaultFx.update(h, delta)
+	DemonHurlFx.update(h, delta)
+	DemonChainFx.update(h, delta)
+	DemonCrucibleFx.update(h, delta)
 	var world = h.game.world
 	var root: Node3D = world.fx_root
-	if h.fxs.has("icharge"):
-		var c: Dictionary = h.fxs["icharge"]
-		c["until"] = float(c["until"]) - delta
-		if float(c["until"]) <= 0.0 or (not h.puppet and not h.dm.has("charge")):
-			_end_charge(h)
-	for key in ["boulders", "meteors"]:
-		if not h.fxs.has(key):
-			continue
-		var bs: Array = h.fxs[key]
+	if h.fxs.has("meteors"):
+		var bs: Array = h.fxs["meteors"]
 		for b in bs.duplicate():
 			var n = b["node"]
 			if n == null or not is_instance_valid(n):
@@ -276,25 +186,33 @@ static func update(h: Hero, delta: float) -> void:
 			var from: Vector3 = b["from"]
 			var to: Vector3 = b["to"]
 			var p := from.lerp(to, u)
-			if key == "boulders":
-				p.y += sin(u * PI) * (2.2 + from.distance_to(to) * 0.18)
+			var vel: Vector3 = (p - (b["last"] as Vector3)) / maxf(delta, 0.001)
+			b["last"] = p
 			(n as Node3D).global_position = p
-			(n as Node3D).rotation += Vector3(delta * 6.0, delta * 2.0, 0.0)
+			var sp = (n as Node).get_meta("spin") if (n as Node).has_meta("spin") else null
+			if sp != null and is_instance_valid(sp):
+				(sp as Node3D).rotation += Vector3(delta * 5.0, delta * 1.5, 0.0)
+			DemonHurlFx.fly_trail(root, b, p, vel, delta, METEOR_TRAIL)
+			var mk = b.get("mark")
+			if mk != null and is_instance_valid(mk[0]):
+				(mk[1] as ShaderMaterial).set_shader_parameter("k", u)
 			if u >= 1.0:
 				bs.erase(b)
+				DemonHurlFx.end_trail(b)
 				(n as Node).queue_free()
-				if key == "meteors":
-					crater(root, to, DemonSkills.METEOR_R)
-					Sfx.play_at("boom", to, -4.0, 1.05)
-					SkillFx.shake(h, 0.22)
+				if mk != null and is_instance_valid(mk[0]):
+					(mk[0] as Node).queue_free()
+				DemonHurlFx.impact(h, to, DemonKitFx.METEOR_PIECES, 0.95, DemonSkills.METEOR_R, 1.15)
+				Sfx.play_at("boom", to, -3.0, 0.95)
+				Sfx.play_at("impact_bone", to, -8.0, 0.5)
 		if bs.is_empty():
-			h.fxs.erase(key)
+			h.fxs.erase("meteors")
 	if h.fxs.has("grip"):
 		var g: Dictionary = h.fxs["grip"]
 		var v = g["victim"]
 		g["until"] = float(g["until"]) - delta
 		g["t"] = float(g["t"]) + delta
-		if v == null or not is_instance_valid(v) or v.dead or float(g["until"]) <= 0.0:
+		if v == null or not is_instance_valid(v) or bool(v.get("dead")) or float(g["until"]) <= 0.0:
 			_end_grip(h, false)
 		else:
 			# hauled up into the air over his head, squirming
@@ -303,18 +221,9 @@ static func update(h: Hero, delta: float) -> void:
 			if rig != null and is_instance_valid(rig):
 				rig.position.y = float(g["lift"]) + sin(float(g["t"]) * 14.0) * 0.06
 				rig.rotation.z = sin(float(g["t"]) * 9.0) * 0.25 * clampf(float(g["lift"]) / DemonSkills.GRIP_LIFT, 0.0, 1.0)
-			if h.puppet:
-				# a partner's puppet holds it beside the hero's hands
-				var hand := SkillFx.hand(h, true)
-				var pv: Vector3 = v.global_position
-				pv.x = lerpf(pv.x, hand.x, clampf(delta * 6.0, 0.0, 1.0))
-				pv.z = lerpf(pv.z, hand.z, clampf(delta * 6.0, 0.0, 1.0))
 	if h.fxs.has("wrath"):
 		var n: Dictionary = h.fxs["wrath"]
 		n["until"] = float(n["until"]) - delta
-		var st := SkillFx.style(h)
-		if st in DemonSkills.WRATH_STAGES:
-			n["until"] = maxf(float(n["until"]), 2.0)
 		if float(n["until"]) <= 0.0 or (not h.puppet and not h.dm.has("wrath")):
 			_end_wrath(h, false)
 		else:
@@ -332,15 +241,22 @@ static func update(h: Hero, delta: float) -> void:
 ## Everything of his that lingers is gone (death, a class change, a zone change).
 static func clear(h: Hero) -> void:
 	DemonFistsFx.clear(h)
-	_end_charge(h)
+	DemonChargeFx._end(h)
+	DemonFaultFx.clear(h)
+	DemonHurlFx.clear(h)
+	DemonChainFx.clear(h)
+	DemonCrucibleFx.clear(h)
 	_end_grip(h, false)
 	_end_wrath(h, false)
-	for key in ["boulders", "meteors"]:
-		if h.fxs.has(key):
-			for b in h.fxs[key]:
-				if is_instance_valid(b["node"]):
-					(b["node"] as Node).queue_free()
-			h.fxs.erase(key)
+	if h.fxs.has("meteors"):
+		for b in h.fxs["meteors"]:
+			DemonHurlFx.end_trail(b)
+			if is_instance_valid(b["node"]):
+				(b["node"] as Node).queue_free()
+			var mk = b.get("mark")
+			if mk != null and is_instance_valid(mk[0]):
+				(mk[0] as Node).queue_free()
+		h.fxs.erase("meteors")
 
 # ---------------------------------------------------------------- the pieces
 ## Cracked rock with magma glowing through it, flat on the ground (a disc, or a wedge of one opening toward -z),

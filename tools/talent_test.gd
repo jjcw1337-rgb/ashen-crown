@@ -144,7 +144,7 @@ func _run() -> void:
 				aim = foe[0].global_position
 				h.global_position = aim + Vector3(2.0, 0, 0)      # back beside it (a charge or a step carried him off)
 			var ok: bool = h.use_skill(sk["id"], aim)
-			await wait((2.2 if cls == "demon" else 1.2) if sk["id"] != "drain" else 0.4)
+			await wait((3.2 if cls == "demon" else 1.2) if sk["id"] != "drain" else 0.4)     # (the Demon's chain: throw, haul, smash)
 			if sk["id"] == "drain":
 				h.end_drain()
 			check(ok, "%s: %s cast" % [cls, sk["name"]])

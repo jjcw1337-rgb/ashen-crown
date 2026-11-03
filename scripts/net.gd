@@ -11,7 +11,8 @@ const STYLES := ["over", "back", "side", "thrust", "bow", "cast", "claw", "slam"
 	"rend", "siphon", "wstep", "grasp", "phantom", "night_rise", "night_scream", "night_hold", "night_fall",
 	"pd_flask", "pd_volatile", "pd_trap", "pd_slam", "pd_dome", "pd_inspect",
 	"fists", "icharge", "cslam", "hurl", "grip", "wrath_roar", "wrath_stomp", "chop",
-	"pie", "peels", "slide", "doppel", "juggle", "bounce", "car"]
+	"pie", "peels", "slide", "doppel", "juggle", "bounce", "car",
+	"icharge_wind", "icharge_skid", "hurl2", "grip_throw", "grip_haul", "crucible"]
 const SEND_RATE := 0.05
 const ALLY_COLORS := [Color(0.45, 0.8, 1.0), Color(0.5, 1.0, 0.5), Color(1.0, 0.6, 0.9)]
 
@@ -929,6 +930,21 @@ func send_pvp_hit(target_pid: int, amount: float, from: Vector3) -> void:
 func sv_pvp_hit(target_pid: int, amount: float, from: Vector3) -> void:
 	if server and game.bg != null:
 		game.bg.pvp_hit(multiplayer.get_remote_sender_id(), target_pid, amount, from)
+
+## PvP crowd control (PvpStatus): the local hero's skill did more than hurt another player's stand-in.
+func send_pvp_status(target_pid: int, kind: String, secs: float, data: Dictionary) -> void:
+	if active and not server:
+		rpc_id(1, "sv_pvp_status", target_pid, kind, secs, data)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_pvp_status(target_pid: int, kind: String, secs: float, data: Dictionary) -> void:
+	if server and game.bg != null:
+		game.bg.pvp_status(multiplayer.get_remote_sender_id(), target_pid, kind, secs, data)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_pvp_status(kind: String, secs: float, data: Dictionary) -> void:
+	if not loading:
+		PvpStatus.apply(game.hero, kind, secs, data)
 
 ## PvP crowd control (Doug's slips, pies and launches): the local hero's skill caught another player's stand-in;
 ## the server checks the raid is on and both are playing, then hands it to that player as a zero-damage hit of
