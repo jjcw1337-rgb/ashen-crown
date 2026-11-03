@@ -18,10 +18,11 @@ const BOOKS := {
 	"tongue": "res://assets/textures/fx/fire_tongue.png",
 	"spread": "res://assets/textures/fx/fire_spread.png",
 	"smoke": "res://assets/textures/fx/smoke_body.png",
+	"spirit": "res://assets/textures/fx/fire_spirit.png",   # blue spirit-fire (FIRE_KIND=spirit), already coloured
 }
 const LEGACY_BOOK := "res://assets/textures/fx/fire_flipbook.png"
 const GRID := Vector2(6, 6)          # frames per book unless GRIDS says otherwise
-const GRIDS := {"body": Vector2(8, 8)}   # the body book holds 64 frames
+const GRIDS := {"body": Vector2(8, 8), "spirit": Vector2(8, 8)}   # these books hold 64 frames (spirit: 256 x 512 each)
 const FPS := 30.0
 
 ## Each kind of fire: its book, how many flames per second (per metre of size), their life, how wide and tall a
@@ -36,6 +37,15 @@ const PRESETS := {
 	"ground":   {"book": "spread", "rate": 7.0, "life": 0.7, "w": 1.5, "h": 0.75, "back": 0.5, "core": 0.6, "embers": 8.0, "sparks": 0.1, "smoke": 0.8, "light": 2.0, "range": 6.5, "haze": false, "jitter": 0.35},
 	"magic":    {"book": "tongue", "rate": 12.0, "life": 0.5, "w": 0.95, "h": 1.6, "back": 0.3, "core": 1.0, "embers": 10.0, "sparks": 0.3, "smoke": 0.0, "light": 2.0, "range": 6.0, "haze": false, "jitter": 0.15},
 	"weapon":   {"book": "tongue", "rate": 14.0, "life": 0.42, "w": 0.9, "h": 1.5, "back": 0.0, "core": 0.0, "embers": 8.0, "sparks": 0.0, "smoke": 0.0, "light": 0.0, "range": 0.0, "haze": false, "jitter": 0.1},
+	# the camp waypoint's blue spirit-fire braziers: the spirit book plays as rendered (violet tips, electric blue,
+	# a cyan-white heart), blue embers and sparks, a cold light, no soot
+	# "anchored": a few long-lived flames standing in the bowl ("count", whatever the graphics tier), each playing a
+	# long run of the simulation at full strength (brief "fades"), never wrapping past the book's end ("seamless"),
+	# so the simulated tongues read whole instead of many short faded flames blurring into a cloud. Overlapping
+	# light adds and the tonemapper bleaches what passes 1: no hot core layer, "hot" per flame and "cool" (the shader
+	# keeps red and green low, and cuts each flame's faint haze) so they sum to blue with dark gaps between tongues.
+	"spirit":   {"book": "spirit", "rate": 0.0, "life": 1.3, "w": 0.95, "h": 1.35, "back": 0.0, "core": 0.0, "embers": 14.0, "sparks": 0.2, "smoke": 0.0, "light": 2.0, "range": 6.5, "haze": false, "jitter": 0.035, "pal": "spirit", "hot": 0.6, "cool": 1.0,
+		"anchored": true, "count": 3, "fades": Vector2(0.1, 0.86), "seamless": true},
 	"burning":  {"book": "tongue", "rate": 12.0, "life": 0.5, "w": 1.1, "h": 1.7, "back": 0.3, "core": 0.0, "embers": 8.0, "sparks": 0.1, "smoke": 0.5, "light": 0.0, "range": 0.0, "haze": false, "jitter": 0.2},
 }
 ## Flames per preset scale with the graphics budget (InfernalFx.tier: Low, Medium, High, Ultra).
@@ -75,8 +85,8 @@ static func book(name: String) -> Texture2D:
 	return _books[name]
 
 ## A flame material for a book (shared per book and look, so fires batch). life = the particle's lifetime.
-static func flame_mat(bk: String, life: float, hot: float, tint: float) -> ShaderMaterial:
-	var key := "%s_%.2f_%.2f_%.2f" % [bk, life, hot, tint]
+static func flame_mat(bk: String, life: float, hot: float, tint: float, cool := 0.0, fades := Vector2(0.12, 0.55), seamless := false) -> ShaderMaterial:
+	var key := "%s_%.2f_%.2f_%.2f_%.2f_%.2f_%.2f_%s" % [bk, life, hot, tint, cool, fades.x, fades.y, seamless]
 	if _mats.has(key):
 		return _mats[key]
 	var tex := book(bk)
@@ -92,6 +102,10 @@ static func flame_mat(bk: String, life: float, hot: float, tint: float) -> Shade
 		m.set_shader_parameter("frames_per_life", FPS * life)
 		m.set_shader_parameter("hot", hot)
 		m.set_shader_parameter("tint", tint)
+		m.set_shader_parameter("cool", cool)
+		m.set_shader_parameter("fade_in", fades.x)
+		m.set_shader_parameter("fade_out", fades.y)
+		m.set_shader_parameter("seamless", 1.0 if seamless else 0.0)
 		m.set_shader_parameter("crimson", InfernalFx.CRIMSON)
 		m.set_shader_parameter("molten", InfernalFx.MOLTEN)
 		m.set_shader_parameter("whitehot", InfernalFx.WHITEHOT)
@@ -118,21 +132,28 @@ static func make(parent: Node3D, pos: Vector3, kind := "", size := 1.0, col := C
 	var k: float = TIER_K[tr]
 	var bk: String = P["book"]
 	var tint := _tint_for(col)
+	var pal: String = P.get("pal", "")
+	if pal == "spirit":
+		tint = 0.0       # the spirit book is already blue: no pull toward hellfire
 	var height: float = float(P["h"]) * size
 	var width: float = float(P["w"]) * size
 	var life: float = float(P["life"]) * (0.85 + 0.15 * size)
 	# the back layer: bigger, dimmer, slower flames behind, so the fire has depth
 	if float(P["back"]) > 0.0 and tr >= 1:
-		_flames(root, "back", bk, life * 1.3, width * 1.35, height * 1.15, maxf(2.0, float(P["rate"]) * float(P["back"]) * 0.6 * size * k), 0.5, tint, float(P["jitter"]) * size * 1.4, size)
+		_flames(root, "back", bk, life * 1.3, width * 1.35, height * 1.15, maxf(2.0, float(P["rate"]) * float(P["back"]) * 0.6 * size * k), 0.5 * float(P.get("hot", 1.0)), tint, float(P["jitter"]) * size * 1.4, size, float(P.get("cool", 0.0)))
 	# the main flames
-	_flames(root, "flames", bk, life, width, height, maxf(3.0, float(P["rate"]) * size * k), 1.0, tint, float(P["jitter"]) * size, size)
+	var hot := float(P.get("hot", 1.0))
+	if bool(P.get("anchored", false)):
+		_anchored(root, bk, life, width, height, int(P.get("count", 3)), hot, tint, float(P["jitter"]) * size, float(P.get("cool", 0.0)), P.get("fades", Vector2(0.1, 0.86)), bool(P.get("seamless", true)))
+	else:
+		_flames(root, "flames", bk, life, width, height, maxf(3.0, float(P["rate"]) * size * k), hot, tint, float(P["jitter"]) * size, size, float(P.get("cool", 0.0)))
 	# the hot core: small, bright, low
 	if float(P["core"]) > 0.0:
-		_flames(root, "core", bk, life * 0.6, width * 0.55, height * 0.5, maxf(2.0, float(P["rate"]) * 0.6 * size * k), 0.95 * float(P["core"]), tint, float(P["jitter"]) * size * 0.5, size)
+		_flames(root, "core", bk, life * 0.6, width * 0.55, height * 0.5, maxf(2.0, float(P["rate"]) * 0.6 * size * k), 0.95 * float(P["core"]), tint, float(P["jitter"]) * size * 0.5, size, float(P.get("cool", 0.0)))
 	if float(P["embers"]) > 0.0:
-		_embers(root, height, maxi(2, int(float(P["embers"]) * size * k)), size)
+		_embers(root, height, maxi(2, int(float(P["embers"]) * size * k)), size, pal)
 	if float(P["sparks"]) > 0.0 and tr >= 1:
-		_sparks(root, height, float(P["sparks"]) * size * k)
+		_sparks(root, height, float(P["sparks"]) * size * k, pal)
 	if smoke and float(P["smoke"]) > 0.0 and tr >= 1:
 		_smoke(root, height, float(P["smoke"]) * size * k, size)
 	if bool(P["haze"]) and game != null and InfernalFx.haze_ok(game) and size >= 0.9:
@@ -142,7 +163,7 @@ static func make(parent: Node3D, pos: Vector3, kind := "", size := 1.0, col := C
 	if light and float(P["light"]) > 0.0:
 		var l := OmniLight3D.new()
 		l.name = "FireLight"
-		l.light_color = col.lerp(Color(1.0, 0.5, 0.18), 0.4)
+		l.light_color = col if pal == "spirit" else col.lerp(Color(1.0, 0.5, 0.18), 0.4)
 		l.light_energy = float(P["light"]) * size
 		l.omni_range = float(P["range"]) * size
 		l.omni_attenuation = 1.3
@@ -163,7 +184,7 @@ static func make(parent: Node3D, pos: Vector3, kind := "", size := 1.0, col := C
 	return root
 
 ## One layer of flames: flipbook particles standing on their spot, rising a little, nudged by turbulence.
-static func _flames(root: Node3D, nm: String, bk: String, life: float, w: float, h: float, rate: float, hot: float, tint: float, jitter: float, size: float) -> void:
+static func _flames(root: Node3D, nm: String, bk: String, life: float, w: float, h: float, rate: float, hot: float, tint: float, jitter: float, size: float, cool := 0.0) -> void:
 	var q := QuadMesh.new()
 	q.size = Vector2(w, h)
 	q.center_offset = Vector3(0, h * 0.42, 0)
@@ -171,7 +192,7 @@ static func _flames(root: Node3D, nm: String, bk: String, life: float, w: float,
 	# so a fire stays orange and yellow and never sums to white
 	var n := maxi(2, int(rate * life))
 	var share := clampf(1.45 / sqrt(float(n)), 0.22, 0.9)
-	q.material = flame_mat(bk, snappedf(life, 0.05), snappedf(hot * share, 0.05), snappedf(tint, 0.1))
+	q.material = flame_mat(bk, snappedf(life, 0.05), snappedf(hot * share, 0.05), snappedf(tint, 0.1), cool)
 	var p := InfernalFx.particles(root, root.global_position if root.is_inside_tree() else root.position, {
 		"amount": n, "life": life, "one_shot": false, "randomness": 0.4,
 		"shape": "sphere", "r": maxf(jitter, 0.01), "dir": Vector3.UP, "spread": 8.0,
@@ -182,22 +203,50 @@ static func _flames(root: Node3D, nm: String, bk: String, life: float, w: float,
 	p.position = Vector3.ZERO
 	p.preprocess = life
 
+## A few long-lived flames standing still on their spot (no drift or turbulence: the simulation is the motion),
+## emitted evenly so they take over from one another; each plays a long, unbroken run of the book.
+static func _anchored(root: Node3D, bk: String, life: float, w: float, h: float, count: int, hot: float, tint: float, jitter: float, cool: float, fades: Vector2, seamless: bool) -> void:
+	var q := QuadMesh.new()
+	q.size = Vector2(w, h)
+	q.center_offset = Vector3(0, h * 0.42, 0)
+	var share := clampf(1.45 / sqrt(float(maxi(count, 1))), 0.22, 0.9)
+	q.material = flame_mat(bk, snappedf(life, 0.05), snappedf(hot * share, 0.05), snappedf(tint, 0.1), cool, fades, seamless)
+	var p := InfernalFx.particles(root, root.global_position if root.is_inside_tree() else root.position, {
+		"amount": maxi(1, count), "life": life, "one_shot": false, "randomness": 0.15,
+		"shape": "sphere", "r": maxf(jitter, 0.005), "dir": Vector3.UP, "spread": 0.0,
+		"vel": [0.0, 0.0], "gravity": 0.0, "scale": [0.9, 1.08], "angle": true, "mesh": q,
+		"colors": [[0.0, Color(1, 1, 1, 1)], [1.0, Color(1, 1, 1, 1)]]})
+	p.name = "flames"
+	p.position = Vector3.ZERO
+	p.local_coords = true          # they stand in the bowl even if it moves
+	p.preprocess = life
+
 ## Embers that detach and drift up on the heat, wandering.
-static func _embers(root: Node3D, h: float, n: int, size: float) -> void:
+## Ember and spark colours by palette ("" = natural fire, "spirit" = the blue spirit-fire's sparkle).
+const EMBER_COLS := {
+	"": [[0.0, Color(1.0, 0.86, 0.62)], [0.25, Color(1.0, 0.55, 0.12)], [0.75, Color(0.9, 0.18, 0.03)], [1.0, Color(0.6, 0.05, 0.0, 0.0)]],
+	"spirit": [[0.0, Color(0.85, 0.95, 1.0)], [0.25, Color(0.35, 0.65, 1.0)], [0.75, Color(0.25, 0.15, 0.95)], [1.0, Color(0.2, 0.05, 0.6, 0.0)]],
+}
+const SPARK_COLS := {
+	"": [[0.0, Color(1.0, 0.95, 0.75)], [0.4, Color(1.0, 0.6, 0.15)], [1.0, Color(1.0, 0.25, 0.0, 0.0)]],
+	"spirit": [[0.0, Color(0.9, 0.97, 1.0)], [0.4, Color(0.3, 0.6, 1.0)], [1.0, Color(0.3, 0.1, 0.9, 0.0)]],
+}
+
+static func _embers(root: Node3D, h: float, n: int, size: float, pal := "") -> void:
 	var e := InfernalFx.particles(root, root.position, {"amount": n, "life": 2.0, "one_shot": false, "randomness": 0.7,
 		"shape": "sphere", "r": 0.18 * size, "dir": Vector3.UP, "spread": 25.0, "vel": [0.6 * size + 0.3, 1.8 * size + 0.4],
 		"gravity": 0.5, "damping": [0.3, 0.8], "scale": [0.4, 1.0], "size": clampf(0.04 * size, 0.02, 0.06), "turb": 1.4,
-		"colors": [[0.0, InfernalFx.WHITEHOT], [0.25, Color(1.0, 0.55, 0.12)], [0.75, Color(0.9, 0.18, 0.03)], [1.0, Color(0.6, 0.05, 0.0, 0.0)]]})
+		"colors": EMBER_COLS.get(pal, EMBER_COLS[""])})
 	e.name = "embers"
 	e.position = Vector3(0, h * 0.35, 0)
 	e.preprocess = 2.0
 
 ## Now and then a pop of sparks flying out.
-static func _sparks(root: Node3D, h: float, k: float) -> void:
+static func _sparks(root: Node3D, h: float, k: float, pal := "") -> void:
 	var s := InfernalFx.particles(root, root.position, {"amount": maxi(3, int(10 * k)), "life": 0.7, "one_shot": false,
 		"explosive": 0.85, "randomness": 0.6, "shape": "sphere", "r": 0.1, "dir": Vector3.UP, "spread": 55.0,
 		"vel": [2.0, 4.5], "gravity": -6.0, "scale": [0.3, 0.8], "size": 0.03,
-		"colors": [[0.0, Color(1.0, 0.95, 0.75)], [0.4, Color(1.0, 0.6, 0.15)], [1.0, Color(1.0, 0.25, 0.0, 0.0)]]})
+		"colors": SPARK_COLS.get(pal, SPARK_COLS[""])})
 	s.name = "sparks"
 	s.position = Vector3(0, h * 0.3, 0)
 

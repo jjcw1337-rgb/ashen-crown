@@ -300,11 +300,13 @@ func ignite(dps: float, t: float, look := "") -> void:
 		return
 	# a player's stand-in: the burn goes to them (the sandbox's hero, or a raid's player through the server)
 	if sandbox_hero != null:
-		if Hero.striker != sandbox_hero and not sandbox_hero.dead:
-			sandbox_hero.take_hit(dps * Battlegrounds.PVP_MULT, global_position, "burn", "fire")
+		var who: Hero = Hero.striker
+		if who != sandbox_hero and not sandbox_hero.dead:
+			var k := Data.pvp_scale(who.cls if who != null else "", sandbox_hero.cls, who.level if who != null else 20, sandbox_hero.level)
+			sandbox_hero.take_hit(minf(dps, Battlegrounds.PVP_BURN_CAP) * Battlegrounds.PVP_MULT * k, global_position, "burn", "fire")
 		return
 	if pvp_pid > 0:
-		game.net.send_pvp_dot(pvp_pid, dps * Battlegrounds.PVP_MULT, global_position)
+		game.net.send_pvp_dot(pvp_pid, dps, global_position)
 		return
 	burn_dps = maxf(burn_dps if burn_t > 0.0 else 0.0, dps)
 	burn_t = maxf(burn_t, t)
@@ -717,8 +719,8 @@ func _process(delta: float) -> void:
 	if hoard != null and hoard.boss == self and aggro:
 		hoard.update(delta)
 	var vel := Vector3.ZERO
-	# a Demon phased into the Underworld cannot be seen
-	var hero_dead: bool = hero.dead or hero.get("phased") == true or float(hero.get("hidden_t") if hero.get("hidden_t") != null else 0.0) > 0.0
+	# a Demon phased into the Underworld cannot be seen, nor a partner under a Shadow Phial (his state's bit, Net._hero_packet)
+	var hero_dead: bool = hero.dead or hero.get("phased") == true or hero.get("net_invis") == true or float(hero.get("hidden_t") if hero.get("hidden_t") != null else 0.0) > 0.0
 	if sloth != null:
 		vel = sloth.update(delta, hero, to, dist, hero_dead)
 	elif brain != null:

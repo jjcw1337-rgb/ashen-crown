@@ -14,6 +14,8 @@ const CYAN := Color(0.45, 0.85, 1.0)
 const GOLD := Color(0.86, 0.72, 0.44)
 const DIM := Color(0.62, 0.58, 0.52)
 const INK := Color(0.9, 0.87, 0.8)
+const CRYPT := Color(0.42, 0.62, 1.0)     # the Hollow Crypt's cold rune light (the Battlegrounds card's accent)
+const RISK := Color(1.0, 0.5, 0.35)       # the stakes, the seal's red
 
 var ui: UI
 var game: Node
@@ -33,6 +35,7 @@ var banner_note: Label
 var next_box: VBoxContainer
 var seal: Label
 var route_box: VBoxContainer
+var route_head: Label         # "THE ROUTE" over an act's stops, "THE DESCENT" over the raids
 var route_line: Control
 var route_stack: Control      # holds the road and the stops; sized to the stops so the route scrolls
 var here_icons: Array = []   # the "you are here" sigils, pulsed in _process
@@ -193,7 +196,8 @@ func setup(u: UI) -> void:
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right.add_theme_constant_override("separation", 8)
 	body.add_child(right)
-	right.add_child(ui._label("THE ROUTE", 13, DIM, true))
+	route_head = ui._label("THE ROUTE", 13, DIM, true)
+	right.add_child(route_head)
 	# the route scrolls when an act has more waypoints than fit; the road is drawn behind the stops
 	var rscroll := ScrollContainer.new()
 	rscroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -234,6 +238,7 @@ func open(from: Node3D = null) -> void:
 func close() -> void:
 	visible = false
 	stone = null
+	_probe_stop()
 	ui.tooltip.visible = false
 	ui.tip_owner = null
 
@@ -259,6 +264,10 @@ func _act_name(run: int) -> String:
 
 func _fill() -> void:
 	here_icons.clear()
+	bg_icons.clear()
+	probe_lbl = null
+	_probe_stop()
+	route_head.text = "THE ROUTE"
 	for c in tabs_box.get_children():
 		c.queue_free()
 	for c in groups_box.get_children():
@@ -267,10 +276,15 @@ func _fill() -> void:
 	for a in _acts():
 		if not used.has(a.get("group", "acts")):
 			used.append(a.get("group", "acts"))
+	if acts_override.is_empty() and not Data.WAYPOINT_BATTLEGROUNDS.is_empty():
+		used.append("battlegrounds")
 	groups_box.visible = used.size() > 1
 	for gdef in Data.WAYPOINT_GROUPS:
 		if used.has(gdef["id"]):
 			groups_box.add_child(_group_tab(gdef))
+	if sel_group == "battlegrounds":
+		_fill_battlegrounds()
+		return
 	for a in _acts():
 		if str(a.get("group", "acts")) == sel_group:
 			tabs_box.add_child(_tab(a))
@@ -301,6 +315,289 @@ func _fill() -> void:
 		next_box.add_child(_next_card(act, nxt))
 	_size_route.call_deferred()
 	route_line.queue_redraw()
+
+## The Battlegrounds group: no act tabs or route. The banner shows the raid's painting (the first entry's art) and
+## the right column holds a card per battleground (Data.WAYPOINT_BATTLEGROUNDS), each a way down from this dais.
+func _fill_battlegrounds() -> void:
+	var first: Dictionary = Data.WAYPOINT_BATTLEGROUNDS[0] if not Data.WAYPOINT_BATTLEGROUNDS.is_empty() else {}
+	banner.texture = load(first["art"]) if first.has("art") and ResourceLoader.exists(first["art"]) else null
+	banner.modulate = Color(1, 1, 1)
+	banner_sub.text = "BATTLEGROUNDS   ·   A SHARED SERVER"
+	banner_title.text = str(first.get("name", "Battlegrounds"))
+	banner_note.text = "Raids where other heroes hunt too. What you carry down is at stake; your levels, talents and the camp's stash never are."
+	seal.visible = false
+	route_head.text = "THE DESCENT"
+	for c in route_box.get_children():
+		route_box.remove_child(c)
+		c.queue_free()
+	for c in next_box.get_children():
+		c.queue_free()
+	for b in Data.WAYPOINT_BATTLEGROUNDS:
+		route_box.add_child(_bg_card(b))
+	# a word on where it ends: the way back is the same dais
+	var back := PanelContainer.new()
+	back.add_theme_stylebox_override("panel", ui._box(Color(0.05, 0.04, 0.03, 0.7), Color(0.3, 0.24, 0.15), 1, 6, 8))
+	var bh := HBoxContainer.new()
+	bh.add_theme_constant_override("separation", 10)
+	back.add_child(bh)
+	var bi := TextureRect.new()
+	bi.texture = load(SIGIL)
+	bi.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bi.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	bi.custom_minimum_size = Vector2(32, 32)
+	bi.modulate = Color(0.6, 0.6, 0.65)
+	bh.add_child(bi)
+	var bt := VBoxContainer.new()
+	bt.add_theme_constant_override("separation", 0)
+	bt.alignment = BoxContainer.ALIGNMENT_CENTER
+	bh.add_child(bt)
+	bt.add_child(ui._label("The way back is this waypoint", 13, INK, true))
+	bt.add_child(ui._label("Extracted or fallen, %s returns to this dais" % game.char_name, 11, DIM))
+	route_box.add_child(back)
+	_probe_start(game.bg_server_address())
+	_size_route.call_deferred()
+	route_line.queue_redraw()
+
+## One battleground, laid out like a route stop: its sigil and name with a RAID plaque, the mode and the round's
+## numbers (Battlegrounds' constants), what the place is, the stakes in plain words, the character going down and
+## what they carry, the server and whether it answers (the probe), and Descend. Hover lights it like a stop; the
+## button or a click on the card asks Game.waypoint_battleground (a last word on the stakes, then the way down).
+func _bg_card(b: Dictionary) -> Control:
+	var h = game.hero
+	var in_coop: bool = game.net.active
+	var card := PanelContainer.new()
+	var idle := ui._box(Color(0.06, 0.05, 0.04, 0.9), Color(0.3, 0.24, 0.15), 1, 6, 10)
+	var hot := ui._box(Color(0.08, 0.1, 0.16, 0.94), CRYPT, 1, 6, 10)
+	card.add_theme_stylebox_override("panel", idle)
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	card.mouse_default_cursor_shape = Control.CURSOR_ARROW if in_coop else Control.CURSOR_POINTING_HAND
+	card.set_meta("node", true)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 5)
+	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(vb)
+	# the head: the sigil (slowly turning, in the crypt's cold light), the name, the plaque, and the tag
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 10)
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(head)
+	var icon := TextureRect.new()
+	icon.texture = load(SIGIL)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.custom_minimum_size = Vector2(44, 44)
+	icon.pivot_offset = Vector2(22, 22)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.modulate = Color(0.75, 0.85, 1.0)
+	head.add_child(icon)
+	bg_icons.append(icon)
+	var tv := VBoxContainer.new()
+	tv.add_theme_constant_override("separation", 0)
+	tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tv.alignment = BoxContainer.ALIGNMENT_CENTER
+	tv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	head.add_child(tv)
+	var nrow := HBoxContainer.new()
+	nrow.add_theme_constant_override("separation", 8)
+	nrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tv.add_child(nrow)
+	nrow.add_child(ui._label(str(b["name"]), 16, INK, true))
+	nrow.add_child(_plaque("RAID", Color(0.95, 0.5, 0.4)))
+	var mins := int(Battlegrounds.RAID_SECS / 60.0)
+	var pmins := int(Battlegrounds.PORTALS_AT / 60.0)
+	tv.add_child(ui._label("%s  ·  up to %d raiders  ·  rounds of %d min, the portals open after %d" % [str(b.get("kind", "Raid")), Battlegrounds.MAX_PLAYERS, mins, pmins], 11, DIM))
+	var tag := ui._label("IN CO-OP" if in_coop else "DESCEND ›", 12, DIM if in_coop else CRYPT, true)
+	head.add_child(tag)
+	# the place
+	for line in b.get("lines", []):
+		var l := ui._label(str(line), 12, INK)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vb.add_child(l)
+	# the stakes, in plain words
+	var risk := ui._label("☠  Fall down there and every item you wear and carry, your belt and your gold stay on the crypt floor. Your levels, stats, talents and the camp's stash are safe.", 12, RISK, true)
+	risk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	risk.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(risk)
+	# who goes down, and with what
+	var rule := ColorRect.new()
+	rule.color = Color(GOLD, 0.25)
+	rule.custom_minimum_size = Vector2(0, 1)
+	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(rule)
+	var worn := 0
+	for slot in h.equipment:
+		if h.equipment[slot] != null:
+			worn += 1
+	var carried := 0
+	for it in h.inventory + h.belt:
+		if it != null:
+			carried += 1
+	var stashed := 0
+	for it in h.stash:
+		if it != null:
+			stashed += 1
+	var who := HBoxContainer.new()
+	who.add_theme_constant_override("separation", 14)
+	who.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vb.add_child(who)
+	var cls_name := str(Data.CLASSES.get(h.cls, {}).get("name", h.cls))
+	var wv := VBoxContainer.new()
+	wv.add_theme_constant_override("separation", 0)
+	wv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	wv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	who.add_child(wv)
+	wv.add_child(ui._label("%s  ·  level %d %s" % [game.char_name, h.level, cls_name], 13, GOLD, true))
+	wv.add_child(ui._label("At stake: %d worn, %d in the bag and belt, %d gold" % [worn, carried, h.gold], 11, INK))
+	wv.add_child(ui._label("Safe in the camp's stash: %d item%s" % [stashed, "" if stashed == 1 else "s"], 11, DIM))
+	var sv := VBoxContainer.new()
+	sv.add_theme_constant_override("separation", 0)
+	sv.alignment = BoxContainer.ALIGNMENT_END
+	sv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	who.add_child(sv)
+	var addr: String = game.bg_server_address()
+	var server_name := "the %s server" % BuildEnv.env() if BuildEnv.env() != "local" else addr
+	sv.add_child(ui._label("Server  ·  " + server_name, 11, DIM))
+	probe_lbl = ui._label("checking...", 11, DIM)
+	probe_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	sv.add_child(probe_lbl)
+	# the way down
+	if in_coop:
+		var why := ui._label("Leave co-op to go down: the party's host would lose you mid-act.", 12, RISK)
+		why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		why.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		vb.add_child(why)
+	else:
+		var go := Button.new()
+		go.text = "Descend into %s" % str(b["name"])
+		go.custom_minimum_size = Vector2(0, 38)
+		go.focus_mode = Control.FOCUS_NONE
+		go.pressed.connect(func(): _descend(str(b["id"]), icon))
+		vb.add_child(go)
+	card.mouse_entered.connect(func():
+		if not in_coop:
+			card.add_theme_stylebox_override("panel", hot)
+			icon.create_tween().tween_property(icon, "scale", Vector2(1.12, 1.12), 0.1)
+		var lines := [[str(b["name"]), GOLD], ["A shared server: other raiders are down there with you", INK]]
+		if in_coop:
+			lines.append(["Leave co-op to go down", RISK])
+		else:
+			lines.append(["Click to descend with %s (you will be asked first)" % game.char_name, INK])
+			lines.append(["Death costs everything worn and carried", RISK])
+		ui.show_tooltip(lines)
+		ui.tip_owner = card)
+	card.mouse_exited.connect(func():
+		card.add_theme_stylebox_override("panel", idle)
+		icon.create_tween().tween_property(icon, "scale", Vector2.ONE, 0.12)
+		ui.tooltip.visible = false
+		ui.tip_owner = null)
+	card.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			if in_coop:
+				Sfx.play("deny")
+				return
+			_descend(str(b["id"]), icon))
+	# every line of text wraps (the name, its plaque and the tag excepted): an unwrapped line sets the card's
+	# minimum width, and wider than its column the card was clipped, text and button cut off at the right
+	for n in card.find_children("*", "Label", true, false):
+		var lb: Label = n
+		if lb.get_parent() == nrow or lb == tag or lb.autowrap_mode != TextServer.AUTOWRAP_OFF:
+			continue
+		lb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lb.custom_minimum_size.x = 60.0
+	return card
+
+## Down we go: the sigil flashes, the window closes and Game asks its last word (then the dais flares).
+func _descend(id: String, icon: Control) -> void:
+	_spin = 10.0
+	Sfx.play("click")
+	var tw := icon.create_tween()
+	tw.tween_property(icon, "modulate", Color(2.0, 2.4, 3.0), 0.1)
+	tw.tween_property(icon, "modulate", Color(0.75, 0.85, 1.0), 0.2)
+	await get_tree().create_timer(0.2).timeout
+	close()
+	game.waypoint_battleground(id)
+
+## A small plaque like the town's, with its own word and colour (the Meshy gold nameplate behind).
+func _plaque(word: String, col: Color) -> Control:
+	var plq := _town_plaque()
+	var t: Label = plq.get_child(0)
+	t.text = word
+	t.add_theme_color_override("font_color", col)
+	return plq
+
+# ---------------------------------------------------------------- is the raid server there?
+## A cheap look at the server before anyone goes down: an ENet connection attempt (the raid's own protocol) that is
+## dropped the moment the handshake answers. The game server rejects a peer with no player id before any player
+## hears of it, so nobody in the raid sees a thing. Three seconds without an answer is "no answer". Not from a
+## browser (no UDP there).
+const PROBE_SECS := 3.0
+var probe: ENetConnection = null
+var probe_t := 0.0
+var probe_state := ""          # "" | "checking" | "ok" | "fail" | "web"
+var probe_lbl: Label = null
+var bg_icons: Array = []       # the raid cards' sigils, turning slowly
+
+func _probe_start(addr: String) -> void:
+	_probe_stop()
+	probe_t = 0.0
+	if OS.has_feature("web"):
+		probe_state = "web"
+		_probe_show()
+		return
+	var a: Array = Battlegrounds.parse_address(addr)
+	var c := ENetConnection.new()
+	if c.create_host(1) != OK:
+		probe_state = "fail"
+		_probe_show()
+		return
+	var peer: ENetPacketPeer = c.connect_to_host(str(a[0]), int(a[1]), 1, 0)
+	if peer == null:
+		c.destroy()
+		probe_state = "fail"
+		_probe_show()
+		return
+	probe = c
+	probe_state = "checking"
+	_probe_show()
+
+func _probe_stop() -> void:
+	if probe != null:
+		for p in probe.get_peers():
+			(p as ENetPacketPeer).peer_disconnect_now(0)
+		probe.destroy()
+		probe = null
+
+func _probe_poll(delta: float) -> void:
+	if probe == null:
+		return
+	probe_t += delta
+	var ev: Array = probe.service(0)
+	var kind: int = int(ev[0])
+	if kind == ENetConnection.EVENT_CONNECT:
+		probe_state = "ok"
+		_probe_stop()
+	elif kind == ENetConnection.EVENT_DISCONNECT or kind == ENetConnection.EVENT_ERROR or probe_t > PROBE_SECS:
+		probe_state = "fail"
+		_probe_stop()
+	_probe_show()
+
+func _probe_show() -> void:
+	if probe_lbl == null or not is_instance_valid(probe_lbl):
+		return
+	match probe_state:
+		"ok":
+			probe_lbl.text = "answering  ●"
+			probe_lbl.add_theme_color_override("font_color", Color(0.55, 0.9, 0.55))
+		"fail":
+			probe_lbl.text = "no answer  ●"
+			probe_lbl.add_theme_color_override("font_color", RISK)
+		"web":
+			probe_lbl.text = "not from a browser"
+			probe_lbl.add_theme_color_override("font_color", RISK)
+		_:
+			probe_lbl.text = "checking..."
+			probe_lbl.add_theme_color_override("font_color", DIM)
 
 func _boss_name(act: Dictionary) -> String:
 	var b: String = act.get("boss", "")
@@ -608,6 +905,10 @@ func _process(delta: float) -> void:
 		if is_instance_valid(ic):
 			(ic as Control).rotation += delta * 0.8
 			(ic as Control).modulate = Color(1, 1, 1).lerp(Color(1.6, 1.9, 2.2), 0.5 + 0.5 * sin(_t * 3.0))
+	for ic in bg_icons:
+		if is_instance_valid(ic):
+			(ic as Control).rotation -= delta * 0.45      # the crypt's sigil turns the other way, slowly, in a cold light
+	_probe_poll(delta)
 	# the banner drifts slowly, a little alive
 	if banner_clip.size.x > 0:
 		var z := 1.06 + 0.03 * sin(_t * 0.25)

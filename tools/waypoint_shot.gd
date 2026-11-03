@@ -1,6 +1,6 @@
 extends SceneTree
 ## Screenshot of the waypoint window: Act I with its wilderness waypoint bound, A2 open, A3 sealed.
-## Needs a display. Usage: godot -s tools/waypoint_shot.gd -- out.png [run to show]
+## Needs a display. Usage: godot -s tools/waypoint_shot.gd -- out.png [run to show | bg] (bg: the Battlegrounds tab)
 var g
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
@@ -20,7 +20,10 @@ func _run() -> void:
 	g.run_progress["1"] = {"waypoints": ["town"], "boss": false}
 	g.ui.open_waypoints()
 	var wp = g.ui.wp_panel
-	if args.size() > 1:
+	if args.size() > 1 and args[1] == "bg":
+		wp.sel_group = "battlegrounds"
+		wp._fill()
+	elif args.size() > 1:
 		wp.sel_run = int(args[1])
 		wp._fill()
 	for f in 20:
