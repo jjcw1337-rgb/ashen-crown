@@ -916,7 +916,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   (`GrassField.impulse(pos, radius, strength)`). Local and cosmetic: no network traffic. Far grass thins by
   shrinking clumps by their random value and LOD0/LOD1 cross-fade per clump (`Grass.FADE`, `LOD_BAND` per
   preset, using the global `grass_cam` so shadow passes agree); density per preset `QUALITY_DENSITY`; grass
-  casts shadows only on Ultra. `Grass.apply_quality` updates distances (`Game.apply_quality` skips the 3D grass's
+  casts shadows only on Ultra, from a shadows-only twin of each near (LOD0) chunk drawn with the LOD1 clump
+  (`Grass._shadow_twin`, `SHADOW_STYLE`; made on switching to Ultra, freed below it; nightly 2026-11-03: 14 -> 6 ms). `Grass.apply_quality` updates distances (`Game.apply_quality` skips the 3D grass's
   nodes, meta `grass3d`). Tests: `tools/grass_test.gd` (headless: species, LODs, no painted clumps, field on/off,
   movers, swings, rings, wind); `tools/grass_lab.gd -- outdir [quality] [zoomin]` (needs a display: biome bands,
   scripted walkers that walk, sprint, stop, turn and dash, a big beast, swings, a slam, wind changes; saves frames

@@ -60,6 +60,7 @@ func _run() -> void:
 		check(g.grass_field.enabled, "%s: touch field on" % zone)
 		if zone == "wild":
 			await _moor_checks(w)
+			await _shadow_checks()
 	# A2's road and A3's moor grow the living grass too (in their own colours), with the touch field on
 	for d in [1, 2]:
 		g.difficulty = d
@@ -74,6 +75,42 @@ func _run() -> void:
 	g.difficulty = 0
 	print("[G] %s" % ("all passed" if fails == 0 else "%d FAILED" % fails))
 	quit()
+
+## Ultra: the near grass's shadow comes from a shadows-only twin of each LOD0 chunk on the LOD1 clump; other
+## presets have no twins and no grass shadows (nightly 2026-11-03).
+func _shadow_checks() -> void:
+	var count := func() -> Array:
+		var tw := 0
+		var lod1 := 0
+		var cast := 0
+		for n in g.get_tree().get_nodes_in_group("grass"):
+			if not n.has_meta("grass3d") or n.is_queued_for_deletion():
+				continue
+			var gi := n as GeometryInstance3D
+			if int(n.get_meta("grass3d")) == 2:
+				tw += 1
+				if gi.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY:
+					lod1 += 1
+			elif gi.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
+				cast += 1
+		return [tw, lod1, cast]
+	var q0: int = g.quality
+	g.apply_quality(2)
+	await process_frame
+	await process_frame
+	var before: Array = count.call()
+	check(int(before[0]) == 0 and int(before[2]) == 0, "below Ultra: no grass shadow twins, no grass shadows (%s)" % str(before))
+	g.apply_quality(3)
+	await process_frame
+	var ultra: Array = count.call()
+	check(int(ultra[0]) > 100 and int(ultra[1]) == int(ultra[0]) and int(ultra[2]) == 0, "Ultra: shadows-only twins on the near grass (%s)" % str(ultra))
+	g.apply_quality(2)
+	await process_frame
+	await process_frame
+	var back: Array = count.call()
+	check(int(back[0]) == 0, "back to High: the twins are gone (%s)" % str(back))
+	g.apply_quality(q0)
+	await process_frame
 
 func _moor_checks(w) -> void:
 	var gf: GrassField = g.grass_field
