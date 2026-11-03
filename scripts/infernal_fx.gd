@@ -659,6 +659,10 @@ uniform vec2 grid = vec2(6.0, 6.0);
 uniform float frames_per_life = 18.0;
 uniform float hot = 1.0;
 uniform float tint = 0.25;
+uniform float cool = 0.0;     // the blue spirit-fire: keeps red and green low so overlapping flames sum to blue, not white
+uniform float fade_in = 0.12;     // of the flame's life
+uniform float fade_out = 0.55;    // it burns out from here to the end of its life
+uniform float seamless = 0.0;     // 1: start where the whole life plays without wrapping past the book's last frame
 uniform vec3 crimson : source_color = vec3(0.78, 0.035, 0.05);
 uniform vec3 molten : source_color = vec3(1.0, 0.42, 0.07);
 uniform vec3 whitehot : source_color = vec3(1.0, 0.86, 0.62);
@@ -678,11 +682,13 @@ vec3 frame_at(float f, vec2 uv) {
 }
 void fragment() {
 	vec2 uv = UV;
-	if (v_rnd > 0.5) { uv.x = 1.0 - uv.x; }
-	float f = v_rnd * (grid.x * grid.y - 1.0) + v_age * frames_per_life;
+	bool flip = seamless > 0.5 ? fract(v_rnd * 7.31) > 0.5 : v_rnd > 0.5;
+	if (flip) { uv.x = 1.0 - uv.x; }
+	float span = grid.x * grid.y - 1.0;
+	float f = v_rnd * mix(span, max(span - frames_per_life - 1.0, 0.0), seamless) + v_age * frames_per_life;
 	float f0 = floor(f);
 	vec3 c = mix(frame_at(f0, uv), frame_at(f0 + 1.0, uv), f - f0);
-	float fade = smoothstep(0.0, 0.12, v_age) * (1.0 - smoothstep(0.55, 1.0, v_age));
+	float fade = smoothstep(0.0, fade_in, v_age) * (1.0 - smoothstep(fade_out, 1.0, v_age));
 	// the sim's floor is the frame's bottom edge: soften it so a flame never shows a straight cut
 	fade *= smoothstep(0.0, 0.14, 1.0 - UV.y) * smoothstep(0.0, 0.2, UV.y);   // and its ceiling
 	fade *= smoothstep(0.0, 0.16, UV.x) * smoothstep(0.0, 0.16, 1.0 - UV.x);    // and its walls (a wide fire touches them)
@@ -690,6 +696,9 @@ void fragment() {
 	// a touch toward hellfire: the dim edges go blood-red, the hearts stay molten
 	vec3 hell = mix(crimson * 1.6, molten * 1.3, smoothstep(0.25, 0.8, lum)) * lum;
 	c = mix(c, hell, tint * (1.0 - smoothstep(0.6, 1.0, lum)));
+	c *= mix(vec3(1.0), vec3(0.42, 0.7, 1.0), cool);
+	// and its faint haze is cut away, so dark gaps open between the tongues (crisp flames, not a glowing cloud)
+	c *= mix(1.0, smoothstep(0.1, 0.32, lum), cool);
 	ALBEDO = c * hot * fade * COLOR.a;
 	ALPHA = clamp(lum * 0.12 * fade, 0.0, 1.0);
 }

@@ -1,6 +1,7 @@
 """Simulates a real fire with Mantaflow and renders it as flipbook frames for the game's flames (InfernalFx).
 
     blender -b --python tools/blender/fx/fire_flipbook.py -- <outdir> [res] [frames] [px] [seed]
+    (env: FIRE_KIND=body|tongue|spread|spirit, RENDER_ONLY=1 re-renders from the baked cache, START_FRAME=n)
 
 A small fuel source at the foot of a tall gas domain burns with vorticity and noise, buffeted by a turbulence
 field, so the tongues lick, pinch off and tear away as real flames do. Rendered side-on with an orthographic
@@ -20,14 +21,17 @@ PX = int(argv[3]) if len(argv) > 3 else 256
 SEED = int(argv[4]) if len(argv) > 4 else 3
 WARM = 76            # frames for the fire to rise and settle before recording
 # FIRE_KIND: body (a full fire: campfires, braziers), tongue (a tall thin flame: torches, weapons, burning foes),
-# spread (low and wide: burning ground, buildings). Each sets the domain, the fuel and the framing.
+# spread (low and wide: burning ground, buildings), spirit (the waypoint's blue spirit-fire: the body fire a little
+# wider and calmer, no soot, rendered violet / electric blue / cyan-white). Each sets the domain, the fuel and the framing.
 KIND = os.environ.get("FIRE_KIND", "body")
 SHAPE = {
     # domain (x, y, z) m, fuel radius, fuel scale, fuel height, camera (ortho, centre z), frame aspect (w / h)
     "body":   {"dom": (0.9, 0.3, 1.8), "r": 0.095, "fs": (1.7, 0.45, 0.55), "fz": 0.1, "cam": (1.15, 0.56), "aspect": 0.5},
     "tongue": {"dom": (0.5, 0.2, 1.6), "r": 0.05, "fs": (1.0, 1.0, 0.8), "fz": 0.08, "cam": (1.1, 0.53), "aspect": 0.5},
     "spread": {"dom": (1.8, 0.35, 1.0), "r": 0.1, "fs": (7.0, 0.6, 0.35), "fz": 0.06, "cam": (1.6, 0.38), "aspect": 2.0},
+    "spirit": {"dom": (0.9, 0.3, 1.8), "r": 0.095, "fs": (1.9, 0.45, 0.5), "fz": 0.1, "cam": (1.15, 0.56), "aspect": 0.5},
 }[KIND]
+SPIRIT = KIND == "spirit"
 os.makedirs(OUT, exist_ok=True)
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -38,11 +42,28 @@ scn.render.fps = 30
 
 # --- the fuel (a lumpy little bed at the foot) and its domain, made by Blender's own Quick Smoke (a domain built
 # by hand never took up the flow in a background bake), then reshaped: 0.9 x 0.3 x 1.8 m, open but for the floor
-bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=SHAPE["r"], location=(0, 0, SHAPE["fz"]))
-src = bpy.context.object
-src.name = "Fuel"
-src.scale = SHAPE["fs"]            # (body: a line of fuel, thin in depth: separate tongues)
-bpy.ops.object.transform_apply(scale=True)
+if KIND == "spirit":
+    # a bed of coals: four small lumps at different heights, so separate tongues rise and lick from separate points
+    lumps = []
+    for (x, y, z, r) in [(-0.13, 0.01, 0.09, 0.05), (-0.04, -0.015, 0.12, 0.06), (0.05, 0.015, 0.1, 0.055), (0.14, -0.01, 0.085, 0.045)]:
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=r, location=(x, y, z))
+        o = bpy.context.object
+        o.scale = (1.2, 0.8, 0.7)
+        bpy.ops.object.transform_apply(scale=True)
+        lumps.append(o)
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in lumps:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = lumps[0]
+    bpy.ops.object.join()
+    src = bpy.context.object
+    src.name = "Fuel"
+else:
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=3, radius=SHAPE["r"], location=(0, 0, SHAPE["fz"]))
+    src = bpy.context.object
+    src.name = "Fuel"
+    src.scale = SHAPE["fs"]            # (body: a line of fuel, thin in depth: separate tongues)
+    bpy.ops.object.transform_apply(scale=True)
 src.select_set(True)
 bpy.context.view_layer.objects.active = src
 bpy.ops.object.quick_smoke(style="BOTH")
@@ -75,8 +96,10 @@ ds.flame_vorticity = 0.6
 ds.flame_ignition = 1.2
 ds.flame_max_temp = 3.0
 ds.use_noise = False      # smooth sheets of flame (the upres mottles them); resolution carries the edges
-ds.noise_scale = 2
-ds.noise_strength = 1.2
+if SPIRIT:
+    # the body fire's gas (crisp tongues with dark gaps, as approved), a touch calmer, and no soot
+    ds.flame_smoke = 0.0
+    ds.vorticity = 0.1
 fm = src.modifiers[0]
 fs = fm.flow_settings
 fs.flow_type = "BOTH"
@@ -91,7 +114,7 @@ fs.velocity_normal = 1.4
 # --- turbulence keeps the silhouette from ever repeating
 bpy.ops.object.effector_add(type="TURBULENCE", location=(0, 0, 0.8))
 tb = bpy.context.object
-tb.field.strength = 3.0
+tb.field.strength = 3.0 if not SPIRIT else 2.6
 tb.field.size = 0.35
 tb.field.flow = 0.5
 tb.field.noise = 0.6
@@ -130,16 +153,26 @@ dens.attribute_name = "density"
 ramp = nt.nodes.new("ShaderNodeValToRGB")
 cr = ramp.color_ramp
 cr.elements[0].position = 0.0
-cr.elements[0].color = (0.32, 0.02, 0.0, 1.0)
-cr.elements[1].position = 1.0
-cr.elements[1].color = (1.0, 0.66, 0.14, 1.0)
-for pos, col in [(0.35, (0.9, 0.16, 0.0, 1.0)), (0.7, (1.0, 0.4, 0.03, 1.0))]:
-    e = cr.elements.new(pos)
-    e.color = col
+if SPIRIT:
+    # blue spirit-fire (target: the Meshy concept, wp_concepts/bluefire): violet at the cooling edges and tips,
+    # electric blue through the body, a near-white cyan heart
+    cr.elements[0].color = (0.16, 0.02, 0.42, 1.0)
+    cr.elements[1].position = 1.0
+    cr.elements[1].color = (0.82, 0.95, 1.0, 1.0)
+    for pos, col in [(0.25, (0.22, 0.08, 0.9, 1.0)), (0.5, (0.08, 0.3, 1.0, 1.0)), (0.75, (0.25, 0.62, 1.0, 1.0)), (0.9, (0.55, 0.85, 1.0, 1.0))]:
+        e = cr.elements.new(pos)
+        e.color = col
+else:
+    cr.elements[0].color = (0.32, 0.02, 0.0, 1.0)
+    cr.elements[1].position = 1.0
+    cr.elements[1].color = (1.0, 0.66, 0.14, 1.0)
+    for pos, col in [(0.35, (0.9, 0.16, 0.0, 1.0)), (0.7, (1.0, 0.4, 0.03, 1.0))]:
+        e = cr.elements.new(pos)
+        e.color = col
 # a sharp edge: the flame's light is a steep ramp of its field, so the tongues have crisp outlines like real fire
 edge = nt.nodes.new("ShaderNodeMapRange")
 edge.interpolation_type = "SMOOTHERSTEP"
-edge.inputs["From Min"].default_value = 0.42
+edge.inputs["From Min"].default_value = 0.42 if not SPIRIT else 0.5     # spirit: crisper tongue outlines
 edge.inputs["From Max"].default_value = 0.78
 edge.inputs["To Min"].default_value = 0.0
 edge.inputs["To Max"].default_value = 1.0
@@ -193,8 +226,8 @@ scn.render.engine = "CYCLES"
 scn.cycles.device = "CPU"
 scn.cycles.samples = 48
 scn.cycles.use_denoising = True
-scn.cycles.volume_step_rate = 0.5
-scn.cycles.volume_max_steps = 256
+scn.cycles.volume_step_rate = 0.5 if not SPIRIT else 0.2     # spirit (res 128): finer steps, no banding
+scn.cycles.volume_max_steps = 256 if not SPIRIT else 1024
 scn.render.film_transparent = False      # RGB is the fire's light on black (it adds); no alpha
 scn.render.resolution_x = int(PX * SHAPE["aspect"]) if SHAPE["aspect"] <= 1.0 else PX
 scn.render.resolution_y = PX if SHAPE["aspect"] <= 1.0 else int(PX / SHAPE["aspect"])
@@ -205,7 +238,8 @@ scn.view_settings.view_transform = "Standard"
 world = bpy.data.worlds.new("W")
 world.color = (0, 0, 0)
 scn.world = world
-for i in range(FRAMES):
+# START_FRAME=n renders from frame n on (with RENDER_ONLY=1: finish a render that was cut short)
+for i in range(int(os.environ.get("START_FRAME", "0")), FRAMES):
     scn.frame_set(WARM + 1 + i)
     scn.render.filepath = os.path.join(OUT, "fire_%03d.png" % i)
     bpy.ops.render.render(write_still=True)

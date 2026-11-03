@@ -173,7 +173,33 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   room per side holds a candidate Extraction Portal (Inter `"extract"`, hidden until open), the other is a treasure
   room and the only way into the hall from that side; a ring of corridors with one link missing; crypt rooms with
   sarcophagi, chests, few but tough monsters (`MON_LIFE`, `MON_DMG`, level `MON_LEVEL`); the hall has a pillar ring,
-  three chests and a champion with bowmen. The walls come from `World.crypt_shell` (shared with the crypt). **Rounds**
+  three chests and a champion with bowmen. The walls come from `World.crypt_shell` (shared with the crypt). **The
+  Ossuary's look** (floor 1; the floors below keep their own, see below; `scripts/crypt_props.gd` `CryptProps`): Meshy props re-baked onto clean UVs by
+  `tools/blender/battlegrounds/rebake_crypt_prop.py` into `assets/models/crypt/` (sarcophagus, pillar, archway, bones,
+  sconce, brazier, ossuary niche, the iron-bound chest, a row of candles; `prep_all.sh` rebuilds them from the raw
+  Meshy downloads, `--solid` for props Meshy made of single sheets; `cut_flames.py` cut the candles' modelled flames
+  and wrote their wicks, `CryptProps.CANDLE_WICKS`; `inspect_glb.py`, `components.py` to look at a raw model). World's shared crypt helpers (`_pillar`, `_sarcophagus`, `_bones`,
+  `_wall_torch`) draw them when the files are there (A3's crypt too) with the same footprints and the same rolls on
+  `rng`; in the Hollow Crypt (`theme.name == "bg"`) `crypt_shell` hands its wall blocks to `CryptProps.walls`, which
+  turns cells into tomb alcoves with sarcophagi (each room's north wall), ossuary niches (candles in some), the hall's
+  three statue alcoves (the knight statue in crypt stone) and wall braziers, closing the rock behind them; the walls
+  (`CryptProps.wall_meshes`) and the flagstone floor (`CryptProps.lay_floor`, quads over the floor cells) use
+  Meshy-drawn textures made tileable and normal-mapped in Blender (`make_tile_textures.py`, `assets/textures/crypt/`),
+  both cut into `TILE` (12 m) meshes, since the OpenGL renderer lights a mesh by at most eight lights; `_chest` is the
+  Meshy chest (`CryptProps.chest`, on the old chest's footprint node, a faint warm glint over it) and floor `_candles`
+  the Meshy candles burning FireFx candle flames (the same rolls as before); the wall torches light a warm pool to the
+  floor (`CryptProps.torch_light`, `TORCH_ENERGY`/`TORCH_RANGE`) and every other hall pillar carries one
+  (`hall_torches`); the tall Meshy pieces (pillars, sarcophagi, archways) are redrawn by `CryptProps.see_through`
+  (`SEE_SHADER`: their own textures plus the near-player see-through, so a pillar never hides the hero); the
+  Extraction Portals stand in rune archways whose painted runes light when the portal opens
+  (`Battlegrounds.sync_gates`, `CryptProps.set_runes`) with `portal_glow` inside; `dress` adds rubble, corner cobwebs,
+  lit dust drifting in every room (`dust`), black beyond the rock (`void_frame`; the terrain ran on past the map's
+  edge) and the hall's floor seal (a quad with `SEAL_SHADER`: its runes breathe and a wave of light runs out from the
+  skull; not a Decal, which OpenGL can't draw); the dead kings in the hall's statue alcoves stand in a cold light. **Everything visual
+  is on the same layout**: no footprint changes, no new interactable, no call added to `w.rng`
+  (`tools/bg_layout_fingerprint.gd` prints a hash of the layout; a visual change must leave it as it was: the server
+  builds the map from the same rolls). Stills: `tools/crypt_shots.gd -- outdir [quality N] [only a,b]`, a walk: `tools/crypt_clip.gd -- outdir [frames]`
+  (`--fixed-fps 30`; it holds WASD keys, since the game reads the keys every frame). **Rounds**
   of `RAID_SECS` (20 min): two of the four portals open at `PORTALS_AT` (5 min), joining closes at `JOIN_CLOSE` (15 min), the
   crypt collapses at the end (everyone inside dies) and the dungeon resets (`new_round`). **Several raids** (Blaine
   2026-11-01): one server per raid, `--server --raid N` (port `RAID_PORTS[N]`), each running its rounds on the wall
@@ -1262,8 +1288,63 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   route (lit waypoints travel, across acts too via `switch_run(run, zone)`); it closes when you walk off the stone
   or click outside it. Add an act: a `Data.RUNS` entry, its zones, an entry here (its `group`, e.g. "acts" or "ancient"; groups are `Data.WAYPOINT_GROUPS`, and a group's heading appears once it has an entry; the tab row scrolls when it overflows). Add a waypoint: a point here + one
   line in that zone's builder, `add_waypoint("<id>", Vector3(x, 0, z))` (stone, colliders, its own arrival spot;
-  a zone can hold several). Tests: `tools/waypoint_test.gd`
-  (rules), `tools/waypoint_shot.gd -- out.png [run]` (screenshot).
+  a zone can hold several). The camp's stone is the grand dais (`WaypointGrand`, `scripts/waypoint_grand.gd`): models in
+  `assets/models/waypoint/` (`dais.glb` modelled by `tools/blender/waypoint/build_dais.py`, its floor rings' gaps are the carved
+  rune channels the glow sits in; Meshy crystal, brazier, guardian, banner, torch, pillar re-baked by `camp/rebake_prop.py`, the crystal
+  split and the modelled flames cut by `waypoint/split_parts.py`; each missing model falls back to its code blockout); wakes as a
+  hero nears, flares on arrival and when the window opens; `add_waypoint(id, p, cobble, true)`, colliders in `SOLIDS`; `-- --old-waypoint` shows the old
+  stone). Its look is jj's concept picture made real (2026-11-01): **the rune lettering** on the flagstones is
+  `assets/textures/waypoint/rune_rings.png`, drawn by `tools/waypoint_runes.py` (an Elder-Futhark-like alphabet, ring
+  lines, an octagram and sigils laid in rings at the dais's radii, one band per channel: R the outer rim ring and the
+  inner ring, G the great ring, B the ornate band; lossless, mipmaps) on a plane over the floor with
+  `WaypointGrand.RUNE_FLOOR_SHADER` (each stroke lit from its heart out through a halo from the mask's blurred mips, the
+  groove round it darkened, bands lit outer to inner with the wake, pulse rings running out from the socket, the outer
+  and inner rings turning slowly); **the crystal** is a second Meshy model made for the picture (`crystal_rune.glb`:
+  a Meshy concept of a sapphire hexagonal bipyramid with carved glowing runes, image-to-3D, then
+  `tools/blender/waypoint/prep_crystal.py` (planar decimate keeps the facets sharp, one UV island a facet, the
+  colour, normal, roughness and metal baked onto it, origin at its centre, 3 m tall); the first model's socket and
+  orbiting shards stay, its crystal piece is the fallback) at `CRY_Y` 3.35, wearing `CRYSTAL_SHADER` on its texture
+  (dark faceted glass, its cracks and rune the light inside, energy crawling along cell borders, a cold rim) with `ARCS`
+  arc quads (`ARC_SHADER`: a bolt that strikes, holds a moment, moves on) and hangs in **the column of light**
+  (`COLUMN_SHADER` core and sheath on capless cylinders to `COLUMN_TOP`, dimmed where the crystal hangs, `BOLTS_SHADER`
+  lightning wandering up; FogVolumes for the shaft in the air on High/Ultra, Forward+ only); **the stone is wet**
+  (`wet_stone`: `Mats.PROP_SHADER` plus puddles and damp, whose mirrors are faked from the column's axis and the
+  fires in `mirrors`, `_set_mirrors` in `_ready`, so the paving catches the blue and the orange on every preset); a low
+  cold light (`light_low`) rakes the steps, the statues and the hero; two fire bowls (`FIRE_BOWLS`: `firebowl.glb`,
+  Meshy's iron bowl of coals on a rune-carved stone pedestal, `camp/rebake_prop.py h=1.25`, with a real "brazier"
+  fire and a bonfire-sized light; the brazier model without it) flank the approach, two torches stand in the back wall's gap (`TORCH_AT`), four
+  banners (`BANNERS`), the guardians (`GUARDIAN_AT`) in the wall's breaks; mist (InfernalFx's smoke shader, pale)
+  creeps over the steps, sparks rise in the column, motes drift. The four braziers' blue fire (`FireFx` "spirit") and
+  the bowls' coals (below) are their own work. `tools/waypoint_lab.gd -- outdir [frames] [step]
+  [game|ref|close|high] [quality]` renders it alone on a slab under the camp's dusk from the game's camera in a few
+  minutes (`--fixed-fps 30`; `--rendering-driver vulkan --rendering-method forward_plus` with lavapipe shows the
+  High look: glow, volumetric fog). The window's **Battlegrounds tab** shows `Data.WAYPOINT_BATTLEGROUNDS` (the Hollow Crypt: its Meshy painting
+  `wp_bg_crypt.png` on the banner, a card laid out like a route stop with the round's numbers from `Battlegrounds`'
+  constants, the stakes in plain words, who goes down with what at stake, the server and whether it answers: an
+  ENet probe dropped on the handshake, `WaypointPanel._probe_*`). Descend -> `Game.waypoint_battleground`: a last word
+  on the stakes (dialog), then `_waypoint_descend` (the dais flares, `WaypointGrand.pulse`) and `start_battlegrounds` with the
+  character playing against `Game.bg_server_address()` (the address last used, else the build's), the crypt's
+  painting behind the loading words (`set_loading_art`). `bg_from_waypoint`: extracted, fallen or cut off, the raid
+  ends back on this dais (`_leave_battlegrounds` -> `_bg_home_camp`) instead of the title's Battlegrounds window (a
+  raid from the title still ends there); not from co-op. Tests: `tools/waypoint_grand_test.gd`
+  (it loads WaypointGrand at run time), `tools/waypoint_test.gd` (rules), `tools/waypoint_shot.gd -- out.png [run | bg]` (screenshot; `bg` the Battlegrounds tab).
+  **The braziers' coals** (`scripts/brazier_coals.gd`, `BrazierCoals`, one line in WaypointGrand's brazier loop):
+  what burns in each bowl is a pile of fractured dark basalt stones, fragments and sapphire crystals on an ember bed,
+  from `assets/models/waypoint/coals.glb`: a library of unique pieces (`lib/rock_NN|frag_NN|cry_NN` with `_l0`/`_l1`
+  LODs, one baked atlas for the stones and one for the crystals: albedo, normal, AO + roughness, and the crack /
+  vein mask in the emissive map) and four piles settled with rigid-body physics in the real bowl (`arr_K`, Empties
+  whose transforms are the instances, in the brazier node's frame). Built by `tools/blender/waypoint/rock_library.py`
+  from three Meshy models (concepts in `concepts/waypoint_rocks/`): stage 1 bakes Meshy's textures onto watertight
+  solids, stage 2 Voronoi-fractures them (every cut capped with a procedural fresh-break material and roughened),
+  makes the LODs, atlases and bakes, stage 3 (`--stage3`, from `<workdir>/library.blend`) settles the piles and
+  exports. The brazier model itself was cleaned by `tools/blender/waypoint/clean_bowl.py` (Meshy's flame blob cut
+  out of the bowl, the dish closed; the old one is `concepts/waypoint_rocks/backup/brazier_v1.glb`). In the game
+  each pile is merged into one mesh per material and LOD (the LOD1 copy the only shadow caster); the shaders read
+  the flame's own flicker from the fire's `FireLight` every frame, so the energy in the cracks (vertex COLOR.r = a
+  stone's glow weight, most 0; g = phase), the crystal veins and the bed breathe with the flame; sparks and motes
+  from Medium, heat shimmer (`InfernalFx.haze_mat`) on Forward+ High/Ultra. Without the glb a primitive pile stands
+  in. Tests and previews: `tools/coals_test.gd`, `tools/coals_shot.gd -- outdir [frames] [step] [bowl|close|pair|top] [quality]`,
+  `tools/blender/waypoint/coals_preview.py` (the piles in Eevee, no Godot).
 - **Inventory (I)** (`UI._build_inventory`, jj's "Classic"): Meshy art in the action bar's iron and bronze
   (`assets/textures/ui/inv_*.png`, cut and cleaned from Meshy concepts in `exports/ui/inventory/`): a NinePatchRect
   frame (`INV_SCALE`, corners `INV_PATCH` texture px, the middle bands mirror-symmetric so they tile seamlessly,

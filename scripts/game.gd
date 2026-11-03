@@ -31,6 +31,7 @@ var quests: Quests          # the quest log (quests.gd), per character and run
 var vignette: ColorRect
 var loading: ColorRect
 var loading_lbl: Label
+var loading_art: TextureRect     # the destination's painting behind the loading words (set_loading_art)
 var quality := 2
 var zoom := 1.0
 var cam_target := Vector3.ZERO
@@ -58,6 +59,8 @@ var bg_mode := false:
 var net_joining := false     # a co-op join sent, no welcome yet (on_net_failed then goes back to the co-op screen)
 var bg_home_run := -1        # in a raid: the character's own act (Net.cl_welcome swaps to the raid's, saves keep this)
 var bg_raid := {}               # the round as the raid server last said (Net.cl_bg_raid): state, t, open portals...
+var bg_from_waypoint := false   # the raid was taken from the camp's waypoint: it ends back on the dais, not on the title
+var bg_gained := -1             # ... items brought out of it (-1: no extraction; the news told back at the camp)
 var bg_wait_until := 0         # turned away late in a round: when (ticks msec) the next raid lets players in
 var bg_refusal := ""           # why the raid server last turned us away ("closed", "refused")
 var bg_retry := []             # [addr, character id] to rejoin with when the wait is over
@@ -1009,6 +1012,30 @@ void fragment(){
 	loading.mouse_filter = Control.MOUSE_FILTER_STOP
 	loading.visible = false
 	layer2.add_child(loading)
+	# a destination's painting behind the words (set_loading_art; only the Hollow Crypt has one), dimmed so the
+	# words read, fading to black at the bottom
+	loading_art = TextureRect.new()
+	loading_art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	loading_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	loading_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	loading_art.modulate = Color(0.62, 0.62, 0.62)
+	loading_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	loading_art.visible = false
+	loading.add_child(loading_art)
+	var art_fade := TextureRect.new()
+	var agt := GradientTexture2D.new()
+	var agr := Gradient.new()
+	agr.set_color(0, Color(0, 0, 0, 0.0))
+	agr.set_color(1, Color(0, 0, 0, 0.85))
+	agt.gradient = agr
+	agt.fill_from = Vector2(0, 0.45)
+	agt.fill_to = Vector2(0, 1)
+	art_fade.texture = agt
+	art_fade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art_fade.stretch_mode = TextureRect.STRETCH_SCALE
+	art_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	art_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	loading_art.add_child(art_fade)
 	loading_lbl = Label.new()
 	loading_lbl.set_anchors_preset(Control.PRESET_CENTER)
 	loading_lbl.add_theme_font_size_override("font_size", 28)
@@ -1147,7 +1174,8 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		return
 	_busy = true
 	net.broadcast_goto(act, zone, spawn, at)
-	loading_lbl.text = "Entering %s..." % zone_title(act, zone)
+	loading_lbl.text = ("Descending into %s..." if zone == Battlegrounds.ZONE else "Entering %s...") % zone_title(act, zone)
+	set_loading_art(zone)
 	loading.visible = not _boot_quiet
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -1541,15 +1569,19 @@ func start_join(ip: String, id := "") -> void:
 func start_battlegrounds(addr: String, id: String) -> void:
 	while _busy:
 		await get_tree().process_frame
-	Telemetry.crumb("raid", {"server": addr})
+	Telemetry.crumb("raid", {"server": addr, "from": "waypoint" if bg_from_waypoint else "title"})
 	bg_retry = [addr, id]
 	bg_refusal = ""
 	bg_wait_until = 0
 	Sfx.play("click")
 	net.stop_listening()
 	char_id = id
+	bg_gained = -1
 	if id == "" or not load_game():
 		ui.message("Pick a character for the crypt first", Color(1, 0.6, 0.4))
+		if bg_from_waypoint:
+			bg_from_waypoint = false     # (the character playing couldn't be read back: stay in the camp)
+			return
 		char_id = ""
 		ui.open_battlegrounds()
 		return
@@ -1568,6 +1600,7 @@ func start_battlegrounds(addr: String, id: String) -> void:
 		return
 	save_game()             # (marked in_raid from here on)
 	loading_lbl.text = "Descending into %s..." % Battlegrounds.TITLE
+	set_loading_art(Battlegrounds.ZONE)
 	loading.visible = true
 	if net.join(a[0], int(a[1])) != OK:
 		on_net_failed("Could not reach the Battlegrounds server.")
@@ -1594,15 +1627,35 @@ func bg_wait_text() -> String:
 	var s := maxi(0, (bg_wait_until - Time.get_ticks_msec()) / 1000)
 	return "%d:%02d" % [s / 60, s % 60]
 
+## The painting behind the loading screen's words: the Hollow Crypt's on the way down into it (Data.WAYPOINT_BATTLEGROUNDS
+## "wide"), black for every other zone, as it always was.
+func set_loading_art(zone: String) -> void:
+	if loading_art == null:
+		return
+	var tex: Texture2D = null
+	if zone == Battlegrounds.ZONE:
+		for b in Data.WAYPOINT_BATTLEGROUNDS:
+			var p := str(b.get("wide", ""))
+			if p != "" and ResourceLoader.exists(p):
+				tex = load(p)
+				break
+	loading_art.texture = tex
+	loading_art.visible = tex != null
+
 ## The server let us out: what we carry is ours, saved to the character as it is.
 ## The crypt never let us in (sign-in failed before the character was marked in_raid): back to the Battlegrounds
-## screen, the character as it was.
+## screen, the character as it was; from the camp's waypoint, the hero simply hasn't left.
 func _bg_abort(msg: String) -> void:
 	bg_mode = false
 	_bg_home()
 	loading.visible = false
 	if net.active:
 		net.shutdown()
+	if bg_from_waypoint:
+		bg_from_waypoint = false
+		ui.big_message("Couldn't enter the crypt")
+		ui.message(msg, Color(1, 0.6, 0.4))
+		return
 	await exit_to_title()
 	ui.open_battlegrounds()
 	ui.big_message("Couldn't enter the crypt")
@@ -1610,6 +1663,7 @@ func _bg_abort(msg: String) -> void:
 
 func bg_extracted(gained: Array) -> void:
 	bg_mode = false
+	bg_gained = gained.size()
 	save_game()
 	ui.big_message("Extracted!")
 	ui.message("%s made it out with %d new item%s" % [char_name, gained.size(), "" if gained.size() == 1 else "s"], Color(0.6, 1.0, 0.6))
@@ -1694,16 +1748,54 @@ func _bury_lost_raiders() -> void:
 				cloud.push(str(c["id"]), d)
 			ui.message("%s fell in %s and lost everything they carried" % [str(c["name"]), Battlegrounds.TITLE], Color(1, 0.5, 0.4), 6.0)
 
+## Out of the crypt, extracted, fallen or cut off: a raid taken from the title screen ends on its Battlegrounds
+## window; one taken from the camp's waypoint (bg_from_waypoint) ends back on the dais, see _bg_home_camp.
 func _leave_battlegrounds() -> void:
 	if not bg_mode and char_id == "" and not playing:
 		return
-	if hero.dead and bg_mode:
+	var fell := hero.dead and bg_mode
+	if fell:
 		bg_strip()
 	bg_mode = false
 	_bg_home()
 	bg_raid = {}
+	if bg_from_waypoint and char_id != "":
+		bg_from_waypoint = false
+		await _bg_home_camp(fell)
+		return
+	bg_from_waypoint = false
 	await exit_to_title()
 	ui.open_battlegrounds()
+
+## Back at the camp's waypoint after a raid taken from it: everything the raid put up comes down (the fallen hero's
+## screen, the spectator's camera, the raid's connection), the hero stands alive on the dais again (WaypointGrand
+## flares on his arrival) and hears how it went. A raid that never got in (the server unreachable) leaves him where
+## he stood. Levels, stats, talents and the camp's stash were never at stake; the save is written with in_raid off.
+func _bg_home_camp(fell: bool) -> void:
+	net_joining = false
+	death_t = -1.0
+	ui.death_panel.visible = false
+	spectate_stop()
+	ui.set_boss(null)
+	if net.active:
+		net.shutdown()
+	if paused:
+		toggle_pause()
+	ui.close_all()
+	if hero.dead:
+		hero.respawn(hero.global_position)
+	loading.visible = false
+	while _busy:
+		await get_tree().process_frame
+	if cur_zone == Battlegrounds.ZONE or world == null:
+		Sfx.play("portal")
+		await load_zone(cur_act, "town", "waypoint_town")
+	save_game()
+	if fell:
+		ui.message("%s is back from %s with nothing but their strength: everything they carried lies on its floor." % [char_name, Battlegrounds.TITLE], Color(1, 0.55, 0.45), 7.0)
+	elif bg_gained >= 0:
+		ui.message("%s is back from %s with %d new item%s. All of it is theirs to keep." % [char_name, Battlegrounds.TITLE, bg_gained, "" if bg_gained == 1 else "s"], Color(0.6, 1.0, 0.6), 7.0)
+	bg_gained = -1
 
 func on_net_failed(msg: String) -> void:
 	if net_joining:
@@ -1877,6 +1969,59 @@ func default_name(cls: String) -> String:
 	var pool: Array = names.get(cls, names["knight"])
 	return str(pool[randi() % pool.size()])
 
+## The waypoint window's Battlegrounds card (Data.WAYPOINT_BATTLEGROUNDS): the way down into the Hollow Crypt from
+## the camp, with the character playing. A last word on what is at stake (everything worn and carried; levels,
+## talents and the stash are safe), then `_waypoint_descend`: the dais flares, the sigil's sound, and start_battlegrounds
+## joins the raid server (bg_server_address) with this character, the crypt's painting behind the loading words.
+## The raid ends back on this dais (_leave_battlegrounds -> _bg_home_camp). Not from co-op (the party's host
+## would lose a player mid-act), not from a raid, and never while a zone is still loading.
+func waypoint_battleground(_id: String) -> void:
+	if bg_mode or _busy or not playing or char_id == "":
+		return
+	if net.active:
+		ui.message("Leave co-op to enter the Battlegrounds.", Color(1.0, 0.6, 0.45))
+		return
+	var nm := char_name
+	ui.open_dialog(Battlegrounds.TITLE,
+		"%s goes down with everything they wear and carry, and it is all at stake. Reach an open Extraction Portal and all of it, and whatever they find, comes home. Fall down there and every item, the belt and the gold stay on the crypt floor for others to take.\n\nLevels, stats, talents and the camp's stash are safe whatever happens.\n\nDescend into %s?" % [nm, Battlegrounds.TITLE],
+		[["Descend", func(): _waypoint_descend()], ["Not yet", func(): pass]])
+
+## The trip down: the character is saved as he stands, the grand waypoint flares, the sigil's sound, a breath, and
+## the raid server is joined (start_battlegrounds).
+func _waypoint_descend() -> void:
+	if bg_mode or _busy or not playing or net.active or char_id == "":
+		return
+	ui.close_all()
+	hero.cmd_wasd(Vector3.ZERO)
+	hero.target = null
+	hero.path = PackedVector3Array()
+	hero.moving = false
+	bg_from_waypoint = true
+	bg_gained = -1
+	save_game()
+	for it in world.interactables:
+		if is_instance_valid(it) and it.kind == "waypoint" and it.global_position.distance_to(hero.global_position) < 8.0:
+			for c in it.get_children():
+				if c is WaypointGrand:
+					(c as WaypointGrand).pulse()
+	Sfx.play("portal")
+	Fx.pillar(world.fx_root, hero.global_position, Color(0.35, 0.6, 1.0), 1.0)
+	await get_tree().create_timer(0.75).timeout
+	if bg_mode or _busy or not playing or net.active:
+		bg_from_waypoint = false
+		return
+	start_battlegrounds(bg_server_address(), char_id)
+
+## The raid server a trip from the waypoint joins: a LAN or test server last picked on the Battlegrounds page, else
+## this build's own raid server (local: this machine) at the port of the raid open now, as the page's Enter does
+## (Battlegrounds.best_raid: one server per raid, each on its own clock).
+func bg_server_address() -> String:
+	var own: String = (str(BuildEnv.value("bg_server")) if BuildEnv.env() != "local" else "127.0.0.1").split(":")[0]
+	var a := str(_load_setting("battlegrounds", "address", "")).strip_edges()
+	if a != "" and str(Battlegrounds.parse_address(a)[0]) != own:
+		return a
+	return "%s:%d" % [own, int(Battlegrounds.best_raid(Time.get_unix_time_from_system()).get("port", Net.PORT))]
+
 ## Back to the title screen to pick another character (the pause menu's "Save and Exit to Title").
 func exit_to_title() -> void:
 	if sandbox != null:
@@ -1894,6 +2039,8 @@ func exit_to_title() -> void:
 	_bg_home()
 	bg_mode = false
 	bg_raid = {}
+	bg_from_waypoint = false
+	bg_gained = -1
 	net_joining = false
 	# nothing of the character that was playing carries on: its death or victory screen still to come, its portal,
 	# its experience bonus, the admin switches

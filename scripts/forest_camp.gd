@@ -9,6 +9,11 @@ extends RefCounted
 ## prep_prop.py, prep_npc.py, prep_tree.py). Without the files it falls back to the old camp.
 
 const CENTER := Vector2(0, -2)
+## The waypoint stone. grand_waypoint(): the large dais (WaypointGrand), blockout of the waypoint overhaul.
+const WP_AT := Vector3(-8, 0, 6)
+## `-- --old-waypoint` shows the old stone instead (before/after shots).
+static func grand_waypoint() -> bool:
+	return not OS.get_cmdline_user_args().has("--old-waypoint")
 const RADIUS := 25.0
 const GATE_HALF := 0.23         # half the gap in the ring for the gatehouse (radians)
 const VIGIL_GATE := Vector2(9.5, 13.5)     # the Vigil Gate (vigil.gd), inside the ring by the south-east palisade
@@ -102,14 +107,14 @@ static func build(w: World) -> void:
 	var rng := w.rng
 	var gate_z := CENTER.y - RADIUS
 	# --- ground: a trodden clearing, paths to each shop and out of the gate
-	w.dirt_blobs = [[CENTER, 11.0, 1.0], [Vector2(0, gate_z + 3), 5.0, 0.95], [Vector2(-8, 6), 3.5, 0.9]]
+	w.dirt_blobs = [[CENTER, 11.0, 1.0], [Vector2(0, gate_z + 3), 5.0, 0.95], [Vector2(-8, 6), 7.0 if grand_waypoint() else 3.5, 0.9]]
 	w.dirt_lines = [[Vector2(0, 0), Vector2(0, gate_z - 9), 3.2]]
 	for s in SHOPS:
 		var p: Vector2 = s["at"]
 		w.dirt_blobs.append([p, 5.2, 1.0])
 		w.dirt_blobs.append([p.lerp(CENTER, 0.3), 4.2, 0.95])
 		w.dirt_lines.append([CENTER, p, 2.4])
-	w.cobble_blobs = [[CENTER, 4.2, 0.85], [Vector2(0, gate_z + 1.5), 3.0, 0.8], [Vector2(-8, 6), 2.6, 0.7]]
+	w.cobble_blobs = [[CENTER, 4.2, 0.85], [Vector2(0, gate_z + 1.5), 3.0, 0.8], [Vector2(-8, 6), 6.4 if grand_waypoint() else 2.6, 0.75]]
 
 	# --- the palisade: sharpened logs all round, a gap for the gatehouse to the north
 	var pal_x := []
@@ -196,11 +201,11 @@ static func build(w: World) -> void:
 		chest = Props.stash_chest(null, Vector3.ZERO, -15.0)
 	w._inter("stash", "Stash", Vector3(4.2, 0, 3.2), 1.6, chest)
 	w.solid(chest)
-	var wp := w.add_waypoint("town", Vector3(-8, 0, 6))
+	var wp := w.add_waypoint("town", WP_AT, false, grand_waypoint())
 	# old mossy stone, not the clean pale stone: it was the brightest thing on screen at dusk (graphics plan, phase 1)
-	var clean := Props.stone_clean()
+	var clean := Props.stone_clean() if not grand_waypoint() else null
 	var dark := Mats.world(Color(0.26, 0.26, 0.27), Color(0.17, 0.17, 0.18), 0.92, 1.3, 0.5, Props.MOSS)
-	for n in wp.find_children("*", "MeshInstance3D", true, false):
+	for n in ([] if grand_waypoint() else wp.find_children("*", "MeshInstance3D", true, false)):
 		var mi: MeshInstance3D = n
 		if mi.material_override == clean:     # Mats.world caches, so it's the same material instance
 			mi.material_override = dark
@@ -300,6 +305,8 @@ static func build(w: World) -> void:
 
 	# --- lantern posts along the paths
 	for lp in [Vector2(-2.6, -9), Vector2(2.6, -15), Vector2(-6.5, -4.5), Vector2(7, -4.5), Vector2(9, 3.5), Vector2(-9.5, 2.5), Vector2(-2.6, gate_z + 7)]:
+		if grand_waypoint() and lp.distance_to(Vector2(WP_AT.x, WP_AT.z)) < 7.5:
+			continue  # the grand waypoint brings its own torches
 		var lit: bool = lp.y < -8.0 or absf(lp.x) > 8.0
 		var mp := piece(w, "lantern_post", lp, rng.randf() * TAU)
 		if mp:
@@ -324,6 +331,8 @@ static func build(w: World) -> void:
 	for op in [Vector2(-7.5, -18.5), Vector2(8.5, -19), Vector2(-18.5, -9.5), Vector2(19.5, -4), Vector2(-9, 15.5), Vector2(10, 14.5)]:
 		if _near_shop(op, 4.5):
 			continue
+		if grand_waypoint() and op.y > WP_AT.z and op.y - WP_AT.z < 14.0 and absf(op.x - WP_AT.x) < 9.0:
+			continue      # the camera side of the grand waypoint stays open: a crown there hid the dais and its fire bowl
 		oaks[k % 3].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(1.15, 1.35)), Vector3(op.x, w.height_at(op.x, op.y), op.y)))
 		w.add_circle(Vector3(op.x, 0, op.y), 0.8)
 		var la := rng.randf() * TAU
@@ -397,7 +406,7 @@ static func _near_shop(p: Vector2, r: float) -> bool:
 	for s in SHOPS:
 		if p.distance_to(s["at"]) < r:
 			return true
-	return p.distance_to(Vector2(-8, 6)) < r * 0.7 or p.distance_to(Vector2(0, CENTER.y - RADIUS)) < r
+	return p.distance_to(Vector2(-8, 6)) < r * 0.7 + (4.5 if grand_waypoint() else 0.0) or p.distance_to(Vector2(0, CENTER.y - RADIUS)) < r
 
 ## A point given in a stall's own frame (x right, z toward the camp's centre), in world space.
 static func _local(w: World, at: Vector2, off: Vector3) -> Vector3:
