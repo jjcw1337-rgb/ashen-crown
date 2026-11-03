@@ -455,10 +455,10 @@ func _sea_sounds() -> void:
 
 ## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
-	return cur_zone == Battlegrounds.ZONE or cur_zone == Vigil.ZONE or cur_zone == Sandbox.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
+	return cur_zone == Battlegrounds.ZONE or cur_zone == Vigil.ZONE or cur_zone == Gauntlet.ZONE or cur_zone == Sandbox.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
 
 func _zone_env(kind: String) -> void:
-	var inside := kind == Battlegrounds.ZONE or kind == Vigil.ZONE or kind == Sandbox.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
+	var inside := kind == Battlegrounds.ZONE or kind == Vigil.ZONE or kind == Gauntlet.ZONE or kind == Sandbox.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
 	var snowy := is_snowy() and not inside
 	var ashen := difficulty >= 2 and not inside
 	RenderingServer.global_shader_parameter_set("snow_amt", 1.0 if snowy else 0.0)
@@ -507,6 +507,14 @@ func _zone_env(kind: String) -> void:
 			env.fog_light_color = Color(0.12, 0.07, 0.05)
 			hero.light.light_energy = 2.2
 			hero.light.omni_range = 13.0
+		elif kind == Gauntlet.ZONE:
+			# the Gauntlet's throne hall: cold stone, the Throne Gate's red glow at the far end
+			env.ambient_light_color = Color(0.46, 0.45, 0.52)
+			env.ambient_light_energy = 0.85
+			env.tonemap_exposure = 1.4
+			env.fog_light_color = Color(0.09, 0.06, 0.06)
+			hero.light.light_energy = 2.4
+			hero.light.omni_range = 15.0
 	else:
 		env.background_mode = Environment.BG_SKY
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
@@ -1109,6 +1117,7 @@ func zone_title(act: int, zone: String) -> String:
 		"coast": return str(a.get("coast", "The Coast")) + tag
 		Battlegrounds.ZONE: return Battlegrounds.TITLE
 		Vigil.ZONE: return Vigil.TITLE
+		Gauntlet.ZONE: return Gauntlet.TITLE
 		Sandbox.ZONE: return Sandbox.TITLE
 	if zone.begins_with("isle_"):
 		return str(Isles.get_isle(Isles.id_of(zone)).get("name", "An Island")) + tag
@@ -2608,6 +2617,31 @@ func _interact(t: Inter) -> void:
 			elif bg_mode and net.is_client() and not hero.dead:
 				ui.message("Extracting...", Color(0.6, 0.85, 1.0))
 				net.request_extract()
+		"gauntlet_gate":
+			# the camp's Gauntlet Gate: down to the Gauntlet of Kings (gauntlet.gd); the ready check takes everyone
+			Sfx.play("portal")
+			travel(0, Gauntlet.ZONE, "start")
+		"gauntlet_exit":
+			Sfx.play("portal")
+			travel(0, "town", "from_gauntlet")
+		"gauntlet", "gauntlet_boon":
+			# the gong (a run begins) or an offering between kings: the host runs it
+			var gt = world.get_meta("gauntlet") if world.has_meta("gauntlet") else null
+			if gt == null:
+				return
+			var act_s := "begin" if t.kind == "gauntlet" else "boon"
+			if act_s == "begin" and gt.state != "idle":
+				ui.message("The gauntlet is under way" if gt.state in ["count", "fight", "boon"] else "The gong is still ringing", Color(1.0, 0.75, 0.45))
+				return
+			if act_s == "boon" and gt.state != "boon":
+				ui.message("Offerings are made between kings" if gt.state != "count" else "An offering was already made", Color(1.0, 0.75, 0.45))
+				return
+			if net.is_client():
+				net.request_gauntlet(act_s, int(t.data.get("i", 0)), int(hero.level))
+			elif act_s == "begin":
+				gt.begin()
+			else:
+				gt.choose(int(t.data.get("i", 0)), char_name)
 		"vigil_gate":
 			# the camp's Vigil Gate: down to the Last Flame (vigil.gd); the party's ready check takes everyone
 			Sfx.play("portal")
@@ -2887,6 +2921,12 @@ func on_enemy_killed(e: Enemy) -> void:
 	if e.def.get("class_unique", false):
 		_drop_class_unique(e.global_position)
 	_boss_loot(e)
+	if e.boss and cur_zone == Gauntlet.ZONE:
+		# a king of the Gauntlet: the run goes on (gauntlet.gd), no act victory or portal
+		ui.set_boss(null)
+		add_shake(0.8)
+		Fx.pillar(world.fx_root, e.global_position, Color(1.0, 0.3, 0.2), 2.0)
+		return
 	if e.boss:
 		boss_killed = true
 		ui.set_boss(null)
@@ -2912,6 +2952,11 @@ func on_local_respawn() -> void:
 
 ## Co-op: the host's game reports the boss fell.
 func boss_down_remote(e: Enemy) -> void:
+	if cur_zone == Gauntlet.ZONE:
+		ui.set_boss(null)
+		add_shake(0.8)
+		Fx.pillar(world.fx_root, e.global_position, Color(1.0, 0.3, 0.2), 2.0)
+		return
 	boss_killed = true
 	ui.set_boss(null)
 	ui.big_message(e.display_name + " has fallen")
@@ -3050,6 +3095,11 @@ func respawn() -> void:
 		_leave_battlegrounds()
 		return
 	hero.gold = int(hero.gold * 0.9)
+	if cur_zone == Gauntlet.ZONE and world != null:
+		# the Gauntlet of Kings: the fallen rise in the vestibule (a life of the party's is spent, gauntlet.gd)
+		hero.respawn(Gauntlet.respawn_at(world))
+		ui.message("You rise at the hall's door", Color(1.0, 0.75, 0.45))
+		return
 	if cur_zone == Vigil.ZONE and world != null:
 		# the Last Flame: the fallen rise by the altar and fight on
 		hero.respawn(Vigil.respawn_at(world))
