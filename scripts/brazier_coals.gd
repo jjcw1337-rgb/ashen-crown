@@ -262,7 +262,7 @@ func _build() -> void:
 		mo.local_coords = true
 	# heat shimmer right over the stones, where the flames rise (Forward+, High and Ultra)
 	if game != null and InfernalFx.haze_ok(game):
-		var hz := InfernalFx.glow(self, global_position, 0.55, InfernalFx.haze_mat(0.007, true))
+		var hz := InfernalFx.glow(self, Vector3.ZERO, 0.55, InfernalFx.haze_mat(0.007, true))
 		hz.name = "haze"
 		hz.position = Vector3(0, FLOOR_Y + 0.3, 0)
 	set_process(true)
