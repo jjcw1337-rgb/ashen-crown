@@ -97,6 +97,17 @@ func _run() -> void:
 	check(pack.all(func(e) -> bool: return e.chill_t > 0.0 and e.chill_k > 0.3), "and chilled them (%.0f%% slower)" % (pack[0].chill_k * 100.0))
 	for e in pack:
 		e.take_damage(99999.0, 0.0, p0, 0.0, false)
+	# the frozen ground it leaves (jj): one walking in after the rain is slowed while the frost lasts, not after
+	await wait(1.4)
+	var late := _foe(at + Vector3(0.6, 0, 0.3))
+	await wait(0.6)
+	check(late.chill_t > 0.0 and late.chill_k > 0.3, "the frozen ground slows one that walks in after the rain (%.0f%% slower)" % (late.chill_k * 100.0))
+	late.take_damage(99999.0, 0.0, p0, 0.0, false)
+	await wait(3.2)
+	var after := _foe(at + Vector3(0.6, 0, 0.3))
+	await wait(0.6)
+	check(after.chill_t <= 0.0, "and once it has thawed, the ground slows no one")
+	after.take_damage(99999.0, 0.0, p0, 0.0, false)
 	# Snare Trap: set, an enemy walks on, it's held fast
 	h.cds["snare"] = 0.0
 	h.mana = h.max_mana

@@ -337,6 +337,34 @@ static func _rain(h: Hero, v: Dictionary) -> void:
 			h._hit_enemy(e, 0.35 * shatter(h, e), 0.0, "volley")
 			e.chill(minf(slow, 0.75), 2.0)
 
+## The frozen ground the volley leaves (jj): everything standing in the frost or crossing it is slowed (the volley's
+## chill, Rime deepening it), from when the frost has spread until it has thawed, the slowed ground shrinking from the
+## edges in as it thaws (FrostVolleyFx's ground: full until the shatter, then thawing over THAW).
+static func frost_radius(v: Dictionary) -> float:
+	var age: float = float(v.get("age", 0.0))
+	var r: float = v["r"]
+	if age < FrostVolleyFx.STORM_AT + 0.15:
+		return 0.0
+	if age <= FrostVolleyFx.SHATTER_AT:
+		return r
+	var k := smoothstep(0.0, 1.0, (age - FrostVolleyFx.SHATTER_AT) / FrostVolleyFx.THAW)
+	return r * clampf((1.0 - k) * 1.2, 0.0, 1.0)
+
+static func _frost_ground(h: Hero, v: Dictionary, delta: float) -> void:
+	if h.puppet:
+		return
+	v["slow_tick"] = float(v.get("slow_tick", 0.0)) - delta
+	if float(v["slow_tick"]) > 0.0:
+		return
+	v["slow_tick"] = 0.25
+	var fr := frost_radius(v)
+	if fr < 0.3:
+		return
+	var slow := minf(0.4 * (1.0 + h.talent("chill_pct") / 100.0), 0.75)
+	for e in h.game.enemies_near(v["pos"], fr):
+		if not e.dead:
+			e.chill(slow, 0.6)     # a moment past the edge: leaving it, he's still slow for a step or two
+
 # ---------------------------------------------------------------- Snare Trap
 static func _set_snare(h: Hero, at: Vector3) -> void:
 	var g := Vector3(at.x, h.game.world.height_at(at.x, at.z), at.z)
@@ -533,10 +561,12 @@ static func update(h: Hero, delta: float) -> void:
 	for v in h.volleys.duplicate():
 		v["t"] -= delta
 		v["tick"] -= delta
-		if v["tick"] <= 0.0:
+		v["age"] = float(v.get("age", 0.0)) + delta
+		if v["tick"] <= 0.0 and v["t"] > -0.05:
 			v["tick"] = 0.2
 			_rain(h, v)
-		if v["t"] <= 0.0:
+		_frost_ground(h, v, delta)
+		if v["t"] <= 0.0 and float(v["age"]) >= FrostVolleyFx.SHATTER_AT + FrostVolleyFx.THAW:
 			h.volleys.erase(v)
 	for s in h.snares.duplicate():
 		s["t"] -= delta

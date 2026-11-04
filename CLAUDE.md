@@ -304,7 +304,10 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   aims high (the rig's `sky` meta, `KnightMocapRig` `SHOT_BODY["sky"]`/`SKY_TILT`) with a glacier arrow on the string,
   a fan of glacier arrows climbs out of the bow, hoarfrost spreads over the ground (the Meshy-painted
   `assets/textures/fx/frost/hoarfrost.png`, `GROUND_SHADER`), freezing fog pools (the `rime` Mantaflow book), the rain
-  drops glacier arrows that stick in and burst in cold mist (the `frost` book), Meshy ice-crystal clusters
+  drops six unique Meshy ice arrows (`FrostVolleyFx.RAIN`, `assets/models/arrows/rain/`: spear, icicle, runic, shard,
+  snowflake, wraith, each with its own glow, rim, streak, trail and spin) that stick in and burst in cold mist (the
+  `frost` book), the frozen ground slows whatever stands in it or crosses it until it thaws (`Archer.frost_radius`,
+  `_frost_ground`: full until the shatter, shrinking with the thaw; host side), Meshy ice-crystal clusters
   (`assets/models/fx/frost/crystal.glb`) burst up, foes under it frost over (`Enemy.set_frost`, rime crawling up from
   the feet; one dying frozen shatters), and at the end every crystal breaks into its Blender-fractured pieces
   (`crystal_pieces.glb`, `fracture_rock.py`) and the frost thaws; sounds `frost_loose`, `arrow_rain`, `ice_arrow_hit`,

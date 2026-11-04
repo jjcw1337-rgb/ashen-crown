@@ -34,7 +34,7 @@ const RAIN_END := 1.55
 const SHATTER_AT := 1.95
 const THAW := 3.2
 const UP_SPEED := 30.0
-const FALL_T := 0.2
+const FALL_T := 0.24
 const MAX_STUCK := 26
 const CRYSTAL_GAP := 1.15
 
@@ -264,17 +264,37 @@ static func strike(h: Hero, p: Vector3) -> void:
 	if st.is_empty():
 		return
 	var root: Node3D = h.game.world.fx_root
+	var tr := _tier(h)
 	var fwd: Vector3 = st["fwd"]
 	var d := (fwd * randf_range(0.35, 0.55) + Vector3(randf_range(-0.12, 0.12), -1.0, randf_range(-0.12, 0.12))).normalized()
-	var top := p - d * 9.0
-	var ar := arrow(1.0)
+	var top := p - d * 10.0
+	# one of the six, never the same one twice running
+	var last: int = int(st.get("last_kind", -1))
+	var ki := randi() % RAIN.size()
+	if ki == last:
+		ki = (ki + 1 + randi() % (RAIN.size() - 1)) % RAIN.size()
+	st["last_kind"] = ki
+	var k: Dictionary = RAIN[ki]
+	var col: Color = k["col"]
+	var ar := rain_arrow(k)
 	root.add_child(ar)
 	ar.global_position = top
-	ar.look_at(top + d, Vector3.UP)
-	var sk := streak(ar, d, 1.9, 0.09, 0.45)
+	var aim := Basis.looking_at(d, Vector3.UP)
+	ar.global_transform = Transform3D(aim, top)
+	var sk := streak(ar, d, float(k["trail"]), float(k["width"]), 0.5)
+	(sk.material_override as ShaderMaterial).set_shader_parameter("col", col)
+	# what it sheds as it falls: glints and wisps in its own colour, left in the air
+	var shed: GPUParticles3D = null
+	if tr >= 1:
+		shed = InfernalFx.particles(ar, top, {"one_shot": false, "amount": [0, 5, 8, 12][tr], "life": 0.45, "explosive": 0.0,
+			"shape": "sphere", "r": 0.06, "dir": -d, "spread": 35.0, "vel": [0.4, 1.4], "gravity": -1.5, "scale": [0.4, 1.0],
+			"size": 0.016, "colors": [[0.0, Color(col.r * 1.4, col.g * 1.4, col.b * 1.5)], [1.0, Color(col, 0.0)]]})
 	var delay := randf_range(0.0, 0.17)
+	var spin: float = float(k["spin"]) * (1.0 if randf() < 0.5 else -1.0)
 	ar.visible = false
 	sk.visible = false
+	if shed != null:
+		shed.emitting = false
 	var tw := ar.create_tween()
 	tw.tween_method(func(t: float):
 		if not is_instance_valid(ar):
@@ -282,16 +302,58 @@ static func strike(h: Hero, p: Vector3) -> void:
 		var on := t >= 0.0
 		ar.visible = on
 		sk.visible = on
+		if shed != null:
+			shed.emitting = on
 		var q := top.lerp(p, clampf(t / FALL_T, 0.0, 1.0))
-		ar.global_position = q
+		# turning on its own axis as it falls
+		ar.global_transform = Transform3D(aim * Basis(Vector3.BACK, spin * maxf(t, 0.0)), q)
 		_aim_streak(sk, q, d), -delay, FALL_T, FALL_T + delay)
 	tw.tween_callback(func():
 		if not is_instance_valid(ar):
 			return
 		sk.queue_free()
+		if shed != null and is_instance_valid(shed):
+			var gp := shed.global_position
+			ar.remove_child(shed)
+			root.add_child(shed)
+			shed.global_position = gp
+			shed.emitting = false
+			Fx._free_later(shed, 0.8)
 		# in to a third of its length, at the angle it fell
-		ar.global_position = p + d * 0.22
+		ar.global_position = p + d * 0.28 * float(k["scale"])
+		ar.set_meta("col", col)
 		_land(h, st, p, ar))
+
+## The rain's arrows (jj: "each arrow unique and visually stunning"): six Meshy ice arrows (concepts in
+## exports/frost_volley/rain), each lit from inside by its own ice (its albedo's blues glow), with its own cold rim,
+## streak, trail and spin.
+const RAIN_GLB := "res://assets/models/arrows/rain/%s.glb"
+const RAIN := [
+	{"id": "spear", "col": Color(0.62, 0.85, 1.0), "glow": 0.5, "spin": 7.0, "trail": 2.4, "width": 0.1, "scale": 1.25},
+	{"id": "icicle", "col": Color(0.85, 0.95, 1.0), "glow": 0.45, "spin": 3.0, "trail": 2.0, "width": 0.08, "scale": 1.3},
+	{"id": "runic", "col": Color(0.55, 0.78, 1.0), "glow": 0.75, "spin": 11.0, "trail": 2.2, "width": 0.09, "scale": 1.2},
+	{"id": "shard", "col": Color(0.5, 0.68, 1.0), "glow": 0.55, "spin": 4.0, "trail": 1.8, "width": 0.11, "scale": 1.3},
+	{"id": "snowflake", "col": Color(0.75, 0.95, 1.0), "glow": 0.7, "spin": 14.0, "trail": 2.6, "width": 0.08, "scale": 1.2},
+	{"id": "wraith", "col": Color(0.5, 0.95, 0.95), "glow": 0.7, "spin": 6.0, "trail": 2.3, "width": 0.09, "scale": 1.25},
+]
+
+static func rain_arrow(k: Dictionary) -> Node3D:
+	var n := DemonKitFx.model(RAIN_GLB % str(k["id"]))
+	if n == null:
+		return arrow(1.0)
+	var col: Color = k["col"]
+	DemonKitFx.heat_model(n, float(k["glow"]), col)
+	var rim := _mat("rim")
+	rim.set_shader_parameter("col", col)
+	rim.set_shader_parameter("glow", 1.3)
+	for mi in n.find_children("*", "MeshInstance3D", true, false):
+		(mi as MeshInstance3D).material_overlay = rim
+	n.set_meta("rim", rim)
+	var root := Node3D.new()
+	root.add_child(n)
+	n.scale = Vector3.ONE * float(k["scale"])
+	root.set_meta("rim", rim)
+	return root
 
 static func _land(h: Hero, st: Dictionary, p: Vector3, ar: Node3D) -> void:
 	var root: Node3D = h.game.world.fx_root
@@ -310,9 +372,10 @@ static func _land(h: Hero, st: Dictionary, p: Vector3, ar: Node3D) -> void:
 	if tr >= 2 or int(st["strikes"]) % 2 == 0:
 		DemonKitFx.smoke(root, p, "frost", randf_range(1.0, 1.45), randf_range(0.8, 1.0), false, Color(0.62, 0.7, 0.8))
 	# ice splinters and frost dust thrown up
+	var kc: Color = ar.get_meta("col", PALE)
 	InfernalFx.particles(root, p + Vector3(0, 0.08, 0), {"amount": [4, 6, 8, 11][tr], "life": 0.5, "explosive": 1.0,
 		"shape": "sphere", "r": 0.06, "dir": Vector3.UP, "spread": 65.0, "vel": [1.5, 3.4], "gravity": -13.0,
-		"scale": [0.4, 1.0], "size": 0.022, "colors": [[0.0, Color(1, 1, 1)], [0.6, PALE], [1.0, Color(DEEP, 0.0)]]})
+		"scale": [0.4, 1.0], "size": 0.022, "colors": [[0.0, Color(1, 1, 1)], [0.6, kc], [1.0, Color(DEEP, 0.0)]]})
 	_glints(root, p + Vector3(0, 0.2, 0), [2, 3, 4, 6][tr])
 	# some strikes burst a crystal cluster up out of the frost (kept apart, a few per volley)
 	var crystals: Array = st["crystals"]
@@ -419,11 +482,14 @@ static func warm(h: Hero) -> void:
 		c.scale = Vector3.ONE * 0.001
 		c.global_position = h.global_position
 		Fx._free_later(c, 0.3)
-	var ar := arrow()
-	root.add_child(ar)
-	ar.scale = Vector3.ONE * 0.001
-	ar.global_position = h.global_position
-	Fx._free_later(ar, 0.3)
+	var arrows: Array = [arrow()]
+	for k in RAIN:
+		arrows.append(rain_arrow(k))
+	for ar in arrows:
+		root.add_child(ar)
+		(ar as Node3D).scale = Vector3.ONE * 0.001
+		(ar as Node3D).global_position = h.global_position
+		Fx._free_later(ar, 0.3)
 	for k in ["frost", "rime"]:
 		var sm := DemonKitFx.smoke(root, h.global_position + Vector3(0, -2, 0), k, 0.01, 0.25)
 		if is_instance_valid(sm):
