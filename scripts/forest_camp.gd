@@ -8,6 +8,7 @@ extends RefCounted
 ## Models: assets/models/camp/*.glb, assets/models/npc/*.glb, prepared in Blender (tools/blender/
 ## prep_prop.py, prep_npc.py, prep_tree.py). Without the files it falls back to the old camp.
 
+const VendorCourt := preload("res://scripts/vendor_court.gd")
 const CENTER := Vector2(0, -2)
 ## The waypoint stone. grand_waypoint(): the large dais (WaypointGrand), blockout of the waypoint overhaul.
 const WP_AT := Vector3(3.5, 0, -5) # replaces the central bonfire (jj, 2026-11-03)
@@ -228,6 +229,7 @@ static func build(w: World) -> void:
 		if s.has("inside"):
 			kp.radius = half.y - lp.y + 1.3      # talked to from in front of the stall
 
+		VendorCourt.build(w, s["role"], p, yaw, half, kp, load(DIR + "lantern.glb"))
 		if s.has("hold"):
 			hold(kp.model, s["hold"])
 			kp.set_meta("hold", s["hold"])
@@ -235,10 +237,9 @@ static func build(w: World) -> void:
 	var fp: Vector3 = _local(w, SHOPS[1]["at"], Vector3(5.2, 0, 0.5))
 	Furnace.place(w, fp, face(Vector2(fp.x, fp.z), CENTER))
 	# the stalls' own light: the forge's coals, the alchemist's cauldron, a lantern on the others
-	_glow(w, SHOPS[1]["at"], Vector3(0.9, 1.4, -0.6), Color(1.0, 0.45, 0.12), 2.6, 7.0)
-	_glow(w, SHOPS[0]["at"], Vector3(-1.3, 0.9, 0.4), Color(0.4, 1.0, 0.35), 1.6, 6.0)
-	_lantern(w, _local(w, SHOPS[2]["at"], Vector3(2.4, 4.0, 1.9)), true)
-	_lantern(w, _local(w, SHOPS[3]["at"], Vector3(-2.0, 3.6, 2.0)), true)
+	_glow(w, SHOPS[1]["at"], Vector3(0.9, 1.4, -0.6), Color(1.0, 0.52, 0.22), 1.5, 4.0)
+	_glow(w, SHOPS[0]["at"], Vector3(-1.3, 0.9, 0.4), Color(0.55, 0.85, 0.38), 0.65, 3.5)
+	# VendorCourt supplies each frontage's neutral-warm light; coloured work lights stay local.
 	# the Vigil Gate: a portal down to the Last Flame, the co-op horde defence (vigil.gd), between two old stones
 	# (no fire or light of its own: the camp's frame time is a benchmark, docs/nightly/KPIS.md)
 	var vgp := Vector3(VIGIL_GATE.x, 0, VIGIL_GATE.y)
@@ -255,8 +256,9 @@ static func build(w: World) -> void:
 		post.rotation.y = vgi.rotation.y
 		w.add_circle(post.position, 0.4)
 	# Captain Roth keeps the gate
-	_keeper(w, "roth", V["elder"], "elder", Vector2(5.0, gate_z + 5.0), face(Vector2(5.0, gate_z + 5.0), CENTER),
+	var captain := _keeper(w, "roth", V["elder"], "elder", Vector2(5.0, gate_z + 5.0), face(Vector2(5.0, gate_z + 5.0), CENTER),
 		{"idle": "Idle", "work": ["Short_Breathe_and_Look_Around", "Long_Breathe_and_Look_Around"], "talk": "Talk_Passionately"})
+	VendorCourt.light_captain(w, captain)
 	for bx in [-5.5, 5.5]:
 		w.solid(Props.banner(w.props_root, Vector3(bx, w.height_at(bx, gate_z + 2.2), gate_z + 2.2), Color(0.42, 0.06, 0.05), Color(0.6, 0.5, 0.25)))
 

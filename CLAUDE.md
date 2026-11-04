@@ -1350,7 +1350,15 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   their collision positions share the placement constants in `WaypointGrand`.
   New characters enter at (0, 17) on a clear southern approach to walk into the square;
   the `new_player` spawn is separate from Continue, portals and waypoint arrivals.
-  The small cooking fire at the southern edge retains item burning. Everything is Meshy (concept image, then image-to-3D),
+  The small cooking fire at the southern edge retains item burning. `scripts/vendor_court.gd` rebuilds the
+  four shop frontages around their detailed workshop models: braced timber, iron fittings, trade signs,
+  paired hanging lanterns and terrain-following stone forecourts. A soft warm key light makes each keeper
+  readable against the cool blue waypoint; forge/alchemy colours stay local to their work areas. Captain
+  Roth also gets a warm key. Frontage posts register their collision at the same transformed positions as
+  the models; the centre stays open. Paving uses one MultiMesh per shop, shared materials/meshes, and the
+  new lights do not cast shadows or flood the square's fog. Shop positions, inventories and interaction
+  rules remain in `ForestCamp`/`Data`.
+  The workshop cores and other detailed props are Meshy assets (concept image, then image-to-3D),
   prepared in Blender: props by `tools/blender/prep_prop.py` into `assets/models/camp/`, trees by `prep_tree.py`. The
   lantern and the palisade section were re-made in the visual overhaul (2026-11-02: new Meshy models re-baked onto
   clean UVs by `tools/blender/camp/rebake_prop.py`, so the importer can make LODs; the palisade is 4.2 m tall).
