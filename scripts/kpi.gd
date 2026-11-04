@@ -170,6 +170,17 @@ static func _stage() -> void:
 							print("[KPI] spot at ", h.global_position)
 							break
 						k += 1
+			elif pi >= 0 and pi + 1 < a.size() and a[pi + 1].begins_with("harvest"):
+				# --pos harvestN: beside the Nth tree that can be felled (Harvest.HTree)
+				var want := int(a[pi + 1].substr(7))
+				var k := 0
+				for it in g.world.interactables:
+					if is_instance_valid(it) and str(it.get("kind")) == "tree":
+						if k == want:
+							h.global_position = g.world.free_spot_near((it as Node3D).global_position + Vector3(3.0, 0, 3.0), 1.0)
+							print("[KPI] spot at ", h.global_position)
+							break
+						k += 1
 			elif pi >= 0 and pi + 1 < a.size():
 				var xz := a[pi + 1].split(",")
 				h.global_position = g.world.free_spot_near(Vector3(float(xz[0]), 0, float(xz[1])), 0.5)
@@ -406,6 +417,7 @@ static func _env_off() -> void:
 	if k.contains("dfog"): env.fog_enabled = false
 	if k.contains("msaa") and not k.contains("msaa4"): g.get_viewport().msaa_3d = Viewport.MSAA_DISABLED
 	if k.contains("half"): g.get_viewport().scaling_3d_scale = 0.5
+	if k.contains("softhigh"): RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH)
 	if k.contains("softmed"): RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM)
 	if k.contains("softlow"): RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_LOW)
 	if k.contains("atlas2k"): RenderingServer.directional_shadow_atlas_set_size(2048, true)

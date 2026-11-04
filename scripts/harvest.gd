@@ -391,6 +391,16 @@ class HTree extends Inter:
 		full = MeshInstance3D.new()
 		full.mesh = mesh
 		holder.add_child(full)
+		# its shadow from the forest's shadows-only twin (welded trunk, baked leaf mask: Flora.shadow_twin), as the
+		# MultiMesh oaks around it do; a child of `full`, so it goes when the tree is felled (nightly perf 2026-11-04)
+		if mesh != null and mesh.has_meta("shadow_mesh") and not OS.get_cmdline_user_args().has("--notwins") and not OS.get_cmdline_user_args().has("--noharvesttwin"):
+			var tw := MeshInstance3D.new()
+			tw.name = "ShadowTwin"
+			tw.mesh = mesh.get_meta("shadow_mesh")
+			tw.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+			tw.visibility_range_end = 90.0
+			full.add_child(tw)
+			full.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		var parts := Harvest.split_mesh(mesh, float(def["cut"]))
 		height = float(parts[2]) * base_scale
 		trunk_r = maxf(0.18, float(parts[3]) * base_scale)
