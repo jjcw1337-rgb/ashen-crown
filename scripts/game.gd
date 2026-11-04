@@ -2185,10 +2185,12 @@ func _burst_seals(t: Inter) -> void:
 			var v := out * randf_range(3.0, 4.2) + Vector3(0, randf_range(3.2, 4.5), 0)
 			var w := Vector3(randf_range(-9, 9), randf_range(-12, 12), randf_range(-9, 9))
 			InfernalFx.fly(s, v, w, 1.15, -7.0, true)
+			var s_ref: WeakRef = weakref(s)      # (it frees itself at the end of its flight: no strong capture)
 			Fx.later(root, 1.0, func():
-				if is_instance_valid(s):
-					Fx.flash(root, s.global_position, flash_c, 4.0, 0.4, 4.0)
-					Fx.burst(root, s.global_position, spark_c, 22, 2.0, 0.03, 0.6, false, -3.0, 180.0)))
+				var seal: Node3D = s_ref.get_ref() as Node3D
+				if seal != null:
+					Fx.flash(root, seal.global_position, flash_c, 4.0, 0.4, 4.0)
+					Fx.burst(root, seal.global_position, spark_c, 22, 2.0, 0.03, 0.6, false, -3.0, 180.0)))
 	var gl: OmniLight3D = t.find_child("seal_glow", true, false) as OmniLight3D
 	if gl:
 		var tw := gl.create_tween()
