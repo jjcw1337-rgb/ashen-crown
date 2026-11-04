@@ -1387,6 +1387,8 @@ func _capture_map(zone: String) -> void:
 	add_child(vp)
 	mc.current = true
 	for i in 3:
+		# the near-only see-through's two variants, both drawn once while loading (Props.see_all)
+		Props.see_all(i == 0)
 		await get_tree().process_frame
 	var img := vp.get_texture().get_image()
 	vp.queue_free()

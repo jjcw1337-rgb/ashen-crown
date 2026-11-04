@@ -271,8 +271,6 @@ static func _see_register(node: GeometryInstance3D, mode: int, see: Array, solid
 		box = node.global_transform * (node as MultiMeshInstance3D).multimesh.get_aabb()
 	var e := [node, box, see, solid, true, mode]
 	see_nodes.append(e)
-	if not see_always:
-		_see_apply(e, false)
 
 static func _see_apply(e: Array, near: bool) -> void:
 	if bool(e[4]) == near:
@@ -285,7 +283,7 @@ static func _see_apply(e: Array, near: bool) -> void:
 		0:
 			var mi := node as MeshInstance3D
 			for si in want.size():
-				if want[si] != null and mi.get_surface_override_material(si) == had[si]:
+				if (want[si] != null or had[si] != null) and mi.get_surface_override_material(si) == had[si]:
 					mi.set_surface_override_material(si, want[si])
 		1:
 			if node.material_override == had[0]:
@@ -295,6 +293,17 @@ static func _see_apply(e: Array, near: bool) -> void:
 				node.material_override = null
 			elif not near and node.material_override == null:
 				node.material_override = e[3][0]
+
+## Every registered node in one state (the minimap capture shows the whole zone in both on its frames, so both
+## variants' pipelines are compiled while the zone loads, not the first time the hero walks up to a prop); the next
+## see_update puts each where it belongs.
+static func see_all(near: bool) -> void:
+	if see_always:
+		return
+	for e in see_nodes:
+		if is_instance_valid(e[0]):
+			_see_apply(e, near)
+	_see_at = Vector3(1e9, 0, 0)
 
 ## Swaps the dithering materials onto the converted nodes the cut can reach from `p` (the hero, as the shaders'
 ## `player_pos`) and the solid ones onto the rest. Cheap: it only looks again once the hero has moved SEE_STEP.
