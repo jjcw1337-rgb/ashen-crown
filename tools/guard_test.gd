@@ -98,6 +98,11 @@ func _run() -> void:
 	var to := (hp - w.global_position)
 	to.y = 0
 	_ok(face.dot(to.normalized()) > 0.6, "... and turns to face them (%.2f)" % face.dot(to.normalized()))
+	# the head waits for the turn about to finish before it takes the hero up
+	for i in 20:
+		if w.head.amount > 0.5:
+			break
+		await create_timer(0.1).timeout
 	_ok(w.head.amount > 0.5, "... and follows them with his head (%.2f)" % w.head.amount)
 	# a zombie loose in the camp: the nearest guard fights it
 	g.hero.global_position = Vector3(0, 0, 40)
