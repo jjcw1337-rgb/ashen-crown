@@ -3,7 +3,7 @@ extends SceneTree
 ## room's chest in the Hollow Crypt, the game camera, then what the raid server's answer sets off on every game
 ## (Game.chest_lid: the padlock springs, the lid heaves back; Battlegrounds.stash_fx: the fire, the spray, the
 ## smoke, the loop). Saves every `step`th frame and a contact sheet. Needs a display; run with --fixed-fps 30.
-## Usage: godot --path . --fixed-fps 30 -s tools/chest_open_clip.gd -- outdir [frames 90] [step 3] [close]
+## Usage: godot --path . --fixed-fps 30 -s tools/chest_open_clip.gd -- outdir [frames 90] [step 3] [close <zoom>] [--stash-chest N]
 var g
 
 func _initialize():

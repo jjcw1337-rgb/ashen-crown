@@ -145,11 +145,14 @@ static func best_raid(now: float, n := LIVE_RAIDS) -> Dictionary:
 			best = r
 	return best
 
-## Which fire this map's chests burn with (STASH_THEMES; "--stash-theme spirit" on the command line previews stash #2).
-static func stash_theme() -> String:
+## Which chest this map's stash is (StashChests: jj's numbered chests; the Hollow Crypt has #2, the blue Spirit
+## Chest). "--stash-chest N" on the command line previews another.
+static func stash_chest_no() -> int:
 	var a := OS.get_cmdline_user_args()
-	var i := a.find("--stash-theme")
-	return a[i + 1] if i >= 0 and i + 1 < a.size() and STASH_THEMES.has(a[i + 1]) else "ember"
+	var i := a.find("--stash-chest")
+	if i >= 0 and i + 1 < a.size() and StashChests.CHESTS.has(int(a[i + 1])):
+		return int(a[i + 1])
+	return StashChests.for_map(ZONE)
 
 ## A colour of a chest's theme (its Inter's "stash_theme").
 static func stash_col(t: Node, key: String):
@@ -306,7 +309,7 @@ static func build(w: World) -> void:
 			gates.append(_gate(w, door, half))
 		var c := r.get_center()
 		_bell(w, Vector3(c.x + 2.2, 0, c.y - 2.2))
-		_stash_chest(w, Vector3(c.x - 1.9, 0, c.y - 1.9), stash_theme())
+		_stash_chest(w, Vector3(c.x - 1.9, 0, c.y - 1.9), stash_chest_no())
 	w.set_meta("bg_gates", gates)
 	for p in portals:
 		var glow: Node3D = CryptProps.portal_glow() if CryptProps.has("archway") else Fx.portal_model()
@@ -342,12 +345,13 @@ static func _gate(w: World, door: Vector2, half: Vector2) -> Dictionary:
 
 ## The antechamber's stash chest (jj): the player's own shared stash (SharedStash, local to their game), open until
 ## the gates rise (Game.stash_allowed), to leave behind what they won't risk once they've seen the matchup.
-static func _stash_chest(w: World, p: Vector3, theme := "ember") -> void:
-	# every map its own chest (jj): the crypt's (assets/models/crypt/stash_chest.glb), else the camp's
+static func _stash_chest(w: World, p: Vector3, no := 2) -> void:
+	# every map its own chest (jj): its numbered chest (StashChests, assets/models/stash/chest/), else the camp's
+	var theme := StashChests.theme(no)
 	var chest: Node3D
-	if CryptProps.has("stash_chest"):
+	if StashChests.has(no):
 		chest = Props.footprint(Models.N(null, "stash"), STASH_CHEST_HALF)
-		var crm := CryptProps.model("stash_chest")
+		var crm := StashChests.model(no)
 		chest.add_child(crm)
 		crm.rotation.y = deg_to_rad(20.0)
 	elif ForestCamp.has_piece("stash_chest"):
@@ -363,8 +367,8 @@ static func _stash_chest(w: World, p: Vector3, theme := "ember") -> void:
 	var lift := 0.0
 	var reach := 1.6
 	var SD = load("res://scripts/stash_dais.gd")        # (at run time: tool scripts load this file before the autoloads)
-	if SD.has_model():
-		var dais: Node3D = SD.make(theme)
+	if SD.has_model(StashChests.path(no, "dais")):
+		var dais: Node3D = SD.make(theme, StashChests.path(no, "dais"))
 		dais.position = Vector3(p.x, 0.0, p.z)
 		dais.rotation.y = deg_to_rad(20.0)
 		w.add_child(dais)
@@ -377,6 +381,7 @@ static func _stash_chest(w: World, p: Vector3, theme := "ember") -> void:
 	it.set_meta("pick_y", 0.6 + lift)
 	it.set_meta("lift", lift)          # (the chest stands this high on its dais: Game.chest_lid, stash_fx follow it)
 	it.set_meta("stash_theme", theme)
+	it.set_meta("stash_chest", no)
 	_dress_seals(it, chest, lift)
 	if theme == "spirit":
 		_spirit_coals(chest)

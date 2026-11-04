@@ -1180,11 +1180,16 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `tools/stash_test.gd`, `tools/stash_shot.gd`.
 - **The raid's antechamber** (jj): the countdown (`PREP_SECS` 20) starts by itself at `RAID_MIN` (2) players; the matchup
   (`Battlegrounds.roster` -> `Net.cl_bg_roster`, `BgMatchup`: each other raider's class crest, name and level, never a
-  player name) shows under the clock while it runs. Each corner room has the raid's **stash chest** on its **dais**:
-  the chest (`assets/models/crypt/stash_chest.glb`, built from seven Meshy pieces by
+  player name) shows under the clock while it runs. Each corner room has the raid's **stash chest** on its **dais**.
+  jj's chests are numbered (`StashChests`, `scripts/stash_chests.gd`; for people `assets/models/stash/chest/CHESTS.md`
+  with renders in `previews/`): each names its model and dais in `assets/models/stash/chest/`, its fire
+  (`Battlegrounds.STASH_THEMES`: `ember` red, `spirit` blue, every light, flame, spark and glow of the chest, its dais
+  and its opening) and the maps that use it (`StashChests.for_map`; the Hollow Crypt has #2, the blue Spirit Chest; #1,
+  the red Ember Chest, is saved for the next map; `--stash-chest N` previews another). The chest
+  (`chest_01.glb`, built from seven Meshy pieces by
   `tools/blender/camp/assemble_chest.py`: body, `lid` hinged at the back, `lock` with its Blender-made `shackle`,
   `coals`) and the dais (`StashDais`, `scripts/stash_dais.gd`: the grand waypoint's build at 2/5 size,
-  `tools/blender/camp/build_stash_dais.py`, its wet stone, its rune lettering in embers, the waypoint's fire bowls;
+  `tools/blender/camp/build_stash_dais.py`, its wet stone, its rune lettering in the chest's fire, the waypoint's fire bowls (`dais_01.glb`);
   wakes as a hero comes, `burst()` on opening). The raid server hands the chest to the first who asks
   (`Battlegrounds.stash_opened`, one player at a time, `stash_user`); the opener is 15% slower for the rest of the
   raid (`Hero.stash_slow`, `stash_slowed`, sent as bit 10 of the state; its mark only on the opener's own screen),

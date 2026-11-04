@@ -10,7 +10,7 @@ extends Node3D
 ## a hero comes near (the channels light outer to inner, the lettering brightens, pulses run out over it), and
 ## `burst()` (the chest opening, Battlegrounds.stash_fx) floods it and sends a ring of light out from the chest.
 
-const MODEL := "res://assets/models/crypt/stash_dais.glb"
+const MODEL := "res://assets/models/stash/chest/dais_01.glb"    # (StashChests names each chest's dais)
 const BOWL := "res://assets/models/waypoint/firebowl.glb"
 const EMBER := Color(1.0, 0.24, 0.03)        # deep: the glow shaders multiply it by energy
 const EMBER_CORE := Color(1.0, 0.66, 0.32)
@@ -44,13 +44,13 @@ var _flash := 0.0
 var _wave := -1.0
 var _wave_t := 2.0
 
-static func has_model() -> bool:
-	return ResourceLoader.exists(MODEL)
+static func has_model(path := MODEL) -> bool:
+	return path != "" and ResourceLoader.exists(path)
 
-static func make(theme := "ember") -> StashDais:
+static func make(theme := "ember", path := MODEL) -> StashDais:
 	var d := StashDais.new()
 	d.name = "StashDais"
-	d._build(THEMES.get(theme, THEMES["ember"]))
+	d._build(THEMES.get(theme, THEMES["ember"]), path)
 	return d
 
 static func _stone(c1: Color, c2: Color, rough: float, scale: float, moss: float, wet: float) -> ShaderMaterial:
@@ -70,12 +70,12 @@ static func _stone(c1: Color, c2: Color, rough: float, scale: float, moss: float
 	m.set_shader_parameter("wet", wet)
 	return m
 
-func _build(th: Dictionary) -> void:
+func _build(th: Dictionary, path := MODEL) -> void:
 	var stone := _stone(Color(0.25, 0.24, 0.24), Color(0.15, 0.14, 0.14), 0.9, 1.8, 0.3, 0.45)
 	var floor_m := _stone(Color(0.23, 0.22, 0.22), Color(0.14, 0.13, 0.13), 0.78, 3.0, 0.08, 0.7)
 	var plinth_m := _stone(Color(0.19, 0.18, 0.18), Color(0.11, 0.1, 0.1), 0.85, 2.4, 0.15, 0.5)
 	var groove_m := Mats.world(Color(0.08, 0.05, 0.04), Color(0.04, 0.03, 0.02), 0.6, 3.0, 0.0, Props.MOSS, false)
-	var dais: Node3D = (load(MODEL) as PackedScene).instantiate()
+	var dais: Node3D = (load(path) as PackedScene).instantiate()
 	add_child(dais)
 	for n in dais.find_children("*", "MeshInstance3D", true, false):
 		var mi: MeshInstance3D = n

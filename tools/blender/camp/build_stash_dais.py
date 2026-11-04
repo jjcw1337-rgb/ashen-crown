@@ -14,7 +14,7 @@
 #   steps (the tiers), floor (the flagstones), groove (the channel floor), socket.
 # The radii must match WaypointGrand (RINGS, SPOKE_R, TIERS).
 #
-#   blender -b --python tools/blender/camp/build_stash_dais.py -- assets/models/crypt/stash_dais.glb [--seed 4410]
+#   blender -b --python tools/blender/camp/build_stash_dais.py -- assets/models/stash/chest/dais_01.glb [--seed 4410]
 import bpy, bmesh, sys, math, random
 from mathutils import Vector, noise
 
