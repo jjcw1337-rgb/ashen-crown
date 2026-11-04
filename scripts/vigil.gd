@@ -452,7 +452,7 @@ static func wave_def(n: int) -> Dictionary:
 
 ## Its monsters' level: the party's base, +1 every three waves, and past the tenth LEVEL_PER more a wave.
 func wave_level(n: int) -> int:
-	return level + (n - 1) / 3 + int(maxi(0, n - WAVES.size()) * LEVEL_PER)
+	return level + (n - 1) / 3 + int(ceil(maxi(0, n - WAVES.size()) * LEVEL_PER))
 
 func _spawn_next() -> void:
 	var q: Array = queue.pop_front()

@@ -3902,12 +3902,11 @@ func _build_title() -> void:
 	# the build, tiny in the corner, so a screenshot shows at once whether a copy is out of date
 	var rev := _label("%s · %s" % [BuildEnv.env(), BuildEnv.value("rev")], 11, Color(0.5, 0.47, 0.42, 0.7))
 	rev.name = "build_rev"
-	rev.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	rev.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	rev.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	# (bottom left, under Quit: the bottom right is the character sidebar's frame)
+	rev.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	rev.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	rev.offset_right = -10
-	rev.offset_bottom = -6
+	rev.offset_left = TitleHome.EDGE + 4
+	rev.offset_bottom = -4
 	title_panel.add_child(rev)
 	var slots := _label("", 13, Color(0.62, 0.58, 0.5))
 	slots.name = "slots"

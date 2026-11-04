@@ -85,8 +85,13 @@ func _build_sidebar() -> void:
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 10)
 	side.add_child(vb)
+	var hm := MarginContainer.new()
+	hm.add_theme_constant_override("margin_left", 6)
+	hm.add_theme_constant_override("margin_right", 30)     # (the count clear of the frame's corner spike)
+	hm.add_theme_constant_override("margin_top", 4)
+	vb.add_child(hm)
 	var head := HBoxContainer.new()
-	vb.add_child(head)
+	hm.add_child(head)
 	var t: Label = ui._label("CHARACTERS", 22, ui.GOLD, true)
 	var tf := FontVariation.new()
 	tf.base_font = ui.font_title
@@ -339,10 +344,10 @@ func _build_bg_card() -> void:
 	add_child(_bg_card)
 	var clip := Control.new()
 	clip.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	clip.offset_left = 16
-	clip.offset_top = 16
-	clip.offset_right = -16
-	clip.offset_bottom = -16
+	clip.offset_left = 22
+	clip.offset_top = 22
+	clip.offset_right = -22
+	clip.offset_bottom = -22
 	clip.clip_contents = true
 	clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bg_card.add_child(clip)
@@ -364,10 +369,11 @@ func _build_bg_card() -> void:
 	clip.add_child(shade)
 	var vb := VBoxContainer.new()
 	vb.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# (inside the frame's ornament, which is about 42 px thick at this size: the text never runs under it)
 	vb.offset_left = 22
-	vb.offset_top = 16
-	vb.offset_right = -20
-	vb.offset_bottom = -18
+	vb.offset_top = 10
+	vb.offset_right = -18
+	vb.offset_bottom = -26
 	vb.alignment = BoxContainer.ALIGNMENT_END
 	vb.add_theme_constant_override("separation", 0)
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
