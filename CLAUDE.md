@@ -1346,7 +1346,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   dusk/mist mood (`Game._zone_env`, `theme.forest_camp`). The grand waypoint now replaces the central
   bonfire at (3.5, -5), with an open forecourt, paths around its back wall, and the forge moved outward
   (jj, 2026-11-03). The two guardian statues stand wider apart outside the waypoint wall, with just two
-  flags set farther back; their collision positions share the placement constants in `WaypointGrand`.
+  flags set farther back (18 m between statues; 11 m between flags, 6 m behind the statues);
+  their collision positions share the placement constants in `WaypointGrand`.
   The small cooking fire at the southern edge retains item burning. Everything is Meshy (concept image, then image-to-3D),
   prepared in Blender: props by `tools/blender/prep_prop.py` into `assets/models/camp/`, trees by `prep_tree.py`. The
   lantern and the palisade section were re-made in the visual overhaul (2026-11-02: new Meshy models re-baked onto

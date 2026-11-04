@@ -17,8 +17,8 @@ const RUNES_TEX := "res://assets/textures/waypoint/rune_rings.png"   # tools/way
 const RUNES_SPAN := 7.0                   # metres the rune texture covers (+-3.5 m round the centre)
 const DAIS_R := 4.85          # outer step radius
 const TOP_Y := 0.36           # walking height of the inner dais
-const GUARDIAN_AT := Vector3(7.2, 0.0, -3.5) # flank the dais with room between statue and wall
-const BANNER_AT := Vector3(3.6, 0.0, -7.5)   # one flag each side, set behind the wall
+const GUARDIAN_AT := Vector3(9.0, 0.0, -3.5) # broad flanks: 18 m between guardians
+const BANNER_AT := Vector3(5.5, 0.0, -9.5)   # 11 m between flags, clear of wall and guardians
 
 const SOLIDS := [
 	# braziers on the middle step
