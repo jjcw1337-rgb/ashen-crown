@@ -17,22 +17,22 @@ const RUNES_TEX := "res://assets/textures/waypoint/rune_rings.png"   # tools/way
 const RUNES_SPAN := 7.0                   # metres the rune texture covers (+-3.5 m round the centre)
 const DAIS_R := 4.85          # outer step radius
 const TOP_Y := 0.36           # walking height of the inner dais
+const GUARDIAN_AT := Vector3(7.2, 0.0, -3.5) # flank the dais with room between statue and wall
+const BANNER_AT := Vector3(3.6, 0.0, -7.5)   # one flag each side, set behind the wall
 
 const SOLIDS := [
 	# braziers on the middle step
 	[2.76, 2.76, 0.45], [-2.76, 2.76, 0.45], [2.76, -2.76, 0.45], [-2.76, -2.76, 0.45],
-	# guardian statues' plinths (GUARDIAN_AT), standing in the back wall's breaks
-	[4.9, -4.5, 0.85], [-4.9, -4.5, 0.85],
-	# banner poles (two a side, BANNERS), the torches in the wall's gap, the fire bowls flanking the approach
+	# guardian statues' plinths, separated from the back wall
+	[GUARDIAN_AT.x, GUARDIAN_AT.z, 0.85], [-GUARDIAN_AT.x, GUARDIAN_AT.z, 0.85],
+	# banner poles (one a side), the torches in the wall's gap, the fire bowls flanking the approach
 	# (FIRE_BOWLS), the crystal's socket
-	[2.1, -5.3, 0.2], [-2.1, -5.3, 0.2], [3.45, -4.55, 0.2], [-3.45, -4.55, 0.2],
+	[BANNER_AT.x, BANNER_AT.z, 0.2], [-BANNER_AT.x, BANNER_AT.z, 0.2],
 	[0.8, -6.0, 0.2], [-0.8, -6.0, 0.2], [4.7, 4.3, 0.55], [-4.7, 4.3, 0.55], [0.0, 0.0, 0.65],
 	# the broken back wall (WALL_R, WALL_A0 + i * WALL_STEP; gaps at 1, 4 and 7) and its two end pillars
 	[-5.62, -2.62, 0.75], [-3.05, -5.4, 0.6], [-1.25, -6.07, 0.6],
 	[1.25, -6.07, 0.6], [3.05, -5.4, 0.6], [5.62, -2.62, 0.75],
 ]
-const GUARDIAN_AT := Vector3(4.9, 0.0, -4.5)
-const BANNERS := [[2.1, -5.3, 1.0], [3.45, -4.55, 0.9]]     # x, z, scale (mirrored each side)
 const FIRE_BOWLS := Vector3(4.7, 0.0, 4.3)
 const TORCH_AT := Vector3(0.8, 0.0, -6.0)
 const BOWL_SCALE := 0.92
@@ -501,7 +501,7 @@ func _build() -> void:
 					break
 			mirrors.append([bz.position + Vector3(0, fy + 0.2, 0), Color(0.3, 0.55, 1.0), 0.9])
 
-	# --- two hooded guardians with spears, on plinths at the back corners, facing the dais
+	# --- two hooded guardians with spears, spaced outside the wall, facing the dais
 	for sx in [-1.0, 1.0]:
 		var s := Models.N(self, "guardian", Vector3(GUARDIAN_AT.x * sx, 0, GUARDIAN_AT.z), Vector3(0, -24.0 * sx, 0))
 		if _put(s, "guardian", Vector3.ZERO, 0.0):
@@ -519,14 +519,12 @@ func _build() -> void:
 		Models.P(f, Geo.cyl(0.035, 0.045, 4.3, 6), iron, Vector3(0.52 * sx, 1.9, 0.32))     # spear shaft
 		Models.P(f, Geo.cyl(0.0, 0.1, 0.5, 4), iron, Vector3(0.52 * sx, 4.3, 0.32))         # spearhead
 
-	# --- four red banners along the back, two a side between the torches and the guardians
+	# --- two red banners, spaced behind the wall with the central crystal unobstructed
 	var cloth := Mats.mat(Color(0.42, 0.05, 0.04), 0.9)
 	var gold := Mats.mat(Color(0.75, 0.55, 0.22), 0.35, 0.9)
-	for bi in 4:
-		var sx := -1.0 if bi < 2 else 1.0
-		var spec: Array = BANNERS[bi % 2]
-		var bn := Models.N(self, "banner", Vector3(spec[0] * sx, 0, spec[1]), Vector3(0, 8.0 * sx * (bi % 2), 0))
-		var bmod := _put(bn, "banner", Vector3.ZERO, 0.0, spec[2])
+	for sx in [-1.0, 1.0]:
+		var bn := Models.N(self, "banner", Vector3(BANNER_AT.x * sx, 0, BANNER_AT.z), Vector3(0, 8.0 * sx, 0))
+		var bmod := _put(bn, "banner", Vector3.ZERO, 0.0)
 		if bmod:
 			# Meshy's cloth is a dark oxblood that the crystal's cold light turns navy: warm it so it stays red
 			for g in bmod.find_children("*", "MeshInstance3D", true, false):
@@ -550,7 +548,7 @@ func _build() -> void:
 	for i in 9:
 		var a := deg_to_rad(WALL_A0 + i * WALL_STEP)
 		if i == 4 or i == 1 or i == 7:
-			continue  # gaps: behind the crystal, between the banners, and where the guardians stand
+			continue  # keep the back wall broken and the central sightline open
 		var at := Vector3(cos(a) * WALL_R, 0, sin(a) * WALL_R)
 		if pillars and i in [0, 8]:
 			# the wall's ends: the rune-carved ruined pillar, turned so its runes face the dais
