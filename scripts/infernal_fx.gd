@@ -267,13 +267,24 @@ static func ready_fire(f: Node3D) -> Node3D:
 	return f
 
 ## Turns a fire on or off (off: the tongues already alive burn out, nothing new is born).
-## Turns a fire made here (`fire`, `smoke`) blue: the spirit-fire of the camp waypoint's braziers (FireFx "spirit").
-## Its flipbook flames play the spirit book (already blue) with the shader's `cool`, and the palette, the smoke's
-## glow and the embers' colours go to SPIRIT; every mesh, material and colour ramp is copied first, so the shared
-## ones stay red. For a blue stash chest (jj's stash #2, Battlegrounds.STASH_THEMES).
+## Recolours a fire made here (`fire`, `smoke`), or by FireFx: "spirit", the camp waypoint's blue spirit-fire (FireFx
+## "spirit"); "void", the same in purple (jj's stash #3). Its flipbook flames play the spirit book (already blue) with
+## the shader's `cool` and the palette's `mul` (purple: more red, less green), and the palette, the smoke's glow and
+## the embers' colours go to its colours; every mesh, material and colour ramp is copied first, so the shared ones
+## keep theirs. For the stash chests' fires (Battlegrounds.STASH_THEMES "pal").
 const SPIRIT := [Color(0.2, 0.37, 0.78), Color(0.35, 0.66, 1.0), Color(0.66, 0.88, 1.0)]   # crimson, molten, whitehot
+const PALETTES := {
+	"spirit": {"pal": SPIRIT, "mul": Vector3(1.0, 1.0, 1.0), "map": [0.25, 0.55, 0.45, 0.5]},
+	"void": {"pal": [Color(0.42, 0.12, 0.78), Color(0.65, 0.3, 1.0), Color(0.86, 0.66, 1.0)], "mul": Vector3(1.6, 0.42, 1.0),
+		"map": [0.55, 0.35, 0.2, 0.45]},
+}
 
 static func spirit(n: Node) -> void:
+	recolor(n, "spirit")
+
+static func recolor(n: Node, which: String) -> void:
+	if not PALETTES.has(which):
+		return
 	var ps: Array = n.find_children("*", "GPUParticles3D", true, false)
 	if n is GPUParticles3D:
 		ps.append(n)
@@ -284,41 +295,45 @@ static func spirit(n: Node) -> void:
 			if pm.color_ramp is GradientTexture1D and (pm.color_ramp as GradientTexture1D).gradient != null:
 				var gr := (pm.color_ramp as GradientTexture1D).gradient
 				for i in gr.get_point_count():
-					gr.set_color(i, _to_spirit(gr.get_color(i)))
-			pm.color = _to_spirit(pm.color)
+					gr.set_color(i, _to_pal(gr.get_color(i), which))
+			pm.color = _to_pal(pm.color, which)
 			gp.process_material = pm
 		for i in gp.draw_passes:
 			var me := gp.get_draw_pass_mesh(i)
 			if me is PrimitiveMesh and (me as PrimitiveMesh).material is ShaderMaterial:
 				var m2 := me.duplicate() as PrimitiveMesh
 				var sm := (m2.material as ShaderMaterial).duplicate() as ShaderMaterial
-				_spirit_mat(sm)
+				_pal_mat(sm, which)
 				m2.material = sm
 				gp.set_draw_pass_mesh(i, m2)
 		if gp.material_override is ShaderMaterial:
 			var mo := (gp.material_override as ShaderMaterial).duplicate() as ShaderMaterial
-			_spirit_mat(mo)
+			_pal_mat(mo, which)
 			gp.material_override = mo
 
-static func _spirit_mat(sm: ShaderMaterial) -> void:
+static func _pal_mat(sm: ShaderMaterial, which: String) -> void:
+	var P: Dictionary = PALETTES[which]
+	var pal: Array = P["pal"]
 	if sm.get_shader_parameter("flip_tex") != null and FireFx.book("spirit") != null:
 		sm.set_shader_parameter("flip_tex", FireFx.book("spirit"))
 		sm.set_shader_parameter("grid", FireFx.grid_of("spirit"))
 		sm.set_shader_parameter("tint", 0.0)
 		sm.set_shader_parameter("cool", 1.0)
-	sm.set_shader_parameter("crimson", SPIRIT[0])
-	sm.set_shader_parameter("molten", SPIRIT[1])
-	sm.set_shader_parameter("whitehot", SPIRIT[2])
+		sm.set_shader_parameter("hue_mul", P["mul"])
+	sm.set_shader_parameter("crimson", pal[0])
+	sm.set_shader_parameter("molten", pal[1])
+	sm.set_shader_parameter("whitehot", pal[2])
 	if sm.get_shader_parameter("glow_col") != null:
-		sm.set_shader_parameter("glow_col", SPIRIT[0])
+		sm.set_shader_parameter("glow_col", pal[0])
 	if sm.get_shader_parameter("color") is Color:
-		sm.set_shader_parameter("color", _to_spirit(sm.get_shader_parameter("color")))
+		sm.set_shader_parameter("color", _to_pal(sm.get_shader_parameter("color"), which))
 
-## A fire colour turned to the spirit-fire's: its brightness kept, its hue moved to blue (orange -> electric blue,
-## white-hot -> cyan-white, blood red -> deep blue); alpha kept.
-static func _to_spirit(c: Color) -> Color:
+## A fire colour turned to a palette's: its brightness kept, its hue moved (spirit: orange -> electric blue, white-hot
+## -> cyan-white, blood red -> deep blue; void: the same toward violet and lavender); alpha kept.
+static func _to_pal(c: Color, which := "spirit") -> Color:
+	var m: Array = PALETTES[which]["map"]
 	var l := maxf(c.r, maxf(c.g, c.b))
-	return Color(0.25 * l + 0.55 * c.g * c.g, 0.45 * l + 0.5 * c.g, l, c.a)
+	return Color(m[0] * l + m[1] * c.g * c.g, m[2] * l + m[3] * c.g, l, c.a)
 
 static func fire_on(f: Node3D, on: bool) -> void:
 	if f == null or not is_instance_valid(f):
@@ -718,6 +733,7 @@ uniform float frames_per_life = 18.0;
 uniform float hot = 1.0;
 uniform float tint = 0.25;
 uniform float cool = 0.0;     // the blue spirit-fire: keeps red and green low so overlapping flames sum to blue, not white
+uniform vec3 hue_mul = vec3(1.0);   // a recoloured spirit-fire (InfernalFx.recolor: purple = more red, less green)
 uniform float fade_in = 0.12;     // of the flame's life
 uniform float fade_out = 0.55;    // it burns out from here to the end of its life
 uniform float seamless = 0.0;     // 1: start where the whole life plays without wrapping past the book's last frame
@@ -757,6 +773,7 @@ void fragment() {
 	c *= mix(vec3(1.0), vec3(0.42, 0.7, 1.0), cool);
 	// and its faint haze is cut away, so dark gaps open between the tongues (crisp flames, not a glowing cloud)
 	c *= mix(1.0, smoothstep(0.1, 0.32, lum), cool);
+	c *= hue_mul;
 	ALBEDO = c * hot * fade * COLOR.a;
 	ALPHA = clamp(lum * 0.12 * fade, 0.0, 1.0);
 }

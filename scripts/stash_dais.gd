@@ -19,6 +19,7 @@ const EMBER_CORE := Color(1.0, 0.66, 0.32)
 const THEMES := {
 	"ember": {"glow": EMBER, "core": EMBER_CORE, "fire": "brazier", "fire_col": Color(1.0, 0.5, 0.18), "light": Color(1.0, 0.45, 0.18)},
 	"spirit": {"glow": Color(0.06, 0.34, 1.0), "core": Color(0.62, 0.86, 1.0), "fire": "spirit", "fire_col": Color(0.4, 0.66, 1.0), "light": Color(0.35, 0.58, 1.0)},
+	"void": {"glow": Color(0.42, 0.08, 1.0), "core": Color(0.86, 0.66, 1.0), "fire": "spirit", "fire_col": Color(0.7, 0.4, 1.0), "light": Color(0.62, 0.35, 1.0), "pal": "void"},
 }
 const TOP_Y := 0.27          # the floor's walking height (build_stash_dais.py FLOOR_Y)
 const PLINTH_Y := 0.34       # the chest's plinth top (FLOOR_Y + 0.07)
@@ -136,7 +137,9 @@ func _build(th: Dictionary, path := MODEL) -> void:
 			bm.rotation.y = -a
 			fb.add_child(bm)
 			var top := WaypointGrand._bounds(bm).end.y * BOWL_SCALE - 0.14 * BOWL_SCALE
-			Props.fire(fb, Vector3(0, top, 0), 0.7, th["fire_col"], false, false, th["fire"] != "spirit", th["fire"])
+			var bf := Props.fire(fb, Vector3(0, top, 0), 0.7, th["fire_col"], false, false, th["fire"] != "spirit", th["fire"])
+			if th.has("pal"):
+				InfernalFx.recolor(bf, th["pal"])
 	var lt := OmniLight3D.new()
 	lt.name = "dais_light"
 	lt.light_color = th["light"]

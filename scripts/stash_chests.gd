@@ -13,6 +13,8 @@ const CHESTS := {
 		"note": "the first raid chest (red fire); saved for the next map"},
 	2: {"name": "Spirit Chest", "model": "chest_01", "dais": "dais_01", "theme": "spirit", "maps": ["bg"],
 		"note": "chest #1 burning blue: the Hollow Crypt's raid stash"},
+	3: {"name": "Void Chest", "model": "chest_01", "dais": "dais_01", "theme": "void", "maps": [],
+		"note": "chest #1 burning purple; kept in the list for a map to come"},
 }
 
 static func for_map(zone: String) -> int:
