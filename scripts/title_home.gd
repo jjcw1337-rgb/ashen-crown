@@ -11,7 +11,7 @@ extends Control
 ##    (Blaine, 2026-11-03: "the ux is over each other ... tighten that up")
 ## Panels are UI._ornate (the inventory's iron and gold frame), buttons UI._iron_button: no plain boxes (Blaine).
 ## Play hands the chosen character to the game: Story = UI._title_choose("continue") on it, Battlegrounds =
-## Game.start_battlegrounds (after one confirm), Online Co-op = Game.start_join on the co-op server, LAN = host or
+## Game.start_battlegrounds (after one confirm), Online Co-op = start solo and queue for a party, LAN = host or
 ## the join screen. UI keeps the old cards (hidden) so its title API and tests stay as they were.
 
 const W := 420.0                 # the sidebar's width
@@ -22,7 +22,7 @@ const BG_H := 196.0              # the Battlegrounds card's height
 const QUIT_H := 50.0
 const MODES := [["story", "Story"], ["online", "Online Co-op"], ["lan", "LAN"]]
 const NOTE := {"story": "Your journey through the acts, alone.",
-	"online": "Play the story together, on the co-op server.", "lan": "Host a game, or join one on your network."}
+	"online": "Find a co-op party while you keep playing solo.", "lan": "Host a game, or join one on your network."}
 
 var ui
 var game
@@ -52,7 +52,7 @@ static func mid() -> float:
 func setup(u) -> void:
 	ui = u
 	game = u.game
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_sidebar()
 	_build_play()
@@ -68,6 +68,25 @@ func setup(u) -> void:
 	quit.pressed.connect(func(): get_tree().quit())
 	quit.visible = not OS.has_feature("web")
 	add_child(quit)
+	# Scale the three columns as one layout on small screens; fixed-width buttons must
+	# never cross into the Battlegrounds card or the character sidebar.
+	var head: Control = ui.title_panel.get_node("title_head")
+	head.reparent(self, false)
+	head.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	head.offset_top = 34
+	head.offset_left = EDGE + LEFT_W
+	head.offset_right = -W - EDGE
+	get_viewport().size_changed.connect(_layout)
+	_layout()
+
+func _layout() -> void:
+	var available := get_viewport_rect().size
+	var factor := minf(1.0, minf(available.x / 1440.0, available.y / 800.0))
+	scale = Vector2.ONE * factor
+	size = available / factor
+	position = Vector2.ZERO
+	var title: Label = get_node("title_head").get_child(0)
+	title.add_theme_font_size_override("font_size", mini(84, int((size.x - W - LEFT_W - EDGE * 2) / 9.0)))
 
 func _build_sidebar() -> void:
 	var side := PanelContainer.new()
@@ -144,7 +163,7 @@ func _build_play() -> void:
 	for m in MODES:
 		if m[0] == "online" and BuildEnv.env() == "local":
 			continue           # (the co-op server is the staging/production builds')
-		if m[0] in ["bg", "lan"] and OS.has_feature("web"):
+		if m[0] in ["bg", "online", "lan"] and OS.has_feature("web"):
 			continue           # (no raw UDP in a browser)
 		var b: Button = ui._iron_button(m[1], 160, 42, 17)
 		b.toggle_mode = true
@@ -294,11 +313,16 @@ func set_mode(m: String) -> void:
 func _update() -> void:
 	var none := sel == ""
 	_play.disabled = none
-	_play.text = {"story": "Play", "online": "Join Co-op", "lan": "Host"}.get(mode, "Play")
+	_play.text = {"story": "Play", "online": "Find Party", "lan": "Host"}.get(mode, "Play")
 	_join.visible = mode == "lan"
 	_note.text = "Create a character to begin." if none else NOTE.get(mode, "")
 
 func _process(delta: float) -> void:
+	# Subpages own the screen and input; never leave the Battlegrounds card behind a
+	# character creation/selection panel, even when that panel has transparent areas.
+	visible = not ((ui.class_panel != null and ui.class_panel.visible)
+		or (ui.chars_panel != null and ui.chars_panel.visible)
+		or (ui.bg_page != null and ui.bg_page.visible))
 	if not is_visible_in_tree():
 		return
 	_status.visible = false
@@ -320,7 +344,9 @@ func play() -> void:
 		"story":
 			ui._title_choose("continue")
 		"online":
-			game.start_join(BuildEnv.value("coop_server"), sel)
+			await game.start_game(true, "knight", sel)
+			game.ui.close_all()
+			game.party_queue.begin()
 		"lan":
 			game.start_host(sel)
 

@@ -72,6 +72,9 @@ var cloud: CloudSaves
 var coop_server: CoopServer     # the online co-op server's logic (coop_server.gd), only on a `--server --coop` run
 var sandbox: Sandbox = null     # the admins' Battlegrounds sandbox (sandbox.gd) while one is open
 var paused := false
+var party_queue
+var party_join_ticket := ""
+var party_join_pending := false
 var hovered = null
 var ground_pt := Vector3.ZERO
 var lmb_held := false
@@ -164,6 +167,10 @@ func _ready() -> void:
 	hero.died.connect(_on_hero_died)
 	hero.leveled.connect(_on_level)
 	ui.bind_hero(hero)
+	if not args.has("--server"):
+		party_queue = load("res://scripts/party_queue.gd").new()
+		add_child(party_queue)
+		party_queue.setup(self)
 	if not args.has("--server"):
 		stash = SharedStash.new(SharedStash.TEST_PATH if get_tree().get_script() != null else SharedStash.PATH)
 	if BuildEnv.cloud() and not args.has("--server") and shot_path == "" and not args.has("--kpi"):
@@ -1884,6 +1891,13 @@ func _bg_home_camp(fell: bool) -> void:
 	bg_gained = -1
 
 func on_net_failed(msg: String) -> void:
+	party_join_ticket = ""
+	if party_join_pending:
+		party_join_pending = false
+		net_joining = false
+		loading.visible = false
+		ui.message(msg + " Your solo adventure is still open.", Color(1, 0.7, 0.45), 7.0)
+		return
 	if net_joining:
 		# a co-op join that never got in: back to the co-op screen
 		net_joining = false
@@ -3076,6 +3090,8 @@ func waypoint_activities() -> Array:
 	if BuildEnv.env() != "local":
 		entries.append({"id": "online_coop", "group": "pve", "name": "Online Co-op", "kind": "Join online",
 			"route": "coop", "run": difficulty, "description": "Join the shared co-op server with this character."})
+		entries.append({"id": "find_party", "group": "pve", "name": "Find a Party", "kind": "Co-op queue",
+			"route": "party", "run": difficulty, "description": "Keep adventuring while we find a co-op party. Accept when ready."})
 	for isle in Isles.ISLANDS:
 		if not Isles.ISLE_SCRIPTS.has(str(isle["id"])):
 			continue
@@ -3103,6 +3119,8 @@ func waypoint_activities() -> Array:
 
 func waypoint_activity_valid(entry: Dictionary) -> bool:
 	if str(entry.get("name", "")) == "": return false
+	if str(entry.get("route", "")) == "party":
+		return str(entry.get("id", "")) == "find_party" and BuildEnv.env() != "local" and not OS.has_feature("web")
 	if str(entry.get("route", "")) == "coop":
 		return str(entry.get("id", "")) == "online_coop" and BuildEnv.env() != "local"
 	var zone := str(entry.get("zone", ""))
@@ -3118,7 +3136,7 @@ func waypoint_activity(id: String) -> Dictionary:
 func waypoint_activity_lock(entry: Dictionary) -> String:
 	if entry.is_empty(): return "This activity is no longer available."
 	if bg_mode or _busy or not playing or hero == null or hero.dead: return "Cannot travel right now."
-	if str(entry["route"]) == "coop":
+	if str(entry["route"]) in ["coop", "party"]:
 		return "Already in co-op." if net.active else ""
 	var run := int(entry["run"])
 	if not act_unlocked(run): return "Unlock this act first."
@@ -3135,6 +3153,9 @@ func waypoint_activity_go(id: String) -> void:
 		ui.message(reason, Color(1.0, 0.6, 0.45))
 		return
 	ui.close_all()
+	if str(entry["route"]) == "party":
+		party_queue.begin()
+		return
 	if str(entry["route"]) == "coop":
 		save_game()
 		start_join(str(BuildEnv.value("coop_server")), char_id)

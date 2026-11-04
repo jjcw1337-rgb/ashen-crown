@@ -1739,3 +1739,33 @@ and development-only sandboxes are not advertised as playable destinations.
 
 Validation: `tools/waypoint_activities_test.gd` uses the real renderer, checks catalogue changes,
 locks and expired entries, renders the menus, and visits each registered PvE zone and its arrival.
+
+
+## Background co-op party finder (JJ, 2026-11-03)
+
+`party_queue.gd` owns a second ENet socket, leaving the solo world, travel and menus running.
+The title's Online Co-op / Find Party starts the selected character in solo then queues; the town
+waypoint also offers Find a Party. The compact ready check uses UI's existing ornate panel, gold
+labels and iron buttons. Ready/Decline never pauses the world. Accepting reserves a slot, saves the
+current character, then joins co-op when alive, unpaused and outside a zone load. A failed queue
+handoff keeps solo play open. Leaving play, changing characters or joining another mode cancels search.
+
+`party_queue_server.gd` runs inside the existing co-op process on UDP 24569 (`--queue-port` override),
+with gameplay still on 24570. The queue pairs at least two players, or fills available slots in the
+current public co-op party, up to four. This is one shared story party, not independent instances or
+PvP teams. Only the current server act is offered, and only to characters that have unlocked it.
+The server owns the 30-second ready check and 45-second, single-use handoff reservations. Ready
+players keep their queue position if someone declines; nonresponders leave the queue on timeout.
+Disconnected clients expire and direct joins cannot steal reserved slots. The reservation token is
+an ephemeral bearer token; it does not add account authentication to the existing co-op protocol.
+
+`BuildEnv.value("party_queue")` defaults to the configured raid host on port 24569 and supports an
+`[env] party_queue="host:port"` override. A matching client/server release and UDP firewall opening
+are required before public staging use. Preview exports retain the local environment by default.
+Do not describe a local socket test as a deployed service or authenticated internet test.
+
+Tests: `tools/party_queue_test.gd` uses real lightweight ENet sockets on 24779;
+`tools/party_queue_game_test.gd` runs a real game host on 24770 with queue 24769 and clients `a` and `b`
+(see its header). Characters live in isolated test save folders. `tools/title_layout_test.gd` checks
+Story/Online/LAN controls at 1920x1080, 1280x720 and 1024x768 and hides the home cards on character
+subpages. It renders screenshots when run with a real renderer.
