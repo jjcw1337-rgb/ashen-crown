@@ -274,6 +274,23 @@ SPEC = [
     dict(name="night_forest", src="eleven", n=3, dur=16.0, hit=0, loop=True, label="the old forest at night",
          prompt="an old forest at night, crickets chirping softly in the grass, a distant owl hooting now and then, "
                 "a faint breeze in the leaves, calm and dark, steady and even, no music, no voices"),
+    # jj: "those choices are bad": a second round, four moods as field recordings, the best take of each sent
+    dict(name="night_deep", src="eleven", n=4, dur=22.0, hit=0, loop=True, label="deep old woods at night",
+         prompt="high quality stereo field recording deep inside an ancient forest at midnight, cold night wind "
+                "moving slowly through tall old trees, branches creaking, leaves hissing softly, a tawny owl calling "
+                "far away, a few crickets, wide and dark and still, no music, no voices"),
+    dict(name="night_summer", src="eleven", n=4, dur=22.0, hit=0, loop=True, label="a warm night, alive",
+         prompt="realistic nature field recording of a warm summer night in a European forest clearing, dense "
+                "chorus of crickets and grasshoppers, a nightjar churring in the distance, soft frogs by a far pond, "
+                "gentle breeze, rich and immersive, no music, no voices"),
+    dict(name="night_camp", src="eleven", n=4, dur=22.0, hit=0, loop=True, label="the camp asleep",
+         prompt="field recording of a quiet medieval camp in a forest clearing at night, a campfire crackling "
+                "and popping softly nearby, wood creaking in the wind, crickets in the grass around it, an owl "
+                "far off in the trees, calm and cosy, no music, no voices"),
+    dict(name="night_eerie", src="eleven", n=4, dur=22.0, hit=0, loop=True, label="dark woods, something out there",
+         prompt="dark fantasy forest at night ambience, low hollow wind through dead branches, distant wolf howl "
+                "far away, an owl, sparse crickets, twigs snapping somewhere in the dark, ominous and lonely but "
+                "quiet, realistic recording, no music, no voices"),
     dict(name="drip", src="eleven", n=3, dur=8.0, hit=0, loop=True, label="water dripping in a cave",
          prompt_b="water dripping slowly in a stone dungeon, soft drips and quiet cave air, steady, no music",
          prompt="a damp stone crypt, slow water drips echoing, faint distant wind, no music"),
