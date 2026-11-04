@@ -723,40 +723,6 @@ func sv_games() -> void:
 	if is_host and game.world != null and game.world.has_meta("games"):
 		game.world.get_meta("games").begin()
 
-## The Gauntlet of Kings (gauntlet.gd): the host's run state and events to everyone, a partner's gong / offering.
-func gauntlet_state(args: Array) -> void:
-	if is_host and not players.is_empty():
-		rpc("cl_gauntlet", args)
-
-@rpc("authority", "call_remote", "reliable")
-func cl_gauntlet(args: Array) -> void:
-	if not loading and game.world != null and game.world.has_meta("gauntlet"):
-		game.world.get_meta("gauntlet").apply(args)
-
-func gauntlet_event(ev: String) -> void:
-	if is_host and not players.is_empty():
-		rpc("cl_gauntlet_fx", ev)
-
-@rpc("authority", "call_remote", "reliable")
-func cl_gauntlet_fx(ev: String) -> void:
-	if not loading and game.world != null and game.world.has_meta("gauntlet"):
-		game.world.get_meta("gauntlet").fx(ev)
-
-func request_gauntlet(action: String, arg: int, lvl: int) -> void:
-	rpc_id(1, "sv_gauntlet", action, arg, lvl)
-
-@rpc("any_peer", "call_remote", "reliable")
-func sv_gauntlet(action: String, arg: int, lvl: int) -> void:
-	if not is_host or game.world == null or not game.world.has_meta("gauntlet"):
-		return
-	var pid := multiplayer.get_remote_sender_id()
-	if not players.has(pid):
-		return
-	var gt = game.world.get_meta("gauntlet")
-	gt.levels[pid] = clampi(lvl, 1, 99)
-	if action in ["begin", "boon"]:
-		gt.request(action, clampi(arg, 0, 2), str(players[pid]["name"]))
-
 ## The Last Flame (vigil.gd): the host's round state and events to everyone, a partner's kindling and level.
 func vigil_state(args: Array) -> void:
 	if is_host and not players.is_empty():

@@ -1,6 +1,7 @@
 #!/bin/bash
 # Installs (or updates) the nightly lab on the Game Factory Mac: the runner copy of run.sh and one launchd job per
-# nightly job (from nightly.plist.in): mode at 20:00, perf at 00:30, triage at 05:00.
+# nightly job (from nightly.plist.in): perf at 00:30, triage at 05:00. (The 20:00 game-mode job was removed by Blaine,
+# 2026-11-03; run.sh mode still works by hand.)
 #   bash tools/nightly/install.sh            (from any checkout that has tools/nightly)
 #   bash tools/nightly/install.sh --smoke    (also runs a smoke test of the perf job now under launchd: tiny prompt,
 #                                             test-nightly-smoke branch, no benchmark, no deploy, no Discord)
@@ -11,10 +12,12 @@ AGENTS=/Users/blaine/Library/LaunchAgents
 U=gui/$(id -u)
 mkdir -p "$RUNNER" "$AGENTS" /Users/blaine/Library/Logs/ashen-nightly
 install -m 755 "$HERE/run.sh" "$RUNNER/run.sh"
-# (the single job of before 2026-11-01)
-launchctl bootout $U/com.gamefactory.ashen-nightly 2>/dev/null || true
-rm -f "$AGENTS/com.gamefactory.ashen-nightly.plist"
-for spec in mode:20:0 perf:0:30 triage:5:0; do
+# (the single job of before 2026-11-01, and the game-mode job, removed 2026-11-03)
+for old in com.gamefactory.ashen-nightly com.gamefactory.ashen-nightly-mode; do
+  launchctl bootout $U/$old 2>/dev/null || true
+  rm -f "$AGENTS/$old.plist"
+done
+for spec in perf:0:30 triage:5:0; do
   job=${spec%%:*}; t=${spec#*:}; h=${t%%:*}; m=${t##*:}
   P=$AGENTS/com.gamefactory.ashen-nightly-$job.plist
   sed -e "s|@JOB@|$job|g" -e "s|@HOUR@|$h|g" -e "s|@MINUTE@|$m|g" "$HERE/nightly.plist.in" > "$P"

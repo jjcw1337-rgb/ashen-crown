@@ -10,3 +10,5 @@
 
 ## Verdict (keep / iterate / cut)
 
+cut (Blaine, 2026-11-03): deleted from the game; this folder is kept as the record.
+

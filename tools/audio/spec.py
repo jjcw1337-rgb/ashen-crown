@@ -188,9 +188,6 @@ SPEC = [
     # ---------------------------------------------------------------- ambience loops
     # the campsite's song (Blaine: eerie, piano); the acts keep the wind
     # ---------------------------------------------------------------- A2: Aurelia's arena (games.gd)
-    dict(name="gauntlet_gong", src="eleven", n=3, dur=4.0, hit=0, label="a great gong struck",
-         prompt="a huge bronze temple gong struck once with a heavy mallet in a vast stone hall, deep shimmering "
-                "roar that swells and rings out, isolated sound effect, no music, no voices"),
     dict(name="arena_horn", src="eleven", n=4, dur=3.0, hit=0, label="a war horn blowing",
          prompt="a Roman cornu war horn blast in a stone amphitheatre, a deep brassy fanfare call of two long notes"
                 ", isolated sound effect, no music, no voices"),
