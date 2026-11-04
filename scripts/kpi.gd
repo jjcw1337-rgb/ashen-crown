@@ -170,6 +170,20 @@ static func _stage() -> void:
 							print("[KPI] spot at ", h.global_position)
 							break
 						k += 1
+			elif pi >= 0 and pi + 1 < a.size() and a[pi + 1].begins_with("see"):
+				# --pos seeN: just behind (north of) the Nth tall Meshy prop on the near-only see-through
+				# (Props.see_nodes), so it stands between the camera and the hero
+				var want := int(a[pi + 1].substr(3))
+				var k := 0
+				for e in Props.see_nodes:
+					var b: AABB = e[1]
+					if b.size.y > 2.5 and b.size.x < 12.0 and b.size.z < 12.0:
+						if k == want:
+							var c := b.get_center()
+							h.global_position = g.world.free_spot_near(Vector3(c.x, 0, b.position.z - 0.6), 0.5)
+							print("[KPI] spot at ", h.global_position, " behind ", (e[0] as Node).name, " ", b)
+							break
+						k += 1
 			elif pi >= 0 and pi + 1 < a.size() and a[pi + 1].begins_with("harvest"):
 				# --pos harvestN: beside the Nth tree that can be felled (Harvest.HTree)
 				var want := int(a[pi + 1].substr(7))

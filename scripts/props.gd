@@ -209,7 +209,23 @@ const SEE_MIN_H := 1.5         # metres: anything lower can't hide the hero
 ## `-- --no-see-through` leaves the glb materials as they were (before/after comparisons)
 static var see_through_off := OS.get_cmdline_user_args().has("--no-see-through")
 
+## Only what stands round the hero needs the dither (nightly perf 2026-11-04): a shader that can `discard` costs
+## wherever it's drawn (no early depth or hidden-surface removal, and it runs in every shadow pass), though it only
+## ever cuts within a few metres of the hero. So every converted node also gets a SOLID copy of its materials (the
+## same shader without the cut: the same pixels wherever the cut can't reach) and wears it while its box is out of
+## the cut's reach; `see_update(player_pos)` (Game, every frame) swaps the dithering ones in as the hero comes near.
+## Camp at High: GPU 21.4 -> 19.8 ms. `-- --see-always` keeps the dithering materials on everything (comparisons).
+static var _see_solid := {}      # see material -> its solid twin (one walk)
+static var see_nodes: Array = []  # [node, world AABB, see (mats or mesh), solid (mats or mesh), near?]
+static var _see_at := Vector3(1e9, 0, 0)
+static var occlude_k := 0.73   # the shaders' occlude_k (Game sets both from the camera's offset)
+static var see_always := OS.get_cmdline_user_args().has("--see-always")
+const SEE_MARGIN := 1.0        # metres round the cut's reach (the hero moves SEE_STEP between checks)
+const SEE_STEP := 0.25
+
 static func see_through(root: Node) -> int:
+	see_nodes = see_nodes.filter(func(e): return is_instance_valid(e[0]) and (e[0] as Node).is_inside_tree() and not root.is_ancestor_of(e[0]))
+	_see_at = Vector3(1e9, 0, 0)
 	if see_through_off:
 		return 0
 	var n := 0
@@ -228,7 +244,81 @@ static func see_through(root: Node) -> int:
 	# meshes alive after it is freed (it held every visited zone's glb textures in video memory: +134 MB in the fort)
 	_see_mats.clear()
 	_see_meshes.clear()
+	_see_solid.clear()
 	return n
+
+## The solid twin of a see-through material: the same shader without the cut, the same parameters.
+static func _solid_of(m: ShaderMaterial) -> ShaderMaterial:
+	if m == null:
+		return null
+	if _see_solid.has(m):
+		return _see_solid[m]
+	var two := m.shader == Mats.custom("see_through_2side", SEE_THROUGH_SHADER.replace("cull_back", "cull_disabled"))
+	var code := SEE_THROUGH_SHADER.replace("if (cover * 0.9 > dith(FRAGCOORD.xy)) { discard; }", "")
+	var sm := m.duplicate() as ShaderMaterial
+	sm.shader = Mats.custom("see_through_2side_solid" if two else "see_through_solid", code.replace("cull_back", "cull_disabled") if two else code)
+	_see_solid[m] = sm
+	return sm
+
+## mode 0: per-surface override materials (`see`/`solid` arrays, null = surface left alone); 1: material_override;
+## 2: a MultiMesh whose one-material mesh is the see-through copy: solid = material_override over it (setting a
+## MultiMesh's mesh would read its instance buffer back from the GPU).
+static func _see_register(node: GeometryInstance3D, mode: int, see: Array, solid: Array) -> void:
+	var box := AABB()
+	if node is MeshInstance3D:
+		box = node.global_transform * (node as MeshInstance3D).mesh.get_aabb()
+	else:
+		box = node.global_transform * (node as MultiMeshInstance3D).multimesh.get_aabb()
+	var e := [node, box, see, solid, true, mode]
+	see_nodes.append(e)
+	if not see_always:
+		_see_apply(e, false)
+
+static func _see_apply(e: Array, near: bool) -> void:
+	if bool(e[4]) == near:
+		return
+	e[4] = near
+	var node: GeometryInstance3D = e[0]
+	var want: Array = e[2] if near else e[3]
+	var had: Array = e[3] if near else e[2]
+	match int(e[5]):
+		0:
+			var mi := node as MeshInstance3D
+			for si in want.size():
+				if want[si] != null and mi.get_surface_override_material(si) == had[si]:
+					mi.set_surface_override_material(si, want[si])
+		1:
+			if node.material_override == had[0]:
+				node.material_override = want[0]
+		2:
+			if near and node.material_override == e[3][0]:
+				node.material_override = null
+			elif not near and node.material_override == null:
+				node.material_override = e[3][0]
+
+## Swaps the dithering materials onto the converted nodes the cut can reach from `p` (the hero, as the shaders'
+## `player_pos`) and the solid ones onto the rest. Cheap: it only looks again once the hero has moved SEE_STEP.
+static func see_update(p: Vector3) -> void:
+	if see_always or see_nodes.is_empty() or p.distance_squared_to(_see_at) < SEE_STEP * SEE_STEP:
+		return
+	_see_at = p
+	var k := occlude_k
+	var m := SEE_MARGIN
+	var drop := false
+	for e in see_nodes:
+		if not is_instance_valid(e[0]):
+			drop = true
+			continue
+		var b: AABB = e[1]
+		var hmax := b.end.y - p.y
+		var hmin := b.position.y - p.y
+		var near := hmax > 0.9 - m and b.end.z - p.z > 0.2 - m \
+			and b.position.x - p.x < 3.6 + m and b.end.x - p.x > -3.6 - m \
+			and (b.position.z - p.z) - maxf(k * (hmax - 1.0), k * (hmin - 1.0)) < 3.2 + m \
+			and (b.end.z - p.z) - minf(k * (hmax - 1.0), k * (hmin - 1.0)) > -3.2 - m
+		_see_apply(e, near)
+	if drop:
+		see_nodes = see_nodes.filter(func(e): return is_instance_valid(e[0]))
 
 static func _see_mesh(mi: MeshInstance3D) -> int:
 	if mi.mesh == null or mi.skin != null:
@@ -240,15 +330,24 @@ static func _see_mesh(mi: MeshInstance3D) -> int:
 		if mo == null:
 			return 0
 		mi.material_override = mo
+		_see_register(mi, 1, [mo], [_solid_of(mo)])
 		return 1
 	var k := 0
+	var see := []
+	var solid := []
 	for si in mi.mesh.get_surface_count():
+		see.append(null)
+		solid.append(null)
 		if mi.get_surface_override_material(si) != null:
 			continue
 		var m := _see_mat(mi.mesh.surface_get_material(si))
 		if m != null:
 			mi.set_surface_override_material(si, m)
+			see[si] = m
+			solid[si] = _solid_of(m)
 			k += 1
+	if k > 0:
+		_see_register(mi, 0, see, solid)
 	return k
 
 static func _see_multimesh(mmi: MultiMeshInstance3D) -> int:
@@ -269,6 +368,17 @@ static func _see_multimesh(mmi: MultiMeshInstance3D) -> int:
 	if copy == null:
 		return 0
 	mm.mesh = copy
+	# one see-through material on every surface: far from the hero a solid override stands in for it
+	var one: Material = null
+	for si in copy.get_surface_count():
+		var sm := copy.surface_get_material(si)
+		if one == null:
+			one = sm
+		elif sm != one:
+			one = null
+			break
+	if one is ShaderMaterial and _see_mats.values().has(one):
+		_see_register(mmi, 2, [one], [_solid_of(one)])
 	return 1
 
 static func _see_mesh_copy(src: Mesh) -> Mesh:

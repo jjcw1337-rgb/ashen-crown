@@ -1025,6 +1025,7 @@ func _setup_camera() -> void:
 	cam.position = CAM_OFFSET
 	cam.basis = Basis.looking_at(Vector3(0, 1.0, 0) - CAM_OFFSET, Vector3.UP)
 	RenderingServer.global_shader_parameter_set("occlude_k", CAM_OFFSET.z / CAM_OFFSET.y)
+	Props.occlude_k = CAM_OFFSET.z / CAM_OFFSET.y
 
 func _setup_post() -> void:
 	var layer := CanvasLayer.new()
@@ -4032,7 +4033,9 @@ func _process(delta: float) -> void:
 		_fit_shadows()
 		if playing:
 			_sea_sounds()
-		RenderingServer.global_shader_parameter_set("player_pos", watched.global_position if watched != null else hero.global_position)
+		var pp: Vector3 = watched.global_position if watched != null else hero.global_position
+		RenderingServer.global_shader_parameter_set("player_pos", pp)
+		Props.see_update(pp)
 		if grass_field:
 			grass_field.center = cam_target
 			grass_field.cam_pos = cam.global_position
