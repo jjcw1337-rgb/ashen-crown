@@ -10,6 +10,7 @@ concept itself should be a size reduction until the download is well under 200 M
 | 2026-11-01 | 704 -> 281 MiB zip (exe 762 -> 336) | 725 -> 302 MiB zip | 275 MiB zip (bin 318) | 682 -> 255 MiB (Mac) | nightly: lossy WebP q0.9 for model textures that imported lossless; local exports (zip -r), intro.ogv (81.5 MiB) included |
 | 2026-11-02 | 390.1 MiB zip (exe 445.3) | 410.8 MiB zip (fresh import) | | 365.0 MiB (Mac) | nightly: no size change tonight (perf concepts); grew 302 -> 411 MiB since 11-01 from the day's new content (dinosaurs, trolls, crypt floors and bosses, NPCs) |
 | 2026-11-03 | 520.7 -> 387.8 MiB zip (exe 576.7 -> 443.9) | 541.5 -> 408.6 MiB zip | | 496.4 -> 363.6 MiB (Mac) | nightly: model textures capped at 1024 px and WebP q0.75 (`[importer_defaults]`), dyes capped; it had grown 411 -> 541 since 11-02 |
+| 2026-11-04 | 580.6 MiB exe (unchanged) | 545.3 MiB zip (unchanged) | | 500.2 MiB (Mac) | nightly: a perf night, no size change; textures back at full size since 11-03 (jj); found 5 MB of byte-identical textures carried twice, ~5-7 MB unreferenced |
 
 Where it goes (2026-11-01): assets 420 MB on disk: models 346 MB (the biggest: knight_statue, knight_mocap,
 grubb_mutant, plague_doctor, knight_armored, archer_ranger, wraith_mocap, title/gate, gnome_warlock, demon_mocap,

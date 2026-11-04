@@ -1209,7 +1209,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `Harvest.build` makes each a `Harvest.HTree` (an `Inter`, kind `"tree"`, in `world.interactables`, so hovering,
   clicking and walking up are the usual interaction; `Game._interact` -> `Hero.start_chop`), keeps the footprint World
   already had for it (`World.obstacle_at`; a stump shrinks it, regrowth restores it) and cuts its mesh in two at the
-  cut (`Harvest.split_mesh`) for the stump and the falling trunk. Kinds and numbers: `Harvest.KINDS` (Moor Oak 7
+  cut (`Harvest.split_mesh`) for the stump and the falling trunk; it casts from the forest's shadows-only twin (`shadow_mesh`, `--noharvesttwin`). Kinds and numbers: `Harvest.KINDS` (Moor Oak 7
   blows / 3-4 logs / 8 min, Old Pine 4 / 2-3 / 6 min, Ashen Heartwood 14 / 1-2 / 25 min). Chopping (`Hero.chop_*`):
   the hero needs an axe (`Hero.chop_axe`: the `woodsman_axe` tool every hero gets in the last bag cell, sold by the
   smith, or a combat axe, `Data.CHOP_POWER`), puts his weapon away and swings style `"chop"` (an attack with
@@ -1647,7 +1647,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   multimesh's mesh) is given `SEE_THROUGH_SHADER`, StandardMaterial3D's own sums plus the see-through, one copy per
   material; skinned, glowing, see-through and shader materials are left alone, and a node with meta `keep_material` is
   skipped with its children. Its caches are cleared after each walk (held across zones they kept every visited zone's
-  textures in video memory). `-- --no-see-through` turns it off for comparisons; `tools/visual_audit/see_through_check.gd
+  textures in video memory). `-- --no-see-through` turns it off for comparisons; away from the hero each converted node wears a solid copy of its material (the same shader without the discard: a shader that can discard costs wherever it's drawn, shadow passes too) and `Props.see_update` (Game, every 0.25 m the hero moves) swaps the dithering one in on what's near him (nightly 2026-11-04, camp +7.6%; `--see-always` for comparisons); `tools/visual_audit/see_through_check.gd
   -- town lair coast` lists what dithers in each zone and what tall mesh still can't. World generation draws from `World.rng`: a visual change must keep its calls (count and order) or every
   rock, tree, footprint and spawn after it moves (and co-op peers must agree). Check with
   `tools/visual_audit/layout_dump.gd` (one zone per process) and diff against the old build.
