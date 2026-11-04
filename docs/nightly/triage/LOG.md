@@ -8,35 +8,37 @@ Rows with Kind `bench` are the runner's KPI benchmark of the night's result (a f
 
 ## Lessons (rewritten by each run: at most 8 bullets, the most useful first)
 
+- **A timer lambda must not hold a node strongly.** The commonest player error so far (11-02 servers, 11-04 clients):
+  `Lambda capture at index 0 was freed` = a `create_timer(...).timeout.connect(func` or `Fx.later` lambda captured a
+  node that freed itself (one-shot particles do, `InfernalFx.particles`) or that something else freed first (the
+  gates rising, a zone change). `Fx.later` guards only the node it's given; capture `weakref(x)` for anything else.
+  Tween callbacks on the captured node's own tween are safe. Effects every game plays at once (a stash opening)
+  show as several players hit within seconds: look for the shared event in the server's journal.
 - **Reproduce on the player's renderer, not only headless.** An engine error a headless repro never shows may live
-  behind a Forward+/High switch (heat haze, SSAO, shadows: `haze_ok`, `is_forward()`, `DisplayServer` checks): the
-  braziers' `!is_inside_tree()` (11-03-1912) logged 8 times on every windowed camp load and never headless. Run the
-  same tool script windowed at their preset first; then `printerr` lines through `Game.load_zone` find the step, and
-  the count per load (8 = 4 braziers x 2) names the culprit. A `.global_position` on a node built before it's added
-  is this bug; build helpers place with `InfernalFx._place`.
-- **Know the screen before blaming the scene.** The worst "slow spot" so far (the camp at 21 fps on an M5 Pro) was a
-  Retina window drawing 4x the pixels; `res` is now `WxH@scale 3dS`. Compare one spot across players and presets
-  first. This Mac's KPI window can't be Retina-sized: emulate with `--render-scale 2.0`. (Confirmed fixed 11-03.)
-- **Look at hitches, not only the average.** The worst play now is stutter at fine averages (archer: 9-45 frames
-  over 100 ms a minute). `--kpi ... --trace` lists every frame; line a hitch up with what ran the frame before.
-  Rare hitches need 5+ runs a variant. The first use of a shader variant in a process costs 100-700 ms cold:
-  repeated KPI runs warm `user://shader_cache` and hide it, so clear them to see what a player meets.
-- **Read the crumbs for the order of events.** `raid` -> `enter bg` -> `enter town` 2 s later = a join turned away
-  mid-load; after any `await` in net code, check the link is still the same one (`Net.still_joined`). Two `enter
-  town` 10 s apart = the camp behind the title, then Continue (or Save and Exit to Title).
-- **Engine errors with callable `''` or a C++ `at:` and no script line**: Godot 4.3 prints no GDScript stack for
-  them (`-d` neither). Read the engine source for the one path that logs it (raw.githubusercontent.com/godotengine/
-  godot/4.3-stable/...); in 4.3 `set_global_position` reads `get_global_transform` first. One player on every build
-  with no repro = watch, not chase.
+  behind a Forward+/High switch (heat haze, SSAO, shadows): the braziers' `!is_inside_tree()` (11-03-1912) logged
+  8 times on every windowed camp load and never headless. `printerr` through `Game.load_zone` finds the step; the
+  count per load names the culprit. A `.global_position` on a node built before it's added is this bug.
+- **Read the crumbs for the order of events, and the journal for what the server did.** `raid` -> `enter town` 8 s
+  later with no `enter bg` = a join that never got an answer (11-04: staging was down); `raid` -> `enter bg` ->
+  `enter town` 2 s later = turned away mid-load. After any `await` in net code check the link (`Net.still_joined`);
+  behind a loading screen nothing may take input (`loading.visible` blocks it since 11-04).
+- **Engine errors with a C++ `at:` and no script line**: read the engine source (raw.githubusercontent.com/
+  godotengine/godot/4.3-stable/...) for the one path that logs it, then build a tiny probe of just that path (two
+  ENet peers in one process, one not polled = a busy client: 11-04's `max channels: 0` was a graceful
+  `disconnect_peer` emptying the channels while the peer stayed listed; `Net.drop_peer` disconnects now).
+- **Know the screen before blaming the scene.** The worst "slow spot" so far (camp at 21 fps on an M5 Pro) was a
+  Retina window drawing 4x the pixels; `res` is `WxH@scale 3dS`. Compare a spot across players and presets first;
+  emulate Retina here with `--render-scale 2.0`.
+- **Look at hitches, not only the average.** Averages are 97-120 fps now; what's left is stutter (1% lows of 16-36 in
+  single minutes). `--kpi ... --trace` lists every frame; first-use shader compiles cost 100-700 ms cold and repeated
+  runs hide them (clear `user://shader_cache`). Rare hitches need 5+ runs a variant.
+- **A test that "fails" with `Nonexistent function ... in base 'GDScript'` every frame didn't compile**: its first
+  error is `Identifier not found: Sfx`; run it through `tools/_late.gd -- res://tools/<test>.gd`. Read a test's first
+  errors before its last. A test can read its own `user://logs/godot.log` from its start offset to fail on an engine
+  error (`nightly_stash_fx_test`), but only run one Godot at a time then (they share the log).
 - **The servers' journal is the fuller story** (`ssh ashen-crown-staging 'sudo journalctl -u ashen-crown-bg|coop
-  --since -24h'`, UTC); group it with `sed 's/[0-9]+/#/g' | sort | uniq -c`. `Parameter "m" is null` and the
-  exit-leak lines are the dummy renderer's noise. Half-written log lines once made up issues: an odd `at:` = the reader.
-- **A test that "fails" with `Nonexistent function 'rooted' in base 'GDScript'` every frame didn't compile**: its
-  first error is `Identifier not found: Sfx` (a static reference to Hero compiled before the autoloads). Run it as
-  `-s tools/_late.gd -- res://tools/<test>.gd [args]` (coop_fx_test, bg_test, mp_test needed it on 11-03). Read a
-  test's first errors before its last.
-- **Timer lambdas that capture a node error when it's gone** (use `Fx.later`); RPC checksum / argument-count errors
-  are a client and a server on different builds during deploys (the client already explains it).
+  --since -24h'`, UTC); `Parameter "m" is null` / `mesh_get_surface_count` are the dummy renderer's noise. RPC
+  checksum errors are client and server on different builds during deploys.
 
 ## Log
 
@@ -59,3 +61,8 @@ Rows with Kind `bench` are the runner's KPI benchmark of the night's result (a f
 | 2026-11-03 | bench | Runner's KPI benchmark of the night's result (avg fps) | camp 46→45, moor Medium 89→88, moor 52→52, moor Ultra 15→16, fight 46→46, boss 82→84, arena 77→77, crypt 96→94; server tick p99 94→100 ms, camp 10M→10M tris, download 409→409 MB | shipped | | `docs/nightly/perf/metrics.jsonl` |
 | 2026-11-03-1912 | hotfix-error | client: `Condition "!is_inside_tree()" is true` at `get_global_transform` (016d8c012ecbed22), camp, Forward+ High | fixed: the grand waypoint's 4 braziers (`BrazierCoals`) built their heat haze before being in the tree (own `global_position` + `InfernalFx.glow` setting one): 8 errors every camp load on Forward+ High/Ultra, never headless. `InfernalFx._place` (local while outside the tree); windowed boot 8 -> 0, haze unchanged | 1 player, 16 events / 1 session | none expected after the next staging build | [runs/2026-11-03-1912.md](runs/2026-11-03-1912.md) |
 | 2026-11-03-1912 | note | Molten Fists' effect state (`DemonFistsFx.update`, `demon_fists_fx.gd:168`) touches nodes freed with the old zone after a zone change (seen in the debug repro, not by players: release builds skip the check) | not fixed (outside the hotfix's issue) | none | a normal night: `SkillFx.clear(hero)` where `load_zone` frees the world, as puppets do; coop_fx_test + demon_test | [runs/2026-11-03-1912.md](runs/2026-11-03-1912.md) |
+| 2026-11-04 | error | client (regression of 11-02): `Lambda capture at index 0 was freed` (07a289503f7f9fa8), raid antechamber | fixed: a stash chest opening (`Battlegrounds.stash_fx`, played by every game) kept its self-freeing smoke in a 4 s lambda; the gates rising freed the fire and loop under theirs. Lambda removed, weak refs, Frost Nova's timer via `Fx.later`; `nightly_stash_fx_test` 4 -> 0 | 2 players, 3 events | if back: audit `create_timer` / `Fx.later` lambdas capturing other nodes | [runs/2026-11-04.md](runs/2026-11-04.md) |
+| 2026-11-04 | error | client: `Trying to call an RPC via a multiplayer peer which is not connected` (5a186a1ced052d71), camp 0,5 | fixed: a raid join waiting 8 s for a server that was down (the 11-03 outage) left the camp behind the loading screen taking keys; the Plague Doctor's skills sent effects down the connecting link. No game input while `loading.visible`; `nightly_join_wait_test` 4 -> 0 | 1 player, 4 events | none expected | [runs/2026-11-04.md](runs/2026-11-04.md) |
+| 2026-11-04 | error | servers: `Unable to send packet on channel 1, max channels: 0` (fd6796612eee4c16), 3rd night | fixed: graceful `disconnect_peer` on a turn-away empties the ENet peer's channels but keeps it listed until a busy client answers; every per-peer RPC meanwhile failed (27 lines a turn-away). `Net.drop_peer` disconnects now (peer_disconnected still fires); `nightly_drop_peer_test` 106 -> 0 | servers, 58 events / 24 h | none expected; `bg_admin_test` fails "back in, though joining has closed" with and without this (not a player report) | [runs/2026-11-04.md](runs/2026-11-04.md) |
+| 2026-11-04 | error | `!is_inside_tree()` (016d8c012ecbed22), `skeleton_updated` (28b5fe25d00fd3d0), `tree_exited` (2bdc80640e965691) | watch: the first is fixed by the 11-03-1912 hotfix (reports from the build before it); the other two the same one Windows player, engine-side | 1 player, 24 / 6 / 2 events | check 016d8c is gone on a newer build | [runs/2026-11-04.md](runs/2026-11-04.md) |
+| 2026-11-04 | spot | none qualified: every square 97-120 fps (Medium RTX 5070 Ti, Low M3 Max), 3 hitches a minute | nothing to fix | 2 players, 147 samples | stutter (single-minute 1% lows 16-36) stays the lead | [runs/2026-11-04.md](runs/2026-11-04.md) |
