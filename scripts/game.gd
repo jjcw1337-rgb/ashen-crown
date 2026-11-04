@@ -3745,8 +3745,10 @@ func max_out() -> void:
 	ui.message("Level 99, every talent, a million gold and %d pieces of the best gear in your bag" % n, Color(1.0, 0.85, 0.4), 6.0)
 
 func _unhandled_input(ev: InputEvent) -> void:
-	if not playing or _busy or world == null:
+	if not playing or _busy or world == null or loading.visible:
 		return      # (the title and its screens, and a zone loading: nothing in the game takes keys or clicks)
+		# (nor behind the loading screen while a join waits for its server: the camp behind it would send the
+		# skills' and clicks' messages down a link not yet connected; triage 2026-11-04)
 	_cheat_keys(ev)
 	if ev is InputEventMouseButton:
 		if ev.button_index == MOUSE_BUTTON_LEFT:
@@ -3960,7 +3962,10 @@ func _process(delta: float) -> void:
 	_update_grade(real_dt)
 	if Engine.time_scale < 1.0 and Time.get_ticks_msec() > _hitstop_until:
 		Engine.time_scale = 1.0
-	if playing and not paused and not _busy:
+	if playing and not _busy and loading.visible and hero != null:
+		hero.cmd_wasd(Vector3.ZERO)      # (keys held as the loading screen came up don't walk him on behind it)
+		hero.blocking = false
+	if playing and not paused and not _busy and not loading.visible:
 		_update_hover()
 		hero.cursor = _cursor_aim()     # the pointer aims everything (see Hero's aiming notes)
 		_check_ambushes()
