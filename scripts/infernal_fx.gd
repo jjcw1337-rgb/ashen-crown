@@ -202,7 +202,7 @@ static func flame(root: Node3D, pos: Vector3, size: Vector2, mat: ShaderMaterial
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.extra_cull_margin = 2.0
 	root.add_child(mi)
-	mi.global_position = pos
+	_place(mi, pos)
 	mi.scale = Vector3(size.x, size.y, 1.0)
 	return mi
 
@@ -214,7 +214,7 @@ static func flame(root: Node3D, pos: Vector3, size: Vector2, mat: ShaderMaterial
 static func fire(parent: Node3D, pos: Vector3, size := 0.8, rate := 40.0, tr := 2, soot := true, embers := true) -> Node3D:
 	var n := Node3D.new()
 	parent.add_child(n)
-	n.global_position = pos
+	_place(n, pos)
 	var life := 0.32 + size * 0.28
 	var q := QuadMesh.new()
 	q.size = Vector2(size * 0.7, size * 1.0)
@@ -350,6 +350,14 @@ static func tongue_mat(life := 0.6) -> ShaderMaterial:
 	m.set_shader_parameter("noise_tex", noise())
 	return _palette(m)
 
+## Puts a node just added under root at pos: a world position, or the local one while root is still being built
+## outside the tree (a prop dressed before it is placed; a global transform there logs "!is_inside_tree()").
+static func _place(n: Node3D, pos: Vector3) -> void:
+	if n.is_inside_tree():
+		n.global_position = pos
+	else:
+		n.position = pos
+
 ## A soft glow facing the camera (hit flashes, the cores of the fists).
 static func glow(root: Node3D, pos: Vector3, size: float, mat: ShaderMaterial) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
@@ -358,7 +366,7 @@ static func glow(root: Node3D, pos: Vector3, size: float, mat: ShaderMaterial) -
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.extra_cull_margin = 2.0
 	root.add_child(mi)
-	mi.global_position = pos
+	_place(mi, pos)
 	mi.scale = Vector3.ONE * size
 	return mi
 
@@ -455,10 +463,7 @@ static func particles(root: Node3D, pos: Vector3, d: Dictionary) -> GPUParticles
 		p.draw_pass_1 = q
 	p.visibility_aabb = AABB(Vector3(-6, -2, -6), Vector3(12, 8, 12))
 	root.add_child(p)
-	if p.is_inside_tree():
-		p.global_position = pos
-	else:
-		p.position = pos
+	_place(p, pos)
 	p.emitting = true
 	if p.one_shot:
 		Fx._free_later(p, p.lifetime + 0.6)
