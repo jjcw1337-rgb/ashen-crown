@@ -1769,3 +1769,19 @@ Tests: `tools/party_queue_test.gd` uses real lightweight ENet sockets on 24779;
 (see its header). Characters live in isolated test save folders. `tools/title_layout_test.gd` checks
 Story/Online/LAN controls at 1920x1080, 1280x720 and 1024x768 and hides the home cards on character
 subpages. It renders screenshots when run with a real renderer.
+
+
+## Home-to-game UI flow (JJ, 2026-11-04)
+
+Home actions explicitly say Continue Story, Host LAN and Join LAN. LAN Join carries the selected
+character ID rather than silently loading the most recent save. Home cards hide behind LAN discovery
+as well as the other title subpages; discovery lists scroll within their frame. Battlegrounds scales
+its entire page and fits its heading to the available description width, keeping the champion frame
+separate. Character creation's information frame scales within the viewport; gameplay control hints
+wrap within screen margins. Transient zone announcements and controls hints hide while gameplay
+menus are open so they cannot cover the actions. Existing waypoint routes and progression rules are unchanged.
+
+`tools/home_game_flow_test.gd` checks layouts at 1024x768, 1280x720 and 1920x1080, long LAN lists,
+selected-character LAN entry, Continue Story, in-game waypoint access, return home and new-character
+creation. It uses isolated test saves and a local unavailable LAN endpoint, never a public server.
+Run with the real renderer to inspect its `/tmp/flow-*.png` captures as well as its log.

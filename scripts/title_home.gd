@@ -190,7 +190,7 @@ func _build_play() -> void:
 	_play.name = "play"
 	_play.pressed.connect(play)
 	prow.add_child(_play)
-	_join = ui._iron_button("Join", 160, 68, 24)
+	_join = ui._iron_button("Join LAN", 160, 68, 24)
 	_join.pressed.connect(func(): ui.open_join())
 	_join.visible = false
 	prow.add_child(_join)
@@ -313,7 +313,8 @@ func set_mode(m: String) -> void:
 func _update() -> void:
 	var none := sel == ""
 	_play.disabled = none
-	_play.text = {"story": "Play", "online": "Find Party", "lan": "Host"}.get(mode, "Play")
+	_join.disabled = none
+	_play.text = {"story": "Continue Story", "online": "Find Party", "lan": "Host LAN"}.get(mode, "Play")
 	_join.visible = mode == "lan"
 	_note.text = "Create a character to begin." if none else NOTE.get(mode, "")
 
@@ -322,7 +323,8 @@ func _process(delta: float) -> void:
 	# character creation/selection panel, even when that panel has transparent areas.
 	visible = not ((ui.class_panel != null and ui.class_panel.visible)
 		or (ui.chars_panel != null and ui.chars_panel.visible)
-		or (ui.bg_page != null and ui.bg_page.visible))
+		or (ui.bg_page != null and ui.bg_page.visible)
+		or (ui.join_panel != null and ui.join_panel.visible))
 	if not is_visible_in_tree():
 		return
 	_status.visible = false
