@@ -268,14 +268,15 @@ static func _spark(root: Node3D, at: Vector3, tr: int) -> void:
 		"scale": [0.4, 0.9], "size": 0.05, "colors": [[0.0, STORM_CORE], [0.5, STORM_GLOW], [1.0, Color(STORM_GLOW, 0.0)]]})
 
 ## One lightning bolt from a to b living `dur` seconds: a jagged ribbon facing the camera, struck again with a new
-## path every few frames (that's the flicker), with a fork or two; bright white core in a violet-blue glow.
-static func bolt(root: Node3D, a: Vector3, b: Vector3, dur: float, width: float, tr: int) -> void:
+## path every few frames (that's the flicker), with a fork or two; bright white core in a violet-blue glow (or the
+## colours given: Thunderstep's are gold).
+static func bolt(root: Node3D, a: Vector3, b: Vector3, dur: float, width: float, tr: int, core := STORM_CORE, glow := STORM_GLOW) -> void:
 	var mi := MeshInstance3D.new()
 	var im := ImmediateMesh.new()
 	mi.mesh = im
 	var m := _mat("bolt")
-	m.set_shader_parameter("core", STORM_CORE)
-	m.set_shader_parameter("glow", STORM_GLOW)
+	m.set_shader_parameter("core", core)
+	m.set_shader_parameter("glow", glow)
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.extra_cull_margin = 8.0

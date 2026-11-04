@@ -312,11 +312,17 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   the feet; one dying frozen shatters), and at the end every crystal breaks into its Blender-fractured pieces
   (`crystal_pieces.glb`, `fracture_rock.py`) and the frost thaws; sounds `frost_loose`, `arrow_rain`, `ice_arrow_hit`,
   `frost_spread`, `ice_burst`; the books are `tools/blender/fx/smoke_flipbook.py` kinds `frost`/`rime`, packed by
-  `tools/fx_smokebook.py`, listed in `DemonKitFx.BOOKS`), Storm Snare (`snare`: holds the first on it, lightning arcs into the nearest others,
-  `Fx.bolt`), Spirit Beast (`beast`: commands his wolf, below). Arrows are Meshy models (`assets/models/arrows/`
+  `tools/fx_smokebook.py`, listed in `DemonKitFx.BOOKS`), Thunderstep (`snare`, id kept for old saves; jj's pick in place of Storm Snare: he backflips
+  `Archer.VAULT_DIST` away from the pointer (`Archer._vault`, carried by `_update_vault`, rooted meanwhile), driving the
+  Meshy thunderstone (`assets/models/fx/storm/thunderstone.glb`, gold veins by `tools/blender/fx/gold_veins.py`,
+  fractured into `thunderstone_pieces.glb`) into a gold storm sigil (`assets/textures/fx/storm/sigil.png`, Meshy) where
+  he stood; `SIGIL_ARM` later it detonates (`_detonate`: stun and damage on it, lightning leaping into the nearest
+  others beyond; Aftershock strikes again); the look is `scripts/thunderstep_fx.gd` `ThunderstepFx` (the flip on the
+  rig, gold `ElementalFx.bolt`s, the sky bolt, sparks, shock ring), sounds `thunder_vault`, `sigil_charge`,
+  `thunder_blast`), Spirit Beast (`beast`: commands his wolf, below). Arrows are Meshy models (`assets/models/arrows/`
   war / fire / frost, prepared by `tools/blender/prep_arrow.py`: head toward Godot -Z), `Archer._arrow_mesh(kind)`.
   Talents: Flame, Frost, Storm (`Talents.TREES["archer"]`; specials arrow_split, burn_dmg, wolf_burn, chill_pct, wolf_howl,
-  frost_shatter, arc_count, snare_dur, snare_max, volley_size, beast_two). His **wolf** (`spirit_beast.gd`, `SpiritBeast`): JJ's dire forest wolf (Meshy, 25% larger
+  frost_shatter, arc_count, snare_dur, snare_max (Aftershock), volley_size, beast_two). His **wolf** (`spirit_beast.gd`, `SpiritBeast`): JJ's dire forest wolf (Meshy, 25% larger
   than a wolf, `assets/models/monsters/wolf.glb`, rigged by `tools/blender/act1/rig_quadruped.py` on the lion's
   skeleton, so `Lion.build(glb, scale)`/`Lion.pose` run it), his companion from the start: a state machine of follow /
   engage / command / protect / investigate / return / hold (every number in `SpiritBeast.CFG`); it settles at his side,

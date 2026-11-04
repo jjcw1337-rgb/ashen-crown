@@ -217,12 +217,12 @@ const TREES := {
 			{"id": "a_rain", "name": "Endless Rain", "row": 2, "max": 2, "icon": "t_hourglass", "fx": {"cd:volley": 12, "cost:volley": 10}, "text": "Frost Volley recharges {cd:volley}% faster and costs {cost:volley}% less mana."},
 			{"id": "a_shatter", "name": "Shatter", "row": 3, "max": 1, "icon": "t_skull", "fx": {"frost_shatter": 1}, "text": "Chilled enemies take 20% more damage from your arrows."},
 		]},
-		{"name": "Storm", "desc": "Storm Snare, forked lightning and the bond with his wolf.", "talents": [
+		{"name": "Storm", "desc": "Thunderstep, forked lightning and the bond with his wolf.", "talents": [
 			{"id": "a_vigor", "name": "Hunter's Vigor", "row": 0, "max": 3, "icon": "t_heart", "fx": {"life_pct": 4}, "text": "+{life_pct}% maximum life."},
-			{"id": "a_jaws", "name": "Thunder Jaws", "row": 0, "max": 3, "icon": "snare", "fx": {"dmg:snare": 15, "snare_dur": 0.5}, "text": "Storm Snare deals {dmg:snare}% more damage and holds {snare_dur} seconds longer."},
-			{"id": "a_arc", "name": "Forked Lightning", "row": 1, "max": 3, "icon": "snare", "fx": {"arc_count": 1}, "text": "Storm Snare's lightning leaps to {arc_count} more enemies."},
+			{"id": "a_jaws", "name": "Thunder Jaws", "row": 0, "max": 3, "icon": "snare", "fx": {"dmg:snare": 15, "snare_dur": 0.5}, "text": "Thunderstep's sigil deals {dmg:snare}% more damage and stuns {snare_dur} seconds longer."},
+			{"id": "a_arc", "name": "Forked Lightning", "row": 1, "max": 3, "icon": "snare", "fx": {"arc_count": 1}, "text": "Thunderstep's lightning leaps to {arc_count} more enemies."},
 			{"id": "a_bond", "name": "Spirit Bond", "row": 1, "max": 3, "icon": "beast", "fx": {"dmg:beast": 15}, "text": "Your wolf hits {dmg:beast}% harder."},
-			{"id": "a_trapper", "name": "Trapper", "row": 2, "max": 2, "icon": "snare", "fx": {"snare_max": 1}, "text": "Set {snare_max} more Storm Snare at once."},
+			{"id": "a_trapper", "name": "Aftershock", "row": 2, "max": 2, "icon": "snare", "fx": {"snare_max": 1}, "text": "Thunderstep's sigil strikes {snare_max} more time(s), a little weaker each time."},
 			{"id": "a_pack", "name": "Pack Hunter", "row": 2, "max": 3, "icon": "beast", "fx": {"buff_pow": 10}, "text": "The hunt your commands rouse is {buff_pow}% stronger."},
 			{"id": "a_alpha", "name": "Alpha", "row": 3, "max": 1, "icon": "beast", "fx": {"beast_two": 1}, "text": "A second wolf runs with you."},
 		]},

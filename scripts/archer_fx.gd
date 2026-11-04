@@ -2,12 +2,13 @@ class_name ArcherFx
 extends RefCounted
 ## Visual effects for the archer's skills (SkillFx events; the gameplay is in archer.gd). What flies or lies in
 ## wait is raised here on the archer's own game and on his puppet on every partner's (Hero.arrows, volleys,
-## snares), and Archer.update moves it on both: a puppet's arrows stop and spark on a foe but hurt nothing,
-## its volley rains without hitting, its snares wait for the "spring" event instead of springing themselves.
+## Thunderstep's sigils), and Archer.update moves it on both: a puppet's arrows stop and spark on a foe but hurt
+## nothing, its volley rains without hitting, its sigils wait for the "spring" event instead of detonating themselves.
 ##  the attack / Fire Arrow: "loose" {p: from, d: direction, k: "war"|"fire", x: it pierces}
 ##  Frost Volley: "cast" (the glacier arrow drawn, aimed high), "impact" {p: the ground, r: radius}: the flight up and
 ##    the storm (FrostVolleyFx); the rain's strikes come from Archer._rain on both games
-##  Storm Snare: "impact" {p, n: how many he may keep}, "spring" {p, r, t: the foes its lightning reaches}
+##  Thunderstep: "vault" {p: the sigil, q: where he lands}, "spring" {p, r, t: the foes struck, n: how many of them
+##    were on the sigil, x: it strikes again} (ThunderstepFx)
 ##  Spirit Beast: "impact" {p: the point, t: [the foe] when it was sent at one, x: called home} (the command's
 ##    rings and the roar; a puppet's own wolf (Archer.keep_companions) takes the same command and only shows its bites)
 
@@ -44,51 +45,8 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			h.volleys.append({"pos": g, "t": 1.3, "tick": 0.25, "r": r})
 			# the flight going up out of the bow, then the storm over the mark (FrostVolleyFx)
 			FrostVolleyFx.release(h, g, r)
-		["snare", "impact"]:
-			var g: Vector3 = ev["p"]
-			var mx: int = int(ev.get("n", 2))
-			while h.snares.size() >= mx and not h.snares.is_empty():
-				var old: Dictionary = h.snares.pop_front()
-				if is_instance_valid(old["node"]):
-					(old["node"] as Node3D).queue_free()
-			var n := Archer._snare_mesh()
-			root.add_child(n)
-			n.global_position = g + Vector3(0, 0.03, 0)
-			h.snares.append({"node": n, "pos": g, "t": 20.0})
-			trap_set(root, g)
-			Sfx.play_at("impact_metal", g, -8.0, 1.3)
-		["snare", "spring"]:
-			var pos: Vector3 = ev["p"]
-			var r: float = float(ev.get("r", Archer.SNARE_R))
-			var from := pos + Vector3(0, 0.4, 0)
-			for e in ev.get("t", []):
-				Fx.bolt(root, from, e.global_position + Vector3(0, e.height * 0.9, 0), Archer.STORM)
-			_light(root, from, Archer.STORM, 4.0, 0.25, 6.0)
-			Sfx.play_at("impact_metal", pos, -4.0, 1.6)
-			# the trap that sprang: the one lying there
-			var best = null
-			var bd := 1.5
-			for s in h.snares:
-				var d: float = (s["pos"] as Vector3).distance_to(pos)
-				if d < bd:
-					bd = d
-					best = s
-			if best != null:
-				h.snares.erase(best)
-				var n: Node3D = best["node"]
-				if is_instance_valid(n):
-					var tw := n.create_tween().set_parallel(true)
-					for j in ["jaw_l", "jaw_r"]:
-						tw.tween_property(n.get_node(j), "rotation:z", 0.0, 0.08)
-					tw.chain().tween_interval(0.8)
-					tw.chain().tween_callback(n.queue_free)
-			Fx.sparks(root, pos + Vector3(0, 0.3, 0), Color(0.9, 0.85, 0.7))
-			ElementalFx._dust(root, pos + Vector3(0, 0.15, 0), ElementalFx.DUST_DARK, 1.0, 0.5, {"amount": 6, "life": 1.0,
-				"explosive": 1.0, "shape": "ring", "r": 0.3, "r_in": 0.1, "dir": Vector3.UP, "spread": 25.0, "vel": [0.2, 0.5],
-				"radial": [r * 1.5, r * 2.2], "damping": [2.4, 3.2], "scale": [0.6, 1.1], "grow": [0.5, 1.5]})
-			hunter_mark(root, pos, r * 0.6, Archer.STORM)
-			Sfx.play_at("impact_metal", pos, 0.0, 0.8)
-			SkillFx.shake(h, 0.1)
+		["snare", "vault"], ["snare", "spring"]:
+			ThunderstepFx.play(h, ev)
 		["beast", "impact"]:
 			var foes: Array = ev.get("t", [])
 			var foe = foes[0] if not foes.is_empty() else null
@@ -113,10 +71,10 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			return false
 	return true
 
-## Arrows, volleys and snares move in Archer.update (the puppet's too). Here: the fire gathering on the nocked
+## Arrows, volleys and sigils move in Archer.update (the puppet's too). Here: the fire gathering on the nocked
 ## arrow through the draw of a Fire Arrow shot (from the attack's progress, so the puppet shows it too).
 # ---------------------------------------------------------------- the hunter's own marks (visual overhaul)
-## The hunter's mark on the ground (a command to his wolf, a sprung snare): three claw rakes torn across a pale ring,
+## The hunter's mark on the ground (a command to his wolf): three claw rakes torn across a pale ring,
 ## glowing in col, drawn in a blink and fading. In place of the generic ring.
 static func hunter_mark(root: Node3D, pos: Vector3, r: float, col: Color, life := 0.9) -> void:
 	if _claw_shader == null:
@@ -130,15 +88,6 @@ static func hunter_mark(root: Node3D, pos: Vector3, r: float, col: Color, life :
 	var mi := ElementalFx._piece(root, InfernalFx.disc_mesh(w, pos, r, 32, 3, 0.07), m, pos, life + 0.1)
 	InfernalFx.tween_param(mi, m, "draw", 0.0, 1.0, 0.12).set_ease(Tween.EASE_OUT)
 	InfernalFx.tween_param(mi, m, "life", 1.0, 0.0, life * 0.6, life * 0.4)
-
-## A snare set down: its jaws clack, a little dust kicked up, glints off the steel.
-static func trap_set(root: Node3D, g: Vector3) -> void:
-	InfernalFx.particles(root, g + Vector3(0, 0.12, 0), {"amount": 6, "life": 0.35, "explosive": 1.0, "shape": "sphere",
-		"r": 0.15, "dir": Vector3.UP, "spread": 60.0, "vel": [0.8, 1.8], "gravity": -9.0, "scale": [0.4, 0.9], "size": 0.04,
-		"colors": [[0.0, Color(0.95, 0.97, 1.0)], [1.0, Color(Archer.STORM, 0.0)]]})
-	ElementalFx._dust(root, g + Vector3(0, 0.1, 0), ElementalFx.DUST_DARK, 0.7, 0.35, {"amount": 3, "life": 0.8,
-		"explosive": 1.0, "shape": "ring", "r": 0.35, "r_in": 0.2, "dir": Vector3.UP, "spread": 20.0, "vel": [0.1, 0.3],
-		"radial": [1.0, 2.0], "damping": [2.0, 3.0], "scale": [0.6, 1.0], "grow": [0.5, 1.3]})
 
 static func _light(root: Node3D, pos: Vector3, col: Color, energy: float, life: float, reach: float) -> void:
 	var l := OmniLight3D.new()
@@ -204,6 +153,7 @@ static func update(h: Hero, _delta: float) -> void:
 		FrostVolleyFx.end_draw(h)
 		h.fxs.erase("draw_volley")
 	FrostVolleyFx.update(h, _delta)
+	ThunderstepFx.update(h, _delta)
 
 ## A puppet's shot has no skill id on the wire: the volley's "cast" event marks the next shot its.
 static func _puppet_volley(h: Hero) -> bool:

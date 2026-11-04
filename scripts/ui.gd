@@ -5956,14 +5956,11 @@ class SkillGlyph extends Control:
 				draw_rect(Rect2(c + Vector2(-14, 12), Vector2(28, 4)), gvt.darkened(0.3))
 				draw_arc(c + Vector2(14, 0), 4.0, 0, TAU, 10, gvt, 2.0, true)
 			"snare":
-				# an open iron trap
-				draw_arc(c + Vector2(0, 4), 13, PI * 1.05, PI * 1.95, 14, steel, 3.0, true)
-				draw_arc(c + Vector2(0, -4), 13, PI * 0.05, PI * 0.95, 14, steel, 3.0, true)
-				for k in 5:
-					var x2 := -10.0 + k * 5.0
-					draw_line(c + Vector2(x2, -6), c + Vector2(x2, -1), steel, 2.0, true)
-					draw_line(c + Vector2(x2, 6), c + Vector2(x2, 1), steel, 2.0, true)
-				draw_circle(c, 3.0, ahunt)
+				# Thunderstep: a gold storm sigil with a bolt through it
+				var gold := Color(1.0, 0.72, 0.22) if not dim else steel
+				draw_arc(c, 13, 0, TAU, 24, gold, 2.0, true)
+				draw_arc(c, 9, 0, TAU, 20, Color(gold.r, gold.g, gold.b, 0.55), 1.2, true)
+				draw_polyline(PackedVector2Array([c + Vector2(3, -15), c + Vector2(-4, -1), c + Vector2(2, -1), c + Vector2(-3, 15)]), Color(1.0, 0.96, 0.8) if not dim else steel, 2.6, true)
 			"beast":
 				# a beast's head, ghostly
 				draw_colored_polygon(PackedVector2Array([c + Vector2(-12, -10), c + Vector2(-6, -4), c + Vector2(6, -4), c + Vector2(12, -10), c + Vector2(10, 4), c + Vector2(0, 15), c + Vector2(-10, 4)]), Color(ahunt.r, ahunt.g, ahunt.b, 0.55))

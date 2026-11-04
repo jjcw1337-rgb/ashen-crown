@@ -9,7 +9,7 @@ const EXPECT := {
 	"wraith": {"rend": ["reap_swing"], "siphon": ["spirit_dart"], "step": ["shade_in", "shade_out"], "grasp": ["slam"], "phantom": ["host_summon"], "night": ["host_summon"]},
 	"demon": {"fists": ["hellclaw"], "icharge": ["charge_dash"], "cslam": ["slam"], "hurl": ["cleave_swing", "boom"], "grip": ["growl", "slam"], "wrath": ["roar"]},
 	"warlock": {"drain": ["drain_start"], "blight": ["blight_cast"], "shackles": ["shackles"], "covenant": ["covenant"]},
-	"archer": {"pierce": ["bow"], "volley": ["bow"], "snare": ["impact_metal"], "beast": ["lion_roar"]},
+	"archer": {"pierce": ["bow"], "volley": ["bow"], "snare": ["thunder_vault"], "beast": ["lion_roar"]},
 	"plague": {"toxic": ["swing_light", "ice_shatter", "blight_burst"], "swarm": ["swing_light"], "bloom": ["equip", "impact_metal"], "fog": ["swing", "impact_metal"], "transfusion": ["equip", "drip"], "experiment": ["swing_heavy", "slam"]},
 }
 func _initialize():

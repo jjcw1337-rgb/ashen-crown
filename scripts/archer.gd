@@ -5,10 +5,12 @@ extends RefCounted
 ## (Hero.reach) and keeps shooting while the button is held. His skills (Data.SKILLS "cls": "archer"):
 ##   Piercing Shot: a heavy arrow through every enemy in a line;
 ##   Volley: arrows into the sky that rain on the cursor, hitting all within reach again and again;
-##   Snare Trap: an iron trap thrown to the cursor that holds fast (stuns) the first enemies on it;
+##   Thunderstep (id "snare", kept for old saves' bindings and talents; jj's pick, in place of Storm Snare): he
+##     backflips away from the pointer, driving a thunderstone into a gold storm sigil where he stood, which a moment
+##     later detonates: everything on it stunned and hurt, lightning chaining on into the nearest others;
 ##   Spirit Beast: a spectral beast (the lion's body, ghostly) that hunts with him for 30 s, and the
 ##     class's 12 s battle buff (+40% damage).
-## Everything in flight or lying in wait lives on the hero (arrows, volleys, snares, beasts), updated
+## Everything in flight or lying in wait lives on the hero (arrows, volleys, sigils in h.snares, beasts), updated
 ## by `update` and cleared by `clear`. What is seen is raised by fx events (Hero.fx -> ArcherFx), so a
 ## partner's copy of him (Hero.puppet) shoots, rains, sets traps and runs his wolf too; only his own game
 ## deals the damage (Enemy.take_damage routes to the host in co-op).
@@ -17,14 +19,20 @@ extends RefCounted
 const RANGE := 13.0
 const ARROW_SPEED := 34.0
 const VOLLEY_R := 4.0
-const SNARE_R := 2.2
+## Thunderstep: how far back he vaults, how long the flip takes, the sigil's reach, how long it charges, how far its
+## lightning leaps on
+const VAULT_DIST := 6.5
+const VAULT_T := 0.55
+const SIGIL_R := 3.2
+const SIGIL_ARM := 0.9
+const SIGIL_CHAIN := 8.0
 const HUNTER := Color(0.62, 0.85, 0.75)     # the class's colour: pale spirit-green
 
 ## The ranger (assets/models/archer_ranger.glb, tools/blender/archer/prep_ranger_mocap.py): the Meshy northern ranger
 ## (wolf-fur cowl, dark leather, quiver on his back) on the knight's mocap system (Knight.build_mocap,
 ## knight_mocap_rig.gd): motion capture for idle, walk and run (bow raised and aimed when it's out: "combat_idle",
 ## "walk_aim"), the shot as a whole-body clip (`SHOT`: nock, draw, loose on the attack's release frame, follow
-## through), his casts (Snare Trap, Spirit Beast) as the game's own moves laid over the upper body. The bow is the
+## through), his casts (Spirit Beast) as the game's own moves laid over the upper body. The bow is the
 ## game's (whatever is equipped), held in his LEFT hand like the clips (J "grip_bow", `BOW_HOLD`).
 const RANGER_GLB := "res://assets/models/archer_ranger.glb"
 const SHOT := {"style": "bow", "clip": "shoot_quick",
@@ -190,10 +198,7 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 			h.atk_aim = h.global_position + to.limit_length(14.0)
 			h._start_attack("bow", "volley")
 		"snare":
-			var to2 := (aim - h.global_position) * Vector3(1, 0, 1)
-			h.atk_aim = h.global_position + to2.limit_length(10.0)
-			h._start_attack("cast", "snare")
-			h.atk_dur = 0.4
+			_vault(h, aim)
 		"beast":
 			h.atk_aim = aim
 			h._start_attack("cast", "beast")
@@ -204,8 +209,9 @@ static func can_cast(_h: Hero, _id: String, _aim: Vector3) -> bool:
 	return true
 
 ## Nothing of his roots him.
-static func rooted(_h: Hero) -> bool:
-	return false
+## Mid-Thunderstep his feet are the vault's (Archer.update carries him).
+static func rooted(h: Hero) -> bool:
+	return h.has_meta("vault")
 
 ## His wolf and arrows stay through death (the wolf rises again on its own, keep_companions).
 static func died(_h: Hero) -> void:
@@ -236,7 +242,7 @@ static func impact(h: Hero) -> bool:
 		"volley":
 			_volley(h, h.atk_aim)
 		"snare":
-			_set_snare(h, h.atk_aim)
+			pass        # (Thunderstep acts at the cast: the vault and the sigil)
 		"beast":
 			_command_beast(h, h.atk_aim)
 		_:
@@ -365,77 +371,70 @@ static func _frost_ground(h: Hero, v: Dictionary, delta: float) -> void:
 		if not e.dead:
 			e.chill(slow, 0.6)     # a moment past the edge: leaving it, he's still slow for a step or two
 
-# ---------------------------------------------------------------- Snare Trap
-static func _set_snare(h: Hero, at: Vector3) -> void:
-	var g := Vector3(at.x, h.game.world.height_at(at.x, at.z), at.z)
-	h.fx("snare", "impact", {"p": g, "n": 2 + int(h.talent("snare_max"))})    # the trap (h.snares) on every game
+# ---------------------------------------------------------------- Thunderstep
+## The cast: he turns to the pointer and backflips away from it (as far as the ground lets him), driving a thunderstone
+## into a sigil where he stood. The flip, the sigil and the stone are the "vault" event's (ThunderstepFx), on every game.
+static func _vault(h: Hero, aim: Vector3) -> void:
+	var from: Vector3 = h.global_position
+	var away := (from - aim) * Vector3(1, 0, 1)
+	if away.length() < 0.5:
+		away = -h.facing()
+	away = away.normalized()
+	h._face(-away)
+	var to: Vector3 = h.game.world.move(from, away * VAULT_DIST, h.radius)
+	to.y = h.game.world.height_at(to.x, to.z)
+	h.atk_aim = aim
+	h._start_attack("cast", "snare")
+	h.atk_dur = VAULT_T
+	h.set_meta("vault", {"from": from, "to": to, "t": 0.0})
+	var g := Vector3(from.x, h.game.world.height_at(from.x, from.z), from.z)
+	h.snares.append({"pos": g, "t": SIGIL_ARM, "n": 1 + int(h.talent("snare_max"))})
+	h.fx("snare", "vault", {"p": g, "q": to})
 
-## An iron jaw trap: two toothed half-rings open on a plate, a faint glow round it.
-static func _snare_mesh() -> Node3D:
-	var root := Node3D.new()
-	var iron := Mats.mat(Color(0.25, 0.24, 0.23), 0.5, 0.8)
-	var plate := MeshInstance3D.new()
-	var pm := CylinderMesh.new()
-	pm.top_radius = 0.16
-	pm.bottom_radius = 0.18
-	pm.height = 0.04
-	plate.mesh = pm
-	plate.material_override = iron
-	root.add_child(plate)
-	for side in [-1.0, 1.0]:
-		var jaw := Node3D.new()
-		jaw.name = "jaw_l" if side < 0.0 else "jaw_r"
-		jaw.rotation.z = side * 1.25
-		root.add_child(jaw)
-		var arc := MeshInstance3D.new()
-		var tm := TorusMesh.new()
-		tm.inner_radius = 0.33
-		tm.outer_radius = 0.37
-		arc.mesh = tm
-		arc.scale = Vector3(1, 1, 0.5)
-		arc.position = Vector3(side * 0.0, 0.0, 0)
-		arc.material_override = iron
-		jaw.add_child(arc)
-		for k in 6:
-			var tooth := MeshInstance3D.new()
-			var tc := CylinderMesh.new()
-			tc.top_radius = 0.0
-			tc.bottom_radius = 0.02
-			tc.height = 0.07
-			tooth.mesh = tc
-			var a := (float(k) + 0.5) / 6.0 * PI
-			tooth.position = Vector3(cos(a) * 0.35, 0.04, sin(a) * 0.35 * side)
-			tooth.material_override = iron
-			jaw.add_child(tooth)
-	var glow := OmniLight3D.new()
-	glow.light_color = HUNTER
-	glow.light_energy = 0.5
-	glow.omni_range = 1.6
-	glow.position = Vector3(0, 0.4, 0)
-	root.add_child(glow)
-	return root
+## The vault carrying him back along the ground (the flip itself is ThunderstepFx's pose).
+static func _update_vault(h: Hero, delta: float) -> void:
+	var v: Dictionary = h.get_meta("vault")
+	v["t"] = float(v["t"]) + delta
+	var s := clampf(float(v["t"]) / VAULT_T, 0.0, 1.0)
+	var e := 1.0 - pow(1.0 - s, 1.8)
+	var want: Vector3 = (v["from"] as Vector3).lerp(v["to"], e)
+	var np: Vector3 = h.game.world.move(h.global_position, (want - h.global_position) * Vector3(1, 0, 1), h.radius)
+	np.y = h.game.world.height_at(np.x, np.z)
+	h.global_position = np
+	if s >= 1.0 or h.dead:
+		h.remove_meta("vault")
 
-static func _spring(h: Hero, s: Dictionary) -> void:
+## The sigil detonates: everything on it stunned and hurt, the lightning leaping on into the nearest others outside it
+## (Forked Lightning: more of them); with Aftershock it strikes again, a little weaker.
+static func _detonate(h: Hero, s: Dictionary) -> void:
 	var pos: Vector3 = s["pos"]
-	var r := SNARE_R if h.talent("snare_wide") <= 0.0 else 4.0
-	var hold := 3.0 + h.talent("snare_dur")
-	var caught := []
+	var r := SIGIL_R * (1.3 if h.talent("snare_wide") > 0.0 else 1.0)
+	var first: bool = not s.has("struck")
+	var k := 1.0 if first else 0.6
+	var hold := (1.4 + h.talent("snare_dur")) * (1.0 if first else 0.5)
+	var caught: Array = []
 	for e in h.game.enemies_near(pos, r):
 		if not e.dead:
-			e.stun(hold)
-			h._hit_enemy(e, 1.2, 0.0, "snare")
 			caught.append(e)
-	# Storm Snare: lightning bursts out of the jaws into the nearest others (Forked Lightning: more of them)
 	var arcs := 3 + int(h.talent("arc_count"))
-	var near: Array = h.game.enemies_near(pos, 7.0).filter(func(e) -> bool: return not e.dead and not (e in caught))
+	var near: Array = h.game.enemies_near(pos, SIGIL_CHAIN).filter(func(e) -> bool: return not e.dead and not (e in caught))
 	near.sort_custom(func(a, b) -> bool: return a.global_position.distance_to(pos) < b.global_position.distance_to(pos))
 	var struck: Array = near.slice(0, arcs)
-	# the jaws, the lightning, the ring: seen by everyone (the trap itself goes with the event)
-	h.snares.append(s)
-	h.fx("snare", "spring", {"p": pos, "r": r, "t": struck})
+	s["struck"] = true
+	s["n"] = int(s["n"]) - 1
+	var again: bool = int(s["n"]) > 0
+	# the blast and the chain, seen by everyone (the puppet's sigil detonates on this event)
+	h.fx("snare", "spring", {"p": pos, "r": r, "t": caught + struck, "n": caught.size(), "x": again})
+	for e in caught:
+		e.stun(hold)
+		h._hit_enemy(e, 1.6 * k, 0.0, "snare")
 	for e in struck:
-		h._hit_enemy(e, 0.8, 0.0, "snare")
+		h._hit_enemy(e, 0.8 * k, 0.0, "snare")
 		e.stun(0.5)
+	if again:
+		s["t"] = 0.8
+	else:
+		h.snares.erase(s)
 
 # ---------------------------------------------------------------- Spirit Beast
 ## The archer always has his Spirit Beast (two with Alpha): it rises beside him when he becomes an archer, a
@@ -500,6 +499,8 @@ static func _command_beast(h: Hero, aim: Vector3) -> void:
 # ---------------------------------------------------------------- every frame
 static func update(h: Hero, delta: float) -> void:
 	keep_companions(h, delta)
+	if h.has_meta("vault"):
+		_update_vault(h, delta)
 	if h.arrows.is_empty() and h.volleys.is_empty() and h.snares.is_empty():
 		return
 	var w = h.game.world
@@ -568,21 +569,12 @@ static func update(h: Hero, delta: float) -> void:
 		_frost_ground(h, v, delta)
 		if v["t"] <= 0.0 and float(v["age"]) >= FrostVolleyFx.SHATTER_AT + FrostVolleyFx.THAW:
 			h.volleys.erase(v)
-	for s in h.snares.duplicate():
-		s["t"] -= delta
-		var n2 = s["node"]
-		if s["t"] <= 0.0 or not is_instance_valid(n2):
-			if is_instance_valid(n2):
-				n2.queue_free()
-			h.snares.erase(s)
-			continue
-		if h.puppet:
-			continue     # a partner's trap springs on his word (the "spring" event)
-		for e in h.game.enemies_near(s["pos"], 1.1):
-			if not e.dead:
-				h.snares.erase(s)
-				_spring(h, s)
-				break
+	# Thunderstep's sigils charging (a partner's detonates on his word: the "spring" event)
+	if not h.puppet:
+		for s in h.snares.duplicate():
+			s["t"] = float(s["t"]) - delta
+			if float(s["t"]) <= 0.0:
+				_detonate(h, s)
 
 static func _seg_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
 	var ab := b - a
@@ -598,10 +590,10 @@ static func clear(h: Hero) -> void:
 	ArrowFx.end_draw(h)
 	h.volleys.clear()
 	FrostVolleyFx.clear(h)
-	for s in h.snares:
-		if is_instance_valid(s["node"]):
-			(s["node"] as Node3D).queue_free()
 	h.snares.clear()
+	if h.has_meta("vault"):
+		h.remove_meta("vault")
+	ThunderstepFx.clear(h)
 	for b in h.beasts:
 		if is_instance_valid(b):
 			b.dismiss()

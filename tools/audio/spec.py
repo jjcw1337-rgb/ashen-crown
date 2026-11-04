@@ -364,3 +364,15 @@ SPEC += [
          prompt="a field of tall ice crystals shattering all at once, a big glassy crash of breaking ice and "
                 "shards raining down and tinkling across frozen ground" + DRY),
 ]
+
+# Thunderstep (jj, 2026-11-04; the archer's R in place of Storm Snare; ThunderstepFx): the vault, the sigil charging,
+# its detonation
+SPEC += [
+    dict(name="thunder_vault", src="eleven", n=4, dur=0.9, hit=0, label="a leap away crackling with electricity",
+         prompt="a quick athletic leap with a sharp electric crackle and a whoosh, static discharge snapping in the air" + DRY),
+    dict(name="sigil_charge", src="eleven", n=4, dur=1.2, hit=0.85, label="a lightning rune charging up",
+         prompt="electricity building up fast in a stone rune, a rising crackling hum with sparks snapping, about to discharge" + DRY),
+    dict(name="thunder_blast", src="eleven", n=4, dur=2.0, hit=0, label="a lightning blast exploding from the ground",
+         prompt="a massive lightning bolt striking the ground and exploding, a deafening electric crack, rock shattering, "
+                "and a short heavy thunder rumble rolling away" + DRY),
+]

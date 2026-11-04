@@ -1,6 +1,6 @@
 extends SceneTree
 ## The archer (archer.gd): starts with a bow and shoots from range (an arrow, not a swing); Piercing Shot goes
-## through a line; Volley rains on an area; Snare Trap holds the first enemy on it; Spirit Beast hunts beside
+## through a line; Volley rains on an area; Thunderstep vaults him back and its sigil detonates; Spirit Beast hunts beside
 ## him; only he can use bows; his talents and the class picker. Prints [A] lines.
 var g
 var fails := 0
@@ -108,23 +108,29 @@ func _run() -> void:
 	await wait(0.6)
 	check(after.chill_t <= 0.0, "and once it has thawed, the ground slows no one")
 	after.take_damage(99999.0, 0.0, p0, 0.0, false)
-	# Snare Trap: set, an enemy walks on, it's held fast
+	# Thunderstep: he backflips away from the pointer; the sigil where he stood detonates on what is on it, and its
+	# lightning leaps on into one beyond it
 	h.cds["snare"] = 0.0
 	h.mana = h.max_mana
-	var trap_at: Vector3 = p0 + fwd * 6.0
-	h.use_skill("snare", trap_at)
-	await wait(0.6)
-	var set_ok: bool = h.snares.size() == 1
-	var e2 := _foe(trap_at + Vector3(3, 0, 0))
-	var l2: float = e2.life
-	var by := _foe(trap_at + Vector3(-4.0, 0, 1.0))
-	var lb: float = by.life
-	e2.global_position = trap_at
-	await wait(0.3)
-	check(set_ok and h.snares.is_empty() and e2.stun_t > 2.0 and e2.life < l2, "Snare Trap: set, sprung by the enemy on it (held %.1f s, hurt %s)" % [e2.stun_t, e2.life < l2])
-	check(by.life < lb and by.stun_t > 0.0, "Storm Snare's lightning leapt into one nearby (hurt, stunned %.1f s)" % by.stun_t)
-	e2.take_damage(99999.0, 0.0, p0, 0.0, false)
-	by.take_damage(99999.0, 0.0, p0, 0.0, false)
+	var start: Vector3 = h.global_position
+	var on_it := _foe(start + fwd * 1.4)
+	var beyond := _foe(start + fwd * 5.5)
+	for e in [on_it, beyond]:
+		e.max_life = 5000.0     # (his wolf mustn't finish them first)
+		e.life = 5000.0
+	var lo: float = on_it.life
+	var lb: float = beyond.life
+	g.exit_grace = 1e9      # (the vault mustn't carry him through a zone exit mid-test)
+	h.use_skill("snare", start + fwd * 6.0)
+	await wait(0.75)
+	var back: float = -(h.global_position - start).dot(fwd)
+	check(back > 4.0 and not h.has_meta("vault"), "Thunderstep: he vaulted %.1f m back, away from the pointer" % back)
+	check(not h.snares.is_empty() and on_it.life == lo, "and the sigil where he stood is still charging")
+	await wait(0.5)
+	check(h.snares.is_empty() and on_it.stun_t > 0.6 and on_it.life < lo, "it detonated on the one on it (stunned %.1f s, hurt %s)" % [on_it.stun_t, on_it.life < lo])
+	check(beyond.life < lb and beyond.stun_t > 0.0, "and its lightning leapt into one beyond it (hurt, stunned %.1f s)" % beyond.stun_t)
+	on_it.take_damage(99999.0, 0.0, p0, 0.0, false)
+	beyond.take_damage(99999.0, 0.0, p0, 0.0, false)
 	h.beast_down_t = 0.0
 	await wait(0.3)
 	# Spirit Beast: it comes, mauls a foe, and the buff is on

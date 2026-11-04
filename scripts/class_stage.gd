@@ -715,11 +715,12 @@ func _skill_fx(c: String, h: Hero, home: Vector3) -> void:
 			Fx.burst(root3d, floor_front + Vector3(0, 2.5 * k, 0), Color(0.75, 0.92, 1.0), 40, 4.0 * k, 0.06 * k, 0.6, true, -12.0, 15.0, Vector3.DOWN)
 			Sfx.play("bow", -10.0)
 		"snare":
-			Fx.ring(root3d, floor_front, 0.8 * k, Color(0.75, 0.6, 1.0), 0.7)
+			# Thunderstep: a gold sigil flares on the floor before him and lightning bursts out of it
+			Fx.ring(root3d, floor_front, 0.8 * k, Color(1.0, 0.72, 0.22), 0.7)
 			for j in 3:
 				var to := floor_front + Vector3((j - 1) * 0.9 * k, 0.0, 0.3 * k)
-				Fx.bolt(root3d, floor_front + Vector3(0, 0.1, 0), to + Vector3(0, 0.1, 0), Color(0.8, 0.7, 1.0), 0.3)
-			Sfx.play("thunder_strike", -14.0)
+				Fx.bolt(root3d, floor_front + Vector3(0, 0.1, 0), to + Vector3(0, 0.1, 0), Color(1.0, 0.8, 0.35), 0.3)
+			Sfx.play("thunder_blast", -14.0)
 		"beast":
 			# the spirit beast answers: a grey spirit burst where it would pounce
 			Fx.burst(root3d, floor_front + Vector3(0, 0.5 * k, 0), Color(0.75, 0.8, 0.85), 30, 3.0 * k, 0.1 * k, 0.7, true, 0.0)
