@@ -1,0 +1,154 @@
+{
+ "alert": {
+  "fwd": 0.0,
+  "len": 4.0,
+  "side": 0.0
+ },
+ "combat_idle": {
+  "fwd": 0.0,
+  "len": 1.667,
+  "side": 0.0
+ },
+ "death": {
+  "fwd": -0.336,
+  "len": 2.167,
+  "side": -0.024
+ },
+ "extra": {
+  "fwd": 0.001,
+  "len": 1.375,
+  "side": 0.0
+ },
+ "hit": {
+  "fwd": -0.0,
+  "len": 1.625,
+  "side": 0.542
+ },
+ "idle": {
+  "fwd": -0.0,
+  "len": 1.833,
+  "side": -0.0
+ },
+ "look": {
+  "fwd": 0.0,
+  "len": 7.833,
+  "side": 0.0
+ },
+ "look_long": {
+  "fwd": 0.0,
+  "len": 11.25,
+  "side": 0.0
+ },
+ "run": {
+  "fwd": 3.014,
+  "inplace": true,
+  "len": 0.667,
+  "side": -0.018
+ },
+ "strafe_l": {
+  "fwd": 2.122,
+  "inplace": true,
+  "len": 0.583,
+  "side": 2.174
+ },
+ "strafe_r": {
+  "fwd": 2.211,
+  "inplace": true,
+  "len": 0.583,
+  "side": -1.735
+ },
+ "strike_1": {
+  "fwd": -0.001,
+  "hits": [
+   0.293
+  ],
+  "len": 1.708,
+  "side": 0.0
+ },
+ "strike_2": {
+  "fwd": 0.001,
+  "hits": [
+   0.463
+  ],
+  "len": 1.708,
+  "side": 0.0
+ },
+ "strike_3": {
+  "fwd": 0.33,
+  "hits": [
+   0.531
+  ],
+  "len": 2.667,
+  "side": -0.569
+ },
+ "turn_l": {
+  "fwd": -0.043,
+  "len": 0.917,
+  "side": 0.049,
+  "turn": 116.0
+ },
+ "turn_l_combat": {
+  "fwd": -0.2,
+  "len": 1.25,
+  "side": -0.393,
+  "turn": 66.5
+ },
+ "turn_r": {
+  "fwd": 0.011,
+  "len": 1.083,
+  "side": 0.008,
+  "turn": -102.8
+ },
+ "turn_r_alert": {
+  "fwd": 0.005,
+  "len": 2.792,
+  "side": 0.004,
+  "turn": -90.0
+ },
+ "walk": {
+  "fwd": 1.312,
+  "inplace": true,
+  "len": 3.0,
+  "side": 0.002
+ },
+ "walk_back": {
+  "fwd": -1.125,
+  "len": 0.833,
+  "side": 0.001
+ },
+ "walk_fight": {
+  "fwd": 0.631,
+  "inplace": true,
+  "len": 1.667,
+  "side": 0.03
+ },
+ "walk_fight_back": {
+  "fwd": -0.605,
+  "inplace": true,
+  "len": 1.667,
+  "side": -0.027
+ },
+ "walk_look": {
+  "fwd": 0.227,
+  "inplace": true,
+  "len": 23.792,
+  "side": -0.008
+ },
+ "walk_turn_l": {
+  "fwd": 0.698,
+  "len": 2.0,
+  "side": 0.391,
+  "turn": 99.0
+ },
+ "walk_turn_r": {
+  "fwd": 0.494,
+  "len": 2.167,
+  "side": -0.71,
+  "turn": -83.1
+ },
+ "warmup": {
+  "fwd": -0.0,
+  "len": 6.333,
+  "side": 0.0
+ }
+}

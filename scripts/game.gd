@@ -4241,6 +4241,12 @@ func _shot_setup() -> void:
 			if x.boss and x.hoard != null:
 				x.aggro = true
 				x.life = x.max_life * 0.74
+	if args.has("--guard-fight") and cur_zone == "town":
+		# the camp's guards (CampGuard) against a few zombies loose in the camp
+		for i in 4:
+			var ze := spawn_enemy("zombie", Vector3(-6.0 + i * 3.5, 0, -6.0), 3)
+			if ze != null:
+				ze.aggro = true
 	if args.has("--fight"):
 		var e := enemies_near(hero.global_position, 80.0)
 		for x in e:

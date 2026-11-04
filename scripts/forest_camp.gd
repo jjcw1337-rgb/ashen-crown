@@ -410,6 +410,8 @@ static func build(w: World) -> void:
 	w.spawns["from_vigil"] = Vector3(VIGIL_GATE.x, 0, VIGIL_GATE.y) + (Vector3(CENTER.x, 0, CENTER.y) - Vector3(VIGIL_GATE.x, 0, VIGIL_GATE.y)).normalized() * 3.0
 	w.spawns["alch"] = Vector3(-11.5, 0, -9)
 	w.spawns["forge"] = Vector3(11.5, 0, -9)
+	# the camp's guards on their rounds (CampGuard; after _rasterize, since they find their way by its grid)
+	CampGuard.place_all(w)
 
 const FOREST_FLOOR := {
 	"col_a": Color(0.11, 0.14, 0.07), "col_b": Color(0.17, 0.15, 0.09), "col_accent": Color(0.22, 0.24, 0.11),

@@ -1,0 +1,156 @@
+{
+ "alert": {
+  "fwd": 0.0,
+  "len": 4.0,
+  "side": 0.0
+ },
+ "combat_idle": {
+  "fwd": 0.0,
+  "len": 1.667,
+  "side": -0.0
+ },
+ "death": {
+  "fwd": -0.395,
+  "len": 2.167,
+  "side": -0.027
+ },
+ "extra": {
+  "fwd": -0.009,
+  "len": 1.333,
+  "side": 0.003
+ },
+ "hit": {
+  "fwd": -0.0,
+  "len": 1.625,
+  "side": 0.624
+ },
+ "idle": {
+  "fwd": -0.0,
+  "len": 4.0,
+  "side": -0.0
+ },
+ "look": {
+  "fwd": 0.0,
+  "len": 7.833,
+  "side": 0.0
+ },
+ "look_long": {
+  "fwd": 0.0,
+  "len": 11.25,
+  "side": 0.0
+ },
+ "run": {
+  "fwd": 3.47,
+  "inplace": true,
+  "len": 0.667,
+  "side": -0.017
+ },
+ "strafe_l": {
+  "fwd": 2.466,
+  "inplace": true,
+  "len": 0.583,
+  "side": 2.583
+ },
+ "strafe_r": {
+  "fwd": 2.608,
+  "inplace": true,
+  "len": 0.583,
+  "side": -1.999
+ },
+ "strike_1": {
+  "fwd": -0.0,
+  "hits": [
+   0.458
+  ],
+  "len": 3.458,
+  "side": -0.0
+ },
+ "strike_2": {
+  "fwd": 0.0,
+  "hits": [
+   0.237,
+   0.441,
+   0.864
+  ],
+  "len": 2.458,
+  "side": 0.0
+ },
+ "strike_3": {
+  "fwd": 0.004,
+  "hits": [
+   0.515
+  ],
+  "len": 1.375,
+  "side": -0.001
+ },
+ "turn_l": {
+  "fwd": -0.054,
+  "len": 0.917,
+  "side": 0.058,
+  "turn": 116.0
+ },
+ "turn_l_combat": {
+  "fwd": -0.232,
+  "len": 1.25,
+  "side": -0.452,
+  "turn": 66.5
+ },
+ "turn_r": {
+  "fwd": 0.009,
+  "len": 1.083,
+  "side": 0.007,
+  "turn": -102.8
+ },
+ "turn_r_alert": {
+  "fwd": 0.004,
+  "len": 2.792,
+  "side": 0.004,
+  "turn": -90.0
+ },
+ "walk": {
+  "fwd": 0.787,
+  "inplace": true,
+  "len": 4.167,
+  "side": 0.013
+ },
+ "walk_back": {
+  "fwd": -1.295,
+  "len": 0.833,
+  "side": 0.001
+ },
+ "walk_fight": {
+  "fwd": 0.726,
+  "inplace": true,
+  "len": 1.667,
+  "side": 0.034
+ },
+ "walk_fight_back": {
+  "fwd": -0.692,
+  "inplace": true,
+  "len": 1.667,
+  "side": -0.025
+ },
+ "walk_look": {
+  "fwd": 0.259,
+  "inplace": true,
+  "len": 23.792,
+  "side": -0.009
+ },
+ "walk_turn_l": {
+  "fwd": 0.802,
+  "len": 2.0,
+  "side": 0.451,
+  "turn": 99.0
+ },
+ "walk_turn_r": {
+  "fwd": 0.568,
+  "len": 2.167,
+  "side": -0.816,
+  "turn": -83.1
+ },
+ "warmup": {
+  "fwd": -0.0,
+  "len": 6.333,
+  "side": 0.0
+ }
+}
