@@ -5,9 +5,11 @@ extends Node
 ## holds the flame. Monsters go for the flame (Enemy.taunt = the Flame below) unless a hero stands closer, so
 ## players intercept, kite and peel; archers shoot it from range (projectile.gd checks the "objective" group).
 ## Wave 5 brings a champion, wave 8 the Forsaken Bear, wave 10 both. Each wave held: the flame mends a little and
-## gold (and every other wave an item) is laid by it; holding all ten: a unique each and a heap of gold. If the
-## flame goes out the vigil is lost (the wave's monsters crumble to ash); either way the flame relights and the party
-## can try again. Nothing is lost: it's the story game's co-op, the players' own characters, deaths rise by the flame.
+## gold (and every other wave an item) is laid by it. It is endless (Blaine, 2026-11-03): after the ten authored
+## waves the dark keeps coming, bigger and stronger every wave (`wave_def`, `wave_level`), a unique each every
+## MILESTONE waves held, until the flame goes out; the waves held are the party's score, each player's best goes to
+## the leaderboard (FlameBoard; the title's Hall of the Last Flame). Then the flame relights and the party can try
+## again. Nothing is lost: it's the story game's co-op, the players' own characters, deaths rise by the flame.
 ##
 ## Host-authoritative (the player host, or the online co-op server, coop_server.gd): this node runs the waves on
 ## the host and only shows them on the others. State -> Net.vigil_state (cl_vigil), events -> Net.vigil_event
@@ -26,12 +28,12 @@ const GATE_NAMES := ["north", "east", "west"]
 const FLAME_LIFE := 1100.0       # at level 1 for one player (scaled by level like monster damage, and by players)
 const COUNT_SECS := 6.0          # kindled: the first wave comes after this
 const BREAK_SECS := 12.0         # between waves
-const END_SECS := 14.0           # won or lost: then the flame relights
+const END_SECS := 14.0           # lost: then the flame relights
 const MEND := 0.15               # of its life the flame regains per wave held
 const SPAWN_GAP := 0.55          # seconds between monsters coming out of the breaches
 const MAX_ALIVE := 18            # at most this many of a wave on the floor at once (the rest wait in the dark)
 const PER_PLAYER := 0.55         # each extra player: this many more monsters, and the flame's life
-## Ten waves: [kind, count] (counts for one player), "champ": a named champion of that kind joins it.
+## The first ten waves: [kind, count] (counts for one player), "champ": a named champion of that kind joins it.
 const WAVES := [
 	{"foes": [["zombie", 6]]},
 	{"foes": [["zombie", 5], ["fallen_skirmisher", 3]]},
@@ -44,6 +46,15 @@ const WAVES := [
 	{"foes": [["fallen_reaver", 4], ["fallen_skirmisher", 6], ["skel_archer", 4], ["zombie", 4]]},
 	{"foes": [["bear", 1], ["fallen_reaver", 3], ["fallen_stalker", 5], ["skel_archer", 4]], "champ": "fallen_reaver"},
 ]
+## Past the tenth wave (`wave_def`): its foes drawn from POOL, GROW more of them per wave, their level up LEVEL_PER a
+## wave on top of the +1 every three; a champion every fifth wave (two from the 20th...), the Bear every fourth; more
+## on the floor at once (up to MAX_ALIVE_CAP) and coming out faster.
+const POOL := ["zombie", "fallen_skirmisher", "skel_archer", "fallen_stalker", "fallen_reaver"]
+const BASE_COUNT := 24.0         # wave 11's foes for one player
+const GROW := 0.08
+const LEVEL_PER := 0.5
+const MAX_ALIVE_CAP := 26
+const MILESTONE := 5             # every this many waves held from the tenth: a unique each
 ## Logs from the moor (woodcutting) feed the flame: the share of its life each one gives back (Game._interact)
 const FUEL := {"heartwood": 0.25, "oak_log": 0.08, "pine_log": 0.05}
 const CHAMP_NAMES := ["Emberwarden", "Ashmaw", "the Cinder Tyrant"]
@@ -53,13 +64,14 @@ var world: World
 var flame: Flame
 var flame_fx: Node3D            # the fire on the altar (every peer)
 var flame_light: OmniLight3D
-var state := "idle"             # idle | count | wave | break | won | lost
-var wave := 0                   # the wave under way or last held (1..10)
-var t := 0.0                    # seconds left in count / break / won / lost
+var state := "idle"             # idle | count | wave | break | lost
+var wave := 0                   # the wave under way or last held
+var t := 0.0                    # seconds left in count / break / lost
 var life := FLAME_LIFE
 var max_life := FLAME_LIFE
 var left := 0                   # monsters of this wave still to kill (shown)
-var best := 0                   # the best wave reached this visit
+var best := 0                   # the best wave reached this vigil
+var held := 0                   # the waves held when the flame went out (the score)
 var level := 1                  # host: the waves' base level
 var levels := {}                # host: peer id -> that player's level (Net.vigil_hi)
 var queue: Array = []           # host: [kind, champion name or ""] still to come out
@@ -209,7 +221,7 @@ func _process(delta: float) -> void:
 		return
 	if host():
 		_host_tick(delta)
-	elif state in ["count", "break", "won", "lost"]:
+	elif state in ["count", "break", "lost"]:
 		t = maxf(0.0, t - delta)
 	if not _said_hi and game.net.is_client() and game.net.active:
 		_said_hi = true
@@ -232,7 +244,7 @@ func _show_flame() -> void:
 
 ## Host -> everyone: the round's state (also the late joiner's catch-up, it is sent twice a second).
 func _state_args() -> Array:
-	return [state, wave, t, life, max_life, left, best]
+	return [state, wave, t, life, max_life, left, best, held]
 
 func apply(a: Array) -> void:
 	if a.size() < 7:
@@ -244,6 +256,7 @@ func apply(a: Array) -> void:
 	max_life = float(a[4])
 	left = int(a[5])
 	best = int(a[6])
+	held = int(a[7]) if a.size() > 7 else held
 	flame.dead = state == "lost"
 
 ## Something everyone sees and hears (the host plays it at once and sends it).
@@ -260,7 +273,7 @@ func fx(ev: String) -> void:
 		"wave":
 			var n := int(parts[1]) if parts.size() > 1 else 1
 			Sfx.play("arena_horn", -4.0, 0.85)
-			game.ui.big_message("Wave %d of %d" % [n, WAVES.size()] if n < WAVES.size() else "The last wave")
+			game.ui.big_message("Wave %d" % n if n <= WAVES.size() else "Wave %d  ·  the dark grows" % n)
 			game.add_shake(0.2)
 		"breach":
 			var gi := clampi(int(parts[1]) if parts.size() > 1 else 0, 0, GATES.size() - 1)
@@ -290,18 +303,24 @@ func fx(ev: String) -> void:
 			Sfx.play("levelup", -4.0, 0.9)
 			Fx.ring(world.fx_root, at, 6.0, Color(1.0, 0.8, 0.4), 0.6)
 			game.ui.big_message("Wave %d held" % n2)
-		"won":
+		"milestone":
+			# milestone:<waves held>: a unique for everyone
 			Sfx.play("levelup", 0.0, 0.75)
 			Sfx.play("crowd_cheer", -10.0, 0.9)
 			Fx.pillar(world.fx_root, at, Color(1.0, 0.9, 0.5), 3.0)
 			Fx.holy_slam(world.fx_root, at, 10.0)
-			game.ui.big_message("The Last Flame endures!")
+			game.ui.big_message("%d waves held!" % (int(parts[1]) if parts.size() > 1 else wave))
 			game.add_shake(0.5)
 		"lost":
+			# lost:<waves held>:<players>: the vigil's score, each player's best to the leaderboard
+			var h := int(parts[1]) if parts.size() > 1 else maxi(0, wave - 1)
+			var np := int(parts[2]) if parts.size() > 2 else 1
 			Sfx.play("boss_die", -4.0, 0.7)
 			Fx.burst(world.fx_root, at + Vector3(0, 1.2, 0), Color(0.25, 0.22, 0.2, 0.8), 60, 3.0, 0.35, 1.6, false, 1.5)
-			game.ui.big_message("The Last Flame has gone out")
 			game.add_shake(0.5)
+			if not game.net.server:
+				var rec := FlameBoard.record(game, h, np)
+				game.ui.big_message("The Last Flame has gone out  ·  %d wave%s held%s" % [h, "" if h == 1 else "s", "  ·  NEW BEST" if rec else ""])
 		"relit":
 			Sfx.play("bonfire_open", -8.0, 1.1)
 			game.ui.message("The flame burns again. Click it to begin a new vigil.", Color(1.0, 0.75, 0.45), 4.0)
@@ -327,6 +346,7 @@ func begin() -> void:
 	life = max_life
 	wave = 0
 	best = 0
+	held = 0
 	state = "count"
 	t = COUNT_SECS
 	flame.dead = false
@@ -362,8 +382,9 @@ func _host_tick(delta: float) -> void:
 		"wave":
 			_spawn_t -= delta
 			alive = alive.filter(func(e) -> bool: return is_instance_valid(e) and not e.dead)
-			if _spawn_t <= 0.0 and not queue.is_empty() and alive.size() < MAX_ALIVE:
-				_spawn_t = SPAWN_GAP
+			var past := maxi(0, wave - WAVES.size())
+			if _spawn_t <= 0.0 and not queue.is_empty() and alive.size() < mini(MAX_ALIVE_CAP, MAX_ALIVE + past / 2):
+				_spawn_t = maxf(0.3, SPAWN_GAP - 0.012 * past)
 				_spawn_next()
 			for e in alive:
 				if e.taunt == null:          # (a bite from the Spirit Beast drew it off: back to the flame after)
@@ -375,7 +396,7 @@ func _host_tick(delta: float) -> void:
 				_sync()
 			if left == 0:
 				_wave_held()
-		"won", "lost":
+		"lost":
 			t -= delta
 			if t <= 0.0:
 				state = "idle"
@@ -388,28 +409,57 @@ func _start_wave(n: int) -> void:
 	wave = n
 	best = maxi(best, n)
 	state = "wave"
-	var w: Dictionary = WAVES[clampi(n - 1, 0, WAVES.size() - 1)]
+	var w: Dictionary = wave_def(n)
 	var k := 1.0 + PER_PLAYER * (_players().size() - 1)
 	queue = []
 	for f in w["foes"]:
 		for i in maxi(1, int(round(float(f[1]) * (k if str(f[0]) != "bear" else 1.0)))):
 			queue.append([f[0], ""])
 	queue.shuffle()
-	if w.has("champ"):
-		var nm := "%s, %s" % [CHAMP_NAMES[(n / 5 - 1) % CHAMP_NAMES.size()], Data.ENEMIES[w["champ"]]["name"]]
-		queue.insert(mini(3, queue.size()), [w["champ"], nm])
+	var champs: Array = w.get("champs", [w["champ"]] if w.has("champ") else [])
+	for ci in champs.size():
+		var nm := "%s, %s" % [CHAMP_NAMES[(n / 5 - 1 + ci) % CHAMP_NAMES.size()], Data.ENEMIES[champs[ci]]["name"]]
+		queue.insert(mini(3 + ci * 6, queue.size()), [champs[ci], nm])
 	alive = []
 	left = queue.size()
 	_spawn_t = 1.0
 	_event("wave:%d" % n)
 	_sync()
 
+## Wave n: the authored ten, then the endless ones (POOL, GROW, champions and the Bear; see the constants).
+static func wave_def(n: int) -> Dictionary:
+	if n <= WAVES.size():
+		return WAVES[n - 1]
+	var x := n - WAVES.size()
+	var total := BASE_COUNT * (1.0 + GROW * (x - 1))
+	# the mix turns over the waves: two kinds lead each wave, the rest fill in
+	var lead := [POOL[n % POOL.size()], POOL[(n * 3 + 1) % POOL.size()]]
+	var foes := []
+	for kind in POOL:
+		var share := 0.3 if kind in lead else (0.4 / (POOL.size() - 2))
+		var c := int(round(total * share))
+		if c > 0:
+			foes.append([kind, c])
+	if n % 4 == 0:
+		foes.append(["bear", 1 + x / 12])
+	var d := {"foes": foes}
+	if n % 5 == 0:
+		var champs := []
+		for i in 1 + x / 10:
+			champs.append(["fallen_reaver", "fallen_stalker", "bear"][(n / 5 + i) % 3])
+		d["champs"] = champs
+	return d
+
+## Its monsters' level: the party's base, +1 every three waves, and past the tenth LEVEL_PER more a wave.
+func wave_level(n: int) -> int:
+	return level + (n - 1) / 3 + int(maxi(0, n - WAVES.size()) * LEVEL_PER)
+
 func _spawn_next() -> void:
 	var q: Array = queue.pop_front()
 	var gi := _gate_i % GATES.size()
 	_gate_i += 1
 	var g: Vector3 = GATES[gi]
-	var lvl := level + (wave - 1) / 3
+	var lvl := wave_level(wave)
 	var champ: bool = str(q[1]) != ""
 	var e: Enemy = game.spawn_enemy(str(q[0]), world.free_spot_near(g + Vector3(randf_range(-2, 2), 0, randf_range(-2, 2)), 1.5), lvl, champ, str(q[1]), 800 + wave)
 	if e == null:
@@ -425,27 +475,27 @@ func _spawn_next() -> void:
 		_event("champ:%d:%d:%s" % [e.net_id, gi, str(q[1]).split(",")[0]])
 
 func _wave_held() -> void:
-	var lvl := level + (wave - 1) / 3
+	var lvl := wave_level(wave)
 	var n := _players().size()
 	var at := flame.global_position + Vector3(0, 0, 3.0)
 	for i in maxi(1, n):
-		game.drop_item(Items.gold(int(randf_range(14, 26) * (1.0 + lvl * 0.6) * (1.0 + wave * 0.15))), at)
+		game.drop_item(Items.gold(int(randf_range(14, 26) * (1.0 + lvl * 0.6) * (1.0 + mini(wave, 30) * 0.15))), at)
 	if wave % 2 == 0 or wave == 5:
 		game._drop_loot_roll(at, lvl + 1, wave == 5)
-	if wave >= WAVES.size():
-		state = "won"
-		t = END_SECS
+	held = wave
+	if wave >= WAVES.size() and wave % MILESTONE == 0:
+		# every fifth wave held from the tenth: a unique and a heap of gold each
 		var cands := Data.UNIQUES.keys().filter(func(u): return int(Data.UNIQUES[u]["lvl"]) <= lvl + 3 and not Data.UNIQUES[u].get("boss_only", false))
 		for i in maxi(1, n):
 			if not cands.is_empty():
 				game.drop_item(Items.make_unique(cands[randi() % cands.size()]), at)
 			game.drop_item(Items.gold(int(randf_range(60, 90) * (1.0 + lvl * 0.6))), at)
-		_event("won")
+		_event("milestone:%d" % wave)
 	else:
-		state = "break"
-		t = BREAK_SECS
-		life = minf(max_life, life + max_life * MEND)
 		_event("held:%d" % wave)
+	state = "break"
+	t = BREAK_SECS
+	life = minf(max_life, life + max_life * MEND)
 	_sync()
 
 ## A hero fed the flame a log (on the host; a partner's comes through Net.vigil_feed).
@@ -484,7 +534,8 @@ func _lose() -> void:
 			e._by_rival = false
 	alive = []
 	left = 0
-	_event("lost")
+	held = maxi(0, wave - 1)
+	_event("lost:%d:%d" % [held, maxi(1, _players().size())])
 	_sync()
 
 # ---------------------------------------------------------------- the HUD (players)
@@ -520,12 +571,11 @@ func _draw_hud() -> void:
 	_hud_fill.color = Color(1.0, 0.62, 0.2).lerp(Color(1.0, 0.18, 0.1), clampf(1.0 - f * 2.0, 0.0, 1.0))
 	var txt := TITLE.to_upper() + "  ·  "
 	match state:
-		"idle": txt += "click the flame to begin the vigil (10 waves)"
+		"idle": txt += "click the flame to begin  ·  endless waves  ·  your best: %d" % FlameBoard.best(game)
 		"count": txt += "the dark stirs... %d" % ceili(t)
-		"wave": txt += "WAVE %d/%d  ·  %d foe%s left" % [wave, WAVES.size(), left, "" if left == 1 else "s"]
+		"wave": txt += "WAVE %d  ·  %d foe%s left" % [wave, left, "" if left == 1 else "s"]
 		"break": txt += "wave %d held  ·  the next in %d  ·  feed it logs" % [wave, ceili(t)]
-		"won": txt += "THE FLAME ENDURES  ·  all %d waves held" % WAVES.size()
-		"lost": txt += "the flame is out  ·  reached wave %d" % best
+		"lost": txt += "the flame is out  ·  %d wave%s held" % [held, "" if held == 1 else "s"]
 	_hud_lbl.text = txt
 	_hud_lbl.add_theme_color_override("font_color", Color(1.0, 0.8, 0.55) if state != "lost" else Color(0.75, 0.7, 0.68))
 	_hud.visible = game.playing

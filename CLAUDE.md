@@ -91,8 +91,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `coop_server.gd` | Online co-op: the story game hosted by a dedicated server (see "Online co-op") |
 | `build_env.gd`, `nakama_client.gd`, `cloud_saves.gd` | Which backend a build uses; the Nakama REST client; characters kept in Nakama (see "Staging and accounts") |
 | `battlegrounds.gd` | Battlegrounds prototype: the raid map, the dedicated server's raid logic (respawns, carried loot, extraction, the stash), the client's id and cached stash |
-| `vigil.gd` | The Last Flame (zone `"vigil"`): the co-op horde defence under the Act I camp, its sanctum, waves, flame and HUD (see "The Last Flame") |
-| `gauntlet.gd` | The Gauntlet of Kings (zone `"gauntlet"`): the co-op boss rush under the Act I camp, its throne hall, the four kings, lives, offerings, the record and HUD (see "The Gauntlet of Kings") |
+| `vigil.gd`, `flame_board.gd` | The Last Flame (zone `"vigil"`): the endless co-op horde defence under the Act I camp, its sanctum, waves, flame and HUD; its leaderboard (see "The Last Flame") |
 | `kpi.gd` | The official performance KPIs: scripted scenarios measured frame by frame (`--kpi`), see docs/nightly/KPIS.md |
 | `shared_skills.gd`, `shared_fx.gd`, `elemental_fx.gd` | The shared skills every class can use (`"cls": "any"`): their gameplay and their effects (`ElementalFx`: Earthshatter's crack and rock spikes, Frost Nova's frost and ice crystals, Arc's branching lightning, War Cry's sigil and dust wave) |
 | `skill_spec.gd` | The skill format (`SkillSpec`): a skill's timing, damage, area and damage over time read from its `Data.SKILLS` entry |
@@ -238,7 +237,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   Dev cheat (non-production builds or dev tools): type `maxout` while playing (`Game.max_out`: level 99, stats,
   every talent, a million gold, potions, a bag of the best gear).
 - **The Last Flame** (`scripts/vigil.gd`, `Vigil`, zone `"vigil"`; nightly mode 2026-11-01, `docs/nightly/modes/2026-11-01-last-flame/`):
-  a co-op horde defence. The Act I camp's Vigil Gate (Inter `"vigil_gate"` at `ForestCamp.VIGIL_GATE`, `travel`, so the
+  an endless co-op horde defence (Blaine, 2026-11-03: endless, harder and harder, a leaderboard on the title). The Act I camp's Vigil Gate (Inter `"vigil_gate"` at `ForestCamp.VIGIL_GATE`, `travel`, so the
   party's ready check takes everyone; the way back is `"vigil_exit"` to the camp's `from_vigil`) leads to an indoor
   sanctum (`Vigil.build`: a 32 m hall on `crypt_shell`, three breach rooms N/E/W with red portals, the altar at
   `CENTER`). Clicking the altar (Inter `"vigil"`) kindles a vigil: `WAVES` (ten; champions on 5 and 10 with a boss bar
@@ -254,23 +253,15 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   (solo, in the gate), `tools/vigil_coop_test.gd` (the co-op server and two players: `-- --server --coop --port 24661
   server`, `-- a 24661`, `-- b 24661`); balance probe `tools/vigil_sim.gd -- [class] [level] [secs]`; screenshots
   `tools/vigil_shots.gd -- outdir [frames] [class]` (needs a display).
-- **The Gauntlet of Kings** (`scripts/gauntlet.gd`, `Gauntlet`, zone `"gauntlet"`; nightly mode 2026-11-02,
-  `docs/nightly/modes/2026-11-02-gauntlet/`): a co-op boss rush. The Act I camp's Gauntlet Gate (Inter
-  `"gauntlet_gate"` at `ForestCamp.GAUNTLET_GATE`, `travel`; back through `"gauntlet_exit"` to `from_gauntlet`) leads to a
-  36 m throne hall on `crypt_shell`. The gong (Inter `"gauntlet"`) starts a run: `KINGS` (Gorehide `trex`, Cinderhide
-  `sloth_fire`, Old Mossbeard `hermit`, Hrimgar `ice_troll`, each with its usual brain, `"life"` evening the fights out)
-  come one at a time through the Throne Gate (`GATE`) at the party's average level, life x(1 + `PER_PLAYER` per extra
-  player); one clock (`run_t`, `splits`); the party shares `LIVES` (+1 per extra player): a fall spends one, a fall with
-  none left loses the run (`_watch_falls`; the fallen rise at the door, `Game.respawn`). Between kings, `BOON_SECS` to
-  click one of three offerings (Inter `"gauntlet_boon"`, `BOONS`): Mercy (every player heals on his own game, +1 life),
-  Wrath (the next king at `WRATH` life), Greed (`GREED_LIFE`/`GREED_DMG`, a hoard where it falls). All four down: a
-  unique and gold each, the hall's record (host's `user://gauntlet_record.json`, `_testing()` uses a test file). A king
-  is no act boss there (`Game.on_enemy_killed`/`boss_down_remote` skip the victory, portal and `boss_killed`).
-  Host-authoritative: `Net.gauntlet_state`/`cl_gauntlet`, `gauntlet_event`/`cl_gauntlet_fx` (`"king:<id>:<i>:<max life>"`
-  gives partners the scaled life bar), `request_gauntlet`/`sv_gauntlet` (gong, offering, the player's level). Tests:
-  `tools/nightly_gauntlet_test.gd` (solo, in the gate), `tools/gauntlet_coop_test.gd` (`-- --server --coop --port 24663
-  server`, `-- a 24663`, `-- b 24663`); balance probe `tools/gauntlet_sim.gd -- [class] [level] [secs] [geared]`;
-  screenshots `tools/gauntlet_shots.gd -- outdir [frames] [class]`.
+  **Endless**: after the ten authored `WAVES`, `Vigil.wave_def(n)` makes the rest (`POOL`, `BASE_COUNT` growing `GROW` a
+  wave, a champion every fifth wave, more from the 20th, the Bear every fourth) and `wave_level(n)` climbs `LEVEL_PER`
+  a wave past the tenth on top of +1 every three; more on the floor (`MAX_ALIVE_CAP`) and faster. Every `MILESTONE`
+  waves held from the tenth: a unique each ("milestone" event). There is no win: the flame out ends it, `held` (waves
+  held) is the score, sent with the "lost:<held>:<players>" event so every player's game records it
+  (`FlameBoard.record`: the local best in `user://flame_best.json`, the tools' `flame_best_test.json`; and, with the
+  cloud on, Nakama's authoritative `last_flame` leaderboard through `ashen.lua` `flame_submit`: one record per account,
+  its best, ties to the smaller party). The title's left column shows the top ten (`TitleHome.refresh_board`,
+  `FlameBoard.top` -> `flame_top`) and the player's own best.
 - **Online co-op** (`scripts/coop_server.gd`, `CoopServer`): the story game hosted by a dedicated server
   (`-- --server --coop --port 24570`, staging systemd `ashen-crown-coop`), so friends co-op over the internet with no
   router setup: the title's "Online Co-op" (non-local builds) joins `BuildEnv.value("coop_server")` with the

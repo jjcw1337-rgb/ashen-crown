@@ -5,13 +5,21 @@ extends Control
 ##    delete on its card (asks first); "Create New Character" at the bottom of the list
 ##  - bottom centre, how to play it: Story · Battlegrounds · Online Co-op · LAN, and one big Play (LAN: Host / Join);
 ##    Battlegrounds says in one line what death costs there, and counts down when a raid turned us away
-##  - bottom left: the Battlegrounds' card (its key art; opens its own page, BgPage), and Quit
+##  - the left column (LEFT_W wide): the Hall of the Last Flame (the endless vigil's top ten, FlameBoard), the
+##    Battlegrounds' card under it (its key art; opens its own page, BgPage), and Quit at the bottom
+##  - the title and Play are centred in the room between the column and the sidebar (`mid`), so nothing overlaps
+##    (Blaine, 2026-11-03: "the ux is over each other ... tighten that up")
 ## Panels are UI._ornate (the inventory's iron and gold frame), buttons UI._iron_button: no plain boxes (Blaine).
 ## Play hands the chosen character to the game: Story = UI._title_choose("continue") on it, Battlegrounds =
 ## Game.start_battlegrounds (after one confirm), Online Co-op = Game.start_join on the co-op server, LAN = host or
 ## the join screen. UI keeps the old cards (hidden) so its title API and tests stay as they were.
 
 const W := 420.0                 # the sidebar's width
+const EDGE := 18.0               # the screen edge to the sidebar and the column
+const LEFT_W := 360.0            # the left column's width
+const BOARD_TOP := 168.0         # the hall's top (under the env badge, level with the title's subtitle)
+const BG_H := 196.0              # the Battlegrounds card's height
+const QUIT_H := 50.0
 const MODES := [["story", "Story"], ["online", "Online Co-op"], ["lan", "LAN"]]
 const NOTE := {"story": "Your journey through the acts, alone.",
 	"online": "Play the story together, on the co-op server.", "lan": "Host a game, or join one on your network."}
@@ -31,6 +39,15 @@ var _bg_card: Button
 var _bg_art: TextureRect
 var _bg_t := 0.0
 var _bg_hot := 0.0
+var _board: VBoxContainer
+var _board_rows: VBoxContainer
+var _board_best: Label
+var _board_busy := false
+
+## The middle of the free room between the left column and the sidebar, from the screen's centre (the title, the
+## Play box and the stage's framing use it).
+static func mid() -> float:
+	return ((EDGE + LEFT_W) - (W + EDGE)) * 0.5
 
 func setup(u) -> void:
 	ui = u
@@ -39,14 +56,15 @@ func setup(u) -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_sidebar()
 	_build_play()
+	_build_board()
 	_build_bg_card()
-	var quit: Button = ui._iron_button("Quit Game", 200, 52, 19)
+	var quit: Button = ui._iron_button("Quit Game", int(LEFT_W), int(QUIT_H), 19)
 	quit.name = "quit"
 	quit.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	quit.offset_top = -80
-	quit.offset_bottom = -28
-	quit.offset_left = 40
-	quit.offset_right = 240
+	quit.offset_top = -EDGE - 8 - QUIT_H
+	quit.offset_bottom = -EDGE - 8
+	quit.offset_left = EDGE
+	quit.offset_right = EDGE + LEFT_W
 	quit.pressed.connect(func(): get_tree().quit())
 	quit.visible = not OS.has_feature("web")
 	add_child(quit)
@@ -58,10 +76,10 @@ func _build_sidebar() -> void:
 	side.anchor_right = 1.0
 	side.anchor_top = 0.0
 	side.anchor_bottom = 1.0
-	side.offset_left = -W - 18
-	side.offset_right = -18
-	side.offset_top = 18
-	side.offset_bottom = -18
+	side.offset_left = -W - EDGE
+	side.offset_right = -EDGE
+	side.offset_top = EDGE
+	side.offset_bottom = -EDGE
 	ui._ornate(side, 0.2, 8)
 	add_child(side)
 	var vb := VBoxContainer.new()
@@ -104,9 +122,9 @@ func _build_play() -> void:
 	box.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	box.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	box.offset_bottom = -26
-	# centred in the room the sidebar leaves
-	box.offset_left = -W * 0.5 - 270
-	box.offset_right = -W * 0.5 + 270
+	# centred in the room between the left column and the sidebar
+	box.offset_left = mid() - 270
+	box.offset_right = mid() + 270
 	box.alignment = BoxContainer.ALIGNMENT_END
 	box.add_theme_constant_override("separation", 10)
 	add_child(box)
@@ -311,11 +329,12 @@ func _build_bg_card() -> void:
 	_bg_card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	for st in ["normal", "hover", "pressed", "focus", "disabled"]:
 		_bg_card.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	# the left column, over Quit
 	_bg_card.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_bg_card.offset_left = 34
-	_bg_card.offset_right = 34 + 400
-	_bg_card.offset_top = -100 - 240
-	_bg_card.offset_bottom = -100
+	_bg_card.offset_left = EDGE
+	_bg_card.offset_right = EDGE + LEFT_W
+	_bg_card.offset_bottom = -EDGE - 8 - QUIT_H - 14
+	_bg_card.offset_top = _bg_card.offset_bottom - BG_H
 	_bg_card.pressed.connect(func(): ui.open_battlegrounds())
 	add_child(_bg_card)
 	var clip := Control.new()
@@ -345,10 +364,10 @@ func _build_bg_card() -> void:
 	clip.add_child(shade)
 	var vb := VBoxContainer.new()
 	vb.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	vb.offset_left = 34
-	vb.offset_top = 24
-	vb.offset_right = -30
-	vb.offset_bottom = -30
+	vb.offset_left = 22
+	vb.offset_top = 16
+	vb.offset_right = -20
+	vb.offset_bottom = -18
 	vb.alignment = BoxContainer.ALIGNMENT_END
 	vb.add_theme_constant_override("separation", 0)
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -360,7 +379,7 @@ func _build_bg_card() -> void:
 	eb.add_theme_font_override("font", ef)
 	eb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(eb)
-	var t: Label = ui._label(Battlegrounds.TITLE, 30, ui.GOLD, true)
+	var t: Label = ui._label(Battlegrounds.TITLE, 26, ui.GOLD, true)
 	t.add_theme_constant_override("outline_size", 8)
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(t)
@@ -379,3 +398,102 @@ func _build_bg_card() -> void:
 	fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bg_card.add_child(fr)
 
+
+## The left column's top: the Hall of the Last Flame, the endless vigil's best ten (FlameBoard; Blaine: "a
+## leaderboard added to the main title page"), with this game's own best under it. It fills from the server when the
+## title shows (refresh_board); offline it says so and keeps the local best. It shrinks to the room left above the
+## Battlegrounds card (its rows are cut, never drawn over the card).
+func _build_board() -> void:
+	var panel := PanelContainer.new()
+	panel.name = "flame_board"
+	panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	panel.offset_left = EDGE
+	panel.offset_right = EDGE + LEFT_W
+	panel.offset_top = BOARD_TOP
+	panel.clip_contents = true
+	ui._ornate(panel, 0.16, 6)
+	add_child(panel)
+	_board = VBoxContainer.new()
+	_board.add_theme_constant_override("separation", 4)
+	panel.add_child(_board)
+	var k: Label = ui._label("THE LAST FLAME", 13, Color(1.0, 0.62, 0.3), true)
+	var kf := FontVariation.new()
+	kf.base_font = ui.font_title
+	kf.spacing_glyph = 3
+	k.add_theme_font_override("font", kf)
+	k.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_board.add_child(k)
+	var t: Label = ui._label("Hall of the Endless Vigil", 21, ui.GOLD, true)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_board.add_child(t)
+	var rule := TextureRect.new()
+	rule.texture = load("res://assets/textures/ui/sheet_divider.png")
+	rule.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rule.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	rule.custom_minimum_size = Vector2(0, 18)
+	_board.add_child(rule)
+	_board_rows = VBoxContainer.new()
+	_board_rows.add_theme_constant_override("separation", 1)
+	_board.add_child(_board_rows)
+	_board_best = ui._label("", 13, ui.DIM)
+	_board_best.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_board.add_child(_board_best)
+	_board_note("Reaching the hall...")
+
+func _board_note(txt: String) -> void:
+	for c in _board_rows.get_children():
+		_board_rows.remove_child(c)
+		c.queue_free()
+	var l: Label = ui._label(txt, 14, ui.DIM)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_board_rows.add_child(l)
+
+## Fills the hall from the server (when the title shows). Rows that wouldn't fit above the Battlegrounds card are left
+## out.
+func refresh_board() -> void:
+	if _board == null or _board_busy:
+		return
+	var b := FlameBoard.best(game)
+	_board_best.text = "Your best: %d wave%s" % [b, "" if b == 1 else "s"] if b > 0 else "Hold the flame in the camp's Vigil Gate"
+	_board_busy = true
+	var rows = await FlameBoard.top(game)
+	_board_busy = false
+	if not is_instance_valid(_board_rows):
+		return
+	if rows == null:
+		_board_note("The hall can't be reached right now.")
+		return
+	if (rows as Array).is_empty():
+		_board_note("No vigil has been held yet. Be the first.")
+		return
+	for c in _board_rows.get_children():
+		_board_rows.remove_child(c)
+		c.queue_free()
+	# room for rows: from the hall's top down to the Battlegrounds card, less the hall's own heading and footer
+	var room := (size.y - EDGE - 8 - QUIT_H - 14 - BG_H - 12) - BOARD_TOP - 118.0
+	var fit := clampi(int(room / 23.0), 3, FlameBoard.TOP)
+	for r in (rows as Array).slice(0, fit):
+		_board_rows.add_child(_board_row(r))
+
+func _board_row(r: Dictionary) -> Control:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 8)
+	var mine: bool = r["mine"]
+	var top3: bool = int(r["rank"]) <= 3
+	var col: Color = Color(1.0, 0.86, 0.5) if mine else (Color(0.95, 0.88, 0.74) if top3 else Color(0.82, 0.77, 0.68))
+	var rk: Label = ui._label("%d" % int(r["rank"]), 15, Color(1.0, 0.62, 0.3) if top3 else ui.DIM, true)
+	rk.custom_minimum_size = Vector2(26, 0)
+	rk.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	h.add_child(rk)
+	var cls: String = Data.CLASSES.get(str(r["cls"]), {}).get("name", "")
+	var nm: Label = ui._label(str(r["name"]) + ("  ·  " + cls if cls != "" else ""), 15, col)
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	nm.clip_text = true
+	nm.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	h.add_child(nm)
+	var p := int(r["party"])
+	var w: Label = ui._label("%d%s" % [int(r["waves"]), "" if p <= 1 else "  (%dp)" % p], 15, col, true)
+	w.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	h.add_child(w)
+	return h

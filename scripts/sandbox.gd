@@ -244,13 +244,17 @@ func _tot(h: Hero) -> Dictionary:
 		totals[h] = {"dealt": 0.0, "taken": 0.0}
 	return totals[h]
 
-## Damage a second dealt (or taken) over the last WINDOW seconds.
+## Damage a second dealt (or taken) over the last WINDOW seconds, over the time since the first of those hits (at
+## least a second): dividing a fight's first seconds by the whole window read as a delay (Blaine, 2026-11-03: "doesnt
+## show damage on meter but its doing damage"), the rate crawling up for five seconds after the blows began.
 func rate(h: Hero, dealt := true) -> float:
 	var s := 0.0
+	var first := t
 	for x in hits:
 		if t - float(x[0]) <= WINDOW and (x[1] if dealt else x[2]) == h:
 			s += float(x[3])
-	return s / WINDOW
+			first = minf(first, float(x[0]))
+	return s / clampf(t - first, 1.0, WINDOW) if s > 0.0 else 0.0
 
 func hero_died(h: Hero) -> void:
 	var secs: float = t - float(fight_start.get(h, t))

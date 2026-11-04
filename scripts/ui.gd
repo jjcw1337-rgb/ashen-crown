@@ -3827,7 +3827,8 @@ func _build_title() -> void:
 	head.name = "title_head"
 	head.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	head.offset_top = 34
-	head.offset_right = -TitleHome.W - 22      # (centred in the room left of the character sidebar)
+	head.offset_left = TitleHome.EDGE + TitleHome.LEFT_W     # (centred in the room between the left column
+	head.offset_right = -TitleHome.W - TitleHome.EDGE        # and the character sidebar, like Play)
 	head.add_theme_constant_override("separation", 2)
 	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_panel.add_child(head)
@@ -4799,6 +4800,7 @@ func show_title() -> void:
 		else "Every character has its own save. Making a new one never overwrites the others."
 	title_stage.reset()
 	home.refresh(chars)
+	home.refresh_board()
 	_title_hover("")
 	_title_fade.color = Color(0, 0, 0, 0)
 	_title_busy = false

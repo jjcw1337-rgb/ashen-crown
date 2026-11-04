@@ -1,9 +1,11 @@
 extends SceneTree
 ## The Last Flame (scripts/vigil.gd), played solo (the host's code is the same in co-op and on the co-op server):
 ## the camp's Vigil Gate takes the hero down, the sanctum is built (altar, three breaches, the way back), the flame
-## kindles, wave 1's monsters walk to the flame and hurt it while the hero keeps away, every wave is cleared to
-## the tenth (gold by the flame, the flame mends), the vigil is won (uniques), the flame relights; a second vigil
-## is lost (the wave crumbles with no xp), a death rises by the altar, and the portal leads back to the camp.
+## kindles, wave 1's monsters walk to the flame and hurt it while the hero keeps away, every wave is cleared past
+## the tenth (gold by the flame, the flame mends; a unique at the tenth; it's endless: the eleventh comes, bigger and
+## stronger), the flame goes out in the twelfth: 11 waves held, the game's best (FlameBoard, the test file); the
+## flame relights; a second vigil is lost (the wave crumbles with no xp), a death rises by the altar, and the
+## portal leads back to the camp.
 ##   godot --headless --path . -s tools/nightly_vigil_test.gd
 var g
 var fails := 0
@@ -79,16 +81,19 @@ func _run() -> void:
 	check(await until(func(): return v.state == "wave" and v.wave == 1, 12.0), "wave 1 comes")
 	check(await until(func(): return _wave_mons().size() >= 3, 8.0), "monsters pour out of the breaches (%d)" % _wave_mons().size())
 	check(await until(func(): return v.life < v.max_life, 45.0), "they go for the flame and hurt it (%d/%d)" % [v.life, v.max_life])
-	# clear every wave
+	# clear every wave, past the authored ten
+	DirAccess.remove_absolute(FlameBoard.TEST_PATH)
 	var gold0 := _gold_on_floor()
 	var xp0: int = g.hero.xp
-	for n in range(1, v.WAVES.size() + 1):
+	var sizes := {}
+	for n in range(1, v.WAVES.size() + 2):
 		if not await until(func(): return v.state == "wave" and v.wave == n, 20.0):
 			check(false, "wave %d began" % n)
 			break
 		var peak := 0
 		var champ := false
 		var bar := false
+		sizes[n] = v.left
 		while v.state == "wave":
 			bar = bar or (g.ui.boss_ref != null and is_instance_valid(g.ui.boss_ref) and g.ui.boss_ref.champion)
 			v._spawn_t = 0.0
@@ -99,16 +104,33 @@ func _run() -> void:
 			await process_frame
 		if n in [5, 10]:
 			check(champ and bar, "wave %d had its champion, its life bar on screen" % n)
-		if n < v.WAVES.size():
-			check(v.state == "break" and v.wave == n, "wave %d held (at most %d on the floor)" % [n, peak])
-			v.t = 0.3
-	check(v.state == "won", "all ten waves held: the vigil is won")
-	await secs(1.5)
+		check(v.state == "break" and v.wave == n, "wave %d held (at most %d on the floor)" % [n, peak])
+		if n == v.WAVES.size():
+			await secs(0.5)
+			check(_uniques_on_floor() >= 1, "ten waves held: a unique for the vigil")
+		v.t = 0.3
+	check(int(sizes.get(11, 0)) > int(sizes.get(10, 0)) and v.wave_level(11) > v.wave_level(10),
+		"it's endless: wave 11 comes, bigger (%d foes vs %d) and stronger (level %d vs %d)" % [sizes.get(11, 0), sizes.get(10, 0), v.wave_level(11), v.wave_level(10)])
+	var d30: Dictionary = v.wave_def(30)
+	var n30 := 0
+	for f in d30["foes"]:
+		n30 += int(f[1])
+	check(n30 > int(sizes.get(11, 0)) and d30.has("champs") and v.wave_level(30) > v.wave_level(11) + 8, "and wave 30 is far worse (%d foes, %d champions, level %d)" % [n30, d30.get("champs", []).size(), v.wave_level(30)])
+	await secs(1.0)
 	check(_gold_on_floor() > gold0 + 9, "gold lies by the flame (%d piles)" % (_gold_on_floor() - gold0))
-	check(_uniques_on_floor() >= 1, "and a unique for the victor")
 	check(g.hero.xp > xp0, "the kills gave experience")
+	# the flame goes out in the twelfth: eleven held, this game's best
+	v.t = 0.1
+	check(await until(func(): return v.state == "wave" and v.wave == 12, 10.0), "wave 12 comes")
+	v.flame_hit(v.life + 10.0, Vector3.ZERO)
+	await process_frame
+	check(v.state == "lost" and v.held == 11, "the flame goes out in wave 12: %d waves held" % v.held)
+	await secs(0.3)
+	check(FlameBoard.best(g) == 11 and FlameBoard.best_record(g).get("party", 0) == 1, "the game keeps its best: %s" % str(FlameBoard.best_record(g)))
+	check(g.ui.hud.get_node_or_null("vigil_hud") != null and str(g.ui.hud.get_node("vigil_hud").get_child(0).text).contains("11 waves held"), "the HUD says so")
 	v.t = 0.2
 	check(await until(func(): return v.state == "idle" and v.life == v.max_life, 5.0), "the flame relights")
+	check(str(g.ui.hud.get_node("vigil_hud").get_child(0).text).contains("your best: 11"), "and shows the best to beat")
 	# a second vigil, lost
 	g._interact(_inter("vigil"))
 	v.t = 0.1
@@ -132,6 +154,7 @@ func _run() -> void:
 	v.flame_hit(v.life + 10.0, Vector3.ZERO)
 	await process_frame
 	check(v.state == "lost" and v.flame.dead, "the flame goes out: the vigil is lost")
+	check(FlameBoard.best(g) == 11, "a worse vigil leaves the best alone")
 	await secs(0.5)
 	check(_wave_mons().is_empty() and g.hero.xp == xp1, "its wave crumbles to ash (no experience)")
 	check(not v.flame_fx.visible, "the fire is out")

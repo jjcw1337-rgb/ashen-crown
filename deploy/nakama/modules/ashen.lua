@@ -245,3 +245,57 @@ end
 
 nk.register_rpc(telemetry, "telemetry")
 nk.register_rpc(telemetry_server, "telemetry_server")
+
+-- The Last Flame's leaderboard (Blaine: "tracks your wave ranking with a leaderboard added to the main title page";
+-- scripts/flame_board.gd). Authoritative, so the generic leaderboard API can't write it: only flame_submit, which
+-- keeps each account's best (score = waves held; subscore = 5 - party size, so a smaller party ranks above a bigger
+-- one on the same wave). flame_top lists the best ten for the title's Hall of the Last Flame.
+local FLAME = "last_flame"
+local FLAME_MAX_WAVES = 1000
+local okf, errf = pcall(nk.leaderboard_create, FLAME, true, "desc", "best", nil, {})
+if not okf then
+  nk.logger_info("last_flame leaderboard: " .. tostring(errf))
+end
+
+local function flame_submit(context, payload)
+  if context.user_id == nil or context.user_id == "" then
+    error({ "sign in first", 16 })
+  end
+  local p = nk.json_decode(payload)
+  local waves = math.floor(num(p.waves) or -1)
+  local party = math.floor(num(p.party) or 1)
+  if waves < 1 or waves > FLAME_MAX_WAVES then
+    error({ "waves out of range", 3 })
+  end
+  if party < 1 then party = 1 end
+  if party > 4 then party = 4 end
+  local name = string.gsub(cut(p.name, 24) or "", "[^%w%s'%-_]", "")
+  if name == "" then name = "A hero" end
+  local cls = string.gsub(cut(p.cls, 16) or "", "[^%w_]", "")
+  nk.leaderboard_record_write(FLAME, context.user_id, name, waves, 5 - party, { cls = cls, party = party })
+  return nk.json_encode({ ok = true, waves = waves })
+end
+
+local function flame_top(context, payload)
+  if context.user_id == nil or context.user_id == "" then
+    error({ "sign in first", 16 })
+  end
+  local p = nk.json_decode(payload ~= "" and payload or "{}")
+  local limit = math.floor(num(p.limit) or 10)
+  if limit < 1 then limit = 1 end
+  if limit > 25 then limit = 25 end
+  local records = nk.leaderboard_records_list(FLAME, nil, limit, nil, 0)
+  local out = {}
+  for i, r in ipairs(records or {}) do
+    local md = r.metadata or {}
+    out[#out + 1] = { rank = r.rank or i, name = r.username or "?", owner = r.owner_id, waves = r.score,
+      party = md.party or (5 - (r.subscore or 4)), cls = md.cls or "" }
+  end
+  if #out == 0 then
+    return '{"records":[]}'
+  end
+  return nk.json_encode({ records = out })
+end
+
+nk.register_rpc(flame_submit, "flame_submit")
+nk.register_rpc(flame_top, "flame_top")

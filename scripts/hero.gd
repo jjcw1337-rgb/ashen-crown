@@ -70,6 +70,7 @@ var invis_t := 0.0          # a Shadow Phial: unseen (monsters lose him, other p
 var net_invis := false      # a partner's, from his state (Net._hero_packet)
 var burn_t := 0.0           # set burning by another player (PvP: a Fire Arrow, magma, a unique's burn): take_hit "burn"
 var burn_dps := 0.0
+var burn_by: Hero = null     # who set him burning (the Proving Crypt's meter counts the ticks as theirs)
 var _burn_tick := 0.0
 var dash_t := 0.0           # a unique's "dash": faster for a moment after a dodge roll (Dodge.start)
 var regen := 0.0
@@ -1612,6 +1613,8 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 		# set alight by another player: `dmg` is the burn a second, for BURN_SECS (ticks as fire, resist counts)
 		burn_dps = maxf(burn_dps if burn_t > 0.0 else 0.0, minf(dmg, 80.0))
 		burn_t = BURN_SECS
+		if Hero.striker != null and Hero.striker != self:
+			burn_by = Hero.striker
 		return
 	if (game.test_immortal and _mine()) or phased:
 		return
@@ -1757,7 +1760,10 @@ func _process(delta: float) -> void:
 		_burn_tick -= delta
 		if _burn_tick <= 0.0:
 			_burn_tick = 0.5
+			var l0 := life
 			take_hit(burn_dps * 0.5, global_position, "burnt", "fire")
+			if game.sandbox != null and life < l0:
+				game.sandbox.note_hit(burn_by, self, l0 - life)     # (the burn's ticks were done but never counted)
 	roll_cd = maxf(0.0, roll_cd - delta)
 	ClassSkills.update(self, delta)     # every class's lingering skills (pools, the tether, lava, arrows, clouds...)
 	aura.emitting = buff_t > 0.0

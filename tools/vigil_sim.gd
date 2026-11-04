@@ -30,7 +30,7 @@ func _run() -> void:
 	var wave := 0
 	var was_dead := false
 	var dbg := 0.0
-	while (Time.get_ticks_msec() - t0) / 1000.0 < limit and v.state not in ["won", "lost"]:
+	while (Time.get_ticks_msec() - t0) / 1000.0 < limit and v.state != "lost":
 		if v.wave != wave:
 			print("[SIM] wave %d starts at %.0f s: flame %d/%d, deaths %d" % [v.wave, (Time.get_ticks_msec() - t0) / 1000.0, v.life, v.max_life, deaths])
 			wave = v.wave
