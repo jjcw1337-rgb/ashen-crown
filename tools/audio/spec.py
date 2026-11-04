@@ -270,6 +270,10 @@ SPEC = [
     dict(name="forest", src="eleven", n=4, dur=14.0, hit=0, loop=True, label="trees rustling in a breeze",
          prompt="a soft gentle breeze through the leaves of an old forest, branches swaying and leaves rustling softly, "
                 "calm and peaceful, steady and even, no birds, no music"),
+    # day and night (DayNight): the camp's bed after dark, jj picks one of three
+    dict(name="night_forest", src="eleven", n=3, dur=16.0, hit=0, loop=True, label="the old forest at night",
+         prompt="an old forest at night, crickets chirping softly in the grass, a distant owl hooting now and then, "
+                "a faint breeze in the leaves, calm and dark, steady and even, no music, no voices"),
     dict(name="drip", src="eleven", n=3, dur=8.0, hit=0, loop=True, label="water dripping in a cave",
          prompt_b="water dripping slowly in a stone dungeon, soft drips and quiet cave air, steady, no music",
          prompt="a damp stone crypt, slow water drips echoing, faint distant wind, no music"),

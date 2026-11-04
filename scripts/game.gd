@@ -19,6 +19,11 @@ var old_save := SAVE_PATH
 var env: Environment
 var world_env: WorldEnvironment
 var sun: DirectionalLight3D
+## Day and night in Act I's camp (DayNight): the hour moves the sun or moon (this light), the sky, the mist and the
+## lamps. lamp_mul and fire_mul scale the "flicker" lights (lanterns and candles, and fires) for the hour.
+var day_night: DayNight
+var lamp_mul := 1.0
+var fire_mul := 1.0
 var cam_pivot: Node3D
 var cam: Camera3D
 var hero: Hero
@@ -392,6 +397,10 @@ func _setup_env() -> void:
 	sun.directional_shadow_max_distance = 70.0
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	add_child(sun)
+	day_night = DayNight.new()
+	day_night.name = "DayNight"
+	day_night.game = self
+	add_child(day_night)
 	apply_quality(quality)
 
 ## A3: set the camp and the moor ablaze, with smoke columns rising beyond the trees.
@@ -441,7 +450,9 @@ func zone_music() -> void:
 	if world.sea:
 		Sfx.play_music("wild", "surf")      # the coast and the islands: surf on the beaches (Game._sea_sounds fades it)
 		return
-	Sfx.play_music("fort" if cur_zone == "lair" and world.fort else cur_zone, "forest" if world.oak_forest and cur_zone != "town" and not indoor() else "")
+	# the camp after dark: crickets and the owl (DayNight), once the bed exists
+	var night_bed := cur_zone == "town" and day_night != null and day_night.on and day_night.night > 0.5
+	Sfx.play_music("fort" if cur_zone == "lair" and world.fort else cur_zone, "forest" if world.oak_forest and cur_zone != "town" and not indoor() else ("night_forest" if night_bed else ""))
 
 ## In a sea zone the surf bed follows the shore: full on the beach, fading inland and out at sea (the boat's
 ## own `sea` bed takes over out there, BoatRide._sounds).
@@ -626,6 +637,8 @@ func _zone_env(kind: String) -> void:
 			hero.light.light_energy = 1.0
 			_set_fires()
 	_apply_grade()
+	# the camp runs through the day (DayNight); every other zone keeps its own hour
+	day_night.enable(kind == "town" and world.theme.get("forest_camp", false) and not inside)
 
 # ---------------------------------------------------------------- grade (graphics plan, phase 1)
 ## The zone's look from Grade.LOOKS ("" = none): the colour-grading LUT, the vignette and grain, and the hero's rim
@@ -4039,7 +4052,7 @@ func _process(delta: float) -> void:
 	_update_underworld(real_dt)
 	for l in get_tree().get_nodes_in_group("flicker"):
 		var lt := l as OmniLight3D
-		var b: float = lt.get_meta("base", 1.0)
+		var b: float = lt.get_meta("base", 1.0) * (fire_mul if lt.has_meta("fire") else lamp_mul)
 		var id := float(lt.get_instance_id() % 100)
 		if lt.has_meta("fire"):
 			# a real fire's light: slow breathing, quicker licks and a ragged flutter, never in step with another

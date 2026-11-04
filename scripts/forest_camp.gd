@@ -443,6 +443,7 @@ static func _glow(w: World, at: Vector2, off: Vector3, col: Color, energy: float
 	# a living glow (coals, a cauldron): it flickers with the fires, and may cast shadows (Grade)
 	l.add_to_group("flicker")
 	l.set_meta("base", l.light_energy)
+	l.set_meta("fire", true)       # (it burns by day too, lower: DayNight's fire_mul)
 	l.add_to_group(Grade.SHADOW_GROUP)
 	w.props_root.add_child(l)
 	l.position = _local(w, at, off)
@@ -463,6 +464,7 @@ static func _candle(parent: Node3D, at: Vector3, lit: bool) -> void:
 	core.mesh = Geo.sph(0.06, 8)
 	core.material_override = Mats.glow_unique(Color(1.0, 0.75, 0.4), 4.0)
 	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	core.add_to_group(DayNight.LAMP_GROUP)      # put out by day (DayNight)
 	parent.add_child(core)
 	core.position = at
 	if lit:

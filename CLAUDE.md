@@ -1356,6 +1356,27 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `"inside"`: his spot in the stall's frame; `"stay"` in its clips: he never turns from his work and greets once a
   visit; his `radius` reaches the stall's front, since the stall is solid). His hammer rings the anvil on each blow (`anvil`: five layered Kenney takes; `Inter._strikes` hears the
   hand bone stop falling; a SHOPS entry's `"strike"`), `tools/anvil_test.gd`. Screenshots: `tools/camp_shots.gd`.
+- **The camp's guards** (`scripts/camp_guard.gd`, `CampGuard`, jj 2026-11-04; notes and what's to come in
+  `docs/guards.md`): Warden Bram, Sentry Kell and Ironfist Varg, armoured hand-to-hand fighters on their rounds in the
+  Act I camp (`CampGuard.GUARDS`: posts, three attack slots each, `"skill"` empty until their skills are made). Meshy
+  bodies on the playable 24-bone rig with 26 library clips each, merged and measured by
+  `tools/blender/guards/prep_guard.py` into `assets/models/guards/<id>.glb` + `<id>.json` (clip lengths, ground motion,
+  turn angles baked out of the turn clips, strike landing moments). They patrol by `World.find_path`, scan at posts
+  (turns in place, looks, alert, warm-ups), stop and watch a hero coming near (head tracking: `CampGuard.HeadLook`, a
+  SkeletonModifier3D), and fight a monster in the ring (circling, strafing, stepping back, the slots' strikes; host-only
+  damage via `Enemy.take_hit`). Bodies move by the clips' measured motion through `World.move` (no foot sliding).
+  Rim light and a soft fill keep them readable at dusk. `--guard-fight` (zombies in the camp), `tools/guard_test.gd`
+  (via `_late.gd`), `tools/guard_shots.gd -- outdir`.
+- **Day and night** (`scripts/day_night.gd`, `DayNight`, `Game.day_night`; jj 2026-11-04): Act I's camp runs through
+  a day every `DAY_LEN` (30 min) by the wall clock, so co-op partners share the hour with nothing on the network. The
+  one shadowed light (`Game.sun`) is the sun (east to south to west, up to `SUN_ELEV`) or the moon (the night's arc),
+  whichever is up, so shadows swing and lengthen; `KEYS` is the camp's look by the hour (sky, ambient, exposure, mist
+  and volumetric fog, saturation, bloom, the hero's light; night is the tuned forest-camp dusk), blended between keys.
+  Lights in the `flicker` group are scaled by `Game.lamp_mul` (lanterns, candles: out by day) or `fire_mul` (meta
+  `fire`: low by day); candle cores in `DayNight.LAMP_GROUP` are hidden by day. Fireflies after dark; a message at
+  dusk and dawn; the guards' rim and fill grow at night and the sentry carries a lantern (`CampGuard._night`).
+  `Game._zone_env` enables it in the camp only (`enable(false)` puts the sun back). `-- --time 13.5` holds the hour,
+  `--day-len 120` speeds it up. `tools/daynight_shots.gd -- outdir` (contact sheets through the day, and checks).
 - **Nameplates and the trade window** (`scripts/vendor_ui.gd`): `VendorUI.Plates` (in `ui.plates`, under every
   window) floats a gold-trimmed plate with the name and trade (`VendorUI.ROLE_TITLES`) over each vendor and Varro,
   click-through, fading with distance, lit when hovered. The trade window (`UI._build_shop`, `open_shop(mode,

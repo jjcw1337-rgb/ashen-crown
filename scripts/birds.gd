@@ -114,6 +114,9 @@ static func _flat(pts: Array) -> ArrayMesh:
 func _new_flock(burst: bool, anywhere := false) -> void:
 	if game == null or game.world == null:
 		return
+	# the birds roost after dark (DayNight)
+	if not sea and game.day_night != null and game.day_night.on and game.day_night.night > 0.6:
+		return
 	var b: Rect2 = game.world.bounds
 	var hp: Vector3 = game.hero.global_position
 	var start: Vector3

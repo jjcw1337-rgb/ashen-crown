@@ -45,6 +45,7 @@ const GUARDS := [
 			{"skill": "", "clip": "strike_3", "reach": 2.0, "dmg": 1.4, "cd": 1.3}]},  # the Spartan kick
 	# the sentry: lean and quick, mail and studded leather, the wolf-fur mantle; walks the whole ring
 	{"id": "sentry", "name": "Sentry Kell", "dmg": 0.9, "rim": Color(0.65, 0.8, 1.0), "fill": Color(0.8, 0.88, 1.0),
+		"night_lamp": true,                       # carries a lantern on his night rounds (DayNight)
 		"posts": [
 			{"at": Vector2(-20.4, -2.0), "look": Vector2(-34, -2), "wait": [7.0, 11.0]},
 			{"at": Vector2(-13.0, -3.4), "look": Vector2(-17, -6.5), "wait": [3.0, 5.0]},
@@ -104,6 +105,11 @@ var think_t := 0.0
 var dance_left := 0.0
 var _rng := RandomNumberGenerator.new()
 var posts_at: Array = []       # each post's spot, nudged clear of what's solid
+var rim_mat: ShaderMaterial
+var fill: OmniLight3D
+var night_lamp: Node3D = null  # the lantern a night-rounds guard carries ("night_lamp" in GUARDS)
+var _hand_l: BoneAttachment3D = null
+var _swing := 0.0
 var _stuck := 0.0
 var _gap := INF
 
@@ -224,6 +230,7 @@ func _process(delta: float) -> void:
 	_root_motion(delta)
 	model.rotation.y = yaw
 	_look(delta)
+	_night(delta)
 
 ## Every quarter second: a monster in the camp to fight, a hero coming near to watch.
 func _think() -> void:
@@ -537,10 +544,66 @@ func _look(delta: float) -> void:
 	head.target = tgt if tgt != Vector3.INF else head.target
 	head.amount = move_toward(head.amount, 1.0 if tgt != Vector3.INF and not clip.begins_with("turn") else 0.0, delta * 2.5)
 
+## The hour (Game.day_night): stronger rim and fill after dark; the sentry carries a lantern on his night rounds.
+func _night(delta: float) -> void:
+	var dn: DayNight = game.day_night if game != null and "day_night" in game else null
+	var n: float = dn.night if dn != null and dn.on else 1.0
+	if rim_mat != null:
+		rim_mat.set_shader_parameter("strength", RIM * lerpf(0.4, 1.0, n))
+	if fill != null:
+		fill.light_energy = FILL * lerpf(0.35, 1.0, n)
+	if not def.get("night_lamp", false):
+		return
+	var want: bool = n > 0.5
+	if want and night_lamp == null:
+		_carry_lamp()
+	if night_lamp != null:
+		night_lamp.visible = want
+		if want and _hand_l != null:
+			# hanging from his left fist, swinging with his stride
+			var moving := clip in ["walk", "walk_look", "run", "walk_fight"]
+			_swing += delta * (5.0 if moving else 1.6)
+			var amp := 0.32 if moving else 0.08
+			night_lamp.global_position = _hand_l.global_position + Vector3(0, -0.06, 0)
+			night_lamp.global_rotation = Vector3(sin(_swing) * amp * 0.6, yaw, sin(_swing * 0.7) * amp * 0.3)
+
+func _carry_lamp() -> void:
+	var sk: Skeleton3D = model.find_child("Skeleton3D", true, false)
+	if sk == null or sk.find_bone("LeftHand") < 0:
+		return
+	_hand_l = BoneAttachment3D.new()
+	_hand_l.bone_name = "LeftHand"
+	sk.add_child(_hand_l)
+	night_lamp = Node3D.new()
+	night_lamp.name = "NightLamp"
+	add_child(night_lamp)
+	var ln: Node3D = ForestCamp.model("lantern") if ForestCamp.has_piece("lantern") else null
+	if ln != null:
+		night_lamp.add_child(ln)
+		ln.scale = Vector3.ONE * 0.62
+		ln.position = Vector3(0, -0.42, 0)
+		for m in ln.find_children("*", "GeometryInstance3D", true, false):
+			(m as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var core := MeshInstance3D.new()
+	core.mesh = Geo.sph(0.04, 8)
+	core.material_override = Mats.glow_unique(Color(1.0, 0.75, 0.4), 4.0)
+	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	night_lamp.add_child(core)
+	core.position = Vector3(0, -0.27, 0)
+	var l := OmniLight3D.new()
+	l.light_color = Color(1.0, 0.68, 0.38)
+	l.light_energy = 1.9
+	l.omni_range = 7.0
+	l.omni_attenuation = 1.4
+	l.shadow_enabled = false
+	night_lamp.add_child(l)
+	l.position = Vector3(0, -0.22, 0)
+
 ## Their look in the dusk: a rim light round the silhouette in each one's colour (a pass over every surface), a soft
 ## light of his own over the shoulders, and the ironfist's lantern alight at his hip.
 func _dress() -> void:
 	var rim := ShaderMaterial.new()
+	rim_mat = rim
 	var sh := Shader.new()
 	sh.code = RIM_SHADER
 	rim.shader = sh
@@ -565,6 +628,7 @@ func _dress() -> void:
 	fl.light_specular = 0.3
 	fl.position = Vector3(0, 2.5, 0)
 	add_child(fl)
+	fill = fl
 	if def.has("lantern"):
 		_hang_lantern(def["lantern"])
 
