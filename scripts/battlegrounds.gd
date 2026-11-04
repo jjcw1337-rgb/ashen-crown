@@ -54,6 +54,21 @@ const STASH_SLOW := 0.15        # (jj) opening the antechamber's stash: the open
                                 # whole raid (Hero.stash_slowed, cleared when the raid ends for them)
 const STASH_LOOP_DB := -4.0     # the open raid chest's fire loop at first (it sinks to 20% over 10 s)
 const STASH_CHEST_HALF := Vector2(0.82, 0.64)   # the crypt chest's footprint (half-extents)
+## The raid chest's fire (jj): "ember", chest #1's red fire; "spirit", stash #2, the same chest burning blue (the camp
+## waypoint's spirit-fire, InfernalFx.spirit). Every light, flash, spark and flame of the chest, its dais and its
+## opening takes its colour from here (Inter meta "stash_theme"; `stash_col`).
+const STASH_THEMES := {
+	"ember": {"lid": Color(1.0, 0.5, 0.2), "spark": Color(0.95, 0.42, 0.08, 1.0), "flash": Color(1.0, 0.42, 0.1),
+		"jet": [Color(1.0, 0.72, 0.3, 1.0), Color(0.95, 0.38, 0.06, 0.9), Color(0.35, 0.06, 0.02, 0.0)],
+		"ring": Color(0.7, 0.2, 0.03), "burst": Color(0.9, 0.3, 0.04, 1.0), "fire": "brazier", "fire_col": Color(1.0, 0.5, 0.18),
+		"seal": Color(1.0, 0.62, 0.18), "seal_light": Color(1.0, 0.68, 0.25), "seal_flash": Color(1.0, 0.62, 0.2),
+		"seal_spark": Color(1.0, 0.75, 0.3, 1.0), "seal_trail": Color(0.95, 0.55, 0.12)},
+	"spirit": {"lid": Color(0.4, 0.62, 1.0), "spark": Color(0.45, 0.7, 1.0, 1.0), "flash": Color(0.3, 0.55, 1.0),
+		"jet": [Color(0.7, 0.9, 1.0, 1.0), Color(0.25, 0.55, 1.0, 0.9), Color(0.04, 0.1, 0.4, 0.0)],
+		"ring": Color(0.08, 0.3, 0.95), "burst": Color(0.25, 0.5, 1.0, 1.0), "fire": "spirit", "fire_col": Color(0.4, 0.66, 1.0),
+		"seal": Color(0.35, 0.65, 1.0), "seal_light": Color(0.45, 0.68, 1.0), "seal_flash": Color(0.4, 0.66, 1.0),
+		"seal_spark": Color(0.6, 0.82, 1.0, 1.0), "seal_trail": Color(0.3, 0.55, 1.0)},
+}
 const RAID_MIN := 2             # (jj) this many raiders in the antechamber start the countdown by themselves
 const RAIDS := 3                # raids run side by side, staggered on the clock (phase)
 const RAID_PORTS := [24567, 24571, 24572]
@@ -129,6 +144,17 @@ static func best_raid(now: float, n := LIVE_RAIDS) -> Dictionary:
 		elif not r["open"] and (best.is_empty() or (not best["open"] and float(r["opens_in"]) < float(best["opens_in"]))):
 			best = r
 	return best
+
+## Which fire this map's chests burn with (STASH_THEMES; "--stash-theme spirit" on the command line previews stash #2).
+static func stash_theme() -> String:
+	var a := OS.get_cmdline_user_args()
+	var i := a.find("--stash-theme")
+	return a[i + 1] if i >= 0 and i + 1 < a.size() and STASH_THEMES.has(a[i + 1]) else "ember"
+
+## A colour of a chest's theme (its Inter's "stash_theme").
+static func stash_col(t: Node, key: String):
+	var th: String = str(t.get_meta("stash_theme")) if t.has_meta("stash_theme") else "ember"
+	return STASH_THEMES.get(th, STASH_THEMES["ember"])[key]
 
 # ---------------------------------------------------------------- the map
 ## The Hollow Crypt. Cell (i, j) of a 4x4 grid; the middle 2x2 is the great hall.
@@ -280,7 +306,7 @@ static func build(w: World) -> void:
 			gates.append(_gate(w, door, half))
 		var c := r.get_center()
 		_bell(w, Vector3(c.x + 2.2, 0, c.y - 2.2))
-		_stash_chest(w, Vector3(c.x - 1.9, 0, c.y - 1.9))
+		_stash_chest(w, Vector3(c.x - 1.9, 0, c.y - 1.9), stash_theme())
 	w.set_meta("bg_gates", gates)
 	for p in portals:
 		var glow: Node3D = CryptProps.portal_glow() if CryptProps.has("archway") else Fx.portal_model()
@@ -316,7 +342,7 @@ static func _gate(w: World, door: Vector2, half: Vector2) -> Dictionary:
 
 ## The antechamber's stash chest (jj): the player's own shared stash (SharedStash, local to their game), open until
 ## the gates rise (Game.stash_allowed), to leave behind what they won't risk once they've seen the matchup.
-static func _stash_chest(w: World, p: Vector3) -> void:
+static func _stash_chest(w: World, p: Vector3, theme := "ember") -> void:
 	# every map its own chest (jj): the crypt's (assets/models/crypt/stash_chest.glb), else the camp's
 	var chest: Node3D
 	if CryptProps.has("stash_chest"):
@@ -338,7 +364,7 @@ static func _stash_chest(w: World, p: Vector3) -> void:
 	var reach := 1.6
 	var SD = load("res://scripts/stash_dais.gd")        # (at run time: tool scripts load this file before the autoloads)
 	if SD.has_model():
-		var dais: Node3D = SD.make()
+		var dais: Node3D = SD.make(theme)
 		dais.position = Vector3(p.x, 0.0, p.z)
 		dais.rotation.y = deg_to_rad(20.0)
 		w.add_child(dais)
@@ -350,7 +376,10 @@ static func _stash_chest(w: World, p: Vector3) -> void:
 	w.solid(chest)
 	it.set_meta("pick_y", 0.6 + lift)
 	it.set_meta("lift", lift)          # (the chest stands this high on its dais: Game.chest_lid, stash_fx follow it)
+	it.set_meta("stash_theme", theme)
 	_dress_seals(it, chest, lift)
+	if theme == "spirit":
+		_spirit_coals(chest)
 
 ## The chest's gold wolf seals (jj's pick; the "seal_N" parts, assemble_chest.py): molten gold that breathes
 ## (gold_seal.gdshader) and a warm gold light just in front of the chest that casts real shadows (the hasp, the
@@ -371,10 +400,11 @@ static func _dress_seals(it: Node3D, chest: Node3D, lift: float) -> void:
 				sm.set_shader_parameter("normal_tex", src.normal_texture)
 				sm.set_shader_parameter("has_normal", true)
 		sm.set_shader_parameter("phase", randf() * TAU)
+		sm.set_shader_parameter("glow_col", stash_col(it, "seal"))
 		mi.material_override = sm
 	var gl := OmniLight3D.new()
 	gl.name = "seal_glow"
-	gl.light_color = Color(1.0, 0.68, 0.25)
+	gl.light_color = stash_col(it, "seal_light")
 	gl.light_energy = 2.4
 	gl.omni_range = 3.6
 	gl.omni_attenuation = 1.4
@@ -386,6 +416,33 @@ static func _dress_seals(it: Node3D, chest: Node3D, lift: float) -> void:
 	chest.add_child(gl)
 	it.set_meta("pick", 1.4)
 
+
+## Stash #2's coals burn blue: Meshy's painted embers (the bright orange texels) glow the spirit-fire's blue, the rest
+## of them dark ash.
+const SPIRIT_COALS := """
+shader_type spatial;
+uniform sampler2D tex : source_color, filter_linear_mipmap;
+void fragment() {
+	vec4 a = texture(tex, UV);
+	float hot = clamp((a.r - a.b) * 1.8 - 0.25, 0.0, 1.0);
+	float l = dot(a.rgb, vec3(0.3, 0.5, 0.2));
+	ALBEDO = mix(vec3(l * 0.55), vec3(0.04, 0.1, 0.28), hot);
+	ROUGHNESS = 0.85;
+	EMISSION = vec3(0.25, 0.55, 1.0) * hot * 2.4;
+}
+"""
+
+static func _spirit_coals(chest: Node3D) -> void:
+	var sh := Shader.new()
+	sh.code = SPIRIT_COALS
+	for n in chest.find_children("coals*", "MeshInstance3D", true, false):
+		var mi: MeshInstance3D = n
+		var src := mi.get_active_material(0) as StandardMaterial3D
+		var sm := ShaderMaterial.new()
+		sm.shader = sh
+		if src != null:
+			sm.set_shader_parameter("tex", src.albedo_texture)
+		mi.material_override = sm
 
 ## The antechamber's bell: ring it to start the raid's countdown (Game._interact "bell").
 static func _bell(w: World, p: Vector3) -> void:
@@ -745,7 +802,7 @@ static func stash_fx(g: Node, idx: int) -> void:
 		# (its light is the chest's own shadow-casting glow, Game.chest_lid: no second light here)
 		Fx.later(t, 0.8, func():
 			if is_instance_valid(fire):
-				FireFx.make(fire, Vector3(0, 0.62 + lift, 0), "brazier", 0.7, Color(1.0, 0.5, 0.18), false, false, true))
+				FireFx.make(fire, Vector3(0, 0.62 + lift, 0), stash_col(t, "fire"), 0.7, stash_col(t, "fire_col"), false, false, stash_col(t, "fire") != "spirit"))
 
 	# (jj: "opening the stash is a huge thing", "make it fire style"), timed to the lid (it lifts 0.26 s in):
 	# the padlock's sparks, then the lid's heave lets the fire out: an orange flash, the spray (a jet of flame
@@ -753,14 +810,19 @@ static func stash_fx(g: Node, idx: int) -> void:
 	# column of dark smoke. The chest keeps burning (stash_fire) until the gates rise.
 	# The fire is the game's own: the Demon kit's living fire (InfernalFx.fire: simulated flipbook flame tongues)
 	# for the spray, its lit smoke, and the braziers' fire (FireFx) for the chest burning on.
+	var blue: bool = stash_col(t, "fire") == "spirit"
+	var jet: Array = stash_col(t, "jet")
 	Fx.later(t, 0.28, func():
-		Fx.flash(root, at + Vector3(0, 0.4, 0), Color(1.0, 0.42, 0.1), 6.0, 0.7, 7.0)
+		Fx.flash(root, at + Vector3(0, 0.4, 0), stash_col(t, "flash"), 6.0, 0.7, 7.0)
 		var spray: Node3D = InfernalFx.fire(root, at + Vector3(0, -0.2, 0), 3.2, 260.0, InfernalFx.tier(g))
 		var spray2: Node3D = InfernalFx.fire(root, at + Vector3(0, -0.1, 0), 1.6, 140.0, InfernalFx.tier(g), false, true)
+		if blue:
+			InfernalFx.spirit(spray)
+			InfernalFx.spirit(spray2)
 		# the spray's jet: flame streaks thrown up and out of the open chest
-		Fx.streaks(root, at, [[0.0, Color(1.0, 0.72, 0.3, 1.0)], [0.4, Color(0.95, 0.38, 0.06, 0.9)], [1.0, Color(0.35, 0.06, 0.02, 0.0)]], 60, 6.5, 0.07, 2.6, 0.55, false, -3.0, 24.0)
-		Fx.ring(root, t.global_position + Vector3(0, lift, 0), 1.9, Color(0.7, 0.2, 0.03), 0.5)
-		Fx.burst(root, at + Vector3(0, 0.5, 0), Color(0.9, 0.3, 0.04, 1.0), 26, 2.6, 0.03, 1.6, false, -1.2, 60.0)
+		Fx.streaks(root, at, [[0.0, jet[0]], [0.4, jet[1]], [1.0, jet[2]]], 60, 6.5, 0.07, 2.6, 0.55, false, -3.0, 24.0)
+		Fx.ring(root, t.global_position + Vector3(0, lift, 0), 1.9, stash_col(t, "ring"), 0.5)
+		Fx.burst(root, at + Vector3(0, 0.5, 0), stash_col(t, "burst"), 26, 2.6, 0.03, 1.6, false, -1.2, 60.0)
 		Fx.later(root, 1.2, func():
 			InfernalFx.fire_on(spray, false)
 			InfernalFx.fire_on(spray2, false))
@@ -770,6 +832,8 @@ static func stash_fx(g: Node, idx: int) -> void:
 					n.queue_free()))
 	Fx.later(t, 0.7, func():
 		var sm := InfernalFx.smoke(root, at + Vector3(0, 1.1, 0), 20, Vector3(0.45, 0.2, 0.35), Vector3.UP, 1.4, 3.0, 0.12, 0.75)
+		if blue:
+			InfernalFx.spirit(sm)
 		Fx.later(root, 4.0, func():
 			if is_instance_valid(sm):
 				sm.queue_free()))

@@ -14,6 +14,12 @@ const MODEL := "res://assets/models/crypt/stash_dais.glb"
 const BOWL := "res://assets/models/waypoint/firebowl.glb"
 const EMBER := Color(1.0, 0.24, 0.03)        # deep: the glow shaders multiply it by energy
 const EMBER_CORE := Color(1.0, 0.66, 0.32)
+## (jj's stash #2: the same dais burning blue) each theme's glow, the lettering's core, the fire bowls' fire and its
+## colour, the dais's light (Battlegrounds.STASH_THEMES picks one per chest)
+const THEMES := {
+	"ember": {"glow": EMBER, "core": EMBER_CORE, "fire": "brazier", "fire_col": Color(1.0, 0.5, 0.18), "light": Color(1.0, 0.45, 0.18)},
+	"spirit": {"glow": Color(0.06, 0.34, 1.0), "core": Color(0.62, 0.86, 1.0), "fire": "spirit", "fire_col": Color(0.4, 0.66, 1.0), "light": Color(0.35, 0.58, 1.0)},
+}
 const TOP_Y := 0.27          # the floor's walking height (build_stash_dais.py FLOOR_Y)
 const PLINTH_Y := 0.34       # the chest's plinth top (FLOOR_Y + 0.07)
 const GROOVE_Y := 0.245
@@ -41,10 +47,10 @@ var _wave_t := 2.0
 static func has_model() -> bool:
 	return ResourceLoader.exists(MODEL)
 
-static func make() -> StashDais:
+static func make(theme := "ember") -> StashDais:
 	var d := StashDais.new()
 	d.name = "StashDais"
-	d._build()
+	d._build(THEMES.get(theme, THEMES["ember"]))
 	return d
 
 static func _stone(c1: Color, c2: Color, rough: float, scale: float, moss: float, wet: float) -> ShaderMaterial:
@@ -64,7 +70,7 @@ static func _stone(c1: Color, c2: Color, rough: float, scale: float, moss: float
 	m.set_shader_parameter("wet", wet)
 	return m
 
-func _build() -> void:
+func _build(th: Dictionary) -> void:
 	var stone := _stone(Color(0.25, 0.24, 0.24), Color(0.15, 0.14, 0.14), 0.9, 1.8, 0.3, 0.45)
 	var floor_m := _stone(Color(0.23, 0.22, 0.22), Color(0.14, 0.13, 0.13), 0.78, 3.0, 0.08, 0.7)
 	var plinth_m := _stone(Color(0.19, 0.18, 0.18), Color(0.11, 0.1, 0.1), 0.85, 2.4, 0.15, 0.5)
@@ -85,18 +91,18 @@ func _build() -> void:
 			mi.material_override = stone
 	# the channels' glow, the steps' lips, the spokes across the inner ring
 	for c in CHANNELS:
-		var rm := Mats.glow_unique(EMBER, IDLE)
+		var rm := Mats.glow_unique(th["glow"], IDLE)
 		ring_mats.append(rm)
 		var ring := Models.P(self, Geo.torus(c[0] - c[1], c[0] + c[1] - 0.008, 64, 4), rm, Vector3(0, GROOVE_Y, 0))
 		ring.scale = Vector3(1, 0.25, 1)
 		ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	for e in LIPS:
-		var em := Mats.glow_unique(EMBER, IDLE * 0.4)
+		var em := Mats.glow_unique(th["glow"], IDLE * 0.4)
 		edge_mats.append(em)
 		var edge := Models.P(self, Geo.torus(e[0] - 0.025, e[0], 80, 4), em, Vector3(0, e[1], 0))
 		edge.scale = Vector3(1, 0.2, 1)
 		edge.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	spoke_mat = Mats.glow_unique(EMBER, IDLE)
+	spoke_mat = Mats.glow_unique(th["glow"], IDLE)
 	for i in 8:
 		var a := TAU * i / 8.0
 		Models.P(self, Geo.box(0.03, 0.012, 0.22), spoke_mat, Vector3(cos(a) * 1.065, GROOVE_Y + 0.01, sin(a) * 1.065),
@@ -106,8 +112,8 @@ func _build() -> void:
 		rune_floor = ShaderMaterial.new()
 		rune_floor.shader = WaypointGrand._shader("rune_floor", WaypointGrand.RUNE_FLOOR_SHADER)
 		rune_floor.set_shader_parameter("runes", load(WaypointGrand.RUNES_TEX))
-		rune_floor.set_shader_parameter("glow", EMBER)
-		rune_floor.set_shader_parameter("core", EMBER_CORE)
+		rune_floor.set_shader_parameter("glow", th["glow"])
+		rune_floor.set_shader_parameter("core", th["core"])
 		var pm := PlaneMesh.new()
 		pm.size = Vector2(WaypointGrand.RUNES_SPAN, WaypointGrand.RUNES_SPAN)
 		var disc := MeshInstance3D.new()
@@ -130,10 +136,10 @@ func _build() -> void:
 			bm.rotation.y = -a
 			fb.add_child(bm)
 			var top := WaypointGrand._bounds(bm).end.y * BOWL_SCALE - 0.14 * BOWL_SCALE
-			Props.fire(fb, Vector3(0, top, 0), 0.7, Color(1.0, 0.5, 0.18), false, false, true, "brazier")
+			Props.fire(fb, Vector3(0, top, 0), 0.7, th["fire_col"], false, false, th["fire"] != "spirit", th["fire"])
 	var lt := OmniLight3D.new()
 	lt.name = "dais_light"
-	lt.light_color = Color(1.0, 0.45, 0.18)
+	lt.light_color = th["light"]
 	lt.light_energy = 1.2
 	lt.omni_range = 5.5
 	lt.position = Vector3(0, 1.6, 0)

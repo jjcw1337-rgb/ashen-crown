@@ -2096,7 +2096,7 @@ func chest_lid(t: Inter, open: bool, mine := true) -> void:
 		# the raised lid and whoever stands at it throw real shadows over the floor; first in the shadow budget
 		glow = OmniLight3D.new()
 		glow.name = "lid_glow"
-		glow.light_color = Color(1.0, 0.5, 0.2)
+		glow.light_color = Battlegrounds.stash_col(t, "lid")      # (red, or blue on stash #2)
 		glow.omni_range = 8.0
 		glow.omni_attenuation = 1.1
 		glow.light_energy = 0.0
@@ -2134,7 +2134,7 @@ func chest_lid(t: Inter, open: bool, mine := true) -> void:
 		else:
 			Sfx.play_at("chest_unlock" if Sfx.bank.has("chest_unlock") else "anvil", top + Vector3(0, -0.2, 0.4), -6.0, 1.25)
 		# the unlock: sparks at the hasp
-		Fx.burst(root, t.global_position + Vector3(0, 0.6 + lift, 0.6), Color(0.95, 0.42, 0.08, 1.0), 14, 2.2, 0.018, 0.45, false, -6.0, 70.0, Vector3(0, 0.4, 1))
+		Fx.burst(root, t.global_position + Vector3(0, 0.6 + lift, 0.6), Battlegrounds.stash_col(t, "spark"), 14, 2.2, 0.018, 0.45, false, -6.0, 70.0, Vector3(0, 0.4, 1))
 		var raid: bool = bool(t.data.get("raid", false))
 		Fx.later(t, 0.26, func():
 			if not raid_snd:
@@ -2157,6 +2157,9 @@ func _burst_seals(t: Inter) -> void:
 		return
 	var root: Node3D = world.fx_root
 	var c := t.global_position
+	var flash_c: Color = Battlegrounds.stash_col(t, "seal_flash")
+	var spark_c: Color = Battlegrounds.stash_col(t, "seal_spark")
+	var trail_c: Color = Battlegrounds.stash_col(t, "seal_trail")
 	for i in seals.size():
 		var s: MeshInstance3D = seals[i]
 		var delay := 0.08 + i * 0.05
@@ -2172,16 +2175,16 @@ func _burst_seals(t: Inter) -> void:
 				sm.set_shader_parameter("energy", 2.6)
 			var out := Vector3(s.global_position.x - c.x, 0, s.global_position.z - c.z)
 			out = out.normalized() if out.length() > 0.01 else Vector3(0, 0, 1)
-			Fx.flash(root, s.global_position, Color(1.0, 0.62, 0.2), 1.6, 0.3, 3.0)
-			Fx.burst(root, s.global_position, Color(1.0, 0.75, 0.3, 1.0), 16, 2.4, 0.025, 0.5, false, -4.0, 50.0, out)
-			Fx.aura(s, Color(0.95, 0.55, 0.12), 14, 0.3, 0.018, 0.45, -0.5, 0.05, 40.0, Vector3.ZERO, false)
+			Fx.flash(root, s.global_position, flash_c, 1.6, 0.3, 3.0)
+			Fx.burst(root, s.global_position, spark_c, 16, 2.4, 0.025, 0.5, false, -4.0, 50.0, out)
+			Fx.aura(s, trail_c, 14, 0.3, 0.018, 0.45, -0.5, 0.05, 40.0, Vector3.ZERO, false)
 			var v := out * randf_range(3.0, 4.2) + Vector3(0, randf_range(3.2, 4.5), 0)
 			var w := Vector3(randf_range(-9, 9), randf_range(-12, 12), randf_range(-9, 9))
 			InfernalFx.fly(s, v, w, 1.15, -7.0, true)
 			Fx.later(root, 1.0, func():
 				if is_instance_valid(s):
-					Fx.flash(root, s.global_position, Color(1.0, 0.65, 0.2), 4.0, 0.4, 4.0)
-					Fx.burst(root, s.global_position, Color(1.0, 0.7, 0.25, 1.0), 22, 2.0, 0.03, 0.6, false, -3.0, 180.0)))
+					Fx.flash(root, s.global_position, flash_c, 4.0, 0.4, 4.0)
+					Fx.burst(root, s.global_position, spark_c, 22, 2.0, 0.03, 0.6, false, -3.0, 180.0)))
 	var gl: OmniLight3D = t.find_child("seal_glow", true, false) as OmniLight3D
 	if gl:
 		var tw := gl.create_tween()
