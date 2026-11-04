@@ -13,6 +13,11 @@ so a camera-facing card shows the cloud as the game camera would see it in 3D):
   ash     a dark puff of ash and dust kicked up by a hoof: a few small ejecta and a little surge. One shot.
   blast   a ring of fire and smoke blown outward from a body (the Crucible bursting): particles fly out level,
           burning, and their fire turns to rolling smoke. One shot, seen from above-side.
+  frost   an ice arrow striking the ground (Frost Volley): cold mist bursts out of the strike, heavier than the air,
+          and rolls out low along the ground in a ring while a few ice splinters fly trailing thin vapour. One shot.
+  rime    freezing fog pooled over the ground under a volley: cold vapour seeping up out of the frost in patches that
+          come and go, sinking and churning slowly. Loops, seen from the game camera.
+Cold kinds (frost, rime) are colder than the air (a negative temperature sinks them) and lit by a cold key.
 Smoke takes its colour from the flows (brown dirt, grey ash, white steam, soot); it is lit by a warm low key (the
 game's dusk) and a cool sky fill, and from inside by its own fire, whose light is a black-body ramp of the flame
 field with a crisp edge (as in fire_flipbook.py, so flames have sharp tongues, not cotton). The film is
@@ -45,7 +50,10 @@ SHAPE = {
 	"steam":  {"dom": (2.4, 0.8, 2.6), "dz": 1.3, "warm": 50, "cam": (2.6, 1.25, 0.0), "aspect": 1.0, "span": 2.4, "mode": 0},
 	"ash":    {"dom": (2.8, 2.8, 2.0), "dz": 1.0, "warm": 0, "cam": (2.5, 0.45, 44.0), "aspect": 1.25, "span": 1.9, "mode": 1},
 	"blast":  {"dom": (10.6, 10.6, 4.4), "dz": 2.2, "warm": 0, "cam": (9.6, 1.3, 44.0), "aspect": 1.25, "span": 7.0, "mode": 1},
+	"frost":  {"dom": (5.2, 5.2, 2.4), "dz": 1.2, "warm": 0, "cam": (4.6, 0.35, 44.0), "aspect": 1.3, "span": 3.6, "mode": 1},
+	"rime":   {"dom": (10.0, 10.0, 2.0), "dz": 1.0, "warm": 50, "cam": (9.6, 0.3, 44.0), "aspect": 1.4, "span": 8.0, "mode": 1},
 }[KIND]
+COLD = KIND in ("frost", "rime")
 EXTRA = OVERLAP if SHAPE["warm"] > 0 else 0
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -328,6 +336,80 @@ elif KIND == "blast":
 	pr = particles(rg, 200, 1, 3, 12, 5.2, 1.6, up=0.6, gravity=0.25, drag=1.4, size=0.1)
 	flow_from(rg, pr, "BOTH", (0.12, 0.08, 0.08), 0.45, 2.5, 2.0, fuel=1.2, vel=0.4)
 
+elif KIND == "frost":
+	ground()
+	ds.vorticity = 0.7
+	ds.alpha = -0.7             # heavy cold air: it falls back and rolls out instead of rising
+	ds.beta = 1.0
+	ds.dissolve_speed = 16      # gone by the last frame, before it reaches the domain's walls
+	# the burst off the strike: thrown up a little, then sinking
+	bpy.ops.mesh.primitive_uv_sphere_add(radius=0.22, location=(0, 0, 0.2))
+	pf = bpy.context.object
+	pf.name = "Puff"
+	pm = pf.modifiers.new("Fluid", "FLUID")
+	pm.fluid_type = "FLOW"
+	pfs = pm.flow_settings
+	pfs.flow_type = "SMOKE"
+	pfs.flow_behavior = "INFLOW"
+	pfs.smoke_color = (0.85, 0.92, 1.0)
+	pfs.temperature = -1.2
+	pfs.use_initial_velocity = True
+	pfs.velocity_normal = 2.2
+	pfs.velocity_coord = (0, 0, 1.4)
+	pfs.subframes = 2
+	for f, on in [(1, 1.0), (3, 1.0), (4, 0.0)]:
+		pfs.density = 1.0 * on
+		pfs.keyframe_insert("density", frame=f)
+	pf.hide_render = True
+	# the surge of cold air racing out along the ground
+	sg = ring("Surge", 0.22, 0.06, 0.04)
+	psg = particles(sg, 240, 1, 3, 10, 1.9, 1.2, up=0.1, gravity=0.4, drag=1.8, size=0.06)
+	flow_from(sg, psg, "SMOKE", (0.82, 0.9, 1.0), 0.6, -1.0, 2.4, vel=0.5)
+	# ice splinters flung out on short arcs, each trailing a thread of vapour
+	ej = dome("Splinters", 0.1, 0.05)
+	pe = particles(ej, 36, 1, 2, 10, 3.2, 1.4, up=1.6, gravity=1.0, drag=0.3, size=0.04)
+	flow_from(ej, pe, "SMOKE", (0.88, 0.94, 1.0), 0.45, -0.6, 0.9, vel=0.4)
+elif KIND == "rime":
+	ground()
+	ds.vorticity = 0.4
+	ds.alpha = -0.5
+	ds.beta = 1.0
+	ds.dissolve_speed = 24
+	ds.noise_strength = 1.5
+	# frost breathing vapour up in patches that come and go: small vents scattered over the ground, each pulsing on
+	# its own phase (the loop's length is a whole number of every pulse, so it loops)
+	import random
+	random.seed(11)
+	total = SHAPE["warm"] + FRAMES + EXTRA
+	period = FRAMES
+	for i in range(26):
+		a = i * 2.39996 + random.uniform(-0.3, 0.3)          # a sunflower spread: even over the disc, never in rows
+		rr = 3.4 * math.sqrt((i + 0.5) / 26.0) * random.uniform(0.85, 1.05)
+		bpy.ops.mesh.primitive_uv_sphere_add(radius=random.uniform(0.3, 0.48), location=(math.cos(a) * rr, math.sin(a) * rr, 0.08))
+		src = bpy.context.object
+		src.scale = (1.0, 1.0, 0.4)
+		sm = src.modifiers.new("Fluid", "FLUID")
+		sm.fluid_type = "FLOW"
+		fs = sm.flow_settings
+		fs.flow_type = "SMOKE"
+		fs.flow_behavior = "INFLOW"
+		fs.temperature = -0.4
+		fs.use_initial_velocity = True
+		fs.velocity_coord = (random.uniform(-0.2, 0.2), random.uniform(-0.2, 0.2), 0.3)
+		fs.smoke_color = (0.84, 0.9, 0.98)
+		ph = random.uniform(0, 1)
+		for f in range(1, total + 1, 3):
+			fs.density = 0.75 * (0.25 + 0.75 * max(0.0, math.sin(math.tau * ((f / period) + ph))) ** 2)
+			fs.keyframe_insert("density", frame=f)
+		src.hide_render = True
+	bpy.ops.object.effector_add(type="TURBULENCE", location=(0, 0, 0.5))
+	tb = bpy.context.object
+	tb.field.strength = 1.4
+	tb.field.size = 0.9
+	tb.field.flow = 0.4
+	tb.keyframe_insert("location", frame=1)
+	tb.location = (0.6, -0.4, 0.5)
+	tb.keyframe_insert("location", frame=SHAPE["warm"] + FRAMES + EXTRA)
 # --- bake
 bpy.context.view_layer.objects.active = dom
 for o in scn.objects:
@@ -352,13 +434,15 @@ flame = nt.nodes.new("ShaderNodeAttribute")
 flame.attribute_name = "flame"
 # (the node multiplies Density by the smoke's own density grid itself: its "Density Attribute"; wiring the grid in
 # as well squares it and thin dust all but vanishes)
-vol.inputs["Density"].default_value = {"impact": 4.5, "comet": 5.0, "steam": 3.5, "ash": 7.0, "blast": 6.0}[KIND]
+vol.inputs["Density"].default_value = {"impact": 4.5, "comet": 5.0, "steam": 3.5, "ash": 7.0, "blast": 6.0,
+	"frost": 3.4, "rime": 2.0}[KIND]
 # the smoke's colour: one per kind (the colour grid comes through weighted by density, so thin dust read black)
 vol.inputs["Color"].default_value = {"impact": (0.52, 0.43, 0.33, 1.0), "comet": (0.24, 0.2, 0.18, 1.0),
-	"steam": (0.92, 0.91, 0.9, 1.0), "ash": (0.5, 0.45, 0.4, 1.0), "blast": (0.22, 0.18, 0.17, 1.0)}[KIND]
+	"steam": (0.92, 0.91, 0.9, 1.0), "ash": (0.5, 0.45, 0.4, 1.0), "blast": (0.22, 0.18, 0.17, 1.0),
+	"frost": (0.86, 0.93, 1.0, 1.0), "rime": (0.86, 0.92, 1.0, 1.0)}[KIND]
 vol.inputs["Anisotropy"].default_value = 0.25
 # dust and steam scatter light (a dull grey absorption, so the colour shows); soot stays dark through its colour
-vol.inputs["Absorption Color"].default_value = (0.55, 0.52, 0.5, 1.0)
+vol.inputs["Absorption Color"].default_value = (0.55, 0.52, 0.5, 1.0) if not COLD else (0.62, 0.7, 0.8, 1.0)
 ramp = nt.nodes.new("ShaderNodeValToRGB")
 cr = ramp.color_ramp
 cr.elements[0].position = 0.0
@@ -397,12 +481,12 @@ for o in scn.objects:
 # cool fill from the sky in front
 key = bpy.data.objects.new("Key", bpy.data.lights.new("Key", "SUN"))
 key.data.energy = 8.0
-key.data.color = (1.0, 0.86, 0.72)
+key.data.color = (1.0, 0.86, 0.72) if not COLD else (0.9, 0.95, 1.0)
 key.rotation_euler = (math.radians(60), 0, math.radians(-110))
 link(key)
 fill = bpy.data.objects.new("Fill", bpy.data.lights.new("Fill", "SUN"))
 fill.data.energy = 1.8
-fill.data.color = (0.62, 0.72, 0.92)
+fill.data.color = (0.62, 0.72, 0.92) if not COLD else (0.55, 0.7, 1.0)
 fill.rotation_euler = (math.radians(60), 0, math.radians(54.5))
 link(fill)
 world = bpy.data.worlds.new("W")

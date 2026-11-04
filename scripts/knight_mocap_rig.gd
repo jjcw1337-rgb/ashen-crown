@@ -482,7 +482,12 @@ const SHOT_BODY := {
 	"set": [[0.42, 0.0], [0.6, 1.0], [0.72, 1.0], [0.78, 0.2], [0.95, 0.0]],
 	# the follow-through: the weight rolling onto the front foot after the release, the body staying in the shot
 	"follow": [[0.71, 0.0], [0.8, 1.0], [0.9, 0.7], [1.0, 0.0]],
+	# a shot aimed high (Frost Volley, the rig's "sky" meta): up with the draw, held through the release, eased down
+	"sky": [[0.16, 0.0], [0.5, 1.0], [0.82, 1.0], [1.0, 0.0]],
 }
+## how far a shot aimed high (SHOT_BODY "sky") tilts the shoulder line up toward the mark, in degrees over the spine
+const SKY_TILT := 42.0
+var sky_w := 0.0
 const SHOT_BONES := {"twist": ["Spine", "Spine01", "Spine02"], "recoil": ["LeftArm", "LeftForeArm"],
 	"fling": ["RightArm", "RightForeArm", "RightHand"], "head": ["Head"]}
 var shot_body_w := 0.0
@@ -536,6 +541,16 @@ func _shot_body(st: Dictionary, a: float, shooting: bool, stepping: bool, dt: fl
 			_add_turn("LeftUpLeg", Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(-3.0) * lean + deg_to_rad(-5.0) * follow))
 			_add_turn("LeftLeg", Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(6.0) * follow))
 			_add_turn("RightUpLeg", Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(4.0) * lean - deg_to_rad(2.0) * follow))
+	# a shot aimed high (FrostVolleyFx.draw sets the "sky" meta): the shoulder line tilts up toward the mark over the
+	# spine, the bow arm and the draw rising with it, the head tipped back along the arrow, the weight on the back foot
+	var sky_t: float = float(get_meta("sky")) * curve_at(SHOT_BODY["sky"], a) if has_meta("sky") else 0.0
+	sky_w = lerpf(sky_w, sky_t if not stepping else sky_t * 0.7, k)
+	if sky_w > 0.002:
+		var tilt := Quaternion(yaw_b * Vector3.FORWARD, deg_to_rad(SKY_TILT / 3.0) * sky_w)
+		_add_turn("Spine", tilt * Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(-4.0) * sky_w))
+		_add_turn("Spine01", tilt)
+		_add_turn("Spine02", tilt)
+		_add_turn("Head", Quaternion(yaw_b * Vector3.FORWARD, deg_to_rad(-6.0) * sky_w) * Quaternion(yaw_b * Vector3.RIGHT, deg_to_rad(-10.0) * sky_w))
 
 ## Adds a turn given in the rig frame to a bone's pose (converted into the bone's parent's frame).
 func _add_turn(nm: String, q_rig: Quaternion) -> void:

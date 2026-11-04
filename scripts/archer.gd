@@ -260,8 +260,8 @@ static func _loose(h: Hero, at: Vector3, pierce: bool, mult: float, src: String,
 	h.fx(src, "loose", {"p": from, "d": dir, "k": "fire" if pierce else "war", "x": pierce, "m": mult})
 
 ## The arrows are Meshy models (tools/blender/prep_arrow.py, head toward -Z): "war" (black-shafted, barbed: his
-## plain shots), "fire" (red-fletched: Fire Arrow, burning in flight), "frost" (pale, white-fletched: Frost Volley,
-## tinted icy). A faint streak behind each so it reads from the high camera. Without the files, a shaft and head.
+## plain shots), "fire" (red-fletched: Fire Arrow, burning in flight), "frost" (the glacier arrow: an ice
+## head and ice-blade fletching on a rimed shaft, Frost Volley's, FrostVolleyFx). A faint streak behind each so it reads from the high camera. Without the files, a shaft and head.
 const ARROW_GLB := "res://assets/models/arrows/%s.glb"
 const FIRE := Color(1.0, 0.45, 0.12)
 const FROST := Color(0.55, 0.8, 1.0)
@@ -273,11 +273,6 @@ static func _arrow_mesh(kind: String, bare := false) -> Node3D:
 	if ResourceLoader.exists(path):
 		var m: Node3D = (load(path) as PackedScene).instantiate()
 		root.add_child(m)
-		if kind == "frost":
-			# frost on it: a pale blue sheen over the wood and feathers
-			var ice := Mats.glow(FROST, 0.35, 0.0, 0.0)
-			for mi in m.find_children("*", "MeshInstance3D", true, false):
-				(mi as MeshInstance3D).material_overlay = ice
 	else:
 		var shaft := MeshInstance3D.new()
 		var cm := CylinderMesh.new()
@@ -324,7 +319,6 @@ static func _volley(h: Hero, at: Vector3) -> void:
 
 ## Arrows falling on the volley's ground: a hit on everything in reach every 0.2 s, arrows sticking in.
 static func _rain(h: Hero, v: Dictionary) -> void:
-	var root: Node3D = h.game.world.fx_root
 	var pos: Vector3 = v["pos"]
 	var r: float = v["r"]
 	for k in 6:
@@ -332,23 +326,8 @@ static func _rain(h: Hero, v: Dictionary) -> void:
 		var d := sqrt(randf()) * r
 		var p := pos + Vector3(cos(a) * d, 0, sin(a) * d)
 		p.y = h.game.world.height_at(p.x, p.z)
-		var ar := _arrow_mesh("frost")
-		root.add_child(ar)
-		ar.global_position = p + Vector3(randf_range(-0.6, 0.6), 7.0, randf_range(-0.6, 0.6))
-		ar.look_at(p, Vector3.FORWARD)
-		var tw := ar.create_tween()
-		tw.tween_property(ar, "global_position", p + Vector3(0, 0.25, 0), 0.18)
-		tw.tween_callback(func():
-			# the arrow strikes: splinters of ice and a breath of frost off the ground
-			InfernalFx.particles(root, p + Vector3(0, 0.12, 0), {"amount": 6, "life": 0.45, "explosive": 1.0, "shape": "sphere",
-				"r": 0.08, "dir": Vector3.UP, "spread": 60.0, "vel": [1.2, 2.6], "gravity": -12.0, "scale": [0.4, 1.0],
-				"size": 0.05, "colors": [[0.0, ElementalFx.ICE_PALE], [1.0, Color(ElementalFx.ICE_DEEP, 0.0)]]})
-			ElementalFx._dust(root, p + Vector3(0, 0.15, 0), Color(0.5, 0.62, 0.72), 0.6, 0.35, {"amount": 2, "life": 0.8,
-				"explosive": 1.0, "shape": "sphere", "r": 0.1, "dir": Vector3.UP, "spread": 70.0, "vel": [0.2, 0.5],
-				"damping": [1.5, 2.2], "scale": [0.7, 1.1], "grow": [0.6, 1.4]}))
-		tw.tween_interval(1.4)
-		tw.tween_callback(ar.queue_free)
-	Sfx.play_at("bow", pos, -10.0, randf_range(0.8, 0.95))
+		# the glacier arrow dropping onto it, its strike, the crystals (FrostVolleyFx: seen on every game)
+		FrostVolleyFx.strike(h, p)
 	if h.puppet:
 		return
 	# Frost Volley: each hit chills (slower), Rime deepens it; Shatter: the chilled take more
@@ -588,6 +567,7 @@ static func clear(h: Hero) -> void:
 	h.arrows.clear()
 	ArrowFx.end_draw(h)
 	h.volleys.clear()
+	FrostVolleyFx.clear(h)
 	for s in h.snares:
 		if is_instance_valid(s["node"]):
 			(s["node"] as Node3D).queue_free()

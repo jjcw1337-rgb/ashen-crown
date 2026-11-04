@@ -227,6 +227,8 @@ func _hands(h, f: int, take: String) -> void:
 
 ## One take: stage the lane, cast at 0.4 s, record secs of frames from the take's camera.
 func _take(out: String, mode: String, lane: String, sk: String, take: String, cam: Camera3D, secs := 3.4) -> void:
+	if OS.get_environment("RANGE_SECS") != "":
+		secs = float(OS.get_environment("RANGE_SECS"))     # a longer take (Frost Volley runs about 6 s)
 	var h = g.hero
 	await _stage(lane)
 	var z: float = LANES[lane]

@@ -300,7 +300,16 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `Hero.swipe_attack`/`free_attack`; `Hero.reach` is `Archer.RANGE`). His skills are fire, cold and lightning (ids kept):
   Fire Arrow (`pierce`: through a line, sets them burning, `Enemy.ignite`; its look is real simulated fire, below), Frost Volley (`volley`: a rain on the cursor,
   hits every 0.2 s and chills, `Enemy.chill`, slower on their feet; a partner's chill reaches the host through
-  `Net.send_enemy_chill`), Storm Snare (`snare`: holds the first on it, lightning arcs into the nearest others,
+  `Net.send_enemy_chill`; its look is jj's remake, `scripts/frost_volley_fx.gd` `FrostVolleyFx`: he leans back and
+  aims high (the rig's `sky` meta, `KnightMocapRig` `SHOT_BODY["sky"]`/`SKY_TILT`) with a glacier arrow on the string,
+  a fan of glacier arrows climbs out of the bow, hoarfrost spreads over the ground (the Meshy-painted
+  `assets/textures/fx/frost/hoarfrost.png`, `GROUND_SHADER`), freezing fog pools (the `rime` Mantaflow book), the rain
+  drops glacier arrows that stick in and burst in cold mist (the `frost` book), Meshy ice-crystal clusters
+  (`assets/models/fx/frost/crystal.glb`) burst up, foes under it frost over (`Enemy.set_frost`, rime crawling up from
+  the feet; one dying frozen shatters), and at the end every crystal breaks into its Blender-fractured pieces
+  (`crystal_pieces.glb`, `fracture_rock.py`) and the frost thaws; sounds `frost_loose`, `arrow_rain`, `ice_arrow_hit`,
+  `frost_spread`, `ice_burst`; the books are `tools/blender/fx/smoke_flipbook.py` kinds `frost`/`rime`, packed by
+  `tools/fx_smokebook.py`, listed in `DemonKitFx.BOOKS`), Storm Snare (`snare`: holds the first on it, lightning arcs into the nearest others,
   `Fx.bolt`), Spirit Beast (`beast`: commands his wolf, below). Arrows are Meshy models (`assets/models/arrows/`
   war / fire / frost, prepared by `tools/blender/prep_arrow.py`: head toward Godot -Z), `Archer._arrow_mesh(kind)`.
   Talents: Flame, Frost, Storm (`Talents.TREES["archer"]`; specials arrow_split, burn_dmg, wolf_burn, chill_pct, wolf_howl,

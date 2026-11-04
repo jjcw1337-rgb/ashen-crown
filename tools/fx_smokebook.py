@@ -19,8 +19,10 @@ import json
 import math
 import os
 import subprocess
+import shutil
 import sys
 
+os.environ.setdefault("OPENCV_IO_ENABLE_OPENEXR", "1")     # (before cv2 loads: pip's OpenCV reads EXR with it)
 import cv2
 import numpy as np
 from PIL import Image
@@ -30,7 +32,13 @@ EDGE = float(os.environ.get("SMOKEBOOK_EDGE", "0.06"))   # how far in from each 
 
 
 def read_exr(path):
-	"""RGBA float32 (linear, premultiplied as Blender wrote it), decoded by ffmpeg (OpenCV here has no EXR)."""
+	"""RGBA float32 (linear, premultiplied as Blender wrote it), decoded by ffmpeg, or by OpenCV where there is no ffmpeg
+	(the Mac; pip's OpenCV reads EXR once OPENCV_IO_ENABLE_OPENEXR is set)."""
+	if shutil.which("ffprobe") is None:
+		im = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+		if im is None:
+			sys.exit("can't read " + path)
+		return np.dstack([im[..., 2], im[..., 1], im[..., 0], im[..., 3]]).astype(np.float32)
 	wh = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height",
 		"-of", "csv=p=0", path], capture_output=True, text=True, check=True).stdout.strip().split(",")
 	w, h = int(wh[0]), int(wh[1])

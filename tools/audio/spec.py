@@ -344,3 +344,23 @@ SPEC += [
 ]
 
 BY_NAME = {s["name"]: s for s in SPEC}
+
+# Frost Volley's remake (jj, 2026-11-04; FrostVolleyFx): the flight going up, the rain coming down, each ice arrow
+# striking, the ground freezing, the crystals shattering at the end
+SPEC += [
+    dict(name="frost_loose", src="eleven", n=4, dur=1.4, hit=0, label="a volley of ice arrows loosed skyward",
+         prompt="a heavy longbow string thrums and a flight of arrows whooshes steeply up into the sky, an icy airy "
+                "whistle trailing off with a faint crystalline shimmer" + DRY),
+    dict(name="arrow_rain", src="eleven", n=4, dur=1.4, hit=0, label="arrows whistling down from the sky",
+         prompt="many arrows whistling down out of the sky toward you, a rising rush of fletching through the air "
+                "ending in a dense flurry" + DRY),
+    dict(name="ice_arrow_hit", src="eleven", n=4, dur=0.7, hit=0, label="an ice arrow striking frozen ground",
+         prompt="an arrow tipped with ice thudding hard into frozen ground, a sharp crystalline crack and tiny ice "
+                "splinters skittering" + DRY),
+    dict(name="frost_spread", src="eleven", n=4, dur=1.6, hit=0, label="the ground freezing over",
+         prompt="the ground freezing over fast, crackling and creaking ice spreading out across it, frost crystals "
+                "crunching and ticking as they grow" + DRY),
+    dict(name="ice_burst", src="eleven", n=4, dur=2.0, hit=0, label="ice crystals shattering all at once",
+         prompt="a field of tall ice crystals shattering all at once, a big glassy crash of breaking ice and "
+                "shards raining down and tinkling across frozen ground" + DRY),
+]

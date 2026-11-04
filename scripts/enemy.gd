@@ -245,7 +245,7 @@ func _set_flash(v: float) -> void:
 	if on == _flash_on and not (v <= 0.0):
 		return
 	_flash_on = on
-	var rest: Material = soul_mat() if _soul_lit else (drain_mat() if _drained else (Feral.rim_mat() if rig.has_meta("feral") else null))
+	var rest: Material = soul_mat() if _soul_lit else (drain_mat() if _drained else (_frost_mat if _frosted else (Feral.rim_mat() if rig.has_meta("feral") else null)))
 	for m in meshes:
 		if is_instance_valid(m):
 			(m as MeshInstance3D).material_overlay = flash_mat if on else rest
@@ -297,6 +297,28 @@ func set_soul_lit(on: bool) -> void:
 		return
 	_soul_lit = on
 	_set_flash(0.0)
+
+## Frost Volley's rime (FrostVolleyFx.frost_body): a rest overlay crawling up the body from the feet, v 0..1 of the
+## way to the head (0 takes it off). Cosmetic, on every game.
+var _frost_mat: ShaderMaterial
+var _frosted := false
+
+func set_frost(v: float) -> void:
+	if champion or rig == null:
+		return
+	if _frost_mat == null:
+		if v <= 0.0:
+			return
+		_frost_mat = ShaderMaterial.new()
+		_frost_mat.shader = FrostVolleyFx.shader("body")
+		_frost_mat.set_shader_parameter("noise_tex", InfernalFx.noise())
+	_frost_mat.set_shader_parameter("amt", v)
+	_frost_mat.set_shader_parameter("base_y", global_position.y)
+	_frost_mat.set_shader_parameter("height", maxf(height, 0.8) * 1.8)
+	var on := v > 0.001
+	if on != _frosted:
+		_frosted = on
+		_set_flash(0.0)
 
 ## `look` names who draws the burn: "" = the Demon's ember flames (DemonFx.ignite, here and as it ticks);
 ## an arrow kind (ArrowFx.burn, the archer's own body flames) draws its own and these are skipped.

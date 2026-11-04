@@ -7,6 +7,7 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 |---|---|---|---|---|
 | anvil | 5 | Kenney Impact Sounds (kenney.nl), layered into an anvil strike | CC0 1.0 | metal impact + bell ring layered, Halvar's anvil take 1 |
 | arena_horn | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a Roman cornu war horn blast in a stone amphitheatre, a deep brassy fanfare call of two long notes, isolated sound effect, no music, no voices |
+| arrow_rain | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | many arrows whistling down out of the sky toward you, a rising rush of fletching through the air ending in a dense flurry, close mic, dry, isolated sound effect, no music |
 | battle_cry | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a medieval warrior's battle cry, one man roaring a fierce 'Haaa!' to rally his allies, close mic, dry, isolated sound effect, no music |
 | birds_flutter | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a small flock of birds suddenly taking off from a tree, a burst of flapping wings and a few startled chirps, then flying away, close mic, dry, isolated sound effect, no music |
 | blight_burst | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a poison bolt bursting on an enemy, splash of bubbling acid that sizzles, close mic, dry, isolated sound effect, no music |
@@ -55,6 +56,8 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | fire_erupt | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a ring of fire erupting from the ground, roaring whoosh of flames bursting up, close mic, dry, isolated sound effect, no music |
 | fireball | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a fireball launched, roaring burst of flame whooshing away, close mic, dry, isolated sound effect, no music |
 | forest | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a soft gentle breeze through the leaves of an old forest, branches swaying and leaves rustling softly, calm and peaceful, steady and even, no birds, no music |
+| frost_loose | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a heavy longbow string thrums and a flight of arrows whooshes steeply up into the sky, an icy airy whistle trailing off with a faint crystalline shimmer, close mic, dry, isolated sound effect, no music |
+| frost_spread | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | the ground freezing over fast, crackling and creaking ice spreading out across it, frost crystals crunching and ticking as they grow, close mic, dry, isolated sound effect, no music |
 | fuse | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a lit bomb fuse sizzling and hissing with sparks, steady, close mic, dry, isolated sound effect, no music |
 | gold | 2 | Kenney rpg-audio (kenney.nl) | CC0 1.0 | handleCoins.ogg |
 | growl | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a rotting zombie's low hungry groan, close mic, dry, isolated sound effect, no music |
@@ -67,6 +70,8 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | hull_creak | 4 | Procedural (tools/audio/make_sea.py) | CC0 1.0 (made for the game) | a small wooden boat's planks creaking in a seaway |
 | hull_slap | 3 | Procedural (tools/audio/make_sea.py) | CC0 1.0 (made for the game) | the bow dropping into a wave: a hollow thump and spray |
 | hurt | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a goblin or ghoul hit by a blade, a short ugly grunt of pain, close mic, dry, isolated sound effect, no music |
+| ice_arrow_hit | 3 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | an arrow tipped with ice thudding hard into frozen ground, a sharp crystalline crack and tiny ice splinters skittering, close mic, dry, isolated sound effect, no music |
+| ice_burst | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a field of tall ice crystals shattering all at once, a big glassy crash of breaking ice and shards raining down and tinkling across frozen ground, close mic, dry, isolated sound effect, no music |
 | ice_shatter | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a block of ice cracking and shattering into shards on stone, sharp crystalline crunch, close mic, dry, isolated sound effect, no music |
 | impact_bone | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a mace smashing into a skeleton, dry bones cracking and clattering, short, close mic, dry, isolated sound effect, no music |
 | impact_flesh | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a sword slash hitting a body, meaty wet cut with a solid thud, short and punchy, close mic, dry, isolated sound effect, no music |

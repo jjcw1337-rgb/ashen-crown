@@ -38,6 +38,18 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "arrow_rain": [
+  {
+   "detail": "many arrows whistling down out of the sky toward you, a rising rush of fletching through the air ending in a dense flurry, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "many arrows whistling down out of the sky toward you, a rising rush of fletching through the air ending in a dense flurry, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "battle_cry": [
   {
    "detail": "a medieval warrior's battle cry, one man roaring a fierce 'Haaa!' to rally his allies, close mic, dry, isolated sound effect, no music",
@@ -484,6 +496,30 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "frost_loose": [
+  {
+   "detail": "a heavy longbow string thrums and a flight of arrows whooshes steeply up into the sky, an icy airy whistle trailing off with a faint crystalline shimmer, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a heavy longbow string thrums and a flight of arrows whooshes steeply up into the sky, an icy airy whistle trailing off with a faint crystalline shimmer, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "frost_spread": [
+  {
+   "detail": "the ground freezing over fast, crackling and creaking ice spreading out across it, frost crystals crunching and ticking as they grow, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "the ground freezing over fast, crackling and creaking ice spreading out across it, frost crystals crunching and ticking as they grow, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "fuse": [
   {
    "detail": "a lit bomb fuse sizzling and hissing with sparks, steady, close mic, dry, isolated sound effect, no music",
@@ -624,6 +660,35 @@
  "hurt": [
   {
    "detail": "a goblin or ghoul hit by a blade, a short ugly grunt of pain, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "ice_arrow_hit": [
+  {
+   "detail": "an arrow tipped with ice thudding hard into frozen ground, a sharp crystalline crack and tiny ice splinters skittering, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "an arrow tipped with ice thudding hard into frozen ground, a sharp crystalline crack and tiny ice splinters skittering, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "an arrow tipped with ice thudding hard into frozen ground, a sharp crystalline crack and tiny ice splinters skittering, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "ice_burst": [
+  {
+   "detail": "a field of tall ice crystals shattering all at once, a big glassy crash of breaking ice and shards raining down and tinkling across frozen ground, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a field of tall ice crystals shattering all at once, a big glassy crash of breaking ice and shards raining down and tinkling across frozen ground, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }

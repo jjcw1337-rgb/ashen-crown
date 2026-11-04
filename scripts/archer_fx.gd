@@ -5,7 +5,8 @@ extends RefCounted
 ## snares), and Archer.update moves it on both: a puppet's arrows stop and spark on a foe but hurt nothing,
 ## its volley rains without hitting, its snares wait for the "spring" event instead of springing themselves.
 ##  the attack / Fire Arrow: "loose" {p: from, d: direction, k: "war"|"fire", x: it pierces}
-##  Frost Volley: "impact" {p: the ground, r: radius}
+##  Frost Volley: "cast" (the glacier arrow drawn, aimed high), "impact" {p: the ground, r: radius}: the flight up and
+##    the storm (FrostVolleyFx); the rain's strikes come from Archer._rain on both games
 ##  Storm Snare: "impact" {p, n: how many he may keep}, "spring" {p, r, t: the foes its lightning reaches}
 ##  Spirit Beast: "impact" {p: the point, t: [the foe] when it was sent at one, x: called home} (the command's
 ##    rings and the roar; a puppet's own wolf (Archer.keep_companions) takes the same command and only shows its bites)
@@ -17,7 +18,10 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			# the fire wakes on the cast: a low fuse under the draw, the charge (update) from here on
 			h.fxs["fire_cast"] = Time.get_ticks_msec() / 1000.0
 			ArrowFx.sounds(h, "fire", "cast")
-		["volley", "cast"], ["snare", "cast"], ["beast", "cast"]:
+		["volley", "cast"]:
+			# the volley's shot: the glacier arrow and the high aim through its draw (update), the puppet's too
+			h.fxs["volley_cast"] = Time.get_ticks_msec() / 1000.0
+		["snare", "cast"], ["beast", "cast"]:
 			pass
 		["attack", "loose"], ["pierce", "loose"]:
 			var from: Vector3 = ev["p"]
@@ -38,17 +42,8 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			var g: Vector3 = ev["p"]
 			var r: float = float(ev.get("r", Archer.VOLLEY_R))
 			h.volleys.append({"pos": g, "t": 1.3, "tick": 0.25, "r": r})
-			Fx.telegraph(root, g, r, 0.25, Archer.FROST)
-			# the flight going up
-			for k in 5:
-				var up := Archer._arrow_mesh("frost")
-				root.add_child(up)
-				var p0: Vector3 = h.global_position + Vector3(randf_range(-0.3, 0.3), 1.6, randf_range(-0.3, 0.3))
-				up.global_position = p0
-				up.look_at(p0 + Vector3(randf_range(-0.2, 0.2), 1.0, randf_range(-0.2, 0.2)), Vector3.FORWARD)
-				var tw := up.create_tween()
-				tw.tween_property(up, "global_position", p0 + Vector3(0, 9.0, 0), 0.3)
-				tw.tween_callback(up.queue_free)
+			# the flight going up out of the bow, then the storm over the mark (FrostVolleyFx)
+			FrostVolleyFx.release(h, g, r)
 		["snare", "impact"]:
 			var g: Vector3 = ev["p"]
 			var mx: int = int(ev.get("n", 2))
@@ -201,6 +196,18 @@ static func update(h: Hero, _delta: float) -> void:
 	elif h.fxs.has("draw_fire"):
 		ArrowFx.end_draw(h)
 		h.fxs.erase("draw_fire")
+	# Frost Volley's draw: the glacier arrow, the rime on it, the high aim (to the end of the shot's follow-through)
+	if sty == "bow" and a >= 0.0 and a < 1.0 and (skill == "volley" or (h.puppet and _puppet_volley(h))):
+		FrostVolleyFx.draw(h, a)
+		h.fxs["draw_volley"] = true
+	elif h.fxs.has("draw_volley"):
+		FrostVolleyFx.end_draw(h)
+		h.fxs.erase("draw_volley")
+	FrostVolleyFx.update(h, _delta)
+
+## A puppet's shot has no skill id on the wire: the volley's "cast" event marks the next shot its.
+static func _puppet_volley(h: Hero) -> bool:
+	return h.fxs.has("volley_cast") and Time.get_ticks_msec() / 1000.0 - float(h.fxs["volley_cast"]) < 2.5
 
 ## A puppet's shot has no skill id on the wire: the Fire Arrow's "cast" event marks the next shot his.
 static func _puppet_fire(h: Hero) -> bool:

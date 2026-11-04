@@ -150,6 +150,13 @@ func _run() -> void:
 			await wait(1.2)
 			check(is_equal_approx(lives(en2), l0), "%s %s: replayed on the puppet, the pack is unhurt (%d of %d)" % [cls, id, int(lives(en2)), int(l0)])
 			check(is_equal_approx(puppet.life, 50.0) and is_equal_approx(puppet.mana, 20.0), "%s %s: and the puppet's life and mana are untouched" % [cls, id])
+			# Frost Volley's storm runs ~5 s (the shatter, the thaw): let both play out, so the next skill's new nodes
+			# aren't hidden by the volley's going
+			var t_v := Time.get_ticks_msec()
+			while (h.fxs.has("frost_volleys") or puppet.fxs.has("frost_volleys")) and Time.get_ticks_msec() - t_v < 9000:
+				await wait(0.1)
+			if id == "volley":
+				await wait(1.2)
 			SkillFx.clear(puppet)
 			h.global_position = far
 			h.end_drain()

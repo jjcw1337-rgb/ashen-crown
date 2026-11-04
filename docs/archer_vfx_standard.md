@@ -102,6 +102,12 @@ and is dimmer than a GPU; judge shapes, motion and colour, then check brightness
 
 ## Adding a skill
 
+Frost Volley (`scripts/frost_volley_fx.gd`) is the second skill built to this standard, and the model for a skill that
+is not one arrow: its cold mists are Mantaflow sims (`smoke_flipbook.py` kinds `frost`, `rime`: colder than the air, so
+they sink and roll) drawn as `DemonKitFx.smoke` books, its crystals are Meshy models broken in Blender
+(`fracture_rock.py`), its ground is a Meshy-painted texture, and its stages run from one event per cast plus
+`Archer._rain`'s strikes on both games. Record it with `RANGE_SECS=6 ... fire_range.gd -- out game grass volley`.
+
 Add a preset to `ArrowFx.PRESETS` (copy `"fire"`), simulate or model what it needs (a frost sim is a smoke sim
 with cold, dense, falling vapour; lightning wants branching emissive geometry, not a sim), pack it with
 `tools/fx_flipbook.py`, give its `"loose"` event the new kind in `Archer._loose`, and record it on the range.
