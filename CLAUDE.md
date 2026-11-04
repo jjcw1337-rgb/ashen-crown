@@ -1374,9 +1374,11 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   and volumetric fog, saturation, bloom, the hero's light; night is the tuned forest-camp dusk), blended between keys.
   Lights in the `flicker` group are scaled by `Game.lamp_mul` (lanterns, candles: out by day) or `fire_mul` (meta
   `fire`: low by day); candle cores in `DayNight.LAMP_GROUP` are hidden by day. Fireflies after dark; a message at
-  dusk and dawn; the guards' rim and fill grow at night and the sentry carries a lantern (`CampGuard._night`).
+  dusk and dawn, when the camp's bed turns to `night_forest` (jj's pick of round 2: hollow wind, far wolves, an owl,
+  snapping twigs; an `Sfx.LOOPS` bed) after dark and back to the wind by day; the guards' rim and fill grow at night and the sentry carries a lantern (`CampGuard._night`).
   `Game._zone_env` enables it in the camp only (`enable(false)` puts the sun back). `-- --time 13.5` holds the hour,
-  `--day-len 120` speeds it up. `tools/daynight_shots.gd -- outdir` (contact sheets through the day, and checks).
+  `--day-len 120` speeds it up. `tools/daynight_shots.gd -- outdir` (contact sheets through the day, and checks);
+  `tools/daynight_test.gd` (headless, via `_late.gd`: lanterns, moon, the night bed and its loop).
 - **Nameplates and the trade window** (`scripts/vendor_ui.gd`): `VendorUI.Plates` (in `ui.plates`, under every
   window) floats a gold-trimmed plate with the name and trade (`VendorUI.ROLE_TITLES`) over each vendor and Varro,
   click-through, fading with distance, lit when hovered. The trade window (`UI._build_shop`, `open_shop(mode,

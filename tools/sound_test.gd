@@ -115,8 +115,9 @@ func _run() -> void:
 	var beds := {}
 	for zn in ["town", "wild", "lair"]:
 		await g.load_zone(0, zn, "start")
-		beds[zn] = [sfx.music.stream == sfx.bank["music_town"][0], sfx.ambience.stream == sfx.bank["forest"][0], sfx.ambience.stream == sfx.bank["wind"][0]]
-	print("[S] Act I beds: camp plays its song %s (wind %s); moor rustling trees %s; fort rustling trees %s" % [beds["town"][0], beds["town"][2], beds["wild"][1], beds["lair"][1]])
+		beds[zn] = [sfx.music.stream == sfx.bank["music_town"][0], sfx.ambience.stream == sfx.bank["forest"][0], sfx.ambience.stream == sfx.bank["wind"][0] \
+				or (sfx.bank.has("night_forest") and sfx.ambience.stream == sfx.bank["night_forest"][0])]
+	print("[S] Act I beds: camp plays its song %s (wind, or the night bed after dark, %s); moor rustling trees %s; fort rustling trees %s" % [beds["town"][0], beds["town"][2], beds["wild"][1], beds["lair"][1]])
 	# the New Character screen: its own theme while open, each hero's own sound when chosen, the camp's song after
 	await g.load_zone(0, "town", "start")
 	g.ui.open_class_picker()

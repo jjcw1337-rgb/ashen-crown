@@ -79,6 +79,7 @@ const BANK := {
 	"mallet": [4, "sfx", 0.0],
 	"music_select": [1, "sfx", 0.0],
 	"music_town": [1, "sfx", 0.0],
+	"night_forest": [1, "ambience", 0.0],
 	"phase_erupt": [1, "sfx", 0.0],
 	"phase_in": [1, "sfx", 0.0],
 	"pickup": [8, "ui", 0.0],
