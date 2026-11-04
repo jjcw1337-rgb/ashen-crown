@@ -9,8 +9,9 @@ benchmark of the night's result, added by the script: the scoreboard; "blocked" 
 ## Lessons (rewritten by each run: at most 8 bullets, the most useful first)
 
 - **The download is the importer's defaults.** The glb-extracted textures (`.import` git-ignored, made fresh in CI)
-  take `[importer_defaults] texture`: lossless -> WebP q0.9 (11-01, -420 MB), then a 1024 px cap and q0.75 (11-03,
-  -133 MiB) showed nowhere: a hero is ~100 px tall in play, ~300 px on the class picker. To re-import, re-extract
+  take `[importer_defaults] texture`: lossless -> WebP q0.9 (11-01, -420 MB). The 11-03 1024 px cap and q0.75 were
+  **undone by jj the same day** ("when playing on ultra there should be full everything"): full size, q0.9. Don't
+  shrink textures again (cap, quality, resize) unless an admin asks; find size and load time elsewhere. To re-import, re-extract
   (`git clean -fX assets/models && godot --headless --import`): deleting only the `.import` files loses the mipmaps.
 - **Measure the GPU, not TIME_PROCESS.** Every scene on the Mac is GPU-bound (scripts 1.5-3.5 ms, GPU 18-22 ms at
   High). `cpu_process_peak_ms` includes the wait for the GPU. The server KPI's 100 ms "hitches" are macOS throttling

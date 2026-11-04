@@ -69,3 +69,5 @@ megabytes are). Size changes must keep the look: show before/after images of any
    conventions). Do NOT push, merge or deploy: the nightly script does that after its own checks.
 
 Never print or commit credentials. Never touch `main`. Spend no Meshy or ElevenLabs credits in this phase.
+Don't lower texture size or quality (the importer's size cap, lossy quality, resizing): jj wants Ultra at full
+quality, and the import is the same for every preset (2026-11-03).

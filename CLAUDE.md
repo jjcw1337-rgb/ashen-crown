@@ -832,12 +832,11 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   build, kept as a reference; its export isn't used. Godot's `.import` files and extracted textures under
   `assets/models/` are git-ignored (regenerated on import); run `godot --headless --editor --quit` after re-exporting.
   Since those `.import` files are made fresh, the textures take `project.godot`'s `[importer_defaults] texture`:
-  **lossy WebP at quality 0.75, 3D detection off, at most 1024 px** (`process/size_limit`; the default was lossless,
-  490 MB of the old 618 MB pack; q0.9 was ~41 dB against the source JPGs, which are lossy already; q0.75 and the 1024 cap,
-  nightly 2026-11-03, took 133 MiB off the download (541 -> 409) and showed nowhere, not even the class picker's front hero or the
-  title's gate: a hero is ~100 px tall in play, so the 2048 top level was never sampled). **A new texture gets the cap
-  too**: a UI painting or anything meant to be sharper than 1024 needs `process/size_limit=0` in its committed
-  `.import`. A checkout imported before keeps its old `.import` files until they're remade; deleting only the
+  **lossy WebP at quality 0.9, 3D detection off, full size** (the default was lossless, 490 MB of the old 618 MB pack;
+  q0.9 is ~41 dB against the source JPGs, which are lossy already). The nightly of 2026-11-03 capped them at 1024 px
+  and q0.75 (541 -> 409 MiB); jj undid it the same day: "when playing on ultra there should be full everything", and
+  an import can't differ by preset, so every preset gets the full textures. A checkout imported before keeps its old
+  `.import` files until they're remade; deleting only the
   `.import` files is wrong (the textures come back without mipmaps: only the glTF importer's own extraction turns them
   on), so re-extract: `git clean -fX assets/models && godot --headless --import`. Give a new texture with a committed
   `.import` the same settings when it
