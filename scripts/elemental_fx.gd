@@ -208,10 +208,7 @@ static func frost_nova(h: Hero, root: Node3D, p: Vector3, r := 4.0) -> void:
 		tw.tween_property(c, "scale", full * Vector3(1.15, 0.05, 1.15), 0.14).set_ease(Tween.EASE_IN)
 		InfernalFx.tween_param(c, im, "alpha", 1.0, 0.0, 0.14, delay + 0.1 + hold)
 		# the shatter: fragments and glints where it stood
-		var sc := root.get_tree().create_timer(delay + 0.1 + hold, false)
-		sc.timeout.connect(func():
-			if not is_instance_valid(root):
-				return
+		Fx.later(root, delay + 0.1 + hold, func():      # (Fx.later: the zone, and root, may be gone by then)
 			InfernalFx.particles(root, at + Vector3(0, 0.5 * full.y, 0), {"amount": [4, 6, 9, 12][tr], "life": 0.6, "explosive": 1.0,
 				"shape": "sphere", "r": 0.25, "dir": Vector3.UP, "spread": 70.0, "vel": [2.0, 4.5], "gravity": -12.0,
 				"scale": [0.5, 1.1], "size": 0.06, "colors": [[0.0, ICE_PALE], [1.0, Color(ICE_DEEP, 0.0)]]}))
