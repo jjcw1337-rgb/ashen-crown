@@ -5,6 +5,7 @@
 # A test fails on any "FAIL" line, a Parse Error, or not finishing within its limit.
 set -u
 OUT=${1:-/tmp}
+mkdir -p "$OUT"
 G=/Users/blaine/Applications/Godot_v4.3.app/Contents/MacOS/Godot
 BAD=0
 
@@ -16,6 +17,7 @@ check() {  # name, log, finished-in-time
   # (a test script that doesn't compile at all prints "Failed to load script" and no result lines, not "Parse
   # Error": that's a red too, or a broken test reads as green, as playtest did until 2026-11-02. Many tests print a
   # "Compile Error ... Sfx" for a class they reference before the autoload exists and still run: those aren't red.)
+  if [ ! -s "$log" ]; then echo "RED   $name (no log at $log)"; BAD=1; return; fi
   f=$(grep -c 'FAIL' "$log"); e=$(grep -c 'Parse Error' "$log")
   if [ "$(grep -c '^\[' "$log")" = 0 ] && grep -q 'Failed to load script' "$log"; then e=$((e + 1)); fi
   if [ "$ok" != 0 ] || [ "$f" -gt 0 ] || [ "$e" -gt 0 ]; then
