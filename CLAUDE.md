@@ -1348,6 +1348,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   (jj, 2026-11-03). The two guardian statues stand wider apart outside the waypoint wall, with just two
   flags set farther back (18 m between statues; 11 m between flags, 6 m behind the statues);
   their collision positions share the placement constants in `WaypointGrand`.
+  New characters enter at (0, 17) on a clear southern approach to walk into the square;
+  the `new_player` spawn is separate from Continue, portals and waypoint arrivals.
   The small cooking fire at the southern edge retains item burning. Everything is Meshy (concept image, then image-to-3D),
   prepared in Blender: props by `tools/blender/prep_prop.py` into `assets/models/camp/`, trees by `prep_tree.py`. The
   lantern and the palisade section were re-made in the visual overhaul (2026-11-02: new Meshy models re-baked onto

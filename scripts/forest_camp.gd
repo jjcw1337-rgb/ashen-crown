@@ -13,6 +13,7 @@ const CENTER := Vector2(0, -2)
 const WP_AT := Vector3(3.5, 0, -5) # replaces the central bonfire (jj, 2026-11-03)
 const WP_CLEAR := 8.5 # open ground beyond the dais, wall and fire bowls
 const COOKFIRE_AT := Vector2(2.5, 12.5)
+const NEW_PLAYER_AT := Vector3(0, 0, 17) # enter the square from its southern approach
 ## `-- --old-waypoint` shows the old stone instead (before/after shots).
 static func grand_waypoint() -> bool:
 	return not OS.get_cmdline_user_args().has("--old-waypoint")
@@ -125,7 +126,9 @@ static func build(w: World) -> void:
 	w.dirt_lines = [[Vector2(0, gate_z - 9), Vector2(0, -18), 3.2],
 		[Vector2(0, -18), Vector2(-5.5, -11), 2.4], [Vector2(-5.5, -11), Vector2(-5.5, 2), 2.4],
 		[Vector2(0, -18), Vector2(12.5, -10), 2.4], [Vector2(12.5, -10), Vector2(12.5, 2), 2.4],
-		[Vector2(-5.5, 2), Vector2(12.5, 2), 2.8]]
+		[Vector2(-5.5, 2), Vector2(12.5, 2), 2.8],
+		[Vector2(NEW_PLAYER_AT.x, NEW_PLAYER_AT.z), Vector2(0, 6), 1.8],
+		[Vector2(0, 6), Vector2(WP_AT.x, 2), 2.0]]
 	for s in SHOPS:
 		var p: Vector2 = s["at"]
 		w.dirt_blobs.append([p, 5.2, 1.0])
@@ -387,6 +390,7 @@ static func build(w: World) -> void:
 	w._scatter_grass(24000, FOREST_GRASS, 0.26)
 	w._scatter_ferns(380)
 	w.spawns["start"] = Vector3(0, 0, 5)
+	w.spawns["new_player"] = NEW_PLAYER_AT
 	w.spawns["from_wild"] = Vector3(0, 0, gate_z + 4.5)
 	w.spawns["from_coast"] = Vector3(-RADIUS + 4.5, 0, CENTER.y)
 	w.spawns["portal"] = Vector3(4, 0, 8)

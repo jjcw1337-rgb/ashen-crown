@@ -1606,7 +1606,7 @@ func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
 		tp_link = {}
 		if dev_tools:
 			max_run = 2
-		await load_zone(0, "town", "start")
+		await load_zone(0, "town", "new_player")
 		ui.open_dialog(Data.VENDORS[0]["elder"], "Welcome to the Forsaken Wilds, %s. Since the goblin king Grubb tunnelled into the old crypt to loot the dead, the dead walk Cairnfell Moor and the Fallen raid our roads. He sits on a mountain of stolen gold down there and calls himself king. Trade with our folk, then head out through the north gate. End him, and the moor may yet heal." % ("restless one" if hero.is_wraith() else ("pact-bound one" if hero.is_warlock() else "crusader")), [["I will", func(): pass]])
 	ui.refresh()
 
