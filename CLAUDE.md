@@ -1706,3 +1706,28 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 - **Preview builds**: push a branch named `test-*` (`git push origin HEAD:test-something`) and
   `.github/workflows/preview.yml` builds the Windows, Linux and Mac versions as downloads on that Actions run
   (Artifacts, kept 7 days) without publishing anything. Use it to let a partner play a change before it goes to main.
+
+## Waypoint activity catalogue (JJ, 2026-11-03)
+
+The existing waypoint frame, banners, sigils and Acts route remain. PvE cards include the Last Flame,
+coast, islands (derived from `Isles.ISLANDS`/builders), and each registered act's dungeon. Shipped builds
+also offer Online Co-op using their configured server and the current character. Act and discovery
+locks remain; islands retain their level requirement. Zone journeys use the existing party ready check.
+Cross-act co-op activities ask the party to switch acts first.
+
+Register additional zone activities in `Data.WAYPOINT_ACTIVITIES` with a stable `id`, `name`, `group`
+(`pve` or `daily`), `route: zone`, `run`, `zone`, `spawn`, and optional `description`, `kind`, `level`.
+Use `enabled: false` or remove an entry to withdraw it. `starts_at` (inclusive) / `ends_at` (exclusive)
+are UTC Unix seconds; a daily is a scheduled entry targeting implemented content, not a new reward
+or quest system. Empty categories hide. The panel refreshes availability and locks while open, and
+Game rechecks the current entry when clicked. Unknown zones/builders are not offered; a new zone
+needs its actual World builder and inclusion in `waypoint_activity_valid`, never new menu layout code.
+
+Existing extraction raids remain in `Data.WAYPOINT_BATTLEGROUNDS`; IDs are now checked instead of
+ignored. The crypt uses the build's raid allocation address. Additional extraction raids must provide
+an explicit `address`; other PvP rulesets require their gameplay/connection handler before registration.
+This is build-local content configuration, not a remote live-ops service. Unimplemented daily content
+and development-only sandboxes are not advertised as playable destinations.
+
+Validation: `tools/waypoint_activities_test.gd` uses the real renderer, checks catalogue changes,
+locks and expired entries, renders the menus, and visits each registered PvE zone and its arrival.
