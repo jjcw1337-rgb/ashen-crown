@@ -291,6 +291,20 @@ SPEC = [
          prompt="dark fantasy forest at night ambience, low hollow wind through dead branches, distant wolf howl "
                 "far away, an owl, sparse crickets, twigs snapping somewhere in the dark, ominous and lonely but "
                 "quiet, realistic recording, no music, no voices"),
+    # jj: five unique nights rotating, one a night (DayNight.night_take): the wolves, deep woods, summer, + two of these
+    dict(name="night_bog", src="eleven", n=4, dur=22.0, hit=0, loop=True, label="frogs in a forest bog at night",
+         prompt="field recording of a marsh in a dark forest at night, many frogs and toads croaking in the reeds, "
+                "water lapping softly, a few crickets, a bittern booming far away, damp and alive, no music, no voices"),
+    dict(name="night_gale", src="eleven", n=4, dur=22.0, hit=0, loop=True, label="a gale through the forest at night",
+         prompt="realistic recording of strong gusty wind at night in an old forest, gusts roaring through the "
+                "treetops and dying away, big branches creaking and groaning, leaves rushing, no rain, no music, no voices"),
+    dict(name="night_thunder", src="eleven", n=4, dur=22.0, hit=0, loop=True, label="a storm far off at night",
+         prompt="field recording of a forest at night with a thunderstorm far away over the hills, low distant "
+                "thunder rolling now and then, warm wind rising in the trees, a few crickets, no rain, no music, no voices"),
+    dict(name="night_fox", src="eleven", n=4, dur=22.0, hit=0, loop=True, label="a still frosty night, a fox crying",
+         prompt="a very still cold frosty night in a forest, almost silent, a red fox screaming far away now and "
+                "then, a tawny owl answering, twigs cracking in the frost, faint breeze, realistic recording, no music, "
+                "no voices"),
     dict(name="drip", src="eleven", n=3, dur=8.0, hit=0, loop=True, label="water dripping in a cave",
          prompt_b="water dripping slowly in a stone dungeon, soft drips and quiet cave air, steady, no music",
          prompt="a damp stone crypt, slow water drips echoing, faint distant wind, no music"),

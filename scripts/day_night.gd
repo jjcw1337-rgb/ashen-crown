@@ -63,7 +63,9 @@ var on := false
 var hour := 20.6                 # 0..24
 var night := 1.0                 # 0 by day .. 1 at night (lanterns, fireflies, the guards' night rounds)
 var moon_up := false             # the light is the moon
-var fixed := -1.0                # --time
+var fixed := -1.0                # --time, or the admin panel's hour (-1 = the wall clock)
+var pace := 0.0                  # the hand-set hour runs on at this many times the day's pace (0 = held)
+var night_shift := 0             # the admin panel's step through the night beds (this game only)
 var day_len := DAY_LEN
 var _was_night := -1
 var _flies: GPUParticles3D = null
@@ -71,6 +73,7 @@ var _lit := true
 var _lamps_t := 0.0
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS     # the admin panel sets the hour from the pause menu: show it behind
 	var a := OS.get_cmdline_user_args()
 	var i := a.find("--time")
 	if i >= 0 and i + 1 < a.size():
@@ -102,8 +105,40 @@ func enable(yes: bool) -> void:
 	update(0.0)
 
 func _process(delta: float) -> void:
+	if fixed >= 0.0 and pace > 0.0:
+		fixed = fposmod(fixed + delta * 24.0 / day_len * pace, 24.0)
 	if on:
 		update(delta)
+
+## The admin panel's clock (this game only; partners keep the wall clock): hold the camp at an hour, or let it run
+## on from there at `p` times the day's pace. A pace below 0 keeps the one it has.
+func set_hour(h: float, p := -1.0) -> void:
+	fixed = fposmod(h, 24.0)
+	if p >= 0.0:
+		pace = p
+	if on:
+		update(0.0)
+
+## Which night this is, counted on the wall clock from one sunset to the next, so every game in a party hears the
+## same night's bed (jj: five unique nights, one each night in turn; `night_forest` takes 0..4).
+func night_number() -> int:
+	return int(floor((Time.get_unix_time_from_system() / day_len * 24.0 - SUNSET) / 24.0))
+
+func night_take() -> int:
+	return posmod(night_number() + night_shift, maxi(1, (Sfx.bank.get("night_forest", [null]) as Array).size()))
+
+## The admin panel's "Next night's sounds": step this game on to the next bed (and play it, if it's dark).
+func next_night_bed() -> void:
+	night_shift += 1
+	if on and night > 0.5:
+		Sfx.play_music("town", "night_forest", night_take())
+
+## Back to the wall clock, the hour every game shares.
+func live() -> void:
+	fixed = -1.0
+	pace = 0.0
+	if on:
+		update(0.0)
 
 ## Everything at the hour now: the sky, the light and its direction, the mist and the lamps.
 func update(delta: float) -> void:
@@ -172,8 +207,8 @@ func update(delta: float) -> void:
 func _announce() -> void:
 	var n := 1 if night > 0.5 else 0
 	if n != _was_night and Sfx.bank.has("night_forest"):
-		# the bed under the camp: crickets and the owl after dark, the wind by day
-		Sfx.play_music("town", "night_forest" if n == 1 else "")
+		# the bed under the camp: tonight's night sounds after dark (a different one each night), the wind by day
+		Sfx.play_music("town", "night_forest" if n == 1 else "", night_take())
 	if _was_night >= 0 and n != _was_night and game.ui != null:
 		game.ui.message("Night falls over the camp." if n == 1 else "Dawn breaks over the old forest.", Color(0.75, 0.82, 1.0) if n == 1 else Color(1.0, 0.85, 0.6))
 	_was_night = n

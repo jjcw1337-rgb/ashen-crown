@@ -152,6 +152,7 @@ var boss_bar: ProgressBar
 var boss_lbl: Label
 var boss_ref = null
 var minimap: Control
+var day_clock: DayClock              # the camp's hour on the corner map's ring
 var show_fps := false
 
 func setup(g: Node) -> void:
@@ -740,6 +741,17 @@ func _build_hud() -> void:
 	minimap.offset_bottom = 252
 	minimap.set_big(false)
 	hud.add_child(minimap)
+	# the camp's hour (DayNight), a small dial on the corner map's ring at its lower left
+	day_clock = DayClock.new()
+	day_clock.game = game
+	day_clock.font = font_title
+	day_clock.anchor_left = 1.0
+	day_clock.anchor_right = 1.0
+	day_clock.offset_left = -225
+	day_clock.offset_right = -173
+	day_clock.offset_top = 195
+	day_clock.offset_bottom = 247
+	hud.add_child(day_clock)
 	quest_tracker = VBoxContainer.new()
 	quest_tracker.anchor_left = 1.0
 	quest_tracker.anchor_right = 1.0
@@ -3717,6 +3729,63 @@ func _build_admin(parent: Control) -> VBoxContainer:
 			message(nm + (" ON" if game.get(key) else " off"), Color(0.6, 1.0, 0.6) if game.get(key) else Color(0.8, 0.8, 0.8)))
 		syncs.append(sync)
 		vb.add_child(b)
+	# the camp's hour (DayNight): jump to a time, drag to any hour, hold it or run it fast, or back to the shared clock
+	var tod := VBoxContainer.new()
+	tod.add_theme_constant_override("separation", 4)
+	var tl := _label("", 14, Color(0.75, 0.82, 1.0))
+	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tod.add_child(tl)
+	var trow := HBoxContainer.new()
+	trow.add_theme_constant_override("separation", 4)
+	trow.alignment = BoxContainer.ALIGNMENT_CENTER
+	for at in [[6.3, "Dawn"], [13.0, "Noon"], [19.3, "Dusk"], [0.0, "Midnight"]]:
+		var h: float = at[0]
+		var tb := _iron_button(at[1], 83, 34, 14)
+		tb.pressed.connect(func(): game.day_night.set_hour(h, 0.0 if game.day_night.fixed < 0.0 else -1.0))
+		trow.add_child(tb)
+	tod.add_child(trow)
+	var slider := HSlider.new()
+	slider.min_value = 0.0
+	slider.max_value = 24.0
+	slider.step = 0.25
+	slider.custom_minimum_size = Vector2(340, 22)
+	slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	slider.value_changed.connect(func(v: float): game.day_night.set_hour(v, 0.0 if game.day_night.fixed < 0.0 else -1.0))
+	tod.add_child(slider)
+	var prow := HBoxContainer.new()
+	prow.add_theme_constant_override("separation", 4)
+	prow.alignment = BoxContainer.ALIGNMENT_CENTER
+	for pc in [[0.0, "Hold"], [1.0, "Run"], [30.0, "Fast 30x"], [-1.0, "Live clock"]]:
+		var p: float = pc[0]
+		var pb := _iron_button(pc[1], 83, 34, 14)
+		pb.pressed.connect(func():
+			var dn: DayNight = game.day_night
+			if p < 0.0:
+				dn.live()
+			else:
+				dn.set_hour(dn.hour, p))
+		prow.add_child(pb)
+	tod.add_child(prow)
+	var nb := _iron_button("Next night's sounds", 340, 32, 14)
+	nb.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	nb.pressed.connect(func(): game.day_night.next_night_bed())
+	tod.add_child(nb)
+	vb.add_child(tod)
+	var tick := Timer.new()             # the hour runs on under the pause menu: keep the label and slider with it
+	tick.wait_time = 0.2
+	tick.process_mode = Node.PROCESS_MODE_ALWAYS
+	tick.timeout.connect(func():
+		var dn: DayNight = game.day_night
+		if not vb.visible or dn == null:
+			return
+		var h := dn.clock()
+		var mode := "live clock (everyone's)" if dn.fixed < 0.0 else ("held, your screen only" if dn.pace <= 0.0 else "running %sx, your screen only" % str(snappedf(dn.pace, 0.1)))
+		var beds: int = (Sfx.bank.get("night_forest", []) as Array).size()
+		tl.text = "Time of day  %02d:%02d  ·  %s\nnight sounds %d of %d%s" % [int(h), int(fmod(h, 1.0) * 60.0), mode, dn.night_take() + 1, beds, "" if dn.on else "  (the Act I camp only)"]
+		if not slider.has_focus() or dn.pace > 0.0 or dn.fixed < 0.0:
+			slider.set_value_no_signal(h))
+	tick.autostart = true
+	vb.add_child(tick)
 	# the level: pick a number and press Set
 	var lv := HBoxContainer.new()
 	lv.add_theme_constant_override("separation", 8)

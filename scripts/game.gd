@@ -450,9 +450,10 @@ func zone_music() -> void:
 	if world.sea:
 		Sfx.play_music("wild", "surf")      # the coast and the islands: surf on the beaches (Game._sea_sounds fades it)
 		return
-	# the camp after dark: crickets and the owl (DayNight), once the bed exists
+	# the camp after dark: tonight's night bed (DayNight, one of five in turn), once the bed exists
 	var night_bed := cur_zone == "town" and day_night != null and day_night.on and day_night.night > 0.5
-	Sfx.play_music("fort" if cur_zone == "lair" and world.fort else cur_zone, "forest" if world.oak_forest and cur_zone != "town" and not indoor() else ("night_forest" if night_bed else ""))
+	Sfx.play_music("fort" if cur_zone == "lair" and world.fort else cur_zone, "forest" if world.oak_forest and cur_zone != "town" and not indoor() else ("night_forest" if night_bed else ""),
+			day_night.night_take() if night_bed else 0)
 
 ## In a sea zone the surf bed follows the shore: full on the beach, fading inland and out at sea (the boat's
 ## own `sea` bed takes over out there, BoatRide._sounds).

@@ -209,7 +209,8 @@ func start_loop(nm: String, vol := 0.0, pitch := 1.0) -> AudioStreamPlayer:
 
 ## The zone's music and its ambience bed (wind outdoors, drips in the crypt; `amb` picks another, like
 ## Act I's forest rustle outside the camp).
-func play_music(kind: String, amb_over := "") -> void:
+## `amb_take` picks which take of the bed plays (the camp's nights rotate theirs, DayNight.night_take).
+func play_music(kind: String, amb_over := "", amb_take := 0) -> void:
 	var key := "music_" + kind
 	# a recorded song where there is one (the campsite's piano), else the old synthesized drone
 	var song: AudioStream = bank[key][0] if bank.has(key) else null
@@ -224,7 +225,7 @@ func play_music(kind: String, amb_over := "") -> void:
 		if not muted:
 			music.play()
 	var amb := amb_over if amb_over != "" and bank.has(amb_over) else ("wind" if kind != "lair" else "drip")
-	var amb_st: AudioStream = bank[amb][0] if bank.has(amb) else streams.get(amb)
+	var amb_st: AudioStream = bank[amb][posmod(amb_take, (bank[amb] as Array).size())] if bank.has(amb) else streams.get(amb)
 	if ambience.stream != amb_st:
 		ambience.stream = amb_st
 		# the recorded beds are levelled already; the old synthesized ones need pulling down
