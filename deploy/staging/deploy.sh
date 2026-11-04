@@ -64,7 +64,13 @@ git -C "$ROOT" archive --format=tar HEAD | ssh "$HOST" "set -e
   sudo tar -xf - -C \$S/releases/$REL.tmp
   echo $REV | sudo tee \$S/releases/$REL.tmp/DEPLOYED_REV > /dev/null
   sudo chown -R ashen:ashen \$S/releases/$REL.tmp
-  sudo -u ashen /opt/ashen-crown/godot/godot --headless --path \$S/releases/$REL.tmp --import > /tmp/ashen-import.log 2>&1 || true
+  # the import never starves the live servers (2026-11-03: a full import on the 2-CPU droplet took it down, load 39):
+  # it starts from the live release's cache, so only what changed is imported, and runs last in line for the CPU
+  # with a memory cap (a capped import is killed, never the game servers; the release then imports what's left
+  # when it starts)
+  if [ -d \$S/game/.godot ]; then sudo cp -a \$S/game/.godot \$S/releases/$REL.tmp/; fi
+  sudo systemd-run --scope -q -p MemoryMax=1200M -p CPUQuota=70% --uid=ashen --gid=ashen \\
+    nice -n 19 ionice -c3 /opt/ashen-crown/godot/godot --headless --path \$S/releases/$REL.tmp --import > /tmp/ashen-import.log 2>&1 || true
   sudo mv \$S/releases/$REL.tmp \$S/releases/$REL
   sudo ln -sfn \$S/releases/$REL \$S/game.next && sudo mv -Tf \$S/game.next \$S/game
   sudo systemctl daemon-reload
