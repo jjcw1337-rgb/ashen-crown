@@ -4,6 +4,9 @@
 # Re-run to update.
 #   bash tools/audit/install.sh
 set -eu
+# Blaine turned the audit off on 2026-11-03 ("i dont think they are helping"): the job is unloaded and its plist
+# moved to ~/Library/LaunchAgents/disabled. Pass --force to install it again.
+if [ "${1:-}" != "--force" ]; then echo "audit is off (Blaine, 2026-11-03); pass --force to reinstall"; exit 0; fi
 HERE=$(cd "$(dirname "$0")" && pwd)
 RUNNER=/Users/blaine/dev/ashen-crown-nightly-runner
 P=/Users/blaine/Library/LaunchAgents/com.gamefactory.ashen-audit.plist
