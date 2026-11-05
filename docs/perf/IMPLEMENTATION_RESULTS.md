@@ -14,6 +14,9 @@ The candidate integrates Claude's committed lean-server and lobby-capacity work 
   timeouts, concurrent engine processes, FPS/stall/load/RAM/VRAM regression and mismatched settings.
 - Complete combat catalog: all 278 roots loaded through the background loader, zero failed/pending roots
   and zero synchronous misses, clean headless log. This includes actual imported models and textures.
+- Downloaded Mac preview (5b8f8d7, CI 42119100000), running its packaged executable/PCK: all 278
+  combat roots discovered and loaded, zero pending/failed roots, zero synchronous misses and a clean
+  runtime log. Confirms export remapping, separately from source/import-cache tests.
 - Integrated lobby service: 49 Python tests pass.
 - Real local six-client 3v3, repeated after the lean-server integration and the final resource-lifetime change: 36 assertions, round/result/return-home checks;
   no script/parse failures, but known Godot 4.3 headless dummy null-mesh errors remain. Not an error-free run.
@@ -21,7 +24,7 @@ The candidate integrates Claude's committed lean-server and lobby-capacity work 
   passed, all exits zero, rendered client log clean and arena screenshot inspected. The other clients/worker
   had only known dummy null-mesh errors (1,049 total). An earlier fixture omitted `current_scene`, causing
   an Archer warmup error; the fixture was corrected to match normal startup and the full match rerun.
-- Windows, Linux and Mac preview exports passed in [CI 42119100000](https://github.com/jjcw1337-rgb/ashen-crown/actions/runs/42119100000),
+- Windows, Linux and Mac final preview exports and Linux catalog-loading contracts passed in [CI 42121186507](https://github.com/jjcw1337-rgb/ashen-crown/actions/runs/42121186507),
   with no actual script/parse/export error lines.
 - Synchronous vs scheduled construction: town, moor, coast and Verdant Isle preserve grass buffer hashes,
   spawns, obstacles and interactables. Known headless dummy null-mesh errors remain. No RNG-order change accepted.
@@ -53,7 +56,9 @@ helps first-use behavior; this does **not** establish that all-class warmup meet
 The catalog was then corrected to declare the summoned wolf directly and to remove unrelated outdoor/Roman
 scenery from the PvP hall. A clean rendered check of that revision had zero observed gameplay cache misses and
 reported 2,894 MB video memory. Another Godot process started during this check; its timing/FPS is excluded from
-controlled comparison. Further quiet repeats are pending a quiet window on the shared Mac; other agents' processes are left untouched.
+controlled comparison. Further quiet repeats remain blocked by other agents' Godot runs on the shared Mac. Two bounded attempts
+to obtain a quiet window expired; those processes were left untouched. A separate attempt was deliberately
+stopped because the Mac artifact download overlapped it; that attempt is also excluded.
 The complete user-flow results are below.
 
 Compact pilot evidence: [implementation-pvp-pilot.json](evidence/implementation-pvp-pilot.json).
@@ -89,3 +94,6 @@ monolithic world/minimap sections, session-long legacy/material pins and the cos
 online class. Full suite certification, all class combinations, Windows/Linux GPU runs and long memory soaks
 remain required. Existing synchronous fallbacks are counted, not silently declared impossible. The six-actor
 burst is presentation replay; actual network gameplay correctness is tested separately.
+
+Final check summary: [implementation-verification.json](evidence/implementation-verification.json).
+Temporary local overrides were removed; all own clients, workers and test broker exited. No shared import caches were modified.
