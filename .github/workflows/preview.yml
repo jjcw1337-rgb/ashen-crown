@@ -24,6 +24,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify lobby lifecycle and item settlement
+        run: python3 -m unittest discover -s deploy/lobbies -v
+
       - name: Stamp preview protocol revision
         run: |
           revision=$(printf '%s' "$GITHUB_SHA" | cut -c1-7)

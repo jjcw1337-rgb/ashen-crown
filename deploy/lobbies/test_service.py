@@ -16,6 +16,12 @@ class LobbyTests(unittest.TestCase):
   for uid in self.m.rooms[r['id']]['members']:self.act(uid,r,'ready',ready=True)
   return r
  def test_waiting_is_lightweight(self):self.create();self.assertEqual(self.started,[])
+ def test_terminal_worker_gets_bounded_shutdown_grace(self):
+  r=self.pair();self.act('a',r,'start');live=self.m.rooms[r['id']]
+  self.m.worker(r['id'],live['worker_key'],'state',{'state':'finished','winner':0})
+  self.now+=20;self.m.sweep();self.assertEqual(self.stopped,[])
+  self.now+=11;self.m.sweep();self.assertEqual(self.stopped,[r['id']])
+  self.m.sweep();self.assertEqual(self.stopped,[r['id']])
  def test_owner_start_only(self):
   r=self.pair()
   with self.assertRaises(Rejected):self.act('1',r,'start')

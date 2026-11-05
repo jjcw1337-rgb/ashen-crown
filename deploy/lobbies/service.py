@@ -185,6 +185,9 @@ class Lobbies:
                 r['state']='aborted';r['reason']='Match server stopped responding.';self.settle(r,-1);self.stop(r['id'])
             elif r['state'] in ('starting','playing') and now-r.get('started',now)>(180 if r['state']=='starting' else 7200):
                 r['state']='aborted';r['reason']='Match timed out.';self.settle(r,-1);self.stop(r['id'])
+            elif r['state'] in ('finished','aborted') and not r.get('retired',False) and now-r.get('touched',now)>30:
+                # A stuck renderer/shutdown must not hold the only game port indefinitely.
+                r['retired']=True;self.stop(r['id'])
 
 class Service:
     def __init__(self,args):

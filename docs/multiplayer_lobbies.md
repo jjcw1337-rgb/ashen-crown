@@ -53,7 +53,9 @@ inventory ownership and combat validation, not just more lobby processes.
 This is the DigitalOcean droplet, not Dropbox. The existing deployed setup runs persistent Godot BG
 and co-op worlds beside Nakama/Postgres and monitoring. On 2026-11-05 at 00:56 UTC the 4 GB / 2 vCPU
 host had about 688 MB available RAM and 893 MB swap in use. Three Godot processes were observed; this
-change did not stop or alter them. The existing host was **not** already configured to allocate one
+change did not stop or alter them. A later read-only check at 01:58 UTC showed ~1708 MB available,
+but all 2047 MB of swap in use, load 2.11, and three Godot processes still running. Available RAM
+alone is not evidence of safe additional capacity. The existing host was **not** already configured to allocate one
 independent process per user-created lobby.
 
 The new lightweight Python service authenticates existing Nakama sessions, stores lobby state and
@@ -80,7 +82,8 @@ store lobbies. Several simultaneous full worlds are not verified to fit the curr
    preview export (executable plus PCK) or a fully imported Linux release prepared in CI.
    For an exported build, point `--godot` at its Linux executable, keep its PCK alongside it, and
    place a `DEPLOYED_REV` file containing the same seven-character build revision in `--game`.
-   Keep the previous release for rollback. Client and worker Net RPC signatures must match. The manager pins its release path and checks
+   Keep the previous release for rollback. Client and worker Net RPC signatures must match, including
+   the existing co-op server if these clients use Co-op. The manager pins its release path and checks
    client build revisions before admitting new lobby entries; restart it deliberately for a new release.
 2. Verify the actual deployment user, Godot binary, release path, Nakama loopback port and existing
    services before installing `deploy/lobbies/ashen-crown-lobbies.service`; it is a template.
@@ -128,3 +131,10 @@ godot --path . --script tools/lobby_modes_test.gd
 
 The network tests create disposable heroes in separate test directories. Review **all** client and
 worker logs for runtime/parse errors and shutdown warnings, not just assertion totals.
+
+Godot 4.3's dummy renderer still reports `mesh_get_surface_count: Parameter "m" is null` while
+creating/freeing mesh scenes in headless runs. This matches the upstream
+[confirmed headless mesh issue](https://github.com/godotengine/godot/issues/86806); these runs are
+not clean error-free passes. The separate BG scenery leak (instantiating props before rejecting
+placement) and headless icon renderer awaiting a nonexistent draw frame are fixed here. An engine
+upgrade is outside this change and would need its own compatibility/visual validation.
