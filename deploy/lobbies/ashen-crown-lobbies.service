@@ -1,0 +1,29 @@
+[Unit]
+Description=Ashen Crown on-demand multiplayer lobbies
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ashen
+Group=ashen
+WorkingDirectory=/opt/ashen-crown/staging/game
+EnvironmentFile=/opt/ashen-crown/staging/bg.env
+# Deploy an imported Linux release here. Never run Godot's importer on the live host.
+ExecStart=/usr/bin/python3 /opt/ashen-crown/staging/game/deploy/lobbies/service.py --state /var/lib/ashen-lobbies --game /opt/ashen-crown/staging/game --godot /opt/ashen-crown/godot/godot --public-host 161.35.185.195 --first-port 24600 --slots 1 --min-free-mb 1500
+StateDirectory=ashen-lobbies
+UMask=0077
+Restart=on-failure
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=15
+MemoryHigh=1400M
+MemoryMax=1800M
+MemorySwapMax=256M
+CPUQuota=150%
+Nice=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

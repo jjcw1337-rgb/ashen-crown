@@ -4262,6 +4262,9 @@ func _build_battlegrounds() -> void:
 
 ## The Battlegrounds' own page over the title (BgPage), with the character that went in last.
 func open_battlegrounds() -> void:
+	if game.lobby_client != null:
+		game.lobby_client.open("battlegrounds")
+		return
 	join_panel.visible = false
 	if bg_page != null and title_panel.visible:
 		bg_page.open()
@@ -5218,6 +5221,10 @@ func show_victory(diff: int) -> void:
 	victory_panel.visible = true
 
 func _unhandled_key_input(ev: InputEvent) -> void:
+	if game and game.lobby_client != null and game.lobby_client.panel.visible and ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE:
+		game.lobby_client.panel.hide()
+		get_viewport().set_input_as_handled()
+		return
 	if game and game.paused and ev is InputEventKey and ev.pressed and not ev.echo and ev.keycode == KEY_ESCAPE:
 		game.toggle_pause()
 		get_viewport().set_input_as_handled()
@@ -5256,6 +5263,9 @@ func _walked_off() -> void:
 
 func close_all() -> bool:
 	var any := close_skill_picker()
+	if game.lobby_client != null and game.lobby_client.panel.visible:
+		game.lobby_client.panel.hide()
+		any = true
 	for p in [inv_panel, char_panel, shop_panel, stash_panel, burn_panel, furnace_ui, wp_panel, dialog_panel, ench_panel, skills_panel, talent_panel, quest_panel, boat_panel]:
 		if p.visible:
 			p.visible = false
@@ -5267,10 +5277,10 @@ func close_all() -> bool:
 ## The title with nothing open over it (no class picker, character list, co-op or Battlegrounds screen).
 func title_idle() -> bool:
 	return title_panel.visible and not (class_panel != null and class_panel.visible) and not (chars_panel != null and chars_panel.visible) \
-		and not join_panel.visible and not bg_panel.visible and not (bg_page != null and bg_page.visible)
+		and not join_panel.visible and not bg_panel.visible and not (bg_page != null and bg_page.visible) and not (game.lobby_client != null and game.lobby_client.panel.visible)
 
 func any_panel_open() -> bool:
-	return inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or furnace_ui.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible or quest_panel.visible or boat_panel.visible
+	return (game.lobby_client != null and game.lobby_client.panel.visible) or inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or furnace_ui.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible or quest_panel.visible or boat_panel.visible
 
 func message(t: String, col := Color(1, 1, 1), dur := 2.5) -> void:
 	msg_lbl.text = t

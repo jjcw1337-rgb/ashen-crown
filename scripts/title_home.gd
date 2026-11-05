@@ -20,8 +20,9 @@ const LEFT_W := 360.0            # the left column's width
 const BOARD_TOP := 168.0         # the hall's top (under the env badge, level with the title's subtitle)
 const BG_H := 196.0              # the Battlegrounds card's height
 const QUIT_H := 50.0
-const MODES := [["story", "Story"], ["online", "Online Co-op"], ["lan", "LAN"]]
+const MODES := [["story", "Single Player"], ["online", "Co-op"], ["multiplayer", "Multiplayer"]]
 const NOTE := {"story": "Your journey through the acts, alone.",
+	"multiplayer": "Battlegrounds, endless waves and team arena lobbies.",
 	"online": "Find a co-op party while you keep playing solo.", "lan": "Host a game, or join one on your network."}
 
 var ui
@@ -33,6 +34,7 @@ var _count: Label
 var _modes := {}
 var _play: Button
 var _join: Button
+var _lan_row: HBoxContainer
 var _note: Label
 var _status: Label
 var _bg_card: Button
@@ -161,9 +163,7 @@ func _build_play() -> void:
 	row.add_theme_constant_override("separation", 6)
 	box.add_child(row)
 	for m in MODES:
-		if m[0] == "online" and BuildEnv.env() == "local":
-			continue           # (the co-op server is the staging/production builds')
-		if m[0] in ["bg", "online", "lan"] and OS.has_feature("web"):
+		if m[0] in ["multiplayer", "online"] and OS.has_feature("web"):
 			continue           # (no raw UDP in a browser)
 		var b: Button = ui._iron_button(m[1], 160, 42, 17)
 		b.toggle_mode = true
@@ -193,7 +193,15 @@ func _build_play() -> void:
 	_join = ui._iron_button("Join LAN", 160, 68, 24)
 	_join.pressed.connect(func(): ui.open_join())
 	_join.visible = false
-	prow.add_child(_join)
+	_lan_row = HBoxContainer.new()
+	_lan_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_lan_row.add_theme_constant_override("separation", 10)
+	box.add_child(_lan_row)
+	var host = ui._iron_button("Host LAN", 200, 44, 18)
+	host.pressed.connect(func(): if sel != "": game.start_host(sel))
+	_lan_row.add_child(host)
+	_join.custom_minimum_size = Vector2(200,44)
+	_lan_row.add_child(_join)
 	_note = ui._label("", 16, Color(0.78, 0.72, 0.64))
 	_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_note)
@@ -314,8 +322,9 @@ func _update() -> void:
 	var none := sel == ""
 	_play.disabled = none
 	_join.disabled = none
-	_play.text = {"story": "Continue Story", "online": "Find Party", "lan": "Host LAN"}.get(mode, "Play")
-	_join.visible = mode == "lan"
+	_play.text = {"story": "Continue Story", "online": "Find Party", "multiplayer": "Browse Lobbies", "lan": "Host LAN"}.get(mode, "Play")
+	_lan_row.visible = mode == "online"
+	_join.visible = mode == "online"
 	_note.text = "Create a character to begin." if none else NOTE.get(mode, "")
 
 func _process(delta: float) -> void:
@@ -324,7 +333,8 @@ func _process(delta: float) -> void:
 	visible = not ((ui.class_panel != null and ui.class_panel.visible)
 		or (ui.chars_panel != null and ui.chars_panel.visible)
 		or (ui.bg_page != null and ui.bg_page.visible)
-		or (ui.join_panel != null and ui.join_panel.visible))
+		or (ui.join_panel != null and ui.join_panel.visible)
+		or (game.lobby_client != null and game.lobby_client.panel.visible))
 	if not is_visible_in_tree():
 		return
 	_status.visible = false
@@ -349,6 +359,8 @@ func play() -> void:
 			await game.start_game(true, "knight", sel)
 			game.ui.close_all()
 			game.party_queue.begin()
+		"multiplayer":
+			game.lobby_client.open()
 		"lan":
 			game.start_host(sel)
 
@@ -368,7 +380,7 @@ func _build_bg_card() -> void:
 	_bg_card.offset_right = EDGE + LEFT_W
 	_bg_card.offset_bottom = -EDGE - 8 - QUIT_H - 14
 	_bg_card.offset_top = _bg_card.offset_bottom - BG_H
-	_bg_card.pressed.connect(func(): ui.open_battlegrounds())
+	_bg_card.pressed.connect(func(): game.lobby_client.open())
 	add_child(_bg_card)
 	var clip := Control.new()
 	clip.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -406,18 +418,18 @@ func _build_bg_card() -> void:
 	vb.add_theme_constant_override("separation", 0)
 	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip.add_child(vb)
-	var eb: Label = ui._label("BATTLEGROUNDS", 14, Color(0.62, 0.78, 1.0), true)
+	var eb: Label = ui._label("MULTIPLAYER", 14, Color(0.62, 0.78, 1.0), true)
 	var ef := FontVariation.new()
 	ef.base_font = ui.font_title
 	ef.spacing_glyph = 3
 	eb.add_theme_font_override("font", ef)
 	eb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(eb)
-	var t: Label = ui._label(Battlegrounds.TITLE, 26, ui.GOLD, true)
+	var t: Label = ui._label("Gather & Battle", 26, ui.GOLD, true)
 	t.add_theme_constant_override("outline_size", 8)
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(t)
-	var l: Label = ui._label("PvP extraction raids  ·  Enter  ▸", 15, Color(0.88, 0.82, 0.72))
+	var l: Label = ui._label("Raids · Waves · Arena  ▸", 15, Color(0.88, 0.82, 0.72))
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(l)
 	# the frame over it all
@@ -457,7 +469,7 @@ func _build_board() -> void:
 	k.add_theme_font_override("font", kf)
 	k.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_board.add_child(k)
-	var t: Label = ui._label("Hall of the Endless Vigil", 21, ui.GOLD, true)
+	var t: Label = ui._label("Hall of the Last Flame", 21, ui.GOLD, true)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_board.add_child(t)
 	var rule := TextureRect.new()
@@ -472,6 +484,9 @@ func _build_board() -> void:
 	_board_best = ui._label("", 13, ui.DIM)
 	_board_best.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_board.add_child(_board_best)
+	var enter: Button = ui._iron_button("Play Endless Waves", 0, 42, 17)
+	enter.pressed.connect(func(): game.lobby_client.open("waves"))
+	_board.add_child(enter)
 	_board_note("Reaching the hall...")
 
 func _board_note(txt: String) -> void:
@@ -489,23 +504,23 @@ func refresh_board() -> void:
 	if _board == null or _board_busy:
 		return
 	var b := FlameBoard.best(game)
-	_board_best.text = "Your best: %d wave%s" % [b, "" if b == 1 else "s"] if b > 0 else "Hold the flame in the camp's Vigil Gate"
+	_board_best.text = "Your best: %d wave%s" % [b, "" if b == 1 else "s"] if b > 0 else "Play Endless Waves from Multiplayer"
 	_board_busy = true
 	var rows = await FlameBoard.top(game)
 	_board_busy = false
 	if not is_instance_valid(_board_rows):
 		return
 	if rows == null:
-		_board_note("The hall can't be reached right now.")
+		_board_note("Leaderboard offline. Play is available.")
 		return
 	if (rows as Array).is_empty():
-		_board_note("No vigil has been held yet. Be the first.")
+		_board_note("No waves recorded yet. Be the first.")
 		return
 	for c in _board_rows.get_children():
 		_board_rows.remove_child(c)
 		c.queue_free()
 	# room for rows: from the hall's top down to the Battlegrounds card, less the hall's own heading and footer
-	var room := (size.y - EDGE - 8 - QUIT_H - 14 - BG_H - 12) - BOARD_TOP - 118.0
+	var room := (size.y - EDGE - 8 - QUIT_H - 14 - BG_H - 12) - BOARD_TOP - 164.0
 	var fit := clampi(int(room / 23.0), 3, FlameBoard.TOP)
 	for r in (rows as Array).slice(0, fit):
 		_board_rows.add_child(_board_row(r))

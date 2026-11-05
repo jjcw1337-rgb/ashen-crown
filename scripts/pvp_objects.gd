@@ -28,7 +28,7 @@ const MAX_LIFE := 14.0
 ## A stand-in for another player's thing on this client, or null where there should be none (not the Battlegrounds,
 ## the server, no id).
 static func proxy(g: Node, owner: Hero, oid: int, kind: String, left: int, at: Vector3) -> Enemy:
-	if g == null or not bool(g.get("bg_mode")) or g.net == null or g.net.server or g.world == null or oid <= 0 or owner == null:
+	if g == null or not (bool(g.get("bg_mode")) or bool(g.get("arena_mode"))) or g.net == null or g.net.server or g.world == null or oid <= 0 or owner == null:
 		return null
 	var e := Enemy.new()
 	e.pvp_obj = oid

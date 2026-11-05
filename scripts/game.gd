@@ -78,6 +78,10 @@ var coop_server: CoopServer     # the online co-op server's logic (coop_server.g
 var sandbox: Sandbox = null     # the admins' Battlegrounds sandbox (sandbox.gd) while one is open
 var paused := false
 var party_queue
+var match_instance
+var lobby_client
+var arena_mode := false
+var arena_state := {}
 var party_join_ticket := ""
 var party_join_pending := false
 var hovered = null
@@ -145,7 +149,11 @@ func _ready() -> void:
 		if args[i] == "--render-scale" and i + 1 < args.size():
 			render_scale_arg = float(args[i + 1])
 	quality = _initial_quality()
-	set_sound(bool(_load_setting("audio", "sound_on", true)))
+	if args.has("--server"):
+		sound_on = false
+		Sfx.set_muted(true)
+	else:
+		set_sound(bool(_load_setting("audio", "sound_on", true)))
 	click_move = bool(_load_setting("controls", "click_move", false))
 	_setup_env()
 	weather = Weather.new()
@@ -177,6 +185,9 @@ func _ready() -> void:
 		party_queue = load("res://scripts/party_queue.gd").new()
 		add_child(party_queue)
 		party_queue.setup(self)
+		lobby_client = load("res://scripts/lobby_client.gd").new()
+		add_child(lobby_client)
+		lobby_client.setup(self)
 	if not args.has("--server"):
 		stash = SharedStash.new(SharedStash.TEST_PATH if get_tree().get_script() != null else SharedStash.PATH)
 	if BuildEnv.cloud() and not args.has("--server") and shot_path == "" and not args.has("--kpi"):
@@ -193,7 +204,11 @@ func _ready() -> void:
 		# the Battlegrounds' dedicated server: `godot --headless --path . -- --server [--port N]`
 		var pi := args.find("--port")
 		var port := int(args[pi + 1]) if pi >= 0 and pi + 1 < args.size() else Net.PORT
-		if args.has("--coop"):
+		if args.has("--match-config"):
+			match_instance = load("res://scripts/match_instance.gd").new()
+			add_child(match_instance)
+			await match_instance.start(self, args[args.find("--match-config") + 1], port)
+		elif args.has("--coop"):
 			await CoopServer.start(self, port)       # online co-op: the story game hosted by the server
 		else:
 			await Battlegrounds.start_server(self, port)
@@ -483,10 +498,10 @@ func _sea_sounds() -> void:
 
 ## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
-	return cur_zone == Battlegrounds.ZONE or cur_zone == Vigil.ZONE or cur_zone == Sandbox.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
+	return cur_zone == Battlegrounds.ZONE or cur_zone == Vigil.ZONE or cur_zone == "arena" or cur_zone == Sandbox.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
 
 func _zone_env(kind: String) -> void:
-	var inside := kind == Battlegrounds.ZONE or kind == Vigil.ZONE or kind == Sandbox.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
+	var inside := kind == Battlegrounds.ZONE or kind == Vigil.ZONE or kind == "arena" or kind == Sandbox.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
 	var snowy := is_snowy() and not inside
 	var ashen := difficulty >= 2 and not inside
 	RenderingServer.global_shader_parameter_set("snow_amt", 1.0 if snowy else 0.0)
@@ -1138,6 +1153,7 @@ func zone_title(act: int, zone: String) -> String:
 		"lair": return ("Throne of the Ashen King" if difficulty >= 2 else a["lair"]) + tag
 		"coast": return str(a.get("coast", "The Coast")) + tag
 		Battlegrounds.ZONE: return Battlegrounds.TITLE
+		"arena": return "The Proving Arena"
 		Vigil.ZONE: return Vigil.TITLE
 		Sandbox.ZONE: return Sandbox.TITLE
 	if zone.begins_with("isle_"):
@@ -1752,6 +1768,9 @@ func set_loading_art(zone: String) -> void:
 ## The crypt never let us in (sign-in failed before the character was marked in_raid): back to the Battlegrounds
 ## screen, the character as it was; from the camp's waypoint, the hero simply hasn't left.
 func _bg_abort(msg: String) -> void:
+	if lobby_client != null and lobby_client.match_id != "":
+		lobby_client.finished(msg)
+		return
 	bg_mode = false
 	_bg_home()
 	loading.visible = false
@@ -1906,6 +1925,9 @@ func _bg_home_camp(fell: bool) -> void:
 	bg_gained = -1
 
 func on_net_failed(msg: String) -> void:
+	if lobby_client != null and lobby_client.match_id != "":
+		lobby_client.finished(msg)
+		return
 	party_join_ticket = ""
 	if party_join_pending:
 		party_join_pending = false
@@ -2220,13 +2242,18 @@ func _write_char(p: String, id: String, d: Dictionary) -> void:
 		cloud.push(id, d)
 
 func save_game() -> void:
+	if arena_mode: return # Arena uses a temporary copy; only escrow settlement changes owned items.
 	if char_id == "" and not _testing():
 		return
 	_store_progress()
 	_store_harvest()
-	var d := {"hero": hero.to_save(), "in_raid": bg_mode, "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed,
+	var raid_admitted: bool = bg_mode and (lobby_client == null or lobby_client.match_id == "" or lobby_client.admitted)
+	var d := {"hero": hero.to_save(), "in_raid": raid_admitted, "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed,
 		"difficulty": bg_home_run if bg_mode and bg_home_run >= 0 else difficulty,     # (a raid is Act I's; the character keeps its own)
 		"max_run": max_run, "runs": run_progress, "quests": quests.to_save(), "harvest": {"t": played_s, "zones": harvest_saved}, "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
+	var old_lobby_save: Dictionary = load("res://scripts/lobby_stakes.gd").read(save_path())
+	d["lobby_receipts"] = old_lobby_save.get("lobby_receipts", [])
+	d["lobby_locked"] = old_lobby_save.get("lobby_locked", [])
 	DirAccess.make_dir_recursive_absolute(char_dir)
 	var f := FileAccess.open(save_path(), FileAccess.WRITE)
 	if f:
@@ -2352,6 +2379,9 @@ func default_name(cls: String) -> String:
 ## The raid ends back on this dais (_leave_battlegrounds -> _bg_home_camp). Not from co-op (the party's host
 ## would lose a player mid-act), not from a raid, and never while a zone is still loading.
 func waypoint_battleground(id: String) -> void:
+	if lobby_client != null:
+		lobby_client.open("battlegrounds")
+		return
 	var entry := Data.waypoint_battleground(id)
 	if entry.is_empty() or (id != "crypt" and str(entry.get("address", "")) == ""):
 		ui.message("This raid is no longer available.")
@@ -2411,6 +2441,16 @@ func bg_server_address() -> String:
 
 ## Back to the title screen to pick another character (the pause menu's "Save and Exit to Title").
 func exit_to_title() -> void:
+	if lobby_client != null and lobby_client.match_id != "":
+		if bg_mode and not lobby_client.admitted:
+			bg_mode = false
+			load_game()
+		lobby_client.match_id = ""
+		lobby_client.room = {}
+	if arena_mode:
+		arena_mode = false
+		arena_state = {}
+		load_game()
 	if sandbox != null:
 		# out of the sandbox first: the character as it was outside
 		sandbox.shutdown()
@@ -3400,6 +3440,9 @@ func hitstop(t: float) -> void:
 	Engine.time_scale = 0.08
 
 func _on_hero_died() -> void:
+	if arena_mode:
+		death_t = -1.0
+		return
 	Telemetry.crumb("died", {"bg": bg_mode})
 	death_t = 2.0
 	if sandbox != null:
@@ -3467,6 +3510,7 @@ func _update_spectate(dt: float) -> void:
 	ui.update_spectate()
 
 func respawn() -> void:
+	if arena_mode: return
 	if sandbox != null:
 		# the sandbox: back on your feet at once, nothing lost
 		hero.respawn(sandbox.spawn_point())
@@ -3962,7 +4006,7 @@ func wasd_dir() -> Vector3:
 
 ## Space: roll the way the keys point, or toward the pointer with no key held.
 func dodge_roll() -> void:
-	if hero == null or paused or ui.any_panel_open() or sailing():
+	if hero == null or hero.arena_waiting() or paused or ui.any_panel_open() or sailing():
 		return       # (aboard, Space heaves the boat to: _sail_input)
 	var d := wasd_dir()
 	if d.length() < 0.1:
@@ -4046,6 +4090,8 @@ func _click_world() -> void:
 
 # ---------------------------------------------------------------- loop
 func _process(delta: float) -> void:
+	if arena_mode:
+		Battlegrounds.sync_proxies(self)
 	if bg_mode:
 		Battlegrounds.sync_proxies(self)
 		Battlegrounds.hud(self, delta)

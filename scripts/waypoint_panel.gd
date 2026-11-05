@@ -225,6 +225,9 @@ func setup(u: UI) -> void:
 	rwrap.add_child(route_box)
 	next_box = VBoxContainer.new()
 	right.add_child(next_box)
+	var multiplayer_button := ui._iron_button("Multiplayer · Raids, Waves & Arena", 0, 44, 17)
+	multiplayer_button.pressed.connect(func(): close(); game.lobby_client.open())
+	vb.add_child(multiplayer_button)
 
 ## Show the window on the act you are in.
 func open(from: Node3D = null) -> void:
@@ -400,7 +403,7 @@ func _fill_battlegrounds() -> void:
 	var first: Dictionary = _raids()[0] if not _raids().is_empty() else {}
 	banner.texture = load(first["art"]) if first.has("art") and ResourceLoader.exists(first["art"]) else null
 	banner.modulate = Color(1, 1, 1)
-	banner_sub.text = "BATTLEGROUNDS   ·   A SHARED SERVER"
+	banner_sub.text = "BATTLEGROUNDS   ·   PLAYER LOBBIES"
 	banner_title.text = str(first.get("name", "Battlegrounds"))
 	banner_note.text = "Raids where other heroes hunt too. What you carry down is at stake; your levels, talents and the camp's stash never are."
 	seal.visible = false
@@ -429,10 +432,10 @@ func _fill_battlegrounds() -> void:
 	bt.add_theme_constant_override("separation", 0)
 	bt.alignment = BoxContainer.ALIGNMENT_CENTER
 	bh.add_child(bt)
-	bt.add_child(ui._label("The way back is this waypoint", 13, INK, true))
-	bt.add_child(ui._label("Extracted or fallen, %s returns to this dais" % game.char_name, 11, DIM))
+	bt.add_child(ui._label("Gather first, start when ready", 13, INK, true))
+	bt.add_child(ui._label("Browse or create a lobby with this character", 11, DIM))
 	route_box.add_child(back)
-	_probe_start(game.bg_server_address())
+	_probe_stop()
 	_size_route.call_deferred()
 	route_line.queue_redraw()
 
@@ -484,7 +487,7 @@ func _bg_card(b: Dictionary) -> Control:
 	var mins := int(Battlegrounds.RAID_SECS / 60.0)
 	var pmins := int(Battlegrounds.PORTALS_AT / 60.0)
 	tv.add_child(ui._label("%s  ·  up to %d raiders  ·  rounds of %d min, the portals open after %d" % [str(b.get("kind", "Raid")), Battlegrounds.MAX_PLAYERS, mins, pmins], 11, DIM))
-	var tag := ui._label("IN CO-OP" if in_coop else "DESCEND ›", 12, DIM if in_coop else CRYPT, true)
+	var tag := ui._label("IN CO-OP" if in_coop else "LOBBIES ›", 12, DIM if in_coop else CRYPT, true)
 	head.add_child(tag)
 	# the place
 	for line in b.get("lines", []):
@@ -533,7 +536,7 @@ func _bg_card(b: Dictionary) -> Control:
 	var addr: String = str(b.get("address", game.bg_server_address()))
 	var server_name := "the %s server" % BuildEnv.env() if BuildEnv.env() != "local" else addr
 	sv.add_child(ui._label("Server  ·  " + server_name, 11, DIM))
-	var status := ui._label("Check on entry", 11, DIM)
+	var status := ui._label("Starts with your lobby", 11, DIM)
 	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	sv.add_child(status)
 	if str(b["id"]) == "crypt" and not b.has("address"):
@@ -546,7 +549,7 @@ func _bg_card(b: Dictionary) -> Control:
 		vb.add_child(why)
 	else:
 		var go := Button.new()
-		go.text = "Descend into %s" % str(b["name"])
+		go.text = "Browse Battlegrounds Lobbies"
 		go.custom_minimum_size = Vector2(0, 38)
 		go.focus_mode = Control.FOCUS_NONE
 		go.pressed.connect(func(): _descend(str(b["id"]), icon))
@@ -559,7 +562,7 @@ func _bg_card(b: Dictionary) -> Control:
 		if in_coop:
 			lines.append(["Leave co-op to go down", RISK])
 		else:
-			lines.append(["Click to descend with %s (you will be asked first)" % game.char_name, INK])
+			lines.append(["Click to find a lobby with %s" % game.char_name, INK])
 			lines.append(["Death costs everything worn and carried", RISK])
 		ui.show_tooltip(lines)
 		ui.tip_owner = card)

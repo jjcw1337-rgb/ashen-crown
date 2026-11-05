@@ -1,0 +1,268 @@
+#!/usr/bin/env python3
+"""On-demand game lobbies. Public HTTP is reverse-proxied through HTTPS; workers use loopback.
+No shell commands are built from requests. Waiting lobbies allocate no game processes.
+"""
+import argparse, hashlib, json, os, secrets, sqlite3, subprocess, threading, time, urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+
+MODES = {'arena': (2, 6), 'battlegrounds': (1, 16), 'waves': (1, 4)}
+class Rejected(Exception): pass
+
+class Lobbies:
+    def __init__(self, path, launch, stop, slots=1, clock=time.time):
+        self.db = sqlite3.connect(path, check_same_thread=False)
+        self.db.execute('CREATE TABLE IF NOT EXISTS state (id TEXT PRIMARY KEY, data TEXT NOT NULL)')
+        self.db.execute('CREATE TABLE IF NOT EXISTS receipts (id TEXT PRIMARY KEY, user TEXT NOT NULL, data TEXT NOT NULL)')
+        self.receipts={key:dict(user=uid,**json.loads(data)) for key,uid,data in self.db.execute('SELECT id,user,data FROM receipts')}
+        self.lock = threading.RLock(); self.launch = launch; self.stop = stop
+        self.slots = slots; self.clock = clock; self.rooms = {}
+        for key, data in self.db.execute('SELECT id,data FROM state'):
+            room = json.loads(data)
+            # A controller restart never silently resumes an uncertain match.
+            if room['state'] in ('starting', 'playing'):
+                room['state'] = 'aborted'; room['reason'] = 'Server restarted; match cancelled.'
+                self.settle(room,-1)
+            self.rooms[key] = room
+        self.persist()
+    def persist(self):
+        with self.db:
+            for key, room in self.rooms.items():
+                self.db.execute('INSERT OR REPLACE INTO state VALUES (?,?)', (key, json.dumps(room)))
+            for key, receipt in self.receipts.items():
+                self.db.execute('INSERT OR REPLACE INTO receipts VALUES (?,?,?)',(key,receipt['user'],json.dumps({k:v for k,v in receipt.items() if k!='user'})))
+    def receipt(self,r,uid,items):
+        key=r['id']+':'+uid
+        self.receipts.setdefault(key,dict(user=uid,id=key,character=r['members'][uid]['character'],items=items,acked=False))
+    def settle(self,r,winner=-1):
+        if r.get('settled',False): return
+        winners=[u for u,m in r['members'].items() if m['team']==winner]
+        rewards={u:[] for u in r['members']}
+        lost=[]
+        for uid,m in r['members'].items():
+            item=m.get('stake')
+            if not item:continue
+            if winner<0 or not winners or uid in winners: rewards[uid].append(item)
+            else: lost.append(item)
+        for i,item in enumerate(lost): rewards[winners[i%len(winners)]].append(item)
+        for uid,m in r['members'].items():
+            if m.get('stake') or rewards[uid]: self.receipt(r,uid,rewards[uid])
+        r['settled']=True
+    def room(self, rid):
+        if rid not in self.rooms: raise Rejected('That lobby is no longer available.')
+        return self.rooms[rid]
+    def public(self, r, uid):
+        out = {k:r[k] for k in ('id','name','mode','team_size','capacity','state','owner','members','created','reason','wager')}
+        out = json.loads(json.dumps(out))
+        out['joined']=sum(not m.get('departed',False) for m in r['members'].values())
+        out['joinable'] = r['state']=='waiting' or (r['state']=='playing' and r.get('joinable',False))
+        for m in out['members'].values(): m.pop('ticket', None)
+        if uid in r['members'] and not r['members'][uid].get('departed',False) and r['state'] in ('starting','playing'):
+            out['address'] = r.get('address','') if r.get('listening',False) else ''; out['ticket'] = r['members'][uid].get('ticket','')
+        return out
+    def call(self, uid, op, p):
+        with self.lock:
+            self.sweep()
+            if op=='receipts': return {'receipts':[v for v in self.receipts.values() if v['user']==uid and not v['acked']]}
+            if op=='ack':
+                receipt=self.receipts.get(str(p.get('receipt','')),{})
+                if receipt.get('user')!=uid: raise Rejected('Unknown reward receipt.')
+                receipt['acked']=True;self.persist();return {'ok':True}
+            if op == 'list': return {'lobbies':[self.public(r,uid) for r in self.rooms.values() if r['state'] in ('waiting','starting','playing')], 'slots':self.slots}
+            if op == 'create':
+                mode = p.get('mode'); team = p.get('team_size',1)
+                if mode not in MODES or type(team) is not int or team not in (1,2,3): raise Rejected('Choose a supported mode and team size.')
+                if any(uid in r['members'] and not r['members'][uid].get('departed',False) and r['state'] in ('waiting','starting','playing') for r in self.rooms.values()): raise Rejected('Leave your current lobby first.')
+                if p.get('wager',False) and mode!='arena': raise Rejected('Optional stakes are for Arena; Battlegrounds already has its extraction rules.')
+                rid = secrets.token_hex(8)
+                r = dict(id=rid,name=str(p.get('name','Adventure'))[:48],mode=mode,team_size=team,capacity=team*2 if mode=='arena' else MODES[mode][1],state='waiting',owner=uid,members={},created=self.clock(),touched=self.clock(),reason='',wager=bool(p.get('wager',False)))
+                self.rooms[rid]=r; self.add(r,uid,p)
+            else:
+                r=self.room(str(p.get('id','')))
+                if op == 'join': self.add(r,uid,p)
+                elif op == 'get':
+                    if uid in r['members']: r['members'][uid]['seen']=self.clock()
+                elif op == 'leave':
+                    if uid not in r['members']: raise Rejected('You are not in that lobby.')
+                    if r['state']!='waiting': raise Rejected('Leave through the match exit after it starts.')
+                    if r['members'][uid].get('stake'): self.receipt(r,uid,[r['members'][uid]['stake']])
+                    del r['members'][uid]
+                    for m in r['members'].values(): m['ready']=False
+                    if not r['members']: r['state']='closed'
+                    elif uid==r['owner']: r['owner']=next(iter(r['members']))
+                elif op=='stake':
+                    if r['state']!='waiting' or uid not in r['members'] or not r['wager']: raise Rejected('This lobby is not accepting stakes.')
+                    m=r['members'][uid];item=p.get('item',{})
+                    if not isinstance(item,dict) or not isinstance(item.get('base'),str) or not isinstance(item.get('uid'),str) or len(item['uid'])<12 or item['base']=='gold': raise Rejected('Select a valid item.')
+                    if m.get('stake') and m['stake']!=item: raise Rejected('A stake is already locked for this entry.')
+                    if not m.get('stake'):
+                        for other in self.rooms.values():
+                            if other['state'] in ('waiting','starting','playing') and any(x.get('stake',{}).get('uid')==item['uid'] for x in other['members'].values()): raise Rejected('That item is already committed.')
+                    if not m.get('stake'):
+                        m['stake']=item
+                        for x in r['members'].values():x['ready']=False
+                    m['seen']=self.clock()
+                elif op in ('ready','team'):
+                    if r['state']!='waiting' or uid not in r['members']: raise Rejected('This lobby is not waiting for players.')
+                    if op=='team':
+                        team=p.get('team')
+                        if type(team) is not int or team not in (0,1) or r['mode']!='arena': raise Rejected('Choose a team.')
+                        if sum(m['team']==team for u,m in r['members'].items() if u!=uid)>=r['team_size']: raise Rejected('That team is full.')
+                        r['members'][uid]['team']=team
+                        for m in r['members'].values(): m['ready']=False
+                    else:
+                        if p.get('ready',False) and r['wager'] and not r['members'][uid].get('stake'): raise Rejected('Lock one item first, then confirm Ready to accept the displayed stakes.')
+                        r['members'][uid]['ready']=bool(p.get('ready',False))
+                    r['members'][uid]['seen']=self.clock()
+                elif op=='start':
+                    if uid!=r['owner'] or r['state']!='waiting': raise Rejected('Only the waiting lobby owner can start.')
+                    if r['wager'] and not all(m.get('stake') for m in r['members'].values()): raise Rejected('Everyone must commit an item.')
+                    if not all(m['ready'] for m in r['members'].values()): raise Rejected('Everyone must be ready.')
+                    if r['mode']=='arena' and any(sum(m['team']==t for m in r['members'].values())!=r['team_size'] for t in (0,1)): raise Rejected('Fill both teams before starting.')
+                    busy=sum(x['state'] in ('starting','playing') for x in self.rooms.values())
+                    if busy>=self.slots: raise Rejected('All match slots are busy. Your lobby stays open; try Start when a match finishes.')
+                    r['state']='starting'; r['started']=self.clock(); r['worker_key']=secrets.token_hex(32)
+                    for m in r['members'].values(): m['ticket']=secrets.token_hex(32); m['redeemed']=False; m['issued']=self.clock()
+                    try: r['address']=self.launch(r)
+                    except Exception as exc:
+                        r['state']='waiting'; r['reason']=str(exc) if isinstance(exc,Rejected) else 'The match could not start. Try again.'
+                        self.persist(); raise Rejected(r['reason'])
+                else: raise Rejected('Unknown lobby action.')
+                if r['state']=='waiting': r['touched']=self.clock()
+            self.persist(); return {'lobby':self.public(r,uid)}
+    def add(self,r,uid,p):
+        if r['state']!='waiting' and not (r['state']=='playing' and r.get('joinable',False)): raise Rejected('This match has started. Join a waiting lobby or create another.')
+        if uid in r['members']:
+            if r['members'][uid].get('departed',False): raise Rejected('You already left this match. Join or create a different lobby.')
+            return
+        if r['id']+':'+uid in self.receipts: raise Rejected('This lobby entry has already refunded your stake. Create or join a new lobby.')
+        if any(uid in x['members'] and not x['members'][uid].get('departed',False) and x['state'] in ('starting','playing','waiting') and x['id']!=r['id'] for x in self.rooms.values()): raise Rejected('Leave your current lobby first.')
+        if sum(not m.get('departed',False) for m in r['members'].values())>=r['capacity']: raise Rejected('Lobby full.')
+        char=str(p.get('character',''))
+        if not char or len(char)>100 or not all(c.isalnum() or c in '-_' for c in char): raise Rejected('Select a character first.')
+        team=0
+        if r['mode']=='arena': team=0 if sum(m['team']==0 for m in r['members'].values())<r['team_size'] else 1
+        r['members'][uid]={'name':str(p.get('player','Adventurer'))[:32],'character':char,'team':team,'ready':False,'seen':self.clock()}
+        for m in r['members'].values(): m['ready']=False
+        if r['state']=='playing':
+            r['members'][uid].update(ticket=secrets.token_hex(32),redeemed=False,issued=self.clock())
+    def worker(self,rid,key,op,p):
+        with self.lock:
+            r=self.room(rid)
+            if not secrets.compare_digest(str(r.get('worker_key','')),key) or not key: raise Rejected('Invalid worker.')
+            if op=='depart':
+                member=r['members'].get(str(p.get('user','')))
+                if member: member['departed']=True
+                self.persist();return {'ok':True}
+            if op=='listening':
+                r['listening']=True;self.persist();return {'ok':True}
+            if op=='redeem':
+                if r['state'] not in ('starting','playing'): raise Rejected('Admission expired.')
+                for uid,m in r['members'].items():
+                    if secrets.compare_digest(str(m.get('ticket','')),str(p.get('ticket',''))) and not m.get('redeemed',False) and self.clock()-m.get('issued',0)<180:
+                        m['redeemed']=True;self.persist();return {'user':uid,'team':m['team'],'character':m['character'],'name':m['name']}
+                raise Rejected('Invalid or already used ticket.')
+            if op=='state':
+                state=p.get('state')
+                if state not in ('playing','finished','aborted'): raise Rejected('Invalid match state.')
+                if r['state'] not in ('starting','playing'): return {'ok':True}
+                r['joinable']=bool(p.get('joinable',False)) and r['mode']!='arena' and state=='playing'
+                r['state']=state;r['reason']=str(p.get('reason',''))[:200];r['touched']=self.clock()
+                if state in ('finished','aborted'): self.settle(r,int(p.get('winner',-1)) if state=='finished' else -1)
+                self.persist();return {'ok':True}
+            raise Rejected('Unknown worker action.')
+    def sweep(self):
+        now=self.clock()
+        for r in self.rooms.values():
+            if r['state']=='waiting':
+                for uid in list(r['members']):
+                    if now-r['members'][uid]['seen']>90:
+                        if r['members'][uid].get('stake'): self.receipt(r,uid,[r['members'][uid]['stake']])
+                        del r['members'][uid]
+                if not r['members']: r['state']='closed'
+                elif r['owner'] not in r['members']: r['owner']=next(iter(r['members']))
+            elif r['state']=='playing' and now-r.get('touched',now)>60:
+                r['state']='aborted';r['reason']='Match server stopped responding.';self.settle(r,-1);self.stop(r['id'])
+            elif r['state'] in ('starting','playing') and now-r.get('started',now)>(180 if r['state']=='starting' else 7200):
+                r['state']='aborted';r['reason']='Match timed out.';self.settle(r,-1);self.stop(r['id'])
+
+class Service:
+    def __init__(self,args):
+        self.args=args;args.game=str(Path(args.game).resolve());self.processes={};self.root=Path(args.state);self.root.mkdir(parents=True,exist_ok=True)
+        revision=Path(args.game)/"DEPLOYED_REV"
+        self.version=revision.read_text().strip() if revision.exists() else "dev"
+        if not args.dev and self.version=="dev": raise RuntimeError("Deploy an imported release with DEPLOYED_REV before starting the public lobby service.")
+        self.model=Lobbies(str(self.root/'lobbies.sqlite'),self.launch,self.stop,args.slots)
+    def launch(self,r):
+        # Leave emergency RAM headroom; do not thrash swap to squeeze in another world.
+        if Path('/proc/meminfo').exists():
+            info=dict((line.split(':')[0],int(line.split()[1])) for line in Path('/proc/meminfo').read_text().splitlines())
+            if info.get('MemAvailable',0)<self.args.min_free_mb*1024: raise Rejected('Insufficient server memory.')
+        used={p[1] for p in self.processes.values() if p[0].poll() is None}
+        port=next((p for p in range(self.args.first_port,self.args.first_port+self.args.slots) if p not in used),None)
+        if port is None: raise Rejected('No free game port.')
+        manifest={k:r[k] for k in ('id','mode','team_size','capacity','worker_key','members')}
+        manifest['broker']='http://127.0.0.1:%d'%self.args.port
+        path=self.root/(r['id']+'.json');path.write_text(json.dumps(manifest));path.chmod(0o600)
+        log=(self.root/(r['id']+'.log')).open('ab')
+        proc=subprocess.Popen([self.args.godot,'--headless','--path',self.args.game,'--','--server','--port',str(port),'--match-config',str(path)],stdout=log,stderr=subprocess.STDOUT)
+        log.close();self.processes[r['id']]=(proc,port)
+        return '%s:%d'%(self.args.public_host,port)
+    def stop(self,rid):
+        pair=self.processes.get(rid)
+        if pair and pair[0].poll() is None:
+            proc=pair[0];proc.terminate()
+            def force():
+                try: proc.wait(timeout=5)
+                except subprocess.TimeoutExpired: proc.kill()
+            threading.Thread(target=force,daemon=True).start()
+    def user(self,header):
+        if self.args.dev:
+            if not header.startswith('Bearer dev-') or len(header)>100: raise Rejected('Local test identity required.')
+            return hashlib.sha256(header.encode()).hexdigest()[:24]
+        if not header.startswith('Bearer '): raise Rejected('Sign in first.')
+        req=urllib.request.Request(self.args.nakama.rstrip('/')+'/v2/account',headers={'Authorization':header})
+        try:
+            with urllib.request.urlopen(req,timeout=5) as response: return json.load(response)['user']['id']
+        except Exception: raise Rejected('Your session expired. Sign in again.')
+    def reap(self):
+        with self.model.lock:
+            for rid,(proc,_) in list(self.processes.items()):
+                if proc.poll() is not None:
+                    r=self.model.rooms[rid]
+                    if r['state'] in ('starting','playing'): r['state']='aborted';r['reason']='The match server stopped.';self.model.settle(r,-1)
+                    del self.processes[rid]
+            self.model.sweep();self.model.persist()
+
+class Handler(BaseHTTPRequestHandler):
+    def log_message(self,*args): pass # Never log sessions or admission tokens.
+    def do_POST(self):
+        status=200
+        try:
+            length=int(self.headers.get('Content-Length','0'))
+            if length<0 or length>16384: raise Rejected('Request too large.')
+            p=json.loads(self.rfile.read(length));svc=self.server.service
+            if not isinstance(p,dict): raise Rejected('Invalid request.')
+            if self.path=='/worker':
+                if self.client_address[0] not in ('127.0.0.1','::1'): raise Rejected('Local workers only.')
+                result=svc.model.worker(str(p.get('id','')),self.headers.get('X-Worker-Key',''),str(p.get('op','')),p)
+            elif self.path=='/lobbies':
+                if not svc.args.dev and p.get('op') in ('create','join','ready','team','stake','start') and p.get('version')!=svc.version:
+                    raise Rejected('Update your game to the current server release before entering multiplayer.')
+                result=svc.model.call(svc.user(self.headers.get('Authorization','')),str(p.get('op','')),p)
+            else: raise Rejected('Unknown endpoint.')
+        except (Rejected,ValueError,KeyError,TypeError) as e: status=400;result={'error':str(e)}
+        except Exception: status=500;result={'error':'Lobby service unavailable.'}
+        data=json.dumps(result).encode();self.send_response(status);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
+
+def main():
+    ap=argparse.ArgumentParser();ap.add_argument('--state',default='/var/lib/ashen-lobbies');ap.add_argument('--game',required=True);ap.add_argument('--godot',default='godot');ap.add_argument('--bind',default='127.0.0.1');ap.add_argument('--port',type=int,default=7352);ap.add_argument('--public-host',default='127.0.0.1');ap.add_argument('--first-port',type=int,default=24600);ap.add_argument('--slots',type=int,default=1);ap.add_argument('--min-free-mb',type=int,default=1500);ap.add_argument('--nakama',default='http://127.0.0.1:7350');ap.add_argument('--dev',action='store_true');args=ap.parse_args()
+    if args.dev and args.bind!='127.0.0.1': ap.error('Development identities are loopback-only.')
+    svc=Service(args);server=ThreadingHTTPServer((args.bind,args.port),Handler);server.service=svc
+    def tick():
+        while True: time.sleep(2);svc.reap()
+    threading.Thread(target=tick,daemon=True).start()
+    try: server.serve_forever()
+    finally:
+        for rid in list(svc.processes): svc.stop(rid)
+if __name__=='__main__': main()

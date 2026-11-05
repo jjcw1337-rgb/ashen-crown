@@ -436,6 +436,7 @@ func _build_rig() -> void:
 ## ("plain"), the Meshy plate once it is ("armored"), or "" for the procedural armoured body
 ## (without the glb files).
 func _knight_body() -> String:
+	if DisplayServer.get_name() == "headless": return ""
 	if cls != "knight":
 		return ""
 	if equipment.get("armor") == null:
@@ -544,7 +545,8 @@ func setup(g: Node) -> void:
 	light.shadow_enabled = false
 	add_child(light)
 	trail = MeshInstance3D.new()
-	trail.mesh = ImmediateMesh.new()
+	if DisplayServer.get_name() != "headless":
+		trail.mesh = ImmediateMesh.new()
 	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var tm := ShaderMaterial.new()
 	tm.shader = _trail_shader()
@@ -716,11 +718,11 @@ func _mine() -> bool:
 ## The Battlegrounds' rules for gear (recalc): on while this game is in a raid (Game.bg_mode); `pvp_force` for tools.
 var pvp_force := false
 func pvp_scaled() -> bool:
-	return pvp_force or (game != null and (game.bg_mode or game.sandbox != null) and not puppet)
+	return pvp_force or (game != null and (game.bg_mode or game.arena_mode or game.sandbox != null) and not puppet)
 
 ## The raid's rules for movement and regeneration: in a raid, and in the admins' sandbox (which plays like one).
 func raid_rules() -> bool:
-	return game != null and (game.bg_mode or game.sandbox != null)
+	return game != null and (game.bg_mode or game.arena_mode or game.sandbox != null)
 
 func total_str() -> int: return str_ + stats.get("str", 0)
 func total_dex() -> int: return dex + stats.get("dex", 0)
@@ -1308,10 +1310,14 @@ func skill_ready(id: String) -> bool:
 		return false
 	return (not Data.skill_locked(sk, level) or game.test_allskills) and cds.get(id, 0.0) <= 0.0 and mana >= skill_cost(id)
 
+func arena_waiting() -> bool:
+	return not puppet and game != null and game.arena_mode and game.arena_state.get("phase", "waiting") != "fight"
+
 func can_act() -> bool:
-	return not dead and atk_t < 0.0 and charge_t < 0.0 and drain_t < 0.0
+	return not arena_waiting() and not dead and atk_t < 0.0 and charge_t < 0.0 and drain_t < 0.0
 
 func use_skill(id: String, aim: Vector3) -> bool:
+	if arena_waiting(): return false
 	Hero.striker = self          # (whoever acts now strikes: a sandbox stand-in never takes its own hero's blows)
 	break_invis()
 	stop_chop()
@@ -1821,6 +1827,10 @@ func _process(delta: float) -> void:
 	var want_block := blocking and atk_t < 0.0 and charge_t < 0.0
 	block_amt = move_toward(block_amt, 1.0 if (want_block or block_flash > 0.0) else 0.0, delta * 9.0)
 	var vel := Vector3.ZERO
+	if arena_waiting():
+		direct_dir = Vector3.ZERO
+		moving = false
+		path = PackedVector3Array()
 	var wants_move := direct_dir.length() > 0.1 or (moving and not path.is_empty())
 	# stamina: sprint drains it, resting refills it; running dry leaves you winded
 	running = sprint and wants_move and not exhausted and block_amt < 0.5 and charge_t < 0.0
@@ -2324,6 +2334,7 @@ void fragment() {
 	return _trail_sh
 
 func _update_trail(active: bool) -> void:
+	if trail.mesh == null: return # No sword-trail draw mesh in a headless world.
 	var im: ImmediateMesh = trail.mesh
 	im.clear_surfaces()
 	if active and weapon_node != null and is_instance_valid(weapon_node):

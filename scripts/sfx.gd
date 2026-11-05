@@ -68,6 +68,9 @@ func _ready() -> void:
 	ambience.volume_db = -20.0
 	ambience.bus = "Ambience"
 	add_child(ambience)
+	if OS.get_cmdline_user_args().has("--server") or DisplayServer.get_name() == "headless":
+		muted = true
+		return # A dedicated match has no listener; do not load its sound bank.
 	for nm in BANK.keys():
 		var takes := []
 		for k in int(BANK[nm][0]):

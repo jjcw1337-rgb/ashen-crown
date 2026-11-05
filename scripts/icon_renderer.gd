@@ -11,6 +11,9 @@ var waiting := {}
 var busy := false
 
 func _ready() -> void:
+	if DisplayServer.get_name() == "headless":
+		set_process(false)
+		return # No frame_post_draw signal in a headless match; never queue icon renders.
 	vp = SubViewport.new()
 	vp.size = Vector2i(128, 128)
 	vp.own_world_3d = true
@@ -48,6 +51,7 @@ static func key_of(it: Dictionary) -> String:
 	return "%s|%d|%s" % [it["base"], int(it.get("rarity", 0)), it.get("unique", "")]
 
 func get_icon(it: Dictionary, cb: Callable) -> Texture2D:
+	if DisplayServer.get_name() == "headless": return null
 	var k := key_of(it)
 	if cache.has(k):
 		return cache[k]

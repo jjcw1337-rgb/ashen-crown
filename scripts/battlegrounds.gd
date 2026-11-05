@@ -539,7 +539,8 @@ static func start_server(g: Node, port: int) -> void:
 	print("[BG] accounts through ", "Nakama at " + nurl if bg.nk != null else "the per-PC id (no Nakama)")
 	print("[BG] server ", "up on UDP port %d" % port if err == OK else "FAILED to open port %d (error %d)" % [port, err])
 	# a new deploy waits for a quiet moment: nobody in, or between rounds (the crypt has just collapsed)
-	ServerUpdate.watch(g, "[BG]", func() -> bool: return g.net.players.is_empty() or bg.state == "reset")
+	if g.match_instance == null:
+		ServerUpdate.watch(g, "[BG]", func() -> bool: return g.net.players.is_empty() or bg.state == "reset")
 
 ## How long the antechamber waits for a bell (tests' fast rounds keep a lobby long enough for a client to join).
 static func lobby_max() -> float:
@@ -623,7 +624,10 @@ func _process(delta: float) -> void:
 	if game == null or not game.net.server or game.world == null or game._busy:
 		return
 	park_hero()
+	if game.match_instance != null and not game.match_instance.begun:
+		return
 	if state == "reset":
+		if game.match_instance != null: return
 		reset_t -= delta
 		if reset_t <= 0.0:
 			await new_round()
@@ -642,7 +646,7 @@ func _process(delta: float) -> void:
 		broadcast()
 		if state == "lobby" or state == "prep":
 			send_roster()
-	if state == "lobby" and (raid_t >= lobby_max() or game.net.players.size() >= RAID_MIN):
+	if game.match_instance == null and state == "lobby" and (raid_t >= lobby_max() or game.net.players.size() >= RAID_MIN):
 		start_prep("")
 	if state == "prep":
 		prep_left -= delta
@@ -1110,6 +1114,7 @@ static func sync_proxies(g: Node) -> void:
 	for pid in g.net.players:
 		var h = g.net.players[pid]["hero"]
 		if is_instance_valid(h) and h.net_has and not h.dead:
+			if g.arena_mode and g.arena_state.get("teams", {}).get(str(pid), -1) == g.arena_state.get("teams", {}).get(str(g.net.multiplayer.get_unique_id()), -2): continue
 			want[pid] = h
 	PvpObjects.prune(g, want)
 	for e in g.world.enemies_root.get_children():

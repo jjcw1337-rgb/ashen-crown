@@ -56,6 +56,9 @@ func setup(g) -> void:
 
 func begin() -> void:
 	if state != "idle": return
+	if game.lobby_client != null and not game.lobby_client.room.is_empty():
+		game.ui.message("Leave your multiplayer lobby before finding a co-op party.")
+		return
 	if not game.playing or game.net.active or game.bg_mode or game._busy or game.hero.dead:
 		game.ui.message("Find a party while playing solo.")
 		return

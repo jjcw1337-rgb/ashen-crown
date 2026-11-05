@@ -183,3 +183,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). In short: open `project.godot` in Godot 
 - **F2** or **Esc → Sound**: turn all sound on or off (remembered between sessions).
 - **F3**: FPS counter.
 - **F8** or **Esc → Testing panel** (only while `UNLOCK_ALL_ACTS` is on): switches for **Immortal**, **One-hit kill**, **Infinite stamina** and **Unlock all skills** (use every skill at any level), plus a **Level** box: type a level (1–99) and press **Set**. The switches aren't saved; a level change is (raising it gives the usual 5 stat points per level).
+
+### On-demand multiplayer preview
+
+The post-intro Multiplayer browser groups Battlegrounds, endless waves (The Last Flame), and
+1v1/2v2/3v3 Arena behind a shared create/join/ready/start lobby flow. Waiting rooms are lightweight;
+only started matches allocate a Godot process. See [multiplayer lobbies](docs/multiplayer_lobbies.md)
+for selected-item arena stakes, local tests, capacity limits and the coordinated server rollout.
+The old sandbox remains available for admin testing. This requires matching clients and the new
+lobby service; it does not install or enable that service automatically.

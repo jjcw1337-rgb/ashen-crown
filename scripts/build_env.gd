@@ -33,6 +33,7 @@ static func value(key: String) -> String:
 				return FileAccess.get_file_as_string("res://DEPLOYED_REV").strip_edges()
 			return REV
 		"coop_server": return BG_SERVER.split(":")[0] + ":24570"     # the online co-op server, beside the raid server
+		"lobby_url": return NAKAMA_URL if ENV != "local" else "http://127.0.0.1:7352"
 		"party_queue": return BG_SERVER.split(":")[0] + ":24569"
 	return ""
 

@@ -29,7 +29,7 @@ var coop_server := false
 
 ## A raid server takes no party travel (each player comes and goes on their own); a co-op server does.
 func refuses_travel() -> bool:
-	return server and not coop_server
+	return server and (not coop_server or game.match_instance != null)
 var my_name := "Crusader"
 var players := {}          # peer id -> {"name": String, "hero": Hero}
 var enemies := {}          # net id -> Enemy
@@ -163,9 +163,9 @@ func local_ips() -> Array:
 
 func _on_connected() -> void:
 	reached = true
-	rpc_id(1, "sv_hello", my_name, game.hero.net_gear(), game.hero.level, game.party_join_ticket)
+	rpc_id(1, "sv_hello", my_name, game.hero.net_gear(), game.hero.level, game.party_join_ticket, game.char_id)
 	game.party_join_ticket = ""
-	if game.bg_mode:
+	if game.bg_mode and (game.lobby_client == null or game.lobby_client.match_id == ""):
 		# with accounts on: a one-time join ticket from Nakama (over HTTPS), never the session itself
 		var ticket := ""
 		if game.cloud != null and game.cloud.signed_in:
@@ -188,6 +188,7 @@ func _on_server_gone() -> void:
 func _on_peer_disconnected(pid: int) -> void:
 	if not players.has(pid):
 		return
+	if game.match_instance != null: game.match_instance.left(pid)
 	var n: String = players[pid]["name"]
 	if server and game.bg != null and is_instance_valid(players[pid]["hero"]):
 		game.bg.player_left(pid, players[pid]["hero"].global_position)
@@ -282,7 +283,7 @@ func _process(delta: float) -> void:
 		return
 	_send_t = SEND_RATE
 	# (a client of a dedicated server has no partners listed yet, but the server still needs its position)
-	if (players.is_empty() and not (is_client() and game.bg_mode)) or game.world == null or game._busy or loading:
+	if (players.is_empty() and not (is_client() and (game.bg_mode or (game.lobby_client != null and game.lobby_client.match_id != "")))) or game.world == null or game._busy or loading:
 		_update_party_ui()
 		return
 	if not server:
@@ -297,7 +298,9 @@ func _process(delta: float) -> void:
 				continue
 			arr.append_array([float(id), e.global_position.x, e.global_position.z, e.rig.rotation.y, e.move_amt, e.phase,
 				(e.atk_t / e.atk_dur) if e.atk_t >= 0.0 else -1.0, float(maxi(0, STYLES.find(e.atk_style))), e.hit_t, e.life])
-		rpc("cl_enemy_states", arr)
+		# Keep unreliable snapshots below ENet's MTU; each enemy is ten floats.
+		for offset in range(0, arr.size(), 240):
+			rpc("cl_enemy_states", arr.slice(offset, mini(offset + 240, arr.size())))
 	_update_party_ui()
 
 func _hero_packet(h: Hero) -> PackedFloat32Array:
@@ -368,11 +371,19 @@ func pl_fx(w: Dictionary) -> void:
 
 # ---------------------------------------------------------------- handshake
 @rpc("any_peer", "call_remote", "reliable")
-func sv_hello(nm: String, gear: Dictionary, _lvl: int, queue_ticket := "") -> void:
+func sv_hello(nm: String, gear: Dictionary, _lvl: int, queue_ticket := "", character := "") -> void:
 	if not is_host:
 		return
 	var pid := multiplayer.get_remote_sender_id()
 	if players.has(pid): return
+	if game.match_instance != null:
+		if not await game.match_instance.admit(pid, queue_ticket):
+			rpc_id(pid, "cl_party_refused")
+			return
+		if not active or not multiplayer.get_peers().has(pid): return
+		if str(game.match_instance.members[pid].character) != character:
+			rpc_id(pid, "cl_party_refused")
+			return
 	if coop_server and game.coop_server != null and game.coop_server.party_queue != null:
 		if not game.coop_server.party_queue.admit(queue_ticket):
 			rpc_id(pid, "cl_party_refused")
@@ -385,7 +396,9 @@ func sv_hello(nm: String, gear: Dictionary, _lvl: int, queue_ticket := "") -> vo
 	if players.has(pid) and is_instance_valid(players[pid]["hero"]):
 		players[pid]["hero"].level = clampi(_lvl, 1, 99)      # (the raid's PvP class balance is by level, Data.pvp_scale)
 	var at: Vector3 = game.hero.global_position
-	if server:
+	if game.match_instance != null:
+		at = game.match_instance.spawn(pid)
+	elif server:
 		at = game.bg.spawn_point() if game.bg != null else (game.coop_server.spawn_point() if game.coop_server != null else at)
 	rpc_id(pid, "cl_welcome", game.cur_act, game.cur_zone, at, game.tp_link, game.boss_killed, roster, game.difficulty)
 	if server:
@@ -402,6 +415,9 @@ func cl_party_refused() -> void:
 @rpc("authority", "call_remote", "reliable")
 func cl_welcome(act: int, zone: String, pos: Vector3, tp: Dictionary, bk: bool, roster: Array, diff: int) -> void:
 	welcomed = true
+	if game.lobby_client != null and game.lobby_client.match_id != "":
+		game.lobby_client.admitted = true
+		if game.bg_mode: game.save_game()
 	game.party_join_pending = false
 	if diff != game.difficulty:
 		# the host's (or the raid's) act: keep our own act's waypoints and boss aside, as cl_goto does
@@ -419,6 +435,8 @@ func cl_welcome(act: int, zone: String, pos: Vector3, tp: Dictionary, bk: bool, 
 	if game.bg_mode:
 		game.ui.message("Joined the Battlegrounds", Color(0.5, 1.0, 0.5))
 		game.give_raid_phials()
+	elif game.arena_mode:
+		game.ui.message("Joined the arena", Color(1.0, 0.85, 0.5))
 	elif not players.has(1):
 		game.ui.message("Joined the online co-op server", Color(0.5, 1.0, 0.5))
 	else:
@@ -908,6 +926,7 @@ func cl_grant(it: Dictionary, pos: Vector3) -> void:
 ## the round's state, or turns them away (the round is closing, the ticket was refused).
 @rpc("any_peer", "call_remote", "reliable")
 func sv_bg_hello(uid: String, ticket: String) -> void:
+	if game.match_instance != null: return # Identity already came from the lobby admission ticket.
 	if not server or game.bg == null:
 		return
 	var pid := multiplayer.get_remote_sender_id()
@@ -1082,6 +1101,9 @@ func send_team_buff(secs: float, at: Vector3) -> void:
 func cl_team_buff(secs: float, at: Vector3) -> void:
 	if server or game.bg_mode or game.world == null or game.hero == null or game.hero.dead or loading:
 		return
+	if game.arena_mode:
+		var teams: Dictionary = game.arena_state.get("teams", {})
+		if teams.get(str(multiplayer.get_remote_sender_id()), -1) != teams.get(str(multiplayer.get_unique_id()), -2): return
 	if game.hero.global_position.distance_to(at) <= SharedSkills.CRY_R:
 		game.hero.buff_t = maxf(game.hero.buff_t, secs)
 		game.ui.message("%s's War Cry: +40%% damage" % _name_of(multiplayer.get_remote_sender_id()), Color(1.0, 0.5, 0.35))
@@ -1379,7 +1401,7 @@ func _update_status() -> void:
 		var ips := local_ips()
 		status_lbl.text = "♛ Party leader  ·  %d joined%s" % [players.size(), ("  ·  " + ips[0]) if ips.size() > 0 else ""]
 	else:
-		status_lbl.text = "Co-op"
+		status_lbl.text = "Arena" if game.arena_mode else ("Battlegrounds" if game.bg_mode else "Co-op")
 
 func _rebuild_party_ui() -> void:
 	for c in party_box.get_children():
@@ -1436,7 +1458,7 @@ func _rebuild_party_ui() -> void:
 func _update_party_ui() -> void:
 	if party_box == null:
 		return
-	party_box.visible = game.playing
+	party_box.visible = game.playing and not game.ui.any_panel_open()
 	for row in party_box.get_children():
 		if not row.has_meta("pid"):
 			continue
@@ -1444,8 +1466,45 @@ func _update_party_ui() -> void:
 		if not players.has(pid):
 			continue
 		var h = players[pid]["hero"]
+		if game.arena_mode:
+			var team := int(game.arena_state.get("teams", {}).get(str(pid), -1))
+			row.get_child(0).text = str(players[pid]["name"]) + (" · Ember" if team == 0 else " · Frost")
+			row.get_child(0).add_theme_color_override("font_color", Color(1,0.55,0.3) if team == 0 else Color(0.45,0.75,1))
 		var fill := row.get_child(1).get_node("fill") as ColorRect
 		if is_instance_valid(h):
 			var f: float = clampf(h.life / maxf(h.max_life, 1.0), 0.0, 1.0)
 			fill.size.x = 140.0 * f
 			fill.color = Color(0.3, 0.3, 0.3) if h.dead else Color(0.75, 0.1, 0.08)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_arena_reset(at: Vector3) -> void:
+	if not game.arena_mode:return
+	ClassSkills.clear(game.hero)
+	SkillFx.clear(game.hero)
+	game.hero.respawn(at)
+	game.hero.cds.clear()
+	for sk in game.hero.skill_list() + Data.shared_skills(): game.hero.cds[sk.id] = 0.0
+	game.hero.buff_t = 0
+	game.hero.burn_t = 0
+	game.hero.mana_pool = 0
+	game.hero.knock_v = Vector3.ZERO
+	game.hero.shove = Vector3.ZERO
+	game.hero.atk_t = -1
+	game.hero.charge_t = -1
+	game.hero.drain_t = -1
+	game.hero.direct_dir = Vector3.ZERO
+	game.hero.life=game.hero.max_life
+	game.hero.mana=game.hero.max_mana
+	game.hero.stamina=game.hero.max_stamina
+	game.death_t=-1
+	game.ui.death_panel.visible=false
+
+@rpc("authority", "call_remote", "reliable")
+func cl_arena_state(data: Dictionary) -> void:
+	if game.arena_mode:
+		game.arena_state=data
+		_update_status()
+
+@rpc("authority", "call_remote", "reliable")
+func cl_match_end(reason: String) -> void:
+	if game.lobby_client!=null:game.lobby_client.finished(reason)

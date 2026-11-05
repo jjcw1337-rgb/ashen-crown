@@ -51,6 +51,9 @@ var _flash := 0.0
 
 func setup(g: Node) -> void:
 	game = g
+	if OS.get_cmdline_user_args().has("--server") or DisplayServer.get_name() == "headless":
+		set_process(false)
+		return
 	stretch = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	vp = SubViewport.new()
@@ -603,6 +606,7 @@ func _ash(q: int) -> void:
 ## Shows the character a save describes ({} for none): `gear` is Hero.net_gear()'s shape (equipment plus
 ## "_cls" and "_helm"), read from the save without touching it.
 func show_character(gear: Dictionary) -> void:
+	if root3d == null: return
 	if hero != null:
 		hero.queue_free()
 		hero = null

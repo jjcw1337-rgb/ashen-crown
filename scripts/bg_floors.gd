@@ -251,9 +251,6 @@ static func _dress(w: World, r: Rect2, n: int, kind: String) -> void:
 	var count := 10 if big else w.rng.randi_range(2, 4)
 	for i in count:
 		var nm: String = pieces[w.rng.randi() % pieces.size()]
-		var m := prop(nm)
-		if m == null:
-			continue
 		# round the walls, clear of the room's middle (where the fighting is) and of the doorways' line
 		var t := w.rng.randf()
 		var side := w.rng.randi() % 4
@@ -267,6 +264,10 @@ static func _dress(w: World, r: Rect2, n: int, kind: String) -> void:
 			continue
 		var pos := Vector3(p.x, 0, p.y)
 		if w.is_near_obstacle(pos, 1.2):
+			continue
+		# Instantiate only after placement is accepted; rejected unparented scenes leak.
+		var m := prop(nm)
+		if m == null:
 			continue
 		var sc := w.rng.randf_range(0.8, 1.25) * (1.3 if big else 1.0)
 		m.scale = Vector3.ONE * sc
@@ -282,8 +283,10 @@ static func _dress(w: World, r: Rect2, n: int, kind: String) -> void:
 		# everywhere on this floor: fungus glowing in the corners, a mushroom or two
 		for i in (3 if not big else 0):
 			var fp := Vector3(lerpf(r.position.x + 1.2, r.end.x - 1.2, w.rng.randf()), 0, r.position.y + 1.2 if i % 2 == 0 else r.end.y - 1.2)
+			if w.is_near_obstacle(fp, 1.0):
+				continue
 			var fm := prop("fungus")
-			if fm != null and not w.is_near_obstacle(fp, 1.0):
+			if fm != null:
 				fm.scale = Vector3.ONE * w.rng.randf_range(0.7, 1.2)
 				w._place(fm, fp)
 				fm.rotation.y = w.rng.randf() * TAU
