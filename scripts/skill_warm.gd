@@ -17,6 +17,7 @@ const SETTLE := 2.2          # seconds the effects are left to play out (Frost V
 ## so a short-lived stage is never stepped over: slow frames get less of the speed-up.
 const SPEED := 4.0
 const MAX_STEP := 0.066
+const LOW_RES := 0.25
 
 static var _done := {}
 
@@ -55,6 +56,12 @@ static func run(g) -> void:
 	p.net_has = true
 	var was_muted: bool = Sfx.muted
 	Sfx.set_muted(true)
+	# under the loading screen nothing of the 3D view is seen: drawn at a quarter of its size, its frames come
+	# quicker (the pipelines compiled are the same: they don't depend on the size), so the fast-forward below
+	# reaches its full speed (nightly 2026-11-05)
+	var vp: Viewport = g.get_viewport()
+	var was_3d := vp.scaling_3d_scale
+	vp.scaling_3d_scale = LOW_RES
 	var t0 := Time.get_ticks_msec()
 	for w in evs:
 		if w is Dictionary:
@@ -80,6 +87,7 @@ static func run(g) -> void:
 		await tree.process_frame
 		left -= tree.root.get_process_delta_time()
 	Engine.time_scale = was_scale if was_scale <= 1.0 else 1.0
+	vp.scaling_3d_scale = was_3d
 	SkillFx.clear(p)
 	p.queue_free()
 	if is_instance_valid(root):
