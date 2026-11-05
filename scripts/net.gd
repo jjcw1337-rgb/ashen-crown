@@ -117,6 +117,10 @@ func join(ip: String, port := PORT) -> int:
 	return OK
 
 func shutdown(retiring := false) -> void:
+	if retiring:
+		# This dedicated worker is exiting; polling a closed peer would clear its
+		# RPC cache before tree-exit notifications can remove the tracked nodes.
+		get_tree().multiplayer_poll = false
 	for pid in players.keys():
 		_remove_player(pid)
 	players.clear()
