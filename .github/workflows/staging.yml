@@ -70,12 +70,12 @@ jobs:
           test -n "$(ls build/mac)"
 
       # The dedicated server: "Linux Server" strips textures and meshes to placeholders (1.25 GB -> ~0.45 GB a world on
-      # the droplet, Blaine's capacity audit 2026-11-05). Exported with the debug template: 4.3's release template
-      # segfaults at startup on a dedicated-server pack, the debug one runs it. Its own artifact: never on itch/Steam.
+      # the droplet, Blaine's capacity audit 2026-11-05). Release template (4.4.1 runs a dedicated-server pack; 4.3's
+      # segfaulted). Its own artifact, with the GDExtension libraries beside it: never on itch/Steam.
       - name: Export the dedicated server
         run: |
           mkdir -p server
-          godot --headless --export-debug "Linux Server" server/AshenCrown.x86_64
+          godot --headless --export-release "Linux Server" server/AshenCrown.x86_64
           chmod +x server/AshenCrown.x86_64
           printf '%.7s\n' "$GITHUB_SHA" > server/DEPLOYED_REV
           ls -la server

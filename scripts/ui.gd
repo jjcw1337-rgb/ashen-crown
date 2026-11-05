@@ -121,6 +121,7 @@ var dialog_text: Label
 var dialog_btns: HBoxContainer
 var gfx_info: Label
 var pause_panel: PanelContainer
+var invite_btn: Button
 var gfx_btn: Button
 var title_panel: Control
 var sound_btn: Button
@@ -3628,6 +3629,15 @@ func _build_pause() -> void:
 	resume.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	resume.pressed.connect(func(): game.toggle_pause())
 	vb.add_child(resume)
+	# co-op through Steam: open this world to Steam friends and invite them (SteamLink; only with Steam running, in
+	# your own game, not in a raid or a match)
+	invite_btn = _iron_button("Invite Friends", 320, 44, 19)
+	invite_btn.name = "invite_friends"
+	invite_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	invite_btn.pressed.connect(func():
+		game.toggle_pause()
+		game.steam.invite())
+	vb.add_child(invite_btn)
 	var head := func(txt: String):
 		var l := _label(txt, 13, Color(0.62, 0.55, 0.43), true)
 		var f := FontVariation.new()

@@ -293,11 +293,20 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   three platforms against staging and upload them to Steam's password-protected `staging` beta branch
   (`tools/ci/steam_upload.sh`, refuses the default branch). Tests: `tools/nakama_check.gd`, `tools/cloud_test.gd`
   (incl. forged stashes, replayed and planted tickets), `bg_test` with `cloud`.
+- **Co-op through Steam** (`scripts/steam_link.gd` `SteamLink`, `Game.steam`; Blaine, 2026-11-05): single player and
+  co-op are one flow, Enter World, and friends join your world through Steam. GodotSteam 4.23.2 GDExtension
+  (`addons/godotsteam`, Godot 4.4+, its `SteamMultiplayerPeer` built in). Development runs as Spacewar (App ID 480).
+  The pause menu's Invite Friends (`UI.invite_btn`, only in your own world) hosts through Steam (`Net.host_with` a
+  Steam peer: Net takes any MultiplayerPeer) and opens a friends-only lobby with rich presence `connect`; a friend's
+  invite / "Join Game" (`join_requested`, or `+connect_lobby <id>` on a cold start) joins (`Game.start_join_steam`,
+  `Net.join_with`); `LobbyClient.draw` lists friends' open worlds first. Back to the title closes the world. No
+  Steam running: `ok` is false and nothing changes. `tools/steam_host_probe.gd` (host side, display + Steam),
+  `-- --steam-selftest` for a build. See docs/patterns/multiplayer.md.
 - **Dedicated servers are lean** (Blaine's capacity audit, 2026-11-05; measured on the 4 GB / 2 vCPU droplet with bot
   players, `tools/load_bot.gd`): a server doesn't pose bodies (`Enemy.server_nopose`, on with `--server`; `--pose`
   turns it off) and ticks at 30 fps (`Battlegrounds.server_tick`, `--tick N`); physics stays at 60. The staging CI also
   exports the **Linux Server** preset (`dedicated_server`, everything stripped to placeholders: no textures, meshes
-  keep only their AABB; the debug template, since 4.3's release template segfaults on a dedicated-server pack) as
+  keep only their AABB; the release template since 4.4.1: 4.3's segfaulted on a dedicated-server pack) as
   the `AshenCrown-server` artifact, never uploaded to itch/Steam. A Battlegrounds world: 1.25 GB -> ~0.4 GB, a busy
   one (6 players fighting) 95% -> 24% of a core, an empty one 31% -> 13%. So server code must never need pixels or
   mesh surfaces (a stripped mesh has none: guard like `Flora.oak_model`'s leaves and `UI._scaled_tex`).

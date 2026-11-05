@@ -171,6 +171,13 @@ func draw() -> void:
  for id in mode_buttons:
   mode_buttons[id].modulate=Color(1.3,1.12,0.8) if id==selected_mode else Color.WHITE
   mode_buttons[id].disabled=not room.is_empty()
+ # Steam friends' open worlds first (co-op: SteamLink), like Slay the Spire's join list
+ if game.steam!=null and game.steam.ok and room.is_empty():
+  for f in game.steam.friends_worlds():
+   var fl:int=int(f.lobby)
+   var fb=ui._iron_button("%s's world · Co-op · Join"%str(f.name),900,48,18)
+   fb.pressed.connect(func():panel.hide();game.steam.join_world(fl))
+   rows.add_child(fb)
  for r in rooms:
   var rid:String=str(r.id)
   var b=ui._iron_button("%s · %s · %d/%d · %s"%[r.name,str(r.mode).capitalize(),int(r.get("joined",r.members.size())),r.capacity,str(r.state).capitalize()],900,48,18)

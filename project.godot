@@ -2,6 +2,8 @@
 config_version=5
 
 [application]
+
+run/flush_stdout_on_print.dedicated_server=true
 config/name="Ashen Crown"
 config/description="An isometric action RPG in four acts."
 run/main_scene="res://main.tscn"
