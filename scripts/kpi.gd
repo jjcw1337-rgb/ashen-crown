@@ -107,6 +107,13 @@ static func step(delta: float) -> void:
 		if float(st["t"]) >= SETTLE:
 			st["phase"] = "measure"
 			st["t"] = 0.0
+			# the profiling switches again, now the zone has settled: what the settle built or re-enabled (deferred
+			# multimesh cells, apply_quality, Grade's shadow picks) is caught too (nightly 2026-11-05)
+			_hide_parts()
+			_no_shadows()
+			_env_off()
+			_mm_no_shadow()
+			_no_cast()
 			st["t0"] = Time.get_ticks_usec()
 			st["p0"] = [load("res://scripts/kpi_probe.gd").proc_us, load("res://scripts/kpi_probe.gd").phys_us]
 			if OS.get_cmdline_user_args().has("--census"):
@@ -460,7 +467,10 @@ static func _mm_no_shadow() -> void:
 				var il: int = m.surface_get_array_index_len(si)
 				t += (il if il > 0 else m.surface_get_array_len(si)) / 3
 			if t > lim:
-				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				if a.has("--mmhide"):
+					mi.visible = false         # --mmhide: hide them altogether (what they cost in every pass)
+				else:
+					mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				n += 1
 	print("[KPI] shadows off on ", n, " multimeshes")
 
