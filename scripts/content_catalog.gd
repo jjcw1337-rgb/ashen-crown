@@ -2,8 +2,11 @@ extends RefCounted
 ## Presentation dependencies. Godot loads imported dependencies of these roots itself.
 ## Dynamic skill paths live in named families; adding content to an existing family needs no warm-list edit.
 ## Simulation dependencies remain in World/Enemy: dedicated servers must not request these bundles.
-const FX_DIRS := ["res://assets/models/fx", "res://assets/models/arrows", "res://assets/models/plague",
-	"res://assets/textures/fx", "res://assets/textures/plague", "res://assets/textures/ranger", "res://assets/models/doug"]
+const FX_DIRS := ["res://assets/models/fx", "res://assets/textures/fx"]
+const CLASS_DIRS := {
+	"archer": ["res://assets/models/arrows", "res://assets/textures/ranger"],
+	"plague": ["res://assets/models/plague", "res://assets/textures/plague"],
+	"doug": ["res://assets/models/doug"]}
 const CLASS_ROOTS := {
 	"knight": ["knight_mocap.glb", "knight_meshy.glb"], "demon": ["demon_mocap.glb"],
 	"plague": ["plague_doctor.glb"], "archer": ["archer_ranger.glb", "ranger_bow.glb"],
@@ -41,12 +44,15 @@ static func files(dir: String, recursive := true) -> Array:
 static func combat(classes: Array = []) -> Array:
 	if not _families.has("combat"):
 		var paths: Array = ["res://scripts/demon_mocap.gdshader", "res://scripts/wraith_mocap.gdshader"]
-		paths.append(SpiritBeast.WOLF_GLB) # summoned spirit beast is not a Data.ENEMIES kind
 		for dir in FX_DIRS:
 			paths.append_array(files(dir))
 		_families["combat"] = paths
 	var result: Array = (_families["combat"] as Array).duplicate()
 	for cls in (CLASS_ROOTS.keys() if classes.is_empty() else classes):
+		if cls == "archer": result.append(SpiritBeast.WOLF_GLB)
+		for dir in CLASS_DIRS.get(cls, []):
+			if not _families.has(dir): _families[dir] = files(str(dir))
+			result.append_array(_families[dir])
 		for path in CLASS_ROOTS.get(cls, []):
 			result.append("res://assets/models/" + str(path))
 	return result

@@ -226,3 +226,9 @@ static func _value(v, origin: Vector3):
 			arr.append(_value(x, origin))
 		return arr
 	return v
+
+## Leaving gameplay retires warm-only references. Live nodes keep their own resources.
+static func release_prepared() -> void:
+	_done.clear()
+	_kept.clear()
+	_kept_ids.clear()

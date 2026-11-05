@@ -18,6 +18,9 @@ func run() -> void:
 			represented[str(event.get("s", ""))] = true
 		for skill in Data.skills_for(cls) + Data.shared_skills():
 			check(represented.has(str(skill.id)), "Skill missing captured preparation event: %s/%s" % [cls, skill.id])
+	var solo: Array = catalog.combat(["knight"])
+	check(not solo.any(func(p): return str(p).contains("/plague/") or str(p).contains("/arrows/")), "Solo knight must not acquire other classes\' families")
+	check(catalog.combat(["archer"]).has(SpiritBeast.WOLF_GLB), "Archer summon must be declared")
 	for path in catalog.combat():
 		check(ResourceLoader.exists(path), "Missing combat dependency: " + path)
 	for run_i in 3:

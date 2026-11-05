@@ -96,3 +96,6 @@ static func run(g) -> void:
 		SkillWarm.keep(r)
 		r.queue_free()
 	print("[warm] monsters %s in %d ms" % [",".join(todo), Time.get_ticks_msec() - t0])
+
+static func release_prepared() -> void:
+	_done.clear()

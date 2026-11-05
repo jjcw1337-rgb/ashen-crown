@@ -70,6 +70,7 @@ func run() -> void:
 	await step("title_idle_again_3s", func(): await create_timer(3.0).timeout)
 	await shot("title")
 	await step("new_knight_in_camp", func(): await g.start_game(false, "knight", "", "Perf Audit"))
+	var saved_character: String = g.char_id
 	g.test_immortal = true
 	for pass_i in 2:
 		await step("character_window_%d" % pass_i, func(): g.ui.toggle(g.ui.char_panel), 20)
@@ -89,6 +90,12 @@ func run() -> void:
 	if not recovered:
 		push_error("Return to title during transition did not recover")
 	await shot("returned-title")
+	var retired: bool = ResCache.metrics().scopes == 1 and SkillWarm._kept.is_empty()
+	print("[FLOW CHECK] title retires combat preparation=", retired)
+	await step("resume_after_release", func(): await g.start_game(true, "knight", saved_character))
+	var resumed: bool = g.playing and g.char_id == saved_character and not g._busy and ResCache.metrics().scopes == 2
+	print("[FLOW CHECK] resumed after release=", resumed)
+	await shot("resumed-camp")
 	var f := FileAccess.open(output, FileAccess.WRITE)
 	f.store_string(JSON.stringify({"rows": rows, "viewport": str(get_root().get_visible_rect().size),
 		"preset": g.quality, "user_dir": OS.get_user_data_dir(),
@@ -99,4 +106,4 @@ func run() -> void:
 	await wait_frames(8)
 	var released: bool = int(ResCache.metrics().get("scopes", 0)) == 0 and int(ResCache.metrics().get("pending", 0)) == 0
 	print("[FLOW CHECK] scope teardown=", released)
-	quit(0 if recovered and released else 1)
+	quit(0 if recovered and released and retired and resumed else 1)

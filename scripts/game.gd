@@ -1398,8 +1398,9 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	_content_generation += 1
 	var next_scope := "zone:%d:%d" % [get_instance_id(), _content_generation]
 	_loading_scope = next_scope
-	_combat_scope = "combat:%d" % get_instance_id()
+	var old_combat_scope := _combat_scope
 	var prepared_classes := _preparation_classes(zone)
+	_combat_scope = "" if _boot_quiet else "combat:%d:%s" % [get_instance_id(), ",".join(prepared_classes)]
 	# Dedicated simulation keeps its own dependencies; it never acquires the presentation bundle.
 	if _presentation_client():
 		ResCache.prepare(next_scope, ContentCatalog.zone(difficulty, zone))
@@ -1422,6 +1423,8 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		hovered = null
 		await get_tree().process_frame
 	ResCache.release(_zone_scope)
+	if old_combat_scope != _combat_scope:
+		ResCache.release(old_combat_scope)
 	_zone_scope = next_scope
 	_loading_scope = ""
 	Telemetry.crumb("enter", {"to": zone, "run": difficulty})
@@ -2662,7 +2665,13 @@ func exit_to_title() -> void:
 	char_id = ""
 	while _busy:
 		await get_tree().process_frame       # (a zone still loading would swallow ours)
+	_boot_quiet = true
+	_boot_hold = true
 	await load_zone(0, "town", "start")
+	_boot_quiet = false
+	_boot_hold = false
+	SkillWarm.release_prepared()
+	MonsterWarm.release_prepared()
 	ui.show_title()
 
 # ---------------------------------------------------------------- shops
