@@ -5661,8 +5661,8 @@ class SkillGlyph extends Control:
 				for k in 6:
 					var a := TAU * k / 6.0
 					draw_line(c, c + Vector2(cos(a), sin(a)) * 11, ic.lightened(0.3), 2.0, true)
-			"arc":
-				var lc := Color(0.75, 0.7, 1.0) if not dim else Color(0.4, 0.4, 0.45)
+			"arc", "storm_arc":
+				var lc := (Color(0.75, 0.7, 1.0) if id == "arc" else Color(0.45, 0.95, 0.95)) if not dim else Color(0.4, 0.4, 0.45)
 				draw_polyline(PackedVector2Array([c + Vector2(-15, -12), c + Vector2(-4, -3), c + Vector2(-8, 2), c + Vector2(4, 9), c + Vector2(0, 12), c + Vector2(15, 15)]), lc, 3.0, true)
 				draw_circle(c + Vector2(15, 15), 2.5, lc.lightened(0.4))
 			"war_cry":

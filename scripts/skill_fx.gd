@@ -41,6 +41,7 @@ static func play(h: Hero, ev: Dictionary) -> void:
 		"warlock": done = WarlockFx.play(h, ev)
 		"archer": done = ArcherFx.play(h, ev)
 		"doug": done = DougFx.play(h, ev)
+		"wyrm", "serpent", "wyvern": done = ArcFx.play_dragon(h, ev)
 	if not done:
 		done = _common(h, ev)
 	if not done:

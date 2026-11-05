@@ -221,8 +221,8 @@ static func died(_h: Hero) -> void:
 static func sound(h: Hero, skill: String, at: float) -> bool:
 	if h.atk_style != "bow":
 		return false
-	# (the Fire Arrow's release roars over it: ArrowFx "release" layers land with the arrow's "loose" event)
-	Sfx.play_synced("bow", at, -3.0 if skill != "pierce" else -6.0, 0.85 if skill == "volley" else (0.92 if skill == "pierce" else 1.0))
+	# (the Fire Arrow's whoosh of flame goes with it: ArrowFx "release" layers land with the arrow's "loose" event)
+	Sfx.play_synced("bow", at, -3.0, 0.85 if skill == "volley" else (0.92 if skill == "pierce" else 1.0))
 	return true
 
 ## The release (Hero._impact): true when it was the archer's.

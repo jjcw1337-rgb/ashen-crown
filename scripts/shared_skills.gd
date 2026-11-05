@@ -38,24 +38,7 @@ static func impact(h: Hero) -> bool:
 		return false
 	match id:
 		"arc":
-			var first := SkillSpec.targets(h, id)
-			var pts := PackedVector3Array([SkillFx.hand(h, true)])
-			var hit := []
-			var at = first[0] if not first.is_empty() else null
-			while at != null and hit.size() <= ARC_JUMPS:
-				hit.append(at)
-				pts.append(at.global_position + Vector3(0, 1.0, 0))
-				SkillSpec.strike(h, id, at)
-				var next = null
-				var bd := ARC_JUMP_R
-				for e in h.game.enemies_near(at.global_position, ARC_JUMP_R):
-					if e.dead or hit.has(e):
-						continue
-					var d: float = e.global_position.distance_to(at.global_position)
-					if d < bd:
-						bd = d
-						next = e
-				at = next
+			var pts := chain(h, id, SkillFx.hand(h, true), ARC_JUMPS)
 			h.fx(id, "impact", {"ps": pts, "d": h.aim_dir()})
 		"war_cry":
 			h.buff_t = maxf(h.buff_t, CRY_BUFF)
@@ -71,6 +54,29 @@ static func impact(h: Hero) -> bool:
 				SkillSpec.strike(h, id, e)
 			h.fx(id, "impact", {"p": h.global_position, "d": h.aim_dir(), "r": float(Data.skill_def(id)["area"]["r"])})
 	return true
+
+## Arc's lightning (and the Storm Wyvern's): into the first target the skill finds ahead, then on to the nearest one
+## within ARC_JUMP_R of each, `jumps` more times, striking each (SkillSpec.strike). Returns the path, from `from`.
+static func chain(h: Hero, id: String, from: Vector3, jumps: int) -> PackedVector3Array:
+	var first := SkillSpec.targets(h, id)
+	var pts := PackedVector3Array([from])
+	var hit := []
+	var at = first[0] if not first.is_empty() else null
+	while at != null and hit.size() <= jumps:
+		hit.append(at)
+		pts.append(at.global_position + Vector3(0, 1.0, 0))
+		SkillSpec.strike(h, id, at)
+		var next = null
+		var bd := ARC_JUMP_R
+		for e in h.game.enemies_near(at.global_position, ARC_JUMP_R):
+			if e.dead or hit.has(e):
+				continue
+			var d: float = e.global_position.distance_to(at.global_position)
+			if d < bd:
+				bd = d
+				next = e
+		at = next
+	return pts
 
 static func update(_h: Hero, _delta: float) -> void:
 	pass

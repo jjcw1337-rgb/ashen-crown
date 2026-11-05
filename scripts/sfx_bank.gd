@@ -3,6 +3,8 @@
 ## [takes, bus, seconds to the payoff (Sfx.play_synced lands it on an attack's impact frame)]
 const BANK := {
 	"anvil": [5, "sfx", 0.0],
+	"arc_hit": [2, "sfx", 0.0],
+	"arc_zap": [2, "sfx", 0.0],
 	"arena_horn": [2, "sfx", 0.0],
 	"arrow_rain": [2, "sfx", 0.0],
 	"battle_cry": [1, "sfx", 0.0],

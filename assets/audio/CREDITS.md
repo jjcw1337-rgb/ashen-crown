@@ -6,6 +6,8 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | Sound | Takes | Source | License | Prompt / file |
 |---|---|---|---|---|
 | anvil | 5 | Kenney Impact Sounds (kenney.nl), layered into an anvil strike | CC0 1.0 | metal impact + bell ring layered, Halvar's anvil take 1 |
+| arc_hit | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a bolt of electricity striking a body, a sharp electric snap and sizzle with a short buzz, close mic, dry, isolated sound effect, no music |
+| arc_zap | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a fierce bolt of chain lightning leaping from target to target, rapid sharp electric zaps and crackles in quick succession with a sizzling hum, close mic, dry, isolated sound effect, no music |
 | arena_horn | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a Roman cornu war horn blast in a stone amphitheatre, a deep brassy fanfare call of two long notes, isolated sound effect, no music, no voices |
 | arrow_rain | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | many arrows whistling down out of the sky toward you, a rising rush of fletching through the air ending in a dense flurry, close mic, dry, isolated sound effect, no music |
 | battle_cry | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a medieval warrior's battle cry, one man roaring a fierce 'Haaa!' to rally his allies, close mic, dry, isolated sound effect, no music |

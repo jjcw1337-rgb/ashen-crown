@@ -75,7 +75,8 @@ const PRESETS := {
 			"wood": {"flames": 0, "flame_life": 7.0, "settle": true, "bounce": 0.25, "friction": 0.7, "smoke_col": Color(0.42, 0.39, 0.36), "smoke": 8, "scorch": 1.0, "glow": 8.0, "keep": 7.0},
 			"dark": {"flames": 3, "flame_life": 1.2, "settle": false, "bounce": 0.3, "friction": 0.6, "smoke_col": Color(0.28, 0.27, 0.25), "smoke": 7, "scorch": 1.0, "glow": 2.0, "dust": Color(0.12, 0.11, 0.1)},
 		},
-		"sounds": {"cast": [["fuse", -13.0, 1.15]], "release": [["fireball", -4.0, 1.08], ["burn_item", -14.0, 1.25]],
+		## (jj: no sizzle on the draw or the release, only the arrow being loosed: the fuse and the crackle are gone)
+		"sounds": {"cast": [], "release": [["fireball", -6.0, 1.08]],
 			"pierce": [["impact_flesh", -4.0, 1.0], ["fire_erupt", -9.0, 1.45]], "end": [["boom", -7.0, 1.15], ["fire_erupt", -4.0, 0.9]]},
 	},
 	## the plain war arrow: no fire; sparks on the hit

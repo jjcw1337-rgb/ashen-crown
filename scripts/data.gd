@@ -642,6 +642,11 @@ const SKILLS := [
 		"style": "cast", "use": 0.7, "speed": "cast", "base": [8, 14], "per_lvl": 2.8, "type": "lightning",
 		"area": {"shape": "single", "r": 10.0}, "tags": ["spell", "lightning", "chain"],
 		"desc": "Lightning leaps from your hand into the nearest foe ahead and on to three more nearby, striking each."},
+	# the Storm Wyvern's own (jj, 2026-11-04: "give Arc for the storm wyvern"): rears up and breathes chain lightning
+	{"id": "storm_arc", "cls": "wyvern", "name": "Storm Arc", "key": "Q", "lvl": 1, "mana": 6, "cd": 0.0, "aim": "facing", "range": 11.0,
+		"style": "cast", "use": 0.75, "speed": "cast", "base": [10, 16], "per_lvl": 3.2, "type": "lightning",
+		"area": {"shape": "single", "r": 11.0}, "tags": ["spell", "lightning", "chain"],
+		"desc": "The wyvern rears up, the lightning in its wings flaring, and breathes a bolt into the nearest foe ahead that leaps on to four more nearby, striking each."},
 	{"id": "war_cry", "cls": "any", "name": "War Cry", "key": "", "lvl": 6, "mana": 12, "cd": 8.0, "aim": "self",
 		"style": "cast", "use": 0.8, "speed": "attack", "tags": ["warcry", "buff"],
 		"desc": "A roar that rallies your team: you and every ally within 8 metres deal +40% damage for 6 seconds, and the monsters near turn on you. In the Battlegrounds it is yours alone (no teams there yet)."},

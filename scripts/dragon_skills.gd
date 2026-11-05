@@ -1,6 +1,8 @@
 class_name DragonSkills
 extends RefCounted
-## The dragon classes' skills (Obsidian Wyrm "wyrm", Frost Serpent "serpent", Storm Wyvern "wyvern"): none yet.
+## The dragon classes' skills (Obsidian Wyrm "wyrm", Frost Serpent "serpent", Storm Wyvern "wyvern"). The Storm
+## Wyvern's Storm Arc (jj): it rears and breathes chain lightning from its jaws (SharedSkills.chain, WYVERN_JUMPS
+## leaps; the look is ArcFx's, its wings crackling); the others have none yet.
 ## For now a dragon has only the common Attack (left mouse: the hero's three-swipe combo, which Dragon.pose shows as
 ## a foreclaw rake, a bite and a tail spin) and Block; this script plays their own sounds for the attack.
 ##
@@ -16,11 +18,28 @@ static func is_mine(h: Hero) -> bool:
 static func can_cast(_h: Hero, _id: String, _aim: Vector3) -> bool:
 	return true
 
-static func cast(_h: Hero, _id: String, _aim: Vector3) -> void:
-	pass
+const WYVERN_JUMPS := 4
 
-static func impact(_h: Hero) -> bool:
-	return false
+static func cast(h: Hero, id: String, _aim: Vector3) -> void:
+	if id == "storm_arc":
+		h._start_attack("cast", id)
+		h.moving = false
+		h.path = PackedVector3Array()
+
+static func impact(h: Hero) -> bool:
+	if not is_mine(h) or h.atk_skill != "storm_arc":
+		return false
+	var pts := SharedSkills.chain(h, "storm_arc", jaws(h), WYVERN_JUMPS)
+	h.fx("storm_arc", "impact", {"ps": pts, "d": h.aim_dir()})
+	return true
+
+## Where a dragon's breath leaves it: in front of its head.
+static func jaws(h: Hero) -> Vector3:
+	var J: Dictionary = h.rig.get_meta("j") if h.rig != null and h.rig.has_meta("j") else {}
+	var hd = J.get("at_head", J.get("head"))
+	if hd is Node3D and is_instance_valid(hd):
+		return (hd as Node3D).global_position + h.facing() * 0.5
+	return h.global_position + Vector3(0, 2.0, 0) + h.facing() * 1.2
 
 static func update(_h: Hero, _delta: float) -> void:
 	pass
@@ -37,6 +56,10 @@ static func died(h: Hero) -> void:
 
 ## The basic attack's sounds, each landing on its impact frame: claw, bite, tail spin.
 static func sound(h: Hero, skill: String, at: float) -> bool:
+	if is_mine(h) and skill == "storm_arc":
+		Sfx.play(h.cls + "_roar", -8.0, 1.15)
+		Sfx.play_synced("arc_zap", at, -2.0)
+		return true
 	if not is_mine(h) or skill != "":
 		return false
 	match h.atk_style:

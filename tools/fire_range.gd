@@ -115,7 +115,8 @@ func _run() -> void:
 	while g.world == null or g._busy or g._intro_playing:
 		g._intro_skip = true
 		await process_frame
-	await g.start_game(false, "archer")
+	# (RANGE_CLASS: another class on the range, e.g. the Storm Wyvern for its Storm Arc)
+	await g.start_game(false, OS.get_environment("RANGE_CLASS") if OS.get_environment("RANGE_CLASS") != "" else "archer")
 	g.ui.close_all()
 	print("[range] loaded in %.1f s" % ((Time.get_ticks_msec() - t0) / 1000.0))
 	var h = g.hero

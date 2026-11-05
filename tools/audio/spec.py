@@ -376,3 +376,12 @@ SPEC += [
          prompt="a massive lightning bolt striking the ground and exploding, a deafening electric crack, rock shattering, "
                 "and a short heavy thunder rumble rolling away" + DRY),
 ]
+
+# Arc's new lightning (jj, 2026-11-04: the Storm Wyvern's skill, the lightning redone; ArcFx)
+SPEC += [
+    dict(name="arc_zap", src="eleven", n=4, dur=1.0, hit=0, label="chain lightning leaping between targets",
+         prompt="a fierce bolt of chain lightning leaping from target to target, rapid sharp electric zaps and "
+                "crackles in quick succession with a sizzling hum" + DRY),
+    dict(name="arc_hit", src="eleven", n=4, dur=0.6, hit=0, label="a lightning bolt striking a body",
+         prompt="a bolt of electricity striking a body, a sharp electric snap and sizzle with a short buzz" + DRY),
+]

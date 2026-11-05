@@ -45,12 +45,11 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 		"arc":
 			match e:
 				"cast":
-					var hand := SkillFx.hand(h, true)
-					ElementalFx.bolt(root, hand, hand + Vector3(randf_range(-0.3, 0.3), 0.35, randf_range(-0.3, 0.3)), 0.18, 0.03, 1)
+					ArcFx.charge(h, SkillFx.hand(h, true), ArcFx.STORM, 0.28)
 				"impact":
-					var ps: PackedVector3Array = ev["ps"]
-					ElementalFx.arc(h, root, ps, ev["d"])
-					SkillFx.snd(h, "thunder_strike", -8.0, 1.35)
+					# the new lightning (ArcFx: Blender-rendered bolts, the Meshy burn and plasma)
+					ArcFx.chain(h, root, ev["ps"], ev["d"], ArcFx.STORM)
+					SkillFx.snd(h, "arc_zap", -4.0, 1.0)
 				_:
 					return false
 		"war_cry":
