@@ -15,9 +15,11 @@ go deeper on attempts." Be AGGRESSIVE:
   Big structural changes are welcome (merging meshes into MultiMeshes, LOD/visibility-range systems, moving work off
   the main thread, cutting per-frame script work, rebuilding heavy assets at lower cost) as long as tests stay green
   and the look holds.
-- Known targets (2026-11-01): the GPU is only 57-66% busy, so the MAIN THREAD is the limit (profile the scripts'
-  _process/_physics_process time per node type and cut the hot ones); the camp draws 152 M primitives a frame (the
-  moor 20 M): find which meshes and cut them (LODs, decimation, visibility ranges, shadow casters).
+- Known targets (2026-11-05): big fights are GPU-bound on the Mac mini (~24 ms GPU on High, ~35 lights and ~1,100
+  particles alive); zone changes still hold one 1.0-1.1 s frame while the zone builds on the main thread; the
+  open first-time work is monster spells and boss effects, Act II/III and Battlegrounds/arena loads, a cold first
+  launch and memory over a long session (docs/patterns/loading.md, "Not covered yet"). Older: the camp draws ~150 M
+  primitives a frame; cut-out shadow casters cost, triangles don't.
 - Each win is its own commit (measured before/after on its own), so one that turns out bad can be reverted alone.
 - Leave 20 minutes before {{DEADLINE}} for the final measurements, the tests and the records (steps 4-7).
 STANDING GOAL, EVERY NIGHT: the DOWNLOAD SIZE (Blaine: "we want this to be much much smaller"; it was ~650-740 MB
@@ -28,6 +30,25 @@ per platform on 2026-11-01). Read docs/nightly/perf/SIZE.md. Measure the export 
 is well under 200 MB, make tonight's concept a size reduction at least every other night (see SIZE.md for where the
 megabytes are). Size changes must keep the look: show before/after images of anything you recompress.
 
+0. THE DEFAULT PATTERNS (Blaine, 2026-11-05: "audit our stuff to improve it every time ... make sure we're doing
+   checks"). Read AGENTS.md and every file in docs/patterns/ (loading, servers, multiplayer, effects, measuring, code
+   organization). They are the rules the game follows and the budgets it must meet. Every night, before picking your
+   concepts, run the PATTERN AUDIT and put its result first in your run write-up and summary:
+   a. Code since the last perf night (`git log --since=<last perf row's date> -p -- scripts`): any new bare `load(` in
+      code that runs during play (not boot or a zone build), any `Shader.new()` outside a static cache, any server
+      path that reads pixels or mesh surfaces, any new mid-zone spawn kind not in `MonsterWarm.kinds`, any skill whose
+      effects changed without `SkillWarmData` re-recorded. Fix what you find (each its own commit) or log it.
+   b. The checks, against docs/patterns/measuring.md's budgets (3 runs each where it says so, median and spread):
+      - first times: `$G --path . -s tools/_late.gd -- res://tools/app_hitch_audit.gd` (no first-occurrence frame over
+        50 ms on High);
+      - a big fight: `tools/stress_fight.gd -- plague demon,archer 25 18` (p99 at or under 33 ms, worst at or under 80);
+      - zone loads: the KPI scenarios' load_ms (3 s warm, 5 s cold) and the longest frame during a load (250 ms);
+      - the server: a stripped "Linux Server" export (`--export-debug "Linux Server"`) run headless locally with
+        `tools/load_bot.gd` players (6 fighting in a Battlegrounds world): its RSS and CPU against the costs in
+        `deploy/lobbies/service.py` `COST`; a regression is a finding.
+      Any budget missed is a candidate concept for tonight; one that got worse since the last night goes first.
+   c. When you change a pattern (a new loader, a new warm-up, a new budget), update its docs/patterns file in the same
+      commit: the next run reads it.
 1. Learn from the past. Read docs/nightly/perf/LOG.md FIRST: its Lessons and every row (yours and the runner's
    `bench` rows, the scoreboard). Open the linked run write-ups (docs/nightly/perf/runs/*.md) of anything you build
    on, and docs/nightly/perf/metrics.jsonl for the trend. Don't repeat an attempt marked "no" unless you can say what
@@ -63,8 +84,9 @@ megabytes are). Size changes must keep the look: show before/after images of any
      changed (files), every measurement before/after, why the failures failed, what you'd try next;
    - append the measurements to docs/nightly/perf/metrics.jsonl, one JSON object per line with keys
      date, phase ("before"/"after"), scene, preset, fps, low1, draw_calls, primitives, gpu_ms, gpu_busy;
-   - write {{OUT}}/perf_summary.md: 5-12 lines for the morning report, numbers first: the night's overall
-     before -> after, then each win (and each revert) in a line.
+   - write {{OUT}}/perf_summary.md: 5-12 lines for the morning report: first the pattern audit (what it found, what
+     you fixed) and each budget's number against its target (met / missed), then the night's overall before -> after,
+     then each win (and each revert) in a line.
 7. Commit on the current branch (a commit per win, plus one for the records) with a clear message (end it with the Co-Authored-By line from CLAUDE.md's
    conventions). Do NOT push, merge or deploy: the nightly script does that after its own checks.
 

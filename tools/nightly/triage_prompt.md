@@ -11,6 +11,15 @@ with Kind `hotfix-<error|crash|spot>`. If it turns out not to be real or can't b
 GOAL: what real players hit since the last triage gets fixed, worst first: crashes and errors, then the places where
 the game ran worst. You don't guess: every fix starts from the reports, is reproduced, and is checked.
 
+0. THE DEFAULT PATTERNS (Blaine, 2026-11-05). Read AGENTS.md and docs/patterns/ (loading, servers, multiplayer,
+   effects, measuring, code organization). Besides the reports, check that the day's commits keep them
+   (`git log --since=yesterday -p -- scripts deploy`): a bare `load(` or a fresh `Shader.new()` in code that runs during
+   play, server code that needs pixels or mesh surfaces, a mid-zone spawn kind missing from `MonsterWarm.kinds`, a new
+   RPC or co-op path that bypasses `Net`/`SkillFx`. Also check the live servers: `ssh ashen-crown-staging` for the
+   lobby service's match logs (`/var/lib/ashen-lobbies/*.log`: SCRIPT ERROR, crashes, matches that hit their LIMIT)
+   and the match processes' memory (`ps -eo rss,pcpu,args | grep match-config`) against service.py `COST`. A pattern
+   break or a server regression is an issue like a player report: rank it with them (a crash or a server that can't
+   start a match is at the top) and log it with Kind `pattern` or `server`.
 1. Learn from the past. Read docs/nightly/triage/LOG.md FIRST: its Lessons and every row (what was fixed, what
    couldn't be reproduced, what's "watch"). An issue fixed before that's back is a regression: it goes to the top.
 2. Read the reports (last 24 h; widen to 72 h if there's little):
@@ -45,7 +54,8 @@ the game ran worst. You don't guess: every fix starts from the reports, is repro
      and REWRITE its Lessons (at most 8 bullets: what kinds of bugs players hit, where the game is slow, what worked);
    - docs/nightly/triage/runs/{{DATE}}.md: for each, the reports (counts, builds, context, crumbs), the reproduction,
      the cause, the fix (files), before/after (an error gone, fps at the spot), and what to watch;
-   - {{OUT}}/triage_summary.md: 5-12 lines for Discord, worst first: what players hit, what's fixed, what's left.
+   - {{OUT}}/triage_summary.md: 5-12 lines for Discord, worst first: what players hit, what's fixed, what's left,
+     and one line for the pattern and server check (clean, or what it found).
 7. Commit on the current branch (a commit per fix, plus one for the records), messages ending with the Co-Authored-By
    line from CLAUDE.md's conventions. Do NOT push, merge or deploy: the nightly script does that after its checks.
 
