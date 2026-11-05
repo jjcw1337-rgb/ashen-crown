@@ -10,6 +10,10 @@ extends RefCounted
 ## Measured on the proof range (first cast's worst frame): Fire Arrow 198 ms, Thunderstep 183, Spirit Beast 544.
 
 const SETTLE := 2.2          # seconds the effects are left to play out (Frost Volley shatters at 1.95)
+## The settle runs in fast-forward (Engine.time_scale): every effect still lives its whole 2.2 s of game time and
+## draws each of its stages (pipelines compile on the frame a thing is first drawn), in a quarter of the wall-clock
+## wait under the loading screen (nightly 2026-11-05: the warm was 2.5-2.7 s of every first load).
+const SPEED := 4.0
 
 static var _done := {}
 
@@ -65,7 +69,10 @@ static func run(g) -> void:
 	if cls == "archer":
 		ArrowFx.end_draw(p)
 		FrostVolleyFx.end_draw(p)
+	var was_scale := Engine.time_scale
+	Engine.time_scale = SPEED
 	await tree.create_timer(SETTLE).timeout
+	Engine.time_scale = was_scale if was_scale <= 1.0 else 1.0
 	SkillFx.clear(p)
 	p.queue_free()
 	if is_instance_valid(root):
