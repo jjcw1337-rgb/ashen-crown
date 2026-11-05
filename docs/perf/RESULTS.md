@@ -1,5 +1,7 @@
 # Audit verification
 
+This page records the initial static audit at `123b77b`. The subsequent runtime probes, limitations and revised design are in [VERIFICATION.md](VERIFICATION.md) and [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md). Statements below about tests not performed apply to that initial audit.
+
 2026-11-05. Audited source baseline: `8845213e29577b81fda420b2a0b89e5799231002`.
 
 Completed: reviewed the supplied brief, branch instructions and relevant performance notes; traced resource access, zone loading, warmers, combat queries, projectile creation and benchmark selection; researched primary engine/vendor/developer sources; generated a reproducible lexical inventory.

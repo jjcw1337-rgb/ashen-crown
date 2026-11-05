@@ -1,5 +1,7 @@
 # Performance system audit
 
+Follow-up: [verified signals and benchmark limitations](VERIFICATION.md), and [the five proposed shared systems](SYSTEM_DESIGN.md). This page preserves the initial static audit; follow-up measurements are reported separately.
+
 2026-11-05 · desktop Godot 4.3 Forward+ · source baseline `8845213e29577b81fda420b2a0b89e5799231002`
 
 This is a code audit and implementation design, informed by `codex_perf_brief.md`, the current source, recorded project measurements, and primary developer documentation. It is **not a completed runtime overhaul or a new performance benchmark**. No game, server, rendering setting, asset, or shared cache was changed for this audit. See [RESULTS.md](RESULTS.md) for what was actually verified.
