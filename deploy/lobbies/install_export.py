@@ -33,7 +33,10 @@ config=caddy.read_text()
 assert '\thandle {' in config and '\thandle /lobbies {' not in config
 route='\thandle /lobbies {\n\t\trequest_body {\n\t\t\tmax_size 16KB\n\t\t}\n\t\treverse_proxy '+gateway+':7352\n\t}\n'
 caddy.write_text(config.replace('\thandle {',route+'\thandle {',1))
-try:call('docker','exec',container,'caddy','validate','--config','/etc/caddy/Caddyfile')
+# An earlier atomic install can leave Docker's bind mount on an old inode.
+# Validate and reload an explicit copy; a later container restart remounts the persisted host file.
+call('docker','cp',str(caddy),container+':/tmp/lobby-Caddyfile')
+try:call('docker','exec',container,'caddy','validate','--config','/tmp/lobby-Caddyfile','--adapter','caddyfile')
 except Exception:
  caddy.write_text((backup/'Caddyfile').read_text());raise
 (root/'lobbies.env').write_text('LOBBY_PROXY_BIND='+gateway+'\n');(root/'lobbies.env').chmod(0o600)
@@ -50,7 +53,8 @@ try:
  call('systemctl','daemon-reload')
  call('systemctl','start','ashen-crown-coop')
  call('systemctl','enable','--now',manager)
- call('docker','exec',container,'caddy','reload','--config','/etc/caddy/Caddyfile')
+ call('docker','cp',str(caddy),container+':/tmp/lobby-Caddyfile')
+ call('docker','exec',container,'caddy','reload','--config','/tmp/lobby-Caddyfile','--adapter','caddyfile')
  (root/'lobbies-enabled').write_text(revision+'\n')
 except Exception:
  call('systemctl','stop',manager,'ashen-crown-coop')
@@ -58,6 +62,7 @@ except Exception:
  shutil.copy2(backup/'ashen-crown-coop.service','/etc/systemd/system/ashen-crown-coop.service')
  caddy.write_text((backup/'Caddyfile').read_text())
  call('systemctl','daemon-reload');call('systemctl','enable','--now','ashen-crown-bg');call('systemctl','start','ashen-crown-coop')
- call('docker','exec',container,'caddy','reload','--config','/etc/caddy/Caddyfile')
+ call('docker','cp',str(caddy),container+':/tmp/lobby-Caddyfile')
+ call('docker','exec',container,'caddy','reload','--config','/tmp/lobby-Caddyfile','--adapter','caddyfile')
  raise
 print('Activated staging candidate',revision,'with one match slot; verify before publishing clients.')
