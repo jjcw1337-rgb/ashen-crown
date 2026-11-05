@@ -250,8 +250,8 @@ class Handler(BaseHTTPRequestHandler):
                 if self.client_address[0] not in ('127.0.0.1','::1'): raise Rejected('Local workers only.')
                 result=svc.model.worker(str(p.get('id','')),self.headers.get('X-Worker-Key',''),str(p.get('op','')),p)
             elif self.path=='/lobbies':
-                if not svc.args.dev and p.get('op') in ('create','join','ready','team','stake','start') and p.get('version')!=svc.version:
-                    raise Rejected('Update your game to the current server release before entering multiplayer.')
+                # Private development: build revisions are diagnostic, not admission gates.
+                # Keep real session authentication and all lobby/ticket rules.
                 result=svc.model.call(svc.user(self.headers.get('Authorization','')),str(p.get('op','')),p)
             else: raise Rejected('Unknown endpoint.')
         except (Rejected,ValueError,KeyError,TypeError) as e: status=400;result={'error':str(e)}

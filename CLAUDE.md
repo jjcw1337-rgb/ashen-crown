@@ -137,7 +137,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   (`Items.PCT_STATS`) stay as rolled. Re-run the balance sim after changing any of them.
 
 - **Typed GDScript**: inference from Variant is treated as an error. Write `var x: Type = ...`.
-- **Co-op**: every peer must run the same build; RPC ids depend on each script's RPC set.
+- **Multiplayer development** (Blaine, 2026-11-05): do not require identical build SHAs for lobby admission. Cosmetic/client updates may connect to existing workers. RPC ids still depend on each script's RPC set: test network changes against deployed workers and update worker/co-op binaries when needed. Keep Nakama authentication, admission tickets and item consent. See `docs/multiplayer_lobbies.md`.
 - **Co-op skill effects** (`scripts/skill_fx.gd` `SkillFx`): partners see a hero as a puppet (`Hero.puppet`, posed
   from `net_st`/`net_pos`/`net_yaw`), so his animation plays for them, but what a skill DRAWS has to be told: every
   skill effect is an event. Skill code never draws; wherever something is to be seen it calls

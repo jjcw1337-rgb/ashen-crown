@@ -83,8 +83,10 @@ store lobbies. Several simultaneous full worlds are not verified to fit the curr
    For an exported build, point `--godot` at its Linux executable, keep its PCK alongside it, and
    place a `DEPLOYED_REV` file containing the same seven-character build revision in `--game`.
    Keep the previous release for rollback. Client and worker Net RPC signatures must match, including
-   the existing co-op server if these clients use Co-op. The manager pins its release path and checks
-   client build revisions before admitting new lobby entries; restart it deliberately for a new release.
+   the existing co-op server if these clients use Co-op. The manager pins its worker release path; restart it deliberately for a new worker release.
+   Private development does not gate admission on client build revisions (Blaine, 2026-11-05).
+   New cosmetic/client builds can connect without a server redeploy. RPC or shared gameplay changes
+   still need an actual multiplayer test and, when necessary, a worker/co-op update.
 2. Verify the actual deployment user, Godot binary, release path, Nakama loopback port and existing
    services before installing `deploy/lobbies/ashen-crown-lobbies.service`; it is a template.
 3. Configure the authenticated HTTPS site's Caddy routing, before Nakama's catch-all:
