@@ -44,11 +44,14 @@ ResCache are not captured by this counter; the inventory and code review remain 
 Dedicated servers never acquire client presentation bundles or run visual warmers. Their simulation, collision
 and other required data remain under the existing server builders, compatible with the lean server work.
 Solo preparation selects the current class. Online/competitive preparation currently covers all classes so an
-unknown late arrival does not bypass class readiness. Assets shared across spells form a session combat family;
-zone assets belong to the current zone. During transition, old and incoming assets can overlap until the old
+unknown late arrival does not bypass class readiness. Shared spell assets form a common combat family; Plague, Archer and Doug families are acquired only
+when their classes are requested. Zone assets belong to the current zone. Changing the prepared class set
+retires the previous combat scope after the replacement is ready. Returning to the title releases the combat
+scope and warm-only references; re-entering gameplay prepares them again. During transition, old and incoming assets can overlap until the old
 world is retired. This is a deliberate peak-memory tradeoff that must be measured.
 
-Legacy compatibility pins and existing shader/material warm caches are still session-long. This is not a
+Legacy compatibility pins and some existing builder/material caches are still session-long.
+SkillWarm/MonsterWarm preparation references now retire on return to the title. This is not a
 byte-budgeted LRU cache, and clearing a scope cannot force GPU memory to fall while another object retains a
 resource. Byte-budgeted eviction, roster-specific online preparation and all UI caches need further measured
 work if the residency results exceed target. Loading everything at startup is not the contract.
@@ -82,7 +85,8 @@ network gameplay profiling or a sweep of every class combination.
 ## Adding content without recreating the problem
 
 - New content inside a declared family is discovered automatically. A new family needs a catalog declaration;
-  a new class also needs its roots and a visual recipe. CI rejects missing class declarations and missing roots.
+  a new class also needs its roots and a visual recipe. CI rejects missing class declarations, missing roots
+  and class/shared skills without captured preparation events. Event presence is not proof every delayed visual variant was captured.
 - Acquire resources before a screen, zone or encounter uses them; reuse its owner scope. Do not add a new global
   cache or untracked hot-path `load()` to solve an individual hitch.
 - Expensive procedural construction needs small resumable steps. Preserve deterministic layout and test parity

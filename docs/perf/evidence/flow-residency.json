@@ -1,0 +1,483 @@
+{
+ "pipeline_cache": false,
+ "preset": 2,
+ "rows": [
+  {
+   "cache": {
+    "errors": {},
+    "held": 131,
+    "legacy_pins": 6,
+    "loads_started": 156,
+    "pending": 0,
+    "queued": 0,
+    "scopes": 1,
+    "sync_misses": {
+     "res://assets/models/knight_meshy.glb": 1,
+     "res://assets/models/knight_mocap.glb": 1,
+     "res://assets/textures/fx/demon/smoke_chimney.png": 1,
+     "res://assets/textures/fx/fire_body.png": 1,
+     "res://assets/textures/fx/fire_spirit.png": 1,
+     "res://assets/textures/fx/fire_tongue.png": 1
+    }
+   },
+   "elapsed_ms": 33591.841,
+   "focused": true,
+   "frames": 1708,
+   "label": "boot_to_title",
+   "max_frame_ms": 7954.631,
+   "over100": 11,
+   "preparation": {
+    "construction_ms": 5612,
+    "max_step_ms": 25.012,
+    "resources_ms": 8836,
+    "visual_wall_ms": 3558.47,
+    "yields": 36
+   },
+   "ram_mb": 380.77831,
+   "vram_mb": 3054.533486
+  },
+  {
+   "cache": {
+    "errors": {},
+    "held": 131,
+    "legacy_pins": 6,
+    "loads_started": 156,
+    "pending": 0,
+    "queued": 0,
+    "scopes": 1,
+    "sync_misses": {
+     "res://assets/models/knight_meshy.glb": 1,
+     "res://assets/models/knight_mocap.glb": 1,
+     "res://assets/textures/fx/demon/smoke_chimney.png": 1,
+     "res://assets/textures/fx/fire_body.png": 1,
+     "res://assets/textures/fx/fire_spirit.png": 1,
+     "res://assets/textures/fx/fire_tongue.png": 1
+    }
+   },
+   "elapsed_ms": 3315.723,
+   "focused": true,
+   "frames": 242,
+   "label": "title_idle_3s",
+   "max_frame_ms": 355.921,
+   "over100": 3,
+   "preparation": {
+    "construction_ms": 5612,
+    "max_step_ms": 25.012,
+    "resources_ms": 8836,
+    "visual_wall_ms": 3558.47,
+    "yields": 36
+   },
+   "ram_mb": 412.588206,
+   "vram_mb": 3009.51009
+  },
+  {
+   "cache": {
+    "errors": {},
+    "held": 131,
+    "legacy_pins": 6,
+    "loads_started": 156,
+    "pending": 0,
+    "queued": 0,
+    "scopes": 1,
+    "sync_misses": {
+     "res://assets/models/knight_meshy.glb": 1,
+     "res://assets/models/knight_mocap.glb": 1,
+     "res://assets/textures/fx/demon/smoke_chimney.png": 1,
+     "res://assets/textures/fx/fire_body.png": 1,
+     "res://assets/textures/fx/fire_spirit.png": 1,
+     "res://assets/textures/fx/fire_tongue.png": 1
+    }
+   },
+   "elapsed_ms": 3134.442,
+   "focused": true,
+   "frames": 225,
+   "label": "title_idle_again_3s",
+   "max_frame_ms": 181.186,
+   "over100": 2,
+   "preparation": {
+    "construction_ms": 5612,
+    "max_step_ms": 25.012,
+    "resources_ms": 8836,
+    "visual_wall_ms": 3558.47,
+    "yields": 36
+   },
+   "ram_mb": 412.618566,
+   "vram_mb": 3009.51009
+  },
+  {
+   "cache": {
+    "errors": {},
+    "held": 250,
+    "legacy_pins": 6,
+    "loads_started": 223,
+    "pending": 0,
+    "queued": 0,
+    "scopes": 2,
+    "sync_misses": {
+     "res://assets/models/knight_meshy.glb": 1,
+     "res://assets/models/knight_mocap.glb": 1,
+     "res://assets/textures/fx/demon/smoke_chimney.png": 1,
+     "res://assets/textures/fx/fire_body.png": 1,
+     "res://assets/textures/fx/fire_spirit.png": 1,
+     "res://assets/textures/fx/fire_tongue.png": 1
+    }
+   },
+   "elapsed_ms": 12212.328,
+   "focused": true,
+   "frames": 394,
+   "label": "new_knight_in_camp",
+   "max_frame_ms": 1449.437,
+   "over100": 14,
+   "preparation": {
+    "construction_ms": 2353,
+    "max_step_ms": 5.875,
+    "resources_ms": 4572,
+    "visual_wall_ms": 1225.275,
+    "yields": 30
+   },
+   "ram_mb": 500.887202,
+   "vram_mb": 3582.772654
+  },
+  {
+   "cache": {
+    "errors": {},
+    "held": 250,
+    "legacy_pins": 6,
+    "loads_started": 223,
+    "pending": 0,
+    "queued": 0,
+    "scopes": 2,
+    "sync_misses": {
+     "res://assets/models/knight_meshy.glb": 1,
+     "res://assets/models/knight_mocap.glb": 1,
+     "res://assets/textures/fx/demon/smoke_chimney.png": 1,
+     "res://assets/textures/fx/fire_body.png": 1,
+     "res://assets/textures/fx/fire_spirit.png": 1,
+     "res://assets/textures/fx/fire_tongue.png": 1
+    }
+   },
+   "elapsed_ms": 438.399,
+   "focused": true,
+   "frames": 20,
+   "label": "character_window_0",
+   "max_frame_ms": 34.437,
+   "over100": 0,
+   "preparation": {
+    "construction_ms": 2353,
+    "max_step_ms": 5.875,
+    "resources_ms": 4572,
+    "visual_wall_ms": 1225.275,
+    "yields": 30
+   },
+   "ram_mb": 500.870886,
+   "vram_mb": 3582.659206
+  },
+  {
+   "cache": {
+    "errors": {},
+    "held": 250,
+    "legacy_pins": 6,
+    "loads_started": 223,
+    "pending": 0,
+    "queued": 0,
+    "scopes": 2,
+    "sync_misses": {
+     "res://assets/models/knight_meshy.glb": 1,
+     "res://assets/models/knight_mocap.glb": 1,
+     "res://assets/textures/fx/demon/smoke_chimney.png": 1,
+     "res://assets/textures/fx/fire_body.png": 1,
+     "res://assets/textures/fx/fire_spirit.png": 1,
+     "res://assets/textures/fx/fire_tongue.png": 1
+    }
+   },
+   "elapsed_ms": 433.222,
+   "focused": true,
+   "frames": 20,
+   "label": "character_window_1",
+   "max_frame_ms": 26.272,
+   "over100": 0,
+   "preparation": {
+    "construction_ms": 2353,
+    "max_step_ms": 5.875,
+    "resources_ms": 4572,
+    "visual_wall_ms": 1225.275,
+    "yields": 30
+   },
+   "ram_mb": 500.879182,
+   "vram_mb": 3582.715486
+  },
+  {
+   "cache": {
+    "errors": {},
+    "held": 227,
+    "legacy_pins": 6,
+    "loads_started": 243,
+    "pending": 0,
+    "queued": 0,
+    "scopes": 2,
+    "sync_misses": {
+     "res://assets/models/knight_meshy.glb": 1,
+     "res://assets/models/knight_mocap.glb": 1,
+     "res://assets/textures/fx/demon/smoke_chimney.png": 1,
+     "res://assets/textures/fx/fire_body.png": 1,
+     "res://assets/textures/fx/fire_spirit.png": 1,
+     "res://assets/textures/fx/fire_tongue.png": 1
+    }
+   },
+   "elapsed_ms": 13429.96,
+   "focused": true,
+   "frames": 464,
+   "label": "camp_to_moor_0",
+   "max_frame_ms": 2954.398,
+   "over100": 8,
+   "preparation": {
+    "construction_ms": 4601,
+    "max_step_ms": 16.432,
+    "resources_ms": 3286,
+    "visual_wall_ms": 3561.132,
+    "yields": 222
+   },
+   "ram_mb": 440.710366,
+   "vram_mb": 3176.752242
+  },
+  {
+   "cache": {
+    "errors": {},
+    "held": 227,
+    "legacy_pins": 6,
+    "loads_started": 243,
+    "pending": 0,
+    "queued": 0,
+    "scopes": 2,
+    "sync_misses": {
+     "res://assets/models/knight_meshy.glb": 1,
+     "res://assets/models/knight_mocap.glb": 1,
+     "res://assets/textures/fx/demon/smoke_chimney.png": 1,
+     "res://assets/textures/fx/fire_body.png": 1,
+     "res://assets/textures/fx/fire_spirit.png": 1,
+     "res://assets/textures/fx/fire_tongue.png": 1
+    }
+   },
+   "elapsed_ms": 1965.848,
+   "focused": true,
+   "frames": 36,
+   "label": "moor_idle_2s_0",
+   "max_frame_ms": 168.504,
+   "over100": 1,
+   "preparation": {
+    "construction_ms": 4601,
+    "max_step_ms": 16.432,
+    "resources_ms": 3286,
+    "visual_wall_ms": 3561.132,
+    "yields": 222
+   },
+   "ram_mb": 440.949606,
+   "vram_mb": 3176.753314
+  },
+  {
+   "cache": {
+    "errors": {},
+    "held": 250,
+    "legacy_pins": 6,
+    "loads_started": 282,
+    "pending": 0,
+    "queued": 0,
+    "scopes": 2,
+    "sync_misses": {
+     "res://assets/models/knight_meshy.glb": 1,
+     "res://assets/models/knight_mocap.glb": 1,
+     "res://assets/textures/fx/demon/smoke_chimney.png": 1,
+     "res://assets/textures/fx/fire_body.png": 1,
+     "res://assets/textures/fx/fire_spirit.png": 1,
+     "res://assets/textures/fx/fire_tongue.png": 1
+    }
+   },
+   "elapsed_ms": 12621.446,
+   "focused": true,
+   "frames": 368,
+   "label": "moor_to_camp_0",
+   "max_frame_ms": 1270.825,
+   "over100": 11,
+   "preparation": {
+    "construction_ms": 1902,
+    "max_step_ms": 3.493,
+    "resources_ms": 7971,
+    "visual_wall_ms": 783.746,
+    "yields": 30
+   },
+   "ram_mb": 509.152258,
+   "vram_mb": 3687.835802
+  },
+  {
+   "cache": {
+    "errors": {},
+    "held": 227,
+    "legacy_pins": 6,
+    "loads_started": 302,
+    "pending": 0,
+    "queued": 0,
+    "scopes": 2,
+    "sync_misses": {
+     "res://assets/models/knight_meshy.glb": 1,
+     "res://assets/models/knight_mocap.glb": 1,
+     "res://assets/textures/fx/demon/smoke_chimney.png": 1,
+     "res://assets/textures/fx/fire_body.png": 1,
+     "res://assets/textures/fx/fire_spirit.png": 1,
+     "res://assets/textures/fx/fire_tongue.png": 1
+    }
+   },
+   "elapsed_ms": 8494.976,
+   "focused": true,
+   "frames": 388,
+   "label": "camp_to_moor_1",
+   "max_frame_ms": 384.598,
+   "over100": 8,
+   "preparation": {
+    "construction_ms": 3983,
+    "max_step_ms": 31.066,
+    "resources_ms": 3291,
+    "visual_wall_ms": 3618.674,
+    "yields": 213
+   },
+   "ram_mb": 442.13525,
+   "vram_mb": 3176.787302
+  },
+  {
+   "cache": {
+    "errors": {},
+    "held": 227,
+    "legacy_pins": 6,
+    "loads_started": 302,
+    "pending": 0,
+    "queued": 0,
+    "scopes": 2,
+    "sync_misses": {
+     "res://assets/models/knight_meshy.glb": 1,
+     "res://assets/models/knight_mocap.glb": 1,
+     "res://assets/textures/fx/demon/smoke_chimney.png": 1,
+     "res://assets/textures/fx/fire_body.png": 1,
+     "res://assets/textures/fx/fire_spirit.png": 1,
+     "res://assets/textures/fx/fire_tongue.png": 1
+    }
+   },
+   "elapsed_ms": 2079.859,
+   "focused": true,
+   "frames": 60,
+   "label": "moor_idle_2s_1",
+   "max_frame_ms": 75.362,
+   "over100": 0,
+   "preparation": {
+    "construction_ms": 3983,
+    "max_step_ms": 31.066,
+    "resources_ms": 3291,
+    "visual_wall_ms": 3618.674,
+    "yields": 213
+   },
+   "ram_mb": 442.15491,
+   "vram_mb": 3176.778838
+  },
+  {
+   "cache": {
+    "errors": {},
+    "held": 250,
+    "legacy_pins": 6,
+    "loads_started": 341,
+    "pending": 0,
+    "queued": 0,
+    "scopes": 2,
+    "sync_misses": {
+     "res://assets/models/knight_meshy.glb": 1,
+     "res://assets/models/knight_mocap.glb": 1,
+     "res://assets/textures/fx/demon/smoke_chimney.png": 1,
+     "res://assets/textures/fx/fire_body.png": 1,
+     "res://assets/textures/fx/fire_spirit.png": 1,
+     "res://assets/textures/fx/fire_tongue.png": 1
+    }
+   },
+   "elapsed_ms": 12319.541,
+   "focused": true,
+   "frames": 381,
+   "label": "moor_to_camp_1",
+   "max_frame_ms": 1356.329,
+   "over100": 9,
+   "preparation": {
+    "construction_ms": 2065,
+    "max_step_ms": 4.844,
+    "resources_ms": 7174,
+    "visual_wall_ms": 868.112,
+    "yields": 31
+   },
+   "ram_mb": 508.986674,
+   "vram_mb": 3687.845202
+  },
+  {
+   "cache": {
+    "errors": {},
+    "held": 131,
+    "legacy_pins": 6,
+    "loads_started": 400,
+    "pending": 0,
+    "queued": 0,
+    "scopes": 1,
+    "sync_misses": {
+     "res://assets/models/knight_meshy.glb": 1,
+     "res://assets/models/knight_mocap.glb": 1,
+     "res://assets/textures/fx/demon/smoke_chimney.png": 1,
+     "res://assets/textures/fx/fire_body.png": 1,
+     "res://assets/textures/fx/fire_spirit.png": 1,
+     "res://assets/textures/fx/fire_tongue.png": 1
+    }
+   },
+   "elapsed_ms": 20154.226,
+   "focused": true,
+   "frames": 810,
+   "label": "return_title_during_transition",
+   "max_frame_ms": 1600.426,
+   "over100": 11,
+   "preparation": {
+    "construction_ms": 2386,
+    "max_step_ms": 6.373,
+    "resources_ms": 7044,
+    "visual_wall_ms": 955.423,
+    "yields": 33
+   },
+   "ram_mb": 485.283494,
+   "vram_mb": 3165.658602
+  },
+  {
+   "cache": {
+    "errors": {},
+    "held": 250,
+    "legacy_pins": 6,
+    "loads_started": 462,
+    "pending": 0,
+    "queued": 0,
+    "scopes": 2,
+    "sync_misses": {
+     "res://assets/models/knight_meshy.glb": 1,
+     "res://assets/models/knight_mocap.glb": 1,
+     "res://assets/textures/fx/demon/smoke_chimney.png": 1,
+     "res://assets/textures/fx/fire_body.png": 1,
+     "res://assets/textures/fx/fire_spirit.png": 1,
+     "res://assets/textures/fx/fire_tongue.png": 1
+    }
+   },
+   "elapsed_ms": 12913.032,
+   "focused": true,
+   "frames": 310,
+   "label": "resume_after_release",
+   "max_frame_ms": 1273.147,
+   "over100": 14,
+   "preparation": {
+    "construction_ms": 3136,
+    "max_step_ms": 10.006,
+    "resources_ms": 4053,
+    "visual_wall_ms": 2144.002,
+    "yields": 37
+   },
+   "ram_mb": 518.991882,
+   "vram_mb": 3689.799058
+  }
+ ],
+ "viewport": "(1600, 900)"
+}
