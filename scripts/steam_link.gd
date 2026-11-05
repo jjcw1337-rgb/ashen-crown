@@ -35,6 +35,13 @@ func setup(g) -> void:
 		print("[STEAM] not available: ", r.get("verbal", ""))
 		return
 	print("[STEAM] ready as app %s, %s" % [app, steam.getPersonaName()])
+	if OS.get_cmdline_user_args().has("--steam-selftest"):
+		# (an exported build's check that both Steam plugins share one Steam library: a host peer opens and closes)
+		var sp: MultiplayerPeer = ClassDB.instantiate("SteamMultiplayerPeer")
+		var e: int = sp.call("create_host", 0)
+		printerr("[STEAM] selftest: app %s, host peer %s" % [app, "OK" if e == OK else "failed (%d)" % e])
+		sp.close()
+		get_tree().quit(0 if e == OK else 1)
 	steam.lobby_created.connect(_on_lobby_created)
 	steam.lobby_joined.connect(_on_lobby_joined)
 	steam.join_requested.connect(_on_join_requested)

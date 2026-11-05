@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleExecutable</key>
-	<string>libgodotsteam.debug</string>
+	<string>libgodotsteam.macos.template_debug</string>
 	<key>CFBundleIdentifier</key>
 	<string>org.godotsteam.godotsteam</string>
 	<key>CFBundleInfoDictionaryVersion</key>

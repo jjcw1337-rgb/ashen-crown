@@ -3,12 +3,14 @@ entry_symbol = "steam_multiplayer_peer_init"
 compatibility_minimum = 4.2
 
 [libraries]
+; (release exports use the debug builds too: 0.2.1's release build fails create_host with ERR_UNAVAILABLE on macOS
+; while its debug build works, measured 2026-11-05)
 linux.debug.x86_64 = "linux/libsteam-multiplayer-peer.linux.template_debug.x86_64.so"
-linux.release.x86_64 = "linux/libsteam-multiplayer-peer.linux.template_release.x86_64.so"
+linux.release.x86_64 = "linux/libsteam-multiplayer-peer.linux.template_debug.x86_64.so"
 macos.debug = "macos/libsteam-multiplayer-peer.macos.template_debug.framework"
-macos.release = "macos/libsteam-multiplayer-peer.macos.template_release.framework"
+macos.release = "macos/libsteam-multiplayer-peer.macos.template_debug.framework"
 windows.debug.x86_64 = "windows/steam-multiplayer-peer.windows.template_debug.x86_64.dll"
-windows.release.x86_64 = "windows/steam-multiplayer-peer.windows.template_release.x86_64.dll"
+windows.release.x86_64 = "windows/steam-multiplayer-peer.windows.template_debug.x86_64.dll"
 
 [dependencies]
 ; (One Steam library for both plugins, or the second copy is never initialised and create_host fails with
