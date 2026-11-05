@@ -31,8 +31,10 @@ var volume_db := 0.0
 ## Sound off: nothing new starts and the music/ambience loops stop. (Muting the audio bus
 ## instead crashes the browser build's audio code in Godot 4.3.)
 var muted := false
+var silent_runtime := OS.get_cmdline_user_args().has("--server") or DisplayServer.get_name() == "headless"
 
 func set_muted(m: bool) -> void:
+	m = m or silent_runtime
 	if m == muted:
 		return
 	muted = m
@@ -68,7 +70,7 @@ func _ready() -> void:
 	ambience.volume_db = -20.0
 	ambience.bus = "Ambience"
 	add_child(ambience)
-	if OS.get_cmdline_user_args().has("--server") or DisplayServer.get_name() == "headless":
+	if silent_runtime:
 		muted = true
 		return # A dedicated match has no listener; do not load its sound bank.
 	for nm in BANK.keys():
@@ -214,6 +216,8 @@ func start_loop(nm: String, vol := 0.0, pitch := 1.0) -> AudioStreamPlayer:
 ## Act I's forest rustle outside the camp).
 ## `amb_take` picks which take of the bed plays (the camp's nights rotate theirs, DayNight.night_take).
 func play_music(kind: String, amb_over := "", amb_take := 0) -> void:
+	if silent_runtime:
+		return # No device/listener: settings must not start procedural music in a worker.
 	var key := "music_" + kind
 	# a recorded song where there is one (the campsite's piano), else the old synthesized drone
 	var song: AudioStream = bank[key][0] if bank.has(key) else null

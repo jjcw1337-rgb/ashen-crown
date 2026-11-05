@@ -272,6 +272,8 @@ func _process(delta: float) -> void:
 				found.erase(ip)
 	if not active:
 		return
+	if (game.match_instance != null and game.match_instance.ending) or (game.lobby_client != null and game.lobby_client._returning):
+		return # Results are final; stop snapshots while the match closes its transport.
 	if is_host and disco:
 		_disco_t -= delta
 		if _disco_t <= 0.0:

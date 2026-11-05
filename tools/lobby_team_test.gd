@@ -58,7 +58,10 @@ func run():
  check(await until(func():return not g.playing and g.ui.title_panel.visible,90),"match ends and returns home")
  var saved=JSON.parse_string(FileAccess.get_file_as_string(g.char_dir+character+".json"))
  check(int(saved.hero.gold)==4321,"casual team arena preserves character")
+ client.panel.hide();client.room={}
+ # Stop polling before teardown, then let any in-flight HTTP/result work finish.
+ await until(func():return not client.polling and not client.busy and not client._returning,15)
  await create_timer(10).timeout
- client.panel.hide();client.room={};g.queue_free()
+ g.queue_free()
  for i in 30:await process_frame
  print("[TEAM-",index,"] done ",checks," checks / ",fails," failures");quit(1 if fails else 0)

@@ -117,11 +117,14 @@ func finish(state: String, reason: String, winner := -1) -> void:
  if ending:return
  ending=true
  print("[MATCH] ",state,": ",reason)
- if game.net.active:game.net.rpc("cl_match_end",reason)
  await request("state",{"state":state,"reason":reason,"winner":winner})
- await get_tree().create_timer(12).timeout
- var tree:=get_tree()
+ if game.net.active and not game.net.players.is_empty():game.net.rpc("cl_match_end",reason)
+ # Deliver the result, then close from the server before clients all leave simultaneously.
+ # This also stops ENet relaying snapshots into peers whose channels are already gone.
+ await get_tree().create_timer(2).timeout
  game.net.shutdown()
+ await get_tree().create_timer(10).timeout
+ var tree:=get_tree()
  Hero.striker=null
  tree.create_timer(0.5).timeout.connect(tree.quit)
  game.queue_free()
