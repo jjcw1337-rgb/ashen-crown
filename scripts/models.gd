@@ -404,7 +404,7 @@ static func item_model(item: Dictionary) -> Node3D:
 				# the ranger's own carved recurve (Meshy, tools/blender/archer/prep_bow.py) when it's there; a
 				# longbow is the same bow drawn longer
 				if ResourceLoader.exists(RANGER_BOW):
-					var b: Node3D = (load(RANGER_BOW) as PackedScene).instantiate()
+					var b: Node3D = ResCache.inst(RANGER_BOW)
 					var root := Node3D.new()
 					root.add_child(b)
 					b.scale = Vector3.ONE * (1.15 if kind == "longbow" else 1.0)
@@ -438,7 +438,7 @@ static func material(id: String) -> Node3D:
 	var col: Color = b["color"]
 	var root := Node3D.new()
 	if b.has("model") and ResourceLoader.exists(b["model"]):
-		var m: Node3D = (load(b["model"]) as PackedScene).instantiate()
+		var m: Node3D = ResCache.inst(b["model"])
 		root.add_child(m)
 		for mi in m.find_children("*", "MeshInstance3D", true, false):
 			(mi as MeshInstance3D).material_overlay = Mats.glow(col, 0.5, 0.0, 1.0)

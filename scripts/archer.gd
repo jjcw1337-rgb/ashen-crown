@@ -277,7 +277,7 @@ static func _arrow_mesh(kind: String, bare := false) -> Node3D:
 	var root := Node3D.new()
 	var path := ARROW_GLB % kind
 	if ResourceLoader.exists(path):
-		var m: Node3D = (load(path) as PackedScene).instantiate()
+		var m: Node3D = ResCache.inst(path)
 		root.add_child(m)
 	else:
 		var shaft := MeshInstance3D.new()

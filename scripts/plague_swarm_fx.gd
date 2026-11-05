@@ -23,7 +23,7 @@ const RELIQUARY_GLB := "res://assets/models/plague/reliquary.glb"
 static func reliquary() -> Node3D:
 	var root := Node3D.new()
 	if ResourceLoader.exists(RELIQUARY_GLB):
-		var m: Node3D = (load(RELIQUARY_GLB) as PackedScene).instantiate()
+		var m: Node3D = ResCache.inst(RELIQUARY_GLB)
 		root.add_child(m)
 		m.position = Vector3(0, -0.045, 0)
 	else:
@@ -266,7 +266,7 @@ static func _fly_mesh() -> Mesh:
 	if _fly != null:
 		return _fly
 	if ResourceLoader.exists(FLY_GLB):
-		var src: Node3D = (load(FLY_GLB) as PackedScene).instantiate()
+		var src: Node3D = ResCache.inst(FLY_GLB)
 		var mis := src.find_children("*", "MeshInstance3D", true, false)
 		if not mis.is_empty():
 			var mi := mis[0] as MeshInstance3D

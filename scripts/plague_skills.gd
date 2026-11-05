@@ -9,14 +9,21 @@ static func can_cast(h: Hero, id: String, aim: Vector3) -> bool:
 	return Plague.can_cast(h, id, aim)
 
 static func cast(h: Hero, id: String, aim: Vector3) -> void:
+	var t0 := FxTiming.t()
 	Plague.cast(h, id, aim)
+	FxTiming.done(t0, "plague cast " + id)
 
 static func impact(h: Hero) -> bool:
-	return Plague.impact(h)
+	var t0 := FxTiming.t()
+	var r := Plague.impact(h)
+	FxTiming.done(t0, "plague impact")
+	return r
 
 static func update(h: Hero, delta: float) -> void:
 	if h.pd != null:
+		var t0 := FxTiming.t()
 		h.pd.update(delta)
+		FxTiming.done(t0, "plague update")
 
 static func rooted(_h: Hero) -> bool:
 	return false

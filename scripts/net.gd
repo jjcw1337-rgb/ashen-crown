@@ -358,6 +358,7 @@ func pl_gear(gear: Dictionary) -> void:
 ## Every skill effect the local hero shows (Hero.fx) goes out as one small event; each partner plays it on
 ## this player's puppet, visuals only. Enemies in it travel as net ids (SkillFx.encode/decode).
 var fx_tap: Callable      # tests: handed every event as it would go on the wire
+var pd_tap: Callable      # tools: handed every Plague Doctor event (Plague._send) as it would go on the wire
 var fx_sent := 0          # events sent to partners and played from them (mp_test counts both)
 var fx_got := 0
 

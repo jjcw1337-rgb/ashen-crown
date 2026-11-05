@@ -1820,7 +1820,22 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   range). `Game.load_zone` awaits `SkillWarm.run` under the loading screen the first time a class enters a zone in a
   session: an unseen co-op puppet replays everything the class's skills draw (`scripts/skill_warm_data.gd`
   `SkillWarmData.EVENTS`, recorded by `tools/skill_warm_capture.gd`), muted, for ~2 s, then it is all swept away
-  (after: 86, 41, 9 ms). Re-run the capture after adding or changing a skill's effects.
+  (after: 86, 41, 9 ms). Re-run the capture after adding or changing a skill's effects. It warms the whole party
+  (the hero's class and every co-op partner's, all at once: a partner's spells are drawn on this screen too), and the
+  Plague Doctor's own effects (his `Plague.remote` events, `SkillWarmData.PLAGUE`, plus `SkillWarm.PLAGUE_TAIL`).
+  `SkillWarm.keep` holds every material the warm-up drew with (Godot 4.3 frees a generated shader with its last
+  material).
+- **Frame-time rules** (Blaine's audit, 2026-11-05; measured in a 3-class fight on 18 monsters, worst frame 688 ms to
+  56 ms): load anything a skill, effect or gear piece needs while the game runs through `ResCache` (`ResCache.inst(path)`
+  / `get_res(path)`, `scripts/res_cache.gd`): the ResourceLoader only keeps what is referenced, so a bare `load()` in an
+  effect parsed its glb again on every cast (each Archer arrow 14-17 ms). Never create a `Shader` per cast (cache it in a
+  static var, as every fx script does). The boot loads the title's and the camp's glbs on worker threads before the intro
+  ends (`Game._boot_preload`, `BOOT_PRELOAD`) and builds the camp under the loading screen. Tools:
+  `tools/stress_fight.gd -- [hero] [partners|-] [secs] [foes] [--idle] [--q N] [--nowarm] [--fx-timing]` (frame stats,
+  the worst frames with what was cast and where their time went, lights and particles alive), `tools/fx_bench.gd --
+  [classes] [rounds]` (every recorded effect's cost after warming), `tools/hitch_probe.gd -- title|camp|skills <cls>`;
+  `--fx-timing` makes `FxTiming` print every skill/effect call over 6 ms. All need a display. On the Mac mini a big
+  fight is GPU-bound at ~24 ms on High (40 fps) and ~15 ms on Medium.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file). Since 2026-10-31 it is Blaine's
   new trailer at full quality (Blaine: no visible compression): 60 s, 1920x1088 (a multiple of 16, so Theora adds no padding rows), Theora 12 Mbit/s + Vorbis q6,

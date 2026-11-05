@@ -1318,6 +1318,12 @@ func can_act() -> bool:
 
 func use_skill(id: String, aim: Vector3) -> bool:
 	if arena_waiting(): return false
+	var t0 := FxTiming.t()
+	var r := _use_skill(id, aim)
+	FxTiming.done(t0, "use_skill " + id)
+	return r
+
+func _use_skill(id: String, aim: Vector3) -> bool:
 	Hero.striker = self          # (whoever acts now strikes: a sandbox stand-in never takes its own hero's blows)
 	break_invis()
 	stop_chop()
@@ -1745,6 +1751,11 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 
 # ---------------------------------------------------------------- update
 func _process(delta: float) -> void:
+	var t0 := FxTiming.t()
+	_process_body(delta)
+	FxTiming.done(t0, "hero process%s" % (" (puppet)" if puppet else ""))
+
+func _process_body(delta: float) -> void:
 	if game == null or game.world == null or game._busy:
 		return
 	anim_time += delta
@@ -2255,6 +2266,11 @@ func _update_attack(delta: float) -> void:
 			_chop_next()
 
 func _impact() -> void:
+	var t0 := FxTiming.t()
+	_impact_body()
+	FxTiming.done(t0, "impact " + atk_style)
+
+func _impact_body() -> void:
 	if atk_skill == "chop":
 		_chop_impact()
 		return

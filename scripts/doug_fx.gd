@@ -216,7 +216,7 @@ static func _confetti(root: Node3D, p: Vector3, k: float) -> void:
 static func _double(h: Hero) -> Node3D:
 	if not Doug.model_ok():
 		return null
-	var d: Node3D = (load(Doug.GLB) as PackedScene).instantiate()
+	var d: Node3D = ResCache.inst(Doug.GLB)
 	var root := Node3D.new()
 	root.add_child(d)
 	var sh := Shader.new()
@@ -252,7 +252,7 @@ static func _mini(root: Node3D, from: Vector3, to: Vector3) -> void:
 	root.add_child(holder)
 	holder.global_position = from + Vector3(randf_range(-0.6, 0.6), 0, randf_range(-0.6, 0.6))
 	if Doug.model_ok():
-		var d: Node3D = (load(Doug.GLB) as PackedScene).instantiate()
+		var d: Node3D = ResCache.inst(Doug.GLB)
 		d.scale = Vector3.ONE * 0.45
 		holder.add_child(d)
 		var ap := d.find_child("AnimationPlayer", true, false) as AnimationPlayer

@@ -31,7 +31,7 @@ static var _roots_scene: PackedScene
 static func seed_syringe() -> Node3D:
 	var root := Node3D.new()
 	if ResourceLoader.exists(SYRINGE_GLB):
-		var m: Node3D = (load(SYRINGE_GLB) as PackedScene).instantiate()
+		var m: Node3D = ResCache.inst(SYRINGE_GLB)
 		root.add_child(m)
 		# the model lies along x, needle toward -x, bulb up: turned so the needle points out of his fist
 		m.rotation = Vector3(0.0, -PI * 0.5, 0.0)
@@ -104,7 +104,7 @@ class Bloom extends Node3D:
 		body = Node3D.new()
 		add_child(body)
 		if ResourceLoader.exists(PlagueBloomFx.BLOOM_GLB):
-			var m: Node3D = (load(PlagueBloomFx.BLOOM_GLB) as PackedScene).instantiate()
+			var m: Node3D = ResCache.inst(PlagueBloomFx.BLOOM_GLB)
 			body.add_child(m)
 			for mi in m.find_children("*", "MeshInstance3D", true, false):
 				(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON

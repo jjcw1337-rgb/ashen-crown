@@ -275,7 +275,7 @@ const SPLASH_BOOK := "res://assets/textures/fx/vial_splash.png"     # tools/blen
 const VAPOUR_BOOK := "res://assets/textures/fx/vapour.png"          # tools/blender/plague/vapour_flipbook.py, 6 x 6
 
 static func _tex(path: String) -> Texture2D:
-	return load(path) if ResourceLoader.exists(path) else null
+	return ResCache.get_res(path) as Texture2D
 
 static func landing_ring(root: Node3D, w: World, at: Vector3, r: float, ri: int, dur: float) -> void:
 	var m := _ground_disc(w, at, r * 1.15, 10, 40, 0.05)

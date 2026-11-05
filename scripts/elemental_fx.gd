@@ -53,7 +53,7 @@ static func rock_mat() -> StandardMaterial3D:
 
 static func chunk_meshes() -> Array:
 	if _chunks.is_empty() and ResourceLoader.exists(Fx.SLAM_CHUNKS):
-		var sc: Node = (load(Fx.SLAM_CHUNKS) as PackedScene).instantiate()
+		var sc: Node = ResCache.inst(Fx.SLAM_CHUNKS)
 		for n in sc.find_children("*", "MeshInstance3D", true, false):
 			_chunks.append((n as MeshInstance3D).mesh)
 		sc.free()

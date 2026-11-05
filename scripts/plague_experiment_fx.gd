@@ -76,7 +76,7 @@ class Vat extends Node3D:
 		vat = Node3D.new()
 		add_child(vat)
 		if ResourceLoader.exists(PlagueExperimentFx.VAT_GLB):
-			vat.add_child((load(PlagueExperimentFx.VAT_GLB) as PackedScene).instantiate())
+			vat.add_child(ResCache.inst(PlagueExperimentFx.VAT_GLB))
 		vat.rotation.y = randf() * TAU
 		vat.position = Vector3(0, 1.6, 0)
 		var tw := vat.create_tween()
@@ -116,7 +116,7 @@ class Vat extends Node3D:
 	## The vat's own glass flies apart: its cylinder's curved panes, flung out from where each sat (`k` = how hard).
 	func _shards(g: Vector3, k: float) -> void:
 		if ResourceLoader.exists(PlagueExperimentFx.SHARDS_GLB):
-			var src: Node3D = (load(PlagueExperimentFx.SHARDS_GLB) as PackedScene).instantiate()
+			var src: Node3D = ResCache.inst(PlagueExperimentFx.SHARDS_GLB)
 			var gm := PlagueVialFx.glass_mat_2side(Color(0.7, 0.95, 0.75))
 			var turn := vat.rotation.y if vat != null else 0.0
 			for mi in src.find_children("*", "MeshInstance3D", true, false):
@@ -221,7 +221,7 @@ class Vat extends Node3D:
 	func _spawn_creature() -> void:
 		if not ResourceLoader.exists(PlagueExperimentFx.CREATURE_GLB):
 			return
-		creature = (load(PlagueExperimentFx.CREATURE_GLB) as PackedScene).instantiate()
+		creature = ResCache.inst(PlagueExperimentFx.CREATURE_GLB)
 		add_child(creature)
 		creature.scale = Vector3.ONE * PlagueExperimentFx.CREATURE_SCALE
 		c_pos = global_position

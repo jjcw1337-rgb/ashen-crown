@@ -167,6 +167,8 @@ func ghost() -> bool:
 	return h.puppet
 
 func _send(ev: String) -> void:
+	if not ghost() and h.game != null and h.game.net != null and h.game.net.pd_tap.is_valid():
+		h.game.net.pd_tap.call(ev)
 	if not ghost() and h.game != null and h.game.net != null and h.game.net.active:
 		h.game.net.hero_fx(ev)
 
@@ -288,7 +290,7 @@ static func _censer_glow(r: Node3D) -> void:
 static func cane_model() -> Node3D:
 	if ResourceLoader.exists(CANE_GLB):
 		var root := Node3D.new()
-		root.add_child((load(CANE_GLB) as PackedScene).instantiate())
+		root.add_child(ResCache.inst(CANE_GLB))
 		return root
 	var w := Node3D.new()
 	var m := MeshInstance3D.new()

@@ -23,7 +23,7 @@ const BASE_TEX := "res://assets/textures/plague/fog_base_albedo.png"
 static func censer_in_hand() -> Node3D:
 	var root := Node3D.new()
 	if ResourceLoader.exists(CENSER_GLB):
-		var m: Node3D = (load(CENSER_GLB) as PackedScene).instantiate()
+		var m: Node3D = ResCache.inst(CENSER_GLB)
 		root.add_child(m)
 		# the model lies on its side along x, its crown toward +x: stood up, crown to his fist
 		m.rotation = Vector3(0.0, 0.0, PI * 0.5)
@@ -74,7 +74,7 @@ class Fog extends Node3D:
 		add_child(lamp)
 		# the censer dashed down at its heart: it hits, bounces once and lies there smoking
 		if ResourceLoader.exists(PlagueFogFx.CENSER_GLB):
-			censer = (load(PlagueFogFx.CENSER_GLB) as PackedScene).instantiate()
+			censer = ResCache.inst(PlagueFogFx.CENSER_GLB)
 			add_child(censer)
 			for mi in censer.find_children("*", "MeshInstance3D", true, false):
 				(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON

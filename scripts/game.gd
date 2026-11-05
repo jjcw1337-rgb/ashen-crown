@@ -258,14 +258,25 @@ func _ready() -> void:
 			hero.set_class(OS.get_cmdline_user_args()[ci + 1])
 		await load_zone(0, shot_zone, shot_spawn if shot_spawn != "" else "start")
 		return
+	# the camp's and the title's models load on worker threads while the intro plays (Blaine, 2026-11-05: the title
+	# froze for 4.6 s while the camp was built behind it, 3.3 s of that loading 55 models on the main thread)
+	_boot_preload()
 	await _play_intro()
-	# straight from the intro to the title: the camp builds behind it, with no loading screen or zone banner
+	# then the camp is built under the loading screen, from the cache, and the title comes up after it, smooth
 	_boot_quiet = true
+	_boot_hold = true
 	_bury_lost_raiders()
 	_stash_start()
-	ui.show_title()
+	loading_lbl.text = "Waking the Forsaken Wilds..."
+	set_loading_art("town")
+	loading.visible = true
+	await _await_preloads()
 	await load_zone(0, "town", "start")
+	_boot_hold = false
+	loading.visible = false
+	ui.show_title()
 	_boot_quiet = false
+	_release_preloads()
 
 # ---------------------------------------------------------------- intro
 const INTRO_PATH := "res://assets/intro.ogv"
@@ -1319,6 +1330,55 @@ func run_switched_banner() -> void:
 	ui.message(("The Ashen King's reign. " if difficulty >= 2 else "") + run_note(difficulty), Color(1.0, 0.7, 0.4))
 
 var _boot_quiet := false      # the camp loading behind the title at boot: no loading screen, no zone banner
+var _boot_hold := false       # ... but its loading screen kept up while it builds (the title comes up after)
+
+## Models loaded on worker threads at boot (Godot's ResourceLoader.load_threaded_request): the title's and the camp's,
+## found by folder (an exported game lists "x.glb.import" / ".remap": the suffix is dropped). They're kept until the
+## title is up (so the cache doesn't let them go before the camp uses them); the camp's own nodes hold them after.
+const BOOT_PRELOAD := ["res://assets/models/title/", "res://assets/models/camp/", "res://assets/models/camp/birds/",
+	"res://assets/models/camp/props/", "res://assets/models/npc/", "res://assets/models/guards/", "res://assets/models/island/",
+	"res://assets/models/trees/", "res://assets/models/grass/", "res://assets/models/fort/"]
+var _preloading := PackedStringArray()
+var _preloaded: Array = []
+
+static func res_files(dir: String, ext: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	var da := DirAccess.open(dir)
+	if da == null:
+		return out
+	for f in da.get_files():
+		var n := f.trim_suffix(".remap").trim_suffix(".import")
+		if n.ends_with(ext) and not out.has(dir + n):
+			out.append(dir + n)
+	return out
+
+func _boot_preload() -> void:
+	for d in BOOT_PRELOAD:
+		if d == "res://assets/models/fort/":
+			continue          # (the fort is the moor's lair, not the camp: kept for later)
+		for p in res_files(d, ".glb"):
+			if not ResourceLoader.has_cached(p) and ResourceLoader.load_threaded_request(p, "", true) == OK:
+				_preloading.append(p)
+
+## Waits (a frame at a time, so the screen stays alive) until the boot's threaded loads are in, at most max_s.
+func _await_preloads(max_s := 30.0) -> void:
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < int(max_s * 1000.0):
+		var left := 0
+		for p in _preloading:
+			if ResourceLoader.load_threaded_get_status(p) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+				left += 1
+		if left == 0:
+			break
+		loading_lbl.text = "Waking the Forsaken Wilds... %d%%" % int(100.0 * (1.0 - float(left) / maxf(1.0, _preloading.size())))
+		await get_tree().process_frame
+	for p in _preloading:
+		if ResourceLoader.load_threaded_get_status(p) == ResourceLoader.THREAD_LOAD_LOADED:
+			_preloaded.append(ResourceLoader.load_threaded_get(p))
+	_preloading = PackedStringArray()
+
+func _release_preloads() -> void:
+	_preloaded.clear()
 
 func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	if _busy:
@@ -1327,7 +1387,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	net.broadcast_goto(act, zone, spawn, at)
 	loading_lbl.text = ("Descending into %s..." if zone == Battlegrounds.ZONE else "Entering %s...") % zone_title(act, zone)
 	set_loading_art(zone)
-	loading.visible = not _boot_quiet
+	loading.visible = not _boot_quiet or _boot_hold
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if world:

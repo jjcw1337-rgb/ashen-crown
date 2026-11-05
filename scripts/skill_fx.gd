@@ -24,6 +24,11 @@ extends RefCounted
 static func play(h: Hero, ev: Dictionary) -> void:
 	if h == null or not is_instance_valid(h) or h.game == null or h.game.world == null:
 		return
+	var t0 := FxTiming.t()
+	_play(h, ev)
+	FxTiming.done(t0, "play %s/%s" % [ev.get("s", ""), ev.get("e", "")])
+
+static func _play(h: Hero, ev: Dictionary) -> void:
 	var sk: String = str(ev.get("s", ""))
 	if sk == "roll":
 		Dodge.fx(h, ev)       # the dodge roll, every class's
@@ -79,13 +84,19 @@ static func _default(h: Hero, ev: Dictionary) -> void:
 static func update(h: Hero, delta: float) -> void:
 	if h.game == null or h.game.world == null:
 		return
+	var t0 := FxTiming.t()
 	KnightFx.update(h, delta)
 	WraithFx.update(h, delta)
+	var t1 := FxTiming.t()
 	DemonFx.update(h, delta)
+	FxTiming.done(t1, "update demon")
+	t1 = FxTiming.t()
 	WarlockFx.update(h, delta)
 	ArcherFx.update(h, delta)
+	FxTiming.done(t1, "update archer/warlock")
 	SerpentFx.update(h, delta)
 	DougFx.update(h, delta)
+	FxTiming.done(t0, "update all")
 
 ## Everything lingering is gone (death, a class change, a zone change).
 static func clear(h: Hero) -> void:

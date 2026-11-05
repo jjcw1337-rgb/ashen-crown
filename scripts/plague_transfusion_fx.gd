@@ -30,7 +30,7 @@ static func attach(h: Hero) -> Node3D:
 	var app := Node3D.new()
 	root.add_child(app)
 	if ResourceLoader.exists(APP_GLB):
-		app.add_child((load(APP_GLB) as PackedScene).instantiate())
+		app.add_child(ResCache.inst(APP_GLB))
 	# on his back (the rig faces -z), its tanks outward, hanging from the shoulders
 	app.position = Vector3(0, -0.32, 0.2)
 	app.rotation = Vector3(0, 0, 0)

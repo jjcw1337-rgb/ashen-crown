@@ -285,7 +285,7 @@ static func _slam_quad(root: Node3D, pos: Vector3, tex_key: String, additive: bo
 	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD if additive else BaseMaterial3D.BLEND_MODE_MIX
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	m.no_depth_test = false
-	m.albedo_texture = load(SLAM_TEX[tex_key])
+	m.albedo_texture = ResCache.get_res(SLAM_TEX[tex_key])
 	if billboard:
 		m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	mi.material_override = m
@@ -350,12 +350,12 @@ static func _slam_chunks(root: Node3D, pos: Vector3) -> void:
 	if _chunk_meshes.is_empty():
 		if not ResourceLoader.exists(SLAM_CHUNKS):
 			return
-		var sc: Node = (load(SLAM_CHUNKS) as PackedScene).instantiate()
+		var sc: Node = ResCache.inst(SLAM_CHUNKS)
 		for n in sc.find_children("*", "MeshInstance3D", true, false):
 			_chunk_meshes.append((n as MeshInstance3D).mesh)
 		sc.free()
 		_stone = StandardMaterial3D.new()
-		_stone.albedo_texture = load(SLAM_TEX["crack"])
+		_stone.albedo_texture = ResCache.get_res(SLAM_TEX["crack"])
 		_stone.uv1_triplanar = true
 		_stone.uv1_scale = Vector3(2.5, 2.5, 2.5)
 		_stone.albedo_color = Color(0.85, 0.83, 0.8)
