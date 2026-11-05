@@ -41,7 +41,7 @@ static func play(h: Hero, ev: Dictionary) -> void:
 		"warlock": done = WarlockFx.play(h, ev)
 		"archer": done = ArcherFx.play(h, ev)
 		"doug": done = DougFx.play(h, ev)
-		"wyrm", "serpent", "wyvern": done = ArcFx.play_dragon(h, ev)
+		"wyrm", "serpent", "wyvern": done = ArcFx.play_dragon(h, ev) or SerpentFx.play(h, ev)
 	if not done:
 		done = _common(h, ev)
 	if not done:
@@ -84,6 +84,7 @@ static func update(h: Hero, delta: float) -> void:
 	DemonFx.update(h, delta)
 	WarlockFx.update(h, delta)
 	ArcherFx.update(h, delta)
+	SerpentFx.update(h, delta)
 	DougFx.update(h, delta)
 
 ## Everything lingering is gone (death, a class change, a zone change).

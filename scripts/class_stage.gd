@@ -46,7 +46,7 @@ const SIGNATURE := {"knight": ["cleave", 1.1, 0.5, "Holy Slam"], "wraith": ["ren
 const SIG_EVERY := 4.5
 ## Skill previews (hover a skill in the panel, `show_skill`): each skill's pose style and seconds (before the
 ## class's attack pace), as Hero.use_skill plays them; the effects are the game's own, scaled to the stage.
-const SKILL_SHOW := {"storm_arc": ["cast", 0.75], "cleave": ["cleave", 0.95], "nova": ["cast", 0.55], "charge": ["swipe3", 0.7], "cry": ["cast", 0.6],
+const SKILL_SHOW := {"storm_arc": ["cast", 0.75], "frost_breath": ["breath", 1.4], "cleave": ["cleave", 0.95], "nova": ["cast", 0.55], "charge": ["swipe3", 0.7], "cry": ["cast", 0.6],
 	"rend": ["rend", 0.8], "siphon": ["siphon", 0.7], "step": ["wstep", 0.75], "grasp": ["grasp", 0.95],
 	"phantom": ["phantom", 1.0], "night": ["night_scream", 0.9],
 	"fists": ["fists", 0.8], "icharge": ["icharge", 0.75], "cslam": ["cslam", 1.2], "hurl": ["hurl", 1.1], "grip": ["grip_throw", 0.9],
@@ -721,6 +721,12 @@ func _skill_fx(c: String, h: Hero, home: Vector3) -> void:
 				var to := floor_front + Vector3((j - 1) * 0.9 * k, 0.0, 0.3 * k)
 				Fx.bolt(root3d, floor_front + Vector3(0, 0.1, 0), to + Vector3(0, 0.1, 0), Color(1.0, 0.8, 0.35), 0.3)
 			Sfx.play("thunder_blast", -14.0)
+		"frost_breath":
+			# the serpent's breath: a gale of frost out over the floor before it
+			for j in 4:
+				Fx.burst(root3d, chest + Vector3(0, 0.3, 0.6) * k, Color(0.75, 0.92, 1.0), 14, 7.0 * k, 0.08 * k, 0.6, true, -1.0, 12.0, Vector3((j - 1.5) * 0.18, -0.15, 1.0))
+			Fx.ring(root3d, floor_front, 1.3 * k, Color(0.75, 0.92, 1.0), 0.9)
+			Sfx.play("frost_breath", -10.0)
 		"storm_arc":
 			# the Storm Wyvern's breath: lightning out of its jaws, forking along the floor before it
 			for j in 3:

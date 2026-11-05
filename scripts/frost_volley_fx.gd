@@ -621,8 +621,8 @@ static func _shatter(h: Hero, st: Dictionary) -> void:
 
 ## One crystal cluster breaking: its Voronoi pieces (fracture_rock.py) thrown out from where they sat, glinting, the
 ## break's faces frosted white; ice dust where it stood.
-static func _break(root: Node3D, w, n: Node3D, tr: int) -> void:
-	var set := DemonKitFx.piece_set(CRYSTAL_PIECES)
+static func _break(root: Node3D, w, n: Node3D, tr: int, pieces := CRYSTAL_PIECES) -> void:
+	var set := DemonKitFx.piece_set(pieces)
 	var base := n.global_position
 	var xf := n.global_transform
 	var centre := Vector3.ZERO

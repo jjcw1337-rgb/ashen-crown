@@ -385,3 +385,12 @@ SPEC += [
     dict(name="arc_hit", src="eleven", n=4, dur=0.6, hit=0, label="a lightning bolt striking a body",
          prompt="a bolt of electricity striking a body, a sharp electric snap and sizzle with a short buzz" + DRY),
 ]
+
+# The Frost Serpent (jj, 2026-11-04): its frost breath, its ice shell forming and shattering (block)
+SPEC += [
+    dict(name="frost_breath", src="eleven", n=4, dur=2.2, hit=0, label="a dragon exhaling a blast of freezing breath",
+         prompt="a great serpent dragon exhaling a long roaring blast of freezing wind, a hiss of icy vapour and "
+                "crackling frost forming, powerful and cold" + DRY),
+    dict(name="ice_form", src="eleven", n=4, dur=1.0, hit=0, label="ice crystals growing fast around something",
+         prompt="thick ice forming fast, crackling and creaking as crystals grow and lock together into a shell" + DRY),
+]

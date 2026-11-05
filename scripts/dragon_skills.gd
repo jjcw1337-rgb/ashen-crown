@@ -19,14 +19,24 @@ static func can_cast(_h: Hero, _id: String, _aim: Vector3) -> bool:
 	return true
 
 const WYVERN_JUMPS := 4
+## Frost Breath: its ticks while the jaws are open (of the breath's progress), every BREATH_TICK s
+const BREATH_OPEN := Vector2(0.15, 0.9)
+const BREATH_TICK := 0.2
 
 static func cast(h: Hero, id: String, _aim: Vector3) -> void:
 	if id == "storm_arc":
 		h._start_attack("cast", id)
 		h.moving = false
 		h.path = PackedVector3Array()
+	elif id == "frost_breath":
+		h._start_attack("breath", id)
+		h.moving = false
+		h.path = PackedVector3Array()
+		h.set_meta("breath_tick", 0.0)
 
 static func impact(h: Hero) -> bool:
+	if is_mine(h) and h.atk_skill == "frost_breath":
+		return true         # (its damage comes in ticks while it breathes: update)
 	if not is_mine(h) or h.atk_skill != "storm_arc":
 		return false
 	var pts := SharedSkills.chain(h, "storm_arc", jaws(h), WYVERN_JUMPS)
@@ -41,8 +51,20 @@ static func jaws(h: Hero) -> Vector3:
 		return (hd as Node3D).global_position + h.facing() * 0.5
 	return h.global_position + Vector3(0, 2.0, 0) + h.facing() * 1.2
 
-static func update(_h: Hero, _delta: float) -> void:
-	pass
+## Frost Breath's ticks: cold damage and a chill on everything in the cone (SkillSpec: its "area" and "dot"), every
+## BREATH_TICK s while the jaws are open. Only the breather's own game deals it (a puppet has no attack running).
+static func update(h: Hero, delta: float) -> void:
+	if h.puppet or not is_mine(h) or h.atk_t < 0.0 or h.atk_skill != "frost_breath":
+		return
+	var a := h.atk_t / maxf(h.atk_dur, 0.001)
+	if a < BREATH_OPEN.x or a > BREATH_OPEN.y:
+		return
+	var tk: float = float(h.get_meta("breath_tick", 0.0)) - delta
+	if tk <= 0.0:
+		tk = BREATH_TICK
+		for e in SkillSpec.targets(h, "frost_breath"):
+			SkillSpec.strike(h, "frost_breath", e)
+	h.set_meta("breath_tick", tk)
 
 static func rooted(_h: Hero) -> bool:
 	return false

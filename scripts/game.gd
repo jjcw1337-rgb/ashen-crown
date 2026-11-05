@@ -84,6 +84,7 @@ var lmb_repeat := 0.0
 var rmb_held := false
 const BIND_KEYCODES := {"Q": KEY_Q, "E": KEY_E, "R": KEY_R, "F": KEY_F, "G": KEY_G, "V": KEY_V}
 var exit_grace := 0.0
+var test_block := false        # a tool holding the guard up (tools/fire_range.gd's "block" take)
 var waypoints_known := ["town"]
 var boss_killed := false
 var difficulty := 0          # 0 = Act I, 1 = A2, 2 = A3: Act I again with tougher monsters and loot each time
@@ -3965,7 +3966,7 @@ func _process(delta: float) -> void:
 		_check_ambushes()
 		if sailing():
 			_sail_input()
-		hero.blocking = skill_held("block") and not ui.any_panel_open() and not sailing()
+		hero.blocking = (skill_held("block") or test_block) and not ui.any_panel_open() and not sailing()
 		for slot in Hero.BIND_SLOTS:
 			if sailing():
 				break

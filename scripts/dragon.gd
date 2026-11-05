@@ -30,7 +30,8 @@ const KINDS := {
 	"wyrm": {"glb": "res://assets/models/dragons/wyrm.glb", "scale": 0.46, "h": 2.45, "stride": 0.62,
 		"gait": "quad", "wings": true, "tail": 0.2, "reach": 2.3, "radius": 0.8, "stage": 0.55, "stage_yaw": 0.75,
 		"bob": 0.06, "fold": 0.35},
-	"serpent": {"glb": "res://assets/models/dragons/serpent.glb", "scale": 0.42, "h": 2.75, "stride": 0.7,
+	# (the serpent's stride: its phase runs at its short legs' own pace, so a planted foot keeps to the ground)
+	"serpent": {"glb": "res://assets/models/dragons/serpent.glb", "scale": 0.42, "h": 2.75, "stride": 2.3,
 		"gait": "serpent", "wings": false, "tail": 0.22, "reach": 2.2, "radius": 0.7, "stage": 0.5, "stage_yaw": 0.8,
 		"bob": 0.04, "fold": 0.0},
 	"wyvern": {"glb": "res://assets/models/dragons/wyvern.glb", "scale": 0.45, "h": 2.8, "stride": 0.82,
@@ -188,6 +189,9 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 	var hold: Node3D = rig.get_meta("drg_hold")
 	var mem: Dictionary = rig.get_meta("drg_mem")
 	var c: String = str(rig.get_meta("dragon"))
+	if c == "serpent" and info.has("spine_3"):
+		SerpentBody.pose(rig, st)     # the re-rigged serpent's own body (scripts/serpent_body.gd)
+		return
 	var sp := spec(c)
 	var gait: String = sp["gait"]
 	var t: float = float(st.get("time", 0.0))
@@ -274,12 +278,47 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 	var wing_bk := fold * 0.8 * (1.0 - 0.4 * mw)
 	if run > 0.0:
 		flap = sin(ph + 0.6) * (0.32 if gait == "biped" else 0.22) * run
+	# (the wyvern, jj: more life in the wings) they sway against the stride as it walks, twitch at rest, and every so
+	# often it rouses them: half spread, a shake, folded again
+	var wsway := 0.0
+	var rouse := 0.0
+	if winged and gait == "biped":
+		wsway = sin(ph + PI * 0.5) * 0.12 * mw
+		var ra: float = float(mem.get("rouse_at", 6.0))
+		if t > ra and mw < 0.2 and a < 0.0:
+			mem["rouse_t0"] = t
+			mem["rouse_at"] = t + randf_range(8.0, 14.0)
+		var r0: float = float(mem.get("rouse_t0", -10.0))
+		if t - r0 < 1.6:
+			var u := (t - r0) / 1.6
+			rouse = sin(PI * u) * (1.0 + 0.25 * sin(u * 40.0) * sin(PI * u))
+		wing_lo -= 0.55 * rouse * calm
+		wing_bk -= 0.4 * rouse * calm
+		wing_lo += 0.03 * sin(t * 2.3 + sd) * calm
+	# its flight (the dodge, Dodge.pose: the rig's "fly" meta): the wings spread and beat hard, the legs tucked up
+	var fly: float = float(rig.get_meta("fly")) if rig.has_meta("fly") else -1.0
+	if fly >= 0.0 and winged:
+		var fk := smoothstep(0.0, 0.12, fly) * (1.0 - smoothstep(0.85, 1.0, fly))
+		wing_lo -= 0.9 * fk
+		wing_bk -= 0.5 * fk
+		flap += sin(fly * TAU * 3.5) * 0.85 * fk
+		for lg in legs:
+			_add(P, lg + "_0", 0.45 * fk)
+			_add(P, lg + "_1", 0.7 * fk)
 
 	# --- tail: never still
 	var wag_w := lerpf(1.7, 3.0, mw)
 	mem["wag"] = float(mem.get("wag", 0.0)) + dt * wag_w * (0.85 + 0.3 * sin(t * 0.23 + sd))
 	var wag: float = mem["wag"]
-	var tail_amp: float = float(sp["tail"]) * (0.8 + 0.35 * sin(t * 0.37 + sd * 3.0))
+	var tail_amp: float = float(sp["tail"]) * (0.8 + 0.35 * sin(t * 0.37 + sd * 3.0)) * (1.45 if gait == "biped" else 1.0)
+	# turning: the tail swings wide and catches up (the heading's rate, smoothed)
+	var yaw_now := rig.global_rotation.y if rig.is_inside_tree() else 0.0
+	var yr := 0.0
+	if mem.has("yaw") and dt > 0.0:
+		yr = wrapf(yaw_now - float(mem["yaw"]), -PI, PI) / dt
+	mem["yaw"] = yaw_now
+	var turn: float = lerpf(float(mem.get("turn", 0.0)), clampf(yr, -6.0, 6.0), 1.0 - exp(-dt * 4.0))
+	mem["turn"] = turn
 	var flick := 0.0
 	var fa: float = float(mem.get("flick_at", 5.0))
 	if t > fa:
@@ -292,6 +331,9 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 	for i in tail.size():
 		var k := float(i + 1) / nt
 		var yaw := tail_amp * (0.35 + 0.9 * k) * sin(wag - i * 0.55) + 0.1 * m * sin(ph - i * 0.5)
+		yaw += -turn * 0.06 * (0.4 + k) * sin(clampf(1.0 - i * 0.15, 0.0, 1.0) * PI * 0.5 + 0.6)
+		if fly >= 0.0:
+			yaw *= 0.4      # streamlined in the air
 		yaw += flick * 0.55 * k * k * (1.0 if fmod(f0, 2.0) < 1.0 else -1.0)
 		yaw += hit * 0.35 * sin(t * 22.0 - i) * k
 		var pit := -0.02
@@ -362,7 +404,13 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 		for i in neck.size():
 			_add(P, neck[i], 0.3 * blk / nn)
 		_add(P, "head_0", 0.15 * blk)
-		if winged:
+		if winged and gait == "biped":
+			# the wyvern wraps itself in its wings (jj): raised, swept round to the front and closed over it
+			wing_lo += -0.35 * blk - fold * blk
+			wing_bk -= 1.45 * blk
+			for i in neck.size():
+				_add(P, neck[i], 0.18 * blk / nn)
+		elif winged:
 			wing_lo += 0.1 * blk - fold * blk
 			wing_bk -= 0.75 * blk
 		else:
@@ -376,12 +424,13 @@ static func pose(rig: Node3D, st: Dictionary) -> void:
 
 	if winged:
 		for side in ["L", "R"]:
-			_wing(P, "arm_" + side + "_0", wing_lo - flap, wing_bk * 0.6)
+			_wing(P, "arm_" + side + "_0", wing_lo - flap + wsway * (1.0 if side == "L" else -1.0), wing_bk * 0.6)
 			_wing(P, "arm_" + side + "_1", wing_lo * 0.4 - flap * 0.5, wing_bk * 1.1)
 			var f := 1
 			while info.has("fing%d_%s_0" % [f, side]):
-				_wing(P, "fing%d_%s_0" % [f, side], 0.1 * wing_lo - flap * 0.3, wing_bk * 0.6)
-				_wing(P, "fing%d_%s_1" % [f, side], 0.05 * wing_lo, wing_bk * 0.3)
+				# (the fingers curl in round it when the wings close for a block)
+				_wing(P, "fing%d_%s_0" % [f, side], 0.1 * wing_lo - flap * 0.3, wing_bk * 0.6 - 0.35 * blk * (1.0 if gait == "biped" else 0.0))
+				_wing(P, "fing%d_%s_1" % [f, side], 0.05 * wing_lo - flap * 0.15, wing_bk * 0.3 - 0.3 * blk * (1.0 if gait == "biped" else 0.0))
 				f += 1
 
 	# --- death: it slumps and rolls onto its side, neck and tail limp, wings sagging

@@ -5661,6 +5661,13 @@ class SkillGlyph extends Control:
 				for k in 6:
 					var a := TAU * k / 6.0
 					draw_line(c, c + Vector2(cos(a), sin(a)) * 11, ic.lightened(0.3), 2.0, true)
+			"frost_breath":
+				# a serpent's breath: a cone of frost fanning out from a point
+				var fc := Color(0.7, 0.9, 1.0) if not dim else Color(0.4, 0.42, 0.45)
+				draw_colored_polygon(PackedVector2Array([c + Vector2(-14, 0), c + Vector2(14, -12), c + Vector2(16, 0), c + Vector2(14, 12)]), Color(fc.r, fc.g, fc.b, 0.35))
+				for k in 3:
+					draw_line(c + Vector2(-12, 0), c + Vector2(14, (k - 1) * 9.0), fc, 1.6, true)
+				draw_circle(c + Vector2(-13, 0), 3.0, fc.lightened(0.3))
 			"arc", "storm_arc":
 				var lc := (Color(0.75, 0.7, 1.0) if id == "arc" else Color(0.45, 0.95, 0.95)) if not dim else Color(0.4, 0.4, 0.45)
 				draw_polyline(PackedVector2Array([c + Vector2(-15, -12), c + Vector2(-4, -3), c + Vector2(-8, 2), c + Vector2(4, 9), c + Vector2(0, 12), c + Vector2(15, 15)]), lc, 3.0, true)

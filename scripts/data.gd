@@ -642,6 +642,11 @@ const SKILLS := [
 		"style": "cast", "use": 0.7, "speed": "cast", "base": [8, 14], "per_lvl": 2.8, "type": "lightning",
 		"area": {"shape": "single", "r": 10.0}, "tags": ["spell", "lightning", "chain"],
 		"desc": "Lightning leaps from your hand into the nearest foe ahead and on to three more nearby, striking each."},
+	# the Frost Serpent's own (jj, 2026-11-04: "give frost serpent a frost breath attack")
+	{"id": "frost_breath", "cls": "serpent", "name": "Frost Breath", "key": "Q", "lvl": 1, "mana": 10, "cd": 1.5, "aim": "facing", "range": 7.0,
+		"style": "breath", "use": 1.4, "speed": "cast", "base": [4, 7], "per_lvl": 1.3, "type": "cold",
+		"area": {"shape": "cone", "r": 7.0, "angle": 70.0}, "dot": {"kind": "chill", "k": 0.45, "secs": 1.5}, "tags": ["spell", "cold", "area", "channel"],
+		"desc": "The serpent lowers its head and breathes a freezing gale over everything in a cone 7 metres ahead for over a second: cold damage again and again, chilling (slowing) them; the ground frosts over and ice bursts up where it ends."},
 	# the Storm Wyvern's own (jj, 2026-11-04: "give Arc for the storm wyvern"): rears up and breathes chain lightning
 	{"id": "storm_arc", "cls": "wyvern", "name": "Storm Arc", "key": "Q", "lvl": 1, "mana": 6, "cd": 0.0, "aim": "facing", "range": 11.0,
 		"style": "cast", "use": 0.75, "speed": "cast", "base": [10, 16], "per_lvl": 3.2, "type": "lightning",

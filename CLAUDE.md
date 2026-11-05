@@ -600,6 +600,20 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   Sounds: `tools/audio/dragon_sfx.py` derives `<kind>_roar/step/claw/bite/tail`, `death_<kind>` and `wyvern_flap`
   from the game's own recordings (replace any with an ElevenLabs take later under the same name). Test:
   `tools/dragon_test.gd` (`--fixed-fps 60`).
+  **The Frost Serpent** (jj, 2026-11-04) is re-rigged (`tools/blender/dragons/rechain_serpent.py`: 12 tail, 6 spine
+  and 7 neck vertebrae down the body's measured centreline, the old body weights handed to them) and posed by its own
+  `scripts/serpent_body.gd` `SerpentBody` (Dragon.pose hands it over): a lizard's diagonal gait with each foot planted
+  and swept back in a straight line (`STANCE`; its `stride` 2.3 runs the phase at its short legs' pace), the body
+  swimming with the gait and curving into turns, the head held on course, a spring-chain tail (`TAIL_K`) that lags,
+  drags in turns, flicks and lashes, breathing, looking about, weight shifts and cold breaths from its nostrils. Its
+  skill **Frost Breath** (`frost_breath`, style `"breath"`: the neck lowered, head thrust out, jaws wide; damage ticks
+  in `DragonSkills.update` through SkillSpec's cone and chill) and its **block** (coiled round itself inside a clear
+  Meshy ice shell, `assets/models/fx/frost/ice_shell.glb`, that grows as the guard rises and shatters into its
+  fractured pieces when it drops) are `scripts/serpent_fx.gd` `SerpentFx`. **The Storm Wyvern** (jj): Storm Arc (see
+  ArcFx), its dodge a flight (`Dodge.pose`: crouch, a climb of `Dodge.FLY_H` on beating wings by the rig's `fly`
+  meta, a landing with a gust of dust), its block the wings wrapped round it like a cloak, the wings swaying with the
+  stride and roused now and then at rest, a bigger tail swinging wide in turns. Previews: `RANGE_CLASS=serpent|wyvern
+  ... tools/fire_range.gd -- out game|anim grass frost_breath|storm_arc|block|roll` (`Game.test_block` holds the guard).
 - **The Wraith's body**: the Meshy horned, chained wraith (concept D) on the shared mocap system
   (`Wraith.build_mocap`, `assets/models/wraith_mocap.glb`; falls back to the code-built robe without it). He has no
   legs and never walks: `tools/blender/wraith/prep_wraith_mocap.py` cuts the skeletal legs and feet out of the mesh

@@ -104,7 +104,11 @@ func _run() -> void:
 			check(J.has(k), "joint %s" % k)
 		check(h.equipment["weapon"] == null, "starts with its own claws (no weapon)")
 		check(h.dmg_max >= 5, "claw damage %d-%d" % [h.dmg_min, h.dmg_max])
-		check(h.skill_list().is_empty() and h.bound("lmb") == "attack", "no skills yet; left mouse attacks")
+		# its own skills (the wyrm has none yet; the serpent breathes frost, the wyvern Storm Arc), on Q by default
+		var own: Array = Data.skills_for(c)
+		var want_q: String = str(own[0]["id"]) if not own.is_empty() else ""
+		check(h.skill_list().size() == own.size() and h.bound("lmb") == "attack" and (want_q == "" or h.bound("Q") == want_q),
+			"its skills %s; left mouse attacks" % [own.map(func(x): return x["id"])])
 		check(h.reach() > 1.9, "a long reach (%.1f m)" % h.reach())
 		if first == false and c == KINDS[0]:
 			await g.travel(0, "wild", "start")
