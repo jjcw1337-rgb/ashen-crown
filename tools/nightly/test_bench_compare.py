@@ -14,7 +14,7 @@ from bench_compare import aggregate, compare, NAMES
 def fixture():
     data = {}
     for key in NAMES:
-        row = dict(schema=2, clock='monotonic_wall', focused=True, engine='4.3', renderer='forward_plus',
+        row = dict(**{'class': 'knight', 'skill': ''}, schema=2, clock='monotonic_wall', focused=True, engine='4.3', renderer='forward_plus',
                    gpu_name='fixture', resolution='1600x900', preset=int(key[-1]), scenario=key.split('_q')[0],
                    fps_avg=60, frame_ms_p99=20, frame_ms_max=30, first_use_max_ms=40, hitches_per_min=0,
                    load_ms=2500, ram_mb=500, vram_mb=1000, frames=1800, secs=30, validation={'clean': True, 'quiet': True},
@@ -60,6 +60,13 @@ class Gate(unittest.TestCase):
         runs[0]['frame_ms_max'] = 2000
         data['pvp3v3_q2'] = aggregate(runs)
         self.assertEqual(data['pvp3v3_q2']['frame_ms_max'], 30)
+        self.assertTrue(compare(fixture(), data))
+
+    def test_missing_context(self):
+        data = fixture()
+        for row in data["pvp3v3_q2"]["runs"]:
+            row.pop("renderer")
+        data["pvp3v3_q2"] = aggregate(data["pvp3v3_q2"]["runs"])
         self.assertTrue(compare(fixture(), data))
 
     def test_median_not_best(self):

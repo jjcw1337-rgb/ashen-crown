@@ -22,6 +22,9 @@ concurrency:
   group: preview-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  GODOT_SILENCE_ROOT_WARNING: "1"
+
 jobs:
   lobbies:
     runs-on: ubuntu-latest
@@ -61,8 +64,13 @@ jobs:
           mkdir -p ~/.local/share/godot/export_templates
           mv /root/.local/share/godot/export_templates/4.3.stable ~/.local/share/godot/export_templates/4.3.stable
 
+      - name: Install performance check runtime
+        run: apt-get update -qq && apt-get install -y -qq python3 > /dev/null
+
       - name: Import project
-        run: godot --headless --editor --quit || true
+        run: |
+          godot --headless --path . --import > /tmp/content-import.log 2>&1 || { cat /tmp/content-import.log; exit 1; }
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR:' /tmp/content-import.log; then exit 1; fi
 
       - name: Verify content preparation contracts
         run: python3 tools/ci/perf_contracts.py godot

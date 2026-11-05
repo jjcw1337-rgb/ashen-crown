@@ -56,6 +56,8 @@ def validate(data, label):
                     errors.append(f"{prefix}: invalid {metric}")
             if run.get("frames", 0) <= 0 or run.get("secs", 0) < 10 or run.get("fps_avg", 0) <= 0:
                 errors.append(f"{prefix}: incomplete measurement")
+            if any(c not in run for c in CONTEXT):
+                errors.append(f"{prefix}: missing comparison context")
             if any(run.get(c) != row.get(c) for c in CONTEXT):
                 errors.append(f"{prefix}: mixed measurement contexts")
             if run.get("gameplay_sync_misses"):

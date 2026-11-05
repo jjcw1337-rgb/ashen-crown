@@ -13,6 +13,11 @@ func run() -> void:
 	for cls in Data.CLASSES:
 		check(catalog.CLASS_ROOTS.has(cls), "Class missing content declaration: " + cls)
 		check(SkillWarmData.EVENTS.has(cls), "Class missing visual preparation recipe: " + cls)
+		var represented := {}
+		for event in SkillWarmData.EVENTS.get(cls, []):
+			represented[str(event.get("s", ""))] = true
+		for skill in Data.skills_for(cls) + Data.shared_skills():
+			check(represented.has(str(skill.id)), "Skill missing captured preparation event: %s/%s" % [cls, skill.id])
 	for path in catalog.combat():
 		check(ResourceLoader.exists(path), "Missing combat dependency: " + path)
 	for run_i in 3:
