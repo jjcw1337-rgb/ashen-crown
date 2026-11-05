@@ -13,15 +13,15 @@ const TALK := ["Talk_Passionately", "Talk_with_Hands_Open", "Talk_with_Right_Han
 	"Stand_and_Chat", "Shrug", "Finger_Wag_No", "Call_Gesture", "Talk_with_Left_Hand_Raised"]
 const LISTEN := ["Listening_Gesture", "Agree_Gesture", "Hand_on_Hip_Gesture", "Idle_8", "Listening_Gesture", "Agree_Gesture"]
 const PART := ["Wave_One_Hand", "Big_Wave_Hello", "Formal_Bow", "Agree_Gesture"]
-const NEAR := Vector2(1.5, 4.6)   # how far apart two can stand and talk
+const NEAR := Vector2(1.5, 5.5)   # how far apart two can stand and talk
 const COOLDOWN := Vector2(14.0, 30.0)
-const VISIT_EVERY := Vector2(25.0, 50.0)
+const VISIT_EVERY := Vector2(14.0, 28.0)
 
 var world: World
 var chats: Array = []            # {a, b, t, dur, turn_t, speaker}
 var _cd := {}                    # person -> seconds before they'll talk again
-var _scan := 1.0
-var _visit := 20.0
+var _scan := 12.0                # (everyone settles into their day before the talk starts)
+var _visit := 16.0
 var _waved := {}
 
 static func add_to(w: World) -> CampSocial:
@@ -57,7 +57,8 @@ func can_talk(n: Node) -> bool:
 		return false
 	if n is CampGuard:
 		var g := n as CampGuard
-		return g.state == "post" and g.turn_t < 0.0 and g.target == null
+		# (on duty: only while he has a good while left at his post, so his round keeps going)
+		return g.state == "post" and g.turn_t < 0.0 and g.target == null and g.wait_left > 6.0
 	if n is Inter:
 		var it := n as Inter
 		if it.model == null or it.anim == null or it.has_meta("forge") or it._walk_to != Vector3.INF:
@@ -95,12 +96,16 @@ func _find() -> void:
 			if not can_talk(b):
 				continue
 			var d := Vector2(_pos(a).x - _pos(b).x, _pos(a).z - _pos(b).z).length()
-			if d >= NEAR.x and d <= NEAR.y and randf() < 0.55:
+			if d >= NEAR.x and d <= NEAR.y and randf() < 0.85:
 				begin(a, b)
 				return
 
 func begin(a: Node, b: Node) -> void:
-	var c := {"a": a, "b": b, "t": 0.0, "dur": randf_range(9.0, 17.0), "turn_t": 0.0, "speaker": a, "parted": false}
+	var dur := randf_range(9.0, 17.0)
+	for n in [a, b]:
+		if n is CampGuard:
+			dur = minf(dur, randf_range(6.0, 10.0))      # a guard keeps it short
+	var c := {"a": a, "b": b, "t": 0.0, "dur": dur, "turn_t": 0.0, "speaker": a, "parted": false}
 	for n in [a, b]:
 		n.set_meta("chatting", true)
 		_hold(n, true)
@@ -155,7 +160,7 @@ func end(c: Dictionary) -> void:
 		if is_instance_valid(n):
 			n.set_meta("chatting", false)
 			_hold(n, false)
-			_cd[n] = randf_range(COOLDOWN.x, COOLDOWN.y)
+			_cd[n] = randf_range(COOLDOWN.x, COOLDOWN.y) * (2.0 if n is CampGuard else 1.0)
 	# a visitor walks home
 	for n in [c["a"], c["b"]]:
 		if is_instance_valid(n) and n.has_meta("visit_home"):
@@ -213,7 +218,7 @@ func _start_visit() -> void:
 			if hi == vi:
 				continue
 			var d := hi.global_position.distance_to(vi.global_position)
-			if d < 6.0 or d > 30.0:
+			if d < 6.0 or d > 20.0:
 				continue
 			# stand a step in front of them, on open ground
 			var f := Vector3(sin(hi.home_yaw), 0, cos(hi.home_yaw))

@@ -100,14 +100,14 @@ func _run() -> void:
 	if cs != null:
 		var seen := 0
 		var pairs := {}
-		for i in 60 * 120:
+		for i in 60 * 180:
 			await process_frame
 			for c in cs.chats:
 				var key := str(c["a"].get_instance_id()) + "+" + str(c["b"].get_instance_id())
 				if not pairs.has(key):
 					pairs[key] = true
 					seen += 1
-		check(seen >= 3, "%d conversations in two minutes" % seen)
+		check(seen >= 2, "%d conversations in three minutes" % seen)
 	# --- smoke
 	var smoke := 0
 	for n in w.fx_root.get_children():

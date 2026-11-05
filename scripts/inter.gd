@@ -30,12 +30,23 @@ var _walk_to := Vector3.INF
 var _patrol_i := 0
 var social := false              # talking with someone (CampSocial turns them and plays the talk)
 var _arrive_cb: Callable         # walk_to's errand: called on arriving
+var _path := PackedVector3Array() # the rest of walk_to's way
 
 ## Off on an errand at a walk (CampSocial's visits): to p, then `then` is called. Only a keeper with a stroll
 ## ("patrol": its walk clip and speed) can.
 func walk_to(p: Vector3, then := Callable()) -> void:
-	_walk_to = p
 	_arrive_cb = then
+	_path = PackedVector3Array()
+	var w = get_parent()
+	while w != null and not (w is World):
+		w = w.get_parent()
+	if w != null:
+		# round the stalls and the waypoint's dais, not through them
+		_path = (w as World).find_path(global_position, p)
+	if _path.is_empty():
+		_path = PackedVector3Array([p])
+	_walk_to = _path[0]
+	_path.remove_at(0)
 
 ## A keeper who gets about (clips "patrol": {"points": [Vector3...], "walk": clip, "speed": m/s, "face": [yaw per point],
 ## "chance", "works": [clips per point]}; Osric between his
@@ -50,6 +61,10 @@ func _patrol(delta: float, near: bool) -> bool:
 		return false
 	var to := _walk_to - global_position
 	to.y = 0
+	if to.length() < 0.15 and not _path.is_empty():
+		_walk_to = _path[0]           # on along walk_to's way
+		_path.remove_at(0)
+		return true
 	if to.length() < 0.15:
 		global_position = Vector3(_walk_to.x, global_position.y, _walk_to.z)
 		_walk_to = Vector3.INF
