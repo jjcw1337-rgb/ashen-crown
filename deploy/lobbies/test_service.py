@@ -175,4 +175,47 @@ class LobbyTests(unittest.TestCase):
   with self.assertRaises(Rejected):self.act('e',r,'join')
   self.m.worker(r['id'],rr['worker_key'],'depart',dict(user='b'))
   self.act('e',r,'join');self.assertEqual(self.m.public(rr,'a')['joined'],4)
-if __name__=='__main__':unittest.main()
+
+class LaunchRoomTests(unittest.TestCase):
+ """Service.launch: no slot count; room = this mode's measured cost against free memory, the CPU budget and ports."""
+ def make(self,cpus=2,mem_mb=4000,ports=16):
+  import service,types
+  svc=service.Service.__new__(service.Service)
+  svc.args=types.SimpleNamespace(min_free_mb=300,cpu_budget=0.9,reserve_cpu=0.3,first_port=24600,ports=ports,port=7352,
+   server_binary='/usr/bin/true',godot='godot',game='.',public_host='127.0.0.1')
+  svc.processes={};svc.root=Path(tempfile.mkdtemp())
+  svc.cpus=lambda:cpus;svc.mem_available_mb=lambda:mem_mb
+  return svc
+ def room(self,rid,mode='battlegrounds'):return {'id':rid,'mode':mode,'team_size':1,'capacity':16,'worker_key':'k','members':{}}
+ def fill(self,svc,mode,tries=40):
+  n=0
+  try:
+   for i in range(tries):
+    svc.launch(self.room('r%d'%i,mode));n+=1
+    import time;time.sleep(0)   # (a finished /usr/bin/true no longer counts as running: keep them alive)
+  except Rejected as e:self.assertIn('full',str(e))
+  return n
+ def test_cpu_budget_fills_then_full(self):
+  svc=self.make(cpus=2)
+  svc.processes={}
+  import service
+  real=service.subprocess.Popen
+  class Alive:
+   def __init__(s,*a,**k):pass
+   def poll(s):return None
+  service.subprocess.Popen=Alive
+  self.addCleanup(lambda:setattr(service.subprocess,'Popen',real))
+  self.assertEqual(self.fill(svc,'battlegrounds'),5)        # (2 x 0.9 - 0.3) / 0.3 per Battlegrounds world
+ def test_memory_short_is_full(self):
+  svc=self.make(mem_mb=600)
+  with self.assertRaises(Rejected):svc.launch(self.room('a'))
+ def test_bigger_machine_holds_more(self):
+  svc=self.make(cpus=8,mem_mb=16000,ports=32)
+  import service
+  real=service.subprocess.Popen
+  class Alive:
+   def __init__(s,*a,**k):pass
+   def poll(s):return None
+  service.subprocess.Popen=Alive
+  self.addCleanup(lambda:setattr(service.subprocess,'Popen',real))
+  self.assertEqual(self.fill(svc,'arena'),32)               # ports are the limit here: (8 x 0.9 - 0.3) / 0.15 = 46

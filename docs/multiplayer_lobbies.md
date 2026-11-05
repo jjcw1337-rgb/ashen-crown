@@ -64,16 +64,23 @@ UDP port, world, participants and lifecycle. Match workers redeem admission tick
 HTTP endpoint. The public API is HTTPS `/lobbies`; `/worker` must never be reverse-proxied publicly.
 A manager restart aborts uncertain matches and refunds stakes; systemd kills its old child workers.
 
-Initial recommendation: **one active match slot on this host**, many cheap waiting lobbies, with a
-1500 MB available-memory admission threshold. The example unit caps the service plus workers at
-1800 MB RAM and 150% CPU. Headless workers skip the unused title world, audio bank and sword-trail draw mesh.
-These caps are admission safeguards, not a measured promise of a particular player count or FPS.
-A local Mac test is not a Linux droplet capacity benchmark. Do not add lobby workers alongside the
-existing persistent worlds while the host has the observed low headroom. Keep existing co-op only
-if measured headroom permits; retire the old permanent BG process during a coordinated rollout.
-Increasing slots needs a peak-load test of the heaviest mode with actual players and monitoring of
-CPU, frame time, available RAM, swap growth and worker exits. No droplet upgrade is required just to
-store lobbies. Several simultaneous full worlds are not verified to fit the current server.
+**Measured capacity (Blaine's audit, 2026-11-05)**, on this droplet with bot players (`tools/load_bot.gd`):
+the full game release as a server holds 1.25 GB per world whatever happens in it (it loads every texture
+and sound); the stripped **Linux Server** export (CI artifact `AshenCrown-server`) 393-476 MB. With servers
+not posing bodies and ticking at 30 fps, a Battlegrounds world costs ~13% of a core empty and ~24% with six
+players fighting (was 31% / 95%). The map is the base cost; each fighting player adds a little.
+
+So there is **no fixed slot count**: `service.py` starts a match when there is room for it (`COST` per mode:
+free memory for its world plus `--min-free-mb` headroom, a CPU budget of `--cpu-budget` x cores less
+`--reserve-cpu` for the backend, a free port among `--ports` from `--first-port`), else every player in
+the lobby reads "Servers are full right now" and the lobby stays open. `--slots` is only a hard ceiling.
+A bigger machine simply holds more. Each mode has its own longest life (`LIMIT`); a finished match's
+process quits by itself (the 30 s stop is only for one that hangs). The unit lets the manager and its
+matches use 2.8 GB and 180% CPU; open UDP `24600-24615` in the cloud firewall for them.
+
+`sh deploy/lobbies/update.sh [ci-run]` installs the latest staging CI's server export and this checkout's
+service and unit (`/opt/ashen-crown/staging/server/current`, `/opt/ashen-crown/staging/lobbies/service.py`)
+and restarts the manager, refusing while a match is starting or playing.
 
 ## Preview and rollout
 

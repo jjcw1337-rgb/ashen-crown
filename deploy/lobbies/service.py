@@ -7,6 +7,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 MODES = {'arena': (2, 6), 'battlegrounds': (1, 16), 'waves': (1, 4)}
+# What one match costs, measured on the staging droplet (4 GB, 2 vCPU) with bot players on the stripped server build
+# (Blaine's capacity audit, 2026-11-05: a Battlegrounds world ~0.4-0.46 GB; 6 players fighting ~0.25 of a core, so the
+# budget allows some heavier fights). (MB, cores). Arena is a small map with no monsters; Waves is a full co-op zone.
+COST = {'arena': (450, 0.15), 'battlegrounds': (480, 0.3), 'waves': (480, 0.3)}
+# A match's longest life (s): a hung or forgotten world never holds a server forever. Arena is best of three short
+# rounds; Battlegrounds and Waves run as long as their players last.
+LIMIT = {'arena': 45 * 60, 'battlegrounds': 3 * 3600, 'waves': 3 * 3600}
+FULL = 'Servers are full right now. Your lobby stays open: press Start again in a moment.'
 class Rejected(Exception): pass
 
 class Lobbies:
@@ -120,7 +128,7 @@ class Lobbies:
                     if not all(m['ready'] for m in r['members'].values()): raise Rejected('Everyone must be ready.')
                     if r['mode']=='arena' and any(sum(m['team']==t for m in r['members'].values())!=r['team_size'] for t in (0,1)): raise Rejected('Fill both teams before starting.')
                     busy=sum(x['state'] in ('starting','playing') for x in self.rooms.values())
-                    if busy>=self.slots: raise Rejected('All match slots are busy. Your lobby stays open; try Start when a match finishes.')
+                    if busy>=self.slots: raise Rejected(FULL)
                     r['state']='starting'; r['started']=self.clock(); r['worker_key']=secrets.token_hex(32)
                     for m in r['members'].values(): m['ticket']=secrets.token_hex(32); m['redeemed']=False; m['issued']=self.clock()
                     try: r['address']=self.launch(r)
@@ -183,10 +191,10 @@ class Lobbies:
                 elif r['owner'] not in r['members']: r['owner']=next(iter(r['members']))
             elif r['state']=='playing' and now-r.get('touched',now)>60:
                 r['state']='aborted';r['reason']='Match server stopped responding.';self.settle(r,-1);self.stop(r['id'])
-            elif r['state'] in ('starting','playing') and now-r.get('started',now)>(180 if r['state']=='starting' else 7200):
+            elif r['state'] in ('starting','playing') and now-r.get('started',now)>(180 if r['state']=='starting' else LIMIT.get(r['mode'],7200)):
                 r['state']='aborted';r['reason']='Match timed out.';self.settle(r,-1);self.stop(r['id'])
             elif r['state'] in ('finished','aborted') and not r.get('retired',False) and now-r.get('touched',now)>30:
-                # A stuck renderer/shutdown must not hold the only game port indefinitely.
+                # A finished match's process quits by itself; this only stops one that hung on its way out.
                 r['retired']=True;self.stop(r['id'])
 
 class Service:
@@ -197,20 +205,34 @@ class Service:
         if not args.dev and self.version=="dev": raise RuntimeError("Deploy an imported release with DEPLOYED_REV before starting the public lobby service.")
         self.model=Lobbies(str(self.root/'lobbies.sqlite'),self.launch,self.stop,args.slots)
     def launch(self,r):
-        # Leave emergency RAM headroom; do not thrash swap to squeeze in another world.
-        if Path('/proc/meminfo').exists():
-            info=dict((line.split(':')[0],int(line.split()[1])) for line in Path('/proc/meminfo').read_text().splitlines())
-            if info.get('MemAvailable',0)<self.args.min_free_mb*1024: raise Rejected('Insufficient server memory.')
-        used={p[1] for p in self.processes.values() if p[0].poll() is None}
-        port=next((p for p in range(self.args.first_port,self.args.first_port+self.args.slots) if p not in used),None)
-        if port is None: raise Rejected('No free game port.')
+        # Room for one more? Free memory for this mode's world plus headroom, and a CPU budget across the running
+        # matches (their measured cost, COST): no fixed slot count, so a bigger machine simply holds more.
+        mb,cpu=COST.get(r['mode'],(500,0.3))
+        free=self.mem_available_mb()
+        if free is not None and free<mb+self.args.min_free_mb: raise Rejected(FULL)
+        alive={rid:p for rid,p in self.processes.items() if p[0].poll() is None}
+        used=sum(COST.get(p[2],(0,0.3))[1] for p in alive.values())
+        if used+cpu>self.cpus()*self.args.cpu_budget-self.args.reserve_cpu: raise Rejected(FULL)
+        ports={p[1] for p in alive.values()}
+        port=next((p for p in range(self.args.first_port,self.args.first_port+self.args.ports) if p not in ports),None)
+        if port is None: raise Rejected(FULL)
         manifest={k:r[k] for k in ('id','mode','team_size','capacity','worker_key','members')}
         manifest['broker']='http://127.0.0.1:%d'%self.args.port
         path=self.root/(r['id']+'.json');path.write_text(json.dumps(manifest));path.chmod(0o600)
         log=(self.root/(r['id']+'.log')).open('ab')
-        proc=subprocess.Popen([self.args.godot,'--headless','--path',self.args.game,'--','--server','--port',str(port),'--match-config',str(path)],stdout=log,stderr=subprocess.STDOUT)
-        log.close();self.processes[r['id']]=(proc,port)
+        args=['--','--server','--port',str(port),'--match-config',str(path)]
+        # the stripped dedicated-server export (one file, its pack inside) when deployed; else the game itself
+        lean=self.args.server_binary and os.path.isfile(self.args.server_binary)
+        cmd=[self.args.server_binary,'--headless']+args if lean else [self.args.godot,'--headless','--path',self.args.game]+args
+        proc=subprocess.Popen(cmd,stdout=log,stderr=subprocess.STDOUT)
+        log.close();self.processes[r['id']]=(proc,port,r['mode'])
         return '%s:%d'%(self.args.public_host,port)
+    def mem_available_mb(self):
+        p=Path('/proc/meminfo')
+        if not p.exists(): return None
+        info=dict((line.split(':')[0],int(line.split()[1])) for line in p.read_text().splitlines())
+        return info.get('MemAvailable',0)//1024
+    def cpus(self): return os.cpu_count() or 1
     def stop(self,rid):
         pair=self.processes.get(rid)
         if pair and pair[0].poll() is None:
@@ -230,7 +252,7 @@ class Service:
         except Exception: raise Rejected('Your session expired. Sign in again.')
     def reap(self):
         with self.model.lock:
-            for rid,(proc,_) in list(self.processes.items()):
+            for rid,(proc,*_) in list(self.processes.items()):
                 if proc.poll() is not None:
                     r=self.model.rooms[rid]
                     if r['state'] in ('starting','playing'): r['state']='aborted';r['reason']='The match server stopped.';self.model.settle(r,-1)
@@ -259,7 +281,7 @@ class Handler(BaseHTTPRequestHandler):
         data=json.dumps(result).encode();self.send_response(status);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--state',default='/var/lib/ashen-lobbies');ap.add_argument('--game',required=True);ap.add_argument('--godot',default='godot');ap.add_argument('--bind',default='127.0.0.1');ap.add_argument('--proxy-bind',default='');ap.add_argument('--port',type=int,default=7352);ap.add_argument('--public-host',default='127.0.0.1');ap.add_argument('--first-port',type=int,default=24600);ap.add_argument('--slots',type=int,default=1);ap.add_argument('--min-free-mb',type=int,default=1500);ap.add_argument('--nakama',default='http://127.0.0.1:7350');ap.add_argument('--dev',action='store_true');args=ap.parse_args()
+    ap=argparse.ArgumentParser();ap.add_argument('--state',default='/var/lib/ashen-lobbies');ap.add_argument('--game',required=True);ap.add_argument('--godot',default='godot');ap.add_argument('--bind',default='127.0.0.1');ap.add_argument('--proxy-bind',default='');ap.add_argument('--port',type=int,default=7352);ap.add_argument('--public-host',default='127.0.0.1');ap.add_argument('--first-port',type=int,default=24600);ap.add_argument('--ports',type=int,default=16);ap.add_argument('--slots',type=int,default=32);ap.add_argument('--min-free-mb',type=int,default=300);ap.add_argument('--cpu-budget',type=float,default=0.9);ap.add_argument('--reserve-cpu',type=float,default=0.3);ap.add_argument('--server-binary',default='');ap.add_argument('--nakama',default='http://127.0.0.1:7350');ap.add_argument('--dev',action='store_true');args=ap.parse_args()
     if args.dev and (args.bind!='127.0.0.1' or args.proxy_bind): ap.error('Development identities are loopback-only.')
     svc=Service(args);server=ThreadingHTTPServer((args.bind,args.port),Handler);server.service=svc
     if args.proxy_bind:

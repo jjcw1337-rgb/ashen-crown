@@ -11,17 +11,21 @@ WorkingDirectory=/opt/ashen-crown/staging/game
 EnvironmentFile=/opt/ashen-crown/staging/bg.env
 # Deploy CI-exported Linux executable/PCK here. Never import on the live host.
 EnvironmentFile=/opt/ashen-crown/staging/lobbies.env
-ExecStart=/usr/bin/python3 /opt/ashen-crown/staging/game/deploy/lobbies/service.py --state /var/lib/ashen-lobbies --game /opt/ashen-crown/staging/game --godot /opt/ashen-crown/staging/game/AshenCrown.x86_64 --proxy-bind ${LOBBY_PROXY_BIND} --public-host 161.35.185.195 --first-port 24600 --slots 1 --min-free-mb 1500
+# Matches start while there is room (service.py COST: free memory for the mode's world plus 300 MB, a CPU budget,
+# a free port in 24600-24615; open that UDP range in the cloud firewall). The stripped server export
+# (CI artifact AshenCrown-server, deploy/lobbies/update.sh) runs matches; without it, the game release does.
+ExecStart=/usr/bin/python3 /opt/ashen-crown/staging/lobbies/service.py --state /var/lib/ashen-lobbies --game /opt/ashen-crown/staging/game --godot /opt/ashen-crown/staging/game/AshenCrown.x86_64 --server-binary /opt/ashen-crown/staging/server/current/AshenCrown.x86_64 --proxy-bind ${LOBBY_PROXY_BIND} --public-host 161.35.185.195 --first-port 24600 --ports 16 --min-free-mb 300
 StateDirectory=ashen-lobbies
 UMask=0077
 Restart=on-failure
 RestartSec=5
 KillMode=control-group
 TimeoutStopSec=15
-MemoryHigh=1400M
-MemoryMax=1800M
+# (the manager and all its matches: ~0.45 GB a stripped world; the backend and the co-op server keep the rest)
+MemoryHigh=2400M
+MemoryMax=2800M
 MemorySwapMax=256M
-CPUQuota=150%
+CPUQuota=180%
 Nice=5
 NoNewPrivileges=yes
 PrivateTmp=yes
