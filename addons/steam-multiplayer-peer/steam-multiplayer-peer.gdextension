@@ -1,0 +1,19 @@
+[configuration]
+entry_symbol = "steam_multiplayer_peer_init"
+compatibility_minimum = 4.2
+
+[libraries]
+linux.debug.x86_64 = "linux/libsteam-multiplayer-peer.linux.template_debug.x86_64.so"
+linux.release.x86_64 = "linux/libsteam-multiplayer-peer.linux.template_release.x86_64.so"
+macos.debug = "macos/libsteam-multiplayer-peer.macos.template_debug.framework"
+macos.release = "macos/libsteam-multiplayer-peer.macos.template_release.framework"
+windows.debug.x86_64 = "windows/steam-multiplayer-peer.windows.template_debug.x86_64.dll"
+windows.release.x86_64 = "windows/steam-multiplayer-peer.windows.template_release.x86_64.dll"
+
+[dependencies]
+; (One Steam library for both plugins, or the second copy is never initialised and create_host fails with
+; ERR_UNAVAILABLE: Ashen Crown 2026-11-05. Windows and Linux load it once by name; on macOS this addon's dylibs were
+; changed to @rpath/libsteam_api.dylib with rpaths to GodotSteam's frameworks (install_name_tool, re-signed ad hoc),
+; so they share the copy GodotSteam ships. Linux/Windows copies here are the same file, for the editor.)
+linux.x86_64 = { "res://addons/godotsteam/linux64/libsteam_api.so": "" }
+windows.x86_64 = { "res://addons/godotsteam/win64/steam_api64.dll": "" }

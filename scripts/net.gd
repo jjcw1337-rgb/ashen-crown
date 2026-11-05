@@ -18,7 +18,7 @@ const SEND_RATE := 0.05
 const ALLY_COLORS := [Color(0.45, 0.8, 1.0), Color(0.5, 1.0, 0.5), Color(1.0, 0.6, 0.9)]
 
 var game: Node
-var peer: ENetMultiplayerPeer
+var peer: MultiplayerPeer            # ENet (LAN, dedicated servers) or Steam (SteamLink)
 var active := false
 var is_host := false
 ## A dedicated server (Battlegrounds, `-- --server`): the host has no player of its own, so it never streams its
@@ -70,11 +70,11 @@ func is_client() -> bool:
 # ---------------------------------------------------------------- hosting / joining
 func host(port := PORT, max_clients := MAX_CLIENTS) -> int:
 	shutdown()
-	peer = ENetMultiplayerPeer.new()
-	var err := peer.create_server(port, max_clients)
+	var e := ENetMultiplayerPeer.new()
+	var err := e.create_server(port, max_clients)
 	if err != OK:
-		peer = null
 		return err
+	peer = e
 	multiplayer.multiplayer_peer = peer
 	active = true
 	is_host = true
@@ -101,15 +101,37 @@ func join_failure(fallback: String) -> String:
 		return "That server runs a different version of the game than yours (%s · %s). Update the game (in the itch app: Update), then try again." % [BuildEnv.env(), BuildEnv.value("rev")]
 	return fallback
 
+## Host through a peer made elsewhere (SteamLink's Steam peer): the same as host() from here on, no LAN broadcast.
+func host_with(p: MultiplayerPeer) -> int:
+	shutdown()
+	peer = p
+	multiplayer.multiplayer_peer = peer
+	active = true
+	is_host = true
+	_update_status()
+	return OK
+
+## Join through a peer made elsewhere (SteamLink: a friend's world through Steam).
+func join_with(p: MultiplayerPeer) -> int:
+	shutdown()
+	reached = false
+	welcomed = false
+	peer = p
+	multiplayer.multiplayer_peer = peer
+	active = true
+	is_host = false
+	loading = true
+	return OK
+
 func join(ip: String, port := PORT) -> int:
 	shutdown()
 	reached = false
 	welcomed = false
-	peer = ENetMultiplayerPeer.new()
-	var err := peer.create_client(ip, port)
+	var e := ENetMultiplayerPeer.new()
+	var err := e.create_client(ip, port)
 	if err != OK:
-		peer = null
 		return err
+	peer = e
 	multiplayer.multiplayer_peer = peer
 	active = true
 	is_host = false
@@ -518,7 +540,7 @@ func _client_goto(act: int, zone: String, spawn: String, at) -> void:
 	rpc_id(1, "sv_zone_ready")
 
 ## Client: still connected through the same link as before an await (not shut down, nor joined elsewhere since).
-func still_joined(link: ENetMultiplayerPeer) -> bool:
+func still_joined(link: MultiplayerPeer) -> bool:
 	return active and not is_host and link != null and peer == link \
 		and link.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED
 
