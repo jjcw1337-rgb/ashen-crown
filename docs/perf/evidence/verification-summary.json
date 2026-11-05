@@ -1,0 +1,3270 @@
+{
+  "scope": "Diagnostic source-build verification, not a release benchmark",
+  "runtime_revision": "8845213e29577b81fda420b2a0b89e5799231002",
+  "settings": {
+    "engine": "Godot 4.3 Forward+",
+    "quality": "High",
+    "viewport": "1600x900",
+    "vsync": false,
+    "pipeline_disk_cache": false,
+    "resources": "Reused read-only imports; driver cache not cleared"
+  },
+  "sets": {
+    "controlled": [
+      {
+        "label": "moor-1",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 4,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 7.7,
+          "cpu_process_peak_ms": 75.53,
+          "draw_calls": 1877,
+          "enemies": 73,
+          "fps_avg": 23.3,
+          "fps_low1": 8,
+          "frame_ms_median": 38.89,
+          "frame_ms_p99": 116.67,
+          "frames": 350,
+          "gpu_ms": 19.15,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 16,
+          "load_ms": 15723,
+          "nodes": 9449,
+          "objects": 2158,
+          "physics_ms": 0,
+          "preset": 2,
+          "primitives": 8282284,
+          "ram_mb": 419,
+          "render_cpu_ms": 12.91,
+          "resolution": "(1600, 900)",
+          "scenario": "moor",
+          "script_ms": 16.08,
+          "secs": 15.01,
+          "skill": "",
+          "vram_mb": 1344
+        },
+        "kpi_trace_max_ms": 137.8,
+        "wall": {
+          "frames": 349,
+          "max_ms": 142.102,
+          "over100": 4,
+          "p99_ms": 111.296
+        },
+        "query": {
+          "calls": 13518,
+          "total_us": 790610,
+          "ms_per_sampled_frame": 2.265358166189112
+        },
+        "pipeline_cache": false,
+        "observed_render_scales": null,
+        "observed_window_focus": null,
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 1927.352
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 5112.994
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 30.41
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 1710.495
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 242.365
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 11.211
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 4035.749
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.223
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 1393.658
+          }
+        ],
+        "boot_ui_setup_ms": []
+      },
+      {
+        "label": "moor_half-1",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 6,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 5.64,
+          "cpu_process_peak_ms": 86.85,
+          "draw_calls": 1858,
+          "enemies": 73,
+          "fps_avg": 22.4,
+          "fps_low1": 8.3,
+          "frame_ms_median": 41.67,
+          "frame_ms_p99": 84.67,
+          "frames": 342,
+          "gpu_ms": 17.76,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 7.9,
+          "load_ms": 16126,
+          "nodes": 9426,
+          "objects": 2131,
+          "physics_ms": 0,
+          "preset": 2,
+          "primitives": 8164811,
+          "ram_mb": 419,
+          "render_cpu_ms": 11.47,
+          "resolution": "(1600, 900)",
+          "scenario": "moor",
+          "script_ms": 19.25,
+          "secs": 15.25,
+          "skill": "",
+          "vram_mb": 1292
+        },
+        "kpi_trace_max_ms": 140,
+        "wall": {
+          "frames": 341,
+          "max_ms": 298.349,
+          "over100": 2,
+          "p99_ms": 88.401
+        },
+        "query": {
+          "calls": 13198,
+          "total_us": 994873,
+          "ms_per_sampled_frame": 2.917516129032258
+        },
+        "pipeline_cache": false,
+        "observed_render_scales": null,
+        "observed_window_focus": null,
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 1792.955
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 5933.85
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 14.978
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 2609.19
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 223.949
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 6.16
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 2937.311
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.128
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 1305.59
+          }
+        ],
+        "boot_ui_setup_ms": []
+      },
+      {
+        "label": "fight-1",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 4,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 8.96,
+          "cpu_process_peak_ms": 134.53,
+          "draw_calls": 2129,
+          "enemies": 97,
+          "fps_avg": 19.7,
+          "fps_low1": 7,
+          "frame_ms_median": 44.44,
+          "frame_ms_p99": 137.97,
+          "frames": 307,
+          "gpu_ms": 20.21,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 80.8,
+          "load_ms": 14069,
+          "nodes": 10404,
+          "objects": 2949,
+          "physics_ms": 0.01,
+          "preset": 2,
+          "primitives": 10161592,
+          "ram_mb": 431,
+          "render_cpu_ms": 12.51,
+          "resolution": "(1600, 900)",
+          "scenario": "fight",
+          "script_ms": 17.67,
+          "secs": 15.6,
+          "skill": "",
+          "vram_mb": 1362
+        },
+        "kpi_trace_max_ms": 147.4,
+        "wall": {
+          "frames": 306,
+          "max_ms": 267.763,
+          "over100": 20,
+          "p99_ms": 221.79
+        },
+        "query": {
+          "calls": 11348,
+          "total_us": 952510,
+          "ms_per_sampled_frame": 3.1127777777777776
+        },
+        "pipeline_cache": false,
+        "observed_render_scales": null,
+        "observed_window_focus": null,
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 1404.465
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 4981.184
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 21.957
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 2035.359
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 250.838
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 3.73
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 2730.172
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.244
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 1449.572
+          }
+        ],
+        "boot_ui_setup_ms": []
+      },
+      {
+        "label": "moor_half-2",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 2,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 12.64,
+          "cpu_process_peak_ms": 107.51,
+          "draw_calls": 1866,
+          "enemies": 73,
+          "fps_avg": 18.1,
+          "fps_low1": 7,
+          "frame_ms_median": 50,
+          "frame_ms_p99": 138.74,
+          "frames": 283,
+          "gpu_ms": 18.93,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 34.6,
+          "load_ms": 15223,
+          "nodes": 9463,
+          "objects": 2144,
+          "physics_ms": 0.01,
+          "preset": 2,
+          "primitives": 8247578,
+          "ram_mb": 419,
+          "render_cpu_ms": 16.18,
+          "resolution": "(1600, 900)",
+          "scenario": "moor",
+          "script_ms": 21.54,
+          "secs": 15.61,
+          "skill": "",
+          "vram_mb": 1292
+        },
+        "kpi_trace_max_ms": 145.6,
+        "wall": {
+          "frames": 282,
+          "max_ms": 540.135,
+          "over100": 9,
+          "p99_ms": 184.278
+        },
+        "query": {
+          "calls": 10947,
+          "total_us": 844019,
+          "ms_per_sampled_frame": 2.9929751773049644
+        },
+        "pipeline_cache": false,
+        "observed_render_scales": null,
+        "observed_window_focus": null,
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 1577.446
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 4909.738
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 26.785
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 1970.667
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 245.256
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 4.438
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 3999.284
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.831
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 1570.977
+          }
+        ],
+        "boot_ui_setup_ms": []
+      },
+      {
+        "label": "moor-2",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 2,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 6.84,
+          "cpu_process_peak_ms": 82.58,
+          "draw_calls": 1848,
+          "enemies": 73,
+          "fps_avg": 20.2,
+          "fps_low1": 9.4,
+          "frame_ms_median": 50,
+          "frame_ms_p99": 88.98,
+          "frames": 305,
+          "gpu_ms": 19.87,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 4,
+          "load_ms": 16498,
+          "nodes": 9456,
+          "objects": 2124,
+          "physics_ms": 0,
+          "preset": 2,
+          "primitives": 8175223,
+          "ram_mb": 419,
+          "render_cpu_ms": 15.28,
+          "resolution": "(1600, 900)",
+          "scenario": "moor",
+          "script_ms": 18.93,
+          "secs": 15.14,
+          "skill": "",
+          "vram_mb": 1344
+        },
+        "kpi_trace_max_ms": 136.8,
+        "wall": {
+          "frames": 304,
+          "max_ms": 207.495,
+          "over100": 1,
+          "p99_ms": 94.261
+        },
+        "query": {
+          "calls": 11906,
+          "total_us": 862444,
+          "ms_per_sampled_frame": 2.836986842105263
+        },
+        "pipeline_cache": false,
+        "observed_render_scales": null,
+        "observed_window_focus": null,
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 1735.716
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 5749.489
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 33.589
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 2250.06
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 292.743
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 6.172
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 3587.751
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 1.222
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 1560.979
+          }
+        ],
+        "boot_ui_setup_ms": []
+      },
+      {
+        "label": "fight-2",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 4,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 14.45,
+          "cpu_process_peak_ms": 162.75,
+          "draw_calls": 2172,
+          "enemies": 92,
+          "fps_avg": 18.2,
+          "fps_low1": 7,
+          "frame_ms_median": 44.44,
+          "frame_ms_p99": 136.33,
+          "frames": 296,
+          "gpu_ms": 20.03,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 55.4,
+          "load_ms": 15769,
+          "nodes": 10308,
+          "objects": 2974,
+          "physics_ms": 0.01,
+          "preset": 2,
+          "primitives": 9755932,
+          "ram_mb": 430,
+          "render_cpu_ms": 12.95,
+          "resolution": "(1600, 900)",
+          "scenario": "fight",
+          "script_ms": 19.59,
+          "secs": 16.25,
+          "skill": "",
+          "vram_mb": 1376
+        },
+        "kpi_trace_max_ms": 148.3,
+        "wall": {
+          "frames": 295,
+          "max_ms": 583.679,
+          "over100": 18,
+          "p99_ms": 323.835
+        },
+        "query": {
+          "calls": 11591,
+          "total_us": 935315,
+          "ms_per_sampled_frame": 3.1705593220338986
+        },
+        "pipeline_cache": false,
+        "observed_render_scales": null,
+        "observed_window_focus": null,
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 1647.324
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 5459.59
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 28.429
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 2065.27
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 293.625
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 5.193
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 3610.496
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.641
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 1413.178
+          }
+        ],
+        "boot_ui_setup_ms": []
+      },
+      {
+        "label": "moor-3",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 6,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 5.27,
+          "cpu_process_peak_ms": 91.45,
+          "draw_calls": 1864,
+          "enemies": 73,
+          "fps_avg": 22.1,
+          "fps_low1": 7.1,
+          "frame_ms_median": 41.67,
+          "frame_ms_p99": 118.08,
+          "frames": 337,
+          "gpu_ms": 19.09,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 27.5,
+          "load_ms": 15373,
+          "nodes": 9457,
+          "objects": 2144,
+          "physics_ms": 0,
+          "preset": 2,
+          "primitives": 8232459,
+          "ram_mb": 419,
+          "render_cpu_ms": 14.66,
+          "resolution": "(1600, 900)",
+          "scenario": "moor",
+          "script_ms": 16.56,
+          "secs": 15.26,
+          "skill": "",
+          "vram_mb": 1344
+        },
+        "kpi_trace_max_ms": 150,
+        "wall": {
+          "frames": 336,
+          "max_ms": 260.679,
+          "over100": 8,
+          "p99_ms": 131.145
+        },
+        "query": {
+          "calls": 13113,
+          "total_us": 839212,
+          "ms_per_sampled_frame": 2.4976547619047618
+        },
+        "pipeline_cache": false,
+        "observed_render_scales": null,
+        "observed_window_focus": null,
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 1591.701
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 6236.846
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 23.335
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 2156.032
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 224.447
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 5.357
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 2890.903
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.097
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 1525.013
+          }
+        ],
+        "boot_ui_setup_ms": []
+      },
+      {
+        "label": "moor_half-3",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 3,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 5.91,
+          "cpu_process_peak_ms": 73.52,
+          "draw_calls": 1857,
+          "enemies": 73,
+          "fps_avg": 24.6,
+          "fps_low1": 9.4,
+          "frame_ms_median": 39.58,
+          "frame_ms_p99": 98.65,
+          "frames": 369,
+          "gpu_ms": 17.73,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 12,
+          "load_ms": 12909,
+          "nodes": 9477,
+          "objects": 2137,
+          "physics_ms": 0,
+          "preset": 2,
+          "primitives": 8199257,
+          "ram_mb": 419,
+          "render_cpu_ms": 12.92,
+          "resolution": "(1600, 900)",
+          "scenario": "moor",
+          "script_ms": 15.06,
+          "secs": 15.03,
+          "skill": "",
+          "vram_mb": 1292
+        },
+        "kpi_trace_max_ms": 115.4,
+        "wall": {
+          "frames": 368,
+          "max_ms": 107.1,
+          "over100": 2,
+          "p99_ms": 95.593
+        },
+        "query": {
+          "calls": 14431,
+          "total_us": 794506,
+          "ms_per_sampled_frame": 2.1589836956521737
+        },
+        "pipeline_cache": false,
+        "observed_render_scales": null,
+        "observed_window_focus": null,
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 1396.931
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 4505.433
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 22.599
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 1555.246
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 185.874
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 2.311
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 2528.277
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 23.618
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 1742.778
+          }
+        ],
+        "boot_ui_setup_ms": []
+      },
+      {
+        "label": "fight-3",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 4,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 9.19,
+          "cpu_process_peak_ms": 135.17,
+          "draw_calls": 2209,
+          "enemies": 102,
+          "fps_avg": 17.5,
+          "fps_low1": 6.9,
+          "frame_ms_median": 50,
+          "frame_ms_p99": 144.59,
+          "frames": 270,
+          "gpu_ms": 21.18,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 65.9,
+          "load_ms": 14859,
+          "nodes": 10732,
+          "objects": 3064,
+          "physics_ms": 0.01,
+          "preset": 2,
+          "primitives": 10091926,
+          "ram_mb": 433,
+          "render_cpu_ms": 14.76,
+          "resolution": "(1600, 900)",
+          "scenario": "fight",
+          "script_ms": 18.31,
+          "secs": 15.47,
+          "skill": "",
+          "vram_mb": 1365
+        },
+        "kpi_trace_max_ms": 146.1,
+        "wall": {
+          "frames": 269,
+          "max_ms": 266.862,
+          "over100": 18,
+          "p99_ms": 194.328
+        },
+        "query": {
+          "calls": 10856,
+          "total_us": 885370,
+          "ms_per_sampled_frame": 3.2913382899628254
+        },
+        "pipeline_cache": false,
+        "observed_render_scales": [
+          "1"
+        ],
+        "observed_window_focus": null,
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 1636.529
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 4519.429
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 20.274
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 1980.636
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 221.006
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 6.391
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 3973.888
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.377
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 1384.001
+          }
+        ],
+        "boot_ui_setup_ms": []
+      }
+    ],
+    "quiet": [
+      {
+        "label": "moor-1",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 0,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 6.16,
+          "cpu_process_peak_ms": 99.17,
+          "draw_calls": 1855,
+          "enemies": 73,
+          "fps_avg": 18.6,
+          "fps_low1": 7.3,
+          "frame_ms_median": 50,
+          "frame_ms_p99": 122.85,
+          "frames": 282,
+          "gpu_ms": 19.99,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 35.6,
+          "load_ms": 16601,
+          "nodes": 9441,
+          "objects": 2118,
+          "physics_ms": 0.01,
+          "preset": 2,
+          "primitives": 8241201,
+          "ram_mb": 419,
+          "render_cpu_ms": 16.79,
+          "resolution": "(1600, 900)",
+          "scenario": "moor",
+          "script_ms": 20.12,
+          "secs": 15.17,
+          "skill": "",
+          "vram_mb": 1344
+        },
+        "kpi_trace_max_ms": 137.7,
+        "wall": {
+          "frames": 281,
+          "max_ms": 280.638,
+          "over100": 8,
+          "p99_ms": 117.146
+        },
+        "query": {
+          "calls": 11040,
+          "total_us": 834256,
+          "ms_per_sampled_frame": 2.96888256227758
+        },
+        "pipeline_cache": false,
+        "observed_render_scales": [
+          "1"
+        ],
+        "observed_window_focus": [
+          "false"
+        ],
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 1879.831
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 6084.539
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 37.194
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 2198.031
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 302.518
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 6.267
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 3536.848
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.583
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 1322.829
+          }
+        ],
+        "boot_ui_setup_ms": [
+          6755.444
+        ]
+      },
+      {
+        "label": "fight-1",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 0,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 7.69,
+          "cpu_process_peak_ms": 148.58,
+          "draw_calls": 2289,
+          "enemies": 110,
+          "fps_avg": 15.6,
+          "fps_low1": 6.8,
+          "frame_ms_median": 57.31,
+          "frame_ms_p99": 146.94,
+          "frames": 241,
+          "gpu_ms": 22.02,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 66,
+          "load_ms": 16640,
+          "nodes": 11058,
+          "objects": 3433,
+          "physics_ms": 0.01,
+          "preset": 2,
+          "primitives": 10754411,
+          "ram_mb": 434,
+          "render_cpu_ms": 16.04,
+          "resolution": "(1600, 900)",
+          "scenario": "fight",
+          "script_ms": 20.62,
+          "secs": 15.46,
+          "skill": "",
+          "vram_mb": 1373
+        },
+        "kpi_trace_max_ms": 147.6,
+        "wall": {
+          "frames": 240,
+          "max_ms": 313.012,
+          "over100": 18,
+          "p99_ms": 197.503
+        },
+        "query": {
+          "calls": 9356,
+          "total_us": 916035,
+          "ms_per_sampled_frame": 3.8168124999999997
+        },
+        "pipeline_cache": false,
+        "observed_render_scales": [
+          "1"
+        ],
+        "observed_window_focus": [
+          "false"
+        ],
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 1803.656
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 6121.357
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 24.438
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 2222.232
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 296.398
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 3.957
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 3307.387
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.307
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 1632.276
+          }
+        ],
+        "boot_ui_setup_ms": [
+          6738.326
+        ]
+      },
+      {
+        "label": "fight-2",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 0,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 7.93,
+          "cpu_process_peak_ms": 164.63,
+          "draw_calls": 2176,
+          "enemies": 101,
+          "fps_avg": 15,
+          "fps_low1": 6.7,
+          "frame_ms_median": 58.24,
+          "frame_ms_p99": 148.57,
+          "frames": 239,
+          "gpu_ms": 21.82,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 75.1,
+          "load_ms": 16904,
+          "nodes": 10599,
+          "objects": 3031,
+          "physics_ms": 0.01,
+          "preset": 2,
+          "primitives": 10120920,
+          "ram_mb": 431,
+          "render_cpu_ms": 16.65,
+          "resolution": "(1600, 900)",
+          "scenario": "fight",
+          "script_ms": 22.8,
+          "secs": 15.98,
+          "skill": "",
+          "vram_mb": 1381
+        },
+        "kpi_trace_max_ms": 150,
+        "wall": {
+          "frames": 238,
+          "max_ms": 554.692,
+          "over100": 21,
+          "p99_ms": 207.81
+        },
+        "query": {
+          "calls": 9152,
+          "total_us": 929240,
+          "ms_per_sampled_frame": 3.90436974789916
+        },
+        "pipeline_cache": false,
+        "observed_render_scales": [
+          "1"
+        ],
+        "observed_window_focus": [
+          "false"
+        ],
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 1786.224
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 6080.868
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 30.061
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 2102.677
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 312.333
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 6.21
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 3382.251
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.173
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 1950.099
+          }
+        ],
+        "boot_ui_setup_ms": [
+          6901.273
+        ]
+      },
+      {
+        "label": "moor-2",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 0,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 5.68,
+          "cpu_process_peak_ms": 92.08,
+          "draw_calls": 1849,
+          "enemies": 73,
+          "fps_avg": 19.2,
+          "fps_low1": 7.6,
+          "frame_ms_median": 50,
+          "frame_ms_p99": 99.49,
+          "frames": 291,
+          "gpu_ms": 20.17,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 7.9,
+          "load_ms": 16193,
+          "nodes": 9393,
+          "objects": 2128,
+          "physics_ms": 0.01,
+          "preset": 2,
+          "primitives": 8225680,
+          "ram_mb": 419,
+          "render_cpu_ms": 15.62,
+          "resolution": "(1600, 900)",
+          "scenario": "moor",
+          "script_ms": 20.09,
+          "secs": 15.18,
+          "skill": "",
+          "vram_mb": 1344
+        },
+        "kpi_trace_max_ms": 131.3,
+        "wall": {
+          "frames": 290,
+          "max_ms": 216.872,
+          "over100": 2,
+          "p99_ms": 99.226
+        },
+        "query": {
+          "calls": 11342,
+          "total_us": 901318,
+          "ms_per_sampled_frame": 3.1079931034482757
+        },
+        "pipeline_cache": false,
+        "observed_render_scales": [
+          "1"
+        ],
+        "observed_window_focus": [
+          "false"
+        ],
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 1562.533
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 6235.987
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 40.161
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 2138.921
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 315.633
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 5.133
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 3470.149
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.154
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 1450.174
+          }
+        ],
+        "boot_ui_setup_ms": [
+          6765.628
+        ]
+      },
+      {
+        "label": "moor-3",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 0,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 9.25,
+          "cpu_process_peak_ms": 94.94,
+          "draw_calls": 1864,
+          "enemies": 73,
+          "fps_avg": 18.2,
+          "fps_low1": 7.1,
+          "frame_ms_median": 53.7,
+          "frame_ms_p99": 118.36,
+          "frames": 273,
+          "gpu_ms": 20.92,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 47.9,
+          "load_ms": 17894,
+          "nodes": 9470,
+          "objects": 2141,
+          "physics_ms": 0.01,
+          "preset": 2,
+          "primitives": 8308976,
+          "ram_mb": 419,
+          "render_cpu_ms": 16,
+          "resolution": "(1600, 900)",
+          "scenario": "moor",
+          "script_ms": 19.81,
+          "secs": 15.02,
+          "skill": "",
+          "vram_mb": 1344
+        },
+        "kpi_trace_max_ms": 147.5,
+        "wall": {
+          "frames": 272,
+          "max_ms": 147.472,
+          "over100": 12,
+          "p99_ms": 124.655
+        },
+        "query": {
+          "calls": 10551,
+          "total_us": 635562,
+          "ms_per_sampled_frame": 2.336625
+        },
+        "pipeline_cache": false,
+        "observed_render_scales": [
+          "1"
+        ],
+        "observed_window_focus": [
+          "false"
+        ],
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 1825.391
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 5946.284
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 28.158
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 2660.219
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 262.005
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 5.212
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 4133.58
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.468
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 1982.072
+          }
+        ],
+        "boot_ui_setup_ms": [
+          6365.494
+        ]
+      },
+      {
+        "label": "fight-3",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 0,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 12.46,
+          "cpu_process_peak_ms": 203.29,
+          "draw_calls": 2226,
+          "enemies": 100,
+          "fps_avg": 12.5,
+          "fps_low1": 6.7,
+          "frame_ms_median": 66.1,
+          "frame_ms_p99": 146.99,
+          "frames": 208,
+          "gpu_ms": 24.18,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 137,
+          "load_ms": 13127,
+          "nodes": 10676,
+          "objects": 3086,
+          "physics_ms": 0.01,
+          "preset": 2,
+          "primitives": 9931499,
+          "ram_mb": 432,
+          "render_cpu_ms": 19.94,
+          "resolution": "(1600, 900)",
+          "scenario": "fight",
+          "script_ms": 27.13,
+          "secs": 16.64,
+          "skill": "",
+          "vram_mb": 1401
+        },
+        "kpi_trace_max_ms": 150,
+        "wall": {
+          "frames": 207,
+          "max_ms": 566.041,
+          "over100": 37,
+          "p99_ms": 280.765
+        },
+        "query": {
+          "calls": 8160,
+          "total_us": 731311,
+          "ms_per_sampled_frame": 3.5329033816425124
+        },
+        "pipeline_cache": false,
+        "observed_render_scales": [
+          "1"
+        ],
+        "observed_window_focus": [
+          "false"
+        ],
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 1583.384
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 4379.109
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 37.924
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 2191.595
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 198.29
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 5.56
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 2755.88
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.398
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 1075.396
+          }
+        ],
+        "boot_ui_setup_ms": [
+          5361.336
+        ]
+      }
+    ],
+    "foreground": [
+      {
+        "label": "moor-1",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 0,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 13.08,
+          "cpu_process_peak_ms": 150.6,
+          "draw_calls": 1895,
+          "enemies": 73,
+          "fps_avg": 12.6,
+          "fps_low1": 6.7,
+          "frame_ms_median": 58.56,
+          "frame_ms_p99": 150,
+          "frames": 213,
+          "gpu_ms": 22.24,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 216.2,
+          "load_ms": 19027,
+          "nodes": 9511,
+          "objects": 2208,
+          "physics_ms": 0.03,
+          "preset": 2,
+          "primitives": 8353941,
+          "ram_mb": 419,
+          "render_cpu_ms": 19.37,
+          "resolution": "(1600, 900)",
+          "scenario": "moor",
+          "script_ms": 32.18,
+          "secs": 16.93,
+          "skill": "",
+          "vram_mb": 1344
+        },
+        "kpi_trace_max_ms": 150,
+        "wall": {
+          "frames": 212,
+          "max_ms": 347.647,
+          "over100": 59,
+          "p99_ms": 303.648
+        },
+        "query": {
+          "calls": 8608,
+          "total_us": 535549,
+          "ms_per_sampled_frame": 2.526174528301887
+        },
+        "pipeline_cache": false,
+        "observed_render_scales": [
+          "1"
+        ],
+        "observed_window_focus": [
+          "false"
+        ],
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 1855.359
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 5746.744
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 37.346
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 2222.836
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 394.867
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 37.383
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 5692.709
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 3.866
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 2139.538
+          }
+        ],
+        "boot_ui_setup_ms": [
+          6695.141
+        ]
+      },
+      {
+        "label": "moor-2",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 0,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 8.14,
+          "cpu_process_peak_ms": 112.18,
+          "draw_calls": 1861,
+          "enemies": 73,
+          "fps_avg": 17.2,
+          "fps_low1": 6.7,
+          "frame_ms_median": 45.6,
+          "frame_ms_p99": 149.2,
+          "frames": 268,
+          "gpu_ms": 20.3,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 139,
+          "load_ms": 18823,
+          "nodes": 9441,
+          "objects": 2151,
+          "physics_ms": 0.01,
+          "preset": 2,
+          "primitives": 8158849,
+          "ram_mb": 419,
+          "render_cpu_ms": 15.52,
+          "resolution": "(1600, 900)",
+          "scenario": "moor",
+          "script_ms": 23.45,
+          "secs": 15.54,
+          "skill": "",
+          "vram_mb": 1344
+        },
+        "kpi_trace_max_ms": 150,
+        "wall": {
+          "frames": 267,
+          "max_ms": 238.1,
+          "over100": 33,
+          "p99_ms": 226.479
+        },
+        "query": {
+          "calls": 10631,
+          "total_us": 699982,
+          "ms_per_sampled_frame": 2.6216554307116104
+        },
+        "pipeline_cache": false,
+        "observed_render_scales": [
+          "1"
+        ],
+        "observed_window_focus": [
+          "false"
+        ],
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 2006.5
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 5430.173
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 33.478
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 2096.932
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 386.815
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 21.375
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 5372.874
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 1.525
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 2285.564
+          }
+        ],
+        "boot_ui_setup_ms": [
+          6079.534
+        ]
+      },
+      {
+        "label": "moor-3",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 0,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 8.85,
+          "cpu_process_peak_ms": 148.43,
+          "draw_calls": 1860,
+          "enemies": 73,
+          "fps_avg": 16.1,
+          "fps_low1": 6.8,
+          "frame_ms_median": 50,
+          "frame_ms_p99": 146.22,
+          "frames": 264,
+          "gpu_ms": 20.2,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 142.9,
+          "load_ms": 16294,
+          "nodes": 9462,
+          "objects": 2136,
+          "physics_ms": 0.02,
+          "preset": 2,
+          "primitives": 8260880,
+          "ram_mb": 419,
+          "render_cpu_ms": 17.39,
+          "resolution": "(1600, 900)",
+          "scenario": "moor",
+          "script_ms": 24.34,
+          "secs": 16.37,
+          "skill": "",
+          "vram_mb": 1344
+        },
+        "kpi_trace_max_ms": 148.4,
+        "wall": {
+          "frames": 263,
+          "max_ms": 706.252,
+          "over100": 37,
+          "p99_ms": 241.464
+        },
+        "query": {
+          "calls": 10262,
+          "total_us": 682915,
+          "ms_per_sampled_frame": 2.596634980988593
+        },
+        "pipeline_cache": false,
+        "observed_render_scales": [
+          "1"
+        ],
+        "observed_window_focus": [
+          "false"
+        ],
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 1988.902
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 6486.807
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 28.866
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 1818.233
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 298.4
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 21.269
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 3247.41
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.116
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 1190.701
+          }
+        ],
+        "boot_ui_setup_ms": [
+          7139.636
+        ]
+      }
+    ],
+    "native": [
+      {
+        "label": "moor-1",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 0,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 6.59,
+          "cpu_process_peak_ms": 94.79,
+          "custom_tree": false,
+          "draw_calls": 1866,
+          "enemies": 73,
+          "fps_avg": 22.6,
+          "fps_low1": 7.1,
+          "frame_ms_median": 35.88,
+          "frame_ms_p99": 133.33,
+          "frames": 352,
+          "gpu_ms": 18.22,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 42.3,
+          "load_ms": 19344,
+          "native_scale": 1,
+          "native_window_focus": false,
+          "native_window_visible": true,
+          "nodes": 9448,
+          "objects": 2150,
+          "physics_ms": 0.01,
+          "preset": 2,
+          "primitives": 8230574,
+          "ram_mb": 418,
+          "render_cpu_ms": 11.98,
+          "resolution": "(1600, 900)",
+          "scenario": "moor",
+          "script_ms": 17.92,
+          "secs": 15.59,
+          "skill": "",
+          "vram_mb": 1344
+        },
+        "kpi_trace_max_ms": 143.9,
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 1664.949
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 6348.242
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 56.097
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 2629.806
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 417.251
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 49.907
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 5147.501
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.277
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 2026.718
+          }
+        ],
+        "boot_ui_setup_ms": [
+          6160.492
+        ]
+      },
+      {
+        "label": "moor-2",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 0,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 7.24,
+          "cpu_process_peak_ms": 126.38,
+          "custom_tree": false,
+          "draw_calls": 1854,
+          "enemies": 73,
+          "fps_avg": 14.5,
+          "fps_low1": 6.7,
+          "frame_ms_median": 51.51,
+          "frame_ms_p99": 148.66,
+          "frames": 240,
+          "gpu_ms": 21.6,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 119.5,
+          "load_ms": 18533,
+          "native_scale": 1,
+          "native_window_focus": false,
+          "native_window_visible": true,
+          "nodes": 9518,
+          "objects": 2122,
+          "physics_ms": 0.03,
+          "preset": 2,
+          "primitives": 8248688,
+          "ram_mb": 419,
+          "render_cpu_ms": 18.32,
+          "resolution": "(1600, 900)",
+          "scenario": "moor",
+          "script_ms": 27.11,
+          "secs": 16.57,
+          "skill": "",
+          "vram_mb": 1344
+        },
+        "kpi_trace_max_ms": 150,
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 1905.72
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 6421.494
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 39.338
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 2080.128
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 310.83
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 103.517
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 4719.342
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.963
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 1654.526
+          }
+        ],
+        "boot_ui_setup_ms": [
+          7135.85
+        ]
+      },
+      {
+        "label": "moor-3",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 0,
+        "kpi": {
+          "class": "knight",
+          "cpu_physics_peak_ms": 8.75,
+          "cpu_process_peak_ms": 148.07,
+          "custom_tree": false,
+          "draw_calls": 1864,
+          "enemies": 73,
+          "fps_avg": 14.8,
+          "fps_low1": 6.7,
+          "frame_ms_median": 50,
+          "frame_ms_p99": 146.37,
+          "frames": 238,
+          "gpu_ms": 20.69,
+          "gpu_name": "Apple M6",
+          "hitches_per_min": 164.7,
+          "load_ms": 14686,
+          "native_scale": 1,
+          "native_window_focus": false,
+          "native_window_visible": true,
+          "nodes": 9464,
+          "objects": 2135,
+          "physics_ms": 0.02,
+          "preset": 2,
+          "primitives": 8144711,
+          "ram_mb": 418,
+          "render_cpu_ms": 17.55,
+          "resolution": "(1600, 900)",
+          "scenario": "moor",
+          "script_ms": 27.81,
+          "secs": 16.03,
+          "skill": "",
+          "vram_mb": 1344
+        },
+        "kpi_trace_max_ms": 150,
+        "phases": [
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 2049.412
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 5522.732
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 27.374
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 1770.699
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 172.001
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 12.062
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 2522.775
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.294
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 1628.344
+          }
+        ],
+        "boot_ui_setup_ms": [
+          7482.445
+        ]
+      }
+    ],
+    "flow-verified": [
+      {
+        "label": "flow-1",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [
+          "\u001b[1;31mERROR:\u001b[0;91m 1 shaders of type SceneForwardClusteredShaderRD were never freed",
+          "ERROR: 1 RID allocations of type 'N10RendererRD15MaterialStorage6ShaderE' were leaked at exit."
+        ],
+        "other_godot_count": 1,
+        "flow": [
+          {
+            "elapsed_ms": 26151.769,
+            "frames": 14,
+            "label": "boot_to_title",
+            "max_frame_ms": 14159.188,
+            "over100": 8
+          },
+          {
+            "elapsed_ms": 3559.971,
+            "frames": 113,
+            "label": "title_idle_3s",
+            "max_frame_ms": 343.495,
+            "over100": 5
+          },
+          {
+            "elapsed_ms": 9420.512,
+            "frames": 57,
+            "label": "new_knight_in_camp",
+            "max_frame_ms": 3157.003,
+            "over100": 15
+          },
+          {
+            "elapsed_ms": 632.181,
+            "frames": 20,
+            "label": "character_window_0",
+            "max_frame_ms": 48.842,
+            "over100": 0
+          },
+          {
+            "elapsed_ms": 376.226,
+            "frames": 20,
+            "label": "character_window_1",
+            "max_frame_ms": 21.014,
+            "over100": 0
+          },
+          {
+            "elapsed_ms": 8071.21,
+            "frames": 11,
+            "label": "camp_to_moor_0",
+            "max_frame_ms": 5546.658,
+            "over100": 5
+          },
+          {
+            "elapsed_ms": 1966.962,
+            "frames": 36,
+            "label": "moor_idle_2s_0",
+            "max_frame_ms": 125.11,
+            "over100": 1
+          },
+          {
+            "elapsed_ms": 8666.433,
+            "frames": 11,
+            "label": "moor_to_camp_0",
+            "max_frame_ms": 5106.569,
+            "over100": 8
+          },
+          {
+            "elapsed_ms": 4923.215,
+            "frames": 11,
+            "label": "camp_to_moor_1",
+            "max_frame_ms": 3533.51,
+            "over100": 4
+          },
+          {
+            "elapsed_ms": 2297.397,
+            "frames": 58,
+            "label": "moor_idle_2s_1",
+            "max_frame_ms": 243.296,
+            "over100": 3
+          },
+          {
+            "elapsed_ms": 11497.249,
+            "frames": 11,
+            "label": "moor_to_camp_1",
+            "max_frame_ms": 6748.084,
+            "over100": 8
+          }
+        ],
+        "phases": [
+          {
+            "zone": "town",
+            "phase": "retire_and_setup",
+            "ms": 149.018
+          },
+          {
+            "zone": "town",
+            "phase": "world_build",
+            "ms": 4230.841
+          },
+          {
+            "zone": "town",
+            "phase": "environment",
+            "ms": 644.469
+          },
+          {
+            "zone": "town",
+            "phase": "minimap",
+            "ms": 4042.566
+          },
+          {
+            "zone": "town",
+            "phase": "spawn",
+            "ms": 0.116
+          },
+          {
+            "zone": "town",
+            "phase": "post_spawn",
+            "ms": 9.375
+          },
+          {
+            "zone": "town",
+            "phase": "ui_warm",
+            "ms": 0.001
+          },
+          {
+            "zone": "town",
+            "phase": "retire_and_setup",
+            "ms": 660.79
+          },
+          {
+            "zone": "town",
+            "phase": "world_build",
+            "ms": 2199.941
+          },
+          {
+            "zone": "town",
+            "phase": "environment",
+            "ms": 25.166
+          },
+          {
+            "zone": "town",
+            "phase": "minimap",
+            "ms": 1380.26
+          },
+          {
+            "zone": "town",
+            "phase": "spawn",
+            "ms": 0.182
+          },
+          {
+            "zone": "town",
+            "phase": "post_spawn",
+            "ms": 12.9
+          },
+          {
+            "zone": "town",
+            "phase": "skill_warm",
+            "ms": 3745.391
+          },
+          {
+            "zone": "town",
+            "phase": "monster_warm",
+            "ms": 0.188
+          },
+          {
+            "zone": "town",
+            "phase": "ui_warm",
+            "ms": 1312.703
+          },
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 132.433
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 4673.461
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 45.272
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 1205.134
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 300.399
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 2.936
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 0.088
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.134
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 455.354
+          },
+          {
+            "zone": "town",
+            "phase": "retire_and_setup",
+            "ms": 1042.908
+          },
+          {
+            "zone": "town",
+            "phase": "world_build",
+            "ms": 4053.517
+          },
+          {
+            "zone": "town",
+            "phase": "environment",
+            "ms": 29.492
+          },
+          {
+            "zone": "town",
+            "phase": "minimap",
+            "ms": 2185.618
+          },
+          {
+            "zone": "town",
+            "phase": "spawn",
+            "ms": 0.246
+          },
+          {
+            "zone": "town",
+            "phase": "post_spawn",
+            "ms": 12.626
+          },
+          {
+            "zone": "town",
+            "phase": "skill_warm",
+            "ms": 0.103
+          },
+          {
+            "zone": "town",
+            "phase": "monster_warm",
+            "ms": 0.08
+          },
+          {
+            "zone": "town",
+            "phase": "ui_warm",
+            "ms": 1074.375
+          },
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 532.654
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 3002.196
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 23.163
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 856.072
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 29.919
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 2.17
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 0.083
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.085
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 421.452
+          },
+          {
+            "zone": "town",
+            "phase": "retire_and_setup",
+            "ms": 305.621
+          },
+          {
+            "zone": "town",
+            "phase": "world_build",
+            "ms": 5110.74
+          },
+          {
+            "zone": "town",
+            "phase": "environment",
+            "ms": 37.798
+          },
+          {
+            "zone": "town",
+            "phase": "minimap",
+            "ms": 3940.294
+          },
+          {
+            "zone": "town",
+            "phase": "spawn",
+            "ms": 0.113
+          },
+          {
+            "zone": "town",
+            "phase": "post_spawn",
+            "ms": 53.322
+          },
+          {
+            "zone": "town",
+            "phase": "skill_warm",
+            "ms": 4.263
+          },
+          {
+            "zone": "town",
+            "phase": "monster_warm",
+            "ms": 0.473
+          },
+          {
+            "zone": "town",
+            "phase": "ui_warm",
+            "ms": 1572.523
+          }
+        ],
+        "boot_ui_setup_ms": []
+      },
+      {
+        "label": "flow-2",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 1,
+        "flow": [
+          {
+            "elapsed_ms": 22742.392,
+            "frames": 14,
+            "label": "boot_to_title",
+            "max_frame_ms": 13712.059,
+            "over100": 8
+          },
+          {
+            "elapsed_ms": 3084.725,
+            "frames": 147,
+            "label": "title_idle_3s",
+            "max_frame_ms": 178.938,
+            "over100": 4
+          },
+          {
+            "elapsed_ms": 3012.002,
+            "frames": 174,
+            "label": "title_idle_again_3s",
+            "max_frame_ms": 67.53,
+            "over100": 0
+          },
+          {
+            "elapsed_ms": 10331.056,
+            "frames": 52,
+            "label": "new_knight_in_camp",
+            "max_frame_ms": 2749.928,
+            "over100": 19
+          },
+          {
+            "elapsed_ms": 665.419,
+            "frames": 20,
+            "label": "character_window_0",
+            "max_frame_ms": 37.446,
+            "over100": 0
+          },
+          {
+            "elapsed_ms": 613.41,
+            "frames": 20,
+            "label": "character_window_1",
+            "max_frame_ms": 54.998,
+            "over100": 0
+          },
+          {
+            "elapsed_ms": 8740.061,
+            "frames": 11,
+            "label": "camp_to_moor_0",
+            "max_frame_ms": 5807.326,
+            "over100": 6
+          },
+          {
+            "elapsed_ms": 1980.948,
+            "frames": 37,
+            "label": "moor_idle_2s_0",
+            "max_frame_ms": 142.388,
+            "over100": 1
+          },
+          {
+            "elapsed_ms": 8569.501,
+            "frames": 11,
+            "label": "moor_to_camp_0",
+            "max_frame_ms": 5706.723,
+            "over100": 8
+          },
+          {
+            "elapsed_ms": 4742.557,
+            "frames": 11,
+            "label": "camp_to_moor_1",
+            "max_frame_ms": 3645.603,
+            "over100": 5
+          },
+          {
+            "elapsed_ms": 2212.105,
+            "frames": 33,
+            "label": "moor_idle_2s_1",
+            "max_frame_ms": 134.842,
+            "over100": 3
+          },
+          {
+            "elapsed_ms": 8579.48,
+            "frames": 11,
+            "label": "moor_to_camp_1",
+            "max_frame_ms": 3314.45,
+            "over100": 10
+          }
+        ],
+        "phases": [
+          {
+            "zone": "town",
+            "phase": "retire_and_setup",
+            "ms": 285.682
+          },
+          {
+            "zone": "town",
+            "phase": "world_build",
+            "ms": 3769.721
+          },
+          {
+            "zone": "town",
+            "phase": "environment",
+            "ms": 495.951
+          },
+          {
+            "zone": "town",
+            "phase": "minimap",
+            "ms": 3079.863
+          },
+          {
+            "zone": "town",
+            "phase": "spawn",
+            "ms": 0.119
+          },
+          {
+            "zone": "town",
+            "phase": "post_spawn",
+            "ms": 6.411
+          },
+          {
+            "zone": "town",
+            "phase": "ui_warm",
+            "ms": 0.001
+          },
+          {
+            "zone": "town",
+            "phase": "retire_and_setup",
+            "ms": 894.179
+          },
+          {
+            "zone": "town",
+            "phase": "world_build",
+            "ms": 1770.12
+          },
+          {
+            "zone": "town",
+            "phase": "environment",
+            "ms": 28.56
+          },
+          {
+            "zone": "town",
+            "phase": "minimap",
+            "ms": 1762.864
+          },
+          {
+            "zone": "town",
+            "phase": "spawn",
+            "ms": 0.19
+          },
+          {
+            "zone": "town",
+            "phase": "post_spawn",
+            "ms": 11.143
+          },
+          {
+            "zone": "town",
+            "phase": "skill_warm",
+            "ms": 4078.762
+          },
+          {
+            "zone": "town",
+            "phase": "monster_warm",
+            "ms": 0.125
+          },
+          {
+            "zone": "town",
+            "phase": "ui_warm",
+            "ms": 1688.552
+          },
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 249.554
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 4731.644
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 41.9
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 1548.152
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 315.121
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 9.193
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 0.714
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.227
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 596.787
+          },
+          {
+            "zone": "town",
+            "phase": "retire_and_setup",
+            "ms": 349.797
+          },
+          {
+            "zone": "town",
+            "phase": "world_build",
+            "ms": 4644.944
+          },
+          {
+            "zone": "town",
+            "phase": "environment",
+            "ms": 25.794
+          },
+          {
+            "zone": "town",
+            "phase": "minimap",
+            "ms": 1868.143
+          },
+          {
+            "zone": "town",
+            "phase": "spawn",
+            "ms": 0.223
+          },
+          {
+            "zone": "town",
+            "phase": "post_spawn",
+            "ms": 13.953
+          },
+          {
+            "zone": "town",
+            "phase": "skill_warm",
+            "ms": 0.096
+          },
+          {
+            "zone": "town",
+            "phase": "monster_warm",
+            "ms": 0.139
+          },
+          {
+            "zone": "town",
+            "phase": "ui_warm",
+            "ms": 1321.984
+          },
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 341.72
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 3132.103
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 43.081
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 787.825
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 41.345
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 2.451
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 0.055
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.094
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 330.153
+          },
+          {
+            "zone": "town",
+            "phase": "retire_and_setup",
+            "ms": 3174.892
+          },
+          {
+            "zone": "town",
+            "phase": "world_build",
+            "ms": 2303.645
+          },
+          {
+            "zone": "town",
+            "phase": "environment",
+            "ms": 27.202
+          },
+          {
+            "zone": "town",
+            "phase": "minimap",
+            "ms": 1645.411
+          },
+          {
+            "zone": "town",
+            "phase": "spawn",
+            "ms": 0.273
+          },
+          {
+            "zone": "town",
+            "phase": "post_spawn",
+            "ms": 10.882
+          },
+          {
+            "zone": "town",
+            "phase": "skill_warm",
+            "ms": 0.08
+          },
+          {
+            "zone": "town",
+            "phase": "monster_warm",
+            "ms": 0.1
+          },
+          {
+            "zone": "town",
+            "phase": "ui_warm",
+            "ms": 1078.48
+          }
+        ],
+        "boot_ui_setup_ms": [
+          6111.983
+        ]
+      },
+      {
+        "label": "flow-3",
+        "exit": 0,
+        "timeout": false,
+        "issue_lines": [],
+        "other_godot_count": 0,
+        "flow": [
+          {
+            "elapsed_ms": 24531.458,
+            "frames": 13,
+            "label": "boot_to_title",
+            "max_frame_ms": 13602.786,
+            "over100": 8
+          },
+          {
+            "elapsed_ms": 3371.741,
+            "frames": 137,
+            "label": "title_idle_3s",
+            "max_frame_ms": 322.143,
+            "over100": 5
+          },
+          {
+            "elapsed_ms": 3045.598,
+            "frames": 136,
+            "label": "title_idle_again_3s",
+            "max_frame_ms": 108.071,
+            "over100": 1
+          },
+          {
+            "elapsed_ms": 9460.037,
+            "frames": 56,
+            "label": "new_knight_in_camp",
+            "max_frame_ms": 2719.722,
+            "over100": 17
+          },
+          {
+            "elapsed_ms": 1141.108,
+            "frames": 20,
+            "label": "character_window_0",
+            "max_frame_ms": 82.471,
+            "over100": 0
+          },
+          {
+            "elapsed_ms": 948.995,
+            "frames": 20,
+            "label": "character_window_1",
+            "max_frame_ms": 81.25,
+            "over100": 0
+          },
+          {
+            "elapsed_ms": 7682.82,
+            "frames": 11,
+            "label": "camp_to_moor_0",
+            "max_frame_ms": 5292.283,
+            "over100": 5
+          },
+          {
+            "elapsed_ms": 2183.85,
+            "frames": 37,
+            "label": "moor_idle_2s_0",
+            "max_frame_ms": 157.828,
+            "over100": 5
+          },
+          {
+            "elapsed_ms": 8959.416,
+            "frames": 11,
+            "label": "moor_to_camp_0",
+            "max_frame_ms": 5796.85,
+            "over100": 7
+          },
+          {
+            "elapsed_ms": 7656.256,
+            "frames": 11,
+            "label": "camp_to_moor_1",
+            "max_frame_ms": 5811.568,
+            "over100": 6
+          },
+          {
+            "elapsed_ms": 2038.552,
+            "frames": 30,
+            "label": "moor_idle_2s_1",
+            "max_frame_ms": 125.591,
+            "over100": 3
+          },
+          {
+            "elapsed_ms": 8739.869,
+            "frames": 11,
+            "label": "moor_to_camp_1",
+            "max_frame_ms": 5485.278,
+            "over100": 8
+          }
+        ],
+        "phases": [
+          {
+            "zone": "town",
+            "phase": "retire_and_setup",
+            "ms": 259.142
+          },
+          {
+            "zone": "town",
+            "phase": "world_build",
+            "ms": 4028.452
+          },
+          {
+            "zone": "town",
+            "phase": "environment",
+            "ms": 522.256
+          },
+          {
+            "zone": "town",
+            "phase": "minimap",
+            "ms": 3328.077
+          },
+          {
+            "zone": "town",
+            "phase": "spawn",
+            "ms": 0.399
+          },
+          {
+            "zone": "town",
+            "phase": "post_spawn",
+            "ms": 9.179
+          },
+          {
+            "zone": "town",
+            "phase": "ui_warm",
+            "ms": 0.001
+          },
+          {
+            "zone": "town",
+            "phase": "retire_and_setup",
+            "ms": 746.37
+          },
+          {
+            "zone": "town",
+            "phase": "world_build",
+            "ms": 1774.473
+          },
+          {
+            "zone": "town",
+            "phase": "environment",
+            "ms": 21.452
+          },
+          {
+            "zone": "town",
+            "phase": "minimap",
+            "ms": 1210.392
+          },
+          {
+            "zone": "town",
+            "phase": "spawn",
+            "ms": 0.179
+          },
+          {
+            "zone": "town",
+            "phase": "post_spawn",
+            "ms": 6.588
+          },
+          {
+            "zone": "town",
+            "phase": "skill_warm",
+            "ms": 4036.692
+          },
+          {
+            "zone": "town",
+            "phase": "monster_warm",
+            "ms": 0.168
+          },
+          {
+            "zone": "town",
+            "phase": "ui_warm",
+            "ms": 1536.215
+          },
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 681.991
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 4315.642
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 39.803
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 1222.073
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 259.208
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 4.866
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 0.059
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.122
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 405.958
+          },
+          {
+            "zone": "town",
+            "phase": "retire_and_setup",
+            "ms": 677.976
+          },
+          {
+            "zone": "town",
+            "phase": "world_build",
+            "ms": 4694.442
+          },
+          {
+            "zone": "town",
+            "phase": "environment",
+            "ms": 27.076
+          },
+          {
+            "zone": "town",
+            "phase": "minimap",
+            "ms": 2206.88
+          },
+          {
+            "zone": "town",
+            "phase": "spawn",
+            "ms": 0.083
+          },
+          {
+            "zone": "town",
+            "phase": "post_spawn",
+            "ms": 11.45
+          },
+          {
+            "zone": "town",
+            "phase": "skill_warm",
+            "ms": 0.071
+          },
+          {
+            "zone": "town",
+            "phase": "monster_warm",
+            "ms": 0.072
+          },
+          {
+            "zone": "town",
+            "phase": "ui_warm",
+            "ms": 954.719
+          },
+          {
+            "zone": "wild",
+            "phase": "retire_and_setup",
+            "ms": 637.93
+          },
+          {
+            "zone": "wild",
+            "phase": "world_build",
+            "ms": 5138.071
+          },
+          {
+            "zone": "wild",
+            "phase": "environment",
+            "ms": 33.434
+          },
+          {
+            "zone": "wild",
+            "phase": "minimap",
+            "ms": 1189.345
+          },
+          {
+            "zone": "wild",
+            "phase": "spawn",
+            "ms": 54.431
+          },
+          {
+            "zone": "wild",
+            "phase": "post_spawn",
+            "ms": 3.959
+          },
+          {
+            "zone": "wild",
+            "phase": "skill_warm",
+            "ms": 0.106
+          },
+          {
+            "zone": "wild",
+            "phase": "monster_warm",
+            "ms": 0.194
+          },
+          {
+            "zone": "wild",
+            "phase": "ui_warm",
+            "ms": 502.123
+          },
+          {
+            "zone": "town",
+            "phase": "retire_and_setup",
+            "ms": 977.282
+          },
+          {
+            "zone": "town",
+            "phase": "world_build",
+            "ms": 4533.069
+          },
+          {
+            "zone": "town",
+            "phase": "environment",
+            "ms": 27.557
+          },
+          {
+            "zone": "town",
+            "phase": "minimap",
+            "ms": 1824.359
+          },
+          {
+            "zone": "town",
+            "phase": "spawn",
+            "ms": 0.193
+          },
+          {
+            "zone": "town",
+            "phase": "post_spawn",
+            "ms": 18.552
+          },
+          {
+            "zone": "town",
+            "phase": "skill_warm",
+            "ms": 0.095
+          },
+          {
+            "zone": "town",
+            "phase": "monster_warm",
+            "ms": 0.056
+          },
+          {
+            "zone": "town",
+            "phase": "ui_warm",
+            "ms": 1155.364
+          }
+        ],
+        "boot_ui_setup_ms": [
+          6686.543
+        ]
+      }
+    ]
+  },
+  "synthetic_gate": {
+    "kind": "synthetic_gate_probe",
+    "results": [
+      {
+        "case": "unchanged",
+        "exit_code": 0,
+        "accepted": true,
+        "output": ""
+      },
+      {
+        "case": "seven_scenarios_missing",
+        "exit_code": 0,
+        "accepted": true,
+        "output": ""
+      },
+      {
+        "case": "p99_500ms",
+        "exit_code": 0,
+        "accepted": true,
+        "output": ""
+      },
+      {
+        "case": "hitches_20_per_min",
+        "exit_code": 0,
+        "accepted": true,
+        "output": ""
+      },
+      {
+        "case": "load_20_seconds",
+        "exit_code": 0,
+        "accepted": true,
+        "output": ""
+      },
+      {
+        "case": "fps_40_control",
+        "exit_code": 1,
+        "accepted": false,
+        "output": ""
+      }
+    ]
+  },
+  "resource_cache": [
+    {
+      "cached_before": false,
+      "first_get_us": 91173,
+      "released_after_clear": true,
+      "retained_by_cache": true,
+      "same_resource": true,
+      "thousand_hits_us": 1416
+    },
+    {
+      "cached_before": false,
+      "first_get_us": 57958,
+      "released_after_clear": true,
+      "retained_by_cache": true,
+      "same_resource": true,
+      "thousand_hits_us": 474
+    },
+    {
+      "cached_before": false,
+      "first_get_us": 85211,
+      "released_after_clear": true,
+      "retained_by_cache": true,
+      "same_resource": true,
+      "thousand_hits_us": 1435
+    }
+  ]
+}

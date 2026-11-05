@@ -1,71 +1,135 @@
-"""Compares the runner's KPI benchmark before and after a night's work (tools/nightly/bench.sh) and decides if it may
-ship.
-    python bench_compare.py <before.json> <after.json> <date> <job> <log.md> [--check]
-    python bench_compare.py <a.json> <b.json> --merge <out.json>      (the better run of each scenario of the two)
---check: only the verdict (exit code), nothing written.
-Prints a short Markdown summary (the report includes it), appends both sets to docs/nightly/perf/metrics.jsonl
-(source "runner") and one "bench" row to the job's log. Exit 1 = a regression: the average fps over the rendering
-scenarios fell more than AVG_DROP, or one scenario's more than ONE_DROP (run-to-run noise is up to ~10% on a single
-scenario on this Mac), or the perf job grew the download more than 3%, or the benchmark is missing.
+"""Fail-closed performance gate. Three complete, comparable repeats; median metrics, raw runs retained.
+python bench_compare.py BEFORE AFTER DATE JOB LOG [--check]
+python bench_compare.py A B --merge OUT  # combine raw runs, never select the best result
+A fresh schema-2 baseline is required; old simulation-clock/best-run data is not comparable.
 """
 import json
+import math
+from pathlib import Path
+import statistics
 import sys
 
-AVG_DROP, ONE_DROP = 0.07, 0.15
-if len(sys.argv) > 3 and sys.argv[3] == "--merge":
-    a, b = (json.load(open(p)) for p in sys.argv[1:3])
-    m = {k: max((x for x in (a.get(k), b.get(k)) if x), key=lambda r: r.get("fps_avg", 0)) for k in set(a) | set(b)}
-    json.dump(m, open(sys.argv[4], "w"), indent=1)
-    sys.exit(0)
-BEFORE, AFTER, DATE, JOB, LOG = sys.argv[1:6]
-CHECK = "--check" in sys.argv
-NAMES = {"camp_q2": "camp", "moor_q1": "moor Medium", "moor_q2": "moor", "moor_q3": "moor Ultra", "fight_q2": "fight",
-         "boss_q2": "boss", "arena_q2": "arena", "crypt_q2": "crypt"}
+NAMES = {"camp_q2": "camp", "moor_q1": "moor Medium", "moor_q2": "moor", "moor_q3": "moor Ultra",
+         "fight_q2": "fight", "boss_q2": "boss", "arena_q2": "Aurelia", "crypt_q2": "crypt",
+         "pvp3v3_q2": "3v3 spell flood", "server_q2": "server"}
+METRICS = ("fps_avg", "frame_ms_p99", "frame_ms_max", "first_use_max_ms", "hitches_per_min", "load_ms", "ram_mb", "vram_mb")
+CONTEXT = ("schema", "clock", "engine", "renderer", "gpu_name", "resolution", "preset", "scenario", "class", "skill")
 
 
-def load(p):
+def aggregate(rows):
+    """Keep samples and take each numeric metric's median. Never hide a failed/missing repeat."""
+    rows = [r for row in rows for r in row.get("runs", [row])]
+    if not rows:
+        raise ValueError("no samples")
+    result = dict(rows[0])
+    for key in result:
+        values = [r.get(key) for r in rows]
+        if all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in values):
+            result[key] = statistics.median(values)
+    result["runs"] = rows
+    return result
+
+
+def validate(data, label):
+    errors = []
+    for key in NAMES:
+        if key not in data:
+            errors.append(f"{label}: missing {key}")
+            continue
+        row = data[key]
+        runs = row.get("runs", [])
+        if len(runs) < 3:
+            errors.append(f"{label}/{key}: needs at least three repeats")
+        for i, run in enumerate(runs or [row]):
+            prefix = f"{label}/{key}/run{i+1}"
+            if run.get("schema") != 2 or run.get("clock") != "monotonic_wall":
+                errors.append(f"{prefix}: incompatible measurement schema/clock")
+            if run.get("validation", {}).get("clean") is not True:
+                errors.append(f"{prefix}: missing clean exit/log validation")
+            if run.get("validation", {}).get("quiet") is not True:
+                errors.append(f"{prefix}: missing quiet-machine validation")
+            if key != "server_q2" and run.get("focused") is not True:
+                errors.append(f"{prefix}: not focused throughout measurement")
+            for metric in METRICS:
+                value = run.get(metric)
+                if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+                    errors.append(f"{prefix}: invalid {metric}")
+            if run.get("frames", 0) <= 0 or run.get("secs", 0) < 10 or run.get("fps_avg", 0) <= 0:
+                errors.append(f"{prefix}: incomplete measurement")
+            if any(c not in run for c in CONTEXT):
+                errors.append(f"{prefix}: missing comparison context")
+            if any(run.get(c) != row.get(c) for c in CONTEXT):
+                errors.append(f"{prefix}: mixed measurement contexts")
+            if run.get("gameplay_sync_misses"):
+                errors.append(f"{prefix}: synchronous resource misses during play")
+            if key == "pvp3v3_q2":
+                pvp = run.get("pvp", {})
+                if pvp.get("actors") != 6 or pvp.get("teams") != [3, 3] or pvp.get("bursts", 0) < 2 or pvp.get("presentation_events", 0) <= 0:
+                    errors.append(f"{prefix}: incomplete 3v3 workload")
+        # Reject edited summaries that don't describe their retained samples.
+        if runs:
+            expected = aggregate(runs)
+            for metric in METRICS:
+                if row.get(metric) != expected.get(metric):
+                    errors.append(f"{label}/{key}: summary mismatch for {metric}")
+    return errors
+
+
+def compare(before, after, job="perf"):
+    errors = validate(before, "before") + validate(after, "after")
+    if errors:
+        return errors
+    fps_ratios = []
+    for key in NAMES:
+        b, a = before[key], after[key]
+        if any(b.get(c) != a.get(c) for c in CONTEXT):
+            errors.append(f"{key}: incomparable hardware/settings/workload")
+        ratio = a["fps_avg"] / b["fps_avg"]
+        if key != "server_q2":
+            fps_ratios.append(ratio)
+            if ratio < .85:
+                errors.append(f"{key}: FPS fell over 15%")
+        # Noise allowances are explicit; stalls and load time count independently of average FPS.
+        for metric, fraction, floor in [("frame_ms_p99", .20, 2), ("frame_ms_max", .20, 10),
+                                        ("first_use_max_ms", .20, 10), ("hitches_per_min", .20, 1),
+                                        ("load_ms", .20, 500), ("ram_mb", .15, 16), ("vram_mb", .15, 64)]:
+            if a[metric] > b[metric] + max(b[metric] * fraction, floor):
+                errors.append(f"{key}: {metric} regressed {b[metric]} -> {a[metric]}")
+            worst_b = max(r[metric] for r in b["runs"])
+            worst_a = max(r[metric] for r in a["runs"])
+            if worst_a > worst_b + max(worst_b * fraction, floor):
+                errors.append(f"{key}: worst repeat {metric} regressed {worst_b} -> {worst_a}")
+    if statistics.mean(fps_ratios) < .93:
+        errors.append("average FPS fell over 7%")
+    if job == "perf" and "download" in before:
+        old = before["download"].get("mac_zip_mb", 0)
+        new = after.get("download", {}).get("mac_zip_mb", 0)
+        if not new or new > old * 1.03:
+            errors.append("download missing or grew over 3%")
+    return errors
+
+
+def main(args):
     try:
-        return json.load(open(p))
-    except Exception:
-        return {}
+        before, after = (json.loads(Path(p).read_text()) for p in args[:2])
+        if args[2] == "--merge":
+            if set(before) != set(after):
+                raise ValueError("cannot merge incomplete scenario sets")
+            result = {k: aggregate([before[k], after[k]]) if k != "download" else after[k] for k in before}
+            Path(args[3]).write_text(json.dumps(result, indent=1))
+            return 0
+        date, job, log = args[2:5]
+        errors = compare(before, after, job)
+        verdict = "BLOCKED: " + "; ".join(errors) if errors else "PASS: complete comparable median measurements; no threshold regressions"
+        print(verdict)
+        if "--check" not in args:
+            with Path(log).open("a") as f:
+                f.write(f"\n{date} benchmark: {verdict}\n")
+        return int(bool(errors))
+    except (ValueError, OSError, KeyError, TypeError, IndexError) as e:
+        print(f"BLOCKED: invalid benchmark: {e}")
+        return 1
 
 
-b, a = load(BEFORE), load(AFTER)
-keys = [k for k in NAMES if k in b and k in a and b[k].get("fps_avg")]
-if not keys:
-    print("_The runner's benchmark didn't complete (no comparable scenarios), so it can't vouch for tonight's numbers._")
-    sys.exit(1)
-
-if not CHECK:
-  with open("docs/nightly/perf/metrics.jsonl", "a") as f:
-    for phase, d in (("before", b), ("after", a)):
-        for k, row in d.items():
-            f.write(json.dumps(dict({"date": DATE, "job": JOB, "source": "runner", "phase": phase}, **row)) + "\n")
-
-ratios = {k: a[k]["fps_avg"] / b[k]["fps_avg"] for k in keys}
-avg = sum(ratios.values()) / len(ratios)
-worst = min(ratios, key=ratios.get)
-bad = avg < 1.0 - AVG_DROP or ratios[worst] < 1.0 - ONE_DROP
-parts = ["%s %.0f→%.0f" % (NAMES[k], b[k]["fps_avg"], a[k]["fps_avg"]) for k in keys]
-extra = []
-if "server_q2" in b and "server_q2" in a:
-    extra.append("server tick p99 %.0f→%.0f ms" % (b["server_q2"].get("frame_ms_p99", 0), a["server_q2"].get("frame_ms_p99", 0)))
-if "camp_q2" in keys:
-    extra.append("camp %.0fM→%.0fM tris" % (b["camp_q2"]["primitives"] / 1e6, a["camp_q2"]["primitives"] / 1e6))
-if "download" in b and "download" in a:
-    z0, z1 = b["download"].get("mac_zip_mb", 0), a["download"].get("mac_zip_mb", 0)
-    extra.append("download %.0f→%.0f MB" % (z0, z1))
-    if JOB == "perf" and z0 and z1 > z0 * 1.03:     # (the perf job may not grow the download; a new mode may add assets)
-        bad, worst = True, "download"
-        ratios["download"] = z0 / z1
-        NAMES["download"] = "download"
-verdict = "BLOCKED: slower (%s %+.0f%%)" % (NAMES[worst], (ratios[worst] - 1) * 100) if bad else "ok (%+.1f%% avg fps)" % ((avg - 1) * 100)
-
-if CHECK:
-    sys.exit(1 if bad else 0)
-print("**Runner's KPI benchmark** (avg fps, same scenarios on the same Mac, best of 2): " + ", ".join(parts)
-      + ("; " + ", ".join(extra) if extra else "") + ". Verdict: " + verdict + ".")
-with open(LOG, "a") as f:
-    f.write("| %s | bench | Runner's KPI benchmark of the night's result (avg fps) | %s | %s | | `docs/nightly/perf/metrics.jsonl` |\n"
-            % (DATE, ", ".join(parts) + ("; " + ", ".join(extra) if extra else ""), "no (blocked)" if bad else "shipped"))
-sys.exit(1 if bad else 0)
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

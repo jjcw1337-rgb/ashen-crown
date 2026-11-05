@@ -14,7 +14,8 @@ ship, and they're kept in Grafana.
 
 Each is a scripted scene (`scripts/kpi.gd`, `SCENARIOS`), deterministic (fixed seeds, paths and spawns), the hero
 immortal. Each loads its zone (timed), settles 4 s (shaders compile, monsters wake), then is measured for its
-seconds, every frame. Run one yourself, in any build:
+seconds, every frame. Both settling and measured frame intervals use a monotonic wall clock; first-use stalls
+are retained separately from steady-state results, independent of hitstop/simulation time. Run one yourself, in any build:
 `AshenCrown -- --kpi <scenario> out.json [--quality 0-3] [--secs N]` (writes out.json and out.png, then quits).
 
 | Scenario | Where | What happens | Seconds |
@@ -25,11 +26,12 @@ seconds, every frame. Run one yourself, in any build:
 | `boss` | Grubb's fort | The King Grubb fight: the knight on him with skills | 25 |
 | `arena` | A2 Aurelia | The arena games running (lions, the crowd), the knight on the sand | 25 |
 | `crypt` | Battlegrounds | The Hollow Crypt: walking a loop through the rooms, fighting what's there | 20 |
+| `pvp3v3` | PvP arena | Six rendered Demon/Plague/Archer actors, 3 per side, replay every recorded spell event in synchronized bursts; presentation stress, separate from network correctness | 30 |
 | `server` | Battlegrounds server | The headless dedicated server running the crypt (`-- --server --kpi server out.json`) | 30 |
 | `download` | (export) | The macOS export: the .zip players download and the .pck inside | |
 
-The nightly benchmark runs every scenario at **High** (preset 2), the moor also at Medium and Ultra, each twice
-(the better run kept), on the Game Factory Mac (Apple M6, a 1600x900 window).
+The nightly benchmark runs every scenario at **High** (preset 2), the moor also at Medium and Ultra, each at least three times
+(all runs retained, numeric medians and worst repeats checked), on the Game Factory Mac (Apple M6, a 1600x900 window).
 
 ## Metrics and targets
 
@@ -40,7 +42,7 @@ The nightly benchmark runs every scenario at **High** (preset 2), the moor also 
 | `frame_ms_median` | Median frame time (ms) | ≤ 16.7 |
 | `frame_ms_p99` | 99th-percentile frame time (ms) | ≤ 25 |
 | `hitches_per_min` | Frames of 100 ms or longer (a visible stutter), per minute | **0** |
-| `load_ms` | Entering the zone: `Game.load_zone` start to ready (for `server`: engine start to the crypt being up) | **≤ 3000** |
+| `load_ms` | Entering the zone plus scripted actor setup: start to ready (for `server`: engine start to the crypt being up) | **≤ 3000** |
 | `cpu_process_peak_ms` | Godot's `TIME_PROCESS`: the slowest frame's main-thread process time in each second, averaged | ≤ 16 |
 | `cpu_physics_peak_ms` | The same for the physics step | ≤ 4 |
 | `script_ms` | Every node's `_process` in a frame (average), timed between two probe nodes processed first and last (`scripts/kpi_probe.gd`). `cpu_process_peak_ms` includes drawing and the wait for the GPU, so this is the scripts' real cost | ≤ 8 |
@@ -66,7 +68,10 @@ Targets are where we want a mid-range PC to be; the Mac is the yardstick that st
   player), `machine`, `scenario`, `preset`, `metric`, `value`.
 - `tools/nightly/bench_compare.py` writes the night's `bench` row in the job's log, appends to
   `docs/nightly/perf/metrics.jsonl`, and blocks the ship if the average fps fell more than 7% (one scenario 15%), or
-  the perf job grew the download more than 3%.
+  the perf job grew the download more than 3%. Schema 2 additionally requires all scenarios, three clean focused
+  repeats, matching hardware/settings, and no synchronous resource misses during play. It checks load time,
+  RAM, first-use/max/p99 frame time and hitch regressions, including the worst repeat. Missing data is a failure.
+  These relative gates do not mean the absolute targets above are met. Headless runtime errors also block a pass.
 - Grafana (`deploy/staging/docker-compose.yml`, provisioned from `deploy/staging/grafana/`) reads it through the
   read-only role `grafana_ro`. The dashboard is generated: edit `tools/kpi_dashboard.py`, then
   `python3 tools/kpi_dashboard.py deploy/staging/grafana/dashboards/kpis.json` and `sh deploy/staging/deploy.sh --backend`.

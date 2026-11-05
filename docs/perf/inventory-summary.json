@@ -1,0 +1,24 @@
+{
+  "revision": "8845213e29577b81fda420b2a0b89e5799231002",
+  "scope": "Lexical callsites in scripts/**/*.gd; no call-graph or performance-cost claim.",
+  "calls_by_api": {
+    "load": 146,
+    "Shader.new": 108,
+    "ResCache.inst": 26,
+    "preload": 7,
+    "ResCache.get_res": 4,
+    "ResourceLoader.load_threaded_request": 3,
+    "ResourceLoader.load_threaded_get": 3
+  },
+  "tracked_image_import_modes": {
+    "1": 94,
+    "0": 200
+  },
+  "manifest_keys": [
+    "0:bg",
+    "0:lair",
+    "0:town",
+    "0:wild",
+    "1:lair"
+  ]
+}

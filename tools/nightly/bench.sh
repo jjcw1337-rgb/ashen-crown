@@ -3,22 +3,21 @@
 # scoreboard a night's work is judged by, independent of what the session reports.
 #   bash tools/nightly/bench.sh <out dir> <label>       (run from the checkout; writes <out dir>/<label>.json)
 # Every scenario at High (2), the moor also at Medium (1) and Ultra (3), the dedicated server headless, and the
-# download (the macOS export's .zip and .pck). BENCH_RUNS=2 runs each twice (the better run kept, by average fps).
+# download (the macOS export's .zip and .pck). BENCH_RUNS defaults to 3; every run is retained and numeric medians are compared.
 # ~12 min a run. Needs the GUI session (a real window and GPU), as launchd's job has.
 set -u
 OUT=$1; LABEL=$2
 G=/Users/blaine/Applications/Godot_v4.3.app/Contents/MacOS/Godot
 mkdir -p "$OUT"
-for sc in camp:2 moor:1 moor:2 moor:3 fight:2 boss:2 arena:2 crypt:2 server:2; do
+for sc in camp:2 moor:1 moor:2 moor:3 fight:2 boss:2 arena:2 crypt:2 pvp3v3:2 server:2; do
   s=${sc%%:*}; q=${sc##*:}
-  for r in $(seq 1 "${BENCH_RUNS:-1}"); do
+  for r in $(seq 1 "${BENCH_RUNS:-3}"); do
     f="$OUT/${LABEL}_${s}_q${q}_r$r"
     if [ "$s" = server ]; then
-      "$G" --headless --path . -- --server --port 24691 --kpi server "$f.json" > "$f.log" 2>&1 &
+      python3 tools/nightly/run_kpi.py "$f" "$G" -ApplePersistenceIgnoreState YES --headless --path . -- --server --port 24691 --kpi server "$f.json"
     else
-      "$G" --path . --resolution 1600x900 -- --kpi "$s" "$f.json" --quality "$q" > "$f.log" 2>&1 &
+      python3 tools/nightly/run_kpi.py "$f" "$G" -ApplePersistenceIgnoreState YES --path . --resolution 1600x900 -- --kpi "$s" "$f.json" --quality "$q"
     fi
-    p=$!; for i in $(seq 1 150); do kill -0 $p 2>/dev/null || break; sleep 1; done; kill $p 2>/dev/null
   done
 done
 # the download: the macOS export's .zip and the .pck in it, from a fresh checkout of HEAD imported from scratch the way
@@ -29,6 +28,8 @@ git worktree add -q --detach "$T" HEAD && ( cd "$T" && "$G" --headless --path . 
 git worktree remove --force "$T" 2>/dev/null
 python3 -I - "$OUT" "$LABEL" <<'EOF'
 import glob, json, os, re, sys, zipfile
+sys.path.insert(0, os.path.abspath("tools/nightly"))
+from bench_compare import aggregate
 out, label = sys.argv[1], sys.argv[2]
 res = {}
 z = os.path.join(out, label + "_mac.zip")
@@ -36,14 +37,24 @@ if os.path.exists(z) and os.path.getsize(z) > 0:
     pck = sum(i.file_size for i in zipfile.ZipFile(z).infolist() if i.filename.endswith(".pck"))
     res["download"] = {"scenario": "download", "mac_zip_mb": round(os.path.getsize(z) / 2**20, 1), "pck_mb": round(pck / 2**20, 1)}
     os.remove(z)
+groups = {}
 for f in sorted(glob.glob(os.path.join(out, label + "_*_r*.json"))):
     try:
         row = json.load(open(f))
     except Exception:
         continue
     key = re.sub(r"_r\d+\.json$", "", os.path.basename(f))[len(label) + 1:]
-    if key not in res or row.get("fps_avg", 0) > res[key].get("fps_avg", 0):
-        res[key] = row
+    log_path = f[:-5] + ".log"
+    exit_path = f[:-5] + ".exit"
+    text = open(log_path).read() if os.path.exists(log_path) else "ERROR: missing log"
+    code = open(exit_path).read().strip() if os.path.exists(exit_path) else "missing"
+    validation_path = f[:-5] + ".validation.json"
+    row["validation"] = json.load(open(validation_path)) if os.path.exists(validation_path) else {"clean": False, "quiet": False}
+    row["validation"]["clean"] = row["validation"]["clean"] and code == "0" and not re.search(r"SCRIPT ERROR|Parse Error|ERROR:|WARNING:|crashed", text)
+    row["validation"]["log"] = log_path
+    groups.setdefault(key, []).append(row)
+for key, rows in groups.items():
+    res[key] = aggregate(rows)
 json.dump(res, open(os.path.join(out, label + ".json"), "w"), indent=1)
 print(label, {k: v.get("fps_avg") for k, v in res.items()})
 EOF

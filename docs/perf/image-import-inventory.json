@@ -1,0 +1,1178 @@
+[
+  {
+    "file": "assets/textures/crypt/cobweb.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/crypt/floor_albedo.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/crypt/floor_normal.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/crypt/seal.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/crypt/seal_emit.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/crypt/wall_albedo.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/crypt/wall_normal.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/demon/crater.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/demon/crater_glow.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/demon/crush.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/demon/crush_glow.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/demon/faultline.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/demon/faultline_glow.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/demon/furrow.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/demon/furrow_glow.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/demon/hoof.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/demon/hoof_glow.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/demon/lightning_scorch.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/demon/lightning_scorch_glow.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/demon/smoke_ash.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/demon/smoke_blast.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/demon/smoke_chimney.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/demon/smoke_comet.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/demon/smoke_frost.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/demon/smoke_impact.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/demon/smoke_rime.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/demon/smoke_steam.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/fire_body.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/fire_flipbook.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/fire_spirit.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/fire_spread.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/fire_tongue.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/fog_puff.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/fog_wisp.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/foliage_mask_0.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/foliage_mask_1.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/foliage_mask_2.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/frost/hoarfrost.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/holy_slam_burst.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/holy_slam_crack.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/holy_slam_ring.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/phoenix_feathers.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/phoenix_flames.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/phoenix_scorch.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/phoenix_smoke.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/real_burst_fire.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/real_burst_smoke.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/real_flame.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/real_scorch.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/real_scorch_e.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/real_scorch_n.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/real_smoke.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/fx/spore_burst.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/storm/bolts.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/storm/plasma.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/storm/sigil.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/vapour.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/vat_wave.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/fx/vial_splash.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/grass/atlas.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/grass/flower_sun.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/grass/g1.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/grass/g2.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/grass/g3.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/grass/top1.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/grass/top2.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/grass/top3.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/grass/top4.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/grass/top5.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/grass/top6.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/grass/top7.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/grass/top8.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/grass/top9.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/items/cinderheart.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/items/elixir_arcane.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/items/elixir_colossus.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/items/elixir_fortune.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/items/elixir_fury.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/items/elixir_shadow.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/items/elixir_wilds.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/items/everfrost.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/items/stormglass.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/plague/bile_fan_albedo.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/bile_fan_normal.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/blight_albedo.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/blight_mark.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/blight_normal.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/bloom_ring_albedo.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/bloom_ring_normal.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/bloom_roots_albedo.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/bloom_roots_normal.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/coat_ash2.jpg.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/coat_oxblood.jpg.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/coat_oxblood2.jpg.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/coat_plague.jpg.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/coat_plague2.jpg.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/fever_ring_albedo.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/fog_base_albedo.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/glass_veins_mask.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/hose_albedo.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/puddle_albedo.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/puddle_normal.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/reveal_eye.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/ring_albedo.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/plague/ring_normal.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/ranger/ranger_crimson.jpg.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/ranger/ranger_royal.jpg.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/ranger/ranger_teal.jpg.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/ranger/ranger_verdant.jpg.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/skills/bloom.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/skills/experiment.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/skills/fog.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/skills/plague_attack.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/skills/swarm.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/skills/toxic.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/skills/transfusion.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/space/comet.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/space/milkyway_eso.jpg.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/space/saturn.jpg.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/space/saturn_rings.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_abyss.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_arm.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_bargain.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_belly.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_brim.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_cheap.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_cinder.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_cream.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_crowd.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_double.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_drum.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_edge.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_encore.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_erupt.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_ferocity.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_finale.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_flop.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_frenzy.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_furnace.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_hellsworn.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_hide.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_horn.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_hunger.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_inferno.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_kindle.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_legion.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_nimble.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_oath.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_pack.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_patter.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_pins.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_plate.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_rift.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_sauce.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_sear.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_slide.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_slip.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_spring.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_tithe.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/d_tough.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_tune.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/d_wits.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/demon_tree0.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/demon_tree1.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/demon_tree2.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/doug_tree0.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/doug_tree1.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/doug_tree2.png.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/talents/k_command.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_consecrate.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_fervor.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_guard.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_heavy.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_might.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_momentum.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_purify.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_radiance.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_rally.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_ram.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_relentless.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_resolve.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_steel.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_sword.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_tough.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_unbroken.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_vigor.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_wall.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_wind.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/k_zeal.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/knight_tree0.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/knight_tree1.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/knight_tree2.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_chains.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_contagion.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_dark.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_deep.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_eternal.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_felarmor.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_fork.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_glut.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_intel.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_malice.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_quick.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_reach.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_reserves.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_sigils.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_spread.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_thirst.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_thrift.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_twin.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_vigor.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_virulence.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/l_wither.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_blast.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_cache.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_cane.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_charge.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_cloud.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_dose.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_fever.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_hardy.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_ignite.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_inferno.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_last.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_linger.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_miasma.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_quick.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_snare.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_spread.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_spring.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_steady.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_study.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_thrift.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/p_venom.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/plague_tree0.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/plague_tree1.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/plague_tree2.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_chill.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_cruel.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_dread.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_echo.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_eternal.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_exec.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_focus.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_form.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_harvest.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_haste.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_hollow.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_legion.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_mind.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_moon.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_rider.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_scream.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_scythe.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_siphon.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_slip.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_unlife.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/w_ward.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/warlock_tree0.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/warlock_tree1.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/warlock_tree2.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/wraith_tree0.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/wraith_tree1.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/talents/wraith_tree2.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/arrow_gem.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/arrow_left.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/bar_frame.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/bg_crypt.jpg.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/ui/globe_frame.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/globe_glass.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/inv_alcove.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/inv_coinplate.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/inv_coins.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/inv_frame_full.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/inv_iron.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/inv_plate.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/sheet_dex.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/sheet_divider.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/sheet_ene.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/sheet_panel.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/sheet_plus.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/sheet_portrait.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/sheet_str.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/sheet_vit.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/slot.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/slot_big.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/wp_act1.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/wp_act2.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/wp_act3.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/wp_bg_crypt.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/wp_bg_crypt_wide.jpg.import",
+    "compress_mode": 1
+  },
+  {
+    "file": "assets/textures/ui/wp_sigil.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/ui/wp_town.png.import",
+    "compress_mode": 0
+  },
+  {
+    "file": "assets/textures/waypoint/rune_rings.png.import",
+    "compress_mode": 0
+  }
+]

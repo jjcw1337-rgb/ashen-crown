@@ -13,6 +13,7 @@ class_name Kpi
 const SETTLE := 4.0
 const SCENARIOS := {
 	# zone, run, secs, what it is
+	"pvp3v3": {"zone": "arena", "run": 0, "secs": 30.0, "what": "3v3 presentation flood: both teams Demon/Plague/Archer, all recorded spells every six seconds"},
 	"camp": {"zone": "town", "run": 0, "secs": 15.0, "what": "Act I camp: walking a loop past the tents, the fire and the traders"},
 	"moor": {"zone": "wild", "run": 0, "secs": 20.0, "what": "Act I moor: running up the road, grass, trees and the world streaming in"},
 	"fight": {"zone": "wild", "run": 0, "secs": 20.0, "what": "Act I moor: the knight fighting 24 monsters at once with every skill (kills replaced)"},
@@ -23,6 +24,8 @@ const SCENARIOS := {
 	# a place a player reported as slow (tools/telemetry_query.sh spots): --zone Z --run R --pos x,z [--foes N]
 	"spot": {"zone": "wild", "run": 0, "secs": 15.0, "what": "Any place: the hero standing at --pos in --zone (--run), turning, --foes N monsters about"},
 }
+static var pvp_stress
+
 const FIGHT_FOES := 24
 const HITCH_MS := 100.0          # a frame this long is a visible stutter
 
@@ -57,7 +60,7 @@ static func start(game) -> bool:
 	if si >= 0 and si + 1 < a.size():
 		secs = float(a[si + 1])
 	st = {"secs": secs, "phase": "load", "t": 0.0, "frames": [], "proc": 0.0, "phys": 0.0,
-		"dc": 0.0, "prims": 0.0, "objs": 0.0, "gpu": 0.0, "n": 0, "next_skill": 0.0, "path_i": -1, "boot_ms": Time.get_ticks_msec()}
+		"dc": 0.0, "prims": 0.0, "objs": 0.0, "gpu": 0.0, "n": 0, "next_skill": 0.0, "path_i": -1, "boot_ms": Time.get_ticks_msec(), "first_use_frames": []}
 	for k in 2:
 		var pr: Node = load("res://scripts/kpi_probe.gd").new()
 		pr.first = k == 0
@@ -87,23 +90,34 @@ static func start(game) -> bool:
 static func _load(spec: Dictionary) -> void:
 	var t0 := Time.get_ticks_msec()
 	await g.load_zone(0, spec["zone"], "start")
-	st["load_ms"] = Time.get_ticks_msec() - t0
+	st["cache_before_play"] = ResCache.metrics().sync_misses
 	_stage()
+	st["load_ms"] = Time.get_ticks_msec() - t0
 	_hide_parts()
 	_no_shadows()
 	_env_off()
 	_mm_no_shadow()
 	_no_cast()
 	st["phase"] = "settle"
+	st["last_wall_us"] = Time.get_ticks_usec()
+	st["focused"] = true
+	st["first_use_frames"] = []
 	RenderingServer.viewport_set_measure_render_time(g.get_viewport().get_viewport_rid(), true)
 
 ## Called every frame by Game._process (and by the server's loop through `server_tick`).
 static func step(delta: float) -> void:
 	if st.is_empty() or st["phase"] in ["load", "done"] or g._busy:
 		return
+	# Monotonic wall time is independent of hitstop and Engine.time_scale.
+	var now := Time.get_ticks_usec()
+	delta = (now - int(st.get("last_wall_us", now))) / 1000000.0
+	st["last_wall_us"] = now
+	if sc != "server":
+		st["focused"] = bool(st.get("focused", true)) and DisplayServer.window_is_focused()
 	st["t"] = float(st["t"]) + delta
 	_drive(delta)
 	if st["phase"] == "settle":
+		(st["first_use_frames"] as Array).append(delta * 1000.0)
 		if float(st["t"]) >= SETTLE:
 			st["phase"] = "measure"
 			st["t"] = 0.0
@@ -149,6 +163,9 @@ static func server_tick(delta: float) -> void:
 static func _stage() -> void:
 	var h = g.hero
 	match sc:
+		"pvp3v3":
+			pvp_stress = load("res://scripts/pvp_stress.gd").new()
+			pvp_stress.setup(g)
 		"fight":
 			var r := RandomNumberGenerator.new()
 			r.seed = 9
@@ -204,6 +221,8 @@ static func _drive(delta: float) -> void:
 	var h = g.hero
 	h.life = h.max_life
 	match sc:
+		"pvp3v3":
+			pvp_stress.step(g, float(st["t"]) + (SETTLE if st["phase"] == "measure" else 0.0))
 		"camp":
 			var a := float(st["t"]) * 0.5
 			var c: Vector3 = st.get("centre", h.global_position)
@@ -584,6 +603,11 @@ static func _finish() -> void:
 		if f >= HITCH_MS:
 			hitches += 1
 	var r := {
+		"schema": 2, "clock": "monotonic_wall", "focused": bool(st.get("focused", false)),
+		"engine": Engine.get_version_info().string, "renderer": str(ProjectSettings.get_setting("rendering/renderer/rendering_method", "")),
+		"preparation": g.preparation_phases, "cache": ResCache.metrics(),
+		"first_use_max_ms": (st.get("first_use_frames", [0.0]) as Array).max(),
+		"frame_ms_max": s.back(),
 		"scenario": sc, "preset": g.quality, "secs": snappedf(wall, 0.01), "frames": n,
 		"fps_avg": snappedf(n / wall, 0.1),
 		"fps_low1": snappedf(1000.0 / worst1, 0.1),
@@ -608,6 +632,14 @@ static func _finish() -> void:
 		"resolution": str(g.get_viewport().get_visible_rect().size),
 		"class": str(g.hero.cls), "skill": str(st.get("skill", "")),
 	}
+	var misses := {}
+	var before: Dictionary = st.get("cache_before_play", {})
+	for path in ResCache.metrics().sync_misses:
+		var added := int(ResCache.metrics().sync_misses[path]) - int(before.get(path, 0))
+		if added > 0: misses[path] = added
+	r["gameplay_sync_misses"] = misses
+	if sc == "pvp3v3":
+		r["pvp"] = pvp_stress.report()
 	if bool(st.get("trace", false)):
 		r["trace_frames"] = fr.map(func(f): return snappedf(float(f), 0.1))
 		r["trace_casts"] = st["casts"]
@@ -618,4 +650,6 @@ static func _finish() -> void:
 	print("[KPI] ", JSON.stringify(r))
 	if sc != "server":
 		g.get_viewport().get_texture().get_image().save_png(out.get_basename() + ".png")
+	# Actors and their delayed effects share the Game lifetime. Let SceneTree
+	# tear them down together; freeing actors first invalidates spell callbacks.
 	g.get_tree().quit()

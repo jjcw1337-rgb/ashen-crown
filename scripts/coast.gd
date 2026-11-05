@@ -128,7 +128,7 @@ static func build(w: World) -> void:
 	w._flush_stones(Props.stone())
 	w.terrain_patch(BOUNDS.grow(World.MARGIN), 1.0, TERRAIN, "Terrain")
 	distant(w, Vector2.ZERO, BOUNDS.grow(World.MARGIN))
-	Grass.scatter(w.props_root, BOUNDS.grow(6.0), w, Grass.ACT1, World.detail, 3131)
+	await w.scatter_grass(BOUNDS.grow(6.0), Grass.ACT1, World.detail, 3131)
 	w._scatter_ferns(260)
 
 ## The sea's other ground, coarser, round a hole where the zone's own detailed ground is: each island

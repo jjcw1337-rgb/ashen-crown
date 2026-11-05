@@ -1,0 +1,118 @@
+{
+  "source_commit": "8aad30d",
+  "status": "preview; performance acceptance incomplete",
+  "rendered_3v3": {
+    "exits": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "assertions": 36,
+    "logs": [
+      {
+        "file": "network-rendered-clean/broker.log",
+        "error_warning_lines": 0,
+        "unknown_errors": [],
+        "check_summary": []
+      },
+      {
+        "file": "network-rendered-clean/client-0.log",
+        "error_warning_lines": 0,
+        "unknown_errors": [],
+        "check_summary": [
+          "[TEAM-0] done 7 checks / 0 failures"
+        ]
+      },
+      {
+        "file": "network-rendered-clean/client-1.log",
+        "error_warning_lines": 187,
+        "unknown_errors": [],
+        "check_summary": [
+          "[TEAM-1] done 7 checks / 0 failures"
+        ]
+      },
+      {
+        "file": "network-rendered-clean/client-2.log",
+        "error_warning_lines": 235,
+        "unknown_errors": [],
+        "check_summary": [
+          "[TEAM-2] done 5 checks / 0 failures"
+        ]
+      },
+      {
+        "file": "network-rendered-clean/client-3.log",
+        "error_warning_lines": 190,
+        "unknown_errors": [],
+        "check_summary": [
+          "[TEAM-3] done 5 checks / 0 failures"
+        ]
+      },
+      {
+        "file": "network-rendered-clean/client-4.log",
+        "error_warning_lines": 190,
+        "unknown_errors": [],
+        "check_summary": [
+          "[TEAM-4] done 7 checks / 0 failures"
+        ]
+      },
+      {
+        "file": "network-rendered-clean/client-5.log",
+        "error_warning_lines": 239,
+        "unknown_errors": [],
+        "check_summary": [
+          "[TEAM-5] done 5 checks / 0 failures"
+        ]
+      },
+      {
+        "file": "network-rendered-clean/state/00090147fd8e08ec.log",
+        "error_warning_lines": 8,
+        "unknown_errors": [],
+        "check_summary": []
+      }
+    ],
+    "screenshot_inspected": true
+  },
+  "contracts": {
+    "cache_checks": 20,
+    "declaration_checks": 1775,
+    "loaded_combat_roots": 278,
+    "lobby_python_tests": 49,
+    "benchmark_python_tests": 10
+  },
+  "desktop_exports": {
+    "commit": "8aad30d",
+    "run": 42121186507,
+    "status": "success",
+    "actual_runtime_export_errors": 0
+  },
+  "limitations": [
+    "Controlled initial PvP policy rejected for load/VRAM/worst-repeat regression",
+    "Refined policy still needs three quiet repeats and full-suite performance acceptance",
+    "Headless full worlds retain known dummy null-mesh errors",
+    "Source runtime used existing imported caches; no local editor/import",
+    "Pipeline disk cache disabled only in local tests",
+    "No long memory soak, all-class combinations, Windows/Linux GPU measurements or live rollout"
+  ],
+  "packaged_mac_catalog": {
+    "source_commit": "5b8f8d7",
+    "ci": 42119100000,
+    "roots": 278,
+    "ready": true,
+    "failed": 0,
+    "pending": 0,
+    "sync_misses": 0,
+    "runtime_errors": 0
+  },
+  "quiet_refined_repeats": {
+    "status": "not obtained",
+    "reason": "Two bounded waits expired while other agents ran Godot; their work left untouched. One download-overlapping attempt stopped and excluded."
+  },
+  "cleanup": {
+    "own_override_removed": true,
+    "baseline_override_removed": true,
+    "own_test_processes_finished": true
+  }
+}

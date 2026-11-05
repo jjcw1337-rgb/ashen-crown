@@ -118,7 +118,7 @@ static func shimmer_ok() -> bool:
 
 static func tex(key: String) -> Texture2D:
 	if not _tex.has(key):
-		_tex[key] = load(TEX[key]) if ResourceLoader.exists(TEX[key]) else null
+		_tex[key] = ResCache.get_res(TEX[key]) if ResourceLoader.exists(TEX[key]) else null
 	return _tex[key]
 
 ## A seamless normal-mapped noise for the heat haze.

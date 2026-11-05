@@ -1339,8 +1339,13 @@ var _boot_hold := false       # ... but its loading screen kept up while it buil
 const BOOT_PRELOAD := ["res://assets/models/title/", "res://assets/models/camp/", "res://assets/models/camp/birds/",
 	"res://assets/models/camp/props/", "res://assets/models/npc/", "res://assets/models/guards/", "res://assets/models/island/",
 	"res://assets/models/trees/", "res://assets/models/grass/", "res://assets/models/fort/"]
-var _preloading := PackedStringArray()
-var _preloaded: Array = []
+const ContentCatalog = preload("res://scripts/content_catalog.gd")
+var _content_generation := 0
+var _zone_scope := ""
+var _loading_scope := ""
+var _boot_scope := ""
+var _combat_scope := ""
+var preparation_phases := {}
 
 static func res_files(dir: String, ext: String) -> PackedStringArray:
 	var out := PackedStringArray()
@@ -1353,33 +1358,30 @@ static func res_files(dir: String, ext: String) -> PackedStringArray:
 			out.append(dir + n)
 	return out
 
-func _boot_preload() -> void:
-	for d in BOOT_PRELOAD:
-		if d == "res://assets/models/fort/":
-			continue          # (the fort is the moor's lair, not the camp: kept for later)
-		for p in res_files(d, ".glb"):
-			if not ResourceLoader.has_cached(p) and ResourceLoader.load_threaded_request(p, "", true) == OK:
-				_preloading.append(p)
+func _presentation_client() -> bool:
+	return not net.server and DisplayServer.get_name() != "headless"
 
-## Waits (a frame at a time, so the screen stays alive) until the boot's threaded loads are in, at most max_s.
-func _await_preloads(max_s := 30.0) -> void:
-	var t0 := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t0 < int(max_s * 1000.0):
-		var left := 0
-		for p in _preloading:
-			if ResourceLoader.load_threaded_get_status(p) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
-				left += 1
-		if left == 0:
-			break
-		loading_lbl.text = "Waking the Forsaken Wilds... %d%%" % int(100.0 * (1.0 - float(left) / maxf(1.0, _preloading.size())))
-		await get_tree().process_frame
-	for p in _preloading:
-		if ResourceLoader.load_threaded_get_status(p) == ResourceLoader.THREAD_LOAD_LOADED:
-			_preloaded.append(ResourceLoader.load_threaded_get(p))
-	_preloading = PackedStringArray()
+func _preparation_classes(zone: String) -> Array:
+	# Competitive/online play can introduce any opponent or late partner. Solo needs its active class.
+	if zone in ["arena", Battlegrounds.ZONE] or net.active:
+		return SkillWarmData.EVENTS.keys()
+	return [hero.cls]
+
+func _boot_preload() -> void:
+	_boot_scope = "boot:%d" % get_instance_id()
+	var paths: Array = []
+	for dir in BOOT_PRELOAD:
+		if dir != "res://assets/models/fort/":
+			paths.append_array(ContentCatalog.files(dir, false))
+	ResCache.prepare(_boot_scope, paths)
+
+func _await_preloads(_max_s := 60.0) -> void:
+	var result := await ResCache.wait_ready(get_tree(), _boot_scope)
+	if not result["ready"]:
+		push_warning("Boot preparation incomplete: %s" % result)
 
 func _release_preloads() -> void:
-	_preloaded.clear()
+	ResCache.release(_boot_scope)
 
 func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	if _busy:
@@ -1389,8 +1391,29 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	loading_lbl.text = ("Descending into %s..." if zone == Battlegrounds.ZONE else "Entering %s...") % zone_title(act, zone)
 	set_loading_art(zone)
 	loading.visible = not _boot_quiet or _boot_hold
-	# the zone's model files on worker threads from now on, while the old zone goes and the new one is built
-	var zone_files := ZonePreload.start(difficulty, zone)
+	# Keep the old simulation still while the loading screen prepares its replacement.
+	if world != null:
+		world.process_mode = Node.PROCESS_MODE_DISABLED
+	var prep_start := Time.get_ticks_msec()
+	_content_generation += 1
+	var next_scope := "zone:%d:%d" % [get_instance_id(), _content_generation]
+	_loading_scope = next_scope
+	var old_combat_scope := _combat_scope
+	var prepared_classes := _preparation_classes(zone)
+	_combat_scope = "" if _boot_quiet else "combat:%d:%s" % [get_instance_id(), ",".join(prepared_classes)]
+	# Dedicated simulation keeps its own dependencies; it never acquires the presentation bundle.
+	if _presentation_client():
+		ResCache.prepare(next_scope, ContentCatalog.zone(difficulty, zone))
+		# Combat is a bounded session bundle shared by all classes, including late PvP arrivals.
+		if not _boot_quiet:
+			ResCache.prepare(_combat_scope, ContentCatalog.combat(prepared_classes))
+		var result := await ResCache.wait_ready(get_tree(), next_scope)
+		var combat_result: Dictionary = {"ready": true}
+		if not _boot_quiet:
+			combat_result = await ResCache.wait_ready(get_tree(), _combat_scope)
+		if not result["ready"] or not combat_result["ready"]:
+			push_warning("Zone preparation incomplete: %s / %s" % [result, combat_result])
+	preparation_phases = {"resources_ms": Time.get_ticks_msec() - prep_start}
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if world:
@@ -1399,6 +1422,11 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		world = null
 		hovered = null
 		await get_tree().process_frame
+	ResCache.release(_zone_scope)
+	if old_combat_scope != _combat_scope:
+		ResCache.release(old_combat_scope)
+	_zone_scope = next_scope
+	_loading_scope = ""
 	Telemetry.crumb("enter", {"to": zone, "run": difficulty})
 	ui.close_all()             # (a trader, a stash or a waypoint list belongs to the zone being left)
 	cur_act = act
@@ -1410,9 +1438,22 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	world.fort = difficulty == 0           # Act I: the lair is Grubb's goblin fort, outdoors (A3 keeps the crypt)
 	world.run = difficulty                 # A2 builds its own road and Aurelia
 	world.living_grass = true              # the living grass everywhere outdoors (its shader chars it under A3's ash)
+	world.scheduled_build = _presentation_client()
+	world.process_mode = Node.PROCESS_MODE_DISABLED
 	add_child(world)
-	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair", "coast"].find(zone) * 7 + (zone.hash() % 997 if zone.begins_with("isle_") else 0))
-	var preloads := _preload_monsters(zone_files)
+	var build_start := Time.get_ticks_msec()
+	await world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair", "coast"].find(zone) * 7 + (zone.hash() % 997 if zone.begins_with("isle_") else 0))
+	preparation_phases["construction_ms"] = Time.get_ticks_msec() - build_start
+	if _presentation_client():
+		ResCache.prepare(_zone_scope, _monster_paths())
+		var monsters_ready := await ResCache.wait_ready(get_tree(), _zone_scope)
+		var combat_ready: Dictionary = {"ready": true}
+		if not _boot_quiet:
+			combat_ready = await ResCache.wait_ready(get_tree(), _combat_scope)
+		if not monsters_ready["ready"] or not combat_ready["ready"]:
+			push_warning("Combat preparation incomplete: %s / %s" % [monsters_ready, combat_ready])
+	preparation_phases.merge(world.construction_metrics)
+	world.process_mode = Node.PROCESS_MODE_INHERIT
 	_restore_harvest()
 	_add_ocean(zone)
 	_end_underworld_now()
@@ -1448,9 +1489,6 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 			spawn_enemy(es["kind"], p, int(es["level"]), es["champ"], champ_name, int(es["pack"]))
 	if not world.boss_spawn.is_empty() and not net.is_client():
 		spawn_enemy(boss_kind(), world.boss_spawn["pos"], world.level + 1, false, "", 999)
-	for p in preloads:
-		ResourceLoader.load_threaded_get(p)     # (they are in use: this only closes the threaded requests)
-	ZonePreload.finish(zone_files)
 	if OS.get_cmdline_user_args().has("--preload-record"):
 		ZonePreload.record(world, difficulty, zone)
 	if zone == "town":
@@ -1475,7 +1513,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	_add_boat(zone, spawn)
 	# the class's skill effects played once, unseen, under the loading screen: no freeze on a first cast (SkillWarm)
 	if not _boot_quiet:
-		await SkillWarm.run(self)
+		await SkillWarm.run(self, prepared_classes)
 		# the monsters that can still turn up here (MonsterWarm), the windows and the sheet's portrait, drawn once
 		await MonsterWarm.run(self)
 		await ui.warm_windows()
@@ -1489,7 +1527,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 
 ## The zone's monsters' models, loaded on worker threads while the minimap is drawn (load_zone): each first load
 ## of a kind's model was 23-34 ms on the main thread, ~0.6 s of the moor's arrival (nightly 2026-11-03).
-func _preload_monsters(skip := PackedStringArray()) -> PackedStringArray:
+func _monster_paths() -> Array:
 	var kinds := {}
 	for es in (world.enemy_spawns if not net.is_client() else []):
 		kinds[str(es["kind"])] = true
@@ -1497,10 +1535,10 @@ func _preload_monsters(skip := PackedStringArray()) -> PackedStringArray:
 		kinds[boss_kind()] = true
 	for k in MonsterWarm.kinds(self):       # (and what can still turn up here: MonsterWarm builds those)
 		kinds[k] = true
-	var out := PackedStringArray()
+	var out: Array = []
 	for k in kinds:
 		for p in Enemy.model_paths(k):
-			if not out.has(p) and not skip.has(p) and not ResourceLoader.has_cached(p) and ResourceLoader.load_threaded_request(p, "", true) == OK:
+			if not out.has(p):
 				out.append(p)
 	return out
 
@@ -2627,7 +2665,13 @@ func exit_to_title() -> void:
 	char_id = ""
 	while _busy:
 		await get_tree().process_frame       # (a zone still loading would swallow ours)
+	_boot_quiet = true
+	_boot_hold = true
 	await load_zone(0, "town", "start")
+	_boot_quiet = false
+	_boot_hold = false
+	SkillWarm.release_prepared()
+	MonsterWarm.release_prepared()
 	ui.show_title()
 
 # ---------------------------------------------------------------- shops
@@ -4228,6 +4272,7 @@ func _click_world() -> void:
 
 # ---------------------------------------------------------------- loop
 func _process(delta: float) -> void:
+	ResCache.pump()
 	if arena_mode:
 		Battlegrounds.sync_proxies(self)
 	if bg_mode:
@@ -4571,3 +4616,10 @@ func _shot_setup() -> void:
 			hero.global_position = world.free_spot_near(tgt.global_position + Vector3(0, 0, 2.2), 0.5)
 			hero.cmd_target(tgt)
 		hero.blocking = OS.get_cmdline_user_args().has("--block")
+
+func _exit_tree() -> void:
+	ResCache.release(_boot_scope)
+	ResCache.release(_zone_scope)
+	ResCache.release(_loading_scope)
+	ResCache.release(_combat_scope)
+	ResCache.shutdown_if_unused()

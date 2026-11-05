@@ -10,16 +10,15 @@ extends RefCounted
 ## Measured on the proof range (first cast's worst frame): Fire Arrow 198 ms, Thunderstep 183, Spirit Beast 544.
 
 const SETTLE := 2.2          # seconds the effects are left to play out (Frost Volley shatters at 1.95)
-## The settle runs in fast-forward (Engine.time_scale): every effect still lives its whole 2.2 s of game time and
-## draws each of its stages (pipelines compile on the frame a thing is first drawn), in up to a quarter of the
-## wall-clock wait under the loading screen (nightly 2026-11-05: the warm was 2.5-2.7 s of every first load). A
-## frame never steps more than MAX_STEP of game time (a 15 fps frame, what a slow Ultra frame already stepped at 1x),
-## so a short-lived stage is never stepped over: slow frames get less of the speed-up.
-const SPEED := 4.0
-const MAX_STEP := 0.066
+## Let every delayed visual stage render at normal simulation speed.
 const LOW_RES := 0.25
 
 static var _done := {}
+
+static func context(g) -> String:
+	return "%s:%s:%d:%d" % [str(ProjectSettings.get_setting("rendering/renderer/rendering_method", "")),
+		RenderingServer.get_video_adapter_name(), g.quality, g.get_viewport().msaa_3d]
+
 
 ## What the capture's 2.2 s per skill doesn't reach of the Plague Doctor's (Plague.remote events).
 const PLAGUE_TAIL := ["cloud|~0,0,-3|3.0|4.0|toxic", "cloud|~2,0,-2|2.0|2.5|cane", "trans_end|1.0", "burst|8.0|2",
@@ -31,7 +30,8 @@ static func _load() -> Dictionary:
 ## Warm the party's classes' effects (once per class per session): the hero's and every co-op partner's, since a
 ## partner's spells are drawn on this screen too, from his puppet (the stress fight, Blaine 2026-11-05: an unwarmed
 ## partner Archer's first Fire Arrow froze the host 0.7 s). Awaited by Game.load_zone before the loading screen goes;
-## a partner who joins mid-zone is warmed at the next zone change. `classes` overrides the party (tools).
+## Game prepares all classes before online/competitive entry so late arrivals are covered.
+## `classes` overrides the party (tools and the shared content preparation policy).
 static func run(g, classes: Array = []) -> void:
 	if g == null or g.hero == null or g.world == null or g.net.server or g.shot_path != "":
 		return
@@ -44,8 +44,7 @@ static func run(g, classes: Array = []) -> void:
 				classes.append(str(pp.cls))
 	var todo: Array = []
 	for c in classes:
-		if not _done.has(c) and not (_load().get(c, []) as Array).is_empty():
-			_done[c] = true
+		if not _done.has(context(g) + ":" + str(c)) and not (_load().get(c, []) as Array).is_empty():
 			todo.append(c)
 	if todo.is_empty():
 		return
@@ -56,8 +55,7 @@ static func run(g, classes: Array = []) -> void:
 	var was_muted: bool = Sfx.muted
 	Sfx.set_muted(true)
 	# under the loading screen nothing of the 3D view is seen: drawn at a quarter of its size, its frames come
-	# quicker (the pipelines compiled are the same: they don't depend on the size), so the fast-forward below
-	# reaches its full speed (nightly 2026-11-05)
+	# quicker. Effect timers still run at normal simulation speed; readiness is recorded after drawing.
 	var vp: Viewport = g.get_viewport()
 	var was_3d := vp.scaling_3d_scale
 	vp.scaling_3d_scale = LOW_RES
@@ -131,19 +129,16 @@ static func run(g, classes: Array = []) -> void:
 				c.queue_free()
 	await tree.process_frame
 	Sfx.set_muted(was_muted)
+	for cls in todo:
+		_done[context(g) + ":" + str(cls)] = true
 	print("[warm] %s: %d effects in %d ms" % [",".join(todo), n, Time.get_ticks_msec() - t0])
 
-## Waits `secs` of game time in fast-forward (Engine.time_scale up to SPEED, never more than MAX_STEP of game time a
-## frame), so the effects play out in a fraction of the real time (nightly 2026-11-05).
+## Lets delayed effects render without changing the global simulation clock.
 static func _settle(tree: SceneTree, secs: float) -> void:
-	var was_scale := Engine.time_scale
-	var left := secs
-	while left > 0.0:
-		var real := tree.root.get_process_delta_time() / maxf(Engine.time_scale, 0.01)
-		Engine.time_scale = clampf(MAX_STEP / maxf(real, 0.001), 1.0, SPEED)
+	# Preparation must never accelerate live multiplayer simulation or somebody else's timers.
+	var deadline := Time.get_ticks_msec() + int(secs * 1000.0)
+	while Time.get_ticks_msec() < deadline:
 		await tree.process_frame
-		left -= tree.root.get_process_delta_time()
-	Engine.time_scale = was_scale if was_scale <= 1.0 else 1.0
 
 static var _kept: Array = []
 static var _kept_ids := {}
@@ -231,3 +226,9 @@ static func _value(v, origin: Vector3):
 			arr.append(_value(x, origin))
 		return arr
 	return v
+
+## Leaving gameplay retires warm-only references. Live nodes keep their own resources.
+static func release_prepared() -> void:
+	_done.clear()
+	_kept.clear()
+	_kept_ids.clear()

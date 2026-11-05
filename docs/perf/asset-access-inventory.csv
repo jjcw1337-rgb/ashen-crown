@@ -1,0 +1,298 @@
+file,line,function,api,path,classification,source
+scripts/arc_fx.gd,33,tex,load,<dynamic/expression>,direct load; inspect retention and callers,_tex[path] = load(path) if ResourceLoader.exists(path) else null
+scripts/arc_fx.gd,38,_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var s := Shader.new()
+scripts/archer.gd,129,dye,load,<dynamic/expression>,direct load; inspect retention and callers,var tex: Texture2D = load(path)
+scripts/archer.gd,280,_arrow_mesh,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,var m: Node3D = ResCache.inst(path)
+scripts/archer_fx.gd,81,hunter_mark,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_claw_shader = Shader.new()
+scripts/arrow_fx.gd,121,tex,load,<dynamic/expression>,direct load; inspect retention and callers,_tex[key] = load(TEX[key]) if ResourceLoader.exists(TEX[key]) else null
+scripts/arrow_fx.gd,143,shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var s := Shader.new()
+scripts/auction_ui.gd,37,icon,load,<dynamic/expression>,direct load; inspect retention and callers,return load(p) if ResourceLoader.exists(p) else null
+scripts/aurelia.gd,285,_market,load,<dynamic/expression>,direct load; inspect retention and callers,var st: Node3D = (load(path) as PackedScene).instantiate()
+scripts/battlegrounds.gd,374,_stash_chest,load,res://scripts/stash_dais.gd,script load; inspect first use,"var SD = load(""res://scripts/stash_dais.gd"")        # (at run time: tool scripts load this file before the autoloads)"
+scripts/battlegrounds.gd,401,_dress_seals,load,res://scripts/gold_seal.gdshader,direct load; inspect retention and callers,"var sh := load(""res://scripts/gold_seal.gdshader"") as Shader"
+scripts/battlegrounds.gd,447,_spirit_coals,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/bear.gd,35,build,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,var body: Node3D = ResCache.inst(GLB)
+scripts/bg_floors.gd,72,prop,load,<dynamic/expression>,direct load; inspect retention and callers,_props[name] = load(path) if ResourceLoader.exists(path) else null
+scripts/bg_floors.gd,345,_ice,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_ice_sh = Shader.new()
+scripts/bg_matchup.gd,45,_icon,load,<dynamic/expression>,direct load; inspect retention and callers,_icons[cls] = load(p) if ResourceLoader.exists(p) else null
+scripts/bg_page.gd,48,setup,load,<dynamic/expression>,direct load; inspect retention and callers,_art.texture = load(ART)
+scripts/bg_page.gd,59,setup,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/bg_page.gd,75,setup,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var gs := Shader.new()
+scripts/bg_page.gd,163,_build_words,load,res://assets/textures/ui/sheet_divider.png,direct load; inspect retention and callers,"rule.texture = load(""res://assets/textures/ui/sheet_divider.png"")"
+scripts/boat.gd,124,_glb_model,load,<dynamic/expression>,direct load; inspect retention and callers,var ps := load(path) as PackedScene
+scripts/boat.gd,277,hull_mat,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/boat.gd,288,deck_mat,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/boss_card.gd,82,_build,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/brazier_coals.gd,54,_load,load,<dynamic/expression>,direct load; inspect retention and callers,var scene := (load(GLB) as PackedScene).instantiate()
+scripts/brazier_coals.gd,97,_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var s := Shader.new()
+scripts/build_env.gd,23,value,load,<dynamic/expression>,direct load; inspect retention and callers,"if cf.load(OVERRIDE) == OK and cf.has_section_key(""env"", key):"
+scripts/camp_guard.gd,141,_ready,load,<dynamic/expression>,direct load; inspect retention and callers,"model = (load(DIR + str(def[""id""]) + "".glb"") as PackedScene).instantiate()"
+scripts/camp_guard.gd,154,_ready,load,<dynamic/expression>,direct load; inspect retention and callers,"var js := load(mp) as JSON         # (a JSON resource, so the export carries it)"
+scripts/camp_guard.gd,614,_dress,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/camp_island.gd,35,glb,load,<dynamic/expression>,direct load; inspect retention and callers,return (load(p) as PackedScene).instantiate()
+scripts/camp_island.gd,252,_waterfall,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/camp_island.gd,368,_comet,load,<dynamic/expression>,direct load; inspect retention and callers,_comet_tex = load(tex)
+scripts/camp_island.gd,385,_comet,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/camp_island.gd,502,space_sky,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/camp_island.gd,509,space_sky,load,<dynamic/expression>,direct load; inspect retention and callers,"m.set_shader_parameter(str(k[0]), load(p))"
+scripts/class_cathedral.gd,328,_shader_mat,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/coast.gd,246,prop,load,<dynamic/expression>,direct load; inspect retention and callers,_props[name] = load(path) if ResourceLoader.exists(path) else null
+scripts/coast.gd,413,_boatyard,load,res://scripts/forest_camp.gd,script load; inspect first use,"var fc: GDScript = load(""res://scripts/forest_camp.gd"")    # at run time: a static reference compiles it before Sfx exists"
+scripts/coop_server.gd,38,start,load,res://scripts/party_queue_server.gd,script load; inspect first use,"cs.party_queue = load(""res://scripts/party_queue_server.gd"").new()"
+scripts/crypt_props.gd,47,model,load,<dynamic/expression>,direct load; inspect retention and callers,"return (load(DIR + name + "".glb"") as PackedScene).instantiate()"
+scripts/crypt_props.gd,204,see_through,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/crypt_props.gd,286,statue,load,<dynamic/expression>,direct load; inspect retention and callers,var body: Node3D = (load(STATUE) as PackedScene).instantiate()
+scripts/crypt_props.gd,603,wall_material,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/crypt_props.gd,606,wall_material,load,<dynamic/expression>,direct load; inspect retention and callers,"sm.set_shader_parameter(""albedo_tex"", load(TEX + ""wall_albedo.png""))"
+scripts/crypt_props.gd,607,wall_material,load,<dynamic/expression>,direct load; inspect retention and callers,"sm.set_shader_parameter(""normal_tex"", load(TEX + ""wall_normal.png""))"
+scripts/crypt_props.gd,657,lay_floor,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/crypt_props.gd,660,lay_floor,load,<dynamic/expression>,direct load; inspect retention and callers,"sm.set_shader_parameter(""albedo_tex"", load(TEX + ""floor_albedo.png""))"
+scripts/crypt_props.gd,661,lay_floor,load,<dynamic/expression>,direct load; inspect retention and callers,"sm.set_shader_parameter(""normal_tex"", load(TEX + ""floor_normal.png""))"
+scripts/crypt_props.gd,762,portal_glow,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/crypt_props.gd,998,cobweb_material,load,<dynamic/expression>,direct load; inspect retention and callers,"m.albedo_texture = load(TEX + ""cobweb.png"")"
+scripts/crypt_props.gd,1042,floor_seal,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/crypt_props.gd,1045,floor_seal,load,<dynamic/expression>,direct load; inspect retention and callers,"sm.set_shader_parameter(""albedo_tex"", load(TEX + ""seal.png""))"
+scripts/crypt_props.gd,1047,floor_seal,load,<dynamic/expression>,direct load; inspect retention and callers,"sm.set_shader_parameter(""emit_tex"", load(TEX + ""seal_emit.png""))"
+scripts/demon.gd,122,_magma,load,res://scripts/demon_mocap.gdshader,direct load; inspect retention and callers,"var sh: Shader = load(""res://scripts/demon_mocap.gdshader"")"
+scripts/demon.gd,184,edge_mat,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_edge_shader = Shader.new()
+scripts/demon_fault_fx.gd,189,_crack_only,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_crack_shader = Shader.new()
+scripts/demon_fx.gd,426,_lava_mat,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_lava_shader = Shader.new()
+scripts/demon_kit_fx.gd,100,model,load,<dynamic/expression>,direct load; inspect retention and callers,_scenes[path] = load(path) if ResourceLoader.exists(path) else null
+scripts/demon_kit_fx.gd,140,tex,load,<dynamic/expression>,direct load; inspect retention and callers,_tex[name] = load(p) if ResourceLoader.exists(p) else null
+scripts/demon_kit_fx.gd,152,smoke,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_smoke_shader = Shader.new()
+scripts/demon_kit_fx.gd,240,ground_mark,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_mark_shader = Shader.new()
+scripts/demon_kit_fx.gd,427,ghost_mat,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_ghost_shader = Shader.new()
+scripts/demon_kit_fx.gd,439,target_mark,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_target_shader = Shader.new()
+scripts/doug.gd,46,prop,load,<dynamic/expression>,direct load; inspect retention and callers,_props[name] = load(path) if ResourceLoader.exists(path) else null
+scripts/doug_fx.gd,221,_double,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,var d: Node3D = ResCache.inst(Doug.GLB)
+scripts/doug_fx.gd,225,_double,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_balloon_sh = Shader.new()
+scripts/doug_fx.gd,258,_mini,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,var d: Node3D = ResCache.inst(Doug.GLB)
+scripts/dragon.gd,74,build,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,"body = ResCache.inst(str(sp[""glb""])) as Node3D"
+scripts/elemental_fx.gd,34,shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var s := Shader.new()
+scripts/elemental_fx.gd,56,chunk_meshes,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,var sc: Node = ResCache.inst(Fx.SLAM_CHUNKS)
+scripts/enemy.gd,177,setup,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_flash_shader = Shader.new()
+scripts/feral.gd,36,build,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,var body: Node3D = ResCache.inst(GLB % v)
+scripts/feral.gd,68,outline_mat,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/feral.gd,82,rim_mat,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/fire_fx.gd,79,book,load,<dynamic/expression>,direct load; inspect retention and callers,t = load(p)
+scripts/fire_fx.gd,83,book,load,<dynamic/expression>,direct load; inspect retention and callers,t = load(LEGACY_BOOK)
+scripts/flora.gd,20,_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var s := Shader.new()
+scripts/flora.gd,336,oak_model,load,<dynamic/expression>,direct load; inspect retention and callers,var scene: Node = (load(path) as PackedScene).instantiate()
+scripts/flora.gd,438,foliage_shadow_mat,load,res://assets/textures/fx/foliage_mask_%d.png,direct load; inspect retention and callers,"m.set_shader_parameter(""mask"", load(""res://assets/textures/fx/foliage_mask_%d.png"" % kind))"
+scripts/flora.gd,586,_camera_card,load,<dynamic/expression>,direct load; inspect retention and callers,"mat.set_shader_parameter(""tex"", load(tex))"
+scripts/flora.gd,630,grass_cards,load,<dynamic/expression>,direct load; inspect retention and callers,"mat.set_shader_parameter(""tex"", load(GRASS_TEX % k))"
+scripts/forest_camp.gd,11,<top-level>,preload,res://scripts/vendor_court.gd,script-load-time; not a runtime load call,"const VendorCourt := preload(""res://scripts/vendor_court.gd"")"
+scripts/forest_camp.gd,131,mesh,load,<dynamic/expression>,direct load; inspect retention and callers,var sc: Node = (load(path) as PackedScene).instantiate()
+scripts/forest_camp.gd,152,model,load,<dynamic/expression>,direct load; inspect retention and callers,"return (load(DIR + name + "".glb"") as PackedScene).instantiate()"
+scripts/forest_camp.gd,317,build,load,<dynamic/expression>,direct load; inspect retention and callers,"VendorCourt.build(w, s[""role""], p, yaw, half, kp, load(DIR + ""lantern.glb""))"
+scripts/forest_camp.gd,665,_keeper,load,<dynamic/expression>,direct load; inspect retention and callers,"var m: Node3D = (load(NPC_DIR + file + "".glb"") as PackedScene).instantiate()"
+scripts/forest_camp.gd,699,_rune_material,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/fort.gd,38,model,load,<dynamic/expression>,direct load; inspect retention and callers,_models[name] = load(path)
+scripts/fort.gd,876,_camp_model,load,<dynamic/expression>,direct load; inspect retention and callers,var m: Node3D = (load(path) as PackedScene).instantiate()
+scripts/frost_volley_fx.gd,48,shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var s := Shader.new()
+scripts/frost_volley_fx.gd,55,hoarfrost,load,<dynamic/expression>,direct load; inspect retention and callers,_tex = load(HOARFROST)
+scripts/furnace.gd,363,_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var s := Shader.new()
+scripts/furnace_ui.gd,57,build,load,<dynamic/expression>,direct load; inspect retention and callers,"plate.texture = load(UI.INV_TEX[""plate""])"
+scripts/furnace_ui.gd,390,_refresh,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/fx.gd,288,_slam_quad,ResCache.get_res,<dynamic/expression>,retained-cache-access; first miss can block,m.albedo_texture = ResCache.get_res(SLAM_TEX[tex_key])
+scripts/fx.gd,353,_slam_chunks,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,var sc: Node = ResCache.inst(SLAM_CHUNKS)
+scripts/fx.gd,358,_slam_chunks,ResCache.get_res,<dynamic/expression>,retained-cache-access; first miss can block,"_stone.albedo_texture = ResCache.get_res(SLAM_TEX[""crack""])"
+scripts/fx.gd,408,_telegraph,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_tele_shader = Shader.new()
+scripts/fx.gd,541,_splat_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_splat_sh = Shader.new()
+scripts/game.gd,222,_ready,load,res://scripts/party_queue.gd,script load; inspect first use,"party_queue = load(""res://scripts/party_queue.gd"").new()"
+scripts/game.gd,225,_ready,load,res://scripts/lobby_client.gd,script load; inspect first use,"lobby_client = load(""res://scripts/lobby_client.gd"").new()"
+scripts/game.gd,245,_ready,load,res://scripts/match_instance.gd,script load; inspect first use,"match_instance = load(""res://scripts/match_instance.gd"").new()"
+scripts/game.gd,318,_play_intro,load,<dynamic/expression>,direct load; inspect retention and callers,vp.stream = load(INTRO_PATH)
+scripts/game.gd,396,_apply_underworld,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/game.gd,1020,_save_setting,load,<dynamic/expression>,direct load; inspect retention and callers,cf.load(SETTINGS_PATH)
+scripts/game.gd,1026,_load_setting,load,<dynamic/expression>,direct load; inspect retention and callers,if cf.load(SETTINGS_PATH) == OK:
+scripts/game.gd,1042,_initial_quality,load,<dynamic/expression>,direct load; inspect retention and callers,"if cf.load(SETTINGS_PATH) == OK and cf.has_section_key(""graphics"", ""quality""):"
+scripts/game.gd,1137,_setup_post,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/game.gd,1360,_boot_preload,ResourceLoader.load_threaded_request,<dynamic/expression>,background request,"if not ResourceLoader.has_cached(p) and ResourceLoader.load_threaded_request(p, """", true) == OK:"
+scripts/game.gd,1377,_await_preloads,ResourceLoader.load_threaded_get,<dynamic/expression>,collection; can block unless ready,_preloaded.append(ResourceLoader.load_threaded_get(p))
+scripts/game.gd,1451,load_zone,ResourceLoader.load_threaded_get,<dynamic/expression>,collection; can block unless ready,ResourceLoader.load_threaded_get(p)     # (they are in use: this only closes the threaded requests)
+scripts/game.gd,1502,_preload_monsters,ResourceLoader.load_threaded_request,<dynamic/expression>,background request,"if not out.has(p) and not skip.has(p) and not ResourceLoader.has_cached(p) and ResourceLoader.load_threaded_request(p, """", true) == OK:"
+scripts/game.gd,1891,set_loading_art,load,<dynamic/expression>,direct load; inspect retention and callers,tex = load(p)
+scripts/game.gd,2383,save_game,load,res://scripts/lobby_stakes.gd,script load; inspect first use,"var old_lobby_save: Dictionary = load(""res://scripts/lobby_stakes.gd"").read(save_path())"
+scripts/games.gd,495,_crowd,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/games.gd,647,_crowd_cards,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/globe.gd,45,_ready,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/globe.gd,60,_ready,load,<dynamic/expression>,direct load; inspect retention and callers,glass.texture = load(GLASS_TEX)
+scripts/globe.gd,70,_ready,load,<dynamic/expression>,direct load; inspect retention and callers,frame.texture = load(FRAME_TEX)
+scripts/globe.gd,112,set_style,load,<dynamic/expression>,direct load; inspect retention and callers,frame.texture = load(ft)
+scripts/goblin.gd,53,skin_mat,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_skin_shader = Shader.new()
+scripts/goblin.gd,71,coin_mat,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_coin_shader = Shader.new()
+scripts/goblin.gd,221,build,load,res://scripts/knight_rig.gd,script load; inspect first use,"root.set_script(load(""res://scripts/knight_rig.gd""))"
+scripts/goblin.gd,361,imported_rig,load,res://scripts/knight_rig.gd,script load; inspect first use,"root.set_script(load(""res://scripts/knight_rig.gd""))"
+scripts/goblin.gd,478,_imported,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,var scene: Node = ResCache.inst(path)
+scripts/grass.gd,86,glb_mesh,load,<dynamic/expression>,direct load; inspect retention and callers,var scene := (load(GLB % sp) as PackedScene).instantiate()
+scripts/grass.gd,391,material,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_shader = Shader.new()
+scripts/grass.gd,408,material,load,<dynamic/expression>,direct load; inspect retention and callers,"m.set_shader_parameter(""atlas"", load(ATLAS))"
+scripts/grass_field.gd,298,_sim_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_shader_cache = Shader.new()
+scripts/hero.gd,2333,_trail_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_trail_sh = Shader.new()
+scripts/holy_fx.gd,29,shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var s := Shader.new()
+scripts/icon_renderer.gd,61,get_icon,load,<dynamic/expression>,direct load; inspect retention and callers,"cache[k] = load(b[""icon""])"
+scripts/infernal_fx.gd,85,shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var s := Shader.new()
+scripts/infernal_fx.gd,350,flipbook,load,<dynamic/expression>,direct load; inspect retention and callers,_flipbook = load(FIRE_FLIPBOOK)
+scripts/isle_lost.gd,94,_rune_mat,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/isles.gd,71,<top-level>,preload,res://scripts/isle_verdant.gd,script-load-time; not a runtime load call,"""verdant"": preload(""res://scripts/isle_verdant.gd""),"
+scripts/isles.gd,72,<top-level>,preload,res://scripts/isle_ruins.gd,script-load-time; not a runtime load call,"""ruins"": preload(""res://scripts/isle_ruins.gd""),"
+scripts/isles.gd,73,<top-level>,preload,res://scripts/isle_lost.gd,script-load-time; not a runtime load call,"""lost"": preload(""res://scripts/isle_lost.gd""),"
+scripts/isles.gd,74,<top-level>,preload,res://scripts/isle_bleak.gd,script-load-time; not a runtime load call,"""bleak"": preload(""res://scripts/isle_bleak.gd""),"
+scripts/isles.gd,75,<top-level>,preload,res://scripts/isle_merchant.gd,script-load-time; not a runtime load call,"""merchant"": preload(""res://scripts/isle_merchant.gd""),"
+scripts/isles.gd,262,prop,load,<dynamic/expression>,direct load; inspect retention and callers,_props[name] = load(path) if ResourceLoader.exists(path) else null
+scripts/knight.gd,140,build_meshy,load,res://scripts/knight_rig.gd,script load; inspect first use,"root.set_script(load(""res://scripts/knight_rig.gd""))"
+scripts/knight.gd,219,build_mocap,load,<dynamic/expression>,direct load; inspect retention and callers,"root.set_script(load(str(opts.get(""script"", ""res://scripts/knight_mocap_rig.gd""))))"
+scripts/knight.gd,236,build_mocap,ResCache.get_res,<dynamic/expression>,retained-cache-access; first miss can block,var ps: PackedScene = ResCache.get_res(glb)
+scripts/knight.gd,439,build,load,res://scripts/knight_rig.gd,script load; inspect first use,"root.set_script(load(""res://scripts/knight_rig.gd""))"
+scripts/knight.gd,496,material,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_shader = Shader.new()
+scripts/kpi.gd,62,start,load,res://scripts/kpi_probe.gd,script load; inspect first use,"var pr: Node = load(""res://scripts/kpi_probe.gd"").new()"
+scripts/kpi.gd,118,step,load,res://scripts/kpi_probe.gd,script load; inspect first use,"st[""p0""] = [load(""res://scripts/kpi_probe.gd"").proc_us, load(""res://scripts/kpi_probe.gd"").phys_us]"
+scripts/kpi.gd,118,step,load,res://scripts/kpi_probe.gd,script load; inspect first use,"st[""p0""] = [load(""res://scripts/kpi_probe.gd"").proc_us, load(""res://scripts/kpi_probe.gd"").phys_us]"
+scripts/kpi.gd,596,_finish,load,res://scripts/kpi_probe.gd,script load; inspect first use,"""script_ms"": snappedf(float(load(""res://scripts/kpi_probe.gd"").proc_us - int((st.get(""p0"", [0, 0]) as Array)[0])) / 1000.0 / n, 0.01),"
+scripts/kpi.gd,597,_finish,load,res://scripts/kpi_probe.gd,script load; inspect first use,"""physics_ms"": snappedf(float(load(""res://scripts/kpi_probe.gd"").phys_us - int((st.get(""p0"", [0, 0]) as Array)[1])) / 1000.0 / n, 0.01),"
+scripts/lion.gd,21,build,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,var body: Node3D = ResCache.inst(glb)
+scripts/lobby_client.gd,14,<top-level>,load,res://scripts/lobby_stakes.gd,script load; inspect first use,"var stake_store = load(""res://scripts/lobby_stakes.gd"")"
+scripts/match_instance.gd,28,start,load,res://scripts/arena_match.gd,script load; inspect first use,"game.bg=load(""res://scripts/arena_match.gd"").new()"
+scripts/mats.gd,180,shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var s := Shader.new()
+scripts/mats.gd,197,custom,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var s := Shader.new()
+scripts/models.gd,407,item_model,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,var b: Node3D = ResCache.inst(RANGER_BOW)
+scripts/models.gd,441,material,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,"var m: Node3D = ResCache.inst(b[""model""])"
+scripts/monster_warm.gd,83,run,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,Enemy._flash_shader = Shader.new()
+scripts/ocean.gd,335,shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var s := Shader.new()
+scripts/plague.gd,262,dye,load,<dynamic/expression>,direct load; inspect retention and callers,var tex: Texture2D = load(path)
+scripts/plague.gd,293,cane_model,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,root.add_child(ResCache.inst(CANE_GLB))
+scripts/plague_bloom_fx.gd,34,seed_syringe,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,var m: Node3D = ResCache.inst(SYRINGE_GLB)
+scripts/plague_bloom_fx.gd,107,seed_syringe,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,var m: Node3D = ResCache.inst(PlagueBloomFx.BLOOM_GLB)
+scripts/plague_bloom_fx.gd,231,lash,load,<dynamic/expression>,direct load; inspect retention and callers,_roots_scene = load(ROOTS_GLB)
+scripts/plague_bloom_fx.gd,269,_root_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_rsh = Shader.new()
+scripts/plague_experiment_fx.gd,79,<top-level>,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,vat.add_child(ResCache.inst(PlagueExperimentFx.VAT_GLB))
+scripts/plague_experiment_fx.gd,119,<top-level>,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,var src: Node3D = ResCache.inst(PlagueExperimentFx.SHARDS_GLB)
+scripts/plague_experiment_fx.gd,224,<top-level>,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,creature = ResCache.inst(PlagueExperimentFx.CREATURE_GLB)
+scripts/plague_experiment_fx.gd,455,_fan_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_fsh = Shader.new()
+scripts/plague_experiment_fx.gd,493,_wave_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_wsh = Shader.new()
+scripts/plague_experiment_fx.gd,536,_zone_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_zsh = Shader.new()
+scripts/plague_fever.gd,116,_ring_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_rsh = Shader.new()
+scripts/plague_fog_fx.gd,26,censer_in_hand,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,var m: Node3D = ResCache.inst(CENSER_GLB)
+scripts/plague_fog_fx.gd,77,censer_in_hand,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,censer = ResCache.inst(PlagueFogFx.CENSER_GLB)
+scripts/plague_fog_fx.gd,176,_base_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_bsh = Shader.new()
+scripts/plague_fx.gd,32,shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var s := Shader.new()
+scripts/plague_smoke.gd,214,_card_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_csh = Shader.new()
+scripts/plague_swarm_fx.gd,26,reliquary,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,var m: Node3D = ResCache.inst(RELIQUARY_GLB)
+scripts/plague_swarm_fx.gd,207,_process_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_psh = Shader.new()
+scripts/plague_swarm_fx.gd,269,_fly_mesh,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,var src: Node3D = ResCache.inst(FLY_GLB)
+scripts/plague_swarm_fx.gd,338,_model_fly_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_msh = Shader.new()
+scripts/plague_swarm_fx.gd,370,_fly_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_fsh = Shader.new()
+scripts/plague_transfusion_fx.gd,33,attach,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,app.add_child(ResCache.inst(APP_GLB))
+scripts/plague_transfusion_fx.gd,199,_shell_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_ssh = Shader.new()
+scripts/plague_vial_fx.gd,37,vial,load,<dynamic/expression>,direct load; inspect retention and callers,_vial_scene = load(VIAL_GLB)
+scripts/plague_vial_fx.gd,117,glass_mat_2side,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_gsh2 = Shader.new()
+scripts/plague_vial_fx.gd,128,_glass_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_gsh = Shader.new()
+scripts/plague_vial_fx.gd,149,_liquid_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_lsh = Shader.new()
+scripts/plague_vial_fx.gd,278,_tex,ResCache.get_res,<dynamic/expression>,retained-cache-access; first miss can block,return ResCache.get_res(path) as Texture2D
+scripts/plague_vial_fx.gd,300,_ring_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_rsh = Shader.new()
+scripts/plague_vial_fx.gd,373,shatter,load,<dynamic/expression>,direct load; inspect retention and callers,_shard_scene = load(SHARDS_GLB)
+scripts/plague_vial_fx.gd,454,_flip_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_fsh = Shader.new()
+scripts/plague_vial_fx.gd,694,_pool_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_psh = Shader.new()
+scripts/props.gd,51,_meshy_model,load,<dynamic/expression>,direct load; inspect retention and callers,var inst: Node = (load(path) as PackedScene).instantiate()
+scripts/props.gd,249,shadow_twins,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/pvp_status_fx.gd,123,_snare,load,<dynamic/expression>,direct load; inspect retention and callers,_roots = load(PlagueBloomFx.ROOTS_GLB)
+scripts/raven.gd,57,make,load,<dynamic/expression>,direct load; inspect retention and callers,_scene = load(GLB)
+scripts/res_cache.gd,13,get_res,load,<dynamic/expression>,direct load; inspect retention and callers,_held[path] = load(path) if ResourceLoader.exists(path) else null
+scripts/roman.gd,330,statue,load,<dynamic/expression>,direct load; inspect retention and callers,var body: Node3D = (load(STATUE_GLB) as PackedScene).instantiate()
+scripts/sfx.gd,10,<top-level>,preload,res://scripts/sfx_bank.gd,script-load-time; not a runtime load call,"const BANK := preload(""res://scripts/sfx_bank.gd"").BANK"
+scripts/sfx.gd,81,_ready,load,<dynamic/expression>,direct load; inspect retention and callers,takes.append(load(path))
+scripts/skeleton.gd,43,dm,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_shader = Shader.new()
+scripts/skeleton.gd,69,cloak_mat,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_cloak_shader = Shader.new()
+scripts/skill_warm.gd,163,keep,load,<dynamic/expression>,direct load; inspect retention and callers,_kept.append(load(sp))
+scripts/sloth.gd,763,build,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,body = ResCache.inst(GLB % variant)
+scripts/sloth.gd,804,outline_mat,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/sloth_lair.gd,113,_piece,load,<dynamic/expression>,direct load; inspect retention and callers,var m: Node3D = (load(path) as PackedScene).instantiate()
+scripts/smith_forge.gd,32,setup,load,<dynamic/expression>,direct load; inspect retention and callers,var tg: Node3D = (load(TONGS) as PackedScene).instantiate()
+scripts/stash_chests.gd,35,model,load,<dynamic/expression>,direct load; inspect retention and callers,"return (load(path(n, part)) as PackedScene).instantiate()"
+scripts/stash_dais.gd,79,_build,load,<dynamic/expression>,direct load; inspect retention and callers,var dais: Node3D = (load(path) as PackedScene).instantiate()
+scripts/stash_dais.gd,115,_build,load,<dynamic/expression>,direct load; inspect retention and callers,"rune_floor.set_shader_parameter(""runes"", load(WaypointGrand.RUNES_TEX))"
+scripts/stash_dais.gd,135,_build,load,<dynamic/expression>,direct load; inspect retention and callers,var bm: Node3D = (load(BOWL) as PackedScene).instantiate()
+scripts/telemetry.gd,56,wanted,load,user://settings.cfg,direct load; inspect retention and callers,"var opted := cf.load(""user://settings.cfg"") == OK and bool(cf.get_value(""telemetry"", ""on"", false))"
+scripts/theropod.gd,25,build,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,var body: Node3D = ResCache.inst(GLB[kind])
+scripts/thunderstep_fx.gd,34,sigil_tex,load,<dynamic/expression>,direct load; inspect retention and callers,_tex = load(SIGIL)
+scripts/thunderstep_fx.gd,69,_sigil,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_shader = Shader.new()
+scripts/title_home.gd,126,_build_sidebar,load,res://assets/textures/ui/sheet_divider.png,direct load; inspect retention and callers,"rule.texture = load(""res://assets/textures/ui/sheet_divider.png"")"
+scripts/title_home.gd,395,_build_bg_card,load,<dynamic/expression>,direct load; inspect retention and callers,_bg_art.texture = load(BgPage.ART)
+scripts/title_home.gd,405,_build_bg_card,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/title_home.gd,476,_build_board,load,res://assets/textures/ui/sheet_divider.png,direct load; inspect retention and callers,"rule.texture = load(""res://assets/textures/ui/sheet_divider.png"")"
+scripts/title_stage.gd,72,setup,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var shs := Shader.new()
+scripts/title_stage.gd,162,_model,load,<dynamic/expression>,direct load; inspect retention and callers,"var m: Node3D = (load(MODEL_DIR + n + "".glb"") as PackedScene).instantiate()"
+scripts/title_stage.gd,194,_ground,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/title_stage.gd,236,_gate,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var rsh := Shader.new()
+scripts/title_stage.gd,267,_gate,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var gsh := Shader.new()
+scripts/title_stage.gd,293,_gate_light,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var gsh := Shader.new()
+scripts/title_stage.gd,365,_monuments,load,<dynamic/expression>,direct load; inspect retention and callers,var body: Node3D = (load(Roman.STATUE_GLB) as PackedScene).instantiate()
+scripts/title_stage.gd,446,_new_dais_magic,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/title_stage.gd,456,_new_dais_magic,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var psh := Shader.new()
+scripts/title_stage.gd,521,_fog_banks,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/trike.gd,17,build,ResCache.inst,<dynamic/expression>,retained-cache-access; first miss can block,var body: Node3D = ResCache.inst(GLB[kind])
+scripts/ui.gd,187,setup,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var fsh := Shader.new()
+scripts/ui.gd,582,_build_hud,load,<dynamic/expression>,direct load; inspect retention and callers,"frame.texture = load(BAR_TEX[""frame""])"
+scripts/ui.gd,814,_bar_slot,load,<dynamic/expression>,direct load; inspect retention and callers,"bg.texture = load(BAR_TEX[""slot_big"" if big else ""slot""])"
+scripts/ui.gd,897,_skill_drag,load,<dynamic/expression>,direct load; inspect retention and callers,"bg.texture = load(BAR_TEX[""slot""])"
+scripts/ui.gd,951,_choose_skill,load,<dynamic/expression>,direct load; inspect retention and callers,"frame.texture = load(BAR_TEX[""frame""])"
+scripts/ui.gd,1067,_picker_card,load,<dynamic/expression>,direct load; inspect retention and callers,"bg.texture = load(BAR_TEX[""slot""])"
+scripts/ui.gd,1215,_fill_skills_panel,load,<dynamic/expression>,direct load; inspect retention and callers,"ibg.texture = load(BAR_TEX[""slot""])"
+scripts/ui.gd,1324,_grey_mat,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/ui.gd,1357,_fill_talents,load,<dynamic/expression>,direct load; inspect retention and callers,emr.texture = load(em)
+scripts/ui.gd,1395,_talent_node,load,<dynamic/expression>,direct load; inspect retention and callers,"bg.texture = load(BAR_TEX[""slot""])"
+scripts/ui.gd,1406,_talent_node,load,<dynamic/expression>,direct load; inspect retention and callers,tr.texture = load(tex)
+scripts/ui.gd,1650,pie_face,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/ui.gd,1693,_divider,load,res://assets/textures/ui/sheet_divider.png,direct load; inspect retention and callers,"rule.texture = load(""res://assets/textures/ui/sheet_divider.png"")"
+scripts/ui.gd,1763,_scaled_tex,load,<dynamic/expression>,direct load; inspect retention and callers,var img: Image = (load(path) as Texture2D).get_image()
+scripts/ui.gd,1810,_build_inventory,load,<dynamic/expression>,direct load; inspect retention and callers,"plate.texture = load(INV_TEX[""plate""])"
+scripts/ui.gd,1847,_build_inventory,load,<dynamic/expression>,direct load; inspect retention and callers,"al.texture = load(INV_TEX[""alcove""])"
+scripts/ui.gd,1883,_build_inventory,load,<dynamic/expression>,direct load; inspect retention and callers,"cp.texture = load(INV_TEX[""coinplate""])"
+scripts/ui.gd,1890,_build_inventory,load,<dynamic/expression>,direct load; inspect retention and callers,"coins.texture = load(INV_TEX[""coins""])"
+scripts/ui.gd,2114,_build_character,load,<dynamic/expression>,direct load; inspect retention and callers,"sb.texture = load(SHEET_TEX[""panel""])"
+scripts/ui.gd,2171,_build_character,load,<dynamic/expression>,direct load; inspect retention and callers,"frame.texture = load(SHEET_TEX[""portrait""])"
+scripts/ui.gd,2217,_build_character,load,<dynamic/expression>,direct load; inspect retention and callers,"div.texture = load(SHEET_TEX[""divider""])"
+scripts/ui.gd,2290,_stat_row,load,<dynamic/expression>,direct load; inspect retention and callers,ic.texture = load(SHEET_TEX[st])
+scripts/ui.gd,2313,_stat_row,load,<dynamic/expression>,direct load; inspect retention and callers,"b.texture_normal = load(SHEET_TEX[""plus""])"
+scripts/ui.gd,2762,stash_plate_tex,load,<dynamic/expression>,direct load; inspect retention and callers,"_stash_plate = load(INV_TEX[""plate""])"
+scripts/ui.gd,3113,_build_burn,load,<dynamic/expression>,direct load; inspect retention and callers,"plate.texture = load(INV_TEX[""plate""])"
+scripts/ui.gd,3372,_burn,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/ui.gd,3526,_build_dialog,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var dsh := Shader.new()
+scripts/ui.gd,3548,_build_dialog,load,res://assets/textures/ui/sheet_divider.png,direct load; inspect retention and callers,"rule.texture = load(""res://assets/textures/ui/sheet_divider.png"")"
+scripts/ui.gd,3596,_build_pause,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var dsh := Shader.new()
+scripts/ui.gd,3928,_build_title,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/ui.gd,4521,_build_class_picker,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var dsh := Shader.new()
+scripts/ui.gd,4550,_build_class_picker,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var fsh := Shader.new()
+scripts/ui.gd,4821,_class_key,load,res://assets/textures/ui/arrow_left.png,direct load; inspect retention and callers,"_tex = load(""res://assets/textures/ui/arrow_left.png"")"
+scripts/ui.gd,4822,_class_key,load,res://assets/textures/ui/arrow_gem.png,direct load; inspect retention and callers,"_gem = load(""res://assets/textures/ui/arrow_gem.png"")"
+scripts/ui.gd,5113,_build_death,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var vs := Shader.new()
+scripts/ui.gd,5661,_process,load,<dynamic/expression>,direct load; inspect retention and callers,"_painted[sid] = load(path) if sid != """" and ResourceLoader.exists(path) else null"
+scripts/ui.gd,6084,_process,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/vendor_ui.gd,214,_aabb,load,<dynamic/expression>,direct load; inspect retention and callers,"body = (load(str(it.get_meta(""npc_file""))) as PackedScene).instantiate()"
+scripts/via.gd,161,_moor,load,<dynamic/expression>,direct load; inspect retention and callers,var wg: Node3D = (load(path) as PackedScene).instantiate()
+scripts/via.gd,217,_pass,load,<dynamic/expression>,direct load; inspect retention and callers,var wagon: Node3D = (load(path) as PackedScene).instantiate()
+scripts/warlock.gd,238,cloak_mat,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_cloak_shader = Shader.new()
+scripts/waypoint_grand.gd,92,_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var s := Shader.new()
+scripts/waypoint_grand.gd,131,_glb,load,<dynamic/expression>,direct load; inspect retention and callers,return (load(path) as PackedScene).instantiate()
+scripts/waypoint_grand.gd,234,_build,load,<dynamic/expression>,direct load; inspect retention and callers,"rune_floor.set_shader_parameter(""runes"", load(RUNES_TEX))"
+scripts/waypoint_panel.gd,72,setup,load,<dynamic/expression>,direct load; inspect retention and callers,sb.texture = load(FRAME)
+scripts/waypoint_panel.gd,99,setup,load,<dynamic/expression>,direct load; inspect retention and callers,sigil.texture = load(SIGIL)
+scripts/waypoint_panel.gd,312,_fill,load,<dynamic/expression>,direct load; inspect retention and callers,"banner.texture = load(act[""art""]) if act.has(""art"") and ResourceLoader.exists(act[""art""]) else null"
+scripts/waypoint_panel.gd,346,_fill_activities,load,res://assets/textures/ui/wp_act1.png,direct load; inspect retention and callers,"banner.texture = load(""res://assets/textures/ui/wp_act1.png"")"
+scripts/waypoint_panel.gd,376,_activity_card,load,<dynamic/expression>,direct load; inspect retention and callers,icon.texture = load(SIGIL)
+scripts/waypoint_panel.gd,404,_fill_battlegrounds,load,<dynamic/expression>,direct load; inspect retention and callers,"banner.texture = load(first[""art""]) if first.has(""art"") and ResourceLoader.exists(first[""art""]) else null"
+scripts/waypoint_panel.gd,425,_fill_battlegrounds,load,<dynamic/expression>,direct load; inspect retention and callers,bi.texture = load(SIGIL)
+scripts/waypoint_panel.gd,466,_bg_card,load,<dynamic/expression>,direct load; inspect retention and callers,icon.texture = load(SIGIL)
+scripts/waypoint_panel.gd,735,_tab,load,<dynamic/expression>,direct load; inspect retention and callers,sock.texture = load(SLOT)
+scripts/waypoint_panel.gd,792,_point_row,load,<dynamic/expression>,direct load; inspect retention and callers,icon.texture = load(SIGIL)
+scripts/waypoint_panel.gd,849,_town_plaque,load,<dynamic/expression>,direct load; inspect retention and callers,plq.texture = load(TOWN_PLAQUE)
+scripts/waypoint_panel.gd,917,_next_card,load,<dynamic/expression>,direct load; inspect retention and callers,"thumb.texture = load(nxt[""art""]) if ResourceLoader.exists(nxt[""art""]) else null"
+scripts/weather.gd,23,_ready,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var sh := Shader.new()
+scripts/wood.gd,82,_shader,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,var s := Shader.new()
+scripts/wraith.gd,71,_spectral,load,res://scripts/wraith_mocap.gdshader,direct load; inspect retention and callers,"var sh: Shader = load(""res://scripts/wraith_mocap.gdshader"")"
+scripts/wraith.gd,144,material,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_shader = Shader.new()
+scripts/wraith_fx.gd,456,_soul_ring,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_ring_shader = Shader.new()
+scripts/wraith_fx.gd,985,_floor_mat,Shader.new,<dynamic/expression>,shader creation; inspect caching and callers,_floor_shader = Shader.new()
+scripts/zone_preload.gd,26,start,ResourceLoader.load_threaded_request,<dynamic/expression>,background request,"if ResourceLoader.load_threaded_request(ps, """", true) == OK:"
+scripts/zone_preload.gd,33,finish,ResourceLoader.load_threaded_get,<dynamic/expression>,collection; can block unless ready,ResourceLoader.load_threaded_get(p)

@@ -48,7 +48,7 @@ static func kinds(g) -> Array:
 				k[str(wv["champ"])] = true
 	var out: Array = []
 	for kind in k:
-		if Data.ENEMIES.has(kind) and not _done.has(kind) and not (present.has(kind) and not g.net.is_client()):
+		if Data.ENEMIES.has(kind) and not _done.has(SkillWarm.context(g) + ":" + str(kind)) and not (present.has(kind) and not g.net.is_client()):
 			out.append(kind)
 	return out
 
@@ -69,12 +69,12 @@ static func run(g) -> void:
 		at.y = g.world.height_at(at.x, at.z)
 	var bodies: Array = []
 	for i in todo.size():
-		_done[todo[i]] = true
 		var r := Enemy.build_rig(str(todo[i]))
 		if r == null:
 			continue
 		g.world.fx_root.add_child(r)
 		r.global_position = at + Vector3((i % 6 - 2.5) * 1.6, 0, (i / 6) * 1.6)
+		r.set_meta("warm_kind", str(todo[i]))
 		bodies.append(r)
 	for i in 3:
 		await RenderingServer.frame_post_draw
@@ -92,6 +92,10 @@ static func run(g) -> void:
 		for i in 2:
 			await RenderingServer.frame_post_draw
 	for r in bodies:
+		_done[SkillWarm.context(g) + ":" + str(r.get_meta("warm_kind"))] = true
 		SkillWarm.keep(r)
 		r.queue_free()
 	print("[warm] monsters %s in %d ms" % [",".join(todo), Time.get_ticks_msec() - t0])
+
+static func release_prepared() -> void:
+	_done.clear()

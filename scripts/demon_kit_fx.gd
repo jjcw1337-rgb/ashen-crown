@@ -97,7 +97,7 @@ static func head(h: Hero) -> Vector3:
 # ---------------------------------------------------------------- models
 static func model(path: String) -> Node3D:
 	if not _scenes.has(path):
-		_scenes[path] = load(path) if ResourceLoader.exists(path) else null
+		_scenes[path] = ResCache.get_res(path) if ResourceLoader.exists(path) else null
 	var ps = _scenes[path]
 	if ps == null:
 		return null
@@ -137,7 +137,7 @@ static func set_heat(n: Node3D, heat: float) -> void:
 static func tex(name: String) -> Texture2D:
 	if not _tex.has(name):
 		var p := TEX + name
-		_tex[name] = load(p) if ResourceLoader.exists(p) else null
+		_tex[name] = ResCache.get_res(p) if ResourceLoader.exists(p) else null
 	return _tex[name]
 
 # ---------------------------------------------------------------- simulated smoke

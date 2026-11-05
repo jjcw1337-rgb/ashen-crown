@@ -1,0 +1,2901 @@
+{
+ "baseline": {
+  "runs": [
+   {
+    "cache": {
+     "held": 40,
+     "sync_misses": {}
+    },
+    "class": "knight",
+    "clock": "monotonic_wall",
+    "cpu_physics_peak_ms": 22.33,
+    "cpu_process_peak_ms": 177.13,
+    "draw_calls": 930,
+    "enemies": 0,
+    "engine": "4.3-stable (official)",
+    "first_use_max_ms": 5870.155,
+    "focused": true,
+    "fps_avg": 9.5,
+    "fps_low1": 0.9,
+    "frame_ms_max": 1122.913,
+    "frame_ms_median": 35.93,
+    "frame_ms_p99": 1016.11,
+    "frames": 171,
+    "gameplay_sync_misses": {},
+    "gpu_ms": 35.91,
+    "gpu_name": "Apple M6",
+    "hitches_per_min": 129.4,
+    "load_ms": 8658,
+    "nodes": 4981,
+    "objects": 1210,
+    "physics_ms": 0.66,
+    "preparation": {},
+    "preset": 2,
+    "primitives": 4981877,
+    "pvp": {
+     "actors": 6,
+     "bursts": 4,
+     "classes": [
+      "demon",
+      "plague",
+      "archer",
+      "demon",
+      "plague",
+      "archer"
+     ],
+     "creation_us": {
+      "archer/arc/cast": {
+       "count": 8,
+       "max_us": 366,
+       "total_us": 1679
+      },
+      "archer/arc/impact": {
+       "count": 8,
+       "max_us": 1802,
+       "total_us": 6451
+      },
+      "archer/attack/loose": {
+       "count": 8,
+       "max_us": 62540,
+       "total_us": 67763
+      },
+      "archer/beast/cast": {
+       "count": 8,
+       "max_us": 110,
+       "total_us": 359
+      },
+      "archer/beast/impact": {
+       "count": 8,
+       "max_us": 6772,
+       "total_us": 12592
+      },
+      "archer/earthshatter/cast": {
+       "count": 8,
+       "max_us": 84,
+       "total_us": 377
+      },
+      "archer/earthshatter/impact": {
+       "count": 8,
+       "max_us": 5954,
+       "total_us": 27874
+      },
+      "archer/earthshatter/windup": {
+       "count": 8,
+       "max_us": 235,
+       "total_us": 816
+      },
+      "archer/frost_nova/cast": {
+       "count": 8,
+       "max_us": 251,
+       "total_us": 1310
+      },
+      "archer/frost_nova/impact": {
+       "count": 8,
+       "max_us": 4433,
+       "total_us": 21473
+      },
+      "archer/pierce/cast": {
+       "count": 8,
+       "max_us": 270,
+       "total_us": 580
+      },
+      "archer/pierce/loose": {
+       "count": 8,
+       "max_us": 362795,
+       "total_us": 398405
+      },
+      "archer/snare/cast": {
+       "count": 8,
+       "max_us": 138,
+       "total_us": 425
+      },
+      "archer/snare/spring": {
+       "count": 8,
+       "max_us": 316503,
+       "total_us": 328322
+      },
+      "archer/snare/vault": {
+       "count": 8,
+       "max_us": 154456,
+       "total_us": 171093
+      },
+      "archer/volley/cast": {
+       "count": 8,
+       "max_us": 134,
+       "total_us": 621
+      },
+      "archer/volley/impact": {
+       "count": 8,
+       "max_us": 49790,
+       "total_us": 79506
+      },
+      "archer/war_cry/cast": {
+       "count": 8,
+       "max_us": 42,
+       "total_us": 166
+      },
+      "archer/war_cry/impact": {
+       "count": 8,
+       "max_us": 839,
+       "total_us": 4215
+      },
+      "demon/arc/cast": {
+       "count": 8,
+       "max_us": 471,
+       "total_us": 2310
+      },
+      "demon/arc/impact": {
+       "count": 8,
+       "max_us": 918,
+       "total_us": 6214
+      },
+      "demon/attack/hit": {
+       "count": 24,
+       "max_us": 11449,
+       "total_us": 32757
+      },
+      "demon/cslam/cast": {
+       "count": 8,
+       "max_us": 133,
+       "total_us": 344
+      },
+      "demon/cslam/erupt": {
+       "count": 8,
+       "max_us": 302467,
+       "total_us": 350979
+      },
+      "demon/cslam/impact": {
+       "count": 8,
+       "max_us": 83078,
+       "total_us": 98557
+      },
+      "demon/earthshatter/cast": {
+       "count": 8,
+       "max_us": 63,
+       "total_us": 321
+      },
+      "demon/earthshatter/impact": {
+       "count": 8,
+       "max_us": 9534,
+       "total_us": 32534
+      },
+      "demon/earthshatter/windup": {
+       "count": 8,
+       "max_us": 209,
+       "total_us": 758
+      },
+      "demon/fists/brand": {
+       "count": 8,
+       "max_us": 115,
+       "total_us": 346
+      },
+      "demon/fists/cast": {
+       "count": 8,
+       "max_us": 14975,
+       "total_us": 52760
+      },
+      "demon/fists/impact": {
+       "count": 8,
+       "max_us": 29554,
+       "total_us": 96499
+      },
+      "demon/frost_nova/cast": {
+       "count": 8,
+       "max_us": 697,
+       "total_us": 1846
+      },
+      "demon/frost_nova/impact": {
+       "count": 8,
+       "max_us": 35143,
+       "total_us": 54050
+      },
+      "demon/grip/cast": {
+       "count": 8,
+       "max_us": 418,
+       "total_us": 2069
+      },
+      "demon/grip/fling": {
+       "count": 8,
+       "max_us": 144933,
+       "total_us": 178772
+      },
+      "demon/grip/grab": {
+       "count": 8,
+       "max_us": 74,
+       "total_us": 310
+      },
+      "demon/grip/hook": {
+       "count": 8,
+       "max_us": 4783,
+       "total_us": 9645
+      },
+      "demon/grip/smash": {
+       "count": 8,
+       "max_us": 1936,
+       "total_us": 12373
+      },
+      "demon/hurl/cast": {
+       "count": 8,
+       "max_us": 640,
+       "total_us": 3139
+      },
+      "demon/hurl/splash": {
+       "count": 8,
+       "max_us": 40758,
+       "total_us": 60874
+      },
+      "demon/hurl/throw": {
+       "count": 8,
+       "max_us": 202258,
+       "total_us": 216118
+      },
+      "demon/icharge/cast": {
+       "count": 8,
+       "max_us": 141,
+       "total_us": 420
+      },
+      "demon/icharge/end": {
+       "count": 8,
+       "max_us": 101,
+       "total_us": 419
+      },
+      "demon/icharge/hit": {
+       "count": 24,
+       "max_us": 634,
+       "total_us": 8078
+      },
+      "demon/icharge/run": {
+       "count": 8,
+       "max_us": 361,
+       "total_us": 1599
+      },
+      "demon/icharge/skid": {
+       "count": 8,
+       "max_us": 2131,
+       "total_us": 6883
+      },
+      "demon/icharge/wind": {
+       "count": 8,
+       "max_us": 150369,
+       "total_us": 161691
+      },
+      "demon/war_cry/cast": {
+       "count": 8,
+       "max_us": 25,
+       "total_us": 144
+      },
+      "demon/war_cry/impact": {
+       "count": 8,
+       "max_us": 970,
+       "total_us": 5224
+      },
+      "demon/wrath/cast": {
+       "count": 8,
+       "max_us": 93,
+       "total_us": 326
+      },
+      "demon/wrath/crucible": {
+       "count": 8,
+       "max_us": 74923,
+       "total_us": 85772
+      },
+      "plague/arc/cast": {
+       "count": 8,
+       "max_us": 374,
+       "total_us": 1623
+      },
+      "plague/arc/impact": {
+       "count": 8,
+       "max_us": 5633,
+       "total_us": 10712
+      },
+      "plague/attack/hit": {
+       "count": 24,
+       "max_us": 887,
+       "total_us": 8998
+      },
+      "plague/bloom": {
+       "count": 8,
+       "max_us": 271196,
+       "total_us": 321058
+      },
+      "plague/bloom/cast": {
+       "count": 8,
+       "max_us": 230,
+       "total_us": 1206
+      },
+      "plague/burst": {
+       "count": 8,
+       "max_us": 353510,
+       "total_us": 632445
+      },
+      "plague/cloud": {
+       "count": 16,
+       "max_us": 327,
+       "total_us": 2849
+      },
+      "plague/earthshatter/cast": {
+       "count": 8,
+       "max_us": 106,
+       "total_us": 447
+      },
+      "plague/earthshatter/impact": {
+       "count": 8,
+       "max_us": 16516,
+       "total_us": 40331
+      },
+      "plague/earthshatter/windup": {
+       "count": 8,
+       "max_us": 112,
+       "total_us": 594
+      },
+      "plague/experiment/cast": {
+       "count": 8,
+       "max_us": 197,
+       "total_us": 1175
+      },
+      "plague/fog": {
+       "count": 8,
+       "max_us": 126037,
+       "total_us": 158684
+      },
+      "plague/fog/cast": {
+       "count": 8,
+       "max_us": 255,
+       "total_us": 1363
+      },
+      "plague/frost_nova/cast": {
+       "count": 8,
+       "max_us": 2945,
+       "total_us": 4750
+      },
+      "plague/frost_nova/impact": {
+       "count": 8,
+       "max_us": 6857,
+       "total_us": 26038
+      },
+      "plague/reveal": {
+       "count": 8,
+       "max_us": 9,
+       "total_us": 38
+      },
+      "plague/spew": {
+       "count": 8,
+       "max_us": 84761,
+       "total_us": 91024
+      },
+      "plague/swarm": {
+       "count": 8,
+       "max_us": 114253,
+       "total_us": 118852
+      },
+      "plague/swarm/cast": {
+       "count": 8,
+       "max_us": 242,
+       "total_us": 1145
+      },
+      "plague/swarm_scatter": {
+       "count": 8,
+       "max_us": 70,
+       "total_us": 245
+      },
+      "plague/throw": {
+       "count": 8,
+       "max_us": 50359,
+       "total_us": 80669
+      },
+      "plague/toxic/cast": {
+       "count": 8,
+       "max_us": 244,
+       "total_us": 1204
+      },
+      "plague/trans": {
+       "count": 8,
+       "max_us": 177530,
+       "total_us": 189549
+      },
+      "plague/trans_end": {
+       "count": 8,
+       "max_us": 1489,
+       "total_us": 5677
+      },
+      "plague/transfusion/cast": {
+       "count": 8,
+       "max_us": 219,
+       "total_us": 1234
+      },
+      "plague/vat": {
+       "count": 8,
+       "max_us": 245701,
+       "total_us": 311164
+      },
+      "plague/war_cry/cast": {
+       "count": 8,
+       "max_us": 25,
+       "total_us": 129
+      },
+      "plague/war_cry/impact": {
+       "count": 8,
+       "max_us": 1581,
+       "total_us": 4981
+      }
+     },
+     "kind": "presentation_replay_not_network_simulation",
+     "peak_fx_root_children": 2421,
+     "pre_burst_fx_children": [
+      0,
+      1233,
+      263,
+      75
+     ],
+     "presentation_events": 688,
+     "teams": [
+      3,
+      3
+     ]
+    },
+    "ram_mb": 459,
+    "render_cpu_ms": 26.42,
+    "renderer": "forward_plus",
+    "resolution": "(1600, 900)",
+    "scenario": "pvp3v3",
+    "schema": 2,
+    "script_ms": 27.51,
+    "secs": 18.08,
+    "skill": "",
+    "vram_mb": 1823,
+    "validation": {
+     "exit": 0,
+     "clean": true,
+     "errors": [],
+     "other_godots": [],
+     "source": "baseline"
+    }
+   },
+   {
+    "cache": {
+     "held": 40,
+     "sync_misses": {}
+    },
+    "class": "knight",
+    "clock": "monotonic_wall",
+    "cpu_physics_peak_ms": 16.78,
+    "cpu_process_peak_ms": 154.37,
+    "draw_calls": 924,
+    "enemies": 0,
+    "engine": "4.3-stable (official)",
+    "first_use_max_ms": 5994.98,
+    "focused": true,
+    "fps_avg": 15.1,
+    "fps_low1": 0.7,
+    "frame_ms_max": 1632.067,
+    "frame_ms_median": 31.41,
+    "frame_ms_p99": 759.36,
+    "frames": 272,
+    "gameplay_sync_misses": {},
+    "gpu_ms": 30.38,
+    "gpu_name": "Apple M6",
+    "hitches_per_min": 113.2,
+    "load_ms": 8390,
+    "nodes": 4571,
+    "objects": 1154,
+    "physics_ms": 0.27,
+    "preparation": {},
+    "preset": 2,
+    "primitives": 4778298,
+    "pvp": {
+     "actors": 6,
+     "bursts": 4,
+     "classes": [
+      "demon",
+      "plague",
+      "archer",
+      "demon",
+      "plague",
+      "archer"
+     ],
+     "creation_us": {
+      "archer/arc/cast": {
+       "count": 8,
+       "max_us": 563,
+       "total_us": 1923
+      },
+      "archer/arc/impact": {
+       "count": 8,
+       "max_us": 1055,
+       "total_us": 5950
+      },
+      "archer/attack/loose": {
+       "count": 8,
+       "max_us": 54393,
+       "total_us": 59234
+      },
+      "archer/beast/cast": {
+       "count": 8,
+       "max_us": 274,
+       "total_us": 589
+      },
+      "archer/beast/impact": {
+       "count": 8,
+       "max_us": 17259,
+       "total_us": 22020
+      },
+      "archer/earthshatter/cast": {
+       "count": 8,
+       "max_us": 63,
+       "total_us": 308
+      },
+      "archer/earthshatter/impact": {
+       "count": 8,
+       "max_us": 9680,
+       "total_us": 31750
+      },
+      "archer/earthshatter/windup": {
+       "count": 8,
+       "max_us": 199,
+       "total_us": 721
+      },
+      "archer/frost_nova/cast": {
+       "count": 8,
+       "max_us": 279,
+       "total_us": 1470
+      },
+      "archer/frost_nova/impact": {
+       "count": 8,
+       "max_us": 5232,
+       "total_us": 24485
+      },
+      "archer/pierce/cast": {
+       "count": 8,
+       "max_us": 140,
+       "total_us": 445
+      },
+      "archer/pierce/loose": {
+       "count": 8,
+       "max_us": 324534,
+       "total_us": 373483
+      },
+      "archer/snare/cast": {
+       "count": 8,
+       "max_us": 202,
+       "total_us": 625
+      },
+      "archer/snare/spring": {
+       "count": 8,
+       "max_us": 402094,
+       "total_us": 416367
+      },
+      "archer/snare/vault": {
+       "count": 8,
+       "max_us": 197180,
+       "total_us": 217179
+      },
+      "archer/volley/cast": {
+       "count": 8,
+       "max_us": 146,
+       "total_us": 538
+      },
+      "archer/volley/impact": {
+       "count": 8,
+       "max_us": 60581,
+       "total_us": 84802
+      },
+      "archer/war_cry/cast": {
+       "count": 8,
+       "max_us": 19,
+       "total_us": 130
+      },
+      "archer/war_cry/impact": {
+       "count": 8,
+       "max_us": 796,
+       "total_us": 4243
+      },
+      "demon/arc/cast": {
+       "count": 8,
+       "max_us": 7507,
+       "total_us": 9202
+      },
+      "demon/arc/impact": {
+       "count": 8,
+       "max_us": 1346,
+       "total_us": 6636
+      },
+      "demon/attack/hit": {
+       "count": 24,
+       "max_us": 27532,
+       "total_us": 44186
+      },
+      "demon/cslam/cast": {
+       "count": 8,
+       "max_us": 50,
+       "total_us": 225
+      },
+      "demon/cslam/erupt": {
+       "count": 8,
+       "max_us": 295115,
+       "total_us": 338458
+      },
+      "demon/cslam/impact": {
+       "count": 8,
+       "max_us": 89632,
+       "total_us": 104778
+      },
+      "demon/earthshatter/cast": {
+       "count": 8,
+       "max_us": 66,
+       "total_us": 411
+      },
+      "demon/earthshatter/impact": {
+       "count": 8,
+       "max_us": 7790,
+       "total_us": 33416
+      },
+      "demon/earthshatter/windup": {
+       "count": 8,
+       "max_us": 156,
+       "total_us": 821
+      },
+      "demon/fists/brand": {
+       "count": 8,
+       "max_us": 120,
+       "total_us": 356
+      },
+      "demon/fists/cast": {
+       "count": 8,
+       "max_us": 25654,
+       "total_us": 63111
+      },
+      "demon/fists/impact": {
+       "count": 8,
+       "max_us": 31976,
+       "total_us": 97710
+      },
+      "demon/frost_nova/cast": {
+       "count": 8,
+       "max_us": 333,
+       "total_us": 1814
+      },
+      "demon/frost_nova/impact": {
+       "count": 8,
+       "max_us": 11479,
+       "total_us": 31676
+      },
+      "demon/grip/cast": {
+       "count": 8,
+       "max_us": 432,
+       "total_us": 1998
+      },
+      "demon/grip/fling": {
+       "count": 8,
+       "max_us": 153401,
+       "total_us": 177503
+      },
+      "demon/grip/grab": {
+       "count": 8,
+       "max_us": 47,
+       "total_us": 258
+      },
+      "demon/grip/hook": {
+       "count": 8,
+       "max_us": 826,
+       "total_us": 4052
+      },
+      "demon/grip/smash": {
+       "count": 8,
+       "max_us": 8420,
+       "total_us": 20174
+      },
+      "demon/hurl/cast": {
+       "count": 8,
+       "max_us": 625,
+       "total_us": 3180
+      },
+      "demon/hurl/splash": {
+       "count": 8,
+       "max_us": 47565,
+       "total_us": 60130
+      },
+      "demon/hurl/throw": {
+       "count": 8,
+       "max_us": 285787,
+       "total_us": 299101
+      },
+      "demon/icharge/cast": {
+       "count": 8,
+       "max_us": 78,
+       "total_us": 280
+      },
+      "demon/icharge/end": {
+       "count": 8,
+       "max_us": 59,
+       "total_us": 310
+      },
+      "demon/icharge/hit": {
+       "count": 24,
+       "max_us": 2036,
+       "total_us": 8979
+      },
+      "demon/icharge/run": {
+       "count": 8,
+       "max_us": 225,
+       "total_us": 1418
+      },
+      "demon/icharge/skid": {
+       "count": 8,
+       "max_us": 1169,
+       "total_us": 5208
+      },
+      "demon/icharge/wind": {
+       "count": 8,
+       "max_us": 157224,
+       "total_us": 172022
+      },
+      "demon/war_cry/cast": {
+       "count": 8,
+       "max_us": 25,
+       "total_us": 146
+      },
+      "demon/war_cry/impact": {
+       "count": 8,
+       "max_us": 1052,
+       "total_us": 5504
+      },
+      "demon/wrath/cast": {
+       "count": 8,
+       "max_us": 73,
+       "total_us": 330
+      },
+      "demon/wrath/crucible": {
+       "count": 8,
+       "max_us": 76585,
+       "total_us": 86121
+      },
+      "plague/arc/cast": {
+       "count": 8,
+       "max_us": 321,
+       "total_us": 1584
+      },
+      "plague/arc/impact": {
+       "count": 8,
+       "max_us": 934,
+       "total_us": 5438
+      },
+      "plague/attack/hit": {
+       "count": 24,
+       "max_us": 804,
+       "total_us": 7687
+      },
+      "plague/bloom": {
+       "count": 8,
+       "max_us": 284036,
+       "total_us": 332198
+      },
+      "plague/bloom/cast": {
+       "count": 8,
+       "max_us": 156,
+       "total_us": 857
+      },
+      "plague/burst": {
+       "count": 8,
+       "max_us": 256868,
+       "total_us": 655874
+      },
+      "plague/cloud": {
+       "count": 16,
+       "max_us": 519,
+       "total_us": 3266
+      },
+      "plague/earthshatter/cast": {
+       "count": 8,
+       "max_us": 106,
+       "total_us": 378
+      },
+      "plague/earthshatter/impact": {
+       "count": 8,
+       "max_us": 3935,
+       "total_us": 23022
+      },
+      "plague/earthshatter/windup": {
+       "count": 8,
+       "max_us": 107,
+       "total_us": 465
+      },
+      "plague/experiment/cast": {
+       "count": 8,
+       "max_us": 133,
+       "total_us": 819
+      },
+      "plague/fog": {
+       "count": 8,
+       "max_us": 150311,
+       "total_us": 183005
+      },
+      "plague/fog/cast": {
+       "count": 8,
+       "max_us": 133,
+       "total_us": 796
+      },
+      "plague/frost_nova/cast": {
+       "count": 8,
+       "max_us": 275,
+       "total_us": 1545
+      },
+      "plague/frost_nova/impact": {
+       "count": 8,
+       "max_us": 3844,
+       "total_us": 23570
+      },
+      "plague/reveal": {
+       "count": 8,
+       "max_us": 7,
+       "total_us": 36
+      },
+      "plague/spew": {
+       "count": 8,
+       "max_us": 69684,
+       "total_us": 78166
+      },
+      "plague/swarm": {
+       "count": 8,
+       "max_us": 123100,
+       "total_us": 127754
+      },
+      "plague/swarm/cast": {
+       "count": 8,
+       "max_us": 211,
+       "total_us": 1033
+      },
+      "plague/swarm_scatter": {
+       "count": 8,
+       "max_us": 57,
+       "total_us": 260
+      },
+      "plague/throw": {
+       "count": 8,
+       "max_us": 58326,
+       "total_us": 93533
+      },
+      "plague/toxic/cast": {
+       "count": 8,
+       "max_us": 223,
+       "total_us": 1113
+      },
+      "plague/trans": {
+       "count": 8,
+       "max_us": 145225,
+       "total_us": 152504
+      },
+      "plague/trans_end": {
+       "count": 8,
+       "max_us": 1110,
+       "total_us": 6754
+      },
+      "plague/transfusion/cast": {
+       "count": 8,
+       "max_us": 131,
+       "total_us": 825
+      },
+      "plague/vat": {
+       "count": 8,
+       "max_us": 241676,
+       "total_us": 309640
+      },
+      "plague/war_cry/cast": {
+       "count": 8,
+       "max_us": 63,
+       "total_us": 252
+      },
+      "plague/war_cry/impact": {
+       "count": 8,
+       "max_us": 1003,
+       "total_us": 4975
+      }
+     },
+     "kind": "presentation_replay_not_network_simulation",
+     "peak_fx_root_children": 2411,
+     "pre_burst_fx_children": [
+      0,
+      1260,
+      83,
+      63
+     ],
+     "presentation_events": 688,
+     "teams": [
+      3,
+      3
+     ]
+    },
+    "ram_mb": 450,
+    "render_cpu_ms": 16.44,
+    "renderer": "forward_plus",
+    "resolution": "(1600, 900)",
+    "scenario": "pvp3v3",
+    "schema": 2,
+    "script_ms": 17.59,
+    "secs": 18.02,
+    "skill": "",
+    "vram_mb": 1820,
+    "validation": {
+     "exit": 0,
+     "clean": true,
+     "errors": [],
+     "other_godots": [],
+     "source": "baseline"
+    }
+   },
+   {
+    "cache": {
+     "held": 40,
+     "sync_misses": {}
+    },
+    "class": "knight",
+    "clock": "monotonic_wall",
+    "cpu_physics_peak_ms": 22.38,
+    "cpu_process_peak_ms": 146.18,
+    "draw_calls": 930,
+    "enemies": 0,
+    "engine": "4.3-stable (official)",
+    "first_use_max_ms": 5712.27,
+    "focused": true,
+    "fps_avg": 13.4,
+    "fps_low1": 1,
+    "frame_ms_max": 994.838,
+    "frame_ms_median": 34.9,
+    "frame_ms_p99": 836.01,
+    "frames": 242,
+    "gameplay_sync_misses": {},
+    "gpu_ms": 32.64,
+    "gpu_name": "Apple M6",
+    "hitches_per_min": 120,
+    "load_ms": 8378,
+    "nodes": 3777,
+    "objects": 1189,
+    "physics_ms": 0.34,
+    "preparation": {},
+    "preset": 2,
+    "primitives": 4948040,
+    "pvp": {
+     "actors": 6,
+     "bursts": 4,
+     "classes": [
+      "demon",
+      "plague",
+      "archer",
+      "demon",
+      "plague",
+      "archer"
+     ],
+     "creation_us": {
+      "archer/arc/cast": {
+       "count": 8,
+       "max_us": 493,
+       "total_us": 1768
+      },
+      "archer/arc/impact": {
+       "count": 8,
+       "max_us": 1604,
+       "total_us": 7729
+      },
+      "archer/attack/loose": {
+       "count": 8,
+       "max_us": 56867,
+       "total_us": 61013
+      },
+      "archer/beast/cast": {
+       "count": 8,
+       "max_us": 314,
+       "total_us": 576
+      },
+      "archer/beast/impact": {
+       "count": 8,
+       "max_us": 9327,
+       "total_us": 16463
+      },
+      "archer/earthshatter/cast": {
+       "count": 8,
+       "max_us": 81,
+       "total_us": 358
+      },
+      "archer/earthshatter/impact": {
+       "count": 8,
+       "max_us": 4782,
+       "total_us": 27232
+      },
+      "archer/earthshatter/windup": {
+       "count": 8,
+       "max_us": 320,
+       "total_us": 1029
+      },
+      "archer/frost_nova/cast": {
+       "count": 8,
+       "max_us": 310,
+       "total_us": 1509
+      },
+      "archer/frost_nova/impact": {
+       "count": 8,
+       "max_us": 3721,
+       "total_us": 23396
+      },
+      "archer/pierce/cast": {
+       "count": 8,
+       "max_us": 125,
+       "total_us": 426
+      },
+      "archer/pierce/loose": {
+       "count": 8,
+       "max_us": 320565,
+       "total_us": 357865
+      },
+      "archer/snare/cast": {
+       "count": 8,
+       "max_us": 94,
+       "total_us": 362
+      },
+      "archer/snare/spring": {
+       "count": 8,
+       "max_us": 356230,
+       "total_us": 366772
+      },
+      "archer/snare/vault": {
+       "count": 8,
+       "max_us": 160063,
+       "total_us": 176510
+      },
+      "archer/volley/cast": {
+       "count": 8,
+       "max_us": 108,
+       "total_us": 505
+      },
+      "archer/volley/impact": {
+       "count": 8,
+       "max_us": 54141,
+       "total_us": 79517
+      },
+      "archer/war_cry/cast": {
+       "count": 8,
+       "max_us": 39,
+       "total_us": 204
+      },
+      "archer/war_cry/impact": {
+       "count": 8,
+       "max_us": 1162,
+       "total_us": 5136
+      },
+      "demon/arc/cast": {
+       "count": 8,
+       "max_us": 462,
+       "total_us": 1922
+      },
+      "demon/arc/impact": {
+       "count": 8,
+       "max_us": 1298,
+       "total_us": 5625
+      },
+      "demon/attack/hit": {
+       "count": 24,
+       "max_us": 10095,
+       "total_us": 19649
+      },
+      "demon/cslam/cast": {
+       "count": 8,
+       "max_us": 49,
+       "total_us": 207
+      },
+      "demon/cslam/erupt": {
+       "count": 8,
+       "max_us": 303774,
+       "total_us": 333411
+      },
+      "demon/cslam/impact": {
+       "count": 8,
+       "max_us": 91709,
+       "total_us": 103942
+      },
+      "demon/earthshatter/cast": {
+       "count": 8,
+       "max_us": 75,
+       "total_us": 312
+      },
+      "demon/earthshatter/impact": {
+       "count": 8,
+       "max_us": 4933,
+       "total_us": 25254
+      },
+      "demon/earthshatter/windup": {
+       "count": 8,
+       "max_us": 265,
+       "total_us": 691
+      },
+      "demon/fists/brand": {
+       "count": 8,
+       "max_us": 277,
+       "total_us": 492
+      },
+      "demon/fists/cast": {
+       "count": 8,
+       "max_us": 13026,
+       "total_us": 41879
+      },
+      "demon/fists/impact": {
+       "count": 8,
+       "max_us": 34128,
+       "total_us": 84076
+      },
+      "demon/frost_nova/cast": {
+       "count": 8,
+       "max_us": 289,
+       "total_us": 1317
+      },
+      "demon/frost_nova/impact": {
+       "count": 8,
+       "max_us": 3387,
+       "total_us": 20830
+      },
+      "demon/grip/cast": {
+       "count": 8,
+       "max_us": 925,
+       "total_us": 2557
+      },
+      "demon/grip/fling": {
+       "count": 8,
+       "max_us": 167022,
+       "total_us": 189911
+      },
+      "demon/grip/grab": {
+       "count": 8,
+       "max_us": 61,
+       "total_us": 285
+      },
+      "demon/grip/hook": {
+       "count": 8,
+       "max_us": 1339,
+       "total_us": 4385
+      },
+      "demon/grip/smash": {
+       "count": 8,
+       "max_us": 1828,
+       "total_us": 10938
+      },
+      "demon/hurl/cast": {
+       "count": 8,
+       "max_us": 905,
+       "total_us": 2595
+      },
+      "demon/hurl/splash": {
+       "count": 8,
+       "max_us": 42432,
+       "total_us": 52787
+      },
+      "demon/hurl/throw": {
+       "count": 8,
+       "max_us": 288772,
+       "total_us": 300414
+      },
+      "demon/icharge/cast": {
+       "count": 8,
+       "max_us": 114,
+       "total_us": 366
+      },
+      "demon/icharge/end": {
+       "count": 8,
+       "max_us": 835,
+       "total_us": 1189
+      },
+      "demon/icharge/hit": {
+       "count": 24,
+       "max_us": 783,
+       "total_us": 9012
+      },
+      "demon/icharge/run": {
+       "count": 8,
+       "max_us": 382,
+       "total_us": 1624
+      },
+      "demon/icharge/skid": {
+       "count": 8,
+       "max_us": 1057,
+       "total_us": 5622
+      },
+      "demon/icharge/wind": {
+       "count": 8,
+       "max_us": 159843,
+       "total_us": 167836
+      },
+      "demon/war_cry/cast": {
+       "count": 8,
+       "max_us": 46,
+       "total_us": 176
+      },
+      "demon/war_cry/impact": {
+       "count": 8,
+       "max_us": 837,
+       "total_us": 4889
+      },
+      "demon/wrath/cast": {
+       "count": 8,
+       "max_us": 76,
+       "total_us": 273
+      },
+      "demon/wrath/crucible": {
+       "count": 8,
+       "max_us": 75620,
+       "total_us": 82823
+      },
+      "plague/arc/cast": {
+       "count": 8,
+       "max_us": 245,
+       "total_us": 1376
+      },
+      "plague/arc/impact": {
+       "count": 8,
+       "max_us": 848,
+       "total_us": 4495
+      },
+      "plague/attack/hit": {
+       "count": 24,
+       "max_us": 587,
+       "total_us": 6959
+      },
+      "plague/bloom": {
+       "count": 8,
+       "max_us": 277271,
+       "total_us": 324311
+      },
+      "plague/bloom/cast": {
+       "count": 8,
+       "max_us": 210,
+       "total_us": 971
+      },
+      "plague/burst": {
+       "count": 8,
+       "max_us": 234876,
+       "total_us": 613687
+      },
+      "plague/cloud": {
+       "count": 16,
+       "max_us": 659,
+       "total_us": 2655
+      },
+      "plague/earthshatter/cast": {
+       "count": 8,
+       "max_us": 110,
+       "total_us": 410
+      },
+      "plague/earthshatter/impact": {
+       "count": 8,
+       "max_us": 4452,
+       "total_us": 24637
+      },
+      "plague/earthshatter/windup": {
+       "count": 8,
+       "max_us": 85,
+       "total_us": 548
+      },
+      "plague/experiment/cast": {
+       "count": 8,
+       "max_us": 195,
+       "total_us": 1056
+      },
+      "plague/fog": {
+       "count": 8,
+       "max_us": 136709,
+       "total_us": 165366
+      },
+      "plague/fog/cast": {
+       "count": 8,
+       "max_us": 216,
+       "total_us": 930
+      },
+      "plague/frost_nova/cast": {
+       "count": 8,
+       "max_us": 217,
+       "total_us": 1224
+      },
+      "plague/frost_nova/impact": {
+       "count": 8,
+       "max_us": 4875,
+       "total_us": 21020
+      },
+      "plague/reveal": {
+       "count": 8,
+       "max_us": 8,
+       "total_us": 35
+      },
+      "plague/spew": {
+       "count": 8,
+       "max_us": 70668,
+       "total_us": 78076
+      },
+      "plague/swarm": {
+       "count": 8,
+       "max_us": 144106,
+       "total_us": 146829
+      },
+      "plague/swarm/cast": {
+       "count": 8,
+       "max_us": 200,
+       "total_us": 974
+      },
+      "plague/swarm_scatter": {
+       "count": 8,
+       "max_us": 98,
+       "total_us": 291
+      },
+      "plague/throw": {
+       "count": 8,
+       "max_us": 52068,
+       "total_us": 74761
+      },
+      "plague/toxic/cast": {
+       "count": 8,
+       "max_us": 205,
+       "total_us": 1109
+      },
+      "plague/trans": {
+       "count": 8,
+       "max_us": 136550,
+       "total_us": 144994
+      },
+      "plague/trans_end": {
+       "count": 8,
+       "max_us": 1232,
+       "total_us": 4517
+      },
+      "plague/transfusion/cast": {
+       "count": 8,
+       "max_us": 207,
+       "total_us": 1023
+      },
+      "plague/vat": {
+       "count": 8,
+       "max_us": 248529,
+       "total_us": 310537
+      },
+      "plague/war_cry/cast": {
+       "count": 8,
+       "max_us": 26,
+       "total_us": 141
+      },
+      "plague/war_cry/impact": {
+       "count": 8,
+       "max_us": 4775,
+       "total_us": 8104
+      }
+     },
+     "kind": "presentation_replay_not_network_simulation",
+     "peak_fx_root_children": 2375,
+     "pre_burst_fx_children": [
+      0,
+      1256,
+      125,
+      73
+     ],
+     "presentation_events": 688,
+     "teams": [
+      3,
+      3
+     ]
+    },
+    "ram_mb": 432,
+    "render_cpu_ms": 17.52,
+    "renderer": "forward_plus",
+    "resolution": "(1600, 900)",
+    "scenario": "pvp3v3",
+    "schema": 2,
+    "script_ms": 19.36,
+    "secs": 18,
+    "skill": "",
+    "vram_mb": 1817,
+    "validation": {
+     "exit": 0,
+     "clean": true,
+     "errors": [],
+     "other_godots": [],
+     "source": "baseline"
+    }
+   }
+  ],
+  "median": {
+   "fps_avg": 13.4,
+   "frame_ms_p99": 836.01,
+   "first_use_max_ms": 5870.155,
+   "load_ms": 8390,
+   "vram_mb": 1820
+  }
+ },
+ "candidate": {
+  "runs": [
+   {
+    "cache": {
+     "errors": {},
+     "held": 315,
+     "legacy_pins": 5,
+     "loads_started": 175,
+     "pending": 0,
+     "queued": 0,
+     "scopes": 2,
+     "sync_misses": {
+      "res://assets/models/knight_meshy.glb": 1,
+      "res://assets/models/knight_mocap.glb": 1,
+      "res://assets/models/monsters/wolf.glb": 1,
+      "res://assets/textures/fx/fire_body.png": 1,
+      "res://assets/textures/fx/fire_tongue.png": 1
+     }
+    },
+    "class": "knight",
+    "clock": "monotonic_wall",
+    "cpu_physics_peak_ms": 12.96,
+    "cpu_process_peak_ms": 107.66,
+    "draw_calls": 885,
+    "enemies": 0,
+    "engine": "4.3-stable (official)",
+    "first_use_max_ms": 1460.567,
+    "focused": true,
+    "fps_avg": 25.8,
+    "fps_low1": 1.2,
+    "frame_ms_max": 1623.423,
+    "frame_ms_median": 22.95,
+    "frame_ms_p99": 318.51,
+    "frames": 465,
+    "gameplay_sync_misses": {
+     "res://assets/models/monsters/wolf.glb": 1
+    },
+    "gpu_ms": 24.04,
+    "gpu_name": "Apple M6",
+    "hitches_per_min": 63.3,
+    "load_ms": 31313,
+    "nodes": 4662,
+    "objects": 1060,
+    "physics_ms": 0.13,
+    "preparation": {
+     "construction_ms": 712,
+     "resources_ms": 20838
+    },
+    "preset": 2,
+    "primitives": 4302175,
+    "pvp": {
+     "actors": 6,
+     "bursts": 4,
+     "classes": [
+      "demon",
+      "plague",
+      "archer",
+      "demon",
+      "plague",
+      "archer"
+     ],
+     "creation_us": {
+      "archer/arc/cast": {
+       "count": 8,
+       "max_us": 744,
+       "total_us": 2308
+      },
+      "archer/arc/impact": {
+       "count": 8,
+       "max_us": 1277,
+       "total_us": 6583
+      },
+      "archer/attack/loose": {
+       "count": 8,
+       "max_us": 1784,
+       "total_us": 6589
+      },
+      "archer/beast/cast": {
+       "count": 8,
+       "max_us": 186,
+       "total_us": 422
+      },
+      "archer/beast/impact": {
+       "count": 8,
+       "max_us": 1201,
+       "total_us": 5903
+      },
+      "archer/earthshatter/cast": {
+       "count": 8,
+       "max_us": 80,
+       "total_us": 331
+      },
+      "archer/earthshatter/impact": {
+       "count": 8,
+       "max_us": 5426,
+       "total_us": 26293
+      },
+      "archer/earthshatter/windup": {
+       "count": 8,
+       "max_us": 144,
+       "total_us": 563
+      },
+      "archer/frost_nova/cast": {
+       "count": 8,
+       "max_us": 309,
+       "total_us": 1644
+      },
+      "archer/frost_nova/impact": {
+       "count": 8,
+       "max_us": 14834,
+       "total_us": 38370
+      },
+      "archer/pierce/cast": {
+       "count": 8,
+       "max_us": 106,
+       "total_us": 421
+      },
+      "archer/pierce/loose": {
+       "count": 8,
+       "max_us": 14895,
+       "total_us": 54618
+      },
+      "archer/snare/cast": {
+       "count": 8,
+       "max_us": 87,
+       "total_us": 373
+      },
+      "archer/snare/spring": {
+       "count": 8,
+       "max_us": 12042,
+       "total_us": 22227
+      },
+      "archer/snare/vault": {
+       "count": 8,
+       "max_us": 4033,
+       "total_us": 19569
+      },
+      "archer/volley/cast": {
+       "count": 8,
+       "max_us": 107,
+       "total_us": 570
+      },
+      "archer/volley/impact": {
+       "count": 8,
+       "max_us": 15750,
+       "total_us": 46634
+      },
+      "archer/war_cry/cast": {
+       "count": 8,
+       "max_us": 37,
+       "total_us": 162
+      },
+      "archer/war_cry/impact": {
+       "count": 8,
+       "max_us": 1920,
+       "total_us": 6278
+      },
+      "demon/arc/cast": {
+       "count": 8,
+       "max_us": 748,
+       "total_us": 3108
+      },
+      "demon/arc/impact": {
+       "count": 8,
+       "max_us": 1600,
+       "total_us": 8004
+      },
+      "demon/attack/hit": {
+       "count": 24,
+       "max_us": 2635,
+       "total_us": 13868
+      },
+      "demon/cslam/cast": {
+       "count": 8,
+       "max_us": 57,
+       "total_us": 240
+      },
+      "demon/cslam/erupt": {
+       "count": 8,
+       "max_us": 13967,
+       "total_us": 48230
+      },
+      "demon/cslam/impact": {
+       "count": 8,
+       "max_us": 3928,
+       "total_us": 15708
+      },
+      "demon/earthshatter/cast": {
+       "count": 8,
+       "max_us": 685,
+       "total_us": 1040
+      },
+      "demon/earthshatter/impact": {
+       "count": 8,
+       "max_us": 19470,
+       "total_us": 55938
+      },
+      "demon/earthshatter/windup": {
+       "count": 8,
+       "max_us": 4429,
+       "total_us": 5136
+      },
+      "demon/fists/brand": {
+       "count": 8,
+       "max_us": 122,
+       "total_us": 350
+      },
+      "demon/fists/cast": {
+       "count": 8,
+       "max_us": 10308,
+       "total_us": 38975
+      },
+      "demon/fists/impact": {
+       "count": 8,
+       "max_us": 22008,
+       "total_us": 63973
+      },
+      "demon/frost_nova/cast": {
+       "count": 8,
+       "max_us": 821,
+       "total_us": 2273
+      },
+      "demon/frost_nova/impact": {
+       "count": 8,
+       "max_us": 4124,
+       "total_us": 23241
+      },
+      "demon/grip/cast": {
+       "count": 8,
+       "max_us": 9375,
+       "total_us": 10933
+      },
+      "demon/grip/fling": {
+       "count": 8,
+       "max_us": 18306,
+       "total_us": 52370
+      },
+      "demon/grip/grab": {
+       "count": 8,
+       "max_us": 55,
+       "total_us": 351
+      },
+      "demon/grip/hook": {
+       "count": 8,
+       "max_us": 2571,
+       "total_us": 6590
+      },
+      "demon/grip/smash": {
+       "count": 8,
+       "max_us": 7508,
+       "total_us": 18295
+      },
+      "demon/hurl/cast": {
+       "count": 8,
+       "max_us": 517,
+       "total_us": 2373
+      },
+      "demon/hurl/splash": {
+       "count": 8,
+       "max_us": 98875,
+       "total_us": 108992
+      },
+      "demon/hurl/throw": {
+       "count": 8,
+       "max_us": 5424,
+       "total_us": 16269
+      },
+      "demon/icharge/cast": {
+       "count": 8,
+       "max_us": 127,
+       "total_us": 313
+      },
+      "demon/icharge/end": {
+       "count": 8,
+       "max_us": 1965,
+       "total_us": 2528
+      },
+      "demon/icharge/hit": {
+       "count": 24,
+       "max_us": 9034,
+       "total_us": 16388
+      },
+      "demon/icharge/run": {
+       "count": 8,
+       "max_us": 316,
+       "total_us": 1252
+      },
+      "demon/icharge/skid": {
+       "count": 8,
+       "max_us": 4303,
+       "total_us": 10481
+      },
+      "demon/icharge/wind": {
+       "count": 8,
+       "max_us": 4349,
+       "total_us": 14211
+      },
+      "demon/war_cry/cast": {
+       "count": 8,
+       "max_us": 32,
+       "total_us": 189
+      },
+      "demon/war_cry/impact": {
+       "count": 8,
+       "max_us": 1793,
+       "total_us": 6166
+      },
+      "demon/wrath/cast": {
+       "count": 8,
+       "max_us": 85,
+       "total_us": 302
+      },
+      "demon/wrath/crucible": {
+       "count": 8,
+       "max_us": 7439,
+       "total_us": 15846
+      },
+      "plague/arc/cast": {
+       "count": 8,
+       "max_us": 677,
+       "total_us": 2313
+      },
+      "plague/arc/impact": {
+       "count": 8,
+       "max_us": 11777,
+       "total_us": 17849
+      },
+      "plague/attack/hit": {
+       "count": 24,
+       "max_us": 1459,
+       "total_us": 10746
+      },
+      "plague/bloom": {
+       "count": 8,
+       "max_us": 10914,
+       "total_us": 59725
+      },
+      "plague/bloom/cast": {
+       "count": 8,
+       "max_us": 256,
+       "total_us": 1054
+      },
+      "plague/burst": {
+       "count": 8,
+       "max_us": 238510,
+       "total_us": 589334
+      },
+      "plague/cloud": {
+       "count": 16,
+       "max_us": 362,
+       "total_us": 2718
+      },
+      "plague/earthshatter/cast": {
+       "count": 8,
+       "max_us": 158,
+       "total_us": 511
+      },
+      "plague/earthshatter/impact": {
+       "count": 8,
+       "max_us": 6237,
+       "total_us": 28435
+      },
+      "plague/earthshatter/windup": {
+       "count": 8,
+       "max_us": 514,
+       "total_us": 928
+      },
+      "plague/experiment/cast": {
+       "count": 8,
+       "max_us": 227,
+       "total_us": 1102
+      },
+      "plague/fog": {
+       "count": 8,
+       "max_us": 6144,
+       "total_us": 33229
+      },
+      "plague/fog/cast": {
+       "count": 8,
+       "max_us": 207,
+       "total_us": 992
+      },
+      "plague/frost_nova/cast": {
+       "count": 8,
+       "max_us": 258,
+       "total_us": 1491
+      },
+      "plague/frost_nova/impact": {
+       "count": 8,
+       "max_us": 15879,
+       "total_us": 36170
+      },
+      "plague/reveal": {
+       "count": 8,
+       "max_us": 9,
+       "total_us": 44
+      },
+      "plague/spew": {
+       "count": 8,
+       "max_us": 7728,
+       "total_us": 15105
+      },
+      "plague/swarm": {
+       "count": 8,
+       "max_us": 4573,
+       "total_us": 11844
+      },
+      "plague/swarm/cast": {
+       "count": 8,
+       "max_us": 225,
+       "total_us": 973
+      },
+      "plague/swarm_scatter": {
+       "count": 8,
+       "max_us": 51,
+       "total_us": 196
+      },
+      "plague/throw": {
+       "count": 8,
+       "max_us": 7346,
+       "total_us": 33726
+      },
+      "plague/toxic/cast": {
+       "count": 8,
+       "max_us": 366,
+       "total_us": 1308
+      },
+      "plague/trans": {
+       "count": 8,
+       "max_us": 2182,
+       "total_us": 8802
+      },
+      "plague/trans_end": {
+       "count": 8,
+       "max_us": 1672,
+       "total_us": 6799
+      },
+      "plague/transfusion/cast": {
+       "count": 8,
+       "max_us": 187,
+       "total_us": 1030
+      },
+      "plague/vat": {
+       "count": 8,
+       "max_us": 12561,
+       "total_us": 64545
+      },
+      "plague/war_cry/cast": {
+       "count": 8,
+       "max_us": 58,
+       "total_us": 184
+      },
+      "plague/war_cry/impact": {
+       "count": 8,
+       "max_us": 3156,
+       "total_us": 6760
+      }
+     },
+     "kind": "presentation_replay_not_network_simulation",
+     "peak_fx_root_children": 1302,
+     "pre_burst_fx_children": [
+      0,
+      98,
+      30,
+      24
+     ],
+     "presentation_events": 688,
+     "teams": [
+      3,
+      3
+     ]
+    },
+    "ram_mb": 459,
+    "render_cpu_ms": 4.96,
+    "renderer": "forward_plus",
+    "resolution": "(1600, 900)",
+    "scenario": "pvp3v3",
+    "schema": 2,
+    "script_ms": 9.97,
+    "secs": 18.01,
+    "skill": "",
+    "vram_mb": 3416,
+    "validation": {
+     "exit": 0,
+     "clean": true,
+     "errors": [],
+     "other_godots": [],
+     "source": "candidate"
+    }
+   },
+   {
+    "cache": {
+     "errors": {},
+     "held": 315,
+     "legacy_pins": 5,
+     "loads_started": 175,
+     "pending": 0,
+     "queued": 0,
+     "scopes": 2,
+     "sync_misses": {
+      "res://assets/models/knight_meshy.glb": 1,
+      "res://assets/models/knight_mocap.glb": 1,
+      "res://assets/models/monsters/wolf.glb": 1,
+      "res://assets/textures/fx/fire_body.png": 1,
+      "res://assets/textures/fx/fire_tongue.png": 1
+     }
+    },
+    "class": "knight",
+    "clock": "monotonic_wall",
+    "cpu_physics_peak_ms": 19.77,
+    "cpu_process_peak_ms": 123.9,
+    "draw_calls": 901,
+    "enemies": 0,
+    "engine": "4.3-stable (official)",
+    "first_use_max_ms": 1108.797,
+    "focused": true,
+    "fps_avg": 10.1,
+    "fps_low1": 0.6,
+    "frame_ms_max": 1739.779,
+    "frame_ms_median": 31.61,
+    "frame_ms_p99": 1679.75,
+    "frames": 183,
+    "gameplay_sync_misses": {
+     "res://assets/models/monsters/wolf.glb": 1
+    },
+    "gpu_ms": 33.38,
+    "gpu_name": "Apple M6",
+    "hitches_per_min": 118.7,
+    "load_ms": 31028,
+    "nodes": 5772,
+    "objects": 1122,
+    "physics_ms": 0.68,
+    "preparation": {
+     "construction_ms": 807,
+     "resources_ms": 20601
+    },
+    "preset": 2,
+    "primitives": 4718157,
+    "pvp": {
+     "actors": 6,
+     "bursts": 4,
+     "classes": [
+      "demon",
+      "plague",
+      "archer",
+      "demon",
+      "plague",
+      "archer"
+     ],
+     "creation_us": {
+      "archer/arc/cast": {
+       "count": 8,
+       "max_us": 782,
+       "total_us": 3034
+      },
+      "archer/arc/impact": {
+       "count": 8,
+       "max_us": 6007,
+       "total_us": 16462
+      },
+      "archer/attack/loose": {
+       "count": 8,
+       "max_us": 5018,
+       "total_us": 15001
+      },
+      "archer/beast/cast": {
+       "count": 8,
+       "max_us": 99,
+       "total_us": 346
+      },
+      "archer/beast/impact": {
+       "count": 8,
+       "max_us": 4833,
+       "total_us": 10603
+      },
+      "archer/earthshatter/cast": {
+       "count": 8,
+       "max_us": 178,
+       "total_us": 543
+      },
+      "archer/earthshatter/impact": {
+       "count": 8,
+       "max_us": 7315,
+       "total_us": 35195
+      },
+      "archer/earthshatter/windup": {
+       "count": 8,
+       "max_us": 554,
+       "total_us": 1205
+      },
+      "archer/frost_nova/cast": {
+       "count": 8,
+       "max_us": 467,
+       "total_us": 2084
+      },
+      "archer/frost_nova/impact": {
+       "count": 8,
+       "max_us": 5792,
+       "total_us": 30114
+      },
+      "archer/pierce/cast": {
+       "count": 8,
+       "max_us": 143,
+       "total_us": 617
+      },
+      "archer/pierce/loose": {
+       "count": 8,
+       "max_us": 24818,
+       "total_us": 99829
+      },
+      "archer/snare/cast": {
+       "count": 8,
+       "max_us": 121,
+       "total_us": 463
+      },
+      "archer/snare/spring": {
+       "count": 8,
+       "max_us": 31823,
+       "total_us": 46680
+      },
+      "archer/snare/vault": {
+       "count": 8,
+       "max_us": 8067,
+       "total_us": 31243
+      },
+      "archer/volley/cast": {
+       "count": 8,
+       "max_us": 141,
+       "total_us": 619
+      },
+      "archer/volley/impact": {
+       "count": 8,
+       "max_us": 77037,
+       "total_us": 115119
+      },
+      "archer/war_cry/cast": {
+       "count": 8,
+       "max_us": 49,
+       "total_us": 225
+      },
+      "archer/war_cry/impact": {
+       "count": 8,
+       "max_us": 1496,
+       "total_us": 6332
+      },
+      "demon/arc/cast": {
+       "count": 8,
+       "max_us": 2987,
+       "total_us": 5533
+      },
+      "demon/arc/impact": {
+       "count": 8,
+       "max_us": 10139,
+       "total_us": 19819
+      },
+      "demon/attack/hit": {
+       "count": 24,
+       "max_us": 30753,
+       "total_us": 65086
+      },
+      "demon/cslam/cast": {
+       "count": 8,
+       "max_us": 28,
+       "total_us": 165
+      },
+      "demon/cslam/erupt": {
+       "count": 8,
+       "max_us": 13657,
+       "total_us": 65307
+      },
+      "demon/cslam/impact": {
+       "count": 8,
+       "max_us": 6849,
+       "total_us": 26147
+      },
+      "demon/earthshatter/cast": {
+       "count": 8,
+       "max_us": 313,
+       "total_us": 807
+      },
+      "demon/earthshatter/impact": {
+       "count": 8,
+       "max_us": 7164,
+       "total_us": 35707
+      },
+      "demon/earthshatter/windup": {
+       "count": 8,
+       "max_us": 199,
+       "total_us": 875
+      },
+      "demon/fists/brand": {
+       "count": 8,
+       "max_us": 66,
+       "total_us": 321
+      },
+      "demon/fists/cast": {
+       "count": 8,
+       "max_us": 15575,
+       "total_us": 67338
+      },
+      "demon/fists/impact": {
+       "count": 8,
+       "max_us": 21454,
+       "total_us": 87057
+      },
+      "demon/frost_nova/cast": {
+       "count": 8,
+       "max_us": 1695,
+       "total_us": 3034
+      },
+      "demon/frost_nova/impact": {
+       "count": 8,
+       "max_us": 15408,
+       "total_us": 37974
+      },
+      "demon/grip/cast": {
+       "count": 8,
+       "max_us": 5039,
+       "total_us": 6912
+      },
+      "demon/grip/fling": {
+       "count": 8,
+       "max_us": 9518,
+       "total_us": 42595
+      },
+      "demon/grip/grab": {
+       "count": 8,
+       "max_us": 270,
+       "total_us": 517
+      },
+      "demon/grip/hook": {
+       "count": 8,
+       "max_us": 2435,
+       "total_us": 7896
+      },
+      "demon/grip/smash": {
+       "count": 8,
+       "max_us": 3395,
+       "total_us": 17939
+      },
+      "demon/hurl/cast": {
+       "count": 8,
+       "max_us": 1175,
+       "total_us": 3745
+      },
+      "demon/hurl/splash": {
+       "count": 8,
+       "max_us": 2974,
+       "total_us": 14981
+      },
+      "demon/hurl/throw": {
+       "count": 8,
+       "max_us": 28171,
+       "total_us": 40171
+      },
+      "demon/icharge/cast": {
+       "count": 8,
+       "max_us": 87,
+       "total_us": 349
+      },
+      "demon/icharge/end": {
+       "count": 8,
+       "max_us": 55,
+       "total_us": 335
+      },
+      "demon/icharge/hit": {
+       "count": 24,
+       "max_us": 2000,
+       "total_us": 13303
+      },
+      "demon/icharge/run": {
+       "count": 8,
+       "max_us": 1138,
+       "total_us": 2988
+      },
+      "demon/icharge/skid": {
+       "count": 8,
+       "max_us": 1867,
+       "total_us": 8543
+      },
+      "demon/icharge/wind": {
+       "count": 8,
+       "max_us": 279651,
+       "total_us": 300196
+      },
+      "demon/war_cry/cast": {
+       "count": 8,
+       "max_us": 404,
+       "total_us": 543
+      },
+      "demon/war_cry/impact": {
+       "count": 8,
+       "max_us": 3469,
+       "total_us": 8245
+      },
+      "demon/wrath/cast": {
+       "count": 8,
+       "max_us": 47,
+       "total_us": 235
+      },
+      "demon/wrath/crucible": {
+       "count": 8,
+       "max_us": 2192,
+       "total_us": 12050
+      },
+      "plague/arc/cast": {
+       "count": 8,
+       "max_us": 593,
+       "total_us": 2597
+      },
+      "plague/arc/impact": {
+       "count": 8,
+       "max_us": 36951,
+       "total_us": 43231
+      },
+      "plague/attack/hit": {
+       "count": 24,
+       "max_us": 5497,
+       "total_us": 15221
+      },
+      "plague/bloom": {
+       "count": 8,
+       "max_us": 15113,
+       "total_us": 66777
+      },
+      "plague/bloom/cast": {
+       "count": 8,
+       "max_us": 292,
+       "total_us": 1527
+      },
+      "plague/burst": {
+       "count": 8,
+       "max_us": 212793,
+       "total_us": 755732
+      },
+      "plague/cloud": {
+       "count": 16,
+       "max_us": 450,
+       "total_us": 4000
+      },
+      "plague/earthshatter/cast": {
+       "count": 8,
+       "max_us": 1381,
+       "total_us": 1842
+      },
+      "plague/earthshatter/impact": {
+       "count": 8,
+       "max_us": 174682,
+       "total_us": 206032
+      },
+      "plague/earthshatter/windup": {
+       "count": 8,
+       "max_us": 140,
+       "total_us": 671
+      },
+      "plague/experiment/cast": {
+       "count": 8,
+       "max_us": 257,
+       "total_us": 1326
+      },
+      "plague/fog": {
+       "count": 8,
+       "max_us": 8689,
+       "total_us": 47590
+      },
+      "plague/fog/cast": {
+       "count": 8,
+       "max_us": 290,
+       "total_us": 1309
+      },
+      "plague/frost_nova/cast": {
+       "count": 8,
+       "max_us": 1794,
+       "total_us": 4120
+      },
+      "plague/frost_nova/impact": {
+       "count": 8,
+       "max_us": 6958,
+       "total_us": 30106
+      },
+      "plague/reveal": {
+       "count": 8,
+       "max_us": 14,
+       "total_us": 63
+      },
+      "plague/spew": {
+       "count": 8,
+       "max_us": 4008,
+       "total_us": 15221
+      },
+      "plague/swarm": {
+       "count": 8,
+       "max_us": 6538,
+       "total_us": 14636
+      },
+      "plague/swarm/cast": {
+       "count": 8,
+       "max_us": 339,
+       "total_us": 1408
+      },
+      "plague/swarm_scatter": {
+       "count": 8,
+       "max_us": 84,
+       "total_us": 355
+      },
+      "plague/throw": {
+       "count": 8,
+       "max_us": 14153,
+       "total_us": 55588
+      },
+      "plague/toxic/cast": {
+       "count": 8,
+       "max_us": 349,
+       "total_us": 1553
+      },
+      "plague/trans": {
+       "count": 8,
+       "max_us": 4052,
+       "total_us": 13488
+      },
+      "plague/trans_end": {
+       "count": 8,
+       "max_us": 2239,
+       "total_us": 7767
+      },
+      "plague/transfusion/cast": {
+       "count": 8,
+       "max_us": 287,
+       "total_us": 1353
+      },
+      "plague/vat": {
+       "count": 8,
+       "max_us": 14273,
+       "total_us": 81181
+      },
+      "plague/war_cry/cast": {
+       "count": 8,
+       "max_us": 98,
+       "total_us": 314
+      },
+      "plague/war_cry/impact": {
+       "count": 8,
+       "max_us": 7612,
+       "total_us": 13042
+      }
+     },
+     "kind": "presentation_replay_not_network_simulation",
+     "peak_fx_root_children": 2307,
+     "pre_burst_fx_children": [
+      0,
+      210,
+      46,
+      1237
+     ],
+     "presentation_events": 688,
+     "teams": [
+      3,
+      3
+     ]
+    },
+    "ram_mb": 497,
+    "render_cpu_ms": 13.6,
+    "renderer": "forward_plus",
+    "resolution": "(1600, 900)",
+    "scenario": "pvp3v3",
+    "schema": 2,
+    "script_ms": 31.07,
+    "secs": 18.19,
+    "skill": "",
+    "vram_mb": 3426,
+    "validation": {
+     "exit": 0,
+     "clean": true,
+     "errors": [],
+     "other_godots": [],
+     "source": "candidate"
+    }
+   },
+   {
+    "cache": {
+     "errors": {},
+     "held": 315,
+     "legacy_pins": 5,
+     "loads_started": 175,
+     "pending": 0,
+     "queued": 0,
+     "scopes": 2,
+     "sync_misses": {
+      "res://assets/models/knight_meshy.glb": 1,
+      "res://assets/models/knight_mocap.glb": 1,
+      "res://assets/models/monsters/wolf.glb": 1,
+      "res://assets/textures/fx/fire_body.png": 1,
+      "res://assets/textures/fx/fire_tongue.png": 1
+     }
+    },
+    "class": "knight",
+    "clock": "monotonic_wall",
+    "cpu_physics_peak_ms": 13.57,
+    "cpu_process_peak_ms": 137.76,
+    "draw_calls": 896,
+    "enemies": 0,
+    "engine": "4.3-stable (official)",
+    "first_use_max_ms": 1514.866,
+    "focused": true,
+    "fps_avg": 21.3,
+    "fps_low1": 1.3,
+    "frame_ms_max": 1161.897,
+    "frame_ms_median": 28.53,
+    "frame_ms_p99": 277.8,
+    "frames": 383,
+    "gameplay_sync_misses": {
+     "res://assets/models/monsters/wolf.glb": 1
+    },
+    "gpu_ms": 25.81,
+    "gpu_name": "Apple M6",
+    "hitches_per_min": 113.2,
+    "load_ms": 31645,
+    "nodes": 3878,
+    "objects": 1103,
+    "physics_ms": 0.25,
+    "preparation": {
+     "construction_ms": 771,
+     "resources_ms": 20105
+    },
+    "preset": 2,
+    "primitives": 4534408,
+    "pvp": {
+     "actors": 6,
+     "bursts": 4,
+     "classes": [
+      "demon",
+      "plague",
+      "archer",
+      "demon",
+      "plague",
+      "archer"
+     ],
+     "creation_us": {
+      "archer/arc/cast": {
+       "count": 8,
+       "max_us": 481,
+       "total_us": 1836
+      },
+      "archer/arc/impact": {
+       "count": 8,
+       "max_us": 1739,
+       "total_us": 8266
+      },
+      "archer/attack/loose": {
+       "count": 8,
+       "max_us": 6902,
+       "total_us": 14799
+      },
+      "archer/beast/cast": {
+       "count": 8,
+       "max_us": 52,
+       "total_us": 292
+      },
+      "archer/beast/impact": {
+       "count": 8,
+       "max_us": 1378,
+       "total_us": 6296
+      },
+      "archer/earthshatter/cast": {
+       "count": 8,
+       "max_us": 111,
+       "total_us": 375
+      },
+      "archer/earthshatter/impact": {
+       "count": 8,
+       "max_us": 7367,
+       "total_us": 27902
+      },
+      "archer/earthshatter/windup": {
+       "count": 8,
+       "max_us": 163,
+       "total_us": 679
+      },
+      "archer/frost_nova/cast": {
+       "count": 8,
+       "max_us": 225,
+       "total_us": 1244
+      },
+      "archer/frost_nova/impact": {
+       "count": 8,
+       "max_us": 7183,
+       "total_us": 28166
+      },
+      "archer/pierce/cast": {
+       "count": 8,
+       "max_us": 118,
+       "total_us": 504
+      },
+      "archer/pierce/loose": {
+       "count": 8,
+       "max_us": 25407,
+       "total_us": 76807
+      },
+      "archer/snare/cast": {
+       "count": 8,
+       "max_us": 106,
+       "total_us": 345
+      },
+      "archer/snare/spring": {
+       "count": 8,
+       "max_us": 3298,
+       "total_us": 15086
+      },
+      "archer/snare/vault": {
+       "count": 8,
+       "max_us": 9274,
+       "total_us": 30647
+      },
+      "archer/volley/cast": {
+       "count": 8,
+       "max_us": 142,
+       "total_us": 507
+      },
+      "archer/volley/impact": {
+       "count": 8,
+       "max_us": 11136,
+       "total_us": 39216
+      },
+      "archer/war_cry/cast": {
+       "count": 8,
+       "max_us": 39,
+       "total_us": 181
+      },
+      "archer/war_cry/impact": {
+       "count": 8,
+       "max_us": 1195,
+       "total_us": 5647
+      },
+      "demon/arc/cast": {
+       "count": 8,
+       "max_us": 525,
+       "total_us": 2177
+      },
+      "demon/arc/impact": {
+       "count": 8,
+       "max_us": 1365,
+       "total_us": 7090
+      },
+      "demon/attack/hit": {
+       "count": 24,
+       "max_us": 3221,
+       "total_us": 15135
+      },
+      "demon/cslam/cast": {
+       "count": 8,
+       "max_us": 34,
+       "total_us": 192
+      },
+      "demon/cslam/erupt": {
+       "count": 8,
+       "max_us": 14797,
+       "total_us": 53041
+      },
+      "demon/cslam/impact": {
+       "count": 8,
+       "max_us": 2785,
+       "total_us": 15589
+      },
+      "demon/earthshatter/cast": {
+       "count": 8,
+       "max_us": 522,
+       "total_us": 860
+      },
+      "demon/earthshatter/impact": {
+       "count": 8,
+       "max_us": 10487,
+       "total_us": 42484
+      },
+      "demon/earthshatter/windup": {
+       "count": 8,
+       "max_us": 117,
+       "total_us": 706
+      },
+      "demon/fists/brand": {
+       "count": 8,
+       "max_us": 53,
+       "total_us": 264
+      },
+      "demon/fists/cast": {
+       "count": 8,
+       "max_us": 7846,
+       "total_us": 42334
+      },
+      "demon/fists/impact": {
+       "count": 8,
+       "max_us": 13638,
+       "total_us": 72116
+      },
+      "demon/frost_nova/cast": {
+       "count": 8,
+       "max_us": 299,
+       "total_us": 1644
+      },
+      "demon/frost_nova/impact": {
+       "count": 8,
+       "max_us": 6451,
+       "total_us": 30508
+      },
+      "demon/grip/cast": {
+       "count": 8,
+       "max_us": 3449,
+       "total_us": 5413
+      },
+      "demon/grip/fling": {
+       "count": 8,
+       "max_us": 5893,
+       "total_us": 30903
+      },
+      "demon/grip/grab": {
+       "count": 8,
+       "max_us": 92,
+       "total_us": 348
+      },
+      "demon/grip/hook": {
+       "count": 8,
+       "max_us": 1366,
+       "total_us": 4545
+      },
+      "demon/grip/smash": {
+       "count": 8,
+       "max_us": 8412,
+       "total_us": 20223
+      },
+      "demon/hurl/cast": {
+       "count": 8,
+       "max_us": 4602,
+       "total_us": 9242
+      },
+      "demon/hurl/splash": {
+       "count": 8,
+       "max_us": 3017,
+       "total_us": 14322
+      },
+      "demon/hurl/throw": {
+       "count": 8,
+       "max_us": 3098,
+       "total_us": 14843
+      },
+      "demon/icharge/cast": {
+       "count": 8,
+       "max_us": 65,
+       "total_us": 297
+      },
+      "demon/icharge/end": {
+       "count": 8,
+       "max_us": 69,
+       "total_us": 377
+      },
+      "demon/icharge/hit": {
+       "count": 24,
+       "max_us": 2840,
+       "total_us": 11275
+      },
+      "demon/icharge/run": {
+       "count": 8,
+       "max_us": 333,
+       "total_us": 1390
+      },
+      "demon/icharge/skid": {
+       "count": 8,
+       "max_us": 4155,
+       "total_us": 10278
+      },
+      "demon/icharge/wind": {
+       "count": 8,
+       "max_us": 7971,
+       "total_us": 18203
+      },
+      "demon/war_cry/cast": {
+       "count": 8,
+       "max_us": 31,
+       "total_us": 166
+      },
+      "demon/war_cry/impact": {
+       "count": 8,
+       "max_us": 937,
+       "total_us": 5277
+      },
+      "demon/wrath/cast": {
+       "count": 8,
+       "max_us": 43,
+       "total_us": 247
+      },
+      "demon/wrath/crucible": {
+       "count": 8,
+       "max_us": 2360,
+       "total_us": 10670
+      },
+      "plague/arc/cast": {
+       "count": 8,
+       "max_us": 315,
+       "total_us": 1984
+      },
+      "plague/arc/impact": {
+       "count": 8,
+       "max_us": 1527,
+       "total_us": 7789
+      },
+      "plague/attack/hit": {
+       "count": 24,
+       "max_us": 1713,
+       "total_us": 10092
+      },
+      "plague/bloom": {
+       "count": 8,
+       "max_us": 25623,
+       "total_us": 76523
+      },
+      "plague/bloom/cast": {
+       "count": 8,
+       "max_us": 380,
+       "total_us": 1237
+      },
+      "plague/burst": {
+       "count": 8,
+       "max_us": 159761,
+       "total_us": 490771
+      },
+      "plague/cloud": {
+       "count": 16,
+       "max_us": 1955,
+       "total_us": 5620
+      },
+      "plague/earthshatter/cast": {
+       "count": 8,
+       "max_us": 83,
+       "total_us": 413
+      },
+      "plague/earthshatter/impact": {
+       "count": 8,
+       "max_us": 4657,
+       "total_us": 26072
+      },
+      "plague/earthshatter/windup": {
+       "count": 8,
+       "max_us": 192,
+       "total_us": 568
+      },
+      "plague/experiment/cast": {
+       "count": 8,
+       "max_us": 399,
+       "total_us": 1198
+      },
+      "plague/fog": {
+       "count": 8,
+       "max_us": 12317,
+       "total_us": 53046
+      },
+      "plague/fog/cast": {
+       "count": 8,
+       "max_us": 224,
+       "total_us": 1023
+      },
+      "plague/frost_nova/cast": {
+       "count": 8,
+       "max_us": 502,
+       "total_us": 1997
+      },
+      "plague/frost_nova/impact": {
+       "count": 8,
+       "max_us": 4913,
+       "total_us": 29028
+      },
+      "plague/reveal": {
+       "count": 8,
+       "max_us": 7,
+       "total_us": 40
+      },
+      "plague/spew": {
+       "count": 8,
+       "max_us": 13277,
+       "total_us": 22084
+      },
+      "plague/swarm": {
+       "count": 8,
+       "max_us": 6374,
+       "total_us": 12294
+      },
+      "plague/swarm/cast": {
+       "count": 8,
+       "max_us": 210,
+       "total_us": 1081
+      },
+      "plague/swarm_scatter": {
+       "count": 8,
+       "max_us": 72,
+       "total_us": 278
+      },
+      "plague/throw": {
+       "count": 8,
+       "max_us": 11347,
+       "total_us": 37970
+      },
+      "plague/toxic/cast": {
+       "count": 8,
+       "max_us": 276,
+       "total_us": 1256
+      },
+      "plague/trans": {
+       "count": 8,
+       "max_us": 3306,
+       "total_us": 12755
+      },
+      "plague/trans_end": {
+       "count": 8,
+       "max_us": 7689,
+       "total_us": 13766
+      },
+      "plague/transfusion/cast": {
+       "count": 8,
+       "max_us": 250,
+       "total_us": 1028
+      },
+      "plague/vat": {
+       "count": 8,
+       "max_us": 24218,
+       "total_us": 92640
+      },
+      "plague/war_cry/cast": {
+       "count": 8,
+       "max_us": 31,
+       "total_us": 184
+      },
+      "plague/war_cry/impact": {
+       "count": 8,
+       "max_us": 887,
+       "total_us": 5010
+      }
+     },
+     "kind": "presentation_replay_not_network_simulation",
+     "peak_fx_root_children": 1342,
+     "pre_burst_fx_children": [
+      0,
+      72,
+      30,
+      28
+     ],
+     "presentation_events": 688,
+     "teams": [
+      3,
+      3
+     ]
+    },
+    "ram_mb": 442,
+    "render_cpu_ms": 6.4,
+    "renderer": "forward_plus",
+    "resolution": "(1600, 900)",
+    "scenario": "pvp3v3",
+    "schema": 2,
+    "script_ms": 12.05,
+    "secs": 18.01,
+    "skill": "",
+    "vram_mb": 3413,
+    "validation": {
+     "exit": 0,
+     "clean": true,
+     "errors": [],
+     "other_godots": [],
+     "source": "candidate"
+    }
+   }
+  ],
+  "median": {
+   "fps_avg": 21.3,
+   "frame_ms_p99": 318.51,
+   "first_use_max_ms": 1460.567,
+   "load_ms": 31313,
+   "vram_mb": 3416
+  }
+ }
+}

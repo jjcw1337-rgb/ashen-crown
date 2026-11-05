@@ -5,14 +5,22 @@ var team_size:=2
 var index:=0
 var checks:=0
 var fails:=0
+var rendered := false
+var capture := ""
 func _initialize():
  var args:=OS.get_cmdline_user_args()
  team_size=int(args[0]);index=int(args[1])
+ rendered=args.has("--rendered")
+ if args.has("--capture"):capture=args[args.find("--capture")+1]
  node_added.connect(func(n):
-  if n is SubViewport:n.disable_3d=true)
- load("res://scripts/build_env.gd").forced={"env":"local","cloud":"0","lobby_url":"http://127.0.0.1:7352"}
+  if n is SubViewport and not rendered:n.disable_3d=true)
+ var broker: String = args[args.find("--broker-url") + 1] if args.has("--broker-url") else "http://127.0.0.1:7352"
+ load("res://scripts/build_env.gd").forced={"env":"local","cloud":"0","lobby_url":broker}
  g=load("res://main.tscn").instantiate();g.char_dir="user://lobby_team_%d_%d/"%[team_size,index]
- root.disable_3d=true;root.add_child(g);run()
+ root.disable_3d=not rendered;root.add_child(g)
+ # Match normal scene startup: presentation helpers resolve the world through current_scene.
+ current_scene=g
+ run()
 func check(ok: bool,label: String):
  checks+=1;print("[TEAM-",index,"] ","ok " if ok else "FAIL ",label)
  if not ok:fails+=1
@@ -26,7 +34,7 @@ func until(test: Callable,seconds:=180.0) -> bool:
 func run():
  Engine.max_fps=20
  if not await until(func():return g.world!=null and not g._busy and not g._intro_playing):quit(1);return
- await g.start_game(false,"knight","","Team %d"%index)
+ await g.start_game(false,["demon","plague","archer"][index%3],"","Team %d"%index)
  g.hero.gold=4321;g.save_game();var character:String=g.char_id
  var client=g.lobby_client
  client.auth="Bearer dev-team-%d-%d"%[team_size,index];client.identity=client.auth.sha256_text().substr(0,24)
@@ -43,6 +51,9 @@ func run():
   if not await until(func():return client.room.members.values().all(func(m):return m.ready)):quit(1);return
   await client.action("start")
  if not await until(func():return g.net.welcomed and not g.net.loading and not g._busy and g.arena_state.get("phase","")=="fight"):quit(1);return
+ if rendered and capture!="":
+  await RenderingServer.frame_post_draw
+  root.get_texture().get_image().save_png(capture)
  check(g.net.players.size()==team_size*2-1,"all teammates and opponents connected")
  var my_team:int=g.arena_state.teams.get(str(g.net.multiplayer.get_unique_id()),-1)
  check(my_team in [0,1],"server assigns a team")

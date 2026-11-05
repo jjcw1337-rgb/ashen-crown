@@ -120,7 +120,7 @@ static func _sink(h: Hero, nm: String) -> void:
 ## Rooted: the bloom's thorned roots burst up round his feet and hold them.
 static func _snare(h: Hero) -> void:
 	if _roots == null and ResourceLoader.exists(PlagueBloomFx.ROOTS_GLB):
-		_roots = load(PlagueBloomFx.ROOTS_GLB)
+		_roots = ResCache.get_res(PlagueBloomFx.ROOTS_GLB)
 	var root := Node3D.new()
 	root.name = "pvs_snare"
 	h.add_child(root)

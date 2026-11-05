@@ -488,7 +488,7 @@ static func build(w: World) -> void:
 		CampIsland.build(w)
 	else:
 		w._build_terrain(FOREST_FLOOR)
-	w._scatter_grass(24000, FOREST_GRASS, 0.26)
+	await w._scatter_grass(24000, FOREST_GRASS, 0.26)
 	w._scatter_ferns(380)
 	w.spawns["start"] = Vector3(0, 0, 5)
 	w.spawns["new_player"] = NEW_PLAYER_AT
