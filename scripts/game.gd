@@ -1335,6 +1335,9 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		birds.name = "birds"
 		world.add_child(birds)
 	_add_boat(zone, spawn)
+	# the class's skill effects played once, unseen, under the loading screen: no freeze on a first cast (SkillWarm)
+	if not _boot_quiet:
+		await SkillWarm.run(self)
 	zone_music()
 	loading.visible = false
 	_busy = false

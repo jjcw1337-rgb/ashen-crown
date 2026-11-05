@@ -1763,6 +1763,12 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   (`-- levels=20 rounds=6 mirror`: real bot duels in the sandbox, every pairing, win rates and kill times; flags a
   pairing past 70/30 and geared not beating fresh).
 - Developer tools (`Game.dev_tools`): unlock-all-acts (`UNLOCK_ALL_ACTS`) and the **Admin column of the Escape menu** (`UI._build_admin`, `ui.test_panel`; F8 just opens the menu): Go to level 20 (`Game.go_level_20`: talents, level-20 gear, +10,000 gold each press), Max out, the switches `test_immortal`, `test_onehit`, `test_stamina`, `test_allskills`, `test_fast` (super speed, `TEST_FAST` times as fast) in `game.gd`, and a level setter (`Hero.set_level`). On when running from the Godot editor or a local debug run, for an account with the **admin role** (above; granted 2026-11-02 to jj's and Blaine's accounts, found by their characters in Nakama), or when this PC holds a valid **admin key** (`AdminKey`, `scripts/admin_key.gd`): `user://admin.key`, signed with the owner's private key; the game checks it against the public key built into the code, so nobody can forge one. Off for everyone else in production builds. Make a key: `tools/admin_key.gd` (needs the private key, which is never in the repo and isn't on the Game Factory Mac). `UNLOCK_ALL_ACTS = false` turns the tools off everywhere.
+- **No freeze on a first cast** (`scripts/skill_warm.gd` `SkillWarm`, jj 2026-11-04): a skill's first use compiled its
+  effect's shaders and loaded its models on that frame (Fire Arrow 198 ms, Thunderstep 183, Spirit Beast 544 on the
+  range). `Game.load_zone` awaits `SkillWarm.run` under the loading screen the first time a class enters a zone in a
+  session: an unseen co-op puppet replays everything the class's skills draw (`scripts/skill_warm_data.gd`
+  `SkillWarmData.EVENTS`, recorded by `tools/skill_warm_capture.gd`), muted, for ~2 s, then it is all swept away
+  (after: 86, 41, 9 ms). Re-run the capture after adding or changing a skill's effects.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file). Since 2026-10-31 it is Blaine's
   new trailer at full quality (Blaine: no visible compression): 60 s, 1920x1088 (a multiple of 16, so Theora adds no padding rows), Theora 12 Mbit/s + Vorbis q6,
