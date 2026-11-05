@@ -33,7 +33,7 @@ static func variant_at(p: Vector3) -> int:
 
 static func build(v := 1) -> Node3D:
 	var root := Node3D.new()
-	var body: Node3D = (load(GLB % v) as PackedScene).instantiate()
+	var body: Node3D = ResCache.inst(GLB % v)
 	body.name = "Body"
 	# Blender's front (-Y) arrives facing +z; the game's monsters face -z
 	body.rotation.y = PI

@@ -1820,7 +1820,9 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   range). `Game.load_zone` awaits `SkillWarm.run` under the loading screen the first time a class enters a zone in a
   session: an unseen co-op puppet replays everything the class's skills draw (`scripts/skill_warm_data.gd`
   `SkillWarmData.EVENTS`, recorded by `tools/skill_warm_capture.gd`), muted, for ~2 s, then it is all swept away
-  (after: 86, 41, 9 ms). Re-run the capture after adding or changing a skill's effects. It warms the whole party
+  (after: 86, 41, 9 ms). Re-run the capture after adding or changing a skill's effects. The settle plays in
+  fast-forward (`SkillWarm.SPEED` 4x `Engine.time_scale`, never more than `MAX_STEP` 66 ms of game time a frame) with
+  the hidden 3D view at `LOW_RES` (nightly 2026-11-05: 2.5-2.9 s -> 0.8-1.0 s of every first load). It warms the whole party
   (the hero's class and every co-op partner's, all at once: a partner's spells are drawn on this screen too), and the
   Plague Doctor's own effects (his `Plague.remote` events, `SkillWarmData.PLAGUE`, plus `SkillWarm.PLAGUE_TAIL`).
   `SkillWarm.keep` holds every material the warm-up drew with (Godot 4.3 frees a generated shader with its last
@@ -1836,6 +1838,23 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   [classes] [rounds]` (every recorded effect's cost after warming), `tools/hitch_probe.gd -- title|camp|skills <cls>`;
   `--fx-timing` makes `FxTiming` print every skill/effect call over 6 ms. All need a display. On the Mac mini a big
   fight is GPU-bound at ~24 ms on High (40 fps) and ~15 ms on Medium.
+  The rest of the game's first times (the app audit, same day): `MonsterWarm` (`scripts/monster_warm.gd`) builds and
+  draws once, under the loading screen, every monster kind that can still turn up in the zone (ambushes, summons,
+  Grubb's grabbers, the arena's stages, the Vigil's waves; on a co-op client the zone's spawns too), plain and under
+  the hit flash and champion rim (grabber 766 -> 27 ms, bandits 77 -> 21); monster bodies load through `ResCache`.
+  `UI.warm_windows` opens the inventory, sheet, skills, talents, quests and waypoints for a frame once a session and
+  draws the sheet's portrait every zone (the sheet's first open 574 -> 25 ms). A new monster that spawns mid-zone
+  from a new place needs adding to `MonsterWarm.kinds`. `tools/app_hitch_audit.gd -- [--monsters-only]
+  [--all-monsters]` measures each step's worst frame the first and second time (windows, loot, zone changes, spawns).
+- **Zone loads** (nightly 2026-11-05): `ZonePreload` (`scripts/zone_preload.gd`) asks for the zone's .glb files on
+  worker threads as the loading screen goes up (`Game.load_zone`); the lists are `ZonePreloadData.PATHS` by
+  "run:zone", recorded from the built zones (`-- --kpi <scenario> out.json --preload-record`, then `python3
+  tools/zone_preload_gen.py`). A stale list only costs speed; re-record after a zone gains or loses models.
+- **Shadow casters**: a `discard` anywhere in a material (leaf cards, the see-through dither) runs its fragment shader
+  in every shadow cascade; triangles are cheap. `Props.shadow_twins` (end of `World.build`, after `see_through`) gives
+  every static mesh or multimesh whose materials are opaque but for the dither a shadows-only child with a depth-only
+  material (`--no-prop-twins` for comparisons); cut-out foliage casts from baked-mask twins (`Flora.shadow_twin`, the
+  harvest trees too). `--kpi ... --castlist` marks cut-out casters `cut=true`.
 - Don't commit `.godot/` or `build/` (ignored). Line endings are LF (`.gitattributes`).
 - Intro video: Ogg Theora only; keep under ~90 MB (GitHub's limit is 100 MB per file). Since 2026-10-31 it is Blaine's
   new trailer at full quality (Blaine: no visible compression): 60 s, 1920x1088 (a multiple of 16, so Theora adds no padding rows), Theora 12 Mbit/s + Vorbis q6,

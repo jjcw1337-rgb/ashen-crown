@@ -143,6 +143,9 @@ static func scatter(parent: Node3D, area: Rect2, ctx: Object, colors: Dictionary
 	var nx := int(ceil(area.size.x / cell))
 	var nz := int(ceil(area.size.y / cell))
 	var keys: Array = SPECIES.keys()
+	var tops := PackedFloat64Array()
+	for sp in keys:
+		tops.append(float(SPECIES[sp]["h"][1]))
 	for j in nz:
 		for i in nx:
 			var cx := area.position.x + (i + rng.randf()) * cell
@@ -184,23 +187,33 @@ static func scatter(parent: Node3D, area: Rect2, ctx: Object, colors: Dictionary
 			if rng.randf() < local - n:
 				n += 1
 			var gy: float = ctx.grass_height(cx, cz)
+			if n <= 0:
+				continue
+			# the cell's species mix once (what _pick summed again for every clump), in the same order: same picks
+			var mk: Array = mix.keys()
+			var mw := PackedFloat64Array()
+			var mtot := 0.0
+			for ms in mk:
+				mw.append(float(mix[ms]))
+				mtot += float(mix[ms])
 			for k in n:
 				var x := cx + rng.randf_range(-0.6, 0.6)
 				var z := cz + rng.randf_range(-0.6, 0.6)
-				var sp := _pick(mix, rng, keys)
+				var si := _pick_i(mw, mtot, rng, mk, keys)
 				var v := rng.randi() % VARIANTS
 				var s := rng.randf_range(0.75, 1.25)
 				var sh := s * hs * rng.randf_range(0.85, 1.15)
-				var spec: Dictionary = SPECIES[sp]
-				var top: float = float(spec["h"][1]) * sh
+				var top: float = tops[si] * sh
 				if top > MAX_HEIGHT:
 					sh *= MAX_HEIGHT / top
 				var yaw := rng.randf() * TAU
 				var b := Basis(Vector3.UP, yaw).scaled(Vector3(s, sh, s))
-				var key := "%d,%d,%s,%d" % [int(floor(x / CHUNK)), int(floor(z / CHUNK)), sp, v]
-				if not buckets.has(key):
-					buckets[key] = []
-				var arr: Array = buckets[key]
+				# an int key (chunk, species, variant) instead of a formatted string per clump; same insertion order
+				var key: int = (((int(floor(x / CHUNK)) + 32768) * 65536 + int(floor(z / CHUNK)) + 32768) * 256 + si) * 16 + v
+				var arr = buckets.get(key)
+				if arr == null:
+					arr = []
+					buckets[key] = arr
 				var y := gy - 0.02
 				arr.append_array([b.x.x, b.y.x, b.z.x, x, b.x.y, b.y.y, b.z.y, y, b.x.z, b.y.z, b.z.z, z,
 					clampf(shade + rng.randf_range(-0.08, 0.08), 0.0, 1.0), clampf(dry + rng.randf_range(-0.1, 0.1), 0.0, 1.0), rng.randf(), 0.0])
@@ -212,7 +225,7 @@ static func scatter(parent: Node3D, area: Rect2, ctx: Object, colors: Dictionary
 	var half := CHUNK * 0.75
 	for key in buckets.keys():
 		var arr := PackedFloat32Array(buckets[key])
-		var parts: PackedStringArray = String(key).split(",")
+		var parts: PackedStringArray = _key_parts(key, keys)
 		for l in 2:
 			var mm := MultiMesh.new()
 			mm.transform_format = MultiMesh.TRANSFORM_3D
@@ -335,6 +348,24 @@ static func apply_quality(root: Node, q: int) -> void:
 				_add_twin(g as MultiMeshInstance3D)
 			_set_ranges(g as GeometryInstance3D, l, lod, fade, CHUNK * 0.75)
 			(g as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+## _pick on the cell's weights summed once: the same draw and the same walk, so the same species. Returns its
+## index in SPECIES' keys.
+static func _pick_i(w: PackedFloat64Array, total: float, rng: RandomNumberGenerator, mk: Array, keys: Array) -> int:
+	var r := rng.randf() * total
+	for i in w.size():
+		r -= w[i]
+		if r <= 0.0:
+			return keys.find(mk[i])
+	return 0
+
+## A bucket's int key back as the old "cx,cz,species,variant" parts.
+static func _key_parts(key: int, keys: Array) -> PackedStringArray:
+	var v := key % 16
+	var si := (key / 16) % 256
+	var cz := (key / 4096) % 65536 - 32768
+	var cx := key / 4096 / 65536 - 32768
+	return PackedStringArray([str(cx), str(cz), String(keys[si]), str(v)])
 
 static func _pick(mix: Dictionary, rng: RandomNumberGenerator, keys: Array) -> String:
 	var total := 0.0

@@ -233,7 +233,7 @@ static func build_mocap(glb := MOCAP_GLB, opts := {}) -> Node3D:
 		(J[par] as Node3D if par != "" else px).add_child(nd)
 		J[n] = nd
 	J["hips_y"] = (ARMORED_LAYOUT["hips"][1] as Vector3).y
-	var ps: PackedScene = load(glb)
+	var ps: PackedScene = ResCache.get_res(glb)
 	var body: Node3D = ps.instantiate()
 	body.name = "Body"
 	body.rotation.y = PI          # Meshy's model faces +z; the game's bodies face -z

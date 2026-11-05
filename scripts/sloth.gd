@@ -760,7 +760,7 @@ static func build(variant := "", tint := Color(0.52, 0.56, 0.47)) -> Node3D:
 	var root := Node3D.new()
 	var body: Node3D
 	if variant != "" and ok(variant):
-		body = (load(GLB % variant) as PackedScene).instantiate()
+		body = ResCache.inst(GLB % variant)
 	else:
 		body = _standin(tint)
 	body.name = "Body"

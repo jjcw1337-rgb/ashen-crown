@@ -10,6 +10,14 @@ extends RefCounted
 ## Measured on the proof range (first cast's worst frame): Fire Arrow 198 ms, Thunderstep 183, Spirit Beast 544.
 
 const SETTLE := 2.2          # seconds the effects are left to play out (Frost Volley shatters at 1.95)
+## The settle runs in fast-forward (Engine.time_scale): every effect still lives its whole 2.2 s of game time and
+## draws each of its stages (pipelines compile on the frame a thing is first drawn), in up to a quarter of the
+## wall-clock wait under the loading screen (nightly 2026-11-05: the warm was 2.5-2.7 s of every first load). A
+## frame never steps more than MAX_STEP of game time (a 15 fps frame, what a slow Ultra frame already stepped at 1x),
+## so a short-lived stage is never stepped over: slow frames get less of the speed-up.
+const SPEED := 4.0
+const MAX_STEP := 0.066
+const LOW_RES := 0.25
 
 static var _done := {}
 
@@ -47,6 +55,12 @@ static func run(g, classes: Array = []) -> void:
 		before[c.get_instance_id()] = true
 	var was_muted: bool = Sfx.muted
 	Sfx.set_muted(true)
+	# under the loading screen nothing of the 3D view is seen: drawn at a quarter of its size, its frames come
+	# quicker (the pipelines compiled are the same: they don't depend on the size), so the fast-forward below
+	# reaches its full speed (nightly 2026-11-05)
+	var vp: Viewport = g.get_viewport()
+	var was_3d := vp.scaling_3d_scale
+	vp.scaling_3d_scale = LOW_RES
 	var t0 := Time.get_ticks_msec()
 	var origin: Vector3 = g.hero.global_position
 	var pups: Array = []
@@ -90,14 +104,14 @@ static func run(g, classes: Array = []) -> void:
 	if archer != null:
 		ArrowFx.end_draw(archer)
 		FrostVolleyFx.end_draw(archer)
-	await tree.create_timer(SETTLE * 0.5).timeout
+	await _settle(tree, SETTLE * 0.5)
 	# the Plague Doctor's later moments: his clouds, the transfusion's end, the experiment's burst and spew
 	var plague: Hero = pups[todo.find("plague")] if todo.has("plague") else null
 	if plague != null and plague.pd != null:
 		for ev in PLAGUE_TAIL:
 			plague.pd.remote(_pd_rebuild(ev, origin))
 			n += 1
-	await tree.create_timer(SETTLE * 0.5).timeout
+	await _settle(tree, SETTLE * 0.5)
 	# keep every material the effects drew with (Godot 4.3 frees a StandardMaterial3D's or ParticleProcessMaterial's
 	# generated shader with the last material using it, so sweeping the effects away threw away what was just
 	# compiled, and the first real cast compiled it all again: Blaine, 2026-11-05)
@@ -110,6 +124,7 @@ static func run(g, classes: Array = []) -> void:
 	for p in pups:
 		SkillFx.clear(p)
 		p.queue_free()
+	vp.scaling_3d_scale = was_3d
 	if is_instance_valid(root):
 		for c in root.get_children():
 			if not before.has(c.get_instance_id()):
@@ -117,6 +132,18 @@ static func run(g, classes: Array = []) -> void:
 	await tree.process_frame
 	Sfx.set_muted(was_muted)
 	print("[warm] %s: %d effects in %d ms" % [",".join(todo), n, Time.get_ticks_msec() - t0])
+
+## Waits `secs` of game time in fast-forward (Engine.time_scale up to SPEED, never more than MAX_STEP of game time a
+## frame), so the effects play out in a fraction of the real time (nightly 2026-11-05).
+static func _settle(tree: SceneTree, secs: float) -> void:
+	var was_scale := Engine.time_scale
+	var left := secs
+	while left > 0.0:
+		var real := tree.root.get_process_delta_time() / maxf(Engine.time_scale, 0.01)
+		Engine.time_scale = clampf(MAX_STEP / maxf(real, 0.001), 1.0, SPEED)
+		await tree.process_frame
+		left -= tree.root.get_process_delta_time()
+	Engine.time_scale = was_scale if was_scale <= 1.0 else 1.0
 
 static var _kept: Array = []
 static var _kept_ids := {}

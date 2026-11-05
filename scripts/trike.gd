@@ -14,7 +14,7 @@ static func ok(kind: String) -> bool:
 
 static func build(kind: String) -> Node3D:
 	var root := Node3D.new()
-	var body: Node3D = (load(GLB[kind]) as PackedScene).instantiate()
+	var body: Node3D = ResCache.inst(GLB[kind])
 	body.name = "Body"
 	body.rotation.y = PI
 	root.add_child(body)

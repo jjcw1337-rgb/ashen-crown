@@ -212,6 +212,8 @@ static func _confetti(root: Node3D, p: Vector3, k: float) -> void:
 	for c in CONFETTI:
 		Fx.burst(root, p, c, int(14 * k), 4.5 * k, 0.07, 1.1, false, -3.0, 180.0)
 
+static var _balloon_sh: Shader     # one for every cast (a new Shader per cast compiled again each time)
+
 ## His balloon double: his own model, shiny (a balloon sheen over his colours), running.
 static func _double(h: Hero) -> Node3D:
 	if not Doug.model_ok():
@@ -219,8 +221,9 @@ static func _double(h: Hero) -> Node3D:
 	var d: Node3D = ResCache.inst(Doug.GLB)
 	var root := Node3D.new()
 	root.add_child(d)
-	var sh := Shader.new()
-	sh.code = """shader_type spatial;
+	if _balloon_sh == null:
+		_balloon_sh = Shader.new()
+		_balloon_sh.code = """shader_type spatial;
 uniform sampler2D tex : source_color, filter_linear_mipmap;
 void fragment() {
 	vec3 base = texture(tex, UV).rgb;
@@ -237,7 +240,7 @@ void fragment() {
 		for si in mesh.get_surface_count():
 			var src := mesh.surface_get_material(si) as BaseMaterial3D
 			var sm := ShaderMaterial.new()
-			sm.shader = sh
+			sm.shader = _balloon_sh
 			if src != null and src.albedo_texture != null:
 				sm.set_shader_parameter("tex", src.albedo_texture)
 			(mi as MeshInstance3D).set_surface_override_material(si, sm)

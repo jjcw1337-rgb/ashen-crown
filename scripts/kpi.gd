@@ -107,6 +107,13 @@ static func step(delta: float) -> void:
 		if float(st["t"]) >= SETTLE:
 			st["phase"] = "measure"
 			st["t"] = 0.0
+			# the profiling switches again, now the zone has settled: what the settle built or re-enabled (deferred
+			# multimesh cells, apply_quality, Grade's shadow picks) is caught too (nightly 2026-11-05)
+			_hide_parts()
+			_no_shadows()
+			_env_off()
+			_mm_no_shadow()
+			_no_cast()
 			st["t0"] = Time.get_ticks_usec()
 			st["p0"] = [load("res://scripts/kpi_probe.gd").proc_us, load("res://scripts/kpi_probe.gd").phys_us]
 			if OS.get_cmdline_user_args().has("--census"):
@@ -460,7 +467,10 @@ static func _mm_no_shadow() -> void:
 				var il: int = m.surface_get_array_index_len(si)
 				t += (il if il > 0 else m.surface_get_array_len(si)) / 3
 			if t > lim:
-				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				if a.has("--mmhide"):
+					mi.visible = false         # --mmhide: hide them altogether (what they cost in every pass)
+				else:
+					mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				n += 1
 	print("[KPI] shadows off on ", n, " multimeshes")
 
@@ -478,7 +488,9 @@ static func _no_cast() -> void:
 		for p in pats:
 			if p == "all-mm" and not (gi is MultiMeshInstance3D):
 				hit = true
-			elif p != "all-mm" and str(gi.name).contains(p):
+			elif p == "cut" and not (gi is MultiMeshInstance3D) and _cutout(gi):
+				hit = true        # --nocast cut: every single mesh with a cut-out material (see _cutout)
+			elif p != "all-mm" and p != "cut" and str(gi.name).contains(p):
 				hit = true
 		if hit and (gi as GeometryInstance3D).cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
 			(gi as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -495,7 +507,7 @@ static func _no_cast() -> void:
 				var il: int = (mi.mesh as ArrayMesh).surface_get_array_index_len(si) if mi.mesh is ArrayMesh else 0
 				tris += il / 3
 			var key := mi.mesh.resource_path.get_file() if mi.mesh.resource_path != "" else str(mi.get_parent().name) + "/" + str(mi.name)
-			key += " cast=%d" % mi.cast_shadow
+			key += " cast=%d cut=%s" % [mi.cast_shadow, _cutout(mi)]
 			if not by.has(key):
 				by[key] = [0, 0]
 			by[key][0] += tris
@@ -523,6 +535,23 @@ static func _no_cast() -> void:
 		mk.sort_custom(func(x, y): return int(mmby[x][0]) > int(mmby[y][0]))
 		for k in mk.slice(0, 30):
 			print("[KPI] mmcast ", mmby[k][0], " x", mmby[k][1], " ", k)
+
+## (castlist) Does the geometry draw any surface with a cut-out material (discard / alpha scissor)? Those pay per
+## pixel in every shadow cascade (bake a mask: Flora.shadow_twin).
+static func _cutout(gi: GeometryInstance3D) -> bool:
+	var mats: Array = [gi.material_override]
+	var m: Mesh = (gi as MeshInstance3D).mesh if gi is MeshInstance3D else null
+	if m != null:
+		for si in m.get_surface_count():
+			mats.append((gi as MeshInstance3D).get_active_material(si))
+	for mat in mats:
+		if mat is ShaderMaterial and (mat as ShaderMaterial).shader != null:
+			var c: String = (mat as ShaderMaterial).shader.code
+			if c.contains("discard") or c.contains("ALPHA_SCISSOR"):
+				return true
+		elif mat is BaseMaterial3D and (mat as BaseMaterial3D).transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR:
+			return true
+	return false
 
 ## --noshadow omni,dir: (profiling) turns those lights' shadows off.
 static func _no_shadows() -> void:

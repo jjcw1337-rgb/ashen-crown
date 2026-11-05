@@ -428,6 +428,16 @@ class HTree extends Inter:
 		# like the forest's MultiMesh chunks: past ~90 m it's off any screen
 		for mi in [full, lo, up]:
 			(mi as MeshInstance3D).visibility_range_end = 90.0
+		# its shadow like the forest's oaks (Props.multimesh): from the shadows-only twin whose leaf cards read the baked
+		# mask, not from the cut-out leaves themselves, which cost every shadow cascade per pixel (nightly 2026-11-05)
+		if tkind != "heart" and mesh != null and mesh.has_meta("shadow_mesh"):
+			var tw := MeshInstance3D.new()
+			tw.name = "ShadowTwin"
+			tw.mesh = mesh.get_meta("shadow_mesh")
+			tw.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+			tw.visibility_range_end = 90.0
+			full.add_child(tw)
+			full.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		if tkind == "heart":
 			# a dead tree still smouldering inside: ember-lit cracks, a glow at its foot, embers drifting up
 			var em := Wood.bark("heartwood")

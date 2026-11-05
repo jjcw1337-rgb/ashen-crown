@@ -71,7 +71,7 @@ static func build(c: String) -> Node3D:
 	root.add_child(hold)
 	var body: Node3D
 	if ok(c):
-		body = (load(str(sp["glb"])) as PackedScene).instantiate() as Node3D
+		body = ResCache.inst(str(sp["glb"])) as Node3D
 	else:
 		body = _stand_in()
 	body.name = "Body"

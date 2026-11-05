@@ -2369,6 +2369,41 @@ func _stat_tip(st: String) -> Array:
 		lines.append(["Click + to spend a point here.", Color(1.0, 0.85, 0.45)])
 	return lines
 
+var _sheet_warm := 0
+
+var _windows_warm := false
+
+## Under the loading screen (Game.load_zone; its overlay is drawn over the UI): the game's windows opened for a frame
+## once a session, and the character sheet's portrait drawn for a few frames every zone. The first open of a window
+## built its contents, rasterized its fonts' sizes and drew its art for the first time (talents 59 ms, inventory 35,
+## the sheet 86 without its portrait); the portrait's view has its own settings (no MSAA, no positional shadows), so
+## it compiled pipelines for the hero and everything behind him (with the window, 574 ms on the Mac mini: Blaine's
+## app audit, 2026-11-05).
+func warm_windows() -> void:
+	if hero == null or DisplayServer.get_name() == "headless":
+		return
+	if sheet_view != null:
+		_sheet_camera(0.0)
+		_sheet_warm = 3
+	if not _windows_warm:
+		_windows_warm = true
+		var was_muted: bool = Sfx.muted
+		Sfx.set_muted(true)
+		for p in [inv_panel, char_panel, skills_panel, talent_panel, quest_panel]:
+			if p == null or p.visible:
+				continue
+			toggle(p)
+			await RenderingServer.frame_post_draw
+			p.visible = false
+		if wp_panel != null and not wp_panel.visible:
+			open_waypoints()
+			await RenderingServer.frame_post_draw
+			wp_panel.visible = false
+		tooltip.visible = false
+		Sfx.set_muted(was_muted)
+	for i in 4:
+		await RenderingServer.frame_post_draw
+
 ## The portrait's camera: a slow look at the hero's face and shoulders, from the front.
 func _sheet_camera(delta: float) -> void:
 	if sheet_cam == null or hero == null or not is_instance_valid(hero.rig):
@@ -5426,7 +5461,8 @@ func _process(delta: float) -> void:
 		# the portrait renders the game's own world: only while the sheet is open. UPDATE_WHEN_PARENT_VISIBLE asks the
 		# parent *viewport* (the screen, always visible), so with the sheet closed it still drew the whole scene and
 		# its shadow passes every frame: 66 M of the camp's 150 M primitives (docs/visual/AUDIT.md)
-		var want := SubViewport.UPDATE_ALWAYS if char_panel and char_panel.is_visible_in_tree() and hero else SubViewport.UPDATE_DISABLED
+		var want := SubViewport.UPDATE_ALWAYS if (char_panel and char_panel.is_visible_in_tree() or _sheet_warm > 0) and hero else SubViewport.UPDATE_DISABLED
+		_sheet_warm = maxi(0, _sheet_warm - 1)
 		if sheet_view.render_target_update_mode != want:
 			sheet_view.render_target_update_mode = want
 	if char_panel and char_panel.visible and hero:

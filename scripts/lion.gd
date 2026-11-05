@@ -18,7 +18,7 @@ static func ok() -> bool:
 ## glb/sc: another quadruped on the same skeleton (the archer's wolf, rigged by rig_quadruped.py).
 static func build(glb := GLB, sc := SCALE) -> Node3D:
 	var root := Node3D.new()
-	var body: Node3D = (load(glb) as PackedScene).instantiate()
+	var body: Node3D = ResCache.inst(glb)
 	body.name = "Body"
 	body.rotation.y = PI          # Blender's front (-Y) arrives facing +z; monsters face -z
 	body.scale = Vector3.ONE * sc

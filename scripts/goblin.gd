@@ -475,7 +475,7 @@ static func blender(kind: String) -> bool:
 ## A body modelled in Blender (tools/blender/grubb.py): its skinned mesh, re-bound to our skeleton
 ## by bone name. The Blender rig sits on the same joints, so the rest pose matches ours.
 static func _imported(path: String, bi: Dictionary) -> ArrayMesh:
-	var scene: Node = (load(path) as PackedScene).instantiate()
+	var scene: Node = ResCache.inst(path)
 	var out := ArrayMesh.new()
 	for n in scene.find_children("*", "MeshInstance3D", true, false):
 		var src: MeshInstance3D = n

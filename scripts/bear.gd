@@ -32,7 +32,7 @@ static func ok() -> bool:
 
 static func build() -> Node3D:
 	var root := Node3D.new()
-	var body: Node3D = (load(GLB) as PackedScene).instantiate()
+	var body: Node3D = ResCache.inst(GLB)
 	body.name = "Body"
 	body.rotation.y = PI          # Blender's front (-Y) arrives facing +z; monsters face -z
 	root.add_child(body)
