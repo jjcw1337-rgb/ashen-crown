@@ -18,7 +18,8 @@ BUSY=$(ssh "$HOST" "sudo python3 -c \"import sqlite3,json,os; p='/var/lib/ashen-
 [ "$BUSY" = 0 ] || { echo "$BUSY match(es) in progress: try again when they finish"; exit 1; }
 S=/opt/ashen-crown/staging
 ssh "$HOST" "sudo install -d -o ashen -g ashen $S/server/$REV $S/lobbies"
-COPYFILE_DISABLE=1 tar -C "$T" -cf - AshenCrown.x86_64 DEPLOYED_REV | ssh "$HOST" "sudo tar -xf - -C $S/server/$REV"
+# (the whole export: the binary and its pack, DEPLOYED_REV, and any GDExtension libraries the export put beside it)
+COPYFILE_DISABLE=1 tar -C "$T" -cf - . | ssh "$HOST" "sudo tar -xf - -C $S/server/$REV"
 COPYFILE_DISABLE=1 tar -C "$ROOT/deploy/lobbies" -cf - service.py ashen-crown-lobbies.service | ssh "$HOST" "set -e
   sudo chmod +x $S/server/$REV/AshenCrown.x86_64; sudo chown -R ashen:ashen $S/server/$REV
   t=\$(mktemp -d); tar -xf - -C \$t
