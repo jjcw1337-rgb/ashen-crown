@@ -46,6 +46,8 @@ def validate(data, label):
                 errors.append(f"{prefix}: incompatible measurement schema/clock")
             if run.get("validation", {}).get("clean") is not True:
                 errors.append(f"{prefix}: missing clean exit/log validation")
+            if run.get("validation", {}).get("quiet") is not True:
+                errors.append(f"{prefix}: missing quiet-machine validation")
             if key != "server_q2" and run.get("focused") is not True:
                 errors.append(f"{prefix}: not focused throughout measurement")
             for metric in METRICS:

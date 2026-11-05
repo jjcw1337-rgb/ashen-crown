@@ -121,3 +121,14 @@ Keep it under ~90 MB (GitHub's limit per file is 100 MB).
 - **Engine:** no Nanite/Lumen-class rendering; smaller asset store than Unity/Unreal; C# can't
   export to the web; consoles need a third-party porting company.
 - **Mac app** is unsigned: first launch needs System Settings → Privacy & Security → Open Anyway.
+
+## Content and performance changes
+
+Use the shared [content preparation contract](docs/perf/IMPLEMENTATION.md) for new zones, classes,
+models and effects. Declare dependencies, acquire/release the owning resource scope, and prepare visuals
+before activation. Keep simulation dependencies separate from client presentation. Do not introduce
+an independent cache or a synchronous gameplay load to fix an individual hitch.
+
+Run `python3 tools/ci/perf_contracts.py godot` on an imported project and the relevant gameplay tests.
+Performance acceptance uses three focused runs with runtime logs, first-use stalls, memory and load times;
+the six-actor `pvp3v3` spell flood is mandatory in the full suite. CI export success alone is not an FPS pass.

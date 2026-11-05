@@ -1,5 +1,5 @@
 extends SceneTree
-## Targeted audit of actual title/story/transition/UI flow. No gameplay optimization.
+## Repeatable title/story/transition/UI flow and resource residency probe.
 ## Use _late.gd -- res://tools/perf_flow_probe.gd --out /absolute/result.json
 ## Requires an isolated user directory; screenshots are saved beside the JSON.
 var g
@@ -34,7 +34,11 @@ func summarize(label: String, start: int) -> void:
 	var row := {"label": label, "elapsed_ms": (Time.get_ticks_usec() - start) / 1000.0,
 		"frames": sorted.size(), "max_frame_ms": sorted.back() if not sorted.is_empty() else 0,
 		"over100": sorted.filter(func(x): return x >= 100.0).size(),
-		"wall_frames_ms": samples.duplicate()}
+		"wall_frames_ms": samples.duplicate(), "cache": ResCache.metrics(),
+		"preparation": g.preparation_phases.duplicate(),
+		"focused": DisplayServer.window_is_focused(),
+		"ram_mb": Performance.get_monitor(Performance.MEMORY_STATIC) / 1e6,
+		"vram_mb": Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1e6}
 	rows.append(row)
 	print("[FLOW] ", label, " elapsed=", row.elapsed_ms, " max_frame=", row.max_frame_ms, " over100=", row.over100)
 
@@ -77,6 +81,14 @@ func run() -> void:
 		if pass_i == 0:
 			await shot("moor")
 		await step("moor_to_camp_%d" % pass_i, func(): await g.load_zone(0, "town", "waypoint"))
+	await step("return_title_during_transition", func():
+		g.load_zone(0, "wild", "waypoint")
+		await g.exit_to_title())
+	var recovered: bool = g.ui.title_panel.visible and g.cur_zone == "town" and not g._busy
+	print("[FLOW CHECK] interrupted transition recovered=", recovered)
+	if not recovered:
+		push_error("Return to title during transition did not recover")
+	await shot("returned-title")
 	var f := FileAccess.open(output, FileAccess.WRITE)
 	f.store_string(JSON.stringify({"rows": rows, "viewport": str(get_root().get_visible_rect().size),
 		"preset": g.quality, "user_dir": OS.get_user_data_dir(),
@@ -85,4 +97,6 @@ func run() -> void:
 	SkillFx.clear(g.hero)
 	g.queue_free()
 	await wait_frames(8)
-	quit()
+	var released: bool = int(ResCache.metrics().get("scopes", 0)) == 0 and int(ResCache.metrics().get("pending", 0)) == 0
+	print("[FLOW CHECK] scope teardown=", released)
+	quit(0 if recovered and released else 1)

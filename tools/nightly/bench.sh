@@ -14,17 +14,9 @@ for sc in camp:2 moor:1 moor:2 moor:3 fight:2 boss:2 arena:2 crypt:2 pvp3v3:2 se
   for r in $(seq 1 "${BENCH_RUNS:-3}"); do
     f="$OUT/${LABEL}_${s}_q${q}_r$r"
     if [ "$s" = server ]; then
-      "$G" --headless --path . -- --server --port 24691 --kpi server "$f.json" > "$f.log" 2>&1 &
+      python3 tools/nightly/run_kpi.py "$f" "$G" -ApplePersistenceIgnoreState YES --headless --path . -- --server --port 24691 --kpi server "$f.json"
     else
-      "$G" --path . --resolution 1600x900 -- --kpi "$s" "$f.json" --quality "$q" > "$f.log" 2>&1 &
-    fi
-    p=$!
-    for i in $(seq 1 240); do kill -0 "$p" 2>/dev/null || break; sleep 1; done
-    if kill -0 "$p" 2>/dev/null; then
-      kill "$p" 2>/dev/null
-      printf 'timeout\n' > "$f.exit"
-    else
-      wait "$p"; printf '%s\n' "$?" > "$f.exit"
+      python3 tools/nightly/run_kpi.py "$f" "$G" -ApplePersistenceIgnoreState YES --path . --resolution 1600x900 -- --kpi "$s" "$f.json" --quality "$q"
     fi
   done
 done
@@ -56,8 +48,10 @@ for f in sorted(glob.glob(os.path.join(out, label + "_*_r*.json"))):
     exit_path = f[:-5] + ".exit"
     text = open(log_path).read() if os.path.exists(log_path) else "ERROR: missing log"
     code = open(exit_path).read().strip() if os.path.exists(exit_path) else "missing"
-    row["validation"] = {"clean": code == "0" and not re.search(r"SCRIPT ERROR|Parse Error|ERROR:|WARNING:|crashed", text),
-                         "exit": code, "log": log_path}
+    validation_path = f[:-5] + ".validation.json"
+    row["validation"] = json.load(open(validation_path)) if os.path.exists(validation_path) else {"clean": False, "quiet": False}
+    row["validation"]["clean"] = row["validation"]["clean"] and code == "0" and not re.search(r"SCRIPT ERROR|Parse Error|ERROR:|WARNING:|crashed", text)
+    row["validation"]["log"] = log_path
     groups.setdefault(key, []).append(row)
 for key, rows in groups.items():
     res[key] = aggregate(rows)
