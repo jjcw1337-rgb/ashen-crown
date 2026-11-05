@@ -347,7 +347,7 @@ static func flipbook() -> Texture2D:
 	if _flipbook == null:
 		_flipbook = FireFx.book("tongue")      # the game's simulated fire (falls back to the body book)
 	if _flipbook == null and ResourceLoader.exists(FIRE_FLIPBOOK):
-		_flipbook = load(FIRE_FLIPBOOK)
+		_flipbook = ResCache.get_res(FIRE_FLIPBOOK)
 	return _flipbook
 
 ## A flame tongue: the simulated fire's flipbook when it is there, else the procedural flame. life = the

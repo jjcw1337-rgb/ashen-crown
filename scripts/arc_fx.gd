@@ -30,7 +30,7 @@ static var _lights := 0
 
 static func tex(path: String) -> Texture2D:
 	if not _tex.has(path):
-		_tex[path] = load(path) if ResourceLoader.exists(path) else null
+		_tex[path] = ResCache.get_res(path) if ResourceLoader.exists(path) else null
 	return _tex[path]
 
 static func _shader(key: String) -> Shader:

@@ -60,7 +60,7 @@ static func build(w: World) -> void:
 	w._rasterize()
 	w._flush_stones(Props.stone())
 	w._build_terrain(VIA_TERRAIN)
-	w._scatter_grass(120000, VIA_GRASS, 0.32)
+	await w._scatter_grass(120000, VIA_GRASS, 0.32)
 	w._scatter_ferns(500)
 	_packs(w)
 	w.spawns["start"] = Vector3(0, 0, -6)

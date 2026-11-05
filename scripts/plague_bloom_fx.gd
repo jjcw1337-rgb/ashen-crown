@@ -228,7 +228,7 @@ static func lash(bloom: Node, e: Node3D) -> void:
 	root.global_position = Vector3(at.x, gy, at.z)
 	root.rotation.y = randf() * TAU
 	if _roots_scene == null and ResourceLoader.exists(ROOTS_GLB):
-		_roots_scene = load(ROOTS_GLB)
+		_roots_scene = ResCache.get_res(ROOTS_GLB)
 	if _roots_scene != null:
 		var m: Node3D = _roots_scene.instantiate()
 		root.add_child(m)

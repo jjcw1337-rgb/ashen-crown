@@ -126,7 +126,7 @@ static func dye(r: Node3D, scheme: String) -> void:
 	var path := "res://assets/textures/ranger/ranger_%s.jpg" % scheme
 	if scheme == "" or not ResourceLoader.exists(path):
 		return
-	var tex: Texture2D = load(path)
+	var tex: Texture2D = ResCache.get_res(path)
 	for mi in r.find_children("*", "MeshInstance3D", true, false):
 		var m := mi as MeshInstance3D
 		if m.mesh == null or not (m.mesh is ArrayMesh) or m.get_parent() is BoneAttachment3D:

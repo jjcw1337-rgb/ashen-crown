@@ -127,26 +127,87 @@ static var quality := 2
 ## (base_col, tip_col, dry_col); `q` the graphics preset. Adds MultiMeshInstance3D chunks under `parent`
 ## (group "grass", meta "grass3d") and returns how many clumps went in.
 static func scatter(parent: Node3D, area: Rect2, ctx: Object, colors: Dictionary, q: int, seed_v: int, shadows := true) -> int:
-	quality = clampi(q, 0, 3)
-	var t0 := Time.get_ticks_msec()
+	var job := ScatterJob.new(parent, area, ctx, colors, q, seed_v, shadows)
+	while not job.step():
+		pass
+	return job.count
+
+## One row or one MultiMesh bucket per step; time slicing happens between these bounded units.
+class ScatterJob extends RefCounted:
+	var parent: Node3D
+	var area: Rect2
+	var ctx: Object
+	var colors: Dictionary
+	var quality: int
+	var shadows: bool
 	var rng := RandomNumberGenerator.new()
-	rng.seed = seed_v
 	var clump_n := FastNoiseLite.new()
-	clump_n.seed = seed_v + 11
-	clump_n.frequency = 0.11
-	clump_n.fractal_octaves = 2
-	var dens := BASE_DENSITY * float(QUALITY_DENSITY[quality])
-	# per chunk, species, variant ("cx,cz,species,variant"): 16 floats per instance (3x4 transform + custom)
+	var dens := 0.0
 	var buckets := {}
 	var count := 0
 	var cell := 1.0
-	var nx := int(ceil(area.size.x / cell))
-	var nz := int(ceil(area.size.y / cell))
-	var keys: Array = SPECIES.keys()
+	var nx := 0
+	var nz := 0
+	var keys: Array = []
 	var tops := PackedFloat64Array()
-	for sp in keys:
-		tops.append(float(SPECIES[sp]["h"][1]))
-	for j in nz:
+	var j := 0
+	var bucket_keys: Array = []
+	var bucket_i := 0
+	var mats: Array = []
+	var tmats: Array = []
+	var lod: Vector2
+	var fade: Vector2
+	var half := CHUNK * 0.75
+	var generating := true
+
+	func _init(p: Node3D, rect: Rect2, context: Object, palette: Dictionary, q: int, seed_v: int, shade := true) -> void:
+		parent = p
+		area = rect
+		ctx = context
+		colors = palette
+		quality = clampi(q, 0, 3)
+		shadows = shade
+		rng = RandomNumberGenerator.new()
+		rng.seed = seed_v
+		clump_n = FastNoiseLite.new()
+		clump_n.seed = seed_v + 11
+		clump_n.frequency = 0.11
+		clump_n.fractal_octaves = 2
+		dens = BASE_DENSITY * float(QUALITY_DENSITY[quality])
+		# per chunk, species, variant ("cx,cz,species,variant"): 16 floats per instance (3x4 transform + custom)
+		buckets = {}
+		count = 0
+		cell = 1.0
+		nx = int(ceil(area.size.x / cell))
+		nz = int(ceil(area.size.y / cell))
+		keys = SPECIES.keys()
+		tops = PackedFloat64Array()
+		for sp in keys:
+			tops.append(float(SPECIES[sp]["h"][1]))
+
+	func step() -> bool:
+		Grass.quality = quality
+		if not is_instance_valid(parent) or not is_instance_valid(ctx):
+			return true
+		if generating:
+			if j < nz:
+				_row()
+				j += 1
+				return false
+			generating = false
+			mats = Grass.material(colors)
+			tmats = Grass.material(colors, true)
+			lod = LOD_BAND[quality]
+			fade = FADE[quality]
+			bucket_keys = buckets.keys()
+			return false
+		if bucket_i < bucket_keys.size():
+			_attach(bucket_keys[bucket_i])
+			bucket_i += 1
+			return false
+		return true
+
+	func _row() -> void:
 		for i in nx:
 			var cx := area.position.x + (i + rng.randf()) * cell
 			var cz := area.position.y + (j + rng.randf()) * cell
@@ -199,7 +260,7 @@ static func scatter(parent: Node3D, area: Rect2, ctx: Object, colors: Dictionary
 			for k in n:
 				var x := cx + rng.randf_range(-0.6, 0.6)
 				var z := cz + rng.randf_range(-0.6, 0.6)
-				var si := _pick_i(mw, mtot, rng, mk, keys)
+				var si := Grass._pick_i(mw, mtot, rng, mk, keys)
 				var v := rng.randi() % VARIANTS
 				var s := rng.randf_range(0.75, 1.25)
 				var sh := s * hs * rng.randf_range(0.85, 1.15)
@@ -218,20 +279,16 @@ static func scatter(parent: Node3D, area: Rect2, ctx: Object, colors: Dictionary
 				arr.append_array([b.x.x, b.y.x, b.z.x, x, b.x.y, b.y.y, b.z.y, y, b.x.z, b.y.z, b.z.z, z,
 					clampf(shade + rng.randf_range(-0.08, 0.08), 0.0, 1.0), clampf(dry + rng.randf_range(-0.1, 0.1), 0.0, 1.0), rng.randf(), 0.0])
 				count += 1
-	var mats := material(colors)
-	var tmats := material(colors, true)
-	var lod: Vector2 = LOD_BAND[quality]
-	var fade: Vector2 = FADE[quality]
-	var half := CHUNK * 0.75
-	for key in buckets.keys():
+
+	func _attach(key: int) -> void:
 		var arr := PackedFloat32Array(buckets[key])
-		var parts: PackedStringArray = _key_parts(key, keys)
+		var parts: PackedStringArray = Grass._key_parts(key, keys)
 		for l in 2:
 			var mm := MultiMesh.new()
 			mm.transform_format = MultiMesh.TRANSFORM_3D
 			mm.use_custom_data = true
-			var gm := glb_mesh(parts[2], int(parts[3]), l)
-			mm.mesh = gm if gm != null else mesh(parts[2], int(parts[3]), l)
+			var gm := Grass.glb_mesh(parts[2], int(parts[3]), l)
+			mm.mesh = gm if gm != null else Grass.mesh(parts[2], int(parts[3]), l)
 			mm.instance_count = arr.size() / 16
 			mm.buffer = arr
 			var mmi := MultiMeshInstance3D.new()
@@ -241,17 +298,15 @@ static func scatter(parent: Node3D, area: Rect2, ctx: Object, colors: Dictionary
 			# shadows only from the near, detailed grass, and only on Ultra (as before): grass shading grass on
 			# lower presets darkens the field more than it grounds it, and costs a second pass
 			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			_set_ranges(mmi, l, lod, fade, half)
+			Grass._set_ranges(mmi, l, lod, fade, half)
 			mmi.set_meta("grass3d", l)
 			mmi.add_to_group("grass")
 			mmi.name = "Grass_%s_%s_%s%s_L%d" % [parts[0], parts[1], parts[2], parts[3], l]
 			parent.add_child(mmi)
-			if l == 0 and shadows and not (parts[2] in _no_shadow_species()):
+			if l == 0 and shadows and not (parts[2] in Grass._no_shadow_species()):
 				mmi.set_meta("shadows", PackedStringArray([parts[2], parts[3]]))
 				if quality >= 3:
-					_add_twin(mmi, arr)
-	print("Grass: %d clumps in %d chunks (preset %d) in %d ms" % [count, buckets.size(), quality, Time.get_ticks_msec() - t0])
-	return count
+					Grass._add_twin(mmi, arr)
 
 ## The near grass's shadow (Ultra only): a shadows-only twin of each LOD0 chunk. It draws the same clumps with
 ## the LOD0 material (same sway, touch and thinning) but, by `SHADOW_STYLE`, from the LOD1 clump (fewer triangles)

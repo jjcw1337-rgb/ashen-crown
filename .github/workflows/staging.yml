@@ -54,6 +54,11 @@ jobs:
       - name: Import project
         run: godot --headless --editor --quit || true
 
+      - name: Verify performance and content contracts
+        run: |
+          python3 -m unittest discover -s tools/nightly -p test_bench_compare.py -v
+          python3 tools/ci/perf_contracts.py godot
+
       - name: Export
         run: |
           mkdir -p build/win build/linux build/mac

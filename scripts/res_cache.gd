@@ -1,24 +1,140 @@
 class_name ResCache
 extends RefCounted
-## Models and textures that skills and gear load while the game runs, held for the whole session (the frame-time
-## audit, Blaine 2026-11-05). Godot's ResourceLoader only keeps a resource while something references it, so an
-## effect's model went with the effect and the next cast parsed the file again on the main thread: every Archer
-## arrow reloaded its glb (14-17 ms a shot), the Plague Doctor's flask, swarm, censer and vat their models.
-
+## Main-thread coordinator over Godot's resource cache. One owned background thread loads
+## resources sequentially; only finished worker results are collected on the main thread.
+## Native loader crashes occurred in the 4.3 threaded-status pilot; the exact native cause
+## is unproven. An owned thread gives an explicit completion boundary. No scene-tree work runs there.
+const MAX_IN_FLIGHT := 1
+static var _thread: Thread
 static var _held := {}
+static var _scopes := {}
+static var _pending := {}
+static var _queue: Array[String] = []
+static var _errors := {}
+static var _legacy := {} # compatibility pins for unconverted callers, visible in diagnostics
+static var _sync_misses := {}
+static var _loads_started := 0
 
-## The resource at `path` (null if it isn't there), loaded once.
+static func prepare(scope: String, paths: Array) -> void:
+	if not _scopes.has(scope):
+		_scopes[scope] = {}
+	for item in paths:
+		var path := str(item)
+		_scopes[scope][path] = true
+		_errors.erase(path) # a new request may retry a previously failed file
+		if _held.has(path) or _pending.has(path) or _queue.has(path):
+			continue
+		if not ResourceLoader.exists(path):
+			_errors[path] = "missing"
+		else:
+			_queue.append(path)
+	pump()
+
+static func pump() -> void:
+	if _thread != null and not _thread.is_alive():
+		var path: String = str(_pending.keys()[0])
+		var res: Resource = _thread.wait_to_finish() as Resource
+		_thread = null
+		_pending.erase(path)
+		if res != null:
+			if _owned(path):
+				_held[path] = res
+		else:
+			_errors[path] = "load failed"
+	while _pending.size() < MAX_IN_FLIGHT and not _queue.is_empty():
+		var path: String = _queue.pop_front()
+		if not _owned(path):
+			continue
+		# Resident resources need a reference, not another worker or disk read.
+		if ResourceLoader.has_cached(path):
+			_held[path] = load(path)
+			continue
+		if OS.get_cmdline_user_args().has("--content-trace"):
+			print("[content] request ", path)
+		_thread = Thread.new()
+		var err := _thread.start(_load_worker.bind(path))
+		if err == OK:
+			_pending[path] = true
+			_loads_started += 1
+		else:
+			_thread = null
+			_errors[path] = "request error %d" % err
+
+static func _load_worker(path: String) -> Resource:
+	return ResourceLoader.load(path)
+
+static func status(scope: String) -> Dictionary:
+	if not _scopes.has(scope):
+		return {"ready": false, "cancelled": true, "pending": 0, "failed": []}
+	var failed: Array[String] = []
+	var remaining := 0
+	for path in _scopes[scope]:
+		if _errors.has(path):
+			failed.append(path)
+		elif not _held.has(path):
+			remaining += 1
+	return {"ready": remaining == 0 and failed.is_empty(), "cancelled": false,
+		"pending": remaining, "failed": failed}
+
+static func wait_ready(tree: SceneTree, scope: String, timeout_s := 60.0) -> Dictionary:
+	var deadline := Time.get_ticks_msec() + int(timeout_s * 1000.0)
+	while true:
+		pump()
+		var result := status(scope)
+		if result["cancelled"] or result["pending"] == 0:
+			return result
+		if Time.get_ticks_msec() >= deadline:
+			result["timeout"] = true
+			return result
+		await tree.process_frame
+	return {}
+
+static func release(scope: String) -> void:
+	_scopes.erase(scope)
+	for path in _held.keys():
+		if not _owned(path):
+			_held.erase(path)
+	# An in-flight load finishes normally; pump joins the worker and discards an unowned result.
+
+static func _owned(path: String) -> bool:
+	if _legacy.has(path):
+		return true
+	for paths in _scopes.values():
+		if paths.has(path):
+			return true
+	return false
+
+## Transitional fallback. New gameplay code should acquire a scope before activation.
+## Misses are counted by path so an omitted dependency is observable, rather than silently hidden.
 static func get_res(path: String) -> Resource:
-	if not _held.has(path):
-		_held[path] = load(path) if ResourceLoader.exists(path) else null
-	return _held[path]
+	if _held.has(path):
+		return _held[path]
+	_sync_misses[path] = int(_sync_misses.get(path, 0)) + 1
+	var res: Resource = load(path) if ResourceLoader.exists(path) else null
+	if res != null:
+		if not _owned(path):
+			_legacy[path] = true
+		_held[path] = res
+	return res
 
-## A new instance of the scene at `path` (null if it isn't there).
 static func inst(path: String) -> Node:
 	var ps := get_res(path) as PackedScene
 	return ps.instantiate() if ps != null else null
 
-## Load `paths` now (a loading screen calls it), so the first use finds them held.
 static func hold(paths: Array) -> void:
 	for p in paths:
 		get_res(str(p))
+
+static func metrics() -> Dictionary:
+	return {"held": _held.size(), "scopes": _scopes.size(), "pending": _pending.size(),
+		"queued": _queue.size(), "legacy_pins": _legacy.size(), "loads_started": _loads_started,
+		"sync_misses": _sync_misses.duplicate(), "errors": _errors.duplicate()}
+
+## Only at final teardown; ordinary cancellation is nonblocking and handled by pump().
+static func shutdown_if_unused() -> void:
+	if not _scopes.is_empty(): return
+	if _thread != null:
+		_thread.wait_to_finish()
+		_thread = null
+	_pending.clear()
+	_queue.clear()

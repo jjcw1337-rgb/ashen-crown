@@ -76,11 +76,11 @@ static func book(name: String) -> Texture2D:
 		var t: Texture2D = null
 		var p: String = BOOKS.get(name, "")
 		if p != "" and ResourceLoader.exists(p):
-			t = load(p)
+			t = ResCache.get_res(p)
 		elif name != "body" and name != "smoke":
 			t = book("body")
 		elif name == "body" and ResourceLoader.exists(LEGACY_BOOK):
-			t = load(LEGACY_BOOK)
+			t = ResCache.get_res(LEGACY_BOOK)
 		_books[name] = t
 	return _books[name]
 

@@ -31,7 +31,7 @@ static var _tex: Texture2D
 
 static func sigil_tex() -> Texture2D:
 	if _tex == null and ResourceLoader.exists(SIGIL):
-		_tex = load(SIGIL)
+		_tex = ResCache.get_res(SIGIL)
 	return _tex
 
 static func play(h: Hero, ev: Dictionary) -> void:

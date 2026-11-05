@@ -134,7 +134,7 @@ static func build(w: World) -> void:
 	w._rasterize()
 	w._flush_stones(Props.stone())
 	w._build_terrain(FORT_TERRAIN)
-	w._scatter_grass(52000, World.MOOR_GRASS, 0.3)
+	await w._scatter_grass(52000, World.MOOR_GRASS, 0.3)
 	w._scatter_ferns(400)
 
 const FORT_TERRAIN := {

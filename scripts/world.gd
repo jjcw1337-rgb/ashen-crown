@@ -628,6 +628,37 @@ func terrain_patch(r: Rect2, step: float, tcol: Dictionary, nm := "Terrain", flo
 
 ## Grass, wildflowers and ferns use their own random numbers so a denser graphics setting
 ## never shifts anything gameplay-related (co-op players can use different settings).
+var scheduled_build := false
+var _visual_jobs: Array = []
+var construction_metrics := {}
+
+func scatter_grass(area: Rect2, colors: Dictionary, q: int, seed_v: int) -> void:
+	if scheduled_build:
+		_visual_jobs.append(Grass.ScatterJob.new(props_root, area, self, colors, q, seed_v))
+		await finish_visuals()
+	else:
+		Grass.scatter(props_root, area, self, colors, q, seed_v)
+
+## All callers keep the synchronous build API; gameplay opts into scheduled presentation assembly.
+func finish_visuals(budget_ms := 4.0) -> void:
+	var started := Time.get_ticks_usec()
+	var deadline := started + int(budget_ms * 1000.0)
+	var max_step := 0
+	var yields := 0
+	for job in _visual_jobs:
+		var done := false
+		while not done:
+			var t := Time.get_ticks_usec()
+			done = job.step()
+			max_step = maxi(max_step, Time.get_ticks_usec() - t)
+			if Time.get_ticks_usec() >= deadline:
+				yields += 1
+				await get_tree().process_frame
+				deadline = Time.get_ticks_usec() + int(budget_ms * 1000.0)
+	_visual_jobs.clear()
+	construction_metrics = {"visual_wall_ms": (Time.get_ticks_usec() - started) / 1000.0,
+		"max_step_ms": max_step / 1000.0, "yields": yields}
+
 func _scatter_grass(count: int, colors: Dictionary, height: float, outside := true) -> void:
 	# The living 3D grass (grass.gd): species and biomes, wind and touch; Act I in its own colours, A2 and A3 in the
 	# zone's (they were the old blade clumps: 15 M triangles on the Imperial Road; A3's ash chars it in the shader)
@@ -635,7 +666,7 @@ func _scatter_grass(count: int, colors: Dictionary, height: float, outside := tr
 		var a := bounds.grow(MARGIN * 0.6 if outside else 0.0)
 		_grass_dry.seed = int(bounds.size.x * 31.0) + count
 		_grass_dry.frequency = 0.035
-		Grass.scatter(props_root, a, self, Grass.ACT1 if oak_forest else colors, detail, int(bounds.size.x * 1000.0) + count)
+		await scatter_grass(a, Grass.ACT1 if oak_forest else colors, detail, int(bounds.size.x * 1000.0) + count)
 		return
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(bounds.size.x * 1000.0) + count
@@ -1036,19 +1067,21 @@ func build(act_i: int, kind_s: String, seed_v: int) -> void:
 		Battlegrounds.ZONE: Battlegrounds.build(self)
 		Vigil.ZONE: Vigil.build(self)
 		Sandbox.ZONE, "arena": Sandbox.build(self)
-		"town": _build_town()
-		"wild": Via.build(self) if run == 1 else _build_wild()
-		"coast": Coast.build(self)
+		"town": await _build_town()
+		"wild":
+			if run == 1: await Via.build(self)
+			else: await _build_wild()
+		"coast": await Coast.build(self)
 		"lair":
 			if run == 1:
 				Aurelia.build(self)
 			elif fort:
-				Fort.build(self)
+				await Fort.build(self)
 			else:
 				_build_lair()
 		_:
 			if kind.begins_with("isle_"):
-				Isles.build_zone(self, Isles.id_of(kind))
+				await Isles.build_zone(self, Isles.id_of(kind))
 	# the Meshy pieces that keep their glb's own material dither away round the hero too, like every code-built prop
 	Props.see_through(self)
 	Props.shadow_twins(self)
@@ -1065,7 +1098,7 @@ var MOOR_ROAD: Dictionary = MOOR_TERRAIN.merged({"cob_shade": 0.72}, true)
 
 func _build_town() -> void:
 	if oak_forest and act == 0 and ForestCamp.ok():
-		ForestCamp.build(self)      # Act I: the camp in the old forest
+		await ForestCamp.build(self)      # Act I: the camp in the old forest
 		return
 	bounds = Rect2(-38, -42, 76, 80)
 	theme = {"name": "town"}
@@ -1267,7 +1300,7 @@ func _build_town() -> void:
 	_rasterize()
 	_flush_stones(Props.stone())
 	_build_terrain(MOOR_TERRAIN)
-	_scatter_grass(60000, MOOR_GRASS, 0.3)
+	await _scatter_grass(60000, MOOR_GRASS, 0.3)
 	_scatter_ferns(120)
 	spawns["start"] = Vector3(0, 0, 6)
 	spawns["from_wild"] = Vector3(0, 0, wy + 4.0)
@@ -1714,7 +1747,7 @@ func _build_wild() -> void:
 	_rasterize()
 	_flush_stones(Props.stone())
 	_build_terrain(MOOR_ROAD if road_style() == 2 else MOOR_TERRAIN if road_style() == 0 else MOOR_TRAIL)
-	_scatter_grass(94000, MOOR_GRASS, 0.32)
+	await _scatter_grass(94000, MOOR_GRASS, 0.32)
 	_scatter_ferns(700)
 	if oak_forest:
 		_rare_flowers(3)

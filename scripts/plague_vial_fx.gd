@@ -34,7 +34,7 @@ static func vial(ri: int) -> Node3D:
 	var root := Node3D.new()
 	var rc := recipe(ri)
 	if _vial_scene == null and ResourceLoader.exists(VIAL_GLB):
-		_vial_scene = load(VIAL_GLB)
+		_vial_scene = ResCache.get_res(VIAL_GLB)
 	if _vial_scene == null:
 		var m := MeshInstance3D.new()
 		m.mesh = Geo.sph(0.04, 12)
@@ -370,7 +370,7 @@ static func shatter(root: Node3D, w: World, at: Vector3, r: float, ri: int, dir:
 	var fwd := (dir * Vector3(1, 0, 1)).normalized() if (dir * Vector3(1, 0, 1)).length() > 0.01 else Vector3.FORWARD
 	# the glass
 	if _shard_scene == null and ResourceLoader.exists(SHARDS_GLB):
-		_shard_scene = load(SHARDS_GLB)
+		_shard_scene = ResCache.get_res(SHARDS_GLB)
 	if _shard_scene != null:
 		var src: Node3D = _shard_scene.instantiate()
 		for mi in src.find_children("*", "MeshInstance3D", true, false):

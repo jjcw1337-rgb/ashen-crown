@@ -52,7 +52,7 @@ static func shader(key: String) -> Shader:
 
 static func hoarfrost() -> Texture2D:
 	if _tex == null and ResourceLoader.exists(HOARFROST):
-		_tex = load(HOARFROST)
+		_tex = ResCache.get_res(HOARFROST)
 	return _tex
 
 static func _mat(key: String) -> ShaderMaterial:
