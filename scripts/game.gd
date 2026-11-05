@@ -1428,6 +1428,10 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	await get_tree().process_frame
 	if world:
 		_store_harvest()
+		# the hero's lingering skill effects (Hero.fxs) live in this zone's fx_root: drop them with it, as a puppet's
+		# are (Hero.net_zone_reset); Molten Fists' update touched its freed nodes every frame after a trip
+		if hero != null:
+			SkillFx.clear(hero)
 		world.queue_free()
 		world = null
 		hovered = null
