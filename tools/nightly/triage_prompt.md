@@ -40,7 +40,7 @@ the game ran worst. You don't guess: every fix starts from the reports, is repro
      it with a headless tool script (load the zone, put the hero where they were, do what they did) and see the error;
    - crashes: the log's end and the crumbs; reproduce if you can; if not, harden the code on that path and say so;
    - slow spots: reproduce with the KPI tool at that place and preset:
-       G=~/Applications/Godot_v4.3.app/Contents/MacOS/Godot
+       G=~/Applications/Godot_v4.4.1.app/Contents/MacOS/Godot
        $G --path . --resolution 1600x900 -- --kpi spot {{OUT}}/spot1.json --zone wild --run 0 --pos 120,-40 --quality 2 [--foes 12]
      (writes spot1.json and spot1.png), find what's expensive there (--hide ..., draw calls, triangles, the
      scripts), fix it, and measure again.

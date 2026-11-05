@@ -18,7 +18,7 @@ machine). Claude reads it through CLAUDE.md, which holds the full code map and t
 
 ## Ground rules
 
-- Godot **4.3** (desktop), binary on this Mac: `/Users/blaine/Applications/Godot_v4.3.app/Contents/MacOS/Godot`.
+- Godot **4.4.1** (desktop), binary on this Mac: `/Users/blaine/Applications/Godot_v4.4.1.app/Contents/MacOS/Godot`.
 - Before pushing: run `bash tools/nightly/gate.sh <logdir>` from inside the worktree you are testing; it must be green.
 - Branches: your own worktree; previews on `test-*`; `staging` only with a green gate; `main` only on an admin's
   explicit request. Never force-push over someone else's commits; rebase on the latest remote first.

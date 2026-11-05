@@ -4,7 +4,7 @@
 # restarts into it once they've gone; an empty one restarts within ServerUpdate.CHECK.
 #   bash tools/server_update_test.sh            prints PASS or FAIL lines; exit 1 on a failure
 set -u
-G=${GODOT:-$HOME/Applications/Godot_v4.3.app/Contents/MacOS/Godot}
+G=${GODOT:-$HOME/Applications/Godot_v4.4.1.app/Contents/MacOS/Godot}
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 T=$(mktemp -d)
 trap 'rm -rf "$T"' EXIT

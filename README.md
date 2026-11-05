@@ -20,7 +20,7 @@ Windows SmartScreen may warn that the app is unrecognised (it isn't code-signed)
 
 **Black screen, or the picture looks wrong?** Run **`Ashen Crown (Safe Mode).bat`** instead. It starts the game with the OpenGL renderer, which works on almost every laptop. The game also checks for a black screen when you enter an outdoor area and lowers the graphics setting by itself if it finds one.
 
-**From source:** install [Godot 4.3](https://godotengine.org/download/archive/4.3-stable/), open `project.godot`, press F5.
+**From source:** install [Godot 4.4.1](https://godotengine.org/download/archive/4.4.1-stable/), open `project.godot`, press F5.
 
 ## Classes
 

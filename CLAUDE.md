@@ -1,6 +1,6 @@
 # Ashen Crown: notes for Claude (and humans)
 
-A Diablo II-style isometric ARPG in **Godot 4.3** (GDScript, Forward+ with an OpenGL fallback).
+A Diablo II-style isometric ARPG in **Godot 4.4.1** (GDScript, Forward+ with an OpenGL fallback).
 Everything is procedural (models, textures, sound, music) except a few asset files: the intro video
 `assets/intro.ogv`, the Act I boss King Grubb `assets/models/grubb_mutant.glb` and the gnome Warlock
 `assets/models/gnome_warlock.glb`, and the knight's two bodies `knight_meshy.glb` / `knight_armored.glb` (all generated
@@ -19,10 +19,11 @@ When you change one of these patterns, update its file in the same commit.
 
 ## Getting the tools (Linux)
 
-Godot 4.3 **standard** (not .NET) must be on PATH as `godot`:
+Godot 4.4.1 **standard** (not .NET) must be on PATH (upgraded from 4.3 on 2026-11-05: every script and
+resource now has a `.uid` file beside it; commit them) as `godot`:
 ```
-wget https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
-unzip Godot_v4.3-stable_linux.x86_64.zip && sudo mv Godot_v4.3-stable_linux.x86_64 /usr/local/bin/godot
+wget https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip
+unzip Godot_v4.4.1-stable_linux.x86_64.zip && sudo mv Godot_v4.4.1-stable_linux.x86_64 /usr/local/bin/godot
 ```
 **Blender 4.5 LTS** (for models and rigs, see "Blender assets"): `bash tools/blender/setup_blender.sh` installs it
 to `/opt` and links `blender` (checksum-verified). Claude's cloud workspace resets, so run it again in a new session;
@@ -34,7 +35,7 @@ thumbnail. Key from `$MESHY_API_KEY` or `~/.config/meshy/key` (never in the repo
 `assets.meshy.ai` reachable. Each generation costs credits; results expire on Meshy after 3 days. Clean up, rig and
 export with Blender, the way King Grubb was made.
 
-Exporting locally also needs the 4.3 export templates (Editor → Manage Export Templates), but
+Exporting locally also needs the 4.4.1 export templates (Editor → Manage Export Templates), but
 you normally don't export locally: pushing to `main` does it in CI.
 
 ## Commands
@@ -301,7 +302,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   one (6 players fighting) 95% -> 24% of a core, an empty one 31% -> 13%. So server code must never need pixels or
   mesh surfaces (a stripped mesh has none: guard like `Flora.oak_model`'s leaves and `UI._scaled_tex`).
 - **Browser build (WebGL)** is a test build only and is fragile:
-  - it is exported with **Godot 4.5.1** in CI (the desktop builds use 4.3): Godot 4.3's WebGL renderer
+  - it is exported with **Godot 4.5.1** in CI (the desktop builds use 4.4.1): Godot 4.3's WebGL renderer
     blanks the whole 3D view in busy scenes (many objects near lights). Keep code working in both versions:
     e.g. `get_meta(key, null)` errors in 4.5, so check `has_meta` first;
   - keep graphics capped (`max_quality()` returns Medium on web); no intro video (excluded in the Web preset);
@@ -1880,7 +1881,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   Enter, a click or gamepad A/Start: the first says "Press again to skip"; `Game._is_skip_press`, other keys such as
   volume do nothing); `tools/intro_skip_test.gd`.
   The originals and the previous intro are kept on Blaine's Mac in ~/Documents/Game Factory/Trailers/.
-- CI is `.github/workflows/deploy.yml` (container `barichello/godot-ci:4.3`). If it fails, the
+- CI is `.github/workflows/deploy.yml` (container `barichello/godot-ci:4.4.1`). If it fails, the
   site keeps the last good build; read the failed step in the Actions tab.
 - **Preview builds**: push a branch named `test-*` (`git push origin HEAD:test-something`) and
   `.github/workflows/preview.yml` builds the Windows, Linux and Mac versions as downloads on that Actions run

@@ -61,7 +61,7 @@ megabytes are). Size changes must keep the look: show before/after images of any
    vram_mb ...). The runner's own "before" run of tonight is in {{OUT}}/bench/before.json; all past nights are in the
    KPI store: `sh tools/kpi_query.sh latest` or any SQL (`sh tools/kpi_query.sh "SELECT ..."`), or the `grafana` MCP
    if your session has it. Run a scenario yourself to iterate (each ~30-40 s):
-     G=~/Applications/Godot_v4.3.app/Contents/MacOS/Godot
+     G=~/Applications/Godot_v4.4.1.app/Contents/MacOS/Godot
      $G --path . --resolution 1600x900 -- --kpi fight {{OUT}}/try_fight.json --quality 2
    (`--secs N` for a shorter run; `--hide ...` in CLAUDE.md isolates costs; the old `--shot x.png --perf 12` hook
    still works). Pick tonight's targets from the KPIs furthest from their targets in KPIS.md.

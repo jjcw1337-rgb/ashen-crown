@@ -6,7 +6,7 @@
 set -u
 OUT=${1:-/tmp}
 mkdir -p "$OUT"
-G=/Users/blaine/Applications/Godot_v4.3.app/Contents/MacOS/Godot
+G=/Users/blaine/Applications/Godot_v4.4.1.app/Contents/MacOS/Godot
 BAD=0
 
 # wait for a pid up to N seconds; kill it after
