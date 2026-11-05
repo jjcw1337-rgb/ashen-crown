@@ -120,13 +120,11 @@ static func update(h: Hero, delta: float) -> void:
 			if cn != null:
 				crystals.append(cn)
 		Sfx.play_at("ice_arrow_hit", g2, -4.0, 0.85)
-		var tm := root.get_tree().create_timer(2.6, false)
-		tm.timeout.connect(func():
-			if not is_instance_valid(root):
-				return
+		var wld = h.game.world
+		Fx.later(root, 2.6, func():        # (skipped once the zone's fx_root is gone; captures no hero)
 			for cn in crystals:
 				if is_instance_valid(cn):
-					FrostVolleyFx._break(root, h.game.world, cn, tr)
+					FrostVolleyFx._break(root, wld, cn, tr)
 			Sfx.play_at("ice_shatter", g2, -5.0, 1.0))
 	# foes in the gale frost over
 	if on and fmod(t, 0.25) < delta:

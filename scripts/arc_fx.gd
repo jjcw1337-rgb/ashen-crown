@@ -118,11 +118,13 @@ static func chain(h: Hero, root: Node3D, ps: PackedVector3Array, d: Vector3, pal
 			bolt(root, a, b, 0.36, wk, pal, h.game)
 			_struck(h, root, b, pal)
 		else:
-			var tm := root.get_tree().create_timer(LEAP_GAP * i, false)
-			tm.timeout.connect(func():
-				if is_instance_valid(root) and is_instance_valid(h):
-					bolt(root, a, b, 0.32, wk, pal, h.game)
-					_struck(h, root, b, pal))
+			# (Fx.later skips it once the zone's fx_root is gone; the caster, a puppet that may leave, by weak reference)
+			var hw: WeakRef = weakref(h)
+			Fx.later(root, LEAP_GAP * i, func():
+				var hh := hw.get_ref() as Hero
+				if hh != null and is_instance_valid(hh):
+					bolt(root, a, b, 0.32, wk, pal, hh.game)
+					_struck(hh, root, b, pal))
 
 ## One bolt from a to b living `dur` s: a frame of the Blender lightning stretched between them, turning to the camera
 ## round its own line, struck again with another frame every 50 ms, a thin jagged core over it, its light flashing.
