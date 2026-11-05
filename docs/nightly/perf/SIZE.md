@@ -10,6 +10,7 @@ concept itself should be a size reduction until the download is well under 200 M
 | 2026-11-01 | 704 -> 281 MiB zip (exe 762 -> 336) | 725 -> 302 MiB zip | 275 MiB zip (bin 318) | 682 -> 255 MiB (Mac) | nightly: lossy WebP q0.9 for model textures that imported lossless; local exports (zip -r), intro.ogv (81.5 MiB) included |
 | 2026-11-02 | 390.1 MiB zip (exe 445.3) | 410.8 MiB zip (fresh import) | | 365.0 MiB (Mac) | nightly: no size change tonight (perf concepts); grew 302 -> 411 MiB since 11-01 from the day's new content (dinosaurs, trolls, crypt floors and bosses, NPCs) |
 | 2026-11-03 | 520.7 -> 387.8 MiB zip (exe 576.7 -> 443.9) | 541.5 -> 408.6 MiB zip | | 496.4 -> 363.6 MiB (Mac) | nightly: model textures capped at 1024 px and WebP q0.75 (`[importer_defaults]`), dyes capped; it had grown 411 -> 541 since 11-02 |
+| 2026-11-05 | 607.8 MiB zip (exe 664.4) | 628.6 MiB zip (fresh import; unchanged tonight) | | 584.1 MiB (Mac) | nightly: no size change (load-time and shadow concepts). It grew 408.6 -> 628.6 since 11-03: jj undid the 1024 px cap and q0.75 the same day (full textures on every preset), plus the living camp |
 
 Where it goes (2026-11-01): assets 420 MB on disk: models 346 MB (the biggest: knight_statue, knight_mocap,
 grubb_mutant, plague_doctor, knight_armored, archer_ranger, wraith_mocap, title/gate, gnome_warlock, demon_mocap,
@@ -47,3 +48,13 @@ are the next lever: Godot can't simplify the Meshy meshes (no LODs at import or 
 so decimate offline in Blender: the densest static props (stash chest 54 k triangles / 91 k vertices, waypoint dais
 44 k / 93 k, title gate 40 k / 85 k, sloop 39 k / 70 k, camp forge and alchemy 24 k / 50 k) and the bodies (player
 classes 60-95 k vertices, monsters 20-60 k).
+
+2026-11-05 (pack 584.1 MiB, Mac; parsed from the .pck's own directory): model textures (glb-extracted, full size,
+WebP q0.9 by jj's rule) 243.5 MB, imported scenes 188.4 MB (6.1 M vertices; the 7 camp traders and 3 guards are 4-6 MB
+each, mostly 30-52 animation clips: 1.55 M keys in all), intro.ogv 85.4 MB (not a target), committed PNG textures
+79.4 MB, audio 11.1 MB, scripts 2.8 MB. Byte-identical duplicates across glbs: only 8 MB (the knight bodies' three
+textures, the fractured props' `_pieces` copies). Files nothing references by path are few and mostly fallbacks
+(the painted grass clumps, the retired Phoenix textures: ~10 MB). Animation compression would save perhaps 15-20 MB
+but `ForestCamp._pin_root` and `CampGuard._unroot` edit the hips' tracks at run time, which compressed tracks refuse
+(pin them at import first). The remaining lever inside the rules is offline decimation of the densest Meshy scenes
+(stash chest 153 k vertices, the knight bodies and the statue 92-95 k, waypoint dais 93 k, title gate 85 k).
