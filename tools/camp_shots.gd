@@ -9,7 +9,7 @@ func _initialize():
 	_run()
 
 func _snap(name: String, frames := 6) -> void:
-	var out: String = OS.get_cmdline_user_args()[0]
+	var out: String = OS.get_cmdline_user_args()[-1]     # (the last: _late.gd takes the first)
 	for f in frames:
 		await process_frame
 	get_root().get_texture().get_image().save_png(out + "/" + name + ".png")
