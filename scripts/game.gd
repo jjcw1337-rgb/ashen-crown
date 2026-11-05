@@ -1312,6 +1312,8 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	loading_lbl.text = ("Descending into %s..." if zone == Battlegrounds.ZONE else "Entering %s...") % zone_title(act, zone)
 	set_loading_art(zone)
 	loading.visible = not _boot_quiet
+	# the zone's model files on worker threads from now on, while the old zone goes and the new one is built
+	var zone_files := ZonePreload.start(difficulty, zone)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if world:
@@ -1333,7 +1335,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	world.living_grass = true              # the living grass everywhere outdoors (its shader chars it under A3's ash)
 	add_child(world)
 	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair", "coast"].find(zone) * 7 + (zone.hash() % 997 if zone.begins_with("isle_") else 0))
-	var preloads := _preload_monsters()
+	var preloads := _preload_monsters(zone_files)
 	_restore_harvest()
 	_add_ocean(zone)
 	_end_underworld_now()
@@ -1371,6 +1373,9 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		spawn_enemy(boss_kind(), world.boss_spawn["pos"], world.level + 1, false, "", 999)
 	for p in preloads:
 		ResourceLoader.load_threaded_get(p)     # (they are in use: this only closes the threaded requests)
+	ZonePreload.finish(zone_files)
+	if OS.get_cmdline_user_args().has("--preload-record"):
+		ZonePreload.record(world, difficulty, zone)
 	if zone == "town":
 		_stock_shops()
 		if not tp_link.is_empty():
@@ -1404,7 +1409,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 
 ## The zone's monsters' models, loaded on worker threads while the minimap is drawn (load_zone): each first load
 ## of a kind's model was 23-34 ms on the main thread, ~0.6 s of the moor's arrival (nightly 2026-11-03).
-func _preload_monsters() -> PackedStringArray:
+func _preload_monsters(skip := PackedStringArray()) -> PackedStringArray:
 	var kinds := {}
 	for es in (world.enemy_spawns if not net.is_client() else []):
 		kinds[str(es["kind"])] = true
@@ -1413,7 +1418,7 @@ func _preload_monsters() -> PackedStringArray:
 	var out := PackedStringArray()
 	for k in kinds:
 		for p in Enemy.model_paths(k):
-			if not out.has(p) and not ResourceLoader.has_cached(p) and ResourceLoader.load_threaded_request(p, "", true) == OK:
+			if not out.has(p) and not skip.has(p) and not ResourceLoader.has_cached(p) and ResourceLoader.load_threaded_request(p, "", true) == OK:
 				out.append(p)
 	return out
 
