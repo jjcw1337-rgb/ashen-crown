@@ -51,8 +51,10 @@ func request(op: String, args: Dictionary) -> Dictionary:
   req.queue_free();return {}
  var result:Array=await req.request_completed
  req.queue_free()
- if int(result[1])!=200:return {}
- var data=JSON.parse_string((result[3] as PackedByteArray).get_string_from_utf8())
+ if int(result[0])!=HTTPRequest.RESULT_SUCCESS or int(result[1])!=200:return {}
+ var decoder:=JSON.new()
+ if decoder.parse((result[3] as PackedByteArray).get_string_from_utf8())!=OK:return {}
+ var data=decoder.data
  return data if data is Dictionary else {}
 
 func admit(pid: int, ticket: String) -> bool:
