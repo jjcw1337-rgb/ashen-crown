@@ -816,7 +816,15 @@ func _process(delta: float) -> void:
 	_pose({"time": anim_time, "phase": phase, "move": move_amt, "atk": (atk_t / atk_dur) if atk_t >= 0.0 else -1.0,
 		"style": atk_style, "hit": hit_t, "zombie": kind in ["zombie", "mummy"], "aggro": aggro})
 
+## A dedicated server doesn't pose the bodies of its monsters and players: nobody sees them, and posing was half of a
+## busy server's CPU (Battlegrounds, 6 players fighting: 18.1% of a core -> 8.2%, with the 30 Hz tick 4.8%; Blaine's
+## capacity audit, 2026-11-05). Bones then stay in their rest pose (Grubb's bombs leave from a resting hand).
+## `-- --server --pose` poses them again.
+static var server_nopose := false
+
 func _pose(st: Dictionary) -> void:
+	if Enemy.server_nopose:
+		return
 	pose_rig(rig, st, height)
 
 ## The model files a monster kind's body loads (build_rig), so a zone can load them on worker threads before it

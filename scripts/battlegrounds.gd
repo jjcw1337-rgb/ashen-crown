@@ -121,6 +121,12 @@ var _gear_t := 0.0
 const GEAR_CHECK := 2.0
 var _sync_t := 0.0
 
+## A dedicated server's frame rate: 30 like the lobby's match workers (60 was about twice the CPU for nothing a
+## player sees: physics still ticks at 60), or `-- --tick N`.
+static func server_tick() -> int:
+	var a := OS.get_cmdline_user_args()
+	return int(a[a.find("--tick") + 1]) if a.has("--tick") else 30
+
 static func secs(n: float) -> float:
 	return n / 8.0 if fast else n       # (tests: a 150 s round, portals at 37.5 s, joining closes at 112.5 s)
 
@@ -525,7 +531,7 @@ static func start_server(g: Node, port: int) -> void:
 		bg.nk = NakamaClient.new(nurl, "-")
 		bg.add_child(bg.nk)
 	g.net.server = true
-	Engine.max_fps = 60             # headless, the loop would otherwise spin a whole core
+	Engine.max_fps = Battlegrounds.server_tick()     # headless, the loop would otherwise spin a whole core
 	g.ui.hide_title()
 	g.playing = true
 	g.difficulty = 0

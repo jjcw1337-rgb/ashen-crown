@@ -1760,7 +1760,10 @@ func _ornate(panel: PanelContainer, k := 0.3, pad := 16) -> void:
 
 ## A texture at a fraction of its size (the frame and its pieces are drawn at their pixel size in a NinePatchRect).
 static func _scaled_tex(path: String, k: float) -> Texture2D:
-	var img: Image = (load(path) as Texture2D).get_image()
+	var src := load(path) as Texture2D
+	var img: Image = src.get_image() if src != null else null
+	if img == null:
+		return src     # (a stripped server build: a placeholder with no pixels; nobody sees it)
 	img.resize(int(img.get_width() * k), int(img.get_height() * k), Image.INTERPOLATE_LANCZOS)
 	return ImageTexture.create_from_image(img)
 

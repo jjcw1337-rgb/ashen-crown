@@ -22,7 +22,7 @@ static func start(g: Node, port: int) -> void:
 	g.coop_server = cs
 	g.net.server = true
 	g.net.coop_server = true
-	Engine.max_fps = 60             # headless, the loop would otherwise spin a whole core
+	Engine.max_fps = Battlegrounds.server_tick()     # headless, the loop would otherwise spin a whole core
 	g.ui.hide_title()
 	g.playing = true
 	g.difficulty = 0
