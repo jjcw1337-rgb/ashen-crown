@@ -4,7 +4,7 @@ extends RefCounted
 ## staging build (tools/ci/write_build_env.sh, from the repository's GitHub variables) before exporting, so a staging
 ## build can only ever reach staging and a production build only production. Nothing secret lives here: the Nakama
 ## server key is the public client key every copy of the game carries.
-## A developer can point a local run elsewhere with user://env.cfg ([env] env=, bg_server=, nakama_url=, nakama_key=, cloud=).
+## A developer can point a local run elsewhere with user://env.cfg ([env] env=, bg_server=, party_queue=, nakama_url=, nakama_key=, cloud=).
 
 const ENV := "local"
 const BG_SERVER := "127.0.0.1:24567"
@@ -33,6 +33,7 @@ static func value(key: String) -> String:
 				return FileAccess.get_file_as_string("res://DEPLOYED_REV").strip_edges()
 			return REV
 		"coop_server": return BG_SERVER.split(":")[0] + ":24570"     # the online co-op server, beside the raid server
+		"party_queue": return BG_SERVER.split(":")[0] + ":24569"
 	return ""
 
 static func env() -> String:

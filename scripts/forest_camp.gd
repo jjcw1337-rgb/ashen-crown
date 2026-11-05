@@ -2,17 +2,19 @@ class_name ForestCamp
 extends RefCounted
 ## Act I's camp, the Forsaken Wilds, as an encampment deep in an old misty forest (World._build_town hands over
 ## to this when World.oak_forest and act 0; A2/A3 keep the old camp). A ring palisade of sharpened
-## logs with a gatehouse to the north, glowing rune stones in the trees outside it, a bonfire at the
+## logs with a gatehouse to the north, glowing rune stones in the trees outside it, the grand waypoint at the
 ## heart, tents and huge oaks hung with lanterns inside, and the shops round the ring, each with its
 ## shopkeeper at work: Meshy-made and Meshy-rigged, animated with Meshy's clip library (Inter._animate).
 ## Models: assets/models/camp/*.glb, assets/models/npc/*.glb, prepared in Blender (tools/blender/
 ## prep_prop.py, prep_npc.py, prep_tree.py). Without the files it falls back to the old camp.
 
+const VendorCourt := preload("res://scripts/vendor_court.gd")
 const CENTER := Vector2(0, -2)
 ## The waypoint stone. grand_waypoint(): the large dais (WaypointGrand), blockout of the waypoint overhaul.
-const WP_AT := Vector3(-8, 0, 6)
-# the bonfire and its benches, off the camp's centre toward the gate: jj's grand waypoint gets its own space (2026-11-02)
-const BONFIRE_AT := Vector2(3.5, -5)
+const WP_AT := Vector3(3.5, 0, -5) # replaces the central bonfire (jj, 2026-11-03)
+const WP_CLEAR := 8.5 # open ground beyond the dais, wall and fire bowls
+const COOKFIRE_AT := Vector2(2.5, 12.5)
+const NEW_PLAYER_AT := Vector3(0, 0, 17) # enter the square from its southern approach
 ## `-- --old-waypoint` shows the old stone instead (before/after shots).
 static func grand_waypoint() -> bool:
 	return not OS.get_cmdline_user_args().has("--old-waypoint")
@@ -29,7 +31,7 @@ const SHOPS := [
 		"clips": {"idle": "Idle_02", "work": ["Stand_and_Drink", "mage_soell_cast"], "talk": "Talk_with_Left_Hand_Raised"},
 		"hold": {"bone": "RightHand", "potion": Color(0.35, 1.0, 0.3), "pos": Vector3(0.0, 0.07, 0.03)}},
 	# the smith works inside his forge, behind the anvil ("inside": his spot in the stall's own frame, facing out)
-	{"role": "smith", "npc": "grisold", "stall": "forge", "at": Vector2(12, -11.5), "half": Vector2(2.2, 1.65), "inside": Vector2(0.05, 0.35),
+	{"role": "smith", "npc": "grisold", "stall": "forge", "at": Vector2(16, -13.5), "half": Vector2(2.2, 1.65), "inside": Vector2(0.05, 0.35),
 		"clips": {"idle": "Idle", "work": ["Heavy_Hammer_Swing"], "talk": "Talk_with_Hands_Open", "stay": true, "strike": "anvil"},
 		"hold": {"bone": "RightHand", "item": "war_hammer", "rot": Vector3(0, 0, 90), "pos": Vector3(0.0, 0.08, 0.0)}},
 	{"role": "armor", "npc": "hedda", "stall": "armory", "at": Vector2(16, 5), "half": Vector2(1.95, 1.62),
@@ -41,7 +43,7 @@ const SHOPS := [
 ]
 
 static func ok() -> bool:
-	for f in ["palisade", "gate", "forge", "alchemy", "armory", "wagon", "bonfire", "tent", "runestone", "lantern"]:
+	for f in ["palisade", "gate", "forge", "alchemy", "armory", "wagon", "tent", "runestone", "lantern"]:
 		if not ResourceLoader.exists(DIR + f + ".glb"):
 			return false
 	for f in ["maeve", "grisold", "hedda", "tarrow", "roth"]:
@@ -119,14 +121,21 @@ static func build(w: World) -> void:
 	var rng := w.rng
 	var gate_z := CENTER.y - RADIUS
 	# --- ground: a trodden clearing, paths to each shop and out of the gate
-	w.dirt_blobs = [[CENTER, 11.0, 1.0], [Vector2(0, gate_z + 3), 5.0, 0.95], [Vector2(-8, 6), 7.0 if grand_waypoint() else 3.5, 0.9]]
-	w.dirt_lines = [[Vector2(0, 0), Vector2(0, gate_z - 9), 3.2]]
+	var wp_ground := Vector2(WP_AT.x, WP_AT.z)
+	w.dirt_blobs = [[CENTER, 11.0, 1.0], [Vector2(0, gate_z + 3), 5.0, 0.95], [wp_ground, WP_CLEAR + 1.0, 1.0]]
+	# Approaches skirt the back wall; the southern forecourt opens onto the steps.
+	w.dirt_lines = [[Vector2(0, gate_z - 9), Vector2(0, -18), 3.2],
+		[Vector2(0, -18), Vector2(-5.5, -11), 2.4], [Vector2(-5.5, -11), Vector2(-5.5, 2), 2.4],
+		[Vector2(0, -18), Vector2(12.5, -10), 2.4], [Vector2(12.5, -10), Vector2(12.5, 2), 2.4],
+		[Vector2(-5.5, 2), Vector2(12.5, 2), 2.8],
+		[Vector2(NEW_PLAYER_AT.x, NEW_PLAYER_AT.z), Vector2(0, 6), 1.8],
+		[Vector2(0, 6), Vector2(WP_AT.x, 2), 2.0]]
 	for s in SHOPS:
 		var p: Vector2 = s["at"]
 		w.dirt_blobs.append([p, 5.2, 1.0])
 		w.dirt_blobs.append([p.lerp(CENTER, 0.3), 4.2, 0.95])
 		w.dirt_lines.append([CENTER, p, 2.4])
-	w.cobble_blobs = [[BONFIRE_AT, 4.2, 0.85], [Vector2(0, gate_z + 1.5), 3.0, 0.8], [Vector2(-8, 6), 6.4 if grand_waypoint() else 2.6, 0.75]]
+	w.cobble_blobs = [[wp_ground, 7.0 if grand_waypoint() else 2.6, 0.75], [Vector2(0, gate_z + 1.5), 3.0, 0.8]]
 
 	# --- the palisade: sharpened logs all round, a gap for the gatehouse to the north
 	var pal_x := []
@@ -175,35 +184,10 @@ static func build(w: World) -> void:
 		rs.append(Transform3D(Basis(Vector3.UP, face(p, CENTER)).scaled(Vector3.ONE * rng.randf_range(0.85, 1.2)), Vector3(p.x, w.height_at(p.x, p.y) - 0.15, p.y)))
 	w.mm_chunked(mesh(DIR + "runestone.glb"), rs, true, 24.0, 0.0, rune_mat)
 
-	# --- the heart of the camp: the bonfire, seats, stash and waypoint
-	var bf := model("bonfire")
-	w._place(bf, Vector3(BONFIRE_AT.x, 0, BONFIRE_AT.y))
-	Props.fire(bf, Vector3(0, 0.3, 0), 1.15, Color(1.0, 0.5, 0.18), true, true, true, "bonfire")
-	# the heart of the camp's light (graphics plan, phase 1): reaches the shops, glows in the mist, always shadowed
-	for n in bf.find_children("*", "OmniLight3D", true, false):
-		var fl: OmniLight3D = n
-		fl.light_energy *= 2.2
-		fl.set_meta("base", fl.light_energy)
-		fl.omni_range = 17.0
-		fl.omni_attenuation = 1.15
-		fl.light_volumetric_fog_energy = 3.0
-		fl.shadow_blur = 1.4
-		fl.set_meta("shadow_pri", true)
-		fl.add_to_group(Grade.SHADOW_GROUP)
-	w.add_circle(Vector3(BONFIRE_AT.x, 0, BONFIRE_AT.y), 1.4)
-	# click it to burn what you don't want (UI.open_burn)
-	w._inter("bonfire", "Bonfire", Vector3(BONFIRE_AT.x, 0, BONFIRE_AT.y), 2.6)
+	# --- the heart of the camp: a single grand waypoint with an open forecourt.
+	# Retain the removed benches' four random draws for the subsequent decoration sequence.
 	for i in 4:
-		var la := TAU * i / 4.0 + 0.6
-		var sp := Vector2(BONFIRE_AT.x + cos(la) * 3.6, BONFIRE_AT.y + sin(la) * 3.6)
-		# a log bench facing the fire (Meshy), else the old plain log
-		if piece(w, "log_bench", sp, face(sp, BONFIRE_AT) + rng.randf_range(-0.12, 0.12)) != null:
-			continue
-		var lg := Props.footprint(Models.N(null, "seat"), Vector2(0.25, 0.8))
-		Models.P(lg, Geo.cyl(0.22, 0.24, 1.6, 10), Props.wood(), Vector3(0, 0.2, 0), Vector3(90, 0, 0))
-		w._place(lg, Vector3(sp.x, 0, sp.y))
-		lg.rotation.y = -la
-		w.solid(lg)
+		rng.randf_range(-0.12, 0.12)
 	var chest: Node3D
 	if has_piece("stash_chest"):
 		chest = Props.footprint(Models.N(null, "stash"), SET_PIECES["stash_chest"] * 0.9)
@@ -212,7 +196,7 @@ static func build(w: World) -> void:
 		cm.rotation.y = deg_to_rad(-15.0)
 	else:
 		chest = Props.stash_chest(null, Vector3.ZERO, -15.0)
-	w._inter("stash", "Stash", Vector3(4.2, 0, 3.2), 1.6, chest)
+	w._inter("stash", "Stash", Vector3(-4.0, 0, 4.5), 1.6, chest)
 	w.solid(chest)
 	var wp := w.add_waypoint("town", WP_AT, false, grand_waypoint())
 	# old mossy stone, not the clean pale stone: it was the brightest thing on screen at dusk (graphics plan, phase 1)
@@ -245,6 +229,7 @@ static func build(w: World) -> void:
 		if s.has("inside"):
 			kp.radius = half.y - lp.y + 1.3      # talked to from in front of the stall
 
+		VendorCourt.build(w, s["role"], p, yaw, half, kp, load(DIR + "lantern.glb"))
 		if s.has("hold"):
 			hold(kp.model, s["hold"])
 			kp.set_meta("hold", s["hold"])
@@ -252,10 +237,9 @@ static func build(w: World) -> void:
 	var fp: Vector3 = _local(w, SHOPS[1]["at"], Vector3(5.2, 0, 0.5))
 	Furnace.place(w, fp, face(Vector2(fp.x, fp.z), CENTER))
 	# the stalls' own light: the forge's coals, the alchemist's cauldron, a lantern on the others
-	_glow(w, SHOPS[1]["at"], Vector3(0.9, 1.4, -0.6), Color(1.0, 0.45, 0.12), 2.6, 7.0)
-	_glow(w, SHOPS[0]["at"], Vector3(-1.3, 0.9, 0.4), Color(0.4, 1.0, 0.35), 1.6, 6.0)
-	_lantern(w, _local(w, SHOPS[2]["at"], Vector3(2.4, 4.0, 1.9)), true)
-	_lantern(w, _local(w, SHOPS[3]["at"], Vector3(-2.0, 3.6, 2.0)), true)
+	_glow(w, SHOPS[1]["at"], Vector3(0.9, 1.4, -0.6), Color(1.0, 0.52, 0.22), 1.5, 4.0)
+	_glow(w, SHOPS[0]["at"], Vector3(-1.3, 0.9, 0.4), Color(0.55, 0.85, 0.38), 0.65, 3.5)
+	# VendorCourt supplies each frontage's neutral-warm light; coloured work lights stay local.
 	# the Vigil Gate: a portal down to the Last Flame, the co-op horde defence (vigil.gd), between two old stones
 	# (no fire or light of its own: the camp's frame time is a benchmark, docs/nightly/KPIS.md)
 	var vgp := Vector3(VIGIL_GATE.x, 0, VIGIL_GATE.y)
@@ -272,8 +256,9 @@ static func build(w: World) -> void:
 		post.rotation.y = vgi.rotation.y
 		w.add_circle(post.position, 0.4)
 	# Captain Roth keeps the gate
-	_keeper(w, "roth", V["elder"], "elder", Vector2(5.0, gate_z + 5.0), face(Vector2(5.0, gate_z + 5.0), CENTER),
+	var captain := _keeper(w, "roth", V["elder"], "elder", Vector2(5.0, gate_z + 5.0), face(Vector2(5.0, gate_z + 5.0), CENTER),
 		{"idle": "Idle", "work": ["Short_Breathe_and_Look_Around", "Long_Breathe_and_Look_Around"], "talk": "Talk_Passionately"})
+	VendorCourt.light_captain(w, captain)
 	for bx in [-5.5, 5.5]:
 		w.solid(Props.banner(w.props_root, Vector3(bx, w.height_at(bx, gate_z + 2.2), gate_z + 2.2), Color(0.42, 0.06, 0.05), Color(0.6, 0.5, 0.25)))
 
@@ -298,14 +283,17 @@ static func build(w: World) -> void:
 			var cp: Vector2 = c[1]
 			piece(w, c[0], cp, face(cp, CENTER) + rng.randf_range(-0.5, 0.5), c[2])
 		# a cookfire for the camp's folk, a weapon rack by the armoury, hides drying by the alchemist
-		var cf := piece(w, "cookfire", Vector2(2.5, 12.5), rng.randf() * TAU)     # (clear of the waypoint's fire bowls)
+		var cf := piece(w, "cookfire", COOKFIRE_AT, rng.randf() * TAU)     # the small existing fire remains at the camp edge
 		if cf:
+			w._inter("bonfire", "Campfire", Vector3(COOKFIRE_AT.x, 0, COOKFIRE_AT.y), 2.0)
 			Props.fire(cf, Vector3(0, 0.15, 0), 0.55, Color(1.0, 0.5, 0.2), true, false, true, "campfire")
 			for n in cf.find_children("*", "OmniLight3D", true, false):
 				(n as OmniLight3D).add_to_group(Grade.SHADOW_GROUP)
 		piece(w, "weapon_rack", Vector2(12.2, 8.8), face(Vector2(12.2, 8.8), CENTER))
 		piece(w, "hide_rack", Vector2(-14.8, -1.6), face(Vector2(-14.8, -1.6), CENTER) + 0.3)
 	else:
+		var cf := Props.campfire(w.props_root, Vector3(COOKFIRE_AT.x, w.height_at(COOKFIRE_AT.x, COOKFIRE_AT.y), COOKFIRE_AT.y))
+		w._inter("bonfire", "Campfire", cf.position, 2.0)
 		for c in [["crate", Vector2(-9.5, -15.5)], ["barrel", Vector2(-15.8, -8.8)], ["barrel", Vector2(17.6, -4.9)], ["logs", Vector2(9.0, -15.5)],
 				["crate", Vector2(18.8, 1.4)], ["crate", Vector2(19.4, 2.2)], ["barrel", Vector2(-18.4, 4.0)], ["crate", Vector2(-3.5, gate_z + 4.5)],
 				["barrel", Vector2(-4.6, gate_z + 4.0)], ["logs", Vector2(6, 13)], ["crate", Vector2(-6.5, 13.5)], ["barrel", Vector2(-1.5, 16)]]:
@@ -317,8 +305,8 @@ static func build(w: World) -> void:
 				"logs": w.solid(Props.log_pile(w.props_root, p3))
 
 	# --- lantern posts along the paths
-	for lp in [Vector2(-2.6, -9), Vector2(2.6, -15), Vector2(-6.5, -4.5), Vector2(8.5, -1.5), Vector2(9, 3.5), Vector2(-9.5, 2.5), Vector2(-2.6, gate_z + 7)]:
-		if grand_waypoint() and lp.distance_to(Vector2(WP_AT.x, WP_AT.z)) < 7.5:
+	for lp in [Vector2(-5.5, -12.5), Vector2(2.6, -17), Vector2(-6.5, -4.5), Vector2(12.5, -3), Vector2(9, 3.5), Vector2(-2.6, gate_z + 7)]:
+		if grand_waypoint() and lp.distance_to(wp_ground) < WP_CLEAR:
 			continue  # the grand waypoint brings its own torches
 		var lit: bool = lp.y < -8.0 or absf(lp.x) > 8.0
 		var mp := piece(w, "lantern_post", lp, rng.randf() * TAU)
@@ -404,12 +392,13 @@ static func build(w: World) -> void:
 	w._scatter_grass(24000, FOREST_GRASS, 0.26)
 	w._scatter_ferns(380)
 	w.spawns["start"] = Vector3(0, 0, 5)
+	w.spawns["new_player"] = NEW_PLAYER_AT
 	w.spawns["from_wild"] = Vector3(0, 0, gate_z + 4.5)
 	w.spawns["from_coast"] = Vector3(-RADIUS + 4.5, 0, CENTER.y)
 	w.spawns["portal"] = Vector3(4, 0, 8)
 	w.spawns["from_vigil"] = Vector3(VIGIL_GATE.x, 0, VIGIL_GATE.y) + (Vector3(CENTER.x, 0, CENTER.y) - Vector3(VIGIL_GATE.x, 0, VIGIL_GATE.y)).normalized() * 3.0
 	w.spawns["alch"] = Vector3(-11.5, 0, -9)
-	w.spawns["forge"] = Vector3(11.5, 0, -9)
+	w.spawns["forge"] = Vector3(13.5, 0, -10.5)
 	# the camp's guards on their rounds (CampGuard; after _rasterize, since they find their way by its grid)
 	CampGuard.place_all(w)
 
@@ -423,7 +412,7 @@ static func _near_shop(p: Vector2, r: float) -> bool:
 	for s in SHOPS:
 		if p.distance_to(s["at"]) < r:
 			return true
-	return p.distance_to(Vector2(-8, 6)) < r * 0.7 + (4.5 if grand_waypoint() else 0.0) or p.distance_to(Vector2(0, CENTER.y - RADIUS)) < r
+	return p.distance_to(Vector2(WP_AT.x, WP_AT.z)) < r * 0.7 + (4.5 if grand_waypoint() else 0.0) or p.distance_to(Vector2(0, CENTER.y - RADIUS)) < r
 
 ## A point given in a stall's own frame (x right, z toward the camp's centre), in world space.
 static func _local(w: World, at: Vector2, off: Vector3) -> Vector3:

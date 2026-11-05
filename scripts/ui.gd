@@ -128,6 +128,7 @@ var join_panel: PanelContainer
 var join_list: VBoxContainer
 var join_ip: LineEdit
 var join_hint: Label
+var join_character_id := ""
 var hud: Control                  # the screen's layers (setup): the in-game HUD
 var windows: Control              # inventory, character sheet, shops, the stash, the fire, waypoints
 var menus: Control                # the title and its screens (characters, class picker, co-op, Battlegrounds)
@@ -720,12 +721,13 @@ func _build_hud() -> void:
 	big_lbl.add_theme_constant_override("outline_size", 8)
 	top.add_child(big_lbl)
 	hint_lbl = _label("", 14, DIM)
-	hint_lbl.anchor_left = 0.5
-	hint_lbl.anchor_right = 0.5
+	hint_lbl.anchor_left = 0.0
+	hint_lbl.anchor_right = 1.0
 	hint_lbl.anchor_top = 1.0
 	hint_lbl.anchor_bottom = 1.0
-	hint_lbl.offset_left = -400
-	hint_lbl.offset_right = 400
+	hint_lbl.offset_left = 24
+	hint_lbl.offset_right = -24
+	hint_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint_lbl.offset_top = -bh - 52
 	hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -4141,11 +4143,17 @@ func _build_join() -> void:
 	vb.add_child(t)
 	vb.add_child(_divider(30))
 	vb.add_child(_label("Games on your network:", 16))
+	var games_scroll := ScrollContainer.new()
+	games_scroll.custom_minimum_size.y = 150
+	games_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	games_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	vb.add_child(games_scroll)
 	join_list = VBoxContainer.new()
+	join_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	join_list.custom_minimum_size = Vector2(0, 150)
 	join_list.add_theme_constant_override("separation", 6)
-	vb.add_child(join_list)
-	join_hint = _label("Searching... make sure the other computer has picked Host Co-op Game.", 14, Color(0.7, 0.66, 0.58))
+	games_scroll.add_child(join_list)
+	join_hint = _label("Searching… ask the other player to choose LAN → Host LAN.", 14, Color(0.7, 0.66, 0.58))
 	join_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(join_hint)
 	vb.add_child(_label("Or type the host's address (shown at the top left of their screen):", 14, Color(0.7, 0.66, 0.58)))
@@ -4164,15 +4172,30 @@ func _build_join() -> void:
 	var go := _iron_button("Join", 140, 46, 19)
 	go.pressed.connect(func(): _join_ip(join_ip.text))
 	row.add_child(go)
-	var note := _label("Your saved knight comes with you (a new one if you have no save).", 13, Color(0.6, 0.57, 0.5))
+	var note := _label("Your selected character comes with you.", 13, Color(0.6, 0.57, 0.5))
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(note)
 	var back := _iron_button("Back", 220, 46, 18)
 	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	back.name = "join_back"
 	back.pressed.connect(func():
 		join_panel.visible = false
 		game.net.stop_listening())
 	vb.add_child(back)
+
+	join_panel.minimum_size_changed.connect(_fit_join_panel.call_deferred)
+	get_viewport().size_changed.connect(_fit_join_panel)
+	_fit_join_panel.call_deferred()
+
+func _fit_join_panel() -> void:
+	# Wrapped labels can report a tall minimum before their first layout pass.
+	# Refit the preferred frame when that minimum settles; do not retain the old height.
+	join_panel.size = Vector2(760, 600)
+	var available := get_viewport().get_visible_rect().size - Vector2(40, 40)
+	var factor := minf(1.0, minf(available.x / join_panel.size.x, available.y / join_panel.size.y))
+	join_panel.pivot_offset = join_panel.size * 0.5
+	join_panel.scale = Vector2.ONE * factor
+	join_panel.position = (get_viewport().get_visible_rect().size - join_panel.size) * 0.5
 
 ## The Battlegrounds screen (battlegrounds.gd): pick one of your characters, the raid server's address, Enter. Death in
 ## the crypt costs everything carried (Game.bg_strip; levels kept), and the screen says so before anyone goes in.
@@ -4282,6 +4305,7 @@ func _bg_go() -> void:
 
 func open_join() -> void:
 	Sfx.play("click")
+	join_character_id = game.char_id if game.playing else (home.sel if home != null else "")
 	join_panel.visible = true
 	game.net.start_listening()
 	_refresh_join()
@@ -4291,7 +4315,7 @@ func _join_ip(txt: String) -> void:
 	if txt == "":
 		return
 	join_panel.visible = false
-	game.start_join(txt)
+	game.start_join(txt, join_character_id)
 
 func _refresh_join() -> void:
 	for c in join_list.get_children():
@@ -4592,6 +4616,17 @@ func _build_class_picker() -> void:
 		show_title())
 	rv.add_child(back)
 	_show_class("knight")
+	get_viewport().size_changed.connect(_layout_class_info)
+	_layout_class_info()
+
+func _layout_class_info() -> void:
+	var available := get_viewport().get_visible_rect().size
+	var factor := minf(1.0, minf((available.x - 32.0) / 1120.0, available.y * 0.38 / 248.0))
+	class_info.scale = Vector2.ONE * factor
+	class_info.offset_left = -560.0 * factor
+	class_info.offset_right = class_info.offset_left + 1120.0
+	class_info.offset_top = -22.0 - 248.0 * factor
+	class_info.offset_bottom = class_info.offset_top + 248.0
 
 ## Fills the info panel for a class (the chosen one, or the one under the mouse while it's there).
 func _show_class(c: String) -> void:
@@ -5013,6 +5048,7 @@ func open_characters() -> void:
 
 func hide_title() -> void:
 	title_panel.visible = false
+	join_panel.visible = false
 	get_viewport().disable_3d = false
 	_set_hud(true)
 
@@ -5231,7 +5267,7 @@ func close_all() -> bool:
 ## The title with nothing open over it (no class picker, character list, co-op or Battlegrounds screen).
 func title_idle() -> bool:
 	return title_panel.visible and not (class_panel != null and class_panel.visible) and not (chars_panel != null and chars_panel.visible) \
-		and not join_panel.visible and not bg_panel.visible
+		and not join_panel.visible and not bg_panel.visible and not (bg_page != null and bg_page.visible)
 
 func any_panel_open() -> bool:
 	return inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or furnace_ui.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible or quest_panel.visible or boat_panel.visible
@@ -5453,6 +5489,10 @@ func _process(delta: float) -> void:
 	if msg_t > 0.0:
 		msg_t -= delta
 		msg_lbl.modulate.a = clampf(msg_t, 0.0, 1.0)
+	# Transient world announcements and the controls hint must not cover menu actions.
+	var clear_hud_text := not any_panel_open() and not pause_panel.visible
+	big_lbl.visible = clear_hud_text
+	hint_lbl.visible = clear_hud_text
 	if big_t > 0.0:
 		big_t -= delta
 		big_lbl.modulate.a = clampf(big_t, 0.0, 1.0) * clampf((4.0 - big_t) * 2.0, 0.0, 1.0)

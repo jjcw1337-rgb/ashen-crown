@@ -35,7 +35,7 @@ func setup(u) -> void:
 	ui = u
 	game = u.game
 	name = "bg_page"
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
 	# the art, a touch larger than the screen so it can drift
@@ -112,6 +112,25 @@ void fragment() {
 	back.offset_bottom = -32
 	back.pressed.connect(close)
 	add_child(back)
+	get_viewport().size_changed.connect(_layout)
+	get_node("words").minimum_size_changed.connect(_layout.call_deferred)
+	_layout()
+
+func _layout() -> void:
+	var available := get_viewport_rect().size
+	var factor := minf(1.0, minf(available.x / 1440.0, available.y / 900.0))
+	scale = Vector2.ONE * factor
+	size = available / factor
+	position = Vector2.ZERO
+	var words: VBoxContainer = get_node("words")
+	var heading: Label = words.get_node("heading")
+	var width := maxf(720.0, size.x - 728.0)
+	var font: Font = heading.get_theme_font("font")
+	var font_size := 84
+	while font_size > 40 and font.get_string_size(heading.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > width - 20:
+		font_size -= 1
+	heading.add_theme_font_size_override("font_size", font_size)
+	words.size = Vector2(width, 0)
 
 func _title_font(sz: int, spacing := 0) -> FontVariation:
 	var fv := FontVariation.new()
@@ -133,6 +152,7 @@ func _build_words() -> void:
 	eyebrow.add_theme_font_override("font", _title_font(17, 4))
 	vb.add_child(eyebrow)
 	var title: Label = ui._label(Battlegrounds.TITLE.to_upper(), 84, ui.GOLD, true)
+	title.name = "heading"
 	title.add_theme_font_override("font", _title_font(84, 2))
 	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	title.add_theme_constant_override("outline_size", 14)
@@ -201,7 +221,7 @@ func _build_champion() -> void:
 	var pc := PanelContainer.new()
 	pc.name = "champion"
 	pc.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	pc.offset_left = -560
+	pc.offset_left = -608
 	pc.offset_right = -48
 	pc.offset_top = -430 - 24 * Battlegrounds.LIVE_RAIDS
 	pc.offset_bottom = -40
@@ -322,6 +342,8 @@ func _cycle(d: int) -> void:
 	_show()
 
 func _show() -> void:
+	for key in ["prev", "next"]:
+		(get_node("champion").find_child(key, true, false) as Button).disabled = _chars.size() < 2
 	var c: Dictionary = {}
 	for x in _chars:
 		if str(x["id"]) == sel:

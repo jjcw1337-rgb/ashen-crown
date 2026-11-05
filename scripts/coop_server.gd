@@ -4,7 +4,7 @@ extends Node
 ## story game hosted by the server instead of a player's PC, so friends can play together over the internet without
 ## touching their routers. It is the normal co-op host (Net, host-authoritative monsters, loot and bosses) with
 ## Net.server + Net.coop_server: the server's own hero is hidden, parked off the map and phased, every player brings
-## their own saved character (the title's "Online Co-op" -> Game.start_join to BuildEnv's coop_server), and travel,
+## their own saved character (the party finder or a direct waypoint join -> Game.start_join), and travel,
 ## waypoints, portals and the party's ready check work as in player-hosted co-op (the server always says yes).
 ## Battlegrounds (battlegrounds.gd) is the other kind of server; one process runs one or the other.
 ## Test: tools/coop_server_test.gd (a server and two players).
@@ -12,6 +12,7 @@ extends Node
 const MAX_PLAYERS := 4
 
 var game: Node
+var party_queue
 
 static func start(g: Node, port: int) -> void:
 	var cs := CoopServer.new()
@@ -30,6 +31,14 @@ static func start(g: Node, port: int) -> void:
 	var err: int = g.net.host(port, MAX_PLAYERS)
 	await g.load_zone(0, "town", "start")
 	cs.park_hero()
+	if err == OK:
+		var args := OS.get_cmdline_user_args()
+		var qi := args.find("--queue-port")
+		var queue_port := int(args[qi + 1]) if qi >= 0 and qi + 1 < args.size() else 24569
+		cs.party_queue = load("res://scripts/party_queue_server.gd").new()
+		cs.add_child(cs.party_queue)
+		var qe: int = cs.party_queue.start(g, queue_port, port)
+		print("[COOP] party queue ", "up on UDP %d" % queue_port if qe == OK else "unavailable (%d)" % qe)
 	print("[COOP] server ", "up on UDP port %d" % port if err == OK else "FAILED to open port %d (error %d)" % [port, err])
 	ServerUpdate.watch(g, "[COOP]", func() -> bool: return g.net.players.is_empty())
 

@@ -49,3 +49,15 @@ nakama_url="https://161.35.185.195"
 nakama_key="<the staging server key>"
 cloud="1"
 ```
+
+
+## Party finder rollout (prepared, not deployed by the town preview)
+
+The co-op process also listens on UDP 24569 for background party search. No extra Godot world or
+process is needed. The game connection stays on UDP 24570; use `--queue-port N` for an isolated
+local host. Before enabling this preview on public staging, deploy matching client/server code
+(the Net handshake changed), allow UDP 24569 in the host and DigitalOcean firewalls, and verify
+queue/ready/decline/join with two remote clients. Existing staging firewall notes above do not
+imply that this new port is already open. Import assets off-host using the verified deployment
+workflow; do not run a full import on the live droplet. No server deployment or firewall mutation
+is performed by pushing the isolated preview branch.
