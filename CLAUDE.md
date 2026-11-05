@@ -11,6 +11,12 @@ Actions exports Web + Windows + Linux + Mac and publishes them to GitHub Pages.
 - Live test build + downloads: https://jjcw1337-rgb.github.io/ashen-crown/
 - Human setup and workflow: `CONTRIBUTING.md`. Player docs: `README.md`.
 
+**Default patterns (every agent, read these first; `AGENTS.md` is the shared entry point for Codex/ChatGPT):**
+[loading](docs/patterns/loading.md) · [servers](docs/patterns/servers.md) ·
+[multiplayer](docs/patterns/multiplayer.md) · [effects](docs/patterns/effects.md) ·
+[measuring](docs/patterns/measuring.md) · [code organization](docs/patterns/code-organization.md).
+When you change one of these patterns, update its file in the same commit.
+
 ## Getting the tools (Linux)
 
 Godot 4.3 **standard** (not .NET) must be on PATH as `godot`:
