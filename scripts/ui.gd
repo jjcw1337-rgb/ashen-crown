@@ -88,6 +88,7 @@ var char_panel: PanelContainer
 var char_labels := {}
 var plus_btns: Array = []
 var shop_panel: PanelContainer
+var auction_panel: PanelContainer
 ## The shipwright's window (boat_shop.gd): the boat, its price, how to sail it, Buy.
 var boat_shop: BoatShop
 var boat_panel: PanelContainer
@@ -195,6 +196,7 @@ func setup(g: Node) -> void:
 	_build_inventory()
 	_build_character()
 	_build_shop()
+	auction_panel = AuctionUI.build(self)    # the Gilded Hall's window (auction_ui.gd)
 	boat_shop = BoatShop.new()
 	boat_panel = boat_shop.build(self)
 	_build_sail_prompt()
@@ -5266,7 +5268,7 @@ func close_all() -> bool:
 	if game.lobby_client != null and game.lobby_client.panel.visible:
 		game.lobby_client.panel.hide()
 		any = true
-	for p in [inv_panel, char_panel, shop_panel, stash_panel, burn_panel, furnace_ui, wp_panel, dialog_panel, ench_panel, skills_panel, talent_panel, quest_panel, boat_panel]:
+	for p in [inv_panel, char_panel, shop_panel, stash_panel, burn_panel, furnace_ui, wp_panel, dialog_panel, ench_panel, skills_panel, talent_panel, quest_panel, boat_panel, auction_panel]:
 		if p.visible:
 			p.visible = false
 			any = true
@@ -5280,7 +5282,7 @@ func title_idle() -> bool:
 		and not join_panel.visible and not bg_panel.visible and not (bg_page != null and bg_page.visible) and not (game.lobby_client != null and game.lobby_client.panel.visible)
 
 func any_panel_open() -> bool:
-	return (game.lobby_client != null and game.lobby_client.panel.visible) or inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or furnace_ui.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible or quest_panel.visible or boat_panel.visible
+	return (game.lobby_client != null and game.lobby_client.panel.visible) or inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or furnace_ui.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible or quest_panel.visible or boat_panel.visible or auction_panel.visible
 
 func message(t: String, col := Color(1, 1, 1), dur := 2.5) -> void:
 	msg_lbl.text = t

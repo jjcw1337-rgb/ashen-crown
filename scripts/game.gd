@@ -1351,6 +1351,9 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		birds.name = "birds"
 		world.add_child(birds)
 	_add_boat(zone, spawn)
+	# the class's skill effects played once, unseen, under the loading screen: no freeze on a first cast (SkillWarm)
+	if not _boot_quiet:
+		await SkillWarm.run(self)
 	zone_music()
 	loading.visible = false
 	_busy = false
@@ -2738,6 +2741,10 @@ func _vendor_talk(t: Inter) -> void:
 	var role: String = t.data.get("role", "")
 	if role == "shipwright":
 		_shipwright_talk(t)
+		return
+	if role == "auction":
+		ui.open_dialog(t.label, "Elixirs, friend: the finest brews in the Wilds, and the rarest. The hall holds every coin until the hammer falls.",
+			[["See the auctions", func(): AuctionUI.open(ui, ui.auction_panel)], ["Leave", func(): pass]])
 		return
 	if role == "elder":
 		var txt := "The crypt lies at the far end of Cairnfell Moor. Bone archers and the restless dead guard the way. Raise your shield against their arrows: a good block turns them aside. And Grubb guards his gold like his life: rip open one of his sacks and his goblins come running for it. Get to the gold before they bring it back to him."

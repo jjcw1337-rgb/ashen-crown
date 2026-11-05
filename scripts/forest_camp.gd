@@ -19,6 +19,10 @@ const NEW_PLAYER_AT := Vector3(0, 0, 17) # enter the square from its southern ap
 static func grand_waypoint() -> bool:
 	return not OS.get_cmdline_user_args().has("--old-waypoint")
 const RADIUS := 25.0
+## the Gilded Hall (jj, 2026-11-04: the auction house), on the open ground west of the waypoint, facing east; its
+## footprint (half-extents, from prep_prop.py) and its auctioneer at the door
+const AUCTION_AT := Vector2(-15.0, 6.5)
+const AUCTION_HALF := Vector2(4.4, 4.45)
 const GATE_HALF := 0.23         # half the gap in the ring for the gatehouse (radians)
 const VIGIL_GATE := Vector2(9.5, 13.5)     # the Vigil Gate (vigil.gd), inside the ring by the south-east palisade
 const WEST := PI * 1.5          # the west gate (ring angle): the path to the coast (coast.gd)
@@ -233,6 +237,7 @@ static func build(w: World) -> void:
 		if s.has("hold"):
 			hold(kp.model, s["hold"])
 			kp.set_meta("hold", s["hold"])
+	_auction_hall(w)
 	# Halvar's furnace beside his forge, where weapons are tempered over felled wood (Furnace)
 	var fp: Vector3 = _local(w, SHOPS[1]["at"], Vector3(5.2, 0, 0.5))
 	Furnace.place(w, fp, face(Vector2(fp.x, fp.z), CENTER))
@@ -408,10 +413,34 @@ const FOREST_FLOOR := {
 }
 const FOREST_GRASS := {"base_col": Color(0.08, 0.12, 0.05), "tip_col": Color(0.2, 0.26, 0.1), "dry_col": Color(0.3, 0.28, 0.15), "wind": 0.7}
 
+## The Gilded Hall (assets/models/camp/auction_hall.glb, Meshy, prep_prop.py) and Auctioneer Corvin at its door
+## (assets/models/npc/auctioneer.glb when it exists; else the hall's door itself is what you click).
+static func _auction_hall(w: World) -> void:
+	if not ResourceLoader.exists(DIR + "auction_hall.glb"):
+		return
+	var ah := AUCTION_AT
+	var yaw := PI * 0.5             # its front toward the waypoint (east)
+	var hall := model("auction_hall")
+	w._place(hall, Vector3(ah.x, 0, ah.y))
+	hall.rotation.y = yaw
+	w.add_box(Vector3(ah.x, 0, ah.y), AUCTION_HALF * 0.95, yaw)
+	var fwd := Vector2(sin(yaw), cos(yaw))
+	var dp := ah + fwd * (AUCTION_HALF.y + 1.3)
+	if ResourceLoader.exists(NPC_DIR + "auctioneer.glb"):
+		_keeper(w, "auctioneer", "Auctioneer Corvin", "auction", dp, yaw,
+			{"idle": "Idle_3", "work": ["Talk_Passionately", "Talk_with_Left_Hand_Raised"], "talk": "Talk_with_Hands_Open"})
+	else:
+		w._inter("vendor", "The Gilded Hall", Vector3(dp.x, 0, dp.y), 1.6, null, {"role": "auction"})
+	# warm lamplight spilling from its door and balcony
+	_glow(w, ah, Vector3(0.0, 2.4, 4.8), Color(1.0, 0.72, 0.4), 1.4, 7.0)
+	_glow(w, ah, Vector3(-1.5, 4.8, 4.2), Color(1.0, 0.75, 0.45), 0.8, 5.0)
+
 static func _near_shop(p: Vector2, r: float) -> bool:
 	for s in SHOPS:
 		if p.distance_to(s["at"]) < r:
 			return true
+	if p.distance_to(AUCTION_AT) < r + 4.5:
+		return true
 	return p.distance_to(Vector2(WP_AT.x, WP_AT.z)) < r * 0.7 + (4.5 if grand_waypoint() else 0.0) or p.distance_to(Vector2(0, CENTER.y - RADIUS)) < r
 
 ## A point given in a stall's own frame (x right, z toward the camp's centre), in world space.
