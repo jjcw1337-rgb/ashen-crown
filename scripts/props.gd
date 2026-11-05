@@ -230,6 +230,119 @@ static func see_through(root: Node) -> int:
 	_see_meshes.clear()
 	return n
 
+## Shadows of the see-through props from an opaque twin (nightly 2026-11-05). The see-through dither is a `discard`,
+## so every prop drawn with it (SEE_THROUGH_SHADER, MESHY_PROP_SHADER, Mats.PROP_SHADER) ran its fragment shader in
+## every shadow cascade and lost the depth-only path: 129 meshes in the camp, ~1.4 ms of its GPU frame at High.
+## A single static mesh whose every material is opaque but for that dither casts from a shadows-only child with a
+## depth-only material instead; the mesh itself casts nothing. (Its shadow no longer gets the dither's holes where
+## it hides the hero.) Skinned meshes, multimeshes, vertex-animated shaders and real cut-outs are left as they were.
+## `-- --no-prop-twins` turns it off for comparisons.
+static var prop_twins_off := OS.get_cmdline_user_args().has("--no-prop-twins")
+static var _twin_mats: Array[ShaderMaterial] = []      # depth only: [culling back faces, both faces]
+static var _twin_ok := {}
+
+static func shadow_twins(root: Node) -> int:
+	if prop_twins_off:
+		return 0
+	if _twin_mats.is_empty():
+		for cull in ["cull_back", "cull_disabled"]:
+			var sh := Shader.new()
+			sh.code = "shader_type spatial;\nrender_mode unshaded, %s;\nvoid fragment() { ALBEDO = vec3(0.0); }\n" % cull
+			var tm := ShaderMaterial.new()
+			tm.shader = sh
+			_twin_mats.append(tm)
+	var n := 0
+	for node in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := node as MeshInstance3D
+		if mi.mesh == null or mi.skin != null or mi.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_ON:
+			continue
+		if mi.get_parent() is Skeleton3D or mi.has_meta("keep_material"):
+			continue
+		var dither := false
+		var both := false
+		var ok := true
+		for si in mi.mesh.get_surface_count():
+			var k := _twin_kind(mi.get_active_material(si))
+			if k < 0:
+				ok = false
+				break
+			dither = dither or (k & 1) != 0
+			both = both or (k & 2) != 0
+		if not ok or not dither:
+			continue
+		var tw := MeshInstance3D.new()
+		tw.name = "ShadowTwin"
+		tw.mesh = mi.mesh
+		tw.material_override = _twin_mats[1 if both else 0]     # (a closed mesh casts the same either way)
+		tw.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+		tw.visibility_range_begin = mi.visibility_range_begin
+		tw.visibility_range_end = mi.visibility_range_end
+		tw.visibility_range_begin_margin = mi.visibility_range_begin_margin
+		tw.visibility_range_end_margin = mi.visibility_range_end_margin
+		tw.visibility_range_fade_mode = mi.visibility_range_fade_mode
+		tw.lod_bias = mi.lod_bias
+		mi.add_child(tw)
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		n += 1
+	# instanced props the same way: a shadows-only instance of the same MultiMesh, with the depth-only material
+	for node in root.find_children("*", "MultiMeshInstance3D", true, false):
+		var mmi := node as MultiMeshInstance3D
+		var mm := mmi.multimesh
+		if mm == null or mm.mesh == null or mm.instance_count == 0 or mmi.cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_ON:
+			continue
+		if mmi.has_meta("keep_material") or mmi.has_meta("shadow_twin") or mmi.is_in_group("grass"):
+			continue
+		var dither := false
+		var both := false
+		var ok := true
+		for si in mm.mesh.get_surface_count():
+			var k := _twin_kind(mmi.material_override if mmi.material_override != null else mm.mesh.surface_get_material(si))
+			if k < 0:
+				ok = false
+				break
+			dither = dither or (k & 1) != 0
+			both = both or (k & 2) != 0
+		if not ok or not dither:
+			continue
+		var tw := MultiMeshInstance3D.new()
+		tw.name = "ShadowTwin"
+		tw.multimesh = mm
+		tw.material_override = _twin_mats[1 if both else 0]
+		tw.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+		tw.visibility_range_begin = mmi.visibility_range_begin
+		tw.visibility_range_end = mmi.visibility_range_end
+		tw.visibility_range_begin_margin = mmi.visibility_range_begin_margin
+		tw.visibility_range_end_margin = mmi.visibility_range_end_margin
+		tw.visibility_range_fade_mode = mmi.visibility_range_fade_mode
+		mmi.add_child(tw)
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		n += 1
+	_twin_ok.clear()
+	print("Shadow twins: %d see-through props" % n)
+	return n
+
+## -1 = anything the twin can't stand in for (cut-out, blended, moving vertices, front-face culling); else bits:
+## 1 = the see-through dither, 2 = drawn double-sided (else back faces culled).
+static func _twin_kind(m: Material) -> int:
+	if m == null:
+		return 0
+	if _twin_ok.has(m):
+		return int(_twin_ok[m])
+	var k := -1
+	if m is BaseMaterial3D:
+		var b := m as BaseMaterial3D
+		if b.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED and b.cull_mode != BaseMaterial3D.CULL_FRONT and not b.grow and b.billboard_mode == BaseMaterial3D.BILLBOARD_DISABLED and not b.use_point_size and b.next_pass == null:
+			k = 2 if b.cull_mode == BaseMaterial3D.CULL_DISABLED else 0
+	elif m is ShaderMaterial and (m as ShaderMaterial).shader != null and m.next_pass == null:
+		var c: String = (m as ShaderMaterial).shader.code
+		var rm := c.substr(0, c.find(";", c.find("render_mode")) + 1) if c.contains("render_mode") else ""
+		var moves := c.contains("VERTEX =") or c.contains("VERTEX +=") or c.contains("VERTEX -=") or c.contains("VERTEX.") or c.contains("VERTEX *=")
+		if c.count("discard") == 1 and c.contains("dith(FRAGCOORD.xy)) { discard; }") and not c.contains("ALPHA") \
+				and not moves and not rm.contains("cull_front") and not rm.contains("unshaded"):
+			k = 1 | (2 if rm.contains("cull_disabled") else 0)
+	_twin_ok[m] = k
+	return k
+
 static func _see_mesh(mi: MeshInstance3D) -> int:
 	if mi.mesh == null or mi.skin != null:
 		return 0
