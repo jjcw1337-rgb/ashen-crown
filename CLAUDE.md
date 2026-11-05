@@ -40,7 +40,7 @@ godot --headless --path . -s tools/playtest.gd    # main gameplay smoke test
 ```
 Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR / Parse Error):
 `playtest`, `unlock_test`, `test_panel_test`, `wraith_test`, `demon_test`, `warlock_test`, `a2_test`, `a3_test`, `run_switch_test`, `drag_test`,
-`det_test`, `woodcut_test` (`--fixed-fps 60`), `temper_test`, `woodcut_mp_test` (host + join), `grass_test`, `collision_test`, `aim_test`, `plague_test` (`--fixed-fps 60`), `hoard_test`, `coop_fx_test` (every skill's effects reach a puppet, in one process), `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), `bg_test` (the Battlegrounds: a server and a client, `-- --server --port 24611 --raid-fast server` and `-- client 24611`), `bg_pvp_test` (a server and two players, `a` and `b`), `plague_pvp_test` (the same three, `-- a N` / `-- b N`: the Plague Doctor's statuses on another player), `controls_test` (WASD, the left click, the dodge roll, every class), `nightly_net_drop_test` (a client's link closing while a zone loads: no RPC after it), and the co-op pairs `mp_test`, `mp_boss_test` and `plague_mp_test` (run one copy
+`det_test`, `woodcut_test` (`--fixed-fps 60`), `temper_test`, `woodcut_mp_test` (host + join), `grass_test`, `collision_test`, `aim_test`, `plague_test` (`--fixed-fps 60`), `hoard_test`, `coop_fx_test` (every skill's effects reach a puppet, in one process), `potion_test`, `fort_test`, `sound_test`, `char_test`, `flower_test`, `feral_test`, `talent_test`, `title_test`, `a2_arena_test`, `sloth_test` (the Hollow Sloths roam, notice, hunt, use their three skills, flee, give up, drop a unique), `vendor_test` (the camp's traders, the trade window, walking off closes it), `ui_click_test` (no click on a window, menu, globe or the corner map walks the hero; a control that rebuilds itself on click must `accept_event()` first, or the click leaks through), `camp_life_test` (the traders' moves and talk, the smith on the anvil, the ravens, the smoke, the World-Tree Island and its orbit camera; `--fixed-fps 60`), `bg_test` (the Battlegrounds: a server and a client, `-- --server --port 24611 --raid-fast server` and `-- client 24611`), `bg_pvp_test` (a server and two players, `a` and `b`), `plague_pvp_test` (the same three, `-- a N` / `-- b N`: the Plague Doctor's statuses on another player), `controls_test` (WASD, the left click, the dodge roll, every class), `nightly_net_drop_test` (a client's link closing while a zone loads: no RPC after it), and the co-op pairs `mp_test`, `mp_boss_test` and `plague_mp_test` (run one copy
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
@@ -1433,6 +1433,51 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `--day-len 120` speeds it up. `tools/daynight_shots.gd -- outdir` (contact sheets through the day, and checks);
   `tools/daynight_test.gd` (headless, via `_late.gd`: lanterns, moon, the night beds and their turn, the admin
   controls, the HUD clock).
+- **The World-Tree Island** (`scripts/camp_island.gd` `CampIsland`; jj's pick, concept 2 of three, 2026-11-04): Act I's
+  camp adrift in space (`ForestCamp.ISLAND`). The ground ends `ForestCamp.ISLAND_R` from the middle at a gently
+  ragged edge (`World.island_r`/`island_edge`/`off_island`; `terrain_patch`'s `clip` draws edge vertices onto it, so
+  the ground ends in a smooth line); nothing grows or stands past it (trees, rocks, grass `grass_ground`, ferns). The
+  north (moor) and west (coast) gates are barred (`CampIsland.bar_gate`, no exits): the waypoint is the way out, and
+  the moor's waypoint is always known in Act I (`Game.waypoint_known`). Round it: the Meshy underside
+  (`assets/models/island/underside.glb`: prep_prop, then `tools/blender/island/level_top.py` levels its top, cuts
+  its middle and the coarse rim bushes out; scaled so its rim sits at the edge), the World-Tree's roots hanging off
+  the cliff (`roots.glb`), four waterfalls out of the cliff into the void (`FALL_SHADER`), rocks drifting by the edge
+  and asteroids tumbling round it (Meshy `asteroid1..3.glb` and NASA's Bennu `bennu.glb`, its own dark stone; fog
+  off on them), comets streaking past (a Meshy-painted card along the path, `COMET_SHADER`), and the coast and the
+  moor as small far islands (`isle_coast.glb`, `isle_moor.glb`, dimmed). The sky is `CampIsland.space_sky()`
+  (Game.`space_sky`, set by `_zone_env`; ambient from a colour, fog thinner: DayNight's `thin`): ESO's real 360°
+  Milky Way panorama in galactic coordinates (`band_n`, `core_dir`), a few crisp stars, faint aurora, and Saturn
+  drawn analytically in the sky shader (its real surface and rings, `planet_dir`, `planet_r`). Textures and their
+  licences: `assets/textures/space/` (`CREDITS.md`; `tools/space_textures.py` makes them). The scroll wheel zooms
+  out further there (`Game.zoom_max` 2.2; past 1.3 the view drifts to the island's middle), and zoomed out the
+  **orbit camera** turns: middle-mouse (or Alt + left) drag (`Game._orbit_input`, `orbit_yaw`/`orbit_pitch`,
+  `_orbit_offset`), down past the edge to the underside; zoomed back in it eases home. Any zone raising `zoom_max`
+  gets it. Previews: `tools/camp_aerial.gd -- out.png [height] [hour] [edge|game|at:x,z] [nounder]`.
+- **The living camp** (jj, 2026-11-04): every trader has thirty moves (`ForestCamp.ACTS`: Meshy library clips
+  animated once on the auctioneer's rig and moved onto each keeper by `tools/blender/npc_add_clips.py`, their hips
+  pinned) and the strollers a round (`ForestCamp.lively`: their spot, along their stall, the waypoint's square; walk
+  clips `STROLL`). `CampSocial` (`scripts/camp_social.gd`, a node in the camp) pairs people who are free and close
+  (a guard idling at his post, a keeper at their stall; group `camp_walker`), turns them to each other and plays a
+  conversation in turns (talk clips for one, listening/nodding for the other), then a wave or a bow; a strolling
+  trader now and then walks over to visit another's stall (`Inter.walk_to`), and traders wave to guards walking
+  by. The guards have the same talk clips (`npc_add_clips.py ... --keep`, which keeps their meshes and 2k
+  textures), and their post idles swapped the warm-up stretches for a hand on the hip, a look round, a drink.
+  **The smith forges** (`scripts/smith_forge.gd` `SmithForge`): while he works (`Inter` clips `"forge"`), his body
+  stands in its idle and his arms are placed by a one-pass two-bone IK (`_reach`, `_wrist`) after the animation
+  (his AnimationPlayer is advanced by hand): the war hammer (taken off the hand bone, `top_level`, placed by
+  `_hammer_basis`) swings over his shoulder and its face lands on the forge's anvil (`ANVIL`, in the forge model's
+  frame) with a ring, sparks and a flash; his left fist holds the Meshy tongs with the glowing bar
+  (`assets/models/camp/props/tongs.glb`) on the anvil, turned now and then, and every `QUENCH_EVERY` blows plunged
+  into the bucket in steam (`quench`). Fists: `tools/blender/npc/fist_keys.py` adds `fist_R`/`fist_L` shape keys
+  (Meshy's rigs have no finger bones), set by `ForestCamp.fist` wherever a keeper holds something. **Ravens**
+  (`scripts/raven.gd` `Raven`, `scripts/camp_ravens.gd` `CampRavens`): the Meshy raven rigged by
+  `tools/blender/npc/rig_raven.py` (perch cut by its colour, bones by region) and posed in code: perched acts (look,
+  peck, preen, shake, stretch, caw, hop, settle), take-off, flapping and gliding flight that banks, a flared landing;
+  roosts found on the roofs themselves (`_measure`: the highest surface under points along each building, ForestCamp
+  `roost`), and on the ground round the square; a hero (or a walker) near puts them up (`raven_wings`, `raven_caw`).
+  **Smoke**: a Mantaflow chimney plume (`smoke_flipbook.py` kind `chimney`, DemonKitFx BOOKS) loops out of the
+  forge's chimney, off the alchemist's cauldron and the cookfire (`ForestCamp._smokes`). `tools/camp_life_test.gd`
+  (in the gate) checks all of it; previews `tools/forge_clip.gd`, `tools/raven_sheet.gd`, `tools/guard_clip.gd`.
 - **Nameplates and the trade window** (`scripts/vendor_ui.gd`): `VendorUI.Plates` (in `ui.plates`, under every
   window) floats a gold-trimmed plate with the name and trade (`VendorUI.ROLE_TITLES`) over each vendor and Varro,
   click-through, fading with distance, lit when hovered. The trade window (`UI._build_shop`, `open_shop(mode,

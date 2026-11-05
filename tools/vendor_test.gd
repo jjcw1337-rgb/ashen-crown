@@ -45,9 +45,11 @@ func _run() -> void:
 	while Time.get_ticks_msec() - t0 < 14000:
 		await process_frame
 		played[smith.anim.current_animation] = true
+		if SmithForge.forging(smith):
+			played["forging"] = true
 		var hp: Vector3 = sk.global_transform * sk.get_bone_global_pose(hips).origin
 		far = maxf(far, Vector2(hp.x - smith.global_position.x, hp.z - smith.global_position.z).length())
-	check(far < 0.6 and played.has("Heavy_Hammer_Swing") and not played.has("Catching_Breath"), "he hammers at the anvil, never wandering out (hips at most %.2f m off, clips %s)" % [far, played.keys()])
+	check(far < 0.6 and played.has("forging") and not played.has("Catching_Breath"), "he hammers at the anvil, never wandering out (hips at most %.2f m off, clips %s)" % [far, played.keys()])
 	# nameplates over the vendors
 	g.hero.global_position = g.world.free_spot_near(smith.global_position + Vector3(sin(smith.home_yaw), 0, cos(smith.home_yaw)) * 4.0, 0.4)
 	await process_frame

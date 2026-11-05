@@ -175,9 +175,11 @@ func update(delta: float) -> void:
 	env.ambient_light_energy = k["amb"]
 	env.tonemap_exposure = k["exp"]
 	env.fog_light_color = k["fog_c"]
-	env.fog_density = k["fog"]
-	env.fog_height_density = k["fog_h"]
-	env.volumetric_fog_density = k["vol"]
+	# (the World-Tree Island, CampIsland: thinner, or the haze washes the island and the void out)
+	var thin := 0.35 if game.world != null and game.world.island_r > 0.0 else 1.0
+	env.fog_density = float(k["fog"]) * thin
+	env.fog_height_density = float(k["fog_h"]) * thin
+	env.volumetric_fog_density = float(k["vol"]) * (0.4 if thin < 1.0 else 1.0)
 	env.volumetric_fog_albedo = k["vol_a"]
 	env.volumetric_fog_emission = k["vol_e"]
 	env.adjustment_saturation = k["sat"]

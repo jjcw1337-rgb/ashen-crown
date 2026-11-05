@@ -31,11 +31,12 @@ const RECOVER := 0.5           # seconds of a strike's follow-through kept after
 const LOOPS := ["idle", "walk", "walk_back", "walk_look", "run", "combat_idle", "walk_fight", "walk_fight_back",
 	"strafe_l", "strafe_r", "alert"]
 # camp coordinates (ForestCamp: CENTER (0, -2), RADIUS 25, the north gate at z -27, the west gate at x -25)
+# (posts kept off the Gilded Hall's footprint, west of the waypoint: ForestCamp.AUCTION_AT)
 const GUARDS := [
 	# the gate warden: heavy plate, the green surcoat with the ember; keeps the north gate and the forge
 	{"id": "warden", "name": "Warden Bram", "dmg": 1.25, "rim": Color(1.0, 0.5, 0.2), "fill": Color(1.0, 0.72, 0.5),
 		"posts": [
-			{"at": Vector2(-1.2, -22.3), "look": Vector2(0, -34), "wait": [10.0, 16.0]},
+			{"at": Vector2(2.6, -21.2), "look": Vector2(0, -34), "wait": [10.0, 16.0]},     # (beside Captain Roth: they talk)
 			{"at": Vector2(4.4, -16.6), "look": Vector2(10, -12), "wait": [5.0, 8.0]},
 			{"at": Vector2(8.4, -8.2), "look": Vector2(14, -3), "wait": [6.0, 10.0]},
 			{"at": Vector2(0.4, -9.4), "look": Vector2(3.5, -5), "wait": [5.0, 8.0]}],
@@ -55,7 +56,7 @@ const GUARDS := [
 			{"at": Vector2(12.2, 2.2), "look": Vector2(16, 5), "wait": [3.0, 5.0]},
 			{"at": Vector2(7.0, 10.6), "look": Vector2(9.5, 13.5), "wait": [4.0, 7.0]},
 			{"at": Vector2(-1.0, 13.8), "look": Vector2(0, 26), "wait": [4.0, 7.0]},
-			{"at": Vector2(-13.6, 5.0), "look": Vector2(-25, 7), "wait": [3.0, 6.0]}],
+			{"at": Vector2(-8.8, 1.2), "look": Vector2(-20, -2), "wait": [3.0, 6.0]}],
 		"slots": [
 			{"skill": "", "clip": "strike_1", "reach": 1.6, "dmg": 0.8, "cd": 0.45},   # the left jab
 			{"skill": "", "clip": "strike_2", "reach": 1.5, "dmg": 1.1, "cd": 0.7},    # the right upper hook
@@ -65,7 +66,7 @@ const GUARDS := [
 		"lantern": Vector3(-0.3, 0.92, 0.06),       # the iron lantern at his right hip (model space, as modelled)
 		"posts": [
 			{"at": Vector2(-2.3, 0.3), "look": Vector2(-8, 6), "wait": [9.0, 14.0]},
-			{"at": Vector2(-12.6, 8.8), "look": Vector2(-22, 13), "wait": [5.0, 8.0]},
+			{"at": Vector2(-9.0, 12.2), "look": Vector2(-15, 15), "wait": [5.0, 8.0]},
 			{"at": Vector2(6.2, 9.4), "look": Vector2(9.5, 13.5), "wait": [9.0, 14.0]},
 			{"at": Vector2(5.6, 0.8), "look": Vector2(13, 2), "wait": [5.0, 8.0]}],
 		"slots": [
@@ -135,6 +136,7 @@ static func place_all(w: World) -> Array:
 	return out
 
 func _ready() -> void:
+	add_to_group("camp_walker")
 	game = world.get_parent()
 	model = (load(DIR + str(def["id"]) + ".glb") as PackedScene).instantiate()
 	model.name = "Body"
@@ -157,6 +159,8 @@ func _ready() -> void:
 		var a := anim.get_animation(an)
 		a.loop_mode = Animation.LOOP_LINEAR if an in LOOPS else Animation.LOOP_NONE
 		_unroot(a)
+		if not meta.has(an):
+			ForestCamp._pin_root(a)     # (the talk and gesture clips CampSocial plays stay on his spot)
 	var sk: Skeleton3D = model.find_child("Skeleton3D", true, false)
 	if sk != null:
 		head = HeadLook.new()
@@ -300,8 +304,11 @@ func _at_post(_delta: float) -> void:
 	elif r < 0.84:
 		_play("alert", 0.3)
 		act_left = _rng.randf_range(2.0, 3.5)
-	elif r < 0.92:
-		_play("warmup", 0.35)
+	elif r < 0.93:
+		# a guard's ease at his post (jj thought the warm-up stretches looked wrong on a sentry): hand on hip, a
+		# breath and a long look round, a drink
+		_play(["Hand_on_Hip_Gesture", "Long_Breathe_and_Look_Around", "Short_Breathe_and_Look_Around", "Idle_11", "Idle_14",
+			"Stand_and_Drink"][_rng.randi() % 6], 0.35)
 	else:
 		_play("extra", 0.35)
 	wait_left -= maxf(act_left, 0.5)
