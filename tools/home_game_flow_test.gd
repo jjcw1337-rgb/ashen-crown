@@ -40,8 +40,7 @@ func run():
   # Keep 1080p logical coverage without the macOS desktop clamping the window.
   root.size=Vector2i(1280,720) if dimensions.x==1920 else dimensions
   await frames()
-  ui.home.set_mode("lan")
-  check(not rect(ui.home.get_node("play_box")).intersects(rect(ui.home.get_node("bg_card"))), "%s: home actions clear the raid card" % dimensions)
+  check(not rect(ui.home.get_node("play_box")).intersects(rect(ui.home.get_node("sidebar"))), "%s: home actions clear the character sidebar" % dimensions)
   ui.open_class_picker()
   await frames()
   for cls in ["knight","demon","warlock"]:
@@ -53,18 +52,13 @@ func run():
   check(not ui.home.visible,"creation hides home buttons")
   await shot("class-%d" % dimensions.x)
   ui.show_title()
-  ui.home.get_node("bg_card").pressed.emit()
+  # Battlegrounds is a lobby type now: its way in is the lobby browser (the old raid page is unused)
+  ui.open_battlegrounds()
   await frames()
-  var page=ui.bg_page
-  var words:Control=page.get_node("words")
-  var champion:Control=page.get_node("champion")
-  print("[FLOW] bounds ",root.get_visible_rect()," words ",rect(words)," champion ",rect(champion)," back ",rect(page.get_node("back")))
-  check(not rect(words).intersects(rect(champion)),"%s: raid description and champion controls do not overlap" % dimensions)
-  check(inside(words) and inside(champion),"%s: raid content stays on screen" % dimensions)
-  check(not rect(words).intersects(rect(page.get_node("back"))),"%s: Back clears raid description" % dimensions)
-  check(not ui.title_idle(),"raid page is not idle home screen")
+  check(g.lobby_client.panel.visible and inside(g.lobby_client.panel),"%s: Battlegrounds opens the lobby browser on screen" % dimensions)
+  check(not ui.title_idle(),"lobby browser is not idle home screen")
   await shot("bg-%d" % dimensions.x)
-  page.get_node("back").pressed.emit()
+  g.lobby_client.panel.hide()
   ui.open_join()
   for i in 12:g.net.found["127.0.0.%d" % (i+1)]={"name":"Adventurer %d"%i,"zone":"Town","t":g.net._clock}
   ui._refresh_join()
@@ -89,8 +83,7 @@ func run():
   g.hero.set_class(entry[2]);g.hero.new_character();g.save_game()
  ui.show_title()
  ui.home.select("flow-a")
- ui.home.set_mode("lan")
- ui.home._join.pressed.emit()
+ ui.home.lan_join()
  ui.join_ip.text="127.0.0.1:24799"
  ui.join_ip.text_submitted.emit(ui.join_ip.text)
  await frames(2)
@@ -98,8 +91,7 @@ func run():
  g.net.shutdown()
  await g.exit_to_title()
  ui.home.select("flow-a")
- ui.home.set_mode("story")
- check(ui.home._play.text=="Continue Story","Story action is explicit")
+ check(ui.home._play.text=="Enter World","Enter World is the one way into your own game")
  root.content_scale_size=Vector2i(1600,900)
  root.size=Vector2i(1280,720)
  ui.home._play.pressed.emit()

@@ -20,22 +20,21 @@ func run():
   g._intro_skip=true;await process_frame
  g.char_id="uihero";g.char_name="Arena Hero";g.save_game();g.char_id="";g.ui.show_title();g.ui.home.select("uihero")
  var c=g.lobby_client;c.set_process(false);c.identity="a";c.auth="Bearer dev-ui"
- check(g.ui.home._modes.size()==3,"exactly three main home choices")
+ check(g.ui.home.get_node("play_box/buttons").get_child_count()==3,"exactly three main home choices")
  for size in [Vector2i(1024,768),Vector2i(1280,720),Vector2i(1920,1080)]:
   root.size=Vector2i(1280,720) if size.x>1280 else size
   root.content_scale_size=size;root.content_scale_mode=Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
-  c.panel.hide();g.ui.home.set_mode("story")
+  c.panel.hide()
   await shot("home-"+str(size.x))
-  check(g.ui.home._play.visible and not g.ui.home._lan_row.visible,"single player controls "+str(size.x))
-  var buttons=g.ui.home._modes.values()
+  check(g.ui.home._play.visible and g.ui.home._play.text=="Enter World","Enter World "+str(size.x))
+  var buttons=g.ui.home.get_node("play_box/buttons").get_children()
   for a in buttons:
    for b in buttons:
     if a!=b:check(not a.get_global_rect().intersects(b.get_global_rect()),"home modes do not overlap")
-  g.ui.home.set_mode("online");await wait_s(0.3)
-  check(g.ui.home._lan_row.visible and g.ui.home._join.visible,"LAN remains inside Co-op")
-  g.ui.home.set_mode("multiplayer");g.ui.home._play.pressed.emit()
+  g.ui.home._mp.pressed.emit()
   await wait_s(0.5)
   check(c.panel.visible and not g.ui.home.visible,"Multiplayer opens from post-intro home")
+  check(c.lan_row.visible,"LAN remains inside Multiplayer (Local network)")
   c.room={};c.rooms=[];c.draw();await shot("browser-"+str(size.x))
   c.room={"id":"sample","name":"Arena 3v3","mode":"arena","team_size":3,"capacity":6,"state":"waiting","owner":"a","wager":true,"members":{}}
   for i in 6:c.room.members[str(i)]={"name":"Hero "+str(i+1),"team":0 if i<3 else 1,"ready":true,"stake":{"name":"Rare longsword"}}

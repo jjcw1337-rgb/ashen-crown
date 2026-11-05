@@ -26,6 +26,7 @@ var identity := ""
 var arena_hud: Label
 var _returning := false
 var admitted := false
+var lan_row: HBoxContainer # the home screen's LAN (Blaine, 2026-11-05: no menu of its own, still there)
 
 func setup(g) -> void:
  game=g
@@ -59,6 +60,10 @@ func setup(g) -> void:
  rows=VBoxContainer.new();rows.size_flags_horizontal=Control.SIZE_EXPAND_FILL;scroll.add_child(rows)
  detail=VBoxContainer.new();vb.add_child(detail)
  var claim=ui._iron_button("Collect Arena Rewards",280,42,18);claim.pressed.connect(collect);vb.add_child(claim)
+ lan_row=HBoxContainer.new();lan_row.name="lan_row";lan_row.add_theme_constant_override("separation",10);vb.add_child(lan_row)
+ lan_row.add_child(ui._label("Local network:",15,ui.DIM))
+ var lan_host=ui._iron_button("Host LAN Game",200,40,16);lan_host.name="lan_host";lan_host.pressed.connect(func():ui.home.lan_host());lan_row.add_child(lan_host)
+ var lan_join=ui._iron_button("Join LAN / Address",220,40,16);lan_join.name="lan_join";lan_join.pressed.connect(func():ui.home.lan_join());lan_row.add_child(lan_join)
  var back=ui._iron_button("Back",160,46,18);back.pressed.connect(func():panel.hide());vb.add_child(back)
  panel.minimum_size_changed.connect(fit.call_deferred)
  get_viewport().size_changed.connect(fit)
@@ -83,6 +88,7 @@ func open(mode := "") -> void:
  if room.get("members",{}).has(identity):character=str(room.members[identity].character)
  if character=="":game.ui.message("Create or select a character first.");return
  if mode!="":selected_mode=mode
+ lan_row.visible=not game.playing
  game.ui.close_all();panel.show();draw();refresh()
  if not game.playing:recover_stakes()
 

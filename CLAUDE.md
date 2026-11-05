@@ -1342,13 +1342,16 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   lightning now and then. Models are Meshy (concept image, then image-to-3D, 144 credits) in `assets/models/title/`
   (`gate` 18 m, `arcade` 8 m, `colossus` 10 m, `crown` 1 m, prepared by `tools/blender/prep_prop.py`; the colossus cut
   at the ash line by `tools/blender/trim_below.py`), darkened to the game's palette in code (`SOOT`); without them
-  procedural stand-ins are built. Two daises: Continue (left) shows the last character played as a co-op puppet in
-  their saved gear (`Game.character_gear(id)`, read-only), idle, doing their class's `ClassStage.SIGNATURE` move when
-  hovered; Create New Character (right) is an empty dais with a rune circle and a cold light. The choices are cards
-  (`UI._title_card`) placed under their daises each frame (`TitleStage._place_cards`); dais or card, hover leans the
-  camera and lights that side (`set_focus`), a click plays the camera's move in (`enter`) and then Continue calls
-  `start_game(true, …, id)` with the id of the one shown, New opens the class picker. No saves: the Continue card is
-  disabled and the camera leans to New. Characters, co-op and Quit sit in a row below. While the title is up the main
+  procedural stand-ins are built. The chosen character (the sidebar's choice, `TitleHome.select`) stands alone before
+  the arch between two braziers, no dais (Blaine, 2026-11-05), as a co-op puppet in their saved gear
+  (`Game.character_gear(id)`, read-only), idle, doing their class's `ClassStage.SIGNATURE` move when hovered; hover
+  leans the camera in and lights them (`set_focus`), a click plays the move in (`enter`) and enters their world. The
+  picture is centred in the room left of the character sidebar by shifting the camera's frustum (`TitleStage._frame`,
+  `TitleHome.mid`), so the hero stays in line with the arch. The controls (`TitleHome`): the sidebar of characters with
+  Create New Character, and at the bottom **Enter World** (your own game; friends join it), **Multiplayer** (straight
+  to the lobby browser, `LobbyClient`: Battlegrounds, Endless Waves, Arena) and a small Quit. No left column any more
+  (the Last Flame board's code is kept for the Waves lobby). LAN has no menu of its own: the lobby browser's "Local
+  network" row (`LobbyClient.lan_row`, hidden in game) hosts or joins (`TitleHome.lan_host`/`lan_join`). While the title is up the main
   viewport's 3D is off (`disable_3d`; the camp still builds behind), the stage stops drawing under the class picker or
   the list (`covered`), and the music is `music_select` (`Game.zone_music`). Sharpness: MSAA only (no FXAA/TAA), no
   mesh LOD, anisotropic filtering on the models, light bloom and a contrast-adaptive sharpen (`SHARPEN_SHADER`). Screens
