@@ -259,9 +259,13 @@ class Handler(BaseHTTPRequestHandler):
         data=json.dumps(result).encode();self.send_response(status);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--state',default='/var/lib/ashen-lobbies');ap.add_argument('--game',required=True);ap.add_argument('--godot',default='godot');ap.add_argument('--bind',default='127.0.0.1');ap.add_argument('--port',type=int,default=7352);ap.add_argument('--public-host',default='127.0.0.1');ap.add_argument('--first-port',type=int,default=24600);ap.add_argument('--slots',type=int,default=1);ap.add_argument('--min-free-mb',type=int,default=1500);ap.add_argument('--nakama',default='http://127.0.0.1:7350');ap.add_argument('--dev',action='store_true');args=ap.parse_args()
-    if args.dev and args.bind!='127.0.0.1': ap.error('Development identities are loopback-only.')
+    ap=argparse.ArgumentParser();ap.add_argument('--state',default='/var/lib/ashen-lobbies');ap.add_argument('--game',required=True);ap.add_argument('--godot',default='godot');ap.add_argument('--bind',default='127.0.0.1');ap.add_argument('--proxy-bind',default='');ap.add_argument('--port',type=int,default=7352);ap.add_argument('--public-host',default='127.0.0.1');ap.add_argument('--first-port',type=int,default=24600);ap.add_argument('--slots',type=int,default=1);ap.add_argument('--min-free-mb',type=int,default=1500);ap.add_argument('--nakama',default='http://127.0.0.1:7350');ap.add_argument('--dev',action='store_true');args=ap.parse_args()
+    if args.dev and (args.bind!='127.0.0.1' or args.proxy_bind): ap.error('Development identities are loopback-only.')
     svc=Service(args);server=ThreadingHTTPServer((args.bind,args.port),Handler);server.service=svc
+    if args.proxy_bind:
+        # A private Docker bridge listener for Caddy; worker calls still require loopback.
+        proxy=ThreadingHTTPServer((args.proxy_bind,args.port),Handler);proxy.service=svc
+        threading.Thread(target=proxy.serve_forever,daemon=True).start()
     def tick():
         while True: time.sleep(2);svc.reap()
     threading.Thread(target=tick,daemon=True).start()

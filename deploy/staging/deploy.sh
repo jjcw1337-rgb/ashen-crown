@@ -20,6 +20,11 @@ NOW=0
 [ "${1:-}" = "--backend" ] && { ONLY_BACKEND=1; shift; }
 [ "${1:-}" = "--now" ] && { NOW=1; shift; }
 HOST=${1:-ashen-crown-staging}
+# Once lobbies are enabled, this legacy source-import path must not restore permanent raids.
+if ssh "$HOST" 'test -f /opt/ashen-crown/staging/lobbies-enabled'; then
+  echo "Lobby deployment active: use deploy/lobbies/deploy_export.sh with a matching CI Linux export."
+  exit 1
+fi
 ROOT=$(git rev-parse --show-toplevel)
 REV=$(git -C "$ROOT" rev-parse --short HEAD)
 echo "deploying $REV to $HOST"

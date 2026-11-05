@@ -8,6 +8,12 @@ on:
   push:
     branches: ['test-*']
   workflow_dispatch:
+    inputs:
+      target_env:
+        description: Backend for this preview (no publication)
+        type: choice
+        options: [local, staging]
+        default: local
 
 permissions:
   contents: read
@@ -35,6 +41,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Configure staging candidate
+        if: inputs.target_env == 'staging'
+        env:
+          BG: ${{ vars.STAGING_BG_SERVER }}
+          URL: ${{ vars.STAGING_NAKAMA_URL }}
+          KEY: ${{ vars.STAGING_NAKAMA_KEY }}
+        run: sh tools/ci/write_build_env.sh staging "$BG" "$URL" "$KEY"
+
       - name: Stamp preview protocol revision
         run: |
           revision=$(printf '%s' "$GITHUB_SHA" | cut -c1-7)
@@ -60,6 +74,7 @@ jobs:
           godot --headless --export-release "Linux" build/linux/AshenCrown.x86_64
           chmod +x build/linux/AshenCrown.x86_64
           cp README.md build/linux/
+          printf '%.7s\n' "$GITHUB_SHA" > build/linux/DEPLOYED_REV
 
       - name: Export Mac version
         run: godot --headless --export-release "macOS" build/mac/AshenCrown-Mac.zip
