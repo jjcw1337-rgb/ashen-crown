@@ -77,6 +77,9 @@ var cloud: CloudSaves
 var coop_server: CoopServer     # the online co-op server's logic (coop_server.gd), only on a `--server --coop` run
 var sandbox: Sandbox = null     # the admins' Battlegrounds sandbox (sandbox.gd) while one is open
 var paused := false
+var party_queue
+var party_join_ticket := ""
+var party_join_pending := false
 var hovered = null
 var ground_pt := Vector3.ZERO
 var lmb_held := false
@@ -170,6 +173,10 @@ func _ready() -> void:
 	hero.died.connect(_on_hero_died)
 	hero.leveled.connect(_on_level)
 	ui.bind_hero(hero)
+	if not args.has("--server"):
+		party_queue = load("res://scripts/party_queue.gd").new()
+		add_child(party_queue)
+		party_queue.setup(self)
 	if not args.has("--server"):
 		stash = SharedStash.new(SharedStash.TEST_PATH if get_tree().get_script() != null else SharedStash.PATH)
 	if BuildEnv.cloud() and not args.has("--server") and shot_path == "" and not args.has("--kpi"):
@@ -1621,7 +1628,7 @@ func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
 		tp_link = {}
 		if dev_tools:
 			max_run = 2
-		await load_zone(0, "town", "start")
+		await load_zone(0, "town", "new_player")
 		ui.open_dialog(Data.VENDORS[0]["elder"], "Welcome to the Forsaken Wilds, %s. Since the goblin king Grubb tunnelled into the old crypt to loot the dead, the dead walk Cairnfell Moor and the Fallen raid our roads. He sits on a mountain of stolen gold down there and calls himself king. Trade with our folk, then head out through the north gate. End him, and the moor may yet heal." % ("restless one" if hero.is_wraith() else ("pact-bound one" if hero.is_warlock() else "crusader")), [["I will", func(): pass]])
 	ui.refresh()
 
@@ -1899,6 +1906,13 @@ func _bg_home_camp(fell: bool) -> void:
 	bg_gained = -1
 
 func on_net_failed(msg: String) -> void:
+	party_join_ticket = ""
+	if party_join_pending:
+		party_join_pending = false
+		net_joining = false
+		loading.visible = false
+		ui.message(msg + " Your solo adventure is still open.", Color(1, 0.7, 0.45), 7.0)
+		return
 	if net_joining:
 		# a co-op join that never got in: back to the co-op screen
 		net_joining = false
@@ -2337,20 +2351,27 @@ func default_name(cls: String) -> String:
 ## joins the raid server (bg_server_address) with this character, the crypt's painting behind the loading words.
 ## The raid ends back on this dais (_leave_battlegrounds -> _bg_home_camp). Not from co-op (the party's host
 ## would lose a player mid-act), not from a raid, and never while a zone is still loading.
-func waypoint_battleground(_id: String) -> void:
+func waypoint_battleground(id: String) -> void:
+	var entry := Data.waypoint_battleground(id)
+	if entry.is_empty() or (id != "crypt" and str(entry.get("address", "")) == ""):
+		ui.message("This raid is no longer available.")
+		return
 	if bg_mode or _busy or not playing or char_id == "":
 		return
 	if net.active:
 		ui.message("Leave co-op to enter the Battlegrounds.", Color(1.0, 0.6, 0.45))
 		return
 	var nm := char_name
-	ui.open_dialog(Battlegrounds.TITLE,
-		"%s goes down with everything they wear and carry, and it is all at stake. Reach an open Extraction Portal and all of it, and whatever they find, comes home. Fall down there and every item, the belt and the gold stay on the crypt floor for others to take.\n\nLevels, stats, talents and the camp's stash are safe whatever happens.\n\nDescend into %s?" % [nm, Battlegrounds.TITLE],
-		[["Descend", func(): _waypoint_descend()], ["Not yet", func(): pass]])
+	ui.open_dialog(str(entry["name"]),
+		"%s goes down with everything they wear and carry, and it is all at stake. Reach an open Extraction Portal and all of it, and whatever they find, comes home. Fall down there and every item, the belt and the gold stay on the crypt floor for others to take.\n\nLevels, stats, talents and the camp's stash are safe whatever happens.\n\nDescend into %s?" % [nm, str(entry["name"])],
+		[["Descend", func(): _waypoint_descend(id)], ["Not yet", func(): pass]])
 
 ## The trip down: the character is saved as he stands, the grand waypoint flares, the sigil's sound, a breath, and
 ## the raid server is joined (start_battlegrounds).
-func _waypoint_descend() -> void:
+func _waypoint_descend(id := "crypt") -> void:
+	var entry := Data.waypoint_battleground(id)
+	if entry.is_empty() or (id != "crypt" and str(entry.get("address", "")) == ""):
+		return
 	if bg_mode or _busy or not playing or net.active or char_id == "":
 		return
 	ui.close_all()
@@ -2372,7 +2393,11 @@ func _waypoint_descend() -> void:
 	if bg_mode or _busy or not playing or net.active:
 		bg_from_waypoint = false
 		return
-	start_battlegrounds(bg_server_address(), char_id)
+	entry = Data.waypoint_battleground(id)
+	if entry.is_empty() or (id != "crypt" and str(entry.get("address", "")) == ""):
+		bg_from_waypoint = false
+		return
+	start_battlegrounds(str(entry.get("address", bg_server_address())), char_id)
 
 ## The raid server a trip from the waypoint joins: a LAN or test server last picked on the Battlegrounds page, else
 ## this build's own raid server (local: this machine) at the port of the raid open now, as the page's Enter does
@@ -3073,6 +3098,89 @@ func _interact(t: Inter) -> void:
 func travel_waypoint(dest: Dictionary) -> void:
 	Sfx.play("portal")
 	travel(cur_act, dest["zone"], "waypoint")
+
+## Available activities are rebuilt from content data, never from a second UI-only list.
+func waypoint_activities() -> Array:
+	var entries: Array = Data.WAYPOINT_ACTIVITIES.duplicate(true)
+	if BuildEnv.env() != "local":
+		entries.append({"id": "online_coop", "group": "pve", "name": "Online Co-op", "kind": "Join online",
+			"route": "coop", "run": difficulty, "description": "Join the shared co-op server with this character."})
+		entries.append({"id": "find_party", "group": "pve", "name": "Find a Party", "kind": "Co-op queue",
+			"route": "party", "run": difficulty, "description": "Keep adventuring while we find a co-op party. Accept when ready."})
+	for isle in Isles.ISLANDS:
+		if not Isles.ISLE_SCRIPTS.has(str(isle["id"])):
+			continue
+		entries.append({"id": "isle_" + str(isle["id"]), "group": "pve", "name": isle["name"],
+			"kind": "Island", "description": isle.get("lore", ""), "route": "zone", "run": 0,
+			"zone": Isles.zone_of(str(isle["id"])), "spawn": "start", "level": isle.get("level", 1),
+			"enabled": isle.get("enabled", true)})
+	for act in Data.WAYPOINT_ACTS:
+		var run := int(act["run"])
+		var info := Data.act_info(0, run)
+		entries.append({"id": "lair_%d" % run, "group": "pve", "name": "Throne of the Ashen King" if run >= 2 else info["lair"],
+			"kind": "Act dungeon", "description": "Enter the act's dungeon from its entrance.",
+			"route": "zone", "run": run, "zone": "lair", "spawn": "start", "requires_waypoint": "wild"})
+	var result := []
+	var seen := {}
+	for entry in entries:
+		var id := str(entry.get("id", ""))
+		if id == "" or seen.has(id) or not Data.waypoint_available(entry, Time.get_unix_time_from_system()):
+			continue
+		if not waypoint_activity_valid(entry):
+			continue
+		seen[id] = true
+		result.append(entry)
+	return result
+
+func waypoint_activity_valid(entry: Dictionary) -> bool:
+	if str(entry.get("name", "")) == "": return false
+	if str(entry.get("route", "")) == "party":
+		return str(entry.get("id", "")) == "find_party" and BuildEnv.env() != "local" and not OS.has_feature("web")
+	if str(entry.get("route", "")) == "coop":
+		return str(entry.get("id", "")) == "online_coop" and BuildEnv.env() != "local"
+	var zone := str(entry.get("zone", ""))
+	return str(entry.get("group", "")) in ["pve", "daily"] and str(entry.get("route", "")) == "zone" and not Data.waypoint_act(int(entry.get("run", -1))).is_empty() and (zone in ["town", "wild", "lair", "coast", Vigil.ZONE] or (zone.begins_with("isle_") and Isles.ISLE_SCRIPTS.has(Isles.id_of(zone))))
+
+func waypoint_activity(id: String) -> Dictionary:
+	for entry in waypoint_activities():
+		if str(entry["id"]) == id:
+			return entry
+	return {}
+
+## Used both by the card and immediately before travel, so stale buttons cannot bypass locks.
+func waypoint_activity_lock(entry: Dictionary) -> String:
+	if entry.is_empty(): return "This activity is no longer available."
+	if bg_mode or _busy or not playing or hero == null or hero.dead: return "Cannot travel right now."
+	if str(entry["route"]) in ["coop", "party"]:
+		return "Already in co-op." if net.active else ""
+	var run := int(entry["run"])
+	if not act_unlocked(run): return "Unlock this act first."
+	if entry.has("requires_waypoint") and not waypoint_known(run, str(entry["requires_waypoint"])):
+		return "Discover this act's wilderness waypoint first."
+	if hero.level < int(entry.get("level", 1)): return "Requires level %d" % int(entry["level"])
+	if net.active and run != difficulty: return "Switch the party to this act first."
+	return ""
+
+func waypoint_activity_go(id: String) -> void:
+	var entry := waypoint_activity(id)
+	var reason := waypoint_activity_lock(entry)
+	if reason != "":
+		ui.message(reason, Color(1.0, 0.6, 0.45))
+		return
+	ui.close_all()
+	if str(entry["route"]) == "party":
+		party_queue.begin()
+		return
+	if str(entry["route"]) == "coop":
+		save_game()
+		start_join(str(BuildEnv.value("coop_server")), char_id)
+		return
+	var run := int(entry["run"])
+	Sfx.play("portal")
+	if run != difficulty:
+		switch_run(run, str(entry["zone"]), str(entry.get("spawn", "start")))
+	else:
+		travel(0, str(entry["zone"]), str(entry.get("spawn", "start")))
 
 # ---------------------------------------------------------------- the waypoint network (Data.WAYPOINT_ACTS)
 ## An act is open once the act before it has fallen (in co-op, the host's progress counts). An entry

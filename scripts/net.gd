@@ -163,7 +163,8 @@ func local_ips() -> Array:
 
 func _on_connected() -> void:
 	reached = true
-	rpc_id(1, "sv_hello", my_name, game.hero.net_gear(), game.hero.level)
+	rpc_id(1, "sv_hello", my_name, game.hero.net_gear(), game.hero.level, game.party_join_ticket)
+	game.party_join_ticket = ""
 	if game.bg_mode:
 		# with accounts on: a one-time join ticket from Nakama (over HTTPS), never the session itself
 		var ticket := ""
@@ -367,10 +368,15 @@ func pl_fx(w: Dictionary) -> void:
 
 # ---------------------------------------------------------------- handshake
 @rpc("any_peer", "call_remote", "reliable")
-func sv_hello(nm: String, gear: Dictionary, _lvl: int) -> void:
+func sv_hello(nm: String, gear: Dictionary, _lvl: int, queue_ticket := "") -> void:
 	if not is_host:
 		return
 	var pid := multiplayer.get_remote_sender_id()
+	if players.has(pid): return
+	if coop_server and game.coop_server != null and game.coop_server.party_queue != null:
+		if not game.coop_server.party_queue.admit(queue_ticket):
+			rpc_id(pid, "cl_party_refused")
+			return
 	var roster := [] if server else [[1, my_name, game.hero.net_gear()]]
 	for op in players:
 		roster.append([op, players[op]["name"], players[op]["hero"].net_gear()])
@@ -389,8 +395,14 @@ func sv_hello(nm: String, gear: Dictionary, _lvl: int) -> void:
 	_update_status()
 
 @rpc("authority", "call_remote", "reliable")
+func cl_party_refused() -> void:
+	shutdown()
+	game.on_net_failed("The party is full or your reservation expired. Please queue again.")
+
+@rpc("authority", "call_remote", "reliable")
 func cl_welcome(act: int, zone: String, pos: Vector3, tp: Dictionary, bk: bool, roster: Array, diff: int) -> void:
 	welcomed = true
+	game.party_join_pending = false
 	if diff != game.difficulty:
 		# the host's (or the raid's) act: keep our own act's waypoints and boss aside, as cl_goto does
 		if game.bg_mode and game.bg_home_run < 0:

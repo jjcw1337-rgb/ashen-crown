@@ -26,6 +26,8 @@ var sigil: TextureRect
 var tabs_box: HBoxContainer
 var groups_box: HBoxContainer
 var sel_group := "acts"
+var _catalog_stamp := 0
+var _catalog_tick := 0.0
 var acts_override: Array = []   # screenshots only: sample future acts in place of Data.WAYPOINT_ACTS
 var banner_clip: Control
 var banner: TextureRect
@@ -123,7 +125,11 @@ func setup(u: UI) -> void:
 	# in a row that scrolls sideways when more acts are added than fit
 	groups_box = HBoxContainer.new()
 	groups_box.add_theme_constant_override("separation", 18)
-	vb.add_child(groups_box)
+	var gscroll := ScrollContainer.new()
+	gscroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	gscroll.custom_minimum_size.y = 30
+	vb.add_child(gscroll)
+	gscroll.add_child(groups_box)
 	var tscroll := ScrollContainer.new()
 	tscroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	tscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
@@ -263,6 +269,7 @@ func _act_name(run: int) -> String:
 	return str(Data.RUNS[clampi(run, 0, Data.RUNS.size() - 1)]["name"])
 
 func _fill() -> void:
+	_catalog_stamp = _catalog_hash()
 	here_icons.clear()
 	bg_icons.clear()
 	probe_lbl = null
@@ -276,12 +283,20 @@ func _fill() -> void:
 	for a in _acts():
 		if not used.has(a.get("group", "acts")):
 			used.append(a.get("group", "acts"))
-	if acts_override.is_empty() and not Data.WAYPOINT_BATTLEGROUNDS.is_empty():
+	if acts_override.is_empty():
+		for entry in game.waypoint_activities():
+			if not used.has(entry["group"]): used.append(entry["group"])
+	if acts_override.is_empty() and not _raids().is_empty():
 		used.append("battlegrounds")
+	if not used.has(sel_group):
+		sel_group = str(used[0]) if not used.is_empty() else "acts"
 	groups_box.visible = used.size() > 1
 	for gdef in Data.WAYPOINT_GROUPS:
 		if used.has(gdef["id"]):
 			groups_box.add_child(_group_tab(gdef))
+	if sel_group in ["pve", "daily"]:
+		_fill_activities()
+		return
 	if sel_group == "battlegrounds":
 		_fill_battlegrounds()
 		return
@@ -316,10 +331,73 @@ func _fill() -> void:
 	_size_route.call_deferred()
 	route_line.queue_redraw()
 
+func _catalog_hash() -> int:
+	var entries: Array = game.waypoint_activities()
+	var locks := entries.map(func(entry): return game.waypoint_activity_lock(entry))
+	return hash([entries, locks, _raids(), game.net.active])
+
+func _raids() -> Array:
+	return Data.WAYPOINT_BATTLEGROUNDS.filter(func(b): return Data.waypoint_available(b, Time.get_unix_time_from_system()) and (str(b.get("id", "")) == "crypt" or str(b.get("address", "")) != ""))
+
+func _fill_activities() -> void:
+	banner.texture = load("res://assets/textures/ui/wp_act1.png")
+	banner.modulate = Color.WHITE
+	banner_sub.text = "DAILIES" if sel_group == "daily" else "PVE   ·   ADVENTURES"
+	banner_title.text = "Daily expeditions" if sel_group == "daily" else "Beyond the camp"
+	banner_note.text = "Choose a destination. Your party travels through the usual ready check."
+	seal.visible = false
+	route_head.text = "AVAILABLE ACTIVITIES"
+	for c in route_box.get_children():
+		route_box.remove_child(c)
+		c.queue_free()
+	for c in next_box.get_children(): c.queue_free()
+	for entry in game.waypoint_activities():
+		if str(entry["group"]) == sel_group:
+			route_box.add_child(_activity_card(entry))
+	_size_route.call_deferred()
+	route_line.queue_redraw()
+
+func _activity_card(entry: Dictionary) -> Control:
+	var card := PanelContainer.new()
+	card.set_meta("activity_id", str(entry["id"]))
+	var idle := ui._box(Color(0.06, 0.05, 0.04, 0.9), Color(0.3, 0.24, 0.15), 1, 6, 10)
+	var hot := ui._box(Color(0.08, 0.1, 0.16, 0.94), CYAN, 1, 6, 10)
+	card.add_theme_stylebox_override("panel", idle)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	card.add_child(vb)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 10)
+	vb.add_child(head)
+	var icon := TextureRect.new()
+	icon.texture = load(SIGIL)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.custom_minimum_size = Vector2(38, 38)
+	head.add_child(icon)
+	var title := ui._label(str(entry["name"]), 16, INK, true)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	head.add_child(title)
+	var desc := ui._label(str(entry.get("description", "")), 12, DIM)
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vb.add_child(desc)
+	var why: String = game.waypoint_activity_lock(entry)
+	var go := Button.new()
+	go.text = why if why != "" else "Travel · " + str(entry.get("kind", "Adventure"))
+	go.disabled = why != ""
+	go.custom_minimum_size = Vector2(0, 36)
+	go.focus_mode = Control.FOCUS_NONE
+	go.pressed.connect(func(): game.waypoint_activity_go(str(entry["id"])))
+	vb.add_child(go)
+	card.mouse_entered.connect(func(): card.add_theme_stylebox_override("panel", hot))
+	card.mouse_exited.connect(func(): card.add_theme_stylebox_override("panel", idle))
+	return card
+
 ## The Battlegrounds group: no act tabs or route. The banner shows the raid's painting (the first entry's art) and
 ## the right column holds a card per battleground (Data.WAYPOINT_BATTLEGROUNDS), each a way down from this dais.
 func _fill_battlegrounds() -> void:
-	var first: Dictionary = Data.WAYPOINT_BATTLEGROUNDS[0] if not Data.WAYPOINT_BATTLEGROUNDS.is_empty() else {}
+	var first: Dictionary = _raids()[0] if not _raids().is_empty() else {}
 	banner.texture = load(first["art"]) if first.has("art") and ResourceLoader.exists(first["art"]) else null
 	banner.modulate = Color(1, 1, 1)
 	banner_sub.text = "BATTLEGROUNDS   ·   A SHARED SERVER"
@@ -332,7 +410,7 @@ func _fill_battlegrounds() -> void:
 		c.queue_free()
 	for c in next_box.get_children():
 		c.queue_free()
-	for b in Data.WAYPOINT_BATTLEGROUNDS:
+	for b in _raids():
 		route_box.add_child(_bg_card(b))
 	# a word on where it ends: the way back is the same dais
 	var back := PanelContainer.new()
@@ -452,12 +530,14 @@ func _bg_card(b: Dictionary) -> Control:
 	sv.alignment = BoxContainer.ALIGNMENT_END
 	sv.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	who.add_child(sv)
-	var addr: String = game.bg_server_address()
+	var addr: String = str(b.get("address", game.bg_server_address()))
 	var server_name := "the %s server" % BuildEnv.env() if BuildEnv.env() != "local" else addr
 	sv.add_child(ui._label("Server  ·  " + server_name, 11, DIM))
-	probe_lbl = ui._label("checking...", 11, DIM)
-	probe_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	sv.add_child(probe_lbl)
+	var status := ui._label("Check on entry", 11, DIM)
+	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	sv.add_child(status)
+	if str(b["id"]) == "crypt" and not b.has("address"):
+		probe_lbl = status
 	# the way down
 	if in_coop:
 		var why := ui._label("Leave co-op to go down: the party's host would lose you mid-act.", 12, RISK)
@@ -780,7 +860,7 @@ func _town_plaque() -> Control:
 	plq.add_child(t)
 	return plq
 
-## The end of the route: the act's lair, reached on foot; shows whether its lord still rules.
+## The end of the route: the act's lair; its travel card lives in the PvE group.
 func _lair_row(act: Dictionary, info: Dictionary) -> Control:
 	var slain: bool = game.act_boss_slain(int(act["run"]))
 	var row := PanelContainer.new()
@@ -800,7 +880,7 @@ func _lair_row(act: Dictionary, info: Dictionary) -> Control:
 	hb.add_child(tv)
 	var lair: String = "Throne of the Ashen King" if int(act["run"]) >= 2 else str(info.get("lair", "The lair"))
 	tv.add_child(ui._label(lair, 15, INK, true))
-	tv.add_child(ui._label(("Slain: " if slain else "Lord: ") + _boss_name(act) + "  ·  reached on foot", 11, DIM))
+	tv.add_child(ui._label(("Slain: " if slain else "Lord: ") + _boss_name(act) + "  ·  travel from the PvE tab", 11, DIM))
 	return row
 
 ## A sealed act's route: what opens it.
@@ -894,6 +974,11 @@ func _process(delta: float) -> void:
 		if not is_instance_valid(stone) or h == null or h.global_position.distance_to(stone.global_position) > 4.5:
 			close()
 			return
+	_catalog_tick += delta
+	if _catalog_tick >= 1.0:
+		_catalog_tick = 0.0
+		if _catalog_stamp != _catalog_hash():
+			_fill()
 	_t += delta
 	_spin = move_toward(_spin, 0.0, delta * 18.0)
 	sigil.rotation += delta * (0.35 + _spin)

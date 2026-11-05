@@ -1374,8 +1374,23 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `tools/char_shot.gd` screenshots the screens.
 - **Act I camp in the forest** (`scripts/forest_camp.gd`, `ForestCamp.build`, used by `World._build_town` when
   `oak_forest` and act 0; A2/A3 keep the old camp): a ring palisade with a gatehouse, rune stones outside
-  (`RUNE_SHADER` glows their runes), a bonfire, tents and lantern-hung oaks inside, the old forest beyond, and a
-  dusk/mist mood (`Game._zone_env`, `theme.forest_camp`). Everything is Meshy (concept image, then image-to-3D),
+  (`RUNE_SHADER` glows their runes), a grand waypoint, tents and lantern-hung oaks inside, the old forest beyond, and a
+  dusk/mist mood (`Game._zone_env`, `theme.forest_camp`). The grand waypoint now replaces the central
+  bonfire at (3.5, -5), with an open forecourt, paths around its back wall, and the forge moved outward
+  (jj, 2026-11-03). The two guardian statues stand wider apart outside the waypoint wall, with just two
+  flags set farther back (18 m between statues; 11 m between flags, 6 m behind the statues);
+  their collision positions share the placement constants in `WaypointGrand`.
+  New characters enter at (0, 17) on a clear southern approach to walk into the square;
+  the `new_player` spawn is separate from Continue, portals and waypoint arrivals.
+  The small cooking fire at the southern edge retains item burning. `scripts/vendor_court.gd` rebuilds the
+  four shop frontages around their detailed workshop models: braced timber, iron fittings, trade signs,
+  paired hanging lanterns and terrain-following stone forecourts. A soft warm key light makes each keeper
+  readable against the cool blue waypoint; forge/alchemy colours stay local to their work areas. Captain
+  Roth also gets a warm key. Frontage posts register their collision at the same transformed positions as
+  the models; the centre stays open. Paving uses one MultiMesh per shop, shared materials/meshes, and the
+  new lights do not cast shadows or flood the square's fog. Shop positions, inventories and interaction
+  rules remain in `ForestCamp`/`Data`.
+  The workshop cores and other detailed props are Meshy assets (concept image, then image-to-3D),
   prepared in Blender: props by `tools/blender/prep_prop.py` into `assets/models/camp/`, trees by `prep_tree.py`. The
   lantern and the palisade section were re-made in the visual overhaul (2026-11-02: new Meshy models re-baked onto
   clean UVs by `tools/blender/camp/rebake_prop.py`, so the importer can make LODs; the palisade is 4.2 m tall).
@@ -1761,3 +1776,74 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 - **Preview builds**: push a branch named `test-*` (`git push origin HEAD:test-something`) and
   `.github/workflows/preview.yml` builds the Windows, Linux and Mac versions as downloads on that Actions run
   (Artifacts, kept 7 days) without publishing anything. Use it to let a partner play a change before it goes to main.
+
+## Waypoint activity catalogue (JJ, 2026-11-03)
+
+The existing waypoint frame, banners, sigils and Acts route remain. PvE cards include the Last Flame,
+coast, islands (derived from `Isles.ISLANDS`/builders), and each registered act's dungeon. Shipped builds
+also offer Online Co-op using their configured server and the current character. Act and discovery
+locks remain; islands retain their level requirement. Zone journeys use the existing party ready check.
+Cross-act co-op activities ask the party to switch acts first.
+
+Register additional zone activities in `Data.WAYPOINT_ACTIVITIES` with a stable `id`, `name`, `group`
+(`pve` or `daily`), `route: zone`, `run`, `zone`, `spawn`, and optional `description`, `kind`, `level`.
+Use `enabled: false` or remove an entry to withdraw it. `starts_at` (inclusive) / `ends_at` (exclusive)
+are UTC Unix seconds; a daily is a scheduled entry targeting implemented content, not a new reward
+or quest system. Empty categories hide. The panel refreshes availability and locks while open, and
+Game rechecks the current entry when clicked. Unknown zones/builders are not offered; a new zone
+needs its actual World builder and inclusion in `waypoint_activity_valid`, never new menu layout code.
+
+Existing extraction raids remain in `Data.WAYPOINT_BATTLEGROUNDS`; IDs are now checked instead of
+ignored. The crypt uses the build's raid allocation address. Additional extraction raids must provide
+an explicit `address`; other PvP rulesets require their gameplay/connection handler before registration.
+This is build-local content configuration, not a remote live-ops service. Unimplemented daily content
+and development-only sandboxes are not advertised as playable destinations.
+
+Validation: `tools/waypoint_activities_test.gd` uses the real renderer, checks catalogue changes,
+locks and expired entries, renders the menus, and visits each registered PvE zone and its arrival.
+
+
+## Background co-op party finder (JJ, 2026-11-03)
+
+`party_queue.gd` owns a second ENet socket, leaving the solo world, travel and menus running.
+The title's Online Co-op / Find Party starts the selected character in solo then queues; the town
+waypoint also offers Find a Party. The compact ready check uses UI's existing ornate panel, gold
+labels and iron buttons. Ready/Decline never pauses the world. Accepting reserves a slot, saves the
+current character, then joins co-op when alive, unpaused and outside a zone load. A failed queue
+handoff keeps solo play open. Leaving play, changing characters or joining another mode cancels search.
+
+`party_queue_server.gd` runs inside the existing co-op process on UDP 24569 (`--queue-port` override),
+with gameplay still on 24570. The queue pairs at least two players, or fills available slots in the
+current public co-op party, up to four. This is one shared story party, not independent instances or
+PvP teams. Only the current server act is offered, and only to characters that have unlocked it.
+The server owns the 30-second ready check and 45-second, single-use handoff reservations. Ready
+players keep their queue position if someone declines; nonresponders leave the queue on timeout.
+Disconnected clients expire and direct joins cannot steal reserved slots. The reservation token is
+an ephemeral bearer token; it does not add account authentication to the existing co-op protocol.
+
+`BuildEnv.value("party_queue")` defaults to the configured raid host on port 24569 and supports an
+`[env] party_queue="host:port"` override. A matching client/server release and UDP firewall opening
+are required before public staging use. Preview exports retain the local environment by default.
+Do not describe a local socket test as a deployed service or authenticated internet test.
+
+Tests: `tools/party_queue_test.gd` uses real lightweight ENet sockets on 24779;
+`tools/party_queue_game_test.gd` runs a real game host on 24770 with queue 24769 and clients `a` and `b`
+(see its header). Characters live in isolated test save folders. `tools/title_layout_test.gd` checks
+Story/Online/LAN controls at 1920x1080, 1280x720 and 1024x768 and hides the home cards on character
+subpages. It renders screenshots when run with a real renderer.
+
+
+## Home-to-game UI flow (JJ, 2026-11-04)
+
+Home actions explicitly say Continue Story, Host LAN and Join LAN. LAN Join carries the selected
+character ID rather than silently loading the most recent save. Home cards hide behind LAN discovery
+as well as the other title subpages; discovery lists scroll within their frame. Battlegrounds scales
+its entire page and fits its heading to the available description width, keeping the champion frame
+separate. Character creation's information frame scales within the viewport; gameplay control hints
+wrap within screen margins. Transient zone announcements and controls hints hide while gameplay
+menus are open so they cannot cover the actions. Existing waypoint routes and progression rules are unchanged.
+
+`tools/home_game_flow_test.gd` checks layouts at 1024x768, 1280x720 and 1920x1080, long LAN lists,
+selected-character LAN entry, Continue Story, in-game waypoint access, return home and new-character
+creation. It uses isolated test saves and a local unavailable LAN endpoint, never a public server.
+Run with the real renderer to inspect its `/tmp/flow-*.png` captures as well as its log.

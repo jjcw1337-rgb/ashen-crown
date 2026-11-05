@@ -46,7 +46,9 @@ static func act_info(act: int, run: int) -> Dictionary:
 const WAYPOINT_GROUPS := [
 	{"id": "acts", "name": "Acts"},
 	{"id": "ancient", "name": "Ancient Levels"},
+	{"id": "pve", "name": "PvE"},
 	{"id": "battlegrounds", "name": "Battlegrounds"},
+	{"id": "daily", "name": "Dailies"},
 ]
 
 ## Battlegrounds the waypoint window offers (its "Battlegrounds" tab group; shown once this has an entry).
@@ -61,6 +63,28 @@ const WAYPOINT_BATTLEGROUNDS := [
 		"lines": ["Three floors under the old kingdom: the Ossuary's twelve chambers round a great pillared hall, the Frozen Depths where Hrimgar the Frostbound waits, and the Overgrown Vault, Old Mossbeard's, with its golden chest. Each round opens in the antechambers behind iron gates: the first bell rung, the gates rise.",
 			"Other raiders are hunting down there too. Reach an Extraction Portal once they open and everything you carry comes home."]},
 ]
+
+## Activity registration: add/remove entries here, not buttons in the waypoint panel.
+## group: pve | daily; route: zone; run, zone, spawn; optional level, enabled,
+## starts_at / ends_at (UTC Unix seconds). Scheduled entries disappear outside their window.
+## Islands and act lairs are derived from their existing content tables by Game.
+static var WAYPOINT_ACTIVITIES: Array = [
+	{"id": "vigil", "group": "pve", "name": "The Last Flame", "kind": "Horde defence",
+		"route": "zone", "run": 0, "zone": "vigil", "spawn": "start",
+		"description": "Hold the flame against endless waves, alone or with your co-op party."},
+	{"id": "coast", "group": "pve", "name": "The Mournwater Coast", "kind": "Exploration",
+		"route": "zone", "run": 0, "zone": "coast", "spawn": "from_town",
+		"description": "Explore the coast, visit the shipwright and sail to the islands."},
+]
+
+static func waypoint_available(entry: Dictionary, now: float) -> bool:
+	return bool(entry.get("enabled", true)) and now >= float(entry.get("starts_at", 0)) and (not entry.has("ends_at") or now < float(entry["ends_at"]))
+
+static func waypoint_battleground(id: String) -> Dictionary:
+	for b in WAYPOINT_BATTLEGROUNDS:
+		if str(b.get("id", "")) == id and waypoint_available(b, Time.get_unix_time_from_system()):
+			return b
+	return {}
 
 const WAYPOINT_ACTS := [
 	{"run": 0, "group": "acts", "tab": "I", "art": "res://assets/textures/ui/wp_act1.png", "boss": "goblin_king",
