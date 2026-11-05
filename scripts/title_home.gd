@@ -1,55 +1,40 @@
 class_name TitleHome
 extends Control
-## The title's controls, WoW-style (Blaine, 2026-11-01): the gate scene (TitleStage) stays the picture; over it
-##  - a right sidebar of your characters (name, level and class, act, last played): click one to stand it on the dais;
+## The title's controls (Blaine, 2026-11-05: "Simplify the bottom controls to Enter World, Multiplayer, and a smaller
+## Quit"): the gate scene (TitleStage) stays the picture, the chosen character standing alone in the arch; over it
+##  - a right sidebar of your characters (name, level and class, act, last played): click one to stand it in the arch;
 ##    delete on its card (asks first); "Create New Character" at the bottom of the list
-##  - bottom centre, how to play it: Story · Battlegrounds · Online Co-op · LAN, and one big Play (LAN: Host / Join);
-##    Battlegrounds says in one line what death costs there, and counts down when a raid turned us away
-##  - the left column (LEFT_W wide): the Hall of the Last Flame (the endless vigil's top ten, FlameBoard), the
-##    Battlegrounds' card under it (its key art; opens its own page, BgPage), and Quit at the bottom
-##  - the title and Play are centred in the room between the column and the sidebar (`mid`), so nothing overlaps
-##    (Blaine, 2026-11-03: "the ux is over each other ... tighten that up")
-## Panels are UI._ornate (the inventory's iron and gold frame), buttons UI._iron_button: no plain boxes (Blaine).
-## Play hands the chosen character to the game: Story = UI._title_choose("continue") on it, Battlegrounds =
-## Game.start_battlegrounds (after one confirm), Online Co-op = start solo and queue for a party, LAN = host or
-## the join screen. UI keeps the old cards (hidden) so its title API and tests stay as they were.
+##  - bottom centre: Enter World (the chosen character's game: alone, or with friends who join you), Multiplayer (the
+##    lobby browser: Battlegrounds, Arena, Endless Waves; LobbyClient) and a small Quit
+##  - the title and the buttons are centred in the room left of the sidebar (`mid`)
+## LAN is no menu of its own any more: the lobby browser's "Local network" row hosts or joins one (lan_host,
+## lan_join). Panels are UI._ornate (the inventory's iron and gold frame), buttons UI._iron_button (Blaine).
+## UI keeps the old cards (hidden) so its title API and tests stay as they were.
 
 const W := 420.0                 # the sidebar's width
 const EDGE := 18.0               # the screen edge to the sidebar and the column
-const LEFT_W := 360.0            # the left column's width
-const BOARD_TOP := 168.0         # the hall's top (under the env badge, level with the title's subtitle)
-const BG_H := 196.0              # the Battlegrounds card's height
-const QUIT_H := 50.0
-const MODES := [["story", "Single Player"], ["online", "Co-op"], ["multiplayer", "Multiplayer"]]
-const NOTE := {"story": "Your journey through the acts, alone.",
-	"multiplayer": "Battlegrounds, endless waves and team arena lobbies.",
-	"online": "Find a co-op party while you keep playing solo.", "lan": "Host a game, or join one on your network."}
+const BOARD_TOP := 168.0         # (the Last Flame board's top, for when it has a home again)
+const LEFT_W := 360.0            # (the board's width)
 
 var ui
 var game
 var sel := ""                    # the chosen character's id
-var mode := "story"
 var _list: VBoxContainer
 var _count: Label
-var _modes := {}
-var _play: Button
-var _join: Button
-var _lan_row: HBoxContainer
+var _play: Button                # Enter World
+var _mp: Button                  # Multiplayer
+var _quit: Button
 var _note: Label
 var _status: Label
-var _bg_card: Button
-var _bg_art: TextureRect
-var _bg_t := 0.0
-var _bg_hot := 0.0
 var _board: VBoxContainer
 var _board_rows: VBoxContainer
 var _board_best: Label
 var _board_busy := false
 
-## The middle of the free room between the left column and the sidebar, from the screen's centre (the title, the
-## Play box and the stage's framing use it).
+## The middle of the free room left of the sidebar, from the screen's centre (the title, the buttons and the
+## stage's framing use it).
 static func mid() -> float:
-	return ((EDGE + LEFT_W) - (W + EDGE)) * 0.5
+	return -(W + EDGE) * 0.5
 
 func setup(u) -> void:
 	ui = u
@@ -58,25 +43,12 @@ func setup(u) -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_sidebar()
 	_build_play()
-	_build_board()
-	_build_bg_card()
-	var quit: Button = ui._iron_button("Quit Game", int(LEFT_W), int(QUIT_H), 19)
-	quit.name = "quit"
-	quit.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	quit.offset_top = -EDGE - 8 - QUIT_H
-	quit.offset_bottom = -EDGE - 8
-	quit.offset_left = EDGE
-	quit.offset_right = EDGE + LEFT_W
-	quit.pressed.connect(func(): get_tree().quit())
-	quit.visible = not OS.has_feature("web")
-	add_child(quit)
-	# Scale the three columns as one layout on small screens; fixed-width buttons must
-	# never cross into the Battlegrounds card or the character sidebar.
+	# Scale the layout as one on small screens; the buttons must never cross into the character sidebar.
 	var head: Control = ui.title_panel.get_node("title_head")
 	head.reparent(self, false)
 	head.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	head.offset_top = 34
-	head.offset_left = EDGE + LEFT_W
+	head.offset_left = EDGE
 	head.offset_right = -W - EDGE
 	get_viewport().size_changed.connect(_layout)
 	_layout()
@@ -88,7 +60,7 @@ func _layout() -> void:
 	size = available / factor
 	position = Vector2.ZERO
 	var title: Label = get_node("title_head").get_child(0)
-	title.add_theme_font_size_override("font_size", mini(84, int((size.x - W - LEFT_W - EDGE * 2) / 9.0)))
+	title.add_theme_font_size_override("font_size", mini(84, int((size.x - W - EDGE * 2) / 9.0)))
 
 func _build_sidebar() -> void:
 	var side := PanelContainer.new()
@@ -147,10 +119,10 @@ func _build_play() -> void:
 	box.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	box.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	box.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	box.offset_bottom = -26
-	# centred in the room between the left column and the sidebar
-	box.offset_left = mid() - 270
-	box.offset_right = mid() + 270
+	box.offset_bottom = -30
+	# centred in the room left of the sidebar
+	box.offset_left = mid() - 380
+	box.offset_right = mid() + 380
 	box.alignment = BoxContainer.ALIGNMENT_END
 	box.add_theme_constant_override("separation", 10)
 	add_child(box)
@@ -159,53 +131,32 @@ func _build_play() -> void:
 	_status.visible = false
 	box.add_child(_status)
 	var row := HBoxContainer.new()
+	row.name = "buttons"
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", 14)
 	box.add_child(row)
-	for m in MODES:
-		if m[0] in ["multiplayer", "online"] and OS.has_feature("web"):
-			continue           # (no raw UDP in a browser)
-		var b: Button = ui._iron_button(m[1], 160, 42, 17)
-		b.toggle_mode = true
-		b.focus_mode = Control.FOCUS_NONE
-		b.add_theme_color_override("font_color", Color(0.72, 0.64, 0.5))
-		b.add_theme_color_override("font_pressed_color", Color(1.0, 0.88, 0.55))
-		b.add_theme_color_override("font_hover_pressed_color", Color(1.0, 0.92, 0.65))
-		# the chosen one lit gold (the socket brightened), the others dim iron
-		var on := (b.get_theme_stylebox("pressed") as StyleBoxTexture).duplicate() as StyleBoxTexture
-		on.modulate_color = Color(1.45, 1.22, 0.82)
-		b.add_theme_stylebox_override("pressed", on)
-		b.add_theme_stylebox_override("hover_pressed", on)
-		var id: String = m[0]
-		b.pressed.connect(func(): set_mode(id))
-		row.add_child(b)
-		_modes[id] = b
-	var prow := HBoxContainer.new()
-	prow.alignment = BoxContainer.ALIGNMENT_CENTER
-	prow.add_theme_constant_override("separation", 10)
-	box.add_child(prow)
-	_play = ui._iron_button("Play", 360, 68, 30)
+	_play = ui._iron_button("Enter World", 340, 68, 30)
 	_play.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	_play.add_theme_constant_override("outline_size", 6)
 	_play.name = "play"
 	_play.pressed.connect(play)
-	prow.add_child(_play)
-	_join = ui._iron_button("Join LAN", 160, 68, 24)
-	_join.pressed.connect(func(): ui.open_join())
-	_join.visible = false
-	_lan_row = HBoxContainer.new()
-	_lan_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	_lan_row.add_theme_constant_override("separation", 10)
-	box.add_child(_lan_row)
-	var host = ui._iron_button("Host LAN", 200, 44, 18)
-	host.pressed.connect(func(): if sel != "": game.start_host(sel))
-	_lan_row.add_child(host)
-	_join.custom_minimum_size = Vector2(200,44)
-	_lan_row.add_child(_join)
+	row.add_child(_play)
+	_mp = ui._iron_button("Multiplayer", 240, 68, 24)
+	_mp.name = "multiplayer"
+	_mp.pressed.connect(open_multiplayer)
+	_mp.visible = not OS.has_feature("web")        # (no raw UDP in a browser)
+	row.add_child(_mp)
+	_quit = ui._iron_button("Quit", 110, 44, 16)
+	_quit.name = "quit"
+	_quit.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_quit.add_theme_color_override("font_color", Color(0.7, 0.62, 0.5))
+	_quit.pressed.connect(func(): get_tree().quit())
+	_quit.visible = not OS.has_feature("web")
+	row.add_child(_quit)
 	_note = ui._label("", 16, Color(0.78, 0.72, 0.64))
 	_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_note)
-	set_mode("story")
+	_update()
 
 ## The characters into the sidebar (newest first, as Game.list_characters gives them), keeping the choice.
 func refresh(chars: Array) -> void:
@@ -310,142 +261,43 @@ func select(id: String) -> void:
 		ui.title_stage.show_character(game.character_gear(id))
 	_update()
 
-func set_mode(m: String) -> void:
-	if not _modes.has(m):
-		m = "story"
-	mode = m
-	for k in _modes:
-		(_modes[k] as Button).set_pressed_no_signal(k == m)
-	_update()
-
 func _update() -> void:
 	var none := sel == ""
 	_play.disabled = none
-	_join.disabled = none
-	_play.text = {"story": "Continue Story", "online": "Find Party", "multiplayer": "Browse Lobbies", "lan": "Host LAN"}.get(mode, "Play")
-	_lan_row.visible = mode == "online"
-	_join.visible = mode == "online"
-	_note.text = "Create a character to begin." if none else NOTE.get(mode, "")
+	_note.text = "Create a character to begin." if none else ""
+	_note.visible = none
 
-func _process(delta: float) -> void:
-	# Subpages own the screen and input; never leave the Battlegrounds card behind a
-	# character creation/selection panel, even when that panel has transparent areas.
+func _process(_delta: float) -> void:
+	# Subpages own the screen and input
 	visible = not ((ui.class_panel != null and ui.class_panel.visible)
 		or (ui.chars_panel != null and ui.chars_panel.visible)
 		or (ui.bg_page != null and ui.bg_page.visible)
 		or (ui.join_panel != null and ui.join_panel.visible)
 		or (game.lobby_client != null and game.lobby_client.panel.visible))
-	if not is_visible_in_tree():
-		return
-	_status.visible = false
-	# the Battlegrounds card breathes, brighter under the mouse
-	if _bg_card != null and _bg_art != null:
-		_bg_t += delta
-		var hot := _bg_card.is_hovered()
-		_bg_hot = move_toward(_bg_hot, 1.0 if hot else 0.0, delta * 5.0)
-		var k := 1.04 + 0.03 * _bg_hot + sin(_bg_t * 0.3) * 0.01
-		_bg_art.pivot_offset = _bg_art.size * Vector2(0.62, 0.4)
-		_bg_art.scale = Vector2(k, k)
-		_bg_art.modulate = Color(0.78, 0.78, 0.8).lerp(Color(1.08, 1.06, 1.1), _bg_hot)
+	if is_visible_in_tree():
+		_status.visible = false
 
-## Play the chosen character the chosen way.
+## Enter World: the chosen character's own game (friends join it from there).
 func play() -> void:
 	if sel == "" or ui._title_busy:
 		return
-	match mode:
-		"story":
-			ui._title_choose("continue")
-		"online":
-			await game.start_game(true, "knight", sel)
-			game.ui.close_all()
-			game.party_queue.begin()
-		"multiplayer":
-			game.lobby_client.open()
-		"lan":
-			game.start_host(sel)
+	ui._title_choose("continue")
 
-## Bottom left: the Battlegrounds, its own way in (a card of its key art in the iron and gold frame; BgPage).
-func _build_bg_card() -> void:
-	if OS.has_feature("web"):
-		return                       # (no raw UDP in a browser)
-	_bg_card = Button.new()
-	_bg_card.name = "bg_card"
-	_bg_card.focus_mode = Control.FOCUS_NONE
-	_bg_card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	for st in ["normal", "hover", "pressed", "focus", "disabled"]:
-		_bg_card.add_theme_stylebox_override(st, StyleBoxEmpty.new())
-	# the left column, over Quit
-	_bg_card.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_bg_card.offset_left = EDGE
-	_bg_card.offset_right = EDGE + LEFT_W
-	_bg_card.offset_bottom = -EDGE - 8 - QUIT_H - 14
-	_bg_card.offset_top = _bg_card.offset_bottom - BG_H
-	_bg_card.pressed.connect(func(): game.lobby_client.open())
-	add_child(_bg_card)
-	var clip := Control.new()
-	clip.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	clip.offset_left = 22
-	clip.offset_top = 22
-	clip.offset_right = -22
-	clip.offset_bottom = -22
-	clip.clip_contents = true
-	clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_bg_card.add_child(clip)
-	_bg_art = TextureRect.new()
-	_bg_art.texture = load(BgPage.ART)
-	_bg_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_bg_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	_bg_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_bg_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	clip.add_child(_bg_art)
-	var shade := ColorRect.new()
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var sm := ShaderMaterial.new()
-	var sh := Shader.new()
-	sh.code = "shader_type canvas_item; void fragment(){ float a = (1.0 - smoothstep(0.0, 0.75, UV.x)) * 0.8 + smoothstep(0.45, 1.0, UV.y) * 0.65; COLOR = vec4(0.01, 0.008, 0.012, clamp(a, 0.0, 0.92)); }"
-	sm.shader = sh
-	shade.material = sm
-	clip.add_child(shade)
-	var vb := VBoxContainer.new()
-	vb.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	# (inside the frame's ornament, which is about 42 px thick at this size: the text never runs under it)
-	vb.offset_left = 22
-	vb.offset_top = 10
-	vb.offset_right = -18
-	vb.offset_bottom = -26
-	vb.alignment = BoxContainer.ALIGNMENT_END
-	vb.add_theme_constant_override("separation", 0)
-	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	clip.add_child(vb)
-	var eb: Label = ui._label("MULTIPLAYER", 14, Color(0.62, 0.78, 1.0), true)
-	var ef := FontVariation.new()
-	ef.base_font = ui.font_title
-	ef.spacing_glyph = 3
-	eb.add_theme_font_override("font", ef)
-	eb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(eb)
-	var t: Label = ui._label("Gather & Battle", 26, ui.GOLD, true)
-	t.add_theme_constant_override("outline_size", 8)
-	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(t)
-	var l: Label = ui._label("Raids · Waves · Arena  ▸", 15, Color(0.88, 0.82, 0.72))
-	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(l)
-	# the frame over it all
-	var fr := NinePatchRect.new()
-	fr.texture = ui._ornate_frame(0.13)
-	for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
-		fr.set_patch_margin(side, int(ui.INV_PATCH * 0.13))
-	fr.axis_stretch_horizontal = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
-	fr.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
-	fr.draw_center = false
-	fr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_bg_card.add_child(fr)
+## Multiplayer: straight to the lobby browser.
+func open_multiplayer() -> void:
+	game.lobby_client.open()
 
+## LAN, from the lobby browser's "Local network" row: host the chosen character's game on this network, or find one.
+func lan_host() -> void:
+	if sel != "":
+		game.lobby_client.panel.hide()
+		game.start_host(sel)
 
-## The left column's top: the Hall of the Last Flame, the endless vigil's best ten (FlameBoard; Blaine: "a
+func lan_join() -> void:
+	game.lobby_client.panel.hide()
+	ui.open_join()
+
+## (Not on the home screen since 2026-11-05: for the Endless Waves lobby to show.) The Hall of the Last Flame, the endless vigil's best ten (FlameBoard; Blaine: "a
 ## leaderboard added to the main title page"), with this game's own best under it. It fills from the server when the
 ## title shows (refresh_board); offline it says so and keeps the local best. It shrinks to the room left above the
 ## Battlegrounds card (its rows are cut, never drawn over the card).
@@ -520,7 +372,7 @@ func refresh_board() -> void:
 		_board_rows.remove_child(c)
 		c.queue_free()
 	# room for rows: from the hall's top down to the Battlegrounds card, less the hall's own heading and footer
-	var room := (size.y - EDGE - 8 - QUIT_H - 14 - BG_H - 12) - BOARD_TOP - 164.0
+	var room := (size.y - EDGE - 8 - 64.0 - 14 - 196.0 - 12) - BOARD_TOP - 164.0
 	var fit := clampi(int(room / 23.0), 3, FlameBoard.TOP)
 	for r in (rows as Array).slice(0, fit):
 		_board_rows.add_child(_board_row(r))

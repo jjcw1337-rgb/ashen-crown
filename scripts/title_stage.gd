@@ -2,22 +2,20 @@ class_name TitleStage
 extends SubViewportContainer
 ## The title screen's world (UI._build_title): the Gate of the Ashen Crown at dusk. A ruined cathedral gate,
 ## broken arcades, a fallen colossus and a giant crown half-sunk in the ash, fog banks, falling ash, braziers.
-## Two stone daises stand before the gate: on the left the last character played (a co-op puppet in their own
-## saved gear, as on the class picker), on the right an empty dais with a rune circle and a cold light, the
-## hero not yet made. The camera drifts; hovering a side leans toward it and lights it up; `enter` plays the
-## short move into a choice. It renders in its own World3D, and only while it is showing (`active`).
+## The chosen character (a co-op puppet in their own saved gear, as on the class picker) stands alone in the
+## gate's light, between two braziers, no dais (Blaine, 2026-11-05: "remove the two daises and show only the
+## selected character"). The camera drifts; hovering the hero leans in and lights them up (their class's
+## signature move); `enter` plays the short move in. It renders in its own World3D, and only while it is showing (`active`).
 ## Blockout: every piece here is procedural or an existing asset; GATE/ARCADE/COLOSSUS/CROWN are the spots the
 ## Meshy models replace.
 
-signal hovering(which: String)     # "continue", "new" or ""
+signal hovering(which: String)     # "continue" (the hero) or ""
 signal clicked(which: String)
 
-const LEFT := Vector3(-3.4, 0.0, 1.0)    # the Continue dais
-const RIGHT := Vector3(3.4, 0.0, 1.0)    # the New Character dais
+const HOME := Vector3(0.0, 0.0, 4.6)     # where the chosen hero stands, before the gate's arch
 ## The Meshy models (concept image, then image-to-3D; prepared by tools/blender/prep_prop.py): the gate 18 m
 ## high, the arcade 8 m, the colossus 10 m, the crown 1 m. Without them the procedural stand-ins are built.
 const MODEL_DIR := "res://assets/models/title/"
-const DAIS_TOP := 0.52
 const FACE := PI                          # bodies face -z; the camera is on +z
 const WARM := Color(1.0, 0.66, 0.36)
 ## 16:9's horizontal field of view at the 40° vertical one, kept on narrower screens
@@ -35,15 +33,13 @@ var has_char := false
 var focus := ""                           # the hovered side
 var entering := ""                        # set by enter(): the camera is moving into a choice
 var covered: Callable                     # true while something opaque is over the stage: stop drawing
-var cards := {}                           # "continue"/"new" -> Control placed under its dais each frame
+var cards := {}                           # (the old Continue/New cards, hidden; kept placed for UI's API)
 var t := 0.0
 var _lean := 0.0                          # -1 left .. 1 right, eased
 var _push := 0.0                          # 0..1 the move into a choice
 var _spot := {}                           # side -> SpotLight3D
 var _key := {}                            # side -> OmniLight3D in front of the dais
 var _flames: Array[OmniLight3D] = []
-var _runes: ShaderMaterial
-var _pillar: ShaderMaterial
 var _sig_t := -1.0
 var _sig_cool := 0.0
 var _flash_t := 9.0
@@ -51,7 +47,7 @@ var _flash := 0.0
 
 func setup(g: Node) -> void:
 	game = g
-	if OS.get_cmdline_user_args().has("--server") or DisplayServer.get_name() == "headless":
+	if OS.get_cmdline_user_args().has("--server"):     # (dedicated servers and match workers; headless tests still need the stage)
 		set_process(false)
 		return
 	stretch = true
@@ -85,9 +81,7 @@ func setup(g: Node) -> void:
 	_gate()
 	_arcades()
 	_monuments()
-	_dais(LEFT, WARM, "continue")
-	_dais(RIGHT, COLD, "new")
-	_new_dais_magic()
+	_hero_lights(HOME, WARM)
 	_trees()
 	_fog_banks()
 	_ash(q)
@@ -391,17 +385,14 @@ func _crown(parent: Node3D, at: Vector3, r: float, rot: Vector3) -> void:
 		Models.P(c, Geo.cone(r * 0.2, r * (0.7 if i % 2 == 0 else 0.45), 5), gold, p + Vector3(0, r * (0.35 if i % 2 == 0 else 0.22), 0))
 
 ## A round stone dais, three steps, a brazier each side behind it, and a spotlight over it.
-func _dais(at: Vector3, col: Color, side: String) -> void:
-	var st := _stone()
-	var sd := _stone_dark()
-	Models.P(root3d, Geo.cyl(1.7, 1.8, 0.2, 40), sd, at + Vector3(0, 0.1, 0))
-	Models.P(root3d, Geo.cyl(1.38, 1.45, 0.18, 40), st, at + Vector3(0, 0.29, 0))
-	Models.P(root3d, Geo.cyl(1.08, 1.12, 0.14, 40), st, at + Vector3(0, 0.45, 0))
+## The hero's place: two braziers either side and behind, a spot from above, a warm key in front and a cold rim
+## behind (no dais: the hero stands on the gate's flagstones).
+func _hero_lights(at: Vector3, col: Color) -> void:
 	for sx: int in [-1, 1]:
-		var b := at + Vector3(sx * 2.05, 0, -0.9)
+		var b := at + Vector3(sx * 2.3, 0, -1.1)
 		Models.P(root3d, Geo.cyl(0.08, 0.12, 1.3, 8), Mats.mat(Color(0.08, 0.07, 0.07), 0.5, 0.7), b + Vector3(0, 0.65, 0))
 		Models.P(root3d, Geo.cyl(0.36, 0.14, 0.3, 12), Mats.mat(Color(0.1, 0.09, 0.08), 0.45, 0.75), b + Vector3(0, 1.42, 0))
-		var fcol := Color(1.0, 0.55, 0.2) if side == "continue" else Color(0.45, 0.75, 1.0)
+		var fcol := Color(1.0, 0.55, 0.2)
 		Props.fire(root3d, b + Vector3(0, 1.55, 0), 0.65, fcol, false, false, true, "brazier")
 		var l := OmniLight3D.new()
 		l.light_color = fcol.lightened(0.15)
@@ -412,96 +403,28 @@ func _dais(at: Vector3, col: Color, side: String) -> void:
 		_flames.append(l)
 	var sp := SpotLight3D.new()
 	sp.light_color = col
-	sp.spot_angle = 24.0
+	sp.spot_angle = 22.0
 	sp.spot_range = 12.0
-	sp.light_energy = 1.2
+	sp.light_energy = 1.8
 	sp.shadow_enabled = true
 	root3d.add_child(sp)
 	sp.look_at_from_position(at + Vector3(0.4, 7.5, 3.2), at + Vector3(0, 0.6, 0))
-	_spot[side] = sp
-	# a key light in front (warm for the hero, cold for the empty dais) and a rim light behind
+	_spot["continue"] = sp
 	var key := OmniLight3D.new()
-	key.name = "key_" + side
+	key.name = "key_continue"
 	key.light_color = col.lerp(Color.WHITE, 0.35)
-	key.light_energy = 1.8
+	key.light_energy = 2.8
 	key.omni_range = 5.6
-	key.position = at + Vector3(0.7, 2.4, 2.0)
+	key.position = at + Vector3(0.7, 2.0, 2.0)
 	root3d.add_child(key)
-	_key[side] = key
+	_key["continue"] = key
+	# the dusk through the arch behind, as a cold rim on the shoulders
 	var rim := OmniLight3D.new()
-	rim.light_color = Color(0.6, 0.7, 1.0) if side == "continue" else col
-	rim.light_energy = 1.2
-	rim.omni_range = 3.4
-	rim.position = at + Vector3(-0.5, 2.2, -1.3)
+	rim.light_color = Color(0.62, 0.72, 1.0)
+	rim.light_energy = 1.6
+	rim.omni_range = 3.6
+	rim.position = at + Vector3(-0.4, 2.2, -1.4)
 	root3d.add_child(rim)
-
-## The empty dais: a rune circle on its top, a faint column of light, and rune stones in an arc behind it.
-func _new_dais_magic() -> void:
-	var ring := MeshInstance3D.new()
-	var rq := QuadMesh.new()
-	rq.size = Vector2(2.1, 2.1)
-	rq.orientation = PlaneMesh.FACE_Y
-	ring.mesh = rq
-	_runes = ShaderMaterial.new()
-	var sh := Shader.new()
-	sh.code = RUNE_CIRCLE_SHADER
-	_runes.shader = sh
-	_runes.set_shader_parameter("power", 0.6)
-	ring.material_override = _runes
-	ring.position = RIGHT + Vector3(0, DAIS_TOP + 0.01, 0)
-	root3d.add_child(ring)
-	var col := MeshInstance3D.new()
-	col.mesh = Geo.cyl(0.75, 0.95, 6.0, 24)
-	_pillar = ShaderMaterial.new()
-	var psh := Shader.new()
-	psh.code = PILLAR_SHADER
-	_pillar.shader = psh
-	_pillar.set_shader_parameter("power", 0.5)
-	col.material_override = _pillar
-	col.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	col.position = RIGHT + Vector3(0, DAIS_TOP + 3.0, 0)
-	root3d.add_child(col)
-	# motes rising in the light
-	var motes := GPUParticles3D.new()
-	motes.amount = 40
-	motes.lifetime = 3.5
-	motes.preprocess = 3.5
-	var pm := ParticleProcessMaterial.new()
-	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_RING
-	pm.emission_ring_axis = Vector3.UP
-	pm.emission_ring_radius = 0.8
-	pm.emission_ring_inner_radius = 0.1
-	pm.emission_ring_height = 0.05
-	pm.direction = Vector3.UP
-	pm.spread = 8.0
-	pm.initial_velocity_min = 0.4
-	pm.initial_velocity_max = 0.9
-	pm.gravity = Vector3.ZERO
-	pm.scale_min = 0.5
-	pm.scale_max = 1.0
-	var g := Gradient.new()
-	g.set_color(0, Color(0.6, 0.85, 1.0, 0.0))
-	g.add_point(0.2, Color(0.6, 0.85, 1.0, 1.0))
-	g.set_color(g.get_point_count() - 1, Color(0.6, 0.85, 1.0, 0.0))
-	var gt := GradientTexture1D.new()
-	gt.gradient = g
-	pm.color_ramp = gt
-	motes.process_material = pm
-	var q := QuadMesh.new()
-	q.size = Vector2(0.06, 0.06)
-	q.material = Mats.particle_mat(true, Color(2, 2, 2))
-	motes.draw_pass_1 = q
-	motes.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	motes.position = RIGHT + Vector3(0, DAIS_TOP + 0.05, 0)
-	root3d.add_child(motes)
-	if ResourceLoader.exists(ForestCamp.DIR + "runestone.glb"):
-		var rmat := ForestCamp._rune_material()
-		var stone: Mesh = ForestCamp.mesh(ForestCamp.DIR + "runestone.glb")
-		for i in 4:
-			var a := deg_to_rad(-60.0 + i * 40.0)
-			var p := RIGHT + Vector3(sin(a) * 2.9, 0, -cos(a) * 2.6 - 0.3)
-			var mi := Models.P(root3d, stone, rmat, p, Vector3(randf_range(-4, 4), rad_to_deg(-a) + 180.0, randf_range(-5, 5)), Vector3.ONE * (0.62 + 0.08 * (i % 2)))
-			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 
 func _trees() -> void:
 	var path := "res://assets/models/trees/deadtree.glb"
@@ -621,7 +544,7 @@ func show_character(gear: Dictionary) -> void:
 	hero.apply_net_gear(gear)
 	if Dragon.is_dragon(hero.cls):
 		hero.rig.scale = Vector3.ONE * Dragon.stage_scale(hero.cls)    # a dragon shrunk onto the dais like the class picker's
-	var home := LEFT + Vector3(0, DAIS_TOP, 0)
+	var home := HOME
 	hero.global_position = home
 	hero.net_pos = home
 	hero.net_yaw = FACE
@@ -637,7 +560,7 @@ func _idle_st() -> Dictionary:
 func _animate_hero(delta: float) -> void:
 	if hero == null:
 		return
-	var home := LEFT + Vector3(0, DAIS_TOP, 0)
+	var home := HOME
 	_sig_cool = maxf(_sig_cool - delta, 0.0)
 	if focus == "continue" and _sig_t < 0.0 and _sig_cool <= 0.0:
 		_sig_t = 0.0
@@ -686,27 +609,23 @@ func reset() -> void:
 	_push = 0.0
 	focus = ""
 
-## The side under a point of this control ("" for none): the dais and the body over it.
+## The side under a point of this control: "continue" over the hero, else "".
 func side_at(p: Vector2) -> String:
-	for side in ["continue", "new"]:
-		var r := dais_rect(side)
-		if r.has_point(p):
-			return side
-	return ""
+	return "continue" if dais_rect("continue").has_point(p) else ""
 
-## The screen rectangle (this control's space) round a dais and whoever stands on it.
-func dais_rect(side: String) -> Rect2:
-	var at: Vector3 = LEFT if side == "continue" else RIGHT
+## The screen rectangle (this control's space) round the hero's place.
+func dais_rect(_side: String) -> Rect2:
+	var at: Vector3 = HOME
 	var sc := size / Vector2(vp.size) if vp.size.x > 0 else Vector2.ONE
 	var feet := cam.unproject_position(at) * sc
 	var head := cam.unproject_position(at + Vector3(0, 2.6, 0)) * sc
-	var edge := cam.unproject_position(at + Vector3(1.6, 0, 0)) * sc
+	var edge := cam.unproject_position(at + Vector3(0.9, 0, 0)) * sc
 	var half := absf(edge.x - feet.x)
 	return Rect2(Vector2(feet.x - half, head.y), Vector2(half * 2.0, feet.y - head.y + 12.0))
 
-## Where a dais's front edge is on screen: the cards hang under it.
-func dais_foot(side: String) -> Vector2:
-	var at: Vector3 = LEFT if side == "continue" else RIGHT
+## Where the hero's feet are on screen (the old cards hung under it).
+func dais_foot(_side: String) -> Vector2:
+	var at: Vector3 = HOME
 	var sc := size / Vector2(vp.size) if vp.size.x > 0 else Vector2.ONE
 	return cam.unproject_position(at + Vector3(0, 0, 1.75)) * sc
 
@@ -749,24 +668,13 @@ func _process(delta: float) -> void:
 	var target := 0.0
 	var f := entering if entering != "" else focus
 	if f == "continue":
-		target = -1.0
-	elif f == "new":
-		target = 1.0
-	elif not has_char:
-		target = 0.35   # nothing to continue: lean toward the new hero
+		target = 1.0     # hovered: lean in a little
 	_lean = lerpf(_lean, target, 1.0 - exp(-delta * 3.0))
 	_place_camera(delta)
-	# spotlights and the rune circle answer the hover
+	# the hero's lights answer the hover
 	var lspot: SpotLight3D = _spot["continue"]
-	var rspot: SpotLight3D = _spot["new"]
-	var lwant := (0.0 if not has_char else (4.0 if f == "continue" else 1.8))
-	lspot.light_energy = move_toward(lspot.light_energy, lwant, delta * 8.0)
-	rspot.light_energy = move_toward(rspot.light_energy, 4.0 if f == "new" else 1.6, delta * 8.0)
-	(_key["continue"] as OmniLight3D).light_energy = move_toward((_key["continue"] as OmniLight3D).light_energy, 0.0 if not has_char else (3.6 if f == "continue" else 2.8), delta * 6.0)
-	(_key["new"] as OmniLight3D).light_energy = move_toward((_key["new"] as OmniLight3D).light_energy, 2.4 if f == "new" else 1.2, delta * 6.0)
-	var rp := 1.6 if f == "new" else (0.85 if not has_char else 0.6)
-	_runes.set_shader_parameter("power", lerpf(float(_runes.get_shader_parameter("power")), rp, 1.0 - exp(-delta * 4.0)))
-	_pillar.set_shader_parameter("power", lerpf(float(_pillar.get_shader_parameter("power")), rp * 0.85, 1.0 - exp(-delta * 4.0)))
+	lspot.light_energy = move_toward(lspot.light_energy, 0.0 if not has_char else (4.2 if f == "continue" else 2.4), delta * 8.0)
+	(_key["continue"] as OmniLight3D).light_energy = move_toward((_key["continue"] as OmniLight3D).light_energy, 0.0 if not has_char else (3.8 if f == "continue" else 2.8), delta * 6.0)
 	# fire flicker
 	for i in _flames.size():
 		var l: OmniLight3D = _flames[i]
@@ -798,15 +706,32 @@ func _place_camera(_delta: float) -> void:
 		cam.fov = 40.0
 	var back := 15.5
 	var drift := Vector3(sin(t * 0.11) * 0.5, sin(t * 0.17) * 0.18, sin(t * 0.07) * 0.3)
-	var pos := Vector3(_lean * 0.9, 2.1, back) + drift
-	var look := Vector3(_lean * 1.5, 2.7 + (narrow - 1.0) * 4.0, -4.0) + drift * 0.3
+	back -= _lean * 1.2
+	var pos := Vector3(0.0, 2.1, back) + drift
+	var look := Vector3(0.0, 2.7 + (narrow - 1.0) * 4.0, -4.0) + drift * 0.3
 	if _push > 0.0 and entering != "":
-		var at: Vector3 = (LEFT if entering == "continue" else RIGHT) + Vector3(0, 1.4, 0)
+		var at: Vector3 = HOME + Vector3(0, 1.4, 0)
 		var close := at + Vector3(0, 0.4, 4.0)
 		var e := _push * _push
 		pos = pos.lerp(close, e)
 		look = look.lerp(at, e)
 	cam.look_at_from_position(pos, look)
+	_frame()
+
+## The picture's centre moved into the room left of the character sidebar (TitleHome.mid, at the home screen's
+## scale) by shifting the camera's frustum, not the camera: the hero stays in line with the arch behind him.
+func _frame() -> void:
+	if size.x < 2.0 or size.y < 2.0:
+		return
+	var k := minf(1.0, minf(size.x / 1440.0, size.y / 800.0))
+	var shift := -TitleHome.mid() * k / size.x          # a fraction of the width: the picture moves left
+	var near := 0.05
+	cam.near = near
+	cam.projection = Camera3D.PROJECTION_FRUSTUM
+	var fov := deg_to_rad(cam.fov)
+	cam.size = 2.0 * near * tan(fov * 0.5)
+	var width := cam.size * (size.x / size.y if cam.keep_aspect == Camera3D.KEEP_HEIGHT else 1.0)
+	cam.frustum_offset = Vector2(shift * width, 0.0)
 
 func _place_cards() -> void:
 	for side in cards:
@@ -928,36 +853,6 @@ void fragment() {
 	float mist = smoothstep(hills + 0.05, hills - 0.02, y) * 0.5 + smoothstep(0.12, 0.0, y) * 0.3;
 	c = mix(c, vec3(0.55, 0.3, 0.2), mist * 0.5);
 	ALBEDO = c;
-}
-"""
-
-const RUNE_CIRCLE_SHADER := """
-shader_type spatial;
-render_mode unshaded, blend_add, depth_draw_never, cull_disabled;
-uniform float power = 0.6;
-void fragment() {
-	vec2 p = UV - 0.5;
-	float r = length(p) * 2.0;
-	float a = atan(p.y, p.x) + TIME * 0.15;
-	float ring1 = smoothstep(0.03, 0.0, abs(r - 0.92));
-	float ring2 = smoothstep(0.02, 0.0, abs(r - 0.74));
-	float glyphs = step(0.78, r) * step(r, 0.88) * step(0.5, fract(a * 24.0 / 6.2832 + sin(floor(a * 24.0 / 6.2832) * 3.7) * 0.3));
-	float star = smoothstep(0.02, 0.0, abs(fract(atan(p.y, p.x) * 5.0 / 6.2832 - TIME * 0.02) - 0.5) * r * 2.0 - 0.0) * step(r, 0.74);
-	float m = ring1 + ring2 + glyphs * 0.8 + star * 0.6;
-	float pulse = 0.8 + 0.2 * sin(TIME * 1.7);
-	ALBEDO = vec3(0.45, 0.75, 1.0) * m * power * pulse * 2.0;
-}
-"""
-
-const PILLAR_SHADER := """
-shader_type spatial;
-render_mode unshaded, blend_add, depth_draw_never, cull_disabled, fog_disabled;
-uniform float power = 0.5;
-void fragment() {
-	float fres = pow(1.0 - abs(dot(NORMAL, VIEW)), 1.5);
-	float up = 1.0 - UV.y;
-	float wave = 0.7 + 0.3 * sin(UV.y * 18.0 - TIME * 2.0 + UV.x * 12.0);
-	ALBEDO = vec3(0.4, 0.65, 1.0) * (1.0 - fres) * pow(up, 0.0) * smoothstep(0.0, 0.15, UV.y) * smoothstep(1.0, 0.4, UV.y) * wave * power * 0.25;
 }
 """
 

@@ -77,58 +77,28 @@ func _run() -> void:
 	# a message shows over the title
 	ui.message("hello")
 	check(ui.msg_lbl.is_visible_in_tree() and ui.top.get_index() > ui.menus.get_index(), "title: a message is drawn over it")
-	# the home screen (TitleHome): the character sidebar, the modes and Play; the Battlegrounds is one of its modes
+	# the home screen (TitleHome): the character sidebar, Enter World, Multiplayer (the lobby browser) and a small Quit
 	var home = ui.home
 	check(home.is_visible_in_tree() and home.sel != "", "home: the sidebar lists the characters and one is chosen")
 	check(_in_front(home.get_node("sidebar").find_child("char_" + home.sel, true, false)), "home: a character's card takes the click")
 	check(_in_front(home.get_node("sidebar").find_child("create", true, false)), "home: Create New Character takes the click")
-	check(_in_front(home.get_node("bg_card")), "home: the Battlegrounds card takes the click")
-	check(_in_front(home.get_node("quit")) and home.get_node("quit").size.x >= 180, "home: a real Quit button (%s)" % home.get_node("quit").size)
-	(home.get_node("bg_card") as Button).pressed.emit()
+	var row: Control = home.get_node("play_box/buttons")
+	check(_in_front(row.get_node("play")) and _in_front(row.get_node("multiplayer")), "home: Enter World and Multiplayer take the click")
+	check(_in_front(row.get_node("quit")) and row.get_node("quit").size.x < row.get_node("multiplayer").size.x, "home: a smaller Quit (%s)" % row.get_node("quit").size)
+	check(home.find_child("bg_card", true, false) == null and home.find_child("flame_board", true, false) == null, "home: no left-side cards")
+	(row.get_node("multiplayer") as Button).pressed.emit()
 	await frames(2)
-	var page = ui.bg_page
-	check(page.visible and ui.title_panel.is_visible_in_tree() and not ui.bg_panel.visible, "Battlegrounds: its own page over the title")
-	check(_in_front(page._enter) and page._enter.text == "Enter the Crypt" and not page._enter.disabled, "Battlegrounds: Enter the Crypt takes the click")
-	check(not ui.quest_tracker.is_visible_in_tree() and not ui.hud.is_visible_in_tree(), "Battlegrounds: no HUD, no quest tracker")
-	var words := ""
-	for l in page.find_children("*", "Label", true, false):
-		words += (l as Label).text.to_lower() + " "
-	check(words.contains("death costs everything you carry") and words.contains("levels, talents and camp stash are kept"), "Battlegrounds: it states the rule (items lost, levels kept)")
-	check(page.sel != "" and page._name.text != "", "Battlegrounds: a champion chosen (%s)" % page._name.text)
-	page.enter()
+	check(g.lobby_client.panel.visible and not home.visible, "home: Multiplayer opens the lobby browser")
+	check(g.lobby_client.lan_row.visible, "lobby browser: LAN lives here (Local network)")
+	g.lobby_client.panel.hide()
 	await frames(2)
-	check(ui.dialog_panel.is_visible_in_tree(), "Battlegrounds: Enter asks first")
-	var btns: Array = ui.dialog_btns.get_children()
-	check(btns.size() > 0 and _in_front(btns[0]), "Battlegrounds: the dialog is on top and its button takes the click")
-	check(not str(ui.dialog_text.text).contains("forever"), "Battlegrounds: the dialog states today's rule")
-	ui.dialog_panel.visible = false
-	# turned away late in a round (Net.cl_bg_refused): the home screen counts down to the next raid and rejoins by itself
-	g.bg_retry = ["127.0.0.1:1", home.sel]
-	g.bg_refused("closed", 1.0)
-	await frames(3)
-	check(page.visible and page._status.text.contains("next opens"), "Battlegrounds: turned away, it counts down to the next raid (%s)" % page._status.text)
-	check(g.net.join_failure("x").contains("next raid opens"), "and says so instead of 'the host left'")
-	var tried := false
-	var t0 := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t0 < 4500 and not tried:
-		tried = g.playing or g.loading.visible
-		await process_frame
-	check(tried, "and when the wait is over it goes in by itself")
-	g.bg_retry = []
-	while g._busy or g.playing:
-		if g.net.active:
-			g.net.shutdown()
-		g.bg_mode = false
-		await process_frame
-		if g.playing and not g._busy:
-			await g.exit_to_title()
+	# Battlegrounds is a lobby type: its way in opens the lobby browser on it (the old Battlegrounds page is unused)
+	ui.open_battlegrounds()
 	await frames(2)
-	if not page.visible:
-		ui.open_battlegrounds()
-		await frames(2)
-	(page.get_node("back") as Button).pressed.emit()
+	check(g.lobby_client.panel.visible and g.lobby_client.selected_mode == "battlegrounds", "Battlegrounds: opens the lobby browser on Battlegrounds")
+	g.lobby_client.panel.hide()
 	await frames(2)
-	check(ui.title_panel.visible and not page.visible and not ui.menu_shade.visible and _in_front(home._play), "Battlegrounds: Back to the home screen")
+	check(ui.title_panel.visible and not ui.menu_shade.visible and _in_front(home._play), "Battlegrounds: closed, back to the home screen")
 	# the co-op screen the same way
 	ui.open_join()
 	await frames(2)
