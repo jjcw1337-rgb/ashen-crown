@@ -17,15 +17,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lobbies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify lobby lifecycle and item settlement
+        run: python3 -m unittest discover -s deploy/lobbies -v
+
   desktop:
+    needs: lobbies
     runs-on: ubuntu-latest
     container:
       image: barichello/godot-ci:4.3
     steps:
       - uses: actions/checkout@v4
-
-      - name: Verify lobby lifecycle and item settlement
-        run: python3 -m unittest discover -s deploy/lobbies -v
 
       - name: Stamp preview protocol revision
         run: |

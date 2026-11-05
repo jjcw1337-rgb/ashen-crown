@@ -44,8 +44,10 @@ static func finish_removal(game,id: String) -> Dictionary:
  for i in inv.size():
   if inv[i] is Dictionary and str(inv[i].get("uid",""))==str(entry.item.uid):inv[i]=null
  locked.append(id);save["lobby_locked"]=locked;save.hero.inventory=inv
+ save["played"]=maxi(int(save.get("played",0))+1,int(Time.get_unix_time_from_system()*1000))
  if not write(path,save):return {}
  if game.playing and game.char_id==str(entry.character):game.hero.inventory=inv.duplicate(true)
+ if game.cloud!=null:game.cloud.push(str(entry.character),save)
  return entry
 static func apply(game,receipt: Dictionary) -> bool:
  var path:String=game.char_dir+str(receipt.character)+".json"
@@ -63,7 +65,7 @@ static func apply(game,receipt: Dictionary) -> bool:
  for i in items.size():inv[int(slots[i])]=items[i]
  applied.append(str(receipt.id));save["lobby_receipts"]=applied;save.hero.inventory=inv
  var locked:Array=save.get("lobby_locked",[]);locked.erase(str(receipt.id).split(":")[0]);save["lobby_locked"]=locked
- save["played"]=int(Time.get_unix_time_from_system()*1000)
+ save["played"]=maxi(int(save.get("played",0))+1,int(Time.get_unix_time_from_system()*1000))
  if not write(path,save):return false
  clear_journal(game,str(receipt.id))
  if game.cloud!=null:game.cloud.push(str(receipt.character),save)

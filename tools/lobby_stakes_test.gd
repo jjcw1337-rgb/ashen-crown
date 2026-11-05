@@ -1,4 +1,7 @@
 extends SceneTree
+class CloudSpy extends RefCounted:
+ var saves:=[]
+ func push(id: String,save: Dictionary):saves.append({"id":id,"save":save.duplicate(true)})
 var fails:=0
 var checks:=0
 func _initialize():call_deferred("run")
@@ -9,7 +12,8 @@ func run():
  var store=load("res://scripts/lobby_stakes.gd")
  var path:="user://lobby_escrow_test/"
  DirAccess.make_dir_recursive_absolute(path)
- var game={"char_dir":path,"playing":false,"cloud":null}
+ var cloud=CloudSpy.new()
+ var game={"char_dir":path,"playing":false,"cloud":cloud}
  var original:={"base":"short_sword","name":"Trial sword"}
  store.write(path+"hero.json",{"hero":{"inventory":[original,null,null]}})
  store.write(store.journal_path(game),{})
@@ -17,11 +21,13 @@ func run():
  check(not entry.is_empty() and entry.item.has("uid"),"selected item stamped and journalled")
  var save:Dictionary=store.read(path+"hero.json")
  check(save.hero.inventory[0]==null,"stake removed from saved inventory")
+ check(cloud.saves.size()==1 and cloud.saves[0].save.hero.inventory[0]==null and cloud.saves[0].save.played>0,"cloud save receives removed stake and fresh revision")
  save.hero.inventory[0]=original.duplicate();store.write(path+"hero.json",save)
  store.finish_removal(game,"room")
  check(store.read(path+"hero.json").hero.inventory[0]!=null,"retry does not consume a second identical item")
  var reward:={"id":"room:user","character":"hero","items":[entry.item,{"base":"shield","uid":"another-unique-item"}]}
  check(store.apply(game,reward),"winner receives own and opponent stakes")
+ check(cloud.saves.size()==2 and cloud.saves[1].save.played>cloud.saves[0].save.played,"cloud settlement revision follows removal")
  check(store.read(path+"hero.json").hero.inventory.filter(func(it):return it!=null).size()==3,"exact item count")
  check(store.apply(game,reward),"receipt replay accepted idempotently")
  check(store.read(path+"hero.json").hero.inventory.size()==3,"replay cannot expand bag")

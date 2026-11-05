@@ -103,6 +103,8 @@ func request(op: String,p: Dictionary) -> Dictionary:
  if err!=OK:req.queue_free();return {"error":"Lobby service unavailable."}
  var result:Array=await req.request_completed;req.queue_free()
  var data=JSON.parse_string((result[3] as PackedByteArray).get_string_from_utf8())
+ if game.cloud!=null and data is Dictionary and data.get("error","")=="Your session expired. Sign in again.":
+  game.cloud.signed_in=false # The next request renews the existing device session.
  return data if data is Dictionary else {"error":"Lobby service unavailable. Your current game is unchanged."}
 
 func action(op: String,extra := {}) -> void:
