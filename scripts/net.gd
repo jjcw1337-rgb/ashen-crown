@@ -116,7 +116,7 @@ func join(ip: String, port := PORT) -> int:
 	loading = true
 	return OK
 
-func shutdown() -> void:
+func shutdown(retiring := false) -> void:
 	for pid in players.keys():
 		_remove_player(pid)
 	players.clear()
@@ -124,7 +124,11 @@ func shutdown() -> void:
 	items.clear()
 	if peer:
 		peer.close()
-	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+	# A retiring match frees its RPC nodes next. Let their tree-exit notifications clear
+	# the cache first: Godot 4.3 release exports otherwise disconnect an unbound
+	# tree_exited callback in SceneCacheInterface.clear(). No new peer is needed.
+	if not retiring:
+		multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
 	peer = null
 	active = false
 	is_host = false

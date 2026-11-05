@@ -124,7 +124,7 @@ func finish(state: String, reason: String, winner := -1) -> void:
  # Deliver the result, then close from the server before clients all leave simultaneously.
  # This also stops ENet relaying snapshots into peers whose channels are already gone.
  await get_tree().create_timer(2).timeout
- game.net.shutdown()
+ game.net.shutdown(true)
  await get_tree().create_timer(10).timeout
  var tree:=get_tree()
  Hero.striker=null
