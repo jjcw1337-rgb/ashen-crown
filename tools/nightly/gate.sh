@@ -35,6 +35,11 @@ for t in archer_test plague_test; do
   "$G" --headless --path . --fixed-fps 60 -s tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
+# the camp's people and the island (they reach the Sfx autoload: run late)
+for t in camp_life_test vendor_test guard_test; do
+  "$G" --headless --path . --fixed-fps 60 -s tools/_late.gd -- res://tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
+  waitfor $p 400; check $t "$OUT/gate_$t.log" $?
+done
 
 # the Battlegrounds pair
 "$G" --headless --path . -s tools/bg_test.gd -- --server --port 24631 --raid-fast server > "$OUT/gate_bg_server.log" 2>&1 & s=$!

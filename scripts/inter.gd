@@ -28,6 +28,25 @@ var _fall := 0.0
 
 var _walk_to := Vector3.INF
 var _patrol_i := 0
+var social := false              # talking with someone (CampSocial turns them and plays the talk)
+var _arrive_cb: Callable         # walk_to's errand: called on arriving
+var _path := PackedVector3Array() # the rest of walk_to's way
+
+## Off on an errand at a walk (CampSocial's visits): to p, then `then` is called. Only a keeper with a stroll
+## ("patrol": its walk clip and speed) can.
+func walk_to(p: Vector3, then := Callable()) -> void:
+	_arrive_cb = then
+	_path = PackedVector3Array()
+	var w = get_parent()
+	while w != null and not (w is World):
+		w = w.get_parent()
+	if w != null:
+		# round the stalls and the waypoint's dais, not through them
+		_path = (w as World).find_path(global_position, p)
+	if _path.is_empty():
+		_path = PackedVector3Array([p])
+	_walk_to = _path[0]
+	_path.remove_at(0)
 
 ## A keeper who gets about (clips "patrol": {"points": [Vector3...], "walk": clip, "speed": m/s, "face": [yaw per point],
 ## "chance", "works": [clips per point]}; Osric between his
@@ -42,10 +61,21 @@ func _patrol(delta: float, near: bool) -> bool:
 		return false
 	var to := _walk_to - global_position
 	to.y = 0
+	if to.length() < 0.15 and not _path.is_empty():
+		_walk_to = _path[0]           # on along walk_to's way
+		_path.remove_at(0)
+		return true
 	if to.length() < 0.15:
 		global_position = Vector3(_walk_to.x, global_position.y, _walk_to.z)
 		_walk_to = Vector3.INF
 		_clip_t = 0.0
+		if _arrive_cb.is_valid():
+			var cb := _arrive_cb
+			_arrive_cb = Callable()
+			if anim.has_animation(str(clips.get("idle", ""))):
+				anim.play(str(clips["idle"]), 0.4)
+			cb.call()
+			return false
 		home_yaw = float(pt.get("face", [])[_patrol_i]) if (pt.get("face", []) as Array).size() > _patrol_i else model.rotation.y
 		return false
 	var step := minf(float(pt.get("speed", 1.1)) * delta, to.length())
@@ -74,6 +104,8 @@ func _animate(delta: float) -> void:
 				want = atan2(d.x, d.z)       # Meshy models face +z
 	if _patrol(delta, near):
 		return
+	if social:
+		return                   # CampSocial has them
 	model.rotation.y = lerp_angle(model.rotation.y, want, delta * (3.0 if near else 1.2))
 	_clip_t -= delta
 	if not (stay and near):
@@ -106,15 +138,25 @@ func _animate(delta: float) -> void:
 			return
 	if next == "" or not anim.has_animation(next):
 		return
-	anim.play(next, 0.45)
 	var a := anim.get_animation(next)
 	_clip_t = a.length * (1.0 if next == clips.get("talk", "") else float(randi_range(2, 3)))
+	# the smith forging: his body stands in a working stance and SmithForge puts his arms on the anvil
+	if has_meta("forge") and next == clips.get("forge", ""):
+		var body: String = clips.get("forge_body", clips.get("idle", ""))
+		_clip_t = randf_range(9.0, 16.0)
+		set_meta("forging", _clip_t)
+		next = body
+	elif has_meta("forging"):
+		set_meta("forging", 0.0)
+	anim.play(next, 0.45)
 
 func _process(delta: float) -> void:
 	_t += delta
 	if anim and model:
 		_animate(delta)
-		if clips.has("strike"):
+		if has_meta("forge"):
+			SmithForge.update(self, delta)
+		elif clips.has("strike"):
 			_strikes(delta)
 
 	if rig:

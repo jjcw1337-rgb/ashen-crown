@@ -53,24 +53,26 @@ func _run() -> void:
 		_ok(shadows, "%s casts shadows" % guard.def["id"])
 		_ok(guard.head != null, "%s turns his head (HeadLook)" % guard.def["id"])
 	# the hero out of the way: they walk their rounds
-	g.hero.global_position = Vector3(0, 0, 40)
+	g.hero.global_position = Vector3(0, 0, 29)       # (outside the wall, still on the island: ForestCamp.ISLAND)
 	var p0 := {}
 	for gd in gs:
 		p0[gd] = (gd as CampGuard).global_position
 	var seen := {}
+	var went := {}          # (any time in the window: a guard may walk on and come back near where he was)
 	for i in 600:
 		await process_frame
 		for gd in gs:
 			seen[(gd as CampGuard).clip] = true
+			if (gd as CampGuard).global_position.distance_to(p0[gd]) > 1.5 or (gd as CampGuard).post_i != 0:
+				went[gd] = true
 	var t0 := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - t0 < 25000:
 		await create_timer(0.1).timeout
 		for gd in gs:
 			seen[(gd as CampGuard).clip] = true
-	var moved := 0
-	for gd in gs:
-		if (gd as CampGuard).global_position.distance_to(p0[gd]) > 1.5 or (gd as CampGuard).post_i != 0:
-			moved += 1
+			if (gd as CampGuard).global_position.distance_to(p0[gd]) > 1.5 or (gd as CampGuard).post_i != 0:
+				went[gd] = true
+	var moved := went.size()
 	_ok(moved >= 2, "they walk their rounds (%d of 3 moved in 25 s); clips seen %s" % [moved, str(seen.keys())])
 	var inside := true
 	for gd in gs:

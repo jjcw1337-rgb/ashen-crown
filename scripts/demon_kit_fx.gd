@@ -42,11 +42,13 @@ const BOOKS := {
 	# Frost Volley's cold mists (FrostVolleyFx): an ice arrow's strike, the freezing fog under the storm
 	"frost": ["smoke_frost.png", Vector2(7, 4), 28, 1.3, Vector2(0.5, 0.4288), 0.7826, 1],
 	"rime": ["smoke_rime.png", Vector2(6, 6), 36, 1.4, Vector2(0.5, 0.4685), 0.8333, 1],
+	# wood smoke rising from the camp's chimneys and fires (ForestCamp._smokes): a plume leaning on a light breeze
+	"chimney": ["smoke_chimney.png", Vector2(7, 6), 40, 1.000, Vector2(0.158, 0.013), 1.000, 0],
 }
 
 ## how much of the books' daylight the smoke keeps in the game's dusk (fire keeps all of its own); steam rising off
 ## lava and the comet's smoke are lit from inside by their fire
-const SMOKE_LIGHT := {"impact": 0.5, "ash": 0.5, "blast": 0.5, "steam": 0.7, "comet": 0.6, "frost": 0.75, "rime": 0.7}
+const SMOKE_LIGHT := {"chimney": 0.75, "impact": 0.5, "ash": 0.5, "blast": 0.5, "steam": 0.7, "comet": 0.6, "frost": 0.75, "rime": 0.7}
 ## each book's fire, per channel: the Crucible's burst is a big sheet of flame, held back and deepened toward the
 ## Pit's red; the impact's flash toward molten rock
 const FIRE_GAIN := {"blast": Color(0.72, 0.4, 0.22), "impact": Color(0.92, 0.74, 0.56)}

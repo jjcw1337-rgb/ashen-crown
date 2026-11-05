@@ -29,6 +29,30 @@ var ground_fn := Callable()
 var height_fn := Callable()
 ## The coast: the sea is at y = 0; walkers stop where the water gets deeper than WADE (coast.gd).
 var sea := false
+## The camp as an island adrift in space (ForestCamp.ISLAND, camp_island.gd): nothing grows or stands past its edge,
+## a jagged circle round island_c of radius island_r (0 = no island).
+var island_c := Vector2.ZERO
+var island_r := 0.0
+
+## Past the island's ragged edge (with a margin, m)?
+func off_island(x: float, z: float, margin := 0.0) -> bool:
+	if island_r <= 0.0:
+		return false
+	return Vector2(x, z).distance_to(island_c) > island_edge(x, z) - margin
+
+## How far the island's edge is from its centre in the direction of (x, z): a circle broken by bays and spurs.
+func island_edge(x: float, z: float) -> float:
+	var a := atan2(z - island_c.y, x - island_c.x)
+	return island_r + sin(a * 3.0 + 0.7) * 0.6 + sin(a * 7.0 + 2.1) * 0.35 + sin(a * 13.0) * 0.2
+
+## A ground vertex at (x, z) height y, drawn in onto the island's edge if it lies past it (terrain_patch's clip).
+func island_clip(x: float, z: float, y: float) -> Vector3:
+	var d := Vector2(x, z) - island_c
+	var e := island_edge(x, z)
+	if d.length() <= e:
+		return Vector3(x, y, z)
+	var q := island_c + d.normalized() * e
+	return Vector3(q.x, y - 0.25, q.y)
 const WADE := -0.18
 ## Ground steeper than this (rise per metre) is a wall in a sea zone: the islands' cliffs (0 = off).
 var steep := 0.0
@@ -528,7 +552,7 @@ func _build_terrain(tcol: Dictionary) -> void:
 ## A piece of ground over `r`, `step` metres between vertices (the coast builds its distant islands and
 ## shores coarser than the ground under the hero). Cells wholly deeper than `floor_y` are left out:
 ## nobody sees the bottom of the open sea.
-func terrain_patch(r: Rect2, step: float, tcol: Dictionary, nm := "Terrain", floor_y := -INF, own := Callable(), drop := 0.0) -> MeshInstance3D:
+func terrain_patch(r: Rect2, step: float, tcol: Dictionary, nm := "Terrain", floor_y := -INF, own := Callable(), drop := 0.0, clip := Callable()) -> MeshInstance3D:
 	if not masks_ready:
 		_bake_masks()
 	var x0 := r.position.x
@@ -558,6 +582,10 @@ func terrain_patch(r: Rect2, step: float, tcol: Dictionary, nm := "Terrain", flo
 			var hd := hs[j * (nx + 3) + (i + 1)]
 			var hu := hs[(j + 2) * (nx + 3) + (i + 1)]
 			verts[k] = Vector3(x, hc - drop, z)
+			if clip.is_valid():
+				# (the island camp: a vertex past the edge is drawn in onto it, so the ground ends in a smooth line)
+				var q: Vector3 = clip.call(x, z, hc - drop)
+				verts[k] = q
 			norms[k] = Vector3(hl - hr, 2.0 * step, hd - hu).normalized()
 			var cliff := clampf((1.0 - norms[k].y) * 3.0, 0.0, 1.0)
 			cols[k] = Color(dirt_at(x, z), cliff, cobble_at(x, z), 1.0)
@@ -696,6 +724,8 @@ func grass_ground(x: float, z: float) -> float:
 			return 0.0           # sand and sea
 		if hy < 1.5:
 			return (hy - 1.0) * 2.0 * (1.0 - clampf((dirt_at(x, z) + cobble_at(x, z)) * 1.6, 0.0, 1.0))
+	if island_r > 0.0 and off_island(x, z, 0.6):
+		return 0.0
 	var dm := dirt_at(x, z) + cobble_at(x, z)
 	if dm > 0.55:
 		return 0.0
@@ -862,7 +892,7 @@ func _scatter_ferns(count: int) -> void:
 		var inside := bounds.grow(-1.5).has_point(Vector2(x, z))
 		if inside and (is_blocked(x, z) or rng.randf() < 0.6):
 			continue
-		if _in_lair(x, z, 0.85):
+		if _in_lair(x, z, 0.85) or off_island(x, z, 1.0):
 			continue
 		if sea and grass_ground(x, z) < 0.3:
 			continue

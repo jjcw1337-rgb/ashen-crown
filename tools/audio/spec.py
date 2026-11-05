@@ -368,6 +368,14 @@ SPEC += [
 # Thunderstep (jj, 2026-11-04; the archer's R in place of Storm Snare; ThunderstepFx): the vault, the sigil charging,
 # its detonation
 SPEC += [
+    # the camp's life (jj, 2026-11-04): Halvar quenching the work in his bucket (SmithForge), the ravens on the roofs
+    # (CampRavens: a caw, wings beating as one goes up)
+    dict(name="quench", src="eleven", n=4, dur=1.6, hit=0, label="red-hot iron plunged into a bucket of water",
+         prompt="a blacksmith plunging red-hot iron into a wooden bucket of water, a violent sizzling hiss and bubbling steam" + DRY),
+    dict(name="raven_caw", src="eleven", n=5, dur=1.4, hit=0, label="a raven calling",
+         prompt="a single common raven calling from a rooftop, two or three deep hoarse croaking caws, outdoors" + DRY),
+    dict(name="raven_wings", src="eleven", n=4, dur=1.2, hit=0, label="a raven taking off",
+         prompt="a large black bird taking off from a roof, a few heavy wing beats and the flutter of feathers, close" + DRY),
     dict(name="thunder_vault", src="eleven", n=4, dur=0.9, hit=0, label="a leap away crackling with electricity",
          prompt="a quick athletic leap with a sharp electric crackle and a whoosh, static discharge snapping in the air" + DRY),
     dict(name="sigil_charge", src="eleven", n=4, dur=1.2, hit=0.85, label="a lightning rune charging up",

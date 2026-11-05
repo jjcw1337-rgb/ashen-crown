@@ -31,6 +31,43 @@ var net: Net
 var weather: Weather
 var grass_field: GrassField   # the grass's touch and wind (grass_field.gd)
 var sky_mat: ProceduralSkyMaterial
+var space_sky: ShaderMaterial      # the island camp's sky (CampIsland.space_sky)
+var zoom_max := 1.3                # the scroll wheel's furthest out (further over the World-Tree Island)
+## The orbit camera (jj, 2026-11-04: "allow the player to use mouse and rotate around it from all views"): zoomed out
+## past the game's own view (zoom > ORBIT_ZOOM, the World-Tree Island), dragging with the middle mouse button (or Alt
+## and the left) turns the camera round and tilts it, down past the island's edge to its underside; the view also
+## drifts from the hero to the island's middle the further out it is. Zoomed back in, it eases home to the game's
+## own angle. Any zone that raises zoom_max gets it.
+const ORBIT_ZOOM := 1.32
+var orbit_yaw := 0.0
+var orbit_pitch := 0.0             # added to the camera's own elevation (radians, + = higher)
+var _orbit_drag := false
+
+func _orbit_input(ev: InputEvent) -> bool:
+	if ev is InputEventMouseButton:
+		var mb := ev as InputEventMouseButton
+		var orb := mb.button_index == MOUSE_BUTTON_MIDDLE or (mb.button_index == MOUSE_BUTTON_LEFT and mb.alt_pressed)
+		if orb and zoom > ORBIT_ZOOM:
+			_orbit_drag = mb.pressed
+			return true
+		if not mb.pressed and (mb.button_index == MOUSE_BUTTON_MIDDLE or mb.button_index == MOUSE_BUTTON_LEFT):
+			_orbit_drag = false
+	elif ev is InputEventMouseMotion and _orbit_drag:
+		var mm := ev as InputEventMouseMotion
+		orbit_yaw = wrapf(orbit_yaw - mm.relative.x * 0.006, -PI, PI)
+		orbit_pitch = clampf(orbit_pitch - mm.relative.y * 0.005, deg_to_rad(-80.0), deg_to_rad(38.0))
+		return true
+	return false
+
+## The camera's place round its pivot: the game's offset, turned by the orbit.
+func _orbit_offset(off: Vector3) -> Vector3:
+	if absf(orbit_yaw) < 0.0001 and absf(orbit_pitch) < 0.0001:
+		return off
+	var flat := Vector2(off.z, off.y)
+	var elev := atan2(flat.y, flat.x) + orbit_pitch
+	var d := off.length()
+	var o := Vector3(0, sin(elev) * d, cos(elev) * d)
+	return Basis(Vector3.UP, orbit_yaw) * o
 var ui: UI
 var quests: Quests          # the quest log (quests.gd), per character and run
 var vignette: ColorRect
@@ -660,6 +697,21 @@ func _zone_env(kind: String) -> void:
 			sun.light_energy = 0.6
 			hero.light.light_energy = 1.0
 			_set_fires()
+	# the World-Tree Island (CampIsland): real space round the camp instead of the forest's dusk sky; the light keeps
+	# the camp's own day (DayNight), its fill a colour now that the sky is black
+	var island: bool = kind == "town" and world.island_r > 0.0 and not inside
+	if island:
+		if space_sky == null:
+			space_sky = CampIsland.space_sky()
+		env.sky.sky_material = space_sky
+		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		env.ambient_light_color = Color(0.52, 0.58, 0.68)
+		env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
+		env.fog_sky_affect = 0.0
+	else:
+		env.sky.sky_material = sky_mat
+	zoom_max = 2.2 if island else 1.3
+	zoom = minf(zoom, zoom_max)
 	_apply_grade()
 	# the camp runs through the day (DayNight); every other zone keeps its own hour
 	day_night.enable(kind == "town" and world.theme.get("forest_camp", false) and not inside)
@@ -1350,6 +1402,10 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		birds.sea = world.sea
 		birds.name = "birds"
 		world.add_child(birds)
+		# the camp's ravens on the roofs and the ground (camp_ravens.gd)
+		if zone == "town" and world.has_meta("roosts"):
+			CampRavens.add_to(world)
+			CampSocial.add_to(world)
 	_add_boat(zone, spawn)
 	# the class's skill effects played once, unseen, under the loading screen: no freeze on a first cast (SkillWarm)
 	if not _boot_quiet:
@@ -2912,7 +2968,7 @@ func _sail_camera(dt: float, sh: Vector3) -> void:
 	var want := 1.0 if sailing() else 0.0
 	sail_blend = move_toward(sail_blend, want, dt / 1.3)
 	if sail_blend <= 0.0:
-		cam.basis = Basis.looking_at(Vector3(0, 1.0, 0) - CAM_OFFSET, Vector3.UP)
+		cam.basis = Basis.looking_at(Vector3(0, 1.0, 0) - cam.position, Vector3.UP)    # (turned by the orbit, if any)
 		return
 	if boat == null or not is_instance_valid(boat):
 		return
@@ -3246,6 +3302,8 @@ func dev_tools_on() -> bool:
 
 ## Has this character touched waypoint `id` in act `run`? Each act keeps its own (run_progress).
 func waypoint_known(run: int, id: String) -> bool:
+	if ForestCamp.ISLAND and run == 0 and id == "wild":
+		return true              # (the island camp's gates are barred: the waypoint is the only way to the moor)
 	if run == difficulty:
 		return waypoints_known.has(id)
 	return (run_progress.get(str(run), {}).get("waypoints", ["town"]) as Array).has(id)
@@ -3907,6 +3965,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 	if not playing or _busy or world == null:
 		return      # (the title and its screens, and a zone loading: nothing in the game takes keys or clicks)
 	_cheat_keys(ev)
+	if _orbit_input(ev):
+		return
 	if ev is InputEventMouseButton:
 		if ev.button_index == MOUSE_BUTTON_LEFT:
 			if ev.pressed and not paused:
@@ -3932,9 +3992,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 				rmb_held = true
 				_use_bind("rmb", true)
 		elif ev.button_index == MOUSE_BUTTON_WHEEL_UP and ev.pressed:
-			zoom = clampf(zoom - 0.08, 0.6, 1.3)
+			zoom = clampf(zoom - 0.08, 0.6, zoom_max)
 		elif ev.button_index == MOUSE_BUTTON_WHEEL_DOWN and ev.pressed:
-			zoom = clampf(zoom + 0.08, 0.6, 1.3)
+			zoom = clampf(zoom + 0.08, 0.6, zoom_max)
 	if ev is InputEventKey and ev.pressed and not ev.echo:
 		if paused and ev.keycode != KEY_ESCAPE:
 			return       # (paused: only Esc, which resumes)
@@ -4196,6 +4256,12 @@ func _process(delta: float) -> void:
 			else:
 				fw = smoothstep(0.0, 0.6, focus_t) * (1.0 - smoothstep(focus_len - 0.7, focus_len, focus_t))
 				goal = goal.lerp(focus_node.global_position + Vector3(0, 0.6, 0), fw)
+		# far out over the island the view turns round its middle rather than the hero
+		if world.island_r > 0.0 and zoom > 1.3:
+			goal = goal.lerp(Vector3(world.island_c.x, 0, world.island_c.y), smoothstep(1.3, zoom_max, zoom))
+		if zoom <= ORBIT_ZOOM and not _orbit_drag:
+			orbit_yaw = lerp_angle(orbit_yaw, 0.0, clampf(real_dt * 3.0, 0.0, 1.0))
+			orbit_pitch = lerpf(orbit_pitch, 0.0, clampf(real_dt * 3.0, 0.0, 1.0))
 		cam_target = cam_target.lerp(goal, clampf(real_dt * 5.0, 0.0, 1.0))
 		weather.follow(cam_target)
 		cam_pivot.position = cam_target
@@ -4203,7 +4269,7 @@ func _process(delta: float) -> void:
 			cam_pivot.position = hero.global_position + Vector3(sin(_t * 0.12) * 3.0, 0, cos(_t * 0.1) * 1.5)
 		shake = maxf(0.0, shake - real_dt * 2.2)
 		var sh := Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake * shake * 0.35
-		cam.position = CAM_OFFSET * zoom * lerpf(1.0, focus_zoom, fw) + sh
+		cam.position = _orbit_offset(CAM_OFFSET * zoom * lerpf(1.0, focus_zoom, fw)) + sh
 		_sail_camera(real_dt, sh)
 		_fit_shadows()
 		if playing:

@@ -17,6 +17,9 @@ so a camera-facing card shows the cloud as the game camera would see it in 3D):
           and rolls out low along the ground in a ring while a few ice splinters fly trailing thin vapour. One shot.
   rime    freezing fog pooled over the ground under a volley: cold vapour seeping up out of the frost in patches that
           come and go, sinking and churning slowly. Loops, seen from the game camera.
+  chimney wood smoke rising out of a chimney or smoke hole (the camp's roofs, the forge): a thin grey plume puffing
+          up from a small vent, curling as it climbs and leaning away on a light breeze, thinning as it goes. Loops,
+          seen side on; the vent is the card's anchor (bottom left of the frame).
 Cold kinds (frost, rime) are colder than the air (a negative temperature sinks them) and lit by a cold key.
 Smoke takes its colour from the flows (brown dirt, grey ash, white steam, soot); it is lit by a warm low key (the
 game's dusk) and a cool sky fill, and from inside by its own fire, whose light is a black-body ramp of the flame
@@ -52,6 +55,7 @@ SHAPE = {
 	"blast":  {"dom": (10.6, 10.6, 4.4), "dz": 2.2, "warm": 0, "cam": (9.6, 1.3, 44.0), "aspect": 1.25, "span": 7.0, "mode": 1},
 	"frost":  {"dom": (5.2, 5.2, 2.4), "dz": 1.2, "warm": 0, "cam": (4.6, 0.35, 44.0), "aspect": 1.3, "span": 3.6, "mode": 1},
 	"rime":   {"dom": (10.0, 10.0, 2.0), "dz": 1.0, "warm": 50, "cam": (9.6, 0.3, 44.0), "aspect": 1.4, "span": 8.0, "mode": 1},
+	"chimney": {"dom": (3.8, 1.6, 3.8), "dz": 1.9, "warm": 60, "cam": (3.8, 1.9, 0.0), "aspect": 1.0, "span": 3.8, "mode": 0, "head": (-1.3, 0.05)},
 }[KIND]
 COLD = KIND in ("frost", "rime")
 EXTRA = OVERLAP if SHAPE["warm"] > 0 else 0
@@ -288,6 +292,53 @@ elif KIND == "steam":
 	tb.keyframe_insert("location", frame=1)
 	tb.location = (0.3, 0.1, 1.8)
 	tb.keyframe_insert("location", frame=SHAPE["warm"] + FRAMES + EXTRA)
+elif KIND == "chimney":
+	ds.vorticity = 0.35
+	ds.alpha = 0.5
+	ds.beta = 2.6
+	ds.dissolve_speed = 110
+	bpy.ops.mesh.primitive_cube_add(size=1.0, location=(-1.3, 0, 0.12))
+	src = bpy.context.object
+	src.scale = (0.26, 0.26, 0.12)
+	bpy.ops.object.transform_apply(scale=True)
+	sm = src.modifiers.new("Fluid", "FLUID")
+	sm.fluid_type = "FLOW"
+	fs = sm.flow_settings
+	fs.flow_type = "SMOKE"
+	fs.flow_behavior = "INFLOW"
+	fs.density = 0.75
+	fs.temperature = 3.0
+	fs.use_initial_velocity = True
+	fs.velocity_normal = 0.0
+	fs.velocity_coord = (0.25, 0.0, 1.4)       # up out of the vent, already leaning with the breeze
+	fs.smoke_color = (0.42, 0.4, 0.37)
+	# the fire below doesn't burn evenly: the smoke comes up in puffs
+	nt_tex = bpy.data.textures.new("Puffs", "CLOUDS")
+	nt_tex.noise_scale = 0.12
+	nt_tex.contrast = 1.6
+	fs.use_texture = True
+	fs.noise_texture = nt_tex
+	fs.texture_map_type = "AUTO"
+	fs.texture_size = 1.0
+	fs.texture_offset = 0.0
+	fs.keyframe_insert("texture_offset", frame=1)
+	fs.texture_offset = 4.0
+	fs.keyframe_insert("texture_offset", frame=SHAPE["warm"] + FRAMES + EXTRA)
+	src.hide_render = True
+	# a light breeze leaning it over, and eddies that curl it
+	bpy.ops.object.effector_add(type="WIND", location=(-2.0, 0, 1.8))
+	wind = bpy.context.object
+	wind.rotation_euler = (0, math.pi * 0.5, 0)
+	wind.field.strength = 0.35
+	wind.field.flow = 0.15
+	bpy.ops.object.effector_add(type="TURBULENCE", location=(-0.6, 0, 1.6))
+	tb = bpy.context.object
+	tb.field.strength = 1.1
+	tb.field.size = 0.5
+	tb.field.flow = 0.5
+	tb.keyframe_insert("location", frame=1)
+	tb.location = (0.2, 0.2, 2.4)
+	tb.keyframe_insert("location", frame=SHAPE["warm"] + FRAMES + EXTRA)
 elif KIND == "ash":
 	ground()
 	ds.vorticity = 0.5          # it billows as it rolls
@@ -435,11 +486,11 @@ flame.attribute_name = "flame"
 # (the node multiplies Density by the smoke's own density grid itself: its "Density Attribute"; wiring the grid in
 # as well squares it and thin dust all but vanishes)
 vol.inputs["Density"].default_value = {"impact": 4.5, "comet": 5.0, "steam": 3.5, "ash": 7.0, "blast": 6.0,
-	"frost": 3.4, "rime": 2.0}[KIND]
+	"frost": 3.4, "rime": 2.0, "chimney": 3.0}[KIND]
 # the smoke's colour: one per kind (the colour grid comes through weighted by density, so thin dust read black)
 vol.inputs["Color"].default_value = {"impact": (0.52, 0.43, 0.33, 1.0), "comet": (0.24, 0.2, 0.18, 1.0),
 	"steam": (0.92, 0.91, 0.9, 1.0), "ash": (0.5, 0.45, 0.4, 1.0), "blast": (0.22, 0.18, 0.17, 1.0),
-	"frost": (0.86, 0.93, 1.0, 1.0), "rime": (0.86, 0.92, 1.0, 1.0)}[KIND]
+	"frost": (0.86, 0.93, 1.0, 1.0), "rime": (0.86, 0.92, 1.0, 1.0), "chimney": (0.5, 0.48, 0.45, 1.0)}[KIND]
 vol.inputs["Anisotropy"].default_value = 0.25
 # dust and steam scatter light (a dull grey absorption, so the colour shows); soot stays dark through its colour
 vol.inputs["Absorption Color"].default_value = (0.55, 0.52, 0.5, 1.0) if not COLD else (0.62, 0.7, 0.8, 1.0)

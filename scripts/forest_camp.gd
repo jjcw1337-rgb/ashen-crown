@@ -19,6 +19,12 @@ const NEW_PLAYER_AT := Vector3(0, 0, 17) # enter the square from its southern ap
 static func grand_waypoint() -> bool:
 	return not OS.get_cmdline_user_args().has("--old-waypoint")
 const RADIUS := 25.0
+## jj, 2026-11-04 ("Nice lets use number 2"): the camp is the World-Tree Island, adrift in space (camp_island.gd): the
+## ground ends ISLAND_R from the middle in a cliff with roots and waterfalls falling into the void, the west (coast) and
+## north (moor) gates are barred for now (the waypoint is the way out), and the coast and the moor hang far off as
+## small islands of their own.
+const ISLAND := true
+const ISLAND_R := RADIUS + 11.0
 ## the Gilded Hall (jj, 2026-11-04: the auction house), on the open ground west of the waypoint, facing east; its
 ## footprint (half-extents, from prep_prop.py) and its auctioneer at the door
 const AUCTION_AT := Vector2(-15.0, 6.5)
@@ -36,7 +42,8 @@ const SHOPS := [
 		"hold": {"bone": "RightHand", "potion": Color(0.35, 1.0, 0.3), "pos": Vector3(0.0, 0.07, 0.03)}},
 	# the smith works inside his forge, behind the anvil ("inside": his spot in the stall's own frame, facing out)
 	{"role": "smith", "npc": "grisold", "stall": "forge", "at": Vector2(16, -13.5), "half": Vector2(2.2, 1.65), "inside": Vector2(0.05, 0.35),
-		"clips": {"idle": "Idle", "work": ["Heavy_Hammer_Swing"], "talk": "Talk_with_Hands_Open", "stay": true, "strike": "anvil"},
+		"clips": {"idle": "Idle", "work": ["Heavy_Hammer_Swing"], "talk": "Talk_with_Hands_Open", "stay": true,
+			"forge": "Heavy_Hammer_Swing", "forge_body": "Idle"},
 		"hold": {"bone": "RightHand", "item": "war_hammer", "rot": Vector3(0, 0, 90), "pos": Vector3(0.0, 0.08, 0.0)}},
 	{"role": "armor", "npc": "hedda", "stall": "armory", "at": Vector2(16, 5), "half": Vector2(1.95, 1.62),
 		"clips": {"idle": "Idle_3", "work": ["Axe_Breathe_and_Look_Around"], "talk": "Talk_with_Left_Hand_on_Hip"},
@@ -45,6 +52,67 @@ const SHOPS := [
 	{"role": "gamble", "npc": "tarrow", "stall": "wagon", "at": Vector2(-17, -6.5), "half": Vector2(1.7, 1.35),
 		"clips": {"idle": "Idle_5", "work": ["Stand_and_Chat", "Happy_Sway_Standing"], "talk": "Talk_with_Right_Hand_Open"}},
 ]
+
+## Each keeper's own thirty moves (jj, 2026-11-04: "30 different movements and gestures for each merchant ... look
+## alive"): Meshy library clips moved onto every keeper by tools/blender/npc_add_clips.py, picked per character (the
+## alchemist sips and inspects, the armourer flexes and lifts, the gambler schemes and bows), played at random between
+## customers (Inter._animate's "work"), and their strolls: round the stall and up to the waypoint and back
+## (Inter "patrol"; a hero coming near stops them where they are to trade).
+const ACTS := {
+	"alch": ["Idle_02", "Idle_3", "Idle_4", "Idle_6", "Idle_7", "Idle_10", "Idle_12", "Idle_13", "Stand_and_Drink", "mage_soell_cast",
+		"Checkout_Gesture", "Collect_Object", "Female_Bend_Over_Pick_Up_Inspect", "Headache_Relief", "Confused_Scratch", "Listening_Gesture",
+		"Talk_with_Left_Hand_Raised", "Agree_Gesture", "Shrug", "Wave_One_Hand", "Call_Gesture", "Look_Around_Dumbfounded",
+		"Happy_Sway_Standing", "Hand_on_Hip_Gesture", "Personalized_Gesture", "Finger_Wag_No", "Short_Breathe_and_Look_Around",
+		"Long_Breathe_and_Look_Around", "Stand_and_Chat", "Formal_Bow"],
+	"armor": ["Idle_3", "Axe_Breathe_and_Look_Around", "Idle_4", "Idle_5", "Idle_8", "Idle_9", "Idle_11", "Idle_14", "Alert",
+		"Hand_on_Hip_Gesture", "Talk_with_Left_Hand_on_Hip", "Show_Both_Arm_Muscles", "Catching_Breath", "Male_Bend_Over_Pick_Up",
+		"Collect_Object", "Checkout_Gesture", "Agree_Gesture", "Finger_Wag_No", "Shrug", "Call_Gesture", "Big_Wave_Hello",
+		"Listening_Gesture", "Short_Breathe_and_Look_Around", "Long_Breathe_and_Look_Around", "Look_Around_Dumbfounded",
+		"Stand_and_Chat", "Talk_with_Hands_Open", "Confused_Scratch", "Headache_Relief", "Gentlemans_Bow"],
+	"gamble": ["Idle_5", "Stand_and_Chat", "Happy_Sway_Standing", "Scheming_Hand_Rub", "Talk_Passionately", "Talk_with_Right_Hand_Open",
+		"Talk_with_Hands_Open", "Big_Wave_Hello", "Call_Gesture", "Personalized_Gesture", "Shrug", "Finger_Wag_No", "Gentlemans_Bow",
+		"Formal_Bow", "Checkout_Gesture", "Agree_Gesture", "Listening_Gesture", "Idle_6", "Idle_7", "Idle_10", "Idle_12", "Idle_13",
+		"Idle_14", "Wave_One_Hand", "Hand_on_Hip_Gesture", "Look_Around_Dumbfounded", "Confused_Scratch", "Stand_and_Drink",
+		"Collect_Object", "Short_Breathe_and_Look_Around"],
+	# the smith stays at his anvil: the hammer is most of what he does, the rest between heats
+	# (never Catching_Breath: its hips stride out of the forge)
+	"smith": ["Heavy_Hammer_Swing", "Heavy_Hammer_Swing", "Heavy_Hammer_Swing", "Heavy_Hammer_Swing", "Heavy_Hammer_Swing",
+		"Heavy_Hammer_Swing", "Heavy_Hammer_Swing", "Heavy_Hammer_Swing", "Idle_10", "Show_Both_Arm_Muscles", "Headache_Relief",
+		"Short_Breathe_and_Look_Around", "Long_Breathe_and_Look_Around", "Idle_4", "Idle_8", "Idle_11", "Idle_14", "Alert",
+		"Hand_on_Hip_Gesture", "Confused_Scratch", "Look_Around_Dumbfounded", "Agree_Gesture", "Finger_Wag_No", "Call_Gesture",
+		"Stand_and_Drink", "Talk_with_Hands_Open", "Listening_Gesture", "Shrug", "Idle_9", "Idle_13"],
+	"elder": ["Idle", "Short_Breathe_and_Look_Around", "Long_Breathe_and_Look_Around", "Alert", "Idle_8", "Idle_9", "Idle_11",
+		"Idle_14", "Hand_on_Hip_Gesture", "Talk_Passionately", "Talk_with_Left_Hand_on_Hip", "Finger_Wag_No", "Call_Gesture",
+		"Agree_Gesture", "Listening_Gesture", "Big_Wave_Hello", "Wave_One_Hand", "Formal_Bow", "Look_Around_Dumbfounded",
+		"Show_Both_Arm_Muscles", "Catching_Breath", "Stand_and_Chat", "Confused_Scratch", "Shrug", "Talk_with_Hands_Open",
+		"Talk_with_Right_Hand_Open", "Headache_Relief", "Idle_3", "Idle_4", "Idle_6"],
+	"auction": ["Talk_Passionately", "Talk_with_Left_Hand_Raised", "Scheming_Hand_Rub", "Gentlemans_Bow", "Formal_Bow", "Call_Gesture",
+		"Big_Wave_Hello", "Checkout_Gesture", "Agree_Gesture", "Listening_Gesture", "Personalized_Gesture", "Finger_Wag_No", "Shrug",
+		"Stand_and_Drink", "Hand_on_Hip_Gesture", "Talk_with_Right_Hand_Open", "Talk_with_Hands_Open", "Stand_and_Chat", "Idle_3",
+		"Idle_4", "Idle_6", "Idle_7", "Idle_12", "Idle_13", "Happy_Sway_Standing", "Look_Around_Dumbfounded", "Wave_One_Hand",
+		"Collect_Object", "Confused_Scratch", "Headache_Relief"],
+}
+## how each walks when they stroll (none for the smith at his anvil or the captain at the gate)
+const STROLL := {"alch": "Walk_Slowly_and_Look_Around", "armor": "Casual_Walk", "gamble": "Discuss_While_Moving", "auction": "Thoughtful_Walk"}
+
+## A keeper's clips with their thirty moves, and (if they stroll) their round: their spot, a step along their stall's
+## front, and a spot at the edge of the waypoint's square facing it, and back.
+static func lively(clips: Dictionary, role: String, at: Vector2, yaw: float, w: World) -> Dictionary:
+	var c := clips.duplicate(true)
+	if ACTS.has(role):
+		c["work"] = ACTS[role]
+	if STROLL.has(role) and not c.get("stay", false):
+		var side := Vector2(cos(yaw), -sin(yaw))
+		var stroll := at + side * 2.6 + Vector2(sin(yaw), cos(yaw)) * 0.8
+		var wp := Vector2(WP_AT.x, WP_AT.z)
+		var to_me := (at - wp).normalized()
+		var plaza := wp + to_me * (WP_CLEAR + 2.0)
+		var face_wp := face(plaza, wp)
+		c["patrol"] = {"points": [Vector3(at.x, 0, at.y), Vector3(stroll.x, 0, stroll.y), Vector3(plaza.x, 0, plaza.y)],
+			"walk": STROLL[role], "speed": 1.05, "face": [yaw, yaw, face_wp], "chance": 0.14,
+			"works": [ACTS[role], ACTS[role], ["Look_Around_Dumbfounded", "Big_Wave_Hello", "Stand_and_Chat", "Long_Breathe_and_Look_Around",
+				"Talk_Passionately", "Listening_Gesture", "Shrug"]]}
+	return c
 
 static func ok() -> bool:
 	for f in ["palisade", "gate", "forge", "alchemy", "armory", "wagon", "tent", "runestone", "lantern"]:
@@ -121,6 +189,9 @@ static func ring_pt(a: float, r: float) -> Vector2:
 static func build(w: World) -> void:
 	w.bounds = Rect2(-38, -42, 76, 80)
 	w.theme = {"name": "town", "forest_camp": true}
+	if ISLAND:
+		w.island_c = CENTER
+		w.island_r = ISLAND_R
 	var V: Dictionary = Data.VENDORS[w.act]
 	var rng := w.rng
 	var gate_z := CENTER.y - RADIUS
@@ -160,21 +231,29 @@ static func build(w: World) -> void:
 	w.mm_chunked(mesh(DIR + "palisade.glb"), pal_x, true, 24.0)
 	var gate := model("gate")
 	w._place(gate, Vector3(0, 0, gate_z))
+	roost(w, gate)
 	gate.scale = Vector3.ONE * 1.15
 	for gx in [-4.1, 4.1]:
 		w.add_box(Vector3(gx, 0, gate_z), Vector2(1.15, 2.2), 0.0)
 	_lantern(w, Vector3(0, w.height_at(0, gate_z) + 4.7, gate_z + 0.4), true)
-	w.exits.append({"pos": Vector3(0, 0, gate_z - 3.5), "radius": 3.5, "to": "wild", "label": w.act_name("wild")})
+	if ISLAND:
+		CampIsland.bar_gate(w, Vector3(0, 0, gate_z), 0.0)
+	else:
+		w.exits.append({"pos": Vector3(0, 0, gate_z - 3.5), "radius": 3.5, "to": "wild", "label": w.act_name("wild")})
 	# the west gate and the track down to the Mournwater Coast
 	var wg := ring_pt(WEST, RADIUS)
 	var wgate := model("gate")
 	w._place(wgate, Vector3(wg.x, 0, wg.y))
+	roost(w, wgate)
 	wgate.scale = Vector3.ONE * 1.15
 	wgate.rotation.y = PI * 0.5
 	for gz in [-4.1, 4.1]:
 		w.add_box(Vector3(wg.x, 0, wg.y + gz), Vector2(2.2, 1.15), 0.0)
 	_lantern(w, Vector3(wg.x + 0.4, w.height_at(wg.x, wg.y) + 4.7, wg.y), true)
-	w.exits.append({"pos": Vector3(wg.x - 6.0, 0, wg.y), "radius": 3.2, "to": "coast", "label": w.act_name("coast")})
+	if ISLAND:
+		CampIsland.bar_gate(w, Vector3(wg.x, 0, wg.y), PI * 0.5)
+	else:
+		w.exits.append({"pos": Vector3(wg.x - 6.0, 0, wg.y), "radius": 3.2, "to": "coast", "label": w.act_name("coast")})
 	w.dirt_lines.append([CENTER, Vector2(wg.x - 9.0, wg.y), 2.6])
 
 	# --- rune stones standing in the trees outside the wall, glowing faintly
@@ -220,6 +299,7 @@ static func build(w: World) -> void:
 		var yaw := face(p, CENTER)
 		var stall := model(s["stall"])
 		w._place(stall, Vector3(p.x, 0, p.y))
+		roost(w, stall)
 		stall.rotation.y = yaw
 		stall.scale = Vector3.ONE * STALL_SCALE
 		var half: Vector2 = (s["half"] as Vector2) * STALL_SCALE
@@ -229,7 +309,8 @@ static func build(w: World) -> void:
 		var lp: Vector2 = s.get("inside", Vector2.ZERO) * STALL_SCALE
 		if s.has("inside"):
 			np = p + Vector2(cos(yaw), -sin(yaw)) * lp.x + fwd * lp.y
-		var kp := _keeper(w, s["npc"], V[s["role"]], s["role"], np, yaw, s["clips"])
+		var kp := _keeper(w, s["npc"], V[s["role"]], s["role"], np, yaw, lively(s["clips"], s["role"], np, yaw, w))
+		kp.game_world_height = Callable(w, "height_at")
 		if s.has("inside"):
 			kp.radius = half.y - lp.y + 1.3      # talked to from in front of the stall
 
@@ -237,7 +318,10 @@ static func build(w: World) -> void:
 		if s.has("hold"):
 			hold(kp.model, s["hold"])
 			kp.set_meta("hold", s["hold"])
+		if s["role"] == "smith":
+			SmithForge.setup(kp, p, yaw, STALL_SCALE, w)
 	_auction_hall(w)
+	_smokes(w)
 	# Halvar's furnace beside his forge, where weapons are tempered over felled wood (Furnace)
 	var fp: Vector3 = _local(w, SHOPS[1]["at"], Vector3(5.2, 0, 0.5))
 	Furnace.place(w, fp, face(Vector2(fp.x, fp.z), CENTER))
@@ -262,7 +346,8 @@ static func build(w: World) -> void:
 		w.add_circle(post.position, 0.4)
 	# Captain Roth keeps the gate
 	var captain := _keeper(w, "roth", V["elder"], "elder", Vector2(5.0, gate_z + 5.0), face(Vector2(5.0, gate_z + 5.0), CENTER),
-		{"idle": "Idle", "work": ["Short_Breathe_and_Look_Around", "Long_Breathe_and_Look_Around"], "talk": "Talk_Passionately"})
+		lively({"idle": "Idle", "work": ["Short_Breathe_and_Look_Around", "Long_Breathe_and_Look_Around"], "talk": "Talk_Passionately"},
+			"elder", Vector2(5.0, gate_z + 5.0), face(Vector2(5.0, gate_z + 5.0), CENTER), w))
 	VendorCourt.light_captain(w, captain)
 	for bx in [-5.5, 5.5]:
 		w.solid(Props.banner(w.props_root, Vector3(bx, w.height_at(bx, gate_z + 2.2), gate_z + 2.2), Color(0.42, 0.06, 0.05), Color(0.6, 0.5, 0.25)))
@@ -274,6 +359,7 @@ static func build(w: World) -> void:
 			continue
 		var tent := model("tent")
 		w._place(tent, Vector3(tp.x, 0, tp.y))
+		roost(w, tent)
 		tent.rotation.y = face(tp, CENTER) + rng.randf_range(-0.25, 0.25)
 		tent.scale = Vector3.ONE * 1.25
 		w.add_box(Vector3(tp.x, 0, tp.y), Vector2(2.2, 1.9), tent.rotation.y)
@@ -360,6 +446,8 @@ static func build(w: World) -> void:
 		var d := Vector2(x, z).distance_to(CENTER)
 		if d < RADIUS + 3.0:
 			continue
+		if w.off_island(x, z, 1.8):
+			continue                     # (nothing grows past the island's edge)
 		if absf(x) < 5.5 and z < gate_z and z > gate_z - 40:
 			continue                     # the road out of the gate
 		if absf(z - CENTER.y) < 6.0 and x < -RADIUS + 2.0:
@@ -382,7 +470,7 @@ static func build(w: World) -> void:
 	for i in 60:
 		var x := rng.randf_range(w.bounds.position.x - 20, w.bounds.end.x + 20)
 		var z := rng.randf_range(w.bounds.position.y - 20, w.bounds.end.y + 10)
-		if Vector2(x, z).distance_to(CENTER) < RADIUS + 2.0:
+		if Vector2(x, z).distance_to(CENTER) < RADIUS + 2.0 or w.off_island(x, z, 1.5):
 			continue
 		w._rock(Vector3(x, 0, z), rng.randf_range(0.8, 2.4), false)
 	for i in 22:
@@ -393,7 +481,13 @@ static func build(w: World) -> void:
 
 	w._rasterize()
 	w._flush_stones(Props.stone())
-	w._build_terrain(FOREST_FLOOR)
+	if ISLAND:
+		# the ground only as far as the island's edge; the cliff, the roots, the void and the sky round it
+		w.terrain_patch(w.bounds.grow(World.MARGIN), 1.0, FOREST_FLOOR, "Terrain", -INF,
+			func(x: float, z: float) -> bool: return not w.off_island(x, z, -1.0), 0.0, Callable(w, "island_clip"))
+		CampIsland.build(w)
+	else:
+		w._build_terrain(FOREST_FLOOR)
 	w._scatter_grass(24000, FOREST_GRASS, 0.26)
 	w._scatter_ferns(380)
 	w.spawns["start"] = Vector3(0, 0, 5)
@@ -422,13 +516,15 @@ static func _auction_hall(w: World) -> void:
 	var yaw := PI * 0.5             # its front toward the waypoint (east)
 	var hall := model("auction_hall")
 	w._place(hall, Vector3(ah.x, 0, ah.y))
+	roost(w, hall)
 	hall.rotation.y = yaw
 	w.add_box(Vector3(ah.x, 0, ah.y), AUCTION_HALF * 0.95, yaw)
 	var fwd := Vector2(sin(yaw), cos(yaw))
 	var dp := ah + fwd * (AUCTION_HALF.y + 1.3)
 	if ResourceLoader.exists(NPC_DIR + "auctioneer.glb"):
-		_keeper(w, "auctioneer", "Auctioneer Corvin", "auction", dp, yaw,
-			{"idle": "Idle_3", "work": ["Talk_Passionately", "Talk_with_Left_Hand_Raised"], "talk": "Talk_with_Hands_Open"})
+		var ak := _keeper(w, "auctioneer", "Auctioneer Corvin", "auction", dp, yaw,
+			lively({"idle": "Idle_3", "work": ["Talk_Passionately", "Talk_with_Left_Hand_Raised"], "talk": "Talk_with_Hands_Open"}, "auction", dp, yaw, w))
+		ak.game_world_height = Callable(w, "height_at")
 	else:
 		w._inter("vendor", "The Gilded Hall", Vector3(dp.x, 0, dp.y), 1.6, null, {"role": "auction"})
 	# warm lamplight spilling from its door and balcony
@@ -444,6 +540,24 @@ static func _near_shop(p: Vector2, r: float) -> bool:
 	return p.distance_to(Vector2(WP_AT.x, WP_AT.z)) < r * 0.7 + (4.5 if grand_waypoint() else 0.0) or p.distance_to(Vector2(0, CENTER.y - RADIUS)) < r
 
 ## A point given in a stall's own frame (x right, z toward the camp's centre), in world space.
+## Real smoke (jj, 2026-11-04: "real smoke and real blacksmith stuff coming out of the rooftops"): a Mantaflow plume
+## (tools/blender/fx/smoke_flipbook.py "chimney", DemonKitFx BOOKS) looping out of the forge's chimney, thick and
+## dark while he works the fire, a pale wisp of the alchemist's brew off her cauldron, and the camp's cookfire's
+## smoke; all leaning the same way on the breeze.
+static func _smokes(w: World) -> void:
+	if not ResourceLoader.exists(DemonKitFx.TEX + "smoke_chimney.png"):
+		return
+	var sm := [
+		[_local(w, SHOPS[1]["at"], Vector3(-0.24, 3.7, -0.79) * STALL_SCALE), 6.0, Color(1.25, 1.17, 1.1)],     # the forge's chimney
+		[_local(w, SHOPS[1]["at"], Vector3(-0.24, 3.7, -0.79) * STALL_SCALE) + Vector3(0.2, 0.3, 0.1), 4.6, Color(0.85, 0.8, 0.76)],
+		[_local(w, SHOPS[0]["at"], Vector3(-1.3, 1.2, 0.4)), 2.6, Color(1.2, 1.6, 1.15)],                    # the alchemist's cauldron
+		[Vector3(COOKFIRE_AT.x, w.height_at(COOKFIRE_AT.x, COOKFIRE_AT.y) + 0.4, COOKFIRE_AT.y), 3.6, Color(1.2, 1.15, 1.1)]]
+	for s in sm:
+		var mi := DemonKitFx.smoke(w.fx_root, s[0], "chimney", float(s[1]), 6.0, true, s[2])
+		var m := mi.material_override as ShaderMaterial
+		m.set_shader_parameter("flip", 1.0)           # (one breeze)
+		m.set_shader_parameter("dur", randf_range(5.5, 7.5))
+
 static func _local(w: World, at: Vector2, off: Vector3) -> Vector3:
 	var yaw := face(at, CENTER)
 	var b := Basis(Vector3.UP, yaw)
@@ -520,15 +634,34 @@ static func hold(m: Node3D, spec: Dictionary) -> void:
 	else:
 		it = Models.item_model({"base": spec["item"], "rarity": 0})
 	ba.add_child(it)
+	fist(m, spec["bone"], 1.0)
 	# Meshy's armature works in centimetres (its node is scaled 0.01): undo that for the held thing
 	var k := 1.0 / maxf((sk.get_parent() as Node3D).scale.x if sk.get_parent() is Node3D else 1.0, 0.0001)
 	it.scale = Vector3.ONE * k
 	it.rotation_degrees = spec.get("rot", Vector3.ZERO)
 	it.position = (spec.get("pos", Vector3.ZERO) as Vector3) * k
 
+## A building the ravens may sit on (CampRavens finds its roof).
+static func roost(w: World, n: Node3D) -> void:
+	if n == null:
+		return
+	var r: Array = w.get_meta("roosts") if w.has_meta("roosts") else []
+	r.append(n)
+	w.set_meta("roosts", r)
+
+## Curls a keeper's hand into a fist (its fist_R / fist_L shape key, tools/blender/npc/fist_keys.py; Meshy's rigs have
+## no finger bones), k 0 open .. 1 closed. A model without the keys is left as it is.
+static func fist(m: Node3D, bone: String, k: float) -> void:
+	var key := "fist_L" if bone.begins_with("Left") else "fist_R"
+	for mi in m.find_children("*", "MeshInstance3D", true, false):
+		var i: int = (mi as MeshInstance3D).find_blend_shape_by_name(key)
+		if i >= 0:
+			(mi as MeshInstance3D).set_blend_shape_value(i, k)
+
 ## A shopkeeper: the rigged Meshy model in an Inter, playing its clips (Inter._animate).
 static func _keeper(w: World, file: String, label: String, role: String, p: Vector2, yaw: float, clips: Dictionary) -> Inter:
 	var it := w._inter("vendor", label, Vector3(p.x, 0, p.y), 1.5, null, {"role": role})
+	it.add_to_group("camp_walker")       # (the ravens keep clear of the people about the camp)
 	var m: Node3D = (load(NPC_DIR + file + ".glb") as PackedScene).instantiate()
 	m.name = "Keeper"
 	it.set_meta("npc_file", NPC_DIR + file + ".glb")    # the trade window's portrait builds its own copy
