@@ -238,6 +238,7 @@ func _ready() -> void:
 	if Kpi.start(self):
 		return       # the official performance KPIs (scripts/kpi.gd): a scripted scenario, measured, then quit
 	if args.has("--server"):
+		Enemy.server_nopose = not args.has("--pose")      # nobody sees a server's bodies (Enemy.server_nopose)
 		# the Battlegrounds' dedicated server: `godot --headless --path . -- --server [--port N]`
 		var pi := args.find("--port")
 		var port := int(args[pi + 1]) if pi >= 0 and pi + 1 < args.size() else Net.PORT

@@ -286,6 +286,14 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   three platforms against staging and upload them to Steam's password-protected `staging` beta branch
   (`tools/ci/steam_upload.sh`, refuses the default branch). Tests: `tools/nakama_check.gd`, `tools/cloud_test.gd`
   (incl. forged stashes, replayed and planted tickets), `bg_test` with `cloud`.
+- **Dedicated servers are lean** (Blaine's capacity audit, 2026-11-05; measured on the 4 GB / 2 vCPU droplet with bot
+  players, `tools/load_bot.gd`): a server doesn't pose bodies (`Enemy.server_nopose`, on with `--server`; `--pose`
+  turns it off) and ticks at 30 fps (`Battlegrounds.server_tick`, `--tick N`); physics stays at 60. The staging CI also
+  exports the **Linux Server** preset (`dedicated_server`, everything stripped to placeholders: no textures, meshes
+  keep only their AABB; the debug template, since 4.3's release template segfaults on a dedicated-server pack) as
+  the `AshenCrown-server` artifact, never uploaded to itch/Steam. A Battlegrounds world: 1.25 GB -> ~0.4 GB, a busy
+  one (6 players fighting) 95% -> 24% of a core, an empty one 31% -> 13%. So server code must never need pixels or
+  mesh surfaces (a stripped mesh has none: guard like `Flora.oak_model`'s leaves and `UI._scaled_tex`).
 - **Browser build (WebGL)** is a test build only and is fragile:
   - it is exported with **Godot 4.5.1** in CI (the desktop builds use 4.3): Godot 4.3's WebGL renderer
     blanks the whole 3D view in busy scenes (many objects near lights). Keep code working in both versions:

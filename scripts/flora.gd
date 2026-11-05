@@ -370,6 +370,8 @@ static func oak_model(k: int, glb := "", leaf_n := -1) -> ArrayMesh:
 	var picks: Array[Vector3] = []
 	var tries := 0
 	var want := int(spec[3]) if leaf_n < 0 else leaf_n
+	if verts.is_empty():
+		want = 0       # (a stripped server build: its meshes are placeholders, no vertices; nobody sees the leaves)
 	while picks.size() < want and tries < 6000:
 		tries += 1
 		var v: Vector3 = verts[rng.randi() % verts.size()]

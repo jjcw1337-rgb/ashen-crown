@@ -2025,6 +2025,8 @@ func _process_body(delta: float) -> void:
 		_carry_weapon(delta)
 		if pd != null:
 			pd.idle_fidget(st, delta)   # now and then, standing about, he peers at a vial
+	if Enemy.server_nopose:
+		return
 	Anim.pose(rig, st)
 	if is_archer():
 		Archer.pose_bow(self, st)
@@ -2207,6 +2209,8 @@ func _puppet_process(delta: float) -> void:
 	block_amt = st.get("block", 0.0)
 	atk_t = 0.0 if st.get("atk", -1.0) >= 0.0 else -1.0
 	_show_chop_axe(atk_t >= 0.0 and str(st.get("style", "")) == "chop", "woodsman_axe")
+	if Enemy.server_nopose:
+		return
 	Anim.pose(rig, st)
 	if is_archer():
 		Archer.pose_bow(self, st)
