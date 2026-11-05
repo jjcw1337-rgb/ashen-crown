@@ -51,7 +51,7 @@ var _flash := 0.0
 
 func setup(g: Node) -> void:
 	game = g
-	if OS.get_cmdline_user_args().has("--server") or DisplayServer.get_name() == "headless":
+	if OS.get_cmdline_user_args().has("--server"):     # (dedicated servers and match workers; headless tests still need the stage)
 		set_process(false)
 		return
 	stretch = true
