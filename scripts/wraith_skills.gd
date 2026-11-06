@@ -251,7 +251,7 @@ static func impact(h: Hero) -> bool:
 				var to2: Vector3 = e.global_position - h.global_position
 				to2.y = 0
 				if to2.length() < 1.0 or fwd.dot(to2.normalized()) > cos(deg_to_rad(80.0)):
-					h._hit_enemy(e, 1.4, 0.6, "r_reap")
+					h._hit_enemy(e, 1.7, 0.6, "r_reap")
 					reaped += 1
 			if reaped > 0:
 				h.life = minf(h.max_life, h.life + h.max_life * (2.0 + h.talent("reap_heal")) / 100.0 * mini(reaped, 6))
