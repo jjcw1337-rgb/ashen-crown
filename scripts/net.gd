@@ -193,7 +193,12 @@ func local_ips() -> Array:
 
 func _on_connected() -> void:
 	reached = true
-	rpc_id(1, "sv_hello", my_name, game.hero.net_gear(), game.hero.level, game.party_join_ticket, game.char_id)
+	# the character the lobby admitted: a run's hero ("run_<class>") has no saved character id (Game._start_run_raid
+	# clears it), and the match turned away every Battlegrounds join while the empty id was sent (2026-11-06)
+	var admitted_as: String = game.char_id
+	if game.lobby_client != null and game.lobby_client.match_id != "":
+		admitted_as = str(game.lobby_client.character)
+	rpc_id(1, "sv_hello", my_name, game.hero.net_gear(), game.hero.level, game.party_join_ticket, admitted_as)
 	game.party_join_ticket = ""
 	if game.bg_mode and (game.lobby_client == null or game.lobby_client.match_id == ""):
 		# with accounts on: a one-time join ticket from Nakama (over HTTPS), never the session itself
@@ -414,7 +419,9 @@ func sv_hello(nm: String, gear: Dictionary, _lvl: int, queue_ticket := "", chara
 			rpc_id(pid, "cl_party_refused")
 			return
 		if not active or not multiplayer.get_peers().has(pid): return
-		if str(game.match_instance.members[pid].character) != character:
+		var want := str(game.match_instance.members[pid].character)
+		# (a run's hero has no saved character: builds before 2026-11-06 sent "" for it; the ticket already proved who it is)
+		if want != character and not (want.begins_with("run_") and character == ""):
 			rpc_id(pid, "cl_party_refused")
 			return
 	if coop_server and game.coop_server != null and game.coop_server.party_queue != null:
