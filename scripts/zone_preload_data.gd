@@ -1,6 +1,12 @@
 class_name ZonePreloadData
 ## Recorded by ZonePreload.record (see zone_preload.gd); regenerate with tools/zone_preload_gen.py.
 const PATHS := {
+	"0:arena": [
+		"res://assets/models/crypt/bones.glb",
+		"res://assets/models/crypt/candles.glb",
+		"res://assets/models/crypt/pillar.glb",
+		"res://assets/models/crypt/sconce.glb",
+	],
 	"0:bg": [
 		"res://assets/models/bg/brambles.glb",
 		"res://assets/models/bg/frozen_pillar.glb",
@@ -27,6 +33,45 @@ const PATHS := {
 		"res://assets/models/waypoint/banner.glb",
 		"res://assets/models/waypoint/crystal_rune.glb",
 	],
+	"0:coast": [
+		"res://assets/models/coast/beacon.glb",
+		"res://assets/models/coast/crates.glb",
+		"res://assets/models/coast/driftwood.glb",
+		"res://assets/models/coast/drying_rack.glb",
+		"res://assets/models/coast/fishing_hut.glb",
+		"res://assets/models/coast/sea_stack.glb",
+		"res://assets/models/coast/wreck.glb",
+		"res://assets/models/isles/beacon.glb",
+		"res://assets/models/isles/mono.glb",
+		"res://assets/models/isles/store.glb",
+		"res://assets/models/isles/temple.glb",
+		"res://assets/models/isles/wreck.glb",
+		"res://assets/models/npc/osric.glb",
+	],
+	"0:isle_bleak": [
+		"res://assets/models/isles/wreck.glb",
+	],
+	"0:isle_lost": [
+		"res://assets/models/isles/mono.glb",
+	],
+	"0:isle_merchant": [
+		"res://assets/models/camp/wagon.glb",
+		"res://assets/models/isles/beacon.glb",
+		"res://assets/models/isles/store.glb",
+	],
+	"0:isle_ruins": [
+		"res://assets/models/isles/temple.glb",
+	],
+	"0:isle_verdant": [
+		"res://assets/models/isles/verdant/egg_nest.glb",
+		"res://assets/models/isles/verdant/raptor_pen.glb",
+		"res://assets/models/isles/verdant/troll_hut.glb",
+		"res://assets/models/isles/verdant/troll_totem.glb",
+		"res://assets/models/isles/verdant/tunnel.glb",
+		"res://assets/models/monsters/dino/baby_trike.glb",
+		"res://assets/models/monsters/dino/raptor.glb",
+		"res://assets/models/monsters/dino/trex.glb",
+	],
 	"0:lair": [
 		"res://assets/models/camp/forge.glb",
 		"res://assets/models/camp/lantern.glb",
@@ -38,6 +83,12 @@ const PATHS := {
 		"res://assets/models/fort/hut.glb",
 		"res://assets/models/fort/palisade.glb",
 		"res://assets/models/fort/tower.glb",
+	],
+	"0:sandbox": [
+		"res://assets/models/crypt/bones.glb",
+		"res://assets/models/crypt/candles.glb",
+		"res://assets/models/crypt/pillar.glb",
+		"res://assets/models/crypt/sconce.glb",
 	],
 	"0:town": [
 		"res://assets/models/camp/alchemy.glb",
