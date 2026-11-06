@@ -96,6 +96,17 @@ CELLS = {
         ("cleave", "an armored gauntlet slamming a sword down onto cracked stone in a burst of white light"),
         ("nova", "an expanding ring of golden holy fire bursting outward across the ground"),
     ],
+    "demon": [
+        ("d_volcano", "a volcano erupting out of cracked ground, molten meteors flying out of its mouth"),
+        ("d_detonate", "a burning infernal brand sigil on a demon's victim exploding in a pillar of hellfire"),
+        ("d_pact", "a horned magma demon clutching his own bleeding chest, blood turning to fire in a dark pact sigil"),
+        ("fists", "two massive molten magma fists smashing together in a shower of lava and sparks"),
+        ("icharge", "a horned magma brute charging head-down, a ghostly flaming ram skull leading him"),
+        ("cslam", "a jagged fissure of lava splitting the ground open, obsidian plates tilting up"),
+        ("hurl", "a huge burning boulder hurled through the air trailing smoke and fire"),
+        ("grip", "a forged iron chain with a hooked claw flung through the air, glowing red hot"),
+        ("wrath", "a demon kneeling inside an obsidian cocoon cracking open with molten light"),
+    ],
     "gems2": [
         ("heartstone", "a heart-shaped rose-red crystal gemstone pulsing with warm light"),
         ("prism", "a clear crystal prism splitting light into a rainbow"),
