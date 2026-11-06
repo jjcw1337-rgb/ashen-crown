@@ -2,7 +2,7 @@ extends SceneTree
 ## Frames of the Warlock (the jungle void spirit) and every skill of hers in the game, for judging the look:
 ## the body close up (idle, floating, casting), then each skill cast at a pack of zombies on the moor, a few frames
 ## each. Needs a display (on a Mac it just opens a window).
-##   godot --path . --fixed-fps 30 --resolution 1280x720 -s tools/warlock_showcase.gd -- <out_dir> [skill,skill|all] [quality 0-3]
+##   godot --path . --fixed-fps 30 --resolution 1280x720 -s tools/warlock_showcase.gd -- <out_dir> [skill,skill|all] [quality 0-3] [zoom]
 var g
 var out := ""
 var shots := 0
@@ -54,6 +54,7 @@ func _run() -> void:
 	out = a[0] if a.size() > 0 else "/tmp/warlock_show"
 	var only: String = a[1] if a.size() > 1 else "all"
 	var q := int(a[2]) if a.size() > 2 else 2
+	var zoom := float(a[3]) if a.size() > 3 else 0.5
 	DirAccess.make_dir_recursive_absolute(out)
 	while g.world == null or g._busy or g._intro_playing:
 		await process_frame
@@ -80,7 +81,7 @@ func _run() -> void:
 		h.cmd_move(h.global_position + Vector3(6, 0, 4))
 		await frames("body_float", 3, 0.25)
 		await create_timer(1.0).timeout
-	g.zoom = 0.5
+	g.zoom = zoom
 	var ids: Array = ["w_corruption", "w_unending", "w_festering", "w_leeching", "w_reckoning", "w_malediction",
 		"w_terrify", "w_effigy", "w_darkwind", "w_crowstorm", "w_leechbolt", "w_harvest", "w_soulfeast", "drain", "blight", "shackles", "covenant"]
 	for id in ids:
