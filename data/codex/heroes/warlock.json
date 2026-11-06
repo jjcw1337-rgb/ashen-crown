@@ -1,7 +1,7 @@
 {
 	"cls": "warlock",
 	"name": "Warlock",
-	"fantasy": "The Harrower: a gnome who struck a bargain with the crows of the Hollow. He rots foes from the inside, terrifies them into flight and drinks what is left, with Fiddlesticks' dread and hunger in fel green. A run takes him down one of three roads: Corruption (stacking curses), Fear (crowd control) or Drain (life drain that overflows into shields).",
+	"fantasy": "A pure evil spirit risen from the depths of an ancient jungle: a graceful figure of starry violet void, black thorned vines coiled up her limbs, a hood of dark leaves over fel green eyes, glowing orchids on her shoulders, her feet fading into roots and mist. Beautiful and wrong, in bright Warcraft colours. A run takes her down one of three roads: Corruption (stacking curses), Fear (crowd control) or Drain (life drain that overflows into shields).",
 	"directions": [
 		{
 			"id": "Corruption",
@@ -11,7 +11,7 @@
 		{
 			"id": "Fear",
 			"name": "Fear",
-			"desc": "Crowd control: terrify, bind and scatter. Feared foes flee, panic spreads, and the crows take whatever stops running."
+			"desc": "Crowd control: terrify, bind and scatter. Feared foes freeze or flee, panic spreads, and the jungle's void takes whatever stops running."
 		},
 		{
 			"id": "Drain",
@@ -210,15 +210,15 @@
 		{
 			"id": "w_effigy",
 			"status": "live",
-			"name": "Scarecrow Effigy",
+			"name": "Dread Totem",
 			"rarity": 1,
 			"direction": "Fear",
-			"desc": "Plant a scarecrow up to 12 m away for 8 seconds. The first three foes to come within 4 m are frightened for 1 second as its crows burst out cawing.",
+			"desc": "Raise a vine-choked jungle idol up to 12 m away for 8 seconds. The first three foes to come within 4 m are frightened for 1 second as its void eyes flare and its wisps lash out.",
 			"mana": 14,
 			"cd": 14.0,
 			"use": 0.6,
 			"range": 12.0,
-			"role": "Fear trap",
+			"role": "Fear totem",
 			"tags": [
 				"trap",
 				"cc"
@@ -228,15 +228,15 @@
 		{
 			"id": "w_darkwind",
 			"status": "live",
-			"name": "Dark Wind",
+			"name": "Void Wisp",
 			"rarity": 1,
 			"direction": "Fear",
-			"desc": "Send a crow at a foe: it bounces on to up to five enemies, 70% spell damage and a one-second slow each. Feared or bound foes take double.",
+			"desc": "Loose a wisp of void light at a foe: it bounces on to up to five enemies, 70% spell damage and a one-second slow each. Feared or bound foes take double.",
 			"mana": 12,
 			"cd": 6.0,
 			"use": 0.6,
 			"range": 12.0,
-			"role": "Bouncing crow",
+			"role": "Bouncing wisp",
 			"tags": [
 				"spell",
 				"projectile",
@@ -248,10 +248,10 @@
 		{
 			"id": "w_crowstorm",
 			"status": "live",
-			"name": "Crowstorm",
+			"name": "Eclipse Bloom",
 			"rarity": 2,
 			"direction": "Fear",
-			"desc": "Gather the crows, then blink up to 8 m: a storm of crows whirls 5 m round you for 5 seconds, 60% spell damage every half second, and everything caught as you land is feared for 1 second.",
+			"desc": "Gather the void, then blink up to 8 m: a storm of void petals and wisps whirls 5 m round you for 5 seconds, 60% spell damage every half second, and everything caught as you land is feared for 1 second.",
 			"mana": 40,
 			"cd": 45.0,
 			"use": 1.5,
@@ -286,14 +286,14 @@
 		{
 			"id": "w_harvest",
 			"status": "live",
-			"name": "Bountiful Harvest",
+			"name": "Thornlash",
 			"rarity": 1,
 			"direction": "Drain",
-			"desc": "Sweep a scythe of shadow round you (5 m): 140% spell damage, and each foe hit heals you 4% of your life (8% when it is the only one).",
+			"desc": "Lash a whip of black thorned vines round you (5 m): 140% spell damage, and each foe hit heals you 4% of your life (8% when it is the only one).",
 			"mana": 12,
 			"cd": 0.0,
 			"use": 0.9,
-			"role": "Healing sweep",
+			"role": "Healing lash",
 			"tags": [
 				"spell",
 				"area",
@@ -892,13 +892,13 @@
 			"text": "Your DoTs tick 20% faster."
 		},
 		{
-			"id": "gem_crowseye",
+			"id": "gem_voideye",
 			"status": "design",
-			"name": "Crow's Eye",
+			"name": "Void Eye",
 			"rarity": 2.0,
 			"direction": "Fear",
 			"color": "#5b4a7a",
-			"text": "Your fears last 50% longer, and a feared foe is marked for your crows."
+			"text": "Your fears last 50% longer, and a feared foe is marked for your void wisps."
 		}
 	]
 }

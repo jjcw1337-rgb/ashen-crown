@@ -1,18 +1,19 @@
 class_name WarlockHarrowFx
 extends RefCounted
-## The look of the Warlock's three directions (WarlockHex): his own visual language, built from WarlockFx's fel fire
-## and the crows of the Hollow. Corruption is fel green (curses: runes turning round the cursed, motes rising off
-## them), Fear is shadow and violet (a terror mark over the frightened, crows wheeling round it), Drain is pale life
-## (bolts and beams pulling motes back into his hand, overflow hardening into a green glass shield).
+## The look of the Warlock's three directions (WarlockHex): the jungle void spirit's own visual language (Blaine
+## 2026-11-06: ethereal green and purple void energy, dark thorned vines, beautiful and evil, Warcraft-bright).
+## Corruption is fel green (curses: runes turning round the cursed, motes rising off them), Fear is void violet (a
+## terror mark over the frightened, void wisps wheeling round it, the Dread Totem, petals and vines), Drain is pale
+## life (bolts, the Thornlash and beams pulling motes back into her hand, overflow hardening into a green glass shield).
 ## Events (Hero.fx, the caster's game and his puppet on everyone else's alike; WarlockFx.play hands them here):
-##   <any of IDS> "cast"                 the hand flares in the direction's colour (crows burst out for the fear skills)
+##   <any of IDS> "cast"                 the hand flares in the direction's colour (void wisps burst out for the fear skills)
 ##   <curse> "curse" {t: [foe], x: secs}   the curse's mark on the foe (refreshed by the next)
 ##   w_festering "fester" {t}            the hex bursts
 ##   w_malediction / w_leechbolt "bolt" {t, n}  a bolt from his hand into the foe (bigger with more curses)
 ##   <any> "fear" {t, x}                 the terror mark; "root" {t}: thorns hold the foe where its fear ended
 ##   w_terrify "scream" {t}              a shriek from him to the foe
 ##   w_effigy "plant" {p, x} / "caw" {p, t} / "gone" {p}
-##   w_darkwind "wind" {t}               a crow flies the chain, WarlockHex.WIND_GAP a hop
+##   w_darkwind "wind" {t}               a void wisp flies the chain, WarlockHex.WIND_GAP a hop
 ##   w_crowstorm "blink" {p, q} / "storm" {x, r}
 ##   w_harvest "sweep" {r, t}
 ##   w_soulfeast "feast" {x} / "end"     beams to every foe in reach, drawn here every frame from the local enemies
@@ -25,15 +26,13 @@ const DEEP := Warlock.DEEP
 const SHADOW := Color(0.42, 0.22, 0.7)
 const VIOLET := Color(0.72, 0.45, 1.0)
 const LIFE := Color(0.75, 1.0, 0.6)
-const CROW_GLB := "res://assets/models/warlock/crow.glb"
-const SCARECROW_GLB := "res://assets/models/warlock/scarecrow.glb"
+const TOTEM_GLB := "res://assets/models/warlock/dread_totem.glb"
 const CURSE_COLORS := {"w_corruption": Color(0.35, 1.0, 0.25), "w_unending": Color(0.85, 0.95, 0.25),
 	"w_festering": Color(0.62, 0.35, 0.95), "w_leeching": Color(0.95, 0.4, 0.45), "w_reckoning": Color(0.92, 1.0, 0.85)}
 const DIR_COLOR := {"w_corruption": FEL, "w_malediction": FEL, "w_unending": FEL, "w_festering": FEL, "w_leeching": FEL,
 	"w_reckoning": PALE, "w_terrify": VIOLET, "w_effigy": VIOLET, "w_darkwind": VIOLET, "w_crowstorm": VIOLET,
 	"w_leechbolt": LIFE, "w_harvest": LIFE, "w_soulfeast": LIFE}
 
-static var _crow_mat: StandardMaterial3D
 static var _eye_mat: Material
 static var _straw_mat: StandardMaterial3D
 static var _sack_mat: StandardMaterial3D
@@ -65,9 +64,9 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			WarlockFx.flash_light(root, hand, c, 1.8, 0.3, 4.0)
 			_motes(root, hand, c, 10, 0.4)
 			if s in ["w_terrify", "w_effigy", "w_darkwind", "w_crowstorm"]:
-				_crow_burst(root, pos + Vector3(0, 1.6, 0), 2 if s != "w_crowstorm" else 6, 1.0)
+				_wisp_burst(root, pos + Vector3(0, 1.6, 0), 2 if s != "w_crowstorm" else 6, 1.0)
 			if s == "w_crowstorm":
-				_snd(h, "crow_flock", "drain_start", -4.0)
+				_snd(h, "eclipse_storm", "drain_start", -4.0)
 			if s == "w_soulfeast" or s == "w_crowstorm":
 				var sg := WarlockFx.sigil(root, 2.2)
 				sg.global_position = pos + Vector3(0, 0.06, 0)
@@ -106,24 +105,24 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			SkillFx.shake(h, 0.15)
 		"plant":
 			var at: Vector3 = ev["p"]
-			var n := scarecrow()
+			var n := totem()
 			root.add_child(n)
 			n.global_position = at
 			n.scale = Vector3(1.0, 0.05, 1.0)
 			n.create_tween().tween_property(n, "scale", Vector3.ONE, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			_dirt(root, at)
 			h.fxs["hx_effigy_%d_%d" % [roundi(at.x * 10.0), roundi(at.z * 10.0)]] = {"n": n, "until": float(ev.get("x", 8.0)) + 0.5}
-			_snd_at("effigy_plant", "shackles", at, -4.0)
+			_snd_at("totem_rise", "shackles", at, -4.0)
 		"caw":
 			var at: Vector3 = ev["p"]
 			var key := "hx_effigy_%d_%d" % [roundi(at.x * 10.0), roundi(at.z * 10.0)]
-			var head := at + Vector3(0, 2.2, 0)
+			var head := at + Vector3(0, 1.9, 0)
 			if h.fxs.has(key) and is_instance_valid(h.fxs[key]["n"]):
 				_eyes_flare(h.fxs[key]["n"])
 			for t in targets:
-				_crow_dart(root, head, SkillFx.chest_of(t, 1.3))
+				_wisp_dart(root, head, SkillFx.chest_of(t, 1.3))
 			WarlockFx.flash_light(root, head, VIOLET, 2.5, 0.4, 6.0)
-			_snd_at("crow_caw", "drain_start", head, -1.0)
+			_snd_at("totem_wail", "drain_start", head, -1.0)
 		"gone":
 			var at: Vector3 = ev["p"]
 			var key := "hx_effigy_%d_%d" % [roundi(at.x * 10.0), roundi(at.z * 10.0)]
@@ -131,18 +130,18 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 				_sink(h.fxs[key]["n"])
 				h.fxs.erase(key)
 		"wind":
-			var crow := crow_node()
-			root.add_child(crow)
-			crow.global_position = SkillFx.hand(h, false)
-			h.fxs["hx_wind_%d" % Time.get_ticks_usec()] = {"crow": crow, "t": targets, "i": 0, "hop": 0.0, "from": crow.global_position, "until": 4.0}
-			_snd(h, "dark_wind", "drain_start", -3.0, 1.3)
+			var wisp := wisp_node()
+			root.add_child(wisp)
+			wisp.global_position = SkillFx.hand(h, false)
+			h.fxs["hx_wind_%d" % Time.get_ticks_usec()] = {"wisp": wisp, "t": targets, "i": 0, "hop": 0.0, "from": wisp.global_position, "until": 4.0}
+			_snd(h, "void_wisp", "drain_start", -3.0, 1.3)
 		"blink":
 			var a: Vector3 = ev["p"]
 			var b: Vector3 = ev["q"]
-			_crow_burst(root, a + Vector3(0, 1.2, 0), 8, 1.3)
+			_wisp_burst(root, a + Vector3(0, 1.2, 0), 8, 1.3)
 			_puff(root, a + Vector3(0, 1.0, 0))
 			Fx.later(root, 0.08, func():
-				_crow_burst(root, b + Vector3(0, 1.2, 0), 6, 0.8)
+				_wisp_burst(root, b + Vector3(0, 1.2, 0), 6, 0.8)
 				_puff(root, b + Vector3(0, 1.0, 0)))
 		"storm":
 			if h.fxs.has("hx_storm"):
@@ -150,17 +149,22 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			var r := float(ev.get("r", WarlockHex.STORM_R))
 			var n := Node3D.new()
 			root.add_child(n)
-			var crows := []
+			var wisps := []
 			var count: int = [10, 14, 18, 24][InfernalFx.tier(h.game)]
 			for i in count:
-				var c := crow_node()
+				var c := wisp_node()
 				n.add_child(c)
-				crows.append({"n": c, "a": TAU * i / count, "r": r * randf_range(0.35, 1.0), "y": randf_range(0.8, 3.2),
+				wisps.append({"n": c, "a": TAU * i / count, "r": r * randf_range(0.35, 1.0), "y": randf_range(0.8, 3.2),
 					"sp": randf_range(1.6, 2.6) * (1.0 if i % 3 else -1.0)})
+			var petals := InfernalFx.particles(n, n.global_position + Vector3(0, 1.2, 0), {"amount": [24, 36, 48, 64][InfernalFx.tier(h.game)],
+				"life": 1.6, "explosive": 0.0, "shape": "ring", "r": r * 0.9, "r_in": r * 0.3, "dir": Vector3.UP, "spread": 40.0,
+				"vel": [0.6, 1.6], "gravity": 0.3, "damping": [0.2, 0.5], "angle": true, "spin": 160.0, "scale": [0.6, 1.2],
+				"size": 0.14, "turb": 1.2, "add": false, "one_shot": false,
+				"colors": [[0.0, Color(VIOLET, 0.0)], [0.15, VIOLET], [0.6, Color(0.35, 0.95, 0.4)], [1.0, Color(DEEP, 0.0)]]})
 			var ring := WarlockFx.sigil(root, r)
-			var loop = Sfx.start_loop("crow_flock", -10.0) if (Sfx.bank.has("crow_flock") or Sfx.streams.has("crow_flock")) else null
-			h.fxs["hx_storm"] = {"n": n, "crows": crows, "ring": ring, "until": float(ev.get("x", 5.0)), "loop": loop}
-			_snd(h, "crowstorm", "covenant", -2.0)
+			var loop = Sfx.start_loop("eclipse_storm", -10.0) if (Sfx.bank.has("eclipse_storm") or Sfx.streams.has("eclipse_storm")) else null
+			h.fxs["hx_storm"] = {"n": n, "wisps": wisps, "ring": ring, "until": float(ev.get("x", 5.0)), "loop": loop}
+			_snd(h, "eclipse_bloom", "covenant", -2.0)
 			SkillFx.shake(h, 0.3)
 		"sweep":
 			_sweep(h, root, float(ev.get("r", WarlockHex.HARVEST_R)))
@@ -168,7 +172,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 				var at := SkillFx.chest_of(t, 1.0)
 				_burst(root, at, SHADOW, 0.6)
 				Fx.later(root, 0.15, func(): WarlockFx.siphon(root, at, h.global_position + Vector3(0, 1.2, 0)))
-			_snd(h, "harvest_sweep", "shackles", -3.0, 1.2)
+			_snd(h, "thornlash", "shackles", -3.0, 1.2)
 		"feast":
 			_end_feast(h)
 			var hum = Sfx.start_loop("soul_feast" if (Sfx.bank.has("soul_feast") or Sfx.streams.has("soul_feast")) else "drain_loop", -7.0)
@@ -228,7 +232,7 @@ static func clear(h: Hero) -> void:
 		if not key.begins_with("hx_"):
 			continue
 		var d: Dictionary = h.fxs[k]
-		for f in ["n", "crow", "node", "ring", "sigil", "bubble"]:
+		for f in ["n", "wisp", "node", "ring", "sigil", "bubble"]:
 			if d.has(f) and d[f] != null and is_instance_valid(d[f]):
 				(d[f] as Node).queue_free()
 		if d.get("loop") != null and is_instance_valid(d["loop"]):
@@ -242,124 +246,75 @@ static func clear(h: Hero) -> void:
 				b.queue_free()
 		h.fxs.erase(k)
 
-# ---------------------------------------------------------------- crows
-## A crow: the Meshy crow when its model is in, else a code-built one (a glossy black body, head, beak, two wings that
-## flap on their pivots and two green eyes). Its "flap" meta is its own phase.
-static func crow_node() -> Node3D:
+# ---------------------------------------------------------------- void wisps and petals
+static var _core_mats := {}
+## A void wisp: a bright core of fel green or void violet in a soft halo, motes trailing it. "pulse" breathes it.
+static func wisp_node(violet := false) -> Node3D:
 	var n := Node3D.new()
 	n.set_meta("flap", randf() * TAU)
-	if ResourceLoader.exists(CROW_GLB):
-		var m = ResCache.inst(CROW_GLB)
-		if m != null:
-			n.add_child(m)
-			m.scale = Vector3.ONE * 0.45
-			n.set_meta("glb", m)
-			return n
-	if _crow_mat == null:
-		_crow_mat = StandardMaterial3D.new()
-		_crow_mat.albedo_color = Color(0.04, 0.04, 0.06)
-		_crow_mat.roughness = 0.35
-		_crow_mat.metallic = 0.2
-		_crow_mat.rim_enabled = true
-		_crow_mat.rim = 0.6
-		_crow_mat.rim_tint = 0.3
-		_eye_mat = Mats.glow(FEL, 3.0)
-	var body := MeshInstance3D.new()
-	body.mesh = Geo.sph(0.11, 8)
-	body.scale = Vector3(0.8, 0.75, 1.6)
-	body.material_override = _crow_mat
-	body.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	n.add_child(body)
-	var head := MeshInstance3D.new()
-	head.mesh = Geo.sph(0.075, 8)
-	head.position = Vector3(0, 0.05, -0.17)
-	head.material_override = _crow_mat
-	head.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	n.add_child(head)
-	var beak := MeshInstance3D.new()
-	beak.mesh = Geo.cone(0.03, 0.11, 6)
-	beak.rotation = Vector3(-PI * 0.5, 0, 0)
-	beak.position = Vector3(0, 0.04, -0.27)
-	beak.material_override = _crow_mat
-	n.add_child(beak)
-	for sx in [-1, 1]:
-		var eye := MeshInstance3D.new()
-		eye.mesh = Geo.sph(0.015, 4)
-		eye.position = Vector3(0.04 * sx, 0.07, -0.21)
-		eye.material_override = _eye_mat
-		n.add_child(eye)
-		var pivot := Node3D.new()
-		pivot.position = Vector3(0.06 * sx, 0.03, -0.02)
-		pivot.name = "wingL" if sx < 0 else "wingR"
-		n.add_child(pivot)
-		var wing := MeshInstance3D.new()
-		wing.mesh = Geo.box(0.34, 0.012, 0.16)
-		wing.position = Vector3(0.17 * sx, 0, 0.02)
-		wing.material_override = _crow_mat
-		wing.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		pivot.add_child(wing)
-	var tail := MeshInstance3D.new()
-	tail.mesh = Geo.box(0.12, 0.01, 0.16)
-	tail.position = Vector3(0, 0.0, 0.22)
-	tail.material_override = _crow_mat
-	n.add_child(tail)
+	var col: Color = VIOLET if (violet or randf() < 0.5) else FEL
+	var key := col.to_html()
+	if not _core_mats.has(key):
+		_core_mats[key] = [Mats.glow(col.lightened(0.5), 5.0), Mats.glow(col, 1.2, 0.0, 1.0)]
+	var core := MeshInstance3D.new()
+	core.mesh = Geo.sph(0.07, 8)
+	core.material_override = _core_mats[key][0]
+	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	core.name = "core"
+	n.add_child(core)
+	var halo := MeshInstance3D.new()
+	halo.mesh = Geo.sph(0.17, 10)
+	halo.material_override = _core_mats[key][1]
+	halo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	n.add_child(halo)
+	var tr := Fx.aura(n, col, 10, 0.25, 0.045, 0.5, 0.0, 0.06)
+	tr.local_coords = false
 	return n
 
-## Flap a crow's wings (fast when `beat` is near 1, a glide near 0).
-static func flap(c: Node3D, now: float, beat := 1.0) -> void:
+## Breathe a wisp (a quick flicker when `beat` is near 1, slow near 0).
+static func pulse(c: Node3D, now: float, beat := 1.0) -> void:
 	var ph := float(c.get_meta("flap", 0.0))
-	var a := sin(now * 18.0 + ph) * 0.9 * beat + 0.15
-	var l := c.get_node_or_null("wingL")
-	var r := c.get_node_or_null("wingR")
-	if l != null:
-		l.rotation.z = a
-	if r != null:
-		r.rotation.z = -a
-	var g = c.get_meta("glb") if c.has_meta("glb") else null
-	if g != null and is_instance_valid(g):
-		g.position.y = sin(now * 18.0 + ph) * 0.03
-		var ap: AnimationPlayer = g.find_child("AnimationPlayer", true, false)
-		if ap != null and not ap.is_playing() and ap.get_animation_list().size() > 0:
-			ap.play(ap.get_animation_list()[0])
+	var core := c.get_node_or_null("core")
+	if core != null:
+		core.scale = Vector3.ONE * (1.0 + 0.25 * sin(now * (6.0 + 10.0 * beat) + ph))
 
-## Crows bursting out of a point and scattering up and away.
-static func _crow_burst(root: Node3D, at: Vector3, n: int, life: float) -> void:
+## Wisps bursting out of a point and scattering up and away.
+static func _wisp_burst(root: Node3D, at: Vector3, n: int, life: float) -> void:
 	for i in n:
-		var c := crow_node()
+		var c := wisp_node()
 		root.add_child(c)
 		c.global_position = at + Vector3(randf_range(-0.3, 0.3), randf_range(-0.2, 0.3), randf_range(-0.3, 0.3))
 		var dir := Vector3(randf_range(-1.0, 1.0), randf_range(0.4, 1.1), randf_range(-1.0, 1.0)).normalized()
-		var to := c.global_position + dir * randf_range(3.0, 6.0)
-		c.look_at(to, Vector3.UP)
+		var to := c.global_position + dir * randf_range(2.5, 5.0)
 		var tw := c.create_tween().set_parallel(true)
 		tw.tween_property(c, "global_position", to, life).set_ease(Tween.EASE_OUT)
-		tw.tween_property(c, "scale", Vector3.ONE * 0.2, life * 0.4).set_delay(life * 0.6)
-		tw.tween_method(func(t: float): flap(c, t), 0.0, life * 1.5, life)
+		tw.tween_property(c, "scale", Vector3.ONE * 0.1, life * 0.4).set_delay(life * 0.6)
 		_free_later(c, life + 0.05)
+	_petals(root, at)
 
-## One crow darting from a point into a foe.
-static func _crow_dart(root: Node3D, from: Vector3, to: Vector3) -> void:
-	var c := crow_node()
+## One wisp darting from a point into a foe.
+static func _wisp_dart(root: Node3D, from: Vector3, to: Vector3) -> void:
+	var c := wisp_node(true)
 	root.add_child(c)
 	c.global_position = from
-	c.look_at(to, Vector3.UP)
-	var tw := c.create_tween().set_parallel(true)
+	var tw := c.create_tween()
 	tw.tween_property(c, "global_position", to, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tw.tween_method(func(t: float): flap(c, t, 0.6), 0.0, 0.5, 0.28)
-	Fx.later(c, 0.28, func(): _feathers(root, to))
+	Fx.later(c, 0.28, func(): _petals(root, to))
 	_free_later(c, 0.3)
 
-static func _feathers(root: Node3D, at: Vector3) -> void:
-	InfernalFx.particles(root, at, {"amount": 10, "life": 0.9, "explosive": 1.0, "shape": "sphere", "r": 0.15,
-		"dir": Vector3.UP, "spread": 160.0, "vel": [1.0, 2.5], "gravity": -2.0, "damping": [1.5, 2.5], "angle": true, "spin": 200.0,
-		"scale": [0.6, 1.0], "size": 0.09, "add": false, "colors": [[0.0, Color(0.05, 0.05, 0.08, 0.95)], [1.0, Color(0.02, 0.02, 0.04, 0.0)]]})
+## Void petals: violet and green, spinning as they fall.
+static func _petals(root: Node3D, at: Vector3) -> void:
+	InfernalFx.particles(root, at, {"amount": 12, "life": 1.0, "explosive": 1.0, "shape": "sphere", "r": 0.2,
+		"dir": Vector3.UP, "spread": 160.0, "vel": [1.0, 2.6], "gravity": -1.5, "damping": [1.5, 2.5], "angle": true, "spin": 220.0,
+		"scale": [0.6, 1.1], "size": 0.1, "add": false,
+		"colors": [[0.0, VIOLET], [0.5, Color(0.4, 0.95, 0.45)], [1.0, Color(DEEP, 0.0)]]})
 
 static func _update_wind(h: Hero, key: String, d: Dictionary, delta: float, now: float) -> void:
-	var c = d["crow"]
+	var c = d["wisp"]      # (the wisp)
 	var chain: Array = d["t"]
 	if not is_instance_valid(c) or d["until"] <= 0.0 or int(d["i"]) >= chain.size():
 		if is_instance_valid(c):
-			_crow_burst(h.game.world.fx_root, c.global_position, 3, 0.6)
+			_wisp_burst(h.game.world.fx_root, c.global_position, 3, 0.6)
 			c.queue_free()
 		h.fxs.erase(key)
 		return
@@ -376,9 +331,9 @@ static func _update_wind(h: Hero, key: String, d: Dictionary, delta: float, now:
 	if p.distance_to(c.global_position) > 0.01:
 		c.look_at(p + (p - c.global_position), Vector3.UP)
 	c.global_position = p
-	flap(c, now, 0.8)
+	pulse(c, now, 0.8)
 	if u >= 1.0:
-		_feathers(h.game.world.fx_root, to)
+		_petals(h.game.world.fx_root, to)
 		_burst(h.game.world.fx_root, to, SHADOW, 0.5)
 		d["i"] = int(d["i"]) + 1
 		d["hop"] = 0.0
@@ -392,7 +347,7 @@ static func _update_storm(h: Hero, d: Dictionary, delta: float, now: float) -> v
 	if is_instance_valid(d["ring"]):
 		(d["ring"] as Node3D).global_position = h.global_position + Vector3(0, 0.06, 0)
 		(d["ring"] as Node3D).rotation.y += delta * 0.8
-	for cw in d["crows"]:
+	for cw in d["wisps"]:      # (the storm's wisps)
 		var c: Node3D = cw["n"]
 		cw["a"] = float(cw["a"]) + float(cw["sp"]) * delta
 		var a: float = cw["a"]
@@ -401,14 +356,14 @@ static func _update_storm(h: Hero, d: Dictionary, delta: float, now: float) -> v
 		var tangent := Vector3(-sin(a), 0, cos(a)) * signf(float(cw["sp"]))
 		c.position = p
 		c.look_at(c.global_position + tangent, Vector3.UP)
-		flap(c, now, 0.7)
+		pulse(c, now, 0.7)
 
 static func _end_storm(h: Hero) -> void:
 	if not h.fxs.has("hx_storm"):
 		return
 	var d: Dictionary = h.fxs["hx_storm"]
 	if is_instance_valid(d["n"]):
-		for cw in d["crows"]:
+		for cw in d["wisps"]:
 			if is_instance_valid(cw["n"]):
 				var c: Node3D = cw["n"]
 				var at := c.global_position
@@ -426,93 +381,97 @@ static func _end_storm(h: Hero) -> void:
 		d["loop"].queue_free()
 	h.fxs.erase("hx_storm")
 
-# ---------------------------------------------------------------- the scarecrow
-## The Scarecrow Effigy: the Meshy scarecrow when its model is in, else built here: a crooked post and crossbar, a
-## stitched sack head with glowing fel eyes under a slouched hat, a ragged poncho, straw at the cuffs and two crows on
-## the arms.
-static func scarecrow() -> Node3D:
+# ---------------------------------------------------------------- the Dread Totem
+## The Dread Totem: the Meshy idol when its model is in, else built here: a carved pillar of black jungle wood with a
+## void mask and two burning fel eyes, black thorned vines spiralling up it, glowing green flowers and roots at its foot.
+static func totem() -> Node3D:
 	var n := Node3D.new()
-	if ResourceLoader.exists(SCARECROW_GLB):
-		var m = ResCache.inst(SCARECROW_GLB)
+	if ResourceLoader.exists(TOTEM_GLB):
+		var m = ResCache.inst(TOTEM_GLB)
 		if m != null:
 			n.add_child(m)
 			n.set_meta("eyes", [])
-			_scarecrow_lights(n)
+			_totem_lights(n)
 			return n
 	if _wood_mat == null:
-		_wood_mat = Mats.flat(Color(0.22, 0.16, 0.1))
-		_sack_mat = Mats.flat(Color(0.48, 0.4, 0.27))
-		_straw_mat = Mats.flat(Color(0.62, 0.52, 0.25))
-		_cloth_mat = Mats.flat(Color(0.12, 0.1, 0.14))
-	var post := MeshInstance3D.new()
-	post.mesh = Geo.cyl(0.06, 0.08, 2.4, 8)
-	post.position = Vector3(0, 1.2, 0)
-	post.rotation.z = 0.05
-	post.material_override = _wood_mat
-	n.add_child(post)
-	var bar := MeshInstance3D.new()
-	bar.mesh = Geo.cyl(0.045, 0.05, 1.8, 8)
-	bar.rotation = Vector3(0, 0, PI * 0.5 + 0.08)
-	bar.position = Vector3(0, 1.75, 0)
-	bar.material_override = _wood_mat
-	n.add_child(bar)
-	var poncho := MeshInstance3D.new()
-	poncho.mesh = Geo.cone(0.6, 1.0, 9)
-	poncho.position = Vector3(0, 1.35, 0)
-	poncho.scale = Vector3(1.0, 1.0, 0.55)
-	poncho.material_override = _cloth_mat
-	n.add_child(poncho)
-	var head := MeshInstance3D.new()
-	head.mesh = Geo.sph(0.24, 12)
-	head.position = Vector3(0, 2.15, 0)
-	head.scale = Vector3(1.0, 1.15, 0.95)
-	head.material_override = _sack_mat
-	n.add_child(head)
-	var hat := MeshInstance3D.new()
-	hat.mesh = Geo.cone(0.42, 0.55, 10)
-	hat.position = Vector3(0.03, 2.45, 0)
-	hat.rotation.z = -0.25
-	hat.material_override = _cloth_mat
-	n.add_child(hat)
+		_wood_mat = Mats.flat(Color(0.1, 0.07, 0.09))
+		_sack_mat = Mats.flat(Color(0.22, 0.12, 0.3))
+		_straw_mat = Mats.flat(Color(0.03, 0.05, 0.03))
+		_cloth_mat = Mats.flat(Color(0.05, 0.09, 0.05))
+	var pillar := MeshInstance3D.new()
+	pillar.mesh = Geo.cyl(0.22, 0.32, 2.0, 8)
+	pillar.position = Vector3(0, 1.0, 0)
+	pillar.material_override = _wood_mat
+	n.add_child(pillar)
+	var mask := MeshInstance3D.new()
+	mask.mesh = Geo.sph(0.3, 12)
+	mask.position = Vector3(0, 2.15, -0.05)
+	mask.scale = Vector3(1.0, 1.25, 0.7)
+	mask.material_override = _sack_mat
+	n.add_child(mask)
+	for sx in [-1, 1]:
+		var horn := MeshInstance3D.new()
+		horn.mesh = Geo.cone(0.06, 0.55, 6)
+		horn.position = Vector3(0.22 * sx, 2.5, 0)
+		horn.rotation.z = -0.5 * sx
+		horn.material_override = _wood_mat
+		n.add_child(horn)
 	var eyes := []
 	for sx in [-1, 1]:
 		var eye := MeshInstance3D.new()
-		eye.mesh = Geo.sph(0.04, 6)
-		eye.position = Vector3(0.08 * sx, 2.2, -0.21)
+		eye.mesh = Geo.sph(0.05, 6)
+		eye.position = Vector3(0.1 * sx, 2.2, -0.26)
 		var em := Mats.glow_unique(FEL, 3.0)
 		eye.material_override = em
 		n.add_child(eye)
 		eyes.append(em)
-		for k in 3:
-			var straw := MeshInstance3D.new()
-			straw.mesh = Geo.box(0.02, 0.02, 0.22)
-			straw.position = Vector3(0.88 * sx, 1.78 + randf_range(-0.06, 0.06), randf_range(-0.05, 0.05))
-			straw.rotation = Vector3(randf_range(-0.6, 0.6), PI * 0.5 + randf_range(-0.5, 0.5), 0)
-			straw.material_override = _straw_mat
-			n.add_child(straw)
-	# a stitched grin
-	for k in 5:
-		var st := MeshInstance3D.new()
-		st.mesh = Geo.box(0.012, 0.05, 0.01)
-		st.position = Vector3(-0.08 + k * 0.04, 2.07, -0.225)
-		st.material_override = _wood_mat
-		n.add_child(st)
-	for sx in [-1, 1]:
-		var c := crow_node()
-		c.position = Vector3(0.62 * sx, 1.86, 0)
-		c.rotation.y = randf_range(-0.8, 0.8)
-		c.name = "perched_%d" % (sx + 1)
-		n.add_child(c)
+	# vines: thorned segments spiralling up the pillar
+	for k in 22:
+		var t := k / 22.0
+		var a := t * TAU * 2.2
+		var seg := MeshInstance3D.new()
+		seg.mesh = Geo.cyl(0.035, 0.035, 0.22, 5)
+		seg.position = Vector3(cos(a) * 0.3, 0.15 + t * 1.85, sin(a) * 0.3)
+		seg.rotation = Vector3(0.9, -a, 0)
+		seg.material_override = _straw_mat
+		n.add_child(seg)
+		if k % 3 == 0:
+			var thorn := MeshInstance3D.new()
+			thorn.mesh = Geo.cone(0.025, 0.1, 4)
+			thorn.position = seg.position * 1.12
+			thorn.rotation = Vector3(0, -a, PI * 0.5)
+			thorn.material_override = _straw_mat
+			n.add_child(thorn)
+		if k % 5 == 2:
+			var fl := MeshInstance3D.new()
+			fl.mesh = Geo.sph(0.06, 6)
+			fl.position = seg.position * 1.15
+			fl.material_override = Mats.glow(Color(0.45, 1.0, 0.5), 2.5)
+			n.add_child(fl)
+	for k in 6:
+		var a := TAU * k / 6.0
+		var root_n := MeshInstance3D.new()
+		root_n.mesh = Geo.cone(0.08, 0.7, 5)
+		root_n.position = Vector3(cos(a) * 0.45, 0.12, sin(a) * 0.45)
+		root_n.rotation = Vector3(sin(a) * 1.2, 0, -cos(a) * 1.2)
+		root_n.material_override = _cloth_mat
+		n.add_child(root_n)
+	for k in 3:
+		var w := wisp_node(true)
+		w.position = Vector3(0, 2.3, 0)
+		w.name = "perched_%d" % k
+		w.set_meta("orbit", TAU * k / 3.0)
+		n.add_child(w)
 	n.set_meta("eyes", eyes)
-	_scarecrow_lights(n)
+	_totem_lights(n)
 	return n
 
-static func _scarecrow_lights(n: Node3D) -> void:
+static func _totem_lights(n: Node3D) -> void:
 	var l := OmniLight3D.new()
 	l.light_color = FEL
 	l.light_energy = 0.8
 	l.omni_range = 3.5
-	l.position = Vector3(0, 2.2, -0.4)
+	l.position = Vector3(0, 2.0, -0.4)
 	n.add_child(l)
 	n.set_meta("light", l)
 
@@ -530,10 +489,11 @@ static func _eyes_flare(n: Node3D) -> void:
 			Fx.later(n, 1.2, func(): if is_instance_valid(c): c.visible = true)
 
 static func _sway(n: Node3D, now: float) -> void:
-	n.rotation.z = sin(now * 1.3 + n.get_instance_id() % 7) * 0.03
 	for c in n.get_children():
 		if str(c.name).begins_with("perched_"):
-			flap(c, now, 0.05)
+			var a: float = float(c.get_meta("orbit", 0.0)) + now * 1.6
+			c.position = Vector3(cos(a) * 0.75, 2.2 + sin(now * 2.0 + a) * 0.25, sin(a) * 0.75)
+			pulse(c, now, 0.3)
 
 static func _sink(n) -> void:
 	if n == null or not is_instance_valid(n):
@@ -542,7 +502,7 @@ static func _sink(n) -> void:
 	tw.tween_property(n, "scale", Vector3(1.0, 0.05, 1.0), 0.5).set_ease(Tween.EASE_IN)
 	tw.tween_callback(n.queue_free)
 	if n.is_inside_tree():
-		_crow_burst(n.get_parent(), (n as Node3D).global_position + Vector3(0, 1.9, 0), 2, 0.9)
+		_wisp_burst(n.get_parent(), (n as Node3D).global_position + Vector3(0, 1.6, 0), 3, 0.9)
 
 static func _dirt(root: Node3D, at: Vector3) -> void:
 	InfernalFx.particles(root, at + Vector3(0, 0.1, 0), {"amount": 16, "life": 0.7, "explosive": 1.0, "shape": "sphere", "r": 0.3,
@@ -609,14 +569,14 @@ static func _terror_mark(h: Hero, e, dur: float) -> void:
 		skull.reparent(t)
 		skull.position = Vector3.ZERO
 		for i in 3:
-			var c := crow_node()
+			var c := wisp_node()
 			c.scale = Vector3.ONE * 0.6
 			t.add_child(c)
 			c.set_meta("orbit", TAU * i / 3.0)
 		m["terror"] = t
 		t.scale = Vector3.ONE * 0.2
 		t.create_tween().tween_property(t, "scale", Vector3.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		_feathers(h.game.world.fx_root, t.global_position)
+		_petals(h.game.world.fx_root, t.global_position)
 
 static func _update_mark(h: Hero, key: String, m: Dictionary, delta: float, now: float) -> void:
 	var e = m["e"]
@@ -654,7 +614,7 @@ static func _update_mark(h: Hero, key: String, m: Dictionary, delta: float, now:
 					var a: float = float(c.get_meta("orbit")) + now * 4.0
 					c.position = Vector3(cos(a) * 0.55, sin(now * 5.0 + a) * 0.1, sin(a) * 0.55)
 					c.look_at(c.global_position + Vector3(-sin(a), 0, cos(a)), Vector3.UP)
-					flap(c, now, 0.9)
+					pulse(c, now, 0.9)
 	if rings.is_empty() and (t == null or not is_instance_valid(t)):
 		(n as Node).queue_free()
 		h.fxs.erase(key)
@@ -742,17 +702,27 @@ static func _sweep(h: Hero, root: Node3D, r: float) -> void:
 	var pivot := Node3D.new()
 	root.add_child(pivot)
 	pivot.global_position = h.global_position + Vector3(0, 1.0, 0)
-	var blade := MeshInstance3D.new()
-	blade.mesh = Geo.box(0.08, 0.5, r * 0.55)
-	blade.position = Vector3(0, 0, -r * 0.72)
-	blade.rotation.x = 0.3
-	blade.material_override = Mats.glow_unique(SHADOW.lightened(0.2), 2.2)
-	pivot.add_child(blade)
-	var shaft := MeshInstance3D.new()
-	shaft.mesh = Geo.box(0.05, 0.05, r * 0.5)
-	shaft.position = Vector3(0, 0, -r * 0.25)
-	shaft.material_override = Mats.glow_unique(DEEP, 1.0)
-	pivot.add_child(shaft)
+	# the lash: a curling thorned vine reaching out to the edge, glowing veins along it
+	var vine_m := Mats.glow_unique(Color(0.08, 0.16, 0.08), 0.6)
+	var vein_m := Mats.glow_unique(Color(0.45, 1.0, 0.45), 2.2)
+	var n := 16
+	for k in n:
+		var t := (k + 0.5) / n
+		var d := r * (0.15 + 0.85 * t)
+		var bend := sin(t * PI) * 0.6
+		var seg := MeshInstance3D.new()
+		seg.mesh = Geo.cyl(0.07 * (1.1 - t), 0.07 * (1.1 - t), r / n * 1.25, 5)
+		seg.position = Vector3(sin(bend) * d * 0.3, sin(t * PI * 2.0) * 0.15, -d)
+		seg.rotation = Vector3(PI * 0.5, bend, 0)
+		seg.material_override = vine_m if k % 4 != 1 else vein_m
+		seg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		pivot.add_child(seg)
+		if k % 2 == 0:
+			var thorn := MeshInstance3D.new()
+			thorn.mesh = Geo.cone(0.03, 0.14, 4)
+			thorn.position = seg.position + Vector3(0, 0.08, 0)
+			thorn.material_override = vine_m
+			pivot.add_child(thorn)
 	var tw := pivot.create_tween()
 	tw.tween_property(pivot, "rotation:y", -TAU, 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_callback(pivot.queue_free)

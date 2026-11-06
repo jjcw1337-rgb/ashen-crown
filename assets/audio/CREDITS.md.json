@@ -267,6 +267,18 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "curse_cast": [
+  {
+   "detail": "a dark sorcerer casting a curse: a quick hissing whisper of evil words and a sickly wet magical sizzle, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a dark sorcerer casting a curse: a quick hissing whisper of evil words and a sickly wet magical sizzle, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "death_demon": [
   {
    "detail": "a demon's dying roar fading into crackling embers, close mic, dry, isolated sound effect, no music",
@@ -467,6 +479,30 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "eclipse_bloom": [
+  {
+   "detail": "a dark nature spirit erupting: a deep void whoosh and boom with leaves and vines lashing and a ghostly choir, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a dark nature spirit erupting: a deep void whoosh and boom with leaves and vines lashing and a ghostly choir, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "eclipse_storm": [
+  {
+   "detail": "a swirling magical whirlwind of leaves and spirit wisps, rustling leaves, whistling wind and soft ghostly whispers, steady, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a swirling magical whirlwind of leaves and spirit wisps, rustling leaves, whistling wind and soft ghostly whispers, steady, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "equip": [
   {
    "detail": "beltHandle1.ogg",
@@ -487,6 +523,18 @@
    "detail": "clothBelt2.ogg",
    "license": "CC0 1.0",
    "source": "Kenney rpg-audio (kenney.nl)"
+  }
+ ],
+ "fester_burst": [
+  {
+   "detail": "a cursed boil bursting with a wet squelch and a short crackle of dark magic, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a cursed boil bursting with a wet squelch and a short crackle of dark magic, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
   }
  ],
  "fire_erupt": [
@@ -795,6 +843,13 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "leech_bolt": [
+  {
+   "detail": "a quick shadow magic bolt zip with a soft sucking pull at the end, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "levelup": [
   {
    "detail": "level up in a dark fantasy game, short triumphant swell with a bright magical chime, subtle, close mic, dry, isolated sound effect, no music",
@@ -810,6 +865,18 @@
   },
   {
    "detail": "a big male lion roaring loudly and angrily, close, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "malediction": [
+  {
+   "detail": "a fel green skull bolt fired: a howling ghostly shriek whooshing past and a sharp eerie impact, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a fel green skull bolt fired: a howling ghostly shriek whooshing past and a sharp eerie impact, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }
@@ -1046,6 +1113,18 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "reckoning": [
+  {
+   "detail": "a curse of judgement sealed: a deep ominous bell-like toll with a choir of whispers, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a curse of judgement sealed: a deep ominous bell-like toll with a choir of whispers, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "relic_ting": [
   {
    "detail": "picking up a rare magical gem in a dark fantasy game, one bright clear crystal ting with a shimmering glassy ring that fades, close mic, dry, isolated sound effect, no music",
@@ -1105,6 +1184,30 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "shield_break": [
+  {
+   "detail": "a magical glass shield shattering, bright crystalline crack and tinkling shards, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a magical glass shield shattering, bright crystalline crack and tinkling shards, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "shield_up": [
+  {
+   "detail": "a glassy magical shield forming around a person, crystalline shimmer swelling up, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a glassy magical shield forming around a person, crystalline shimmer swelling up, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "sigil_charge": [
   {
    "detail": "electricity building up fast in a stone rune, a rising crackling hum with sparks snapping, about to discharge, close mic, dry, isolated sound effect, no music",
@@ -1120,6 +1223,18 @@
  "slam": [
   {
    "detail": "a giant slamming his fists into the ground, heavy thud and rubble, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "soul_feast": [
+  {
+   "detail": "a hungry dark magic drain: low pulsing hum with many faint ghostly moans being pulled in, steady, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a hungry dark magic drain: low pulsing hum with many faint ghostly moans being pulled in, steady, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }
@@ -1202,6 +1317,30 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "terrify": [
+  {
+   "detail": "a terrifying ghostly banshee shriek mixed with a burst of crows flapping and cawing, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a terrifying ghostly banshee shriek mixed with a burst of crows flapping and cawing, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "thornlash": [
+  {
+   "detail": "a thick thorned vine whip lashed in a full circle, a sharp whip crack with rustling leaves and a dark magical hiss, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a thick thorned vine whip lashed in a full circle, a sharp whip crack with rustling leaves and a dark magical hiss, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "thunder_blast": [
   {
    "detail": "a massive lightning bolt striking the ground and exploding, a deafening electric crack, rock shattering, and a short heavy thunder rumble rolling away, close mic, dry, isolated sound effect, no music",
@@ -1234,6 +1373,20 @@
   },
   {
    "detail": "a quick athletic leap with a sharp electric crackle and a whoosh, static discharge snapping in the air, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "totem_rise": [
+  {
+   "detail": "a heavy carved wooden totem bursting up out of the earth, roots tearing and creaking wood, a low magical hum, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "totem_wail": [
+  {
+   "detail": "an eerie spirit totem flaring: a short haunting ghostly wail with a whispering magical swell, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }
@@ -1282,6 +1435,18 @@
   },
   {
    "detail": "a jungle troll shaman's guttural hissing chant ending in a wet spit of poison, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "void_wisp": [
+  {
+   "detail": "a glowing spirit wisp zipping past, airy magical whoosh with a bright shimmering tail, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a glowing spirit wisp zipping past, airy magical whoosh with a bright shimmering tail, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }

@@ -28,7 +28,61 @@ CELLS = {
         ("-", "a plague doctor's beaked mask with glowing green goggles"),
         ("-", "a rat skull on a plague cross"),
     ],
+    # the Warlock's three directions (WarlockHex): Corruption, Fear, Drain; two grids
+    "warlock": [
+        ("w_corruption", "a withered clawed hand casting a twisting curse of fel green smoke and runes onto a shadowed foe"),
+        ("w_malediction", "a crackling fel green bolt with a screaming skull face hurtling forward, rings of curse runes around it"),
+        ("w_unending", "an hourglass wrapped in rotting vines with sickly yellow-green sand that never runs out, decay spreading"),
+        ("w_festering", "a pulsing violet hex sigil bursting with pus and green sparks over a stunned, staggering silhouette"),
+        ("w_leeching", "blood red curse threads pulled out of a writhing figure into an open clawed palm"),
+        ("w_reckoning", "a pale white-green skull of judgement with many curse rings converging on it, blinding light in its eyes"),
+        ("w_terrify", "a terrified ghostly face screaming as a beautiful violet void spirit with fel green eyes looms out of the dark"),
+        ("w_effigy", "a sinister carved jungle idol totem wrapped in black thorned vines, glowing fel green eyes, violet wisps orbiting it"),
+        ("w_darkwind", "a bright wisp of violet and green void light bouncing between dark silhouettes, leaving glowing trails"),
+    ],
+    "warlock2": [
+        ("w_crowstorm", "a whirling vortex of glowing violet petals, void wisps and lashing black vines around a hooded spirit, an eclipse above"),
+        ("w_leechbolt", "a quick pale green bolt of shadow with motes of stolen life streaming back along its trail"),
+        ("w_harvest", "a whip of black thorned jungle vines lashing in a full circle, a ring of pale green life motes rising from its arc"),
+        ("w_soulfeast", "many fel green drain beams converging into a raised clawed hand, a glassy green shield forming"),
+        ("-", "a black crow feather"),
+        ("-", "a cracked green glass orb"),
+        ("-", "a purple skull candle"),
+        ("-", "a rusted sickle"),
+        ("-", "a stitched burlap sack mask"),
+    ],
 }
+# the void re-theme (Blaine 2026-11-06: no crows): the changed icons in one grid
+CELLS["warlock_void"] = [c for c in CELLS["warlock"] if c[0] in ("w_terrify", "w_effigy", "w_darkwind")] + \
+    [c for c in CELLS["warlock2"] if c[0] in ("w_crowstorm", "w_harvest")]
+# the Warlock's rites (WarlockHex.RITE_KEYS, data/codex): cut into assets/textures/talents/<id>.png, where the run's
+# window looks for a passive's icon (UI.TALENT_ICON): `cut art.png warlock_rites1 0.05 assets/textures/talents`
+CELLS["warlock_rites1"] = [
+    ("w_r_lingering", "green rot dripping from a cursed wound, drops falling slowly"),
+    ("w_r_decay", "a skeletal hand holding a cracked hourglass oozing green rot"),
+    ("w_r_thrift", "a half-empty flask of glowing green curse ink with a quill"),
+    ("w_r_vile", "green curse smoke curling into a glowing heart"),
+    ("w_r_echo", "concentric green curse rings echoing outward from a skull"),
+    ("w_r_haunt", "a ghostly hand reaching out of shadow, violet glow"),
+    ("w_r_nightmare", "a screaming face reflected in a black mirror, violet cracks"),
+    ("w_r_panic", "a crowd of shadowy silhouettes fleeing in terror from violet void light"),
+    ("w_r_dread", "a black thorned vine coiling through a skull, green motes rising"),
+]
+CELLS["warlock_rites2"] = [
+    ("w_r_paralysis", "black thorny roots binding a figure's feet, violet glow"),
+    ("w_r_pact", "a clawed hand and a goblet of green blood sealed by a fel rune"),
+    ("w_r_bloodward", "a glowing green glass shield forming over a beating heart"),
+    ("w_r_gorge", "a gaping maw of shadow drinking a stream of pale green life"),
+    ("w_r_hunger", "a green glass shield cracked open with drain beams forking out of it"),
+    ("-", "a crow skull"),
+    ("-", "a fel green candle"),
+    ("-", "a rune stone"),
+    ("-", "a cursed coin"),
+]
+CELLS["warlock_void"] += [c for c in CELLS["warlock_rites1"] if c[0] in ("w_r_panic", "w_r_dread")] + \
+    [("-", "a glowing violet orchid"), ("-", "a black thorned vine")]
+for k in ["warlock2", "warlock_rites1", "warlock_rites2", "warlock_void"]:
+    PAL.setdefault(k, PAL["warlock"])
 
 def prompt(cls):
     return STYLE.format(pal=PAL[cls], cells="; ".join(f"({i+1}) {c[1]}" for i, c in enumerate(CELLS[cls])))
@@ -55,4 +109,4 @@ if __name__ == "__main__":
     if sys.argv[1] == "prompt":
         print(prompt(sys.argv[2]))
     elif sys.argv[1] == "cut":
-        cut(sys.argv[2], sys.argv[3], float(sys.argv[4]) if len(sys.argv) > 4 else 0.05)
+        cut(sys.argv[2], sys.argv[3], float(sys.argv[4]) if len(sys.argv) > 4 else 0.05, *sys.argv[5:6])
