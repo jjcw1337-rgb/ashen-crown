@@ -348,7 +348,9 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   survivor. **Consumables** (Data.BASES elixirs, salve, flasks, scroll, tome; `RunTalents.CONSUMABLES` weights) come
   1-3 per chest per player with the choice (`Game.run_claim`); flasks are thrown at the pointer (`throw_flask`).
   **Run-only skills** (`Data.RUN_SKILLS`: the archer's Scatter Shot, Glacial Shard, Blast Arrow, Storm Shot, Hunter's
-  Mark, Arrow Storm; the plague doctor's Miasma, Contagion, Leech Jar; the in-game codex reads Data.SKILLS + RUN_SKILLS,
+  Mark, Arrow Storm; the plague doctor's Miasma, Contagion, Leech Jar; the knight's Blade Storm, Aegis, Judgment, Last
+  Rites (Holy Brands: `KnightSkills.brand`, every blow of a run knight with Judgment brands, Judgment spends them); the
+  Wraith's Death Mark, Banshee Wail, Reaping Crescent; the in-game codex reads Data.SKILLS + RUN_SKILLS,
   RunTalents.TALENTS / THEMES / GEMS and the potion Data.BASES) join the class's pool in a run only
   (`Hero.skill_list`, `RunBuild.skill_pool`). Icons: Meshy grids `archer`, `run_mix`, `potions`, `gems`, `gems2` in
   `tools/skill_icons.py` (`assets/textures/skills/`, `items/c_*.png`, `gems/`). `tools/run_talents_test.gd` tries every
@@ -359,7 +361,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   dead: `Game.chest_sealed`, refused by the server in `Net.sv_inter`). Every peer sees a camp fall from its own
   monsters (`Enemy.die_visual` -> `Game.camp_check`: the chest flares, a run character within `SHARE_R` gets
   `RunBuild.CAMP_XP`); the chest (`Game._camp_chest`) drops `CHEST_ROLLS` of run loot once for everyone and opens each
-  run character's own upgrade (`Camps.offer_key`: camp and round). `tools/camp_test.gd`.
+  run character's own upgrade (`Camps.offer_key`: camp and round). A camp's monster dragged `LEASH` past its edge with no
+  hero near goes home whole (`Camps.leash`, on whoever runs the monsters). `tools/camp_test.gd`.
   **The Verdant Reach** (`scripts/bg_forest.gd` `BgForest`, `MpMode.FOREST`; the crypt is retired, docs/cleanup.md):
   the Battlegrounds map, an open lush forest 210 m across: four starting glades (a bell each), four portals at the
   edges, sixteen camps (`BgForest.CAMPS`: place, tier, region, foes; six tier I near the glades, five II, three III,
