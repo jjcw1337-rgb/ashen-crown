@@ -14,7 +14,8 @@ Actions exports Web + Windows + Linux + Mac and publishes them to GitHub Pages.
 **Default patterns (every agent, read these first; `AGENTS.md` is the shared entry point for Codex/ChatGPT):**
 [loading](docs/patterns/loading.md) · [servers](docs/patterns/servers.md) ·
 [multiplayer](docs/patterns/multiplayer.md) · [effects](docs/patterns/effects.md) ·
-[measuring](docs/patterns/measuring.md) · [code organization](docs/patterns/code-organization.md).
+[measuring](docs/patterns/measuring.md) · [code organization](docs/patterns/code-organization.md) ·
+[making assets](docs/patterns/assets.md) (Meshy → Blender → Godot, the quality bar and the performance rules).
 When you change one of these patterns, update its file in the same commit.
 
 ## Getting the tools (Linux)

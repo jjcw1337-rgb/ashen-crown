@@ -13,6 +13,7 @@ machine). Claude reads it through CLAUDE.md, which holds the full code map and t
    - [Skill effects](docs/patterns/effects.md): effects are events; handlers only draw
    - [Measuring](docs/patterns/measuring.md): which tool, how many runs, the budgets
    - [Code organization](docs/patterns/code-organization.md): where things live, typed GDScript, tests, branches
+   - [Making assets](docs/patterns/assets.md): Meshy concept → model → Blender prep/rig → Godot, the quality bar, budgets and performance rules
 2. **CLAUDE.md**: the code map ("Code map"), every system's rules and gotchas, and the test list.
 3. **CONTRIBUTING.md**: human setup and workflow.
 
