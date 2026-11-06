@@ -4,7 +4,7 @@ Every coding agent (Claude Code, Codex, any machine) reads this first. Keep it t
 
 **The game:** an action roguelite in Godot 4.4.1. Each run you make a fresh hero, grow it in the Battlegrounds (a
 PvPvE forest of monster camps whose chests offer skills, rites and gems) and extract to keep it. The Arena is for
-survivors. `README.md` describes it for players.
+survivors. The starting camp (Enter World) stays for now. `README.md` describes the game for players.
 
 ## Where things live (one place each)
 
@@ -17,13 +17,14 @@ and who works on what). Until something has moved, it's in `scripts/` or `assets
 | Shared rites, gems, consumables | `data/codex/shared.json`, `gems.json`, `consumables.json` |
 | A hero's code, model, skill assets, build scripts, tests | `game/heroes/<hero>/` (heroes not moved yet: `scripts/<hero>*.gd`, `assets/models/`) |
 | Shared rules and effects: combat, skills, fx, bodies, loading | `game/systems/` (being set up; until then `scripts/`) |
-| Monsters | stats in `scripts/data.gd` `ENEMIES`, brains in `scripts/enemy.gd` (until `game/monsters/`) |
+| Monsters | stats in `scripts/data.gd` `ENEMIES`; behaviour in `scripts/enemy.gd` and the monster's own script (`bear.gd`, `sloth.gd`, `bg_boss.gd`…), until `game/monsters/` |
 | The map, its camps and bosses | `scripts/bg_forest.gd`, `camps.gd`, `bg_boss.gd` (until `game/maps/`) |
 | Screens (title, class picker, lobby, HUD) | `scripts/ui.gd`, `title_*.gd`, `class_stage.gd`, `mp_lobby_view.gd`, `run_ui.gd` (until `game/ui/`) |
 | Sounds | `assets/audio/sfx/`, built by `tools/audio/` (the list is `spec.py`) |
 | Skill and rite icons | `assets/textures/skills/`, `assets/textures/talents/` |
 | Servers and what a build connects to | `deploy/` and the GitHub repository's variables. Secrets live only on the servers. |
 | The asset pipeline, CI, project-wide tests | `tools/` (never shipped) |
+| Kept but not built: sailing, the Last Flame, good unused models | `archive/` (being set up by the cuts; Godot ignores it) |
 | How-tos for each concern | `docs/patterns/`; adding a hero: `docs/character_workflow.md` |
 
 ## Rules
@@ -36,9 +37,9 @@ and who works on what). Until something has moved, it's in `scripts/` or `assets
    fails with "Identifier not found: Sfx" has to run through `tools/_late.gd -- res://<script>`. Report what you
    tested, and say so when something is unmeasured. (`tools/nightly/gate.sh` runs about 40 tests, roughly 25 min,
    for when you want everything.)
-4. **Where new code goes.** If one skill uses it, it goes in that skill's folder. If one hero's skills share it, it
-   goes in `game/heroes/<hero>/shared/`. If several heroes or monsters use it, it goes in `game/systems/`. Systems never name a
-   hero.
+4. **Where new code goes.** If one skill uses it, it goes in that skill's folder. If one hero's skills share it,
+   it goes in `game/heroes/<hero>/shared/`. If several heroes or monsters use it, it goes in `game/systems/`.
+   Systems never name a hero.
 5. **Skill code never draws.** A skill calls `h.fx(skill, event, data)` and an effects script draws it, on every
    player's screen ([effects](docs/patterns/effects.md)). Dedicated servers have no pixels or meshes
    ([servers](docs/patterns/servers.md)).
@@ -46,6 +47,10 @@ and who works on what). Until something has moved, it's in `scripts/` or `assets
    `.blend` files.
 7. **Docs stay short and current.** Docs hold no history, because git has it. When code changes, fix the doc that
    describes it in the same commit.
+8. **Stay in your lane.** Several agents work here at once. Before you start, pull and read "Who does what" and
+   "In progress" in [docs/architecture_cleanup.md](docs/architecture_cleanup.md). Only edit the files your task
+   owns. For a large edit to a shared file (`game.gd`, `ui.gd`, `hero.gd`, `net.gd`, `enemy.gd`), add a line under
+   "In progress" first and remove it when you're done. Work that isn't on that list needs an admin's say-so.
 
 ## Patterns: read the one for your task
 
