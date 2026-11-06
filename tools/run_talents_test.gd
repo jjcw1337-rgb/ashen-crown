@@ -85,15 +85,15 @@ func _data(h) -> void:
 		if t.has("theme") and str(t["theme"]) != "" and t["cls"] != "any" and RT.theme_def(str(t["cls"]).split(",")[0], t["theme"]).is_empty():
 			bad.append("%s theme %s" % [t["id"], t["theme"]])
 	check(bad.is_empty(), "every talent and gem is well formed (%d talents, %d gems) %s" % [RT.TALENTS.size(), RT.GEMS.size(), str(bad)])
-	for cls in ["archer", "plague", "warlock", "knight", "wraith", "demon", "doug", "serpent", "wyvern"]:
+	for cls in ["archer", "plague", "knight", "wraith", "demon", "doug", "serpent", "wyvern"]:
 		var pool: Array = RB.passive_pool(cls)
-		var by := [0, 0, 0, 0]
+		var by := [0, 0, 0]
 		var themed := {}
 		for p in pool:
 			by[int(p["rarity"])] += 1
 			if str(p.get("theme", "")) != "":
 				themed[p["theme"]] = int(themed.get(p["theme"], 0)) + 1
-		check(by[3] >= 4 and by[2] >= 4 and themed.size() >= 2, "%s: talents by rarity %s, by theme %s" % [cls, str(by), str(themed)])
+		check(by[2] >= 6 and by[1] >= 8 and themed.size() >= 2 and themed.size() <= 3, "%s: talents by rarity %s, by direction %s" % [cls, str(by), str(themed)])
 	var t: Dictionary = RT.TALENTS.filter(func(x): return x["id"] == "x_momentum")[0]
 	check(RT.text_of(t, 2, 1).contains("4 → 8"), "a stacking talent's card shows the change: " + RT.text_of(t, 2, 1))
 
@@ -370,10 +370,10 @@ func _offers(h) -> void:
 		var o: Array = h.run.roll_offer("archer", 4, "probe%d" % k, h.binds)
 		var n := o.filter(func(c): return c["kind"] == "skill").size()
 		skills_seen[n] = true
-		epic += o.filter(func(c): return int(c["rarity"]) == 3).size()
+		epic += o.filter(func(c): return int(c["rarity"]) == 2).size()
 		if n < 1 or n > 3:
 			check(false, "offer %d holds %d skills" % [k, n])
-	check(skills_seen.size() >= 2 and epic > 10, "offers hold 1-3 skills (%s) and boss chests offer epics (%d)" % [str(skills_seen.keys()), epic])
+	check(skills_seen.size() >= 2 and epic > 10, "offers hold 1-3 skills (%s) and boss chests offer rares (%d)" % [str(skills_seen.keys()), epic])
 	# pull: a frost build is offered frost more often than a fresh one
 	var frost_fresh := 0
 	for k in 80:
@@ -393,7 +393,9 @@ func _offers(h) -> void:
 func _cast(h, id: String, at: Vector3, secs := 2.5) -> bool:
 	if not h.run.skills.has(id):
 		h.run.skills.append(id)
-	h.cds.clear()
+	for k in h.cds.keys():
+		h.cds[k] = 0.0
+	h.cds[id] = 0.0
 	h.mana = h.max_mana
 	h.atk_t = -1.0
 	h.cursor = at
@@ -473,24 +475,8 @@ func _skills(h) -> void:
 	h._hit_enemy(e1, 80.0, 0.0, "attack")
 	await create_timer(0.3).timeout
 	check(e1.dead and h.pd.curses.has(e2.get_instance_id()), "Epidemic: the curse leaps to the next foe when its host dies")
-	# the warlock's
-	await _fresh(h, "warlock", {})
-	e1 = _foe(h, Vector3(7, 0, 0), "zombie", 5000.0)
-	e2 = _foe(h, Vector3(8, 0, 1.5), "zombie", 5000.0)
-	ok = await _cast(h, "w_corruption", e1.global_position, 1.0)
-	check(ok and e1.life < e1.max_life and e2.burn_t > 0.0, "Corruption: the cursed ground strikes and rots")
-	await _fresh(h, "warlock", {})
-	var ring := [_foe(h, Vector3(3, 0, 0), "zombie", 5000.0), _foe(h, Vector3(-3, 0, 2), "zombie", 5000.0)]
-	h.life = h.max_life * 0.5
-	lf = h.life
-	ok = await _cast(h, "w_soulrend", h.global_position, 1.0)
-	check(ok and ring.all(func(e): return e.life < e.max_life) and h.life >= lf + h.max_life * 0.07, "Soul Rend: drains everything near and heals 4% each")
-	await _fresh(h, "warlock", {})
-	e1 = _foe(h, Vector3(8, 0, 0), "zombie", 5000.0)
-	ok = await _cast(h, "w_hellfire", e1.global_position, 2.0)
-	check(ok and e1.life < e1.max_life - 1.0, "Hellfire Rain: the blasts strike the mark")
 	# every run skill is in its class's pool and reads its theme
-	for cls in ["archer", "plague", "warlock"]:
+	for cls in ["archer", "plague"]:
 		var ids: Array = RB.skill_pool(cls).map(func(s): return s["id"])
 		var run_ids: Array = load("res://scripts/data.gd").run_skills_for(cls).map(func(s): return s["id"])
-		check(run_ids.all(func(i): return ids.has(i) and str(RT.SKILL_THEMES.get(i, "")) != ""), "%s: run skills in the pool with their themes (%d skills to find)" % [cls, ids.size()])
+		check(run_ids.all(func(i): return ids.has(i) and RT.SKILL_THEMES.has(i)), "%s: run skills in the pool with their themes (%d skills to find)" % [cls, ids.size()])

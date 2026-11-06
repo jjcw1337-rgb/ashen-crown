@@ -16,9 +16,9 @@ const BELT := 4
 const STACK := 5
 const RARITY := RunTalents.RARITY_NAMES
 const RARITY_COLORS := RunTalents.RARITY_COLORS
-## A camp's tier (1-3, 4 = a boss) -> the odds of each upgrade rarity [common, uncommon, rare, epic], the experience
+## A camp's tier (1-3, 4 = a boss) -> the odds of each upgrade rarity [common, uncommon, rare], the experience
 ## for clearing it, and the item level of its loot.
-const ODDS := {1: [62, 28, 8, 2], 2: [42, 38, 16, 4], 3: [24, 38, 28, 10], 4: [6, 30, 40, 24]}
+const ODDS := {1: [66, 28, 6], 2: [46, 40, 14], 3: [26, 46, 28], 4: [6, 40, 54]}
 ## How many choices a chest offers (a boss one more; the Seer's Eye gem one more again), and how much a theme the
 ## build already has pulls the draw toward its talents and skills (weight 1 + THEME_PULL x what it has of it).
 const CHOICES := 3
@@ -235,8 +235,8 @@ func roll_offer(cls: String, tier: int, key: String, binds: Dictionary) -> Array
 	var tfx := fx(cls)
 	var up := int(tfx.get("rarity_up", 0.0))
 	var n := CHOICES + (1 if tier >= 4 else 0) + int(tfx.get("offer_plus", 0.0))
-	var skill_pool_ := {0: [], 1: [], 2: [], 3: []}
-	var pass_pool := {0: [], 1: [], 2: [], 3: []}
+	var skill_pool_ := {0: [], 1: [], 2: []}
+	var pass_pool := {0: [], 1: [], 2: []}
 	for sk in skill_pool(cls):
 		if not skills.has(sk["id"]):
 			var c := {"kind": "skill", "id": str(sk["id"]), "rarity": skill_rarity(sk), "theme": str(RunTalents.SKILL_THEMES.get(str(sk["id"]), ""))}
@@ -247,7 +247,8 @@ func roll_offer(cls: String, tier: int, key: String, binds: Dictionary) -> Array
 			continue
 		if p.has("needs") and not skills.has(p["needs"]):
 			continue
-		pass_pool[int(p["rarity"])].append({"kind": "passive", "id": str(p["id"]), "rarity": int(p["rarity"]), "theme": str(p.get("theme", ""))})
+		var pr := mini(2, int(p["rarity"]))
+		pass_pool[pr].append({"kind": "passive", "id": str(p["id"]), "rarity": pr, "theme": str(p.get("theme", ""))})
 	var skills_left := 0
 	for r in skill_pool_:
 		skills_left += skill_pool_[r].size()
@@ -264,18 +265,18 @@ func roll_offer(cls: String, tier: int, key: String, binds: Dictionary) -> Array
 	var out := []
 	for i in n:
 		var pools: Dictionary = skill_pool_ if i < want_skills else pass_pool
-		var r := mini(3, _draw(odds, rng) + up)
+		var r := mini(2, _draw(odds, rng) + up)
 		var pick = null
-		for d in [0, -1, 1, -2, 2, -3, 3]:
+		for d in [0, -1, 1, -2, 2]:
 			var rr: int = r + d
-			if rr < 0 or rr > 3:
+			if rr < 0 or rr > 2:
 				continue
 			var left: Array = pools[rr].filter(func(c): return not _has(out, c))
 			if not left.is_empty():
 				pick = _weighted(left, have, rng)
 				break
 		if pick == null and pools == skill_pool_:
-			for rr in [0, 1, 2, 3]:
+			for rr in [0, 1, 2]:
 				var left2: Array = pass_pool[rr].filter(func(c): return not _has(out, c))
 				if not left2.is_empty():
 					pick = _weighted(left2, have, rng)
