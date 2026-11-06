@@ -645,7 +645,7 @@ static func _break(root: Node3D, w, n: Node3D, tr: int, pieces := CRYSTAL_PIECES
 		for j in mats.size():
 			var mt = mats[j]
 			if mt is BaseMaterial3D and str((mt as BaseMaterial3D).resource_name).to_lower().contains("interior"):
-				mi.set_surface_override_material(j, inner)
+				SurfaceMaterials.assign(mi, j, inner)
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		root.add_child(mi)
 		var at: Vector3 = xf * (centre + (pc["at"] as Vector3))

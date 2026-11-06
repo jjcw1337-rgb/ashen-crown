@@ -163,7 +163,7 @@ func _model(n: String, pos: Vector3, rot_deg: Vector3, scl: float, tint := Color
 				var dm := src.duplicate() as BaseMaterial3D
 				dm.albedo_color = src.albedo_color * tint
 				dm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
-				mi.set_surface_override_material(si, dm)
+				SurfaceMaterials.assign(mi, si, dm)
 	m.name = n.capitalize()
 	m.position = pos
 	m.rotation_degrees = rot_deg

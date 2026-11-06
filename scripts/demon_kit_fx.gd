@@ -120,7 +120,7 @@ static func heat_model(n: Node3D, heat: float, col := Color(1.0, 0.42, 0.07)) ->
 				if c.albedo_texture != null:
 					c.emission_texture = c.albedo_texture
 					c.emission_operator = BaseMaterial3D.EMISSION_OP_MULTIPLY
-				m.set_surface_override_material(i, c)
+				SurfaceMaterials.assign(m, i, c)
 
 static func set_heat(n: Node3D, heat: float) -> void:
 	if n == null or not is_instance_valid(n):
@@ -332,7 +332,7 @@ static func pieces(root: Node3D, world, at: Vector3, path: String, scale: float,
 		for i in mats.size():
 			var mt = mats[i]
 			if mt is BaseMaterial3D and str((mt as BaseMaterial3D).resource_name).to_lower().contains("interior"):
-				mi.set_surface_override_material(i, inner)
+				SurfaceMaterials.assign(mi, i, inner)
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		root.add_child(mi)
 		var off: Vector3 = (p["at"] as Vector3) * scale

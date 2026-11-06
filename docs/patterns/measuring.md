@@ -40,8 +40,8 @@ errors. Its known Godot4.3 dummy null-mesh defect is explicitly counted, never c
 Use `GATE_BG_PORT`, `GATE_PVP_PORT`, `GATE_COOP_PORT`, `GATE_QUEUE_PORT` and `GATE_LAN_PORT` for separate local test ports;
 never collide with another agent's servers. A functional gate is separate from the rendered performance budgets.
 On macOS the gate defaults to native rendering for title/character/Archer checks (`GATE_UI_RENDERED=1`).
-Other platforms default headless; the flag can explicitly select native rendering on a display machine. Godot4.3's
+Other platforms default headless; the flag can explicitly select native rendering on a display machine. The historical Godot4.3
 headless title/character shutdown emits a PagedAllocator error on the pre-change baseline too; it is retained
-as a defect, not added to the error allowlist. Rendered title/character/Archer checks are clean. Archer also reproduces the shutdown error headless
+as a defect, not added to the error allowlist. Those historical rendered title/character/Archer checks were clean; engine upgrades require rerunning them. Archer also reproduces the shutdown error headless
 on the candidate despite explicit scene teardown; its baseline has not been rerun. Tools which instantiate the
 main scene must set `current_scene` explicitly, matching a normal game launch.

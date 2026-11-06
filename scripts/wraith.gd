@@ -86,7 +86,7 @@ static func _spectral(r: Node3D, gear: Dictionary) -> void:
 			if src.roughness_texture != null:
 				mat.set_shader_parameter("rough_tex", src.roughness_texture)
 				mat.set_shader_parameter("use_rough", true)
-			m.set_surface_override_material(si, mat)
+			SurfaceMaterials.assign(m, si, mat)
 			var mats: Array = r.get_meta("spectral_mats") if r.has_meta("spectral_mats") else []
 			mats.append(mat)
 			r.set_meta("spectral_mats", mats)

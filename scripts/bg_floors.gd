@@ -364,7 +364,7 @@ void fragment() {
 			sm.shader = _ice_sh
 			if src != null and src.albedo_texture != null:
 				sm.set_shader_parameter("tex", src.albedo_texture)
-			(mi as MeshInstance3D).set_surface_override_material(si, sm)
+			SurfaceMaterials.assign((mi as MeshInstance3D), si, sm)
 
 static var _moss: Array = []
 

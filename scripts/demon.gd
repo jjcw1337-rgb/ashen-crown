@@ -136,7 +136,7 @@ static func _magma(r: Node3D, g: Dictionary) -> void:
 				mat.set_shader_parameter("normal_tex", src.normal_texture)
 				mat.set_shader_parameter("use_normal", true)
 			mat.set_shader_parameter("ember", g["edge"])
-			m.set_surface_override_material(si, mat)
+			SurfaceMaterials.assign(m, si, mat)
 			mats.append(mat)
 	r.set_meta("demon_mats", mats)
 

@@ -269,7 +269,7 @@ static func dye(r: Node3D, scheme: String) -> void:
 			if mat != null and mat.albedo_texture != null and mat.albedo_texture.get_width() >= 1024:
 				var dm := mat.duplicate() as StandardMaterial3D
 				dm.albedo_texture = tex
-				m.set_surface_override_material(si, dm)
+				SurfaceMaterials.assign(m, si, dm)
 
 ## The faint green in his goggles and the censer's leak: a small light at his head, smoke at his hip.
 static func _censer_glow(r: Node3D) -> void:

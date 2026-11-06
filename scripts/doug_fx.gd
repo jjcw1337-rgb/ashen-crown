@@ -243,7 +243,7 @@ void fragment() {
 			sm.shader = _balloon_sh
 			if src != null and src.albedo_texture != null:
 				sm.set_shader_parameter("tex", src.albedo_texture)
-			(mi as MeshInstance3D).set_surface_override_material(si, sm)
+			SurfaceMaterials.assign((mi as MeshInstance3D), si, sm)
 	var ap := d.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	if ap != null and ap.has_animation("run"):
 		ap.play("run")

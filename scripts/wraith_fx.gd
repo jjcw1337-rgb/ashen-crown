@@ -902,7 +902,7 @@ static func afterimage(rig: Node3D, root: Node3D, tint: Color, life: float, star
 			mat.set_shader_parameter("spirit", tint)
 			mat.set_shader_parameter("phase_amt", start_phase)
 			mat.set_shader_parameter("glow", 2.0)
-			m.set_surface_override_material(si, mat)
+			SurfaceMaterials.assign(m, si, mat)
 			mats.append(mat)
 	g.set_meta("mats", mats)
 	g.set_meta("born", 0.0)

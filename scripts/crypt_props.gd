@@ -216,7 +216,7 @@ static func see_through(root: Node3D, own := false) -> void:
 				sm.set_shader_parameter("rune_col", Vector3(RUNE.r, RUNE.g, RUNE.b))
 				if not own:
 					_cache[key] = sm
-			mi.set_surface_override_material(si, sm)
+			SurfaceMaterials.assign(mi, si, sm)
 
 ## An ossuary niche: 1 m wide, its shelves of bones facing +z.
 static func niche() -> Node3D:
@@ -267,7 +267,7 @@ static func chest(yaw_deg: float) -> Node3D:
 			var lit: StandardMaterial3D = src.duplicate()
 			lit.albedo_color = Color(1.3, 1.24, 1.16)
 			_cache[key] = lit
-		mi.set_surface_override_material(0, _cache[key])
+		SurfaceMaterials.assign(mi, 0, _cache[key])
 	var l := OmniLight3D.new()
 	l.name = "Glint"
 	l.light_color = Color(1.0, 0.78, 0.45)

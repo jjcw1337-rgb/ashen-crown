@@ -1375,6 +1375,39 @@ func _preparation_classes(zone: String) -> Array:
 		return SkillWarmData.EVENTS.keys()
 	return [hero.cls]
 
+## Hosting can start inside an already loaded solo world (Steam Invite Friends / LAN).
+## Complete presentation readiness before opening admission; reuse the normal combat scope.
+func prepare_host_presentation() -> bool:
+	while _busy:
+		await get_tree().process_frame
+	if not playing or world == null or net.active:
+		return false
+	if not _presentation_client():
+		return true
+	_busy = true
+	var was_loading: bool = loading.visible
+	var was_label: String = loading_lbl.text
+	loading_lbl.text = "Preparing co-op..."
+	loading.visible = true
+	var classes: Array = SkillWarmData.EVENTS.keys()
+	var scope := "combat:%d:%s" % [get_instance_id(), ",".join(classes)]
+	ResCache.prepare(scope, ContentCatalog.combat(classes))
+	var result := await ResCache.wait_ready(get_tree(), scope)
+	var ready: bool = result["ready"] and playing
+	if ready:
+		await SkillWarm.run(self, classes)
+		ready = playing
+	if ready:
+		if _combat_scope != scope:
+			ResCache.release(_combat_scope)
+		_combat_scope = scope
+	elif _combat_scope != scope:
+		ResCache.release(scope)
+	loading.visible = was_loading
+	loading_lbl.text = was_label
+	_busy = false
+	return ready
+
 func _boot_preload() -> void:
 	_boot_scope = "boot:%d" % get_instance_id()
 	var paths: Array = []
@@ -1827,6 +1860,9 @@ func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
 ## Co-op from the title screen. Your last character is used if you have one.
 func start_host(id := "") -> void:
 	await start_game(not list_characters().is_empty(), "knight", id)
+	if not await prepare_host_presentation():
+		ui.message("Could not prepare co-op. Try again.", Color(1, 0.5, 0.4))
+		return
 	var err := net.host()
 	if err != OK:
 		ui.big_message("Could not host")

@@ -17,7 +17,10 @@ Two kinds of multiplayer, deliberately different (Blaine, 2026-11-05):
 2. **The host is authoritative.** Monsters, loot and damage resolve on the host (or the dedicated server); partners
    send what they do and draw what they are told. A partner's damage reaches the host through the existing RPCs.
 3. **Everything a skill shows is an fx event** (see [effects.md](effects.md)), so partners see it without new RPCs.
-4. **Every peer runs the same build**: RPC ids depend on each script's RPC set. The game says when versions differ.
+4. **Peers need compatible RPC sets and simulation behavior.** Exact build-SHA admission was explicitly removed
+   for development by Blaine; do not restore it. Client-only presentation changes can interoperate across revisions.
+   Changes to the network contract require matching deployment and real client/server tests. A join that reaches
+   the host but never receives its welcome offers an update diagnostic; it is not exact-SHA enforcement.
 5. **Steam during development is Spacewar (App ID 480)**: real invites and relay from our own builds with Steam
    running. Our own App ID comes later ($100 Steam Direct, needs an admin's OK; then BuildEnv `steam_app_id`).
    `SteamLink` (`scripts/steam_link.gd`, GodotSteam 4.23.2 in `addons/godotsteam`, its `SteamMultiplayerPeer`

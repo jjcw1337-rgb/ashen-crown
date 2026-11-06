@@ -951,7 +951,7 @@ func _set_hilt(show: bool) -> void:
 		for si in m.get_surface_count():
 			var mat := m.surface_get_material(si)
 			if mat != null and mat.resource_name == "Hilt":
-				(mi as MeshInstance3D).set_surface_override_material(si, null if show else _hidden_mat())
+				SurfaceMaterials.assign((mi as MeshInstance3D), si, null if show else _hidden_mat())
 
 static var _hide_mat: StandardMaterial3D
 static func _hidden_mat() -> StandardMaterial3D:

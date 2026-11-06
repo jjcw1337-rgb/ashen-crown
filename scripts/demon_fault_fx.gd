@@ -198,7 +198,7 @@ static func _crack_only(n: Node3D, seed: float) -> void:
 				sm.set_shader_parameter("albedo_tex", (base as BaseMaterial3D).albedo_texture)
 			sm.set_shader_parameter("seed", seed)
 			sm.set_shader_parameter("heat", 3.0)
-			m.set_surface_override_material(i, sm)
+			SurfaceMaterials.assign(m, i, sm)
 
 static var _crack_shader: Shader
 const CRACK_SHADER := """

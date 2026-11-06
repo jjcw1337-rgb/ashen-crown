@@ -129,7 +129,7 @@ func _rock(n: String) -> Node3D:
 			if base is BaseMaterial3D:
 				var m2 := (base as BaseMaterial3D).duplicate() as BaseMaterial3D
 				m2.disable_fog = true
-				g.set_surface_override_material(si, m2)
+				SurfaceMaterials.assign(g, si, m2)
 	if n == "bennu":
 		# NASA's shape model has no texture (a flat pale grey): Bennu is one of the darkest things in the solar
 		# system, a rubble pile of black boulders; a dark stone laid over it in world space
@@ -186,7 +186,7 @@ func _isle(n: String, at: Vector3, size: float, yaw: float) -> void:
 			if base is StandardMaterial3D:
 				var sm := (base as StandardMaterial3D).duplicate() as StandardMaterial3D
 				sm.albedo_color = Color(0.62, 0.66, 0.74)
-				g.set_surface_override_material(si, sm)
+				SurfaceMaterials.assign(g, si, sm)
 	drifts.append({"node": m, "base": at, "ph": randf() * TAU, "amp": 1.2, "spin": Vector3(0, 0.004, 0)})
 
 ## A plain rock cone under the edge (no Meshy model).

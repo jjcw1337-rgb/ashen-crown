@@ -17,6 +17,7 @@ var game
 var ok := false
 var steam: Object
 var lobby := 0                         # the Steam lobby of the world we host or are in (0: none)
+var _preparing_host := false
 var hosting := false
 var _join_after_title := 0             # a lobby to join once the title is up (launched by "Join Game")
 
@@ -66,12 +67,18 @@ func _process(_delta: float) -> void:
 ## Open the world we're playing to Steam friends (the pause menu's Invite Friends): host through Steam, make a
 ## friends-only lobby friends can join from their friends list, then show Steam's invite dialog.
 func invite() -> void:
-	if not ok:
+	if not ok or _preparing_host:
 		return
 	if not hosting:
 		if game.net.active:
 			game.ui.message("You're already in a co-op game.", Color(1, 0.6, 0.45))
 			print("[STEAM] invite: already in a co-op game")
+			return
+		_preparing_host = true
+		var prepared: bool = await game.prepare_host_presentation()
+		_preparing_host = false
+		if not prepared:
+			game.ui.message("Could not prepare co-op. Try again.", Color(1, 0.5, 0.4))
 			return
 		var p: MultiplayerPeer = ClassDB.instantiate("SteamMultiplayerPeer")
 		var err: int = p.call("create_host", 0)

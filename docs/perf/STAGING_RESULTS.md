@@ -1,7 +1,7 @@
 # Staging continuation — 2026-11-05
 
 Blaine authorized continuing optimization and publishing to staging. This continuation builds on the
-shared preparation implementation in PR #4 and integrates staging through b506d32. Publication and
+shared preparation implementation in PR #4 and integrates staging through d0e8ea9 (Godot4.4.1, Steam co-op, autosave and lobby changes). Publication and
 final functional gate are pending; this is not a certified full-suite performance result.
 
 ## Runtime changes
@@ -25,7 +25,11 @@ final functional gate are pending; this is not a certified full-suite performanc
   passes with zero leaks/input failures, exit0, 220 known dummy mesh errors and no warnings.
   This targeted rerun supersedes the initial gate UI diagnostic; runtime files match the gate start.
 
-## Evidence collected so far
+## Historical Godot4.3 evidence
+
+The measurements below precede the engine upgrade. They are not a 4.4.1 baseline.
+
+## Evidence collected before integration
 
 - Final resource contracts: 23 ownership/batching/cancellation/shutdown checks, 1,775 declaration
   checks, all 278 actual combat roots, and 47 fragment/ownership checks. All clean, no failures.
@@ -75,3 +79,20 @@ The earlier implementation's FPS/first-use improvements came with load and VRAM 
 [the original results](IMPLEMENTATION_RESULTS.md). Those limits remain open. No complete three-repeat,
 all-scenario acceptance suite, roster-aware preparation, long soak or Windows/Linux GPU comparison
 has been completed in this continuation. Initial staged adoption is not a claim that all budgets pass.
+
+## Godot4.4.1 integration (verification in progress)
+
+- Merged the latest staging work rather than publishing the earlier engine or replacing Steam/autosave changes.
+  The active server export is e64d0a5; Net, ArenaMatch, MatchInstance and the broker have no diff against it.
+  This continuation changes client preparation and shared visual construction, not the RPC contract.
+- Steam Invite Friends and LAN Host can open an existing solo world without a zone transition. Both now await
+  the shared all-class combat preparation before admitting friends. Repeated preparation reuses the same scope;
+  returning to title releases it. A dedicated rendered contract checks readiness, retained character/world,
+  reuse and release without actually opening a Steam lobby. Steam relay/invites require their separate test.
+- Godot4.4.1 dummy rendering returns an empty MultiMesh transform buffer. Props' shadow twin now falls back
+  to the existing source transforms when readback has no matching data; native rendering keeps its bulk copy.
+  The first 4.4.1 gate exposed this error and was stopped; its log is retained, not counted as a pass.
+- After updating only this worktree's ignored class/extension registrations, all content contracts passed:
+  23 cache, 1775 declarations, 278 actual combat roots, 47 fragment checks. Twelve Python benchmark/log tests
+  and 49 broker tests also passed. Initial stale local class-cache failure is retained. No shared import was run.
+- Full functional gate, rendered host readiness and final staging export/publication remain pending.

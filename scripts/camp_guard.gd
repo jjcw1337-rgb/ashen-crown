@@ -624,7 +624,7 @@ func _dress() -> void:
 				continue
 			var mm := m.duplicate() as Material
 			mm.next_pass = rim
-			mi.set_surface_override_material(i, mm)
+			SurfaceMaterials.assign(mi, i, mm)
 	var fl := OmniLight3D.new()
 	fl.name = "Fill"
 	fl.light_color = def.get("fill", Color(1.0, 0.8, 0.6))
