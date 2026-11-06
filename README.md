@@ -27,7 +27,9 @@ direction, the more the chests offer it, so a run that keeps picking one directi
 ### The Hero Codex
 
 All skills, rites, gems and consumables are data in `data/codex/` (JSON), and the game loads them from
-there. The Codex editor (`tools/codex/server.py`, see `tools/codex/README.md`) edits them in the browser.
+there. **The Codex editor: https://blaines-mac-mini.tail7f9b03.ts.net.** Open it once with the key link from
+the admins' Discord channel. It edits the data in the browser and publishes to `staging`; see
+`tools/codex/README.md` for details.
 Players can browse what they've discovered in game from the Codex button on the multiplayer screen.
 
 ## Play
@@ -61,16 +63,18 @@ has access to the private `ashen-crown-staging` page, and install it. The app up
   .NET), clone `jjcw1337-rgb/ashen-crown`, import `project.godot` and press F5. The first open takes a
   minute while Godot builds `.godot/` (never committed). For models, use Blender 4.5 LTS and keep `.blend`
   files outside the project; only `.glb` exports go in `assets/models/`.
-- **Workflow:** work on your own branch. Run `bash tools/nightly/gate.sh <logdir>` before merging to
-  `staging`. Pushes to `staging` build Windows, Mac and Linux and upload them to itch.io. `main` changes
-  only when an admin asks.
-- **How the code is organized and its rules:** [CLAUDE.md](CLAUDE.md) (also for AI agents; Codex starts
-  at [AGENTS.md](AGENTS.md)) and [docs/patterns/](docs/patterns/).
+- **Workflow:** work on your own branch, test what you change, then merge to `staging`. Pushes to
+  `staging` build Windows, Mac and Linux and upload them to itch.io and Steam's staging branch. `main`
+  changes only when an admin asks.
+- **How the code is organized and its rules:** [AGENTS.md](AGENTS.md) (for people and AI agents alike),
+  [docs/architecture_cleanup.md](docs/architecture_cleanup.md) (the reorganization in progress) and
+  [docs/patterns/](docs/patterns/).
 
 ### Project layout
 
 | Path | What's there |
 |---|---|
+| `heroes/<hero>/` | Everything one hero owns: code, model, skills with their assets, build scripts, tests (Archer and Plague Doctor so far) |
 | `scripts/game.gd` | Boot, zones, camera, input, saving |
 | `scripts/world.gd`, `bg_forest.gd`, `camps.gd` | Map building, the Verdant Reach, camps and their chests |
 | `scripts/hero.gd`, `enemy.gd` | Players and monsters |

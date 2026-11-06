@@ -91,20 +91,32 @@ Touch points to coordinate:
 - Export filters.
 - Saved survivors.
 
-## Who does what
+## Who does what (split by files, so nobody edits the same thing)
 
-- **Claude-1: the world side.** The cuts (the old crypt, Act II, Act I's story, the coast, camp life, the Last
-  Flame, the co-op server; King Grubb kept) together with the loading overhaul, which is already converting those
-  zone builders.
-- **Claude-2: the hero side.** Every hero into its folder, the shared effects into `systems/fx/`, one `codex.json`
-  per hero, then the damage and effect system and the per-skill split.
-- Both touch `game.gd`, `ui.gd` and `hero.gd`, so keep commits small, pull often, and note large edits to those
-  files here.
+- **Claude-1: the world side.**
+  - Tasks: the cuts (the old crypt, Act II, Act I's story, the coast, camp life, the Last Flame, the co-op server;
+    King Grubb is kept) and the loading overhaul.
+  - Owns: `world.gd`, `forest_camp.gd`, `bg_forest.gd`, `camps.gd`, `battlegrounds.gd`, `res_cache.gd`, the
+    preload and warm-up lists, every zone builder, and the files of everything being cut.
+- **Claude-2: the hero side.**
+  - Tasks: every hero into its folder, the per-skill split (the Archer first, as the template), the shared effects
+    into `systems/fx/`, one `codex.json` per hero, then the damage and effect system.
+  - Owns: `heroes/**`, `systems/**`, `class_skills.gd`, `skill_fx.gd`, `skill_spec.gd`, `run_talents.gd`,
+    `run_build.gd`, `codex.gd`, `data/codex/`, `tools/codex/`.
+- **Shared big files** (`game.gd`, `ui.gd`, `hero.gd`, `net.gd`, `enemy.gd`): either of us may edit them.
+  - Keep commits small, and pull before starting.
+  - Before a large edit, add a line under "In progress" below and remove it when it lands.
+- Anything not listed: ask Blaine or JJ before starting.
+
+### In progress
+
+- Claude-2: the Archer's per-skill split (`heroes/archer/**`, plus small hook changes in `hero.gd` and
+  `class_skills.gd`).
 
 ## Status
 
-- [ ] 1. Folders: the Archer is done (`87bae1f`). The Plague Doctor is in progress; Wraith, Demon, Warlock, Doug, the
-  dragons and the Knight come next (the Knight's body builder goes to `systems/bodies/`).
+- [ ] 1. Folders: the Archer (`87bae1f`) and the Plague Doctor (`8550926`) are done. Next: the Wraith, Demon, Warlock,
+  Doug, the dragons and the Knight. The Knight's body builder goes to `systems/bodies/`.
 - [ ] 2. Reference recordings
 - [ ] 3. Damage and effect system
 - [ ] 4. One data source
