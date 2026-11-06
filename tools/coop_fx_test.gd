@@ -94,6 +94,8 @@ func _run() -> void:
 		while g._busy:
 			await process_frame
 		var h = g.hero
+		h.run = RunBuild.new()
+		g.test_allskills = true
 		h.set_level(20)
 		g.test_immortal = true
 		g.exit_grace = 1e9    # a hop or dash in a skill must not carry him through a zone exit mid-test

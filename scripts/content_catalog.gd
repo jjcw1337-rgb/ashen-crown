@@ -70,6 +70,11 @@ static func zone(run: int, name: String) -> Array:
 			"res://assets/models/fort/tower.glb", "res://assets/models/lairs/ice_rock.glb"])
 	if name == "town": paths.append_array(LOBBY_ART.values())
 	var family := "isle" if name.begins_with("isle_") else ("arena" if name == "sandbox" else name)
+	if family in ["bg", "arena"]:
+		# Reward cards and newly learned run skills first appear during play.
+		for dir in ["res://assets/textures/skills", "res://assets/textures/gems"]:
+			if not _families.has(dir): _families[dir] = files(dir)
+			paths.append_array(_families[dir])
 	# The procedural PvP hall and Vigil use crypt props, not outdoor rocks, Roman
 	# scenery or town waypoint/stash models. Keep those bundles out of their residency.
 	var dirs: Array = [] if family in ["arena", "vigil"] else COMMON_ZONE.duplicate()

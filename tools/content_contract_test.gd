@@ -16,7 +16,7 @@ func run() -> void:
 		var represented := {}
 		for event in SkillWarmData.EVENTS.get(cls, []):
 			represented[str(event.get("s", ""))] = true
-		for skill in Data.skills_for(cls) + Data.shared_skills():
+		for skill in Data.skills_for(cls) + Data.run_skills_for(cls) + Data.shared_skills():
 			check(represented.has(str(skill.id)), "Skill missing captured preparation event: %s/%s" % [cls, skill.id])
 	var solo: Array = catalog.combat(["knight"])
 	check(not solo.any(func(p): return str(p).contains("/plague/") or str(p).contains("/arrows/")), "Solo knight must not acquire other classes\' families")

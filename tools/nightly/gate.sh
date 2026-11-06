@@ -77,7 +77,7 @@ check pvp_attacker "$OUT/gate_pvp_a.log" $ra
 check pvp_victim "$OUT/gate_pvp_b.log" $rb
 
 
-for t in terrain_job_test content_world_test playtest coop_fx_test title_test char_test ui_click_test grass_test intro_skip_test controls_test telemetry_test screen_test skill_spec_test stamina_test raid_schedule_test run_build_test camp_test survivor_test; do
+for t in terrain_job_test content_contract_test content_world_test playtest coop_fx_test title_test char_test ui_click_test grass_test intro_skip_test controls_test telemetry_test screen_test skill_spec_test stamina_test raid_schedule_test run_build_test run_talents_test camp_test survivor_test; do
   if [ "$t" = title_test ] || [ "$t" = char_test ]; then
     # Avoid empty arrays under the Mac's Bash 3.2 + set -u.
     if [ "$UI_RENDERED" = 1 ]; then

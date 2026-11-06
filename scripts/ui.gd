@@ -5688,7 +5688,7 @@ class SkillGlyph extends Control:
 	static func painted(sid: String) -> Texture2D:
 		if not _painted.has(sid):
 			var path := "res://assets/textures/skills/%s.png" % sid
-			_painted[sid] = load(path) if sid != "" and ResourceLoader.exists(path) else null
+			_painted[sid] = ResCache.get_res(path) if sid != "" and ResourceLoader.exists(path) else null
 		return _painted[sid]
 
 	func _icon_id() -> String:

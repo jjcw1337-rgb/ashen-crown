@@ -88,6 +88,10 @@ static func run(g, classes: Array = []) -> void:
 			for ev in SkillWarmData.PLAGUE:
 				p.pd.remote(_pd_rebuild(str(ev), origin))
 				n += 1
+	# Shared run procs and consumable variants can appear on any class mid-match.
+	for event in RunTalents.preparation_events(origin):
+		SkillFx.play(pups[0], event)
+		n += 1
 	var tree: SceneTree = g.get_tree()
 	for i in 3:
 		await RenderingServer.frame_post_draw

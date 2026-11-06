@@ -7,8 +7,12 @@ var RB
 var RT
 
 func _initialize():
+	BuildEnv.forced = {"env": "local", "cloud": "0"}
 	g = (load("res://main.tscn") as PackedScene).instantiate()
+	g.char_dir = "user://gate/run_talents/"
+	g.old_save = g.char_dir + "absent.json"
 	get_root().add_child(g)
+	current_scene = g
 	RB = load("res://scripts/run_build.gd")
 	RT = load("res://scripts/run_talents.gd")
 	_run()
@@ -34,6 +38,8 @@ func _run() -> void:
 	await _offers(h)
 	await _skills(h)
 	print("[TAL] done, %d failure(s)" % fails)
+	g.queue_free()
+	for i in 10: await process_frame
 	quit(1 if fails > 0 else 0)
 
 ## A fresh run of `cls` with only these talents (id: stacks), and foes cleared away.

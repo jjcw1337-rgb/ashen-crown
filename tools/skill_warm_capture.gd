@@ -10,11 +10,20 @@ extends SceneTree
 var g
 var events: Array = []
 var pd_events: Array = []      # the Plague Doctor's own events (Plague._send), replayed on a puppet's ghost Plague
+var failures := 0
 const OUT := "res://scripts/skill_warm_data.gd"
 
 func _initialize():
+	if not OS.get_user_data_dir().get_file().begins_with("AshenCrown-"):
+		push_error("Capture requires isolated AshenCrown-* user data")
+		quit(2)
+		return
+	BuildEnv.forced = {"env": "local", "cloud": "0"}
 	g = (load("res://main.tscn") as PackedScene).instantiate()
+	g.char_dir = "user://warm_capture_characters/"
+	g.old_save = g.char_dir + "absent.json"
 	get_root().add_child(g)
+	current_scene = g
 	_run()
 
 func wait(s: float) -> void:
@@ -81,9 +90,12 @@ func _run() -> void:
 	g.net.pd_tap = func(ev: String): pd_events.append(ev)
 	g.test_immortal = true
 	g.test_allskills = true
-	var out := {}
-	var pd_out: Array = []
+	var args := OS.get_cmdline_user_args()
+	var selected: Array = Array(args[args.find("--classes") + 1].split(",")) if args.has("--classes") else Data.CLASSES.keys()
+	var out: Dictionary = SkillWarmData.EVENTS.duplicate(true)
+	var pd_out: Array = [] if selected.has("plague") else SkillWarmData.PLAGUE.duplicate()
 	for cls in Data.CLASSES.keys():
+		if not selected.has(cls): continue
 		await g.start_game(false, cls)
 		g.ui.close_all()
 		await g.travel(0, "wild", "start")
@@ -91,10 +103,12 @@ func _run() -> void:
 			await process_frame
 		g.exit_grace = 1e9
 		var h = g.hero
+		# Run skills are absent from a story character's usable skill list.
+		h.run = RunBuild.new()
 		h.level = 20
 		h.recalc()
 		var ids: Array = ["attack"]
-		for sk in Data.skills_for(cls) + Data.shared_skills():
+		for sk in Data.skills_for(cls) + Data.run_skills_for(cls) + Data.shared_skills():
 			ids.append(str(sk["id"]))
 		var mine: Array = []
 		for id in ids:
@@ -110,10 +124,15 @@ func _run() -> void:
 			if id == "attack":
 				h.swipe_attack(en[1].global_position, false)
 			else:
-				h.use_skill(id, h.skill_aim(id, en[1].global_position))
+				if not h.use_skill(id, h.skill_aim(id, en[1].global_position)):
+					push_error("Capture could not cast %s/%s" % [cls, id])
+					failures += 1
 			await wait(2.2)
 			if id == "drain":
 				h.end_drain()
+			if id != "attack" and not events.any(func(w): return str(w.get("s", "")) == id):
+				push_error("Capture missing event for %s/%s" % [cls, id])
+				failures += 1
 			for w in events:
 				var pw = _plain(w, origin)
 				if pw is Dictionary and pw.has("s") and pw.has("e"):
@@ -129,8 +148,14 @@ func _run() -> void:
 			await wait(0.3)
 		out[cls] = mine
 		print("[W] %s: %d events from %d skills" % [cls, mine.size(), ids.size()])
+	if failures:
+		printerr("Capture rejected; existing recipes preserved")
+		quit(1)
+		return
 	var f := FileAccess.open(OUT, FileAccess.WRITE)
 	f.store_string("class_name SkillWarmData\nextends RefCounted\n## What every class's skills draw, recorded by tools/skill_warm_capture.gd (their fx events, places relative to the\n## caster, no monsters) for SkillWarm. Generated: run the capture again after changing a skill's effects.\n\nconst EVENTS := " + JSON.stringify(out) + "\n\n## The Plague Doctor's own events (Plague._send), places as \"~x,y,z\" relative to the caster.\nconst PLAGUE := " + JSON.stringify(pd_out) + "\n")
 	f.close()
 	print("[W] wrote ", OUT)
+	g.queue_free()
+	for i in 10: await process_frame
 	quit()

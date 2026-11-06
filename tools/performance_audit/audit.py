@@ -83,6 +83,10 @@ def evaluate(groups):
             if m.get('gameplay_sync_misses') != {}: problems.append(prefix + ': cache misses or missing cache instrumentation')
             if key.startswith('pvp'):
                 p = m.get('pvp', {})
+                if not re.fullmatch(r'[0-9a-f]{64}', p.get('recipe_fingerprint', '')):
+                    problems.append(prefix + ': missing presentation workload identity')
+                if p.get('recipe_fingerprint') != runs[0].get('metrics', {}).get('pvp', {}).get('recipe_fingerprint'):
+                    problems.append(prefix + ': presentation workload changed between repeats')
                 if p.get('actors') != 6 or p.get('teams') != [3, 3] or p.get('bursts', 0) < 3 or p.get('presentation_events', 0) < 1:
                     problems.append(prefix + ': incomplete six-actor spell flood')
                 expected = {'pvp3v3:2': ['demon','plague','archer']*2,
@@ -340,6 +344,7 @@ class Audit:
         self.report['summary'] = summary
         self.report['budget_findings'] = budget_issues(summary)
         identity = {'engine': self.report['engine'], 'gpu': self.report['runs'].get('camp:2', [{}])[0].get('metrics', {}).get('gpu_name'), 'resolution': self.report['runs'].get('camp:2', [{}])[0].get('metrics', {}).get('resolution'), 'policy': 2, 'maps': {key: rows[0].get('metrics', {}).get('map_title') for key, rows in self.report['runs'].items() if rows}}
+        identity['workloads'] = {key: rows[0].get('metrics', {}).get('pvp', {}).get('recipe_fingerprint') for key, rows in self.report['runs'].items() if key.startswith('pvp') and rows}
         fingerprint = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:16]
         baseline_file = self.root/('baseline-'+fingerprint+'.json')
         self.report['comparison_identity'] = identity

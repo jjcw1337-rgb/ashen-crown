@@ -51,6 +51,9 @@ func step(g, elapsed: float) -> void:
 	next_burst = elapsed + 6.0
 	bursts += 1
 	for actor in actors:
+		for event in RunTalents.preparation_events(actor.global_position):
+			SkillFx.play(actor, event)
+			events += 1
 		for event in SkillWarmData.EVENTS.get(actor.cls, []):
 			if event is Dictionary:
 				var t := Time.get_ticks_usec()
@@ -73,6 +76,7 @@ func _record(key: String, us: int) -> void:
 
 func report() -> Dictionary:
 	return {"actors": actors.size(), "teams": [3, 3], "classes": classes, "profile": profile, "bursts": bursts,
+		"recipe_fingerprint": (JSON.stringify(SkillWarmData.EVENTS) + JSON.stringify(SkillWarmData.PLAGUE) + str(RunTalents.preparation_events(Vector3.ZERO))).sha256_text(),
 		"presentation_events": events, "peak_fx_root_children": peak_nodes,
 		"pre_burst_fx_children": node_samples, "creation_us": creation_us, "kind": "presentation_replay_not_network_simulation"}
 

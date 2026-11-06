@@ -889,6 +889,18 @@ const TOSS_T := 0.55
 
 const FLARE := [Color(1.0, 0.5, 0.15), Color(0.6, 1.0, 0.3)]
 
+## Representative presentation variants, shared by preparation and the PvP flood.
+## Keep this beside play_fx when adding a new talent/consumable effect.
+static func preparation_events(origin: Vector3) -> Array:
+	var out: Array = []
+	for kind in ["flare", "shards", "cloud", "freeze", "chain", "ricochet", "spread", "bolt", "undying", "echo", "gem", "toss"]:
+		var variants := 3 if kind == "toss" else (2 if kind in ["flare", "undying"] else 1)
+		for variant in variants:
+			out.append({"s": "run", "e": kind, "n": variant, "r": 3.0, "x": 1.5,
+				"p": origin, "q": origin + Vector3(0, 0, -3),
+				"ps": PackedVector3Array([origin, origin + Vector3(0, 1, -3), origin + Vector3(2, 1, -3)])})
+	return out
+
 static func play_fx(h: Hero, ev: Dictionary) -> void:
 	var root: Node3D = h.game.world.fx_root
 	var p: Vector3 = ev.get("p", h.global_position)

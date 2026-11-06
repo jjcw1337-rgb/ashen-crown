@@ -12,7 +12,7 @@ class AuditTests(unittest.TestCase):
     def valid_groups(self):
         metrics = {k: 1.0 for k in audit.METRICS}
         metrics.update(fps_avg=60, focused=True, gameplay_sync_misses={},
-                       pvp={'actors':6,'teams':[3,3],'bursts':6,'presentation_events':100})
+                       pvp={'recipe_fingerprint':'a'*64,'actors':6,'teams':[3,3],'bursts':6,'presentation_events':100})
         groups = {k: [copy.deepcopy({'valid': True, 'metrics': metrics}) for _ in range(3)] for k in audit.SCENARIOS}
         for key, roster, zone in [('pvp3v3:2',['demon','plague','archer']*2,'arena'),
                                  ('pvp_dragons:2',['wyrm','serpent','wyvern']*2,'sandbox'),
@@ -44,6 +44,13 @@ class AuditTests(unittest.TestCase):
             self.assertTrue(audit.evaluate(groups)[0])
             groups = self.valid_groups(); groups[key][1]['metrics']['environment'] = 'town'
             self.assertTrue(audit.evaluate(groups)[0])
+    def test_recipe_changes_cannot_mix_repeats(self):
+        groups = self.valid_groups()
+        groups['pvp3v3:2'][1]['metrics']['pvp']['recipe_fingerprint'] = 'b'*64
+        self.assertTrue(audit.evaluate(groups)[0])
+        groups = self.valid_groups()
+        del groups['pvp3v3:2'][0]['metrics']['pvp']['recipe_fingerprint']
+        self.assertTrue(audit.evaluate(groups)[0])
     def test_balance_requires_actual_finite_positive_damage(self):
         data = {f'{cls}:20:{gear}': dict(cls=cls,lvl=20,gear=gear,dps=10,ehp=100,life=100)
                 for cls in ['demon','plague','archer'] for gear in ['fresh','geared']}
