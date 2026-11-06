@@ -11,7 +11,10 @@ func ok(c: bool, what: String) -> void:
 		fails += 1
 
 func _initialize():
+	BuildEnv.forced = {"env": "local", "cloud": "0"}
 	g = (load("res://main.tscn") as PackedScene).instantiate()
+	g.char_dir = "user://gate/warlock_hex/"
+	g.old_save = g.char_dir + "absent.json"
 	get_root().add_child(g)
 	current_scene = g
 	_run()

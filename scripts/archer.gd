@@ -586,7 +586,10 @@ static func update(h: Hero, delta: float) -> void:
 		var wall: bool = moved.length() < step * 0.4
 		var stop: bool = a["left"] <= 0.0 or wall
 		ArrowFx.fly(a, n, delta, h.game)
-		for e in h.game.enemies_near(np, 1.6):
+		# Gather the whole swept segment: a long frame may cross several enemies.
+		var candidates: Array = h.game.enemies_near((p + np) * 0.5, moved.length() * 0.5 + 1.6)
+		candidates.sort_custom(func(first, second): return (first.global_position - p).dot(moved) < (second.global_position - p).dot(moved))
+		for e in candidates:
 			if e.dead or (a["hit"] as Dictionary).has(e):
 				continue
 			var d := _seg_dist(Vector2(e.global_position.x, e.global_position.z), Vector2(p.x, p.z), Vector2(np.x, np.z))

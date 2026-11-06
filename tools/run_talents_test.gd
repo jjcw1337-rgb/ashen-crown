@@ -62,7 +62,7 @@ func _foe(h, off: Vector3, kind := "zombie", life := 400.0):
 	var e = g.spawn_enemy(kind, p, 5, false, "", 0)
 	e.max_life = life
 	e.life = life
-	e.scripted = true          # (it stands still: the test aims at it)
+	e.scripted = 60.0          # seconds, not a boolean: remain still throughout the cast
 	return e
 
 func _hit(h, e, mult := 1.0, src := "attack") -> void:
