@@ -821,6 +821,12 @@ const RUN_SKILLS := [
 		"desc": "Scream: everything within 6 metres takes 60% weapon damage, is frozen in terror for 1.2 seconds and slowed by half for 2 more."},
 	{"id": "r_reap", "cls": "wraith", "name": "Reaping Crescent", "lvl": 1, "mana": 8, "cd": 0.0, "use": 0.9, "aim": "facing", "range": 5.0, "role": "sweep and sustain",
 		"desc": "A great crescent of soul-fire sweeps out 5 metres in front of you: 140% weapon damage, and each foe it reaps heals you 2% of your life."},
+	{"id": "d_volcano", "cls": "demon", "name": "Volcano", "lvl": 9, "mana": 16, "cd": 0.0, "use": 1.2, "aim": "point", "range": 13.0, "role": "bombard an area",
+		"desc": "Tear open a volcano at the pointer: it hurls five meteors onto the foes around it over two seconds, each 110% weapon damage and setting them alight."},
+	{"id": "d_detonate", "cls": "demon", "name": "Hellbrand Detonation", "lvl": 1, "mana": 8, "cd": 6.0, "tags": ["cc"], "aim": "self", "role": "cash in the Brands",
+		"desc": "Every Branded foe within 10 metres erupts: 160% weapon damage, thrown up for 0.8 seconds, and the fire bursts onto those beside it. The Brands are spent."},
+	{"id": "d_pact", "cls": "demon", "name": "Blood Pact", "lvl": 1, "mana": 0, "cd": 12.0, "tags": ["buff"], "aim": "self", "role": "life for power",
+		"desc": "Pay 15% of your life to the pit: for 8 seconds +35% damage and 6% of the damage you deal heals you."},
 	{"id": "p_leech", "cls": "plague", "name": "Leech Jar", "lvl": 9, "mana": 10, "cd": 9.0, "tags": ["sustain"], "aim": "point", "range": 12.0, "role": "heal from foes",
 		"desc": "Lob a jar of blood leeches: for 5 seconds everything within 3 metres is poisoned, and every foe in it heals you 1.5% of your life a second."},
 ]
