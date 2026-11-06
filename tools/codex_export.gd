@@ -8,9 +8,11 @@ extends SceneTree
 ##   godot --headless --path . -s tools/_late.gd -- res://tools/codex_export.gd   (after the autoloads: RunTalents needs them)
 
 const OUT := "res://data/codex/"
+var base := {}      # the code's own values for every field written (code_base.json: Codex's three-way merge base)
 
 func _initialize() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT + "heroes"))
+	base = Codex.code_now.duplicate(true)
 	var n := 0
 	for cls in Data.CLASSES:
 		var own := Data.skills_for(cls)
@@ -88,6 +90,7 @@ func _initialize() -> void:
 	var ge := _read("gems.json")
 	var gl := []
 	for gm in RunTalents.GEMS:
+		_note("gems", gm, Codex.RITE_FIELDS)
 		var e := {"id": str(gm["id"]), "status": "live", "name": str(gm["name"]), "rarity": int(gm.get("rarity", 0)),
 			"color": "#" + (gm["color"] as Color).to_html(false) if gm.get("color") is Color else "#888888",
 			"fx": gm.get("fx", {}).duplicate(true), "text": str(gm.get("text", ""))}
@@ -99,11 +102,21 @@ func _initialize() -> void:
 	_write("gems.json", gd)
 	# what the code says for every field the codex lays over: the next load's three-way merge base (Codex._take)
 	_write("code_base.json", {"about": "Written by tools/codex_export.gd: the code's own values when the codex was last exported. Don't edit.",
-		"skills": Codex.code_now.get("skills", {}), "rites": Codex.code_now.get("rites", {}), "gems": Codex.code_now.get("gems", {})})
+		"skills": base.get("skills", {}), "rites": base.get("rites", {}), "gems": base.get("gems", {})})
 	print("[codex_export] %d heroes, %d shared skills, %d generic rites, %d consumables" % [n, ss.size(), gr.size(), cl.size()])
 	quit()
 
+## The code's value of each field the codex will now hold, where the load didn't already note it (a new entry, or a
+## field the codex didn't have: either way the dictionary still holds the code's own value).
+func _note(kind: String, src: Dictionary, fields: Array) -> void:
+	var rec: Dictionary = base.get_or_add(kind, {}).get_or_add(str(src["id"]), {})
+	for k in fields:
+		if not rec.has(k):
+			var v = src.get(k)
+			rec[k] = v.duplicate(true) if (v is Dictionary or v is Array) else v
+
 func _skill(s: Dictionary) -> Dictionary:
+	_note("skills", s, Codex.SKILL_FIELDS)
 	var e := {"id": str(s["id"]), "status": "live", "name": str(s["name"]), "rarity": RunBuild.skill_rarity(s),
 		"direction": str(s.get("direction", "")), "desc": str(s.get("desc", ""))}
 	for k in ["mana", "cd", "use", "power", "range", "role", "tags", "lvl"]:
@@ -113,6 +126,7 @@ func _skill(s: Dictionary) -> Dictionary:
 
 ## A run talent (RunTalents.TALENTS): its numbers are "k" (the text's {keys}), what it does is its "proc".
 func _run_rite(t: Dictionary, cls: String) -> Dictionary:
+	_note("rites", t, Codex.RITE_FIELDS)
 	var e := {"id": str(t["id"]), "status": "live", "name": str(t["name"]), "rarity": int(t.get("rarity", 0)), "run": true,
 		"direction": _theme_name(cls, str(t.get("theme", ""))), "max": int(t.get("max", 1)), "text": str(t.get("text", "")),
 		"icon": str(t.get("icon", ""))}
@@ -128,6 +142,7 @@ func _theme_name(cls: String, theme: String) -> String:
 	return ""
 
 func _rite(t: Dictionary, dir: String, rarity: int) -> Dictionary:
+	_note("rites", t, Codex.RITE_FIELDS)
 	return {"id": str(t["id"]), "status": "live", "name": str(t["name"]), "rarity": rarity, "direction": dir,
 		"max": int(t["max"]), "fx": t["fx"].duplicate(true), "text": str(t.get("text", "")), "icon": str(t.get("icon", ""))}
 

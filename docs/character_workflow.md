@@ -36,7 +36,7 @@ costs, and the check that must pass before the next step. A character is not don
   whole-body move, a three-blow combo, flair (taunt, bow, cheer), hit, death. Write them into the design doc.
 - `meshy.py animate <rig task id> <ids> -o .../clips_a` (6–8 per batch).
 
-## 4. Body in Blender (local; not while a nightly job holds /tmp/ashen-nightly.lock)
+## 4. Body in Blender (local)
 
 - Copy `tools/blender/doug/prep_doug_mocap.py` to `tools/blender/<id>/prep_<id>_mocap.py`; map the clip names
   it prints ("dropped clip ...") to the game's names; run

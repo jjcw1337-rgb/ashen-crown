@@ -1,8 +1,7 @@
 # Measuring
 
 **Rule:** don't call something fixed without a number from the same tool, preset and run count, before and after.
-Frame-time comparisons need a quiet machine (nothing else running; no measurements while `/tmp/ashen-nightly.lock`
-exists) and **3 runs**, with the median and the spread reported: the big fight's worst frame varied 56-117 ms between
+Frame-time comparisons need a quiet machine (nothing else running: check the `heavy-tests` claim) and **3 runs**, with the median and the spread reported: the big fight's worst frame varied 56-117 ms between
 identical runs.
 
 | Question | Tool | Notes |

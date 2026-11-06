@@ -23,6 +23,5 @@ machine). Claude reads it through CLAUDE.md, which holds the full code map and t
 - Before pushing: run `bash tools/nightly/gate.sh <logdir>` from inside the worktree you are testing; it must be green.
 - Branches: your own worktree; previews on `test-*`; `staging` only with a green gate; `main` only on an admin's
   explicit request. Never force-push over someone else's commits; rebase on the latest remote first.
-- No benchmarks, renders or gates while `/tmp/ashen-nightly.lock` exists.
 - Never put credentials in the repo, prompts, logs or chat. Never commit `.godot/`, `build/`, `server/` or `.blend`.
 - Say when something is unmeasured. A fix counts only with before and after numbers from the same tool.

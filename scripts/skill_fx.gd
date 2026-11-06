@@ -49,7 +49,7 @@ static func _play(h: Hero, ev: Dictionary) -> void:
 		"warlock": done = WarlockFx.play(h, ev)
 		"archer": done = ArcherFx.play(h, ev)
 		"doug": done = DougFx.play(h, ev)
-		"wyrm", "serpent", "wyvern": done = ArcFx.play_dragon(h, ev) or SerpentFx.play(h, ev)
+		"wyrm", "serpent", "wyvern": done = DragonRunFx.play(h, ev) or ArcFx.play_dragon(h, ev) or SerpentFx.play(h, ev)
 	if not done:
 		done = _common(h, ev)
 	if not done:
@@ -98,6 +98,7 @@ static func update(h: Hero, delta: float) -> void:
 	ArcherFx.update(h, delta)
 	FxTiming.done(t1, "update archer/warlock")
 	SerpentFx.update(h, delta)
+	DragonRunFx.update(h, delta)
 	DougFx.update(h, delta)
 	FxTiming.done(t0, "update all")
 
@@ -109,6 +110,7 @@ static func clear(h: Hero) -> void:
 	ArcherFx.clear(h)
 	KnightFx.clear(h)
 	DougFx.clear(h)
+	DragonRunFx.clear(h)
 	h.fxs.clear()
 
 # ---------------------------------------------------------------- helpers for the handlers

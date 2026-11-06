@@ -8,7 +8,10 @@
 			"cd": 0.0,
 			"range": 6.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"role": null
 		},
 		"nova": {
 			"name": "Holy Nova",
@@ -18,7 +21,9 @@
 			"use": 1.0,
 			"power": 0.37,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"range": null,
+			"role": null
 		},
 		"charge": {
 			"name": "Charge",
@@ -27,7 +32,10 @@
 			"cd": 4.0,
 			"range": 9.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"role": null
 		},
 		"cry": {
 			"name": "Battle Cry",
@@ -35,7 +43,11 @@
 			"mana": 20,
 			"cd": 20.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"range": null,
+			"role": null
 		},
 		"rend": {
 			"name": "Spectral Rend",
@@ -44,7 +56,10 @@
 			"cd": 0.0,
 			"range": 4.5,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"role": null
 		},
 		"siphon": {
 			"name": "Soul Siphon",
@@ -53,7 +68,10 @@
 			"cd": 6.0,
 			"range": 9.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"role": null
 		},
 		"step": {
 			"name": "Shadow Step",
@@ -62,7 +80,10 @@
 			"cd": 5.0,
 			"range": 9.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"role": null
 		},
 		"grasp": {
 			"name": "Haunting Grasp",
@@ -71,7 +92,10 @@
 			"cd": 10.0,
 			"range": 10.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"role": null
 		},
 		"phantom": {
 			"name": "Phantom Assault",
@@ -82,7 +106,8 @@
 			"power": 0.58,
 			"range": 8.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"role": null
 		},
 		"night": {
 			"name": "Eternal Night",
@@ -90,7 +115,11 @@
 			"mana": 40,
 			"cd": 40.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"range": null,
+			"role": null
 		},
 		"fists": {
 			"name": "Molten Fists",
@@ -101,7 +130,8 @@
 			"range": 3.4,
 			"role": "Burst finisher",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"icharge": {
 			"name": "Infernal Charge",
@@ -111,7 +141,9 @@
 			"range": 9.0,
 			"role": "Engage / mobility",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null
 		},
 		"cslam": {
 			"name": "Fault of the Pit",
@@ -145,7 +177,9 @@
 			"range": 7.5,
 			"role": "Pick / pull",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null
 		},
 		"wrath": {
 			"name": "Wrath of the Pit",
@@ -154,7 +188,10 @@
 			"cd": 60.0,
 			"role": "Defensive counter",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"range": null
 		},
 		"drain": {
 			"name": "Drain Life",
@@ -163,7 +200,10 @@
 			"cd": 0.0,
 			"range": 11.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"role": null
 		},
 		"blight": {
 			"name": "Blight Bolt",
@@ -174,7 +214,8 @@
 			"power": 0.59,
 			"range": 15.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"role": null
 		},
 		"shackles": {
 			"name": "Soul Shackles",
@@ -182,7 +223,11 @@
 			"mana": 16,
 			"cd": 8.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"range": null,
+			"role": null
 		},
 		"pierce": {
 			"name": "Fire Arrow",
@@ -191,7 +236,10 @@
 			"cd": 0.0,
 			"range": 16.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"role": null
 		},
 		"volley": {
 			"name": "Frost Volley",
@@ -201,7 +249,9 @@
 			"use": 1.1,
 			"range": 14.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null,
+			"role": null
 		},
 		"snare": {
 			"name": "Thunderstep",
@@ -210,7 +260,10 @@
 			"cd": 7.0,
 			"range": 10.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"role": null
 		},
 		"beast": {
 			"name": "Spirit Beast",
@@ -219,7 +272,10 @@
 			"cd": 8.0,
 			"range": 18.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"role": null
 		},
 		"toxic": {
 			"name": "Pestilence Vial",
@@ -228,7 +284,10 @@
 			"cd": 0.0,
 			"range": 12.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"role": null
 		},
 		"swarm": {
 			"name": "Swarmcraft",
@@ -237,7 +296,10 @@
 			"cd": 12.0,
 			"range": 13.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"role": null
 		},
 		"bloom": {
 			"name": "Corpse Bloom",
@@ -246,7 +308,10 @@
 			"cd": 10.0,
 			"range": 9.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"role": null
 		},
 		"fog": {
 			"name": "Fog of the Forgotten",
@@ -255,7 +320,10 @@
 			"cd": 16.0,
 			"range": 4.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"role": null
 		},
 		"transfusion": {
 			"name": "Transfusion",
@@ -263,7 +331,11 @@
 			"mana": 10,
 			"cd": 18.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"range": null,
+			"role": null
 		},
 		"experiment": {
 			"name": "The Last Experiment",
@@ -272,7 +344,10 @@
 			"cd": 45.0,
 			"range": 7.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"role": null
 		},
 		"covenant": {
 			"name": "Fel Covenant",
@@ -280,7 +355,11 @@
 			"mana": 20,
 			"cd": 20.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"range": null,
+			"role": null
 		},
 		"w_corruption": {
 			"name": "Corruption",
@@ -291,7 +370,8 @@
 			"range": 15.0,
 			"role": "Cheap curse",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"w_malediction": {
 			"name": "Malediction",
@@ -302,7 +382,8 @@
 			"range": 15.0,
 			"role": "Curse payoff",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"w_unending": {
 			"name": "Unending Rot",
@@ -313,7 +394,8 @@
 			"range": 15.0,
 			"role": "Ramping curse",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"w_festering": {
 			"name": "Festering Hex",
@@ -324,7 +406,8 @@
 			"range": 15.0,
 			"role": "Stun curse",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"w_leeching": {
 			"name": "Leeching Curse",
@@ -335,7 +418,8 @@
 			"range": 15.0,
 			"role": "Healing curse",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"w_reckoning": {
 			"name": "Reckoning",
@@ -346,7 +430,8 @@
 			"range": 15.0,
 			"role": "Curse multiplier",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"w_terrify": {
 			"name": "Terrify",
@@ -357,7 +442,8 @@
 			"range": 8.0,
 			"role": "Single fear",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"w_effigy": {
 			"name": "Dread Totem",
@@ -368,7 +454,8 @@
 			"range": 12.0,
 			"role": "Fear totem",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"w_darkwind": {
 			"name": "Void Wisp",
@@ -379,7 +466,8 @@
 			"range": 12.0,
 			"role": "Bouncing wisp",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"w_crowstorm": {
 			"name": "Eclipse Bloom",
@@ -390,7 +478,8 @@
 			"range": 8.0,
 			"role": "Ultimate",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"w_leechbolt": {
 			"name": "Leech Bolt",
@@ -401,7 +490,8 @@
 			"range": 14.0,
 			"role": "Healing bolt",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"w_harvest": {
 			"name": "Thornlash",
@@ -411,7 +501,9 @@
 			"use": 0.9,
 			"role": "Healing lash",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null,
+			"range": null
 		},
 		"w_soulfeast": {
 			"name": "Soul Feast",
@@ -421,7 +513,9 @@
 			"use": 3.0,
 			"role": "Ultimate",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null,
+			"range": null
 		},
 		"pie": {
 			"name": "Cream Pie",
@@ -431,7 +525,9 @@
 			"use": 0.9,
 			"range": 12.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null,
+			"role": null
 		},
 		"peels": {
 			"name": "Banana Peels",
@@ -441,7 +537,9 @@
 			"use": 0.8,
 			"range": 6.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null,
+			"role": null
 		},
 		"slide": {
 			"name": "Pratfall Slide",
@@ -451,7 +549,9 @@
 			"use": 0.7,
 			"range": 7.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null,
+			"role": null
 		},
 		"doppel": {
 			"name": "Doppel-Doug",
@@ -461,7 +561,9 @@
 			"use": 0.4,
 			"range": 12.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null,
+			"role": null
 		},
 		"juggle": {
 			"name": "Pin Juggle",
@@ -471,7 +573,9 @@
 			"use": 1.4,
 			"range": 12.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null,
+			"role": null
 		},
 		"bounce": {
 			"name": "Big Top Bounce",
@@ -481,7 +585,9 @@
 			"use": 1.3,
 			"range": 10.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null,
+			"role": null
 		},
 		"car": {
 			"name": "Clown Car",
@@ -490,7 +596,10 @@
 			"cd": 60.0,
 			"use": 0.6,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null,
+			"range": null,
+			"role": null
 		},
 		"earthshatter": {
 			"name": "Earthshatter",
@@ -500,7 +609,9 @@
 			"use": 1.6,
 			"range": 5.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null,
+			"role": null
 		},
 		"frost_nova": {
 			"name": "Frost Nova",
@@ -509,7 +620,10 @@
 			"cd": 0.0,
 			"use": 0.9,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null,
+			"range": null,
+			"role": null
 		},
 		"arc": {
 			"name": "Arc",
@@ -519,7 +633,9 @@
 			"use": 0.7,
 			"range": 10.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null,
+			"role": null
 		},
 		"frost_breath": {
 			"name": "Frost Breath",
@@ -529,7 +645,9 @@
 			"use": 1.4,
 			"range": 7.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null,
+			"role": null
 		},
 		"storm_arc": {
 			"name": "Storm Arc",
@@ -539,7 +657,9 @@
 			"use": 0.75,
 			"range": 11.0,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null,
+			"role": null
 		},
 		"war_cry": {
 			"name": "War Cry",
@@ -548,7 +668,10 @@
 			"cd": 8.0,
 			"use": 0.8,
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null,
+			"range": null,
+			"role": null
 		},
 		"a_multishot": {
 			"name": "Scatter Shot",
@@ -559,7 +682,8 @@
 			"range": 13.0,
 			"role": "packs up close",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"a_glacial": {
 			"name": "Glacial Shard",
@@ -570,7 +694,8 @@
 			"range": 16.0,
 			"role": "line chill",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"a_explosive": {
 			"name": "Blast Arrow",
@@ -581,7 +706,8 @@
 			"range": 16.0,
 			"role": "fire burst",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"a_stormshot": {
 			"name": "Storm Shot",
@@ -592,7 +718,8 @@
 			"range": 16.0,
 			"role": "chain lightning",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"a_mark": {
 			"name": "Hunter's Mark",
@@ -602,7 +729,9 @@
 			"range": 18.0,
 			"role": "focus a target",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null
 		},
 		"a_barrage": {
 			"name": "Arrow Storm",
@@ -613,7 +742,8 @@
 			"range": 14.0,
 			"role": "area rain",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"p_miasma": {
 			"name": "Miasma",
@@ -623,7 +753,9 @@
 			"use": 0.9,
 			"role": "poison around him",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null,
+			"range": null
 		},
 		"p_spread": {
 			"name": "Contagion",
@@ -634,7 +766,8 @@
 			"range": 14.0,
 			"role": "spreading curse",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"k_whirl": {
 			"name": "Blade Storm",
@@ -644,7 +777,9 @@
 			"use": 0.9,
 			"role": "spin through a crowd",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null,
+			"range": null
 		},
 		"k_aegis": {
 			"name": "Aegis",
@@ -653,7 +788,10 @@
 			"cd": 10.0,
 			"role": "absorb, then answer",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"range": null
 		},
 		"k_judgment": {
 			"name": "Judgment",
@@ -664,7 +802,8 @@
 			"range": 14.0,
 			"role": "cash in the brands",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"k_rites": {
 			"name": "Last Rites",
@@ -674,7 +813,9 @@
 			"range": 9.0,
 			"role": "execute and reset",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null
 		},
 		"r_deathmark": {
 			"name": "Death Mark",
@@ -684,7 +825,9 @@
 			"range": 12.0,
 			"role": "burst a single target",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null
 		},
 		"r_wail": {
 			"name": "Banshee Wail",
@@ -693,7 +836,10 @@
 			"cd": 8.0,
 			"role": "terrify the crowd",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"range": null
 		},
 		"r_reap": {
 			"name": "Reaping Crescent",
@@ -704,7 +850,8 @@
 			"range": 5.0,
 			"role": "sweep and sustain",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"d_volcano": {
 			"name": "Volcano",
@@ -715,7 +862,8 @@
 			"range": 13.0,
 			"role": "bombard an area",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"d_detonate": {
 			"name": "Hellbrand Detonation",
@@ -724,7 +872,10 @@
 			"cd": 6.0,
 			"role": "cash in the Brands",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"range": null
 		},
 		"d_pact": {
 			"name": "Blood Pact",
@@ -733,7 +884,10 @@
 			"cd": 12.0,
 			"role": "life for power",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"range": null
 		},
 		"u_barrage": {
 			"name": "Pie Barrage",
@@ -744,7 +898,8 @@
 			"range": 12.0,
 			"role": "pie a crowd",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"power": null
 		},
 		"u_bonanza": {
 			"name": "Banana Bonanza",
@@ -753,7 +908,10 @@
 			"cd": 9.0,
 			"role": "a ring of peels",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null,
+			"range": null
 		},
 		"u_cannon": {
 			"name": "Human Cannonball",
@@ -763,7 +921,81 @@
 			"range": 14.0,
 			"role": "fly in, flatten",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null
+		},
+		"s_tomb": {
+			"name": "Glacial Tomb",
+			"desc": "Seal the foe nearest the pointer, and all within 2.5 metres of it, in ice for 1.6 seconds. Then the tomb shatters: 180% weapon damage to each sealed foe and 90% to everything else within 3 metres.",
+			"mana": 10,
+			"cd": 9.0,
+			"range": 12.0,
+			"role": "lock a pack, then shatter it",
+			"rarity": null,
+			"direction": null,
+			"use": null,
+			"power": null
+		},
+		"s_coil": {
+			"name": "Crushing Coil",
+			"desc": "Whip your body round in a full coil: 130% weapon damage to everything within 4.2 metres, slowing them by 45% for 2 seconds. Chilled foes are crushed for 30% more.",
+			"mana": 7,
+			"cd": 0.0,
+			"use": 1.0,
+			"role": "crush what surrounds you",
+			"rarity": null,
+			"direction": null,
+			"power": null,
+			"range": null
+		},
+		"s_lance": {
+			"name": "Rime Lance",
+			"desc": "Breathe a line of ice spikes 10 metres ahead: 125% weapon damage to every foe on it, chilling them. A foe already chilled is frozen solid for 1 second.",
+			"mana": 9,
+			"cd": 0.0,
+			"use": 1.0,
+			"range": 10.0,
+			"role": "a line of ice",
+			"rarity": null,
+			"direction": null,
+			"power": null
+		},
+		"v_dive": {
+			"name": "Thunder Dive",
+			"desc": "Climb on your wings and dive onto the pointer (12 metres) in a strike of lightning: 240% weapon damage within 4 metres, stunning them for 0.8 seconds.",
+			"mana": 12,
+			"cd": 8.0,
+			"range": 12.0,
+			"role": "dive in and stun",
+			"rarity": null,
+			"direction": null,
+			"use": null,
+			"power": null
+		},
+		"v_cloud": {
+			"name": "Thunderhead",
+			"desc": "Roar up a storm cloud over the pointer for 4 seconds: every half second it strikes a foe beneath it (within 5 metres) for 45% weapon damage. At most two at once.",
+			"mana": 14,
+			"cd": 0.0,
+			"use": 1.1,
+			"range": 13.0,
+			"role": "a storm over a crowd",
+			"rarity": null,
+			"direction": null,
+			"power": null
+		},
+		"v_gale": {
+			"name": "Gale Wings",
+			"desc": "One great beat of your wings: everything in a cone 6.5 metres ahead takes 100% weapon damage, is hurled back and slowed by 40% for 2.5 seconds.",
+			"mana": 8,
+			"cd": 6.0,
+			"range": 6.5,
+			"role": "blow them away",
+			"rarity": null,
+			"direction": null,
+			"use": null,
+			"power": null
 		},
 		"p_leech": {
 			"name": "Leech Jar",
@@ -773,7 +1005,9 @@
 			"range": 12.0,
 			"role": "heal from foes",
 			"rarity": null,
-			"direction": null
+			"direction": null,
+			"use": null,
+			"power": null
 		}
 	},
 	"rites": {
@@ -794,7 +1028,8 @@
 			"fx": {
 				"dmg:cleave": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"k_radiance": {
 			"name": "Radiance",
@@ -803,7 +1038,8 @@
 			"fx": {
 				"dmg:nova": 12
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"k_fervor": {
 			"name": "Fervor",
@@ -812,7 +1048,8 @@
 			"fx": {
 				"ias": 5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"k_steel": {
 			"name": "Sanctified Steel",
@@ -821,7 +1058,8 @@
 			"fx": {
 				"crit": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"k_purify": {
 			"name": "Purifying Fire",
@@ -831,7 +1069,8 @@
 				"cost:nova": 15,
 				"cd:nova": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"k_consecrate": {
 			"name": "Consecration",
@@ -840,7 +1079,8 @@
 			"fx": {
 				"nova_heal": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"k_tough": {
 			"name": "Toughness",
@@ -849,7 +1089,8 @@
 			"fx": {
 				"armor_pct": 6
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"k_vigor": {
 			"name": "Vigor",
@@ -858,7 +1099,8 @@
 			"fx": {
 				"life_pct": 4
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"k_wall": {
 			"name": "Shield Wall",
@@ -867,7 +1109,8 @@
 			"fx": {
 				"block": 4
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"k_resolve": {
 			"name": "Resolve",
@@ -876,7 +1119,8 @@
 			"fx": {
 				"res": 5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"k_guard": {
 			"name": "Iron Guard",
@@ -885,7 +1129,8 @@
 			"fx": {
 				"block_dr": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"k_wind": {
 			"name": "Second Wind",
@@ -894,7 +1139,8 @@
 			"fx": {
 				"regen": 1.5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"k_unbroken": {
 			"name": "Unbreakable",
@@ -904,7 +1150,8 @@
 				"cry_heal": 25,
 				"buff_dur": 4
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"k_momentum": {
 			"name": "Momentum",
@@ -913,7 +1160,8 @@
 			"fx": {
 				"frw": 5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"k_might": {
 			"name": "Might",
@@ -922,7 +1170,8 @@
 			"fx": {
 				"str": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"k_ram": {
 			"name": "Battering Ram",
@@ -932,7 +1181,8 @@
 				"dmg:charge": 15,
 				"cd:charge": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"k_sword": {
 			"name": "Swordplay",
@@ -941,7 +1191,8 @@
 			"fx": {
 				"dmg:attack": 8
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"k_command": {
 			"name": "Commander",
@@ -950,7 +1201,8 @@
 			"fx": {
 				"buff_pow": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"k_rally": {
 			"name": "Rally",
@@ -959,7 +1211,8 @@
 			"fx": {
 				"cd:cry": 15
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"k_relentless": {
 			"name": "Relentless",
@@ -968,7 +1221,8 @@
 			"fx": {
 				"charge_cdr": 1
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_scythe": {
 			"name": "Keen Claws",
@@ -977,7 +1231,8 @@
 			"fx": {
 				"dmg:rend": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_focus": {
 			"name": "Grim Focus",
@@ -986,7 +1241,8 @@
 			"fx": {
 				"dex": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_harvest": {
 			"name": "Soul Harvest",
@@ -995,7 +1251,8 @@
 			"fx": {
 				"rend_heal": 1
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_haste": {
 			"name": "Deathly Haste",
@@ -1004,7 +1261,8 @@
 			"fx": {
 				"ias": 5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_cruel": {
 			"name": "Cruelty",
@@ -1013,7 +1271,8 @@
 			"fx": {
 				"crit": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_exec": {
 			"name": "Executioner",
@@ -1022,7 +1281,8 @@
 			"fx": {
 				"crit_dmg": 20
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_moon": {
 			"name": "Harvest Moon",
@@ -1031,7 +1291,8 @@
 			"fx": {
 				"rend_full": 1
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_scream": {
 			"name": "Hungry Tether",
@@ -1040,7 +1301,8 @@
 			"fx": {
 				"dmg:siphon": 12
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_mind": {
 			"name": "Ethereal Mind",
@@ -1049,7 +1311,8 @@
 			"fx": {
 				"mana_pct": 5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_dread": {
 			"name": "Long Grip",
@@ -1058,7 +1321,8 @@
 			"fx": {
 				"siphon_dur": 0.3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_slip": {
 			"name": "Slipstream",
@@ -1068,7 +1332,8 @@
 				"cd:step": 10,
 				"dmg:step": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_hollow": {
 			"name": "Hollow Hunger",
@@ -1078,7 +1343,8 @@
 				"cost:siphon": 15,
 				"cd:siphon": 8
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_form": {
 			"name": "Spirit Form",
@@ -1087,7 +1353,8 @@
 			"fx": {
 				"res": 6
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_echo": {
 			"name": "Lingering Mist",
@@ -1097,7 +1364,8 @@
 				"veil": 0.6,
 				"step_stun": 0.5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_unlife": {
 			"name": "Unlife",
@@ -1106,7 +1374,8 @@
 			"fx": {
 				"life_pct": 4
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_chill": {
 			"name": "Grave Chill",
@@ -1115,7 +1384,8 @@
 			"fx": {
 				"armor_pct": 6
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_legion": {
 			"name": "Legion",
@@ -1125,7 +1395,8 @@
 				"dmg:phantom": 12,
 				"dmg:grasp": 12
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_ward": {
 			"name": "Spectral Ward",
@@ -1134,7 +1405,8 @@
 			"fx": {
 				"res": 5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_eternal": {
 			"name": "Eternal",
@@ -1144,7 +1416,8 @@
 				"buff_dur": 2,
 				"grasp_hold": 0.3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_siphon": {
 			"name": "Soul Siphon",
@@ -1153,7 +1426,8 @@
 			"fx": {
 				"ls": 1
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"w_rider": {
 			"name": "Fourth Rider",
@@ -1163,7 +1437,8 @@
 				"phantoms": 1,
 				"dmg:night": 15
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_sear": {
 			"name": "Searing Fists",
@@ -1172,7 +1447,8 @@
 			"fx": {
 				"dmg:fists": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_brim": {
 			"name": "Brimstone",
@@ -1181,7 +1457,8 @@
 			"fx": {
 				"str": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_kindle": {
 			"name": "Kindling",
@@ -1190,7 +1467,8 @@
 			"fx": {
 				"dmg": 4
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_frenzy": {
 			"name": "Frenzy",
@@ -1199,7 +1477,8 @@
 			"fx": {
 				"ias": 5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_edge": {
 			"name": "Infernal Edge",
@@ -1208,7 +1487,8 @@
 			"fx": {
 				"crit": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_cinder": {
 			"name": "Cinder Heart",
@@ -1217,7 +1497,8 @@
 			"fx": {
 				"crit_dmg": 20
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_inferno": {
 			"name": "Inferno",
@@ -1226,7 +1507,8 @@
 			"fx": {
 				"fists_wide": 1
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_bargain": {
 			"name": "Cheap Fury",
@@ -1236,7 +1518,8 @@
 				"cost:icharge": 15,
 				"cost:hurl": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_ferocity": {
 			"name": "Ferocity",
@@ -1246,7 +1529,8 @@
 				"dmg:cslam": 12,
 				"dmg:hurl": 12
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_hellsworn": {
 			"name": "Hellsworn",
@@ -1255,7 +1539,8 @@
 			"fx": {
 				"life_pct": 4
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_pack": {
 			"name": "Slow Cooling",
@@ -1264,7 +1549,8 @@
 			"fx": {
 				"trail_dur": 1
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_tithe": {
 			"name": "Stampede",
@@ -1274,7 +1560,8 @@
 				"cd:icharge": 15,
 				"dmg:icharge": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_oath": {
 			"name": "Pit Lord",
@@ -1283,7 +1570,8 @@
 			"fx": {
 				"buff_pow": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_legion": {
 			"name": "Twin Boulders",
@@ -1292,7 +1580,8 @@
 			"fx": {
 				"hurl_twin": 1
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_plate": {
 			"name": "Charcoal Hide",
@@ -1301,7 +1590,8 @@
 			"fx": {
 				"armor_pct": 6
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_hide": {
 			"name": "Demon Hide",
@@ -1310,7 +1600,8 @@
 			"fx": {
 				"life_pct": 4
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_rift": {
 			"name": "Crushing Grip",
@@ -1319,7 +1610,8 @@
 			"fx": {
 				"dmg:grip": 12
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_abyss": {
 			"name": "Abyssal Ward",
@@ -1328,7 +1620,8 @@
 			"fx": {
 				"res": 5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_erupt": {
 			"name": "Long Wrath",
@@ -1338,7 +1631,8 @@
 				"wrath_dur": 1,
 				"cd:wrath": 8
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_hunger": {
 			"name": "Hungering Fire",
@@ -1347,7 +1641,8 @@
 			"fx": {
 				"ls": 1
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_furnace": {
 			"name": "Meteor Storm",
@@ -1356,7 +1651,8 @@
 			"fx": {
 				"wrath_double": 1
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_deep": {
 			"name": "Deep Drain",
@@ -1365,7 +1661,8 @@
 			"fx": {
 				"dmg:drain": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_thirst": {
 			"name": "Dark Thirst",
@@ -1374,7 +1671,8 @@
 			"fx": {
 				"drain_heal": 12
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_intel": {
 			"name": "Fel Intellect",
@@ -1383,7 +1681,8 @@
 			"fx": {
 				"ene": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_thrift": {
 			"name": "Siphon Efficiency",
@@ -1392,7 +1691,8 @@
 			"fx": {
 				"cost:drain": 15
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_fork": {
 			"name": "Forking Beam",
@@ -1401,7 +1701,8 @@
 			"fx": {
 				"drain_fork": 1
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_wither": {
 			"name": "Withering",
@@ -1410,7 +1711,8 @@
 			"fx": {
 				"dmg": 4
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_glut": {
 			"name": "Soul Glut",
@@ -1419,7 +1721,8 @@
 			"fx": {
 				"drain_glut": 50
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_virulence": {
 			"name": "Virulence",
@@ -1428,7 +1731,8 @@
 			"fx": {
 				"dmg:blight": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_contagion": {
 			"name": "Contagion",
@@ -1437,7 +1741,8 @@
 			"fx": {
 				"blight_dur": 1
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_quick": {
 			"name": "Quickened Rot",
@@ -1446,7 +1751,8 @@
 			"fx": {
 				"cd:blight": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_vigor": {
 			"name": "Fel Vigor",
@@ -1455,7 +1761,8 @@
 			"fx": {
 				"life_pct": 4
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_spread": {
 			"name": "Spreading Rot",
@@ -1464,7 +1771,8 @@
 			"fx": {
 				"blight_size": 15
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_malice": {
 			"name": "Malice",
@@ -1473,7 +1781,8 @@
 			"fx": {
 				"crit": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_twin": {
 			"name": "Twin Skulls",
@@ -1482,7 +1791,8 @@
 			"fx": {
 				"blight_twin": 1
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_felarmor": {
 			"name": "Fel Armor",
@@ -1491,7 +1801,8 @@
 			"fx": {
 				"armor_pct": 6
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_reserves": {
 			"name": "Arcane Reserves",
@@ -1500,7 +1811,8 @@
 			"fx": {
 				"mana_pct": 5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_chains": {
 			"name": "Iron Chains",
@@ -1510,7 +1822,8 @@
 				"dmg:shackles": 15,
 				"shackle_dur": 0.3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_sigils": {
 			"name": "Warding Sigils",
@@ -1519,7 +1832,8 @@
 			"fx": {
 				"res": 5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_reach": {
 			"name": "Binding Reach",
@@ -1528,7 +1842,8 @@
 			"fx": {
 				"shackle_range": 1.5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_dark": {
 			"name": "Dark Pact",
@@ -1538,7 +1853,8 @@
 				"cd:covenant": 10,
 				"buff_pow": 5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"l_eternal": {
 			"name": "Eternal Covenant",
@@ -1547,7 +1863,8 @@
 			"fx": {
 				"buff_dur": 6
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_drum": {
 			"name": "Extra Gravy",
@@ -1556,7 +1873,8 @@
 			"fx": {
 				"dmg:attack": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_belly": {
 			"name": "Big Belly",
@@ -1565,7 +1883,8 @@
 			"fx": {
 				"vit": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_cream": {
 			"name": "Double Cream",
@@ -1574,7 +1893,8 @@
 			"fx": {
 				"dmg:pie": 12
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_arm": {
 			"name": "Pitcher's Arm",
@@ -1583,7 +1903,8 @@
 			"fx": {
 				"dex": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_cheap": {
 			"name": "Day-Old Pies",
@@ -1592,7 +1913,8 @@
 			"fx": {
 				"cost:pie": 20
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_slip": {
 			"name": "Ripe Peels",
@@ -1601,7 +1923,8 @@
 			"fx": {
 				"cd:peels": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_sauce": {
 			"name": "Secret Sauce",
@@ -1610,7 +1933,8 @@
 			"fx": {
 				"dmg": 8
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_slide": {
 			"name": "Greased Belly",
@@ -1619,7 +1943,8 @@
 			"fx": {
 				"cd:slide": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_wits": {
 			"name": "Quick Wits",
@@ -1628,7 +1953,8 @@
 			"fx": {
 				"ene": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_double": {
 			"name": "Understudy",
@@ -1637,7 +1963,8 @@
 			"fx": {
 				"cd:doppel": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_pins": {
 			"name": "Hot Pins",
@@ -1646,7 +1973,8 @@
 			"fx": {
 				"dmg:juggle": 12
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_patter": {
 			"name": "Stage Patter",
@@ -1655,7 +1983,8 @@
 			"fx": {
 				"cost:juggle": 15
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_nimble": {
 			"name": "Light on His Feet",
@@ -1664,7 +1993,8 @@
 			"fx": {
 				"frw": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_encore": {
 			"name": "Encore",
@@ -1673,7 +2003,8 @@
 			"fx": {
 				"cd:slide": 20
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_spring": {
 			"name": "New Springs",
@@ -1682,7 +2013,8 @@
 			"fx": {
 				"cd:bounce": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_tough": {
 			"name": "Thick Skin",
@@ -1691,7 +2023,8 @@
 			"fx": {
 				"vit": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_flop": {
 			"name": "Belly Flop",
@@ -1700,7 +2033,8 @@
 			"fx": {
 				"dmg:bounce": 12
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_horn": {
 			"name": "Loud Horn",
@@ -1709,7 +2043,8 @@
 			"fx": {
 				"dmg:car": 12
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_tune": {
 			"name": "Tuned Engine",
@@ -1718,7 +2053,8 @@
 			"fx": {
 				"cd:car": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_crowd": {
 			"name": "Crowd Pleaser",
@@ -1727,7 +2063,8 @@
 			"fx": {
 				"str": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"d_finale": {
 			"name": "Grand Finale",
@@ -1737,7 +2074,8 @@
 				"dmg": 6,
 				"cd:car": 15
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_dose": {
 			"name": "Stronger Dose",
@@ -1746,7 +2084,8 @@
 			"fx": {
 				"dmg:toxic": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_study": {
 			"name": "Studied Hand",
@@ -1755,7 +2094,8 @@
 			"fx": {
 				"ene": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_venom": {
 			"name": "Virulent Venom",
@@ -1764,7 +2104,8 @@
 			"fx": {
 				"poison_dmg": 8
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_cloud": {
 			"name": "Heavy Vapour",
@@ -1773,7 +2114,8 @@
 			"fx": {
 				"cloud_size": 8
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_linger": {
 			"name": "Lingering Rot",
@@ -1782,7 +2124,8 @@
 			"fx": {
 				"poison_dur": 0.5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_thrift": {
 			"name": "Measured Doses",
@@ -1791,7 +2134,8 @@
 			"fx": {
 				"cost:toxic": 15
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_miasma": {
 			"name": "Standing Miasma",
@@ -1800,7 +2144,8 @@
 			"fx": {
 				"cloud_dur": 1.5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_charge": {
 			"name": "Ravenous Swarm",
@@ -1809,7 +2154,8 @@
 			"fx": {
 				"dmg:swarm": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_steady": {
 			"name": "Steady Hands",
@@ -1818,7 +2164,8 @@
 			"fx": {
 				"dex": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_blast": {
 			"name": "Teeming",
@@ -1827,7 +2174,8 @@
 			"fx": {
 				"swarm_size": 6
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_quick": {
 			"name": "Fertile Soil",
@@ -1836,7 +2184,8 @@
 			"fx": {
 				"cd:bloom": 6
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_ignite": {
 			"name": "Rank Growth",
@@ -1846,7 +2195,8 @@
 				"bloom_size": 6,
 				"dmg:bloom": 6
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_cane": {
 			"name": "Iron-Shod Cane",
@@ -1855,7 +2205,8 @@
 			"fx": {
 				"dmg:attack": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_inferno": {
 			"name": "The Hive Obeys",
@@ -1865,7 +2216,8 @@
 				"swarm_redirect": 1,
 				"swarm_dur": 1.0
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_spring": {
 			"name": "Dense Fog",
@@ -1874,7 +2226,8 @@
 			"fx": {
 				"fog_dur": 0.5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_hardy": {
 			"name": "Hardened Physician",
@@ -1883,7 +2236,8 @@
 			"fx": {
 				"life_pct": 4
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_snare": {
 			"name": "Strangling Roots",
@@ -1892,7 +2246,8 @@
 			"fx": {
 				"bloom_snare": 0.1
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_spread": {
 			"name": "Larger Tanks",
@@ -1901,7 +2256,8 @@
 			"fx": {
 				"trans_cap": 1.5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_cache": {
 			"name": "Quick Needle",
@@ -1910,7 +2266,8 @@
 			"fx": {
 				"cd:transfusion": 12
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_fever": {
 			"name": "Long Fever",
@@ -1919,7 +2276,8 @@
 			"fx": {
 				"exp_dur": 0.5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"p_last": {
 			"name": "Magnum Opus",
@@ -1929,7 +2287,8 @@
 				"exp_size": 10,
 				"cd:experiment": 15
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_kindle": {
 			"name": "Kindling",
@@ -1938,7 +2297,8 @@
 			"fx": {
 				"dmg:pierce": 12
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_draw": {
 			"name": "Heavy Draw",
@@ -1947,7 +2307,8 @@
 			"fx": {
 				"dmg:attack": 8
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_pyre": {
 			"name": "Pyre",
@@ -1956,7 +2317,8 @@
 			"fx": {
 				"burn_dmg": 20
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_nock": {
 			"name": "Quick Nock",
@@ -1965,7 +2327,8 @@
 			"fx": {
 				"ias": 5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_embers": {
 			"name": "Ember Fangs",
@@ -1974,7 +2337,8 @@
 			"fx": {
 				"wolf_burn": 15
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_dead": {
 			"name": "Deadeye",
@@ -1983,7 +2347,8 @@
 			"fx": {
 				"crit": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_split": {
 			"name": "Split Arrow",
@@ -1992,7 +2357,8 @@
 			"fx": {
 				"arrow_split": 1
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_eye": {
 			"name": "Keen Eye",
@@ -2001,7 +2367,8 @@
 			"fx": {
 				"dex": 3
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_cover": {
 			"name": "Hailstorm",
@@ -2010,7 +2377,8 @@
 			"fx": {
 				"volley_size": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_rime": {
 			"name": "Rime",
@@ -2019,7 +2387,8 @@
 			"fx": {
 				"chill_pct": 15
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_hide": {
 			"name": "Hide Armour",
@@ -2028,7 +2397,8 @@
 			"fx": {
 				"armor_pct": 6
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_howl": {
 			"name": "Winter Howl",
@@ -2037,7 +2407,8 @@
 			"fx": {
 				"wolf_howl": 1
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_rain": {
 			"name": "Endless Rain",
@@ -2047,7 +2418,8 @@
 				"cd:volley": 12,
 				"cost:volley": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_shatter": {
 			"name": "Shatter",
@@ -2056,7 +2428,8 @@
 			"fx": {
 				"frost_shatter": 1
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_vigor": {
 			"name": "Hunter's Vigor",
@@ -2065,7 +2438,8 @@
 			"fx": {
 				"life_pct": 4
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_jaws": {
 			"name": "Thunder Jaws",
@@ -2075,7 +2449,8 @@
 				"dmg:snare": 15,
 				"snare_dur": 0.5
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_arc": {
 			"name": "Forked Lightning",
@@ -2084,7 +2459,8 @@
 			"fx": {
 				"arc_count": 1
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_bond": {
 			"name": "Spirit Bond",
@@ -2093,7 +2469,8 @@
 			"fx": {
 				"dmg:beast": 15
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_trapper": {
 			"name": "Aftershock",
@@ -2102,7 +2479,8 @@
 			"fx": {
 				"snare_max": 1
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_pack": {
 			"name": "Pack Hunter",
@@ -2111,7 +2489,8 @@
 			"fx": {
 				"buff_pow": 10
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"a_alpha": {
 			"name": "Alpha",
@@ -2120,7 +2499,8 @@
 			"fx": {
 				"beast_two": 1
 			},
-			"rarity": null
+			"rarity": null,
+			"k": null
 		},
 		"g_edge": {
 			"name": "Honed Edge",
@@ -2129,7 +2509,8 @@
 			"fx": {
 				"dmg": 6
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
 		},
 		"g_hide": {
 			"name": "Thick Hide",
@@ -2138,7 +2519,8 @@
 			"fx": {
 				"life_pct": 8
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
 		},
 		"g_hands": {
 			"name": "Quick Hands",
@@ -2147,7 +2529,8 @@
 			"fx": {
 				"ias": 6
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
 		},
 		"g_stride": {
 			"name": "Fleet Foot",
@@ -2156,7 +2539,8 @@
 			"fx": {
 				"frw": 6
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
 		},
 		"g_plate": {
 			"name": "Hardened",
@@ -2165,7 +2549,8 @@
 			"fx": {
 				"armor_pct": 12
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
 		},
 		"g_well": {
 			"name": "Deep Well",
@@ -2174,7 +2559,8 @@
 			"fx": {
 				"mana_pct": 12
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
 		},
 		"g_mend": {
 			"name": "Mending",
@@ -2183,7 +2569,8 @@
 			"fx": {
 				"regen": 1.0
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
 		},
 		"g_instinct": {
 			"name": "Killer Instinct",
@@ -2192,7 +2579,8 @@
 			"fx": {
 				"crit": 4
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"g_vicious": {
 			"name": "Vicious",
@@ -2201,7 +2589,8 @@
 			"fx": {
 				"crit_dmg": 20
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"g_thirst": {
 			"name": "Bloodthirst",
@@ -2210,7 +2599,8 @@
 			"fx": {
 				"ls": 3
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"g_ward": {
 			"name": "Warded",
@@ -2219,7 +2609,8 @@
 			"fx": {
 				"res": 8
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"g_flow": {
 			"name": "Arcane Flow",
@@ -2228,7 +2619,8 @@
 			"fx": {
 				"cdr": 12
 			},
-			"rarity": 2
+			"rarity": 2,
+			"k": null
 		},
 		"g_trance": {
 			"name": "Battle Trance",
@@ -2238,7 +2630,8 @@
 				"dmg": 15,
 				"ias": 8
 			},
-			"rarity": 2
+			"rarity": 2,
+			"k": null
 		},
 		"g_colossus": {
 			"name": "Colossus",
@@ -2248,7 +2641,8 @@
 				"life_pct": 20,
 				"vit": 5
 			},
-			"rarity": 2
+			"rarity": 2,
+			"k": null
 		},
 		"x_execute": {
 			"name": "Executioner",
@@ -2258,7 +2652,8 @@
 			"k": {
 				"below": 25,
 				"more": 60
-			}
+			},
+			"fx": null
 		},
 		"x_momentum": {
 			"name": "Momentum",
@@ -2269,7 +2664,8 @@
 				"dmg": 4,
 				"stacks": 5,
 				"secs": 8
-			}
+			},
+			"fx": null
 		},
 		"x_vampire": {
 			"name": "Vampiric",
@@ -2278,7 +2674,8 @@
 			"rarity": 1,
 			"k": {
 				"pct": 3
-			}
+			},
+			"fx": null
 		},
 		"x_chain": {
 			"name": "Chain Reaction",
@@ -2288,7 +2685,8 @@
 			"k": {
 				"pct": 25,
 				"r": 3.5
-			}
+			},
+			"fx": null
 		},
 		"x_glass": {
 			"name": "Glass Cannon",
@@ -2298,7 +2696,8 @@
 				"dmg": 35,
 				"life_pct": -20
 			},
-			"rarity": 2
+			"rarity": 2,
+			"k": null
 		},
 		"x_undying": {
 			"name": "Undying",
@@ -2308,7 +2707,8 @@
 			"k": {
 				"life": 35,
 				"secs": 120
-			}
+			},
+			"fx": null
 		},
 		"x_thorns": {
 			"name": "Retribution",
@@ -2317,7 +2717,8 @@
 			"rarity": 1,
 			"k": {
 				"pct": 60
-			}
+			},
+			"fx": null
 		},
 		"x_berserk": {
 			"name": "Berserker",
@@ -2326,7 +2727,8 @@
 			"rarity": 2,
 			"k": {
 				"most": 45
-			}
+			},
+			"fx": null
 		},
 		"x_echo": {
 			"name": "Echo",
@@ -2335,7 +2737,8 @@
 			"rarity": 2,
 			"k": {
 				"chance": 25
-			}
+			},
+			"fx": null
 		},
 		"x_giant": {
 			"name": "Giant Slayer",
@@ -2344,7 +2747,8 @@
 			"rarity": 1,
 			"k": {
 				"more": 20
-			}
+			},
+			"fx": null
 		},
 		"x_frenzy": {
 			"name": "Frenzy",
@@ -2354,7 +2758,8 @@
 			"k": {
 				"ias": 20,
 				"secs": 3
-			}
+			},
+			"fx": null
 		},
 		"x_medic": {
 			"name": "Field Medic",
@@ -2363,7 +2768,8 @@
 			"fx": {
 				"pot": 40
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
 		},
 		"x_lucky": {
 			"name": "Lucky Charm",
@@ -2372,7 +2778,8 @@
 			"fx": {
 				"offer_plus": 1
 			},
-			"rarity": 2
+			"rarity": 2,
+			"k": null
 		},
 		"x_treasure": {
 			"name": "Treasure Hunter",
@@ -2381,7 +2788,8 @@
 			"fx": {
 				"loot_plus": 1
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"x_gemcutter": {
 			"name": "Gemcutter",
@@ -2390,7 +2798,8 @@
 			"fx": {
 				"gem_luck": 1
 			},
-			"rarity": 2
+			"rarity": 2,
+			"k": null
 		},
 		"x_ward": {
 			"name": "Second Skin",
@@ -2399,7 +2808,8 @@
 			"fx": {
 				"ward_bonus": 12
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"x_conduit": {
 			"name": "Elemental Conduit",
@@ -2410,7 +2820,8 @@
 				"chill_pct": 50,
 				"burn_pct": 15
 			},
-			"rarity": 2
+			"rarity": 2,
+			"k": null
 		},
 		"x_bloodlust": {
 			"name": "Bloodlust",
@@ -2420,7 +2831,8 @@
 			"k": {
 				"pct": 10,
 				"below": 50
-			}
+			},
+			"fx": null
 		},
 		"x_adrenaline": {
 			"name": "Adrenaline",
@@ -2430,7 +2842,8 @@
 			"k": {
 				"frw": 12,
 				"secs": 3
-			}
+			},
+			"fx": null
 		},
 		"x_scholar": {
 			"name": "Quick Study",
@@ -2439,7 +2852,8 @@
 			"fx": {
 				"xp_pct": 15
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
 		},
 		"a_kindling": {
 			"name": "Kindling",
@@ -2449,7 +2863,8 @@
 				"burn_pct": 15,
 				"burn_dur": 25
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
 		},
 		"a_firetip": {
 			"name": "Fire-Tipped",
@@ -2460,7 +2875,8 @@
 				"src": "attack",
 				"pct": 30,
 				"secs": 2.5
-			}
+			},
+			"fx": null
 		},
 		"a_wildfire": {
 			"name": "Wildfire",
@@ -2469,7 +2885,8 @@
 			"rarity": 2,
 			"k": {
 				"r": 4.5
-			}
+			},
+			"fx": null
 		},
 		"a_conflag": {
 			"name": "Conflagration",
@@ -2478,7 +2895,8 @@
 			"rarity": 2,
 			"k": {
 				"more": 30
-			}
+			},
+			"fx": null
 		},
 		"a_phoenix": {
 			"name": "Phoenix Quiver",
@@ -2488,7 +2906,8 @@
 			"k": {
 				"n": 5,
 				"skill": "pierce"
-			}
+			},
+			"fx": null
 		},
 		"a_biting": {
 			"name": "Biting Cold",
@@ -2497,7 +2916,8 @@
 			"fx": {
 				"chill_pct": 25
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
 		},
 		"a_frostbite": {
 			"name": "Frostbite",
@@ -2506,7 +2926,8 @@
 			"rarity": 1,
 			"k": {
 				"more": 15
-			}
+			},
+			"fx": null
 		},
 		"a_glacial": {
 			"name": "Rimed Arrows",
@@ -2517,7 +2938,8 @@
 				"src": "attack",
 				"slow": 0.3,
 				"secs": 2.0
-			}
+			},
+			"fx": null
 		},
 		"a_shards": {
 			"name": "Ice Shards",
@@ -2527,7 +2949,8 @@
 			"k": {
 				"pct": 90,
 				"r": 3.5
-			}
+			},
+			"fx": null
 		},
 		"a_zero": {
 			"name": "Absolute Zero",
@@ -2537,7 +2960,8 @@
 			"k": {
 				"n": 4,
 				"secs": 1.6
-			}
+			},
+			"fx": null
 		},
 		"a_static": {
 			"name": "Static Charge",
@@ -2548,7 +2972,8 @@
 				"dmg:arc": 15,
 				"dmg:a_stormshot": 15
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
 		},
 		"a_forked": {
 			"name": "Forked Shots",
@@ -2560,7 +2985,8 @@
 				"jumps": 2,
 				"pct": 50,
 				"r": 6.0
-			}
+			},
+			"fx": null
 		},
 		"a_overcharge": {
 			"name": "Overcharge",
@@ -2570,7 +2996,8 @@
 			"k": {
 				"pct": 140,
 				"r": 2.5
-			}
+			},
+			"fx": null
 		},
 		"a_scent": {
 			"name": "Blood Scent",
@@ -2580,7 +3007,8 @@
 			"k": {
 				"below": 50,
 				"more": 15
-			}
+			},
+			"fx": null
 		},
 		"a_quarry": {
 			"name": "Quarry",
@@ -2589,7 +3017,8 @@
 			"rarity": 2,
 			"k": {
 				"more": 30
-			}
+			},
+			"fx": null
 		},
 		"a_packleader": {
 			"name": "Pack Leader",
@@ -2599,7 +3028,8 @@
 				"wolf_dmg": 100,
 				"wolf_heal": 2
 			},
-			"rarity": 2
+			"rarity": 2,
+			"k": null
 		},
 		"a_steady": {
 			"name": "Steady Aim",
@@ -2608,7 +3038,8 @@
 			"fx": {
 				"dmg:attack": 12
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
 		},
 		"a_eagle": {
 			"name": "Eagle Eye",
@@ -2618,7 +3049,8 @@
 				"crit": 5,
 				"crit_dmg": 20
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"a_ricochet": {
 			"name": "Ricochet",
@@ -2629,7 +3061,8 @@
 				"pct": 70,
 				"r": 8.0,
 				"bounces": 2
-			}
+			},
+			"fx": null
 		},
 		"a_up_fan": {
 			"name": "Wide Fan",
@@ -2639,7 +3072,8 @@
 				"multishot_more": 2,
 				"dmg:a_multishot": 10
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"a_up_cluster": {
 			"name": "Cluster Charge",
@@ -2649,7 +3083,8 @@
 				"blast_r": 40,
 				"dmg:a_explosive": 25
 			},
-			"rarity": 2
+			"rarity": 2,
+			"k": null
 		},
 		"a_up_shatter": {
 			"name": "Shatterpoint",
@@ -2659,7 +3094,8 @@
 				"glacial_freeze": 1,
 				"dmg:a_glacial": 15
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"a_up_overload": {
 			"name": "Overload",
@@ -2669,7 +3105,8 @@
 				"storm_jumps": 2,
 				"dmg:a_stormshot": 10
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"a_up_endless": {
 			"name": "Endless Storm",
@@ -2678,7 +3115,8 @@
 			"fx": {
 				"barrage_ticks": 3
 			},
-			"rarity": 2
+			"rarity": 2,
+			"k": null
 		},
 		"a_up_death": {
 			"name": "Marked for Death",
@@ -2688,7 +3126,8 @@
 			"k": {
 				"dmg": 25,
 				"secs": 5
-			}
+			},
+			"fx": null
 		},
 		"p_virulent": {
 			"name": "Virulence",
@@ -2697,7 +3136,8 @@
 			"fx": {
 				"poison_dmg": 20
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
 		},
 		"p_septic": {
 			"name": "Septic Wounds",
@@ -2706,7 +3146,8 @@
 			"rarity": 1,
 			"k": {
 				"more": 15
-			}
+			},
+			"fx": null
 		},
 		"p_toxblood": {
 			"name": "Toxic Blood",
@@ -2715,7 +3156,8 @@
 			"rarity": 2,
 			"k": {
 				"pct": 8
-			}
+			},
+			"fx": null
 		},
 		"p_necrosis": {
 			"name": "Necrosis",
@@ -2725,7 +3167,8 @@
 			"k": {
 				"grow": 20,
 				"most": 160
-			}
+			},
+			"fx": null
 		},
 		"p_outbreak": {
 			"name": "Outbreak",
@@ -2734,7 +3177,8 @@
 			"fx": {
 				"poison_dur": 0.6
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
 		},
 		"p_carrier": {
 			"name": "Plague Carrier",
@@ -2745,7 +3189,8 @@
 				"src": "attack",
 				"r": 4.5,
 				"n": 1
-			}
+			},
+			"fx": null
 		},
 		"p_contagion": {
 			"name": "Contagion",
@@ -2755,7 +3200,8 @@
 			"k": {
 				"r": 6.0,
 				"n": 3
-			}
+			},
+			"fx": null
 		},
 		"p_pandemic": {
 			"name": "Pandemic",
@@ -2765,7 +3211,8 @@
 			"k": {
 				"r": 3.5,
 				"pct": 60
-			}
+			},
+			"fx": null
 		},
 		"p_hunger": {
 			"name": "Ravenous Swarm",
@@ -2775,7 +3222,8 @@
 				"dmg:swarm": 25,
 				"swarm_heal": 1.5
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"p_overgrowth": {
 			"name": "Overgrowth",
@@ -2785,7 +3233,8 @@
 				"bloom_rate": 45,
 				"bloom_size": 20
 			},
-			"rarity": 2
+			"rarity": 2,
+			"k": null
 		},
 		"p_rotfeast": {
 			"name": "Feast of Rot",
@@ -2795,7 +3244,8 @@
 			"k": {
 				"pct": 5,
 				"poisoned": 1
-			}
+			},
+			"fx": null
 		},
 		"p_volatile": {
 			"name": "Volatile Reagents",
@@ -2804,7 +3254,8 @@
 			"fx": {
 				"vial_burst": 80
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"p_double": {
 			"name": "Double Dose",
@@ -2813,7 +3264,8 @@
 			"fx": {
 				"vial_twin": 1
 			},
-			"rarity": 2
+			"rarity": 2,
+			"k": null
 		},
 		"p_up_miasma": {
 			"name": "Choking Miasma",
@@ -2823,7 +3275,8 @@
 				"miasma_r": 30,
 				"miasma_slow": 1
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"p_up_epidemic": {
 			"name": "Epidemic",
@@ -2832,7 +3285,8 @@
 			"fx": {
 				"curse_jump": 1
 			},
-			"rarity": 2
+			"rarity": 2,
+			"k": null
 		},
 		"p_up_leech": {
 			"name": "Bloated Leeches",
@@ -2842,7 +3296,8 @@
 				"leech_heal": 50,
 				"leech_t": 1.5
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"p_tinctures": {
 			"name": "Strong Tinctures",
@@ -2852,7 +3307,8 @@
 				"pot": 35,
 				"cdr": 5
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
 		},
 		"k_up_judgment": {
 			"name": "Wrath of Heaven",
@@ -2862,7 +3318,8 @@
 				"judgment_more": 2,
 				"dmg:k_judgment": 10
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"k_up_aegis": {
 			"name": "Bastion",
@@ -2872,7 +3329,8 @@
 				"aegis_pct": 20,
 				"cd:k_aegis": 20
 			},
-			"rarity": 2
+			"rarity": 2,
+			"k": null
 		},
 		"k_up_whirl": {
 			"name": "Unending Spin",
@@ -2882,7 +3340,8 @@
 				"whirl_more": 1,
 				"dmg:k_whirl": 10
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"k_up_rites": {
 			"name": "No Quarter",
@@ -2891,7 +3350,8 @@
 			"fx": {
 				"rites_buff": 1
 			},
-			"rarity": 2
+			"rarity": 2,
+			"k": null
 		},
 		"k_brands": {
 			"name": "Searing Brands",
@@ -2901,7 +3361,8 @@
 				"brand_max": 3,
 				"brand_burn": 1
 			},
-			"rarity": 2
+			"rarity": 2,
+			"k": null
 		},
 		"k_zealot": {
 			"name": "Zealot",
@@ -2912,7 +3373,8 @@
 				"src": "attack",
 				"pct": 18,
 				"secs": 3.0
-			}
+			},
+			"fx": null
 		},
 		"k_iron": {
 			"name": "Iron Hide",
@@ -2922,7 +3384,8 @@
 				"armor_pct": 15,
 				"ward_bonus": 4
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
 		},
 		"k_cleave": {
 			"name": "Cleaving Blows",
@@ -2933,7 +3396,8 @@
 				"pct": 50,
 				"r": 3.0,
 				"bounces": 2
-			}
+			},
+			"fx": null
 		},
 		"k_sacred": {
 			"name": "Sacred Flame",
@@ -2943,7 +3407,8 @@
 			"k": {
 				"pct": 60,
 				"secs": 3.0
-			}
+			},
+			"fx": null
 		},
 		"k_martyr": {
 			"name": "Martyr's Resolve",
@@ -2952,7 +3417,8 @@
 			"rarity": 2,
 			"k": {
 				"pct": 120
-			}
+			},
+			"fx": null
 		},
 		"k_onslaught": {
 			"name": "Onslaught",
@@ -2963,7 +3429,8 @@
 				"dmg": 8,
 				"stacks": 6,
 				"secs": 6
-			}
+			},
+			"fx": null
 		},
 		"r_up_mark": {
 			"name": "Marked Soul",
@@ -2973,7 +3440,8 @@
 				"mark_pct": 30,
 				"cd:r_deathmark": 25
 			},
-			"rarity": 2
+			"rarity": 2,
+			"k": null
 		},
 		"r_up_wail": {
 			"name": "Keening",
@@ -2983,7 +3451,8 @@
 				"wail_r": 30,
 				"wail_t": 0.6
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"r_up_reap": {
 			"name": "Harvest of Souls",
@@ -2993,7 +3462,8 @@
 				"dmg:r_reap": 15,
 				"reap_heal": 1
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"r_reaper": {
 			"name": "Reaper",
@@ -3003,7 +3473,8 @@
 			"k": {
 				"below": 35,
 				"more": 80
-			}
+			},
+			"fx": null
 		},
 		"r_soulfeast": {
 			"name": "Soul Feast",
@@ -3012,7 +3483,8 @@
 			"rarity": 2,
 			"k": {
 				"pct": 5
-			}
+			},
+			"fx": null
 		},
 		"r_dread": {
 			"name": "Dread",
@@ -3023,7 +3495,8 @@
 				"src": "",
 				"slow": 0.35,
 				"secs": 2.0
-			}
+			},
+			"fx": null
 		},
 		"d_up_volcano": {
 			"name": "Ring of Fire",
@@ -3033,7 +3506,8 @@
 				"volcano_more": 3,
 				"dmg:d_volcano": 10
 			},
-			"rarity": 2
+			"rarity": 2,
+			"k": null
 		},
 		"d_up_detonate": {
 			"name": "Chain Brand",
@@ -3042,7 +3516,8 @@
 			"fx": {
 				"detonate_brand": 1
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"d_up_pact": {
 			"name": "Blood Price",
@@ -3051,7 +3526,8 @@
 			"fx": {
 				"pact_pow": 10
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"d_hellfire": {
 			"name": "Hellfire",
@@ -3062,7 +3538,8 @@
 				"src": "",
 				"pct": 20,
 				"secs": 3.0
-			}
+			},
+			"fx": null
 		},
 		"d_eruption": {
 			"name": "Eruption",
@@ -3072,7 +3549,8 @@
 			"k": {
 				"pct": 30,
 				"r": 4.0
-			}
+			},
+			"fx": null
 		},
 		"d_pitborn": {
 			"name": "Pitborn Hide",
@@ -3081,7 +3559,8 @@
 			"rarity": 2,
 			"k": {
 				"pct": 100
-			}
+			},
+			"fx": null
 		},
 		"u_up_barrage": {
 			"name": "Bakery Order",
@@ -3090,7 +3569,8 @@
 			"fx": {
 				"barrage_more": 3
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"u_up_cannon": {
 			"name": "Extra Gunpowder",
@@ -3100,7 +3580,8 @@
 				"cannon_r": 30,
 				"dmg:u_cannon": 20
 			},
-			"rarity": 2
+			"rarity": 2,
+			"k": null
 		},
 		"u_encore": {
 			"name": "Standing Ovation",
@@ -3109,7 +3590,8 @@
 			"rarity": 2,
 			"k": {
 				"chance": 35
-			}
+			},
+			"fx": null
 		},
 		"u_slapstick": {
 			"name": "Comic Timing",
@@ -3119,7 +3601,8 @@
 			"k": {
 				"ias": 30,
 				"secs": 3
-			}
+			},
+			"fx": null
 		},
 		"s_permafrost": {
 			"name": "Permafrost",
@@ -3129,7 +3612,8 @@
 			"k": {
 				"n": 5,
 				"secs": 1.4
-			}
+			},
+			"fx": null
 		},
 		"s_shatter": {
 			"name": "Brittle",
@@ -3138,7 +3622,8 @@
 			"rarity": 2,
 			"k": {
 				"more": 25
-			}
+			},
+			"fx": null
 		},
 		"v_tempest": {
 			"name": "Tempest",
@@ -3148,7 +3633,8 @@
 			"k": {
 				"pct": 160,
 				"r": 3.0
-			}
+			},
+			"fx": null
 		},
 		"y_hide": {
 			"name": "Dragonhide",
@@ -3158,7 +3644,8 @@
 				"armor_pct": 15,
 				"life_pct": 6
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
 		},
 		"y_claws": {
 			"name": "Rending Claws",
@@ -3168,7 +3655,8 @@
 				"dmg:attack": 15,
 				"crit": 3
 			},
-			"rarity": 1
+			"rarity": 1,
+			"k": null
 		},
 		"y_apex": {
 			"name": "Apex Predator",
@@ -3178,7 +3666,8 @@
 			"k": {
 				"below": 40,
 				"more": 40
-			}
+			},
+			"fx": null
 		},
 		"y_fury": {
 			"name": "Primal Fury",
@@ -3189,7 +3678,8 @@
 				"dmg": 6,
 				"stacks": 6,
 				"secs": 8
-			}
+			},
+			"fx": null
 		},
 		"s_rime": {
 			"name": "Frozen Blood",
@@ -3199,7 +3689,8 @@
 				"chill_pct": 25,
 				"dmg:frost_breath": 10
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
 		},
 		"v_lord": {
 			"name": "Storm Lord",
@@ -3209,7 +3700,177 @@
 				"dmg:storm_arc": 15,
 				"dmg:arc": 15
 			},
-			"rarity": 0
+			"rarity": 0,
+			"k": null
+		},
+		"s_up_tomb": {
+			"name": "Deep Freeze",
+			"text": "Glacial Tomb seals {tomb_r}% wider, holds {tomb_t} s longer and shatters {dmg:s_tomb}% harder.",
+			"max": 2,
+			"fx": {
+				"tomb_r": 30,
+				"tomb_t": 0.4,
+				"dmg:s_tomb": 15
+			},
+			"rarity": 1,
+			"k": null
+		},
+		"s_up_coil": {
+			"name": "Iron Coils",
+			"text": "Crushing Coil reaches {coil_r}% further, hits {dmg:s_coil}% harder and heals {coil_shield}% of your life for each foe it crushes.",
+			"max": 2,
+			"fx": {
+				"coil_r": 15,
+				"dmg:s_coil": 15,
+				"coil_shield": 1
+			},
+			"rarity": 1,
+			"k": null
+		},
+		"s_up_lance": {
+			"name": "Spear of Winter",
+			"text": "Rime Lance runs {lance_len}% further, freezes {lance_freeze} s longer and hits {dmg:s_lance}% harder.",
+			"max": 1,
+			"fx": {
+				"lance_len": 40,
+				"lance_freeze": 0.8,
+				"dmg:s_lance": 20
+			},
+			"rarity": 2,
+			"k": null
+		},
+		"s_glacier_hide": {
+			"name": "Rime Scales",
+			"text": "+{armor_pct}% defense and +{res}% to every resistance.",
+			"max": 3,
+			"fx": {
+				"armor_pct": 12,
+				"res": 6
+			},
+			"rarity": 0,
+			"k": null
+		},
+		"s_glacier_cold": {
+			"name": "Biting Cold",
+			"text": "Chills last {chill_pct}% longer; Glacial Tomb +{dmg:s_tomb}%.",
+			"max": 3,
+			"fx": {
+				"chill_pct": 20,
+				"dmg:s_tomb": 10
+			},
+			"rarity": 0,
+			"k": null
+		},
+		"s_glacier_thorns": {
+			"name": "Frozen Barbs",
+			"text": "Foes that strike you take {pct}% of the blow back as cold.",
+			"max": 2,
+			"rarity": 1,
+			"k": {
+				"pct": 30
+			},
+			"fx": null
+		},
+		"s_glacier_shards": {
+			"name": "Shatterpoint",
+			"text": "Chilled foes that die burst into ice shards: {pct}% weapon damage within {r} m, chilling.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"pct": 60,
+				"r": 3.0
+			},
+			"fx": null
+		},
+		"s_glacier_undying": {
+			"name": "Heart of the Glacier",
+			"text": "A blow that would kill you leaves you at {life}% life inside a shell of ice instead (once every {secs} seconds).",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"life": 40,
+				"secs": 90
+			},
+			"fx": null
+		},
+		"v_up_dive": {
+			"name": "Plummet",
+			"text": "Thunder Dive lands {dive_r}% wider, {dmg:v_dive}% harder and comes back {cd:v_dive}% sooner.",
+			"max": 2,
+			"fx": {
+				"dive_r": 20,
+				"dmg:v_dive": 20,
+				"cd:v_dive": 15
+			},
+			"rarity": 1,
+			"k": null
+		},
+		"v_up_cloud": {
+			"name": "Supercell",
+			"text": "Thunderhead strikes {cloud_rate}% faster, lasts {cloud_t} s longer, and each bolt has a {cloud_stun}% chance to stun.",
+			"max": 1,
+			"fx": {
+				"cloud_rate": 30,
+				"cloud_t": 1.5,
+				"cloud_stun": 25
+			},
+			"rarity": 2,
+			"k": null
+		},
+		"v_up_gale": {
+			"name": "Hurricane",
+			"text": "Gale Wings reaches {gale_r}% further and hits {dmg:v_gale}% harder.",
+			"max": 2,
+			"fx": {
+				"gale_r": 25,
+				"dmg:v_gale": 20
+			},
+			"rarity": 1,
+			"k": null
+		},
+		"v_sky_speed": {
+			"name": "Tailwind",
+			"text": "+{frw}% run speed; Thunder Dive {cd:v_dive}% sooner.",
+			"max": 3,
+			"fx": {
+				"frw": 4,
+				"cd:v_dive": 8
+			},
+			"rarity": 0,
+			"k": null
+		},
+		"v_sky_dodge": {
+			"name": "Wind-Rider",
+			"text": "+{dex} Dexterity; Thunder Dive and Gale Wings +{dmg:v_dive}%.",
+			"max": 3,
+			"fx": {
+				"dex": 4,
+				"dmg:v_dive": 10,
+				"dmg:v_gale": 10
+			},
+			"rarity": 0,
+			"k": null
+		},
+		"v_sky_kill": {
+			"name": "Hunter's Updraft",
+			"text": "Each kill: +{frw}% run speed for {secs} seconds.",
+			"max": 2,
+			"rarity": 1,
+			"k": {
+				"frw": 15,
+				"secs": 3
+			},
+			"fx": null
+		},
+		"v_sky_reset": {
+			"name": "Eye of the Storm",
+			"text": "A kill with Thunder Dive makes it ready again.",
+			"max": 1,
+			"fx": {
+				"dive_reset": 1
+			},
+			"rarity": 2,
+			"k": null
 		},
 		"v_static": {
 			"name": "Static Claws",
@@ -3221,7 +3882,8 @@
 				"jumps": 2,
 				"pct": 40,
 				"r": 6.0
-			}
+			},
+			"fx": null
 		}
 	},
 	"gems": {
@@ -3232,7 +3894,9 @@
 				"dmg": 6,
 				"burn_pct": 15
 			},
-			"rarity": 0
+			"rarity": 0,
+			"max": null,
+			"k": null
 		},
 		"sapphire": {
 			"name": "Frost Sapphire",
@@ -3241,7 +3905,9 @@
 				"cdr": 6,
 				"chill_pct": 15
 			},
-			"rarity": 0
+			"rarity": 0,
+			"max": null,
+			"k": null
 		},
 		"emerald": {
 			"name": "Venom Emerald",
@@ -3250,7 +3916,9 @@
 				"regen": 1.5,
 				"poison_dmg": 15
 			},
-			"rarity": 0
+			"rarity": 0,
+			"max": null,
+			"k": null
 		},
 		"topaz": {
 			"name": "Storm Topaz",
@@ -3259,7 +3927,9 @@
 				"ias": 5,
 				"crit": 3
 			},
-			"rarity": 0
+			"rarity": 0,
+			"max": null,
+			"k": null
 		},
 		"amethyst": {
 			"name": "Dusk Amethyst",
@@ -3268,7 +3938,9 @@
 				"mana_pct": 15,
 				"res": 6
 			},
-			"rarity": 0
+			"rarity": 0,
+			"max": null,
+			"k": null
 		},
 		"onyx": {
 			"name": "Onyx",
@@ -3276,7 +3948,9 @@
 			"fx": {
 				"crit_dmg": 25
 			},
-			"rarity": 0
+			"rarity": 0,
+			"max": null,
+			"k": null
 		},
 		"bloodstone": {
 			"name": "Bloodstone",
@@ -3284,7 +3958,9 @@
 			"fx": {
 				"ls": 2
 			},
-			"rarity": 0
+			"rarity": 0,
+			"max": null,
+			"k": null
 		},
 		"jade": {
 			"name": "Jade",
@@ -3292,7 +3968,9 @@
 			"fx": {
 				"life_pct": 10
 			},
-			"rarity": 0
+			"rarity": 0,
+			"max": null,
+			"k": null
 		},
 		"moonstone": {
 			"name": "Moonstone",
@@ -3300,7 +3978,9 @@
 			"fx": {
 				"frw": 6
 			},
-			"rarity": 0
+			"rarity": 0,
+			"max": null,
+			"k": null
 		},
 		"heartstone": {
 			"name": "Heartstone",
@@ -3309,7 +3989,9 @@
 				"life_pct": 20,
 				"regen": 2.5
 			},
-			"rarity": 2
+			"rarity": 2,
+			"max": null,
+			"k": null
 		},
 		"prism": {
 			"name": "Prism",
@@ -3319,7 +4001,9 @@
 				"life_pct": 8,
 				"ias": 6
 			},
-			"rarity": 2
+			"rarity": 2,
+			"max": null,
+			"k": null
 		},
 		"warstone": {
 			"name": "Warstone",
@@ -3327,7 +4011,9 @@
 			"fx": {
 				"dmg": 14
 			},
-			"rarity": 2
+			"rarity": 2,
+			"max": null,
+			"k": null
 		},
 		"phoenix": {
 			"name": "Phoenix Ember",
@@ -3338,7 +4024,8 @@
 				"life": 60,
 				"secs": 99999,
 				"burst": 1
-			}
+			},
+			"max": null
 		},
 		"tempest": {
 			"name": "Eye of the Tempest",
@@ -3349,7 +4036,8 @@
 				"n": 8,
 				"pct": 150,
 				"r": 3.0
-			}
+			},
+			"max": null
 		},
 		"hunger": {
 			"name": "Hunger Stone",
@@ -3359,7 +4047,8 @@
 			"k": {
 				"per": 1,
 				"most": 35
-			}
+			},
+			"max": null
 		},
 		"seer": {
 			"name": "Seer's Eye",
@@ -3367,7 +4056,9 @@
 			"fx": {
 				"offer_plus": 1
 			},
-			"rarity": 3
+			"rarity": 3,
+			"max": null,
+			"k": null
 		},
 		"crownshard": {
 			"name": "Shard of the Crown",
@@ -3375,7 +4066,9 @@
 			"fx": {
 				"rarity_up": 1
 			},
-			"rarity": 3
+			"rarity": 3,
+			"max": null,
+			"k": null
 		}
 	}
 }

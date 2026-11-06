@@ -120,6 +120,18 @@ CELLS = {
         ("juggle", "three juggling pins spinning in the air with motion trails"),
         ("bounce", "a clown bouncing high off a trampoline, arms wide"),
     ],
+    # the dragons' run skills and their base skills, plus Doug's cannon (the clown cell never looked like him)
+    "dragons": [
+        ("s_tomb", "a monster sealed inside a clear glowing block of blue glacier ice, cracks spreading through it"),
+        ("s_coil", "a long pale-blue wingless ice serpent dragon coiled in a tight crushing spiral, frost mist and broken stone"),
+        ("s_lance", "a line of jagged blue ice spikes erupting from frozen ground toward the viewer, shards flying"),
+        ("v_dive", "a dark storm wyvern with bat wings diving straight down from the clouds, wreathed in a bolt of white-blue lightning"),
+        ("v_cloud", "a black thundercloud low over a battlefield raining forked white-blue lightning bolts onto the ground"),
+        ("v_gale", "huge storm wyvern wings spread in one mighty beat, a blast of wind and dust hurling shapes backward"),
+        ("frost_breath", "an ice dragon's open jaws breathing a freezing gale of white frost and ice crystals"),
+        ("storm_arc", "a wyvern's open jaws breathing a chain of crackling white-blue lightning"),
+        ("u_cannon", "a red-and-yellow striped circus cannon firing in a huge burst of confetti, sparks and smoke"),
+    ],
     "gems2": [
         ("heartstone", "a heart-shaped rose-red crystal gemstone pulsing with warm light"),
         ("prism", "a clear crystal prism splitting light into a rainbow"),
@@ -136,6 +148,7 @@ PAL.setdefault("run_mix", "dark fantasy: deep shadow, warm firelight and cold ar
 PAL.setdefault("potions", "dark fantasy alchemy: rich glowing liquids in glass, worn brass and leather, deep shadow")
 PAL.setdefault("gems", "dark velvet black background, each gem brilliantly lit, rich saturated jewel colours")
 PAL.setdefault("knight_wraith", "dark gothic fantasy: burnished gold holy light for the knight, icy spectral cyan and violet for the wraith, deep shadow")
+PAL.setdefault("dragons", "dark fantasy: glacial blues and frost white for the ice serpent, storm violet and white-blue lightning for the wyvern, deep shadow")
 PAL.setdefault("gems2", "dark velvet black background, each gem brilliantly lit, rich saturated jewel colours")
 # the Warlock's three directions (WarlockHex): Corruption, Fear, Drain; two grids
 CELLS["warlock"] = [

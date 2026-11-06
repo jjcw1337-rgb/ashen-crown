@@ -58,6 +58,6 @@ recipes it links are the source of truth.
   spending request.
 - Hold the `asset-budget` claim while submitting paid jobs, record each job's handle, and resume a pending job
   instead of paying for it twice. Hold `blender` only for the shared GUI scene; headless Blender on your own files
-  needs no claim. Nothing heavy while `/tmp/ashen-nightly.lock` exists.
+  needs no claim.
 - A downloaded model (Sketchfab, Poly Haven) needs its URL, author, licence and attribution recorded beside it before
   it goes in the game.
