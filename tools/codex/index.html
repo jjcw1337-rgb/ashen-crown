@@ -163,7 +163,7 @@ function docOf(rel) {
   return { "shared.json": B.shared, "gems.json": B.gems, "consumables.json": B.consumables }[rel];
 }
 async function save(rel, doc) {
-  const r = await fetch("/api/file/" + rel, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ doc, base: B.hashes[rel] }) });
+  const r = await fetch("/api/file/" + rel, { method: "PUT", headers: { "Content-Type": "application/json", "X-Codex-Who": who() }, body: JSON.stringify({ doc, base: B.hashes[rel] }) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) { toast(j.error || `Save failed (${r.status})`, true); return false; }
   B.hashes[rel] = j.hash; B.git = j.git;
@@ -227,7 +227,11 @@ function nav() {
      <a href="#consumables" class="${view === "consumables" ? "on" : ""}">Items &amp; consumables<small>${B.consumables.entries.length}</small></a>
      <h4>ABOUT</h4><a href="#about" class="${view === "about" ? "on" : ""}">How it works</a>`;
   const g = B.git || {};
-  $("#git").innerHTML = `${esc(g.branch)} · ${esc(g.commit)}<br>${g.unpushed && g.unpushed !== "0" ? esc(g.unpushed) + " change(s) not published" : "published"}`;
+  const where = g.live ? "in the game (" + esc(g.live) + ")" : "published";
+  $("#git").innerHTML = `${esc(g.branch)} · ${esc(g.commit)}<br>${g.unpushed && g.unpushed !== "0" ? esc(g.unpushed) + " change(s) not published" : where}`
+    + (g.sync_error ? `<br><span style="color:#e87">${esc(g.sync_error)}</span>` : "");
+  $("#publish").textContent = pubLabel();
+  $("#publish").title = g.live ? "Run the codex test, then push the saved changes into the game (" + g.live + ")" : "Push the saved changes for a preview build";
 }
 function toolbar(kinds = true) {
   return `<div class="toolbar">
@@ -294,7 +298,9 @@ function aboutView() {
   <p><b>Design</b> entries are ideas the Codex keeps until someone writes their code. The game ignores them. Their <i>needs</i> line says what the code has to do.</p>
   <p>A new <b>rite</b> can go live straight from here when its effects are all stats the game already reads: <code>${esc((B.fx_keys.any || []).join(", "))}</code> (each hero adds its own: the Warlock's <code>${esc((B.fx_keys.warlock || []).join(", "))}</code>), and <code>dmg:&lt;skill&gt;</code>, <code>cd:&lt;skill&gt;</code>, <code>cost:&lt;skill&gt;</code> (more damage, a faster recharge, or less mana for one skill). Put <code>{key}</code> in its text and the number appears there.</p>
   <p><b>Rarity</b> is what a camp chest offers it as. Every camp lets each player pick 1 of 3: Camp I rolls 70/25/5 common/uncommon/rare, Camp II 50/38/12, Camp III 32/43/25, a boss 12/45/43 (<code>RunBuild.ODDS</code>). Skills are active abilities on the five slots; rites are passives and power-ups that stack.</p>
-  <p><b>Publish preview</b> pushes the saved changes to the branch and to <code>test-codex</code>, which builds a playable preview on GitHub Actions in a few minutes. Merging into staging stays the integrator's job.</p></div>`;
+  ${(B.git || {}).live
+    ? `<p><b>Publish to the game</b> runs the codex test on the saved changes and pushes them to <code>${esc(B.git.live)}</code>, the shared game: its next build has them. This editor follows ${esc(B.git.live)} by itself, so it always shows the game as it is now; a change to the same entry made in code meanwhile stops a publish and asks for Claude-2.</p>`
+    : `<p><b>Publish preview</b> pushes the saved changes to the branch and to <code>test-codex</code>, which builds a playable preview on GitHub Actions in a few minutes.</p>`}</div>`;
 }
 function draftBox(cls) {
   return `<div class="draft"><h3>Camp chest: pick 1 of 3</h3>
@@ -465,14 +471,20 @@ function editHeroText(what, i) {
     if (await save(rel, n)) dlg.close();
   };
 }
+function who() {   // the name written into each save's commit (asked once, kept in this browser)
+  let n = ""; try { n = localStorage.getItem("codex_who") || ""; } catch (e) {}
+  if (!n) { n = (prompt("Your name, for the change history?") || "").replace(/[^A-Za-z0-9 _-]/g, "").slice(0, 24); try { if (n) localStorage.setItem("codex_who", n); } catch (e) {} }
+  return n || "codex";
+}
+function pubLabel() { return (B && B.git && B.git.live) ? "Publish to the game" : "Publish preview"; }
 $("#publish").onclick = async () => {
-  const b = $("#publish");
-  if (b.dataset.sure !== "1") { b.dataset.sure = "1"; b.textContent = "Push for a preview build?"; setTimeout(() => { b.dataset.sure = ""; b.textContent = "Publish preview"; }, 4000); return; }
-  b.disabled = true; b.textContent = "Publishing…";
+  const b = $("#publish"); const live = !!(B && B.git && B.git.live);
+  if (b.dataset.sure !== "1") { b.dataset.sure = "1"; b.textContent = live ? "Test and push into the game?" : "Push for a preview build?"; setTimeout(() => { b.dataset.sure = ""; b.textContent = pubLabel(); }, 4000); return; }
+  b.disabled = true; b.textContent = live ? "Testing and publishing…" : "Publishing…";
   const r = await fetch("/api/publish", { method: "POST" }); const j = await r.json().catch(() => ({}));
-  b.disabled = false; b.dataset.sure = ""; b.textContent = "Publish preview";
+  b.disabled = false; b.dataset.sure = ""; b.textContent = pubLabel();
   if (!r.ok) return toast(j.error || "Publish failed", true);
-  toast(`Pushed ${j.commit}. The preview build starts on GitHub Actions in a minute.`); load();
+  toast(live ? (j.pushed && j.pushed.length ? `In the game: ${j.commit}. The next ${B.git.live} build has it.` : j.note) : `Pushed ${j.commit}. The preview build starts on GitHub Actions in a minute.`); load();
 };
 window.addEventListener("hashchange", () => { view = location.hash.slice(1) || "hero:warlock"; if (!view.startsWith("hero")) filt.kind = "all"; render(); window.scrollTo(0, 0); });
 load();

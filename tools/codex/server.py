@@ -4,12 +4,20 @@ heroes' skills, rites, gems and consumables from (scripts/codex.gd). Saving an e
 just that file on the checkout's current branch; Publish pushes the branch for a preview build.
 
     python3 tools/codex/server.py [--port 8765] [--repo .] [--password-file ~/.config/ashen-codex/password]
+    python3 tools/codex/server.py --repo <its own worktree on LIVE_BRANCH> --live staging --godot <godot binary>
 
-Every request needs HTTP basic auth (any user name, the password from the file; one is generated on the first run).
-Standard library only."""
+--live staging (Blaine 2026-11-06: the editor updates the shared game): the checkout follows origin/staging (its
+unpublished edits replayed on top), and Publish runs tools/codex_test.gd on it and pushes it to staging (a
+fast-forward, never a force). Give it a worktree of its own: it moves that checkout.
 
-import argparse, base64, hashlib, hmac, json, os, re, secrets, subprocess, sys, threading
+Access (Blaine 2026-11-06: no username and password): the link is the key. Open /?key=<the key in
+~/.config/ashen-codex/link_key> once and a cookie remembers it; HTTP basic auth with the password file still works
+for tools. Standard library only."""
+
+import argparse, base64, hashlib, hmac, json, os, re, secrets, subprocess, sys, threading, time
+from http.cookies import SimpleCookie
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+from urllib.parse import parse_qs, urlsplit
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -17,6 +25,8 @@ LOCK = threading.Lock()
 ID_RE = re.compile(r"^[a-z0-9_]{2,40}$")
 FILE_RE = re.compile(r"^(heroes/[a-z0-9_]+|shared|gems|consumables)\.json$")
 NUM = (int, float)
+LIVE_BRANCH = "claude-2/codex-live"   # the only branch a --live server publishes from
+SYNC_EVERY = 60                       # seconds between looks at the newest staging
 
 
 def fx_ok(fx, keys):
@@ -25,9 +35,13 @@ def fx_ok(fx, keys):
 
 
 class Codex:
-    def __init__(self, repo: Path):
+    def __init__(self, repo: Path, live=None, godot=None):
         self.repo = repo
         self.dir = repo / "data" / "codex"
+        self.live = live          # "staging": Publish puts the edits into the shared game
+        self.godot = godot        # runs tools/codex_test.gd before a live publish
+        self.synced = 0.0
+        self.sync_error = ""
 
     def git(self, *args, check=True):
         r = subprocess.run(["git", "-C", str(self.repo), *args], capture_output=True, text=True)
@@ -60,13 +74,15 @@ class Codex:
         for p in sorted((self.dir / "heroes").glob("*.json")):
             heroes[p.stem] = json.loads(p.read_text())
         dirty = self.git("status", "--porcelain", "--", "data/codex", check=False)
-        ahead = self.git("rev-list", "--count", "@{u}..HEAD", check=False) or "?"
+        upstream = f"origin/{self.live}" if self.live else "@{u}"
+        ahead = self.git("rev-list", "--count", f"{upstream}..HEAD", check=False) or "?"
         hashes = {str(p.relative_to(self.dir)): self.digest(p) for p in self.dir.rglob("*.json")}
         return {"heroes": heroes, "shared": self.read("shared.json"), "gems": self.read("gems.json"),
                 "consumables": self.read("consumables.json"), "fx_keys": self.fx_keys(), "hashes": hashes,
                 "git": {"branch": self.git("branch", "--show-current", check=False),
                         "commit": self.git("log", "-1", "--format=%h %s", check=False),
-                        "dirty": bool(dirty), "unpushed": ahead}}
+                        "dirty": bool(dirty), "unpushed": ahead, "live": self.live or "",
+                        "sync_error": self.sync_error}}
 
     def validate(self, rel, doc):
         if not isinstance(doc, dict):
@@ -135,7 +151,66 @@ class Codex:
                          "--only", "--", f"data/codex/{rel}")
         return self.bundle()["git"]
 
+    def sync(self, force=False):
+        """Live mode: bring the checkout up to the newest origin/<live>, replaying the editor's unpublished commits on
+        top. Called under LOCK. Never touches a checkout with uncommitted changes; a conflict is aborted and reported."""
+        if not self.live or (not force and time.time() - self.synced < SYNC_EVERY):
+            return
+        self.synced = time.time()
+        if self.git("status", "--porcelain", "--untracked-files=no", check=False):
+            self.sync_error = "the checkout has uncommitted changes: not following staging until they're committed"
+            if force:
+                raise ValueError(self.sync_error)
+            return
+        try:
+            self.git("fetch", "-q", "origin", self.live)
+            if self.git("rev-list", "--count", f"HEAD..origin/{self.live}") != "0":
+                if self.git("rev-list", "--count", f"origin/{self.live}..HEAD") == "0":
+                    self.git("merge", "-q", "--ff-only", f"origin/{self.live}")
+                else:
+                    r = subprocess.run(["git", "-C", str(self.repo), "rebase", "-q", f"origin/{self.live}"],
+                                       capture_output=True, text=True)
+                    if r.returncode != 0:
+                        self.git("rebase", "--abort", check=False)
+                        raise RuntimeError("the unpublished edits conflict with a newer " + self.live
+                                           + ": someone changed the same entries in the game; ask Claude-2 to merge them")
+            self.sync_error = ""
+        except RuntimeError as e:
+            self.sync_error = str(e)
+            if force:
+                raise
+
+    def _godot(self, script, what):
+        if not self.godot:
+            raise ValueError("publishing to the game needs --godot (the codex export and test run first)")
+        try:
+            r = subprocess.run([self.godot, "--headless", "--path", str(self.repo), "-s", "tools/_late.gd", "--",
+                                f"res://tools/{script}.gd"], capture_output=True, text=True, timeout=600)
+        except subprocess.TimeoutExpired:
+            raise RuntimeError(f"the {what} timed out: nothing was published")
+        return r, r.stdout + r.stderr
+
+    def export(self):
+        """Live mode: fold what the code changed since the last export into the codex (Codex's three-way merge keeps
+        the editor's own edits), and commit it on its own."""
+        r, out = self._godot("codex_export", "codex export")
+        if r.returncode != 0 or "[codex_export]" not in out:
+            raise RuntimeError("the codex export failed, nothing was published: " + out[-300:])
+        if self.git("status", "--porcelain", "--", "data/codex", check=False):
+            self.git("add", "--", "data/codex")
+            self.git("commit", "-q", "-m", "Codex: brought up to date with the code (tools/codex_export.gd)\n\n"
+                     "Run by the Hero Codex editor before publishing.", "--", "data/codex")
+
+    def check(self):
+        """Live mode: tools/codex_test.gd on the checkout (the game and the codex agree, every file loads)."""
+        r, out = self._godot("codex_test", "codex test")
+        if r.returncode != 0 or "SCRIPT ERROR" in out or "[codex_test] PASS" not in out:
+            fails = [ln for ln in out.splitlines() if "[FAIL]" in ln or "SCRIPT ERROR" in ln][:6]
+            raise RuntimeError("the codex test failed, nothing was published: " + ("; ".join(fails) or out[-300:]))
+
     def publish(self):
+        if self.live:
+            return self.publish_live()
         with LOCK:
             br = self.git("branch", "--show-current")
             if not br.startswith("claude-2/"):
@@ -146,17 +221,73 @@ class Codex:
         return {"pushed": [br, "test-codex"], "commit": self.git("log", "-1", "--format=%h %s"),
                 "preview": "https://github.com/jjcw1337-rgb/ashen-crown/actions/workflows/preview.yml"}
 
+    def publish_live(self):
+        with LOCK:
+            br = self.git("branch", "--show-current")
+            if br != LIVE_BRANCH:
+                raise ValueError(f"publishing to {self.live} is only allowed from {LIVE_BRANCH} (on {br})")
+            for attempt in range(2):
+                self.sync(force=True)
+                if self.git("rev-list", "--count", f"origin/{self.live}..HEAD") == "0":
+                    return {"pushed": [], "commit": self.git("log", "-1", "--format=%h %s"),
+                            "note": f"nothing new: the game ({self.live}) already has every saved edit"}
+                self.export()
+                self.check()
+                r = subprocess.run(["git", "-C", str(self.repo), "push", "-q", "origin", f"HEAD:{self.live}"],
+                                   capture_output=True, text=True)
+                if r.returncode == 0:
+                    self.git("fetch", "-q", "origin", self.live, check=False)
+                    return {"pushed": [self.live], "commit": self.git("log", "-1", "--format=%h %s"),
+                            "note": f"in the game: pushed to {self.live}"}
+                if "rejected" not in (r.stderr + r.stdout) and "non-fast-forward" not in (r.stderr + r.stdout):
+                    raise RuntimeError((r.stderr or r.stdout).strip()[-400:])
+            raise RuntimeError(f"{self.live} kept moving while publishing: try again in a minute")
 
-def make_handler(codex: Codex, password: str):
+
+NO_KEY = (b"<!doctype html><meta charset=utf-8><title>Hero Codex</title><body style='font:16px system-ui;"
+          b"background:#15120f;color:#e8dcc4;padding:40px'><h2>Hero Codex</h2><p>Open the Codex with its link "
+          b"(the one with <code>?key=</code>). Ask Claude-2 for it.</p>")
+
+
+def _secret(path: Path, n: int) -> str:
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(secrets.token_urlsafe(n) + "\n")
+        path.chmod(0o600)
+        print(f"[codex] a new secret was generated in {path}", flush=True)
+    return path.read_text().strip()
+
+
+def make_handler(codex: Codex, password: str, link_key: str):
     index = (HERE / "index.html").read_bytes()
 
     class H(BaseHTTPRequestHandler):
         server_version = "HeroCodex/1"
 
         def log_message(self, fmt, *a):
-            sys.stderr.write("[codex] %s %s\n" % (self.address_string(), fmt % a))
+            line = re.sub(r"key=[^& ]+", "key=***", fmt % a)          # the key never lands in the log
+            sys.stderr.write("[codex] %s %s\n" % (self.address_string(), line))
 
         def _authed(self):
+            url = urlsplit(self.path)
+            self.route = url.path
+            self.who = re.sub(r"[^A-Za-z0-9 _-]", "", self.headers.get("X-Codex-Who", ""))[:24] or "codex"
+            q = parse_qs(url.query).get("key", [""])[0]
+            if q and hmac.compare_digest(q.encode(), link_key.encode()):
+                # the link is the key: a cookie remembers it, and the address bar loses it
+                self.send_response(303)
+                self.send_header("Set-Cookie", f"codex_key={link_key}; Max-Age=31536000; Path=/; HttpOnly; Secure; SameSite=Lax")
+                self.send_header("Location", url.path or "/")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return False
+            jar = SimpleCookie()
+            try:
+                jar.load(self.headers.get("Cookie", ""))
+            except Exception:
+                pass
+            if "codex_key" in jar and hmac.compare_digest(jar["codex_key"].value.encode(), link_key.encode()):
+                return True
             h = self.headers.get("Authorization", "")
             if h.startswith("Basic "):
                 try:
@@ -166,10 +297,11 @@ def make_handler(codex: Codex, password: str):
                         return True
                 except Exception:
                     pass
-            self.send_response(401)
-            self.send_header("WWW-Authenticate", 'Basic realm="Ashen Crown Hero Codex"')
-            self.send_header("Content-Length", "0")
+            self.send_response(401)                 # no WWW-Authenticate: no login prompt, just how to get in
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(NO_KEY)))
             self.end_headers()
+            self.wfile.write(NO_KEY)
             return False
 
         def _send(self, code, body, ctype="application/json"):
@@ -186,11 +318,13 @@ def make_handler(codex: Codex, password: str):
         def do_GET(self):
             if not self._authed():
                 return
-            if self.path in ("/", "/index.html") or self.path.startswith("/#"):
+            if self.route in ("/", "/index.html"):
                 return self._send(200, index, "text/html; charset=utf-8")
-            if self.path == "/api/codex":
+            if self.route == "/api/codex":
+                with LOCK:
+                    codex.sync()       # live: follow the newest staging (at most once a minute)
                 return self._send(200, codex.bundle())
-            m = re.match(r"^/icon/(skills|talents)/([a-z0-9_]{1,40})\.png$", self.path)
+            m = re.match(r"^/icon/(skills|talents)/([a-z0-9_]{1,40})\.png$", self.route)
             if m:
                 f = codex.repo / "assets" / "textures" / m.group(1) / (m.group(2) + ".png")
                 if f.is_file():
@@ -201,14 +335,14 @@ def make_handler(codex: Codex, password: str):
         def do_PUT(self):
             if not self._authed():
                 return
-            if not self.path.startswith("/api/file/"):
+            if not self.route.startswith("/api/file/"):
                 return self._send(404, {"error": "not found"})
             try:
                 n = int(self.headers.get("Content-Length", "0"))
                 if n > 2_000_000:
                     raise ValueError("too large")
                 body = json.loads(self.rfile.read(n))
-                rel = self.path[len("/api/file/"):]
+                rel = self.route[len("/api/file/"):]
                 git = codex.save(rel, body.get("doc"), self.who, body.get("base"))
                 self._send(200, {"ok": True, "git": git, "hash": codex.digest(codex.dir / rel)})
             except (ValueError, RuntimeError, json.JSONDecodeError) as e:
@@ -217,7 +351,7 @@ def make_handler(codex: Codex, password: str):
         def do_POST(self):
             if not self._authed():
                 return
-            if self.path != "/api/publish":
+            if self.route != "/api/publish":
                 return self._send(404, {"error": "not found"})
             try:
                 self._send(200, codex.publish())
@@ -233,6 +367,8 @@ def main():
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--repo", default=str(HERE.parent.parent))
     ap.add_argument("--password-file", default=os.path.expanduser("~/.config/ashen-codex/password"))
+    ap.add_argument("--live", default=None, help="a branch (staging): Publish tests and pushes the edits into it")
+    ap.add_argument("--godot", default=os.environ.get("GODOT"), help="the Godot binary for the codex test (--live)")
     a = ap.parse_args()
     pf = Path(a.password_file)
     if not pf.exists():
@@ -241,9 +377,16 @@ def main():
         pf.chmod(0o600)
         print(f"[codex] a password was generated in {pf}")
     password = pf.read_text().strip()
-    codex = Codex(Path(a.repo).resolve())
+    link_key = _secret(pf.parent / "link_key", 18)
+    codex = Codex(Path(a.repo).resolve(), a.live, a.godot)
+    if a.live:
+        br = codex.git("branch", "--show-current", check=False)
+        if br != LIVE_BRANCH:
+            sys.exit(f"[codex] --live needs a checkout of its own on {LIVE_BRANCH} (this one is on {br or 'no branch'})")
+        with LOCK:
+            codex.sync(force=False)
     codex.bundle()
-    srv = ThreadingHTTPServer((a.host, a.port), make_handler(codex, password))
+    srv = ThreadingHTTPServer((a.host, a.port), make_handler(codex, password, link_key))
     print(f"[codex] serving {codex.dir} on http://{a.host}:{a.port}", flush=True)
     srv.serve_forever()
 
