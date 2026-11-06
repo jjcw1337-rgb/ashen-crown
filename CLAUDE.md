@@ -1581,7 +1581,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `plague_attack`, picked by `_icon_id`) are a Meshy 3x3 grid cut by `tools/skill_icons.py` (`prompt`, `meshy.py
   draw`, `cut`; the same palette and cutter as `talent_icons.py`; lossless import). Another class gets them by adding
   a `CELLS` entry and painting its grid.
-- **Talents** (`scripts/talents.gd`, the window is N; `tools/talent_test.gd`, `tools/talent_shot.gd`): three trees per
+- **Talents** (players see them as **Rites**, for every class: JJ 2026-11-05; only the shown text says Rites, the code,
+  save keys and tools keep `talent`) (`scripts/talents.gd`, the window is N; `tools/talent_test.gd`, `tools/talent_shot.gd`): three trees per
   class of seven talents in four rows (2, 2, 2, then a capstone); a row opens with 0/3/6/10 points spent above it in
   that tree (`Talents.ROW_REQ`), and a rank can't be taken back if a deeper talent would lose its row. One point a
   level from level 2: `Hero.free_talent_points()` = level - 1 - spent (nothing stored but `talents` {id: ranks} in

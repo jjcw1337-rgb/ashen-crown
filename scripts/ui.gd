@@ -734,7 +734,7 @@ func _build_hud() -> void:
 	hint_lbl.offset_top = -bh - 52
 	hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hint_lbl.text = "WASD: move  ·  Left mouse: attack  ·  Right mouse, Q E R F G V: skills (K to set them)  ·  Space: dodge roll (hold to sprint)  ·  N: talents  ·  J: quests  ·  1-4: potions  ·  I/C: inventory/stats  ·  T: portal  ·  Tab: map"
+	hint_lbl.text = "WASD: move  ·  Left mouse: attack  ·  Right mouse, Q E R F G V: skills (K to set them)  ·  Space: dodge roll (hold to sprint)  ·  N: rites  ·  J: quests  ·  1-4: potions  ·  I/C: inventory/stats  ·  T: portal  ·  Tab: map"
 	hud.add_child(hint_lbl)
 	minimap = Minimap.new()
 	minimap.ui = self
@@ -1183,7 +1183,7 @@ func _build_skills_panel() -> void:
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	vb.add_child(sc)
 	var tb := Button.new()
-	tb.text = "Talents (N)"
+	tb.text = "Rites (N)"
 	tb.pressed.connect(func(): toggle(talent_panel))
 	vb.add_child(tb)
 	skill_rows = VBoxContainer.new()
@@ -1278,7 +1278,7 @@ func skills_hotkey(key: String) -> bool:
 # ---------------------------------------------------------------- talents window (N)
 ## Three trees side by side, four rows each; left click learns a rank, right click gives it back.
 func _build_talent_panel() -> void:
-	talent_panel = _panel("Talents", true, 960, 600)
+	talent_panel = _panel("Rites", true, 960, 600)
 	var vb: VBoxContainer = talent_panel.get_node("vb")
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 8)
@@ -1336,7 +1336,7 @@ func _fill_talents() -> void:
 		talent_cols.remove_child(c)
 		c.queue_free()
 	var free: int = hero.free_talent_points()
-	talent_head.text = ("%d talent point%s to spend" % [free, "" if free == 1 else "s"]) if free > 0 else "No points to spend: you get one each level"
+	talent_head.text = ("%d rite point%s to spend" % [free, "" if free == 1 else "s"]) if free > 0 else "No points to spend: you get one each level"
 	var ts := Talents.trees(hero.cls)
 	for i in ts.size():
 		var tree: Dictionary = ts[i]
@@ -4271,7 +4271,7 @@ func _build_battlegrounds() -> void:
 	var sub := _label("Descend with one of your heroes. Monsters are few and deadly, other players are hunting too, and the Extraction Portals only open %d minutes in. Get out alive and everything you carry is yours. Fall, and it lies where you fell." % int(Battlegrounds.PORTALS_AT / 60.0), 14, Color(0.78, 0.72, 0.64))
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(sub)
-	var warn := _label("☠  DEATH COSTS EVERYTHING YOU CARRY. Fall in the crypt and every item you wear and carry, your belt and your gold stay where you fell. Your hero lives on: levels, stats and talents are kept, and your camp stash is safe.", 15, Color(1.0, 0.42, 0.32), true)
+	var warn := _label("☠  DEATH COSTS EVERYTHING YOU CARRY. Fall in the crypt and every item you wear and carry, your belt and your gold stay where you fell. Your hero lives on: levels, stats and rites are kept, and your camp stash is safe.", 15, Color(1.0, 0.42, 0.32), true)
 	warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(warn)
 	var row := HBoxContainer.new()
@@ -4351,7 +4351,7 @@ func _bg_go() -> void:
 	var nm := bg_class.get_item_text(bg_class.selected).split("  ·  ")[0]
 	var addr := bg_addr.text if bg_addr.text.strip_edges() != "" else "127.0.0.1"
 	# a last word before risking everything they carry
-	open_dialog(Battlegrounds.TITLE, "%s will enter with everything they wear and carry. If %s dies down there, all of it stays on the crypt floor (their levels and talents are kept).\n\nEnter the crypt?" % [nm, nm],
+	open_dialog(Battlegrounds.TITLE, "%s will enter with everything they wear and carry. If %s dies down there, all of it stays on the crypt floor (their levels and rites are kept).\n\nEnter the crypt?" % [nm, nm],
 		[["Enter", func():
 			bg_panel.visible = false
 			game.start_battlegrounds(addr, id)], ["Not yet", func(): pass]])
@@ -5420,7 +5420,7 @@ func refresh() -> void:
 		stash_count_lbl.text = "Tab %s: %d / %d    ·    All tabs: %d / %d" % [STASH_NUMERALS[stash_tab], game.stash.tab_count(stash_tab), SharedStash.SLOTS, game.stash.count(), SharedStash.SLOTS * SharedStash.TABS]
 	var free: int = hero.free_talent_points()
 	talent_badge.visible = free > 0 and not talent_panel.visible
-	talent_badge.text = "%d talent point%s to spend  (N)" % [free, "" if free == 1 else "s"]
+	talent_badge.text = "%d rite point%s to spend  (N)" % [free, "" if free == 1 else "s"]
 	if talent_panel.visible and _talent_sig() != _talent_shown:
 		_fill_talents()
 	if char_panel.visible:
