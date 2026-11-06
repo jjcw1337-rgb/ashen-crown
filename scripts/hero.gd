@@ -1255,7 +1255,7 @@ func _swipe_lunge(a0: float, a1: float) -> void:
 	var L: Array = SWIPE_LUNGE[atk_style]
 	var f0 := clampf((a0 - L[0]) / (L[1] - L[0]), 0.0, 1.0)
 	var f1 := clampf((a1 - L[0]) / (L[1] - L[0]), 0.0, 1.0)
-	var slam := atk_style == "cleave" and atk_skill == "cleave"
+	var slam := atk_style == "cleave" and atk_skill in ["cleave", "k_rites"]
 	var d: float = (smoothstep(0.0, 1.0, f1) - smoothstep(0.0, 1.0, f0)) * (slam_leap if slam else float(L[2]))
 	if d <= 0.0:
 		return
@@ -1598,6 +1598,8 @@ func _hit_enemy(e, mult: float, knock: float = 0.0, src := "", flat := 0.0) -> v
 	var dealt: float = e.take_damage(r["phys"], r["fire"], global_position, knock, r["crit"])
 	if run != null:
 		RunTalents.on_hit(self, e, dealt, r["crit"], src)
+		if cls == "knight" and src != "k_judgment" and run.skills.has("k_judgment"):
+			KnightSkills.brand(self, e)      # Holy Brands, for Judgment to spend
 	if ls > 0.0:
 		life = minf(max_life, life + dealt * ls / 100.0)
 	_item_effects(e, dealt, src)
@@ -2332,7 +2334,7 @@ func _update_attack(delta: float) -> void:
 	atk_t += delta
 	var a := atk_t / atk_dur
 	var swipe := atk_skill == "" and SWIPE_LUNGE.has(atk_style)
-	if swipe or (atk_skill == "cleave" and atk_style == "cleave"):
+	if swipe or (atk_skill in ["cleave", "k_rites"] and atk_style == "cleave"):
 		_swipe_lunge(a0, a)
 	if not impact_done and a >= Anim.impact_at(atk_style):
 		impact_done = true

@@ -19,8 +19,8 @@ const TIER_NAMES := {1: "Tier I", 2: "Tier II", 3: "Tier III", 4: "Boss"}
 ## A boss camp's boss against a run character (bosses are tuned for the whole act's heroes): its life and damage
 ## scaled, so a level-15 run character with a fair build can take it alone in about a minute, and a party faster.
 ## Measured with tools/run_playthrough.gd.
-const BOSS_LIFE := 0.45
-const BOSS_DMG := 0.33
+const BOSS_LIFE := 0.8
+const BOSS_DMG := 0.4
 ## and its experience (a boss's own is the whole act's worth: six levels at once in a run)
 const BOSS_XP := 0.35
 ## How near a hero must be when a camp falls to share its experience (the fighters, not the whole map).
