@@ -80,6 +80,31 @@ loads and failures, and rejects absent/malformed trace data. These timings inclu
 isolated disk time, total transition time or VRAM. Tracing is opt-in and does not retain resources. Source/grammar
 checks and three report unit tests pass; native tracing and Knight capture have not yet run.
 
+## Player journey acceptance — requested 2026-11-06
+
+Blaine explicitly requires that ordinary play makes sense and a Battlegrounds run can be completed.
+This is a release requirement alongside the loading checks. **Normal-play acceptance is pending.**
+
+| Journey | Required evidence on the release candidate |
+|---|---|
+| Basic play | Enter World, move/aim/attack, use skills and potions, collect/equip loot, open/close menus, leave and resume with the correct character. Inspect actual rendered controls and overlapping text. |
+| BG entry and objective | Use Multiplayer → Battlegrounds, choose a class, create/join, Ready/Start and enter a fresh run. Understand the bell, camp rewards, portal opening and collapse deadline from the visible game. |
+| Ordinary completion | Walk a viable route, fight with normal damage/health, take camp upgrades and gear, find and interact with an open portal before the normal server deadline. No teleport, free healing, immortality, one-hit, forced portal or direct result calls. Record class, route, elapsed time and screenshots. Clearing every camp or both bosses is not required to extract. |
+| Finish and reuse | See Survived, save once, use the results Return button, see the survivor in Arena, and start a new level-0 BG run without altering story saves. |
+| Losing and recovery | Die or miss extraction: truthful Fallen result, no survivor award, usable Return/retry. Check a dropped connection leaves a usable UI and does not award survival. |
+
+Keep the existing automated tests: `bg_test` verifies real server-mediated extraction/death/reset with an
+accelerated clock and assisted combat; `run_playthrough` diagnoses the camp curve with teleports, healing and
+direct result calls. Neither is the ordinary completion proof above. Existing two-client Arena and disconnect
+fixtures cover separate parts of the journey; inspect actual screens as well as assertions.
+
+Source review found the forest HUD still advertised crypt gates/stash and used the retired map title. The
+candidate now gives forest-specific bell/camp instructions, names the active map, labels the collapse timer
+and directs players to an open portal. `bg_test` checks these live state hints and now uses the actual results
+Return signal for both survival and death, asserting connection closure and the reopened BG browser.
+These changes have **not yet been run/rendered**; check the HUD at small and normal viewports, including the
+countdown's matchup cards. Native tests remain deferred while Claude-1 owns heavy-tests and nightly is active.
+
 ## Current performance decision: hold publication
 
 All current diagnostic runs had `focused=false`; macOS reports `CGSSessionScreenIsLocked=true`. The user has

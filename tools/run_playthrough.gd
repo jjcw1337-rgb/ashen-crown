@@ -1,12 +1,11 @@
 extends SceneTree
-## A whole Battlegrounds run played for real (Blaine's overhaul, step 7): a fresh run character of `cls` at level 0
-## on the Verdant Reach, played by the sandbox's BotBrain (the same calls as the mouse and keys: its skills, weapon,
-## dodge and potions; nothing immortal, nothing one-hit) through every camp in tier order, nearest first. After each
-## camp it opens the chest, takes an upgrade (a skill while a slot is empty, else the rarest passive), wears better
-## gear (the swap), and goes on. Then it "extracts" (the results and Save Character), reloads the survivor as the
-## Arena would and checks it matches. Prints a line per camp ([RUN-PLAY]) and a summary; a death is reported (and
-## the run carries on at full life so the rest of the curve is measured, marked as a fall).
-##   godot --headless --path . -s tools/run_playthrough.gd -- archer|plague [max_secs_per_camp]
+## Assisted camp progression diagnostic: a fresh level-0 run character fights every camp with BotBrain,
+## takes chest upgrades and swaps gear. Combat uses ordinary attacks/skills, but the harness teleports
+## between camps, refills life/mana before each, and respawns after a death (which fails the run).
+## It calls bg_extracted directly: no lobby, live raid clock, walking route or server-confirmed portal.
+## Use this to diagnose the build curve, NOT as proof that an ordinary Battlegrounds run is completable.
+## Player-journey acceptance is tracked in docs/perf/COVERAGE.md.
+##   godot --headless --path . --fixed-fps 60 -s tools/run_playthrough.gd -- archer|plague [max_secs_per_camp]
 var g
 var cls := "archer"
 var per_camp := 120.0

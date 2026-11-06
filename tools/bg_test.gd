@@ -1,12 +1,14 @@
 extends SceneTree
-## Battlegrounds (battlegrounds.gd), the Hollow Crypt, two processes on this machine:
+## Battlegrounds (battlegrounds.gd), the active raid map, two processes on this machine:
 ##   godot --headless --path . -s tools/bg_test.gd -- --server --port 24611 --raid-fast server
 ##   godot --headless --path . -s tools/bg_test.gd -- client 24611 [addr <host>] [cloud <nakama url> <server key>]
-## The client makes a real character (in a scratch character folder) and enters the crypt with a fresh run character
+## The client makes a real character (in a scratch character folder) and enters the raid with a fresh run character
 ## of its class (RunBuild, level 0: the multiplayer overhaul; the saved character is never touched), kills a monster,
 ## loots a chest, picks up what fits and swaps a piece of gear through the host (the old piece left on the ground),
 ## waits for the portals, extracts, goes back in as a new run character and dies: its gear drops for others. The server
-## checks the round (portals open, the collapse, a new round) and the drop. `--raid-fast` = a round of 150 s.
+## checks the round (portals open, the collapse, a new round) and the drop.
+## This is an accelerated lifecycle test with teleports and combat assists, not a normal-play completion proof.
+## `--raid-fast` = a round of 150 s.
 
 var g
 var role := "client"
@@ -178,7 +180,7 @@ func _client() -> void:
 	g.test_immortal = true
 	g.test_onehit = true
 	await g.start_battlegrounds("%s:%d" % [host, port], id)
-	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 90.0), "entered the crypt as Testric")
+	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 90.0), "entered the raid as Testric")
 	if DisplayServer.get_name() != "headless":
 		check(not g.get_viewport().disable_3d and ResCache.status(g._zone_scope).ready and ResCache.status(g._combat_scope).ready, "Battlegrounds content ready and rendering restored before play")
 		if capture != "":
@@ -190,6 +192,8 @@ func _client() -> void:
 	var gates: Array = g.world.get_meta("bg_gates", [])
 	var forest: bool = load("res://scripts/mp_mode.gd").FOREST
 	check(str(g.bg_raid.get("state", "")).begins_with("lobby") and (forest or (not gates.is_empty() and not gates[0]["up"])), "waiting for the round to start (%s)" % str(g.bg_raid.get("state", "")))
+	if forest:
+		_check_hint("ring the bell", "ANTECHAMBER")
 	var bells: Array = g.world.interactables.filter(func(t): return t.kind == "bell")
 	check(bells.size() == 4, "a bell in each of the four antechambers")
 	var bell = bells[0]
@@ -197,7 +201,9 @@ func _client() -> void:
 		if b.global_position.distance_to(g.hero.global_position) < bell.global_position.distance_to(g.hero.global_position):
 			bell = b
 	g._interact(bell)
-	check(await until(func(): return str(g.bg_raid.get("state", "")).begins_with("prep"), 6.0), "rang the bell: the gates open in a moment (%s)" % str(g.bg_raid.get("state", "")))
+	check(await until(func(): return str(g.bg_raid.get("state", "")).begins_with("prep"), 6.0), "rang the bell: the raid starts in a moment (%s)" % str(g.bg_raid.get("state", "")))
+	if forest:
+		_check_hint("clear camps", "stash")
 	check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 10.0) and (forest or gates[0]["up"]), "the raid was on")
 	await secs(1.0)
 	# one standard for attacks: the same timing, damage and cooldowns in the crypt as in the story game
@@ -238,6 +244,8 @@ func _client() -> void:
 	var ex = Battlegrounds.portal_list(g.world)[0]
 	check(not bool(ex.data.get("open", false)) or not g.bg_raid["open"].is_empty(), "portals start closed")
 	check(await until(func(): return not (g.bg_raid.get("open", []) as Array).is_empty(), 70.0), "the portals opened")
+	_check_hint(Battlegrounds.map_title().to_upper(), "")
+	_check_hint("reach an open portal before collapse", "")
 	var ps: Array = Battlegrounds.portal_list(g.world)
 	var op = ps[int(g.bg_raid["open"][0])]
 	g.hero.target = null
@@ -261,9 +269,8 @@ func _client() -> void:
 		save_b.pressed.emit()
 		save_b.pressed.emit()
 	check(SV.list().size() == 1 and int(SV.list()[0]["level"]) == g.hero.level, "Save Character: one survivor (level %d)" % g.hero.level)
-	await g.run_return()
+	await _return_from_results()
 	# back in, and die
-	await until(func(): return not g._busy and g.ui.title_panel.visible, 20.0)      # (back on the title, the lobby browser over it)
 	await g.start_battlegrounds("%s:%d" % [host, port], id)
 	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 90.0), "went back in")
 	check(g.hero.run != null and g.hero.level == 0, "as a new run character")
@@ -278,11 +285,25 @@ func _client() -> void:
 	g.respawn()
 	check(await until(func(): return not g.bg_mode and not g._busy, 20.0), "a death ends the raid")
 	check(await until(func(): return g.ui.run_ui.mode == "results", 6.0) and g.ui.run_ui.find_child("save", true, false) == null, "its results: fallen, nothing to save")
-	await g.run_return()
+	await _return_from_results()
 	var after := _save(path)
 	var eq: Dictionary = (after.get("hero", {}) as Dictionary).get("equipment", {})
 	var worn: Array = eq.values().filter(func(x): return x != null)
 	check(FileAccess.file_exists(path) and not after.get("in_raid", true) and int((after.get("hero", {}) as Dictionary).get("level", 0)) == 1 and _count_saved(after) == inv0 and worn.size() >= 1, "a fallen run leaves the saved character as it was (level 1, %d items)" % _count_saved(after))
+
+func _check_hint(required: String, forbidden: String) -> void:
+	Battlegrounds.hud(g, 0.0)
+	var label: Label = g.ui.hud.get_node_or_null("bg_hud")
+	check(label != null and label.is_visible_in_tree() and required in label.text and (forbidden == "" or forbidden not in label.text), "raid instructions: " + required)
+
+func _return_from_results() -> void:
+	var back: Button = g.ui.run_ui.find_child("return", true, false)
+	check(back != null and back.is_visible_in_tree() and not back.disabled, "results expose an enabled Return button")
+	if back == null:
+		return
+	back.pressed.emit()
+	check(await until(func(): return not g._busy and g.ui.title_panel.visible and not g.ui.run_ui.visible and g.hero.run == null and not g.net.active, 40.0), "Return finishes the run and restores the title without a live game connection")
+	check(g.lobby_client != null and g.lobby_client.panel.visible and g.lobby_client.selected_mode == "battlegrounds", "Return opens the Battlegrounds lobby browser")
 
 func _save(p := "") -> Dictionary:
 	if p == "":

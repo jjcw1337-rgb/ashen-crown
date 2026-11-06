@@ -357,7 +357,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   (`Hero.skill_list`, `RunBuild.skill_pool`). Icons: Meshy grids `archer`, `run_mix`, `potions`, `gems`, `gems2` in
   `tools/skill_icons.py` (`assets/textures/skills/`, `items/c_*.png`, `gems/`). `tools/run_talents_test.gd` tries every
   talent, gem, consumable and run skill on real monsters; `tools/run_playthrough.gd -- <class> <secs> [theme|random]`
-  plays a whole run chasing a theme.
+  exercises the camp progression curve chasing a theme (assists described below).
   **Camps** (`scripts/camps.gd` `Camps`): a map's encounters, `Camps.add(w, id, name, tier, pos, r, foes, chest)` (tier
   1-3, 4 = boss; monsters at `Camps.MON_LEVEL[tier]` under the camp's own pack id, its chest sealed until they're all
   dead: `Game.chest_sealed`, refused by the server in `Net.sv_inter`). Every peer sees a camp fall from its own
@@ -375,10 +375,12 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   Reaver/Sniper (`dark_elf`, `dark_elf_archer`), Meshy models rigged by `tools/blender/act1/rig_monster.py`. Boss camps
   are tuned for run characters (`Camps.BOSS_LIFE/DMG/XP`); a boss's death withers its camp; deep chests can drop a
   class unique (`Camps.UNIQUE_CHANCE`, `Game._run_class_unique`); every chest drops a healing potion.
-  **The whole run played for real**: `tools/run_playthrough.gd -- archer|plague [secs per camp]` (`--fixed-fps 60`,
-  headless): BotBrain plays a level-0 run character through all sixteen camps in tier order, takes upgrades and
-  gear, extracts, saves and reloads the survivor; prints each camp's time, damage per second and level. Re-run it
-  after changing camps, monsters, rewards or the run curve.
+  **Assisted camp progression diagnostic**: `tools/run_playthrough.gd -- archer|plague [secs per camp]`
+  (`--fixed-fps 60`, headless): BotBrain fights all sixteen camps, takes upgrades and gear, then tests survivor
+  saving/reloading. It teleports between camps, refills life/mana, and calls the extraction result directly;
+  deaths fail the test but respawn to diagnose later camps. It does not prove navigation, the live raid deadline
+  or server-confirmed extraction. Re-run after camp/reward/curve changes; separately complete the ordinary
+  player journey in [release coverage](docs/perf/COVERAGE.md).
   **Survivors** (`scripts/survivors.gd` `Survivors`): a run that extracts (`Game.bg_extracted`, server-confirmed) ends
   on `RunUI.open_results` with Save Character (`Game.run_save_survivor` -> `Survivors.save`: one file per run,
   `user://survivors/sv_<RunBuild.uid>.json`, so a second save writes nothing); a fallen run's results offer none;
