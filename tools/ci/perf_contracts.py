@@ -4,6 +4,11 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from construction_contracts import check
+
+construction_errors = check()
+if construction_errors:
+    raise SystemExit("\n".join(construction_errors))
 
 # Cache residency can outlive instances. All per-instance surface overrides must
 # register the predelete cleanup, including new content added after this migration.
@@ -15,7 +20,7 @@ for source in Path('scripts').glob('*.gd'):
             raise SystemExit(f'{source}:{line_number}: use SurfaceMaterials.assign for safe retirement')
 
 engine = sys.argv[1] if len(sys.argv) > 1 else 'godot'
-for tool in ['content_parse_test', 'content_cache_test', 'content_contract_test', 'content_catalog_test', 'content_parts_test', 'nightly_surface_material_test']:
+for tool in ['content_parse_test', 'terrain_job_test', 'content_cache_test', 'content_contract_test', 'content_catalog_test', 'content_parts_test', 'nightly_surface_material_test']:
     run = subprocess.run([engine, '--headless', '--path', '.', '-s', 'tools/_late.gd', '--',
                           f'res://tools/{tool}.gd'], capture_output=True, text=True, timeout=240 if tool == "content_catalog_test" else 120)
     log = run.stdout + run.stderr

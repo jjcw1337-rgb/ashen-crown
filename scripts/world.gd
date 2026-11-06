@@ -552,85 +552,40 @@ func _build_terrain(tcol: Dictionary) -> void:
 ## A piece of ground over `r`, `step` metres between vertices (the coast builds its distant islands and
 ## shores coarser than the ground under the hero). Cells wholly deeper than `floor_y` are left out:
 ## nobody sees the bottom of the open sea.
+const TerrainBuild = preload("res://scripts/terrain_build.gd")
 func terrain_patch(r: Rect2, step: float, tcol: Dictionary, nm := "Terrain", floor_y := -INF, own := Callable(), drop := 0.0, clip := Callable()) -> MeshInstance3D:
 	if not masks_ready:
 		_bake_masks()
-	var x0 := r.position.x
-	var z0 := r.position.y
-	var nx := int(r.size.x / step)
-	var nz := int(r.size.y / step)
-	var verts := PackedVector3Array()
-	var norms := PackedVector3Array()
-	var cols := PackedColorArray()
-	var idx := PackedInt32Array()
-	verts.resize((nx + 1) * (nz + 1))
-	norms.resize(verts.size())
-	cols.resize(verts.size())
-	var hs := PackedFloat32Array()
-	hs.resize((nx + 3) * (nz + 3))
-	for j in nz + 3:
-		for i in nx + 3:
-			hs[j * (nx + 3) + i] = ground_h(x0 + (i - 1) * step, z0 + (j - 1) * step)
-	for j in nz + 1:
-		for i in nx + 1:
-			var x := x0 + i * step
-			var z := z0 + j * step
-			var k := j * (nx + 1) + i
-			var hc := hs[(j + 1) * (nx + 3) + (i + 1)]
-			var hl := hs[(j + 1) * (nx + 3) + i]
-			var hr := hs[(j + 1) * (nx + 3) + (i + 2)]
-			var hd := hs[j * (nx + 3) + (i + 1)]
-			var hu := hs[(j + 2) * (nx + 3) + (i + 1)]
-			verts[k] = Vector3(x, hc - drop, z)
-			if clip.is_valid():
-				# (the island camp: a vertex past the edge is drawn in onto it, so the ground ends in a smooth line)
-				var q: Vector3 = clip.call(x, z, hc - drop)
-				verts[k] = q
-			norms[k] = Vector3(hl - hr, 2.0 * step, hd - hu).normalized()
-			var cliff := clampf((1.0 - norms[k].y) * 3.0, 0.0, 1.0)
-			cols[k] = Color(dirt_at(x, z), cliff, cobble_at(x, z), 1.0)
-	for j in nz:
-		for i in nx:
-			var a := j * (nx + 1) + i
-			var b := a + 1
-			var c := a + (nx + 1)
-			var d := c + 1
-			if verts[a].y < floor_y and verts[b].y < floor_y and verts[c].y < floor_y and verts[d].y < floor_y:
-				continue
-			if own.is_valid() and not bool(own.call(x0 + (i + 0.5) * step, z0 + (j + 0.5) * step)):
-				continue
-			idx.append_array([a, b, d, a, d, c])
-	if idx.is_empty():
-		return null
-	var arr := []
-	arr.resize(Mesh.ARRAY_MAX)
-	arr[Mesh.ARRAY_VERTEX] = verts
-	arr[Mesh.ARRAY_NORMAL] = norms
-	arr[Mesh.ARRAY_COLOR] = cols
-	arr[Mesh.ARRAY_INDEX] = idx
-	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
-	var mat := ShaderMaterial.new()
-	mat.shader = Mats.shader("terrain")
-	for k in tcol.keys():
-		mat.set_shader_parameter(k, tcol[k])
-	# the ground's small detail: pebbles and grit in the dirt from Medium up, fallen leaves in Act I's oak woods
-	mat.set_shader_parameter("ground_detail", 1.0 if detail >= 1 else 0.0)
-	mat.set_shader_parameter("litter", 1.0 if oak_forest and detail >= 1 else 0.0)
-	mesh.surface_set_material(0, mat)
 	var mi := MeshInstance3D.new()
 	mi.name = nm
-	mi.mesh = mesh
-	add_child(mi)
-	# Godot culls clockwise as front; flip if our winding is inverted
 	mi.set_meta("terrain", true)
-	return mi
+	add_child(mi)
+	var job := TerrainBuild.new(self, mi, r, step, tcol, floor_y, own, drop, clip)
+	if scheduled_build:
+		_visual_jobs.append(job)
+	else:
+		while not job.step(): pass
+	return mi if is_instance_valid(mi) else null
 
 ## Grass, wildflowers and ferns use their own random numbers so a denser graphics setting
 ## never shifts anything gameplay-related (co-op players can use different settings).
 var scheduled_build := false
 var _visual_jobs: Array = []
 var construction_metrics := {}
+var _build_checkpoint_usec := 0
+
+## Cooperative checkpoints for builder loops. Keep random draws and placement in their original order.
+func build_checkpoint(budget_ms := 4.0) -> void:
+	if not scheduled_build or not is_inside_tree(): return
+	var now := Time.get_ticks_usec()
+	if _build_checkpoint_usec == 0:
+		_build_checkpoint_usec = now
+	if now - _build_checkpoint_usec < int(budget_ms * 1000.0): return
+	construction_metrics["max_builder_slice_ms"] = maxf(float(construction_metrics.get("max_builder_slice_ms", 0.0)), (now - _build_checkpoint_usec) / 1000.0)
+	construction_metrics["builder_yields"] = int(construction_metrics.get("builder_yields", 0)) + 1
+	await get_tree().process_frame
+	_build_checkpoint_usec = Time.get_ticks_usec()
+
 
 func scatter_grass(area: Rect2, colors: Dictionary, q: int, seed_v: int) -> void:
 	if scheduled_build:
@@ -656,8 +611,10 @@ func finish_visuals(budget_ms := 4.0) -> void:
 				await get_tree().process_frame
 				deadline = Time.get_ticks_usec() + int(budget_ms * 1000.0)
 	_visual_jobs.clear()
-	construction_metrics = {"visual_wall_ms": (Time.get_ticks_usec() - started) / 1000.0,
-		"max_step_ms": max_step / 1000.0, "yields": yields}
+	_build_checkpoint_usec = Time.get_ticks_usec()
+	construction_metrics["visual_wall_ms"] = float(construction_metrics.get("visual_wall_ms", 0.0)) + (Time.get_ticks_usec() - started) / 1000.0
+	construction_metrics["max_step_ms"] = maxf(float(construction_metrics.get("max_step_ms", 0.0)), max_step / 1000.0)
+	construction_metrics["yields"] = int(construction_metrics.get("yields", 0)) + yields
 
 func _scatter_grass(count: int, colors: Dictionary, height: float, outside := true) -> void:
 	# The living 3D grass (grass.gd): species and biomes, wind and touch; Act I in its own colours, A2 and A3 in the
@@ -678,6 +635,7 @@ func _scatter_grass(count: int, colors: Dictionary, height: float, outside := tr
 	n2.seed = rng.randi()
 	n2.frequency = 0.08
 	while xf.size() < count and tries > 0:
+		if tries % 64 == 0: await build_checkpoint()
 		tries -= 1
 		var x := rng.randf_range(area.position.x, area.end.x)
 		var z := rng.randf_range(area.position.y, area.end.y)
@@ -915,6 +873,7 @@ func _scatter_ferns(count: int) -> void:
 	var area := bounds.grow(MARGIN * 0.5)
 	var tries := count * 6
 	while xf.size() < count and tries > 0:
+		if tries % 64 == 0: await build_checkpoint()
 		tries -= 1
 		var x := rng.randf_range(area.position.x, area.end.x)
 		var z := rng.randf_range(area.position.y, area.end.y)
@@ -934,6 +893,7 @@ func _scatter_ferns(count: int) -> void:
 	for k in 2:
 		for mmi in mm_chunked(Flora.fern(k + 1), parts[k], true, 24.0, 60.0):
 			mmi.add_to_group("grass")
+			await build_checkpoint()
 
 func _flush_stones(mat: Material) -> void:
 	if stone_xf.size() > 0:
@@ -1051,6 +1011,7 @@ func act_name(key: String) -> String:
 	return str(act_info()[key])
 
 func build(act_i: int, kind_s: String, seed_v: int) -> void:
+	_build_checkpoint_usec = Time.get_ticks_usec()
 	act = act_i
 	kind = kind_s
 	level = Data.zone_level(act, kind)
@@ -1061,10 +1022,11 @@ func build(act_i: int, kind_s: String, seed_v: int) -> void:
 	hill_noise.frequency = 0.03
 	hill_noise.fractal_octaves = 4
 	if custom_zones.has(kind):
-		(custom_zones[kind] as Callable).call(self)
+		await (custom_zones[kind] as Callable).call(self)
+		await finish_visuals()
 		return
 	match kind:
-		Battlegrounds.ZONE: Battlegrounds.build(self)
+		Battlegrounds.ZONE: await Battlegrounds.build(self)
 		Vigil.ZONE: Vigil.build(self)
 		Sandbox.ZONE, "arena": Sandbox.build(self)
 		"town": await _build_town()
@@ -1082,6 +1044,7 @@ func build(act_i: int, kind_s: String, seed_v: int) -> void:
 		_:
 			if kind.begins_with("isle_"):
 				await Isles.build_zone(self, Isles.id_of(kind))
+	await finish_visuals() # all deferred terrain must exist before material walks and activation
 	# the Meshy pieces that keep their glb's own material dither away round the hero too, like every code-built prop
 	Props.see_through(self)
 	Props.shadow_twins(self)
@@ -1301,7 +1264,7 @@ func _build_town() -> void:
 	_flush_stones(Props.stone())
 	_build_terrain(MOOR_TERRAIN)
 	await _scatter_grass(60000, MOOR_GRASS, 0.3)
-	_scatter_ferns(120)
+	await _scatter_ferns(120)
 	spawns["start"] = Vector3(0, 0, 6)
 	spawns["from_wild"] = Vector3(0, 0, wy + 4.0)
 	spawns["portal"] = Vector3(4, 0, 9)
@@ -1749,7 +1712,7 @@ func _build_wild() -> void:
 	_flush_stones(Props.stone())
 	_build_terrain(MOOR_ROAD if road_style() == 2 else MOOR_TERRAIN if road_style() == 0 else MOOR_TRAIL)
 	await _scatter_grass(94000, MOOR_GRASS, 0.32)
-	_scatter_ferns(700)
+	await _scatter_ferns(700)
 	if oak_forest:
 		_rare_flowers(3)
 

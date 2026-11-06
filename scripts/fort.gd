@@ -135,7 +135,7 @@ static func build(w: World) -> void:
 	w._flush_stones(Props.stone())
 	w._build_terrain(FORT_TERRAIN)
 	await w._scatter_grass(52000, World.MOOR_GRASS, 0.3)
-	w._scatter_ferns(400)
+	await w._scatter_ferns(400)
 
 const FORT_TERRAIN := {
 	"col_a": Color(0.14, 0.18, 0.08), "col_b": Color(0.2, 0.21, 0.1), "col_accent": Color(0.27, 0.28, 0.12),

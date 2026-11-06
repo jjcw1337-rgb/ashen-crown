@@ -181,7 +181,7 @@ static func stash_col(t: Node, key: String):
 ## The Hollow Crypt. Cell (i, j) of a 4x4 grid; the middle 2x2 is the great hall.
 static func build(w: World) -> void:
 	if MpMode.FOREST:
-		BgForest.build(w)       # the overhaul's open forest (the crypt below is retired: docs/cleanup.md)
+		await BgForest.build(w)       # the overhaul's open forest (the crypt below is retired: docs/cleanup.md)
 		return
 	w.flat_floor = true
 	w.theme = {"name": "bg"}

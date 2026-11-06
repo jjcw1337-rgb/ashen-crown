@@ -205,6 +205,7 @@ static func build(w: World) -> void:
 		var foes: Array = c["foes"]
 		Camps.add(w, c["id"], c["name"], int(c["tier"]), at, float(c["r"]), foes, chest_ofs)
 		_dress_camp(w, c, rng)
+		await w.build_checkpoint()
 	# the starting glades: a bell and lanterns; the extraction portals: a ring of rune stones round the light
 	var spawns := []
 	for s in SPAWNS:
@@ -225,9 +226,9 @@ static func build(w: World) -> void:
 		for k in 6:
 			var a := TAU * k / 6.0
 			w._standing_stone(Vector3(p.x + cos(a) * 4.2, 0, p.y + sin(a) * 4.2), rng.randf_range(1.8, 2.6))
-	_ridge_rocks(w, rng)
+	await _ridge_rocks(w, rng)
 	_stream(w)
-	_forest(w, rng)
+	await _forest(w, rng)
 	_regions(w, rng)
 	w._rasterize()
 	w._flush_stones(Props.stone())
@@ -236,8 +237,8 @@ static func build(w: World) -> void:
 		w.living_grass = true
 		w._grass_dry.seed = 77
 		w._grass_dry.frequency = 0.03
-		Grass.scatter(w.props_root, w.bounds.grow(World.MARGIN * 0.6), w, GRASS, World.detail, 6060)
-		w._scatter_ferns(1400)
+		await w.scatter_grass(w.bounds.grow(World.MARGIN * 0.6), GRASS, World.detail, 6060)
+		await w._scatter_ferns(1400)
 	w.spawns["start"] = spawns[0]
 
 ## Is a point kept clear of trees and growth: trails, camps' fighting ground, the glades, the portals, the stream.
@@ -274,6 +275,7 @@ static func _forest(w: World, rng: RandomNumberGenerator) -> void:
 	var tries := 0
 	var area := w.bounds.grow(World.MARGIN - 4.0)
 	while placed < TREES and tries < TREES * 8:
+		if tries % 64 == 0: await w.build_checkpoint()
 		tries += 1
 		var p := Vector2(rng.randf_range(area.position.x, area.end.x), rng.randf_range(area.position.y, area.end.y))
 		var inside := w.bounds.grow(-1.5).has_point(p)
@@ -307,12 +309,14 @@ static func _forest(w: World, rng: RandomNumberGenerator) -> void:
 		placed += 1
 	for key in groups:
 		w.mm_chunked(meshes[key], groups[key], true, 32.0, 110.0 if key.begins_with("oak") else 0.0)
+		await w.build_checkpoint()
 
 ## Boulders along each ridge's crest, solid, with a gap wherever a trail crosses: the passes.
 static func _ridge_rocks(w: World, rng: RandomNumberGenerator) -> void:
 	for r in RIDGES:
 		var pts: Array = r[0]
 		for i in pts.size() - 1:
+			await w.build_checkpoint()
 			var a: Vector2 = pts[i]
 			var b: Vector2 = pts[i + 1]
 			var n := int(a.distance_to(b) / 3.2)

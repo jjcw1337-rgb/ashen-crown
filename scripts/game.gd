@@ -1522,7 +1522,9 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	_zone_env(zone)
 	_grass_zone(zone)
 	apply_quality(quality)
+	var map_started := Time.get_ticks_usec()
 	await _capture_map(zone)
+	preparation_phases["minimap_ms"] = (Time.get_ticks_usec() - map_started) / 1000.0
 	# a waypoint's own arrival spot ("waypoint_<id>"), else the zone's main waypoint, else the start
 	var sp: Vector3 = world.spawns.get(spawn, world.spawns.get("waypoint", world.spawns["start"]) if spawn.begins_with("waypoint") else world.spawns["start"])
 	if at != null:
@@ -1615,7 +1617,7 @@ func _monster_paths() -> Array:
 func _capture_map(zone: String) -> void:
 	ui.minimap.chart = false
 	if zone == "coast":
-		_sea_chart()
+		await _sea_chart()
 		return
 	var b: Rect2 = world.bounds.grow(6.0)
 	if DisplayServer.get_name() == "headless":
@@ -1697,9 +1699,11 @@ func _sea_chart() -> void:
 		var hs := PackedFloat32Array()
 		hs.resize(w * h)
 		for y in h:
+			await world.build_checkpoint()
 			for x in w:
 				hs[y * w + x] = world.ground_h(r.position.x + (x + 0.5) * step, r.position.y + (y + 0.5) * step)
 		for y in h:
+			await world.build_checkpoint()
 			for x in w:
 				var g: float = hs[y * w + x]
 				var gx: float = hs[y * w + mini(x + 1, w - 1)] - hs[y * w + maxi(x - 1, 0)]

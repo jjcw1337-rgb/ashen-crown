@@ -8,7 +8,7 @@ not another rulebook. Update affected rows as work lands; no percentage implies 
 |---|---|---|
 | Shared loading | ContentCatalog roots, one bounded loading worker, owner scopes, cancellation and release. Cache 23, declarations 1,775, actual roots 278 and fragment 47 checks passed on 4.4.1. | Audit remaining direct loads and session-long references; resource counts do not prove every content path is covered. |
 | Zone / screen lifecycle | Game preparation, host admission, return-to-title cleanup. Native host preparation: 10 assertions, zero errors, one Metal warning; screenshot inspected. | Full current-engine travel/interruption/late-join suite and UI residency; actual Steam transport remains a separate check. |
-| Construction | Deterministic grass jobs; shared fragment recipes for Plague vial/vat. Earlier layout parity checks retained. | Other builders, minimap and expensive effect assembly; repeat parity after integrating new map builders. |
+| Construction | Terrain row jobs, scheduled grass including PvP forest, forest/fern checkpoints and sea-chart rows; shared Plague fragment recipes. Terrain unit: 27 native checks; full-world parity pending. | Remaining atomic builders, minimap GPU readback and effect assembly; repeat terrain/grass/collision parity on current maps. |
 | Effects / materials | All-class replay: 387 clean assertions on 4.4.1; cached-mesh retirement: 73 clean checks. Delayed visuals use world-owned callbacks. | Delayed variants, monster/boss effects and every class combination; long-session memory soak. |
 | PvP priority | Three six-actor profiles: mixed spells, moving dragons, forest summoners/status effects; nightly moving-target simulator and Sandbox lifecycle fixtures. | New profiles and solo/hosted Sandbox need current-engine gameplay/render acceptance. Presentation floods do not verify network matches. Latest six-client attempt was stopped for memory pressure, not passed. |
 | Lean servers | Client preparation skips dedicated servers; retain Claude's server builders/capacity policy. | Re-measure affected modes after integrating gameplay/map changes; client FPS cannot certify server capacity. |
@@ -23,7 +23,7 @@ Earlier improvements also increased loading time and VRAM; no complete performan
 ## Integration with Claude's current work
 
 Reviewed committed `test-godot-44` through af34478: multiplayer run characters, camps, survivors and the
-Verdant Reach replace parts of the old flow/map. Integrated committed changes through af34478 in a4c37c8. Claude's committed lobby redesign through 10652ed is now integrated, with Sandbox actions in MpLobbyView.
+Verdant Reach replace parts of the old flow/map. Integrated committed changes through af34478 in a4c37c8. Claude's committed lobby redesign through 03a4744 is now integrated, with Sandbox actions in MpLobbyView.
 Preserve those product decisions. Adapt the catalog, builder scheduling and affected tests to the new paths;
 do not restore retired modes merely to satisfy old fixtures. The existing `crypt` KPI identifier currently
 means the Battlegrounds scenario; verify what it actually builds before comparing old/new map measurements.
@@ -47,3 +47,5 @@ changes clear Ready before Start. Merged gate includes run/camp/survivor checks 
 log checks. Shared catalog/cache now covers the new menu art. Merged broker/HTTP suite: 56 passed;
 eight affected GDScript files grammar-parse, Bash/diff checks clean. Native screen/gameplay verification
 still awaits the occupied shared test slot; no new runtime performance claim.
+
+Current core-migration check-in: [work, expected impact and release status](CHECKIN_2026-11-05.md).

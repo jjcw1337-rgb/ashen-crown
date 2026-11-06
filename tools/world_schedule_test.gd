@@ -5,10 +5,14 @@ func snapshot(w: World) -> Dictionary:
 	var grass := {}
 	for node in w.find_children("Grass_*", "MultiMeshInstance3D", true, false):
 		grass[str(node.name)] = hash((node as MultiMeshInstance3D).multimesh.buffer)
+	var terrain := {}
+	for node in w.find_children("*", "MeshInstance3D", true, false):
+		if node.has_meta("terrain") and node.mesh != null:
+			terrain[str(node.name)] = hash(node.mesh.surface_get_arrays(0))
 	var inter: Array = []
 	for item in w.interactables:
 		inter.append([item.kind, item.position])
-	return {"grass": grass, "spawns": w.enemy_spawns.duplicate(true), "obstacles": w.obstacles.duplicate(true), "inter": inter}
+	return {"terrain": terrain, "grass": grass, "spawns": w.enemy_spawns.duplicate(true), "obstacles": w.obstacles.duplicate(true), "inter": inter}
 func build(scheduled: bool, zone: String) -> Dictionary:
 	seed(420042)
 	var w := World.new()

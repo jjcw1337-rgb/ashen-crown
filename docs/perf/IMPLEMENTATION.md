@@ -12,7 +12,8 @@ for historical results; [COVERAGE.md](COVERAGE.md) tracks current verification a
    own references safely after a scope is released. Unconverted synchronous calls are counted by path.
 2. **Preparation and activation:** `Game.load_zone` prepares resources, assembles the world, prepares monster
    models and visual recipes, then enables play. `World` can run incremental presentation jobs while preserving
-   construction order. Grass is the first migrated job across camp, moor, fort, road, coast and islands.
+   construction order. Terrain rows and grass are migrated across the shared World path, including the PvP forest.
+   Forest dressing/tree batches, ferns and sea-chart rows also have cooperative checkpoints.
 3. **Permanent acceptance checks:** CI verifies resource lifecycle and content declarations. The benchmark
    retains first-use stalls, all repeats and runtime errors; requires complete coverage including 3v3; and
    rejects regressions in stalls, loading, memory and FPS independently.
@@ -71,8 +72,16 @@ overshoots so an oversized step can be split further. The synchronous Grass API 
 callers and headless world tests. Scheduled jobs execute at the original construction point to preserve random
 number use and collision/layout order.
 
+Terrain uses `TerrainBuild`: height samples, vertices and indices are row-sized steps. `terrain_patch` keeps
+its synchronous behavior by default; scheduled worlds return a placeholder node whose mesh becomes ready
+at `finish_visuals`. Callers must not use the mesh until that boundary. The final drain is before material
+walks and gameplay activation. Completed jobs clear their temporary arrays. Mesh upload remains atomic.
+The forest's camps/tree batches and fern sampling yield through `World.build_checkpoint`; the sea chart
+yields between CPU rows. `construction_metrics` accumulates across drains, and `minimap_ms` separates the
+capture cost. No pixel count, mesh density, physics layout or terrain formula was deliberately reduced.
+
 Only presentation assembly is scheduled. Simulation-critical layout does not become partially playable. Other
-world builder loops, minimap capture and first-use GPU compilation can still block; they must be measured and
+world builder loops, minimap GPU readback and first-use GPU compilation can still block; they must be measured and
 migrated deliberately. An `await` around a large monolithic function alone does not split its work.
 
 ## Visual preparation and PvP

@@ -446,6 +446,6 @@ static func build_zone(w: World, id: String) -> void:
 	w.terrain_patch(near, 1.0 if World.detail >= 2 else 1.5, tc, "Terrain", DEEP + 1.0)
 	w.set_meta("sea_rect", Rect2(Coast.sea_rect().position - c, Coast.sea_rect().size))
 	await w.scatter_grass(w.bounds, Grass.ACT1, World.detail, int(isle["seed"]) * 97)
-	w._scatter_ferns(int(isle.get("ferns", 400)))
+	await w._scatter_ferns(int(isle.get("ferns", 400)))
 	# the rest of the sea, far off: the other islands and the mainland, as seen from the shore
 	Coast.distant(w, -c, near, 4.0)

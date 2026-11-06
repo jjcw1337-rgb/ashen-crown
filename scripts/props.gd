@@ -48,7 +48,8 @@ static func _meshy_model(path: String) -> Array:
 	if not ResourceLoader.exists(path):
 		return []
 	var out := []
-	var inst: Node = (load(path) as PackedScene).instantiate()
+	var inst: Node = ResCache.inst(path)
+	if inst == null: return []
 	var mi := _first_mesh(inst)
 	if mi != null and mi.mesh != null:
 		var local := Transform3D.IDENTITY

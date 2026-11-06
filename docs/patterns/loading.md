@@ -25,8 +25,8 @@ frame is ~18 ms).
    - `UI.warm_windows`: the game's windows and the character sheet's portrait.
 4. **Load resources on the shared worker; assemble scenes on the main thread.** `Game.load_zone` prepares
    catalog roots and recorded zone paths, constructs the world, then prepares visuals before enabling play.
-   A loaded file is not an instantiated scene or a compiled GPU pipeline. Grass construction uses the shared
-   incremental job path; other large builder loops still need measured migration. Boot preparation also keeps
+   A loaded file is not an instantiated scene or a compiled GPU pipeline. Terrain rows and grass use the shared incremental job path. Forest/camp/fern loops use
+   cooperative checkpoints; mesh uploads and other atomic builder work still need measurement. Boot preparation also keeps
    `Game._busy` true until the first world is ready. Dedicated servers skip client presentation preparation.
 5. **Reuse derived data with the same lifetime.** `ResCache.mesh_parts(path)` extracts immutable mesh/local-offset
    recipes once per owned scene; vial and vat shatters create only their live debris nodes on subsequent bursts.
@@ -50,5 +50,6 @@ Use `SurfaceMaterials.assign(instance, surface, material)` for surface overrides
 `SurfaceMaterials`. It clears overrides before deletion to avoid stale material handles with cached meshes
 (Godot #85817), without copying the meshes. The lifecycle test exercises retention and release.
 
-See [coverage and remaining work](../perf/COVERAGE.md). Only grass assembly is incremental so far; online
-roster-specific preparation, other expensive builders and long-session memory still need measured work.
+See [coverage and remaining work](../perf/COVERAGE.md). Terrain and grass assembly are incremental; the PvP forest and ferns also yield between batches.
+Use `await world.scatter_grass` and await yielding builders: CI flags bypasses of these APIs. Online
+roster-specific preparation, remaining atomic construction and long-session memory still need measured work.
