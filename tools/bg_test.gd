@@ -257,6 +257,8 @@ func _client() -> void:
 	var sv := _save(path)
 	var sgold: int = int((sv.get("hero", {}) as Dictionary).get("gold", 0))
 	check(FileAccess.file_exists(path) and not sv.get("in_raid", true) and _count_saved(sv) == inv0 and sgold == gold0 and held == 0, "the saved character is untouched by the run (%d items, %d gold)" % [_count_saved(sv), sgold])
+	await wait(2)
+	check(not g.ui.msg_lbl.is_visible_in_tree(), "extraction message does not cover result buttons")
 	# the run's results: Save Character (once), then Return to the lobby browser
 	var SV = load("res://scripts/survivors.gd")
 	SV.dir = "user://bg_test_survivors/"
@@ -294,6 +296,7 @@ func _client() -> void:
 func _check_hint(required: String, forbidden: String) -> void:
 	await wait(2) # Observe the actual per-frame HUD; do not bypass Game._process.
 	var label: Label = g.ui.hud.get_node_or_null("bg_hud")
+	check(not g.ui.quest_tracker.is_visible_in_tree(), "story quests stay out of raid objectives")
 	check(label != null and label.is_visible_in_tree() and required in label.text and (forbidden == "" or forbidden not in label.text), "raid instructions: " + required)
 
 func _return_from_results() -> void:
