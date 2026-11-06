@@ -7,3 +7,4 @@
 {"date": "2026-11-03", "job": "triage", "base": "ba8f91c", "claude_usd": 7.995689999999997, "claude_turns": 1, "minutes": 0.0, "meshy_credits": 0, "elevenlabs_credits": 0, "server_usd": 0.27, "failed": "none", "skipped": false}
 {"date": "2026-11-03-1912", "job": "hotfix", "base": "08af128", "claude_usd": 5.6442116, "claude_turns": 91, "minutes": 22.3, "meshy_credits": 0, "elevenlabs_credits": 0, "server_usd": 0.27, "failed": "none", "skipped": false}
 {"date": "2026-11-05", "job": "perf", "base": "c1d6c2c", "claude_usd": 25.43295239999998, "claude_turns": 269, "minutes": 115.4, "meshy_credits": 0, "elevenlabs_credits": 0, "server_usd": 0.27, "failed": "none", "skipped": false}
+{"date": "2026-11-05-2103", "job": "hotfix", "base": "2f34d20", "claude_usd": null, "claude_turns": null, "minutes": null, "meshy_credits": 0, "elevenlabs_credits": 0, "server_usd": 0.27, "failed": "none", "skipped": true}
