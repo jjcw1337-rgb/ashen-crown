@@ -176,7 +176,6 @@ func action(op: String,extra := {}) -> void:
  if result.has("error"):status.text=str(result.error)
  elif result.has("lobby"):
   room={} if op=="leave" else result.lobby
-  if op in ["create","join"] and game.party_queue!=null:game.party_queue.stop()
   status.text="";draw()
  busy=false
  await refresh()
@@ -259,7 +258,6 @@ func enter_match() -> void:
 func play_solo() -> void:
  if busy or game._busy or not room.is_empty():return
  if selected_mode=="sandbox":
-  if game.party_queue!=null:game.party_queue.stop()
   panel.hide()
   await game.open_sandbox(run_class)
  elif selected_mode=="waves":await play_solo_waves()

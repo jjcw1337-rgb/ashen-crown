@@ -22,7 +22,7 @@ Restart=on-failure
 RestartSec=5
 KillMode=control-group
 TimeoutStopSec=15
-# (the manager and all its matches: ~0.45 GB a stripped world; the backend and the co-op server keep the rest)
+# (the manager and all its matches: ~0.45 GB a stripped world; the backend keeps the rest)
 MemoryHigh=2400M
 MemoryMax=2800M
 MemorySwapMax=256M

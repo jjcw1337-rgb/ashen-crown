@@ -81,7 +81,7 @@ class LobbyTests(unittest.TestCase):
   r=self.pair();self.act('a',r,'leave');self.assertEqual(self.m.rooms[r['id']]['owner'],'1')
  def test_empty_closes(self):
   r=self.create();self.act('a',r,'leave');self.assertEqual(self.m.rooms[r['id']]['state'],'closed')
- def test_waves_and_bg_can_start_solo(self):
+ def test_bg_can_start_solo(self):
   for mode in ('battlegrounds',):
    r=self.create(mode=mode);self.act('a',r,'ready',ready=True);self.act('a',r,'start');self.assertEqual(self.m.rooms[r['id']]['state'],'starting');self.m.rooms[r['id']]['state']='finished'
  def test_pick_changes_class_and_unreadies(self):

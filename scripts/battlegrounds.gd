@@ -577,9 +577,6 @@ static func start_server(g: Node, port: int) -> void:
 		print("[BG] raid %s on the clock: %d s into its period" % [RAID_NAMES[bg.raid_idx], int(bg.raid_t)])
 	print("[BG] accounts through ", "Nakama at " + nurl if bg.nk != null else "the per-PC id (no Nakama)")
 	print("[BG] server ", "up on UDP port %d" % port if err == OK else "FAILED to open port %d (error %d)" % [port, err])
-	# a new deploy waits for a quiet moment: nobody in, or between rounds (the crypt has just collapsed)
-	if g.match_instance == null:
-		ServerUpdate.watch(g, "[BG]", func() -> bool: return g.net.players.is_empty() or bg.state == "reset")
 
 ## How long the antechamber waits for a bell (tests' fast rounds keep a lobby long enough for a client to join).
 static func lobby_max() -> float:

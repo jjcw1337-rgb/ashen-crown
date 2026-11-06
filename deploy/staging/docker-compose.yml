@@ -2,12 +2,12 @@
 # with its own database; nothing here is shared with it.
 # Secrets come from nakama.env next to this file on the server (made by setup.sh, mode 600, never in Git):
 #   POSTGRES_PASSWORD, NAKAMA_SERVER_KEY, NAKAMA_SESSION_KEY, NAKAMA_REFRESH_KEY, NAKAMA_HTTP_KEY, NAKAMA_CONSOLE_PASSWORD,
-#   GRAFANA_ADMIN_PASSWORD, GRAFANA_PG_PASSWORD (kpi_setup.sh)
+#   GRAFANA_ADMIN_PASSWORD, GRAFANA_PG_PASSWORD (grafana_setup.sh)
 #   docker compose --env-file nakama.env up -d
 # Ports: the game reaches Nakama only through Caddy's HTTPS on 443 (80 for the certificate's ACME challenge);
-# Nakama's own 7350 is on the server's loopback (the Battlegrounds server on the same box uses it), the console 7351
-# too (`ssh -L 7351:127.0.0.1:7351 ashen-crown-staging`); PostgreSQL is never published. Grafana (the performance KPIs,
-# docs/systems/performance_kpis.md) is behind Caddy at https://<STAGING_HOST>/grafana/ with a login; Loki keeps the server's logs
+# Nakama's own 7350 is on the server's loopback (the match servers on the same box use it), the console 7351
+# too (`ssh -L 7351:127.0.0.1:7351 ashen-crown-staging`); PostgreSQL is never published. Grafana (players, errors and
+# logs, docs/systems/telemetry.md) is behind Caddy at https://<STAGING_HOST>/grafana/ with a login; Loki keeps the server's logs
 # (shipped by Alloy from the journal and the containers) for it, docs/systems/telemetry.md.
 # STAGING_HOST (the server's public IP, the certificate's name) is in nakama.env too.
 name: ashen-staging
@@ -80,7 +80,7 @@ services:
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
-      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/kpis.json
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/telemetry.json
       GRAFANA_PG_PASSWORD: ${GRAFANA_PG_PASSWORD}
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro

@@ -60,15 +60,6 @@ check pvp_server "$OUT/gate_pvp_server.log" $rc
 check pvp_attacker "$OUT/gate_pvp_a.log" 0
 check pvp_victim "$OUT/gate_pvp_b.log" 0
 
-# the online co-op server with two players
-"$G" --headless --path . -s tools/coop_server_test.gd -- --server --coop --port 24651 server > "$OUT/gate_coop_server.log" 2>&1 & s=$!
-sleep 6
-"$G" --headless --path . -s tools/coop_server_test.gd -- a 24651 > "$OUT/gate_coop_a.log" 2>&1 & a=$!
-"$G" --headless --path . -s tools/coop_server_test.gd -- b 24651 > "$OUT/gate_coop_b.log" 2>&1 & b=$!
-waitfor $s 300; rc=$?; waitfor $a 30; waitfor $b 30
-check coop_server "$OUT/gate_coop_server.log" $rc
-check coop_player_a "$OUT/gate_coop_a.log" 0
-check coop_player_b "$OUT/gate_coop_b.log" 0
 
 # the co-op pairs
 for f in tools/mp_test.gd heroes/plague/tests/plague_mp_test.gd; do

@@ -4016,12 +4016,6 @@ func _build_title() -> void:
 	jb.name = "join"
 	jb.pressed.connect(func(): open_join())
 	row.add_child(jb)
-	if BuildEnv.env() != "local":
-		# the story game with friends over the internet, hosted by the server (coop_server.gd)
-		var oc := _iron_button("Online Co-op", 160, 38, 15)
-		oc.name = "online_coop"
-		oc.pressed.connect(func(): game.start_join(BuildEnv.value("coop_server")))
-		row.add_child(oc)
 	var bgb := _iron_button("Battlegrounds", 170, 38, 15)
 	bgb.name = "battlegrounds"
 	bgb.pressed.connect(func(): open_battlegrounds())

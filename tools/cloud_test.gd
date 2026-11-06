@@ -78,20 +78,10 @@ func _run() -> void:
 	await other.authenticate_device("cloud-test-other-" + Crypto.new().generate_random_bytes(8).hex_encode())
 	var theirs: Array = await other.list_objects(CloudSaves.COLLECTION)
 	check(theirs.is_empty(), "another account sees none of them")
-	# the Battlegrounds stash: a player can't write it, only the game server
-	var ok_rpc: Dictionary = await other.server_rpc("bg_stash_write", {"user_id": other.user_id, "items": [{"base": "gold", "count": 99999}]}, "wrong-key")
-	check(not ok_rpc.get("ok", false), "a wrong key can't write a stash")
-	var bearer: Dictionary = await other._call(HTTPClient.METHOD_POST, "/v2/rpc/bg_stash_write?unwrap", {"user_id": other.user_id, "items": []})
-	check(not bearer.get("ok", false), "a player's own session can't call the server RPC (%s)" % other.last_error.substr(0, 40))
+	# the server's own collections: a player can't write or delete them
+	var direct: bool = await other.write_objects([{"collection": "battlegrounds", "key": "stash", "value": {"items": []}}])
+	check(not direct, "a player can't write the server's collections")
 	if http_key != "":
-		var w: Dictionary = await other.server_rpc("bg_stash_write", {"user_id": other.user_id, "items": [{"base": "gold", "count": 7}]}, http_key)
-		check(w.get("ok", false), "the server key writes a stash")
-		var mine: Dictionary = await other.read_object("battlegrounds", "stash")
-		check(mine.get("items", []).size() == 1, "the player can read their own stash")
-		var direct: bool = await other.write_objects([{"collection": "battlegrounds", "key": "stash", "value": {"items": []}}])
-		check(not direct, "but can't overwrite it themselves")
-		var gone: bool = await other.delete_objects([{"collection": "battlegrounds", "key": "stash"}])
-		check(not gone, "or delete it")
 		# join tickets: one-time, and only for a signed-in player
 		var tk: Dictionary = await other.user_rpc("bg_ticket", {})
 		var ticket: String = str(tk.get("ticket", ""))

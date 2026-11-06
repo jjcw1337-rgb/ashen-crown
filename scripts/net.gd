@@ -24,12 +24,10 @@ var is_host := false
 ## A dedicated server (Battlegrounds, `-- --server`): the host has no player of its own, so it never streams its
 ## hero, isn't in the roster partners see, and refuses party travel (Battlegrounds.gd).
 var server := false
-## ... and a co-op server (coop_server.gd: the story game hosted online) allows travel, portals and the ready check.
-var coop_server := false
 
-## A raid server takes no party travel (each player comes and goes on their own); a co-op server does.
+## A dedicated server takes no party travel (each player comes and goes on their own); a player's own host does.
 func refuses_travel() -> bool:
-	return server and (not coop_server or game.match_instance != null)
+	return server
 var my_name := "Crusader"
 var players := {}          # peer id -> {"name": String, "hero": Hero}
 var enemies := {}          # net id -> Enemy
@@ -229,7 +227,7 @@ func _on_peer_disconnected(pid: int) -> void:
 		game.bg.player_left(pid, players[pid]["hero"].global_position)
 	_remove_player(pid)
 	if server:
-		print("[%s] %s left (%d playing)" % ["COOP" if coop_server else "BG", n, players.size()])
+		print("[BG] %s left (%d playing)" % [n, players.size()])
 	# a trip waiting on them: theirs is called off, otherwise it goes on without their answer
 	if is_host and not vote.is_empty():
 		if int(vote["from"]) == pid:
@@ -424,10 +422,6 @@ func sv_hello(nm: String, gear: Dictionary, _lvl: int, queue_ticket := "", chara
 		if want != character and not (want.begins_with("run_") and character == ""):
 			rpc_id(pid, "cl_party_refused")
 			return
-	if coop_server and game.coop_server != null and game.coop_server.party_queue != null:
-		if not game.coop_server.party_queue.admit(queue_ticket):
-			rpc_id(pid, "cl_party_refused")
-			return
 	var roster := [] if server else [[1, my_name, game.hero.net_gear()]]
 	for op in players:
 		roster.append([op, players[op]["name"], players[op]["hero"].net_gear()])
@@ -439,10 +433,10 @@ func sv_hello(nm: String, gear: Dictionary, _lvl: int, queue_ticket := "", chara
 	if game.match_instance != null:
 		at = game.match_instance.spawn(pid)
 	elif server:
-		at = game.bg.spawn_point() if game.bg != null else (game.coop_server.spawn_point() if game.coop_server != null else at)
+		at = game.bg.spawn_point() if game.bg != null else at
 	rpc_id(pid, "cl_welcome", game.cur_act, game.cur_zone, at, game.tp_link, game.boss_killed, roster, game.difficulty)
 	if server:
-		print("[%s] %s joined (%d playing)" % ["COOP" if coop_server else "BG", nm, players.size()])
+		print("[BG] %s joined (%d playing)" % [nm, players.size()])
 	game.ui.message(nm + " joined the game", Color(0.5, 1.0, 0.5))
 	Sfx.play("portal")
 	_update_status()

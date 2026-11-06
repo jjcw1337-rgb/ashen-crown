@@ -2,8 +2,8 @@
 
 Who decides what, today, in the three arrangements: **(a)** player-hosted co-op (the host player's game: ENet
 LAN/direct or Steam, `Net.is_host`), **(b)** dedicated Battlegrounds/Arena matches (a headless worker the lobby
-service starts per lobby, `deploy/lobbies/service.py`, `scripts/match_instance.gd`), **(c)** the always-on co-op
-server (`scripts/coop_server.gd`, the same code as (a) on a headless host).
+service starts per lobby, `deploy/lobbies/service.py`, `scripts/match_instance.gd`), the always-on co-op server
+that was **(c)** here is gone (2026-11-06).
 
 The **lobby owner** (`service.py` `r['owner']`) only presses Start and is reassigned if they leave; the **match**
 runs on the worker, which alone reports the result (per-match `worker_key`, loopback only). So the lobby/UI is
