@@ -77,7 +77,15 @@ func _server() -> void:
 		return n
 	check(mons.call() >= 10, "%d monsters in the crypt" % mons.call())
 	var e0 = g.world.enemies_root.get_child(0)
-	check(e0 is Enemy and e0.max_life > Data.ENEMIES[e0.kind]["life"] * 2.0, "they are tougher than outside")
+	if load("res://scripts/mp_mode.gd").FOREST:
+		# (the Verdant Reach's camps are tuned by tier, Camps.MON_LEVEL: a tier III monster tougher than a tier I one)
+		var CA2 = load("res://scripts/camps.gd")
+		var t1: Array = CA2.all(g.world).filter(func(c): return int(c["tier"]) == 1)
+		var t3: Array = CA2.all(g.world).filter(func(c): return int(c["tier"]) == 3)
+		var lv := func(c): return g.world.enemies_root.get_children().filter(func(e): return e is Enemy and e.pack_id == int(c["pack"])).map(func(e): return e.level).max()
+		check(not t1.is_empty() and not t3.is_empty() and int(lv.call(t3[0])) > int(lv.call(t1[0])), "deeper camps are tougher (tier I level %d, tier III %d)" % [int(lv.call(t1[0])), int(lv.call(t3[0]))])
+	else:
+		check(e0 is Enemy and e0.max_life > Data.ENEMIES[e0.kind]["life"] * 2.0, "they are tougher than outside")
 	var forest: bool = load("res://scripts/mp_mode.gd").FOREST
 	check(g.world.enemies_root.get_children().any(func(e): return e.kind == "ice_troll") and g.world.enemies_root.get_children().any(func(e): return e.kind == "hermit"), "Hrimgar and Mossbeard in their halls")
 	if forest:

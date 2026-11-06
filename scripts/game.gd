@@ -1470,7 +1470,14 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 			var champ_name := ""
 			if es["champ"]:
 				champ_name = "%s%s the %s" % [Data.CHAMP_PREFIX[rng.randi() % Data.CHAMP_PREFIX.size()], Data.CHAMP_SUFFIX[rng.randi() % Data.CHAMP_SUFFIX.size()], Data.ENEMIES[es["kind"]]["name"]]
-			spawn_enemy(es["kind"], p, int(es["level"]), es["champ"], champ_name, int(es["pack"]))
+			var se = spawn_enemy(es["kind"], p, int(es["level"]), es["champ"], champ_name, int(es["pack"]))
+			if se != null and (es.has("life_k") or es.has("dmg_k")):
+				# a camp's own tuning (Camps: its boss against run characters)
+				se.max_life *= float(es.get("life_k", 1.0))
+				se.life = se.max_life
+				var dk := float(es.get("dmg_k", 1.0))
+				se.dmg = [se.dmg[0] * dk, se.dmg[1] * dk]
+				se.xp = int(se.xp * float(es.get("xp_k", 1.0)))
 	if not world.boss_spawn.is_empty() and not net.is_client():
 		spawn_enemy(boss_kind(), world.boss_spawn["pos"], world.level + 1, false, "", 999)
 	for p in preloads:
@@ -2958,8 +2965,16 @@ func _camp_chest(t: Inter) -> void:
 ## unseals, and a run character who fought there (within Camps.SHARE_R) gets the camp's experience.
 func camp_check(e: Enemy) -> void:
 	var camp := Camps.by_pack(world, e.pack_id)
-	if camp.is_empty() or camp["cleared"] or Camps.alive(world, camp) > 0:
+	if camp.is_empty() or camp["cleared"]:
 		return
+	if e.boss and int(camp["tier"]) >= 4 and not net.is_client():
+		# the boss is down: what it summoned and the rest of its camp wither with it (Mossbeard's mushrooms grow back
+		# while he lives), so a boss camp always ends with its boss
+		for o in world.enemies_root.get_children():
+			if o is Enemy and o != e and not o.dead and o.pack_id == e.pack_id:
+				o.take_damage(o.life * 10.0 + 99999.0, 0.0, o.global_position + Vector3(0.5, 0, 0), 0.0, false)
+	if camp["cleared"] or Camps.alive(world, camp) > 0:
+		return      # (a withered member's own death may have finished the camp already)
 	camp["cleared"] = true
 	var ch = camp.get("chest_node")
 	if ch != null and is_instance_valid(ch):

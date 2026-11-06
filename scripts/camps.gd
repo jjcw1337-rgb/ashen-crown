@@ -14,6 +14,13 @@ extends RefCounted
 const MON_LEVEL := {1: 1, 2: 5, 3: 10, 4: 15}
 const CHEST_ROLLS := {1: 2, 2: 2, 3: 3, 4: 4}
 const TIER_NAMES := {1: "Tier I", 2: "Tier II", 3: "Tier III", 4: "Boss"}
+## A boss camp's boss against a run character (bosses are tuned for the whole act's heroes): its life and damage
+## scaled, so a level-15 run character with a fair build can take it alone in about a minute, and a party faster.
+## Measured with tools/run_playthrough.gd.
+const BOSS_LIFE := 0.45
+const BOSS_DMG := 0.33
+## and its experience (a boss's own is the whole act's worth: six levels at once in a run)
+const BOSS_XP := 0.35
 ## How near a hero must be when a camp falls to share its experience (the fighters, not the whole map).
 const SHARE_R := 30.0
 const FIRST_PACK := 2000      # (clear of every map's own pack numbers)
@@ -27,8 +34,11 @@ static func add(w: World, id: String, title: String, tier: int, pos: Vector3, r:
 	var camp := {"id": id, "name": title, "tier": tier, "pos": pos, "r": r, "pack": pack, "cleared": false}
 	for f in foes:
 		var at: Vector3 = f.get("at", Vector3.ZERO)
+		var boss: bool = bool(Data.ENEMIES.get(str(f["kind"]), {}).get("boss", false))
 		w.enemy_spawns.append({"kind": str(f["kind"]), "pos": pos + at, "count": int(f.get("count", 1)),
-			"champ": bool(f.get("champ", false)), "pack": pack, "level": int(f.get("level", MON_LEVEL[tier]))})
+			"champ": bool(f.get("champ", false)), "pack": pack, "level": int(f.get("level", MON_LEVEL[tier])),
+			"life_k": float(f.get("life_k", BOSS_LIFE if boss else 1.0)), "dmg_k": float(f.get("dmg_k", BOSS_DMG if boss else 1.0)),
+			"xp_k": float(f.get("xp_k", BOSS_XP if boss else 1.0))})
 	var ch := w._chest(pos + chest)
 	if ch != null:
 		ch.data["camp"] = id

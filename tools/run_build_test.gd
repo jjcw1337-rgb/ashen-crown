@@ -134,6 +134,7 @@ func _class_run(h, cls: String) -> void:
 	await process_frame
 	check(h.equipment["weapon"] == w and g.world.items_root.get_child_count() == on_ground + 1, "%s: a better weapon is worn and the old one left on the ground" % cls)
 	check(RB.wearable(w, cls) and not RB.wearable(load("res://scripts/items.gd").make("buckler"), cls), "%s: only its own gear is wearable" % cls)
+	check(not RB.wearable(load("res://scripts/items.gd").make("war_axe"), cls), "%s: no general weapon in place of its own kind" % cls)
 	var gear: Dictionary = RB.random_gear(3, rng, [cls])
 	check(str(load("res://scripts/data.gd").BASES[gear["base"]]["slot"]) in RB.GEAR, "%s: run loot is gear for the run's slots (%s)" % [cls, gear["base"]])
 	# save and load

@@ -32,7 +32,7 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 - 🟡 A class choice in the lobby (`LobbyClient.class_pick`, sent as `run_<class>`; `survivor_test`); a fresh level-0 run character with a basic attack and empty slots (`run_build_test`, `bg_test`).
 - ✅ Class tiles with the selected class large on the stage (name, role, playstyle, its skills); every member's class and ready state; a class change in the lobby un-readies its member (service `pick`, `test_pick_changes_class_and_unreadies`; `mp_lobby_shots`, `lobby_ui_test`).
 - ⬜ The class change through a real service and two clients. **Not proven yet** (step 7).
-- ⬜ A level-0 character can clear a starting camp: **not proven by a fight yet** (tier I monsters are level 1; to prove with the verification bot run, step 7).
+- ✅ A level-0 character clears a starting camp in a real fight (`run_playthrough`: archer 11 s, plague doctor 6 s for Sporefall Dell) (tier I monsters are level 1; to prove with the verification bot run, step 7).
 
 ## 6. Survivors roster
 - ✅ Save Character on a successful extraction only (server-confirmed `Net.cl_extracted`); a fallen run has no save (`survivor_test`, `bg_test` through a real server).
@@ -49,12 +49,13 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 
 ## 8. One progression system, every class
 - ✅ Archer and Plague Doctor: `run_build_test` (both), `survivor_test` (plague), `bg_test` (knight).
-- 🟡 Every class: the pools are built from each class's own skills and talents. **Not proven per class yet** (a per-class test in step 7).
+- ✅ Archer and Plague Doctor play the whole map for real (`run_playthrough -- archer|plague`: BotBrain, no immortality: 16/16 camps, both bosses, no falls, level 22 at the end).
+- 🟡 Every other class: the pools are built from each class's own skills and talents (`run_build_test` covers archer and plague; the others aren't played through yet).
 
 ## 9. Five slots and a spellbook
 - ✅ Exactly five (RMB Q E R F), the attack outside them, auto-equip into empty slots, the rest in the spellbook, G/V refused, a rebind keeps its cooldown, unlearned skills refused (`run_build_test`).
 - ✅ Changing slots only between fights (`RunUI._assign`).
-- ⬜ Ultimates through the same limit: they are ordinary pool skills, **not proven by a cast test yet**.
+- ✅ Ultimates through the same limit: the plague doctor's first upgrade in a run was The Last Experiment, slotted like any skill (`run_playthrough`).
 
 ## 10. Passives instead of talents
 - ✅ No talent points or talents in a run; passives with rarity, stack limits and descriptions showing the change (`run_build_test`).
@@ -65,11 +66,11 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 
 ## 12. Fast progression 0 → 20
 - ✅ Fast curve from level 0; camp experience by tier; level-ups grow attributes and don't offer choices; camp rewards carry on past 20 (`run_build_test`, `camp_test`).
-- ⬜ The pace across a whole run to level 20: **not proven yet** (step 7's bot run).
+- ✅ The pace across a whole run: level 7 after the six tier I camps, 12 after tier II, 16 after tier III, about 22 after both bosses (`run_playthrough`, both classes). Boss experience is scaled for runs (`Camps.BOSS_XP`) so one boss is ~3 levels, not 6.
 
 ## 13. Inventory and equipment
 - ✅ No gold, rings, amulets or backpack; four consumable slots with stacks of five; gear comparison and swap, the old piece left on the ground (also through the host); skills and passives apart from items (`run_build_test`, `bg_test`, `bg_pvp_test`).
-- 🟡 Common/uncommon/rare gear in runs (`RunBuild.random_gear`); class-specific effects: the existing class uniques aren't in run loot yet.
+- 🟡 Common/uncommon/rare gear in runs (`RunBuild.random_gear`); a class keeps its own weapon kind (`run_build_test`, `run_playthrough`). Class-specific effects: the existing class uniques aren't in run loot yet.
 
 ## 14. A big connected lush map
 - ✅ The Verdant Reach: 16 camps, 2 bosses, four starting glades, trails with loops, a stream, ridges, mushroom woodland, dark elf camps, frost hollow, ruins (`camp_test`, `bg_test`, `forest_shots`).
@@ -78,11 +79,13 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 ## 15. Every camp a complete encounter
 - ✅ Each camp has its own monsters (pack), clearing ground, completion and chest; neighbours never complete each other; completion counts members wherever they are (`camp_test`).
 - ✅ Tiers I-III and boss; Hrimgar and Mossbeard featured (`bg_test`).
-- 🟡 Camps' compositions are curated data (`BgForest.CAMPS`); no reset rule for a camp whose monsters walk home yet.
+- 🟡 Camps' compositions are curated data (`BgForest.CAMPS`); a boss camp ends with its boss (its summons wither); camp difficulty comes from the tier only (the crypt's blanket 2.2x life is off in the forest); bosses tuned for a run (`Camps.BOSS_LIFE/DMG/XP`, measured: 25-45 s solo). No reset rule for a camp whose monsters walk home yet.
 
 ## 16. Hosting authority
 - ✅ Audit and recommendations: `docs/multiplayer_authority.md`. Survivors are documented as not tamper-proof.
 - 🟡 Duplicate claims prevented on the client (offers, survivors); the server doesn't own run state yet (documented).
 
 ## 17. Verify the whole sequence and the screens
-- 🟡 Automated pieces above. **Still to do (step 7):** a full archer and plague doctor run (level 0 → camps → upgrades → loot → levels → bosses → extract → save → reload → Arena), the screens at 1024x768, 1280x720, 1920x1080 and 2560x1440, and the final write-up.
+- ✅ The sequence level 0 → camps → upgrades → skills and loot → levels → bosses → survive → save → reload, for the archer and the plague doctor (`run_playthrough`, offline host; extraction through a real server is `bg_test`).
+- ⬜ The Arena match itself played with a reloaded survivor through the lobby service and two clients. **Not proven yet.**
+- 🟡 Screens at 1024x768, 1280x720, 1920x1080 (`lobby_ui_test`, `mp_lobby_shots`, `run_ui_shots`); 2560x1440 not checked; the final write-up still to do.
