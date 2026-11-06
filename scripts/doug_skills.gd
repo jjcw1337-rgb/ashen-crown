@@ -142,18 +142,28 @@ static func impact(h: Hero) -> bool:
 					to = at + Vector3(cos(a), 0, sin(a)) * randf_range(1.0, 3.5)
 				var t := PIE_FLIGHT + i * 0.05
 				(s["pies"] as Array).append({"to": to, "t": t, "src": "u_barrage"})
-				h.fx("pie", "throw", {"p": h.global_position + Vector3(0, 1.2, 0), "q": to, "x": t})
+				h.fx("pie", "throw", {"p": h.global_position + Vector3(0, 1.2, 0), "q": to, "x": t, "r": 1.1})
 		"u_bonanza":
+			# a full ring round him (no World.rng: that is the map's generator); a blocked spot comes inward until free
 			var ps := PackedVector3Array()
+			var w: Node = h.game.world
+			var c := h.global_position
+			var spin := randf() * TAU
 			for k in 8:
-				var a2 := TAU * float(k) / 8.0
-				var p: Vector3 = h.game.world.free_spot_near(h.global_position + Vector3(cos(a2), 0, sin(a2)) * 3.2, 0.6)
+				var a2 := spin + TAU * float(k) / 8.0
+				var p := c
+				for rr in [3.2, 2.6, 2.0, 1.4]:
+					var q := c + Vector3(cos(a2), 0, sin(a2)) * float(rr)
+					if not w.is_blocked(q.x, q.z):
+						p = q
+						break
+				p.y = w.height_at(p.x, p.z)
 				(s["peels"] as Array).append({"p": p, "t": PEEL_LIFE, "bonanza": true})
 				ps.append(p)
 			while (s["peels"] as Array).size() > PEEL_MAX + 8:
 				var old: Dictionary = (s["peels"] as Array).pop_front()
 				h.fx("peels", "gone", {"p": old["p"]})
-			h.fx("peels", "land", {"ps": ps, "x": PEEL_LIFE})
+			h.fx("peels", "land", {"ps": ps, "x": PEEL_LIFE, "q": c + Vector3(0, 1.1, 0)})
 		"u_cannon":
 			var b2: Dictionary = s["bounce"]
 			if not b2.is_empty():

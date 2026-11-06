@@ -654,6 +654,18 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "gale_gust": [
+  {
+   "detail": "one enormous leathery wing beat creating a violent blast of wind gust and blowing dust, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "one enormous leathery wing beat creating a violent blast of wind gust and blowing dust, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "gem_found": [
   {
    "detail": "a precious magical gemstone revealed, a bright crystalline chime with a shimmering sparkle tail, close mic, dry, isolated sound effect, no music",
@@ -859,6 +871,18 @@
   },
   {
    "detail": "a block of ice cracking and shattering into shards on stone, sharp crystalline crunch, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "ice_tomb_seal": [
+  {
+   "detail": "thick glacier ice rapidly freezing and cracking closed around something, crystalline crunching and a deep cold creak, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "thick glacier ice rapidly freezing and cracking closed around something, crystalline crunching and a deep cold creak, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }
@@ -1410,6 +1434,18 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "thunderhead": [
+  {
+   "detail": "a dark storm cloud gathering overhead, deep rolling thunder rumble with crackling static, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a dark storm cloud gathering overhead, deep rolling thunder rumble with crackling static, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "trex_roar": [
   {
    "detail": "a gigantic tyrannosaurus rex roar, a deep rumbling bellow rising to a terrifying scream, heavy breath and rattling throat, close mic, dry, isolated sound effect, no music",
@@ -1468,6 +1504,18 @@
  "wind": [
   {
    "detail": "cold wind blowing across an empty moor at night, steady, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "wyvern_dive": [
+  {
+   "detail": "a huge winged beast diving from the sky with a rushing wind whoosh ending in a sharp close thunderclap impact, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a huge winged beast diving from the sky with a rushing wind whoosh ending in a sharp close thunderclap impact, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }
