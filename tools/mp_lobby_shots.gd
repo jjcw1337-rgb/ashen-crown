@@ -25,7 +25,8 @@ func check(ok: bool, what: String) -> void:
 	print("[MPV] %s %s" % ["ok  " if ok else "FAIL", what])
 
 func shot(name: String) -> void:
-	for i in 12:
+	await create_timer(0.4).timeout      # (past the screen's fade on a state change)
+	for i in 4:
 		await process_frame
 	await RenderingServer.frame_post_draw
 	get_root().get_texture().get_image().save_png(out.path_join(name + ".png"))

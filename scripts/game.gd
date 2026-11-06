@@ -1548,7 +1548,14 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 			var champ_name := ""
 			if es["champ"]:
 				champ_name = "%s%s the %s" % [Data.CHAMP_PREFIX[rng.randi() % Data.CHAMP_PREFIX.size()], Data.CHAMP_SUFFIX[rng.randi() % Data.CHAMP_SUFFIX.size()], Data.ENEMIES[es["kind"]]["name"]]
-			spawn_enemy(es["kind"], p, int(es["level"]), es["champ"], champ_name, int(es["pack"]))
+			var se = spawn_enemy(es["kind"], p, int(es["level"]), es["champ"], champ_name, int(es["pack"]))
+			if se != null and (es.has("life_k") or es.has("dmg_k")):
+				# a camp's own tuning (Camps: its boss against run characters)
+				se.max_life *= float(es.get("life_k", 1.0))
+				se.life = se.max_life
+				var dk := float(es.get("dmg_k", 1.0))
+				se.dmg = [se.dmg[0] * dk, se.dmg[1] * dk]
+				se.xp = int(se.xp * float(es.get("xp_k", 1.0)))
 	if not world.boss_spawn.is_empty() and not net.is_client():
 		spawn_enemy(boss_kind(), world.boss_spawn["pos"], world.level + 1, false, "", 999)
 	if OS.get_cmdline_user_args().has("--preload-record"):
@@ -3042,8 +3049,16 @@ func _camp_chest(t: Inter) -> void:
 ## unseals, and a run character who fought there (within Camps.SHARE_R) gets the camp's experience.
 func camp_check(e: Enemy) -> void:
 	var camp := Camps.by_pack(world, e.pack_id)
-	if camp.is_empty() or camp["cleared"] or Camps.alive(world, camp) > 0:
+	if camp.is_empty() or camp["cleared"]:
 		return
+	if e.boss and int(camp["tier"]) >= 4 and not net.is_client():
+		# the boss is down: what it summoned and the rest of its camp wither with it (Mossbeard's mushrooms grow back
+		# while he lives), so a boss camp always ends with its boss
+		for o in world.enemies_root.get_children():
+			if o is Enemy and o != e and not o.dead and o.pack_id == e.pack_id:
+				o.take_damage(o.life * 10.0 + 99999.0, 0.0, o.global_position + Vector3(0.5, 0, 0), 0.0, false)
+	if camp["cleared"] or Camps.alive(world, camp) > 0:
+		return      # (a withered member's own death may have finished the camp already)
 	camp["cleared"] = true
 	var ch = camp.get("chest_node")
 	if ch != null and is_instance_valid(ch):
@@ -3147,6 +3162,18 @@ func run_claim(key: String, i: int) -> Dictionary:
 		ui.refresh()
 	return c
 
+## A deep camp's rare reward: a class unique (its own effect: a free roll, a ward) for one of the raid's classes, in a
+## slot run characters wear, with no level to meet.
+func _run_class_unique(at: Vector3) -> void:
+	var classes := raid_classes()
+	var pool := Data.UNIQUES.keys().filter(func(k): return Data.UNIQUES[k].has("cls") and classes.has(str(Data.UNIQUES[k]["cls"])) \
+		and RunBuild.wearable(Items.make_unique(k), str(Data.UNIQUES[k]["cls"])))
+	if pool.is_empty():
+		return
+	var it := Items.make_unique(pool[rng.randi() % pool.size()])
+	it["req"] = 0
+	drop_item(it, at)
+
 ## A run's loot roll (the monsters and camp chests): gear for the raid's classes at the camp's tier, or a potion;
 ## never gold, rings or amulets.
 func _run_loot(at: Vector3, tier: int, good: bool, always := false) -> void:
@@ -3225,6 +3252,8 @@ func _open_chest(t: Inter) -> void:
 		var tier := int(t.data.get("tier", tier_of_level(world.level)))
 		for i in int(Camps.CHEST_ROLLS.get(tier, 2)):
 			_run_loot(t.global_position, tier, i == 0, true)
+		if rng.randf() < float(Camps.UNIQUE_CHANCE.get(tier, 0.0)):
+			_run_class_unique(t.global_position)
 		return
 	var n := 7 if gold else rng.randi_range(2, 4)
 	for i in n:

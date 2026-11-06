@@ -88,6 +88,19 @@ func _run() -> void:
 	g._interact(ch_a)
 	await secs(0.2)
 	check(not g.ui.run_ui.visible, "and the chest has no second upgrade")
+	# a boss chest: a class unique for someone in the raid, wearable, no level to meet
+	var boss: Array = camps.filter(func(c): return int(c["tier"]) == 4)
+	if not boss.is_empty():
+		var bc: Dictionary = boss[0]
+		_kill_camp(bc)
+		await secs(0.5)
+		var nb: int = g.world.items_root.get_child_count()
+		g.hero.global_position = g.world.free_spot_near(bc["chest_node"].global_position, 1.2)
+		g._interact(bc["chest_node"])
+		await secs(0.6)
+		var got: Array = g.world.items_root.get_children().slice(nb).filter(func(x): return x is GroundItem and x.item.has("unique"))
+		check(got.size() == 1 and int(got[0].item.get("req", 1)) == 0 and RB.wearable(got[0].item, "archer"), "a boss chest drops a class unique the archer can wear (%s)" % (got[0].item["name"] if not got.is_empty() else "none"))
+		g.ui.run_ui.close()
 	# better odds deeper in: a tier III camp's offers lean rarer
 	var r1 := 0
 	var r3 := 0

@@ -278,7 +278,16 @@ static func wearable(it: Dictionary, cls: String) -> bool:
 	if slot == "shield" and cls != "knight":
 		return false
 	var only := str(b.get("cls", ""))
+	if slot == "weapon" and has_own_weapons(cls):
+		return only == cls      # (the archer keeps a bow, the plague doctor a cane: their kits are built on them)
 	return only == "" or only == cls
+
+static var _own_weapons := {}
+## Does this class have weapons of its own (Data.BASES with its "cls")?
+static func has_own_weapons(cls: String) -> bool:
+	if not _own_weapons.has(cls):
+		_own_weapons[cls] = Data.BASES.values().any(func(b): return str(b["slot"]) == "weapon" and str(b.get("cls", "")) == cls)
+	return _own_weapons[cls]
 
 ## Where a found item would go on this hero.
 static func gear_slot(it: Dictionary) -> String:

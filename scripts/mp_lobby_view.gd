@@ -55,6 +55,8 @@ var joinable_only := false
 var _root: Control
 ## The left column's room (the window less the panel and margins), set by _fit: text there wraps to it.
 var col_w := 620.0
+## What the screen last showed ("browse:battlegrounds", "prep:arena"...): a change fades the columns in.
+var _shown := ""
 
 func setup(client) -> void:
 	lc = client
@@ -213,6 +215,7 @@ func _survivor_picked(id: String) -> void:
 
 func _on_visibility() -> void:
 	if visible:
+		_shown = ""
 		_fit()
 	if not visible and ui.title_stage != null:
 		for k in ["frame_mid", "lobby_cls", "lobby_zoom"]:
@@ -271,6 +274,24 @@ func render() -> void:
 	else:
 		_left_browse(mode)
 		_right_browse(mode)
+	var key := ("prep:" if prep else "browse:") + mode
+	if key != _shown:
+		# one restrained move when the screen changes (a lobby entered or left, another mode): never on the poll
+		_shown = key
+		_fade(left, 14.0)
+		_fade(right.get_parent() as Control, 0.0)
+		_fade(art, 0.0)
+
+func _fade(c: Control, dy: float) -> void:
+	if c == null or not is_inside_tree():
+		return
+	c.modulate.a = 0.0
+	var tw := c.create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(c, "modulate:a", 1.0, 0.22)
+	if dy != 0.0:
+		var to := c.position.y
+		c.position.y += dy
+		tw.parallel().tween_property(c, "position:y", to, 0.26)
 
 # ---------------------------------------------------------------- browse
 

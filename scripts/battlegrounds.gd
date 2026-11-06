@@ -614,7 +614,7 @@ func new_round() -> void:
 	stash_user.clear()
 	await game.load_zone(0, ZONE, "start")
 	for e in game.world.enemies_root.get_children():
-		if e is Enemy:
+		if e is Enemy and not MpMode.FOREST:      # (the Verdant Reach's camps are tuned by tier: Camps)
 			e.max_life *= MON_LIFE
 			e.life = e.max_life
 			e.dmg = [int(round(e.dmg[0] * MON_DMG)), int(round(e.dmg[1] * MON_DMG))]

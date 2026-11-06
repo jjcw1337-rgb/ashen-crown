@@ -29,7 +29,11 @@ remain unverified while Claude owns the shared test slot. No staging publication
 Sandbox requires the matching broker and worker changes as well as clients; a client-only upload is
 insufficient. Its provisional reservation is 600 MB / 0.3 CPU core, pending measurement.
 
-Claude's committed lobby redesign through 10652ed is integrated. `MpLobbyView` draws the Sandbox tab,
+Claude's committed lobby redesign through 03a4744 is integrated. `MpLobbyView` draws the Sandbox tab,
 solo action/class picker and hosted class tiles; `LobbyClient` keeps the connection/lifecycle logic.
 Existing mode artwork is reused and loaded through the shared catalog/cache. The screenshot fixture
 covers Sandbox browse/preparation and button bounds at four logical viewport sizes; renders are pending.
+
+Claude’s subsequent camp tuning, class-unique rewards, screen transitions and Arena survivor fixture are
+integrated. Their reported acceptance remains Claude’s evidence; this merged branch still needs its own
+native checks. Use `arena_survivor_test.gd` for the current survivor flow instead of restoring old stakes.

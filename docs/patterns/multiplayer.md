@@ -7,7 +7,7 @@ Two kinds of multiplayer, deliberately different (Blaine, 2026-11-05):
 | Entry | **Enter World**; friends join your world | **Multiplayer**: the lobby browser |
 | Who hosts | the player's own game | our dedicated servers, one process per match |
 | Connection | Steam (invites, "Join Game", Steam's relay); LAN and direct address hidden in the lobby browser's "Local network" row | UDP game ports on the droplet |
-| Modes | the story, Act I-III | Battlegrounds, Arena 1v1/2v2/3v3, Endless Waves |
+| Modes | the story, Act I-III | Battlegrounds, survivor Arena 1v1/2v2/3v3, Sandbox practice |
 | Host leaves | the session ends; everyone keeps their character | the match runs on |
 
 ## The rules
@@ -30,3 +30,7 @@ Two kinds of multiplayer, deliberately different (Blaine, 2026-11-05):
    `-- --steam-selftest` (opens and closes a host peer, prints the result, quits).
 6. **Friends are Steam friends.** No friends database of our own. A Steam ID is linked to the player's Nakama
    account, so a cross-play friend list could later be imported into Nakama.
+
+Sandbox also has direct solo entry without sign-in or a lobby. Hosted practice uses temporary heroes,
+free-for-all damage and respawns; bots and monster packs are solo-only. Waves is currently retired.
+See [Sandbox behavior and rollout status](../perf/SANDBOX.md); prepared source is not a deployed feature.

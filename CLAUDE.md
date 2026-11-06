@@ -1601,9 +1601,9 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `PVP_EFFECT_GAP` s (`pvp_effect`); a burn is scaled like a blow and counts for the kill (`pvp_burn`).
   `tools/items_rework_test.gd`, `tools/pvp_server_test.gd`; re-run `tools/balance.sh` after changing any of it.
 - **The Battlegrounds sandbox** (`scripts/sandbox.gd` `Sandbox`, zone `"sandbox"` "The Proving Crypt";
-  `scripts/bot_brain.gd` `BotBrain`): the admins' testing arena, opened from the Escape menu's Admin column
+  `scripts/bot_brain.gd` `BotBrain`): practice entered from Multiplayer → Sandbox (solo or hosted), also available in the Admin column
   (`Game.open_sandbox` / `close_sandbox`; the character is saved and set aside, `char_id` cleared so nothing inside is
-  saved, and loaded back on leaving). Local and offline: the admin becomes any class at level 1/5/10/20, fresh or
+  saved, and loaded back on leaving). Solo practice lets the player become any class at level 1/5/10/20, fresh or
   geared (`Sandbox.outfit`), spawns bots (`Hero.bot`: a full hero played by a `BotBrain` through the same calls as
   the mouse: `use_skill`, `cmd_target`, `free_attack`, `Dodge.start`, `drink`; `bot_hold` is its held button) and
   monster packs. PvP is the raid's: each hero has an invisible stand-in (`Enemy.sandbox_hero`) that takes every
@@ -1612,6 +1612,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   before it strikes). Monsters go for the nearest hero (`Game.target_for`, `all_heroes`). A bot's screen effects,
   messages and the testing switches are the player's only (`Hero._mine`). The panel's meters (`note_hit`) give
   damage a second over 5 s, totals and kill times. `tools/sandbox_test.gd` (`--fixed-fps 60`), `tools/sandbox_shot.gd`.
+  Hosted practice uses `SandboxMatch`, supports late joining and automatic respawn, and excludes local bots/packs.
+  See [Sandbox validation and rollout status](docs/perf/SANDBOX.md) before claiming it is live.
 - **Skill bar and bindings** (every class, including new ones): the bar has a big slot for each mouse button and six
   hotkeys (Q E R F G V); any skill can go on any of them (`Hero.binds`, saved per character; `Hero.default_binds`:
   left mouse `attack`, right mouse the class's first skill, the class's first four skills on Q-F). `attack` and `block` are
