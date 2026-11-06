@@ -39,7 +39,9 @@ Blaine's spec of 2026-11-06 (17 points). The line-by-line proof is `docs/overhau
   the same. It found and fixed: the knight and Doug too weak against bosses (a run-only class factor), Doug stuck on
   a level-1 weapon, a leftover 2.2x monster multiplier, bosses tuned for a whole act, a boss giving six
   levels, a boss camp counted twice, the archer taking a cleaver, runs starving for healing.
-- `arena_survivor_test` (two clients, the real lobby service and an Arena worker): see its result below.
+- `arena_survivor_test` (two clients, the real lobby service and an Arena worker, 31 checks, all pass): a class pick
+  reaches the other player and un-readies; both fight a best-of-three Arena match as their saved survivors; the
+  survivor files are untouched after.
 
 ## Kept for later cleanup
 

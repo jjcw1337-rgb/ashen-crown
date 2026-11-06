@@ -31,7 +31,7 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 ## 5. Battlegrounds class selection inside the lobby
 - 🟡 A class choice in the lobby (`LobbyClient.class_pick`, sent as `run_<class>`; `survivor_test`); a fresh level-0 run character with a basic attack and empty slots (`run_build_test`, `bg_test`).
 - ✅ Class tiles with the selected class large on the stage (name, role, playstyle, its skills); every member's class and ready state; a class change in the lobby un-readies its member (service `pick`, `test_pick_changes_class_and_unreadies`; `mp_lobby_shots`, `lobby_ui_test`).
-- ⬜ The class change through a real service and two clients. **Not proven yet** (step 7).
+- ✅ The class change through a real service and two clients: b sees a's new class, a is un-readied (`arena_survivor_test`).
 - ✅ A level-0 character clears a starting camp in a real fight (`run_playthrough`: archer 11 s, plague doctor 6 s for Sporefall Dell) (tier I monsters are level 1; to prove with the verification bot run, step 7).
 
 ## 6. Survivors roster
@@ -43,8 +43,8 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 
 ## 7. Arena uses saved survivors
 - ✅ The Arena lobby picks a survivor; none = it says how to earn one (`survivor_test`); the join path loads it (`Game.start_join` → `Survivors.load_into`, `survivor_test`).
-- ⬜ Inspect a survivor before ready (the roster shows its build; a fuller inspect panel with step 6).
-- ⬜ An Arena match played with a survivor through the lobby service: **not proven yet** (step 7).
+- ✅ Inspect a survivor before ready: the lobby shows the chosen survivor large on the stage with its level, camps, bosses and slotted skills; the roster card adds its spellbook and gear (`mp_lobby_shots` roster).
+- ✅ An Arena match played with survivors through the real lobby service, an Arena worker and two clients (`arena_survivor_test -- a|b`, 31 checks): each fights as its survivor (class, level, skills, slots), rounds resolve from real PvP damage, the survivors' files are untouched after.
 - 🟡 Compatible Arena rules kept; item stakes are hidden while survivors can't stake items (docs/cleanup.md).
 
 ## 8. One progression system, every class
@@ -88,6 +88,6 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 
 ## 17. Verify the whole sequence and the screens
 - ✅ The sequence level 0 → camps → upgrades → skills and loot → levels → bosses → survive → save → reload, for the archer and the plague doctor (`run_playthrough`, offline host; extraction through a real server is `bg_test`).
-- ⬜ The Arena match itself played with a reloaded survivor through the lobby service and two clients. **Not proven yet.**
+- ✅ The Arena match itself with reloaded survivors through the lobby service and two clients (`arena_survivor_test`).
 - ✅ Screens at 1024x768, 1280x720, 1920x1080 and 2560 wide (`lobby_ui_test`, `mp_lobby_shots`: every control on screen at each; `run_ui_shots`).
-- ⬜ The final write-up.
+- ✅ The final write-up: `docs/overhaul_report.md`.
