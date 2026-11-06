@@ -74,7 +74,7 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 
 ## 14. A big connected lush map
 - ✅ The Verdant Reach: 16 camps, 2 bosses, four starting glades, trails with loops, a stream, ridges, mushroom woodland, dark elf camps, frost hollow, ruins (`camp_test`, `bg_test`, `forest_shots`).
-- 🟡 Treants and dark elf monsters of our own: the camps borrow existing monsters. **Not done.**
+- ✅ Treants and dark elves of our own (Meshy concept → image-to-3D → `prep_monster.py` / `rig_monster.py`, 72 credits): the Rootbound Treant in the mushroom woodland's camps, the Shadeleaf Reaver and Sniper in the dark elf encampments (`monster_lineup` renders; `camp_test`, `run_playthrough` fight them).
 
 ## 15. Every camp a complete encounter
 - ✅ Each camp has its own monsters (pack), clearing ground, completion and chest; neighbours never complete each other; completion counts members wherever they are (`camp_test`).

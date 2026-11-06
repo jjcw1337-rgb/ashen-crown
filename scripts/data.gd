@@ -245,6 +245,19 @@ const ENEMIES := {
 	"bandit": {"mesh": "bandit", "name": "Road Bandit", "rig": "humanoid", "life": 22, "dmg": [3, 7], "speed": 4.4, "range": 1.6, "xp": 13,
 		"ai": "melee", "atk": "side", "atk_time": 0.8, "armor": 3, "radius": 0.45, "faction": "bandit", "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.62, 0.46, 0.34), "cloth": Color(0.3, 0.24, 0.16), "cloth2": Color(0.22, 0.25, 0.14), "height": 1.0, "bulk": 0.95, "head": "human", "hair": Color(0.12, 0.09, 0.06), "weapon": "scimitar"}},
+	# the Verdant Reach's treant (Meshy, concept exports/bg_forest/treant_concept.png; rig_monster.py with crotch/sh_z
+	# hints for its crown): the mushroom woodland's slow, heavy guardian
+	"treant": {"mesh": "treant", "name": "Rootbound Treant", "rig": "humanoid", "life": 70, "dmg": [7, 12], "speed": 2.7, "range": 2.3, "xp": 34,
+		"ai": "melee", "atk": "slam", "atk_time": 1.4, "armor": 10, "radius": 0.85, "blood": Color(0.32, 0.5, 0.2),
+		"look": {"skin": Color(0.36, 0.27, 0.18), "cloth": Color(0.25, 0.35, 0.15), "cloth2": Color(0.2, 0.3, 0.12), "height": 1.55, "bulk": 1.3, "head": "human", "hair": Color(0.2, 0.4, 0.15), "weapon": ""}},
+	# the Verdant Reach's dark elves (Meshy, concept exports/bg_forest/dark_elf_concept.png; rig_monster.py): the
+	# encampments' blades and bows, a little quicker and harder than bandits
+	"dark_elf": {"mesh": "dark_elf", "name": "Shadeleaf Reaver", "rig": "humanoid", "life": 26, "dmg": [4, 8], "speed": 4.6, "range": 1.7, "xp": 15,
+		"ai": "melee", "atk": "side", "atk_time": 0.75, "armor": 4, "radius": 0.45, "faction": "elf", "blood": Color(0.42, 0.05, 0.25),
+		"look": {"skin": Color(0.45, 0.45, 0.5), "cloth": Color(0.16, 0.13, 0.2), "cloth2": Color(0.3, 0.16, 0.36), "height": 1.0, "bulk": 0.9, "head": "human", "hair": Color(0.85, 0.85, 0.88), "weapon": "scimitar"}},
+	"dark_elf_archer": {"mesh": "dark_elf", "name": "Shadeleaf Sniper", "rig": "humanoid", "life": 18, "dmg": [4, 7], "speed": 4.0, "range": 13.0, "xp": 14,
+		"ai": "ranged", "atk": "bow", "atk_time": 1.1, "armor": 2, "radius": 0.45, "proj": "arrow", "faction": "elf", "blood": Color(0.42, 0.05, 0.25),
+		"look": {"skin": Color(0.45, 0.45, 0.5), "cloth": Color(0.16, 0.13, 0.2), "cloth2": Color(0.3, 0.16, 0.36), "height": 1.0, "bulk": 0.88, "head": "human", "hair": Color(0.85, 0.85, 0.88), "weapon": "bow"}},
 	"bandit_archer": {"mesh": "bandit", "name": "Bandit Bowman", "rig": "humanoid", "life": 16, "dmg": [3, 6], "speed": 3.6, "range": 12.0, "xp": 12,
 		"ai": "ranged", "atk": "bow", "atk_time": 1.2, "armor": 2, "radius": 0.45, "proj": "arrow", "faction": "bandit", "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.6, 0.45, 0.33), "cloth": Color(0.26, 0.22, 0.15), "cloth2": Color(0.3, 0.2, 0.12), "height": 0.98, "bulk": 0.9, "head": "human", "hair": Color(0.15, 0.1, 0.07), "weapon": "bow"}},

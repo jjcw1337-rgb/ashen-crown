@@ -224,7 +224,8 @@ func setup(g: Node) -> void:
 	_build_spectate()
 	_build_victory()
 	run_ui = RunUI.new()
-	windows.add_child(run_ui)
+	modals.add_child(run_ui)      # (over the menus: the survivor roster opens from the multiplayer screen)
+	modals.move_child(run_ui, 0)
 	run_ui.setup(self)
 
 func bind_hero(h: Hero) -> void:

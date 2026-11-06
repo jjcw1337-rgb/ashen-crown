@@ -322,6 +322,7 @@ func _left_browse(mode: String) -> void:
 		seg.add_theme_constant_override("separation", 4)
 		for n in [1, 2, 3]:
 			var b := MpStyle.button("%dv%d" % [n, n], n == lc.team_size)
+			b.text = "%dv%d" % [n, n]      # (not upper-cased like a primary action)
 			b.name = "size_%d" % n
 			b.custom_minimum_size.x = 64
 			b.pressed.connect(func():
