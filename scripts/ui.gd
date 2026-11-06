@@ -5570,7 +5570,7 @@ func _process(delta: float) -> void:
 	# Transient world announcements and the controls hint must not cover menu actions.
 	var clear_hud_text := not any_panel_open() and not pause_panel.visible
 	msg_lbl.visible = not (run_ui != null and run_ui.visible)
-	quest_tracker.visible = game.hero.run == null and not game.bg_mode and not game.arena_mode and not game.sandbox_mode
+	quest_tracker.visible = game.hero.run == null and not game.bg_mode and not game.arena_mode and game.sandbox == null
 	big_lbl.visible = clear_hud_text
 	hint_lbl.visible = clear_hud_text
 	if big_t > 0.0:
