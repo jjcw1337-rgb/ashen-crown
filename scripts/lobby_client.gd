@@ -47,6 +47,12 @@ var last_error := ""
 ## A match that ended on the player (disconnected, closed): shown once on the multiplayer screen.
 var notice := ""
 var loaded := false
+## After Start (Blaine, 2026-11-06: "a visible countdown when we click start"): while the match's server boots the
+## lobby shows how long it has been starting; once it listens, everyone counts GO_SECS down together and goes in.
+const GO_SECS := 3.0
+var start_seen_ms := 0         # when this lobby was first seen "starting"
+var go_t := -1.0               # the countdown to entering, once the server listens
+var start_label: Label         # MpLobbyView's big line, updated every frame without a redraw
 ## The list's columns: title, width.
 const COLUMNS := [["MODE", 130], ["LOBBY", 190], ["HOST", 140], ["FORMAT", 120], ["PLAYERS", 80], ["STATUS", 90]]
 
@@ -189,7 +195,7 @@ func refresh() -> void:
    if str(room.state)=="waiting":
     var pending:Dictionary=stake_store.finish_removal(game,str(room.id))
     if not pending.is_empty():await request("stake",{"id":room.id,"item":pending.item})
-   if str(room.state) in ["starting","playing"] and str(room.get("address",""))!="" and match_id=="":enter_match()
+   if str(room.state) in ["starting","playing"] and str(room.get("address",""))!="" and match_id=="" and go_t<0.0:go_t=GO_SECS
    elif str(room.state) in ["aborted","finished","closed"] and match_id=="":status.text=str(room.get("reason","Lobby closed."));room={}
  draw();polling=false
 
@@ -298,8 +304,29 @@ func _process(delta: float) -> void:
   var s:Dictionary=game.arena_state
   var score:Array=s.get("scores",[0,0])
   arena_hud.text="ARENA · Round %d · Ember %d — %d Frost · %s · %ds"%[int(s.get("round",1)),score[0],score[1],str(s.get("phase","waiting")).capitalize(),int(s.get("left",0))]
+ _start_countdown(delta)
  poll_t-=delta
- if poll_t<=0 and (panel.visible or not room.is_empty()):poll_t=3;refresh()
+ if poll_t<=0 and (panel.visible or not room.is_empty()):poll_t=1.0 if str(room.get("state",""))=="starting" else 3.0;refresh()
+
+## The start's visible countdown (see GO_SECS): the server's boot time, then 3 · 2 · 1, then in.
+func _start_countdown(delta: float) -> void:
+ var starting:=not room.is_empty() and str(room.get("state","")) in ["starting","playing"] and match_id==""
+ if not starting:
+  start_seen_ms=0;go_t=-1.0;return
+ if start_seen_ms==0:start_seen_ms=Time.get_ticks_msec()
+ if go_t>=0.0:
+  go_t-=delta
+  if go_t<=0.0:
+   go_t=-1.0
+   if start_label!=null and is_instance_valid(start_label):start_label.text="Entering..."
+   enter_match()
+   return
+ if start_label!=null and is_instance_valid(start_label):start_label.text=start_text()
+
+func start_text() -> String:
+ if go_t>=0.0:return "Match starts in %d" % ceili(go_t)
+ var s:=int((Time.get_ticks_msec()-start_seen_ms)/1000)
+ return "Starting the server...  %d:%02d" % [s/60,s%60]
 
 func commit_stake() -> void:
  if busy or room.is_empty() or item_pick.item_count==0:return

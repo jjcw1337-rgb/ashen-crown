@@ -620,6 +620,15 @@ func _right_prep(mode: String) -> void:
 			continue
 		members.add_child(_member_row(str(uid), m, mode, room))
 	right.add_child(MpStyle.rule())
+	lc.start_label = null
+	if str(room.state) in ["starting", "playing"]:
+		# the start's countdown (LobbyClient._start_countdown keeps its text going between redraws)
+		var go := MpStyle.label(lc.start_text(), _big(40), MpStyle.GOLD, 700, true)
+		go.name = "start_countdown"
+		go.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		right.add_child(go)
+		lc.start_label = go
+		right.add_child(MpStyle.para("Everyone in the lobby goes in together.", 15, MpStyle.DIM))
 	if str(room.state) == "waiting":
 		if mode in ["battlegrounds", "sandbox"]:
 			right.add_child(MpStyle.eyebrow("Choose your class"))
