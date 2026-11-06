@@ -445,7 +445,7 @@
 			"text": "Your poison deals +{poison_dmg}% damage.",
 			"icon": "toxic",
 			"fx": {
-				"poison_dmg": 20
+				"poison_dmg": 20.0
 			}
 		},
 		{
@@ -459,7 +459,7 @@
 			"text": "Poisoned foes take +{more}% damage from your blows.",
 			"icon": "toxic",
 			"k": {
-				"more": 15
+				"more": 15.0
 			},
 			"per": [
 				"more"
@@ -477,7 +477,7 @@
 			"text": "{pct}% of the poison damage you deal heals you.",
 			"icon": "toxic",
 			"k": {
-				"pct": 8
+				"pct": 8.0
 			},
 			"proc": "heal_on_dot"
 		},
@@ -492,8 +492,8 @@
 			"text": "Poison grows {grow}% crueller every second a foe stays poisoned (up to +{most}%).",
 			"icon": "toxic",
 			"k": {
-				"grow": 20,
-				"most": 160
+				"grow": 20.0,
+				"most": 160.0
 			},
 			"proc": "necrosis"
 		},
@@ -524,7 +524,7 @@
 			"k": {
 				"src": "attack",
 				"r": 4.5,
-				"n": 1
+				"n": 1.0
 			},
 			"proc": "spread_on_hit"
 		},
@@ -540,7 +540,7 @@
 			"icon": "swarm",
 			"k": {
 				"r": 6.0,
-				"n": 3
+				"n": 3.0
 			},
 			"proc": "spread_on_death"
 		},
@@ -556,7 +556,7 @@
 			"icon": "swarm",
 			"k": {
 				"r": 3.5,
-				"pct": 60
+				"pct": 60.0
 			},
 			"proc": "cloud_on_death"
 		},
@@ -571,7 +571,7 @@
 			"text": "The swarm bites for +{dmg:swarm}% and each bite heals you {swarm_heal}% of your life.",
 			"icon": "swarm",
 			"fx": {
-				"dmg:swarm": 25,
+				"dmg:swarm": 25.0,
 				"swarm_heal": 1.5
 			}
 		},
@@ -586,8 +586,8 @@
 			"text": "Corpse Bloom pulses {bloom_rate}% more often and reaches {bloom_size}% further.",
 			"icon": "bloom",
 			"fx": {
-				"bloom_rate": 45,
-				"bloom_size": 20
+				"bloom_rate": 45.0,
+				"bloom_size": 20.0
 			}
 		},
 		{
@@ -601,8 +601,8 @@
 			"text": "Each poisoned foe that dies heals you {pct}% of your life and makes you +15% faster for 3 s.",
 			"icon": "bloom",
 			"k": {
-				"pct": 5,
-				"poisoned": 1
+				"pct": 5.0,
+				"poisoned": 1.0
 			},
 			"proc": "heal_on_kill"
 		},
@@ -617,7 +617,7 @@
 			"text": "Pestilence Vial bursts on impact for {vial_burst}% weapon damage.",
 			"icon": "toxic",
 			"fx": {
-				"vial_burst": 80
+				"vial_burst": 80.0
 			}
 		},
 		{
@@ -631,7 +631,7 @@
 			"text": "Pestilence Vial throws a second vial beside the first.",
 			"icon": "toxic",
 			"fx": {
-				"vial_twin": 1
+				"vial_twin": 1.0
 			}
 		},
 		{
@@ -645,8 +645,8 @@
 			"text": "Miasma spreads {miasma_r}% wider and slows everything in it.",
 			"icon": "p_miasma",
 			"fx": {
-				"miasma_r": 30,
-				"miasma_slow": 1
+				"miasma_r": 30.0,
+				"miasma_slow": 1.0
 			}
 		},
 		{
@@ -660,7 +660,7 @@
 			"text": "When a cursed foe dies, Contagion's curse leaps to the nearest foe with its time renewed.",
 			"icon": "p_spread",
 			"fx": {
-				"curse_jump": 1
+				"curse_jump": 1.0
 			}
 		},
 		{
@@ -674,7 +674,7 @@
 			"text": "Leech Jar heals {leech_heal}% more and lasts {leech_t} seconds longer.",
 			"icon": "p_leech",
 			"fx": {
-				"leech_heal": 50,
+				"leech_heal": 50.0,
 				"leech_t": 1.5
 			}
 		},
@@ -689,8 +689,8 @@
 			"text": "Potions restore {pot}% more; skills recharge {cdr}% faster.",
 			"icon": "transfusion",
 			"fx": {
-				"pot": 35,
-				"cdr": 5
+				"pot": 35.0,
+				"cdr": 5.0
 			}
 		}
 	]

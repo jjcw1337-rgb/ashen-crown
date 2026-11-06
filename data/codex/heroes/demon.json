@@ -467,8 +467,8 @@
 			"text": "Volcano hurls {volcano_more} more meteors, each {dmg:d_volcano}% harder.",
 			"icon": "d_volcano",
 			"fx": {
-				"volcano_more": 3,
-				"dmg:d_volcano": 10
+				"volcano_more": 3.0,
+				"dmg:d_volcano": 10.0
 			}
 		},
 		{
@@ -482,7 +482,7 @@
 			"text": "Hellbrand Detonation Brands everything its eruptions strike.",
 			"icon": "d_detonate",
 			"fx": {
-				"detonate_brand": 1
+				"detonate_brand": 1.0
 			}
 		},
 		{
@@ -496,7 +496,7 @@
 			"text": "Blood Pact gives {pact_pow}% more damage.",
 			"icon": "d_pact",
 			"fx": {
-				"pact_pow": 10
+				"pact_pow": 10.0
 			}
 		},
 		{
@@ -511,7 +511,7 @@
 			"icon": "fists",
 			"k": {
 				"src": "",
-				"pct": 20,
+				"pct": 20.0,
 				"secs": 3.0
 			},
 			"proc": "ignite_on_hit"
@@ -527,7 +527,7 @@
 			"text": "Foes you kill erupt: {pct}% of their life to all within {r} m.",
 			"icon": "cslam",
 			"k": {
-				"pct": 30,
+				"pct": 30.0,
 				"r": 4.0
 			},
 			"proc": "explode_on_kill"
@@ -543,7 +543,7 @@
 			"text": "Monsters that strike you take {pct}% of the blow back.",
 			"icon": "wrath",
 			"k": {
-				"pct": 100
+				"pct": 100.0
 			},
 			"proc": "thorns"
 		}

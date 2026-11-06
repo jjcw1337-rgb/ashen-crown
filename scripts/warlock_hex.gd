@@ -16,16 +16,16 @@ extends RefCounted
 const IDS := ["w_corruption", "w_malediction", "w_unending", "w_festering", "w_leeching", "w_reckoning",
 	"w_terrify", "w_effigy", "w_darkwind", "w_crowstorm", "w_leechbolt", "w_harvest", "w_soulfeast"]
 ## The curses: [share of spell damage over the whole curse, seconds]. Reckoning's ticks copy the others instead.
-const CURSES := {"w_corruption": [1.2, 10.0], "w_unending": [1.0, 12.0], "w_festering": [0.0, 15.0],
-	"w_leeching": [1.0, 8.0], "w_reckoning": [0.0, 6.0]}
+const CURSES := {"w_corruption": [2.4, 10.0], "w_unending": [1.8, 12.0], "w_festering": [0.0, 15.0],
+	"w_leeching": [1.6, 8.0], "w_reckoning": [0.0, 6.0]}
 const TICK := 0.5
 const UNENDING_RAMP := 0.15     # +15% a second the foe has been cursed without a break
 const UNENDING_CAP := 4.0
 const FESTER_EVERY := 5.0
-const FESTER_BURST := 0.8
+const FESTER_BURST := 1.2
 const FESTER_STUN := 0.5
 const LEECH_HEAL := 0.5
-const MALEDICT_BASE := 0.6
+const MALEDICT_BASE := 0.9
 const MALEDICT_PER := 0.5       # per curse on the target, up to MALEDICT_MAX
 const MALEDICT_MAX := 5
 const FEARED_BONUS := 20.0      # % more spell damage on a feared foe
@@ -38,17 +38,17 @@ const EFFIGY_FEAR := 1.0
 const WIND_HOPS := 5
 const WIND_HOP_R := 6.0
 const WIND_GAP := 0.14
-const WIND_DMG := 0.7
+const WIND_DMG := 0.9
 const STORM_SECS := 5.0
 const STORM_R := 5.0
-const STORM_DMG := 0.6
+const STORM_DMG := 0.8
 const STORM_BLINK := 8.0
 const LEECHBOLT_HEAL := 0.3
 const HARVEST_R := 5.0
-const HARVEST_DMG := 1.4
+const HARVEST_DMG := 1.8
 const HARVEST_HEAL := 4.0       # % of his life per foe hit (twice that when it is the only one)
 const FEAST_R := 7.0
-const FEAST_DPS := 0.5
+const FEAST_DPS := 0.8
 const FEAST_HEAL := 0.25
 const FEAST_SHIELD := 30.0      # % of his life the feast's overflow can harden into
 const SHIELD_FADE := 5.0        # out of combat this long, the shield melts away
@@ -77,7 +77,7 @@ static func _st(h: Hero) -> Dictionary:
 # ---------------------------------------------------------------- damage
 ## A spell's 100%: grows with level and the weapon, like Blight Bolt's.
 static func spell(h: Hero) -> float:
-	return (10.0 + h.level * 3.0 + (h.dmg_min + h.dmg_max) * 0.4) * h.buff_mult()
+	return (12.0 + h.level * 4.0 + (h.dmg_min + h.dmg_max) * 0.5) * h.buff_mult()
 
 static func _alive(e) -> bool:
 	return e != null and is_instance_valid(e) and not e.dead
@@ -182,7 +182,7 @@ static func impact(h: Hero) -> bool:
 		"w_leechbolt":
 			if e != null:
 				h.fx(id, "bolt", {"t": [e]})
-				var dealt := hit(h, e, amount(h, id, 1.0, e), Color(0.6, 1.0, 0.45))
+				var dealt := hit(h, e, amount(h, id, 1.4, e), Color(0.6, 1.0, 0.45))
 				heal(h, dealt * LEECHBOLT_HEAL)
 		"w_effigy":
 			var to := h.atk_aim - h.global_position

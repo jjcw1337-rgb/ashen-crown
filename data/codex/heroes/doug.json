@@ -470,7 +470,7 @@
 			"text": "Pie Barrage flings {barrage_more} more pies.",
 			"icon": "u_barrage",
 			"fx": {
-				"barrage_more": 3
+				"barrage_more": 3.0
 			}
 		},
 		{
@@ -484,8 +484,8 @@
 			"text": "Human Cannonball lands {cannon_r}% wider and {dmg:u_cannon}% harder.",
 			"icon": "u_cannon",
 			"fx": {
-				"cannon_r": 30,
-				"dmg:u_cannon": 20
+				"cannon_r": 30.0,
+				"dmg:u_cannon": 20.0
 			}
 		},
 		{
@@ -499,7 +499,7 @@
 			"text": "A skill with a cooldown has a {chance}% chance to be ready again at once.",
 			"icon": "juggle",
 			"k": {
-				"chance": 35
+				"chance": 35.0
 			},
 			"proc": "echo"
 		},
@@ -514,8 +514,8 @@
 			"text": "Critical hits give +{ias}% attack speed for {secs} seconds.",
 			"icon": "pie",
 			"k": {
-				"ias": 30,
-				"secs": 3
+				"ias": 30.0,
+				"secs": 3.0
 			},
 			"proc": "frenzy"
 		}

@@ -77,8 +77,8 @@ func _run() -> void:
 	await secs(2.0)
 	var per2 := lost([e]) - l0
 	ok(per2 > 0.0, "Corruption ticks (%.0f in 2 s)" % per2)
-	var expect: float = hex.amount(h, "w_corruption", 1.2) / 10.0 * 2.0
-	ok(absf(per2 - expect) < expect * 0.5 + 2.0, "about 120%% spell over 10 s (%.0f vs %.0f expected)" % [per2, expect])
+	var expect: float = hex.amount(h, "w_corruption", float(hex.CURSES["w_corruption"][0])) / 10.0 * 2.0
+	ok(absf(per2 - expect) < expect * 0.5 + 2.0, "about 240%% spell over 10 s (%.0f vs %.0f expected)" % [per2, expect])
 	cast(h, "w_unending", e.global_position)
 	await secs(0.6)
 	cast(h, "w_leeching", e.global_position)

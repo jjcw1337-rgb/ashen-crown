@@ -269,8 +269,8 @@
 			"text": "Your hits on foes under {below}% life deal +{more}% damage.",
 			"icon": "t_skull",
 			"k": {
-				"below": 25,
-				"more": 60
+				"below": 25.0,
+				"more": 60.0
 			},
 			"proc": "more_vs_low"
 		},
@@ -285,9 +285,9 @@
 			"text": "Each kill: +{dmg}% damage for {secs} seconds, up to {stacks} times.",
 			"icon": "t_fist",
 			"k": {
-				"dmg": 4,
-				"stacks": 5,
-				"secs": 8
+				"dmg": 4.0,
+				"stacks": 5.0,
+				"secs": 8.0
 			},
 			"per": [
 				"dmg"
@@ -305,7 +305,7 @@
 			"text": "Each kill heals you for {pct}% of your life.",
 			"icon": "t_heart",
 			"k": {
-				"pct": 3
+				"pct": 3.0
 			},
 			"per": [
 				"pct"
@@ -323,7 +323,7 @@
 			"text": "Monsters you kill explode: {pct}% of their life to everything within {r} m. Kills it causes explode too.",
 			"icon": "t_star",
 			"k": {
-				"pct": 25,
+				"pct": 25.0,
 				"r": 3.5
 			},
 			"proc": "explode_on_kill"
@@ -339,8 +339,8 @@
 			"text": "+{dmg}% damage, {life_pct}% maximum life.",
 			"icon": "t_sword",
 			"fx": {
-				"dmg": 35,
-				"life_pct": -20
+				"dmg": 35.0,
+				"life_pct": -20.0
 			}
 		},
 		{
@@ -354,8 +354,8 @@
 			"text": "A blow that would kill you leaves you at {life}% life instead (once every {secs} seconds).",
 			"icon": "t_ward",
 			"k": {
-				"life": 35,
-				"secs": 120
+				"life": 35.0,
+				"secs": 120.0
 			},
 			"proc": "undying"
 		},
@@ -370,7 +370,7 @@
 			"text": "Monsters that strike you take {pct}% of the blow back.",
 			"icon": "t_armor",
 			"k": {
-				"pct": 60
+				"pct": 60.0
 			},
 			"per": [
 				"pct"
@@ -388,7 +388,7 @@
 			"text": "Up to +{most}% damage as your life runs low.",
 			"icon": "t_fist",
 			"k": {
-				"most": 45
+				"most": 45.0
 			},
 			"proc": "berserk"
 		},
@@ -403,7 +403,7 @@
 			"text": "A skill with a cooldown has a {chance}% chance to be ready again at once.",
 			"icon": "t_hourglass",
 			"k": {
-				"chance": 25
+				"chance": 25.0
 			},
 			"proc": "echo"
 		},
@@ -418,7 +418,7 @@
 			"text": "+{more}% damage to champions and bosses.",
 			"icon": "t_sword",
 			"k": {
-				"more": 20
+				"more": 20.0
 			},
 			"per": [
 				"more"
@@ -436,8 +436,8 @@
 			"text": "Critical hits give +{ias}% attack speed for {secs} seconds.",
 			"icon": "t_haste",
 			"k": {
-				"ias": 20,
-				"secs": 3
+				"ias": 20.0,
+				"secs": 3.0
 			},
 			"proc": "frenzy"
 		},
@@ -452,7 +452,7 @@
 			"text": "Potions restore {pot}% more.",
 			"icon": "t_regen",
 			"fx": {
-				"pot": 40
+				"pot": 40.0
 			}
 		},
 		{
@@ -466,7 +466,7 @@
 			"text": "Camp chests offer one more choice.",
 			"icon": "t_star",
 			"fx": {
-				"offer_plus": 1
+				"offer_plus": 1.0
 			}
 		},
 		{
@@ -480,7 +480,7 @@
 			"text": "Camp chests hold {loot_plus} more consumable for you.",
 			"icon": "t_eye",
 			"fx": {
-				"loot_plus": 1
+				"loot_plus": 1.0
 			}
 		},
 		{
@@ -494,7 +494,7 @@
 			"text": "Camp chests hold a gem twice as often, and rare gems more often.",
 			"icon": "t_star",
 			"fx": {
-				"gem_luck": 1
+				"gem_luck": 1.0
 			}
 		},
 		{
@@ -508,7 +508,7 @@
 			"text": "A ward soaks blows worth {ward_bonus}% of your life; it refills out of combat.",
 			"icon": "t_ward",
 			"fx": {
-				"ward_bonus": 12
+				"ward_bonus": 12.0
 			}
 		},
 		{
@@ -522,9 +522,9 @@
 			"text": "Your burns last {burn_dur}% longer and hurt {burn_pct}% more; your chills last {chill_pct}% longer.",
 			"icon": "t_hourglass",
 			"fx": {
-				"burn_dur": 50,
-				"chill_pct": 50,
-				"burn_pct": 15
+				"burn_dur": 50.0,
+				"chill_pct": 50.0,
+				"burn_pct": 15.0
 			}
 		},
 		{
@@ -538,8 +538,8 @@
 			"text": "Under {below}% life, {pct}% of the damage your hits deal heals you.",
 			"icon": "t_heart",
 			"k": {
-				"pct": 10,
-				"below": 50
+				"pct": 10.0,
+				"below": 50.0
 			},
 			"proc": "bloodlust"
 		},
@@ -554,8 +554,8 @@
 			"text": "Each kill: +{frw}% run speed for {secs} seconds.",
 			"icon": "t_boot",
 			"k": {
-				"frw": 12,
-				"secs": 3
+				"frw": 12.0,
+				"secs": 3.0
 			},
 			"per": [
 				"frw"
@@ -573,7 +573,7 @@
 			"text": "+{xp_pct}% experience.",
 			"icon": "t_eye",
 			"fx": {
-				"xp_pct": 15
+				"xp_pct": 15.0
 			}
 		}
 	]

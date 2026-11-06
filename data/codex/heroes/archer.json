@@ -457,8 +457,8 @@
 			"text": "Your burns deal +{burn_pct}% damage and last {burn_dur}% longer.",
 			"icon": "pierce",
 			"fx": {
-				"burn_pct": 15,
-				"burn_dur": 25
+				"burn_pct": 15.0,
+				"burn_dur": 25.0
 			}
 		},
 		{
@@ -473,7 +473,7 @@
 			"icon": "pierce",
 			"k": {
 				"src": "attack",
-				"pct": 30,
+				"pct": 30.0,
 				"secs": 2.5
 			},
 			"proc": "ignite_on_hit"
@@ -504,7 +504,7 @@
 			"text": "Burning foes take +{more}% damage from your hits.",
 			"icon": "pierce",
 			"k": {
-				"more": 30
+				"more": 30.0
 			},
 			"proc": "more_vs_burning"
 		},
@@ -519,7 +519,7 @@
 			"text": "Every {n}th plain shot looses a free Fire Arrow.",
 			"icon": "pierce",
 			"k": {
-				"n": 5,
+				"n": 5.0,
 				"skill": "pierce"
 			},
 			"proc": "nth_shot"
@@ -535,7 +535,7 @@
 			"text": "Your chills last {chill_pct}% longer and slow more.",
 			"icon": "volley",
 			"fx": {
-				"chill_pct": 25
+				"chill_pct": 25.0
 			}
 		},
 		{
@@ -549,7 +549,7 @@
 			"text": "Chilled foes take +{more}% damage from your hits.",
 			"icon": "volley",
 			"k": {
-				"more": 15
+				"more": 15.0
 			},
 			"per": [
 				"more"
@@ -584,7 +584,7 @@
 			"text": "A chilled foe that dies shatters: {pct}% weapon damage to everything within {r} m, chilling them.",
 			"icon": "volley",
 			"k": {
-				"pct": 90,
+				"pct": 90.0,
 				"r": 3.5
 			},
 			"proc": "shards_on_death"
@@ -600,7 +600,7 @@
 			"text": "Every {n}th hit on a chilled foe freezes it solid for {secs} seconds.",
 			"icon": "volley",
 			"k": {
-				"n": 4,
+				"n": 4.0,
 				"secs": 1.6
 			},
 			"proc": "freeze_after"
@@ -616,9 +616,9 @@
 			"text": "Thunderstep, Arc and Storm Shot deal +{dmg:snare}% damage.",
 			"icon": "snare",
 			"fx": {
-				"dmg:snare": 15,
-				"dmg:arc": 15,
-				"dmg:a_stormshot": 15
+				"dmg:snare": 15.0,
+				"dmg:arc": 15.0,
+				"dmg:a_stormshot": 15.0
 			}
 		},
 		{
@@ -633,8 +633,8 @@
 			"icon": "snare",
 			"k": {
 				"src": "attack",
-				"jumps": 2,
-				"pct": 50,
+				"jumps": 2.0,
+				"pct": 50.0,
 				"r": 6.0
 			},
 			"proc": "chain_on_hit"
@@ -650,7 +650,7 @@
 			"text": "Critical hits call lightning down on the target: {pct}% weapon damage within {r} m.",
 			"icon": "snare",
 			"k": {
-				"pct": 140,
+				"pct": 140.0,
 				"r": 2.5
 			},
 			"proc": "bolt_on_crit"
@@ -666,8 +666,8 @@
 			"text": "+{more}% damage to foes under {below}% life.",
 			"icon": "beast",
 			"k": {
-				"below": 50,
-				"more": 15
+				"below": 50.0,
+				"more": 15.0
 			},
 			"per": [
 				"more"
@@ -685,7 +685,7 @@
 			"text": "The foe you shot last takes +{more}% damage from you and your wolf.",
 			"icon": "beast",
 			"k": {
-				"more": 30
+				"more": 30.0
 			},
 			"proc": "more_vs_marked"
 		},
@@ -700,8 +700,8 @@
 			"text": "Your wolf deals {wolf_dmg}% more damage and each bite heals you {wolf_heal}% of your life.",
 			"icon": "beast",
 			"fx": {
-				"wolf_dmg": 100,
-				"wolf_heal": 2
+				"wolf_dmg": 100.0,
+				"wolf_heal": 2.0
 			}
 		},
 		{
@@ -715,7 +715,7 @@
 			"text": "Plain shots deal +{dmg:attack}% damage.",
 			"icon": "attack",
 			"fx": {
-				"dmg:attack": 12
+				"dmg:attack": 12.0
 			}
 		},
 		{
@@ -729,8 +729,8 @@
 			"text": "+{crit}% critical chance, +{crit_dmg}% critical damage.",
 			"icon": "attack",
 			"fx": {
-				"crit": 5,
-				"crit_dmg": 20
+				"crit": 5.0,
+				"crit_dmg": 20.0
 			}
 		},
 		{
@@ -744,9 +744,9 @@
 			"text": "Plain shots that strike a foe glance on to {bounces} more ({pct}% damage).",
 			"icon": "attack",
 			"k": {
-				"pct": 70,
+				"pct": 70.0,
 				"r": 8.0,
-				"bounces": 2
+				"bounces": 2.0
 			},
 			"proc": "ricochet"
 		},
@@ -761,8 +761,8 @@
 			"text": "Scatter Shot looses {multishot_more} more arrows and hits {dmg:a_multishot}% harder.",
 			"icon": "a_multishot",
 			"fx": {
-				"multishot_more": 2,
-				"dmg:a_multishot": 10
+				"multishot_more": 2.0,
+				"dmg:a_multishot": 10.0
 			}
 		},
 		{
@@ -776,8 +776,8 @@
 			"text": "Blast Arrow's burst is {blast_r}% wider and {dmg:a_explosive}% stronger.",
 			"icon": "a_explosive",
 			"fx": {
-				"blast_r": 40,
-				"dmg:a_explosive": 25
+				"blast_r": 40.0,
+				"dmg:a_explosive": 25.0
 			}
 		},
 		{
@@ -791,8 +791,8 @@
 			"text": "Glacial Shard freezes foes already chilled for a moment, and hits {dmg:a_glacial}% harder.",
 			"icon": "a_glacial",
 			"fx": {
-				"glacial_freeze": 1,
-				"dmg:a_glacial": 15
+				"glacial_freeze": 1.0,
+				"dmg:a_glacial": 15.0
 			}
 		},
 		{
@@ -806,8 +806,8 @@
 			"text": "Storm Shot's lightning leaps to {storm_jumps} more foes and hits {dmg:a_stormshot}% harder.",
 			"icon": "a_stormshot",
 			"fx": {
-				"storm_jumps": 2,
-				"dmg:a_stormshot": 10
+				"storm_jumps": 2.0,
+				"dmg:a_stormshot": 10.0
 			}
 		},
 		{
@@ -821,7 +821,7 @@
 			"text": "Arrow Storm rains {barrage_ticks} more times.",
 			"icon": "a_barrage",
 			"fx": {
-				"barrage_ticks": 3
+				"barrage_ticks": 3.0
 			}
 		},
 		{
@@ -835,8 +835,8 @@
 			"text": "A marked foe that dies makes Hunter's Mark ready again and gives you +{dmg}% damage for {secs} seconds.",
 			"icon": "a_mark",
 			"k": {
-				"dmg": 25,
-				"secs": 5
+				"dmg": 25.0,
+				"secs": 5.0
 			},
 			"proc": "mark_reset"
 		}

@@ -47,7 +47,7 @@
 			"text": "Every {n}th hit on a chilled foe freezes it solid for {secs} seconds.",
 			"icon": "frost_breath",
 			"k": {
-				"n": 5,
+				"n": 5.0,
 				"secs": 1.4
 			},
 			"proc": "freeze_after"
@@ -63,7 +63,7 @@
 			"text": "Chilled foes take +{more}% damage from your hits.",
 			"icon": "frost_breath",
 			"k": {
-				"more": 25
+				"more": 25.0
 			},
 			"proc": "more_vs_chilled"
 		},
@@ -78,8 +78,8 @@
 			"text": "+{armor_pct}% defense and +{life_pct}% life.",
 			"icon": "t_armor",
 			"fx": {
-				"armor_pct": 15,
-				"life_pct": 6
+				"armor_pct": 15.0,
+				"life_pct": 6.0
 			}
 		},
 		{
@@ -93,8 +93,8 @@
 			"text": "Claws and bites deal +{dmg:attack}%; +{crit}% critical chance.",
 			"icon": "attack",
 			"fx": {
-				"dmg:attack": 15,
-				"crit": 3
+				"dmg:attack": 15.0,
+				"crit": 3.0
 			}
 		},
 		{
@@ -108,8 +108,8 @@
 			"text": "+{more}% damage to foes under {below}% life.",
 			"icon": "t_skull",
 			"k": {
-				"below": 40,
-				"more": 40
+				"below": 40.0,
+				"more": 40.0
 			},
 			"proc": "more_vs_low"
 		},
@@ -124,9 +124,9 @@
 			"text": "Each kill: +{dmg}% damage for {secs} seconds, up to {stacks} times.",
 			"icon": "t_fist",
 			"k": {
-				"dmg": 6,
-				"stacks": 6,
-				"secs": 8
+				"dmg": 6.0,
+				"stacks": 6.0,
+				"secs": 8.0
 			},
 			"proc": "momentum"
 		},
@@ -141,8 +141,8 @@
 			"text": "Chills last {chill_pct}% longer; Frost Breath +{dmg:frost_breath}%.",
 			"icon": "frost_breath",
 			"fx": {
-				"chill_pct": 25,
-				"dmg:frost_breath": 10
+				"chill_pct": 25.0,
+				"dmg:frost_breath": 10.0
 			}
 		}
 	]

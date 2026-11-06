@@ -151,7 +151,17 @@
 				"dmg": 4.0
 			},
 			"text": "+{dmg}% damage.",
-			"icon": "t_sword"
+			"icon": "t_sword",
+			"run": true,
+			"k": {
+				"src": "attack",
+				"pct": 18.0,
+				"secs": 3.0
+			},
+			"per": [
+				"pct"
+			],
+			"proc": "ignite_on_hit"
 		},
 		{
 			"id": "k_heavy",
@@ -427,8 +437,8 @@
 			"text": "Judgment calls {judgment_more} more pillars round the first, each {dmg:k_judgment}% stronger.",
 			"icon": "k_judgment",
 			"fx": {
-				"judgment_more": 2,
-				"dmg:k_judgment": 10
+				"judgment_more": 2.0,
+				"dmg:k_judgment": 10.0
 			}
 		},
 		{
@@ -442,8 +452,8 @@
 			"text": "Aegis's ward is {aegis_pct}% of your life stronger and comes back {cd:k_aegis}% sooner; its burst is twice as hard.",
 			"icon": "k_aegis",
 			"fx": {
-				"aegis_pct": 20,
-				"cd:k_aegis": 20
+				"aegis_pct": 20.0,
+				"cd:k_aegis": 20.0
 			}
 		},
 		{
@@ -457,8 +467,8 @@
 			"text": "Blade Storm spins {whirl_more} more time and hits {dmg:k_whirl}% harder.",
 			"icon": "k_whirl",
 			"fx": {
-				"whirl_more": 1,
-				"dmg:k_whirl": 10
+				"whirl_more": 1.0,
+				"dmg:k_whirl": 10.0
 			}
 		},
 		{
@@ -472,7 +482,7 @@
 			"text": "A Last Rites kill also gives you +30% damage and +20% run speed for 4 seconds.",
 			"icon": "k_rites",
 			"fx": {
-				"rites_buff": 1
+				"rites_buff": 1.0
 			}
 		},
 		{
@@ -486,8 +496,8 @@
 			"text": "Holy Brands stack {brand_max} higher and each one burns its foe a little.",
 			"icon": "t_star",
 			"fx": {
-				"brand_max": 3,
-				"brand_burn": 1
+				"brand_max": 3.0,
+				"brand_burn": 1.0
 			}
 		},
 		{
@@ -502,7 +512,7 @@
 			"icon": "t_sword",
 			"k": {
 				"src": "attack",
-				"pct": 18,
+				"pct": 18.0,
 				"secs": 3.0
 			},
 			"fx": {
@@ -524,8 +534,8 @@
 			"text": "+{armor_pct}% defense and a ward of {ward_bonus}% of your life that refills out of combat.",
 			"icon": "t_armor",
 			"fx": {
-				"armor_pct": 15,
-				"ward_bonus": 4
+				"armor_pct": 15.0,
+				"ward_bonus": 4.0
 			}
 		},
 		{
@@ -539,9 +549,9 @@
 			"text": "Your sword's blows cleave into {bounces} more foes beside the one struck ({pct}%).",
 			"icon": "attack",
 			"k": {
-				"pct": 50,
+				"pct": 50.0,
 				"r": 3.0,
-				"bounces": 2
+				"bounces": 2.0
 			},
 			"proc": "ricochet"
 		},
@@ -556,7 +566,7 @@
 			"text": "Critical hits set foes alight with holy fire ({pct}% of the hit a second).",
 			"icon": "nova",
 			"k": {
-				"pct": 60,
+				"pct": 60.0,
 				"secs": 3.0
 			},
 			"proc": "ignite_on_crit"
@@ -572,7 +582,7 @@
 			"text": "Monsters that strike you take {pct}% of the blow back in holy fire.",
 			"icon": "t_ward",
 			"k": {
-				"pct": 120
+				"pct": 120.0
 			},
 			"proc": "thorns"
 		},
@@ -587,9 +597,9 @@
 			"text": "Each kill: +{dmg}% damage for {secs} seconds, up to {stacks} times.",
 			"icon": "charge",
 			"k": {
-				"dmg": 8,
-				"stacks": 6,
-				"secs": 6
+				"dmg": 8.0,
+				"stacks": 6.0,
+				"secs": 6.0
 			},
 			"proc": "momentum"
 		}

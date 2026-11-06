@@ -46,7 +46,7 @@
 			"text": "Critical hits call lightning down: {pct}% weapon damage within {r} m.",
 			"icon": "storm_arc",
 			"k": {
-				"pct": 160,
+				"pct": 160.0,
 				"r": 3.0
 			},
 			"proc": "bolt_on_crit"
@@ -62,8 +62,8 @@
 			"text": "+{armor_pct}% defense and +{life_pct}% life.",
 			"icon": "t_armor",
 			"fx": {
-				"armor_pct": 15,
-				"life_pct": 6
+				"armor_pct": 15.0,
+				"life_pct": 6.0
 			}
 		},
 		{
@@ -77,8 +77,8 @@
 			"text": "Claws and bites deal +{dmg:attack}%; +{crit}% critical chance.",
 			"icon": "attack",
 			"fx": {
-				"dmg:attack": 15,
-				"crit": 3
+				"dmg:attack": 15.0,
+				"crit": 3.0
 			}
 		},
 		{
@@ -92,8 +92,8 @@
 			"text": "+{more}% damage to foes under {below}% life.",
 			"icon": "t_skull",
 			"k": {
-				"below": 40,
-				"more": 40
+				"below": 40.0,
+				"more": 40.0
 			},
 			"proc": "more_vs_low"
 		},
@@ -108,9 +108,9 @@
 			"text": "Each kill: +{dmg}% damage for {secs} seconds, up to {stacks} times.",
 			"icon": "t_fist",
 			"k": {
-				"dmg": 6,
-				"stacks": 6,
-				"secs": 8
+				"dmg": 6.0,
+				"stacks": 6.0,
+				"secs": 8.0
 			},
 			"proc": "momentum"
 		},
@@ -125,8 +125,8 @@
 			"text": "Storm Arc and Arc deal +{dmg:storm_arc}%.",
 			"icon": "storm_arc",
 			"fx": {
-				"dmg:storm_arc": 15,
-				"dmg:arc": 15
+				"dmg:storm_arc": 15.0,
+				"dmg:arc": 15.0
 			}
 		},
 		{
@@ -141,8 +141,8 @@
 			"icon": "storm_arc",
 			"k": {
 				"src": "attack",
-				"jumps": 2,
-				"pct": 40,
+				"jumps": 2.0,
+				"pct": 40.0,
 				"r": 6.0
 			},
 			"proc": "chain_on_hit"

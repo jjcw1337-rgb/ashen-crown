@@ -446,8 +446,8 @@
 			"text": "Death Mark tears out {mark_pct}% more and comes back {cd:r_deathmark}% sooner.",
 			"icon": "r_deathmark",
 			"fx": {
-				"mark_pct": 30,
-				"cd:r_deathmark": 25
+				"mark_pct": 30.0,
+				"cd:r_deathmark": 25.0
 			}
 		},
 		{
@@ -461,7 +461,7 @@
 			"text": "Banshee Wail reaches {wail_r}% further and terrifies {wail_t} seconds longer.",
 			"icon": "r_wail",
 			"fx": {
-				"wail_r": 30,
+				"wail_r": 30.0,
 				"wail_t": 0.6
 			}
 		},
@@ -476,8 +476,8 @@
 			"text": "Reaping Crescent hits {dmg:r_reap}% harder and heals {reap_heal}% more for each it reaps.",
 			"icon": "r_reap",
 			"fx": {
-				"dmg:r_reap": 15,
-				"reap_heal": 1
+				"dmg:r_reap": 15.0,
+				"reap_heal": 1.0
 			}
 		},
 		{
@@ -491,8 +491,8 @@
 			"text": "Your hits on foes under {below}% life deal +{more}% damage.",
 			"icon": "rend",
 			"k": {
-				"below": 35,
-				"more": 80
+				"below": 35.0,
+				"more": 80.0
 			},
 			"proc": "more_vs_low"
 		},
@@ -507,7 +507,7 @@
 			"text": "Each kill heals you {pct}% of your life.",
 			"icon": "siphon",
 			"k": {
-				"pct": 5
+				"pct": 5.0
 			},
 			"proc": "heal_on_kill"
 		},

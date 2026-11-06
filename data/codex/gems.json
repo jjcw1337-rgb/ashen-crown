@@ -8,8 +8,8 @@
 			"rarity": 0,
 			"color": "#f23833",
 			"fx": {
-				"dmg": 6,
-				"burn_pct": 15
+				"dmg": 6.0,
+				"burn_pct": 15.0
 			},
 			"text": "+{dmg}% damage, burns +{burn_pct}%."
 		},
@@ -20,8 +20,8 @@
 			"rarity": 0,
 			"color": "#4073ff",
 			"fx": {
-				"cdr": 6,
-				"chill_pct": 15
+				"cdr": 6.0,
+				"chill_pct": 15.0
 			},
 			"text": "Skills recharge {cdr}% faster, chills +{chill_pct}%."
 		},
@@ -33,7 +33,7 @@
 			"color": "#33d959",
 			"fx": {
 				"regen": 1.5,
-				"poison_dmg": 15
+				"poison_dmg": 15.0
 			},
 			"text": "+{regen} life a second, poison +{poison_dmg}%."
 		},
@@ -44,8 +44,8 @@
 			"rarity": 0,
 			"color": "#ffcc40",
 			"fx": {
-				"ias": 5,
-				"crit": 3
+				"ias": 5.0,
+				"crit": 3.0
 			},
 			"text": "+{ias}% attack speed, +{crit}% critical chance."
 		},
@@ -56,8 +56,8 @@
 			"rarity": 0,
 			"color": "#b359f2",
 			"fx": {
-				"mana_pct": 15,
-				"res": 6
+				"mana_pct": 15.0,
+				"res": 6.0
 			},
 			"text": "+{mana_pct}% mana, +{res}% resistances."
 		},
@@ -68,7 +68,7 @@
 			"rarity": 0,
 			"color": "#40404d",
 			"fx": {
-				"crit_dmg": 25
+				"crit_dmg": 25.0
 			},
 			"text": "Critical hits deal +{crit_dmg}%."
 		},
@@ -79,7 +79,7 @@
 			"rarity": 0,
 			"color": "#990d1a",
 			"fx": {
-				"ls": 2
+				"ls": 2.0
 			},
 			"text": "{ls}% life steal."
 		},
@@ -90,7 +90,7 @@
 			"rarity": 0,
 			"color": "#59bf8c",
 			"fx": {
-				"life_pct": 10
+				"life_pct": 10.0
 			},
 			"text": "+{life_pct}% life."
 		},
@@ -101,7 +101,7 @@
 			"rarity": 0,
 			"color": "#d1e0ff",
 			"fx": {
-				"frw": 6
+				"frw": 6.0
 			},
 			"text": "+{frw}% run speed."
 		},
@@ -112,7 +112,7 @@
 			"rarity": 2,
 			"color": "#ff5973",
 			"fx": {
-				"life_pct": 20,
+				"life_pct": 20.0,
 				"regen": 2.5
 			},
 			"text": "+{life_pct}% life, +{regen} life a second."
@@ -124,9 +124,9 @@
 			"rarity": 2,
 			"color": "#e6f2ff",
 			"fx": {
-				"dmg": 8,
-				"life_pct": 8,
-				"ias": 6
+				"dmg": 8.0,
+				"life_pct": 8.0,
+				"ias": 6.0
 			},
 			"text": "+{dmg}% damage, +{life_pct}% life, +{ias}% attack speed."
 		},
@@ -137,7 +137,7 @@
 			"rarity": 2,
 			"color": "#f28033",
 			"fx": {
-				"dmg": 14
+				"dmg": 14.0
 			},
 			"text": "+{dmg}% damage."
 		},
@@ -153,9 +153,9 @@
 			"text": "Once this run, a killing blow is refused: you rise at {life}% life in a burst of fire.",
 			"proc": "undying",
 			"k": {
-				"life": 60,
-				"secs": 99999,
-				"burst": 1
+				"life": 60.0,
+				"secs": 99999.0,
+				"burst": 1.0
 			}
 		},
 		{
@@ -170,8 +170,8 @@
 			"text": "Every {n}th hit calls lightning down on its foe ({pct}% weapon damage).",
 			"proc": "nth_hit_bolt",
 			"k": {
-				"n": 8,
-				"pct": 150,
+				"n": 8.0,
+				"pct": 150.0,
 				"r": 3.0
 			}
 		},
@@ -187,8 +187,8 @@
 			"text": "Every kill adds +{per}% damage for the rest of the run (up to {most}%).",
 			"proc": "hunger",
 			"k": {
-				"per": 1,
-				"most": 35
+				"per": 1.0,
+				"most": 35.0
 			}
 		},
 		{
@@ -198,7 +198,7 @@
 			"rarity": 3,
 			"color": "#73f2f2",
 			"fx": {
-				"offer_plus": 1
+				"offer_plus": 1.0
 			},
 			"text": "Camp chests offer one more choice."
 		},
@@ -209,7 +209,7 @@
 			"rarity": 3,
 			"color": "#ffd959",
 			"fx": {
-				"rarity_up": 1
+				"rarity_up": 1.0
 			},
 			"text": "Camp chests' offers are one step rarer."
 		}
