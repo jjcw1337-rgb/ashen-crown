@@ -12,7 +12,8 @@ identical runs.
 | What does each skill effect cost? | `tools/fx_bench.gd -- [classes] [rounds]` | after warming |
 | Title, camp, first casts | `tools/hitch_probe.gd -- title\|camp\|skills <cls>` | |
 | Which call was slow? | run with `--fx-timing` | prints skill/effect calls over 6 ms |
-| fps per scenario, every night | `scripts/kpi.gd`, `tools/nightly/bench.sh` | camp, moor, fight, boss, arena, crypt, server |
+| FPS and six-actor PvP floods | `scripts/kpi.gd`, `tools/nightly/bench.sh` | camp, moor, fight, boss, arena, Battlegrounds, PvP, server |
+| Has the published build regressed? | [nightly audit](../perf/NIGHTLY_AUDIT.md) | 22:30 Mac local time; three repeats, lifecycle checks and a retained report |
 | What does a server cost? | `tools/load_bot.gd` against a server, then `ps`/`/proc` on the host | RAM, CPU per mode, with players fighting |
 
 All frame tools need a display. Run tools that use `Sfx` through `tools/_late.gd`
@@ -35,13 +36,12 @@ rejects synchronous gameplay cache misses. Never promote a baseline just because
 Actual six-client team/round correctness is a separate test, not implied by that replay. The complete suite,
 not a single successful scene, is required for performance acceptance. See [results and limits](../perf/IMPLEMENTATION_RESULTS.md).
 
-The functional gate runs tools after autoload initialization and rejects nonzero exits and script/compile/runtime
-errors. Its known Godot4.3 dummy null-mesh defect is explicitly counted, never called an error-free render pass.
-Use `GATE_BG_PORT`, `GATE_PVP_PORT`, `GATE_COOP_PORT`, `GATE_QUEUE_PORT` and `GATE_LAN_PORT` for separate local test ports;
-never collide with another agent's servers. A functional gate is separate from the rendered performance budgets.
-On macOS the gate defaults to native rendering for title/character/Archer checks (`GATE_UI_RENDERED=1`).
-Other platforms default headless; the flag can explicitly select native rendering on a display machine. The historical Godot4.3
-headless title/character shutdown emits a PagedAllocator error on the pre-change baseline too; it is retained
-as a defect, not added to the error allowlist. Those historical rendered title/character/Archer checks were clean; engine upgrades require rerunning them. Archer also reproduces the shutdown error headless
-on the candidate despite explicit scene teardown; its baseline has not been rerun. Tools which instantiate the
-main scene must set `current_scene` explicitly, matching a normal game launch.
+The functional gate checks exit codes and runtime logs as well as assertions. Native rendering and actual
+network tests cover different behavior; a passing spell replay alone does not verify a multiplayer match.
+Keep engine-specific failures and incomplete runs visible; detailed history belongs in the
+[staging results](../perf/STAGING_RESULTS.md), not an expanding error allowlist.
+
+On the shared Mac, claim `heavy-tests` and respect the legacy nightly lock. Use isolated saves and separate
+ports (`GATE_BG_PORT`, `GATE_PVP_PORT`, `GATE_COOP_PORT`, `GATE_QUEUE_PORT`, `GATE_LAN_PORT`). Tools that instantiate
+the main scene set `current_scene`, matching a normal launch. See [coverage](../perf/COVERAGE.md) for what is
+implemented, verified and still pending. The nightly report can be deferred; that is not a performance pass.

@@ -6,15 +6,18 @@ machine). Claude reads it through CLAUDE.md, which holds the full code map and t
 ## Read first
 
 1. **The default patterns:** follow these unless a task says otherwise, and update them when you change a pattern.
-   - [Loading and first-time costs](docs/patterns/loading.md): ResCache, warm-ups, no shader per cast, zone preloads
+   - [Loading and first-time costs](docs/patterns/loading.md): shared preparation, resource ownership, warm-ups
    - [Dedicated servers](docs/patterns/servers.md): the stripped server export, no pixels or meshes on servers,
      the 30 fps tick, matches started when there is room
    - [Multiplayer shape](docs/patterns/multiplayer.md): Enter World + Steam co-op vs. lobby-browser matches on our servers
    - [Skill effects](docs/patterns/effects.md): effects are events; handlers only draw
-   - [Measuring](docs/patterns/measuring.md): which tool, how many runs, the budgets
+   - [Measuring](docs/patterns/measuring.md): tools, PvP stress, nightly audit and budgets
    - [Code organization](docs/patterns/code-organization.md): where things live, typed GDScript, tests, branches
 2. **CLAUDE.md**: the code map ("Code map"), every system's rules and gotchas, and the test list.
 3. **CONTRIBUTING.md**: human setup and workflow.
+
+Use these short guides for day-to-day decisions; implementation details and evidence live in the linked docs.
+Prefer the existing shared path and the smallest measured change that solves the problem.
 
 ## Ground rules
 

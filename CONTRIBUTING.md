@@ -124,11 +124,10 @@ Keep it under ~90 MB (GitHub's limit per file is 100 MB).
 
 ## Content and performance changes
 
-Use the shared [content preparation contract](docs/perf/IMPLEMENTATION.md) for new zones, classes,
-models and effects. Declare dependencies, acquire/release the owning resource scope, and prepare visuals
-before activation. Keep simulation dependencies separate from client presentation. Do not introduce
-an independent cache or a synchronous gameplay load to fix an individual hitch.
+Follow the existing [loading](docs/patterns/loading.md), [effects](docs/patterns/effects.md) and
+[measuring](docs/patterns/measuring.md) guides. Reuse preparation/ownership, keep server simulation separate
+from presentation, and check the affected gameplay plus first-use, memory and loading costs.
 
-Run `python3 tools/ci/perf_contracts.py godot` on an imported project and the relevant gameplay tests.
-Performance acceptance uses three focused runs with runtime logs, first-use stalls, memory and load times;
-the six-actor `pvp3v3` spell flood is mandatory in the full suite. CI export success alone is not an FPS pass.
+[Coverage and rollout status](docs/perf/COVERAGE.md) links the contracts, PvP stress checks and installed
+nightly audit. Use it to see what is already covered and what still needs proof; CI export success alone
+is not an FPS pass.

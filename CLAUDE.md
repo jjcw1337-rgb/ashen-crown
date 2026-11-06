@@ -16,6 +16,8 @@ Actions exports Web + Windows + Linux + Mac and publishes them to GitHub Pages.
 [multiplayer](docs/patterns/multiplayer.md) · [effects](docs/patterns/effects.md) ·
 [measuring](docs/patterns/measuring.md) · [code organization](docs/patterns/code-organization.md).
 When you change one of these patterns, update its file in the same commit.
+Shared performance work: [coverage and rollout status](docs/perf/COVERAGE.md);
+[installed nightly audit](docs/perf/NIGHTLY_AUDIT.md). Preparation and verification are separate: check the status before calling it shipped.
 
 ## Getting the tools (Linux)
 
@@ -99,6 +101,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `build_env.gd`, `nakama_client.gd`, `cloud_saves.gd` | Which backend a build uses; the Nakama REST client; characters kept in Nakama (see "Staging and accounts") |
 | `battlegrounds.gd` | Battlegrounds prototype: the raid map, the dedicated server's raid logic (respawns, carried loot, extraction, the stash), the client's id and cached stash |
 | `vigil.gd`, `flame_board.gd` | The Last Flame (zone `"vigil"`): the endless co-op horde defence under the Act I camp, its sanctum, waves, flame and HUD; its leaderboard (see "The Last Flame") |
+| `content_catalog.gd`, `res_cache.gd` | Shared asset declarations, background loading and owner scopes; reuse through Game preparation and release when the owner leaves |
+| `surface_materials.gd` | Surface overrides with safe instance retirement while shared meshes stay cached |
 | `kpi.gd` | The official performance KPIs: scripted scenarios measured frame by frame (`--kpi`), see docs/nightly/KPIS.md |
 | `shared_skills.gd`, `shared_fx.gd`, `elemental_fx.gd` | The shared skills every class can use (`"cls": "any"`): their gameplay and their effects (`ElementalFx`: Earthshatter's crack and rock spikes, Frost Nova's frost and ice crystals, War Cry's sigil and dust wave); Arc's lightning is `arc_fx.gd` `ArcFx` (jj's redo: Blender-rendered branching bolts, `tools/blender/fx/lightning_bolts.py` -> `tools/fx_bolt_atlas.py` -> `assets/textures/fx/storm/bolts.png`, stretched between the leaps with a blurred-mip halo; the Meshy plasma charge and Lichtenberg burn `lightning_scorch`; sounds `arc_zap`, `arc_hit`) |
 | `skill_spec.gd` | The skill format (`SkillSpec`): a skill's timing, damage, area and damage over time read from its `Data.SKILLS` entry |

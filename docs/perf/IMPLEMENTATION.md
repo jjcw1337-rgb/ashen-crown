@@ -1,8 +1,8 @@
 # Shared content preparation implementation
 
-This branch implements a common preparation path in the existing Godot 4.3 game. It is a preview candidate;
+This branch implements a common preparation path in the existing game, now integrated with Godot 4.4.1. It is a preview candidate;
 performance acceptance is separate from successful functional tests and exports. See IMPLEMENTATION_RESULTS.md
-for measured results and remaining limits. It does not change damage, PvP rules, or network RPC signatures.
+for historical results; [COVERAGE.md](COVERAGE.md) tracks current verification and remaining work. It does not change damage, PvP rules, or network RPC signatures.
 
 ## The three systems developers use
 

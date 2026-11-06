@@ -15,10 +15,10 @@ frame is ~18 ms).
 2. **Never create a `Shader` per cast or per spawn.** Make it once and keep it in a `static var`:
    `if _sh == null: _sh = Shader.new(); _sh.code = ...`. Each fresh Shader compiles again and creates new GPU
    pipelines.
-3. **Warm what will first appear during play under the loading screen.** Godot 4.3 compiles GPU pipelines the first
-   time something is drawn on camera, so building it unseen is not enough: it has to be drawn. A shader is also freed
+3. **Warm what will first appear during play under the loading screen.** First-use GPU preparation can remain after a
+   resource loads, so exercise the actual rendered variant; building it unseen is not enough. A shader is also freed
    with its last material, so keep the materials (`SkillWarm.keep`). The warm-ups that exist:
-   - `SkillWarm` (`scripts/skill_warm.gd`): every party class's skill effects, replayed on hidden puppets from
+   - `SkillWarm` (`scripts/skill_warm.gd`): prepared class skill effects (current class in solo, all classes online), replayed on puppets from
      recorded events (`SkillWarmData`, re-recorded by `tools/skill_warm_capture.gd` after a skill's effects change).
    - `MonsterWarm` (`scripts/monster_warm.gd`): every monster kind that can still turn up in the zone. A new
      place that spawns monsters mid-zone needs its kinds added to `MonsterWarm.kinds`.
@@ -40,25 +40,15 @@ frame is ~18 ms).
 See [measuring.md](measuring.md): `tools/app_hitch_audit.gd` (first times across the game), `tools/stress_fight.gd`
 (a big fight), `tools/fx_bench.gd` (each effect), `--fx-timing`.
 
-## Not covered yet (open work)
+## Lifetimes and open work
 
-Full performance acceptance for monster/boss effects and every map/class combination, a cold first launch
-(empty shader caches), memory over a long session, and machines other than the Mac mini. Online zone entry and Steam/LAN host admission prepare all classes, including late arrivals; roster-specific readiness and tighter residency are open.
-Catalog/resource functionality and representative 3v3 rendering are verified, not a blanket FPS guarantee. The budgets these must meet are in
-[measuring.md](measuring.md).
+Opening a solo world to friends uses `Game.prepare_host_presentation`; it reuses the combat scope without
+rebuilding the world. Return to title releases combat/warm-only references. Some legacy caches remain
+session-long; ownership release does not free resources still held by live nodes.
 
-Opening a solo world to friends calls `Game.prepare_host_presentation` before creating the transport/lobby.
-It uses the same combat ownership and visual preparation as zone entry; it does not rebuild the world.
+Use `SurfaceMaterials.assign(instance, surface, material)` for surface overrides; custom mesh scripts inherit
+`SurfaceMaterials`. It clears overrides before deletion to avoid stale material handles with cached meshes
+(Godot #85817), without copying the meshes. The lifecycle test exercises retention and release.
 
-## Shared meshes and per-instance materials
-
-Use `SurfaceMaterials.assign(mesh_instance, surface, material)` for surface overrides. It installs a
-small MeshInstance3D script that clears those overrides at `NOTIFICATION_PREDELETE`. Custom scripted
-mesh instances that need surface overrides must inherit `SurfaceMaterials`; the helper never replaces
-an existing custom script. Reparenting and normal rendering retain their materials.
-
-This handles [Godot #85817](https://github.com/godotengine/godot/issues/85817): a cached mesh may outlive
-its instance, and deletion can flush a stale material RID. Do not duplicate every mesh or pin every
-material to hide the error. The CI content contract rejects direct setters outside the helper; the
-nightly/CI regression tests cover mixed overrides, retained meshes, immediate/queued destruction,
-reparenting, custom subclasses and weak-reference release. Keep the strict runtime error gate.
+See [coverage and remaining work](../perf/COVERAGE.md). Only grass assembly is incremental so far; online
+roster-specific preparation, other expensive builders and long-session memory still need measured work.
