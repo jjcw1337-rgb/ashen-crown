@@ -436,7 +436,7 @@ func _on_level(l: int) -> void:
 	Telemetry.crumb("level", {"level": l})
 	ui.big_message("Level %d" % l)
 	if hero.run != null:
-		ui.message("Stronger: your attributes rise with every level  ·  camp chests bring skills and passives", Color(1, 0.85, 0.4))
+		ui.message("Stronger: your attributes rise with every level  ·  camp chests bring skills, talents and gems", Color(1, 0.85, 0.4))
 	else:
 		ui.message("+5 stat points (press C)  ·  +1 talent point (press N)", Color(1, 0.85, 0.4))
 
