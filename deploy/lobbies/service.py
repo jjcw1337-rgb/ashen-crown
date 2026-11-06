@@ -7,6 +7,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 MODES = {'arena': (2, 6), 'battlegrounds': (1, 16), 'waves': (1, 4)}
+MAPS = ('crypt', 'peak')      # Battlegrounds' maps (Battlegrounds.MAPS): the Hollow Crypt, Peak Ruins
 # What one match costs, measured on the staging droplet (4 GB, 2 vCPU) with bot players on the stripped server build
 # (Blaine's capacity audit, 2026-11-05: a Battlegrounds world ~0.4-0.46 GB; 6 players fighting ~0.25 of a core, so the
 # budget allows some heavier fights). (MB, cores). Arena is a small map with no monsters; Waves is a full co-op zone.
@@ -61,6 +62,7 @@ class Lobbies:
         return self.rooms[rid]
     def public(self, r, uid):
         out = {k:r[k] for k in ('id','name','mode','team_size','capacity','state','owner','members','created','reason','wager')}
+        out['map'] = r.get('map','')
         out = json.loads(json.dumps(out))
         out['joined']=sum(not m.get('departed',False) for m in r['members'].values())
         out['joinable'] = r['state']=='waiting' or (r['state']=='playing' and r.get('joinable',False))
@@ -82,8 +84,10 @@ class Lobbies:
                 if mode not in MODES or type(team) is not int or team not in (1,2,3): raise Rejected('Choose a supported mode and team size.')
                 if any(uid in r['members'] and not r['members'][uid].get('departed',False) and r['state'] in ('waiting','starting','playing') for r in self.rooms.values()): raise Rejected('Leave your current lobby first.')
                 if p.get('wager',False) and mode!='arena': raise Rejected('Optional stakes are for Arena; Battlegrounds already has its extraction rules.')
+                bg_map = str(p.get('map','crypt')) if mode=='battlegrounds' else ''
+                if mode=='battlegrounds' and bg_map not in MAPS: raise Rejected('Choose a Battlegrounds map.')
                 rid = secrets.token_hex(8)
-                r = dict(id=rid,name=str(p.get('name','Adventure'))[:48],mode=mode,team_size=team,capacity=team*2 if mode=='arena' else MODES[mode][1],state='waiting',owner=uid,members={},created=self.clock(),touched=self.clock(),reason='',wager=bool(p.get('wager',False)))
+                r = dict(id=rid,name=str(p.get('name','Adventure'))[:48],mode=mode,team_size=team,capacity=team*2 if mode=='arena' else MODES[mode][1],state='waiting',owner=uid,members={},created=self.clock(),touched=self.clock(),reason='',wager=bool(p.get('wager',False)),map=bg_map)
                 self.rooms[rid]=r; self.add(r,uid,p)
             else:
                 r=self.room(str(p.get('id','')))
@@ -217,6 +221,7 @@ class Service:
         port=next((p for p in range(self.args.first_port,self.args.first_port+self.args.ports) if p not in ports),None)
         if port is None: raise Rejected(FULL)
         manifest={k:r[k] for k in ('id','mode','team_size','capacity','worker_key','members')}
+        manifest['map']=r.get('map','') or 'crypt'
         manifest['broker']='http://127.0.0.1:%d'%self.args.port
         path=self.root/(r['id']+'.json');path.write_text(json.dumps(manifest));path.chmod(0o600)
         log=(self.root/(r['id']+'.log')).open('ab')

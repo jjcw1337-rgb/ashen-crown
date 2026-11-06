@@ -242,6 +242,8 @@ func _ready() -> void:
 		add_child(Telemetry.new(self))      # player telemetry and error reports (scripts/telemetry.gd)
 	if Kpi.start(self):
 		return       # the official performance KPIs (scripts/kpi.gd): a scripted scenario, measured, then quit
+	if args.has("--bg-map") and args.find("--bg-map") + 1 < args.size():
+		Battlegrounds.map_id = str(args[args.find("--bg-map") + 1])
 	if args.has("--server"):
 		Enemy.server_nopose = not args.has("--pose")      # nobody sees a server's bodies (Enemy.server_nopose)
 		# the Battlegrounds' dedicated server: `godot --headless --path . -- --server [--port N]`
@@ -552,10 +554,10 @@ func _sea_sounds() -> void:
 
 ## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
-	return cur_zone == Battlegrounds.ZONE or cur_zone == Vigil.ZONE or cur_zone == "arena" or cur_zone == Sandbox.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
+	return cur_zone == Battlegrounds.ZONE and not Battlegrounds.outdoor() or cur_zone == Vigil.ZONE or cur_zone == "arena" or cur_zone == Sandbox.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
 
 func _zone_env(kind: String) -> void:
-	var inside := kind == Battlegrounds.ZONE or kind == Vigil.ZONE or kind == "arena" or kind == Sandbox.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
+	var inside := kind == Battlegrounds.ZONE and not Battlegrounds.outdoor() or kind == Vigil.ZONE or kind == "arena" or kind == Sandbox.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
 	var snowy := is_snowy() and not inside
 	var ashen := difficulty >= 2 and not inside
 	RenderingServer.global_shader_parameter_set("snow_amt", 1.0 if snowy else 0.0)
@@ -625,7 +627,25 @@ func _zone_env(kind: String) -> void:
 		sun.light_energy = 0.85 if kind == "town" else 0.75
 		hero.light.light_energy = 0.9
 		hero.light.omni_range = 10.0
-		if kind == "town" and world.theme.get("forest_camp", false):
+		if kind == Battlegrounds.ZONE:
+			# Peak Ruins: a cold dusk above the clouds, snow on the wind, the braziers the warm light
+			sky_mat.sky_top_color = Color(0.12, 0.15, 0.24)
+			sky_mat.sky_horizon_color = Color(0.62, 0.5, 0.46)
+			sky_mat.ground_horizon_color = Color(0.4, 0.42, 0.48)
+			env.ambient_light_energy = 0.55
+			env.tonemap_exposure = 1.2
+			env.fog_light_color = Color(0.45, 0.48, 0.56)
+			env.fog_density = 0.0025
+			env.fog_height = -20.0
+			env.fog_height_density = 0.0
+			env.volumetric_fog_density = 0.004
+			sun.light_color = Color(0.9, 0.82, 0.78)
+			sun.light_energy = 0.8
+			hero.light.light_energy = 1.2
+			hero.light.omni_range = 11.0
+			weather.set_snow(true, quality)
+			RenderingServer.global_shader_parameter_set("snow_amt", 0.35)     # (a dusting: the stone still reads)
+		elif kind == "town" and world.theme.get("forest_camp", false):
 			# Act I's camp deep in the old forest: late dusk under the canopy. Cool blue-green light
 			# and low mist between the trees, so the bonfire, the lanterns and the rune stones glow
 			sky_mat.sky_top_color = Color(0.1, 0.13, 0.17)
@@ -1221,7 +1241,7 @@ func zone_title(act: int, zone: String) -> String:
 		"wild": return a["wild"] + tag
 		"lair": return ("Throne of the Ashen King" if difficulty >= 2 else a["lair"]) + tag
 		"coast": return str(a.get("coast", "The Coast")) + tag
-		Battlegrounds.ZONE: return Battlegrounds.TITLE
+		Battlegrounds.ZONE: return Battlegrounds.map_title()
 		"arena": return "The Proving Arena"
 		Vigil.ZONE: return Vigil.TITLE
 		Sandbox.ZONE: return Sandbox.TITLE
@@ -1883,7 +1903,7 @@ func start_battlegrounds(addr: String, id: String) -> void:
 		_bg_abort("Could not sign in to your account (%s)." % cloud.nk.last_error)
 		return
 	save_game()             # (marked in_raid from here on)
-	loading_lbl.text = "Descending into %s..." % Battlegrounds.TITLE
+	loading_lbl.text = ("Climbing to %s..." if Battlegrounds.outdoor() else "Descending into %s...") % Battlegrounds.map_title()
 	set_loading_art(Battlegrounds.ZONE)
 	loading.visible = true
 	if net.join(a[0], int(a[1])) != OK:
@@ -2081,9 +2101,9 @@ func _bg_home_camp(fell: bool) -> void:
 		await load_zone(cur_act, "town", "waypoint_town")
 	save_game()
 	if fell:
-		ui.message("%s is back from %s with nothing but their strength: everything they carried lies on its floor." % [char_name, Battlegrounds.TITLE], Color(1, 0.55, 0.45), 7.0)
+		ui.message("%s is back from %s with nothing but their strength: everything they carried lies on its floor." % [char_name, Battlegrounds.map_title()], Color(1, 0.55, 0.45), 7.0)
 	elif bg_gained >= 0:
-		ui.message("%s is back from %s with %d new item%s. All of it is theirs to keep." % [char_name, Battlegrounds.TITLE, bg_gained, "" if bg_gained == 1 else "s"], Color(0.6, 1.0, 0.6), 7.0)
+		ui.message("%s is back from %s with %d new item%s. All of it is theirs to keep." % [char_name, Battlegrounds.map_title(), bg_gained, "" if bg_gained == 1 else "s"], Color(0.6, 1.0, 0.6), 7.0)
 	bg_gained = -1
 
 func on_net_failed(msg: String) -> void:

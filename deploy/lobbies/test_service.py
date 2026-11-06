@@ -54,6 +54,10 @@ class LobbyTests(unittest.TestCase):
  def test_waves_and_bg_can_start_solo(self):
   for mode in ('waves','battlegrounds'):
    r=self.create(mode=mode);self.act('a',r,'ready',ready=True);self.act('a',r,'start');self.assertEqual(self.m.rooms[r['id']]['state'],'starting');self.m.rooms[r['id']]['state']='finished'
+ def test_battlegrounds_map(self):
+  r=self.m.call('a','create',{'mode':'battlegrounds','team_size':1,'character':'hero','player':'a','map':'peak'})['lobby']
+  self.assertEqual(r['map'],'peak')
+  with self.assertRaises(Rejected):self.m.call('b','create',{'mode':'battlegrounds','team_size':1,'character':'hero','player':'b','map':'moon'})
  def test_capacity_limit(self):
   r=self.pair();self.act('a',r,'start');second=self.create('x','waves');self.act('x',second,'ready',ready=True)
   with self.assertRaises(Rejected):self.act('x',second,'start')

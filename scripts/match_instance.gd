@@ -22,6 +22,7 @@ func start(g, path: String, port: int) -> void:
  game.ui.hide_title()
  Engine.max_fps=30
  var mode: String=str(config.mode)
+ Battlegrounds.map_id=str(config.get("map","crypt")) if Battlegrounds.MAPS.has(str(config.get("map","crypt"))) else "crypt"
  if mode=="battlegrounds":
   await Battlegrounds.start_server(game,port)
  elif mode=="arena":

@@ -42,6 +42,17 @@ extends Node
 
 const ZONE := "bg"
 const TITLE := "The Hollow Crypt"
+## The raid maps: the Hollow Crypt (underground) and Peak Ruins (bg_peak.gd: a summit above the clouds, jj's). The
+## lobby's host picks one (the match manifest's "map"); `--bg-map <id>` on a server or a client sets it for tests.
+const MAPS := {"crypt": "The Hollow Crypt", "peak": "Peak Ruins"}
+static var map_id := "crypt"
+
+static func map_title() -> String:
+	return str(MAPS.get(map_id, TITLE))
+
+## Peak Ruins is under the sky (Game.indoor, _zone_env).
+static func outdoor() -> bool:
+	return map_id == "peak"
 const MAX_PLAYERS := 16
 const RAID_SECS := 1200.0       # a round: 20 minutes
 const PORTALS_AT := 300.0       # the Extraction Portals open 5 minutes in
@@ -173,6 +184,9 @@ static func stash_col(t: Node, key: String):
 # ---------------------------------------------------------------- the map
 ## The Hollow Crypt. Cell (i, j) of a 4x4 grid; the middle 2x2 is the great hall.
 static func build(w: World) -> void:
+	if map_id == "peak":
+		BgPeak.build(w)
+		return
 	w.flat_floor = true
 	w.theme = {"name": "bg"}
 	var rooms := {}                 # Vector2i -> Rect2

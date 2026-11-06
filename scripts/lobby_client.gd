@@ -28,6 +28,7 @@ var _returning := false
 var admitted := false
 var lan_row: HBoxContainer # the home screen's LAN (Blaine, 2026-11-05: no menu of its own, still there)
 var host_box: VBoxContainer # the right side's "host a game" (hidden while you're in a lobby)
+var map_pick: OptionButton  # Battlegrounds' map (Battlegrounds.MAPS)
 ## The list's columns: title, width.
 const COLUMNS := [["MODE", 130], ["LOBBY", 190], ["HOST", 140], ["FORMAT", 120], ["PLAYERS", 80], ["STATUS", 90]]
 
@@ -68,7 +69,10 @@ func setup(g) -> void:
  team_pick.item_selected.connect(func(i):team_size=team_pick.get_item_id(i))
  options.add_child(team_pick)
  wager_pick=CheckButton.new();wager_pick.text="Play for items";options.add_child(wager_pick)
- var create=ui._iron_button("Create Lobby",400,54,21);create.name="create";create.pressed.connect(func():action("create",{"mode":selected_mode,"team_size":team_size,"name":_lobby_name(),"wager":wager_pick.button_pressed}));host_box.add_child(create);create_button=create
+ map_pick=OptionButton.new();map_pick.name="map"
+ for id in Battlegrounds.MAPS:map_pick.add_item(str(Battlegrounds.MAPS[id]));map_pick.set_item_metadata(map_pick.item_count-1,id)
+ options.add_child(map_pick)
+ var create=ui._iron_button("Create Lobby",400,54,21);create.name="create";create.pressed.connect(func():action("create",{"mode":selected_mode,"team_size":team_size,"name":_lobby_name(),"wager":wager_pick.button_pressed,"map":str(map_pick.get_item_metadata(map_pick.selected))}));host_box.add_child(create);create_button=create
  var solo=ui._iron_button("Play Waves Solo",400,44,18);solo.pressed.connect(play_solo_waves);host_box.add_child(solo)
  detail=VBoxContainer.new();detail.name="detail";detail.add_theme_constant_override("separation",8);right.add_child(detail)
  var bottom:=HBoxContainer.new();bottom.add_theme_constant_override("separation",12);vb.add_child(bottom)
@@ -176,6 +180,7 @@ func draw() -> void:
  for child in rows.get_children():child.queue_free()
  for child in detail.get_children():child.queue_free()
  team_pick.visible=selected_mode=="arena"
+ map_pick.visible=selected_mode=="battlegrounds"
  wager_pick.visible=selected_mode=="arena"
  if selected_mode!="arena":wager_pick.button_pressed=false
  var ui=game.ui
@@ -250,7 +255,7 @@ func _row(cells: Array, joinable: bool, join: Callable) -> Control:
 func _format(r: Dictionary) -> String:
  match str(r.mode):
   "arena":return "%dv%d%s"%[int(r.team_size),int(r.team_size)," · items" if bool(r.get("wager",false)) else ""]
-  "battlegrounds":return "Raid · %d max"%int(r.capacity)
+  "battlegrounds":return "%s · %d max"%[str(Battlegrounds.MAPS.get(str(r.get("map","crypt")) if str(r.get("map",""))!="" else "crypt","Raid")),int(r.capacity)]
   "waves":return "Co-op · %d max"%int(r.capacity)
  return ""
 
@@ -268,6 +273,9 @@ func enter_match() -> void:
  game.party_join_ticket=str(room.ticket)
  panel.hide()
  if str(room.mode)=="battlegrounds":
+  # the raid's map, built the same way on every player's game (Battlegrounds.MAPS)
+  var m:String=str(room.get("map","crypt"))
+  Battlegrounds.map_id=m if Battlegrounds.MAPS.has(m) else "crypt"
   await game.start_battlegrounds(str(room.address),character)
  else:
   game.arena_mode=str(room.mode)=="arena"
@@ -294,6 +302,7 @@ func finished(reason: String) -> void:
   game.bg_mode=false
   if not admitted:game.load_game()
  match_id="";room={}
+ Battlegrounds.map_id="crypt"
  await game.exit_to_title()
  await collect()
  game.ui.message(reason)
