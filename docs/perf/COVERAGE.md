@@ -23,7 +23,7 @@ Earlier improvements also increased loading time and VRAM; no complete performan
 ## Integration with Claude's current work
 
 Reviewed committed `test-godot-44` through af34478: multiplayer run characters, camps, survivors and the
-Verdant Reach replace parts of the old flow/map. Integrated committed changes through af34478 in a4c37c8. Claude's subsequent uncommitted lobby redesign remains separate.
+Verdant Reach replace parts of the old flow/map. Integrated committed changes through af34478 in a4c37c8. Claude's committed lobby redesign through 10652ed is now integrated, with Sandbox actions in MpLobbyView.
 Preserve those product decisions. Adapt the catalog, builder scheduling and affected tests to the new paths;
 do not restore retired modes merely to satisfy old fixtures. The existing `crypt` KPI identifier currently
 means the Battlegrounds scenario; verify what it actually builds before comparing old/new map measurements.
@@ -40,3 +40,10 @@ Fifty-four broker/HTTP, thirteen nightly-audit and thirteen benchmark/log checks
 GDScript files parse with gdtoolkit (grammar only, not native compilation). Bash syntax and diff checks pass.
 The installed audit runner includes the additions; its full exported workload awaits their staging rollout.
 No new GPU results, full green gate, staging push, live Sandbox or server-capacity gain is claimed.
+
+
+Follow-up integration: preserved Claude's new screen and broker class-picking operation; Sandbox class
+changes clear Ready before Start. Merged gate includes run/camp/survivor checks and keeps strict runtime
+log checks. Shared catalog/cache now covers the new menu art. Merged broker/HTTP suite: 56 passed;
+eight affected GDScript files grammar-parse, Bash/diff checks clean. Native screen/gameplay verification
+still awaits the occupied shared test slot; no new runtime performance claim.

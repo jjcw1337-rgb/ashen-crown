@@ -38,14 +38,26 @@ func run():
   c.room={};c.rooms=[{"id":"l1","name":"Aldric's Battlegrounds","mode":"battlegrounds","team_size":1,"capacity":16,"state":"waiting","owner":"o1","members":{"o1":{"name":"Aldric"}},"joined":3,"joinable":true},
    {"id":"l2","name":"Mira's Arena","mode":"arena","team_size":2,"capacity":4,"state":"waiting","owner":"o2","members":{"o2":{"name":"Mira"}},"joined":1,"joinable":true,"wager":true},
    {"id":"l3","name":"Doug's Endless Waves","mode":"waves","team_size":1,"capacity":4,"state":"playing","owner":"o3","members":{"o3":{"name":"Doug"}},"joined":4,"joinable":false}]
-  c.draw();await shot("browser-"+str(size.x))
-  check(c.rows.get_child_count()>=3,"the list shows every open game "+str(size.x))
-  check(c.panel.size.x*c.panel.scale.x<=size.x-20,"the browser fits the screen width "+str(size.x))
+  c.loaded=true;c.selected_mode="battlegrounds";c.draw();await shot("browser-"+str(size.x))
+  # (MpLobbyView: one mode's lobbies at a time, chosen by the tabs; Waves never listed)
+  check(c.rows.get_child_count()==1 and c.view.find_child("tab_arena",true,false)!=null and c.view.find_child("tab_waves",true,false)==null,"the list shows this mode's open games, tabs for the others "+str(size.x))
+  c.selected_mode="arena";c.draw();await shot("browser-arena-"+str(size.x))
+  check(c.rows.get_child_count()==1,"the Arena tab lists the Arena's games "+str(size.x))
+  var vis:Rect2=root.get_visible_rect()
+  check(vis.grow(1).encloses(c.panel.get_global_rect()) and c.panel.get_global_rect().size.x>=vis.size.x-2,"the screen fills the window, nothing past it "+str(size.x))
   c.rooms=[]
   c.room={"id":"sample","name":"Arena 3v3","mode":"arena","team_size":3,"capacity":6,"state":"waiting","owner":"a","wager":true,"members":{}}
   for i in 6:c.room.members[str(i)]={"name":"Hero "+str(i+1),"team":0 if i<3 else 1,"ready":true,"stake":{"name":"Rare longsword"}}
   c.draw();await shot("stakes-"+str(size.x))
-  check(c.panel.size.y*c.panel.scale.y<=size.y-20,"full item lobby fits viewport height")
+  var on_screen:=true
+  for nm in ["leave","ready","start","back","survivors_top"]:
+   var b=c.view.find_child(nm,true,false)
+   if b==null or not root.get_visible_rect().grow(1).encloses(b.get_global_rect()):on_screen=false;print("[LOBBY-UI] off screen: ",nm)
+  check(on_screen,"a full 3v3 lobby keeps every control on screen "+str(size.x))
+  c.room={"id":"bgs","name":"Raid","mode":"battlegrounds","capacity":16,"state":"waiting","owner":"a","members":{"a":{"name":"Archer","character":"run_archer"}}}
+  c.draw();await shot("prep-bg-"+str(size.x))
+  var tiles=c.view.find_child("class_tiles",true,false)
+  check(tiles!=null and root.get_visible_rect().grow(1).encloses(tiles.get_global_rect()) and root.get_visible_rect().grow(1).encloses(c.view.find_child("ready",true,false).get_global_rect()),"the class tiles and Ready fit "+str(size.x))
   c.room={};c.panel.hide()
  c.set_process(false);c.panel.hide()
  await g.start_game(true,"knight","uihero")

@@ -126,6 +126,17 @@ class Lobbies:
                         if p.get('ready',False) and r['wager'] and not r['members'][uid].get('stake'): raise Rejected('Lock one item first, then confirm Ready to accept the displayed stakes.')
                         r['members'][uid]['ready']=bool(p.get('ready',False))
                     r['members'][uid]['seen']=self.clock()
+                elif op=='pick':
+                    # a member's class (Battlegrounds: run_<class>) or survivor (Arena) changes while the lobby waits;
+                    # it un-readies them, so nobody starts on a choice the others haven't seen
+                    if r['state']!='waiting' or uid not in r['members']: raise Rejected('This lobby is not waiting for players.')
+                    char=str(p.get('character',''))
+                    if not char or len(char)>100 or not all(c.isalnum() or c in '-_' for c in char): raise Rejected('Select a character first.')
+                    if r['members'][uid].get('stake'): raise Rejected('Your item is locked for this lobby.')
+                    r['members'][uid]['character']=char
+                    r['members'][uid]['name']=str(p.get('player',r['members'][uid]['name']))[:32]
+                    r['members'][uid]['ready']=False
+                    r['members'][uid]['seen']=self.clock()
                 elif op=='start':
                     if uid!=r['owner'] or r['state']!='waiting': raise Rejected('Only the waiting lobby owner can start.')
                     if r['wager'] and not all(m.get('stake') for m in r['members'].values()): raise Rejected('Everyone must commit an item.')

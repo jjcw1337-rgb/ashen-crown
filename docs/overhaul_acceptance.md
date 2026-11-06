@@ -19,16 +19,19 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 
 ## 3. Full multiplayer UI redesign (Valorant-inspired modern fantasy)
 - 🟡 The visual system exists (`MpStyle`: palette, Cinzel/Inter) and the run's windows use it: build, gear swap, camp upgrade, results, roster (`run_ui_shots`, `survivor_test`).
-- ⬜ Not redesigned yet: multiplayer entry, mode selection, lobby browser, lobby preparation and class selection. **Not proven yet.**
+- ✅ Multiplayer entry, mode selection (tabs), lobby browser and lobby preparation redesigned (`MpLobbyView`): the mode's painted art (Meshy, `assets/textures/ui/mp_*.jpg`), large type, one gold primary action, the chosen class large on the title's lit stage. Proven at 1024x768, 1280x720 and 1920x1080: `lobby_ui_test` (every control on screen, tiles and Ready fit, nothing past the window), `mp_lobby_shots` (15 checks + screenshots).
+- ⬜ Transitions between states and focus/keyboard navigation reviewed. **Not proven yet.**
 
 ## 4. Simple journey: Multiplayer → browse/create → mode → prepare → ready → play
-- 🟡 Works end to end with the existing lobby (`lobby_*` tests, `bg_test`); mode, host, players, capacity and joinability are shown in the list.
-- ⬜ Filtering, the designed loading/empty/full/failure/disconnected states, distinct mode artwork. **Not proven yet.**
+- 🟡 Works end to end with the existing lobby service (`bg_test`); mode (tabs), host, players, capacity, state and joinability shown (`mp_lobby_shots`).
+- ✅ Filtering (All / Joinable now), loading, empty, full (Join disabled, "Full") and service-failure (Retry, selections kept) states; distinct mode artwork (`mp_lobby_shots` screenshots).
+- ⬜ A disconnected-from-match state in the new look (the old message path is used). **Not proven yet.**
 - ✅ The survivor roster is reachable from the lobby (Survivors button; `survivor_test`).
 
 ## 5. Battlegrounds class selection inside the lobby
 - 🟡 A class choice in the lobby (`LobbyClient.class_pick`, sent as `run_<class>`; `survivor_test`); a fresh level-0 run character with a basic attack and empty slots (`run_build_test`, `bg_test`).
-- ⬜ Class tiles with a large selected presentation; every member's class and ready state shown. **Not proven yet.**
+- ✅ Class tiles with the selected class large on the stage (name, role, playstyle, its skills); every member's class and ready state; a class change in the lobby un-readies its member (service `pick`, `test_pick_changes_class_and_unreadies`; `mp_lobby_shots`, `lobby_ui_test`).
+- ⬜ The class change through a real service and two clients. **Not proven yet** (step 7).
 - ⬜ A level-0 character can clear a starting camp: **not proven by a fight yet** (tier I monsters are level 1; to prove with the verification bot run, step 7).
 
 ## 6. Survivors roster

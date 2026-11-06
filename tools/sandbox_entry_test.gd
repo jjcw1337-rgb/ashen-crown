@@ -19,11 +19,12 @@ func run() -> void:
  while g._busy or g.world==null or not g.ui.title_panel.visible:await process_frame
  var lobby=g.lobby_client
  lobby.set_process(false)
+ lobby.panel.show()
  var mode=load("res://scripts/mp_mode.gd")
  var original_count: int=g.list_characters().size()
  for name in mode.MODES:
   lobby.selected_mode=name;lobby.draw()
-  check(lobby.solo_button.visible==(name=="sandbox"),"solo belongs only to selected Sandbox: "+name)
+  check((is_instance_valid(lobby.solo_button) and lobby.solo_button.is_visible_in_tree())==(name=="sandbox"),"solo belongs only to selected Sandbox: "+name)
  check(mode.solo_label("waves")=="","retired Waves has no solo action")
  g.dev_tools=false
  lobby.selected_mode="sandbox"

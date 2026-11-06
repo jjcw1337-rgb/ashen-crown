@@ -1434,6 +1434,7 @@ func _boot_preload() -> void:
 	for dir in BOOT_PRELOAD:
 		if dir != "res://assets/models/fort/":
 			paths.append_array(ContentCatalog.files(dir, false))
+	paths.append_array(ContentCatalog.LOBBY_ART.values())
 	ResCache.prepare(_boot_scope, paths)
 
 func _await_preloads(_max_s := 60.0) -> void:

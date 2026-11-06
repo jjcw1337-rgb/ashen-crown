@@ -27,6 +27,13 @@ class LobbyTests(unittest.TestCase):
   for i in range(5):self.act(str(i),r,'join')
   with self.assertRaises(Rejected):self.act('overflow',r,'join')
   self.assertEqual(len(live['members']),6)
+ def test_sandbox_class_pick_clears_ready_and_rejects_change_after_start(self):
+  r=self.create(mode='sandbox');self.act('a',r,'ready',ready=True)
+  self.m.call('a','pick',{'id':r['id'],'character':'sandbox_serpent','player':'Serpent'})
+  member=self.m.rooms[r['id']]['members']['a']
+  self.assertEqual((member['character'],member['ready']),('sandbox_serpent',False))
+  self.act('a',r,'ready',ready=True);self.act('a',r,'start')
+  with self.assertRaises(Rejected):self.m.call('a','pick',{'id':r['id'],'character':'sandbox_demon'})
  def test_sandbox_time_limit_retires_worker(self):
   r=self.create(mode='sandbox');self.act('a',r,'ready',ready=True);self.act('a',r,'start')
   live=self.m.rooms[r['id']]
@@ -77,6 +84,12 @@ class LobbyTests(unittest.TestCase):
  def test_waves_and_bg_can_start_solo(self):
   for mode in ('battlegrounds',):
    r=self.create(mode=mode);self.act('a',r,'ready',ready=True);self.act('a',r,'start');self.assertEqual(self.m.rooms[r['id']]['state'],'starting');self.m.rooms[r['id']]['state']='finished'
+ def test_pick_changes_class_and_unreadies(self):
+  r=self.create(mode='battlegrounds');self.act('a',r,'ready',ready=True)
+  self.m.call('a','pick',{'id':r['id'],'character':'run_plague','player':'Plague Doctor'})
+  m=self.m.rooms[r['id']]['members']['a']
+  self.assertEqual((m['character'],m['name'],m['ready']),('run_plague','Plague Doctor',False))
+  with self.assertRaises(Rejected):self.m.call('a','pick',{'id':r['id'],'character':'../x'})
  def test_waves_retired(self):
   with self.assertRaises(Rejected):self.m.call('a','create',{'mode':'waves','team_size':1,'character':'hero','player':'a'})
  def test_capacity_limit(self):

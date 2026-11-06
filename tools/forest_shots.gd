@@ -35,6 +35,16 @@ func _run() -> void:
 	g.test_immortal = true
 	await g.load_zone(0, "bg", "start")
 	var F = load("res://scripts/bg_forest.gd")
+	if OS.get_cmdline_user_args().has("keyart"):
+		# the lobby's Battlegrounds art: no HUD, the camera a little further out, the hero out of the way
+		g.ui._set_hud(false)
+		g.ui.hint_lbl.visible = false
+		g.ui.zone_lbl.visible = false
+		g.hero.visible = false
+		for k in [["key_mush", Vector2(-48, 40)], ["key_elf", Vector2(50, -44)], ["key_ruins", Vector2(8, 24)], ["key_stream", Vector2(18, 40)]]:
+			await shot(k[0], k[1])
+		quit(0)
+		return
 	await shot("glade_sw", F.SPAWNS[0] + Vector2(4, -4))
 	await shot("stream", Vector2(20, -20))
 	# (the bosses last: their intro cards hold the screen a while)

@@ -2,6 +2,8 @@ extends RefCounted
 ## Presentation dependencies. Godot loads imported dependencies of these roots itself.
 ## Dynamic skill paths live in named families; adding content to an existing family needs no warm-list edit.
 ## Simulation dependencies remain in World/Enemy: dedicated servers must not request these bundles.
+const LOBBY_ART := {"battlegrounds": "res://assets/textures/ui/mp_battlegrounds.jpg",
+	"arena": "res://assets/textures/ui/mp_arena.jpg", "sandbox": "res://assets/textures/ui/mp_arena.jpg"}
 const FX_DIRS := ["res://assets/models/fx", "res://assets/textures/fx"]
 const CLASS_DIRS := {
 	"archer": ["res://assets/models/arrows", "res://assets/textures/ranger"],
@@ -62,6 +64,7 @@ static func zone(run: int, name: String) -> Array:
 	if name == "bg" and MpMode.FOREST:
 		paths.append_array(["res://assets/models/camp/runestone.glb", "res://assets/models/camp/tent.glb",
 			"res://assets/models/fort/tower.glb", "res://assets/models/lairs/ice_rock.glb"])
+	if name == "town": paths.append_array(LOBBY_ART.values())
 	var family := "isle" if name.begins_with("isle_") else ("arena" if name == "sandbox" else name)
 	# The procedural PvP hall and Vigil use crypt props, not outdoor rocks, Roman
 	# scenery or town waypoint/stash models. Keep those bundles out of their residency.

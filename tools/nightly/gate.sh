@@ -48,7 +48,7 @@ check() {  # name, log, child exit status (124 means timeout)
   fi
 }
 
-for t in playtest coop_fx_test title_test char_test ui_click_test grass_test intro_skip_test controls_test telemetry_test screen_test skill_spec_test stamina_test raid_schedule_test; do
+for t in playtest coop_fx_test title_test char_test ui_click_test grass_test intro_skip_test controls_test telemetry_test screen_test skill_spec_test stamina_test raid_schedule_test run_build_test camp_test survivor_test; do
   if [ "$t" = title_test ] || [ "$t" = char_test ]; then
     # Avoid empty arrays under the Mac's Bash 3.2 + set -u.
     if [ "$UI_RENDERED" = 1 ]; then

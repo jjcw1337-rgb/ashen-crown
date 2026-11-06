@@ -127,3 +127,10 @@ passed grammar parsing only. Native compilation/gameplay, rendered UI, hosted la
 and the full merged gate are pending; Claude owns heavy-tests/staging and the legacy nightly lock
 is present. The audit's installed preflight deferred correctly; no competing game was launched.
 See [Sandbox](SANDBOX.md) and [coverage](COVERAGE.md). Retain earlier measurements as historical.
+
+
+Follow-up: integrated Claude's committed MpLobbyView redesign 10652ed, carrying Sandbox into its tabs,
+class tiles and controls. Shared loading includes the new menu artwork. Broker/HTTP suite now passes
+56 checks, including changing a Sandbox class clears Ready and cannot change the admission choice after
+Start. Eight affected GDScript files pass grammar parsing; native compilation/rendering is still pending.
+No changes to another checkout or shared claims; no GPU/game workload was launched.
