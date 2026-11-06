@@ -84,7 +84,7 @@ func _run() -> void:
 		g._intro_skip = true
 		await process_frame
 	var bad := []
-	for s in Data.SKILLS + Data.COMMON_SKILLS:
+	for s in Data.SKILLS + Data.RUN_SKILLS + Data.COMMON_SKILLS:
 		var why := _validate(s)
 		if why != "":
 			bad.append(why)

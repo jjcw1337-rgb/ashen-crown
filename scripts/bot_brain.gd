@@ -23,10 +23,38 @@ func _init() -> void:
 	_think = randf() * react        # (bots spawned together don't all act on the same frame)
 
 ## One frame of play. `pick` (Callable: hero -> Enemy) finds what to fight.
+## A run's consumables (RunTalents): an elixir or a ward when a big fight starts, a flask at a pack or a boss in reach.
+var _item_cd := 0.0
+func _run_items(h: Hero, t: Enemy, d: float) -> void:
+	var near := 0
+	for e in h.game.enemies_near(t.global_position, 5.0):
+		if not e.dead:
+			near += 1
+	var big: bool = t.boss or t.champion or near >= 4
+	for i in 4:
+		var it = h.belt[i]
+		if not (it is Dictionary):
+			continue
+		var b: Dictionary = Data.BASES[it["base"]]
+		if b.has("bomb") and d < 12.0 and (near >= 3 or t.boss):
+			h.cursor = t.global_position
+			h.drink(i)
+			_item_cd = 2.0
+			return
+		if (b.has("buff") or b.has("ward_pct")) and big and d < 14.0 and not h.run.buffs.has("item_" + str(it["base"])) and not h.run.buffs.has("item_ward"):
+			h.drink(i)
+			_item_cd = 2.0
+			return
+		if b.has("xp_level"):
+			h.drink(i)
+			_item_cd = 1.0
+			return
+
 func think(h: Hero, pick: Callable, delta: float) -> void:
 	Hero.striker = h
 	_dodge_cd -= delta
 	_pot_cd -= delta
+	_item_cd -= delta
 	_think -= delta
 	if h.dead:
 		h.bot_hold = false
@@ -58,6 +86,8 @@ func think(h: Hero, pick: Callable, delta: float) -> void:
 	var to := tp - h.global_position
 	to.y = 0.0
 	var d := to.length()
+	if h.run != null and _item_cd <= 0.0:
+		_run_items(h, target, d)
 	var ranged := h.reach() > 4.0
 	# hurt with a foe at arm's length: roll out of it
 	if _dodge_cd <= 0.0 and d < 3.0 and h.life < h.max_life * 0.55 and randf() < 0.5:

@@ -521,7 +521,11 @@ func _strike(mult: float) -> void:
 		return
 	var avg: float = (master.dmg_min + master.dmg_max) * 0.5
 	var d := (avg * 0.5 + master.level * 3.0 + 5.0) * master.dmg_mult("beast") * mult
+	if master.run != null:
+		d *= (1.0 + master.talent("wolf_dmg") / 100.0) * RunTalents.hit_mult(master, target, "beast")
 	target.take_damage(d, 0.0, global_position, 0.5 if mult > 1.2 else 0.2, false)
+	if master.talent("wolf_heal") > 0.0:
+		master.life = minf(master.max_life, master.life + master.max_life * master.talent("wolf_heal") / 100.0)
 	if mult > 1.2 and target.has_method("stun"):
 		target.stun(0.6)
 	# Ember Fangs (Flame): its bites set them alight; Winter Howl (Frost): its pounce chills all round where it lands

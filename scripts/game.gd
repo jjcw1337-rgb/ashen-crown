@@ -3168,6 +3168,12 @@ func run_claim(key: String, i: int) -> Dictionary:
 		return {}
 	var c := hero.run.claim(key, i, hero.binds)
 	if not c.is_empty():
+		# the chest's consumables for this player (RunTalents.roll_consumables): to the belt, the rest at his feet
+		for base in hero.run.offers[key].get("loot", []):
+			if Data.BASES.has(str(base)):
+				var it := Items.potion(str(base))
+				if not hero.add_to_inventory(it):
+					drop_item(it, hero.global_position)
 		hero.run_changed()
 		ui.refresh()
 	return c
@@ -3942,6 +3948,8 @@ func gain_kill_xp(xp: int, lvl: int) -> void:
 	var bonus := 1.5 if xp_bonus_t > 0.0 else 1.0
 	# (a run character takes a kill's full worth at any level: its curve is RunBuild.xp_for)
 	var lvl_ratio := 1.0 if hero.run != null else clampf(1.0 - (hero.level - lvl) * 0.08, 0.2, 1.3)
+	if hero.run != null:
+		bonus *= 1.0 + hero.talent("xp_pct") / 100.0
 	hero.add_xp(int(xp * lvl_ratio * bonus))
 
 func on_enemy_killed(e: Enemy) -> void:

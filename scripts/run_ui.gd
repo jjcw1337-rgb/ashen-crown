@@ -164,7 +164,19 @@ func _build_window() -> void:
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right.add_theme_constant_override("separation", 8)
 	cols.add_child(right)
-	right.add_child(MpStyle.eyebrow("Passives"))
+	var themes := r.theme_counts(h.cls)
+	if not themes.is_empty():
+		var trow := HBoxContainer.new()
+		trow.add_theme_constant_override("separation", 6)
+		right.add_child(trow)
+		trow.add_child(MpStyle.eyebrow("Build  "))
+		var keys := themes.keys()
+		keys.sort_custom(func(a, b): return int(themes[a]) > int(themes[b]))
+		for th_id in keys:
+			var th := RunTalents.theme_def(h.cls, str(th_id))
+			if not th.is_empty():
+				trow.add_child(MpStyle.tag("%s %d" % [th["name"], int(themes[th_id])], th["color"]))
+	right.add_child(MpStyle.eyebrow("Talents"))
 	if r.passives.is_empty():
 		right.add_child(MpStyle.para("None yet: camp chests offer them too.", 14, MpStyle.DIM))
 	for id in r.passives:
@@ -178,6 +190,26 @@ func _build_window() -> void:
 		var t := MpStyle.para(RunBuild.passive_text(p, int(r.passives[id])), 13, MpStyle.DIM)
 		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		line.add_child(t)
+	if not r.gems.is_empty():
+		right.add_child(MpStyle.rule())
+		right.add_child(MpStyle.eyebrow("Gems  ·  %d" % r.gems.size()))
+		var seen := {}
+		for gid in r.gems:
+			seen[gid] = int(seen.get(gid, 0)) + 1
+		for gid in seen:
+			var g := RunTalents.gem_def(str(gid))
+			if g.is_empty():
+				continue
+			var gl := HBoxContainer.new()
+			gl.add_theme_constant_override("separation", 10)
+			right.add_child(gl)
+			gl.add_child(_gem_swatch(g["color"], 26, str(gid)))
+			gl.add_child(MpStyle.label(str(g["name"]) + ("  ×%d" % int(seen[gid]) if int(seen[gid]) > 1 else ""), 14, RunBuild.RARITY_COLORS[int(g["rarity"])], 600))
+			var gt := MpStyle.para(RunTalents.text_of(g, 1), 13, MpStyle.DIM)
+			gt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			gl.add_child(gt)
+		if r.hunger > 0.0:
+			right.add_child(MpStyle.para("The Hunger Stone has fed: +%d%% damage." % int(r.hunger), 13, RunBuild.RARITY_COLORS[3]))
 	right.add_child(MpStyle.rule())
 	right.add_child(MpStyle.eyebrow("Gear"))
 	for s in RunBuild.GEAR:
@@ -438,9 +470,11 @@ func open_offer(key: String, tier: int, camp_name := "") -> void:
 		return
 	var o := hero.run.offer_for(hero.cls, key, tier, hero.binds)
 	offer_key = key
-	var vb := _open("offer", 1020)
+	var n: int = o["choices"].size()
+	var vb := _open("offer", maxi(1020, 70 + n * 300))
 	var tiername := "Boss" if tier >= 4 else "Tier %d" % tier
-	_header(vb, "Camp reward  ·  " + tiername, "Choose an upgrade", ((camp_name + "  ·  ") if camp_name != "" else "") + "One of three. Skills fill an empty slot; passives never take one.")
+	_header(vb, "Camp reward  ·  " + tiername, "Choose an upgrade", ((camp_name + "  ·  ") if camp_name != "" else "") + "Take one of %d. Skills fill an empty slot; talents shape the build." % n)
+	_found_strip(vb, o)
 	if str(o["claimed"]) != "":
 		vb.add_child(MpStyle.para("You already took this camp's upgrade.", 15, MpStyle.DIM))
 		return
@@ -452,14 +486,68 @@ func open_offer(key: String, tier: int, camp_name := "") -> void:
 	vb.add_child(row)
 	for i in o["choices"].size():
 		row.add_child(_offer_card(o["choices"][i], i))
-	vb.add_child(MpStyle.para("Closing this keeps the offer: open the chest again to choose.", 12, MpStyle.FAINT))
+	vb.add_child(MpStyle.para("Closing this keeps the offer: open the chest again to choose. The consumables come with your choice.", 12, MpStyle.FAINT))
+
+## What else the chest holds for this player: the gem (already yours) and the consumables (yours with the choice).
+func _found_strip(vb: VBoxContainer, o: Dictionary) -> void:
+	var gem := str(o.get("gem", ""))
+	var loot: Array = o.get("loot", [])
+	if gem == "" and loot.is_empty():
+		return
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	vb.add_child(row)
+	if gem != "":
+		var g := RunTalents.gem_def(gem)
+		var box := PanelContainer.new()
+		var gc: Color = g.get("color", Color.WHITE)
+		var sb := MpStyle.box(MpStyle.RAISED, Color(gc.r, gc.g, gc.b, 0.8), 6, 10, 2)
+		box.add_theme_stylebox_override("panel", sb)
+		var line := HBoxContainer.new()
+		line.add_theme_constant_override("separation", 10)
+		box.add_child(line)
+		line.add_child(_gem_swatch(gc, 44, gem))
+		var col := VBoxContainer.new()
+		line.add_child(col)
+		col.add_child(MpStyle.label("Gem found: " + str(g["name"]) + ("  ·  Legendary" if int(g["rarity"]) >= 3 else ""), 15, RunBuild.RARITY_COLORS[int(g["rarity"])], 700))
+		col.add_child(MpStyle.para(RunTalents.text_of(g, 1), 13, MpStyle.DIM, 360))
+		row.add_child(box)
+	if not loot.is_empty():
+		var col2 := VBoxContainer.new()
+		row.add_child(col2)
+		col2.add_child(MpStyle.eyebrow("Consumables" + ("  ·  taken" if str(o["claimed"]) != "" else "")))
+		var names := []
+		for b in loot:
+			if Data.BASES.has(str(b)):
+				names.append(str(Data.BASES[b]["name"]))
+		col2.add_child(MpStyle.para(", ".join(names), 14, MpStyle.IVORY, 380))
+
+## A gem's icon: its painting (Meshy), else a cut-stone diamond in its colour.
+func _gem_swatch(col: Color, px: int, id := "") -> Control:
+	var tex := RunTalents.gem_icon(id) if id != "" else null
+	if tex != null:
+		var tr := TextureRect.new()
+		tr.texture = tex
+		tr.custom_minimum_size = Vector2(px, px)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		return tr
+	var c := ColorRect.new()
+	c.custom_minimum_size = Vector2(px, px)
+	c.color = col
+	c.rotation_degrees = 45.0
+	c.pivot_offset = Vector2(px, px) * 0.5
+	return c
 
 func _offer_card(c: Dictionary, i: int) -> Control:
 	var r := int(c["rarity"])
 	var col: Color = RunBuild.RARITY_COLORS[r]
 	var card := PanelContainer.new()
-	var sb := MpStyle.box(MpStyle.PANEL, Color(col.r, col.g, col.b, 0.55), 8, 18)
-	sb.border_width_top = 3
+	var sb := MpStyle.box(MpStyle.PANEL, Color(col.r, col.g, col.b, 0.55 if r < 3 else 0.95), 8, 18, 1 if r < 3 else 2)
+	sb.border_width_top = 3 if r < 3 else 5
+	if r >= 3:
+		sb.shadow_color = Color(col.r, col.g, col.b, 0.35)
+		sb.shadow_size = 14
 	card.add_theme_stylebox_override("panel", sb)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.custom_minimum_size = Vector2(280, 300)
@@ -470,7 +558,11 @@ func _offer_card(c: Dictionary, i: int) -> Control:
 	top.add_theme_constant_override("separation", 6)
 	vb.add_child(top)
 	top.add_child(MpStyle.tag(RunBuild.RARITY[r], col))
-	top.add_child(MpStyle.tag("Active skill" if c["kind"] == "skill" else "Passive", MpStyle.ARCANE if c["kind"] == "skill" else MpStyle.GOLD))
+	top.add_child(MpStyle.tag("Active skill" if c["kind"] == "skill" else "Talent", MpStyle.ARCANE if c["kind"] == "skill" else MpStyle.GOLD))
+	var th := RunTalents.theme_def(hero.cls, str(c.get("theme", "")))
+	if not th.is_empty():
+		var have := int(hero.run.theme_counts(hero.cls).get(th["id"], 0))
+		top.add_child(MpStyle.tag(str(th["name"]) + (" ✦" if have > 0 else ""), th["color"]))
 	var title := ""
 	var text := ""
 	var extra := ""
@@ -491,8 +583,6 @@ func _offer_card(c: Dictionary, i: int) -> Control:
 		title = p["name"] + (("  ·  %d → %d" % [have, have + 1]) if have > 0 else "")
 		text = RunBuild.passive_text(p, have + 1, have)
 		extra = "Stacks up to %d" % int(p["max"]) if int(p["max"]) > 1 else "Once only"
-		if p.has("tree"):
-			extra += "   ·   " + str(p["tree"])
 		vb.add_child(_icon(str(p.get("icon", "")), 64, UI.TALENT_ICON % c["id"]))
 	vb.add_child(MpStyle.label(title, 20, MpStyle.IVORY, 700))
 	vb.add_child(MpStyle.para(text, 14, Color(0.84, 0.83, 0.78)))
@@ -592,7 +682,19 @@ func _build_card(h, survived := true) -> Control:
 			ic.mouse_entered.connect(func(): ui.show_tooltip(_skill_lines(id)))
 			ic.mouse_exited.connect(func(): ui.tooltip.visible = false)
 		row.add_child(ic)
-	mid.add_child(MpStyle.eyebrow("Passives"))
+	if not h.run.gems.is_empty():
+		var grow := HBoxContainer.new()
+		grow.add_theme_constant_override("separation", 4)
+		mid.add_child(grow)
+		for gid in h.run.gems:
+			var g := RunTalents.gem_def(str(gid))
+			if not g.is_empty():
+				var gi := _gem_swatch(g["color"], 30, str(gid))
+				gi.mouse_filter = Control.MOUSE_FILTER_STOP
+				gi.mouse_entered.connect(func(): ui.show_tooltip([[str(g["name"]), RunBuild.RARITY_COLORS[int(g["rarity"])]], [RunTalents.text_of(g, 1), Color(0.85, 0.83, 0.77)]]))
+				gi.mouse_exited.connect(func(): ui.tooltip.visible = false)
+				grow.add_child(gi)
+	mid.add_child(MpStyle.eyebrow("Talents"))
 	var names := []
 	for pid in h.run.passives:
 		var pd := RunBuild.passive_def(h.cls, pid)
@@ -673,6 +775,25 @@ func _survivor_row(d: Dictionary, pick: Callable, current: String) -> Control:
 		if it is Dictionary:
 			gear.append(str(it.get("name", "")))
 	col.add_child(MpStyle.para(("Spellbook: " + ", ".join(reserve) + "   ·   " if not reserve.is_empty() else "") + "Gear: " + (", ".join(gear) if not gear.is_empty() else "none"), 12, MpStyle.DIM, 640))
+	# its gems and its build's leading themes
+	var rb := RunBuild.from_dict(run)
+	for k in run.get("passives", {}):
+		rb.passives[str(k)] = int(run["passives"][k])
+	var cls_id := str(d.get("cls", ""))
+	var extra := HBoxContainer.new()
+	extra.add_theme_constant_override("separation", 4)
+	col.add_child(extra)
+	for gid in rb.gems:
+		var g := RunTalents.gem_def(str(gid))
+		if not g.is_empty():
+			extra.add_child(_gem_swatch(g["color"], 22, str(gid)))
+	var themes := rb.theme_counts(cls_id)
+	var keys := themes.keys()
+	keys.sort_custom(func(a, b): return int(themes[a]) > int(themes[b]))
+	for th_id in keys.slice(0, 3):
+		var th := RunTalents.theme_def(cls_id, str(th_id))
+		if not th.is_empty():
+			extra.add_child(MpStyle.tag("%s %d" % [th["name"], int(themes[th_id])], th["color"]))
 	if pick.is_valid():
 		var b := MpStyle.button("Chosen" if sel else "Choose", not sel)
 		b.disabled = sel

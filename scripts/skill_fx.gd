@@ -33,6 +33,9 @@ static func _play(h: Hero, ev: Dictionary) -> void:
 	if sk == "roll":
 		Dodge.fx(h, ev)       # the dodge roll, every class's
 		return
+	if sk == "run":
+		RunTalents.play_fx(h, ev)     # a run's talents and gems going off (RunTalents)
+		return
 	if SharedSkills.IDS.has(sk) and SharedFx.play(h, ev):
 		return            # a shared skill: drawn the same whatever the hero's class
 	var cls: String = str(Data.skill_def(sk).get("cls", "any"))

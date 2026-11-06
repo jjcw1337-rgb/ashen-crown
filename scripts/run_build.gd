@@ -14,11 +14,15 @@ const SLOTS := ["rmb", "Q", "E", "R", "F"]
 const GEAR := ["weapon", "shield", "helm", "armor", "gloves", "boots"]
 const BELT := 4
 const STACK := 5
-const RARITY := ["Common", "Uncommon", "Rare"]
-const RARITY_COLORS := [Color(0.86, 0.84, 0.78), Color(0.42, 0.86, 0.52), Color(0.48, 0.68, 1.0)]
-## A camp's tier (1-3, 4 = a boss) -> the odds of each upgrade rarity [common, uncommon, rare], the experience for
-## clearing it, and the item level of its loot.
-const ODDS := {1: [70, 25, 5], 2: [50, 38, 12], 3: [32, 43, 25], 4: [12, 45, 43]}
+const RARITY := RunTalents.RARITY_NAMES
+const RARITY_COLORS := RunTalents.RARITY_COLORS
+## A camp's tier (1-3, 4 = a boss) -> the odds of each upgrade rarity [common, uncommon, rare, epic], the experience
+## for clearing it, and the item level of its loot.
+const ODDS := {1: [62, 28, 8, 2], 2: [42, 38, 16, 4], 3: [24, 38, 28, 10], 4: [6, 30, 40, 24]}
+## How many choices a chest offers (a boss one more; the Seer's Eye gem one more again), and how much a theme the
+## build already has pulls the draw toward its talents and skills (weight 1 + THEME_PULL x what it has of it).
+const CHOICES := 3
+const THEME_PULL := 1.0
 const CAMP_XP := {1: 60, 2: 140, 3: 260, 4: 600}
 const TIER_ILVL := {1: 2, 2: 7, 3: 13, 4: 18}
 ## Gear rarity odds by tier [common, uncommon, rare].
@@ -54,6 +58,15 @@ const GENERIC := [
 var skills: Array = []
 var passives := {}
 var offers := {}
+## The gems found (RunTalents.GEMS ids, in the order found; duplicates stack their stats).
+var gems: Array = []
+## The Hunger Stone's damage so far (+% for the rest of the run).
+var hunger := 0.0
+## Not saved: timed buffs ({key: {"t", "fx"}}: momentum, frenzy, a consumable's), proc counters, the procs cache.
+var buffs := {}
+var counters := {}
+var proc_cache = null
+var cls_hint := ""       # (the class the offers are rolled for: roll_gem reads its luck)
 ## A run's own seed: offers roll from it and the camp, so a reopened chest shows the same three.
 var seed := 0
 ## The run's own id: its survivor's file name (Survivors), so one run is saved once however often it's asked.
@@ -83,14 +96,22 @@ static func passive_pool(cls: String) -> Array:
 	if _class_cache.has(cls):
 		return _class_cache[cls]
 	var out: Array = GENERIC.duplicate(true)
+	for p in out:
+		p["theme"] = ""
+	for t in RunTalents.talents_for(cls):
+		out.append(t.duplicate(true))
 	var own := {}
 	for s in Data.skills_for(cls) + Data.shared_skills():
 		own[str(s["id"])] = true
-	for tree in Talents.TREES.get(cls, []):
+	var themes: Array = RunTalents.TREE_THEME.get(cls, [])
+	var trees: Array = Talents.TREES.get(cls, [])
+	for ti in trees.size():
+		var tree: Dictionary = trees[ti]
 		for t in tree["talents"]:
 			var p: Dictionary = t.duplicate(true)
 			p["rarity"] = [0, 0, 1, 2][clampi(int(t["row"]), 0, 3)]
 			p["tree"] = tree["name"]
+			p["theme"] = str(themes[ti]) if ti < themes.size() else ""
 			var fx := {}
 			for k in t["fx"]:
 				fx[k] = float(t["fx"][k]) * (TALENT_SCALE if _scales(k) else 1.0)
@@ -120,8 +141,15 @@ func fx(cls: String) -> Dictionary:
 		var p := passive_def(cls, id)
 		if p.is_empty():
 			continue
-		for k in p["fx"]:
+		for k in p.get("fx", {}):
 			out[k] = float(out.get(k, 0.0)) + float(p["fx"][k]) * int(passives[id])
+	for g in gems:
+		var gd := RunTalents.gem_def(str(g))
+		for k in gd.get("fx", {}):
+			out[k] = float(out.get(k, 0.0)) + float(gd["fx"][k])
+	for b in buffs.values():
+		for k in b["fx"]:
+			out[k] = float(out.get(k, 0.0)) + float(b["fx"][k])
 	for k in out:
 		if str(k).begins_with("cd:") or str(k).begins_with("cost:"):
 			out[k] = minf(out[k], REDUCTION_CAP)
@@ -132,18 +160,31 @@ static func _num(v: float) -> String:
 
 ## A passive's text at `stacks`; with `from` > 0 it shows the change: "Fire Arrow deals 24% -> 48% more damage."
 static func passive_text(p: Dictionary, stacks: int, from := 0) -> String:
-	var s := str(p.get("text", ""))
-	for k in p["fx"]:
-		var v: float = float(p["fx"][k])
-		s = s.replace("{" + k + "}", (_num(v * from) + " → " + _num(v * stacks)) if from > 0 else _num(v * stacks))
-	return s
+	return RunTalents.text_of(p, stacks, from)
+
+## Something about the build changed (a passive, a gem, a buff): the procs are looked up again.
+func changed() -> void:
+	proc_cache = null
+
+## How much of each theme the build has: its skills and passives (stacks), for the offers' pull and the build window.
+func theme_counts(cls: String) -> Dictionary:
+	var out := {}
+	for id in skills:
+		var th := str(RunTalents.SKILL_THEMES.get(id, ""))
+		if th != "":
+			out[th] = int(out.get(th, 0)) + 2
+	for id in passives:
+		var th := str(passive_def(cls, id).get("theme", ""))
+		if th != "":
+			out[th] = int(out.get(th, 0)) + int(passives[id])
+	return out
 
 # ---------------------------------------------------------------- skills
 
 ## The active skills this class can earn: its own and the shared ones (never the primary attack or Block).
 static func skill_pool(cls: String) -> Array:
 	var out := []
-	for s in Data.skills_for(cls) + Data.shared_skills():
+	for s in Data.skills_for(cls) + Data.run_skills_for(cls) + Data.shared_skills():
 		if not (str(s["id"]) in ["attack", "block"]):
 			out.append(s)
 	return out
@@ -182,52 +223,99 @@ func check_binds(binds: Dictionary) -> void:
 
 # ---------------------------------------------------------------- upgrade offers
 
-## Roll an offer of three for a camp: each choice draws a rarity by the tier's odds, then an eligible skill or
-## passive of that rarity (the nearest rarity when that one has nothing left); no repeats. While a slot is empty
-## and a skill is still to be had, at least one of the three is a skill.
+## Roll a camp's offer: CHOICES (+1 at a boss, +1 with the Seer's Eye) choices, each a rarity drawn by the tier's
+## odds (one step rarer with the Shard of the Crown), then an eligible skill or passive of that rarity (the nearest
+## rarity when that one has nothing left), weighted toward the themes the build already has; no repeats. One to
+## three are skills while skills are left to learn (at least one while a slot is empty), like Slay the Spire's
+## reward screen leaning on the deck's archetype.
 func roll_offer(cls: String, tier: int, key: String, binds: Dictionary) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash("%d:%s" % [seed, key])
-	var pool := {0: [], 1: [], 2: []}
-	var skill_opts := []
+	var have := theme_counts(cls)
+	var tfx := fx(cls)
+	var up := int(tfx.get("rarity_up", 0.0))
+	var n := CHOICES + (1 if tier >= 4 else 0) + int(tfx.get("offer_plus", 0.0))
+	var skill_pool_ := {0: [], 1: [], 2: [], 3: []}
+	var pass_pool := {0: [], 1: [], 2: [], 3: []}
 	for sk in skill_pool(cls):
 		if not skills.has(sk["id"]):
-			var c := {"kind": "skill", "id": str(sk["id"]), "rarity": skill_rarity(sk)}
-			pool[c["rarity"]].append(c)
-			skill_opts.append(c)
+			var c := {"kind": "skill", "id": str(sk["id"]), "rarity": skill_rarity(sk), "theme": str(RunTalents.SKILL_THEMES.get(str(sk["id"]), ""))}
+			skill_pool_[c["rarity"]].append(c)
 	for p in passive_pool(cls):
-		var have := int(passives.get(p["id"], 0))
-		if have >= int(p["max"]):
+		var stacks := int(passives.get(p["id"], 0))
+		if stacks >= int(p["max"]):
 			continue
 		if p.has("needs") and not skills.has(p["needs"]):
 			continue
-		pool[int(p["rarity"])].append({"kind": "passive", "id": str(p["id"]), "rarity": int(p["rarity"])})
+		pass_pool[int(p["rarity"])].append({"kind": "passive", "id": str(p["id"]), "rarity": int(p["rarity"]), "theme": str(p.get("theme", ""))})
+	var skills_left := 0
+	for r in skill_pool_:
+		skills_left += skill_pool_[r].size()
+	var empty := SLOTS.any(func(s): return str(binds.get(s, "")) == "")
+	# how many of the choices are skills: 1-3 while there are skills to learn (more while the slots are empty)
+	var want_skills := 0
+	if skills_left > 0:
+		var x := rng.randf()
+		want_skills = 1 if x < 0.55 else (2 if x < 0.9 else 3)
+		if empty:
+			want_skills = maxi(want_skills, 2 if skills.size() < 2 else 1)
+		want_skills = mini(want_skills, mini(skills_left, n))
 	var odds: Array = ODDS.get(clampi(tier, 1, 4), ODDS[1])
 	var out := []
-	for i in 3:
-		var r := _draw(odds, rng)
+	for i in n:
+		var pools: Dictionary = skill_pool_ if i < want_skills else pass_pool
+		var r := mini(3, _draw(odds, rng) + up)
 		var pick = null
-		for d in [0, -1, 1, -2, 2]:
+		for d in [0, -1, 1, -2, 2, -3, 3]:
 			var rr: int = r + d
-			if rr < 0 or rr > 2:
+			if rr < 0 or rr > 3:
 				continue
-			var left: Array = pool[rr].filter(func(c): return not _has(out, c))
+			var left: Array = pools[rr].filter(func(c): return not _has(out, c))
 			if not left.is_empty():
-				pick = left[rng.randi() % left.size()]
+				pick = _weighted(left, have, rng)
 				break
+		if pick == null and pools == skill_pool_:
+			for rr in [0, 1, 2, 3]:
+				var left2: Array = pass_pool[rr].filter(func(c): return not _has(out, c))
+				if not left2.is_empty():
+					pick = _weighted(left2, have, rng)
+					break
 		if pick != null:
 			out.append(pick)
-	var empty := SLOTS.any(func(s): return str(binds.get(s, "")) == "")
-	if empty and not out.any(func(c): return c["kind"] == "skill"):
-		var left: Array = skill_opts.filter(func(c): return not _has(out, c))
-		if not left.is_empty():
-			left.sort_custom(func(a, b): return int(a["rarity"]) < int(b["rarity"]))     # (the commoner first)
-			var s = left[0] if rng.randf() < 0.6 else left[rng.randi() % left.size()]
-			if out.size() >= 3:
-				out[out.size() - 1] = s
-			else:
-				out.append(s)
 	return out
+
+## One of `list`, each weighted 1 + THEME_PULL x how much of its theme the build has (generic ones weigh 1).
+static func _weighted(list: Array, have: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
+	var total := 0.0
+	var ws := []
+	for c in list:
+		var w := 1.0 + THEME_PULL * float(have.get(str(c.get("theme", "")), 0)) if str(c.get("theme", "")) != "" else 1.0
+		ws.append(w)
+		total += w
+	var x := rng.randf() * total
+	for i in list.size():
+		x -= float(ws[i])
+		if x <= 0.0:
+			return list[i]
+	return list[list.size() - 1]
+
+## The gem a camp's chest holds for this player, or "" (rolled with the offer, once).
+func roll_gem(tier: int, key: String) -> String:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("%d:%s:gem" % [seed, key])
+	tier = clampi(tier, 1, 4)
+	var luck := 1.0 + float(fx(cls_hint).get("gem_luck", 0.0))
+	if rng.randf() >= float(RunTalents.GEM_CHANCE[tier]) * luck:
+		return ""
+	var want := 0
+	if tier >= 4 and rng.randf() < RunTalents.LEGEND_ODDS:
+		want = 3
+	elif rng.randf() < float(RunTalents.RARE_GEM_CHANCE[tier]) * luck or tier >= 4:
+		want = 2
+	var pool := RunTalents.GEMS.filter(func(g): return int(g["rarity"]) == want and (want < 3 or not gems.has(g["id"])))
+	if pool.is_empty():
+		pool = RunTalents.GEMS.filter(func(g): return int(g["rarity"]) == 0)
+	return str(pool[rng.randi() % pool.size()]["id"])
 
 static func _has(list: Array, c: Dictionary) -> bool:
 	return list.any(func(o): return o["kind"] == c["kind"] and o["id"] == c["id"])
@@ -247,7 +335,17 @@ static func _draw(odds: Array, rng: RandomNumberGenerator) -> int:
 ## doesn't reroll it).
 func offer_for(cls: String, key: String, tier: int, binds: Dictionary) -> Dictionary:
 	if not offers.has(key):
-		offers[key] = {"tier": tier, "choices": roll_offer(cls, tier, key, binds), "claimed": ""}
+		cls_hint = cls
+		var gem := roll_gem(tier, key)
+		var lrng := RandomNumberGenerator.new()
+		lrng.seed = hash("%d:%s:loot" % [seed, key])
+		var loot := RunTalents.roll_consumables(tier, lrng)
+		for i in int(fx(cls).get("loot_plus", 0.0)):
+			loot.append_array(RunTalents.roll_consumables(1, lrng).slice(0, 1))
+		offers[key] = {"tier": tier, "choices": roll_offer(cls, tier, key, binds), "claimed": "", "gem": gem, "loot": loot}
+		if gem != "":
+			gems.append(gem)       # (found when the chest is opened, whatever is chosen)
+			changed()
 	return offers[key]
 
 func offer_open(key: String) -> bool:
@@ -267,6 +365,7 @@ func claim(key: String, i: int, binds: Dictionary) -> Dictionary:
 		add_skill(c["id"], binds)
 	else:
 		passives[c["id"]] = int(passives.get(c["id"], 0)) + 1
+	changed()
 	return c
 
 # ---------------------------------------------------------------- gear
@@ -359,7 +458,7 @@ static func grow(hero) -> void:
 
 func to_dict() -> Dictionary:
 	return {"skills": skills.duplicate(), "passives": passives.duplicate(), "offers": offers.duplicate(true),
-		"seed": seed, "camps": camps, "bosses": bosses, "uid": uid}
+		"seed": seed, "camps": camps, "bosses": bosses, "uid": uid, "gems": gems.duplicate(), "hunger": hunger}
 
 static func from_dict(d: Dictionary) -> RunBuild:
 	var r := RunBuild.new()
@@ -371,4 +470,6 @@ static func from_dict(d: Dictionary) -> RunBuild:
 	r.camps = int(d.get("camps", 0))
 	r.bosses = int(d.get("bosses", 0))
 	r.uid = str(d.get("uid", r.uid))
+	r.gems = Array(d.get("gems", [])).map(func(x): return str(x))
+	r.hunger = float(d.get("hunger", 0.0))
 	return r
