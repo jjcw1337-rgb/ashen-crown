@@ -3078,6 +3078,18 @@ func run_claim(key: String, i: int) -> Dictionary:
 		ui.refresh()
 	return c
 
+## A deep camp's rare reward: a class unique (its own effect: a free roll, a ward) for one of the raid's classes, in a
+## slot run characters wear, with no level to meet.
+func _run_class_unique(at: Vector3) -> void:
+	var classes := raid_classes()
+	var pool := Data.UNIQUES.keys().filter(func(k): return Data.UNIQUES[k].has("cls") and classes.has(str(Data.UNIQUES[k]["cls"])) \
+		and RunBuild.wearable(Items.make_unique(k), str(Data.UNIQUES[k]["cls"])))
+	if pool.is_empty():
+		return
+	var it := Items.make_unique(pool[rng.randi() % pool.size()])
+	it["req"] = 0
+	drop_item(it, at)
+
 ## A run's loot roll (the monsters and camp chests): gear for the raid's classes at the camp's tier, or a potion;
 ## never gold, rings or amulets.
 func _run_loot(at: Vector3, tier: int, good: bool, always := false) -> void:
@@ -3156,6 +3168,8 @@ func _open_chest(t: Inter) -> void:
 		var tier := int(t.data.get("tier", tier_of_level(world.level)))
 		for i in int(Camps.CHEST_ROLLS.get(tier, 2)):
 			_run_loot(t.global_position, tier, i == 0, true)
+		if rng.randf() < float(Camps.UNIQUE_CHANCE.get(tier, 0.0)):
+			_run_class_unique(t.global_position)
 		return
 	var n := 7 if gold else rng.randi_range(2, 4)
 	for i in n:

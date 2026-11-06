@@ -13,6 +13,8 @@ extends RefCounted
 ## A tier's monster level (their life and damage) and its chest's loot rolls.
 const MON_LEVEL := {1: 1, 2: 5, 3: 10, 4: 15}
 const CHEST_ROLLS := {1: 2, 2: 2, 3: 3, 4: 4}
+## A chest's chance of a class unique for someone in the raid (Game._run_class_unique)
+const UNIQUE_CHANCE := {3: 0.25, 4: 1.0}
 const TIER_NAMES := {1: "Tier I", 2: "Tier II", 3: "Tier III", 4: "Boss"}
 ## A boss camp's boss against a run character (bosses are tuned for the whole act's heroes): its life and damage
 ## scaled, so a level-15 run character with a fair build can take it alone in about a minute, and a party faster.

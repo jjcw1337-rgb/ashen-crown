@@ -20,7 +20,7 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 ## 3. Full multiplayer UI redesign (Valorant-inspired modern fantasy)
 - 🟡 The visual system exists (`MpStyle`: palette, Cinzel/Inter) and the run's windows use it: build, gear swap, camp upgrade, results, roster (`run_ui_shots`, `survivor_test`).
 - ✅ Multiplayer entry, mode selection (tabs), lobby browser and lobby preparation redesigned (`MpLobbyView`): the mode's painted art (Meshy, `assets/textures/ui/mp_*.jpg`), large type, one gold primary action, the chosen class large on the title's lit stage. Proven at 1024x768, 1280x720 and 1920x1080: `lobby_ui_test` (every control on screen, tiles and Ready fit, nothing past the window), `mp_lobby_shots` (15 checks + screenshots).
-- ⬜ Transitions between states and focus/keyboard navigation reviewed. **Not proven yet.**
+- 🟡 Transitions: a short fade-and-rise when the screen changes state or mode (never on the 3 s poll); buttons have hover and keyboard-focus styles (arcane outline), Esc closes. Keyboard-only navigation not walked through yet.
 
 ## 4. Simple journey: Multiplayer → browse/create → mode → prepare → ready → play
 - 🟡 Works end to end with the existing lobby service (`bg_test`); mode (tabs), host, players, capacity, state and joinability shown (`mp_lobby_shots`).
@@ -70,7 +70,7 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 
 ## 13. Inventory and equipment
 - ✅ No gold, rings, amulets or backpack; four consumable slots with stacks of five; gear comparison and swap, the old piece left on the ground (also through the host); skills and passives apart from items (`run_build_test`, `bg_test`, `bg_pvp_test`).
-- 🟡 Common/uncommon/rare gear in runs (`RunBuild.random_gear`); a class keeps its own weapon kind (`run_build_test`, `run_playthrough`). Class-specific effects: the existing class uniques aren't in run loot yet.
+- 🟡 Common/uncommon/rare gear in runs (`RunBuild.random_gear`); a class keeps its own weapon kind (`run_build_test`, `run_playthrough`). Class-specific effects: tier III chests (25%) and boss chests (always) drop a class unique for someone in the raid, in a slot run characters wear, no level to meet (`camp_test`: a boss chest's Windrunner Treads for the archer).
 
 ## 14. A big connected lush map
 - ✅ The Verdant Reach: 16 camps, 2 bosses, four starting glades, trails with loops, a stream, ridges, mushroom woodland, dark elf camps, frost hollow, ruins (`camp_test`, `bg_test`, `forest_shots`).
