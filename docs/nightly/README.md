@@ -1,11 +1,12 @@
 # Nightly lab (knowledge base)
 
-Three nightly jobs on the Game Factory Mac (launchd, New York time), one at a time, each on a fresh copy of `staging`,
-each with its own test gate, push, deploy and Discord report (`tools/nightly/run.sh <job>`):
+The existing Claude optimization/triage jobs run on the Game Factory Mac (launchd, New York time).
+The additional published-build audit is read-only and coordinates through `heavy-tests`:
 
 | Job | When | What | Its log |
 |---|---|---|---|
-| `mode` | 20:00, 3.5 h | A new multiplayer mode or map on the staging server, playable the same night | `modes/LOG.md` |
+| `audit` | 22:30, up to 75 min | Published client, cache/lifetime contracts, three-repeat performance profiles including 3v3; no code changes or deployment | [audit setup/results](../perf/NIGHTLY_AUDIT.md) |
+| `mode` | Manual only (schedule removed), 3.5 h | A new multiplayer mode or map on the staging server, playable the same night | `modes/LOG.md` |
 | `perf` | 00:30, 3 h | Faster and smaller: a big structural win, then as many small ones as the night allows; the download size every night | `perf/LOG.md` |
 | `triage` | 05:00, 2 h | What players hit (errors, crashes, slow spots from the telemetry, `TELEMETRY.md`), worst first, at most 3 issues and 2 spots: reproduced from where they were and what they did, fixed | `triage/LOG.md` |
 | `hotfix` | on an alert | Started by the telemetry watcher (`tools/nightly/watch.py`, every 5 min) on one serious new issue: a crash, an error that hit 2+ players or 10+ times, a slow spot; at most 3 a day, 2 h apart | `triage/LOG.md` |
