@@ -1,5 +1,5 @@
 """Writes the Grafana dashboard of the performance KPIs: python3 tools/kpi_dashboard.py deploy/staging/grafana/dashboards/kpis.json
-(edit the panels here, not in the JSON; docs/nightly/KPIS.md lists the metrics)."""
+(edit the panels here, not in the JSON; docs/systems/performance_kpis.md lists the metrics)."""
 import json, sys
 DS = {"type": "grafana-postgresql-datasource", "uid": "kpi-pg"}
 W = "source = '$source' AND $__timeFilter(ts)"
@@ -28,7 +28,7 @@ def series(metric, scale="value", where="scenario <> 'server' AND preset = $pres
 fpsteps = [{"color": "red", "value": None}, {"color": "orange", "value": 30}, {"color": "green", "value": 60}]
 panels.append({"id": nid(), "type": "text", "title": "", "gridPos": {"x": 0, "y": y, "w": 24, "h": 3}, "options": {"mode": "markdown", "content":
     "**Ashen Crown performance KPIs.** Fixed scripted scenarios (`scripts/kpi.gd`) measured on the Game Factory Mac (Apple M6, 1600x900 window) "
-    "around every nightly job; definitions and targets: `docs/nightly/KPIS.md`. Targets: **60 fps average, 45 fps 1% low, 0 hitches, under 3 s loads, "
+    "around every nightly job; definitions and targets: `docs/systems/performance_kpis.md`. Targets: **60 fps average, 45 fps 1% low, 0 hitches, under 3 s loads, "
     "a download under 200 MB.** `phase` before = staging as it stood when a job started; after = that job's result."}})
 y += 3
 panels.append(stat("Average fps now", "fps_avg", 0, 12, "The latest average frames per second of each scenario. Target 60.", fpsteps))

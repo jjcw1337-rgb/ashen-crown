@@ -30,4 +30,4 @@ hold every asset and draw everything. Measured on the staging droplet (4 GB, 2 v
 
 `sh deploy/lobbies/update.sh` installs the latest staging CI's server export and the lobby service, refusing while
 a match is in progress. Game ports are UDP 24600 + `--ports` (each must be open in the cloud firewall). Announce
-restarts in Discord first. See `docs/multiplayer_lobbies.md` for the full setup.
+restarts in Discord first. See `docs/systems/multiplayer_lobbies.md` for the full setup.

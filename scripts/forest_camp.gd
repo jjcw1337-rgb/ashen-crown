@@ -330,7 +330,7 @@ static func build(w: World) -> void:
 	_glow(w, SHOPS[0]["at"], Vector3(-1.3, 0.9, 0.4), Color(0.55, 0.85, 0.38), 0.65, 3.5)
 	# VendorCourt supplies each frontage's neutral-warm light; coloured work lights stay local.
 	# the Vigil Gate: a portal down to the Last Flame, the co-op horde defence (vigil.gd), between two old stones
-	# (no fire or light of its own: the camp's frame time is a benchmark, docs/nightly/KPIS.md)
+	# (no fire or light of its own: the camp's frame time is a benchmark, docs/systems/performance_kpis.md)
 	var vgp := Vector3(VIGIL_GATE.x, 0, VIGIL_GATE.y)
 	var vgm := Fx.portal_model(Color(1.0, 0.45, 0.15))
 	vgm.scale = Vector3.ONE * 1.15

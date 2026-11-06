@@ -1,5 +1,5 @@
 extends SceneTree
-## The Battlegrounds' PvP balance (Blaine's progression overhaul, docs/queue_progression_overhaul.md): every class at
+## The Battlegrounds' PvP balance (Blaine's progression overhaul): every class at
 ## levels 1, 5, 10 and 20, fresh (its starting weapon, nothing else) and fully geared (rare gear of its level in every
 ## slot), under the raid's gear rules (Hero.pvp_scaled). For each it measures, in real play:
 ##   ehp  life against a player's blows (life x (120 + armor) / 120; elements: life / (1 - res))

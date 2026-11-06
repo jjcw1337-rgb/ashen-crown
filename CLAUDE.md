@@ -101,7 +101,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `run_build.gd`, `run_talents.gd`, `run_ui.gd` | A multiplayer run's character (skills, slots, passives, offers, gems), its roguelike talents/gems/consumables and their procs, its windows (see "Multiplayer runs") |
 | `battlegrounds.gd` | Battlegrounds prototype: the raid map, the dedicated server's raid logic (respawns, carried loot, extraction, the stash), the client's id and cached stash |
 | `vigil.gd`, `flame_board.gd` | The Last Flame (zone `"vigil"`): the endless co-op horde defence under the Act I camp, its sanctum, waves, flame and HUD; its leaderboard (see "The Last Flame") |
-| `kpi.gd` | The official performance KPIs: scripted scenarios measured frame by frame (`--kpi`), see docs/nightly/KPIS.md |
+| `kpi.gd` | The official performance KPIs: scripted scenarios measured frame by frame (`--kpi`), see docs/systems/performance_kpis.md |
 | `shared_skills.gd`, `shared_fx.gd`, `elemental_fx.gd` | The shared skills every class can use (`"cls": "any"`): their gameplay and their effects (`ElementalFx`: Earthshatter's crack and rock spikes, Frost Nova's frost and ice crystals, War Cry's sigil and dust wave); Arc's lightning is `arc_fx.gd` `ArcFx` (jj's redo: Blender-rendered branching bolts, `tools/blender/fx/lightning_bolts.py` -> `tools/fx_bolt_atlas.py` -> `assets/textures/fx/storm/bolts.png`, stretched between the leaps with a blurred-mip halo; the Meshy plasma charge and Lichtenberg burn `lightning_scorch`; sounds `arc_zap`, `arc_hit`) |
 | `skill_spec.gd` | The skill format (`SkillSpec`): a skill's timing, damage, area and damage over time read from its `Data.SKILLS` entry |
 | `skill_fx.gd`, `knight_fx.gd`, `archer_fx.gd` | Co-op skill effects: `SkillFx` plays every class's skill events on the caster and on his puppet for partners (see "Co-op skill effects"); the knight's and archer's effect handlers (the Wraith's, Demon's and Warlock's are in their `*_fx.gd`) |
@@ -146,7 +146,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   (`Items.PCT_STATS`) stay as rolled. Re-run the balance sim after changing any of them.
 
 - **Typed GDScript**: inference from Variant is treated as an error. Write `var x: Type = ...`.
-- **Multiplayer development** (Blaine, 2026-11-05): do not require identical build SHAs for lobby admission. Cosmetic/client updates may connect to existing workers. RPC ids still depend on each script's RPC set: test network changes against deployed workers and update worker/co-op binaries when needed. Keep Nakama authentication, admission tickets and item consent. See `docs/multiplayer_lobbies.md`.
+- **Multiplayer development** (Blaine, 2026-11-05): do not require identical build SHAs for lobby admission. Cosmetic/client updates may connect to existing workers. RPC ids still depend on each script's RPC set: test network changes against deployed workers and update worker/co-op binaries when needed. Keep Nakama authentication, admission tickets and item consent. See `docs/systems/multiplayer_lobbies.md`.
 - **Co-op skill effects** (`scripts/skill_fx.gd` `SkillFx`): partners see a hero as a puppet (`Hero.puppet`, posed
   from `net_st`/`net_pos`/`net_yaw`), so his animation plays for them, but what a skill DRAWS has to be told: every
   skill effect is an event. Skill code never draws; wherever something is to be seen it calls
@@ -245,7 +245,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   and accounts"). Tests: `tools/bg_test.gd` (server `--raid-fast`: 150 s rounds) and `tools/bg_pvp_test.gd`.
   Dev cheat (non-production builds or dev tools): type `maxout` while playing (`Game.max_out`: level 99, stats,
   every talent, a million gold, potions, a bag of the best gear).
-- **The Last Flame** (`scripts/vigil.gd`, `Vigil`, zone `"vigil"`; nightly mode 2026-11-01, `docs/nightly/modes/2026-11-01-last-flame/`):
+- **The Last Flame** (`scripts/vigil.gd`, `Vigil`, zone `"vigil"`, nightly mode 2026-11-01):
   an endless co-op horde defence (Blaine, 2026-11-03: endless, harder and harder, a leaderboard on the title). The Act I camp's Vigil Gate (Inter `"vigil_gate"` at `ForestCamp.VIGIL_GATE`, `travel`, so the
   party's ready check takes everyone; the way back is `"vigil_exit"` to the camp's `from_vigil`) leads to an indoor
   sanctum (`Vigil.build`: a 32 m hall on `crypt_shell`, three breach rooms N/E/W with red portals, the altar at
@@ -312,7 +312,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   the `AshenCrown-server` artifact, never uploaded to itch/Steam. A Battlegrounds world: 1.25 GB -> ~0.4 GB, a busy
   one (6 players fighting) 95% -> 24% of a core, an empty one 31% -> 13%. So server code must never need pixels or
   mesh surfaces (a stripped mesh has none: guard like `Flora.oak_model`'s leaves and `UI._scaled_tex`).
-- **Multiplayer runs** (Blaine's overhaul, 2026-11-06; `docs/overhaul_plan.md`, retirements in `docs/cleanup.md`,
+- **Multiplayer runs** (Blaine's overhaul, 2026-11-06, retirements in `docs/cleanup.md`,
   switches in `scripts/mp_mode.gd` `MpMode`): a Battlegrounds raider is a fresh **run character** (`Hero.run`, a
   `RunBuild`; `Hero.start_run`, `Game._start_run_raid`): level 0 on its own fast curve (`RunBuild.xp_for`, attributes
   grow by themselves, `RunBuild.grow`), the primary attack on left mouse and five slots (`RunBuild.SLOTS`: right mouse,
@@ -399,8 +399,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   loading/empty/full/failure states) and prepare (the chosen class on the title's stage: metas `frame_mid`,
   `lobby_zoom` on `TitleStage`; members, class tiles or survivor, Ready / Start / Leave). A class change in a lobby
   is the service's `pick` op. `tools/mp_lobby_shots.gd -- outdir`, `tools/lobby_ui_test.gd` (a local service:
-  `python3 deploy/lobbies/service.py --dev --state <dir> --game . --godot <godot>`). What proves each spec point:
-  `docs/overhaul_acceptance.md`.
+  `python3 deploy/lobbies/service.py --dev --state <dir> --game . --godot <godot>`).
 - **Browser build (WebGL)** is a test build only and is fragile:
   - it is exported with **Godot 4.5.1** in CI (the desktop builds use 4.4.1): Godot 4.3's WebGL renderer
     blanks the whole 3D view in busy scenes (many objects near lights). Keep code working in both versions:
@@ -651,7 +650,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `blight_*` (the flood) and `ring_*` (its boundary, its band remapped thin along the edge) in `_zone_shader`.
   His skills draw no weapon trail (`Hero._update_trail`). Frames: `tools/plague_vial_clip.gd -- outdir
   close|hand|game|fight [secs] [throws] [quality]` (xvfb, `--fixed-fps 30`; ~5-7 s a frame on the cloud).
-- **Doug** (`scripts/doug.gd`, `doug_skills.gd` `DougSkills`, `doug_fx.gd` `DougFx`; design `docs/characters/doug.md`;
+- **Doug** (`scripts/doug.gd`, `doug_skills.gd` `DougSkills`, `doug_fx.gd` `DougFx`;
   Blaine's tier-1 character and the pilot of the character workflow, `docs/character_workflow.md`): the stubby circus
   brawler. Body: Meshy concept edited from Blaine's reference, image-to-3D, Meshy auto-rig + library clips merged by
   `tools/blender/doug/prep_doug_mocap.py` into `assets/models/doug.glb` on the knight's mocap system (`Doug.ACTS`:
@@ -1542,8 +1541,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `"inside"`: his spot in the stall's frame; `"stay"` in its clips: he never turns from his work and greets once a
   visit; his `radius` reaches the stall's front, since the stall is solid). His hammer rings the anvil on each blow (`anvil`: five layered Kenney takes; `Inter._strikes` hears the
   hand bone stop falling; a SHOPS entry's `"strike"`), `tools/anvil_test.gd`. Screenshots: `tools/camp_shots.gd`.
-- **The camp's guards** (`scripts/camp_guard.gd`, `CampGuard`, jj 2026-11-04; notes and what's to come in
-  `docs/guards.md`): Warden Bram, Sentry Kell and Ironfist Varg, armoured hand-to-hand fighters on their rounds in the
+- **The camp's guards** (`scripts/camp_guard.gd`, `CampGuard`, jj 2026-11-04): Warden Bram, Sentry Kell and Ironfist Varg, armoured hand-to-hand fighters on their rounds in the
   Act I camp (`CampGuard.GUARDS`: posts, three attack slots each, `"skill"` empty until their skills are made). Meshy
   bodies on the playable 24-bone rig with 26 library clips each, merged and measured by
   `tools/blender/guards/prep_guard.py` into `assets/models/guards/<id>.glb` + `<id>.json` (clip lengths, ground motion,
@@ -1626,7 +1624,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   each cell, red when you can't afford it. `UI.trade_with` is the NPC whose window is open: walking more than 3 m
   past their `radius` closes it (`UI._walked_off`, the stash too). `tools/vendor_test.gd` checks all of it with
   the smith; `tools/vendor_shots.gd -- outdir [role]` screenshots a trader.
-- **Progression and the Battlegrounds' gear rules** (Blaine's progression overhaul, `docs/queue_progression_overhaul.md`):
+- **Progression and the Battlegrounds' gear rules** (Blaine's progression overhaul):
   skills unlock by level (`Data.skill_locked`, each skill's `"lvl"`; `Data.SKILLS_UNLOCKED = true` opens all again):
   a class's skills Q 1, E 3, R 5, F 9, G 14, every ultimate at 20 (Eternal Night, Wrath of the Pit, The Last Epidemic,
   Clown Car); the shared ones War Cry 6, Frost Nova 8, Arc 11, Earthshatter 16. A locked skill waits on the bar greyed
@@ -1638,7 +1636,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   the raid's item effects: `"roll"` (a free dodge roll every N s, `Hero.free_roll`) or `"ward"` (a % of life that
   soaks blows and refills out of combat, `Hero.ward`). `tools/pvp_sim.gd` (classes at levels 1/5/10/20, fresh vs
   geared, Monte Carlo duels), `tools/skill_unlock_test.gd`, `tools/pvp_items_test.gd`.
-- **Items** (the items rework, `docs/queue_items_rework.md`; Blaine: level and skills carry a character, gear helps,
+- **Items** (the items rework; Blaine: level and skills carry a character, gear helps,
   in PvE and PvP alike): every affix rolls `Data.AFFIXES` times `Data.AFFIX_SCALE` (`Items.roll_affix`; Gold and
   Magic Find unscaled), rares roll `Data.RARE_AFFIXES` (2-3), base defence counts for `Data.GEAR_ARMOR`
   (`Items.defense_of`), percentages are capped across all gear (`Data.GEAR_CAP`: +5% run speed, 25% attack speed and
@@ -1848,7 +1846,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   move its clip's blow to match (`Demon.SHOTS`-style keys). `tools/skill_spec_test.gd` (in the gate) validates every
   entry's fields and plays Molten Fists by its data; `tools/demon_test.gd` checks the wind-up and the dodge cancel.
   **Performance**: run `bash tools/skill_perf.sh <class> <skill>` on every new or redone skill (PASS: no new
-  stutters, at most 20% slower than the weapon alone in the 24-monster fight; docs/nightly/KPIS.md "Skills"). An
+  stutters, at most 20% slower than the weapon alone in the 24-monster fight; docs/systems/performance_kpis.md "Skills"). An
   effect light with shadows goes through `Fx.effect_shadow` (cheap maps, at most 2 at once), never `shadow_enabled = true`.
 - **Shared skills** (jj, 2026-11-01: class-free skills, every class can use them): `Data.SKILLS` entries with
   `"cls": "any"` (`Data.shared_skills()`; `skills_known` = the class's own + shared + Attack/Block), played by
@@ -1879,7 +1877,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   but Esc while paused. Leaving for the title (`Game.exit_to_title`) resets what belonged to the character: its death
   and victory screens, portal, XP bonus, F8 switches, a raid (left without extracting = died there, `bg_strip`) and the
   raid's act (`bg_home_run`). `tools/screen_test.gd` checks it (in the nightly gate).
-- **Visual audit and overhaul** (`docs/visual/AUDIT.md`, `docs/visual/checklist.csv`, tools in `tools/visual_audit/`):
+- **Visual audit and overhaul** (tools in `tools/visual_audit/`):
   the ranked roadmap and every asset's scores and status. `frame_stats.gd` measures draw calls and primitives per pass
   **and per viewport** in any zone and preset (the cloud's software Vulkan runs the real Forward+ renderer: counts are
   exact, frame times meaningless; `--fast` drops screen-space effects, which add no geometry); `scene_census.gd`
@@ -1937,7 +1935,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   -- town lair coast` lists what dithers in each zone and what tall mesh still can't. World generation draws from `World.rng`: a visual change must keep its calls (count and order) or every
   rock, tree, footprint and spawn after it moves (and co-op peers must agree). Check with
   `tools/visual_audit/layout_dump.gd` (one zone per process) and diff against the old build.
-- **Performance KPIs** (`scripts/kpi.gd` `Kpi`, `docs/nightly/KPIS.md`): the official numbers. Scripted, deterministic
+- **Performance KPIs** (`scripts/kpi.gd` `Kpi`, `docs/systems/performance_kpis.md`): the official numbers. Scripted, deterministic
   scenarios (camp, moor, fight, boss, arena, crypt, server; `Kpi.SCENARIOS`) run in any build with
   `-- --kpi <scenario> out.json [--quality N] [--secs N]` (the server: `-- --server --kpi server out.json`), measuring
   fps, 1% low, p99 frame time, hitches, load time, main thread, GPU, draw calls, triangles, memory; then quit.

@@ -8,7 +8,7 @@ instanced meshes per node), vertices, surfaces, materials and the texture maps e
 embedded image (format, pixel size, bytes), whether the normal map is lossy JPEG, skin joints,
 animations and their length, morph targets and extensions. Then every loose texture in assets/textures.
 Writes models.csv, textures.csv and audit.json, and prints a summary. Used for the visual overhaul's
-baseline (docs/visual/AUDIT.md) and to compare before/after.
+baseline (the visual audit of 2026-11-02 (in git history)) and to compare before/after.
 """
 import csv
 import json

@@ -1,4 +1,4 @@
--- The KPI store (docs/nightly/KPIS.md). One row per measured number: long format, so a new metric or scenario needs
+-- The KPI store (docs/systems/performance_kpis.md). One row per measured number: long format, so a new metric or scenario needs
 -- no schema change. Written by tools/nightly/kpi_push.py (the nightly runner's benchmark, source 'runner'; later
 -- players' builds, source 'player'), read by Grafana (role grafana_ro) and tools/kpi_query.sh.
 CREATE TABLE IF NOT EXISTS kpi (

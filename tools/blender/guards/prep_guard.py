@@ -13,7 +13,7 @@
 # The numbers go to <out>.json beside the glb.
 #   blender -b --python prep_guard.py -- <rigged.glb> <out.glb> <tris> <names.json> clips_a.glb [clips_b.glb ...]
 # names.json maps Meshy library names (any case and punctuation: "Left Jab from Guard") to the game's clip names.
-# Sources (Meshy task ids, clip ids) are in docs/guards.md.
+# Sources (Meshy task ids, clip ids) are in the git history of docs/guards.md (removed 2026-11-06).
 import bpy, json, math, re, sys
 from mathutils import Matrix, Vector
 a = sys.argv[sys.argv.index("--") + 1:]

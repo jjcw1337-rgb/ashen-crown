@@ -353,7 +353,7 @@ SPEC += [
     dict(name="mallet", src="made", hit=0, label="wooden mallet knocking on wood"),
 ]
 
-# Doug the clown (docs/characters/doug.md; DougSkills.sound / DougFx): slapstick, but real and weighty, not cartoon beeps
+# Doug the clown (DougSkills.sound / DougFx): slapstick, but real and weighty, not cartoon beeps
 SPEC += [
     dict(name="doug_splat", src="eleven", n=4, dur=0.8, hit=0, label="a cream pie splatting into a face",
          prompt="a cream pie smashed into someone's face, a wet soft squelching splat of whipped cream and crust" + DRY),

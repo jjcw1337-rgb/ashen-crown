@@ -6,7 +6,7 @@ extends SceneTree
 ## writes <out_dir>/<zone>.json plus a printed summary: triangles (LOD0) x instances, how many LOD levels each
 ## mesh has, multimeshes whose bounds are so big they can't be culled or LOD-ed (one draw for the whole map),
 ## shadow casters, lights with shadows, particle counts. Groups rows by the mesh's resource path or the node's
-## name pattern so the same prop placed 200 times is one row. Used for docs/visual/AUDIT.md and before/after.
+## name pattern so the same prop placed 200 times is one row. Used for the visual audit of 2026-11-02 (in git history) and before/after.
 
 var g
 var out_dir := "build/visual_audit"

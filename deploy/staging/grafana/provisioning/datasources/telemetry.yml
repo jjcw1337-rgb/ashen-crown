@@ -1,4 +1,4 @@
-# Player telemetry and error reports (docs/nightly/TELEMETRY.md): the tables tm_sample, tm_error and the view tm_issue
+# Player telemetry and error reports (docs/systems/telemetry.md): the tables tm_sample, tm_error and the view tm_issue
 # in Nakama's database, read-only through grafana_ro (SELECT on those three only); and Loki, the server logs.
 apiVersion: 1
 datasources:

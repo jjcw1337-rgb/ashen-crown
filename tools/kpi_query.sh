@@ -1,5 +1,5 @@
 #!/bin/sh
-# Reads the performance KPI store (docs/nightly/KPIS.md) from a script or a session: SQL on the `kpi` table, through
+# Reads the performance KPI store (docs/systems/performance_kpis.md) from a script or a session: SQL on the `kpi` table, through
 # ssh (no database port is open), as CSV-ish aligned text.
 #   sh tools/kpi_query.sh "SELECT scenario, value FROM kpi WHERE metric = 'fps_avg' ORDER BY ts DESC LIMIT 10"
 #   sh tools/kpi_query.sh latest        (the latest value of every metric of every scenario)

@@ -1,4 +1,4 @@
-# Builds Doug's mocap body (assets/models/doug.glb; docs/characters/doug.md): the Meshy auto-rigged clown (24-bone
+# Builds Doug's mocap body (assets/models/doug.glb; ): the Meshy auto-rigged clown (24-bone
 # humanoid, like the knight's, the ranger's and the plague doctor's) with Meshy library clips merged onto its one
 # armature, decimated to a game budget and exported as one glb whose AnimationPlayer holds every clip by a clean
 # name. The drumstick is a separate prop (assets/models/doug/drumstick.glb), held in the grip.

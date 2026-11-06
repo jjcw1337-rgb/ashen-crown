@@ -7,8 +7,8 @@
 # Ports: the game reaches Nakama only through Caddy's HTTPS on 443 (80 for the certificate's ACME challenge);
 # Nakama's own 7350 is on the server's loopback (the Battlegrounds server on the same box uses it), the console 7351
 # too (`ssh -L 7351:127.0.0.1:7351 ashen-crown-staging`); PostgreSQL is never published. Grafana (the performance KPIs,
-# docs/nightly/KPIS.md) is behind Caddy at https://<STAGING_HOST>/grafana/ with a login; Loki keeps the server's logs
-# (shipped by Alloy from the journal and the containers) for it, docs/nightly/TELEMETRY.md.
+# docs/systems/performance_kpis.md) is behind Caddy at https://<STAGING_HOST>/grafana/ with a login; Loki keeps the server's logs
+# (shipped by Alloy from the journal and the containers) for it, docs/systems/telemetry.md.
 # STAGING_HOST (the server's public IP, the certificate's name) is in nakama.env too.
 name: ashen-staging
 services:

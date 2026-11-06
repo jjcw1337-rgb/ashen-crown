@@ -1,6 +1,6 @@
 class_name Telemetry
 extends Node
-## Player telemetry and error reports (docs/nightly/TELEMETRY.md), into the staging backend's database through
+## Player telemetry and error reports (docs/systems/telemetry.md), into the staging backend's database through
 ## Nakama (the "telemetry" RPC, deploy/nakama/modules/ashen.lua), shown in Grafana and read by the nightly triage job.
 ## On in cloud builds that aren't production (staging), and in production only if the player turns it on
 ## (settings "telemetry"/"on"); never in tools, tests, screenshots or KPI runs. The dedicated servers send their errors

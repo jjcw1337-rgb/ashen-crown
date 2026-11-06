@@ -1,6 +1,6 @@
 class_name DougSkills
 extends RefCounted
-## Doug's skills (docs/characters/doug.md; tuning in Data.SKILLS "cls": "doug", timing by SkillSpec): the gameplay.
+## Doug's skills (tuning in Data.SKILLS "cls": "doug", timing by SkillSpec): the gameplay.
 ## Everything seen is an fx event drawn by DougFx (on his puppet for partners and PvP opponents too). State lives on
 ## the hero (meta "doug": pies in flight, peels on the ground, the slide, the bounce, the double, the car).
 ##   pie     Cream Pie: a lobbed pie; the first foe near where it lands takes the hit and is Pied

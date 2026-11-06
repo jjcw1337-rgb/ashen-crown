@@ -1,6 +1,6 @@
 class_name Doug
 extends RefCounted
-## Doug (docs/characters/doug.md; Blaine's tier-1 character and the pilot of the character workflow): the stubby
+## Doug (Blaine's tier-1 character and the pilot of the character workflow): the stubby
 ## circus brawler. His body is the Meshy clown (concept from Blaine's reference, image-to-3D, Meshy auto-rig and
 ## library clips merged by tools/blender/doug/prep_doug_mocap.py into assets/models/doug.glb) on the knight's mocap
 ## system, like the ranger and the plague doctor; without the glb, the knight's procedural body. His skills are

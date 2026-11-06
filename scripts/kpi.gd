@@ -1,5 +1,5 @@
 class_name Kpi
-## The official performance KPIs (docs/nightly/KPIS.md): fixed, scripted scenarios measured the same way every time,
+## The official performance KPIs (docs/systems/performance_kpis.md): fixed, scripted scenarios measured the same way every time,
 ## in any build (an exported game too):
 ##   AshenCrown -- --kpi <scenario> <out.json> [--quality 0-3] [--secs N] [--class C] [--skill id|none] [--trace]
 ##   (--class: the hero (default knight); --skill: cast only that skill (none: only the weapon); --trace: the JSON

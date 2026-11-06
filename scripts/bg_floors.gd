@@ -1,6 +1,6 @@
 class_name BgFloors
 extends RefCounted
-## The Hollow Crypt's lower floors (Blaine's overhaul, docs/queue_battlegrounds_overhaul.md): under the Ossuary
+## The Hollow Crypt's lower floors (Blaine's overhaul): under the Ossuary
 ## (floor 1, Battlegrounds.build) lie the Frozen Depths (floor 2: ice-white stone, frost on the floors, cold light,
 ## the hall of Hrimgar the Frostbound) and the Overgrown Vault (floor 3: something alive has broken in through the
 ## stone: thorny brambles spilling out of the hermit's grove into the corridors, vines up the pillars, giant

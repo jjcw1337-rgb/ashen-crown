@@ -12,7 +12,7 @@ speckled and, through the roughness map, glossy at the seams. Per model this pri
   dark@N    how much darker the colour map reads at mip size N (sampled inside the islands) than at full size,
             as a percentage of its luminance: the darkening players actually see at the game's distance
   rough@N   the same for the roughness channel (negative = glossier at a distance)
-Used by docs/visual/AUDIT.md and by tools/visual_audit/pad_textures.py (which fixes it).
+Used by the visual audit of 2026-11-02 (in git history) and by tools/visual_audit/pad_textures.py (which fixes it).
 """
 import csv
 import io

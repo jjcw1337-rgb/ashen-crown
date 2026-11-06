@@ -1,5 +1,5 @@
 #!/bin/sh
-# One-time (idempotent) setup of the KPI store and Grafana on the STAGING server (docs/nightly/KPIS.md):
+# One-time (idempotent) setup of the KPI store and Grafana on the STAGING server (docs/systems/performance_kpis.md):
 #   sh deploy/staging/kpi_setup.sh [ssh-host]
 # Makes the passwords on the server (GRAFANA_ADMIN_PASSWORD, GRAFANA_PG_PASSWORD appended to nakama.env, mode 600;
 # never printed), the `kpi` database, the read-only role grafana_ro and the table. Then `deploy.sh` (or
@@ -22,7 +22,7 @@ ssh "$HOST" 'set -e
   $P -d nakama -tc "SELECT 1 FROM pg_roles WHERE rolname = '"'"'grafana_ro'"'"'" | grep -q 1 || $P -d nakama -c "CREATE ROLE grafana_ro LOGIN"
   echo "ALTER ROLE grafana_ro PASSWORD '"'"'$PW'"'"';" | $P -d nakama
   $P -d kpi -c "GRANT CONNECT ON DATABASE kpi TO grafana_ro; GRANT USAGE ON SCHEMA public TO grafana_ro"
-  # (the telemetry tables in Nakama'"'"'s database: the module grants SELECT on them, docs/nightly/TELEMETRY.md)
+  # (the telemetry tables in Nakama'"'"'s database: the module grants SELECT on them, docs/systems/telemetry.md)
   $P -d nakama -c "GRANT CONNECT ON DATABASE nakama TO grafana_ro; GRANT USAGE ON SCHEMA public TO grafana_ro"' 
 ssh "$HOST" 'sudo docker exec -i ashen-staging-postgres-1 psql -v ON_ERROR_STOP=1 -q -U nakama -d kpi' < "$ROOT/deploy/staging/kpi_schema.sql"
 mkdir -p ~/.config/ashen-grafana && chmod 700 ~/.config/ashen-grafana

@@ -2,7 +2,7 @@ extends SceneTree
 ## Real duels between bots in the admins' sandbox (Sandbox, BotBrain): every class against every class at a level,
 ## both fresh or both geared, and each class geared against itself fresh; each pairing `rounds` times, the two spawned
 ## 9 m apart in the Proving Crypt and left to fight (free for all) until one falls or `cap` seconds pass. Prints the
-## win rates and how long kills take, and flags what misses Blaine's targets (docs/queue_progression_overhaul.md):
+## win rates and how long kills take, and flags what misses Blaine's targets:
 ## a geared class should beat the same class fresh (>= 80% at the same skill); no class pairing past 70/30 at equal
 ## gear.
 ##   godot --headless --fixed-fps 30 --path . -s tools/duel_sim.gd -- [levels=1,5,10,20] [classes=knight,demon]

@@ -1,4 +1,4 @@
-"""Writes the Grafana dashboard of the player telemetry, error reports and server logs (docs/nightly/TELEMETRY.md):
+"""Writes the Grafana dashboard of the player telemetry, error reports and server logs (docs/systems/telemetry.md):
     python3 tools/telemetry_dashboard.py deploy/staging/grafana/dashboards/telemetry.json
 (edit the panels here, not in the JSON)."""
 import json
@@ -51,7 +51,7 @@ red = [{"color": "green", "value": None}, {"color": "orange", "value": 1}, {"col
 add({"type": "text", "title": "", "options": {"mode": "markdown", "content":
      "**Players and errors.** What the staging builds send (`scripts/telemetry.gd`: a performance sample a minute of play, "
      "every error and crash with where the player was and what they did), and the servers' logs (Loki). The nightly triage job "
-     "(05:00) works from the same data: `tools/telemetry_query.sh issues` / `spots`. Docs: `docs/nightly/TELEMETRY.md`."}}, 0, 0, 24, 3)
+     "(05:00) works from the same data: `tools/telemetry_query.sh issues` / `spots`. Docs: `docs/systems/telemetry.md`."}}, 0, 0, 24, 3)
 add(stat("Open issues (in range)", "SELECT count(DISTINCT fingerprint) AS issues FROM tm_error WHERE $__timeFilter(ts)",
          "Distinct errors (fingerprints) seen in the time range.", red), 0, 3, 6, 4)
 add(stat("Crashes (in range)", "SELECT count(*) AS crashes FROM tm_error WHERE kind = 'crash' AND $__timeFilter(ts)",

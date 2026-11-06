@@ -4,7 +4,7 @@ extends RefCounted
 ## roster the Arena picks from. Each is its own file, `user://survivors/sv_<run uid>.json`, apart from the
 ## single-player characters (`user://characters/`), so neither touches the other. A run has one uid (RunBuild.uid):
 ## saving it again (a second press, a reconnect, the results reopened) finds its file and writes nothing new.
-## Not tamper-proof: the file is the player's own, like every save today (docs/multiplayer_authority.md).
+## Not tamper-proof: the file is the player's own, like every save today (docs/systems/multiplayer_authority.md).
 
 const DIR := "user://survivors/"
 const PREFIX := "sv_"
