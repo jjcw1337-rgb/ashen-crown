@@ -718,7 +718,7 @@ static func _meteor_land(h: Hero, at: Vector3, src := "wrath") -> void:
 		var to: Vector3 = e.global_position - at
 		to.y = 0
 		if to.length() - e.radius <= METEOR_R:
-			_hit(h, e, 1.1, 1.2, src, magma(h, 0.55))
+			_hit(h, e, 0.85 if src == "d_volcano" else 1.1, 1.2, src, magma(h, 0.55))
 			if is_instance_valid(e) and not e.dead and not PvpStatus.is_player(e):
 				e.ignite(magma(h, 0.1) * h.dmg_mult(src), 3.0)
 

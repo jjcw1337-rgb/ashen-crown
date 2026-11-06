@@ -33,7 +33,7 @@ const TALENT_SCALE := 2.0
 ## A class's damage in a run, where its kit plays differently from the story game (measured with
 ## tools/run_playthrough.gd: the knight and Doug flattened at ~30 damage a second against the bosses while every
 ## other class reached 60-250). Runs only; single player and the Battlegrounds' PvP scale stay as they are.
-const CLASS_POWER := {"knight": 1.6, "doug": 1.8}
+const CLASS_POWER := {"knight": 1.6, "doug": 1.8, "demon": 0.9}
 ## Cooldown and mana reductions stop here however many stack.
 const REDUCTION_CAP := 60.0
 

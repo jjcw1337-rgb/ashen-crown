@@ -205,6 +205,15 @@ static func _run_play(h: Hero, ev: Dictionary) -> bool:
 				_free_later(a, float(ev.get("x", 3.0)))
 				var ring := Fx.aura(e, PALE, 8, 0.1, 0.07, 0.6, 0.0, 0.6, 10.0, Vector3(0, float(e.get("height")) * 2.0 + 0.4, 0))
 				_free_later(ring, float(ev.get("x", 3.0)))
+				# a violet soul ring pulsing under the marked foe every 0.6 s until the mark tears (tightening as it nears)
+				var secs: float = float(ev.get("x", 3.0))
+				var tw := e.create_tween()
+				for k in int(secs / 0.6):
+					tw.tween_interval(0.6)
+					var rr := 1.8 - 0.25 * k
+					tw.tween_callback(func():
+						if is_instance_valid(e) and not e.dead and is_instance_valid(root):
+							_soul_ring(root, e.global_position, maxf(0.8, rr), VIOLET, 0.45, 0.35))
 			SkillFx.snd(h, "shade_in", -2.0, 0.7)
 			return true
 		["r_deathmark", "pop"]:
