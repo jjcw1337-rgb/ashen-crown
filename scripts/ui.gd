@@ -5569,6 +5569,7 @@ func _process(delta: float) -> void:
 		msg_lbl.modulate.a = clampf(msg_t, 0.0, 1.0)
 	# Transient world announcements and the controls hint must not cover menu actions.
 	var clear_hud_text := not any_panel_open() and not pause_panel.visible
+	msg_lbl.visible = not (run_ui != null and run_ui.visible)
 	big_lbl.visible = clear_hud_text
 	hint_lbl.visible = clear_hud_text
 	if big_t > 0.0:

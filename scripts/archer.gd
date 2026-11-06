@@ -820,15 +820,9 @@ static func pose_bow_on(rig: Node3D, w: Node3D, kind: String, st: Dictionary) ->
 		off = want * ease
 		vel = Vector3.ZERO
 	else:
-		# loosed (or never drawn): the string flies home and shivers
-		vel += (-off * 1500.0 - vel * 34.0) * dt
-		off += vel * dt
-		var along := off.dot(sp["pull"])
-		if along < -0.04:
-			off -= (sp["pull"] as Vector3) * (along + 0.04)      # a little past straight, no further
-		if off.length() < 0.0005 and vel.length() < 0.01:
-			off = Vector3.ZERO
-			vel = Vector3.ZERO
+		var relaxed := relax_bow_string(off, vel, dt, sp["pull"])
+		off = relaxed[0]
+		vel = relaxed[1]
 	w.set_meta("draw_off", off)
 	w.set_meta("draw_vel", vel)
 	w.set_meta("draw_s", off.dot(sp["pull"]))
@@ -841,6 +835,23 @@ static func pose_bow_on(rig: Node3D, w: Node3D, kind: String, st: Dictionary) ->
 	if nocked:
 		var dir := ((sp["grip"] as Vector3) - nock).normalized()
 		arrow.transform = Transform3D(Basis.looking_at(dir, sp["limb"]), nock + dir * 0.36)
+
+## Bound the stiff string spring's integration step independently of render FPS.
+## A 100 ms frame made the old single Euler step gain energy until the bow became NaN.
+static func relax_bow_string(off: Vector3, vel: Vector3, dt: float, pull: Vector3) -> Array[Vector3]:
+	if not off.is_finite() or not vel.is_finite(): return [Vector3.ZERO, Vector3.ZERO]
+	var remaining := clampf(dt, 0.0, 0.1)
+	while remaining > 0.0:
+		var step := minf(remaining, 1.0 / 120.0)
+		vel += (-off * 1500.0 - vel * 34.0) * step
+		off += vel * step
+		var along := off.dot(pull)
+		if along < -0.04:
+			off -= pull * (along + 0.04)
+		remaining -= step
+	if off.length() < 0.0005 and vel.length() < 0.01:
+		return [Vector3.ZERO, Vector3.ZERO]
+	return [off, vel]
 
 static func _curve(pts: Array, a: float) -> float:
 	if pts.is_empty() or a < float(pts[0][0]):

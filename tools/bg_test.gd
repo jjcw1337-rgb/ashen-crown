@@ -193,7 +193,7 @@ func _client() -> void:
 	var forest: bool = load("res://scripts/mp_mode.gd").FOREST
 	check(str(g.bg_raid.get("state", "")).begins_with("lobby") and (forest or (not gates.is_empty() and not gates[0]["up"])), "waiting for the round to start (%s)" % str(g.bg_raid.get("state", "")))
 	if forest:
-		_check_hint("ring the bell", "ANTECHAMBER")
+		await _check_hint("ring the bell", "ANTECHAMBER")
 	var bells: Array = g.world.interactables.filter(func(t): return t.kind == "bell")
 	check(bells.size() == 4, "a bell in each of the four antechambers")
 	var bell = bells[0]
@@ -203,7 +203,7 @@ func _client() -> void:
 	g._interact(bell)
 	check(await until(func(): return str(g.bg_raid.get("state", "")).begins_with("prep"), 6.0), "rang the bell: the raid starts in a moment (%s)" % str(g.bg_raid.get("state", "")))
 	if forest:
-		_check_hint("clear camps", "stash")
+		await _check_hint("clear camps", "stash")
 	check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 10.0) and (forest or gates[0]["up"]), "the raid was on")
 	await secs(1.0)
 	# one standard for attacks: the same timing, damage and cooldowns in the crypt as in the story game
@@ -244,8 +244,8 @@ func _client() -> void:
 	var ex = Battlegrounds.portal_list(g.world)[0]
 	check(not bool(ex.data.get("open", false)) or not g.bg_raid["open"].is_empty(), "portals start closed")
 	check(await until(func(): return not (g.bg_raid.get("open", []) as Array).is_empty(), 70.0), "the portals opened")
-	_check_hint(Battlegrounds.map_title().to_upper(), "")
-	_check_hint("reach an open portal before collapse", "")
+	await _check_hint(Battlegrounds.map_title().to_upper(), "")
+	await _check_hint("reach an open portal before collapse", "")
 	var ps: Array = Battlegrounds.portal_list(g.world)
 	var op = ps[int(g.bg_raid["open"][0])]
 	g.hero.target = null
@@ -292,7 +292,7 @@ func _client() -> void:
 	check(FileAccess.file_exists(path) and not after.get("in_raid", true) and int((after.get("hero", {}) as Dictionary).get("level", 0)) == 1 and _count_saved(after) == inv0 and worn.size() >= 1, "a fallen run leaves the saved character as it was (level 1, %d items)" % _count_saved(after))
 
 func _check_hint(required: String, forbidden: String) -> void:
-	Battlegrounds.hud(g, 0.0)
+	await wait(2) # Observe the actual per-frame HUD; do not bypass Game._process.
 	var label: Label = g.ui.hud.get_node_or_null("bg_hud")
 	check(label != null and label.is_visible_in_tree() and required in label.text and (forbidden == "" or forbidden not in label.text), "raid instructions: " + required)
 

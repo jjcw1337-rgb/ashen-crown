@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded Arena/Sandbox acceptance: isolated local broker, two clients and one worker.
+"""Bounded lobby acceptance: isolated broker, one/two clients and one worker.
 Caller owns the heavy-tests claim and configures an isolated Godot user directory.
 No live endpoints, imports, deployments or changes to another process.
 """
@@ -65,8 +65,8 @@ def run(args):
         else:
             raise RuntimeError('Local broker did not become ready')
         url = 'http://127.0.0.1:%d' % args.broker_port
-        roles = ('a', 'b') if args.mode == 'arena' else ('host', 'guest')
-        fixture = 'arena_survivor_test' if args.mode == 'arena' else 'sandbox_lobby_test'
+        roles = {'arena': ('a', 'b'), 'sandbox': ('host', 'guest'), 'journey': ('player',)}[args.mode]
+        fixture = {'arena': 'arena_survivor_test', 'sandbox': 'sandbox_lobby_test', 'journey': 'bg_journey_test'}[args.mode]
         clients = []
         for index, role in enumerate(roles):
             command = [args.godot]
@@ -74,9 +74,11 @@ def run(args):
                 command.append('--headless')
             command += ['--path', str(root), '-s', 'tools/_late.gd', '--', role,
                         'res://tools/%s.gd' % fixture,
-                        '--broker' if args.mode == 'arena' else '--broker-url', url]
+                        '--broker-url' if args.mode == 'sandbox' else '--broker', url]
             if args.mode == 'sandbox':
                 command += ['--run-id', out.name]
+            if args.mode == 'journey':
+                command += ['--out', str(out)]
             if index == 0 and args.rendered:
                 command += ['--capture', str(out / (args.mode + '.png'))]
             clients.append(start(role, command))
@@ -138,10 +140,12 @@ def run(args):
             known, errors, warnings = inspect(path.read_text(errors='replace'))
             result['logs'][str(path.relative_to(out))] = dict(known=known, errors=errors, warnings=warnings)
         completed = True
-        for role in (('a', 'b') if args.mode == 'arena' else ('host', 'guest')):
+        roles = {'arena': ('a', 'b'), 'sandbox': ('host', 'guest'), 'journey': ('player',)}[args.mode]
+        marker = r'\[JOURNEY\] done, 0 failure\(s\)' if args.mode == 'journey' else r'done \d+ checks / 0 failures'
+        for role in roles:
             path = out / (role + '.log')
-            completed &= path.exists() and bool(re.search(r'done \d+ checks / 0 failures', path.read_text(errors='replace')))
-        result['passed'] = (not result.get('failure') and result.get('exit_codes') == [0, 0]
+            completed &= path.exists() and bool(re.search(marker, path.read_text(errors='replace')))
+        result['passed'] = (not result.get('failure') and result.get('exit_codes') == [0] * len(roles)
                             and result.get('worker_exited_and_port_released') and completed
                             and not any(log['errors'] for log in result['logs'].values()))
         (out / 'result.json').write_text(json.dumps(result, indent=2))
@@ -151,7 +155,7 @@ def run(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=['arena', 'sandbox'])
+    parser.add_argument('mode', choices=['arena', 'sandbox', 'journey'])
     parser.add_argument('output')
     parser.add_argument('--godot', required=True)
     parser.add_argument('--broker-port', type=int, default=7354)

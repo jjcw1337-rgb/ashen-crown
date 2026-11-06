@@ -193,7 +193,12 @@ func local_ips() -> Array:
 
 func _on_connected() -> void:
 	reached = true
-	rpc_id(1, "sv_hello", my_name, game.hero.net_gear(), game.hero.level, game.party_join_ticket, game.char_id)
+	# A fresh BG run has no story-save ID. Authenticate the character reserved by
+	# the lobby ticket, as Arena/Sandbox do, without assigning a story save to the run.
+	var admitted_character: String = game.char_id
+	if game.lobby_client != null and game.lobby_client.match_id != "":
+		admitted_character = game.lobby_client.character
+	rpc_id(1, "sv_hello", my_name, game.hero.net_gear(), game.hero.level, game.party_join_ticket, admitted_character)
 	game.party_join_ticket = ""
 	if game.bg_mode and (game.lobby_client == null or game.lobby_client.match_id == ""):
 		# with accounts on: a one-time join ticket from Nakama (over HTTPS), never the session itself
