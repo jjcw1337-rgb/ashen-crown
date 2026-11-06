@@ -1,8 +1,8 @@
 # Player telemetry, errors and logs
 
 What the game and its servers report, where it goes, and how it's used. Built 2026-11-01 on the stack we run:
-the game → Nakama → PostgreSQL for game events, Loki for the servers' raw logs, Grafana over both, and the nightly
-triage job (05:00) acting on it.
+the game → Nakama → PostgreSQL for game events, Loki for the servers' raw logs, Grafana over both. (The nightly triage job and
+the 5-minute alert watcher that acted on it were removed on 2026-11-06, Blaine: read it by hand or through Grafana.)
 
 - **Dashboard**: https://161.35.185.195/grafana/ → "Ashen Crown: players, errors and logs" (login in `KPIS.md`).
 - **From a script**: `sh tools/telemetry_query.sh issues` (errors grouped into issues, worst first), `spots` (the
@@ -46,30 +46,8 @@ the `tm_issue` view at start, and grants Grafana's read-only role SELECT on them
 Lines with ERROR / SCRIPT ERROR / panic / a JSON `"level":"error"` also get `level="error"`. In Grafana: Explore →
 Logs, e.g. `{unit="ashen-crown-bg.service"} |= "SCRIPT ERROR"`.
 
-## Alerts and hotfix runs (`tools/nightly/watch.py`)
-
-Every 5 minutes (launchd `com.gamefactory.ashen-watch` on the Game Factory Mac; the Mac isn't reachable from the
-internet, so it asks the server rather than being called) the watcher reads the telemetry and:
-- **alerts** the Discord channel at once: any crash, an error never seen before, an error spike (50+ events of one issue
-  in an hour), a slow spot (5+ minutes of play in one 20 m square averaging under 30 fps in the last hour, once a day
-  per place);
-- starts a **hotfix run** (`tools/nightly/run.sh hotfix`: the triage job on that one issue, 1 h, its focus in
-  `hotfix_focus.json`; the KPI benchmark only for a slow spot) when an alert is serious (a crash; a new error that hit
-  2+ players or 10+ times; a slow spot) and that issue was never investigated. Caps: one run every 2 h, 3 a day, never
-  while a nightly job holds the lock (it tries again next check). Everything else waits for the 05:00 triage.
-State: `~/Library/Application Support/ashen-nightly/watch.json`; log: `~/Library/Logs/ashen-nightly/watch.log`.
-Developer runs (build `dev`, env `local`) are ignored. `python3 tools/nightly/watch.py --dry` shows what it would do.
-
-## The triage job
-
-`tools/nightly/triage_prompt.md`, 05:00, 2 h: reads `docs/nightly/triage/LOG.md` first, then the last day's issues and
-slow spots; picks worst first with a cap (3 issues, 2 spots: crashes, then players hit, then events); reproduces each
-from where the player was and what they did (an error with a tool script; a slow spot with
-`--kpi spot out.json --zone Z --run R --pos x,z --quality P [--foes N]`); fixes the cause; keeps the tests green; logs
-a row per issue and rewrites the Lessons. Like the other jobs, a fix that makes the KPIs worse doesn't ship.
-
 ## Tests
 
-`tools/telemetry_test.gd` (in the nightly gate): off in tools, a crash from a session that didn't end, an error read
+`tools/telemetry_test.gd` (in the gate, `tools/nightly/gate.sh`): off in tools, a crash from a session that didn't end, an error read
 from the log and fingerprinted (twice = one issue counted twice) with the crumbs and the PC, a sample with its
 hitches; with `-- cloud <url> <key>` it also sends them to that Nakama.

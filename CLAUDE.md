@@ -1437,11 +1437,6 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   monster within 14 m, `_engaged`) and for `COMBAT_SECS` after, then rises to `CALM_MAX` (5) over `CALM_RAMP`;
   sprinting drains that many times slower and stamina refills that many times faster ("Rested ×N" on the bar).
   `tools/stamina_test.gd`.
-- **The Codex standards audit** (Blaine 2026-11-01, `tools/audit/`): a read-only run of ChatGPT's Codex CLI on a clean
-  worktree of `origin/staging` (`~/dev/ashen-crown-audit`) with the admins' Discord requests since the last audit;
-  it checks requests vs delivered, asset quality, architecture, performance, tests and process against
-  `audit_prompt.md` and posts the findings to the channel. launchd `com.gamefactory.ashen-audit` (install.sh):
-  19:40, 23:30, 2:30, 7:30, 12:50, 16:20. It never edits or runs the game; log `~/Library/Logs/ashen-nightly/audit.log`.
 - **Title screen** (`UI._build_title`, `scripts/title_stage.gd` `TitleStage`): the Gate of the Ashen Crown at dusk in
   its own World3D: a ruined cathedral gate with the dusk showing through its arch (`BACKDROP_SHADER`), broken arcades,
   the fallen stone king and a giant crown in the ash, fog banks, falling ash, embers, braziers and torches, heat
@@ -1897,10 +1892,6 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `assets/textures/fx/foliage_mask_<kind>.png`, `tools/bake_foliage_mask.gd`; rebake if `FOLIAGE_SHADER`'s
   needles/leaves/fern change). SSIL is Ultra only, SSAO outdoors Ultra only (indoors from Medium; `Game.apply_quality`
   reads `indoor()`): they cost ~7 ms each and showed nothing there.
-- **Nightly lab** (`tools/nightly/`, `docs/nightly/README.md`): two launchd jobs on the Game Factory Mac, `perf` (01:00)
-  and `mode` (04:30), each on a fresh `staging` with its own log (`docs/nightly/perf/LOG.md`, `docs/nightly/modes/LOG.md`:
-  lessons, then one row per attempt), the KPI benchmark before and after (slower = not shipped), the gate, a push to
-  `staging` and a Discord report. `bash tools/nightly/install.sh` installs or updates them.
 - **The admin role** (Nakama, `deploy/nakama/modules/ashen.lua`: `admin_status`, `admin_check`, `admin_set`; the
   "admins" collection only the server writes): `CloudSaves.ensure` asks after signing in and an admin account gets
   the dev tools in any build (`Game.account_admin`; the Admin column shows the account id). Grant it:
