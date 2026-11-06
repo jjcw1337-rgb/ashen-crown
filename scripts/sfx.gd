@@ -31,7 +31,8 @@ var volume_db := 0.0
 ## Sound off: nothing new starts and the music/ambience loops stop. (Muting the audio bus
 ## instead crashes the browser build's audio code in Godot 4.3.)
 var muted := false
-var silent_runtime := OS.get_cmdline_user_args().has("--server") or DisplayServer.get_name() == "headless"
+## (headless workers stay silent; `-- --sounds` keeps the bank on for tools/sound_test.gd)
+var silent_runtime := (OS.get_cmdline_user_args().has("--server") or DisplayServer.get_name() == "headless") and not OS.get_cmdline_user_args().has("--sounds")
 
 func set_muted(m: bool) -> void:
 	m = m or silent_runtime

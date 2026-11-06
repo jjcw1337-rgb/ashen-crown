@@ -1428,6 +1428,10 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	await get_tree().process_frame
 	if world:
 		_store_harvest()
+		# the hero's lingering skill effects (Hero.fxs) live in this zone's fx_root: drop them with it, as a puppet's
+		# are (Hero.net_zone_reset); Molten Fists' update touched its freed nodes every frame after a trip
+		if hero != null:
+			SkillFx.clear(hero)
 		world.queue_free()
 		world = null
 		hovered = null
@@ -2530,10 +2534,12 @@ func _burst_seals(t: Inter) -> void:
 			var v := out * randf_range(3.0, 4.2) + Vector3(0, randf_range(3.2, 4.5), 0)
 			var w := Vector3(randf_range(-9, 9), randf_range(-12, 12), randf_range(-9, 9))
 			InfernalFx.fly(s, v, w, 1.15, -7.0, true)
+			var s_ref: WeakRef = weakref(s)      # (it frees itself at the end of its flight: no strong capture)
 			Fx.later(root, 1.0, func():
-				if is_instance_valid(s):
-					Fx.flash(root, s.global_position, flash_c, 4.0, 0.4, 4.0)
-					Fx.burst(root, s.global_position, spark_c, 22, 2.0, 0.03, 0.6, false, -3.0, 180.0)))
+				var seal: Node3D = s_ref.get_ref() as Node3D
+				if seal != null:
+					Fx.flash(root, seal.global_position, flash_c, 4.0, 0.4, 4.0)
+					Fx.burst(root, seal.global_position, spark_c, 22, 2.0, 0.03, 0.6, false, -3.0, 180.0)))
 	var gl: OmniLight3D = t.find_child("seal_glow", true, false) as OmniLight3D
 	if gl:
 		var tw := gl.create_tween()
@@ -2564,21 +2570,65 @@ func save_game() -> void:
 	d["lobby_receipts"] = old_lobby_save.get("lobby_receipts", [])
 	d["lobby_locked"] = old_lobby_save.get("lobby_locked", [])
 	DirAccess.make_dir_recursive_absolute(char_dir)
-	var f := FileAccess.open(save_path(), FileAccess.WRITE)
-	if f:
-		f.store_string(JSON.stringify(d))
+	if not write_save(save_path(), d):
+		push_warning("could not save " + save_path())
 	if cloud != null and not _testing():
 		cloud.push(char_id, d)
 
-func load_game() -> bool:
-	if not FileAccess.file_exists(save_path()):
-		return false
-	var f := FileAccess.open(save_path(), FileAccess.READ)
+## How many earlier saves are kept beside each character's (<id>.json.bak1 is the newest).
+const SAVE_BACKUPS := 3
+
+## Writes a save safely (from the saves branch of 2026-10-29, now that it autosaves every minute): to <path>.tmp,
+## read back and checked, and only then swapped in, the saves before it kept as .bak1 to .bak3. A crash, a closed
+## window or a full disk mid-save never costs the character.
+func write_save(path: String, d: Dictionary) -> bool:
+	var txt := JSON.stringify(d)
+	var tmp := path + ".tmp"
+	var f := FileAccess.open(tmp, FileAccess.WRITE)
 	if f == null:
 		return false
-	var d = JSON.parse_string(f.get_as_text())
-	if typeof(d) != TYPE_DICTIONARY:
+	f.store_string(txt)
+	f.flush()
+	var ok := f.get_error() == OK
+	f.close()
+	if not ok or FileAccess.get_file_as_string(tmp) != txt:
 		return false
+	if FileAccess.file_exists(path):
+		for i in range(SAVE_BACKUPS - 1, 0, -1):
+			_replace("%s.bak%d" % [path, i], "%s.bak%d" % [path, i + 1])
+		_replace(path, path + ".bak1")
+	return _replace(tmp, path)
+
+## Moves a over b (b removed first: renaming onto an existing file fails on Windows).
+func _replace(a: String, b: String) -> bool:
+	if not FileAccess.file_exists(a):
+		return false
+	if FileAccess.file_exists(b):
+		DirAccess.remove_absolute(b)
+	return DirAccess.rename_absolute(a, b) == OK
+
+## Reads a save, falling back to a finished .tmp and then the backups, newest first, when the save itself is missing
+## or damaged; {} when there's nothing usable. `save_recovered` names the copy it came from.
+var save_recovered := ""
+func read_save(path: String) -> Dictionary:
+	save_recovered = ""
+	for p in [path, path + ".tmp"] + range(1, SAVE_BACKUPS + 1).map(func(i): return "%s.bak%d" % [path, i]):
+		if not FileAccess.file_exists(p):
+			continue
+		var d = JSON.parse_string(FileAccess.get_file_as_string(p))
+		if typeof(d) == TYPE_DICTIONARY and typeof(d.get("hero")) == TYPE_DICTIONARY:
+			if p != path:
+				save_recovered = p.get_file()
+			return d
+	return {}
+
+func load_game() -> bool:
+	var d := read_save(save_path())
+	if d.is_empty():
+		return false
+	if save_recovered != "":
+		write_save(save_path(), d.duplicate(true))      # (the save was damaged or cut short: the good copy back in its place)
+		push_warning("save recovered from " + save_recovered)
 	hero.from_save(d.get("hero", {}))
 	char_name = str(d.get("name", default_name(hero.cls)))
 	if char_name != "":
@@ -2667,8 +2717,10 @@ func _adopt_old_save() -> void:
 		mark.store_string("1")
 
 func delete_character(id: String) -> void:
-	if id != "" and FileAccess.file_exists(char_dir + id + ".json"):
-		DirAccess.remove_absolute(char_dir + id + ".json")
+	if id != "":
+		for sfx in [".json", ".json.tmp"] + range(1, SAVE_BACKUPS + 1).map(func(i): return ".json.bak%d" % i):
+			if FileAccess.file_exists(char_dir + id + sfx):
+				DirAccess.remove_absolute(char_dir + id + sfx)
 	if cloud != null:
 		cloud.remove(id)
 
@@ -4438,8 +4490,10 @@ func max_out() -> void:
 	ui.message("Level 99, every rite, a million gold and %d pieces of the best gear in your bag" % n, Color(1.0, 0.85, 0.4), 6.0)
 
 func _unhandled_input(ev: InputEvent) -> void:
-	if not playing or _busy or world == null:
+	if not playing or _busy or world == null or loading.visible:
 		return      # (the title and its screens, and a zone loading: nothing in the game takes keys or clicks)
+		# (nor behind the loading screen while a join waits for its server: the camp behind it would send the
+		# skills' and clicks' messages down a link not yet connected; triage 2026-11-04)
 	_cheat_keys(ev)
 	if _orbit_input(ev):
 		return
@@ -4688,7 +4742,10 @@ func _process(delta: float) -> void:
 	_update_grade(real_dt)
 	if Engine.time_scale < 1.0 and Time.get_ticks_msec() > _hitstop_until:
 		Engine.time_scale = 1.0
-	if playing and not paused and not _busy:
+	if playing and not _busy and loading.visible and hero != null:
+		hero.cmd_wasd(Vector3.ZERO)      # (keys held as the loading screen came up don't walk him on behind it)
+		hero.blocking = false
+	if playing and not paused and not _busy and not loading.visible:
 		_update_hover()
 		hero.cursor = _cursor_aim()     # the pointer aims everything (see Hero's aiming notes)
 		_check_ambushes()
