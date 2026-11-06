@@ -81,7 +81,19 @@ CELLS["warlock_rites2"] = [
 ]
 CELLS["warlock_void"] += [c for c in CELLS["warlock_rites1"] if c[0] in ("w_r_panic", "w_r_dread")] + \
     [("-", "a glowing violet orchid"), ("-", "a black thorned vine")]
-for k in ["warlock2", "warlock_rites1", "warlock_rites2", "warlock_void"]:
+# her four original skills, in the same hand as the rest (and spares)
+CELLS["warlock_core"] = [
+    ("drain", "a forked fel green beam of life essence torn out of a screaming silhouette into a raised clawed hand"),
+    ("blight", "a howling fel green skull bolt bursting into a bubbling plague pool"),
+    ("shackles", "chains of fel green fire snapping out from a glowing sigil to bind shadowy figures"),
+    ("covenant", "two clawed hands sealing a pact over a burning fel green sigil, a crown of green flame rising"),
+    ("-", "a cracked green glass orb with blood inside"),
+    ("-", "a black thorned heart dripping green rot"),
+    ("-", "a violet eye in a ring of thorns"),
+    ("-", "a glowing green orchid"),
+    ("-", "a vine-wrapped jungle idol mask"),
+]
+for k in ["warlock2", "warlock_rites1", "warlock_rites2", "warlock_void", "warlock_core"]:
     PAL.setdefault(k, PAL["warlock"])
 
 def prompt(cls):
