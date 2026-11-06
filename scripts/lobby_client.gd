@@ -27,6 +27,9 @@ var arena_hud: Label
 var _returning := false
 var admitted := false
 var lan_row: HBoxContainer # the home screen's LAN (Blaine, 2026-11-05: no menu of its own, still there)
+var host_box: VBoxContainer # the right side's "host a game" (hidden while you're in a lobby)
+## The list's columns: title, width.
+const COLUMNS := [["MODE", 130], ["LOBBY", 190], ["HOST", 140], ["FORMAT", 120], ["PLAYERS", 80], ["STATUS", 90]]
 
 func setup(g) -> void:
  game=g
@@ -36,35 +39,46 @@ func setup(g) -> void:
  ui._ornate(panel,0.3,18)
  ui.menus.add_child(panel)
  panel.visible=false
- var vb:=VBoxContainer.new();vb.add_theme_constant_override("separation",12);panel.add_child(vb)
+ # StarCraft-style (Blaine, 2026-11-05): one big list of open games on the left (mode, lobby, host, format, players,
+ # status, Join; your Steam friends' worlds first), hosting on the right (pick a mode, Create); in a lobby, its roster
+ # and controls take the right side.
+ var vb:=VBoxContainer.new();vb.add_theme_constant_override("separation",10);panel.add_child(vb)
  var heading=ui._label("MULTIPLAYER",36,ui.GOLD,true);vb.add_child(heading)
- vb.add_child(ui._label("Create a lobby, gather your party, then start when everyone is ready.",16))
- var cards:=HBoxContainer.new();cards.add_theme_constant_override("separation",12);vb.add_child(cards)
- for entry in [["battlegrounds","BATTLEGROUNDS\nThe Hollow Crypt"],["waves","ENDLESS WAVES\nThe Last Flame"],["arena","ARENA\n1v1 · 2v2 · 3v3"]]:
+ var body:=HBoxContainer.new();body.add_theme_constant_override("separation",18);body.size_flags_vertical=Control.SIZE_EXPAND_FILL;vb.add_child(body)
+ var left:=VBoxContainer.new();left.size_flags_horizontal=Control.SIZE_EXPAND_FILL;left.add_theme_constant_override("separation",6);body.add_child(left)
+ left.add_child(ui._label("OPEN GAMES",18,ui.GOLD,true))
+ var cols:=HBoxContainer.new();cols.add_theme_constant_override("separation",8);left.add_child(cols)
+ for c in COLUMNS:
+  var h=ui._label(str(c[0]),13,ui.DIM,true);h.custom_minimum_size.x=float(c[1]);cols.add_child(h)
+ var scroll:=ScrollContainer.new();scroll.custom_minimum_size=Vector2(700,420);scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL;scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED;left.add_child(scroll)
+ rows=VBoxContainer.new();rows.name="rows";rows.size_flags_horizontal=Control.SIZE_EXPAND_FILL;rows.add_theme_constant_override("separation",4);scroll.add_child(rows)
+ status=ui._label("",15,ui.GOLD);status.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;left.add_child(status)
+ var right:=VBoxContainer.new();right.custom_minimum_size.x=400;right.add_theme_constant_override("separation",8);body.add_child(right)
+ host_box=VBoxContainer.new();host_box.name="host";host_box.add_theme_constant_override("separation",8);right.add_child(host_box)
+ host_box.add_child(ui._label("HOST A GAME",18,ui.GOLD,true))
+ for entry in [["battlegrounds","Battlegrounds · The Hollow Crypt"],["waves","Endless Waves · The Last Flame"],["arena","Arena · 1v1 · 2v2 · 3v3"]]:
   var id:String=entry[0]
-  var b=ui._iron_button(entry[1],300,90,20)
-  b.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+  var b=ui._iron_button(entry[1],400,52,18)
   b.pressed.connect(func():selected_mode=id;draw())
-  cards.add_child(b);mode_buttons[id]=b
- rules=ui._label("",16,ui.GOLD);rules.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;vb.add_child(rules)
- var options:=HBoxContainer.new();vb.add_child(options)
+  host_box.add_child(b);mode_buttons[id]=b
+ rules=ui._label("",15,ui.GOLD);rules.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;rules.custom_minimum_size.x=400;host_box.add_child(rules)
+ var options:=HBoxContainer.new();options.add_theme_constant_override("separation",10);host_box.add_child(options)
  team_pick=OptionButton.new()
  for n in [1,2,3]:team_pick.add_item("%dv%d"%[n,n],n)
  team_pick.item_selected.connect(func(i):team_size=team_pick.get_item_id(i))
  options.add_child(team_pick)
  wager_pick=CheckButton.new();wager_pick.text="Play for items";options.add_child(wager_pick)
- var create=ui._iron_button("Create Lobby",220,48,20);create.pressed.connect(func():action("create",{"mode":selected_mode,"team_size":team_size,"name":"Adventurers","wager":wager_pick.button_pressed}));options.add_child(create);create_button=create
- var solo=ui._iron_button("Play Waves Solo",240,48,20);solo.pressed.connect(play_solo_waves);options.add_child(solo)
- status=ui._label("",15,ui.GOLD);status.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;vb.add_child(status)
- var scroll:=ScrollContainer.new();scroll.custom_minimum_size.y=160;scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL;vb.add_child(scroll)
- rows=VBoxContainer.new();rows.size_flags_horizontal=Control.SIZE_EXPAND_FILL;scroll.add_child(rows)
- detail=VBoxContainer.new();vb.add_child(detail)
- var claim=ui._iron_button("Collect Arena Rewards",280,42,18);claim.pressed.connect(collect);vb.add_child(claim)
- lan_row=HBoxContainer.new();lan_row.name="lan_row";lan_row.add_theme_constant_override("separation",10);vb.add_child(lan_row)
+ var create=ui._iron_button("Create Lobby",400,54,21);create.name="create";create.pressed.connect(func():action("create",{"mode":selected_mode,"team_size":team_size,"name":_lobby_name(),"wager":wager_pick.button_pressed}));host_box.add_child(create);create_button=create
+ var solo=ui._iron_button("Play Waves Solo",400,44,18);solo.pressed.connect(play_solo_waves);host_box.add_child(solo)
+ detail=VBoxContainer.new();detail.name="detail";detail.add_theme_constant_override("separation",8);right.add_child(detail)
+ var bottom:=HBoxContainer.new();bottom.add_theme_constant_override("separation",12);vb.add_child(bottom)
+ lan_row=HBoxContainer.new();lan_row.name="lan_row";lan_row.add_theme_constant_override("separation",10);bottom.add_child(lan_row)
  lan_row.add_child(ui._label("Local network:",15,ui.DIM))
- var lan_host=ui._iron_button("Host LAN Game",200,40,16);lan_host.name="lan_host";lan_host.pressed.connect(func():ui.home.lan_host());lan_row.add_child(lan_host)
- var lan_join=ui._iron_button("Join LAN / Address",220,40,16);lan_join.name="lan_join";lan_join.pressed.connect(func():ui.home.lan_join());lan_row.add_child(lan_join)
- var back=ui._iron_button("Back",160,46,18);back.pressed.connect(func():panel.hide());vb.add_child(back)
+ var lan_host=ui._iron_button("Host LAN Game",190,40,16);lan_host.name="lan_host";lan_host.pressed.connect(func():ui.home.lan_host());lan_row.add_child(lan_host)
+ var lan_join=ui._iron_button("Join LAN / Address",210,40,16);lan_join.name="lan_join";lan_join.pressed.connect(func():ui.home.lan_join());lan_row.add_child(lan_join)
+ var gap:=Control.new();gap.size_flags_horizontal=Control.SIZE_EXPAND_FILL;bottom.add_child(gap)
+ var claim=ui._iron_button("Collect Arena Rewards",250,40,16);claim.pressed.connect(collect);bottom.add_child(claim)
+ var back=ui._iron_button("Back",150,44,18);back.name="back";back.pressed.connect(func():panel.hide());bottom.add_child(back)
  panel.minimum_size_changed.connect(fit.call_deferred)
  get_viewport().size_changed.connect(fit)
  fit.call_deferred()
@@ -75,7 +89,7 @@ func setup(g) -> void:
  ui.hud.add_child(arena_hud)
 
 func fit() -> void:
- panel.size=Vector2(1040,710)
+ panel.size=Vector2(1320,760)
  var available:=get_viewport().get_visible_rect().size
  var factor:=minf(1,minf((available.x-32)/panel.size.x,(available.y-32)/panel.size.y))
  panel.scale=Vector2.ONE*factor;panel.pivot_offset=panel.size*0.5;panel.position=(available-panel.size)*0.5
@@ -171,29 +185,28 @@ func draw() -> void:
  for id in mode_buttons:
   mode_buttons[id].modulate=Color(1.3,1.12,0.8) if id==selected_mode else Color.WHITE
   mode_buttons[id].disabled=not room.is_empty()
+ host_box.visible=room.is_empty()
+ var shown:=0
  # Steam friends' open worlds first (co-op: SteamLink), like Slay the Spire's join list
  if game.steam!=null and game.steam.ok and room.is_empty():
   for f in game.steam.friends_worlds():
    var fl:int=int(f.lobby)
-   var fb=ui._iron_button("%s's world · Co-op · Join"%str(f.name),900,48,18)
-   fb.pressed.connect(func():panel.hide();game.steam.join_world(fl))
-   rows.add_child(fb)
+   rows.add_child(_row(["Co-op",str(f.name)+"'s world",str(f.name),"Their world","",""],true,func():panel.hide();game.steam.join_world(fl)));shown+=1
  for r in rooms:
   var rid:String=str(r.id)
-  var b=ui._iron_button("%s · %s · %d/%d · %s"%[r.name,str(r.mode).capitalize(),int(r.get("joined",r.members.size())),r.capacity,str(r.state).capitalize()],900,48,18)
-  b.disabled=not bool(r.get("joinable",false)) or not room.is_empty()
-  b.pressed.connect(func():join_lobby(rid,str(r.mode)))
-  rows.add_child(b)
- if rooms.is_empty():rows.add_child(ui._label("No lobbies yet. Create one and invite others to join.",18))
+  var owner:Dictionary=r.members.get(str(r.get("owner","")),{})
+  rows.add_child(_row([MODE_NAMES.get(str(r.mode),str(r.mode).capitalize()),str(r.name),str(owner.get("name","?")),_format(r),"%d/%d"%[int(r.get("joined",r.members.size())),int(r.capacity)],str(r.state).capitalize()],bool(r.get("joinable",false)) and room.is_empty(),func():join_lobby(rid,str(r.mode))));shown+=1
+ if shown==0:rows.add_child(ui._label("No open games yet. Host one on the right.",18))
  if not room.is_empty():
   detail.add_child(ui._label(str(room.name)+" · "+str(room.state).capitalize(),22,ui.GOLD,true))
-  var roster:=GridContainer.new();roster.columns=2;roster.add_theme_constant_override("h_separation",24);detail.add_child(roster)
+  var roster:=GridContainer.new();roster.columns=1;detail.add_child(roster)
   for uid in room.members:
    var m:Dictionary=room.members[uid]
    roster.add_child(ui._label("%s · %s · %s"%[m.name,("Ember" if int(m.team)==0 else "Frost") if room.mode=="arena" else "Party","Ready" if m.ready else "Not ready"],16))
   if bool(room.get("wager",false)) and room.state=="waiting":
-   detail.add_child(ui._label("ITEM MATCH: Ready accepts the displayed stakes. Winners keep their stake and split the losing team's items.",14,ui.GOLD))
-   var stakes:=GridContainer.new();stakes.columns=2;stakes.add_theme_constant_override("h_separation",24);detail.add_child(stakes)
+   var note=ui._label("ITEM MATCH: Ready accepts the displayed stakes. Winners keep their stake and split the losing team's items.",14,ui.GOLD)
+   note.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;note.custom_minimum_size.x=400;detail.add_child(note)
+   var stakes:=GridContainer.new();stakes.columns=1;detail.add_child(stakes)
    for m in room.members.values():
     stakes.add_child(ui._label(str(m.name)+": "+str(m.get("stake",{}).get("name","No item committed")),14))
    item_pick=OptionButton.new()
@@ -208,17 +221,44 @@ func draw() -> void:
    if room.members.get(identity,{}).has("stake"):
     commit.text="Item Locked";commit.disabled=true;item_pick.disabled=true
    commit.pressed.connect(commit_stake);detail.add_child(commit)
-  var bar:=HBoxContainer.new();detail.add_child(bar)
+  var bar:=GridContainer.new();bar.columns=2;bar.add_theme_constant_override("h_separation",10);bar.add_theme_constant_override("v_separation",8);detail.add_child(bar)
   for option in [["Ready","ready",{"ready":true}],["Not Ready","ready",{"ready":false}],["Start Match","start",{}],["Leave Lobby","leave",{}]]:
    var op:String=option[1];var args:Dictionary=option[2]
-   var b=ui._iron_button(option[0],210,44,18);b.disabled=str(room.state)!="waiting"
+   var b=ui._iron_button(option[0],195,44,18);b.disabled=str(room.state)!="waiting"
    if op=="start":b.disabled=b.disabled or str(room.owner)!=identity
    b.pressed.connect(func():action(op,args));bar.add_child(b)
   if room.mode=="arena" and room.state=="waiting":
    var teams:=HBoxContainer.new();detail.add_child(teams)
    for t in [0,1]:
-    var b=ui._iron_button("Join "+("Ember" if t==0 else "Frost"),220,42,17)
+    var b=ui._iron_button("Join "+("Ember" if t==0 else "Frost"),195,42,17)
     b.pressed.connect(func():action("team",{"team":t}));teams.add_child(b)
+
+const MODE_NAMES := {"battlegrounds": "Battlegrounds", "waves": "Endless Waves", "arena": "Arena"}
+
+## One row of the list: its columns and a Join button.
+func _row(cells: Array, joinable: bool, join: Callable) -> Control:
+ var ui=game.ui
+ var p:=PanelContainer.new()
+ p.add_theme_stylebox_override("panel",ui._box(Color(0.07,0.055,0.04,0.92),Color(0.32,0.25,0.15),1,3,6))
+ var h:=HBoxContainer.new();h.add_theme_constant_override("separation",8);p.add_child(h)
+ for i in cells.size():
+  var l=ui._label(str(cells[i]),16 if i>0 else 15,ui.GOLD if i==0 else Color(0.9,0.85,0.76))
+  l.custom_minimum_size.x=float(COLUMNS[i][1]);l.clip_text=true;h.add_child(l)
+ var j=ui._iron_button("Join",110,38,16);j.disabled=not joinable;j.pressed.connect(join);h.add_child(j)
+ return p
+
+func _format(r: Dictionary) -> String:
+ match str(r.mode):
+  "arena":return "%dv%d%s"%[int(r.team_size),int(r.team_size)," · items" if bool(r.get("wager",false)) else ""]
+  "battlegrounds":return "Raid · %d max"%int(r.capacity)
+  "waves":return "Co-op · %d max"%int(r.capacity)
+ return ""
+
+## A new lobby's name: the host's character.
+func _lobby_name() -> String:
+ for c in game.list_characters():
+  if str(c.id)==character:return "%s's %s"%[str(c.get("name","Adventurer")),MODE_NAMES.get(selected_mode,"game")]
+ return "Adventurers"
 
 func enter_match() -> void:
  match_id=str(room.id)
