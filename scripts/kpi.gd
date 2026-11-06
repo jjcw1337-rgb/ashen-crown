@@ -229,6 +229,8 @@ static func _drive(delta: float) -> void:
 			if float(st["t"]) >= float(st["next_skill"]):
 				st["next_skill"] = float(st["t"]) + 1.2
 				h.mana = h.max_mana          # (what's measured is the frame, not the mana)
+				if str(st["skill"]) != "":
+					h.cds[str(st["skill"])] = 0.0      # (a long cooldown, an ultimate's, would leave the window with no cast)
 				for s in h.skill_list() + (Data.shared_skills() if str(st["skill"]) != "" else []):
 					if str(st["skill"]) != "" and str(s["id"]) != str(st["skill"]):
 						continue
