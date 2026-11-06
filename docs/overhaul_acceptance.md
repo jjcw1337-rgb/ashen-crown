@@ -88,4 +88,5 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 ## 17. Verify the whole sequence and the screens
 - ✅ The sequence level 0 → camps → upgrades → skills and loot → levels → bosses → survive → save → reload, for the archer and the plague doctor (`run_playthrough`, offline host; extraction through a real server is `bg_test`).
 - ⬜ The Arena match itself played with a reloaded survivor through the lobby service and two clients. **Not proven yet.**
-- 🟡 Screens at 1024x768, 1280x720, 1920x1080 (`lobby_ui_test`, `mp_lobby_shots`, `run_ui_shots`); 2560x1440 not checked; the final write-up still to do.
+- ✅ Screens at 1024x768, 1280x720, 1920x1080 and 2560 wide (`lobby_ui_test`, `mp_lobby_shots`: every control on screen at each; `run_ui_shots`).
+- ⬜ The final write-up.

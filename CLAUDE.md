@@ -337,7 +337,14 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   shortcuts; distances baked once in `_bake_trails`), a stream with plank bridges (decks), two ridges with passes cut
   where trails cross (`relief`), and four regions (mushroom woodland, dark elf encampments, the frost hollow, ruins).
   Oaks keep `CANOPY` from open ground so crowns never hide a fight. Bright afternoon light (`Game._zone_env`).
-  Screenshots: `tools/forest_shots.gd -- outdir`.
+  Screenshots: `tools/forest_shots.gd -- outdir`. Its own monsters: the Rootbound Treant (`treant`) and the Shadeleaf
+  Reaver/Sniper (`dark_elf`, `dark_elf_archer`), Meshy models rigged by `tools/blender/act1/rig_monster.py`. Boss camps
+  are tuned for run characters (`Camps.BOSS_LIFE/DMG/XP`); a boss's death withers its camp; deep chests can drop a
+  class unique (`Camps.UNIQUE_CHANCE`, `Game._run_class_unique`); every chest drops a healing potion.
+  **The whole run played for real**: `tools/run_playthrough.gd -- archer|plague [secs per camp]` (`--fixed-fps 60`,
+  headless): BotBrain plays a level-0 run character through all sixteen camps in tier order, takes upgrades and
+  gear, extracts, saves and reloads the survivor; prints each camp's time, damage per second and level. Re-run it
+  after changing camps, monsters, rewards or the run curve.
   **Survivors** (`scripts/survivors.gd` `Survivors`): a run that extracts (`Game.bg_extracted`, server-confirmed) ends
   on `RunUI.open_results` with Save Character (`Game.run_save_survivor` -> `Survivors.save`: one file per run,
   `user://survivors/sv_<RunBuild.uid>.json`, so a second save writes nothing); a fallen run's results offer none;

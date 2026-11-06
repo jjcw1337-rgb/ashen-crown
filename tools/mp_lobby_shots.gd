@@ -51,7 +51,7 @@ func _run() -> void:
 		{"id": "r3", "mode": "battlegrounds", "name": "Full house", "owner": "u3", "members": {"u3": {"name": "Demon"}}, "capacity": 16, "joined": 16, "state": "playing", "joinable": true},
 		{"id": "r4", "mode": "arena", "name": "Plague Doctor's Arena", "owner": "u4", "members": {"u4": {"name": "Plague Doctor", "team": 0}}, "capacity": 4, "joined": 1, "team_size": 2, "state": "waiting", "joinable": true},
 	]
-	for size in [Vector2i(1920, 1080), Vector2i(1280, 720), Vector2i(1024, 768)]:
+	for size in [Vector2i(1920, 1080), Vector2i(1280, 720), Vector2i(1024, 768), Vector2i(2560, 1440)]:
 		get_root().size = size
 		await process_frame
 		var tag := "%d" % size.x
