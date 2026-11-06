@@ -54,7 +54,7 @@ See [measuring.md](measuring.md): `tools/load_bench.gd` (loading strategies on t
 (`load_ms`), `tools/app_hitch_audit.gd` (first times across the game), `tools/stress_fight.gd` (a big fight),
 `tools/fx_bench.gd` (each effect), `--fx-timing`.
 
-## Open work (docs/PLAN.md)
+## Open work
 
 Building a zone still runs in one go on the main thread under its loading screen (the camp ~0.9 s, of which the grand
 waypoint 0.5 s); builders can yield a little per frame if a zone's loading screen needs to keep animating.

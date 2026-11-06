@@ -7,7 +7,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 MODES = {'arena': (2, 6), 'battlegrounds': (1, 16), 'waves': (1, 4), 'sandbox': (1, 6)}
-# The modes a new lobby may use (MpMode.MODES in the game). Endless Waves is retired (docs/cleanup.md): its lobbies
+# The modes a new lobby may use (MpMode.MODES in the game). Endless Waves is retired: its lobbies
 # can't be created, though one already running finishes normally.
 LIVE_MODES = ('battlegrounds', 'arena', 'sandbox')
 # What one match costs, measured on the staging droplet (4 GB, 2 vCPU) with bot players on the stripped server build

@@ -59,7 +59,7 @@ func _run() -> void:
 	check(not g.world.solid_at(gate.global_position.x, gate.global_position.z), "the gate stands on open ground")
 	g.hero.global_position = g.world.free_spot_near(gate.global_position, 1.5)
 	if not load("res://scripts/mp_mode.gd").WAVES:
-		# Endless Waves is retired (MpMode.WAVES, docs/cleanup.md): the gate stays shut and the Vigil isn't reachable
+		# Endless Waves is retired (MpMode.WAVES): the gate stays shut and the Vigil isn't reachable
 		g._interact(gate)
 		await create_timer(2.0).timeout
 		check(g.cur_zone == "town", "Endless Waves retired: the Vigil Gate stays sealed")

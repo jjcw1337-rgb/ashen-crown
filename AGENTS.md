@@ -6,20 +6,25 @@ Every coding agent (Claude Code, Codex, any machine) reads this first. Keep it t
 PvPvE forest of monster camps whose chests offer skills, rites and gems) and extract to keep it. The Arena is for
 survivors. `README.md` describes it for players.
 
-## Where things are
+## Where things live (one place each)
 
-The code is moving to the layout in [docs/architecture_cleanup.md](docs/architecture_cleanup.md), which also says
-who is working on which part.
+The code is moving into `game/` ([docs/architecture_cleanup.md](docs/architecture_cleanup.md): the target layout
+and who works on what). Until something has moved, it's in `scripts/` or `assets/`.
 
-| Path | What's there |
+| What | The one place |
 |---|---|
-| `game/` | Everything that ships. `game/heroes/<hero>/` holds everything one hero owns: code, model, `skills/<skill>/` with each skill's own assets, `build/` (Blender and other build scripts), `tests/` and `tools/` (previews). `game/systems/` holds the shared rules and effects (being set up). `monsters/`, `maps/` and `items/` will join them. |
-| `scripts/` | Everything not moved yet: `game.gd` (boot, zones), `hero.gd`, `enemy.gd`, `net.gd`, `ui.gd`, `world.gd`, … |
-| `assets/` | Models, textures and audio not moved yet |
-| `data/codex/` | Skill, rite, gem and consumable data (the Hero Codex; its editor is in `tools/codex/`) |
-| `tools/` | Project-wide tests, previews, the asset pipeline (`meshy/`, `blender/`, `audio/`) and CI. Never shipped. |
-| `deploy/` | The staging server, the lobby service and Nakama |
-| `docs/PLAN.md` | The to-do list |
+| A hero's skills and rites: numbers and text | `data/codex/heroes/<hero>.json` (the Hero Codex; its editor writes here). The old copies in `scripts/data.gd`, `talents.gd` and `run_talents.gd` are being removed, so edit the codex. |
+| Shared rites, gems, consumables | `data/codex/shared.json`, `gems.json`, `consumables.json` |
+| A hero's code, model, skill assets, build scripts, tests | `game/heroes/<hero>/` (heroes not moved yet: `scripts/<hero>*.gd`, `assets/models/`) |
+| Shared rules and effects: combat, skills, fx, bodies, loading | `game/systems/` (being set up; until then `scripts/`) |
+| Monsters | stats in `scripts/data.gd` `ENEMIES`, brains in `scripts/enemy.gd` (until `game/monsters/`) |
+| The map, its camps and bosses | `scripts/bg_forest.gd`, `camps.gd`, `bg_boss.gd` (until `game/maps/`) |
+| Screens (title, class picker, lobby, HUD) | `scripts/ui.gd`, `title_*.gd`, `class_stage.gd`, `mp_lobby_view.gd`, `run_ui.gd` (until `game/ui/`) |
+| Sounds | `assets/audio/sfx/`, built by `tools/audio/` (the list is `spec.py`) |
+| Skill and rite icons | `assets/textures/skills/`, `assets/textures/talents/` |
+| Servers and what a build connects to | `deploy/` and the GitHub repository's variables. Secrets live only on the servers. |
+| The asset pipeline, CI, project-wide tests | `tools/` (never shipped) |
+| How-tos for each concern | `docs/patterns/`; adding a hero: `docs/character_workflow.md` |
 
 ## Rules
 

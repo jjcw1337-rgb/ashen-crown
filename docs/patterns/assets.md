@@ -23,7 +23,7 @@ recipes it links are the source of truth.
    - Check a prepared model beside a man-sized post: `tools/blender/prop_sheet.py` (prints sizes too).
 4. **Effects.** Fire, smoke, fog, liquid and ice are simulations (Mantaflow/FLIP in Blender, rendered to flipbooks,
    packed by `tools/fx_flipbook.py` / `tools/fx_smokebook.py` / `tools/flipbook_pack.py`), and broken things are
-   real fractured pieces (`tools/blender/fx/fracture_rock.py`). The bar is `docs/archer_vfx_standard.md`; each class
+   real fractured pieces (`tools/blender/fx/fracture_rock.py`). The bar is in [effects.md](effects.md); each class
    has its own visual language; effects are events (`effects.md`).
 5. **2D art in the UI.** Skill, talent, item and gem icons are Meshy-painted 3x3 grids cut by
    `tools/skill_icons.py` / `tools/talent_icons.py` (one grid ≈ 6 credits; palette per class); ground paintings and

@@ -17,4 +17,22 @@ never changes the game's state.
 5. **Tested by `tools/coop_fx_test.gd`**: it fails a skill that shows partners nothing, a lingering effect that doesn't
    reach the puppet, or a replay that changes a monster.
 
+## The quality bar
+
+A skill's look is done when it has all of these. Fire Arrow (`scripts/arrow_fx.gd`) is the reference.
+1. **Real things, not painted ones.** Fire and smoke come from simulations rendered into flipbooks (Blender
+   Mantaflow), models come from Meshy, and broken things are real fractured pieces. There are no flat glowing tubes,
+   painted flames or plain particle dots.
+2. **One continuous trail**, not a row of identical sprites. What it sheds (smoke, embers, sparks) is left to burn
+   out, not cut off.
+3. **Real light:** a flash on impact and light that decays. At most 2 shadowed effect lights at once
+   (`Fx.effect_shadow`).
+4. **Every phase is shown:** the wind-up on the caster, the release, each foe struck, any status on them, and the
+   end (with the ground's reaction).
+5. **The body sells it:** whole-body animation for the cast, standing, walking and on the puppet.
+6. **Sound synced to the animation**, using existing takes until new ones are picked.
+7. **Budgets:** about 150 live particles per projectile, about 200 in a one-shot burst, everything freed when done.
+   Low / web settings get half the particles and no haze, and must still look like the same effect.
+8. **It reads from the game camera**, not only close up.
+
 Details: `scripts/skill_fx.gd`'s header.
