@@ -1373,53 +1373,22 @@ func run_switched_banner() -> void:
 var _boot_quiet := false      # the camp loading behind the title at boot: no loading screen, no zone banner
 var _boot_hold := false       # ... but its loading screen kept up while it builds (the title comes up after)
 
-## Models loaded on worker threads at boot (Godot's ResourceLoader.load_threaded_request): the title's and the camp's,
-## found by folder (an exported game lists "x.glb.import" / ".remap": the suffix is dropped). They're kept until the
-## title is up (so the cache doesn't let them go before the camp uses them); the camp's own nodes hold them after.
-const BOOT_PRELOAD := ["res://assets/models/title/", "res://assets/models/camp/", "res://assets/models/camp/birds/",
-	"res://assets/models/camp/props/", "res://assets/models/npc/", "res://assets/models/guards/", "res://assets/models/island/",
-	"res://assets/models/trees/", "res://assets/models/grass/", "res://assets/models/fort/"]
-var _preloading := PackedStringArray()
-var _preloaded: Array = []
-
-static func res_files(dir: String, ext: String) -> PackedStringArray:
-	var out := PackedStringArray()
-	var da := DirAccess.open(dir)
-	if da == null:
-		return out
-	for f in da.get_files():
-		var n := f.trim_suffix(".remap").trim_suffix(".import")
-		if n.ends_with(ext) and not out.has(dir + n):
-			out.append(dir + n)
-	return out
+## The boot's files (ResCache, "boot" scope): the title's models and the camp's recorded list, read on the loader's
+## threads while the intro plays, so the title and the camp build from memory. Released once the title is up (the
+## camp's own nodes hold what it uses).
+const TITLE_MODELS := ["res://assets/models/title/gate.glb", "res://assets/models/title/arcade.glb",
+	"res://assets/models/title/colossus.glb", "res://assets/models/title/crown.glb"]
+var _zone_scope := ""
 
 func _boot_preload() -> void:
-	for d in BOOT_PRELOAD:
-		if d == "res://assets/models/fort/":
-			continue          # (the fort is the moor's lair, not the camp: kept for later)
-		for p in res_files(d, ".glb"):
-			if not ResourceLoader.has_cached(p) and ResourceLoader.load_threaded_request(p, "", true) == OK:
-				_preloading.append(p)
+	ResCache.prepare("boot", TITLE_MODELS + (ZonePreloadData.PATHS.get(ZonePreload.key(0, "town"), []) as Array))
 
-## Waits (a frame at a time, so the screen stays alive) until the boot's threaded loads are in, at most max_s.
+## Waits (a frame at a time, so the screen stays alive) until the boot's files are in, at most max_s.
 func _await_preloads(max_s := 30.0) -> void:
-	var t0 := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t0 < int(max_s * 1000.0):
-		var left := 0
-		for p in _preloading:
-			if ResourceLoader.load_threaded_get_status(p) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
-				left += 1
-		if left == 0:
-			break
-		loading_lbl.text = "Waking the Forsaken Wilds... %d%%" % int(100.0 * (1.0 - float(left) / maxf(1.0, _preloading.size())))
-		await get_tree().process_frame
-	for p in _preloading:
-		if ResourceLoader.load_threaded_get_status(p) == ResourceLoader.THREAD_LOAD_LOADED:
-			_preloaded.append(ResourceLoader.load_threaded_get(p))
-	_preloading = PackedStringArray()
+	await ResCache.wait_ready(get_tree(), "boot", max_s, func(f: float): loading_lbl.text = "Loading... %d%%" % int(100.0 * f))
 
 func _release_preloads() -> void:
-	_preloaded.clear()
+	ResCache.release("boot")
 
 func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	if _busy:
@@ -1430,8 +1399,9 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		loading_lbl.text = ("Descending into %s..." if zone == Battlegrounds.ZONE else "Entering %s...") % zone_title(act, zone)
 		set_loading_art(zone)
 	loading.visible = not _boot_quiet or _boot_hold
-	# the zone's model files on worker threads from now on, while the old zone goes and the new one is built
-	var zone_files := ZonePreload.start(difficulty, zone)
+	# the zone's recorded files on the loader's threads (ResCache), while the old zone goes; the build waits for them
+	var scope := "zone:%s:%d" % [zone, Time.get_ticks_usec()]
+	ResCache.prepare(scope, ZonePreloadData.PATHS.get(ZonePreload.key(difficulty, zone), []))
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if world:
@@ -1444,6 +1414,9 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		world = null
 		hovered = null
 		await get_tree().process_frame
+	ResCache.release(_zone_scope)          # (the zone left: its files go unless the new one lists them too)
+	_zone_scope = scope
+	await ResCache.wait_ready(get_tree(), scope, 20.0)
 	Telemetry.crumb("enter", {"to": zone, "run": difficulty})
 	ui.close_all()             # (a trader, a stash or a waypoint list belongs to the zone being left)
 	cur_act = act
@@ -1457,7 +1430,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	world.living_grass = true              # the living grass everywhere outdoors (its shader chars it under A3's ash)
 	add_child(world)
 	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair", "coast"].find(zone) * 7 + (zone.hash() % 997 if zone.begins_with("isle_") else 0))
-	var preloads := _preload_monsters(zone_files)
+	ResCache.prepare(scope, _monster_paths())     # (on the threads while the minimap is drawn)
 	_restore_harvest()
 	_add_ocean(zone)
 	_end_underworld_now()
@@ -1500,9 +1473,6 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 				se.xp = int(se.xp * float(es.get("xp_k", 1.0)))
 	if not world.boss_spawn.is_empty() and not net.is_client():
 		spawn_enemy(boss_kind(), world.boss_spawn["pos"], world.level + 1, false, "", 999)
-	for p in preloads:
-		ResourceLoader.load_threaded_get(p)     # (they are in use: this only closes the threaded requests)
-	ZonePreload.finish(zone_files)
 	if OS.get_cmdline_user_args().has("--preload-record"):
 		ZonePreload.record(world, difficulty, zone)
 	if zone == "town":
@@ -1544,7 +1514,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 
 ## The zone's monsters' models, loaded on worker threads while the minimap is drawn (load_zone): each first load
 ## of a kind's model was 23-34 ms on the main thread, ~0.6 s of the moor's arrival (nightly 2026-11-03).
-func _preload_monsters(skip := PackedStringArray()) -> PackedStringArray:
+func _monster_paths() -> Array:
 	var kinds := {}
 	for es in (world.enemy_spawns if not net.is_client() else []):
 		kinds[str(es["kind"])] = true
@@ -1552,10 +1522,10 @@ func _preload_monsters(skip := PackedStringArray()) -> PackedStringArray:
 		kinds[boss_kind()] = true
 	for k in MonsterWarm.kinds(self):       # (and what can still turn up here: MonsterWarm builds those)
 		kinds[k] = true
-	var out := PackedStringArray()
+	var out: Array = []
 	for k in kinds:
 		for p in Enemy.model_paths(k):
-			if not out.has(p) and not skip.has(p) and not ResourceLoader.has_cached(p) and ResourceLoader.load_threaded_request(p, "", true) == OK:
+			if not out.has(p):
 				out.append(p)
 	return out
 
@@ -4760,6 +4730,7 @@ func _notification(what: int) -> void:
 		save_game()
 
 func _process(delta: float) -> void:
+	ResCache.pump()                  # (collects what the loader's threads finished)
 	_autosave_t += delta
 	if _autosave_t >= AUTOSAVE_EVERY:
 		_autosave_t = 0.0
