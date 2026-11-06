@@ -59,7 +59,7 @@ costs, and the check that must pass before the next step. A character is not don
   (prepare the size by the car's length, not its height). Text-to-3D is cheap but a coin toss for anything that isn't
   a simple object: for those, concept → image-to-3D (~36 credits) from the start.
 
-## 6. Code (the project's patterns; copy `heroes/archer/`'s layout)
+## 6. Code (the project's patterns; copy `game/heroes/archer/`'s layout)
 
 - `Data.CLASSES[<id>]`, seven `Data.SKILLS` entries with SkillSpec fields (`style`, `use`, `hit`, `dmg`, `area`,
   `tags`...), the class's weapon base.

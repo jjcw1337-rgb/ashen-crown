@@ -95,7 +95,7 @@ var stone_xf: Array = []
 var rock_xf := {}               # variant -> Array of transforms
 var kerb_xf: Array = []         # the Meshy kerbstones along the old roads (World.kerb)
 var theme := {}
-## Tools can stage their own zone: kind -> Callable(world) built instead of the game's (heroes/archer/tools/fire_range.gd's test range).
+## Tools can stage their own zone: kind -> Callable(world) built instead of the game's (game/heroes/archer/tools/fire_range.gd's test range).
 static var custom_zones := {}
 
 func _init() -> void:

@@ -31,7 +31,7 @@ for t in playtest coop_fx_test title_test char_test ui_click_test grass_test int
   "$G" --headless --path . -s tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
-for f in heroes/archer/tests/archer_test.gd heroes/plague/tests/plague_test.gd tools/warlock_hex_test.gd; do
+for f in game/heroes/archer/tests/archer_test.gd game/heroes/plague/tests/plague_test.gd tools/warlock_hex_test.gd; do
   t=$(basename "$f" .gd)
   "$G" --headless --path . --fixed-fps 60 -s "$f" > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
@@ -71,7 +71,7 @@ check coop_player_a "$OUT/gate_coop_a.log" 0
 check coop_player_b "$OUT/gate_coop_b.log" 0
 
 # the co-op pairs
-for f in tools/mp_test.gd heroes/plague/tests/plague_mp_test.gd; do
+for f in tools/mp_test.gd game/heroes/plague/tests/plague_mp_test.gd; do
   t=$(basename "$f" .gd)
   "$G" --headless --path . -s "$f" -- host > "$OUT/gate_${t}_host.log" 2>&1 & h=$!
   sleep 3

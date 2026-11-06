@@ -36,17 +36,17 @@ assets/models/**/*_Material_*_metallic-*.jpg
 assets/models/**/*_Material_*_normal.jpg
 server/
 
-# hero folders (heroes/<name>/): Godot's import files for their models and the textures it extracts, like assets/models/
-heroes/**/*.glb.import
-heroes/**/*_Image_*
-heroes/**/*_normal.jpg
-heroes/**/*_normal_*.jpg
-heroes/**/*_albedo.jpg
-heroes/**/*_metal_rough.jpg
-heroes/**/*_emission.jpg
-heroes/**/*_normal.jpg.import
-heroes/**/*_normal_*.jpg.import
-heroes/**/*_albedo.jpg.import
-heroes/**/*_metal_rough.jpg.import
-heroes/**/*_emission.jpg.import
-heroes/**/*_Material_*
+# hero folders (game/heroes/<name>/): Godot's import files for their models and the textures it extracts, like assets/models/
+game/heroes/**/*.glb.import
+game/heroes/**/*_Image_*
+game/heroes/**/*_normal.jpg
+game/heroes/**/*_normal_*.jpg
+game/heroes/**/*_albedo.jpg
+game/heroes/**/*_metal_rough.jpg
+game/heroes/**/*_emission.jpg
+game/heroes/**/*_normal.jpg.import
+game/heroes/**/*_normal_*.jpg.import
+game/heroes/**/*_albedo.jpg.import
+game/heroes/**/*_metal_rough.jpg.import
+game/heroes/**/*_emission.jpg.import
+game/heroes/**/*_Material_*

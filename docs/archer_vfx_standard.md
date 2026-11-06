@@ -86,13 +86,13 @@ The run times on the 2-core cloud machine (domain res 80, 16 samples): about 3-4
 ## Proof: the range, in Forward+
 
 The moor is too heavy for the cloud machine's software Vulkan, so skills are recorded on the proof range
-(`heroes/archer/tools/fire_range.gd`, its ground `heroes/archer/tools/fire_range_zone.gd`, built in through `World.custom_zones`): five lanes
+(`game/heroes/archer/tools/fire_range.gd`, its ground `game/heroes/archer/tools/fire_range_zone.gd`, built in through `World.custom_zones`): five lanes
 (grass with the living 3D grass, stone flagstones, dirt, wooden planks with logs, dark charred soil in a wall's
 shadow) at dusk, the real ranger and three real zombies, the skill fired through `Hero.use_skill`.
 
     apt-get install -y mesa-vulkan-drivers        # lavapipe, if /usr/share/vulkan/icd.d/lvp_icd.json is missing
     xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver vulkan --rendering-method forward_plus \
-      --path . --resolution 1280x720 --fixed-fps 30 -s heroes/archer/tools/fire_range.gd -- <outdir> <mode> [lane] [skill]
+      --path . --resolution 1280x720 --fixed-fps 30 -s game/heroes/archer/tools/fire_range.gd -- <outdir> <mode> [lane] [skill]
 
 Modes: `game` (the game camera, standing then walking), `follow` (a camera riding beside the arrow), `impact`
 (close on the far end), `surfaces` (the impact on every lane), `anim` (the archer close, side and three-quarter),
@@ -111,5 +111,5 @@ they sink and roll) drawn as `DemonKitFx.smoke` books, its crystals are Meshy mo
 Add a preset to `ArrowFx.PRESETS` (copy `"fire"`), simulate or model what it needs (a frost sim is a smoke sim
 with cold, dense, falling vapour; lightning wants branching emissive geometry, not a sim), pack it with
 `tools/fx_flipbook.py`, give its `"loose"` event the new kind in `Archer._loose`, and record it on the range.
-Then run `heroes/archer/tests/archer_test.gd` (`--fixed-fps 60`), `tools/coop_fx_test.gd`, `tools/sound_test.gd` and
+Then run `game/heroes/archer/tests/archer_test.gd` (`--fixed-fps 60`), `tools/coop_fx_test.gd`, `tools/sound_test.gd` and
 `tools/ui_click_test.gd`.

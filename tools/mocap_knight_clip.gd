@@ -56,7 +56,7 @@ func _run() -> void:
 		root3.add_child(s)
 	var archer := args.has("archer")
 	# archer.gd uses the Sfx autoload: load it at run time (a static reference compiles it before Sfx exists)
-	var AR: GDScript = load("res://heroes/archer/archer.gd") if archer else null
+	var AR: GDScript = load("res://game/heroes/archer/archer.gd") if archer else null
 	var wraith := args.has("wraith")
 	var demon := args.has("demon")
 	var warlock := args.has("warlock")

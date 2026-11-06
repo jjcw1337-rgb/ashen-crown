@@ -16,16 +16,18 @@ work lands; change the plan here first if it changes.
 ## Target layout
 
 ```
-heroes/<hero>/      body/ (model, rig, dyes), weapon/, skills/<skill>/ (code, effects, its own models),
-                    companion/, shared/ (what only this hero's skills share), build/ (Blender and other build
-                    scripts), tests/, tools/ (previews)
-monsters/<monster>/ model, data, its brain if it has its own
-maps/<map>/         verdant_reach/, arena/: the map code and its props (borrowed pieces move here)
-items/              gems, consumables, shared rites
-systems/            the shared rules: gameplay (stats, effects, statuses, hooks, damage), skills (cost,
-                    cooldown, aim, delivery), fx/<fire|frost|lightning>/ (with their own textures and models),
-                    bodies (rigs, animation), ai, world, net, loading, ui, audio
-tools/              the pipeline (Meshy, Blender, audio), project-wide tests, CI. Never shipped.
+game/                 everything that ships (Godot loads it as res://game/...)
+  heroes/<hero>/      body/ (model, rig, dyes), weapon/, skills/<skill>/ (code, effects, its own models),
+                      companion/, shared/ (what only this hero's skills share), build/ (Blender and other build
+                      scripts), tests/, tools/ (previews)
+  monsters/<monster>/ model, data, its brain if it has its own
+  maps/<map>/         verdant_reach/, arena/: the map code and its props (borrowed pieces move here)
+  items/              gems, consumables, shared rites
+  systems/            the shared rules: gameplay (stats, effects, statuses, hooks, damage), skills (cost,
+                      cooldown, aim, delivery), fx/<fire|frost|lightning>/ (with their own textures and models),
+                      bodies (rigs, animation), ai, world, net, loading, ui, audio
+tools/                the pipeline (Meshy, Blender, audio), project-wide tests, CI. Never shipped.
+deploy/  docs/  addons/ (GodotSteam: Godot wants it at the root)  project.godot  main.tscn
 ```
 
 Rules:
@@ -33,16 +35,16 @@ Rules:
 - Where a piece goes depends on how many things use it:
   - one skill uses it: it goes in that skill's folder;
   - one hero's skills share it: it goes in that hero's `shared/`;
-  - several heroes or monsters use it: it goes in `systems/`.
+  - several heroes or monsters use it: it goes in `game/systems/`.
 - Some things are already one central system: the codex data (`data/codex/`), the sound bank and the skill icons.
   They stay central for now. Each hero's `codex.json` may move into its folder later, with the loader and the
-  editor finding `heroes/*/codex.json`. That needs no master file.
+  editor finding `game/heroes/*/codex.json`. That needs no master file.
 - `tests/`, `tools/` and `build/` inside a hero are excluded from exports (`export_presets.cfg`). `build/` has a
   `.gdignore`.
-- King Grubb is kept as content (`monsters/king_grubb/`), not deleted with Act I. Everything else that's cut is
+- King Grubb is kept as content (`game/monsters/king_grubb/`), not deleted with Act I. Everything else that's cut is
   deleted, because git keeps the history.
 
-## The gameplay core (systems/gameplay, systems/skills)
+## The gameplay core (game/systems/gameplay, game/systems/skills)
 
 Modelled on Unreal's Gameplay Ability System and Slay the Spire 2's hooks, built small:
 1. **Stats** on every combatant. Heroes and monsters share one combatant component; today they share no base class.
@@ -67,7 +69,7 @@ Every hit and effect goes to a **combat log**, which is used both for balance an
 
 ## Order
 
-1. **Folders.** Each hero's own code and models move into `heroes/<hero>/`. These are moves only, and play doesn't
+1. **Folders.** Each hero's own code and models move into `game/heroes/<hero>/`. These are moves only, and play doesn't
    change. All heroes are done back to back, starting with the Archer. Shared files (the fire in `arrow_fx.gd`, the
    frost toolkit in `frost_volley_fx.gd`, `arc_fx.gd`) stay where they are until step 3 gives them a home.
 2. **Reference recordings.** Before damage changes, record a fixed-seed, fixed-frame-rate fight for each hero
@@ -100,8 +102,8 @@ Touch points to coordinate:
     preload and warm-up lists, every zone builder, and the files of everything being cut.
 - **Claude-2: the hero side.**
   - Tasks: every hero into its folder, the per-skill split (the Archer first, as the template), the shared effects
-    into `systems/fx/`, one `codex.json` per hero, then the damage and effect system.
-  - Owns: `heroes/**`, `systems/**`, `class_skills.gd`, `skill_fx.gd`, `skill_spec.gd`, `run_talents.gd`,
+    into `game/systems/fx/`, one `codex.json` per hero, then the damage and effect system.
+  - Owns: `game/heroes/**`, `game/systems/**`, `class_skills.gd`, `skill_fx.gd`, `skill_spec.gd`, `run_talents.gd`,
     `run_build.gd`, `codex.gd`, `data/codex/`, `tools/codex/`.
 - **Shared big files** (`game.gd`, `ui.gd`, `hero.gd`, `net.gd`, `enemy.gd`): either of us may edit them.
   - Keep commits small, and pull before starting.
@@ -110,7 +112,7 @@ Touch points to coordinate:
 
 ### In progress
 
-- Claude-2: the Archer's per-skill split (`heroes/archer/**`, plus small hook changes in `hero.gd` and
+- Claude-2: the Archer's per-skill split (`game/heroes/archer/**`, plus small hook changes in `hero.gd` and
   `class_skills.gd`).
 
 ## Cutting an old system: what the live game still borrows
@@ -125,21 +127,21 @@ again with `git grep` before each cut):
   - the waypoint: `models/waypoint/` banner and crystal_rune;
   - the old crypt's lower floors: `models/bg/` mushrooms, fungus, brambles, ice_crystals, frozen_pillar.
 
-  These move to `maps/verdant_reach/props/`.
+  These move to `game/maps/verdant_reach/props/`.
 - **Monsters:** the forest camps use Act I monsters (zombies, the three Fallen, the Feral, the bear, the goblin
   guard).
-  - All of them are built on `Goblin.imported_rig` (`goblin.gd`, King Grubb's file). It goes to `systems/bodies/`.
+  - All of them are built on `Goblin.imported_rig` (`goblin.gd`, King Grubb's file). It goes to `game/systems/bodies/`.
   - The Poison Mushroom loads through `BgFloors.prop` (the crypt's floors).
 - **The archer's wolf** runs on `lion.gd` (the Act II arena lion's skeleton and pose).
 - **Every camp chest** is built by `World._chest` (`world.gd`).
 - **`World.crypt_shell`** is used by the Sandbox (`sandbox.gd`) and the Last Flame (`vigil.gd`) as well as the old
   crypt.
-- **King Grubb is kept** as `monsters/king_grubb/`: his model, `hoard.gd` and his part of `goblin.gd`.
+- **King Grubb is kept** as `game/monsters/king_grubb/`: his model, `hoard.gd` and his part of `goblin.gd`.
 
 ## Status
 
 - [ ] 1. Folders: the Archer (`87bae1f`) and the Plague Doctor (`8550926`) are done. Next: the Wraith, Demon, Warlock,
-  Doug, the dragons and the Knight. The Knight's body builder goes to `systems/bodies/`.
+  Doug, the dragons and the Knight. The Knight's body builder goes to `game/systems/bodies/`.
 - [ ] 2. Reference recordings
 - [ ] 3. Damage and effect system
 - [ ] 4. One data source

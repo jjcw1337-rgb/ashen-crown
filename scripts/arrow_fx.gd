@@ -17,7 +17,7 @@ extends RefCounted
 ## cracks that cool); the flight's light casts shadows.
 ##
 ## A kind's preset:
-##   "model"    the Meshy arrow (heroes/archer/weapon/arrows/<model>.glb, Archer._arrow_mesh)
+##   "model"    the Meshy arrow (game/heroes/archer/weapon/arrows/<model>.glb, Archer._arrow_mesh)
 ##   "heat"     {head, char}: the arrowhead glowing with heat and the shaft charring behind it (HEAT_SHADER overlay)
 ##   "flame"    {amount, life, size, energy, t}: sim flames wrapped round the head and blown back along the shaft
 ##   "ribbon"   {len, width, energy, smoke_len, smoke_width, smoke_col}: the flame's tail, one continuous strip rebuilt

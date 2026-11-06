@@ -15,7 +15,7 @@ const SNARE := 1
 const HARRIED := 2
 const SLOW := 4
 const REVEAL := 8
-const EYE_TEX := "res://heroes/plague/shared/reveal_eye.png"
+const EYE_TEX := "res://game/heroes/plague/shared/reveal_eye.png"
 
 static var _roots: PackedScene
 static var _eye_mat: StandardMaterial3D

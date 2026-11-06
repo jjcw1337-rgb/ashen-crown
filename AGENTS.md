@@ -13,8 +13,7 @@ who is working on which part.
 
 | Path | What's there |
 |---|---|
-| `heroes/<hero>/` | Everything one hero owns: code, model, `skills/<skill>/` with each skill's own assets, `build/` (Blender and other build scripts), `tests/`, `tools/` (previews). (Heroes not moved yet are still in `scripts/` and `assets/`.) |
-| `systems/` | Shared rules and effects that any hero uses (being set up) |
+| `game/` | Everything that ships. `game/heroes/<hero>/` holds everything one hero owns: code, model, `skills/<skill>/` with each skill's own assets, `build/` (Blender and other build scripts), `tests/` and `tools/` (previews). `game/systems/` holds the shared rules and effects (being set up). `monsters/`, `maps/` and `items/` will join them. |
 | `scripts/` | Everything not moved yet: `game.gd` (boot, zones), `hero.gd`, `enemy.gd`, `net.gd`, `ui.gd`, `world.gd`, … |
 | `assets/` | Models, textures and audio not moved yet |
 | `data/codex/` | Skill, rite, gem and consumable data (the Hero Codex; its editor is in `tools/codex/`) |
@@ -28,12 +27,12 @@ who is working on which part.
    Write typed GDScript: `var x: Type = ...`, because inference from a Variant counts as an error.
 2. **Branches.** Work in your own worktree and branch, and merge `origin/staging` before you push. Push to `staging`
    when an admin asks. Push to `main` only on an explicit admin request. Never force-push over anyone else's commits.
-3. **Test what you touched.** Run the tests beside it (`heroes/<hero>/tests/`, `tools/*_test.gd`). A script that
+3. **Test what you touched.** Run the tests beside it (`game/heroes/<hero>/tests/`, `tools/*_test.gd`). A script that
    fails with "Identifier not found: Sfx" has to run through `tools/_late.gd -- res://<script>`. Report what you
    tested, and say so when something is unmeasured. (`tools/nightly/gate.sh` runs about 40 tests, roughly 25 min,
    for when you want everything.)
 4. **Where new code goes.** If one skill uses it, it goes in that skill's folder. If one hero's skills share it, it
-   goes in `heroes/<hero>/shared/`. If several heroes or monsters use it, it goes in `systems/`. Systems never name a
+   goes in `game/heroes/<hero>/shared/`. If several heroes or monsters use it, it goes in `game/systems/`. Systems never name a
    hero.
 5. **Skill code never draws.** A skill calls `h.fx(skill, event, data)` and an effects script draws it, on every
    player's screen ([effects](docs/patterns/effects.md)). Dedicated servers have no pixels or meshes

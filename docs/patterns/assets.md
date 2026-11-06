@@ -27,7 +27,7 @@ recipes it links are the source of truth.
    has its own visual language; effects are events (`effects.md`).
 5. **2D art in the UI.** Skill, talent, item and gem icons are Meshy-painted 3x3 grids cut by
    `tools/skill_icons.py` / `tools/talent_icons.py` (one grid ≈ 6 credits; palette per class); ground paintings and
-   decals by `heroes/plague/build/ground_decal.py`; tiling textures by `make_tile_textures.py`.
+   decals by `game/heroes/plague/build/ground_decal.py`; tiling textures by `make_tile_textures.py`.
 6. **Sound.** ElevenLabs through `tools/audio/` (spec → candidates → score → a human picks → `build_sfx.py`); never
    synthesized.
 7. **Import and look.** `godot --headless --editor --quit-after 2000`, then screenshots or frame clips in the game

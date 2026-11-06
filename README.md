@@ -74,7 +74,7 @@ has access to the private `ashen-crown-staging` page, and install it. The app up
 
 | Path | What's there |
 |---|---|
-| `heroes/<hero>/` | Everything one hero owns: code, model, skills with their assets, build scripts, tests |
+| `game/heroes/<hero>/` | Everything one hero owns: code, model, skills with their assets, build scripts, tests |
 | `scripts/game.gd` | Boot, zones, camera, input, saving |
 | `scripts/world.gd`, `bg_forest.gd`, `camps.gd` | Map building, the Verdant Reach, camps and their chests |
 | `scripts/hero.gd`, `enemy.gd` | Players and monsters |

@@ -17,7 +17,7 @@ extends RefCounted
 ##    vapour falling off them; one that dies frozen shatters);
 ##  - the end (`update`, SHATTER_AT after the rain): every crystal breaks into its Blender-fractured pieces and every
 ##    arrow into glints, at once, with a crash of ice; the frost thaws from the edges in.
-## Counts follow InfernalFx.tier (Low / web: fewer of everything). Models: heroes/archer/weapon/arrows/frost.glb (Meshy,
+## Counts follow InfernalFx.tier (Low / web: fewer of everything). Models: game/heroes/archer/weapon/arrows/frost.glb (Meshy,
 ## concept "glacier arrow"), assets/models/fx/frost/crystal.glb and crystal_pieces.glb (Meshy, prep_prop.py,
 ## trim_below.py, fracture_rock.py); books: tools/blender/fx/smoke_flipbook.py frost | rime (DemonKitFx.BOOKS).
 
@@ -327,7 +327,7 @@ static func strike(h: Hero, p: Vector3) -> void:
 ## The rain's arrows (jj: "each arrow unique and visually stunning"): six Meshy ice arrows (concepts in
 ## exports/frost_volley/rain), each lit from inside by its own ice (its albedo's blues glow), with its own cold rim,
 ## streak, trail and spin.
-const RAIN_GLB := "res://heroes/archer/skills/frost_volley/rain/%s.glb"
+const RAIN_GLB := "res://game/heroes/archer/skills/frost_volley/rain/%s.glb"
 const RAIN := [
 	{"id": "spear", "col": Color(0.62, 0.85, 1.0), "glow": 0.5, "spin": 7.0, "trail": 2.4, "width": 0.1, "scale": 1.25},
 	{"id": "icicle", "col": Color(0.85, 0.95, 1.0), "glow": 0.45, "spin": 3.0, "trail": 2.0, "width": 0.08, "scale": 1.3},

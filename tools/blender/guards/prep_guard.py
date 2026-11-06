@@ -2,7 +2,7 @@
 # 24-bone humanoid the playable mocap bodies use, so a guard can be made playable on Knight.build_mocap later)
 # with its Meshy library clips merged onto its one armature, decimated to a game budget and exported as one glb
 # whose AnimationPlayer holds every clip by the game's name (CampGuard: idle, walk, run, combat_idle, strafe_l,
-# turn_l, strike_1..3 ...). Same steps as heroes/plague/build/prep_plague_mocap.py, plus what CampGuard needs
+# turn_l, strike_1..3 ...). Same steps as game/heroes/plague/build/prep_plague_mocap.py, plus what CampGuard needs
 # to play the clips in place and drive the body itself:
 # - turn clips (turn_*, walk_turn_*): the yaw the hips swing through is baked out of the clip (the body turns
 #   in place in the game instead, by the measured angle, so the clip never snaps back when it ends);
