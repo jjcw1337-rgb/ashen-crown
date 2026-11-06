@@ -17,4 +17,4 @@ never changes the game's state.
 5. **Tested by `tools/coop_fx_test.gd`**: it fails a skill that shows partners nothing, a lingering effect that doesn't
    reach the puppet, or a replay that changes a monster.
 
-Details: CLAUDE.md, "Co-op skill effects".
+Details: `scripts/skill_fx.gd`'s header.

@@ -87,7 +87,7 @@ scene round it into a cube map (6 passes). Fix with nothing taken from the look:
 `Fx.effect_shadow` (dual-paraboloid maps, 2 passes, and at most `Fx.EFFECT_SHADOWS` = 2 at once across every effect
 and every player). After: 0 stutters, +13.5% frame time (PASS).
 
-Rules for skill effects (CLAUDE.md "Skill design"): a light that casts shadows uses `Fx.effect_shadow`; effects that
+Rules for skill effects: a light that casts shadows uses `Fx.effect_shadow`; effects that
 repeat share meshes, materials and textures (made once, cached) instead of building new ones each cast; a partner's
 copy (the puppet) draws the same effect, so four players casting is four times the cost: keep `skill_perf` well inside
 its budget.
