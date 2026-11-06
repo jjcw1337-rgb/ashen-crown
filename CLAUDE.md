@@ -363,8 +363,17 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `RunBuild.CAMP_XP`); the chest (`Game._camp_chest`) drops `CHEST_ROLLS` of run loot once for everyone and opens each
   run character's own upgrade (`Camps.offer_key`: camp and round). A camp's monster dragged `LEASH` past its edge with no
   hero near goes home whole (`Camps.leash`, on whoever runs the monsters). `tools/camp_test.gd`.
+  A camp's monsters are one encounter whatever their factions (`Enemy` skips rivals from `Camps.FIRST_PACK`: mixed
+  camps used to fight themselves from the start). **No antechamber in the forest** (Blaine, 2026-11-06): a lobby
+  match's raid begins when its players are in (`start_prep` goes straight to "raid" under `MpMode.FOREST`; a dev
+  server's when the first player arrives); no bells, countdown, gate banner or portcullis; the HUD and messages say
+  `Battlegrounds.map_title()`. The map plays the forest bed and no music (`Sfx.play_music("")`, not the synthesized
+  drone) and has no bird flocks. `tools/camp_reach_test.gd` (in the gate) walks a hero to every camp's chest,
+  every camp monster out of its camp, and checks the hermit's Poison Mushrooms keep their size (their pulse grew
+  them ~1% a frame) and only Mossbeard's own wither with him. `tools/bg_sound_probe.gd -- --sounds [secs]` logs
+  what the map sounds like standing still.
   **The Verdant Reach** (`scripts/bg_forest.gd` `BgForest`, `MpMode.FOREST`; the crypt is retired, docs/cleanup.md):
-  the Battlegrounds map, an open lush forest 210 m across: four starting glades (a bell each), four portals at the
+  the Battlegrounds map, an open lush forest 210 m across: four starting glades (no bells), four portals at the
   edges, sixteen camps (`BgForest.CAMPS`: place, tier, region, foes; six tier I near the glades, five II, three III,
   Hrimgar's Frostfang Hollow and Old Mossbeard's Mycelial Grotto) joined by winding trails (`TRAILS`, with loops and
   shortcuts; distances baked once in `_bake_trails`), a stream with plank bridges (decks), two ridges with passes cut

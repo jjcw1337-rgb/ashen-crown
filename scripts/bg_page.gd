@@ -151,7 +151,7 @@ func _build_words() -> void:
 	var eyebrow: Label = ui._label("BATTLEGROUNDS  ·  PVP EXTRACTION", 17, Color(0.62, 0.78, 1.0), true)
 	eyebrow.add_theme_font_override("font", _title_font(17, 4))
 	vb.add_child(eyebrow)
-	var title: Label = ui._label(Battlegrounds.TITLE.to_upper(), 84, ui.GOLD, true)
+	var title: Label = ui._label(Battlegrounds.map_title().to_upper(), 84, ui.GOLD, true)
 	title.name = "heading"
 	title.add_theme_font_override("font", _title_font(84, 2))
 	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))

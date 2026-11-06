@@ -60,6 +60,7 @@ var sloth: Sloth = null
 var brain: BgBoss = null
 var _sloth_phase := 0.0
 ## Factions (Data.ENEMIES "faction"): goblins and the undead fight each other on sight (and both fight you).
+## Not inside a camp (pack_id from Camps.FIRST_PACK): a camp's monsters are one encounter, whatever their factions.
 var rival: Enemy = null
 # burning (the archer's Fire Arrow, his wolf's Ember Fangs): fire damage every half second; chilled (Frost
 # Volley, Winter Howl): slower on its feet. Burning is ticked by whoever set it (take_damage routes to the host);
@@ -733,7 +734,9 @@ func _process(delta: float) -> void:
 		elif hero == null or hero.dead or taunt.global_position.distance_to(global_position) < hero.global_position.distance_to(global_position) * 0.9:
 			hero = taunt
 			aggro = true
-	if def.has("faction"):
+	# (a camp's monsters (Camps, the Battlegrounds) never fight each other or the next camp: a camp mixing factions
+	# fought itself from the start, and the whole map rang with their blows and kills (Blaine, 2026-11-06))
+	if def.has("faction") and pack_id < Camps.FIRST_PACK:
 		rival_t -= delta
 		if rival_t <= 0.0:
 			rival_t = 0.4 + randf() * 0.2
@@ -932,9 +935,14 @@ static func pose_rig(r: Node3D, st: Dictionary, height: float) -> void:
 	elif r.has_meta("static_prop"):
 		var b := r.get_node_or_null("body") as Node3D
 		if b != null:
+			# the breathing pulse round its own size, kept from the first pose: scaling from the current scale every
+			# frame compounded (~1% a frame) and grew the hermit's mushrooms past the camera within minutes, one
+			# giant cap's shadow over the map (Blaine, 2026-11-06)
+			if not b.has_meta("base_scale"):
+				b.set_meta("base_scale", b.scale)
 			var t := float(st.get("time", 0.0))
 			var k := 1.0 + sin(t * 2.6) * 0.04
-			b.scale = Vector3(k, 2.0 - k, k) * b.scale.length() / sqrt(3.0)
+			b.scale = (b.get_meta("base_scale") as Vector3) * Vector3(k, 2.0 - k, k)
 	else:
 		Anim.pose(r, st)
 

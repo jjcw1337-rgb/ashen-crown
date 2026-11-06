@@ -685,7 +685,7 @@ func _process(delta: float) -> void:
 		broadcast()
 		if state == "lobby" or state == "prep":
 			send_roster()
-	if game.match_instance == null and state == "lobby" and (raid_t >= lobby_max() or game.net.players.size() >= RAID_MIN):
+	if game.match_instance == null and state == "lobby" and (raid_t >= lobby_max() or game.net.players.size() >= (1 if MpMode.FOREST else RAID_MIN)):
 		start_prep("")
 	if state == "prep":
 		prep_left -= delta
@@ -698,7 +698,7 @@ func _process(delta: float) -> void:
 	if state == "raid" and open.is_empty() and raid_t >= secs(PORTALS_AT):
 		open_portals()
 	if raid_t >= secs(RAID_SECS):
-		_announce("The crypt collapses")
+		_announce("The crypt collapses" if not MpMode.FOREST else "The raid is over")
 		collapse()
 		forced = false               # (an admin's round is over: back on the clock)
 		if aligned():
@@ -772,7 +772,7 @@ func admin_cmd(pid: int, cmd: String) -> void:
 			if state == "lobby" or state == "prep":
 				state = "raid"
 				open_gates(game.world)
-				_announce("%s opened the gates" % who)
+				_announce(("%s opened the gates" if not MpMode.FOREST else "%s started the raid") % who)
 				broadcast()
 		"portals":
 			if state == "raid" and open.is_empty():
@@ -925,8 +925,16 @@ func send_roster() -> void:
 		game.net.rpc("cl_bg_roster", roster())
 
 ## Someone rang an antechamber's bell (or the lobby ran out): the countdown to the gates, for everyone.
+## The Verdant Reach has no antechamber (Blaine, 2026-11-06: the bell and "the gates are open" mean nothing in the
+## forest): its raid simply begins.
 func start_prep(who: String) -> void:
 	if state != "lobby":
+		return
+	if MpMode.FOREST:
+		state = "raid"
+		prep_left = 0.0
+		print("[BG] the raid begins")
+		broadcast()
 		return
 	state = "prep"
 	prep_left = secs(PREP_SECS)
@@ -1226,14 +1234,17 @@ static func hud(g: Node, delta: float) -> void:
 	if st.begins_with("lobby") or st.begins_with("prep"):
 		r["wait"] = maxf(0.0, float(r.get("wait", 0.0)) - delta)
 		var w := int(ceilf(float(r["wait"])))
-		if st.begins_with("lobby"):
+		if st.begins_with("lobby") and MpMode.FOREST:
+			lbl.text = "%s  ·  waiting for the other players" % map_title().to_upper()
+			lbl.add_theme_color_override("font_color", Color(0.95, 0.85, 0.6))
+		elif st.begins_with("lobby"):
 			lbl.text = "THE ANTECHAMBER  ·  ring the bell to begin  ·  the gates open by themselves in %d:%02d" % [(w + int(PREP_SECS)) / 60, (w + int(PREP_SECS)) % 60]
 			lbl.add_theme_color_override("font_color", Color(0.95, 0.85, 0.6))
 		else:
 			lbl.text = "THE GATES OPEN IN %d  ·  the stash chest is open until then" % w
 			lbl.add_theme_color_override("font_color", Color(1.0, 0.65, 0.3))
 		return
-	var txt := "%s  ·  %d:%02d" % [TITLE.to_upper(), int(left) / 60, int(left) % 60]
+	var txt := "%s  ·  %d:%02d" % [map_title().to_upper(), int(left) / 60, int(left) % 60]
 	if (r["open"] as Array).is_empty():
 		var p := maxf(0.0, float(r["portals_at"]) - float(r["t"]))
 		txt += "  ·  portals open in %d:%02d" % [int(p) / 60, int(p) % 60]

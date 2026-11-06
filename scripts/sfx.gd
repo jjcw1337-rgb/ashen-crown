@@ -199,8 +199,10 @@ func duck(db := -8.0, hold := 0.6) -> void:
 	tw.tween_method(func(v: float): AudioServer.set_bus_volume_db(i, v), db, 0.0, 1.2)
 
 ## A sound that keeps looping until the caller stops and frees the player (a channelled
-## skill). Returns null while muted.
-func start_loop(nm: String, vol := 0.0, pitch := 1.0) -> AudioStreamPlayer:
+## skill). Returns null while muted. `owner` (the caster): the loop is its child, so it ends with it even when the
+## caller never gets to stop it (a partner who leaves mid-cast, a body freed by a zone change); without one it
+## lives under Sfx and only the caller can end it.
+func start_loop(nm: String, vol := 0.0, pitch := 1.0, owner: Node = null) -> AudioStreamPlayer:
 	var st := _pick(nm)
 	if muted or st == null:
 		return null
@@ -209,16 +211,25 @@ func start_loop(nm: String, vol := 0.0, pitch := 1.0) -> AudioStreamPlayer:
 	p.stream = st
 	p.volume_db = vol + volume_db
 	p.pitch_scale = pitch
-	add_child(p)
+	if owner != null and is_instance_valid(owner) and owner.is_inside_tree():
+		owner.add_child(p)
+	else:
+		add_child(p)
 	p.play()
 	return p
 
 ## The zone's music and its ambience bed (wind outdoors, drips in the crypt; `amb` picks another, like
 ## Act I's forest rustle outside the camp).
 ## `amb_take` picks which take of the bed plays (the camp's nights rotate theirs, DayNight.night_take).
+## kind "" = no music, only the ambience bed (a zone with no song of its own: better quiet than the old drone).
 func play_music(kind: String, amb_over := "", amb_take := 0) -> void:
 	if silent_runtime:
 		return # No device/listener: settings must not start procedural music in a worker.
+	if kind == "":
+		music.stop()
+		music.stream = null
+		_ambience(kind, amb_over, amb_take)
+		return
 	var key := "music_" + kind
 	# a recorded song where there is one (the campsite's piano), else the old synthesized drone
 	var song: AudioStream = bank[key][0] if bank.has(key) else null
@@ -232,6 +243,9 @@ func play_music(kind: String, amb_over := "", amb_take := 0) -> void:
 		music.volume_db = -6.0 if bank.has(key) else -14.0
 		if not muted:
 			music.play()
+	_ambience(kind, amb_over, amb_take)
+
+func _ambience(kind: String, amb_over: String, amb_take: int) -> void:
 	var amb := amb_over if amb_over != "" and bank.has(amb_over) else ("wind" if kind != "lair" else "drip")
 	var amb_st: AudioStream = bank[amb][posmod(amb_take, (bank[amb] as Array).size())] if bank.has(amb) else streams.get(amb)
 	if ambience.stream != amb_st:

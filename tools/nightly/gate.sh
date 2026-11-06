@@ -36,7 +36,7 @@ for t in archer_test plague_test warlock_hex_test; do
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
 # the camp's people and the island (they reach the Sfx autoload: run late)
-for t in camp_life_test vendor_test guard_test codex_test codex_book_test; do
+for t in camp_life_test vendor_test guard_test codex_test codex_book_test camp_reach_test; do
   "$G" --headless --path . --fixed-fps 60 -s tools/_late.gd -- res://tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done

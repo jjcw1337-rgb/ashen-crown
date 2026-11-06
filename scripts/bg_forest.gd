@@ -14,7 +14,7 @@ extends RefCounted
 
 const TITLE := "The Verdant Reach"
 const HALF := 105.0
-## The four starting glades (a bell each), the four extraction portals
+## The four starting glades, the four extraction portals
 const SPAWNS := [Vector2(-88, 88), Vector2(88, 88), Vector2(88, -88), Vector2(-88, -88)]
 const PORTALS := [Vector2(-102, 2), Vector2(102, -4), Vector2(34, -101), Vector2(-34, 101)]
 const MUSH_C := Vector2(-56, 46)
@@ -205,13 +205,12 @@ static func build(w: World) -> void:
 		var foes: Array = c["foes"]
 		Camps.add(w, c["id"], c["name"], int(c["tier"]), at, float(c["r"]), foes, chest_ofs)
 		_dress_camp(w, c, rng)
-	# the starting glades: a bell and lanterns; the extraction portals: a ring of rune stones round the light
+	# the starting glades: lanterns (no bell: a match starts by itself, Blaine 2026-11-06); the extraction portals: a
+	# ring of rune stones round the light
 	var spawns := []
 	for s in SPAWNS:
 		var sp := Vector3(s.x, 0, s.y)
 		spawns.append(sp)
-		var towards: Vector2 = (-s).normalized()
-		Battlegrounds._bell(w, sp + Vector3(towards.x * 4.0 + towards.y * 2.0, 0, towards.y * 4.0 - towards.x * 2.0))
 		for k in 4:
 			var a := TAU * k / 4.0 + 0.4
 			_lantern_post(w, Vector2(s.x + cos(a) * 7.5, s.y + sin(a) * 7.5))
@@ -523,7 +522,9 @@ static func _dress_camp(w: World, c: Dictionary, rng: RandomNumberGenerator) -> 
 		"barrow":
 			for k in 9:
 				w._standing_stone(Vector3(_ring(at, r * 0.95, k, 9).x, 0, _ring(at, r * 0.95, k, 9).y), rng.randf_range(2.2, 3.6))
-			_put(w, "res://assets/models/rocks/boulder_b.glb", at + Vector2(0, -r * 0.2), 0.0, 2.6, 2.4)
+			# (footprint in the model's metres, scaled with it: the boulder is ~1 m across, so 0.55 x 2.6 = 1.4 m; its old
+			# 2.4 made a 6 m wall that swallowed the chest and the barrow's own zombies, Blaine 2026-11-06)
+			_put(w, "res://assets/models/rocks/boulder_b.glb", at + Vector2(0, -r * 0.2), 0.0, 2.6, 0.55)
 		"ruins":
 			for k in 6:
 				var a := _ring(at, r * rng.randf_range(0.85, 1.1), k, 6, rng.randf())
