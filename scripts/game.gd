@@ -273,8 +273,9 @@ func _ready() -> void:
 	_boot_hold = true
 	_bury_lost_raiders()
 	_stash_start()
-	loading_lbl.text = "Waking the Forsaken Wilds..."
-	set_loading_art("town")
+	# (the camp is only built behind the title here, nobody is going there yet: no zone name, Blaine 2026-11-06)
+	loading_lbl.text = "Loading..."
+	set_loading_art("")
 	loading.visible = true
 	await _await_preloads()
 	await load_zone(0, "town", "start")
@@ -1419,8 +1420,9 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		return
 	_busy = true
 	net.broadcast_goto(act, zone, spawn, at)
-	loading_lbl.text = ("Descending into %s..." if zone == Battlegrounds.ZONE else "Entering %s...") % zone_title(act, zone)
-	set_loading_art(zone)
+	if not _boot_quiet:
+		loading_lbl.text = ("Descending into %s..." if zone == Battlegrounds.ZONE else "Entering %s...") % zone_title(act, zone)
+		set_loading_art(zone)
 	loading.visible = not _boot_quiet or _boot_hold
 	# the zone's model files on worker threads from now on, while the old zone goes and the new one is built
 	var zone_files := ZonePreload.start(difficulty, zone)
