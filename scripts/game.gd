@@ -1391,7 +1391,7 @@ func _presentation_client() -> bool:
 
 func _preparation_classes(zone: String) -> Array:
 	# Competitive/online play can introduce any opponent or late partner. Solo needs its active class.
-	if zone in ["arena", Battlegrounds.ZONE] or net.active:
+	if zone in ["arena", Sandbox.ZONE, Battlegrounds.ZONE] or net.active:
 		return SkillWarmData.EVENTS.keys()
 	return [hero.cls]
 
@@ -2611,7 +2611,7 @@ func _write_char(p: String, id: String, d: Dictionary) -> void:
 		cloud.push(id, d)
 
 func save_game() -> void:
-	if arena_mode: return # Arena uses a temporary copy; only escrow settlement changes owned items.
+	if arena_mode or sandbox != null: return # Practice and Arena use a temporary copy; only escrow settlement changes owned items.
 	if hero != null and hero.run != null:
 		return      # (a run character is saved only as a survivor, at a successful exit: Survivors)
 	if char_id == "" and not _testing():
@@ -2811,7 +2811,8 @@ func bg_server_address() -> String:
 	return "%s:%d" % [own, int(Battlegrounds.best_raid(Time.get_unix_time_from_system()).get("port", Net.PORT))]
 
 ## Back to the title screen to pick another character (the pause menu's "Save and Exit to Title").
-func exit_to_title() -> void:
+func exit_to_title(save_current := true) -> void:
+	var leaving_practice := sandbox != null
 	if steam != null:
 		steam.close_world()      # (friends see our world gone)
 	if lobby_client != null and lobby_client.match_id != "":
@@ -2823,18 +2824,17 @@ func exit_to_title() -> void:
 	if arena_mode:
 		arena_mode = false
 		arena_state = {}
-		load_game()
+		if sandbox == null: load_game()
 	if sandbox != null:
 		# out of the sandbox first: the character as it was outside
 		sandbox.shutdown()
 		sandbox = null
 		char_id = _sandbox_char
 		_sandbox_char = ""
-		if char_id != "":
-			load_game()
+		if char_id != "" and not load_game(): char_id = ""
 	if bg_mode and not hero.dead:
 		bg_strip()           # leaving a raid without extracting is dying there (it saves)
-	else:
+	elif save_current and not leaving_practice:
 		save_game()
 	_bg_home()
 	bg_mode = false
@@ -4313,50 +4313,87 @@ func _boss_loot(e: Enemy) -> void:
 	drop_item(bu, e.global_position)
 	ui.message("%s dropped %s!" % [e.display_name, bu["name"]], Color(0.85, 0.66, 0.38))
 
-## The admins' Battlegrounds sandbox (Sandbox; the Escape menu's Admin column): the character is saved and set aside
-## (char_id cleared, so nothing in there is saved) and comes back exactly as it was on leaving.
+## Practice uses a temporary hero. Preserve the saved character and restore it when leaving.
 var _sandbox_char := ""
 
-func open_sandbox() -> void:
-	if not dev_tools or sandbox != null or _busy:
-		return
-	if net.active:
-		ui.message("Leave the party first: the sandbox is played alone", Color(1, 0.6, 0.4))
-		return
-	if bg_mode:
-		ui.message("Not from inside a raid", Color(1, 0.6, 0.4))
-		return
-	if paused:
-		toggle_pause()
-	save_game()
-	_sandbox_char = char_id
+var _sandbox_from_title := false
+
+func _begin_sandbox(cls: String, online: bool) -> void:
+	_sandbox_from_title = not playing
+	if playing: save_game()
+	_sandbox_char = char_id if playing else ""
 	char_id = ""
+	if paused: toggle_pause()
+	ui.hide_title()
+	ui.close_all()
+	net.stop_listening()
+	playing = true
+	hero.run = null
 	sandbox = Sandbox.new(self)
-	sandbox.pick_me["cls"] = hero.cls
-	sandbox.pick_bot["cls"] = hero.cls
+	sandbox.online = online
+	sandbox.pick_me["cls"] = cls if Data.CLASSES.has(cls) else "knight"
+	sandbox.pick_bot["cls"] = sandbox.pick_me["cls"]
 	add_child(sandbox)
+	Sandbox.outfit(self, hero, sandbox.pick_me["cls"], 20, "geared")
+
+func open_sandbox(cls := "") -> void:
+	if sandbox != null or _busy: return
+	if net.active or bg_mode or arena_mode or (lobby_client != null and not lobby_client.room.is_empty()):
+		ui.message("Leave your current match or lobby before entering Sandbox.")
+		return
+	_begin_sandbox(hero.cls if cls == "" else cls, false)
 	await load_zone(0, Sandbox.ZONE, "start")
-	Sandbox.outfit(self, hero, hero.cls, 20, "geared")
 	ui.refresh()
 	ui.big_message(Sandbox.TITLE)
-	ui.message("Your character is saved and waits outside; nothing here is kept", Color(0.6, 0.85, 1.0))
+	ui.message("Practice only. Your saved characters are unchanged.", Color(0.6, 0.85, 1.0))
+
+func start_sandbox_join(address: String, ticket_character: String) -> void:
+	while _busy: await get_tree().process_frame
+	if sandbox != null or net.active: return
+	_begin_sandbox(ticket_character.trim_prefix("sandbox_"), true)
+	# This identifier is used only for admission; save_game is suppressed throughout practice.
+	char_id = ticket_character
+	char_name = str(Data.CLASSES[hero.cls]["name"])
+	arena_mode = true
+	arena_state = {"phase": "waiting"}
+	net_joining = true
+	loading_lbl.text = "Joining Sandbox..."
+	loading.visible = true
+	var address_parts := Battlegrounds.parse_address(address)
+	if net.join(str(address_parts[0]), int(address_parts[1])) != OK:
+		on_net_failed("Could not connect to Sandbox.")
+		return
+	await get_tree().create_timer(12).timeout
+	if sandbox != null and sandbox.online and net.is_client() and not net.welcomed:
+		net.shutdown()
+		on_net_failed("Sandbox did not answer in time.")
 
 func close_sandbox() -> void:
-	if sandbox == null or _busy:
-		return
+	if sandbox == null or _busy: return
+	var title := _sandbox_from_title or sandbox.online
+	if sandbox.online: net.shutdown()
+	arena_mode = false
+	arena_state = {}
 	sandbox.shutdown()
 	sandbox = null
 	char_id = _sandbox_char
 	_sandbox_char = ""
-	if char_id != "" and load_game():
-		hero.refresh_gear()
-		hero.recalc()
-		hero.life = hero.max_life
-		hero.mana = hero.max_mana
-	if hero.dead:
-		hero.respawn(hero.global_position)
+	if char_id != "":
+		if load_game():
+			hero.refresh_gear()
+			hero.recalc()
+		else:
+			char_id = ""
+			title = true
+	if title:
+		await exit_to_title(false)
+		lobby_client.open("sandbox")
+		return
+	if hero.dead: hero.respawn(hero.global_position)
 	death_t = -1.0
 	await load_zone(difficulty, "town", "start")
+	hero.life = hero.max_life
+	hero.mana = hero.max_mana
 	ui.refresh()
 
 const BOOST_SLOTS := ["weapon", "armor", "helm", "gloves", "boots", "belt", "ring1", "ring2", "amulet"]

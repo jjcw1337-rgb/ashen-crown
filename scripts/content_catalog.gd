@@ -59,12 +59,15 @@ static func combat(classes: Array = []) -> Array:
 
 static func zone(run: int, name: String) -> Array:
 	var paths: Array = (ZonePreloadData.PATHS.get("%d:%s" % [run, name], []) as Array).duplicate()
+	if name == "bg" and MpMode.FOREST:
+		paths.append_array(["res://assets/models/camp/runestone.glb", "res://assets/models/camp/tent.glb",
+			"res://assets/models/fort/tower.glb", "res://assets/models/lairs/ice_rock.glb"])
 	var family := "isle" if name.begins_with("isle_") else ("arena" if name == "sandbox" else name)
 	# The procedural PvP hall and Vigil use crypt props, not outdoor rocks, Roman
 	# scenery or town waypoint/stash models. Keep those bundles out of their residency.
 	var dirs: Array = [] if family in ["arena", "vigil"] else COMMON_ZONE.duplicate()
 	dirs.append_array(ZONE_FAMILIES.get(family, []))
-	if family in ["town", "wild", "coast", "isle"] or (family == "lair" and run == 0):
+	if family in ["town", "wild", "coast", "isle"] or (family == "bg" and MpMode.FOREST) or (family == "lair" and run == 0):
 		dirs.append_array(OUTDOOR)
 	for dir in dirs:
 		var key := "zone/" + str(dir)

@@ -10,11 +10,18 @@ var fails := 0
 var SB      # sandbox.gd and hero.gd at run time (a static reference compiles their Sfx before the autoload)
 var HS
 func _initialize():
+	BuildEnv.forced = {"env": "local", "cloud": "0"}
 	SB = load("res://scripts/sandbox.gd")
 	HS = load("res://scripts/hero.gd")
 	g = (load("res://main.tscn") as PackedScene).instantiate()
+	g.char_dir = "user://sandbox_combat_test/"
+	g.old_save = "user://sandbox_combat_test/absent.json"
 	get_root().add_child(g)
+	current_scene = g
 	_run()
+func _process(_dt: float) -> bool:
+	if is_instance_valid(g):g._intro_skip=true
+	return false
 func check(ok: bool, what: String) -> void:
 	print("[SB] ", "ok   " if ok else "FAIL ", what)
 	if not ok:
@@ -29,7 +36,7 @@ func _run() -> void:
 	while g._busy:
 		await frames(5)
 	g.ui.close_all()
-	g.dev_tools = true
+	g.dev_tools = false
 	var h = g.hero
 	h.set_level(7)
 	h.gold = 1234
@@ -125,4 +132,6 @@ func _run() -> void:
 	check(str(after) == str(before), "the character is exactly as it was: %s" % str(after))
 	check(get_root().find_children("Bot*", "Node3D", true, false).is_empty(), "no bot is left behind")
 	print("[SB] done, %d failed" % fails)
-	quit()
+	g.queue_free()
+	for i in 12: await process_frame
+	quit(1 if fails else 0)

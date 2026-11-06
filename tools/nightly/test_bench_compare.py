@@ -15,7 +15,7 @@ def fixture():
     data = {}
     for key in NAMES:
         row = dict(**{'class': 'knight', 'skill': ''}, schema=2, clock='monotonic_wall', focused=True, engine='4.3', renderer='forward_plus',
-                   gpu_name='fixture', resolution='1600x900', preset=int(key[-1]), scenario=key.split('_q')[0],
+                   gpu_name='fixture', environment='fixture', map_title='fixture', resolution='1600x900', preset=int(key[-1]), scenario=key.split('_q')[0],
                    fps_avg=60, frame_ms_p99=20, frame_ms_max=30, first_use_max_ms=40, hitches_per_min=0,
                    load_ms=2500, ram_mb=500, vram_mb=1000, frames=1800, secs=30, validation={'clean': True, 'quiet': True},
                    pvp={'actors': 6, 'teams': [3, 3], 'bursts': 5, 'presentation_events': 300})
@@ -61,6 +61,12 @@ class Gate(unittest.TestCase):
         data['pvp3v3_q2'] = aggregate(runs)
         self.assertEqual(data['pvp3v3_q2']['frame_ms_max'], 30)
         self.assertTrue(compare(fixture(), data))
+
+    def test_changed_map_is_not_comparable(self):
+        changed = fixture()
+        for row in changed['crypt_q2']['runs']: row['map_title'] = 'new map'
+        changed['crypt_q2'] = aggregate(changed['crypt_q2']['runs'])
+        self.assertTrue(compare(fixture(), changed))
 
     def test_missing_context(self):
         data = fixture()

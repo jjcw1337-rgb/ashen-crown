@@ -24,12 +24,12 @@ func start(g, path: String, port: int) -> void:
  var mode: String=str(config.mode)
  if mode=="battlegrounds":
   await Battlegrounds.start_server(game,port)
- elif mode=="arena":
-  game.bg=load("res://scripts/arena_match.gd").new()
+ elif mode in ["arena","sandbox"]:
+  game.bg=load("res://scripts/sandbox_match.gd" if mode=="sandbox" else "res://scripts/arena_match.gd").new()
   game.bg.game=game
   game.add_child(game.bg)
   game.net.host(port,int(config.capacity))
-  await game.load_zone(0,"arena","start")
+  await game.load_zone(0,Sandbox.ZONE if mode=="sandbox" else "arena","start")
  else:
   game.coop_server=CoopServer.new()
   game.coop_server.game=game
@@ -73,6 +73,9 @@ func admit(pid: int, ticket: String) -> bool:
  return true
 
 func spawn(pid: int) -> Vector3:
+ if str(config.mode)=="sandbox":
+  var angle:=TAU*float(game.net.players.keys().find(pid))/float(maxi(1,int(config.capacity)))
+  return game.world.free_spot_near(Vector3(cos(angle)*13,0,sin(angle)*13),1.5)
  if str(config.mode)=="arena":
   var team:=int(members.get(pid,{}).get("team",0))
   var peers:Array=members.keys().filter(func(peer):return int(members[peer].team)==team)
@@ -83,6 +86,7 @@ func spawn(pid: int) -> Vector3:
 func left(pid: int) -> void:
  # Keep match membership for team results; release the account to browse other lobbies.
  if members.has(pid):request("depart",{"user":members[pid].user})
+ if str(config.mode)=="sandbox":members.erase(pid)
  if not begun and not ending: finish("aborted","A player disconnected before the match began.")
 
 func _process(delta: float) -> void:
@@ -93,7 +97,7 @@ func _process(delta: float) -> void:
  report_t-=delta
  if begun and report_t<=0:
   report_t=10
-  request("state",{"state":"playing","joinable":str(config.mode)=="waves" or (str(config.mode)=="battlegrounds" and game.bg.raid_t<Battlegrounds.JOIN_CLOSE)})
+  request("state",{"state":"playing","joinable":str(config.mode) in ["waves","sandbox"] or (str(config.mode)=="battlegrounds" and game.bg.raid_t<Battlegrounds.JOIN_CLOSE)})
  if not begun:
   if report_t<=0:
    report_t=10
@@ -105,7 +109,7 @@ func _process(delta: float) -> void:
   if ready:
    begun=true
    await request("state",{"state":"playing"})
-   if str(config.mode)=="arena":game.bg.begin_round()
+   if str(config.mode) in ["arena","sandbox"]:game.bg.begin_round()
    elif str(config.mode)=="waves":game.world.get_meta("vigil").begin()
    else:game.bg.raid_t=0;game.bg.start_prep("")
   elif elapsed>120:finish("aborted","Players did not arrive in time.")

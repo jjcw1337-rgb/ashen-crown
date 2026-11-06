@@ -64,8 +64,8 @@ for t in playtest coop_fx_test title_test char_test ui_click_test grass_test int
   [ "$t" = coop_fx_test ] && limit=1200
   waitfor $p "$limit"; check $t "$OUT/gate_$t.log" $?
 done
-for t in archer_test plague_test; do
-  if [ "$t" = archer_test ] && [ "$UI_RENDERED" = 1 ]; then
+for t in archer_test plague_test sandbox_test sandbox_entry_test; do
+  if [ "$t" != plague_test ] && [ "$UI_RENDERED" = 1 ]; then
     "$G" --path . --fixed-fps 60 -s tools/_late.gd -- res://tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
   else
     "$G" --headless --path . --fixed-fps 60 -s tools/_late.gd -- res://tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!

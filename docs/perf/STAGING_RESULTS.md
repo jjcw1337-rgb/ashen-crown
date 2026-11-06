@@ -112,3 +112,18 @@ has been completed in this continuation. Initial staged adoption is not a claim 
 - No Codex game process or gate remains running. Claude-1 holds heavy-tests and the legacy nightly lock is
   active, so further heavy validation waits for coordination. Staging publication is still pending. The local
   override was archived with test evidence and removed. Native rendering is tested separately from headless assertions.
+
+
+## Sandbox / QA continuation — 2026-11-05
+
+Integrated committed Claude multiplayer runs, camps, survivors and forest map through af34478
+(merge a4c37c8). Added explicit Sandbox solo/hosted entry, mode-specific solo controls, temporary
+character isolation, a free-for-all worker with respawn and three PvP stress profiles. This changes
+broker/worker behavior: unlike the earlier preparation-only checkpoint above, a matching backend
+rollout is now required. Current live revision was not rechecked and no service was changed.
+
+Python checks: 54 broker/HTTP, 13 audit, 13 benchmark/log passed. Fourteen changed GDScript files
+passed grammar parsing only. Native compilation/gameplay, rendered UI, hosted late-join/respawn
+and the full merged gate are pending; Claude owns heavy-tests/staging and the legacy nightly lock
+is present. The audit's installed preflight deferred correctly; no competing game was launched.
+See [Sandbox](SANDBOX.md) and [coverage](COVERAGE.md). Retain earlier measurements as historical.

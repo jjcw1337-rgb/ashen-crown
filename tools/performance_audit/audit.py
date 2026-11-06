@@ -23,12 +23,14 @@ LOCK = Path('/Users/blaine/dev/game-factory-agents/lock.py')
 OWNER = 'codex-nightly-audit'
 LEGACY = Path('/tmp/ashen-nightly.lock')
 ROOT = Path('/Users/blaine/Library/Application Support/ashen-performance-audit')
-SCENARIOS = ['camp:2', 'moor:1', 'moor:2', 'moor:3', 'fight:2', 'boss:2', 'arena:2', 'crypt:2', 'pvp3v3:2', 'server:2']
+SCENARIOS = ['camp:2', 'moor:1', 'moor:2', 'moor:3', 'fight:2', 'boss:2', 'arena:2', 'crypt:2', 'pvp3v3:2', 'pvp_dragons:2', 'pvp_forest:2', 'server:2']
 METRICS = ['fps_avg', 'frame_ms_p99', 'frame_ms_max', 'first_use_max_ms', 'hitches_per_min', 'load_ms', 'ram_mb', 'vram_mb']
 CONTRACTS = ['content_cache_test', 'content_contract_test', 'content_catalog_test', 'content_parts_test',
-             'nightly_surface_material_test', 'coop_fx_test', 'content_host_test']
+             'nightly_surface_material_test', 'coop_fx_test', 'content_host_test', 'sandbox_test', 'sandbox_entry_test', 'pvp_sim']
 MARKERS = {
     'isolation': '[AUDIT] isolated user directory verified',
+    'pvp_sim': '[PVP] done,',
+    'sandbox_test': '[SB] done, 0 failed', 'sandbox_entry_test': '[SANDBOX ENTRY] done, 0 failed',
     'content_cache_test': '[CACHE TEST]', 'content_contract_test': '[CONTENT CONTRACT]',
     'content_catalog_test': '[CATALOG]', 'content_parts_test': '[PARTS]',
     'nightly_surface_material_test': '[SURFACE]', 'coop_fx_test': '[X] done, 0 failed',
@@ -77,14 +79,34 @@ def evaluate(groups):
                 problems.append(prefix + ': missing/nonfinite metrics')
                 continue
             if m.get('gameplay_sync_misses') != {}: problems.append(prefix + ': cache misses or missing cache instrumentation')
-            if key == 'pvp3v3:2':
+            if key.startswith('pvp'):
                 p = m.get('pvp', {})
                 if p.get('actors') != 6 or p.get('teams') != [3, 3] or p.get('bursts', 0) < 3 or p.get('presentation_events', 0) < 1:
                     problems.append(prefix + ': incomplete six-actor spell flood')
+                expected = {'pvp3v3:2': ['demon','plague','archer']*2,
+                            'pvp_dragons:2': ['wyrm','serpent','wyvern']*2,
+                            'pvp_forest:2': ['warlock','wraith','plague']*2}[key]
+                if p.get('classes') != expected or p.get('profile') != key.split(':')[0]:
+                    problems.append(prefix + ': wrong/missing PvP roster or profile')
+                zone = {'pvp3v3:2': 'arena', 'pvp_dragons:2': 'sandbox', 'pvp_forest:2': 'bg'}[key]
+                if m.get('environment') != zone: problems.append(prefix + ': wrong/missing environment')
         if all(all(isinstance(r.get('metrics', {}).get(k), (float, int)) and math.isfinite(r['metrics'][k]) for k in METRICS) for r in runs):
             summary[key] = {k: {'median': statistics.median(r['metrics'][k] for r in runs),
                                 'worst': (min if k == 'fps_avg' else max)(r['metrics'][k] for r in runs)} for k in METRICS}
     return problems, summary
+
+
+def balance_issues(data):
+    issues = []
+    for cls in ['demon', 'plague', 'archer']:
+        for gear in ['fresh', 'geared']:
+            key = f'{cls}:20:{gear}'
+            row = data.get(key, {})
+            if row.get('cls') != cls or row.get('lvl') != 20 or row.get('gear') != gear or any(
+                isinstance(row.get(k), bool) or not isinstance(row.get(k), (int, float)) or
+                not math.isfinite(row[k]) or row[k] <= 0 for k in ['dps', 'ehp', 'life']):
+                issues.append('PvP simulator missing/invalid moving-target result: '+key)
+    return issues
 
 
 def compare(summary, baseline):
@@ -104,7 +126,7 @@ def budget_issues(summary):
     for key, metrics in summary.items():
         if key == 'server:2': continue
         caps = {'first_use_max_ms': 50, 'load_ms': 5000}
-        if key in ['fight:2', 'boss:2', 'pvp3v3:2']: caps.update(frame_ms_p99=33, frame_ms_max=80)
+        if key in ['fight:2', 'boss:2'] or key.startswith('pvp'): caps.update(frame_ms_p99=33, frame_ms_max=80)
         for metric, cap in caps.items():
             if metrics[metric]['worst'] > cap: result.append(f'{key} {metric}: {metrics[metric]["worst"]:.1f} > {cap}')
     return result
@@ -227,7 +249,8 @@ class Audit:
             try: command(['git', 'cat-file', '-e', sha+':tools/'+name+'.gd'], self.repo)
             except subprocess.CalledProcessError: raise Deferred('Staging does not yet include required contract: '+name)
         kpi = command(['git', 'show', sha+':scripts/kpi.gd'], self.repo)
-        if '"pvp3v3"' not in kpi: raise Deferred('Staging does not yet include the six-actor PvP profile')
+        if any('"'+name+'"' not in kpi for name in ['pvp3v3', 'pvp_dragons', 'pvp_forest']):
+            raise Deferred('Staging does not yet include all required PvP stress profiles')
         inventory = {}
         paths = command(['git', 'ls-tree', '-r', '--name-only', sha, 'scripts'], self.repo).splitlines()
         for path in paths:
@@ -285,9 +308,20 @@ class Audit:
         if not self.run('isolation', base+['--headless', '--', '--audit-mode', 'isolation'])['valid']:
             raise RuntimeError('User-data isolation failed')
         for test in CONTRACTS:
-            args = [] if test == 'content_host_test' else ['--headless']
-            row = self.run(test, base+args+['--', '--audit-mode', test], timeout=900)
+            args = [] if test in ['content_host_test', 'sandbox_test', 'sandbox_entry_test', 'pvp_sim'] else ['--headless']
+            extra = []
+            if test == 'pvp_sim':
+                extra = ['classes=demon,plague,archer', 'levels=20', 'moving', 'out='+str(self.out/'pvp-balance.json')]
+            if test in ['sandbox_test', 'sandbox_entry_test', 'pvp_sim']: args += ['--fixed-fps', '60']
+            row = self.run(test, base+args+['--', '--audit-mode', test]+extra, timeout=900)
             if not row['valid']: self.report['issues'].append(test+': errors, warnings or failed assertions; inspect private log')
+            if test == 'pvp_sim':
+                target = self.out/'pvp-balance.json'
+                data = json.loads(target.read_text()) if target.exists() else {}
+                self.report['issues'] += balance_issues(data)
+                self.report['balance'] = data
+                for line in (self.out/(test+'.log')).read_text(errors='replace').splitlines():
+                    if '[PVP-FLAG]' in line: self.report['issues'].append(line.strip())
         for scenario in SCENARIOS:
             name, quality = scenario.split(':')
             self.report['runs'][scenario] = []
@@ -303,7 +337,7 @@ class Audit:
         self.report['issues'].extend(issues)
         self.report['summary'] = summary
         self.report['budget_findings'] = budget_issues(summary)
-        identity = {'engine': self.report['engine'], 'gpu': self.report['runs'].get('camp:2', [{}])[0].get('metrics', {}).get('gpu_name'), 'resolution': self.report['runs'].get('camp:2', [{}])[0].get('metrics', {}).get('resolution'), 'policy': 1}
+        identity = {'engine': self.report['engine'], 'gpu': self.report['runs'].get('camp:2', [{}])[0].get('metrics', {}).get('gpu_name'), 'resolution': self.report['runs'].get('camp:2', [{}])[0].get('metrics', {}).get('resolution'), 'policy': 2, 'maps': {key: rows[0].get('metrics', {}).get('map_title') for key, rows in self.report['runs'].items() if rows}}
         fingerprint = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:16]
         baseline_file = self.root/('baseline-'+fingerprint+'.json')
         self.report['comparison_identity'] = identity

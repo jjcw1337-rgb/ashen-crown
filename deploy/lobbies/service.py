@@ -6,17 +6,18 @@ import argparse, hashlib, json, os, secrets, sqlite3, subprocess, threading, tim
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-MODES = {'arena': (2, 6), 'battlegrounds': (1, 16), 'waves': (1, 4)}
+MODES = {'arena': (2, 6), 'battlegrounds': (1, 16), 'waves': (1, 4), 'sandbox': (1, 6)}
 # The modes a new lobby may use (MpMode.MODES in the game). Endless Waves is retired (docs/cleanup.md): its lobbies
 # can't be created, though one already running finishes normally.
-LIVE_MODES = ('battlegrounds', 'arena')
+LIVE_MODES = ('battlegrounds', 'arena', 'sandbox')
 # What one match costs, measured on the staging droplet (4 GB, 2 vCPU) with bot players on the stripped server build
 # (Blaine's capacity audit, 2026-11-05: a Battlegrounds world ~0.4-0.46 GB; 6 players fighting ~0.25 of a core, so the
 # budget allows some heavier fights). (MB, cores). Arena is a small map with no monsters; Waves is a full co-op zone.
-COST = {'arena': (450, 0.15), 'battlegrounds': (480, 0.3), 'waves': (480, 0.3)}
+# Sandbox starts with a conservative provisional allowance; measure before increasing capacity.
+COST = {'arena': (450, 0.15), 'battlegrounds': (480, 0.3), 'waves': (480, 0.3), 'sandbox': (600, 0.3)}
 # A match's longest life (s): a hung or forgotten world never holds a server forever. Arena is best of three short
 # rounds; Battlegrounds and Waves run as long as their players last.
-LIMIT = {'arena': 45 * 60, 'battlegrounds': 3 * 3600, 'waves': 3 * 3600}
+LIMIT = {'arena': 45 * 60, 'battlegrounds': 3 * 3600, 'waves': 3 * 3600, 'sandbox': 60 * 60}
 FULL = 'Servers are full right now. Your lobby stays open: press Start again in a moment.'
 class Rejected(Exception): pass
 

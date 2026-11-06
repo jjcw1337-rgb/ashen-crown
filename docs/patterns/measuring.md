@@ -32,7 +32,8 @@ p99, maximum frame, hitches/minute, loading time and memory as well as average F
 `bench_compare.py` checks both medians and worst repeats, requires complete scenario/context coverage, and
 rejects synchronous gameplay cache misses. Never promote a baseline just because average FPS improves.
 
-`--kpi pvp3v3` floods six Demon/Plague/Archer presentation actors; this exceeds legal cooldown concurrency.
+`--kpi pvp3v3` floods six Demon/Plague/Archer presentation actors; `pvp_dragons` adds moving dragon effects,
+and `pvp_forest` exercises summoners/status effects in the current Battlegrounds map. These exceed legal cooldown concurrency.
 Actual six-client team/round correctness is a separate test, not implied by that replay. The complete suite,
 not a single successful scene, is required for performance acceptance. See [results and limits](../perf/IMPLEMENTATION_RESULTS.md).
 

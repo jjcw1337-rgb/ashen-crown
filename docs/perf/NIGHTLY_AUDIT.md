@@ -31,9 +31,15 @@ Reinstall deliberately when its code changes; it never silently executes an upda
 - Cache ownership/cancellation, content declarations, actual catalog loads, fragment reuse,
   cached-mesh material retirement, all-class spell replay and solo-to-co-op preparation/cleanup.
 - Three fresh-process repeats each: camp, moor at Medium/High/Ultra, combat, boss, Aurelia,
-  Battlegrounds, **six-actor 3v3 spell flood**, and the local headless server tick. PvP requires
-  six actors/two teams, at least three bursts and actual presentation events. This is not a
+  Battlegrounds, **three six-actor PvP floods** (mixed Demon/Plague/Archer, moving dragons, and
+  forest summoners/status effects), and the local headless server tick: twelve profiles total.
+  PvP requires the declared roster/environment, six actors/two teams, at least three bursts and actual events. This is not a
   six-network-client match or proof of public competitive authority.
+- Sandbox solo entry, bot damage/respawn, mode-specific buttons, repeated mixed-bot/monster cleanup
+  and temporary-character isolation. The existing PvP simulator measures moving-target Demon/Plague/Archer
+  damage at level20 with fresh/geared builds; its duel flags are review findings, not automatic balance edits.
+  Hosted Sandbox late-join/respawn/save checks use the separate two-client `sandbox_lobby_test.gd`;
+  they are a release check, not part of this one-process nightly job.
 - Median **and worst-repeat** FPS, p99/worst/first-use frames, hitches, loading time and engine
   memory counters; zero observed gameplay cache misses. These counters are not OS RSS/total memory.
 - Per-file lexical load/preload/Shader.new/cache-fallback inventory, for review; counts are not
@@ -44,7 +50,7 @@ are checked. Warnings and runtime errors invalidate benchmark acceptance even if
 print success. Focus must be retained for rendered scenarios. Each repeat is a fresh process,
 but OS/driver caches may remain warm: **no cold-driver-cache claim**.
 
-The first complete valid run establishes a pinned baseline for its engine/GPU/resolution/policy.
+The first complete valid run establishes a pinned baseline for its engine/GPU/resolution/map/policy.
 It does not prove improvement. Later nights compare against that baseline; an engine change
 starts a separate baseline. FPS losses over10% and other metric growth over20% plus a small
 noise floor are findings. Current project budgets also flag first-use over50ms, loading over5s,

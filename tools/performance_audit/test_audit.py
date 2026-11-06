@@ -13,7 +13,14 @@ class AuditTests(unittest.TestCase):
         metrics = {k: 1.0 for k in audit.METRICS}
         metrics.update(fps_avg=60, focused=True, gameplay_sync_misses={},
                        pvp={'actors':6,'teams':[3,3],'bursts':6,'presentation_events':100})
-        return {k: [copy.deepcopy({'valid': True, 'metrics': metrics}) for _ in range(3)] for k in audit.SCENARIOS}
+        groups = {k: [copy.deepcopy({'valid': True, 'metrics': metrics}) for _ in range(3)] for k in audit.SCENARIOS}
+        for key, roster, zone in [('pvp3v3:2',['demon','plague','archer']*2,'arena'),
+                                 ('pvp_dragons:2',['wyrm','serpent','wyvern']*2,'sandbox'),
+                                 ('pvp_forest:2',['warlock','wraith','plague']*2,'bg')]:
+            for row in groups[key]:
+                row['metrics']['pvp'].update(classes=roster, profile=key.split(':')[0])
+                row['metrics']['environment'] = zone
+        return groups
     def test_complete_coverage(self):
         groups = self.valid_groups()
         self.assertEqual(audit.evaluate(groups)[0], [])
@@ -31,6 +38,20 @@ class AuditTests(unittest.TestCase):
     def test_flood_must_actually_run(self):
         groups = self.valid_groups(); groups['pvp3v3:2'][0]['metrics']['pvp']['actors'] = 2
         self.assertTrue(audit.evaluate(groups)[0])
+    def test_wrong_pvp_roster_or_environment_rejected(self):
+        for key in ['pvp_dragons:2', 'pvp_forest:2']:
+            groups = self.valid_groups(); groups[key][0]['metrics']['pvp']['classes'] = ['knight']*6
+            self.assertTrue(audit.evaluate(groups)[0])
+            groups = self.valid_groups(); groups[key][1]['metrics']['environment'] = 'town'
+            self.assertTrue(audit.evaluate(groups)[0])
+    def test_balance_requires_actual_finite_positive_damage(self):
+        data = {f'{cls}:20:{gear}': dict(cls=cls,lvl=20,gear=gear,dps=10,ehp=100,life=100)
+                for cls in ['demon','plague','archer'] for gear in ['fresh','geared']}
+        self.assertEqual(audit.balance_issues(data), [])
+        data['plague:20:geared']['dps'] = 0
+        self.assertTrue(audit.balance_issues(data))
+        del data['archer:20:fresh']
+        self.assertEqual(len(audit.balance_issues(data)), 2)
     def test_errors_with_exit_zero(self):
         self.assertTrue(audit.errors('\x1b[31mSCRIPT ERROR: bad\x1b[0m\n0 failures'))
         self.assertTrue(audit.errors('WARNING: render warning'))

@@ -469,7 +469,7 @@ func cl_welcome(act: int, zone: String, pos: Vector3, tp: Dictionary, bk: bool, 
 		game.ui.message("Joined the Battlegrounds", Color(0.5, 1.0, 0.5))
 		game.give_raid_phials()
 	elif game.arena_mode:
-		game.ui.message("Joined the arena", Color(1.0, 0.85, 0.5))
+		game.ui.message("Joined Sandbox" if game.sandbox != null else "Joined the arena", Color(1.0, 0.85, 0.5))
 	elif not players.has(1):
 		game.ui.message("Joined the online co-op server", Color(0.5, 1.0, 0.5))
 	else:
@@ -1434,7 +1434,7 @@ func _update_status() -> void:
 		var ips := local_ips()
 		status_lbl.text = "♛ Party leader  ·  %d joined%s" % [players.size(), ("  ·  " + ips[0]) if ips.size() > 0 else ""]
 	else:
-		status_lbl.text = "Arena" if game.arena_mode else ("Battlegrounds" if game.bg_mode else "Co-op")
+		status_lbl.text = "Sandbox" if game.sandbox != null else "Arena" if game.arena_mode else ("Battlegrounds" if game.bg_mode else "Co-op")
 
 func _rebuild_party_ui() -> void:
 	for c in party_box.get_children():
@@ -1499,7 +1499,7 @@ func _update_party_ui() -> void:
 		if not players.has(pid):
 			continue
 		var h = players[pid]["hero"]
-		if game.arena_mode:
+		if game.arena_mode and game.sandbox == null:
 			var team := int(game.arena_state.get("teams", {}).get(str(pid), -1))
 			row.get_child(0).text = str(players[pid]["name"]) + (" · Ember" if team == 0 else " · Frost")
 			row.get_child(0).add_theme_color_override("font_color", Color(1,0.55,0.3) if team == 0 else Color(0.45,0.75,1))

@@ -28,6 +28,7 @@ var rows := {}      # "cls:lvl:gear" -> {ehp, dps, life, armor}
 var flags := 0
 
 func _initialize():
+	BuildEnv.forced = {"env": "local", "cloud": "0"}
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("classes="):
 			classes = Array(a.substr(8).split(","))
@@ -40,8 +41,15 @@ func _initialize():
 		elif a == "moving":
 			moving = true
 	g = (load("res://main.tscn") as PackedScene).instantiate()
+	g.char_dir = "user://pvp_sim_audit/"
+	g.old_save = "user://pvp_sim_audit/absent.json"
 	get_root().add_child(g)
+	current_scene = g
 	_run()
+
+func _process(_dt: float) -> bool:
+	if is_instance_valid(g):g._intro_skip=true
+	return false
 
 func frames(n: int) -> void:
 	for i in n:
@@ -65,6 +73,8 @@ func _run() -> void:
 		var f := FileAccess.open(out_path, FileAccess.WRITE)
 		f.store_string(JSON.stringify(rows, " "))
 	print("[PVP] done, %d flagged" % flags)
+	g.queue_free()
+	for i in 12: await process_frame
 	quit()
 
 func _setup(cls: String, lvl: int, geared: bool) -> void:

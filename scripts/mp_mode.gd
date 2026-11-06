@@ -20,8 +20,14 @@ const STASH := false
 ## corridors, its floors below and its antechamber gates are retired (Blaine: "the old battlegrounds can completely go").
 const FOREST := true
 ## The multiplayer modes the lobby browser offers and the lobby service accepts.
-const MODES := ["battlegrounds", "arena"]
+const MODES := ["battlegrounds", "arena", "sandbox"]
 
 ## Whether a lobby mode is offered.
 static func mode_on(mode: String) -> bool:
 	return MODES.has(mode)
+
+## A solo action belongs to its selected mode; never leave another mode's button visible.
+static func solo_label(mode: String) -> String:
+	if mode == "sandbox": return "Play Sandbox Solo"
+	if mode == "waves" and WAVES: return "Play Waves Solo"
+	return ""

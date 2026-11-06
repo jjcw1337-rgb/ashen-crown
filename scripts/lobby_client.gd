@@ -7,6 +7,7 @@ var detail
 var status
 var team_pick
 var mode_buttons := {}
+var solo_button: Button
 var create_button
 var rules: Label
 var wager_pick
@@ -67,7 +68,7 @@ func setup(g) -> void:
  var right:=VBoxContainer.new();right.custom_minimum_size.x=400;right.add_theme_constant_override("separation",8);body.add_child(right)
  host_box=VBoxContainer.new();host_box.name="host";host_box.add_theme_constant_override("separation",8);right.add_child(host_box)
  host_box.add_child(ui._label("HOST A GAME",18,ui.GOLD,true))
- for entry in [["battlegrounds","Battlegrounds · The Hollow Crypt"],["waves","Endless Waves · The Last Flame"],["arena","Arena · 1v1 · 2v2 · 3v3"]]:
+ for entry in [["battlegrounds","Battlegrounds · The Hollow Crypt"],["waves","Endless Waves · The Last Flame"],["arena","Arena · 1v1 · 2v2 · 3v3"],["sandbox","Sandbox · Practice with friends or bots"]]:
   var id:String=entry[0]
   if not MpMode.mode_on(id):continue
   var b=ui._iron_button(entry[1],400,52,18)
@@ -82,8 +83,7 @@ func setup(g) -> void:
  options.add_child(team_pick)
  wager_pick=CheckButton.new();wager_pick.text="Play for items";options.add_child(wager_pick)
  var create=ui._iron_button("Create Lobby",400,54,21);create.name="create";create.pressed.connect(func():action("create",{"mode":selected_mode,"team_size":team_size,"name":_lobby_name(),"wager":wager_pick.button_pressed}));host_box.add_child(create);create_button=create
- if MpMode.WAVES:
-  var solo=ui._iron_button("Play Waves Solo",400,44,18);solo.pressed.connect(play_solo_waves);host_box.add_child(solo)
+ solo_button=ui._iron_button("",400,44,18);solo_button.name="play_solo";solo_button.pressed.connect(play_solo);host_box.add_child(solo_button)
  detail=VBoxContainer.new();detail.name="detail";detail.add_theme_constant_override("separation",8);right.add_child(detail)
  var bottom:=HBoxContainer.new();bottom.add_theme_constant_override("separation",12);vb.add_child(bottom)
  lan_row=HBoxContainer.new();lan_row.name="lan_row";lan_row.add_theme_constant_override("separation",10);bottom.add_child(lan_row)
@@ -123,6 +123,7 @@ func _build_prep(ui) -> void:
 ## The member's character for the lobby service: "run_<class>" in Battlegrounds, the survivor's id in the Arena.
 func member_character(mode := "") -> String:
  if mode=="":mode=str(room.get("mode",selected_mode))
+ if mode=="sandbox":return "sandbox_"+run_class
  if mode=="arena":return survivor
  return "run_"+run_class
 
@@ -136,7 +137,7 @@ func member_name(mode := "") -> String:
 func _draw_prep() -> void:
  if prep_box==null:return
  var mode:=str(room.get("mode",selected_mode))
- class_pick.get_parent().visible=mode=="battlegrounds"
+ class_pick.get_parent().visible=mode in ["battlegrounds","sandbox"]
  class_pick.disabled=not room.is_empty()
  survivor_btn.get_parent().visible=mode=="arena"
  survivor_btn.disabled=not room.is_empty()
@@ -241,8 +242,11 @@ func draw() -> void:
  if selected_mode!="arena" or MpMode.RUNS:wager_pick.button_pressed=false
  var ui=game.ui
  create_button.disabled=not room.is_empty()
+ solo_button.text=MpMode.solo_label(selected_mode)
+ solo_button.visible=room.is_empty() and solo_button.text!=""
+ solo_button.disabled=busy or game._busy
  var display_mode:String=str(room.get("mode",selected_mode))
- rules.text={"arena":"Best of three: first team to win two rounds wins. You fight with a saved survivor exactly as it left the Battlegrounds; losing never deletes it.","battlegrounds":"A fresh run from level 0: pick a class, clear camps for skills, passives and gear, and reach an open Extraction Portal alive to save the character for the Arena. A fallen run keeps nothing. Your single-player characters are never at risk.","waves":"Defend the Last Flame against endless waves. Start alone or with up to four players; others can join your active lobby."}.get(display_mode,"")
+ rules.text={"sandbox":"Practice only: choose any class and gear. Hosted games are free-for-all, with automatic respawns and no rewards or save changes. Solo practice also has bots and monster packs.","arena":"Best of three: first team to win two rounds wins. You fight with a saved survivor exactly as it left the Battlegrounds; losing never deletes it.","battlegrounds":"A fresh run from level 0: pick a class, clear camps for skills, passives and gear, and reach an open Extraction Portal alive to save the character for the Arena. A fallen run keeps nothing. Your single-player characters are never at risk.","waves":"Defend the Last Flame against endless waves. Start alone or with up to four players; others can join your active lobby."}.get(display_mode,"")
  for id in mode_buttons:
   mode_buttons[id].modulate=Color(1.3,1.12,0.8) if id==selected_mode else Color.WHITE
   mode_buttons[id].disabled=not room.is_empty()
@@ -295,7 +299,7 @@ func draw() -> void:
     var b=ui._iron_button("Join "+("Ember" if t==0 else "Frost"),195,42,17)
     b.pressed.connect(func():action("team",{"team":t}));teams.add_child(b)
 
-const MODE_NAMES := {"battlegrounds": "Battlegrounds", "waves": "Endless Waves", "arena": "Arena"}
+const MODE_NAMES := {"battlegrounds": "Battlegrounds", "waves": "Endless Waves", "arena": "Arena", "sandbox": "Sandbox"}
 
 ## One row of the list: its columns and a Join button.
 func _row(cells: Array, joinable: bool, join: Callable) -> Control:
@@ -314,6 +318,7 @@ func _format(r: Dictionary) -> String:
   "arena":return "%dv%d%s"%[int(r.team_size),int(r.team_size)," · items" if bool(r.get("wager",false)) else ""]
   "battlegrounds":return "Raid · %d max"%int(r.capacity)
   "waves":return "Co-op · %d max"%int(r.capacity)
+  "sandbox":return "Practice · %d max"%int(r.capacity)
  return ""
 
 ## A new lobby's name: the host's character.
@@ -328,15 +333,25 @@ func enter_match() -> void:
  game.save_game()
  game.party_join_ticket=str(room.ticket)
  panel.hide()
- if str(room.mode)=="battlegrounds":
+ if str(room.mode)=="sandbox":
+  await game.start_sandbox_join(str(room.address),character)
+ elif str(room.mode)=="battlegrounds":
   await game.start_battlegrounds(str(room.address),"",character.trim_prefix("run_") if character.begins_with("run_") else run_class)
  else:
   game.arena_mode=str(room.mode)=="arena"
   await game.start_join(str(room.address),character)
   if game.arena_mode:game.hero.recalc()
 
+func play_solo() -> void:
+ if busy or game._busy or not room.is_empty():return
+ if selected_mode=="sandbox":
+  if game.party_queue!=null:game.party_queue.stop()
+  panel.hide()
+  await game.open_sandbox(run_class)
+ elif selected_mode=="waves":await play_solo_waves()
+
 func play_solo_waves() -> void:
- if not MpMode.WAVES:return
+ if not MpMode.WAVES or selected_mode!="waves":return
  if not room.is_empty():status.text="Leave your lobby before playing solo.";return
  panel.hide()
  if not game.playing:await game.start_game(true,"knight",character)
@@ -349,7 +364,7 @@ func finished(reason: String) -> void:
  game.ui.big_message(reason)
  await get_tree().create_timer(4).timeout
  game.net.shutdown()
- if game.arena_mode:
+ if game.arena_mode and game.sandbox==null:
   game.arena_mode=false;game.arena_state={};game.load_game()
  elif game.bg_mode:
   if admitted:game.bg_strip()
@@ -364,7 +379,7 @@ func finished(reason: String) -> void:
 func _process(delta: float) -> void:
  if game==null:return
  game.ui.quest_tracker.visible=not game.arena_mode and not game.bg_mode
- arena_hud.visible=game.arena_mode and not game.ui.any_panel_open()
+ arena_hud.visible=game.arena_mode and game.sandbox==null and not game.ui.any_panel_open()
  if game.arena_mode:
   var s:Dictionary=game.arena_state
   var score:Array=s.get("scores",[0,0])

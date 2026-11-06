@@ -1,11 +1,8 @@
 class_name Sandbox
 extends Node
-## The Proving Crypt (zone "sandbox"): the admins' Battlegrounds sandbox (Blaine, 2026-11-02: "a little quick
-## battleground sim ... so we can easily test characters + item balancing ... put some npcs in there and pvp").
-## Opened from the Escape menu's Admin column (Game.open_sandbox). Local and offline: the admin plays any class at
-## level 1, 5, 10 or 20, fresh or geared, against bots (Hero.bot, played by a BotBrain) of any class, level and
-## gear, and against monster packs, in a walled crypt hall. Nothing is saved while inside (Game.char_id is set
-## aside and the character comes back as it was on leaving).
+## PvP practice, available from Multiplayer and the existing admin shortcut. Solo supports up to five
+## bots plus monster packs; hosted practice uses authenticated player combat and automatic respawns.
+## Class/level/gear changes affect only the temporary hero. Saved characters are restored on exit.
 ##
 ## PvP is the raid's: every hero here has an invisible stand-in (an Enemy with `sandbox_hero`) that every skill,
 ## swing, arrow and burn can hit; the blow is dealt to that hero at Battlegrounds.PVP_MULT through Hero.take_hit
@@ -15,7 +12,7 @@ extends Node
 ## a second over the last 5 s, totals, and how long each kill took.
 
 const ZONE := "sandbox"
-const TITLE := "The Proving Crypt"
+const TITLE := "PvP Sandbox"
 const HALL := Rect2(-20.0, -20.0, 40.0, 40.0)
 const LEVELS := [1, 5, 10, 20]
 const GEARS := ["fresh", "geared"]
@@ -32,6 +29,7 @@ const COLORS := [Color(1.0, 0.45, 0.35), Color(0.5, 0.75, 1.0), Color(0.6, 1.0, 
 	Color(0.85, 0.55, 1.0), Color(1.0, 0.6, 0.85)]
 
 var game
+var online := false # Online practice shares player combat; bots/packs remain the local training tools.
 var bots: Array = []          # {hero, proxy, brain, label, dead_t}
 var me_proxy: Enemy = null
 var ffa := false
@@ -156,6 +154,7 @@ func nearest_hero(p: Vector3) -> Hero:
 	return best
 
 func spawn_bot(cls: String, lvl: int, gear: String) -> Hero:
+	if online or bots.size() >= 5: return null
 	var h := Hero.new()
 	h.bot = true
 	h.name = "Bot%d" % (bots.size() + 1)
@@ -277,7 +276,7 @@ func _name_of(h: Hero) -> String:
 	return "?"
 
 func _process(delta: float) -> void:
-	if game.world == null or game._busy or game.cur_zone != ZONE:
+	if online or game.world == null or game._busy or game.cur_zone != ZONE:
 		return
 	t += delta
 	while not hits.is_empty() and t - float(hits[0][0]) > 30.0:
@@ -329,6 +328,7 @@ func clear_monsters() -> void:
 			e.queue_free()
 
 func spawn_pack(kind: String, n: int, champ := false) -> void:
+	if online: return
 	var lvl: int = game.hero.level
 	var a := randf() * TAU
 	var at := Vector3(cos(a) * 9.0, 0, sin(a) * 9.0)
@@ -376,9 +376,19 @@ func _build_panel() -> void:
 	apply.pressed.connect(func():
 		apply.release_focus()
 		outfit(game, game.hero, pick_me["cls"], int(pick_me["lvl"]), pick_me["gear"])
+		if online: game.net.send_gear()
 		game.ui.refresh()
 		reset_meters())
 	vb.add_child(apply)
+	if online:
+		var note: Label = ui._label("Free-for-all practice. Respawn automatically.\nBots and monster packs are available in Solo.", 14)
+		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		note.custom_minimum_size.x = 330
+		vb.add_child(note)
+		var exit_button: Button = ui._iron_button("Leave Sandbox", 330, 36, 15)
+		exit_button.pressed.connect(game.close_sandbox)
+		vb.add_child(exit_button)
+		return
 	vb.add_child(ui._divider(10))
 	vb.add_child(_picker("Bot", pick_bot))
 	var row := HBoxContainer.new()
@@ -386,7 +396,8 @@ func _build_panel() -> void:
 	var sp: Button = ui._iron_button("Spawn bot", 160, 34, 15)
 	sp.pressed.connect(func():
 		sp.release_focus()
-		spawn_bot(pick_bot["cls"], int(pick_bot["lvl"]), pick_bot["gear"]))
+		if spawn_bot(pick_bot["cls"], int(pick_bot["lvl"]), pick_bot["gear"]) == null:
+			game.ui.message("Five bots are already active. Clear bots before adding more."))
 	row.add_child(sp)
 	var cb: Button = ui._iron_button("Clear bots", 160, 34, 15)
 	cb.pressed.connect(func():
@@ -450,7 +461,7 @@ func _picker(title: String, pick: Dictionary) -> Control:
 	var l: Label = ui._label(title, 14, Color(0.75, 0.7, 0.6))
 	l.custom_minimum_size = Vector2(34, 0)
 	row.add_child(l)
-	var classes: Array = Data.CLASSES.keys().filter(func(c): return POINTS.has(c))
+	var classes: Array = Data.CLASSES.keys()
 	var cbtn: Button = ui._iron_button("", 130, 32, 13)
 	var lbtn: Button = ui._iron_button("", 64, 32, 13)
 	var gbtn: Button = ui._iron_button("", 96, 32, 13)

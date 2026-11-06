@@ -14,13 +14,15 @@ const SETTLE := 4.0
 const SCENARIOS := {
 	# zone, run, secs, what it is
 	"pvp3v3": {"zone": "arena", "run": 0, "secs": 30.0, "what": "3v3 presentation flood: both teams Demon/Plague/Archer, all recorded spells every six seconds"},
+	"pvp_dragons": {"zone": "sandbox", "run": 0, "secs": 30.0, "what": "Six moving dragons: fire, ice, lightning and delayed effects in Sandbox"},
+	"pvp_forest": {"zone": "bg", "run": 0, "secs": 30.0, "what": "Six moving summoner/status actors amid Verdant Reach camps and foliage"},
 	"camp": {"zone": "town", "run": 0, "secs": 15.0, "what": "Act I camp: walking a loop past the tents, the fire and the traders"},
 	"moor": {"zone": "wild", "run": 0, "secs": 20.0, "what": "Act I moor: running up the road, grass, trees and the world streaming in"},
 	"fight": {"zone": "wild", "run": 0, "secs": 20.0, "what": "Act I moor: the knight fighting 24 monsters at once with every skill (kills replaced)"},
 	"boss": {"zone": "lair", "run": 0, "secs": 25.0, "what": "Grubb's fort: the King Grubb fight, the knight on him with skills"},
 	"arena": {"zone": "lair", "run": 1, "secs": 25.0, "what": "A2 Aurelia: the arena games (lions, the crowd) with the knight on the sand"},
-	"crypt": {"zone": "bg", "run": 0, "secs": 20.0, "what": "Battlegrounds Hollow Crypt: walking the corridors and rooms, fighting what's there"},
-	"server": {"zone": "bg", "run": 0, "secs": 30.0, "what": "The dedicated Battlegrounds server (headless): its frame time with the crypt running"},
+	"crypt": {"zone": "bg", "run": 0, "secs": 20.0, "what": "Battlegrounds current map: walking and fighting; record the map identity"},
+	"server": {"zone": "bg", "run": 0, "secs": 30.0, "what": "The dedicated Battlegrounds server (headless): its frame time with the current map running"},
 	# a place a player reported as slow (tools/telemetry_query.sh spots): --zone Z --run R --pos x,z [--foes N]
 	"spot": {"zone": "wild", "run": 0, "secs": 15.0, "what": "Any place: the hero standing at --pos in --zone (--run), turning, --foes N monsters about"},
 }
@@ -163,9 +165,9 @@ static func server_tick(delta: float) -> void:
 static func _stage() -> void:
 	var h = g.hero
 	match sc:
-		"pvp3v3":
+		"pvp3v3", "pvp_dragons", "pvp_forest":
 			pvp_stress = load("res://scripts/pvp_stress.gd").new()
-			pvp_stress.setup(g)
+			pvp_stress.setup(g, sc)
 		"fight":
 			var r := RandomNumberGenerator.new()
 			r.seed = 9
@@ -221,7 +223,7 @@ static func _drive(delta: float) -> void:
 	var h = g.hero
 	h.life = h.max_life
 	match sc:
-		"pvp3v3":
+		"pvp3v3", "pvp_dragons", "pvp_forest":
 			pvp_stress.step(g, float(st["t"]) + (SETTLE if st["phase"] == "measure" else 0.0))
 		"camp":
 			var a := float(st["t"]) * 0.5
@@ -629,6 +631,7 @@ static func _finish() -> void:
 		"enemies": g.world.enemies_root.get_child_count() if g.world else 0,
 		"load_ms": int(st.get("load_ms", 0)),
 		"gpu_name": RenderingServer.get_video_adapter_name(),
+		"environment": g.cur_zone, "map_title": g.zone_title(g.cur_act, g.cur_zone),
 		"resolution": str(g.get_viewport().get_visible_rect().size),
 		"class": str(g.hero.cls), "skill": str(st.get("skill", "")),
 	}
@@ -638,7 +641,7 @@ static func _finish() -> void:
 		var added := int(ResCache.metrics().sync_misses[path]) - int(before.get(path, 0))
 		if added > 0: misses[path] = added
 	r["gameplay_sync_misses"] = misses
-	if sc == "pvp3v3":
+	if sc.begins_with("pvp"):
 		r["pvp"] = pvp_stress.report()
 	if bool(st.get("trace", false)):
 		r["trace_frames"] = fr.map(func(f): return snappedf(float(f), 0.1))

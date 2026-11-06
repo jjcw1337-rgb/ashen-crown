@@ -10,10 +10,10 @@ import statistics
 import sys
 
 NAMES = {"camp_q2": "camp", "moor_q1": "moor Medium", "moor_q2": "moor", "moor_q3": "moor Ultra",
-         "fight_q2": "fight", "boss_q2": "boss", "arena_q2": "Aurelia", "crypt_q2": "crypt",
-         "pvp3v3_q2": "3v3 spell flood", "server_q2": "server"}
+         "fight_q2": "fight", "boss_q2": "boss", "arena_q2": "Aurelia", "crypt_q2": "Battlegrounds",
+         "pvp3v3_q2": "3v3 spell flood", "pvp_dragons_q2": "moving dragons", "pvp_forest_q2": "forest summoners", "server_q2": "server"}
 METRICS = ("fps_avg", "frame_ms_p99", "frame_ms_max", "first_use_max_ms", "hitches_per_min", "load_ms", "ram_mb", "vram_mb")
-CONTEXT = ("schema", "clock", "engine", "renderer", "gpu_name", "resolution", "preset", "scenario", "class", "skill")
+CONTEXT = ("schema", "clock", "engine", "renderer", "gpu_name", "resolution", "preset", "scenario", "class", "skill", "environment", "map_title")
 
 
 def aggregate(rows):
@@ -62,7 +62,7 @@ def validate(data, label):
                 errors.append(f"{prefix}: mixed measurement contexts")
             if run.get("gameplay_sync_misses"):
                 errors.append(f"{prefix}: synchronous resource misses during play")
-            if key == "pvp3v3_q2":
+            if key.startswith("pvp"):
                 pvp = run.get("pvp", {})
                 if pvp.get("actors") != 6 or pvp.get("teams") != [3, 3] or pvp.get("bursts", 0) < 2 or pvp.get("presentation_events", 0) <= 0:
                     errors.append(f"{prefix}: incomplete 3v3 workload")

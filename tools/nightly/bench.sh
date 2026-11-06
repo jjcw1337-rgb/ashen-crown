@@ -9,7 +9,7 @@ set -u
 OUT=$1; LABEL=$2
 G=/Users/blaine/Applications/Godot_v4.4.1.app/Contents/MacOS/Godot
 mkdir -p "$OUT"
-for sc in camp:2 moor:1 moor:2 moor:3 fight:2 boss:2 arena:2 crypt:2 pvp3v3:2 server:2; do
+for sc in camp:2 moor:1 moor:2 moor:3 fight:2 boss:2 arena:2 crypt:2 pvp3v3:2 pvp_dragons:2 pvp_forest:2 server:2; do
   s=${sc%%:*}; q=${sc##*:}
   for r in $(seq 1 "${BENCH_RUNS:-3}"); do
     f="$OUT/${LABEL}_${s}_q${q}_r$r"
