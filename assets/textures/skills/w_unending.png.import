@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/w_unending.png-b179c4d3811f1ace22487c52abee5d
 
 [params]
 
-compress/mode=1
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.9
 compress/hdr_compression=1

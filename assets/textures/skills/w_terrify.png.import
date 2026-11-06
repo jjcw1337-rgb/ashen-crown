@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/w_terrify.png-063931b3b30ab7c88a8c7c61133ed8f
 
 [params]
 
-compress/mode=1
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.9
 compress/hdr_compression=1

@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/w_effigy.png-e7161804d174c6a2b1a1cc922c70c115
 
 [params]
 
-compress/mode=1
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.9
 compress/hdr_compression=1

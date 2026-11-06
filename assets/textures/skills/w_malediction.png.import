@@ -15,7 +15,7 @@ dest_files=["res://.godot/imported/w_malediction.png-863edda64a771c0c01e57e449a7
 
 [params]
 
-compress/mode=1
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.9
 compress/hdr_compression=1
