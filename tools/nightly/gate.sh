@@ -64,8 +64,12 @@ waitfor $p 400; rc=$?; check char_test "$OUT/gate_char_test.log" "$rc"
 
 # Check the corrected projectile and newly integrated run/Warlock fixtures before long matches.
 for t in archer_sweep_test run_talents_test warlock_hex_test; do
-  if [ "$t" = warlock_hex_test ] && [ "$UI_RENDERED" = 1 ]; then
-    "$G" --path . --fixed-fps 60 -s tools/_late.gd -- res://tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
+  if [ "$t" = warlock_hex_test ]; then
+    if [ "$UI_RENDERED" = 1 ]; then
+      "$G" --path . --fixed-fps 60 -s tools/_late.gd -- res://tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
+    else
+      "$G" --headless --path . --fixed-fps 60 -s tools/_late.gd -- res://tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
+    fi
   else
     "$G" --headless --path . -s tools/_late.gd -- res://tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
   fi
