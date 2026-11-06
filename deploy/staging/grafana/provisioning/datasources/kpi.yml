@@ -1,4 +1,4 @@
-# The KPI database (docs/nightly/KPIS.md): PostgreSQL database `kpi` in the staging backend's postgres, read through
+# The KPI database (docs/systems/performance_kpis.md): PostgreSQL database `kpi` in the staging backend's postgres, read through
 # the read-only role grafana_ro (its password is GRAFANA_PG_PASSWORD in nakama.env on the server, never in Git).
 apiVersion: 1
 datasources:

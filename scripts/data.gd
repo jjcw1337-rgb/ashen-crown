@@ -280,7 +280,7 @@ const ENEMIES := {
 	"troll_shaman": {"mesh": "troll_shaman", "faction": "troll", "name": "Troll Beast-Tamer", "rig": "humanoid", "life": 70, "dmg": [7, 12], "speed": 3.4, "range": 10.0, "xp": 48,
 		"ai": "ranged", "atk": "cast", "atk_time": 1.3, "armor": 5, "radius": 0.5, "proj": "poison", "blood": Color(0.25, 0.4, 0.3),
 		"look": {"height": 2.3, "eyes": Color(1.0, 0.6, 0.15)}},
-	# the Battlegrounds' bosses (Blaine's overhaul, docs/queue_battlegrounds_overhaul.md): Meshy, rigged by rig_monster.py;
+	# the Battlegrounds' bosses (Blaine's overhaul): Meshy, rigged by rig_monster.py;
 	# their fights (abilities, arenas, the hermit's chest) are the overhaul's to build on these entries
 	"ice_troll": {"mesh": "ice_troll", "class_unique": true, "name": "Hrimgar the Frostbound", "rig": "humanoid", "life": 1400, "dmg": [24, 38], "speed": 3.2, "range": 3.0, "xp": 1400,
 		"ai": "melee", "atk": "slam", "atk_time": 1.7, "armor": 22, "radius": 1.3, "boss": true, "aggro": 18.0, "blood": Color(0.55, 0.8, 1.0),
@@ -619,7 +619,7 @@ const UNIQUES := {
 ## Each run is Act I again with stronger monsters and loot (indexed by Game.difficulty).
 ## Multipliers on Act I: monster life (and armor), the final boss's life, monster damage,
 ## the flat stats on items they drop (Items.empower) and experience. Tuned with
-## tools/balance_sim.gd (see BALANCE.md).
+## tools/balance_sim.gd.
 ## "power": how much stronger the act's items are (Items.empower). Since the items rework (level and skills carry a
 ## character, gear helps) it's modest, and so are the monsters' life and damage multipliers: the act's monsters are
 ## also higher level. "loot" is how much more and better loot drops; "xp" the experience.
@@ -700,7 +700,7 @@ static var SKILLS: Array = [
 		"desc": "Lash thorned vines all around you for 180% spell damage. Each enemy hit heals you."},
 	{"id": "w_soulfeast", "cls": "warlock", "name": "Soul Feast", "key": "", "lvl": 20, "mana": 30, "cd": 30.0, "use": 3.0, "aim": "self", "tags": ["ultimate", "channel", "sustain"], "role": "Ultimate",
 		"desc": "Channel for 3 seconds to drain every enemy within 7 metres. Healing past full life becomes a shield."},
-	# Doug (doug_skills.gd, docs/characters/doug.md): the trickster; every tool readable, every tool answerable
+	# Doug (doug_skills.gd): the trickster; every tool readable, every tool answerable
 	{"id": "pie", "cls": "doug", "name": "Cream Pie", "key": "", "lvl": 1, "mana": 6, "cd": 0.0, "use": 0.9, "hit": 0.5, "style": "pie", "speed": "attack", "dmg": 120, "type": "phys", "aim": "point", "range": 12.0, "tags": ["projectile", "attack"],
 		"desc": "Lob a cream pie at the cursor (12 m): a splat for 120% weapon damage and the target is Pied: monsters blinded for 2 seconds, a player's screen creamed at the edges and their aim assist gone for 1.5 seconds. The same target can't be Pied again for 6 seconds."},
 	{"id": "peels", "cls": "doug", "name": "Banana Peels", "key": "Q", "lvl": 2, "mana": 9, "cd": 7.0, "use": 0.8, "hit": 0.55, "style": "peels", "aim": "facing", "range": 6.0, "tags": ["trap"],
@@ -814,7 +814,7 @@ const COMMON_SKILLS := [
 static func skills_known(cls: String) -> Array:
 	return skills_for(cls) + shared_skills() + COMMON_SKILLS
 
-## Skills unlock by level (Blaine's progression overhaul, docs/queue_progression_overhaul.md): each skill's "lvl";
+## Skills unlock by level (Blaine's progression overhaul): each skill's "lvl";
 ## a class's skills Q 1, E 3, R 5, F 9, G 14 and every ultimate at 20, the shared ones spread between (War Cry 6,
 ## Frost Nova 8, Arc 11, Earthshatter 16). A locked skill shows greyed with its level, can't be bound or cast.
 ## true opens every skill from level 1 again (jj's unlock-all, 2026-11-01); the F8 panel's "All skills" does it for
@@ -888,7 +888,7 @@ static func run_skills_for(cls: String) -> Array:
 
 const SKILLS_UNLOCKED := false
 
-## Item power (Blaine's progression overhaul, then "not 'cut' but full rework", docs/queue_items_rework.md): character
+## Item power (Blaine's progression overhaul, then "not 'cut' but full rework"): character
 ## level and skills give most of a player's power, gear a smaller but meaningful part, in PvE and PvP alike.
 ## Items made under these rules carry "gen": ITEM_GEN; older ones are rebuilt once on load (Items.upgrade).
 const ITEM_GEN := 4            # 2: the rework's sizes; 3: the uniques' signature effects; 4: effects no longer act-scaled (uniques remade each time)

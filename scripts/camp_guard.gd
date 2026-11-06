@@ -4,7 +4,7 @@ extends Node3D
 ## Meshy character on the playable bodies' 24-bone rig (concept, image-to-3D, Meshy's auto-rig and clip library,
 ## tools/blender/guards/prep_guard.py) in assets/models/guards/<id>.glb, with the clip measurements beside it in
 ## <id>.json (each clip's length, its ground motion forward and to the side, a turn's angle, a strike's landing
-## moments). See docs/guards.md for the sources, the clips and what's still to come.
+## moments). Sources and clips: git history of docs/guards.md (removed 2026-11-06).
 ## - Patrol: each walks his own round of posts (GUARDS "posts": a spot, what he watches there, how long), finding
 ##   his way with World.find_path; at a post he scans: turns in place to look another way (the turn clips, the body
 ##   turned by the measured angle), looks about, stands alert, warms up, his own flourish ("extra").

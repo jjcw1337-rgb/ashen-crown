@@ -2,7 +2,7 @@ extends SceneTree
 ## Balance protocol: an autopilot plays every class through the run checkpoints (Act I, A2
 ## arriving in Act I gear, A2 in A2 gear, A3) in real fights against real packs and bosses,
 ## and reports how long kills take, how much life they cost and whether it died. Each number
-## is checked against the target bands in BANDS below. See BALANCE.md for the protocol.
+## is checked against the target bands in BANDS below.
 ##
 ##   godot --headless --fixed-fps 30 --path . -s tools/balance_sim.gd -- [out=report.json] [classes=knight,warlock] [quick]
 ##

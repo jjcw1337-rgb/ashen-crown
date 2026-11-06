@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Builds the visual production checklist (docs/visual/checklist.csv) from the audit's measurements and the
+"""Builds the visual production checklist (build/visual_audit/checklist.csv) from the audit's measurements and the
 per-asset assessment below. Re-run after changing an assessment or re-measuring:
 
     python3 tools/visual_audit/glb_audit.py build/visual_audit && python3 tools/visual_audit/uv_report.py build/visual_audit/uv.csv
-    python3 tools/visual_audit/checklist.py build/visual_audit docs/visual/checklist.csv
+    python3 tools/visual_audit/checklist.py build/visual_audit build/visual_audit/checklist.csv
 
 Scores are 1-5 against the Diablo IV / Path of Exile 2 bar at the game camera (and in close-ups where the asset is
 shown up close): 5 ship-ready AAA, 4 good, 3 acceptable in play with visible weaknesses, 2 visibly below the rest
@@ -184,7 +184,7 @@ A = {
 	"bg/mushrooms.glb": ((3, 3, 3, 3, 0, 2, 3, 3), "P3", "B", "Inspected", "Staging's Overgrown Vault: pale mushrooms, 9k tris, standing on Meshy's round ground patch (the disc shows unless sunk into the floor; cut it in Blender if it does)."),
 }
 
-# Built in code or not a .glb: the systems the audit covered as a whole (see docs/visual/AUDIT.md)
+# Built in code or not a .glb: the systems the audit covered as a whole (see the visual audit of 2026-11-02 (in git history))
 P = [
 	# id, category, (scores), priority, actions, status, note
 	("enemy:grabber", "monsters", (3, 4, 3, 3, 3, 2, 3, 3), "P3", "M", "Inspected", "King Grubb's Gold Grabbers: code-sculpted goblins (Sculpt SDF bodies)."),

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Reads the player telemetry and error reports (docs/nightly/TELEMETRY.md) from a script or a session: SQL on the
+# Reads the player telemetry and error reports (docs/systems/telemetry.md) from a script or a session: SQL on the
 # tables tm_sample, tm_error and the view tm_issue in the staging Nakama database, through ssh (no port is open).
 #   sh tools/telemetry_query.sh issues      (the issues of the last 24 h, worst first)
 #   sh tools/telemetry_query.sh spots       (the slowest places players were in the last 24 h)

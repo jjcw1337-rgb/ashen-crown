@@ -7,7 +7,7 @@ costs, and the check that must pass before the next step. A character is not don
 ## 0. Brief → design doc (no credits)
 
 - Inputs: the admin's description and reference images (Discord attachments).
-- Write `docs/characters/<id>.md`: who they are, their **PvP identity in one line**, body and motion, and the kit:
+- Write the hero's codex file `data/codex/heroes/<id>.json` (its fantasy, three directions, skills and rites; the Codex editor edits it): who they are, their **PvP identity in one line**, body and motion, and the kit:
   LMB attack, RMB + Q E R (the base kit), F G V (stronger skills, V the ultimate). For **every** skill: what it
   does, why it's fun in PvP, **the answer to it** (counterplay), its unlock level, and whether it's a damage skill
   (no cooldown, PoE standard) or a utility one (cooldown + tag).

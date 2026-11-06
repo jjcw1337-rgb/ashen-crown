@@ -4,7 +4,7 @@ What the game and its servers report, where it goes, and how it's used. Built 20
 the game → Nakama → PostgreSQL for game events, Loki for the servers' raw logs, Grafana over both. (The nightly triage job and
 the 5-minute alert watcher that acted on it were removed on 2026-11-06, Blaine: read it by hand or through Grafana.)
 
-- **Dashboard**: https://161.35.185.195/grafana/ → "Ashen Crown: players, errors and logs" (login in `KPIS.md`).
+- **Dashboard**: https://161.35.185.195/grafana/ → "Ashen Crown: players, errors and logs" (login in `performance_kpis.md`).
 - **From a script**: `sh tools/telemetry_query.sh issues` (errors grouped into issues, worst first), `spots` (the
   slowest places players stood), or any SQL on `tm_sample` / `tm_error` / `tm_issue`.
 - **From Claude**: the `grafana` MCP (read-only): datasources "Telemetry" (the tables) and "Logs" (Loki).

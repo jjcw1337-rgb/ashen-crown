@@ -1,5 +1,5 @@
 extends SceneTree
-## The items rework (docs/queue_items_rework.md): new rolls are small, an old item is rebuilt once (uniques from
+## The items rework (): new rolls are small, an old item is rebuilt once (uniques from
 ## their table, rares trimmed to three, nothing lost), a weapon hits for the level's damage, gear's percentages are
 ## capped, and at level 20 the best gear is worth about a third more than none.
 var g

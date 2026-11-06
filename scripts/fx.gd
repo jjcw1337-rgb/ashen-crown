@@ -4,7 +4,7 @@ extends RefCounted
 
 ## Effect lights that cast shadows (a skill's fire, a burst): at most EFFECT_SHADOWS at once across every effect and
 ## every player, each on a dual-paraboloid map (2 passes, not a cube's 6). A new shadow-casting light would otherwise
-## re-render the scene round it, and that was Fire Arrow's stutter (docs/nightly/KPIS.md "skills"). The rest light
+## re-render the scene round it, and that was Fire Arrow's stutter (docs/systems/performance_kpis.md "skills"). The rest light
 ## the scene unshadowed. Call it before the light enters the tree, in place of `shadow_enabled = true`.
 const EFFECT_SHADOWS := 2
 

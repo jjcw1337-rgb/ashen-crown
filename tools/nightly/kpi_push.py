@@ -1,5 +1,5 @@
 """Pushes a KPI benchmark (tools/nightly/bench.sh's <label>.json) into the KPI store on the staging server (the
-`kpi` table, docs/nightly/KPIS.md), which Grafana draws.
+`kpi` table, docs/systems/performance_kpis.md), which Grafana draws.
     python kpi_push.py <bench.json> <night> <job> <phase> <commit> [source] [--dry]
 One row per number (long format). Goes through ssh to the postgres container (no database port is open).
 """

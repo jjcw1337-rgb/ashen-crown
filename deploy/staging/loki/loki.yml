@@ -1,4 +1,4 @@
-# Loki, the server logs' store (single process, files on the server's disk, 30 days kept). docs/nightly/TELEMETRY.md
+# Loki, the server logs' store (single process, files on the server's disk, 30 days kept). docs/systems/telemetry.md
 auth_enabled: false
 server:
   http_listen_port: 3100

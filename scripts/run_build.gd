@@ -1,6 +1,6 @@
 class_name RunBuild
 extends RefCounted
-## A multiplayer run character's build (Blaine's overhaul, 2026-11-06; docs/overhaul_plan.md): what a Battlegrounds
+## A multiplayer run character's build (Blaine's overhaul, 2026-11-06): what a Battlegrounds
 ## character earns in one run and what a survivor keeps. It sits on the hero as `Hero.run` only in multiplayer; in
 ## single player it is null and the talents, level unlocks and backpack work as before.
 ##   skills    the acquired active skills in the order earned (the spellbook); up to five sit on SLOTS

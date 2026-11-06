@@ -1,5 +1,5 @@
 #!/bin/bash
-# The nightly runner's own benchmark: the official performance KPIs (docs/nightly/KPIS.md, scripts/kpi.gd), the
+# The nightly runner's own benchmark: the official performance KPIs (docs/systems/performance_kpis.md, scripts/kpi.gd), the
 # scoreboard a night's work is judged by, independent of what the session reports.
 #   bash tools/nightly/bench.sh <out dir> <label>       (run from the checkout; writes <out dir>/<label>.json)
 # Every scenario at High (2), the moor also at Medium (1) and Ultra (3), the dedicated server headless, and the
