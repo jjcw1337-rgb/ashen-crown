@@ -135,7 +135,7 @@ func _run() -> void:
 	check(await until(func(): return g.net.players.size() == 1), "the opponent is there")
 	check(await until(func(): return g.arena_state.get("phase", "") == "fight", 120), "a round begins after both clients finish preparation")
 	if DisplayServer.get_name() != "headless":
-		check(ResCache.status(g._zone_scope).ready and ResCache.status(g._combat_scope).ready, "Arena content scopes ready before combat")
+		check(not g.get_viewport().disable_3d and ResCache.status(g._zone_scope).ready and ResCache.status(g._combat_scope).ready, "Arena content ready and rendering restored before combat")
 		if capture != "":
 			get_root().disable_3d = false
 			for i in 10: await process_frame

@@ -22,6 +22,7 @@ func run() -> void:
 	check(not solo.any(func(p): return str(p).contains("/plague/") or str(p).contains("/arrows/")), "Solo knight must not acquire other classes\' families")
 	check(catalog.combat(["archer"]).has(SpiritBeast.WOLF_GLB), "Archer summon must be declared")
 	for path in catalog.combat():
+		check(not str(path).begins_with("res://assets/models/") or str(path).get_extension() in ["glb", "tscn", "tres"], "Model families must not duplicate imported texture roots: " + str(path))
 		check(ResourceLoader.exists(path), "Missing combat dependency: " + path)
 	for run_i in 3:
 		for zone in ["town", "wild", "lair", "coast", "bg", "arena", "vigil", "sandbox"]:

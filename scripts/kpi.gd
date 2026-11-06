@@ -94,6 +94,11 @@ static func _load(spec: Dictionary) -> void:
 	await g.load_zone(0, spec["zone"], "start")
 	st["cache_before_play"] = ResCache.metrics().sync_misses
 	_stage()
+	# Startup/Steam windows can take focus after the external runner's initial activation.
+	# Acquire it at the actual measurement boundary; step() still rejects later focus loss.
+	if DisplayServer.get_name() != "headless":
+		g.get_window().grab_focus()
+		await g.get_tree().process_frame
 	st["load_ms"] = Time.get_ticks_msec() - t0
 	_hide_parts()
 	_no_shadows()

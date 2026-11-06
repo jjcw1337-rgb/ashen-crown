@@ -157,7 +157,7 @@ func _client() -> void:
 	await g.start_battlegrounds("%s:%d" % [host, port], id)
 	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 90.0), "entered the crypt as Testric")
 	if DisplayServer.get_name() != "headless":
-		check(ResCache.status(g._zone_scope).ready and ResCache.status(g._combat_scope).ready, "Battlegrounds content ready before play")
+		check(not g.get_viewport().disable_3d and ResCache.status(g._zone_scope).ready and ResCache.status(g._combat_scope).ready, "Battlegrounds content ready and rendering restored before play")
 		if capture != "":
 			await RenderingServer.frame_post_draw
 			root.get_texture().get_image().save_png(capture)

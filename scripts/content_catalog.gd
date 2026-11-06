@@ -26,6 +26,14 @@ const ZONE_FAMILIES := {
 const EXTENSIONS := ["glb", "tscn", "tres", "png", "jpg", "jpeg", "webp"]
 static var _families := {}
 
+## Imported model scenes already own their texture dependencies. Extracted JPG/PNG
+## files beside a GLB are importer artifacts, not additional presentation roots.
+static func family_roots(dir: String) -> Array:
+	var paths := files(dir)
+	if dir.begins_with("res://assets/models/"):
+		return paths.filter(func(p): return str(p).get_extension() in ["glb", "tscn", "tres"])
+	return paths
+
 static func files(dir: String, recursive := true) -> Array:
 	var out: Array = []
 	var da := DirAccess.open(dir)
@@ -47,23 +55,25 @@ static func combat(classes: Array = []) -> Array:
 	if not _families.has("combat"):
 		var paths: Array = ["res://scripts/demon_mocap.gdshader", "res://scripts/wraith_mocap.gdshader"]
 		for dir in FX_DIRS:
-			paths.append_array(files(dir))
+			paths.append_array(family_roots(dir))
 		_families["combat"] = paths
 	var result: Array = (_families["combat"] as Array).duplicate()
 	for cls in (CLASS_ROOTS.keys() if classes.is_empty() else classes):
 		if cls == "archer": result.append(SpiritBeast.WOLF_GLB)
 		for dir in CLASS_DIRS.get(cls, []):
-			if not _families.has(dir): _families[dir] = files(str(dir))
+			if not _families.has(dir): _families[dir] = family_roots(str(dir))
 			result.append_array(_families[dir])
 		for path in CLASS_ROOTS.get(cls, []):
 			result.append("res://assets/models/" + str(path))
 	return result
 
 static func zone(run: int, name: String) -> Array:
-	var paths: Array = (ZonePreloadData.PATHS.get("%d:%s" % [run, name], []) as Array).duplicate()
+	var forest := name == "bg" and MpMode.FOREST
+	# The recorded BG list predates Verdant Reach and describes the retired crypt.
+	var paths: Array = [] if forest else (ZonePreloadData.PATHS.get("%d:%s" % [run, name], []) as Array).duplicate()
 	# World torches/fires are needed even when no combat bundle is requested.
 	paths.append_array(["res://assets/textures/fx/fire_tongue.png", "res://assets/textures/fx/fire_body.png"])
-	if name == "bg" and MpMode.FOREST:
+	if forest:
 		paths.append_array(["res://assets/models/camp/runestone.glb", "res://assets/models/camp/tent.glb",
 			"res://assets/models/camp/lantern_post.glb", "res://assets/models/camp/cookfire.glb",
 			"res://assets/models/camp/weapon_rack.glb",
@@ -77,9 +87,12 @@ static func zone(run: int, name: String) -> Array:
 			paths.append_array(_families[dir])
 	# The procedural PvP hall and Vigil use crypt props, not outdoor rocks, Roman
 	# scenery or town waypoint/stash models. Keep those bundles out of their residency.
-	var dirs: Array = [] if family in ["arena", "vigil"] else COMMON_ZONE.duplicate()
-	dirs.append_array(ZONE_FAMILIES.get(family, []))
-	if family in ["town", "wild", "coast", "isle"] or (family == "bg" and MpMode.FOREST) or (family == "lair" and run == 0):
+	var dirs: Array = [] if forest or family in ["arena", "vigil"] else COMMON_ZONE.duplicate()
+	if forest:
+		dirs.append_array(["models/bg", "models/props", "models/rocks", "models/trees", "models/grass", "textures/grass"])
+	else:
+		dirs.append_array(ZONE_FAMILIES.get(family, []))
+	if family in ["town", "wild", "coast", "isle"] or (family == "lair" and run == 0):
 		dirs.append_array(OUTDOOR)
 	for dir in dirs:
 		var key := "zone/" + str(dir)

@@ -1374,6 +1374,13 @@ var _loading_scope := ""
 var _boot_scope := ""
 var _combat_scope := ""
 var preparation_phases := {}
+var _preparing_viewport: Viewport
+var _preparing_was_disabled := false
+
+func _restore_preparation_viewport() -> void:
+	if is_instance_valid(_preparing_viewport):
+		_preparing_viewport.disable_3d = _preparing_was_disabled
+	_preparing_viewport = null
 
 static func res_files(dir: String, ext: String) -> PackedStringArray:
 	var out := PackedStringArray()
@@ -1453,6 +1460,12 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	loading_lbl.text = ("Descending into %s..." if zone == Battlegrounds.ZONE else "Entering %s...") % zone_title(act, zone)
 	set_loading_art(zone)
 	loading.visible = not _boot_quiet or _boot_hold
+	# The opaque loading screen still draws in 2D. Avoid drawing the old or partially
+	# assembled 3D world while resources upload and construction yields between frames.
+	if _presentation_client() and loading.visible:
+		_preparing_viewport = get_viewport()
+		_preparing_was_disabled = _preparing_viewport.disable_3d
+		_preparing_viewport.disable_3d = true
 	# Keep the old simulation still while the loading screen prepares its replacement.
 	if world != null:
 		world.process_mode = Node.PROCESS_MODE_DISABLED
@@ -1515,6 +1528,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		if not monsters_ready["ready"] or not combat_ready["ready"]:
 			push_warning("Combat preparation incomplete: %s / %s" % [monsters_ready, combat_ready])
 	preparation_phases.merge(world.construction_metrics)
+	_restore_preparation_viewport() # minimap capture and shader preparation need actual rendering
 	world.process_mode = Node.PROCESS_MODE_INHERIT
 	_restore_harvest()
 	_add_ocean(zone)
@@ -5131,6 +5145,7 @@ func _shot_setup() -> void:
 		hero.blocking = OS.get_cmdline_user_args().has("--block")
 
 func _exit_tree() -> void:
+	_restore_preparation_viewport()
 	ResCache.release(_boot_scope)
 	ResCache.release(_zone_scope)
 	ResCache.release(_loading_scope)
