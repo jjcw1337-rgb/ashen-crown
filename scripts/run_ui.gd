@@ -470,6 +470,10 @@ func open_offer(key: String, tier: int, camp_name := "") -> void:
 		return
 	var o := hero.run.offer_for(hero.cls, key, tier, hero.binds)
 	offer_key = key
+	if str(o.get("gem", "")) != "" and not o.has("gem_seen"):
+		o["gem_seen"] = true      # (the first look at a chest with a gem: its chime and a pillar of light)
+		Sfx.play("gem_found", -2.0)
+		hero.fx("run", "gem", {"p": hero.global_position})
 	var n: int = o["choices"].size()
 	var vb := _open("offer", maxi(1020, 70 + n * 300))
 	var tiername := "Boss" if tier >= 4 else "Tier %d" % tier

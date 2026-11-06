@@ -910,14 +910,14 @@ static func play_fx(h: Hero, ev: Dictionary) -> void:
 				col = Color(1.0, 0.92, 0.7)
 			elif ev["e"] == "spread":
 				col = Color(0.5, 1.0, 0.3)
-			for i in ps.size() - 1:
-				if ev["e"] == "chain":
-					ArcFx.bolt(root, ps[i], ps[i + 1], 0.22, 0.9, ArcFx.STORM, h.game)
-				else:
-					Fx.bolt(root, ps[i], ps[i + 1], col, 0.18)
-				Fx.burst(root, ps[i + 1], col, 8, 2.0, 0.08, 0.3, true, -3.0)
 			if ev["e"] == "chain":
-				Sfx.play_at("arc_zap", ps[0], -8.0)
+				# the Arc skill's own lightning (the Blender bolts, the strike on each foe), leaping in turn
+				ArcFx.chain(h, root, ps, Vector3.ZERO, ArcFx.STORM, 1.25)
+				Sfx.play_at("arc_zap", ps[0], -5.0)
+			else:
+				for i in ps.size() - 1:
+					Fx.bolt(root, ps[i], ps[i + 1], col, 0.18)
+					Fx.burst(root, ps[i + 1], col, 8, 2.0, 0.08, 0.3, true, -3.0)
 		"bolt":
 			ArcFx.bolt(root, p + Vector3(randf_range(-1, 1), 14.0, randf_range(-1, 1)), p + Vector3(0, 0.2, 0), 0.3, 1.4, ArcFx.STORM, h.game)
 			Fx.ring(root, p, r, Color(0.7, 0.75, 1.0), 0.35)
@@ -965,6 +965,7 @@ static func _toss_fx(h: Hero, root: Node3D, from: Vector3, to: Vector3, r: float
 		n.queue_free())
 
 static func _bomb_fx(h: Hero, root: Node3D, p: Vector3, r: float, kind: int) -> void:
+	Sfx.play_at("flask_shatter", p, -2.0)
 	match kind:
 		0:
 			ArrowFx.finish(h, "fire", p + Vector3(0, 0.5, 0), Vector3.FORWARD, false)

@@ -488,7 +488,7 @@ func _skills(h) -> void:
 	check(near2.life < near2.max_life, "Aegis: it bursts for what it soaked")
 	await _fresh(h, "knight", {})
 	var low = _foe(h, Vector3(6, 0, 0), "zombie", 1000.0)
-	low.life = 60.0
+	low.life = 12.0
 	h.cds["k_rites"] = 0.0
 	ok = await _cast(h, "k_rites", low.global_position, 1.5)
 	check(ok and low.dead and h.cds["k_rites"] == 0.0, "Last Rites: the execute kills and the leap is ready again (ok %s dead %s life %.0f cd %.1f dist %.1f)" % [ok, low.dead, low.life, h.cds["k_rites"], h.global_position.distance_to(low.global_position)])

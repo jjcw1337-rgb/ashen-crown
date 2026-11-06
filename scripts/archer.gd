@@ -594,6 +594,12 @@ static func update(h: Hero, delta: float) -> void:
 				a["hit"][e] = true
 				# the strike seen (the puppet's too): the entry flash, the cone out of his back, the sparks
 				ArrowFx.pierce(h, kind, e, a["dir"])
+				if kind == "frost":
+					# Glacial Shard: frost bursting over the ground round each one it passes through
+					ElementalFx.frost_nova(h, w.fx_root, Vector3(e.global_position.x, w.height_at(e.global_position.x, e.global_position.z), e.global_position.z), 1.5)
+					Sfx.play_at("ice_arrow_hit", e.global_position, -4.0, randf_range(0.95, 1.1))
+				elif kind == "storm":
+					ArcFx.charge(h, e.global_position + Vector3(0, 1.0, 0), ArcFx.STORM, 0.5)
 				if h.puppet:
 					# a partner's arrow: it strikes home for the eye only (his own game deals the hit)
 					if a["pierce"]:
@@ -671,6 +677,7 @@ const BLAST_R := 3.5
 static func _blast(h: Hero, at: Vector3) -> void:
 	var avg: float = (h.dmg_min + h.dmg_max) * 0.5
 	var r := BLAST_R * (1.0 + h.talent("blast_r") / 100.0)
+	h.fx("a_explosive", "blast", {"p": at, "r": r})
 	if h.talent("blast_r") > 0.0:
 		h.fx("run", "flare", {"p": at, "r": r, "n": 0})
 	for e in h.game.enemies_near(at, r):
@@ -680,7 +687,6 @@ static func _blast(h: Hero, at: Vector3) -> void:
 		if not e.dead:
 			e.ignite((avg * 0.25 + h.level * 0.8) * h.dmg_mult("a_explosive"), 3.0, "fire")
 			ArrowFx.burn(h.game, e, "fire", 3.0)
-	SkillFx.shake(h, 0.2)
 
 ## Arrow Storm's strikes (every 0.25 s for 1.5 s), on his own game.
 static func _barrage_tick(h: Hero, v: Dictionary) -> void:
