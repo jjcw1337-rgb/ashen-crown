@@ -1,4 +1,6 @@
-# Skill effects
+# Effects
+
+How a skill's look reaches every screen, and when it is good enough.
 
 **Goal:** what a skill draws is the same for the caster and every partner, costs nothing new on the network, and
 never changes the game's state.
@@ -6,8 +8,8 @@ never changes the game's state.
 ## The rules
 
 1. **Skill code never draws.** Wherever something is to be seen, it calls `Hero.fx(skill_id, event, data)`. That plays
-   the event locally (`SkillFx.play`) and, in co-op, sends it once to partners, whose game plays it on the caster's
-   puppet.
+   the event locally (`SkillFx.play`) and sends it once (`Net.skill_fx`). Every other player's game plays it on the
+   caster's puppet.
 2. **A handler only draws.** `<Class>Fx.play(h, ev)` must not touch life, mana, cooldowns, stuns or talents (a puppet
    has none). Send what the effect needs in the event (`"p"`, `"d"`, `"t"`, ...).
 3. **Nothing is sent per frame.** Lingering effects are state in `Hero.fxs`, started and ended by events and moved by

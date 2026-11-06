@@ -62,13 +62,13 @@ has access to the private `ashen-crown-staging` page, and install it. The app up
 - **Setup:** install [Godot 4.4.1](https://godotengine.org/download/archive/4.4.1-stable/) (standard, not
   .NET), clone `jjcw1337-rgb/ashen-crown`, import `project.godot` and press F5. The first open takes a
   minute while Godot builds `.godot/` (never committed). For models, use Blender 4.5 LTS and keep `.blend`
-  files outside the project; only `.glb` exports go in `assets/models/`.
+  files outside the project; only `.glb` exports go in the project, next to what uses them.
 - **Workflow:** work on your own branch, test what you change, then merge to `staging`. Pushes to
   `staging` build Windows, Mac and Linux and upload them to itch.io and Steam's staging branch. `main`
   changes only when an admin asks.
 - **How the code is organized and its rules:** [AGENTS.md](AGENTS.md) (for people and AI agents alike),
-  [docs/architecture_cleanup.md](docs/architecture_cleanup.md) (the reorganization in progress) and
-  [docs/patterns/](docs/patterns/).
+  [docs/architecture_cleanup.md](docs/architecture_cleanup.md) (the reorganization in progress), and one doc per
+  part of the game in [docs/](docs/).
 
 ### Project layout
 

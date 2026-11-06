@@ -1,7 +1,7 @@
 extends SceneTree
 ## What a skill deals: each skill cast at one durable dummy, its damage over the cast and the next WINDOW seconds
 ## (burns, tethers and lingering hits included), averaged over CASTS casts, per cast and per second of its cycle
-## (the longer of its use time and its cooldown). For tuning skills the Path of Exile way (CLAUDE.md "Skill design").
+## (the longer of its use time and its cooldown). For tuning skills the Path of Exile way (docs/content/skills.md, "Designing a skill").
 ##   godot --headless --path . -s tools/skill_dps.gd -- out.json [level] [class ...]
 ## Every class by default, at level 20 with its starting weapon; the shared skills on the knight.
 const CASTS := 4

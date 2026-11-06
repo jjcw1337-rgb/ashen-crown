@@ -1,6 +1,6 @@
 class_name SkillSpec
 extends RefCounted
-## The skill format, the Path of Exile way (CLAUDE.md "Skill design"): a skill's timing, damage, area and damage over
+## The skill format, the Path of Exile way (docs/content/skills.md, "Designing a skill"): a skill's timing, damage, area and damage over
 ## time are fields of its `Data.SKILLS` entry, so a skill is tuned in data.gd alone. Every field is optional: a skill
 ## without "use" keeps the timing its class script gives it, one without "area" or "dmg" deals what its script deals.
 ##   "style":  the animation its use plays (an Anim / Net.STYLES style); its "hit" is that style's impact frame

@@ -1,7 +1,7 @@
 class_name ArrowFx
 extends RefCounted
 ## The Archer's arrow effects, data-driven per arrow kind (PRESETS), so every bow skill gets the same treatment
-## with its own identity (docs/patterns/effects.md, the quality bar): a new skill is mostly a new preset.
+## with its own identity (docs/systems/effects.md, the quality bar): a new skill is mostly a new preset.
 ## Everything here only DRAWS: it is called from ArcherFx (the "loose" event, the draw charge) and from
 ## Archer.update (the flight, each foe pierced, the end of the flight) on the caster's game and on his
 ## puppet's alike, so partners see the same arrow from the one "loose" event. Nothing here touches gameplay.

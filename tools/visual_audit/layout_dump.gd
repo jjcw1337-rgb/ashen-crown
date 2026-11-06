@@ -1,6 +1,6 @@
 extends SceneTree
 ## Dumps one zone's layout as World alone builds it (interactables, enemy spawns, obstacle footprints), one
-## line each, so two builds can be diffed: a visual change must not move anything (World.rng, CLAUDE.md).
+## line each, so two builds can be diffed: a visual change must not move anything (World.rng).
 ## Run each zone in a fresh process. Crate yaw and the Ferals' perches use Godot's global random numbers,
 ## so those lines already differ between two launches of the same build.
 ##   godot --headless --path . -s tools/visual_audit/layout_dump.gd -- out.txt 0 wild

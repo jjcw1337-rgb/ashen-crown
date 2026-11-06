@@ -6,7 +6,7 @@ samples its memory and CPU, and adds bot players (tools/load_bot.gd: they join, 
 
 Prints one JSON line per step ({"players", "rss_mb", "cpu_pct_of_one_core"}) and a RESULT line. On macOS the RSS is
 only indicative (memory compression); the CPU is comparable night to night. The droplet's real numbers (and the
-costs service.py COST uses) come from the same bots against a server there: docs/patterns/servers.md."""
+costs service.py COST uses) come from the same bots against a server there: docs/systems/multiplayer.md."""
 import argparse, json, os, re, subprocess, sys, time
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ap = argparse.ArgumentParser()

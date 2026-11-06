@@ -1,5 +1,5 @@
 extends SceneTree
-## The skill format (SkillSpec, CLAUDE.md "Skill design"): every Data.SKILLS entry's fields are checked (known keys,
+## The skill format (SkillSpec, docs/content/skills.md, "Designing a skill"): every Data.SKILLS entry's fields are checked (known keys,
 ## types and ranges), and a skill in the format plays by its data (Molten Fists: its use time, its impact frame, its
 ## area, damage and burn, and a "cancel": false skill can't be dodged out of).
 ##   godot --headless --path . -s tools/skill_spec_test.gd
@@ -10,7 +10,7 @@ const KEYS := ["id", "cls", "name", "key", "lvl", "mana", "cd", "aim", "range", 
 
 ## Styles more than one user plays (the weapon swings, monsters' attacks, the shared skills): a skill's "hit" must
 ## not retime them.
-## Tags that allow a cooldown (CLAUDE.md "Skill design": cooldowns are for utility).
+## Tags that allow a cooldown (docs/content/skills.md, "Designing a skill": cooldowns are for utility).
 const UTILITY := ["movement", "warcry", "buff", "cc", "trap", "summon", "command", "ultimate", "sustain"]
 const SHARED_STYLES := ["over", "back", "side", "thrust", "cast", "slam", "smash", "claw", "bite", "lob", "cleave",
 	"swipe1", "swipe2", "swipe3", "burst", "cackle", "scoop", "bow", "chop"]

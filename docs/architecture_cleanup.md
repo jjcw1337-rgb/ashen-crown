@@ -70,17 +70,37 @@ Every hit and effect goes to a **combat log**, which is used both for balance an
 
 ## Order
 
+Each step is done for the Archer first, all the way through, and the other heroes copy it.
+
 1. **Folders.** Each hero's own code and models move into `game/heroes/<hero>/`. These are moves only, and play doesn't
-   change. All heroes are done back to back, starting with the Archer. Shared files (the fire in `arrow_fx.gd`, the
-   frost toolkit in `frost_volley_fx.gd`, `arc_fx.gd`) stay where they are until step 3 gives them a home.
-2. **Reference recordings.** Before damage changes, record a fixed-seed, fixed-frame-rate fight for each hero
+   change. Shared files (the fire in `arrow_fx.gd`, the frost toolkit in `frost_volley_fx.gd`, `arc_fx.gd`) stay where
+   they are until step 2 gives them a home.
+2. **The Archer, end to end: the template.** Every file the Archer touches is rebuilt until it follows every rule in
+   `AGENTS.md` and the docs it points to:
+   - one folder per skill, with its rules (`<skill>.gd`) and its look (`<skill>_fx.gd`); `archer.gd` keeps only the
+     body and the routing;
+   - every number a player sees comes from `data/codex/heroes/archer.json` (today Fire Arrow's ×1.3, `RANGE`,
+     `VOLLEY_R` and the rest are constants in `archer.gd`);
+   - the shared fire, frost and arc effects move to `game/systems/fx/`, so other heroes stop borrowing the Archer's
+     files;
+   - its crowd control on players goes through `PvpStatus`. Today Thunderstep's stun never reaches a player
+     (`Enemy.stun` has no PvP path), and Frost Volley's chill goes through `send_pvp_effect`, with no diminishing
+     returns;
+   - the code outside its folder that names it (`hero.gd`, `ui.gd`, `run_talents.gd`, `enemy.gd`, `game.gd`…) shrinks
+     to the registration list in `docs/content/heroes.md`;
+   - one contract for a hero's skills, written in `docs/content/skills.md`. Today the Archer is static functions with
+     its state on `Hero`, and the Plague Doctor an object per hero (`Hero.pd`).
+
+   Play doesn't change except for those fixes. Its tests and `tools/coop_fx_test.gd` pass, and its skills are checked
+   from the game camera. The other heroes then follow its template.
+3. **Reference recordings.** Before damage changes, record a fixed-seed, fixed-frame-rate fight for each hero
    (every skill on training dummies, plus one PvP pair through a real server) as a combat log. Every later step
    reproduces it or explains each difference.
-3. **The new damage and effect system**, server-side from day one. Move one hero, then the rest. Nothing new is
-   built on the old path.
-4. **One data source.** The codex JSON is the only copy. The copies in `data.gd`, `run_talents.gd` and
+4. **The new damage and effect system**, server-side from day one ([combat](systems/combat.md), "What's changing").
+   Move the Archer, then the rest. Nothing new is built on the old path.
+5. **One data source.** The codex JSON is the only copy. The copies in `data.gd`, `run_talents.gd` and
    `talents.gd` go, and then so do `code_base.json` and the three-way merge.
-5. **Real ids** (`pierce` → `fire_arrow`) everywhere at once, with aliases for saved survivors. Ids travel over the
+6. **Real ids** (`pierce` → `fire_arrow`) everywhere at once, with aliases for saved survivors. Ids travel over the
    network, so the server deploy and the clients ship together.
 
 Cuts run alongside: the old crypt, the old Warlock (the gnome body and the four-skill kit), Act II, Act I's story
@@ -103,7 +123,8 @@ Touch points to coordinate:
     preload and warm-up lists, every zone builder, and the files of everything being cut.
 - **Claude-2: the hero side.**
   - Tasks: every hero into its folder, the per-skill split (the Archer first, as the template), the shared effects
-    into `game/systems/fx/`, one `codex.json` per hero, then the damage and effect system.
+    into `game/systems/fx/`, one `codex.json` per hero, then the damage and effect system. The docs by concept
+    (`AGENTS.md`, `docs/content/`, `docs/systems/`, `docs/pipeline/`).
   - Owns: `game/heroes/**`, `game/systems/**`, `class_skills.gd`, `skill_fx.gd`, `skill_spec.gd`, `run_talents.gd`,
     `run_build.gd`, `codex.gd`, `data/codex/`, `tools/codex/`.
 - **Shared big files** (`game.gd`, `ui.gd`, `hero.gd`, `net.gd`, `enemy.gd`): either of us may edit them.
@@ -113,8 +134,8 @@ Touch points to coordinate:
 
 ### In progress
 
-- Claude-2: the Archer's per-skill split (`game/heroes/archer/**`, plus small hook changes in `hero.gd` and
-  `class_skills.gd`).
+- Claude-2: the Archer, end to end (`game/heroes/archer/**`, `game/systems/**`, plus the Archer's places in `hero.gd`,
+  `class_skills.gd`, `skill_fx.gd` and `run_talents.gd`).
 
 ## Cutting an old system
 
@@ -184,8 +205,10 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
 
 - [ ] 1. Folders: the Archer (`87bae1f`) and the Plague Doctor (`8550926`) are done. Next: the Wraith, Demon, Warlock,
   Doug, the dragons and the Knight. The Knight's body builder goes to `game/systems/bodies/`.
-- [ ] 2. Reference recordings
-- [ ] 3. Damage and effect system
-- [ ] 4. One data source
-- [ ] 5. Real ids
+- [ ] 2. The Archer, end to end
+- [ ] 3. Reference recordings
+- [ ] 4. Damage and effect system
+- [ ] 5. One data source
+- [ ] 6. Real ids
 - [x] `concepts/` removed (2026-11-06)
+- [x] Docs by concept: one root `AGENTS.md`, and a doc per piece of content, system and pipeline (2026-11-06)

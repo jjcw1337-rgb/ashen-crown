@@ -6,7 +6,7 @@ extends RefCounted
 ## For now a dragon has only the common Attack (left mouse: the hero's three-swipe combo, which Dragon.pose shows as
 ## a foreclaw rake, a bite and a tail spin) and Block; this script plays their own sounds for the attack.
 ##
-## Ready for skills (see CLAUDE.md "Adding a class"): add Data.SKILLS entries with "cls" set to the dragon's id and
+## Ready for skills (see docs/content/heroes.md): add Data.SKILLS entries with "cls" set to the dragon's id and
 ## an "aim", then handle their ids below (cast -> h._start_attack(style, id, seconds); impact on Anim.impact_at of
 ## the style; state on the hero in one dictionary, e.g. `h.set_meta("drg", {...})` or a new `Hero.dg`); Dragon.pose
 ## already plays any unknown attack style as a roar with the wings flared, so a new skill animates before it has a

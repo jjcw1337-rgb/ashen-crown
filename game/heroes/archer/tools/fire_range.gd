@@ -1,5 +1,5 @@
 extends SceneTree
-## The Archer's proof range (docs/patterns/effects.md, the quality bar): a small dusk test zone instead of the moor, so a skill
+## The Archer's proof range (docs/systems/effects.md, the quality bar): a small dusk test zone instead of the moor, so a skill
 ## can be recorded in Forward+ on a machine without a GPU (Mesa lavapipe) in minutes. Five lanes run east, each a
 ## different ground: grass (the game's living 3D grass), stone (the terrain's flagstones), dirt, wooden planks with
 ## logs, and dark charred soil in the shadow of a wall. The real ranger (Archer body, his bow) shoots down a lane

@@ -1,5 +1,5 @@
 extends SceneTree
-## Proof-of-quality recording of an Archer skill (docs/patterns/effects.md, the quality bar): the ranger staged on the moor
+## Proof-of-quality recording of an Archer skill (docs/systems/effects.md, the quality bar): the ranger staged on the moor
 ## with three monsters in a line ahead of him, the skill fired standing and then while walking, every frame
 ## saved from the game camera and from a close camera that follows the arrow. Needs a display (xvfb) and
 ## --fixed-fps 30 so the frames are 1/30 s apart whatever the software renderer takes:

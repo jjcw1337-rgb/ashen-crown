@@ -16,7 +16,7 @@ extends RefCounted
 ##
 ## Adding a class: write `scripts/<class>_skills.gd` with those functions (start from
 ## `tools/templates/new_class_skills.gd`) and add it to `of` and `all` below. Its effects go in `<Class>Fx.play`
-## (SkillFx), its tuning in Data.SKILLS. See CLAUDE.md, "Adding a class".
+## (SkillFx), its numbers and text in its codex file. See docs/content/heroes.md.
 
 ## The skills script for a class, or null. ADD NEW CLASSES HERE (and in `all`).
 static func of(cls: String):

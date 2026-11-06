@@ -1,6 +1,6 @@
 extends RefCounted
 ## TEMPLATE for a new class's skills. Copy it to `scripts/<class>_skills.gd`, uncomment and rename the
-## class_name, replace "newclass" and the skill ids, then follow the checklist in CLAUDE.md ("Adding a class").
+## class_name, replace "newclass" and the skill ids, then follow the checklist in docs/content/heroes.md ("Making a hero").
 ##
 ## ClassSkills (scripts/class_skills.gd) calls these static functions; every class's script has all of them.
 ## Keep gameplay here and drawing in `<Class>Fx.play`: wherever something should be seen, call

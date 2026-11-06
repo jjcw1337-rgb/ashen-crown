@@ -13,18 +13,19 @@ recipes it links are the source of truth.
 2. **Model (Meshy image-to-3D ~30 credits; text-to-3D ~10).** Text-to-3D is a coin toss beyond simple objects: use
    concept → image-to-3D for anything with a shape that matters. Look at the four turnaround renders before going on.
 3. **Prepare in Blender (headless, local).** Pick the script for the kind of thing, and keep the editable `.blend` in
-   `~/Documents/Blender/Game Factory/sources/` (never inside the project); export `.glb` into `assets/models/`.
+   `~/Documents/Blender/Game Factory/sources/` (never inside the project); export the `.glb` next to what uses it (a hero's `body/`, a skill's folder; `assets/models/` for
+   whatever hasn't moved into `game/`).
    - Props: `tools/blender/prep_prop.py` (size, axis, triangles, texture size); repeated or LOD-worthy pieces
      re-baked onto clean UVs with `tools/blender/camp/rebake_prop.py` (Meshy's own UVs leave the importer no LODs).
    - Characters and heroes: Meshy auto-rig + library clips, then a `prep_<id>_mocap.py` (copy Doug's), following
-     `docs/character_workflow.md` step by step (gates at every step).
+     [heroes](../content/heroes.md) step by step (gates at every step).
    - Monsters: `tools/blender/act1/prep_monster.py` then `rig_monster.py` (+ `layout_to_gd.py`); four-legged:
      `act1/rig_quadruped.py` on the lion's skeleton; NPCs: `tools/blender/prep_npc.py`.
    - Check a prepared model beside a man-sized post: `tools/blender/prop_sheet.py` (prints sizes too).
 4. **Effects.** Fire, smoke, fog, liquid and ice are simulations (Mantaflow/FLIP in Blender, rendered to flipbooks,
    packed by `tools/fx_flipbook.py` / `tools/fx_smokebook.py` / `tools/flipbook_pack.py`), and broken things are
-   real fractured pieces (`tools/blender/fx/fracture_rock.py`). The bar is in [effects.md](effects.md); each class
-   has its own visual language; effects are events (`effects.md`).
+   real fractured pieces (`tools/blender/fx/fracture_rock.py`). The bar is in [effects](../systems/effects.md); each class
+   has its own visual language; effects are events.
 5. **2D art in the UI.** Skill, talent, item and gem icons are Meshy-painted 3x3 grids cut by
    `tools/skill_icons.py` / `tools/talent_icons.py` (one grid ≈ 6 credits; palette per class); ground paintings and
    decals by `game/heroes/plague/build/ground_decal.py`; tiling textures by `make_tile_textures.py`.
@@ -35,7 +36,7 @@ recipes it links are the source of truth.
    `--rendering-driver vulkan` when the look depends on it). Look at every frame you claim is good. Judge candidates
    in the game, not in model sheets.
 
-## Performance rules for anything new (see `loading.md`, `measuring.md`)
+## Performance rules for anything new (see [loading](../systems/loading.md), [measuring](../systems/measuring.md))
 
 - **Budgets:** props ≤ 10k triangles with 1k textures (pieces repeated many times ~12k or less); monsters ~20k
   (bosses 30k, 2k textures); heroes 50–60k. Textures import as lossy WebP q0.9 with mipmaps (UI and cut-outs lossless).
@@ -49,15 +50,12 @@ recipes it links are the source of truth.
   with shadows only through `Fx.effect_shadow`; tall props keep the see-through near the hero (`Props.see_through`).
 - **Prove it:** `bash tools/skill_perf.sh <class> <skill>` for every new or redone skill; the KPI suite before and
   after anything that changes a zone (`--kpi`, slower = not shipped); dedicated servers never need pixels or mesh
-  surfaces (`servers.md`).
+  surfaces ([multiplayer](../systems/multiplayer.md)).
 
-## Spending and coordination
+## Spending
 
-- Meshy and ElevenLabs use the Game Factory credentials through `/Users/blaine/dev/game-factory-codex/services.py`
-  (`meshy check` shows the live balance). Either admin's request covers existing credits; purchases need an explicit
-  spending request.
-- Hold the `asset-budget` claim while submitting paid jobs, record each job's handle, and resume a pending job
-  instead of paying for it twice. Hold `blender` only for the shared GUI scene; headless Blender on your own files
-  needs no claim.
+- Meshy and ElevenLabs credits: either admin's request covers existing credits. Subscriptions, upgrades and top-ups
+  need an explicit spending request.
+- Record each paid job's id, and resume a pending job instead of paying for it twice.
 - A downloaded model (Sketchfab, Poly Haven) needs its URL, author, licence and attribution recorded beside it before
   it goes in the game.

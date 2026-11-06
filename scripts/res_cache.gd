@@ -1,6 +1,6 @@
 class_name ResCache
 extends RefCounted
-## The game's one loader (docs/patterns/loading.md). Everything a screen, zone or effect needs from disk goes through
+## The game's one loader (docs/systems/loading.md). Everything a screen, zone or effect needs from disk goes through
 ## here, in one of two ways:
 ##
 ##   prepare(scope, paths)   ahead of time, under a loading screen or the intro: Godot's threaded loader reads the

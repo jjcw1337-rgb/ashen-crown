@@ -16,7 +16,7 @@ extends RefCounted
 ## copy never hands out an item the other already took. The file is written whole through a temporary file and a
 ## rename, so it's never left half-written. Old saves: each character's own stash (Hero.stash, 60 slots) is stamped,
 ## moved in and reconciled away the same way (`adopt`), so a crash mid-move can't bring it in twice.
-## What it can't stop: someone editing or restoring their own files (saves are the player's; see CLAUDE.md).
+## What it can't stop: someone editing or restoring their own files (saves are the player's; see docs/systems/combat.md, "Who decides").
 
 const TABS := 5
 const SLOTS := 60
