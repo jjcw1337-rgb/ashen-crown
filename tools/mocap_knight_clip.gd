@@ -1,6 +1,6 @@
 extends SceneTree
 ## Preview of the mocap knight (Knight.build_mocap) as the game drives him through Anim.pose.
-## Needs a display (xvfb). Usage: -- outdir mode [side|front|34|back|game|close] [frames] [archer|wraith|demon] [relaxed]
+## Needs a display (xvfb). Usage: -- outdir mode [side|front|34|back|game|close] [frames] [archer|wraith|demon|warlock] [relaxed]
 ## modes: idle, run (stand, run, stop), attack (the three-swing combo standing), runattack (run into a swing),
 ##        block, turn (runs a circle), draw (sheathed run, stop, draw the sword, guard, holster),
 ##        demontour (the Demon: idle, walk, run, a turn, every clip of his, a hit, death; ~34 s),
@@ -9,7 +9,10 @@ func _initialize():
 	_run()
 
 func _run() -> void:
-	var args := OS.get_cmdline_user_args()
+	var args := PackedStringArray()
+	for x in OS.get_cmdline_user_args():
+		if not x.begins_with("res://"):    # (run through _late.gd for the Warlock)
+			args.append(x)
 	var out: String = args[0]
 	var mode: String = args[1] if args.size() > 1 else "run"
 	var view: String = args[2] if args.size() > 2 else "34"
@@ -56,8 +59,11 @@ func _run() -> void:
 	var AR: GDScript = load("res://scripts/archer.gd") if archer else null
 	var wraith := args.has("wraith")
 	var demon := args.has("demon")
+	var warlock := args.has("warlock")
+	if warlock:
+		wraith = true      # (floats and carries nothing, like the Wraith)
 	var relaxed := args.has("relaxed")    # weapon away (no battle stance)
-	var r: Node3D = AR.call("build_body") if archer else (Wraith.build(Wraith.default_gear()) if wraith else (Demon.build(Demon.default_gear()) if demon else Knight.build_mocap()))
+	var r: Node3D = AR.call("build_body") if archer else (Warlock.build(Warlock.default_gear()) if warlock else Wraith.build(Wraith.default_gear()) if wraith else (Demon.build(Demon.default_gear()) if demon else Knight.build_mocap()))
 	r.set_meta("pers", "hero")
 	r.set_meta("gait", "knight")
 	r.set("fixed_dt", 1.0 / 30.0)
@@ -231,6 +237,8 @@ func _run() -> void:
 		st["move"] = mv
 		st["speed"] = spd
 		Anim.pose(r, st)
+		if warlock:
+			Warlock.animate(r, float(st["time"]), mv, 0.0, phase, float(st.get("atk", -1.0)) < 0.0)
 		if archer:
 			AR.call("pose_bow_on", r, sword, Data.BASES["long_bow" if args.has("longbow") else "short_bow"]["kind"], st)
 			if f % 2 == 0 and f < 26 and sword.has_meta("strands"):

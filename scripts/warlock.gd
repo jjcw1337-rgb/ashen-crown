@@ -90,7 +90,7 @@ static func _build_spirit(g: Dictionary) -> Node3D:
 	var r := Knight.build_mocap(SPIRIT_GLB, {
 		"relaxed": ["idle", 0.0, "float", Wraith.FLOAT_SPEED],
 		"combat": ["combat_idle", 0.0, "float_combat", Wraith.FLOAT_SPEED],
-		"meta": "warlock_spirit", "hair_run": 1.0, "shots": SPIRIT_SHOTS})
+		"meta": "warlock_spirit", "hair_run": 1.0, "shots": SPIRIT_SHOTS, "script": "res://scripts/warlock_spirit_rig.gd"})
 	r.remove_meta("knight")
 	r.set_meta("warlock", true)
 	r.set_meta("spirit", true)
@@ -103,10 +103,8 @@ static func _build_spirit(g: Dictionary) -> Node3D:
 		(m as ShaderMaterial).shader = sh
 		(m as ShaderMaterial).set_shader_parameter("fray", 0.72)
 	Wraith._mocap_extras(r, gear)
-	# the mist off her hem: dark void violet, not the Wraith's pale haze
-	var mist := r.get_meta("hem_mist", null) as GPUParticles3D
-	if mist != null and mist.draw_pass_1 is QuadMesh:
-		(mist.draw_pass_1 as QuadMesh).material = Mats.particle_mat(false, Color(0.2, 0.1, 0.3))
+	# her wisps, the fire in her hands, the petals and the hem's motes and mist (WarlockAura)
+	WarlockAura.build(r)
 	var gl := r.find_child("EyeGlow", true, false) as OmniLight3D
 	if gl != null:
 		gl.light_color = FEL
@@ -390,7 +388,8 @@ static func animate(root: Node3D, t: float, move: float, power := 0.0, phase := 
 		var sp: float = move_toward(float(a["power"]), power, 0.05)
 		a["power"] = sp
 		for m in root.get_meta("spectral_mats", []):
-			(m as ShaderMaterial).set_shader_parameter("glow", 1.0 + 1.4 * sp + 0.1 * sin(t * 3.0))
+			(m as ShaderMaterial).set_shader_parameter("glow", 1.0 + 1.4 * sp + 0.18 * sin(t * 2.2) + 0.08 * sin(t * 5.3))
+		WarlockAura.update(root, t, move, free)
 		return
 	var pw: float = move_toward(float(a["power"]), power, 0.05)
 	if pw != float(a["power"]) or pw > 0.0:

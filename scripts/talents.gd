@@ -120,7 +120,7 @@ static var TREES: Dictionary = {
 			{"id": "l_thrift", "name": "Siphon Efficiency", "row": 1, "max": 3, "icon": "t_drop", "fx": {"cost:drain": 15}, "text": "Drain Life costs {cost:drain}% less mana."},
 			{"id": "l_fork", "name": "Forking Beam", "row": 2, "max": 2, "icon": "drain", "fx": {"drain_fork": 1}, "text": "Drain Life forks to {drain_fork} more enemy."},
 			{"id": "l_wither", "name": "Withering", "row": 2, "max": 3, "icon": "t_sword", "fx": {"dmg": 4}, "text": "+{dmg}% damage."},
-			{"id": "l_glut", "name": "Soul Glut", "row": 3, "max": 1, "icon": "t_drop", "fx": {"drain_glut": 50}, "text": "Life Drain Life pulls in past your full life fills {drain_glut}% as much mana."},
+			{"id": "l_glut", "name": "Soul Glut", "row": 3, "max": 1, "icon": "t_drop", "fx": {"drain_glut": 50}, "text": "Healing from Drain Life past your full life refills {drain_glut}% as much mana."},
 		]},
 		{"name": "Plague", "desc": "Rot: Blight Bolt and its plague pools.", "talents": [
 			{"id": "l_virulence", "name": "Virulence", "row": 0, "max": 3, "icon": "blight", "fx": {"dmg:blight": 10}, "text": "Blight Bolt and its pools deal {dmg:blight}% more damage."},

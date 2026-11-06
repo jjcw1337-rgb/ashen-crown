@@ -75,7 +75,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 		"curse":
 			var dur := float(ev.get("x", 8.0))
 			for t in targets:
-				_streak(root, SkillFx.hand(h, false), SkillFx.chest_of(t, 1.0), CURSE_COLORS.get(s, FEL), 0.16, 0.05)
+				_streak(root, SkillFx.hand(h, false), SkillFx.chest_of(t, 1.0), CURSE_COLORS.get(s, FEL), 0.16, 0.09)
 				_curse_mark(h, t, s, dur)
 			_snd(h, "curse_cast", "blight_cast", -6.0, 1.1)
 		"fester":
@@ -159,7 +159,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			var petals := InfernalFx.particles(n, n.global_position + Vector3(0, 1.2, 0), {"amount": [24, 36, 48, 64][InfernalFx.tier(h.game)],
 				"life": 1.6, "explosive": 0.0, "shape": "ring", "r": r * 0.9, "r_in": r * 0.3, "dir": Vector3.UP, "spread": 40.0,
 				"vel": [0.6, 1.6], "gravity": 0.3, "damping": [0.2, 0.5], "angle": true, "spin": 160.0, "scale": [0.6, 1.2],
-				"size": 0.14, "turb": 1.2, "add": false, "one_shot": false,
+				"size": 0.16, "turb": 1.2, "mat": WarlockAura.petal_mat(), "one_shot": false,
 				"colors": [[0.0, Color(VIOLET, 0.0)], [0.15, VIOLET], [0.6, Color(0.35, 0.95, 0.4)], [1.0, Color(DEEP, 0.0)]]})
 			var ring := WarlockFx.sigil(root, r)
 			var loop = Sfx.start_loop("eclipse_storm", -10.0, 1.0, h) if (Sfx.bank.has("eclipse_storm") or Sfx.streams.has("eclipse_storm")) else null
@@ -309,7 +309,7 @@ static func _wisp_dart(root: Node3D, from: Vector3, to: Vector3) -> void:
 static func _petals(root: Node3D, at: Vector3) -> void:
 	InfernalFx.particles(root, at, {"amount": 12, "life": 1.0, "explosive": 1.0, "shape": "sphere", "r": 0.2,
 		"dir": Vector3.UP, "spread": 160.0, "vel": [1.0, 2.6], "gravity": -1.5, "damping": [1.5, 2.5], "angle": true, "spin": 220.0,
-		"scale": [0.6, 1.1], "size": 0.1, "add": false,
+		"scale": [0.6, 1.1], "size": 0.12, "mat": WarlockAura.petal_mat(),
 		"colors": [[0.0, VIOLET], [0.5, Color(0.4, 0.95, 0.45)], [1.0, Color(DEEP, 0.0)]]})
 
 static func _update_wind(h: Hero, key: String, d: Dictionary, delta: float, now: float) -> void:
@@ -522,9 +522,15 @@ static func _mark(h: Hero, e) -> Dictionary:
 		var n := Node3D.new()
 		e.add_child(n)
 		n.position = Vector3(0, float(e.get("height")) * 0.9, 0)
-		var motes := Fx.aura(n, FEL, 10, 0.5, 0.05, 1.0, 0.4, float(e.get("radius")) + 0.15)
+		var motes := Fx.aura(n, FEL, 16, 0.6, 0.06, 1.1, 0.5, float(e.get("radius")) + 0.15)
 		motes.emitting = false
-		m = {"node": n, "e": e, "rings": {}, "motes": motes, "terror": null, "terror_until": 0.0}
+		# the curse sigil on the ground under it (WarlockAura.sigil): in the last curse's colour, brighter with more
+		var sg := WarlockAura.sigil(FEL, float(e.get("radius")) + 0.75, float(e.get_instance_id() % 97), 0.7)
+		n.add_child(sg)
+		sg.position = Vector3(0, -float(e.get("height")) * 0.9 + 0.05, 0)
+		(sg.material_override as ShaderMaterial).set_shader_parameter("alpha", 0.0)
+		sg.visible = false
+		m = {"node": n, "e": e, "rings": {}, "motes": motes, "terror": null, "terror_until": 0.0, "sigil": sg, "sig_a": 0.0, "sig_pulse": 0.0}
 		h.fxs[key] = m
 	return m
 
@@ -557,6 +563,12 @@ static func _curse_mark(h: Hero, e, id: String, dur: float) -> void:
 		ring.create_tween().tween_property(ring, "scale", Vector3(1.0, 0.3, 1.0), 0.25).set_ease(Tween.EASE_OUT)
 	else:
 		rings[id]["until"] = now + dur
+	# the ground sigil takes the curse's colour and flares
+	var sg = m.get("sigil")
+	if sg != null and is_instance_valid(sg):
+		((sg as MeshInstance3D).material_override as ShaderMaterial).set_shader_parameter("color", CURSE_COLORS.get(id, FEL))
+		(sg as Node3D).visible = true
+		m["sig_pulse"] = 1.0
 
 static func _terror_mark(h: Hero, e, dur: float) -> void:
 	if e == null or not is_instance_valid(e):
@@ -605,6 +617,15 @@ static func _update_mark(h: Hero, key: String, m: Dictionary, delta: float, now:
 			(r["mat"] as ShaderMaterial).set_shader_parameter("alpha_mul", left / 0.5)
 	if is_instance_valid(m["motes"]):
 		(m["motes"] as GPUParticles3D).emitting = not rings.is_empty()
+	var sg = m.get("sigil")
+	if sg != null and is_instance_valid(sg):
+		var want := 0.0 if rings.is_empty() else 0.55 + 0.15 * minf(rings.size(), 3.0)
+		m["sig_a"] = move_toward(float(m["sig_a"]), want, delta * 2.5)
+		m["sig_pulse"] = move_toward(float(m["sig_pulse"]), 0.0, delta * 2.0)
+		var sm := (sg as MeshInstance3D).material_override as ShaderMaterial
+		sm.set_shader_parameter("alpha", float(m["sig_a"]))
+		sm.set_shader_parameter("pulse", float(m["sig_pulse"]))
+		(sg as Node3D).visible = float(m["sig_a"]) > 0.01
 	var t = m["terror"]
 	if t != null and is_instance_valid(t):
 		if float(m["terror_until"]) <= now:

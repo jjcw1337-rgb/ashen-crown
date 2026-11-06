@@ -6,17 +6,17 @@
 		{
 			"id": "Corruption",
 			"name": "Corruption",
-			"desc": "Damage over time, WoW-style: cheap curses that stack, spells that grow with every curse on a foe and how long it has been cursed, and a finisher that cashes them all in."
+			"desc": "Curses that stack and hurt more the longer they last."
 		},
 		{
 			"id": "Fear",
 			"name": "Fear",
-			"desc": "Crowd control: terrify, bind and scatter. Feared foes freeze or flee, panic spreads, and the jungle's void takes whatever stops running."
+			"desc": "Scare enemies so they freeze or run, then hit them harder."
 		},
 		{
 			"id": "Drain",
 			"name": "Drain",
-			"desc": "Life drain: beams and bolts that heal, healing past full life that hardens into a shield, and a feast at the end."
+			"desc": "Steal life to heal yourself; extra healing becomes a shield."
 		}
 	],
 	"skills": [
@@ -26,7 +26,7 @@
 			"name": "Drain Life",
 			"rarity": 0,
 			"direction": "Drain",
-			"desc": "Latch a green beam onto an enemy and pull the life out of it. The beam forks to up to 3 enemies near your target and everything it drains heals you. Hold Q to keep draining (costs mana each second).",
+			"desc": "Hold to drain life from an enemy with a green beam. It also hits up to 3 enemies near it, and everything it drains heals you.",
 			"mana": 6,
 			"cd": 0.0,
 			"range": 11.0,
@@ -38,7 +38,7 @@
 			"name": "Blight Bolt",
 			"rarity": 0,
 			"direction": "Corruption",
-			"desc": "Hurl a howling skull of blight. It bursts where it lands and leaves a plague pool that rots enemies standing in it for 4 seconds.",
+			"desc": "Throw a blight skull. It bursts and leaves a poison pool for 4 seconds.",
 			"mana": 12,
 			"cd": 0.0,
 			"use": 1.0,
@@ -52,7 +52,7 @@
 			"name": "Soul Shackles",
 			"rarity": 0,
 			"direction": "Fear",
-			"desc": "Chains of fel fire snap out to every enemy within 7 metres, damaging them and binding them in place for 2.5 seconds.",
+			"desc": "Chain every enemy within 7 metres in place for 2.5 seconds, hurting them.",
 			"mana": 16,
 			"cd": 8.0,
 			"tags": [
@@ -66,7 +66,7 @@
 			"name": "Fel Covenant",
 			"rarity": 1,
 			"direction": "Drain",
-			"desc": "Seal a pact with what waits beyond: +40% damage for 12 seconds, and Drain Life forks to two more enemies and heals twice as much.",
+			"desc": "For 12 seconds you deal 40% more damage, and Drain Life hits more enemies and heals twice as much.",
 			"mana": 20,
 			"cd": 20.0,
 			"tags": [
@@ -80,7 +80,7 @@
 			"name": "Corruption",
 			"rarity": 0,
 			"direction": "Corruption",
-			"desc": "Curse a foe up to 15 m away: 240% spell damage over 10 seconds. Cheap; casting it again refreshes it.",
+			"desc": "A cheap curse: 240% spell damage over 10 seconds.",
 			"mana": 4,
 			"cd": 0.0,
 			"use": 0.45,
@@ -99,7 +99,7 @@
 			"name": "Malediction",
 			"rarity": 1,
 			"direction": "Corruption",
-			"desc": "A fel bolt for 90% spell damage, +50% for every one of your curses on the target (up to five: 315%). Standing in your plague pool counts as a curse.",
+			"desc": "A bolt for 90% spell damage, plus 50% for each of your curses on the enemy.",
 			"mana": 10,
 			"cd": 0.0,
 			"use": 0.8,
@@ -117,7 +117,7 @@
 			"name": "Unending Rot",
 			"rarity": 1,
 			"direction": "Corruption",
-			"desc": "A curse for 12 seconds (180% spell damage at the start) whose ticks grow 15% stronger for every second the foe has carried one of your curses without a break (up to four times as strong). A clean foe starts again.",
+			"desc": "A curse that grows stronger the longer the enemy stays cursed, up to four times as strong.",
 			"mana": 8,
 			"cd": 0.0,
 			"use": 0.5,
@@ -136,7 +136,7 @@
 			"name": "Festering Hex",
 			"rarity": 1,
 			"direction": "Corruption",
-			"desc": "A hex for 15 seconds: every 5 seconds it bursts for 120% spell damage and stuns the foe for half a second.",
+			"desc": "A curse that bursts every 5 seconds for 120% spell damage and a short stun.",
 			"mana": 12,
 			"cd": 6.0,
 			"use": 0.5,
@@ -156,7 +156,7 @@
 			"name": "Leeching Curse",
 			"rarity": 1,
 			"direction": "Corruption",
-			"desc": "A curse for 8 seconds: 160% spell damage over its life, and every tick heals you for half of what it dealt.",
+			"desc": "A curse for 160% spell damage over 8 seconds. Half of it heals you.",
 			"mana": 8,
 			"cd": 0.0,
 			"use": 0.5,
@@ -176,7 +176,7 @@
 			"name": "Reckoning",
 			"rarity": 2,
 			"direction": "Corruption",
-			"desc": "The rare curse: for 6 seconds, each of its ticks deals as much as all your other curses on the foe tick for together.",
+			"desc": "A curse for 6 seconds whose every tick hits as hard as all your other curses on the enemy put together.",
 			"mana": 16,
 			"cd": 0.0,
 			"use": 0.7,
@@ -195,7 +195,7 @@
 			"name": "Terrify",
 			"rarity": 0,
 			"direction": "Fear",
-			"desc": "Point at a foe within 8 m: it is frozen in terror for 1.5 seconds (a player flees for 1 second). Feared foes take 20% more from your spells.",
+			"desc": "Freeze an enemy in terror for 1.5 seconds. Scared enemies take 20% more from your spells.",
 			"mana": 8,
 			"cd": 9.0,
 			"use": 0.4,
@@ -213,7 +213,7 @@
 			"name": "Dread Totem",
 			"rarity": 1,
 			"direction": "Fear",
-			"desc": "Raise a vine-choked jungle idol up to 12 m away for 8 seconds. The first three foes to come within 4 m are frightened for 1 second as its void eyes flare and its wisps lash out.",
+			"desc": "Plant a totem for 8 seconds. It scares the first 3 enemies that come near it.",
 			"mana": 14,
 			"cd": 14.0,
 			"use": 0.6,
@@ -231,7 +231,7 @@
 			"name": "Void Wisp",
 			"rarity": 1,
 			"direction": "Fear",
-			"desc": "Loose a wisp of void light at a foe: it bounces on to up to five enemies, 90% spell damage and a one-second slow each. Feared or bound foes take double.",
+			"desc": "A wisp that bounces between up to 5 enemies, hurting and slowing each. Scared enemies take double.",
 			"mana": 12,
 			"cd": 6.0,
 			"use": 0.6,
@@ -251,7 +251,7 @@
 			"name": "Eclipse Bloom",
 			"rarity": 2,
 			"direction": "Fear",
-			"desc": "Gather the void, then blink up to 8 m: a storm of void petals and wisps whirls 5 m round you for 5 seconds, 80% spell damage every half second, and everything caught as you land is feared for 1 second.",
+			"desc": "Blink up to 8 metres into a storm of void petals. Enemies caught are scared and keep getting hurt for 5 seconds.",
 			"mana": 40,
 			"cd": 45.0,
 			"use": 1.5,
@@ -270,7 +270,7 @@
 			"name": "Leech Bolt",
 			"rarity": 0,
 			"direction": "Drain",
-			"desc": "A quick shadow bolt: 140% spell damage, and 30% of it heals you.",
+			"desc": "A quick bolt for 140% spell damage. 30% of it heals you.",
 			"mana": 5,
 			"cd": 0.0,
 			"use": 0.6,
@@ -289,7 +289,7 @@
 			"name": "Thornlash",
 			"rarity": 1,
 			"direction": "Drain",
-			"desc": "Lash a whip of black thorned vines round you (5 m): 180% spell damage, and each foe hit heals you 4% of your life (8% when it is the only one).",
+			"desc": "Lash thorned vines all around you for 180% spell damage. Each enemy hit heals you.",
 			"mana": 12,
 			"cd": 0.0,
 			"use": 0.9,
@@ -307,7 +307,7 @@
 			"name": "Soul Feast",
 			"rarity": 2,
 			"direction": "Drain",
-			"desc": "Channel for 3 seconds: beams to every foe within 7 m drain 80% spell damage a second from each. Healing past full life hardens into a shield, up to 30% of your life.",
+			"desc": "Channel for 3 seconds to drain every enemy within 7 metres. Healing past full life becomes a shield.",
 			"mana": 30,
 			"cd": 30.0,
 			"use": 3.0,
@@ -409,7 +409,7 @@
 			"fx": {
 				"drain_glut": 50.0
 			},
-			"text": "Life Drain Life pulls in past your full life fills {drain_glut}% as much mana.",
+			"text": "Healing from Drain Life past your full life refills {drain_glut}% as much mana.",
 			"icon": "t_drop"
 		},
 		{
@@ -606,7 +606,7 @@
 			"fx": {
 				"dot_flat": 1.0
 			},
-			"text": "Your DoTs deal +{dot_flat} damage every tick.",
+			"text": "Your curses deal +{dot_flat} damage every tick.",
 			"icon": "",
 			"requires": [
 				"blight",
@@ -627,7 +627,7 @@
 			"fx": {
 				"dot_dur": 15.0
 			},
-			"text": "Your DoTs last {dot_dur}% longer.",
+			"text": "Your curses last {dot_dur}% longer.",
 			"icon": "",
 			"requires": [
 				"blight",
@@ -672,7 +672,7 @@
 			"fx": {
 				"dot_heal": 25.0
 			},
-			"text": "Every DoT tick has a {dot_heal}% chance to heal you for 1% of your life.",
+			"text": "Each curse tick has a {dot_heal}% chance to heal you for 1% of your life.",
 			"icon": "",
 			"requires": [
 				"blight",
@@ -693,7 +693,7 @@
 			"fx": {
 				"dot_echo": 1.0
 			},
-			"text": "Refreshing a DoT makes every one of your DoTs on that foe tick once at once.",
+			"text": "Recasting a curse makes all your curses on that enemy tick at once.",
 			"icon": "",
 			"requires": [
 				"w_corruption",
@@ -733,7 +733,7 @@
 			"fx": {
 				"dmg_feared": 10.0
 			},
-			"text": "Your spells deal {dmg_feared}% more to feared or bound foes.",
+			"text": "Your spells deal {dmg_feared}% more to scared or chained enemies.",
 			"icon": "",
 			"requires": [
 				"shackles",
@@ -753,7 +753,7 @@
 			"fx": {
 				"fear_spread": 1.0
 			},
-			"text": "A feared foe that runs into another frightens it too, for half a second.",
+			"text": "A scared enemy that runs into another scares it too.",
 			"icon": "",
 			"requires": [
 				"shackles",
@@ -773,7 +773,7 @@
 			"fx": {
 				"fear_kill": 1.0
 			},
-			"text": "Killing a feared foe gives back 15 mana and takes 2 seconds off Terrify.",
+			"text": "Killing a scared enemy gives back 15 mana and takes 2 seconds off Terrify.",
 			"icon": "",
 			"requires": [
 				"shackles",
@@ -793,7 +793,7 @@
 			"fx": {
 				"fear_root": 1.0
 			},
-			"text": "When one of your fears ends, the foe is rooted where it stands for 1 second.",
+			"text": "When your fear ends, the enemy is stuck in place for 1 second.",
 			"icon": "",
 			"requires": [
 				"shackles",

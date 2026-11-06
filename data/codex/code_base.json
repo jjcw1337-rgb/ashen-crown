@@ -195,7 +195,7 @@
 		},
 		"drain": {
 			"name": "Drain Life",
-			"desc": "Latch a green beam onto an enemy and pull the life out of it. The beam forks to up to 3 enemies near your target and everything it drains heals you. Hold Q to keep draining (costs mana each second).",
+			"desc": "Hold to drain life from an enemy with a green beam. It also hits up to 3 enemies near it, and everything it drains heals you.",
 			"mana": 6,
 			"cd": 0.0,
 			"range": 11.0,
@@ -207,7 +207,7 @@
 		},
 		"blight": {
 			"name": "Blight Bolt",
-			"desc": "Hurl a howling skull of blight. It bursts where it lands and leaves a plague pool that rots enemies standing in it for 4 seconds.",
+			"desc": "Throw a blight skull. It bursts and leaves a poison pool for 4 seconds.",
 			"mana": 12,
 			"cd": 0.0,
 			"use": 1.0,
@@ -219,7 +219,7 @@
 		},
 		"shackles": {
 			"name": "Soul Shackles",
-			"desc": "Chains of fel fire snap out to every enemy within 7 metres, damaging them and binding them in place for 2.5 seconds.",
+			"desc": "Chain every enemy within 7 metres in place for 2.5 seconds, hurting them.",
 			"mana": 16,
 			"cd": 8.0,
 			"rarity": null,
@@ -351,7 +351,7 @@
 		},
 		"covenant": {
 			"name": "Fel Covenant",
-			"desc": "Seal a pact with what waits beyond: +40% damage for 12 seconds, and Drain Life forks to two more enemies and heals twice as much.",
+			"desc": "For 12 seconds you deal 40% more damage, and Drain Life hits more enemies and heals twice as much.",
 			"mana": 20,
 			"cd": 20.0,
 			"rarity": null,
@@ -363,7 +363,7 @@
 		},
 		"w_corruption": {
 			"name": "Corruption",
-			"desc": "Curse a foe up to 15 m away: 240% spell damage over 10 seconds. Cheap; casting it again refreshes it.",
+			"desc": "A cheap curse: 240% spell damage over 10 seconds.",
 			"mana": 4,
 			"cd": 0.0,
 			"use": 0.45,
@@ -375,7 +375,7 @@
 		},
 		"w_malediction": {
 			"name": "Malediction",
-			"desc": "A fel bolt for 90% spell damage, +50% for every one of your curses on the target (up to five: 315%). Standing in your plague pool counts as a curse.",
+			"desc": "A bolt for 90% spell damage, plus 50% for each of your curses on the enemy.",
 			"mana": 10,
 			"cd": 0.0,
 			"use": 0.8,
@@ -387,7 +387,7 @@
 		},
 		"w_unending": {
 			"name": "Unending Rot",
-			"desc": "A curse for 12 seconds (180% spell damage at the start) whose ticks grow 15% stronger for every second the foe has carried one of your curses without a break (up to four times as strong). A clean foe starts again.",
+			"desc": "A curse that grows stronger the longer the enemy stays cursed, up to four times as strong.",
 			"mana": 8,
 			"cd": 0.0,
 			"use": 0.5,
@@ -399,7 +399,7 @@
 		},
 		"w_festering": {
 			"name": "Festering Hex",
-			"desc": "A hex for 15 seconds: every 5 seconds it bursts for 120% spell damage and stuns the foe for half a second.",
+			"desc": "A curse that bursts every 5 seconds for 120% spell damage and a short stun.",
 			"mana": 12,
 			"cd": 6.0,
 			"use": 0.5,
@@ -411,7 +411,7 @@
 		},
 		"w_leeching": {
 			"name": "Leeching Curse",
-			"desc": "A curse for 8 seconds: 160% spell damage over its life, and every tick heals you for half of what it dealt.",
+			"desc": "A curse for 160% spell damage over 8 seconds. Half of it heals you.",
 			"mana": 8,
 			"cd": 0.0,
 			"use": 0.5,
@@ -423,7 +423,7 @@
 		},
 		"w_reckoning": {
 			"name": "Reckoning",
-			"desc": "The rare curse: for 6 seconds, each of its ticks deals as much as all your other curses on the foe tick for together.",
+			"desc": "A curse for 6 seconds whose every tick hits as hard as all your other curses on the enemy put together.",
 			"mana": 16,
 			"cd": 0.0,
 			"use": 0.7,
@@ -435,7 +435,7 @@
 		},
 		"w_terrify": {
 			"name": "Terrify",
-			"desc": "Point at a foe within 8 m: it is frozen in terror for 1.5 seconds (a player flees for 1 second). Feared foes take 20% more from your spells.",
+			"desc": "Freeze an enemy in terror for 1.5 seconds. Scared enemies take 20% more from your spells.",
 			"mana": 8,
 			"cd": 9.0,
 			"use": 0.4,
@@ -447,7 +447,7 @@
 		},
 		"w_effigy": {
 			"name": "Dread Totem",
-			"desc": "Raise a vine-choked jungle idol up to 12 m away for 8 seconds. The first three foes to come within 4 m are frightened for 1 second as its void eyes flare and its wisps lash out.",
+			"desc": "Plant a totem for 8 seconds. It scares the first 3 enemies that come near it.",
 			"mana": 14,
 			"cd": 14.0,
 			"use": 0.6,
@@ -459,7 +459,7 @@
 		},
 		"w_darkwind": {
 			"name": "Void Wisp",
-			"desc": "Loose a wisp of void light at a foe: it bounces on to up to five enemies, 90% spell damage and a one-second slow each. Feared or bound foes take double.",
+			"desc": "A wisp that bounces between up to 5 enemies, hurting and slowing each. Scared enemies take double.",
 			"mana": 12,
 			"cd": 6.0,
 			"use": 0.6,
@@ -471,7 +471,7 @@
 		},
 		"w_crowstorm": {
 			"name": "Eclipse Bloom",
-			"desc": "Gather the void, then blink up to 8 m: a storm of void petals and wisps whirls 5 m round you for 5 seconds, 80% spell damage every half second, and everything caught as you land is feared for 1 second.",
+			"desc": "Blink up to 8 metres into a storm of void petals. Enemies caught are scared and keep getting hurt for 5 seconds.",
 			"mana": 40,
 			"cd": 45.0,
 			"use": 1.5,
@@ -483,7 +483,7 @@
 		},
 		"w_leechbolt": {
 			"name": "Leech Bolt",
-			"desc": "A quick shadow bolt: 140% spell damage, and 30% of it heals you.",
+			"desc": "A quick bolt for 140% spell damage. 30% of it heals you.",
 			"mana": 5,
 			"cd": 0.0,
 			"use": 0.6,
@@ -495,7 +495,7 @@
 		},
 		"w_harvest": {
 			"name": "Thornlash",
-			"desc": "Lash a whip of black thorned vines round you (5 m): 180% spell damage, and each foe hit heals you 4% of your life (8% when it is the only one).",
+			"desc": "Lash thorned vines all around you for 180% spell damage. Each enemy hit heals you.",
 			"mana": 12,
 			"cd": 0.0,
 			"use": 0.9,
@@ -507,7 +507,7 @@
 		},
 		"w_soulfeast": {
 			"name": "Soul Feast",
-			"desc": "Channel for 3 seconds: beams to every foe within 7 m drain 80% spell damage a second from each. Healing past full life hardens into a shield, up to 30% of your life.",
+			"desc": "Channel for 3 seconds to drain every enemy within 7 metres. Healing past full life becomes a shield.",
 			"mana": 30,
 			"cd": 30.0,
 			"use": 3.0,
@@ -1716,7 +1716,7 @@
 		},
 		"l_glut": {
 			"name": "Soul Glut",
-			"text": "Life Drain Life pulls in past your full life fills {drain_glut}% as much mana.",
+			"text": "Healing from Drain Life past your full life refills {drain_glut}% as much mana.",
 			"max": 1,
 			"fx": {
 				"drain_glut": 50

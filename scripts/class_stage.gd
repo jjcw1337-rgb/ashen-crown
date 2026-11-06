@@ -40,7 +40,7 @@ const TURN_T := 0.52                # seconds of a glide by one slot
 const WHEEL_GAP := 0.08             # seconds between wheel notches that count
 ## signature moves: [pose style, seconds, impact fraction, skill name]
 const SIGNATURE := {"knight": ["cleave", 1.1, 0.5, "Holy Slam"], "wraith": ["rend", 0.95, 0.42, "Spectral Rend"],
-	"demon": ["fists", 0.9, 0.48, "Molten Fists"], "warlock": ["cast", 1.8, 0.2, "Drain Life"], "archer": ["bow", 1.0, 0.55, "Volley"],
+	"demon": ["fists", 0.9, 0.48, "Molten Fists"], "warlock": ["cast", 2.0, 0.55, "Eclipse Bloom"], "archer": ["bow", 1.0, 0.55, "Volley"],
 	"plague": ["pd_flask", 1.3, 0.55, "Pestilence Vial"], "doug": ["pie", 0.9, 0.5, "Cream Pie"],
 	"wyrm": ["swipe3", 1.2, 0.47, "Tail Spin"], "serpent": ["swipe3", 1.1, 0.47, "Tail Spin"], "wyvern": ["swipe3", 1.1, 0.47, "Tail Spin"]}
 const SIG_EVERY := 4.5
@@ -52,6 +52,10 @@ const SKILL_SHOW := {"storm_arc": ["cast", 0.75], "frost_breath": ["breath", 1.4
 	"fists": ["fists", 0.8], "icharge": ["icharge", 0.75], "cslam": ["cslam", 1.2], "hurl": ["hurl", 1.1], "grip": ["grip_throw", 0.9],
 	"wrath": ["wrath_roar", 1.3],
 	"drain": ["cast", 1.6], "blight": ["cast", 0.45], "shackles": ["cast", 0.5], "covenant": ["cast", 0.6],
+	"w_corruption": ["cast", 0.6], "w_unending": ["cast", 0.6], "w_festering": ["cast", 0.6], "w_leeching": ["cast", 0.6],
+	"w_reckoning": ["cast", 0.75], "w_malediction": ["cast", 0.8], "w_terrify": ["cast", 0.55], "w_effigy": ["cast", 0.7],
+	"w_darkwind": ["cast", 0.65], "w_crowstorm": ["cast", 1.4], "w_leechbolt": ["cast", 0.6], "w_harvest": ["cast", 0.9],
+	"w_soulfeast": ["cast", 1.6],
 	"pierce": ["bow", 0.9], "volley": ["bow", 0.9], "snare": ["cast", 0.6], "beast": ["cast", 0.6],
 	"toxic": ["pd_flask", 0.85], "swarm": ["pd_swarm", 0.8], "bloom": ["pd_bloom", 0.95], "fog": ["pd_fog", 0.6],
 	"transfusion": ["pd_transfuse", 0.8], "experiment": ["pd_slam", 1.2],
@@ -63,7 +67,7 @@ const PICK_SOUND := {
 	"knight": [["swing_heavy", 0.0, -2.0, 0.9], ["block", 0.16, 0.0, 0.85], ["battle_cry", 0.3, -3.0, 1.0]],
 	"wraith": [["phase_in", 0.0, -2.0, 1.0], ["wail", 0.12, -4.0, 1.1], ["shade_implode", 0.75, -3.0, 0.9]],
 	"demon": [["fire_erupt", 0.0, 0.0, 0.85], ["summon_demon", 0.2, -3.0, 0.9]],
-	"warlock": [["blight_cast", 0.0, -2.0, 1.0], ["relic_ting", 0.08, -6.0, 1.3], ["cackle", 0.3, -4.0, 1.55]],
+	"warlock": [["void_wisp", 0.0, -3.0, 1.0], ["curse_cast", 0.1, -5.0, 0.9], ["eclipse_bloom", 0.35, -8.0, 1.1]],
 	"archer": [["bow", 0.0, 0.0, 0.85], ["bow", 0.14, -3.0, 1.05], ["lion_roar", 0.32, -8.0, 1.45]],
 	"plague": [["ice_shatter", 0.0, -4.0, 1.4], ["blight_burst", 0.1, -5.0, 1.15], ["fuse", 0.35, -9.0, 1.0]],
 	"doug": [["arena_horn", 0.0, -6.0, 2.4], ["inv_click", 0.25, -2.0, 0.5], ["arena_horn", 0.4, -8.0, 2.8]],
@@ -100,6 +104,7 @@ var _sig_wait := 0.0
 var _fid_t := {}                    # cls -> seconds of fidgeting
 var _hit_done := {}
 var _beam_t := 0.0
+var _sig_fx := {}                   # cls -> a lingering piece of its signature (the Warlock's sigil), faded at its end
 # the carousel: `center` is where the ring stands now (a float index into CLASSES, wrapping), gliding
 # toward `target` (an int index, unwrapped, so several turns queue into one longer glide)
 var center := 0.0
@@ -525,6 +530,8 @@ func _process(delta: float) -> void:
 		gm.set_shader_parameter("power", nxt)
 		(gm.get_meta("cap") as ShaderMaterial).set_shader_parameter("power", nxt)
 		h.net_buff = false      # no buff aura on the stage: its motes floated in front of the chosen one; his light marks him
+		if _sig_fx.has(c) and (float(_sig_t[c]) < 0.0 or c == _skill_c or turning):
+			_end_sig_fx(c)
 		if not h.visible:
 			continue
 		if c == _skill_c:
@@ -613,6 +620,75 @@ func _skill_show(c: String, h: Hero, home: Vector3, delta: float) -> void:
 		_skill_hit = true
 		_skill_fx(c, h, home)
 
+func _end_sig_fx(c: String) -> void:
+	if not _sig_fx.has(c):
+		return
+	var n = _sig_fx[c]
+	_sig_fx.erase(c)
+	if is_instance_valid(n):
+		var sm := (n as MeshInstance3D).material_override as ShaderMaterial
+		var tw := (n as Node3D).create_tween()
+		tw.tween_method(func(v: float): sm.set_shader_parameter("alpha", v), 1.0, 0.0, 0.6)
+		tw.tween_callback((n as Node).queue_free)
+
+## The Warlock's new kit on the stage (WarlockHex's skills): the game's own pieces (WarlockHarrowFx), at stage scale.
+func _warlock_skill_fx(id: String, h: Hero, k: float, floor_front: Vector3) -> void:
+	var hand := SkillFx.hand(h, false)
+	var foe := floor_front + Vector3(0, 0.9 * k, 0)
+	var col: Color = WarlockHarrowFx.DIR_COLOR.get(id, Warlock.FEL)
+	WarlockFx.flash_light(root3d, hand, col, 1.8, 0.3, 3.0 * k)
+	match id:
+		"w_corruption", "w_unending", "w_festering", "w_leeching", "w_reckoning":
+			var cc: Color = WarlockHarrowFx.CURSE_COLORS.get(id, col)
+			WarlockHarrowFx._streak(root3d, hand, foe, cc, 0.18, 0.06)
+			var sg := WarlockAura.sigil(cc, 0.8 * k, float(id.length()), 0.9)
+			root3d.add_child(sg)
+			sg.global_position = floor_front + Vector3(0, 0.01, 0)
+			WarlockHarrowFx._motes(root3d, foe, cc, 14, 0.9)
+			_fade_out(sg, 1.6)
+			Sfx.play("curse_cast", -10.0)
+		"w_malediction", "w_leechbolt":
+			WarlockHarrowFx._bolt(root3d, hand, foe, col, 1.3, id == "w_leechbolt")
+			Sfx.play("malediction" if id == "w_malediction" else "leech_bolt", -10.0)
+		"w_terrify":
+			WarlockHarrowFx._scream(root3d, h.global_position + Vector3(0, 1.5, 0) * k, foe)
+			Sfx.play("terrify", -10.0)
+		"w_effigy":
+			var n := WarlockHarrowFx.totem()
+			root3d.add_child(n)
+			n.global_position = floor_front
+			n.scale = Vector3(k, 0.05 * k, k)
+			var tw := n.create_tween()
+			tw.tween_property(n, "scale", Vector3.ONE * k, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			tw.tween_interval(1.1)
+			tw.tween_property(n, "scale", Vector3(k, 0.02 * k, k), 0.3)
+			tw.tween_callback(n.queue_free)
+			Sfx.play("totem_rise", -10.0)
+		"w_darkwind":
+			WarlockHarrowFx._wisp_dart(root3d, hand, foe)
+			Fx.later(root3d, 0.3, func(): WarlockHarrowFx._wisp_dart(root3d, foe, foe + Vector3(1.2, 0.1, -0.3) * k))
+			Sfx.play("void_wisp", -10.0)
+		"w_crowstorm":
+			WarlockHarrowFx._wisp_burst(root3d, h.global_position + Vector3(0, 1.2, 0) * k, 6, 1.0)
+			for j in 3:
+				WarlockHarrowFx._petals(root3d, h.global_position + Vector3(randf_range(-0.6, 0.6), 1.0, randf_range(-0.2, 0.6)) * k)
+			Sfx.play("eclipse_bloom", -10.0)
+		"w_harvest":
+			WarlockHarrowFx._sweep(h, root3d, 1.6 * k)
+			Sfx.play("thornlash", -10.0)
+		"w_soulfeast":
+			for j in 3:
+				var at := floor_front + Vector3((j - 1) * 0.9, 0.8, 0) * k
+				Fx.later(root3d, j * 0.15, func(): WarlockFx.siphon(root3d, at, hand))
+			Sfx.play("soul_feast", -12.0)
+
+func _fade_out(n: Node3D, after: float) -> void:
+	var sm := (n as MeshInstance3D).material_override as ShaderMaterial
+	var tw := n.create_tween()
+	tw.tween_interval(after)
+	tw.tween_method(func(v: float): sm.set_shader_parameter("alpha", v), 1.0, 0.0, 0.5)
+	tw.tween_callback(n.queue_free)
+
 ## The skill's effects at its impact frame: the game's own, at stage scale.
 func _skill_fx(c: String, h: Hero, home: Vector3) -> void:
 	var col: Color = ACCENTS[c]
@@ -621,6 +697,9 @@ func _skill_fx(c: String, h: Hero, home: Vector3) -> void:
 	var yaw := h.rig.global_rotation.y
 	var floor_front := Vector3(home.x, 0.03, home.z + 1.5 * k)
 	var chest := h.global_position + Vector3(0, 1.1, 0.2) * k
+	if WarlockHex.has(_skill_id):
+		_warlock_skill_fx(_skill_id, h, k, floor_front)
+		return
 	match _skill_id:
 		"cleave":
 			Fx.holy_slam(root3d, p + Vector3(0, 0, 0.25 * k), 1.3 * k)
@@ -811,11 +890,19 @@ func _fidget(c: String, h: Hero, home: Vector3, f: float) -> void:
 			st["style"] = "fists"
 			st["atk"] = fmod(f, 0.9) / 0.9
 		"warlock":
-			# cackling, tiny frantic hops
-			st["style"] = "cackle"
-			st["atk"] = fmod(f, 1.2) / 1.2
-			pos.y += absf(sin(f * 11.0)) * 0.14 * k
-			yaw = FACE + sin(f * 9.0) * 0.35
+			# she rises, arms lifting and falling as she stirs the void, turning slowly; her wisps whirl in round her and
+			# now and then petals burst from her hands
+			st["style"] = "cast"
+			st["atk"] = 0.12 + 0.3 * (0.5 - 0.5 * cos(f * 2.4))
+			pos.y += (0.08 + 0.06 * sin(f * 1.2)) * k
+			yaw = FACE + sin(f * 0.9) * 0.5
+			_beam_t -= get_process_delta_time()
+			if _beam_t <= 0.0:
+				_beam_t = 1.3
+				for right in [false, true]:
+					var hp := SkillFx.hand(h, right)
+					WarlockHarrowFx._petals(root3d, hp)
+					WarlockFx.flash_light(root3d, hp, WarlockAura.VIOLET if right else Warlock.FEL, 1.2, 0.4, 2.0 * k)
 		"archer":
 			# sways side to side drawing the bow at everything
 			pos.x += sin(f * 4.0) * 0.22 * k
@@ -863,14 +950,17 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 			# the lunge of Spectral Rend, kept on the plinth
 			pos.z += smoothstep(0.05, 0.4, a) * 0.3 * k
 		"warlock":
-			# Drain Life: both hands out, holding the beam
-			st["atk"] = minf(a / 0.2, 1.0) * 0.6
-			if a > 0.2 and a < 0.95:
-				_beam_t -= delta
-				if _beam_t <= 0.0:
-					_beam_t = 0.05
-					var from := h.global_position + Vector3(0, 0.75, 0.35) * k
-					Fx.burst(root3d, from + Vector3(randf_range(-0.05, 0.05), 0, 0), col, 4, 3.5 * k, 0.07 * k, 0.5, true, 0.0, 6.0, Vector3(0, 0.08, 1))
+			# Eclipse Bloom: she gathers the void, rising, a sigil of runes opening under her; at the bloom she flings
+			# her arms wide, then settles
+			pos.y += sin(clampf(a / 0.6, 0.0, 1.0) * PI * 0.5) * 0.3 * k * (1.0 - smoothstep(0.75, 1.0, a))
+			if not _sig_fx.has(c):
+				var sg := WarlockAura.sigil(WarlockAura.VIOLET, 0.95 * k, 1.0, 1.2)
+				root3d.add_child(sg)
+				sg.global_position = Vector3(home.x, home.y + 0.03, home.z + STEP * k)
+				sg.scale = Vector3.ONE * 0.2
+				sg.create_tween().tween_property(sg, "scale", Vector3.ONE, 0.9).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+				_sig_fx[c] = sg
+				Sfx.play("eclipse_storm", -14.0)
 	h.net_pos = pos
 	h.net_yaw = _face(c)
 	h.net_st = st
@@ -895,8 +985,17 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 				Sfx.play("hellclaw", -10.0)
 				Sfx.play("slam", -16.0, 1.2)
 			"warlock":
-				Fx.flash(root3d, h.global_position + Vector3(0, 0.8, 0.6) * k, col, 2.5, 1.4, 3.5 * k)
-				Sfx.play("drain", -14.0)
+				var at := h.global_position + Vector3(0, 1.2, 0.1) * k
+				WarlockHarrowFx._wisp_burst(root3d, at, 6, 1.1)
+				for j in 3:
+					WarlockHarrowFx._petals(root3d, at + Vector3(randf_range(-0.4, 0.4), randf_range(-0.3, 0.3), 0.2) * k)
+				WarlockFx.flash_light(root3d, at, WarlockAura.VIOLET, 3.0, 0.6, 5.0 * k)
+				Fx.flash(root3d, at, col, 2.0, 0.5, 3.0 * k)
+				if _sig_fx.has(c) and is_instance_valid(_sig_fx[c]):
+					var sm := (_sig_fx[c] as MeshInstance3D).material_override as ShaderMaterial
+					var tw := (_sig_fx[c] as Node3D).create_tween()
+					tw.tween_method(func(v: float): sm.set_shader_parameter("pulse", v), 1.5, 0.0, 0.5)
+				Sfx.play("eclipse_bloom", -10.0)
 			"archer":
 				# the volley: a fan of arrows streaking up out of the bow
 				for j in 5:
@@ -926,3 +1025,4 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 	if s >= dur:
 		_sig_t[c] = -1.0
 		_sig_wait = SIG_EVERY
+		_end_sig_fx(c)
