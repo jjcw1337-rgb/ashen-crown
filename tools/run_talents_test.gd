@@ -467,8 +467,24 @@ func _skills(h) -> void:
 	h._hit_enemy(e1, 80.0, 0.0, "attack")
 	await create_timer(0.3).timeout
 	check(e1.dead and h.pd.curses.has(e2.get_instance_id()), "Epidemic: the curse leaps to the next foe when its host dies")
+	# the warlock's
+	await _fresh(h, "warlock", {})
+	e1 = _foe(h, Vector3(7, 0, 0), "zombie", 5000.0)
+	e2 = _foe(h, Vector3(8, 0, 1.5), "zombie", 5000.0)
+	ok = await _cast(h, "w_corruption", e1.global_position, 1.0)
+	check(ok and e1.life < e1.max_life and e2.burn_t > 0.0, "Corruption: the cursed ground strikes and rots")
+	await _fresh(h, "warlock", {})
+	var ring := [_foe(h, Vector3(3, 0, 0), "zombie", 5000.0), _foe(h, Vector3(-3, 0, 2), "zombie", 5000.0)]
+	h.life = h.max_life * 0.5
+	lf = h.life
+	ok = await _cast(h, "w_soulrend", h.global_position, 1.0)
+	check(ok and ring.all(func(e): return e.life < e.max_life) and h.life >= lf + h.max_life * 0.07, "Soul Rend: drains everything near and heals 4% each")
+	await _fresh(h, "warlock", {})
+	e1 = _foe(h, Vector3(8, 0, 0), "zombie", 5000.0)
+	ok = await _cast(h, "w_hellfire", e1.global_position, 2.0)
+	check(ok and e1.life < e1.max_life - 1.0, "Hellfire Rain: the blasts strike the mark")
 	# every run skill is in its class's pool and reads its theme
-	for cls in ["archer", "plague"]:
+	for cls in ["archer", "plague", "warlock"]:
 		var ids: Array = RB.skill_pool(cls).map(func(s): return s["id"])
 		var run_ids: Array = load("res://scripts/data.gd").run_skills_for(cls).map(func(s): return s["id"])
 		check(run_ids.all(func(i): return ids.has(i) and str(RT.SKILL_THEMES.get(i, "")) != ""), "%s: run skills in the pool with their themes (%d skills to find)" % [cls, ids.size()])

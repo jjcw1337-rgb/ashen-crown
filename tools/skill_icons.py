@@ -74,6 +74,17 @@ CELLS = {
         ("jade", "a single carved green jade stone with a leaf pattern"),
         ("moonstone", "a single milky moonstone with a pale blue moon glow"),
     ],
+    "warlock": [
+        ("w_corruption", "a circle of cursed ground erupting in sickly fel-green flame, rotting skeletal hands reaching up"),
+        ("w_soulrend", "ghostly green souls being torn out of shadowy figures and pulled toward a gnome warlock's raised claw"),
+        ("w_hellfire", "fel-green meteors of hellfire streaking down from a dark purple sky onto burning ground"),
+        ("-", "a warlock's floating grimoire with glowing fel runes"),
+        ("covenant", "a fel-green flame in a pact circle"),
+        ("-", "a horned gnome warlock's hat glowing green"),
+        ("shackles", "green chains of fel fire"),
+        ("blight", "a skull of blight howling green smoke"),
+        ("-", "a dark purple pact scroll sealed with green wax"),
+    ],
     "gems2": [
         ("heartstone", "a heart-shaped rose-red crystal gemstone pulsing with warm light"),
         ("prism", "a clear crystal prism splitting light into a rainbow"),

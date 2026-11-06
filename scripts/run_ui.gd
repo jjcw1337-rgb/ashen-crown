@@ -682,7 +682,19 @@ func _build_card(h, survived := true) -> Control:
 			ic.mouse_entered.connect(func(): ui.show_tooltip(_skill_lines(id)))
 			ic.mouse_exited.connect(func(): ui.tooltip.visible = false)
 		row.add_child(ic)
-	mid.add_child(MpStyle.eyebrow("Passives"))
+	if not h.run.gems.is_empty():
+		var grow := HBoxContainer.new()
+		grow.add_theme_constant_override("separation", 4)
+		mid.add_child(grow)
+		for gid in h.run.gems:
+			var g := RunTalents.gem_def(str(gid))
+			if not g.is_empty():
+				var gi := _gem_swatch(g["color"], 30, str(gid))
+				gi.mouse_filter = Control.MOUSE_FILTER_STOP
+				gi.mouse_entered.connect(func(): ui.show_tooltip([[str(g["name"]), RunBuild.RARITY_COLORS[int(g["rarity"])]], [RunTalents.text_of(g, 1), Color(0.85, 0.83, 0.77)]]))
+				gi.mouse_exited.connect(func(): ui.tooltip.visible = false)
+				grow.add_child(gi)
+	mid.add_child(MpStyle.eyebrow("Talents"))
 	var names := []
 	for pid in h.run.passives:
 		var pd := RunBuild.passive_def(h.cls, pid)
@@ -763,6 +775,25 @@ func _survivor_row(d: Dictionary, pick: Callable, current: String) -> Control:
 		if it is Dictionary:
 			gear.append(str(it.get("name", "")))
 	col.add_child(MpStyle.para(("Spellbook: " + ", ".join(reserve) + "   ·   " if not reserve.is_empty() else "") + "Gear: " + (", ".join(gear) if not gear.is_empty() else "none"), 12, MpStyle.DIM, 640))
+	# its gems and its build's leading themes
+	var rb := RunBuild.from_dict(run)
+	for k in run.get("passives", {}):
+		rb.passives[str(k)] = int(run["passives"][k])
+	var cls_id := str(d.get("cls", ""))
+	var extra := HBoxContainer.new()
+	extra.add_theme_constant_override("separation", 4)
+	col.add_child(extra)
+	for gid in rb.gems:
+		var g := RunTalents.gem_def(str(gid))
+		if not g.is_empty():
+			extra.add_child(_gem_swatch(g["color"], 22, str(gid)))
+	var themes := rb.theme_counts(cls_id)
+	var keys := themes.keys()
+	keys.sort_custom(func(a, b): return int(themes[a]) > int(themes[b]))
+	for th_id in keys.slice(0, 3):
+		var th := RunTalents.theme_def(cls_id, str(th_id))
+		if not th.is_empty():
+			extra.add_child(MpStyle.tag("%s %d" % [th["name"], int(themes[th_id])], th["color"]))
 	if pick.is_valid():
 		var b := MpStyle.button("Chosen" if sel else "Choose", not sel)
 		b.disabled = sel
