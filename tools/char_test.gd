@@ -61,10 +61,28 @@ func _run() -> void:
 	print("[C] played Fizz: class %s gold %d name %s" % [g.hero.cls, g.hero.gold, g.char_name])
 	await g.exit_to_title()
 	print("[C] Fizz now first: ", g.list_characters()[0]["name"] == "Fizz")
+	# safe saves: backups kept, no .tmp left behind, a save cut off mid-write recovered from its backup
+	await g.start_game(true, "knight", fizz)
+	for i in 4:
+		g.hero.gold = 5000 + i
+		g.save_game()
+	var fp: String = g.save_path()
+	var baks := range(1, 5).filter(func(i): return FileAccess.file_exists("%s.bak%d" % [fp, i]))
+	var safe_ok: bool = baks == [1, 2, 3] and not FileAccess.file_exists(fp + ".tmp")
+	print("[C] safe saves: backups %s (3 kept), no .tmp left %s %s" % [baks, not FileAccess.file_exists(fp + ".tmp"), "ok" if safe_ok else "FAIL"])
+	await g.exit_to_title()
+	var bad := FileAccess.open(fp, FileAccess.WRITE)
+	bad.store_string("{\"hero\": {\"cls\": \"warl")       # cut off mid-write
+	bad.close()
+	await g.start_game(true, "knight", fizz)
+	var rec_ok: bool = g.hero.gold == 5003 and g.save_recovered == fizz + ".json.bak1" and typeof(JSON.parse_string(FileAccess.get_file_as_string(fp))) == TYPE_DICTIONARY
+	print("[C] damaged save: gold %d from %s, repaired %s" % [g.hero.gold, g.save_recovered, "ok" if rec_ok else "FAIL"])
+	await g.exit_to_title()
 	# delete Fizz
 	g.delete_character(fizz)
 	chars = g.list_characters()
 	print("[C] after delete: %d left, Fizz gone %s" % [chars.size(), chars.all(func(c): return c["name"] != "Fizz")])
+	print("[C] delete removes the backups too: %s" % ("ok" if not range(1, 4).any(func(i): return FileAccess.file_exists("%s.json.bak%d" % [g.char_dir + fizz, i])) else "FAIL"))
 	_wipe()
 	DirAccess.remove_absolute(DIR)
 	quit()
