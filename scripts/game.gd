@@ -2849,9 +2849,57 @@ func raid_classes() -> Array:
 			out.append(h.cls)
 	return out
 
-## A camp tier from a monster's level (camps set their monsters' levels by tier: RunBuild.TIER_ILVL).
+## A camp tier from a monster's level (camps set their monsters' levels by tier: Camps.MON_LEVEL).
 static func tier_of_level(lvl: int) -> int:
-	return 1 if lvl <= 4 else (2 if lvl <= 9 else (3 if lvl <= 15 else 4))
+	return 1 if lvl <= 2 else (2 if lvl <= 7 else (3 if lvl <= 12 else 4))
+
+## A camp's chest: sealed until the camp falls; the first to open it rolls its loot for everyone; a run character then
+## takes its own upgrade (one of three, once per camp and round).
+func _camp_chest(t: Inter) -> void:
+	var camp := Camps.by_id(world, str(t.data["camp"]))
+	var left := Camps.alive(world, camp)
+	if left > 0:
+		ui.message("%s still stands: %d to go" % [camp.get("name", "The camp"), left], Color(1, 0.6, 0.45))
+		Sfx.play("deny")
+		return
+	if not t.used:
+		_open_chest(t)
+		if net.active:
+			net.inter_used(t)
+	if hero.run == null:
+		return
+	var key := Camps.offer_key(self, camp)
+	if hero.run.offers.has(key) and not hero.run.offer_open(key):
+		ui.message("You took this camp's upgrade", Color(0.8, 0.8, 0.85))
+		return
+	ui.close_all()
+	ui.run_ui.open_offer(key, int(camp.get("tier", 1)), str(camp.get("name", "")))
+
+## A monster died on this peer (Enemy.die_visual): was it its camp's last? Then the camp falls here: the chest
+## unseals, and a run character who fought there (within Camps.SHARE_R) gets the camp's experience.
+func camp_check(e: Enemy) -> void:
+	var camp := Camps.by_pack(world, e.pack_id)
+	if camp.is_empty() or camp["cleared"] or Camps.alive(world, camp) > 0:
+		return
+	camp["cleared"] = true
+	var ch = camp.get("chest_node")
+	if ch != null and is_instance_valid(ch):
+		Fx.pillar(world.fx_root, ch.global_position, Color(1.0, 0.82, 0.4), 1.2)
+		Fx.burst(world.fx_root, ch.global_position + Vector3(0, 0.8, 0), Color(1, 0.85, 0.5), 30, 3.0, 0.1, 0.8, true, -3.0)
+	if net.server or hero == null or hero.dead:
+		return
+	var near := Vector2(hero.global_position.x - camp["pos"].x, hero.global_position.z - camp["pos"].z).length() < float(camp["r"]) + Camps.SHARE_R
+	if not near:
+		return
+	var tier := int(camp["tier"])
+	ui.big_message("✦ %s cleared ✦" % camp["name"])
+	ui.message("Its chest is open: gear for the taking and an upgrade of your own", Color(1, 0.85, 0.45), 4.0)
+	Sfx.play("relic_ting")
+	if hero.run != null:
+		hero.run.camps += 1
+		if tier >= 4:
+			hero.run.bosses += 1
+		hero.add_xp(int(RunBuild.CAMP_XP.get(tier, 60)))
 
 ## Before a run character takes something off the ground: gear for an occupied slot opens the swap window
 ## instead (RunUI.open_swap), gear for someone else and full consumables are refused, gold is passed by.
@@ -2938,11 +2986,11 @@ func run_claim(key: String, i: int) -> Dictionary:
 
 ## A run's loot roll (the monsters and camp chests): gear for the raid's classes at the camp's tier, or a potion;
 ## never gold, rings or amulets.
-func _run_loot(at: Vector3, tier: int, good: bool) -> void:
+func _run_loot(at: Vector3, tier: int, good: bool, always := false) -> void:
 	var r := rng.randf()
-	if good or r < 0.32:
+	if good or r < (0.5 if always else 0.32):
 		drop_item(RunBuild.random_gear(tier, rng, raid_classes()), at)
-	elif r < 0.55:
+	elif always or r < 0.55:
 		drop_item(Items.potion("hp_potion" if rng.randf() < 0.7 else "mp_potion"), at)
 
 ## Somewhere else: alone, straight there; in a co-op party, everyone is asked first and the party goes
@@ -3008,6 +3056,13 @@ func _open_chest(t: Inter) -> void:
 		Fx.pillar(world.fx_root, t.global_position, Color(1.0, 0.8, 0.3), 1.6)
 	if net.is_client():
 		return
+	if run_rules():
+		# a run's chest: gear and potions at the camp's tier (the first roll always gear); the upgrade is each
+		# player's own (Game._camp_chest)
+		var tier := int(t.data.get("tier", tier_of_level(world.level)))
+		for i in int(Camps.CHEST_ROLLS.get(tier, 2)):
+			_run_loot(t.global_position, tier, i == 0, true)
+		return
 	var n := 7 if gold else rng.randi_range(2, 4)
 	for i in n:
 		if gold and i == 0:
@@ -3019,6 +3074,8 @@ func _open_chest(t: Inter) -> void:
 ## boss lives within 40 m. Every peer works it out from the monsters it has, so the server (which refuses a sealed
 ## chest's sv_inter) and each client agree, a late joiner too (a dead boss isn't in its list).
 func chest_sealed(t: Inter) -> bool:
+	if t.data.has("camp"):
+		return Camps.alive(world, Camps.by_id(world, str(t.data["camp"]))) > 0
 	var guard := str(t.data.get("guard", ""))
 	if guard == "" or world == null or t.data.get("unsealed", false):
 		return false
@@ -3454,6 +3511,9 @@ func _interact(t: Inter) -> void:
 			if net.active:
 				net.inter_used(t)
 		"chest":
+			if t.data.has("camp"):
+				_camp_chest(t)
+				return
 			if t.used:
 				return
 			if chest_sealed(t):

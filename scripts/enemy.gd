@@ -544,6 +544,7 @@ func die_visual() -> void:
 	life = 0.0
 	_drained = false
 	_set_flash(0.0)
+	game.camp_check(self)     # (its camp's last? Camps)
 	if boss:
 		Sfx.play("boss_die", 0.0, randf_range(0.85, 1.15))
 		game.guard_fell(kind)

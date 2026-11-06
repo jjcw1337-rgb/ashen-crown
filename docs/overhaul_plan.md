@@ -14,7 +14,7 @@ Character retired. This file is the working plan: each step is pushed to staging
 2. [x] **Run character** (`RunBuild`, on the hero only in Battlegrounds/Arena): level 0, basic attack, five slots
    (RMB Q E R F) + spellbook, passives feeding `Hero.tfx` instead of talents, four consumable slots (the belt), no
    gold/rings/amulets/backpack (found gear is equipped or left on the ground, with a comparison).
-3. [ ] **Camps + rewards**: camps as encounters (tier 1-3, boss), completion opens the camp's chest, one upgrade
+3. [x] **Camps + rewards**: camps as encounters (tier 1-3, boss), completion opens the camp's chest, one upgrade
    offer of three (common/uncommon/rare, generated once, claimed once), XP from kills and camps, levels 0-20+.
 4. [ ] **Survivors**: successful extraction -> results -> Save Character (no duplicates) -> survivor roster
    (`user://survivors/`, separate from single-player characters) -> Arena lobby picks a survivor.
@@ -30,4 +30,6 @@ Character retired. This file is the working plan: each step is pushed to staging
 
 - Authority today is client-trusted (docs/multiplayer_authority.md): survivors and Arena results are not
   tamper-proof; say so, don't claim otherwise.
+- Blaine (2026-11-06): the Battlegrounds map is a whole rebuild, no corridors; the old crypt map goes completely
+  once the forest map is in (its rooms host the camps meanwhile).
 - Peak Ruins (jj's snowy map) is parked on `test-peak-ruins`; it can come back as a second map.

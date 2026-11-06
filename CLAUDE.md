@@ -324,6 +324,12 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   classes). Single player never has `run`. Its windows are `RunUI` (I/K/N or a bar slot: the build; the swap; the
   camp upgrade) in the multiplayer look, `MpStyle` (palette, Cinzel and Inter in `assets/fonts`, OFL).
   `tools/run_build_test.gd`; screenshots `tools/run_ui_shots.gd -- outdir`.
+  **Camps** (`scripts/camps.gd` `Camps`): a map's encounters, `Camps.add(w, id, name, tier, pos, r, foes, chest)` (tier
+  1-3, 4 = boss; monsters at `Camps.MON_LEVEL[tier]` under the camp's own pack id, its chest sealed until they're all
+  dead: `Game.chest_sealed`, refused by the server in `Net.sv_inter`). Every peer sees a camp fall from its own
+  monsters (`Enemy.die_visual` -> `Game.camp_check`: the chest flares, a run character within `SHARE_R` gets
+  `RunBuild.CAMP_XP`); the chest (`Game._camp_chest`) drops `CHEST_ROLLS` of run loot once for everyone and opens each
+  run character's own upgrade (`Camps.offer_key`: camp and round). `tools/camp_test.gd`.
 - **Browser build (WebGL)** is a test build only and is fragile:
   - it is exported with **Godot 4.5.1** in CI (the desktop builds use 4.4.1): Godot 4.3's WebGL renderer
     blanks the whole 3D view in busy scenes (many objects near lights). Keep code working in both versions:

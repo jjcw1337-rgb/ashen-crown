@@ -1479,15 +1479,16 @@ func _shrine(p: Vector3, kind_s: String) -> void:
 	_inter("shrine", kind_s.capitalize() + " Shrine", p, 1.8, g, {"type": kind_s})
 	add_circle(p, 0.9)
 
-func _chest(p: Vector3) -> void:
+func _chest(p: Vector3) -> Inter:
 	var yaw := rng.randf_range(-40, 40)
 	# the Hollow Crypt's chests are the Meshy iron-bound chest (CryptProps.chest) on the same footprint
 	var c: Node3D = CryptProps.chest(yaw) if str(theme.get("name", "")) == "bg" else null
 	if c == null:
 		c = Props.stash_chest(null, Vector3.ZERO, yaw)
 		c.scale = Vector3.ONE * 0.75
-	_inter("chest", "Chest", p, 1.4, c)
+	var t = _inter("chest", "Chest", p, 1.4, c)
 	solid(c)
+	return t
 
 func _crypt_entrance(p: Vector3) -> void:
 	var g := Models.N(null, "crypt")
