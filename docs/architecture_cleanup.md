@@ -91,9 +91,20 @@ Touch points to coordinate:
 - Export filters.
 - Saved survivors.
 
+## Who does what
+
+- **Claude-1: the world side.** The cuts (the old crypt, Act II, Act I's story, the coast, camp life, the Last
+  Flame, the co-op server; King Grubb kept) together with the loading overhaul, which is already converting those
+  zone builders.
+- **Claude-2: the hero side.** Every hero into its folder, the shared effects into `systems/fx/`, one `codex.json`
+  per hero, then the damage and effect system and the per-skill split.
+- Both touch `game.gd`, `ui.gd` and `hero.gd`, so keep commits small, pull often, and note large edits to those
+  files here.
+
 ## Status
 
-- [ ] 1. Folders: the Archer is in progress on `claude-2/archer-pilot`. The other heroes follow.
+- [ ] 1. Folders: the Archer is done (`87bae1f`). The Plague Doctor is in progress; Wraith, Demon, Warlock, Doug, the
+  dragons and the Knight come next (the Knight's body builder goes to `systems/bodies/`).
 - [ ] 2. Reference recordings
 - [ ] 3. Damage and effect system
 - [ ] 4. One data source
