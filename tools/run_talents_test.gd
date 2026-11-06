@@ -494,10 +494,61 @@ func _skills(h) -> void:
 	check(near2.life < near2.max_life, "Aegis: it bursts for what it soaked")
 	await _fresh(h, "knight", {})
 	var low = _foe(h, Vector3(6, 0, 0), "zombie", 1000.0)
-	low.life = 60.0
+	low.life = 12.0
 	h.cds["k_rites"] = 0.0
 	ok = await _cast(h, "k_rites", low.global_position, 1.5)
 	check(ok and low.dead and h.cds["k_rites"] == 0.0, "Last Rites: the execute kills and the leap is ready again (ok %s dead %s life %.0f cd %.1f dist %.1f)" % [ok, low.dead, low.life, h.cds["k_rites"], h.global_position.distance_to(low.global_position)])
+	# the Wraith's
+	await _fresh(h, "wraith", {})
+	var dmk = _foe(h, Vector3(5, 0, 0), "zombie", 5000.0)
+	ok = await _cast(h, "r_deathmark", dmk.global_position, 0.9)
+	check(ok and dmk.has_meta("deathmark"), "Death Mark: the foe is marked")
+	h._hit_enemy(dmk, 5.0, 0.0, "attack")
+	var before_pop: float = dmk.life
+	await create_timer(3.0).timeout
+	check(not dmk.has_meta("deathmark") and dmk.life < before_pop, "Death Mark: it tears out what it stored (%.0f -> %.0f)" % [before_pop, dmk.life])
+	await _fresh(h, "wraith", {})
+	var wail := [_foe(h, Vector3(3, 0, 0), "zombie", 5000.0), _foe(h, Vector3(-3, 0, 2), "zombie", 5000.0)]
+	ok = await _cast(h, "r_wail", h.global_position, 1.2)
+	check(ok and wail.all(func(e): return e.life < e.max_life and e.slow_t > 0.0), "Banshee Wail: strikes, terrifies and slows all round")
+	await _fresh(h, "wraith", {})
+	var reap := [_foe(h, Vector3(0, 0, -3), "zombie", 5000.0), _foe(h, Vector3(1.5, 0, -3.5), "zombie", 5000.0)]
+	h._face(Vector3(0, 0, -1))
+	h.life = h.max_life * 0.5
+	lf = h.life
+	ok = await _cast(h, "r_reap", h.global_position + Vector3(0, 0, -4), 1.5)
+	check(ok and reap.all(func(e): return e.life < e.max_life) and h.life > lf, "Reaping Crescent: reaps the arc in front and heals")
+	# the Demon's
+	var DS = load("res://scripts/demon_skills.gd")
+	await _fresh(h, "demon", {})
+	var vic := [_foe(h, Vector3(8, 0, 0), "zombie", 5000.0), _foe(h, Vector3(9, 0, 1.5), "zombie", 5000.0)]
+	ok = await _cast(h, "d_volcano", vic[0].global_position, 3.5)
+	check(ok and vic.all(func(e): return e.life < e.max_life), "Volcano: its meteors fall on the foes round it")
+	await _fresh(h, "demon", {})
+	var br = _foe(h, Vector3(4, 0, 0), "zombie", 5000.0)
+	var plain = _foe(h, Vector3(-6, 0, 0), "zombie", 5000.0)
+	DS.brand(h, br)
+	ok = await _cast(h, "d_detonate", h.global_position, 1.2)
+	check(ok and br.life < br.max_life and not DS.branded(h, br) and is_equal_approx(plain.life, plain.max_life), "Hellbrand Detonation: the Branded foe erupts, the Brand spent, the unbranded spared")
+	await _fresh(h, "demon", {})
+	var d0: float = h.talent("dmg")
+	var l0p: float = h.life
+	ok = await _cast(h, "d_pact", h.global_position, 1.0)
+	check(ok and h.life < l0p and is_equal_approx(h.talent("dmg"), d0 + 35.0) and h.talent("ls") >= 6.0, "Blood Pact: life paid for +35% damage and life steal")
+	# Doug's
+	await _fresh(h, "doug", {})
+	var crowd := [_foe(h, Vector3(7, 0, 0), "zombie", 5000.0), _foe(h, Vector3(8, 0, 1.5), "zombie", 5000.0), _foe(h, Vector3(6.5, 0, -1.5), "zombie", 5000.0)]
+	ok = await _cast(h, "u_barrage", crowd[0].global_position, 2.0)
+	check(ok and crowd.all(func(e): return e.life < e.max_life), "Pie Barrage: a pie for every foe round the pointer")
+	await _fresh(h, "doug", {})
+	ok = await _cast(h, "u_bonanza", h.global_position, 1.2)
+	var peels_n: int = (h.get_meta("doug")["peels"] as Array).size()
+	check(ok and peels_n >= 8, "Banana Bonanza: a ring of eight peels (%d)" % peels_n)
+	await _fresh(h, "doug", {})
+	var far = _foe(h, Vector3(11, 0, 0), "zombie", 5000.0)
+	var p0: Vector3 = h.global_position
+	ok = await _cast(h, "u_cannon", far.global_position, 2.0)
+	check(ok and h.global_position.distance_to(p0) > 7.0 and far.life < far.max_life, "Human Cannonball: he flies to the pointer and flattens what's there")
 	# every run skill is in its class's pool and reads its theme
 	for cls in ["archer", "plague"]:
 		var ids: Array = RB.skill_pool(cls).map(func(s): return s["id"])

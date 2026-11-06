@@ -4813,6 +4813,8 @@ func _process(delta: float) -> void:
 	if bg_mode:
 		Battlegrounds.sync_proxies(self)
 		Battlegrounds.hud(self, delta)
+	if not net.is_client():
+		Camps.leash(self, delta)
 	elif ui != null and ui.hud.get_node_or_null("bg_hud") != null:
 		ui.hud.get_node("bg_hud").visible = false
 	_t += delta

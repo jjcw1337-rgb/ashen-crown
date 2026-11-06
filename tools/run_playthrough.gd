@@ -100,6 +100,9 @@ func _run() -> void:
 			for e in g.world.enemies_root.get_children():
 				if e is Enemy and not e.dead and e.pack_id == int(c["pack"]):
 					hp_left += e.life
+					var cp: Vector3 = c["pos"] if c.has("pos") else Vector3.ZERO
+					print("[RUN-PLAY]   left: %s at %s (%.1f m from the camp, %.1f from the hero) life %d/%d stun %.1f scripted %.1f aggro %s" % [e.kind, str(e.global_position.snapped(Vector3(0.1, 0.1, 0.1))),
+						Vector2(e.global_position.x - cp.x, e.global_position.z - cp.z).length(), e.global_position.distance_to(h.global_position), int(e.life), int(e.max_life), e.stun_t, e.scripted, str(e.aggro)])
 			check(false, "%s (%s): not cleared in %ds (%d left, %d of %d life, %d falls)" % [c["name"], CA.TIER_NAMES[int(c["tier"])], int(per_camp), CA.alive(g.world, c), int(hp_left), int(hp0), falls])
 			continue
 		# the chest: loot for everyone, the upgrade for us

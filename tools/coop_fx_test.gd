@@ -114,7 +114,16 @@ func _run() -> void:
 			events.clear()
 			var n0 := root.get_child_count()
 			var p0 := puppet.get_child_count() + puppet.rig.get_child_count()
+			var run_only: bool = Data.run_skills_for(cls).any(func(x): return x["id"] == id)
+			if run_only:
+				# a run's skill (Data.RUN_SKILLS): only a run character has it; give him a run with it learned
+				if h.run == null:
+					h.run = load("res://scripts/run_build.gd").new()
+				if not h.run.skills.has(id):
+					h.run.skills.append(id)
 			var ok: bool = h.use_skill(id, h.skill_aim(id, en[1].global_position))
+			if run_only:
+				h.run = null
 			var peak := 0
 			var fxs_seen := {}
 			for i in (130 if id == "cslam" else (60 if LINGER.has(id) and id != "wrath" else (190 if id == "wrath" else 36))):     # (the fault stays molten 4 s)

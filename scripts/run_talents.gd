@@ -80,8 +80,11 @@ const SKILL_THEMES := {
 	"p_miasma": "toxin", "p_spread": "toxin", "p_leech": "alchemy", "p_rats": "vermin",
 	"cleave": "crusader", "nova": "crusader", "charge": "vanguard", "cry": "vanguard",
 	"k_judgment": "crusader", "k_aegis": "bulwark", "k_whirl": "crusader", "k_rites": "vanguard",
+	"r_deathmark": "render", "r_wail": "shadow", "r_reap": "night",
 	"rend": "render", "siphon": "shadow", "step": "shadow", "grasp": "night", "phantom": "render", "night": "night",
+	"d_volcano": "cataclysm", "d_detonate": "magma", "d_pact": "pit",
 	"fists": "magma", "icharge": "magma", "cslam": "cataclysm", "hurl": "cataclysm", "grip": "pit", "wrath": "pit",
+	"u_barrage": "slapstick", "u_bonanza": "showman", "u_cannon": "bigtop",
 	"pie": "slapstick", "peels": "slapstick", "slide": "showman", "doppel": "showman", "juggle": "showman", "bounce": "bigtop", "car": "bigtop",
 	"frost_breath": "frost", "storm_arc": "storm",
 	"frost_nova": "frost", "arc": "storm", "earthshatter": "", "war_cry": "",
@@ -246,6 +249,12 @@ const TALENTS := [
 	{"id": "k_onslaught", "cls": "knight", "theme": "vanguard", "rarity": 2, "max": 1, "name": "Onslaught", "icon": "charge",
 		"proc": "momentum", "k": {"dmg": 8, "stacks": 6, "secs": 6}, "text": "Each kill: +{dmg}% damage for {secs} seconds, up to {stacks} times."},
 	# ---- the wraith
+	{"id": "r_up_mark", "cls": "wraith", "theme": "render", "rarity": 2, "max": 1, "name": "Marked Soul", "icon": "r_deathmark", "needs": "r_deathmark",
+		"fx": {"mark_pct": 30, "cd:r_deathmark": 25}, "text": "Death Mark tears out {mark_pct}% more and comes back {cd:r_deathmark}% sooner."},
+	{"id": "r_up_wail", "cls": "wraith", "theme": "shadow", "rarity": 1, "max": 1, "name": "Keening", "icon": "r_wail", "needs": "r_wail",
+		"fx": {"wail_r": 30, "wail_t": 0.6}, "text": "Banshee Wail reaches {wail_r}% further and terrifies {wail_t} seconds longer."},
+	{"id": "r_up_reap", "cls": "wraith", "theme": "night", "rarity": 1, "max": 2, "name": "Harvest of Souls", "icon": "r_reap", "needs": "r_reap",
+		"fx": {"dmg:r_reap": 15, "reap_heal": 1}, "text": "Reaping Crescent hits {dmg:r_reap}% harder and heals {reap_heal}% more for each it reaps."},
 	{"id": "r_reaper", "cls": "wraith", "theme": "render", "rarity": 2, "max": 1, "name": "Reaper", "icon": "rend",
 		"proc": "more_vs_low", "k": {"below": 35, "more": 80}, "text": "Your hits on foes under {below}% life deal +{more}% damage."},
 	{"id": "r_soulfeast", "cls": "wraith", "theme": "shadow", "rarity": 2, "max": 1, "name": "Soul Feast", "icon": "siphon",
@@ -253,6 +262,12 @@ const TALENTS := [
 	{"id": "r_dread", "cls": "wraith", "theme": "night", "rarity": 2, "max": 1, "name": "Dread", "icon": "night",
 		"proc": "chill_on_hit", "k": {"src": "", "slow": 0.35, "secs": 2.0}, "text": "Every hit chills its foe with dread."},
 	# ---- the demon
+	{"id": "d_up_volcano", "cls": "demon", "theme": "cataclysm", "rarity": 2, "max": 1, "name": "Ring of Fire", "icon": "d_volcano", "needs": "d_volcano",
+		"fx": {"volcano_more": 3, "dmg:d_volcano": 10}, "text": "Volcano hurls {volcano_more} more meteors, each {dmg:d_volcano}% harder."},
+	{"id": "d_up_detonate", "cls": "demon", "theme": "magma", "rarity": 1, "max": 1, "name": "Chain Brand", "icon": "d_detonate", "needs": "d_detonate",
+		"fx": {"detonate_brand": 1}, "text": "Hellbrand Detonation Brands everything its eruptions strike."},
+	{"id": "d_up_pact", "cls": "demon", "theme": "pit", "rarity": 1, "max": 2, "name": "Blood Price", "icon": "d_pact", "needs": "d_pact",
+		"fx": {"pact_pow": 10}, "text": "Blood Pact gives {pact_pow}% more damage."},
 	{"id": "d_hellfire", "cls": "demon", "theme": "magma", "rarity": 2, "max": 1, "name": "Hellfire", "icon": "fists",
 		"proc": "ignite_on_hit", "k": {"src": "", "pct": 20, "secs": 3.0}, "text": "Every blow sets its foe alight ({pct}% of the hit a second)."},
 	{"id": "d_eruption", "cls": "demon", "theme": "cataclysm", "rarity": 2, "max": 1, "name": "Eruption", "icon": "cslam",
@@ -260,6 +275,10 @@ const TALENTS := [
 	{"id": "d_pitborn", "cls": "demon", "theme": "pit", "rarity": 2, "max": 1, "name": "Pitborn Hide", "icon": "wrath",
 		"proc": "thorns", "k": {"pct": 100}, "text": "Monsters that strike you take {pct}% of the blow back."},
 	# ---- Doug
+	{"id": "u_up_barrage", "cls": "doug", "theme": "slapstick", "rarity": 1, "max": 2, "name": "Bakery Order", "icon": "u_barrage", "needs": "u_barrage",
+		"fx": {"barrage_more": 3}, "text": "Pie Barrage flings {barrage_more} more pies."},
+	{"id": "u_up_cannon", "cls": "doug", "theme": "bigtop", "rarity": 2, "max": 1, "name": "Extra Gunpowder", "icon": "u_cannon", "needs": "u_cannon",
+		"fx": {"cannon_r": 30, "dmg:u_cannon": 20}, "text": "Human Cannonball lands {cannon_r}% wider and {dmg:u_cannon}% harder."},
 	{"id": "u_encore", "cls": "doug", "theme": "showman", "rarity": 2, "max": 1, "name": "Standing Ovation", "icon": "juggle",
 		"proc": "echo", "k": {"chance": 35}, "text": "A skill with a cooldown has a {chance}% chance to be ready again at once."},
 	{"id": "u_slapstick", "cls": "doug", "theme": "slapstick", "rarity": 2, "max": 1, "name": "Comic Timing", "icon": "pie",
@@ -454,6 +473,11 @@ static func hit_mult(h: Hero, e, src: String) -> float:
 				m *= 1.0 + float(k["most"]) / 100.0 * clampf(missing / 0.8, 0.0, 1.0)
 	if r.hunger > 0.0:
 		m *= 1.0 + r.hunger / 100.0
+	if e.has_meta("slipped_until"):
+		# Banana Bonanza (Doug's run skill): the next blow on a foe that slipped on one of its peels
+		if Time.get_ticks_msec() < int(e.get_meta("slipped_until")):
+			m *= 2.0
+		e.remove_meta("slipped_until")
 	return m
 
 ## After one of this hero's hits landed on `e`.
@@ -922,14 +946,14 @@ static func play_fx(h: Hero, ev: Dictionary) -> void:
 				col = Color(1.0, 0.92, 0.7)
 			elif ev["e"] == "spread":
 				col = Color(0.5, 1.0, 0.3)
-			for i in ps.size() - 1:
-				if ev["e"] == "chain":
-					ArcFx.bolt(root, ps[i], ps[i + 1], 0.22, 0.9, ArcFx.STORM, h.game)
-				else:
-					Fx.bolt(root, ps[i], ps[i + 1], col, 0.18)
-				Fx.burst(root, ps[i + 1], col, 8, 2.0, 0.08, 0.3, true, -3.0)
 			if ev["e"] == "chain":
-				Sfx.play_at("arc_zap", ps[0], -8.0)
+				# the Arc skill's own lightning (the Blender bolts, the strike on each foe), leaping in turn
+				ArcFx.chain(h, root, ps, Vector3.ZERO, ArcFx.STORM, 1.25)
+				Sfx.play_at("arc_zap", ps[0], -5.0)
+			else:
+				for i in ps.size() - 1:
+					Fx.bolt(root, ps[i], ps[i + 1], col, 0.18)
+					Fx.burst(root, ps[i + 1], col, 8, 2.0, 0.08, 0.3, true, -3.0)
 		"bolt":
 			ArcFx.bolt(root, p + Vector3(randf_range(-1, 1), 14.0, randf_range(-1, 1)), p + Vector3(0, 0.2, 0), 0.3, 1.4, ArcFx.STORM, h.game)
 			Fx.ring(root, p, r, Color(0.7, 0.75, 1.0), 0.35)
@@ -977,6 +1001,7 @@ static func _toss_fx(h: Hero, root: Node3D, from: Vector3, to: Vector3, r: float
 		n.queue_free())
 
 static func _bomb_fx(h: Hero, root: Node3D, p: Vector3, r: float, kind: int) -> void:
+	Sfx.play_at("flask_shatter", p, -2.0)
 	match kind:
 		0:
 			ArrowFx.finish(h, "fire", p + Vector3(0, 0.5, 0), Vector3.FORWARD, false)

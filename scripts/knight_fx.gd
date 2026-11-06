@@ -43,7 +43,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 						HolyFx.fire_ring(root, at + Vector3(0, 0.9, 0), 0.8, KnightSkills.WHIRL_R, 0.25, 0.28)
 						HolyFx.motes(root, at, KnightSkills.WHIRL_R * 0.8, 10, 0.8)
 						Fx.sparks(root, at + Vector3(0, 1.0, 0), Color(1.0, 0.95, 0.75))
-						Sfx.play_at("cleave_swing", at, -3.0, randf_range(1.05, 1.2)))
+						Sfx.play_at("blade_spin", at, -3.0, randf_range(0.95, 1.08)))
 			SkillFx.shake(h, 0.18)
 		["k_aegis", "impact"]:
 			# Aegis: the seal under him, a shaft of light round him, a gold ring out to the taunt
@@ -51,7 +51,30 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			var ward := Fx.aura(h, Color(1.0, 0.9, 0.55), 22, 0.15, 0.08, 1.0, 0.2, 0.8, 50.0, Vector3(0, 1.0, 0))
 			ward.name = "aegis_ward"
 			Fx._free_later(ward, 6.0)
-			SkillFx.snd(h, "battle_cry", -4.0, 1.15)
+			SkillFx.snd(h, "aegis_raise", -2.0)
+		["k_aegis", "burst"]:
+			# the ward bursts: a ring of holy fire and a ripple out to the burst's reach, harder the more it soaked
+			var bp: Vector3 = ev["p"]
+			var big := clampf(float(ev.get("x", 0.0)) / 120.0, 0.3, 1.0)
+			HolyFx.seal(root, bp, 2.0, 0.1, 0.7, 0.6 + big)
+			HolyFx.sunburst(root, bp + Vector3(0, 1.2, 0), 1.8 + big, 0.3, 1.6 + big, 1.0)
+			HolyFx.fire_ring(root, bp, 0.5, KnightSkills.AEGIS_R, 0.9 + big, 0.4)
+			HolyFx.shockwave(root, h.game, bp, KnightSkills.AEGIS_R + 0.8, 0.4)
+			var wf := h.get_node_or_null("aegis_ward")
+			if wf != null:
+				wf.queue_free()
+			Sfx.play_at("aegis_burst", bp, -1.0)
+			SkillFx.shake(h, 0.2 + 0.3 * big)
+		["k_rites", "impact"]:
+			# Last Rites lands: the slam of Holy Slam, a gold seal, and on a kill a column of light
+			var rp: Vector3 = ev["p"]
+			Fx.holy_slam(root, rp, 2.6)
+			HolyFx.seal(root, rp, 2.2, 0.1, 0.8, 1.0)
+			if bool(ev.get("x", false)):
+				HolyFx.level_up(h, root, rp)
+			Sfx.play_at("last_rites", rp, 0.0)
+			SkillFx.shake(h, 0.45)
+			SkillFx.hitstop(h, 0.08)
 		["k_judgment", "impact"]:
 			# Judgment: a seal drawn on the ground, then a column of light slamming down on it in a sunburst
 			for q in ev.get("ps", PackedVector3Array()):
@@ -59,7 +82,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 				HolyFx.level_up(h, root, q)
 				HolyFx.fire_ring(root, q, 0.4, KnightSkills.JUDGE_R, 0.9, 0.35)
 				HolyFx.shockwave(root, h.game, q, KnightSkills.JUDGE_R + 0.8, 0.35)
-				Sfx.play_at("holy_nova", q, -3.0, 1.2)
+				Sfx.play_at("judgment_pillar", q, -1.0)
 			SkillFx.shake(h, 0.3)
 		["charge", "cast"]:
 			h.fxs["charge"] = 0.5

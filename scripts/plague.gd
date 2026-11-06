@@ -190,6 +190,10 @@ func remote(ev: String) -> void:
 		"curse":
 			if a.size() >= 3:
 				_curse_fx(_pv(a[1]), _pv(a[2]), null)
+		"miasma":
+			if a.size() >= 3:
+				_miasma_pool(_pv(a[1]), float(a[2]))
+				Sfx.play_at("miasma_burst", _pv(a[1]), -2.0)
 		"swarm":
 			if a.size() >= 3:
 				_swarm_start(_pv(a[1]), _pv(a[2]))
@@ -489,20 +493,31 @@ func _miasma() -> void:
 	var at := h.global_position
 	at.y = h.game.world.height_at(at.x, at.z)
 	var r := MIASMA_R * (1.0 + h.talent("miasma_r") / 100.0)
-	_cloud(at, r, MIASMA_T, "toxic")
+	_miasma_pool(at, r)
 	if h.talent("miasma_slow") > 0.0 and not ghost():
 		clouds[-1]["slow"] = true       # (Choking Miasma: its ticks slow, _update_clouds)
-	_send("cloud|%s|%.2f|%.2f|toxic" % [_v(at), r, MIASMA_T])
+	_send("miasma|%s|%.2f" % [_v(at), r])
 	var root: Node3D = h.game.world.fx_root
-	PlagueSmoke.puffs(root, at + Vector3(0, 0.3, 0), PlagueSmoke.FOG, Color(TOXIC.r, TOXIC.g, TOXIC.b, 0.7), 16, MIASMA_R * 0.7, 2.0, 2.2, MIASMA_R * 0.35, 0.3, 85.0, Vector3.UP, true)
-	Fx.ring(root, at, MIASMA_R, TOXIC, 0.5)
-	Sfx.play_at("ice_shatter", at, -4.0, 0.7)
-	Sfx.play_at("blight_burst", at, -5.0, 0.9)
+	Fx.ring(root, at, r, TOXIC, 0.5)
+	Fx.burst(root, at + Vector3(0, 0.4, 0), Color(0.8, 1.0, 0.6), 18, 4.0, 0.06, 0.4, true, -8.0)
+	Sfx.play_at("miasma_burst", at, -1.0)
 	if not ghost():
 		h.game.add_shake(0.1)
 		for e in _foes(at, r):
 			_poison(e, "toxic", MIASMA_T)
 			_add_blight(e, "p_miasma")
+
+## Miasma's ground: Pestilence Vial's burst and pool (the Meshy puddle, the FLIP splash, the vapour), as wide as
+## the censer's cloud, lasting MIASMA_T: a clouds entry like the vial's (every peer draws it; the caster's ticks poison).
+func _miasma_pool(at: Vector3, r: float) -> void:
+	var w: World = h.game.world
+	var g := Vector3(at.x, w.height_at(at.x, at.z), at.z)
+	PlagueVialFx.shatter(w.fx_root, w, g, r, 0, Vector3.DOWN, true)
+	var pool := PlagueVialFx.Pool.new()
+	w.fx_root.add_child(pool)
+	pool.global_position = g
+	pool.setup(w, g, r, 0, true)
+	clouds.append({"node": pool, "pos": g, "r": r, "t": MIASMA_T, "src": "toxic", "tick": 0.0})
 
 ## Contagion: the foe nearest the pointer is cursed; its poison leaps to all near it every second, and bursts if it dies cursed.
 func _curse(at: Vector3) -> void:
@@ -531,10 +546,10 @@ func _curse_fx(from: Vector3, to: Vector3, e) -> void:
 	Fx.bolt(root, from, to + Vector3(0, 1.0, 0), TOXIC, 0.3)
 	Fx.burst(root, to + Vector3(0, 1.0, 0), TOXIC, 16, 2.5, 0.1, 0.5, true, -2.0)
 	if e != null and is_instance_valid(e) and not e.has_node("pd_curse"):
-		var a := PlagueSmoke.vapour(e, Color(0.65, 1.0, 0.25, 0.55), 10, 0.7, 1.2, 0.6, 0.35 * e.radius + 0.2, Vector3(0, e.height * 1.2, 0), TOXIC * 0.35)
+		var a := PlagueSmoke.vapour(e, Color(0.62, 0.85, 0.22, 0.32), 6, 0.42, 1.1, 0.5, 0.3 * e.radius + 0.15, Vector3(0, e.height * 1.1, 0), TOXIC * 0.1)
 		a.name = "pd_curse"
 		Fx._free_later(a, CURSE_T)
-	Sfx.play_at("blight_burst", to, -6.0, 1.3)
+	Sfx.play_at("curse_leap", to, -3.0)
 
 func _update_curses(delta: float) -> void:
 	for id in curses.keys():
@@ -593,6 +608,7 @@ func _leech_pool(at: Vector3) -> void:
 	var root: Node3D = h.game.world.fx_root
 	Fx.burst(root, at + Vector3(0, 0.4, 0), Color(0.55, 0.05, 0.08), 26, 2.5, 0.09, 0.6, false, -8.0)
 	Fx.ring(root, at, LEECH_R, Color(0.75, 0.1, 0.12), 0.6)
+	Sfx.play_at("leech_jar", at, -2.0)
 	if ghost():
 		return
 	clouds[-1]["leech"] = true      # (the pool _shatter laid: its ticks heal him too, _update_clouds)
@@ -631,6 +647,7 @@ func _cloud(at: Vector3, r: float, dur: float, src: String) -> void:
 	node.global_position = at
 	var p := Fx.aura(node, Color(TOXIC.r * 0.6, TOXIC.g * 0.75, TOXIC.b * 0.45, 0.6), int(clampf(r * r * 6.0, 24.0, 120.0)), 0.3, 0.6, 1.6, 0.15, r * 0.8, 80.0, Vector3(0, 0.35, 0), false)
 	p.name = "fog"
+
 	Fx._free_later(node, dur + 2.0)
 	clouds.append({"node": node, "pos": at, "r": r, "t": dur, "src": src, "tick": 0.0})
 
@@ -938,6 +955,11 @@ func _bloom_at(g: Vector3, r: float, oid := 0) -> void:
 
 func _update_blooms(delta: float) -> void:
 	for b in blooms.duplicate():
+		if not is_instance_valid(b["node"]):
+			# (freed under it: a zone change, a class change) a typed hold on a freed node errors every frame
+			blooms.erase(b)
+			PvpObjects.drop(b.get("proxy"))
+			continue
 		var node: PlagueBloomFx.Bloom = b["node"]
 		b["age"] = float(b["age"]) + delta
 		if float(b["age"]) >= float(b["life"]) or not is_instance_valid(node):
@@ -1194,6 +1216,11 @@ func _exp_burst(r: float, coid := 0) -> void:
 
 func _update_exp(delta: float) -> void:
 	if lab.is_empty():
+		return
+	if not is_instance_valid(lab["node"]):
+		PvpObjects.drop(lab.get("proxy"))
+		PvpObjects.drop(lab.get("cproxy"))
+		lab = {}
 		return
 	var node: PlagueExperimentFx.Vat = lab["node"]
 	if not is_instance_valid(node):

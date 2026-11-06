@@ -124,6 +124,8 @@ func _run() -> void:
 			if id == "attack":
 				h.swipe_attack(en[1].global_position, false)
 			else:
+				if Data.run_skills_for(cls).any(func(x): return x["id"] == id) and not h.run.skills.has(id):
+					h.run.skills.append(id)
 				if not h.use_skill(id, h.skill_aim(id, en[1].global_position)):
 					push_error("Capture could not cast %s/%s" % [cls, id])
 					failures += 1
