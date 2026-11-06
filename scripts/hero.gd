@@ -1397,7 +1397,7 @@ func _use_skill(id: String, aim: Vector3) -> bool:
 		if _mine():
 			game.ui.message(("%s isn't learned yet" % sk["name"]) if run != null else ("Requires level %d" % sk.get("lvl", 1)), Color(1, 0.4, 0.3))
 		return false
-	if cds[id] > 0.0:
+	if cds.get(id, 0.0) > 0.0:
 		if _mine():
 			game.ui.message("%s is recharging" % sk["name"], Color(0.8, 0.8, 0.8))
 		return false

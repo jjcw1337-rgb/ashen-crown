@@ -387,7 +387,9 @@ func _offers(h) -> void:
 func _cast(h, id: String, at: Vector3, secs := 2.5) -> bool:
 	if not h.run.skills.has(id):
 		h.run.skills.append(id)
-	h.cds.clear()
+	for k in h.cds.keys():
+		h.cds[k] = 0.0
+	h.cds[id] = 0.0
 	h.mana = h.max_mana
 	h.atk_t = -1.0
 	h.cursor = at
@@ -471,4 +473,4 @@ func _skills(h) -> void:
 	for cls in ["archer", "plague"]:
 		var ids: Array = RB.skill_pool(cls).map(func(s): return s["id"])
 		var run_ids: Array = load("res://scripts/data.gd").run_skills_for(cls).map(func(s): return s["id"])
-		check(run_ids.all(func(i): return ids.has(i) and str(RT.SKILL_THEMES.get(i, "")) != ""), "%s: run skills in the pool with their themes (%d skills to find)" % [cls, ids.size()])
+		check(run_ids.all(func(i): return ids.has(i) and RT.SKILL_THEMES.has(i)), "%s: run skills in the pool with their themes (%d skills to find)" % [cls, ids.size()])
