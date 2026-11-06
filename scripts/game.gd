@@ -264,28 +264,20 @@ func _ready() -> void:
 			hero.set_class(OS.get_cmdline_user_args()[ci + 1])
 		await load_zone(0, shot_zone, shot_spawn if shot_spawn != "" else "start")
 		return
-	# the camp's and the title's models load on worker threads while the intro plays (Blaine, 2026-11-05: the title
-	# froze for 4.6 s while the camp was built behind it, 3.3 s of that loading 55 models on the main thread)
-	# Boot preparation is busy too: callers must not enter gameplay before a world exists.
+	# No world is built behind the title (Blaine, 2026-11-06): the camp it used to build at every start froze the
+	# screen ~1 s and was built again by start_game anyway. The title's own models load on the loader's threads while
+	# the intro plays; whatever is chosen on the title (a lobby, Sandbox, a character's world) loads its own zone.
 	_busy = true
 	_boot_preload()
 	await _play_intro()
-	# then the camp is built under the loading screen, from the cache, and the title comes up after it, smooth
-	_boot_quiet = true
-	_boot_hold = true
 	_bury_lost_raiders()
 	_stash_start()
-	# (the camp is only built behind the title here, nobody is going there yet: no zone name, Blaine 2026-11-06)
-	loading_lbl.text = "Loading..."
-	set_loading_art("")
-	loading.visible = true
 	await _await_preloads()
 	_busy = false
-	await load_zone(0, "town", "start")
-	_boot_hold = false
-	loading.visible = false
+	# (the tools/ test harness still finds the camp built when the title comes up: its scripts wait for a world)
+	if _harness_camp():
+		await load_zone(0, "town", "start")
 	ui.show_title()
-	_boot_quiet = false
 	_release_preloads()
 
 # ---------------------------------------------------------------- intro
@@ -1370,18 +1362,15 @@ func run_switched_banner() -> void:
 	ui.big_message(run_name())
 	ui.message(("The Ashen King's reign. " if difficulty >= 2 else "") + run_note(difficulty), Color(1.0, 0.7, 0.4))
 
-var _boot_quiet := false      # the camp loading behind the title at boot: no loading screen, no zone banner
-var _boot_hold := false       # ... but its loading screen kept up while it builds (the title comes up after)
 
-## The boot's files (ResCache, "boot" scope): the title's models and the camp's recorded list, read on the loader's
-## threads while the intro plays, so the title and the camp build from memory. Released once the title is up (the
-## camp's own nodes hold what it uses).
+## The boot's files (ResCache, "boot" scope): the title's models, read on the loader's threads while the intro plays.
+## Released once the title is up (the title's own nodes hold them).
 const TITLE_MODELS := ["res://assets/models/title/gate.glb", "res://assets/models/title/arcade.glb",
 	"res://assets/models/title/colossus.glb", "res://assets/models/title/crown.glb"]
 var _zone_scope := ""
 
 func _boot_preload() -> void:
-	ResCache.prepare("boot", TITLE_MODELS + (ZonePreloadData.PATHS.get(ZonePreload.key(0, "town"), []) as Array))
+	ResCache.prepare("boot", TITLE_MODELS)
 
 ## Waits (a frame at a time, so the screen stays alive) until the boot's files are in, at most max_s.
 func _await_preloads(max_s := 30.0) -> void:
@@ -1395,10 +1384,9 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		return
 	_busy = true
 	net.broadcast_goto(act, zone, spawn, at)
-	if not _boot_quiet:
-		loading_lbl.text = ("Descending into %s..." if zone == Battlegrounds.ZONE else "Entering %s...") % zone_title(act, zone)
-		set_loading_art(zone)
-	loading.visible = not _boot_quiet or _boot_hold
+	loading_lbl.text = ("Descending into %s..." if zone == Battlegrounds.ZONE else "Entering %s...") % zone_title(act, zone)
+	set_loading_art(zone)
+	loading.visible = true
 	# the zone's recorded files on the loader's threads (ResCache), while the old zone goes; the build waits for them
 	var scope := "zone:%s:%d" % [zone, Time.get_ticks_usec()]
 	ResCache.prepare(scope, ZonePreloadData.PATHS.get(ZonePreload.key(difficulty, zone), []))
@@ -1479,10 +1467,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		_stock_shops()
 		if not tp_link.is_empty():
 			_make_portal(world.spawns["portal"], "back")
-	if _boot_quiet:
-		ui.zone_lbl.text = zone_title(act, zone)
-	else:
-		ui.set_zone(zone_title(act, zone))
+	ui.set_zone(zone_title(act, zone))
 	# Act I outdoors: birds over the forest (birds.gd). Not over the Battlegrounds: in its bright afternoon their
 	# flapping shadows pulsed over the ground and a flock bursting from the trees fluttered every half minute, with
 	# the birds themselves hard to see from the camera, so it read as a glitch (Blaine, 2026-11-06)
@@ -1499,11 +1484,10 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 			CampSocial.add_to(world)
 	_add_boat(zone, spawn)
 	# the class's skill effects played once, unseen, under the loading screen: no freeze on a first cast (SkillWarm)
-	if not _boot_quiet:
-		await SkillWarm.run(self)
-		# the monsters that can still turn up here (MonsterWarm), the windows and the sheet's portrait, drawn once
-		await MonsterWarm.run(self)
-		await ui.warm_windows()
+	await SkillWarm.run(self)
+	# the monsters that can still turn up here (MonsterWarm), the windows and the sheet's portrait, drawn once
+	await MonsterWarm.run(self)
+	await ui.warm_windows()
 	zone_music()
 	loading.visible = false
 	_busy = false
@@ -2842,8 +2826,30 @@ func exit_to_title(save_current := true) -> void:
 	char_id = ""
 	while _busy:
 		await get_tree().process_frame       # (a zone still loading would swallow ours)
-	await load_zone(0, "town", "start")
+	if _harness_camp():
+		await load_zone(0, "town", "start")  # (the test harness: see _ready)
+	else:
+		unload_world()                     # (no world behind the title: see _ready)
 	ui.show_title()
+
+## The tools/ harness (a SceneTree script) still gets the camp behind the title, as before 2026-11-06: ~170 test
+## scripts wait for a world at boot. `-- --real-boot` gives a tool the real start (tools/boot_flow_test.gd).
+func _harness_camp() -> bool:
+	return get_tree().get_script() != null and not OS.get_cmdline_user_args().has("--real-boot")
+
+## Leave the current zone with nothing in its place (back to the title). load_zone does the same before it builds.
+func unload_world() -> void:
+	if world == null:
+		return
+	_store_harvest()
+	if hero != null:
+		SkillFx.clear(hero)
+	world.queue_free()
+	world = null
+	hovered = null
+	cur_zone = ""
+	ResCache.release(_zone_scope)
+	_zone_scope = ""
 
 # ---------------------------------------------------------------- shops
 func _stock_shops() -> void:

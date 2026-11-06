@@ -4,7 +4,13 @@
 the player is playing, and no frozen loading screen. Measured budget: no first-occurrence frame over **50 ms** on the
 Mac at High (a normal frame is ~17 ms).
 
-Every screen change follows the same order, at boot and at every zone change, under the loading screen:
+**Nothing is built that the player isn't going to.** The title has no world behind it (Blaine, 2026-11-06: the camp
+built there at every start froze the screen ~1.3 s and was built again on Enter World): the boot loads only the
+title's models during the intro, and each choice on the title (a lobby, Sandbox, a character's world) loads its own
+zone; going back to the title unloads the world (`Game.unload_world`). Tool scripts still get the camp behind the
+title (`Game._harness_camp`); `-- --real-boot` gives them the real start (`tools/boot_flow_test.gd`).
+
+Every zone change follows the same order, under the loading screen:
 
 1. **Load**: the files the place needs, on the loader's threads.
 2. **Build**: the world, from memory.
@@ -50,4 +56,5 @@ See [measuring.md](measuring.md): `tools/load_bench.gd` (loading strategies on t
 
 ## Open work (docs/PLAN.md)
 
-Building a zone still runs in one go on the main thread (the camp ~0.9 s): builders are to yield a little per frame.
+Building a zone still runs in one go on the main thread under its loading screen (the camp ~0.9 s, of which the grand
+waypoint 0.5 s); builders can yield a little per frame if a zone's loading screen needs to keep animating.

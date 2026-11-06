@@ -39,7 +39,7 @@ func run() -> void:
  g.char_dir="user://sandbox_lobby_test_"+role+"/"
  g.old_save=g.char_dir+"absent.json"
  root.add_child(g);current_scene=g
- if not await until(func():return g.world!=null and not g._busy and not g._intro_playing):quit(1);return
+ if not await until(func():return not g._busy and not g._intro_playing and g.ui.title_panel.visible):quit(1);return
  # Preserve an actual story character byte-for-byte across online practice.
  await g.start_game(false,"knight","","Practice Save Probe")
  g.hero.gold=4321;g.save_game()
