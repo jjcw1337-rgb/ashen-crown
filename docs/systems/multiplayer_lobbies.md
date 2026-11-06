@@ -52,13 +52,9 @@ inventory ownership and combat validation, not just more lobby processes.
 
 ## Server setup and capacity
 
-This is the DigitalOcean droplet, not Dropbox. The existing deployed setup runs persistent Godot BG
-and co-op worlds beside Nakama/Postgres and monitoring. On 2026-11-05 at 00:56 UTC the 4 GB / 2 vCPU
-host had about 688 MB available RAM and 893 MB swap in use. Three Godot processes were observed; this
-change did not stop or alter them. A later read-only check at 01:58 UTC showed ~1708 MB available,
-but all 2047 MB of swap in use, load 2.11, and three Godot processes still running. Available RAM
-alone is not evidence of safe additional capacity. The existing host was **not** already configured to allocate one
-independent process per user-created lobby.
+The DigitalOcean droplet (4 GB / 2 vCPU, `deploy/staging/README.md`) runs the lobby service, its match servers
+and the backend (Nakama, Postgres, Grafana, logging). Nothing else: the permanent Battlegrounds and online co-op
+servers were retired on 2026-11-06.
 
 The new lightweight Python service authenticates existing Nakama sessions, stores lobby state and
 receipts in SQLite, and starts an imported Godot release only on Start. Each match has its own process,
@@ -84,43 +80,14 @@ matches use 2.8 GB and 180% CPU; open UDP `24600-24615` in the cloud firewall fo
 service and unit (`/opt/ashen-crown/staging/server/current`, `/opt/ashen-crown/staging/lobbies/service.py`)
 and restarts the manager, refusing while a match is starting or playing.
 
-## Preview and rollout
+## Deploying and rolling out
 
-1. Build/import the matching Linux release **off-host**. The checked-in staging deploy script still
-   performs a capped import on the droplet; do not use that path for this rollout. Use the Linux
-   preview export (executable plus PCK) or a fully imported Linux release prepared in CI.
-   For an exported build, point `--godot` at its Linux executable, keep its PCK alongside it, and
-   place a `DEPLOYED_REV` file containing the same seven-character build revision in `--game`.
-   Keep the previous release for rollback. Client and worker Net RPC signatures must match, including
-   the existing co-op server if these clients use Co-op. The manager pins its worker release path; restart it deliberately for a new worker release.
-   Private development does not gate admission on client build revisions (Blaine, 2026-11-05).
-   New cosmetic/client builds can connect without a server redeploy. RPC or shared gameplay changes
-   still need an actual multiplayer test and, when necessary, a worker/co-op update.
-2. Verify the actual deployment user, Godot binary, release path, Nakama loopback port and existing
-   services before installing `deploy/lobbies/ashen-crown-lobbies.service`; it is a template.
-3. Configure the authenticated HTTPS site's Caddy routing, before Nakama's catch-all:
+The rollout from the permanent servers is done (2026-11-06). To update: `sh deploy/lobbies/update.sh [ci-run]`
+(above). Client and worker Net RPC signatures must match: an RPC or shared gameplay change needs the match servers
+updated and a real multiplayer test; a cosmetic client build connects to the running servers (admission doesn't
+check build revisions, Blaine 2026-11-05). `/worker` stays loopback-only and `--dev` never runs on a reachable host.
 
-   ```caddyfile
-   handle /lobbies {
-       request_body {
-           max_size 16KB
-       }
-       reverse_proxy 127.0.0.1:7352
-   }
-   ```
-
-   Keep `/worker` loopback-only. Do not run `--dev` on a remotely accessible service. No new secret is
-   embedded in clients: the browser uses the current Nakama bearer session over HTTPS. Workers use
-   random per-match keys in mode-0600 manifests. Use the existing protected BG server configuration
-   for server-side Nakama stash/admin RPCs; never place it in the repository.
-4. Coordinate retirement of the old permanent BG world, then start the manager with `--slots 1`.
-   Open **UDP 24600** in the host/cloud firewall for that slot. Each additional approved slot needs
-   another UDP port, more measured capacity, and a larger unit budget. HTTPS remains the lobby API.
-   Existing co-op queue ports are separate and are not required by these three modes.
-5. Deploy matching preview clients with `lobby_url` pointing at the site's HTTPS origin (staging
-   builds derive it from Nakama's configured URL). Verify authenticated remote discovery, two-client
-   joins, late joins, arena results, item refunds, disconnects and worker cleanup before public release.
-6. Monitor manager restarts, per-worker logs and host pressure. Retain SQLite receipts across release
+Monitor manager restarts, per-worker logs and host pressure. Retain SQLite receipts across release
    changes and back up the state directory. Old terminal worker logs/manifests can be archived after
    review; do not delete unclaimed receipts or reuse a new empty database during an ordinary upgrade.
 

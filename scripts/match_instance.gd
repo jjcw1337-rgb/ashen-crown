@@ -31,12 +31,8 @@ func start(g, path: String, port: int) -> void:
   game.net.host(port,int(config.capacity))
   await game.load_zone(0,Sandbox.ZONE if mode=="sandbox" else "arena","start")
  else:
-  game.coop_server=CoopServer.new()
-  game.coop_server.game=game
-  game.add_child(game.coop_server)
-  game.net.coop_server=true
-  game.net.host(port,int(config.capacity))
-  await game.load_zone(0,Vigil.ZONE,"start")
+  finish("aborted","This match mode is retired.")
+  return
  await request("listening",{})
  announced=true
 
@@ -93,11 +89,10 @@ func _process(delta: float) -> void:
  if not announced or ending or game.world==null or game._busy:return
  elapsed+=delta
  if game.bg!=null:game.bg.park_hero()
- elif game.coop_server!=null:game.coop_server.park_hero()
  report_t-=delta
  if begun and report_t<=0:
   report_t=10
-  request("state",{"state":"playing","joinable":str(config.mode) in ["waves","sandbox"] or (str(config.mode)=="battlegrounds" and game.bg.raid_t<Battlegrounds.JOIN_CLOSE)})
+  request("state",{"state":"playing","joinable":str(config.mode)=="sandbox" or (str(config.mode)=="battlegrounds" and game.bg.raid_t<Battlegrounds.JOIN_CLOSE)})
  if not begun:
   if report_t<=0:
    report_t=10

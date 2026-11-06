@@ -112,10 +112,8 @@ var bg_retry := []             # [addr, character id] to rejoin with when the wa
 var stash: SharedStash
 ## Characters and the stash in Nakama (cloud_saves.gd), in builds with BuildEnv.cloud() on; null otherwise.
 var cloud: CloudSaves
-var coop_server: CoopServer     # the online co-op server's logic (coop_server.gd), only on a `--server --coop` run
 var sandbox: Sandbox = null     # the admins' Battlegrounds sandbox (sandbox.gd) while one is open
 var paused := false
-var party_queue
 var match_instance
 var lobby_client
 var arena_mode := false
@@ -224,9 +222,6 @@ func _ready() -> void:
 	hero.leveled.connect(_on_level)
 	ui.bind_hero(hero)
 	if not args.has("--server"):
-		party_queue = load("res://scripts/party_queue.gd").new()
-		add_child(party_queue)
-		party_queue.setup(self)
 		lobby_client = load("res://scripts/lobby_client.gd").new()
 		add_child(lobby_client)
 		lobby_client.setup(self)
@@ -251,8 +246,6 @@ func _ready() -> void:
 			match_instance = load("res://scripts/match_instance.gd").new()
 			add_child(match_instance)
 			await match_instance.start(self, args[args.find("--match-config") + 1], port)
-		elif args.has("--coop"):
-			await CoopServer.start(self, port)       # online co-op: the story game hosted by the server
 		else:
 			await Battlegrounds.start_server(self, port)
 		return
@@ -368,7 +361,7 @@ func set_underworld(on: bool) -> void:
 	_under_target = 1.0 if on else 0.0
 
 func _end_underworld_now() -> void:
-	if hero and hero.phased and coop_server == null and bg == null:
+	if hero and hero.phased and bg == null:
 		# (a dedicated server's own hero stays phased: it's how monsters ignore it)
 		hero.phased = false
 	if underworld > 0.0 or _under_target > 0.0:
@@ -3709,11 +3702,6 @@ func waypoint_activities() -> Array:
 	var entries: Array = Data.WAYPOINT_ACTIVITIES.duplicate(true)
 	if not MpMode.WAVES:
 		entries = entries.filter(func(e): return str(e.get("id", "")) != "vigil")
-	if BuildEnv.env() != "local":
-		entries.append({"id": "online_coop", "group": "pve", "name": "Online Co-op", "kind": "Join online",
-			"route": "coop", "run": difficulty, "description": "Join the shared co-op server with this character."})
-		entries.append({"id": "find_party", "group": "pve", "name": "Find a Party", "kind": "Co-op queue",
-			"route": "party", "run": difficulty, "description": "Keep adventuring while we find a co-op party. Accept when ready."})
 	for isle in Isles.ISLANDS:
 		if not Isles.ISLE_SCRIPTS.has(str(isle["id"])):
 			continue
@@ -3741,10 +3729,6 @@ func waypoint_activities() -> Array:
 
 func waypoint_activity_valid(entry: Dictionary) -> bool:
 	if str(entry.get("name", "")) == "": return false
-	if str(entry.get("route", "")) == "party":
-		return str(entry.get("id", "")) == "find_party" and BuildEnv.env() != "local" and not OS.has_feature("web")
-	if str(entry.get("route", "")) == "coop":
-		return str(entry.get("id", "")) == "online_coop" and BuildEnv.env() != "local"
 	var zone := str(entry.get("zone", ""))
 	return str(entry.get("group", "")) in ["pve", "daily"] and str(entry.get("route", "")) == "zone" and not Data.waypoint_act(int(entry.get("run", -1))).is_empty() and (zone in ["town", "wild", "lair", "coast", Vigil.ZONE] or (zone.begins_with("isle_") and Isles.ISLE_SCRIPTS.has(Isles.id_of(zone))))
 
@@ -3758,8 +3742,6 @@ func waypoint_activity(id: String) -> Dictionary:
 func waypoint_activity_lock(entry: Dictionary) -> String:
 	if entry.is_empty(): return "This activity is no longer available."
 	if bg_mode or _busy or not playing or hero == null or hero.dead: return "Cannot travel right now."
-	if str(entry["route"]) in ["coop", "party"]:
-		return "Already in co-op." if net.active else ""
 	var run := int(entry["run"])
 	if not act_unlocked(run): return "Unlock this act first."
 	if entry.has("requires_waypoint") and not waypoint_known(run, str(entry["requires_waypoint"])):
@@ -3778,13 +3760,6 @@ func waypoint_activity_go(id: String) -> void:
 		ui.message(reason, Color(1.0, 0.6, 0.45))
 		return
 	ui.close_all()
-	if str(entry["route"]) == "party":
-		party_queue.begin()
-		return
-	if str(entry["route"]) == "coop":
-		save_game()
-		start_join(str(BuildEnv.value("coop_server")), char_id)
-		return
 	var run := int(entry["run"])
 	Sfx.play("portal")
 	if run != difficulty:

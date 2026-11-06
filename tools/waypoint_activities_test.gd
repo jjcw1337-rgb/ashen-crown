@@ -113,15 +113,6 @@ func _run():
   var expected := ["travel", 0, entry["zone"], entry["spawn"]] if int(entry["run"]) == 0 else ["switch", int(entry["run"]), entry["zone"], entry["spawn"]]
   ok(spy.dispatched.has(expected), "button dispatches correct destination " + str(entry["id"]))
   card.queue_free()
- var env = load("res://scripts/build_env.gd")
- env.forced = {"env": "staging", "coop_server": "127.0.0.1:24670", "cloud": "0"}
- spy.dispatched.clear()
- spy.waypoint_activity_go("online_coop")
- ok(spy.dispatched == [["save"], ["coop", "127.0.0.1:24670", "waypoint-test"]], "online co-op saves current character and uses configured endpoint")
- spy.net.active = true
- ok(spy.waypoint_activity_lock(spy.waypoint_activity("online_coop")) != "", "online join blocked while already in a party")
- spy.net.active = false
- env.forced = {}
  daily.erase("ends_at")
  data.WAYPOINT_ACTIVITIES.append(daily)
  spy.dispatched.clear()

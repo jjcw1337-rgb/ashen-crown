@@ -1,14 +1,8 @@
 # Performance KPIs (the official numbers)
 
-How fast and how big Ashen Crown is, measured the same way every time so the numbers can be compared night to night.
-The nightly runner measures them around every job (`tools/nightly/bench.sh`), a job that makes them worse doesn't
-ship, and they're kept in Grafana.
-
-- **Dashboard**: https://161.35.185.195/grafana/ (user `admin`, password on the Game Factory Mac in
-  `~/.config/ashen-grafana/admin_password`). The home dashboard is "Ashen Crown: performance KPIs".
-- **From a script**: `sh tools/kpi_query.sh latest` (every scenario's latest numbers) or
-  `sh tools/kpi_query.sh "SELECT ... FROM kpi ..."`.
-- **From Claude**: the `grafana` MCP (read-only), registered for every Claude session on the Mac.
+How fast and how big Ashen Crown is, measured the same way every time so a change can be compared before and after.
+Run them on demand (the nightly runner, its KPI database and dashboard were removed on 2026-11-06): the same scenario
+three times on each side, on the same machine, nothing else running.
 
 ## Scenarios
 
@@ -28,8 +22,7 @@ seconds, every frame. Run one yourself, in any build:
 | `server` | Battlegrounds server | The headless dedicated server running the crypt (`-- --server --kpi server out.json`) | 30 |
 | `download` | (export) | The macOS export: the .zip players download and the .pck inside | |
 
-The nightly benchmark runs every scenario at **High** (preset 2), the moor also at Medium and Ultra, each twice
-(the better run kept), on the Game Factory Mac (Apple M6, a 1600x900 window).
+Compare at **High** (preset 2) on the Game Factory Mac (Apple M6) unless the change is about another preset.
 
 ## Metrics and targets
 
@@ -59,18 +52,8 @@ Targets are where we want a mid-range PC to be; the Mac is the yardstick that st
 
 ## Where the numbers go
 
-- `tools/nightly/bench.sh <dir> <label>` runs the suite into `<dir>/<label>.json`.
-- `tools/nightly/kpi_push.py` puts it in the KPI store: PostgreSQL database `kpi` on the staging server, table `kpi`
-  (`deploy/staging/kpi_schema.sql`): one row per number with `ts`, `night`, `job` (perf / mode / manual), `phase`
-  (before = staging as it stood when a job started, after = the job's result), `commit`, `source` (runner, later
-  player), `machine`, `scenario`, `preset`, `metric`, `value`.
-- `tools/nightly/bench_compare.py` writes the night's `bench` row in the job's log, appends to
-  `docs/nightly/perf/metrics.jsonl`, and blocks the ship if the average fps fell more than 7% (one scenario 15%), or
-  the perf job grew the download more than 3%.
-- Grafana (`deploy/staging/docker-compose.yml`, provisioned from `deploy/staging/grafana/`) reads it through the
-  read-only role `grafana_ro`. The dashboard is generated: edit `tools/kpi_dashboard.py`, then
-  `python3 tools/kpi_dashboard.py deploy/staging/grafana/dashboards/kpis.json` and `sh deploy/staging/deploy.sh --backend`.
-- Setup (once, done 2026-11-01): `sh deploy/staging/kpi_setup.sh` (passwords made on the server, the database, the role).
+Each run writes its JSON (`out.json`, every metric above) and a screenshot. Put the before/after numbers in the commit
+message; nothing stores them centrally.
 
 ## Skills
 
@@ -107,10 +90,8 @@ frame) and compare against two identical runs, not against zero (particles, AI a
 
 ## Adding a scenario or a metric
 
-A scenario: an entry in `Kpi.SCENARIOS`, its staging in `Kpi._stage` and driving in `Kpi._drive`, then add it to the
-list in `tools/nightly/bench.sh` (and `NAMES` in `bench_compare.py` to gate on it). A metric: add it to the dictionary
-in `Kpi._finish`; it's stored and shown in the table panel automatically (a graph needs a panel in
-`tools/kpi_dashboard.py`).
+A scenario: an entry in `Kpi.SCENARIOS`, its staging in `Kpi._stage` and driving in `Kpi._drive`, . A metric: add it to the dictionary
+in `Kpi._finish`.
 
 ## Next (not built yet)
 

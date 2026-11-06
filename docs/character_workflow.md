@@ -71,8 +71,7 @@ Register the hero where the game lists classes:
 
 - The hero's own test in `game/heroes/<id>/tests/` (each skill's gameplay).
 - `tools/coop_fx_test.gd`: every skill reaches a puppet, and replaying it hurts nothing.
-- `tools/skill_spec_test.gd`, `tools/class_carousel_test.gd`, `tools/playtest.gd`, and `tools/bg_pvp_test.gd` (PvP
-  crowd control).
+- `tools/skill_spec_test.gd`, `tools/playtest.gd`, and `tools/bg_pvp_test.gd` (PvP crowd control).
 - Test in game time (`--fixed-fps 60`), not the wall clock.
 - Screenshots of every skill from the game camera, posted.
 

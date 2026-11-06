@@ -19,5 +19,4 @@ model alone in studio light, `chest_01_model.jpg`.
    parts live outside the repo in `~/Documents/Blender/Game Factory/exports/stash/chest/NN_name/`.
 2. An entry in `StashChests.CHESTS` (name, model, dais, theme, the maps that use it). A new fire colour is a new
    `Battlegrounds.STASH_THEMES` entry (and `StashDais.THEMES` for its dais).
-3. A row in the table above, and its renders in `previews/` (`godot --path . --fixed-fps 30 -s
-   tools/chest_open_clip.gd -- outdir 90 3 close 0.5 --stash-chest NN`).
+3. A row in the table above, and its renders in `previews/` (the raid stash is retired; its render tool was deleted).
