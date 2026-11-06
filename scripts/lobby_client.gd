@@ -42,6 +42,8 @@ var host_box: VBoxContainer
 var view: MpLobbyView
 ## The lobby list's state for the view: the last request's error, and whether a list has arrived yet.
 var last_error := ""
+## A match that ended on the player (disconnected, closed): shown once on the multiplayer screen.
+var notice := ""
 var loaded := false
 ## The list's columns: title, width.
 const COLUMNS := [["MODE", 130], ["LOBBY", 190], ["HOST", 140], ["FORMAT", 120], ["PLAYERS", 80], ["STATUS", 90]]
@@ -262,10 +264,16 @@ func finished(reason: String) -> void:
   game.bg_mode=false
   if not admitted:game.load_game()
  match_id="";room={}
+ var was_run:bool=game.hero!=null and game.hero.run!=null
  await game.exit_to_title()
+ if was_run:game.hero.new_character() # (a run cut off by a lost connection is over: nothing of it is kept)
  await collect()
  game.ui.message(reason)
  _returning=false
+ # back on the multiplayer screen with the mode and class or survivor chosen before, saying what happened
+ open(selected_mode)
+ notice=reason+(" The run was lost with the connection." if was_run else "")
+ draw()
 
 func _process(delta: float) -> void:
  if game==null:return

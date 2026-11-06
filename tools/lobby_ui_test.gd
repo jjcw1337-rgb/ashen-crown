@@ -78,6 +78,9 @@ func run():
   if not g.playing:break
   await wait_s(1)
  check(not g.playing,"unavailable match returns to home")
+ await wait_s(6)
+ check(c.panel.visible and c.notice!="" and c.view.find_child("rows",true,false)!=null,"and to the multiplayer screen, saying the match ended ("+c.notice.left(40)+")")
+ await shot("notice")
  var saved=JSON.parse_string(FileAccess.get_file_as_string(g.char_dir+"uihero.json"))
  check(saved.hero.gold==8765 and not saved.in_raid,"failed admission preserves gold and raid eligibility")
  await wait_s(10)

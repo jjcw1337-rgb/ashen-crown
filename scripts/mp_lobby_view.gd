@@ -399,6 +399,11 @@ func _right_browse(mode: String) -> void:
 			rows.add_child(_lobby_row(str(f.name) + "'s world", "Co-op  ·  a friend's story game", "", "Open", true, func():
 				hide()
 				game.steam.join_world(fl)))
+	if lc.notice != "":
+		var msg: String = lc.notice
+		rows.add_child(_state_card("Your last match ended", msg, "Dismiss", func():
+			lc.notice = ""
+			lc.draw()))
 	if lc.last_error != "" and lc.rooms.is_empty():
 		rows.add_child(_state_card("Can't reach the lobby service", lc.last_error + " Your selections are kept.", "Retry", func(): lc.refresh()))
 	elif not lc.loaded:

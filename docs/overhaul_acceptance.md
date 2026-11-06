@@ -25,7 +25,7 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 ## 4. Simple journey: Multiplayer → browse/create → mode → prepare → ready → play
 - 🟡 Works end to end with the existing lobby service (`bg_test`); mode (tabs), host, players, capacity, state and joinability shown (`mp_lobby_shots`).
 - ✅ Filtering (All / Joinable now), loading, empty, full (Join disabled, "Full") and service-failure (Retry, selections kept) states; distinct mode artwork (`mp_lobby_shots` screenshots).
-- ⬜ A disconnected-from-match state in the new look (the old message path is used). **Not proven yet.**
+- ✅ Disconnected from a match: back on the multiplayer screen in the same mode with the same class or survivor chosen, a "Your last match ended" card saying why (and that a cut-off run is lost), Dismiss (`lobby_ui_test`).
 - ✅ The survivor roster is reachable from the lobby (Survivors button; `survivor_test`).
 
 ## 5. Battlegrounds class selection inside the lobby
