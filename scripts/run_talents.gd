@@ -84,6 +84,7 @@ const SKILL_THEMES := {
 	"rend": "render", "siphon": "shadow", "step": "shadow", "grasp": "night", "phantom": "render", "night": "night",
 	"d_volcano": "cataclysm", "d_detonate": "magma", "d_pact": "pit",
 	"fists": "magma", "icharge": "magma", "cslam": "cataclysm", "hurl": "cataclysm", "grip": "pit", "wrath": "pit",
+	"u_barrage": "slapstick", "u_bonanza": "showman", "u_cannon": "bigtop",
 	"pie": "slapstick", "peels": "slapstick", "slide": "showman", "doppel": "showman", "juggle": "showman", "bounce": "bigtop", "car": "bigtop",
 	"frost_breath": "frost", "storm_arc": "storm",
 	"frost_nova": "frost", "arc": "storm", "earthshatter": "", "war_cry": "",
@@ -274,6 +275,10 @@ const TALENTS := [
 	{"id": "d_pitborn", "cls": "demon", "theme": "pit", "rarity": 2, "max": 1, "name": "Pitborn Hide", "icon": "wrath",
 		"proc": "thorns", "k": {"pct": 100}, "text": "Monsters that strike you take {pct}% of the blow back."},
 	# ---- Doug
+	{"id": "u_up_barrage", "cls": "doug", "theme": "slapstick", "rarity": 1, "max": 2, "name": "Bakery Order", "icon": "u_barrage", "needs": "u_barrage",
+		"fx": {"barrage_more": 3}, "text": "Pie Barrage flings {barrage_more} more pies."},
+	{"id": "u_up_cannon", "cls": "doug", "theme": "bigtop", "rarity": 2, "max": 1, "name": "Extra Gunpowder", "icon": "u_cannon", "needs": "u_cannon",
+		"fx": {"cannon_r": 30, "dmg:u_cannon": 20}, "text": "Human Cannonball lands {cannon_r}% wider and {dmg:u_cannon}% harder."},
 	{"id": "u_encore", "cls": "doug", "theme": "showman", "rarity": 2, "max": 1, "name": "Standing Ovation", "icon": "juggle",
 		"proc": "echo", "k": {"chance": 35}, "text": "A skill with a cooldown has a {chance}% chance to be ready again at once."},
 	{"id": "u_slapstick", "cls": "doug", "theme": "slapstick", "rarity": 2, "max": 1, "name": "Comic Timing", "icon": "pie",
@@ -468,6 +473,11 @@ static func hit_mult(h: Hero, e, src: String) -> float:
 				m *= 1.0 + float(k["most"]) / 100.0 * clampf(missing / 0.8, 0.0, 1.0)
 	if r.hunger > 0.0:
 		m *= 1.0 + r.hunger / 100.0
+	if e.has_meta("slipped_until"):
+		# Banana Bonanza (Doug's run skill): the next blow on a foe that slipped on one of its peels
+		if Time.get_ticks_msec() < int(e.get_meta("slipped_until")):
+			m *= 2.0
+		e.remove_meta("slipped_until")
 	return m
 
 ## After one of this hero's hits landed on `e`.

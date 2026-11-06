@@ -43,6 +43,21 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 	match id:
 		"pie", "peels", "doppel", "juggle", "car":
 			h._start_attack(id, id)
+		# a run's skills (Data.RUN_SKILLS), on his own moves
+		"u_barrage":
+			h._start_attack("pie", "u_barrage")
+		"u_bonanza":
+			h._start_attack("peels", "u_bonanza")
+		"u_cannon":
+			h._start_attack("bounce", "u_cannon")
+			var to2 := aim
+			to2.y = h.global_position.y
+			var off2 := to2 - h.global_position
+			if off2.length() > 14.0:
+				to2 = h.global_position + off2.normalized() * 14.0
+			to2 = h.game.world.free_spot_near(to2, 1.0)
+			s["bounce"] = {"from": h.global_position, "to": to2}
+			h.fx("bounce", "mark", {"p": h.global_position, "q": to2, "x": h.atk_dur})
 		"slide":
 			h._start_attack("slide", "slide")
 			s["slide"] = {"from": h.global_position, "dir": h.aim_dir(), "hit": {}}
@@ -110,9 +125,54 @@ static func impact(h: Hero) -> bool:
 			s["car_t"] = CAR_SECS
 			s["rammed"] = {}
 			h.fx("car", "start", {"p": h.global_position, "x": CAR_SECS})
+		"u_barrage":
+			var at: Vector3 = s.get("aim", h.global_position + h.aim_dir() * 6.0)
+			var off := at - h.global_position
+			off.y = 0
+			if off.length() > 12.0:
+				at = h.global_position + off.normalized() * 12.0
+			var foes: Array = h.game.enemies_near(at, 5.0).filter(func(e): return not e.dead)
+			var n := 6 + int(h.talent("barrage_more"))
+			for i in n:
+				var to: Vector3
+				if i < foes.size():
+					to = foes[i].global_position
+				else:
+					var a := TAU * float(i) / n
+					to = at + Vector3(cos(a), 0, sin(a)) * randf_range(1.0, 3.5)
+				var t := PIE_FLIGHT + i * 0.05
+				(s["pies"] as Array).append({"to": to, "t": t, "src": "u_barrage"})
+				h.fx("pie", "throw", {"p": h.global_position + Vector3(0, 1.2, 0), "q": to, "x": t})
+		"u_bonanza":
+			var ps := PackedVector3Array()
+			for k in 8:
+				var a2 := TAU * float(k) / 8.0
+				var p: Vector3 = h.game.world.free_spot_near(h.global_position + Vector3(cos(a2), 0, sin(a2)) * 3.2, 0.6)
+				(s["peels"] as Array).append({"p": p, "t": PEEL_LIFE, "bonanza": true})
+				ps.append(p)
+			while (s["peels"] as Array).size() > PEEL_MAX + 8:
+				var old: Dictionary = (s["peels"] as Array).pop_front()
+				h.fx("peels", "gone", {"p": old["p"]})
+			h.fx("peels", "land", {"ps": ps, "x": PEEL_LIFE})
+		"u_cannon":
+			var b2: Dictionary = s["bounce"]
+			if not b2.is_empty():
+				h.global_position = b2["to"]
+			var r := CANNON_R * (1.0 + h.talent("cannon_r") / 100.0)
+			var hit2 := []
+			for e in h.game.enemies_near(h.global_position, r):
+				h._hit_enemy(e, 2.6, 2.4, "u_cannon")
+				_cc(h, e, "quake", 1.0)
+				hit2.append(e)
+			h.fx("bounce", "flop", {"p": h.global_position, "t": hit2})
+			h.fx("u_cannon", "boom", {"p": h.global_position, "r": r})
+			h.game.add_shake(0.5)
+			s["bounce"] = {}
 		_:
 			return false
 	return true
+
+const CANNON_R := 4.5
 
 ## A crowd-control effect on a foe: a monster stunned or slowed, another player told through the server.
 static func _cc(h: Hero, e, kind: String, secs: float) -> void:
@@ -151,7 +211,7 @@ static func update(h: Hero, delta: float) -> void:
 				best = e
 		h.fx("pie", "splat", {"p": pie["to"], "t": [best] if best != null else []})
 		if best != null:
-			h._hit_enemy(best, 1.2, 0.0, "pie")
+			h._hit_enemy(best, 0.8 if str(pie.get("src", "")) == "u_barrage" else 1.2, 0.0, str(pie.get("src", "pie")))
 			var key := str(best.get_instance_id())
 			var now := Time.get_ticks_msec() / 1000.0
 			if now - float((s["pied"] as Dictionary).get(key, -99.0)) > PIED_LOCK:
@@ -167,6 +227,8 @@ static func update(h: Hero, delta: float) -> void:
 			for e in h.game.enemies_near(pl["p"], PEEL_R + 0.5):
 				if Vector2(e.global_position.x - pl["p"].x, e.global_position.z - pl["p"].z).length() < PEEL_R + e.radius * 0.5:
 					_cc(h, e, "slip", 1.0)
+					if pl.has("bonanza"):
+						e.set_meta("slipped_until", Time.get_ticks_msec() + 4000)     # (Banana Bonanza: the next blow doubles)
 					h.fx("peels", "slip", {"p": pl["p"], "t": [e]})
 					gone = true
 					break

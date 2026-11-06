@@ -529,6 +529,20 @@ func _skills(h) -> void:
 	var l0p: float = h.life
 	ok = await _cast(h, "d_pact", h.global_position, 1.0)
 	check(ok and h.life < l0p and is_equal_approx(h.talent("dmg"), d0 + 35.0) and h.talent("ls") >= 6.0, "Blood Pact: life paid for +35% damage and life steal")
+	# Doug's
+	await _fresh(h, "doug", {})
+	var crowd := [_foe(h, Vector3(7, 0, 0), "zombie", 5000.0), _foe(h, Vector3(8, 0, 1.5), "zombie", 5000.0), _foe(h, Vector3(6.5, 0, -1.5), "zombie", 5000.0)]
+	ok = await _cast(h, "u_barrage", crowd[0].global_position, 2.0)
+	check(ok and crowd.all(func(e): return e.life < e.max_life), "Pie Barrage: a pie for every foe round the pointer")
+	await _fresh(h, "doug", {})
+	ok = await _cast(h, "u_bonanza", h.global_position, 1.2)
+	var peels_n: int = (h.get_meta("doug")["peels"] as Array).size()
+	check(ok and peels_n >= 8, "Banana Bonanza: a ring of eight peels (%d)" % peels_n)
+	await _fresh(h, "doug", {})
+	var far = _foe(h, Vector3(11, 0, 0), "zombie", 5000.0)
+	var p0: Vector3 = h.global_position
+	ok = await _cast(h, "u_cannon", far.global_position, 2.0)
+	check(ok and h.global_position.distance_to(p0) > 7.0 and far.life < far.max_life, "Human Cannonball: he flies to the pointer and flattens what's there")
 	# every run skill is in its class's pool and reads its theme
 	for cls in ["archer", "plague"]:
 		var ids: Array = RB.skill_pool(cls).map(func(s): return s["id"])

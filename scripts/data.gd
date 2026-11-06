@@ -827,6 +827,12 @@ const RUN_SKILLS := [
 		"desc": "Every Branded foe within 10 metres erupts: 160% weapon damage, thrown up for 0.8 seconds, and the fire bursts onto those beside it. The Brands are spent."},
 	{"id": "d_pact", "cls": "demon", "name": "Blood Pact", "lvl": 1, "mana": 0, "cd": 12.0, "tags": ["buff"], "aim": "self", "role": "life for power",
 		"desc": "Pay 15% of your life to the pit: for 8 seconds +35% damage and 6% of the damage you deal heals you."},
+	{"id": "u_barrage", "cls": "doug", "name": "Pie Barrage", "lvl": 1, "mana": 10, "cd": 0.0, "use": 1.1, "aim": "point", "range": 12.0, "role": "pie a crowd",
+		"desc": "Fling six cream pies at once onto the foes around the pointer: each 80% weapon damage, and the first time a foe is Pied it is stunned and slowed."},
+	{"id": "u_bonanza", "cls": "doug", "name": "Banana Bonanza", "lvl": 9, "mana": 8, "cd": 9.0, "tags": ["trap"], "aim": "self", "role": "a ring of peels",
+		"desc": "Scatter eight banana peels in a ring round you: whatever steps on one goes down. Your next blow on a slipped foe within 4 seconds hits twice as hard."},
+	{"id": "u_cannon", "cls": "doug", "name": "Human Cannonball", "lvl": 9, "mana": 12, "cd": 8.0, "tags": ["movement"], "aim": "point", "range": 14.0, "role": "fly in, flatten",
+		"desc": "Fire yourself out of a cannon onto the pointer (14 metres): you land in a belly-flop that deals 260% weapon damage within 4.5 metres and knocks them down."},
 	{"id": "p_leech", "cls": "plague", "name": "Leech Jar", "lvl": 9, "mana": 10, "cd": 9.0, "tags": ["sustain"], "aim": "point", "range": 12.0, "role": "heal from foes",
 		"desc": "Lob a jar of blood leeches: for 5 seconds everything within 3 metres is poisoned, and every foe in it heals you 1.5% of your life a second."},
 ]
