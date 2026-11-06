@@ -7,6 +7,7 @@ var detail
 var status
 var team_pick
 var mode_buttons := {}
+var solo_button: Button
 var create_button
 var rules: Label
 var wager_pick
@@ -94,6 +95,7 @@ func _build_prep(ui) -> void:
 ## The member's character for the lobby service: "run_<class>" in Battlegrounds, the survivor's id in the Arena.
 func member_character(mode := "") -> String:
  if mode=="":mode=str(room.get("mode",selected_mode))
+ if mode=="sandbox":return "sandbox_"+run_class
  if mode=="arena":return survivor
  return "run_"+run_class
 
@@ -107,7 +109,7 @@ func member_name(mode := "") -> String:
 func _draw_prep() -> void:
  if prep_box==null:return
  var mode:=str(room.get("mode",selected_mode))
- class_pick.get_parent().visible=mode=="battlegrounds"
+ class_pick.get_parent().visible=mode in ["battlegrounds","sandbox"]
  class_pick.disabled=not room.is_empty()
  survivor_btn.get_parent().visible=mode=="arena"
  survivor_btn.disabled=not room.is_empty()
@@ -199,12 +201,13 @@ func draw() -> void:
   var mine:Dictionary=room.members.get(identity,{})
   var ch:=str(mine.get("character",""))
   if ch.begins_with("run_") and run_classes().has(ch.trim_prefix("run_")):run_class=ch.trim_prefix("run_")
+  elif ch.begins_with("sandbox_") and run_classes().has(ch.trim_prefix("sandbox_")):run_class=ch.trim_prefix("sandbox_")
   elif Survivors.is_survivor(ch):survivor=ch
  if not MpMode.mode_on(selected_mode):selected_mode=MpMode.MODES[0]
  _draw_prep()
  if view!=null and view.visible:view.render()
 
-const MODE_NAMES := {"battlegrounds": "Battlegrounds", "waves": "Endless Waves", "arena": "Arena"}
+const MODE_NAMES := {"battlegrounds": "Battlegrounds", "waves": "Endless Waves", "arena": "Arena", "sandbox": "Sandbox"}
 
 ## One row of the list: its columns and a Join button.
 func _row(cells: Array, joinable: bool, join: Callable) -> Control:
@@ -223,6 +226,7 @@ func _format(r: Dictionary) -> String:
   "arena":return "%dv%d%s"%[int(r.team_size),int(r.team_size)," · items" if bool(r.get("wager",false)) else ""]
   "battlegrounds":return "Raid · %d max"%int(r.capacity)
   "waves":return "Co-op · %d max"%int(r.capacity)
+  "sandbox":return "Practice · %d max"%int(r.capacity)
  return ""
 
 ## A new lobby's name: the host's character.
@@ -237,15 +241,25 @@ func enter_match() -> void:
  game.save_game()
  game.party_join_ticket=str(room.ticket)
  panel.hide()
- if str(room.mode)=="battlegrounds":
+ if str(room.mode)=="sandbox":
+  await game.start_sandbox_join(str(room.address),character)
+ elif str(room.mode)=="battlegrounds":
   await game.start_battlegrounds(str(room.address),"",character.trim_prefix("run_") if character.begins_with("run_") else run_class)
  else:
   game.arena_mode=str(room.mode)=="arena"
   await game.start_join(str(room.address),character)
   if game.arena_mode:game.hero.recalc()
 
+func play_solo() -> void:
+ if busy or game._busy or not room.is_empty():return
+ if selected_mode=="sandbox":
+  if game.party_queue!=null:game.party_queue.stop()
+  panel.hide()
+  await game.open_sandbox(run_class)
+ elif selected_mode=="waves":await play_solo_waves()
+
 func play_solo_waves() -> void:
- if not MpMode.WAVES:return
+ if not MpMode.WAVES or selected_mode!="waves":return
  if not room.is_empty():status.text="Leave your lobby before playing solo.";return
  panel.hide()
  if not game.playing:await game.start_game(true,"knight",character)
@@ -258,7 +272,7 @@ func finished(reason: String) -> void:
  game.ui.big_message(reason)
  await get_tree().create_timer(4).timeout
  game.net.shutdown()
- if game.arena_mode:
+ if game.arena_mode and game.sandbox==null:
   game.arena_mode=false;game.arena_state={};game.load_game()
  elif game.bg_mode:
   if admitted:game.bg_strip()
@@ -279,7 +293,7 @@ func finished(reason: String) -> void:
 func _process(delta: float) -> void:
  if game==null:return
  game.ui.quest_tracker.visible=not game.arena_mode and not game.bg_mode
- arena_hud.visible=game.arena_mode and not game.ui.any_panel_open()
+ arena_hud.visible=game.arena_mode and game.sandbox==null and not game.ui.any_panel_open()
  if game.arena_mode:
   var s:Dictionary=game.arena_state
   var score:Array=s.get("scores",[0,0])

@@ -266,6 +266,8 @@ func _ready() -> void:
 		return
 	# the camp's and the title's models load on worker threads while the intro plays (Blaine, 2026-11-05: the title
 	# froze for 4.6 s while the camp was built behind it, 3.3 s of that loading 55 models on the main thread)
+	# Boot preparation is busy too: callers must not enter gameplay before a world exists.
+	_busy = true
 	_boot_preload()
 	await _play_intro()
 	# then the camp is built under the loading screen, from the cache, and the title comes up after it, smooth
@@ -278,6 +280,7 @@ func _ready() -> void:
 	set_loading_art("")
 	loading.visible = true
 	await _await_preloads()
+	_busy = false
 	await load_zone(0, "town", "start")
 	_boot_hold = false
 	loading.visible = false
@@ -1959,7 +1962,7 @@ func _start_run_raid(addr: String, id: String, cls: String) -> void:
 	Sfx.play("click")
 	net.stop_listening()
 	if cls == "" and id != "":
-		var d = JSON.parse_string(FileAccess.get_file_as_string(char_dir + id + ".json")) if FileAccess.file_exists(char_dir + id + ".json") else null
+		var d := read_save(char_dir + id + ".json", false)
 		cls = str(d.get("hero", {}).get("cls", "")) if d is Dictionary else ""
 	if not Data.CLASSES.has(cls):
 		cls = hero.cls if hero != null and Data.CLASSES.has(hero.cls) else "archer"
@@ -2563,7 +2566,7 @@ func _write_char(p: String, id: String, d: Dictionary) -> void:
 		cloud.push(id, d)
 
 func save_game() -> void:
-	if arena_mode: return # Arena uses a temporary copy; only escrow settlement changes owned items.
+	if arena_mode or sandbox != null: return # Practice and Arena use a temporary copy; only escrow settlement changes owned items.
 	if hero != null and hero.run != null:
 		return      # (a run character is saved only as a survivor, at a successful exit: Survivors)
 	if char_id == "" and not _testing():
@@ -2618,14 +2621,19 @@ func _replace(a: String, b: String) -> bool:
 ## Reads a save, falling back to a finished .tmp and then the backups, newest first, when the save itself is missing
 ## or damaged; {} when there's nothing usable. `save_recovered` names the copy it came from.
 var save_recovered := ""
-func read_save(path: String) -> Dictionary:
-	save_recovered = ""
+func read_save(path: String, record_recovery := true) -> Dictionary:
+	if record_recovery:
+		save_recovered = ""
 	for p in [path, path + ".tmp"] + range(1, SAVE_BACKUPS + 1).map(func(i): return "%s.bak%d" % [path, i]):
 		if not FileAccess.file_exists(p):
 			continue
-		var d = JSON.parse_string(FileAccess.get_file_as_string(p))
+		# A truncated candidate is expected here: parse quietly, then try its backup.
+		var parser := JSON.new()
+		if parser.parse(FileAccess.get_file_as_string(p)) != OK:
+			continue
+		var d = parser.data
 		if typeof(d) == TYPE_DICTIONARY and typeof(d.get("hero")) == TYPE_DICTIONARY:
-			if p != path:
+			if record_recovery and p != path:
 				save_recovered = p.get_file()
 			return d
 	return {}
@@ -2668,11 +2676,8 @@ func list_characters() -> Array:
 	for fn in dir.get_files():
 		if not fn.ends_with(".json"):
 			continue
-		var f := FileAccess.open(char_dir + fn, FileAccess.READ)
-		if f == null:
-			continue
-		var d = JSON.parse_string(f.get_as_text())
-		if typeof(d) != TYPE_DICTIONARY:
+		var d := read_save(char_dir + fn, false)
+		if d.is_empty():
 			continue
 		var h: Dictionary = d.get("hero", {})
 		out.append({"id": fn.get_basename(), "name": str(d.get("name", "")), "cls": str(h.get("cls", "knight")),
@@ -2696,9 +2701,8 @@ func character_gear(id: String) -> Dictionary:
 	var path := char_dir + id + ".json"
 	if id == "" or not FileAccess.file_exists(path):
 		return {}
-	var f := FileAccess.open(path, FileAccess.READ)
-	var d = JSON.parse_string(f.get_as_text()) if f else null
-	if typeof(d) != TYPE_DICTIONARY:
+	var d := read_save(path, false)
+	if d.is_empty():
 		return {}
 	var h: Dictionary = d.get("hero", {}) if d.get("hero") is Dictionary else {}
 	var g: Dictionary = (h.get("equipment", {}) as Dictionary).duplicate(true) if h.get("equipment") is Dictionary else {}
@@ -2809,7 +2813,8 @@ func bg_server_address() -> String:
 	return "%s:%d" % [own, int(Battlegrounds.best_raid(Time.get_unix_time_from_system()).get("port", Net.PORT))]
 
 ## Back to the title screen to pick another character (the pause menu's "Save and Exit to Title").
-func exit_to_title() -> void:
+func exit_to_title(save_current := true) -> void:
+	var leaving_practice := sandbox != null
 	if steam != null:
 		steam.close_world()      # (friends see our world gone)
 	if lobby_client != null and lobby_client.match_id != "":
@@ -2821,18 +2826,17 @@ func exit_to_title() -> void:
 	if arena_mode:
 		arena_mode = false
 		arena_state = {}
-		load_game()
+		if sandbox == null: load_game()
 	if sandbox != null:
 		# out of the sandbox first: the character as it was outside
 		sandbox.shutdown()
 		sandbox = null
 		char_id = _sandbox_char
 		_sandbox_char = ""
-		if char_id != "":
-			load_game()
+		if char_id != "" and not load_game(): char_id = ""
 	if bg_mode and not hero.dead:
 		bg_strip()           # leaving a raid without extracting is dying there (it saves)
-	else:
+	elif save_current and not leaving_practice:
 		save_game()
 	_bg_home()
 	bg_mode = false
@@ -4336,50 +4340,87 @@ func _boss_loot(e: Enemy) -> void:
 	drop_item(bu, e.global_position)
 	ui.message("%s dropped %s!" % [e.display_name, bu["name"]], Color(0.85, 0.66, 0.38))
 
-## The admins' Battlegrounds sandbox (Sandbox; the Escape menu's Admin column): the character is saved and set aside
-## (char_id cleared, so nothing in there is saved) and comes back exactly as it was on leaving.
+## Practice uses a temporary hero. Preserve the saved character and restore it when leaving.
 var _sandbox_char := ""
 
-func open_sandbox() -> void:
-	if not dev_tools or sandbox != null or _busy:
-		return
-	if net.active:
-		ui.message("Leave the party first: the sandbox is played alone", Color(1, 0.6, 0.4))
-		return
-	if bg_mode:
-		ui.message("Not from inside a raid", Color(1, 0.6, 0.4))
-		return
-	if paused:
-		toggle_pause()
-	save_game()
-	_sandbox_char = char_id
+var _sandbox_from_title := false
+
+func _begin_sandbox(cls: String, online: bool) -> void:
+	_sandbox_from_title = not playing
+	if playing: save_game()
+	_sandbox_char = char_id if playing else ""
 	char_id = ""
+	if paused: toggle_pause()
+	ui.hide_title()
+	ui.close_all()
+	net.stop_listening()
+	playing = true
+	hero.run = null
 	sandbox = Sandbox.new(self)
-	sandbox.pick_me["cls"] = hero.cls
-	sandbox.pick_bot["cls"] = hero.cls
+	sandbox.online = online
+	sandbox.pick_me["cls"] = cls if Data.CLASSES.has(cls) else "knight"
+	sandbox.pick_bot["cls"] = sandbox.pick_me["cls"]
 	add_child(sandbox)
+	Sandbox.outfit(self, hero, sandbox.pick_me["cls"], 20, "geared")
+
+func open_sandbox(cls := "") -> void:
+	if sandbox != null or _busy: return
+	if net.active or bg_mode or arena_mode or (lobby_client != null and not lobby_client.room.is_empty()):
+		ui.message("Leave your current match or lobby before entering Sandbox.")
+		return
+	_begin_sandbox(hero.cls if cls == "" else cls, false)
 	await load_zone(0, Sandbox.ZONE, "start")
-	Sandbox.outfit(self, hero, hero.cls, 20, "geared")
 	ui.refresh()
 	ui.big_message(Sandbox.TITLE)
-	ui.message("Your character is saved and waits outside; nothing here is kept", Color(0.6, 0.85, 1.0))
+	ui.message("Practice only. Your saved characters are unchanged.", Color(0.6, 0.85, 1.0))
+
+func start_sandbox_join(address: String, ticket_character: String) -> void:
+	while _busy: await get_tree().process_frame
+	if sandbox != null or net.active: return
+	_begin_sandbox(ticket_character.trim_prefix("sandbox_"), true)
+	# This identifier is used only for admission; save_game is suppressed throughout practice.
+	char_id = ticket_character
+	char_name = str(Data.CLASSES[hero.cls]["name"])
+	arena_mode = true
+	arena_state = {"phase": "waiting"}
+	net_joining = true
+	loading_lbl.text = "Joining Sandbox..."
+	loading.visible = true
+	var address_parts := Battlegrounds.parse_address(address)
+	if net.join(str(address_parts[0]), int(address_parts[1])) != OK:
+		on_net_failed("Could not connect to Sandbox.")
+		return
+	await get_tree().create_timer(12).timeout
+	if sandbox != null and sandbox.online and net.is_client() and not net.welcomed:
+		net.shutdown()
+		on_net_failed("Sandbox did not answer in time.")
 
 func close_sandbox() -> void:
-	if sandbox == null or _busy:
-		return
+	if sandbox == null or _busy: return
+	var title := _sandbox_from_title or sandbox.online
+	if sandbox.online: net.shutdown()
+	arena_mode = false
+	arena_state = {}
 	sandbox.shutdown()
 	sandbox = null
 	char_id = _sandbox_char
 	_sandbox_char = ""
-	if char_id != "" and load_game():
-		hero.refresh_gear()
-		hero.recalc()
-		hero.life = hero.max_life
-		hero.mana = hero.max_mana
-	if hero.dead:
-		hero.respawn(hero.global_position)
+	if char_id != "":
+		if load_game():
+			hero.refresh_gear()
+			hero.recalc()
+		else:
+			char_id = ""
+			title = true
+	if title:
+		await exit_to_title(false)
+		lobby_client.open("sandbox")
+		return
+	if hero.dead: hero.respawn(hero.global_position)
 	death_t = -1.0
 	await load_zone(difficulty, "town", "start")
+	hero.life = hero.max_life
+	hero.mana = hero.max_mana
 	ui.refresh()
 
 const BOOST_SLOTS := ["weapon", "armor", "helm", "gloves", "boots", "belt", "ring1", "ring2", "amulet"]

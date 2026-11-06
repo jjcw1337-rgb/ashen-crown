@@ -2,7 +2,9 @@
 
 The post-intro home has Single Player, Co-op and Multiplayer. Multiplayer opens one browser for
 Battlegrounds, The Last Flame (endless waves) and Arena. The same browser is available from the
-in-game waypoint, using the current character. Sandbox remains an admin test tool.
+in-game waypoint, using the current character. Sandbox is PvP practice: "Play Sandbox Solo" (bots and monster
+packs, offline) or a Sandbox lobby (up to six players, free-for-all, automatic respawns, `scripts/sandbox_match.gd`).
+Practice heroes are temporary and nothing is saved.
 
 ## Player flow
 

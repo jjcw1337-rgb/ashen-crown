@@ -6,8 +6,12 @@ var g
 var fails := 0
 
 func _initialize():
+	BuildEnv.forced = {"env": "local", "cloud": "0"}
 	g = (load("res://main.tscn") as PackedScene).instantiate()
+	g.char_dir = "user://gate/vendor_test/"
+	g.old_save = g.char_dir + "absent.json"
 	get_root().add_child(g)
+	current_scene = g
 	_run()
 
 func check(ok: bool, what: String) -> void:
@@ -41,6 +45,18 @@ func _run() -> void:
 	var hips := sk.find_bone("Hips")
 	var far := 0.0
 	var played := {}
+	# Exercise the real random work-selection path with bounded, reproducible draws.
+	# Do not fake the forging metadata or replace the configured work clips.
+	g.hero.global_position = g.world.free_spot_near(smith.global_position + Vector3(0, 0, 12), 0.5)
+	var selected := false
+	for draw in 32:
+		seed(draw)
+		smith._clip_t = 0.0
+		smith._animate(0.0)
+		if SmithForge.forging(smith):
+			selected = true
+			break
+	check(selected, "configured work selection reaches the real forging path")
 	var t0 := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - t0 < 14000:
 		await process_frame
@@ -109,5 +125,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	check(not ui.stash_panel.visible, "stepping away from the stash closes it")
+	g.queue_free()
+	for i in 20: await process_frame
 	print("[V] done, %d failed" % fails)
-	quit()
+	quit(1 if fails else 0)

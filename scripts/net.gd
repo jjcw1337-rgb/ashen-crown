@@ -476,7 +476,7 @@ func cl_welcome(act: int, zone: String, pos: Vector3, tp: Dictionary, bk: bool, 
 		game.ui.message("Joined the Battlegrounds", Color(0.5, 1.0, 0.5))
 		game.give_raid_phials()
 	elif game.arena_mode:
-		game.ui.message("Joined the arena", Color(1.0, 0.85, 0.5))
+		game.ui.message("Joined Sandbox" if game.sandbox != null else "Joined the arena", Color(1.0, 0.85, 0.5))
 	elif not players.has(1):
 		game.ui.message("Joined the online co-op server", Color(0.5, 1.0, 0.5))
 	else:
@@ -671,6 +671,9 @@ func cl_enemy_states(arr: PackedFloat32Array) -> void:
 ## A partner's hit on a monster, for the host to apply. A quiet damage tick (Enemy.soft_hit: the plague doctor's
 ## poison) travels as knock -1: no flash, no flinch, a green number.
 func send_enemy_hit(e: Enemy, phys: float, fire: float, from: Vector3, knock: float, crit: bool) -> void:
+	# Remote effects can outlive their transport while the world retires.
+	if not still_joined(peer):
+		return
 	rpc_id(1, "sv_enemy_hit", e.net_id, phys, fire, from, -1.0 if e.soft_hit else knock, crit)
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -689,6 +692,9 @@ func sv_enemy_hit(id: int, phys: float, fire: float, from: Vector3, knock: float
 			e.take_damage(phys, fire, from, knock, crit)
 
 func send_enemy_chill(e: Enemy, k: float, t: float) -> void:
+	# Remote effects can outlive their transport while the world retires.
+	if not still_joined(peer):
+		return
 	rpc_id(1, "sv_enemy_chill", e.net_id, k, t)
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -697,6 +703,9 @@ func sv_enemy_chill(id: int, k: float, t: float) -> void:
 		(enemies[id] as Enemy).chill(clampf(k, 0.0, 0.8), clampf(t, 0.0, 6.0))
 
 func send_enemy_stun(e: Enemy, t: float) -> void:
+	# Remote effects can outlive their transport while the world retires.
+	if not still_joined(peer):
+		return
 	rpc_id(1, "sv_enemy_stun", e.net_id, t)
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -1453,7 +1462,7 @@ func _update_status() -> void:
 		var ips := local_ips()
 		status_lbl.text = "♛ Party leader  ·  %d joined%s" % [players.size(), ("  ·  " + ips[0]) if ips.size() > 0 else ""]
 	else:
-		status_lbl.text = "Arena" if game.arena_mode else ("Battlegrounds" if game.bg_mode else "Co-op")
+		status_lbl.text = "Sandbox" if game.sandbox != null else "Arena" if game.arena_mode else ("Battlegrounds" if game.bg_mode else "Co-op")
 
 func _rebuild_party_ui() -> void:
 	for c in party_box.get_children():
@@ -1518,7 +1527,7 @@ func _update_party_ui() -> void:
 		if not players.has(pid):
 			continue
 		var h = players[pid]["hero"]
-		if game.arena_mode:
+		if game.arena_mode and game.sandbox == null:
 			var team := int(game.arena_state.get("teams", {}).get(str(pid), -1))
 			row.get_child(0).text = str(players[pid]["name"]) + (" · Ember" if team == 0 else " · Frost")
 			row.get_child(0).add_theme_color_override("font_color", Color(1,0.55,0.3) if team == 0 else Color(0.45,0.75,1))

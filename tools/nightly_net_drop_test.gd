@@ -10,8 +10,12 @@ var g
 var fails := 0
 
 func _initialize():
+	BuildEnv.forced = {"env": "local", "cloud": "0"}
 	g = (load("res://main.tscn") as PackedScene).instantiate()
+	g.char_dir = "user://gate/net_drop/"
+	g.old_save = g.char_dir + "absent.json"
 	get_root().add_child(g)
+	current_scene = g
 	_run()
 
 func check(ok: bool, what: String) -> void:
@@ -51,7 +55,16 @@ func _run() -> void:
 	await wait(30)
 	check(not g._busy and g.cur_zone == "wild", "the zone finished loading")
 	check(not g.net.active and not g.net.loading, "offline and not waiting on a host")
+	var stale := Enemy.new()
+	stale.net_id = 23
+	g.net.send_enemy_hit(stale, 10.0, 0.0, Vector3.ZERO, 0.0, false)
+	g.net.send_enemy_chill(stale, 0.2, 2.0)
+	g.net.send_enemy_stun(stale, 1.0)
+	stale.free()
+	await wait(2)
 	var txt := FileAccess.get_file_as_string("user://logs/godot.log")
 	check(txt != "" and not txt.contains("on yourself is not allowed"), "no RPC sent to the closed link")
 	print("[D] done, %d failed" % fails)
-	quit()
+	g.queue_free()
+	await wait(20)
+	quit(1 if fails else 0)

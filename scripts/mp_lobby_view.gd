@@ -10,11 +10,13 @@ extends Control
 ##            class tiles (or the survivors) and Ready / Start / Leave
 ## LobbyClient keeps the logic (requests, polling, joining matches); this draws it (`render`).
 
-const ART := {"battlegrounds": "res://assets/textures/ui/mp_battlegrounds.jpg", "arena": "res://assets/textures/ui/mp_arena.jpg"}
-const MODE_TITLE := {"battlegrounds": "Battlegrounds", "arena": "Arena"}
+const ART := {"battlegrounds": "res://assets/textures/ui/mp_battlegrounds.jpg", "arena": "res://assets/textures/ui/mp_arena.jpg",
+	"sandbox": "res://assets/textures/ui/mp_arena.jpg"}
+const MODE_TITLE := {"battlegrounds": "Battlegrounds", "arena": "Arena", "sandbox": "Sandbox"}
 const MODE_LINE := {
 	"battlegrounds": "Start from nothing in the Verdant Reach. Clear camps, build your hero, and get out alive.",
-	"arena": "Your survivors, as they left the Battlegrounds, in team fights of 1v1, 2v2 or 3v3."}
+	"arena": "Your survivors, as they left the Battlegrounds, in team fights of 1v1, 2v2 or 3v3.",
+	"sandbox": "Try any class and build. Practice solo with bots or host a free-for-all with friends."}
 ## How a mode plays, in order (a real sequence, so it's numbered).
 const MODE_STEPS := {
 	"battlegrounds": ["Pick a class. You start at level 0 with only your basic attack.",
@@ -22,7 +24,10 @@ const MODE_STEPS := {
 		"Reach an open Extraction Portal alive, then save the character as a survivor."],
 	"arena": ["Choose one of your survivors. Its skills, passives and gear come as saved.",
 		"Join a team. Best of three rounds; the first team to win two takes the match.",
-		"Losing never deletes a survivor."]}
+		"Losing never deletes a survivor."],
+	"sandbox": ["Choose a temporary hero. Change class, level and gear during practice.",
+		"Play solo with bots and monster packs, or host up to six players with automatic respawns.",
+		"No stakes or rewards. Your saved characters stay unchanged."]}
 ## A class's playstyle in a line (the lobby's class presentation).
 const PLAYSTYLE := {
 	"knight": ["Frontline", "Sword and shield, holy fire and a rallying cry. Holds the line and hits hard up close."],
@@ -59,7 +64,8 @@ func setup(client) -> void:
 	game = client.game
 	ui = game.ui
 	name = "multiplayer_lobbies"
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# _fit owns viewport sizing, including before the parent menus layer is laid out.
+	set_anchors_preset(Control.PRESET_TOP_LEFT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	art = TextureRect.new()
 	art.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -85,7 +91,7 @@ void fragment() {
 	shade.material = sm
 	add_child(shade)
 	_root = MarginContainer.new()
-	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_root.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	for m in ["margin_left", "margin_right"]:
 		_root.add_theme_constant_override(m, 48)
 	_root.add_theme_constant_override("margin_top", 28)
@@ -145,15 +151,21 @@ void fragment() {
 const STAGE_MID := -90.0
 
 func _fit() -> void:
-	# the whole window (the menus layer isn't laid out for a late full-rect child); below 1280 wide the panel narrows
+	# Keep the entire preparation screen usable on short/narrow windows. Container
+	# minimum sizes otherwise push the class grid and Ready/Start off screen.
 	position = Vector2.ZERO
 	size = get_viewport_rect().size
-	var w := size.x
+	var layout_scale := minf(1.0, minf(size.x / 1280.0, size.y / 900.0))
+	var layout_size := size / layout_scale
+	var w := layout_size.x
 	var pw := clampf(w * 0.36, 420.0, 640.0)
 	var m := int(clampf(w * 0.025, 16.0, 48.0))
 	if right != null and right.get_parent() != null:
 		(right.get_parent() as Control).custom_minimum_size.x = pw
 	if _root != null:
+		_root.position = Vector2.ZERO
+		_root.scale = Vector2.ONE * layout_scale
+		_root.size = layout_size
 		_root.add_theme_constant_override("margin_left", m)
 		_root.add_theme_constant_override("margin_right", m)
 	col_w = maxf(260.0, w - pw - m * 2.0 - 40.0 - 36.0)      # (the body's gap, and slack for the panel's own padding)
@@ -227,6 +239,7 @@ func _on_visibility() -> void:
 
 ## Everything from the client's state.
 func render() -> void:
+	lc.solo_button = null
 	var mode: String = str(lc.room.get("mode", lc.selected_mode))
 	if not MpMode.mode_on(mode):
 		mode = MpMode.MODES[0]
@@ -342,7 +355,7 @@ func _left_browse(mode: String) -> void:
 	create.pressed.connect(func(): lc.action("create", {"mode": mode, "team_size": lc.team_size, "name": lc._lobby_name(), "wager": false}))
 	host.add_child(create)
 	lc.create_button = create
-	if mode == "battlegrounds":
+	if mode in ["battlegrounds", "sandbox"]:
 		var who := MpStyle.label("as %s  ·  change in the lobby" % Data.CLASSES[lc.run_class]["name"], 14, MpStyle.DIM)
 		who.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		host.add_child(who)
@@ -352,6 +365,28 @@ func _left_browse(mode: String) -> void:
 		who.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		host.add_child(who)
 		create.disabled = s.is_empty()
+	var solo_label := MpMode.solo_label(mode)
+	if solo_label != "":
+		var solo_row := HBoxContainer.new()
+		solo_row.add_theme_constant_override("separation", 12)
+		left.add_child(solo_row)
+		var solo := MpStyle.button(solo_label, false, 18)
+		solo.name = "play_solo"
+		solo.custom_minimum_size = Vector2(240, 48)
+		solo.disabled = lc.busy or game._busy
+		solo.pressed.connect(lc.play_solo)
+		solo_row.add_child(solo)
+		lc.solo_button = solo
+		if mode == "sandbox":
+			var pick := OptionButton.new()
+			pick.name = "solo_class"
+			var classes: Array = lc.run_classes()
+			for cls in classes: pick.add_item(str(Data.CLASSES[cls]["name"]))
+			pick.select(maxi(0, classes.find(lc.run_class)))
+			pick.item_selected.connect(func(i):
+				lc.run_class = str(classes[i])
+				lc.draw())
+			solo_row.add_child(pick)
 	var bottom_gap := Control.new()
 	bottom_gap.custom_minimum_size.y = 20
 	left.add_child(bottom_gap)
@@ -476,7 +511,7 @@ func _state_card(title: String, text: String, action: String, cb: Callable) -> C
 # ---------------------------------------------------------------- prepare
 
 func _left_prep(mode: String, stage: bool) -> void:
-	if mode == "battlegrounds":
+	if mode in ["battlegrounds", "sandbox"]:
 		var cls: String = lc.run_class
 		if stage:
 			var w := str(Data.CLASSES[cls].get("weapon", "hand_axe" if cls == "demon" else "short_sword"))
@@ -489,7 +524,7 @@ func _left_prep(mode: String, stage: bool) -> void:
 				if ui.title_stage.hero != null:
 					ui.title_stage.hero.light.light_energy = 1.1      # (a key light on the chosen hero)
 		var ps: Array = PLAYSTYLE.get(cls, ["", str(Data.CLASSES[cls].get("desc", ""))])
-		left.add_child(MpStyle.eyebrow("Your class  ·  a fresh run from level 0"))
+		left.add_child(MpStyle.eyebrow("Your class  ·  temporary practice hero" if mode == "sandbox" else "Your class  ·  a fresh run from level 0"))
 		var title := MpStyle.label(Data.CLASSES[cls]["name"], _big(72), MpStyle.IVORY, 700, true)
 		title.add_theme_constant_override("outline_size", 10)
 		title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.5))
@@ -497,7 +532,7 @@ func _left_prep(mode: String, stage: bool) -> void:
 		var tg := MpStyle.tag(ps[0], ClassStage.ACCENTS.get(cls, MpStyle.GOLD))
 		left.add_child(tg)
 		left.add_child(MpStyle.para(ps[1], 17, MpStyle.IVORY, minf(560.0, col_w)))
-		left.add_child(MpStyle.eyebrow("Skills to find in camp chests", MpStyle.FAINT))
+		left.add_child(MpStyle.eyebrow("Practice skills" if mode == "sandbox" else "Skills to find in camp chests", MpStyle.FAINT))
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 6)
 		left.add_child(row)
@@ -586,7 +621,7 @@ func _right_prep(mode: String) -> void:
 		members.add_child(_member_row(str(uid), m, mode, room))
 	right.add_child(MpStyle.rule())
 	if str(room.state) == "waiting":
-		if mode == "battlegrounds":
+		if mode in ["battlegrounds", "sandbox"]:
 			right.add_child(MpStyle.eyebrow("Choose your class"))
 			right.add_child(_class_tiles())
 		elif mode == "arena":
@@ -637,7 +672,7 @@ func _member_row(uid: String, m: Dictionary, mode: String, room: Dictionary) -> 
 	hb.add_theme_constant_override("separation", 12)
 	p.add_child(hb)
 	var ch := str(m.get("character", ""))
-	var cls := ch.trim_prefix("run_") if ch.begins_with("run_") else ""
+	var cls := ch.trim_prefix("sandbox_") if ch.begins_with("sandbox_") else ch.trim_prefix("run_") if ch.begins_with("run_") else ""
 	var accent: Color = ClassStage.ACCENTS.get(cls, MpStyle.GOLD)
 	var bar := ColorRect.new()
 	bar.color = accent
@@ -651,7 +686,7 @@ func _member_row(uid: String, m: Dictionary, mode: String, room: Dictionary) -> 
 	col.add_child(MpStyle.label(crown + str(m.get("name", "Adventurer")) + ("  (you)" if me else ""), 15, MpStyle.IVORY, 600))
 	var what := ""
 	if cls != "":
-		what = str(Data.CLASSES.get(cls, {}).get("name", cls)) + "  ·  level 0"
+		what = str(Data.CLASSES.get(cls, {}).get("name", cls)) + ("  ·  practice" if mode == "sandbox" else "  ·  level 0")
 	elif mode == "arena":
 		what = "Survivor  ·  " + ("Ember" if int(m.get("team", 0)) == 0 else "Frost")
 	col.add_child(MpStyle.label(what, 13, MpStyle.DIM))

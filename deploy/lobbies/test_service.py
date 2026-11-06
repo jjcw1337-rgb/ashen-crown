@@ -10,6 +10,36 @@ class LobbyTests(unittest.TestCase):
  def launch(self,r):self.started.append(r['id']);return '127.0.0.1:24600'
  def create(self,uid='a',mode='arena',size=1):return self.m.call(uid,'create',{'mode':mode,'team_size':size,'character':'hero','player':uid})['lobby']
  def act(self,uid,r,op,**kw):return self.m.call(uid,op,dict(id=r['id'],character='hero',**kw))
+ def test_sandbox_starts_with_one_player_and_no_stakes(self):
+  r=self.create(mode='sandbox');self.assertEqual(r['capacity'],6);self.assertEqual(self.started,[])
+  with self.assertRaises(Rejected):self.act('a',r,'start')
+  self.act('a',r,'ready',ready=True);self.act('a',r,'start')
+  self.assertEqual(self.started,[r['id']]);self.assertFalse(r['wager'])
+ def test_sandbox_rejects_stakes_and_team_changes(self):
+  with self.assertRaises(Rejected):self.m.call('a','create',dict(mode='sandbox',character='practice',wager=True))
+  r=self.create(mode='sandbox')
+  with self.assertRaises(Rejected):self.act('a',r,'team',team=1)
+ def test_sandbox_six_slots_and_late_join(self):
+  r=self.create(mode='sandbox');self.act('a',r,'ready',ready=True);self.act('a',r,'start')
+  live=self.m.rooms[r['id']]
+  self.m.worker(r['id'],live['worker_key'],'listening',{})
+  self.m.worker(r['id'],live['worker_key'],'state',{'state':'playing','joinable':True})
+  for i in range(5):self.act(str(i),r,'join')
+  with self.assertRaises(Rejected):self.act('overflow',r,'join')
+  self.assertEqual(len(live['members']),6)
+ def test_sandbox_class_pick_clears_ready_and_rejects_change_after_start(self):
+  r=self.create(mode='sandbox');self.act('a',r,'ready',ready=True)
+  self.m.call('a','pick',{'id':r['id'],'character':'sandbox_serpent','player':'Serpent'})
+  member=self.m.rooms[r['id']]['members']['a']
+  self.assertEqual((member['character'],member['ready']),('sandbox_serpent',False))
+  self.act('a',r,'ready',ready=True);self.act('a',r,'start')
+  with self.assertRaises(Rejected):self.m.call('a','pick',{'id':r['id'],'character':'sandbox_demon'})
+ def test_sandbox_time_limit_retires_worker(self):
+  r=self.create(mode='sandbox');self.act('a',r,'ready',ready=True);self.act('a',r,'start')
+  live=self.m.rooms[r['id']]
+  self.m.worker(r['id'],live['worker_key'],'state',{'state':'playing','joinable':True})
+  self.now+=3601;self.m.sweep()
+  self.assertEqual(live['state'],'aborted')
  def pair(self,size=1):
   r=self.create(size=size)
   for i in range(1,2*size):self.act(str(i),r,'join')

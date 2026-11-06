@@ -690,7 +690,14 @@ static func _multimesh_one(parent: Node3D, mesh: Mesh, xforms: Array, shadows: b
 		mm2.transform_format = MultiMesh.TRANSFORM_3D
 		mm2.mesh = twin
 		mm2.instance_count = xforms.size()
-		mm2.buffer = mm.buffer
+		# Dummy rendering has no backing transform buffer in Godot 4.4. Use the
+		# source transforms there; assigning its empty readback fails size validation.
+		var buffer := mm.buffer
+		if buffer.size() == xforms.size() * 12:
+			mm2.buffer = buffer
+		else:
+			for i in xforms.size():
+				mm2.set_instance_transform(i, xforms[i])
 		var sh := MultiMeshInstance3D.new()
 		sh.multimesh = mm2
 		sh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY

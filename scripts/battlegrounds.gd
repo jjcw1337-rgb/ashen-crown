@@ -1241,15 +1241,18 @@ static func hud(g: Node, delta: float) -> void:
 			lbl.text = "THE ANTECHAMBER  ·  ring the bell to begin  ·  the gates open by themselves in %d:%02d" % [(w + int(PREP_SECS)) / 60, (w + int(PREP_SECS)) % 60]
 			lbl.add_theme_color_override("font_color", Color(0.95, 0.85, 0.6))
 		else:
-			lbl.text = "THE GATES OPEN IN %d  ·  the stash chest is open until then" % w
+			if MpMode.FOREST:
+				lbl.text = "RAID STARTS IN %d  ·  clear camps for skills and gear" % w
+			else:
+				lbl.text = "THE GATES OPEN IN %d  ·  the stash chest is open until then" % w
 			lbl.add_theme_color_override("font_color", Color(1.0, 0.65, 0.3))
 		return
-	var txt := "%s  ·  %d:%02d" % [map_title().to_upper(), int(left) / 60, int(left) % 60]
+	var txt := "%s  ·  %s in %d:%02d" % [map_title().to_upper(), "raid ends" if MpMode.FOREST else "collapse", int(left) / 60, int(left) % 60]
 	if (r["open"] as Array).is_empty():
 		var p := maxf(0.0, float(r["portals_at"]) - float(r["t"]))
-		txt += "  ·  portals open in %d:%02d" % [int(p) / 60, int(p) % 60]
+		txt += "\nPortals open in %d:%02d" % [int(p) / 60, int(p) % 60]
 		lbl.add_theme_color_override("font_color", Color(0.85, 0.8, 0.7))
 	else:
-		txt += "  ·  PORTALS OPEN"
+		txt += "\nPORTALS OPEN  ·  reach an open portal before time runs out"
 		lbl.add_theme_color_override("font_color", Color(0.55, 0.85, 1.0) if left > 60.0 else Color(1.0, 0.45, 0.35))
 	lbl.text = txt
