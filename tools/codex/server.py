@@ -188,6 +188,12 @@ def make_handler(codex: Codex, password: str):
                 return self._send(200, index, "text/html; charset=utf-8")
             if self.path == "/api/codex":
                 return self._send(200, codex.bundle())
+            m = re.match(r"^/icon/(skills|talents)/([a-z0-9_]{1,40})\.png$", self.path)
+            if m:
+                f = codex.repo / "assets" / "textures" / m.group(1) / (m.group(2) + ".png")
+                if f.is_file():
+                    return self._send(200, f.read_bytes(), "image/png")
+                return self._send(404, {"error": "no icon"})
             self._send(404, {"error": "not found"})
 
         def do_PUT(self):
