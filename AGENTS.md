@@ -13,7 +13,7 @@ who is working on which part.
 
 | Path | What's there |
 |---|---|
-| `heroes/<hero>/` | Everything one hero owns: code, model, `skills/<skill>/` with each skill's own assets, `build/` (Blender and other build scripts), `tests/`, `tools/` (previews). Done so far: archer, plague. |
+| `heroes/<hero>/` | Everything one hero owns: code, model, `skills/<skill>/` with each skill's own assets, `build/` (Blender and other build scripts), `tests/`, `tools/` (previews). (Heroes not moved yet are still in `scripts/` and `assets/`.) |
 | `systems/` | Shared rules and effects that any hero uses (being set up) |
 | `scripts/` | Everything not moved yet: `game.gd` (boot, zones), `hero.gd`, `enemy.gd`, `net.gd`, `ui.gd`, `world.gd`, … |
 | `assets/` | Models, textures and audio not moved yet |
