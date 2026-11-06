@@ -123,6 +123,37 @@ func _run() -> void:
 		await shot("prep_bg_archer_" + tag)
 		c.room = {}
 		c.view.hide()
+	# the survivor roster with two survivors (a scratch folder)
+	var SV = load("res://scripts/survivors.gd")
+	var RB = load("res://scripts/run_build.gd")
+	SV.dir = "user://mp_lobby_shots_survivors/"
+	DirAccess.make_dir_recursive_absolute(SV.dir)
+	for fn in DirAccess.get_files_at(SV.dir):
+		DirAccess.remove_absolute(SV.dir + fn)
+	get_root().size = Vector2i(1280, 720)
+	get_root().content_scale_size = Vector2i(1920, 1080)
+	for cls in ["archer", "plague"]:
+		var h = g.hero
+		h.set_class(cls)
+		h.start_run()
+		for i in 9:
+			h.add_xp(RB.xp_for(h.level))
+		var pool: Array = RB.skill_pool(cls)
+		for i in mini(7, pool.size()):
+			h.run.add_skill(str(pool[i]["id"]), h.binds)
+		h.run.camps = 9
+		h.run.bosses = 1
+		h.run_changed()
+		SV.save(h, load("res://scripts/data.gd").CLASSES[cls]["name"])
+	g.hero.new_character()
+	c.open("arena")
+	c.set_process(false)
+	g.ui.run_ui.open_roster(func(_id): pass, "")
+	await shot("roster_1920")
+	check(SV.list().size() == 2 and g.ui.run_ui.mode == "roster", "the roster shows two survivors")
+	var layers: Control = g.ui.root
+	check(g.ui.run_ui.get_parent().get_index() > c.view.get_parent().get_index(), "the roster draws over the multiplayer screen")
+	g.ui.run_ui.close()
 	c.panel.hide(); c.set_process(false)
 	for i in 30: await process_frame
 	g.queue_free()

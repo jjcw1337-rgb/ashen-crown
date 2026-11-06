@@ -624,7 +624,7 @@ func open_roster(pick := Callable(), current := "") -> void:
 		vb.add_child(go)
 		return
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, minf(560.0, get_viewport_rect().size.y - 260.0))
+	scroll.custom_minimum_size = Vector2(0, minf(minf(560.0, list.size() * 172.0), get_viewport_rect().size.y - 260.0))
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	vb.add_child(scroll)
 	var grid := VBoxContainer.new()
@@ -641,16 +641,38 @@ func _survivor_row(d: Dictionary, pick: Callable, current: String) -> Control:
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 14)
 	p.add_child(hb)
+	var accent: Color = ClassStage.ACCENTS.get(str(d.get("cls", "")), MpStyle.GOLD)
+	var stripe := ColorRect.new()
+	stripe.color = accent
+	stripe.custom_minimum_size = Vector2(4, 0)
+	hb.add_child(stripe)
 	var col := VBoxContainer.new()
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", 4)
 	hb.add_child(col)
 	col.add_child(MpStyle.label(str(d.get("name", "Survivor")), 18, MpStyle.IVORY, 700))
-	col.add_child(MpStyle.label(Survivors.summary(d), 13, MpStyle.DIM))
+	col.add_child(MpStyle.label(Survivors.summary(d), 13, accent.lerp(MpStyle.IVORY, 0.35), 600))
+	# its slotted skills as icons (hover for each), then what it learned beyond them and its gear
+	var binds: Dictionary = d["hero"].get("binds", {})
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	col.add_child(row)
+	for slot in RunBuild.SLOTS:      # (the basic attack is everyone's: its icon follows the loaded hero's class)
+		var sid := str(binds.get(slot, ""))
+		var ic := _icon(sid, 34)
+		if sid != "":
+			ic.mouse_filter = Control.MOUSE_FILTER_STOP
+			ic.mouse_entered.connect(func(): ui.show_tooltip([[Data.skill_def(sid).get("name", sid), MpStyle.GOLD], [str(Data.skill_def(sid).get("desc", "")), Color(0.85, 0.83, 0.77)]]))
+			ic.mouse_exited.connect(func(): ui.tooltip.visible = false)
+		row.add_child(ic)
 	var run: Dictionary = d["hero"]["run"]
-	var skills := []
-	for id in run.get("skills", []):
-		skills.append(str(Data.skill_def(str(id)).get("name", id)))
-	col.add_child(MpStyle.para("Skills: " + (", ".join(skills) if not skills.is_empty() else "none"), 13, MpStyle.IVORY, 640))
+	var reserve := Array(run.get("skills", [])).filter(func(id): return not binds.values().has(id)).map(func(id): return str(Data.skill_def(str(id)).get("name", id)))
+	var gear := []
+	for gs in RunBuild.GEAR:
+		var it = (d["hero"].get("equipment", {}) as Dictionary).get(gs)
+		if it is Dictionary:
+			gear.append(str(it.get("name", "")))
+	col.add_child(MpStyle.para(("Spellbook: " + ", ".join(reserve) + "   ·   " if not reserve.is_empty() else "") + "Gear: " + (", ".join(gear) if not gear.is_empty() else "none"), 12, MpStyle.DIM, 640))
 	if pick.is_valid():
 		var b := MpStyle.button("Chosen" if sel else "Choose", not sel)
 		b.disabled = sel

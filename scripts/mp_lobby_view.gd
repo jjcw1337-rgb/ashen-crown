@@ -327,6 +327,7 @@ func _left_browse(mode: String) -> void:
 		seg.add_theme_constant_override("separation", 4)
 		for n in [1, 2, 3]:
 			var b := MpStyle.button("%dv%d" % [n, n], n == lc.team_size)
+			b.text = "%dv%d" % [n, n]      # (not upper-cased like a primary action)
 			b.name = "size_%d" % n
 			b.custom_minimum_size.x = 64
 			b.pressed.connect(func():
@@ -425,6 +426,11 @@ func _right_browse(mode: String) -> void:
 			rows.add_child(_lobby_row(str(f.name) + "'s world", "Co-op  ·  a friend's story game", "", "Open", true, func():
 				hide()
 				game.steam.join_world(fl)))
+	if lc.notice != "":
+		var msg: String = lc.notice
+		rows.add_child(_state_card("Your last match ended", msg, "Dismiss", func():
+			lc.notice = ""
+			lc.draw()))
 	if lc.last_error != "" and lc.rooms.is_empty():
 		rows.add_child(_state_card("Can't reach the lobby service", lc.last_error + " Your selections are kept.", "Retry", func(): lc.refresh()))
 	elif not lc.loaded:

@@ -23,7 +23,7 @@ Earlier improvements also increased loading time and VRAM; no complete performan
 ## Integration with Claude's current work
 
 Reviewed committed `test-godot-44` through af34478: multiplayer run characters, camps, survivors and the
-Verdant Reach replace parts of the old flow/map. Integrated committed changes through af34478 in a4c37c8. Claude's committed lobby redesign through 03a4744 is now integrated, with Sandbox actions in MpLobbyView.
+Verdant Reach replace parts of the old flow/map. Integrated committed changes through af34478 in a4c37c8. Claude's committed overhaul through 3d4c661 is now integrated, with Sandbox actions in MpLobbyView. This includes the new forest monsters, survivor roster, disconnect notice and run tuning.
 Preserve those product decisions. Adapt the catalog, builder scheduling and affected tests to the new paths;
 do not restore retired modes merely to satisfy old fixtures. The existing `crypt` KPI identifier currently
 means the Battlegrounds scenario; verify what it actually builds before comparing old/new map measurements.
@@ -49,3 +49,5 @@ eight affected GDScript files grammar-parse, Bash/diff checks clean. Native scre
 still awaits the occupied shared test slot; no new runtime performance claim.
 
 Current core-migration check-in: [work, expected impact and release status](CHECKIN_2026-11-05.md).
+
+Sync checkpoint: merged 3d4c661 after fetching origin (remote staging still e314d66). Preserved terrain/grass scheduling, resource ownership and isolated test saves. Resolved screenshot-fixture overlap by retaining Sandbox and survivor checks, logical resolution scaling and explicit teardown. 56 broker/HTTP, 3 construction-guard, 13 audit and 13 benchmark tests pass; construction source guard, Bash syntax and whitespace checks pass. Eleven changed GD files grammar-parse; the parser rejects inline conditional lambdas in RunUI/UI on both merge parents, so these two are not certified by that parser. Native compilation, rendered parity and the full gate remain pending the heavy-tests handoff. No new publication or performance acceptance.

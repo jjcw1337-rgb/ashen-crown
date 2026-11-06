@@ -25,7 +25,7 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 ## 4. Simple journey: Multiplayer → browse/create → mode → prepare → ready → play
 - 🟡 Works end to end with the existing lobby service (`bg_test`); mode (tabs), host, players, capacity, state and joinability shown (`mp_lobby_shots`).
 - ✅ Filtering (All / Joinable now), loading, empty, full (Join disabled, "Full") and service-failure (Retry, selections kept) states; distinct mode artwork (`mp_lobby_shots` screenshots).
-- ⬜ A disconnected-from-match state in the new look (the old message path is used). **Not proven yet.**
+- ✅ Disconnected from a match: back on the multiplayer screen in the same mode with the same class or survivor chosen, a "Your last match ended" card saying why (and that a cut-off run is lost), Dismiss (`lobby_ui_test`).
 - ✅ The survivor roster is reachable from the lobby (Survivors button; `survivor_test`).
 
 ## 5. Battlegrounds class selection inside the lobby
@@ -50,7 +50,8 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 ## 8. One progression system, every class
 - ✅ Archer and Plague Doctor: `run_build_test` (both), `survivor_test` (plague), `bg_test` (knight).
 - ✅ Archer and Plague Doctor play the whole map for real (`run_playthrough -- archer|plague`: BotBrain, no immortality: 16/16 camps, both bosses, no falls, level 22 at the end).
-- 🟡 Every other class: the pools are built from each class's own skills and talents (`run_build_test` covers archer and plague; the others aren't played through yet).
+- ✅ Every other class played through too (`run_playthrough`): wraith, demon, warlock, knight, Doug, Frost Serpent and Storm Wyvern clear 16/16 camps and both bosses with no falls, level 22. Found and fixed on the way: the knight and Doug flattened at ~30 damage a second against bosses (a run-only class factor, `RunBuild.CLASS_POWER`), Doug locked to his single level-1 drumstick (classes with one weapon of their own take general weapons too).
+- 🟡 The Obsidian Wyrm can only learn the four shared skills, so it can't fill five slots: it's left off the multiplayer class tiles (`LobbyClient.run_classes`) until it has a kit of its own; single player keeps it.
 
 ## 9. Five slots and a spellbook
 - ✅ Exactly five (RMB Q E R F), the attack outside them, auto-equip into empty slots, the rest in the spellbook, G/V refused, a rebind keeps its cooldown, unlearned skills refused (`run_build_test`).
@@ -74,7 +75,7 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 
 ## 14. A big connected lush map
 - ✅ The Verdant Reach: 16 camps, 2 bosses, four starting glades, trails with loops, a stream, ridges, mushroom woodland, dark elf camps, frost hollow, ruins (`camp_test`, `bg_test`, `forest_shots`).
-- 🟡 Treants and dark elf monsters of our own: the camps borrow existing monsters. **Not done.**
+- ✅ Treants and dark elves of our own (Meshy concept → image-to-3D → `prep_monster.py` / `rig_monster.py`, 72 credits): the Rootbound Treant in the mushroom woodland's camps, the Shadeleaf Reaver and Sniper in the dark elf encampments (`monster_lineup` renders; `camp_test`, `run_playthrough` fight them).
 
 ## 15. Every camp a complete encounter
 - ✅ Each camp has its own monsters (pack), clearing ground, completion and chest; neighbours never complete each other; completion counts members wherever they are (`camp_test`).
@@ -88,4 +89,5 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 ## 17. Verify the whole sequence and the screens
 - ✅ The sequence level 0 → camps → upgrades → skills and loot → levels → bosses → survive → save → reload, for the archer and the plague doctor (`run_playthrough`, offline host; extraction through a real server is `bg_test`).
 - ⬜ The Arena match itself played with a reloaded survivor through the lobby service and two clients. **Not proven yet.**
-- 🟡 Screens at 1024x768, 1280x720, 1920x1080 (`lobby_ui_test`, `mp_lobby_shots`, `run_ui_shots`); 2560x1440 not checked; the final write-up still to do.
+- ✅ Screens at 1024x768, 1280x720, 1920x1080 and 2560 wide (`lobby_ui_test`, `mp_lobby_shots`: every control on screen at each; `run_ui_shots`).
+- ⬜ The final write-up.

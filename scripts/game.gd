@@ -3256,6 +3256,7 @@ func _open_chest(t: Inter) -> void:
 		var tier := int(t.data.get("tier", tier_of_level(world.level)))
 		for i in int(Camps.CHEST_ROLLS.get(tier, 2)):
 			_run_loot(t.global_position, tier, i == 0, true)
+		drop_item(Items.potion("hp_potion"), t.global_position)      # (every camp's chest heals: a run lives on its belt)
 		if rng.randf() < float(Camps.UNIQUE_CHANCE.get(tier, 0.0)):
 			_run_class_unique(t.global_position)
 		return
