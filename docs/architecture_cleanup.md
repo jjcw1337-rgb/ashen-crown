@@ -83,9 +83,9 @@ Every hit and effect goes to a **combat log**, which is used both for balance an
 5. **Real ids** (`pierce` → `fire_arrow`) everywhere at once, with aliases for saved survivors. Ids travel over the
    network, so the server deploy and the clients ship together.
 
-Cuts run alongside: the old crypt, the old Warlock (the gnome body and the four-skill kit), Act II, Act I's story,
-the coast, camp life, the Last Flame and the co-op server. For each old system: move what the live game still uses,
-delete the rest, then test.
+Cuts run alongside: the old crypt, the old Warlock (the gnome body and the four-skill kit), Act II, Act I's story
+(the moor and the fort), the co-op server, plus archiving sailing and the Last Flame. The starting camp stays for
+now. Follow "Cutting an old system".
 
 Touch points to coordinate:
 - Claude-1's loader: its recorded file lists and the coming per-class lists, which become "load the hero's folder".
@@ -97,8 +97,8 @@ Touch points to coordinate:
 ## Who does what (split by files, so nobody edits the same thing)
 
 - **Claude-1: the world side.**
-  - Tasks: the cuts (the old crypt, Act II, Act I's story, the coast, camp life, the Last Flame, the co-op server;
-    by the three buckets in "Cutting an old system") and the loading overhaul.
+  - Tasks: the cuts (the old crypt, Act II, Act I's story, the co-op server; archiving sailing and the Last Flame;
+    see "Cutting an old system") and the loading overhaul.
   - Owns: `world.gd`, `forest_camp.gd`, `bg_forest.gd`, `camps.gd`, `battlegrounds.gd`, `res_cache.gd`, the
     preload and warm-up lists, every zone builder, and the files of everything being cut.
 - **Claude-2: the hero side.**
@@ -129,17 +129,26 @@ of three buckets:
 2. **Archive: good assets, not built.** Good models and textures that nothing uses yet go to `archive/`. That
    folder has a `.gdignore`, so Godot neither imports nor exports it, and it stays in the repo for a future map to
    pull back into `game/`. Examples are the fort (palisade, towers, gatehouse, great hall), the Roman/Aurelia set,
-   the coast and islands, the camp buildings and the crypt props. Today every model in the project ships in the
-   download whether it's used or not.
+   the coast and islands, and the crypt props. Today every model in the project ships in the download whether it's
+   used or not.
 3. **Delete: the old machinery.** This covers the story-mode code (zone builders for the moor, fort and Aurelia),
-   quests, traders, waypoints, acts, the Last Flame and the co-op server. Git keeps the history.
+   acts, and the co-op server with its party queue (Blaine: "we can get rid of that entirely"). Git keeps the
+   history.
 
-**Archived whole, code included** (Blaine: "we don't want to lose the boat stuff"): **sailing**. That means the
+**Archived whole, code included** (Blaine, 2026-11-06):
+- **The Last Flame**: `vigil.gd`, `flame_board.gd`, its sanctum, waves and leaderboard. It goes to
+  `archive/last_flame/`.
+- **Sailing** ("we don't want to lose the boat stuff"). That means the
 ocean (`ocean.gd`: waves, shore and depth), the boats (`boat.gd`, `boat_ride.gd`, `boat_shop.gd`, `Data.BOATS`),
 the coast and the five islands (`coast.gd`, `isles.gd`, `isle_*.gd`, `height_grid.gd`), Osric the shipwright, and
-their models, textures and sounds. They go to `archive/sailing/` with a short `REVIVE.md` listing the hooks they
-had in `game.gd`, `hero.gd`, `net.gd` and `ui.gd`, so they can be wired back in. Other features to keep this way
-need an admin's say-so: add them here.
+their models, textures and sounds. They go to `archive/sailing/`.
+
+Each archived feature gets a short `REVIVE.md` listing the hooks it had in `game.gd`, `hero.gd`, `net.gd` and
+`ui.gd`, so it can be wired back in. Other features to keep this way need an admin's say-so: add them here.
+
+**Not cut yet: the starting camp** (Blaine: "we don't want to get rid of that quite yet"). That covers the camp and
+the World-Tree Island, its people (traders, guards, the smith, ravens), day and night, the waypoint, quests and
+Enter World. It stays live as it is until an admin decides.
 
 Order for each old system:
 1. Move what the live game borrows (below).
