@@ -1,160 +1,127 @@
-# Shared performance coverage — 2026-11-06
+# Loading migration: release status — 2026-11-06
 
-The loading migration is implemented locally, but **release and performance acceptance are not complete**.
-Current source merges staging `67937fb` as `3c75462`, preserving the new Knight, Wraith, Demon and Doug
-run kits. The resumed 2026-11-06 checks below supersede older component results; gameplay and performance
-results in the table remain pinned to `2a2f1e2`. The shared guidance remains [loading](../patterns/loading.md),
-[effects](../patterns/effects.md) and [measuring](../patterns/measuring.md).
+Runtime candidate `a0e7c07` includes staging `66172e2` (forest cleanup). The full functional gate finished with failures; focused corrections are running;
+**this candidate is not yet published and has not passed performance acceptance**.
+Shared guidance: [loading](../patterns/loading.md), [effects](../patterns/effects.md),
+[measuring](../patterns/measuring.md). Raw local evidence: `workspace/output/perf-resume/`.
 
-## Resumed verification — 2026-11-06
+## Whole-change review
 
-The native Godot 4.4.1 compile and terrain 27/cache 23/roots 143/world 7/parts 47/material 73
-checks passed clean on the resumed candidate. The latest declaration run passes **2,604 checks**, including
-actual Wraith Death Mark pop and Demon Detonation positions. Wraith capture recorded 50 events/14 skills;
-Demon recorded 48/14, with no runtime errors or warnings. Knight's prior actual capture recorded 32/13,
-including delayed Aegis burst (one layout warning before the lobby sizing fix).
+Main candidate: `test-codex-release-20261106` at `a0e7c07`, incorporating staging `66172e2`.
+The older `test-codex-perf` checkout and detached comparison worktrees are not separate release candidates.
+PR #4 remains the integration PR. Publication status below must be updated from actual CI/server evidence.
 
-Rendered lobby checks initially found four off-screen control failures at 1024×768 and 1280×720.
-The responsive layout fix passes all four viewport sizes with no runtime errors/warnings; actual 1024/1280
-screenshots were inspected. Capture and UI checks used bounded functional runners and recorded a small
-concurrent headless fixture; they are **not performance evidence**. The normal-clock BG journey fixture
-native-compiles but has not yet completed gameplay. Full gate, focused comparison and staging publication
-remain incomplete. Evidence: `workspace/output/perf-resume/`.
-
-| Area | Implemented and verified | Remaining acceptance |
+| Shared system / area | Delivered code | Current evidence / remaining limit |
 |---|---|---|
-| Asset preparation | Shared catalog, bounded worker, owner scopes, cancellation and release. Godot 4.4.1 native checks: cache 23, declarations 2,250, actual combat roots 143, derived recipes 47; clean logs. | Declared roots are not proof of every dynamic path. Forest lantern-post/cookfire/weapon-rack models and environment fire textures are now declared; shared camp-model cache routing migrated. Actual BG/Arena builder contract: 7 checks, zero undeclared cache requests or runtime warnings/errors. |
-| World construction | Terrain rows, grass jobs, forest/fern checkpoints and sea-chart CPU rows use the shared scheduler. Terrain 27 native assertions passed. Current BG and Arena scheduled/synchronous terrain, grass, spawn, obstacle and interaction hashes match. | BG still recorded a 466.7 ms builder slice and 42 ms job step in a headless diagnostic. Mesh upload, masks/collision, material walks and minimap GPU readback are not all incremental. Town hashes match but its headless run has a PagedAllocator shutdown error; native town/coast checks pending. |
-| Actual Arena | Current `2a2f1e2`: rendered client + headless client + local worker: 34 assertions passed, two rounds, survivor skills/gear and byte-identical saves retained, content scopes ready and released at teardown. Worker exited naturally and released its UDP port. Screenshot inspected; no runtime errors. | Three layout/Metal warnings remain across the two clients. This current run had no competing Godot. Functional evidence only; larger team configurations/Steam transport and accepted timings need separate checks. |
-| Actual Battlegrounds | Forest construction parity passed. Arena fixture also verified real BG lobby class selection and Ready invalidation. New forest monsters resolve through the existing enemy/model registry. | Current rendered client passed 28 checks for entry, combat, swaps, extraction, survivor saving, re-entry, death and scope retirement. Server-mediated two-player PvP/spectating passed 24 checks. Screenshots inspected. The full gate was stopped red on two server reset assertions; a clock probe proved the round did collapse at 150 simulation seconds and rebuilt. The corrected fixture observes actual death/reset/rebuild transitions continuously and passed 45 checks (18 server / 27 client), including the configured 150-second simulation boundary and a fully rebuilt next lobby. Both processes exited 0 with no runtime errors; seven client rendering/UI warnings remain. Whole-run, late-join and peak-capacity claims remain separate. |
-| Effects and lifetimes | Current material lifecycle 73 clean assertions; prior 4.4 all-class replay 387 clean assertions. World-owned callbacks and surface-override retirement preserve cached meshes. | Current full replay, long-session residency, delayed variants and performance under six-actor spell floods. Online preparation still covers all classes rather than a changing roster. |
-| Sandbox | Hosted practice passed 20 current two-client checks: late join, FFA damage/respawn, no local bots/autosave, byte-identical story save, no practice save, return and natural worker/port cleanup. Screenshot inspected; no runtime errors, three layout/Metal warnings. | Current solo/entry acceptance, full gate and matching backend/client rollout. Do not describe Sandbox as live based on source alone. |
-| Release | Fresh origin fetch confirms 67937fb. Current native component contracts pass. | Full functional gate, repeatable performance acceptance, matching exports/backend/client staging publication, remote verification. No staging push or deployment in this closure continuation. |
+| Asset readiness | `ContentCatalog` declares zone, class, monster and UI roots; `ResCache` shares one bounded loading worker and tracks owners. `Game` waits before activating play. | Native declarations, real root loading and BG/Arena world dependency checks pass. Unusual dynamic content still needs declarations. |
+| Resource lifetime | Scope release, cached immutable mesh fragments, warm-material retirement and `SurfaceMaterials` cleanup. | Cache/material lifecycle and repeated Sandbox cleanup pass. Legacy references and long-session memory are not fully resolved. |
+| World construction | Incremental terrain rows and grass, checkpoints in forest/camp/fern builders, incremental sea-chart CPU work. Used through the shared world path for story/travel and match worlds. | Terrain contracts and earlier scheduled/synchronous world parity pass. Mesh upload, collision/masks, minimap GPU readback and some effects remain atomic. |
+| Class and effect preparation | Actual recorded skill events, current run skills, delayed effects, shared talent/consumable variants, monster and reward-card preparation. Solo prepares its class; online prepares all classes. | Current all-class replay passes 649 assertions without errors/warnings. Online preparation is still broader than the actual roster; no all-combination GPU certification. |
+| Story, town and UI | Preserve current staging gameplay; repair save recovery, title/loading lifecycle, multiplayer layout and run-HUD visibility. | Current story/save, UI input, four-size lobby, run/survivor, Codex and camp-access checks pass. Title's raw file-count diagnostic incorrectly includes backup files; isolated character-ID check passes, fixture correction pending. |
+| Battlegrounds and PvP | Preserve automatic forest start, camp rewards and extraction; fix fresh-run ticket identity, result Return flow, low-FPS bow instability and swept-arrow collisions. | Current BG and two-player PvP checks pass. Earlier ordinary normal-clock BG completion predates the final forest cleanup; final remote journey remains required. BG has tangent/Metal/ObjectDB exit warnings. |
+| Sandbox | Requested public solo entry and authenticated hosted practice, temporary class/gear, bounded bots, respawn, late join, no save/reward stakes. | Current solo/entry/repeated cleanup pass. Matching broker/worker deployment and final hosted remote checks remain. |
+| Measurement and enforcement | Wall-clock benchmarks, required scenario/repeat coverage, median/worst-repeat limits, log/focus/concurrency checks, per-resource timing, CI dependency/construction guards. | Guard/Python checks pass. These tools expose regressions; they do not establish a performance win. Scheduled jobs removed by upstream remain removed. |
 
-Raw closure evidence is under `workspace/output/perf-closure/`; prior evidence is linked from
-[implementation results](IMPLEMENTATION_RESULTS.md) and [staging results](STAGING_RESULTS.md).
-The first Arena attempt failed because the headless client’s 30-second round wait expired while the rendered client
-prepared. It remains a failed run. The passing fixture keeps native rendering enabled throughout and allows
-120 seconds for both clients to become ready. That timeout is a correctness limit, not an acceptable loading target.
+At `a0e7c07` versus staging `66172e2`, the diff contains 196 files: 63 game-runtime files
+(1,287 added/396 removed lines), 98 test/tool files, 29 documentation/evidence files, two lobby-service
+files and four CI files. About 10,000 added lines are documentation and retained diagnostic evidence.
+These are exact diff categories, not a completion percentage. The runtime changes and their risks are the
+review priority; older failed comparisons remain historical evidence, not current acceptance.
 
-## Audit against the original request
+## What is implemented
 
-The original request, preserved in [AUDIT.md](AUDIT.md) and [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md), calls for shared
-asset readiness/lifetimes, scheduled construction, contextual visual preparation, honest measurement and
-repeatable content adoption. This branch implements those shared paths and preserves the current gameplay/art.
-It does not certify all content or solve sustained GPU cost merely by caching. The original attachment was not
-available during this closure review; the preserved audit/design were used instead.
+- Shared content declarations, a bounded single loading worker, resource ownership and release.
+- Scheduled terrain/grass construction and forest checkpoints; sea-chart CPU work is incremental.
+- Class-effect preparation, current run-skill recipes, monster/reward-icon preparation and material retirement.
+- Hosted/solo Sandbox, responsive multiplayer controls, and reproducible functional/performance tools.
+- Scheduled jobs were removed by staging `67937fb`; they have not been reinstated. Audit tools remain manual.
 
-The original broad preload policy moved costs into loading and increased residency. This closure narrows forest
-families, removes extracted model textures from root declarations and avoids drawing hidden 3D worlds during
-construction. These changes are not an accepted performance result: the current matched diagnostic is below.
-Earlier 4.3 gains also increased loading and memory and were rejected.
+## Current verification
 
-## How future code stays on the path
-
-- **During implementation:** existing `Game.load_zone`, `World` jobs and declared content families carry new content
-  through preparation. New dynamic families, visual events or bespoke builders still need explicit integration.
-- **Before release:** CI checks declarations, root loading, cache/material lifetimes and known construction bypasses.
-  The full gate adds real BG/PvP and isolated two-client Arena/Sandbox flows. The new world-content fixture exercises
-  actual builders for undeclared `ResCache` requests; it does not detect every arbitrary raw `load()`.
-- **After release:** retained manual audit tools support three repeated exported-build profiles, including
-  six-actor Arena/forest floods, with focus, clean-log, miss, stall, load and memory checks. Staging `67937fb`
-  removes scheduled jobs; no automatic audit is currently promised or reinstated. Six rendered actors do not
-  certify six network clients.
-
-Keep functional correctness, measured performance and publication status separate. A green component test,
-installed schedule or successful export cannot stand in for the other two.
-
-## Latest run-content integration
-
-Merged `b8421f0` as `ce3a44f`, preserving Claude's six icon import UIDs/compression settings.
-ForestLife's six extra model roots are declared explicitly (without loading entire Roman/waypoint families),
-its flower atlas uses ResCache, and its two surface overrides use SurfaceMaterials. All eight literal model
-paths are covered by the catalog; the native parse gate now explicitly loads ForestLife and the Knight handlers.
-Eleven changed/involved scripts grammar-parse; construction (3), audit (14) and benchmark (13) Python tests pass.
-These are source checks, not a native/rendered pass.
-
-Before the latest staging merge there were thirteen run skills. The existing bidirectional declaration guard correctly identifies four
-missing Knight captures: `k_aegis`, `k_judgment`, `k_rites`, `k_whirl`; no retired IDs remain. Do not weaken it.
-The next exclusive test window must capture real Knight casts, run the declaration/world contracts and exercise
-those skills in BG/Arena. Existing Archer/Plague captures and shared talent/consumable variants remain intact.
-Nightly workload hashes change with recipes, preventing reuse of incompatible baselines. The previously installed runner was removed with the scheduled jobs; no full automated audit pass is claimed.
-
-The finish is deliberately limited to current character/skill preparation, BG/Arena behavior, the functional
-release gate and a measured loading/residency decision. No new modes, art redesign or broader engine rewrite.
-
-The next Knight capture now waits for Aegis's real delayed burst (bounded to 30 wall seconds after the ordinary
-capture window), and both capture and declaration checks require the run skills' impact phases plus that burst.
-A cast marker alone no longer satisfies these Knight checks. The resumed actual Knight capture now includes the required phases; other new run-kit variants remain under validation.
-
-For the next exclusive loading run, pass `--content-trace` and analyze its single-process log with
-`python3 tools/content_load_report.py <log>`. This ranks inclusive loader time by resource, preserves repeat
-loads and failures, and rejects absent/malformed trace data. These timings include dependencies; they are not
-isolated disk time, total transition time or VRAM. Tracing is opt-in and does not retain resources. Source/grammar
-checks and three report unit tests pass; native tracing remains pending; the resumed Knight capture is recorded above.
-
-## Player journey acceptance — requested 2026-11-06
-
-Blaine explicitly requires that ordinary play makes sense and a Battlegrounds run can be completed.
-This is a release requirement alongside the loading checks. **Normal-play acceptance is pending.**
-
-| Journey | Required evidence on the release candidate |
+| Check | Evidence and limits |
 |---|---|
-| Basic play | Enter World, move/aim/attack, use skills and potions, collect/equip loot, open/close menus, leave and resume with the correct character. Inspect actual rendered controls and overlapping text. |
-| BG entry and objective | Use Multiplayer → Battlegrounds, choose a class, create/join, Ready/Start and enter a fresh run. Understand the bell, camp rewards, portal opening and collapse deadline from the visible game. |
-| Ordinary completion | Walk a viable route, fight with normal damage/health, take camp upgrades and gear, find and interact with an open portal before the normal server deadline. No teleport, free healing, immortality, one-hit, forced portal or direct result calls. Record class, route, elapsed time and screenshots. Clearing every camp or both bosses is not required to extract. |
-| Finish and reuse | See Survived, save once, use the results Return button, see the survivor in Arena, and start a new level-0 BG run without altering story saves. |
-| Losing and recovery | Die or miss extraction: truthful Fallen result, no survivor award, usable Return/retry. Check a dropped connection leaves a usable UI and does not award survival. |
+| Ordinary Battlegrounds | `journey-6`: rendered Archer plus real local lobby worker; create/Ready/Start, bell, ordinary walking/combat, camp reward and upgrade, normal five-minute portal opening, server-confirmed extraction, save once and Return/home. Walked 159.6 m, reached level 5, two camps cleared. No teleport, free healing, invulnerability, forced clock or direct result calls. Exit 0, zero runtime errors; tangent/Metal/ObjectDB shutdown warnings remain. Worker exited naturally and released its port. Screenshots inspected. |
+| Entry fix | The ordinary test exposed an empty story-save ID being sent instead of the ticket's `run_archer` identity. The client now sends the reserved lobby identity without assigning a story save to the run. Actual admission verified; RPC signatures unchanged. |
+| Archer stability | Low-FPS bow integration produced NaN mesh transforms during ordinary combat. Bounded substeps fix the spring; 11 native numerical checks pass clean, and the completed ordinary combat run has no transform errors. |
+| Run guidance | Corrected per-frame client HUD hiding, forest objectives/portal/collapse wording, story-quest bleed-through and transient text over run menus. At `a331b23`, rendered BG checks confirm real per-frame guidance and no story-quest bleed-through; the latest merged gate repeats them. Ordinary journey evidence above predates these final UI edits. |
+| Lobby layout | Four viewport sizes, 1024×768 through 2560×1440: zero bounds/input failures or runtime errors/warnings. Inspected small-screen renders. Functional only; a small concurrent fixture was recorded. |
+| Current skills | Real casts captured Knight 32 events/13 skills, Wraith 50/14, Demon 48/14, Doug 64/15, Serpent 20/9 and Wyvern 29/9. Guards require Aegis burst, Death Mark pop, nonempty Detonation positions, Tomb shatter and Thunderhead bolt/end. Merged Warlock captures retain 64 events. Latest declaration contract: 2,857 checks, zero failures/errors/warnings. |
+| Core contracts | Resumed native compile; terrain 27/cache 23/roots 143/world 7/parts 47/material 73 checks clean before the latest dragon integration. Full gate is rechecking current runtime. |
+| Latest pre-integration multiplayer | `a331b23`: BG 61 and PvP 24, clean runtime logs; BG has six rendering warnings. World dependencies 7 and story play pass after isolating the asset cache. The full suite was interrupted for the subsequent staging merge; it is not a full pass. |
+| Earlier multiplayer evidence | `2a2f1e2`: BG 45, two-player PvP 24, survivor Arena 34 and hosted Sandbox 20; zero runtime errors, rendering/layout warnings documented. These are historical and do not replace the active current-candidate gate. |
 
-Keep the existing automated tests: `bg_test` verifies real server-mediated extraction/death/reset with an
-accelerated clock and assisted combat; `run_playthrough` diagnoses the camp curve with teleports, healing and
-direct result calls. Neither is the ordinary completion proof above. Existing two-client Arena and disconnect
-fixtures cover separate parts of the journey; inspect actual screens as well as assertions.
+## Performance decision
 
-Source review found the forest HUD still advertised crypt gates/stash and used the retired map title. The
-candidate now gives forest-specific bell/camp instructions, names the active map, labels the collapse timer
-and directs players to an open portal. `bg_test` checks these live state hints and now uses the actual results
-Return signal for both survival and death, asserting connection closure and the reopened BG browser.
-These changes have **not yet been run/rendered**; check the HUD at small and normal viewports, including the
-countdown's matchup cards. The resumed session owns heavy-tests; these gameplay/HUD checks remain pending.
+A matched `45e2f82`/`a331b23` six-actor Arena pilot completed without runtime errors and with no
+competing Godot processes. Candidate combat had zero synchronous cache misses; the baseline had 34 paths
+loaded synchronously. **Both were unfocused**, so FPS/stall numbers are not accepted performance evidence.
+The diagnostic still shows the cost of broad preparation: loading 13.3 → 39.9 s and reported VRAM
+2,000 → 3,028 MB. First-use maximum was 10.5 → 2.1 s, also unaccepted because of focus. Remaining comparison
+runs were stopped instead of counting invalid repeats. This predates the latest Warlock/Codex merge; no
+performance result is asserted for the final merged candidate. Evidence: `kpi-release-pilot-4/`.
 
-## Current performance decision: hold publication
+Do not describe this as an overall speed win, a cold-driver-cache test or a certified performance release.
+Online preparation still covers all classes, some construction/upload/minimap operations remain atomic,
+and long-session residency plus three valid matched repeats remain open. The earlier 4.3 gains were also
+rejected for loading/memory regressions; see [historical results](IMPLEMENTATION_RESULTS.md).
 
-All current diagnostic runs had `focused=false`; macOS reports `CGSSessionScreenIsLocked=true`. The user has
-been asked to unlock the desktop. Existing layout/Metal warnings also prevent strict performance acceptance.
-The following are single-process diagnostics on identical Godot 4.4.1/Metal/High settings and identical updated
-six-actor recipes, with measurement shims on the `9ea4830` baseline. They are **not accepted before/after gains**.
-The workload is an extreme effect flood, not ordinary combat or six network clients.
+## Final gate corrections
 
-| Diagnostic | Baseline `9ea4830` | Final runtime `2a2f1e2` |
-|---|---:|---:|
-| Arena loading | 14.0 s | 43.1 s |
-| Arena engine-reported VRAM | 1,888 MB | 2,958 MB |
-| Forest loading | 31.3 s | 79.5 s |
-| Forest engine-reported VRAM | 2,336 MB | 3,787 MB |
-| Measured gameplay synchronous cache requests | 34 Arena / about 30 forest paths | 0 in both modes |
+The `a514e74` gate passed native save recovery, BG/PvP, 646 class-effect assertions, title/UI/controls, terrain,
+content/world, story, camp/survivor and solo Sandbox/entry checks. It was stopped after two failures: Glacial
+Shard skipped enemies on a long frame, and Warlock’s headless fixture emitted a PagedAllocator shutdown error.
+The failed logs remain in `gate-integrated-2/`; this is not a full green gate.
 
-The initial candidate forest took 100.4 s / 4,773 MB before narrowing forest dependencies and suspending hidden
-3D drawing. The later root-texture filter did not materially improve loading/residency. Do not claim it did.
-Raw `kpi-final`, `kpi-loading-refined` and `kpi-model-roots` runs, patches and manifests remain under closure evidence.
+A controlled real-project arrow probe reproduced three missed targets, then verified that the corrected swept
+query hits/chills all three and selects the nearest ordinary-arrow target (six checks, clean exit/log). Runtime
+`3af589e` applies that correction and adds 150/350 ms regressions. The talent fixture’s `scripted` field is a
+seconds counter, so its stationary targets now remain still for the whole cast. Warlock’s real-renderer rerun
+passed with a clean exit and one Metal warning; the gate uses that renderer on Mac.
 
-Release blockers are concrete:
+The subsequent forest-cleanup merge preserves automatic raid start without bells, quieter ambience, mushroom
+size/lifetime fixes and camp accessibility. The ordinary journey and HUD checks follow the new flow. The new
+camp-access fixture has isolated saves and normal `current_scene`/teardown. Native compile passed cleanly.
+The fresh full gate (`gate-integrated-3/`) completed on this merged candidate without checkpoint reuse.
+It recorded 48 green cases and five red cases; the original wrapper was interrupted, so its final process exit
+is unavailable. This is not a full green gate. See the correction record below.
 
-1. Finish a clean full functional gate after the verified BG fixture correction, including solo Sandbox/entry, all-class/run-skill
-   replay and the remaining UI/co-op tests. Gate 5 is **red/incomplete**, not a release pass.
-2. Reduce and measure preparation/residency on an unlocked desktop, then complete three valid matched repeats.
-   Online all-class preparation, broad non-forest zone families and remaining atomic construction are still open.
-   Preserve current art/gameplay and keep omitted dependencies visible through miss checks.
-3. Obtain the shared staging handoff, publish matching client/broker/worker exports, and verify remote operation.
-   Sandbox requires backend changes; this is not a client-only deployment. No push or deployment in this closure.
+## Release checks remaining
 
-The BG clock probe also measured about 150 simulation seconds over 200 wall seconds during a source/debug
-server + rendered-client run. That is not a release-server capacity measurement. Functional timer assertions now
-check the simulation boundary with a bounded wall timeout; they do not certify tick rate or conceal that finding.
+1. Finish the current full native/rendered/network gate; retain and fix failures rather than ignoring errors.
+2. Inspect current HUD/results and Arena/Sandbox renders. Ordinary completion is separate from `bg_test`
+   (accelerated clock/assists) and `run_playthrough` (teleports/healing/direct results).
+3. Publish coordinated staging client and lobby worker/broker builds, then verify remote admission/gameplay.
+   Sandbox requires the broker/worker update; a client-only upload is insufficient. Main is unchanged.
+4. Validate focused performance before making speed/budget claims. Keep the loading/residency tradeoff visible.
 
-Historical sync before the resumed verification: `origin/staging` was `3d4c661`, with Claude-1 gameplay through `b8421f0` merged locally.
-Construction (3), audit (14) and benchmark (13) Python tests pass. At that historical sync Claude-1 held the local heavy-tests claim;
-no new Godot run or runtime acceptance was performed then. Current ownership and checks are recorded above.
-A separate unmerged `origin/claude-2/hero-codex` branch appeared at `f13c496` during the last fetch (no PR at this
-checkpoint). It moves hero/run/talent data into JSON and adds an editor. It is not included in these results;
-when integrated, rerun declaration/recipe capture and gameplay checks against its data-loading changes.
+The new integration preserves Warlock, Hero Codex, save recovery and newer staging fixes. The corrupt-save
+reader now tries backups without emitting JSON parser errors, and character selection/portraits use recoverable
+data. The old broken-disconnect diagnostic is opt-in; the release check exercises the repaired path with no
+error allowance. New fixtures set `current_scene`, matching a normal launch. A private copy-on-write import cache prevents another checkout’s cache cleanup from invalidating this run. No game-editor import was performed.
+
+The user already authorized staging publication. Local staging integration is reserved by Codex; no other
+agent's checkout has been changed. Separate unmerged hero-codex branches are outside this frozen candidate.
+
+## Current release-gate findings
+
+The full run completed 48 green cases. Five cases were red: vendor random work selection; LAN join errors
+from retired enemy effects; Plague host's premature class-readiness check; and Arena/Sandbox interrupted by
+Codex's own simultaneous diagnostic probe. The latter was a test-scheduling mistake, not evidence of a match
+failure. All original logs remain. Title also printed an incorrect duplicate-save diagnostic without failing.
+
+The final runtime change guards enemy hit/chill/stun sends with the existing connected-client check. All 77
+RPC declarations remain identical. LAN now uses wall-clock ready voting and waits for actual player/world
+readiness; important outcomes fail the process instead of merely printing false. Plague waits for the partner's
+class to load. Vendor exercises its real work-selection path with reproducible random draws. Title checks
+character IDs, excluding backup files. These fixtures isolate saves/cloud and tear down normally.
+
+Per Blaine's request to reassess and finish, release verification retains the completed checks on unchanged
+systems and reruns affected paths. This consolidated evidence is distinct from an uninterrupted green full-gate
+run; no old failed output is relabelled as a new pass. The routine full-gate command remains unchanged for future
+runs. Final targeted results, CI/publication and remote gameplay must still be recorded before calling this shipped.
+
+
+Focused correction results so far: native compile, title, vendor, disconnect-during-loading/stale-enemy sends,
+LAN host/client and Plague host/client all exit 0 with no runtime errors. Title has one Metal warning; the
+others have no warnings. LAN verifies kills/XP, bidirectional effects, loot, return travel and clean disconnect.
+Hosted Arena/Sandbox are executing sequentially; publication and remote checks remain pending.

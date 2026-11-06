@@ -16,6 +16,8 @@ Two kinds of multiplayer, deliberately different (Blaine, 2026-11-05):
    dedicated servers) and Steam differ only in the peer that is plugged in. Never write transport-specific game code.
 2. **The host is authoritative.** Monsters, loot and damage resolve on the host (or the dedicated server); partners
    send what they do and draw what they are told. A partner's damage reaches the host through the existing RPCs.
+   Delayed remote-enemy effects must check `still_joined(peer)` before sending; a world can finish retiring
+   after its transport has closed.
 3. **Everything a skill shows is an fx event** (see [effects.md](effects.md)), so partners see it without new RPCs.
 4. **Peers need compatible RPC sets and simulation behavior.** Exact build-SHA admission was explicitly removed
    for development by Blaine; do not restore it. Client-only presentation changes can interoperate across revisions.

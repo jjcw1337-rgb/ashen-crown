@@ -2,16 +2,19 @@ extends SceneTree
 ## Two-player co-op test. Run one copy with "-- host" and another with "-- join".
 
 var g
+var fails := 0
 var test_port := 24567
 var role := "host"
 
 func _initialize():
+	BuildEnv.forced = {"env": "local", "cloud": "0"}
 	var args := OS.get_cmdline_user_args()
 	if args.has("--test-port"): test_port = int(args[args.find("--test-port") + 1])
 	role = "join" if OS.get_cmdline_user_args().has("join") else "host"
 	var scn: PackedScene = load("res://main.tscn")
 	g = scn.instantiate()
 	g.char_dir = "user://gate/mp_test/%s/" % role
+	g.old_save = g.char_dir + "absent.json"
 	get_root().add_child(g)
 	current_scene = g
 	process_frame.connect(_answer_votes)
@@ -20,7 +23,7 @@ func _initialize():
 ## The ready check (UI.party_vote): the partner says "Not yet" to the first trip and joins 2 s later, then
 ## joins every other trip at once; the host joins the partner's trips.
 var votes_seen := 0
-var _vote_wait := 0.0
+var _vote_due := 0
 var _vote_open := false
 func _answer_votes() -> void:
 	if g == null or g.ui == null or g.ui.vote_panel == null:
@@ -32,13 +35,26 @@ func _answer_votes() -> void:
 	if not _vote_open:
 		_vote_open = true
 		votes_seen += 1
-		_vote_wait = 2.0 if (role == "join" and votes_seen == 1) else 0.3
+		_vote_due = Time.get_ticks_msec() + (2000 if (role == "join" and votes_seen == 1) else 300)
 		if role == "join" and votes_seen == 1 and ui.vote_no.visible:
 			ui.vote_no.pressed.emit()
 	if ui.vote_yes.visible:
-		_vote_wait -= 1.0 / 60.0
-		if _vote_wait <= 0.0:
+		if Time.get_ticks_msec() >= _vote_due:
 			ui.vote_yes.pressed.emit()
+
+func check(ok: bool, what: String) -> bool:
+	if not ok:
+		fails += 1
+	print("[MP] %s %s" % ["ok" if ok else "FAIL", what])
+	return ok
+
+func until(condition: Callable, seconds := 180.0) -> bool:
+	var deadline := Time.get_ticks_msec() + int(seconds * 1000.0)
+	while Time.get_ticks_msec() < deadline:
+		if condition.call():
+			return true
+		await process_frame
+	return false
 
 func wait(n: int) -> void:
 	for i in n:
@@ -61,7 +77,12 @@ func _run() -> void:
 		await _host()
 	else:
 		await _join()
-	quit()
+	process_frame.disconnect(_answer_votes)
+	g.net.shutdown()
+	g.queue_free()
+	await wait(20)
+	print("[MP] done, %d failures" % fails)
+	quit(1 if fails else 0)
 
 func _host() -> void:
 	if test_port == 24567:
@@ -80,16 +101,20 @@ func _host() -> void:
 	while g.net.players.is_empty() and Time.get_ticks_msec() - t0 < 180000:
 		await wait(10)
 	print("[H2] partner joined: ", g.net.players.size() == 1, " name=", g.net.players.values()[0]["name"] if g.net.players.size() > 0 else "-")
+	if not check(await until(func(): return not g.net.puppets().is_empty() and g.net.puppets()[0].net_has), "partner finished initial loading"):
+		return
 	await secs(3.0)
 	g.playing = false
 	g.travel(0, "wild", "from_town")
 	await secs(1.0)
 	print("[H2b] the ready check: the partner said Not yet, the party waits in town: ", g.cur_zone == "town" and g.ui.vote_panel.visible, " (", g.ui.vote_wait.text, ")")
 	var tw := Time.get_ticks_msec()
-	while g.cur_zone != "wild" and Time.get_ticks_msec() - tw < 15000:
+	while (g.cur_zone != "wild" or g._busy or g.net.loading) and Time.get_ticks_msec() - tw < 180000:
 		await wait(5)
-	await wait(5)
-	await idle()
+	if not check(g.cur_zone == "wild" and not g._busy and not g.net.loading, "host reached wild after the ready vote"):
+		return
+	if not check(await until(func(): return not g.net.puppets().is_empty() and g.net.puppets()[0].net_has), "partner finished wild loading"):
+		return
 	var h = g.hero
 	h.vit = 400
 	h.recalc()
@@ -104,7 +129,7 @@ func _host() -> void:
 	var cast_t := 0.0
 	var fx0: int = g.net.fx_got
 	var fx_nodes := 0
-	while Time.get_ticks_msec() - t0 < 40000 and g.cur_zone == "wild":
+	while Time.get_ticks_msec() - t0 < 180000 and g.cur_zone == "wild":
 		h.life = h.max_life
 		# the host casts at the partner's foes now and then, so the partner sees his effects on this puppet
 		cast_t -= 10.0 / 60.0
@@ -134,16 +159,19 @@ func _host() -> void:
 				if e.dead:
 					seen[e.get_instance_id()] = true
 		await wait(10)
+	check(not seen.is_empty() and max_items > 0, "host observed kills and loot")
+	check(g.net.fx_got > fx0 and fx_nodes > 0 and g.net.fx_sent > 0, "host received and sent combat effects")
 	print("[H5] monsters killed by partner=", seen.size(), " items dropped peak=", max_items, " items left=", g.net.items.size())
 	print("[H8] partner's skill effects received=", g.net.fx_got - fx0, " seen on his puppet=", (g.net.fx_got - fx0) > 0 and fx_nodes > 0, " mine sent to him=", g.net.fx_sent)
 	t0 = Time.get_ticks_msec()
-	while g.cur_zone != "town" and Time.get_ticks_msec() - t0 < 20000:
+	while g.cur_zone != "town" and Time.get_ticks_msec() - t0 < 180000:
 		await wait(10)
 	await idle()
 	print("[H6] party travelled to town on partner's request: ", g.cur_zone == "town")
 	t0 = Time.get_ticks_msec()
-	while not g.net.players.is_empty() and Time.get_ticks_msec() - t0 < 20000:
+	while not g.net.players.is_empty() and Time.get_ticks_msec() - t0 < 180000:
 		await wait(10)
+	check(g.cur_zone == "town" and g.net.players.is_empty(), "party returned and partner disconnected")
 	print("[H7] partner left cleanly: ", g.net.players.is_empty())
 
 
@@ -161,7 +189,7 @@ func _join() -> void:
 	await secs(2.0)
 	g.start_join("127.0.0.1:%d" % test_port)
 	var t0 := Time.get_ticks_msec()
-	while (g.net.players.is_empty() or g.net.loading or g._busy) and Time.get_ticks_msec() - t0 < 30000:
+	while (g.net.players.is_empty() or g.net.loading or g._busy) and Time.get_ticks_msec() - t0 < 180000:
 		await wait(5)
 	g.playing = false
 	g.ui.close_all()
@@ -169,8 +197,10 @@ func _join() -> void:
 	await secs(1.0)
 	print("[C1] joined=", g.net.is_client(), " zone=", g.cur_zone, " host visible=", host_p != null and host_p.visible, " host class=", host_p.cls if host_p else "-")
 	t0 = Time.get_ticks_msec()
-	while (g.cur_zone != "wild" or g.net.loading or g._busy) and Time.get_ticks_msec() - t0 < 30000:
+	while (g.cur_zone != "wild" or g.net.loading or g._busy) and Time.get_ticks_msec() - t0 < 180000:
 		await wait(5)
+	if not check(g.cur_zone == "wild" and not g.net.loading and not g._busy, "client reached wild"):
+		return
 	await secs(2.0)
 	print("[C2] followed host to wild=", g.cur_zone == "wild", " monsters mirrored=", g.net.enemies.size(), " all remote=", g.net.enemies.values().all(func(e): return e.remote))
 	var h = g.hero
@@ -240,6 +270,8 @@ func _join() -> void:
 	g.lmb_held = false
 	await secs(1.0)
 	var gained: int = h.xp + h.level * 100000 - xp0
+	check(moved_monsters and kills > 0 and gained > 0, "client movement, authoritative kills and XP")
+	check(g.net.fx_sent > sent0 and g.net.fx_got > fx0, "client sent and received combat effects")
 	print("[C3] monsters moved on my screen=", moved_monsters, " I killed=", kills, " xp gained=", gained > 0, " times hit by monsters=", hits)
 	print("[C7] my skill effects sent to the host=", g.net.fx_sent - sent0, " the host's received here=", g.net.fx_got - fx0, " shown on his puppet=", (g.net.fx_got - fx0) > 0 and g.net.puppets().size() > 0)
 	var gold0: int = h.gold
@@ -261,11 +293,13 @@ func _join() -> void:
 		if b != null:
 			belt1 += int(b.get("count", 1))
 	var got: int = (h.gold - gold0) + (h.inventory.filter(func(x): return x != null).size() - inv0) + (belt1 - belt0)
+	check(picked > 0 and got > 0, "client received picked-up loot")
 	print("[C4] tried to pick up ", picked, " items, received something=", got > 0, " ground items left=", g.world.items_root.get_child_count())
 	g.travel(0, "town", "from_wild")
 	t0 = Time.get_ticks_msec()
-	while (g.cur_zone != "town" or g.net.loading or g._busy) and Time.get_ticks_msec() - t0 < 30000:
+	while (g.cur_zone != "town" or g.net.loading or g._busy) and Time.get_ticks_msec() - t0 < 180000:
 		await wait(5)
+	check(g.cur_zone == "town" and not g.net.loading and not g._busy, "client returned to town")
 	print("[C5] I asked to go to town, party is now in: ", g.cur_zone)
 	await secs(2.0)
 	g.net.shutdown()

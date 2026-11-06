@@ -14,11 +14,13 @@ const CASTS := [["toxic", 6.0, 1.8], ["swarm", 6.0, 1.6], ["bloom", 4.0, 1.6], [
 	["transfusion", 0.0, 1.2], ["experiment", 4.0, 4.8]]
 
 func _initialize():
+	BuildEnv.forced = {"env": "local", "cloud": "0"}
 	var args := OS.get_cmdline_user_args()
 	if args.has("--test-port"): test_port = int(args[args.find("--test-port") + 1])
 	role = "join" if OS.get_cmdline_user_args().has("join") else "host"
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	g.char_dir = "user://gate/plague_mp_test/%s/" % role
+	g.old_save = g.char_dir + "absent.json"
 	get_root().add_child(g)
 	current_scene = g
 	_run()
@@ -64,7 +66,7 @@ func _run() -> void:
 		await secs(2.0)
 		g.start_join("127.0.0.1:%d" % test_port)
 		var t0 := Time.get_ticks_msec()
-		while (g.net.players.is_empty() or g.net.loading or g._busy) and Time.get_ticks_msec() - t0 < 30000:
+		while (g.net.players.is_empty() or g.net.loading or g._busy) and Time.get_ticks_msec() - t0 < 180000:
 			await wait(5)
 		g.ui.close_all()
 		g.hero.set_class("plague")
@@ -76,7 +78,7 @@ func _run() -> void:
 	var other = g.net.puppets()[0] if g.net.puppets().size() > 0 else null
 	# the partner's class change follows his own zone load; give it time to arrive
 	var tc := Time.get_ticks_msec()
-	while other and not (other.is_plague() and other.rig.has_meta("plague")) and Time.get_ticks_msec() - tc < 10000:
+	while other and not (other.is_plague() and other.rig.has_meta("plague")) and Time.get_ticks_msec() - tc < 180000:
 		await wait(5)
 	check(other != null and other.is_plague() and other.rig.has_meta("plague"), "the other player shows as a plague doctor on his own body")
 	# both watch the whole time; the host casts first, the partner once the host is done
@@ -89,6 +91,9 @@ func _run() -> void:
 	while not watched:
 		await wait(5)
 	await secs(3.0)
+	g.net.shutdown()
+	g.queue_free()
+	await wait(20)
 	print("[PM] %s done, %d failed" % [role, fails])
 	quit(1 if fails > 0 else 0)
 
