@@ -8,7 +8,7 @@
 set -u
 CLS=$1; SKILL=$2; Q=${3:-2}; SECS=${4:-25}
 BUDGET=20
-G=${GODOT:-/Users/blaine/Applications/Godot_v4.3.app/Contents/MacOS/Godot}
+G=${GODOT:-/Users/blaine/Applications/Godot_v4.4.1.app/Contents/MacOS/Godot}
 OUT=${OUT:-/tmp/skill_perf}
 mkdir -p "$OUT"
 cd "$(dirname "$0")/.."

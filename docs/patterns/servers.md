@@ -13,8 +13,8 @@ hold every asset and draw everything. Measured on the staging droplet (4 GB, 2 v
 
 1. **Servers run the stripped "Linux Server" export** (`export_presets.cfg`: dedicated server, everything stripped
    to placeholders). Textures have no pixels; meshes keep only their bounding box and have no surfaces. Staging CI
-   exports it with the **debug** template (4.3's release template segfaults on it) as the `AshenCrown-server` artifact,
-   which is never uploaded to itch or Steam.
+   exports it with the release template (4.4.1; 4.3's segfaulted on it) as the `AshenCrown-server` artifact, which is
+   never uploaded to itch or Steam. Its prints flush at once (`run/flush_stdout_on_print.dedicated_server`).
 2. **Server code must never need pixels or mesh surfaces.** Anything that reads an image or a mesh's vertices gets a
    guard for the empty case (see `UI._scaled_tex`, `Flora.oak_model`'s leaves). Collision is footprints in code
    (`World.obstacles`), never mesh data.

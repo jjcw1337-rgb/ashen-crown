@@ -43,9 +43,9 @@ megabytes are). Size changes must keep the look: show before/after images of any
         50 ms on High);
       - a big fight: `tools/stress_fight.gd -- plague demon,archer 25 18` (p99 at or under 33 ms, worst at or under 80);
       - zone loads: the KPI scenarios' load_ms (3 s warm, 5 s cold) and the longest frame during a load (250 ms);
-      - the server: a stripped "Linux Server" export (`--export-debug "Linux Server"`) run headless locally with
-        `tools/load_bot.gd` players (6 fighting in a Battlegrounds world): its RSS and CPU against the costs in
-        `deploy/lobbies/service.py` `COST`; a regression is a finding.
+      - the server: `python3 tools/server_cost.py bg --steps 0,1,6` (a headless Battlegrounds server from this
+        checkout with `tools/load_bot.gd` players fighting): its CPU per step against last night's and the costs in
+        `deploy/lobbies/service.py` `COST` (macOS RSS is only indicative); a regression is a finding.
       Any budget missed is a candidate concept for tonight; one that got worse since the last night goes first.
    c. When you change a pattern (a new loader, a new warm-up, a new budget), update its docs/patterns file in the same
       commit: the next run reads it.
@@ -61,7 +61,7 @@ megabytes are). Size changes must keep the look: show before/after images of any
    vram_mb ...). The runner's own "before" run of tonight is in {{OUT}}/bench/before.json; all past nights are in the
    KPI store: `sh tools/kpi_query.sh latest` or any SQL (`sh tools/kpi_query.sh "SELECT ..."`), or the `grafana` MCP
    if your session has it. Run a scenario yourself to iterate (each ~30-40 s):
-     G=~/Applications/Godot_v4.3.app/Contents/MacOS/Godot
+     G=~/Applications/Godot_v4.4.1.app/Contents/MacOS/Godot
      $G --path . --resolution 1600x900 -- --kpi fight {{OUT}}/try_fight.json --quality 2
    (`--secs N` for a shorter run; `--hide ...` in CLAUDE.md isolates costs; the old `--shot x.png --perf 12` hook
    still works). Pick tonight's targets from the KPIs furthest from their targets in KPIS.md.

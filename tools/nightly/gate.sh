@@ -6,7 +6,7 @@
 set -u
 OUT=${1:-/tmp}
 mkdir -p "$OUT"
-G=${GODOT_BIN:-/Users/blaine/Applications/Godot_v4.3.app/Contents/MacOS/Godot}
+G=${GODOT_BIN:-/Users/blaine/Applications/Godot_v4.4.1.app/Contents/MacOS/Godot}
 [ ! -e /tmp/ashen-nightly.lock ] || { echo "Nightly owns the test window"; exit 1; }
 BG_PORT=${GATE_BG_PORT:-24631}
 PVP_PORT=${GATE_PVP_PORT:-24641}

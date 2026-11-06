@@ -28,6 +28,7 @@ var cam_pivot: Node3D
 var cam: Camera3D
 var hero: Hero
 var net: Net
+var steam: SteamLink            # co-op through Steam: friends join your world (steam_link.gd); ok is false without Steam
 var weather: Weather
 var grass_field: GrassField   # the grass's touch and wind (grass_field.gd)
 var sky_mat: ProceduralSkyMaterial
@@ -210,6 +211,10 @@ func _ready() -> void:
 	net = Net.new()
 	add_child(net)
 	net.setup(self)
+	steam = SteamLink.new()
+	steam.name = "SteamLink"
+	add_child(steam)
+	steam.setup(self)
 	hero = Hero.new()
 	hero.name = "Hero"
 	add_child(hero)
@@ -1853,6 +1858,33 @@ func start_join(ip: String, id := "") -> void:
 		net.shutdown()
 		on_net_failed(net.join_failure("No answer from %s. Check the host's game is running and Windows Firewall allowed it." % ip))
 
+## A friend's world through Steam (SteamLink: their invite or "Join Game"): our chosen character joins the friend
+## `owner` (a Steam ID) the way a LAN join does, over Steam's relay.
+func start_join_steam(owner: int) -> void:
+	while _busy:
+		await get_tree().process_frame
+	Sfx.play("click")
+	net.stop_listening()
+	ui.hide_title()
+	playing = true
+	var chars := list_characters()
+	var id: String = ui.home.sel if ui.home != null and ui.home.sel != "" else ""
+	char_id = id if id != "" else (str(chars[0]["id"]) if not chars.is_empty() else new_char_id())
+	if not load_game():
+		char_name = default_name(hero.cls)
+		hero.new_character()
+	net_joining = true      # (until the host welcomes us: Net.cl_welcome)
+	loading_lbl.text = "Joining your friend's world..."
+	loading.visible = true
+	var p: MultiplayerPeer = steam.client_peer(owner)
+	if p == null or net.join_with(p) != OK:
+		on_net_failed("Steam couldn't connect to your friend's world.")
+		return
+	await get_tree().create_timer(15.0).timeout
+	if net.is_client() and net.players.is_empty() and loading.visible and not _busy:
+		net.shutdown()
+		on_net_failed(net.join_failure("Your friend's world didn't answer. Ask them to invite you again."))
+
 ## Battlegrounds from the title screen: the character `id` (one of the player's own; what it carries in, it risks)
 ## joins the raid server at `addr` ("host" or "host:port"). Its save is marked in_raid until it extracts, so closing
 ## the game mid-raid counts as dying (_bury_lost_raiders). Dying costs every item it wore and carried, and its gold
@@ -2096,6 +2128,8 @@ func _bg_home_camp(fell: bool) -> void:
 	bg_gained = -1
 
 func on_net_failed(msg: String) -> void:
+	if steam != null:
+		steam.close_world()
 	if lobby_client != null and lobby_client.match_id != "":
 		lobby_client.finished(msg)
 		return
@@ -2612,6 +2646,8 @@ func bg_server_address() -> String:
 
 ## Back to the title screen to pick another character (the pause menu's "Save and Exit to Title").
 func exit_to_title() -> void:
+	if steam != null:
+		steam.close_world()      # (friends see our world gone)
 	if lobby_client != null and lobby_client.match_id != "":
 		if bg_mode and not lobby_client.admitted:
 			bg_mode = false
@@ -3726,6 +3762,9 @@ func toggle_pause() -> void:
 	paused = not paused
 	get_tree().paused = paused and not net.active
 	ui.pause_panel.visible = paused
+	if ui.invite_btn != null:
+		ui.invite_btn.visible = steam != null and steam.ok and not net.is_client() and not net.server and not bg_mode \
+			and not arena_mode and (lobby_client == null or lobby_client.match_id == "")
 	Engine.time_scale = 1.0
 	lmb_held = false
 	rmb_held = false
@@ -4274,8 +4313,28 @@ func _click_world() -> void:
 		Fx.burst(world.fx_root, ground_pt + Vector3(0, 0.05, 0), Color(1.0, 0.85, 0.5, 0.6), 6, 1.2, 0.08, 0.35, true, 0.0, 90.0)
 
 # ---------------------------------------------------------------- loop
+## Autosave (Blaine, 2026-11-05: a host leaving or a crash must never cost loot): the character is saved every
+## AUTOSAVE_EVERY seconds while playing and when the window is closed (it was saved only on zone changes, boss kills
+## and the menu's Save and Exit, so a Cmd+Q lost everything since the last zone). Not in a raid, an arena match or
+## the sandbox, which keep their own rules.
+const AUTOSAVE_EVERY := 60.0
+var _autosave_t := 0.0
+
+func can_autosave() -> bool:
+	return playing and not _busy and not bg_mode and not arena_mode and sandbox == null and char_id != "" \
+		and shot_path == "" and net != null and not net.server and hero != null
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and can_autosave():
+		save_game()
+
 func _process(delta: float) -> void:
 	ResCache.pump()
+	_autosave_t += delta
+	if _autosave_t >= AUTOSAVE_EVERY:
+		_autosave_t = 0.0
+		if can_autosave():
+			save_game()
 	if arena_mode:
 		Battlegrounds.sync_proxies(self)
 	if bg_mode:

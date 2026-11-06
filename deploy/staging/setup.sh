@@ -5,8 +5,8 @@
 # secrets files (random, mode 600, kept if they already exist). It never prints a secret.
 set -eu
 BASE=/opt/ashen-crown
-GODOT_URL=https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
-GODOT_SUMS=https://github.com/godotengine/godot/releases/download/4.3-stable/SHA512-SUMS.txt
+GODOT_URL=https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_linux.x86_64.zip
+GODOT_SUMS=https://github.com/godotengine/godot/releases/download/4.4.1-stable/SHA512-SUMS.txt
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
@@ -21,11 +21,11 @@ if [ ! -x $BASE/godot/godot ]; then
   tmp=$(mktemp -d)
   curl -fsSL -o $tmp/godot.zip $GODOT_URL
   curl -fsSL -o $tmp/sums.txt $GODOT_SUMS
-  want=$(grep ' Godot_v4.3-stable_linux.x86_64.zip$' $tmp/sums.txt | cut -d' ' -f1)
+  want=$(grep ' Godot_v4.4.1-stable_linux.x86_64.zip$' $tmp/sums.txt | cut -d' ' -f1)
   got=$(sha512sum $tmp/godot.zip | cut -d' ' -f1)
   [ -n "$want" ] && [ "$want" = "$got" ] || { echo "Godot checksum mismatch"; exit 1; }
   unzip -q -o $tmp/godot.zip -d $tmp
-  install -m 755 $tmp/Godot_v4.3-stable_linux.x86_64 $BASE/godot/godot
+  install -m 755 $tmp/Godot_v4.4.1-stable_linux.x86_64 $BASE/godot/godot
   rm -rf $tmp
 fi
 

@@ -22,14 +22,14 @@ The repository owner adds the other developer: **Settings → Collaborators → 
 enter their GitHub username, and they accept the e-mail invite.
 
 **Windows**
-1. Install **Godot 4.3** (standard build, not .NET): https://godotengine.org/download/archive/4.3-stable/
+1. Install **Godot 4.4.1** (standard build, not .NET): https://godotengine.org/download/archive/4.4.1-stable/
 2. Install **GitHub Desktop** (https://desktop.github.com), sign in, then
    **File → Clone repository → `jjcw1337-rgb/ashen-crown`**.
 3. Open Godot, click **Import**, pick `project.godot` in the cloned folder, press **F5** to play.
 
 **Linux**
 1. Download Godot 4.3 for Linux (x86_64) from the same page, unzip it and make it executable
-   (`chmod +x Godot_v4.3-stable_linux.x86_64`).
+   (`chmod +x Godot_v4.4.1-stable_linux.x86_64`).
 2. Clone with git:
    ```
    git clone https://github.com/jjcw1337-rgb/ashen-crown.git

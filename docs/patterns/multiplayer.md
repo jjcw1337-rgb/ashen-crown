@@ -19,6 +19,11 @@ Two kinds of multiplayer, deliberately different (Blaine, 2026-11-05):
 3. **Everything a skill shows is an fx event** (see [effects.md](effects.md)), so partners see it without new RPCs.
 4. **Every peer runs the same build**: RPC ids depend on each script's RPC set. The game says when versions differ.
 5. **Steam during development is Spacewar (App ID 480)**: real invites and relay from our own builds with Steam
-   running. Our own App ID comes later ($100 Steam Direct, needs an admin's OK).
+   running. Our own App ID comes later ($100 Steam Direct, needs an admin's OK; then BuildEnv `steam_app_id`).
+   `SteamLink` (`scripts/steam_link.gd`, GodotSteam 4.23.2 in `addons/godotsteam`, its `SteamMultiplayerPeer`
+   built in) does it all: the pause menu's Invite Friends opens your world (a friends-only Steam lobby, rich presence
+   for "Join Game") and hosts through Steam; a friend's invite or "Join Game" joins (`Game.start_join_steam`); the
+   lobby browser lists friends' open worlds. Without Steam running nothing changes. Check a build with
+   `-- --steam-selftest` (opens and closes a host peer, prints the result, quits).
 6. **Friends are Steam friends.** No friends database of our own. A Steam ID is linked to the player's Nakama
    account, so a cross-play friend list could later be imported into Nakama.
