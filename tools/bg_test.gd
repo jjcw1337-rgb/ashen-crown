@@ -2,10 +2,10 @@ extends SceneTree
 ## Battlegrounds (battlegrounds.gd), the Hollow Crypt, two processes on this machine:
 ##   godot --headless --path . -s tools/bg_test.gd -- --server --port 24611 --raid-fast server
 ##   godot --headless --path . -s tools/bg_test.gd -- client 24611 [addr <host>] [cloud <nakama url> <server key>]
-## The client makes a real character (in a scratch character folder), takes it into the crypt (its save says
-## in_raid), kills a monster, loots a chest, waits for the portals, extracts (the loot is in its own inventory and
-## saved, in_raid off), goes back in, levels up and dies: it loses every item and its gold (a plain weapon given back),
-## keeps its level, and its gear drops for others. The server
+## The client makes a real character (in a scratch character folder) and enters the crypt with a fresh run character
+## of its class (RunBuild, level 0: the multiplayer overhaul; the saved character is never touched), kills a monster,
+## loots a chest, picks up what fits and swaps a piece of gear through the host (the old piece left on the ground),
+## waits for the portals, extracts, goes back in as a new run character and dies: its gear drops for others. The server
 ## checks the round (portals open, the collapse, a new round) and the drop. `--raid-fast` = a round of 150 s.
 
 var g
@@ -116,7 +116,7 @@ func _client() -> void:
 	g.test_onehit = true
 	await g.start_battlegrounds("%s:%d" % [host, port], id)
 	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "entered the crypt as Testric")
-	check(_save().get("in_raid", false), "the save says in_raid")
+	check(not _save(path).get("in_raid", false) and g.hero.run != null and g.hero.level == 0 and g.hero.run.skills.is_empty(), "a fresh run character at level 0; the saved character stays out of the raid")
 	check(await until(func(): return not g.bg_raid.is_empty(), 10.0), "the raid's clock arrived (%s)" % str(g.bg_raid.get("state", "?")))
 	# the antechamber: behind its gate; ring the bell and the countdown begins for everyone; then the gate rises
 	var gates: Array = g.world.get_meta("bg_gates", [])
@@ -162,7 +162,9 @@ func _client() -> void:
 		await until(func(): return g.world.items_root.get_child_count() > 0, 10.0)
 	await secs(1.5)
 	var n: int = await _pick_all()
-	check(n > 0, "picked up %d item(s)" % n)
+	g.ui.run_ui.close()
+	check(n > 0 or await _swap_one(), "picked up %d item(s)" % n)
+	await _swap_one()
 	# a portal that isn't open refuses
 	var ex = Battlegrounds.portal_list(g.world)[0]
 	check(not bool(ex.data.get("open", false)) or not g.bg_raid["open"].is_empty(), "portals start closed")
@@ -175,14 +177,14 @@ func _client() -> void:
 	var held: int = _inv_count()
 	g._interact(op)
 	check(await until(func(): return not g.bg_mode, 15.0), "extracted")
-	var sv := _save()
-	check(FileAccess.file_exists(path) and not sv.get("in_raid", true), "the character is safe and saved (in_raid off)")
+	var sv := _save(path)
 	var sgold: int = int((sv.get("hero", {}) as Dictionary).get("gold", 0))
-	check((held > inv0 or sgold > gold0) and _count_saved(sv) >= held and sgold >= gold0, "and keeps what it found (%d -> %d items, %d -> %d gold)" % [inv0, held, gold0, sgold])
+	check(FileAccess.file_exists(path) and not sv.get("in_raid", true) and _count_saved(sv) == inv0 and sgold == gold0 and held == 0, "the saved character is untouched by the run (%d items, %d gold)" % [_count_saved(sv), sgold])
 	# back in, and die
 	await until(func(): return not g._busy and g.ui.title_panel.visible and g.ui.bg_page.visible, 20.0)      # (back on the Battlegrounds page)
 	await g.start_battlegrounds("%s:%d" % [host, port], id)
 	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "went back in")
+	check(g.hero.run != null and g.hero.level == 0, "as a new run character")
 	await secs(2.0)
 	g.hero.set_level(12)
 	g.test_immortal = false
@@ -196,9 +198,7 @@ func _client() -> void:
 	var after := _save(path)
 	var eq: Dictionary = (after.get("hero", {}) as Dictionary).get("equipment", {})
 	var worn: Array = eq.values().filter(func(x): return x != null)
-	check(FileAccess.file_exists(path) and not after.get("in_raid", true), "the character lives on (saved, in_raid off)")
-	check(int((after.get("hero", {}) as Dictionary).get("level", 0)) == 12, "with its level kept (12)")
-	check(_count_saved(after) == 0 and int((after.get("hero", {}) as Dictionary).get("gold", -1)) == 0 and worn.size() == 1, "but every item and its gold are gone (a plain weapon left)")
+	check(FileAccess.file_exists(path) and not after.get("in_raid", true) and int((after.get("hero", {}) as Dictionary).get("level", 0)) == 1 and _count_saved(after) == inv0 and worn.size() >= 1, "a fallen run leaves the saved character as it was (level 1, %d items)" % _count_saved(after))
 
 func _save(p := "") -> Dictionary:
 	if p == "":
@@ -244,6 +244,40 @@ func _nearest(kind: String, unused := false):
 				bd = d
 				best = t
 	return best
+
+## A run's gear swap through the host: a wearable piece on the ground for a slot already worn -> the swap window's
+## Equip (Game.run_swap: the host grants it, the client wears it and drops the old one). Makes one if none dropped.
+func _swap_one() -> bool:
+	var pick = null
+	for gi in g.world.items_root.get_children():
+		if is_instance_valid(gi) and gi is GroundItem and not gi.is_queued_for_deletion() and Items.is_equip(gi.item) \
+				and RunBuild.wearable(gi.item, g.hero.cls) and g.hero.equipment.get(RunBuild.gear_slot(gi.item)) != null:
+			pick = gi
+			break
+	if pick == null:
+		var w := Items.make(str(Data.CLASSES[g.hero.cls].get("weapon", "short_sword")), 2, 5)
+		w["name"] = "Test Blade"
+		w["req"] = 0
+		g.drop_item(w, g.hero.global_position)
+		await until(func(): return g.world.items_root.get_children().any(func(x): return x is GroundItem and x.item.get("name", "") == "Test Blade"), 5.0)
+		for gi in g.world.items_root.get_children():
+			if gi is GroundItem and gi.item.get("name", "") == "Test Blade":
+				pick = gi
+	if pick == null:
+		check(false, "a gear swap: nothing to swap")
+		return false
+	var it: Dictionary = pick.item
+	var slot := RunBuild.gear_slot(it)
+	var old_name := str(g.hero.equipment[slot]["name"])
+	g.hero.global_position = g.world.free_spot_near(pick.global_position, 0.8)
+	g._pickup(pick)
+	var opened: bool = g.ui.run_ui.mode == "swap"
+	g.ui.run_ui.close()
+	g.run_swap(it, pick)
+	var worn: bool = await until(func(): return g.hero.equipment[slot] != null and str(g.hero.equipment[slot]["name"]) == str(it["name"]), 6.0)
+	var left: bool = await until(func(): return g.world.items_root.get_children().any(func(x): return x is GroundItem and not x.is_queued_for_deletion() and str(x.item.get("name", "")) == old_name), 6.0)
+	check(opened and worn and left, "a gear swap through the host: the swap window, %s worn, %s left on the ground" % [it["name"], old_name])
+	return worn
 
 ## Picks up everything on the ground; returns how many the server took off the ground for us.
 func _pick_all() -> int:

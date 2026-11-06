@@ -320,7 +320,8 @@ static func build(w: World) -> void:
 			gates.append(_gate(w, door, half))
 		var c := r.get_center()
 		_bell(w, Vector3(c.x + 2.2, 0, c.y - 2.2))
-		_stash_chest(w, Vector3(c.x - 1.9, 0, c.y - 1.9), stash_chest_no())
+		if MpMode.STASH:
+			_stash_chest(w, Vector3(c.x - 1.9, 0, c.y - 1.9), stash_chest_no())
 	w.set_meta("bg_gates", gates)
 	for p in portals:
 		var glow: Node3D = CryptProps.portal_glow() if CryptProps.has("archway") else Fx.portal_model()

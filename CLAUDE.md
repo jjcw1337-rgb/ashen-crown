@@ -310,6 +310,20 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   the `AshenCrown-server` artifact, never uploaded to itch/Steam. A Battlegrounds world: 1.25 GB -> ~0.4 GB, a busy
   one (6 players fighting) 95% -> 24% of a core, an empty one 31% -> 13%. So server code must never need pixels or
   mesh surfaces (a stripped mesh has none: guard like `Flora.oak_model`'s leaves and `UI._scaled_tex`).
+- **Multiplayer runs** (Blaine's overhaul, 2026-11-06; `docs/overhaul_plan.md`, retirements in `docs/cleanup.md`,
+  switches in `scripts/mp_mode.gd` `MpMode`): a Battlegrounds raider is a fresh **run character** (`Hero.run`, a
+  `RunBuild`; `Hero.start_run`, `Game._start_run_raid`): level 0 on its own fast curve (`RunBuild.xp_for`, attributes
+  grow by themselves, `RunBuild.grow`), the primary attack on left mouse and five slots (`RunBuild.SLOTS`: right mouse,
+  Q E R F; G and V unused) filled from a spellbook of acquired skills, **passives** (`RunBuild.passive_pool`: generic
+  ones plus the class's talents scaled `TALENT_SCALE`, rarity by row, "needs" the skill a talent's icon names) summed
+  into `Hero.tfx` instead of talents, gear only in `RunBuild.GEAR` (no belt, amulet, rings), the belt's four slots as
+  its consumables, no gold and no backpack: found gear for a worn slot opens the swap window and the old piece is left
+  on the ground (`Game._run_pickup_ok`, `run_swap`, `_run_receive`). Camp offers: `RunBuild.offer_for` (three
+  choices rolled once per camp from the run's seed, `ODDS` by tier, at least one skill while a slot is empty),
+  `RunBuild.claim` once (`Game.run_claim`). Loot in a raid is `Game._run_loot` (`RunBuild.random_gear` for the raid's
+  classes). Single player never has `run`. Its windows are `RunUI` (I/K/N or a bar slot: the build; the swap; the
+  camp upgrade) in the multiplayer look, `MpStyle` (palette, Cinzel and Inter in `assets/fonts`, OFL).
+  `tools/run_build_test.gd`; screenshots `tools/run_ui_shots.gd -- outdir`.
 - **Browser build (WebGL)** is a test build only and is fragile:
   - it is exported with **Godot 4.5.1** in CI (the desktop builds use 4.4.1): Godot 4.3's WebGL renderer
     blanks the whole 3D view in busy scenes (many objects near lights). Keep code working in both versions:

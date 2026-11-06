@@ -452,7 +452,7 @@ static func tooltip(it: Dictionary, hero_level: int = 99, mode: String = "") -> 
 		lines.append(["Enchanted +%d: +%d%% defense, +%d life" % [en, int(round(en * ENCHANT_DEF * 100)), enchant_life(it, en)], Color(0.55, 0.75, 1.0)])
 	if tp > 0:
 		lines.append(["Tempered +%d%s: +%d%% damage, +%d damage" % [tp, " (max)" if tp >= TEMPER_MAX else "", tp * TEMPER_ED, tp], Color(1.0, 0.62, 0.28)])
-	elif b["slot"] == "weapon":
+	elif b["slot"] == "weapon" and mode != "run":      # (a run has no furnace)
 		lines.append(["Untempered  ·  a furnace can harden it", Color(0.62, 0.55, 0.48)])
 	match mode:
 		"buy": lines.append(["Cost: %d gold" % price(it), Color(1.0, 0.85, 0.4)])
