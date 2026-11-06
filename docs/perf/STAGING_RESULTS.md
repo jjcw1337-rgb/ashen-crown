@@ -1,7 +1,7 @@
 # Staging continuation — 2026-11-05
 
 Blaine authorized continuing optimization and publishing to staging. This continuation builds on the
-shared preparation implementation in PR #4 and integrates staging through d0e8ea9 (Godot4.4.1, Steam co-op, autosave and lobby changes). Publication and
+shared preparation implementation in PR #4 and integrates staging through 2f34d20 (Godot4.4.1, Steam co-op, autosave, lobby changes and the authority audit). Publication and
 final functional gate are pending; this is not a certified full-suite performance result.
 
 ## Runtime changes
@@ -95,4 +95,20 @@ has been completed in this continuation. Initial staged adoption is not a claim 
 - After updating only this worktree's ignored class/extension registrations, all content contracts passed:
   23 cache, 1775 declarations, 278 actual combat roots, 47 fragment checks. Twelve Python benchmark/log tests
   and 49 broker tests also passed. Initial stale local class-cache failure is retained. No shared import was run.
-- Full functional gate, rendered host readiness and final staging export/publication remain pending.
+- Rendered host readiness passed ten assertions on Metal Forward+, with zero errors and one engine warning
+  (`Metal does not support LOD bias for samplers`). Camp screenshot inspected; no actual Steam lobby opened.
+- The first full 4.4.1 replay had 386 passing assertions but material runtime errors, also reproduced natively.
+  LLDB located the failure in dirty render-instance cleanup during VisualInstance destruction. A tiny retained
+  mesh / mixed-override reproduction emitted six errors in six cycles. Clearing surface overrides at
+  `NOTIFICATION_PREDELETE` eliminated all six. This matches [Godot #85817](https://github.com/godotengine/godot/issues/85817).
+- `SurfaceMaterials.assign` now owns surface-override retirement across existing setter sites. It installs the
+  cleanup on otherwise unscripted meshes, preserves custom subclasses, never duplicates shared meshes and never
+  pins their instance materials globally. CI rejects direct setter bypasses. The permanent test passes 73 checks
+  for retained meshes, immediate/queued deletion, reparenting, subclass behavior and material weak-reference release.
+- Targeted Demon replay passes 77 assertions with zero errors/warnings after the fix. The complete all-class
+  replay then passed 387 assertions with zero errors/warnings on 4.4.1. The later full gate was interrupted
+  after 13 green cases through raid_schedule; it is NOT a complete green gate. Title/character each retain
+  the Metal LOD-bias warning; telemetry verifies exactly two intentional fixture errors.
+- No Codex game process or gate remains running. Claude-1 holds heavy-tests and the legacy nightly lock is
+  active, so further heavy validation waits for coordination. Staging publication is still pending. The local
+  override was archived with test evidence and removed. Native rendering is tested separately from headless assertions.
