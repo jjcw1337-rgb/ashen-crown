@@ -1700,8 +1700,14 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   codex's design entries; through `tools/_late.gd`) and `tools/codex_test.gd` (also late). The run's content is in it
   too: `Data.RUN_SKILLS` (skills, `"run": true`), `RunTalents.TALENTS` (rites with their `k` numbers and `proc`; "any"
   ones in shared.json) and `RunTalents.GEMS` (gems.json, rarity up to 3 legendary), all laid over when they load; a
-  hero's directions are its `RunTalents.THEMES` (the codex files skills by `SKILL_THEMES` or their codex direction). A value edited in code without re-exporting is overridden by the
-  codex file: change it in the codex.
+  hero's directions are its `RunTalents.THEMES` (the codex files skills by `SKILL_THEMES` or their codex direction).
+  **Code edits are never lost**: `data/codex/code_base.json` (written by the export) is what the code said at the last
+  export, and each field is a three-way merge (`Codex._take`): changed only in code, the code's value plays (and
+  `codex_test` lists it until the next export folds it in); changed only in the codex, the codex's; both, the codex's
+  (listed as a conflict). So keep tuning in code as before, then run the export (or let the editor's Publish do it).
+  Ids are unique per hero file (a run talent and a tree talent can't share one: `k_zeal`'s run twin is `k_zealot`).
+  The editor runs live on the mini (`--live staging`, its own worktree `ashen-crown-claude-2-codex` on
+  `claude-2/codex-live`): Publish follows staging, exports, runs `codex_test` and fast-forwards `staging`.
 - **Talents** (players see them as **Rites**, for every class: JJ 2026-11-05; only the shown text says Rites, the code,
   save keys and tools keep `talent`) (`scripts/talents.gd`, the window is N; `tools/talent_test.gd`, `tools/talent_shot.gd`): three trees per
   class of seven talents in four rows (2, 2, 2, then a capstone); a row opens with 0/3/6/10 points spent above it in

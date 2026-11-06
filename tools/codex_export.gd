@@ -3,6 +3,8 @@ extends SceneTree
 ## (Data.SKILLS), its rites (Talents.TREES, its three directions), the shared skills and generic passives
 ## (RunBuild.GENERIC) and the consumables (Data.BASES potions). A file that exists keeps what only the codex has:
 ## design entries, a hero's fantasy and directions text, gems, and extra fields on live entries.
+## It also writes code_base.json (what the code says, the base of Codex's three-way merge), so run it after changing a
+## skill's or talent's numbers or text in code: the game already plays the code's change, the export puts it in the codex.
 ##   godot --headless --path . -s tools/_late.gd -- res://tools/codex_export.gd   (after the autoloads: RunTalents needs them)
 
 const OUT := "res://data/codex/"
@@ -95,6 +97,9 @@ func _initialize() -> void:
 		gl.append(e)
 	var gd := {"about": str(ge.get("about", "")), "entries": _merge(ge.get("entries", []), gl)}
 	_write("gems.json", gd)
+	# what the code says for every field the codex lays over: the next load's three-way merge base (Codex._take)
+	_write("code_base.json", {"about": "Written by tools/codex_export.gd: the code's own values when the codex was last exported. Don't edit.",
+		"skills": Codex.code_now.get("skills", {}), "rites": Codex.code_now.get("rites", {}), "gems": Codex.code_now.get("gems", {})})
 	print("[codex_export] %d heroes, %d shared skills, %d generic rites, %d consumables" % [n, ss.size(), gr.size(), cl.size()])
 	quit()
 

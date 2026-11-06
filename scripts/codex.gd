@@ -13,6 +13,10 @@ extends RefCounted
 ##          (RunBuild.GENERIC). A live rite with no talent behind it is a new passive made of data alone: it joins
 ##          its class's pool (RunBuild.passive_pool) as long as every fx key is one the game reads (fx_keys.json: shared and the class's own).
 ## A design entry never reaches the game. `tools/codex_export.gd` writes the files from the game's data.
+## Code edits are never lost to the codex (a three-way merge per field): code_base.json is what the code said for every
+## field the codex lays over, as of the last export. A field the code has changed since then while the codex still says
+## what the code said keeps the code's value (`code_newer`; the next export folds it into the codex); a field both
+## changed takes the codex's (`conflicts`). tools/codex_test.gd prints both; tools/codex/server.py exports on Publish.
 
 const DIR := "res://data/codex/"
 const SKILL_FIELDS := ["name", "desc", "mana", "cd", "use", "power", "range", "role", "rarity", "direction"]
@@ -25,6 +29,10 @@ static func fx_keys(cls := "") -> Array:
 	return Array(f.get("any", [])) + (Array(f.get(cls, [])) if cls != "" else [])
 
 static var _files := {}
+static var code_now := {}      # kind -> id -> field -> the code's own value (before the codex): the export's next base
+static var code_newer := []    # "kind id.field": the code changed it since the last export, the codex didn't: code kept
+static var conflicts := []     # "kind id.field": both changed it since the last export: the codex's value taken
+static var overrides := []     # "kind id.field": where the game plays the codex's value instead of the code's
 
 ## A codex file parsed ({} when missing or broken: the game then plays on its built-in data).
 static func file(rel: String) -> Dictionary:
@@ -83,12 +91,12 @@ static func apply_skills(skills: Array) -> void:
 		if e == null:
 			continue
 		for k in SKILL_FIELDS:
-			if e.has(k) and e[k] != null:
+			if e.has(k) and e[k] != null and _take("skills", str(s["id"]), k, s.get(k), e[k]):
 				s[k] = _num_like(s.get(k), e[k])
 
 ## Lay the codex's rites over a list of talents or passives (Talents._static_init per class tree,
 ## RunBuild._static_init for the generic ones).
-static func apply_rites(list: Array, entries: Array) -> void:
+static func apply_rites(list: Array, entries: Array, kind := "rites") -> void:
 	var by := {}
 	for e in entries:
 		if live(e):
@@ -98,7 +106,7 @@ static func apply_rites(list: Array, entries: Array) -> void:
 		if e == null:
 			continue
 		for k in RITE_FIELDS:
-			if e.has(k) and e[k] != null:
+			if e.has(k) and e[k] != null and _take(kind, str(t["id"]), k, t.get(k), e[k]):
 				t[k] = e[k].duplicate(true) if e[k] is Dictionary else _num_like(t.get(k), e[k])
 
 ## Live rites with no talent or generic passive behind them, ready for RunBuild.passive_pool.
@@ -128,6 +136,46 @@ static func data_only(e: Dictionary, cls := "") -> bool:
 		if not (key in keys or key.begins_with("dmg:") or key.begins_with("cd:") or key.begins_with("cost:")):
 			return false
 	return true
+
+## Does the codex's value go on this field? (the three-way merge above; it also notes the code's own value)
+static func _take(kind: String, id: String, k: String, cur, v) -> bool:
+	var rec: Dictionary = code_now.get_or_add(kind, {}).get_or_add(id, {})
+	rec[k] = cur.duplicate(true) if (cur is Dictionary or cur is Array) else cur
+	var base: Dictionary = file("code_base.json").get(kind, {}).get(id, {})
+	var what := "%s %s.%s" % [kind, id, k]
+	if base.has(k) and not same(cur, base[k]):
+		if same(v, base[k]):
+			code_newer.append(what)  # only the code moved since the export: keep it
+			return false
+		if not same(v, cur):
+			conflicts.append(what)   # both moved: the codex (the designers' latest word) wins
+	if cur != null and not same(cur, v):
+		overrides.append(what)       # (a field the code doesn't have at all, e.g. a direction, isn't one)
+	return true
+
+## Equal as data (JSON's floats against the code's ints, dictionaries and arrays by content).
+static func same(a, b) -> bool:
+	if (a is int or a is float) and (b is int or b is float):
+		return is_equal_approx(float(a), float(b))
+	if a is Dictionary and b is Dictionary:
+		if a.size() != b.size():
+			return false
+		for k in a:
+			if not b.has(k) or not same(a[k], b[k]):
+				return false
+		return true
+	if a is Array and b is Array:
+		if a.size() != b.size():
+			return false
+		for i in a.size():
+			if not same(a[i], b[i]):
+				return false
+		return true
+	if a == null or b == null:
+		return a == null and b == null
+	if (a is String or a is StringName) and (b is String or b is StringName):
+		return str(a) == str(b)
+	return typeof(a) == typeof(b) and a == b
 
 ## JSON numbers are floats: keep an int an int where the game had one.
 static func _num_like(old, v):

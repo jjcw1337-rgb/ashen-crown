@@ -26,7 +26,7 @@ static func _static_init() -> void:
 	for cls in ["serpent", "wyvern"]:
 		entries.append_array(Codex.hero(cls).get("rites", []))
 	Codex.apply_rites(TALENTS, entries)
-	Codex.apply_rites(GEMS, Codex.file("gems.json").get("entries", []))
+	Codex.apply_rites(GEMS, Codex.file("gems.json").get("entries", []), "gems")
 
 const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Legendary"]
 const RARITY_COLORS := [Color(0.86, 0.84, 0.78), Color(0.42, 0.86, 0.52), Color(0.48, 0.68, 1.0), Color(1.0, 0.62, 0.18)]
@@ -252,7 +252,7 @@ static var TALENTS: Array = [
 		"fx": {"rites_buff": 1}, "text": "A Last Rites kill also gives you +30% damage and +20% run speed for 4 seconds."},
 	{"id": "k_brands", "cls": "knight", "theme": "crusader", "rarity": 2, "max": 1, "name": "Searing Brands", "icon": "t_star",
 		"fx": {"brand_max": 3, "brand_burn": 1}, "text": "Holy Brands stack {brand_max} higher and each one burns its foe a little."},
-	{"id": "k_zeal", "cls": "knight", "theme": "crusader", "rarity": 1, "max": 2, "name": "Zealot", "icon": "t_sword",
+	{"id": "k_zealot", "cls": "knight", "theme": "crusader", "rarity": 1, "max": 2, "name": "Zealot", "icon": "t_sword",
 		"proc": "ignite_on_hit", "k": {"src": "attack", "pct": 18, "secs": 3.0}, "per": ["pct"], "text": "Your sword sets foes alight with holy fire ({pct}% of the blow a second)."},
 	{"id": "k_iron", "cls": "knight", "theme": "bulwark", "rarity": 0, "max": 3, "name": "Iron Hide", "icon": "t_armor",
 		"fx": {"armor_pct": 15, "ward_bonus": 4}, "text": "+{armor_pct}% defense and a ward of {ward_bonus}% of your life that refills out of combat."},

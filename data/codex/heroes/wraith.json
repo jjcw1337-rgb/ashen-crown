@@ -145,7 +145,7 @@
 			"name": "Reaping Crescent",
 			"rarity": 0,
 			"direction": "Night",
-			"desc": "A great crescent of soul-fire sweeps out 5 metres in front of you: 140% weapon damage, and each foe it reaps heals you 2% of your life.",
+			"desc": "A great crescent of soul-fire sweeps out 5 metres in front of you: 170% weapon damage, and each foe it reaps heals you 2% of your life.",
 			"mana": 8,
 			"cd": 0.0,
 			"use": 0.9,

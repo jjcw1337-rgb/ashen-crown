@@ -148,6 +148,10 @@ func _run() -> void:
 			await wait((3.2 if cls == "demon" else 1.2) if sk["id"] != "drain" else 0.4)     # (the Demon's chain: throw, haul, smash)
 			if sk["id"] == "drain":
 				h.end_drain()
+			var settle := 0
+			while h.atk_t >= 0.0 and settle < 240:      # a long cast (Eclipse Bloom's 1.8 s) ends before the next skill
+				await process_frame
+				settle += 1
 			check(ok, "%s: %s cast" % [cls, sk["name"]])
 		if cls == "wraith":
 			check(h.talent("phantoms") == 1.0 and h.talent("rend_full") == 1.0, "Fourth Rider and Harvest Moon taken")

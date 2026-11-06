@@ -136,7 +136,7 @@
 			"name": "Volcano",
 			"rarity": 1,
 			"direction": "Cataclysm",
-			"desc": "Tear open a volcano at the pointer: it hurls five meteors onto the foes around it over two seconds, each 110% weapon damage and setting them alight.",
+			"desc": "Tear open a volcano at the pointer: it hurls five meteors onto the foes around it over two seconds, each 85% weapon damage and setting them alight.",
 			"mana": 16,
 			"cd": 0.0,
 			"use": 1.2,

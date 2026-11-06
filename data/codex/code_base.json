@@ -1,0 +1,3381 @@
+{
+	"about": "Written by tools/codex_export.gd: the code's own values when the codex was last exported. Don't edit.",
+	"skills": {
+		"cleave": {
+			"name": "Holy Slam",
+			"desc": "Leap at the cursor and bring the sword down in a burst of white light: 160% weapon damage to everything around the blow, knocking them back and stunning them for 1 second.",
+			"mana": 5,
+			"cd": 0.0,
+			"range": 6.0,
+			"rarity": null,
+			"direction": null
+		},
+		"nova": {
+			"name": "Holy Nova",
+			"desc": "A ring of holy fire bursts outward, burning enemies within 7 metres.",
+			"mana": 14,
+			"cd": 0.0,
+			"use": 1.0,
+			"power": 0.37,
+			"rarity": null,
+			"direction": null
+		},
+		"charge": {
+			"name": "Charge",
+			"desc": "Dash toward the cursor, smashing through enemies and knocking them back.",
+			"mana": 10,
+			"cd": 4.0,
+			"range": 9.0,
+			"rarity": null,
+			"direction": null
+		},
+		"cry": {
+			"name": "Battle Cry",
+			"desc": "Rally yourself: +40% damage and +50% defense for 12 seconds. Stuns nearby foes.",
+			"mana": 20,
+			"cd": 20.0,
+			"rarity": null,
+			"direction": null
+		},
+		"rend": {
+			"name": "Spectral Rend",
+			"desc": "Lunge at the foe ahead and tear through it with elongated spectral claws: two rakes for 90% weapon damage each. Every soul the claws tear out flies back and heals you.",
+			"mana": 5,
+			"cd": 0.0,
+			"range": 4.5,
+			"rarity": null,
+			"direction": null
+		},
+		"siphon": {
+			"name": "Soul Siphon",
+			"desc": "Reach out and hook a spectral tether into an enemy: for 2.5 seconds it stands rigid while the tether drains it (about 180% weapon damage in all) and heals you a third of what it takes, and it is slowed after. A soul torn loose heals you more. The tether holds while you fight on.",
+			"mana": 12,
+			"cd": 6.0,
+			"range": 9.0,
+			"rarity": null,
+			"direction": null
+		},
+		"step": {
+			"name": "Shadow Step",
+			"desc": "Come apart into mist and re-form at the cursor, spinning into a claw strike round where you land for 130% weapon damage. For a moment after, blows pass through you. The shade you left behind collapses and hurts.",
+			"mana": 10,
+			"cd": 5.0,
+			"range": 9.0,
+			"rarity": null,
+			"direction": null
+		},
+		"grasp": {
+			"name": "Haunting Grasp",
+			"desc": "Slam the ground: spectral hands burst out of the earth around the cursor, seizing every enemy within 3.5 metres for 110% weapon damage, dragging them inward and holding them fast for 2.5 seconds.",
+			"mana": 16,
+			"cd": 10.0,
+			"range": 10.0,
+			"rarity": null,
+			"direction": null
+		},
+		"phantom": {
+			"name": "Phantom Assault",
+			"desc": "Split into three phantoms that streak through the enemies ahead in a fan, each tearing everything in its path for 120% weapon damage, then strike with your own claws.",
+			"mana": 22,
+			"cd": 0.0,
+			"use": 1.8,
+			"power": 0.58,
+			"range": 8.0,
+			"rarity": null,
+			"direction": null
+		},
+		"night": {
+			"name": "Eternal Night",
+			"desc": "Rise and bring down the night over 9 metres: a scream of terror (150% weapon damage, enemies hurled back and frozen with fear), then the dark feeds on everything in it while you hang untouchable above it, and it collapses into your slam for 200%. +40% damage for 12 seconds.",
+			"mana": 40,
+			"cd": 40.0,
+			"rarity": null,
+			"direction": null
+		},
+		"fists": {
+			"name": "Molten Fists",
+			"desc": "A slow, heavy two-fisted blow: your fists catch fire as you draw back, then crack the ground open ahead of you. Everything in the wedge takes 300% weapon damage plus magma and is set alight. Branded enemies take 30% more and lose the Brand. Dodge to cancel it.",
+			"mana": 5,
+			"cd": 0.0,
+			"use": 2.0,
+			"range": 3.4,
+			"role": "Burst finisher",
+			"rarity": null,
+			"direction": null
+		},
+		"icharge": {
+			"name": "Infernal Charge",
+			"desc": "Paw the ground, then charge head-down up to 9 metres along a burning line everyone can see. You stop on the first champion or player you hit: it takes 120% weapon damage plus magma, is staggered and Branded. Lesser monsters are bowled aside.",
+			"mana": 12,
+			"cd": 9.0,
+			"range": 9.0,
+			"role": "Engage / mobility",
+			"rarity": null,
+			"direction": null
+		},
+		"cslam": {
+			"name": "Fault of the Pit",
+			"desc": "Slam the ground and split it in a line 7 metres long across your aim. After a glowing warning it erupts: everything on it takes 133% weapon damage plus magma, is thrown up and Branded. The fault stays molten for 4 seconds: crossing it burns and slows by 35%.",
+			"mana": 16,
+			"cd": 0.0,
+			"use": 2.2,
+			"power": 0.95,
+			"range": 6.0,
+			"role": "Area control",
+			"rarity": null,
+			"direction": null
+		},
+		"hurl": {
+			"name": "Brimstone Hurl",
+			"desc": "Tear a molten boulder out of the ground and lob it up to 14 metres; its shadow shows where it will land. A direct hit (1.3 metres) deals 77% weapon damage plus magma and Brands; the edge (2.6 metres) half. No cooldown: throw again as soon as the throw is done. It shatters into burning shards.",
+			"mana": 18,
+			"cd": 0.0,
+			"use": 1.6,
+			"power": 0.43,
+			"range": 14.0,
+			"role": "Ranged pressure",
+			"rarity": null,
+			"direction": null
+		},
+		"grip": {
+			"name": "Hellgrip",
+			"desc": "Hurl a molten chain with an iron claw 7.5 metres: the first enemy it hooks is dragged to you, hoisted and smashed into the ground for 320% weapon damage plus magma. Bosses drag you to them instead. A Branded target gives back 30% of the cooldown.",
+			"mana": 20,
+			"cd": 14.0,
+			"range": 7.5,
+			"role": "Pick / pull",
+			"rarity": null,
+			"direction": null
+		},
+		"wrath": {
+			"name": "Wrath of the Pit",
+			"desc": "Fold your wings round you for up to 2 seconds (press again to end it early): you take 50% less damage, can't be stunned or moved, and store the damage as heat. Then burst out: everything within 6 metres takes 100% weapon damage plus the stored heat (up to 30% of your life), is hurled back and frozen with fear. For 6 seconds you deal +40% damage and meteors rain on the enemies round you.",
+			"mana": 35,
+			"cd": 60.0,
+			"role": "Defensive counter",
+			"rarity": null,
+			"direction": null
+		},
+		"drain": {
+			"name": "Drain Life",
+			"desc": "Latch a green beam onto an enemy and pull the life out of it. The beam forks to up to 3 enemies near your target and everything it drains heals you. Hold Q to keep draining (costs mana each second).",
+			"mana": 6,
+			"cd": 0.0,
+			"range": 11.0,
+			"rarity": null,
+			"direction": null
+		},
+		"blight": {
+			"name": "Blight Bolt",
+			"desc": "Hurl a howling skull of blight. It bursts where it lands and leaves a plague pool that rots enemies standing in it for 4 seconds.",
+			"mana": 12,
+			"cd": 0.0,
+			"use": 1.0,
+			"power": 0.59,
+			"range": 15.0,
+			"rarity": null,
+			"direction": null
+		},
+		"shackles": {
+			"name": "Soul Shackles",
+			"desc": "Chains of fel fire snap out to every enemy within 7 metres, damaging them and binding them in place for 2.5 seconds.",
+			"mana": 16,
+			"cd": 8.0,
+			"rarity": null,
+			"direction": null
+		},
+		"pierce": {
+			"name": "Fire Arrow",
+			"desc": "A burning arrow that tears through every enemy in a line for 130% weapon damage and sets them alight: they burn for 3 seconds.",
+			"mana": 5,
+			"cd": 0.0,
+			"range": 16.0,
+			"rarity": null,
+			"direction": null
+		},
+		"volley": {
+			"name": "Frost Volley",
+			"desc": "Loose a flight of frost arrows into the sky: they rain on the cursor for over a second, hitting everything within 4 metres again and again and chilling them (40% slower); the ground stays frozen for a few seconds, slowing everything that stands in it or crosses it.",
+			"mana": 14,
+			"cd": 0.0,
+			"use": 1.1,
+			"range": 14.0,
+			"rarity": null,
+			"direction": null
+		},
+		"snare": {
+			"name": "Thunderstep",
+			"desc": "Backflip away from the pointer, driving a thunderstone into a gold storm sigil where you stood. A moment later it detonates: everything on it is stunned and hurt, and lightning leaps on into the 3 nearest others beyond it.",
+			"mana": 12,
+			"cd": 7.0,
+			"range": 10.0,
+			"rarity": null,
+			"direction": null
+		},
+		"beast": {
+			"name": "Spirit Beast",
+			"desc": "Your Spirit Beast hunts at your side from the start (and you run 10% faster with it). Command it: on an enemy it pounces and fights it, on open ground it holds there, on yourself it comes back. Each command rouses you both: +40% damage for 12 seconds.",
+			"mana": 12,
+			"cd": 8.0,
+			"range": 18.0,
+			"rarity": null,
+			"direction": null
+		},
+		"toxic": {
+			"name": "Pestilence Vial",
+			"desc": "Pluck a vial of plague from your bandolier and lob it. A ring shows everyone where it will land. It bursts for a small hit and leaves a contaminated pool 2.6 metres wide for 3.5 seconds: anything standing in it is poisoned and keeps rotting for 2 seconds after it steps out. Pools of the same kind don't stack.",
+			"mana": 7,
+			"cd": 0.0,
+			"range": 12.0,
+			"rarity": null,
+			"direction": null
+		},
+		"swarm": {
+			"name": "Swarmcraft",
+			"desc": "Uncork your reliquary: a swarm of plague flies flies to the spot and hangs there for 6 seconds, biting whatever is inside and harrying it (attacks and casts 25% slower). Use it again to send the swarm somewhere else (twice). It never chases anyone, it's slower than a running man, and a dodge roll through it scatters it for a moment. The cooldown starts when it comes home.",
+			"mana": 16,
+			"cd": 12.0,
+			"range": 13.0,
+			"rarity": null,
+			"direction": null
+		},
+		"bloom": {
+			"name": "Corpse Bloom",
+			"desc": "Drive a seed into the ground. It grows for a second, then breathes for 6 seconds: every 2 seconds its ring of roots draws in and a spore pulse hits everything within 3.5 metres. Anyone who stood still while the ring drew in is snared by its roots for 0.6 seconds. In the Battlegrounds other players can break it with three blows.",
+			"mana": 14,
+			"cd": 10.0,
+			"range": 9.0,
+			"rarity": null,
+			"direction": null
+		},
+		"fog": {
+			"name": "Fog of the Forgotten",
+			"desc": "Dash your censer at your feet and hop 4 metres back from the pointer. Pale fog 6 metres across hangs for 6 seconds: other players outside it can't see anyone inside, and inside it everyone within 3.5 metres is seen. You move 25% faster in it; monsters beyond 3.5 metres lose track of you in it; striking from it reveals you for a moment.",
+			"mana": 15,
+			"cd": 16.0,
+			"range": 4.0,
+			"rarity": null,
+			"direction": null
+		},
+		"transfusion": {
+			"name": "Transfusion",
+			"desc": "Drive the needle of your apparatus into your arm: for 2 seconds you take 45% less damage and move at 70% speed, and slows, snares and Blight are washed out of you. What the tanks soak heals you afterwards (up to 15% of your life). Attacking ends it early.",
+			"mana": 10,
+			"cd": 18.0,
+			"rarity": null,
+			"direction": null
+		},
+		"experiment": {
+			"name": "The Last Experiment",
+			"desc": "Slam down your vat (everyone sees an 8-metre warning ring) and crank it for 2.5 seconds. Then the glass bursts, the thing inside crawls out and the ring becomes a quarantine for 7 seconds: spores, Blight and a 20% slow inside, and the creature lumbers at the nearest foe, spewing. A stun, another skill or walking away from the vat bursts it early, only 5 metres wide. In the Battlegrounds other players can break the vat while you crank it (three blows: the experiment fails) and kill the creature (four).",
+			"mana": 40,
+			"cd": 45.0,
+			"range": 7.0,
+			"rarity": null,
+			"direction": null
+		},
+		"covenant": {
+			"name": "Fel Covenant",
+			"desc": "Seal a pact with what waits beyond: +40% damage for 12 seconds, and Drain Life forks to two more enemies and heals twice as much.",
+			"mana": 20,
+			"cd": 20.0,
+			"rarity": null,
+			"direction": null
+		},
+		"w_corruption": {
+			"name": "Corruption",
+			"desc": "Curse a foe up to 15 m away: 240% spell damage over 10 seconds. Cheap; casting it again refreshes it.",
+			"mana": 4,
+			"cd": 0.0,
+			"use": 0.45,
+			"range": 15.0,
+			"role": "Cheap curse",
+			"rarity": null,
+			"direction": null
+		},
+		"w_malediction": {
+			"name": "Malediction",
+			"desc": "A fel bolt for 90% spell damage, +50% for every one of your curses on the target (up to five: 315%). Standing in your plague pool counts as a curse.",
+			"mana": 10,
+			"cd": 0.0,
+			"use": 0.8,
+			"range": 15.0,
+			"role": "Curse payoff",
+			"rarity": null,
+			"direction": null
+		},
+		"w_unending": {
+			"name": "Unending Rot",
+			"desc": "A curse for 12 seconds (180% spell damage at the start) whose ticks grow 15% stronger for every second the foe has carried one of your curses without a break (up to four times as strong). A clean foe starts again.",
+			"mana": 8,
+			"cd": 0.0,
+			"use": 0.5,
+			"range": 15.0,
+			"role": "Ramping curse",
+			"rarity": null,
+			"direction": null
+		},
+		"w_festering": {
+			"name": "Festering Hex",
+			"desc": "A hex for 15 seconds: every 5 seconds it bursts for 120% spell damage and stuns the foe for half a second.",
+			"mana": 12,
+			"cd": 6.0,
+			"use": 0.5,
+			"range": 15.0,
+			"role": "Stun curse",
+			"rarity": null,
+			"direction": null
+		},
+		"w_leeching": {
+			"name": "Leeching Curse",
+			"desc": "A curse for 8 seconds: 160% spell damage over its life, and every tick heals you for half of what it dealt.",
+			"mana": 8,
+			"cd": 0.0,
+			"use": 0.5,
+			"range": 15.0,
+			"role": "Healing curse",
+			"rarity": null,
+			"direction": null
+		},
+		"w_reckoning": {
+			"name": "Reckoning",
+			"desc": "The rare curse: for 6 seconds, each of its ticks deals as much as all your other curses on the foe tick for together.",
+			"mana": 16,
+			"cd": 0.0,
+			"use": 0.7,
+			"range": 15.0,
+			"role": "Curse multiplier",
+			"rarity": null,
+			"direction": null
+		},
+		"w_terrify": {
+			"name": "Terrify",
+			"desc": "Point at a foe within 8 m: it is frozen in terror for 1.5 seconds (a player flees for 1 second). Feared foes take 20% more from your spells.",
+			"mana": 8,
+			"cd": 9.0,
+			"use": 0.4,
+			"range": 8.0,
+			"role": "Single fear",
+			"rarity": null,
+			"direction": null
+		},
+		"w_effigy": {
+			"name": "Dread Totem",
+			"desc": "Raise a vine-choked jungle idol up to 12 m away for 8 seconds. The first three foes to come within 4 m are frightened for 1 second as its void eyes flare and its wisps lash out.",
+			"mana": 14,
+			"cd": 14.0,
+			"use": 0.6,
+			"range": 12.0,
+			"role": "Fear totem",
+			"rarity": null,
+			"direction": null
+		},
+		"w_darkwind": {
+			"name": "Void Wisp",
+			"desc": "Loose a wisp of void light at a foe: it bounces on to up to five enemies, 90% spell damage and a one-second slow each. Feared or bound foes take double.",
+			"mana": 12,
+			"cd": 6.0,
+			"use": 0.6,
+			"range": 12.0,
+			"role": "Bouncing wisp",
+			"rarity": null,
+			"direction": null
+		},
+		"w_crowstorm": {
+			"name": "Eclipse Bloom",
+			"desc": "Gather the void, then blink up to 8 m: a storm of void petals and wisps whirls 5 m round you for 5 seconds, 80% spell damage every half second, and everything caught as you land is feared for 1 second.",
+			"mana": 40,
+			"cd": 45.0,
+			"use": 1.5,
+			"range": 8.0,
+			"role": "Ultimate",
+			"rarity": null,
+			"direction": null
+		},
+		"w_leechbolt": {
+			"name": "Leech Bolt",
+			"desc": "A quick shadow bolt: 140% spell damage, and 30% of it heals you.",
+			"mana": 5,
+			"cd": 0.0,
+			"use": 0.6,
+			"range": 14.0,
+			"role": "Healing bolt",
+			"rarity": null,
+			"direction": null
+		},
+		"w_harvest": {
+			"name": "Thornlash",
+			"desc": "Lash a whip of black thorned vines round you (5 m): 180% spell damage, and each foe hit heals you 4% of your life (8% when it is the only one).",
+			"mana": 12,
+			"cd": 0.0,
+			"use": 0.9,
+			"role": "Healing lash",
+			"rarity": null,
+			"direction": null
+		},
+		"w_soulfeast": {
+			"name": "Soul Feast",
+			"desc": "Channel for 3 seconds: beams to every foe within 7 m drain 80% spell damage a second from each. Healing past full life hardens into a shield, up to 30% of your life.",
+			"mana": 30,
+			"cd": 30.0,
+			"use": 3.0,
+			"role": "Ultimate",
+			"rarity": null,
+			"direction": null
+		},
+		"pie": {
+			"name": "Cream Pie",
+			"desc": "Lob a cream pie at the cursor (12 m): a splat for 120% weapon damage and the target is Pied: monsters blinded for 2 seconds, a player's screen creamed at the edges and their aim assist gone for 1.5 seconds. The same target can't be Pied again for 6 seconds.",
+			"mana": 6,
+			"cd": 0.0,
+			"use": 0.9,
+			"range": 12.0,
+			"rarity": null,
+			"direction": null
+		},
+		"peels": {
+			"name": "Banana Peels",
+			"desc": "Toss three banana peels in a fan ahead (they land 3 to 6 metres out and last 8 seconds; at most 6 down). Whoever steps on one slips: a player is knocked down for 0.7 seconds and slides on, a monster is stunned for 1 second. A dodge roll over a peel doesn't slip.",
+			"mana": 9,
+			"cd": 7.0,
+			"use": 0.8,
+			"range": 6.0,
+			"rarity": null,
+			"direction": null
+		},
+		"slide": {
+			"name": "Pratfall Slide",
+			"desc": "Belly-slide 7 metres the way you face, honking: foes in the way take 90% weapon damage and are shoved aside. You pop up with a ta-da.",
+			"mana": 10,
+			"cd": 5.0,
+			"use": 0.7,
+			"range": 7.0,
+			"rarity": null,
+			"direction": null
+		},
+		"doppel": {
+			"name": "Doppel-Doug",
+			"desc": "Duck behind a puff of confetti: you turn invisible for 1.8 seconds while a balloon double of you runs off toward the cursor, waving. Struck, the double pops in a confetti burst that slows whoever is near for 1.5 seconds.",
+			"mana": 14,
+			"cd": 14.0,
+			"use": 0.4,
+			"range": 12.0,
+			"rarity": null,
+			"direction": null
+		},
+		"juggle": {
+			"name": "Pin Juggle",
+			"desc": "Throw five flaming juggling pins in quick succession at the cursor; each bounces on to two more foes. 60% weapon damage as fire each.",
+			"mana": 16,
+			"cd": 0.0,
+			"use": 1.4,
+			"range": 12.0,
+			"rarity": null,
+			"direction": null
+		},
+		"bounce": {
+			"name": "Big Top Bounce",
+			"desc": "Slam down a trampoline and bounce up to 10 metres to the cursor, landing in a belly-flop: 180% weapon damage in 3 metres and foes are launched for 0.8 seconds. A shadow and a whistle mark where you'll land.",
+			"mana": 18,
+			"cd": 10.0,
+			"use": 1.3,
+			"range": 10.0,
+			"rarity": null,
+			"direction": null
+		},
+		"car": {
+			"name": "Clown Car",
+			"desc": "A tiny clown car screeches in and you drive it for 5 seconds: fast, unstoppable, ramming foes for 140% weapon damage and knocking them flying. Then it bursts in confetti and six mini clowns tumble out, sprint at the nearest foes and pie them.",
+			"mana": 40,
+			"cd": 60.0,
+			"use": 0.6,
+			"rarity": null,
+			"direction": null
+		},
+		"earthshatter": {
+			"name": "Earthshatter",
+			"desc": "A heavy two-handed slam: the wedge it will crack shows as you heave, then the ground splits ahead of you for 230% weapon damage plus a part that grows with your level, throwing foes back.",
+			"mana": 8,
+			"cd": 0.0,
+			"use": 1.6,
+			"range": 5.0,
+			"rarity": null,
+			"direction": null
+		},
+		"frost_nova": {
+			"name": "Frost Nova",
+			"desc": "A ring of ice bursts out around you, 4 metres: cold damage, and everything it hits is chilled, slowed for 3 seconds.",
+			"mana": 10,
+			"cd": 0.0,
+			"use": 0.9,
+			"rarity": null,
+			"direction": null
+		},
+		"arc": {
+			"name": "Arc",
+			"desc": "Lightning leaps from your hand into the nearest foe ahead and on to three more nearby, striking each.",
+			"mana": 6,
+			"cd": 0.0,
+			"use": 0.7,
+			"range": 10.0,
+			"rarity": null,
+			"direction": null
+		},
+		"frost_breath": {
+			"name": "Frost Breath",
+			"desc": "The serpent lowers its head and breathes a freezing gale over everything in a cone 7 metres ahead for over a second: cold damage again and again, chilling (slowing) them; the ground frosts over and ice bursts up where it ends.",
+			"mana": 10,
+			"cd": 0.0,
+			"use": 1.4,
+			"range": 7.0,
+			"rarity": null,
+			"direction": null
+		},
+		"storm_arc": {
+			"name": "Storm Arc",
+			"desc": "The wyvern rears up, the lightning in its wings flaring, and breathes a bolt into the nearest foe ahead that leaps on to four more nearby, striking each.",
+			"mana": 6,
+			"cd": 0.0,
+			"use": 0.75,
+			"range": 11.0,
+			"rarity": null,
+			"direction": null
+		},
+		"war_cry": {
+			"name": "War Cry",
+			"desc": "A roar that rallies your team: you and every ally within 8 metres deal +40% damage for 6 seconds, and the monsters near turn on you. In the Battlegrounds it is yours alone (no teams there yet).",
+			"mana": 12,
+			"cd": 8.0,
+			"use": 0.8,
+			"rarity": null,
+			"direction": null
+		},
+		"a_multishot": {
+			"name": "Scatter Shot",
+			"desc": "Loose five arrows in a fan: 55% weapon damage each. A foe close enough takes several.",
+			"mana": 7,
+			"cd": 0.0,
+			"use": 0.85,
+			"range": 13.0,
+			"role": "packs up close",
+			"rarity": null,
+			"direction": null
+		},
+		"a_glacial": {
+			"name": "Glacial Shard",
+			"desc": "An arrow of ice that pierces every foe in a line for 110% weapon damage and chills them (40% slower) for 3 seconds.",
+			"mana": 6,
+			"cd": 0.0,
+			"use": 0.85,
+			"range": 16.0,
+			"role": "line chill",
+			"rarity": null,
+			"direction": null
+		},
+		"a_explosive": {
+			"name": "Blast Arrow",
+			"desc": "A fire arrow that bursts at the first foe it strikes or where its flight ends: 150% weapon damage to everything within 3.5 metres, setting them burning.",
+			"mana": 9,
+			"cd": 0.0,
+			"use": 1.0,
+			"range": 16.0,
+			"role": "fire burst",
+			"rarity": null,
+			"direction": null
+		},
+		"a_stormshot": {
+			"name": "Storm Shot",
+			"desc": "A charged arrow: 100% weapon damage to the first foe it strikes, then lightning leaps on to 4 more for 70%.",
+			"mana": 8,
+			"cd": 0.0,
+			"use": 0.9,
+			"range": 16.0,
+			"role": "chain lightning",
+			"rarity": null,
+			"direction": null
+		},
+		"a_mark": {
+			"name": "Hunter's Mark",
+			"desc": "Mark the foe under the pointer for 8 seconds: it takes 35% more damage from everyone, and your wolf hunts it down.",
+			"mana": 6,
+			"cd": 6.0,
+			"range": 18.0,
+			"role": "focus a target",
+			"rarity": null,
+			"direction": null
+		},
+		"a_barrage": {
+			"name": "Arrow Storm",
+			"desc": "Loose a storm of arrows into the sky: for 1.5 seconds they rain on the cursor, striking everything within 4.5 metres six times for 32% weapon damage.",
+			"mana": 16,
+			"cd": 0.0,
+			"use": 1.2,
+			"range": 14.0,
+			"role": "area rain",
+			"rarity": null,
+			"direction": null
+		},
+		"p_miasma": {
+			"name": "Miasma",
+			"desc": "Smash a censer of plague at your feet: a cloud 4.5 metres wide hangs for 4 seconds, poisoning everything in it.",
+			"mana": 9,
+			"cd": 0.0,
+			"use": 0.9,
+			"role": "poison around him",
+			"rarity": null,
+			"direction": null
+		},
+		"p_spread": {
+			"name": "Contagion",
+			"desc": "Curse the foe nearest the pointer with a creeping plague for 6 seconds: it is poisoned, and every second its poison leaps to all within 4 metres. If it dies cursed, the plague bursts to everyone within 5 metres.",
+			"mana": 8,
+			"cd": 0.0,
+			"use": 0.8,
+			"range": 14.0,
+			"role": "spreading curse",
+			"rarity": null,
+			"direction": null
+		},
+		"k_whirl": {
+			"name": "Blade Storm",
+			"desc": "Spin with the sword out: everything within 3.2 metres is struck twice for 70% weapon damage. Every blow of yours leaves a Holy Brand on its foe (up to 5).",
+			"mana": 8,
+			"cd": 0.0,
+			"use": 0.9,
+			"role": "spin through a crowd",
+			"rarity": null,
+			"direction": null
+		},
+		"k_aegis": {
+			"name": "Aegis",
+			"desc": "Raise a holy ward worth 35% of your life for 5 seconds and call everything within 5 metres onto you. When it breaks or ends, it bursts: everything within 5 metres takes all the damage it soaked.",
+			"mana": 10,
+			"cd": 10.0,
+			"role": "absorb, then answer",
+			"rarity": null,
+			"direction": null
+		},
+		"k_judgment": {
+			"name": "Judgment",
+			"desc": "Call a pillar of holy light down on the pointer: 120% weapon damage within 3 metres, +45% for every Holy Brand on each foe (the brands are spent), and holy fire burns them.",
+			"mana": 12,
+			"cd": 0.0,
+			"use": 1.0,
+			"range": 14.0,
+			"role": "cash in the brands",
+			"rarity": null,
+			"direction": null
+		},
+		"k_rites": {
+			"name": "Last Rites",
+			"desc": "Leap at the foe nearest the pointer and bring the sword down: 150% weapon damage, +2% for every 1% of life it is missing. A kill makes Last Rites ready again.",
+			"mana": 10,
+			"cd": 8.0,
+			"range": 9.0,
+			"role": "execute and reset",
+			"rarity": null,
+			"direction": null
+		},
+		"r_deathmark": {
+			"name": "Death Mark",
+			"desc": "Mark the foe nearest the pointer. When the mark ends 3 seconds later it tears out half of everything you dealt it meanwhile (at least 150% weapon damage) as a soul you drink back.",
+			"mana": 10,
+			"cd": 10.0,
+			"range": 12.0,
+			"role": "burst a single target",
+			"rarity": null,
+			"direction": null
+		},
+		"r_wail": {
+			"name": "Banshee Wail",
+			"desc": "Scream: everything within 6 metres takes 60% weapon damage, is frozen in terror for 1.2 seconds and slowed by half for 2 more.",
+			"mana": 9,
+			"cd": 8.0,
+			"role": "terrify the crowd",
+			"rarity": null,
+			"direction": null
+		},
+		"r_reap": {
+			"name": "Reaping Crescent",
+			"desc": "A great crescent of soul-fire sweeps out 5 metres in front of you: 170% weapon damage, and each foe it reaps heals you 2% of your life.",
+			"mana": 8,
+			"cd": 0.0,
+			"use": 0.9,
+			"range": 5.0,
+			"role": "sweep and sustain",
+			"rarity": null,
+			"direction": null
+		},
+		"d_volcano": {
+			"name": "Volcano",
+			"desc": "Tear open a volcano at the pointer: it hurls five meteors onto the foes around it over two seconds, each 85% weapon damage and setting them alight.",
+			"mana": 16,
+			"cd": 0.0,
+			"use": 1.2,
+			"range": 13.0,
+			"role": "bombard an area",
+			"rarity": null,
+			"direction": null
+		},
+		"d_detonate": {
+			"name": "Hellbrand Detonation",
+			"desc": "Every Branded foe within 10 metres erupts: 160% weapon damage, thrown up for 0.8 seconds, and the fire bursts onto those beside it. The Brands are spent.",
+			"mana": 8,
+			"cd": 6.0,
+			"role": "cash in the Brands",
+			"rarity": null,
+			"direction": null
+		},
+		"d_pact": {
+			"name": "Blood Pact",
+			"desc": "Pay 15% of your life to the pit: for 8 seconds +35% damage and 6% of the damage you deal heals you.",
+			"mana": 0,
+			"cd": 12.0,
+			"role": "life for power",
+			"rarity": null,
+			"direction": null
+		},
+		"u_barrage": {
+			"name": "Pie Barrage",
+			"desc": "Fling six cream pies at once onto the foes around the pointer: each 80% weapon damage, and the first time a foe is Pied it is stunned and slowed.",
+			"mana": 10,
+			"cd": 0.0,
+			"use": 1.1,
+			"range": 12.0,
+			"role": "pie a crowd",
+			"rarity": null,
+			"direction": null
+		},
+		"u_bonanza": {
+			"name": "Banana Bonanza",
+			"desc": "Scatter eight banana peels in a ring round you: whatever steps on one goes down. Your next blow on a slipped foe within 4 seconds hits twice as hard.",
+			"mana": 8,
+			"cd": 9.0,
+			"role": "a ring of peels",
+			"rarity": null,
+			"direction": null
+		},
+		"u_cannon": {
+			"name": "Human Cannonball",
+			"desc": "Fire yourself out of a cannon onto the pointer (14 metres): you land in a belly-flop that deals 260% weapon damage within 4.5 metres and knocks them down.",
+			"mana": 12,
+			"cd": 8.0,
+			"range": 14.0,
+			"role": "fly in, flatten",
+			"rarity": null,
+			"direction": null
+		},
+		"p_leech": {
+			"name": "Leech Jar",
+			"desc": "Lob a jar of blood leeches: for 5 seconds everything within 3 metres is poisoned, and every foe in it heals you 1.5% of your life a second.",
+			"mana": 10,
+			"cd": 9.0,
+			"range": 12.0,
+			"role": "heal from foes",
+			"rarity": null,
+			"direction": null
+		}
+	},
+	"rites": {
+		"k_zeal": {
+			"name": "Zeal",
+			"text": "+{dmg}% damage.",
+			"max": 3,
+			"fx": {
+				"dmg": 4
+			},
+			"rarity": null,
+			"k": null
+		},
+		"k_heavy": {
+			"name": "Heavy Hand",
+			"text": "Holy Slam deals {dmg:cleave}% more damage.",
+			"max": 3,
+			"fx": {
+				"dmg:cleave": 10
+			},
+			"rarity": null
+		},
+		"k_radiance": {
+			"name": "Radiance",
+			"text": "Holy Nova burns {dmg:nova}% hotter.",
+			"max": 3,
+			"fx": {
+				"dmg:nova": 12
+			},
+			"rarity": null
+		},
+		"k_fervor": {
+			"name": "Fervor",
+			"text": "+{ias}% attack speed.",
+			"max": 3,
+			"fx": {
+				"ias": 5
+			},
+			"rarity": null
+		},
+		"k_steel": {
+			"name": "Sanctified Steel",
+			"text": "+{crit}% chance to land a critical hit.",
+			"max": 3,
+			"fx": {
+				"crit": 3
+			},
+			"rarity": null
+		},
+		"k_purify": {
+			"name": "Purifying Fire",
+			"text": "Holy Nova costs {cost:nova}% less mana and recharges {cd:nova}% faster.",
+			"max": 2,
+			"fx": {
+				"cost:nova": 15,
+				"cd:nova": 10
+			},
+			"rarity": null
+		},
+		"k_consecrate": {
+			"name": "Consecration",
+			"text": "Holy Nova heals you {nova_heal}% of your life for every enemy it burns (up to 5).",
+			"max": 1,
+			"fx": {
+				"nova_heal": 3
+			},
+			"rarity": null
+		},
+		"k_tough": {
+			"name": "Toughness",
+			"text": "+{armor_pct}% defense.",
+			"max": 3,
+			"fx": {
+				"armor_pct": 6
+			},
+			"rarity": null
+		},
+		"k_vigor": {
+			"name": "Vigor",
+			"text": "+{life_pct}% maximum life.",
+			"max": 3,
+			"fx": {
+				"life_pct": 4
+			},
+			"rarity": null
+		},
+		"k_wall": {
+			"name": "Shield Wall",
+			"text": "+{block}% chance to block with a shield.",
+			"max": 3,
+			"fx": {
+				"block": 4
+			},
+			"rarity": null
+		},
+		"k_resolve": {
+			"name": "Resolve",
+			"text": "+{res}% to all resistances.",
+			"max": 3,
+			"fx": {
+				"res": 5
+			},
+			"rarity": null
+		},
+		"k_guard": {
+			"name": "Iron Guard",
+			"text": "Block stops {block_dr}% more damage from the front.",
+			"max": 3,
+			"fx": {
+				"block_dr": 3
+			},
+			"rarity": null
+		},
+		"k_wind": {
+			"name": "Second Wind",
+			"text": "+{regen} life regenerated per second.",
+			"max": 2,
+			"fx": {
+				"regen": 1.5
+			},
+			"rarity": null
+		},
+		"k_unbroken": {
+			"name": "Unbreakable",
+			"text": "Battle Cry heals {cry_heal}% of your life and lasts {buff_dur} seconds longer.",
+			"max": 1,
+			"fx": {
+				"cry_heal": 25,
+				"buff_dur": 4
+			},
+			"rarity": null
+		},
+		"k_momentum": {
+			"name": "Momentum",
+			"text": "+{frw}% run speed.",
+			"max": 3,
+			"fx": {
+				"frw": 5
+			},
+			"rarity": null
+		},
+		"k_might": {
+			"name": "Might",
+			"text": "+{str} strength.",
+			"max": 3,
+			"fx": {
+				"str": 3
+			},
+			"rarity": null
+		},
+		"k_ram": {
+			"name": "Battering Ram",
+			"text": "Charge hits {dmg:charge}% harder and recharges {cd:charge}% faster.",
+			"max": 3,
+			"fx": {
+				"dmg:charge": 15,
+				"cd:charge": 10
+			},
+			"rarity": null
+		},
+		"k_sword": {
+			"name": "Swordplay",
+			"text": "Your weapon attack deals {dmg:attack}% more damage.",
+			"max": 3,
+			"fx": {
+				"dmg:attack": 8
+			},
+			"rarity": null
+		},
+		"k_command": {
+			"name": "Commander",
+			"text": "Battle Cry's damage bonus is {buff_pow}% higher.",
+			"max": 3,
+			"fx": {
+				"buff_pow": 10
+			},
+			"rarity": null
+		},
+		"k_rally": {
+			"name": "Rally",
+			"text": "Battle Cry recharges {cd:cry}% faster.",
+			"max": 2,
+			"fx": {
+				"cd:cry": 15
+			},
+			"rarity": null
+		},
+		"k_relentless": {
+			"name": "Relentless",
+			"text": "Every enemy Charge smashes through takes {charge_cdr} second off your other cooldowns.",
+			"max": 1,
+			"fx": {
+				"charge_cdr": 1
+			},
+			"rarity": null
+		},
+		"w_scythe": {
+			"name": "Keen Claws",
+			"text": "Spectral Rend deals {dmg:rend}% more damage.",
+			"max": 3,
+			"fx": {
+				"dmg:rend": 10
+			},
+			"rarity": null
+		},
+		"w_focus": {
+			"name": "Grim Focus",
+			"text": "+{dex} dexterity.",
+			"max": 3,
+			"fx": {
+				"dex": 3
+			},
+			"rarity": null
+		},
+		"w_harvest": {
+			"name": "Soul Harvest",
+			"text": "Each soul Spectral Rend tears out heals {rend_heal}% more of your life.",
+			"max": 3,
+			"fx": {
+				"rend_heal": 1
+			},
+			"rarity": null
+		},
+		"w_haste": {
+			"name": "Deathly Haste",
+			"text": "+{ias}% attack speed.",
+			"max": 3,
+			"fx": {
+				"ias": 5
+			},
+			"rarity": null
+		},
+		"w_cruel": {
+			"name": "Cruelty",
+			"text": "+{crit}% chance to land a critical hit.",
+			"max": 3,
+			"fx": {
+				"crit": 3
+			},
+			"rarity": null
+		},
+		"w_exec": {
+			"name": "Executioner",
+			"text": "Critical hits deal {crit_dmg}% more damage.",
+			"max": 2,
+			"fx": {
+				"crit_dmg": 20
+			},
+			"rarity": null
+		},
+		"w_moon": {
+			"name": "Harvest Moon",
+			"text": "Spectral Rend's claws tear all the way round you.",
+			"max": 1,
+			"fx": {
+				"rend_full": 1
+			},
+			"rarity": null
+		},
+		"w_scream": {
+			"name": "Hungry Tether",
+			"text": "Soul Siphon drains {dmg:siphon}% more.",
+			"max": 3,
+			"fx": {
+				"dmg:siphon": 12
+			},
+			"rarity": null
+		},
+		"w_mind": {
+			"name": "Ethereal Mind",
+			"text": "+{mana_pct}% maximum mana.",
+			"max": 3,
+			"fx": {
+				"mana_pct": 5
+			},
+			"rarity": null
+		},
+		"w_dread": {
+			"name": "Long Grip",
+			"text": "Soul Siphon holds {siphon_dur} seconds longer.",
+			"max": 3,
+			"fx": {
+				"siphon_dur": 0.3
+			},
+			"rarity": null
+		},
+		"w_slip": {
+			"name": "Slipstream",
+			"text": "Shadowstep recharges {cd:step}% faster and strikes {dmg:step}% harder.",
+			"max": 3,
+			"fx": {
+				"cd:step": 10,
+				"dmg:step": 10
+			},
+			"rarity": null
+		},
+		"w_hollow": {
+			"name": "Hollow Hunger",
+			"text": "Soul Siphon costs {cost:siphon}% less mana and recharges {cd:siphon}% faster.",
+			"max": 3,
+			"fx": {
+				"cost:siphon": 15,
+				"cd:siphon": 8
+			},
+			"rarity": null
+		},
+		"w_form": {
+			"name": "Spirit Form",
+			"text": "+{res}% to all resistances.",
+			"max": 2,
+			"fx": {
+				"res": 6
+			},
+			"rarity": null
+		},
+		"w_echo": {
+			"name": "Lingering Mist",
+			"text": "After Shadowstep you stay mist {veil} seconds longer, and its strike stuns {step_stun} seconds longer.",
+			"max": 1,
+			"fx": {
+				"veil": 0.6,
+				"step_stun": 0.5
+			},
+			"rarity": null
+		},
+		"w_unlife": {
+			"name": "Unlife",
+			"text": "+{life_pct}% maximum life.",
+			"max": 3,
+			"fx": {
+				"life_pct": 4
+			},
+			"rarity": null
+		},
+		"w_chill": {
+			"name": "Grave Chill",
+			"text": "+{armor_pct}% defense.",
+			"max": 3,
+			"fx": {
+				"armor_pct": 6
+			},
+			"rarity": null
+		},
+		"w_legion": {
+			"name": "Legion",
+			"text": "Phantom Assault and Haunting Grasp strike {dmg:phantom}% harder.",
+			"max": 3,
+			"fx": {
+				"dmg:phantom": 12,
+				"dmg:grasp": 12
+			},
+			"rarity": null
+		},
+		"w_ward": {
+			"name": "Spectral Ward",
+			"text": "+{res}% to all resistances.",
+			"max": 3,
+			"fx": {
+				"res": 5
+			},
+			"rarity": null
+		},
+		"w_eternal": {
+			"name": "Eternal",
+			"text": "Eternal Night's power lasts {buff_dur} seconds longer and Haunting Grasp holds {grasp_hold} seconds longer.",
+			"max": 2,
+			"fx": {
+				"buff_dur": 2,
+				"grasp_hold": 0.3
+			},
+			"rarity": null
+		},
+		"w_siphon": {
+			"name": "Soul Siphon",
+			"text": "+{ls}% of the damage you deal comes back as life.",
+			"max": 3,
+			"fx": {
+				"ls": 1
+			},
+			"rarity": null
+		},
+		"w_rider": {
+			"name": "Fourth Rider",
+			"text": "Phantom Assault sends a fourth phantom, and Eternal Night deals {dmg:night}% more damage.",
+			"max": 1,
+			"fx": {
+				"phantoms": 1,
+				"dmg:night": 15
+			},
+			"rarity": null
+		},
+		"d_sear": {
+			"name": "Searing Fists",
+			"text": "Molten Fists deal {dmg:fists}% more damage.",
+			"max": 3,
+			"fx": {
+				"dmg:fists": 10
+			},
+			"rarity": null
+		},
+		"d_brim": {
+			"name": "Brimstone",
+			"text": "+{str} strength.",
+			"max": 3,
+			"fx": {
+				"str": 3
+			},
+			"rarity": null
+		},
+		"d_kindle": {
+			"name": "Kindling",
+			"text": "+{dmg}% damage.",
+			"max": 3,
+			"fx": {
+				"dmg": 4
+			},
+			"rarity": null
+		},
+		"d_frenzy": {
+			"name": "Frenzy",
+			"text": "+{ias}% attack speed.",
+			"max": 3,
+			"fx": {
+				"ias": 5
+			},
+			"rarity": null
+		},
+		"d_edge": {
+			"name": "Infernal Edge",
+			"text": "+{crit}% chance to land a critical hit.",
+			"max": 3,
+			"fx": {
+				"crit": 3
+			},
+			"rarity": null
+		},
+		"d_cinder": {
+			"name": "Cinder Heart",
+			"text": "Critical hits deal {crit_dmg}% more damage.",
+			"max": 2,
+			"fx": {
+				"crit_dmg": 20
+			},
+			"rarity": null
+		},
+		"d_inferno": {
+			"name": "Inferno",
+			"text": "Molten Fists crack the ground a metre further and wider, and what they light burns twice as long.",
+			"max": 1,
+			"fx": {
+				"fists_wide": 1
+			},
+			"rarity": null
+		},
+		"d_bargain": {
+			"name": "Cheap Fury",
+			"text": "Infernal Charge costs {cost:icharge}% and Brimstone Hurl {cost:hurl}% less mana.",
+			"max": 3,
+			"fx": {
+				"cost:icharge": 15,
+				"cost:hurl": 10
+			},
+			"rarity": null
+		},
+		"d_ferocity": {
+			"name": "Ferocity",
+			"text": "Fault of the Pit and Brimstone Hurl deal {dmg:cslam}% more damage.",
+			"max": 3,
+			"fx": {
+				"dmg:cslam": 12,
+				"dmg:hurl": 12
+			},
+			"rarity": null
+		},
+		"d_hellsworn": {
+			"name": "Hellsworn",
+			"text": "+{life_pct}% maximum life.",
+			"max": 3,
+			"fx": {
+				"life_pct": 4
+			},
+			"rarity": null
+		},
+		"d_pack": {
+			"name": "Slow Cooling",
+			"text": "Fault of the Pit stays molten {trail_dur} seconds longer.",
+			"max": 3,
+			"fx": {
+				"trail_dur": 1
+			},
+			"rarity": null
+		},
+		"d_tithe": {
+			"name": "Stampede",
+			"text": "Infernal Charge recharges {cd:icharge}% faster and hits {dmg:icharge}% harder.",
+			"max": 2,
+			"fx": {
+				"cd:icharge": 15,
+				"dmg:icharge": 10
+			},
+			"rarity": null
+		},
+		"d_oath": {
+			"name": "Pit Lord",
+			"text": "Pit-born's damage bonus (after Wrath of the Pit) is {buff_pow}% higher.",
+			"max": 3,
+			"fx": {
+				"buff_pow": 10
+			},
+			"rarity": null
+		},
+		"d_legion": {
+			"name": "Twin Boulders",
+			"text": "Brimstone Hurl throws a second boulder beside the first.",
+			"max": 1,
+			"fx": {
+				"hurl_twin": 1
+			},
+			"rarity": null
+		},
+		"d_plate": {
+			"name": "Charcoal Hide",
+			"text": "+{armor_pct}% defense.",
+			"max": 3,
+			"fx": {
+				"armor_pct": 6
+			},
+			"rarity": null
+		},
+		"d_hide": {
+			"name": "Demon Hide",
+			"text": "+{life_pct}% maximum life.",
+			"max": 3,
+			"fx": {
+				"life_pct": 4
+			},
+			"rarity": null
+		},
+		"d_rift": {
+			"name": "Crushing Grip",
+			"text": "Hellgrip smashes {dmg:grip}% harder.",
+			"max": 3,
+			"fx": {
+				"dmg:grip": 12
+			},
+			"rarity": null
+		},
+		"d_abyss": {
+			"name": "Abyssal Ward",
+			"text": "+{res}% to all resistances.",
+			"max": 3,
+			"fx": {
+				"res": 5
+			},
+			"rarity": null
+		},
+		"d_erupt": {
+			"name": "Long Wrath",
+			"text": "Wrath of the Pit's meteors rain {wrath_dur} seconds longer and it recharges {cd:wrath}% faster.",
+			"max": 2,
+			"fx": {
+				"wrath_dur": 1,
+				"cd:wrath": 8
+			},
+			"rarity": null
+		},
+		"d_hunger": {
+			"name": "Hungering Fire",
+			"text": "+{ls}% of the damage you deal comes back as life.",
+			"max": 3,
+			"fx": {
+				"ls": 1
+			},
+			"rarity": null
+		},
+		"d_furnace": {
+			"name": "Meteor Storm",
+			"text": "Wrath of the Pit calls two meteors at a time.",
+			"max": 1,
+			"fx": {
+				"wrath_double": 1
+			},
+			"rarity": null
+		},
+		"l_deep": {
+			"name": "Deep Drain",
+			"text": "Drain Life deals {dmg:drain}% more damage.",
+			"max": 3,
+			"fx": {
+				"dmg:drain": 10
+			},
+			"rarity": null
+		},
+		"l_thirst": {
+			"name": "Dark Thirst",
+			"text": "Drain Life heals {drain_heal}% more.",
+			"max": 3,
+			"fx": {
+				"drain_heal": 12
+			},
+			"rarity": null
+		},
+		"l_intel": {
+			"name": "Fel Intellect",
+			"text": "+{ene} energy.",
+			"max": 3,
+			"fx": {
+				"ene": 3
+			},
+			"rarity": null
+		},
+		"l_thrift": {
+			"name": "Siphon Efficiency",
+			"text": "Drain Life costs {cost:drain}% less mana.",
+			"max": 3,
+			"fx": {
+				"cost:drain": 15
+			},
+			"rarity": null
+		},
+		"l_fork": {
+			"name": "Forking Beam",
+			"text": "Drain Life forks to {drain_fork} more enemy.",
+			"max": 2,
+			"fx": {
+				"drain_fork": 1
+			},
+			"rarity": null
+		},
+		"l_wither": {
+			"name": "Withering",
+			"text": "+{dmg}% damage.",
+			"max": 3,
+			"fx": {
+				"dmg": 4
+			},
+			"rarity": null
+		},
+		"l_glut": {
+			"name": "Soul Glut",
+			"text": "Life Drain Life pulls in past your full life fills {drain_glut}% as much mana.",
+			"max": 1,
+			"fx": {
+				"drain_glut": 50
+			},
+			"rarity": null
+		},
+		"l_virulence": {
+			"name": "Virulence",
+			"text": "Blight Bolt and its pools deal {dmg:blight}% more damage.",
+			"max": 3,
+			"fx": {
+				"dmg:blight": 10
+			},
+			"rarity": null
+		},
+		"l_contagion": {
+			"name": "Contagion",
+			"text": "Plague pools last {blight_dur} seconds longer.",
+			"max": 3,
+			"fx": {
+				"blight_dur": 1
+			},
+			"rarity": null
+		},
+		"l_quick": {
+			"name": "Quickened Rot",
+			"text": "Blight Bolt recharges {cd:blight}% faster.",
+			"max": 3,
+			"fx": {
+				"cd:blight": 10
+			},
+			"rarity": null
+		},
+		"l_vigor": {
+			"name": "Fel Vigor",
+			"text": "+{life_pct}% maximum life.",
+			"max": 3,
+			"fx": {
+				"life_pct": 4
+			},
+			"rarity": null
+		},
+		"l_spread": {
+			"name": "Spreading Rot",
+			"text": "Blight bursts and pools are {blight_size}% wider.",
+			"max": 2,
+			"fx": {
+				"blight_size": 15
+			},
+			"rarity": null
+		},
+		"l_malice": {
+			"name": "Malice",
+			"text": "+{crit}% chance to land a critical hit with your weapon and Soul Shackles.",
+			"max": 3,
+			"fx": {
+				"crit": 3
+			},
+			"rarity": null
+		},
+		"l_twin": {
+			"name": "Twin Skulls",
+			"text": "Blight Bolt hurls two skulls.",
+			"max": 1,
+			"fx": {
+				"blight_twin": 1
+			},
+			"rarity": null
+		},
+		"l_felarmor": {
+			"name": "Fel Armor",
+			"text": "+{armor_pct}% defense.",
+			"max": 3,
+			"fx": {
+				"armor_pct": 6
+			},
+			"rarity": null
+		},
+		"l_reserves": {
+			"name": "Arcane Reserves",
+			"text": "+{mana_pct}% maximum mana.",
+			"max": 3,
+			"fx": {
+				"mana_pct": 5
+			},
+			"rarity": null
+		},
+		"l_chains": {
+			"name": "Iron Chains",
+			"text": "Soul Shackles deal {dmg:shackles}% more damage and bind {shackle_dur} seconds longer.",
+			"max": 3,
+			"fx": {
+				"dmg:shackles": 15,
+				"shackle_dur": 0.3
+			},
+			"rarity": null
+		},
+		"l_sigils": {
+			"name": "Warding Sigils",
+			"text": "+{res}% to all resistances.",
+			"max": 3,
+			"fx": {
+				"res": 5
+			},
+			"rarity": null
+		},
+		"l_reach": {
+			"name": "Binding Reach",
+			"text": "Soul Shackles reach {shackle_range} metres further.",
+			"max": 2,
+			"fx": {
+				"shackle_range": 1.5
+			},
+			"rarity": null
+		},
+		"l_dark": {
+			"name": "Dark Pact",
+			"text": "Fel Covenant recharges {cd:covenant}% faster and its damage bonus is {buff_pow}% higher.",
+			"max": 3,
+			"fx": {
+				"cd:covenant": 10,
+				"buff_pow": 5
+			},
+			"rarity": null
+		},
+		"l_eternal": {
+			"name": "Eternal Covenant",
+			"text": "Fel Covenant lasts {buff_dur} seconds longer.",
+			"max": 1,
+			"fx": {
+				"buff_dur": 6
+			},
+			"rarity": null
+		},
+		"d_drum": {
+			"name": "Extra Gravy",
+			"text": "Drumstick Smack deals {dmg:attack}% more damage.",
+			"max": 3,
+			"fx": {
+				"dmg:attack": 10
+			},
+			"rarity": null
+		},
+		"d_belly": {
+			"name": "Big Belly",
+			"text": "+{vit} vitality.",
+			"max": 3,
+			"fx": {
+				"vit": 3
+			},
+			"rarity": null
+		},
+		"d_cream": {
+			"name": "Double Cream",
+			"text": "Cream Pie deals {dmg:pie}% more damage.",
+			"max": 3,
+			"fx": {
+				"dmg:pie": 12
+			},
+			"rarity": null
+		},
+		"d_arm": {
+			"name": "Pitcher's Arm",
+			"text": "+{dex} dexterity.",
+			"max": 3,
+			"fx": {
+				"dex": 3
+			},
+			"rarity": null
+		},
+		"d_cheap": {
+			"name": "Day-Old Pies",
+			"text": "Cream Pie costs {cost:pie}% less mana.",
+			"max": 2,
+			"fx": {
+				"cost:pie": 20
+			},
+			"rarity": null
+		},
+		"d_slip": {
+			"name": "Ripe Peels",
+			"text": "Banana Peels recharge {cd:peels}% faster.",
+			"max": 3,
+			"fx": {
+				"cd:peels": 10
+			},
+			"rarity": null
+		},
+		"d_sauce": {
+			"name": "Secret Sauce",
+			"text": "All your damage +{dmg}%.",
+			"max": 1,
+			"fx": {
+				"dmg": 8
+			},
+			"rarity": null
+		},
+		"d_slide": {
+			"name": "Greased Belly",
+			"text": "Pratfall Slide recharges {cd:slide}% faster.",
+			"max": 3,
+			"fx": {
+				"cd:slide": 10
+			},
+			"rarity": null
+		},
+		"d_wits": {
+			"name": "Quick Wits",
+			"text": "+{ene} energy.",
+			"max": 3,
+			"fx": {
+				"ene": 3
+			},
+			"rarity": null
+		},
+		"d_double": {
+			"name": "Understudy",
+			"text": "Doppel-Doug recharges {cd:doppel}% faster.",
+			"max": 3,
+			"fx": {
+				"cd:doppel": 10
+			},
+			"rarity": null
+		},
+		"d_pins": {
+			"name": "Hot Pins",
+			"text": "Pin Juggle deals {dmg:juggle}% more damage.",
+			"max": 3,
+			"fx": {
+				"dmg:juggle": 12
+			},
+			"rarity": null
+		},
+		"d_patter": {
+			"name": "Stage Patter",
+			"text": "Pin Juggle costs {cost:juggle}% less mana.",
+			"max": 2,
+			"fx": {
+				"cost:juggle": 15
+			},
+			"rarity": null
+		},
+		"d_nimble": {
+			"name": "Light on His Feet",
+			"text": "You move {frw}% faster.",
+			"max": 3,
+			"fx": {
+				"frw": 3
+			},
+			"rarity": null
+		},
+		"d_encore": {
+			"name": "Encore",
+			"text": "Pratfall Slide recharges another {cd:slide}% faster.",
+			"max": 1,
+			"fx": {
+				"cd:slide": 20
+			},
+			"rarity": null
+		},
+		"d_spring": {
+			"name": "New Springs",
+			"text": "Big Top Bounce recharges {cd:bounce}% faster.",
+			"max": 3,
+			"fx": {
+				"cd:bounce": 10
+			},
+			"rarity": null
+		},
+		"d_tough": {
+			"name": "Thick Skin",
+			"text": "+{vit} vitality.",
+			"max": 3,
+			"fx": {
+				"vit": 3
+			},
+			"rarity": null
+		},
+		"d_flop": {
+			"name": "Belly Flop",
+			"text": "Big Top Bounce deals {dmg:bounce}% more damage.",
+			"max": 3,
+			"fx": {
+				"dmg:bounce": 12
+			},
+			"rarity": null
+		},
+		"d_horn": {
+			"name": "Loud Horn",
+			"text": "Clown Car deals {dmg:car}% more damage.",
+			"max": 3,
+			"fx": {
+				"dmg:car": 12
+			},
+			"rarity": null
+		},
+		"d_tune": {
+			"name": "Tuned Engine",
+			"text": "Clown Car recharges {cd:car}% faster.",
+			"max": 2,
+			"fx": {
+				"cd:car": 10
+			},
+			"rarity": null
+		},
+		"d_crowd": {
+			"name": "Crowd Pleaser",
+			"text": "+{str} strength.",
+			"max": 3,
+			"fx": {
+				"str": 3
+			},
+			"rarity": null
+		},
+		"d_finale": {
+			"name": "Grand Finale",
+			"text": "All your damage +{dmg}% and Clown Car recharges {cd:car}% faster.",
+			"max": 1,
+			"fx": {
+				"dmg": 6,
+				"cd:car": 15
+			},
+			"rarity": null
+		},
+		"p_dose": {
+			"name": "Stronger Dose",
+			"text": "Pestilence Vial deals {dmg:toxic}% more damage.",
+			"max": 3,
+			"fx": {
+				"dmg:toxic": 10
+			},
+			"rarity": null
+		},
+		"p_study": {
+			"name": "Studied Hand",
+			"text": "+{ene} energy.",
+			"max": 3,
+			"fx": {
+				"ene": 3
+			},
+			"rarity": null
+		},
+		"p_venom": {
+			"name": "Virulent Venom",
+			"text": "All your poison hurts {poison_dmg}% more.",
+			"max": 3,
+			"fx": {
+				"poison_dmg": 8
+			},
+			"rarity": null
+		},
+		"p_cloud": {
+			"name": "Heavy Vapour",
+			"text": "Your contaminated pools spread {cloud_size}% wider.",
+			"max": 3,
+			"fx": {
+				"cloud_size": 8
+			},
+			"rarity": null
+		},
+		"p_linger": {
+			"name": "Lingering Rot",
+			"text": "Poison keeps working {poison_dur} seconds longer after a foe leaves a pool.",
+			"max": 3,
+			"fx": {
+				"poison_dur": 0.5
+			},
+			"rarity": null
+		},
+		"p_thrift": {
+			"name": "Measured Doses",
+			"text": "Pestilence Vial costs {cost:toxic}% less mana.",
+			"max": 2,
+			"fx": {
+				"cost:toxic": 15
+			},
+			"rarity": null
+		},
+		"p_miasma": {
+			"name": "Standing Miasma",
+			"text": "Every pool lingers {cloud_dur} seconds longer.",
+			"max": 1,
+			"fx": {
+				"cloud_dur": 1.5
+			},
+			"rarity": null
+		},
+		"p_charge": {
+			"name": "Ravenous Swarm",
+			"text": "Swarmcraft bites {dmg:swarm}% harder.",
+			"max": 3,
+			"fx": {
+				"dmg:swarm": 10
+			},
+			"rarity": null
+		},
+		"p_steady": {
+			"name": "Steady Hands",
+			"text": "+{dex} dexterity.",
+			"max": 3,
+			"fx": {
+				"dex": 3
+			},
+			"rarity": null
+		},
+		"p_blast": {
+			"name": "Teeming",
+			"text": "The swarm spreads {swarm_size}% wider.",
+			"max": 3,
+			"fx": {
+				"swarm_size": 6
+			},
+			"rarity": null
+		},
+		"p_quick": {
+			"name": "Fertile Soil",
+			"text": "Corpse Bloom recharges {cd:bloom}% faster.",
+			"max": 3,
+			"fx": {
+				"cd:bloom": 6
+			},
+			"rarity": null
+		},
+		"p_ignite": {
+			"name": "Rank Growth",
+			"text": "Corpse Bloom reaches {bloom_size}% further and its pulses hit {dmg:bloom}% harder.",
+			"max": 3,
+			"fx": {
+				"bloom_size": 6,
+				"dmg:bloom": 6
+			},
+			"rarity": null
+		},
+		"p_cane": {
+			"name": "Iron-Shod Cane",
+			"text": "Your cane strikes {dmg:attack}% harder.",
+			"max": 2,
+			"fx": {
+				"dmg:attack": 10
+			},
+			"rarity": null
+		},
+		"p_inferno": {
+			"name": "The Hive Obeys",
+			"text": "The swarm can be turned {swarm_redirect} more time and stays {swarm_dur} second longer.",
+			"max": 1,
+			"fx": {
+				"swarm_redirect": 1,
+				"swarm_dur": 1.0
+			},
+			"rarity": null
+		},
+		"p_spring": {
+			"name": "Dense Fog",
+			"text": "Fog of the Forgotten hangs {fog_dur} seconds longer.",
+			"max": 3,
+			"fx": {
+				"fog_dur": 0.5
+			},
+			"rarity": null
+		},
+		"p_hardy": {
+			"name": "Hardened Physician",
+			"text": "+{life_pct}% maximum life.",
+			"max": 3,
+			"fx": {
+				"life_pct": 4
+			},
+			"rarity": null
+		},
+		"p_snare": {
+			"name": "Strangling Roots",
+			"text": "Corpse Bloom's roots hold {bloom_snare} seconds longer.",
+			"max": 2,
+			"fx": {
+				"bloom_snare": 0.1
+			},
+			"rarity": null
+		},
+		"p_spread": {
+			"name": "Larger Tanks",
+			"text": "Transfusion heals up to {trans_cap}% more of your life.",
+			"max": 3,
+			"fx": {
+				"trans_cap": 1.5
+			},
+			"rarity": null
+		},
+		"p_cache": {
+			"name": "Quick Needle",
+			"text": "Transfusion recharges {cd:transfusion}% faster.",
+			"max": 1,
+			"fx": {
+				"cd:transfusion": 12
+			},
+			"rarity": null
+		},
+		"p_fever": {
+			"name": "Long Fever",
+			"text": "The quarantine lasts {exp_dur} seconds longer.",
+			"max": 3,
+			"fx": {
+				"exp_dur": 0.5
+			},
+			"rarity": null
+		},
+		"p_last": {
+			"name": "Magnum Opus",
+			"text": "The Last Experiment's quarantine is {exp_size}% wider and it recharges {cd:experiment}% faster.",
+			"max": 1,
+			"fx": {
+				"exp_size": 10,
+				"cd:experiment": 15
+			},
+			"rarity": null
+		},
+		"a_kindle": {
+			"name": "Kindling",
+			"text": "Fire Arrow deals {dmg:pierce}% more damage.",
+			"max": 3,
+			"fx": {
+				"dmg:pierce": 12
+			},
+			"rarity": null
+		},
+		"a_draw": {
+			"name": "Heavy Draw",
+			"text": "Your bow shots deal {dmg:attack}% more damage.",
+			"max": 3,
+			"fx": {
+				"dmg:attack": 8
+			},
+			"rarity": null
+		},
+		"a_pyre": {
+			"name": "Pyre",
+			"text": "Burning from Fire Arrow lasts and hurts {burn_dmg}% more.",
+			"max": 3,
+			"fx": {
+				"burn_dmg": 20
+			},
+			"rarity": null
+		},
+		"a_nock": {
+			"name": "Quick Nock",
+			"text": "+{ias}% attack speed.",
+			"max": 3,
+			"fx": {
+				"ias": 5
+			},
+			"rarity": null
+		},
+		"a_embers": {
+			"name": "Ember Fangs",
+			"text": "Your wolf's bites set foes alight: {wolf_burn}% of each bite burns them every second for 3 seconds.",
+			"max": 3,
+			"fx": {
+				"wolf_burn": 15
+			},
+			"rarity": null
+		},
+		"a_dead": {
+			"name": "Deadeye",
+			"text": "+{crit}% chance to land a critical hit.",
+			"max": 3,
+			"fx": {
+				"crit": 3
+			},
+			"rarity": null
+		},
+		"a_split": {
+			"name": "Split Arrow",
+			"text": "Every bow shot flies as three arrows (the outer two at half damage).",
+			"max": 1,
+			"fx": {
+				"arrow_split": 1
+			},
+			"rarity": null
+		},
+		"a_eye": {
+			"name": "Keen Eye",
+			"text": "+{dex} dexterity.",
+			"max": 3,
+			"fx": {
+				"dex": 3
+			},
+			"rarity": null
+		},
+		"a_cover": {
+			"name": "Hailstorm",
+			"text": "Frost Volley covers {volley_size}% more ground.",
+			"max": 3,
+			"fx": {
+				"volley_size": 10
+			},
+			"rarity": null
+		},
+		"a_rime": {
+			"name": "Rime",
+			"text": "Frost Volley's chill slows {chill_pct}% more.",
+			"max": 3,
+			"fx": {
+				"chill_pct": 15
+			},
+			"rarity": null
+		},
+		"a_hide": {
+			"name": "Hide Armour",
+			"text": "+{armor_pct}% defense.",
+			"max": 3,
+			"fx": {
+				"armor_pct": 6
+			},
+			"rarity": null
+		},
+		"a_howl": {
+			"name": "Winter Howl",
+			"text": "Your wolf's pounce chills everything within 3.5 metres of where it lands.",
+			"max": 2,
+			"fx": {
+				"wolf_howl": 1
+			},
+			"rarity": null
+		},
+		"a_rain": {
+			"name": "Endless Rain",
+			"text": "Frost Volley recharges {cd:volley}% faster and costs {cost:volley}% less mana.",
+			"max": 2,
+			"fx": {
+				"cd:volley": 12,
+				"cost:volley": 10
+			},
+			"rarity": null
+		},
+		"a_shatter": {
+			"name": "Shatter",
+			"text": "Chilled enemies take 20% more damage from your arrows.",
+			"max": 1,
+			"fx": {
+				"frost_shatter": 1
+			},
+			"rarity": null
+		},
+		"a_vigor": {
+			"name": "Hunter's Vigor",
+			"text": "+{life_pct}% maximum life.",
+			"max": 3,
+			"fx": {
+				"life_pct": 4
+			},
+			"rarity": null
+		},
+		"a_jaws": {
+			"name": "Thunder Jaws",
+			"text": "Thunderstep's sigil deals {dmg:snare}% more damage and stuns {snare_dur} seconds longer.",
+			"max": 3,
+			"fx": {
+				"dmg:snare": 15,
+				"snare_dur": 0.5
+			},
+			"rarity": null
+		},
+		"a_arc": {
+			"name": "Forked Lightning",
+			"text": "Thunderstep's lightning leaps to {arc_count} more enemies.",
+			"max": 3,
+			"fx": {
+				"arc_count": 1
+			},
+			"rarity": null
+		},
+		"a_bond": {
+			"name": "Spirit Bond",
+			"text": "Your wolf hits {dmg:beast}% harder.",
+			"max": 3,
+			"fx": {
+				"dmg:beast": 15
+			},
+			"rarity": null
+		},
+		"a_trapper": {
+			"name": "Aftershock",
+			"text": "Thunderstep's sigil strikes {snare_max} more time(s), a little weaker each time.",
+			"max": 2,
+			"fx": {
+				"snare_max": 1
+			},
+			"rarity": null
+		},
+		"a_pack": {
+			"name": "Pack Hunter",
+			"text": "The hunt your commands rouse is {buff_pow}% stronger.",
+			"max": 3,
+			"fx": {
+				"buff_pow": 10
+			},
+			"rarity": null
+		},
+		"a_alpha": {
+			"name": "Alpha",
+			"text": "A second wolf runs with you.",
+			"max": 1,
+			"fx": {
+				"beast_two": 1
+			},
+			"rarity": null
+		},
+		"g_edge": {
+			"name": "Honed Edge",
+			"text": "+{dmg}% damage.",
+			"max": 5,
+			"fx": {
+				"dmg": 6
+			},
+			"rarity": 0
+		},
+		"g_hide": {
+			"name": "Thick Hide",
+			"text": "+{life_pct}% maximum life.",
+			"max": 5,
+			"fx": {
+				"life_pct": 8
+			},
+			"rarity": 0
+		},
+		"g_hands": {
+			"name": "Quick Hands",
+			"text": "+{ias}% attack speed.",
+			"max": 4,
+			"fx": {
+				"ias": 6
+			},
+			"rarity": 0
+		},
+		"g_stride": {
+			"name": "Fleet Foot",
+			"text": "+{frw}% run speed.",
+			"max": 3,
+			"fx": {
+				"frw": 6
+			},
+			"rarity": 0
+		},
+		"g_plate": {
+			"name": "Hardened",
+			"text": "+{armor_pct}% defense.",
+			"max": 4,
+			"fx": {
+				"armor_pct": 12
+			},
+			"rarity": 0
+		},
+		"g_well": {
+			"name": "Deep Well",
+			"text": "+{mana_pct}% maximum mana.",
+			"max": 4,
+			"fx": {
+				"mana_pct": 12
+			},
+			"rarity": 0
+		},
+		"g_mend": {
+			"name": "Mending",
+			"text": "+{regen} life regenerated per second.",
+			"max": 4,
+			"fx": {
+				"regen": 1.0
+			},
+			"rarity": 0
+		},
+		"g_instinct": {
+			"name": "Killer Instinct",
+			"text": "+{crit}% chance to land a critical hit.",
+			"max": 4,
+			"fx": {
+				"crit": 4
+			},
+			"rarity": 1
+		},
+		"g_vicious": {
+			"name": "Vicious",
+			"text": "Critical hits deal +{crit_dmg}% damage.",
+			"max": 3,
+			"fx": {
+				"crit_dmg": 20
+			},
+			"rarity": 1
+		},
+		"g_thirst": {
+			"name": "Bloodthirst",
+			"text": "{ls}% of the damage you deal heals you.",
+			"max": 3,
+			"fx": {
+				"ls": 3
+			},
+			"rarity": 1
+		},
+		"g_ward": {
+			"name": "Warded",
+			"text": "+{res}% to all resistances.",
+			"max": 3,
+			"fx": {
+				"res": 8
+			},
+			"rarity": 1
+		},
+		"g_flow": {
+			"name": "Arcane Flow",
+			"text": "Skills recharge {cdr}% faster.",
+			"max": 2,
+			"fx": {
+				"cdr": 12
+			},
+			"rarity": 2
+		},
+		"g_trance": {
+			"name": "Battle Trance",
+			"text": "+{dmg}% damage and +{ias}% attack speed.",
+			"max": 2,
+			"fx": {
+				"dmg": 15,
+				"ias": 8
+			},
+			"rarity": 2
+		},
+		"g_colossus": {
+			"name": "Colossus",
+			"text": "+{life_pct}% maximum life and +{vit} vitality.",
+			"max": 2,
+			"fx": {
+				"life_pct": 20,
+				"vit": 5
+			},
+			"rarity": 2
+		},
+		"x_execute": {
+			"name": "Executioner",
+			"text": "Your hits on foes under {below}% life deal +{more}% damage.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"below": 25,
+				"more": 60
+			}
+		},
+		"x_momentum": {
+			"name": "Momentum",
+			"text": "Each kill: +{dmg}% damage for {secs} seconds, up to {stacks} times.",
+			"max": 2,
+			"rarity": 1,
+			"k": {
+				"dmg": 4,
+				"stacks": 5,
+				"secs": 8
+			}
+		},
+		"x_vampire": {
+			"name": "Vampiric",
+			"text": "Each kill heals you for {pct}% of your life.",
+			"max": 2,
+			"rarity": 1,
+			"k": {
+				"pct": 3
+			}
+		},
+		"x_chain": {
+			"name": "Chain Reaction",
+			"text": "Monsters you kill explode: {pct}% of their life to everything within {r} m. Kills it causes explode too.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"pct": 25,
+				"r": 3.5
+			}
+		},
+		"x_glass": {
+			"name": "Glass Cannon",
+			"text": "+{dmg}% damage, {life_pct}% maximum life.",
+			"max": 1,
+			"fx": {
+				"dmg": 35,
+				"life_pct": -20
+			},
+			"rarity": 2
+		},
+		"x_undying": {
+			"name": "Undying",
+			"text": "A blow that would kill you leaves you at {life}% life instead (once every {secs} seconds).",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"life": 35,
+				"secs": 120
+			}
+		},
+		"x_thorns": {
+			"name": "Retribution",
+			"text": "Monsters that strike you take {pct}% of the blow back.",
+			"max": 2,
+			"rarity": 1,
+			"k": {
+				"pct": 60
+			}
+		},
+		"x_berserk": {
+			"name": "Berserker",
+			"text": "Up to +{most}% damage as your life runs low.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"most": 45
+			}
+		},
+		"x_echo": {
+			"name": "Echo",
+			"text": "A skill with a cooldown has a {chance}% chance to be ready again at once.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"chance": 25
+			}
+		},
+		"x_giant": {
+			"name": "Giant Slayer",
+			"text": "+{more}% damage to champions and bosses.",
+			"max": 2,
+			"rarity": 1,
+			"k": {
+				"more": 20
+			}
+		},
+		"x_frenzy": {
+			"name": "Frenzy",
+			"text": "Critical hits give +{ias}% attack speed for {secs} seconds.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"ias": 20,
+				"secs": 3
+			}
+		},
+		"x_medic": {
+			"name": "Field Medic",
+			"text": "Potions restore {pot}% more.",
+			"max": 2,
+			"fx": {
+				"pot": 40
+			},
+			"rarity": 0
+		},
+		"x_lucky": {
+			"name": "Lucky Charm",
+			"text": "Camp chests offer one more choice.",
+			"max": 1,
+			"fx": {
+				"offer_plus": 1
+			},
+			"rarity": 2
+		},
+		"x_treasure": {
+			"name": "Treasure Hunter",
+			"text": "Camp chests hold {loot_plus} more consumable for you.",
+			"max": 2,
+			"fx": {
+				"loot_plus": 1
+			},
+			"rarity": 1
+		},
+		"x_gemcutter": {
+			"name": "Gemcutter",
+			"text": "Camp chests hold a gem twice as often, and rare gems more often.",
+			"max": 1,
+			"fx": {
+				"gem_luck": 1
+			},
+			"rarity": 2
+		},
+		"x_ward": {
+			"name": "Second Skin",
+			"text": "A ward soaks blows worth {ward_bonus}% of your life; it refills out of combat.",
+			"max": 2,
+			"fx": {
+				"ward_bonus": 12
+			},
+			"rarity": 1
+		},
+		"x_conduit": {
+			"name": "Elemental Conduit",
+			"text": "Your burns last {burn_dur}% longer and hurt {burn_pct}% more; your chills last {chill_pct}% longer.",
+			"max": 1,
+			"fx": {
+				"burn_dur": 50,
+				"chill_pct": 50,
+				"burn_pct": 15
+			},
+			"rarity": 2
+		},
+		"x_bloodlust": {
+			"name": "Bloodlust",
+			"text": "Under {below}% life, {pct}% of the damage your hits deal heals you.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"pct": 10,
+				"below": 50
+			}
+		},
+		"x_adrenaline": {
+			"name": "Adrenaline",
+			"text": "Each kill: +{frw}% run speed for {secs} seconds.",
+			"max": 2,
+			"rarity": 0,
+			"k": {
+				"frw": 12,
+				"secs": 3
+			}
+		},
+		"x_scholar": {
+			"name": "Quick Study",
+			"text": "+{xp_pct}% experience.",
+			"max": 2,
+			"fx": {
+				"xp_pct": 15
+			},
+			"rarity": 0
+		},
+		"a_kindling": {
+			"name": "Kindling",
+			"text": "Your burns deal +{burn_pct}% damage and last {burn_dur}% longer.",
+			"max": 3,
+			"fx": {
+				"burn_pct": 15,
+				"burn_dur": 25
+			},
+			"rarity": 0
+		},
+		"a_firetip": {
+			"name": "Fire-Tipped",
+			"text": "Plain shots set what they strike burning ({pct}% of the hit a second).",
+			"max": 1,
+			"rarity": 1,
+			"k": {
+				"src": "attack",
+				"pct": 30,
+				"secs": 2.5
+			}
+		},
+		"a_wildfire": {
+			"name": "Wildfire",
+			"text": "A burning foe that dies sets everything within {r} m alight.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"r": 4.5
+			}
+		},
+		"a_conflag": {
+			"name": "Conflagration",
+			"text": "Burning foes take +{more}% damage from your hits.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"more": 30
+			}
+		},
+		"a_phoenix": {
+			"name": "Phoenix Quiver",
+			"text": "Every {n}th plain shot looses a free Fire Arrow.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"n": 5,
+				"skill": "pierce"
+			}
+		},
+		"a_biting": {
+			"name": "Biting Cold",
+			"text": "Your chills last {chill_pct}% longer and slow more.",
+			"max": 3,
+			"fx": {
+				"chill_pct": 25
+			},
+			"rarity": 0
+		},
+		"a_frostbite": {
+			"name": "Frostbite",
+			"text": "Chilled foes take +{more}% damage from your hits.",
+			"max": 2,
+			"rarity": 1,
+			"k": {
+				"more": 15
+			}
+		},
+		"a_glacial": {
+			"name": "Rimed Arrows",
+			"text": "Plain shots chill what they strike.",
+			"max": 1,
+			"rarity": 1,
+			"k": {
+				"src": "attack",
+				"slow": 0.3,
+				"secs": 2.0
+			}
+		},
+		"a_shards": {
+			"name": "Ice Shards",
+			"text": "A chilled foe that dies shatters: {pct}% weapon damage to everything within {r} m, chilling them.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"pct": 90,
+				"r": 3.5
+			}
+		},
+		"a_zero": {
+			"name": "Absolute Zero",
+			"text": "Every {n}th hit on a chilled foe freezes it solid for {secs} seconds.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"n": 4,
+				"secs": 1.6
+			}
+		},
+		"a_static": {
+			"name": "Static Charge",
+			"text": "Thunderstep, Arc and Storm Shot deal +{dmg:snare}% damage.",
+			"max": 3,
+			"fx": {
+				"dmg:snare": 15,
+				"dmg:arc": 15,
+				"dmg:a_stormshot": 15
+			},
+			"rarity": 0
+		},
+		"a_forked": {
+			"name": "Forked Shots",
+			"text": "Plain shots leap on as lightning to {jumps} more foes ({pct}% damage).",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"src": "attack",
+				"jumps": 2,
+				"pct": 50,
+				"r": 6.0
+			}
+		},
+		"a_overcharge": {
+			"name": "Overcharge",
+			"text": "Critical hits call lightning down on the target: {pct}% weapon damage within {r} m.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"pct": 140,
+				"r": 2.5
+			}
+		},
+		"a_scent": {
+			"name": "Blood Scent",
+			"text": "+{more}% damage to foes under {below}% life.",
+			"max": 2,
+			"rarity": 1,
+			"k": {
+				"below": 50,
+				"more": 15
+			}
+		},
+		"a_quarry": {
+			"name": "Quarry",
+			"text": "The foe you shot last takes +{more}% damage from you and your wolf.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"more": 30
+			}
+		},
+		"a_packleader": {
+			"name": "Pack Leader",
+			"text": "Your wolf deals {wolf_dmg}% more damage and each bite heals you {wolf_heal}% of your life.",
+			"max": 1,
+			"fx": {
+				"wolf_dmg": 100,
+				"wolf_heal": 2
+			},
+			"rarity": 2
+		},
+		"a_steady": {
+			"name": "Steady Aim",
+			"text": "Plain shots deal +{dmg:attack}% damage.",
+			"max": 3,
+			"fx": {
+				"dmg:attack": 12
+			},
+			"rarity": 0
+		},
+		"a_eagle": {
+			"name": "Eagle Eye",
+			"text": "+{crit}% critical chance, +{crit_dmg}% critical damage.",
+			"max": 2,
+			"fx": {
+				"crit": 5,
+				"crit_dmg": 20
+			},
+			"rarity": 1
+		},
+		"a_ricochet": {
+			"name": "Ricochet",
+			"text": "Plain shots that strike a foe glance on to {bounces} more ({pct}% damage).",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"pct": 70,
+				"r": 8.0,
+				"bounces": 2
+			}
+		},
+		"a_up_fan": {
+			"name": "Wide Fan",
+			"text": "Scatter Shot looses {multishot_more} more arrows and hits {dmg:a_multishot}% harder.",
+			"max": 1,
+			"fx": {
+				"multishot_more": 2,
+				"dmg:a_multishot": 10
+			},
+			"rarity": 1
+		},
+		"a_up_cluster": {
+			"name": "Cluster Charge",
+			"text": "Blast Arrow's burst is {blast_r}% wider and {dmg:a_explosive}% stronger.",
+			"max": 1,
+			"fx": {
+				"blast_r": 40,
+				"dmg:a_explosive": 25
+			},
+			"rarity": 2
+		},
+		"a_up_shatter": {
+			"name": "Shatterpoint",
+			"text": "Glacial Shard freezes foes already chilled for a moment, and hits {dmg:a_glacial}% harder.",
+			"max": 1,
+			"fx": {
+				"glacial_freeze": 1,
+				"dmg:a_glacial": 15
+			},
+			"rarity": 1
+		},
+		"a_up_overload": {
+			"name": "Overload",
+			"text": "Storm Shot's lightning leaps to {storm_jumps} more foes and hits {dmg:a_stormshot}% harder.",
+			"max": 2,
+			"fx": {
+				"storm_jumps": 2,
+				"dmg:a_stormshot": 10
+			},
+			"rarity": 1
+		},
+		"a_up_endless": {
+			"name": "Endless Storm",
+			"text": "Arrow Storm rains {barrage_ticks} more times.",
+			"max": 1,
+			"fx": {
+				"barrage_ticks": 3
+			},
+			"rarity": 2
+		},
+		"a_up_death": {
+			"name": "Marked for Death",
+			"text": "A marked foe that dies makes Hunter's Mark ready again and gives you +{dmg}% damage for {secs} seconds.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"dmg": 25,
+				"secs": 5
+			}
+		},
+		"p_virulent": {
+			"name": "Virulence",
+			"text": "Your poison deals +{poison_dmg}% damage.",
+			"max": 3,
+			"fx": {
+				"poison_dmg": 20
+			},
+			"rarity": 0
+		},
+		"p_septic": {
+			"name": "Septic Wounds",
+			"text": "Poisoned foes take +{more}% damage from your blows.",
+			"max": 2,
+			"rarity": 1,
+			"k": {
+				"more": 15
+			}
+		},
+		"p_toxblood": {
+			"name": "Toxic Blood",
+			"text": "{pct}% of the poison damage you deal heals you.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"pct": 8
+			}
+		},
+		"p_necrosis": {
+			"name": "Necrosis",
+			"text": "Poison grows {grow}% crueller every second a foe stays poisoned (up to +{most}%).",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"grow": 20,
+				"most": 160
+			}
+		},
+		"p_outbreak": {
+			"name": "Outbreak",
+			"text": "Your poison lingers {poison_dur} seconds longer.",
+			"max": 3,
+			"fx": {
+				"poison_dur": 0.6
+			},
+			"rarity": 0
+		},
+		"p_carrier": {
+			"name": "Plague Carrier",
+			"text": "Your cane's blows pass a poisoned foe's poison to another within {r} m.",
+			"max": 1,
+			"rarity": 1,
+			"k": {
+				"src": "attack",
+				"r": 4.5,
+				"n": 1
+			}
+		},
+		"p_contagion": {
+			"name": "Contagion",
+			"text": "A poisoned foe that dies passes its poison to the {n} nearest within {r} m.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"r": 6.0,
+				"n": 3
+			}
+		},
+		"p_pandemic": {
+			"name": "Pandemic",
+			"text": "A poisoned foe that dies bursts in a plague cloud: {pct}% weapon damage and poison to all within {r} m. Its dead burst too.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"r": 3.5,
+				"pct": 60
+			}
+		},
+		"p_hunger": {
+			"name": "Ravenous Swarm",
+			"text": "The swarm bites for +{dmg:swarm}% and each bite heals you {swarm_heal}% of your life.",
+			"max": 2,
+			"fx": {
+				"dmg:swarm": 25,
+				"swarm_heal": 1.5
+			},
+			"rarity": 1
+		},
+		"p_overgrowth": {
+			"name": "Overgrowth",
+			"text": "Corpse Bloom pulses {bloom_rate}% more often and reaches {bloom_size}% further.",
+			"max": 1,
+			"fx": {
+				"bloom_rate": 45,
+				"bloom_size": 20
+			},
+			"rarity": 2
+		},
+		"p_rotfeast": {
+			"name": "Feast of Rot",
+			"text": "Each poisoned foe that dies heals you {pct}% of your life and makes you +15% faster for 3 s.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"pct": 5,
+				"poisoned": 1
+			}
+		},
+		"p_volatile": {
+			"name": "Volatile Reagents",
+			"text": "Pestilence Vial bursts on impact for {vial_burst}% weapon damage.",
+			"max": 2,
+			"fx": {
+				"vial_burst": 80
+			},
+			"rarity": 1
+		},
+		"p_double": {
+			"name": "Double Dose",
+			"text": "Pestilence Vial throws a second vial beside the first.",
+			"max": 1,
+			"fx": {
+				"vial_twin": 1
+			},
+			"rarity": 2
+		},
+		"p_up_miasma": {
+			"name": "Choking Miasma",
+			"text": "Miasma spreads {miasma_r}% wider and slows everything in it.",
+			"max": 1,
+			"fx": {
+				"miasma_r": 30,
+				"miasma_slow": 1
+			},
+			"rarity": 1
+		},
+		"p_up_epidemic": {
+			"name": "Epidemic",
+			"text": "When a cursed foe dies, Contagion's curse leaps to the nearest foe with its time renewed.",
+			"max": 1,
+			"fx": {
+				"curse_jump": 1
+			},
+			"rarity": 2
+		},
+		"p_up_leech": {
+			"name": "Bloated Leeches",
+			"text": "Leech Jar heals {leech_heal}% more and lasts {leech_t} seconds longer.",
+			"max": 2,
+			"fx": {
+				"leech_heal": 50,
+				"leech_t": 1.5
+			},
+			"rarity": 1
+		},
+		"p_tinctures": {
+			"name": "Strong Tinctures",
+			"text": "Potions restore {pot}% more; skills recharge {cdr}% faster.",
+			"max": 2,
+			"fx": {
+				"pot": 35,
+				"cdr": 5
+			},
+			"rarity": 0
+		},
+		"k_up_judgment": {
+			"name": "Wrath of Heaven",
+			"text": "Judgment calls {judgment_more} more pillars round the first, each {dmg:k_judgment}% stronger.",
+			"max": 1,
+			"fx": {
+				"judgment_more": 2,
+				"dmg:k_judgment": 10
+			},
+			"rarity": 1
+		},
+		"k_up_aegis": {
+			"name": "Bastion",
+			"text": "Aegis's ward is {aegis_pct}% of your life stronger and comes back {cd:k_aegis}% sooner; its burst is twice as hard.",
+			"max": 1,
+			"fx": {
+				"aegis_pct": 20,
+				"cd:k_aegis": 20
+			},
+			"rarity": 2
+		},
+		"k_up_whirl": {
+			"name": "Unending Spin",
+			"text": "Blade Storm spins {whirl_more} more time and hits {dmg:k_whirl}% harder.",
+			"max": 2,
+			"fx": {
+				"whirl_more": 1,
+				"dmg:k_whirl": 10
+			},
+			"rarity": 1
+		},
+		"k_up_rites": {
+			"name": "No Quarter",
+			"text": "A Last Rites kill also gives you +30% damage and +20% run speed for 4 seconds.",
+			"max": 1,
+			"fx": {
+				"rites_buff": 1
+			},
+			"rarity": 2
+		},
+		"k_brands": {
+			"name": "Searing Brands",
+			"text": "Holy Brands stack {brand_max} higher and each one burns its foe a little.",
+			"max": 1,
+			"fx": {
+				"brand_max": 3,
+				"brand_burn": 1
+			},
+			"rarity": 2
+		},
+		"k_zealot": {
+			"name": "Zealot",
+			"text": "Your sword sets foes alight with holy fire ({pct}% of the blow a second).",
+			"max": 2,
+			"rarity": 1,
+			"k": {
+				"src": "attack",
+				"pct": 18,
+				"secs": 3.0
+			}
+		},
+		"k_iron": {
+			"name": "Iron Hide",
+			"text": "+{armor_pct}% defense and a ward of {ward_bonus}% of your life that refills out of combat.",
+			"max": 3,
+			"fx": {
+				"armor_pct": 15,
+				"ward_bonus": 4
+			},
+			"rarity": 0
+		},
+		"k_cleave": {
+			"name": "Cleaving Blows",
+			"text": "Your sword's blows cleave into {bounces} more foes beside the one struck ({pct}%).",
+			"max": 1,
+			"rarity": 1,
+			"k": {
+				"pct": 50,
+				"r": 3.0,
+				"bounces": 2
+			}
+		},
+		"k_sacred": {
+			"name": "Sacred Flame",
+			"text": "Critical hits set foes alight with holy fire ({pct}% of the hit a second).",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"pct": 60,
+				"secs": 3.0
+			}
+		},
+		"k_martyr": {
+			"name": "Martyr's Resolve",
+			"text": "Monsters that strike you take {pct}% of the blow back in holy fire.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"pct": 120
+			}
+		},
+		"k_onslaught": {
+			"name": "Onslaught",
+			"text": "Each kill: +{dmg}% damage for {secs} seconds, up to {stacks} times.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"dmg": 8,
+				"stacks": 6,
+				"secs": 6
+			}
+		},
+		"r_up_mark": {
+			"name": "Marked Soul",
+			"text": "Death Mark tears out {mark_pct}% more and comes back {cd:r_deathmark}% sooner.",
+			"max": 1,
+			"fx": {
+				"mark_pct": 30,
+				"cd:r_deathmark": 25
+			},
+			"rarity": 2
+		},
+		"r_up_wail": {
+			"name": "Keening",
+			"text": "Banshee Wail reaches {wail_r}% further and terrifies {wail_t} seconds longer.",
+			"max": 1,
+			"fx": {
+				"wail_r": 30,
+				"wail_t": 0.6
+			},
+			"rarity": 1
+		},
+		"r_up_reap": {
+			"name": "Harvest of Souls",
+			"text": "Reaping Crescent hits {dmg:r_reap}% harder and heals {reap_heal}% more for each it reaps.",
+			"max": 2,
+			"fx": {
+				"dmg:r_reap": 15,
+				"reap_heal": 1
+			},
+			"rarity": 1
+		},
+		"r_reaper": {
+			"name": "Reaper",
+			"text": "Your hits on foes under {below}% life deal +{more}% damage.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"below": 35,
+				"more": 80
+			}
+		},
+		"r_soulfeast": {
+			"name": "Soul Feast",
+			"text": "Each kill heals you {pct}% of your life.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"pct": 5
+			}
+		},
+		"r_dread": {
+			"name": "Dread",
+			"text": "Every hit chills its foe with dread.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"src": "",
+				"slow": 0.35,
+				"secs": 2.0
+			}
+		},
+		"d_up_volcano": {
+			"name": "Ring of Fire",
+			"text": "Volcano hurls {volcano_more} more meteors, each {dmg:d_volcano}% harder.",
+			"max": 1,
+			"fx": {
+				"volcano_more": 3,
+				"dmg:d_volcano": 10
+			},
+			"rarity": 2
+		},
+		"d_up_detonate": {
+			"name": "Chain Brand",
+			"text": "Hellbrand Detonation Brands everything its eruptions strike.",
+			"max": 1,
+			"fx": {
+				"detonate_brand": 1
+			},
+			"rarity": 1
+		},
+		"d_up_pact": {
+			"name": "Blood Price",
+			"text": "Blood Pact gives {pact_pow}% more damage.",
+			"max": 2,
+			"fx": {
+				"pact_pow": 10
+			},
+			"rarity": 1
+		},
+		"d_hellfire": {
+			"name": "Hellfire",
+			"text": "Every blow sets its foe alight ({pct}% of the hit a second).",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"src": "",
+				"pct": 20,
+				"secs": 3.0
+			}
+		},
+		"d_eruption": {
+			"name": "Eruption",
+			"text": "Foes you kill erupt: {pct}% of their life to all within {r} m.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"pct": 30,
+				"r": 4.0
+			}
+		},
+		"d_pitborn": {
+			"name": "Pitborn Hide",
+			"text": "Monsters that strike you take {pct}% of the blow back.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"pct": 100
+			}
+		},
+		"u_up_barrage": {
+			"name": "Bakery Order",
+			"text": "Pie Barrage flings {barrage_more} more pies.",
+			"max": 2,
+			"fx": {
+				"barrage_more": 3
+			},
+			"rarity": 1
+		},
+		"u_up_cannon": {
+			"name": "Extra Gunpowder",
+			"text": "Human Cannonball lands {cannon_r}% wider and {dmg:u_cannon}% harder.",
+			"max": 1,
+			"fx": {
+				"cannon_r": 30,
+				"dmg:u_cannon": 20
+			},
+			"rarity": 2
+		},
+		"u_encore": {
+			"name": "Standing Ovation",
+			"text": "A skill with a cooldown has a {chance}% chance to be ready again at once.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"chance": 35
+			}
+		},
+		"u_slapstick": {
+			"name": "Comic Timing",
+			"text": "Critical hits give +{ias}% attack speed for {secs} seconds.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"ias": 30,
+				"secs": 3
+			}
+		},
+		"s_permafrost": {
+			"name": "Permafrost",
+			"text": "Every {n}th hit on a chilled foe freezes it solid for {secs} seconds.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"n": 5,
+				"secs": 1.4
+			}
+		},
+		"s_shatter": {
+			"name": "Brittle",
+			"text": "Chilled foes take +{more}% damage from your hits.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"more": 25
+			}
+		},
+		"v_tempest": {
+			"name": "Tempest",
+			"text": "Critical hits call lightning down: {pct}% weapon damage within {r} m.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"pct": 160,
+				"r": 3.0
+			}
+		},
+		"y_hide": {
+			"name": "Dragonhide",
+			"text": "+{armor_pct}% defense and +{life_pct}% life.",
+			"max": 3,
+			"fx": {
+				"armor_pct": 15,
+				"life_pct": 6
+			},
+			"rarity": 0
+		},
+		"y_claws": {
+			"name": "Rending Claws",
+			"text": "Claws and bites deal +{dmg:attack}%; +{crit}% critical chance.",
+			"max": 2,
+			"fx": {
+				"dmg:attack": 15,
+				"crit": 3
+			},
+			"rarity": 1
+		},
+		"y_apex": {
+			"name": "Apex Predator",
+			"text": "+{more}% damage to foes under {below}% life.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"below": 40,
+				"more": 40
+			}
+		},
+		"y_fury": {
+			"name": "Primal Fury",
+			"text": "Each kill: +{dmg}% damage for {secs} seconds, up to {stacks} times.",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"dmg": 6,
+				"stacks": 6,
+				"secs": 8
+			}
+		},
+		"s_rime": {
+			"name": "Frozen Blood",
+			"text": "Chills last {chill_pct}% longer; Frost Breath +{dmg:frost_breath}%.",
+			"max": 3,
+			"fx": {
+				"chill_pct": 25,
+				"dmg:frost_breath": 10
+			},
+			"rarity": 0
+		},
+		"v_lord": {
+			"name": "Storm Lord",
+			"text": "Storm Arc and Arc deal +{dmg:storm_arc}%.",
+			"max": 3,
+			"fx": {
+				"dmg:storm_arc": 15,
+				"dmg:arc": 15
+			},
+			"rarity": 0
+		},
+		"v_static": {
+			"name": "Static Claws",
+			"text": "Claws leap on as lightning to {jumps} more foes ({pct}%).",
+			"max": 1,
+			"rarity": 2,
+			"k": {
+				"src": "attack",
+				"jumps": 2,
+				"pct": 40,
+				"r": 6.0
+			}
+		}
+	},
+	"gems": {
+		"ruby": {
+			"name": "Ember Ruby",
+			"text": "+{dmg}% damage, burns +{burn_pct}%.",
+			"fx": {
+				"dmg": 6,
+				"burn_pct": 15
+			},
+			"rarity": 0
+		},
+		"sapphire": {
+			"name": "Frost Sapphire",
+			"text": "Skills recharge {cdr}% faster, chills +{chill_pct}%.",
+			"fx": {
+				"cdr": 6,
+				"chill_pct": 15
+			},
+			"rarity": 0
+		},
+		"emerald": {
+			"name": "Venom Emerald",
+			"text": "+{regen} life a second, poison +{poison_dmg}%.",
+			"fx": {
+				"regen": 1.5,
+				"poison_dmg": 15
+			},
+			"rarity": 0
+		},
+		"topaz": {
+			"name": "Storm Topaz",
+			"text": "+{ias}% attack speed, +{crit}% critical chance.",
+			"fx": {
+				"ias": 5,
+				"crit": 3
+			},
+			"rarity": 0
+		},
+		"amethyst": {
+			"name": "Dusk Amethyst",
+			"text": "+{mana_pct}% mana, +{res}% resistances.",
+			"fx": {
+				"mana_pct": 15,
+				"res": 6
+			},
+			"rarity": 0
+		},
+		"onyx": {
+			"name": "Onyx",
+			"text": "Critical hits deal +{crit_dmg}%.",
+			"fx": {
+				"crit_dmg": 25
+			},
+			"rarity": 0
+		},
+		"bloodstone": {
+			"name": "Bloodstone",
+			"text": "{ls}% life steal.",
+			"fx": {
+				"ls": 2
+			},
+			"rarity": 0
+		},
+		"jade": {
+			"name": "Jade",
+			"text": "+{life_pct}% life.",
+			"fx": {
+				"life_pct": 10
+			},
+			"rarity": 0
+		},
+		"moonstone": {
+			"name": "Moonstone",
+			"text": "+{frw}% run speed.",
+			"fx": {
+				"frw": 6
+			},
+			"rarity": 0
+		},
+		"heartstone": {
+			"name": "Heartstone",
+			"text": "+{life_pct}% life, +{regen} life a second.",
+			"fx": {
+				"life_pct": 20,
+				"regen": 2.5
+			},
+			"rarity": 2
+		},
+		"prism": {
+			"name": "Prism",
+			"text": "+{dmg}% damage, +{life_pct}% life, +{ias}% attack speed.",
+			"fx": {
+				"dmg": 8,
+				"life_pct": 8,
+				"ias": 6
+			},
+			"rarity": 2
+		},
+		"warstone": {
+			"name": "Warstone",
+			"text": "+{dmg}% damage.",
+			"fx": {
+				"dmg": 14
+			},
+			"rarity": 2
+		},
+		"phoenix": {
+			"name": "Phoenix Ember",
+			"text": "Once this run, a killing blow is refused: you rise at {life}% life in a burst of fire.",
+			"fx": null,
+			"rarity": 3,
+			"k": {
+				"life": 60,
+				"secs": 99999,
+				"burst": 1
+			}
+		},
+		"tempest": {
+			"name": "Eye of the Tempest",
+			"text": "Every {n}th hit calls lightning down on its foe ({pct}% weapon damage).",
+			"fx": null,
+			"rarity": 3,
+			"k": {
+				"n": 8,
+				"pct": 150,
+				"r": 3.0
+			}
+		},
+		"hunger": {
+			"name": "Hunger Stone",
+			"text": "Every kill adds +{per}% damage for the rest of the run (up to {most}%).",
+			"fx": null,
+			"rarity": 3,
+			"k": {
+				"per": 1,
+				"most": 35
+			}
+		},
+		"seer": {
+			"name": "Seer's Eye",
+			"text": "Camp chests offer one more choice.",
+			"fx": {
+				"offer_plus": 1
+			},
+			"rarity": 3
+		},
+		"crownshard": {
+			"name": "Shard of the Crown",
+			"text": "Camp chests' offers are one step rarer.",
+			"fx": {
+				"rarity_up": 1
+			},
+			"rarity": 3
+		}
+	}
+}

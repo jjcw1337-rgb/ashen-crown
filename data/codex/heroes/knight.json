@@ -501,22 +501,19 @@
 			}
 		},
 		{
-			"id": "k_zeal",
+			"id": "k_zealot",
 			"status": "live",
-			"name": "Zeal",
-			"rarity": 0,
+			"name": "Zealot",
+			"rarity": 1,
 			"run": true,
 			"direction": "Crusader",
-			"max": 3,
-			"text": "+{dmg}% damage.",
+			"max": 2,
+			"text": "Your sword sets foes alight with holy fire ({pct}% of the blow a second).",
 			"icon": "t_sword",
 			"k": {
 				"src": "attack",
 				"pct": 18.0,
 				"secs": 3.0
-			},
-			"fx": {
-				"dmg": 4.0
 			},
 			"per": [
 				"pct"
