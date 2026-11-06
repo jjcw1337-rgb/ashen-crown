@@ -27,11 +27,11 @@ check() {  # name, log, finished-in-time
   fi
 }
 
-for t in playtest coop_fx_test title_test char_test ui_click_test grass_test intro_skip_test controls_test telemetry_test screen_test skill_spec_test stamina_test raid_schedule_test run_build_test camp_test survivor_test; do
+for t in playtest coop_fx_test title_test char_test ui_click_test grass_test intro_skip_test controls_test telemetry_test screen_test skill_spec_test stamina_test raid_schedule_test run_build_test camp_test survivor_test codex_test; do
   "$G" --headless --path . -s tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
-for t in archer_test plague_test; do
+for t in archer_test plague_test warlock_hex_test; do
   "$G" --headless --path . --fixed-fps 60 -s tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
