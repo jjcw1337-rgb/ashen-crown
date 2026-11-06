@@ -492,6 +492,26 @@ func _skills(h) -> void:
 	h.cds["k_rites"] = 0.0
 	ok = await _cast(h, "k_rites", low.global_position, 1.5)
 	check(ok and low.dead and h.cds["k_rites"] == 0.0, "Last Rites: the execute kills and the leap is ready again (ok %s dead %s life %.0f cd %.1f dist %.1f)" % [ok, low.dead, low.life, h.cds["k_rites"], h.global_position.distance_to(low.global_position)])
+	# the Wraith's
+	await _fresh(h, "wraith", {})
+	var dmk = _foe(h, Vector3(5, 0, 0), "zombie", 5000.0)
+	ok = await _cast(h, "r_deathmark", dmk.global_position, 0.9)
+	check(ok and dmk.has_meta("deathmark"), "Death Mark: the foe is marked")
+	h._hit_enemy(dmk, 5.0, 0.0, "attack")
+	var before_pop: float = dmk.life
+	await create_timer(3.0).timeout
+	check(not dmk.has_meta("deathmark") and dmk.life < before_pop, "Death Mark: it tears out what it stored (%.0f -> %.0f)" % [before_pop, dmk.life])
+	await _fresh(h, "wraith", {})
+	var wail := [_foe(h, Vector3(3, 0, 0), "zombie", 5000.0), _foe(h, Vector3(-3, 0, 2), "zombie", 5000.0)]
+	ok = await _cast(h, "r_wail", h.global_position, 1.2)
+	check(ok and wail.all(func(e): return e.life < e.max_life and e.slow_t > 0.0), "Banshee Wail: strikes, terrifies and slows all round")
+	await _fresh(h, "wraith", {})
+	var reap := [_foe(h, Vector3(0, 0, -3), "zombie", 5000.0), _foe(h, Vector3(1.5, 0, -3.5), "zombie", 5000.0)]
+	h._face(Vector3(0, 0, -1))
+	h.life = h.max_life * 0.5
+	lf = h.life
+	ok = await _cast(h, "r_reap", h.global_position + Vector3(0, 0, -4), 1.5)
+	check(ok and reap.all(func(e): return e.life < e.max_life) and h.life > lf, "Reaping Crescent: reaps the arc in front and heals")
 	# every run skill is in its class's pool and reads its theme
 	for cls in ["archer", "plague"]:
 		var ids: Array = RB.skill_pool(cls).map(func(s): return s["id"])

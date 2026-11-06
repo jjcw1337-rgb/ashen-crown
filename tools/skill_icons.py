@@ -85,6 +85,17 @@ CELLS = {
         ("blight", "a skull of blight howling green smoke"),
         ("-", "a dark purple pact scroll sealed with green wax"),
     ],
+    "knight_wraith": [
+        ("k_whirl", "a crusader knight spinning with a longsword in a whirl of golden holy light, blade trails circling"),
+        ("k_aegis", "a radiant golden shield of holy light flaring around a kneeling armored knight"),
+        ("k_judgment", "a blinding pillar of golden holy light slamming down from the heavens onto glowing runes"),
+        ("k_rites", "an armored knight leaping with a greatsword raised high for an execution blow, golden light"),
+        ("r_deathmark", "a glowing violet death mark sigil burning on the chest of a terrified silhouette, spectral claws"),
+        ("r_wail", "a horned spectral wraith screaming, rings of cyan soul-sound blasting outward, figures cowering"),
+        ("r_reap", "a huge crescent of cyan soul-fire sweeping like a scythe through ghostly figures"),
+        ("cleave", "an armored gauntlet slamming a sword down onto cracked stone in a burst of white light"),
+        ("nova", "an expanding ring of golden holy fire bursting outward across the ground"),
+    ],
     "gems2": [
         ("heartstone", "a heart-shaped rose-red crystal gemstone pulsing with warm light"),
         ("prism", "a clear crystal prism splitting light into a rainbow"),
@@ -100,6 +111,7 @@ CELLS = {
 PAL.setdefault("run_mix", "dark fantasy: deep shadow, warm firelight and cold arcane glows, worn brass and glass")
 PAL.setdefault("potions", "dark fantasy alchemy: rich glowing liquids in glass, worn brass and leather, deep shadow")
 PAL.setdefault("gems", "dark velvet black background, each gem brilliantly lit, rich saturated jewel colours")
+PAL.setdefault("knight_wraith", "dark gothic fantasy: burnished gold holy light for the knight, icy spectral cyan and violet for the wraith, deep shadow")
 PAL.setdefault("gems2", "dark velvet black background, each gem brilliantly lit, rich saturated jewel colours")
 
 def prompt(cls):

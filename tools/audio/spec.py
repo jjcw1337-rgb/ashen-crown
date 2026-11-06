@@ -431,6 +431,10 @@ SPEC += [
          prompt="a heavy sword spun in a fast full circle twice, two deep whooshing blade swings" + DRY),
     dict(name="flask_shatter", src="eleven", n=4, dur=1.0, hit=0, label="a thrown alchemy flask shattering",
          prompt="a thrown glass alchemy flask shattering on the ground with a magical burst" + DRY),
+    dict(name="banshee_wail", src="eleven", n=4, dur=1.8, hit=0, label="a banshee's terrifying scream",
+         prompt="a ghostly banshee wraith letting out a piercing terrifying scream that echoes and warps, chilling and unearthly" + DRY),
+    dict(name="death_mark_pop", src="eleven", n=4, dur=1.2, hit=0, label="a soul torn out with a dark burst",
+         prompt="a dark magic mark detonating, a deep whooshing implosion then a soul being ripped out with a ghostly shriek" + DRY),
     dict(name="gem_found", src="eleven", n=4, dur=1.6, hit=0, label="a precious gem found",
          prompt="a precious magical gemstone revealed, a bright crystalline chime with a shimmering sparkle tail" + DRY),
 ]

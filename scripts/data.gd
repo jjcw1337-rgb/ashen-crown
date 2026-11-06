@@ -815,6 +815,12 @@ const RUN_SKILLS := [
 		"desc": "Call a pillar of holy light down on the pointer: 120% weapon damage within 3 metres, +45% for every Holy Brand on each foe (the brands are spent), and holy fire burns them."},
 	{"id": "k_rites", "cls": "knight", "name": "Last Rites", "lvl": 9, "mana": 10, "cd": 8.0, "tags": ["movement"], "aim": "point", "range": 9.0, "role": "execute and reset",
 		"desc": "Leap at the foe nearest the pointer and bring the sword down: 150% weapon damage, +2% for every 1% of life it is missing. A kill makes Last Rites ready again."},
+	{"id": "r_deathmark", "cls": "wraith", "name": "Death Mark", "lvl": 9, "mana": 10, "cd": 10.0, "tags": ["cc"], "aim": "point", "range": 12.0, "role": "burst a single target",
+		"desc": "Mark the foe nearest the pointer. When the mark ends 3 seconds later it tears out half of everything you dealt it meanwhile (at least 150% weapon damage) as a soul you drink back."},
+	{"id": "r_wail", "cls": "wraith", "name": "Banshee Wail", "lvl": 1, "mana": 9, "cd": 8.0, "tags": ["cc"], "aim": "self", "role": "terrify the crowd",
+		"desc": "Scream: everything within 6 metres takes 60% weapon damage, is frozen in terror for 1.2 seconds and slowed by half for 2 more."},
+	{"id": "r_reap", "cls": "wraith", "name": "Reaping Crescent", "lvl": 1, "mana": 8, "cd": 0.0, "use": 0.9, "aim": "facing", "range": 5.0, "role": "sweep and sustain",
+		"desc": "A great crescent of soul-fire sweeps out 5 metres in front of you: 140% weapon damage, and each foe it reaps heals you 2% of your life."},
 	{"id": "p_leech", "cls": "plague", "name": "Leech Jar", "lvl": 9, "mana": 10, "cd": 9.0, "tags": ["sustain"], "aim": "point", "range": 12.0, "role": "heal from foes",
 		"desc": "Lob a jar of blood leeches: for 5 seconds everything within 3 metres is poisoned, and every foe in it heals you 1.5% of your life a second."},
 ]

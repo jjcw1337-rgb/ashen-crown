@@ -1600,6 +1600,8 @@ func _hit_enemy(e, mult: float, knock: float = 0.0, src := "", flat := 0.0) -> v
 		RunTalents.on_hit(self, e, dealt, r["crit"], src)
 		if cls == "knight" and src != "k_judgment" and run.skills.has("k_judgment"):
 			KnightSkills.brand(self, e)      # Holy Brands, for Judgment to spend
+		if is_instance_valid(e) and e.has_meta("deathmark") and e.get_meta("deathmark").get("h") == self:
+			e.get_meta("deathmark")["stored"] = float(e.get_meta("deathmark")["stored"]) + dealt      # (Death Mark's store)
 	if ls > 0.0:
 		life = minf(max_life, life + dealt * ls / 100.0)
 	_item_effects(e, dealt, src)
