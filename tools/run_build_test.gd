@@ -94,10 +94,11 @@ func _class_run(h, cls: String) -> void:
 	# passives: the generic damage one changes damage, and talents don't apply
 	var before: int = h.dmg_max
 	var life0: float = h.max_life
+	var pct0: float = h.talent("life_pct")      # (a gem from the chest may have some already)
 	r.passives["g_hide"] = 2
 	h.run_changed()
-	check(h.max_life > life0 * 1.14, "%s: Thick Hide ×2 raises life %d -> %d" % [cls, int(life0), int(h.max_life)])
-	check(h.talent("life_pct") == 16.0, "%s: the passive reaches Hero.talent" % cls)
+	check(h.max_life > life0 * 1.1, "%s: Thick Hide ×2 raises life %d -> %d" % [cls, int(life0), int(h.max_life)])
+	check(is_equal_approx(h.talent("life_pct"), pct0 + 16.0), "%s: the passive reaches Hero.talent" % cls)
 	var p: Dictionary = RB.passive_def(cls, "g_hide")
 	check(RB.passive_text(p, 3, 2).contains("16 → 24"), "%s: an upgrade shows the change (%s)" % [cls, RB.passive_text(p, 3, 2)])
 	var own: Array = RB.passive_pool(cls).filter(func(x): return x.has("tree"))
@@ -140,10 +141,11 @@ func _class_run(h, cls: String) -> void:
 	# save and load
 	var d: Dictionary = h.to_save()
 	var skills_before: Array = r.skills.duplicate()
+	var gems_before: Array = r.gems.duplicate()
 	h.new_character()
 	check(h.run == null, "%s: a new character drops the run" % cls)
 	h.from_save(d)
-	check(h.run != null and h.run.skills == skills_before and int(h.run.passives.get("g_hide", 0)) == 2 and h.talent("life_pct") == 16.0, "%s: a run saves and loads (skills, passives)" % cls)
+	check(h.run != null and h.run.skills == skills_before and int(h.run.passives.get("g_hide", 0)) == 2 and is_equal_approx(h.talent("life_pct"), pct0 + 16.0) and h.run.gems == gems_before, "%s: a run saves and loads (skills, passives, gems)" % cls)
 	check(h.run.offers.has("camp_a") and not h.run.offer_open("camp_a"), "%s: a claimed offer stays claimed after loading" % cls)
 	if old == null:
 		pass

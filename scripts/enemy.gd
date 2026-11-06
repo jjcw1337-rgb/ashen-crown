@@ -335,6 +335,12 @@ func ignite(dps: float, t: float, look := "") -> void:
 	if pvp_pid > 0:
 		game.net.send_pvp_dot(pvp_pid, dps, global_position)
 		return
+	# a run's talents and gems: the striker's burns hotter and longer (RunTalents: Kindling, the Ember Ruby)
+	var who: Hero = Hero.striker
+	if who != null and is_instance_valid(who) and who.run != null:
+		RunTalents.mark(who, self)
+		dps *= 1.0 + who.talent("burn_pct") / 100.0
+		t *= 1.0 + who.talent("burn_dur") / 100.0
 	burn_dps = maxf(burn_dps if burn_t > 0.0 else 0.0, dps)
 	burn_t = maxf(burn_t, t)
 	burn_look = look
@@ -349,6 +355,11 @@ func chill(k: float, t: float) -> void:
 		if Hero.striker != sandbox_hero and not sandbox_hero.dead:
 			sandbox_hero.chill_t = maxf(sandbox_hero.chill_t, t * sandbox_hero.cc_k())
 		return
+	var who: Hero = Hero.striker
+	if who != null and is_instance_valid(who) and who.run != null and who.talent("chill_pct") > 0.0:
+		var more := who.talent("chill_pct") / 100.0
+		t *= 1.0 + more
+		k = minf(0.75, k * (1.0 + more * 0.5))
 	if remote:
 		game.net.send_enemy_chill(self, k, t)
 	if boss:
@@ -544,6 +555,7 @@ func die_visual() -> void:
 	life = 0.0
 	_drained = false
 	_set_flash(0.0)
+	RunTalents.on_death(self)     # (a run's talents: the explosions, spreads and kills' rewards of who struck it last)
 	game.camp_check(self)     # (its camp's last? Camps)
 	if boss:
 		Sfx.play("boss_die", 0.0, randf_range(0.85, 1.15))

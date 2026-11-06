@@ -424,6 +424,13 @@ func _throw(at: Vector3) -> void:
 	_send("throw|toxic|%s|%s|%.2f|%d" % [_v(from), _v(to), r, recipe])
 	_reveal_if_fogged()
 	_launch(from, to, r)
+	if h.talent("vial_twin") > 0.0:
+		# Double Dose (a run's talent): a second vial beside the first
+		var side := (to - from).cross(Vector3.UP).normalized() * (r * 1.3)
+		var to2 := to + side
+		to2.y = w.height_at(to2.x, to2.z)
+		_send("throw|toxic|%s|%s|%.2f|%d" % [_v(from), _v(to2), r, recipe])
+		_launch(from, to2, r)
 
 func _launch(from: Vector3, to: Vector3, r: float) -> void:
 	var w: World = h.game.world
@@ -456,7 +463,13 @@ func _shatter(at: Vector3, r: float, ri: int, dir: Vector3) -> void:
 	if not ghost():
 		h.game.add_shake(0.06)
 		var dmg := _base(12.0, 1.65, 0.24, "toxic")
-		for e in _foes(at, r * 0.6):
+		var burst := h.talent("vial_burst")
+		if burst > 0.0:
+			# Volatile Reagents (a run's talent): the vial bursts for a share of his weapon's blow across the whole pool
+			dmg += (h.dmg_min + h.dmg_max) * 0.5 * h.buff_mult() * burst / 100.0 * h.dmg_mult("toxic")
+			Fx.burst(root, at + Vector3(0, 0.6, 0), TOXIC, 30, r * 1.6, 0.16, 0.5, true, -4.0)
+			Fx.flash(root, at + Vector3(0, 1.0, 0), TOXIC, 2.5, 0.25, r * 2.0)
+		for e in _foes(at, r * (0.6 if burst <= 0.0 else 1.0)):
 			_damage(e, dmg, at, true)
 	var pool := PlagueVialFx.Pool.new()
 	root.add_child(pool)
@@ -550,7 +563,11 @@ func _update_poison(delta: float) -> void:
 		if float(pz["tick"]) <= 0.0:
 			pz["tick"] = TICK
 			var fever := 1.2 if (_feverish(e) and e.pvp_pid == 0) else 1.0
-			_damage(e, total * TICK * fever, e.global_position, false)
+			pz["age"] = float(pz.get("age", 0.0)) + TICK
+			var grow := RunTalents.poison_mult(h, float(pz["age"])) if h.run != null and e.pvp_pid == 0 else 1.0
+			_damage(e, total * TICK * fever * grow, e.global_position, false)
+			if h.run != null:
+				RunTalents.on_dot(h, e, total * TICK * fever * grow)
 
 ## Poison and its kin hurt in green numbers, with no blood; armour doesn't stop them (the game's elemental channel).
 func _damage(e: Enemy, amount: float, from: Vector3, knock: bool) -> void:
@@ -558,15 +575,17 @@ func _damage(e: Enemy, amount: float, from: Vector3, knock: bool) -> void:
 		return
 	e.dmg_tint = POISON_TINT
 	e.soft_hit = not knock
+	if h.run != null:
+		RunTalents.mark(h, e)
 	e.take_damage(0.0, amount, from, 0.3 if knock else 0.0, false)
 	e.soft_hit = false
 	e.dmg_tint = Color(0, 0, 0, 0)
 
 ## A poisoned foe trails a thin green haze (the Mantaflow vapour; their own child: it goes when they do).
-func _tint(e: Enemy, on: bool) -> void:
+func _tint(e, on: bool) -> void:
 	if not is_instance_valid(e):
 		return
-	var f := e.get_node_or_null("pd_poison")
+	var f: Node = e.get_node_or_null("pd_poison")
 	if on and f == null and not e.dead:
 		var a := PlagueSmoke.vapour(e, Color(TOXIC.r, TOXIC.g, TOXIC.b, 0.4), 7, 0.55, 1.1, 0.45, 0.25 * e.radius + 0.12, Vector3(0, e.height * 0.9, 0), TOXIC * 0.15)
 		a.name = "pd_poison"
@@ -703,8 +722,11 @@ func _update_swarm(delta: float) -> void:
 		return
 	swarm["tick"] = TICK
 	var dmg := _base(5.0, 0.77, 0.1, "swarm") * TICK * 2.0
+	var heal := h.talent("swarm_heal")
 	for e in _foes(pos, r):
 		_damage(e, dmg, pos, false)
+		if heal > 0.0 and not ghost():
+			h.life = minf(h.max_life, h.life + h.max_life * heal / 100.0 * TICK)
 		PvpStatus.send(h.game, e, "harried", 0.8, HARRIED)
 		if e.pvp_pid > 0:
 			PvpStatus.send(h.game, e, "reveal", 0.8, 1.0)
@@ -751,8 +773,9 @@ func _bloom_at(g: Vector3, r: float, oid := 0) -> void:
 	var node := PlagueBloomFx.Bloom.new()
 	w.fx_root.add_child(node)
 	node.global_position = g
-	node.setup(w, g, r, BLOOM_GROW, BLOOM_T + h.talent("bloom_dur"), BLOOM_EVERY, BLOOM_WARN)
-	var b := {"node": node, "pos": g, "r": r, "age": 0.0, "life": BLOOM_GROW + BLOOM_T + h.talent("bloom_dur"), "next": BLOOM_GROW + BLOOM_EVERY - BLOOM_WARN, "marks": {}, "warned": false,
+	var every := maxf(BLOOM_WARN + 0.3, BLOOM_EVERY / (1.0 + h.talent("bloom_rate") / 100.0))     # (Overgrowth: more often)
+	node.setup(w, g, r, BLOOM_GROW, BLOOM_T + h.talent("bloom_dur"), every, BLOOM_WARN)
+	var b := {"node": node, "pos": g, "r": r, "age": 0.0, "life": BLOOM_GROW + BLOOM_T + h.talent("bloom_dur"), "next": BLOOM_GROW + every - BLOOM_WARN, "marks": {}, "warned": false, "every": every,
 		"oid": oid, "left": int(PvpObjects.HITS["bloom"])}
 	if ghost():
 		b["proxy"] = PvpObjects.proxy(h.game, h, oid, "bloom", int(b["left"]), g)
@@ -786,7 +809,7 @@ func _update_blooms(delta: float) -> void:
 			continue
 		# the pulse
 		b["warned"] = false
-		b["next"] = float(b["next"]) + BLOOM_EVERY
+		b["next"] = float(b["next"]) + float(b.get("every", BLOOM_EVERY))
 		var pos: Vector3 = b["pos"]
 		Sfx.play_at("blight_burst", pos, -3.0, 0.8)
 		if ghost():

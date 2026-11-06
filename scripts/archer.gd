@@ -237,6 +237,7 @@ static func impact(h: Hero) -> bool:
 			for k in n:
 				var spread := (float(k) - (n - 1) * 0.5) * 0.16
 				_loose(h, h.atk_aim, false, 1.0 if k == (n - 1) / 2 else 0.5, "attack", spread)
+			RunTalents.on_shot(h)
 		"pierce":
 			_loose(h, h.atk_aim, true, 1.3, "pierce", 0.0)
 		"volley":
