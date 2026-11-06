@@ -53,6 +53,15 @@ check() {  # name, log, child exit status (124 means timeout)
 waitfor $p 60; rc=$?; check content_parse_test "$OUT/gate_content_parse_test.log" "$rc"
 [ "$BAD" = 0 ] || exit "$BAD"
 
+# Corrupt-save recovery is part of the integrated release; check it before long match tests.
+if [ "$UI_RENDERED" = 1 ]; then
+  "$G" --path . -s tools/char_test.gd > "$OUT/gate_char_test.log" 2>&1 & p=$!
+else
+  "$G" --headless --path . -s tools/char_test.gd > "$OUT/gate_char_test.log" 2>&1 & p=$!
+fi
+waitfor $p 400; rc=$?; check char_test "$OUT/gate_char_test.log" "$rc"
+[ "$BAD" = 0 ] || exit "$BAD"
+
 # Prioritize the affected competitive modes before the broader regression suite.
 # A completed pair may be reused after an infrastructure interruption only when
 # the checkpoint verifies identical runtime/assets/fixtures and the original clean exits.
@@ -92,7 +101,7 @@ check pvp_victim "$OUT/gate_pvp_b.log" $rb
 
 fi
 
-for t in archer_bow_spring_test terrain_job_test content_contract_test content_world_test playtest coop_fx_test title_test char_test ui_click_test grass_test intro_skip_test controls_test telemetry_test screen_test skill_spec_test stamina_test raid_schedule_test run_build_test run_talents_test camp_test survivor_test; do
+for t in archer_bow_spring_test terrain_job_test content_contract_test content_world_test playtest coop_fx_test title_test ui_click_test grass_test intro_skip_test controls_test telemetry_test screen_test skill_spec_test stamina_test raid_schedule_test run_build_test run_talents_test camp_test survivor_test; do
   if [ "$t" = title_test ] || [ "$t" = char_test ]; then
     # Avoid empty arrays under the Mac's Bash 3.2 + set -u.
     if [ "$UI_RENDERED" = 1 ]; then
@@ -118,7 +127,11 @@ for t in archer_test plague_test warlock_hex_test sandbox_test sandbox_entry_tes
 done
 # the camp's people and the island (they reach the Sfx autoload: run late)
 for t in camp_life_test vendor_test guard_test codex_test codex_book_test; do
-  "$G" --headless --path . --fixed-fps 60 -s tools/_late.gd -- res://tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
+  if [ "$t" = codex_book_test ] && [ "$UI_RENDERED" = 1 ]; then
+    "$G" --path . --fixed-fps 60 -s tools/_late.gd -- res://tools/$t.gd shots "$OUT/codex_book" > "$OUT/gate_$t.log" 2>&1 & p=$!
+  else
+    "$G" --headless --path . --fixed-fps 60 -s tools/_late.gd -- res://tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
+  fi
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
 
