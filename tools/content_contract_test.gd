@@ -28,6 +28,10 @@ func run() -> void:
 		for phase in (["impact", "burst"] if skill_id == "k_aegis" else ["impact"]):
 			check(SkillWarmData.EVENTS.get("knight", []).any(func(event): return event.get("s") == skill_id and event.get("e") == phase),
 				"Knight preparation missing phase: %s/%s" % [skill_id, phase])
+	check(SkillWarmData.EVENTS.get("wraith", []).any(func(event): return event.get("s") == "r_deathmark" and event.get("e") == "pop"),
+		"Wraith preparation missing delayed Death Mark explosion")
+	check(SkillWarmData.EVENTS.get("demon", []).any(func(event): return event.get("s") == "d_detonate" and event.get("e") == "impact" and not event.get("ps", {}).get("pv3", []).is_empty()),
+		"Demon preparation missing branded Detonation positions")
 	var solo: Array = catalog.combat(["knight"])
 	check(not solo.any(func(p): return str(p).contains("/plague/") or str(p).contains("/arrows/")), "Solo knight must not acquire other classes\' families")
 	check(catalog.combat(["archer"]).has(SpiritBeast.WOLF_GLB), "Archer summon must be declared")

@@ -1,11 +1,27 @@
 # Shared performance coverage — 2026-11-06
 
 The loading migration is implemented locally, but **release and performance acceptance are not complete**.
-Current source includes published staging `3d4c661` and Claude-1's committed gameplay through `b8421f0`
-(including the new Knight run kit and ForestLife presentation).
-The latest merge has source checks only: runtime results below remain pinned to `2a2f1e2` and must be rerun. The shared guidance remains [loading](../patterns/loading.md), [effects](../patterns/effects.md)
-and [measuring](../patterns/measuring.md). This is the current status page; older result pages preserve their
-original revisions and failed attempts.
+Current source merges staging `70a3ed0` as `9db64e5`, preserving the new Knight, Wraith, Demon and Doug
+run kits. The resumed 2026-11-06 checks below supersede older component results; gameplay and performance
+results in the table remain pinned to `2a2f1e2`. The shared guidance remains [loading](../patterns/loading.md),
+[effects](../patterns/effects.md) and [measuring](../patterns/measuring.md).
+
+## Resumed verification — 2026-11-06
+
+The native Godot 4.4.1 compile and terrain 27/cache 23/declarations 2,602/roots 143/world 7/parts 47/material 73
+checks passed with no runtime errors or warnings on the merged candidate. Actual Knight capture recorded
+32 events across 13 skills, including Aegis's delayed burst; it had no runtime errors and one UI anchor warning.
+The lobby sizing correction and the extended Wraith/Detonation captures remain pending runtime validation.
+Four affected scripts grammar-parse. The new phase assertions correctly remain unsatisfied until regeneration;
+the earlier 2,602 declaration pass predates those new assertions.
+The latest Wraith capture omitted Death Mark's delayed pop; Detonation recorded an empty impact list because
+the fixture had not branded its targets. The capture now waits for the real pop and brands real targets before
+casting Detonation; declaration checks require those phases. Regeneration is not yet certified.
+
+Thirty-three Python CI/audit/benchmark tests pass. Four capture attempts were stopped by the runner when
+another Godot appeared during Codex's reserved heavy-test window; those attempts are retained as interrupted,
+not passing. No full functional gate, normal BG completion, new focused comparison or staging publication has
+completed in this resumed session. Evidence: `workspace/output/perf-resume/`.
 
 | Area | Implemented and verified | Remaining acceptance |
 |---|---|---|
@@ -15,7 +31,7 @@ original revisions and failed attempts.
 | Actual Battlegrounds | Forest construction parity passed. Arena fixture also verified real BG lobby class selection and Ready invalidation. New forest monsters resolve through the existing enemy/model registry. | Current rendered client passed 28 checks for entry, combat, swaps, extraction, survivor saving, re-entry, death and scope retirement. Server-mediated two-player PvP/spectating passed 24 checks. Screenshots inspected. The full gate was stopped red on two server reset assertions; a clock probe proved the round did collapse at 150 simulation seconds and rebuilt. The corrected fixture observes actual death/reset/rebuild transitions continuously and passed 45 checks (18 server / 27 client), including the configured 150-second simulation boundary and a fully rebuilt next lobby. Both processes exited 0 with no runtime errors; seven client rendering/UI warnings remain. Whole-run, late-join and peak-capacity claims remain separate. |
 | Effects and lifetimes | Current material lifecycle 73 clean assertions; prior 4.4 all-class replay 387 clean assertions. World-owned callbacks and surface-override retirement preserve cached meshes. | Current full replay, long-session residency, delayed variants and performance under six-actor spell floods. Online preparation still covers all classes rather than a changing roster. |
 | Sandbox | Hosted practice passed 20 current two-client checks: late join, FFA damage/respawn, no local bots/autosave, byte-identical story save, no practice save, return and natural worker/port cleanup. Screenshot inspected; no runtime errors, three layout/Metal warnings. | Current solo/entry acceptance, full gate and matching backend/client rollout. Do not describe Sandbox as live based on source alone. |
-| Release | Fresh origin fetch confirms 3d4c661. Current native component contracts pass. | Full functional gate, repeatable performance acceptance, matching exports/backend/client staging publication, remote verification. No staging push or deployment in this closure continuation. |
+| Release | Fresh origin fetch confirms 70a3ed0. Current native component contracts pass. | Full functional gate, repeatable performance acceptance, matching exports/backend/client staging publication, remote verification. No staging push or deployment in this closure continuation. |
 
 Raw closure evidence is under `workspace/output/perf-closure/`; prior evidence is linked from
 [implementation results](IMPLEMENTATION_RESULTS.md) and [staging results](STAGING_RESULTS.md).
@@ -60,7 +76,7 @@ paths are covered by the catalog; the native parse gate now explicitly loads For
 Eleven changed/involved scripts grammar-parse; construction (3), audit (14) and benchmark (13) Python tests pass.
 These are source checks, not a native/rendered pass.
 
-There are now thirteen run skills. The existing bidirectional declaration guard correctly identifies four
+Before the latest staging merge there were thirteen run skills. The existing bidirectional declaration guard correctly identifies four
 missing Knight captures: `k_aegis`, `k_judgment`, `k_rites`, `k_whirl`; no retired IDs remain. Do not weaken it.
 The next exclusive test window must capture real Knight casts, run the declaration/world contracts and exercise
 those skills in BG/Arena. Existing Archer/Plague captures and shared talent/consumable variants remain intact.
@@ -72,13 +88,13 @@ release gate and a measured loading/residency decision. No new modes, art redesi
 
 The next Knight capture now waits for Aegis's real delayed burst (bounded to 30 wall seconds after the ordinary
 capture window), and both capture and declaration checks require the run skills' impact phases plus that burst.
-A cast marker alone no longer satisfies these Knight checks. Actual regenerated recipes remain pending.
+A cast marker alone no longer satisfies these Knight checks. The resumed actual Knight capture now includes the required phases; other new run-kit variants remain under validation.
 
 For the next exclusive loading run, pass `--content-trace` and analyze its single-process log with
 `python3 tools/content_load_report.py <log>`. This ranks inclusive loader time by resource, preserves repeat
 loads and failures, and rejects absent/malformed trace data. These timings include dependencies; they are not
 isolated disk time, total transition time or VRAM. Tracing is opt-in and does not retain resources. Source/grammar
-checks and three report unit tests pass; native tracing and Knight capture have not yet run.
+checks and three report unit tests pass; native tracing remains pending; the resumed Knight capture is recorded above.
 
 ## Player journey acceptance — requested 2026-11-06
 
@@ -103,7 +119,7 @@ candidate now gives forest-specific bell/camp instructions, names the active map
 and directs players to an open portal. `bg_test` checks these live state hints and now uses the actual results
 Return signal for both survival and death, asserting connection closure and the reopened BG browser.
 These changes have **not yet been run/rendered**; check the HUD at small and normal viewports, including the
-countdown's matchup cards. Native tests remain deferred while Claude-1 owns heavy-tests and nightly is active.
+countdown's matchup cards. The resumed session owns heavy-tests; these gameplay/HUD checks remain pending.
 
 ## Current performance decision: hold publication
 
@@ -139,9 +155,9 @@ The BG clock probe also measured about 150 simulation seconds over 200 wall seco
 server + rendered-client run. That is not a release-server capacity measurement. Functional timer assertions now
 check the simulation boundary with a bounded wall timeout; they do not certify tick rate or conceal that finding.
 
-Latest sync: `origin/staging` remains `3d4c661`; Claude-1 gameplay through `b8421f0` is merged locally.
-Construction (3), audit (14) and benchmark (13) Python tests pass. Claude-1 holds the local heavy-tests claim;
-no new Godot run or runtime acceptance was performed for this sync.
+Historical sync before the resumed verification: `origin/staging` was `3d4c661`, with Claude-1 gameplay through `b8421f0` merged locally.
+Construction (3), audit (14) and benchmark (13) Python tests pass. At that historical sync Claude-1 held the local heavy-tests claim;
+no new Godot run or runtime acceptance was performed then. Current ownership and checks are recorded above.
 A separate unmerged `origin/claude-2/hero-codex` branch appeared at `f13c496` during the last fetch (no PR at this
 checkpoint). It moves hero/run/talent data into JSON and adds an editor. It is not included in these results;
 when integrated, rerun declaration/recipe capture and gameplay checks against its data-loading changes.

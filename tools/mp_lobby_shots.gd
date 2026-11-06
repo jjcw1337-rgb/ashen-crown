@@ -69,6 +69,7 @@ func _run() -> void:
 		c.rooms = rooms
 		c.draw()
 		await shot("browse_bg_" + tag)
+		check(c.view.get_global_rect().is_equal_approx(Rect2(Vector2.ZERO, Vector2(size))), "%s: lobby covers the logical viewport after resize" % tag)
 		var create: Control = c.view.find_child("create", true, false)
 		check(create != null and create.is_visible_in_tree() and _inside(create), "%s: Create Lobby on screen" % tag)
 		check(c.view.find_child("tab_arena", true, false) != null, "%s: the mode tabs" % tag)

@@ -118,6 +118,10 @@ func _run() -> void:
 				h.cds[k] = 0.0
 			h.mana = h.max_mana
 			h.life = h.max_life
+			# Detonation needs branded targets to draw its actual explosion variant.
+			if id == "d_detonate":
+				for foe in en:
+					DemonSkills.brand(h, foe)
 			events.clear()
 			pd_events.clear()
 			var origin: Vector3 = h.global_position
@@ -130,12 +134,18 @@ func _run() -> void:
 					push_error("Capture could not cast %s/%s" % [cls, id])
 					failures += 1
 			await wait(2.2)
-			if id == "k_aegis":
-				# Aegis bursts after five simulation seconds; the ordinary capture window
-				# ends too early and could attribute its late event to the next skill.
+			if id in ["k_aegis", "r_deathmark"]:
+				# Wait for the real delayed event before clearing state or starting another skill.
+				var late_phase := "burst" if id == "k_aegis" else "pop"
 				var deadline := Time.get_ticks_msec() + 30000
-				while not events.any(func(w): return w.get("s") == id and w.get("e") == "burst") and Time.get_ticks_msec() < deadline:
+				while not events.any(func(w): return w.get("s") == id and w.get("e") == late_phase) and Time.get_ticks_msec() < deadline:
 					await process_frame
+				if not events.any(func(w): return w.get("s") == id and w.get("e") == late_phase):
+					push_error("Capture missing delayed phase %s/%s" % [id, late_phase])
+					failures += 1
+			if id == "d_detonate" and not events.any(func(w): return w.get("s") == id and w.get("e") == "impact" and not w.get("ps", []).is_empty()):
+				push_error("Capture missing branded Detonation impacts")
+				failures += 1
 			if str(id).begins_with("k_"):
 				for phase in (["impact", "burst"] if id == "k_aegis" else ["impact"]):
 					if not events.any(func(w): return w.get("s") == id and w.get("e") == phase):

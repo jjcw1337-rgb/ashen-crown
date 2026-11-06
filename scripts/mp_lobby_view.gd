@@ -63,7 +63,8 @@ func setup(client) -> void:
 	game = client.game
 	ui = game.ui
 	name = "multiplayer_lobbies"
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# _fit owns viewport sizing, including before the parent menus layer is laid out.
+	set_anchors_preset(Control.PRESET_TOP_LEFT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	art = TextureRect.new()
 	art.set_anchors_preset(Control.PRESET_FULL_RECT)
