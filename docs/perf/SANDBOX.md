@@ -37,3 +37,20 @@ covers Sandbox browse/preparation and button bounds at four logical viewport siz
 Claude’s subsequent camp tuning, class-unique rewards, screen transitions and Arena survivor fixture are
 integrated. Their reported acceptance remains Claude’s evidence; this merged branch still needs its own
 native checks. Use `arena_survivor_test.gd` for the current survivor flow instead of restoring old stakes.
+
+
+The functional gate now launches both real two-client survivor Arena and hosted Sandbox acceptance with
+`tools/nightly/lobby_gate.py`. It uses a private loopback broker and one worker, retains every log, requires
+completion markers and worker exit, rejects runtime errors, and stops only its own process groups on disk
+pressure or a competing Godot. The caller must hold `heavy-tests` and configure an isolated `AshenCrown-*`
+custom user directory in its own `override.cfg`; fixtures refuse the ordinary player directory. Ports default
+to broker7354/worker24640 (`GATE_BROKER_PORT` / `GATE_WORKER_PORT` override them). Each output directory
+must be new. Example from the isolated checkout:
+
+```sh
+python3 tools/nightly/lobby_gate.py arena /absolute/new-output --godot /absolute/Godot --rendered
+```
+
+This release gate is separate from the one-process nightly performance audit; the nightly's six visual actors
+are not six network clients. Existing UI/renderer warnings are retained in functional results; performance
+acceptance still rejects warnings under its stricter policy.

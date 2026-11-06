@@ -13,9 +13,12 @@ var role := "client"
 var port := 24611
 var host := "127.0.0.1"
 var fails := 0
+var capture := ""
 
 func _initialize():
 	var a := OS.get_cmdline_user_args()
+	if a.has("--capture"): capture = a[a.find("--capture") + 1]
+	BuildEnv.forced = {"env": "local", "cloud": "0"}
 	role = "server" if a.has("server") else "client"
 	for i in a.size():
 		if a[i].is_valid_int() and int(a[i]) > 1024:
@@ -31,6 +34,7 @@ func _initialize():
 			BuildEnv.forced = {"cloud": "1", "nakama_url": a[ci + 1], "nakama_key": a[ci + 2]}
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	g.char_dir = "user://gate/bg_test/%s/" % role
+	g.old_save = g.char_dir + "absent.json"
 	get_root().add_child(g)
 	current_scene = g
 	_run()
@@ -42,6 +46,7 @@ func check(ok: bool, what: String) -> void:
 
 func wait(n: int) -> void:
 	for i in n:
+		if is_instance_valid(g): g._intro_skip = true
 		await process_frame
 
 func secs(t: float) -> void:
@@ -69,6 +74,7 @@ func _run() -> void:
 	g.queue_free()
 	for i in 8:
 		await process_frame
+	check(ResCache.metrics().scopes == 0 and ResCache.metrics().pending == 0, "content owners and loading jobs retired")
 	quit(1 if fails else 0)
 
 # The accelerated 40s lobby is shorter than cold rendered-client preparation. Hold only
@@ -150,6 +156,11 @@ func _client() -> void:
 	g.test_onehit = true
 	await g.start_battlegrounds("%s:%d" % [host, port], id)
 	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 90.0), "entered the crypt as Testric")
+	if DisplayServer.get_name() != "headless":
+		check(ResCache.status(g._zone_scope).ready and ResCache.status(g._combat_scope).ready, "Battlegrounds content ready before play")
+		if capture != "":
+			await RenderingServer.frame_post_draw
+			root.get_texture().get_image().save_png(capture)
 	check(not _save(path).get("in_raid", false) and g.hero.run != null and g.hero.level == 0 and g.hero.run.skills.is_empty(), "a fresh run character at level 0; the saved character stays out of the raid")
 	check(await until(func(): return not g.bg_raid.is_empty(), 10.0), "the raid's clock arrived (%s)" % str(g.bg_raid.get("state", "?")))
 	# the antechamber: behind its gate; ring the bell and the countdown begins for everyone; then the gate rises

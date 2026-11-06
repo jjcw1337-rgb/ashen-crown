@@ -48,7 +48,36 @@ check() {  # name, log, child exit status (124 means timeout)
   fi
 }
 
-for t in terrain_job_test playtest coop_fx_test title_test char_test ui_click_test grass_test intro_skip_test controls_test telemetry_test screen_test skill_spec_test stamina_test raid_schedule_test run_build_test camp_test survivor_test; do
+# Native compile/type checks precede expensive world and network tests.
+"$G" --headless --path . -s tools/_late.gd -- res://tools/content_parse_test.gd > "$OUT/gate_content_parse_test.log" 2>&1 & p=$!
+waitfor $p 60; rc=$?; check content_parse_test "$OUT/gate_content_parse_test.log" "$rc"
+[ "$BAD" = 0 ] || exit "$BAD"
+
+# Prioritize the affected competitive modes before the broader regression suite.
+# the Battlegrounds pair
+"$G" --headless --path . -s tools/_late.gd -- res://tools/bg_test.gd --server --port "$BG_PORT" --raid-fast server > "$OUT/gate_bg_server.log" 2>&1 & s=$!
+sleep 6
+if [ "$UI_RENDERED" = 1 ]; then
+  "$G" --path . -s tools/_late.gd -- res://tools/bg_test.gd client "$BG_PORT" --capture "$OUT/battlegrounds.png" > "$OUT/gate_bg_client.log" 2>&1 & c=$!
+else
+  "$G" --headless --path . -s tools/_late.gd -- res://tools/bg_test.gd client "$BG_PORT" --capture "$OUT/battlegrounds.png" > "$OUT/gate_bg_client.log" 2>&1 & c=$!
+fi
+waitfor $c 420; rc=$?; waitfor $s 200; rs=$?
+check bg_test_server "$OUT/gate_bg_server.log" $rs
+check bg_test_client "$OUT/gate_bg_client.log" $rc
+
+# Battlegrounds PvP: a server and two players
+"$G" --headless --path . -s tools/_late.gd -- res://tools/bg_pvp_test.gd --server --port "$PVP_PORT" --raid-fast server > "$OUT/gate_pvp_server.log" 2>&1 & s=$!
+sleep 6
+"$G" --headless --path . -s tools/_late.gd -- res://tools/bg_pvp_test.gd a "$PVP_PORT" > "$OUT/gate_pvp_a.log" 2>&1 & a=$!
+"$G" --headless --path . -s tools/_late.gd -- res://tools/bg_pvp_test.gd b "$PVP_PORT" > "$OUT/gate_pvp_b.log" 2>&1 & b=$!
+waitfor $s 300; rc=$?; waitfor $a 30; ra=$?; waitfor $b 30; rb=$?
+check pvp_server "$OUT/gate_pvp_server.log" $rc
+check pvp_attacker "$OUT/gate_pvp_a.log" $ra
+check pvp_victim "$OUT/gate_pvp_b.log" $rb
+
+
+for t in terrain_job_test content_world_test playtest coop_fx_test title_test char_test ui_click_test grass_test intro_skip_test controls_test telemetry_test screen_test skill_spec_test stamina_test raid_schedule_test run_build_test camp_test survivor_test; do
   if [ "$t" = title_test ] || [ "$t" = char_test ]; then
     # Avoid empty arrays under the Mac's Bash 3.2 + set -u.
     if [ "$UI_RENDERED" = 1 ]; then
@@ -78,28 +107,6 @@ for t in camp_life_test vendor_test guard_test; do
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
 
-# the Battlegrounds pair
-"$G" --headless --path . -s tools/_late.gd -- res://tools/bg_test.gd --server --port "$BG_PORT" --raid-fast server > "$OUT/gate_bg_server.log" 2>&1 & s=$!
-sleep 6
-if [ "$UI_RENDERED" = 1 ]; then
-  "$G" --path . -s tools/_late.gd -- res://tools/bg_test.gd client "$BG_PORT" > "$OUT/gate_bg_client.log" 2>&1 & c=$!
-else
-  "$G" --headless --path . -s tools/_late.gd -- res://tools/bg_test.gd client "$BG_PORT" > "$OUT/gate_bg_client.log" 2>&1 & c=$!
-fi
-waitfor $c 420; rc=$?; waitfor $s 200; rs=$?
-check bg_test_server "$OUT/gate_bg_server.log" $rs
-check bg_test_client "$OUT/gate_bg_client.log" $rc
-
-# Battlegrounds PvP: a server and two players
-"$G" --headless --path . -s tools/_late.gd -- res://tools/bg_pvp_test.gd --server --port "$PVP_PORT" --raid-fast server > "$OUT/gate_pvp_server.log" 2>&1 & s=$!
-sleep 6
-"$G" --headless --path . -s tools/_late.gd -- res://tools/bg_pvp_test.gd a "$PVP_PORT" > "$OUT/gate_pvp_a.log" 2>&1 & a=$!
-"$G" --headless --path . -s tools/_late.gd -- res://tools/bg_pvp_test.gd b "$PVP_PORT" > "$OUT/gate_pvp_b.log" 2>&1 & b=$!
-waitfor $s 300; rc=$?; waitfor $a 30; ra=$?; waitfor $b 30; rb=$?
-check pvp_server "$OUT/gate_pvp_server.log" $rc
-check pvp_attacker "$OUT/gate_pvp_a.log" $ra
-check pvp_victim "$OUT/gate_pvp_b.log" $rb
-
 # the online co-op server with two players
 "$G" --headless --path . -s tools/_late.gd -- res://tools/coop_server_test.gd --server --coop --port "$COOP_PORT" --queue-port "$QUEUE_PORT" server > "$OUT/gate_coop_server.log" 2>&1 & s=$!
 sleep 6
@@ -122,6 +129,18 @@ for t in mp_test plague_mp_test; do
   waitfor $j 300; rc=$?; waitfor $h 60; rh=$?
   check ${t}_host "$OUT/gate_${t}_host.log" $rh
   check ${t}_join "$OUT/gate_${t}_join.log" $rc
+done
+
+# Actual lobby workers and two clients: survivor Arena and late-joining Sandbox.
+# The caller holds heavy-tests; ports and output stay separate from other agents.
+for mode in arena sandbox; do
+  if [ "$UI_RENDERED" = 1 ]; then
+    python3 tools/nightly/lobby_gate.py "$mode" "$OUT/${mode}_lobby" --godot "$G" --rendered --broker-port "${GATE_BROKER_PORT:-7354}" --worker-port "${GATE_WORKER_PORT:-24640}" > "$OUT/gate_${mode}_lobby.log" 2>&1
+  else
+    python3 tools/nightly/lobby_gate.py "$mode" "$OUT/${mode}_lobby" --godot "$G" --broker-port "${GATE_BROKER_PORT:-7354}" --worker-port "${GATE_WORKER_PORT:-24640}" > "$OUT/gate_${mode}_lobby.log" 2>&1
+  fi
+  rc=$?
+  if [ "$rc" = 0 ]; then echo "GREEN ${mode}_lobby"; else echo "RED   ${mode}_lobby (see $OUT/gate_${mode}_lobby.log)"; BAD=1; fi
 done
 
 # any test the night added: tools/nightly_*_test.gd (single process) are run too

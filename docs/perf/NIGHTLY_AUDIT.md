@@ -28,7 +28,8 @@ Reinstall deliberately when its code changes; it never silently executes an upda
   `--main-pack` reads override.cfg beside the PCK; putting it in the working directory is
   insufficient ([Godot 4.4 source](https://github.com/godotengine/godot/blob/4.4/core/config/project_settings.cpp)).
   Cloud is disabled in the test bootstrap. Player characters and settings are not test inputs.
-- Cache ownership/cancellation, content declarations, actual catalog loads, fragment reuse,
+- Cache ownership/cancellation, content declarations, actual catalog loads, BG/Arena world construction
+  without undeclared cache requests, fragment reuse,
   cached-mesh material retirement, all-class spell replay and solo-to-co-op preparation/cleanup.
 - Three fresh-process repeats each: camp, moor at Medium/High/Ultra, combat, boss, Aurelia,
   Battlegrounds, **three six-actor PvP floods** (mixed Demon/Plague/Archer, moving dragons, and

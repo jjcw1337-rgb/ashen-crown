@@ -6,24 +6,37 @@ extends SceneTree
 ##   2. an Arena lobby: each brings its survivor; both ready, a starts; the ticket hands both into the Arena worker
 ##      with the survivor loaded (its class, level, skills and slots, passives); real PvP damage resolves the rounds;
 ##      the match ends back home with the survivor's file untouched (no deletion on a loss)
-## Run `python3 deploy/lobbies/service.py --dev --state <dir> --game . --godot <godot>` on loopback first.
+## Run through tools/nightly/lobby_gate.py arena <output> --godot <godot> --rendered.
 var g
 var role := "a"
 var fails := 0
 var checks := 0
 var SV
 var RB
+var capture := ""
 
 func _initialize():
+	if not bool(ProjectSettings.get_setting("application/config/use_custom_user_dir", false)) or not OS.get_user_data_dir().get_file().begins_with("AshenCrown-"):
+		printerr("ERROR: Arena fixture requires an isolated AshenCrown-* custom user directory")
+		quit(2)
+		return
 	node_added.connect(func(n):
-		if n is SubViewport:
+		if n is SubViewport and DisplayServer.get_name() == "headless":
 			n.disable_3d = true)
-	role = "b" if OS.get_cmdline_user_args().has("b") else "a"
-	load("res://scripts/build_env.gd").forced = {"env": "local", "cloud": "0", "lobby_url": "http://127.0.0.1:7352"}
+	var args := OS.get_cmdline_user_args()
+	role = "b" if args.has("b") else "a"
+	var broker := ""
+	if args.has("--broker"): broker = args[args.find("--broker") + 1]
+	if args.has("--capture"): capture = args[args.find("--capture") + 1]
+	if not broker.begins_with("http://127.0.0.1:"):
+		printerr("Arena fixture requires an explicit loopback --broker")
+		quit(2)
+		return
+	load("res://scripts/build_env.gd").forced = {"env": "local", "cloud": "0", "lobby_url": broker}
 	g = load("res://main.tscn").instantiate()
 	g.char_dir = "user://arena_survivor_test_" + role + "/"
 	g.old_save = g.char_dir + "absent.json"
-	get_root().disable_3d = true
+	get_root().disable_3d = DisplayServer.get_name() == "headless"
 	get_root().add_child(g)
 	current_scene = g
 	SV = load("res://scripts/survivors.gd")
@@ -120,7 +133,15 @@ func _run() -> void:
 	check(g.arena_mode and g.hero.run != null and g.hero.cls == want["cls"] and g.hero.level == want["level"], "fighting as the survivor (%s level %d)" % [g.hero.cls, g.hero.level])
 	check(g.hero.run.skills == want["skills"] and g.hero.bound("rmb") == want["rmb"], "with its skills and slots")
 	check(await until(func(): return g.net.players.size() == 1), "the opponent is there")
-	check(await until(func(): return g.arena_state.get("phase", "") == "fight", 30), "a round begins")
+	check(await until(func(): return g.arena_state.get("phase", "") == "fight", 120), "a round begins after both clients finish preparation")
+	if DisplayServer.get_name() != "headless":
+		check(ResCache.status(g._zone_scope).ready and ResCache.status(g._combat_scope).ready, "Arena content scopes ready before combat")
+		if capture != "":
+			get_root().disable_3d = false
+			for i in 10: await process_frame
+			await RenderingServer.frame_post_draw
+			get_root().get_texture().get_image().save_png(capture)
+
 	if role == "a":
 		for round_index in 2:
 			check(await until(func(): return g.arena_state.get("phase", "") == "fight", 30), "round %d" % (round_index + 1))
@@ -138,5 +159,6 @@ func _run() -> void:
 	g.queue_free()
 	for i in 30:
 		await process_frame
+	check(ResCache.metrics().scopes == 0 and ResCache.metrics().pending == 0, "teardown releases content scopes and loading work")
 	print("[ARENA-", role, "] done ", checks, " checks / ", fails, " failures")
 	quit(1 if fails else 0)

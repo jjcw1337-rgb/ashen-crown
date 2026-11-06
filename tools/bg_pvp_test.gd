@@ -19,6 +19,7 @@ var fails := 0
 
 func _initialize():
 	var a := OS.get_cmdline_user_args()
+	BuildEnv.forced = {"env": "local", "cloud": "0"}
 	role = "server" if a.has("server") else ("b" if a.has("b") else "a")
 	for i in a.size():
 		if a[i].is_valid_int() and int(a[i]) > 1024:
@@ -34,6 +35,7 @@ func _initialize():
 			BuildEnv.forced = {"cloud": "1", "nakama_url": a[ci + 1], "nakama_key": a[ci + 2]}
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	g.char_dir = "user://gate/bg_pvp_test/%s/" % role
+	g.old_save = g.char_dir + "absent.json"
 	get_root().add_child(g)
 	current_scene = g
 	_run()
@@ -45,6 +47,7 @@ func check(ok: bool, what: String) -> void:
 
 func wait(n: int) -> void:
 	for i in n:
+		if is_instance_valid(g): g._intro_skip = true
 		await process_frame
 
 func secs(t: float) -> void:

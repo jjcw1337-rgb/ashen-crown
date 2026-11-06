@@ -1584,10 +1584,16 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	_add_boat(zone, spawn)
 	# the class's skill effects played once, unseen, under the loading screen: no freeze on a first cast (SkillWarm)
 	if not _boot_quiet:
+		var warm_started := Time.get_ticks_msec()
 		await SkillWarm.run(self, prepared_classes)
+		preparation_phases["skill_warm_ms"] = Time.get_ticks_msec() - warm_started
+		warm_started = Time.get_ticks_msec()
 		# the monsters that can still turn up here (MonsterWarm), the windows and the sheet's portrait, drawn once
 		await MonsterWarm.run(self)
+		preparation_phases["monster_warm_ms"] = Time.get_ticks_msec() - warm_started
+		warm_started = Time.get_ticks_msec()
 		await ui.warm_windows()
+		preparation_phases["ui_warm_ms"] = Time.get_ticks_msec() - warm_started
 	zone_music()
 	loading.visible = false
 	_busy = false

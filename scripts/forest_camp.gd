@@ -128,7 +128,7 @@ static var _meshes := {}
 static func mesh(path: String) -> Mesh:
 	if _meshes.has(path):
 		return _meshes[path]
-	var sc: Node = (load(path) as PackedScene).instantiate()
+	var sc: Node = ResCache.inst(path)
 	var mis := sc.find_children("*", "MeshInstance3D", true, false)
 	var out: Mesh
 	if mis.size() == 1:
@@ -149,7 +149,7 @@ static func mesh(path: String) -> Mesh:
 	return out
 
 static func model(name: String) -> Node3D:
-	return (load(DIR + name + ".glb") as PackedScene).instantiate()
+	return ResCache.inst(DIR + name + ".glb")
 
 ## The set pieces (graphics plan, phase 3): Meshy props re-baked onto clean UVs by tools/blender/camp/rebake_prop.py,
 ## each with its footprint (half-extents in its own x/z, from the script's "foot half"). Optional: without a file the

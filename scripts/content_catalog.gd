@@ -61,8 +61,12 @@ static func combat(classes: Array = []) -> Array:
 
 static func zone(run: int, name: String) -> Array:
 	var paths: Array = (ZonePreloadData.PATHS.get("%d:%s" % [run, name], []) as Array).duplicate()
+	# World torches/fires are needed even when no combat bundle is requested.
+	paths.append_array(["res://assets/textures/fx/fire_tongue.png", "res://assets/textures/fx/fire_body.png"])
 	if name == "bg" and MpMode.FOREST:
 		paths.append_array(["res://assets/models/camp/runestone.glb", "res://assets/models/camp/tent.glb",
+			"res://assets/models/camp/lantern_post.glb", "res://assets/models/camp/cookfire.glb",
+			"res://assets/models/camp/weapon_rack.glb",
 			"res://assets/models/fort/tower.glb", "res://assets/models/lairs/ice_rock.glb"])
 	if name == "town": paths.append_array(LOBBY_ART.values())
 	var family := "isle" if name.begins_with("isle_") else ("arena" if name == "sandbox" else name)

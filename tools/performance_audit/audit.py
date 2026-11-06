@@ -25,9 +25,10 @@ LEGACY = Path('/tmp/ashen-nightly.lock')
 ROOT = Path('/Users/blaine/Library/Application Support/ashen-performance-audit')
 SCENARIOS = ['camp:2', 'moor:1', 'moor:2', 'moor:3', 'fight:2', 'boss:2', 'arena:2', 'crypt:2', 'pvp3v3:2', 'pvp_dragons:2', 'pvp_forest:2', 'server:2']
 METRICS = ['fps_avg', 'frame_ms_p99', 'frame_ms_max', 'first_use_max_ms', 'hitches_per_min', 'load_ms', 'ram_mb', 'vram_mb']
-CONTRACTS = ['terrain_job_test', 'content_cache_test', 'content_contract_test', 'content_catalog_test', 'content_parts_test',
+CONTRACTS = ['content_world_test', 'terrain_job_test', 'content_cache_test', 'content_contract_test', 'content_catalog_test', 'content_parts_test',
              'nightly_surface_material_test', 'coop_fx_test', 'content_host_test', 'sandbox_test', 'sandbox_entry_test', 'pvp_sim']
 MARKERS = {
+    'content_world_test': '[WORLD CONTENT] done, 0 failed',
     'terrain_job_test': '[TERRAIN JOB]',
     'isolation': '[AUDIT] isolated user directory verified',
     'pvp_sim': '[PVP] done,',

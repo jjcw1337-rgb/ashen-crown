@@ -9,6 +9,8 @@ var capture := ""
 var failures := 0
 var checks := 0
 func _initialize() -> void:
+ if not bool(ProjectSettings.get_setting("application/config/use_custom_user_dir",false)) or not OS.get_user_data_dir().get_file().begins_with("AshenCrown-"):
+  printerr("ERROR: Sandbox fixture requires an isolated AshenCrown-* custom user directory");quit(2);return
  var args:=OS.get_cmdline_user_args()
  role=args[0] if not args.is_empty() else "host"
  if args.has("--broker-url"):broker=args[args.find("--broker-url")+1]
