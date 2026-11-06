@@ -13,6 +13,7 @@ func ok(c: bool, what: String) -> void:
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
+	current_scene = g
 	_run()
 
 func secs(t: float) -> void:

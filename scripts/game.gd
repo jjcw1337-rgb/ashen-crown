@@ -2055,7 +2055,7 @@ func _start_run_raid(addr: String, id: String, cls: String) -> void:
 	Sfx.play("click")
 	net.stop_listening()
 	if cls == "" and id != "":
-		var d = JSON.parse_string(FileAccess.get_file_as_string(char_dir + id + ".json")) if FileAccess.file_exists(char_dir + id + ".json") else null
+		var d := read_save(char_dir + id + ".json", false)
 		cls = str(d.get("hero", {}).get("cls", "")) if d is Dictionary else ""
 	if not Data.CLASSES.has(cls):
 		cls = hero.cls if hero != null and Data.CLASSES.has(hero.cls) else "archer"
@@ -2714,14 +2714,19 @@ func _replace(a: String, b: String) -> bool:
 ## Reads a save, falling back to a finished .tmp and then the backups, newest first, when the save itself is missing
 ## or damaged; {} when there's nothing usable. `save_recovered` names the copy it came from.
 var save_recovered := ""
-func read_save(path: String) -> Dictionary:
-	save_recovered = ""
+func read_save(path: String, record_recovery := true) -> Dictionary:
+	if record_recovery:
+		save_recovered = ""
 	for p in [path, path + ".tmp"] + range(1, SAVE_BACKUPS + 1).map(func(i): return "%s.bak%d" % [path, i]):
 		if not FileAccess.file_exists(p):
 			continue
-		var d = JSON.parse_string(FileAccess.get_file_as_string(p))
+		# A truncated candidate is expected here: parse quietly, then try its backup.
+		var parser := JSON.new()
+		if parser.parse(FileAccess.get_file_as_string(p)) != OK:
+			continue
+		var d = parser.data
 		if typeof(d) == TYPE_DICTIONARY and typeof(d.get("hero")) == TYPE_DICTIONARY:
-			if p != path:
+			if record_recovery and p != path:
 				save_recovered = p.get_file()
 			return d
 	return {}
@@ -2764,11 +2769,8 @@ func list_characters() -> Array:
 	for fn in dir.get_files():
 		if not fn.ends_with(".json"):
 			continue
-		var f := FileAccess.open(char_dir + fn, FileAccess.READ)
-		if f == null:
-			continue
-		var d = JSON.parse_string(f.get_as_text())
-		if typeof(d) != TYPE_DICTIONARY:
+		var d := read_save(char_dir + fn, false)
+		if d.is_empty():
 			continue
 		var h: Dictionary = d.get("hero", {})
 		out.append({"id": fn.get_basename(), "name": str(d.get("name", "")), "cls": str(h.get("cls", "knight")),
@@ -2792,9 +2794,8 @@ func character_gear(id: String) -> Dictionary:
 	var path := char_dir + id + ".json"
 	if id == "" or not FileAccess.file_exists(path):
 		return {}
-	var f := FileAccess.open(path, FileAccess.READ)
-	var d = JSON.parse_string(f.get_as_text()) if f else null
-	if typeof(d) != TYPE_DICTIONARY:
+	var d := read_save(path, false)
+	if d.is_empty():
 		return {}
 	var h: Dictionary = d.get("hero", {}) if d.get("hero") is Dictionary else {}
 	var g: Dictionary = (h.get("equipment", {}) as Dictionary).duplicate(true) if h.get("equipment") is Dictionary else {}

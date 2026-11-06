@@ -75,6 +75,8 @@ func _run() -> void:
 	var bad := FileAccess.open(fp, FileAccess.WRITE)
 	bad.store_string("{\"hero\": {\"cls\": \"warl")       # cut off mid-write
 	bad.close()
+	print("[C] damaged save remains selectable: %s" % ("ok" if g.list_characters().any(func(c): return c["id"] == fizz and c["cls"] == "warlock") else "FAIL"))
+	print("[C] damaged save portrait uses backup: %s" % ("ok" if g.character_gear(fizz).get("_cls") == "warlock" else "FAIL"))
 	await g.start_game(true, "knight", fizz)
 	var rec_ok: bool = g.hero.gold == 5003 and g.save_recovered == fizz + ".json.bak1" and typeof(JSON.parse_string(FileAccess.get_file_as_string(fp))) == TYPE_DICTIONARY
 	print("[C] damaged save: gold %d from %s, repaired %s" % [g.hero.gold, g.save_recovered, "ok" if rec_ok else "FAIL"])

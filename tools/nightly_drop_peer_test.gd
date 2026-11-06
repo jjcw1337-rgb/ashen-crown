@@ -61,9 +61,11 @@ func _case(port: int, now: bool) -> Array:
 	return [errs, float(st["gone"])]
 
 func _run() -> void:
-	var old: Array = await _case(24795, false)
+	# Historical broken behavior is an opt-in diagnostic, not part of clean release acceptance.
+	if OS.get_cmdline_user_args().has("--compare-broken"):
+		var old: Array = await _case(24795, false)
+		print("[D] graceful disconnect_peer: %d send errors, left after %.2f s" % [old[0], old[1]])
 	var new: Array = await _case(24796, true)
-	print("[D] graceful disconnect_peer: %d send errors, left after %.2f s" % [old[0], old[1]])
 	print("[D] disconnect now (Net.drop_peer): %d send errors, left after %.2f s" % [new[0], new[1]])
 	_check("disconnecting now: no send errors to the busy client", int(new[0]) == 0)
 	_check("and the server still sees it leave at once (peer_disconnected)", float(new[1]) >= 0.0 and float(new[1]) < 0.5)

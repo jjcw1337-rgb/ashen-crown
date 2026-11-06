@@ -7,6 +7,7 @@ var g
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
+	current_scene = g
 	_run()
 func _run() -> void:
 	while g.world == null or g._busy or g._intro_playing:
