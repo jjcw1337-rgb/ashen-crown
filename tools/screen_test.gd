@@ -81,7 +81,7 @@ func _run() -> void:
 	var home = ui.home
 	check(home.is_visible_in_tree() and home.sel != "", "home: the sidebar lists the characters and one is chosen")
 	check(_in_front(home.get_node("sidebar").find_child("char_" + home.sel, true, false)), "home: a character's card takes the click")
-	check(_in_front(home.get_node("sidebar").find_child("create", true, false)), "home: Create New Character takes the click")
+	check(not home.get_node("sidebar").find_child("create", true, false).visible, "home: Create New Character is hidden (MpMode.CREATE_CHARACTER)")
 	var row: Control = home.get_node("play_box/buttons")
 	check(_in_front(row.get_node("play")) and _in_front(row.get_node("multiplayer")), "home: Enter World and Multiplayer take the click")
 	check(_in_front(row.get_node("quit")) and row.get_node("quit").size.x < row.get_node("multiplayer").size.x, "home: a smaller Quit (%s)" % row.get_node("quit").size)

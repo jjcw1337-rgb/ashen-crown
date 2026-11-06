@@ -40,7 +40,8 @@ func _run():
  g.max_run = 0
  g.hero.level = 1
  g.waypoints_known = ["town"]
- ok(g.waypoint_activities().size() == data.WAYPOINT_ACTIVITIES.size() + load("res://scripts/isles.gd").ISLANDS.size() + data.WAYPOINT_ACTS.size(), "all registered activities, islands and act dungeons listed")
+ var retired: int = 0 if MpMode.WAVES else data.WAYPOINT_ACTIVITIES.filter(func(e): return str(e.get("id", "")) == "vigil").size()
+ ok(g.waypoint_activities().size() == data.WAYPOINT_ACTIVITIES.size() - retired + load("res://scripts/isles.gd").ISLANDS.size() + data.WAYPOINT_ACTS.size(), "all live activities, islands and act dungeons listed (Endless Waves retired: MpMode)")
  ok(g.waypoint_activity_lock(g.waypoint_activity("isle_verdant")) != "", "island level gate retained")
  ok(g.waypoint_activity_lock(g.waypoint_activity("lair_0")) != "", "dungeon discovery gate retained")
  ok(g.waypoint_activity_lock(g.waypoint_activity("lair_1")) != "", "sealed act cannot be entered")

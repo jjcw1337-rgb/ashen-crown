@@ -58,6 +58,7 @@ func setup(g) -> void:
  host_box.add_child(ui._label("HOST A GAME",18,ui.GOLD,true))
  for entry in [["battlegrounds","Battlegrounds · The Hollow Crypt"],["waves","Endless Waves · The Last Flame"],["arena","Arena · 1v1 · 2v2 · 3v3"]]:
   var id:String=entry[0]
+  if not MpMode.mode_on(id):continue
   var b=ui._iron_button(entry[1],400,52,18)
   b.pressed.connect(func():selected_mode=id;draw())
   host_box.add_child(b);mode_buttons[id]=b
@@ -69,7 +70,8 @@ func setup(g) -> void:
  options.add_child(team_pick)
  wager_pick=CheckButton.new();wager_pick.text="Play for items";options.add_child(wager_pick)
  var create=ui._iron_button("Create Lobby",400,54,21);create.name="create";create.pressed.connect(func():action("create",{"mode":selected_mode,"team_size":team_size,"name":_lobby_name(),"wager":wager_pick.button_pressed}));host_box.add_child(create);create_button=create
- var solo=ui._iron_button("Play Waves Solo",400,44,18);solo.pressed.connect(play_solo_waves);host_box.add_child(solo)
+ if MpMode.WAVES:
+  var solo=ui._iron_button("Play Waves Solo",400,44,18);solo.pressed.connect(play_solo_waves);host_box.add_child(solo)
  detail=VBoxContainer.new();detail.name="detail";detail.add_theme_constant_override("separation",8);right.add_child(detail)
  var bottom:=HBoxContainer.new();bottom.add_theme_constant_override("separation",12);vb.add_child(bottom)
  lan_row=HBoxContainer.new();lan_row.name="lan_row";lan_row.add_theme_constant_override("separation",10);bottom.add_child(lan_row)
@@ -102,6 +104,7 @@ func open(mode := "") -> void:
  if room.get("members",{}).has(identity):character=str(room.members[identity].character)
  if character=="":game.ui.message("Create or select a character first.");return
  if mode!="":selected_mode=mode
+ if not MpMode.mode_on(selected_mode):selected_mode=MpMode.MODES[0]
  lan_row.visible=not game.playing
  game.ui.close_all();panel.show();draw();refresh()
  if not game.playing:recover_stakes()
@@ -275,6 +278,7 @@ func enter_match() -> void:
   if game.arena_mode:game.hero.recalc()
 
 func play_solo_waves() -> void:
+ if not MpMode.WAVES:return
  if not room.is_empty():status.text="Leave your lobby before playing solo.";return
  panel.hide()
  if not game.playing:await game.start_game(true,"knight",character)

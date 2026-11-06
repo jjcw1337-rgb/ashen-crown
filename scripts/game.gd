@@ -3152,6 +3152,9 @@ func _interact(t: Inter) -> void:
 				ui.message("Extracting...", Color(0.6, 0.85, 1.0))
 				net.request_extract()
 		"vigil_gate":
+			if not MpMode.WAVES:
+				ui.message("The Vigil Gate is sealed.", Color(1.0, 0.6, 0.45))
+				return
 			# the camp's Vigil Gate: down to the Last Flame (vigil.gd); the party's ready check takes everyone
 			Sfx.play("portal")
 			travel(0, Vigil.ZONE, "start")
@@ -3312,6 +3315,8 @@ func travel_waypoint(dest: Dictionary) -> void:
 ## Available activities are rebuilt from content data, never from a second UI-only list.
 func waypoint_activities() -> Array:
 	var entries: Array = Data.WAYPOINT_ACTIVITIES.duplicate(true)
+	if not MpMode.WAVES:
+		entries = entries.filter(func(e): return str(e.get("id", "")) != "vigil")
 	if BuildEnv.env() != "local":
 		entries.append({"id": "online_coop", "group": "pve", "name": "Online Co-op", "kind": "Join online",
 			"route": "coop", "run": difficulty, "description": "Join the shared co-op server with this character."})
@@ -3372,6 +3377,9 @@ func waypoint_activity_lock(entry: Dictionary) -> String:
 	return ""
 
 func waypoint_activity_go(id: String) -> void:
+	if id == "vigil" and not MpMode.WAVES:
+		ui.message("The Last Flame is out of reach for now.", Color(1.0, 0.6, 0.45))
+		return
 	var entry := waypoint_activity(id)
 	var reason := waypoint_activity_lock(entry)
 	if reason != "":

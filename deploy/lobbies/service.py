@@ -7,6 +7,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 MODES = {'arena': (2, 6), 'battlegrounds': (1, 16), 'waves': (1, 4)}
+# The modes a new lobby may use (MpMode.MODES in the game). Endless Waves is retired (docs/cleanup.md): its lobbies
+# can't be created, though one already running finishes normally.
+LIVE_MODES = ('battlegrounds', 'arena')
 # What one match costs, measured on the staging droplet (4 GB, 2 vCPU) with bot players on the stripped server build
 # (Blaine's capacity audit, 2026-11-05: a Battlegrounds world ~0.4-0.46 GB; 6 players fighting ~0.25 of a core, so the
 # budget allows some heavier fights). (MB, cores). Arena is a small map with no monsters; Waves is a full co-op zone.
@@ -79,7 +82,7 @@ class Lobbies:
             if op == 'list': return {'lobbies':[self.public(r,uid) for r in self.rooms.values() if r['state'] in ('waiting','starting','playing')], 'slots':self.slots}
             if op == 'create':
                 mode = p.get('mode'); team = p.get('team_size',1)
-                if mode not in MODES or type(team) is not int or team not in (1,2,3): raise Rejected('Choose a supported mode and team size.')
+                if mode not in LIVE_MODES or type(team) is not int or team not in (1,2,3): raise Rejected('Choose a supported mode and team size.')
                 if any(uid in r['members'] and not r['members'][uid].get('departed',False) and r['state'] in ('waiting','starting','playing') for r in self.rooms.values()): raise Rejected('Leave your current lobby first.')
                 if p.get('wager',False) and mode!='arena': raise Rejected('Optional stakes are for Arena; Battlegrounds already has its extraction rules.')
                 rid = secrets.token_hex(8)

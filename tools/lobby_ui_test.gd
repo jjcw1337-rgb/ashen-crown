@@ -55,7 +55,7 @@ func run():
  g.ui.close_all();c.character=g.char_id
  c.play_solo_waves()
  await wait_s(5)
- check(g.cur_zone=="vigil","direct solo waves entry requires no story unlock")
+ check(g.cur_zone!="vigil","Endless Waves is retired: its solo start goes nowhere (MpMode.WAVES)")
  await shot("waves-solo")
  await g.exit_to_title()
  await g.start_game(true,"knight","uihero")

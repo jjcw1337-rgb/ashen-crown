@@ -111,6 +111,7 @@ func _build_sidebar() -> void:
 	var make: Button = ui._iron_button("Create New Character", int(W - 96), 54, 19)
 	make.name = "create"
 	make.pressed.connect(func(): ui._title_choose("new"))
+	make.visible = MpMode.CREATE_CHARACTER
 	vb.add_child(make)
 
 func _build_play() -> void:
