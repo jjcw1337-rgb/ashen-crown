@@ -9,7 +9,7 @@ Actions exports Web + Windows + Linux + Mac and publishes them to GitHub Pages.
 
 - Repo: https://github.com/jjcw1337-rgb/ashen-crown
 - Live test build + downloads: https://jjcw1337-rgb.github.io/ashen-crown/
-- Human setup and workflow: `CONTRIBUTING.md`. Player docs: `README.md`.
+- What the game is, human setup and workflow: `README.md`.
 
 **Default patterns (every agent, read these first; `AGENTS.md` is the shared entry point for Codex/ChatGPT):**
 [loading](docs/patterns/loading.md) · [servers](docs/patterns/servers.md) ·
@@ -52,7 +52,7 @@ Headless tests in `tools/` (each prints `[X] ...` lines; look for SCRIPT ERROR /
 with `-- host` and one with `-- join`; `mp_boss_test` plays King Grubb's fight with the joining player).
 Tool scripts save to `user://ashen_crown_test_save.json`, never the player's save.
 Balance: `tools/balance.sh` runs `tools/balance_sim.gd` (bots play every class through Act I, A2 and A3) and flags numbers
-outside their target bands. See `BALANCE.md` for the protocol.
+outside their target bands (story acts only; runs are checked with `tools/run_playthrough.gd`).
 Screenshots need a display: `xvfb-run -a godot --rendering-driver opengl3 --path . -- --shot out.png --zone town`
 (other flags in `game.gd` `_ready`: `--zone town|wild|lair`, `--run 0|1|2`, `--class knight|wraith|demon|warlock`, `--god`, `--fight`).
 The moor's road is `World.road_style()`: the paved Old Kingsroad (2) by default; `--road 0|1|3` shows the old broad

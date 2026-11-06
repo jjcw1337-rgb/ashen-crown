@@ -619,7 +619,7 @@ const UNIQUES := {
 ## Each run is Act I again with stronger monsters and loot (indexed by Game.difficulty).
 ## Multipliers on Act I: monster life (and armor), the final boss's life, monster damage,
 ## the flat stats on items they drop (Items.empower) and experience. Tuned with
-## tools/balance_sim.gd (see BALANCE.md).
+## tools/balance_sim.gd.
 ## "power": how much stronger the act's items are (Items.empower). Since the items rework (level and skills carry a
 ## character, gear helps) it's modest, and so are the monsters' life and damage multipliers: the act's monsters are
 ## also higher level. "loot" is how much more and better loot drops; "xp" the experience.

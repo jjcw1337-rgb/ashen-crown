@@ -57,10 +57,15 @@ has access to the private `ashen-crown-staging` page, and install it. The app up
 
 ## Working on it
 
-- **Setup and workflow:** [CONTRIBUTING.md](CONTRIBUTING.md). Open `project.godot` in Godot 4.4.1
-  (standard, not .NET) and press F5.
-- **How the code is organized and its rules:** [CLAUDE.md](CLAUDE.md) and [docs/patterns/](docs/patterns/).
-- **Builds:** pushes to `staging` build Windows, Mac and Linux and upload them to itch.io.
+- **Setup:** install [Godot 4.4.1](https://godotengine.org/download/archive/4.4.1-stable/) (standard, not
+  .NET), clone `jjcw1337-rgb/ashen-crown`, import `project.godot` and press F5. The first open takes a
+  minute while Godot builds `.godot/` (never committed). For models, use Blender 4.5 LTS and keep `.blend`
+  files outside the project; only `.glb` exports go in `assets/models/`.
+- **Workflow:** work on your own branch. Run `bash tools/nightly/gate.sh <logdir>` before merging to
+  `staging`. Pushes to `staging` build Windows, Mac and Linux and upload them to itch.io. `main` changes
+  only when an admin asks.
+- **How the code is organized and its rules:** [CLAUDE.md](CLAUDE.md) (also for AI agents; Codex starts
+  at [AGENTS.md](AGENTS.md)) and [docs/patterns/](docs/patterns/).
 
 ### Project layout
 
