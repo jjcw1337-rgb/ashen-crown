@@ -12,7 +12,7 @@ const CLASS_DIRS := {
 const CLASS_ROOTS := {
 	"knight": ["knight_mocap.glb", "knight_meshy.glb"], "demon": ["demon_mocap.glb"],
 	"plague": ["plague_doctor.glb"], "archer": ["archer_ranger.glb", "ranger_bow.glb"],
-	"doug": ["doug.glb"], "wraith": ["wraith_mocap.glb"], "warlock": ["gnome_warlock.glb"],
+	"doug": ["doug.glb"], "wraith": ["wraith_mocap.glb"], "warlock": ["warlock_spirit.glb", "warlock/dread_totem.glb"],
 	"wyrm": ["dragons/wyrm.glb"], "serpent": ["dragons/serpent.glb"], "wyvern": ["dragons/wyvern.glb"]}
 # Builders stay responsible for placement. These families declare dynamically chosen asset roots;
 # recorded exact paths supplement them, rather than being the only coverage for a map.
@@ -60,6 +60,7 @@ static func combat(classes: Array = []) -> Array:
 	var result: Array = (_families["combat"] as Array).duplicate()
 	for cls in (CLASS_ROOTS.keys() if classes.is_empty() else classes):
 		if cls == "archer": result.append(SpiritBeast.WOLF_GLB)
+		if cls == "warlock": result.append("res://scripts/warlock_spirit.gdshader")
 		for dir in CLASS_DIRS.get(cls, []):
 			if not _families.has(dir): _families[dir] = family_roots(str(dir))
 			result.append_array(_families[dir])

@@ -845,19 +845,25 @@ static func stash_fx(g: Node, idx: int) -> void:
 		lp.volume_db = STASH_LOOP_DB + _sfx().volume_db
 		t.add_child(lp)
 		# (jj) it comes in at full volume after the opening's own sound, then sinks to 20% over 10 s and stays there
+		# (the lambdas hold weak references: the gates rising frees the loop and the fire under their timers, and
+		# a lambda that captured a freed node logs "Lambda capture ... was freed" when it runs; triage 2026-11-04)
+		var lp_ref: WeakRef = weakref(lp)
 		Fx.later(t, 1.6, func():
-			if not is_instance_valid(lp):
+			var loop: AudioStreamPlayer3D = lp_ref.get_ref() as AudioStreamPlayer3D
+			if loop == null:
 				return
-			lp.play()
-			lp.create_tween().tween_property(lp, "volume_db", STASH_LOOP_DB + _sfx().volume_db + linear_to_db(0.2), 10.0))
+			loop.play()
+			loop.create_tween().tween_property(loop, "volume_db", STASH_LOOP_DB + _sfx().volume_db + linear_to_db(0.2), 10.0))
 		# the chest burning on: a brazier's fire in it (FireFx, the game's braziers), its light and smoke
 		var fire := Node3D.new()
 		fire.name = "stash_fire"
 		t.add_child(fire)
 		# (its light is the chest's own shadow-casting glow, Game.chest_lid: no second light here)
+		var fire_ref: WeakRef = weakref(fire)
 		Fx.later(t, 0.8, func():
-			if is_instance_valid(fire):
-				var ff := FireFx.make(fire, Vector3(0, 0.62 + lift, 0), stash_col(t, "fire"), 0.7, stash_col(t, "fire_col"), false, false, stash_col(t, "fire") != "spirit")
+			var burn: Node3D = fire_ref.get_ref() as Node3D
+			if burn != null:
+				var ff := FireFx.make(burn, Vector3(0, 0.62 + lift, 0), stash_col(t, "fire"), 0.7, stash_col(t, "fire_col"), false, false, stash_col(t, "fire") != "spirit")
 				if stash_col(t, "pal") == "void":
 					InfernalFx.recolor(ff, "void"))
 
@@ -890,10 +896,7 @@ static func stash_fx(g: Node, idx: int) -> void:
 	Fx.later(t, 0.7, func():
 		var sm := InfernalFx.smoke(root, at + Vector3(0, 1.1, 0), 20, Vector3(0.45, 0.2, 0.35), Vector3.UP, 1.4, 3.0, 0.12, 0.75)
 		if pal != "":
-			InfernalFx.recolor(sm, pal)
-		Fx.later(root, 4.0, func():
-			if is_instance_valid(sm):
-				sm.queue_free()))
+			InfernalFx.recolor(sm, pal))      # (it frees itself after its life: InfernalFx.particles)
 	# the dais: everything flares and a ring of light runs out from the chest (StashDais.burst)
 	for d in g.world.get_children():
 		if d.has_method("burst") and (d as Node3D).global_position.distance_to(t.global_position) < 1.0:

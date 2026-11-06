@@ -1,0 +1,316 @@
+{
+	"cls": "wyvern",
+	"name": "Storm Wyvern",
+	"fantasy": "A rearing two-legged dragon whose wings are its forelimbs, with lightning veined through the membranes. Strikes with its wing claws, bites, and whips its barbed tail round.",
+	"directions": [
+		{
+			"id": "Storm",
+			"name": "Storm",
+			"desc": "Lightning from its jaws."
+		},
+		{
+			"id": "Beast",
+			"name": "Beast",
+			"desc": "Claws, wings and the tail."
+		},
+		{
+			"id": "Sky",
+			"name": "Sky",
+			"desc": "Dives, gales and the storm overhead: never where they strike."
+		}
+	],
+	"skills": [
+		{
+			"id": "storm_arc",
+			"status": "live",
+			"name": "Storm Arc",
+			"rarity": 0,
+			"direction": "Storm",
+			"desc": "The wyvern rears up, the lightning in its wings flaring, and breathes a bolt into the nearest foe ahead that leaps on to four more nearby, striking each.",
+			"mana": 6,
+			"cd": 0.0,
+			"use": 0.75,
+			"range": 11.0,
+			"tags": [
+				"spell",
+				"lightning",
+				"chain"
+			],
+			"lvl": 1
+		},
+		{
+			"id": "v_dive",
+			"status": "live",
+			"name": "Thunder Dive",
+			"rarity": 0,
+			"direction": "Sky",
+			"desc": "Climb on your wings and dive onto the pointer (12 metres) in a strike of lightning: 240% weapon damage within 4 metres, stunning them for 0.8 seconds.",
+			"mana": 12,
+			"cd": 8.0,
+			"range": 12.0,
+			"role": "dive in and stun",
+			"tags": [
+				"movement"
+			],
+			"lvl": 1,
+			"run": true
+		},
+		{
+			"id": "v_cloud",
+			"status": "live",
+			"name": "Thunderhead",
+			"rarity": 1,
+			"direction": "Storm",
+			"desc": "Roar up a storm cloud over the pointer for 4 seconds: every half second it strikes a foe beneath it (within 5 metres) for 45% weapon damage. At most two at once.",
+			"mana": 14,
+			"cd": 0.0,
+			"use": 1.1,
+			"range": 13.0,
+			"role": "a storm over a crowd",
+			"lvl": 9,
+			"run": true
+		},
+		{
+			"id": "v_gale",
+			"status": "live",
+			"name": "Gale Wings",
+			"rarity": 0,
+			"direction": "Sky",
+			"desc": "One great beat of your wings: everything in a cone 6.5 metres ahead takes 100% weapon damage, is hurled back and slowed by 40% for 2.5 seconds.",
+			"mana": 8,
+			"cd": 6.0,
+			"range": 6.5,
+			"role": "blow them away",
+			"tags": [
+				"cc"
+			],
+			"lvl": 1,
+			"run": true
+		}
+	],
+	"rites": [
+		{
+			"id": "v_tempest",
+			"status": "live",
+			"name": "Tempest",
+			"rarity": 2,
+			"run": true,
+			"direction": "Storm",
+			"max": 1,
+			"text": "Critical hits call lightning down: {pct}% weapon damage within {r} m.",
+			"icon": "storm_arc",
+			"k": {
+				"pct": 160.0,
+				"r": 3.0
+			},
+			"proc": "bolt_on_crit"
+		},
+		{
+			"id": "y_hide",
+			"status": "live",
+			"name": "Dragonhide",
+			"rarity": 0,
+			"run": true,
+			"direction": "Beast",
+			"max": 3,
+			"text": "+{armor_pct}% defense and +{life_pct}% life.",
+			"icon": "t_armor",
+			"fx": {
+				"armor_pct": 15.0,
+				"life_pct": 6.0
+			}
+		},
+		{
+			"id": "y_claws",
+			"status": "live",
+			"name": "Rending Claws",
+			"rarity": 1,
+			"run": true,
+			"direction": "Beast",
+			"max": 2,
+			"text": "Claws and bites deal +{dmg:attack}%; +{crit}% critical chance.",
+			"icon": "attack",
+			"fx": {
+				"dmg:attack": 15.0,
+				"crit": 3.0
+			}
+		},
+		{
+			"id": "y_apex",
+			"status": "live",
+			"name": "Apex Predator",
+			"rarity": 2,
+			"run": true,
+			"direction": "Beast",
+			"max": 1,
+			"text": "+{more}% damage to foes under {below}% life.",
+			"icon": "t_skull",
+			"k": {
+				"below": 40.0,
+				"more": 40.0
+			},
+			"proc": "more_vs_low"
+		},
+		{
+			"id": "y_fury",
+			"status": "live",
+			"name": "Primal Fury",
+			"rarity": 2,
+			"run": true,
+			"direction": "Beast",
+			"max": 1,
+			"text": "Each kill: +{dmg}% damage for {secs} seconds, up to {stacks} times.",
+			"icon": "t_fist",
+			"k": {
+				"dmg": 6.0,
+				"stacks": 6.0,
+				"secs": 8.0
+			},
+			"proc": "momentum"
+		},
+		{
+			"id": "v_lord",
+			"status": "live",
+			"name": "Storm Lord",
+			"rarity": 0,
+			"run": true,
+			"direction": "Storm",
+			"max": 3,
+			"text": "Storm Arc and Arc deal +{dmg:storm_arc}%.",
+			"icon": "storm_arc",
+			"fx": {
+				"dmg:storm_arc": 15.0,
+				"dmg:arc": 15.0
+			}
+		},
+		{
+			"id": "v_up_dive",
+			"status": "live",
+			"name": "Plummet",
+			"rarity": 1,
+			"run": true,
+			"direction": "Sky",
+			"max": 2,
+			"text": "Thunder Dive lands {dive_r}% wider, {dmg:v_dive}% harder and comes back {cd:v_dive}% sooner.",
+			"icon": "v_dive",
+			"fx": {
+				"dive_r": 20.0,
+				"dmg:v_dive": 20.0,
+				"cd:v_dive": 15.0
+			}
+		},
+		{
+			"id": "v_up_cloud",
+			"status": "live",
+			"name": "Supercell",
+			"rarity": 2,
+			"run": true,
+			"direction": "Storm",
+			"max": 1,
+			"text": "Thunderhead strikes {cloud_rate}% faster, lasts {cloud_t} s longer, and each bolt has a {cloud_stun}% chance to stun.",
+			"icon": "v_cloud",
+			"fx": {
+				"cloud_rate": 30.0,
+				"cloud_t": 1.5,
+				"cloud_stun": 25.0
+			}
+		},
+		{
+			"id": "v_up_gale",
+			"status": "live",
+			"name": "Hurricane",
+			"rarity": 1,
+			"run": true,
+			"direction": "Sky",
+			"max": 2,
+			"text": "Gale Wings reaches {gale_r}% further and hits {dmg:v_gale}% harder.",
+			"icon": "v_gale",
+			"fx": {
+				"gale_r": 25.0,
+				"dmg:v_gale": 20.0
+			}
+		},
+		{
+			"id": "v_sky_speed",
+			"status": "live",
+			"name": "Tailwind",
+			"rarity": 0,
+			"run": true,
+			"direction": "Sky",
+			"max": 3,
+			"text": "+{frw}% run speed; Thunder Dive {cd:v_dive}% sooner.",
+			"icon": "v_gale",
+			"fx": {
+				"frw": 4.0,
+				"cd:v_dive": 8.0
+			}
+		},
+		{
+			"id": "v_sky_dodge",
+			"status": "live",
+			"name": "Wind-Rider",
+			"rarity": 0,
+			"run": true,
+			"direction": "Sky",
+			"max": 3,
+			"text": "+{dex} Dexterity; Thunder Dive and Gale Wings +{dmg:v_dive}%.",
+			"icon": "v_dive",
+			"fx": {
+				"dex": 4.0,
+				"dmg:v_dive": 10.0,
+				"dmg:v_gale": 10.0
+			}
+		},
+		{
+			"id": "v_sky_kill",
+			"status": "live",
+			"name": "Hunter's Updraft",
+			"rarity": 1,
+			"run": true,
+			"direction": "Sky",
+			"max": 2,
+			"text": "Each kill: +{frw}% run speed for {secs} seconds.",
+			"icon": "v_dive",
+			"k": {
+				"frw": 15.0,
+				"secs": 3.0
+			},
+			"per": [
+				"frw"
+			],
+			"proc": "speed_on_kill"
+		},
+		{
+			"id": "v_sky_reset",
+			"status": "live",
+			"name": "Eye of the Storm",
+			"rarity": 2,
+			"run": true,
+			"direction": "Sky",
+			"max": 1,
+			"text": "A kill with Thunder Dive makes it ready again.",
+			"icon": "v_dive",
+			"fx": {
+				"dive_reset": 1.0
+			}
+		},
+		{
+			"id": "v_static",
+			"status": "live",
+			"name": "Static Claws",
+			"rarity": 2,
+			"run": true,
+			"direction": "Storm",
+			"max": 1,
+			"text": "Claws leap on as lightning to {jumps} more foes ({pct}%).",
+			"icon": "storm_arc",
+			"k": {
+				"src": "attack",
+				"jumps": 2.0,
+				"pct": 40.0,
+				"r": 6.0
+			},
+			"proc": "chain_on_hit"
+		}
+	]
+}

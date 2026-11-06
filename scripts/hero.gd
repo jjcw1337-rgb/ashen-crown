@@ -138,6 +138,7 @@ var drain_heal := 0.0        # healing gathered since the last "+N" number
 var drain_heal_t := 0.0
 var drain_victims: Array = []  # Drain Life's victims this frame: the main one, then its forks (WarlockSkills)
 var covenant_t := 0.0        # Warlock: Fel Covenant (Drain Life forks further and heals double)
+var wl := {}                 # Warlock: his three directions' state (WarlockHex: curses, fears, crows, the feast, the shield)
 var bolts: Array = []        # Warlock's Blight Bolts in flight: [{node, dir, left}] (flown by WarlockFx.update, burst here)
 ## The archer (archer.gd): arrows in flight, volleys raining down, snares lying in wait, the spirit beasts
 var arrows: Array = []
@@ -863,7 +864,9 @@ func refresh_gear() -> void:
 		carry.configure(cls)
 		_carry_in_hand = not (carry.t >= float(carry.p["grab"]))
 		gear_nodes.append(weapon_node)
-		if w.get("rarity", 0) == 3 and Models.palette(w)["glow"] != null:
+		if is_warlock() and rig.has_meta("spirit"):
+			weapon_node.visible = false      # the void spirit fights with her hands (the weapon's stats still count)
+		if w.get("rarity", 0) == 3 and Models.palette(w)["glow"] != null and weapon_node.visible:
 			var fl := Props.fire(weapon_node, Vector3(0, 0, -0.5), 0.35, Models.palette(w)["glow"], false, false, false, "weapon")
 			gear_nodes.append(fl)
 	var s = equipment.get("shield")
@@ -961,7 +964,7 @@ func _carry_weapon(delta: float) -> void:
 			weapon_node.reparent(dest, true)
 		_set_hilt(not in_hand and store == "hilt")
 	# hidden in the scabbard; on the back it stays in view
-	weapon_node.visible = (in_hand or store != "hilt") and not (pd != null and pd.hands_busy) and _chop_axe == null   # the plague doctor puts his cane away to throw; the felling axe replaces it
+	weapon_node.visible = (in_hand or store != "hilt") and not (pd != null and pd.hands_busy) and _chop_axe == null and not (is_warlock() and rig.has_meta("spirit"))   # the plague doctor puts his cane away to throw; the felling axe replaces it
 	# ease into the hold (identity in the hand; the back mount's own rest)
 	var k := 1.0 - exp(-delta * 16.0)
 	weapon_node.transform = weapon_node.transform.interpolate_with(Transform3D.IDENTITY, k)
@@ -1218,7 +1221,7 @@ func _show_chop_axe(on: bool, base: String) -> void:
 		hand.add_child(_chop_axe)
 		_chop_axe_base = base
 	if weapon_node != null and is_instance_valid(weapon_node) and puppet:
-		weapon_node.visible = _chop_axe == null
+		weapon_node.visible = _chop_axe == null and not (is_warlock() and rig.has_meta("spirit"))
 
 func swipe_attack(aim: Vector3, keep_target := false) -> void:
 	Hero.striker = self          # (whoever acts now strikes: a sandbox stand-in never takes its own hero's blows)
@@ -1757,6 +1760,8 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	if is_demon():
 		dmg = DemonSkills.absorb(self, dmg)      # Wrath of the Pit's Crucible
 	dmg = maxf(1.0, dmg)
+	if not wl.is_empty():
+		dmg = WarlockHex.absorb(self, dmg)       # the Warlock's shield (Blood Ward, the Soul Feast)
 	if ward > 0.0:
 		var soak := minf(ward, dmg)
 		ward -= soak
@@ -2146,7 +2151,7 @@ func _hover() -> void:
 
 ## The Wraith's mocap body floats by itself (KnightMocapRig's float mode: hover, lean, the sinking death).
 func _floats() -> bool:
-	return is_wraith() and rig != null and rig.has_method("sync_pose")
+	return (is_wraith() or (is_warlock() and rig != null and rig.has_meta("spirit"))) and rig != null and rig.has_method("sync_pose")
 
 ## A body whose death clip lays it down itself (the Demon's mocap body): the hero's death tilt stays off it.
 func _own_death() -> bool:

@@ -74,6 +74,11 @@ check bg_test_client "$OUT/gate_bg_client.log" $rc
 
 fi
 
+if [ -n "${GATE_PVP_CHECKPOINT:-}" ] && python3 tools/nightly/gate_checkpoint.py restore "$GATE_PVP_CHECKPOINT" "$OUT" pvp; then
+  check pvp_server "$OUT/gate_pvp_server.log" 0
+  check pvp_attacker "$OUT/gate_pvp_a.log" 0
+  check pvp_victim "$OUT/gate_pvp_b.log" 0
+else
 # Battlegrounds PvP: a server and two players
 "$G" --headless --path . -s tools/_late.gd -- res://tools/bg_pvp_test.gd --server --port "$PVP_PORT" --raid-fast server > "$OUT/gate_pvp_server.log" 2>&1 & s=$!
 sleep 6
@@ -84,6 +89,8 @@ check pvp_server "$OUT/gate_pvp_server.log" $rc
 check pvp_attacker "$OUT/gate_pvp_a.log" $ra
 check pvp_victim "$OUT/gate_pvp_b.log" $rb
 
+
+fi
 
 for t in archer_bow_spring_test terrain_job_test content_contract_test content_world_test playtest coop_fx_test title_test char_test ui_click_test grass_test intro_skip_test controls_test telemetry_test screen_test skill_spec_test stamina_test raid_schedule_test run_build_test run_talents_test camp_test survivor_test; do
   if [ "$t" = title_test ] || [ "$t" = char_test ]; then
@@ -101,8 +108,8 @@ for t in archer_bow_spring_test terrain_job_test content_contract_test content_w
   [ "$t" = coop_fx_test ] && limit=1200
   waitfor $p "$limit"; check $t "$OUT/gate_$t.log" $?
 done
-for t in archer_test plague_test sandbox_test sandbox_entry_test; do
-  if [ "$t" != plague_test ] && [ "$UI_RENDERED" = 1 ]; then
+for t in archer_test plague_test warlock_hex_test sandbox_test sandbox_entry_test; do
+  if [ "$t" != plague_test ] && [ "$t" != warlock_hex_test ] && [ "$UI_RENDERED" = 1 ]; then
     "$G" --path . --fixed-fps 60 -s tools/_late.gd -- res://tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
   else
     "$G" --headless --path . --fixed-fps 60 -s tools/_late.gd -- res://tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
@@ -110,7 +117,7 @@ for t in archer_test plague_test sandbox_test sandbox_entry_test; do
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
 # the camp's people and the island (they reach the Sfx autoload: run late)
-for t in camp_life_test vendor_test guard_test; do
+for t in camp_life_test vendor_test guard_test codex_test codex_book_test; do
   "$G" --headless --path . --fixed-fps 60 -s tools/_late.gd -- res://tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done

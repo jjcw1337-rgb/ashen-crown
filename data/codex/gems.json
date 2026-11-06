@@ -1,0 +1,217 @@
+{
+	"about": "Gems: the run's relics (RunTalents.GEMS), found in camp chests and kept for the run; the survivor keeps them. Legendary (3) is a gem's top tier. A hero's own design gems live in its hero file.",
+	"entries": [
+		{
+			"id": "ruby",
+			"status": "live",
+			"name": "Ember Ruby",
+			"rarity": 0,
+			"color": "#f23833",
+			"fx": {
+				"dmg": 6.0,
+				"burn_pct": 15.0
+			},
+			"text": "+{dmg}% damage, burns +{burn_pct}%."
+		},
+		{
+			"id": "sapphire",
+			"status": "live",
+			"name": "Frost Sapphire",
+			"rarity": 0,
+			"color": "#4073ff",
+			"fx": {
+				"cdr": 6.0,
+				"chill_pct": 15.0
+			},
+			"text": "Skills recharge {cdr}% faster, chills +{chill_pct}%."
+		},
+		{
+			"id": "emerald",
+			"status": "live",
+			"name": "Venom Emerald",
+			"rarity": 0,
+			"color": "#33d959",
+			"fx": {
+				"regen": 1.5,
+				"poison_dmg": 15.0
+			},
+			"text": "+{regen} life a second, poison +{poison_dmg}%."
+		},
+		{
+			"id": "topaz",
+			"status": "live",
+			"name": "Storm Topaz",
+			"rarity": 0,
+			"color": "#ffcc40",
+			"fx": {
+				"ias": 5.0,
+				"crit": 3.0
+			},
+			"text": "+{ias}% attack speed, +{crit}% critical chance."
+		},
+		{
+			"id": "amethyst",
+			"status": "live",
+			"name": "Dusk Amethyst",
+			"rarity": 0,
+			"color": "#b359f2",
+			"fx": {
+				"mana_pct": 15.0,
+				"res": 6.0
+			},
+			"text": "+{mana_pct}% mana, +{res}% resistances."
+		},
+		{
+			"id": "onyx",
+			"status": "live",
+			"name": "Onyx",
+			"rarity": 0,
+			"color": "#40404d",
+			"fx": {
+				"crit_dmg": 25.0
+			},
+			"text": "Critical hits deal +{crit_dmg}%."
+		},
+		{
+			"id": "bloodstone",
+			"status": "live",
+			"name": "Bloodstone",
+			"rarity": 0,
+			"color": "#990d1a",
+			"fx": {
+				"ls": 2.0
+			},
+			"text": "{ls}% life steal."
+		},
+		{
+			"id": "jade",
+			"status": "live",
+			"name": "Jade",
+			"rarity": 0,
+			"color": "#59bf8c",
+			"fx": {
+				"life_pct": 10.0
+			},
+			"text": "+{life_pct}% life."
+		},
+		{
+			"id": "moonstone",
+			"status": "live",
+			"name": "Moonstone",
+			"rarity": 0,
+			"color": "#d1e0ff",
+			"fx": {
+				"frw": 6.0
+			},
+			"text": "+{frw}% run speed."
+		},
+		{
+			"id": "heartstone",
+			"status": "live",
+			"name": "Heartstone",
+			"rarity": 2,
+			"color": "#ff5973",
+			"fx": {
+				"life_pct": 20.0,
+				"regen": 2.5
+			},
+			"text": "+{life_pct}% life, +{regen} life a second."
+		},
+		{
+			"id": "prism",
+			"status": "live",
+			"name": "Prism",
+			"rarity": 2,
+			"color": "#e6f2ff",
+			"fx": {
+				"dmg": 8.0,
+				"life_pct": 8.0,
+				"ias": 6.0
+			},
+			"text": "+{dmg}% damage, +{life_pct}% life, +{ias}% attack speed."
+		},
+		{
+			"id": "warstone",
+			"status": "live",
+			"name": "Warstone",
+			"rarity": 2,
+			"color": "#f28033",
+			"fx": {
+				"dmg": 14.0
+			},
+			"text": "+{dmg}% damage."
+		},
+		{
+			"id": "phoenix",
+			"status": "live",
+			"name": "Phoenix Ember",
+			"rarity": 3,
+			"color": "#ff8c26",
+			"fx": {
+
+			},
+			"text": "Once this run, a killing blow is refused: you rise at {life}% life in a burst of fire.",
+			"proc": "undying",
+			"k": {
+				"life": 60.0,
+				"secs": 99999.0,
+				"burst": 1.0
+			}
+		},
+		{
+			"id": "tempest",
+			"status": "live",
+			"name": "Eye of the Tempest",
+			"rarity": 3,
+			"color": "#8c99ff",
+			"fx": {
+
+			},
+			"text": "Every {n}th hit calls lightning down on its foe ({pct}% weapon damage).",
+			"proc": "nth_hit_bolt",
+			"k": {
+				"n": 8.0,
+				"pct": 150.0,
+				"r": 3.0
+			}
+		},
+		{
+			"id": "hunger",
+			"status": "live",
+			"name": "Hunger Stone",
+			"rarity": 3,
+			"color": "#731a33",
+			"fx": {
+
+			},
+			"text": "Every kill adds +{per}% damage for the rest of the run (up to {most}%).",
+			"proc": "hunger",
+			"k": {
+				"per": 1.0,
+				"most": 35.0
+			}
+		},
+		{
+			"id": "seer",
+			"status": "live",
+			"name": "Seer's Eye",
+			"rarity": 3,
+			"color": "#73f2f2",
+			"fx": {
+				"offer_plus": 1.0
+			},
+			"text": "Camp chests offer one more choice."
+		},
+		{
+			"id": "crownshard",
+			"status": "live",
+			"name": "Shard of the Crown",
+			"rarity": 3,
+			"color": "#ffd959",
+			"fx": {
+				"rarity_up": 1.0
+			},
+			"text": "Camp chests' offers are one step rarer."
+		}
+	]
+}

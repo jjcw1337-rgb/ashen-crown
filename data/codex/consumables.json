@@ -1,0 +1,198 @@
+{
+	"entries": [
+		{
+			"id": "hp_potion",
+			"name": "Healing Potion",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0,
+			"heal": 60,
+			"text": "Restore 60 life."
+		},
+		{
+			"id": "mp_potion",
+			"name": "Mana Potion",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0,
+			"mana": 40,
+			"text": "Restore 40 mana."
+		},
+		{
+			"id": "shadow_phial",
+			"name": "Shadow Phial",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0,
+			"invis": 6.0,
+			"text": "Invisible for 6 s. Any blow or cast ends it."
+		},
+		{
+			"id": "rejuv",
+			"name": "Rejuvenation Potion",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0,
+			"rejuv": 0.4,
+			"text": "Restore 40% of your life and mana at once."
+		},
+		{
+			"id": "elixir_fury",
+			"name": "Elixir of Fury",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
+			"id": "draught_iron",
+			"name": "Ironbark Draught",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
+			"id": "tonic_swift",
+			"name": "Swiftness Tonic",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
+			"id": "salve_troll",
+			"name": "Troll Salve",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
+			"id": "elixir_wrath",
+			"name": "Elixir of Wrath",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
+			"id": "flask_fire",
+			"name": "Fire Flask",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
+			"id": "flask_frost",
+			"name": "Frost Flask",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
+			"id": "flask_storm",
+			"name": "Thunder Flask",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
+			"id": "scroll_ward",
+			"name": "Scroll of Warding",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
+			"id": "tome_insight",
+			"name": "Tome of Insight",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
+			"id": "item_flash_bomb",
+			"status": "design",
+			"name": "Flash Bomb",
+			"kind": "item",
+			"cd": 20.0,
+			"rarity": 1.0,
+			"text": "Stun everything within 3 m for 1 s."
+		},
+		{
+			"id": "item_grappling_hook",
+			"status": "design",
+			"name": "Grappling Hook",
+			"kind": "item",
+			"cd": 15.0,
+			"rarity": 0.0,
+			"text": "Pull yourself to a point up to 10 m away: over gaps, out of a fight."
+		},
+		{
+			"id": "item_smoke_bomb",
+			"status": "design",
+			"name": "Smoke Bomb",
+			"kind": "item",
+			"cd": 25.0,
+			"rarity": 1.0,
+			"text": "Vanish for 3 s. Monsters lose you; players can't target you."
+		},
+		{
+			"id": "item_caltrops",
+			"status": "design",
+			"name": "Caltrops",
+			"kind": "item",
+			"cd": 12.0,
+			"rarity": 0.0,
+			"text": "Scatter a 4 m patch that slows anything crossing it by 40% for 5 s."
+		},
+		{
+			"id": "item_bear_trap",
+			"status": "design",
+			"name": "Bear Trap",
+			"kind": "item",
+			"cd": 18.0,
+			"rarity": 0.0,
+			"text": "The first foe to step in it is rooted for 2 s."
+		},
+		{
+			"id": "item_grave_dirt",
+			"status": "design",
+			"name": "Grave Dirt",
+			"kind": "item",
+			"cd": 10.0,
+			"rarity": 0.0,
+			"text": "Throw a fistful in a cone: foes miss half their attacks for 2 s."
+		},
+		{
+			"id": "item_holy_water",
+			"status": "design",
+			"name": "Holy Water",
+			"kind": "item",
+			"cd": 20.0,
+			"rarity": 1.0,
+			"text": "Wash off slows, snares and burns."
+		},
+		{
+			"id": "item_bell_of_the_dead",
+			"status": "design",
+			"name": "Bell of the Dead",
+			"kind": "item",
+			"cd": 30.0,
+			"rarity": 1.0,
+			"text": "Every hidden or invisible foe within 12 m is revealed for 4 s."
+		},
+		{
+			"id": "con_fire_flask",
+			"status": "design",
+			"name": "Fire Flask",
+			"kind": "consumable",
+			"rarity": 0.0,
+			"text": "Throw it: a burning pool 3 m wide for 4 s."
+		},
+		{
+			"id": "con_elixir_of_haste",
+			"status": "design",
+			"name": "Elixir of Haste",
+			"kind": "consumable",
+			"rarity": 0.0,
+			"text": "+20% move and attack speed for 10 s."
+		}
+	]
+}

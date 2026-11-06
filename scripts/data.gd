@@ -634,7 +634,8 @@ const OLD_POWER := {5: 1.6, 25: 2.4}
 const RARITY_COLOR := [Color(0.92, 0.92, 0.92), Color(0.45, 0.55, 1.0), Color(1.0, 0.95, 0.35), Color(0.82, 0.66, 0.38)]
 const RARITY_NAME := ["Normal", "Magic", "Rare", "Unique"]
 
-const SKILLS := [
+## Laid over by the Hero Codex (data/codex/, Codex.apply_skills) when this script loads: a static var, not a const.
+static var SKILLS: Array = [
 	{"id": "cleave", "cls": "knight", "name": "Holy Slam", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "point", "range": 6.0, "desc": "Leap at the cursor and bring the sword down in a burst of white light: 160% weapon damage to everything around the blow, knocking them back and stunning them for 1 second."},
 	{"id": "nova", "cls": "knight", "name": "Holy Nova", "key": "E", "lvl": 3, "mana": 14, "cd": 0.0, "use": 1.0, "power": 0.37, "aim": "self", "desc": "A ring of holy fire bursts outward, burning enemies within 7 metres."},
 	{"id": "charge", "cls": "knight", "name": "Charge", "key": "R", "lvl": 5, "mana": 10, "cd": 4.0, "tags": ["movement"], "aim": "facing", "range": 9.0, "desc": "Dash toward the cursor, smashing through enemies and knocking them back."},
@@ -672,6 +673,33 @@ const SKILLS := [
 	{"id": "transfusion", "cls": "plague", "name": "Transfusion", "key": "G", "lvl": 14, "mana": 10, "cd": 18.0, "tags": ["buff", "sustain"], "aim": "self", "desc": "Drive the needle of your apparatus into your arm: for 2 seconds you take 45% less damage and move at 70% speed, and slows, snares and Blight are washed out of you. What the tanks soak heals you afterwards (up to 15% of your life). Attacking ends it early."},
 	{"id": "experiment", "cls": "plague", "name": "The Last Experiment", "key": "V", "lvl": 20, "mana": 40, "cd": 45.0, "tags": ["ultimate"], "aim": "point", "range": 7.0, "desc": "Slam down your vat (everyone sees an 8-metre warning ring) and crank it for 2.5 seconds. Then the glass bursts, the thing inside crawls out and the ring becomes a quarantine for 7 seconds: spores, Blight and a 20% slow inside, and the creature lumbers at the nearest foe, spewing. A stun, another skill or walking away from the vat bursts it early, only 5 metres wide. In the Battlegrounds other players can break the vat while you crank it (three blows: the experiment fails) and kill the creature (four)."},
 	{"id": "covenant", "cls": "warlock", "name": "Fel Covenant", "key": "F", "lvl": 9, "mana": 20, "cd": 20.0, "tags": ["buff"], "aim": "self", "desc": "Seal a pact with what waits beyond: +40% damage for 12 seconds, and Drain Life forks to two more enemies and heals twice as much."},
+	# the Warlock's three directions (WarlockHex; Blaine 2026-11-06, the Hero Codex): Corruption, Fear, Drain
+	{"id": "w_corruption", "cls": "warlock", "name": "Corruption", "key": "", "lvl": 2, "mana": 4, "cd": 0.0, "use": 0.45, "aim": "facing", "range": 15.0, "tags": ["spell", "dot", "curse"], "role": "Cheap curse",
+		"desc": "Curse a foe up to 15 m away: 240% spell damage over 10 seconds. Cheap; casting it again refreshes it."},
+	{"id": "w_malediction", "cls": "warlock", "name": "Malediction", "key": "", "lvl": 7, "mana": 10, "cd": 0.0, "use": 0.8, "aim": "facing", "range": 15.0, "tags": ["spell", "projectile"], "role": "Curse payoff",
+		"desc": "A fel bolt for 90% spell damage, +50% for every one of your curses on the target (up to five: 315%). Standing in your plague pool counts as a curse."},
+	{"id": "w_unending", "cls": "warlock", "name": "Unending Rot", "key": "", "lvl": 11, "mana": 8, "cd": 0.0, "use": 0.5, "aim": "facing", "range": 15.0, "tags": ["spell", "dot", "curse"], "role": "Ramping curse",
+		"desc": "A curse for 12 seconds (180% spell damage at the start) whose ticks grow 15% stronger for every second the foe has carried one of your curses without a break (up to four times as strong). A clean foe starts again."},
+	{"id": "w_festering", "cls": "warlock", "name": "Festering Hex", "key": "", "lvl": 13, "mana": 12, "cd": 6.0, "use": 0.5, "aim": "facing", "range": 15.0, "tags": ["spell", "dot", "curse", "cc"], "role": "Stun curse",
+		"desc": "A hex for 15 seconds: every 5 seconds it bursts for 120% spell damage and stuns the foe for half a second."},
+	{"id": "w_leeching", "cls": "warlock", "name": "Leeching Curse", "key": "", "lvl": 11, "mana": 8, "cd": 0.0, "use": 0.5, "aim": "facing", "range": 15.0, "tags": ["spell", "dot", "curse", "sustain"], "role": "Healing curse",
+		"desc": "A curse for 8 seconds: 160% spell damage over its life, and every tick heals you for half of what it dealt."},
+	{"id": "w_reckoning", "cls": "warlock", "name": "Reckoning", "key": "", "lvl": 16, "mana": 16, "cd": 0.0, "use": 0.7, "aim": "facing", "range": 15.0, "tags": ["spell", "dot", "curse"], "role": "Curse multiplier",
+		"desc": "The rare curse: for 6 seconds, each of its ticks deals as much as all your other curses on the foe tick for together."},
+	{"id": "w_terrify", "cls": "warlock", "name": "Terrify", "key": "", "lvl": 4, "mana": 8, "cd": 9.0, "use": 0.4, "aim": "facing", "range": 8.0, "tags": ["spell", "cc"], "role": "Single fear",
+		"desc": "Point at a foe within 8 m: it is frozen in terror for 1.5 seconds (a player flees for 1 second). Feared foes take 20% more from your spells."},
+	{"id": "w_effigy", "cls": "warlock", "name": "Dread Totem", "key": "", "lvl": 12, "mana": 14, "cd": 14.0, "use": 0.6, "aim": "point", "range": 12.0, "tags": ["trap", "cc"], "role": "Fear totem",
+		"desc": "Raise a vine-choked jungle idol up to 12 m away for 8 seconds. The first three foes to come within 4 m are frightened for 1 second as its void eyes flare and its wisps lash out."},
+	{"id": "w_darkwind", "cls": "warlock", "name": "Void Wisp", "key": "", "lvl": 8, "mana": 12, "cd": 6.0, "use": 0.6, "aim": "facing", "range": 12.0, "tags": ["spell", "projectile", "chain", "cc"], "role": "Bouncing wisp",
+		"desc": "Loose a wisp of void light at a foe: it bounces on to up to five enemies, 90% spell damage and a one-second slow each. Feared or bound foes take double."},
+	{"id": "w_crowstorm", "cls": "warlock", "name": "Eclipse Bloom", "key": "", "lvl": 20, "mana": 40, "cd": 45.0, "use": 1.5, "aim": "point", "range": 8.0, "tags": ["ultimate", "cc", "movement"], "role": "Ultimate",
+		"desc": "Gather the void, then blink up to 8 m: a storm of void petals and wisps whirls 5 m round you for 5 seconds, 80% spell damage every half second, and everything caught as you land is feared for 1 second."},
+	{"id": "w_leechbolt", "cls": "warlock", "name": "Leech Bolt", "key": "", "lvl": 2, "mana": 5, "cd": 0.0, "use": 0.6, "aim": "facing", "range": 14.0, "tags": ["spell", "projectile", "sustain"], "role": "Healing bolt",
+		"desc": "A quick shadow bolt: 140% spell damage, and 30% of it heals you."},
+	{"id": "w_harvest", "cls": "warlock", "name": "Thornlash", "key": "", "lvl": 7, "mana": 12, "cd": 0.0, "use": 0.9, "aim": "self", "tags": ["spell", "area", "sustain"], "role": "Healing lash",
+		"desc": "Lash a whip of black thorned vines round you (5 m): 180% spell damage, and each foe hit heals you 4% of your life (8% when it is the only one)."},
+	{"id": "w_soulfeast", "cls": "warlock", "name": "Soul Feast", "key": "", "lvl": 20, "mana": 30, "cd": 30.0, "use": 3.0, "aim": "self", "tags": ["ultimate", "channel", "sustain"], "role": "Ultimate",
+		"desc": "Channel for 3 seconds: beams to every foe within 7 m drain 80% spell damage a second from each. Healing past full life hardens into a shield, up to 30% of your life."},
 	# Doug (doug_skills.gd, docs/characters/doug.md): the trickster; every tool readable, every tool answerable
 	{"id": "pie", "cls": "doug", "name": "Cream Pie", "key": "", "lvl": 1, "mana": 6, "cd": 0.0, "use": 0.9, "hit": 0.5, "style": "pie", "speed": "attack", "dmg": 120, "type": "phys", "aim": "point", "range": 12.0, "tags": ["projectile", "attack"],
 		"desc": "Lob a cream pie at the cursor (12 m): a splat for 120% weapon damage and the target is Pied: monsters blinded for 2 seconds, a player's screen creamed at the edges and their aim assist gone for 1.5 seconds. The same target can't be Pied again for 6 seconds."},
@@ -761,6 +789,10 @@ static func unarmed_speed(cls: String) -> float:
 	return float(CLASSES[cls].get("claw_speed", 1.2)) if CLASSES.has(cls) else 1.2
 
 ## The shared skills ("cls": "any" in SKILLS), every class's to use (SharedSkills).
+static func _static_init() -> void:
+	Codex.apply_skills(SKILLS)
+	Codex.apply_skills(RUN_SKILLS)
+
 static func shared_skills() -> Array:
 	return SKILLS.filter(func(s): return s["cls"] == "any")
 
@@ -790,7 +822,8 @@ static func skills_known(cls: String) -> Array:
 ## Skills only a multiplayer run offers (Blaine's roguelike pass, 2026-11-06): camp chests draw them with the class's
 ## own (RunBuild.skill_pool); single player never sees them (skills_for, skills_known and the class picker read SKILLS).
 ## Their build theme is RunTalents.SKILL_THEMES; their reward rarity comes from "lvl" (RunBuild.skill_rarity).
-const RUN_SKILLS := [
+## Laid over by the Hero Codex (data/codex/, Codex.apply_skills) when this script loads.
+static var RUN_SKILLS: Array = [
 	{"id": "a_multishot", "cls": "archer", "name": "Scatter Shot", "lvl": 1, "mana": 7, "cd": 0.0, "use": 0.85, "aim": "facing", "range": 13.0, "role": "packs up close",
 		"desc": "Loose five arrows in a fan: 55% weapon damage each. A foe close enough takes several."},
 	{"id": "a_glacial", "cls": "archer", "name": "Glacial Shard", "lvl": 1, "mana": 6, "cd": 0.0, "use": 0.85, "aim": "facing", "range": 16.0, "role": "line chill",

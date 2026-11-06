@@ -1,0 +1,580 @@
+{
+	"skills": [
+		{
+			"id": "earthshatter",
+			"status": "live",
+			"name": "Earthshatter",
+			"rarity": 1,
+			"direction": "",
+			"desc": "A heavy two-handed slam: the wedge it will crack shows as you heave, then the ground splits ahead of you for 230% weapon damage plus a part that grows with your level, throwing foes back.",
+			"mana": 8,
+			"cd": 0.0,
+			"use": 1.6,
+			"range": 5.0,
+			"tags": [
+				"attack",
+				"melee",
+				"slam",
+				"heavy",
+				"area"
+			],
+			"lvl": 16
+		},
+		{
+			"id": "frost_nova",
+			"status": "live",
+			"name": "Frost Nova",
+			"rarity": 1,
+			"direction": "",
+			"desc": "A ring of ice bursts out around you, 4 metres: cold damage, and everything it hits is chilled, slowed for 3 seconds.",
+			"mana": 10,
+			"cd": 0.0,
+			"use": 0.9,
+			"tags": [
+				"spell",
+				"cold",
+				"area",
+				"nova"
+			],
+			"lvl": 8
+		},
+		{
+			"id": "arc",
+			"status": "live",
+			"name": "Arc",
+			"rarity": 1,
+			"direction": "",
+			"desc": "Lightning leaps from your hand into the nearest foe ahead and on to three more nearby, striking each.",
+			"mana": 6,
+			"cd": 0.0,
+			"use": 0.7,
+			"range": 10.0,
+			"tags": [
+				"spell",
+				"lightning",
+				"chain"
+			],
+			"lvl": 11
+		},
+		{
+			"id": "war_cry",
+			"status": "live",
+			"name": "War Cry",
+			"rarity": 1,
+			"direction": "",
+			"desc": "A roar that rallies your team: you and every ally within 8 metres deal +40% damage for 6 seconds, and the monsters near turn on you. In the Battlegrounds it is yours alone (no teams there yet).",
+			"mana": 12,
+			"cd": 8.0,
+			"use": 0.8,
+			"tags": [
+				"warcry",
+				"buff"
+			],
+			"lvl": 6
+		}
+	],
+	"rites": [
+		{
+			"id": "g_edge",
+			"status": "live",
+			"name": "Honed Edge",
+			"rarity": 0,
+			"direction": "",
+			"max": 5,
+			"fx": {
+				"dmg": 6.0
+			},
+			"text": "+{dmg}% damage.",
+			"icon": "t_sword"
+		},
+		{
+			"id": "g_hide",
+			"status": "live",
+			"name": "Thick Hide",
+			"rarity": 0,
+			"direction": "",
+			"max": 5,
+			"fx": {
+				"life_pct": 8.0
+			},
+			"text": "+{life_pct}% maximum life.",
+			"icon": "t_heart"
+		},
+		{
+			"id": "g_hands",
+			"status": "live",
+			"name": "Quick Hands",
+			"rarity": 0,
+			"direction": "",
+			"max": 4,
+			"fx": {
+				"ias": 6.0
+			},
+			"text": "+{ias}% attack speed.",
+			"icon": "t_haste"
+		},
+		{
+			"id": "g_stride",
+			"status": "live",
+			"name": "Fleet Foot",
+			"rarity": 0,
+			"direction": "",
+			"max": 3,
+			"fx": {
+				"frw": 6.0
+			},
+			"text": "+{frw}% run speed.",
+			"icon": "t_boot"
+		},
+		{
+			"id": "g_plate",
+			"status": "live",
+			"name": "Hardened",
+			"rarity": 0,
+			"direction": "",
+			"max": 4,
+			"fx": {
+				"armor_pct": 12.0
+			},
+			"text": "+{armor_pct}% defense.",
+			"icon": "t_armor"
+		},
+		{
+			"id": "g_well",
+			"status": "live",
+			"name": "Deep Well",
+			"rarity": 0,
+			"direction": "",
+			"max": 4,
+			"fx": {
+				"mana_pct": 12.0
+			},
+			"text": "+{mana_pct}% maximum mana.",
+			"icon": "t_eye"
+		},
+		{
+			"id": "g_mend",
+			"status": "live",
+			"name": "Mending",
+			"rarity": 0,
+			"direction": "",
+			"max": 4,
+			"fx": {
+				"regen": 1.0
+			},
+			"text": "+{regen} life regenerated per second.",
+			"icon": "t_regen"
+		},
+		{
+			"id": "g_instinct",
+			"status": "live",
+			"name": "Killer Instinct",
+			"rarity": 1,
+			"direction": "",
+			"max": 4,
+			"fx": {
+				"crit": 4.0
+			},
+			"text": "+{crit}% chance to land a critical hit.",
+			"icon": "t_star"
+		},
+		{
+			"id": "g_vicious",
+			"status": "live",
+			"name": "Vicious",
+			"rarity": 1,
+			"direction": "",
+			"max": 3,
+			"fx": {
+				"crit_dmg": 20.0
+			},
+			"text": "Critical hits deal +{crit_dmg}% damage.",
+			"icon": "t_skull"
+		},
+		{
+			"id": "g_thirst",
+			"status": "live",
+			"name": "Bloodthirst",
+			"rarity": 1,
+			"direction": "",
+			"max": 3,
+			"fx": {
+				"ls": 3.0
+			},
+			"text": "{ls}% of the damage you deal heals you.",
+			"icon": "t_heart"
+		},
+		{
+			"id": "g_ward",
+			"status": "live",
+			"name": "Warded",
+			"rarity": 1,
+			"direction": "",
+			"max": 3,
+			"fx": {
+				"res": 8.0
+			},
+			"text": "+{res}% to all resistances.",
+			"icon": "t_ward"
+		},
+		{
+			"id": "g_flow",
+			"status": "live",
+			"name": "Arcane Flow",
+			"rarity": 2,
+			"direction": "",
+			"max": 2,
+			"fx": {
+				"cdr": 12.0
+			},
+			"text": "Skills recharge {cdr}% faster.",
+			"icon": "t_hourglass"
+		},
+		{
+			"id": "g_trance",
+			"status": "live",
+			"name": "Battle Trance",
+			"rarity": 2,
+			"direction": "",
+			"max": 2,
+			"fx": {
+				"dmg": 15.0,
+				"ias": 8.0
+			},
+			"text": "+{dmg}% damage and +{ias}% attack speed.",
+			"icon": "t_fist"
+		},
+		{
+			"id": "g_colossus",
+			"status": "live",
+			"name": "Colossus",
+			"rarity": 2,
+			"direction": "",
+			"max": 2,
+			"fx": {
+				"life_pct": 20.0,
+				"vit": 5.0
+			},
+			"text": "+{life_pct}% maximum life and +{vit} vitality.",
+			"icon": "t_heart"
+		},
+		{
+			"id": "x_execute",
+			"status": "live",
+			"name": "Executioner",
+			"rarity": 2,
+			"run": true,
+			"direction": "",
+			"max": 1,
+			"text": "Your hits on foes under {below}% life deal +{more}% damage.",
+			"icon": "t_skull",
+			"k": {
+				"below": 25.0,
+				"more": 60.0
+			},
+			"proc": "more_vs_low"
+		},
+		{
+			"id": "x_momentum",
+			"status": "live",
+			"name": "Momentum",
+			"rarity": 1,
+			"run": true,
+			"direction": "",
+			"max": 2,
+			"text": "Each kill: +{dmg}% damage for {secs} seconds, up to {stacks} times.",
+			"icon": "t_fist",
+			"k": {
+				"dmg": 4.0,
+				"stacks": 5.0,
+				"secs": 8.0
+			},
+			"per": [
+				"dmg"
+			],
+			"proc": "momentum"
+		},
+		{
+			"id": "x_vampire",
+			"status": "live",
+			"name": "Vampiric",
+			"rarity": 1,
+			"run": true,
+			"direction": "",
+			"max": 2,
+			"text": "Each kill heals you for {pct}% of your life.",
+			"icon": "t_heart",
+			"k": {
+				"pct": 3.0
+			},
+			"per": [
+				"pct"
+			],
+			"proc": "heal_on_kill"
+		},
+		{
+			"id": "x_chain",
+			"status": "live",
+			"name": "Chain Reaction",
+			"rarity": 2,
+			"run": true,
+			"direction": "",
+			"max": 1,
+			"text": "Monsters you kill explode: {pct}% of their life to everything within {r} m. Kills it causes explode too.",
+			"icon": "t_star",
+			"k": {
+				"pct": 25.0,
+				"r": 3.5
+			},
+			"proc": "explode_on_kill"
+		},
+		{
+			"id": "x_glass",
+			"status": "live",
+			"name": "Glass Cannon",
+			"rarity": 2,
+			"run": true,
+			"direction": "",
+			"max": 1,
+			"text": "+{dmg}% damage, {life_pct}% maximum life.",
+			"icon": "t_sword",
+			"fx": {
+				"dmg": 35.0,
+				"life_pct": -20.0
+			}
+		},
+		{
+			"id": "x_undying",
+			"status": "live",
+			"name": "Undying",
+			"rarity": 2,
+			"run": true,
+			"direction": "",
+			"max": 1,
+			"text": "A blow that would kill you leaves you at {life}% life instead (once every {secs} seconds).",
+			"icon": "t_ward",
+			"k": {
+				"life": 35.0,
+				"secs": 120.0
+			},
+			"proc": "undying"
+		},
+		{
+			"id": "x_thorns",
+			"status": "live",
+			"name": "Retribution",
+			"rarity": 1,
+			"run": true,
+			"direction": "",
+			"max": 2,
+			"text": "Monsters that strike you take {pct}% of the blow back.",
+			"icon": "t_armor",
+			"k": {
+				"pct": 60.0
+			},
+			"per": [
+				"pct"
+			],
+			"proc": "thorns"
+		},
+		{
+			"id": "x_berserk",
+			"status": "live",
+			"name": "Berserker",
+			"rarity": 2,
+			"run": true,
+			"direction": "",
+			"max": 1,
+			"text": "Up to +{most}% damage as your life runs low.",
+			"icon": "t_fist",
+			"k": {
+				"most": 45.0
+			},
+			"proc": "berserk"
+		},
+		{
+			"id": "x_echo",
+			"status": "live",
+			"name": "Echo",
+			"rarity": 2,
+			"run": true,
+			"direction": "",
+			"max": 1,
+			"text": "A skill with a cooldown has a {chance}% chance to be ready again at once.",
+			"icon": "t_hourglass",
+			"k": {
+				"chance": 25.0
+			},
+			"proc": "echo"
+		},
+		{
+			"id": "x_giant",
+			"status": "live",
+			"name": "Giant Slayer",
+			"rarity": 1,
+			"run": true,
+			"direction": "",
+			"max": 2,
+			"text": "+{more}% damage to champions and bosses.",
+			"icon": "t_sword",
+			"k": {
+				"more": 20.0
+			},
+			"per": [
+				"more"
+			],
+			"proc": "more_vs_big"
+		},
+		{
+			"id": "x_frenzy",
+			"status": "live",
+			"name": "Frenzy",
+			"rarity": 2,
+			"run": true,
+			"direction": "",
+			"max": 1,
+			"text": "Critical hits give +{ias}% attack speed for {secs} seconds.",
+			"icon": "t_haste",
+			"k": {
+				"ias": 20.0,
+				"secs": 3.0
+			},
+			"proc": "frenzy"
+		},
+		{
+			"id": "x_medic",
+			"status": "live",
+			"name": "Field Medic",
+			"rarity": 0,
+			"run": true,
+			"direction": "",
+			"max": 2,
+			"text": "Potions restore {pot}% more.",
+			"icon": "t_regen",
+			"fx": {
+				"pot": 40.0
+			}
+		},
+		{
+			"id": "x_lucky",
+			"status": "live",
+			"name": "Lucky Charm",
+			"rarity": 2,
+			"run": true,
+			"direction": "",
+			"max": 1,
+			"text": "Camp chests offer one more choice.",
+			"icon": "t_star",
+			"fx": {
+				"offer_plus": 1.0
+			}
+		},
+		{
+			"id": "x_treasure",
+			"status": "live",
+			"name": "Treasure Hunter",
+			"rarity": 1,
+			"run": true,
+			"direction": "",
+			"max": 2,
+			"text": "Camp chests hold {loot_plus} more consumable for you.",
+			"icon": "t_eye",
+			"fx": {
+				"loot_plus": 1.0
+			}
+		},
+		{
+			"id": "x_gemcutter",
+			"status": "live",
+			"name": "Gemcutter",
+			"rarity": 2,
+			"run": true,
+			"direction": "",
+			"max": 1,
+			"text": "Camp chests hold a gem twice as often, and rare gems more often.",
+			"icon": "t_star",
+			"fx": {
+				"gem_luck": 1.0
+			}
+		},
+		{
+			"id": "x_ward",
+			"status": "live",
+			"name": "Second Skin",
+			"rarity": 1,
+			"run": true,
+			"direction": "",
+			"max": 2,
+			"text": "A ward soaks blows worth {ward_bonus}% of your life; it refills out of combat.",
+			"icon": "t_ward",
+			"fx": {
+				"ward_bonus": 12.0
+			}
+		},
+		{
+			"id": "x_conduit",
+			"status": "live",
+			"name": "Elemental Conduit",
+			"rarity": 2,
+			"run": true,
+			"direction": "",
+			"max": 1,
+			"text": "Your burns last {burn_dur}% longer and hurt {burn_pct}% more; your chills last {chill_pct}% longer.",
+			"icon": "t_hourglass",
+			"fx": {
+				"burn_dur": 50.0,
+				"chill_pct": 50.0,
+				"burn_pct": 15.0
+			}
+		},
+		{
+			"id": "x_bloodlust",
+			"status": "live",
+			"name": "Bloodlust",
+			"rarity": 2,
+			"run": true,
+			"direction": "",
+			"max": 1,
+			"text": "Under {below}% life, {pct}% of the damage your hits deal heals you.",
+			"icon": "t_heart",
+			"k": {
+				"pct": 10.0,
+				"below": 50.0
+			},
+			"proc": "bloodlust"
+		},
+		{
+			"id": "x_adrenaline",
+			"status": "live",
+			"name": "Adrenaline",
+			"rarity": 0,
+			"run": true,
+			"direction": "",
+			"max": 2,
+			"text": "Each kill: +{frw}% run speed for {secs} seconds.",
+			"icon": "t_boot",
+			"k": {
+				"frw": 12.0,
+				"secs": 3.0
+			},
+			"per": [
+				"frw"
+			],
+			"proc": "speed_on_kill"
+		},
+		{
+			"id": "x_scholar",
+			"status": "live",
+			"name": "Quick Study",
+			"rarity": 0,
+			"run": true,
+			"direction": "",
+			"max": 2,
+			"text": "+{xp_pct}% experience.",
+			"icon": "t_eye",
+			"fx": {
+				"xp_pct": 15.0
+			}
+		}
+	]
+}

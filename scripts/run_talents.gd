@@ -19,6 +19,15 @@ extends RefCounted
 
 ## Skills and talents come Common, Uncommon or Rare (Blaine's character structure, 2026-11-06: the rares are the
 ## run-changers). A fourth colour is the gems' legendary tier (GEMS rarity 3), never a talent's.
+static func _static_init() -> void:
+	var entries: Array = Codex.shared().get("rites", []).duplicate()
+	for cls in THEMES:
+		entries.append_array(Codex.hero(cls).get("rites", []))
+	for cls in ["serpent", "wyvern"]:
+		entries.append_array(Codex.hero(cls).get("rites", []))
+	Codex.apply_rites(TALENTS, entries)
+	Codex.apply_rites(GEMS, Codex.file("gems.json").get("entries", []), "gems")
+
 const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Legendary"]
 const RARITY_COLORS := [Color(0.86, 0.84, 0.78), Color(0.42, 0.86, 0.52), Color(0.48, 0.68, 1.0), Color(1.0, 0.62, 0.18)]
 
@@ -35,7 +44,12 @@ const THEMES := {
 		{"id": "vermin", "name": "Vermin and Rot", "color": Color(0.55, 0.62, 0.3), "desc": "The swarm and the bloom."},
 		{"id": "alchemy", "name": "Alchemy", "color": Color(0.7, 0.45, 0.95), "desc": "Vials, fog and the apparatus."},
 	],
-	# (the warlock: being redesigned in another session, damage over time / fear / drain)
+	# the warlock (the jungle void spirit, WarlockHex; her skills' and rites' directions come from the Hero Codex)
+	"warlock": [
+		{"id": "corruption", "name": "Corruption", "color": Color(0.45, 1.0, 0.3), "desc": "Curses that stack, grow and multiply."},
+		{"id": "fear", "name": "Fear", "color": Color(0.72, 0.45, 1.0), "desc": "Terrify, bind and scatter; the frightened take more."},
+		{"id": "drain", "name": "Drain", "color": Color(0.75, 1.0, 0.6), "desc": "Life drained, healing past full hardening into a shield."},
+	],
 	"knight": [
 		{"id": "crusader", "name": "Crusader", "color": Color(1.0, 0.9, 0.55), "desc": "Holy fire and the sword."},
 		{"id": "bulwark", "name": "Bulwark", "color": Color(0.7, 0.78, 0.9), "desc": "Plate and shield: hard to kill."},
@@ -73,6 +87,7 @@ const TREE_THEME := {
 "knight": ["crusader", "bulwark", "vanguard"],
 	"wraith": ["render", "shadow", "night"], "demon": ["magma", "cataclysm", "pit"],
 	"doug": ["slapstick", "showman", "bigtop"],
+	"warlock": ["drain", "corruption", "fear"],      # (her talent trees Affliction, Plague, Binding)
 }
 ## Which theme each skill is for (the shared skills by element, so they join a build that fits).
 const SKILL_THEMES := {
@@ -95,7 +110,8 @@ const SKILL_THEMES := {
 
 ## The talents: every class's own (beside its talent trees, which RunBuild.passive_pool adds) and the generic ones.
 ## `per` names the k values that grow with each stack. Texts read {key} from k (times stacks) and fx.
-const TALENTS := [
+## Laid over by the Hero Codex (data/codex/: a class's in its hero file, "any" in shared.json) when this script loads.
+static var TALENTS: Array = [
 	# ---- every class
 	{"id": "x_execute", "cls": "any", "theme": "", "rarity": 2, "max": 1, "name": "Executioner", "icon": "t_skull",
 		"proc": "more_vs_low", "k": {"below": 25, "more": 60}, "text": "Your hits on foes under {below}% life deal +{more}% damage."},
@@ -239,7 +255,7 @@ const TALENTS := [
 		"fx": {"rites_buff": 1}, "text": "A Last Rites kill also gives you +30% damage and +20% run speed for 4 seconds."},
 	{"id": "k_brands", "cls": "knight", "theme": "crusader", "rarity": 2, "max": 1, "name": "Searing Brands", "icon": "t_star",
 		"fx": {"brand_max": 3, "brand_burn": 1}, "text": "Holy Brands stack {brand_max} higher and each one burns its foe a little."},
-	{"id": "k_zeal", "cls": "knight", "theme": "crusader", "rarity": 1, "max": 2, "name": "Zealot", "icon": "t_sword",
+	{"id": "k_zealot", "cls": "knight", "theme": "crusader", "rarity": 1, "max": 2, "name": "Zealot", "icon": "t_sword",
 		"proc": "ignite_on_hit", "k": {"src": "attack", "pct": 18, "secs": 3.0}, "per": ["pct"], "text": "Your sword sets foes alight with holy fire ({pct}% of the blow a second)."},
 	{"id": "k_iron", "cls": "knight", "theme": "bulwark", "rarity": 0, "max": 3, "name": "Iron Hide", "icon": "t_armor",
 		"fx": {"armor_pct": 15, "ward_bonus": 4}, "text": "+{armor_pct}% defense and a ward of {ward_bonus}% of your life that refills out of combat."},
@@ -342,7 +358,8 @@ const TALENTS := [
 
 ## The gems: a run's relics. Found in camp chests (more often in deeper camps; a boss always gives one, often
 ## legendary), kept for the run and by its survivor. Common and rare gems are stats; legendary ones change the run.
-const GEMS := [
+## Laid over by the Hero Codex (data/codex/gems.json) when this script loads.
+static var GEMS: Array = [
 	{"id": "ruby", "name": "Ember Ruby", "rarity": 0, "color": Color(0.95, 0.22, 0.2), "fx": {"dmg": 6, "burn_pct": 15}, "text": "+{dmg}% damage, burns +{burn_pct}%."},
 	{"id": "sapphire", "name": "Frost Sapphire", "rarity": 0, "color": Color(0.25, 0.45, 1.0), "fx": {"cdr": 6, "chill_pct": 15}, "text": "Skills recharge {cdr}% faster, chills +{chill_pct}%."},
 	{"id": "emerald", "name": "Venom Emerald", "rarity": 0, "color": Color(0.2, 0.85, 0.35), "fx": {"regen": 1.5, "poison_dmg": 15}, "text": "+{regen} life a second, poison +{poison_dmg}%."},

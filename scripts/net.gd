@@ -193,12 +193,12 @@ func local_ips() -> Array:
 
 func _on_connected() -> void:
 	reached = true
-	# A fresh BG run has no story-save ID. Authenticate the character reserved by
-	# the lobby ticket, as Arena/Sandbox do, without assigning a story save to the run.
-	var admitted_character: String = game.char_id
+	# the character the lobby admitted: a run's hero ("run_<class>") has no saved character id (Game._start_run_raid
+	# clears it), and the match turned away every Battlegrounds join while the empty id was sent (2026-11-06)
+	var admitted_as: String = game.char_id
 	if game.lobby_client != null and game.lobby_client.match_id != "":
-		admitted_character = game.lobby_client.character
-	rpc_id(1, "sv_hello", my_name, game.hero.net_gear(), game.hero.level, game.party_join_ticket, admitted_character)
+		admitted_as = str(game.lobby_client.character)
+	rpc_id(1, "sv_hello", my_name, game.hero.net_gear(), game.hero.level, game.party_join_ticket, admitted_as)
 	game.party_join_ticket = ""
 	if game.bg_mode and (game.lobby_client == null or game.lobby_client.match_id == ""):
 		# with accounts on: a one-time join ticket from Nakama (over HTTPS), never the session itself
@@ -419,7 +419,9 @@ func sv_hello(nm: String, gear: Dictionary, _lvl: int, queue_ticket := "", chara
 			rpc_id(pid, "cl_party_refused")
 			return
 		if not active or not multiplayer.get_peers().has(pid): return
-		if str(game.match_instance.members[pid].character) != character:
+		var want := str(game.match_instance.members[pid].character)
+		# (a run's hero has no saved character: builds before 2026-11-06 sent "" for it; the ticket already proved who it is)
+		if want != character and not (want.begins_with("run_") and character == ""):
 			rpc_id(pid, "cl_party_refused")
 			return
 	if coop_server and game.coop_server != null and game.coop_server.party_queue != null:
@@ -973,10 +975,21 @@ func sv_bg_hello(uid: String, ticket: String) -> void:
 		# turned away: say why, and when the next raid lets players in (the client counts down and rejoins)
 		rpc_id(pid, "cl_bg_refused", r, game.bg.secs_to_next() if r == "closed" else 0.0)
 		await get_tree().create_timer(0.5).timeout
-		if peer != null:
-			peer.disconnect_peer(pid)
+		drop_peer(pid)
 		return
 	game.bg.broadcast(pid)
+
+## Host or server: cut one peer off now. A graceful `disconnect_peer` empties the ENet peer's channels at once
+## but leaves it listed until the other end answers, which a client busy building a zone can't do for seconds:
+## every broadcast meanwhile logged "Unable to send packet on channel 1, max channels: 0" (triage 2026-11-04,
+## fd6796612eee4c16). Disconnecting now makes it inactive; the next poll drops it and still emits
+## peer_disconnected, so the usual leaving (`_on_peer_disconnected`) runs as before.
+func drop_peer(pid: int) -> void:
+	if peer == null or peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
+		return
+	var pp: ENetPacketPeer = peer.get_peer(pid)
+	if pp != null and pp.is_active():
+		pp.peer_disconnect_now(0)
 
 ## Server: turn a player away now (why: "boosted" = admin gear without the admin role).
 func bg_refuse(pid: int, why: String) -> void:
@@ -985,8 +998,8 @@ func bg_refuse(pid: int, why: String) -> void:
 	rpc_id(pid, "cl_bg_refused", why, 0.0)
 	# (time for it to land: a client still building the crypt can be busy for a second or more)
 	await get_tree().create_timer(2.0).timeout
-	if peer != null and players.has(pid):
-		peer.disconnect_peer(pid)
+	if players.has(pid):
+		drop_peer(pid)
 
 ## The antechamber's stash chest was opened (Battlegrounds.stash_opened checks it and slows the opener).
 func send_bg_stash(idx: int) -> void:
@@ -1405,8 +1418,8 @@ func kick(pid: int) -> void:
 	var nm := _name_of(pid)
 	rpc_id(pid, "cl_kicked")
 	await get_tree().create_timer(0.3).timeout
-	if peer != null and players.has(pid):
-		peer.disconnect_peer(pid)
+	if players.has(pid):
+		drop_peer(pid)
 	game.ui.message("%s was removed from the party" % nm, Color(1.0, 0.8, 0.4))
 
 @rpc("authority", "call_remote", "reliable")

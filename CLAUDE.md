@@ -945,6 +945,32 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   bake), then `bash tools/fx_flipbook.sh outdir assets/textures/fx/fire_<kind>.png first cell tile`. Settings that
   worked and mistakes to avoid are in the project doc "fire pipeline". Comparison: `tools/fire_compare.gd -- outdir
   new|old close|wide|game frames`.
+- **The Warlock: the jungle void spirit and her three directions** (Blaine, 2026-11-06; design in the Hero Codex,
+  `data/codex/heroes/warlock.json`). **Body**: `assets/models/warlock_spirit.glb` (Meshy concept A, image-to-3D, Meshy rig
+  and library clips 0, 89, 198, 200, 125, 129, 132, 386, 178, 384, 127; job ids in the commit), prepared by
+  `tools/blender/warlock/prep_warlock_mocap.py` (the Wraith's pipeline: legless, the robe on cloth panels, float
+  clips) and built by `Warlock._build_spirit` on the Wraith's float mode with `scripts/warlock_spirit.gdshader` (the
+  painted fel green glows in its own colour; `SPIRIT_VOID` violet rim, fraying hem and mist); her weapon is unseen;
+  `SPIRIT_SHOTS` maps "cast" and the weapon combo to her clips. The gnome is the fallback without the glb.
+  **Skills** (`scripts/warlock_hex.gd` `WarlockHex`, every id in `IDS`; WarlockSkills hands them over): Corruption
+  (curses: Corruption, Unending Rot ramping `UNENDING_RAMP` a second the foe has been cursed without a break, Festering
+  Hex's stun bursts, Leeching Curse's heal, Reckoning whose ticks deal what the others tick for, Malediction growing
+  with every curse; a plague pool counts as one), Fear (Terrify, the Dread Totem `w_effigy`, Void Wisp `w_darkwind`
+  bouncing, Eclipse Bloom `w_crowstorm`: blink + storm; feared monsters cower (a stun: the one message every server
+  already takes), feared players flee through PvpStatus "fear"; feared or bound foes take `FEARED_BONUS` more from
+  her spells), Drain (Leech Bolt, Thornlash `w_harvest`, Soul Feast; healing past full life hardens into a shield,
+  `WarlockHex.heal`/`absorb`, Hero.take_hit asks it). Curses tick on the caster's game every `TICK` and reach monsters
+  and players through `Enemy.take_damage`, so they work in single player, co-op and the Battlegrounds; their clock is
+  `ArrowFx.now()` (game seconds). State: `Hero.wl`. **Rites**: 14 live through the codex (`requires`: a skill of their
+  direction first), keys in `WarlockHex.RITE_KEYS` = `data/codex/fx_keys.json` "warlock". **Look**:
+  `scripts/warlock_harrow_fx.gd` `WarlockHarrowFx` (fx events listed at its top; WarlockFx.play hands over what it
+  doesn't know): curse rings with runes, the terror mark, void wisps (soft glows), violet and green petals, the Meshy
+  Dread Totem (`assets/models/warlock/dread_totem.glb`, code-built fallback), the thorned lash, the feast's beams, the
+  green glass shield. Sounds `curse_cast`, `fester_burst`, `malediction`, `reckoning`, `terrify`, `totem_rise`,
+  `totem_wail`, `void_wisp`, `eclipse_bloom`, `eclipse_storm` (loop), `thornlash`, `leech_bolt`, `soul_feast` (loop),
+  `shield_up`, `shield_break`. Icons: `tools/skill_icons.py` grids warlock, warlock2, warlock_void (skills) and
+  warlock_rites1/2 (cut into `assets/textures/talents/`). Tests: `tools/warlock_hex_test.gd` (`--fixed-fps 60`, every
+  skill and rite), `tools/warlock_test.gd`; frames: `tools/warlock_showcase.gd -- outdir [skills|all] [quality]`.
 - **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `WarlockSkills.update_drain` (all of Drain Life is in `warlock_skills.gd`), and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. The beams, sigil, hand light and hum are the `"drain"` fx events' effect (`WarlockFx.play`, state in `Hero.fxs["drain"]`, drawn by `WarlockFx.update` after the pose on the caster and on his puppet; `"start"`, `"victims"` when the fork set changes, `"tick"`, `"end"`), so partners see the beam on him too.
 - **King Grubb** (Act I boss, `hoard.gd`) is host-authoritative. Every visible part of the fight (piles, bombs, burst
   sacks, shouts, a grabber's `carry_on`/`carry_off`) is an Enemy fx event string handled in `Hoard.fx`, so partners see it;
@@ -1224,7 +1250,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   frame at any attack speed; monster impacts, crit stings and kill sounds come from `Enemy._hit_sound`/`die_visual`
   by `Enemy.material()`. King Grubb's voice is deep (the `cackle`/`roar` takes, never pitched up), and before his fight
   his muttering (`grubb_mutter`) carries through the fort from him, faint from ~75 m and clear in sight
-  (`Hoard.murmur`, every peer locally; stops at the "intro" event). `tools/sound_test.gd` checks every skill fires its
+  (`Hoard.murmur`, every peer locally; stops at the "intro" event). `tools/sound_test.gd` (through `_late.gd`, with `-- --sounds`: headless runs are otherwise silent, `Sfx.silent_runtime`) checks every skill fires its
   sounds (`Sfx.counts`) and the fort voice. The camp's song is `music_town` (jj's pick: a dark forest sanctuary, harp over a low
   string drone with a wooden flute; candidate take 13). Ambience: wind, drips in the crypt, and in Act I outside the camp (moor and fort) `forest`, soft
   trees in a breeze (`Sfx.play_music(kind, amb)`, picked in `Game.load_zone`).
@@ -1666,7 +1692,32 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `plague_attack`, picked by `_icon_id`) are a Meshy 3x3 grid cut by `tools/skill_icons.py` (`prompt`, `meshy.py
   draw`, `cut`; the same palette and cutter as `talent_icons.py`; lossless import). Another class gets them by adding
   a `CELLS` entry and painting its grid.
-- **Talents** (`scripts/talents.gd`, the window is N; `tools/talent_test.gd`, `tools/talent_shot.gd`): three trees per
+- **The Hero Codex** (`scripts/codex.gd` `Codex`, `data/codex/`; Blaine 2026-11-06): every hero's skills, rites
+  (talents), gems and consumables as JSON, the one place they are designed; `Data.SKILLS`, `Talents.TREES` and
+  `RunBuild.GENERIC` are static vars that the codex is laid over when their scripts load (`_static_init`: names, text,
+  mana, cooldowns, power, range, rarity; rites' fx and stacks). Entries are `"live"` (in the game) or `"design"` (kept
+  until their code exists; the game ignores them); a live rite whose fx keys are all `Codex.FX_KEYS` (or
+  `dmg:`/`cd:`/`cost:<skill>`) joins its class's run pool from data alone (`Codex.extra_rites`). Every hero has three
+  **directions** (its three talent trees; the Warlock's design: Corruption, Fear, Drain). The web editor is
+  `tools/codex/server.py` (README there); after adding a skill or talent in code run `tools/codex_export.gd` (keeps the
+  codex's design entries; through `tools/_late.gd`) and `tools/codex_test.gd` (also late). The run's content is in it
+  too: `Data.RUN_SKILLS` (skills, `"run": true`), `RunTalents.TALENTS` (rites with their `k` numbers and `proc`; "any"
+  ones in shared.json) and `RunTalents.GEMS` (gems.json, rarity up to 3 legendary), all laid over when they load; a
+  hero's directions are its `RunTalents.THEMES` (the codex files skills by `SKILL_THEMES` or their codex direction).
+  **Code edits are never lost**: `data/codex/code_base.json` (written by the export) is what the code said at the last
+  export, and each field is a three-way merge (`Codex._take`): changed only in code, the code's value plays (and
+  `codex_test` lists it until the next export folds it in); changed only in the codex, the codex's; both, the codex's
+  (listed as a conflict). So keep tuning in code as before, then run the export (or let the editor's Publish do it).
+  Ids are unique per hero file (a run talent and a tree talent can't share one: `k_zeal`'s run twin is `k_zealot`).
+  The editor runs live on the mini (`--live staging`, its own worktree `ashen-crown-claude-2-codex` on
+  `claude-2/codex-live`): Publish follows staging, exports, runs `codex_test` and fast-forwards `staging`.
+  **The players' Codex** (`scripts/codex_book.gd` `CodexBook`, a RunUI mode "codex"): the same data in game, every
+  hero's directions with their skills and rites, the shared ones, gems and consumables (live entries only, text from
+  the game's data); an entry stays a locked "?" card until a camp chest shows it (`RunUI.open_offer` ->
+  `CodexBook.see_offer`; this PC's `user://codex_seen.json`). Opened from the multiplayer screen's Codex button and
+  the run's build window; dev tools can Reveal all. `tools/codex_book_test.gd` (late; `-- shots <dir>` for frames).
+- **Talents** (players see them as **Rites**, for every class: JJ 2026-11-05; only the shown text says Rites, the code,
+  save keys and tools keep `talent`) (`scripts/talents.gd`, the window is N; `tools/talent_test.gd`, `tools/talent_shot.gd`): three trees per
   class of seven talents in four rows (2, 2, 2, then a capstone); a row opens with 0/3/6/10 points spent above it in
   that tree (`Talents.ROW_REQ`), and a rank can't be taken back if a deeper talent would lose its row. One point a
   level from level 2: `Hero.free_talent_points()` = level - 1 - spent (nothing stored but `talents` {id: ranks} in

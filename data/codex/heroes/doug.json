@@ -1,0 +1,523 @@
+{
+	"cls": "doug",
+	"name": "Doug",
+	"fantasy": "A washed-up circus brawler with a roast drumstick and a bag of tricks. Every gag is a weapon: pies that blind, peels that trip, a double that runs the other way, and a clown car nobody wants to see coming.",
+	"directions": [
+		{
+			"id": "Slapstick",
+			"name": "Slapstick",
+			"desc": "The drumstick and the pie: closer, harder, messier."
+		},
+		{
+			"id": "Showmanship",
+			"name": "Showmanship",
+			"desc": "Misdirection: the slide, the double, the juggling act."
+		},
+		{
+			"id": "Big Top",
+			"name": "Big Top",
+			"desc": "The grand finale: the bounce and the clown car."
+		}
+	],
+	"skills": [
+		{
+			"id": "pie",
+			"status": "live",
+			"name": "Cream Pie",
+			"rarity": 0,
+			"direction": "Slapstick",
+			"desc": "Lob a cream pie at the cursor (12 m): a splat for 120% weapon damage and the target is Pied: monsters blinded for 2 seconds, a player's screen creamed at the edges and their aim assist gone for 1.5 seconds. The same target can't be Pied again for 6 seconds.",
+			"mana": 6,
+			"cd": 0.0,
+			"use": 0.9,
+			"range": 12.0,
+			"tags": [
+				"projectile",
+				"attack"
+			],
+			"lvl": 1
+		},
+		{
+			"id": "peels",
+			"status": "live",
+			"name": "Banana Peels",
+			"rarity": 0,
+			"direction": "Slapstick",
+			"desc": "Toss three banana peels in a fan ahead (they land 3 to 6 metres out and last 8 seconds; at most 6 down). Whoever steps on one slips: a player is knocked down for 0.7 seconds and slides on, a monster is stunned for 1 second. A dodge roll over a peel doesn't slip.",
+			"mana": 9,
+			"cd": 7.0,
+			"use": 0.8,
+			"range": 6.0,
+			"tags": [
+				"trap"
+			],
+			"lvl": 2
+		},
+		{
+			"id": "slide",
+			"status": "live",
+			"name": "Pratfall Slide",
+			"rarity": 0,
+			"direction": "Showmanship",
+			"desc": "Belly-slide 7 metres the way you face, honking: foes in the way take 90% weapon damage and are shoved aside. You pop up with a ta-da.",
+			"mana": 10,
+			"cd": 5.0,
+			"use": 0.7,
+			"range": 7.0,
+			"tags": [
+				"movement"
+			],
+			"lvl": 4
+		},
+		{
+			"id": "doppel",
+			"status": "live",
+			"name": "Doppel-Doug",
+			"rarity": 1,
+			"direction": "Showmanship",
+			"desc": "Duck behind a puff of confetti: you turn invisible for 1.8 seconds while a balloon double of you runs off toward the cursor, waving. Struck, the double pops in a confetti burst that slows whoever is near for 1.5 seconds.",
+			"mana": 14,
+			"cd": 14.0,
+			"use": 0.4,
+			"range": 12.0,
+			"tags": [
+				"buff",
+				"summon"
+			],
+			"lvl": 7
+		},
+		{
+			"id": "juggle",
+			"status": "live",
+			"name": "Pin Juggle",
+			"rarity": 1,
+			"direction": "Showmanship",
+			"desc": "Throw five flaming juggling pins in quick succession at the cursor; each bounces on to two more foes. 60% weapon damage as fire each.",
+			"mana": 16,
+			"cd": 0.0,
+			"use": 1.4,
+			"range": 12.0,
+			"tags": [
+				"projectile",
+				"fire"
+			],
+			"lvl": 10
+		},
+		{
+			"id": "bounce",
+			"status": "live",
+			"name": "Big Top Bounce",
+			"rarity": 1,
+			"direction": "Big Top",
+			"desc": "Slam down a trampoline and bounce up to 10 metres to the cursor, landing in a belly-flop: 180% weapon damage in 3 metres and foes are launched for 0.8 seconds. A shadow and a whistle mark where you'll land.",
+			"mana": 18,
+			"cd": 10.0,
+			"use": 1.3,
+			"range": 10.0,
+			"tags": [
+				"movement",
+				"cc"
+			],
+			"lvl": 14
+		},
+		{
+			"id": "car",
+			"status": "live",
+			"name": "Clown Car",
+			"rarity": 2,
+			"direction": "Big Top",
+			"desc": "A tiny clown car screeches in and you drive it for 5 seconds: fast, unstoppable, ramming foes for 140% weapon damage and knocking them flying. Then it bursts in confetti and six mini clowns tumble out, sprint at the nearest foes and pie them.",
+			"mana": 40,
+			"cd": 60.0,
+			"use": 0.6,
+			"tags": [
+				"ultimate"
+			],
+			"lvl": 20
+		},
+		{
+			"id": "u_barrage",
+			"status": "live",
+			"name": "Pie Barrage",
+			"rarity": 0,
+			"direction": "Slapstick",
+			"desc": "Fling six cream pies at once onto the foes around the pointer: each 80% weapon damage, and the first time a foe is Pied it is stunned and slowed.",
+			"mana": 10,
+			"cd": 0.0,
+			"use": 1.1,
+			"range": 12.0,
+			"role": "pie a crowd",
+			"lvl": 1,
+			"run": true
+		},
+		{
+			"id": "u_bonanza",
+			"status": "live",
+			"name": "Banana Bonanza",
+			"rarity": 1,
+			"direction": "Showmanship",
+			"desc": "Scatter eight banana peels in a ring round you: whatever steps on one goes down. Your next blow on a slipped foe within 4 seconds hits twice as hard.",
+			"mana": 8,
+			"cd": 9.0,
+			"role": "a ring of peels",
+			"tags": [
+				"trap"
+			],
+			"lvl": 9,
+			"run": true
+		},
+		{
+			"id": "u_cannon",
+			"status": "live",
+			"name": "Human Cannonball",
+			"rarity": 1,
+			"direction": "Big Top",
+			"desc": "Fire yourself out of a cannon onto the pointer (14 metres): you land in a belly-flop that deals 260% weapon damage within 4.5 metres and knocks them down.",
+			"mana": 12,
+			"cd": 8.0,
+			"range": 14.0,
+			"role": "fly in, flatten",
+			"tags": [
+				"movement"
+			],
+			"lvl": 9,
+			"run": true
+		}
+	],
+	"rites": [
+		{
+			"id": "d_drum",
+			"status": "live",
+			"name": "Extra Gravy",
+			"rarity": 0,
+			"direction": "Slapstick",
+			"max": 3,
+			"fx": {
+				"dmg:attack": 10.0
+			},
+			"text": "Drumstick Smack deals {dmg:attack}% more damage.",
+			"icon": "t_fist"
+		},
+		{
+			"id": "d_belly",
+			"status": "live",
+			"name": "Big Belly",
+			"rarity": 0,
+			"direction": "Slapstick",
+			"max": 3,
+			"fx": {
+				"vit": 3.0
+			},
+			"text": "+{vit} vitality.",
+			"icon": "t_heart"
+		},
+		{
+			"id": "d_cream",
+			"status": "live",
+			"name": "Double Cream",
+			"rarity": 0,
+			"direction": "Slapstick",
+			"max": 3,
+			"fx": {
+				"dmg:pie": 12.0
+			},
+			"text": "Cream Pie deals {dmg:pie}% more damage.",
+			"icon": "pie"
+		},
+		{
+			"id": "d_arm",
+			"status": "live",
+			"name": "Pitcher's Arm",
+			"rarity": 0,
+			"direction": "Slapstick",
+			"max": 3,
+			"fx": {
+				"dex": 3.0
+			},
+			"text": "+{dex} dexterity.",
+			"icon": "t_fist"
+		},
+		{
+			"id": "d_cheap",
+			"status": "live",
+			"name": "Day-Old Pies",
+			"rarity": 1,
+			"direction": "Slapstick",
+			"max": 2,
+			"fx": {
+				"cost:pie": 20.0
+			},
+			"text": "Cream Pie costs {cost:pie}% less mana.",
+			"icon": "pie"
+		},
+		{
+			"id": "d_slip",
+			"status": "live",
+			"name": "Ripe Peels",
+			"rarity": 1,
+			"direction": "Slapstick",
+			"max": 3,
+			"fx": {
+				"cd:peels": 10.0
+			},
+			"text": "Banana Peels recharge {cd:peels}% faster.",
+			"icon": "peels"
+		},
+		{
+			"id": "d_sauce",
+			"status": "live",
+			"name": "Secret Sauce",
+			"rarity": 2,
+			"direction": "Slapstick",
+			"max": 1,
+			"fx": {
+				"dmg": 8.0
+			},
+			"text": "All your damage +{dmg}%.",
+			"icon": "pie"
+		},
+		{
+			"id": "d_slide",
+			"status": "live",
+			"name": "Greased Belly",
+			"rarity": 0,
+			"direction": "Showmanship",
+			"max": 3,
+			"fx": {
+				"cd:slide": 10.0
+			},
+			"text": "Pratfall Slide recharges {cd:slide}% faster.",
+			"icon": "slide"
+		},
+		{
+			"id": "d_wits",
+			"status": "live",
+			"name": "Quick Wits",
+			"rarity": 0,
+			"direction": "Showmanship",
+			"max": 3,
+			"fx": {
+				"ene": 3.0
+			},
+			"text": "+{ene} energy.",
+			"icon": "t_eye"
+		},
+		{
+			"id": "d_double",
+			"status": "live",
+			"name": "Understudy",
+			"rarity": 0,
+			"direction": "Showmanship",
+			"max": 3,
+			"fx": {
+				"cd:doppel": 10.0
+			},
+			"text": "Doppel-Doug recharges {cd:doppel}% faster.",
+			"icon": "doppel"
+		},
+		{
+			"id": "d_pins",
+			"status": "live",
+			"name": "Hot Pins",
+			"rarity": 0,
+			"direction": "Showmanship",
+			"max": 3,
+			"fx": {
+				"dmg:juggle": 12.0
+			},
+			"text": "Pin Juggle deals {dmg:juggle}% more damage.",
+			"icon": "juggle"
+		},
+		{
+			"id": "d_patter",
+			"status": "live",
+			"name": "Stage Patter",
+			"rarity": 1,
+			"direction": "Showmanship",
+			"max": 2,
+			"fx": {
+				"cost:juggle": 15.0
+			},
+			"text": "Pin Juggle costs {cost:juggle}% less mana.",
+			"icon": "juggle"
+		},
+		{
+			"id": "d_nimble",
+			"status": "live",
+			"name": "Light on His Feet",
+			"rarity": 1,
+			"direction": "Showmanship",
+			"max": 3,
+			"fx": {
+				"frw": 3.0
+			},
+			"text": "You move {frw}% faster.",
+			"icon": "t_boot"
+		},
+		{
+			"id": "d_encore",
+			"status": "live",
+			"name": "Encore",
+			"rarity": 2,
+			"direction": "Showmanship",
+			"max": 1,
+			"fx": {
+				"cd:slide": 20.0
+			},
+			"text": "Pratfall Slide recharges another {cd:slide}% faster.",
+			"icon": "doppel"
+		},
+		{
+			"id": "d_spring",
+			"status": "live",
+			"name": "New Springs",
+			"rarity": 0,
+			"direction": "Big Top",
+			"max": 3,
+			"fx": {
+				"cd:bounce": 10.0
+			},
+			"text": "Big Top Bounce recharges {cd:bounce}% faster.",
+			"icon": "bounce"
+		},
+		{
+			"id": "d_tough",
+			"status": "live",
+			"name": "Thick Skin",
+			"rarity": 0,
+			"direction": "Big Top",
+			"max": 3,
+			"fx": {
+				"vit": 3.0
+			},
+			"text": "+{vit} vitality.",
+			"icon": "t_heart"
+		},
+		{
+			"id": "d_flop",
+			"status": "live",
+			"name": "Belly Flop",
+			"rarity": 0,
+			"direction": "Big Top",
+			"max": 3,
+			"fx": {
+				"dmg:bounce": 12.0
+			},
+			"text": "Big Top Bounce deals {dmg:bounce}% more damage.",
+			"icon": "bounce"
+		},
+		{
+			"id": "d_horn",
+			"status": "live",
+			"name": "Loud Horn",
+			"rarity": 0,
+			"direction": "Big Top",
+			"max": 3,
+			"fx": {
+				"dmg:car": 12.0
+			},
+			"text": "Clown Car deals {dmg:car}% more damage.",
+			"icon": "car"
+		},
+		{
+			"id": "d_tune",
+			"status": "live",
+			"name": "Tuned Engine",
+			"rarity": 1,
+			"direction": "Big Top",
+			"max": 2,
+			"fx": {
+				"cd:car": 10.0
+			},
+			"text": "Clown Car recharges {cd:car}% faster.",
+			"icon": "car"
+		},
+		{
+			"id": "d_crowd",
+			"status": "live",
+			"name": "Crowd Pleaser",
+			"rarity": 1,
+			"direction": "Big Top",
+			"max": 3,
+			"fx": {
+				"str": 3.0
+			},
+			"text": "+{str} strength.",
+			"icon": "t_star"
+		},
+		{
+			"id": "d_finale",
+			"status": "live",
+			"name": "Grand Finale",
+			"rarity": 2,
+			"direction": "Big Top",
+			"max": 1,
+			"fx": {
+				"dmg": 6.0,
+				"cd:car": 15.0
+			},
+			"text": "All your damage +{dmg}% and Clown Car recharges {cd:car}% faster.",
+			"icon": "car"
+		},
+		{
+			"id": "u_up_barrage",
+			"status": "live",
+			"name": "Bakery Order",
+			"rarity": 1,
+			"run": true,
+			"direction": "Slapstick",
+			"max": 2,
+			"text": "Pie Barrage flings {barrage_more} more pies.",
+			"icon": "u_barrage",
+			"fx": {
+				"barrage_more": 3.0
+			}
+		},
+		{
+			"id": "u_up_cannon",
+			"status": "live",
+			"name": "Extra Gunpowder",
+			"rarity": 2,
+			"run": true,
+			"direction": "Big Top",
+			"max": 1,
+			"text": "Human Cannonball lands {cannon_r}% wider and {dmg:u_cannon}% harder.",
+			"icon": "u_cannon",
+			"fx": {
+				"cannon_r": 30.0,
+				"dmg:u_cannon": 20.0
+			}
+		},
+		{
+			"id": "u_encore",
+			"status": "live",
+			"name": "Standing Ovation",
+			"rarity": 2,
+			"run": true,
+			"direction": "Showmanship",
+			"max": 1,
+			"text": "A skill with a cooldown has a {chance}% chance to be ready again at once.",
+			"icon": "juggle",
+			"k": {
+				"chance": 35.0
+			},
+			"proc": "echo"
+		},
+		{
+			"id": "u_slapstick",
+			"status": "live",
+			"name": "Comic Timing",
+			"rarity": 2,
+			"run": true,
+			"direction": "Slapstick",
+			"max": 1,
+			"text": "Critical hits give +{ias}% attack speed for {secs} seconds.",
+			"icon": "pie",
+			"k": {
+				"ias": 30.0,
+				"secs": 3.0
+			},
+			"proc": "frenzy"
+		}
+	]
+}

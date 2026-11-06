@@ -17,12 +17,17 @@ const DRAIN_FORK := 5.5       # forks reach enemies this close to the main victi
 const DRAIN_MIN := 1.0        # a tap of Q still channels this long
 
 static func can_cast(h: Hero, id: String, aim: Vector3) -> bool:
+	if WarlockHex.has(id):
+		return WarlockHex.can_cast(h, id, aim)
 	if id == "drain" and drain_pick(h, aim) == null:
 		h.game.ui.message("No enemy in reach", Color(0.8, 0.8, 0.8))
 		return false
 	return true
 
 static func cast(h: Hero, id: String, aim: Vector3) -> void:
+	if WarlockHex.has(id):
+		WarlockHex.cast(h, id, aim)
+		return
 	match id:
 		"drain":
 			drain_start(h, drain_pick(h, aim))
@@ -38,6 +43,8 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 
 ## The impact frame of one of his skills (Hero then refreshes the stats); false when it isn't his.
 static func impact(h: Hero) -> bool:
+	if WarlockHex.impact(h):
+		return true
 	var fwd := h.aim_dir()
 	match h.atk_skill:
 		"blight":
@@ -46,7 +53,7 @@ static func impact(h: Hero) -> bool:
 			h.fx("blight", "bolt", {"d": dir, "x": h.talent("blight_twin") > 0.0})
 		"shackles":
 			var reach_s := 7.0 + h.talent("shackle_range")
-			var bind_t := 2.5 + h.talent("shackle_dur")
+			var bind_t := 2.5 + h.talent("shackle_dur") + h.talent("fear_dur")
 			var bound: Array = h.game.enemies_near(h.global_position, reach_s)
 			h.fx("shackles", "impact", {"r": reach_s, "x": bind_t, "t": bound})
 			for e in bound:
@@ -99,6 +106,8 @@ static func drain_victims(h: Hero) -> Array:
 	var near: Array = h.game.enemies_near(mp, DRAIN_FORK).filter(func(e): return e != main)
 	near.sort_custom(func(a, b): return a.global_position.distance_to(mp) < b.global_position.distance_to(mp))
 	var forks := (5 if h.covenant_t > 0.0 else 3) + int(h.talent("drain_fork"))
+	if WarlockHex.shield(h) > 0.0:
+		forks += int(h.talent("shield_fork"))      # Undying Hunger
 	return [main] + near.slice(0, forks)
 
 static func drain_start(h: Hero, foe) -> void:
@@ -168,15 +177,20 @@ static func update_drain(h: Hero, delta: float) -> void:
 		# the main victim is dragged a little toward the Warlock
 		var dealt: float = e.take_damage(dmg * (1.0 if i == 0 else 0.6), 0.0, h.global_position, -0.25 if i == 0 else 0.0, false)
 		e.dmg_tint = Color(0, 0, 0, 0)
-		heal += dealt * (0.3 if i == 0 else 0.15)
+		var part := dealt * (0.3 if i == 0 else 0.15)
+		if h.talent("drain_execute") > 0.0 and e.max_life > 0.0 and e.life < e.max_life * 0.3:
+			part *= 2.0      # Gorge
+		heal += part
 	h.fx("drain", "tick")
 	if h.covenant_t > 0.0:
 		heal *= 2.0
 	heal *= 1.0 + h.talent("drain_heal") / 100.0
+	if WarlockHex.shield(h) > 0.0 and h.talent("shield_fork") > 0.0:
+		heal *= 1.25      # Undying Hunger
 	# Soul Glut: what would heal past full life fills mana instead
 	if h.talent("drain_glut") > 0.0 and h.life + heal > h.max_life:
 		h.mana = minf(h.max_mana, h.mana + (h.life + heal - h.max_life) * h.talent("drain_glut") / 100.0)
-	h.life = minf(h.max_life, h.life + heal)
+	WarlockHex.heal(h, heal)      # (past full life: the shield, when he has one to fill)
 	h.drain_heal += heal
 	h.drain_heal_t += 0.3
 	if h.drain_heal_t >= 0.9:
@@ -224,20 +238,25 @@ static func _update_blights(h: Hero, delta: float) -> void:
 static func update(h: Hero, delta: float) -> void:
 	h.covenant_t = maxf(0.0, h.covenant_t - delta)
 	_update_blights(h, delta)
+	WarlockHex.update(h, delta)
 
-static func rooted(_h: Hero) -> bool:
-	return false
+static func rooted(h: Hero) -> bool:
+	return WarlockHex.rooted(h)
 
 static func clear(h: Hero) -> void:
 	end_drain(h)
 	WarlockFx.clear(h)
 	h.blights.clear()
 	h.covenant_t = 0.0
+	WarlockHex.clear(h)
 
 static func died(h: Hero) -> void:
 	end_drain(h)
+	WarlockHex.died(h)
 
-static func sound(_h: Hero, skill: String, at: float) -> bool:
+static func sound(h: Hero, skill: String, at: float) -> bool:
+	if WarlockHex.sound(h, skill, at):
+		return true
 	if skill == "blight":
 		Sfx.play_synced("blight_cast", at, -2.0)
 		return true

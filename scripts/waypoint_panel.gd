@@ -405,7 +405,7 @@ func _fill_battlegrounds() -> void:
 	banner.modulate = Color(1, 1, 1)
 	banner_sub.text = "BATTLEGROUNDS   ·   PLAYER LOBBIES"
 	banner_title.text = str(first.get("name", "Battlegrounds"))
-	banner_note.text = "Raids where other heroes hunt too. What you carry down is at stake; your levels, talents and the camp's stash never are."
+	banner_note.text = "Raids where other heroes hunt too. What you carry down is at stake; your levels, rites and the camp's stash never are."
 	seal.visible = false
 	route_head.text = "THE DESCENT"
 	for c in route_box.get_children():
@@ -496,7 +496,7 @@ func _bg_card(b: Dictionary) -> Control:
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vb.add_child(l)
 	# the stakes, in plain words
-	var risk := ui._label("☠  Fall down there and every item you wear and carry, your belt and your gold stay on the crypt floor. Your levels, stats, talents and the camp's stash are safe.", 12, RISK, true)
+	var risk := ui._label("☠  Fall down there and every item you wear and carry, your belt and your gold stay on the crypt floor. Your levels, stats, rites and the camp's stash are safe.", 12, RISK, true)
 	risk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	risk.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(risk)

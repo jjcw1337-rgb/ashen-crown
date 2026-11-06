@@ -40,6 +40,8 @@ func run() -> void:
 	var solo: Array = catalog.combat(["knight"])
 	check(not solo.any(func(p): return str(p).contains("/plague/") or str(p).contains("/arrows/")), "Solo knight must not acquire other classes\' families")
 	check(catalog.combat(["archer"]).has(SpiritBeast.WOLF_GLB), "Archer summon must be declared")
+	for path in [Warlock.SPIRIT_GLB, WarlockHarrowFx.TOTEM_GLB, "res://scripts/warlock_spirit.gdshader"]:
+		check(catalog.combat(["warlock"]).has(path), "Warlock presentation dependency must be declared: " + path)
 	for path in catalog.combat():
 		check(not str(path).begins_with("res://assets/models/") or str(path).get_extension() in ["glb", "tscn", "tres"], "Model families must not duplicate imported texture roots: " + str(path))
 		check(ResourceLoader.exists(path), "Missing combat dependency: " + path)

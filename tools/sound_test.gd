@@ -110,7 +110,7 @@ func _run() -> void:
 	var heard: int = sfx.counts.get("grubb_mutter", 0)
 	boss.hoard.fx("intro")
 	await wait(0.1)
-	print("[S] fort: start %.0f m from Grubb, mutters %d, volume at 60 m %.1f dB / 18 m %.1f dB, stops when the fight starts %s" % [start_d, heard, vols[0], vols[1], not boss.hoard.voice.playing])
+	print("[S] fort: start %.0f m from Grubb, mutters %d, volume at 60 m %.1f dB / 18 m %.1f dB, stops when the fight starts %s" % [start_d, heard, vols[0], vols[1], boss.hoard.voice == null or not boss.hoard.voice.playing])
 	# Act I: the camp's song in the camp; soft trees in the breeze on the moor and at the fort, not the wind
 	var beds := {}
 	for zn in ["town", "wild", "lair"]:

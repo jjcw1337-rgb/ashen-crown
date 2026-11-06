@@ -33,7 +33,10 @@ func run():
   await client.action("ready",{"ready":true})
   await client.action("start")
   check(await until(func():return g.net.welcomed and not g.net.loading and not g._busy and g.cur_zone==("vigil" if mode=="waves" else "bg")),mode+" admission and destination")
-  check(g.char_id==character,mode+" uses selected hero")
+  if MpMode.RUNS and mode=="battlegrounds":
+   check(g.hero.cls==str(client.character).trim_prefix("run_") and g.hero.run!=null,mode+" plays the lobby's run class ("+g.hero.cls+")")
+  else:
+   check(g.char_id==character,mode+" uses selected hero")
   if mode=="waves":
    check(await until(func():return g.world.has_meta("vigil") and g.world.get_meta("vigil").state in ["count","wave","break"],30),"waves kindle automatically from lobby")
   else:

@@ -3,6 +3,60 @@
 An isometric action RPG in the spirit of Diablo II, built in Godot 4.3 (Forward+ renderer).
 Every model, texture, sound and piece of music is generated in code. There are no art files.
 
+## The game
+
+Ashen Crown is a dark-fantasy action roguelite. You build a hero over one run, then bring it into the
+fights that matter.
+
+1. **The Battlegrounds run (PvE roguelite).** Everyone drops into the same open map (the Verdant Reach)
+   at level 0 with only a basic attack. You grow by clearing **camps**: packs of monsters guarding a
+   sealed chest. When a camp falls, each player picks **1 of 3** prizes from the chest:
+   - **Skills**: active abilities. You have five slots (right mouse and Q E R F).
+   - **Rites**: passives and power-ups that stack (+damage, longer curses, cheaper spells...).
+
+   The camp sets the odds. Common camps mostly offer common picks; harder camps and bosses roll more
+   uncommon and rare ones. Chests also give **consumables**, which come in three kinds:
+   - **Items**: reusable on a cooldown, like a smoke bomb or a grappling hook.
+   - **One-shot consumables**: potions and flasks that stack on the belt.
+   - **Gems**: one-of-a-kind power-ups that bend a build, like relics.
+
+   Other players are in the same map, so the run is PvPvE. Reach an extraction portal to keep your hero.
+2. **Then take the hero further.** A hero who extracts is saved as a survivor and can be taken into the
+   **waves** (co-op against an endless horde) and into **PvP** (the Arena: 1v1, 2v2, 3v3).
+
+### Heroes: three directions each
+
+Every hero is designed around **three major directions** a run can take. They become the hero's three
+groups of skills and rites (in code, the three `Talents.TREES` per class). A run that keeps picking one
+direction becomes that kind of hero. The Warlock's three directions:
+
+- **Corruption**: stacking damage-over-time curses.
+- **Fear**: crowd control.
+- **Drain**: life drain that overflows into shields.
+
+A new hero needs its three directions before its skills.
+
+The Warlock is now a jungle void spirit: an evil spirit risen from the depths of an ancient jungle,
+wrapped in black thorned vines, a crown of fel-green flowers, her robe dissolving into mist. Her 17
+skills and 14 new rites span the three directions:
+
+- **Corruption** curses that stack and grow: Corruption, Unending Rot, Festering Hex, Leeching Curse,
+  Reckoning (its ticks copy all the others) and Malediction (stronger for every curse on the target).
+- **Fear**: Terrify, the Dread Totem, Void Wisp, and Eclipse Bloom (blink into a storm of void petals).
+  Feared foes take more from her spells.
+- **Drain**: Drain Life, Leech Bolt, Thornlash and Soul Feast. Healing past full life hardens into a
+  shield.
+
+### The Hero Codex
+
+Every hero's skills, rites and gems, the shared skills and rites, and the items and consumables are
+listed in one place: `data/codex/` (JSON). **The game loads them from there** (`scripts/codex.gd`), so
+the Codex is the game's data, not a copy of it. The Codex editor (`tools/codex/server.py`, see
+`tools/codex/README.md`) lists and edits it in the browser, and saving commits the change.
+
+Entries marked *in game* already work, and editing one changes the game. *Design* entries are ideas
+waiting for their code. A new rite made only of stats the game already reads goes live straight away.
+
 ## Play
 
 **In a browser (quick test build):** https://jjcw1337-rgb.github.io/ashen-crown/ is a lighter version: graphics up to Medium, no intro and no co-op. Downloads for the full game are at that same address: `AshenCrown-Windows.zip`, `AshenCrown-Linux.zip`, `AshenCrown-Mac.zip`.

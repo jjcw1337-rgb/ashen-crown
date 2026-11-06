@@ -38,7 +38,8 @@ const CLASS_POWER := {"knight": 1.6, "doug": 1.8, "demon": 0.9}
 const REDUCTION_CAP := 60.0
 
 ## Passives every class can take.
-const GENERIC := [
+## Laid over by the Hero Codex (data/codex/shared.json "rites") when this script loads.
+static var GENERIC: Array = [
 	{"id": "g_edge", "name": "Honed Edge", "rarity": 0, "max": 5, "icon": "t_sword", "fx": {"dmg": 6}, "text": "+{dmg}% damage."},
 	{"id": "g_hide", "name": "Thick Hide", "rarity": 0, "max": 5, "icon": "t_heart", "fx": {"life_pct": 8}, "text": "+{life_pct}% maximum life."},
 	{"id": "g_hands", "name": "Quick Hands", "rarity": 0, "max": 4, "icon": "t_haste", "fx": {"ias": 6}, "text": "+{ias}% attack speed."},
@@ -54,6 +55,9 @@ const GENERIC := [
 	{"id": "g_trance", "name": "Battle Trance", "rarity": 2, "max": 2, "icon": "t_fist", "fx": {"dmg": 15, "ias": 8}, "text": "+{dmg}% damage and +{ias}% attack speed."},
 	{"id": "g_colossus", "name": "Colossus", "rarity": 2, "max": 2, "icon": "t_heart", "fx": {"life_pct": 20, "vit": 5}, "text": "+{life_pct}% maximum life and +{vit} vitality."},
 ]
+
+static func _static_init() -> void:
+	Codex.apply_rites(GENERIC, Codex.shared().get("rites", []))
 
 var skills: Array = []
 var passives := {}
@@ -109,7 +113,7 @@ static func passive_pool(cls: String) -> Array:
 		var tree: Dictionary = trees[ti]
 		for t in tree["talents"]:
 			var p: Dictionary = t.duplicate(true)
-			p["rarity"] = [0, 0, 1, 2][clampi(int(t["row"]), 0, 3)]
+			p["rarity"] = clampi(int(t["rarity"]), 0, 2) if t.has("rarity") else [0, 0, 1, 2][clampi(int(t["row"]), 0, 3)]
 			p["tree"] = tree["name"]
 			p["theme"] = str(themes[ti]) if ti < themes.size() else ""
 			var fx := {}
@@ -120,6 +124,10 @@ static func passive_pool(cls: String) -> Array:
 			if icon == "block" or (icon != "attack" and Data.skill_def(icon).size() > 0):
 				p["needs"] = icon      # (block: the Block skill isn't a run skill, so those never come up)
 			out.append(p)
+	var known := {}
+	for p in out:
+		known[str(p["id"])] = true
+	out.append_array(Codex.extra_rites(cls, known))      # (live rites made of data alone, data/codex)
 	_class_cache[cls] = out
 	return out
 
@@ -195,6 +203,8 @@ static func skill_pool(cls: String) -> Array:
 ## A skill's rarity as a reward: the first ones common, the middle ones uncommon, the ultimates rare; the shared
 ## skills uncommon.
 static func skill_rarity(sk: Dictionary) -> int:
+	if sk.has("rarity"):      # (set by the Hero Codex)
+		return clampi(int(sk["rarity"]), 0, 2)
 	if str(sk.get("cls", "")) == "any":
 		return 1
 	var lvl := int(sk.get("lvl", 1))
@@ -242,13 +252,15 @@ func roll_offer(cls: String, tier: int, key: String, binds: Dictionary) -> Array
 	var pass_pool := {0: [], 1: [], 2: []}
 	for sk in skill_pool(cls):
 		if not skills.has(sk["id"]):
-			var c := {"kind": "skill", "id": str(sk["id"]), "rarity": skill_rarity(sk), "theme": str(RunTalents.SKILL_THEMES.get(str(sk["id"]), ""))}
+			var c := {"kind": "skill", "id": str(sk["id"]), "rarity": skill_rarity(sk), "theme": str(RunTalents.SKILL_THEMES.get(str(sk["id"]), str(sk.get("direction", "")).to_lower()))}
 			skill_pool_[c["rarity"]].append(c)
 	for p in passive_pool(cls):
 		var stacks := int(passives.get(p["id"], 0))
 		if stacks >= int(p["max"]):
 			continue
 		if p.has("needs") and not skills.has(p["needs"]):
+			continue
+		if p.has("needs_any") and not (p["needs_any"] as Array).any(func(x): return skills.has(x)):
 			continue
 		var pr := mini(2, int(p["rarity"]))
 		pass_pool[pr].append({"kind": "passive", "id": str(p["id"]), "rarity": pr, "theme": str(p.get("theme", ""))})

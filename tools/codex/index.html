@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hero Codex · Ashen Crown</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: dark;
+  --ink: #0e0d0c; --iron: #171513; --iron2: #1f1c19; --iron3: #2a2622; --line: #3a342d; --line2: #4d453b;
+  --text: #e9e2d3; --dim: #a89e8c; --faint: #776e60;
+  --bronze: #c9a063; --bronze2: #e3c08a; --ember: #d9622b;
+  --r0: #dbd6c7; --r1: #6bdb85; --r2: #7aadff; --r3: #ff9e2e;
+  --live: #6bdb85; --design: #e0a84a; --bad: #e0574a;
+  --serif: "IM Fell English SC", Georgia, serif; --sans: "Alegreya Sans", system-ui, sans-serif; --mono: "Spline Sans Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--ink); color: var(--text); font: 16px/1.45 var(--sans); }
+body { min-height: 100vh; background: radial-gradient(1200px 600px at 70% -10%, #2a1d12 0%, transparent 60%), var(--ink); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+.app { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; }
+header.top { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; padding: 12px 20px; border-bottom: 1px solid var(--line);
+  background: linear-gradient(#1c1915, #141210); position: sticky; top: 0; z-index: 20; }
+header.top h1 { margin: 0; font: 28px/1 var(--serif); color: var(--bronze2); letter-spacing: .5px; }
+header.top .sub { color: var(--faint); font-size: 13px; }
+header.top .spacer { flex: 1; }
+.git { font: 12px var(--mono); color: var(--dim); text-align: right; max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn { border: 1px solid var(--line2); background: var(--iron3); border-radius: 6px; padding: 7px 14px; color: var(--text); }
+.btn:hover { border-color: var(--bronze); }
+.btn.primary { background: linear-gradient(#7a5a2c, #5a3f1c); border-color: var(--bronze); color: #fff3df; font-weight: 700; }
+.btn.danger { border-color: #6b2b24; color: #f0a59c; }
+.btn.small { padding: 4px 10px; font-size: 14px; }
+nav.side { border-right: 1px solid var(--line); padding: 16px 10px; background: #12100e; position: sticky; top: 61px; height: calc(100vh - 61px); overflow: auto; }
+nav.side h4 { margin: 18px 10px 6px; font: 13px var(--serif); color: var(--faint); letter-spacing: 1px; }
+nav.side a { display: flex; justify-content: space-between; padding: 7px 10px; border-radius: 6px; color: var(--text); text-decoration: none; }
+nav.side a:hover { background: var(--iron2); }
+nav.side a.on { background: var(--iron3); color: var(--bronze2); box-shadow: inset 2px 0 var(--bronze); }
+nav.side a small { color: var(--faint); font: 12px var(--mono); }
+main { padding: 22px 28px 80px; min-width: 0; }
+.hero-head h2 { margin: 0; font: 40px/1.1 var(--serif); color: var(--bronze2); }
+.fantasy { color: var(--dim); max-width: 900px; margin: 8px 0 0; font-style: italic; }
+.editable { cursor: pointer; border-radius: 4px; }
+.editable:hover { outline: 1px dashed var(--line2); outline-offset: 3px; }
+.dirs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 12px; margin: 20px 0 8px; }
+.dir { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: linear-gradient(var(--iron2), var(--iron)); }
+.dir h3 { margin: 0 0 4px; font: 22px var(--serif); color: var(--bronze2); }
+.dir p { margin: 0; color: var(--dim); font-size: 14px; }
+.dir .count { font: 12px var(--mono); color: var(--faint); margin-top: 6px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 16px 0; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: #13110f; }
+.toolbar input[type=search] { flex: 1 1 220px; min-width: 0; background: var(--iron); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; }
+.chip { border: 1px solid var(--line); background: var(--iron); border-radius: 999px; padding: 4px 11px; font-size: 14px; color: var(--dim); }
+.chip.on { color: var(--text); border-color: var(--bronze); background: #2a2116; }
+.board { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(290px, 100%), 1fr)); gap: 16px; align-items: start; }
+.col { border: 1px solid var(--line); border-radius: 12px; background: #13110f; padding: 10px; }
+.col > h3 { margin: 4px 6px 10px; font: 22px var(--serif); color: var(--bronze2); display: flex; justify-content: space-between; align-items: baseline; }
+.col > h3 small { font: 12px var(--mono); color: var(--faint); }
+.group { margin: 10px 0 4px 6px; font: 12px var(--mono); color: var(--faint); letter-spacing: 1px; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; }
+.group button { font: 12px var(--sans); background: none; border: 1px dashed var(--line2); color: var(--dim); border-radius: 5px; padding: 1px 8px; text-transform: none; letter-spacing: 0; }
+.group button:hover { color: var(--bronze2); border-color: var(--bronze); }
+.card { position: relative; border: 1px solid var(--line); border-left: 4px solid var(--rc, var(--r0)); border-radius: 8px; padding: 9px 11px 9px 12px; margin: 7px 0;
+  background: linear-gradient(var(--iron2), var(--iron)); cursor: pointer; }
+.card:hover { border-color: var(--line2); border-left-color: var(--rc); transform: translateY(-1px); }
+.card.design { background: repeating-linear-gradient(135deg, #1d1915 0 10px, #1a1713 10px 20px); }
+.card .row1 { display: flex; gap: 8px; align-items: baseline; }
+.card .name { font-weight: 700; font-size: 17px; flex: 1; }
+.card .text { color: var(--dim); font-size: 14px; margin-top: 3px; overflow-wrap: anywhere; }
+.card .meta { overflow-wrap: anywhere; font: 11.5px var(--mono); color: var(--faint); margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.badge { font: 10.5px var(--mono); padding: 1px 6px; border-radius: 4px; border: 1px solid currentColor; text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; }
+.b-run { color: #ffb36b; } .b-live { color: var(--live); } .b-design { color: var(--design); } .b-skill { color: var(--bronze2); } .b-rite { color: #c99be8; } .b-gem { color: #e88f9b; } .b-item { color: #8fd3e8; } .b-consumable { color: #e8d38f; }
+.rar { font: 11px var(--mono); color: var(--rc); }
+.empty { color: var(--faint); font-size: 14px; padding: 6px; }
+section.block { margin-top: 28px; }
+section.block > h3 { font: 26px var(--serif); color: var(--bronze2); margin: 0 0 4px; }
+section.block > p { color: var(--dim); margin: 0 0 10px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); gap: 10px; }
+.card .ico { width: 34px; height: 34px; border-radius: 6px; border: 1px solid var(--line2); flex: none; align-self: center; }
+.gemdot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; background: var(--gc, #888); box-shadow: 0 0 8px var(--gc, #888); flex: none; align-self: center; }
+/* draft */
+.draft { margin-top: 18px; border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: linear-gradient(#1a140d, #13100c); }
+.draft h3 { margin: 0 0 8px; font: 22px var(--serif); color: var(--bronze2); }
+.draft .opts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; color: var(--dim); font-size: 14px; }
+.draft select { background: var(--iron); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+.picks { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.pick { border: 1px solid var(--rc); border-radius: 10px; padding: 14px; background: radial-gradient(400px 120px at 50% 0, color-mix(in srgb, var(--rc) 18%, transparent), transparent), var(--iron); text-align: center; }
+.pick .k { font: 11px var(--mono); color: var(--rc); letter-spacing: 1px; text-transform: uppercase; }
+.pick .n { font: 22px var(--serif); margin: 4px 0; }
+.pick .t { color: var(--dim); font-size: 14px; }
+/* editor */
+dialog { border: 1px solid var(--bronze); border-radius: 12px; background: #15120f; color: var(--text); width: min(720px, calc(100vw - 32px)); padding: 0; }
+dialog::backdrop { background: rgba(0,0,0,.65); }
+.ed-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.ed-head h3 { margin: 0; flex: 1; font: 24px var(--serif); color: var(--bronze2); }
+.ed-body { padding: 14px 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; max-height: 68vh; overflow: auto; }
+.ed-body label { display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--dim); }
+.ed-body label.wide { grid-column: 1 / -1; }
+.ed-body input, .ed-body select, .ed-body textarea { background: var(--iron); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; font-size: 15px; }
+.ed-body textarea { min-height: 84px; resize: vertical; }
+.ed-body .note { grid-column: 1 / -1; font-size: 13px; color: var(--faint); border-left: 2px solid var(--line2); padding-left: 10px; }
+.fxrows { display: flex; flex-direction: column; gap: 6px; }
+.fxrow { display: flex; gap: 6px; } .fxrow input:first-child { flex: 2; } .fxrow input:nth-child(2) { flex: 1; min-width: 0; }
+.ed-foot { display: flex; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--line); }
+.ed-foot .spacer { flex: 1; }
+.preview { grid-column: 1 / -1; font-size: 14px; color: var(--text); background: var(--iron); border-radius: 6px; padding: 8px 10px; border: 1px solid var(--line); }
+.toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #201b15; border: 1px solid var(--bronze); padding: 10px 16px; border-radius: 8px; z-index: 50; max-width: calc(100vw - 32px); box-shadow: 0 8px 30px #000a; }
+.toast.err { border-color: var(--bad); color: #ffc9c2; }
+.help { color: var(--dim); font-size: 14px; max-width: 900px; }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; max-width: 980px; margin: 18px 0; }
+.step { background: var(--iron2); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+.step b { display: block; color: var(--bronze2); font: 20px var(--serif); margin-bottom: 6px; }
+.step b span { color: var(--faint); font: 13px var(--mono); margin-right: 8px; }
+.step p { margin: 0; color: var(--dim); font-size: 14px; line-height: 1.45; }
+.now { max-width: 980px; padding: 10px 14px; border-left: 3px solid var(--bronze); background: var(--iron2); color: var(--text); font-size: 14px; }
+.now.warn { border-color: var(--bad); }
+.help code { font: 13px var(--mono); color: var(--bronze2); }
+@media (max-width: 820px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  header.top .sub { display: none; }
+  nav.side { max-width: 100vw; }
+  nav.side { position: static; height: auto; display: flex; overflow-x: auto; gap: 4px; padding: 8px 12px; border-right: 0; border-bottom: 1px solid var(--line); }
+  nav.side h4 { display: none; }
+  nav.side a { white-space: nowrap; }
+  nav.side a small { display: none; }
+  main { padding: 16px 16px 60px; }
+  header.top { flex-wrap: wrap; padding: 10px 16px; }
+  .git { display: none; }
+  .ed-body { grid-template-columns: 1fr; }
+  .hero-head h2 { font-size: 32px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>Hero Codex</h1><span class="sub">Ashen Crown · every hero's skills, rites, gems and items: the game reads these files</span>
+    <span class="spacer"></span>
+    <span class="git" id="git"></span>
+    <button class="btn primary" id="publish" title="Push the saved changes for a preview build">Publish preview</button>
+  </header>
+  <nav class="side" id="nav"></nav>
+  <main id="main"><p class="empty">Loading the codex…</p></main>
+</div>
+<dialog id="ed"></dialog>
+<script>
+"use strict";
+const RAR = ["Common", "Uncommon", "Rare", "Legendary"], RC = ["var(--r0)", "var(--r1)", "var(--r2)", "var(--r3)"];
+const ODDS = {1: [70, 25, 5], 2: [50, 38, 12], 3: [32, 43, 25], 4: [12, 45, 43]};   // RunBuild.ODDS
+const TIER = {1: "Camp I", 2: "Camp II", 3: "Camp III", 4: "Boss"};
+let B = null, view = location.hash.slice(1) || "start";
+const filt = { q: "", rar: new Set(), status: "all", kind: "all" };
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const num = (v) => (Math.round(v * 10) / 10).toString();
+
+function toast(msg, err) {
+  const t = document.createElement("div"); t.className = "toast" + (err ? " err" : ""); t.textContent = msg;
+  document.body.append(t); setTimeout(() => t.remove(), err ? 7000 : 2800);
+}
+async function load() {
+  const r = await fetch("/api/codex", { cache: "no-store" });
+  if (!r.ok) { $("#main").innerHTML = `<p class="empty">Could not load the codex (${r.status}).</p>`; return; }
+  B = await r.json(); render();
+}
+function fileOf(v) { const [k, id] = v.split(":"); return k === "hero" ? `heroes/${id}.json` : `${k}.json`; }
+function docOf(rel) {
+  if (rel.startsWith("heroes/")) return B.heroes[rel.slice(7, -5)];
+  return { "shared.json": B.shared, "gems.json": B.gems, "consumables.json": B.consumables }[rel];
+}
+async function save(rel, doc) {
+  const r = await fetch("/api/file/" + rel, { method: "PUT", headers: { "Content-Type": "application/json", "X-Codex-Who": who() }, body: JSON.stringify({ doc, base: B.hashes[rel] }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { toast(j.error || `Save failed (${r.status})`, true); return false; }
+  B.hashes[rel] = j.hash; B.git = j.git;
+  if (rel.startsWith("heroes/")) B.heroes[rel.slice(7, -5)] = doc;
+  else ({ "shared.json": () => B.shared = doc, "gems.json": () => B.gems = doc, "consumables.json": () => B.consumables = doc })[rel]();
+  toast("Saved and committed."); render(); return true;
+}
+
+// ---------------------------------------------------------------- text helpers
+function riteText(e, stacks = 1) {
+  let s = e.text || "";
+  for (const k in (e.fx || {})) s = s.split("{" + k + "}").join(num(e.fx[k] * stacks));
+  // a run talent's numbers (RunTalents "k"): the ones in "per" grow with the stacks
+  for (const k in (e.k || {})) s = s.split("{" + k + "}").join(num(e.k[k] * ((e.per || []).includes(k) ? stacks : 1)));
+  return s;
+}
+function body(e, type) { return type === "rite" ? riteText(e) : (e.desc || e.text || ""); }
+function metaOf(e, type) {
+  const m = [];
+  if (type === "skill") {
+    if (e.mana != null) m.push(`${e.mana} mana`);
+    if (e.cd) m.push(`${num(e.cd)} s cd`); else if (e.use) m.push(`${num(e.use)} s use`);
+    if (e.range) m.push(`${num(e.range)} m`);
+    if (e.tags) m.push(e.tags.join(" · "));
+  } else if (type === "rite") {
+    m.push(`max ${e.max || 1}`);
+    if (e.max > 1) m.push("at max: " + riteText(e, e.max).replace(/\.$/, ""));
+  } else if (type === "item") m.push(`${e.cd} s cooldown · reusable`);
+  else if (type === "consumable") m.push("used up · stacks on the belt");
+  if (e.status === "design" && e.needs) m.push("needs: " + e.needs);
+  return m;
+}
+function match(e, type) {
+  if (filt.status !== "all" && (e.status || "live") !== filt.status) return false;
+  if (filt.rar.size && !filt.rar.has(+e.rarity || 0)) return false;
+  if (filt.kind !== "all" && filt.kind !== type) return false;
+  if (filt.q) { const q = filt.q.toLowerCase(); return (e.name + " " + body(e, type) + " " + e.id).toLowerCase().includes(q); }
+  return true;
+}
+function card(e, type, rel, list) {
+  const st = e.status || "live", r = +e.rarity || 0;
+  const dot = type === "gem" ? `<span class="gemdot" style="--gc:${esc(e.color || "#888")}"></span>`
+    : (type === "skill" || type === "rite") ? `<img class="ico" alt="" loading="lazy" src="/icon/${type === "skill" ? "skills" : "talents"}/${esc(e.id)}.png" onerror="this.remove()">` : "";
+  return `<div class="card ${st}" style="--rc:${RC[r]}" data-rel="${esc(rel)}" data-list="${list}" data-id="${esc(e.id)}" data-type="${type}">
+    <div class="row1">${dot}<span class="name">${esc(e.name)}</span><span class="rar">${RAR[r]}</span></div>
+    <div class="row1" style="gap:5px;margin-top:3px"><span class="badge b-${type}">${type}</span><span class="badge b-${st}">${st === "live" ? "in game" : "design"}</span>${e.run ? '<span class="badge b-run">run</span>' : ""}</div>
+    <div class="text">${esc(body(e, type))}</div>
+    <div class="meta">${metaOf(e, type).map((x) => `<span>${esc(x)}</span>`).join("")}</div></div>`;
+}
+const byRar = (a, b) => (+a.rarity || 0) - (+b.rarity || 0) || (a.status === "design") - (b.status === "design");
+
+// ---------------------------------------------------------------- views
+function nav() {
+  const hs = Object.values(B.heroes).sort((a, b) => a.name.localeCompare(b.name));
+  const n = (h) => (h.skills || []).length + (h.rites || []).length;
+  $("#nav").innerHTML = `<a href="#start" class="${view === "start" || view === "about" ? "on" : ""}">How Codex Works</a><h4>HEROES</h4>` +
+    hs.map((h) => `<a href="#hero:${h.cls}" class="${view === "hero:" + h.cls ? "on" : ""}">${esc(h.name)}<small>${n(h)}</small></a>`).join("") +
+    `<h4>FOR EVERY HERO</h4>
+     <a href="#shared" class="${view === "shared" ? "on" : ""}">Shared skills &amp; rites<small>${B.shared.skills.length + B.shared.rites.length}</small></a>
+     <a href="#gems" class="${view === "gems" ? "on" : ""}">Gems (relics)<small>${B.gems.entries.length}</small></a>
+     <a href="#consumables" class="${view === "consumables" ? "on" : ""}">Items &amp; consumables<small>${B.consumables.entries.length}</small></a>`;
+  const g = B.git || {};
+  const waiting = g.unpushed && g.unpushed !== "0" && g.unpushed !== "?" ? +g.unpushed : 0;
+  $("#git").innerHTML = g.sync_error ? `<span style="color:#e87">Stuck: see How Codex Works</span>`
+    : waiting ? `${waiting} saved change${waiting === 1 ? "" : "s"} not in the game yet` : (g.live ? "Everything saved is in the game" : "Nothing waiting");
+  $("#git").title = `${g.branch} · ${g.commit}`;
+  $("#publish").textContent = pubLabel();
+  $("#publish").title = g.live ? "Run the codex test, then push the saved changes into the game (" + g.live + ")" : "Push the saved changes for a preview build";
+}
+function toolbar(kinds = true) {
+  return `<div class="toolbar">
+    <input type="search" id="q" placeholder="Search names and text…" value="${esc(filt.q)}">
+    ${RAR.map((r, i) => `<button class="chip ${filt.rar.has(i) ? "on" : ""}" data-rar="${i}" style="${filt.rar.has(i) ? "border-color:" + RC[i] : ""}">${r}</button>`).join("")}
+    <span style="width:8px"></span>
+    ${["all", "live", "design"].map((s) => `<button class="chip ${filt.status === s ? "on" : ""}" data-status="${s}">${{ all: "All", live: "In game", design: "Design" }[s]}</button>`).join("")}
+    ${kinds ? `<span style="width:8px"></span>` : ""}
+    ${!kinds ? "" : ["all", "skill", "rite", "gem"].map((s) => `<button class="chip ${filt.kind === s ? "on" : ""}" data-kind="${s}">${{ all: "Everything", skill: "Skills", rite: "Rites", gem: "Gems" }[s]}</button>`).join("")}
+  </div>`;
+}
+function heroView(cls) {
+  const h = B.heroes[cls], rel = `heroes/${cls}.json`;
+  if (!h) return `<p class="empty">No hero ${esc(cls)}.</p>`;
+  const dirs = (h.directions || []).map((d) => d.id);
+  const cols = [...dirs];
+  const loose = (l) => (h[l] || []).some((e) => !dirs.includes(e.direction || ""));
+  if (["skills", "rites", "gems"].some(loose)) cols.push("");
+  const count = (d, l) => (h[l] || []).filter((e) => (e.direction || "") === d).length;
+  let html = `<div class="hero-head"><h2>${esc(h.name)}</h2>
+    <p class="fantasy editable" data-edit="fantasy" title="Click to edit">${esc(h.fantasy || "Add the hero's fantasy…")}</p></div>
+    <div class="dirs">${(h.directions || []).map((d, i) => `<div class="dir editable" data-edit="dir" data-i="${i}" title="Click to edit">
+      <h3>${esc(d.name)}</h3><p>${esc(d.desc)}</p><div class="count">${count(d.id, "skills")} skills · ${count(d.id, "rites")} rites · ${count(d.id, "gems")} gems</div></div>`).join("")}</div>`;
+  html += toolbar() + `<div class="board">`;
+  for (const d of cols) {
+    const dn = d === "" ? "Core" : (h.directions.find((x) => x.id === d) || {}).name || d;
+    html += `<div class="col"><h3>${esc(dn)}<small>${d === "" ? "no direction" : "direction"}</small></h3>`;
+    for (const [l, type, label] of [["skills", "skill", "Skills"], ["rites", "rite", "Rites"], ["gems", "gem", "Gems"]]) {
+      const items = (h[l] || []).filter((e) => (e.direction || "") === d && match(e, type)).sort(byRar);
+      if (filt.kind !== "all" && filt.kind !== type) continue;
+      html += `<div class="group">${label}<button data-new="${l}" data-dir="${esc(d)}" data-rel="${rel}">+ new</button></div>`;
+      html += items.length ? items.map((e) => card(e, type, rel, l)).join("") : `<div class="empty">None${filt.q || filt.rar.size || filt.status !== "all" ? " match" : " yet"}.</div>`;
+    }
+    html += `</div>`;
+  }
+  html += `</div>` + draftBox(cls);
+  return html;
+}
+function listView(title, intro, rel, groups) {
+  let html = `<div class="hero-head"><h2>${title}</h2><p class="fantasy">${intro}</p></div>` + toolbar(false);
+  const doc = docOf(rel);
+  for (const [l, type, label, pred, help] of groups) {
+    const items = (doc[l] || []).filter((e) => (!pred || pred(e)) && match(e, type)).sort(byRar);
+    html += `<section class="block"><h3>${label}</h3><p>${help}</p>
+      <div class="group" style="margin-left:0">${items.length} shown<button data-new="${l}" data-dir="" data-rel="${rel}" data-kind="${type}">+ new</button></div>
+      <div class="grid">${items.map((e) => card(e, type, rel, l)).join("") || `<div class="empty">None.</div>`}</div></section>`;
+  }
+  return html;
+}
+function gemsView() {
+  let html = listView("Gems", "Gems are the run's relics: unique power-ups. One of each per run; bosses and deep chests offer a pick of 1 of 3. They're all design for now: the run doesn't hand out gems yet.",
+    "gems.json", [["entries", "gem", "Every hero", null, "Any hero can find these."]]);
+  for (const h of Object.values(B.heroes)) {
+    const g = (h.gems || []).filter((e) => match(e, "gem"));
+    if (g.length) html += `<section class="block"><h3>${esc(h.name)}'s own</h3><p>Only the ${esc(h.name)} finds these. Edit them on <a href="#hero:${h.cls}" style="color:var(--bronze2)">the hero's page</a>.</p>
+      <div class="grid">${g.map((e) => card(e, "gem", `heroes/${h.cls}.json`, "gems")).join("")}</div></section>`;
+  }
+  return html;
+}
+function startView() {
+  const g = B.git || {}, live = !!g.live, waiting = g.unpushed && g.unpushed !== "0" ? +g.unpushed : 0;
+  const step = (n, t, p) => `<div class="step"><b><span>${n}</span>${t}</b><p>${p}</p></div>`;
+  return `<div class="hero-head"><h2>How Codex Works</h2></div>
+  <p class="help" style="font-size:16px;color:var(--text)">This is the game's list of every hero's skills and powers. The game reads it. Change it here and the game changes.</p>
+  <div class="steps">
+    ${step(1, "Change it", "Click a skill or rite. Change it. Press Save.")}
+    ${step(2, "Publish", live ? "Press <b style='display:inline;font:inherit;color:var(--text)'>Publish to the game</b> (top right)." : "Press <b style='display:inline;font:inherit;color:var(--text)'>Publish preview</b> (top right).")}
+    ${step(3, "Play it", live ? "About 15 minutes later it's in the staging game on Steam." : "About 10 minutes later the preview build is ready.")}
+  </div>
+  <div class="now${g.sync_error ? " warn" : ""}">${g.sync_error ? "Stuck: " + esc(g.sync_error)
+    : waiting ? `${waiting} saved change${waiting === 1 ? "" : "s"} not in the game yet. Press Publish.` : "Everything you saved is in the game."}</div>
+  <p class="help" style="margin-top:14px"><b style="color:var(--live)">In game</b> = works now. <b style="color:var(--design)">Design</b> = an idea, not in the game yet.<br>
+  Saving alone doesn't change the game. Only Publish does. If Publish stops, it says why: ask Claude-2.</p>
+  <details class="help" style="margin-top:22px"><summary style="cursor:pointer;color:var(--faint)">More detail (for designers)</summary>
+  <p><b>Rarity</b>: what a camp chest offers it as (pick 1 of 3). Camp I 70/25/5 common/uncommon/rare, Camp II 50/38/12, Camp III 32/43/25, a boss 12/45/43.</p>
+  <p>A new <b>rite</b> can go live from here when all its effects are stats the game already reads: <code>${esc((B.fx_keys.any || []).join(", "))}</code>, the Warlock's <code>${esc((B.fx_keys.warlock || []).join(", "))}</code>, and <code>dmg:&lt;skill&gt;</code>, <code>cd:&lt;skill&gt;</code>, <code>cost:&lt;skill&gt;</code>. Put <code>{key}</code> in its text to show the number.</p>
+  <p>Agents still tune numbers in code: a change made only in code wins, a change made only here wins, and the editor keeps itself up to date with the game.</p></details>`;
+}
+function aboutView() { return startView(); }
+function draftBox(cls) {
+  return `<div class="draft"><h3>Camp chest: pick 1 of 3</h3>
+    <div class="opts">Tier <select id="tier">${[1, 2, 3, 4].map((t) => `<option value="${t}" ${t === draftTier ? "selected" : ""}>${TIER[t]}</option>`).join("")}</select>
+    <label><input type="checkbox" id="withdesign" ${draftDesign ? "checked" : ""}> include design entries</label>
+    <button class="btn small" id="draw">Draw again</button></div>
+    <div class="picks" id="picks">${drawPicks(cls)}</div></div>`;
+}
+let draftTier = 2, draftDesign = true;
+function drawPicks(cls) {
+  const h = B.heroes[cls], pool = [];
+  const add = (l, type) => (l || []).forEach((e) => { if (draftDesign || (e.status || "live") === "live") pool.push([e, type]); });
+  add(h.skills, "skill"); add(h.rites, "rite"); add(B.shared.skills, "skill"); add(B.shared.rites, "rite");
+  const out = [], odds = ODDS[draftTier];
+  for (let i = 0; i < 3; i++) {
+    let x = Math.random() * 100, r = 0;
+    for (; r < 3; r++) { x -= odds[r]; if (x <= 0) break; }
+    r = Math.min(r, 2);
+    for (const d of [0, -1, 1, -2, 2]) {
+      const left = pool.filter(([e]) => (+e.rarity || 0) === r + d && !out.includes(e));
+      if (left.length) { out.push(left[Math.floor(Math.random() * left.length)][0]); break; }
+    }
+  }
+  return out.map((e) => { const type = h.skills.includes(e) || B.shared.skills.includes(e) ? "skill" : "rite"; const r = +e.rarity || 0;
+    return `<div class="pick" style="--rc:${RC[r]}"><div class="k">${RAR[r]} ${type}${e.status === "design" ? " · design" : ""}</div><div class="n">${esc(e.name)}</div><div class="t">${esc(body(e, type))}</div></div>`; }).join("");
+}
+function render() {
+  if (!B) return;
+  nav();
+  const [k, id] = view.split(":");
+  $("#main").innerHTML = k === "hero" ? heroView(id)
+    : k === "shared" ? listView("Shared", "Skills any hero can learn, and the rites every hero can be offered.", "shared.json",
+        [["skills", "skill", "Shared skills", null, "Active skills every class can earn."], ["rites", "rite", "Generic rites", null, "Passives in every hero's pool."]])
+    : k === "gems" ? gemsView()
+    : k === "consumables" ? listView("Items & consumables", "What goes on the belt: items are reusable on a cooldown, consumables are used up and stack (four belt slots, five to a stack).", "consumables.json",
+        [["entries", "item", "Items (reusable)", (e) => e.kind === "item", "Each has a cooldown; keep it for the whole run."],
+         ["entries", "consumable", "Consumables (one-shot)", (e) => e.kind !== "item", "Used up when drunk or thrown; they stack on the belt."]])
+    : k === "start" ? startView()
+    : aboutView();
+  wire();
+}
+function wire() {
+  const q = $("#q");
+  if (q) q.oninput = () => { filt.q = q.value; const p = q.selectionStart; render(); const n = $("#q"); n.focus(); n.setSelectionRange(p, p); };
+  document.querySelectorAll("[data-rar]").forEach((b) => b.onclick = () => { const i = +b.dataset.rar; filt.rar.has(i) ? filt.rar.delete(i) : filt.rar.add(i); render(); });
+  document.querySelectorAll("[data-status]").forEach((b) => b.onclick = () => { filt.status = b.dataset.status; render(); });
+  document.querySelectorAll("[data-kind]:not([data-new])").forEach((b) => b.onclick = () => { filt.kind = b.dataset.kind; render(); });
+  document.querySelectorAll(".card").forEach((c) => c.onclick = () => openEntry(c.dataset.rel, c.dataset.list, c.dataset.id, c.dataset.type));
+  document.querySelectorAll("[data-new]").forEach((b) => b.onclick = (ev) => { ev.stopPropagation(); newEntry(b.dataset.rel, b.dataset.new, b.dataset.dir, b.dataset.kind); });
+  document.querySelectorAll("[data-edit]").forEach((el) => el.onclick = () => editHeroText(el.dataset.edit, +el.dataset.i));
+  const t = $("#tier"), w = $("#withdesign"), d = $("#draw"), cls = view.split(":")[1];
+  if (t) { t.onchange = () => { draftTier = +t.value; $("#picks").innerHTML = drawPicks(cls); };
+    w.onchange = () => { draftDesign = w.checked; $("#picks").innerHTML = drawPicks(cls); };
+    d.onclick = () => { $("#picks").innerHTML = drawPicks(cls); }; }
+}
+
+// ---------------------------------------------------------------- editor
+const TYPE_OF = { skills: "skill", rites: "rite", gems: "gem" };
+function openEntry(rel, list, id, type) {
+  const doc = docOf(rel), e = doc[list].find((x) => x.id === id);
+  if (e) editor(rel, list, structuredClone(e), type, false);
+}
+function newEntry(rel, list, dir, kind) {
+  const type = kind || TYPE_OF[list] || "consumable";
+  const prefix = rel.startsWith("heroes/") ? rel.slice(7, 9) + "_" : "";
+  const e = { id: prefix + "new_" + Math.random().toString(36).slice(2, 6), status: "design", name: "", rarity: 0, direction: dir || "" };
+  if (type === "skill") Object.assign(e, { desc: "", mana: 10, cd: 0, tags: [], needs: "" });
+  if (type === "rite") Object.assign(e, { max: 3, fx: {}, text: "", icon: "", needs: "" });
+  if (type === "gem") Object.assign(e, { color: "#c9a063", text: "" });
+  if (type === "item") Object.assign(e, { kind: "item", cd: 15, text: "" });
+  if (type === "consumable") Object.assign(e, { kind: "consumable", text: "" });
+  editor(rel, list, e, type, true);
+}
+function field(label, key, val, kind = "text", opts = {}) {
+  const wide = opts.wide ? " wide" : "", dis = opts.disabled ? " disabled" : "";
+  if (kind === "select") return `<label class="${wide}">${label}<select data-k="${key}"${dis}>${opts.options.map(([v, t]) => `<option value="${esc(v)}" ${String(v) === String(val) ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></label>`;
+  if (kind === "area") return `<label class="wide">${label}<textarea data-k="${key}"${dis}>${esc(val)}</textarea></label>`;
+  return `<label class="${wide}">${label}<input data-k="${key}" type="${kind}" value="${esc(val ?? "")}" ${kind === "number" ? 'step="any" min="0"' : ""}${dis}></label>`;
+}
+function editor(rel, list, e, type, isNew) {
+  const doc = docOf(rel), hero = rel.startsWith("heroes/") ? doc : null;
+  const wasLive = !isNew && (e.status || "live") === "live";
+  const dirOpts = [["", "Core / none"], ...((hero && hero.directions) || []).map((d) => [d.id, d.name])];
+  let f = field("Name", "name", e.name) + field("Rarity", "rarity", e.rarity || 0, "select", { options: RAR.map((r, i) => [i, r]).filter(([i]) => i < 3 || type === "gem") });
+  if (hero) f += field("Direction", "direction", e.direction || "", "select", { options: dirOpts });
+  const statusLocked = type === "skill" && wasLive;
+  f += field("Status", "status", e.status || "live", "select", { options: [["live", "In game"], ["design", "Design"]], disabled: statusLocked });
+  if (type === "skill") {
+    f += field("Mana", "mana", e.mana, "number") + field("Cooldown (s, 0 = none)", "cd", e.cd, "number") +
+      field("Use time (s)", "use", e.use, "number") + field("Power (damage ×)", "power", e.power, "number") +
+      field("Range (m)", "range", e.range, "number") + field("Role", "role", e.role || "") +
+      field("Tags (comma separated)", "tags", (e.tags || []).join(", "), "text", { wide: true }) + field("Description", "desc", e.desc || "", "area");
+  } else if (type === "rite") {
+    f += field("Max stacks", "max", e.max || 1, "number") +
+      `<label class="wide">Effects per stack (key and number). <span style="color:var(--faint)">Use <code>{key}</code> in the text to show the number.</span>
+       <div class="fxrows" id="fxrows">${Object.entries(e.fx || {}).map(([k, v]) => fxRow(k, v)).join("")}</div>
+       <button class="btn small" type="button" id="addfx" style="align-self:flex-start;margin-top:4px">+ effect</button>
+       <datalist id="fxkeys">${fxKeys(hero).map((k) => `<option value="${k}">`).join("")}</datalist></label>` +
+      (e.k && Object.keys(e.k).length ? `<label class="wide">Run numbers (its <code>{key}</code>s; ${(e.per || []).length ? "these grow with each stack: " + esc(e.per.join(", ")) : "the same at every stack"}). <span style="color:var(--faint)">The keys are what its code reads, so only the values change here.</span>
+       <div class="fxrows" id="krows">${Object.entries(e.k).map(([k, v]) => kRow(k, v)).join("")}</div></label>` : "") +
+      field("Text", "text", e.text || "", "area") + `<div class="preview" id="pv"></div>`;
+  } else if (type === "gem") {
+    f += field("Colour", "color", e.color || "#c9a063", "color") + field("Text", "text", e.text || "", "area");
+  } else {
+    f += field("Kind", "kind", e.kind || "consumable", "select", { options: [["item", "Item (reusable)"], ["consumable", "Consumable (one-shot)"]] }) +
+      (e.kind === "item" ? field("Cooldown (s)", "cd", e.cd, "number") : "") + field("Text", "text", e.text || "", "area");
+  }
+  if ((e.status || "live") === "design" || type !== "skill") f += field("Needs (what the code must do)", "needs", e.needs || "", "text", { wide: true });
+  f += `<div class="note">${wasLive ? "In the game now: saving changes the game." : "Design: kept in the Codex; the game ignores it until its code exists" + (type === "rite" ? ", unless every effect is a stat the game already reads, then it can go live now." : ".")} · id <code>${esc(e.id)}</code></div>`;
+  const dlg = $("#ed");
+  dlg.innerHTML = `<div class="ed-head"><h3>${isNew ? "New " + type : esc(e.name)}</h3><span class="badge b-${type}">${type}</span></div>
+    <div class="ed-body">${isNew ? field("Id (a-z, 0-9, _)", "id", e.id, "text", { wide: true }) : ""}${f}</div>
+    <div class="ed-foot">${!isNew && !wasLive ? `<button class="btn danger" id="del">Delete</button>` : ""}<span class="spacer"></span>
+    <button class="btn" id="cancel">Cancel</button><button class="btn primary" id="ok">Save</button></div>`;
+  dlg.showModal();
+  const pv = () => { const p = $("#pv"); if (p) { const x = collect(e, type); p.textContent = "Shows as: " + riteText(x) + (x.max > 1 ? `   (at ${x.max} stacks: ${riteText(x, x.max)})` : ""); } };
+  dlg.querySelectorAll("input, textarea, select").forEach((i) => i.addEventListener("input", pv));
+  const add = $("#addfx"); if (add) add.onclick = () => { $("#fxrows").insertAdjacentHTML("beforeend", fxRow("", "")); dlg.querySelectorAll("#fxrows input").forEach((i) => i.oninput = pv); };
+  dlg.onclick = (ev) => { if (ev.target.matches(".fxdel")) { ev.target.parentElement.remove(); pv(); } };
+  pv();
+  $("#cancel").onclick = () => dlg.close();
+  const del = $("#del");
+  if (del) del.onclick = async () => {
+    if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "Click again to delete"; return; }
+    const d = structuredClone(doc); d[list] = d[list].filter((x) => x.id !== e.id);
+    if (await save(rel, d)) dlg.close();
+  };
+  $("#ok").onclick = async () => {
+    const x = collect(e, type);
+    if (!x.name.trim()) return toast("Give it a name.", true);
+    const d = structuredClone(doc); d[list] = d[list] || [];
+    if (isNew) { if (d[list].some((y) => y.id === x.id)) return toast("That id is taken.", true); d[list].push(x); }
+    else d[list] = d[list].map((y) => (y.id === e.id ? x : y));
+    if (await save(rel, d)) dlg.close();
+  };
+}
+function fxKeys(hero) { return [...(B.fx_keys.any || []), ...((hero && B.fx_keys[hero.cls]) || [])]; }
+function kRow(k, v) {
+  return `<div class="fxrow" data-key="${esc(k)}"><input value="${esc(k)}" disabled><input ${typeof v === "number" ? 'type="number" step="any"' : 'type="text"'} value="${esc(v)}"></div>`;
+}
+function fxRow(k, v) {
+  return `<div class="fxrow"><input list="fxkeys" placeholder="key, e.g. dmg or dmg:drain" value="${esc(k)}"><input type="number" step="any" placeholder="per stack" value="${esc(v)}"><button class="btn small fxdel" type="button">✕</button></div>`;
+}
+function collect(e, type) {
+  const x = structuredClone(e), dlg = $("#ed");
+  dlg.querySelectorAll("[data-k]").forEach((i) => {
+    const k = i.dataset.k; let v = i.value;
+    if (i.disabled) return;
+    if (["rarity"].includes(k)) v = +v;
+    else if (["mana", "cd", "use", "power", "range", "max"].includes(k)) { if (v === "") { delete x[k]; return; } v = +v; if (k === "max" || k === "mana") v = Math.round(v); }
+    else if (k === "tags") v = v.split(",").map((s) => s.trim()).filter(Boolean);
+    x[k] = v;
+  });
+  if (type === "rite") {
+    const fx = {};
+    dlg.querySelectorAll("#fxrows .fxrow").forEach((r) => { const [a, b] = r.querySelectorAll("input"); if (a.value.trim() && b.value !== "") fx[a.value.trim()] = +b.value; });
+    if (Object.keys(fx).length || e.fx) x.fx = fx; else delete x.fx;      // (a run rite works by its proc: no effects list)
+    if (e.k) {
+      x.k = structuredClone(e.k);
+      dlg.querySelectorAll("#krows .fxrow").forEach((r) => { const key = r.dataset.key, v = r.querySelectorAll("input")[1].value;
+        if (v !== "") x.k[key] = typeof e.k[key] === "number" ? +v : v; });
+    }
+  }
+  if (!x.needs) delete x.needs;
+  return x;
+}
+function editHeroText(what, i) {
+  const cls = view.split(":")[1], h = B.heroes[cls], rel = `heroes/${cls}.json`, dlg = $("#ed");
+  const d = what === "dir" ? h.directions[i] : null;
+  dlg.innerHTML = `<div class="ed-head"><h3>${what === "dir" ? "Direction" : "Fantasy"}</h3></div><div class="ed-body">
+    ${what === "dir" ? field("Name", "name", d.name, "text", { wide: true }) + field("What it is", "desc", d.desc, "area") : field("The hero's fantasy", "fantasy", h.fantasy || "", "area")}
+    ${what === "dir" ? `<div class="note">Renaming a direction keeps its entries (they're filed under its id, <code>${esc(d.id)}</code>).</div>` : ""}</div>
+    <div class="ed-foot"><span class="spacer"></span><button class="btn" id="cancel">Cancel</button><button class="btn primary" id="ok">Save</button></div>`;
+  dlg.showModal();
+  $("#cancel").onclick = () => dlg.close();
+  $("#ok").onclick = async () => {
+    const n = structuredClone(h);
+    if (what === "dir") { n.directions[i].name = $("[data-k=name]", dlg).value; n.directions[i].desc = $("[data-k=desc]", dlg).value; }
+    else n.fantasy = $("[data-k=fantasy]", dlg).value;
+    if (await save(rel, n)) dlg.close();
+  };
+}
+function who() {   // the name written into each save's commit (asked once, kept in this browser)
+  let n = ""; try { n = localStorage.getItem("codex_who") || ""; } catch (e) {}
+  if (!n) { n = (prompt("Your name, for the change history?") || "").replace(/[^A-Za-z0-9 _-]/g, "").slice(0, 24); try { if (n) localStorage.setItem("codex_who", n); } catch (e) {} }
+  return n || "codex";
+}
+function pubLabel() { return (B && B.git && B.git.live) ? "Publish to the game" : "Publish preview"; }
+$("#publish").onclick = async () => {
+  const b = $("#publish"); const live = !!(B && B.git && B.git.live);
+  if (b.dataset.sure !== "1") { b.dataset.sure = "1"; b.textContent = live ? "Test and push into the game?" : "Push for a preview build?"; setTimeout(() => { b.dataset.sure = ""; b.textContent = pubLabel(); }, 4000); return; }
+  b.disabled = true; b.textContent = live ? "Testing and publishing…" : "Publishing…";
+  const r = await fetch("/api/publish", { method: "POST" }); const j = await r.json().catch(() => ({}));
+  b.disabled = false; b.dataset.sure = ""; b.textContent = pubLabel();
+  if (!r.ok) return toast(j.error || "Publish failed", true);
+  toast(live ? (j.pushed && j.pushed.length ? `In the game: ${j.commit}. The next ${B.git.live} build has it.` : j.note) : `Pushed ${j.commit}. The preview build starts on GitHub Actions in a minute.`); load();
+};
+window.addEventListener("hashchange", () => { view = location.hash.slice(1) || "start"; if (!view.startsWith("hero")) filt.kind = "all"; render(); window.scrollTo(0, 0); });
+load();
+</script>
+</body>
+</html>

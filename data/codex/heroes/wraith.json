@@ -1,0 +1,532 @@
+{
+	"cls": "wraith",
+	"name": "Wraith",
+	"fantasy": "A horned spirit in chains that never touches the ground. Tears souls out with spectral claws, drains them down a tether, steps through shadow, drags foes into the earth's grasp and brings down the night.",
+	"directions": [
+		{
+			"id": "Render",
+			"name": "Render",
+			"desc": "The claws: Spectral Rend, quick strikes and cruel crits."
+		},
+		{
+			"id": "Shadow",
+			"name": "Shadow",
+			"desc": "The tether and the mist: Soul Siphon and Shadowstep."
+		},
+		{
+			"id": "Night",
+			"name": "Night",
+			"desc": "What comes out of the dark: Haunting Grasp, Phantom Assault and Eternal Night."
+		}
+	],
+	"skills": [
+		{
+			"id": "rend",
+			"status": "live",
+			"name": "Spectral Rend",
+			"rarity": 0,
+			"direction": "Render",
+			"desc": "Lunge at the foe ahead and tear through it with elongated spectral claws: two rakes for 90% weapon damage each. Every soul the claws tear out flies back and heals you.",
+			"mana": 5,
+			"cd": 0.0,
+			"range": 4.5,
+			"lvl": 1
+		},
+		{
+			"id": "siphon",
+			"status": "live",
+			"name": "Soul Siphon",
+			"rarity": 0,
+			"direction": "Shadow",
+			"desc": "Reach out and hook a spectral tether into an enemy: for 2.5 seconds it stands rigid while the tether drains it (about 180% weapon damage in all) and heals you a third of what it takes, and it is slowed after. A soul torn loose heals you more. The tether holds while you fight on.",
+			"mana": 12,
+			"cd": 6.0,
+			"range": 9.0,
+			"tags": [
+				"cc",
+				"sustain"
+			],
+			"lvl": 3
+		},
+		{
+			"id": "step",
+			"status": "live",
+			"name": "Shadow Step",
+			"rarity": 0,
+			"direction": "Shadow",
+			"desc": "Come apart into mist and re-form at the cursor, spinning into a claw strike round where you land for 130% weapon damage. For a moment after, blows pass through you. The shade you left behind collapses and hurts.",
+			"mana": 10,
+			"cd": 5.0,
+			"range": 9.0,
+			"tags": [
+				"movement"
+			],
+			"lvl": 5
+		},
+		{
+			"id": "grasp",
+			"status": "live",
+			"name": "Haunting Grasp",
+			"rarity": 1,
+			"direction": "Night",
+			"desc": "Slam the ground: spectral hands burst out of the earth around the cursor, seizing every enemy within 3.5 metres for 110% weapon damage, dragging them inward and holding them fast for 2.5 seconds.",
+			"mana": 16,
+			"cd": 10.0,
+			"range": 10.0,
+			"tags": [
+				"cc"
+			],
+			"lvl": 9
+		},
+		{
+			"id": "phantom",
+			"status": "live",
+			"name": "Phantom Assault",
+			"rarity": 1,
+			"direction": "Render",
+			"desc": "Split into three phantoms that streak through the enemies ahead in a fan, each tearing everything in its path for 120% weapon damage, then strike with your own claws.",
+			"mana": 22,
+			"cd": 0.0,
+			"use": 1.8,
+			"power": 0.58,
+			"range": 8.0,
+			"lvl": 14
+		},
+		{
+			"id": "night",
+			"status": "live",
+			"name": "Eternal Night",
+			"rarity": 2,
+			"direction": "Night",
+			"desc": "Rise and bring down the night over 9 metres: a scream of terror (150% weapon damage, enemies hurled back and frozen with fear), then the dark feeds on everything in it while you hang untouchable above it, and it collapses into your slam for 200%. +40% damage for 12 seconds.",
+			"mana": 40,
+			"cd": 40.0,
+			"tags": [
+				"ultimate"
+			],
+			"lvl": 20
+		},
+		{
+			"id": "r_deathmark",
+			"status": "live",
+			"name": "Death Mark",
+			"rarity": 1,
+			"direction": "Render",
+			"desc": "Mark the foe nearest the pointer. When the mark ends 3 seconds later it tears out half of everything you dealt it meanwhile (at least 150% weapon damage) as a soul you drink back.",
+			"mana": 10,
+			"cd": 10.0,
+			"range": 12.0,
+			"role": "burst a single target",
+			"tags": [
+				"cc"
+			],
+			"lvl": 9,
+			"run": true
+		},
+		{
+			"id": "r_wail",
+			"status": "live",
+			"name": "Banshee Wail",
+			"rarity": 0,
+			"direction": "Shadow",
+			"desc": "Scream: everything within 6 metres takes 60% weapon damage, is frozen in terror for 1.2 seconds and slowed by half for 2 more.",
+			"mana": 9,
+			"cd": 8.0,
+			"role": "terrify the crowd",
+			"tags": [
+				"cc"
+			],
+			"lvl": 1,
+			"run": true
+		},
+		{
+			"id": "r_reap",
+			"status": "live",
+			"name": "Reaping Crescent",
+			"rarity": 0,
+			"direction": "Night",
+			"desc": "A great crescent of soul-fire sweeps out 5 metres in front of you: 170% weapon damage, and each foe it reaps heals you 2% of your life.",
+			"mana": 8,
+			"cd": 0.0,
+			"use": 0.9,
+			"range": 5.0,
+			"role": "sweep and sustain",
+			"lvl": 1,
+			"run": true
+		}
+	],
+	"rites": [
+		{
+			"id": "w_scythe",
+			"status": "live",
+			"name": "Keen Claws",
+			"rarity": 0,
+			"direction": "Render",
+			"max": 3,
+			"fx": {
+				"dmg:rend": 10.0
+			},
+			"text": "Spectral Rend deals {dmg:rend}% more damage.",
+			"icon": "rend"
+		},
+		{
+			"id": "w_focus",
+			"status": "live",
+			"name": "Grim Focus",
+			"rarity": 0,
+			"direction": "Render",
+			"max": 3,
+			"fx": {
+				"dex": 3.0
+			},
+			"text": "+{dex} dexterity.",
+			"icon": "t_eye"
+		},
+		{
+			"id": "w_harvest",
+			"status": "live",
+			"name": "Soul Harvest",
+			"rarity": 0,
+			"direction": "Render",
+			"max": 3,
+			"fx": {
+				"rend_heal": 1.0
+			},
+			"text": "Each soul Spectral Rend tears out heals {rend_heal}% more of your life.",
+			"icon": "t_heart"
+		},
+		{
+			"id": "w_haste",
+			"status": "live",
+			"name": "Deathly Haste",
+			"rarity": 0,
+			"direction": "Render",
+			"max": 3,
+			"fx": {
+				"ias": 5.0
+			},
+			"text": "+{ias}% attack speed.",
+			"icon": "t_haste"
+		},
+		{
+			"id": "w_cruel",
+			"status": "live",
+			"name": "Cruelty",
+			"rarity": 1,
+			"direction": "Render",
+			"max": 3,
+			"fx": {
+				"crit": 3.0
+			},
+			"text": "+{crit}% chance to land a critical hit.",
+			"icon": "t_star"
+		},
+		{
+			"id": "w_exec",
+			"status": "live",
+			"name": "Executioner",
+			"rarity": 1,
+			"direction": "Render",
+			"max": 2,
+			"fx": {
+				"crit_dmg": 20.0
+			},
+			"text": "Critical hits deal {crit_dmg}% more damage.",
+			"icon": "t_skull"
+		},
+		{
+			"id": "w_moon",
+			"status": "live",
+			"name": "Harvest Moon",
+			"rarity": 2,
+			"direction": "Render",
+			"max": 1,
+			"fx": {
+				"rend_full": 1.0
+			},
+			"text": "Spectral Rend's claws tear all the way round you.",
+			"icon": "rend"
+		},
+		{
+			"id": "w_scream",
+			"status": "live",
+			"name": "Hungry Tether",
+			"rarity": 0,
+			"direction": "Shadow",
+			"max": 3,
+			"fx": {
+				"dmg:siphon": 12.0
+			},
+			"text": "Soul Siphon drains {dmg:siphon}% more.",
+			"icon": "siphon"
+		},
+		{
+			"id": "w_mind",
+			"status": "live",
+			"name": "Ethereal Mind",
+			"rarity": 0,
+			"direction": "Shadow",
+			"max": 3,
+			"fx": {
+				"mana_pct": 5.0
+			},
+			"text": "+{mana_pct}% maximum mana.",
+			"icon": "t_drop"
+		},
+		{
+			"id": "w_dread",
+			"status": "live",
+			"name": "Long Grip",
+			"rarity": 0,
+			"direction": "Shadow",
+			"max": 3,
+			"fx": {
+				"siphon_dur": 0.3
+			},
+			"text": "Soul Siphon holds {siphon_dur} seconds longer.",
+			"icon": "siphon"
+		},
+		{
+			"id": "w_slip",
+			"status": "live",
+			"name": "Slipstream",
+			"rarity": 0,
+			"direction": "Shadow",
+			"max": 3,
+			"fx": {
+				"cd:step": 10.0,
+				"dmg:step": 10.0
+			},
+			"text": "Shadowstep recharges {cd:step}% faster and strikes {dmg:step}% harder.",
+			"icon": "step"
+		},
+		{
+			"id": "w_hollow",
+			"status": "live",
+			"name": "Hollow Hunger",
+			"rarity": 1,
+			"direction": "Shadow",
+			"max": 3,
+			"fx": {
+				"cost:siphon": 15.0,
+				"cd:siphon": 8.0
+			},
+			"text": "Soul Siphon costs {cost:siphon}% less mana and recharges {cd:siphon}% faster.",
+			"icon": "t_drop"
+		},
+		{
+			"id": "w_form",
+			"status": "live",
+			"name": "Spirit Form",
+			"rarity": 1,
+			"direction": "Shadow",
+			"max": 2,
+			"fx": {
+				"res": 6.0
+			},
+			"text": "+{res}% to all resistances.",
+			"icon": "t_ward"
+		},
+		{
+			"id": "w_echo",
+			"status": "live",
+			"name": "Lingering Mist",
+			"rarity": 2,
+			"direction": "Shadow",
+			"max": 1,
+			"fx": {
+				"veil": 0.6,
+				"step_stun": 0.5
+			},
+			"text": "After Shadowstep you stay mist {veil} seconds longer, and its strike stuns {step_stun} seconds longer.",
+			"icon": "step"
+		},
+		{
+			"id": "w_unlife",
+			"status": "live",
+			"name": "Unlife",
+			"rarity": 0,
+			"direction": "Night",
+			"max": 3,
+			"fx": {
+				"life_pct": 4.0
+			},
+			"text": "+{life_pct}% maximum life.",
+			"icon": "t_heart"
+		},
+		{
+			"id": "w_chill",
+			"status": "live",
+			"name": "Grave Chill",
+			"rarity": 0,
+			"direction": "Night",
+			"max": 3,
+			"fx": {
+				"armor_pct": 6.0
+			},
+			"text": "+{armor_pct}% defense.",
+			"icon": "t_armor"
+		},
+		{
+			"id": "w_legion",
+			"status": "live",
+			"name": "Legion",
+			"rarity": 0,
+			"direction": "Night",
+			"max": 3,
+			"fx": {
+				"dmg:phantom": 12.0,
+				"dmg:grasp": 12.0
+			},
+			"text": "Phantom Assault and Haunting Grasp strike {dmg:phantom}% harder.",
+			"icon": "phantom"
+		},
+		{
+			"id": "w_ward",
+			"status": "live",
+			"name": "Spectral Ward",
+			"rarity": 0,
+			"direction": "Night",
+			"max": 3,
+			"fx": {
+				"res": 5.0
+			},
+			"text": "+{res}% to all resistances.",
+			"icon": "t_ward"
+		},
+		{
+			"id": "w_eternal",
+			"status": "live",
+			"name": "Eternal",
+			"rarity": 1,
+			"direction": "Night",
+			"max": 2,
+			"fx": {
+				"buff_dur": 2.0,
+				"grasp_hold": 0.3
+			},
+			"text": "Eternal Night's power lasts {buff_dur} seconds longer and Haunting Grasp holds {grasp_hold} seconds longer.",
+			"icon": "t_hourglass"
+		},
+		{
+			"id": "w_siphon",
+			"status": "live",
+			"name": "Soul Siphon",
+			"rarity": 1,
+			"direction": "Night",
+			"max": 3,
+			"fx": {
+				"ls": 1.0
+			},
+			"text": "+{ls}% of the damage you deal comes back as life.",
+			"icon": "t_fang"
+		},
+		{
+			"id": "w_rider",
+			"status": "live",
+			"name": "Fourth Rider",
+			"rarity": 2,
+			"direction": "Night",
+			"max": 1,
+			"fx": {
+				"phantoms": 1.0,
+				"dmg:night": 15.0
+			},
+			"text": "Phantom Assault sends a fourth phantom, and Eternal Night deals {dmg:night}% more damage.",
+			"icon": "night"
+		},
+		{
+			"id": "r_up_mark",
+			"status": "live",
+			"name": "Marked Soul",
+			"rarity": 2,
+			"run": true,
+			"direction": "Render",
+			"max": 1,
+			"text": "Death Mark tears out {mark_pct}% more and comes back {cd:r_deathmark}% sooner.",
+			"icon": "r_deathmark",
+			"fx": {
+				"mark_pct": 30.0,
+				"cd:r_deathmark": 25.0
+			}
+		},
+		{
+			"id": "r_up_wail",
+			"status": "live",
+			"name": "Keening",
+			"rarity": 1,
+			"run": true,
+			"direction": "Shadow",
+			"max": 1,
+			"text": "Banshee Wail reaches {wail_r}% further and terrifies {wail_t} seconds longer.",
+			"icon": "r_wail",
+			"fx": {
+				"wail_r": 30.0,
+				"wail_t": 0.6
+			}
+		},
+		{
+			"id": "r_up_reap",
+			"status": "live",
+			"name": "Harvest of Souls",
+			"rarity": 1,
+			"run": true,
+			"direction": "Night",
+			"max": 2,
+			"text": "Reaping Crescent hits {dmg:r_reap}% harder and heals {reap_heal}% more for each it reaps.",
+			"icon": "r_reap",
+			"fx": {
+				"dmg:r_reap": 15.0,
+				"reap_heal": 1.0
+			}
+		},
+		{
+			"id": "r_reaper",
+			"status": "live",
+			"name": "Reaper",
+			"rarity": 2,
+			"run": true,
+			"direction": "Render",
+			"max": 1,
+			"text": "Your hits on foes under {below}% life deal +{more}% damage.",
+			"icon": "rend",
+			"k": {
+				"below": 35.0,
+				"more": 80.0
+			},
+			"proc": "more_vs_low"
+		},
+		{
+			"id": "r_soulfeast",
+			"status": "live",
+			"name": "Soul Feast",
+			"rarity": 2,
+			"run": true,
+			"direction": "Shadow",
+			"max": 1,
+			"text": "Each kill heals you {pct}% of your life.",
+			"icon": "siphon",
+			"k": {
+				"pct": 5.0
+			},
+			"proc": "heal_on_kill"
+		},
+		{
+			"id": "r_dread",
+			"status": "live",
+			"name": "Dread",
+			"rarity": 2,
+			"run": true,
+			"direction": "Night",
+			"max": 1,
+			"text": "Every hit chills its foe with dread.",
+			"icon": "night",
+			"k": {
+				"src": "",
+				"slow": 0.35,
+				"secs": 2.0
+			},
+			"proc": "chill_on_hit"
+		}
+	]
+}

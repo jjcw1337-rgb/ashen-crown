@@ -1,0 +1,328 @@
+{
+	"cls": "serpent",
+	"name": "Frost Serpent",
+	"fantasy": "A long, wingless dragon of pale ice-blue scale with crystal antlers and a ridge of ice shards. Swims over the ground, strikes with claw and fang and lashes its tail in a full turn.",
+	"directions": [
+		{
+			"id": "Frost",
+			"name": "Frost",
+			"desc": "Breath, chill and shatter."
+		},
+		{
+			"id": "Beast",
+			"name": "Beast",
+			"desc": "Claws, coils and the tail."
+		},
+		{
+			"id": "Glacier",
+			"name": "Glacier",
+			"desc": "Tombs of ice and a hide of it: lock them down, then break them."
+		}
+	],
+	"skills": [
+		{
+			"id": "frost_breath",
+			"status": "live",
+			"name": "Frost Breath",
+			"rarity": 0,
+			"direction": "Frost",
+			"desc": "The serpent lowers its head and breathes a freezing gale over everything in a cone 7 metres ahead for over a second: cold damage again and again, chilling (slowing) them; the ground frosts over and ice bursts up where it ends.",
+			"mana": 10,
+			"cd": 0.0,
+			"use": 1.4,
+			"range": 7.0,
+			"tags": [
+				"spell",
+				"cold",
+				"area",
+				"channel"
+			],
+			"lvl": 1
+		},
+		{
+			"id": "s_tomb",
+			"status": "live",
+			"name": "Glacial Tomb",
+			"rarity": 0,
+			"direction": "Glacier",
+			"desc": "Seal the foe nearest the pointer, and all within 2.5 metres of it, in ice for 1.6 seconds. Then the tomb shatters: 180% weapon damage to each sealed foe and 90% to everything else within 3 metres.",
+			"mana": 10,
+			"cd": 9.0,
+			"range": 12.0,
+			"role": "lock a pack, then shatter it",
+			"tags": [
+				"cc"
+			],
+			"lvl": 1,
+			"run": true
+		},
+		{
+			"id": "s_coil",
+			"status": "live",
+			"name": "Crushing Coil",
+			"rarity": 0,
+			"direction": "Beast",
+			"desc": "Whip your body round in a full coil: 130% weapon damage to everything within 4.2 metres, slowing them by 45% for 2 seconds. Chilled foes are crushed for 30% more.",
+			"mana": 7,
+			"cd": 0.0,
+			"use": 1.0,
+			"role": "crush what surrounds you",
+			"lvl": 1,
+			"run": true
+		},
+		{
+			"id": "s_lance",
+			"status": "live",
+			"name": "Rime Lance",
+			"rarity": 1,
+			"direction": "Frost",
+			"desc": "Breathe a line of ice spikes 10 metres ahead: 125% weapon damage to every foe on it, chilling them. A foe already chilled is frozen solid for 1 second.",
+			"mana": 9,
+			"cd": 0.0,
+			"use": 1.0,
+			"range": 10.0,
+			"role": "a line of ice",
+			"lvl": 9,
+			"run": true
+		}
+	],
+	"rites": [
+		{
+			"id": "s_permafrost",
+			"status": "live",
+			"name": "Permafrost",
+			"rarity": 2,
+			"run": true,
+			"direction": "Frost",
+			"max": 1,
+			"text": "Every {n}th hit on a chilled foe freezes it solid for {secs} seconds.",
+			"icon": "frost_breath",
+			"k": {
+				"n": 5.0,
+				"secs": 1.4
+			},
+			"proc": "freeze_after"
+		},
+		{
+			"id": "s_shatter",
+			"status": "live",
+			"name": "Brittle",
+			"rarity": 2,
+			"run": true,
+			"direction": "Frost",
+			"max": 1,
+			"text": "Chilled foes take +{more}% damage from your hits.",
+			"icon": "frost_breath",
+			"k": {
+				"more": 25.0
+			},
+			"proc": "more_vs_chilled"
+		},
+		{
+			"id": "y_hide",
+			"status": "live",
+			"name": "Dragonhide",
+			"rarity": 0,
+			"run": true,
+			"direction": "Beast",
+			"max": 3,
+			"text": "+{armor_pct}% defense and +{life_pct}% life.",
+			"icon": "t_armor",
+			"fx": {
+				"armor_pct": 15.0,
+				"life_pct": 6.0
+			}
+		},
+		{
+			"id": "y_claws",
+			"status": "live",
+			"name": "Rending Claws",
+			"rarity": 1,
+			"run": true,
+			"direction": "Beast",
+			"max": 2,
+			"text": "Claws and bites deal +{dmg:attack}%; +{crit}% critical chance.",
+			"icon": "attack",
+			"fx": {
+				"dmg:attack": 15.0,
+				"crit": 3.0
+			}
+		},
+		{
+			"id": "y_apex",
+			"status": "live",
+			"name": "Apex Predator",
+			"rarity": 2,
+			"run": true,
+			"direction": "Beast",
+			"max": 1,
+			"text": "+{more}% damage to foes under {below}% life.",
+			"icon": "t_skull",
+			"k": {
+				"below": 40.0,
+				"more": 40.0
+			},
+			"proc": "more_vs_low"
+		},
+		{
+			"id": "y_fury",
+			"status": "live",
+			"name": "Primal Fury",
+			"rarity": 2,
+			"run": true,
+			"direction": "Beast",
+			"max": 1,
+			"text": "Each kill: +{dmg}% damage for {secs} seconds, up to {stacks} times.",
+			"icon": "t_fist",
+			"k": {
+				"dmg": 6.0,
+				"stacks": 6.0,
+				"secs": 8.0
+			},
+			"proc": "momentum"
+		},
+		{
+			"id": "s_rime",
+			"status": "live",
+			"name": "Frozen Blood",
+			"rarity": 0,
+			"run": true,
+			"direction": "Frost",
+			"max": 3,
+			"text": "Chills last {chill_pct}% longer; Frost Breath +{dmg:frost_breath}%.",
+			"icon": "frost_breath",
+			"fx": {
+				"chill_pct": 25.0,
+				"dmg:frost_breath": 10.0
+			}
+		},
+		{
+			"id": "s_up_tomb",
+			"status": "live",
+			"name": "Deep Freeze",
+			"rarity": 1,
+			"run": true,
+			"direction": "Glacier",
+			"max": 2,
+			"text": "Glacial Tomb seals {tomb_r}% wider, holds {tomb_t} s longer and shatters {dmg:s_tomb}% harder.",
+			"icon": "s_tomb",
+			"fx": {
+				"tomb_r": 30.0,
+				"tomb_t": 0.4,
+				"dmg:s_tomb": 15.0
+			}
+		},
+		{
+			"id": "s_up_coil",
+			"status": "live",
+			"name": "Iron Coils",
+			"rarity": 1,
+			"run": true,
+			"direction": "Beast",
+			"max": 2,
+			"text": "Crushing Coil reaches {coil_r}% further, hits {dmg:s_coil}% harder and heals {coil_shield}% of your life for each foe it crushes.",
+			"icon": "s_coil",
+			"fx": {
+				"coil_r": 15.0,
+				"dmg:s_coil": 15.0,
+				"coil_shield": 1.0
+			}
+		},
+		{
+			"id": "s_up_lance",
+			"status": "live",
+			"name": "Spear of Winter",
+			"rarity": 2,
+			"run": true,
+			"direction": "Frost",
+			"max": 1,
+			"text": "Rime Lance runs {lance_len}% further, freezes {lance_freeze} s longer and hits {dmg:s_lance}% harder.",
+			"icon": "s_lance",
+			"fx": {
+				"lance_len": 40.0,
+				"lance_freeze": 0.8,
+				"dmg:s_lance": 20.0
+			}
+		},
+		{
+			"id": "s_glacier_hide",
+			"status": "live",
+			"name": "Rime Scales",
+			"rarity": 0,
+			"run": true,
+			"direction": "Glacier",
+			"max": 3,
+			"text": "+{armor_pct}% defense and +{res}% to every resistance.",
+			"icon": "t_armor",
+			"fx": {
+				"armor_pct": 12.0,
+				"res": 6.0
+			}
+		},
+		{
+			"id": "s_glacier_cold",
+			"status": "live",
+			"name": "Biting Cold",
+			"rarity": 0,
+			"run": true,
+			"direction": "Glacier",
+			"max": 3,
+			"text": "Chills last {chill_pct}% longer; Glacial Tomb +{dmg:s_tomb}%.",
+			"icon": "s_tomb",
+			"fx": {
+				"chill_pct": 20.0,
+				"dmg:s_tomb": 10.0
+			}
+		},
+		{
+			"id": "s_glacier_thorns",
+			"status": "live",
+			"name": "Frozen Barbs",
+			"rarity": 1,
+			"run": true,
+			"direction": "Glacier",
+			"max": 2,
+			"text": "Foes that strike you take {pct}% of the blow back as cold.",
+			"icon": "t_armor",
+			"k": {
+				"pct": 30.0
+			},
+			"per": [
+				"pct"
+			],
+			"proc": "thorns"
+		},
+		{
+			"id": "s_glacier_shards",
+			"status": "live",
+			"name": "Shatterpoint",
+			"rarity": 2,
+			"run": true,
+			"direction": "Glacier",
+			"max": 1,
+			"text": "Chilled foes that die burst into ice shards: {pct}% weapon damage within {r} m, chilling.",
+			"icon": "frost_breath",
+			"k": {
+				"pct": 60.0,
+				"r": 3.0
+			},
+			"proc": "shards_on_death"
+		},
+		{
+			"id": "s_glacier_undying",
+			"status": "live",
+			"name": "Heart of the Glacier",
+			"rarity": 2,
+			"run": true,
+			"direction": "Glacier",
+			"max": 1,
+			"text": "A blow that would kill you leaves you at {life}% life inside a shell of ice instead (once every {secs} seconds).",
+			"icon": "t_armor",
+			"k": {
+				"life": 40.0,
+				"secs": 90.0
+			},
+			"proc": "undying"
+		}
+	]
+}
