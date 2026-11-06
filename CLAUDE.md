@@ -327,11 +327,14 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   camp upgrade) in the multiplayer look, `MpStyle` (palette, Cinzel and Inter in `assets/fonts`, OFL).
   `tools/run_build_test.gd`; screenshots `tools/run_ui_shots.gd -- outdir`.
   **The roguelike layer** (`scripts/run_talents.gd` `RunTalents`; Blaine 2026-11-06: "like Slay the Spire, themes of
-  card types, then relics and consumables"): each class has build **themes** (`THEMES`; the archer Flame / Frost /
-  Storm / The Hunt / Marksman, the plague doctor Toxin / Contagion / Vermin / Alchemy, the rest from their trees,
-  `TREE_THEME`; skills by `SKILL_THEMES`), and offers lean toward the themes a build has (`RunBuild.THEME_PULL`,
+  card types, then relics and consumables"; **every character has three major directions** and Common / Uncommon /
+  Rare skills and talents): build **themes** (`THEMES`; the archer Flame / Frost / Storm and Hunt, the plague doctor
+  Toxin / Vermin and Rot / Alchemy, the rest from their talent trees, `TREE_THEME`; the warlock is being redesigned
+  around damage over time / fear / drain; skills by `SKILL_THEMES`; "" = core, for any build), and offers lean toward
+  the themes a build has (`RunBuild.THEME_PULL`,
   `theme_counts`). A chest offers `CHOICES` (+1 at a boss, the Seer's Eye, Lucky Charm), 1-3 of them skills while
-  skills are left, rarities Common / Uncommon / Rare / **Epic** (`ODDS`, one step rarer with the Shard of the Crown).
+  skills are left, rarities Common / Uncommon / Rare (`ODDS`, one step rarer with the Shard of the Crown; the rares are
+  the run-changers; "Legendary" is only the gems' top tier).
   **Talents** (`TALENTS`: data `{id, cls ("any", a class, or "serpent,wyvern"), theme, rarity, max, fx, proc, k, per,
   needs}`) are stats (`fx`, summed into `Hero.tfx`) or **procs** (game-changers run by the handlers in RunTalents on
   the hero's own game: `hit_mult` before a blow, `on_hit`, `on_death` for the hero who struck last (`mark`), `struck`,
@@ -345,7 +348,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   survivor. **Consumables** (Data.BASES elixirs, salve, flasks, scroll, tome; `RunTalents.CONSUMABLES` weights) come
   1-3 per chest per player with the choice (`Game.run_claim`); flasks are thrown at the pointer (`throw_flask`).
   **Run-only skills** (`Data.RUN_SKILLS`: the archer's Scatter Shot, Glacial Shard, Blast Arrow, Storm Shot, Hunter's
-  Mark, Arrow Storm; the plague doctor's Miasma, Contagion, Leech Jar) join the class's pool in a run only
+  Mark, Arrow Storm; the plague doctor's Miasma, Contagion, Leech Jar; the in-game codex reads Data.SKILLS + RUN_SKILLS,
+  RunTalents.TALENTS / THEMES / GEMS and the potion Data.BASES) join the class's pool in a run only
   (`Hero.skill_list`, `RunBuild.skill_pool`). Icons: Meshy grids `archer`, `run_mix`, `potions`, `gems`, `gems2` in
   `tools/skill_icons.py` (`assets/textures/skills/`, `items/c_*.png`, `gems/`). `tools/run_talents_test.gd` tries every
   talent, gem, consumable and run skill on real monsters; `tools/run_playthrough.gd -- <class> <secs> [theme|random]`

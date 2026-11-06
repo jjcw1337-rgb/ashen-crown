@@ -35,14 +35,6 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 		"covenant":
 			h._start_attack("cast", "covenant")
 			h.atk_dur = 0.6 * Data.attack_pace(h.cls)
-		# a run's skills (Data.RUN_SKILLS)
-		"w_corruption", "w_hellfire":
-			var to := (aim - h.global_position) * Vector3(1, 0, 1)
-			h.atk_aim = h.global_position + to.limit_length(14.0)
-			h._start_attack("cast", id)
-		"w_soulrend":
-			h._start_attack("cast", "w_soulrend")
-			h.atk_dur = 0.5 * Data.attack_pace(h.cls)
 
 ## The impact frame of one of his skills (Hero then refreshes the stats); false when it isn't his.
 static func impact(h: Hero) -> bool:
@@ -65,52 +57,9 @@ static func impact(h: Hero) -> bool:
 			h.buff_t = 12.0 + h.talent("buff_dur")
 			h.covenant_t = h.buff_t
 			h.fx("covenant", "impact")
-		"w_corruption":
-			var g := _ground(h, h.atk_aim)
-			var r := CORRUPT_R * (1.0 + h.talent("corrupt_r") / 100.0)
-			var hit: Array = h.game.enemies_near(g, r).filter(func(e): return not e.dead)
-			h.fx("w_corruption", "impact", {"p": g, "r": r, "t": hit})
-			for e in hit:
-				h._hit_enemy(e, 0.4, 0.0, "w_corruption")
-				if not e.dead:
-					e.ignite(_weapon(h) * 0.45 * h.dmg_mult("w_corruption"), 6.0, "fel")
-		"w_soulrend":
-			var foes: Array = h.game.enemies_near(h.global_position, REND_R).filter(func(e): return not e.dead)
-			h.fx("w_soulrend", "impact", {"r": REND_R, "t": foes})
-			var healed := 0
-			for e in foes:
-				h._hit_enemy(e, 0.9, 0.0, "w_soulrend")
-				if healed < 5:
-					healed += 1
-					h.life = minf(h.max_life, h.life + h.max_life * 0.04 * (1.0 + h.talent("rend_heal") / 100.0))
-		"w_hellfire":
-			var g2 := _ground(h, h.atk_aim)
-			var n := 3 + int(h.talent("hellfire_more"))
-			h.fx("w_hellfire", "impact", {"p": g2, "n": n})
-			for i in n:
-				var at := g2 + Vector3(randf_range(-1.6, 1.6), 0, randf_range(-1.6, 1.6))
-				h.get_tree().create_timer(0.3 + i * 0.3).timeout.connect(func():
-					if not is_instance_valid(h) or h.dead or h.game == null or h.game.world == null:
-						return
-					Hero.striker = h
-					for e in h.game.enemies_near(at, HELLFIRE_R):
-						if not e.dead:
-							h._hit_enemy(e, 0.7, 0.2, "w_hellfire")
-							if not e.dead:
-								e.ignite(_weapon(h) * 0.25 * h.dmg_mult("w_hellfire"), 3.0, "fel"))
 		_:
 			return false
 	return true
-
-const CORRUPT_R := 3.2
-const REND_R := 6.0
-const HELLFIRE_R := 3.0
-
-static func _ground(h: Hero, p: Vector3) -> Vector3:
-	return Vector3(p.x, h.game.world.height_at(p.x, p.z), p.z)
-
-static func _weapon(h: Hero) -> float:
-	return (h.dmg_min + h.dmg_max) * 0.5 * h.buff_mult()
 
 # ---------------------------------------------------------------- Drain Life
 ## The enemy Drain Life latches onto: the one nearest the aim point, else the nearest in reach.

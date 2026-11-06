@@ -807,12 +807,6 @@ const RUN_SKILLS := [
 		"desc": "Smash a censer of plague at your feet: a cloud 4.5 metres wide hangs for 4 seconds, poisoning everything in it."},
 	{"id": "p_spread", "cls": "plague", "name": "Contagion", "lvl": 9, "mana": 8, "cd": 0.0, "use": 0.8, "aim": "point", "range": 14.0, "role": "spreading curse",
 		"desc": "Curse the foe nearest the pointer with a creeping plague for 6 seconds: it is poisoned, and every second its poison leaps to all within 4 metres. If it dies cursed, the plague bursts to everyone within 5 metres."},
-	{"id": "w_corruption", "cls": "warlock", "name": "Corruption", "lvl": 1, "mana": 8, "cd": 0.0, "use": 0.8, "aim": "point", "range": 14.0, "role": "rot an area",
-		"desc": "Curse the ground at the pointer: everything within 3.2 metres is struck for 40% weapon damage and rots for 6 seconds (45% of your weapon damage a second)."},
-	{"id": "w_soulrend", "cls": "warlock", "name": "Soul Rend", "lvl": 9, "mana": 14, "cd": 7.0, "tags": ["sustain"], "aim": "self", "role": "drain a crowd",
-		"desc": "Tear at the souls of everything within 6 metres: 90% weapon damage each, and each heals you 4% of your life (up to five)."},
-	{"id": "w_hellfire", "cls": "warlock", "name": "Hellfire Rain", "lvl": 16, "mana": 18, "cd": 0.0, "use": 1.2, "aim": "point", "range": 14.0, "role": "fel bombardment",
-		"desc": "Call fel fire down on the pointer: three blasts over a second, each 70% weapon damage within 3 metres, setting what they strike rotting."},
 	{"id": "p_leech", "cls": "plague", "name": "Leech Jar", "lvl": 9, "mana": 10, "cd": 9.0, "tags": ["sustain"], "aim": "point", "range": 12.0, "role": "heal from foes",
 		"desc": "Lob a jar of blood leeches: for 5 seconds everything within 3 metres is poisoned, and every foe in it heals you 1.5% of your life a second."},
 ]

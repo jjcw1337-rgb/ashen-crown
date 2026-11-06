@@ -543,9 +543,9 @@ func _offer_card(c: Dictionary, i: int) -> Control:
 	var r := int(c["rarity"])
 	var col: Color = RunBuild.RARITY_COLORS[r]
 	var card := PanelContainer.new()
-	var sb := MpStyle.box(MpStyle.PANEL, Color(col.r, col.g, col.b, 0.55 if r < 3 else 0.95), 8, 18, 1 if r < 3 else 2)
-	sb.border_width_top = 3 if r < 3 else 5
-	if r >= 3:
+	var sb := MpStyle.box(MpStyle.PANEL, Color(col.r, col.g, col.b, 0.55 if r < 2 else 0.95), 8, 18, 1 if r < 2 else 2)
+	sb.border_width_top = 3 if r < 2 else 5
+	if r >= 2:
 		sb.shadow_color = Color(col.r, col.g, col.b, 0.35)
 		sb.shadow_size = 14
 	card.add_theme_stylebox_override("panel", sb)

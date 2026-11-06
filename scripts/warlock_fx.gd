@@ -27,43 +27,6 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 	var root: Node3D = h.game.world.fx_root
 	var pos := h.global_position
 	match [str(ev["s"]), str(ev["e"])]:
-		["w_corruption", "impact"]:
-			# Corruption: the ground cursed in a ring of fel flame, the struck left rotting (a fel haze about each)
-			var p: Vector3 = ev["p"]
-			var r: float = float(ev.get("r", 3.2))
-			blight_burst(root, p, r)
-			var pool := blight_pool(root, p, r, 2.5)
-			pool.name = "corruption"
-			for e in ev.get("t", []):
-				if is_instance_valid(e):
-					var a := Fx.aura(e, FEL, 12, 0.3, 0.07, 0.9, 0.5, 0.4 * float(e.get("radius")) + 0.2, 40.0, Vector3(0, 1.0, 0))
-					_free_later(a, 6.0)
-			SkillFx.snd(h, "blight_burst", -3.0, 0.85)
-		["w_soulrend", "impact"]:
-			# Soul Rend: every soul in reach torn toward him along a wisp, a fel ring at his feet
-			var me: Vector3 = h.global_position + Vector3(0, 1.0, 0)
-			fel_ring(root, h.global_position, float(ev.get("r", 6.0)) * 0.5, 12, 0.6, 1.2, 0.5)
-			for e in ev.get("t", []):
-				if is_instance_valid(e):
-					var at: Vector3 = (e as Node3D).global_position + Vector3(0, 1.0, 0)
-					siphon(root, at, me)
-					chain(root, at, me, 0.35)
-			flash_light(root, me, FEL, 3.0, 0.4, 7.0)
-			SkillFx.snd(h, "drain_start", -3.0, 1.2)
-		["w_hellfire", "impact"]:
-			# Hellfire Rain: fel fire falling in blasts round the mark (their times match the gameplay's)
-			var g: Vector3 = ev["p"]
-			var n: int = int(ev.get("n", 3))
-			for i in n:
-				var at2 := g + Vector3(randf_range(-1.6, 1.6), 0, randf_range(-1.6, 1.6))
-				var t := root.create_tween()
-				t.tween_interval(0.3 + i * 0.3)
-				t.tween_callback(func():
-					if is_instance_valid(root):
-						blight_burst(root, at2, 3.0)
-						fel_ring(root, at2, 1.6, 8, 1.2, 2.4, 0.5)
-						Sfx.play_at("blight_burst", at2, -4.0, 0.7))
-			fel_ring(root, g, 2.4, 10, 0.4, 0.8, 1.4)
 		["drain", "cast"], ["blight", "cast"], ["shackles", "cast"], ["covenant", "cast"]:
 			pass
 		["drain", "start"]:
