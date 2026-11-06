@@ -120,13 +120,15 @@ static func update(h: Hero, delta: float) -> void:
 			if cn != null:
 				crystals.append(cn)
 		Sfx.play_at("ice_arrow_hit", g2, -4.0, 0.85)
-		var tm := root.get_tree().create_timer(2.6, false)
-		tm.timeout.connect(func():
-			if not is_instance_valid(root):
-				return
+		# The old world and caster can disappear before these crystals shatter.
+		# Capture weak references, resolved before invoking any visual work.
+		var caster: WeakRef = weakref(h)
+		Fx.later(root, 2.6, func():
+			var hero := caster.get_ref() as Hero
+			if hero == null or not hero.is_inside_tree(): return
 			for cn in crystals:
 				if is_instance_valid(cn):
-					FrostVolleyFx._break(root, h.game.world, cn, tr)
+					FrostVolleyFx._break(root, hero.game.world, cn, tr)
 			Sfx.play_at("ice_shatter", g2, -5.0, 1.0))
 	# foes in the gale frost over
 	if on and fmod(t, 0.25) < delta:

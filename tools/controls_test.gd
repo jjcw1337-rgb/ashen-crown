@@ -14,6 +14,7 @@ var DG       # dodge.gd, loaded at run time (a static reference compiles the gam
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
+	current_scene = g
 	_run()
 
 func check(ok: bool, what: String) -> void:

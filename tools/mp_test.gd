@@ -2,13 +2,18 @@ extends SceneTree
 ## Two-player co-op test. Run one copy with "-- host" and another with "-- join".
 
 var g
+var test_port := 24567
 var role := "host"
 
 func _initialize():
+	var args := OS.get_cmdline_user_args()
+	if args.has("--test-port"): test_port = int(args[args.find("--test-port") + 1])
 	role = "join" if OS.get_cmdline_user_args().has("join") else "host"
 	var scn: PackedScene = load("res://main.tscn")
 	g = scn.instantiate()
+	g.char_dir = "user://gate/mp_test/%s/" % role
 	get_root().add_child(g)
+	current_scene = g
 	process_frame.connect(_answer_votes)
 	_run()
 
@@ -59,15 +64,20 @@ func _run() -> void:
 	quit()
 
 func _host() -> void:
-	await g.start_host()
+	if test_port == 24567:
+		await g.start_host()
+	else:
+		await g.start_game(not g.list_characters().is_empty())
+		g.net.host(test_port)
 	await idle()
 	for c in ["wraith", "demon", "warlock"]:
 		if OS.get_cmdline_user_args().has(c):
 			g.hero.set_class(c)   # also re-sends gear + class to the partner
 	g.ui.close_all()
 	print("[H1] hosting=", g.net.active and g.net.is_host, " zone=", g.cur_zone)
+	if g.net.active and g.net.is_host: print("[GATE_READY] host_port=", test_port)
 	var t0 := Time.get_ticks_msec()
-	while g.net.players.is_empty() and Time.get_ticks_msec() - t0 < 60000:
+	while g.net.players.is_empty() and Time.get_ticks_msec() - t0 < 180000:
 		await wait(10)
 	print("[H2] partner joined: ", g.net.players.size() == 1, " name=", g.net.players.values()[0]["name"] if g.net.players.size() > 0 else "-")
 	await secs(3.0)
@@ -149,7 +159,7 @@ func _snap(path: String) -> void:
 
 func _join() -> void:
 	await secs(2.0)
-	g.start_join("127.0.0.1")
+	g.start_join("127.0.0.1:%d" % test_port)
 	var t0 := Time.get_ticks_msec()
 	while (g.net.players.is_empty() or g.net.loading or g._busy) and Time.get_ticks_msec() - t0 < 30000:
 		await wait(5)

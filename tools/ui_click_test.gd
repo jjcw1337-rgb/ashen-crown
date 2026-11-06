@@ -6,6 +6,7 @@ var reached := false
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
+	current_scene = g
 	_run()
 func wait(n: int) -> void:
 	for i in n:
@@ -15,8 +16,9 @@ func _click(p: Vector2, btn := MOUSE_BUTTON_LEFT) -> void:
 	var m := InputEventMouseMotion.new()
 	m.position = p
 	m.global_position = p
+	# Keep motion and press in the same frame. A delayed waypoint trip can close the
+	# panel during an intervening frame; clicking the exposed map is then legitimate.
 	vp.push_input(m, true)
-	await process_frame
 	var e := InputEventMouseButton.new()
 	e.button_index = btn
 	e.pressed = true
@@ -24,8 +26,11 @@ func _click(p: Vector2, btn := MOUSE_BUTTON_LEFT) -> void:
 	e.global_position = p
 	g.lmb_held = false
 	g.rmb_held = false
+	var before := {"point":p, "drawn":_drawn_at(g.ui.root,p), "waypoint_visible":g.ui.wp_panel.visible, "waypoint_rect":g.ui.wp_panel.get_global_rect(), "busy":g._busy}
 	vp.push_input(e, true)
 	reached = g.lmb_held or g.rmb_held        # set only when the press got past the GUI to the game
+	if reached and OS.get_cmdline_user_args().has("--waypoint-only"):
+		print("[UDEBUG] ",before)
 	var u := e.duplicate()
 	u.pressed = false
 	vp.push_input(u, true)
@@ -66,6 +71,8 @@ func _run() -> void:
 	var h = g.hero
 	var panels := {"inventory": g.ui.inv_panel, "character": g.ui.char_panel, "skills": g.ui.skills_panel,
 		"talents": g.ui.talent_panel, "stash": g.ui.stash_panel, "waypoints": g.ui.wp_panel, "merchant": g.ui.shop_panel}
+	var waypoint_only := OS.get_cmdline_user_args().has("--waypoint-only")
+	if waypoint_only: panels = {"waypoints": g.ui.wp_panel}
 	var bad := 0
 	for nm: String in panels:
 		var p: Control = panels[nm]
@@ -79,7 +86,11 @@ func _run() -> void:
 				if not p.visible:
 					p.visible = true
 					await wait(2)
-				var pt := r.position + r.size * Vector2(ix / 12.0, iy / 12.0)
+				# Tabs and activity rows can resize the waypoint panel after a click.
+				# Sample the currently visible panel, not the previous layout footprint.
+				p.visible = true # a pending trip may have closed it during wait(2) above
+				var live_rect: Rect2 = p.get_global_rect().intersection(get_root().get_visible_rect())
+				var pt := live_rect.position + live_rect.size * Vector2(ix / 12.0, iy / 12.0)
 				h.moving = false
 				h.target = null
 				h.path = PackedVector3Array()
@@ -89,6 +100,12 @@ func _run() -> void:
 				g.lmb_held = false
 		bad += leaks.size()
 		print("[U] ", nm, " rect=", Vector2i(r.size), " leaks=", leaks.size(), " ", leaks.slice(0, 6))
+	if waypoint_only:
+		print("[U] ", "FAIL " if bad else "", "waypoint-only done, ", bad, " leaks")
+		g.queue_free()
+		for i in 8: await process_frame
+		quit(1 if bad else 0)
+		return
 	# a dialog (an NPC's) and the enchanting window (the pause menu stops all play input itself)
 	for nm: String in ["dialog", "enchant"]:
 		g.ui.close_all()
@@ -181,5 +198,9 @@ func _run() -> void:
 	h.moving = false
 	await _click(mid)
 	print("[U] a click on the map with no window open reaches the game: ", reached)
-	print("[U] done, ", bad, " leaks")
-	quit()
+	bad += int(not reached)
+	print("[U] ", "FAIL " if bad else "", "done, ", bad, " leaks/input failures")
+	g.queue_free()
+	for i in 8:
+		await process_frame
+	quit(1 if bad else 0)

@@ -6,6 +6,7 @@ func _initialize():
 	var scn: PackedScene = load("res://main.tscn")
 	g = scn.instantiate()
 	get_root().add_child(g)
+	current_scene = g
 	_run()
 
 func wait(n: int) -> void:

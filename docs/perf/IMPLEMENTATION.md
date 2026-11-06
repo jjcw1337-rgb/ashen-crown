@@ -25,7 +25,10 @@ A pending cancelled request finishes safely and its unowned result is discarded.
 outstanding worker; ordinary release does not wait for disk I/O.
 
 The background worker only loads resource files. Nodes, scene-tree insertion, physics and rendering setup stay
-on the main thread. One worker is active at a time, following Godot's advice to use one loading thread and avoid
+on the main thread. One worker is active at a time, loading at most eight roots per batch before the main thread collects results.
+This avoids requiring a separate frame for each small file. Cancellation retires ownership immediately; at most
+the current bounded batch finishes before unowned work is discarded. `--content-batch-one` is a diagnostic
+control for the former one-root scheduling policy. The worker follows Godot's advice to use one loading thread and avoid
 concurrent modification of shared resources. Early experiments with the Godot threaded-status API crashed inside
 the native loader; the exact native cause is unproven. The final path uses an owned Thread and collects its result
 only after the worker has finished. No engine upgrade is required.
@@ -38,6 +41,10 @@ named directories in source and exported packs (`.import` / `.remap` names are n
 session pin. That is visible in metrics and rejected during benchmark gameplay. This migration is therefore
 observable rather than pretending all direct `load()` calls have disappeared. Direct engine loads outside
 ResCache are not captured by this counter; the inventory and code review remain necessary.
+
+`mesh_parts(path)` is a main-thread derived cache tied to the scene's ownership. It extracts mesh/local-offset
+recipes once for repeated glass effects; final scope release retires those recipes too. Live fragment nodes
+remain independent, and their materials, placements and random trajectories are unchanged.
 
 ## Context and memory policy
 

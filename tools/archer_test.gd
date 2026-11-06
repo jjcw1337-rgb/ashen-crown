@@ -8,6 +8,7 @@ var fails := 0
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
+	current_scene = g
 	_run()
 
 func check(ok: bool, what: String) -> void:
@@ -150,4 +151,7 @@ func _run() -> void:
 	# talents and the class picker
 	check(Talents.trees("archer").size() == 3 and Talents.AUTO["archer"].size() == 21, "three talent trees, an auto build of 21")
 	print("[A] done, %d failed" % fails)
-	quit()
+	g.queue_free()
+	for i in 8:
+		await process_frame
+	quit(1 if fails else 0)

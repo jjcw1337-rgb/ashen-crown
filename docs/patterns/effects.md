@@ -16,5 +16,9 @@ never changes the game's state.
    and re-record `SkillWarmData` (`tools/skill_warm_capture.gd`) after changing what a skill draws.
 5. **Tested by `tools/coop_fx_test.gd`**: it fails a skill that shows partners nothing, a lingering effect that doesn't
    reach the puppet, or a replay that changes a monster.
+6. **Delayed stages belong to their world.** Use `Fx.later(root, delay, callback)` so unloading that world cancels
+   its visual work. Other independently removable nodes, such as a caster, must be captured through `WeakRef`
+   and resolved inside the callback. Checking `is_instance_valid` inside a raw timer lambda is too late: Godot
+   reads freed captures before entering its body. Test class changes and travel while effects are still pending.
 
 Details: CLAUDE.md, "Co-op skill effects".

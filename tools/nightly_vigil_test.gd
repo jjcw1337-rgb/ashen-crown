@@ -13,6 +13,7 @@ var fails := 0
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
+	current_scene = g
 	_run()
 
 func check(ok: bool, what: String) -> void:
@@ -188,4 +189,7 @@ func _uniques_on_floor() -> int:
 
 func _done() -> void:
 	print("[V] done, %d failed" % fails)
-	quit()
+	g.queue_free()
+	for i in 8:
+		await process_frame
+	quit(1 if fails else 0)

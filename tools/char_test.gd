@@ -8,6 +8,7 @@ const OLD := "user://test_characters_old_save.json"
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
+	current_scene = g
 	_run()
 
 func _wipe() -> void:
@@ -67,4 +68,7 @@ func _run() -> void:
 	print("[C] after delete: %d left, Fizz gone %s" % [chars.size(), chars.all(func(c): return c["name"] != "Fizz")])
 	_wipe()
 	DirAccess.remove_absolute(DIR)
+	g.queue_free()
+	for i in 8:
+		await process_frame
 	quit()

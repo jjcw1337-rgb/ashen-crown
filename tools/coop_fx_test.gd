@@ -17,6 +17,7 @@ const LINGER := {"siphon": "tether", "drain": "drain", "night": "night", "phanto
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
+	current_scene = g
 	_run()
 
 func wait(s: float) -> void:
@@ -84,6 +85,9 @@ func _run() -> void:
 		if puppet != null and is_instance_valid(puppet):
 			SkillFx.play(puppet, SkillFx.decode(g.net, w))
 	for cls in Data.CLASSES.keys():
+		var args := OS.get_cmdline_user_args()
+		if args.has("--classes") and not cls in args[args.find("--classes") + 1].split(","):
+			continue
 		await g.start_game(false, cls)
 		g.ui.close_all()
 		await g.travel(0, "wild", "start")
@@ -183,20 +187,30 @@ func _run() -> void:
 	# PvP statuses ride in a player's state packet: his puppet on everyone else's screen shows them (PvpStatusFx)
 	_make_puppet()
 	var hh: Hero = g.hero
+	Dodge.cancel(hh) # the preceding roll test must not reject the snare on its invulnerability window
 	hh.pvs.clear()
-	PvpStatus.apply(hh, "snare", 1.0, 1.0)
-	PvpStatus.apply(hh, "harried", 2.0, 0.25)
-	PvpStatus.apply(hh, "blight", 4.0, 3.0)
+	# This checks packet-driven appearance/removal, not expiry. Leave enough duration for slow
+	# first-use frames; the explicit empty packet below is what must remove the visuals.
+	PvpStatus.apply(hh, "snare", 10.0, 1.0)
+	PvpStatus.apply(hh, "harried", 10.0, 0.25)
+	PvpStatus.apply(hh, "blight", 10.0, 3.0)
 	puppet.apply_net_state(g.net._hero_packet(hh))
-	await process_frame
+	check(puppet.net_pvs_bits == (PvpStatusFx.SNARE | PvpStatusFx.HARRIED) and puppet.net_pvs_blight == 3,
+		"the status packet carries roots, harried and three Blight stacks")
+	# Status visuals update in physics, not render callbacks. Two fast process frames can contain no physics tick.
+	await physics_frame
 	await process_frame
 	check(puppet.get_node_or_null("pvs_snare") != null and puppet.get_node_or_null("pvs_harried") != null and puppet.get_node_or_null("pd_fever") != null, "a player's PvP statuses show on his puppet (rooted, harried, Feverish)")
 	hh.pvs.clear()
 	puppet.apply_net_state(g.net._hero_packet(hh))
-	await process_frame
+	await physics_frame
 	await process_frame
 	check(puppet.get_node_or_null("pvs_snare") == null and puppet.get_node_or_null("pvs_harried") == null and puppet.get_node_or_null("pd_fever") == null, "and leave it when they end")
 	puppet.queue_free()
 	puppet = null
 	print("[X] done, %d failed" % fails)
-	quit()
+	process_frame.disconnect(_mirror)
+	g.queue_free()
+	for i in 8:
+		await process_frame
+	quit(1 if fails else 0)

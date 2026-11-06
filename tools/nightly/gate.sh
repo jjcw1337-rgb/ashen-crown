@@ -6,33 +6,70 @@
 set -u
 OUT=${1:-/tmp}
 mkdir -p "$OUT"
-G=/Users/blaine/Applications/Godot_v4.3.app/Contents/MacOS/Godot
+G=${GODOT_BIN:-/Users/blaine/Applications/Godot_v4.3.app/Contents/MacOS/Godot}
+[ ! -e /tmp/ashen-nightly.lock ] || { echo "Nightly owns the test window"; exit 1; }
+BG_PORT=${GATE_BG_PORT:-24631}
+PVP_PORT=${GATE_PVP_PORT:-24641}
+COOP_PORT=${GATE_COOP_PORT:-24651}
+LAN_PORT=${GATE_LAN_PORT:-24567}
+QUEUE_PORT=${GATE_QUEUE_PORT:-$((COOP_PORT - 1))}
+NATIVE_DEFAULT=0
+[ "$(uname -s)" = Darwin ] && NATIVE_DEFAULT=1
+UI_RENDERED=${GATE_UI_RENDERED:-$NATIVE_DEFAULT}
 BAD=0
 
 # wait for a pid up to N seconds; kill it after
-waitfor() { local p=$1 n=$2; for i in $(seq 1 "$n"); do kill -0 "$p" 2>/dev/null || return 0; sleep 1; done; kill "$p" 2>/dev/null; return 1; }
+waitfor() { local p=$1 n=$2; for i in $(seq 1 "$n"); do kill -0 "$p" 2>/dev/null || { wait "$p"; return $?; }; sleep 1; done; kill "$p" 2>/dev/null; wait "$p" 2>/dev/null; return 124; }
 
-check() {  # name, log, finished-in-time
+# A LAN host builds a world before opening its socket. Start clients on readiness,
+# not a three-second guess that races asynchronous preparation.
+waitready() { local p=$1 log=$2; for i in $(seq 1 180); do
+  grep -q "^\[GATE_READY\] host_port=$LAN_PORT$" "$log" && return 0
+  kill -0 "$p" 2>/dev/null || return 1
+  sleep 1
+ done; return 1; }
+
+check() {  # name, log, child exit status (124 means timeout)
   local name=$1 log=$2 ok=$3 f e
   # (a test script that doesn't compile at all prints "Failed to load script" and no result lines, not "Parse
-  # Error": that's a red too, or a broken test reads as green, as playtest did until 2026-11-02. Many tests print a
-  # "Compile Error ... Sfx" for a class they reference before the autoload exists and still run: those aren't red.)
+  # Error": that's a red too, or a broken test reads as green, as playtest did until 2026-11-02. Tools are now run after autoload initialization, so script/compile errors are always red.)
   if [ ! -s "$log" ]; then echo "RED   $name (no log at $log)"; BAD=1; return; fi
-  f=$(grep -c 'FAIL' "$log"); e=$(grep -c 'Parse Error' "$log")
+  f=$(grep -c 'FAIL' "$log"); e=$(grep -Ec 'SCRIPT ERROR|Parse Error|Compile Error' "$log")
   if [ "$(grep -c '^\[' "$log")" = 0 ] && grep -q 'Failed to load script' "$log"; then e=$((e + 1)); fi
+  if [ "$name" = telemetry_test ]; then
+    if ! python3 tools/nightly/check_functional_log.py "$log" --telemetry-fixture; then e=$((e + 1)); fi
+  else
+    if ! python3 tools/nightly/check_functional_log.py "$log"; then e=$((e + 1)); fi
+  fi
   if [ "$ok" != 0 ] || [ "$f" -gt 0 ] || [ "$e" -gt 0 ]; then
-    echo "RED   $name (fails $f, parse errors $e, timed out $ok)"; grep -m5 'FAIL\|Parse Error\|Failed to load script' "$log"; BAD=1
+    echo "RED   $name (fails $f, error markers $e, exit $ok)"; grep -m5 'FAIL\|Parse Error\|Failed to load script' "$log"; BAD=1
   else
     echo "GREEN $name"
   fi
 }
 
 for t in playtest coop_fx_test title_test char_test ui_click_test grass_test intro_skip_test controls_test telemetry_test screen_test skill_spec_test stamina_test raid_schedule_test; do
-  "$G" --headless --path . -s tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
-  waitfor $p 400; check $t "$OUT/gate_$t.log" $?
+  if [ "$t" = title_test ] || [ "$t" = char_test ]; then
+    # Avoid empty arrays under the Mac's Bash 3.2 + set -u.
+    if [ "$UI_RENDERED" = 1 ]; then
+      "$G" --path . -s "tools/$t.gd" > "$OUT/gate_$t.log" 2>&1 & p=$!
+    else
+      "$G" --headless --path . -s "tools/$t.gd" > "$OUT/gate_$t.log" 2>&1 & p=$!
+    fi
+  else
+    "$G" --headless --path . -s tools/_late.gd -- res://tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
+  fi
+  limit=400
+  # Full real-time replay includes every class plus shared skills, not just the first class.
+  [ "$t" = coop_fx_test ] && limit=1200
+  waitfor $p "$limit"; check $t "$OUT/gate_$t.log" $?
 done
 for t in archer_test plague_test; do
-  "$G" --headless --path . --fixed-fps 60 -s tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
+  if [ "$t" = archer_test ] && [ "$UI_RENDERED" = 1 ]; then
+    "$G" --path . --fixed-fps 60 -s tools/_late.gd -- res://tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
+  else
+    "$G" --headless --path . --fixed-fps 60 -s tools/_late.gd -- res://tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
+  fi
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
 # the camp's people and the island (they reach the Sfx autoload: run late)
@@ -42,40 +79,48 @@ for t in camp_life_test vendor_test guard_test; do
 done
 
 # the Battlegrounds pair
-"$G" --headless --path . -s tools/bg_test.gd -- --server --port 24631 --raid-fast server > "$OUT/gate_bg_server.log" 2>&1 & s=$!
+"$G" --headless --path . -s tools/_late.gd -- res://tools/bg_test.gd --server --port "$BG_PORT" --raid-fast server > "$OUT/gate_bg_server.log" 2>&1 & s=$!
 sleep 6
-"$G" --headless --path . -s tools/bg_test.gd -- client 24631 > "$OUT/gate_bg_client.log" 2>&1 & c=$!
-waitfor $c 420; rc=$?; waitfor $s 200
-check bg_test_server "$OUT/gate_bg_server.log" 0
+if [ "$UI_RENDERED" = 1 ]; then
+  "$G" --path . -s tools/_late.gd -- res://tools/bg_test.gd client "$BG_PORT" > "$OUT/gate_bg_client.log" 2>&1 & c=$!
+else
+  "$G" --headless --path . -s tools/_late.gd -- res://tools/bg_test.gd client "$BG_PORT" > "$OUT/gate_bg_client.log" 2>&1 & c=$!
+fi
+waitfor $c 420; rc=$?; waitfor $s 200; rs=$?
+check bg_test_server "$OUT/gate_bg_server.log" $rs
 check bg_test_client "$OUT/gate_bg_client.log" $rc
 
 # Battlegrounds PvP: a server and two players
-"$G" --headless --path . -s tools/bg_pvp_test.gd -- --server --port 24641 --raid-fast server > "$OUT/gate_pvp_server.log" 2>&1 & s=$!
+"$G" --headless --path . -s tools/_late.gd -- res://tools/bg_pvp_test.gd --server --port "$PVP_PORT" --raid-fast server > "$OUT/gate_pvp_server.log" 2>&1 & s=$!
 sleep 6
-"$G" --headless --path . -s tools/bg_pvp_test.gd -- a 24641 > "$OUT/gate_pvp_a.log" 2>&1 & a=$!
-"$G" --headless --path . -s tools/bg_pvp_test.gd -- b 24641 > "$OUT/gate_pvp_b.log" 2>&1 & b=$!
-waitfor $s 300; rc=$?; waitfor $a 30; waitfor $b 30
+"$G" --headless --path . -s tools/_late.gd -- res://tools/bg_pvp_test.gd a "$PVP_PORT" > "$OUT/gate_pvp_a.log" 2>&1 & a=$!
+"$G" --headless --path . -s tools/_late.gd -- res://tools/bg_pvp_test.gd b "$PVP_PORT" > "$OUT/gate_pvp_b.log" 2>&1 & b=$!
+waitfor $s 300; rc=$?; waitfor $a 30; ra=$?; waitfor $b 30; rb=$?
 check pvp_server "$OUT/gate_pvp_server.log" $rc
-check pvp_attacker "$OUT/gate_pvp_a.log" 0
-check pvp_victim "$OUT/gate_pvp_b.log" 0
+check pvp_attacker "$OUT/gate_pvp_a.log" $ra
+check pvp_victim "$OUT/gate_pvp_b.log" $rb
 
 # the online co-op server with two players
-"$G" --headless --path . -s tools/coop_server_test.gd -- --server --coop --port 24651 server > "$OUT/gate_coop_server.log" 2>&1 & s=$!
+"$G" --headless --path . -s tools/_late.gd -- res://tools/coop_server_test.gd --server --coop --port "$COOP_PORT" --queue-port "$QUEUE_PORT" server > "$OUT/gate_coop_server.log" 2>&1 & s=$!
 sleep 6
-"$G" --headless --path . -s tools/coop_server_test.gd -- a 24651 > "$OUT/gate_coop_a.log" 2>&1 & a=$!
-"$G" --headless --path . -s tools/coop_server_test.gd -- b 24651 > "$OUT/gate_coop_b.log" 2>&1 & b=$!
-waitfor $s 300; rc=$?; waitfor $a 30; waitfor $b 30
+"$G" --headless --path . -s tools/_late.gd -- res://tools/coop_server_test.gd a "$COOP_PORT" > "$OUT/gate_coop_a.log" 2>&1 & a=$!
+"$G" --headless --path . -s tools/_late.gd -- res://tools/coop_server_test.gd b "$COOP_PORT" > "$OUT/gate_coop_b.log" 2>&1 & b=$!
+waitfor $s 300; rc=$?; waitfor $a 30; ra=$?; waitfor $b 30; rb=$?
 check coop_server "$OUT/gate_coop_server.log" $rc
-check coop_player_a "$OUT/gate_coop_a.log" 0
-check coop_player_b "$OUT/gate_coop_b.log" 0
+check coop_player_a "$OUT/gate_coop_a.log" $ra
+check coop_player_b "$OUT/gate_coop_b.log" $rb
 
 # the co-op pairs
 for t in mp_test plague_mp_test; do
-  "$G" --headless --path . -s tools/$t.gd -- host > "$OUT/gate_${t}_host.log" 2>&1 & h=$!
-  sleep 3
-  "$G" --headless --path . -s tools/$t.gd -- join > "$OUT/gate_${t}_join.log" 2>&1 & j=$!
-  waitfor $j 300; rc=$?; waitfor $h 60
-  check ${t}_host "$OUT/gate_${t}_host.log" 0
+  "$G" --headless --path . -s tools/_late.gd -- host --test-port "$LAN_PORT" res://tools/$t.gd > "$OUT/gate_${t}_host.log" 2>&1 & h=$!
+  if ! waitready "$h" "$OUT/gate_${t}_host.log"; then
+    echo "RED   ${t}_host (did not become ready)"; BAD=1
+    kill "$h" 2>/dev/null; wait "$h" 2>/dev/null
+    continue
+  fi
+  "$G" --headless --path . -s tools/_late.gd -- join --test-port "$LAN_PORT" res://tools/$t.gd > "$OUT/gate_${t}_join.log" 2>&1 & j=$!
+  waitfor $j 300; rc=$?; waitfor $h 60; rh=$?
+  check ${t}_host "$OUT/gate_${t}_host.log" $rh
   check ${t}_join "$OUT/gate_${t}_join.log" $rc
 done
 
@@ -83,7 +128,11 @@ done
 for f in tools/nightly_*_test.gd; do
   [ -f "$f" ] || continue
   t=$(basename "$f" .gd)
-  "$G" --headless --path . -s "$f" > "$OUT/gate_$t.log" 2>&1 & p=$!
+  if [ "$t" = nightly_vigil_test ] && [ "$UI_RENDERED" = 1 ]; then
+    "$G" --path . -s tools/_late.gd -- "res://$f" > "$OUT/gate_$t.log" 2>&1 & p=$!
+  else
+    "$G" --headless --path . -s tools/_late.gd -- "res://$f" > "$OUT/gate_$t.log" 2>&1 & p=$!
+  fi
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
 exit $BAD

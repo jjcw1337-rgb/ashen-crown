@@ -27,7 +27,6 @@ static func recipe(i: int) -> Dictionary:
 
 # ---------------------------------------------------------------- the vial
 static var _vial_scene: PackedScene
-static var _shard_scene: PackedScene
 
 ## A vial filled with recipe `ri`. Its liquid material is in meta "liquid" (one per vial: the slosh plane is its own).
 static func vial(ri: int) -> Node3D:
@@ -369,19 +368,16 @@ static func shatter(root: Node3D, w: World, at: Vector3, r: float, ri: int, dir:
 	var pos := Vector3(at.x, gy, at.z)
 	var fwd := (dir * Vector3(1, 0, 1)).normalized() if (dir * Vector3(1, 0, 1)).length() > 0.01 else Vector3.FORWARD
 	# the glass
-	if _shard_scene == null and ResourceLoader.exists(SHARDS_GLB):
-		_shard_scene = ResCache.get_res(SHARDS_GLB)
-	if _shard_scene != null:
-		var src: Node3D = _shard_scene.instantiate()
-		for mi in src.find_children("*", "MeshInstance3D", true, false):
+	if ResourceLoader.exists(SHARDS_GLB):
+		for part in ResCache.mesh_parts(SHARDS_GLB):
 			var m := MeshInstance3D.new()
-			m.mesh = (mi as MeshInstance3D).mesh
+			m.mesh = part.mesh
 			m.material_override = glass_mat()
 			m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			var d := Debris.new()
 			d.add_child(m)
 			root.add_child(d)
-			var loc: Vector3 = (mi as Node3D).position * FLIGHT_SCALE
+			var loc: Vector3 = (part.position as Vector3) * FLIGHT_SCALE
 			d.global_position = pos + Vector3(0, 0.12, 0) + loc
 			d.scale = Vector3.ONE * FLIGHT_SCALE
 			var out := Vector3(loc.x, 0, loc.z).normalized() if Vector2(loc.x, loc.z).length() > 0.001 else Vector3.RIGHT
@@ -389,7 +385,6 @@ static func shatter(root: Node3D, w: World, at: Vector3, r: float, ri: int, dir:
 			d.spin = Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)).normalized() * randf_range(8.0, 20.0)
 			d.floor_y = gy + 0.02
 			d.life = randf_range(1.1, 1.8)
-		src.free()
 	# the cork, still in its wax, tumbling away
 	var cork := Debris.new()
 	var cm := MeshInstance3D.new()

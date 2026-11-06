@@ -118,11 +118,12 @@ static func chain(h: Hero, root: Node3D, ps: PackedVector3Array, d: Vector3, pal
 			bolt(root, a, b, 0.36, wk, pal, h.game)
 			_struck(h, root, b, pal)
 		else:
-			var tm := root.get_tree().create_timer(LEAP_GAP * i, false)
-			tm.timeout.connect(func():
-				if is_instance_valid(root) and is_instance_valid(h):
-					bolt(root, a, b, 0.32, wk, pal, h.game)
-					_struck(h, root, b, pal))
+			var caster: WeakRef = weakref(h)
+			Fx.later(root, LEAP_GAP * i, func():
+				var hero := caster.get_ref() as Hero
+				if hero != null and hero.is_inside_tree():
+					bolt(root, a, b, 0.32, wk, pal, hero.game)
+					_struck(hero, root, b, pal))
 
 ## One bolt from a to b living `dur` s: a frame of the Blender lightning stretched between them, turning to the camera
 ## round its own line, struck again with another frame every 50 ms, a thin jagged core over it, its light flashing.

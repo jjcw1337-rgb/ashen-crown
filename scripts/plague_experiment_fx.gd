@@ -116,18 +116,17 @@ class Vat extends Node3D:
 	## The vat's own glass flies apart: its cylinder's curved panes, flung out from where each sat (`k` = how hard).
 	func _shards(g: Vector3, k: float) -> void:
 		if ResourceLoader.exists(PlagueExperimentFx.SHARDS_GLB):
-			var src: Node3D = ResCache.inst(PlagueExperimentFx.SHARDS_GLB)
 			var gm := PlagueVialFx.glass_mat_2side(Color(0.7, 0.95, 0.75))
 			var turn := vat.rotation.y if vat != null else 0.0
-			for mi in src.find_children("*", "MeshInstance3D", true, false):
+			for part in ResCache.mesh_parts(PlagueExperimentFx.SHARDS_GLB):
 				var d := PlagueVialFx.Debris.new()
 				var m := MeshInstance3D.new()
-				m.mesh = (mi as MeshInstance3D).mesh
+				m.mesh = part.mesh
 				m.material_override = gm
 				m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				d.add_child(m)
 				add_child(d)
-				var loc: Vector3 = (mi as Node3D).position.rotated(Vector3.UP, turn)
+				var loc: Vector3 = (part.position as Vector3).rotated(Vector3.UP, turn)
 				d.global_position = g + Vector3(loc.x, loc.y + PlagueExperimentFx.GLASS_LIFT, loc.z)
 				d.rotation.y = turn
 				var out := Vector3(loc.x, 0, loc.z).normalized() if Vector2(loc.x, loc.z).length() > 0.001 else Vector3.RIGHT
@@ -135,7 +134,6 @@ class Vat extends Node3D:
 				d.spin = Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)).normalized() * randf_range(5.0, 14.0)
 				d.floor_y = g.y + 0.04
 				d.life = randf_range(1.8, 2.8)
-			src.free()
 	func _burst_rest(g: Vector3) -> void:
 		Fx.burst(self, g + Vector3(0, 0.8, 0), PlagueExperimentFx.BILE, 60, 7.0, 0.08, 0.9, true, -9.0, 80.0)
 		PlagueSmoke.puffs(self, g + Vector3(0, 0.6, 0), PlagueSmoke.VAPOUR, Color(0.55, 0.72, 0.35, 0.5), 14, 1.6, 1.6, r * 0.9, 0.5, 0.6, 0.0, Vector3.UP, true)

@@ -26,6 +26,7 @@ func run() -> void:
 	check(ready.ready, "async preparation")
 	check(cache.status("b").ready, "coalesced readiness")
 	check(cache.metrics().loads_started == 7, "no duplicate requests")
+	check(cache.metrics().batches_started == 1, "seven uncached roots share one bounded worker batch")
 	var first: Resource = cache.get_res(paths[0])
 	check(first == cache.get_res(paths[0]), "identity")
 	check(cache.metrics().sync_misses.is_empty(), "no synchronous miss")
@@ -51,6 +52,10 @@ func run() -> void:
 	cache.prepare("missing", ["user://missing_cache_fixture.tres"])
 	check(not cache.status("missing").ready and cache.status("missing").failed.size() == 1, "missing is not ready")
 	cache.release("missing")
+	cache.get_res(paths[0])
+	check(cache.metrics().legacy_pins == 1, "fallback owns a transitional pin")
+	cache.shutdown_if_unused()
+	check(cache.metrics().held == 0 and cache.metrics().legacy_pins == 0, "final shutdown releases transitional pins")
 	for path in paths:
 		DirAccess.remove_absolute(path)
 	print("[CACHE TEST] %d checks" % checks)

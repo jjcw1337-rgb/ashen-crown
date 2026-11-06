@@ -6,10 +6,12 @@ frame is ~18 ms).
 
 ## The rules
 
-1. **Everything that can load during play goes through `ResCache`** (`scripts/res_cache.gd`): `ResCache.inst(path)`
-   for a scene, `ResCache.get_res(path)` for anything else. Godot keeps a resource only while something references
-   it, so a bare `load()` in an effect re-read its .glb on every cast (each Archer arrow 14-17 ms). `ResCache` holds
-   it for the session. Monster bodies load through it too.
+1. **Declare preparation and ownership through `ContentCatalog` + `ResCache`.** Before activating a screen,
+   zone or combat family, call `prepare(scope, paths)`, await `wait_ready`, and release that scope when its owner
+   leaves. Requests share Godot's resident resource; ownership determines retention. `get_res`/`inst` remain
+   transitional fallbacks, with per-path synchronous misses reported and rejected by performance checks.
+   New content in a declared family is discovered in source and exported packs; unusual dynamic paths must
+   be declared explicitly. See [the shared implementation](../perf/IMPLEMENTATION.md).
 2. **Never create a `Shader` per cast or per spawn.** Make it once and keep it in a `static var`:
    `if _sh == null: _sh = Shader.new(); _sh.code = ...`. Each fresh Shader compiles again and creates new GPU
    pipelines.
@@ -21,11 +23,16 @@ frame is ~18 ms).
    - `MonsterWarm` (`scripts/monster_warm.gd`): every monster kind that can still turn up in the zone. A new
      place that spawns monsters mid-zone needs its kinds added to `MonsterWarm.kinds`.
    - `UI.warm_windows`: the game's windows and the character sheet's portrait.
-4. **Load on worker threads before building.** `ZonePreload` (`scripts/zone_preload.gd`) requests a zone's .glb
-   files as the loading screen goes up, and the boot preloads the title's and the camp's
-   (`Game._boot_preload`). Re-record the zone lists (`--preload-record`, `tools/zone_preload_gen.py`) after a zone
-   gains or loses models; a stale list only costs speed.
-5. **Shadows:** a `discard` in a material runs in every shadow cascade. Static props cast from depth-only twins
+4. **Load resources on the shared worker; assemble scenes on the main thread.** `Game.load_zone` prepares
+   catalog roots and recorded zone paths, constructs the world, then prepares visuals before enabling play.
+   A loaded file is not an instantiated scene or a compiled GPU pipeline. Grass construction uses the shared
+   incremental job path; other large builder loops still need measured migration. Boot preparation also keeps
+   `Game._busy` true until the first world is ready. Dedicated servers skip client presentation preparation.
+5. **Reuse derived data with the same lifetime.** `ResCache.mesh_parts(path)` extracts immutable mesh/local-offset
+   recipes once per owned scene; vial and vat shatters create only their live debris nodes on subsequent bursts.
+   Callers must not mutate recipes. Releasing the final owner retires the derived cache too; active consumers
+   retain their own references. This is not a general pool of live nodes or a change to particle quality.
+6. **Shadows:** a `discard` in a material runs in every shadow cascade. Static props cast from depth-only twins
    (`Props.shadow_twins`, `Flora.shadow_twin`).
 
 ## Measuring
@@ -35,6 +42,8 @@ See [measuring.md](measuring.md): `tools/app_hitch_audit.gd` (first times across
 
 ## Not covered yet (open work)
 
-Monster spells and boss effects, Act II/III and the Battlegrounds/arena map loads, a cold first launch (empty shader
-caches), memory over a long session, and machines other than the Mac mini. The budgets these must meet are in
+Full performance acceptance for monster/boss effects and every map/class combination, a cold first launch
+(empty shader caches), memory over a long session, and machines other than the Mac mini. Online preparation
+currently covers all classes, including late arrivals; roster-specific readiness and tighter residency are open.
+Catalog/resource functionality and representative 3v3 rendering are verified, not a blanket FPS guarantee. The budgets these must meet are in
 [measuring.md](measuring.md).

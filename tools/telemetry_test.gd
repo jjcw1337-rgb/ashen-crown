@@ -16,6 +16,7 @@ func _initialize():
 		BuildEnv.forced = {"cloud": "1", "env": "staging", "nakama_url": a[ci + 1], "nakama_key": a[ci + 2]}
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
+	current_scene = g
 	_run()
 
 func check(ok: bool, what: String) -> void:
@@ -55,7 +56,9 @@ func _run() -> void:
 	DirAccess.remove_absolute("user://logs/godot9999-12-31T23.59.59.log")
 	# an error in this session, twice: one issue, counted
 	TM.crumb("boss", {"kind": "test"})
+	print("[T] EXPECT TELEMETRY INJECTION 1234")
 	push_error("telemetry test error 1234")
+	print("[T] EXPECT TELEMETRY INJECTION 5678")
 	push_error("telemetry test error 5678")
 	await secs(0.5)
 	t._read_log()

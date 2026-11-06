@@ -99,5 +99,26 @@ class Runner(unittest.TestCase):
             self.assertTrue(json.loads((Path(folder) / 'timeout.validation.json').read_text())['timed_out'])
 
 
+
+class FunctionalLogTests(unittest.TestCase):
+    def test_telemetry_requires_exact_injections_and_successful_reporting(self):
+        from check_functional_log import inspect
+        text = '\n'.join(f'[T] EXPECT TELEMETRY INJECTION {n}\nERROR: telemetry test error {n}\n   at: push_error (core/variant/variant_utility.cpp:1092)' for n in (1234, 5678))
+        text += '\n[T] ok   an error from the log, fingerprinted: one issue, counted twice (2)\n[T] done, 0 failed'
+        self.assertEqual(len(inspect(text)[1]), 2)
+        self.assertEqual(inspect(text, True)[1], [])
+        self.assertTrue(inspect(text.replace('[T] done, 0 failed', ''), True)[1])
+        self.assertTrue(inspect(text + '\nERROR: telemetry test error 1234', True)[1])
+        self.assertTrue(inspect(text + '\nERROR: unrelated failure', True)[1])
+
+    def test_only_the_exact_dummy_renderer_defect_is_classified_known(self):
+        from check_functional_log import inspect
+        known = 'ERROR: Parameter "m" is null.\n   at: mesh_get_surface_count (servers/rendering/dummy/storage/mesh_storage.h:120)'
+        self.assertEqual(inspect(known)[:2], (1, []))
+        self.assertEqual(len(inspect(known + '\nSCRIPT ERROR: broken readiness')[1]), 1)
+        self.assertEqual(len(inspect('ERROR: Parameter "m" is null.\n at: game.gd:12')[1]), 1)
+        self.assertEqual(inspect('[TEST] passed')[:2], (0, []))
+        self.assertEqual(len(inspect('[X] FAIL missing status effect')[1]), 1)
+
 if __name__ == '__main__':
     unittest.main()

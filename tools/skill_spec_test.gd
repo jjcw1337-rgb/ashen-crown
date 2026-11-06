@@ -79,6 +79,7 @@ func _run() -> void:
 	AN = load("res://scripts/anim.gd")
 	SH = load("res://scripts/shared_skills.gd")
 	get_root().add_child(g)
+	current_scene = g
 	while g.world == null or g._busy or g._intro_playing or not g.ui.title_panel.visible:
 		g._intro_skip = true
 		await process_frame

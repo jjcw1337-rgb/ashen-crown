@@ -261,6 +261,8 @@ func _ready() -> void:
 		return
 	# the camp's and the title's models load on worker threads while the intro plays (Blaine, 2026-11-05: the title
 	# froze for 4.6 s while the camp was built behind it, 3.3 s of that loading 55 models on the main thread)
+	# Boot preparation is busy too: callers must not enter gameplay before a world exists.
+	_busy = true
 	_boot_preload()
 	await _play_intro()
 	# then the camp is built under the loading screen, from the cache, and the title comes up after it, smooth
@@ -272,6 +274,7 @@ func _ready() -> void:
 	set_loading_art("town")
 	loading.visible = true
 	await _await_preloads()
+	_busy = false
 	await load_zone(0, "town", "start")
 	_boot_hold = false
 	loading.visible = false

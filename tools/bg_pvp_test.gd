@@ -32,7 +32,9 @@ func _initialize():
 		if ci >= 0 and ci + 2 < a.size():
 			BuildEnv.forced = {"cloud": "1", "nakama_url": a[ci + 1], "nakama_key": a[ci + 2]}
 	g = (load("res://main.tscn") as PackedScene).instantiate()
+	g.char_dir = "user://gate/bg_pvp_test/%s/" % role
 	get_root().add_child(g)
+	current_scene = g
 	_run()
 
 func check(ok: bool, what: String) -> void:

@@ -9,6 +9,7 @@ const DIR := "user://test_title_characters/"
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
+	current_scene = g
 	_run()
 
 func _frames(n: int) -> void:
@@ -78,4 +79,6 @@ func _run() -> void:
 	print("[T] back to title: shows Roland again %s, 3D off %s" % [(cont.find_child("big", true, false) as Label).text == "Roland", get_root().disable_3d])
 	_wipe()
 	DirAccess.remove_absolute(DIR)
+	g.queue_free()
+	await _frames(8)
 	quit()

@@ -23,7 +23,9 @@ func _initialize():
 	if ai >= 0 and ai + 1 < a.size():
 		host = a[ai + 1]
 	g = (load("res://main.tscn") as PackedScene).instantiate()
+	g.char_dir = "user://gate/coop_server_test/%s/" % role
 	get_root().add_child(g)
+	current_scene = g
 	process_frame.connect(_answer_votes)
 	_run()
 

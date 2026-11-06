@@ -4,9 +4,11 @@ extends RefCounted
 ## resources sequentially; only finished worker results are collected on the main thread.
 ## Native loader crashes occurred in the 4.3 threaded-status pilot; the exact native cause
 ## is unproven. An owned thread gives an explicit completion boundary. No scene-tree work runs there.
-const MAX_IN_FLIGHT := 1
+const MAX_IN_FLIGHT := 8 # resource roots per bounded batch; still exactly one worker
 static var _thread: Thread
 static var _held := {}
+static var _mesh_parts := {}
+static var _mesh_parts_builds := 0
 static var _scopes := {}
 static var _pending := {}
 static var _queue: Array[String] = []
@@ -14,6 +16,7 @@ static var _errors := {}
 static var _legacy := {} # compatibility pins for unconverted callers, visible in diagnostics
 static var _sync_misses := {}
 static var _loads_started := 0
+static var _batches_started := 0
 
 static func prepare(scope: String, paths: Array) -> void:
 	if not _scopes.has(scope):
@@ -31,37 +34,45 @@ static func prepare(scope: String, paths: Array) -> void:
 	pump()
 
 static func pump() -> void:
-	if _thread != null and not _thread.is_alive():
-		var path: String = str(_pending.keys()[0])
-		var res: Resource = _thread.wait_to_finish() as Resource
+	if _thread != null:
+		if _thread.is_alive(): return
+		var loaded: Dictionary = _thread.wait_to_finish()
 		_thread = null
-		_pending.erase(path)
-		if res != null:
-			if _owned(path):
-				_held[path] = res
-		else:
-			_errors[path] = "load failed"
-	while _pending.size() < MAX_IN_FLIGHT and not _queue.is_empty():
+		for path in _pending:
+			var res: Resource = loaded.get(path)
+			if res != null:
+				if _owned(path): _held[path] = res
+			else:
+				_errors[path] = "load failed"
+		_pending.clear()
+	# Collect several roots per frame instead of requiring a frame for every small file.
+	# This diagnostic flag reproduces the previous one-root scheduling policy for paired runs.
+	var limit := 1 if OS.get_cmdline_user_args().has("--content-batch-one") else MAX_IN_FLIGHT
+	var batch: Array[String] = []
+	while batch.size() < limit and not _queue.is_empty():
 		var path: String = _queue.pop_front()
-		if not _owned(path):
-			continue
-		# Resident resources need a reference, not another worker or disk read.
+		if not _owned(path): continue
 		if ResourceLoader.has_cached(path):
 			_held[path] = load(path)
 			continue
-		if OS.get_cmdline_user_args().has("--content-trace"):
-			print("[content] request ", path)
-		_thread = Thread.new()
-		var err := _thread.start(_load_worker.bind(path))
-		if err == OK:
-			_pending[path] = true
-			_loads_started += 1
-		else:
-			_thread = null
-			_errors[path] = "request error %d" % err
+		batch.append(path)
+	if batch.is_empty(): return
+	if OS.get_cmdline_user_args().has("--content-trace"):
+		print("[content] batch ", batch)
+	_thread = Thread.new()
+	var err := _thread.start(_load_worker.bind(batch))
+	if err == OK:
+		for path in batch: _pending[path] = true
+		_loads_started += batch.size()
+		_batches_started += 1
+	else:
+		_thread = null
+		for path in batch: _errors[path] = "request error %d" % err
 
-static func _load_worker(path: String) -> Resource:
-	return ResourceLoader.load(path)
+static func _load_worker(paths: Array[String]) -> Dictionary:
+	var loaded := {}
+	for path in paths: loaded[path] = ResourceLoader.load(path)
+	return loaded
 
 static func status(scope: String) -> Dictionary:
 	if not _scopes.has(scope):
@@ -94,6 +105,7 @@ static func release(scope: String) -> void:
 	for path in _held.keys():
 		if not _owned(path):
 			_held.erase(path)
+			_mesh_parts.erase(path)
 	# An in-flight load finishes normally; pump joins the worker and discards an unowned result.
 
 static func _owned(path: String) -> bool:
@@ -121,13 +133,30 @@ static func inst(path: String) -> Node:
 	var ps := get_res(path) as PackedScene
 	return ps.instantiate() if ps != null else null
 
+## Immutable fragment recipes derived on the main thread, once per owned scene.
+## Keep each mesh's local offset: these glass effects historically use local positions.
+## Callers create only the live debris nodes; the temporary imported scene is never rebuilt per burst.
+static func mesh_parts(path: String) -> Array:
+	if _mesh_parts.has(path): return _mesh_parts[path]
+	var scene := get_res(path) as PackedScene
+	if scene == null: return []
+	var source := scene.instantiate()
+	var parts: Array = []
+	for child in source.find_children("*", "MeshInstance3D", true, false):
+		var mi := child as MeshInstance3D
+		parts.append({"mesh": mi.mesh, "position": mi.position})
+	source.free()
+	_mesh_parts[path] = parts
+	_mesh_parts_builds += 1
+	return parts
+
 static func hold(paths: Array) -> void:
 	for p in paths:
 		get_res(str(p))
 
 static func metrics() -> Dictionary:
 	return {"held": _held.size(), "scopes": _scopes.size(), "pending": _pending.size(),
-		"queued": _queue.size(), "legacy_pins": _legacy.size(), "loads_started": _loads_started,
+		"queued": _queue.size(), "derived_mesh_sets": _mesh_parts.size(), "mesh_parts_builds": _mesh_parts_builds, "legacy_pins": _legacy.size(), "loads_started": _loads_started, "batches_started": _batches_started,
 		"sync_misses": _sync_misses.duplicate(), "errors": _errors.duplicate()}
 
 ## Only at final teardown; ordinary cancellation is nonblocking and handled by pump().
@@ -138,3 +167,9 @@ static func shutdown_if_unused() -> void:
 		_thread = null
 	_pending.clear()
 	_queue.clear()
+	# Final application teardown also releases transitional pins and derived recipes.
+	# Live consumers retain their own Resource references; no cache owns them now.
+	_mesh_parts.clear()
+	_held.clear()
+	_legacy.clear()
+	_errors.clear()

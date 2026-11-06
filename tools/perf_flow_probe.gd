@@ -61,6 +61,7 @@ func run() -> void:
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	g.char_dir = "user://perf_flow_chars/"
 	get_root().add_child(g)
+	current_scene = g
 	g.rng.seed = 420042
 	g.set_sound(false)
 	while g.world == null or g._busy or g._intro_playing or g._boot_hold or not g.ui.title_panel.visible:

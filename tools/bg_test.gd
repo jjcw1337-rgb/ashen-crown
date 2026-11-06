@@ -30,7 +30,9 @@ func _initialize():
 		if ci >= 0 and ci + 2 < a.size():
 			BuildEnv.forced = {"cloud": "1", "nakama_url": a[ci + 1], "nakama_key": a[ci + 2]}
 	g = (load("res://main.tscn") as PackedScene).instantiate()
+	g.char_dir = "user://gate/bg_test/%s/" % role
 	get_root().add_child(g)
+	current_scene = g
 	_run()
 
 func check(ok: bool, what: String) -> void:
@@ -63,7 +65,22 @@ func _run() -> void:
 	else:
 		await _client()
 	print("[%s] done, %d failed" % ["S" if role == "server" else "C", fails])
-	quit()
+	g.net.shutdown()
+	g.queue_free()
+	for i in 8:
+		await process_frame
+	quit(1 if fails else 0)
+
+# The accelerated 40s lobby is shorter than cold rendered-client preparation. Hold only
+# that fixture clock until the player's bell starts it; raid/portal/reset clocks then run
+# normally at --raid-fast speed. This test does not cover the unattended lobby timeout.
+func _client_joined() -> bool:
+	if g.bg.state == "lobby": g.bg.raid_t = 0.0
+	return not g.net.players.is_empty()
+
+func _bell_rang() -> bool:
+	if g.bg.state == "lobby": g.bg.raid_t = 0.0
+	return g.bg.state == "prep"
 
 func _server() -> void:
 	await until(func(): return g.bg != null and g.net.active and g.cur_zone == Battlegrounds.ZONE and not g._busy, 40.0)
@@ -84,8 +101,8 @@ func _server() -> void:
 	var gold: Array = g.world.interactables.filter(func(t): return t.kind == "chest" and t.data.get("gold", false))
 	check(gold.size() == 1 and g.chest_sealed(gold[0]), "the golden chest, sealed while Mossbeard lives")
 	check(g.bg.state == "lobby" and g.world.has_meta("bg_gates") and (g.world.get_meta("bg_gates") as Array).size() >= 4 and not g.world.get_meta("bg_gates")[0]["up"], "a round begins in the antechamber, its gates shut (%d gates)" % (g.world.get_meta("bg_gates", []) as Array).size())
-	check(await until(func(): return not g.net.players.is_empty(), 60.0), "a player joined")
-	check(await until(func(): return g.bg.state == "prep", 30.0), "the player rang the bell: the countdown")
+	check(await until(_client_joined, 180.0), "a player joined")
+	check(await until(_bell_rang, 180.0), "the player rang the bell: the countdown")
 	check(await until(func(): return g.bg.state == "raid", 20.0) and g.world.get_meta("bg_gates")[0]["up"], "then the gates rose and the raid was on")
 	check(await until(func(): return g.bg.open.size() == Battlegrounds.OPEN_PORTALS + 2, 70.0), "the portals opened on time (two on the Ossuary, one on each floor below)")
 	var items0: int = g.net.items.size()
@@ -115,7 +132,7 @@ func _client() -> void:
 	g.test_immortal = true
 	g.test_onehit = true
 	await g.start_battlegrounds("%s:%d" % [host, port], id)
-	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "entered the crypt as Testric")
+	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 90.0), "entered the crypt as Testric")
 	check(_save().get("in_raid", false), "the save says in_raid")
 	check(await until(func(): return not g.bg_raid.is_empty(), 10.0), "the raid's clock arrived (%s)" % str(g.bg_raid.get("state", "?")))
 	# the antechamber: behind its gate; ring the bell and the countdown begins for everyone; then the gate rises

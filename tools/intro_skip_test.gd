@@ -25,6 +25,7 @@ func reset(t := 5.0) -> void:
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
+	current_scene = g
 	_run()
 func _run() -> void:
 	for i in 20:
@@ -53,4 +54,10 @@ func _run() -> void:
 	check(not g._intro_skip, "nothing skips in the first half second")
 	g._intro_playing = false
 	print("[I] done, %d failed" % fails)
+	# This fixture tests skip input, not quitting in the middle of the boot coroutine.
+	while g._busy or g.world == null:
+		await process_frame
+	g.queue_free()
+	for i in 4:
+		await process_frame
 	quit(1 if fails > 0 else 0)

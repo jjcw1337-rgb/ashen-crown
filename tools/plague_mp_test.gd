@@ -5,6 +5,7 @@ extends SceneTree
 ## (whose events go through the host).
 ## Run one copy with "-- host" and another with "-- join". Prints [PM] lines.
 var g
+var test_port := 24567
 var role := "host"
 var fails := 0
 
@@ -13,9 +14,13 @@ const CASTS := [["toxic", 6.0, 1.8], ["swarm", 6.0, 1.6], ["bloom", 4.0, 1.6], [
 	["transfusion", 0.0, 1.2], ["experiment", 4.0, 4.8]]
 
 func _initialize():
+	var args := OS.get_cmdline_user_args()
+	if args.has("--test-port"): test_port = int(args[args.find("--test-port") + 1])
 	role = "join" if OS.get_cmdline_user_args().has("join") else "host"
 	g = (load("res://main.tscn") as PackedScene).instantiate()
+	g.char_dir = "user://gate/plague_mp_test/%s/" % role
 	get_root().add_child(g)
+	current_scene = g
 	_run()
 
 func check(ok: bool, what: String) -> void:
@@ -41,17 +46,23 @@ func _run() -> void:
 	await wait(30)
 	await idle()
 	if role == "host":
-		await g.start_host()
+		if test_port == 24567:
+			await g.start_host()
+		else:
+			await g.start_game(not g.list_characters().is_empty())
+			g.net.host(test_port)
 		await idle()
 		g.hero.set_class("plague")
 		g.ui.close_all()
+		check(g.net.active and g.net.is_host, "host is listening")
+		if g.net.active and g.net.is_host: print("[GATE_READY] host_port=", test_port)
 		var t0 := Time.get_ticks_msec()
-		while g.net.players.is_empty() and Time.get_ticks_msec() - t0 < 60000:
+		while g.net.players.is_empty() and Time.get_ticks_msec() - t0 < 180000:
 			await wait(10)
 		check(g.net.players.size() == 1, "the partner joined")
 	else:
 		await secs(2.0)
-		g.start_join("127.0.0.1")
+		g.start_join("127.0.0.1:%d" % test_port)
 		var t0 := Time.get_ticks_msec()
 		while (g.net.players.is_empty() or g.net.loading or g._busy) and Time.get_ticks_msec() - t0 < 30000:
 			await wait(5)
