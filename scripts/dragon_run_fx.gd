@@ -36,7 +36,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			ElementalFx._dust(root, p + Vector3(0, 0.2, 0), FrostVolleyFx.MIST, 1.6, 0.45, {"amount": 10, "life": 1.4,
 				"explosive": 1.0, "shape": "ring", "r": 1.6, "r_in": 0.6, "dir": Vector3.UP, "spread": 25.0, "vel": [0.2, 0.6],
 				"radial": [0.6, 1.6], "damping": [2.0, 3.0], "scale": [0.8, 1.3], "grow": [0.6, 1.8]})
-			SkillFx.snd(h, "ice_form", -1.0, 0.9)
+			SkillFx.snd(h, "ice_tomb_seal", 0.0)
 		["s_tomb", "shatter"]:
 			var p2: Vector3 = ev["p"]
 			var shells2: Array = h.fxs.get("drg_tombs", [])
@@ -107,7 +107,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			clouds.append({"p": p6, "n": [c1, c2], "t": secs + 1.0})
 			h.fxs["drg_clouds"] = clouds
 			ArcFx.bolt(root, p6 + Vector3(0, CLOUD_Y, 0), p6 + Vector3(randf_range(-3, 3), CLOUD_Y - 2.0, randf_range(-3, 3)), 0.3, 0.8, ArcFx.WYVERN, game)
-			SkillFx.snd(h, "thunder_vault", -4.0, 0.8)
+			SkillFx.snd(h, "thunderhead", -2.0)
 		["v_cloud", "bolt"]:
 			var q: Vector3 = ev["q"]
 			var top: Vector3 = (ev["p"] as Vector3) + Vector3(randf_range(-2, 2), CLOUD_Y - 0.5, randf_range(-2, 2))
@@ -127,6 +127,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			var d2: Vector3 = ev["d"]
 			var r3: float = float(ev.get("r", 6.5))
 			Dodge._wing_gust(h, 2.0)
+			SkillFx.snd(h, "gale_gust", 0.0)
 			var tr2 := InfernalFx.tier(game)
 			ElementalFx._dust(root, p8 + d2 * 1.2 + Vector3(0, 0.4, 0), Color(0.62, 0.6, 0.55), 1.5, 0.55, {"amount": [8, 12, 16, 22][tr2],
 				"life": 1.1, "explosive": 1.0, "shape": "point", "dir": d2 + Vector3(0, 0.12, 0), "spread": 38.0, "vel": [r3 * 1.4, r3 * 2.2],

@@ -328,13 +328,14 @@ static func sound(h: Hero, skill: String, at: float) -> bool:
 				return true
 			"v_dive":
 				Sfx.play(h.cls + "_roar", -6.0, 1.05)
+				Sfx.play_synced("wyvern_dive", at, -1.0)
 				return true
 			"v_cloud":
 				Sfx.play(h.cls + "_roar", -8.0, 0.9)
 				Sfx.play_synced("sigil_charge", at, -4.0)
 				return true
 			"v_gale":
-				Sfx.play_synced("wyvern_flap", at, 0.0, 0.75)
+				Sfx.play_synced("wyvern_flap", at, -3.0, 0.75)
 				Sfx.play(h.cls + "_roar", -9.0, 1.0)
 				return true
 	if is_mine(h) and skill == "storm_arc":
