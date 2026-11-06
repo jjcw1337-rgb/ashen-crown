@@ -43,8 +43,7 @@ Rules:
   editor finding `game/heroes/*/codex.json`. That needs no master file.
 - `tests/`, `tools/` and `build/` inside a hero are excluded from exports (`export_presets.cfg`). `build/` has a
   `.gdignore`.
-- King Grubb is kept as content (`game/monsters/king_grubb/`), not deleted with Act I. Everything else that's cut is
-  deleted, because git keeps the history.
+- Cuts keep the good things and drop the machinery (see "Cutting an old system").
 
 ## The gameplay core (game/systems/gameplay, game/systems/skills)
 
@@ -99,7 +98,7 @@ Touch points to coordinate:
 
 - **Claude-1: the world side.**
   - Tasks: the cuts (the old crypt, Act II, Act I's story, the coast, camp life, the Last Flame, the co-op server;
-    King Grubb is kept) and the loading overhaul.
+    by the three buckets in "Cutting an old system") and the loading overhaul.
   - Owns: `world.gd`, `forest_camp.gd`, `bg_forest.gd`, `camps.gd`, `battlegrounds.gd`, `res_cache.gd`, the
     preload and warm-up lists, every zone builder, and the files of everything being cut.
 - **Claude-2: the hero side.**
@@ -117,10 +116,37 @@ Touch points to coordinate:
 - Claude-2: the Archer's per-skill split (`game/heroes/archer/**`, plus small hook changes in `hero.gd` and
   `class_skills.gd`).
 
-## Cutting an old system: what the live game still borrows
+## Cutting an old system
 
-Before deleting an old system, move what the live game still uses out of it. Known borrowings (2026-11-06; check
-again with `git grep` before each cut):
+Blaine, 2026-11-06: keep the good things we built, drop the old machinery. Every piece of an old system goes into one
+of three buckets:
+1. **Keep live, in `game/`.** These are the monsters and bosses, each a camp or boss for the Battlegrounds:
+   - King Grubb with his gold-sack fight (`hoard.gd`, his part of `goblin.gd`, his model) and the Gold Grabbers;
+   - the three Hollow Sloths;
+   - the bear, the Feral, the three Fallen, the bandits, the gladiator, Aurelius and the lion.
+
+   They go to `game/monsters/<name>/`. Anything the live game still uses (the list below) also stays live.
+2. **Archive: good assets, not built.** Good models and textures that nothing uses yet go to `archive/`. That
+   folder has a `.gdignore`, so Godot neither imports nor exports it, and it stays in the repo for a future map to
+   pull back into `game/`. Examples are the fort (palisade, towers, gatehouse, great hall), the Roman/Aurelia set,
+   the coast and islands, the camp buildings and the crypt props. Today every model in the project ships in the
+   download whether it's used or not.
+3. **Delete: the old machinery.** This covers the story-mode code (zone builders for the moor, fort, Aurelia, coast
+   and islands), quests, traders, boats and sailing, waypoints, acts, the Last Flame and the co-op server. Git
+   keeps the history.
+
+Order for each old system:
+1. Move what the live game borrows (below).
+2. Move the monsters to `game/monsters/`.
+3. Archive the good assets.
+4. Delete the rest.
+5. Run the tests for what's left.
+
+Do one old system per push.
+
+### What the live game still borrows
+
+Known borrowings (2026-11-06; check again with `git grep` before each cut):
 - **The Verdant Reach** (`bg_forest.gd`) uses models from:
   - Act II: `models/roman/` arch, broken, column, drum (its ruins);
   - Grubb's fort: `models/fort/tower`;
@@ -138,7 +164,6 @@ again with `git grep` before each cut):
 - **Every camp chest** is built by `World._chest` (`world.gd`).
 - **`World.crypt_shell`** is used by the Sandbox (`sandbox.gd`) and the Last Flame (`vigil.gd`) as well as the old
   crypt.
-- **King Grubb is kept** as `game/monsters/king_grubb/`: his model, `hoard.gd` and his part of `goblin.gd`.
 
 ## Status
 
