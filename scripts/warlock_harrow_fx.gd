@@ -255,15 +255,18 @@ static func wisp_node(violet := false) -> Node3D:
 	var col: Color = VIOLET if (violet or randf() < 0.5) else FEL
 	var key := col.to_html()
 	if not _core_mats.has(key):
-		_core_mats[key] = [Mats.glow(col.lightened(0.5), 5.0), Mats.glow(col, 1.2, 0.0, 1.0)]
+		_core_mats[key] = [Mats.glow(col.lightened(0.5), 5.0), InfernalFx.glow_mat(col, 2.2, 2.6, 0.0)]
 	var core := MeshInstance3D.new()
 	core.mesh = Geo.sph(0.07, 8)
 	core.material_override = _core_mats[key][0]
 	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	core.name = "core"
 	n.add_child(core)
+	# a soft camera-facing glow round it (a shared material: InfernalFx's glow, no hard rim)
 	var halo := MeshInstance3D.new()
-	halo.mesh = Geo.sph(0.17, 10)
+	halo.mesh = InfernalFx.quad()
+	halo.scale = Vector3.ONE * 0.6
+	halo.extra_cull_margin = 2.0
 	halo.material_override = _core_mats[key][1]
 	halo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	n.add_child(halo)
@@ -703,15 +706,15 @@ static func _sweep(h: Hero, root: Node3D, r: float) -> void:
 	root.add_child(pivot)
 	pivot.global_position = h.global_position + Vector3(0, 1.0, 0)
 	# the lash: a curling thorned vine reaching out to the edge, glowing veins along it
-	var vine_m := Mats.glow_unique(Color(0.08, 0.16, 0.08), 0.6)
-	var vein_m := Mats.glow_unique(Color(0.45, 1.0, 0.45), 2.2)
+	var vine_m := Mats.glow_unique(Color(0.12, 0.3, 0.12), 1.4)
+	var vein_m := Mats.glow_unique(Color(0.55, 1.0, 0.5), 3.0)
 	var n := 16
 	for k in n:
 		var t := (k + 0.5) / n
 		var d := r * (0.15 + 0.85 * t)
 		var bend := sin(t * PI) * 0.6
 		var seg := MeshInstance3D.new()
-		seg.mesh = Geo.cyl(0.07 * (1.1 - t), 0.07 * (1.1 - t), r / n * 1.25, 5)
+		seg.mesh = Geo.cyl(0.11 * (1.1 - t), 0.11 * (1.1 - t), r / n * 1.3, 5)
 		seg.position = Vector3(sin(bend) * d * 0.3, sin(t * PI * 2.0) * 0.15, -d)
 		seg.rotation = Vector3(PI * 0.5, bend, 0)
 		seg.material_override = vine_m if k % 4 != 1 else vein_m
@@ -731,6 +734,8 @@ static func _sweep(h: Hero, root: Node3D, r: float) -> void:
 		"damping": [1.0, 2.0], "scale": [0.6, 1.2], "size": 0.5, "grow": [1.0, 0.3], "angle": true, "add": false,
 		"colors": [[0.0, Color(0.06, 0.03, 0.1, 0.0)], [0.2, Color(0.1, 0.05, 0.16, 0.6)], [1.0, Color(0.02, 0.01, 0.04, 0.0)]]})
 	HolyFx.shockwave(root, h.game, h.global_position, r, 0.35, 0.02)
+	WarlockFx.fel_ring(root, h.global_position, r * 0.8, 14, 0.5, 0.9, 0.45, 0.3)
+	_petals(root, h.global_position + Vector3(0, 1.0, 0))
 	SkillFx.shake(h, 0.18)
 
 # ---------------------------------------------------------------- Soul Feast and the shield
@@ -740,7 +745,7 @@ static func _update_feast(h: Hero, d: Dictionary, delta: float, now: float) -> v
 		d["scan"] = 0.2
 		d["near"] = h.game.enemies_near(h.global_position, WarlockHex.FEAST_R).filter(func(e): return not e.get("pvp_obj") and not e.get("pvp_hidden")).slice(0, 8)
 	var beams: Dictionary = d["beams"]
-	var hand := SkillFx.hand(h, false) + Vector3(0, 0.3, 0)
+	var hand := SkillFx.hand(h, false)
 	var live := {}
 	for e in d["near"]:
 		if not is_instance_valid(e) or e.dead:
@@ -749,7 +754,7 @@ static func _update_feast(h: Hero, d: Dictionary, delta: float, now: float) -> v
 		live[k] = true
 		if not beams.has(k) or not is_instance_valid(beams[k]):
 			var b := WarlockFx.beam(h.game.world.fx_root, 0.14)
-			b.arc = 0.8
+			b.arc = 0.25
 			beams[k] = b
 			WarlockFx.latch(h.game.world.fx_root, SkillFx.chest_of(e, 1.0))
 		(beams[k] as WarlockFx.Beam).draw(hand, SkillFx.chest_of(e, 1.0), now)

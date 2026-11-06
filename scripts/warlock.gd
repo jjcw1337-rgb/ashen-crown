@@ -57,7 +57,28 @@ static func body_gear(g: Dictionary) -> Dictionary:
 static func gnome() -> bool:
 	return ResourceLoader.exists(GNOME["glb"])
 
+## The jungle void spirit (Blaine, 2026-11-06): a hooded spirit of black vines and violet void, a crown of vines
+## and fel flowers, the robe dissolving into mist. The Meshy model rigged by Meshy, with library clips, prepared by
+## tools/blender/warlock/prep_warlock_mocap.py like the Wraith's (legless, the robe on cloth panels, float clips) and
+## run by the Wraith's float mode on the shared mocap system; the Wraith's spectral shader in fel green.
+const SPIRIT_GLB := "res://assets/models/warlock_spirit.glb"
+## Whole-body clips per attack style: [attack progress, clip seconds] keys (the spells are "cast"; the weapon combo
+## her claw strikes and the slam; felling a tree the slam).
+const SPIRIT_SHOTS := {
+	"cast": {"style": "cast", "clip": "cast", "keys": [[0.0, 0.55], [0.55, 1.35], [1.0, 2.1]]},
+	"swipe1": {"style": "swipe1", "clip": "claw1", "keys": [[0.0, 0.25], [0.5, 0.8], [1.0, 1.35]]},
+	"swipe2": {"style": "swipe2", "clip": "claw2", "keys": [[0.0, 0.3], [0.5, 0.75], [1.0, 1.3]]},
+	"swipe3": {"style": "swipe3", "clip": "slam", "keys": [[0.0, 0.4], [0.55, 1.6], [1.0, 2.4]]},
+	"chop": {"style": "chop", "clip": "slam", "keys": [[0.0, 0.35], [0.3, 1.1], [0.55, 1.63], [0.75, 2.3], [1.0, 3.0]]},
+}
+## Her rim, the fraying hem and the mist pouring off it: a deep void violet (the fel green is the texture's own glow).
+const SPIRIT_VOID := Color(0.42, 0.2, 0.62)
+static func spirit() -> bool:
+	return ResourceLoader.exists(SPIRIT_GLB)
+
 static func build(g: Dictionary) -> Node3D:
+	if spirit():
+		return _build_spirit(g)
 	if gnome():
 		return _build_gnome(g)
 	var root := Knight.build(body_gear(g))
@@ -65,7 +86,36 @@ static func build(g: Dictionary) -> Node3D:
 	_extras(root, g)
 	return root
 
+static func _build_spirit(g: Dictionary) -> Node3D:
+	var r := Knight.build_mocap(SPIRIT_GLB, {
+		"relaxed": ["idle", 0.0, "float", Wraith.FLOAT_SPEED],
+		"combat": ["combat_idle", 0.0, "float_combat", Wraith.FLOAT_SPEED],
+		"meta": "warlock_spirit", "hair_run": 1.0, "shots": SPIRIT_SHOTS})
+	r.remove_meta("knight")
+	r.set_meta("warlock", true)
+	r.set_meta("spirit", true)
+	r.set("hover", Wraith.HOVER)
+	r.set("float_mode", true)
+	var gear := {"spirit": SPIRIT_VOID}
+	Wraith._spectral(r, gear)
+	var sh: Shader = load("res://scripts/warlock_spirit.gdshader")
+	for m in r.get_meta("spectral_mats", []):
+		(m as ShaderMaterial).shader = sh
+		(m as ShaderMaterial).set_shader_parameter("fray", 0.72)
+	Wraith._mocap_extras(r, gear)
+	# the mist off her hem: dark void violet, not the Wraith's pale haze
+	var mist := r.get_meta("hem_mist", null) as GPUParticles3D
+	if mist != null and mist.draw_pass_1 is QuadMesh:
+		(mist.draw_pass_1 as QuadMesh).material = Mats.particle_mat(false, Color(0.2, 0.1, 0.3))
+	var gl := r.find_child("EyeGlow", true, false) as OmniLight3D
+	if gl != null:
+		gl.light_color = FEL
+	r.set_meta("warlock_anim", {"power": 0.0})
+	return r
+
 static func rebuild_body(root: Node3D, g: Dictionary) -> void:
+	if root.has_meta("spirit"):
+		return
 	if not root.has_meta("gnome"):
 		Knight.rebuild_body(root, body_gear(g))
 	for m in root.get_meta("fel_mats", []):
@@ -335,6 +385,13 @@ static func animate(root: Node3D, t: float, move: float, power := 0.0, phase := 
 	if not root.has_meta("warlock_anim"):
 		return
 	var a: Dictionary = root.get_meta("warlock_anim")
+	if root.has_meta("spirit"):
+		# the void spirit: her fel light swells with the Covenant's power
+		var sp: float = move_toward(float(a["power"]), power, 0.05)
+		a["power"] = sp
+		for m in root.get_meta("spectral_mats", []):
+			(m as ShaderMaterial).set_shader_parameter("glow", 1.0 + 1.4 * sp + 0.1 * sin(t * 3.0))
+		return
 	var pw: float = move_toward(float(a["power"]), power, 0.05)
 	if pw != float(a["power"]) or pw > 0.0:
 		a["power"] = pw
