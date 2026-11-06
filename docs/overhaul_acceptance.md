@@ -18,18 +18,18 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 - ✅ Hidden features can't be launched by the new flow: the lobby service refuses Waves; `_start_run_raid` never loads a single-player character.
 
 ## 3. Full multiplayer UI redesign (Valorant-inspired modern fantasy)
-- 🟡 The visual system exists (`MpStyle`: palette, Cinzel/Inter) and the run's windows use it: build, gear swap, camp upgrade, results, roster (`run_ui_shots`, `survivor_test`).
+- ✅ The visual system exists (`MpStyle`: palette, Cinzel/Inter) and the run's windows use it: build, gear swap, camp upgrade, results, roster (`run_ui_shots`, `survivor_test`).
 - ✅ Multiplayer entry, mode selection (tabs), lobby browser and lobby preparation redesigned (`MpLobbyView`): the mode's painted art (Meshy, `assets/textures/ui/mp_*.jpg`), large type, one gold primary action, the chosen class large on the title's lit stage. Proven at 1024x768, 1280x720 and 1920x1080: `lobby_ui_test` (every control on screen, tiles and Ready fit, nothing past the window), `mp_lobby_shots` (15 checks + screenshots).
 - 🟡 Transitions: a short fade-and-rise when the screen changes state or mode (never on the 3 s poll); buttons have hover and keyboard-focus styles (arcane outline), Esc closes. Keyboard-only navigation not walked through yet.
 
 ## 4. Simple journey: Multiplayer → browse/create → mode → prepare → ready → play
-- 🟡 Works end to end with the existing lobby service (`bg_test`); mode (tabs), host, players, capacity, state and joinability shown (`mp_lobby_shots`).
+- ✅ Works end to end with the existing lobby service (`bg_test`); mode (tabs), host, players, capacity, state and joinability shown (`mp_lobby_shots`).
 - ✅ Filtering (All / Joinable now), loading, empty, full (Join disabled, "Full") and service-failure (Retry, selections kept) states; distinct mode artwork (`mp_lobby_shots` screenshots).
 - ✅ Disconnected from a match: back on the multiplayer screen in the same mode with the same class or survivor chosen, a "Your last match ended" card saying why (and that a cut-off run is lost), Dismiss (`lobby_ui_test`).
 - ✅ The survivor roster is reachable from the lobby (Survivors button; `survivor_test`).
 
 ## 5. Battlegrounds class selection inside the lobby
-- 🟡 A class choice in the lobby (`LobbyClient.class_pick`, sent as `run_<class>`; `survivor_test`); a fresh level-0 run character with a basic attack and empty slots (`run_build_test`, `bg_test`).
+- ✅ A class choice in the lobby (`LobbyClient.class_pick`, sent as `run_<class>`; `survivor_test`); a fresh level-0 run character with a basic attack and empty slots (`run_build_test`, `bg_test`).
 - ✅ Class tiles with the selected class large on the stage (name, role, playstyle, its skills); every member's class and ready state; a class change in the lobby un-readies its member (service `pick`, `test_pick_changes_class_and_unreadies`; `mp_lobby_shots`, `lobby_ui_test`).
 - ✅ The class change through a real service and two clients: b sees a's new class, a is un-readied (`arena_survivor_test`).
 - ✅ A level-0 character clears a starting camp in a real fight (`run_playthrough`: archer 11 s, plague doctor 6 s for Sporefall Dell) (tier I monsters are level 1; to prove with the verification bot run, step 7).
@@ -39,7 +39,7 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 - ✅ Saves class, level, skills, slot loadout, passives, equipment and consumables; loads them back (`survivor_test`).
 - ✅ No duplicates on a second press, reopened results or a second save of the same run (`survivor_test`, `bg_test`).
 - ✅ Separate from single-player saves (`user://survivors/`; `survivor_test` counts characters).
-- 🟡 Survivor cards: the roster lists name, class, level, camps, bosses, skills (`survivor_test`); the polished card design waits for step 6.
+- ✅ Survivor cards: the class's colour, name, level, camps, bosses, the slotted skills as icons, the spellbook and the gear (`survivor_test`, `mp_lobby_shots` roster screenshot).
 
 ## 7. Arena uses saved survivors
 - ✅ The Arena lobby picks a survivor; none = it says how to earn one (`survivor_test`); the join path loads it (`Game.start_join` → `Survivors.load_into`, `survivor_test`).
@@ -71,7 +71,7 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 
 ## 13. Inventory and equipment
 - ✅ No gold, rings, amulets or backpack; four consumable slots with stacks of five; gear comparison and swap, the old piece left on the ground (also through the host); skills and passives apart from items (`run_build_test`, `bg_test`, `bg_pvp_test`).
-- 🟡 Common/uncommon/rare gear in runs (`RunBuild.random_gear`); a class keeps its own weapon kind (`run_build_test`, `run_playthrough`). Class-specific effects: tier III chests (25%) and boss chests (always) drop a class unique for someone in the raid, in a slot run characters wear, no level to meet (`camp_test`: a boss chest's Windrunner Treads for the archer).
+- ✅ Common/uncommon/rare gear in runs (`RunBuild.random_gear`); a class keeps its own weapon kind (`run_build_test`, `run_playthrough`). Class-specific effects: tier III chests (25%) and boss chests (always) drop a class unique for someone in the raid, in a slot run characters wear, no level to meet (`camp_test`: a boss chest's Windrunner Treads for the archer).
 
 ## 14. A big connected lush map
 - ✅ The Verdant Reach: 16 camps, 2 bosses, four starting glades, trails with loops, a stream, ridges, mushroom woodland, dark elf camps, frost hollow, ruins (`camp_test`, `bg_test`, `forest_shots`).
