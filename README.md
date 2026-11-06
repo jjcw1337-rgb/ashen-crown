@@ -36,6 +36,17 @@ direction becomes that kind of hero. The Warlock's three directions:
 
 A new hero needs its three directions before its skills.
 
+The Warlock is now a jungle void spirit: an evil spirit risen from the depths of an ancient jungle,
+wrapped in black thorned vines, a crown of fel-green flowers, her robe dissolving into mist. Her 17
+skills and 14 new rites span the three directions:
+
+- **Corruption** curses that stack and grow: Corruption, Unending Rot, Festering Hex, Leeching Curse,
+  Reckoning (its ticks copy all the others) and Malediction (stronger for every curse on the target).
+- **Fear**: Terrify, the Dread Totem, Void Wisp, and Eclipse Bloom (blink into a storm of void petals).
+  Feared foes take more from her spells.
+- **Drain**: Drain Life, Leech Bolt, Thornlash and Soul Feast. Healing past full life hardens into a
+  shield.
+
 ### The Hero Codex
 
 Every hero's skills, rites and gems, the shared skills and rites, and the items and consumables are

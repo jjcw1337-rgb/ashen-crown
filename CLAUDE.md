@@ -906,6 +906,32 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   bake), then `bash tools/fx_flipbook.sh outdir assets/textures/fx/fire_<kind>.png first cell tile`. Settings that
   worked and mistakes to avoid are in the project doc "fire pipeline". Comparison: `tools/fire_compare.gd -- outdir
   new|old close|wide|game frames`.
+- **The Warlock: the jungle void spirit and her three directions** (Blaine, 2026-11-06; design in the Hero Codex,
+  `data/codex/heroes/warlock.json`). **Body**: `assets/models/warlock_spirit.glb` (Meshy concept A, image-to-3D, Meshy rig
+  and library clips 0, 89, 198, 200, 125, 129, 132, 386, 178, 384, 127; job ids in the commit), prepared by
+  `tools/blender/warlock/prep_warlock_mocap.py` (the Wraith's pipeline: legless, the robe on cloth panels, float
+  clips) and built by `Warlock._build_spirit` on the Wraith's float mode with `scripts/warlock_spirit.gdshader` (the
+  painted fel green glows in its own colour; `SPIRIT_VOID` violet rim, fraying hem and mist); her weapon is unseen;
+  `SPIRIT_SHOTS` maps "cast" and the weapon combo to her clips. The gnome is the fallback without the glb.
+  **Skills** (`scripts/warlock_hex.gd` `WarlockHex`, every id in `IDS`; WarlockSkills hands them over): Corruption
+  (curses: Corruption, Unending Rot ramping `UNENDING_RAMP` a second the foe has been cursed without a break, Festering
+  Hex's stun bursts, Leeching Curse's heal, Reckoning whose ticks deal what the others tick for, Malediction growing
+  with every curse; a plague pool counts as one), Fear (Terrify, the Dread Totem `w_effigy`, Void Wisp `w_darkwind`
+  bouncing, Eclipse Bloom `w_crowstorm`: blink + storm; feared monsters cower (a stun: the one message every server
+  already takes), feared players flee through PvpStatus "fear"; feared or bound foes take `FEARED_BONUS` more from
+  her spells), Drain (Leech Bolt, Thornlash `w_harvest`, Soul Feast; healing past full life hardens into a shield,
+  `WarlockHex.heal`/`absorb`, Hero.take_hit asks it). Curses tick on the caster's game every `TICK` and reach monsters
+  and players through `Enemy.take_damage`, so they work in single player, co-op and the Battlegrounds; their clock is
+  `ArrowFx.now()` (game seconds). State: `Hero.wl`. **Rites**: 14 live through the codex (`requires`: a skill of their
+  direction first), keys in `WarlockHex.RITE_KEYS` = `data/codex/fx_keys.json` "warlock". **Look**:
+  `scripts/warlock_harrow_fx.gd` `WarlockHarrowFx` (fx events listed at its top; WarlockFx.play hands over what it
+  doesn't know): curse rings with runes, the terror mark, void wisps (soft glows), violet and green petals, the Meshy
+  Dread Totem (`assets/models/warlock/dread_totem.glb`, code-built fallback), the thorned lash, the feast's beams, the
+  green glass shield. Sounds `curse_cast`, `fester_burst`, `malediction`, `reckoning`, `terrify`, `totem_rise`,
+  `totem_wail`, `void_wisp`, `eclipse_bloom`, `eclipse_storm` (loop), `thornlash`, `leech_bolt`, `soul_feast` (loop),
+  `shield_up`, `shield_break`. Icons: `tools/skill_icons.py` grids warlock, warlock2, warlock_void (skills) and
+  warlock_rites1/2 (cut into `assets/textures/talents/`). Tests: `tools/warlock_hex_test.gd` (`--fixed-fps 60`, every
+  skill and rite), `tools/warlock_test.gd`; frames: `tools/warlock_showcase.gd -- outdir [skills|all] [quality]`.
 - **Drain Life** (Warlock Q) is a channel, not an attack: `hero.drain_t` runs while Q is held (minimum 1 s), ticks every 0.3 s in `WarlockSkills.update_drain` (all of Drain Life is in `warlock_skills.gd`), and the beams are drawn after `Anim.pose` in `_draw_drain`. Any move, target click or other skill calls `end_drain()`, which also clears the victims' green rim (`Enemy.set_drained`), the ground sigil and the looping hum (`Sfx.start_loop`). Drain ticks set `Enemy.dmg_tint` around `take_damage` for green numbers and no blood. The beams, sigil, hand light and hum are the `"drain"` fx events' effect (`WarlockFx.play`, state in `Hero.fxs["drain"]`, drawn by `WarlockFx.update` after the pose on the caster and on his puppet; `"start"`, `"victims"` when the fork set changes, `"tick"`, `"end"`), so partners see the beam on him too.
 - **King Grubb** (Act I boss, `hoard.gd`) is host-authoritative. Every visible part of the fight (piles, bombs, burst
   sacks, shouts, a grabber's `carry_on`/`carry_off`) is an Enemy fx event string handled in `Hoard.fx`, so partners see it;
