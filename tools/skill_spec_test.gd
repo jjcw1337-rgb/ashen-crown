@@ -5,7 +5,8 @@ extends SceneTree
 ##   godot --headless --path . -s tools/skill_spec_test.gd
 var fails := 0
 const KEYS := ["id", "cls", "name", "key", "lvl", "mana", "cd", "aim", "range", "desc", "channel", "hold", "style", "use", "hit",
-	"speed", "lock", "cancel", "dmg", "base", "per_lvl", "type", "knock", "area", "dot", "tags", "power", "role", "pvp"]
+	"speed", "lock", "cancel", "dmg", "base", "per_lvl", "type", "knock", "area", "dot", "tags", "power", "role", "pvp",
+	"rarity", "direction"]   # (the last two: the Hero Codex, data/codex/)
 
 ## Styles more than one user plays (the weapon swings, monsters' attacks, the shared skills): a skill's "hit" must
 ## not retime them.
