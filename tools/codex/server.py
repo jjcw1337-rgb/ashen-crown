@@ -92,10 +92,13 @@ class Codex:
         lists = {"skills": doc.get("skills", []), "rites": doc.get("rites", []), "gems": doc.get("gems", []),
                  "entries": doc.get("entries", [])}
         live_before = set()
+        old_k = {}
         for key in ("skills", "rites", "gems", "entries"):
             for e in old.get(key, []) or []:
                 if isinstance(e, dict) and e.get("status", "live") == "live":
                     live_before.add((key, e.get("id")))
+                if isinstance(e, dict) and isinstance(e.get("k"), dict):
+                    old_k[(key, e.get("id"))] = e["k"]
         for key, lst in lists.items():
             if not isinstance(lst, list):
                 raise ValueError(f"{key} must be a list")
@@ -121,9 +124,16 @@ class Codex:
                 for f in ("mana", "cd", "use", "power", "range", "max", "lvl"):
                     if f in e and e[f] is not None and (not isinstance(e[f], NUM) or e[f] < 0):
                         raise ValueError(f"{i}: {f} must be a number of 0 or more")
-                for fk in ("fx", "k"):
-                    if fk in e and not (isinstance(e[fk], dict) and all(isinstance(v, NUM) for v in e[fk].values())):
-                        raise ValueError(f"{i}: every {fk} value must be a number")
+                if "fx" in e and not (isinstance(e["fx"], dict) and all(isinstance(v, NUM) for v in e["fx"].values())):
+                    raise ValueError(f"{i}: every fx value must be a number")
+                if "k" in e:
+                    # a run talent's settings: numbers, and words some procs read (e.g. "src": "attack")
+                    if not (isinstance(e["k"], dict) and all(isinstance(v, (int, float, str)) for v in e["k"].values())):
+                        raise ValueError(f"{i}: every k value must be a number or a word")
+                    was = old_k.get((key, i), {})
+                    for kk, v in e["k"].items():
+                        if kk in was and isinstance(was[kk], str) != isinstance(v, str):
+                            raise ValueError(f"{i}: k {kk} must stay a {'word' if isinstance(was[kk], str) else 'number'}")
                 if st == "live" and (key, i) not in live_before:
                     if key == "rites" and fx_ok(e.get("fx"), keys):
                         continue     # a new rite made of keys the game reads: live straight away

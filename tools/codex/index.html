@@ -398,6 +398,8 @@ function editor(rel, list, e, type, isNew) {
        <div class="fxrows" id="fxrows">${Object.entries(e.fx || {}).map(([k, v]) => fxRow(k, v)).join("")}</div>
        <button class="btn small" type="button" id="addfx" style="align-self:flex-start;margin-top:4px">+ effect</button>
        <datalist id="fxkeys">${fxKeys(hero).map((k) => `<option value="${k}">`).join("")}</datalist></label>` +
+      (e.k && Object.keys(e.k).length ? `<label class="wide">Run numbers (its <code>{key}</code>s; ${(e.per || []).length ? "these grow with each stack: " + esc(e.per.join(", ")) : "the same at every stack"}). <span style="color:var(--faint)">The keys are what its code reads, so only the values change here.</span>
+       <div class="fxrows" id="krows">${Object.entries(e.k).map(([k, v]) => kRow(k, v)).join("")}</div></label>` : "") +
       field("Text", "text", e.text || "", "area") + `<div class="preview" id="pv"></div>`;
   } else if (type === "gem") {
     f += field("Colour", "color", e.color || "#c9a063", "color") + field("Text", "text", e.text || "", "area");
@@ -435,6 +437,9 @@ function editor(rel, list, e, type, isNew) {
   };
 }
 function fxKeys(hero) { return [...(B.fx_keys.any || []), ...((hero && B.fx_keys[hero.cls]) || [])]; }
+function kRow(k, v) {
+  return `<div class="fxrow" data-key="${esc(k)}"><input value="${esc(k)}" disabled><input ${typeof v === "number" ? 'type="number" step="any"' : 'type="text"'} value="${esc(v)}"></div>`;
+}
 function fxRow(k, v) {
   return `<div class="fxrow"><input list="fxkeys" placeholder="key, e.g. dmg or dmg:drain" value="${esc(k)}"><input type="number" step="any" placeholder="per stack" value="${esc(v)}"><button class="btn small fxdel" type="button">✕</button></div>`;
 }
@@ -449,8 +454,14 @@ function collect(e, type) {
     x[k] = v;
   });
   if (type === "rite") {
-    x.fx = {};
-    dlg.querySelectorAll("#fxrows .fxrow").forEach((r) => { const [a, b] = r.querySelectorAll("input"); if (a.value.trim() && b.value !== "") x.fx[a.value.trim()] = +b.value; });
+    const fx = {};
+    dlg.querySelectorAll("#fxrows .fxrow").forEach((r) => { const [a, b] = r.querySelectorAll("input"); if (a.value.trim() && b.value !== "") fx[a.value.trim()] = +b.value; });
+    if (Object.keys(fx).length || e.fx) x.fx = fx; else delete x.fx;      // (a run rite works by its proc: no effects list)
+    if (e.k) {
+      x.k = structuredClone(e.k);
+      dlg.querySelectorAll("#krows .fxrow").forEach((r) => { const key = r.dataset.key, v = r.querySelectorAll("input")[1].value;
+        if (v !== "") x.k[key] = typeof e.k[key] === "number" ? +v : v; });
+    }
   }
   if (!x.needs) delete x.needs;
   return x;
