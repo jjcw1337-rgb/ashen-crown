@@ -113,6 +113,29 @@ Touch points to coordinate:
 - Claude-2: the Archer's per-skill split (`heroes/archer/**`, plus small hook changes in `hero.gd` and
   `class_skills.gd`).
 
+## Cutting an old system: what the live game still borrows
+
+Before deleting an old system, move what the live game still uses out of it. Known borrowings (2026-11-06; check
+again with `git grep` before each cut):
+- **The Verdant Reach** (`bg_forest.gd`) uses models from:
+  - Act II: `models/roman/` arch, broken, column, drum (its ruins);
+  - Grubb's fort: `models/fort/tower`;
+  - the Sloths' lairs: `models/lairs/ice_rock`, plus the frost floor texture `SlothLair._ground_tex("cold")`;
+  - the camp: `models/camp/` tent and runestone;
+  - the waypoint: `models/waypoint/` banner and crystal_rune;
+  - the old crypt's lower floors: `models/bg/` mushrooms, fungus, brambles, ice_crystals, frozen_pillar.
+
+  These move to `maps/verdant_reach/props/`.
+- **Monsters:** the forest camps use Act I monsters (zombies, the three Fallen, the Feral, the bear, the goblin
+  guard).
+  - All of them are built on `Goblin.imported_rig` (`goblin.gd`, King Grubb's file). It goes to `systems/bodies/`.
+  - The Poison Mushroom loads through `BgFloors.prop` (the crypt's floors).
+- **The archer's wolf** runs on `lion.gd` (the Act II arena lion's skeleton and pose).
+- **Every camp chest** is built by `World._chest` (`world.gd`).
+- **`World.crypt_shell`** is used by the Sandbox (`sandbox.gd`) and the Last Flame (`vigil.gd`) as well as the old
+  crypt.
+- **King Grubb is kept** as `monsters/king_grubb/`: his model, `hoard.gd` and his part of `goblin.gd`.
+
 ## Status
 
 - [ ] 1. Folders: the Archer (`87bae1f`) and the Plague Doctor (`8550926`) are done. Next: the Wraith, Demon, Warlock,
