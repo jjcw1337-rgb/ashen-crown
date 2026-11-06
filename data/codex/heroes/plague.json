@@ -4,9 +4,9 @@
 	"fantasy": "A beaked physician of the cursed years, belted with vials and a smoking censer. Fights by control: vials of plague, a swarm of flies, a corpse flower that roots the careless, a fog to vanish in, a transfusion to outlast a beating, and a last experiment that turns the ground to quarantine.",
 	"directions": [
 		{
-			"id": "Toxicology",
-			"name": "Toxicology",
-			"desc": "Poison: Pestilence Vial, longer and crueller pools."
+			"id": "Toxin",
+			"name": "Toxin",
+			"desc": "Poison that grows crueller and leaps from the dying to the living."
 		},
 		{
 			"id": "Vermin and Rot",
@@ -14,9 +14,9 @@
 			"desc": "The living plague: Swarmcraft and Corpse Bloom."
 		},
 		{
-			"id": "The Experiment",
-			"name": "The Experiment",
-			"desc": "Deception and survival: Fog of the Forgotten, Transfusion and The Last Experiment."
+			"id": "Alchemy",
+			"name": "Alchemy",
+			"desc": "Vials, fog and the apparatus."
 		}
 	],
 	"skills": [
@@ -25,7 +25,7 @@
 			"status": "live",
 			"name": "Pestilence Vial",
 			"rarity": 0,
-			"direction": "",
+			"direction": "Toxin",
 			"desc": "Pluck a vial of plague from your bandolier and lob it. A ring shows everyone where it will land. It bursts for a small hit and leaves a contaminated pool 2.6 metres wide for 3.5 seconds: anything standing in it is poisoned and keeps rotting for 2 seconds after it steps out. Pools of the same kind don't stack.",
 			"mana": 7,
 			"cd": 0.0,
@@ -37,7 +37,7 @@
 			"status": "live",
 			"name": "Swarmcraft",
 			"rarity": 0,
-			"direction": "",
+			"direction": "Vermin and Rot",
 			"desc": "Uncork your reliquary: a swarm of plague flies flies to the spot and hangs there for 6 seconds, biting whatever is inside and harrying it (attacks and casts 25% slower). Use it again to send the swarm somewhere else (twice). It never chases anyone, it's slower than a running man, and a dodge roll through it scatters it for a moment. The cooldown starts when it comes home.",
 			"mana": 16,
 			"cd": 12.0,
@@ -53,7 +53,7 @@
 			"status": "live",
 			"name": "Corpse Bloom",
 			"rarity": 0,
-			"direction": "",
+			"direction": "Vermin and Rot",
 			"desc": "Drive a seed into the ground. It grows for a second, then breathes for 6 seconds: every 2 seconds its ring of roots draws in and a spore pulse hits everything within 3.5 metres. Anyone who stood still while the ring drew in is snared by its roots for 0.6 seconds. In the Battlegrounds other players can break it with three blows.",
 			"mana": 14,
 			"cd": 10.0,
@@ -69,7 +69,7 @@
 			"status": "live",
 			"name": "Fog of the Forgotten",
 			"rarity": 1,
-			"direction": "",
+			"direction": "Alchemy",
 			"desc": "Dash your censer at your feet and hop 4 metres back from the pointer. Pale fog 6 metres across hangs for 6 seconds: other players outside it can't see anyone inside, and inside it everyone within 3.5 metres is seen. You move 25% faster in it; monsters beyond 3.5 metres lose track of you in it; striking from it reveals you for a moment.",
 			"mana": 15,
 			"cd": 16.0,
@@ -85,7 +85,7 @@
 			"status": "live",
 			"name": "Transfusion",
 			"rarity": 1,
-			"direction": "",
+			"direction": "Alchemy",
 			"desc": "Drive the needle of your apparatus into your arm: for 2 seconds you take 45% less damage and move at 70% speed, and slows, snares and Blight are washed out of you. What the tanks soak heals you afterwards (up to 15% of your life). Attacking ends it early.",
 			"mana": 10,
 			"cd": 18.0,
@@ -100,7 +100,7 @@
 			"status": "live",
 			"name": "The Last Experiment",
 			"rarity": 2,
-			"direction": "",
+			"direction": "Alchemy",
 			"desc": "Slam down your vat (everyone sees an 8-metre warning ring) and crank it for 2.5 seconds. Then the glass bursts, the thing inside crawls out and the ring becomes a quarantine for 7 seconds: spores, Blight and a 20% slow inside, and the creature lumbers at the nearest foe, spewing. A stun, another skill or walking away from the vat bursts it early, only 5 metres wide. In the Battlegrounds other players can break the vat while you crank it (three blows: the experiment fails) and kill the creature (four).",
 			"mana": 40,
 			"cd": 45.0,
@@ -109,6 +109,52 @@
 				"ultimate"
 			],
 			"lvl": 20
+		},
+		{
+			"id": "p_miasma",
+			"status": "live",
+			"name": "Miasma",
+			"rarity": 0,
+			"direction": "Toxin",
+			"desc": "Smash a censer of plague at your feet: a cloud 4.5 metres wide hangs for 4 seconds, poisoning everything in it.",
+			"mana": 9,
+			"cd": 0.0,
+			"use": 0.9,
+			"role": "poison around him",
+			"lvl": 1,
+			"run": true
+		},
+		{
+			"id": "p_spread",
+			"status": "live",
+			"name": "Contagion",
+			"rarity": 1,
+			"direction": "Toxin",
+			"desc": "Curse the foe nearest the pointer with a creeping plague for 6 seconds: it is poisoned, and every second its poison leaps to all within 4 metres. If it dies cursed, the plague bursts to everyone within 5 metres.",
+			"mana": 8,
+			"cd": 0.0,
+			"use": 0.8,
+			"range": 14.0,
+			"role": "spreading curse",
+			"lvl": 9,
+			"run": true
+		},
+		{
+			"id": "p_leech",
+			"status": "live",
+			"name": "Leech Jar",
+			"rarity": 1,
+			"direction": "Alchemy",
+			"desc": "Lob a jar of blood leeches: for 5 seconds everything within 3 metres is poisoned, and every foe in it heals you 1.5% of your life a second.",
+			"mana": 10,
+			"cd": 9.0,
+			"range": 12.0,
+			"role": "heal from foes",
+			"tags": [
+				"sustain"
+			],
+			"lvl": 9,
+			"run": true
 		}
 	],
 	"rites": [
@@ -117,7 +163,7 @@
 			"status": "live",
 			"name": "Stronger Dose",
 			"rarity": 0,
-			"direction": "Toxicology",
+			"direction": "Toxin",
 			"max": 3,
 			"fx": {
 				"dmg:toxic": 10.0
@@ -130,7 +176,7 @@
 			"status": "live",
 			"name": "Studied Hand",
 			"rarity": 0,
-			"direction": "Toxicology",
+			"direction": "Toxin",
 			"max": 3,
 			"fx": {
 				"ene": 3.0
@@ -143,7 +189,7 @@
 			"status": "live",
 			"name": "Virulent Venom",
 			"rarity": 0,
-			"direction": "Toxicology",
+			"direction": "Toxin",
 			"max": 3,
 			"fx": {
 				"poison_dmg": 8.0
@@ -156,7 +202,7 @@
 			"status": "live",
 			"name": "Heavy Vapour",
 			"rarity": 0,
-			"direction": "Toxicology",
+			"direction": "Toxin",
 			"max": 3,
 			"fx": {
 				"cloud_size": 8.0
@@ -169,7 +215,7 @@
 			"status": "live",
 			"name": "Lingering Rot",
 			"rarity": 1,
-			"direction": "Toxicology",
+			"direction": "Toxin",
 			"max": 3,
 			"fx": {
 				"poison_dur": 0.5
@@ -182,7 +228,7 @@
 			"status": "live",
 			"name": "Measured Doses",
 			"rarity": 1,
-			"direction": "Toxicology",
+			"direction": "Toxin",
 			"max": 2,
 			"fx": {
 				"cost:toxic": 15.0
@@ -195,7 +241,7 @@
 			"status": "live",
 			"name": "Standing Miasma",
 			"rarity": 2,
-			"direction": "Toxicology",
+			"direction": "Toxin",
 			"max": 1,
 			"fx": {
 				"cloud_dur": 1.5
@@ -301,7 +347,7 @@
 			"status": "live",
 			"name": "Dense Fog",
 			"rarity": 0,
-			"direction": "The Experiment",
+			"direction": "Alchemy",
 			"max": 3,
 			"fx": {
 				"fog_dur": 0.5
@@ -314,7 +360,7 @@
 			"status": "live",
 			"name": "Hardened Physician",
 			"rarity": 0,
-			"direction": "The Experiment",
+			"direction": "Alchemy",
 			"max": 3,
 			"fx": {
 				"life_pct": 4.0
@@ -327,7 +373,7 @@
 			"status": "live",
 			"name": "Strangling Roots",
 			"rarity": 0,
-			"direction": "The Experiment",
+			"direction": "Alchemy",
 			"max": 2,
 			"fx": {
 				"bloom_snare": 0.1
@@ -340,7 +386,7 @@
 			"status": "live",
 			"name": "Larger Tanks",
 			"rarity": 0,
-			"direction": "The Experiment",
+			"direction": "Alchemy",
 			"max": 3,
 			"fx": {
 				"trans_cap": 1.5
@@ -353,7 +399,7 @@
 			"status": "live",
 			"name": "Quick Needle",
 			"rarity": 1,
-			"direction": "The Experiment",
+			"direction": "Alchemy",
 			"max": 1,
 			"fx": {
 				"cd:transfusion": 12.0
@@ -366,7 +412,7 @@
 			"status": "live",
 			"name": "Long Fever",
 			"rarity": 1,
-			"direction": "The Experiment",
+			"direction": "Alchemy",
 			"max": 3,
 			"fx": {
 				"exp_dur": 0.5
@@ -379,7 +425,7 @@
 			"status": "live",
 			"name": "Magnum Opus",
 			"rarity": 2,
-			"direction": "The Experiment",
+			"direction": "Alchemy",
 			"max": 1,
 			"fx": {
 				"exp_size": 10.0,
@@ -387,6 +433,265 @@
 			},
 			"text": "The Last Experiment's quarantine is {exp_size}% wider and it recharges {cd:experiment}% faster.",
 			"icon": "experiment"
+		},
+		{
+			"id": "p_virulent",
+			"status": "live",
+			"name": "Virulence",
+			"rarity": 0,
+			"run": true,
+			"direction": "Toxin",
+			"max": 3,
+			"text": "Your poison deals +{poison_dmg}% damage.",
+			"icon": "toxic",
+			"fx": {
+				"poison_dmg": 20
+			}
+		},
+		{
+			"id": "p_septic",
+			"status": "live",
+			"name": "Septic Wounds",
+			"rarity": 1,
+			"run": true,
+			"direction": "Toxin",
+			"max": 2,
+			"text": "Poisoned foes take +{more}% damage from your blows.",
+			"icon": "toxic",
+			"k": {
+				"more": 15
+			},
+			"per": [
+				"more"
+			],
+			"proc": "more_vs_poisoned"
+		},
+		{
+			"id": "p_toxblood",
+			"status": "live",
+			"name": "Toxic Blood",
+			"rarity": 2,
+			"run": true,
+			"direction": "Toxin",
+			"max": 1,
+			"text": "{pct}% of the poison damage you deal heals you.",
+			"icon": "toxic",
+			"k": {
+				"pct": 8
+			},
+			"proc": "heal_on_dot"
+		},
+		{
+			"id": "p_necrosis",
+			"status": "live",
+			"name": "Necrosis",
+			"rarity": 2,
+			"run": true,
+			"direction": "Toxin",
+			"max": 1,
+			"text": "Poison grows {grow}% crueller every second a foe stays poisoned (up to +{most}%).",
+			"icon": "toxic",
+			"k": {
+				"grow": 20,
+				"most": 160
+			},
+			"proc": "necrosis"
+		},
+		{
+			"id": "p_outbreak",
+			"status": "live",
+			"name": "Outbreak",
+			"rarity": 0,
+			"run": true,
+			"direction": "Toxin",
+			"max": 3,
+			"text": "Your poison lingers {poison_dur} seconds longer.",
+			"icon": "swarm",
+			"fx": {
+				"poison_dur": 0.6
+			}
+		},
+		{
+			"id": "p_carrier",
+			"status": "live",
+			"name": "Plague Carrier",
+			"rarity": 1,
+			"run": true,
+			"direction": "Toxin",
+			"max": 1,
+			"text": "Your cane's blows pass a poisoned foe's poison to another within {r} m.",
+			"icon": "attack",
+			"k": {
+				"src": "attack",
+				"r": 4.5,
+				"n": 1
+			},
+			"proc": "spread_on_hit"
+		},
+		{
+			"id": "p_contagion",
+			"status": "live",
+			"name": "Contagion",
+			"rarity": 2,
+			"run": true,
+			"direction": "Toxin",
+			"max": 1,
+			"text": "A poisoned foe that dies passes its poison to the {n} nearest within {r} m.",
+			"icon": "swarm",
+			"k": {
+				"r": 6.0,
+				"n": 3
+			},
+			"proc": "spread_on_death"
+		},
+		{
+			"id": "p_pandemic",
+			"status": "live",
+			"name": "Pandemic",
+			"rarity": 2,
+			"run": true,
+			"direction": "Toxin",
+			"max": 1,
+			"text": "A poisoned foe that dies bursts in a plague cloud: {pct}% weapon damage and poison to all within {r} m. Its dead burst too.",
+			"icon": "swarm",
+			"k": {
+				"r": 3.5,
+				"pct": 60
+			},
+			"proc": "cloud_on_death"
+		},
+		{
+			"id": "p_hunger",
+			"status": "live",
+			"name": "Ravenous Swarm",
+			"rarity": 1,
+			"run": true,
+			"direction": "Vermin and Rot",
+			"max": 2,
+			"text": "The swarm bites for +{dmg:swarm}% and each bite heals you {swarm_heal}% of your life.",
+			"icon": "swarm",
+			"fx": {
+				"dmg:swarm": 25,
+				"swarm_heal": 1.5
+			}
+		},
+		{
+			"id": "p_overgrowth",
+			"status": "live",
+			"name": "Overgrowth",
+			"rarity": 2,
+			"run": true,
+			"direction": "Vermin and Rot",
+			"max": 1,
+			"text": "Corpse Bloom pulses {bloom_rate}% more often and reaches {bloom_size}% further.",
+			"icon": "bloom",
+			"fx": {
+				"bloom_rate": 45,
+				"bloom_size": 20
+			}
+		},
+		{
+			"id": "p_rotfeast",
+			"status": "live",
+			"name": "Feast of Rot",
+			"rarity": 2,
+			"run": true,
+			"direction": "Vermin and Rot",
+			"max": 1,
+			"text": "Each poisoned foe that dies heals you {pct}% of your life and makes you +15% faster for 3 s.",
+			"icon": "bloom",
+			"k": {
+				"pct": 5,
+				"poisoned": 1
+			},
+			"proc": "heal_on_kill"
+		},
+		{
+			"id": "p_volatile",
+			"status": "live",
+			"name": "Volatile Reagents",
+			"rarity": 1,
+			"run": true,
+			"direction": "Alchemy",
+			"max": 2,
+			"text": "Pestilence Vial bursts on impact for {vial_burst}% weapon damage.",
+			"icon": "toxic",
+			"fx": {
+				"vial_burst": 80
+			}
+		},
+		{
+			"id": "p_double",
+			"status": "live",
+			"name": "Double Dose",
+			"rarity": 2,
+			"run": true,
+			"direction": "Alchemy",
+			"max": 1,
+			"text": "Pestilence Vial throws a second vial beside the first.",
+			"icon": "toxic",
+			"fx": {
+				"vial_twin": 1
+			}
+		},
+		{
+			"id": "p_up_miasma",
+			"status": "live",
+			"name": "Choking Miasma",
+			"rarity": 1,
+			"run": true,
+			"direction": "Toxin",
+			"max": 1,
+			"text": "Miasma spreads {miasma_r}% wider and slows everything in it.",
+			"icon": "p_miasma",
+			"fx": {
+				"miasma_r": 30,
+				"miasma_slow": 1
+			}
+		},
+		{
+			"id": "p_up_epidemic",
+			"status": "live",
+			"name": "Epidemic",
+			"rarity": 2,
+			"run": true,
+			"direction": "Toxin",
+			"max": 1,
+			"text": "When a cursed foe dies, Contagion's curse leaps to the nearest foe with its time renewed.",
+			"icon": "p_spread",
+			"fx": {
+				"curse_jump": 1
+			}
+		},
+		{
+			"id": "p_up_leech",
+			"status": "live",
+			"name": "Bloated Leeches",
+			"rarity": 1,
+			"run": true,
+			"direction": "Alchemy",
+			"max": 2,
+			"text": "Leech Jar heals {leech_heal}% more and lasts {leech_t} seconds longer.",
+			"icon": "p_leech",
+			"fx": {
+				"leech_heal": 50,
+				"leech_t": 1.5
+			}
+		},
+		{
+			"id": "p_tinctures",
+			"status": "live",
+			"name": "Strong Tinctures",
+			"rarity": 0,
+			"run": true,
+			"direction": "Alchemy",
+			"max": 2,
+			"text": "Potions restore {pot}% more; skills recharge {cdr}% faster.",
+			"icon": "transfusion",
+			"fx": {
+				"pot": 35,
+				"cdr": 5
+			}
 		}
 	]
 }

@@ -37,6 +37,76 @@
 			"text": "Restore 40% of your life and mana at once."
 		},
 		{
+			"id": "elixir_fury",
+			"name": "Elixir of Fury",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
+			"id": "draught_iron",
+			"name": "Ironbark Draught",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
+			"id": "tonic_swift",
+			"name": "Swiftness Tonic",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
+			"id": "salve_troll",
+			"name": "Troll Salve",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
+			"id": "elixir_wrath",
+			"name": "Elixir of Wrath",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
+			"id": "flask_fire",
+			"name": "Fire Flask",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
+			"id": "flask_frost",
+			"name": "Frost Flask",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
+			"id": "flask_storm",
+			"name": "Thunder Flask",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
+			"id": "scroll_ward",
+			"name": "Scroll of Warding",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
+			"id": "tome_insight",
+			"name": "Tome of Insight",
+			"status": "live",
+			"kind": "consumable",
+			"rarity": 0
+		},
+		{
 			"id": "item_flash_bomb",
 			"status": "design",
 			"name": "Flash Bomb",

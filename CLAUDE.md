@@ -14,7 +14,8 @@ Actions exports Web + Windows + Linux + Mac and publishes them to GitHub Pages.
 **Default patterns (every agent, read these first; `AGENTS.md` is the shared entry point for Codex/ChatGPT):**
 [loading](docs/patterns/loading.md) · [servers](docs/patterns/servers.md) ·
 [multiplayer](docs/patterns/multiplayer.md) · [effects](docs/patterns/effects.md) ·
-[measuring](docs/patterns/measuring.md) · [code organization](docs/patterns/code-organization.md).
+[measuring](docs/patterns/measuring.md) · [code organization](docs/patterns/code-organization.md) ·
+[making assets](docs/patterns/assets.md) (Meshy → Blender → Godot, the quality bar and the performance rules).
 When you change one of these patterns, update its file in the same commit.
 
 ## Getting the tools (Linux)
@@ -97,6 +98,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
 | `net.gd` | LAN co-op over ENet (UDP 24567, discovery 24568); RPC layer; `server` = a dedicated host with no player (Battlegrounds) |
 | `coop_server.gd` | Online co-op: the story game hosted by a dedicated server (see "Online co-op") |
 | `build_env.gd`, `nakama_client.gd`, `cloud_saves.gd` | Which backend a build uses; the Nakama REST client; characters kept in Nakama (see "Staging and accounts") |
+| `run_build.gd`, `run_talents.gd`, `run_ui.gd` | A multiplayer run's character (skills, slots, passives, offers, gems), its roguelike talents/gems/consumables and their procs, its windows (see "Multiplayer runs") |
 | `battlegrounds.gd` | Battlegrounds prototype: the raid map, the dedicated server's raid logic (respawns, carried loot, extraction, the stash), the client's id and cached stash |
 | `vigil.gd`, `flame_board.gd` | The Last Flame (zone `"vigil"`): the endless co-op horde defence under the Act I camp, its sanctum, waves, flame and HUD; its leaderboard (see "The Last Flame") |
 | `kpi.gd` | The official performance KPIs: scripted scenarios measured frame by frame (`--kpi`), see docs/nightly/KPIS.md |
@@ -324,12 +326,43 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   classes). Single player never has `run`. Its windows are `RunUI` (I/K/N or a bar slot: the build; the swap; the
   camp upgrade) in the multiplayer look, `MpStyle` (palette, Cinzel and Inter in `assets/fonts`, OFL).
   `tools/run_build_test.gd`; screenshots `tools/run_ui_shots.gd -- outdir`.
+  **The roguelike layer** (`scripts/run_talents.gd` `RunTalents`; Blaine 2026-11-06: "like Slay the Spire, themes of
+  card types, then relics and consumables"; **every character has three major directions** and Common / Uncommon /
+  Rare skills and talents): build **themes** (`THEMES`; the archer Flame / Frost / Storm and Hunt, the plague doctor
+  Toxin / Vermin and Rot / Alchemy, the rest from their talent trees, `TREE_THEME`; the warlock is being redesigned
+  around damage over time / fear / drain; skills by `SKILL_THEMES`; "" = core, for any build), and offers lean toward
+  the themes a build has (`RunBuild.THEME_PULL`,
+  `theme_counts`). A chest offers `CHOICES` (+1 at a boss, the Seer's Eye, Lucky Charm), 1-3 of them skills while
+  skills are left, rarities Common / Uncommon / Rare (`ODDS`, one step rarer with the Shard of the Crown; the rares are
+  the run-changers; "Legendary" is only the gems' top tier).
+  **Talents** (`TALENTS`: data `{id, cls ("any", a class, or "serpent,wyvern"), theme, rarity, max, fx, proc, k, per,
+  needs}`) are stats (`fx`, summed into `Hero.tfx`) or **procs** (game-changers run by the handlers in RunTalents on
+  the hero's own game: `hit_mult` before a blow, `on_hit`, `on_death` for the hero who struck last (`mark`), `struck`,
+  `save_from_death`, `on_cooldown`, `on_shot`, `poison_mult`/`on_dot`, `tick` for timed `buff`s); their damage goes
+  through the usual channels (`_deal`: `Enemy.take_damage`, so the host or raid server applies it) and what is seen is
+  `"run"` fx events (`play_fx`; partners see them). A new proc is a name in a talent and a `match` case; a new talent
+  that reuses one is a data line. Skill-upgrade talents (`needs` a skill: Wide Fan, Overload, Epidemic...) read their
+  `fx` keys in the skill's code. **Gems** (`GEMS`: the run's relics; stats, rare stats and legendary procs: Phoenix
+  Ember, Eye of the Tempest, Hunger Stone, Seer's Eye, Shard of the Crown) are rolled once per chest
+  (`RunBuild.roll_gem`, `GEM_CHANCE` by tier, always at a boss), found on opening, kept in `RunBuild.gems` and by the
+  survivor. **Consumables** (Data.BASES elixirs, salve, flasks, scroll, tome; `RunTalents.CONSUMABLES` weights) come
+  1-3 per chest per player with the choice (`Game.run_claim`); flasks are thrown at the pointer (`throw_flask`).
+  **Run-only skills** (`Data.RUN_SKILLS`: the archer's Scatter Shot, Glacial Shard, Blast Arrow, Storm Shot, Hunter's
+  Mark, Arrow Storm; the plague doctor's Miasma, Contagion, Leech Jar; the knight's Blade Storm, Aegis, Judgment, Last
+  Rites (Holy Brands: `KnightSkills.brand`, every blow of a run knight with Judgment brands, Judgment spends them); the
+  Wraith's Death Mark, Banshee Wail, Reaping Crescent; the in-game codex reads Data.SKILLS + RUN_SKILLS,
+  RunTalents.TALENTS / THEMES / GEMS and the potion Data.BASES) join the class's pool in a run only
+  (`Hero.skill_list`, `RunBuild.skill_pool`). Icons: Meshy grids `archer`, `run_mix`, `potions`, `gems`, `gems2` in
+  `tools/skill_icons.py` (`assets/textures/skills/`, `items/c_*.png`, `gems/`). `tools/run_talents_test.gd` tries every
+  talent, gem, consumable and run skill on real monsters; `tools/run_playthrough.gd -- <class> <secs> [theme|random]`
+  plays a whole run chasing a theme.
   **Camps** (`scripts/camps.gd` `Camps`): a map's encounters, `Camps.add(w, id, name, tier, pos, r, foes, chest)` (tier
   1-3, 4 = boss; monsters at `Camps.MON_LEVEL[tier]` under the camp's own pack id, its chest sealed until they're all
   dead: `Game.chest_sealed`, refused by the server in `Net.sv_inter`). Every peer sees a camp fall from its own
   monsters (`Enemy.die_visual` -> `Game.camp_check`: the chest flares, a run character within `SHARE_R` gets
   `RunBuild.CAMP_XP`); the chest (`Game._camp_chest`) drops `CHEST_ROLLS` of run loot once for everyone and opens each
-  run character's own upgrade (`Camps.offer_key`: camp and round). `tools/camp_test.gd`.
+  run character's own upgrade (`Camps.offer_key`: camp and round). A camp's monster dragged `LEASH` past its edge with no
+  hero near goes home whole (`Camps.leash`, on whoever runs the monsters). `tools/camp_test.gd`.
   **The Verdant Reach** (`scripts/bg_forest.gd` `BgForest`, `MpMode.FOREST`; the crypt is retired, docs/cleanup.md):
   the Battlegrounds map, an open lush forest 210 m across: four starting glades (a bell each), four portals at the
   edges, sixteen camps (`BgForest.CAMPS`: place, tier, region, foes; six tier I near the glades, five II, three III,
@@ -1664,7 +1697,10 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `dmg:`/`cd:`/`cost:<skill>`) joins its class's run pool from data alone (`Codex.extra_rites`). Every hero has three
   **directions** (its three talent trees; the Warlock's design: Corruption, Fear, Drain). The web editor is
   `tools/codex/server.py` (README there); after adding a skill or talent in code run `tools/codex_export.gd` (keeps the
-  codex's design entries) and `tools/codex_test.gd`. A value edited in code without re-exporting is overridden by the
+  codex's design entries; through `tools/_late.gd`) and `tools/codex_test.gd` (also late). The run's content is in it
+  too: `Data.RUN_SKILLS` (skills, `"run": true`), `RunTalents.TALENTS` (rites with their `k` numbers and `proc`; "any"
+  ones in shared.json) and `RunTalents.GEMS` (gems.json, rarity up to 3 legendary), all laid over when they load; a
+  hero's directions are its `RunTalents.THEMES` (the codex files skills by `SKILL_THEMES` or their codex direction). A value edited in code without re-exporting is overridden by the
   codex file: change it in the codex.
 - **Talents** (`scripts/talents.gd`, the window is N; `tools/talent_test.gd`, `tools/talent_shot.gd`): three trees per
   class of seven talents in four rows (2, 2, 2, then a capstone); a row opens with 0/3/6/10 points spent above it in

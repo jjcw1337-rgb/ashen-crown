@@ -231,6 +231,10 @@ static func _drive(delta: float) -> void:
 				h.mana = h.max_mana          # (what's measured is the frame, not the mana)
 				if str(st["skill"]) != "":
 					h.cds[str(st["skill"])] = 0.0      # (a long cooldown, an ultimate's, would leave the window with no cast)
+				if str(st["skill"]) != "" and h.run == null and Data.run_skills_for(h.cls).any(func(x): return x["id"] == str(st["skill"])):
+					# a run's skill (Data.RUN_SKILLS): only a run character has it
+					h.run = RunBuild.new()
+					h.run.skills.append(str(st["skill"]))
 				for s in h.skill_list() + (Data.shared_skills() if str(st["skill"]) != "" else []):
 					if str(st["skill"]) != "" and str(s["id"]) != str(st["skill"]):
 						continue

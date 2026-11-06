@@ -94,7 +94,7 @@ func _run() -> void:
 		h.level = 20
 		h.recalc()
 		var ids: Array = ["attack"]
-		for sk in Data.skills_for(cls) + Data.shared_skills():
+		for sk in Data.skills_for(cls) + Data.run_skills_for(cls) + Data.shared_skills():
 			ids.append(str(sk["id"]))
 		var mine: Array = []
 		for id in ids:
@@ -110,7 +110,12 @@ func _run() -> void:
 			if id == "attack":
 				h.swipe_attack(en[1].global_position, false)
 			else:
+				if Data.run_skills_for(cls).any(func(x): return x["id"] == id):
+					# a run's skill: only a run character has it
+					h.run = load("res://scripts/run_build.gd").new()
+					h.run.skills.append(id)
 				h.use_skill(id, h.skill_aim(id, en[1].global_position))
+				h.run = null
 			await wait(2.2)
 			if id == "drain":
 				h.end_drain()

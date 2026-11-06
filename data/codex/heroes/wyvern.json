@@ -2,14 +2,25 @@
 	"cls": "wyvern",
 	"name": "Storm Wyvern",
 	"fantasy": "A rearing two-legged dragon whose wings are its forelimbs, with lightning veined through the membranes. Strikes with its wing claws, bites, and whips its barbed tail round.",
-	"directions": [],
+	"directions": [
+		{
+			"id": "Storm",
+			"name": "Storm",
+			"desc": "Lightning from its jaws."
+		},
+		{
+			"id": "Beast",
+			"name": "Beast",
+			"desc": "Claws, wings and the tail."
+		}
+	],
 	"skills": [
 		{
 			"id": "storm_arc",
 			"status": "live",
 			"name": "Storm Arc",
 			"rarity": 0,
-			"direction": "",
+			"direction": "Storm",
 			"desc": "The wyvern rears up, the lightning in its wings flaring, and breathes a bolt into the nearest foe ahead that leaps on to four more nearby, striking each.",
 			"mana": 6,
 			"cd": 0.0,
@@ -23,5 +34,118 @@
 			"lvl": 1
 		}
 	],
-	"rites": []
+	"rites": [
+		{
+			"id": "v_tempest",
+			"status": "live",
+			"name": "Tempest",
+			"rarity": 2,
+			"run": true,
+			"direction": "Storm",
+			"max": 1,
+			"text": "Critical hits call lightning down: {pct}% weapon damage within {r} m.",
+			"icon": "storm_arc",
+			"k": {
+				"pct": 160,
+				"r": 3.0
+			},
+			"proc": "bolt_on_crit"
+		},
+		{
+			"id": "y_hide",
+			"status": "live",
+			"name": "Dragonhide",
+			"rarity": 0,
+			"run": true,
+			"direction": "Beast",
+			"max": 3,
+			"text": "+{armor_pct}% defense and +{life_pct}% life.",
+			"icon": "t_armor",
+			"fx": {
+				"armor_pct": 15,
+				"life_pct": 6
+			}
+		},
+		{
+			"id": "y_claws",
+			"status": "live",
+			"name": "Rending Claws",
+			"rarity": 1,
+			"run": true,
+			"direction": "Beast",
+			"max": 2,
+			"text": "Claws and bites deal +{dmg:attack}%; +{crit}% critical chance.",
+			"icon": "attack",
+			"fx": {
+				"dmg:attack": 15,
+				"crit": 3
+			}
+		},
+		{
+			"id": "y_apex",
+			"status": "live",
+			"name": "Apex Predator",
+			"rarity": 2,
+			"run": true,
+			"direction": "Beast",
+			"max": 1,
+			"text": "+{more}% damage to foes under {below}% life.",
+			"icon": "t_skull",
+			"k": {
+				"below": 40,
+				"more": 40
+			},
+			"proc": "more_vs_low"
+		},
+		{
+			"id": "y_fury",
+			"status": "live",
+			"name": "Primal Fury",
+			"rarity": 2,
+			"run": true,
+			"direction": "Beast",
+			"max": 1,
+			"text": "Each kill: +{dmg}% damage for {secs} seconds, up to {stacks} times.",
+			"icon": "t_fist",
+			"k": {
+				"dmg": 6,
+				"stacks": 6,
+				"secs": 8
+			},
+			"proc": "momentum"
+		},
+		{
+			"id": "v_lord",
+			"status": "live",
+			"name": "Storm Lord",
+			"rarity": 0,
+			"run": true,
+			"direction": "Storm",
+			"max": 3,
+			"text": "Storm Arc and Arc deal +{dmg:storm_arc}%.",
+			"icon": "storm_arc",
+			"fx": {
+				"dmg:storm_arc": 15,
+				"dmg:arc": 15
+			}
+		},
+		{
+			"id": "v_static",
+			"status": "live",
+			"name": "Static Claws",
+			"rarity": 2,
+			"run": true,
+			"direction": "Storm",
+			"max": 1,
+			"text": "Claws leap on as lightning to {jumps} more foes ({pct}%).",
+			"icon": "storm_arc",
+			"k": {
+				"src": "attack",
+				"jumps": 2,
+				"pct": 40,
+				"r": 6.0
+			},
+			"proc": "chain_on_hit"
+		}
+	]
 }

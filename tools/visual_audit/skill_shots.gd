@@ -75,6 +75,12 @@ func _run() -> void:
 		for f in frames + cast_at:
 			if f == cast_at:
 				var def: Dictionary = Data.skill_def(sk)
+				if Data.RUN_SKILLS.any(func(x): return x["id"] == sk):
+					# a run's skill (Data.RUN_SKILLS): only a run character has it
+					if h.run == null:
+						h.run = load("res://scripts/run_build.gd").new()
+					if not h.run.skills.has(sk):
+						h.run.skills.append(sk)
 				h.use_skill(sk, h.skill_aim(sk, aim) if def.get("aim", "facing") == "facing" else aim)
 			if view == "close":
 				close.current = true

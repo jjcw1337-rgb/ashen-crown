@@ -25,7 +25,7 @@
 			"status": "live",
 			"name": "Spectral Rend",
 			"rarity": 0,
-			"direction": "",
+			"direction": "Render",
 			"desc": "Lunge at the foe ahead and tear through it with elongated spectral claws: two rakes for 90% weapon damage each. Every soul the claws tear out flies back and heals you.",
 			"mana": 5,
 			"cd": 0.0,
@@ -37,7 +37,7 @@
 			"status": "live",
 			"name": "Soul Siphon",
 			"rarity": 0,
-			"direction": "",
+			"direction": "Shadow",
 			"desc": "Reach out and hook a spectral tether into an enemy: for 2.5 seconds it stands rigid while the tether drains it (about 180% weapon damage in all) and heals you a third of what it takes, and it is slowed after. A soul torn loose heals you more. The tether holds while you fight on.",
 			"mana": 12,
 			"cd": 6.0,
@@ -53,7 +53,7 @@
 			"status": "live",
 			"name": "Shadow Step",
 			"rarity": 0,
-			"direction": "",
+			"direction": "Shadow",
 			"desc": "Come apart into mist and re-form at the cursor, spinning into a claw strike round where you land for 130% weapon damage. For a moment after, blows pass through you. The shade you left behind collapses and hurts.",
 			"mana": 10,
 			"cd": 5.0,
@@ -68,7 +68,7 @@
 			"status": "live",
 			"name": "Haunting Grasp",
 			"rarity": 1,
-			"direction": "",
+			"direction": "Night",
 			"desc": "Slam the ground: spectral hands burst out of the earth around the cursor, seizing every enemy within 3.5 metres for 110% weapon damage, dragging them inward and holding them fast for 2.5 seconds.",
 			"mana": 16,
 			"cd": 10.0,
@@ -83,7 +83,7 @@
 			"status": "live",
 			"name": "Phantom Assault",
 			"rarity": 1,
-			"direction": "",
+			"direction": "Render",
 			"desc": "Split into three phantoms that streak through the enemies ahead in a fan, each tearing everything in its path for 120% weapon damage, then strike with your own claws.",
 			"mana": 22,
 			"cd": 0.0,
@@ -97,7 +97,7 @@
 			"status": "live",
 			"name": "Eternal Night",
 			"rarity": 2,
-			"direction": "",
+			"direction": "Night",
 			"desc": "Rise and bring down the night over 9 metres: a scream of terror (150% weapon damage, enemies hurled back and frozen with fear), then the dark feeds on everything in it while you hang untouchable above it, and it collapses into your slam for 200%. +40% damage for 12 seconds.",
 			"mana": 40,
 			"cd": 40.0,
@@ -105,6 +105,54 @@
 				"ultimate"
 			],
 			"lvl": 20
+		},
+		{
+			"id": "r_deathmark",
+			"status": "live",
+			"name": "Death Mark",
+			"rarity": 1,
+			"direction": "Render",
+			"desc": "Mark the foe nearest the pointer. When the mark ends 3 seconds later it tears out half of everything you dealt it meanwhile (at least 150% weapon damage) as a soul you drink back.",
+			"mana": 10,
+			"cd": 10.0,
+			"range": 12.0,
+			"role": "burst a single target",
+			"tags": [
+				"cc"
+			],
+			"lvl": 9,
+			"run": true
+		},
+		{
+			"id": "r_wail",
+			"status": "live",
+			"name": "Banshee Wail",
+			"rarity": 0,
+			"direction": "Shadow",
+			"desc": "Scream: everything within 6 metres takes 60% weapon damage, is frozen in terror for 1.2 seconds and slowed by half for 2 more.",
+			"mana": 9,
+			"cd": 8.0,
+			"role": "terrify the crowd",
+			"tags": [
+				"cc"
+			],
+			"lvl": 1,
+			"run": true
+		},
+		{
+			"id": "r_reap",
+			"status": "live",
+			"name": "Reaping Crescent",
+			"rarity": 0,
+			"direction": "Night",
+			"desc": "A great crescent of soul-fire sweeps out 5 metres in front of you: 140% weapon damage, and each foe it reaps heals you 2% of your life.",
+			"mana": 8,
+			"cd": 0.0,
+			"use": 0.9,
+			"range": 5.0,
+			"role": "sweep and sustain",
+			"lvl": 1,
+			"run": true
 		}
 	],
 	"rites": [
@@ -386,6 +434,99 @@
 			},
 			"text": "Phantom Assault sends a fourth phantom, and Eternal Night deals {dmg:night}% more damage.",
 			"icon": "night"
+		},
+		{
+			"id": "r_up_mark",
+			"status": "live",
+			"name": "Marked Soul",
+			"rarity": 2,
+			"run": true,
+			"direction": "Render",
+			"max": 1,
+			"text": "Death Mark tears out {mark_pct}% more and comes back {cd:r_deathmark}% sooner.",
+			"icon": "r_deathmark",
+			"fx": {
+				"mark_pct": 30,
+				"cd:r_deathmark": 25
+			}
+		},
+		{
+			"id": "r_up_wail",
+			"status": "live",
+			"name": "Keening",
+			"rarity": 1,
+			"run": true,
+			"direction": "Shadow",
+			"max": 1,
+			"text": "Banshee Wail reaches {wail_r}% further and terrifies {wail_t} seconds longer.",
+			"icon": "r_wail",
+			"fx": {
+				"wail_r": 30,
+				"wail_t": 0.6
+			}
+		},
+		{
+			"id": "r_up_reap",
+			"status": "live",
+			"name": "Harvest of Souls",
+			"rarity": 1,
+			"run": true,
+			"direction": "Night",
+			"max": 2,
+			"text": "Reaping Crescent hits {dmg:r_reap}% harder and heals {reap_heal}% more for each it reaps.",
+			"icon": "r_reap",
+			"fx": {
+				"dmg:r_reap": 15,
+				"reap_heal": 1
+			}
+		},
+		{
+			"id": "r_reaper",
+			"status": "live",
+			"name": "Reaper",
+			"rarity": 2,
+			"run": true,
+			"direction": "Render",
+			"max": 1,
+			"text": "Your hits on foes under {below}% life deal +{more}% damage.",
+			"icon": "rend",
+			"k": {
+				"below": 35,
+				"more": 80
+			},
+			"proc": "more_vs_low"
+		},
+		{
+			"id": "r_soulfeast",
+			"status": "live",
+			"name": "Soul Feast",
+			"rarity": 2,
+			"run": true,
+			"direction": "Shadow",
+			"max": 1,
+			"text": "Each kill heals you {pct}% of your life.",
+			"icon": "siphon",
+			"k": {
+				"pct": 5
+			},
+			"proc": "heal_on_kill"
+		},
+		{
+			"id": "r_dread",
+			"status": "live",
+			"name": "Dread",
+			"rarity": 2,
+			"run": true,
+			"direction": "Night",
+			"max": 1,
+			"text": "Every hit chills its foe with dread.",
+			"icon": "night",
+			"k": {
+				"src": "",
+				"slow": 0.35,
+				"secs": 2.0
+			},
+			"proc": "chill_on_hit"
 		}
 	]
 }

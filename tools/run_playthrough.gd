@@ -14,6 +14,8 @@ var fails := 0
 var CA
 var RB
 var SV
+var theme := ""
+var dmg_total := 0.0
 
 func _initialize():
 	var a := OS.get_cmdline_user_args()
@@ -21,6 +23,8 @@ func _initialize():
 		cls = a[0]
 	if a.size() > 1:
 		per_camp = float(a[1])
+	if a.size() > 2:
+		theme = a[2]       # a build theme to chase (RunTalents.THEMES), or "random" for a player who picks blindly
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
 	CA = load("res://scripts/camps.gd")
@@ -87,11 +91,15 @@ func _run() -> void:
 		h.bot_hold = false
 		var took := frames * 1000.0 / 60.0      # game milliseconds (--fixed-fps 60)
 		t_total += took / 1000.0
+		dmg_total += hp0
 		if not c["cleared"]:
 			var hp_left := 0.0
 			for e in g.world.enemies_root.get_children():
 				if e is Enemy and not e.dead and e.pack_id == int(c["pack"]):
 					hp_left += e.life
+					var cp: Vector3 = c["pos"] if c.has("pos") else Vector3.ZERO
+					print("[RUN-PLAY]   left: %s at %s (%.1f m from the camp, %.1f from the hero) life %d/%d stun %.1f scripted %.1f aggro %s" % [e.kind, str(e.global_position.snapped(Vector3(0.1, 0.1, 0.1))),
+						Vector2(e.global_position.x - cp.x, e.global_position.z - cp.z).length(), e.global_position.distance_to(h.global_position), int(e.life), int(e.max_life), e.stun_t, e.scripted, str(e.aggro)])
 			check(false, "%s (%s): not cleared in %ds (%d left, %d of %d life, %d falls)" % [c["name"], CA.TIER_NAMES[int(c["tier"])], int(per_camp), CA.alive(g.world, c), int(hp_left), int(hp0), falls])
 			continue
 		# the chest: loot for everyone, the upgrade for us
@@ -105,17 +113,31 @@ func _run() -> void:
 			var o: Dictionary = h.run.offers[g.ui.run_ui.offer_key]
 			var best := 0
 			var empty: bool = RB.SLOTS.any(func(s): return h.bound(s) == "")
+			var want_skill: bool = empty or h.run.skills.size() < 8
+			var score := func(ci: Dictionary) -> int:
+				# skills first while a slot is empty or the spellbook is thin (so it gets exercised), then the theme the
+				# bot chases, then rarity
+				var v: int = int(ci["rarity"]) * 10 + (50 if want_skill and ci["kind"] == "skill" else 0)
+				if theme != "" and theme != "random" and str(ci.get("theme", "")) == theme:
+					v += 45
+				return v
 			for i in o["choices"].size():
-				var ci: Dictionary = o["choices"][i]
-				var bi: Dictionary = o["choices"][best]
-				# (skills first while a slot is empty or the spellbook is thin, so the spellbook gets exercised; else rarity)
-				var want_skill: bool = empty or h.run.skills.size() < 8
-				var score: int = int(ci["rarity"]) * 10 + (50 if want_skill and ci["kind"] == "skill" else 0)
-				var bscore: int = int(bi["rarity"]) * 10 + (50 if want_skill and bi["kind"] == "skill" else 0)
-				if score > bscore:
+				if score.call(o["choices"][i]) > score.call(o["choices"][best]):
 					best = i
-			pick_txt = "%s %s" % [o["choices"][best]["kind"], o["choices"][best]["id"]]
+			if theme == "random":
+				best = randi() % o["choices"].size()
+			var chosen: Dictionary = o["choices"][best]
+			pick_txt = "%s %s%s" % [chosen["kind"], chosen["id"], (" [%s]" % chosen["theme"]) if str(chosen.get("theme", "")) != "" else ""]
 			g.ui.run_ui._take(best)
+			if o.get("gem", "") != "":
+				pick_txt += "  gem " + str(o["gem"])
+			# a themed skill learned into the spellbook takes the place of an off-theme one (between fights, as a player would)
+			if theme != "" and theme != "random" and chosen["kind"] == "skill" and str(chosen.get("theme", "")) == theme and not RB.SLOTS.any(func(sl): return h.bound(sl) == chosen["id"]):
+				for sl in RB.SLOTS:
+					var cur: String = h.bound(sl)
+					if str(load("res://scripts/run_talents.gd").SKILL_THEMES.get(cur, "")) != theme:
+						h.bind(sl, chosen["id"])
+						break
 		await secs(0.2)
 		var gear_txt := await _loot(before)
 		print("[RUN-PLAY] %-22s %-8s lvl %2d -> %2d  %5.1fs  %6d hp (%4d/s)  life %3d/%3d %s  took %s%s" % [c["name"], CA.TIER_NAMES[int(c["tier"])], lvl0, h.level, took / 1000.0,
@@ -125,11 +147,14 @@ func _run() -> void:
 	var slotted: int = RB.SLOTS.filter(func(s): return h.bound(s) != "").size()
 	print("[RUN-PLAY] summary: %s level %d, %d/%d camps, %d bosses, %d skills (%d slotted), %d passives, %d falls, %.0fs fighting" % [
 		cls, h.level, cleared, camps.size(), h.run.bosses, skills, slotted, h.run.passives.size(), falls, t_total])
+	print("[RUN-PLAY] build%s: themes %s; slots %s; talents %s; gems %s; total damage %d, %.0f/s" % [
+		(" (chasing %s)" % theme) if theme != "" else "", str(h.run.theme_counts(cls)), str(RB.SLOTS.map(func(sl): return h.bound(sl))),
+		str(h.run.passives.keys()), str(h.run.gems), int(dmg_total), dmg_total / maxf(t_total, 1.0)])
 	check(cleared == camps.size(), "every camp cleared (%d/%d)" % [cleared, camps.size()])
 	check(h.run.bosses == 2, "both bosses down")
 	check(h.level >= 15, "fast progression: level %d after the whole map" % h.level)
 	var can_learn: int = RB.skill_pool(cls).size()
-	check(slotted == mini(5, can_learn) and skills >= mini(6, can_learn), "five slotted, the rest in the spellbook (%d of %d learned)" % [skills, can_learn])
+	check(slotted == mini(5, can_learn) and (skills >= mini(6, can_learn) or theme == "random"), "five slotted, the rest in the spellbook (%d of %d learned)" % [skills, can_learn])
 	check(falls == 0, "no falls (%d)" % falls)
 	var wk := str(load("res://scripts/data.gd").BASES[h.equipment["weapon"]["base"]].get("cls", ""))
 	check(wk == cls or not RB.has_own_weapons(cls), "still fighting with its own weapon kind (%s)" % h.equipment["weapon"]["name"])

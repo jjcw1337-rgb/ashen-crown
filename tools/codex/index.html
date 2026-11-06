@@ -13,7 +13,7 @@
   --ink: #0e0d0c; --iron: #171513; --iron2: #1f1c19; --iron3: #2a2622; --line: #3a342d; --line2: #4d453b;
   --text: #e9e2d3; --dim: #a89e8c; --faint: #776e60;
   --bronze: #c9a063; --bronze2: #e3c08a; --ember: #d9622b;
-  --r0: #dbd6c7; --r1: #6bdb85; --r2: #7aadff;
+  --r0: #dbd6c7; --r1: #6bdb85; --r2: #7aadff; --r3: #ff9e2e;
   --live: #6bdb85; --design: #e0a84a; --bad: #e0574a;
   --serif: "IM Fell English SC", Georgia, serif; --sans: "Alegreya Sans", system-ui, sans-serif; --mono: "Spline Sans Mono", ui-monospace, monospace;
 }
@@ -70,7 +70,7 @@ main { padding: 22px 28px 80px; min-width: 0; }
 .card .text { color: var(--dim); font-size: 14px; margin-top: 3px; overflow-wrap: anywhere; }
 .card .meta { overflow-wrap: anywhere; font: 11.5px var(--mono); color: var(--faint); margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px 10px; }
 .badge { font: 10.5px var(--mono); padding: 1px 6px; border-radius: 4px; border: 1px solid currentColor; text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; }
-.b-live { color: var(--live); } .b-design { color: var(--design); } .b-skill { color: var(--bronze2); } .b-rite { color: #c99be8; } .b-gem { color: #e88f9b; } .b-item { color: #8fd3e8; } .b-consumable { color: #e8d38f; }
+.b-run { color: #ffb36b; } .b-live { color: var(--live); } .b-design { color: var(--design); } .b-skill { color: var(--bronze2); } .b-rite { color: #c99be8; } .b-gem { color: #e88f9b; } .b-item { color: #8fd3e8; } .b-consumable { color: #e8d38f; }
 .rar { font: 11px var(--mono); color: var(--rc); }
 .empty { color: var(--faint); font-size: 14px; padding: 6px; }
 section.block { margin-top: 28px; }
@@ -139,7 +139,7 @@ dialog::backdrop { background: rgba(0,0,0,.65); }
 <dialog id="ed"></dialog>
 <script>
 "use strict";
-const RAR = ["Common", "Uncommon", "Rare"], RC = ["var(--r0)", "var(--r1)", "var(--r2)"];
+const RAR = ["Common", "Uncommon", "Rare", "Legendary"], RC = ["var(--r0)", "var(--r1)", "var(--r2)", "var(--r3)"];
 const ODDS = {1: [70, 25, 5], 2: [50, 38, 12], 3: [32, 43, 25], 4: [12, 45, 43]};   // RunBuild.ODDS
 const TIER = {1: "Camp I", 2: "Camp II", 3: "Camp III", 4: "Boss"};
 let B = null, view = location.hash.slice(1) || "hero:warlock";
@@ -176,6 +176,8 @@ async function save(rel, doc) {
 function riteText(e, stacks = 1) {
   let s = e.text || "";
   for (const k in (e.fx || {})) s = s.split("{" + k + "}").join(num(e.fx[k] * stacks));
+  // a run talent's numbers (RunTalents "k"): the ones in "per" grow with the stacks
+  for (const k in (e.k || {})) s = s.split("{" + k + "}").join(num(e.k[k] * ((e.per || []).includes(k) ? stacks : 1)));
   return s;
 }
 function body(e, type) { return type === "rite" ? riteText(e) : (e.desc || e.text || ""); }
@@ -207,7 +209,7 @@ function card(e, type, rel, list) {
     : (type === "skill" || type === "rite") ? `<img class="ico" alt="" loading="lazy" src="/icon/${type === "skill" ? "skills" : "talents"}/${esc(e.id)}.png" onerror="this.remove()">` : "";
   return `<div class="card ${st}" style="--rc:${RC[r]}" data-rel="${esc(rel)}" data-list="${list}" data-id="${esc(e.id)}" data-type="${type}">
     <div class="row1">${dot}<span class="name">${esc(e.name)}</span><span class="rar">${RAR[r]}</span></div>
-    <div class="row1" style="gap:5px;margin-top:3px"><span class="badge b-${type}">${type}</span><span class="badge b-${st}">${st === "live" ? "in game" : "design"}</span></div>
+    <div class="row1" style="gap:5px;margin-top:3px"><span class="badge b-${type}">${type}</span><span class="badge b-${st}">${st === "live" ? "in game" : "design"}</span>${e.run ? '<span class="badge b-run">run</span>' : ""}</div>
     <div class="text">${esc(body(e, type))}</div>
     <div class="meta">${metaOf(e, type).map((x) => `<span>${esc(x)}</span>`).join("")}</div></div>`;
 }
@@ -375,7 +377,7 @@ function editor(rel, list, e, type, isNew) {
   const doc = docOf(rel), hero = rel.startsWith("heroes/") ? doc : null;
   const wasLive = !isNew && (e.status || "live") === "live";
   const dirOpts = [["", "Core / none"], ...((hero && hero.directions) || []).map((d) => [d.id, d.name])];
-  let f = field("Name", "name", e.name) + field("Rarity", "rarity", e.rarity || 0, "select", { options: RAR.map((r, i) => [i, r]) });
+  let f = field("Name", "name", e.name) + field("Rarity", "rarity", e.rarity || 0, "select", { options: RAR.map((r, i) => [i, r]).filter(([i]) => i < 3 || type === "gem") });
   if (hero) f += field("Direction", "direction", e.direction || "", "select", { options: dirOpts });
   const statusLocked = type === "skill" && wasLive;
   f += field("Status", "status", e.status || "live", "select", { options: [["live", "In game"], ["design", "Design"]], disabled: statusLocked });

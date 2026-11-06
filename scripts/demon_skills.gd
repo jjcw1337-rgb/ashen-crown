@@ -207,6 +207,16 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 			w["grip_held"] = false
 			w["grip_grabbed"] = false
 			_start(h, "grip_throw", "grip")
+		# a run's skills (Data.RUN_SKILLS)
+		"d_volcano":
+			var at2 := h.global_position + to.limit_length(13.0)
+			at2.y = h.game.world.height_at(at2.x, at2.z)
+			w["volcano_at"] = at2
+			_start(h, "hurl", "d_volcano")
+		"d_detonate":
+			_start(h, "cslam", "d_detonate", 0.9)
+		"d_pact":
+			_start(h, "wrath_stomp", "d_pact", 0.8)
 		"wrath":
 			end_wrath(h, false)
 			w["wrath"] = {"stage": 0, "t": 0.0, "heat": 0.0, "rain": -1.0, "next": 0.0, "n": 0, "pvp_n": 0}
@@ -225,6 +235,8 @@ static func recast(h: Hero, id: String) -> bool:
 static func impact(h: Hero) -> bool:
 	if not active(h):
 		return false
+	if h.atk_skill.begins_with("d_") and _run_impact(h):
+		return true       # (a run's skill on a borrowed style: its own impact, not the style's skill)
 	match h.atk_style:
 		"fists":
 			_fists(h)
@@ -242,6 +254,58 @@ static func impact(h: Hero) -> bool:
 			_eruption(h)
 		_:
 			return h.atk_skill in STYLE
+	return true
+
+const VOLCANO_N := 5
+const VOLCANO_R := 6.0
+const DETONATE_R := 10.0
+
+## A run's skills on their impact frame (the styles they borrow: hurl, stomp, roar).
+static func _run_impact(h: Hero) -> bool:
+	var w: Dictionary = h.dm
+	match h.atk_skill:
+		"d_volcano":
+			var at: Vector3 = w.get("volcano_at", h.global_position)
+			h.fx("d_volcano", "raise", {"p": at})
+			var n := VOLCANO_N + int(h.talent("volcano_more"))
+			var foes: Array = h.game.enemies_near(at, VOLCANO_R).filter(func(e): return not e.dead)
+			var ms: Array = w.get("meteors", [])
+			for i in n:
+				var p: Vector3
+				if not foes.is_empty():
+					var pick = foes[i % foes.size()]
+					p = pick.global_position + Vector3(randf_range(-0.8, 0.8), 0, randf_range(-0.8, 0.8))
+				else:
+					var ang := TAU * float(i) / n
+					p = at + Vector3(cos(ang), 0, sin(ang)) * randf_range(2.0, VOLCANO_R * 0.8)
+				p.y = h.game.world.height_at(p.x, p.z)
+				var fall := 0.6 + i * 0.35
+				ms.append({"at": p, "t": fall, "src": "d_volcano"})
+				h.fx("wrath", "meteor", {"p": p, "n": i, "x": fall})
+			w["meteors"] = ms
+		"d_detonate":
+			var popped := PackedVector3Array()
+			for e in h.game.enemies_near(h.global_position, DETONATE_R):
+				if e.dead or not branded(h, e):
+					continue
+				_unbrand(h, e)
+				popped.append(e.global_position)
+				_hit(h, e, 1.6, 1.4, "d_detonate", magma(h, 0.5))
+				if is_instance_valid(e) and not e.dead:
+					_cc(h, e, "knockup", 0.8, 0.5)
+				for o in h.game.enemies_near(e.global_position, 2.5):
+					if o != e and not o.dead:
+						_hit(h, o, 0.6, 0.6, "d_detonate", 0.0)
+						if h.talent("detonate_brand") > 0.0:
+							brand(h, o)
+			h.fx("d_detonate", "impact", {"ps": popped})
+		"d_pact":
+			var cost := h.max_life * 0.15
+			h.life = maxf(1.0, h.life - cost)
+			RunTalents.buff(h, "blood_pact", {"dmg": 35.0 + h.talent("pact_pow"), "ls": 6.0}, 8.0)
+			h.fx("d_pact", "impact", {"x": 8.0})
+		_:
+			return false
 	return true
 
 ## Molten Fists on the skill format (jj): its area, damage and burn are its data (Data.SKILLS, SkillSpec); the magma
@@ -649,14 +713,14 @@ static func _call_meteor(h: Hero) -> void:
 	w["meteors"] = ms
 	h.fx("wrath", "meteor", {"p": at, "n": k, "x": fall})
 
-static func _meteor_land(h: Hero, at: Vector3) -> void:
+static func _meteor_land(h: Hero, at: Vector3, src := "wrath") -> void:
 	for e in h.game.enemies_near(at, METEOR_R + 0.8):
 		var to: Vector3 = e.global_position - at
 		to.y = 0
 		if to.length() - e.radius <= METEOR_R:
-			_hit(h, e, 1.1, 1.2, "wrath", magma(h, 0.55))
+			_hit(h, e, 1.1, 1.2, src, magma(h, 0.55))
 			if is_instance_valid(e) and not e.dead and not PvpStatus.is_player(e):
-				e.ignite(magma(h, 0.1) * h.dmg_mult("wrath"), 3.0)
+				e.ignite(magma(h, 0.1) * h.dmg_mult(src), 3.0)
 
 # ---------------------------------------------------------------- every frame
 static func update(h: Hero, delta: float) -> void:
@@ -699,7 +763,7 @@ static func update(h: Hero, delta: float) -> void:
 			m["t"] = float(m["t"]) - delta
 			if float(m["t"]) <= 0.0:
 				ms.erase(m)
-				_meteor_land(h, m["at"])
+				_meteor_land(h, m["at"], str(m.get("src", "wrath")))
 		if ms.is_empty():
 			w.erase("meteors")
 	# the Crucible: nothing moves or stops him

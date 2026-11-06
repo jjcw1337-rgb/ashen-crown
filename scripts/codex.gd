@@ -16,7 +16,7 @@ extends RefCounted
 
 const DIR := "res://data/codex/"
 const SKILL_FIELDS := ["name", "desc", "mana", "cd", "use", "power", "range", "role", "rarity", "direction"]
-const RITE_FIELDS := ["name", "text", "max", "fx", "rarity"]
+const RITE_FIELDS := ["name", "text", "max", "fx", "rarity", "k"]      # (k: a run talent's numbers, RunTalents)
 ## The fx keys a rite may use and still be live: fx_keys.json "any" (plain stats and percentages Hero.recalc /
 ## Hero.talent read for every class, plus the per-skill forms dmg:<skill>, cd:<skill>, cost:<skill>) and the class's
 ## own list (keys its skills script reads, e.g. WarlockHex.RITE_KEYS). The codex editor reads the same file.
@@ -109,7 +109,8 @@ static func extra_rites(cls: String, known: Dictionary) -> Array:
 			continue
 		var p := {"id": str(e["id"]), "name": str(e.get("name", e["id"])), "rarity": clampi(int(e.get("rarity", 0)), 0, 2),
 			"max": maxi(1, int(e.get("max", 1))), "icon": str(e.get("icon", "")) if str(e.get("icon", "")) != "" else "t_star",
-			"fx": e.get("fx", {}).duplicate(true), "text": str(e.get("text", "")), "tree": str(e.get("direction", ""))}
+			"fx": e.get("fx", {}).duplicate(true), "text": str(e.get("text", "")), "tree": str(e.get("direction", "")),
+			"theme": str(e.get("direction", "")).to_lower()}
 		# offered only once one of these skills is his (RunBuild.roll_offer)
 		if e.get("requires") is Array and not (e["requires"] as Array).is_empty():
 			p["needs_any"] = Array(e["requires"]).map(func(x): return str(x))

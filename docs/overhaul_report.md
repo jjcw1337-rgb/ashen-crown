@@ -28,6 +28,31 @@ Blaine's spec of 2026-11-06 (17 points). The line-by-line proof is `docs/overhau
   gear swap, upgrade, results and roster windows in the same look. A lobby-service `pick` op changes class in a
   lobby.
 
+## The roguelike pass (Blaine, 2026-11-06 night: "like Slay the Spire")
+
+- **Three directions per character, Common / Uncommon / Rare** (`RunTalents.THEMES`): the archer Flame / Frost /
+  Storm and Hunt, the plague doctor Toxin / Vermin and Rot / Alchemy, the knight Crusader / Bulwark / Vanguard, the
+  rest from their talent trees (the warlock is being redesigned in another session). Chests offer 3 (4 at a boss),
+  1-3 of them skills, leaning toward the directions a build already has.
+- **Talents that change runs** (`RunTalents.TALENTS`, ~80, procs on hit / kill / crit / poison / cooldown / death):
+  burning or chilled deaths spread fire or shatter into neighbours, freezes, ricochets and forked lightning,
+  poison that grows and leaps to new hosts, Momentum, Undying, Echo, Chain Reaction, skill-upgrade talents.
+- **Run-only skills** (`Data.RUN_SKILLS`): archer Scatter Shot, Glacial Shard, Blast Arrow, Storm Shot, Hunter's
+  Mark, Arrow Storm; plague doctor Miasma, Contagion, Leech Jar; knight Blade Storm, Aegis, Judgment, Last Rites
+  (Holy Brands: every blow brands, Judgment spends them; Aegis bursts for what it soaked; Last Rites executes and
+  resets on a kill).
+- **Gems** (17, the run's relics, legendary ones change the run) and **consumables** (elixirs, salve, thrown flasks,
+  warding scroll, tome) from every chest.
+- Meshy-painted icons for every new skill, gem and consumable; 14 new ElevenLabs sounds; every new skill looked at
+  frame by frame in the game renderer, warmed for the first cast (SkillWarmData), and under its performance budget
+  (`tools/skill_perf.sh`: all within 20%, no new stutters).
+- The Verdant Reach brighter and alive (`scripts/forest_life.gd`: flower drifts, butterflies, fireflies, elf banners,
+  ruins, crystal shrines, a clearer stream, a golden afternoon), +6-15% draw calls.
+- Balance: every class played through a whole run with random picks, and every archer and plague doctor direction
+  chased on purpose: all clear 16/16 camps and both bosses; boss fights 25-120 s. Boss camps toughened (0.8 life,
+  0.4 damage) for the stronger builds. A camp leash sends a dragged-off straggler home.
+- Tests: `tools/run_talents_test.gd` (every talent, gem, consumable and run skill on real monsters).
+
 ## What was verified
 
 - Automated (in the nightly gate unless noted): `run_build_test` (73 checks), `camp_test`, `survivor_test`,
@@ -39,7 +64,9 @@ Blaine's spec of 2026-11-06 (17 points). The line-by-line proof is `docs/overhau
   the same. It found and fixed: the knight and Doug too weak against bosses (a run-only class factor), Doug stuck on
   a level-1 weapon, a leftover 2.2x monster multiplier, bosses tuned for a whole act, a boss giving six
   levels, a boss camp counted twice, the archer taking a cleaver, runs starving for healing.
-- `arena_survivor_test` (two clients, the real lobby service and an Arena worker): see its result below.
+- `arena_survivor_test` (two clients, the real lobby service and an Arena worker, 31 checks, all pass): a class pick
+  reaches the other player and un-readies; both fight a best-of-three Arena match as their saved survivors; the
+  survivor files are untouched after.
 
 ## Kept for later cleanup
 

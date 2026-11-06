@@ -41,6 +41,8 @@ static func wisp_time(i: int) -> float:
 
 # ---------------------------------------------------------------- the skills' events (SkillFx)
 static func play(h: Hero, ev: Dictionary) -> bool:
+	if _run_play(h, ev):
+		return true
 	var root: Node3D = h.game.world.fx_root
 	var pos := h.global_position
 	match [str(ev["s"]), str(ev["e"])]:
@@ -185,6 +187,60 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 		_:
 			return false
 	return true
+
+## A run's skills (Data.RUN_SKILLS): Death Mark, Banshee Wail, Reaping Crescent, in the Wraith's own language (soul
+## rings, spirit bursts, wisps and rakes).
+static func _run_play(h: Hero, ev: Dictionary) -> bool:
+	var root: Node3D = h.game.world.fx_root
+	match [str(ev["s"]), str(ev["e"])]:
+		["r_deathmark", "mark"]:
+			var foes: Array = ev.get("t", [])
+			if not foes.is_empty() and is_instance_valid(foes[0]):
+				var e: Node3D = foes[0]
+				var at: Vector3 = e.global_position
+				_soul_ring(root, at, 1.6, VIOLET, 0.6)
+				_spirit_burst(root, at + Vector3(0, 1.0, 0), VIOLET, 22, 2.5, 0.1, 0.6, true, 0.5)
+				var a := Fx.aura(e, VIOLET, 16, 0.25, 0.09, 0.9, 0.5, 0.45, 40.0, Vector3(0, 1.1, 0))
+				a.name = "death_mark"
+				_free_later(a, float(ev.get("x", 3.0)))
+				var ring := Fx.aura(e, PALE, 8, 0.1, 0.07, 0.6, 0.0, 0.6, 10.0, Vector3(0, float(e.get("height")) * 2.0 + 0.4, 0))
+				_free_later(ring, float(ev.get("x", 3.0)))
+			SkillFx.snd(h, "shade_in", -2.0, 0.7)
+			return true
+		["r_deathmark", "pop"]:
+			var p: Vector3 = ev["p"]
+			pulse(root, p + Vector3(0, 1.0, 0), VIOLET, 2.6, 0.45)
+			_soul_ring(root, p, 2.8, VIOLET, 0.5)
+			_spirit_burst(root, p + Vector3(0, 1.0, 0), PALE, 40, 5.0, 0.12, 0.6, true, 0.0)
+			soul_wisp(root, p + Vector3(0, 1.2, 0), h, 0.5)
+			Fx.flash(root, p + Vector3(0, 1.2, 0), VIOLET, 4.0, 0.35, 7.0)
+			Sfx.play_at("death_mark_pop", p, 0.0)
+			SkillFx.shake(h, 0.3)
+			return true
+		["r_wail", "impact"]:
+			var r: float = float(ev.get("r", 6.0))
+			var me: Vector3 = h.global_position
+			_soul_ring(root, me, r, SPIRIT, 0.6, 0.6)
+			_soul_ring(root, me, r * 0.6, VIOLET, 0.45, 0.4)
+			_spirit_burst(root, me + Vector3(0, 1.4, 0), Color(0.3, 0.26, 0.42, 0.7), 40, 6.0, 0.3, 0.8, false, 0.4, 100.0)
+			pulse(root, me + Vector3(0, 1.3, 0), SPIRIT, r * 0.8, 0.4)
+			for e in ev.get("t", []):
+				if is_instance_valid(e):
+					_spirit_burst(root, (e as Node3D).global_position + Vector3(0, 1.4, 0), PALE, 10, 2.0, 0.08, 0.5, true, 1.0)
+			SkillFx.snd(h, "banshee_wail", -1.0)
+			SkillFx.shake(h, 0.35)
+			return true
+		["r_reap", "impact"]:
+			var yaw: float = float(ev.get("y", 0.0))
+			rake(root, h.global_position, yaw, WraithSkills.REAP_R, true)
+			rake(root, h.global_position, yaw, WraithSkills.REAP_R * 0.85, false)
+			var dir := Vector3(-sin(yaw), 0, -cos(yaw))
+			_soul_ring(root, h.global_position + dir * 2.0, 2.4, SPIRIT, 0.35)
+			for i in int(ev.get("n", 0)):
+				soul_wisp(root, h.global_position + dir * 3.0 + Vector3(randf_range(-1.5, 1.5), 1.0, randf_range(-1.5, 1.5)), h, 0.4 + i * 0.05)
+			SkillFx.shake(h, 0.2)
+			return true
+	return false
 
 static func _set_hover(h: Hero, extra: float) -> void:
 	if h.rig != null and h._floats():

@@ -99,13 +99,15 @@ class Codex:
                 if st not in ("live", "design"):
                     raise ValueError(f"{i}: status must be live or design")
                 r = e.get("rarity", 0)
-                if not isinstance(r, NUM) or int(r) not in (0, 1, 2):
-                    raise ValueError(f"{i}: rarity must be 0 common, 1 uncommon or 2 rare")
+                top = 3 if rel == "gems.json" or key == "gems" else 2      # (a gem can be legendary)
+                if not isinstance(r, NUM) or int(r) not in range(top + 1):
+                    raise ValueError(f"{i}: rarity must be 0 common, 1 uncommon, 2 rare" + (" or 3 legendary" if top == 3 else ""))
                 for f in ("mana", "cd", "use", "power", "range", "max", "lvl"):
                     if f in e and e[f] is not None and (not isinstance(e[f], NUM) or e[f] < 0):
                         raise ValueError(f"{i}: {f} must be a number of 0 or more")
-                if "fx" in e and not (isinstance(e["fx"], dict) and all(isinstance(v, NUM) for v in e["fx"].values())):
-                    raise ValueError(f"{i}: every fx value must be a number")
+                for fk in ("fx", "k"):
+                    if fk in e and not (isinstance(e[fk], dict) and all(isinstance(v, NUM) for v in e[fk].values())):
+                        raise ValueError(f"{i}: every {fk} value must be a number")
                 if st == "live" and (key, i) not in live_before:
                     if key == "rites" and fx_ok(e.get("fx"), keys):
                         continue     # a new rite made of keys the game reads: live straight away

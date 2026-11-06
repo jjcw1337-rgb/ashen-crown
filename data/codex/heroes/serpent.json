@@ -2,14 +2,25 @@
 	"cls": "serpent",
 	"name": "Frost Serpent",
 	"fantasy": "A long, wingless dragon of pale ice-blue scale with crystal antlers and a ridge of ice shards. Swims over the ground, strikes with claw and fang and lashes its tail in a full turn.",
-	"directions": [],
+	"directions": [
+		{
+			"id": "Frost",
+			"name": "Frost",
+			"desc": "Breath, chill and shatter."
+		},
+		{
+			"id": "Beast",
+			"name": "Beast",
+			"desc": "Claws, coils and the tail."
+		}
+	],
 	"skills": [
 		{
 			"id": "frost_breath",
 			"status": "live",
 			"name": "Frost Breath",
 			"rarity": 0,
-			"direction": "",
+			"direction": "Frost",
 			"desc": "The serpent lowers its head and breathes a freezing gale over everything in a cone 7 metres ahead for over a second: cold damage again and again, chilling (slowing) them; the ground frosts over and ice bursts up where it ends.",
 			"mana": 10,
 			"cd": 0.0,
@@ -24,5 +35,115 @@
 			"lvl": 1
 		}
 	],
-	"rites": []
+	"rites": [
+		{
+			"id": "s_permafrost",
+			"status": "live",
+			"name": "Permafrost",
+			"rarity": 2,
+			"run": true,
+			"direction": "Frost",
+			"max": 1,
+			"text": "Every {n}th hit on a chilled foe freezes it solid for {secs} seconds.",
+			"icon": "frost_breath",
+			"k": {
+				"n": 5,
+				"secs": 1.4
+			},
+			"proc": "freeze_after"
+		},
+		{
+			"id": "s_shatter",
+			"status": "live",
+			"name": "Brittle",
+			"rarity": 2,
+			"run": true,
+			"direction": "Frost",
+			"max": 1,
+			"text": "Chilled foes take +{more}% damage from your hits.",
+			"icon": "frost_breath",
+			"k": {
+				"more": 25
+			},
+			"proc": "more_vs_chilled"
+		},
+		{
+			"id": "y_hide",
+			"status": "live",
+			"name": "Dragonhide",
+			"rarity": 0,
+			"run": true,
+			"direction": "Beast",
+			"max": 3,
+			"text": "+{armor_pct}% defense and +{life_pct}% life.",
+			"icon": "t_armor",
+			"fx": {
+				"armor_pct": 15,
+				"life_pct": 6
+			}
+		},
+		{
+			"id": "y_claws",
+			"status": "live",
+			"name": "Rending Claws",
+			"rarity": 1,
+			"run": true,
+			"direction": "Beast",
+			"max": 2,
+			"text": "Claws and bites deal +{dmg:attack}%; +{crit}% critical chance.",
+			"icon": "attack",
+			"fx": {
+				"dmg:attack": 15,
+				"crit": 3
+			}
+		},
+		{
+			"id": "y_apex",
+			"status": "live",
+			"name": "Apex Predator",
+			"rarity": 2,
+			"run": true,
+			"direction": "Beast",
+			"max": 1,
+			"text": "+{more}% damage to foes under {below}% life.",
+			"icon": "t_skull",
+			"k": {
+				"below": 40,
+				"more": 40
+			},
+			"proc": "more_vs_low"
+		},
+		{
+			"id": "y_fury",
+			"status": "live",
+			"name": "Primal Fury",
+			"rarity": 2,
+			"run": true,
+			"direction": "Beast",
+			"max": 1,
+			"text": "Each kill: +{dmg}% damage for {secs} seconds, up to {stacks} times.",
+			"icon": "t_fist",
+			"k": {
+				"dmg": 6,
+				"stacks": 6,
+				"secs": 8
+			},
+			"proc": "momentum"
+		},
+		{
+			"id": "s_rime",
+			"status": "live",
+			"name": "Frozen Blood",
+			"rarity": 0,
+			"run": true,
+			"direction": "Frost",
+			"max": 3,
+			"text": "Chills last {chill_pct}% longer; Frost Breath +{dmg:frost_breath}%.",
+			"icon": "frost_breath",
+			"fx": {
+				"chill_pct": 25,
+				"dmg:frost_breath": 10
+			}
+		}
+	]
 }

@@ -13,6 +13,14 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 	var s := str(ev.get("s", ""))
 	var e := str(ev.get("e", ""))
 	match s + ":" + e:
+		"u_cannon:boom":
+			var bp: Vector3 = ev["p"]
+			var br: float = float(ev.get("r", 4.5))
+			_confetti(root, bp + Vector3(0, 0.8, 0), 2.0)
+			Fx.ring(root, bp, br, Color(1.0, 0.85, 0.3), 0.5)
+			Fx.burst(root, bp + Vector3(0, 0.4, 0), Color(0.6, 0.5, 0.4), 30, 5.0, 0.14, 0.6, false, -8.0)
+			Fx.flash(root, bp + Vector3(0, 1.0, 0), Color(1.0, 0.8, 0.4), 4.0, 0.3, 8.0)
+			SkillFx.snd(h, "boom", -2.0, 1.1)
 		"pie:throw":
 			_fly(root, "pie", ev["p"], ev["q"], float(ev.get("x", 0.45)), 2.2, 0.6)
 			SkillFx.snd(h, "swing_light", -4.0, 1.3)

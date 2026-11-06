@@ -424,6 +424,27 @@ const BASES := {
 	# the Veilmother's Locket's raid potion (Hero.drink "invis": unseen for that long; breaks on a blow, given or taken)
 	"shadow_phial": {"name": "Shadow Phial", "slot": "potion", "kind": "potion", "lvl": 1, "price": 0, "invis": 6.0, "color": Color(0.4, 0.32, 0.62)},
 	"rejuv": {"name": "Rejuvenation Potion", "slot": "potion", "kind": "potion", "lvl": 1, "price": 60, "rejuv": 0.4, "color": Color(0.6, 0.1, 0.9)},
+	# a run's consumables (camp chests, RunTalents.CONSUMABLES): elixirs are timed buffs, flasks are thrown at the pointer
+	"elixir_fury": {"icon": "res://assets/textures/items/c_elixir_fury.png", "name": "Elixir of Fury", "slot": "potion", "kind": "potion", "lvl": 1, "price": 40, "color": Color(0.95, 0.25, 0.1),
+		"buff": {"dmg": 30, "ias": 10}, "secs": 20.0, "desc": "+30% damage and +10% attack speed for 20 seconds."},
+	"draught_iron": {"icon": "res://assets/textures/items/c_draught_iron.png", "name": "Ironbark Draught", "slot": "potion", "kind": "potion", "lvl": 1, "price": 40, "color": Color(0.55, 0.45, 0.3),
+		"buff": {"armor_pct": 60, "res": 15}, "secs": 20.0, "desc": "+60% defense and +15% resistances for 20 seconds."},
+	"tonic_swift": {"icon": "res://assets/textures/items/c_tonic_swift.png", "name": "Swiftness Tonic", "slot": "potion", "kind": "potion", "lvl": 1, "price": 30, "color": Color(0.3, 0.95, 0.85),
+		"buff": {"frw": 25, "ias": 12}, "secs": 15.0, "desc": "+25% run speed and +12% attack speed for 15 seconds."},
+	"salve_troll": {"icon": "res://assets/textures/items/c_salve_troll.png", "name": "Troll Salve", "slot": "potion", "kind": "potion", "lvl": 1, "price": 40, "color": Color(0.35, 0.7, 0.2),
+		"buff": {"regen": 0.0}, "regen_pct": 6.0, "secs": 10.0, "desc": "Regenerate 60% of your life over 10 seconds."},
+	"elixir_wrath": {"icon": "res://assets/textures/items/c_elixir_wrath.png", "name": "Elixir of Wrath", "slot": "potion", "kind": "potion", "lvl": 1, "price": 60, "color": Color(1.0, 0.75, 0.15),
+		"buff": {"crit": 25, "crit_dmg": 50}, "secs": 15.0, "desc": "+25% critical chance and +50% critical damage for 15 seconds."},
+	"flask_fire": {"icon": "res://assets/textures/items/c_flask_fire.png", "name": "Fire Flask", "slot": "potion", "kind": "potion", "lvl": 1, "price": 40, "color": Color(1.0, 0.45, 0.1),
+		"bomb": 0, "bomb_pct": 260, "bomb_r": 4.0, "desc": "Thrown at the pointer: 260% weapon damage within 4 m, setting everything alight."},
+	"flask_frost": {"icon": "res://assets/textures/items/c_flask_frost.png", "name": "Frost Flask", "slot": "potion", "kind": "potion", "lvl": 1, "price": 40, "color": Color(0.55, 0.85, 1.0),
+		"bomb": 1, "bomb_pct": 160, "bomb_r": 4.5, "desc": "Thrown at the pointer: 160% weapon damage within 4.5 m, freezing them for 2 seconds."},
+	"flask_storm": {"icon": "res://assets/textures/items/c_flask_storm.png", "name": "Thunder Flask", "slot": "potion", "kind": "potion", "lvl": 1, "price": 40, "color": Color(0.6, 0.65, 1.0),
+		"bomb": 2, "bomb_pct": 200, "bomb_r": 5.0, "desc": "Thrown at the pointer: lightning strikes everything within 5 m for 200% weapon damage."},
+	"scroll_ward": {"icon": "res://assets/textures/items/c_scroll_ward.png", "name": "Scroll of Warding", "slot": "potion", "kind": "potion", "lvl": 1, "price": 50, "color": Color(0.85, 0.8, 1.0),
+		"ward_pct": 40, "desc": "For 20 seconds, a ward soaks blows worth 40% of your life."},
+	"tome_insight": {"icon": "res://assets/textures/items/c_tome_insight.png", "name": "Tome of Insight", "slot": "potion", "kind": "potion", "lvl": 1, "price": 80, "color": Color(0.95, 0.85, 0.5),
+		"xp_level": 0.6, "desc": "Read it: 60% of a level's experience."},
 	"gold": {"name": "Gold", "slot": "gold", "kind": "gold", "lvl": 1, "price": 0},
 	# the plague doctor's cane ("cls": only he carries it; Plague.cane_model draws it)
 "roast_drumstick": {"name": "Roast Drumstick", "slot": "weapon", "kind": "club", "cls": "doug", "dmg": [3, 7], "speed": 1.2, "lvl": 1, "price": 30, "shape": {"len": 0.55, "w": 0.12}},
@@ -770,6 +791,7 @@ static func unarmed_speed(cls: String) -> float:
 ## The shared skills ("cls": "any" in SKILLS), every class's to use (SharedSkills).
 static func _static_init() -> void:
 	Codex.apply_skills(SKILLS)
+	Codex.apply_skills(RUN_SKILLS)
 
 static func shared_skills() -> Array:
 	return SKILLS.filter(func(s): return s["cls"] == "any")
@@ -797,6 +819,60 @@ static func skills_known(cls: String) -> Array:
 ## Frost Nova 8, Arc 11, Earthshatter 16). A locked skill shows greyed with its level, can't be bound or cast.
 ## true opens every skill from level 1 again (jj's unlock-all, 2026-11-01); the F8 panel's "All skills" does it for
 ## testing (Game.test_allskills).
+## Skills only a multiplayer run offers (Blaine's roguelike pass, 2026-11-06): camp chests draw them with the class's
+## own (RunBuild.skill_pool); single player never sees them (skills_for, skills_known and the class picker read SKILLS).
+## Their build theme is RunTalents.SKILL_THEMES; their reward rarity comes from "lvl" (RunBuild.skill_rarity).
+## Laid over by the Hero Codex (data/codex/, Codex.apply_skills) when this script loads.
+static var RUN_SKILLS: Array = [
+	{"id": "a_multishot", "cls": "archer", "name": "Scatter Shot", "lvl": 1, "mana": 7, "cd": 0.0, "use": 0.85, "aim": "facing", "range": 13.0, "role": "packs up close",
+		"desc": "Loose five arrows in a fan: 55% weapon damage each. A foe close enough takes several."},
+	{"id": "a_glacial", "cls": "archer", "name": "Glacial Shard", "lvl": 1, "mana": 6, "cd": 0.0, "use": 0.85, "aim": "facing", "range": 16.0, "role": "line chill",
+		"desc": "An arrow of ice that pierces every foe in a line for 110% weapon damage and chills them (40% slower) for 3 seconds."},
+	{"id": "a_explosive", "cls": "archer", "name": "Blast Arrow", "lvl": 9, "mana": 9, "cd": 0.0, "use": 1.0, "aim": "facing", "range": 16.0, "role": "fire burst",
+		"desc": "A fire arrow that bursts at the first foe it strikes or where its flight ends: 150% weapon damage to everything within 3.5 metres, setting them burning."},
+	{"id": "a_stormshot", "cls": "archer", "name": "Storm Shot", "lvl": 9, "mana": 8, "cd": 0.0, "use": 0.9, "aim": "facing", "range": 16.0, "role": "chain lightning",
+		"desc": "A charged arrow: 100% weapon damage to the first foe it strikes, then lightning leaps on to 4 more for 70%."},
+	{"id": "a_mark", "cls": "archer", "name": "Hunter's Mark", "lvl": 9, "mana": 6, "cd": 6.0, "tags": ["cc"], "aim": "point", "range": 18.0, "role": "focus a target",
+		"desc": "Mark the foe under the pointer for 8 seconds: it takes 35% more damage from everyone, and your wolf hunts it down."},
+	{"id": "a_barrage", "cls": "archer", "name": "Arrow Storm", "lvl": 16, "mana": 16, "cd": 0.0, "use": 1.2, "aim": "point", "range": 14.0, "role": "area rain",
+		"desc": "Loose a storm of arrows into the sky: for 1.5 seconds they rain on the cursor, striking everything within 4.5 metres six times for 32% weapon damage."},
+	{"id": "p_miasma", "cls": "plague", "name": "Miasma", "lvl": 1, "mana": 9, "cd": 0.0, "use": 0.9, "aim": "self", "role": "poison around him",
+		"desc": "Smash a censer of plague at your feet: a cloud 4.5 metres wide hangs for 4 seconds, poisoning everything in it."},
+	{"id": "p_spread", "cls": "plague", "name": "Contagion", "lvl": 9, "mana": 8, "cd": 0.0, "use": 0.8, "aim": "point", "range": 14.0, "role": "spreading curse",
+		"desc": "Curse the foe nearest the pointer with a creeping plague for 6 seconds: it is poisoned, and every second its poison leaps to all within 4 metres. If it dies cursed, the plague bursts to everyone within 5 metres."},
+	{"id": "k_whirl", "cls": "knight", "name": "Blade Storm", "lvl": 1, "mana": 8, "cd": 0.0, "use": 0.9, "aim": "self", "role": "spin through a crowd",
+		"desc": "Spin with the sword out: everything within 3.2 metres is struck twice for 70% weapon damage. Every blow of yours leaves a Holy Brand on its foe (up to 5)."},
+	{"id": "k_aegis", "cls": "knight", "name": "Aegis", "lvl": 1, "mana": 10, "cd": 10.0, "tags": ["sustain", "warcry"], "aim": "self", "role": "absorb, then answer",
+		"desc": "Raise a holy ward worth 35% of your life for 5 seconds and call everything within 5 metres onto you. When it breaks or ends, it bursts: everything within 5 metres takes all the damage it soaked."},
+	{"id": "k_judgment", "cls": "knight", "name": "Judgment", "lvl": 9, "mana": 12, "cd": 0.0, "use": 1.0, "aim": "point", "range": 14.0, "role": "cash in the brands",
+		"desc": "Call a pillar of holy light down on the pointer: 120% weapon damage within 3 metres, +45% for every Holy Brand on each foe (the brands are spent), and holy fire burns them."},
+	{"id": "k_rites", "cls": "knight", "name": "Last Rites", "lvl": 9, "mana": 10, "cd": 8.0, "tags": ["movement"], "aim": "point", "range": 9.0, "role": "execute and reset",
+		"desc": "Leap at the foe nearest the pointer and bring the sword down: 150% weapon damage, +2% for every 1% of life it is missing. A kill makes Last Rites ready again."},
+	{"id": "r_deathmark", "cls": "wraith", "name": "Death Mark", "lvl": 9, "mana": 10, "cd": 10.0, "tags": ["cc"], "aim": "point", "range": 12.0, "role": "burst a single target",
+		"desc": "Mark the foe nearest the pointer. When the mark ends 3 seconds later it tears out half of everything you dealt it meanwhile (at least 150% weapon damage) as a soul you drink back."},
+	{"id": "r_wail", "cls": "wraith", "name": "Banshee Wail", "lvl": 1, "mana": 9, "cd": 8.0, "tags": ["cc"], "aim": "self", "role": "terrify the crowd",
+		"desc": "Scream: everything within 6 metres takes 60% weapon damage, is frozen in terror for 1.2 seconds and slowed by half for 2 more."},
+	{"id": "r_reap", "cls": "wraith", "name": "Reaping Crescent", "lvl": 1, "mana": 8, "cd": 0.0, "use": 0.9, "aim": "facing", "range": 5.0, "role": "sweep and sustain",
+		"desc": "A great crescent of soul-fire sweeps out 5 metres in front of you: 140% weapon damage, and each foe it reaps heals you 2% of your life."},
+	{"id": "d_volcano", "cls": "demon", "name": "Volcano", "lvl": 9, "mana": 16, "cd": 0.0, "use": 1.2, "aim": "point", "range": 13.0, "role": "bombard an area",
+		"desc": "Tear open a volcano at the pointer: it hurls five meteors onto the foes around it over two seconds, each 110% weapon damage and setting them alight."},
+	{"id": "d_detonate", "cls": "demon", "name": "Hellbrand Detonation", "lvl": 1, "mana": 8, "cd": 6.0, "tags": ["cc"], "aim": "self", "role": "cash in the Brands",
+		"desc": "Every Branded foe within 10 metres erupts: 160% weapon damage, thrown up for 0.8 seconds, and the fire bursts onto those beside it. The Brands are spent."},
+	{"id": "d_pact", "cls": "demon", "name": "Blood Pact", "lvl": 1, "mana": 0, "cd": 12.0, "tags": ["buff"], "aim": "self", "role": "life for power",
+		"desc": "Pay 15% of your life to the pit: for 8 seconds +35% damage and 6% of the damage you deal heals you."},
+	{"id": "u_barrage", "cls": "doug", "name": "Pie Barrage", "lvl": 1, "mana": 10, "cd": 0.0, "use": 1.1, "aim": "point", "range": 12.0, "role": "pie a crowd",
+		"desc": "Fling six cream pies at once onto the foes around the pointer: each 80% weapon damage, and the first time a foe is Pied it is stunned and slowed."},
+	{"id": "u_bonanza", "cls": "doug", "name": "Banana Bonanza", "lvl": 9, "mana": 8, "cd": 9.0, "tags": ["trap"], "aim": "self", "role": "a ring of peels",
+		"desc": "Scatter eight banana peels in a ring round you: whatever steps on one goes down. Your next blow on a slipped foe within 4 seconds hits twice as hard."},
+	{"id": "u_cannon", "cls": "doug", "name": "Human Cannonball", "lvl": 9, "mana": 12, "cd": 8.0, "tags": ["movement"], "aim": "point", "range": 14.0, "role": "fly in, flatten",
+		"desc": "Fire yourself out of a cannon onto the pointer (14 metres): you land in a belly-flop that deals 260% weapon damage within 4.5 metres and knocks them down."},
+	{"id": "p_leech", "cls": "plague", "name": "Leech Jar", "lvl": 9, "mana": 10, "cd": 9.0, "tags": ["sustain"], "aim": "point", "range": 12.0, "role": "heal from foes",
+		"desc": "Lob a jar of blood leeches: for 5 seconds everything within 3 metres is poisoned, and every foe in it heals you 1.5% of your life a second."},
+]
+
+static func run_skills_for(cls: String) -> Array:
+	return RUN_SKILLS.filter(func(s): return s["cls"] == cls)
+
 const SKILLS_UNLOCKED := false
 
 ## Item power (Blaine's progression overhaul, then "not 'cut' but full rework", docs/queue_items_rework.md): character
@@ -888,6 +964,9 @@ static func skill_locked(sk: Dictionary, level: int) -> bool:
 
 static func skill_def(id: String) -> Dictionary:
 	for s in SKILLS:
+		if s["id"] == id:
+			return s
+	for s in RUN_SKILLS:
 		if s["id"] == id:
 			return s
 	for s in COMMON_SKILLS:

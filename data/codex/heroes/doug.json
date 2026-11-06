@@ -25,7 +25,7 @@
 			"status": "live",
 			"name": "Cream Pie",
 			"rarity": 0,
-			"direction": "",
+			"direction": "Slapstick",
 			"desc": "Lob a cream pie at the cursor (12 m): a splat for 120% weapon damage and the target is Pied: monsters blinded for 2 seconds, a player's screen creamed at the edges and their aim assist gone for 1.5 seconds. The same target can't be Pied again for 6 seconds.",
 			"mana": 6,
 			"cd": 0.0,
@@ -42,7 +42,7 @@
 			"status": "live",
 			"name": "Banana Peels",
 			"rarity": 0,
-			"direction": "",
+			"direction": "Slapstick",
 			"desc": "Toss three banana peels in a fan ahead (they land 3 to 6 metres out and last 8 seconds; at most 6 down). Whoever steps on one slips: a player is knocked down for 0.7 seconds and slides on, a monster is stunned for 1 second. A dodge roll over a peel doesn't slip.",
 			"mana": 9,
 			"cd": 7.0,
@@ -58,7 +58,7 @@
 			"status": "live",
 			"name": "Pratfall Slide",
 			"rarity": 0,
-			"direction": "",
+			"direction": "Showmanship",
 			"desc": "Belly-slide 7 metres the way you face, honking: foes in the way take 90% weapon damage and are shoved aside. You pop up with a ta-da.",
 			"mana": 10,
 			"cd": 5.0,
@@ -74,7 +74,7 @@
 			"status": "live",
 			"name": "Doppel-Doug",
 			"rarity": 1,
-			"direction": "",
+			"direction": "Showmanship",
 			"desc": "Duck behind a puff of confetti: you turn invisible for 1.8 seconds while a balloon double of you runs off toward the cursor, waving. Struck, the double pops in a confetti burst that slows whoever is near for 1.5 seconds.",
 			"mana": 14,
 			"cd": 14.0,
@@ -91,7 +91,7 @@
 			"status": "live",
 			"name": "Pin Juggle",
 			"rarity": 1,
-			"direction": "",
+			"direction": "Showmanship",
 			"desc": "Throw five flaming juggling pins in quick succession at the cursor; each bounces on to two more foes. 60% weapon damage as fire each.",
 			"mana": 16,
 			"cd": 0.0,
@@ -108,7 +108,7 @@
 			"status": "live",
 			"name": "Big Top Bounce",
 			"rarity": 1,
-			"direction": "",
+			"direction": "Big Top",
 			"desc": "Slam down a trampoline and bounce up to 10 metres to the cursor, landing in a belly-flop: 180% weapon damage in 3 metres and foes are launched for 0.8 seconds. A shadow and a whistle mark where you'll land.",
 			"mana": 18,
 			"cd": 10.0,
@@ -125,7 +125,7 @@
 			"status": "live",
 			"name": "Clown Car",
 			"rarity": 2,
-			"direction": "",
+			"direction": "Big Top",
 			"desc": "A tiny clown car screeches in and you drive it for 5 seconds: fast, unstoppable, ramming foes for 140% weapon damage and knocking them flying. Then it bursts in confetti and six mini clowns tumble out, sprint at the nearest foes and pie them.",
 			"mana": 40,
 			"cd": 60.0,
@@ -134,6 +134,54 @@
 				"ultimate"
 			],
 			"lvl": 20
+		},
+		{
+			"id": "u_barrage",
+			"status": "live",
+			"name": "Pie Barrage",
+			"rarity": 0,
+			"direction": "Slapstick",
+			"desc": "Fling six cream pies at once onto the foes around the pointer: each 80% weapon damage, and the first time a foe is Pied it is stunned and slowed.",
+			"mana": 10,
+			"cd": 0.0,
+			"use": 1.1,
+			"range": 12.0,
+			"role": "pie a crowd",
+			"lvl": 1,
+			"run": true
+		},
+		{
+			"id": "u_bonanza",
+			"status": "live",
+			"name": "Banana Bonanza",
+			"rarity": 1,
+			"direction": "Showmanship",
+			"desc": "Scatter eight banana peels in a ring round you: whatever steps on one goes down. Your next blow on a slipped foe within 4 seconds hits twice as hard.",
+			"mana": 8,
+			"cd": 9.0,
+			"role": "a ring of peels",
+			"tags": [
+				"trap"
+			],
+			"lvl": 9,
+			"run": true
+		},
+		{
+			"id": "u_cannon",
+			"status": "live",
+			"name": "Human Cannonball",
+			"rarity": 1,
+			"direction": "Big Top",
+			"desc": "Fire yourself out of a cannon onto the pointer (14 metres): you land in a belly-flop that deals 260% weapon damage within 4.5 metres and knocks them down.",
+			"mana": 12,
+			"cd": 8.0,
+			"range": 14.0,
+			"role": "fly in, flatten",
+			"tags": [
+				"movement"
+			],
+			"lvl": 9,
+			"run": true
 		}
 	],
 	"rites": [
@@ -410,6 +458,66 @@
 			},
 			"text": "All your damage +{dmg}% and Clown Car recharges {cd:car}% faster.",
 			"icon": "car"
+		},
+		{
+			"id": "u_up_barrage",
+			"status": "live",
+			"name": "Bakery Order",
+			"rarity": 1,
+			"run": true,
+			"direction": "Slapstick",
+			"max": 2,
+			"text": "Pie Barrage flings {barrage_more} more pies.",
+			"icon": "u_barrage",
+			"fx": {
+				"barrage_more": 3
+			}
+		},
+		{
+			"id": "u_up_cannon",
+			"status": "live",
+			"name": "Extra Gunpowder",
+			"rarity": 2,
+			"run": true,
+			"direction": "Big Top",
+			"max": 1,
+			"text": "Human Cannonball lands {cannon_r}% wider and {dmg:u_cannon}% harder.",
+			"icon": "u_cannon",
+			"fx": {
+				"cannon_r": 30,
+				"dmg:u_cannon": 20
+			}
+		},
+		{
+			"id": "u_encore",
+			"status": "live",
+			"name": "Standing Ovation",
+			"rarity": 2,
+			"run": true,
+			"direction": "Showmanship",
+			"max": 1,
+			"text": "A skill with a cooldown has a {chance}% chance to be ready again at once.",
+			"icon": "juggle",
+			"k": {
+				"chance": 35
+			},
+			"proc": "echo"
+		},
+		{
+			"id": "u_slapstick",
+			"status": "live",
+			"name": "Comic Timing",
+			"rarity": 2,
+			"run": true,
+			"direction": "Slapstick",
+			"max": 1,
+			"text": "Critical hits give +{ias}% attack speed for {secs} seconds.",
+			"icon": "pie",
+			"k": {
+				"ias": 30,
+				"secs": 3
+			},
+			"proc": "frenzy"
 		}
 	]
 }

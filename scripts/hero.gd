@@ -237,7 +237,7 @@ var fxs := {}
 func _init() -> void:
 	inventory.resize(40)
 	stash.resize(60)
-	for s in Data.SKILLS:
+	for s in Data.SKILLS + Data.RUN_SKILLS:
 		cds[s["id"]] = 0.0
 	binds = default_binds()
 
@@ -269,7 +269,8 @@ func has_bow() -> bool:
 	return is_archer() and w != null and Data.BASES[w["base"]]["kind"] in ["bow", "longbow"]
 
 func skill_list() -> Array:
-	return Data.skills_for(cls)
+	# (a run character also has the run-only skills of its class: Data.RUN_SKILLS)
+	return Data.skills_for(cls) + (Data.run_skills_for(cls) if run != null else [])
 
 # ---------------------------------------------------------------- skill effects (SkillFx, every class)
 ## A skill wants something seen: play the event here now and, in co-op, on this hero's puppet on every
@@ -411,7 +412,17 @@ func auto_talents() -> void:
 	talents = Talents.auto_build(cls, free_talent_points(), talents)
 	_talents_changed()
 
+## The run's build changed (a passive, a gem, a buff came or went): its stats again.
+func refresh_run() -> void:
+	if run == null:
+		return
+	run.changed()
+	tfx = run.fx(cls)
+	recalc()
+
 func _talents_changed() -> void:
+	if run != null:
+		run.changed()
 	tfx = run.fx(cls) if run != null else Talents.sum(cls, talents)
 	recalc()
 	if game and game.ui and _mine():
@@ -694,7 +705,7 @@ func recalc() -> void:
 			if stats.has(k):
 				stats[k] = mini(int(stats[k]), int(Data.PVP_GEAR_CAP[k]))
 		def_sum = int(round(def_sum * Data.PVP_ARMOR_SHARE))
-	for k in ["str", "dex", "vit", "res", "ls", "regen", "ias", "frw", "block", "mf", "cdr"]:
+	for k in ["str", "dex", "vit", "res", "ls", "regen", "ias", "frw", "block", "mf", "cdr", "pot"]:
 		if tfx.has(k):
 			stats[k] = stats.get(k, 0) + (tfx[k] if k == "regen" else int(tfx[k]))
 	var st_total: int = str_ + stats.get("str", 0)
@@ -731,7 +742,7 @@ func recalc() -> void:
 	mf = stats.get("mf", 0)
 	gf = stats.get("gf", 0)
 	pvp_roll_s = int(stats.get("roll", 0))
-	ward_max = max_life * float(stats.get("ward", 0)) / 100.0
+	ward_max = max_life * (float(stats.get("ward", 0)) + talent("ward_bonus")) / 100.0
 	ward = minf(ward, ward_max)
 	life = minf(life, max_life)
 	mana = minf(mana, max_mana)
@@ -1247,7 +1258,7 @@ func _swipe_lunge(a0: float, a1: float) -> void:
 	var L: Array = SWIPE_LUNGE[atk_style]
 	var f0 := clampf((a0 - L[0]) / (L[1] - L[0]), 0.0, 1.0)
 	var f1 := clampf((a1 - L[0]) / (L[1] - L[0]), 0.0, 1.0)
-	var slam := atk_style == "cleave" and atk_skill == "cleave"
+	var slam := atk_style == "cleave" and atk_skill in ["cleave", "k_rites"]
 	var d: float = (smoothstep(0.0, 1.0, f1) - smoothstep(0.0, 1.0, f0)) * (slam_leap if slam else float(L[2]))
 	if d <= 0.0:
 		return
@@ -1389,7 +1400,7 @@ func _use_skill(id: String, aim: Vector3) -> bool:
 		if _mine():
 			game.ui.message(("%s isn't learned yet" % sk["name"]) if run != null else ("Requires level %d" % sk.get("lvl", 1)), Color(1, 0.4, 0.3))
 		return false
-	if cds[id] > 0.0:
+	if cds.get(id, 0.0) > 0.0:
 		if _mine():
 			game.ui.message("%s is recharging" % sk["name"], Color(0.8, 0.8, 0.8))
 		return false
@@ -1407,6 +1418,8 @@ func _use_skill(id: String, aim: Vector3) -> bool:
 	impact_done = true
 	mana -= skill_cost(id)
 	cds[id] = skill_cd(id)
+	if run != null:
+		RunTalents.on_cooldown(self, id)
 	atk_aim = aim
 	_face(aim - global_position)
 	# the class's skills script starts it (ClassSkills.of: KnightSkills, WraithSkills, DemonSkills, ...)
@@ -1434,6 +1447,22 @@ func drink(slot: int) -> void:
 	if b.has("rejuv"):
 		life = minf(max_life, life + max_life * b["rejuv"])
 		mana = minf(max_mana, mana + max_mana * b["rejuv"])
+	# a run's consumables (Data.BASES): elixirs (timed buffs), salves, flasks thrown at the pointer, wards, tomes
+	if b.has("buff") and run != null:
+		var bfx: Dictionary = b["buff"].duplicate()
+		if b.has("regen_pct"):
+			bfx["regen"] = max_life * float(b["regen_pct"]) / 100.0
+		RunTalents.buff(self, "item_" + str(it["base"]), bfx, float(b["secs"]))
+		if _mine():
+			game.ui.message("%s: %s" % [b["name"], b.get("desc", "")], b["color"])
+	if b.has("bomb"):
+		RunTalents.throw_flask(self, str(it["base"]), cursor)
+	if b.has("ward_pct") and run != null:
+		RunTalents.buff(self, "item_ward", {"ward_bonus": float(b["ward_pct"])}, 20.0)
+		ward = ward_max
+		Fx.ring(game.world.fx_root, global_position, 1.6, b["color"], 0.6)
+	if b.has("xp_level") and run != null:
+		add_xp(int(RunBuild.xp_for(level) * float(b["xp_level"])))
 	it["count"] = int(it.get("count", 1)) - 1
 	if it["count"] <= 0:
 		belt[slot] = null
@@ -1564,10 +1593,18 @@ func _hit_enemy(e, mult: float, knock: float = 0.0, src := "", flat := 0.0) -> v
 	combat_t = 0.0
 	if src == "":
 		src = atk_skill if atk_skill != "" else "attack"
+	if run != null:
+		mult *= RunTalents.hit_mult(self, e, src)
 	var r := roll_damage(mult * dmg_mult(src))
 	if flat > 0.0:
 		r["phys"] += flat * buff_mult() * dmg_mult(src) * (2.0 if r["crit"] else 1.0)
 	var dealt: float = e.take_damage(r["phys"], r["fire"], global_position, knock, r["crit"])
+	if run != null:
+		RunTalents.on_hit(self, e, dealt, r["crit"], src)
+		if cls == "knight" and src != "k_judgment" and run.skills.has("k_judgment"):
+			KnightSkills.brand(self, e)      # Holy Brands, for Judgment to spend
+		if is_instance_valid(e) and e.has_meta("deathmark") and e.get_meta("deathmark").get("h") == self:
+			e.get_meta("deathmark")["stored"] = float(e.get_meta("deathmark")["stored"]) + dealt      # (Death Mark's store)
 	if ls > 0.0:
 		life = minf(max_life, life + dealt * ls / 100.0)
 	_item_effects(e, dealt, src)
@@ -1733,6 +1770,10 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 			Sfx.play("ice_shatter", -8.0, 1.4)
 	life -= dmg
 	hit_t = 1.0
+	if run != null:
+		RunTalents.struck(self, dmg, from)
+		if life <= 0.0 and RunTalents.save_from_death(self):
+			life = maxf(life, 1.0)
 	if kind == "maul":
 		# thrown back from the blow
 		var away := global_position - from
@@ -1816,6 +1857,8 @@ func _process_body(delta: float) -> void:
 			pd.update(delta)       # a partner plague doctor's flasks and clouds (shown only)
 		return
 	Hero.striker = self
+	if run != null:
+		RunTalents.tick(self, delta)
 	for k in cds.keys():
 		cds[k] = maxf(0.0, cds[k] - delta)
 	buff_t = maxf(0.0, buff_t - delta)
@@ -2298,7 +2341,7 @@ func _update_attack(delta: float) -> void:
 	atk_t += delta
 	var a := atk_t / atk_dur
 	var swipe := atk_skill == "" and SWIPE_LUNGE.has(atk_style)
-	if swipe or (atk_skill == "cleave" and atk_style == "cleave"):
+	if swipe or (atk_skill in ["cleave", "k_rites"] and atk_style == "cleave"):
 		_swipe_lunge(a0, a)
 	if not impact_done and a >= Anim.impact_at(atk_style):
 		impact_done = true

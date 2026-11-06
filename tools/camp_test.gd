@@ -41,7 +41,7 @@ func _run() -> void:
 	var tiers := {}
 	for c in camps:
 		tiers[int(c["tier"])] = true
-		var members: Array = g.world.enemies_root.get_children().filter(func(e): return e is Enemy and e.pack_id == int(c["pack"]))
+		var members: Array = g.world.enemies_root.get_children().filter(func(e): return "pack_id" in e and e.pack_id == int(c["pack"]))
 		if members.is_empty():
 			check(false, "%s has no monsters" % c["name"])
 	check(tiers.size() >= 2, "camps of %d tiers" % tiers.size())
@@ -71,7 +71,7 @@ func _run() -> void:
 	await secs(0.6)
 	var drops: Array = g.world.items_root.get_children().slice(before)
 	check(drops.size() >= 2, "the chest dropped %d things" % drops.size())
-	var bad := drops.filter(func(x): return x is GroundItem and str(load("res://scripts/data.gd").BASES[x.item["base"]]["slot"]) in ["gold", "ring", "amulet", "belt"])
+	var bad := drops.filter(func(x): return "item" in x and str(load("res://scripts/data.gd").BASES[x.item["base"]]["slot"]) in ["gold", "ring", "amulet", "belt"])
 	check(bad.is_empty(), "no gold, ring, amulet or belt in it")
 	check(g.ui.run_ui.visible and g.ui.run_ui.mode == "offer", "and its upgrade window opened")
 	var key: String = CA.offer_key(g, a)
@@ -98,7 +98,7 @@ func _run() -> void:
 		g.hero.global_position = g.world.free_spot_near(bc["chest_node"].global_position, 1.2)
 		g._interact(bc["chest_node"])
 		await secs(0.6)
-		var got: Array = g.world.items_root.get_children().slice(nb).filter(func(x): return x is GroundItem and x.item.has("unique"))
+		var got: Array = g.world.items_root.get_children().slice(nb).filter(func(x): return "item" in x and x.item.has("unique"))
 		check(got.size() == 1 and int(got[0].item.get("req", 1)) == 0 and RB.wearable(got[0].item, "archer"), "a boss chest drops a class unique the archer can wear (%s)" % (got[0].item["name"] if not got.is_empty() else "none"))
 		g.ui.run_ui.close()
 	# better odds deeper in: a tier III camp's offers lean rarer
@@ -115,5 +115,5 @@ func _run() -> void:
 
 func _kill_camp(c: Dictionary) -> void:
 	for e in g.world.enemies_root.get_children():
-		if e is Enemy and not e.dead and e.pack_id == int(c["pack"]):
+		if "pack_id" in e and not e.dead and e.pack_id == int(c["pack"]):
 			e.take_damage(999999.0, 0.0, e.global_position + Vector3(1, 0, 0), 0.0, false)

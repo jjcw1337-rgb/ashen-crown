@@ -1,4 +1,28 @@
 {
+ "aegis_burst": [
+  {
+   "detail": "a shield of holy light bursting outward in a powerful shockwave, a bright crack and a heavy whoomp, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a shield of holy light bursting outward in a powerful shockwave, a bright crack and a heavy whoomp, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "aegis_raise": [
+  {
+   "detail": "a radiant protective barrier of holy light snapping into place around a knight, a resonant shimmering hum, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a radiant protective barrier of holy light snapping into place around a knight, a resonant shimmering hum, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "anvil": [
   {
    "detail": "metal impact + bell ring layered, Halvar's anvil take 1",
@@ -74,6 +98,18 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "banshee_wail": [
+  {
+   "detail": "a ghostly banshee wraith letting out a piercing terrifying scream that echoes and warps, chilling and unearthly, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a ghostly banshee wraith letting out a piercing terrifying scream that echoes and warps, chilling and unearthly, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "battle_cry": [
   {
    "detail": "a medieval warrior's battle cry, one man roaring a fierce 'Haaa!' to rally his allies, close mic, dry, isolated sound effect, no music",
@@ -89,6 +125,30 @@
   },
   {
    "detail": "a small flock of birds suddenly taking off from a tree, a burst of flapping wings and a few startled chirps, then flying away, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "blade_spin": [
+  {
+   "detail": "a heavy sword spun in a fast full circle twice, two deep whooshing blade swings, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a heavy sword spun in a fast full circle twice, two deep whooshing blade swings, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "blast_arrow": [
+  {
+   "detail": "an arrow striking and detonating in a burst of fire, a punchy fiery explosion with crackling embers and debris, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "an arrow striking and detonating in a burst of fire, a punchy fiery explosion with crackling embers and debris, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }
@@ -279,6 +339,13 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "curse_leap": [
+  {
+   "detail": "a sickly wet whisper and a crawling buzzing hiss as a plague curse leaps onto someone, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "death_demon": [
   {
    "detail": "a demon's dying roar fading into crackling embers, close mic, dry, isolated sound effect, no music",
@@ -296,6 +363,18 @@
  "death_knight": [
   {
    "detail": "a knight's dying groan as he falls, then armor crashing onto the ground, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "death_mark_pop": [
+  {
+   "detail": "a dark magic mark detonating, a deep whooshing implosion then a soul being ripped out with a ghostly shriek, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a dark magic mark detonating, a deep whooshing implosion then a soul being ripped out with a ghostly shriek, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }
@@ -556,6 +635,18 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "flask_shatter": [
+  {
+   "detail": "a thrown glass alchemy flask shattering on the ground with a magical burst, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a thrown glass alchemy flask shattering on the ground with a magical burst, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "forest": [
   {
    "detail": "a soft gentle breeze through the leaves of an old forest, branches swaying and leaves rustling softly, calm and peaceful, steady and even, no birds, no music",
@@ -607,6 +698,18 @@
  "fuse": [
   {
    "detail": "a lit bomb fuse sizzling and hissing with sparks, steady, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "gem_found": [
+  {
+   "detail": "a precious magical gemstone revealed, a bright crystalline chime with a shimmering sparkle tail, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a precious magical gemstone revealed, a bright crystalline chime with a shimmering sparkle tail, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }
@@ -741,6 +844,13 @@
    "source": "Procedural (tools/audio/make_sea.py)"
   }
  ],
+ "hunter_mark": [
+  {
+   "detail": "a mystical hunter's mark sigil snapping onto a target, a low wolf growl under an eerie rising chime, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "hurt": [
   {
    "detail": "a goblin or ghoul hit by a blade, a short ugly grunt of pain, close mic, dry, isolated sound effect, no music",
@@ -829,6 +939,18 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "judgment_pillar": [
+  {
+   "detail": "a pillar of holy light slamming down from the heavens, a bright choir swell and a deep resounding impact boom, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a pillar of holy light slamming down from the heavens, a bright choir swell and a deep resounding impact boom, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "kill_bone": [
   {
    "detail": "a skeleton warrior shattering and collapsing into a pile of bones clattering on stone, close mic, dry, isolated sound effect, no music",
@@ -843,9 +965,33 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "last_rites": [
+  {
+   "detail": "a knight leaping and bringing a greatsword down in a brutal execution blow, a heavy whoosh and a crushing impact, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a knight leaping and bringing a greatsword down in a brutal execution blow, a heavy whoosh and a crushing impact, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "leech_bolt": [
   {
    "detail": "a quick shadow magic bolt zip with a soft sucking pull at the end, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
+ "leech_jar": [
+  {
+   "detail": "a glass jar shattering on the ground and slimy leeches squirming and squelching out of it, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a glass jar shattering on the ground and slimy leeches squirming and squelching out of it, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
   }
@@ -901,6 +1047,13 @@
    "detail": "a wooden mallet knocking into an oak plank",
    "license": "CC0 1.0 (made for the game)",
    "source": "Procedural (tools/audio/make_sea.py)"
+  }
+ ],
+ "miasma_burst": [
+  {
+   "detail": "a heavy brass censer smashed on stone, a metallic clang then a thick rushing hiss of poison gas spreading, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
   }
  ],
  "music_select": [
@@ -1149,6 +1302,13 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
+ "scatter_loose": [
+  {
+   "detail": "a recurve bow loosing five arrows at once, a sharp twang and a spreading hiss of fletching fanning out, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  }
+ ],
  "sea": [
   {
    "detail": "open water round a small boat: the swell's heave, lapping wavelets, far whitecaps (loop)",
@@ -1268,6 +1428,18 @@
    "detail": "a fish breaking the surface: plop, spray, droplets",
    "license": "CC0 1.0 (made for the game)",
    "source": "Procedural (tools/audio/make_sea.py)"
+  }
+ ],
+ "storm_shot": [
+  {
+   "detail": "a bowstring snapping and an arrow flying off wrapped in crackling electricity, a rising electric whine and snap, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
+  },
+  {
+   "detail": "a bowstring snapping and an arrow flying off wrapped in crackling electricity, a rising electric whine and snap, close mic, dry, isolated sound effect, no music",
+   "license": "ElevenLabs paid plan, commercial use",
+   "source": "ElevenLabs Sound Effects"
   }
  ],
  "summon": [

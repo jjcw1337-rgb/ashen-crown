@@ -25,7 +25,7 @@
 			"status": "live",
 			"name": "Holy Slam",
 			"rarity": 0,
-			"direction": "",
+			"direction": "Crusader",
 			"desc": "Leap at the cursor and bring the sword down in a burst of white light: 160% weapon damage to everything around the blow, knocking them back and stunning them for 1 second.",
 			"mana": 5,
 			"cd": 0.0,
@@ -37,7 +37,7 @@
 			"status": "live",
 			"name": "Holy Nova",
 			"rarity": 0,
-			"direction": "",
+			"direction": "Crusader",
 			"desc": "A ring of holy fire bursts outward, burning enemies within 7 metres.",
 			"mana": 14,
 			"cd": 0.0,
@@ -50,7 +50,7 @@
 			"status": "live",
 			"name": "Charge",
 			"rarity": 0,
-			"direction": "",
+			"direction": "Vanguard",
 			"desc": "Dash toward the cursor, smashing through enemies and knocking them back.",
 			"mana": 10,
 			"cd": 4.0,
@@ -65,7 +65,7 @@
 			"status": "live",
 			"name": "Battle Cry",
 			"rarity": 1,
-			"direction": "",
+			"direction": "Vanguard",
 			"desc": "Rally yourself: +40% damage and +50% defense for 12 seconds. Stuns nearby foes.",
 			"mana": 20,
 			"cd": 20.0,
@@ -74,6 +74,69 @@
 				"buff"
 			],
 			"lvl": 9
+		},
+		{
+			"id": "k_whirl",
+			"status": "live",
+			"name": "Blade Storm",
+			"rarity": 0,
+			"direction": "Crusader",
+			"desc": "Spin with the sword out: everything within 3.2 metres is struck twice for 70% weapon damage. Every blow of yours leaves a Holy Brand on its foe (up to 5).",
+			"mana": 8,
+			"cd": 0.0,
+			"use": 0.9,
+			"role": "spin through a crowd",
+			"lvl": 1,
+			"run": true
+		},
+		{
+			"id": "k_aegis",
+			"status": "live",
+			"name": "Aegis",
+			"rarity": 0,
+			"direction": "Bulwark",
+			"desc": "Raise a holy ward worth 35% of your life for 5 seconds and call everything within 5 metres onto you. When it breaks or ends, it bursts: everything within 5 metres takes all the damage it soaked.",
+			"mana": 10,
+			"cd": 10.0,
+			"role": "absorb, then answer",
+			"tags": [
+				"sustain",
+				"warcry"
+			],
+			"lvl": 1,
+			"run": true
+		},
+		{
+			"id": "k_judgment",
+			"status": "live",
+			"name": "Judgment",
+			"rarity": 1,
+			"direction": "Crusader",
+			"desc": "Call a pillar of holy light down on the pointer: 120% weapon damage within 3 metres, +45% for every Holy Brand on each foe (the brands are spent), and holy fire burns them.",
+			"mana": 12,
+			"cd": 0.0,
+			"use": 1.0,
+			"range": 14.0,
+			"role": "cash in the brands",
+			"lvl": 9,
+			"run": true
+		},
+		{
+			"id": "k_rites",
+			"status": "live",
+			"name": "Last Rites",
+			"rarity": 1,
+			"direction": "Vanguard",
+			"desc": "Leap at the foe nearest the pointer and bring the sword down: 150% weapon damage, +2% for every 1% of life it is missing. A kill makes Last Rites ready again.",
+			"mana": 10,
+			"cd": 8.0,
+			"range": 9.0,
+			"role": "execute and reset",
+			"tags": [
+				"movement"
+			],
+			"lvl": 9,
+			"run": true
 		}
 	],
 	"rites": [
@@ -352,6 +415,183 @@
 			},
 			"text": "Every enemy Charge smashes through takes {charge_cdr} second off your other cooldowns.",
 			"icon": "charge"
+		},
+		{
+			"id": "k_up_judgment",
+			"status": "live",
+			"name": "Wrath of Heaven",
+			"rarity": 1,
+			"run": true,
+			"direction": "Crusader",
+			"max": 1,
+			"text": "Judgment calls {judgment_more} more pillars round the first, each {dmg:k_judgment}% stronger.",
+			"icon": "k_judgment",
+			"fx": {
+				"judgment_more": 2,
+				"dmg:k_judgment": 10
+			}
+		},
+		{
+			"id": "k_up_aegis",
+			"status": "live",
+			"name": "Bastion",
+			"rarity": 2,
+			"run": true,
+			"direction": "Bulwark",
+			"max": 1,
+			"text": "Aegis's ward is {aegis_pct}% of your life stronger and comes back {cd:k_aegis}% sooner; its burst is twice as hard.",
+			"icon": "k_aegis",
+			"fx": {
+				"aegis_pct": 20,
+				"cd:k_aegis": 20
+			}
+		},
+		{
+			"id": "k_up_whirl",
+			"status": "live",
+			"name": "Unending Spin",
+			"rarity": 1,
+			"run": true,
+			"direction": "Vanguard",
+			"max": 2,
+			"text": "Blade Storm spins {whirl_more} more time and hits {dmg:k_whirl}% harder.",
+			"icon": "k_whirl",
+			"fx": {
+				"whirl_more": 1,
+				"dmg:k_whirl": 10
+			}
+		},
+		{
+			"id": "k_up_rites",
+			"status": "live",
+			"name": "No Quarter",
+			"rarity": 2,
+			"run": true,
+			"direction": "Vanguard",
+			"max": 1,
+			"text": "A Last Rites kill also gives you +30% damage and +20% run speed for 4 seconds.",
+			"icon": "k_rites",
+			"fx": {
+				"rites_buff": 1
+			}
+		},
+		{
+			"id": "k_brands",
+			"status": "live",
+			"name": "Searing Brands",
+			"rarity": 2,
+			"run": true,
+			"direction": "Crusader",
+			"max": 1,
+			"text": "Holy Brands stack {brand_max} higher and each one burns its foe a little.",
+			"icon": "t_star",
+			"fx": {
+				"brand_max": 3,
+				"brand_burn": 1
+			}
+		},
+		{
+			"id": "k_zeal",
+			"status": "live",
+			"name": "Zeal",
+			"rarity": 0,
+			"run": true,
+			"direction": "Crusader",
+			"max": 3,
+			"text": "+{dmg}% damage.",
+			"icon": "t_sword",
+			"k": {
+				"src": "attack",
+				"pct": 18,
+				"secs": 3.0
+			},
+			"fx": {
+				"dmg": 4.0
+			},
+			"per": [
+				"pct"
+			],
+			"proc": "ignite_on_hit"
+		},
+		{
+			"id": "k_iron",
+			"status": "live",
+			"name": "Iron Hide",
+			"rarity": 0,
+			"run": true,
+			"direction": "Bulwark",
+			"max": 3,
+			"text": "+{armor_pct}% defense and a ward of {ward_bonus}% of your life that refills out of combat.",
+			"icon": "t_armor",
+			"fx": {
+				"armor_pct": 15,
+				"ward_bonus": 4
+			}
+		},
+		{
+			"id": "k_cleave",
+			"status": "live",
+			"name": "Cleaving Blows",
+			"rarity": 1,
+			"run": true,
+			"direction": "Vanguard",
+			"max": 1,
+			"text": "Your sword's blows cleave into {bounces} more foes beside the one struck ({pct}%).",
+			"icon": "attack",
+			"k": {
+				"pct": 50,
+				"r": 3.0,
+				"bounces": 2
+			},
+			"proc": "ricochet"
+		},
+		{
+			"id": "k_sacred",
+			"status": "live",
+			"name": "Sacred Flame",
+			"rarity": 2,
+			"run": true,
+			"direction": "Crusader",
+			"max": 1,
+			"text": "Critical hits set foes alight with holy fire ({pct}% of the hit a second).",
+			"icon": "nova",
+			"k": {
+				"pct": 60,
+				"secs": 3.0
+			},
+			"proc": "ignite_on_crit"
+		},
+		{
+			"id": "k_martyr",
+			"status": "live",
+			"name": "Martyr's Resolve",
+			"rarity": 2,
+			"run": true,
+			"direction": "Bulwark",
+			"max": 1,
+			"text": "Monsters that strike you take {pct}% of the blow back in holy fire.",
+			"icon": "t_ward",
+			"k": {
+				"pct": 120
+			},
+			"proc": "thorns"
+		},
+		{
+			"id": "k_onslaught",
+			"status": "live",
+			"name": "Onslaught",
+			"rarity": 2,
+			"run": true,
+			"direction": "Vanguard",
+			"max": 1,
+			"text": "Each kill: +{dmg}% damage for {secs} seconds, up to {stacks} times.",
+			"icon": "charge",
+			"k": {
+				"dmg": 8,
+				"stacks": 6,
+				"secs": 6
+			},
+			"proc": "momentum"
 		}
 	]
 }

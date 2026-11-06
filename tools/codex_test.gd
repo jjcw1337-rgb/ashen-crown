@@ -1,7 +1,7 @@
 extends SceneTree
 ## The Hero Codex (scripts/codex.gd, data/codex/) reaches the game: live skills and rites match the codex files,
 ## design entries stay out of the run's pools, and a live data-only rite joins its class's pool.
-##   godot --headless --path . -s tools/codex_test.gd
+##   godot --headless --path . -s tools/_late.gd -- res://tools/codex_test.gd   (RunTalents needs the autoloads)
 
 var fails := 0
 

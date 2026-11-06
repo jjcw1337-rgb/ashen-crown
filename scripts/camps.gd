@@ -19,8 +19,8 @@ const TIER_NAMES := {1: "Tier I", 2: "Tier II", 3: "Tier III", 4: "Boss"}
 ## A boss camp's boss against a run character (bosses are tuned for the whole act's heroes): its life and damage
 ## scaled, so a level-15 run character with a fair build can take it alone in about a minute, and a party faster.
 ## Measured with tools/run_playthrough.gd.
-const BOSS_LIFE := 0.45
-const BOSS_DMG := 0.33
+const BOSS_LIFE := 0.8
+const BOSS_DMG := 0.4
 ## and its experience (a boss's own is the whole act's worth: six levels at once in a run)
 const BOSS_XP := 0.35
 ## How near a hero must be when a camp falls to share its experience (the fighters, not the whole map).
@@ -75,6 +75,43 @@ static func alive(w: World, camp: Dictionary) -> int:
 		if e is Enemy and not e.dead and e.pack_id == int(camp["pack"]):
 			n += 1
 	return n
+
+## The leash (on whoever runs the monsters: the raid server, a host, a solo game): a camp's monster dragged more than
+## LEASH metres past its camp's edge with no hero within LEASH_CLEAR goes home whole, so a camp is never left with a
+## straggler no one can reach, and a pulled camp resets like an MMO's. Checked every LEASH_EVERY seconds.
+const LEASH := 14.0
+const LEASH_CLEAR := 12.0
+const LEASH_EVERY := 1.0
+static var _leash_t := 0.0
+
+static func leash(g, delta: float) -> void:
+	_leash_t -= delta
+	if _leash_t > 0.0 or g.world == null or not g.world.has_meta("camps"):
+		return
+	_leash_t = LEASH_EVERY
+	var heroes: Array = g.all_heroes() if g.has_method("all_heroes") else [g.hero]
+	for c in all(g.world):
+		if c["cleared"]:
+			continue
+		var cp: Vector3 = c["pos"]
+		for e in g.world.enemies_root.get_children():
+			if not (e is Enemy) or e.dead or e.pack_id != int(c["pack"]) or e.boss:
+				continue
+			if Vector2(e.global_position.x - cp.x, e.global_position.z - cp.z).length() < float(c["r"]) + LEASH:
+				continue
+			var near := false
+			for h in heroes:
+				if is_instance_valid(h) and not h.dead and h.global_position.distance_to(e.global_position) < LEASH_CLEAR:
+					near = true
+					break
+			if near:
+				continue
+			var back: Vector3 = g.world.free_spot_near(e.home if e.home != Vector3.ZERO else cp, 2.0)
+			back.y = g.world.height_at(back.x, back.z)
+			e.global_position = back
+			e.life = e.max_life
+			e.aggro = false
+			e.atk_t = -1.0
 
 ## The camp a point is in (the nearest whose radius holds it), or {}.
 static func at(w: World, p: Vector3) -> Dictionary:

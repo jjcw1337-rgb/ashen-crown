@@ -436,7 +436,7 @@ func _on_level(l: int) -> void:
 	Telemetry.crumb("level", {"level": l})
 	ui.big_message("Level %d" % l)
 	if hero.run != null:
-		ui.message("Stronger: your attributes rise with every level  ·  camp chests bring skills and passives", Color(1, 0.85, 0.4))
+		ui.message("Stronger: your attributes rise with every level  ·  camp chests bring skills, talents and gems", Color(1, 0.85, 0.4))
 	else:
 		ui.message("+5 stat points (press C)  ·  +1 talent point (press N)", Color(1, 0.85, 0.4))
 
@@ -629,22 +629,30 @@ func _zone_env(kind: String) -> void:
 		hero.light.light_energy = 0.9
 		hero.light.omni_range = 10.0
 		if kind == Battlegrounds.ZONE:
-			# the Verdant Reach (BgForest): a bright, lush afternoon. Warm sun, a clear blue sky, rich greens kept
-			# saturated, a light haze between the oaks; the camps' coloured lights read in the shade
-			sky_mat.sky_top_color = Color(0.3, 0.5, 0.78)
-			sky_mat.sky_horizon_color = Color(0.78, 0.84, 0.78)
-			sky_mat.ground_horizon_color = Color(0.45, 0.52, 0.4)
-			env.ambient_light_energy = 0.8
-			env.tonemap_exposure = 1.12
-			env.fog_light_color = Color(0.62, 0.72, 0.6)
-			env.fog_density = 0.0035
-			env.fog_height_density = 0.03
-			env.adjustment_saturation = 1.12
-			env.adjustment_contrast = 1.05
-			env.volumetric_fog_density = 0.008
-			env.volumetric_fog_albedo = Color(0.85, 0.92, 0.8)
-			sun.light_color = Color(1.0, 0.93, 0.78)
-			sun.light_energy = 1.25
+			# the Verdant Reach (BgForest): a bright, lush, golden afternoon (Blaine, 2026-11-06: "brighter, more lively").
+			# A warm low-ish sun, a deep blue sky, a fill strong enough that the shade under the oaks stays green,
+			# saturated colour, a golden haze between the trees, and glow enough for the fireflies, the mushrooms'
+			# light and the shrines (ForestLife) to bloom; the camps' coloured lights still read in the shade
+			sky_mat.sky_top_color = Color(0.26, 0.5, 0.86)
+			sky_mat.sky_horizon_color = Color(0.86, 0.86, 0.72)
+			sky_mat.ground_horizon_color = Color(0.5, 0.56, 0.38)
+			env.ambient_light_energy = 0.98
+			env.tonemap_exposure = 1.14
+			env.fog_light_color = Color(0.8, 0.78, 0.58)
+			env.fog_density = 0.0032
+			env.fog_sky_affect = 0.4
+			env.fog_height_density = 0.02
+			env.adjustment_saturation = 1.16
+			env.adjustment_contrast = 1.06
+			env.volumetric_fog_density = 0.009
+			env.volumetric_fog_albedo = Color(0.98, 0.9, 0.7)
+			env.volumetric_fog_emission = Color(0.02, 0.018, 0.01)
+			env.glow_intensity = 0.85
+			env.glow_bloom = 0.08
+			sun.light_color = Color(1.0, 0.92, 0.77)
+			sun.light_energy = 1.32
+			sun.shadow_blur = 2.0
+			hero.light.light_energy = 0.7
 		elif kind == "town" and world.theme.get("forest_camp", false):
 			# Act I's camp deep in the old forest: late dusk under the canopy. Cool blue-green light
 			# and low mist between the trees, so the bonfire, the lanterns and the rune stones glow
@@ -3074,6 +3082,12 @@ func run_claim(key: String, i: int) -> Dictionary:
 		return {}
 	var c := hero.run.claim(key, i, hero.binds)
 	if not c.is_empty():
+		# the chest's consumables for this player (RunTalents.roll_consumables): to the belt, the rest at his feet
+		for base in hero.run.offers[key].get("loot", []):
+			if Data.BASES.has(str(base)):
+				var it := Items.potion(str(base))
+				if not hero.add_to_inventory(it):
+					drop_item(it, hero.global_position)
 		hero.run_changed()
 		ui.refresh()
 	return c
@@ -3848,6 +3862,8 @@ func gain_kill_xp(xp: int, lvl: int) -> void:
 	var bonus := 1.5 if xp_bonus_t > 0.0 else 1.0
 	# (a run character takes a kill's full worth at any level: its curve is RunBuild.xp_for)
 	var lvl_ratio := 1.0 if hero.run != null else clampf(1.0 - (hero.level - lvl) * 0.08, 0.2, 1.3)
+	if hero.run != null:
+		bonus *= 1.0 + hero.talent("xp_pct") / 100.0
 	hero.add_xp(int(xp * lvl_ratio * bonus))
 
 func on_enemy_killed(e: Enemy) -> void:
@@ -4651,6 +4667,8 @@ func _process(delta: float) -> void:
 	if bg_mode:
 		Battlegrounds.sync_proxies(self)
 		Battlegrounds.hud(self, delta)
+	if not net.is_client():
+		Camps.leash(self, delta)
 	elif ui != null and ui.hud.get_node_or_null("bg_hud") != null:
 		ui.hud.get_node("bg_hud").visible = false
 	_t += delta

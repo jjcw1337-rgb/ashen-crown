@@ -125,6 +125,15 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 		"siphon":
 			w["siphon_victim"] = siphon_pick(h, aim)
 			_start(h, "siphon", "siphon")
+		# a run's skills (Data.RUN_SKILLS)
+		"r_deathmark":
+			h.atk_aim = aim
+			_start(h, "siphon", "r_deathmark")
+		"r_wail":
+			_start(h, "night_scream", "r_wail")
+		"r_reap":
+			h.atk_aim = h.global_position + (to.normalized() if to.length() > 0.3 else h.aim_dir()) * 3.0
+			_start(h, "phantom", "r_reap")
 		"step":
 			var dist := minf(to.length(), STEP_RANGE)
 			var dir := to.normalized() if to.length() > 0.5 else h.aim_dir()
@@ -209,9 +218,76 @@ static func impact(h: Hero) -> bool:
 					h._hit_enemy(e, 1.0, 0.5, "phantom", spirit(h, 0.3))
 		"night":
 			_night_impact(h)
+		"r_deathmark":
+			var foe = null
+			var fd := 3.5
+			for e in h.game.enemies_near(h.atk_aim, 3.5):
+				var d: float = e.global_position.distance_to(h.atk_aim)
+				if not e.dead and e.pvp_obj == 0 and d < fd:
+					fd = d
+					foe = e
+			if foe != null:
+				foe.set_meta("deathmark", {"h": h, "stored": 0.0})
+				var marks: Array = w.get("marks", [])
+				marks.append({"e": foe, "t": MARK_T})
+				w["marks"] = marks
+			h.fx("r_deathmark", "mark", {"p": h.atk_aim, "t": [foe] if foe != null else [], "x": MARK_T})
+		"r_wail":
+			var r := WAIL_R * (1.0 + h.talent("wail_r") / 100.0)
+			var hold := WAIL_T + h.talent("wail_t")
+			var near: Array = h.game.enemies_near(h.global_position, r).filter(func(e): return not e.dead)
+			h.fx("r_wail", "impact", {"r": r, "t": near})
+			for e in near:
+				h._hit_enemy(e, 0.6, 0.8, "r_wail")
+				if not e.dead:
+					e.stun(hold)
+					e.slow(hold + 2.0, 0.5)
+		"r_reap":
+			var fwd := h.aim_dir()
+			var reaped := 0
+			for e in h.game.enemies_near(h.global_position, REAP_R + 0.6):
+				if e.dead:
+					continue
+				var to2: Vector3 = e.global_position - h.global_position
+				to2.y = 0
+				if to2.length() < 1.0 or fwd.dot(to2.normalized()) > cos(deg_to_rad(80.0)):
+					h._hit_enemy(e, 1.4, 0.6, "r_reap")
+					reaped += 1
+			if reaped > 0:
+				h.life = minf(h.max_life, h.life + h.max_life * (2.0 + h.talent("reap_heal")) / 100.0 * mini(reaped, 6))
+			h.fx("r_reap", "impact", {"y": h.rig.global_rotation.y, "n": reaped})
 		_:
 			return false
 	return true
+
+const MARK_T := 3.0
+const WAIL_R := 6.0
+const WAIL_T := 1.2
+const REAP_R := 5.0
+
+## Death Mark running out on its foes: half of what he dealt it meanwhile (+ Marked Soul), at least 150% of his weapon,
+## torn out of it (Hero._hit_enemy adds to the mark's store).
+static func _update_marks(h: Hero, delta: float) -> void:
+	var marks: Array = h.wr.get("marks", [])
+	for m in marks.duplicate():
+		m["t"] = float(m["t"]) - delta
+		var e = m["e"]
+		if not is_instance_valid(e) or e.dead:
+			marks.erase(m)
+			continue
+		if float(m["t"]) > 0.0:
+			continue
+		marks.erase(m)
+		var rec: Dictionary = e.get_meta("deathmark", {})
+		e.remove_meta("deathmark")
+		var avg: float = (h.dmg_min + h.dmg_max) * 0.5
+		var amount: float = maxf(float(rec.get("stored", 0.0)) * (0.5 + h.talent("mark_pct") / 100.0), avg * 1.5 * h.buff_mult())
+		Hero.striker = h
+		e.dmg_tint = WraithFx.VIOLET
+		e.take_damage(0.0, amount, h.global_position, 0.6, true)
+		e.dmg_tint = Color(0, 0, 0, 0)
+		h.fx("r_deathmark", "pop", {"p": e.global_position, "x": amount})
+		h.life = minf(h.max_life, h.life + amount * 0.15)
 
 ## Spectral Rend's rake: the right claw on the first strike, the left on the second. Souls torn out heal him
 ## as their wisps arrive (WraithFx flies them; the heal waits the same time here).
@@ -299,6 +375,8 @@ static func _night_impact(h: Hero) -> void:
 
 # ---------------------------------------------------------------- every frame
 static func update(h: Hero, delta: float) -> void:
+	if h.wr.has("marks") and not h.puppet:
+		_update_marks(h, delta)
 	var w: Dictionary = h.wr
 	if h.veil_t > 0.0 and not w.has("night"):
 		h.veil_t = maxf(0.0, h.veil_t - delta)
@@ -476,6 +554,7 @@ static func sound(h: Hero, skill: String, at: float) -> bool:
 		"step": Sfx.play_synced("shade_out", 0.35 * h.atk_dur, -4.0, 1.1)
 		"grasp": Sfx.play_synced("slam", at, -2.0, 0.9)
 		"phantom": Sfx.play_synced("reap_swing", at, -3.0, 0.9)
+		"r_reap": Sfx.play_synced("reap_swing", at, -1.0, 0.75)
 		_: return false
 	return true
 

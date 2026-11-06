@@ -35,6 +35,8 @@ static var _strip: ArrayMesh
 static var _rock: Mesh
 
 static func play(h: Hero, ev: Dictionary) -> bool:
+	if _run_play(h, ev):
+		return true
 	var root: Node3D = h.game.world.fx_root
 	var s := str(ev["s"])
 	var e := str(ev["e"])
@@ -128,6 +130,39 @@ static func _meteor(h: Hero, root: Node3D, ev: Dictionary) -> void:
 		Sfx.play_at("fireball", at, -10.0, 0.6)
 	else:
 		Sfx.play("fireball", -9.0, 0.6)
+
+## A run's skills (Data.RUN_SKILLS) in the Demon's language: the volcano's eruption (DemonKitFx's blast sim, a lava
+## crater), the Brands bursting (BrandFx, eruptions), the blood pact's sigil and embers.
+static func _run_play(h: Hero, ev: Dictionary) -> bool:
+	var root: Node3D = h.game.world.fx_root
+	match [str(ev["s"]), str(ev["e"])]:
+		["d_volcano", "raise"]:
+			var at: Vector3 = ev["p"]
+			crater(root, at, 2.2)
+			eruption(root, at, 2.4)
+			DemonKitFx.smoke(root, at, "blast", 4.0, 2.2, false)
+			Sfx.play_at("volcano_rumble" if Sfx.bank.has("volcano_rumble") else "boom", at, 0.0, 0.7)
+			SkillFx.shake(h, 0.35)
+			return true
+		["d_detonate", "impact"]:
+			for p in ev.get("ps", PackedVector3Array()):
+				eruption(root, p, 1.8)
+				splash(root, p, 2.5)
+				Sfx.play_at("boom", p, -3.0, 1.2)
+			fire_wave(h.game, root, h.global_position, 2.5, 0.3)
+			SkillFx.shake(h, 0.4 if not ev.get("ps", PackedVector3Array()).is_empty() else 0.1)
+			return true
+		["d_pact", "impact"]:
+			var me := h.global_position
+			lava_decal(root, me, 2.2, float(ev.get("x", 8.0)), 0.5)
+			embers(root, me + Vector3(0, 0.5, 0), 40, Vector2(1.5, 4.0), Vector3.UP, 40.0, 1.4)
+			flare(root, me + Vector3(0, 1.2, 0), 2.0, Color(0.9, 0.1, 0.08), 3.0, 0.5, 6.0)
+			var aura := Fx.aura(h, Color(0.85, 0.08, 0.06), 20, 0.4, 0.09, 0.8, 0.6, 0.6, 40.0, Vector3(0, 1.2, 0))
+			aura.name = "blood_pact"
+			SkillFx.free_later(aura, float(ev.get("x", 8.0)))
+			SkillFx.snd(h, "roar", -3.0, 0.8)
+			return true
+	return false
 
 ## The grip lets go: the victim is back on the ground (dropped, or smashed into it).
 static func _end_grip(h: Hero, smashed: bool) -> void:
