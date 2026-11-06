@@ -134,7 +134,7 @@ static func _flowers(w: World, rng: RandomNumberGenerator, k: float) -> void:
 		if placed % 5 == 0:
 			flower_pts.append(p)
 		placed += 1
-	var tex := load(Grass.ATLAS) as Texture2D if ResourceLoader.exists(Grass.ATLAS) else null
+	var tex := ResCache.get_res(Grass.ATLAS) as Texture2D if ResourceLoader.exists(Grass.ATLAS) else null
 	if tex == null:
 		return
 	var mat := _flower_mat(tex)
@@ -310,7 +310,7 @@ static func _dye_banner(n: Node) -> void:
 		for i in m.get_surface_count():
 			var src := m.surface_get_material(i)
 			if src is StandardMaterial3D:
-				(mi as MeshInstance3D).set_surface_override_material(i, _banner_mat(src as StandardMaterial3D))
+				SurfaceMaterials.assign(mi as MeshInstance3D, i, _banner_mat(src as StandardMaterial3D))
 
 ## The old ruins: fallen column drums lying in the grass, broken columns and a mossy arch at the treeline round
 ## each ruined camp, all deep enough off the trails that nobody fights through them.
@@ -452,7 +452,7 @@ static func _glow_crystal(mi: MeshInstance3D) -> void:
 			g.emission_texture = (src as StandardMaterial3D).albedo_texture
 			g.emission_energy_multiplier = 1.3
 			_mats[k] = g
-		mi.set_surface_override_material(i, _mats[k])
+		SurfaceMaterials.assign(mi, i, _mats[k])
 
 # ---------------------------------------------------------------- what moves
 

@@ -1,8 +1,8 @@
 # Shared performance coverage — 2026-11-06
 
 The loading migration is implemented locally, but **release and performance acceptance are not complete**.
-Current source includes published staging `3d4c661` and Claude-1's committed gameplay through `711375f`
-(three build directions per class, revised rarities, nine run-only skills and the cooldown-default fix).
+Current source includes published staging `3d4c661` and Claude-1's committed gameplay through `b8421f0`
+(including the new Knight run kit and ForestLife presentation).
 The latest merge has source checks only: runtime results below remain pinned to `2a2f1e2` and must be rerun. The shared guidance remains [loading](../patterns/loading.md), [effects](../patterns/effects.md)
 and [measuring](../patterns/measuring.md). This is the current status page; older result pages preserve their
 original revisions and failed attempts.
@@ -53,14 +53,22 @@ installed schedule or successful export cannot stand in for the other two.
 
 ## Latest run-content integration
 
-The nine remaining Archer/Plague run skills retain their actual-cast captures. Six captured events for the three
-retired provisional Warlock skills were removed after merging `711375f`. The declaration contract now checks
-`Data.RUN_SKILLS` as well as story/shared skills, and rejects captured IDs absent from those declarations
-(except the explicit attack/run-proc presentation families). A source audit confirms both directions for all ten
-classes; native execution of this strengthened contract is pending. Shared run-proc and consumable presentation variants are prepared
-and included in the stress workload; skill/gem reward icons use the competitive zone scope. The nightly baseline
-identity now includes the replay recipe hash, so changed workloads cannot silently reuse old baselines. Fourteen
-audit unit tests pass. The installed immutable runner is `e24897599182100d`; no full nightly pass is claimed.
+Merged `b8421f0` as `ce3a44f`, preserving Claude's six icon import UIDs/compression settings.
+ForestLife's six extra model roots are declared explicitly (without loading entire Roman/waypoint families),
+its flower atlas uses ResCache, and its two surface overrides use SurfaceMaterials. All eight literal model
+paths are covered by the catalog; the native parse gate now explicitly loads ForestLife and the Knight handlers.
+Eleven changed/involved scripts grammar-parse; construction (3), audit (14) and benchmark (13) Python tests pass.
+These are source checks, not a native/rendered pass.
+
+There are now thirteen run skills. The existing bidirectional declaration guard correctly identifies four
+missing Knight captures: `k_aegis`, `k_judgment`, `k_rites`, `k_whirl`; no retired IDs remain. Do not weaken it.
+The next exclusive test window must capture real Knight casts, run the declaration/world contracts and exercise
+those skills in BG/Arena. Existing Archer/Plague captures and shared talent/consumable variants remain intact.
+Nightly workload hashes change with recipes, preventing reuse of incompatible baselines. Installed runner
+`e24897599182100d` remains unchanged; no full nightly pass is claimed.
+
+The finish is deliberately limited to current character/skill preparation, BG/Arena behavior, the functional
+release gate and a measured loading/residency decision. No new modes, art redesign or broader engine rewrite.
 
 ## Current performance decision: hold publication
 
@@ -96,7 +104,7 @@ The BG clock probe also measured about 150 simulation seconds over 200 wall seco
 server + rendered-client run. That is not a release-server capacity measurement. Functional timer assertions now
 check the simulation boundary with a bounded wall timeout; they do not certify tick rate or conceal that finding.
 
-Latest sync: `origin/staging` remains `3d4c661`; Claude-1 gameplay through `711375f` is merged locally.
+Latest sync: `origin/staging` remains `3d4c661`; Claude-1 gameplay through `b8421f0` is merged locally.
 Construction (3), audit (14) and benchmark (13) Python tests pass. Claude-1 holds the local heavy-tests claim;
 no new Godot run or runtime acceptance was performed for this sync.
 A separate unmerged `origin/claude-2/hero-codex` branch appeared at `f13c496` during the last fetch (no PR at this

@@ -77,7 +77,11 @@ static func zone(run: int, name: String) -> Array:
 		paths.append_array(["res://assets/models/camp/runestone.glb", "res://assets/models/camp/tent.glb",
 			"res://assets/models/camp/lantern_post.glb", "res://assets/models/camp/cookfire.glb",
 			"res://assets/models/camp/weapon_rack.glb",
-			"res://assets/models/fort/tower.glb", "res://assets/models/lairs/ice_rock.glb"])
+			"res://assets/models/fort/tower.glb", "res://assets/models/lairs/ice_rock.glb",
+			# ForestLife uses these specific decorations; avoid acquiring the whole Roman/town family.
+			"res://assets/models/waypoint/banner.glb", "res://assets/models/waypoint/crystal_rune.glb",
+			"res://assets/models/roman/arch.glb", "res://assets/models/roman/broken.glb",
+			"res://assets/models/roman/drum.glb", "res://assets/models/roman/column.glb"])
 	if name == "town": paths.append_array(LOBBY_ART.values())
 	var family := "isle" if name.begins_with("isle_") else ("arena" if name == "sandbox" else name)
 	if family in ["bg", "arena"]:
