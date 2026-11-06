@@ -23,9 +23,11 @@ game/                 everything that ships (Godot loads it as res://game/...)
   monsters/<monster>/ model, data, its brain if it has its own
   maps/<map>/         verdant_reach/, arena/: the map code and its props (borrowed pieces move here)
   items/              gems, consumables, shared rites
+  ui/                 the screens: title/, class_picker/, lobby/, run/ (build window, offers, Codex), hud/;
+                      ui.gd is split into these
   systems/            the shared rules: gameplay (stats, effects, statuses, hooks, damage), skills (cost,
                       cooldown, aim, delivery), fx/<fire|frost|lightning>/ (with their own textures and models),
-                      bodies (rigs, animation), ai, world, net, loading, ui, audio
+                      bodies (rigs, animation), ai, world, net, loading, audio
 tools/                the pipeline (Meshy, Blender, audio), project-wide tests, CI. Never shipped.
 deploy/  docs/  addons/ (GodotSteam: Godot wants it at the root)  project.godot  main.tscn
 ```
