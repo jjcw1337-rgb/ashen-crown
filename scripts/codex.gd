@@ -11,16 +11,18 @@ extends RefCounted
 ##   skill: name, desc, mana, cd, use, power, range, role, rarity, direction: laid over its Data.SKILLS entry
 ##   rite:  name, text, max, fx, rarity, direction: laid over its talent (Talents.TREES) or generic passive
 ##          (RunBuild.GENERIC). A live rite with no talent behind it is a new passive made of data alone: it joins
-##          its class's pool (RunBuild.passive_pool) as long as every fx key is one the game reads (FX_KEYS).
+##          its class's pool (RunBuild.passive_pool) as long as every fx key is one the game reads (fx_keys.json: shared and the class's own).
 ## A design entry never reaches the game. `tools/codex_export.gd` writes the files from the game's data.
 
 const DIR := "res://data/codex/"
 const SKILL_FIELDS := ["name", "desc", "mana", "cd", "use", "power", "range", "role", "rarity", "direction"]
 const RITE_FIELDS := ["name", "text", "max", "fx", "rarity"]
-## The fx keys a data-only rite may use: plain stats and percentages Hero.recalc / Hero.talent read for every class
-## (Talents' header), plus the per-skill forms dmg:<skill>, cd:<skill>, cost:<skill>.
-const FX_KEYS := ["dmg", "life_pct", "mana_pct", "armor_pct", "crit", "crit_dmg", "ias", "frw", "regen", "res", "ls",
-	"str", "dex", "vit", "ene", "block", "mf", "buff_pow", "buff_dur", "block_dr", "cdr"]
+## The fx keys a rite may use and still be live: fx_keys.json "any" (plain stats and percentages Hero.recalc /
+## Hero.talent read for every class, plus the per-skill forms dmg:<skill>, cd:<skill>, cost:<skill>) and the class's
+## own list (keys its skills script reads, e.g. WarlockHex.RITE_KEYS). The codex editor reads the same file.
+static func fx_keys(cls := "") -> Array:
+	var f := file("fx_keys.json")
+	return Array(f.get("any", [])) + (Array(f.get(cls, [])) if cls != "" else [])
 
 static var _files := {}
 
@@ -103,21 +105,26 @@ static func apply_rites(list: Array, entries: Array) -> void:
 static func extra_rites(cls: String, known: Dictionary) -> Array:
 	var out := []
 	for e in hero(cls).get("rites", []) + shared().get("rites", []):
-		if not live(e) or known.has(str(e["id"])) or not data_only(e):
+		if not live(e) or known.has(str(e["id"])) or not data_only(e, cls):
 			continue
-		out.append({"id": str(e["id"]), "name": str(e.get("name", e["id"])), "rarity": clampi(int(e.get("rarity", 0)), 0, 2),
-			"max": maxi(1, int(e.get("max", 1))), "icon": str(e.get("icon", "t_star")), "fx": e.get("fx", {}).duplicate(true),
-			"text": str(e.get("text", "")), "tree": str(e.get("direction", ""))})
+		var p := {"id": str(e["id"]), "name": str(e.get("name", e["id"])), "rarity": clampi(int(e.get("rarity", 0)), 0, 2),
+			"max": maxi(1, int(e.get("max", 1))), "icon": str(e.get("icon", "")) if str(e.get("icon", "")) != "" else "t_star",
+			"fx": e.get("fx", {}).duplicate(true), "text": str(e.get("text", "")), "tree": str(e.get("direction", ""))}
+		# offered only once one of these skills is his (RunBuild.roll_offer)
+		if e.get("requires") is Array and not (e["requires"] as Array).is_empty():
+			p["needs_any"] = Array(e["requires"]).map(func(x): return str(x))
+		out.append(p)
 	return out
 
-## Can this rite work from its data alone (every fx key one the game already reads)?
-static func data_only(e: Dictionary) -> bool:
+## Can this rite work from its data (every fx key one the game reads, for every class or this class)?
+static func data_only(e: Dictionary, cls := "") -> bool:
 	var fx = e.get("fx", {})
 	if not (fx is Dictionary) or fx.is_empty():
 		return false
+	var keys := fx_keys(cls)
 	for k in fx:
 		var key := str(k)
-		if not (key in FX_KEYS or key.begins_with("dmg:") or key.begins_with("cd:") or key.begins_with("cost:")):
+		if not (key in keys or key.begins_with("dmg:") or key.begins_with("cd:") or key.begins_with("cost:")):
 			return false
 	return true
 

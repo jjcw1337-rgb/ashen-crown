@@ -16,15 +16,12 @@ HERE = Path(__file__).resolve().parent
 LOCK = threading.Lock()
 ID_RE = re.compile(r"^[a-z0-9_]{2,40}$")
 FILE_RE = re.compile(r"^(heroes/[a-z0-9_]+|shared|gems|consumables)\.json$")
-# Keep in step with Codex.FX_KEYS (scripts/codex.gd): what a live data-only rite may use.
-FX_KEYS = ["dmg", "life_pct", "mana_pct", "armor_pct", "crit", "crit_dmg", "ias", "frw", "regen", "res", "ls",
-           "str", "dex", "vit", "ene", "block", "mf", "buff_pow", "buff_dur", "block_dr", "cdr"]
 NUM = (int, float)
 
 
-def fx_ok(fx):
-    return isinstance(fx, dict) and fx and all(
-        k in FX_KEYS or k.startswith(("dmg:", "cd:", "cost:")) for k in fx)
+def fx_ok(fx, keys):
+    """Every effect key one the game reads (data/codex/fx_keys.json, as Codex.data_only)."""
+    return isinstance(fx, dict) and fx and all(k in keys or k.startswith(("dmg:", "cd:", "cost:")) for k in fx)
 
 
 class Codex:
@@ -37,6 +34,12 @@ class Codex:
         if check and r.returncode != 0:
             raise RuntimeError((r.stderr or r.stdout).strip()[-400:])
         return r.stdout.strip()
+
+    def fx_keys(self, cls=None):
+        f = self.read("fx_keys.json")
+        if cls is None:
+            return f
+        return list(f.get("any", [])) + list(f.get(cls, []))
 
     @staticmethod
     def digest(p):
@@ -60,7 +63,7 @@ class Codex:
         ahead = self.git("rev-list", "--count", "@{u}..HEAD", check=False) or "?"
         hashes = {str(p.relative_to(self.dir)): self.digest(p) for p in self.dir.rglob("*.json")}
         return {"heroes": heroes, "shared": self.read("shared.json"), "gems": self.read("gems.json"),
-                "consumables": self.read("consumables.json"), "fx_keys": FX_KEYS, "hashes": hashes,
+                "consumables": self.read("consumables.json"), "fx_keys": self.fx_keys(), "hashes": hashes,
                 "git": {"branch": self.git("branch", "--show-current", check=False),
                         "commit": self.git("log", "-1", "--format=%h %s", check=False),
                         "dirty": bool(dirty), "unpushed": ahead}}
@@ -69,6 +72,7 @@ class Codex:
         if not isinstance(doc, dict):
             raise ValueError("the file must be a JSON object")
         old = self.committed(rel)
+        keys = self.fx_keys(rel[len("heroes/"):-5] if rel.startswith("heroes/") else "any")
         lists = {"skills": doc.get("skills", []), "rites": doc.get("rites", []), "gems": doc.get("gems", []),
                  "entries": doc.get("entries", [])}
         live_before = set()
@@ -103,9 +107,9 @@ class Codex:
                 if "fx" in e and not (isinstance(e["fx"], dict) and all(isinstance(v, NUM) for v in e["fx"].values())):
                     raise ValueError(f"{i}: every fx value must be a number")
                 if st == "live" and (key, i) not in live_before:
-                    if key == "rites" and fx_ok(e.get("fx")):
+                    if key == "rites" and fx_ok(e.get("fx"), keys):
                         continue     # a new rite made of keys the game reads: live straight away
-                    raise ValueError(f"{i}: only a rite made of stats the game already reads ({', '.join(FX_KEYS)}, "
+                    raise ValueError(f"{i}: only a rite made of effects the game already reads ({', '.join(keys)}, "
                                      f"dmg:/cd:/cost:<skill>) can go live from the codex; this one needs code first, keep it design")
         for key, i in live_before:
             if key in lists and not any(isinstance(e, dict) and e.get("id") == i for e in lists[key]):

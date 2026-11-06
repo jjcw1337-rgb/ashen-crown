@@ -211,6 +211,8 @@ func roll_offer(cls: String, tier: int, key: String, binds: Dictionary) -> Array
 			continue
 		if p.has("needs") and not skills.has(p["needs"]):
 			continue
+		if p.has("needs_any") and not (p["needs_any"] as Array).any(func(x): return skills.has(x)):
+			continue
 		pool[int(p["rarity"])].append({"kind": "passive", "id": str(p["id"]), "rarity": int(p["rarity"])})
 	var odds: Array = ODDS.get(clampi(tier, 1, 4), ODDS[1])
 	var out := []

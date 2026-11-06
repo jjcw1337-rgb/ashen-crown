@@ -115,7 +115,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			SkillFx.duck(h, -9.0, 1.6)
 			SkillFx.shake(h, 0.3)
 		_:
-			return false
+			return WarlockHarrowFx.play(h, ev)      # his three directions (WarlockHex)
 	return true
 
 ## The beams let go: the victims' rims, the hand's light, the sigil and the hum are gone.
@@ -148,6 +148,7 @@ static func update(h: Hero, delta: float) -> void:
 		_draw_drain(h, delta)
 	if not h.bolts.is_empty():
 		_fly_bolts(h, delta)
+	WarlockHarrowFx.update(h, delta)
 
 static func _draw_drain(h: Hero, delta: float) -> void:
 	var d: Dictionary = h.fxs["drain"]
@@ -237,6 +238,7 @@ static func _fly_bolts(h: Hero, delta: float) -> void:
 
 static func clear(h: Hero) -> void:
 	_end_drain(h, false)
+	WarlockHarrowFx.clear(h)
 	for b in h.bolts:
 		if is_instance_valid(b["node"]):
 			(b["node"] as Node).queue_free()

@@ -1,0 +1,40 @@
+{
+	"about": "The rite effect keys the game reads (Codex.data_only, tools/codex/server.py). \"any\": every class (Hero.recalc / Hero.talent and the shared stats; also dmg:, cd: and cost:<skill>). A class's own list: keys its skills script reads (WarlockHex.RITE_KEYS for the Warlock). A rite made only of these can be live.",
+	"any": [
+		"dmg",
+		"life_pct",
+		"mana_pct",
+		"armor_pct",
+		"crit",
+		"crit_dmg",
+		"ias",
+		"frw",
+		"regen",
+		"res",
+		"ls",
+		"str",
+		"dex",
+		"vit",
+		"ene",
+		"block",
+		"mf",
+		"buff_pow",
+		"buff_dur",
+		"block_dr",
+		"cdr"
+	],
+	"warlock": [
+		"dot_flat",
+		"dot_dur",
+		"dot_heal",
+		"dot_echo",
+		"fear_dur",
+		"dmg_feared",
+		"fear_spread",
+		"fear_kill",
+		"fear_root",
+		"overheal_shield",
+		"drain_execute",
+		"shield_fork"
+	]
+}

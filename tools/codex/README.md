@@ -15,7 +15,7 @@ cloudflared tunnel --url http://127.0.0.1:8765        # a public https URL for i
 - **Rules**:
   - An entry that is *in game* can be edited but not deleted.
   - A skill can't be switched to *in game* from here, because it needs code first.
-  - A rite can go live from here only when every effect key is one the game reads (`Codex.FX_KEYS`, plus
+  - A rite can go live from here only when every effect key is one the game reads (`data/codex/fx_keys.json`: the shared keys and the hero's own, plus
     `dmg:`, `cd:` and `cost:<skill>`).
 - **Publish preview** pushes the branch, and pushes it to `test-codex` too, which starts the preview build. It is
   only allowed from a `claude-2/` task branch. Merging into staging stays with the integrator.

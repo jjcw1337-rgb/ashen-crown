@@ -288,7 +288,7 @@ function aboutView() {
   <p>The Codex <b>is the game's data</b>. Each hero's skills and rites, the shared ones, the gems and the consumables live in JSON files in the repo (<code>data/codex/</code>), and the game loads them on start (<code>scripts/codex.gd</code>). Saving here writes the file and commits it on the branch this server runs on.</p>
   <p><b>In game</b> entries already work in the game. Editing one changes the game: its name, text, mana, cooldown, power, range and rarity for a skill; its name, text, stacks, effect numbers and rarity for a rite.</p>
   <p><b>Design</b> entries are ideas the Codex keeps until someone writes their code. The game ignores them. Their <i>needs</i> line says what the code has to do.</p>
-  <p>A new <b>rite</b> can go live straight from here when its effects are all stats the game already reads: <code>${esc(B.fx_keys.join(", "))}</code>, and <code>dmg:&lt;skill&gt;</code>, <code>cd:&lt;skill&gt;</code>, <code>cost:&lt;skill&gt;</code> (more damage, a faster recharge, or less mana for one skill). Put <code>{key}</code> in its text and the number appears there.</p>
+  <p>A new <b>rite</b> can go live straight from here when its effects are all stats the game already reads: <code>${esc((B.fx_keys.any || []).join(", "))}</code> (each hero adds its own: the Warlock's <code>${esc((B.fx_keys.warlock || []).join(", "))}</code>), and <code>dmg:&lt;skill&gt;</code>, <code>cd:&lt;skill&gt;</code>, <code>cost:&lt;skill&gt;</code> (more damage, a faster recharge, or less mana for one skill). Put <code>{key}</code> in its text and the number appears there.</p>
   <p><b>Rarity</b> is what a camp chest offers it as. Every camp lets each player pick 1 of 3: Camp I rolls 70/25/5 common/uncommon/rare, Camp II 50/38/12, Camp III 32/43/25, a boss 12/45/43 (<code>RunBuild.ODDS</code>). Skills are active abilities on the five slots; rites are passives and power-ups that stack.</p>
   <p><b>Publish preview</b> pushes the saved changes to the branch and to <code>test-codex</code>, which builds a playable preview on GitHub Actions in a few minutes. Merging into staging stays the integrator's job.</p></div>`;
 }
@@ -387,7 +387,7 @@ function editor(rel, list, e, type, isNew) {
       `<label class="wide">Effects per stack (key and number). <span style="color:var(--faint)">Use <code>{key}</code> in the text to show the number.</span>
        <div class="fxrows" id="fxrows">${Object.entries(e.fx || {}).map(([k, v]) => fxRow(k, v)).join("")}</div>
        <button class="btn small" type="button" id="addfx" style="align-self:flex-start;margin-top:4px">+ effect</button>
-       <datalist id="fxkeys">${B.fx_keys.map((k) => `<option value="${k}">`).join("")}</datalist></label>` +
+       <datalist id="fxkeys">${fxKeys(hero).map((k) => `<option value="${k}">`).join("")}</datalist></label>` +
       field("Text", "text", e.text || "", "area") + `<div class="preview" id="pv"></div>`;
   } else if (type === "gem") {
     f += field("Colour", "color", e.color || "#c9a063", "color") + field("Text", "text", e.text || "", "area");
@@ -424,6 +424,7 @@ function editor(rel, list, e, type, isNew) {
     if (await save(rel, d)) dlg.close();
   };
 }
+function fxKeys(hero) { return [...(B.fx_keys.any || []), ...((hero && B.fx_keys[hero.cls]) || [])]; }
 function fxRow(k, v) {
   return `<div class="fxrow"><input list="fxkeys" placeholder="key, e.g. dmg or dmg:drain" value="${esc(k)}"><input type="number" step="any" placeholder="per stack" value="${esc(v)}"><button class="btn small fxdel" type="button">✕</button></div>`;
 }

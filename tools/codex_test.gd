@@ -10,7 +10,7 @@ func _ok(c: bool, what: String) -> void:
 	if not c:
 		fails += 1
 
-func _init() -> void:
+func _initialize() -> void:
 	var n := 0
 	for cls in Data.CLASSES:
 		var h := Codex.hero(cls)
@@ -42,6 +42,7 @@ func _init() -> void:
 	var r := RunBuild.new()
 	r.passives["w_r_pact"] = 2
 	_ok(is_equal_approx(float(r.fx("warlock").get("ls", 0)), 2.0), "Thirsting Pact's fx add up (2 stacks: 2% life steal)")
-	_ok(Codex.data_only({"fx": {"dmg": 5}}) and not Codex.data_only({"fx": {"dot_flat": 1}}), "data-only check")
+	_ok(Codex.data_only({"fx": {"dmg": 5}}) and not Codex.data_only({"fx": {"dot_flat": 1}}) and Codex.data_only({"fx": {"dot_flat": 1}}, "warlock"), "data-only check (shared and class keys)")
+	_ok(Codex.fx_keys("warlock").has("dot_flat") and (load("res://scripts/warlock_hex.gd").RITE_KEYS as Array).all(func(k): return Codex.fx_keys("warlock").has(k)), "fx_keys.json lists every WarlockHex rite key")
 	print("[codex_test] %s (%d failures)" % ["PASS" if fails == 0 else "FAIL", fails])
 	quit(1 if fails > 0 else 0)

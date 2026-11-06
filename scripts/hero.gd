@@ -138,6 +138,7 @@ var drain_heal := 0.0        # healing gathered since the last "+N" number
 var drain_heal_t := 0.0
 var drain_victims: Array = []  # Drain Life's victims this frame: the main one, then its forks (WarlockSkills)
 var covenant_t := 0.0        # Warlock: Fel Covenant (Drain Life forks further and heals double)
+var wl := {}                 # Warlock: his three directions' state (WarlockHex: curses, fears, crows, the feast, the shield)
 var bolts: Array = []        # Warlock's Blight Bolts in flight: [{node, dir, left}] (flown by WarlockFx.update, burst here)
 ## The archer (archer.gd): arrows in flight, volleys raining down, snares lying in wait, the spirit beasts
 var arrows: Array = []
@@ -1720,6 +1721,8 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	if is_demon():
 		dmg = DemonSkills.absorb(self, dmg)      # Wrath of the Pit's Crucible
 	dmg = maxf(1.0, dmg)
+	if not wl.is_empty():
+		dmg = WarlockHex.absorb(self, dmg)       # the Warlock's shield (Blood Ward, the Soul Feast)
 	if ward > 0.0:
 		var soak := minf(ward, dmg)
 		ward -= soak
