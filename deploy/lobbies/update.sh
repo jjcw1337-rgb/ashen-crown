@@ -1,10 +1,13 @@
 #!/bin/sh
 # Update the staging droplet's multiplayer matches: the staging CI's dedicated-server export (artifact
 # AshenCrown-server: the stripped "Linux Server" build, one file) and this checkout's lobby service and its unit.
-# Usage: sh deploy/lobbies/update.sh [ci-run-id] [ssh-host]     (default: the latest green "Staging build")
-# Restarting the lobby service ends any match in progress, so it refuses while one is starting or playing.
+# Usage: sh deploy/lobbies/update.sh [--force] [ci-run-id] [ssh-host]   (default: the latest green "Staging build")
+# Restarting the lobby service ends any match in progress, so it refuses while one is starting or playing, unless
+# --force (staging: Blaine 2026-11-06, "just kill them").
 # Waiting lobbies survive (they are rows in its database). The game release and the co-op server are untouched.
 set -eu
+FORCE=0
+[ "${1:-}" = "--force" ] && { FORCE=1; shift; }
 HOST=${2:-ashen-crown-staging}
 RUN=${1:-$(gh run list --branch staging --workflow "Staging build" --status success --limit 1 --json databaseId -q '.[0].databaseId')}
 ROOT=$(git rev-parse --show-toplevel)
@@ -15,7 +18,8 @@ REV=$(cat "$T/DEPLOYED_REV")
 [ -s "$T/AshenCrown.x86_64" ] || { echo "run $RUN has no server export"; exit 1; }
 echo "server build $REV (CI run $RUN) -> $HOST"
 BUSY=$(ssh "$HOST" "sudo python3 -c \"import sqlite3,json,os; p='/var/lib/ashen-lobbies/lobbies.sqlite'; print(sum(json.loads(d)['state'] in ('starting','playing') for (d,) in sqlite3.connect(p).execute('select data from state')) if os.path.exists(p) else 0)\"")
-[ "$BUSY" = 0 ] || { echo "$BUSY match(es) in progress: try again when they finish"; exit 1; }
+[ "$BUSY" = 0 ] || [ "$FORCE" = 1 ] || { echo "$BUSY match(es) in progress: try again when they finish (or --force)"; exit 1; }
+[ "$BUSY" = 0 ] || echo "--force: ending $BUSY match(es) in progress"
 S=/opt/ashen-crown/staging
 ssh "$HOST" "sudo install -d -o ashen -g ashen $S/server/$REV $S/lobbies"
 # (the whole export: the binary and its pack, DEPLOYED_REV, and any GDExtension libraries the export put beside it)

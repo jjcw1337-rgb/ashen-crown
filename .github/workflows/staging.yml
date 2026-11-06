@@ -81,6 +81,22 @@ jobs:
           ls -la server
           test $(stat -c %s server/AshenCrown.x86_64) -gt 50000000
 
+      # The stripped server must boot and host each kind of world without a script error (code that needs pixels or
+      # mesh surfaces breaks here first: docs/patterns/servers.md).
+      - name: Smoke-test the dedicated server
+        run: |
+          set +e
+          fail=0
+          for mode in coop bg; do
+            if [ "$mode" = coop ]; then args="--server --coop --port 24651"; want="server up on UDP"; else args="--server --port 24652"; want="server up on UDP"; fi
+            timeout 90 ./server/AshenCrown.x86_64 --headless -- $args > smoke_$mode.log 2>&1
+            up=$(grep -c "$want" smoke_$mode.log); err=$(grep -c "SCRIPT ERROR" smoke_$mode.log)
+            echo "$mode: up=$up script_errors=$err"
+            grep -m5 -A1 "SCRIPT ERROR" smoke_$mode.log
+            if [ "$up" = 0 ] || [ "$err" != 0 ]; then fail=1; tail -20 smoke_$mode.log; fi
+          done
+          exit $fail
+
       - uses: actions/upload-artifact@v4
         with:
           name: AshenCrown-staging
