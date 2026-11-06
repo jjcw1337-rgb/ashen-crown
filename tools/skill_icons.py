@@ -107,6 +107,18 @@ CELLS = {
         ("grip", "a forged iron chain with a hooked claw flung through the air, glowing red hot"),
         ("wrath", "a demon kneeling inside an obsidian cocoon cracking open with molten light"),
     ],
+    "doug": [
+        # (the cells with Doug in them came back as a classic clown, not him: only the prop cells are used)
+        ("u_barrage", "six cream pies flying through the air at once toward startled monsters, cream splattering"),
+        ("u_bonanza", "a ring of banana peels on a wooden circus floor, a monster slipping mid-air"),
+        ("u_cannon", "a stubby clown brawler shot out of a striped circus cannon in a burst of confetti and smoke"),
+        ("pie", "a cream pie with a cherry flying straight at the viewer"),
+        ("peels", "three bright banana peels lying open on the ground"),
+        ("slide", "a clown sliding belly-first across the floor with a honking horn"),
+        ("doppel", "a balloon double of a clown popping in confetti"),
+        ("juggle", "three juggling pins spinning in the air with motion trails"),
+        ("bounce", "a clown bouncing high off a trampoline, arms wide"),
+    ],
     "gems2": [
         ("heartstone", "a heart-shaped rose-red crystal gemstone pulsing with warm light"),
         ("prism", "a clear crystal prism splitting light into a rainbow"),
