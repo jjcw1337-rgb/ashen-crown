@@ -162,7 +162,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 				"size": 0.14, "turb": 1.2, "add": false, "one_shot": false,
 				"colors": [[0.0, Color(VIOLET, 0.0)], [0.15, VIOLET], [0.6, Color(0.35, 0.95, 0.4)], [1.0, Color(DEEP, 0.0)]]})
 			var ring := WarlockFx.sigil(root, r)
-			var loop = Sfx.start_loop("eclipse_storm", -10.0) if (Sfx.bank.has("eclipse_storm") or Sfx.streams.has("eclipse_storm")) else null
+			var loop = Sfx.start_loop("eclipse_storm", -10.0, 1.0, h) if (Sfx.bank.has("eclipse_storm") or Sfx.streams.has("eclipse_storm")) else null
 			h.fxs["hx_storm"] = {"n": n, "wisps": wisps, "ring": ring, "until": float(ev.get("x", 5.0)), "loop": loop}
 			_snd(h, "eclipse_bloom", "covenant", -2.0)
 			SkillFx.shake(h, 0.3)
@@ -175,7 +175,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			_snd(h, "thornlash", "shackles", -3.0, 1.2)
 		"feast":
 			_end_feast(h)
-			var hum = Sfx.start_loop("soul_feast" if (Sfx.bank.has("soul_feast") or Sfx.streams.has("soul_feast")) else "drain_loop", -7.0)
+			var hum = Sfx.start_loop("soul_feast" if (Sfx.bank.has("soul_feast") or Sfx.streams.has("soul_feast")) else "drain_loop", -7.0, 1.0, h)
 			var sg := WarlockFx.sigil(root, 2.4)
 			sg.global_position = pos + Vector3(0, 0.06, 0)
 			h.fxs["hx_feast"] = {"beams": {}, "until": float(ev.get("x", 3.0)) + 0.3, "sigil": sg, "hum": hum, "scan": 0.0, "near": []}

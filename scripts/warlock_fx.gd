@@ -33,7 +33,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			_end_drain(h, false)
 			var victims: Array = ev.get("t", [])
 			var d := {"victims": victims, "beams": {}, "lit": {}, "light": null, "sigil": sigil(root, 1.25),
-				"hum": Sfx.start_loop("drain_loop", -9.0), "until": DRAIN_TIMEOUT}
+				"hum": Sfx.start_loop("drain_loop", -9.0, 1.0, h), "until": DRAIN_TIMEOUT}
 			(d["sigil"] as Node3D).global_position = pos + Vector3(0, 0.06, 0)
 			h.fxs["drain"] = d
 			for e in victims:

@@ -3762,7 +3762,7 @@ func _build_admin(parent: Control) -> VBoxContainer:
 	var rrow := HBoxContainer.new()
 	rrow.add_theme_constant_override("separation", 4)
 	rrow.alignment = BoxContainer.ALIGNMENT_CENTER
-	for c in [["restart", "Restart round"], ["gates", "Open gates"], ["portals", "Open portals"]]:
+	for c in [["restart", "Restart round"], ["gates", "Start the raid" if MpMode.FOREST else "Open gates"], ["portals", "Open portals"]]:
 		var cmd: String = c[0]
 		var rb := _iron_button(c[1], 112, 36, 14)
 		rb.pressed.connect(func():
@@ -4280,7 +4280,7 @@ func _build_battlegrounds() -> void:
 	var vb := VBoxContainer.new()
 	vb.add_theme_constant_override("separation", 10)
 	bg_panel.add_child(vb)
-	var t := _label(Battlegrounds.TITLE, 30, GOLD, true)
+	var t := _label(Battlegrounds.map_title(), 30, GOLD, true)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(t)
 	var sub := _label("Descend with one of your heroes. Monsters are few and deadly, other players are hunting too, and the Extraction Portals only open %d minutes in. Get out alive and everything you carry is yours. Fall, and it lies where you fell." % int(Battlegrounds.PORTALS_AT / 60.0), 14, Color(0.78, 0.72, 0.64))
@@ -4366,7 +4366,7 @@ func _bg_go() -> void:
 	var nm := bg_class.get_item_text(bg_class.selected).split("  ·  ")[0]
 	var addr := bg_addr.text if bg_addr.text.strip_edges() != "" else "127.0.0.1"
 	# a last word before risking everything they carry
-	open_dialog(Battlegrounds.TITLE, "%s will enter with everything they wear and carry. If %s dies down there, all of it stays on the crypt floor (their levels and rites are kept).\n\nEnter the crypt?" % [nm, nm],
+	open_dialog(Battlegrounds.map_title(), "%s will enter with everything they wear and carry. If %s dies down there, all of it stays on the crypt floor (their levels and rites are kept).\n\nEnter the crypt?" % [nm, nm],
 		[["Enter", func():
 			bg_panel.visible = false
 			game.start_battlegrounds(addr, id)], ["Not yet", func(): pass]])

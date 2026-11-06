@@ -1055,7 +1055,8 @@ func cl_bg_raid(state: String, t: float, open: Array, length: float, portals_at:
 		if game.ui.stash_panel.visible:
 			game.ui.close_all()
 			game.ui.message("The gates rise: the stash is sealed until you're home", Color(1.0, 0.7, 0.4))
-		if was.begins_with("prep") or was.begins_with("lobby"):
+		# (the Verdant Reach has no gates: its raid just begins, no banner and no portcullis; Blaine 2026-11-06)
+		if (was.begins_with("prep") or was.begins_with("lobby")) and not MpMode.FOREST:
 			game.ui.big_message("The gates are open")
 			Sfx.play("portcullis" if Sfx.bank.has("portcullis") else "portal", -2.0)
 	elif state.begins_with("prep") and not was.begins_with("prep"):

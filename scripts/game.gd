@@ -536,7 +536,10 @@ func zone_music() -> void:
 		return
 	# the camp after dark: tonight's night bed (DayNight, one of five in turn), once the bed exists
 	var night_bed := cur_zone == "town" and day_night != null and day_night.on and day_night.night > 0.5
-	Sfx.play_music("fort" if cur_zone == "lair" and world.fort else cur_zone, "forest" if world.oak_forest and cur_zone != "town" and not indoor() else ("night_forest" if night_bed else ""),
+	# the Verdant Reach (the Battlegrounds) has no song: its forest bed alone, not the old synthesized drone, which
+	# played under the whole match as a hum and hiss (Blaine, 2026-11-06)
+	var song := "" if cur_zone == Battlegrounds.ZONE and MpMode.FOREST else ("fort" if cur_zone == "lair" and world.fort else cur_zone)
+	Sfx.play_music(song, "forest" if world.oak_forest and cur_zone != "town" and not indoor() else ("night_forest" if night_bed else ""),
 			day_night.night_take() if night_bed else 0)
 
 ## In a sea zone the surf bed follows the shore: full on the beach, fading inland and out at sea (the boat's
@@ -1598,13 +1601,16 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		ui.zone_lbl.text = zone_title(act, zone)
 	else:
 		ui.set_zone(zone_title(act, zone))
-	# Act I outdoors: birds over the forest (birds.gd)
+	# Act I outdoors: birds over the forest (birds.gd). Not over the Battlegrounds: in its bright afternoon their
+	# flapping shadows pulsed over the ground and a flock bursting from the trees fluttered every half minute, with
+	# the birds themselves hard to see from the camera, so it read as a glitch (Blaine, 2026-11-06)
 	if world.oak_forest and not indoor() and not net.server:
-		var birds := Birds.new()
-		birds.game = self
-		birds.sea = world.sea
-		birds.name = "birds"
-		world.add_child(birds)
+		if zone != Battlegrounds.ZONE:
+			var birds := Birds.new()
+			birds.game = self
+			birds.sea = world.sea
+			birds.name = "birds"
+			world.add_child(birds)
 		# the camp's ravens on the roofs and the ground (camp_ravens.gd)
 		if zone == "town" and world.has_meta("roosts"):
 			CampRavens.add_to(world)
@@ -2264,7 +2270,7 @@ func _bury_lost_raiders() -> void:
 				f.close()
 			if cloud != null:
 				cloud.push(str(c["id"]), d)
-			ui.message("%s fell in %s and lost everything they carried" % [str(c["name"]), Battlegrounds.TITLE], Color(1, 0.5, 0.4), 6.0)
+			ui.message("%s fell in %s and lost everything they carried" % [str(c["name"]), Battlegrounds.map_title()], Color(1, 0.5, 0.4), 6.0)
 
 ## Out of the crypt, extracted, fallen or cut off: a raid taken from the title screen ends on its Battlegrounds
 ## window; one taken from the camp's waypoint (bg_from_waypoint) ends back on the dais, see _bg_home_camp.
@@ -2332,9 +2338,9 @@ func _bg_home_camp(fell: bool) -> void:
 		await load_zone(cur_act, "town", "waypoint_town")
 	save_game()
 	if fell:
-		ui.message("%s is back from %s with nothing but their strength: everything they carried lies on its floor." % [char_name, Battlegrounds.TITLE], Color(1, 0.55, 0.45), 7.0)
+		ui.message("%s is back from %s with nothing but their strength: everything they carried lies on its floor." % [char_name, Battlegrounds.map_title()], Color(1, 0.55, 0.45), 7.0)
 	elif bg_gained >= 0:
-		ui.message("%s is back from %s with %d new item%s. All of it is theirs to keep." % [char_name, Battlegrounds.TITLE, bg_gained, "" if bg_gained == 1 else "s"], Color(0.6, 1.0, 0.6), 7.0)
+		ui.message("%s is back from %s with %d new item%s. All of it is theirs to keep." % [char_name, Battlegrounds.map_title(), bg_gained, "" if bg_gained == 1 else "s"], Color(0.6, 1.0, 0.6), 7.0)
 	bg_gained = -1
 
 func on_net_failed(msg: String) -> void:

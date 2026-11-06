@@ -281,8 +281,10 @@ func _shroom(delta: float) -> Vector3:
 	_pulse -= delta
 	if _pulse <= 0.0:
 		_pulse = 1.5
-		# its maker gone, it withers
-		var maker: bool = e.game.world.enemies_root.get_children().any(func(x) -> bool: return x is Enemy and not x.dead and x.kind == "hermit" and x.global_position.distance_to(e.global_position) < 40.0)
+		# its maker gone, it withers: only Mossbeard's own (his camp's, or sprouted by him, same pack). A mushroom of a camp
+		# with no hermit (Sporefall Dell, Rootknot Hollow) is just a monster: it withered 1.5 s after the map loaded
+		var kin: Array = e.game.world.enemies_root.get_children().filter(func(x) -> bool: return x is Enemy and x.kind == "hermit" and x.pack_id == e.pack_id)
+		var maker: bool = kin.is_empty() or kin.any(func(x) -> bool: return not x.dead and x.global_position.distance_to(e.global_position) < 40.0)
 		if not maker:
 			e.take_damage(99999.0, 0.0, e.global_position, 0.0, false)
 			return Vector3.ZERO

@@ -69,7 +69,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 				return true
 			var v = vs[0]
 			latch(root, SkillFx.chest_of(v))
-			h.fxs["tether"] = {"victim": v, "node": tether(root), "hum": Sfx.start_loop("drain_loop", -16.0, 0.72),
+			h.fxs["tether"] = {"victim": v, "node": tether(root), "hum": Sfx.start_loop("drain_loop", -16.0, 0.72, h),
 				"until": float(ev.get("x", 2.5)) + SIPHON_SLACK}
 			v.set_drained(true, SPIRIT)
 			SkillFx.snd(h, "spirit_dart", -4.0, 0.8)

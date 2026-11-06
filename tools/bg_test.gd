@@ -147,8 +147,12 @@ func _server() -> void:
 		check(gold.size() == 1 and g.chest_sealed(gold[0]), "the golden chest, sealed while Mossbeard lives")
 		check(g.bg.state == "lobby" and g.world.has_meta("bg_gates") and (g.world.get_meta("bg_gates") as Array).size() >= 4 and not g.world.get_meta("bg_gates")[0]["up"], "a round begins in the antechamber, its gates shut (%d gates)" % (g.world.get_meta("bg_gates", []) as Array).size())
 	check(await until(_client_joined, 180.0), "a player joined")
-	check(await until(_bell_rang, 180.0), "the player rang the bell: the countdown")
-	check(await until(func(): return g.bg.state == "raid", 20.0) and (forest or g.world.get_meta("bg_gates")[0]["up"]), "then the raid was on")
+	if forest:
+		# the Verdant Reach: no antechamber, bell or countdown: the raid begins once someone is in
+		check(await until(func(): return g.bg.state == "raid", 20.0), "the raid began by itself")
+	else:
+		check(await until(_bell_rang, 180.0), "the player rang the bell: the countdown")
+		check(await until(func(): return g.bg.state == "raid", 20.0) and g.world.get_meta("bg_gates")[0]["up"], "then the raid was on")
 	check(await until(func(): return g.bg.open.size() == Battlegrounds.OPEN_PORTALS + (0 if forest else 2), 70.0), "the portals opened on time (%d)" % g.bg.open.size())
 	check(await until(func(): return death_drop_seen, 180.0), "the server handled the fallen player's death drop")
 	# This is functional acceptance, not a server tick-rate benchmark. A source/debug
@@ -191,20 +195,21 @@ func _client() -> void:
 	# the antechamber: behind its gate; ring the bell and the countdown begins for everyone; then the gate rises
 	var gates: Array = g.world.get_meta("bg_gates", [])
 	var forest: bool = load("res://scripts/mp_mode.gd").FOREST
-	check(str(g.bg_raid.get("state", "")).begins_with("lobby") and (forest or (not gates.is_empty() and not gates[0]["up"])), "waiting for the round to start (%s)" % str(g.bg_raid.get("state", "")))
-	if forest:
-		await _check_hint("ring the bell", "ANTECHAMBER")
 	var bells: Array = g.world.interactables.filter(func(t): return t.kind == "bell")
-	check(bells.size() == 4, "a bell in each of the four antechambers")
-	var bell = bells[0]
-	for b in bells:
-		if b.global_position.distance_to(g.hero.global_position) < bell.global_position.distance_to(g.hero.global_position):
-			bell = b
-	g._interact(bell)
-	check(await until(func(): return str(g.bg_raid.get("state", "")).begins_with("prep"), 6.0), "rang the bell: the raid starts in a moment (%s)" % str(g.bg_raid.get("state", "")))
 	if forest:
-		await _check_hint("clear camps", "stash")
-	check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 10.0) and (forest or gates[0]["up"]), "the raid was on")
+		# the Verdant Reach (Blaine, 2026-11-06): no bell, no gates, no countdown; the raid starts by itself
+		check(bells.is_empty(), "no bells in the starting glades")
+		check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 10.0), "the raid began by itself (%s)" % str(g.bg_raid.get("state", "")))
+	else:
+		check(str(g.bg_raid.get("state", "")).begins_with("lobby") and not gates.is_empty() and not gates[0]["up"], "waiting for the round to start (%s)" % str(g.bg_raid.get("state", "")))
+		check(bells.size() == 4, "a bell in each of the four antechambers")
+		var bell = bells[0]
+		for b in bells:
+			if b.global_position.distance_to(g.hero.global_position) < bell.global_position.distance_to(g.hero.global_position):
+				bell = b
+		g._interact(bell)
+		check(await until(func(): return str(g.bg_raid.get("state", "")).begins_with("prep"), 6.0), "rang the bell: the gates open in a moment (%s)" % str(g.bg_raid.get("state", "")))
+		check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 10.0) and gates[0]["up"], "the raid was on")
 	await secs(1.0)
 	# one standard for attacks: the same timing, damage and cooldowns in the crypt as in the story game
 	var same := true
@@ -245,7 +250,8 @@ func _client() -> void:
 	check(not bool(ex.data.get("open", false)) or not g.bg_raid["open"].is_empty(), "portals start closed")
 	check(await until(func(): return not (g.bg_raid.get("open", []) as Array).is_empty(), 70.0), "the portals opened")
 	await _check_hint(Battlegrounds.map_title().to_upper(), "")
-	await _check_hint("reach an open portal before collapse", "")
+	if forest: await _check_hint("raid ends", "bell")
+	await _check_hint("reach an open portal before time runs out", "")
 	var ps: Array = Battlegrounds.portal_list(g.world)
 	var op = ps[int(g.bg_raid["open"][0])]
 	g.hero.target = null

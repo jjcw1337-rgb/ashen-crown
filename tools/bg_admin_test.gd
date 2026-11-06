@@ -57,7 +57,7 @@ func _run() -> void:
 		check(await until(func(): return g.bg.state == "raid", 30.0), "an admin's \"Open gates\": the raid is on")
 		check(await until(func(): return not g.bg.open.is_empty(), 20.0), "\"Open portals\": %d open" % g.bg.open.size())
 		check(await until(func(): return g.bg.forced, 20.0), "\"Restart round\": a new round, off the clock")
-		check(await until(func(): return g.bg.state == "lobby" and not g._busy, 20.0), "starting in the antechamber")
+		check(await until(func(): return g.bg.state in ["lobby", "raid"] and g.bg.raid_t < 5.0 and not g._busy, 20.0), "the new round began")
 		g.bg.raid_t = Battlegrounds.secs(Battlegrounds.JOIN_CLOSE) + 5.0      # (late in the round: joining has closed)
 		check(await until(func(): return not g.net.players.is_empty(), 60.0), "an admin still gets into a round closed to new players")
 		await until(func(): return g.net.players.is_empty(), 30.0)

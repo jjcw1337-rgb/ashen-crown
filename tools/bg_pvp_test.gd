@@ -109,7 +109,7 @@ func _player() -> void:
 		var bells: Array = g.world.interactables.filter(func(t): return t.kind == "bell")
 		if not bells.is_empty():
 			g._interact(bells[0])
-	check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 30.0), "the bell rang and the raid is on")
+	check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 30.0), "the raid is on")
 	check(await until(func(): return g.net.puppets().size() == 1 and g.net.puppets()[0].net_has, 40.0), "the other player is here")
 	if role == "a":
 		g.test_immortal = true

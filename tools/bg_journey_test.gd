@@ -124,10 +124,13 @@ func _run() -> void:
 	check(g.ui.hud.get_node("bg_hud").is_visible_in_tree(), "raid instructions remain visible on the network client")
 	await shot("arrival")
 	var bells: Array = g.world.interactables.filter(func(t): return t.kind == "bell")
-	bells.sort_custom(func(a, b): return a.global_position.distance_to(g.hero.global_position) < b.global_position.distance_to(g.hero.global_position))
-	if not await walk(bells[0].global_position): await finish(); return
-	g._interact(bells[0])
-	if not check(await until(func(): return g.bg_raid.get("state", "") == "raid", 45), "bell starts raid"): await finish(); return
+	if MpMode.FOREST:
+		check(bells.is_empty(), "forest starts without bells")
+	else:
+		bells.sort_custom(func(a, b): return a.global_position.distance_to(g.hero.global_position) < b.global_position.distance_to(g.hero.global_position))
+		if not await walk(bells[0].global_position): await finish(); return
+		g._interact(bells[0])
+	if not check(await until(func(): return g.bg_raid.get("state", "") == "raid", 45), "normal raid starts"): await finish(); return
 	var camps: Array = Camps.all(g.world).filter(func(x): return x.tier == 1)
 	camps.sort_custom(func(a, b): return a.pos.distance_to(g.hero.global_position) < b.pos.distance_to(g.hero.global_position))
 	var camp: Dictionary = camps[0]
