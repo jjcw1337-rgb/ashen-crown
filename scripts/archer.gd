@@ -203,6 +203,19 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 			h.atk_aim = aim
 			h._start_attack("cast", "beast")
 			h.atk_dur = 0.6
+		# a run's skills (Data.RUN_SKILLS): shots on his bow's draw, the mark a quick cast
+		"a_multishot", "a_explosive", "a_glacial", "a_stormshot":
+			h.atk_aim = _assist(h, aim)
+			h._face(h.atk_aim - h.global_position)
+			h._start_attack("bow", id)
+		"a_barrage":
+			var to2 := (aim - h.global_position) * Vector3(1, 0, 1)
+			h.atk_aim = h.global_position + to2.limit_length(14.0)
+			h._start_attack("bow", "a_barrage")
+		"a_mark":
+			h.atk_aim = aim
+			h._start_attack("cast", "a_mark")
+			h.atk_dur = 0.45
 
 ## ClassSkills: nothing to check before a shot.
 static func can_cast(_h: Hero, _id: String, _aim: Vector3) -> bool:
@@ -246,12 +259,62 @@ static func impact(h: Hero) -> bool:
 			pass        # (Thunderstep acts at the cast: the vault and the sigil)
 		"beast":
 			_command_beast(h, h.atk_aim)
+		"a_multishot":
+			var n2 := 5 + int(h.talent("multishot_more"))
+			for k in n2:
+				_loose_kind(h, h.atk_aim, false, 0.55, "a_multishot", (float(k) - (n2 - 1) * 0.5) * (0.17 if n2 <= 5 else 0.13), "war")
+		"a_explosive":
+			_loose_kind(h, h.atk_aim, false, 0.6, "a_explosive", 0.0, "fire")
+		"a_glacial":
+			_loose_kind(h, h.atk_aim, true, 1.1, "a_glacial", 0.0, "frost")
+		"a_stormshot":
+			_loose_kind(h, h.atk_aim, false, 1.0, "a_stormshot", 0.0, "storm")
+		"a_barrage":
+			var g: Vector3 = h.atk_aim
+			g.y = h.game.world.height_at(g.x, g.z)
+			h.fx("a_barrage", "impact", {"p": g, "r": BARRAGE_R})
+		"a_mark":
+			_hunters_mark(h, h.atk_aim)
 		_:
 			return false
 	return true
 
+## Arrow Storm's reach, its strikes and their share of the weapon's blow; Hunter's Mark's time and what it adds.
+const BARRAGE_R := 4.5
+const BARRAGE_TICKS := 6
+const BARRAGE_PCT := 0.32
+const MARK_SECS := 8.0
+const MARK_MORE := 0.35
+
+## Hunter's Mark: the foe nearest the pointer is marked (Enemy "hunted_until": +35% from everyone), the one his wolf
+## goes for; the claw mark and a ring over it are seen by all.
+static func _hunters_mark(h: Hero, at: Vector3) -> void:
+	var best = null
+	var bd := 3.5
+	for e in h.game.enemies_near(at, 3.5):
+		if e.dead or e.pvp_obj > 0:
+			continue
+		var d: float = Vector2(e.global_position.x - at.x, e.global_position.z - at.z).length()
+		if d < bd:
+			bd = d
+			best = e
+	if best == null:
+		h.fx("a_mark", "impact", {"p": at})
+		return
+	best.set_meta("hunted_until", Time.get_ticks_msec() + int(MARK_SECS * 1000.0))
+	h.mark = best
+	h.mark_t = MARK_SECS
+	for b in h.beasts:
+		if is_instance_valid(b) and not b.dead:
+			b.command("attack", best)
+	h.fx("a_mark", "impact", {"p": best.global_position, "t": [best], "x": MARK_SECS})
+
 ## An arrow from the bow toward at (turned by yaw radians), flying flat at chest height.
 static func _loose(h: Hero, at: Vector3, pierce: bool, mult: float, src: String, yaw: float) -> void:
+	_loose_kind(h, at, pierce, mult, src, yaw, "fire" if pierce else "war")
+
+## The same with its own kind of arrow (ArrowFx.PRESETS: war, fire, frost, storm).
+static func _loose_kind(h: Hero, at: Vector3, pierce: bool, mult: float, src: String, yaw: float, kind: String) -> void:
 	var from: Vector3 = h.global_position + Vector3(0, 1.35, 0)
 	# the shot's own aim (taken from the pointer when the draw began), so walking on while he draws
 	# doesn't swing it; a different point (none today) gets its own direction
@@ -264,7 +327,7 @@ static func _loose(h: Hero, at: Vector3, pierce: bool, mult: float, src: String,
 	var J: Dictionary = h.rig.get_meta("j")
 	if J.has("at_hand_l") and h.weapon_node != null and is_instance_valid(h.weapon_node) and h.weapon_node.get_parent() == J.get("grip_bow_at"):
 		from = (J["at_hand_l"] as Node3D).global_position + dir * 0.15
-	h.fx(src, "loose", {"p": from, "d": dir, "k": "fire" if pierce else "war", "x": pierce, "m": mult})
+	h.fx(src, "loose", {"p": from, "d": dir, "k": kind, "x": pierce, "m": mult})
 
 ## The arrows are Meshy models (tools/blender/prep_arrow.py, head toward -Z): "war" (black-shafted, barbed: his
 ## plain shots), "fire" (red-fletched: Fire Arrow, burning in flight), "frost" (the glacier arrow: an ice
@@ -539,11 +602,23 @@ static func update(h: Hero, delta: float) -> void:
 						stop = true
 						break
 					continue
-				e.seared = a["pierce"]      # the burning arrow sears the wound: fire, not a spray of blood
+				e.seared = kind == "fire"      # the burning arrow sears the wound: fire, not a spray of blood
 				h._hit_enemy(e, a["mult"] * shatter(h, e), 0.25 if not a["pierce"] else 0.5, a["src"])
 				e.seared = false
+				if kind == "frost" and not e.dead:
+					if h.talent("glacial_freeze") > 0.0 and RunTalents.chilled(e):
+						RunTalents._freeze(h, e, 1.2)       # Shatterpoint
+					e.chill(0.4, 3.0)      # Glacial Shard
+				if kind == "storm":
+					# Storm Shot: lightning leaps on from the one it struck
+					var avg2: float = (h.dmg_min + h.dmg_max) * 0.5
+					RunTalents._chain(h, e, 4 + int(h.talent("storm_jumps")), avg2 * 0.7 * h.buff_mult() * h.dmg_mult("a_stormshot"), 7.0)
+				if str(a["src"]) == "a_explosive":
+					a["left"] = 0.0      # (it bursts on the first it strikes: below, where its flight ends)
+					stop = true
+					break
 				# Fire Arrow sets what it passes through alight (Pyre: longer and hotter)
-				if a["pierce"]:
+				if a["pierce"] and kind == "fire":
 					var avg: float = (h.dmg_min + h.dmg_max) * 0.5
 					var pyre := 1.0 + h.talent("burn_dmg") / 100.0
 					e.ignite((avg * 0.35 + h.level * 1.2 + 2.0) * pyre * h.dmg_mult("pierce"), 3.0 * pyre, kind)
@@ -556,11 +631,25 @@ static func update(h: Hero, delta: float) -> void:
 					break
 		if stop:
 			# the end of the flight (the range run out, or a wall): the burst where it ends
+			if str(a["src"]) == "a_explosive" and not h.puppet:
+				_blast(h, np)
 			ArrowFx.finish(h, kind, np, a["dir"], wall)
 			ArrowFx.end_flight(a)
 			n.queue_free()
 			h.arrows.erase(a)
 	for v in h.volleys.duplicate():
+		if v.has("plain"):
+			# Arrow Storm: plain arrows, no frost
+			v["t"] -= delta
+			v["tick"] -= delta
+			if v["tick"] <= 0.0 and int(v["left"]) > 0:
+				v["tick"] = 0.25
+				v["left"] = int(v["left"]) - 1
+				if not h.puppet:
+					_barrage_tick(h, v)
+			if v["t"] <= 0.0:
+				h.volleys.erase(v)
+			continue
 		v["t"] -= delta
 		v["tick"] -= delta
 		v["age"] = float(v.get("age", 0.0)) + delta
@@ -576,6 +665,28 @@ static func update(h: Hero, delta: float) -> void:
 			s["t"] = float(s["t"]) - delta
 			if float(s["t"]) <= 0.0:
 				_detonate(h, s)
+
+## Blast Arrow's burst where its flight ends: a share of the weapon's blow to all within 3.5 m, burning them.
+const BLAST_R := 3.5
+static func _blast(h: Hero, at: Vector3) -> void:
+	var avg: float = (h.dmg_min + h.dmg_max) * 0.5
+	var r := BLAST_R * (1.0 + h.talent("blast_r") / 100.0)
+	if h.talent("blast_r") > 0.0:
+		h.fx("run", "flare", {"p": at, "r": r, "n": 0})
+	for e in h.game.enemies_near(at, r):
+		if e.dead:
+			continue
+		h._hit_enemy(e, 1.5, 0.6, "a_explosive")
+		if not e.dead:
+			e.ignite((avg * 0.25 + h.level * 0.8) * h.dmg_mult("a_explosive"), 3.0, "fire")
+			ArrowFx.burn(h.game, e, "fire", 3.0)
+	SkillFx.shake(h, 0.2)
+
+## Arrow Storm's strikes (every 0.25 s for 1.5 s), on his own game.
+static func _barrage_tick(h: Hero, v: Dictionary) -> void:
+	for e in h.game.enemies_near(v["pos"], float(v["r"])):
+		if not e.dead:
+			h._hit_enemy(e, BARRAGE_PCT, 0.05, "a_barrage")
 
 static func _seg_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
 	var ab := b - a

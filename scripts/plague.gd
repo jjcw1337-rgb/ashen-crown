@@ -187,6 +187,9 @@ func remote(ev: String) -> void:
 			if a.size() >= 6:
 				recipe = int(a[5])
 				_launch(_pv(a[2]), _pv(a[3]), float(a[4]))
+		"curse":
+			if a.size() >= 3:
+				_curse_fx(_pv(a[1]), _pv(a[2]), null)
 		"swarm":
 			if a.size() >= 3:
 				_swarm_start(_pv(a[1]), _pv(a[2]))
@@ -337,6 +340,16 @@ static func cast(hero: Hero, id: String, aim: Vector3) -> void:
 		"experiment":
 			hero.atk_aim = hero.global_position + to.limit_length(7.0)
 			hero._start_attack("pd_slam", "experiment")
+		# a run's skills (Data.RUN_SKILLS)
+		"p_miasma":
+			hero.atk_aim = hero.global_position
+			hero._start_attack("pd_slam", "p_miasma")
+		"p_spread":
+			hero.atk_aim = hero.global_position + to.limit_length(14.0)
+			hero._start_attack("pd_flask", "p_spread")
+		"p_leech":
+			hero.atk_aim = hero.global_position + to.limit_length(12.0)
+			hero._start_attack("pd_flask", "p_leech")
 	if DUR.has(id):
 		hero.atk_dur = float(DUR[id]) * Data.attack_pace(hero.cls) * (PvpStatus.act_mult(hero) if not hero.pvs.is_empty() else 1.0)
 
@@ -360,6 +373,12 @@ static func impact(hero: Hero) -> bool:
 			p._vat_cast(hero.atk_aim)
 		"crank":
 			p._exp_finish()
+		"p_miasma":
+			p._miasma()
+		"p_spread":
+			p._curse(hero.atk_aim)
+		"p_leech":
+			p._throw_leeches(hero.atk_aim)
 		_:
 			return false
 	return true
@@ -451,6 +470,133 @@ func _update_vials(delta: float) -> void:
 			if is_instance_valid(f.node):
 				f.node.queue_free()
 			_shatter(v["to"], float(v["r"]), int(v["ri"]), (v["to"] as Vector3) - (v["from"] as Vector3))
+			if v.has("leech"):
+				_leech_pool(v["to"])
+
+# ---------------------------------------------------------------- a run's skills (Data.RUN_SKILLS)
+const MIASMA_R := 4.5
+const MIASMA_T := 4.0
+const CURSE_T := 6.0
+const CURSE_R := 4.0
+const CURSE_BURST := 5.0
+const LEECH_R := 3.0
+const LEECH_T := 5.0
+const LEECH_HEAL := 1.5        # % of his life a second, for each foe in the pool (at most three count)
+var curses := {}               # {instance id: {"e", "t", "tick"}}
+
+## Miasma: the censer smashed at his feet, a wide cloud of plague (the cane slam's cloud, larger and longer).
+func _miasma() -> void:
+	var at := h.global_position
+	at.y = h.game.world.height_at(at.x, at.z)
+	var r := MIASMA_R * (1.0 + h.talent("miasma_r") / 100.0)
+	_cloud(at, r, MIASMA_T, "toxic")
+	if h.talent("miasma_slow") > 0.0 and not ghost():
+		clouds[-1]["slow"] = true       # (Choking Miasma: its ticks slow, _update_clouds)
+	_send("cloud|%s|%.2f|%.2f|toxic" % [_v(at), r, MIASMA_T])
+	var root: Node3D = h.game.world.fx_root
+	PlagueSmoke.puffs(root, at + Vector3(0, 0.3, 0), PlagueSmoke.FOG, Color(TOXIC.r, TOXIC.g, TOXIC.b, 0.7), 16, MIASMA_R * 0.7, 2.0, 2.2, MIASMA_R * 0.35, 0.3, 85.0, Vector3.UP, true)
+	Fx.ring(root, at, MIASMA_R, TOXIC, 0.5)
+	Sfx.play_at("ice_shatter", at, -4.0, 0.7)
+	Sfx.play_at("blight_burst", at, -5.0, 0.9)
+	if not ghost():
+		h.game.add_shake(0.1)
+		for e in _foes(at, r):
+			_poison(e, "toxic", MIASMA_T)
+			_add_blight(e, "p_miasma")
+
+## Contagion: the foe nearest the pointer is cursed; its poison leaps to all near it every second, and bursts if it dies cursed.
+func _curse(at: Vector3) -> void:
+	var best: Enemy = null
+	var bd := 4.0
+	for e in _foes(at, 4.0):
+		var d: float = Vector2(e.global_position.x - at.x, e.global_position.z - at.z).length()
+		if d < bd:
+			bd = d
+			best = e
+	var hand := h.global_position + Vector3(0, 1.5, 0)
+	if best == null:
+		_send("curse|%s|%s" % [_v(hand), _v(at)])
+		_curse_fx(hand, at, null)
+		return
+	_send("curse|%s|%s" % [_v(hand), _v(best.global_position)])
+	_curse_fx(hand, best.global_position, best)
+	if ghost():
+		return
+	curses[best.get_instance_id()] = {"e": best, "t": CURSE_T, "tick": 1.0}
+	_poison(best, "toxic", CURSE_T)
+	_add_blight(best, "p_spread")
+
+func _curse_fx(from: Vector3, to: Vector3, e) -> void:
+	var root: Node3D = h.game.world.fx_root
+	Fx.bolt(root, from, to + Vector3(0, 1.0, 0), TOXIC, 0.3)
+	Fx.burst(root, to + Vector3(0, 1.0, 0), TOXIC, 16, 2.5, 0.1, 0.5, true, -2.0)
+	if e != null and is_instance_valid(e) and not e.has_node("pd_curse"):
+		var a := PlagueSmoke.vapour(e, Color(0.65, 1.0, 0.25, 0.55), 10, 0.7, 1.2, 0.6, 0.35 * e.radius + 0.2, Vector3(0, e.height * 1.2, 0), TOXIC * 0.35)
+		a.name = "pd_curse"
+		Fx._free_later(a, CURSE_T)
+	Sfx.play_at("blight_burst", to, -6.0, 1.3)
+
+func _update_curses(delta: float) -> void:
+	for id in curses.keys():
+		var c: Dictionary = curses[id]
+		var e = c["e"]
+		if not is_instance_valid(e):
+			curses.erase(id)
+			continue
+		if e.dead:
+			# it died cursed: the plague bursts out of it (Epidemic: the curse itself leaps to the nearest)
+			curses.erase(id)
+			_curse_spread(e, CURSE_BURST, 4.0)
+			if h.talent("curse_jump") > 0.0:
+				var next: Enemy = null
+				var nd := 7.0
+				for o in _foes(e.global_position, 7.0):
+					var d: float = o.global_position.distance_to(e.global_position)
+					if not curses.has(o.get_instance_id()) and d < nd:
+						nd = d
+						next = o
+				if next != null:
+					curses[next.get_instance_id()] = {"e": next, "t": CURSE_T, "tick": 1.0}
+					_poison(next, "toxic", CURSE_T)
+					_send("curse|%s|%s" % [_v(e.global_position + Vector3(0, 1.0, 0)), _v(next.global_position)])
+					_curse_fx(e.global_position + Vector3(0, 1.0, 0), next.global_position, next)
+			Fx.burst(h.game.world.fx_root, e.global_position + Vector3(0, 1.0, 0), TOXIC, 30, 4.0, 0.14, 0.7, true, -1.0)
+			continue
+		c["t"] = float(c["t"]) - delta
+		c["tick"] = float(c["tick"]) - delta
+		if float(c["tick"]) <= 0.0:
+			c["tick"] = 1.0
+			_curse_spread(e, CURSE_R, 2.5)
+		if float(c["t"]) <= 0.0:
+			curses.erase(id)
+
+func _curse_spread(e, r: float, t: float) -> void:
+	var root: Node3D = h.game.world.fx_root
+	for o in _foes(e.global_position, r):
+		if o == e:
+			continue
+		_poison(o, "toxic", t)
+		Fx.bolt(root, e.global_position + Vector3(0, 1.0, 0), o.global_position + Vector3(0, 1.0, 0), TOXIC, 0.2)
+
+## Leech Jar: a vial's flight (partners see the same throw), and where it lands a pool of leeches that poisons and heals him.
+func _throw_leeches(at: Vector3) -> void:
+	var w: World = h.game.world
+	var J: Dictionary = h.rig.get_meta("j")
+	var from: Vector3 = (J["at_hand_r"] as Node3D).global_position if J.has("at_hand_r") else h.global_position + Vector3(0, 1.6, 0)
+	var to := Vector3(at.x, w.height_at(at.x, at.z), at.z)
+	recipe = 2
+	_send("throw|toxic|%s|%s|%.2f|%d" % [_v(from), _v(to), LEECH_R, recipe])
+	_launch(from, to, LEECH_R)
+	vial_flights[-1]["leech"] = true
+
+func _leech_pool(at: Vector3) -> void:
+	var root: Node3D = h.game.world.fx_root
+	Fx.burst(root, at + Vector3(0, 0.4, 0), Color(0.55, 0.05, 0.08), 26, 2.5, 0.09, 0.6, false, -8.0)
+	Fx.ring(root, at, LEECH_R, Color(0.75, 0.1, 0.12), 0.6)
+	if ghost():
+		return
+	clouds[-1]["leech"] = true      # (the pool _shatter laid: its ticks heal him too, _update_clouds)
+	clouds[-1]["t"] = LEECH_T + h.talent("leech_t")
 
 ## Pestilence Vial lands: the glass bursts, the liquid splashes up, a small hit, and the pool creeps out.
 func _shatter(at: Vector3, r: float, ri: int, dir: Vector3) -> void:
@@ -513,10 +659,17 @@ func _update_clouds(delta: float) -> void:
 		if ghost():
 			continue
 		var src: String = c["src"]
+		var fed := 0
 		for e in _foes(c["pos"], float(c["r"])):
 			_poison(e, src, VIAL_LINGER if src == "toxic" else POISON_LINGER)
 			if src == "toxic":
 				_add_blight(e, "toxic")
+			fed += 1
+		if c.has("leech") and fed > 0:
+			h.life = minf(h.max_life, h.life + h.max_life * LEECH_HEAL * (1.0 + h.talent("leech_heal") / 100.0) / 100.0 * TICK * mini(fed, 3))
+		if c.has("slow"):
+			for e in _foes(c["pos"], float(c["r"])):
+				e.chill(0.3, 1.0)
 
 ## What a second of each source's poison does. The per-level parts of all his damage are 0.55 of what they were before
 ## the PvP pass of 2026-11-02 (they had grown to twice anyone's; the pass cut the old kit's, and the new kit's follow).
@@ -1301,6 +1454,8 @@ func update(delta: float) -> void:
 	_update_exp(delta)
 	_update_blight(delta)
 	_update_poison(delta)
+	if not curses.is_empty():
+		_update_curses(delta)
 	_update_visibility()
 
 ## Everything on the ground goes (a zone change, a class change, death).

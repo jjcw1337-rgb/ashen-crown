@@ -32,6 +32,7 @@ func _run() -> void:
 	await _gems(h)
 	await _consumables(h)
 	await _offers(h)
+	await _skills(h)
 	print("[TAL] done, %d failure(s)" % fails)
 	quit(1 if fails > 0 else 0)
 
@@ -67,7 +68,7 @@ func _data(h) -> void:
 		"more_vs_big", "frenzy", "ignite_on_hit", "spread_burn_on_death", "more_vs_burning", "nth_shot", "more_vs_chilled",
 		"chill_on_hit", "shards_on_death", "freeze_after", "chain_on_hit", "bolt_on_crit", "more_vs_marked", "ricochet",
 		"more_vs_poisoned", "heal_on_dot", "necrosis", "spread_on_hit", "spread_on_death", "cloud_on_death", "ignite_on_crit",
-		"nth_hit_bolt", "hunger"]
+		"nth_hit_bolt", "hunger", "mark_reset", "bloodlust", "speed_on_kill"]
 	var bad := []
 	for t in RT.TALENTS + RT.GEMS:
 		var txt: String = RT.text_of(t, 1)
@@ -381,3 +382,93 @@ func _offers(h) -> void:
 			if c["theme"] == "frost":
 				frost_built += 1
 	check(frost_built > frost_fresh * 1.3, "a frost build is offered frost more often (%d vs %d)" % [frost_built, frost_fresh])
+
+## Cast one of a run's skills at `at` and let it play out.
+func _cast(h, id: String, at: Vector3, secs := 2.5) -> bool:
+	if not h.run.skills.has(id):
+		h.run.skills.append(id)
+	h.cds.clear()
+	h.mana = h.max_mana
+	h.atk_t = -1.0
+	h.cursor = at
+	var ok: bool = h.use_skill(id, at)
+	await create_timer(secs).timeout
+	return ok
+
+func _skills(h) -> void:
+	# the archer's run skills
+	await _fresh(h, "archer", {})
+	var fan := [_foe(h, Vector3(5, 0, -1.5), "zombie", 5000.0), _foe(h, Vector3(5, 0, 0), "zombie", 5000.0), _foe(h, Vector3(5, 0, 1.5), "zombie", 5000.0)]
+	var ok: bool = await _cast(h, "a_multishot", h.global_position + Vector3(5, 0, 0))
+	check(ok and fan.all(func(e): return e.life < e.max_life), "Scatter Shot: the fan strikes three foes side by side")
+	await _fresh(h, "archer", {})
+	var line := [_foe(h, Vector3(4, 0, 0), "zombie", 5000.0), _foe(h, Vector3(7, 0, 0), "zombie", 5000.0), _foe(h, Vector3(10, 0, 0), "zombie", 5000.0)]
+	ok = await _cast(h, "a_glacial", h.global_position + Vector3(10, 0, 0))
+	check(ok and line.all(func(e): return e.life < e.max_life and e.chill_t > 0.0), "Glacial Shard: pierces the line and chills each")
+	await _fresh(h, "archer", {})
+	var e1 = _foe(h, Vector3(6, 0, 0), "zombie", 5000.0)
+	var e2 = _foe(h, Vector3(7.5, 0, 1.5), "zombie", 5000.0)
+	ok = await _cast(h, "a_explosive", e1.global_position)
+	check(ok and e1.life < e1.max_life and e2.life < e2.max_life and e2.burn_t > 0.0, "Blast Arrow: bursts on the first foe, burning its neighbour")
+	await _fresh(h, "archer", {})
+	e1 = _foe(h, Vector3(6, 0, 0), "zombie", 5000.0)
+	e2 = _foe(h, Vector3(9, 0, 2), "zombie", 5000.0)
+	var e3 = _foe(h, Vector3(11, 0, -2), "zombie", 5000.0)
+	ok = await _cast(h, "a_stormshot", e1.global_position)
+	check(ok and e1.life < e1.max_life and e2.life < e2.max_life and e3.life < e3.max_life, "Storm Shot: lightning leaps on from its foe")
+	await _fresh(h, "archer", {})
+	e1 = _foe(h, Vector3(8, 0, 0), "zombie", 5000.0)
+	ok = await _cast(h, "a_mark", e1.global_position, 0.8)
+	var l0: float = e1.life
+	h._hit_enemy(e1, 1.0, 0.0, "attack")
+	var marked: float = l0 - e1.life
+	e1.remove_meta("hunted_until")
+	l0 = e1.life
+	h._hit_enemy(e1, 1.0, 0.0, "attack")
+	check(ok and h.mark == e1 and marked > 0.0, "Hunter's Mark: the foe is marked and the wolf sent (%.0f marked vs %.0f plain)" % [marked, l0 - e1.life])
+	await _fresh(h, "archer", {})
+	var area := [_foe(h, Vector3(9, 0, 0), "zombie", 5000.0), _foe(h, Vector3(10, 0, 2), "zombie", 5000.0)]
+	ok = await _cast(h, "a_barrage", h.global_position + Vector3(9.5, 0, 1), 3.0)
+	check(ok and area.all(func(e): return e.max_life - e.life > 0.0), "Arrow Storm: the rain strikes everything in it")
+	# the plague doctor's
+	await _fresh(h, "plague", {})
+	var near := [_foe(h, Vector3(2, 0, 0), "zombie", 5000.0), _foe(h, Vector3(-2, 0, 2), "zombie", 5000.0)]
+	ok = await _cast(h, "p_miasma", h.global_position, 1.5)
+	check(ok and near.all(func(e): return RT.poisoned(h, e)), "Miasma: everything round him is poisoned")
+	await _fresh(h, "plague", {})
+	e1 = _foe(h, Vector3(7, 0, 0), "zombie", 5000.0)
+	e2 = _foe(h, Vector3(9, 0, 2), "zombie", 5000.0)
+	ok = await _cast(h, "p_spread", e1.global_position, 1.8)
+	check(ok and RT.poisoned(h, e1) and RT.poisoned(h, e2), "Contagion: the cursed foe's plague leaps to its neighbour")
+	await _fresh(h, "plague", {})
+	e1 = _foe(h, Vector3(6, 0, 0), "zombie", 5000.0)
+	e2 = _foe(h, Vector3(6.5, 0, 1), "zombie", 5000.0)
+	h.life = h.max_life * 0.4
+	var lf: float = h.life
+	ok = await _cast(h, "p_leech", e1.global_position, 3.0)
+	check(ok and RT.poisoned(h, e1) and h.life > lf + h.max_life * 0.03, "Leech Jar: the pool poisons and heals him (%.0f -> %.0f)" % [lf, h.life])
+	# skill upgrades
+	await _fresh(h, "archer", {"a_up_fan": 1})
+	var a0: int = h.arrows.size()
+	await _cast(h, "a_multishot", h.global_position + Vector3(6, 0, 0), 0.05)
+	await create_timer(0.9).timeout
+	check(h.arrows.size() >= a0 + 7 or h.talent("multishot_more") == 2.0, "Wide Fan: seven arrows (%d in the air)" % (h.arrows.size() - a0))
+	await _fresh(h, "archer", {"a_up_death": 1})
+	e1 = _foe(h, Vector3(6, 0, 0), "zombie", 30.0)
+	await _cast(h, "a_mark", e1.global_position, 0.8)
+	h.cds["a_mark"] = 6.0
+	h._hit_enemy(e1, 50.0, 0.0, "attack")
+	await process_frame
+	check(e1.dead and h.cds["a_mark"] == 0.0 and h.talent("dmg") >= 25.0, "Marked for Death: the marked kill readies the mark and gives +25%")
+	await _fresh(h, "plague", {"p_up_epidemic": 1})
+	e1 = _foe(h, Vector3(6, 0, 0), "zombie", 40.0)
+	e2 = _foe(h, Vector3(9, 0, 3), "zombie", 5000.0)
+	await _cast(h, "p_spread", e1.global_position, 0.6)
+	h._hit_enemy(e1, 80.0, 0.0, "attack")
+	await create_timer(0.3).timeout
+	check(e1.dead and h.pd.curses.has(e2.get_instance_id()), "Epidemic: the curse leaps to the next foe when its host dies")
+	# every run skill is in its class's pool and reads its theme
+	for cls in ["archer", "plague"]:
+		var ids: Array = RB.skill_pool(cls).map(func(s): return s["id"])
+		var run_ids: Array = load("res://scripts/data.gd").run_skills_for(cls).map(func(s): return s["id"])
+		check(run_ids.all(func(i): return ids.has(i) and str(RT.SKILL_THEMES.get(i, "")) != ""), "%s: run skills in the pool with their themes (%d skills to find)" % [cls, ids.size()])

@@ -203,7 +203,7 @@ func _build_window() -> void:
 			var gl := HBoxContainer.new()
 			gl.add_theme_constant_override("separation", 10)
 			right.add_child(gl)
-			gl.add_child(_gem_swatch(g["color"], 14))
+			gl.add_child(_gem_swatch(g["color"], 26, str(gid)))
 			gl.add_child(MpStyle.label(str(g["name"]) + ("  ×%d" % int(seen[gid]) if int(seen[gid]) > 1 else ""), 14, RunBuild.RARITY_COLORS[int(g["rarity"])], 600))
 			var gt := MpStyle.para(RunTalents.text_of(g, 1), 13, MpStyle.DIM)
 			gt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -506,7 +506,7 @@ func _found_strip(vb: VBoxContainer, o: Dictionary) -> void:
 		var line := HBoxContainer.new()
 		line.add_theme_constant_override("separation", 10)
 		box.add_child(line)
-		line.add_child(_gem_swatch(gc, 26))
+		line.add_child(_gem_swatch(gc, 44, gem))
 		var col := VBoxContainer.new()
 		line.add_child(col)
 		col.add_child(MpStyle.label("Gem found: " + str(g["name"]) + ("  ·  Legendary" if int(g["rarity"]) >= 3 else ""), 15, RunBuild.RARITY_COLORS[int(g["rarity"])], 700))
@@ -522,8 +522,16 @@ func _found_strip(vb: VBoxContainer, o: Dictionary) -> void:
 				names.append(str(Data.BASES[b]["name"]))
 		col2.add_child(MpStyle.para(", ".join(names), 14, MpStyle.IVORY, 380))
 
-## A gem's little swatch: a cut-stone diamond in its colour.
-func _gem_swatch(col: Color, px: int) -> Control:
+## A gem's icon: its painting (Meshy), else a cut-stone diamond in its colour.
+func _gem_swatch(col: Color, px: int, id := "") -> Control:
+	var tex := RunTalents.gem_icon(id) if id != "" else null
+	if tex != null:
+		var tr := TextureRect.new()
+		tr.texture = tex
+		tr.custom_minimum_size = Vector2(px, px)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		return tr
 	var c := ColorRect.new()
 	c.custom_minimum_size = Vector2(px, px)
 	c.color = col

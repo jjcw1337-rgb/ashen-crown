@@ -120,6 +120,20 @@ const TALENTS := [
 		"proc": "frenzy", "k": {"ias": 20, "secs": 3}, "text": "Critical hits give +{ias}% attack speed for {secs} seconds."},
 	{"id": "x_medic", "cls": "any", "theme": "", "rarity": 0, "max": 2, "name": "Field Medic", "icon": "t_regen",
 		"fx": {"pot": 40}, "text": "Potions restore {pot}% more."},
+	{"id": "x_lucky", "cls": "any", "theme": "", "rarity": 2, "max": 1, "name": "Lucky Charm", "icon": "t_star",
+		"fx": {"offer_plus": 1}, "text": "Camp chests offer one more choice."},
+	{"id": "x_treasure", "cls": "any", "theme": "", "rarity": 1, "max": 2, "name": "Treasure Hunter", "icon": "t_eye",
+		"fx": {"loot_plus": 1}, "text": "Camp chests hold {loot_plus} more consumable for you."},
+	{"id": "x_gemcutter", "cls": "any", "theme": "", "rarity": 2, "max": 1, "name": "Gemcutter", "icon": "t_star",
+		"fx": {"gem_luck": 1}, "text": "Camp chests hold a gem twice as often, and rare gems more often."},
+	{"id": "x_ward", "cls": "any", "theme": "", "rarity": 1, "max": 2, "name": "Second Skin", "icon": "t_ward",
+		"fx": {"ward_bonus": 12}, "text": "A ward soaks blows worth {ward_bonus}% of your life; it refills out of combat."},
+	{"id": "x_conduit", "cls": "any", "theme": "", "rarity": 2, "max": 1, "name": "Elemental Conduit", "icon": "t_hourglass",
+		"fx": {"burn_dur": 50, "chill_pct": 50, "burn_pct": 15}, "text": "Your burns last {burn_dur}% longer and hurt {burn_pct}% more; your chills last {chill_pct}% longer."},
+	{"id": "x_bloodlust", "cls": "any", "theme": "", "rarity": 3, "max": 1, "name": "Bloodlust", "icon": "t_heart",
+		"proc": "bloodlust", "k": {"pct": 10, "below": 50}, "text": "Under {below}% life, {pct}% of the damage your hits deal heals you."},
+	{"id": "x_adrenaline", "cls": "any", "theme": "", "rarity": 0, "max": 2, "name": "Adrenaline", "icon": "t_boot",
+		"proc": "speed_on_kill", "k": {"frw": 12, "secs": 3}, "per": ["frw"], "text": "Each kill: +{frw}% run speed for {secs} seconds."},
 	{"id": "x_scholar", "cls": "any", "theme": "", "rarity": 0, "max": 2, "name": "Quick Study", "icon": "t_eye",
 		"fx": {"xp_pct": 15}, "text": "+{xp_pct}% experience."},
 
@@ -163,6 +177,20 @@ const TALENTS := [
 	{"id": "a_ricochet", "cls": "archer", "theme": "marksman", "rarity": 3, "max": 1, "name": "Ricochet", "icon": "attack",
 		"proc": "ricochet", "k": {"pct": 70, "r": 8.0, "bounces": 2}, "text": "Plain shots that strike a foe glance on to {bounces} more ({pct}% damage)."},
 
+	# the archer's skill upgrades (like an upgraded card: offered only once the skill is learned)
+	{"id": "a_up_fan", "cls": "archer", "theme": "marksman", "rarity": 1, "max": 1, "name": "Wide Fan", "icon": "a_multishot", "needs": "a_multishot",
+		"fx": {"multishot_more": 2, "dmg:a_multishot": 10}, "text": "Scatter Shot looses {multishot_more} more arrows and hits {dmg:a_multishot}% harder."},
+	{"id": "a_up_cluster", "cls": "archer", "theme": "flame", "rarity": 2, "max": 1, "name": "Cluster Charge", "icon": "a_explosive", "needs": "a_explosive",
+		"fx": {"blast_r": 40, "dmg:a_explosive": 25}, "text": "Blast Arrow's burst is {blast_r}% wider and {dmg:a_explosive}% stronger."},
+	{"id": "a_up_shatter", "cls": "archer", "theme": "frost", "rarity": 1, "max": 1, "name": "Shatterpoint", "icon": "a_glacial", "needs": "a_glacial",
+		"fx": {"glacial_freeze": 1, "dmg:a_glacial": 15}, "text": "Glacial Shard freezes foes already chilled for a moment, and hits {dmg:a_glacial}% harder."},
+	{"id": "a_up_overload", "cls": "archer", "theme": "storm", "rarity": 1, "max": 2, "name": "Overload", "icon": "a_stormshot", "needs": "a_stormshot",
+		"fx": {"storm_jumps": 2, "dmg:a_stormshot": 10}, "text": "Storm Shot's lightning leaps to {storm_jumps} more foes and hits {dmg:a_stormshot}% harder."},
+	{"id": "a_up_endless", "cls": "archer", "theme": "marksman", "rarity": 2, "max": 1, "name": "Endless Storm", "icon": "a_barrage", "needs": "a_barrage",
+		"fx": {"barrage_ticks": 3}, "text": "Arrow Storm rains {barrage_ticks} more times."},
+	{"id": "a_up_death", "cls": "archer", "theme": "hunt", "rarity": 2, "max": 1, "name": "Marked for Death", "icon": "a_mark", "needs": "a_mark",
+		"proc": "mark_reset", "k": {"dmg": 25, "secs": 5}, "text": "A marked foe that dies makes Hunter's Mark ready again and gives you +{dmg}% damage for {secs} seconds."},
+
 	# ---- the plague doctor
 	{"id": "p_virulent", "cls": "plague", "theme": "toxin", "rarity": 0, "max": 3, "name": "Virulence", "icon": "toxic",
 		"fx": {"poison_dmg": 20}, "text": "Your poison deals +{poison_dmg}% damage."},
@@ -190,6 +218,12 @@ const TALENTS := [
 		"fx": {"vial_burst": 80}, "text": "Pestilence Vial bursts on impact for {vial_burst}% weapon damage."},
 	{"id": "p_double", "cls": "plague", "theme": "alchemy", "rarity": 3, "max": 1, "name": "Double Dose", "icon": "toxic", "needs": "toxic",
 		"fx": {"vial_twin": 1}, "text": "Pestilence Vial throws a second vial beside the first."},
+	{"id": "p_up_miasma", "cls": "plague", "theme": "toxin", "rarity": 1, "max": 1, "name": "Choking Miasma", "icon": "p_miasma", "needs": "p_miasma",
+		"fx": {"miasma_r": 30, "miasma_slow": 1}, "text": "Miasma spreads {miasma_r}% wider and slows everything in it."},
+	{"id": "p_up_epidemic", "cls": "plague", "theme": "contagion", "rarity": 2, "max": 1, "name": "Epidemic", "icon": "p_spread", "needs": "p_spread",
+		"fx": {"curse_jump": 1}, "text": "When a cursed foe dies, Contagion's curse leaps to the nearest foe with its time renewed."},
+	{"id": "p_up_leech", "cls": "plague", "theme": "alchemy", "rarity": 1, "max": 2, "name": "Bloated Leeches", "icon": "p_leech", "needs": "p_leech",
+		"fx": {"leech_heal": 50, "leech_t": 1.5}, "text": "Leech Jar heals {leech_heal}% more and lasts {leech_t} seconds longer."},
 	{"id": "p_tinctures", "cls": "plague", "theme": "alchemy", "rarity": 0, "max": 2, "name": "Strong Tinctures", "icon": "transfusion",
 		"fx": {"pot": 35, "cdr": 5}, "text": "Potions restore {pot}% more; skills recharge {cdr}% faster."},
 
@@ -300,6 +334,11 @@ static func talents_for(cls: String) -> Array:
 static func mark(h: Hero, e) -> void:
 	if h != null and h.run != null and not h.puppet and e != null and is_instance_valid(e):
 		e.set_meta("run_hit", [h, Time.get_ticks_msec()])
+
+## A gem's painted icon (Meshy, tools/skill_icons.py grids "gems", "gems2", "potions"), or null.
+static func gem_icon(id: String) -> Texture2D:
+	var p := "res://assets/textures/gems/%s.png" % id
+	return ResCache.get_res(p) as Texture2D if ResourceLoader.exists(p) else null
 
 static func gem_def(id: String) -> Dictionary:
 	for g in GEMS:
@@ -467,6 +506,9 @@ static func on_hit(h: Hero, e, dealt: float, crit: bool, src: String) -> void:
 			"frenzy":
 				if crit:
 					buff(h, "frenzy", {"ias": float(k["ias"])}, float(k["secs"]))
+			"bloodlust":
+				if h.life < h.max_life * float(k["below"]) / 100.0:
+					h.life = minf(h.max_life, h.life + dealt * float(k["pct"]) / 100.0)
 			"spread_on_hit":
 				if _src_ok(k, src) and poisoned(h, e):
 					_spread_poison(h, e, int(k["n"]), float(k["r"]))
@@ -523,6 +565,12 @@ static func on_death(e) -> void:
 					_area(h, e.global_position, float(k["r"]), _weapon(h) * float(k["pct"]) / 100.0, "plague", e)
 			"hunger":
 				h.run.hunger = minf(float(k["most"]), h.run.hunger + float(k["per"]))
+			"speed_on_kill":
+				buff(h, "adrenaline", {"frw": float(k["frw"])}, float(k["secs"]))
+			"mark_reset":
+				if e.has_meta("hunted_until") and Time.get_ticks_msec() < int(e.get_meta("hunted_until")):
+					h.cds["a_mark"] = 0.0
+					buff(h, "marked_death", {"dmg": float(k["dmg"])}, float(k["secs"]))
 
 ## Poison ticking on `e`: Necrosis's growth (Plague._update_poison multiplies the tick by this).
 static func poison_mult(h: Hero, age: float) -> float:

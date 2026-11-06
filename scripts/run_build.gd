@@ -66,6 +66,7 @@ var hunger := 0.0
 var buffs := {}
 var counters := {}
 var proc_cache = null
+var cls_hint := ""       # (the class the offers are rolled for: roll_gem reads its luck)
 ## A run's own seed: offers roll from it and the camp, so a reopened chest shows the same three.
 var seed := 0
 ## The run's own id: its survivor's file name (Survivors), so one run is saved once however often it's asked.
@@ -183,7 +184,7 @@ func theme_counts(cls: String) -> Dictionary:
 ## The active skills this class can earn: its own and the shared ones (never the primary attack or Block).
 static func skill_pool(cls: String) -> Array:
 	var out := []
-	for s in Data.skills_for(cls) + Data.shared_skills():
+	for s in Data.skills_for(cls) + Data.run_skills_for(cls) + Data.shared_skills():
 		if not (str(s["id"]) in ["attack", "block"]):
 			out.append(s)
 	return out
@@ -303,12 +304,13 @@ func roll_gem(tier: int, key: String) -> String:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash("%d:%s:gem" % [seed, key])
 	tier = clampi(tier, 1, 4)
-	if rng.randf() >= float(RunTalents.GEM_CHANCE[tier]):
+	var luck := 1.0 + float(fx(cls_hint).get("gem_luck", 0.0))
+	if rng.randf() >= float(RunTalents.GEM_CHANCE[tier]) * luck:
 		return ""
 	var want := 0
 	if tier >= 4 and rng.randf() < RunTalents.LEGEND_ODDS:
 		want = 3
-	elif rng.randf() < float(RunTalents.RARE_GEM_CHANCE[tier]) or tier >= 4:
+	elif rng.randf() < float(RunTalents.RARE_GEM_CHANCE[tier]) * luck or tier >= 4:
 		want = 2
 	var pool := RunTalents.GEMS.filter(func(g): return int(g["rarity"]) == want and (want < 3 or not gems.has(g["id"])))
 	if pool.is_empty():
@@ -333,11 +335,14 @@ static func _draw(odds: Array, rng: RandomNumberGenerator) -> int:
 ## doesn't reroll it).
 func offer_for(cls: String, key: String, tier: int, binds: Dictionary) -> Dictionary:
 	if not offers.has(key):
+		cls_hint = cls
 		var gem := roll_gem(tier, key)
 		var lrng := RandomNumberGenerator.new()
 		lrng.seed = hash("%d:%s:loot" % [seed, key])
-		offers[key] = {"tier": tier, "choices": roll_offer(cls, tier, key, binds), "claimed": "", "gem": gem,
-			"loot": RunTalents.roll_consumables(tier, lrng)}
+		var loot := RunTalents.roll_consumables(tier, lrng)
+		for i in int(fx(cls).get("loot_plus", 0.0)):
+			loot.append_array(RunTalents.roll_consumables(1, lrng).slice(0, 1))
+		offers[key] = {"tier": tier, "choices": roll_offer(cls, tier, key, binds), "claimed": "", "gem": gem, "loot": loot}
 		if gem != "":
 			gems.append(gem)       # (found when the chest is opened, whatever is chosen)
 			changed()

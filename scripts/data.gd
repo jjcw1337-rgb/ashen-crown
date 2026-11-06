@@ -425,25 +425,25 @@ const BASES := {
 	"shadow_phial": {"name": "Shadow Phial", "slot": "potion", "kind": "potion", "lvl": 1, "price": 0, "invis": 6.0, "color": Color(0.4, 0.32, 0.62)},
 	"rejuv": {"name": "Rejuvenation Potion", "slot": "potion", "kind": "potion", "lvl": 1, "price": 60, "rejuv": 0.4, "color": Color(0.6, 0.1, 0.9)},
 	# a run's consumables (camp chests, RunTalents.CONSUMABLES): elixirs are timed buffs, flasks are thrown at the pointer
-	"elixir_fury": {"name": "Elixir of Fury", "slot": "potion", "kind": "potion", "lvl": 1, "price": 40, "color": Color(0.95, 0.25, 0.1),
+	"elixir_fury": {"icon": "res://assets/textures/items/c_elixir_fury.png", "name": "Elixir of Fury", "slot": "potion", "kind": "potion", "lvl": 1, "price": 40, "color": Color(0.95, 0.25, 0.1),
 		"buff": {"dmg": 30, "ias": 10}, "secs": 20.0, "desc": "+30% damage and +10% attack speed for 20 seconds."},
-	"draught_iron": {"name": "Ironbark Draught", "slot": "potion", "kind": "potion", "lvl": 1, "price": 40, "color": Color(0.55, 0.45, 0.3),
+	"draught_iron": {"icon": "res://assets/textures/items/c_draught_iron.png", "name": "Ironbark Draught", "slot": "potion", "kind": "potion", "lvl": 1, "price": 40, "color": Color(0.55, 0.45, 0.3),
 		"buff": {"armor_pct": 60, "res": 15}, "secs": 20.0, "desc": "+60% defense and +15% resistances for 20 seconds."},
-	"tonic_swift": {"name": "Swiftness Tonic", "slot": "potion", "kind": "potion", "lvl": 1, "price": 30, "color": Color(0.3, 0.95, 0.85),
+	"tonic_swift": {"icon": "res://assets/textures/items/c_tonic_swift.png", "name": "Swiftness Tonic", "slot": "potion", "kind": "potion", "lvl": 1, "price": 30, "color": Color(0.3, 0.95, 0.85),
 		"buff": {"frw": 25, "ias": 12}, "secs": 15.0, "desc": "+25% run speed and +12% attack speed for 15 seconds."},
-	"salve_troll": {"name": "Troll Salve", "slot": "potion", "kind": "potion", "lvl": 1, "price": 40, "color": Color(0.35, 0.7, 0.2),
+	"salve_troll": {"icon": "res://assets/textures/items/c_salve_troll.png", "name": "Troll Salve", "slot": "potion", "kind": "potion", "lvl": 1, "price": 40, "color": Color(0.35, 0.7, 0.2),
 		"buff": {"regen": 0.0}, "regen_pct": 6.0, "secs": 10.0, "desc": "Regenerate 60% of your life over 10 seconds."},
-	"elixir_wrath": {"name": "Elixir of Wrath", "slot": "potion", "kind": "potion", "lvl": 1, "price": 60, "color": Color(1.0, 0.75, 0.15),
+	"elixir_wrath": {"icon": "res://assets/textures/items/c_elixir_wrath.png", "name": "Elixir of Wrath", "slot": "potion", "kind": "potion", "lvl": 1, "price": 60, "color": Color(1.0, 0.75, 0.15),
 		"buff": {"crit": 25, "crit_dmg": 50}, "secs": 15.0, "desc": "+25% critical chance and +50% critical damage for 15 seconds."},
-	"flask_fire": {"name": "Fire Flask", "slot": "potion", "kind": "potion", "lvl": 1, "price": 40, "color": Color(1.0, 0.45, 0.1),
+	"flask_fire": {"icon": "res://assets/textures/items/c_flask_fire.png", "name": "Fire Flask", "slot": "potion", "kind": "potion", "lvl": 1, "price": 40, "color": Color(1.0, 0.45, 0.1),
 		"bomb": 0, "bomb_pct": 260, "bomb_r": 4.0, "desc": "Thrown at the pointer: 260% weapon damage within 4 m, setting everything alight."},
-	"flask_frost": {"name": "Frost Flask", "slot": "potion", "kind": "potion", "lvl": 1, "price": 40, "color": Color(0.55, 0.85, 1.0),
+	"flask_frost": {"icon": "res://assets/textures/items/c_flask_frost.png", "name": "Frost Flask", "slot": "potion", "kind": "potion", "lvl": 1, "price": 40, "color": Color(0.55, 0.85, 1.0),
 		"bomb": 1, "bomb_pct": 160, "bomb_r": 4.5, "desc": "Thrown at the pointer: 160% weapon damage within 4.5 m, freezing them for 2 seconds."},
-	"flask_storm": {"name": "Thunder Flask", "slot": "potion", "kind": "potion", "lvl": 1, "price": 40, "color": Color(0.6, 0.65, 1.0),
+	"flask_storm": {"icon": "res://assets/textures/items/c_flask_storm.png", "name": "Thunder Flask", "slot": "potion", "kind": "potion", "lvl": 1, "price": 40, "color": Color(0.6, 0.65, 1.0),
 		"bomb": 2, "bomb_pct": 200, "bomb_r": 5.0, "desc": "Thrown at the pointer: lightning strikes everything within 5 m for 200% weapon damage."},
-	"scroll_ward": {"name": "Scroll of Warding", "slot": "potion", "kind": "potion", "lvl": 1, "price": 50, "color": Color(0.85, 0.8, 1.0),
+	"scroll_ward": {"icon": "res://assets/textures/items/c_scroll_ward.png", "name": "Scroll of Warding", "slot": "potion", "kind": "potion", "lvl": 1, "price": 50, "color": Color(0.85, 0.8, 1.0),
 		"ward_pct": 40, "desc": "For 20 seconds, a ward soaks blows worth 40% of your life."},
-	"tome_insight": {"name": "Tome of Insight", "slot": "potion", "kind": "potion", "lvl": 1, "price": 80, "color": Color(0.95, 0.85, 0.5),
+	"tome_insight": {"icon": "res://assets/textures/items/c_tome_insight.png", "name": "Tome of Insight", "slot": "potion", "kind": "potion", "lvl": 1, "price": 80, "color": Color(0.95, 0.85, 0.5),
 		"xp_level": 0.6, "desc": "Read it: 60% of a level's experience."},
 	"gold": {"name": "Gold", "slot": "gold", "kind": "gold", "lvl": 1, "price": 0},
 	# the plague doctor's cane ("cls": only he carries it; Plague.cane_model draws it)
@@ -787,6 +787,33 @@ static func skills_known(cls: String) -> Array:
 ## Frost Nova 8, Arc 11, Earthshatter 16). A locked skill shows greyed with its level, can't be bound or cast.
 ## true opens every skill from level 1 again (jj's unlock-all, 2026-11-01); the F8 panel's "All skills" does it for
 ## testing (Game.test_allskills).
+## Skills only a multiplayer run offers (Blaine's roguelike pass, 2026-11-06): camp chests draw them with the class's
+## own (RunBuild.skill_pool); single player never sees them (skills_for, skills_known and the class picker read SKILLS).
+## Their build theme is RunTalents.SKILL_THEMES; their reward rarity comes from "lvl" (RunBuild.skill_rarity).
+const RUN_SKILLS := [
+	{"id": "a_multishot", "cls": "archer", "name": "Scatter Shot", "lvl": 1, "mana": 7, "cd": 0.0, "use": 0.85, "aim": "facing", "range": 13.0, "role": "packs up close",
+		"desc": "Loose five arrows in a fan: 55% weapon damage each. A foe close enough takes several."},
+	{"id": "a_glacial", "cls": "archer", "name": "Glacial Shard", "lvl": 1, "mana": 6, "cd": 0.0, "use": 0.85, "aim": "facing", "range": 16.0, "role": "line chill",
+		"desc": "An arrow of ice that pierces every foe in a line for 110% weapon damage and chills them (40% slower) for 3 seconds."},
+	{"id": "a_explosive", "cls": "archer", "name": "Blast Arrow", "lvl": 9, "mana": 9, "cd": 0.0, "use": 1.0, "aim": "facing", "range": 16.0, "role": "fire burst",
+		"desc": "A fire arrow that bursts at the first foe it strikes or where its flight ends: 150% weapon damage to everything within 3.5 metres, setting them burning."},
+	{"id": "a_stormshot", "cls": "archer", "name": "Storm Shot", "lvl": 9, "mana": 8, "cd": 0.0, "use": 0.9, "aim": "facing", "range": 16.0, "role": "chain lightning",
+		"desc": "A charged arrow: 100% weapon damage to the first foe it strikes, then lightning leaps on to 4 more for 70%."},
+	{"id": "a_mark", "cls": "archer", "name": "Hunter's Mark", "lvl": 9, "mana": 6, "cd": 6.0, "tags": ["cc"], "aim": "point", "range": 18.0, "role": "focus a target",
+		"desc": "Mark the foe under the pointer for 8 seconds: it takes 35% more damage from everyone, and your wolf hunts it down."},
+	{"id": "a_barrage", "cls": "archer", "name": "Arrow Storm", "lvl": 16, "mana": 16, "cd": 0.0, "use": 1.2, "aim": "point", "range": 14.0, "role": "area rain",
+		"desc": "Loose a storm of arrows into the sky: for 1.5 seconds they rain on the cursor, striking everything within 4.5 metres six times for 32% weapon damage."},
+	{"id": "p_miasma", "cls": "plague", "name": "Miasma", "lvl": 1, "mana": 9, "cd": 0.0, "use": 0.9, "aim": "self", "role": "poison around him",
+		"desc": "Smash a censer of plague at your feet: a cloud 4.5 metres wide hangs for 4 seconds, poisoning everything in it."},
+	{"id": "p_spread", "cls": "plague", "name": "Contagion", "lvl": 9, "mana": 8, "cd": 0.0, "use": 0.8, "aim": "point", "range": 14.0, "role": "spreading curse",
+		"desc": "Curse the foe nearest the pointer with a creeping plague for 6 seconds: it is poisoned, and every second its poison leaps to all within 4 metres. If it dies cursed, the plague bursts to everyone within 5 metres."},
+	{"id": "p_leech", "cls": "plague", "name": "Leech Jar", "lvl": 9, "mana": 10, "cd": 9.0, "tags": ["sustain"], "aim": "point", "range": 12.0, "role": "heal from foes",
+		"desc": "Lob a jar of blood leeches: for 5 seconds everything within 3 metres is poisoned, and every foe in it heals you 1.5% of your life a second."},
+]
+
+static func run_skills_for(cls: String) -> Array:
+	return RUN_SKILLS.filter(func(s): return s["cls"] == cls)
+
 const SKILLS_UNLOCKED := false
 
 ## Item power (Blaine's progression overhaul, then "not 'cut' but full rework", docs/queue_items_rework.md): character
@@ -878,6 +905,9 @@ static func skill_locked(sk: Dictionary, level: int) -> bool:
 
 static func skill_def(id: String) -> Dictionary:
 	for s in SKILLS:
+		if s["id"] == id:
+			return s
+	for s in RUN_SKILLS:
 		if s["id"] == id:
 			return s
 	for s in COMMON_SKILLS:

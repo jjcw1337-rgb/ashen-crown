@@ -236,7 +236,7 @@ var fxs := {}
 func _init() -> void:
 	inventory.resize(40)
 	stash.resize(60)
-	for s in Data.SKILLS:
+	for s in Data.SKILLS + Data.RUN_SKILLS:
 		cds[s["id"]] = 0.0
 	binds = default_binds()
 
@@ -268,7 +268,8 @@ func has_bow() -> bool:
 	return is_archer() and w != null and Data.BASES[w["base"]]["kind"] in ["bow", "longbow"]
 
 func skill_list() -> Array:
-	return Data.skills_for(cls)
+	# (a run character also has the run-only skills of its class: Data.RUN_SKILLS)
+	return Data.skills_for(cls) + (Data.run_skills_for(cls) if run != null else [])
 
 # ---------------------------------------------------------------- skill effects (SkillFx, every class)
 ## A skill wants something seen: play the event here now and, in co-op, on this hero's puppet on every

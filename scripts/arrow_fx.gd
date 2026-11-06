@@ -81,6 +81,10 @@ const PRESETS := {
 	},
 	## the plain war arrow: no fire; sparks on the hit
 	"war": {"model": "war", "sounds": {"pierce": [["impact_flesh", -6.0, 1.0]]}},
+	## a run's skills (Blaine's roguelike pass): Glacial Shard flies the Meshy glacier arrow, Storm Shot a war arrow
+	## wreathed in lightning (ArcherFx adds their glow), Arrow Storm's rain are war arrows
+	"frost": {"model": "frost", "sounds": {"pierce": [["ice_arrow_hit", -5.0, 1.0]]}},
+	"storm": {"model": "war", "sounds": {"pierce": [["arc_hit", -6.0, 1.2]]}},
 }
 
 static var _shaders := {}
