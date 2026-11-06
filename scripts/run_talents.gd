@@ -79,6 +79,7 @@ const SKILL_THEMES := {
 	"toxic": "toxin", "swarm": "vermin", "bloom": "vermin", "fog": "alchemy", "transfusion": "alchemy", "experiment": "alchemy",
 	"p_miasma": "toxin", "p_spread": "toxin", "p_leech": "alchemy", "p_rats": "vermin",
 	"cleave": "crusader", "nova": "crusader", "charge": "vanguard", "cry": "vanguard",
+	"k_judgment": "crusader", "k_aegis": "bulwark", "k_whirl": "crusader", "k_rites": "vanguard",
 	"rend": "render", "siphon": "shadow", "step": "shadow", "grasp": "night", "phantom": "render", "night": "night",
 	"fists": "magma", "icharge": "magma", "cslam": "cataclysm", "hurl": "cataclysm", "grip": "pit", "wrath": "pit",
 	"pie": "slapstick", "peels": "slapstick", "slide": "showman", "doppel": "showman", "juggle": "showman", "bounce": "bigtop", "car": "bigtop",
@@ -222,6 +223,22 @@ const TALENTS := [
 		"fx": {"pot": 35, "cdr": 5}, "text": "Potions restore {pot}% more; skills recharge {cdr}% faster."},
 
 	# ---- the knight
+	{"id": "k_up_judgment", "cls": "knight", "theme": "crusader", "rarity": 1, "max": 1, "name": "Wrath of Heaven", "icon": "k_judgment", "needs": "k_judgment",
+		"fx": {"judgment_more": 2, "dmg:k_judgment": 10}, "text": "Judgment calls {judgment_more} more pillars round the first, each {dmg:k_judgment}% stronger."},
+	{"id": "k_up_aegis", "cls": "knight", "theme": "bulwark", "rarity": 2, "max": 1, "name": "Bastion", "icon": "k_aegis", "needs": "k_aegis",
+		"fx": {"aegis_pct": 20, "cd:k_aegis": 20}, "text": "Aegis's ward is {aegis_pct}% of your life stronger and comes back {cd:k_aegis}% sooner; its burst is twice as hard."},
+	{"id": "k_up_whirl", "cls": "knight", "theme": "vanguard", "rarity": 1, "max": 2, "name": "Unending Spin", "icon": "k_whirl", "needs": "k_whirl",
+		"fx": {"whirl_more": 1, "dmg:k_whirl": 10}, "text": "Blade Storm spins {whirl_more} more time and hits {dmg:k_whirl}% harder."},
+	{"id": "k_up_rites", "cls": "knight", "theme": "vanguard", "rarity": 2, "max": 1, "name": "No Quarter", "icon": "k_rites", "needs": "k_rites",
+		"fx": {"rites_buff": 1}, "text": "A Last Rites kill also gives you +30% damage and +20% run speed for 4 seconds."},
+	{"id": "k_brands", "cls": "knight", "theme": "crusader", "rarity": 2, "max": 1, "name": "Searing Brands", "icon": "t_star",
+		"fx": {"brand_max": 3, "brand_burn": 1}, "text": "Holy Brands stack {brand_max} higher and each one burns its foe a little."},
+	{"id": "k_zeal", "cls": "knight", "theme": "crusader", "rarity": 1, "max": 2, "name": "Zealot", "icon": "t_sword",
+		"proc": "ignite_on_hit", "k": {"src": "attack", "pct": 18, "secs": 3.0}, "per": ["pct"], "text": "Your sword sets foes alight with holy fire ({pct}% of the blow a second)."},
+	{"id": "k_iron", "cls": "knight", "theme": "bulwark", "rarity": 0, "max": 3, "name": "Iron Hide", "icon": "t_armor",
+		"fx": {"armor_pct": 15, "ward_bonus": 4}, "text": "+{armor_pct}% defense and a ward of {ward_bonus}% of your life that refills out of combat."},
+	{"id": "k_cleave", "cls": "knight", "theme": "vanguard", "rarity": 1, "max": 1, "name": "Cleaving Blows", "icon": "attack",
+		"proc": "ricochet", "k": {"pct": 50, "r": 3.0, "bounces": 2}, "text": "Your sword's blows cleave into {bounces} more foes beside the one struck ({pct}%)."},
 	{"id": "k_sacred", "cls": "knight", "theme": "crusader", "rarity": 2, "max": 1, "name": "Sacred Flame", "icon": "nova",
 		"proc": "ignite_on_crit", "k": {"pct": 60, "secs": 3.0}, "text": "Critical hits set foes alight with holy fire ({pct}% of the hit a second)."},
 	{"id": "k_martyr", "cls": "knight", "theme": "bulwark", "rarity": 2, "max": 1, "name": "Martyr's Resolve", "icon": "t_ward",
@@ -474,7 +491,7 @@ static func on_hit(h: Hero, e, dealt: float, crit: bool, src: String) -> void:
 				if _src_ok(k, src) and _monster(e):
 					_chain(h, e, int(k["jumps"]), dealt * float(k["pct"]) / 100.0, float(k["r"]))
 			"ricochet":
-				if src == "attack" and _monster(e):
+				if (src == "attack" or src == "") and _monster(e):
 					_ricochet(h, e, int(k["bounces"]), dealt * float(k["pct"]) / 100.0, float(k["r"]))
 			"bolt_on_crit":
 				if crit and _monster(e):

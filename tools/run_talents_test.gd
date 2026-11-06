@@ -475,6 +475,29 @@ func _skills(h) -> void:
 	h._hit_enemy(e1, 80.0, 0.0, "attack")
 	await create_timer(0.3).timeout
 	check(e1.dead and h.pd.curses.has(e2.get_instance_id()), "Epidemic: the curse leaps to the next foe when its host dies")
+	# the knight's
+	await _fresh(h, "knight", {})
+	var spin := [_foe(h, Vector3(2, 0, 0), "zombie", 5000.0), _foe(h, Vector3(-2, 0, 1), "zombie", 5000.0)]
+	h.run.skills.append("k_judgment")
+	ok = await _cast(h, "k_whirl", h.global_position, 1.5)
+	check(ok and spin.all(func(e): return e.life < e.max_life and load("res://scripts/knight_skills.gd").brands(e) >= 2), "Blade Storm: strikes all round twice, branding them")
+	l0 = spin[0].life
+	ok = await _cast(h, "k_judgment", spin[0].global_position, 1.5)
+	var branded_hit: float = l0 - spin[0].life
+	check(ok and load("res://scripts/knight_skills.gd").brands(spin[0]) == 0 and branded_hit > 0.0, "Judgment: the pillar spends the brands (%.0f)" % branded_hit)
+	await _fresh(h, "knight", {})
+	var near2 = _foe(h, Vector3(2.5, 0, 0), "zombie", 5000.0)
+	ok = await _cast(h, "k_aegis", h.global_position, 1.0)
+	check(ok and h.ward > h.max_life * 0.3 and near2.taunt == h, "Aegis: a ward of a third of his life, and the foe turns on him (ward %.0f of %.0f, taunt %s)" % [h.ward, h.max_life, str(near2.taunt)])
+	h.take_hit(h.max_life * 0.2, near2.global_position, "melee", "fire")
+	await create_timer(5.5).timeout
+	check(near2.life < near2.max_life, "Aegis: it bursts for what it soaked")
+	await _fresh(h, "knight", {})
+	var low = _foe(h, Vector3(6, 0, 0), "zombie", 1000.0)
+	low.life = 60.0
+	h.cds["k_rites"] = 0.0
+	ok = await _cast(h, "k_rites", low.global_position, 1.5)
+	check(ok and low.dead and h.cds["k_rites"] == 0.0, "Last Rites: the execute kills and the leap is ready again (ok %s dead %s life %.0f cd %.1f dist %.1f)" % [ok, low.dead, low.life, h.cds["k_rites"], h.global_position.distance_to(low.global_position)])
 	# every run skill is in its class's pool and reads its theme
 	for cls in ["archer", "plague"]:
 		var ids: Array = RB.skill_pool(cls).map(func(s): return s["id"])

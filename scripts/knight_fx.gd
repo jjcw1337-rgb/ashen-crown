@@ -31,6 +31,36 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			SkillFx.snd(h, "battle_cry")
 			SkillFx.duck(h, -8.0, 1.2)
 			SkillFx.shake(h, 0.3)
+		["k_whirl", "impact"]:
+			# Blade Storm: a ring of holy fire at sword height for each turn, sparks thrown off the edge
+			var n: int = int(ev.get("n", 2))
+			for i in n:
+				var t := root.create_tween()
+				t.tween_interval(0.22 * i)
+				t.tween_callback(func():
+					if is_instance_valid(h) and h.game != null and h.game.world != null:
+						var at: Vector3 = h.global_position
+						HolyFx.fire_ring(root, at + Vector3(0, 0.9, 0), 0.8, KnightSkills.WHIRL_R, 0.25, 0.28)
+						HolyFx.motes(root, at, KnightSkills.WHIRL_R * 0.8, 10, 0.8)
+						Fx.sparks(root, at + Vector3(0, 1.0, 0), Color(1.0, 0.95, 0.75))
+						Sfx.play_at("cleave_swing", at, -3.0, randf_range(1.05, 1.2)))
+			SkillFx.shake(h, 0.18)
+		["k_aegis", "impact"]:
+			# Aegis: the seal under him, a shaft of light round him, a gold ring out to the taunt
+			HolyFx.battle_cry(h, root, pos, 5.0)
+			var ward := Fx.aura(h, Color(1.0, 0.9, 0.55), 22, 0.15, 0.08, 1.0, 0.2, 0.8, 50.0, Vector3(0, 1.0, 0))
+			ward.name = "aegis_ward"
+			Fx._free_later(ward, 6.0)
+			SkillFx.snd(h, "battle_cry", -4.0, 1.15)
+		["k_judgment", "impact"]:
+			# Judgment: a seal drawn on the ground, then a column of light slamming down on it in a sunburst
+			for q in ev.get("ps", PackedVector3Array()):
+				HolyFx.seal(root, q, KnightSkills.JUDGE_R, 0.1, 0.8, 1.0)
+				HolyFx.level_up(h, root, q)
+				HolyFx.fire_ring(root, q, 0.4, KnightSkills.JUDGE_R, 0.9, 0.35)
+				HolyFx.shockwave(root, h.game, q, KnightSkills.JUDGE_R + 0.8, 0.35)
+				Sfx.play_at("holy_nova", q, -3.0, 1.2)
+			SkillFx.shake(h, 0.3)
 		["charge", "cast"]:
 			h.fxs["charge"] = 0.5
 			HolyFx.charge_start(h, root)

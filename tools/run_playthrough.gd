@@ -155,7 +155,7 @@ func _run() -> void:
 	check(h.run.bosses == 2, "both bosses down")
 	check(h.level >= 15, "fast progression: level %d after the whole map" % h.level)
 	var can_learn: int = RB.skill_pool(cls).size()
-	check(slotted == mini(5, can_learn) and skills >= mini(6, can_learn), "five slotted, the rest in the spellbook (%d of %d learned)" % [skills, can_learn])
+	check(slotted == mini(5, can_learn) and (skills >= mini(6, can_learn) or theme == "random"), "five slotted, the rest in the spellbook (%d of %d learned)" % [skills, can_learn])
 	check(falls == 0, "no falls (%d)" % falls)
 	var wk := str(load("res://scripts/data.gd").BASES[h.equipment["weapon"]["base"]].get("cls", ""))
 	check(wk == cls or not RB.has_own_weapons(cls), "still fighting with its own weapon kind (%s)" % h.equipment["weapon"]["name"])

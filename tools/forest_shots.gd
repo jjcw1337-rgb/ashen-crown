@@ -1,6 +1,6 @@
 extends SceneTree
 ## Screenshots of the Verdant Reach (BgForest) from the game camera: a starting glade, a camp of each region, the
-## two bosses' grounds, the stream's bridge and the middle. `-- outdir` (needs a display).
+## two bosses' grounds, the stream's bridge and the middle, and ForestLife's places (a shrine, the mushroom woods' heart). `-- outdir` (needs a display).
 var g
 var out := "user://forest_shots"
 
@@ -47,8 +47,16 @@ func _run() -> void:
 		return
 	await shot("glade_sw", F.SPAWNS[0] + Vector2(4, -4))
 	await shot("stream", Vector2(20, -20))
+	# ForestLife's places: the mushroom woodland's heart, a crystal shrine, a meadow by the stream
+	await shot("mush_heart", F.MUSH_C + Vector2(6, 4))
+	var L = load("res://scripts/forest_life.gd")      # (at run time: a static reference compiles it before Sfx exists)
+	var spots: Array = L.shrines
+	print("[LIFE] shrines ", spots, " flower clumps ", L.flower_pts.size() * 5)
+	if not spots.is_empty():
+		await shot("shrine", spots[0] + Vector2(0, 3))
+	await shot("meadow", Vector2(30, 30))
 	# (the bosses last: their intro cards hold the screen a while)
-	for id in ["sporefall", "shadeleaf", "sundered", "nightwhisper", "barrow", "heartwood", "rootknot", "frostfang", "grotto"]:
+	for id in ["sporefall", "shadeleaf", "sundered", "nightwhisper", "brookside", "barrow", "heartwood", "rootknot", "rimewood", "frostfang", "grotto"]:
 		for c in F.CAMPS:
 			if c["id"] == id:
 				await shot("camp_" + c["id"], c["at"] + Vector2(0, float(c["r"]) * 0.8))

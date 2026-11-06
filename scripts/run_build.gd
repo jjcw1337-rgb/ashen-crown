@@ -169,13 +169,16 @@ func changed() -> void:
 ## How much of each theme the build has: its skills and passives (stacks), for the offers' pull and the build window.
 func theme_counts(cls: String) -> Dictionary:
 	var out := {}
+	var mine := {}
+	for t in RunTalents.THEMES.get(cls, []):
+		mine[t["id"]] = true
 	for id in skills:
 		var th := str(RunTalents.SKILL_THEMES.get(id, ""))
-		if th != "":
+		if mine.has(th):
 			out[th] = int(out.get(th, 0)) + 2
 	for id in passives:
 		var th := str(passive_def(cls, id).get("theme", ""))
-		if th != "":
+		if mine.has(th):
 			out[th] = int(out.get(th, 0)) + int(passives[id])
 	return out
 
