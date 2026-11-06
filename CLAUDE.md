@@ -1630,6 +1630,16 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `plague_attack`, picked by `_icon_id`) are a Meshy 3x3 grid cut by `tools/skill_icons.py` (`prompt`, `meshy.py
   draw`, `cut`; the same palette and cutter as `talent_icons.py`; lossless import). Another class gets them by adding
   a `CELLS` entry and painting its grid.
+- **The Hero Codex** (`scripts/codex.gd` `Codex`, `data/codex/`; Blaine 2026-11-06): every hero's skills, rites
+  (talents), gems and consumables as JSON, the one place they are designed; `Data.SKILLS`, `Talents.TREES` and
+  `RunBuild.GENERIC` are static vars that the codex is laid over when their scripts load (`_static_init`: names, text,
+  mana, cooldowns, power, range, rarity; rites' fx and stacks). Entries are `"live"` (in the game) or `"design"` (kept
+  until their code exists; the game ignores them); a live rite whose fx keys are all `Codex.FX_KEYS` (or
+  `dmg:`/`cd:`/`cost:<skill>`) joins its class's run pool from data alone (`Codex.extra_rites`). Every hero has three
+  **directions** (its three talent trees; the Warlock's design: Corruption, Fear, Drain). The web editor is
+  `tools/codex/server.py` (README there); after adding a skill or talent in code run `tools/codex_export.gd` (keeps the
+  codex's design entries) and `tools/codex_test.gd`. A value edited in code without re-exporting is overridden by the
+  codex file: change it in the codex.
 - **Talents** (`scripts/talents.gd`, the window is N; `tools/talent_test.gd`, `tools/talent_shot.gd`): three trees per
   class of seven talents in four rows (2, 2, 2, then a capstone); a row opens with 0/3/6/10 points spent above it in
   that tree (`Talents.ROW_REQ`), and a rank can't be taken back if a deeper talent would lose its row. One point a

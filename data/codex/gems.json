@@ -1,0 +1,77 @@
+{
+	"about": "Gems: unique power-ups (relics). One of a kind per run; bosses and deep chests offer a pick of 1 of 3. A hero's own gems live in its hero file.",
+	"entries": [
+		{
+			"id": "gem_ruby",
+			"status": "design",
+			"name": "Ruby",
+			"rarity": 0,
+			"color": "#d23a3f",
+			"text": "Your hits have a 12% chance to set foes burning for 3 s."
+		},
+		{
+			"id": "gem_sapphire",
+			"status": "design",
+			"name": "Sapphire",
+			"rarity": 0,
+			"color": "#3e6fe0",
+			"text": "Your hits chill foes: 20% slower for 2 s."
+		},
+		{
+			"id": "gem_emerald",
+			"status": "design",
+			"name": "Emerald",
+			"rarity": 0,
+			"color": "#2fae63",
+			"text": "Each kill heals 3% of your life."
+		},
+		{
+			"id": "gem_topaz",
+			"status": "design",
+			"name": "Topaz",
+			"rarity": 1,
+			"color": "#e9a93a",
+			"text": "A free dodge roll every 8 s that costs no stamina."
+		},
+		{
+			"id": "gem_amethyst",
+			"status": "design",
+			"name": "Amethyst",
+			"rarity": 1,
+			"color": "#9a5ad8",
+			"text": "After a dodge roll, monsters lose sight of you for 1.5 s."
+		},
+		{
+			"id": "gem_onyx",
+			"status": "design",
+			"name": "Onyx",
+			"rarity": 1,
+			"color": "#4b4b55",
+			"text": "A ward worth 12% of your life soaks blows and refills out of combat."
+		},
+		{
+			"id": "gem_opal",
+			"status": "design",
+			"name": "Opal",
+			"rarity": 1,
+			"color": "#bfe3e6",
+			"text": "Skill cooldowns recover 12% faster."
+		},
+		{
+			"id": "gem_jet",
+			"status": "design",
+			"name": "Jet",
+			"rarity": 0,
+			"color": "#2a2f3a",
+			"text": "Your dodge roll goes 25% further."
+		},
+		{
+			"id": "gem_crown_diamond",
+			"status": "design",
+			"name": "Crown Diamond",
+			"rarity": 2,
+			"color": "#f2f4ff",
+			"text": "Boss only. Every 5th skill cast is free and deals double damage."
+		}
+	]
+}

@@ -1,0 +1,392 @@
+{
+	"cls": "plague",
+	"name": "Plague Doctor",
+	"fantasy": "A beaked physician of the cursed years, belted with vials and a smoking censer. Fights by control: vials of plague, a swarm of flies, a corpse flower that roots the careless, a fog to vanish in, a transfusion to outlast a beating, and a last experiment that turns the ground to quarantine.",
+	"directions": [
+		{
+			"id": "Toxicology",
+			"name": "Toxicology",
+			"desc": "Poison: Pestilence Vial, longer and crueller pools."
+		},
+		{
+			"id": "Vermin and Rot",
+			"name": "Vermin and Rot",
+			"desc": "The living plague: Swarmcraft and Corpse Bloom."
+		},
+		{
+			"id": "The Experiment",
+			"name": "The Experiment",
+			"desc": "Deception and survival: Fog of the Forgotten, Transfusion and The Last Experiment."
+		}
+	],
+	"skills": [
+		{
+			"id": "toxic",
+			"status": "live",
+			"name": "Pestilence Vial",
+			"rarity": 0,
+			"direction": "",
+			"desc": "Pluck a vial of plague from your bandolier and lob it. A ring shows everyone where it will land. It bursts for a small hit and leaves a contaminated pool 2.6 metres wide for 3.5 seconds: anything standing in it is poisoned and keeps rotting for 2 seconds after it steps out. Pools of the same kind don't stack.",
+			"mana": 7,
+			"cd": 0.0,
+			"range": 12.0,
+			"lvl": 1
+		},
+		{
+			"id": "swarm",
+			"status": "live",
+			"name": "Swarmcraft",
+			"rarity": 0,
+			"direction": "",
+			"desc": "Uncork your reliquary: a swarm of plague flies flies to the spot and hangs there for 6 seconds, biting whatever is inside and harrying it (attacks and casts 25% slower). Use it again to send the swarm somewhere else (twice). It never chases anyone, it's slower than a running man, and a dodge roll through it scatters it for a moment. The cooldown starts when it comes home.",
+			"mana": 16,
+			"cd": 12.0,
+			"range": 13.0,
+			"tags": [
+				"summon",
+				"cc"
+			],
+			"lvl": 3
+		},
+		{
+			"id": "bloom",
+			"status": "live",
+			"name": "Corpse Bloom",
+			"rarity": 0,
+			"direction": "",
+			"desc": "Drive a seed into the ground. It grows for a second, then breathes for 6 seconds: every 2 seconds its ring of roots draws in and a spore pulse hits everything within 3.5 metres. Anyone who stood still while the ring drew in is snared by its roots for 0.6 seconds. In the Battlegrounds other players can break it with three blows.",
+			"mana": 14,
+			"cd": 10.0,
+			"range": 9.0,
+			"tags": [
+				"trap",
+				"cc"
+			],
+			"lvl": 5
+		},
+		{
+			"id": "fog",
+			"status": "live",
+			"name": "Fog of the Forgotten",
+			"rarity": 1,
+			"direction": "",
+			"desc": "Dash your censer at your feet and hop 4 metres back from the pointer. Pale fog 6 metres across hangs for 6 seconds: other players outside it can't see anyone inside, and inside it everyone within 3.5 metres is seen. You move 25% faster in it; monsters beyond 3.5 metres lose track of you in it; striking from it reveals you for a moment.",
+			"mana": 15,
+			"cd": 16.0,
+			"range": 4.0,
+			"tags": [
+				"movement",
+				"buff"
+			],
+			"lvl": 9
+		},
+		{
+			"id": "transfusion",
+			"status": "live",
+			"name": "Transfusion",
+			"rarity": 1,
+			"direction": "",
+			"desc": "Drive the needle of your apparatus into your arm: for 2 seconds you take 45% less damage and move at 70% speed, and slows, snares and Blight are washed out of you. What the tanks soak heals you afterwards (up to 15% of your life). Attacking ends it early.",
+			"mana": 10,
+			"cd": 18.0,
+			"tags": [
+				"buff",
+				"sustain"
+			],
+			"lvl": 14
+		},
+		{
+			"id": "experiment",
+			"status": "live",
+			"name": "The Last Experiment",
+			"rarity": 2,
+			"direction": "",
+			"desc": "Slam down your vat (everyone sees an 8-metre warning ring) and crank it for 2.5 seconds. Then the glass bursts, the thing inside crawls out and the ring becomes a quarantine for 7 seconds: spores, Blight and a 20% slow inside, and the creature lumbers at the nearest foe, spewing. A stun, another skill or walking away from the vat bursts it early, only 5 metres wide. In the Battlegrounds other players can break the vat while you crank it (three blows: the experiment fails) and kill the creature (four).",
+			"mana": 40,
+			"cd": 45.0,
+			"range": 7.0,
+			"tags": [
+				"ultimate"
+			],
+			"lvl": 20
+		}
+	],
+	"rites": [
+		{
+			"id": "p_dose",
+			"status": "live",
+			"name": "Stronger Dose",
+			"rarity": 0,
+			"direction": "Toxicology",
+			"max": 3,
+			"fx": {
+				"dmg:toxic": 10.0
+			},
+			"text": "Pestilence Vial deals {dmg:toxic}% more damage.",
+			"icon": "toxic"
+		},
+		{
+			"id": "p_study",
+			"status": "live",
+			"name": "Studied Hand",
+			"rarity": 0,
+			"direction": "Toxicology",
+			"max": 3,
+			"fx": {
+				"ene": 3.0
+			},
+			"text": "+{ene} energy.",
+			"icon": "t_eye"
+		},
+		{
+			"id": "p_venom",
+			"status": "live",
+			"name": "Virulent Venom",
+			"rarity": 0,
+			"direction": "Toxicology",
+			"max": 3,
+			"fx": {
+				"poison_dmg": 8.0
+			},
+			"text": "All your poison hurts {poison_dmg}% more.",
+			"icon": "t_star"
+		},
+		{
+			"id": "p_cloud",
+			"status": "live",
+			"name": "Heavy Vapour",
+			"rarity": 0,
+			"direction": "Toxicology",
+			"max": 3,
+			"fx": {
+				"cloud_size": 8.0
+			},
+			"text": "Your contaminated pools spread {cloud_size}% wider.",
+			"icon": "toxic"
+		},
+		{
+			"id": "p_linger",
+			"status": "live",
+			"name": "Lingering Rot",
+			"rarity": 1,
+			"direction": "Toxicology",
+			"max": 3,
+			"fx": {
+				"poison_dur": 0.5
+			},
+			"text": "Poison keeps working {poison_dur} seconds longer after a foe leaves a pool.",
+			"icon": "t_hourglass"
+		},
+		{
+			"id": "p_thrift",
+			"status": "live",
+			"name": "Measured Doses",
+			"rarity": 1,
+			"direction": "Toxicology",
+			"max": 2,
+			"fx": {
+				"cost:toxic": 15.0
+			},
+			"text": "Pestilence Vial costs {cost:toxic}% less mana.",
+			"icon": "t_hourglass"
+		},
+		{
+			"id": "p_miasma",
+			"status": "live",
+			"name": "Standing Miasma",
+			"rarity": 2,
+			"direction": "Toxicology",
+			"max": 1,
+			"fx": {
+				"cloud_dur": 1.5
+			},
+			"text": "Every pool lingers {cloud_dur} seconds longer.",
+			"icon": "toxic"
+		},
+		{
+			"id": "p_charge",
+			"status": "live",
+			"name": "Ravenous Swarm",
+			"rarity": 0,
+			"direction": "Vermin and Rot",
+			"max": 3,
+			"fx": {
+				"dmg:swarm": 10.0
+			},
+			"text": "Swarmcraft bites {dmg:swarm}% harder.",
+			"icon": "swarm"
+		},
+		{
+			"id": "p_steady",
+			"status": "live",
+			"name": "Steady Hands",
+			"rarity": 0,
+			"direction": "Vermin and Rot",
+			"max": 3,
+			"fx": {
+				"dex": 3.0
+			},
+			"text": "+{dex} dexterity.",
+			"icon": "t_fist"
+		},
+		{
+			"id": "p_blast",
+			"status": "live",
+			"name": "Teeming",
+			"rarity": 0,
+			"direction": "Vermin and Rot",
+			"max": 3,
+			"fx": {
+				"swarm_size": 6.0
+			},
+			"text": "The swarm spreads {swarm_size}% wider.",
+			"icon": "swarm"
+		},
+		{
+			"id": "p_quick",
+			"status": "live",
+			"name": "Fertile Soil",
+			"rarity": 0,
+			"direction": "Vermin and Rot",
+			"max": 3,
+			"fx": {
+				"cd:bloom": 6.0
+			},
+			"text": "Corpse Bloom recharges {cd:bloom}% faster.",
+			"icon": "bloom"
+		},
+		{
+			"id": "p_ignite",
+			"status": "live",
+			"name": "Rank Growth",
+			"rarity": 1,
+			"direction": "Vermin and Rot",
+			"max": 3,
+			"fx": {
+				"bloom_size": 6.0,
+				"dmg:bloom": 6.0
+			},
+			"text": "Corpse Bloom reaches {bloom_size}% further and its pulses hit {dmg:bloom}% harder.",
+			"icon": "bloom"
+		},
+		{
+			"id": "p_cane",
+			"status": "live",
+			"name": "Iron-Shod Cane",
+			"rarity": 1,
+			"direction": "Vermin and Rot",
+			"max": 2,
+			"fx": {
+				"dmg:attack": 10.0
+			},
+			"text": "Your cane strikes {dmg:attack}% harder.",
+			"icon": "attack"
+		},
+		{
+			"id": "p_inferno",
+			"status": "live",
+			"name": "The Hive Obeys",
+			"rarity": 2,
+			"direction": "Vermin and Rot",
+			"max": 1,
+			"fx": {
+				"swarm_redirect": 1.0,
+				"swarm_dur": 1.0
+			},
+			"text": "The swarm can be turned {swarm_redirect} more time and stays {swarm_dur} second longer.",
+			"icon": "swarm"
+		},
+		{
+			"id": "p_spring",
+			"status": "live",
+			"name": "Dense Fog",
+			"rarity": 0,
+			"direction": "The Experiment",
+			"max": 3,
+			"fx": {
+				"fog_dur": 0.5
+			},
+			"text": "Fog of the Forgotten hangs {fog_dur} seconds longer.",
+			"icon": "fog"
+		},
+		{
+			"id": "p_hardy",
+			"status": "live",
+			"name": "Hardened Physician",
+			"rarity": 0,
+			"direction": "The Experiment",
+			"max": 3,
+			"fx": {
+				"life_pct": 4.0
+			},
+			"text": "+{life_pct}% maximum life.",
+			"icon": "t_heart"
+		},
+		{
+			"id": "p_snare",
+			"status": "live",
+			"name": "Strangling Roots",
+			"rarity": 0,
+			"direction": "The Experiment",
+			"max": 2,
+			"fx": {
+				"bloom_snare": 0.1
+			},
+			"text": "Corpse Bloom's roots hold {bloom_snare} seconds longer.",
+			"icon": "bloom"
+		},
+		{
+			"id": "p_spread",
+			"status": "live",
+			"name": "Larger Tanks",
+			"rarity": 0,
+			"direction": "The Experiment",
+			"max": 3,
+			"fx": {
+				"trans_cap": 1.5
+			},
+			"text": "Transfusion heals up to {trans_cap}% more of your life.",
+			"icon": "transfusion"
+		},
+		{
+			"id": "p_cache",
+			"status": "live",
+			"name": "Quick Needle",
+			"rarity": 1,
+			"direction": "The Experiment",
+			"max": 1,
+			"fx": {
+				"cd:transfusion": 12.0
+			},
+			"text": "Transfusion recharges {cd:transfusion}% faster.",
+			"icon": "transfusion"
+		},
+		{
+			"id": "p_fever",
+			"status": "live",
+			"name": "Long Fever",
+			"rarity": 1,
+			"direction": "The Experiment",
+			"max": 3,
+			"fx": {
+				"exp_dur": 0.5
+			},
+			"text": "The quarantine lasts {exp_dur} seconds longer.",
+			"icon": "t_hourglass"
+		},
+		{
+			"id": "p_last",
+			"status": "live",
+			"name": "Magnum Opus",
+			"rarity": 2,
+			"direction": "The Experiment",
+			"max": 1,
+			"fx": {
+				"exp_size": 10.0,
+				"cd:experiment": 15.0
+			},
+			"text": "The Last Experiment's quarantine is {exp_size}% wider and it recharges {cd:experiment}% faster.",
+			"icon": "experiment"
+		}
+	]
+}

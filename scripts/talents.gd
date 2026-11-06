@@ -23,7 +23,8 @@ extends RefCounted
 
 const ROW_REQ := [0, 3, 6, 10]
 
-const TREES := {
+## Laid over by the Hero Codex (data/codex/heroes/<cls>.json "rites", Codex.apply_rites) when this script loads.
+static var TREES: Dictionary = {
 	"knight": [
 		{"name": "Crusader", "desc": "Holy fire and the sword: Holy Slam and Holy Nova.", "talents": [
 			{"id": "k_zeal", "name": "Zeal", "row": 0, "max": 3, "icon": "t_sword", "fx": {"dmg": 4}, "text": "+{dmg}% damage."},
@@ -247,6 +248,12 @@ const AUTO := {
 	"archer": ["a_kindle", "a_draw", "a_pyre", "a_nock", "a_embers", "a_dead", "a_split", "a_eye", "a_cover", "a_rime", "a_hide", "a_howl", "a_rain",
 		"a_shatter", "a_vigor", "a_jaws", "a_arc", "a_bond", "a_trapper", "a_pack", "a_alpha"],
 }
+
+static func _static_init() -> void:
+	for cls in TREES:
+		var entries: Array = Codex.hero(cls).get("rites", [])
+		for tree in TREES[cls]:
+			Codex.apply_rites(tree["talents"], entries)
 
 static func trees(cls: String) -> Array:
 	return TREES.get(cls, [])

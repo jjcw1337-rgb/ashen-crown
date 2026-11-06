@@ -1,0 +1,27 @@
+{
+	"cls": "wyvern",
+	"name": "Storm Wyvern",
+	"fantasy": "A rearing two-legged dragon whose wings are its forelimbs, with lightning veined through the membranes. Strikes with its wing claws, bites, and whips its barbed tail round.",
+	"directions": [],
+	"skills": [
+		{
+			"id": "storm_arc",
+			"status": "live",
+			"name": "Storm Arc",
+			"rarity": 0,
+			"direction": "",
+			"desc": "The wyvern rears up, the lightning in its wings flaring, and breathes a bolt into the nearest foe ahead that leaps on to four more nearby, striking each.",
+			"mana": 6,
+			"cd": 0.0,
+			"use": 0.75,
+			"range": 11.0,
+			"tags": [
+				"spell",
+				"lightning",
+				"chain"
+			],
+			"lvl": 1
+		}
+	],
+	"rites": []
+}

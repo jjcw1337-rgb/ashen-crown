@@ -1,0 +1,262 @@
+{
+	"skills": [
+		{
+			"id": "earthshatter",
+			"status": "live",
+			"name": "Earthshatter",
+			"rarity": 1,
+			"direction": "",
+			"desc": "A heavy two-handed slam: the wedge it will crack shows as you heave, then the ground splits ahead of you for 230% weapon damage plus a part that grows with your level, throwing foes back.",
+			"mana": 8,
+			"cd": 0.0,
+			"use": 1.6,
+			"range": 5.0,
+			"tags": [
+				"attack",
+				"melee",
+				"slam",
+				"heavy",
+				"area"
+			],
+			"lvl": 16
+		},
+		{
+			"id": "frost_nova",
+			"status": "live",
+			"name": "Frost Nova",
+			"rarity": 1,
+			"direction": "",
+			"desc": "A ring of ice bursts out around you, 4 metres: cold damage, and everything it hits is chilled, slowed for 3 seconds.",
+			"mana": 10,
+			"cd": 0.0,
+			"use": 0.9,
+			"tags": [
+				"spell",
+				"cold",
+				"area",
+				"nova"
+			],
+			"lvl": 8
+		},
+		{
+			"id": "arc",
+			"status": "live",
+			"name": "Arc",
+			"rarity": 1,
+			"direction": "",
+			"desc": "Lightning leaps from your hand into the nearest foe ahead and on to three more nearby, striking each.",
+			"mana": 6,
+			"cd": 0.0,
+			"use": 0.7,
+			"range": 10.0,
+			"tags": [
+				"spell",
+				"lightning",
+				"chain"
+			],
+			"lvl": 11
+		},
+		{
+			"id": "war_cry",
+			"status": "live",
+			"name": "War Cry",
+			"rarity": 1,
+			"direction": "",
+			"desc": "A roar that rallies your team: you and every ally within 8 metres deal +40% damage for 6 seconds, and the monsters near turn on you. In the Battlegrounds it is yours alone (no teams there yet).",
+			"mana": 12,
+			"cd": 8.0,
+			"use": 0.8,
+			"tags": [
+				"warcry",
+				"buff"
+			],
+			"lvl": 6
+		}
+	],
+	"rites": [
+		{
+			"id": "g_edge",
+			"status": "live",
+			"name": "Honed Edge",
+			"rarity": 0,
+			"direction": "",
+			"max": 5,
+			"fx": {
+				"dmg": 6.0
+			},
+			"text": "+{dmg}% damage.",
+			"icon": "t_sword"
+		},
+		{
+			"id": "g_hide",
+			"status": "live",
+			"name": "Thick Hide",
+			"rarity": 0,
+			"direction": "",
+			"max": 5,
+			"fx": {
+				"life_pct": 8.0
+			},
+			"text": "+{life_pct}% maximum life.",
+			"icon": "t_heart"
+		},
+		{
+			"id": "g_hands",
+			"status": "live",
+			"name": "Quick Hands",
+			"rarity": 0,
+			"direction": "",
+			"max": 4,
+			"fx": {
+				"ias": 6.0
+			},
+			"text": "+{ias}% attack speed.",
+			"icon": "t_haste"
+		},
+		{
+			"id": "g_stride",
+			"status": "live",
+			"name": "Fleet Foot",
+			"rarity": 0,
+			"direction": "",
+			"max": 3,
+			"fx": {
+				"frw": 6.0
+			},
+			"text": "+{frw}% run speed.",
+			"icon": "t_boot"
+		},
+		{
+			"id": "g_plate",
+			"status": "live",
+			"name": "Hardened",
+			"rarity": 0,
+			"direction": "",
+			"max": 4,
+			"fx": {
+				"armor_pct": 12.0
+			},
+			"text": "+{armor_pct}% defense.",
+			"icon": "t_armor"
+		},
+		{
+			"id": "g_well",
+			"status": "live",
+			"name": "Deep Well",
+			"rarity": 0,
+			"direction": "",
+			"max": 4,
+			"fx": {
+				"mana_pct": 12.0
+			},
+			"text": "+{mana_pct}% maximum mana.",
+			"icon": "t_eye"
+		},
+		{
+			"id": "g_mend",
+			"status": "live",
+			"name": "Mending",
+			"rarity": 0,
+			"direction": "",
+			"max": 4,
+			"fx": {
+				"regen": 1.0
+			},
+			"text": "+{regen} life regenerated per second.",
+			"icon": "t_regen"
+		},
+		{
+			"id": "g_instinct",
+			"status": "live",
+			"name": "Killer Instinct",
+			"rarity": 1,
+			"direction": "",
+			"max": 4,
+			"fx": {
+				"crit": 4.0
+			},
+			"text": "+{crit}% chance to land a critical hit.",
+			"icon": "t_star"
+		},
+		{
+			"id": "g_vicious",
+			"status": "live",
+			"name": "Vicious",
+			"rarity": 1,
+			"direction": "",
+			"max": 3,
+			"fx": {
+				"crit_dmg": 20.0
+			},
+			"text": "Critical hits deal +{crit_dmg}% damage.",
+			"icon": "t_skull"
+		},
+		{
+			"id": "g_thirst",
+			"status": "live",
+			"name": "Bloodthirst",
+			"rarity": 1,
+			"direction": "",
+			"max": 3,
+			"fx": {
+				"ls": 3.0
+			},
+			"text": "{ls}% of the damage you deal heals you.",
+			"icon": "t_heart"
+		},
+		{
+			"id": "g_ward",
+			"status": "live",
+			"name": "Warded",
+			"rarity": 1,
+			"direction": "",
+			"max": 3,
+			"fx": {
+				"res": 8.0
+			},
+			"text": "+{res}% to all resistances.",
+			"icon": "t_ward"
+		},
+		{
+			"id": "g_flow",
+			"status": "live",
+			"name": "Arcane Flow",
+			"rarity": 2,
+			"direction": "",
+			"max": 2,
+			"fx": {
+				"cdr": 12.0
+			},
+			"text": "Skills recharge {cdr}% faster.",
+			"icon": "t_hourglass"
+		},
+		{
+			"id": "g_trance",
+			"status": "live",
+			"name": "Battle Trance",
+			"rarity": 2,
+			"direction": "",
+			"max": 2,
+			"fx": {
+				"dmg": 15.0,
+				"ias": 8.0
+			},
+			"text": "+{dmg}% damage and +{ias}% attack speed.",
+			"icon": "t_fist"
+		},
+		{
+			"id": "g_colossus",
+			"status": "live",
+			"name": "Colossus",
+			"rarity": 2,
+			"direction": "",
+			"max": 2,
+			"fx": {
+				"life_pct": 20.0,
+				"vit": 5.0
+			},
+			"text": "+{life_pct}% maximum life and +{vit} vitality.",
+			"icon": "t_heart"
+		}
+	]
+}

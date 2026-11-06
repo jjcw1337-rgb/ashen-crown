@@ -1,0 +1,28 @@
+{
+	"cls": "serpent",
+	"name": "Frost Serpent",
+	"fantasy": "A long, wingless dragon of pale ice-blue scale with crystal antlers and a ridge of ice shards. Swims over the ground, strikes with claw and fang and lashes its tail in a full turn.",
+	"directions": [],
+	"skills": [
+		{
+			"id": "frost_breath",
+			"status": "live",
+			"name": "Frost Breath",
+			"rarity": 0,
+			"direction": "",
+			"desc": "The serpent lowers its head and breathes a freezing gale over everything in a cone 7 metres ahead for over a second: cold damage again and again, chilling (slowing) them; the ground frosts over and ice bursts up where it ends.",
+			"mana": 10,
+			"cd": 0.0,
+			"use": 1.4,
+			"range": 7.0,
+			"tags": [
+				"spell",
+				"cold",
+				"area",
+				"channel"
+			],
+			"lvl": 1
+		}
+	],
+	"rites": []
+}

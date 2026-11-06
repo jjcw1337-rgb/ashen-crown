@@ -613,7 +613,8 @@ const OLD_POWER := {5: 1.6, 25: 2.4}
 const RARITY_COLOR := [Color(0.92, 0.92, 0.92), Color(0.45, 0.55, 1.0), Color(1.0, 0.95, 0.35), Color(0.82, 0.66, 0.38)]
 const RARITY_NAME := ["Normal", "Magic", "Rare", "Unique"]
 
-const SKILLS := [
+## Laid over by the Hero Codex (data/codex/, Codex.apply_skills) when this script loads: a static var, not a const.
+static var SKILLS: Array = [
 	{"id": "cleave", "cls": "knight", "name": "Holy Slam", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "point", "range": 6.0, "desc": "Leap at the cursor and bring the sword down in a burst of white light: 160% weapon damage to everything around the blow, knocking them back and stunning them for 1 second."},
 	{"id": "nova", "cls": "knight", "name": "Holy Nova", "key": "E", "lvl": 3, "mana": 14, "cd": 0.0, "use": 1.0, "power": 0.37, "aim": "self", "desc": "A ring of holy fire bursts outward, burning enemies within 7 metres."},
 	{"id": "charge", "cls": "knight", "name": "Charge", "key": "R", "lvl": 5, "mana": 10, "cd": 4.0, "tags": ["movement"], "aim": "facing", "range": 9.0, "desc": "Dash toward the cursor, smashing through enemies and knocking them back."},
@@ -740,6 +741,9 @@ static func unarmed_speed(cls: String) -> float:
 	return float(CLASSES[cls].get("claw_speed", 1.2)) if CLASSES.has(cls) else 1.2
 
 ## The shared skills ("cls": "any" in SKILLS), every class's to use (SharedSkills).
+static func _static_init() -> void:
+	Codex.apply_skills(SKILLS)
+
 static func shared_skills() -> Array:
 	return SKILLS.filter(func(s): return s["cls"] == "any")
 

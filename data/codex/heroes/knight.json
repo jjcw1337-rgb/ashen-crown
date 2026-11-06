@@ -1,0 +1,357 @@
+{
+	"cls": "knight",
+	"name": "Knight",
+	"fantasy": "A crusader in steel. Sword and shield, heavy blows, holy fire and a rallying cry.",
+	"directions": [
+		{
+			"id": "Crusader",
+			"name": "Crusader",
+			"desc": "Holy fire and the sword: Holy Slam and Holy Nova."
+		},
+		{
+			"id": "Bulwark",
+			"name": "Bulwark",
+			"desc": "Plate and shield: harder to hurt, harder to kill."
+		},
+		{
+			"id": "Vanguard",
+			"name": "Vanguard",
+			"desc": "First into the fight: Charge, Battle Cry and the sword combo."
+		}
+	],
+	"skills": [
+		{
+			"id": "cleave",
+			"status": "live",
+			"name": "Holy Slam",
+			"rarity": 0,
+			"direction": "",
+			"desc": "Leap at the cursor and bring the sword down in a burst of white light: 160% weapon damage to everything around the blow, knocking them back and stunning them for 1 second.",
+			"mana": 5,
+			"cd": 0.0,
+			"range": 6.0,
+			"lvl": 1
+		},
+		{
+			"id": "nova",
+			"status": "live",
+			"name": "Holy Nova",
+			"rarity": 0,
+			"direction": "",
+			"desc": "A ring of holy fire bursts outward, burning enemies within 7 metres.",
+			"mana": 14,
+			"cd": 0.0,
+			"use": 1.0,
+			"power": 0.37,
+			"lvl": 3
+		},
+		{
+			"id": "charge",
+			"status": "live",
+			"name": "Charge",
+			"rarity": 0,
+			"direction": "",
+			"desc": "Dash toward the cursor, smashing through enemies and knocking them back.",
+			"mana": 10,
+			"cd": 4.0,
+			"range": 9.0,
+			"tags": [
+				"movement"
+			],
+			"lvl": 5
+		},
+		{
+			"id": "cry",
+			"status": "live",
+			"name": "Battle Cry",
+			"rarity": 1,
+			"direction": "",
+			"desc": "Rally yourself: +40% damage and +50% defense for 12 seconds. Stuns nearby foes.",
+			"mana": 20,
+			"cd": 20.0,
+			"tags": [
+				"warcry",
+				"buff"
+			],
+			"lvl": 9
+		}
+	],
+	"rites": [
+		{
+			"id": "k_zeal",
+			"status": "live",
+			"name": "Zeal",
+			"rarity": 0,
+			"direction": "Crusader",
+			"max": 3,
+			"fx": {
+				"dmg": 4.0
+			},
+			"text": "+{dmg}% damage.",
+			"icon": "t_sword"
+		},
+		{
+			"id": "k_heavy",
+			"status": "live",
+			"name": "Heavy Hand",
+			"rarity": 0,
+			"direction": "Crusader",
+			"max": 3,
+			"fx": {
+				"dmg:cleave": 10.0
+			},
+			"text": "Holy Slam deals {dmg:cleave}% more damage.",
+			"icon": "cleave"
+		},
+		{
+			"id": "k_radiance",
+			"status": "live",
+			"name": "Radiance",
+			"rarity": 0,
+			"direction": "Crusader",
+			"max": 3,
+			"fx": {
+				"dmg:nova": 12.0
+			},
+			"text": "Holy Nova burns {dmg:nova}% hotter.",
+			"icon": "nova"
+		},
+		{
+			"id": "k_fervor",
+			"status": "live",
+			"name": "Fervor",
+			"rarity": 0,
+			"direction": "Crusader",
+			"max": 3,
+			"fx": {
+				"ias": 5.0
+			},
+			"text": "+{ias}% attack speed.",
+			"icon": "t_haste"
+		},
+		{
+			"id": "k_steel",
+			"status": "live",
+			"name": "Sanctified Steel",
+			"rarity": 1,
+			"direction": "Crusader",
+			"max": 3,
+			"fx": {
+				"crit": 3.0
+			},
+			"text": "+{crit}% chance to land a critical hit.",
+			"icon": "t_star"
+		},
+		{
+			"id": "k_purify",
+			"status": "live",
+			"name": "Purifying Fire",
+			"rarity": 1,
+			"direction": "Crusader",
+			"max": 2,
+			"fx": {
+				"cost:nova": 15.0,
+				"cd:nova": 10.0
+			},
+			"text": "Holy Nova costs {cost:nova}% less mana and recharges {cd:nova}% faster.",
+			"icon": "t_hourglass"
+		},
+		{
+			"id": "k_consecrate",
+			"status": "live",
+			"name": "Consecration",
+			"rarity": 2,
+			"direction": "Crusader",
+			"max": 1,
+			"fx": {
+				"nova_heal": 3.0
+			},
+			"text": "Holy Nova heals you {nova_heal}% of your life for every enemy it burns (up to 5).",
+			"icon": "t_heart"
+		},
+		{
+			"id": "k_tough",
+			"status": "live",
+			"name": "Toughness",
+			"rarity": 0,
+			"direction": "Bulwark",
+			"max": 3,
+			"fx": {
+				"armor_pct": 6.0
+			},
+			"text": "+{armor_pct}% defense.",
+			"icon": "t_armor"
+		},
+		{
+			"id": "k_vigor",
+			"status": "live",
+			"name": "Vigor",
+			"rarity": 0,
+			"direction": "Bulwark",
+			"max": 3,
+			"fx": {
+				"life_pct": 4.0
+			},
+			"text": "+{life_pct}% maximum life.",
+			"icon": "t_heart"
+		},
+		{
+			"id": "k_wall",
+			"status": "live",
+			"name": "Shield Wall",
+			"rarity": 0,
+			"direction": "Bulwark",
+			"max": 3,
+			"fx": {
+				"block": 4.0
+			},
+			"text": "+{block}% chance to block with a shield.",
+			"icon": "block"
+		},
+		{
+			"id": "k_resolve",
+			"status": "live",
+			"name": "Resolve",
+			"rarity": 0,
+			"direction": "Bulwark",
+			"max": 3,
+			"fx": {
+				"res": 5.0
+			},
+			"text": "+{res}% to all resistances.",
+			"icon": "t_ward"
+		},
+		{
+			"id": "k_guard",
+			"status": "live",
+			"name": "Iron Guard",
+			"rarity": 1,
+			"direction": "Bulwark",
+			"max": 3,
+			"fx": {
+				"block_dr": 3.0
+			},
+			"text": "Block stops {block_dr}% more damage from the front.",
+			"icon": "block"
+		},
+		{
+			"id": "k_wind",
+			"status": "live",
+			"name": "Second Wind",
+			"rarity": 1,
+			"direction": "Bulwark",
+			"max": 2,
+			"fx": {
+				"regen": 1.5
+			},
+			"text": "+{regen} life regenerated per second.",
+			"icon": "t_regen"
+		},
+		{
+			"id": "k_unbroken",
+			"status": "live",
+			"name": "Unbreakable",
+			"rarity": 2,
+			"direction": "Bulwark",
+			"max": 1,
+			"fx": {
+				"cry_heal": 25.0,
+				"buff_dur": 4.0
+			},
+			"text": "Battle Cry heals {cry_heal}% of your life and lasts {buff_dur} seconds longer.",
+			"icon": "cry"
+		},
+		{
+			"id": "k_momentum",
+			"status": "live",
+			"name": "Momentum",
+			"rarity": 0,
+			"direction": "Vanguard",
+			"max": 3,
+			"fx": {
+				"frw": 5.0
+			},
+			"text": "+{frw}% run speed.",
+			"icon": "t_boot"
+		},
+		{
+			"id": "k_might",
+			"status": "live",
+			"name": "Might",
+			"rarity": 0,
+			"direction": "Vanguard",
+			"max": 3,
+			"fx": {
+				"str": 3.0
+			},
+			"text": "+{str} strength.",
+			"icon": "t_fist"
+		},
+		{
+			"id": "k_ram",
+			"status": "live",
+			"name": "Battering Ram",
+			"rarity": 0,
+			"direction": "Vanguard",
+			"max": 3,
+			"fx": {
+				"dmg:charge": 15.0,
+				"cd:charge": 10.0
+			},
+			"text": "Charge hits {dmg:charge}% harder and recharges {cd:charge}% faster.",
+			"icon": "charge"
+		},
+		{
+			"id": "k_sword",
+			"status": "live",
+			"name": "Swordplay",
+			"rarity": 0,
+			"direction": "Vanguard",
+			"max": 3,
+			"fx": {
+				"dmg:attack": 8.0
+			},
+			"text": "Your weapon attack deals {dmg:attack}% more damage.",
+			"icon": "attack"
+		},
+		{
+			"id": "k_command",
+			"status": "live",
+			"name": "Commander",
+			"rarity": 1,
+			"direction": "Vanguard",
+			"max": 3,
+			"fx": {
+				"buff_pow": 10.0
+			},
+			"text": "Battle Cry's damage bonus is {buff_pow}% higher.",
+			"icon": "cry"
+		},
+		{
+			"id": "k_rally",
+			"status": "live",
+			"name": "Rally",
+			"rarity": 1,
+			"direction": "Vanguard",
+			"max": 2,
+			"fx": {
+				"cd:cry": 15.0
+			},
+			"text": "Battle Cry recharges {cd:cry}% faster.",
+			"icon": "t_hourglass"
+		},
+		{
+			"id": "k_relentless",
+			"status": "live",
+			"name": "Relentless",
+			"rarity": 2,
+			"direction": "Vanguard",
+			"max": 1,
+			"fx": {
+				"charge_cdr": 1.0
+			},
+			"text": "Every enemy Charge smashes through takes {charge_cdr} second off your other cooldowns.",
+			"icon": "charge"
+		}
+	]
+}

@@ -1,0 +1,358 @@
+{
+	"cls": "archer",
+	"name": "Archer",
+	"fantasy": "A red-hooded ranger with a carved recurve bow and his dire wolf at his side. Shoots on the move: fire arrows that burn through a line, frost volleys that chill, and a thunderstep that leaves a storm sigil behind him.",
+	"directions": [
+		{
+			"id": "Flame",
+			"name": "Flame",
+			"desc": "Fire Arrow, burning wounds and the bow's weight; his wolf's fangs catch fire."
+		},
+		{
+			"id": "Frost",
+			"name": "Frost",
+			"desc": "Frost Volley, the chill that slows them and the hide that keeps him alive; his wolf howls the cold."
+		},
+		{
+			"id": "Storm",
+			"name": "Storm",
+			"desc": "Thunderstep, forked lightning and the bond with his wolf."
+		}
+	],
+	"skills": [
+		{
+			"id": "pierce",
+			"status": "live",
+			"name": "Fire Arrow",
+			"rarity": 0,
+			"direction": "",
+			"desc": "A burning arrow that tears through every enemy in a line for 130% weapon damage and sets them alight: they burn for 3 seconds.",
+			"mana": 5,
+			"cd": 0.0,
+			"range": 16.0,
+			"lvl": 1
+		},
+		{
+			"id": "volley",
+			"status": "live",
+			"name": "Frost Volley",
+			"rarity": 0,
+			"direction": "",
+			"desc": "Loose a flight of frost arrows into the sky: they rain on the cursor for over a second, hitting everything within 4 metres again and again and chilling them (40% slower); the ground stays frozen for a few seconds, slowing everything that stands in it or crosses it.",
+			"mana": 14,
+			"cd": 0.0,
+			"use": 1.1,
+			"range": 14.0,
+			"lvl": 3
+		},
+		{
+			"id": "snare",
+			"status": "live",
+			"name": "Thunderstep",
+			"rarity": 0,
+			"direction": "",
+			"desc": "Backflip away from the pointer, driving a thunderstone into a gold storm sigil where you stood. A moment later it detonates: everything on it is stunned and hurt, and lightning leaps on into the 3 nearest others beyond it.",
+			"mana": 12,
+			"cd": 7.0,
+			"range": 10.0,
+			"tags": [
+				"mobility",
+				"cc"
+			],
+			"lvl": 5
+		},
+		{
+			"id": "beast",
+			"status": "live",
+			"name": "Spirit Beast",
+			"rarity": 1,
+			"direction": "",
+			"desc": "Your Spirit Beast hunts at your side from the start (and you run 10% faster with it). Command it: on an enemy it pounces and fights it, on open ground it holds there, on yourself it comes back. Each command rouses you both: +40% damage for 12 seconds.",
+			"mana": 12,
+			"cd": 8.0,
+			"range": 18.0,
+			"tags": [
+				"command",
+				"summon"
+			],
+			"lvl": 9
+		}
+	],
+	"rites": [
+		{
+			"id": "a_kindle",
+			"status": "live",
+			"name": "Kindling",
+			"rarity": 0,
+			"direction": "Flame",
+			"max": 3,
+			"fx": {
+				"dmg:pierce": 12.0
+			},
+			"text": "Fire Arrow deals {dmg:pierce}% more damage.",
+			"icon": "pierce"
+		},
+		{
+			"id": "a_draw",
+			"status": "live",
+			"name": "Heavy Draw",
+			"rarity": 0,
+			"direction": "Flame",
+			"max": 3,
+			"fx": {
+				"dmg:attack": 8.0
+			},
+			"text": "Your bow shots deal {dmg:attack}% more damage.",
+			"icon": "attack"
+		},
+		{
+			"id": "a_pyre",
+			"status": "live",
+			"name": "Pyre",
+			"rarity": 0,
+			"direction": "Flame",
+			"max": 3,
+			"fx": {
+				"burn_dmg": 20.0
+			},
+			"text": "Burning from Fire Arrow lasts and hurts {burn_dmg}% more.",
+			"icon": "t_fist"
+		},
+		{
+			"id": "a_nock",
+			"status": "live",
+			"name": "Quick Nock",
+			"rarity": 0,
+			"direction": "Flame",
+			"max": 3,
+			"fx": {
+				"ias": 5.0
+			},
+			"text": "+{ias}% attack speed.",
+			"icon": "t_haste"
+		},
+		{
+			"id": "a_embers",
+			"status": "live",
+			"name": "Ember Fangs",
+			"rarity": 1,
+			"direction": "Flame",
+			"max": 3,
+			"fx": {
+				"wolf_burn": 15.0
+			},
+			"text": "Your wolf's bites set foes alight: {wolf_burn}% of each bite burns them every second for 3 seconds.",
+			"icon": "beast"
+		},
+		{
+			"id": "a_dead",
+			"status": "live",
+			"name": "Deadeye",
+			"rarity": 1,
+			"direction": "Flame",
+			"max": 3,
+			"fx": {
+				"crit": 3.0
+			},
+			"text": "+{crit}% chance to land a critical hit.",
+			"icon": "t_star"
+		},
+		{
+			"id": "a_split",
+			"status": "live",
+			"name": "Split Arrow",
+			"rarity": 2,
+			"direction": "Flame",
+			"max": 1,
+			"fx": {
+				"arrow_split": 1.0
+			},
+			"text": "Every bow shot flies as three arrows (the outer two at half damage).",
+			"icon": "attack"
+		},
+		{
+			"id": "a_eye",
+			"status": "live",
+			"name": "Keen Eye",
+			"rarity": 0,
+			"direction": "Frost",
+			"max": 3,
+			"fx": {
+				"dex": 3.0
+			},
+			"text": "+{dex} dexterity.",
+			"icon": "t_eye"
+		},
+		{
+			"id": "a_cover",
+			"status": "live",
+			"name": "Hailstorm",
+			"rarity": 0,
+			"direction": "Frost",
+			"max": 3,
+			"fx": {
+				"volley_size": 10.0
+			},
+			"text": "Frost Volley covers {volley_size}% more ground.",
+			"icon": "volley"
+		},
+		{
+			"id": "a_rime",
+			"status": "live",
+			"name": "Rime",
+			"rarity": 0,
+			"direction": "Frost",
+			"max": 3,
+			"fx": {
+				"chill_pct": 15.0
+			},
+			"text": "Frost Volley's chill slows {chill_pct}% more.",
+			"icon": "volley"
+		},
+		{
+			"id": "a_hide",
+			"status": "live",
+			"name": "Hide Armour",
+			"rarity": 0,
+			"direction": "Frost",
+			"max": 3,
+			"fx": {
+				"armor_pct": 6.0
+			},
+			"text": "+{armor_pct}% defense.",
+			"icon": "t_armor"
+		},
+		{
+			"id": "a_howl",
+			"status": "live",
+			"name": "Winter Howl",
+			"rarity": 1,
+			"direction": "Frost",
+			"max": 2,
+			"fx": {
+				"wolf_howl": 1.0
+			},
+			"text": "Your wolf's pounce chills everything within 3.5 metres of where it lands.",
+			"icon": "beast"
+		},
+		{
+			"id": "a_rain",
+			"status": "live",
+			"name": "Endless Rain",
+			"rarity": 1,
+			"direction": "Frost",
+			"max": 2,
+			"fx": {
+				"cd:volley": 12.0,
+				"cost:volley": 10.0
+			},
+			"text": "Frost Volley recharges {cd:volley}% faster and costs {cost:volley}% less mana.",
+			"icon": "t_hourglass"
+		},
+		{
+			"id": "a_shatter",
+			"status": "live",
+			"name": "Shatter",
+			"rarity": 2,
+			"direction": "Frost",
+			"max": 1,
+			"fx": {
+				"frost_shatter": 1.0
+			},
+			"text": "Chilled enemies take 20% more damage from your arrows.",
+			"icon": "t_skull"
+		},
+		{
+			"id": "a_vigor",
+			"status": "live",
+			"name": "Hunter's Vigor",
+			"rarity": 0,
+			"direction": "Storm",
+			"max": 3,
+			"fx": {
+				"life_pct": 4.0
+			},
+			"text": "+{life_pct}% maximum life.",
+			"icon": "t_heart"
+		},
+		{
+			"id": "a_jaws",
+			"status": "live",
+			"name": "Thunder Jaws",
+			"rarity": 0,
+			"direction": "Storm",
+			"max": 3,
+			"fx": {
+				"dmg:snare": 15.0,
+				"snare_dur": 0.5
+			},
+			"text": "Thunderstep's sigil deals {dmg:snare}% more damage and stuns {snare_dur} seconds longer.",
+			"icon": "snare"
+		},
+		{
+			"id": "a_arc",
+			"status": "live",
+			"name": "Forked Lightning",
+			"rarity": 0,
+			"direction": "Storm",
+			"max": 3,
+			"fx": {
+				"arc_count": 1.0
+			},
+			"text": "Thunderstep's lightning leaps to {arc_count} more enemies.",
+			"icon": "snare"
+		},
+		{
+			"id": "a_bond",
+			"status": "live",
+			"name": "Spirit Bond",
+			"rarity": 0,
+			"direction": "Storm",
+			"max": 3,
+			"fx": {
+				"dmg:beast": 15.0
+			},
+			"text": "Your wolf hits {dmg:beast}% harder.",
+			"icon": "beast"
+		},
+		{
+			"id": "a_trapper",
+			"status": "live",
+			"name": "Aftershock",
+			"rarity": 1,
+			"direction": "Storm",
+			"max": 2,
+			"fx": {
+				"snare_max": 1.0
+			},
+			"text": "Thunderstep's sigil strikes {snare_max} more time(s), a little weaker each time.",
+			"icon": "snare"
+		},
+		{
+			"id": "a_pack",
+			"status": "live",
+			"name": "Pack Hunter",
+			"rarity": 1,
+			"direction": "Storm",
+			"max": 3,
+			"fx": {
+				"buff_pow": 10.0
+			},
+			"text": "The hunt your commands rouse is {buff_pow}% stronger.",
+			"icon": "beast"
+		},
+		{
+			"id": "a_alpha",
+			"status": "live",
+			"name": "Alpha",
+			"rarity": 2,
+			"direction": "Storm",
+			"max": 1,
+			"fx": {
+				"beast_two": 1.0
+			},
+			"text": "A second wolf runs with you.",
+			"icon": "beast"
+		}
+	]
+}

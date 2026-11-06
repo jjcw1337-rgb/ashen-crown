@@ -1,0 +1,784 @@
+{
+	"cls": "warlock",
+	"name": "Warlock",
+	"fantasy": "The Harrower: a gnome who struck a bargain with the crows of the Hollow. He rots foes from the inside, terrifies them into flight and drinks what is left, with Fiddlesticks' dread and hunger in fel green. A run takes him down one of three roads: Corruption (stacking curses), Fear (crowd control) or Drain (life drain that overflows into shields).",
+	"directions": [
+		{
+			"id": "Corruption",
+			"name": "Corruption",
+			"desc": "Damage over time, WoW-style: cheap curses that stack, spells that grow with every curse on a foe and how long it has been cursed, and a finisher that cashes them all in."
+		},
+		{
+			"id": "Fear",
+			"name": "Fear",
+			"desc": "Crowd control: terrify, bind and scatter. Feared foes flee, panic spreads, and the crows take whatever stops running."
+		},
+		{
+			"id": "Drain",
+			"name": "Drain",
+			"desc": "Life drain: beams and bolts that heal, healing past full life that hardens into a shield, and a feast at the end."
+		}
+	],
+	"skills": [
+		{
+			"id": "drain",
+			"status": "live",
+			"name": "Drain Life",
+			"rarity": 0,
+			"direction": "Drain",
+			"desc": "Latch a green beam onto an enemy and pull the life out of it. The beam forks to up to 3 enemies near your target and everything it drains heals you. Hold Q to keep draining (costs mana each second).",
+			"mana": 6,
+			"cd": 0.0,
+			"range": 11.0,
+			"lvl": 1
+		},
+		{
+			"id": "blight",
+			"status": "live",
+			"name": "Blight Bolt",
+			"rarity": 0,
+			"direction": "Corruption",
+			"desc": "Hurl a howling skull of blight. It bursts where it lands and leaves a plague pool that rots enemies standing in it for 4 seconds.",
+			"mana": 12,
+			"cd": 0.0,
+			"use": 1.0,
+			"power": 0.59,
+			"range": 15.0,
+			"lvl": 3
+		},
+		{
+			"id": "shackles",
+			"status": "live",
+			"name": "Soul Shackles",
+			"rarity": 0,
+			"direction": "Fear",
+			"desc": "Chains of fel fire snap out to every enemy within 7 metres, damaging them and binding them in place for 2.5 seconds.",
+			"mana": 16,
+			"cd": 8.0,
+			"tags": [
+				"cc"
+			],
+			"lvl": 5
+		},
+		{
+			"id": "covenant",
+			"status": "live",
+			"name": "Fel Covenant",
+			"rarity": 1,
+			"direction": "Drain",
+			"desc": "Seal a pact with what waits beyond: +40% damage for 12 seconds, and Drain Life forks to two more enemies and heals twice as much.",
+			"mana": 20,
+			"cd": 20.0,
+			"tags": [
+				"buff"
+			],
+			"lvl": 9
+		},
+		{
+			"id": "w_corruption",
+			"status": "design",
+			"name": "Corruption",
+			"rarity": 0.0,
+			"direction": "Corruption",
+			"desc": "Curse a foe up to 15 m away, instantly: 120% spell damage over 10 seconds. Cheap, and recasting refreshes it. Your bread-and-butter DoT.",
+			"mana": 4.0,
+			"cd": 0.0,
+			"tags": [
+				"spell",
+				"dot",
+				"curse"
+			],
+			"needs": "A DoT status on Enemy (stacking by source), a cast with no wind-up."
+		},
+		{
+			"id": "w_malediction",
+			"status": "design",
+			"name": "Malediction",
+			"rarity": 1.0,
+			"direction": "Corruption",
+			"desc": "A fel bolt for 60% spell damage, +50% for every one of your DoTs on the target (up to 5: 310%).",
+			"mana": 10.0,
+			"cd": 0.0,
+			"tags": [
+				"spell",
+				"projectile"
+			],
+			"needs": "Count the caster's DoTs on a foe."
+		},
+		{
+			"id": "w_unending",
+			"status": "design",
+			"name": "Unending Rot",
+			"rarity": 1.0,
+			"direction": "Corruption",
+			"desc": "A curse for 12 seconds whose ticks grow 15% stronger for every second the foe has carried at least one of your DoTs without a break. A clean foe starts again from nothing.",
+			"mana": 8.0,
+			"cd": 0.0,
+			"tags": [
+				"spell",
+				"dot",
+				"curse"
+			],
+			"needs": "Track how long a foe has been continuously afflicted."
+		},
+		{
+			"id": "w_festering",
+			"status": "design",
+			"name": "Festering Hex",
+			"rarity": 1.0,
+			"direction": "Corruption",
+			"desc": "A hex for 15 seconds: every 5 seconds it bursts for 80% spell damage and stuns the foe for 0.5 seconds (players: diminishing returns).",
+			"mana": 12.0,
+			"cd": 6.0,
+			"tags": [
+				"spell",
+				"dot",
+				"cc"
+			],
+			"needs": "A periodic stun through PvpStatus for players."
+		},
+		{
+			"id": "w_leeching",
+			"status": "design",
+			"name": "Leeching Curse",
+			"rarity": 1.0,
+			"direction": "Corruption",
+			"desc": "A curse for 8 seconds: 100% spell damage over its life, and every tick heals you for 50% of what it dealt.",
+			"mana": 8.0,
+			"cd": 0.0,
+			"tags": [
+				"spell",
+				"dot",
+				"sustain"
+			],
+			"needs": "A DoT whose ticks heal the caster."
+		},
+		{
+			"id": "w_reckoning",
+			"status": "design",
+			"name": "Reckoning",
+			"rarity": 2.0,
+			"direction": "Corruption",
+			"desc": "Call in the debt: the target instantly takes everything your DoTs on it would still deal. They keep running.",
+			"mana": 18.0,
+			"cd": 8.0,
+			"tags": [
+				"spell",
+				"finisher"
+			],
+			"needs": "Sum the remaining damage of the caster's DoTs on a foe."
+		},
+		{
+			"id": "w_terrify",
+			"status": "design",
+			"name": "Terrify",
+			"rarity": 0.0,
+			"direction": "Fear",
+			"desc": "Point at a foe within 8 m: it flees in terror for 1.5 seconds (players 1 second, with diminishing returns) and takes 20% more damage from you meanwhile.",
+			"mana": 8.0,
+			"cd": 9.0,
+			"tags": [
+				"spell",
+				"cc"
+			],
+			"needs": "A fear on monsters (flee AI) and the PvP fear status."
+		},
+		{
+			"id": "w_effigy",
+			"status": "design",
+			"name": "Scarecrow Effigy",
+			"rarity": 1.0,
+			"direction": "Fear",
+			"desc": "Plant a scarecrow up to 12 m away for 8 seconds. The first three foes to come within 4 m are feared for 1 second as it caws. Players can break it in 3 blows.",
+			"mana": 14.0,
+			"cd": 14.0,
+			"tags": [
+				"trap",
+				"cc"
+			],
+			"needs": "A placed trap object (PvpObjects for players) and the scarecrow model."
+		},
+		{
+			"id": "w_darkwind",
+			"status": "design",
+			"name": "Dark Wind",
+			"rarity": 1.0,
+			"direction": "Fear",
+			"desc": "Send a crow at a foe: it bounces between up to 5 enemies, 70% spell damage and a 1-second slow each. Feared or bound foes take double.",
+			"mana": 12.0,
+			"cd": 6.0,
+			"tags": [
+				"spell",
+				"projectile",
+				"chain"
+			],
+			"needs": "A bouncing projectile (SharedSkills.chain pattern) and a crow model."
+		},
+		{
+			"id": "w_crowstorm",
+			"status": "design",
+			"name": "Crowstorm",
+			"rarity": 2.0,
+			"direction": "Fear",
+			"desc": "Channel for 1.5 seconds, then blink up to 8 m: a storm of crows whirls 5 m round you for 5 seconds, 60% spell damage every half second. Everything caught when it lands is feared for 1 second.",
+			"mana": 40.0,
+			"cd": 45.0,
+			"tags": [
+				"ultimate",
+				"cc",
+				"movement"
+			],
+			"needs": "A channel, a blink, an area that follows the caster."
+		},
+		{
+			"id": "w_leechbolt",
+			"status": "design",
+			"name": "Leech Bolt",
+			"rarity": 0.0,
+			"direction": "Drain",
+			"desc": "A quick shadow bolt: 100% spell damage, and 30% of it heals you.",
+			"mana": 5.0,
+			"cd": 0.0,
+			"tags": [
+				"spell",
+				"projectile",
+				"sustain"
+			],
+			"needs": "A projectile that heals on hit."
+		},
+		{
+			"id": "w_harvest",
+			"status": "design",
+			"name": "Bountiful Harvest",
+			"rarity": 1.0,
+			"direction": "Drain",
+			"desc": "Sweep a scythe of shadow round you (5 m): 140% spell damage; each foe hit heals you 4% of your life (8% when it is the only one).",
+			"mana": 12.0,
+			"cd": 0.0,
+			"tags": [
+				"spell",
+				"area",
+				"sustain"
+			],
+			"needs": "An arc on the skill format plus a heal per target."
+		},
+		{
+			"id": "w_soulfeast",
+			"status": "design",
+			"name": "Soul Feast",
+			"rarity": 2.0,
+			"direction": "Drain",
+			"desc": "Channel for up to 3 seconds: a beam to every foe within 7 m drains 50% spell damage a second from each. Healing past full life becomes a shield up to 30% of your life.",
+			"mana": 30.0,
+			"cd": 30.0,
+			"tags": [
+				"ultimate",
+				"channel",
+				"sustain"
+			],
+			"needs": "Drain Life's beams to every foe in range, and the shield from Blood Ward."
+		}
+	],
+	"rites": [
+		{
+			"id": "l_deep",
+			"status": "live",
+			"name": "Deep Drain",
+			"rarity": 0,
+			"direction": "Affliction",
+			"max": 3,
+			"fx": {
+				"dmg:drain": 10.0
+			},
+			"text": "Drain Life deals {dmg:drain}% more damage.",
+			"icon": "drain"
+		},
+		{
+			"id": "l_thirst",
+			"status": "live",
+			"name": "Dark Thirst",
+			"rarity": 0,
+			"direction": "Affliction",
+			"max": 3,
+			"fx": {
+				"drain_heal": 12.0
+			},
+			"text": "Drain Life heals {drain_heal}% more.",
+			"icon": "t_heart"
+		},
+		{
+			"id": "l_intel",
+			"status": "live",
+			"name": "Fel Intellect",
+			"rarity": 0,
+			"direction": "Affliction",
+			"max": 3,
+			"fx": {
+				"ene": 3.0
+			},
+			"text": "+{ene} energy.",
+			"icon": "t_orb"
+		},
+		{
+			"id": "l_thrift",
+			"status": "live",
+			"name": "Siphon Efficiency",
+			"rarity": 0,
+			"direction": "Affliction",
+			"max": 3,
+			"fx": {
+				"cost:drain": 15.0
+			},
+			"text": "Drain Life costs {cost:drain}% less mana.",
+			"icon": "t_drop"
+		},
+		{
+			"id": "l_fork",
+			"status": "live",
+			"name": "Forking Beam",
+			"rarity": 1,
+			"direction": "Affliction",
+			"max": 2,
+			"fx": {
+				"drain_fork": 1.0
+			},
+			"text": "Drain Life forks to {drain_fork} more enemy.",
+			"icon": "drain"
+		},
+		{
+			"id": "l_wither",
+			"status": "live",
+			"name": "Withering",
+			"rarity": 1,
+			"direction": "Affliction",
+			"max": 3,
+			"fx": {
+				"dmg": 4.0
+			},
+			"text": "+{dmg}% damage.",
+			"icon": "t_sword"
+		},
+		{
+			"id": "l_glut",
+			"status": "live",
+			"name": "Soul Glut",
+			"rarity": 2,
+			"direction": "Affliction",
+			"max": 1,
+			"fx": {
+				"drain_glut": 50.0
+			},
+			"text": "Life Drain Life pulls in past your full life fills {drain_glut}% as much mana.",
+			"icon": "t_drop"
+		},
+		{
+			"id": "l_virulence",
+			"status": "live",
+			"name": "Virulence",
+			"rarity": 0,
+			"direction": "Plague",
+			"max": 3,
+			"fx": {
+				"dmg:blight": 10.0
+			},
+			"text": "Blight Bolt and its pools deal {dmg:blight}% more damage.",
+			"icon": "blight"
+		},
+		{
+			"id": "l_contagion",
+			"status": "live",
+			"name": "Contagion",
+			"rarity": 0,
+			"direction": "Plague",
+			"max": 3,
+			"fx": {
+				"blight_dur": 1.0
+			},
+			"text": "Plague pools last {blight_dur} seconds longer.",
+			"icon": "t_hourglass"
+		},
+		{
+			"id": "l_quick",
+			"status": "live",
+			"name": "Quickened Rot",
+			"rarity": 0,
+			"direction": "Plague",
+			"max": 3,
+			"fx": {
+				"cd:blight": 10.0
+			},
+			"text": "Blight Bolt recharges {cd:blight}% faster.",
+			"icon": "blight"
+		},
+		{
+			"id": "l_vigor",
+			"status": "live",
+			"name": "Fel Vigor",
+			"rarity": 0,
+			"direction": "Plague",
+			"max": 3,
+			"fx": {
+				"life_pct": 4.0
+			},
+			"text": "+{life_pct}% maximum life.",
+			"icon": "t_heart"
+		},
+		{
+			"id": "l_spread",
+			"status": "live",
+			"name": "Spreading Rot",
+			"rarity": 1,
+			"direction": "Plague",
+			"max": 2,
+			"fx": {
+				"blight_size": 15.0
+			},
+			"text": "Blight bursts and pools are {blight_size}% wider.",
+			"icon": "blight"
+		},
+		{
+			"id": "l_malice",
+			"status": "live",
+			"name": "Malice",
+			"rarity": 1,
+			"direction": "Plague",
+			"max": 3,
+			"fx": {
+				"crit": 3.0
+			},
+			"text": "+{crit}% chance to land a critical hit with your weapon and Soul Shackles.",
+			"icon": "t_star"
+		},
+		{
+			"id": "l_twin",
+			"status": "live",
+			"name": "Twin Skulls",
+			"rarity": 2,
+			"direction": "Plague",
+			"max": 1,
+			"fx": {
+				"blight_twin": 1.0
+			},
+			"text": "Blight Bolt hurls two skulls.",
+			"icon": "blight"
+		},
+		{
+			"id": "l_felarmor",
+			"status": "live",
+			"name": "Fel Armor",
+			"rarity": 0,
+			"direction": "Binding",
+			"max": 3,
+			"fx": {
+				"armor_pct": 6.0
+			},
+			"text": "+{armor_pct}% defense.",
+			"icon": "t_armor"
+		},
+		{
+			"id": "l_reserves",
+			"status": "live",
+			"name": "Arcane Reserves",
+			"rarity": 0,
+			"direction": "Binding",
+			"max": 3,
+			"fx": {
+				"mana_pct": 5.0
+			},
+			"text": "+{mana_pct}% maximum mana.",
+			"icon": "t_drop"
+		},
+		{
+			"id": "l_chains",
+			"status": "live",
+			"name": "Iron Chains",
+			"rarity": 0,
+			"direction": "Binding",
+			"max": 3,
+			"fx": {
+				"dmg:shackles": 15.0,
+				"shackle_dur": 0.3
+			},
+			"text": "Soul Shackles deal {dmg:shackles}% more damage and bind {shackle_dur} seconds longer.",
+			"icon": "shackles"
+		},
+		{
+			"id": "l_sigils",
+			"status": "live",
+			"name": "Warding Sigils",
+			"rarity": 0,
+			"direction": "Binding",
+			"max": 3,
+			"fx": {
+				"res": 5.0
+			},
+			"text": "+{res}% to all resistances.",
+			"icon": "t_ward"
+		},
+		{
+			"id": "l_reach",
+			"status": "live",
+			"name": "Binding Reach",
+			"rarity": 1,
+			"direction": "Binding",
+			"max": 2,
+			"fx": {
+				"shackle_range": 1.5
+			},
+			"text": "Soul Shackles reach {shackle_range} metres further.",
+			"icon": "shackles"
+		},
+		{
+			"id": "l_dark",
+			"status": "live",
+			"name": "Dark Pact",
+			"rarity": 1,
+			"direction": "Binding",
+			"max": 3,
+			"fx": {
+				"cd:covenant": 10.0,
+				"buff_pow": 5.0
+			},
+			"text": "Fel Covenant recharges {cd:covenant}% faster and its damage bonus is {buff_pow}% higher.",
+			"icon": "covenant"
+		},
+		{
+			"id": "l_eternal",
+			"status": "live",
+			"name": "Eternal Covenant",
+			"rarity": 2,
+			"direction": "Binding",
+			"max": 1,
+			"fx": {
+				"buff_dur": 6.0
+			},
+			"text": "Fel Covenant lasts {buff_dur} seconds longer.",
+			"icon": "covenant"
+		},
+		{
+			"id": "w_r_lingering",
+			"status": "design",
+			"name": "Lingering Rot",
+			"rarity": 0.0,
+			"direction": "Corruption",
+			"max": 3.0,
+			"fx": {
+				"dot_flat": 1.0
+			},
+			"text": "Your DoTs deal +{dot_flat} damage every tick.",
+			"icon": "",
+			"needs": "Read dot_flat in every DoT tick."
+		},
+		{
+			"id": "w_r_decay",
+			"status": "design",
+			"name": "Slow Decay",
+			"rarity": 0.0,
+			"direction": "Corruption",
+			"max": 3.0,
+			"fx": {
+				"dot_dur": 15.0
+			},
+			"text": "Your DoTs last {dot_dur}% longer.",
+			"icon": "",
+			"needs": "Read dot_dur where DoTs are applied."
+		},
+		{
+			"id": "w_r_thrift",
+			"status": "design",
+			"name": "Thrifty Hexes",
+			"rarity": 1.0,
+			"direction": "Corruption",
+			"max": 1.0,
+			"fx": {
+				"dot_cost": 50.0
+			},
+			"text": "Your DoT skills cost {dot_cost}% less mana.",
+			"icon": "",
+			"needs": "cost: for every skill tagged dot."
+		},
+		{
+			"id": "w_r_vile",
+			"status": "design",
+			"name": "Vile Mending",
+			"rarity": 1.0,
+			"direction": "Corruption",
+			"max": 2.0,
+			"fx": {
+				"dot_heal": 25.0
+			},
+			"text": "Every DoT tick has a {dot_heal}% chance to heal you for 1% of your life.",
+			"icon": "",
+			"needs": "Roll on each DoT tick."
+		},
+		{
+			"id": "w_r_echo",
+			"status": "design",
+			"name": "Echoing Corruption",
+			"rarity": 2.0,
+			"direction": "Corruption",
+			"max": 1.0,
+			"fx": {
+				"dot_echo": 1.0
+			},
+			"text": "Refreshing a DoT makes every one of your DoTs on that foe tick once at once.",
+			"icon": "",
+			"needs": "Hook DoT refresh."
+		},
+		{
+			"id": "w_r_haunt",
+			"status": "design",
+			"name": "Haunting",
+			"rarity": 0.0,
+			"direction": "Fear",
+			"max": 3.0,
+			"fx": {
+				"fear_dur": 0.2
+			},
+			"text": "Your fears and binds last {fear_dur} seconds longer.",
+			"icon": "",
+			"needs": "Read fear_dur in Terrify, the Effigy, Crowstorm and Soul Shackles."
+		},
+		{
+			"id": "w_r_nightmare",
+			"status": "design",
+			"name": "Nightmare Fuel",
+			"rarity": 0.0,
+			"direction": "Fear",
+			"max": 3.0,
+			"fx": {
+				"dmg_feared": 10.0
+			},
+			"text": "You deal {dmg_feared}% more damage to feared or bound foes.",
+			"icon": "",
+			"needs": "A damage bonus when the target is feared or bound."
+		},
+		{
+			"id": "w_r_panic",
+			"status": "design",
+			"name": "Contagious Panic",
+			"rarity": 1.0,
+			"direction": "Fear",
+			"max": 1.0,
+			"fx": {
+				"fear_spread": 1.0
+			},
+			"text": "A feared foe that runs into another frightens it too, for half a second.",
+			"icon": "",
+			"needs": "Fear spreading on contact (monsters only)."
+		},
+		{
+			"id": "w_r_dread",
+			"status": "design",
+			"name": "Dread Harvest",
+			"rarity": 1.0,
+			"direction": "Fear",
+			"max": 2.0,
+			"fx": {
+				"fear_kill": 1.0
+			},
+			"text": "Killing a feared foe gives back 15 mana and takes 2 seconds off Terrify.",
+			"icon": "",
+			"needs": "On kill while feared."
+		},
+		{
+			"id": "w_r_paralysis",
+			"status": "design",
+			"name": "Paralysing Terror",
+			"rarity": 2.0,
+			"direction": "Fear",
+			"max": 1.0,
+			"fx": {
+				"fear_root": 1.0
+			},
+			"text": "When one of your fears ends, the foe is rooted where it stands for 1 second.",
+			"icon": "",
+			"needs": "A root after the fear (PvP: diminishing returns)."
+		},
+		{
+			"id": "w_r_pact",
+			"status": "live",
+			"name": "Thirsting Pact",
+			"rarity": 1.0,
+			"direction": "Drain",
+			"max": 3.0,
+			"fx": {
+				"dmg:drain": 8.0,
+				"ls": 1.0
+			},
+			"text": "Drain Life deals {dmg:drain}% more damage and {ls}% of all your damage heals you.",
+			"icon": ""
+		},
+		{
+			"id": "w_r_bloodward",
+			"status": "design",
+			"name": "Blood Ward",
+			"rarity": 1.0,
+			"direction": "Drain",
+			"max": 2.0,
+			"fx": {
+				"overheal_shield": 10.0
+			},
+			"text": "Healing past full life becomes a shield, up to {overheal_shield}% of your life. It fades 5 seconds out of combat.",
+			"icon": "",
+			"needs": "A shield fed by overhealing, shown on the life globe."
+		},
+		{
+			"id": "w_r_gorge",
+			"status": "design",
+			"name": "Gorge",
+			"rarity": 1.0,
+			"direction": "Drain",
+			"max": 1.0,
+			"fx": {
+				"drain_execute": 1.0
+			},
+			"text": "Your drains heal twice as much from foes below 30% life.",
+			"icon": "",
+			"needs": "Check the victim's life in the heal."
+		},
+		{
+			"id": "w_r_hunger",
+			"status": "design",
+			"name": "Undying Hunger",
+			"rarity": 2.0,
+			"direction": "Drain",
+			"max": 1.0,
+			"fx": {
+				"shield_fork": 2.0
+			},
+			"text": "While your shield holds, Drain Life forks to 2 more foes and heals 25% more.",
+			"icon": "",
+			"needs": "Needs Blood Ward's shield."
+		}
+	],
+	"gems": [
+		{
+			"id": "gem_bloodglass",
+			"status": "design",
+			"name": "Bloodglass",
+			"rarity": 2.0,
+			"direction": "Drain",
+			"color": "#b8303a",
+			"text": "Healing past full life becomes a shield, up to 15% of your life."
+		},
+		{
+			"id": "gem_rotheart",
+			"status": "design",
+			"name": "Rotheart",
+			"rarity": 2.0,
+			"direction": "Corruption",
+			"color": "#7fa63a",
+			"text": "Your DoTs tick 20% faster."
+		},
+		{
+			"id": "gem_crowseye",
+			"status": "design",
+			"name": "Crow's Eye",
+			"rarity": 2.0,
+			"direction": "Fear",
+			"color": "#5b4a7a",
+			"text": "Your fears last 50% longer, and a feared foe is marked for your crows."
+		}
+	]
+}
