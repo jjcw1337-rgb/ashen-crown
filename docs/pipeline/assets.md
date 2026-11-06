@@ -12,8 +12,8 @@ recipes it links are the source of truth.
    and let them pick (jj's rule). Character sheets: full body, symmetrical A-pose, plain grey background, even light.
 2. **Model (Meshy image-to-3D ~30 credits; text-to-3D ~10).** Text-to-3D is a coin toss beyond simple objects: use
    concept → image-to-3D for anything with a shape that matters. Look at the four turnaround renders before going on.
-3. **Prepare in Blender (headless, local).** Pick the script for the kind of thing, and keep the editable `.blend` in
-   `~/Documents/Blender/Game Factory/sources/` (never inside the project); export the `.glb` next to what uses it (a hero's `body/`, a skill's folder; `assets/models/` for
+3. **Prepare in Blender (headless, local).** Pick the script for the kind of thing, and keep the editable `.blend` outside the
+   project (never committed); export the `.glb` next to what uses it (a hero's `body/`, a skill's folder; `assets/models/` for
    whatever hasn't moved into `game/`).
    - Props: `tools/blender/prep_prop.py` (size, axis, triangles, texture size); repeated or LOD-worthy pieces
      re-baked onto clean UVs with `tools/blender/camp/rebake_prop.py` (Meshy's own UVs leave the importer no LODs).
@@ -28,7 +28,7 @@ recipes it links are the source of truth.
    has its own visual language; effects are events.
 5. **2D art in the UI.** Skill, talent, item and gem icons are Meshy-painted 3x3 grids cut by
    `tools/skill_icons.py` / `tools/talent_icons.py` (one grid ≈ 6 credits; palette per class); ground paintings and
-   decals by `game/heroes/plague/build/ground_decal.py`; tiling textures by `make_tile_textures.py`.
+   decals by `game/heroes/plague/build/ground_decal.py`; tiling textures by `tools/blender/battlegrounds/make_tile_textures.py`.
 6. **Sound.** ElevenLabs through `tools/audio/` (spec → candidates → score → a human picks → `build_sfx.py`); never
    synthesized.
 7. **Import and look.** `godot --headless --editor --quit-after 2000`, then screenshots or frame clips in the game
@@ -39,7 +39,8 @@ recipes it links are the source of truth.
 ## Performance rules for anything new (see [loading](../systems/loading.md), [measuring](../systems/measuring.md))
 
 - **Budgets:** props ≤ 10k triangles with 1k textures (pieces repeated many times ~12k or less); monsters ~20k
-  (bosses 30k, 2k textures); heroes 50–60k. Textures import as lossy WebP q0.9 with mipmaps (UI and cut-outs lossless).
+  (bosses 30k, 2k textures); heroes 50–60k. New textures import as lossy WebP q0.9 (the project default), with mipmaps for anything seen in 3D; UI and
+  cut-outs import lossless.
 - **Load once:** models and textures used during play through `ResCache`; one cached `Shader` per effect kind, never
   one per cast or spawn.
 - **Warm it:** re-record `SkillWarmData` (`tools/skill_warm_capture.gd`) after a skill's effects change; add new

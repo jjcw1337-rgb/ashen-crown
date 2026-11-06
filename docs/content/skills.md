@@ -36,7 +36,7 @@ flowchart TD
 
 | Piece | Where | The Archer today |
 |---|---|---|
-| Name, text, mana, cooldown, range, power, timing | its entry in `data/codex/heroes/<hero>.json` ([data](../systems/data.md)) | ✓ for those fields. Its damage multipliers are still constants in `archer.gd`. |
+| Name, text, mana, cooldown, range, power, timing | its entry in `data/codex/heroes/<hero>.json` ([data](../systems/data.md)) | ✓ name, text, mana, cooldown, range and timing (no `power`). Its damage multipliers are still constants in `archer.gd`. |
 | The class wiring (key, aim, tags) | `Data.SKILLS` | ✓ |
 | The rules: `cast`, `impact`, `update` for this skill | `skills/<skill>/<skill>.gd` | all in `archer.gd` (957 lines) |
 | The look: its fx events' handlers | `skills/<skill>/<skill>_fx.gd` | `archer_fx.gd`, `skills/thunderstep/thunderstep_fx.gd`, and the shared `scripts/arrow_fx.gd`, `frost_volley_fx.gd`, `arc_fx.gd` |

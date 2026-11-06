@@ -34,7 +34,7 @@ game/heroes/archer/
   body/                  the model (archer_ranger.glb) and dyes/
   weapon/                the bow and arrows/
   skills/<skill>/        one folder per skill: its rules, its look, its own models
-  companion/             what it summons (spirit_beast.gd, the wolf)
+  companion/             what it summons (spirit_beast.gd; the wolf's model is still assets/models/monsters/wolf.glb)
   shared/                what only this hero's skills share (the Plague Doctor has one)
   build/                 Blender and other build scripts (never imported: .gdignore)
   tests/                 its headless tests
@@ -47,13 +47,18 @@ not here: they are in `data/codex/heroes/<hero>.json` ([data](../systems/data.md
 
 Heroes not moved yet still live in `scripts/<hero>*.gd` and `assets/models/`.
 
-**Where the game names a hero.** These are the places a new hero must be added:
-- `ClassSkills.of` and `all` (`scripts/class_skills.gd`), `SkillFx.play`, `update` and `clear` (`scripts/skill_fx.gd`);
+**Where the game names a hero.** These are the places a new hero must be added (Doug needed all of them):
+- `ClassSkills.of`, `all` and `trail_color` (`scripts/class_skills.gd`); `SkillFx._play`, `update` and `clear`
+  (`scripts/skill_fx.gd`);
 - `Hero.is_<id>` and `_build_rig` (`scripts/hero.gd`);
 - `Net.STYLES` (append new styles at the end);
 - the weapon in `Models.item_model`;
 - `Data.CLASSES` and `Data.SKILLS` (`scripts/data.gd`);
-- the class picker, `ClassStage` (`CLASSES`, `ACCENTS`, `EMBLEMS`, `SIGNATURE`, `SKILL_SHOW`, `PICK_SOUND`).
+- `Talents.TREES` and `AUTO` (`scripts/talents.gd`); `RunTalents`' themes and `TREE_THEME` (`scripts/run_talents.gd`);
+- the class picker, `ClassStage` (`CLASSES`, `ACCENTS`, `EMBLEMS`, `SIGNATURE`, `SKILL_SHOW`, `PICK_SOUND`);
+- `MpLobbyView.PLAYSTYLE`, `BgMatchup.ACCENTS`, and the Sandbox's stats (`scripts/sandbox.gd`).
+
+The Archer's rebuild aims to shrink this list ([the plan](../architecture_cleanup.md), step 2).
 
 ## Making a hero
 
@@ -62,13 +67,13 @@ It was first run with Doug. Each step names its tool, what it costs, and the che
 0. **Brief → codex (no credits).**
    - Write `data/codex/heroes/<id>.json` from the admin's description and references. It holds the fantasy, three
      directions, the skills and the rites.
-   - The kit: LMB attack, RMB and Q E R (the base kit), F G V (stronger skills, V the ultimate). For every skill,
-     note what it does, why it's fun in PvP, **the answer to it** (counterplay), and whether it's a damage skill (no
-     cooldown) or a utility one (cooldown and a tag).
-   - Post the kit summary to Discord.
+   - The kit: LMB attack, RMB and Q E R (the base kit), F G V (stronger skills, V the ultimate).
+   - Post a kit summary to Discord. For every skill it says what it does, why it's fun in PvP, **the answer to it**
+     (counterplay), and whether it's a damage skill (no cooldown) or a utility one (cooldown and a tag). The codex
+     has no counterplay field, so the summary is where it's kept.
    - Gate: every skill has a counterplay line, and no button carries more than one hard crowd control.
 1. **Concept art (Meshy 2D, ~6 credits a take).** `tools/meshy/meshy.py edit <reference.png> "<prompt>" --ref <other>
-   --aspect 3:4` and `meshy.py draw "<prompt>" --aspect 3:4`, two takes each. Full body, symmetrical A-pose, arms a
+   --aspect 3:4` or `meshy.py draw "<prompt>" --aspect 3:4`, at least three takes for the admin to pick from. Full body, symmetrical A-pose, arms a
    little away from the body, front view, plain grey background, even light. Gate: the whole body is visible, and
    the hands are empty or the prop is clear of the body.
 2. **Model (Meshy image-to-3D, ~30 credits).** `meshy.py image <concept.png> -o <dir> --pose a-pose --polys 60000`.
@@ -78,8 +83,9 @@ It was first run with Doug. Each step names its tool, what it costs, and the che
    with `meshy.py library <search>` (free): idle, walk, run, every skill's whole-body move, a three-blow combo, hit,
    death. Then `meshy.py animate <rig task id> <ids>`, 6–8 at a time.
 4. **Body in Blender (local).** Copy another hero's `build/prep_*_mocap.py` into `game/heroes/<id>/build/`, and map
-   the clip names it prints ("dropped clip ...") to the game's names. Export `body/<id>.glb`. Keep the `.blend`
-   outside the project. Gate: every clip is listed and none is "MISSING".
+   the clip names it prints ("dropped clip ...") to the game's names. Export `body/<model>.glb`. Keep the `.blend`
+   outside the project. Gate: every clip the hero needs is in the export. The Plague Doctor's and Doug's prep scripts
+   print "MISSING" for any that isn't; the Archer's doesn't check.
 5. **Props (Meshy text-to-3D, ~10 credits each).** One for each thing a skill throws, places or rides, prepared into
    the skill's own folder ([assets](../pipeline/assets.md)). Gate: the right object, the right way up, the right
    size, textured, ≤10k triangles, 1k textures.
@@ -88,7 +94,8 @@ It was first run with Doug. Each step names its tool, what it costs, and the che
 7. **Gates.**
    - The hero's own test in `tests/` (each skill's gameplay).
    - `tools/coop_fx_test.gd` (every skill reaches a partner, and a replay hurts nothing), `tools/skill_spec_test.gd`,
-     `tools/playtest.gd`, and `tools/bg_pvp_test.gd` (PvP crowd control).
+     `tools/playtest.gd`, and `tools/bg_pvp_test.gd` (PvP hits; its crowd-control check covers only Doug's Cream Pie,
+     so add one for the new hero, like `game/heroes/plague/tests/plague_pvp_test.gd`).
    - Screenshots of every skill from the game camera, posted.
 8. **Sound (ElevenLabs, ~10 credits a second).** Add the hero's sounds to `tools/audio/spec.py`, run `eleven.py
    <names>` and `score.py --rank`, a human picks, then `build_sfx.py picks.json`. Until then it uses the closest
@@ -100,5 +107,6 @@ Doug cost about 190 Meshy credits: concepts 24, model 30, rig 5, clips 60, props
 
 - **A skill's numbers, text or look:** [skills](skills.md), "Improving a skill".
 - **Its body or animations:** re-run its `build/prep_*_mocap.py` with new clips, and check every clip is listed.
-- **Its kit:** change the codex first (the skill, its counterplay, its rites), then the code, then the test.
+- **Its kit:** change the codex first (the skill and its rites), post the new counterplay, then change the code and
+  the test.
 - Run its tests, `tools/coop_fx_test.gd`, and look at it from the game camera before you call it done.

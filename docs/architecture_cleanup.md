@@ -91,8 +91,9 @@ Each step is done for the Archer first, all the way through, and the other heroe
    - one contract for a hero's skills, written in `docs/content/skills.md`. Today the Archer is static functions with
      its state on `Hero`, and the Plague Doctor an object per hero (`Hero.pd`).
 
-   Play doesn't change except for those fixes. Its tests and `tools/coop_fx_test.gd` pass, and its skills are checked
-   from the game camera. The other heroes then follow its template.
+   Play doesn't change except for those fixes. The proof: `game/heroes/archer/tests/archer_reference.gd` reproduces
+   the recorded damage, burns, stuns and chills of every skill; its other tests and `tools/coop_fx_test.gd` pass;
+   and its skills are checked from the game camera. The other heroes then follow its template.
 3. **Reference recordings.** Before damage changes, record a fixed-seed, fixed-frame-rate fight for each hero
    (every skill on training dummies, plus one PvP pair through a real server) as a combat log. Every later step
    reproduces it or explains each difference.
