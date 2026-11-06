@@ -285,7 +285,7 @@
 			"status": "live",
 			"name": "Deep Drain",
 			"rarity": 0,
-			"direction": "Affliction",
+			"direction": "Drain",
 			"max": 3,
 			"fx": {
 				"dmg:drain": 10.0
@@ -298,7 +298,7 @@
 			"status": "live",
 			"name": "Dark Thirst",
 			"rarity": 0,
-			"direction": "Affliction",
+			"direction": "Drain",
 			"max": 3,
 			"fx": {
 				"drain_heal": 12.0
@@ -311,7 +311,7 @@
 			"status": "live",
 			"name": "Fel Intellect",
 			"rarity": 0,
-			"direction": "Affliction",
+			"direction": "Drain",
 			"max": 3,
 			"fx": {
 				"ene": 3.0
@@ -324,7 +324,7 @@
 			"status": "live",
 			"name": "Siphon Efficiency",
 			"rarity": 0,
-			"direction": "Affliction",
+			"direction": "Drain",
 			"max": 3,
 			"fx": {
 				"cost:drain": 15.0
@@ -337,7 +337,7 @@
 			"status": "live",
 			"name": "Forking Beam",
 			"rarity": 1,
-			"direction": "Affliction",
+			"direction": "Drain",
 			"max": 2,
 			"fx": {
 				"drain_fork": 1.0
@@ -350,7 +350,7 @@
 			"status": "live",
 			"name": "Withering",
 			"rarity": 1,
-			"direction": "Affliction",
+			"direction": "Drain",
 			"max": 3,
 			"fx": {
 				"dmg": 4.0
@@ -363,7 +363,7 @@
 			"status": "live",
 			"name": "Soul Glut",
 			"rarity": 2,
-			"direction": "Affliction",
+			"direction": "Drain",
 			"max": 1,
 			"fx": {
 				"drain_glut": 50.0
@@ -376,7 +376,7 @@
 			"status": "live",
 			"name": "Virulence",
 			"rarity": 0,
-			"direction": "Plague",
+			"direction": "Corruption",
 			"max": 3,
 			"fx": {
 				"dmg:blight": 10.0
@@ -389,7 +389,7 @@
 			"status": "live",
 			"name": "Contagion",
 			"rarity": 0,
-			"direction": "Plague",
+			"direction": "Corruption",
 			"max": 3,
 			"fx": {
 				"blight_dur": 1.0
@@ -402,7 +402,7 @@
 			"status": "live",
 			"name": "Quickened Rot",
 			"rarity": 0,
-			"direction": "Plague",
+			"direction": "Corruption",
 			"max": 3,
 			"fx": {
 				"cd:blight": 10.0
@@ -415,7 +415,7 @@
 			"status": "live",
 			"name": "Fel Vigor",
 			"rarity": 0,
-			"direction": "Plague",
+			"direction": "Corruption",
 			"max": 3,
 			"fx": {
 				"life_pct": 4.0
@@ -428,7 +428,7 @@
 			"status": "live",
 			"name": "Spreading Rot",
 			"rarity": 1,
-			"direction": "Plague",
+			"direction": "Corruption",
 			"max": 2,
 			"fx": {
 				"blight_size": 15.0
@@ -441,7 +441,7 @@
 			"status": "live",
 			"name": "Malice",
 			"rarity": 1,
-			"direction": "Plague",
+			"direction": "Corruption",
 			"max": 3,
 			"fx": {
 				"crit": 3.0
@@ -454,7 +454,7 @@
 			"status": "live",
 			"name": "Twin Skulls",
 			"rarity": 2,
-			"direction": "Plague",
+			"direction": "Corruption",
 			"max": 1,
 			"fx": {
 				"blight_twin": 1.0
@@ -467,7 +467,7 @@
 			"status": "live",
 			"name": "Fel Armor",
 			"rarity": 0,
-			"direction": "Binding",
+			"direction": "Fear",
 			"max": 3,
 			"fx": {
 				"armor_pct": 6.0
@@ -480,7 +480,7 @@
 			"status": "live",
 			"name": "Arcane Reserves",
 			"rarity": 0,
-			"direction": "Binding",
+			"direction": "Fear",
 			"max": 3,
 			"fx": {
 				"mana_pct": 5.0
@@ -493,7 +493,7 @@
 			"status": "live",
 			"name": "Iron Chains",
 			"rarity": 0,
-			"direction": "Binding",
+			"direction": "Fear",
 			"max": 3,
 			"fx": {
 				"dmg:shackles": 15.0,
@@ -507,7 +507,7 @@
 			"status": "live",
 			"name": "Warding Sigils",
 			"rarity": 0,
-			"direction": "Binding",
+			"direction": "Fear",
 			"max": 3,
 			"fx": {
 				"res": 5.0
@@ -520,7 +520,7 @@
 			"status": "live",
 			"name": "Binding Reach",
 			"rarity": 1,
-			"direction": "Binding",
+			"direction": "Fear",
 			"max": 2,
 			"fx": {
 				"shackle_range": 1.5
@@ -533,7 +533,7 @@
 			"status": "live",
 			"name": "Dark Pact",
 			"rarity": 1,
-			"direction": "Binding",
+			"direction": "Fear",
 			"max": 3,
 			"fx": {
 				"cd:covenant": 10.0,
@@ -547,7 +547,7 @@
 			"status": "live",
 			"name": "Eternal Covenant",
 			"rarity": 2,
-			"direction": "Binding",
+			"direction": "Fear",
 			"max": 1,
 			"fx": {
 				"buff_dur": 6.0

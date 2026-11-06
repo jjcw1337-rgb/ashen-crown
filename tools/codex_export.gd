@@ -86,8 +86,8 @@ func _merge(old: Array, fresh: Array) -> Array:
 		for k in o:
 			if not e.has(k):
 				e[k] = o[k]
-		if o.has("direction") and str(e.get("direction", "")) == "":
-			e["direction"] = o["direction"]
+		if str(o.get("direction", "")) != "":
+			e["direction"] = o["direction"]      # (the codex may file an entry under another direction than its tree)
 		out.append(e)
 		seen[e["id"]] = true
 	for e in old:
