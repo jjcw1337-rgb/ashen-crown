@@ -59,10 +59,12 @@ const THEMES := {
 	"serpent": [
 		{"id": "frost", "name": "Frost", "color": Color(0.55, 0.82, 1.0), "desc": "Breath, chill and shatter."},
 		{"id": "beast", "name": "Beast", "color": Color(0.7, 0.8, 0.85), "desc": "Claws, coils and the tail."},
+		{"id": "glacier", "name": "Glacier", "color": Color(0.75, 0.92, 1.0), "desc": "Tombs of ice and a hide of it: lock them down, then break them."},
 	],
 	"wyvern": [
 		{"id": "storm", "name": "Storm", "color": Color(0.7, 0.72, 1.0), "desc": "Lightning from its jaws."},
 		{"id": "beast", "name": "Beast", "color": Color(0.7, 0.8, 0.85), "desc": "Claws, wings and the tail."},
+		{"id": "sky", "name": "Sky", "color": Color(0.6, 0.85, 1.0), "desc": "Dives, gales and the storm overhead: never where they strike."},
 	],
 }
 ## Each class's three talent trees -> the theme their talents (now passives) belong to.
@@ -87,6 +89,7 @@ const SKILL_THEMES := {
 	"u_barrage": "slapstick", "u_bonanza": "showman", "u_cannon": "bigtop",
 	"pie": "slapstick", "peels": "slapstick", "slide": "showman", "doppel": "showman", "juggle": "showman", "bounce": "bigtop", "car": "bigtop",
 	"frost_breath": "frost", "storm_arc": "storm",
+	"s_tomb": "glacier", "s_coil": "beast", "s_lance": "frost", "v_dive": "sky", "v_cloud": "storm", "v_gale": "sky",
 	"frost_nova": "frost", "arc": "storm", "earthshatter": "", "war_cry": "",
 }
 
@@ -302,6 +305,37 @@ const TALENTS := [
 		"fx": {"chill_pct": 25, "dmg:frost_breath": 10}, "text": "Chills last {chill_pct}% longer; Frost Breath +{dmg:frost_breath}%."},
 	{"id": "v_lord", "cls": "wyvern", "theme": "storm", "rarity": 0, "max": 3, "name": "Storm Lord", "icon": "storm_arc",
 		"fx": {"dmg:storm_arc": 15, "dmg:arc": 15}, "text": "Storm Arc and Arc deal +{dmg:storm_arc}%."},
+	# the dragons' run skills' upgrades and their third directions (Glacier, Sky)
+	{"id": "s_up_tomb", "cls": "serpent", "theme": "glacier", "rarity": 1, "max": 2, "name": "Deep Freeze", "icon": "s_tomb", "needs": "s_tomb",
+		"fx": {"tomb_r": 30, "tomb_t": 0.4, "dmg:s_tomb": 15}, "text": "Glacial Tomb seals {tomb_r}% wider, holds {tomb_t} s longer and shatters {dmg:s_tomb}% harder."},
+	{"id": "s_up_coil", "cls": "serpent", "theme": "beast", "rarity": 1, "max": 2, "name": "Iron Coils", "icon": "s_coil", "needs": "s_coil",
+		"fx": {"coil_r": 15, "dmg:s_coil": 15, "coil_shield": 1}, "text": "Crushing Coil reaches {coil_r}% further, hits {dmg:s_coil}% harder and heals {coil_shield}% of your life for each foe it crushes."},
+	{"id": "s_up_lance", "cls": "serpent", "theme": "frost", "rarity": 2, "max": 1, "name": "Spear of Winter", "icon": "s_lance", "needs": "s_lance",
+		"fx": {"lance_len": 40, "lance_freeze": 0.8, "dmg:s_lance": 20}, "text": "Rime Lance runs {lance_len}% further, freezes {lance_freeze} s longer and hits {dmg:s_lance}% harder."},
+	{"id": "s_glacier_hide", "cls": "serpent", "theme": "glacier", "rarity": 0, "max": 3, "name": "Rime Scales", "icon": "t_armor",
+		"fx": {"armor_pct": 12, "res": 6}, "text": "+{armor_pct}% defense and +{res}% to every resistance."},
+	{"id": "s_glacier_cold", "cls": "serpent", "theme": "glacier", "rarity": 0, "max": 3, "name": "Biting Cold", "icon": "s_tomb",
+		"fx": {"chill_pct": 20, "dmg:s_tomb": 10}, "text": "Chills last {chill_pct}% longer; Glacial Tomb +{dmg:s_tomb}%."},
+	{"id": "s_glacier_thorns", "cls": "serpent", "theme": "glacier", "rarity": 1, "max": 2, "name": "Frozen Barbs", "icon": "t_armor",
+		"proc": "thorns", "k": {"pct": 30}, "per": ["pct"], "text": "Foes that strike you take {pct}% of the blow back as cold."},
+	{"id": "s_glacier_shards", "cls": "serpent", "theme": "glacier", "rarity": 2, "max": 1, "name": "Shatterpoint", "icon": "frost_breath",
+		"proc": "shards_on_death", "k": {"pct": 60, "r": 3.0}, "text": "Chilled foes that die burst into ice shards: {pct}% weapon damage within {r} m, chilling."},
+	{"id": "s_glacier_undying", "cls": "serpent", "theme": "glacier", "rarity": 2, "max": 1, "name": "Heart of the Glacier", "icon": "t_armor",
+		"proc": "undying", "k": {"life": 40, "secs": 90}, "text": "A blow that would kill you leaves you at {life}% life inside a shell of ice instead (once every {secs} seconds)."},
+	{"id": "v_up_dive", "cls": "wyvern", "theme": "sky", "rarity": 1, "max": 2, "name": "Plummet", "icon": "v_dive", "needs": "v_dive",
+		"fx": {"dive_r": 20, "dmg:v_dive": 20, "cd:v_dive": 15}, "text": "Thunder Dive lands {dive_r}% wider, {dmg:v_dive}% harder and comes back {cd:v_dive}% sooner."},
+	{"id": "v_up_cloud", "cls": "wyvern", "theme": "storm", "rarity": 2, "max": 1, "name": "Supercell", "icon": "v_cloud", "needs": "v_cloud",
+		"fx": {"cloud_rate": 30, "cloud_t": 1.5, "cloud_stun": 25}, "text": "Thunderhead strikes {cloud_rate}% faster, lasts {cloud_t} s longer, and each bolt has a {cloud_stun}% chance to stun."},
+	{"id": "v_up_gale", "cls": "wyvern", "theme": "sky", "rarity": 1, "max": 2, "name": "Hurricane", "icon": "v_gale", "needs": "v_gale",
+		"fx": {"gale_r": 25, "dmg:v_gale": 20}, "text": "Gale Wings reaches {gale_r}% further and hits {dmg:v_gale}% harder."},
+	{"id": "v_sky_speed", "cls": "wyvern", "theme": "sky", "rarity": 0, "max": 3, "name": "Tailwind", "icon": "v_gale",
+		"fx": {"frw": 4, "cd:v_dive": 8}, "text": "+{frw}% run speed; Thunder Dive {cd:v_dive}% sooner."},
+	{"id": "v_sky_dodge", "cls": "wyvern", "theme": "sky", "rarity": 0, "max": 3, "name": "Wind-Rider", "icon": "v_dive",
+		"fx": {"dex": 4, "dmg:v_dive": 10, "dmg:v_gale": 10}, "text": "+{dex} Dexterity; Thunder Dive and Gale Wings +{dmg:v_dive}%."},
+	{"id": "v_sky_kill", "cls": "wyvern", "theme": "sky", "rarity": 1, "max": 2, "name": "Hunter's Updraft", "icon": "v_dive",
+		"proc": "speed_on_kill", "k": {"frw": 15, "secs": 3}, "per": ["frw"], "text": "Each kill: +{frw}% run speed for {secs} seconds."},
+	{"id": "v_sky_reset", "cls": "wyvern", "theme": "sky", "rarity": 2, "max": 1, "name": "Eye of the Storm", "icon": "v_dive",
+		"fx": {"dive_reset": 1}, "text": "A kill with Thunder Dive makes it ready again."},
 	{"id": "v_static", "cls": "wyvern", "theme": "storm", "rarity": 2, "max": 1, "name": "Static Claws", "icon": "storm_arc",
 		"proc": "chain_on_hit", "k": {"src": "attack", "jumps": 2, "pct": 40, "r": 6.0}, "text": "Claws leap on as lightning to {jumps} more foes ({pct}%)."},
 ]

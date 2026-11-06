@@ -543,8 +543,49 @@ func _skills(h) -> void:
 	var p0: Vector3 = h.global_position
 	ok = await _cast(h, "u_cannon", far.global_position, 2.0)
 	check(ok and h.global_position.distance_to(p0) > 7.0 and far.life < far.max_life, "Human Cannonball: he flies to the pointer and flattens what's there")
+	# the Frost Serpent's
+	await _fresh(h, "serpent", {})
+	var tomb := [_foe(h, Vector3(7, 0, 0), "zombie", 5000.0), _foe(h, Vector3(8.2, 0, 1.2), "zombie", 5000.0)]
+	ok = await _cast(h, "s_tomb", tomb[0].global_position, 0.9)
+	check(ok and tomb.all(func(e): return e.stun_t > 0.0 and is_equal_approx(e.life, e.max_life)), "Glacial Tomb: the foe and the one beside it are sealed (stunned, not yet hurt)")
+	await create_timer(1.8).timeout
+	check(tomb.all(func(e): return e.life < e.max_life), "Glacial Tomb: the tomb shatters on them")
+	await _fresh(h, "serpent", {})
+	var coil := [_foe(h, Vector3(2.5, 0, 0), "zombie", 5000.0), _foe(h, Vector3(-2.5, 0, 1.5), "zombie", 5000.0)]
+	coil[1].chill(0.5, 5.0)
+	ok = await _cast(h, "s_coil", h.global_position, 1.6)
+	var c0: float = coil[0].max_life - coil[0].life
+	var c1: float = coil[1].max_life - coil[1].life
+	check(ok and c0 > 0.0 and c1 > 0.0 and coil.all(func(e): return e.slow_t > 0.0), "Crushing Coil: crushes all round and slows them (%.0f, chilled %.0f)" % [c0, c1])
+	await _fresh(h, "serpent", {})
+	var lance := [_foe(h, Vector3(0, 0, -4), "zombie", 5000.0), _foe(h, Vector3(0.4, 0, -8), "zombie", 5000.0)]
+	lance[1].chill(0.5, 5.0)
+	h._face(Vector3(0, 0, -1))
+	ok = await _cast(h, "s_lance", h.global_position + Vector3(0, 0, -9), 0.95)
+	check(ok and lance.all(func(e): return e.life < e.max_life) and lance[0].chill_t > 0.0 and lance[1].stun_t > 0.0, "Rime Lance: the line chills the first and freezes the one already chilled")
+	# the Storm Wyvern's
+	await _fresh(h, "wyvern", {})
+	var dfar = _foe(h, Vector3(10, 0, 0), "zombie", 5000.0)
+	var dp0: Vector3 = h.global_position
+	ok = await _cast(h, "v_dive", dfar.global_position, 0.9)
+	check(ok and h.global_position.distance_to(dp0) > 7.0 and dfar.life < dfar.max_life and dfar.stun_t > 0.0, "Thunder Dive: it flies to the pointer, strikes and stuns (moved %.1f m)" % h.global_position.distance_to(dp0))
+	await create_timer(0.6).timeout
+	check(h.rig == null or (is_zero_approx(h.rig.position.y) and not h.rig.has_meta("fly")), "Thunder Dive: down on its feet after")
+	await _fresh(h, "wyvern", {})
+	var under := [_foe(h, Vector3(8, 0, 0), "zombie", 5000.0), _foe(h, Vector3(9, 0, 2), "zombie", 5000.0)]
+	ok = await _cast(h, "v_cloud", under[0].global_position, 4.8)
+	var cl_hurt: float = under.reduce(func(acc, e): return acc + (e.max_life - e.life), 0.0)
+	check(ok and cl_hurt > 0.0 and (h.get_meta("drg")["clouds"] as Array).is_empty(), "Thunderhead: its bolts strike beneath it, then it's gone (%.0f dealt)" % cl_hurt)
+	await _fresh(h, "wyvern", {})
+	var gale = _foe(h, Vector3(0, 0, -3), "zombie", 5000.0)
+	var behind = _foe(h, Vector3(0, 0, 4), "zombie", 5000.0)
+	gale.scripted = false
+	h._face(Vector3(0, 0, -1))
+	var gp0: Vector3 = gale.global_position
+	ok = await _cast(h, "v_gale", h.global_position + Vector3(0, 0, -5), 1.0)
+	check(ok and gale.life < gale.max_life and gale.slow_t > 0.0 and is_equal_approx(behind.life, behind.max_life), "Gale Wings: the cone ahead is struck and slowed, the one behind spared (pushed %.1f m)" % gale.global_position.distance_to(gp0))
 	# every run skill is in its class's pool and reads its theme
-	for cls in ["archer", "plague"]:
+	for cls in ["archer", "plague", "serpent", "wyvern"]:
 		var ids: Array = RB.skill_pool(cls).map(func(s): return s["id"])
 		var run_ids: Array = load("res://scripts/data.gd").run_skills_for(cls).map(func(s): return s["id"])
 		check(run_ids.all(func(i): return ids.has(i) and RT.SKILL_THEMES.has(i)), "%s: run skills in the pool with their themes (%d skills to find)" % [cls, ids.size()])

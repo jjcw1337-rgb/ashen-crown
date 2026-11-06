@@ -45,6 +45,7 @@ static func impact_at(style: String) -> float:
 		"pd_transfuse": return 0.45
 		"pd_crank": return 0.97
 		"cast": return 0.55
+		"dive": return DragonSkills.DIVE_FLY.y     # the Storm Wyvern's Thunder Dive (a run skill): down on its foes
 		"claw": return 0.45
 		"slam": return 0.58
 		"bite": return 0.5

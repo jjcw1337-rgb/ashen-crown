@@ -22,7 +22,8 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			Fx.flash(root, bp + Vector3(0, 1.0, 0), Color(1.0, 0.8, 0.4), 4.0, 0.3, 8.0)
 			SkillFx.snd(h, "boom", -2.0, 1.1)
 		"pie:throw":
-			_fly(root, "pie", ev["p"], ev["q"], float(ev.get("x", 0.45)), 2.2, 0.6)
+			var big := float(ev.get("r", 0.6))
+			_fly(root, "pie", ev["p"], ev["q"], float(ev.get("x", 0.45)), 2.2 + big, big)
 			SkillFx.snd(h, "swing_light", -4.0, 1.3)
 		"pie:splat":
 			var p: Vector3 = ev["p"]
@@ -35,17 +36,26 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 					Fx.number(root, t.global_position + Vector3(0, 2.4, 0), "Pied!", CREAM)
 		"peels:land":
 			var list: Array = h.fxs.get("peels", [])
+			var from_v: Variant = ev.get("q", null)     # Banana Bonanza: each peel is flung out of his hands first
 			for p in ev.get("ps", PackedVector3Array()):
 				var m := Doug.prop("banana")
 				if m == null:
 					m = MeshInstance3D.new()
 					(m as MeshInstance3D).mesh = Geo.sph(0.18, 8)
-				m.scale = Vector3.ONE * 0.5
 				root.add_child(m)
 				m.global_position = p + Vector3(0, 0.02, 0)
 				m.rotation.y = randf() * TAU
 				m.set_meta("t", float(ev.get("x", 8.0)))
 				list.append(m)
+				if from_v is Vector3:
+					m.scale = Vector3.ONE * 0.01
+					_fly(root, "banana", from_v, p + Vector3(0, 0.1, 0), 0.35, 1.6, 0.7)
+					var tw := m.create_tween()
+					tw.tween_interval(0.33)
+					tw.tween_property(m, "scale", Vector3.ONE * 0.7, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+					tw.tween_callback(func(): Fx.burst(root, p + Vector3(0, 0.15, 0), Color(1.0, 0.9, 0.35), 8, 2.0, 0.06, 0.35, false, -9.0))
+				else:
+					m.scale = Vector3.ONE * 0.5
 			h.fxs["peels"] = list
 			SkillFx.snd(h, "swing_light", -6.0, 1.6)
 		"peels:slip", "peels:gone":
