@@ -68,6 +68,8 @@ var tooltip: PanelContainer
 var tip_box: VBoxContainer
 var tip_owner: Control = null
 var skill_picker: Control = null
+## A multiplayer run character's windows (RunUI: the build, gear swaps, camp upgrades).
+var run_ui: RunUI
 const BIND_KEYS_UI := ["Q", "E", "R", "F", "G", "V"]
 
 var inv_panel: PanelContainer
@@ -221,6 +223,9 @@ func setup(g: Node) -> void:
 	_build_death()
 	_build_spectate()
 	_build_victory()
+	run_ui = RunUI.new()
+	windows.add_child(run_ui)
+	run_ui.setup(self)
 
 func bind_hero(h: Hero) -> void:
 	hero = h
@@ -734,7 +739,7 @@ func _build_hud() -> void:
 	hint_lbl.offset_top = -bh - 52
 	hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hint_lbl.text = "WASD: move  ·  Left mouse: attack  ·  Right mouse, Q E R F G V: skills (K to set them)  ·  Space: dodge roll (hold to sprint)  ·  N: talents  ·  J: quests  ·  1-4: potions  ·  I/C: inventory/stats  ·  T: portal  ·  Tab: map"
+	hint_lbl.text = HINT_STORY
 	hud.add_child(hint_lbl)
 	minimap = Minimap.new()
 	minimap.ui = self
@@ -791,7 +796,10 @@ func refresh_skill_slots() -> void:
 		skill_hb.move_child(s, old.get_index())
 		old.queue_free()
 		skill_slots[slot] = s
+		s.visible = not (hero != null and hero.run != null and slot in ["G", "V"])
 	tooltip.visible = false
+	if hint_lbl != null:
+		hint_lbl.text = HINT_RUN if hero != null and hero.run != null else HINT_STORY
 	if skills_panel and skills_panel.visible:
 		_fill_skills_panel()
 	# the standard globes, unless this class is a special character with its own (Data.CLASSES "hud")
@@ -801,6 +809,9 @@ func refresh_skill_slots() -> void:
 		mana_globe.set_style(hud)
 
 const SLOT_NAMES := {"lmb": "Left mouse", "rmb": "Right mouse"}
+const HINT_STORY := "WASD: move  ·  Left mouse: attack  ·  Right mouse, Q E R F G V: skills (K to set them)  ·  Space: dodge roll (hold to sprint)  ·  N: talents  ·  J: quests  ·  1-4: potions  ·  I/C: inventory/stats  ·  T: portal  ·  Tab: map"
+## A multiplayer run character's controls (RunBuild: five slots, the build window, camp chests)
+const HINT_RUN := "WASD: move  ·  Left mouse: attack  ·  Right mouse, Q E R F: skills  ·  I or K: your build  ·  Space: dodge roll (hold to sprint)  ·  1-4: consumables  ·  Clear a camp, open its chest: an upgrade  ·  Tab: map"
 
 ## One bar slot: the Meshy socket, the bound skill's glyph, a cooldown shade, the key and the mana cost.
 ## Click it to choose what goes there.
@@ -866,7 +877,7 @@ func _bar_slot(slot: String) -> Control:
 		else:
 			lines = [[sk["name"] + "   (" + where + ")", GOLD], [sk["desc"], Color(0.85, 0.82, 0.75)]]
 			if int(sk["mana"]) > 0 or float(sk["cd"]) > 0.0:
-				lines.append(["Mana: %d   Cooldown: %ss" % [int(round(hero.skill_cost(id))), str(snappedf(hero.skill_cd(id), 0.1))] + (("   Unlocks at level %d" % int(sk["lvl"])) if Data.skill_locked(sk, hero.level) else ""), Color(0.55, 0.65, 1.0)])
+				lines.append(["Mana: %d   Cooldown: %ss" % [int(round(hero.skill_cost(id))), str(snappedf(hero.skill_cd(id), 0.1))] + (("   Not learned" if hero.run != null else "   Unlocks at level %d" % int(sk["lvl"])) if hero.skill_locked(sk) else ""), Color(0.55, 0.65, 1.0)])
 			lines.append(["Click to change  ·  drag to move or swap  ·  drag off the bar to clear", DIM])
 		show_tooltip(lines)
 		tip_owner = p)
@@ -888,7 +899,7 @@ func _bar_slot(slot: String) -> Control:
 ## Start dragging a skill (from a bar slot, or from the skills window when from_slot is "").
 func _skill_drag(src: Control, id: String, from_slot: String) -> Variant:
 	var sk := Data.skill_def(id)
-	if sk.is_empty() or hero == null or (Data.skill_locked(sk, hero.level) and not game.test_allskills):
+	if sk.is_empty() or hero == null or (hero.skill_locked(sk) and not game.test_allskills):
 		return null
 	_skill_dragged = true
 	_skill_drag_from = from_slot
@@ -937,6 +948,9 @@ func _notification(what: int) -> void:
 ## skill this class knows (name, mana, which key has it now, locked ones greyed with their level).
 ## Click one to put it on the slot; click outside or press Esc to close.
 func _choose_skill(slot: String) -> void:
+	if hero != null and hero.run != null:
+		run_ui.open_build(slot)     # (a run character's skills live in its build window)
+		return
 	close_skill_picker()
 	tooltip.visible = false
 	var where: String = SLOT_NAMES.get(slot, "Key " + slot)
@@ -1039,7 +1053,7 @@ func close_skill_picker() -> bool:
 ## One skill in the picker (an empty dictionary is the "clear this slot" socket).
 func _picker_card(slot: String, sk: Dictionary) -> Control:
 	var id: String = sk.get("id", "")
-	var locked: bool = Data.skill_locked(sk, hero.level) and not game.test_allskills
+	var locked: bool = hero.skill_locked(sk) and not game.test_allskills
 	var current := hero.bound(slot) == id
 	var on_key := ""
 	if id != "":
@@ -1199,7 +1213,7 @@ func _fill_skills_panel() -> void:
 		c.queue_free()
 	for sk in Data.skills_known(hero.cls):
 		var id: String = sk["id"]
-		var locked: bool = Data.skill_locked(sk, hero.level) and not game.test_allskills
+		var locked: bool = hero.skill_locked(sk) and not game.test_allskills
 		var row := PanelContainer.new()
 		row.add_theme_stylebox_override("panel", _box(Color(0.05, 0.045, 0.04, 0.9), Color(0.32, 0.25, 0.15), 1, 4, 6))
 		row.mouse_entered.connect(func(): _hover_skill = id)
@@ -1269,7 +1283,7 @@ func skills_hotkey(key: String) -> bool:
 	if skills_panel == null or not skills_panel.visible or _hover_skill == "":
 		return false
 	var sk := Data.skill_def(_hover_skill)
-	if sk.is_empty() or (Data.skill_locked(sk, hero.level) and not game.test_allskills):
+	if sk.is_empty() or (hero.skill_locked(sk) and not game.test_allskills):
 		return true
 	hero.bind(key, _hover_skill)
 	Sfx.play("click")
@@ -5313,6 +5327,8 @@ func _walked_off() -> void:
 
 func close_all() -> bool:
 	var any := close_skill_picker()
+	if run_ui != null and run_ui.close():
+		any = true
 	if game.lobby_client != null and game.lobby_client.panel.visible:
 		game.lobby_client.panel.hide()
 		any = true
@@ -5330,7 +5346,7 @@ func title_idle() -> bool:
 		and not join_panel.visible and not bg_panel.visible and not (bg_page != null and bg_page.visible) and not (game.lobby_client != null and game.lobby_client.panel.visible)
 
 func any_panel_open() -> bool:
-	return (game.lobby_client != null and game.lobby_client.panel.visible) or inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or furnace_ui.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible or quest_panel.visible or boat_panel.visible or auction_panel.visible
+	return (run_ui != null and run_ui.visible) or (game.lobby_client != null and game.lobby_client.panel.visible) or inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or furnace_ui.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible or quest_panel.visible or boat_panel.visible or auction_panel.visible
 
 func message(t: String, col := Color(1, 1, 1), dur := 2.5) -> void:
 	msg_lbl.text = t
@@ -5382,7 +5398,7 @@ func set_boss(e) -> void:
 
 ## The experience bar's text, with a Sunstar Bloom's or an Experience Shrine's bonus counting down.
 func _xp_detail() -> String:
-	var need := Data.xp_for_level(hero.level)
+	var need := hero.xp_to_next()
 	var pct := int(float(hero.xp) / maxf(need, 1.0) * 100.0)
 	var t := ("%d / %d   (%d%%)" % [hero.xp, need, pct]) if level_medal else ("Level %d   ·   %d / %d   (%d%%)" % [hero.level, hero.xp, need, pct])
 	if game.xp_bonus_t > 0.0:
@@ -5397,7 +5413,7 @@ func refresh() -> void:
 		_refresh_shop()
 	life_lbl.text = "Life  %d / %d" % [int(hero.life), int(hero.max_life)]
 	mana_lbl.text = "Mana  %d / %d" % [int(hero.mana), int(hero.max_mana)]
-	var xpf := float(hero.xp) / maxf(Data.xp_for_level(hero.level), 1.0)
+	var xpf := float(hero.xp) / maxf(hero.xp_to_next(), 1.0)
 	xp_bar.value = xpf
 	if level_medal:
 		level_medal.level = hero.level
@@ -5428,7 +5444,7 @@ func refresh() -> void:
 		var pname: String = game.char_name if game.char_name != "" else str(cls.get("name", "Hero"))
 		char_labels["name"].text = pname
 		char_labels["level"].text = "%s  ·  Level %d" % [str(cls.get("name", hero.cls.capitalize())), hero.level]
-		var need: int = Data.xp_for_level(hero.level)
+		var need: int = hero.xp_to_next()
 		(char_labels["xpbar"] as ProgressBar).max_value = maxf(1.0, float(need))
 		(char_labels["xpbar"] as ProgressBar).value = float(hero.xp)
 		char_labels["xp"].text = "Experience  %d / %d" % [hero.xp, need]
@@ -5525,7 +5541,7 @@ func _process(delta: float) -> void:
 			if sk.is_empty():
 				cdr.anchor_top = 1.0
 				continue
-			var locked: bool = Data.skill_locked(sk, hero.level) and not game.test_allskills
+			var locked: bool = hero.skill_locked(sk) and not game.test_allskills
 			var frac: float = 1.0 if locked else clampf(float(hero.cds.get(sk["id"], 0.0)) / maxf(hero.skill_cd(sk["id"]), 0.01), 0.0, 1.0)
 			cdr.anchor_top = 1.0 - frac
 			cdr.color = Color(0, 0, 0, 0.82) if locked else Color(0, 0, 0, 0.6)

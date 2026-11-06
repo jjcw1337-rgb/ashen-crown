@@ -99,7 +99,7 @@ func _skill(h: Hero, d: float, aim: Vector3) -> bool:
 	list.reverse()
 	for s in list:
 		var id: String = s["id"]
-		if id in ["attack", "block"] or Data.skill_locked(s, h.level) or float(h.cds.get(id, 0.0)) > 0.0 or h.mana < h.skill_cost(id):
+		if id in ["attack", "block"] or h.skill_locked(s) or float(h.cds.get(id, 0.0)) > 0.0 or h.mana < h.skill_cost(id):
 			continue
 		var kind := str(s.get("aim", "facing"))
 		var rng := float(s.get("range", 0.0))

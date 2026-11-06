@@ -438,7 +438,10 @@ func _apply_underworld() -> void:
 func _on_level(l: int) -> void:
 	Telemetry.crumb("level", {"level": l})
 	ui.big_message("Level %d" % l)
-	ui.message("+5 stat points (press C)  ·  +1 talent point (press N)", Color(1, 0.85, 0.4))
+	if hero.run != null:
+		ui.message("Stronger: your attributes rise with every level  ·  camp chests bring skills and passives", Color(1, 0.85, 0.4))
+	else:
+		ui.message("+5 stat points (press C)  ·  +1 talent point (press N)", Color(1, 0.85, 0.4))
 
 # ---------------------------------------------------------------- environment
 func _setup_env() -> void:
@@ -555,10 +558,10 @@ func _sea_sounds() -> void:
 
 ## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
-	return cur_zone == Battlegrounds.ZONE or cur_zone == Vigil.ZONE or cur_zone == "arena" or cur_zone == Sandbox.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
+	return (cur_zone == Battlegrounds.ZONE and not Battlegrounds.outdoor()) or cur_zone == Vigil.ZONE or cur_zone == "arena" or cur_zone == Sandbox.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
 
 func _zone_env(kind: String) -> void:
-	var inside := kind == Battlegrounds.ZONE or kind == Vigil.ZONE or kind == "arena" or kind == Sandbox.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
+	var inside := (kind == Battlegrounds.ZONE and not Battlegrounds.outdoor()) or kind == Vigil.ZONE or kind == "arena" or kind == Sandbox.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
 	var snowy := is_snowy() and not inside
 	var ashen := difficulty >= 2 and not inside
 	RenderingServer.global_shader_parameter_set("snow_amt", 1.0 if snowy else 0.0)
@@ -628,7 +631,24 @@ func _zone_env(kind: String) -> void:
 		sun.light_energy = 0.85 if kind == "town" else 0.75
 		hero.light.light_energy = 0.9
 		hero.light.omni_range = 10.0
-		if kind == "town" and world.theme.get("forest_camp", false):
+		if kind == Battlegrounds.ZONE:
+			# the Verdant Reach (BgForest): a bright, lush afternoon. Warm sun, a clear blue sky, rich greens kept
+			# saturated, a light haze between the oaks; the camps' coloured lights read in the shade
+			sky_mat.sky_top_color = Color(0.3, 0.5, 0.78)
+			sky_mat.sky_horizon_color = Color(0.78, 0.84, 0.78)
+			sky_mat.ground_horizon_color = Color(0.45, 0.52, 0.4)
+			env.ambient_light_energy = 0.8
+			env.tonemap_exposure = 1.12
+			env.fog_light_color = Color(0.62, 0.72, 0.6)
+			env.fog_density = 0.0035
+			env.fog_height_density = 0.03
+			env.adjustment_saturation = 1.12
+			env.adjustment_contrast = 1.05
+			env.volumetric_fog_density = 0.008
+			env.volumetric_fog_albedo = Color(0.85, 0.92, 0.8)
+			sun.light_color = Color(1.0, 0.93, 0.78)
+			sun.light_energy = 1.25
+		elif kind == "town" and world.theme.get("forest_camp", false):
 			# Act I's camp deep in the old forest: late dusk under the canopy. Cool blue-green light
 			# and low mist between the trees, so the bonfire, the lanterns and the rune stones glow
 			sky_mat.sky_top_color = Color(0.1, 0.13, 0.17)
@@ -1224,7 +1244,7 @@ func zone_title(act: int, zone: String) -> String:
 		"wild": return a["wild"] + tag
 		"lair": return ("Throne of the Ashen King" if difficulty >= 2 else a["lair"]) + tag
 		"coast": return str(a.get("coast", "The Coast")) + tag
-		Battlegrounds.ZONE: return Battlegrounds.TITLE
+		Battlegrounds.ZONE: return Battlegrounds.map_title()
 		"arena": return "The Proving Arena"
 		Vigil.ZONE: return Vigil.TITLE
 		Sandbox.ZONE: return Sandbox.TITLE
@@ -1879,7 +1899,12 @@ func start_join(ip: String, id := "") -> void:
 	playing = true
 	var chars := list_characters()
 	char_id = id if id != "" else (str(chars[0]["id"]) if not chars.is_empty() else new_char_id())
-	if not load_game():
+	if Survivors.is_survivor(char_id):
+		# the Arena with a saved survivor: its real skills, passives, level and gear (Survivors.load_into)
+		if not Survivors.load_into(self, char_id):
+			on_net_failed("That survivor's save could not be read.")
+			return
+	elif not load_game():
 		char_name = default_name(hero.cls)
 		hero.new_character()
 	net_joining = true      # (until the host welcomes us: Net.cl_welcome)
@@ -1925,9 +1950,14 @@ func start_join_steam(owner: int) -> void:
 ## joins the raid server at `addr` ("host" or "host:port"). Its save is marked in_raid until it extracts, so closing
 ## the game mid-raid counts as dying (_bury_lost_raiders). Dying costs every item it wore and carried, and its gold
 ## (bg_strip); it keeps its levels, stats and talents. The camp's stash isn't carried, so it is never lost.
-func start_battlegrounds(addr: String, id: String) -> void:
+## Into a raid. With MpMode.RUNS the raider is a fresh run character (RunBuild, level 0) of `cls`, or of character
+## `id`'s class when none is given (the old screens pass a character): that character's save isn't touched.
+func start_battlegrounds(addr: String, id: String, cls := "") -> void:
 	while _busy:
 		await get_tree().process_frame
+	if MpMode.RUNS:
+		await _start_run_raid(addr, id, cls)
+		return
 	Telemetry.crumb("raid", {"server": addr, "from": "waypoint" if bg_from_waypoint else "title"})
 	bg_retry = [addr, id]
 	bg_refusal = ""
@@ -1960,7 +1990,52 @@ func start_battlegrounds(addr: String, id: String) -> void:
 		_bg_abort("Could not sign in to your account (%s)." % cloud.nk.last_error)
 		return
 	save_game()             # (marked in_raid from here on)
-	loading_lbl.text = "Descending into %s..." % Battlegrounds.TITLE
+	loading_lbl.text = "Entering %s..." % Battlegrounds.map_title()
+	set_loading_art(Battlegrounds.ZONE)
+	loading.visible = true
+	if net.join(a[0], int(a[1])) != OK:
+		on_net_failed("Could not reach the Battlegrounds server.")
+		return
+	await get_tree().create_timer(8.0).timeout
+	if bg_mode and net.is_client() and loading.visible and not _busy and cur_zone != Battlegrounds.ZONE:
+		net.shutdown()
+		on_net_failed(net.join_failure("No answer from the Battlegrounds server at %s." % a[0]))
+
+func _start_run_raid(addr: String, id: String, cls: String) -> void:
+	Telemetry.crumb("raid", {"server": addr, "run": true})
+	bg_retry = [addr, id, cls]
+	bg_refusal = ""
+	bg_wait_until = 0
+	Sfx.play("click")
+	net.stop_listening()
+	if cls == "" and id != "":
+		var d = JSON.parse_string(FileAccess.get_file_as_string(char_dir + id + ".json")) if FileAccess.file_exists(char_dir + id + ".json") else null
+		cls = str(d.get("hero", {}).get("cls", "")) if d is Dictionary else ""
+	if not Data.CLASSES.has(cls):
+		cls = hero.cls if hero != null and Data.CLASSES.has(hero.cls) else "archer"
+	char_id = ""
+	char_name = Data.CLASSES[cls]["name"]
+	bg_gained = -1
+	if run_results_open:
+		ui.run_ui.close(true)      # (a new run from the last one's results)
+	run_results_open = false
+	run_survived = false
+	hero.set_class(cls)
+	hero.start_run()
+	ui.hide_title()
+	ui.close_all()
+	playing = true
+	bg_mode = true
+	bg_raid = {}
+	bg_roster = []
+	hero.stash_slowed = false
+	var a: Array = Battlegrounds.parse_address(addr)
+	_save_setting("battlegrounds", "address", addr.strip_edges())
+	_save_setting("battlegrounds", "class", cls)
+	if cloud != null and not await cloud.ensure():
+		_bg_abort("Could not sign in to your account (%s)." % cloud.nk.last_error)
+		return
+	loading_lbl.text = "Entering %s..." % Battlegrounds.map_title()
 	set_loading_art(Battlegrounds.ZONE)
 	loading.visible = true
 	if net.join(a[0], int(a[1])) != OK:
@@ -1982,7 +2057,7 @@ func bg_refused(why: String, secs: float) -> void:
 			# still waiting on the Battlegrounds screen, nothing else started meanwhile
 			if bg_retry == want and not playing and (ui.bg_panel.visible or (ui.title_panel.visible and ui.bg_page.visible)):
 				ui.message("The next raid is open", Color(0.6, 1.0, 0.6))
-				start_battlegrounds(str(want[0]), str(want[1])))
+				start_battlegrounds(str(want[0]), str(want[1]), str(want[2]) if want.size() > 2 else ""))
 
 func bg_wait_text() -> String:
 	var s := maxi(0, (bg_wait_until - Time.get_ticks_msec()) / 1000)
@@ -2026,6 +2101,15 @@ func _bg_abort(msg: String) -> void:
 	ui.message(msg, Color(1, 0.6, 0.4))
 
 func bg_extracted(gained: Array) -> void:
+	if hero.run != null:
+		# a run character made it out: the results, with Save Character (Survivors); the server confirmed the exit
+		# (Net.sv_extract checks the portal is open and the player at it)
+		run_survived = true
+		Sfx.play("portal")
+		ui.big_message("Extracted!")
+		await get_tree().create_timer(1.0).timeout
+		_leave_battlegrounds()
+		return
 	bg_mode = false
 	bg_gained = gained.size()
 	save_game()
@@ -2094,6 +2178,30 @@ func _bg_home() -> void:
 	difficulty = bg_home_run
 	bg_home_run = -1
 
+## The results window's Return: to the title and the lobby browser (a run character is never saved as a
+## single-player character; a survivor was saved by its own button).
+func run_return() -> void:
+	ui.run_ui.close(true)
+	run_results_open = false
+	run_survived = false
+	bg_mode = false
+	bg_from_waypoint = false
+	if lobby_client != null:
+		lobby_client.match_id = ""
+		lobby_client.room = {}
+	await exit_to_title()
+	hero.new_character()      # (the run is over: what was on the hero is gone unless it was saved as a survivor)
+	if lobby_client != null:
+		lobby_client.open("battlegrounds")
+	else:
+		ui.open_battlegrounds()
+
+## Save Character on the results (once per run: Survivors.save keys on the run's uid).
+func run_save_survivor() -> Array:
+	if hero.run == null or not run_survived:
+		return ["", false]
+	return Survivors.save(hero, char_name)
+
 ## Characters whose game closed while they were in a raid died there: they lose what they carried.
 func _bury_lost_raiders() -> void:
 	if _testing():
@@ -2114,8 +2222,28 @@ func _bury_lost_raiders() -> void:
 
 ## Out of the crypt, extracted, fallen or cut off: a raid taken from the title screen ends on its Battlegrounds
 ## window; one taken from the camp's waypoint (bg_from_waypoint) ends back on the dais, see _bg_home_camp.
+## A run's results are showing (RunUI.open_results) until the player returns to the lobby browser (run_return).
+var run_survived := false
+var run_results_open := false
+
 func _leave_battlegrounds() -> void:
 	if not bg_mode and char_id == "" and not playing:
+		return
+	if hero.run != null and MpMode.RUNS and not run_results_open:
+		# a run ends on its results: survived (Save Character) or fallen (nothing to keep); the raid's connection
+		# closes, the world stays behind the window until the player goes back to the lobby browser
+		run_results_open = true
+		bg_mode = false
+		if net.active:
+			net.shutdown()
+		if hero.dead:
+			run_survived = false
+		death_t = -1.0
+		ui.death_panel.visible = false
+		spectate_stop()
+		ui.set_boss(null)
+		ui.close_all()
+		ui.run_ui.open_results(run_survived)
 		return
 	var fell := hero.dead and bg_mode
 	if fell:
@@ -2484,6 +2612,8 @@ func _write_char(p: String, id: String, d: Dictionary) -> void:
 
 func save_game() -> void:
 	if arena_mode: return # Arena uses a temporary copy; only escrow settlement changes owned items.
+	if hero != null and hero.run != null:
+		return      # (a run character is saved only as a survivor, at a successful exit: Survivors)
 	if char_id == "" and not _testing():
 		return
 	_store_progress()
@@ -2786,6 +2916,8 @@ func on_reach_target(t) -> void:
 func _pickup(g: GroundItem) -> void:
 	if not is_instance_valid(g) or g.is_queued_for_deletion():
 		return
+	if hero.run != null and not _run_pickup_ok(g):
+		return
 	if net.is_client():
 		if not g.has_meta("pending"):
 			g.set_meta("pending", true)
@@ -2844,6 +2976,9 @@ func claim_material(it: Dictionary, at: Vector3) -> void:
 	quests.on_pick(str(it["base"]))
 
 func receive_item(it: Dictionary, pos: Vector3) -> void:
+	if hero.run != null:
+		_run_receive(it, pos)
+		return
 	if it["base"] == "gold":
 		var amt := int(it["count"] * (1.0 + hero.gf / 100.0))
 		hero.gold += amt
@@ -2858,6 +2993,167 @@ func receive_item(it: Dictionary, pos: Vector3) -> void:
 		ui.message("Inventory is full", Color(1, 0.4, 0.3))
 		net.request_drop(it, hero.global_position)
 	ui.refresh()
+
+# ---------------------------------------------------------------- run characters (multiplayer, RunBuild)
+
+## Multiplayer's rules for loot and gear: a Battlegrounds raid, on its players' games and on the server.
+func run_rules() -> bool:
+	return MpMode.RUNS and (bg_mode or (net.server and cur_zone == Battlegrounds.ZONE))
+
+## The classes of everyone in the raid, so its loot fits them (RunBuild.random_gear).
+func raid_classes() -> Array:
+	var out := []
+	if not net.server and hero != null:
+		out.append(hero.cls)
+	for p in net.players.values():
+		var h = p.get("hero")
+		if h != null and is_instance_valid(h) and not out.has(h.cls):
+			out.append(h.cls)
+	return out
+
+## A camp tier from a monster's level (camps set their monsters' levels by tier: Camps.MON_LEVEL).
+static func tier_of_level(lvl: int) -> int:
+	return 1 if lvl <= 2 else (2 if lvl <= 7 else (3 if lvl <= 12 else 4))
+
+## A camp's chest: sealed until the camp falls; the first to open it rolls its loot for everyone; a run character then
+## takes its own upgrade (one of three, once per camp and round).
+func _camp_chest(t: Inter) -> void:
+	var camp := Camps.by_id(world, str(t.data["camp"]))
+	var left := Camps.alive(world, camp)
+	if left > 0:
+		ui.message("%s still stands: %d to go" % [camp.get("name", "The camp"), left], Color(1, 0.6, 0.45))
+		Sfx.play("deny")
+		return
+	if not t.used:
+		_open_chest(t)
+		if net.active:
+			net.inter_used(t)
+	if hero.run == null:
+		return
+	var key := Camps.offer_key(self, camp)
+	if hero.run.offers.has(key) and not hero.run.offer_open(key):
+		ui.message("You took this camp's upgrade", Color(0.8, 0.8, 0.85))
+		return
+	ui.close_all()
+	ui.run_ui.open_offer(key, int(camp.get("tier", 1)), str(camp.get("name", "")))
+
+## A monster died on this peer (Enemy.die_visual): was it its camp's last? Then the camp falls here: the chest
+## unseals, and a run character who fought there (within Camps.SHARE_R) gets the camp's experience.
+func camp_check(e: Enemy) -> void:
+	var camp := Camps.by_pack(world, e.pack_id)
+	if camp.is_empty() or camp["cleared"] or Camps.alive(world, camp) > 0:
+		return
+	camp["cleared"] = true
+	var ch = camp.get("chest_node")
+	if ch != null and is_instance_valid(ch):
+		Fx.pillar(world.fx_root, ch.global_position, Color(1.0, 0.82, 0.4), 1.2)
+		Fx.burst(world.fx_root, ch.global_position + Vector3(0, 0.8, 0), Color(1, 0.85, 0.5), 30, 3.0, 0.1, 0.8, true, -3.0)
+	if net.server or hero == null or hero.dead:
+		return
+	var near := Vector2(hero.global_position.x - camp["pos"].x, hero.global_position.z - camp["pos"].z).length() < float(camp["r"]) + Camps.SHARE_R
+	if not near:
+		return
+	var tier := int(camp["tier"])
+	ui.big_message("✦ %s cleared ✦" % camp["name"])
+	ui.message("Its chest is open: gear for the taking and an upgrade of your own", Color(1, 0.85, 0.45), 4.0)
+	Sfx.play("relic_ting")
+	if hero.run != null:
+		hero.run.camps += 1
+		if tier >= 4:
+			hero.run.bosses += 1
+		hero.add_xp(int(RunBuild.CAMP_XP.get(tier, 60)))
+
+## Before a run character takes something off the ground: gear for an occupied slot opens the swap window
+## instead (RunUI.open_swap), gear for someone else and full consumables are refused, gold is passed by.
+func _run_pickup_ok(g: GroundItem) -> bool:
+	var it: Dictionary = g.item
+	var b: Dictionary = Data.BASES.get(str(it.get("base", "")), {})
+	if b.is_empty() or str(b["slot"]) in ["gold", "ring", "amulet", "belt", "material", "resource", "tool"]:
+		ui.message("Run characters can't carry that", Color(1, 0.6, 0.45))
+		return false
+	if str(b["slot"]) == "potion":
+		if not hero.belt.any(func(x): return x == null or (x["base"] == it["base"] and int(x.get("count", 1)) < RunBuild.STACK)):
+			ui.message("Your %d consumable slots are full" % RunBuild.BELT, Color(1, 0.6, 0.45))
+			return false
+		return true
+	if not RunBuild.wearable(it, hero.cls):
+		ui.message("A %s can't use that" % Data.CLASSES[hero.cls]["name"], Color(1, 0.6, 0.45))
+		return false
+	if hero.equipment.get(RunBuild.gear_slot(it)) != null:
+		ui.run_ui.open_swap(it, g)
+		return false
+	return true
+
+## The swap window's Equip: take the piece off the ground (the host grants it to a client) and wear it; what it
+## replaces is dropped where the hero stands, for anyone to take.
+var run_swapping := false
+func run_swap(it: Dictionary, g: Node) -> void:
+	if not is_instance_valid(g) or g.is_queued_for_deletion():
+		ui.message("Someone took it first", Color(1, 0.6, 0.45))
+		return
+	if net.is_client():
+		run_swapping = true
+		g.set_meta("pending", true)
+		net.request_pickup(g)
+		return
+	if hovered == g:
+		hovered = null
+	net.item_gone(g)
+	g.queue_free()
+	_run_wear(it)
+
+func _run_wear(it: Dictionary) -> void:
+	var old = hero.run_wear(it)
+	if old != null:
+		drop_item(old, hero.global_position)
+	ui.refresh()
+
+## A client's grant from the host (Net.cl_grant) for a run character: a swap in progress wears it; else as a pickup;
+## anything that can't be taken goes back on the ground.
+func _run_receive(it: Dictionary, pos: Vector3) -> void:
+	if str(it.get("base", "")) == "gold":
+		return
+	if run_swapping and Items.is_equip(it) and RunBuild.wearable(it, hero.cls):
+		run_swapping = false
+		_run_wear(it)
+		return
+	if hero.add_to_inventory(it):
+		Sfx.play("pickup")
+	else:
+		net.request_drop(it, hero.global_position)
+	ui.refresh()
+
+## Drop one of a consumable stack (the build window's right-click): it lands at the hero's feet.
+func run_drop_belt(i: int) -> void:
+	if i < 0 or i >= hero.belt.size() or hero.belt[i] == null:
+		return
+	var it: Dictionary = hero.belt[i]
+	var one := it.duplicate(true)
+	one["count"] = 1
+	it["count"] = int(it.get("count", 1)) - 1
+	if int(it["count"]) <= 0:
+		hero.belt[i] = null
+	drop_item(one, hero.global_position)
+	hero.stats_changed.emit()
+
+## Take a camp offer's choice (RunUI's upgrade window): once per camp (RunBuild.claim).
+func run_claim(key: String, i: int) -> Dictionary:
+	if hero.run == null:
+		return {}
+	var c := hero.run.claim(key, i, hero.binds)
+	if not c.is_empty():
+		hero.run_changed()
+		ui.refresh()
+	return c
+
+## A run's loot roll (the monsters and camp chests): gear for the raid's classes at the camp's tier, or a potion;
+## never gold, rings or amulets.
+func _run_loot(at: Vector3, tier: int, good: bool, always := false) -> void:
+	var r := rng.randf()
+	if good or r < (0.5 if always else 0.32):
+		drop_item(RunBuild.random_gear(tier, rng, raid_classes()), at)
+	elif always or r < 0.55:
+		drop_item(Items.potion("hp_potion" if rng.randf() < 0.7 else "mp_potion"), at)
 
 ## Somewhere else: alone, straight there; in a co-op party, everyone is asked first and the party goes
 ## only when all agree (Net.ask_trip, the ready check), then `travel_now` takes the whole party.
@@ -2922,6 +3218,13 @@ func _open_chest(t: Inter) -> void:
 		Fx.pillar(world.fx_root, t.global_position, Color(1.0, 0.8, 0.3), 1.6)
 	if net.is_client():
 		return
+	if run_rules():
+		# a run's chest: gear and potions at the camp's tier (the first roll always gear); the upgrade is each
+		# player's own (Game._camp_chest)
+		var tier := int(t.data.get("tier", tier_of_level(world.level)))
+		for i in int(Camps.CHEST_ROLLS.get(tier, 2)):
+			_run_loot(t.global_position, tier, i == 0, true)
+		return
 	var n := 7 if gold else rng.randi_range(2, 4)
 	for i in n:
 		if gold and i == 0:
@@ -2933,6 +3236,8 @@ func _open_chest(t: Inter) -> void:
 ## boss lives within 40 m. Every peer works it out from the monsters it has, so the server (which refuses a sealed
 ## chest's sv_inter) and each client agree, a late joiner too (a dead boss isn't in its list).
 func chest_sealed(t: Inter) -> bool:
+	if t.data.has("camp"):
+		return Camps.alive(world, Camps.by_id(world, str(t.data["camp"]))) > 0
 	var guard := str(t.data.get("guard", ""))
 	if guard == "" or world == null or t.data.get("unsealed", false):
 		return false
@@ -3235,6 +3540,9 @@ func _interact(t: Inter) -> void:
 				ui.message("Extracting...", Color(0.6, 0.85, 1.0))
 				net.request_extract()
 		"vigil_gate":
+			if not MpMode.WAVES:
+				ui.message("The Vigil Gate is sealed.", Color(1.0, 0.6, 0.45))
+				return
 			# the camp's Vigil Gate: down to the Last Flame (vigil.gd); the party's ready check takes everyone
 			Sfx.play("portal")
 			travel(0, Vigil.ZONE, "start")
@@ -3365,6 +3673,9 @@ func _interact(t: Inter) -> void:
 			if net.active:
 				net.inter_used(t)
 		"chest":
+			if t.data.has("camp"):
+				_camp_chest(t)
+				return
 			if t.used:
 				return
 			if chest_sealed(t):
@@ -3395,6 +3706,8 @@ func travel_waypoint(dest: Dictionary) -> void:
 ## Available activities are rebuilt from content data, never from a second UI-only list.
 func waypoint_activities() -> Array:
 	var entries: Array = Data.WAYPOINT_ACTIVITIES.duplicate(true)
+	if not MpMode.WAVES:
+		entries = entries.filter(func(e): return str(e.get("id", "")) != "vigil")
 	if BuildEnv.env() != "local":
 		entries.append({"id": "online_coop", "group": "pve", "name": "Online Co-op", "kind": "Join online",
 			"route": "coop", "run": difficulty, "description": "Join the shared co-op server with this character."})
@@ -3455,6 +3768,9 @@ func waypoint_activity_lock(entry: Dictionary) -> String:
 	return ""
 
 func waypoint_activity_go(id: String) -> void:
+	if id == "vigil" and not MpMode.WAVES:
+		ui.message("The Last Flame is out of reach for now.", Color(1.0, 0.6, 0.45))
+		return
 	var entry := waypoint_activity(id)
 	var reason := waypoint_activity_lock(entry)
 	if reason != "":
@@ -3583,7 +3899,8 @@ func _pick_flower(t: Inter) -> void:
 # ---------------------------------------------------------------- kills & loot
 func gain_kill_xp(xp: int, lvl: int) -> void:
 	var bonus := 1.5 if xp_bonus_t > 0.0 else 1.0
-	var lvl_ratio := clampf(1.0 - (hero.level - lvl) * 0.08, 0.2, 1.3)
+	# (a run character takes a kill's full worth at any level: its curve is RunBuild.xp_for)
+	var lvl_ratio := 1.0 if hero.run != null else clampf(1.0 - (hero.level - lvl) * 0.08, 0.2, 1.3)
 	hero.add_xp(int(xp * lvl_ratio * bonus))
 
 func on_enemy_killed(e: Enemy) -> void:
@@ -3597,15 +3914,15 @@ func on_enemy_killed(e: Enemy) -> void:
 		drops = 7
 	for i in drops:
 		_drop_loot_roll(e.global_position, e.level, e.boss or (e.champion and i == 0))
-	if e.def.has("drop"):
+	if e.def.has("drop") and not run_rules():
 		# a Hollow Sloth's own material
 		drop_item(Items.make(e.def["drop"], 0, 1), e.global_position)
-	if e.def.get("trophy", false):
+	if e.def.get("trophy", false) and not run_rules():
 		# the Hollow Sloth: a heap of gold (its unique comes from its loot table, below)
 		for i in 3:
 			drop_item(Items.gold(int(rng.randf_range(40, 70) * (1.0 + e.level * 0.6))), e.global_position)
 		ui.message("%s is slain" % e.display_name, Color(0.55, 0.9, 0.95))
-	if e.def.get("class_unique", false):
+	if e.def.get("class_unique", false) and not run_rules():
 		_drop_class_unique(e.global_position)
 	_boss_loot(e)
 	if e.boss:
@@ -3654,6 +3971,9 @@ func on_boss_aggro(e: Enemy) -> void:
 	add_shake(0.5)
 
 func _drop_loot_roll(at: Vector3, lvl: int, good: bool) -> void:
+	if run_rules():
+		_run_loot(at, tier_of_level(lvl), good)
+		return
 	var r := rng.randf()
 	if good or r < 0.3:
 		var it := Items.random_drop(lvl, hero.mf + (100 if good else 0), rng, good)
@@ -4198,6 +4518,13 @@ func _unhandled_input(ev: InputEvent) -> void:
 			KEY_ESCAPE:
 				if not ui.close_all():
 					toggle_pause()
+			KEY_I, KEY_B, KEY_K, KEY_N when hero.run != null:
+				# a run character's one build window (RunUI): skills, spellbook, passives, gear, consumables
+				if ui.run_ui.mode == "build":
+					ui.run_ui.close()
+				else:
+					ui.close_all()
+					ui.run_ui.open_build()
 			KEY_I, KEY_B:
 				ui.toggle(ui.inv_panel)
 			KEY_C:
@@ -4212,6 +4539,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 				try_land()
 			KEY_Q, KEY_E, KEY_R, KEY_F, KEY_G, KEY_V when sailing():
 				pass
+			KEY_G, KEY_V when hero.run != null:
+				pass      # (a run has five slots: right mouse and Q E R F)
 			KEY_Q, KEY_E, KEY_R, KEY_F, KEY_G, KEY_V:
 				if not ui.skills_hotkey(OS.get_keycode_string(ev.keycode)):
 					_use_bind(OS.get_keycode_string(ev.keycode), true)

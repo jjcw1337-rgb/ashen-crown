@@ -52,10 +52,12 @@ class LobbyTests(unittest.TestCase):
  def test_empty_closes(self):
   r=self.create();self.act('a',r,'leave');self.assertEqual(self.m.rooms[r['id']]['state'],'closed')
  def test_waves_and_bg_can_start_solo(self):
-  for mode in ('waves','battlegrounds'):
+  for mode in ('battlegrounds',):
    r=self.create(mode=mode);self.act('a',r,'ready',ready=True);self.act('a',r,'start');self.assertEqual(self.m.rooms[r['id']]['state'],'starting');self.m.rooms[r['id']]['state']='finished'
+ def test_waves_retired(self):
+  with self.assertRaises(Rejected):self.m.call('a','create',{'mode':'waves','team_size':1,'character':'hero','player':'a'})
  def test_capacity_limit(self):
-  r=self.pair();self.act('a',r,'start');second=self.create('x','waves');self.act('x',second,'ready',ready=True)
+  r=self.pair();self.act('a',r,'start');second=self.create('x','battlegrounds');self.act('x',second,'ready',ready=True)
   with self.assertRaises(Rejected):self.act('x',second,'start')
   self.assertEqual(self.m.rooms[second['id']]['state'],'waiting')
  def test_worker_admission_single_use(self):
@@ -85,7 +87,7 @@ class LobbyTests(unittest.TestCase):
   other=Lobbies(str(Path(self.temp.name)/'state.sqlite'),self.launch,self.stopped.append)
   self.assertEqual(other.rooms[r['id']]['state'],'aborted');other.db.close()
  def test_join_started_rejected(self):
-  r=self.create(mode='waves');self.act('a',r,'ready',ready=True);self.act('a',r,'start')
+  r=self.create(mode='battlegrounds');self.act('a',r,'ready',ready=True);self.act('a',r,'start')
   with self.assertRaises(Rejected):self.act('b',r,'join')
  def test_invalid_mode_and_size(self):
   for mode,size in [('bad',1),('arena',4),('arena',True)]:
@@ -146,9 +148,9 @@ class LobbyTests(unittest.TestCase):
   r=self.m.call('a','create',dict(mode='arena',character='hero',wager=True))['lobby']
   with self.assertRaises(Rejected):self.act('a',r,'ready',ready=True)
  def test_no_stakes_in_other_modes(self):
-  with self.assertRaises(Rejected):self.m.call('a','create',dict(mode='waves',character='hero',wager=True))
+  with self.assertRaises(Rejected):self.m.call('a','create',dict(mode='battlegrounds',character='hero',wager=True))
  def test_late_join_gets_unique_ticket(self):
-  r=self.create(mode='waves');self.act('a',r,'ready',ready=True);self.act('a',r,'start');rr=self.m.rooms[r['id']]
+  r=self.create(mode='battlegrounds');self.act('a',r,'ready',ready=True);self.act('a',r,'start');rr=self.m.rooms[r['id']]
   self.m.worker(r['id'],rr['worker_key'],'state',dict(state='playing',joinable=True))
   self.act('b',r,'join');ticket=rr['members']['b']['ticket']
   self.assertEqual(self.m.worker(r['id'],rr['worker_key'],'redeem',dict(ticket=ticket))['user'],'b')
@@ -157,19 +159,21 @@ class LobbyTests(unittest.TestCase):
   self.m.worker(r['id'],rr['worker_key'],'state',dict(state='playing',joinable=True))
   self.assertFalse(self.m.public(rr,'x')['joinable'])
  def test_character_path_traversal_rejected(self):
-  with self.assertRaises(Rejected):self.m.call('a','create',dict(mode='waves',character='../hero'))
+  with self.assertRaises(Rejected):self.m.call('a','create',dict(mode='battlegrounds',character='../hero'))
  def test_departed_account_can_join_another_match(self):
   r=self.pair();self.act('a',r,'start');rr=self.m.rooms[r['id']]
   self.m.worker(r['id'],rr['worker_key'],'depart',dict(user='a'))
-  new=self.create('a','waves');self.assertNotEqual(new['id'],r['id'])
+  new=self.create('a','battlegrounds');self.assertNotEqual(new['id'],r['id'])
   self.assertIn('a',rr['members']) # Retained for arena settlement.
  def test_client_polling_does_not_hide_stalled_worker(self):
   r=self.pair();self.act('a',r,'start');rr=self.m.rooms[r['id']]
   self.m.worker(r['id'],rr['worker_key'],'state',dict(state='playing'))
   self.now+=45;self.act('a',r,'get');self.now+=16;self.m.sweep()
   self.assertEqual(rr['state'],'aborted')
- def test_leaver_opens_active_wave_slot(self):
-  r=self.create(mode='waves');self.act('a',r,'ready',ready=True);self.act('a',r,'start');rr=self.m.rooms[r['id']]
+ def test_leaver_opens_active_slot(self):
+  # (a full active match: a raid trimmed to four places, as Waves had, so the late-join rule is tested)
+  r=self.create(mode='battlegrounds');self.act('a',r,'ready',ready=True);self.act('a',r,'start');rr=self.m.rooms[r['id']]
+  rr['capacity']=4
   self.m.worker(r['id'],rr['worker_key'],'state',dict(state='playing',joinable=True))
   for uid in ['b','c','d']:self.act(uid,r,'join')
   with self.assertRaises(Rejected):self.act('e',r,'join')

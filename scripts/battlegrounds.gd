@@ -90,6 +90,13 @@ const MOVE_MULT := 0.85         # walking and running
 const MON_LIFE := 2.2           # monsters' life and damage in the crypt (server)
 const MON_DMG := 1.4
 const MON_LEVEL := 6
+
+## The raid's map is outdoors (the Verdant Reach) rather than the crypt.
+static func outdoor() -> bool:
+	return MpMode.FOREST
+
+static func map_title() -> String:
+	return BgForest.TITLE if MpMode.FOREST else TITLE
 const GRID := 24.0              # room grid spacing
 const ID_PATH := "user://bg_id.txt"
 static var id_path := ID_PATH   # tests point it elsewhere
@@ -173,6 +180,9 @@ static func stash_col(t: Node, key: String):
 # ---------------------------------------------------------------- the map
 ## The Hollow Crypt. Cell (i, j) of a 4x4 grid; the middle 2x2 is the great hall.
 static func build(w: World) -> void:
+	if MpMode.FOREST:
+		BgForest.build(w)       # the overhaul's open forest (the crypt below is retired: docs/cleanup.md)
+		return
 	w.flat_floor = true
 	w.theme = {"name": "bg"}
 	var rooms := {}                 # Vector2i -> Rect2
@@ -232,6 +242,8 @@ static func build(w: World) -> void:
 	var portals := []
 	var foes := ["zombie", "skel_archer", "fallen_reaver", "fallen_skirmisher", "fallen_stalker"]
 	var pack := 700
+	var names := ["Ossuary", "Bone Gallery", "Mourners' Cell", "Charnel Niche", "Sexton's Vault", "Weeping Crypt",
+		"Lantern Tomb", "Ash Chapel", "Reliquary", "Gravewarden's Rest", "Candle Crypt", "Shrouded Cell"]
 	for cell in rooms:
 		var r: Rect2 = rooms[cell]
 		var c := r.get_center()
@@ -257,9 +269,16 @@ static func build(w: World) -> void:
 				portals.append(Vector3(c.x, 0, c.y))
 				w._candles(Vector3(r.end.x - 1.0, 0, c.y), true)
 			"treasure":
-				w._chest(Vector3(c.x + w.rng.randf_range(-2, 2), 0, c.y + w.rng.randf_range(-2, 2)))
-				w.enemy_spawns.append({"kind": foes[w.rng.randi() % foes.size()], "pos": Vector3(c.x, 0, c.y), "count": w.rng.randi_range(1, 2),
-					"champ": false, "pack": pack, "level": MON_LEVEL})
+				var ofs := Vector3(w.rng.randf_range(-2, 2), 0, w.rng.randf_range(-2, 2))
+				var foe: String = foes[w.rng.randi() % foes.size()]
+				if MpMode.RUNS:
+					# a tier II camp: the chokepoint into the hall (Camps: its chest opens once they're all down)
+					Camps.add(w, "crypt%d" % pack, names[(pack - 700) % names.size()], 2, Vector3(c.x, 0, c.y), maxf(r.size.x, r.size.y) * 0.6,
+						[{"kind": foe, "count": w.rng.randi_range(2, 3)}, {"kind": "skel_archer", "count": 1, "at": Vector3(0, 0, 3)}], ofs)
+				else:
+					w._chest(Vector3(c.x, 0, c.y) + ofs)
+					w.enemy_spawns.append({"kind": foe, "pos": Vector3(c.x, 0, c.y), "count": w.rng.randi_range(1, 2),
+						"champ": false, "pack": pack, "level": MON_LEVEL})
 				pack += 1
 			_:
 				# a crypt room: sarcophagi, a monster or two, sometimes a chest
@@ -267,17 +286,24 @@ static func build(w: World) -> void:
 					var sp := Vector3(w.rng.randf_range(r.position.x + 2.5, r.end.x - 2.5), 0, w.rng.randf_range(r.position.y + 2, r.end.y - 2))
 					if not w.is_near_obstacle(sp, 1.5):
 						w._sarcophagus(sp, w.rng.randf_range(-15, 15) + (90.0 if w.rng.randf() < 0.5 else 0.0))
-				if w.rng.randf() < 0.35:
-					w._chest(Vector3(c.x + w.rng.randf_range(-3, 3), 0, r.position.y + 2.0))
-				w.enemy_spawns.append({"kind": foes[w.rng.randi() % foes.size()], "pos": Vector3(c.x, 0, c.y), "count": w.rng.randi_range(1, 2),
-					"champ": false, "pack": pack, "level": MON_LEVEL})
+				var cofs := Vector3(w.rng.randf_range(-3, 3), 0, r.position.y + 2.0 - c.y)
+				var cfoe: String = foes[w.rng.randi() % foes.size()]
+				if MpMode.RUNS:
+					# a tier I camp: an approachable fight for a level-0 run character
+					Camps.add(w, "crypt%d" % pack, names[(pack - 700) % names.size()], 1, Vector3(c.x, 0, c.y), maxf(r.size.x, r.size.y) * 0.6,
+						[{"kind": cfoe, "count": w.rng.randi_range(2, 3)}], cofs)
+				else:
+					if w.rng.randf() < 0.35:
+						w._chest(Vector3(c.x, 0, c.y) + cofs)
+					w.enemy_spawns.append({"kind": cfoe, "pos": Vector3(c.x, 0, c.y), "count": w.rng.randi_range(1, 2),
+						"champ": false, "pack": pack, "level": MON_LEVEL})
 				pack += 1
 	# the great hall: a ring of pillars, braziers, three chests and its champion with bowmen
 	var hc := hall.get_center()
 	for i in 12:
 		var a := TAU * i / 12.0
 		w._pillar(Vector3(hc.x + cos(a) * 11.5, 0, hc.y + sin(a) * 11.5), 4.5)
-	for k in 3:
+	for k in (2 if MpMode.RUNS else 3):
 		var a2 := TAU * k / 3.0 + 0.4
 		w._chest(Vector3(hc.x + cos(a2) * 4.5, 0, hc.y + sin(a2) * 4.5))
 	for k in 4:
@@ -291,8 +317,14 @@ static func build(w: World) -> void:
 		hl.shadow_enabled = false
 		hl.position = Vector3(hc.x + cos(TAU * k / 3.0) * 7.0, 3.6, hc.y + sin(TAU * k / 3.0) * 7.0)
 		w.props_root.add_child(hl)
-	w.enemy_spawns.append({"kind": "fallen_reaver", "pos": Vector3(hc.x, 0, hc.y), "count": 1, "champ": true, "pack": 690, "level": MON_LEVEL + 2})
-	w.enemy_spawns.append({"kind": "skel_archer", "pos": Vector3(hc.x, 0, hc.y + 6.0), "count": 2, "champ": false, "pack": 690, "level": MON_LEVEL})
+	if MpMode.RUNS:
+		var a3 := TAU * 2.0 / 3.0 + 0.4
+		Camps.add(w, "crypt_hall", "The Great Hall", 3, Vector3(hc.x, 0, hc.y), 14.0,
+			[{"kind": "fallen_reaver", "count": 1, "champ": true}, {"kind": "skel_archer", "count": 2, "at": Vector3(0, 0, 6)},
+			{"kind": "fallen_stalker", "count": 2, "at": Vector3(-5, 0, -3)}], Vector3(cos(a3) * 4.5, 0, sin(a3) * 4.5))
+	else:
+		w.enemy_spawns.append({"kind": "fallen_reaver", "pos": Vector3(hc.x, 0, hc.y), "count": 1, "champ": true, "pack": 690, "level": MON_LEVEL + 2})
+		w.enemy_spawns.append({"kind": "skel_archer", "pos": Vector3(hc.x, 0, hc.y + 6.0), "count": 2, "champ": false, "pack": 690, "level": MON_LEVEL})
 	# the look (CryptProps): the Ossuary's wall cells become niches, tombs, statues and braziers from these rooms;
 	# the rubble, cobwebs and the hall's seal after. Visual only: no footprint, no roll on w.rng, no interactable
 	w.set_meta("bg_rooms", rooms)
@@ -320,7 +352,8 @@ static func build(w: World) -> void:
 			gates.append(_gate(w, door, half))
 		var c := r.get_center()
 		_bell(w, Vector3(c.x + 2.2, 0, c.y - 2.2))
-		_stash_chest(w, Vector3(c.x - 1.9, 0, c.y - 1.9), stash_chest_no())
+		if MpMode.STASH:
+			_stash_chest(w, Vector3(c.x - 1.9, 0, c.y - 1.9), stash_chest_no())
 	w.set_meta("bg_gates", gates)
 	for p in portals:
 		var glow: Node3D = CryptProps.portal_glow() if CryptProps.has("archway") else Fx.portal_model()

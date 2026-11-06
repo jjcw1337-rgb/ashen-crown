@@ -112,7 +112,7 @@ func run():
  await g.exit_to_title()
  await frames()
  check(ui.home.visible and not ui.hud.visible,"return home restores screen isolation")
- ui.home.get_node("sidebar").find_child("create",true,false).pressed.emit()
+ ui._title_choose("new")     # (the button is hidden: MpMode.CREATE_CHARACTER; the class picker still opens)
  check(await until(func():return ui.class_panel.visible and not ui._title_busy),"Create New Character opens the picker")
  ui.name_edit.text="New Adventurer"
  ui.class_info.find_child("cplay",true,false).pressed.emit()

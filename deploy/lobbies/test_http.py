@@ -40,12 +40,12 @@ class HttpAdmissionTests(unittest.TestCase):
         status, data = self.post('start', version='new-client-a', id=rid)
         self.assertEqual(status, 200); self.assertEqual(data['lobby']['state'], 'starting')
     def test_missing_revision_is_allowed(self):
-        self.assertEqual(self.post('create', mode='waves', character='a')[0], 200)
+        self.assertEqual(self.post('create', mode='battlegrounds', character='a')[0], 200)
     def test_anonymous_and_dev_identity_still_rejected(self):
         for account in ('', 'dev-test'):
-            status, data = self.post('create', account, version='anything', mode='waves', character='a')
+            status, data = self.post('create', account, version='anything', mode='battlegrounds', character='a')
             self.assertEqual(status, 400); self.assertEqual(data['error'], 'Sign in first.')
     def test_ready_rule_remains(self):
-        _, data = self.post('create', version='anything', mode='waves', character='a')
+        _, data = self.post('create', version='anything', mode='battlegrounds', character='a')
         status, data = self.post('start', id=data['lobby']['id'])
         self.assertEqual(status, 400); self.assertEqual(data['error'], 'Everyone must be ready.')

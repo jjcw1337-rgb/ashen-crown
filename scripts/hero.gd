@@ -49,6 +49,8 @@ var stash: Array = []
 
 # --- derived
 var tfx := {}                # what the talents taken add up to (Talents.sum); read with talent()
+## A multiplayer run character's build (RunBuild: skills, passives, camp offers); null in single player.
+var run: RunBuild = null
 var max_life := 100.0
 var max_mana := 30.0
 var life := 100.0
@@ -309,9 +311,12 @@ func default_binds() -> Dictionary:
 func bind(slot: String, id: String) -> void:
 	if not BIND_SLOTS.has(slot):
 		return
+	if run != null:
+		_run_bind(slot, id)
+		return
 	# a locked skill can't go on the bar (one already there may move between slots: it waits there greyed)
 	var sk := Data.skill_def(id) if id != "" else {}
-	if not sk.is_empty() and Data.skill_locked(sk, level) and not (game != null and game.test_allskills) and not binds.values().has(id):
+	if not sk.is_empty() and skill_locked(sk) and not (game != null and game.test_allskills) and not binds.values().has(id):
 		if game and game.ui and _mine():
 			game.ui.message("%s unlocks at level %d" % [sk["name"], int(sk["lvl"])], Color(1, 0.55, 0.4))
 		return
@@ -323,8 +328,30 @@ func bind(slot: String, id: String) -> void:
 	if game and game.ui and _mine():
 		game.ui.refresh_skill_slots()
 
+## A run character's binds: only its acquired skills, only on the five RunBuild.SLOTS; a skill moved onto a slot
+## leaves the one it was on (its cooldown goes with it: Hero.cds is by skill).
+func _run_bind(slot: String, id: String) -> void:
+	if not (slot in RunBuild.SLOTS) or (id != "" and not run.skills.has(id)):
+		return
+	if id != "":
+		for k in RunBuild.SLOTS:
+			if binds.get(k, "") == id:
+				binds[k] = ""
+	binds[slot] = id
+	if game and game.ui and _mine():
+		game.ui.refresh_skill_slots()
+
+## Locked: in a run, not acquired yet; otherwise below the skill's level.
+func skill_locked(sk: Dictionary) -> bool:
+	if run != null:
+		return not (str(sk.get("id", "")) == "attack" or run.skills.has(str(sk.get("id", ""))))
+	return Data.skill_locked(sk, level)
+
 ## Keep only skills this class knows; fill anything missing from the defaults.
 func _check_binds() -> void:
+	if run != null:
+		run.check_binds(binds)
+		return
 	var known := {}
 	for s in Data.skills_known(cls):
 		known[s["id"]] = true
@@ -350,6 +377,8 @@ func talent(key: String) -> float:
 
 ## A point per level from level 2, less what is spent.
 func free_talent_points() -> int:
+	if run != null:
+		return 0      # (a run character grows through camp chests, never talents)
 	return maxi(0, level - 1 - Talents.spent(talents))
 
 func learn_talent(id: String) -> bool:
@@ -369,16 +398,20 @@ func unlearn_talent(id: String) -> bool:
 	return true
 
 func reset_talents() -> void:
+	if run != null:
+		return
 	talents = {}
 	_talents_changed()
 
 ## Spend the free points along the class's suggested build.
 func auto_talents() -> void:
+	if run != null:
+		return
 	talents = Talents.auto_build(cls, free_talent_points(), talents)
 	_talents_changed()
 
 func _talents_changed() -> void:
-	tfx = Talents.sum(cls, talents)
+	tfx = run.fx(cls) if run != null else Talents.sum(cls, talents)
 	recalc()
 	if game and game.ui and _mine():
 		game.ui.refresh_skill_slots()     # mana costs on the bar
@@ -584,6 +617,7 @@ func setup(g: Node) -> void:
 
 func new_character() -> void:
 	var c: Dictionary = Data.CLASSES[cls]
+	run = null
 	binds = default_binds()
 	talents = {}
 	tfx = {}
@@ -627,7 +661,7 @@ func recalc() -> void:
 	stats = {}
 	var def_sum := 0
 	var shield_block := 0
-	for s in Items.EQUIP_SLOTS:
+	for s in (RunBuild.GEAR if run != null else Items.EQUIP_SLOTS):
 		var it = equipment.get(s)
 		if it == null:
 			continue
@@ -659,7 +693,7 @@ func recalc() -> void:
 			if stats.has(k):
 				stats[k] = mini(int(stats[k]), int(Data.PVP_GEAR_CAP[k]))
 		def_sum = int(round(def_sum * Data.PVP_ARMOR_SHARE))
-	for k in ["str", "dex", "vit", "res", "ls", "regen", "ias", "frw", "block", "mf"]:
+	for k in ["str", "dex", "vit", "res", "ls", "regen", "ias", "frw", "block", "mf", "cdr"]:
 		if tfx.has(k):
 			stats[k] = stats.get(k, 0) + (tfx[k] if k == "regen" else int(tfx[k]))
 	var st_total: int = str_ + stats.get("str", 0)
@@ -732,10 +766,13 @@ func add_xp(v: int) -> void:
 	if game != null and game.net.server and game.hero == self:
 		return      # (a dedicated server's parked hero isn't anyone's)
 	xp += v
-	while xp >= Data.xp_for_level(level):
-		xp -= Data.xp_for_level(level)
+	while xp >= xp_to_next():
+		xp -= xp_to_next()
 		level += 1
-		stat_points += 5
+		if run != null:
+			RunBuild.grow(self)     # (a run's attributes grow by themselves; its skills come from camp chests)
+		else:
+			stat_points += 5
 		recalc()
 		life = max_life
 		mana = max_mana
@@ -745,9 +782,17 @@ func add_xp(v: int) -> void:
 		_announce_unlocks()
 	stats_changed.emit()
 
+## Experience to finish this level: a run's own fast curve, or the game's.
+func xp_to_next() -> int:
+	return RunBuild.xp_for(level) if run != null else Data.xp_for_level(level)
+
 ## The skills that open at this level light up on the bar (they wait there greyed till then): say which.
 func _announce_unlocks() -> void:
-	if game == null or game.ui == null or not _mine() or Data.SKILLS_UNLOCKED:
+	if game == null or game.ui == null or not _mine():
+		return
+	if run != null:
+		return      # (Game._on_level announces it)
+	if Data.SKILLS_UNLOCKED:
 		return
 	var names := []
 	for s in Data.skills_known(cls):
@@ -1308,7 +1353,7 @@ func skill_ready(id: String) -> bool:
 		return false
 	if atk_t >= 0.0 and atk_skill != "":
 		return false
-	return (not Data.skill_locked(sk, level) or game.test_allskills) and cds.get(id, 0.0) <= 0.0 and mana >= skill_cost(id)
+	return (not skill_locked(sk) or game.test_allskills) and cds.get(id, 0.0) <= 0.0 and mana >= skill_cost(id)
 
 func arena_waiting() -> bool:
 	return not puppet and game != null and game.arena_mode and game.arena_state.get("phase", "waiting") != "fight"
@@ -1337,9 +1382,9 @@ func _use_skill(id: String, aim: Vector3) -> bool:
 	for s in skill_list() + Data.shared_skills():
 		if s["id"] == id:
 			sk = s
-	if sk.is_empty() or (Data.skill_locked(sk, level) and not game.test_allskills):
+	if sk.is_empty() or (skill_locked(sk) and not game.test_allskills):
 		if _mine():
-			game.ui.message("Requires level %d" % sk.get("lvl", 1), Color(1, 0.4, 0.3))
+			game.ui.message(("%s isn't learned yet" % sk["name"]) if run != null else ("Requires level %d" % sk.get("lvl", 1)), Color(1, 0.4, 0.3))
 		return false
 	if cds[id] > 0.0:
 		if _mine():
@@ -2424,6 +2469,8 @@ const INV_STACK := 20
 ## empty belt slots, then matching inventory stacks, then empty cells. Returns false if not
 ## everything fit; a potion stack is then left holding what didn't.
 func add_to_inventory(it: Dictionary) -> bool:
+	if run != null:
+		return _run_take(it)
 	if it["base"] == "gold":
 		gold += int(it["count"])
 		stats_changed.emit()
@@ -2446,6 +2493,72 @@ func add_to_inventory(it: Dictionary) -> bool:
 			stats_changed.emit()
 			return true
 	return false
+
+## A run character has no backpack: consumables go into the belt's four slots (stacks of RunBuild.STACK), gear is
+## worn when its slot is empty (a better piece found later is swapped through Game.run_swap, which leaves the old one
+## on the ground), and gold, rings, amulets and materials aren't taken at all.
+func _run_take(it: Dictionary) -> bool:
+	var b: Dictionary = Data.BASES.get(str(it.get("base", "")), {})
+	if b.is_empty() or str(b["slot"]) in ["gold", "ring", "amulet", "belt", "material", "resource", "tool"]:
+		return false
+	if str(b["slot"]) == "potion":
+		var n := _stack_into(belt, it, RunBuild.STACK, int(it.get("count", 1)), true)
+		it["count"] = n
+		stats_changed.emit()
+		return n <= 0
+	if not RunBuild.wearable(it, cls) or equipment.get(RunBuild.gear_slot(it)) != null:
+		return false
+	equipment[RunBuild.gear_slot(it)] = it
+	Sfx.play("equip")
+	recalc()
+	refresh_gear()
+	stats_changed.emit()
+	return true
+
+## Wear a found piece in a run, handing back what it replaces (null for an empty slot) for the ground.
+func run_wear(it: Dictionary):
+	var slot := RunBuild.gear_slot(it)
+	var old = equipment.get(slot)
+	equipment[slot] = it
+	Sfx.play("equip")
+	recalc()
+	refresh_gear()
+	stats_changed.emit()
+	return old
+
+## A fresh run character (a Battlegrounds lobby's class choice): level 0, the class's weapon and plain armour, the
+## primary attack and no skills, passives, gold or backpack, two health potions and a mana potion.
+func start_run() -> void:
+	new_character()
+	run = RunBuild.new()
+	level = 0
+	gold = 0
+	talents = {}
+	tfx = {}
+	inventory = []
+	inventory.resize(40)
+	for s in equipment.keys():
+		if not (s in RunBuild.GEAR):
+			equipment[s] = null
+	for s in RunBuild.GEAR:
+		var it = equipment.get(s)
+		if it != null:
+			it["req"] = 0
+	belt = [Items.potion("hp_potion"), Items.potion("mp_potion"), null, null]
+	belt[0]["count"] = 2
+	binds = {}
+	_check_binds()
+	recalc()
+	life = max_life
+	mana = max_mana
+	refresh_gear()
+	if game and game.ui and _mine():
+		game.ui.refresh_skill_slots()
+
+## A run's skill or passive changed (a camp chest's choice): the effects and the bar follow.
+func run_changed() -> void:
+	_check_binds()
+	_talents_changed()
 
 ## Puts up to n potions like `it` into `slots`: matching stacks first, then empty slots
 ## (belt slots only fill when `fill_empty_belt`). Returns how many are left over.
@@ -2567,7 +2680,7 @@ func equip_from_inventory(idx: int) -> void:
 		game.ui.message("Only the %s can use that" % Data.CLASSES[only]["name"], Color(1, 0.4, 0.3))
 		Sfx.play("deny")
 		return
-	if int(it.get("req", 1)) > level:
+	if int(it.get("req", 1)) > level and run == null:
 		game.ui.message("You need to be level %d" % it["req"], Color(1, 0.4, 0.3))
 		Sfx.play("deny")
 		return
@@ -2595,7 +2708,7 @@ func unequip(slot: String) -> void:
 
 func to_save() -> Dictionary:
 	return {"cls": cls, "level": level, "xp": xp, "str": str_, "dex": dex, "vit": vit, "ene": ene, "points": stat_points, "gold": gold,
-		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "binds_v": 2, "talents": talents, "axe_given": true, "boats": boats, "sailed": sailed, "dwarves": dwarves, "boss_luck": boss_luck, "boosted": boosted}
+		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "binds_v": 2, "talents": talents, "axe_given": true, "boats": boats, "sailed": sailed, "dwarves": dwarves, "boss_luck": boss_luck, "boosted": boosted}.merged({"run": run.to_dict()} if run != null else {})
 
 func from_save(d: Dictionary) -> void:
 	set_class(str(d.get("cls", "knight")))
@@ -2632,6 +2745,7 @@ func from_save(d: Dictionary) -> void:
 	stash.resize(60)
 	# items from before the items rework are rebuilt once under the new rules (Items.upgrade; nothing is deleted)
 	Items.upgrade_all([equipment, inventory, belt, stash])
+	run = RunBuild.from_dict(d["run"]) if d.get("run") is Dictionary else null
 	binds = (d.get("binds", {}) as Dictionary).duplicate() if d.get("binds") is Dictionary else {}
 	WraithSkills.migrate_binds(binds)
 	DemonSkills.migrate_binds(binds)
@@ -2647,7 +2761,9 @@ func from_save(d: Dictionary) -> void:
 			talents = {}
 	else:
 		talents = Talents.auto_build(cls, level - 1)
-	tfx = Talents.sum(cls, talents)
+	if run != null:
+		talents = {}
+	tfx = run.fx(cls) if run != null else Talents.sum(cls, talents)
 	if game and game.ui and _mine():
 		game.ui.refresh_skill_slots()
 	recalc()

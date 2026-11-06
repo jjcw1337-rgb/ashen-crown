@@ -5,8 +5,9 @@ extends SceneTree
 ##   godot --headless --path . -s tools/bg_pvp_test.gd -- b 24671 [addr <host>] [cloud <nakama url> <server key>]
 ## Two real characters enter the crypt. On a's screen b is an invisible stand-in target (Battlegrounds.sync_proxies);
 ## a walks up to b and swings at it: b's life drops through the server (Net.sv_pvp_hit, PVP_MULT) until b falls.
-## b's gear drops, the server announces who killed whom, and a picks b's things up. b keeps its level but loses
-## everything it carried. Fallen, b spectates a (the camera on a) until a leaves, then leaves the crypt.
+## b's gear drops, the server announces who killed whom, and a picks b's things up. Both raid as run characters
+## (RunBuild, the multiplayer overhaul: fresh at level 0, each given its class's first skill here); b's saved
+## character is untouched by the fall. Fallen, b spectates a (the camera on a) until a leaves, then leaves the crypt.
 ## With "doug" after the port on both players' lines, a plays Doug: his first skill is the Cream Pie, and b checks it
 ## was Pied by it (the crowd control crossing to another player: DougSkills._cc -> Net.send_pvp_effect).
 
@@ -95,6 +96,10 @@ func _player() -> void:
 	var path: String = g.char_dir + g.char_id + ".json"
 	await g.start_battlegrounds("%s:%d" % [host, port], g.char_id)
 	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "entered the crypt")
+	var inv_saved := _saved_items(path)
+	if g.hero.run != null:
+		g.hero.run.add_skill(str(g.hero.skill_list()[0]["id"]), g.hero.binds)     # (as a camp chest would give it)
+		g.hero.run_changed()
 	# a round starts in the antechambers, PvP off behind the gates: ring a bell and wait for the raid
 	await until(func(): return not g.bg_raid.is_empty(), 10.0)
 	if str(g.bg_raid.get("state", "")).begins_with("lobby"):
@@ -126,21 +131,21 @@ func _player() -> void:
 		check(await until(func(): return not is_instance_valid(foe) or foe.dead, 15.0), "they fell")
 		var at: Vector3 = foe.global_position if is_instance_valid(foe) else g.hero.global_position     # (their puppet goes when they leave)
 		await secs(4.0)
-		var n0 := 0
-		for it in g.hero.inventory:
-			if it != null:
-				n0 += 1
-		for gi in g.world.items_root.get_children():
-			if is_instance_valid(gi) and gi is GroundItem and gi.global_position.distance_to(at) < 6.0:
-				g.hero.global_position = g.world.free_spot_near(gi.global_position, 0.8)
-				g._pickup(gi)
-				await secs(0.3)
+		# a run character takes what fits: consumables into its belt, gear it can wear (a swap for a worn slot)
+		var near: Array = g.world.items_root.get_children().filter(func(gi): return is_instance_valid(gi) and gi is GroundItem and gi.global_position.distance_to(at) < 6.0)
+		var n0: int = near.size()
+		for gi in near:
+			if not is_instance_valid(gi) or gi.is_queued_for_deletion():
+				continue
+			g.hero.global_position = g.world.free_spot_near(gi.global_position, 0.8)
+			g._pickup(gi)
+			if g.ui.run_ui.mode == "swap":
+				g.ui.run_ui.close()
+				g.run_swap(gi.item, gi)
+			await secs(0.4)
 		await secs(1.5)
-		var n1 := 0
-		for it in g.hero.inventory:
-			if it != null:
-				n1 += 1
-		check(n1 > n0, "I took their things (%d -> %d)" % [n0, n1])
+		var taken: int = near.filter(func(gi): return not is_instance_valid(gi) or gi.is_queued_for_deletion()).size()
+		check(n0 > 0 and taken > 0, "their things fell and I took some (%d of %d)" % [taken, n0])
 		await secs(3.0)
 	else:
 		g.test_immortal = false
@@ -164,10 +169,15 @@ func _player() -> void:
 		var d = JSON.parse_string(FileAccess.get_file_as_string(path))
 		var h: Dictionary = d.get("hero", {}) if d is Dictionary else {}
 		var inv: Array = (h.get("inventory", []) as Array).filter(func(x): return x != null)
-		check(int(h.get("level", 0)) == 8 and inv.is_empty() and int(h.get("gold", -1)) == 0, "kept my level, lost my things")
+		check(int(h.get("level", 0)) == 8 and inv.size() == inv_saved, "my saved character is untouched by the fall (level 8, %d items)" % inv.size())
 		check(g.net.fx_got > 0, "I saw the other player's skill effects (%d events, through the server)" % g.net.fx_got)
 	g.net.shutdown()
 	await secs(1.0)
+
+func _saved_items(p: String) -> int:
+	var d = JSON.parse_string(FileAccess.get_file_as_string(p)) if FileAccess.file_exists(p) else null
+	var h: Dictionary = d.get("hero", {}) if d is Dictionary else {}
+	return (h.get("inventory", []) as Array).filter(func(x): return x != null).size()
 
 func _proxy():
 	for e in g.world.enemies_root.get_children():

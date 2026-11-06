@@ -314,6 +314,41 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   the `AshenCrown-server` artifact, never uploaded to itch/Steam. A Battlegrounds world: 1.25 GB -> ~0.4 GB, a busy
   one (6 players fighting) 95% -> 24% of a core, an empty one 31% -> 13%. So server code must never need pixels or
   mesh surfaces (a stripped mesh has none: guard like `Flora.oak_model`'s leaves and `UI._scaled_tex`).
+- **Multiplayer runs** (Blaine's overhaul, 2026-11-06; `docs/overhaul_plan.md`, retirements in `docs/cleanup.md`,
+  switches in `scripts/mp_mode.gd` `MpMode`): a Battlegrounds raider is a fresh **run character** (`Hero.run`, a
+  `RunBuild`; `Hero.start_run`, `Game._start_run_raid`): level 0 on its own fast curve (`RunBuild.xp_for`, attributes
+  grow by themselves, `RunBuild.grow`), the primary attack on left mouse and five slots (`RunBuild.SLOTS`: right mouse,
+  Q E R F; G and V unused) filled from a spellbook of acquired skills, **passives** (`RunBuild.passive_pool`: generic
+  ones plus the class's talents scaled `TALENT_SCALE`, rarity by row, "needs" the skill a talent's icon names) summed
+  into `Hero.tfx` instead of talents, gear only in `RunBuild.GEAR` (no belt, amulet, rings), the belt's four slots as
+  its consumables, no gold and no backpack: found gear for a worn slot opens the swap window and the old piece is left
+  on the ground (`Game._run_pickup_ok`, `run_swap`, `_run_receive`). Camp offers: `RunBuild.offer_for` (three
+  choices rolled once per camp from the run's seed, `ODDS` by tier, at least one skill while a slot is empty),
+  `RunBuild.claim` once (`Game.run_claim`). Loot in a raid is `Game._run_loot` (`RunBuild.random_gear` for the raid's
+  classes). Single player never has `run`. Its windows are `RunUI` (I/K/N or a bar slot: the build; the swap; the
+  camp upgrade) in the multiplayer look, `MpStyle` (palette, Cinzel and Inter in `assets/fonts`, OFL).
+  `tools/run_build_test.gd`; screenshots `tools/run_ui_shots.gd -- outdir`.
+  **Camps** (`scripts/camps.gd` `Camps`): a map's encounters, `Camps.add(w, id, name, tier, pos, r, foes, chest)` (tier
+  1-3, 4 = boss; monsters at `Camps.MON_LEVEL[tier]` under the camp's own pack id, its chest sealed until they're all
+  dead: `Game.chest_sealed`, refused by the server in `Net.sv_inter`). Every peer sees a camp fall from its own
+  monsters (`Enemy.die_visual` -> `Game.camp_check`: the chest flares, a run character within `SHARE_R` gets
+  `RunBuild.CAMP_XP`); the chest (`Game._camp_chest`) drops `CHEST_ROLLS` of run loot once for everyone and opens each
+  run character's own upgrade (`Camps.offer_key`: camp and round). `tools/camp_test.gd`.
+  **The Verdant Reach** (`scripts/bg_forest.gd` `BgForest`, `MpMode.FOREST`; the crypt is retired, docs/cleanup.md):
+  the Battlegrounds map, an open lush forest 210 m across: four starting glades (a bell each), four portals at the
+  edges, sixteen camps (`BgForest.CAMPS`: place, tier, region, foes; six tier I near the glades, five II, three III,
+  Hrimgar's Frostfang Hollow and Old Mossbeard's Mycelial Grotto) joined by winding trails (`TRAILS`, with loops and
+  shortcuts; distances baked once in `_bake_trails`), a stream with plank bridges (decks), two ridges with passes cut
+  where trails cross (`relief`), and four regions (mushroom woodland, dark elf encampments, the frost hollow, ruins).
+  Oaks keep `CANOPY` from open ground so crowns never hide a fight. Bright afternoon light (`Game._zone_env`).
+  Screenshots: `tools/forest_shots.gd -- outdir`.
+  **Survivors** (`scripts/survivors.gd` `Survivors`): a run that extracts (`Game.bg_extracted`, server-confirmed) ends
+  on `RunUI.open_results` with Save Character (`Game.run_save_survivor` -> `Survivors.save`: one file per run,
+  `user://survivors/sv_<RunBuild.uid>.json`, so a second save writes nothing); a fallen run's results offer none;
+  Return is `Game.run_return` (title, the lobby browser). The lobby sends `run_<class>` (Battlegrounds,
+  `LobbyClient.class_pick`) or a survivor's id (Arena, the roster `RunUI.open_roster`); `Game.start_join` loads a
+  survivor with `Survivors.load_into`. `tools/survivor_test.gd`. What proves each spec point:
+  `docs/overhaul_acceptance.md`.
 - **Browser build (WebGL)** is a test build only and is fragile:
   - it is exported with **Godot 4.5.1** in CI (the desktop builds use 4.4.1): Godot 4.3's WebGL renderer
     blanks the whole 3D view in busy scenes (many objects near lights). Keep code working in both versions:
