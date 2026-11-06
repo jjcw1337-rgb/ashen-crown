@@ -176,7 +176,7 @@ func _build_window() -> void:
 			var th := RunTalents.theme_def(h.cls, str(th_id))
 			if not th.is_empty():
 				trow.add_child(MpStyle.tag("%s %d" % [th["name"], int(themes[th_id])], th["color"]))
-	right.add_child(MpStyle.eyebrow("Talents"))
+	right.add_child(MpStyle.eyebrow("Rites"))
 	if r.passives.is_empty():
 		right.add_child(MpStyle.para("None yet: camp chests offer them too.", 14, MpStyle.DIM))
 	for id in r.passives:
@@ -477,7 +477,7 @@ func open_offer(key: String, tier: int, camp_name := "") -> void:
 	var n: int = o["choices"].size()
 	var vb := _open("offer", maxi(1020, 70 + n * 300))
 	var tiername := "Boss" if tier >= 4 else "Tier %d" % tier
-	_header(vb, "Camp reward  ·  " + tiername, "Choose an upgrade", ((camp_name + "  ·  ") if camp_name != "" else "") + "Take one of %d. Skills fill an empty slot; talents shape the build." % n)
+	_header(vb, "Camp reward  ·  " + tiername, "Choose an upgrade", ((camp_name + "  ·  ") if camp_name != "" else "") + "Take one of %d. Skills fill an empty slot; rites shape the build." % n)
 	_found_strip(vb, o)
 	if str(o["claimed"]) != "":
 		vb.add_child(MpStyle.para("You already took this camp's upgrade.", 15, MpStyle.DIM))
@@ -562,7 +562,7 @@ func _offer_card(c: Dictionary, i: int) -> Control:
 	top.add_theme_constant_override("separation", 6)
 	vb.add_child(top)
 	top.add_child(MpStyle.tag(RunBuild.RARITY[r], col))
-	top.add_child(MpStyle.tag("Active skill" if c["kind"] == "skill" else "Talent", MpStyle.ARCANE if c["kind"] == "skill" else MpStyle.GOLD))
+	top.add_child(MpStyle.tag("Active skill" if c["kind"] == "skill" else "Rite", MpStyle.ARCANE if c["kind"] == "skill" else MpStyle.GOLD))
 	var th := RunTalents.theme_def(hero.cls, str(c.get("theme", "")))
 	if not th.is_empty():
 		var have := int(hero.run.theme_counts(hero.cls).get(th["id"], 0))
@@ -698,7 +698,7 @@ func _build_card(h, survived := true) -> Control:
 				gi.mouse_entered.connect(func(): ui.show_tooltip([[str(g["name"]), RunBuild.RARITY_COLORS[int(g["rarity"])]], [RunTalents.text_of(g, 1), Color(0.85, 0.83, 0.77)]]))
 				gi.mouse_exited.connect(func(): ui.tooltip.visible = false)
 				grow.add_child(gi)
-	mid.add_child(MpStyle.eyebrow("Talents"))
+	mid.add_child(MpStyle.eyebrow("Rites"))
 	var names := []
 	for pid in h.run.passives:
 		var pd := RunBuild.passive_def(h.cls, pid)

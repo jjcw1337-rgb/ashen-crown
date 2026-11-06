@@ -213,7 +213,7 @@ func _build_words() -> void:
 	var w1: Label = ui._label("DEATH COSTS EVERYTHING YOU CARRY", 22, RED, true)
 	w1.add_theme_font_override("font", _title_font(22, 2))
 	wv.add_child(w1)
-	var w2: Label = ui._label("Fall, and what you wear and carry and your gold stay where you fell. Your levels, talents and camp stash are kept.", 15, Color(0.92, 0.78, 0.72))
+	var w2: Label = ui._label("Fall, and what you wear and carry and your gold stay where you fell. Your levels, rites and camp stash are kept.", 15, Color(0.92, 0.78, 0.72))
 	w2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	wv.add_child(w2)
 

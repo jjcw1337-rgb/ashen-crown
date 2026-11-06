@@ -436,9 +436,9 @@ func _on_level(l: int) -> void:
 	Telemetry.crumb("level", {"level": l})
 	ui.big_message("Level %d" % l)
 	if hero.run != null:
-		ui.message("Stronger: your attributes rise with every level  ·  camp chests bring skills, talents and gems", Color(1, 0.85, 0.4))
+		ui.message("Stronger: your attributes rise with every level  ·  camp chests bring skills, rites and gems", Color(1, 0.85, 0.4))
 	else:
-		ui.message("+5 stat points (press C)  ·  +1 talent point (press N)", Color(1, 0.85, 0.4))
+		ui.message("+5 stat points (press C)  ·  +1 rite point (press N)", Color(1, 0.85, 0.4))
 
 # ---------------------------------------------------------------- environment
 func _setup_env() -> void:
@@ -2702,7 +2702,7 @@ func waypoint_battleground(id: String) -> void:
 		return
 	var nm := char_name
 	ui.open_dialog(str(entry["name"]),
-		"%s goes down with everything they wear and carry, and it is all at stake. Reach an open Extraction Portal and all of it, and whatever they find, comes home. Fall down there and every item, the belt and the gold stay on the crypt floor for others to take.\n\nLevels, stats, talents and the camp's stash are safe whatever happens.\n\nDescend into %s?" % [nm, str(entry["name"])],
+		"%s goes down with everything they wear and carry, and it is all at stake. Reach an open Extraction Portal and all of it, and whatever they find, comes home. Fall down there and every item, the belt and the gold stay on the crypt floor for others to take.\n\nLevels, stats, rites and the camp's stash are safe whatever happens.\n\nDescend into %s?" % [nm, str(entry["name"])],
 		[["Descend", func(): _waypoint_descend(id)], ["Not yet", func(): pass]])
 
 ## The trip down: the character is saved as he stands, the grand waypoint flares, the sigil's sound, a breath, and
@@ -4371,7 +4371,7 @@ func go_level_20() -> void:
 	if char_id != "":
 		save_game()
 	ui.refresh()
-	ui.message("Level 20: talents built, %d piece%s of level-20 gear on, +10,000 gold" % [given, "" if given == 1 else "s"], Color(0.6, 1.0, 0.6))
+	ui.message("Level 20: rites learned, %d piece%s of level-20 gear on, +10,000 gold" % [given, "" if given == 1 else "s"], Color(0.6, 1.0, 0.6))
 
 ## The best base for a slot at level 20 that this class can wear (its own weapon kind: bows for the ranger, canes for
 ## the plague doctor, the drumstick for Doug...).
@@ -4435,7 +4435,7 @@ func max_out() -> void:
 	ui.refresh()
 	save_game()
 	ui.big_message("MAXED OUT")
-	ui.message("Level 99, every talent, a million gold and %d pieces of the best gear in your bag" % n, Color(1.0, 0.85, 0.4), 6.0)
+	ui.message("Level 99, every rite, a million gold and %d pieces of the best gear in your bag" % n, Color(1.0, 0.85, 0.4), 6.0)
 
 func _unhandled_input(ev: InputEvent) -> void:
 	if not playing or _busy or world == null:

@@ -1702,7 +1702,8 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   ones in shared.json) and `RunTalents.GEMS` (gems.json, rarity up to 3 legendary), all laid over when they load; a
   hero's directions are its `RunTalents.THEMES` (the codex files skills by `SKILL_THEMES` or their codex direction). A value edited in code without re-exporting is overridden by the
   codex file: change it in the codex.
-- **Talents** (`scripts/talents.gd`, the window is N; `tools/talent_test.gd`, `tools/talent_shot.gd`): three trees per
+- **Talents** (players see them as **Rites**, for every class: JJ 2026-11-05; only the shown text says Rites, the code,
+  save keys and tools keep `talent`) (`scripts/talents.gd`, the window is N; `tools/talent_test.gd`, `tools/talent_shot.gd`): three trees per
   class of seven talents in four rows (2, 2, 2, then a capstone); a row opens with 0/3/6/10 points spent above it in
   that tree (`Talents.ROW_REQ`), and a rank can't be taken back if a deeper talent would lose its row. One point a
   level from level 2: `Hero.free_talent_points()` = level - 1 - spent (nothing stored but `talents` {id: ranks} in
