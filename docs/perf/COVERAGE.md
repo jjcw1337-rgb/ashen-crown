@@ -1,27 +1,25 @@
 # Shared performance coverage — 2026-11-06
 
 The loading migration is implemented locally, but **release and performance acceptance are not complete**.
-Current source merges staging `70a3ed0` as `9db64e5`, preserving the new Knight, Wraith, Demon and Doug
+Current source merges staging `67937fb` as `3c75462`, preserving the new Knight, Wraith, Demon and Doug
 run kits. The resumed 2026-11-06 checks below supersede older component results; gameplay and performance
 results in the table remain pinned to `2a2f1e2`. The shared guidance remains [loading](../patterns/loading.md),
 [effects](../patterns/effects.md) and [measuring](../patterns/measuring.md).
 
 ## Resumed verification — 2026-11-06
 
-The native Godot 4.4.1 compile and terrain 27/cache 23/declarations 2,602/roots 143/world 7/parts 47/material 73
-checks passed with no runtime errors or warnings on the merged candidate. Actual Knight capture recorded
-32 events across 13 skills, including Aegis's delayed burst; it had no runtime errors and one UI anchor warning.
-The lobby sizing correction and the extended Wraith/Detonation captures remain pending runtime validation.
-Four affected scripts grammar-parse. The new phase assertions correctly remain unsatisfied until regeneration;
-the earlier 2,602 declaration pass predates those new assertions.
-The latest Wraith capture omitted Death Mark's delayed pop; Detonation recorded an empty impact list because
-the fixture had not branded its targets. The capture now waits for the real pop and brands real targets before
-casting Detonation; declaration checks require those phases. Regeneration is not yet certified.
+The native Godot 4.4.1 compile and terrain 27/cache 23/roots 143/world 7/parts 47/material 73
+checks passed clean on the resumed candidate. The latest declaration run passes **2,604 checks**, including
+actual Wraith Death Mark pop and Demon Detonation positions. Wraith capture recorded 50 events/14 skills;
+Demon recorded 48/14, with no runtime errors or warnings. Knight's prior actual capture recorded 32/13,
+including delayed Aegis burst (one layout warning before the lobby sizing fix).
 
-Thirty-three Python CI/audit/benchmark tests pass. Four capture attempts were stopped by the runner when
-another Godot appeared during Codex's reserved heavy-test window; those attempts are retained as interrupted,
-not passing. No full functional gate, normal BG completion, new focused comparison or staging publication has
-completed in this resumed session. Evidence: `workspace/output/perf-resume/`.
+Rendered lobby checks initially found four off-screen control failures at 1024×768 and 1280×720.
+The responsive layout fix passes all four viewport sizes with no runtime errors/warnings; actual 1024/1280
+screenshots were inspected. Capture and UI checks used bounded functional runners and recorded a small
+concurrent headless fixture; they are **not performance evidence**. The normal-clock BG journey fixture
+native-compiles but has not yet completed gameplay. Full gate, focused comparison and staging publication
+remain incomplete. Evidence: `workspace/output/perf-resume/`.
 
 | Area | Implemented and verified | Remaining acceptance |
 |---|---|---|
@@ -31,7 +29,7 @@ completed in this resumed session. Evidence: `workspace/output/perf-resume/`.
 | Actual Battlegrounds | Forest construction parity passed. Arena fixture also verified real BG lobby class selection and Ready invalidation. New forest monsters resolve through the existing enemy/model registry. | Current rendered client passed 28 checks for entry, combat, swaps, extraction, survivor saving, re-entry, death and scope retirement. Server-mediated two-player PvP/spectating passed 24 checks. Screenshots inspected. The full gate was stopped red on two server reset assertions; a clock probe proved the round did collapse at 150 simulation seconds and rebuilt. The corrected fixture observes actual death/reset/rebuild transitions continuously and passed 45 checks (18 server / 27 client), including the configured 150-second simulation boundary and a fully rebuilt next lobby. Both processes exited 0 with no runtime errors; seven client rendering/UI warnings remain. Whole-run, late-join and peak-capacity claims remain separate. |
 | Effects and lifetimes | Current material lifecycle 73 clean assertions; prior 4.4 all-class replay 387 clean assertions. World-owned callbacks and surface-override retirement preserve cached meshes. | Current full replay, long-session residency, delayed variants and performance under six-actor spell floods. Online preparation still covers all classes rather than a changing roster. |
 | Sandbox | Hosted practice passed 20 current two-client checks: late join, FFA damage/respawn, no local bots/autosave, byte-identical story save, no practice save, return and natural worker/port cleanup. Screenshot inspected; no runtime errors, three layout/Metal warnings. | Current solo/entry acceptance, full gate and matching backend/client rollout. Do not describe Sandbox as live based on source alone. |
-| Release | Fresh origin fetch confirms 70a3ed0. Current native component contracts pass. | Full functional gate, repeatable performance acceptance, matching exports/backend/client staging publication, remote verification. No staging push or deployment in this closure continuation. |
+| Release | Fresh origin fetch confirms 67937fb. Current native component contracts pass. | Full functional gate, repeatable performance acceptance, matching exports/backend/client staging publication, remote verification. No staging push or deployment in this closure continuation. |
 
 Raw closure evidence is under `workspace/output/perf-closure/`; prior evidence is linked from
 [implementation results](IMPLEMENTATION_RESULTS.md) and [staging results](STAGING_RESULTS.md).
@@ -59,10 +57,10 @@ Earlier 4.3 gains also increased loading and memory and were rejected.
 - **Before release:** CI checks declarations, root loading, cache/material lifetimes and known construction bypasses.
   The full gate adds real BG/PvP and isolated two-client Arena/Sandbox flows. The new world-content fixture exercises
   actual builders for undeclared `ResCache` requests; it does not detect every arbitrary raw `load()`.
-- **After release:** the installed 22:30 local launchd audit uses three repeated exported-build profiles, including
-  six-actor Arena/forest floods, with focus, clean-log, miss, stall, load and memory checks. It reports regressions;
-  it does not rewrite new code. A second cron job is unnecessary. Its first complete workload still awaits rollout
-  and an exclusive test window. Six rendered actors do not certify six network clients.
+- **After release:** retained manual audit tools support three repeated exported-build profiles, including
+  six-actor Arena/forest floods, with focus, clean-log, miss, stall, load and memory checks. Staging `67937fb`
+  removes scheduled jobs; no automatic audit is currently promised or reinstated. Six rendered actors do not
+  certify six network clients.
 
 Keep functional correctness, measured performance and publication status separate. A green component test,
 installed schedule or successful export cannot stand in for the other two.
@@ -80,8 +78,7 @@ Before the latest staging merge there were thirteen run skills. The existing bid
 missing Knight captures: `k_aegis`, `k_judgment`, `k_rites`, `k_whirl`; no retired IDs remain. Do not weaken it.
 The next exclusive test window must capture real Knight casts, run the declaration/world contracts and exercise
 those skills in BG/Arena. Existing Archer/Plague captures and shared talent/consumable variants remain intact.
-Nightly workload hashes change with recipes, preventing reuse of incompatible baselines. Installed runner
-`e24897599182100d` remains unchanged; no full nightly pass is claimed.
+Nightly workload hashes change with recipes, preventing reuse of incompatible baselines. The previously installed runner was removed with the scheduled jobs; no full automated audit pass is claimed.
 
 The finish is deliberately limited to current character/skill preparation, BG/Arena behavior, the functional
 release gate and a measured loading/residency decision. No new modes, art redesign or broader engine rewrite.

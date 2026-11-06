@@ -1,3 +1,7 @@
+> Current status: scheduled jobs were removed in staging `67937fb` on 2026-11-06.
+> No automatic audit is installed or being reinstated by this work. The material below
+> describes the retained tooling and historical setup, not an active schedule.
+
 # Published-build nightly performance audit
 
 Blaine requested this on 2026-11-05. This is a read-only audit; the existing 00:30 Claude

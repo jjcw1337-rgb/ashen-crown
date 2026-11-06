@@ -12,7 +12,7 @@ identical runs.
 | Title, camp, first casts | `tools/hitch_probe.gd -- title\|camp\|skills <cls>` | |
 | Which call was slow? | run with `--fx-timing` | prints skill/effect calls over 6 ms |
 | FPS and six-actor PvP floods | `scripts/kpi.gd`, `tools/nightly/bench.sh` | camp, moor, fight, boss, arena, Battlegrounds, PvP, server |
-| Has the published build regressed? | [nightly audit](../perf/NIGHTLY_AUDIT.md) | 22:30 Mac local time; three repeats, lifecycle checks and a retained report |
+| Has the published build regressed? | [manual audit tools](../perf/NIGHTLY_AUDIT.md) | Three repeats, lifecycle checks and a retained report; scheduled jobs removed |
 | What does a server cost? | `tools/load_bot.gd` against a server, then `ps`/`/proc` on the host | RAM, CPU per mode, with players fighting |
 
 All frame tools need a display. Run tools that use `Sfx` through `tools/_late.gd`

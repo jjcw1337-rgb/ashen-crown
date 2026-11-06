@@ -90,7 +90,7 @@ void fragment() {
 	shade.material = sm
 	add_child(shade)
 	_root = MarginContainer.new()
-	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_root.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	for m in ["margin_left", "margin_right"]:
 		_root.add_theme_constant_override(m, 48)
 	_root.add_theme_constant_override("margin_top", 28)
@@ -150,15 +150,21 @@ void fragment() {
 const STAGE_MID := -90.0
 
 func _fit() -> void:
-	# the whole window (the menus layer isn't laid out for a late full-rect child); below 1280 wide the panel narrows
+	# Keep the entire preparation screen usable on short/narrow windows. Container
+	# minimum sizes otherwise push the class grid and Ready/Start off screen.
 	position = Vector2.ZERO
 	size = get_viewport_rect().size
-	var w := size.x
+	var layout_scale := minf(1.0, minf(size.x / 1280.0, size.y / 900.0))
+	var layout_size := size / layout_scale
+	var w := layout_size.x
 	var pw := clampf(w * 0.36, 420.0, 640.0)
 	var m := int(clampf(w * 0.025, 16.0, 48.0))
 	if right != null and right.get_parent() != null:
 		(right.get_parent() as Control).custom_minimum_size.x = pw
 	if _root != null:
+		_root.position = Vector2.ZERO
+		_root.scale = Vector2.ONE * layout_scale
+		_root.size = layout_size
 		_root.add_theme_constant_override("margin_left", m)
 		_root.add_theme_constant_override("margin_right", m)
 	col_w = maxf(260.0, w - pw - m * 2.0 - 40.0 - 36.0)      # (the body's gap, and slack for the panel's own padding)
