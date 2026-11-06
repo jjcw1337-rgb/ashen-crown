@@ -37,4 +37,4 @@ A skill's look is done when it has all of these. Fire Arrow (`scripts/arrow_fx.g
    Low / web settings get half the particles and no haze, and must still look like the same effect.
 8. **It reads from the game camera**, not only close up.
 
-Details: `scripts/skill_fx.gd`'s header.
+Event details: `scripts/skill_fx.gd`'s header. The reference effect's details: `scripts/arrow_fx.gd`'s header.

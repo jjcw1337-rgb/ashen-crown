@@ -11,24 +11,27 @@ Where a hero's numbers and text come from, how the game reads them, and what sti
 - `code_base.json`: the values the code had at the last export (see "Code against codex").
 - `fx_keys.json`: which rite effect keys the game reads, so the editor only allows rites the code can run.
 
-A skill entry has `id, status, name, rarity, direction, desc, mana, cd, range, lvl`, and some add `use`, `role`,
-`run` and `tags`. A rite entry has `id, status, name, rarity, direction, max, fx, text, icon`. `scripts/codex.gd`'s
+A skill entry has `id, status, name, rarity, direction, desc, mana, cd, lvl`, and some add `range`, `power`, `use`,
+`role`, `run` and `tags`. A rite entry has `id, status, name, rarity, direction, max, text, icon`, and most add `fx`
+(some also `k`, `proc`, `per`, `requires`, `run`). `scripts/codex.gd`'s
 header describes the format. Only entries with `"status": "live"` reach the game.
 
 ## How the game reads it
 
 `Codex` (`scripts/codex.gd`) reads each file once. When a data script loads, it lays the codex over its built-in
-entries: `Data` (skills and run skills), `Talents`, `RunTalents` (rites and gems) and `RunBuild` (shared skills). A
+entries: `Data` (skills, including the shared ones, and run skills), `Talents`, `RunTalents` (rites and gems) and `RunBuild`
+(the shared rites, over its generic passives). A
 missing or broken file falls back to the built-in data.
 
 **What the codex sets today:**
 - **Skills:** name, desc, mana, cd, use (timing), power (damage multiplier), range, role, rarity, direction.
 - **Rites:** name, text, max, fx, rarity, k.
-- Live rites with no code behind them still reach the camp chests (`Codex.extra_rites`).
+- Live rites with no code behind them still reach the camp chests (`Codex.extra_rites`), if every effect key they
+  use is one the game reads (`fx_keys.json`, or `dmg:`, `cd:`, `cost:`).
 
 **What is still only in code:**
-- `Data.SKILLS`: the class, key, unlock level, aim, tags and `SkillSpec` fields. The codex's `lvl` and `tags` are
-  ignored at runtime.
+- `Data.SKILLS`: the class, key, unlock level, aim, tags and the other `SkillSpec` fields (`hit`, `dmg`, `area`,
+  `dot`, `pvp`…). The codex's `lvl` and `tags` are ignored at runtime.
 - `Data.CLASSES`: each class's name, stats, weapon and description.
 - `Talents.TREES` and `RunTalents`' themes and each rite's proc.
 - **Skills' base damage.** The codex's `power` multiplies it, but the base is in code: `SkillSpec` fields in

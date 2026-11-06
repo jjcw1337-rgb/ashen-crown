@@ -92,8 +92,8 @@ sequenceDiagram
   mode's time limit (`LIMIT`), is aborted and its process stopped.
 - **The gap.** The hero a player brings is whatever their game sends in its hello. The server owning each player's
   build is part of the combat work ([the plan](../architecture_cleanup.md)).
-- Item stakes for Arena matches exist in the lobby service (`lobby_stakes.gd`, settlement receipts in SQLite), but
-  the lobby screen always creates lobbies without them.
+- Item stakes for Arena matches exist in the lobby service (`service.py`, receipts in SQLite) and the game
+  (`lobby_stakes.gd`, the local escrow), but the lobby screen always creates lobbies without them.
 
 ## The rules
 
@@ -126,8 +126,9 @@ Measured on the staging droplet (4 GB, 2 vCPU) with bot players (`tools/load_bot
 | CPU, empty | 31% of a core | 13% |
 | CPU, 6 players fighting | 95% | 24% |
 
-There is no fixed slot count. On Start, `service.py` checks there is room for one more match of that mode (`COST`:
-its memory plus headroom, a CPU budget, a free UDP port from 24600). Otherwise the lobby reads "Servers are full
+There is no slot count per mode. On Start, `service.py` checks there is room for one more match of that mode (`COST`:
+its memory plus headroom, a CPU budget), a free UDP port (16 from 24600 by default), and fewer than `--slots` (32)
+matches running. Otherwise the lobby reads "Servers are full
 right now" and stays open. Measure a mode with `tools/load_bot.gd` before changing `COST`.
 
 ## Accounts and Nakama

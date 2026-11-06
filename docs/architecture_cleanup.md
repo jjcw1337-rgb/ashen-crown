@@ -83,9 +83,9 @@ Each step is done for the Archer first, all the way through, and the other heroe
      `VOLLEY_R` and the rest are constants in `archer.gd`);
    - the shared fire, frost and arc effects move to `game/systems/fx/`, so other heroes stop borrowing the Archer's
      files;
-   - its crowd control on players goes through `PvpStatus`. Today Thunderstep's stun never reaches a player
-     (`Enemy.stun` has no PvP path), and Frost Volley's chill goes through `send_pvp_effect`, with no diminishing
-     returns;
+   - its crowd control is reviewed for PvP and sent through `PvpStatus`. Today Thunderstep's stun is PvE-only
+     (`PvpStatus` keeps other classes' stuns off players until each is reviewed), and Frost Volley's chill reaches
+     players through `send_pvp_effect`, with no diminishing returns;
    - the code outside its folder that names it (`hero.gd`, `ui.gd`, `run_talents.gd`, `enemy.gd`, `game.gd`…) shrinks
      to the registration list in `docs/content/heroes.md`;
    - one contract for a hero's skills, written in `docs/content/skills.md`. Today the Archer is static functions with

@@ -3,6 +3,26 @@
 What a hero is made of, how to make a new one, and how to improve one. The Archer (`game/heroes/archer/`) is the
 example. It is being rebuilt as the template ([the plan](../architecture_cleanup.md)), so check it before copying.
 
+## A hero, and which doc covers each piece
+
+```mermaid
+flowchart LR
+  hero["A hero<br/>game/heroes/archer/"] --> body["Body, weapon, dyes<br/>(Meshy → Blender → .glb)"]
+  hero --> kit["Its skills<br/>skills/thunderstep/ …"]
+  hero --> text["Its numbers and text<br/>data/codex/heroes/archer.json"]
+  kit --> rules["Rules: what a skill does"]
+  kit --> look["Look: what it shows"]
+  body -.- d1(["pipeline/assets.md"])
+  kit -.- d2(["content/skills.md"])
+  text -.- d3(["systems/data.md"])
+  rules -.- d4(["systems/combat.md"])
+  look -.- d5(["systems/effects.md"])
+```
+
+Changing a hero touches two to four of these docs, never all of them: a new look for a skill is
+[skills](skills.md) and [effects](../systems/effects.md); a damage change is [skills](skills.md),
+[data](../systems/data.md) and [combat](../systems/combat.md).
+
 ## A hero's folder
 
 Everything one hero owns lives in `game/heroes/<hero>/`:
