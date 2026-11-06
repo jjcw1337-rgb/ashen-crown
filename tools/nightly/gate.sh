@@ -54,6 +54,12 @@ waitfor $p 60; rc=$?; check content_parse_test "$OUT/gate_content_parse_test.log
 [ "$BAD" = 0 ] || exit "$BAD"
 
 # Prioritize the affected competitive modes before the broader regression suite.
+# A completed pair may be reused after an infrastructure interruption only when
+# the checkpoint verifies identical runtime/assets/fixtures and the original clean exits.
+if [ -n "${GATE_BG_CHECKPOINT:-}" ] && python3 tools/nightly/gate_checkpoint.py restore "$GATE_BG_CHECKPOINT" "$OUT"; then
+  check bg_test_server "$OUT/gate_bg_server.log" 0
+  check bg_test_client "$OUT/gate_bg_client.log" 0
+else
 # the Battlegrounds pair
 "$G" --headless --path . -s tools/_late.gd -- res://tools/bg_test.gd --server --port "$BG_PORT" --raid-fast server > "$OUT/gate_bg_server.log" 2>&1 & s=$!
 sleep 6
@@ -65,6 +71,8 @@ fi
 waitfor $c 420; rc=$?; waitfor $s 200; rs=$?
 check bg_test_server "$OUT/gate_bg_server.log" $rs
 check bg_test_client "$OUT/gate_bg_client.log" $rc
+
+fi
 
 # Battlegrounds PvP: a server and two players
 "$G" --headless --path . -s tools/_late.gd -- res://tools/bg_pvp_test.gd --server --port "$PVP_PORT" --raid-fast server > "$OUT/gate_pvp_server.log" 2>&1 & s=$!
