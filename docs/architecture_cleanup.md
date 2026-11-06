@@ -131,9 +131,15 @@ of three buckets:
    pull back into `game/`. Examples are the fort (palisade, towers, gatehouse, great hall), the Roman/Aurelia set,
    the coast and islands, the camp buildings and the crypt props. Today every model in the project ships in the
    download whether it's used or not.
-3. **Delete: the old machinery.** This covers the story-mode code (zone builders for the moor, fort, Aurelia, coast
-   and islands), quests, traders, boats and sailing, waypoints, acts, the Last Flame and the co-op server. Git
-   keeps the history.
+3. **Delete: the old machinery.** This covers the story-mode code (zone builders for the moor, fort and Aurelia),
+   quests, traders, waypoints, acts, the Last Flame and the co-op server. Git keeps the history.
+
+**Archived whole, code included** (Blaine: "we don't want to lose the boat stuff"): **sailing**. That means the
+ocean (`ocean.gd`: waves, shore and depth), the boats (`boat.gd`, `boat_ride.gd`, `boat_shop.gd`, `Data.BOATS`),
+the coast and the five islands (`coast.gd`, `isles.gd`, `isle_*.gd`, `height_grid.gd`), Osric the shipwright, and
+their models, textures and sounds. They go to `archive/sailing/` with a short `REVIVE.md` listing the hooks they
+had in `game.gd`, `hero.gd`, `net.gd` and `ui.gd`, so they can be wired back in. Other features to keep this way
+need an admin's say-so: add them here.
 
 Order for each old system:
 1. Move what the live game borrows (below).
