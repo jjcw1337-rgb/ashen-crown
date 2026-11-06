@@ -13,11 +13,16 @@ func run() -> void:
 	for cls in Data.CLASSES:
 		check(catalog.CLASS_ROOTS.has(cls), "Class missing content declaration: " + cls)
 		check(SkillWarmData.EVENTS.has(cls), "Class missing visual preparation recipe: " + cls)
+		# Attack and run-proc events are presentation families, not selectable skills.
+		var allowed := {"attack": true, "run": true}
 		var represented := {}
 		for event in SkillWarmData.EVENTS.get(cls, []):
 			represented[str(event.get("s", ""))] = true
 		for skill in Data.skills_for(cls) + Data.run_skills_for(cls) + Data.shared_skills():
 			check(represented.has(str(skill.id)), "Skill missing captured preparation event: %s/%s" % [cls, skill.id])
+			allowed[str(skill.id)] = true
+		for skill_id in represented:
+			check(allowed.has(skill_id), "Retired or unknown preparation event: %s/%s" % [cls, skill_id])
 	var solo: Array = catalog.combat(["knight"])
 	check(not solo.any(func(p): return str(p).contains("/plague/") or str(p).contains("/arrows/")), "Solo knight must not acquire other classes\' families")
 	check(catalog.combat(["archer"]).has(SpiritBeast.WOLF_GLB), "Archer summon must be declared")

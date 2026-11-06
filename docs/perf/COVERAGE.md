@@ -1,8 +1,9 @@
 # Shared performance coverage — 2026-11-06
 
 The loading migration is implemented locally, but **release and performance acceptance are not complete**.
-Current source includes published staging `3d4c661` and Claude's committed gameplay through `9ea4830`
-(run talents, gems, consumables and twelve new run-only skills). The shared guidance remains [loading](../patterns/loading.md), [effects](../patterns/effects.md)
+Current source includes published staging `3d4c661` and Claude-1's committed gameplay through `711375f`
+(three build directions per class, revised rarities, nine run-only skills and the cooldown-default fix).
+The latest merge has source checks only: runtime results below remain pinned to `2a2f1e2` and must be rerun. The shared guidance remains [loading](../patterns/loading.md), [effects](../patterns/effects.md)
 and [measuring](../patterns/measuring.md). This is the current status page; older result pages preserve their
 original revisions and failed attempts.
 
@@ -52,8 +53,11 @@ installed schedule or successful export cannot stand in for the other two.
 
 ## Latest run-content integration
 
-All twelve run skills are captured from actual Archer/Plague/Warlock casts. The declaration contract now checks
-`Data.RUN_SKILLS` as well as story/shared skills. Shared run-proc and consumable presentation variants are prepared
+The nine remaining Archer/Plague run skills retain their actual-cast captures. Six captured events for the three
+retired provisional Warlock skills were removed after merging `711375f`. The declaration contract now checks
+`Data.RUN_SKILLS` as well as story/shared skills, and rejects captured IDs absent from those declarations
+(except the explicit attack/run-proc presentation families). A source audit confirms both directions for all ten
+classes; native execution of this strengthened contract is pending. Shared run-proc and consumable presentation variants are prepared
 and included in the stress workload; skill/gem reward icons use the competitive zone scope. The nightly baseline
 identity now includes the replay recipe hash, so changed workloads cannot silently reuse old baselines. Fourteen
 audit unit tests pass. The installed immutable runner is `e24897599182100d`; no full nightly pass is claimed.
@@ -92,7 +96,9 @@ The BG clock probe also measured about 150 simulation seconds over 200 wall seco
 server + rendered-client run. That is not a release-server capacity measurement. Functional timer assertions now
 check the simulation boundary with a bounded wall timeout; they do not certify tick rate or conceal that finding.
 
-Final source check: `origin/staging` remains `3d4c661`, and Claude-1's latest committed gameplay remains `9ea4830`.
+Latest sync: `origin/staging` remains `3d4c661`; Claude-1 gameplay through `711375f` is merged locally.
+Construction (3), audit (14) and benchmark (13) Python tests pass. Claude-1 holds the local heavy-tests claim;
+no new Godot run or runtime acceptance was performed for this sync.
 A separate unmerged `origin/claude-2/hero-codex` branch appeared at `f13c496` during the last fetch (no PR at this
 checkpoint). It moves hero/run/talent data into JSON and adds an editor. It is not included in these results;
 when integrated, rerun declaration/recipe capture and gameplay checks against its data-loading changes.
