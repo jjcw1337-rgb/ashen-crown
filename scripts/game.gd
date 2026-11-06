@@ -629,22 +629,30 @@ func _zone_env(kind: String) -> void:
 		hero.light.light_energy = 0.9
 		hero.light.omni_range = 10.0
 		if kind == Battlegrounds.ZONE:
-			# the Verdant Reach (BgForest): a bright, lush afternoon. Warm sun, a clear blue sky, rich greens kept
-			# saturated, a light haze between the oaks; the camps' coloured lights read in the shade
-			sky_mat.sky_top_color = Color(0.3, 0.5, 0.78)
-			sky_mat.sky_horizon_color = Color(0.78, 0.84, 0.78)
-			sky_mat.ground_horizon_color = Color(0.45, 0.52, 0.4)
-			env.ambient_light_energy = 0.8
-			env.tonemap_exposure = 1.12
-			env.fog_light_color = Color(0.62, 0.72, 0.6)
-			env.fog_density = 0.0035
-			env.fog_height_density = 0.03
-			env.adjustment_saturation = 1.12
-			env.adjustment_contrast = 1.05
-			env.volumetric_fog_density = 0.008
-			env.volumetric_fog_albedo = Color(0.85, 0.92, 0.8)
-			sun.light_color = Color(1.0, 0.93, 0.78)
-			sun.light_energy = 1.25
+			# the Verdant Reach (BgForest): a bright, lush, golden afternoon (Blaine, 2026-11-06: "brighter, more lively").
+			# A warm low-ish sun, a deep blue sky, a fill strong enough that the shade under the oaks stays green,
+			# saturated colour, a golden haze between the trees, and glow enough for the fireflies, the mushrooms'
+			# light and the shrines (ForestLife) to bloom; the camps' coloured lights still read in the shade
+			sky_mat.sky_top_color = Color(0.26, 0.5, 0.86)
+			sky_mat.sky_horizon_color = Color(0.86, 0.86, 0.72)
+			sky_mat.ground_horizon_color = Color(0.5, 0.56, 0.38)
+			env.ambient_light_energy = 0.98
+			env.tonemap_exposure = 1.14
+			env.fog_light_color = Color(0.8, 0.78, 0.58)
+			env.fog_density = 0.0032
+			env.fog_sky_affect = 0.4
+			env.fog_height_density = 0.02
+			env.adjustment_saturation = 1.16
+			env.adjustment_contrast = 1.06
+			env.volumetric_fog_density = 0.009
+			env.volumetric_fog_albedo = Color(0.98, 0.9, 0.7)
+			env.volumetric_fog_emission = Color(0.02, 0.018, 0.01)
+			env.glow_intensity = 0.85
+			env.glow_bloom = 0.08
+			sun.light_color = Color(1.0, 0.92, 0.77)
+			sun.light_energy = 1.32
+			sun.shadow_blur = 2.0
+			hero.light.light_energy = 0.7
 		elif kind == "town" and world.theme.get("forest_camp", false):
 			# Act I's camp deep in the old forest: late dusk under the canopy. Cool blue-green light
 			# and low mist between the trees, so the bonfire, the lanterns and the rune stones glow

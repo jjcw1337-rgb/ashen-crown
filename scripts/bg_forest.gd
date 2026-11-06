@@ -239,6 +239,8 @@ static func build(w: World) -> void:
 		Grass.scatter(w.props_root, w.bounds.grow(World.MARGIN * 0.6), w, GRASS, World.detail, 6060)
 		w._scatter_ferns(1400)
 	w.spawns["start"] = spawns[0]
+	# the life and colour on top: flowers, butterflies, fireflies, shrines (ForestLife; visual only, its own seeds)
+	ForestLife.dress(w)
 
 ## Is a point kept clear of trees and growth: trails, camps' fighting ground, the glades, the portals, the stream.
 static func open_at(p: Vector2, pad := 0.0) -> bool:
@@ -325,18 +327,30 @@ static func _ridge_rocks(w: World, rng: RandomNumberGenerator) -> void:
 ## The stream: a ribbon of moving water in its bed, plank bridges where the main trails cross it.
 static func _stream(w: World) -> void:
 	var pts := w._spline(STREAM, 8)
+	# its bed: wet mud and pebbles under the water, so the grass doesn't grow through it (visual only: the dirt
+	# mask colours the ground and keeps grass off, nothing walks by it)
+	for i in pts.size() - 1:
+		w.dirt_lines.append([pts[i], pts[i + 1], 2.9])
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var half := 2.6
 	var along := 0.0
+	# each point's sideways direction is the mean of its two segments', so the ribbon bends without gaps or overlaps
+	var sides := PackedVector2Array()
+	for i in pts.size():
+		var d0: Vector2 = (pts[i] - pts[maxi(i - 1, 0)]).normalized() if i > 0 else Vector2.ZERO
+		var d1: Vector2 = (pts[mini(i + 1, pts.size() - 1)] - pts[i]).normalized() if i < pts.size() - 1 else Vector2.ZERO
+		var dd := (d0 + d1).normalized()
+		sides.append(dd.orthogonal() * half / maxf(0.5, dd.dot(d1 if d1 != Vector2.ZERO else d0)))
 	for i in pts.size() - 1:
 		var a: Vector2 = pts[i]
 		var b: Vector2 = pts[i + 1]
-		var n := (b - a).orthogonal().normalized() * half
+		var na: Vector2 = sides[i]
+		var nb: Vector2 = sides[i + 1]
 		var ya := w.ground_h(a.x, a.y) + 0.55
 		var yb := w.ground_h(b.x, b.y) + 0.55
 		var l := a.distance_to(b)
-		var v := [Vector3(a.x + n.x, ya, a.y + n.y), Vector3(a.x - n.x, ya, a.y - n.y), Vector3(b.x + n.x, yb, b.y + n.y), Vector3(b.x - n.x, yb, b.y - n.y)]
+		var v := [Vector3(a.x + na.x, ya, a.y + na.y), Vector3(a.x - na.x, ya, a.y - na.y), Vector3(b.x + nb.x, yb, b.y + nb.y), Vector3(b.x - nb.x, yb, b.y - nb.y)]
 		var uv := [Vector2(0, along), Vector2(1, along), Vector2(0, along + l), Vector2(1, along + l)]
 		for idx in [0, 2, 1, 1, 2, 3]:
 			st.set_uv(uv[idx])
@@ -392,8 +406,8 @@ static func _water_mat() -> ShaderMaterial:
 	var sh := Shader.new()
 	sh.code = """shader_type spatial;
 render_mode blend_mix, depth_draw_opaque, cull_disabled, specular_schlick_ggx;
-uniform vec3 deep : source_color = vec3(0.05, 0.2, 0.22);
-uniform vec3 shallow : source_color = vec3(0.18, 0.45, 0.42);
+uniform vec3 deep : source_color = vec3(0.03, 0.2, 0.36);
+uniform vec3 shallow : source_color = vec3(0.1, 0.44, 0.56);
 float h(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float n(vec2 p) { vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(h(i), h(i + vec2(1, 0)), f.x), mix(h(i + vec2(0, 1)), h(i + vec2(1, 1)), f.x), f.y); }
@@ -401,12 +415,16 @@ void fragment() {
 	vec2 flow = vec2(UV.x * 3.0, UV.y * 0.35 - TIME * 0.9);
 	float w = n(flow * 2.0) * 0.6 + n(flow * 5.0 + 3.0) * 0.4;
 	float edge = smoothstep(0.0, 0.25, UV.x) * smoothstep(1.0, 0.75, UV.x);
-	ALBEDO = mix(shallow, deep, edge * 0.8) + vec3(0.6, 0.75, 0.7) * pow(w, 6.0) * 0.6;
-	ROUGHNESS = 0.08;
+	// sunlit glints riding the current, a little foam where it runs against the banks
+	float glint = pow(n(vec2(UV.x * 9.0, UV.y * 1.6 - TIME * 1.3)) * n(vec2(UV.x * 7.0 + 4.0, UV.y * 1.2 - TIME * 0.8)), 3.0);
+	float foam = (1.0 - edge) * smoothstep(0.45, 0.8, n(vec2(UV.x * 14.0, UV.y * 1.4 - TIME * 1.1)));
+	ALBEDO = mix(shallow, deep, edge * 0.75) + vec3(0.6, 0.8, 0.8) * pow(w, 6.0) * 0.25 + vec3(0.9) * foam * 0.3;
+	EMISSION = vec3(1.0, 0.97, 0.85) * glint * 1.6;
+	ROUGHNESS = 0.06;
 	METALLIC = 0.0;
-	SPECULAR = 0.6;
+	SPECULAR = 0.7;
 	NORMAL_MAP = vec3(0.5 + (n(flow * 4.0) - 0.5) * 0.5, 0.5 + (n(flow * 4.0 + 7.0) - 0.5) * 0.5, 1.0);
-	ALPHA = mix(0.55, 0.9, edge);
+	ALPHA = mix(0.58, 0.86, edge) + foam * 0.2;
 }"""
 	_water = ShaderMaterial.new()
 	_water.shader = sh
@@ -539,9 +557,9 @@ static func _frost_ground(w: World, at: Vector2, size: float) -> void:
 	var tex := SlothLair._ground_tex("cold")
 	d.texture_albedo = tex[0]
 	d.texture_emission = tex[1]
-	d.emission_energy = 0.25
-	d.albedo_mix = 0.5
-	d.modulate = Color(0.72, 0.8, 0.88)      # (rime over the grass, not a sheet of white under the afternoon sun)
+	d.emission_energy = 0.3
+	d.albedo_mix = 0.38
+	d.modulate = Color(0.6, 0.74, 0.9)       # (pale blue rime over the grass, not a sheet of white under the afternoon sun)
 	d.position = Vector3(at.x, w.height_at(at.x, at.y), at.y)
 	w.props_root.add_child(d)
 
