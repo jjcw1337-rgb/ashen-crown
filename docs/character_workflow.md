@@ -75,7 +75,7 @@ costs, and the check that must pass before the next step. A character is not don
 
 - `godot --headless --editor --quit` then `--check-only` on each new script.
 - `tools/coop_fx_test.gd` (every skill reaches a puppet, replays hurt nothing), `tools/skill_spec_test.gd` (the PoE
-  rules), `tools/<id>_test.gd` (each skill's gameplay), `tools/talent_test.gd`, `tools/class_carousel_test.gd`,
+  rules), `tools/<id>_test.gd` (each skill's gameplay), `tools/talent_test.gd`,
   `tools/playtest.gd`, `tools/bg_pvp_test.gd` (PvP crowd control), `tools/skill_perf.sh <id>` (no new stutters).
 - Test scripts wait in game time (frames at `--fixed-fps 60`), not the wall clock: headless runs faster than real
   time, so a 2 s slow is over before a wall-clock `secs(1.6)` looks. Freeze the test monsters (`speed = 0`) where a

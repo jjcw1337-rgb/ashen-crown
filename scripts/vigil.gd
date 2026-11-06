@@ -15,8 +15,7 @@ extends Node
 ## the host and only shows them on the others. State -> Net.vigil_state (cl_vigil), events -> Net.vigil_event
 ## (cl_vigil_fx), a partner's kindling -> Net.request_vigil (sv_vigil), partners' levels -> Net.vigil_hi.
 ## Entered from the camp's Vigil Gate (forest_camp.gd, Inter "vigil_gate" -> Game._interact -> travel, so the
-## party's ready check takes everyone). Test: tools/nightly_vigil_test.gd (solo host), tools/vigil_coop_test.gd
-## (the co-op server and two players).
+## party's ready check takes everyone). Retired (MpMode.WAVES = false); its tests were deleted 2026-11-06.
 
 const ZONE := "vigil"
 const TITLE := "The Last Flame"
