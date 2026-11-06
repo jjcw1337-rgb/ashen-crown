@@ -90,6 +90,13 @@ const MOVE_MULT := 0.85         # walking and running
 const MON_LIFE := 2.2           # monsters' life and damage in the crypt (server)
 const MON_DMG := 1.4
 const MON_LEVEL := 6
+
+## The raid's map is outdoors (the Verdant Reach) rather than the crypt.
+static func outdoor() -> bool:
+	return MpMode.FOREST
+
+static func map_title() -> String:
+	return BgForest.TITLE if MpMode.FOREST else TITLE
 const GRID := 24.0              # room grid spacing
 const ID_PATH := "user://bg_id.txt"
 static var id_path := ID_PATH   # tests point it elsewhere
@@ -173,6 +180,9 @@ static func stash_col(t: Node, key: String):
 # ---------------------------------------------------------------- the map
 ## The Hollow Crypt. Cell (i, j) of a 4x4 grid; the middle 2x2 is the great hall.
 static func build(w: World) -> void:
+	if MpMode.FOREST:
+		BgForest.build(w)       # the overhaul's open forest (the crypt below is retired: docs/cleanup.md)
+		return
 	w.flat_floor = true
 	w.theme = {"name": "bg"}
 	var rooms := {}                 # Vector2i -> Rect2

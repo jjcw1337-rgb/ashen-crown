@@ -555,10 +555,10 @@ func _sea_sounds() -> void:
 
 ## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
-	return cur_zone == Battlegrounds.ZONE or cur_zone == Vigil.ZONE or cur_zone == "arena" or cur_zone == Sandbox.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
+	return (cur_zone == Battlegrounds.ZONE and not Battlegrounds.outdoor()) or cur_zone == Vigil.ZONE or cur_zone == "arena" or cur_zone == Sandbox.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
 
 func _zone_env(kind: String) -> void:
-	var inside := kind == Battlegrounds.ZONE or kind == Vigil.ZONE or kind == "arena" or kind == Sandbox.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
+	var inside := (kind == Battlegrounds.ZONE and not Battlegrounds.outdoor()) or kind == Vigil.ZONE or kind == "arena" or kind == Sandbox.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
 	var snowy := is_snowy() and not inside
 	var ashen := difficulty >= 2 and not inside
 	RenderingServer.global_shader_parameter_set("snow_amt", 1.0 if snowy else 0.0)
@@ -628,7 +628,24 @@ func _zone_env(kind: String) -> void:
 		sun.light_energy = 0.85 if kind == "town" else 0.75
 		hero.light.light_energy = 0.9
 		hero.light.omni_range = 10.0
-		if kind == "town" and world.theme.get("forest_camp", false):
+		if kind == Battlegrounds.ZONE:
+			# the Verdant Reach (BgForest): a bright, lush afternoon. Warm sun, a clear blue sky, rich greens kept
+			# saturated, a light haze between the oaks; the camps' coloured lights read in the shade
+			sky_mat.sky_top_color = Color(0.3, 0.5, 0.78)
+			sky_mat.sky_horizon_color = Color(0.78, 0.84, 0.78)
+			sky_mat.ground_horizon_color = Color(0.45, 0.52, 0.4)
+			env.ambient_light_energy = 0.8
+			env.tonemap_exposure = 1.12
+			env.fog_light_color = Color(0.62, 0.72, 0.6)
+			env.fog_density = 0.0035
+			env.fog_height_density = 0.03
+			env.adjustment_saturation = 1.12
+			env.adjustment_contrast = 1.05
+			env.volumetric_fog_density = 0.008
+			env.volumetric_fog_albedo = Color(0.85, 0.92, 0.8)
+			sun.light_color = Color(1.0, 0.93, 0.78)
+			sun.light_energy = 1.25
+		elif kind == "town" and world.theme.get("forest_camp", false):
 			# Act I's camp deep in the old forest: late dusk under the canopy. Cool blue-green light
 			# and low mist between the trees, so the bonfire, the lanterns and the rune stones glow
 			sky_mat.sky_top_color = Color(0.1, 0.13, 0.17)
@@ -1224,7 +1241,7 @@ func zone_title(act: int, zone: String) -> String:
 		"wild": return a["wild"] + tag
 		"lair": return ("Throne of the Ashen King" if difficulty >= 2 else a["lair"]) + tag
 		"coast": return str(a.get("coast", "The Coast")) + tag
-		Battlegrounds.ZONE: return Battlegrounds.TITLE
+		Battlegrounds.ZONE: return Battlegrounds.map_title()
 		"arena": return "The Proving Arena"
 		Vigil.ZONE: return Vigil.TITLE
 		Sandbox.ZONE: return Sandbox.TITLE
@@ -1891,7 +1908,7 @@ func start_battlegrounds(addr: String, id: String, cls := "") -> void:
 		_bg_abort("Could not sign in to your account (%s)." % cloud.nk.last_error)
 		return
 	save_game()             # (marked in_raid from here on)
-	loading_lbl.text = "Descending into %s..." % Battlegrounds.TITLE
+	loading_lbl.text = "Entering %s..." % Battlegrounds.map_title()
 	set_loading_art(Battlegrounds.ZONE)
 	loading.visible = true
 	if net.join(a[0], int(a[1])) != OK:
@@ -1932,7 +1949,7 @@ func _start_run_raid(addr: String, id: String, cls: String) -> void:
 	if cloud != null and not await cloud.ensure():
 		_bg_abort("Could not sign in to your account (%s)." % cloud.nk.last_error)
 		return
-	loading_lbl.text = "Descending into %s..." % Battlegrounds.TITLE
+	loading_lbl.text = "Entering %s..." % Battlegrounds.map_title()
 	set_loading_art(Battlegrounds.ZONE)
 	loading.visible = true
 	if net.join(a[0], int(a[1])) != OK:

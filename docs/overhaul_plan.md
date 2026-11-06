@@ -18,7 +18,7 @@ Character retired. This file is the working plan: each step is pushed to staging
    offer of three (common/uncommon/rare, generated once, claimed once), XP from kills and camps, levels 0-20+.
 4. [ ] **Survivors**: successful extraction -> results -> Save Character (no duplicates) -> survivor roster
    (`user://survivors/`, separate from single-player characters) -> Arena lobby picks a survivor.
-5. [ ] **The map**: a lush connected forest (mushroom woodland, dark elf camps, ridges, streams, ruins), 12-16 camps,
+5. [x] **The map** (`BgForest`, the Verdant Reach; first pass): a lush connected forest (mushroom woodland, dark elf camps, ridges, streams, ruins), 12-16 camps,
    the ice boss and the mushroom boss.
 6. [ ] **UI redesign**: multiplayer entry, lobby browser, lobby prep with class tiles, survivor roster, reward panel,
    results; modern fantasy (charcoal, deep green, ivory text, gold/arcane accents).

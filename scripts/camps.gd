@@ -16,7 +16,7 @@ const CHEST_ROLLS := {1: 2, 2: 2, 3: 3, 4: 4}
 const TIER_NAMES := {1: "Tier I", 2: "Tier II", 3: "Tier III", 4: "Boss"}
 ## How near a hero must be when a camp falls to share its experience (the fighters, not the whole map).
 const SHARE_R := 30.0
-const FIRST_PACK := 800
+const FIRST_PACK := 2000      # (clear of every map's own pack numbers)
 
 ## Add a camp to a map being built: its monsters (`foes`: [{kind, count, champ?, at: offset from `pos`}]) join
 ## w.enemy_spawns at the tier's level under the camp's own pack id, and its chest stands at `chest` (an offset).

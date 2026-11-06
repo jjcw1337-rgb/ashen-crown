@@ -739,7 +739,7 @@ func _build_hud() -> void:
 	hint_lbl.offset_top = -bh - 52
 	hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hint_lbl.text = "WASD: move  ·  Left mouse: attack  ·  Right mouse, Q E R F G V: skills (K to set them)  ·  Space: dodge roll (hold to sprint)  ·  N: talents  ·  J: quests  ·  1-4: potions  ·  I/C: inventory/stats  ·  T: portal  ·  Tab: map"
+	hint_lbl.text = HINT_STORY
 	hud.add_child(hint_lbl)
 	minimap = Minimap.new()
 	minimap.ui = self
@@ -798,6 +798,8 @@ func refresh_skill_slots() -> void:
 		skill_slots[slot] = s
 		s.visible = not (hero != null and hero.run != null and slot in ["G", "V"])
 	tooltip.visible = false
+	if hint_lbl != null:
+		hint_lbl.text = HINT_RUN if hero != null and hero.run != null else HINT_STORY
 	if skills_panel and skills_panel.visible:
 		_fill_skills_panel()
 	# the standard globes, unless this class is a special character with its own (Data.CLASSES "hud")
@@ -807,6 +809,9 @@ func refresh_skill_slots() -> void:
 		mana_globe.set_style(hud)
 
 const SLOT_NAMES := {"lmb": "Left mouse", "rmb": "Right mouse"}
+const HINT_STORY := "WASD: move  ·  Left mouse: attack  ·  Right mouse, Q E R F G V: skills (K to set them)  ·  Space: dodge roll (hold to sprint)  ·  N: talents  ·  J: quests  ·  1-4: potions  ·  I/C: inventory/stats  ·  T: portal  ·  Tab: map"
+## A multiplayer run character's controls (RunBuild: five slots, the build window, camp chests)
+const HINT_RUN := "WASD: move  ·  Left mouse: attack  ·  Right mouse, Q E R F: skills  ·  I or K: your build  ·  Space: dodge roll (hold to sprint)  ·  1-4: consumables  ·  Clear a camp, open its chest: an upgrade  ·  Tab: map"
 
 ## One bar slot: the Meshy socket, the bound skill's glyph, a cooldown shade, the key and the mana cost.
 ## Click it to choose what goes there.

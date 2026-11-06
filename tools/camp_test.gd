@@ -8,7 +8,7 @@ var g
 var fails := 0
 var CA
 var RB
-const MIN_CAMPS := 5
+const MIN_CAMPS := 14
 
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()

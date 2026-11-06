@@ -330,6 +330,14 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   monsters (`Enemy.die_visual` -> `Game.camp_check`: the chest flares, a run character within `SHARE_R` gets
   `RunBuild.CAMP_XP`); the chest (`Game._camp_chest`) drops `CHEST_ROLLS` of run loot once for everyone and opens each
   run character's own upgrade (`Camps.offer_key`: camp and round). `tools/camp_test.gd`.
+  **The Verdant Reach** (`scripts/bg_forest.gd` `BgForest`, `MpMode.FOREST`; the crypt is retired, docs/cleanup.md):
+  the Battlegrounds map, an open lush forest 210 m across: four starting glades (a bell each), four portals at the
+  edges, sixteen camps (`BgForest.CAMPS`: place, tier, region, foes; six tier I near the glades, five II, three III,
+  Hrimgar's Frostfang Hollow and Old Mossbeard's Mycelial Grotto) joined by winding trails (`TRAILS`, with loops and
+  shortcuts; distances baked once in `_bake_trails`), a stream with plank bridges (decks), two ridges with passes cut
+  where trails cross (`relief`), and four regions (mushroom woodland, dark elf encampments, the frost hollow, ruins).
+  Oaks keep `CANOPY` from open ground so crowns never hide a fight. Bright afternoon light (`Game._zone_env`).
+  Screenshots: `tools/forest_shots.gd -- outdir`.
 - **Browser build (WebGL)** is a test build only and is fragile:
   - it is exported with **Godot 4.5.1** in CI (the desktop builds use 4.4.1): Godot 4.3's WebGL renderer
     blanks the whole 3D view in busy scenes (many objects near lights). Keep code working in both versions:

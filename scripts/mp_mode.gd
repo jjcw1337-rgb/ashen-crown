@@ -16,6 +16,9 @@ const RUNS := true
 ## The Battlegrounds stash (the spawn chests' shared storage) belongs to the old raid-with-your-character loop; run
 ## characters carry nothing in or out but what they wear.
 const STASH := false
+## The Battlegrounds map is the Verdant Reach (BgForest), an open forest of camps; the Hollow Crypt's rooms and
+## corridors, its floors below and its antechamber gates are retired (Blaine: "the old battlegrounds can completely go").
+const FOREST := true
 ## The multiplayer modes the lobby browser offers and the lobby service accepts.
 const MODES := ["battlegrounds", "arena"]
 
