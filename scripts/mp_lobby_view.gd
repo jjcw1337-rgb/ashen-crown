@@ -197,6 +197,11 @@ func _topbar() -> Control:
 	survivors_btn.name = "survivors_top"
 	survivors_btn.pressed.connect(func(): ui.run_ui.open_roster(_survivor_picked if lc.room.is_empty() or str(lc.room.get("mode", "")) == "arena" else Callable(), lc.survivor))
 	hb.add_child(survivors_btn)
+	var codex_btn := MpStyle.button("Codex")
+	codex_btn.name = "codex_top"
+	codex_btn.tooltip_text = "Every hero's skills, rites, gems and consumables"
+	codex_btn.pressed.connect(func(): CodexBook.open(ui.run_ui))
+	hb.add_child(codex_btn)
 	var back := MpStyle.button("Back")
 	back.name = "back"
 	back.pressed.connect(func(): hide())

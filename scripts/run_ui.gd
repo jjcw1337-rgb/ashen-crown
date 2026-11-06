@@ -5,6 +5,7 @@ extends Control
 ##     the four consumables; pick a slot then a skill (or a skill then a slot) to assign, right-click a slot to clear
 ##   the swap window: a found piece of gear against the one worn, Equip (the old one is left on the ground) or Leave
 ##   the upgrade window: a camp chest's three choices (RunBuild.offer_for), one to take
+##   the Codex (mode "codex", built by CodexBook): every hero's skills, rites, gems and consumables, locked until seen
 ## Only for a hero with `run` (multiplayer); single player keeps its old windows.
 
 var ui: UI
@@ -236,6 +237,11 @@ func _build_window() -> void:
 	right.add_child(belt)
 	for i in RunBuild.BELT:
 		belt.add_child(_belt_card(i))
+	var cx := MpStyle.button("Codex: everything a run can offer")
+	cx.name = "open_codex"
+	cx.size_flags_horizontal = Control.SIZE_SHRINK_END
+	cx.pressed.connect(func(): CodexBook.open(self, h.cls))
+	vb.add_child(cx)
 
 func _slot_name(slot: String) -> String:
 	return {"lmb": "Left mouse", "rmb": "Right mouse"}.get(slot, slot)
@@ -470,6 +476,7 @@ func open_offer(key: String, tier: int, camp_name := "") -> void:
 		return
 	var o := hero.run.offer_for(hero.cls, key, tier, hero.binds)
 	offer_key = key
+	CodexBook.see_offer(o)      # (what a chest shows becomes known in the players' Codex)
 	if str(o.get("gem", "")) != "" and not o.has("gem_seen"):
 		o["gem_seen"] = true      # (the first look at a chest with a gem: its chime and a pillar of light)
 		Sfx.play("gem_found", -2.0)

@@ -1703,6 +1703,11 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   Ids are unique per hero file (a run talent and a tree talent can't share one: `k_zeal`'s run twin is `k_zealot`).
   The editor runs live on the mini (`--live staging`, its own worktree `ashen-crown-claude-2-codex` on
   `claude-2/codex-live`): Publish follows staging, exports, runs `codex_test` and fast-forwards `staging`.
+  **The players' Codex** (`scripts/codex_book.gd` `CodexBook`, a RunUI mode "codex"): the same data in game, every
+  hero's directions with their skills and rites, the shared ones, gems and consumables (live entries only, text from
+  the game's data); an entry stays a locked "?" card until a camp chest shows it (`RunUI.open_offer` ->
+  `CodexBook.see_offer`; this PC's `user://codex_seen.json`). Opened from the multiplayer screen's Codex button and
+  the run's build window; dev tools can Reveal all. `tools/codex_book_test.gd` (late; `-- shots <dir>` for frames).
 - **Talents** (players see them as **Rites**, for every class: JJ 2026-11-05; only the shown text says Rites, the code,
   save keys and tools keep `talent`) (`scripts/talents.gd`, the window is N; `tools/talent_test.gd`, `tools/talent_shot.gd`): three trees per
   class of seven talents in four rows (2, 2, 2, then a capstone); a row opens with 0/3/6/10 points spent above it in
