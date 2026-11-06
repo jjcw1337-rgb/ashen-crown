@@ -26,6 +26,10 @@ const GEAR_ODDS := {1: [70, 26, 4], 2: [50, 40, 10], 3: [30, 48, 22], 4: [10, 50
 ## A class talent becomes a passive at this many times its rank (a run has far fewer picks than a talent tree has
 ## points); only the keys `_scales` accepts, never a class special like arc_count or arrow_split.
 const TALENT_SCALE := 2.0
+## A class's damage in a run, where its kit plays differently from the story game (measured with
+## tools/run_playthrough.gd: the knight and Doug flattened at ~30 damage a second against the bosses while every
+## other class reached 60-250). Runs only; single player and the Battlegrounds' PvP scale stay as they are.
+const CLASS_POWER := {"knight": 1.6, "doug": 1.8}
 ## Cooldown and mana reductions stop here however many stack.
 const REDUCTION_CAP := 60.0
 
@@ -283,10 +287,11 @@ static func wearable(it: Dictionary, cls: String) -> bool:
 	return only == "" or only == cls
 
 static var _own_weapons := {}
-## Does this class have weapons of its own (Data.BASES with its "cls")?
+## Does this class have weapons of its own to grow through (two or more Data.BASES with its "cls")? Doug has one
+## drumstick, at level 1: he takes general weapons too, or he'd never find a better one.
 static func has_own_weapons(cls: String) -> bool:
 	if not _own_weapons.has(cls):
-		_own_weapons[cls] = Data.BASES.values().any(func(b): return str(b["slot"]) == "weapon" and str(b.get("cls", "")) == cls)
+		_own_weapons[cls] = Data.BASES.values().filter(func(b): return str(b["slot"]) == "weapon" and str(b.get("cls", "")) == cls).size() >= 2
 	return _own_weapons[cls]
 
 ## Where a found item would go on this hero.
@@ -324,7 +329,7 @@ static func weapon_base(cls: String, ilvl: int, rng: RandomNumberGenerator) -> S
 			own.append(k)
 		elif str(b.get("cls", "")) == "":
 			general.append(k)
-	var pool := own if not own.is_empty() else general
+	var pool := own if has_own_weapons(cls) else general + own
 	if pool.is_empty():
 		return str(Data.CLASSES.get(cls, {}).get("weapon", "short_sword"))
 	pool.sort_custom(func(a, b): return int(Data.BASES[a].get("lvl", 1)) > int(Data.BASES[b].get("lvl", 1)))

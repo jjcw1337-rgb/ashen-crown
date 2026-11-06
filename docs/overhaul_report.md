@@ -35,7 +35,9 @@ Blaine's spec of 2026-11-06 (17 points). The line-by-line proof is `docs/overhau
   service's unit tests, `mp_lobby_shots` (every control on screen at 1024, 1280, 1920 and 2560 wide).
 - **Whole runs played for real** (`run_playthrough -- archer|plague`): a bot with the class's real kit, nothing
   immortal, clears all 16 camps and both bosses with no deaths, ends about level 22, extracts, saves and reloads the
-  survivor. It found and fixed: a leftover 2.2x monster multiplier, bosses tuned for a whole act, a boss giving six
+  survivor; every other selectable class (wraith, demon, warlock, knight, Doug, Frost Serpent, Storm Wyvern) does
+  the same. It found and fixed: the knight and Doug too weak against bosses (a run-only class factor), Doug stuck on
+  a level-1 weapon, a leftover 2.2x monster multiplier, bosses tuned for a whole act, a boss giving six
   levels, a boss camp counted twice, the archer taking a cleaver, runs starving for healing.
 - `arena_survivor_test` (two clients, the real lobby service and an Arena worker): see its result below.
 
@@ -55,6 +57,6 @@ server-held escrow for stakes (details in `docs/multiplayer_authority.md`). Noth
 
 ## Not done yet
 
-- Every class other than the archer and the plague doctor played through a whole run.
+- The Obsidian Wyrm in runs (it needs skills of its own: off the multiplayer class tiles meanwhile).
 - Keyboard-only navigation walked through on the multiplayer screen.
 - A camp whose monsters wander home doesn't reset.

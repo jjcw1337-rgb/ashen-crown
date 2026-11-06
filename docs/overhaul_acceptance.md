@@ -50,7 +50,8 @@ Legend: ✅ done and proven · 🟡 partly done (what's missing is said) · ⬜ 
 ## 8. One progression system, every class
 - ✅ Archer and Plague Doctor: `run_build_test` (both), `survivor_test` (plague), `bg_test` (knight).
 - ✅ Archer and Plague Doctor play the whole map for real (`run_playthrough -- archer|plague`: BotBrain, no immortality: 16/16 camps, both bosses, no falls, level 22 at the end).
-- 🟡 Every other class: the pools are built from each class's own skills and talents (`run_build_test` covers archer and plague; the others aren't played through yet).
+- ✅ Every other class played through too (`run_playthrough`): wraith, demon, warlock, knight, Doug, Frost Serpent and Storm Wyvern clear 16/16 camps and both bosses with no falls, level 22. Found and fixed on the way: the knight and Doug flattened at ~30 damage a second against bosses (a run-only class factor, `RunBuild.CLASS_POWER`), Doug locked to his single level-1 drumstick (classes with one weapon of their own take general weapons too).
+- 🟡 The Obsidian Wyrm can only learn the four shared skills, so it can't fill five slots: it's left off the multiplayer class tiles (`LobbyClient.run_classes`) until it has a kit of its own; single player keeps it.
 
 ## 9. Five slots and a spellbook
 - ✅ Exactly five (RMB Q E R F), the attack outside them, auto-equip into empty slots, the rest in the spellbook, G/V refused, a rebind keeps its cooldown, unlearned skills refused (`run_build_test`).

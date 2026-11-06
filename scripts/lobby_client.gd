@@ -28,7 +28,8 @@ var survivor_btn: Button
 var survivor_lbl: Label
 ## The classes a run can start as (the class screen's order).
 static func run_classes() -> Array:
- return ClassStage.CLASSES.filter(func(c): return Data.CLASSES.has(c))
+ # (a run needs five skills to find: the Obsidian Wyrm has only the four shared ones until it gets its own kit)
+ return ClassStage.CLASSES.filter(func(c): return Data.CLASSES.has(c) and RunBuild.skill_pool(c).size() >= RunBuild.SLOTS.size())
 var busy := false
 var polling := false
 var poll_t := 0.0
