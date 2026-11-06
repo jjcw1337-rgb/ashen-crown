@@ -70,6 +70,16 @@ Nightly workload hashes change with recipes, preventing reuse of incompatible ba
 The finish is deliberately limited to current character/skill preparation, BG/Arena behavior, the functional
 release gate and a measured loading/residency decision. No new modes, art redesign or broader engine rewrite.
 
+The next Knight capture now waits for Aegis's real delayed burst (bounded to 30 wall seconds after the ordinary
+capture window), and both capture and declaration checks require the run skills' impact phases plus that burst.
+A cast marker alone no longer satisfies these Knight checks. Actual regenerated recipes remain pending.
+
+For the next exclusive loading run, pass `--content-trace` and analyze its single-process log with
+`python3 tools/content_load_report.py <log>`. This ranks inclusive loader time by resource, preserves repeat
+loads and failures, and rejects absent/malformed trace data. These timings include dependencies; they are not
+isolated disk time, total transition time or VRAM. Tracing is opt-in and does not retain resources. Source/grammar
+checks and three report unit tests pass; native tracing and Knight capture have not yet run.
+
 ## Current performance decision: hold publication
 
 All current diagnostic runs had `focused=false`; macOS reports `CGSSessionScreenIsLocked=true`. The user has

@@ -23,6 +23,11 @@ func run() -> void:
 			allowed[str(skill.id)] = true
 		for skill_id in represented:
 			check(allowed.has(skill_id), "Retired or unknown preparation event: %s/%s" % [cls, skill_id])
+	# A cast marker alone does not prepare these skills' impact or delayed burst.
+	for skill_id in ["k_whirl", "k_aegis", "k_judgment", "k_rites"]:
+		for phase in (["impact", "burst"] if skill_id == "k_aegis" else ["impact"]):
+			check(SkillWarmData.EVENTS.get("knight", []).any(func(event): return event.get("s") == skill_id and event.get("e") == phase),
+				"Knight preparation missing phase: %s/%s" % [skill_id, phase])
 	var solo: Array = catalog.combat(["knight"])
 	check(not solo.any(func(p): return str(p).contains("/plague/") or str(p).contains("/arrows/")), "Solo knight must not acquire other classes\' families")
 	check(catalog.combat(["archer"]).has(SpiritBeast.WOLF_GLB), "Archer summon must be declared")

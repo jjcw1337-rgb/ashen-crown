@@ -71,7 +71,17 @@ static func pump() -> void:
 
 static func _load_worker(paths: Array[String]) -> Dictionary:
 	var loaded := {}
-	for path in paths: loaded[path] = ResourceLoader.load(path)
+	var trace := OS.get_cmdline_user_args().has("--content-trace")
+	for path in paths:
+		var started := Time.get_ticks_usec() if trace else 0
+		var cached := ResourceLoader.has_cached(path) if trace else false
+		loaded[path] = ResourceLoader.load(path)
+		if trace:
+			# Inclusive of imported dependencies and upload work performed by the loader.
+			# Diagnostic only: no retained Resource references or per-frame logging.
+			print("[CONTENT LOAD] ", JSON.stringify({"path": path,
+				"load_ms": (Time.get_ticks_usec() - started) / 1000.0,
+				"cached_before": cached, "ok": loaded[path] != null}))
 	return loaded
 
 static func status(scope: String) -> Dictionary:

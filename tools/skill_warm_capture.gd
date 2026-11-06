@@ -128,6 +128,17 @@ func _run() -> void:
 					push_error("Capture could not cast %s/%s" % [cls, id])
 					failures += 1
 			await wait(2.2)
+			if id == "k_aegis":
+				# Aegis bursts after five simulation seconds; the ordinary capture window
+				# ends too early and could attribute its late event to the next skill.
+				var deadline := Time.get_ticks_msec() + 30000
+				while not events.any(func(w): return w.get("s") == id and w.get("e") == "burst") and Time.get_ticks_msec() < deadline:
+					await process_frame
+			if str(id).begins_with("k_"):
+				for phase in (["impact", "burst"] if id == "k_aegis" else ["impact"]):
+					if not events.any(func(w): return w.get("s") == id and w.get("e") == phase):
+						push_error("Capture missing Knight phase %s/%s" % [id, phase])
+						failures += 1
 			if id == "drain":
 				h.end_drain()
 			if id != "attack" and not events.any(func(w): return str(w.get("s", "")) == id):
