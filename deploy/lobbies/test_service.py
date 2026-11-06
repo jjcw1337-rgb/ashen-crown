@@ -54,6 +54,12 @@ class LobbyTests(unittest.TestCase):
  def test_waves_and_bg_can_start_solo(self):
   for mode in ('battlegrounds',):
    r=self.create(mode=mode);self.act('a',r,'ready',ready=True);self.act('a',r,'start');self.assertEqual(self.m.rooms[r['id']]['state'],'starting');self.m.rooms[r['id']]['state']='finished'
+ def test_pick_changes_class_and_unreadies(self):
+  r=self.create(mode='battlegrounds');self.act('a',r,'ready',ready=True)
+  self.m.call('a','pick',{'id':r['id'],'character':'run_plague','player':'Plague Doctor'})
+  m=self.m.rooms[r['id']]['members']['a']
+  self.assertEqual((m['character'],m['name'],m['ready']),('run_plague','Plague Doctor',False))
+  with self.assertRaises(Rejected):self.m.call('a','pick',{'id':r['id'],'character':'../x'})
  def test_waves_retired(self):
   with self.assertRaises(Rejected):self.m.call('a','create',{'mode':'waves','team_size':1,'character':'hero','player':'a'})
  def test_capacity_limit(self):

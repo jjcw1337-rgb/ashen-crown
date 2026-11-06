@@ -693,7 +693,12 @@ func _process(delta: float) -> void:
 	_place_cards()
 
 ## The camera: a slow drift, leaning toward the hovered side; `_push` carries it into the chosen dais.
+## The multiplayer lobby's closer view of the hero (meta "lobby_zoom" 0..1, eased in and out).
+var _lobby_zoom := 0.0
+
 func _place_camera(_delta: float) -> void:
+	var want: float = float(get_meta("lobby_zoom")) if has_meta("lobby_zoom") else 0.0
+	_lobby_zoom = move_toward(_lobby_zoom, want, _delta * 1.6)
 	var aspect := float(vp.size.x) / maxf(float(vp.size.y), 1.0) if vp.size.y > 0 else 16.0 / 9.0
 	# narrower than 16:9 (4:3, 5:4, 16:10): keep 16:9's width of view, so both daises stay in the same
 	# places across, and tilt up a little so they sit as low on the screen as they do on 16:9
@@ -715,6 +720,10 @@ func _place_camera(_delta: float) -> void:
 		var e := _push * _push
 		pos = pos.lerp(close, e)
 		look = look.lerp(at, e)
+	if _lobby_zoom > 0.0:
+		var ez := _lobby_zoom * _lobby_zoom * (3.0 - 2.0 * _lobby_zoom)
+		pos = pos.lerp(HOME + Vector3(0.0, 1.7, 7.2), ez)
+		look = look.lerp(HOME + Vector3(0.0, 1.25, 0.0), ez)
 	cam.look_at_from_position(pos, look)
 	_frame()
 
@@ -724,7 +733,9 @@ func _frame() -> void:
 	if size.x < 2.0 or size.y < 2.0:
 		return
 	var k := minf(1.0, minf(size.x / 1440.0, size.y / 800.0))
-	var shift := -TitleHome.mid() * k / size.x          # a fraction of the width: the picture moves left
+	# (the multiplayer lobby stands the hero elsewhere: MpLobbyView.STAGE_MID)
+	var m: float = float(get_meta("frame_mid")) if has_meta("frame_mid") else TitleHome.mid()
+	var shift := -m * k / size.x          # a fraction of the width: the picture moves left
 	var near := 0.05
 	cam.near = near
 	cam.projection = Camera3D.PROJECTION_FRUSTUM

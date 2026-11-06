@@ -343,7 +343,14 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   `user://survivors/sv_<RunBuild.uid>.json`, so a second save writes nothing); a fallen run's results offer none;
   Return is `Game.run_return` (title, the lobby browser). The lobby sends `run_<class>` (Battlegrounds,
   `LobbyClient.class_pick`) or a survivor's id (Arena, the roster `RunUI.open_roster`); `Game.start_join` loads a
-  survivor with `Survivors.load_into`. `tools/survivor_test.gd`. What proves each spec point:
+  survivor with `Survivors.load_into`. `tools/survivor_test.gd`.
+  **The multiplayer screen** (`scripts/mp_lobby_view.gd` `MpLobbyView`, drawn from `LobbyClient`'s state by
+  `render`; LobbyClient keeps the requests and polling): mode tabs, the mode's Meshy art
+  (`assets/textures/ui/mp_battlegrounds.jpg`, `mp_arena.jpg`), browse (Create Lobby, the list with filters and its
+  loading/empty/full/failure states) and prepare (the chosen class on the title's stage: metas `frame_mid`,
+  `lobby_zoom` on `TitleStage`; members, class tiles or survivor, Ready / Start / Leave). A class change in a lobby
+  is the service's `pick` op. `tools/mp_lobby_shots.gd -- outdir`, `tools/lobby_ui_test.gd` (a local service:
+  `python3 deploy/lobbies/service.py --dev --state <dir> --game . --godot <godot>`). What proves each spec point:
   `docs/overhaul_acceptance.md`.
 - **Browser build (WebGL)** is a test build only and is fragile:
   - it is exported with **Godot 4.5.1** in CI (the desktop builds use 4.4.1): Godot 4.3's WebGL renderer
