@@ -18,6 +18,17 @@ var room := {}
 var rooms := []
 var match_id := ""
 var character := ""
+## The overhaul (2026-11-06): a Battlegrounds member brings a class (a fresh run character, "run_<class>"), an Arena
+## member a saved survivor (Survivors); single-player characters stay out of multiplayer.
+var run_class := "archer"
+var survivor := ""
+var prep_box: VBoxContainer
+var class_pick: OptionButton
+var survivor_btn: Button
+var survivor_lbl: Label
+## The classes a run can start as (the class screen's order).
+static func run_classes() -> Array:
+ return ClassStage.CLASSES.filter(func(c): return Data.CLASSES.has(c))
 var busy := false
 var polling := false
 var poll_t := 0.0
@@ -63,6 +74,7 @@ func setup(g) -> void:
   b.pressed.connect(func():selected_mode=id;draw())
   host_box.add_child(b);mode_buttons[id]=b
  rules=ui._label("",15,ui.GOLD);rules.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;rules.custom_minimum_size.x=400;host_box.add_child(rules)
+ _build_prep(ui)
  var options:=HBoxContainer.new();options.add_theme_constant_override("separation",10);host_box.add_child(options)
  team_pick=OptionButton.new()
  for n in [1,2,3]:team_pick.add_item("%dv%d"%[n,n],n)
@@ -90,6 +102,50 @@ func setup(g) -> void:
  arena_hud.mouse_filter=Control.MOUSE_FILTER_IGNORE
  ui.hud.add_child(arena_hud)
 
+## What a member brings: the class for a Battlegrounds run, the survivor for the Arena. Shown on the right while
+## hosting and in a lobby.
+func _build_prep(ui) -> void:
+ prep_box=VBoxContainer.new();prep_box.name="prep";prep_box.add_theme_constant_override("separation",6)
+ var row:=HBoxContainer.new();row.add_theme_constant_override("separation",10);prep_box.add_child(row)
+ row.add_child(ui._label("Class:",15,ui.DIM))
+ class_pick=OptionButton.new();class_pick.name="class_pick";class_pick.custom_minimum_size.x=220
+ for c in run_classes():class_pick.add_item(str(Data.CLASSES[c]["name"]))
+ class_pick.item_selected.connect(func(i):run_class=str(run_classes()[i]);game._save_setting("battlegrounds","class",run_class))
+ row.add_child(class_pick)
+ var row2:=HBoxContainer.new();row2.add_theme_constant_override("separation",10);prep_box.add_child(row2)
+ survivor_lbl=ui._label("",15,ui.GOLD);survivor_lbl.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;survivor_lbl.custom_minimum_size.x=250;row2.add_child(survivor_lbl)
+ survivor_btn=ui._iron_button("Survivors",140,40,16);survivor_btn.name="survivors";survivor_btn.pressed.connect(func():ui.run_ui.open_roster(func(id):survivor=id;draw(),survivor));row2.add_child(survivor_btn)
+ var saved=game._load_setting("battlegrounds","class","archer") if game.has_method("_load_setting") else "archer"
+ if run_classes().has(str(saved)):run_class=str(saved)
+ host_box.get_parent().add_child(prep_box)     # (between hosting and the lobby's own detail: there in both)
+ class_pick.select(maxi(0,run_classes().find(run_class)))
+
+## The member's character for the lobby service: "run_<class>" in Battlegrounds, the survivor's id in the Arena.
+func member_character(mode := "") -> String:
+ if mode=="":mode=str(room.get("mode",selected_mode))
+ if mode=="arena":return survivor
+ return "run_"+run_class
+
+func member_name(mode := "") -> String:
+ if mode=="":mode=str(room.get("mode",selected_mode))
+ if mode=="arena":
+  var d:Dictionary=Survivors.read(survivor)
+  return str(d.get("name","Survivor")) if not d.is_empty() else "Survivor"
+ return str(Data.CLASSES.get(run_class,{}).get("name","Adventurer"))
+
+func _draw_prep() -> void:
+ if prep_box==null:return
+ var mode:=str(room.get("mode",selected_mode))
+ class_pick.get_parent().visible=mode=="battlegrounds"
+ class_pick.disabled=not room.is_empty()
+ survivor_btn.get_parent().visible=mode=="arena"
+ survivor_btn.disabled=not room.is_empty()
+ if mode=="arena":
+  if Survivors.read(survivor).is_empty():survivor=""
+  var all:Array=Survivors.list()
+  if survivor=="" and not all.is_empty():survivor=str(all[0]["id"])
+  survivor_lbl.text=("Survivor: %s (%s)"%[member_name("arena"),Survivors.summary(Survivors.read(survivor))]) if survivor!="" else "No survivors yet: bring one out of a Battlegrounds run alive and press Save Character."
+
 func fit() -> void:
  panel.size=Vector2(1320,760)
  var available:=get_viewport().get_visible_rect().size
@@ -100,9 +156,7 @@ func open(mode := "") -> void:
  if game.net.server:return
  if game.playing and game.net.active:
   game.ui.message("Leave your current game before joining another lobby.");return
- character=game.char_id if game.playing else game.ui.home.sel
  if room.get("members",{}).has(identity):character=str(room.members[identity].character)
- if character=="":game.ui.message("Create or select a character first.");return
  if mode!="":selected_mode=mode
  if not MpMode.mode_on(selected_mode):selected_mode=MpMode.MODES[0]
  lan_row.visible=not game.playing
@@ -138,10 +192,13 @@ func action(op: String,extra := {}) -> void:
  busy=true
  var args:Dictionary=extra.duplicate()
  if not args.has("id"):args["id"]=str(room.get("id",""))
+ var mode_for:=str(args.get("mode",room.get("mode",selected_mode)))
+ character=member_character(mode_for)
+ if character=="" and op in ["create","join"]:
+  status.text="Choose a survivor first: Arena fights use characters saved from the Battlegrounds."
+  busy=false;return
  args["character"]=character
- var chars:Array=game.list_characters()
- for c in chars:
-  if str(c.id)==character:args["player"]=str(c.get("name","Adventurer"))
+ args["player"]=member_name(mode_for)
  var result:Dictionary=await request(op,args)
  if result.has("error"):status.text=str(result.error)
  elif result.has("lobby"):
@@ -179,16 +236,18 @@ func draw() -> void:
  for child in rows.get_children():child.queue_free()
  for child in detail.get_children():child.queue_free()
  team_pick.visible=selected_mode=="arena"
- wager_pick.visible=selected_mode=="arena"
- if selected_mode!="arena":wager_pick.button_pressed=false
+ # (item stakes read single-player saves: survivors don't stake items yet, docs/cleanup.md)
+ wager_pick.visible=selected_mode=="arena" and not MpMode.RUNS
+ if selected_mode!="arena" or MpMode.RUNS:wager_pick.button_pressed=false
  var ui=game.ui
  create_button.disabled=not room.is_empty()
  var display_mode:String=str(room.get("mode",selected_mode))
- rules.text={"arena":"Best of three: first team to win two rounds wins. Casual matches keep your equipment. Item matches risk only the items everyone explicitly locks.","battlegrounds":"Extraction raid: death or leaving without extracting loses worn and carried items, belt contents and gold. Levels and town stash stay safe. Ready accepts these rules.","waves":"Defend the Last Flame against endless waves. Start alone or with up to four players; others can join your active lobby."}.get(display_mode,"")
+ rules.text={"arena":"Best of three: first team to win two rounds wins. You fight with a saved survivor exactly as it left the Battlegrounds; losing never deletes it.","battlegrounds":"A fresh run from level 0: pick a class, clear camps for skills, passives and gear, and reach an open Extraction Portal alive to save the character for the Arena. A fallen run keeps nothing. Your single-player characters are never at risk.","waves":"Defend the Last Flame against endless waves. Start alone or with up to four players; others can join your active lobby."}.get(display_mode,"")
  for id in mode_buttons:
   mode_buttons[id].modulate=Color(1.3,1.12,0.8) if id==selected_mode else Color.WHITE
   mode_buttons[id].disabled=not room.is_empty()
  host_box.visible=room.is_empty()
+ _draw_prep()
  var shown:=0
  # Steam friends' open worlds first (co-op: SteamLink), like Slay the Spire's join list
  if game.steam!=null and game.steam.ok and room.is_empty():
@@ -259,8 +318,7 @@ func _format(r: Dictionary) -> String:
 
 ## A new lobby's name: the host's character.
 func _lobby_name() -> String:
- for c in game.list_characters():
-  if str(c.id)==character:return "%s's %s"%[str(c.get("name","Adventurer")),MODE_NAMES.get(selected_mode,"game")]
+ return "%s's %s"%[member_name(selected_mode),MODE_NAMES.get(selected_mode,"game")]
  return "Adventurers"
 
 func enter_match() -> void:
@@ -271,7 +329,7 @@ func enter_match() -> void:
  game.party_join_ticket=str(room.ticket)
  panel.hide()
  if str(room.mode)=="battlegrounds":
-  await game.start_battlegrounds(str(room.address),character)
+  await game.start_battlegrounds(str(room.address),"",character.trim_prefix("run_") if character.begins_with("run_") else run_class)
  else:
   game.arena_mode=str(room.mode)=="arena"
   await game.start_join(str(room.address),character)
@@ -361,5 +419,5 @@ func recover_stakes() -> void:
 
 func join_lobby(id: String,mode: String) -> void:
  if mode=="battlegrounds":
-  game.ui.open_dialog("Battlegrounds", "Death or leaving without extracting loses worn and carried items, belt contents and gold. Joining an active raid enters immediately. Your levels and town stash are safe.", [["Join Lobby",func():action("join",{"id":id})],["Cancel",func():pass]])
+  game.ui.open_dialog("Battlegrounds", "You join as a fresh %s at level 0. Joining an active raid enters immediately. Nothing of your single-player characters is at risk." % member_name("battlegrounds"), [["Join Lobby",func():action("join",{"id":id})],["Cancel",func():pass]])
  else:action("join",{"id":id})

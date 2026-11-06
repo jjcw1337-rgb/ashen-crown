@@ -1822,7 +1822,12 @@ func start_join(ip: String, id := "") -> void:
 	playing = true
 	var chars := list_characters()
 	char_id = id if id != "" else (str(chars[0]["id"]) if not chars.is_empty() else new_char_id())
-	if not load_game():
+	if Survivors.is_survivor(char_id):
+		# the Arena with a saved survivor: its real skills, passives, level and gear (Survivors.load_into)
+		if not Survivors.load_into(self, char_id):
+			on_net_failed("That survivor's save could not be read.")
+			return
+	elif not load_game():
 		char_name = default_name(hero.cls)
 		hero.new_character()
 	net_joining = true      # (until the host welcomes us: Net.cl_welcome)
@@ -1934,6 +1939,10 @@ func _start_run_raid(addr: String, id: String, cls: String) -> void:
 	char_id = ""
 	char_name = Data.CLASSES[cls]["name"]
 	bg_gained = -1
+	if run_results_open:
+		ui.run_ui.close(true)      # (a new run from the last one's results)
+	run_results_open = false
+	run_survived = false
 	hero.set_class(cls)
 	hero.start_run()
 	ui.hide_title()
@@ -2015,6 +2024,15 @@ func _bg_abort(msg: String) -> void:
 	ui.message(msg, Color(1, 0.6, 0.4))
 
 func bg_extracted(gained: Array) -> void:
+	if hero.run != null:
+		# a run character made it out: the results, with Save Character (Survivors); the server confirmed the exit
+		# (Net.sv_extract checks the portal is open and the player at it)
+		run_survived = true
+		Sfx.play("portal")
+		ui.big_message("Extracted!")
+		await get_tree().create_timer(1.0).timeout
+		_leave_battlegrounds()
+		return
 	bg_mode = false
 	bg_gained = gained.size()
 	save_game()
@@ -2083,6 +2101,30 @@ func _bg_home() -> void:
 	difficulty = bg_home_run
 	bg_home_run = -1
 
+## The results window's Return: to the title and the lobby browser (a run character is never saved as a
+## single-player character; a survivor was saved by its own button).
+func run_return() -> void:
+	ui.run_ui.close(true)
+	run_results_open = false
+	run_survived = false
+	bg_mode = false
+	bg_from_waypoint = false
+	if lobby_client != null:
+		lobby_client.match_id = ""
+		lobby_client.room = {}
+	await exit_to_title()
+	hero.new_character()      # (the run is over: what was on the hero is gone unless it was saved as a survivor)
+	if lobby_client != null:
+		lobby_client.open("battlegrounds")
+	else:
+		ui.open_battlegrounds()
+
+## Save Character on the results (once per run: Survivors.save keys on the run's uid).
+func run_save_survivor() -> Array:
+	if hero.run == null or not run_survived:
+		return ["", false]
+	return Survivors.save(hero, char_name)
+
 ## Characters whose game closed while they were in a raid died there: they lose what they carried.
 func _bury_lost_raiders() -> void:
 	if _testing():
@@ -2103,8 +2145,28 @@ func _bury_lost_raiders() -> void:
 
 ## Out of the crypt, extracted, fallen or cut off: a raid taken from the title screen ends on its Battlegrounds
 ## window; one taken from the camp's waypoint (bg_from_waypoint) ends back on the dais, see _bg_home_camp.
+## A run's results are showing (RunUI.open_results) until the player returns to the lobby browser (run_return).
+var run_survived := false
+var run_results_open := false
+
 func _leave_battlegrounds() -> void:
 	if not bg_mode and char_id == "" and not playing:
+		return
+	if hero.run != null and MpMode.RUNS and not run_results_open:
+		# a run ends on its results: survived (Save Character) or fallen (nothing to keep); the raid's connection
+		# closes, the world stays behind the window until the player goes back to the lobby browser
+		run_results_open = true
+		bg_mode = false
+		if net.active:
+			net.shutdown()
+		if hero.dead:
+			run_survived = false
+		death_t = -1.0
+		ui.death_panel.visible = false
+		spectate_stop()
+		ui.set_boss(null)
+		ui.close_all()
+		ui.run_ui.open_results(run_survived)
 		return
 	var fell := hero.dead and bg_mode
 	if fell:

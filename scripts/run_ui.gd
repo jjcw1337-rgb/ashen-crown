@@ -30,8 +30,9 @@ func setup(u: UI) -> void:
 	visible = false
 	get_viewport().size_changed.connect(func(): if visible: size = get_viewport_rect().size)
 
-func close() -> bool:
-	if not visible:
+## Close whatever is open; the results only with `force` (their Return button, Game.run_return).
+func close(force := false) -> bool:
+	if not visible or (mode == "results" and not force):
 		return false
 	visible = false
 	mode = ""
@@ -43,7 +44,7 @@ func close() -> bool:
 	return true
 
 func _unhandled_key_input(ev: InputEvent) -> void:
-	if visible and ev.is_pressed() and (ev as InputEventKey).keycode == KEY_ESCAPE:
+	if visible and mode != "results" and ev.is_pressed() and (ev as InputEventKey).keycode == KEY_ESCAPE:
 		close()
 		get_viewport().set_input_as_handled()
 
@@ -55,7 +56,7 @@ func _open(m: String, width: float) -> VBoxContainer:
 	visible = true
 	position = Vector2.ZERO
 	size = get_viewport_rect().size     # (the windows layer's own size isn't laid out for a late child)
-	add_child(MpStyle.scrim(close))
+	add_child(MpStyle.scrim(func(): if mode != "results": close()))
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -512,3 +513,151 @@ func _take(i: int) -> void:
 	Sfx.play("levelup")
 	var nm: String = Data.skill_def(c["id"]).get("name", c["id"]) if c["kind"] == "skill" else RunBuild.passive_def(hero.cls, c["id"]).get("name", c["id"])
 	ui.big_message("✦ " + nm + " ✦")
+
+# ---------------------------------------------------------------- results and the survivor roster
+
+## The end of a run: survived (Save Character, once) or fallen. Escape and the scrim don't close it: the way out is
+## Return to the lobby browser (Game.run_return).
+func open_results(survived: bool) -> void:
+	var h := hero
+	var vb := _open("results", 980)
+	_header(vb, "Run complete" if survived else "Run over",
+		"Survived" if survived else "Fallen",
+		("%s made it out of %s. Save the character to fight with it in the Arena." % [Data.CLASSES[h.cls]["name"], Battlegrounds.map_title()]) if survived
+		else "Nothing from a fallen run is kept. Start again from level 0 in a new lobby.")
+	vb.get_child(0).get_child(vb.get_child(0).get_child_count() - 1).queue_free()     # (no ✕: Return is the way out)
+	vb.add_child(_build_card(h, survived))
+	var bar := HBoxContainer.new()
+	bar.alignment = BoxContainer.ALIGNMENT_END
+	bar.add_theme_constant_override("separation", 10)
+	vb.add_child(bar)
+	var saved_lbl := MpStyle.label("", 14, MpStyle.OK, 600)
+	saved_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.add_child(saved_lbl)
+	var back := MpStyle.button("Return to the lobby browser")
+	back.name = "return"
+	back.pressed.connect(func(): game.run_return())
+	bar.add_child(back)
+	if survived:
+		var save := MpStyle.button("Save Character", true)
+		save.name = "save"
+		save.custom_minimum_size.x = 200
+		var id := Survivors.id_for(h.run)
+		if Survivors.exists(id):
+			save.disabled = true
+			save.text = "SAVED"
+			saved_lbl.text = "Saved to your survivors."
+		save.pressed.connect(func():
+			var r: Array = game.run_save_survivor()
+			if str(r[0]) == "":
+				saved_lbl.text = "Couldn't save the character."
+				saved_lbl.add_theme_color_override("font_color", MpStyle.DANGER)
+				return
+			save.disabled = true
+			save.text = "SAVED"
+			saved_lbl.text = "Saved to your survivors: pick it in an Arena lobby." if bool(r[1]) else "Already saved."
+			Sfx.play("relic_ting"))
+		bar.add_child(save)
+		save.grab_focus()
+	else:
+		back.grab_focus()
+
+## A run's card: class and level, camps and bosses, the slotted skills, the passives and the gear.
+func _build_card(h, survived := true) -> Control:
+	var p := MpStyle.panel(MpStyle.FOREST if survived else MpStyle.PANEL, MpStyle.GOLD if survived else Color(1, 1, 1, 0.1), 8, 18)
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 24)
+	p.add_child(cols)
+	var left := VBoxContainer.new()
+	left.add_theme_constant_override("separation", 4)
+	left.custom_minimum_size.x = 260
+	cols.add_child(left)
+	left.add_child(MpStyle.label(Data.CLASSES[h.cls]["name"], 26, MpStyle.IVORY, 700, true))
+	left.add_child(MpStyle.label("Level %d" % h.level, 18, MpStyle.GOLD, 600))
+	left.add_child(MpStyle.label("%d camps cleared  ·  %d bosses" % [h.run.camps, h.run.bosses], 14, MpStyle.DIM))
+	left.add_child(MpStyle.label("%d skills learned  ·  %d passives" % [h.run.skills.size(), h.run.passives.size()], 14, MpStyle.DIM))
+	var mid := VBoxContainer.new()
+	mid.add_theme_constant_override("separation", 6)
+	mid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(mid)
+	mid.add_child(MpStyle.eyebrow("Skills"))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	mid.add_child(row)
+	for slot in ["lmb"] + RunBuild.SLOTS:
+		var id: String = h.bound(slot)
+		var ic := _icon(id, 44)
+		if id != "":
+			ic.mouse_filter = Control.MOUSE_FILTER_STOP
+			ic.mouse_entered.connect(func(): ui.show_tooltip(_skill_lines(id)))
+			ic.mouse_exited.connect(func(): ui.tooltip.visible = false)
+		row.add_child(ic)
+	mid.add_child(MpStyle.eyebrow("Passives"))
+	var names := []
+	for pid in h.run.passives:
+		var pd := RunBuild.passive_def(h.cls, pid)
+		if not pd.is_empty():
+			names.append("%s ×%d" % [pd["name"], int(h.run.passives[pid])])
+	mid.add_child(MpStyle.para(", ".join(names) if not names.is_empty() else "None", 14, MpStyle.IVORY, 420))
+	mid.add_child(MpStyle.eyebrow("Gear"))
+	var gear := []
+	for s in RunBuild.GEAR:
+		if h.equipment.get(s) != null:
+			gear.append(str(h.equipment[s]["name"]))
+	mid.add_child(MpStyle.para(", ".join(gear) if not gear.is_empty() else "None", 14, MpStyle.IVORY, 420))
+	return p
+
+## The survivor roster (from the Arena lobby, or to look at): a card per survivor with its build; `pick` (a survivor
+## id) is called by Choose. With none, how to earn one.
+func open_roster(pick := Callable(), current := "") -> void:
+	var vb := _open("roster", 1000)
+	_header(vb, "Multiplayer", "Survivors", "Characters you brought out of the Battlegrounds alive. The Arena uses them as they were saved.")
+	var list := Survivors.list()
+	if list.is_empty():
+		vb.add_child(MpStyle.para("No survivors yet. Start a Battlegrounds run, clear camps, and reach an open Extraction Portal alive: then press Save Character on the results.", 15, MpStyle.IVORY, 760))
+		var go := MpStyle.button("Find a Battlegrounds lobby", true)
+		go.pressed.connect(func():
+			close()
+			if game.lobby_client != null:
+				game.lobby_client.selected_mode = "battlegrounds"
+				game.lobby_client.draw())
+		vb.add_child(go)
+		return
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, minf(560.0, get_viewport_rect().size.y - 260.0))
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	vb.add_child(scroll)
+	var grid := VBoxContainer.new()
+	grid.add_theme_constant_override("separation", 8)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(grid)
+	for d in list:
+		grid.add_child(_survivor_row(d, pick, current))
+
+func _survivor_row(d: Dictionary, pick: Callable, current: String) -> Control:
+	var sel := str(d["id"]) == current
+	var p := MpStyle.panel(MpStyle.RAISED if sel else MpStyle.PANEL, MpStyle.ARCANE if sel else Color(1, 1, 1, 0.08), 8, 14)
+	p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 14)
+	p.add_child(hb)
+	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hb.add_child(col)
+	col.add_child(MpStyle.label(str(d.get("name", "Survivor")), 18, MpStyle.IVORY, 700))
+	col.add_child(MpStyle.label(Survivors.summary(d), 13, MpStyle.DIM))
+	var run: Dictionary = d["hero"]["run"]
+	var skills := []
+	for id in run.get("skills", []):
+		skills.append(str(Data.skill_def(str(id)).get("name", id)))
+	col.add_child(MpStyle.para("Skills: " + (", ".join(skills) if not skills.is_empty() else "none"), 13, MpStyle.IVORY, 640))
+	if pick.is_valid():
+		var b := MpStyle.button("Chosen" if sel else "Choose", not sel)
+		b.disabled = sel
+		var id := str(d["id"])
+		b.pressed.connect(func():
+			close()
+			pick.call(id))
+		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		hb.add_child(b)
+	return p

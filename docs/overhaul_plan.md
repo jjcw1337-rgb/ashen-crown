@@ -5,7 +5,8 @@ characters from level 0 in Battlegrounds, survivors saved at a successful exit a
 slots (right-click included) plus a spellbook; passive power-ups instead of talents; camp chests offering three
 upgrades; four consumable slots, no gold/rings/amulets, no backpack; a large lush map (12-16 camps, an ice boss and a
 mushroom boss); a modern fantasy (Valorant-inspired) UI; single player and Enter World untouched; Waves and Create
-Character retired. This file is the working plan: each step is pushed to staging when it plays.
+Character retired. This file is the working plan: each step is pushed to staging when it plays. What proves each requirement:
+`docs/overhaul_acceptance.md` (update it with every step).
 
 ## Steps
 
@@ -16,7 +17,7 @@ Character retired. This file is the working plan: each step is pushed to staging
    gold/rings/amulets/backpack (found gear is equipped or left on the ground, with a comparison).
 3. [x] **Camps + rewards**: camps as encounters (tier 1-3, boss), completion opens the camp's chest, one upgrade
    offer of three (common/uncommon/rare, generated once, claimed once), XP from kills and camps, levels 0-20+.
-4. [ ] **Survivors**: successful extraction -> results -> Save Character (no duplicates) -> survivor roster
+4. [x] **Survivors**: successful extraction -> results -> Save Character (no duplicates) -> survivor roster
    (`user://survivors/`, separate from single-player characters) -> Arena lobby picks a survivor.
 5. [x] **The map** (`BgForest`, the Verdant Reach; first pass): a lush connected forest (mushroom woodland, dark elf camps, ridges, streams, ruins), 12-16 camps,
    the ice boss and the mushroom boss.

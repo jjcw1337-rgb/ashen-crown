@@ -338,6 +338,13 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   where trails cross (`relief`), and four regions (mushroom woodland, dark elf encampments, the frost hollow, ruins).
   Oaks keep `CANOPY` from open ground so crowns never hide a fight. Bright afternoon light (`Game._zone_env`).
   Screenshots: `tools/forest_shots.gd -- outdir`.
+  **Survivors** (`scripts/survivors.gd` `Survivors`): a run that extracts (`Game.bg_extracted`, server-confirmed) ends
+  on `RunUI.open_results` with Save Character (`Game.run_save_survivor` -> `Survivors.save`: one file per run,
+  `user://survivors/sv_<RunBuild.uid>.json`, so a second save writes nothing); a fallen run's results offer none;
+  Return is `Game.run_return` (title, the lobby browser). The lobby sends `run_<class>` (Battlegrounds,
+  `LobbyClient.class_pick`) or a survivor's id (Arena, the roster `RunUI.open_roster`); `Game.start_join` loads a
+  survivor with `Survivors.load_into`. `tools/survivor_test.gd`. What proves each spec point:
+  `docs/overhaul_acceptance.md`.
 - **Browser build (WebGL)** is a test build only and is fragile:
   - it is exported with **Godot 4.5.1** in CI (the desktop builds use 4.4.1): Godot 4.3's WebGL renderer
     blanks the whole 3D view in busy scenes (many objects near lights). Keep code working in both versions:

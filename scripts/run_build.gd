@@ -52,12 +52,15 @@ var passives := {}
 var offers := {}
 ## A run's own seed: offers roll from it and the camp, so a reopened chest shows the same three.
 var seed := 0
+## The run's own id: its survivor's file name (Survivors), so one run is saved once however often it's asked.
+var uid := ""
 ## Camps cleared and levels reached, for the results and the survivor card.
 var camps := 0
 var bosses := 0
 
 func _init() -> void:
 	seed = randi()
+	uid = "%08x%08x" % [randi(), Time.get_ticks_usec() & 0xffffffff]
 
 # ---------------------------------------------------------------- experience
 
@@ -342,7 +345,7 @@ static func grow(hero) -> void:
 
 func to_dict() -> Dictionary:
 	return {"skills": skills.duplicate(), "passives": passives.duplicate(), "offers": offers.duplicate(true),
-		"seed": seed, "camps": camps, "bosses": bosses}
+		"seed": seed, "camps": camps, "bosses": bosses, "uid": uid}
 
 static func from_dict(d: Dictionary) -> RunBuild:
 	var r := RunBuild.new()
@@ -353,4 +356,5 @@ static func from_dict(d: Dictionary) -> RunBuild:
 	r.seed = int(d.get("seed", r.seed))
 	r.camps = int(d.get("camps", 0))
 	r.bosses = int(d.get("bosses", 0))
+	r.uid = str(d.get("uid", r.uid))
 	return r

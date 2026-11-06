@@ -190,8 +190,21 @@ func _client() -> void:
 	var sv := _save(path)
 	var sgold: int = int((sv.get("hero", {}) as Dictionary).get("gold", 0))
 	check(FileAccess.file_exists(path) and not sv.get("in_raid", true) and _count_saved(sv) == inv0 and sgold == gold0 and held == 0, "the saved character is untouched by the run (%d items, %d gold)" % [_count_saved(sv), sgold])
+	# the run's results: Save Character (once), then Return to the lobby browser
+	var SV = load("res://scripts/survivors.gd")
+	SV.dir = "user://bg_test_survivors/"
+	DirAccess.make_dir_recursive_absolute(SV.dir)
+	for fn in DirAccess.get_files_at(SV.dir):
+		DirAccess.remove_absolute(SV.dir + fn)
+	check(await until(func(): return g.ui.run_ui.mode == "results", 10.0), "the results window, survived")
+	var save_b = g.ui.run_ui.find_child("save", true, false)
+	if save_b:
+		save_b.pressed.emit()
+		save_b.pressed.emit()
+	check(SV.list().size() == 1 and int(SV.list()[0]["level"]) == g.hero.level, "Save Character: one survivor (level %d)" % g.hero.level)
+	await g.run_return()
 	# back in, and die
-	await until(func(): return not g._busy and g.ui.title_panel.visible and g.ui.bg_page.visible, 20.0)      # (back on the Battlegrounds page)
+	await until(func(): return not g._busy and g.ui.title_panel.visible, 20.0)      # (back on the title, the lobby browser over it)
 	await g.start_battlegrounds("%s:%d" % [host, port], id)
 	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "went back in")
 	check(g.hero.run != null and g.hero.level == 0, "as a new run character")
@@ -205,6 +218,8 @@ func _client() -> void:
 	await secs(3.0)
 	g.respawn()
 	check(await until(func(): return not g.bg_mode and not g._busy, 20.0), "a death ends the raid")
+	check(await until(func(): return g.ui.run_ui.mode == "results", 6.0) and g.ui.run_ui.find_child("save", true, false) == null, "its results: fallen, nothing to save")
+	await g.run_return()
 	var after := _save(path)
 	var eq: Dictionary = (after.get("hero", {}) as Dictionary).get("equipment", {})
 	var worn: Array = eq.values().filter(func(x): return x != null)
