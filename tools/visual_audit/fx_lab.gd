@@ -41,8 +41,8 @@ func _run() -> void:
 		times = [0.6, 1.5, 3.0]
 	var M: GDScript = load("res://scripts/mats.gd")
 	var IF: GDScript = load("res://scripts/infernal_fx.gd")
-	var PF: GDScript = load("res://scripts/plague_fx.gd")
-	var PL: GDScript = load("res://scripts/plague.gd")
+	var PF: GDScript = load("res://heroes/plague/plague_fx.gd")
+	var PL: GDScript = load("res://heroes/plague/plague.gd")
 	IF.set("force_tier", tier)
 	var root3 := Node3D.new()
 	get_root().add_child(root3)

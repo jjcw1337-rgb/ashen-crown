@@ -31,7 +31,7 @@ for t in playtest coop_fx_test title_test char_test ui_click_test grass_test int
   "$G" --headless --path . -s tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
-for f in heroes/archer/tests/archer_test.gd tools/plague_test.gd tools/warlock_hex_test.gd; do
+for f in heroes/archer/tests/archer_test.gd heroes/plague/tests/plague_test.gd tools/warlock_hex_test.gd; do
   t=$(basename "$f" .gd)
   "$G" --headless --path . --fixed-fps 60 -s "$f" > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
@@ -71,10 +71,11 @@ check coop_player_a "$OUT/gate_coop_a.log" 0
 check coop_player_b "$OUT/gate_coop_b.log" 0
 
 # the co-op pairs
-for t in mp_test plague_mp_test; do
-  "$G" --headless --path . -s tools/$t.gd -- host > "$OUT/gate_${t}_host.log" 2>&1 & h=$!
+for f in tools/mp_test.gd heroes/plague/tests/plague_mp_test.gd; do
+  t=$(basename "$f" .gd)
+  "$G" --headless --path . -s "$f" -- host > "$OUT/gate_${t}_host.log" 2>&1 & h=$!
   sleep 3
-  "$G" --headless --path . -s tools/$t.gd -- join > "$OUT/gate_${t}_join.log" 2>&1 & j=$!
+  "$G" --headless --path . -s "$f" -- join > "$OUT/gate_${t}_join.log" 2>&1 & j=$!
   waitfor $j 300; rc=$?; waitfor $h 60
   check ${t}_host "$OUT/gate_${t}_host.log" 0
   check ${t}_join "$OUT/gate_${t}_join.log" $rc
