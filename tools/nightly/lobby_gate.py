@@ -42,6 +42,8 @@ def run(args):
         return process
 
     try:
+        if Path('/tmp/ashen-nightly.lock').exists():
+            raise RuntimeError('Legacy nightly owns the test window')
         if other_engines(args.godot):
             raise RuntimeError('Another Godot is active; keep the shared test window exclusive')
         if shutil.disk_usage(root).free < 8 * 2**30:
@@ -81,6 +83,8 @@ def run(args):
         deadline = time.monotonic() + args.timeout
         minimum_free = shutil.disk_usage(root).free / 2**30
         while any(p.poll() is None for p in clients):
+            if Path('/tmp/ashen-nightly.lock').exists():
+                raise RuntimeError('Legacy nightly acquired the test window; stopped own group')
             competing = []
             for pid in other_engines(args.godot):
                 try:

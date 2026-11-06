@@ -14,6 +14,9 @@ var port := 24611
 var host := "127.0.0.1"
 var fails := 0
 var capture := ""
+var death_drop_seen := false
+var reset_raid_time := -1.0
+var next_round_ready := false
 
 func _initialize():
 	var a := OS.get_cmdline_user_args()
@@ -37,7 +40,24 @@ func _initialize():
 	g.old_save = g.char_dir + "absent.json"
 	get_root().add_child(g)
 	current_scene = g
+	process_frame.connect(_observe_round)
 	_run()
+
+# Observe transitions continuously: reset lasts only 2.5 simulation seconds in this
+# fixture, and gear swaps are not proof that a player died. Slow rendered clients
+# must not make us miss a completed reset while another assertion is waiting.
+func _observe_round() -> void:
+	if role != "server" or not is_instance_valid(g) or g.bg == null:
+		return
+	for pid in g.net.players:
+		var h = g.net.players[pid]["hero"]
+		if is_instance_valid(h) and h.dead and g.bg.died_items.has(pid):
+			death_drop_seen = true
+	if g.bg.state == "reset" and reset_raid_time < 0.0:
+		reset_raid_time = g.bg.raid_t
+		print("[BG CLOCK] collapse at simulation %.3f s; wall %.3f s" % [reset_raid_time, Time.get_ticks_msec() / 1000.0])
+	if reset_raid_time >= 0.0 and g.bg.state == "lobby" and not g._busy and g.bg.raid_t < 5.0:
+		next_round_ready = true
 
 func check(ok: bool, what: String) -> void:
 	if not ok:
@@ -128,10 +148,13 @@ func _server() -> void:
 	check(await until(_bell_rang, 180.0), "the player rang the bell: the countdown")
 	check(await until(func(): return g.bg.state == "raid", 20.0) and (forest or g.world.get_meta("bg_gates")[0]["up"]), "then the raid was on")
 	check(await until(func(): return g.bg.open.size() == Battlegrounds.OPEN_PORTALS + (0 if forest else 2), 70.0), "the portals opened on time (%d)" % g.bg.open.size())
-	var items0: int = g.net.items.size()
-	check(await until(func(): return g.net.items.size() >= items0 + 3, 120.0), "the fallen hero's gear lay on the floor (%d items)" % (g.net.items.size() - items0))
-	check(await until(func(): return g.bg.state == "reset", 120.0), "the crypt collapsed at the end of the round")
-	check(await until(func(): return g.bg.state in ["lobby", "raid"] and g.bg.raid_t < 5.0, 30.0), "and a new round began (in its antechamber)")
+	check(await until(func(): return death_drop_seen, 180.0), "the server handled the fallen player's death drop")
+	# This is functional acceptance, not a server tick-rate benchmark. A source/debug
+	# world can advance simulation slower than wall time; keep a hard wall deadline
+	# while checking the actual configured simulation boundary separately.
+	check(await until(func(): return reset_raid_time >= 0.0, 240.0), "the round collapsed")
+	check(reset_raid_time >= Battlegrounds.secs(Battlegrounds.RAID_SECS) - 0.01, "collapse follows the configured simulation duration")
+	check(await until(func(): return next_round_ready, 60.0), "the next round finished rebuilding and opened its lobby")
 
 func _client() -> void:
 	while g._busy:

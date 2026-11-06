@@ -10,6 +10,7 @@ frame is ~18 ms).
    zone or combat family, call `prepare(scope, paths)`, await `wait_ready`, and release that scope when its owner
    leaves. Requests share Godot's resident resource; ownership determines retention. `get_res`/`inst` remain
    transitional fallbacks, with per-path synchronous misses reported and rejected by performance checks.
+   Model families declare scene roots; imported scenes own their extracted texture dependencies.
    New content in a declared family is discovered in source and exported packs; unusual dynamic paths must
    be declared explicitly. See [the shared implementation](../perf/IMPLEMENTATION.md).
 2. **Never create a `Shader` per cast or per spawn.** Make it once and keep it in a `static var`:
@@ -20,6 +21,8 @@ frame is ~18 ms).
    with its last material, so keep the materials (`SkillWarm.keep`). The warm-ups that exist:
    - `SkillWarm` (`scripts/skill_warm.gd`): prepared class skill effects (current class in solo, all classes online), replayed on puppets from
      recorded events (`SkillWarmData`, re-recorded by `tools/skill_warm_capture.gd` after a skill's effects change).
+     Include run-only skills; shared talent/consumable variants come from `RunTalents.preparation_events`.
+     Declaration checks cover run skills, and nightly baseline identity includes the replay recipe hash.
    - `MonsterWarm` (`scripts/monster_warm.gd`): every monster kind that can still turn up in the zone. A new
      place that spawns monsters mid-zone needs its kinds added to `MonsterWarm.kinds`.
    - `UI.warm_windows`: the game's windows and the character sheet's portrait.
