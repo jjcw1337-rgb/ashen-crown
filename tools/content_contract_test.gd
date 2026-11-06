@@ -32,6 +32,11 @@ func run() -> void:
 		"Wraith preparation missing delayed Death Mark explosion")
 	check(SkillWarmData.EVENTS.get("demon", []).any(func(event): return event.get("s") == "d_detonate" and event.get("e") == "impact" and not event.get("ps", {}).get("pv3", []).is_empty()),
 		"Demon preparation missing branded Detonation positions")
+	for cls in ["serpent", "wyvern"]:
+		var phases: Dictionary = {"s_tomb": ["seal", "shatter"], "s_coil": ["crush"], "s_lance": ["spikes"]} if cls == "serpent" else {"v_dive": ["start", "land"], "v_cloud": ["form", "bolt", "end"], "v_gale": ["gust"]}
+		for id in phases:
+			for phase in phases[id]:
+				check(SkillWarmData.EVENTS.get(cls, []).any(func(event): return event.get("s") == id and event.get("e") == phase), "Dragon preparation missing phase: %s/%s" % [id, phase])
 	var solo: Array = catalog.combat(["knight"])
 	check(not solo.any(func(p): return str(p).contains("/plague/") or str(p).contains("/arrows/")), "Solo knight must not acquire other classes\' families")
 	check(catalog.combat(["archer"]).has(SpiritBeast.WOLF_GLB), "Archer summon must be declared")

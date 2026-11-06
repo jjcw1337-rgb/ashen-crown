@@ -134,9 +134,9 @@ func _run() -> void:
 					push_error("Capture could not cast %s/%s" % [cls, id])
 					failures += 1
 			await wait(2.2)
-			if id in ["k_aegis", "r_deathmark"]:
+			if id in ["k_aegis", "r_deathmark", "s_tomb", "v_cloud"]:
 				# Wait for the real delayed event before clearing state or starting another skill.
-				var late_phase := "burst" if id == "k_aegis" else "pop"
+				var late_phase: String = {"k_aegis": "burst", "r_deathmark": "pop", "s_tomb": "shatter", "v_cloud": "end"}[id]
 				var deadline := Time.get_ticks_msec() + 30000
 				while not events.any(func(w): return w.get("s") == id and w.get("e") == late_phase) and Time.get_ticks_msec() < deadline:
 					await process_frame
