@@ -1244,7 +1244,7 @@ credits and API-key limits without a separate Blaine-only approval. New purchase
   frame at any attack speed; monster impacts, crit stings and kill sounds come from `Enemy._hit_sound`/`die_visual`
   by `Enemy.material()`. King Grubb's voice is deep (the `cackle`/`roar` takes, never pitched up), and before his fight
   his muttering (`grubb_mutter`) carries through the fort from him, faint from ~75 m and clear in sight
-  (`Hoard.murmur`, every peer locally; stops at the "intro" event). `tools/sound_test.gd` checks every skill fires its
+  (`Hoard.murmur`, every peer locally; stops at the "intro" event). `tools/sound_test.gd` (through `_late.gd`, with `-- --sounds`: headless runs are otherwise silent, `Sfx.silent_runtime`) checks every skill fires its
   sounds (`Sfx.counts`) and the fort voice. The camp's song is `music_town` (jj's pick: a dark forest sanctuary, harp over a low
   string drone with a wooden flute; candidate take 13). Ambience: wind, drips in the crypt, and in Act I outside the camp (moor and fort) `forest`, soft
   trees in a breeze (`Sfx.play_music(kind, amb)`, picked in `Game.load_zone`).
