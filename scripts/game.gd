@@ -129,7 +129,7 @@ var lmb_repeat := 0.0
 var rmb_held := false
 const BIND_KEYCODES := {"Q": KEY_Q, "E": KEY_E, "R": KEY_R, "F": KEY_F, "G": KEY_G, "V": KEY_V}
 var exit_grace := 0.0
-var test_block := false        # a tool holding the guard up (tools/fire_range.gd's "block" take)
+var test_block := false        # a tool holding the guard up (heroes/archer/tools/fire_range.gd's "block" take)
 var waypoints_known := ["town"]
 var boss_killed := false
 var difficulty := 0          # 0 = Act I, 1 = A2, 2 = A3: Act I again with tougher monsters and loot each time

@@ -1,7 +1,7 @@
 # Builds the Plague Doctor's mocap body (assets/models/plague_doctor.glb): the Meshy auto-rigged plague doctor
 # (24-bone humanoid, like the knight's and the ranger's) with Meshy library clips merged onto its one armature,
 # decimated to a game budget and exported as one glb whose AnimationPlayer holds every clip by a clean name.
-# Same steps as tools/blender/archer/prep_ranger_mocap.py (no weapon to cut: the concept had empty hands).
+# Same steps as heroes/archer/build/prep_ranger_mocap.py (no weapon to cut: the concept had empty hands).
 #   blender -b --python prep_plague_mocap.py -- <rigged.glb> <out.glb> <tris> clips_a.glb clips_b.glb clips_c.glb clips_d.glb
 # Source tasks (Meshy): image-to-3D 01a191d9-dfec-77ab-90e2-4853b2c02bc4 (concept 1), rig 01a191dc-4fd3-7584-82b8-dd7321ff498c,
 # clips 0,30,14,16,509,12,342,178,189,158 / 421,398,274,365,127,125,572,571,113,21 / 219,240,97,389,239,131

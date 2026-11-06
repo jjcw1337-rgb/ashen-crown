@@ -1,0 +1,37 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://b2yaj44o042wi"
+path="res://.godot/imported/shard_normal.jpg-a8d2c0652fb58cfeff3e2b60b4ce55ff.ctex"
+metadata={
+"vram_texture": false
+}
+generator_parameters={
+"md5": "bab698806b0be0a1bd0487383eb1cde5"
+}
+
+[deps]
+
+source_file="res://heroes/archer/skills/frost_volley/rain/shard_normal.jpg"
+dest_files=["res://.godot/imported/shard_normal.jpg-a8d2c0652fb58cfeff3e2b60b4ce55ff.ctex"]
+
+[params]
+
+compress/mode=1
+compress/high_quality=false
+compress/lossy_quality=0.9
+compress/hdr_compression=1
+compress/normal_map=0
+compress/channel_pack=0
+mipmaps/generate=true
+mipmaps/limit=-1
+roughness/mode=0
+roughness/src_normal=""
+process/fix_alpha_border=true
+process/premult_alpha=false
+process/normal_map_invert_y=false
+process/hdr_as_srgb=false
+process/hdr_clamp_exposure=false
+process/size_limit=0
+detect_3d/compress_to=0

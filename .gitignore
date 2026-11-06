@@ -1,7 +1,7 @@
 # Godot's import cache and editor state (rebuilt automatically when the project is opened)
 .godot/
 # Exported builds (GitHub Actions makes these on every push)
-build/
+/build/
 *.zip
 # Godot's import files for models, and the textures it extracts from them (regenerated on import)
 assets/models/*.import
@@ -35,3 +35,12 @@ assets/models/**/*_Material_*_baseColor.jpg
 assets/models/**/*_Material_*_metallic-*.jpg
 assets/models/**/*_Material_*_normal.jpg
 server/
+
+# hero folders (heroes/<name>/): Godot's import files for their models and the textures it extracts, like assets/models/
+heroes/**/*.glb.import
+heroes/**/*_Image_*
+heroes/**/*_normal.jpg
+heroes/**/*_normal_*.jpg
+heroes/**/*_albedo.jpg
+heroes/**/*_metal_rough.jpg
+heroes/**/*_emission.jpg

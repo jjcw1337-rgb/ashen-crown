@@ -390,7 +390,7 @@ static func _gem(p: Dictionary) -> Material:
 # ---------------------------------------------------------------- item models
 ## Returns a model for an item. Weapons: grip at origin, blade along -Z.
 ## Shields face -Z. Helms are centred on the head. Others are free-standing.
-const RANGER_BOW := "res://assets/models/ranger_bow.glb"
+const RANGER_BOW := "res://heroes/archer/weapon/ranger_bow.glb"
 
 static func item_model(item: Dictionary) -> Node3D:
 	var base: Dictionary = Data.BASES[item["base"]]
@@ -401,7 +401,7 @@ static func item_model(item: Dictionary) -> Node3D:
 		"weapon":
 			# bows (the archer's): the bow geometry the skeleton archers carry (weapon() has no bow of its own)
 			if kind in ["bow", "longbow"]:
-				# the ranger's own carved recurve (Meshy, tools/blender/archer/prep_bow.py) when it's there; a
+				# the ranger's own carved recurve (Meshy, heroes/archer/build/prep_bow.py) when it's there; a
 				# longbow is the same bow drawn longer
 				if ResourceLoader.exists(RANGER_BOW):
 					var b: Node3D = ResCache.inst(RANGER_BOW)

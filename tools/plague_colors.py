@@ -1,6 +1,6 @@
 """The plague doctor's colour schemes (Plague.COLORS / Plague.dye): recolours the dark leather of his coat, cape, hat,
 gloves and boots in the Meshy albedo, keeping the brown straps and pouches, the silver mask, the brass (goggles, censer,
-buckles: found by the metallic map) and the coloured vials as they are. Like tools/archer_colors.py for the ranger.
+buckles: found by the metallic map) and the coloured vials as they are. Like heroes/archer/build/archer_colors.py for the ranger.
 
   # the albedo and the metal/roughness map out of the glb (Blender):
   blender -b --python tools/blender/plague/dump_textures.py -- assets/models/plague_doctor.glb outdir
