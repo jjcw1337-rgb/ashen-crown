@@ -26,19 +26,19 @@ stripped build with no pixels or meshes.
 
 ## Where things live
 
-Everything that ships is moving into `game/`, by feature. `scripts/` and `assets/` are the old layout: nothing new
-goes there.
+Everything that ships lives in `game/`, by feature (`scripts/` is gone). `assets/` is the old layout for what is still
+shared there: nothing new goes in it.
 
 | What | Home | Not moved yet |
 |---|---|---|
-| Heroes | `game/heroes/<hero>/` (the Archer is the example); a family's shared code in `game/systems/` (`dragons/`) | |
-| Monsters | `game/monsters/<monster>/` (Hrimgar is the example) | stats in `data.gd` `ENEMIES`; the shared monster code in `scripts/enemy.gd` |
+| Heroes | `game/heroes/<hero>/` (the Archer is the example); every hero's shared code in `game/heroes/hero.gd`; a family's in `game/systems/` (`dragons/`) | |
+| Monsters | `game/monsters/<monster>/` (Hrimgar is the example); the shared monster code in `game/monsters/enemy.gd` | stats in `data.gd` `ENEMIES` |
 | Maps and camps | `game/maps/<map>/`: `arena/` (the example), `verdant_reach/` | shared world code: `game/systems/world/` (`World`, props, grass, weather) |
-| Items: rites, gems, consumables | `game/items/` | all in one file still: `run_talents.gd` |
-| Screens | `game/ui/<screen>/`: `lobby/` (the home screen), `chat/`, `loot_list/`, `hud/`, `run/`, `codex/` | `scripts/ui.gd` (the HUD's layout, menus), `class_stage.gd` |
-| Shared systems | `game/systems/<system>/` | the big shared files: `scripts/game.gd`, `hero.gd`, `enemy.gd` |
+| Items: rites, gems, consumables | `game/items/`: `rites/`, `gems/`, `consumables/`; `run_talents.gd` (`RunTalents`) is what combat calls | |
+| Screens | `game/ui/<screen>/`: `lobby/` (the home screen), `chat/`, `loot_list/`, `hud/`, `run/`, `codex/`; `game/ui/ui.gd` builds them | `ui.gd` still lays out the HUD and menus itself |
+| Shared systems | `game/systems/<system>/`; the game itself in `game/game.gd` | |
 | Numbers and text | `data/codex/` (the Hero Codex editor writes it) | |
-| Sounds, icons | a skill's own sounds in its `sounds/` folder; shared ones in `assets/audio/sfx/`; icons in `assets/textures/` | some heroes' own sounds: `assets/audio/sfx/` |
+| Sounds, icons | a skill's own sounds in its `sounds/` folder (a hero's shared ones in its `shared/sounds/`); the rest in `assets/audio/sfx/`; icons in `assets/textures/` | |
 | Servers | `deploy/` | |
 | Pipeline, project-wide tests, CI | `tools/`, `.github/workflows/` | |
 

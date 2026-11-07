@@ -158,7 +158,7 @@ func _roll_class(cls: String) -> void:
 	h.stamina = 2.0
 	check(not DG.start(h, Vector3.RIGHT), "%s: no stamina, no roll" % cls)
 	# a partner's view: the puppet tumbles, and the event hurts nothing
-	var pup = load("res://scripts/hero.gd").new()
+	var pup = load("res://game/heroes/hero.gd").new()
 	pup.puppet = true
 	pup.peer_id = 98
 	g.add_child(pup)

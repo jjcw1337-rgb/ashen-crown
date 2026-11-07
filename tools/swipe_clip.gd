@@ -62,7 +62,7 @@ func _run() -> void:
 	r.set("fixed_dt", dt)
 	var fdir := Vector3(1, 0, 1).normalized() if view == "game" else Vector3(0, 0, -1)
 	r.rotation.y = atan2(-fdir.x, -fdir.z)
-	var H = load("res://scripts/hero.gd")
+	var H = load("res://game/heroes/hero.gd")
 	var plan := []
 	for k in ["swipe1", "swipe2", "swipe3"]:
 		var L: Array = H.SWIPE_LUNGE[k]

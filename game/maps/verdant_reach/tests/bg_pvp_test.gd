@@ -169,6 +169,7 @@ func _server() -> void:
 		if n_sk > 0:
 			check(await until(func(): return ServerRules.made_count >= n_sk, 40.0), "the %s's skills ran here: the server made %s (%d made, %d refused)" % [dcls, str(DRAGON_SKILLS[dcls]), ServerRules.made_count, ServerRules.refused_count])
 	check(await until(func(): return g.bg.died_items.size() > 0, 60.0), "and killed them: their body dropped its gear")
+	check(ServerRules.reported.is_empty(), "every blow was the server's: no game reported damage of its own %s" % str(ServerRules.reported))
 	await until(func(): return g.net.players.is_empty(), 90.0)
 
 func _player() -> void:
@@ -384,13 +385,16 @@ func _player() -> void:
 			check(held.is_empty(), "my game keeps none of my skills' state: the server's copy of me deals them %s" % str(held))
 			check(not g.hero.decides(), "and my game doesn't decide my hits (Hero.decides)")
 		var life_seen: Array = [life_before] if wraith else []
-		for i in 60:
+		# weapon swings beside them: the server's copy of me strikes them (my game reports no damage of its own)
+		for i in 120:
 			if not is_instance_valid(foe) or foe.dead:
 				break
 			g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(1.2, 0, 0), 0.5)
 			var p = _proxy()
 			if p != null:
-				g.hero._hit_enemy(p, 3.0)
+				g.hero.atk_style = "swipe3"
+				g.hero.atk_dir = g.hero.dir_to(p.global_position)
+				g.hero._swipe_impact()
 			if is_instance_valid(foe):
 				life_seen.append(foe.life)
 			await secs(0.25)

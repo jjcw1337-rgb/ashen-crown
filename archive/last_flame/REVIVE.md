@@ -17,7 +17,7 @@ Move the two scripts back under `game/maps/last_flame/`, then put back the hooks
 it removed every one of them (`git log -- archive/last_flame`, then `git show` that commit for the exact lines):
 
 - `scripts/world.gd` `build`: `Vigil.ZONE: Vigil.build(self)`.
-- `scripts/game.gd`:
+- `game/game.gd`:
   - `indoor()` and the zone's environment (an `elif kind == Vigil.ZONE` block: warm ambient, the altar's light);
   - the zone title (`Vigil.ZONE: return Vigil.TITLE`);
   - `_interact` kinds `vigil_gate` (travel to `Vigil.ZONE`), `vigil_exit` (back to the camp's `from_vigil` spawn)

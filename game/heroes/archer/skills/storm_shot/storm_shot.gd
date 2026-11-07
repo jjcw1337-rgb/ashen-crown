@@ -15,6 +15,6 @@ func hit(m: Missile, e) -> void:
 	strike(m, e)
 	var avg: float = (hero.dmg_min + hero.dmg_max) * 0.5
 	var each := avg * val("chain", 70.0) / 100.0 * hero.buff_mult() * hero.dmg_mult(id)
-	RunTalents._chain(hero, e, int(val("jumps", 4.0)) + int(hero.talent("storm_jumps")), each, val("chain_r", 7.0))
+	ProcHits.chain(hero, e, int(val("jumps", 4.0)) + int(hero.talent("storm_jumps")), each, val("chain_r", 7.0))
 	hero.mark = e
 	hero.mark_t = 6.0

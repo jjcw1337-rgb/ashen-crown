@@ -42,17 +42,9 @@ static func _play(h: Hero, ev: Dictionary) -> void:
 	if cls == "any":
 		cls = h.cls
 	var done := false
-	match cls:
-		"knight": done = KnightFx.play(h, ev)
-		"wraith": done = WraithFx.play(h, ev)
-		"demon": done = DemonFx.play(h, ev)
-		"warlock": done = WarlockFx.play(h, ev)
-		"archer": done = ArcherFx.play(h, ev)
-		"plague": done = PlagueFx.play(h, ev)
-		"doug": done = DougFx.play(h, ev)
-		"necromancer": done = NecromancerFx.play(h, ev)
-		"serpent": done = SerpentFx.play(h, ev)
-		"wyvern": done = WyvernFx.play(h, ev)
+	var look = Heroes.fx(cls)      # (the class's look script, from the hero registry)
+	if look != null:
+		done = bool(look.play(h, ev))
 	if not done:
 		done = _common(h, ev)
 	if not done:
@@ -92,31 +84,16 @@ static func update(h: Hero, delta: float) -> void:
 		return
 	FrostFx.update_bodies(h.game, delta)      # every frosted foe, whoever frosted it (once a frame)
 	var t0 := FxTiming.t()
-	KnightFx.update(h, delta)
-	WraithFx.update(h, delta)
-	var t1 := FxTiming.t()
-	DemonFx.update(h, delta)
-	FxTiming.done(t1, "update demon")
-	t1 = FxTiming.t()
-	WarlockFx.update(h, delta)
-	ArcherFx.update(h, delta)
-	PlagueFx.update(h, delta)
-	FxTiming.done(t1, "update archer/warlock/plague")
-	SerpentFx.update(h, delta)
-	WyvernFx.update(h, delta)
-	DougFx.update(h, delta)
+	for look in Heroes.fxs():
+		if look.has_method("update"):
+			look.update(h, delta)
 	FxTiming.done(t0, "update all")
 
 ## Everything lingering is gone (death, a class change, a zone change).
 static func clear(h: Hero) -> void:
-	WraithFx.clear(h)
-	DemonFx.clear(h)
-	WarlockFx.clear(h)
-	ArcherFx.clear(h)
-	KnightFx.clear(h)
-	DougFx.clear(h)
-	SerpentFx.clear(h)
-	WyvernFx.clear(h)
+	for look in Heroes.fxs(false):      # (the Plague Doctor's pools and blooms clear themselves: Heroes.KEEP_FX)
+		if look.has_method("clear"):
+			look.clear(h)
 	h.fxs.clear()
 
 # ---------------------------------------------------------------- helpers for the handlers

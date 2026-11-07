@@ -12,7 +12,7 @@ var HS
 func _initialize():
 	BuildEnv.forced = {"env": "local", "cloud": "0"}
 	SB = load("res://game/maps/arena/sandbox.gd")
-	HS = load("res://scripts/hero.gd")
+	HS = load("res://game/heroes/hero.gd")
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	g.char_dir = "user://sandbox_combat_test/"
 	g.old_save = "user://sandbox_combat_test/absent.json"

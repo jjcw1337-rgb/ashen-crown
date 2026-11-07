@@ -13,5 +13,5 @@ lobby's room (members, class or survivor, pairs or teams, ready, start).
 | `tests/` | `lobby_ui_test` (the page at three sizes), `lobby_game_test`, `lobby_modes_test`, `lobby_late_join_test`, `lobby_stakes_test`, `mp_test` |
 | `tools/` | `mp_lobby_shots` |
 
-The rest of the screens are still in `scripts/ui.gd` (HUD, run windows, menus) and `game/ui/run/run_ui.gd`, to be split
+The rest of the screens are still in `game/ui/ui.gd` (HUD, run windows, menus) and `game/ui/run/run_ui.gd`, to be split
 into `game/ui/<screen>/`.

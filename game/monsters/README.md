@@ -13,7 +13,7 @@ One folder per monster, holding everything that is only that monster's. Its stat
 | `tests/`, `tools/` | its own tests and tools |
 
 **The registry** (`monsters.gd`, `Monsters`) lists the cards (`CARDS`) and names no monster. `Enemy`
-(`scripts/enemy.gd`: life, statuses, movement, the shared melee and ranged fighting) asks it, it asks the kind's card,
+(`game/monsters/enemy.gd`: life, statuses, movement, the shared melee and ranged fighting) asks it, it asks the kind's card,
 and whatever the card leaves out is the shared way. What a card can declare (all but `KINDS` optional):
 
 | On the card | What |

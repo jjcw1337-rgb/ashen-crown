@@ -29,9 +29,9 @@ game/heroes/archer/
 A family of heroes keeps what they all share in `game/systems/` (the three dragons: `game/systems/dragons/`), never
 in one member's folder.
 
-**Where the game names a hero.** A new hero is added to: `ClassSkills` (`of`, `all`, `trail_color`),
-`ServerRules.CLASSES` (its skills run on the match server), `SkillFx` (`_play`, `update`, `clear`), `Hero`
-(`is_<id>`, `_build_rig`), `Net.STYLES`, `Models.item_model`, `Data.CLASSES` and `Data.SKILLS`, `Talents.TREES`,
+**Where the game names a hero.** A new hero is one line in the hero registry (`Heroes`, `game/heroes/heroes.gd`: its
+kit and look scripts, which `ClassSkills` and `SkillFx` route to), and is added to: `ClassSkills.trail_color`,
+`ServerRules.CLASSES` (its skills run on the match server), `Hero` (`is_<id>`, `_build_rig`), `Net.STYLES`, `Models.item_model`, `Data.CLASSES` and `Data.SKILLS`, `Talents.TREES`,
 `RunTalents`' themes, the class picker (`ClassStage`), `MpLobbyView.PLAYSTYLE`, `BgMatchup.ACCENTS` and the
 Sandbox's stats.
 

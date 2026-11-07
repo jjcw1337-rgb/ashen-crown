@@ -2,7 +2,7 @@ class_name Monsters
 extends RefCounted
 ## The monster registry. Every monster folder (game/monsters/<monster>/) has a card, its monster.gd, the way every
 ## hero has its class script: it says which kinds (Data.ENEMIES keys) it is and what of its own it has. Enemy
-## (scripts/enemy.gd: life, statuses, movement, the shared melee and ranged fighting) asks here, the registry asks
+## (game/monsters/enemy.gd: life, statuses, movement, the shared melee and ranged fighting) asks here, the registry asks
 ## the kind's card, and when the card has nothing to say the shared way is used. No monster is named in this file:
 ## a new monster is a folder with its card and one line in CARDS.
 ##

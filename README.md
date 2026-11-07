@@ -77,9 +77,9 @@ has access to the private `ashen-crown-staging` page, and install it. The app up
 | `game/heroes/<hero>/` | Everything one hero owns: code, model, skills with their assets, build scripts, tests |
 | `game/maps/<map>/` | Everything one map owns: its builder, props, the modes played on it, tests: `arena/`, `verdant_reach/` |
 | `game/monsters/<monster>/` | Everything one monster owns: model, body, brain, look, tests |
-| `scripts/game.gd` | Boot, zones, camera, input, saving |
+| `game/game.gd` | Boot, zones, camera, input, saving |
 | `game/systems/world/` | The world every map is built on: `World` (terrain, paths, collision, chests), props, flora, grass, birds, weather, colour grading |
-| `scripts/hero.gd`, `enemy.gd` | Players and monsters |
+| `game/heroes/hero.gd`, `enemy.gd` | Players and monsters |
 | `game/items/run_build.gd`, `run_talents.gd`, `run_ui.gd` | A run's hero, its rites, gems and consumables, and its windows |
 | `scripts/<class>_skills.gd`, `*_fx.gd` | Each class's skills and their effects |
 | `game/systems/net/net.gd`, `lobby_client.gd` | Networking and the lobby browser |

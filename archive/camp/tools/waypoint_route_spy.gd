@@ -1,4 +1,4 @@
-extends "res://scripts/game.gd"
+extends "res://game/game.gd"
 ## Test-only transport boundary: exercise real waypoint dispatch without joining a public server.
 var dispatched: Array = []
 func _ready() -> void: pass

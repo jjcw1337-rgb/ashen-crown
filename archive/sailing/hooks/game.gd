@@ -1,4 +1,4 @@
-## Not a script: the Game methods and fields sailing had in scripts/game.gd, cut out whole when sailing was archived
+## Not a script: the Game methods and fields sailing had in game/game.gd, cut out whole when sailing was archived
 ## (2026-11-06), so they can be pasted back into Game. REVIVE.md lists where each was called from.
 
 ## The boat in this zone (coast.gd / isles.gd zones; BoatRide): moored, or sailing with the hero aboard.

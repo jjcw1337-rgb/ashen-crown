@@ -53,7 +53,7 @@ Modelled on Unreal's Gameplay Ability System and Slay the Spire 2's hooks, built
    has a stacking rule.
 3. **Statuses and tags** such as burning, feared, frozen or Branded, which other rules check.
 4. **Hooks** (on hit, on kill, on cast, when struck) that rites, gems and items subscribe to. These replace the 59
-   procs that are now one `match` in `run_talents.gd`.
+   procs that are now one `match` in `game/items/rites/rite_procs.gd`.
 5. **Cues**, which draw the effects. Today's fx events already work this way.
 6. **Delivery**: projectile, area, ground zone, channel/tether, stages, summon. These extend `SkillSpec` rather
    than replacing it.
@@ -99,7 +99,7 @@ Each step is done for the Archer first, all the way through, and the other heroe
    reproduces it or explains each difference.
 4. **The new damage and effect system**, server-side from day one ([combat](systems/combat.md), "What's changing").
    Move the Archer, then the rest. Nothing new is built on the old path.
-5. **One data source.** The codex JSON is the only copy. The copies in `data.gd`, `run_talents.gd` and
+5. **One data source.** The codex JSON is the only copy. The copies in `data.gd`, `rites/rites.gd`, `gems/gems.gd` and
    `talents.gd` go, and then so do `code_base.json` and the three-way merge.
 6. **Real ids** (`pierce` → `fire_arrow`) everywhere at once, with aliases for saved survivors. Ids travel over the
    network, so the server deploy and the clients ship together.
@@ -128,8 +128,8 @@ Touch points to coordinate:
   - Tasks: every hero into its folder, the per-skill split (the Archer first, as the template), the shared effects
     into `game/systems/fx/`, one `codex.json` per hero, then the damage and effect system. The docs by concept
     (`AGENTS.md`, `docs/content/`, `docs/systems/`, `docs/pipeline/`).
-  - Owns: `game/heroes/**`, `game/systems/**`, `class_skills.gd`, `skill_fx.gd`, `skill_spec.gd`, `run_talents.gd`,
-    `run_build.gd`, `codex.gd`, `data/codex/`, `tools/codex/`.
+  - Owns: `game/heroes/**`, `game/systems/**` (but `world/` and `loading/`), `game/items/**`, `data/codex/`,
+    `tools/codex/`.
 - **Shared big files** (`game.gd`, `ui.gd`, `hero.gd`, `net.gd`, `enemy.gd`): either of us may edit them.
   - Keep commits small, and pull before starting.
   - Before a large edit, add a line under "In progress" below and remove it when it lands.
@@ -137,10 +137,11 @@ Touch points to coordinate:
 
 ### In progress
 
-- Claude-2 (2026-11-07): every hero is on the template with its skills on the server (merged in
-  `claude-2/game-folder`, going to staging after the full test run), and the skill and rite text is short (Blaine).
-  Next: the net stack and the last shared scripts out of `scripts/`, one way for skills to send a target the player
-  picked, then the server refusing damage a player's game reports.
+- Claude-2 (2026-11-07): next, the server refusing damage a player's game reports (`ServerRules.REFUSE_REPORTED`:
+  counted now, refused once the arena and lobby tests stop killing through `Net.send_pvp_hit`); then cooldowns and
+  mana checked on the server (needs a design call: which message starts a cast). Done tonight besides the heroes: the
+  hero registry (`game/heroes/heroes.gd`), rites, gems and consumables split under `game/items/`, every hero's own
+  sounds in its skill folders.
 
 ## Cutting an old system
 
@@ -195,11 +196,11 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
 ## Status
 
 - [x] 1. Folders (2026-11-07): every hero is in `game/heroes/<hero>/`, one folder per skill (rules, look, models,
-  sounds), the dragons' shared code in `game/systems/dragons/`, the shared body builder in
-  `game/systems/bodies/` (`mocap_rig.gd`; `knight_rig.gd` is left in `scripts/`). Shared systems out of `scripts/`:
-  `game/systems/fx/`, `bodies/`, `audio/`, `combat/`, `skills/`, `data/` and `game/items/`. Left in `scripts/`: the
-  big shared files (`game.gd`, `hero.gd`, `net.gd`, `enemy.gd`, `ui.gd`), the net stack, the screens and the camp's
-  (being archived). Some heroes' own sounds are still in `assets/audio/sfx/`.
+  sounds), every hero's shared code in `game/heroes/hero.gd`, the dragons' in `game/systems/dragons/`. `scripts/` is
+  gone: the systems are in `game/systems/` (`fx/`, `bodies/`, `audio/`, `combat/`, `skills/`, `data/`, `net/`,
+  `saves/`, `telemetry/`, Claude-1's `world/` and `loading/`), rites, gems and consumables in `game/items/`, the
+  screens in `game/ui/`, the game itself in `game/game.gd`, the shared monster code in `game/monsters/enemy.gd`. Every
+  hero's own sounds are in its skill folders.
 - [x] 2. The Archer, end to end, and every other hero after him (2026-11-07). Done: the reference recording; `game/systems/skills/` (`Skill`, `Missile`,
   `GroundZone`, `DelayedArea`); all eleven of his skills in their own folders with their numbers in the codex,
   Thunderstep's stun 3 s and on players too (Blaine, 2026-11-07); Hunter's Mark no longer named in `enemy.gd`; his
@@ -208,7 +209,7 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
   `game/systems/fx/lightning/` (ArcFx) and the frost toolkit `game/systems/fx/frost/` (FrostFx), with Frost Volley's
   own look in his folder. The body fire every burn shows and the simulated-flame
   building blocks are `game/systems/fx/fire/flame_fx.gd` (FlameFx), the game clock `game/systems/game_clock.gd`, and
-  his arrows' look `shared/arrow_fx.gd`. Left: the burn's look chosen by class in `RunTalents` and `Enemy.ignite` (with
+  his arrows' look `shared/arrow_fx.gd`. Left: the burn's look chosen by class in `RiteProcs.on_hit` and `Enemy.ignite` (with
   the statuses work); joining FlameFx and the older FireFx (torches, campfires).
 - [ ] 3. Reference recordings: every hero's skills on still dummies (`tools/hero_reference.gd`,
   `tools/references/<class>.json`), and a PvP mode per hero through a real server (`bg_pvp_test.gd <hero>`). Left: a
@@ -228,8 +229,8 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
 - [x] Monsters into `game/monsters/<monster>/` (2026-11-07). Every folder has a card (`monster.gd`) listed in
   `Monsters.CARDS`: its kinds, its Meshy rigs, its personality and its own hooks (body, brain, moves, fx, fall).
   `Enemy` names no monster. Bosses run on `BossBrain`; the Meshy body builder is `game/systems/bodies/meshy_rig.gd`.
-  A monster's own sounds are in its `sounds/`. Left: its numbers into the codex (step 5); `Enemy` itself is still in
-  `scripts/` (a shared big file).
+  A monster's own sounds are in its `sounds/`. Left: its numbers into the codex (step 5). `Enemy` itself is
+  `game/monsters/enemy.gd`.
 - [x] Maps: the map registry `game/maps/maps.gd` (2026-11-07). Each map script declares its zones, indoor, music,
   loading art and line, `build`, `title` and `light`, and Game and World ask `Maps`. The camp rules are
   `game/systems/world/camps.gd`.
