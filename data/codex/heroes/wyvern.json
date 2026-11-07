@@ -36,7 +36,11 @@
 				"lightning",
 				"chain"
 			],
-			"lvl": 1
+			"lvl": 1,
+			"k": {
+				"jumps": 4,
+				"hop": 5.0
+			}
 		},
 		{
 			"id": "v_dive",
@@ -53,7 +57,12 @@
 				"movement"
 			],
 			"lvl": 1,
-			"run": true
+			"run": true,
+			"k": {
+				"r": 4.0,
+				"dmg": 240,
+				"stun_s": 0.8
+			}
 		},
 		{
 			"id": "v_cloud",
@@ -68,7 +77,16 @@
 			"range": 13.0,
 			"role": "a storm over a crowd",
 			"lvl": 9,
-			"run": true
+			"run": true,
+			"k": {
+				"secs": 4.0,
+				"r": 5.0,
+				"first": 0.25,
+				"every": 0.5,
+				"most": 2,
+				"dmg": 45,
+				"stun_s": 0.5
+			}
 		},
 		{
 			"id": "v_gale",
@@ -85,7 +103,14 @@
 				"cc"
 			],
 			"lvl": 1,
-			"run": true
+			"run": true,
+			"k": {
+				"r": 6.5,
+				"half": 40.0,
+				"dmg": 100,
+				"slow": 40,
+				"slow_s": 2.5
+			}
 		}
 	],
 	"rites": [

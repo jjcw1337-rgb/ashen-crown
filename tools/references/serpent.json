@@ -79,7 +79,8 @@
 				"dmg": 0.0,
 				"stun": 0.0
 			}
-		]
+		],
+		"loose": true
 	},
 	"run_attack": {
 		"buff": 0.0,

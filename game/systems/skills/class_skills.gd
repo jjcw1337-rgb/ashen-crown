@@ -30,13 +30,15 @@ static func of(cls: String):
 		"archer": return Archer
 		"plague": return Plague
 		"doug": return Doug
-		"wyrm", "serpent", "wyvern": return DragonSkills
+		"wyrm": return Wyrm
+		"serpent": return Serpent
+		"wyvern": return Wyvern
 		"any": return SharedSkills       # the shared skills (Data.SKILLS "cls": "any")
 	return null
 
 ## Every class's skills script (update/clear/died run on all of them: each looks after its own state).
 static func all() -> Array:
-	return [KnightSkills, Wraith, Demon, WarlockSkills, Archer, Plague, Doug, DragonSkills, SharedSkills]
+	return [KnightSkills, Wraith, Demon, WarlockSkills, Archer, Plague, Doug, Wyrm, Serpent, Wyvern, SharedSkills]
 
 ## The class a skill id belongs to ("any" for the common Attack and Block).
 static func owner(id: String) -> String:
@@ -248,7 +250,7 @@ static func trail_color(cls: String, skill: String) -> Color:
 		"wraith": return WraithFx.SPIRIT
 		"demon": return DemonFx.EMBER
 		"warlock": return Warlock.FEL
-		"wyrm": return Color(1.0, 0.42, 0.15)
-		"serpent": return Color(0.55, 0.9, 1.0)
-		"wyvern": return Color(0.55, 0.95, 0.9)
+		"wyrm": return Wyrm.ACCENT
+		"serpent": return Serpent.ACCENT
+		"wyvern": return Wyvern.ACCENT
 	return Color(1.0, 0.85, 0.5) if skill == "cleave" else Color(0.85, 0.9, 1.0)

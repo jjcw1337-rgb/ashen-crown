@@ -1,7 +1,7 @@
 class_name ArcFx
 extends RefCounted
 ## Arc's lightning, rebuilt (jj, 2026-11-04: "redo the lightning coming off of it to look better"), for the shared
-## Arc (SharedFx), the Storm Wyvern's Storm Arc (DragonRunFx) and the Archer's storm arrows. Draws only, on the caster's game and
+## Arc (SharedFx), the Storm Wyvern's Storm Arc (StormArcFx) and the Archer's storm arrows. Draws only, on the caster's game and
 ## his puppet's alike, from the skills' "cast" and "impact" {ps: the path, d} events.
 ##  - The bolts are real lightning: branching channels grown and rendered in Blender (tools/blender/fx/lightning_bolts.py,
 ##    Cycles + glare, packed by tools/fx_bolt_atlas.py into assets/textures/fx/storm/bolts.png, 4x4), each leap a

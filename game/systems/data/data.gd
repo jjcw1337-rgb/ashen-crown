@@ -652,7 +652,7 @@ const CLASSES := {
 		"desc": "A beaked physician of the cursed years, belted with vials and a smoking censer. Fights by control: vials of plague, a swarm of flies, a corpse flower that roots the careless, a fog to vanish in, a transfusion to outlast a beating, and a last experiment that turns the ground to quarantine."},
 	"warlock": {"voice": "gnome", "name": "Warlock", "str": 10, "dex": 10, "vit": 10, "ene": 10,
 		"desc": "A hooded sorcerer bound by a fel pact. Drains the life from foes in a forking green beam, rots them with blight and chains them where they stand."},
-	# the dragons (scripts/dragon.gd): no skills yet, only the basic attack (claw, bite, tail spin); "claws" is the
+	# the dragons (game/heroes/<dragon>/, their body game/systems/dragons/dragon.gd): the basic attack is their claw, bite and tail spin; "claws" is the
 	# damage and speed of their natural weapons when nothing is equipped (they start with none)
 	"wyrm": {"voice": "wyrm", "name": "Obsidian Wyrm", "str": 26, "dex": 12, "vit": 26, "ene": 12, "claws": [3, 8], "claw_speed": 1.0,
 		"desc": "A heavy, low-slung dragon of black volcanic scale, ember-tipped spines and blood-red wings. Rakes with its foreclaws, bites, and spins to sweep its long tail through everything around it."},
@@ -747,7 +747,7 @@ static var RUN_SKILLS: Array = [
 		"desc": "Scatter eight banana peels in a ring round you: whatever steps on one goes down. Your next blow on a slipped foe within 4 seconds hits twice as hard."},
 	{"id": "u_cannon", "cls": "doug", "name": "Human Cannonball", "lvl": 9, "mana": 12, "cd": 8.0, "tags": ["movement"], "aim": "point", "range": 14.0, "role": "fly in, flatten",
 		"desc": "Fire yourself out of a cannon onto the pointer (14 metres): you land in a belly-flop that deals 260% weapon damage within 4.5 metres and knocks them down."},
-	# the dragons (DragonSkills; looks DragonRunFx)
+	# the dragons' (game/heroes/serpent/ and wyvern/: Serpent, Wyvern)
 	{"id": "s_tomb", "cls": "serpent", "name": "Glacial Tomb", "lvl": 1, "mana": 10, "cd": 9.0, "tags": ["cc"], "aim": "point", "range": 12.0, "role": "lock a pack, then shatter it",
 		"desc": "Seal the foe nearest the pointer, and all within 2.5 metres of it, in ice for 1.6 seconds. Then the tomb shatters: 180% weapon damage to each sealed foe and 90% to everything else within 3 metres."},
 	{"id": "s_coil", "cls": "serpent", "name": "Crushing Coil", "lvl": 1, "mana": 7, "cd": 0.0, "use": 1.0, "aim": "self", "role": "crush what surrounds you",

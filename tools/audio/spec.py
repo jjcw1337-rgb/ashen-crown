@@ -243,10 +243,13 @@ SPEC = [
                 "lute over a low hummed choir, sombre and tender, background music loop, no drums"),
     # the Battlegrounds' fighting music (jj, 2026-11-07: "throw me some uplifting music while i fight"): three takes
     # for jj to pick from; the forest bed plays under it
-    dict(name="music_bg", src="eleven", n=12, dur=30.0, hit=0, loop=True, label="uplifting battle music",
-         # (takes 0-2 the first prompt, 3-5 brighter folk, 6-8 a heroic anthem; jj: "lighten it up", takes 9-11 from this)
-         prompt="light cheerful upbeat adventure fight music: bouncy plucked strings, playful flutes and glockenspiel, "
-                "light hand percussion, a fun bright skipping melody, carefree and lively, seamless background music loop"),
+    dict(name="music_bg", src="eleven", n=18, dur=30.0, hit=0, loop=True, label="uplifting battle music",
+         # (takes 0-2 the first prompt, 3-5 brighter folk, 6-8 a heroic anthem with choir, 9-11 too light; Blaine: "somewhere
+         # in between church choir and baby music", takes 12-14 from this)
+         # (12-14 energetic combat; Blaine: "as good as a human home base or a dwarf base", takes 15-17 from this one)
+         prompt="warm proud feel-good medieval fantasy town music: a sturdy marching snare and frame drum, warm french horns "
+                "and low brass, a confident singable fiddle and lute melody, hearty and heroic but relaxed, like a mountain "
+                "kingdom's great hall, mid tempo, no choir, seamless background music loop"),
     dict(name="wind", src="eleven", n=3, dur=8.0, hit=0, loop=True, label="wind blowing",
          prompt="cold wind blowing across an empty moor at night, steady, no music"),
     # the camp's bonfire takes what you throw in (gone for good), and a pick-up click in the inventory
@@ -441,7 +444,7 @@ SPEC += [
          prompt="a thrown glass alchemy flask shattering on the ground with a magical burst" + DRY),
     dict(name="banshee_wail", src="eleven", n=4, dur=1.8, hit=0, label="a banshee's terrifying scream",
          prompt="a ghostly banshee wraith letting out a piercing terrifying scream that echoes and warps, chilling and unearthly" + DRY),
-    # the dragons' run skills (DragonRunFx, 2026-11-06)
+    # the dragons' run skills (their looks in game/heroes/serpent/ and wyvern/skills/, 2026-11-06)
     dict(name="ice_tomb_seal", src="eleven", n=4, dur=1.2, hit=0, label="ice sealing a foe in",
          prompt="thick glacier ice rapidly freezing and cracking closed around something, crystalline crunching and a deep cold creak" + DRY),
     dict(name="wyvern_dive", src="eleven", n=4, dur=1.4, hit=0.9, label="a dragon diving down with a thunderclap",
