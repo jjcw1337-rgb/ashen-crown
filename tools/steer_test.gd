@@ -23,7 +23,7 @@ func _run() -> void:
 		g._intro_skip = true
 		await process_frame
 	await g.start_game(false, "knight")
-	await g.load_zone(0, "town", "start")
+	await g.load_zone(0, "sandbox", "start")
 	for i in 10:
 		await process_frame
 	var h = g.hero

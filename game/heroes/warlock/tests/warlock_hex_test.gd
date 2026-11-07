@@ -262,7 +262,7 @@ func _run() -> void:
 	ok(is_equal_approx(float(r.fx("warlock").get("fear_dur", 0.0)), 0.4), "Haunting's stacks add up (0.4 s)")
 
 	# ---- clean up
-	await g.travel(0, "town", "start")
+	await g.travel(0, "sandbox", "start")
 	while g._busy:
 		await process_frame
 	ok(hex.dots.is_empty() and (WarlockSkills.skill(h, "w_effigy") as DreadTotem).totems.is_empty() and not h.fxs.keys().any(func(k): return str(k).begins_with("hx_") and k != "hx_shield"), "a zone change leaves nothing behind but his shield (%s)" % str(h.fxs.keys()))

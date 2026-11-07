@@ -1,114 +1,17 @@
 class_name Data
 extends RefCounted
-## Static game data: the act, monsters, item bases, affixes, uniques, vendors.
+## Static game data: the act, monsters, item bases, affixes, uniques.
 
-## The one act: Act I, its camp (Enter World, zone "town") and its level. Game.cur_act is always 0.
+## The one act: Act I and its level (Data.zone_level). Game.cur_act is always 0.
 const ACTS := [
-	{"name": "The Ashen Moors", "town": "The Forsaken Wilds", "lvl": 1},
+	{"name": "The Ashen Moors", "lvl": 1},
 ]
 
-## The waypoint network: Act I's tab and its stones (only the camp's today). Each waypoint opens once a player
-## touches its stone (Game.waypoints_known); the camp's is open as soon as you arrive.
-## Adding a waypoint: a point here (a new id; its zone), and in that zone's builder one line,
-## `add_waypoint("<id>", Vector3(x, 0, z))` (World.add_waypoint: the stone, its colliders and its own
-## arrival spot), so a zone can hold several (see ForestCamp). A new zone also goes in WAYPOINT_ZONES and
-## World.build. check_waypoints() reports mistakes (dev builds print them at start).
-##   group: its tab group (WAYPOINT_GROUPS) · tab: the numeral on the act's tab (its name is Data.RUNS[run].name) ·
-##   art: its banner (Meshy) · points: id (what the stone binds), zone (where it takes you), kind (camp | wild | road |
-##   city: its icon), name (optional; else the zone's title)
-## The window's tab groups, left to right; a group shows only once it has an entry (group: its id).
-const WAYPOINT_GROUPS := [
-	{"id": "acts", "name": "Acts"},
-	{"id": "ancient", "name": "Ancient Levels"},
-	{"id": "pve", "name": "PvE"},
-	{"id": "battlegrounds", "name": "Battlegrounds"},
-	{"id": "daily", "name": "Dailies"},
-]
-
-## Battlegrounds the waypoint window offers (its "Battlegrounds" tab group; shown once this has an entry).
-## Each card is a way down from the camp's waypoint with the character playing (Game.waypoint_battleground: a word
-## on the stakes, the dais flares, the raid server is joined; the raid ends back on the dais). The raid's numbers
-## (round length, when the portals open, how many raiders) come from Battlegrounds' constants, never from here.
-##   id · name · kind (its mode, under the name) · art (the Meshy painting on the window's banner, 640x480) · wide
-##   (the same painting at 16:9, behind the loading words on the way down) · lines (what the card says of the place)
+## The Battlegrounds' painting behind the loading screen's words on the way down (Game.set_loading_art): its "wide"
+## (16:9) Meshy painting. (It was the camp's waypoint window's card; the waypoint is archived, archive/camp/.)
 const WAYPOINT_BATTLEGROUNDS := [
-	{"id": "crypt", "name": "The Verdant Reach", "kind": "Extraction raid",
-		"art": "res://assets/textures/ui/wp_bg_crypt.png", "wide": "res://assets/textures/ui/wp_bg_crypt_wide.jpg",
-		"lines": ["An open forest of monster camps, two bosses in its depths. Clear a camp and its chest offers a skill, a rite or a gem.",
-			"Other raiders are hunting there too. Reach an Extraction Portal once they open to keep your hero as a survivor."]},
+	{"id": "crypt", "name": "The Verdant Reach", "wide": "res://assets/textures/ui/wp_bg_crypt_wide.jpg"},
 ]
-
-## Activity registration: add/remove entries here, not buttons in the waypoint panel.
-## group: pve | daily; route: zone; run, zone, spawn; optional level, enabled,
-## starts_at / ends_at (UTC Unix seconds). Scheduled entries disappear outside their window.
-static var WAYPOINT_ACTIVITIES: Array = []
-
-static func waypoint_available(entry: Dictionary, now: float) -> bool:
-	return bool(entry.get("enabled", true)) and now >= float(entry.get("starts_at", 0)) and (not entry.has("ends_at") or now < float(entry["ends_at"]))
-
-static func waypoint_battleground(id: String) -> Dictionary:
-	for b in WAYPOINT_BATTLEGROUNDS:
-		if str(b.get("id", "")) == id and waypoint_available(b, Time.get_unix_time_from_system()):
-			return b
-	return {}
-
-const WAYPOINT_ACTS := [
-	{"run": 0, "group": "acts", "tab": "I", "art": "res://assets/textures/ui/wp_act1.png",
-		"points": [{"id": "town", "zone": "town", "kind": "camp"}]},
-]
-
-static func waypoint_act(run: int) -> Dictionary:
-	for a in WAYPOINT_ACTS:
-		if int(a["run"]) == run:
-			return a
-	return {}
-
-static func waypoint_point(run: int, id: String) -> Dictionary:
-	for p in waypoint_act(run).get("points", []):
-		if str(p["id"]) == id:
-			return p
-	return {}
-
-## Zones the world can build (World.build); a waypoint must lead to one of these.
-const WAYPOINT_ZONES := ["town"]
-
-## Problems in WAYPOINT_ACTS, one line each (empty = all good). Checked at start in dev builds
-## (Game) and by game/maps/camp/tests/waypoint_test.gd, so a mistake shows the moment it is made.
-static func check_waypoints() -> Array:
-	var errs := []
-	var runs := {}
-	var groups := WAYPOINT_GROUPS.map(func(g): return g["id"])
-	for a in WAYPOINT_ACTS:
-		var r := int(a.get("run", -1))
-		var tag := "act run %d" % r
-		if runs.has(r):
-			errs.append(tag + ": run used twice")
-		runs[r] = true
-		if not groups.has(a.get("group", "acts")):
-			errs.append(tag + ": unknown group '%s' (add it to WAYPOINT_GROUPS)" % a.get("group"))
-		if a.has("art") and not ResourceLoader.exists(a["art"]):
-			errs.append(tag + ": banner not found: " + str(a["art"]))
-		if r != 0:
-			errs.append(tag + ": Act I (run 0) is the only act")
-		var pts: Array = a.get("points", [])
-		if pts.is_empty():
-			errs.append(tag + ": no waypoints")
-		var ids := {}
-		for p in pts:
-			var id := str(p.get("id", ""))
-			if id == "" or ids.has(id):
-				errs.append(tag + ": waypoint id missing or used twice ('%s')" % id)
-			ids[id] = true
-			if not WAYPOINT_ZONES.has(str(p.get("zone", ""))):
-				errs.append(tag + ": waypoint '%s' leads to unknown zone '%s'" % [id, p.get("zone", "")])
-	for b in WAYPOINT_BATTLEGROUNDS:
-		var btag := "battleground '%s'" % str(b.get("id", "?"))
-		if str(b.get("id", "")) == "" or str(b.get("name", "")) == "":
-			errs.append(btag + ": needs an id and a name")
-		for key in ["art", "wide"]:
-			if b.has(key) and not ResourceLoader.exists(b[key]):
-				errs.append(btag + ": %s not found: %s" % [key, str(b[key])])
-	return errs
 
 ## How each character draws and puts away its weapon (WeaponCarry; the motion itself lives in Anim).
 ## Keyed by class (or, later, an enemy kind). Any key left out takes WeaponCarry.DEFAULT; a character
@@ -136,9 +39,6 @@ const WEAPON_PROFILES := {
 	"serpent": {"motion": "back", "store": "back"},
 	"wyvern": {"motion": "back", "store": "back"},
 }
-
-## The camp's people by role (ForestCamp, the quest givers).
-const VENDORS := {"smith": "Halvar Emberhammer", "armor": "Hedda Ironhand", "alch": "Agnes Grimwood", "gamble": "Tarrow the Dice", "stash": "Stash", "elder": "Captain Roth"}
 
 ## look keys: skin, cloth, cloth2, armor, height, bulk, head, eyes, horns, cape, thin, tail, wings, weapon, shield
 const ENEMIES := {
@@ -349,8 +249,9 @@ const BASES := {
 		"lore": "A claw of Rimeclaw's that never thaws"},
 	"stormglass": {"icon": "res://assets/textures/items/stormglass.png", "model": "res://assets/models/items/stormglass.glb", "name": "Stormglass Eye", "slot": "material", "kind": "orb", "lvl": 1, "price": 400, "color": Color(0.72, 0.45, 1.0),
 		"lore": "Thundermaw's eye, a storm still raging inside"},
-	# resources (Harvest, Furnace): stacked in one inventory cell up to "stack", never worn; "fuel" is what the
-	# furnace reads (heat it adds per second while burning, how long one burns, the hottest it can drive the fire)
+	# resources (the camp's woodcutting and furnace, archived: archive/camp/): kept so the bags of saved characters and
+	# survivors that hold them still load. Stacked in one inventory cell up to "stack", never worn; "fuel" was the
+	# furnace's (heat it adds per second while burning, how long one burns, the hottest it can drive the fire)
 	"oak_log": {"name": "Oak Log", "slot": "resource", "kind": "log", "lvl": 1, "price": 4, "stack": 50, "color": Color(0.55, 0.38, 0.22),
 		"bark": Color(0.24, 0.18, 0.12), "heart": Color(0.78, 0.6, 0.4), "fuel": {"heat": 62.0, "burn": 40.0, "max_temp": 1240.0, "name": "steady"},
 		"lore": "Dense moor oak. Burns long and even."},
@@ -360,29 +261,10 @@ const BASES := {
 	"heartwood": {"name": "Ashen Heartwood", "slot": "resource", "kind": "log", "lvl": 1, "price": 40, "stack": 10, "color": Color(1.0, 0.42, 0.12),
 		"bark": Color(0.06, 0.05, 0.05), "heart": Color(0.95, 0.35, 0.08), "glow": true, "fuel": {"heat": 120.0, "burn": 50.0, "max_temp": 1400.0, "name": "searing"},
 		"lore": "Wood that smouldered for an age inside a living tree. Only it burns white."},
-	# tools: carried in the inventory, never equipped; the woodsman's axe lets anyone chop trees (combat axes do too)
+	# tools: carried in the inventory, never equipped (the woodsman's axe felled the camp's trees; kept for saved bags)
 	"woodsman_axe": {"name": "Woodsman's Axe", "slot": "tool", "kind": "axe", "lvl": 1, "price": 25, "chop": 1.0, "shape": {"haft": 0.62, "head": 0.17},
 		"lore": "A plain felling axe. Every hero in the Wilds carries one."},
 }
-
-## How many strikes' worth each combat axe is when used to chop (a woodsman's axe is 1.0; Harvest.chop_power).
-const CHOP_POWER := {"hand_axe": 1.1, "war_axe": 1.35, "executioner": 1.65}
-
-## Chopping, per class (like WEAPON_PROFILES): how far from the trunk the hero stands, the swing's length in seconds,
-## the axe's size in the hand. A class with no entry gets DEFAULT_CHOP and the procedural "chop" pose (Anim), so a
-## new class chops on day one.
-const DEFAULT_CHOP := {"stand": 1.05, "swing": 1.05, "axe_scale": 1.0}
-const CHOP_PROFILES := {
-	"knight": {"stand": 1.1, "swing": 1.05},
-	"archer": {"stand": 1.05, "swing": 1.0},
-	"plague": {"stand": 1.05, "swing": 1.1},
-	"demon": {"stand": 1.35, "swing": 1.25, "axe_scale": 1.35},
-	"wraith": {"stand": 1.15, "swing": 1.0, "axe_scale": 1.0, "spectral": true},
-	"warlock": {"stand": 0.85, "swing": 0.9, "axe_scale": 0.75},
-}
-
-static func chop_profile(cls: String) -> Dictionary:
-	return DEFAULT_CHOP.merged(CHOP_PROFILES.get(cls, {}), true)
 
 ## Affixes: [stat, prefix/suffix name, min, max, per-level growth]
 const AFFIXES := [

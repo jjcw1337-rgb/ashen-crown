@@ -39,7 +39,6 @@ var identity := ""
 var arena_hud: Label
 var _returning := false
 var admitted := false
-var lan_row: HBoxContainer # the home screen's LAN (Blaine, 2026-11-05: no menu of its own, still there)
 var host_box: VBoxContainer
 var view: MpLobbyView
 ## The lobby list's state for the view: the last request's error, and whether a list has arrived yet.
@@ -132,7 +131,6 @@ func open(mode := "") -> void:
  if room.get("members",{}).has(identity):character=str(room.members[identity].character)
  if mode!="":selected_mode=mode
  if not MpMode.mode_on(selected_mode):selected_mode=MpMode.MODES[0]
- lan_row.visible=false
  game.ui.close_all();panel.show();draw();refresh()
  if not game.playing:recover_stakes()
 
@@ -294,7 +292,6 @@ func finished(reason: String) -> void:
 
 func _process(delta: float) -> void:
  if game==null:return
- game.ui.quest_tracker.visible=not game.arena_mode and not game.bg_mode
  arena_hud.visible=game.arena_mode and game.sandbox==null and not game.ui.any_panel_open()
  if game.arena_mode:
   var s:Dictionary=game.arena_state

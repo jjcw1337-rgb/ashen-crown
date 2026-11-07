@@ -107,7 +107,7 @@ func _run() -> void:
 	await create_timer(0.9).timeout
 	print("[W] covenant: buff %.1f covenant %.1f" % [h.buff_t, covenant_left.call()])
 	g.save_game()
-	await g.travel(0, "town", "start")
+	await g.travel(0, "sandbox", "start")
 	while g._busy:
 		await process_frame
 	print("[W] after travel: bolts %d pools %d channel %s" % [blight.call().bolts.size(), blight.call().pools.size(), h.channel_t >= 0.0])

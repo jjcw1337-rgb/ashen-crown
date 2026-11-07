@@ -32,9 +32,6 @@ var bar_style := "A"
 var skill_slots := {}        # bar slot ("lmb", "rmb", "Q".."V") -> its Control
 var skills_panel: PanelContainer
 var talent_panel: PanelContainer
-var quest_panel: PanelContainer       # the quest log (J, Quests)
-var quest_list: VBoxContainer
-var quest_tracker: VBoxContainer     # the current objectives under the corner map
 var talent_cols: HBoxContainer
 var talent_head: Label
 var talent_badge: Button       # over the bar while talent points wait to be spent
@@ -45,12 +42,6 @@ var _skill_dragged := false
 var skill_rows: VBoxContainer
 const BAR_TEX := {"frame": "res://assets/textures/ui/bar_frame.png", "slot": "res://assets/textures/ui/slot.png", "slot_big": "res://assets/textures/ui/slot_big.png"}
 var skill_hb: HBoxContainer
-var class_panel: Control
-## Title screen: the saved characters (play / delete), and the new character's name.
-var chars_panel: Control
-var chars_sub: Label
-var chars_list: VBoxContainer
-var name_edit: LineEdit
 var belt_slots: Array = []
 var target_box: PanelContainer
 var target_name: Label
@@ -74,9 +65,6 @@ const BIND_KEYS_UI := ["Q", "E", "R", "F", "G", "V"]
 
 var inv_panel: PanelContainer
 var inv_cells: Array = []
-var ench_panel: PanelContainer
-var ench_rows := {}
-var ench_gold: Label
 # dragging an inventory item: press, move a few pixels, release over a slot or the world
 var drag_idx := -1
 var drag_from := Vector2.ZERO
@@ -89,53 +77,22 @@ var gold_lbl: Label
 var char_panel: PanelContainer
 var char_labels := {}
 var plus_btns: Array = []
-var shop_panel: PanelContainer
-var auction_panel: PanelContainer
-var shop_title: Label
-var shop_grid: GridContainer
-var shop_items: Array = []
-var shop_mode := ""
-var shop_view: Array = []      # the shop_items indices shown, in cell order (the open tab's)
-var shop_tab := "All"
-var shop_tabs: HBoxContainer
-var shop_gold: Label
-var shop_who: Label
-var shop_role: Label
-var shop_greet: Label
-var shop_face: PanelContainer  # holds the trader's live portrait
-var furnace_ui: FurnaceUI      # the furnace window (furnace_ui.gd), opened at Halvar's furnace
-var trade_with: Inter = null   # the NPC whose window (dialog, trade, stash) is open: walking off closes it
-var plates: Control            # VendorUI.Plates: nameplates over the town's people
-var stash_panel: PanelContainer
-var burn_panel: PanelContainer   # the camp's bonfire: drag or right-click an item to burn it for good
 var vote_panel: Control          # the party's ready check (Net.ask_trip): Join / Not yet
-var burn_fire: Control
-var stash_cells: Array = []
-var wp_panel: PanelContainer
 var dialog_panel: PanelContainer
 var dialog_name: Label
 var dialog_text: Label
 var dialog_btns: HBoxContainer
 var gfx_info: Label
 var pause_panel: PanelContainer
-var invite_btn: Button
 var gfx_btn: Button
 var title_panel: Control
 var sound_btn: Button
 var test_panel: VBoxContainer          # the Escape menu's Admin column (dev tools)
-var join_panel: PanelContainer
-var join_list: VBoxContainer
-var join_ip: LineEdit
-var join_hint: Label
-var join_character_id := ""
 var hud: Control                  # the screen's layers (setup): the in-game HUD
-var windows: Control              # inventory, character sheet, shops, the stash, the fire, waypoints
-var menus: Control                # the title and its screens (characters, class picker, co-op, Battlegrounds)
+var windows: Control              # inventory, character sheet, skills, rites
+var menus: Control                # the title (the multiplayer page's 3D stage)
 var modals: Control               # dialogs, the party vote, the pause menu, the F8 panel, death
 var top: Control                  # tooltips, drags, messages, sparkles: over everything
-var menu_shade: ColorRect         # under a menu screen opened over the title: dims it and keeps its clicks off it
-var home: TitleHome               # the title's controls (title_home.gd): the character sidebar, the modes and Play
-var _join_refresh := 0.0
 var death_panel: Control
 var spectate_panel: Control      # Battlegrounds: the fallen hero watching the living (Game.spectate_*)
 var _spec_name: Label
@@ -148,7 +105,6 @@ var boss_ref = null
 var minimap: Control
 var chat: ChatBox                # in-game chat (game/ui/chat/)
 var loot_list: LootList          # Ctrl: the items on the ground nearby (game/ui/loot_list/)
-var day_clock: DayClock              # the camp's hour on the corner map's ring
 var show_fps := false
 
 func setup(g: Node) -> void:
@@ -183,32 +139,18 @@ func setup(g: Node) -> void:
 	fm.shader = fsh
 	dmg_flash.material = fm
 	hud.add_child(dmg_flash)
-	plates = VendorUI.Plates.new()
-	plates.ui = self
-	hud.add_child(plates)
 	_build_hud()
 	chat = ChatBox.attach(self)
 	loot_list = LootList.attach(self)
 	_build_inventory()
 	_build_character()
-	_build_shop()
-	auction_panel = AuctionUI.build(self)    # the Gilded Hall's window (auction_ui.gd)
-	_build_stash()
-	_build_burn()
-	furnace_ui = FurnaceUI.new()
-	windows.add_child(furnace_ui)
-	furnace_ui.build(self)
 	_build_vote()
-	_build_waypoints()
 	_build_dialog()
 	_build_pause()
 	_build_skills_panel()
 	_build_talent_panel()
-	_build_quests()
 	_build_tooltip()
 	_build_title()
-	_build_join()
-	_build_enchant()
 	_build_death()
 	_build_spectate()
 	run_ui = RunUI.new()
@@ -740,26 +682,6 @@ func _build_hud() -> void:
 	minimap.offset_bottom = 252
 	minimap.set_big(false)
 	hud.add_child(minimap)
-	# the camp's hour (DayNight), a small dial on the corner map's ring at its lower left
-	day_clock = DayClock.new()
-	day_clock.game = game
-	day_clock.font = font_title
-	day_clock.anchor_left = 1.0
-	day_clock.anchor_right = 1.0
-	day_clock.offset_left = -225
-	day_clock.offset_right = -173
-	day_clock.offset_top = 195
-	day_clock.offset_bottom = 247
-	hud.add_child(day_clock)
-	quest_tracker = VBoxContainer.new()
-	quest_tracker.anchor_left = 1.0
-	quest_tracker.anchor_right = 1.0
-	quest_tracker.offset_left = -250
-	quest_tracker.offset_right = -18
-	quest_tracker.offset_top = 262
-	quest_tracker.add_theme_constant_override("separation", 1)
-	quest_tracker.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hud.add_child(quest_tracker)
 
 ## Small gold key-cap in a slot's corner showing its hotkey.
 func _keycap(k: String) -> PanelContainer:
@@ -798,7 +720,7 @@ func refresh_skill_slots() -> void:
 		mana_globe.set_style(hud)
 
 const SLOT_NAMES := {"lmb": "Left mouse", "rmb": "Right mouse"}
-const HINT_STORY := "WASD: move  ·  Left mouse: attack  ·  Right mouse, Q E R F G V: skills (K to set them)  ·  Space: dodge roll (hold to sprint)  ·  N: rites  ·  J: quests  ·  1-4: potions  ·  I/C: inventory/stats  ·  T: portal  ·  Tab: map"
+const HINT_STORY := "WASD: move  ·  Left mouse: attack  ·  Right mouse, Q E R F G V: skills (K to set them)  ·  Space: dodge roll (hold to sprint)  ·  N: rites  ·  1-4: potions  ·  I/C: inventory/stats  ·  Tab: map"
 ## A multiplayer run character's controls (RunBuild: five slots, the build window, camp chests)
 const HINT_RUN := "WASD: move  ·  Left mouse: attack  ·  Right mouse, Q E R F: skills  ·  I or K: your build  ·  Space: dodge roll (hold to sprint)  ·  1-4: consumables  ·  Clear a camp, open its chest: an upgrade  ·  Tab: map"
 
@@ -1480,125 +1402,6 @@ func _talent_node(t: Dictionary, tree: int, open: bool) -> Control:
 	return p
 
 # ---------------------------------------------------------------- inventory
-## The quest log (J): every quest taken, the main quest first, with its story, objectives and reward. The tracker
-## under the corner map lists the current objectives. Both redraw when a quest moves (Quests.changed).
-func _build_quests() -> void:
-	quest_panel = _panel("Quests", true, 540, 470)
-	var vb: VBoxContainer = quest_panel.get_node("vb")
-	var sc := ScrollContainer.new()
-	sc.custom_minimum_size = Vector2(520, 420)
-	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	vb.add_child(sc)
-	quest_list = VBoxContainer.new()
-	quest_list.add_theme_constant_override("separation", 14)
-	quest_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sc.add_child(quest_list)
-	quest_panel.visibility_changed.connect(func():
-		if quest_panel.visible:
-			_fill_quests())
-	game.quests.changed.connect(func():
-		_fill_tracker()
-		if quest_panel.visible:
-			_fill_quests())
-
-func _fill_quests() -> void:
-	for c in quest_list.get_children():
-		c.queue_free()
-	var qs = game.quests
-	var shown := 0
-	for pass_done in [false, true]:
-		for q in qs.current() if not pass_done else qs.line().filter(func(x): return qs.status(x["id"]) == "done"):
-			var id: String = q["id"]
-			var s: String = qs.status(id)
-			# each quest on its own inset card: a gold edge for the act's main quest, dimmer when done
-			var card := PanelContainer.new()
-			var csb := StyleBoxFlat.new()
-			csb.bg_color = Color(0.035, 0.03, 0.03, 0.85)
-			csb.border_color = (GOLD if q.get("main", false) else Color(0.55, 0.45, 0.3)).darkened(0.45 if s == "done" else 0.0)
-			csb.border_width_left = 4
-			csb.border_width_top = 1
-			csb.border_width_right = 1
-			csb.border_width_bottom = 1
-			csb.content_margin_left = 14
-			csb.content_margin_right = 10
-			csb.content_margin_top = 8
-			csb.content_margin_bottom = 10
-			card.add_theme_stylebox_override("panel", csb)
-			quest_list.add_child(card)
-			var box := VBoxContainer.new()
-			box.add_theme_constant_override("separation", 3)
-			card.add_child(box)
-			var tl := _label(("◆  " if q.get("main", false) else "") + str(q["name"]) + ("   (done)" if s == "done" else ""), 19, GOLD if s != "done" else DIM, true)
-			box.add_child(tl)
-			var who: String = Data.VENDORS.get(q["giver"], "")
-			box.add_child(_label(("Main quest  ·  " if q.get("main", false) else "") + "From " + who, 12, DIM))
-			var story := _label(str(q["done"] if s != "active" else q["busy"]), 14)
-			story.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			story.custom_minimum_size = Vector2(470, 0)
-			box.add_child(story)
-			if s != "done":
-				var c: Array = qs.counts(id)
-				var goals: Array = q["goals"]
-				for i in goals.size():
-					var g: Dictionary = goals[i]
-					var got: bool = int(c[i]) >= int(g["n"])
-					var gl := _label(("☑  " if got else "☐  ") + str(g["text"]) + ("   %d / %d" % [c[i], g["n"]] if int(g["n"]) > 1 else ""), 14, Color(0.6, 0.85, 0.5) if got else Color(0.9, 0.86, 0.78))
-					box.add_child(gl)
-				if s == "ready":
-					box.add_child(_label("✔  Return to " + who, 14, Color(1.0, 0.82, 0.45)))
-				var rw := _label("Reward: " + qs.reward_text(q), 13, DIM)
-				rw.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-				rw.custom_minimum_size = Vector2(470, 0)
-				box.add_child(rw)
-			shown += 1
-	if shown == 0:
-		var none := _label("No quests yet. Talk to the people of the camp: a gold ! over someone means they have work for you.", 14, DIM)
-		none.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		none.custom_minimum_size = Vector2(500, 0)
-		quest_list.add_child(none)
-	# what's ahead, under the list (the log is never a bare frame)
-	var dv := _divider(24)
-	dv.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	quest_list.add_child(dv)
-	var hint := _label("More work turns up as you go: a gold ! over someone in the camp has a job for you, a ? is ready to hand in. The tracker under the map keeps the current ones in sight.", 13, Color(0.6, 0.56, 0.48))
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.custom_minimum_size = Vector2(470, 0)
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	quest_list.add_child(hint)
-
-func _fill_tracker() -> void:
-	if quest_tracker == null:
-		return
-	for c in quest_tracker.get_children():
-		c.queue_free()
-	var qs = game.quests
-	for q in (qs.current() as Array).slice(0, 4):
-		var id: String = q["id"]
-		var t := _label(str(q["name"]), 15, GOLD, true)
-		t.add_theme_constant_override("outline_size", 4)
-		t.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-		t.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		quest_tracker.add_child(t)
-		var lines: Array = []
-		if qs.status(id) == "ready":
-			lines.append(["✔ Return to " + str(Data.VENDORS.get(q["giver"], "")), Color(1.0, 0.82, 0.45)])
-		else:
-			var c: Array = qs.counts(id)
-			var goals: Array = q["goals"]
-			for i in goals.size():
-				if int(c[i]) < int(goals[i]["n"]):
-					lines.append(["· %s%s" % [goals[i]["text"], (" %d/%d" % [c[i], goals[i]["n"]]) if int(goals[i]["n"]) > 1 else ""], Color(0.88, 0.85, 0.78)])
-		for ln in lines:
-			var l := _label(str(ln[0]), 13, ln[1])
-			l.add_theme_constant_override("outline_size", 4)
-			l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-			l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			quest_tracker.add_child(l)
-		var gap := Control.new()
-		gap.custom_minimum_size = Vector2(0, 6)
-		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		quest_tracker.add_child(gap)
-
 func _panel(title: String, left: bool, w: int, h: int) -> PanelContainer:
 	var p := PanelContainer.new()
 	if left:
@@ -1635,8 +1438,6 @@ func _panel(title: String, left: bool, w: int, h: int) -> PanelContainer:
 	x.pressed.connect(func():
 		p.visible = false
 		tooltip.visible = false
-		if p == shop_panel or p == stash_panel or p == burn_panel:
-			shop_mode = ""
 		Sfx.play("click"))
 	hb.add_child(x)
 	vb.add_child(_divider(22))
@@ -1843,10 +1644,6 @@ func _build_inventory() -> void:
 	x.pressed.connect(func():
 		inv_panel.visible = false
 		tooltip.visible = false
-		shop_panel.visible = false
-		stash_panel.visible = false
-		burn_panel.visible = false
-		shop_mode = ""
 		Sfx.play("click"))
 	body.add_child(x)
 	# the alcove: the knight's silhouette in recessed iron, a bronze line round it
@@ -1880,7 +1677,7 @@ func _build_inventory() -> void:
 	# the bag: 10 x 4 sockets
 	for i in 40:
 		var idx := i
-		var c := _slot(Vector2(CELL, CELL), func(ev): _inv_click(idx, ev), func(p, on): _hover(p, on, "sell" if shop_mode in ["smith", "armor", "alch", "gamble"] else ("stash" if shop_mode == "stash" else "inv")), "", true)
+		var c := _slot(Vector2(CELL, CELL), func(ev): _inv_click(idx, ev), func(p, on): _hover(p, on, "inv"), "", true)
 		c.gui_input.connect(func(ev: InputEvent): _inv_drag_input(idx, ev))
 		c.position = INV_GRID + Vector2((i % 10) * (CELL + 2), (i / 10) * (CELL + 2))
 		body.add_child(c)
@@ -1961,23 +1758,7 @@ func _inv_click(idx: int, ev: InputEventMouseButton) -> void:
 		dragging = false
 		Sfx.play("inv_click", -2.0, randf_range(0.96, 1.04))
 	elif ev.button_index == MOUSE_BUTTON_RIGHT:
-		if shop_mode in ["smith", "armor", "alch", "gamble"]:
-			hero.inventory[idx] = null
-			hero.gold += Items.sell_price(it)
-			Sfx.play("gold")
-			refresh()
-		elif shop_mode == "burn":
-			burn_request(idx)
-		elif shop_mode == "reforge":
-			reforge_request(idx)
-		elif shop_mode == "furnace":
-			furnace_ui.bag_click(idx, ev.shift_pressed)
-		elif shop_mode == "stash":
-			if game.stash_deposit(idx, stash_tab):
-				Sfx.play("pickup")
-			tooltip.visible = false
-			refresh()
-		elif not Items.is_equip(it) and not Items.is_material(it):
+		if not Items.is_equip(it) and not Items.is_material(it):
 			hero.equip_from_inventory(idx)
 			refresh()
 
@@ -2028,9 +1809,7 @@ func _drag_target() -> Array:
 		for k in equip_cells.keys():
 			if (equip_cells[k] as Control).get_global_rect().has_point(mp):
 				return ["equip", k]
-	if burn_panel.visible and burn_fire.get_global_rect().has_point(mp):
-		return ["fire", null]
-	for pnl in [inv_panel, char_panel, stash_panel, burn_panel, shop_panel, wp_panel, dialog_panel, action_bar, skills_panel, talent_panel]:
+	for pnl in [inv_panel, char_panel, dialog_panel, action_bar, skills_panel, talent_panel]:
 		if pnl and pnl.visible and (pnl as Control).get_global_rect().has_point(mp):
 			return ["ui", null]
 	return ["ground", null]
@@ -2089,11 +1868,6 @@ func _finish_drag(forced: Array = []) -> void:
 				click_fx(inv_cells[j])
 		"equip":
 			hero.equip_from_inventory(idx)
-		"fire":
-			if shop_mode == "reforge":
-				reforge_request(idx)
-			else:
-				burn_request(idx)
 	refresh()
 
 # ---------------------------------------------------------------- character
@@ -2396,16 +2170,12 @@ func warm_windows() -> void:
 		_windows_warm = true
 		var was_muted: bool = Sfx.muted
 		Sfx.set_muted(true)
-		for p in [inv_panel, char_panel, skills_panel, talent_panel, quest_panel]:
+		for p in [inv_panel, char_panel, skills_panel, talent_panel]:
 			if p == null or p.visible:
 				continue
 			toggle(p)
 			await RenderingServer.frame_post_draw
 			p.visible = false
-		if wp_panel != null and not wp_panel.visible:
-			open_waypoints()
-			await RenderingServer.frame_post_draw
-			wp_panel.visible = false
 		tooltip.visible = false
 		Sfx.set_muted(was_muted)
 	for i in 4:
@@ -2437,473 +2207,6 @@ func _add_stat(stat: String) -> void:
 		"ene": hero.ene += 1
 	Sfx.play("click")
 	hero.recalc()
-
-# ---------------------------------------------------------------- shops & stash
-func _build_shop() -> void:
-	shop_panel = _panel("Merchant", true, 500, 600)
-	var vb: VBoxContainer = shop_panel.get_node("vb")
-	shop_title = shop_panel.get_node("vb").get_child(0).get_node("title")
-	shop_title.add_theme_font_size_override("font_size", 15)
-	shop_title.add_theme_color_override("font_color", DIM)
-	# the trader: their live portrait beside their name, trade and greeting, and your purse
-	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 14)
-	vb.add_child(head)
-	shop_face = PanelContainer.new()
-	shop_face.add_theme_stylebox_override("panel", _box(Color(0.07, 0.05, 0.035), Color(0.62, 0.48, 0.26), 2, 4, 2))
-	shop_face.custom_minimum_size = Vector2(136, 160)
-	head.add_child(shop_face)
-	var info := VBoxContainer.new()
-	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	info.add_theme_constant_override("separation", 4)
-	head.add_child(info)
-	shop_who = _label("", 26, GOLD, true)
-	info.add_child(shop_who)
-	shop_role = _label("", 13, Color(0.74, 0.66, 0.52))
-	var fv := FontVariation.new()
-	fv.base_font = font_body
-	fv.spacing_glyph = 2
-	shop_role.add_theme_font_override("font", fv)
-	info.add_child(shop_role)
-	var rule := ColorRect.new()
-	rule.color = Color(0.55, 0.43, 0.24, 0.5)
-	rule.custom_minimum_size = Vector2(0, 1)
-	info.add_child(rule)
-	shop_greet = _label("", 15, Color(0.86, 0.82, 0.74))
-	shop_greet.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	shop_greet.custom_minimum_size = Vector2(280, 0)
-	shop_greet.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	info.add_child(shop_greet)
-	var purse := PanelContainer.new()
-	purse.add_theme_stylebox_override("panel", _box(Color(0.03, 0.025, 0.02, 0.9), Color(0.4, 0.31, 0.17), 1, 3, 6))
-	info.add_child(purse)
-	shop_gold = _label("", 17, Color(1.0, 0.85, 0.4), true)
-	purse.add_child(shop_gold)
-	# what they sell, by kind
-	shop_tabs = HBoxContainer.new()
-	shop_tabs.add_theme_constant_override("separation", 4)
-	vb.add_child(shop_tabs)
-	shop_grid = GridContainer.new()
-	shop_grid.columns = 10
-	shop_grid.add_theme_constant_override("h_separation", 3)
-	shop_grid.add_theme_constant_override("v_separation", 3)
-	vb.add_child(shop_grid)
-	for i in 50:
-		var idx := i
-		var c := _slot(Vector2(CELL, CELL + 14), func(ev): if ev.button_index == MOUSE_BUTTON_LEFT: _buy(idx), func(p, on): _hover(p, on, "gamble" if shop_mode == "gamble" else "buy"))
-		var ic: Control = c.get_node("icon")
-		ic.offset_bottom = -16
-		var pr := _label("", 11, Color(1.0, 0.85, 0.4))
-		pr.name = "price"
-		pr.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-		pr.offset_top = -15
-		pr.offset_bottom = -1
-		pr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		pr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		c.add_child(pr)
-		shop_grid.add_child(c)
-	vb.add_child(_label("Left-click to buy  ·  Right-click your own items to sell  ·  Walk away to close", 13, DIM))
-
-const SHOP_KINDS := {"weapon": "Weapons", "shield": "Shields", "armor": "Armour", "helm": "Armour", "gloves": "Armour",
-	"boots": "Armour", "belt": "Armour", "ring": "Jewellery", "amulet": "Jewellery", "potion": "Potions", "tool": "Tools", "resource": "Goods"}
-
-static func shop_kind(it: Dictionary) -> String:
-	return str(SHOP_KINDS.get(str(Data.BASES[it["base"]]["slot"]), "Goods"))
-
-func shop_cost(it: Dictionary) -> int:
-	return Items.price(it) * (2 if shop_mode == "gamble" else 1)
-
-## The trade window, headed by the trader (who, when there is one: their portrait, name and trade).
-func open_shop(mode: String, title: String, items: Array, who: Inter = null, greet := "") -> void:
-	if furnace_ui != null:
-		furnace_ui.visible = false
-	shop_mode = mode
-	shop_items = items
-	shop_title.text = title
-	shop_tab = "All"
-	for c in shop_face.get_children():
-		c.queue_free()
-	shop_face.visible = who != null
-	if who:
-		trade_with = who
-		var pt := VendorUI.Portrait.new()
-		shop_face.add_child(pt)
-		pt.setup(who)
-	shop_who.text = who.label if who else title
-	shop_role.text = VendorUI.title_for(who).to_upper() if who else ""
-	shop_greet.text = ("“%s”" % greet) if greet != "" else ""
-	shop_panel.visible = true
-	stash_panel.visible = false
-	burn_panel.visible = false
-	inv_panel.visible = true
-	char_panel.visible = false
-	_refresh_shop()
-
-func _refresh_shop() -> void:
-	# the tabs: All, then each kind on sale (only when there's more than one); rebuilt only on a change
-	var kinds := []
-	for it in shop_items:
-		var k := shop_kind(it)
-		if k not in kinds:
-			kinds.append(k)
-	if shop_tab not in kinds:
-		shop_tab = "All"
-	var sig := "%s %s" % [shop_tab, kinds]
-	var shown: String = str(shop_tabs.get_meta("sig")) if shop_tabs.has_meta("sig") else ""
-	if shown != sig:
-		shop_tabs.set_meta("sig", sig)
-		for c in shop_tabs.get_children():
-			shop_tabs.remove_child(c)
-			c.queue_free()
-		if kinds.size() > 1:
-			for k in ["All"] + kinds:
-				var b := Button.new()
-				b.text = k
-				b.toggle_mode = true
-				b.button_pressed = k == shop_tab
-				b.add_theme_font_size_override("font_size", 14)
-				b.custom_minimum_size = Vector2(0, 28)
-				var kk: String = k
-				b.pressed.connect(func():
-					shop_tab = kk
-					Sfx.play("click")
-					_refresh_shop())
-				shop_tabs.add_child(b)
-	shop_view = []
-	for i in shop_items.size():
-		if shop_tab == "All" or shop_kind(shop_items[i]) == shop_tab:
-			shop_view.append(i)
-	# the goods, each priced (red and dimmed when you can't afford it)
-	for i in shop_grid.get_child_count():
-		var cell: Panel = shop_grid.get_child(i)
-		var it = shop_items[shop_view[i]] if i < shop_view.size() else null
-		_set_slot(cell, it)
-		var pr: Label = cell.get_node("price")
-		var ic: Control = cell.get_node("icon")
-		if it == null:
-			pr.text = ""
-			ic.modulate = Color.WHITE
-			continue
-		var cost := shop_cost(it)
-		var ok: bool = hero == null or hero.gold >= cost
-		pr.text = "%d g" % cost
-		pr.add_theme_color_override("font_color", Color(1.0, 0.85, 0.4) if ok else Color(0.9, 0.35, 0.28))
-		ic.modulate = Color.WHITE if ok else Color(0.55, 0.5, 0.5)
-	if hero:
-		shop_gold.text = "◉  Your gold: %d" % hero.gold
-
-## Buys what's in cell idx of the open tab.
-func _buy(cell: int) -> void:
-	if cell >= shop_view.size():
-		return
-	var idx: int = shop_view[cell]
-	var it: Dictionary = shop_items[idx]
-	var cost := shop_cost(it)
-	if hero.gold < cost:
-		message("Not enough gold", Color(1, 0.4, 0.3))
-		Sfx.play("deny")
-		return
-	var bought := it.duplicate(true)
-	if shop_mode == "gamble":
-		var rng := RandomNumberGenerator.new()
-		rng.randomize()
-		var r := rng.randf()
-		var rar := 1
-		if r < 0.04:
-			var cands := []
-			for k in Data.UNIQUES.keys():
-				if Data.UNIQUES[k]["base"] == it["base"]:
-					cands.append(k)
-			if cands.size() > 0:
-				bought = Items.make_unique(cands[0])
-			else:
-				rar = 2
-		elif r < 0.2:
-			rar = 2
-		if not bought.has("unique"):
-			bought = Items.generate(it["base"], hero.level + 2, rar, rng)
-	if not hero.add_to_inventory(bought):
-		message("Inventory is full", Color(1, 0.4, 0.3))
-		return
-	hero.gold -= cost
-	Sfx.play("gold")
-	if not (Data.BASES[it["base"]]["slot"] == "potion"):
-		if shop_mode != "gamble":
-			shop_items.remove_at(idx)
-	_refresh_shop()
-	refresh()
-
-## The shared stash (SharedStash, Game.stash: one for every character, never at stake): the inventory's iron and gold
-## frame, a title plate, SharedStash.TABS tabs over a 10 x 6 grid of the bag's sockets, and a count. Three looks for
-## the tabs while jj picks (STASH_STYLES; `stash_style`): bronze plaques, hanging cloth ribbons, rune-gem sockets.
-## A click on a stash item takes it to the bag; a click on a bag item (with the stash open) puts it in this tab.
-const STASH_SIZE := Vector2(600, 548)
-const STASH_K := 0.3                  # the frame at 0.3 of the painted art (the inventory's is INV_SCALE)
-const STASH_GRID := Vector2(70, 140)
-const STASH_STYLES := ["plaques", "ribbons", "gems"]
-const STASH_NUMERALS := ["I", "II", "III", "IV", "V"]
-const STASH_COLORS := [Color(0.62, 0.12, 0.1), Color(0.16, 0.3, 0.62), Color(0.18, 0.46, 0.22), Color(0.42, 0.2, 0.55), Color(0.78, 0.55, 0.16)]
-var stash_style := "plaques"
-var stash_tab := 0
-var stash_tab_row: Control
-var stash_count_lbl: Label
-
-## One tab of the stash, drawn in the chosen style.
-class StashTab extends Control:
-	var ui
-	var idx := 0
-	var hover := false
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_STOP
-		mouse_entered.connect(func():
-			hover = true
-			queue_redraw())
-		mouse_exited.connect(func():
-			hover = false
-			queue_redraw())
-	func _gui_input(ev: InputEvent) -> void:
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			accept_event()
-			ui.select_stash_tab(idx)
-	func _draw() -> void:
-		var on: bool = ui.stash_tab == idx
-		var st: String = ui.stash_style
-		var f: Font = ui.font_title
-		var num: String = STASH_NUMERALS[idx]
-		var col: Color = STASH_COLORS[idx]
-		var n: int = ui.game.stash.tab_count(idx) if ui.game.stash != null else 0
-		var lit := 1.0 if on else (0.8 if hover else 0.55)
-		match st:
-			"plaques":
-				var r := Rect2(Vector2(2, 4 if on else 8), size - Vector2(4, 8 if on else 12))
-				if on:
-					draw_rect(r.grow(5), Color(1.0, 0.7, 0.3, 0.12))
-					draw_rect(r.grow(2), Color(1.0, 0.75, 0.35, 0.25))
-				draw_texture_rect(ui.stash_plate_tex(), r, false, Color(lit, lit, lit))
-				_text(f, num, r.get_center() + Vector2(0, -3 if n > 0 else 1), 18, Color(1.0, 0.86, 0.55) * Color(lit, lit, lit, 1.0) if on else Color(0.82, 0.68, 0.45, 0.85))
-				if n > 0:
-					_text(ui.font_body, str(n), r.get_center() + Vector2(0, 12), 11, Color(0.95, 0.85, 0.65, 0.75 if on else 0.5))
-				if on:
-					draw_line(Vector2(r.position.x + 14, size.y - 1), Vector2(r.end.x - 14, size.y - 1), Color(1.0, 0.75, 0.35), 2.0)
-			"ribbons":
-				var h := size.y if on else size.y - 10
-				var w := size.x - 10
-				var x0 := 5.0
-				var pts := PackedVector2Array([Vector2(x0, 0), Vector2(x0 + w, 0), Vector2(x0 + w, h), Vector2(x0 + w * 0.5, h - 10), Vector2(x0, h)])
-				var cloth := col.darkened(0.15 if on else 0.45)
-				if hover and not on:
-					cloth = col.darkened(0.3)
-				draw_colored_polygon(pts, cloth)
-				# the weave's shading and the gold stitching down both edges
-				draw_colored_polygon(PackedVector2Array([Vector2(x0, 0), Vector2(x0 + w * 0.35, 0), Vector2(x0 + w * 0.35, h - 6), Vector2(x0, h)]), Color(1, 1, 1, 0.06))
-				var stitch := Color(0.85, 0.66, 0.32, 0.9 if on else 0.5)
-				draw_line(Vector2(x0 + 4, 2), Vector2(x0 + 4, h - 4), stitch, 1.0)
-				draw_line(Vector2(x0 + w - 4, 2), Vector2(x0 + w - 4, h - 4), stitch, 1.0)
-				draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[4], pts[0]]), Color(0, 0, 0, 0.7), 1.5)
-				# the bronze rod it hangs from
-				draw_rect(Rect2(0, -3, size.x, 5), Color(0.55, 0.42, 0.22))
-				draw_rect(Rect2(0, -3, size.x, 2), Color(0.85, 0.68, 0.38))
-				_text(f, num, Vector2(size.x * 0.5, h * 0.42), 17, Color(1.0, 0.9, 0.7) if on else Color(0.9, 0.82, 0.66, 0.75))
-				if n > 0:
-					_text(ui.font_body, str(n), Vector2(size.x * 0.5, h * 0.42 + 15), 11, Color(1, 0.92, 0.75, 0.7))
-			"gems":
-				var c := Vector2(size.x * 0.5, 22)
-				if on:
-					for i in 4:
-						draw_circle(c, 24.0 + i * 3.0, Color(col.r, col.g, col.b, 0.1 - i * 0.02))
-				draw_circle(c, 19, Color(0.05, 0.04, 0.03))
-				draw_arc(c, 18, 0, TAU, 40, Color(0.62, 0.48, 0.25), 3.0, true)
-				draw_arc(c, 15.5, 0, TAU, 40, Color(0.25, 0.18, 0.1), 1.5, true)
-				var g := col.lightened(0.25) if on else col.darkened(0.35 if not hover else 0.1)
-				draw_circle(c, 12.5, g.darkened(0.35))
-				draw_circle(c + Vector2(-1, -1), 10, g)
-				draw_circle(c + Vector2(-4, -4.5), 3.2, Color(1, 1, 1, 0.55 if on else 0.25))
-				# four little prongs holding the stone
-				for k in 4:
-					var a := PI * 0.25 + k * PI * 0.5
-					draw_circle(c + Vector2(cos(a), sin(a)) * 13.0, 2.0, Color(0.78, 0.62, 0.34))
-				_text(f, num, Vector2(size.x * 0.5, 54), 14, Color(1.0, 0.86, 0.55) if on else Color(0.72, 0.62, 0.45, 0.8))
-	func _text(f: Font, t: String, at: Vector2, px: int, c: Color) -> void:
-		if f == null:
-			return
-		var w := f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
-		var p := at + Vector2(-w * 0.5, px * 0.35)
-		draw_string_outline(f, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, px, 4, Color(0, 0, 0, 0.85))
-		draw_string(f, p, t, HORIZONTAL_ALIGNMENT_LEFT, -1, px, c)
-
-var _stash_plate: Texture2D
-func stash_plate_tex() -> Texture2D:
-	if _stash_plate == null:
-		_stash_plate = load(INV_TEX["plate"])
-	return _stash_plate
-
-func _build_stash() -> void:
-	stash_panel = PanelContainer.new()
-	stash_panel.position = Vector2(24, 36)
-	stash_panel.custom_minimum_size = STASH_SIZE
-	stash_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-	stash_panel.visible = false
-	windows.add_child(stash_panel)
-	stash_panel.visibility_changed.connect(func():
-		if not stash_panel.visible and is_instance_valid(trade_with) and trade_with.kind == "stash":
-			game.chest_lid(trade_with, false))
-	var body := Control.new()
-	body.name = "body"
-	body.custom_minimum_size = STASH_SIZE
-	body.mouse_filter = Control.MOUSE_FILTER_STOP
-	stash_panel.add_child(body)
-	var trim := int(178 * STASH_K)
-	var iron := TextureRect.new()
-	iron.texture = _scaled_tex(INV_TEX["iron"], STASH_K)
-	iron.stretch_mode = TextureRect.STRETCH_TILE
-	iron.position = Vector2(trim, trim)
-	iron.size = STASH_SIZE - Vector2(trim * 2, trim * 2 - 2)
-	iron.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	body.add_child(iron)
-	var frame := NinePatchRect.new()
-	frame.texture = _ornate_frame(STASH_K)
-	var pm := int(INV_PATCH * STASH_K)
-	frame.patch_margin_left = pm
-	frame.patch_margin_right = pm
-	frame.patch_margin_top = pm
-	frame.patch_margin_bottom = pm
-	frame.axis_stretch_horizontal = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
-	frame.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
-	frame.draw_center = false
-	frame.size = STASH_SIZE
-	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	body.add_child(frame)
-	var plate := TextureRect.new()
-	plate.texture = stash_plate_tex()
-	plate.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	plate.size = Vector2(220, 34)
-	plate.position = Vector2((STASH_SIZE.x - 220) * 0.5, 10)
-	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	body.add_child(plate)
-	var title := _label("STASH", 15, GOLD, true)
-	var tfv := FontVariation.new()
-	tfv.base_font = font_title
-	tfv.spacing_glyph = 3
-	title.add_theme_font_override("font", tfv)
-	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	title.add_theme_constant_override("outline_size", 4)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title.position = plate.position
-	title.size = plate.size
-	body.add_child(title)
-	var lfv := FontVariation.new()
-	lfv.base_font = font_body
-	lfv.spacing_glyph = 2
-	var sub := Caption.new()
-	sub.text = "SHARED BY ALL YOUR CHARACTERS  ·  NEVER AT STAKE"
-	sub.font = lfv
-	sub.size_px = 11
-	sub.position = Vector2(0, 50)
-	sub.size = Vector2(STASH_SIZE.x, 14)
-	body.add_child(sub)
-	var x := Button.new()
-	x.text = "✕"
-	x.flat = true
-	x.add_theme_color_override("font_color", Color(0.85, 0.7, 0.42))
-	x.add_theme_color_override("font_hover_color", Color(1.0, 0.85, 0.5))
-	x.add_theme_font_size_override("font_size", 18)
-	x.position = Vector2(STASH_SIZE.x - pm - 30, 13)
-	x.size = Vector2(30, 30)
-	x.pressed.connect(func():
-		stash_panel.visible = false
-		tooltip.visible = false
-		shop_mode = ""
-		Sfx.play("click"))
-	body.add_child(x)
-	stash_tab_row = Control.new()
-	stash_tab_row.position = Vector2(STASH_GRID.x, 70)
-	stash_tab_row.size = Vector2(460, 66)
-	stash_tab_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	body.add_child(stash_tab_row)
-	_layout_stash_tabs()
-	var grid := GridContainer.new()
-	grid.columns = 10
-	grid.add_theme_constant_override("h_separation", 2)
-	grid.add_theme_constant_override("v_separation", 2)
-	grid.position = STASH_GRID
-	body.add_child(grid)
-	body.add_child(_inset_line(Rect2(STASH_GRID, Vector2(10 * (CELL + 2) - 2, 6 * (CELL + 2) - 2))))
-	for i in SharedStash.SLOTS:
-		var idx := i
-		var c := _slot(Vector2(CELL, CELL), func(ev):
-			if ev.button_index == MOUSE_BUTTON_RIGHT or ev.button_index == MOUSE_BUTTON_LEFT:
-				if game.stash_withdraw(stash_tab, idx):
-					Sfx.play("pickup")
-				tooltip.visible = false
-				refresh(), func(p, on): _hover(p, on, "stash"), "", true)     # the bag's iron sockets
-		grid.add_child(c)
-		stash_cells.append(c)
-	stash_count_lbl = _label("", 14, Color(0.86, 0.78, 0.6))
-	stash_count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stash_count_lbl.position = Vector2(0, STASH_GRID.y + 6 * (CELL + 2) + 12)
-	stash_count_lbl.size = Vector2(STASH_SIZE.x, 20)
-	body.add_child(stash_count_lbl)
-	var hint := _label("Click an item to move it between the stash and your bag", 12, DIM)
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.position = Vector2(0, STASH_GRID.y + 6 * (CELL + 2) + 34)
-	hint.size = Vector2(STASH_SIZE.x, 18)
-	body.add_child(hint)
-
-## The tab row for `stash_style`: plaques side by side, ribbons hanging from a rod, gems in a row.
-func _layout_stash_tabs() -> void:
-	for c in stash_tab_row.get_children():
-		stash_tab_row.remove_child(c)
-		c.queue_free()
-	var n := SharedStash.TABS
-	var w := 460.0
-	for i in n:
-		var t := StashTab.new()
-		t.ui = self
-		t.idx = i
-		match stash_style:
-			"plaques":
-				var tw := (w - 6.0 * (n - 1)) / n
-				t.position = Vector2(i * (tw + 6.0), 14)
-				t.size = Vector2(tw, 50)
-			"ribbons":
-				var tw2 := 64.0
-				var gap := (w - tw2 * n) / (n - 1)
-				t.position = Vector2(i * (tw2 + gap), 6)
-				t.size = Vector2(tw2, 60)
-			_:
-				var tw3 := 64.0
-				var gap3 := (w - tw3 * n) / (n - 1)
-				t.position = Vector2(i * (tw3 + gap3), 0)
-				t.size = Vector2(tw3, 66)
-		stash_tab_row.add_child(t)
-
-func select_stash_tab(i: int) -> void:
-	if i == stash_tab:
-		return
-	stash_tab = i
-	Sfx.play("click")
-	refresh()
-
-func set_stash_style(st: String) -> void:
-	stash_style = st
-	_layout_stash_tabs()
-	refresh()
-
-func open_stash() -> void:
-	if not game.stash_allowed():
-		message("The stash can't be opened here", Color(1, 0.6, 0.4))
-		return
-	game.stash.fresh()
-	if furnace_ui != null:
-		furnace_ui.visible = false
-	shop_mode = "stash"
-	burn_panel.visible = false
-	stash_panel.visible = true
-	shop_panel.visible = false
-	char_panel.visible = false
-	inv_panel.visible = true
-	refresh()
 
 # ---------------------------------------------------------------- the party's ready check
 ## A small window in the inventory's iron and bronze, top centre: "<name> wants to travel to <place>" with
@@ -3032,451 +2335,6 @@ func confirm_kick(pid: int, nm: String) -> void:
 		["Remove", func(): game.net.kick(pid)],
 		["Keep", func(): pass]])
 
-## The camp's bonfire: a window with the fire in it beside your inventory. Drag an item onto the flames, or
-## right-click it, and it burns, gone for good (rare, unique and the sloths' materials ask first).
-## The bonfire window in the inventory's iron and bronze (the same frame, plate and trim): the fire burns in
-## a recessed stone hearth on an iron grate; drop an item on it (or right-click it in the bag) to burn it.
-## Below the hearth, what the fire can do (`BONFIRE_OPTIONS`, in the action bar's sockets): Burn and Enchant
-## now, with empty sockets left for what comes later (a new entry here fills the next one).
-const BURN_SIZE := Vector2(360, 590)
-const BURN_SCALE := 0.26
-const BURN_HEARTH := Rect2(52, 112, 256, 260)
-const BONFIRE_OPTIONS := [
-	["burn", "Burn", "Throw unwanted gear on the fire. Drag it onto the flames or right-click it in your bag."],
-	["enchant", "Enchant", "Bind runes into your worn armour over the flames: more defense and life, up to +10."],
-	["reforge", "Reforge", "Spend a Cinderheart, Everfrost or Stormglass: the weakest affix of a magic or rare item is rerolled. Right-click it in your bag or drag it onto the flames."],
-]
-const BONFIRE_SOCKETS := 6
-var burn_hint: Label
-var burn_opts := {}
-
-func _build_burn() -> void:
-	burn_panel = PanelContainer.new()
-	burn_panel.position = Vector2(24, 64)
-	burn_panel.custom_minimum_size = BURN_SIZE
-	burn_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-	burn_panel.visible = false
-	windows.add_child(burn_panel)
-	var body := Control.new()
-	body.custom_minimum_size = BURN_SIZE
-	body.mouse_filter = Control.MOUSE_FILTER_STOP
-	burn_panel.add_child(body)
-	var trim := int(178 * BURN_SCALE)
-	var iron := TextureRect.new()
-	iron.texture = _scaled_tex(INV_TEX["iron"], BURN_SCALE)
-	iron.stretch_mode = TextureRect.STRETCH_TILE
-	iron.position = Vector2(trim, trim)
-	iron.size = BURN_SIZE - Vector2(trim * 2, trim * 2 - 2)
-	iron.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	body.add_child(iron)
-	var frame := NinePatchRect.new()
-	frame.texture = _scaled_tex(INV_TEX["frame"], BURN_SCALE)
-	var pm := int(INV_PATCH * BURN_SCALE)
-	for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
-		frame.set_patch_margin(side, pm)
-	frame.axis_stretch_horizontal = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
-	frame.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
-	frame.draw_center = false
-	frame.size = BURN_SIZE
-	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	body.add_child(frame)
-	var plate := TextureRect.new()
-	plate.texture = load(INV_TEX["plate"])
-	plate.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	plate.size = Vector2(150, 30)
-	plate.position = Vector2((BURN_SIZE.x - 150) * 0.5, 11)
-	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	body.add_child(plate)
-	var title := _label("BONFIRE", 14, GOLD, true)
-	var tfv := FontVariation.new()
-	tfv.base_font = font_title
-	tfv.spacing_glyph = 3
-	title.add_theme_font_override("font", tfv)
-	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-	title.add_theme_constant_override("outline_size", 4)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title.position = plate.position
-	title.size = plate.size
-	body.add_child(title)
-	var x := Button.new()
-	x.text = "✕"
-	x.flat = true
-	x.add_theme_color_override("font_color", Color(0.85, 0.7, 0.42))
-	x.add_theme_color_override("font_hover_color", Color(1.0, 0.85, 0.5))
-	x.add_theme_font_size_override("font_size", 16)
-	x.position = Vector2(BURN_SIZE.x * 0.5 + 80, 12)
-	x.size = Vector2(28, 28)
-	x.pressed.connect(func():
-		burn_panel.visible = false
-		tooltip.visible = false
-		shop_mode = ""
-		Sfx.play("click"))
-	body.add_child(x)
-	var t := _label("Drag an item onto the fire, or right-click it in your bag. It burns for good.", 13, Color(0.8, 0.74, 0.62))
-	burn_hint = t
-	t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	t.position = Vector2(66, 58)
-	t.size = Vector2(BURN_SIZE.x - 132, 48)
-	body.add_child(t)
-	# the hearth: a recess in the iron, a bronze line round it, the fire inside
-	var well := Panel.new()
-	var wsb := StyleBoxFlat.new()
-	wsb.bg_color = Color(0.03, 0.025, 0.022)
-	wsb.shadow_color = Color(0, 0, 0, 0.6)
-	wsb.shadow_size = 6
-	well.add_theme_stylebox_override("panel", wsb)
-	well.position = BURN_HEARTH.position
-	well.size = BURN_HEARTH.size
-	well.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	body.add_child(well)
-	burn_fire = Flames.new()
-	burn_fire.position = BURN_HEARTH.position
-	burn_fire.size = BURN_HEARTH.size
-	burn_fire.clip_contents = true
-	burn_fire.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	body.add_child(burn_fire)
-	body.add_child(_inset_line(BURN_HEARTH))
-	# what the fire can do: a socket each, three to a row; the empty ones wait for upgrades
-	var grid_at := Vector2(BURN_HEARTH.position.x + 6, BURN_HEARTH.end.y + 18)
-	if _socket_tex == null:
-		_socket_tex = _scaled_tex(BAR_TEX["slot"], 0.3)
-	for i in BONFIRE_SOCKETS:
-		var cell := Control.new()
-		cell.position = grid_at + Vector2((i % 3) * 84, (i / 3) * 86)
-		cell.size = Vector2(76, 80)
-		body.add_child(cell)
-		var sock := Panel.new()
-		var sb := StyleBoxTexture.new()
-		sb.texture = _socket_tex
-		for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
-			sb.set_texture_margin(side, 9)
-		sock.add_theme_stylebox_override("panel", sb)
-		sock.position = Vector2(12, 0)
-		sock.size = Vector2(52, 52)
-		cell.add_child(sock)
-		if i >= BONFIRE_OPTIONS.size():
-			sock.modulate = Color(0.55, 0.52, 0.5)
-			sock.tooltip_text = "More to come"
-			continue
-		var opt: Array = BONFIRE_OPTIONS[i]
-		var id: String = opt[0]
-		var ic := FireIcon.new()
-		ic.kind = id
-		ic.position = Vector2(6, 6)
-		ic.size = Vector2(40, 40)
-		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		sock.add_child(ic)
-		var lb := _label(str(opt[1]), 13, Color(0.86, 0.8, 0.7))
-		lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lb.position = Vector2(0, 54)
-		lb.size = Vector2(76, 20)
-		lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cell.add_child(lb)
-		var b := Button.new()
-		b.flat = true
-		b.position = Vector2.ZERO
-		b.size = cell.size
-		b.tooltip_text = str(opt[2])
-		b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		b.pressed.connect(func(): _bonfire_option(id))
-		cell.add_child(b)
-		burn_opts[id] = [sock, lb]
-	_bonfire_select("burn")
-
-func _bonfire_select(id: String) -> void:
-	for k in burn_opts:
-		var on: bool = k == id
-		(burn_opts[k][0] as Panel).modulate = Color(1.35, 1.15, 0.85) if on else Color.WHITE
-		(burn_opts[k][1] as Label).add_theme_color_override("font_color", GOLD if on else Color(0.86, 0.8, 0.7))
-
-func _bonfire_option(id: String) -> void:
-	Sfx.play("click")
-	match id:
-		"burn":
-			_bonfire_select("burn")
-			shop_mode = "burn"
-			burn_hint.text = "Drag an item onto the fire, or right-click it in your bag. It burns for good."
-		"reforge":
-			_bonfire_select("reforge")
-			shop_mode = "reforge"
-			burn_hint.text = "Drag a magic or rare item onto the fire, or right-click it: one Sloth material rerolls its weakest affix."
-		"enchant":
-			var fire = trade_with
-			open_enchant("Bonfire")
-			trade_with = fire
-
-## The bonfire's option icons, drawn: a flame (Burn), a rune-lit breastplate (Enchant).
-class FireIcon extends Control:
-	var kind := ""
-	var _t := 0.0
-	func _process(delta: float) -> void:
-		_t += delta
-		queue_redraw()
-	func _draw() -> void:
-		var c := size * 0.5
-		var s := size.x
-		match kind:
-			"burn":
-				var cols := [Color(0.8, 0.15, 0.04), Color(1.0, 0.5, 0.1), Color(1.0, 0.85, 0.45)]
-				for k in 3:
-					var h := s * (0.42 - k * 0.1)
-					var w := s * (0.22 - k * 0.05)
-					var sw := sin(_t * 4.0 + k) * 2.0
-					var b := c + Vector2(0, s * 0.3)
-					draw_colored_polygon(PackedVector2Array([b + Vector2(-w, 0), b + Vector2(-w * 0.9 + sw * 0.3, -h * 0.55),
-						b + Vector2(sw, -h * 1.6), b + Vector2(w * 0.9 + sw * 0.3, -h * 0.55), b + Vector2(w, 0)]), cols[k])
-			"reforge":
-				# an anvil with a hammer over it, sparks off the blow
-				draw_rect(Rect2(c + Vector2(-s * 0.3, s * 0.02), Vector2(s * 0.6, s * 0.12)), Color(0.42, 0.4, 0.38))
-				draw_rect(Rect2(c + Vector2(-s * 0.12, s * 0.14), Vector2(s * 0.24, s * 0.16)), Color(0.36, 0.34, 0.32))
-				var sw := sin(_t * 4.0) * 0.25
-				var hp := c + Vector2(s * 0.08, -s * 0.18)
-				draw_line(hp, hp + Vector2(cos(-0.9 + sw), sin(-0.9 + sw)) * s * 0.3, Color(0.55, 0.38, 0.2), 3.0)
-				draw_rect(Rect2(hp + Vector2(-s * 0.09, -s * 0.06), Vector2(s * 0.18, s * 0.12)), Color(0.75, 0.6, 0.35))
-				var glow2 := 0.5 + 0.5 * sin(_t * 8.0)
-				for k in 3:
-					draw_circle(c + Vector2(-s * 0.1 + k * s * 0.1, -s * 0.02 - glow2 * s * 0.08), s * 0.025, Color(1.0, 0.7, 0.3, glow2))
-			"enchant":
-				var pts := PackedVector2Array([c + Vector2(-s * 0.32, -s * 0.3), c + Vector2(s * 0.32, -s * 0.3), c + Vector2(s * 0.26, s * 0.12),
-					c + Vector2(0, s * 0.36), c + Vector2(-s * 0.26, s * 0.12)])
-				draw_colored_polygon(pts, Color(0.42, 0.4, 0.38))
-				draw_polyline(pts + PackedVector2Array([pts[0]]), Color(0.75, 0.6, 0.35), 1.5)
-				var glow := 0.6 + 0.4 * sin(_t * 3.0)
-				var r := c + Vector2(0, -s * 0.02)
-				for a in 4:
-					var ang := a * PI * 0.5 + _t * 0.6
-					draw_line(r, r + Vector2(cos(ang), sin(ang)) * s * 0.16, Color(0.55, 0.9, 1.0, glow), 2.0)
-				draw_circle(r, s * 0.05, Color(0.8, 0.95, 1.0, glow))
-
-## Halvar's furnace: the furnace window beside the bag (FurnaceUI); right-clicks in the bag feed it.
-func open_furnace(f: Furnace) -> void:
-	ench_panel.visible = false
-	burn_panel.visible = false
-	stash_panel.visible = false
-	shop_panel.visible = false
-	char_panel.visible = false
-	shop_mode = "furnace"
-	trade_with = f
-	furnace_ui.open(f)
-	inv_panel.visible = true
-	refresh()
-
-func open_burn() -> void:
-	if furnace_ui != null:
-		furnace_ui.visible = false
-	shop_mode = "burn"
-	ench_panel.visible = false
-	_bonfire_select("burn")
-	stash_panel.visible = false
-	shop_panel.visible = false
-	char_panel.visible = false
-	burn_panel.visible = true
-	inv_panel.visible = true
-	refresh()
-
-## Burns inventory slot idx, asking first for anything rare, unique or a material.
-func burn_request(idx: int) -> void:
-	var it = hero.inventory[idx]
-	if it == null:
-		return
-	tooltip.visible = false
-	if int(it.get("rarity", 0)) >= 2 or Data.BASES[it["base"]].get("slot", "") == "material":
-		open_dialog("Bonfire", "Burn the %s? It will be gone forever." % it["name"], [
-			["Burn it", func(): _burn(idx, it)],
-			["Keep it", func(): pass]])
-		return
-	_burn(idx, it)
-
-## The bonfire's Reforge (the items rework: rewards from effort): a magic or rare item's weakest affix rerolled for
-## one Sloth material from the bag (Items.reforge).
-func reforge_request(idx: int) -> void:
-	var it = hero.inventory[idx]
-	if it == null:
-		return
-	tooltip.visible = false
-	if not Items.can_reforge(it):
-		message("Only magic and rare items can be reforged", Color(1, 0.5, 0.35))
-		Sfx.play("deny")
-		return
-	var mat := -1
-	for i in hero.inventory.size():
-		if Items.is_material(hero.inventory[i]):
-			mat = i
-			break
-	if mat < 0:
-		message("You need a Cinderheart, Everfrost or Stormglass (the Hollow Sloths carry them)", Color(1, 0.5, 0.35))
-		Sfx.play("deny")
-		return
-	var spent: String = hero.inventory[mat]["name"]
-	hero.inventory[mat] = null
-	var got := Items.reforge(it, game.rng)
-	hero.recalc()
-	game.burned(it)
-	(burn_fire as Flames).flare = 1.0
-	message("%s reforged with the %s: %s" % [it["name"], spent, got], Color(1.0, 0.8, 0.45))
-	refresh()
-
-func _burn(idx: int, it: Dictionary) -> void:
-	if hero.inventory[idx] != it:
-		return
-	hero.inventory[idx] = null
-	game.burned(it)
-	(burn_fire as Flames).flare = 1.0
-	message("%s burns" % it["name"], Color(1.0, 0.6, 0.3))
-	refresh()
-
-## The fire in the bonfire's hearth: the firelight on the recess, a shader fire (noise-driven tongues, dark red
-## at the roots to white-gold at the heart), then in front the iron grate, the ring of hearth stones and embers
-## drifting up. `flare` (set when something burns) makes it leap and brighten, then dies down.
-class Flames extends Control:
-	var flare := 0.0
-	var _t := 0.0
-	var _fire: ColorRect
-	var _front: Control
-	func _ready() -> void:
-		_fire = ColorRect.new()
-		_fire.set_anchors_preset(Control.PRESET_FULL_RECT)
-		_fire.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var m := ShaderMaterial.new()
-		var sh := Shader.new()
-		# the simulated fire's flipbook (FireFx) when it is there: three flames played out of step, side by side
-		var book := FireFx.book("body")
-		sh.code = FIRE_FLIP_SHADER if book != null else FIRE_SHADER
-		m.shader = sh
-		if book != null:
-			m.set_shader_parameter("flip_tex", book)
-			m.set_shader_parameter("grid", FireFx.grid_of("body"))
-		_fire.material = m
-		add_child(_fire)
-		_front = Control.new()
-		_front.set_anchors_preset(Control.PRESET_FULL_RECT)
-		_front.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_front.draw.connect(_draw_front)
-		add_child(_front)
-	func _process(delta: float) -> void:
-		_t += delta
-		flare = maxf(0.0, flare - delta * 1.2)
-		if _fire:
-			(_fire.material as ShaderMaterial).set_shader_parameter("flare", flare)
-			_front.queue_redraw()
-		queue_redraw()
-	func _draw() -> void:
-		var w := size.x
-		var h := size.y
-		var c := Vector2(w * 0.5, h * 0.62)
-		var flick := sin(_t * 7.0) * 0.004 + sin(_t * 11.3) * 0.003
-		for k in 18:
-			var r := w * (1.05 - k * 0.05) * (1.0 + flare * 0.2)
-			draw_circle(c, r, Color(1.0, 0.36, 0.08, 0.012 + flare * 0.012 + flick))
-	func _draw_front() -> void:
-		var w := size.x
-		var h := size.y
-		var gy := h - 52.0
-		# embers drifting up out of the fire
-		for e in 26:
-			var life := fmod(_t * (0.3 + fmod(e * 0.37, 0.3)) + e * 0.137, 1.0)
-			var ex := w * 0.5 + sin(e * 12.9898) * w * 0.2 + sin(_t * 2.0 + e) * 10.0 * life
-			var ey := gy - 10.0 - life * h * (0.7 + flare * 0.2)
-			_front.draw_circle(Vector2(ex, ey), 1.7 * (1.0 - life) + 0.5, Color(1.0, 0.6 + 0.35 * (1.0 - life), 0.25, (1.0 - life) * 0.9))
-		# the iron grate
-		_front.draw_line(Vector2(w * 0.14, gy), Vector2(w * 0.86, gy), Color(0.09, 0.08, 0.075), 6.0)
-		for b in 8:
-			var bx := w * (0.18 + b * 0.094)
-			_front.draw_line(Vector2(bx, gy - 2.0), Vector2(bx, gy + 16.0), Color(0.11, 0.1, 0.09), 3.0)
-		_front.draw_line(Vector2(w * 0.14, gy - 3.0), Vector2(w * 0.86, gy - 3.0), Color(1.0, 0.5, 0.18, 0.55 + flare * 0.4), 1.0)
-		# the ring of hearth stones, lit from the fire above
-		var stones := 9
-		for k in stones:
-			var f := (float(k) + 0.5) / stones
-			var cx := w * (0.05 + f * 0.9)
-			var cy := h - 22.0 - absf(f - 0.5) * 12.0
-			var rw := w * 0.058 + sin(k * 7.1) * 3.0
-			var rh := 15.0 + cos(k * 3.3) * 3.0
-			var pts := PackedVector2Array()
-			for q in 12:
-				var aq := TAU * q / 12.0
-				pts.append(Vector2(cx + cos(aq) * rw * (1.0 + sin(aq * 3.0 + k) * 0.08), cy + sin(aq) * rh))
-			var lit := 0.55 + 0.45 * (1.0 - absf(f - 0.5) * 2.0)
-			_front.draw_colored_polygon(pts, Color(0.19, 0.17, 0.155) * lit)
-			_front.draw_arc(Vector2(cx, cy + 2.0), rw * 0.9, PI * 1.15, PI * 1.85, 8, Color(1.0, 0.5, 0.2, 0.35 * lit + flare * 0.3), 2.0)
-
-## The bonfire window's fire from the simulated flipbook: a tall flame in the middle and two smaller ones either
-## side, each at its own speed and frame, the side ones mirrored; all light (added), brighter on a flare.
-const FIRE_FLIP_SHADER := """
-shader_type canvas_item;
-render_mode blend_add;
-uniform sampler2D flip_tex : source_color, filter_linear_mipmap;
-uniform vec2 grid = vec2(6.0, 6.0);
-uniform float flare = 0.0;
-vec3 frame_at(float f, vec2 uv) {
-	float n = grid.x * grid.y;
-	f = mod(f, n);
-	vec2 cell = vec2(mod(f, grid.x), floor(f / grid.x));
-	return texture(flip_tex, (cell + clamp(uv, vec2(0.002), vec2(0.998))) / grid).rgb;
-}
-vec3 flame(vec2 uv, vec2 at, vec2 sz, float speed, float off, bool flip) {
-	vec2 u = (uv - at) / sz + vec2(0.5, 1.0);
-	if (u.x < 0.0 || u.x > 1.0 || u.y < 0.0 || u.y > 1.0) { return vec3(0.0); }
-	if (flip) { u.x = 1.0 - u.x; }
-	float f = TIME * 30.0 * speed + off;
-	float f0 = floor(f);
-	return mix(frame_at(f0, u), frame_at(f0 + 1.0, u), f - f0);
-}
-void fragment() {
-	vec2 uv = UV;
-	float grow = 1.0 + flare * 0.3;
-	vec3 c = flame(uv, vec2(0.5, 0.86), vec2(0.62, 1.05) * grow, 1.0, 0.0, false);
-	c += flame(uv, vec2(0.33, 0.87), vec2(0.42, 0.72) * grow, 0.86, 11.0, true) * 0.75;
-	c += flame(uv, vec2(0.67, 0.87), vec2(0.4, 0.68) * grow, 1.12, 23.0, false) * 0.7;
-	c *= 1.05 + flare * 0.5;
-	COLOR = vec4(c, 1.0);
-}
-"""
-
-const FIRE_SHADER := """
-shader_type canvas_item;
-uniform float flare = 0.0;
-float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-float noise(vec2 p) {
-	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
-	return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
-}
-float fbm(vec2 p) { float v = 0.0; float a = 0.5; for (int i = 0; i < 5; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }
-void fragment() {
-	vec2 uv = vec2(UV.x, 1.0 - UV.y);
-	float y = (uv.y - 0.2) / (0.66 + flare * 0.3);
-	float n = fbm(vec2(uv.x * 4.0, uv.y * 3.2 - TIME * 2.1));
-	float n2 = fbm(vec2(uv.x * 9.0 + 3.0, uv.y * 6.0 - TIME * 3.4));
-	// the flames lick sideways more the higher they reach, and split into tongues
-	float x = (uv.x - 0.5) * 2.0 + (n - 0.5) * 0.7 * max(y, 0.0);
-	float tongues = 0.25 * sin(x * 9.0 + n2 * 4.0 - TIME * 1.5) * max(y, 0.0);
-	float shape = 1.0 - abs(x) * (1.5 + max(y, 0.0) * 1.1) - y * 0.95 + tongues;
-	float f = clamp((shape + n * 1.1 + n2 * 0.6 - 0.8) * 2.0, 0.0, 1.0);
-	f *= smoothstep(-0.08, 0.04, y);
-	vec3 c = mix(vec3(0.45, 0.04, 0.0), vec3(1.0, 0.42, 0.05), smoothstep(0.0, 0.45, f));
-	c = mix(c, vec3(1.0, 0.86, 0.5), smoothstep(0.62, 1.0, f));
-	COLOR = vec4(c * (1.15 + flare * 0.4), smoothstep(0.03, 0.3, f));
-}
-"""
-
-## The waypoint window lives in WaypointPanel (scripts/waypoint_panel.gd); its acts and waypoints in
-## Data.WAYPOINT_ACTS.
-func _build_waypoints() -> void:
-	var wp := WaypointPanel.new()
-	windows.add_child(wp)
-	wp.setup(self)
-	wp_panel = wp
-
-## Opened from a waypoint stone (`stone`): walking away from it, or clicking outside the window, closes it.
-func open_waypoints(stone: Node3D = null) -> void:
-	(wp_panel as WaypointPanel).open(stone)
-	if stone:
-		for g in stone.get_children():
-			if g is WaypointGrand:
-				(g as WaypointGrand).pulse()   # the grand waypoint flares as it wakes
-
 func _build_dialog() -> void:
 	dialog_panel = PanelContainer.new()
 	dialog_panel.anchor_left = 0.5
@@ -3596,15 +2454,6 @@ func _build_pause() -> void:
 	resume.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	resume.pressed.connect(func(): game.toggle_pause())
 	vb.add_child(resume)
-	# co-op through Steam: open this world to Steam friends and invite them (SteamLink; only with Steam running, in
-	# your own game, not in a raid or a match)
-	invite_btn = _iron_button("Invite Friends", 320, 44, 19)
-	invite_btn.name = "invite_friends"
-	invite_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	invite_btn.pressed.connect(func():
-		game.toggle_pause()
-		game.steam.invite())
-	vb.add_child(invite_btn)
 	var head := func(txt: String):
 		var l := _label(txt, 13, Color(0.62, 0.55, 0.43), true)
 		var f := FontVariation.new()
@@ -3748,63 +2597,6 @@ func _build_admin(parent: Control) -> VBoxContainer:
 			message(nm + (" ON" if game.get(key) else " off"), Color(0.6, 1.0, 0.6) if game.get(key) else Color(0.8, 0.8, 0.8)))
 		syncs.append(sync)
 		vb.add_child(b)
-	# the camp's hour (DayNight): jump to a time, drag to any hour, hold it or run it fast, or back to the shared clock
-	var tod := VBoxContainer.new()
-	tod.add_theme_constant_override("separation", 4)
-	var tl := _label("", 14, Color(0.75, 0.82, 1.0))
-	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tod.add_child(tl)
-	var trow := HBoxContainer.new()
-	trow.add_theme_constant_override("separation", 4)
-	trow.alignment = BoxContainer.ALIGNMENT_CENTER
-	for at in [[6.3, "Dawn"], [13.0, "Noon"], [19.3, "Dusk"], [0.0, "Midnight"]]:
-		var h: float = at[0]
-		var tb := _iron_button(at[1], 83, 34, 14)
-		tb.pressed.connect(func(): game.day_night.set_hour(h, 0.0 if game.day_night.fixed < 0.0 else -1.0))
-		trow.add_child(tb)
-	tod.add_child(trow)
-	var slider := HSlider.new()
-	slider.min_value = 0.0
-	slider.max_value = 24.0
-	slider.step = 0.25
-	slider.custom_minimum_size = Vector2(340, 22)
-	slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	slider.value_changed.connect(func(v: float): game.day_night.set_hour(v, 0.0 if game.day_night.fixed < 0.0 else -1.0))
-	tod.add_child(slider)
-	var prow := HBoxContainer.new()
-	prow.add_theme_constant_override("separation", 4)
-	prow.alignment = BoxContainer.ALIGNMENT_CENTER
-	for pc in [[0.0, "Hold"], [1.0, "Run"], [30.0, "Fast 30x"], [-1.0, "Live clock"]]:
-		var p: float = pc[0]
-		var pb := _iron_button(pc[1], 83, 34, 14)
-		pb.pressed.connect(func():
-			var dn: DayNight = game.day_night
-			if p < 0.0:
-				dn.live()
-			else:
-				dn.set_hour(dn.hour, p))
-		prow.add_child(pb)
-	tod.add_child(prow)
-	var nb := _iron_button("Next night's sounds", 340, 32, 14)
-	nb.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	nb.pressed.connect(func(): game.day_night.next_night_bed())
-	tod.add_child(nb)
-	vb.add_child(tod)
-	var tick := Timer.new()             # the hour runs on under the pause menu: keep the label and slider with it
-	tick.wait_time = 0.2
-	tick.process_mode = Node.PROCESS_MODE_ALWAYS
-	tick.timeout.connect(func():
-		var dn: DayNight = game.day_night
-		if not vb.visible or dn == null:
-			return
-		var h := dn.clock()
-		var mode := "live clock (everyone's)" if dn.fixed < 0.0 else ("held, your screen only" if dn.pace <= 0.0 else "running %sx, your screen only" % str(snappedf(dn.pace, 0.1)))
-		var beds: int = (Sfx.bank.get("night_forest", []) as Array).size()
-		tl.text = "Time of day  %02d:%02d  ·  %s\nnight sounds %d of %d%s" % [int(h), int(fmod(h, 1.0) * 60.0), mode, dn.night_take() + 1, beds, "" if dn.on else "  (the Act I camp only)"]
-		if not slider.has_focus() or dn.pace > 0.0 or dn.fixed < 0.0:
-			slider.set_value_no_signal(h))
-	tick.autostart = true
-	vb.add_child(tick)
 	# the level: pick a number and press Set
 	var lv := HBoxContainer.new()
 	lv.add_theme_constant_override("separation", 8)
@@ -3851,18 +2643,6 @@ func _update_gfx_btn() -> void:
 	if gfx_info:
 		gfx_info.text = game.renderer_info()
 
-## The shade under the co-op and Battlegrounds screens (the title shows dimmed behind them, and can't be clicked).
-func _sync_menu_shade() -> void:
-	if menu_shade == null:
-		menu_shade = ColorRect.new()
-		menu_shade.name = "menu_shade"
-		menu_shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-		menu_shade.color = Color(0.0, 0.0, 0.0, 0.55)
-		menu_shade.mouse_filter = Control.MOUSE_FILTER_STOP
-		menus.add_child(menu_shade)
-		menus.move_child(menu_shade, title_panel.get_index() + 1)
-	menu_shade.visible = join_panel != null and join_panel.visible
-
 ## One of the screen's layers (see `setup`): a full-screen holder that lets the mouse through.
 func _layer(nm: String) -> Control:
 	var l := Control.new()
@@ -3881,13 +2661,10 @@ func _fullscreen_panel(col: Color) -> Control:
 	return c
 
 var title_stage: TitleStage
-var _title_cards := {}          # "continue"/"new" -> Button (the choice cards)
-var _title_fade: ColorRect
-var _title_busy := false        # a choice is under way: ignore more clicks
 
-## The title screen: the Gate of the Ashen Crown (TitleStage, its own 3D world) with the two choices as cards
-## under their daises: Continue (the last character played, shown on the left dais in their gear) and Create
-## New Character (the empty dais, into the class picker). Characters, co-op, settings and Quit sit in a row below.
+## The title: the 3D stage (TitleStage, its own world) behind the multiplayer page, where the lobby's class preview
+## stands, and the build in the corner. Enter World's cards, buttons, character list and class picker are archived
+## (archive/camp/).
 func _build_title() -> void:
 	title_panel = Control.new()
 	title_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -3896,84 +2673,6 @@ func _build_title() -> void:
 	title_stage.set_anchors_preset(Control.PRESET_FULL_RECT)
 	title_panel.add_child(title_stage)
 	title_stage.setup(game)
-	title_stage.hovering.connect(_title_hover)
-	title_stage.clicked.connect(_title_choose)
-	# while the class picker or the character list covers it, the stage stops drawing
-	title_stage.covered = func() -> bool: return (class_panel != null and class_panel.visible) or (chars_panel != null and chars_panel.visible)
-	var shade := ColorRect.new()
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var sm := ShaderMaterial.new()
-	var sh := Shader.new()
-	sh.code = "shader_type canvas_item; void fragment(){ vec2 d = (UV - vec2(0.5, 0.48)) * vec2(1.1, 1.0); float v = smoothstep(0.35, 0.95, length(d) * 1.25); float top = smoothstep(0.32, 0.0, UV.y) * 0.45; float bot = smoothstep(0.7, 1.0, UV.y) * 0.55; COLOR = vec4(0.0, 0.0, 0.0, clamp(v * 0.75 + top + bot, 0.0, 0.9)); }"
-	sm.shader = sh
-	shade.material = sm
-	title_panel.add_child(shade)
-	# the name, high over the gate
-	var head := VBoxContainer.new()
-	head.name = "title_head"
-	head.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	head.offset_top = 34
-	head.offset_left = TitleHome.EDGE                        # (centred in the room left of the character
-	head.offset_right = -TitleHome.W - TitleHome.EDGE        # sidebar, like the buttons)
-	head.add_theme_constant_override("separation", 2)
-	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	title_panel.add_child(head)
-	var t := _label("ASHEN CROWN", 84, Color(0.92, 0.74, 0.44), true)
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	t.add_theme_constant_override("outline_size", 14)
-	t.add_theme_color_override("font_outline_color", Color(0.04, 0.02, 0.01, 0.95))
-	t.add_theme_color_override("font_shadow_color", Color(1.0, 0.45, 0.15, 0.35))
-	t.add_theme_constant_override("shadow_outline_size", 22)
-	t.add_theme_constant_override("shadow_offset_x", 0)
-	t.add_theme_constant_override("shadow_offset_y", 0)
-	head.add_child(t)
-	var orn := _label("—  ✦  —", 18, Color(0.7, 0.55, 0.32), true)
-	orn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	head.add_child(orn)
-	var st := _label("ACT I  ·  THE ASHEN MOORS", 18, Color(0.78, 0.72, 0.62), true)
-	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	head.add_child(st)
-	# the two choices
-	var cont := _title_card("continue", WARM_CARD)
-	cont.pressed.connect(func(): _title_choose("continue"))
-	var ng := _title_card("newchar", COLD_CARD)
-	ng.pressed.connect(func(): _title_choose("new"))
-	_title_cards = {"continue": cont, "new": ng}
-	title_stage.cards = _title_cards
-	(ng.find_child("kicker", true, false) as Label).text = "A NEW LEGEND"
-	(ng.find_child("big", true, false) as Label).text = "Create New Character"
-	(ng.find_child("line", true, false) as Label).text = "Choose a class and forge your hero"
-	(ng.find_child("ago", true, false) as Label).text = ""
-	# the rest, in a row along the bottom
-	var row := HBoxContainer.new()
-	row.name = "title_row"
-	row.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	row.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	row.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	row.offset_bottom = -18
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 10)
-	title_panel.add_child(row)
-	var chb := _iron_button("Characters", 170, 38, 15)
-	chb.name = "characters"
-	chb.pressed.connect(func(): open_characters())
-	row.add_child(chb)
-	var hb := _iron_button("Host Co-op", 150, 38, 15)
-	hb.name = "host"
-	hb.pressed.connect(func(): game.start_host())
-	row.add_child(hb)
-	var jb := _iron_button("Join Co-op", 150, 38, 15)
-	jb.name = "join"
-	jb.pressed.connect(func(): open_join())
-	row.add_child(jb)
-	var bgb := _iron_button("Battlegrounds", 170, 38, 15)
-	bgb.name = "battlegrounds"
-	bgb.pressed.connect(func(): open_battlegrounds())
-	row.add_child(bgb)
-	var q := _iron_button("Quit", 110, 38, 15)
-	q.pressed.connect(func(): get_tree().quit())
-	row.add_child(q)
 	if BuildEnv.env() != "local" and BuildEnv.env() != "production":
 		# which backend this build uses, so a staging build is never mistaken for the live game
 		var envl := _label(BuildEnv.env().to_upper() + " BUILD", 14, Color(1.0, 0.55, 0.3))
@@ -3983,981 +2682,31 @@ func _build_title() -> void:
 	# the build, tiny in the corner, so a screenshot shows at once whether a copy is out of date
 	var rev := _label("%s · %s" % [BuildEnv.env(), BuildEnv.value("rev")], 11, Color(0.5, 0.47, 0.42, 0.7))
 	rev.name = "build_rev"
-	# (bottom left: the bottom right is the character sidebar's frame)
 	rev.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	rev.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	rev.offset_left = TitleHome.EDGE + 4
+	rev.offset_left = 18
 	rev.offset_bottom = -4
 	title_panel.add_child(rev)
-	var slots := _label("", 13, Color(0.62, 0.58, 0.5))
-	slots.name = "slots"
-	slots.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	slots.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	slots.offset_top = -86
-	slots.offset_bottom = -66
-	title_panel.add_child(slots)
-	if OS.has_feature("web"):
-		# browsers can't use the LAN co-op networking, and there's nothing to quit to
-		hb.visible = false
-		jb.visible = false
-		bgb.visible = false
-		q.visible = false
-	# the controls, WoW-style (title_home.gd): they replace the two cards and the row of buttons, kept hidden for the
-	# title's own API (_title_choose, the cards' state)
-	cont.visible = false
-	ng.visible = false
-	row.visible = false
-	slots.visible = false
-	home = TitleHome.new()
-	title_panel.add_child(home)
-	home.setup(self)
-	# a fade for the move into a choice (under the picker and the list, which are built on top)
-	_title_fade = ColorRect.new()
-	_title_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_title_fade.color = Color(0, 0, 0, 0)
-	_title_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	title_panel.add_child(_title_fade)
-	_build_class_picker()
-	_build_characters()
-
-const WARM_CARD := Color(0.95, 0.68, 0.36)
-const COLD_CARD := Color(0.58, 0.8, 1.0)
-
-## A choice card: a dark glass plate edged in its colour, with a kicker, a big line, a detail line and a
-## last-played line (filled by show_title). The whole card is the button.
-func _title_card(nm: String, col: Color) -> Button:
-	var b := Button.new()
-	b.name = nm
-	b.custom_minimum_size = Vector2(420, 116)
-	b.size = Vector2(420, 116)
-	b.focus_mode = Control.FOCUS_ALL
-	b.pivot_offset = Vector2(210, 58)
-	for s in ["normal", "hover", "pressed", "focus", "disabled"]:
-		var sb := StyleBoxFlat.new()
-		var lit: bool = s == "hover" or s == "focus" or s == "pressed"
-		sb.bg_color = Color(0.03, 0.025, 0.025, 0.78 if not lit else 0.86)
-		sb.border_color = Color(col.r, col.g, col.b, 0.95 if lit else (0.25 if s == "disabled" else 0.55))
-		sb.set_border_width_all(2 if lit else 1)
-		sb.border_width_top = 3 if lit else 2
-		sb.set_corner_radius_all(3)
-		sb.shadow_color = Color(col.r, col.g, col.b, 0.35 if lit else 0.0)
-		sb.shadow_size = 18 if lit else 0
-		sb.set_content_margin_all(14)
-		b.add_theme_stylebox_override(s, sb)
-	var vb := VBoxContainer.new()
-	vb.set_anchors_preset(Control.PRESET_FULL_RECT)
-	vb.offset_left = 18
-	vb.offset_right = -18
-	vb.offset_top = 12
-	vb.offset_bottom = -10
-	vb.alignment = BoxContainer.ALIGNMENT_CENTER
-	vb.add_theme_constant_override("separation", 2)
-	vb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	b.add_child(vb)
-	var k := _label("", 13, col, true)
-	k.name = "kicker"
-	k.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(k)
-	var big := _label("", 28, Color(0.97, 0.9, 0.78), true)
-	big.name = "big"
-	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	big.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	big.add_theme_constant_override("outline_size", 6)
-	vb.add_child(big)
-	var line := _label("", 16, Color(0.82, 0.77, 0.68))
-	line.name = "line"
-	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(line)
-	var ago := _label("", 13, Color(0.6, 0.56, 0.5))
-	ago.name = "ago"
-	ago.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(ago)
-	b.mouse_entered.connect(func(): if not b.disabled: title_stage.set_focus("continue" if nm == "continue" else "new"))
-	b.mouse_exited.connect(func(): title_stage.set_focus(""))
-	b.focus_entered.connect(func(): if not b.disabled: title_stage.set_focus("continue" if nm == "continue" else "new"))
-	title_panel.add_child(b)
-	return b
-
-## The stage's hover (a dais or a card): the matching card lifts and the other settles.
-func _title_hover(which: String) -> void:
-	for side in _title_cards:
-		var c: Button = _title_cards[side]
-		var on: bool = side == which and not c.disabled
-		var tw := c.create_tween()
-		tw.tween_property(c, "scale", Vector2.ONE * (1.04 if on else 1.0), 0.18).set_trans(Tween.TRANS_SINE)
-		# hovering the dais lights the card as if the mouse were on it
-		if not c.has_meta("plain"):
-			c.set_meta("plain", c.get_theme_stylebox("normal"))
-		c.add_theme_stylebox_override("normal", c.get_theme_stylebox("hover") if on else c.get_meta("plain"))
-	if which != "":
-		Sfx.play("inv_click", -14.0, 0.8 if which == "continue" else 1.15)
-
-## A choice made (card or dais): the camera moves into it, then Continue loads the character shown and
-## New Character opens the class picker.
-func _title_choose(which: String) -> void:
-	if _title_busy or game._intro_playing or (game.lobby_client != null and game.lobby_client.panel.visible):
-		return
-	if which == "continue" and (_title_cards["continue"] as Button).disabled:
-		return
-	_title_busy = true
-	Sfx.play("click")
-	if which == "continue":
-		Sfx.play("swing_heavy", -10.0, 0.8)
-	else:
-		Sfx.play("phase_in", -8.0, 1.0)
-	var tw := create_tween()
-	tw.tween_interval(0.25)
-	tw.tween_property(_title_fade, "color", Color(0, 0, 0, 1) if which == "continue" else Color(0.02, 0.03, 0.05, 1), 0.3)
-	await title_stage.enter(which)
-	if which == "continue":
-		var id: String = str(title_stage.get_meta("char_id")) if title_stage.has_meta("char_id") else ""
-		await game.start_game(true, "knight", id)
-	else:
-		open_class_picker()
-	_title_fade.color = Color(0, 0, 0, 0)
-	title_stage.reset()
-	_title_busy = false
-
-func _build_join() -> void:
-	join_panel = PanelContainer.new()
-	join_panel.anchor_left = 0.5
-	join_panel.anchor_right = 0.5
-	join_panel.anchor_top = 0.5
-	join_panel.anchor_bottom = 0.5
-	join_panel.offset_left = -300
-	join_panel.offset_right = 300
-	join_panel.offset_top = -230
-	join_panel.offset_bottom = 230
-	join_panel.visibility_changed.connect(_sync_menu_shade)
-	join_panel.visible = false
-	menus.add_child(join_panel)
-	join_panel.offset_left = -360
-	join_panel.offset_right = 360
-	join_panel.offset_top = -290
-	join_panel.offset_bottom = 290
-	_ornate(join_panel, 0.26, 18)
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 12)
-	join_panel.add_child(vb)
-	var t := _label("JOIN A GAME", 32, GOLD, true)
-	var tfv := FontVariation.new()
-	tfv.base_font = font_title
-	tfv.spacing_glyph = 5
-	t.add_theme_font_override("font", tfv)
-	t.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	t.add_theme_constant_override("outline_size", 8)
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(t)
-	vb.add_child(_divider(30))
-	vb.add_child(_label("Games on your network:", 16))
-	var games_scroll := ScrollContainer.new()
-	games_scroll.custom_minimum_size.y = 150
-	games_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	games_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	vb.add_child(games_scroll)
-	join_list = VBoxContainer.new()
-	join_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	join_list.custom_minimum_size = Vector2(0, 150)
-	join_list.add_theme_constant_override("separation", 6)
-	games_scroll.add_child(join_list)
-	join_hint = _label("Searching… ask the other player to choose LAN → Host LAN.", 14, Color(0.7, 0.66, 0.58))
-	join_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vb.add_child(join_hint)
-	vb.add_child(_label("Or type the host's address (shown at the top left of their screen):", 14, Color(0.7, 0.66, 0.58)))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	vb.add_child(row)
-	join_ip = LineEdit.new()
-	join_ip.placeholder_text = "e.g. 192.168.1.23"
-	join_ip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	join_ip.custom_minimum_size = Vector2(0, 46)
-	join_ip.add_theme_font_size_override("font_size", 17)
-	join_ip.add_theme_stylebox_override("normal", _box(Color(0.03, 0.028, 0.025, 0.95), Color(0.42, 0.33, 0.2), 1, 3, 10))
-	join_ip.add_theme_stylebox_override("focus", _box(Color(0.04, 0.035, 0.03, 0.95), GOLD, 1, 3, 10))
-	join_ip.text_submitted.connect(func(txt): _join_ip(txt))
-	row.add_child(join_ip)
-	var go := _iron_button("Join", 140, 46, 19)
-	go.pressed.connect(func(): _join_ip(join_ip.text))
-	row.add_child(go)
-	var note := _label("Your selected character comes with you.", 13, Color(0.6, 0.57, 0.5))
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vb.add_child(note)
-	var back := _iron_button("Back", 220, 46, 18)
-	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	back.name = "join_back"
-	back.pressed.connect(func():
-		join_panel.visible = false
-		game.net.stop_listening())
-	vb.add_child(back)
-
-	join_panel.minimum_size_changed.connect(_fit_join_panel.call_deferred)
-	get_viewport().size_changed.connect(_fit_join_panel)
-	_fit_join_panel.call_deferred()
-
-func _fit_join_panel() -> void:
-	# Wrapped labels can report a tall minimum before their first layout pass.
-	# Refit the preferred frame when that minimum settles; do not retain the old height.
-	join_panel.size = Vector2(760, 600)
-	var available := get_viewport().get_visible_rect().size - Vector2(40, 40)
-	var factor := minf(1.0, minf(available.x / join_panel.size.x, available.y / join_panel.size.y))
-	join_panel.pivot_offset = join_panel.size * 0.5
-	join_panel.scale = Vector2.ONE * factor
-	join_panel.position = (get_viewport().get_visible_rect().size - join_panel.size) * 0.5
 
 ## The lobby browser's Battlegrounds.
 func open_battlegrounds() -> void:
 	if game.lobby_client != null:
 		game.lobby_client.open("battlegrounds")
 
-func open_join() -> void:
-	Sfx.play("click")
-	join_character_id = game.char_id if game.playing else (home.sel if home != null else "")
-	join_panel.visible = true
-	game.net.start_listening()
-	_refresh_join()
-
-func _join_ip(txt: String) -> void:
-	txt = txt.strip_edges()
-	if txt == "":
-		return
-	join_panel.visible = false
-	game.start_join(txt, join_character_id)
-
-func _refresh_join() -> void:
-	for c in join_list.get_children():
-		c.queue_free()
-	var found: Dictionary = game.net.found
-	for ip in found.keys():
-		var b := _iron_button("%s's game  ·  %s  ·  %s" % [found[ip]["name"], found[ip]["zone"], ip], 600, 50, 17)
-		var addr: String = ip
-		b.pressed.connect(func(): _join_ip(addr))
-		join_list.add_child(b)
-	join_hint.visible = found.is_empty()
-
-# ---------------------------------------------------------------- armor enchanting
-func _build_enchant() -> void:
-	ench_panel = _panel("Enchant Armor", true, 560, 600)
-	var vb: VBoxContainer = ench_panel.get_node("vb")
-	var intro := _label("Pay to bind runes into your worn armor. Each level adds %d%% defense and extra life. Up to +10." % int(round(Items.ENCHANT_DEF * 100)), 14, DIM)
-	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	intro.custom_minimum_size = Vector2(520, 0)
-	vb.add_child(intro)
-	var names := {"helm": "Helm", "armor": "Body armor", "gloves": "Gloves", "boots": "Boots", "belt": "Belt", "shield": "Shield"}
-	for k in Items.ENCHANT_SLOTS:
-		var slot_name: String = k
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 12)
-		vb.add_child(row)
-		var cell := _slot(Vector2(64, 64), func(_ev): pass, func(p, on): _hover(p, on, ""), names[k])
-		row.add_child(cell)
-		var info := VBoxContainer.new()
-		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		info.add_theme_constant_override("separation", 2)
-		row.add_child(info)
-		var nm := _label("", 16, GOLD, true)
-		info.add_child(nm)
-		var st := _label("", 13, Color(0.75, 0.82, 1.0))
-		info.add_child(st)
-		var pips := HBoxContainer.new()
-		pips.add_theme_constant_override("separation", 3)
-		info.add_child(pips)
-		for i in Items.ENCHANT_MAX:
-			var pip := ColorRect.new()
-			pip.custom_minimum_size = Vector2(14, 6)
-			pips.add_child(pip)
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(150, 48)
-		b.pressed.connect(func(): _enchant(slot_name))
-		row.add_child(b)
-		ench_rows[k] = {"cell": cell, "name": nm, "stats": st, "pips": pips, "btn": b}
-	ench_gold = _label("", 18, Color(1.0, 0.85, 0.4), true)
-	vb.add_child(ench_gold)
-
-func open_enchant(title: String) -> void:
-	if furnace_ui != null:
-		furnace_ui.visible = false
-	close_all()
-	(ench_panel.get_node("vb").get_child(0).get_node("title") as Label).text = title + " · Enchanting"
-	ench_panel.visible = true
-	inv_panel.visible = true
-	_refresh_enchant()
-	Sfx.play("equip")
-
-func _refresh_enchant() -> void:
-	if ench_panel == null or not ench_panel.visible:
-		return
-	for k in ench_rows.keys():
-		var r: Dictionary = ench_rows[k]
-		var it = hero.equipment.get(k)
-		_set_slot(r["cell"], it)
-		var en := int(it.get("ench", 0)) if it != null else 0
-		var pips: HBoxContainer = r["pips"]
-		for i in pips.get_child_count():
-			(pips.get_child(i) as ColorRect).color = Color(0.45, 0.65, 1.0) if i < en else Color(0.14, 0.13, 0.16)
-		var b: Button = r["btn"]
-		if it == null:
-			r["name"].text = "Nothing worn"
-			r["stats"].text = ""
-			b.text = "—"
-			b.disabled = true
-			continue
-		r["name"].text = ("+%d " % en if en > 0 else "") + it["name"]
-		var d_now := Items.defense_of(it)
-		if en >= Items.ENCHANT_MAX:
-			r["stats"].text = "Defense %d  ·  fully enchanted" % d_now
-			b.text = "Maxed"
-			b.disabled = true
-			continue
-		var nxt: Dictionary = it.duplicate(true)
-		nxt["ench"] = en + 1
-		var cost := Items.enchant_cost(it)
-		r["stats"].text = "Defense %d → %d   ·   Life +%d → +%d" % [d_now, Items.defense_of(nxt), Items.enchant_life(it, en), Items.enchant_life(it, en + 1)]
-		b.text = "Enchant +%d\n%d gold" % [en + 1, cost]
-		b.disabled = hero.gold < cost
-	ench_gold.text = "Gold: %d" % hero.gold
-
-func _enchant(slot_name: String) -> void:
-	var it = hero.equipment.get(slot_name)
-	if not Items.can_enchant(it):
-		return
-	var cost := Items.enchant_cost(it)
-	if hero.gold < cost:
-		message("Not enough gold", Color(1, 0.4, 0.3))
-		Sfx.play("deny")
-		return
-	hero.gold -= cost
-	it["ench"] = int(it.get("ench", 0)) + 1
-	hero.recalc()
-	hero.refresh_gear()
-	var r: Dictionary = ench_rows[slot_name]
-	click_fx(r["cell"])
-	_enchant_burst(r["cell"])
-	Sfx.play("levelup", -4.0, 1.25)
-	message("%s enchanted to +%d!" % [it["name"], it["ench"]], Color(0.6, 0.8, 1.0))
-	refresh()
-	_refresh_enchant()
-
-## A ring of blue runes-light around the slot.
-func _enchant_burst(p: Control) -> void:
-	var c := p.get_global_rect().get_center() - root.get_global_rect().position
-	for i in 16:
-		var sp := ColorRect.new()
-		sp.size = Vector2(5, 5)
-		sp.color = Color(0.55, 0.75, 1.0) if i % 2 == 0 else Color(0.9, 0.95, 1.0)
-		sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		sp.position = c - Vector2(2.5, 2.5)
-		sp.rotation = PI * 0.25
-		top.add_child(sp)
-		var a := TAU * i / 16.0
-		var tw := create_tween().set_parallel(true)
-		tw.tween_property(sp, "position", sp.position + Vector2(cos(a), sin(a)) * 60.0, 0.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		tw.tween_property(sp, "modulate:a", 0.0, 0.5).set_delay(0.15)
-		tw.chain().tween_callback(sp.queue_free)
-
-## New Game: choose a class. The heroes stand live on a torch-lit stage (ClassStage): idle they breathe and
-## look about, under the mouse each fidgets, and the chosen one does its signature move. Below them, in the
-## inventory's iron and bronze: the chosen class's name, story, skills and stats, the name field and Play.
-var class_stage: ClassStage
-var class_info: Control
-var class_plates := {}
-var class_arrows := {}              # -1 / 1 -> ClassArrow
-## Over the New Character stage: darkens the hall softly behind the title at the top and behind the info panel at
-## the bottom, and into the corners, so the cathedral runs to the screen's edges without fighting the text.
-const STAGE_FADE_SHADER := """
-shader_type canvas_item;
-void fragment() {
-	float top = 1.0 - smoothstep(0.02, 0.17, UV.y);
-	float bottom = smoothstep(0.62, 0.86, UV.y);
-	vec2 c = (UV - vec2(0.5, 0.42)) * vec2(1.25, 1.0);
-	float edge = smoothstep(0.45, 0.85, length(c));
-	float a = clamp(max(max(top * 0.82, bottom * 0.9), edge * 0.7), 0.0, 1.0);
-	COLOR = vec4(0.03, 0.026, 0.024, a);
-}
-"""
-var _class_sel := "knight"
-
-func _build_class_picker() -> void:
-	class_panel = Control.new()
-	class_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	class_panel.visible = false
-	title_panel.add_child(class_panel)
-	var dim := ColorRect.new()
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	var dm := ShaderMaterial.new()
-	var dsh := Shader.new()
-	dsh.code = "shader_type canvas_item; void fragment(){ float v = length((UV - vec2(0.5, 0.38)) * vec2(1.3, 1.0)); COLOR = vec4(vec3(0.035, 0.03, 0.028) * (1.0 - v * 0.9), 1.0); }"
-	dm.shader = dsh
-	dim.material = dm
-	class_panel.add_child(dim)
-	var t := _label("Choose your path", 40, GOLD, true)
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	t.add_theme_constant_override("outline_size", 8)
-	t.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	t.offset_top = 26
-	class_panel.add_child(t)
-	var hint := _label("Turn with the arrows or the keys, click a hero to choose", 14, Color(0.62, 0.58, 0.5))
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	hint.offset_top = 80
-	class_panel.add_child(hint)
-	# the stage: built when the picker opens, freed when it closes. It fills the screen behind the title and the
-	# panel (ClassStage.band keeps the heroes between them), with soft dark fades so the text stays readable
-	var holder := Control.new()
-	holder.name = "stage_holder"
-	holder.set_anchors_preset(Control.PRESET_FULL_RECT)
-	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	class_panel.add_child(holder)
-	class_panel.move_child(holder, dim.get_index() + 1)
-	var fade := ColorRect.new()
-	fade.name = "stage_fade"
-	fade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var fm := ShaderMaterial.new()
-	var fsh := Shader.new()
-	fsh.code = STAGE_FADE_SHADER
-	fm.shader = fsh
-	fade.material = fm
-	class_panel.add_child(fade)
-	class_panel.move_child(fade, holder.get_index() + 1)
-	# the chosen class, in the inventory's frame
-	class_info = Control.new()
-	class_info.anchor_left = 0.5
-	class_info.anchor_right = 0.5
-	class_info.anchor_top = 1.0
-	class_info.anchor_bottom = 1.0
-	class_info.offset_left = -560
-	class_info.offset_right = 560
-	class_info.offset_top = -270
-	class_info.offset_bottom = -22
-	class_panel.add_child(class_info)
-	var iron := TextureRect.new()
-	iron.texture = _scaled_tex(INV_TEX["iron"], 0.25)
-	iron.stretch_mode = TextureRect.STRETCH_TILE
-	iron.position = Vector2(28, 28)
-	iron.size = Vector2(1064, 192)
-	class_info.add_child(iron)
-	var fr := NinePatchRect.new()
-	fr.texture = _scaled_tex(INV_TEX["frame"], 0.18)
-	for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
-		fr.set_patch_margin(side, 61)
-	fr.axis_stretch_horizontal = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
-	fr.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE_FIT
-	fr.draw_center = false
-	fr.size = Vector2(1120, 248)
-	fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	class_info.add_child(fr)
-	var hb := HBoxContainer.new()
-	hb.position = Vector2(66, 42)
-	hb.size = Vector2(988, 168)
-	hb.add_theme_constant_override("separation", 28)
-	class_info.add_child(hb)
-	# left: name, story, stats
-	var lv := VBoxContainer.new()
-	lv.custom_minimum_size = Vector2(380, 0)
-	lv.add_theme_constant_override("separation", 6)
-	hb.add_child(lv)
-	var nm := _label("", 32, GOLD, true)
-	nm.name = "cname"
-	lv.add_child(nm)
-	var ds := _label("", 14, Color(0.84, 0.8, 0.74))
-	ds.name = "cdesc"
-	ds.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	ds.custom_minimum_size = Vector2(380, 0)
-	lv.add_child(ds)
-	var stl := _label("", 13, Color(0.78, 0.7, 0.55))
-	stl.name = "cstats"
-	lv.add_child(stl)
-	# middle: the four skills in the action bar's sockets
-	var mv := VBoxContainer.new()
-	mv.custom_minimum_size = Vector2(300, 0)
-	mv.add_theme_constant_override("separation", 6)
-	hb.add_child(mv)
-	mv.add_child(_label("Skills", 15, Color(0.8, 0.72, 0.58), true))
-	var grid := GridContainer.new()
-	grid.name = "cskills"
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 14)
-	grid.add_theme_constant_override("v_separation", 8)
-	mv.add_child(grid)
-	# right: the name and Play
-	var rv := VBoxContainer.new()
-	rv.custom_minimum_size = Vector2(250, 0)
-	rv.alignment = BoxContainer.ALIGNMENT_CENTER
-	rv.add_theme_constant_override("separation", 5)
-	hb.add_child(rv)
-	rv.add_child(_label("Name", 14, Color(0.8, 0.72, 0.58)))
-	name_edit = LineEdit.new()
-	name_edit.max_length = 18
-	name_edit.custom_minimum_size = Vector2(250, 36)
-	name_edit.placeholder_text = "a name for your hero"
-	var le := StyleBoxFlat.new()
-	le.bg_color = Color(0.05, 0.045, 0.04, 0.95)
-	le.border_color = Color(0.55, 0.43, 0.24)
-	le.set_border_width_all(1)
-	le.set_corner_radius_all(3)
-	le.content_margin_left = 10
-	name_edit.add_theme_stylebox_override("normal", le)
-	var lef := le.duplicate() as StyleBoxFlat
-	lef.border_color = GOLD
-	name_edit.add_theme_stylebox_override("focus", lef)
-	rv.add_child(name_edit)
-	var note := _label("", 12, Color(0.7, 0.66, 0.58))
-	note.name = "slotnote"
-	note.custom_minimum_size = Vector2(250, 0)
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	rv.add_child(note)
-	var go := _iron_button("Play", 250, 46, 18)
-	go.name = "cplay"
-	go.pressed.connect(func():
-		class_panel.visible = false
-		_close_class_stage()
-		game.start_game(false, _class_sel, "", name_edit.text))
-	rv.add_child(go)
-	var back := _iron_button("Back", 250, 34, 14)
-	back.pressed.connect(func():
-		Sfx.play("click")
-		class_panel.visible = false
-		_close_class_stage()
-		# the whole title as it should be (its fade, camera, stage, music, the 3D switch), never half of it
-		show_title())
-	rv.add_child(back)
-	_show_class("knight")
-	get_viewport().size_changed.connect(_layout_class_info)
-	_layout_class_info()
-
-func _layout_class_info() -> void:
-	var available := get_viewport().get_visible_rect().size
-	var factor := minf(1.0, minf((available.x - 32.0) / 1120.0, available.y * 0.38 / 248.0))
-	class_info.scale = Vector2.ONE * factor
-	class_info.offset_left = -560.0 * factor
-	class_info.offset_right = class_info.offset_left + 1120.0
-	class_info.offset_top = -22.0 - 248.0 * factor
-	class_info.offset_bottom = class_info.offset_top + 248.0
-
-## Fills the info panel for a class (the chosen one, or the one under the mouse while it's there).
-func _show_class(c: String) -> void:
-	if class_stage != null:
-		class_stage.stop_skill()      # the skill rows are rebuilt; a hovered one is gone
-	var d: Dictionary = Data.CLASSES[c]
-	var acc: Color = ClassStage.ACCENTS[c]
-	var nm := class_info.find_child("cname", true, false) as Label
-	nm.text = str(d["name"])
-	nm.add_theme_color_override("font_color", acc)
-	(class_info.find_child("cdesc", true, false) as Label).text = str(d["desc"])
-	(class_info.find_child("cstats", true, false) as Label).text = "Strength %d   Dexterity %d   Vitality %d   Energy %d" % [d["str"], d["dex"], d["vit"], d["ene"]]
-	var grid := class_info.find_child("cskills", true, false) as GridContainer
-	for ch in grid.get_children():
-		ch.queue_free()
-	for sk in Data.skills_for(c):
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
-		var sock := Panel.new()
-		sock.custom_minimum_size = Vector2(46, 46)
-		var sb := StyleBoxTexture.new()
-		if _socket_tex == null:
-			_socket_tex = _scaled_tex(BAR_TEX["slot"], 0.3)
-		sb.texture = _socket_tex
-		for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
-			sb.set_texture_margin(side, 9)
-		sock.add_theme_stylebox_override("panel", sb)
-		var g := SkillGlyph.new()
-		g.id = sk["id"]
-		g.position = Vector2(5, 5)
-		g.size = Vector2(36, 36)
-		g.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		sock.add_child(g)
-		sock.tooltip_text = str(sk["desc"])
-		row.add_child(sock)
-		var l := _label(str(sk["name"]), 13, Color(0.86, 0.82, 0.74))
-		l.custom_minimum_size = Vector2(96, 0)
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		row.add_child(l)
-		grid.add_child(row)
-		# hover a skill and the hero shows it on the stage
-		var sid: String = sk["id"]
-		row.mouse_filter = Control.MOUSE_FILTER_PASS
-		row.mouse_entered.connect(func():
-			if class_stage != null:
-				class_stage.show_skill(c, sid))
-		row.mouse_exited.connect(func():
-			if class_stage != null:
-				class_stage.show_skill(c, ""))
-	(class_info.find_child("cplay", true, false) as Button).text = "Play as " + str(d["name"])
-	for k in class_plates:
-		var p: Label = class_plates[k]
-		p.add_theme_color_override("font_color", ClassStage.ACCENTS[k] if k == c else Color(0.75, 0.7, 0.62))
-
-func _open_class_stage() -> void:
-	if class_stage != null:
-		return
-	var holder := class_panel.find_child("stage_holder", true, false) as Control
-	class_stage = ClassStage.new()
-	class_stage.set_anchors_preset(Control.PRESET_FULL_RECT)
-	holder.add_child(class_stage)
-	class_stage.setup(game)
-	class_stage.picked.connect(func(c: String):
-		_class_sel = c
-		_show_class(c))
-	class_stage.hovering.connect(func(c: String): _show_class(c if c != "" else _class_sel))
-	class_plates.clear()
-	for c in ClassStage.CLASSES:
-		var p := _label(str(Data.CLASSES[c]["name"]), 17, Color(0.75, 0.7, 0.62), true)
-		p.add_theme_constant_override("outline_size", 6)
-		p.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		p.size = Vector2(160, 26)
-		p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		holder.add_child(p)
-		class_plates[c] = p
-	# the carousel's arrows at the stage's edges, level with the heroes
-	for dir: int in [-1, 1]:
-		var ar := ClassArrow.new()
-		ar.setup(dir)
-		ar.anchor_left = 0.0 if dir < 0 else 1.0
-		ar.anchor_right = ar.anchor_left
-		ar.anchor_top = 0.5
-		ar.anchor_bottom = 0.5
-		var w := ClassArrow.SIZE.x
-		ar.offset_left = 48.0 if dir < 0 else -48.0 - w
-		ar.offset_right = ar.offset_left + w
-		ar.offset_top = -ClassArrow.SIZE.y * 0.5 - 36.0 - 83.0     # level with the heroes' band (ClassStage.band)
-		ar.offset_bottom = ar.offset_top + ClassArrow.SIZE.y
-		ar.turned.connect(func(d: int):
-			if class_stage != null:
-				class_stage.turn(d))
-		holder.add_child(ar)
-		class_arrows[dir] = ar
-	class_stage.snap_to(_class_sel)
-	_show_class(_class_sel)
-	# the hero select has its own theme (back to the zone's when it closes)
-	Sfx.play_music("select")
-
-func _close_class_stage() -> void:
-	if class_stage != null:
-		class_stage.queue_free()
-		class_stage = null
-		game.zone_music()
-	for c in class_plates:
-		(class_plates[c] as Label).queue_free()
-	class_plates.clear()
-	for d in class_arrows:
-		(class_arrows[d] as Control).queue_free()
-	class_arrows.clear()
-
-## Left/Right (or A/D) turn the carousel while the picker is open and nothing is being typed.
-func _class_key(ev: InputEvent) -> bool:
-	if class_stage == null or not class_panel.visible or not (ev is InputEventKey):
-		return false
-	var k := ev as InputEventKey
-	if not k.pressed:
-		return false
-	if name_edit != null and name_edit.has_focus():
-		return false
-	var dir := 0
-	if k.keycode == KEY_LEFT or k.keycode == KEY_A:
-		dir = -1
-	elif k.keycode == KEY_RIGHT or k.keycode == KEY_D:
-		dir = 1
-	if dir == 0:
-		return false
-	if not k.echo:
-		var ar := class_arrows.get(dir) as ClassArrow
-		if ar != null:
-			ar.flash()
-		class_stage.turn(dir)
-	return true
-
-## One of the carousel's two arrows (a Meshy-painted iron chevron with a gold gem): brightens, grows a
-## little and its gem glows under the mouse; pressed it dips; a click turns the ring one way.
-class ClassArrow extends Control:
-	signal turned(dir: int)
-	const SIZE := Vector2(150, 158)
-	static var _tex: Texture2D
-	static var _gem: Texture2D
-	var dir := 1
-	var art: TextureRect
-	var gem: TextureRect
-	var _hot := 0.0
-	var _over := false
-	var _down := false
-	var _flash := 0.0
-
-	func setup(d: int) -> void:
-		dir = d
-		if _tex == null:
-			_tex = load("res://assets/textures/ui/arrow_left.png")
-			_gem = load("res://assets/textures/ui/arrow_gem.png")
-		custom_minimum_size = SIZE
-		size = SIZE
-		pivot_offset = SIZE * 0.5
-		mouse_filter = Control.MOUSE_FILTER_STOP
-		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		tooltip_text = "Previous hero  (Left, A)" if d < 0 else "Next hero  (Right, D)"
-		art = TextureRect.new()
-		art.texture = _tex
-		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		art.set_anchors_preset(Control.PRESET_FULL_RECT)
-		art.flip_h = d > 0
-		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(art)
-		gem = TextureRect.new()
-		gem.texture = _gem
-		gem.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		gem.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		gem.set_anchors_preset(Control.PRESET_FULL_RECT)
-		gem.flip_h = d > 0
-		gem.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var gm := CanvasItemMaterial.new()
-		gm.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
-		gem.material = gm
-		gem.modulate = Color(1, 1, 1, 0.0)
-		add_child(gem)
-		mouse_entered.connect(func(): _over = true)
-		mouse_exited.connect(func():
-			_over = false
-			_down = false)
-		_apply(0.0)
-
-	func _gui_input(ev: InputEvent) -> void:
-		if ev is InputEventMouseButton:
-			var mb := ev as InputEventMouseButton
-			accept_event()
-			if mb.button_index == MOUSE_BUTTON_LEFT:
-				if mb.pressed:
-					_down = true
-					_flash = 1.0
-					turned.emit(dir)
-				else:
-					_down = false
-			elif mb.pressed and (mb.button_index == MOUSE_BUTTON_WHEEL_UP or mb.button_index == MOUSE_BUTTON_WHEEL_LEFT):
-				turned.emit(-1)
-			elif mb.pressed and (mb.button_index == MOUSE_BUTTON_WHEEL_DOWN or mb.button_index == MOUSE_BUTTON_WHEEL_RIGHT):
-				turned.emit(1)
-		elif ev is InputEventMouseMotion:
-			accept_event()
-
-	## A key press lights the arrow for a moment as a click would.
-	func flash() -> void:
-		_flash = 1.0
-
-	func _process(delta: float) -> void:
-		_hot = move_toward(_hot, 1.0 if _over else 0.0, delta * 7.0)
-		_flash = maxf(_flash - delta * 3.0, 0.0)
-		_apply(delta)
-
-	func _apply(_delta: float) -> void:
-		var glow := maxf(_hot, _flash)
-		var k := 1.0 + 0.06 * _hot - (0.05 if _down else 0.0) + 0.03 * _flash
-		scale = Vector2(k, k)
-		art.modulate = Color(1, 1, 1).lerp(Color(1.25, 1.18, 1.05), glow) * (0.9 if _down else 1.0)
-		# the gem's light: a slow pulse at rest, blazing under the mouse
-		var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * 2.2 + dir)
-		gem.modulate = Color(1, 1, 1, 0.1 + 0.12 * pulse + 0.75 * glow)
-
-func open_class_picker() -> void:
-	Sfx.play("click")
-	chars_panel.visible = false
-	name_edit.text = ""
-	var n: int = game.list_characters().size()
-	(class_panel.find_child("slotnote", true, false) as Label).text = "" if n == 0 \
-		else "A new save. Your other %s kept." % ("character is" if n == 1 else "%d are" % n)
-	class_panel.visible = true
-	_open_class_stage()
-
+## The home screen is the multiplayer page (Blaine, 2026-11-06): the lobby browser over the title's 3D stage (the
+## lobby's class preview stands on it). No world is drawn behind it.
 func show_title() -> void:
 	title_panel.visible = true
-	if class_panel:
-		class_panel.visible = false
-		_close_class_stage()
-	if chars_panel:
-		chars_panel.visible = false
-	var chars: Array = game.list_characters()
-	var cont := _title_cards["continue"] as Button
-	cont.disabled = chars.is_empty()
-	cont.mouse_default_cursor_shape = Control.CURSOR_ARROW if chars.is_empty() else Control.CURSOR_POINTING_HAND
-	var kick := cont.find_child("kicker", true, false) as Label
-	var big := cont.find_child("big", true, false) as Label
-	var line := cont.find_child("line", true, false) as Label
-	var ago := cont.find_child("ago", true, false) as Label
-	if chars.is_empty():
-		kick.text = "CONTINUE"
-		big.text = "No hero yet"
-		line.text = "Your first character will wait for you here"
-		ago.text = ""
-		big.add_theme_color_override("font_color", Color(0.55, 0.52, 0.48))
-		title_stage.show_character({})
-		title_stage.remove_meta("char_id")
-	else:
-		var c: Dictionary = chars[0]
-		kick.text = "CONTINUE YOUR LEGEND"
-		big.text = str(c["name"]) if str(c["name"]) != "" else "Unnamed"
-		big.add_theme_color_override("font_color", Color(0.97, 0.9, 0.78))
-		line.text = "Level %d %s" % [int(c["level"]), Data.CLASSES.get(c["cls"], {"name": "Knight"})["name"]]
-		var a := _ago(int(c["played"]))
-		ago.text = "Last played " + a if a != "" else ""
-		# the figure on the dais and the save Continue loads are the same one
-		title_stage.set_meta("char_id", str(c["id"]))
-		title_stage.show_character(game.character_gear(str(c["id"])))
-	var chb := title_panel.find_child("characters", true, false) as Button
-	chb.visible = not chars.is_empty()
-	chb.text = "Characters  ·  %d" % chars.size()
-	var ng := _title_cards["new"] as Button
-	(ng.find_child("kicker", true, false) as Label).text = "BEGIN YOUR LEGEND" if chars.is_empty() else "A NEW LEGEND"
-	(title_panel.find_child("slots", true, false) as Label).text = "" if chars.is_empty() \
-		else "Every character has its own save. Making a new one never overwrites the others."
+	title_stage.show_character({})
 	title_stage.reset()
-	home.refresh(chars)
-	_title_hover("")
-	_title_fade.color = Color(0, 0, 0, 0)
-	_title_busy = false
-	# the home screen is the multiplayer page (Blaine, 2026-11-06): no title, Enter World or characters; the 3D stage
-	# stays as its backdrop (the lobby's class preview stands on it)
-	for c in title_panel.get_children():
-		if c != title_stage and not str(c.name) in ["build_rev", "env_badge"]:
-			(c as CanvasItem).visible = false
 	if game.lobby_client != null:
 		game.lobby_client.open("battlegrounds")
-	# the camp keeps building behind; it isn't drawn while the title's own world is up
 	get_viewport().disable_3d = true
 	game.zone_music()
 	_set_hud(false)
 
-## "2 hours ago" from a save's `played` (unix ms); "" when unknown.
-func _ago(ms: int) -> String:
-	if ms <= 0:
-		return ""
-	var s := int(Time.get_unix_time_from_system()) - ms / 1000
-	if s < 60:
-		return "just now"
-	for u in [[86400, "day"], [3600, "hour"], [60, "minute"]]:
-		if s >= int(u[0]):
-			var k := s / int(u[0])
-			return "%d %s%s ago" % [k, u[1], "" if k == 1 else "s"]
-	return ""
-
-func _char_line(c: Dictionary) -> String:
-	var nm: String = c["name"] if str(c["name"]) != "" else "Unnamed"
-	return "%s, level %d %s" % [nm, int(c["level"]), Data.CLASSES.get(c["cls"], {"name": "Knight"})["name"]]
-
-## The saved characters: play one, delete one (asks twice), or make a new one.
-## The Characters screen (the title's list of saves): the game's own frame (Blaine: "no plain boxes"), a card per
-## character in its class's colour (ClassStage.ACCENTS: a lit edge, the name, level, class and act, when last played)
-## with iron Play / Delete (Delete asks once), and New Character / Back below.
-func _build_characters() -> void:
-	chars_panel = Control.new()
-	chars_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	chars_panel.visible = false
-	title_panel.add_child(chars_panel)
-	var dim := ColorRect.new()
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0.01, 0.01, 0.015, 0.82)
-	chars_panel.add_child(dim)
-	var frame := PanelContainer.new()
-	frame.anchor_left = 0.5
-	frame.anchor_right = 0.5
-	frame.anchor_top = 0.5
-	frame.anchor_bottom = 0.5
-	frame.offset_left = -430
-	frame.offset_right = 430
-	frame.offset_top = -330
-	frame.offset_bottom = 330
-	_ornate(frame, 0.3, 26)
-	chars_panel.add_child(frame)
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 10)
-	frame.add_child(vb)
-	var t := _label("CHARACTERS", 34, GOLD, true)
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(t)
-	var dv := _divider(26)
-	dv.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	vb.add_child(dv)
-	chars_sub = _label("", 15, Color(0.75, 0.7, 0.62))
-	chars_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(chars_sub)
-	var sc := ScrollContainer.new()
-	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	vb.add_child(sc)
-	chars_list = VBoxContainer.new()
-	chars_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	chars_list.add_theme_constant_override("separation", 10)
-	sc.add_child(chars_list)
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 18)
-	vb.add_child(row)
-	var nb := _iron_button("New Character", 220, 46, 17)
-	nb.pressed.connect(func(): open_class_picker())
-	row.add_child(nb)
-	var back := _iron_button("Back", 160, 46, 17)
-	back.pressed.connect(func(): chars_panel.visible = false)
-	row.add_child(back)
-
-func open_characters() -> void:
-	Sfx.play("click")
-	for c in chars_list.get_children():
-		c.queue_free()
-	var all: Array = game.list_characters()
-	chars_sub.text = "%d saved, each with its own save. Play any of them, or make a new one." % all.size()
-	var first := true
-	for c in all:
-		var acc: Color = ClassStage.ACCENTS.get(c["cls"], GOLD)
-		var card := PanelContainer.new()
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0.045, 0.04, 0.04, 0.92)
-		sb.border_color = acc.darkened(0.35) if not first else acc
-		sb.border_width_left = 5
-		sb.border_width_top = 1
-		sb.border_width_bottom = 1
-		sb.border_width_right = 1
-		sb.corner_radius_top_left = 3
-		sb.corner_radius_bottom_left = 3
-		sb.content_margin_left = 18
-		sb.content_margin_right = 12
-		sb.content_margin_top = 10
-		sb.content_margin_bottom = 10
-		sb.shadow_color = Color(acc.r, acc.g, acc.b, 0.22 if first else 0.0)
-		sb.shadow_size = 8
-		card.add_theme_stylebox_override("panel", sb)
-		chars_list.add_child(card)
-		var hb := HBoxContainer.new()
-		hb.add_theme_constant_override("separation", 12)
-		card.add_child(hb)
-		var info := VBoxContainer.new()
-		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		info.add_theme_constant_override("separation", 2)
-		hb.add_child(info)
-		info.add_child(_label(str(c["name"]) if str(c["name"]) != "" else "Unnamed", 24, acc, true))
-		info.add_child(_label("Level %d %s" % [int(c["level"]), Data.CLASSES.get(c["cls"], {"name": "Knight"})["name"]], 15, Color(0.82, 0.76, 0.66)))
-		var when := _ago(int(c["played"]))
-		info.add_child(_label(("Last played  ·  " if first else "Played ") + when if when != "" else "", 12, GOLD if first else Color(0.6, 0.57, 0.5)))
-		first = false
-		var id: String = c["id"]
-		var play := _iron_button("Play", 120, 44, 17)
-		play.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		play.pressed.connect(func():
-			chars_panel.visible = false
-			game.start_game(true, "knight", id))
-		hb.add_child(play)
-		var del := _iron_button("Delete", 110, 44, 15)
-		del.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		del.add_theme_color_override("font_color", Color(0.85, 0.5, 0.42))
-		del.pressed.connect(func():
-			if del.text == "Delete":
-				del.text = "Sure?"
-				del.add_theme_color_override("font_color", Color(1.0, 0.35, 0.3))
-				return
-			game.delete_character(id)
-			open_characters()
-			show_title()
-			chars_panel.visible = not game.list_characters().is_empty())
-		hb.add_child(del)
-	chars_panel.visible = true
-
 func hide_title() -> void:
 	title_panel.visible = false
-	join_panel.visible = false
 	get_viewport().disable_3d = false
 	_set_hud(true)
 
@@ -5093,37 +2842,14 @@ func _unhandled_key_input(ev: InputEvent) -> void:
 		game.toggle_pause()
 		get_viewport().set_input_as_handled()
 		return
-	if _class_key(ev):
-		get_viewport().set_input_as_handled()
 
 # ---------------------------------------------------------------- updates
 func toggle(panel: Control) -> void:
 	panel.visible = not panel.visible
 	if not panel.visible:
 		tooltip.visible = false
-	if panel == inv_panel and not panel.visible:
-		shop_panel.visible = false
-		stash_panel.visible = false
-		burn_panel.visible = false
-		shop_mode = ""
 	Sfx.play("click")
 	refresh()
-
-## Walking away from the trader (or the stash) closes their windows, as stepping off from a stall would.
-func _walked_off() -> void:
-	if trade_with == null:
-		return
-	var open := shop_panel.visible or stash_panel.visible or burn_panel.visible or furnace_ui.visible or dialog_panel.visible or ench_panel.visible
-	if not open or not is_instance_valid(trade_with) or hero == null:
-		trade_with = null
-		return
-	var d: Vector3 = hero.global_position - trade_with.global_position
-	if Vector2(d.x, d.z).length() > trade_with.radius + 3.0:
-		trade_with = null
-		for p in [shop_panel, stash_panel, burn_panel, furnace_ui, dialog_panel, ench_panel, inv_panel]:
-			p.visible = false
-		shop_mode = ""
-		tooltip.visible = false
 
 func close_all() -> bool:
 	var any := close_skill_picker()
@@ -5132,21 +2858,19 @@ func close_all() -> bool:
 	if game.lobby_client != null and game.lobby_client.panel.visible:
 		game.lobby_client.panel.hide()
 		any = true
-	for p in [inv_panel, char_panel, shop_panel, stash_panel, burn_panel, furnace_ui, wp_panel, dialog_panel, ench_panel, skills_panel, talent_panel, quest_panel, auction_panel]:
+	for p in [inv_panel, char_panel, dialog_panel, skills_panel, talent_panel]:
 		if p.visible:
 			p.visible = false
 			any = true
-	shop_mode = ""
 	tooltip.visible = false
 	return any
 
-## The title with nothing open over it (no class picker, character list, co-op or Battlegrounds screen).
+## The title with nothing open over it (the lobby browser closed).
 func title_idle() -> bool:
-	return title_panel.visible and not (class_panel != null and class_panel.visible) and not (chars_panel != null and chars_panel.visible) \
-		and not join_panel.visible and not (game.lobby_client != null and game.lobby_client.panel.visible)
+	return title_panel.visible and not (game.lobby_client != null and game.lobby_client.panel.visible)
 
 func any_panel_open() -> bool:
-	return (run_ui != null and run_ui.visible) or (game.lobby_client != null and game.lobby_client.panel.visible) or inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or furnace_ui.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible or quest_panel.visible or auction_panel.visible
+	return (run_ui != null and run_ui.visible) or (game.lobby_client != null and game.lobby_client.panel.visible) or inv_panel.visible or char_panel.visible or dialog_panel.visible or skills_panel.visible or talent_panel.visible
 
 func message(t: String, col := Color(1, 1, 1), dur := 2.5) -> void:
 	msg_lbl.text = t
@@ -5163,7 +2887,6 @@ func flash_damage() -> void:
 func set_zone(t: String) -> void:
 	zone_lbl.text = t
 	big_message(t)
-	_fill_tracker()
 
 func show_target(nm: String, frac: float, col: Color) -> void:
 	target_box.visible = true
@@ -5208,9 +2931,6 @@ func _xp_detail() -> String:
 func refresh() -> void:
 	if hero == null:
 		return
-	_refresh_enchant()
-	if shop_panel.visible:
-		_refresh_shop()
 	life_lbl.text = "Life  %d / %d" % [int(hero.life), int(hero.max_life)]
 	mana_lbl.text = "Mana  %d / %d" % [int(hero.mana), int(hero.max_mana)]
 	var xpf := float(hero.xp) / maxf(hero.xp_to_next(), 1.0)
@@ -5227,13 +2947,6 @@ func refresh() -> void:
 		for k in equip_cells.keys():
 			_set_slot(equip_cells[k], hero.equipment.get(k))
 		gold_lbl.text = "%d" % hero.gold
-	if stash_panel.visible and game.stash != null:
-		var tab: Array = game.stash.tabs[stash_tab]
-		for i in SharedStash.SLOTS:
-			_set_slot(stash_cells[i], tab[i])
-		for t in stash_tab_row.get_children():
-			t.queue_redraw()
-		stash_count_lbl.text = "Tab %s: %d / %d    ·    All tabs: %d / %d" % [STASH_NUMERALS[stash_tab], game.stash.tab_count(stash_tab), SharedStash.SLOTS, game.stash.count(), SharedStash.SLOTS * SharedStash.TABS]
 	var free: int = hero.free_talent_points()
 	talent_badge.visible = free > 0 and not talent_panel.visible
 	talent_badge.text = "%d rite point%s to spend  (N)" % [free, "" if free == 1 else "s"]
@@ -5270,15 +2983,6 @@ func refresh() -> void:
 
 func _process(delta: float) -> void:
 	_update_drag(delta)
-	_walked_off()
-	if class_stage != null and class_stage.is_visible_in_tree():
-		# the nameplates sit just under each hero's feet, fading with the hero into the gloom
-		for c in class_plates:
-			var p: Label = class_plates[c]
-			var a: float = class_stage.plate_alpha(c)
-			p.visible = a > 0.02
-			p.modulate = Color(1, 1, 1, a)
-			p.position = class_stage.feet_at(c) + Vector2(-80, 8 + 10 * float(class_stage.scales[c]))
 	if sheet_view:
 		# the portrait renders the game's own world: only while the sheet is open. UPDATE_WHEN_PARENT_VISIBLE asks the
 		# parent *viewport* (the screen, always visible), so with the sheet closed it still drew the whole scene and
@@ -5291,11 +2995,6 @@ func _process(delta: float) -> void:
 		_sheet_camera(delta)
 		if sheet_points.visible:
 			sheet_points.modulate = Color(1, 1, 1, 0.75 + 0.25 * sin(_sheet_t * 4.0))
-	if join_panel and join_panel.visible:
-		_join_refresh -= delta
-		if _join_refresh <= 0.0:
-			_join_refresh = 0.5
-			_refresh_join()
 	if hero:
 		if game.xp_bonus_t > 0.0 or _xp_bonus_on:
 			xp_bar.detail = _xp_detail()
@@ -5362,7 +3061,6 @@ func _process(delta: float) -> void:
 	# Transient world announcements and the controls hint must not cover menu actions.
 	var clear_hud_text := not any_panel_open() and not pause_panel.visible
 	msg_lbl.visible = not (run_ui != null and run_ui.visible)
-	quest_tracker.visible = game.hero.run == null and not game.bg_mode and not game.arena_mode and game.sandbox == null
 	big_lbl.visible = clear_hud_text
 	hint_lbl.visible = clear_hud_text
 	if big_t > 0.0:
@@ -6003,18 +3701,6 @@ class Minimap extends Control:
 			if not _inside(sp2) or _fogged(it.global_position):
 				continue
 			match it.kind:
-				"waypoint":
-					var dm := PackedVector2Array([sp2 + Vector2(0, -7), sp2 + Vector2(6, 0), sp2 + Vector2(0, 7), sp2 + Vector2(-6, 0)])
-					ci.draw_colored_polygon(dm, Color(0.35, 0.6, 1.0))
-					ci.draw_polyline(PackedVector2Array([dm[0], dm[1], dm[2], dm[3], dm[0]]), Color(0.85, 0.92, 1.0), 1.5, true)
-				"portal":
-					ci.draw_arc(sp2, 6.0, 0, TAU, 20, Color(0.45, 0.7, 1.0), 3.0, true)
-				"vendor":
-					ci.draw_circle(sp2, 5.0, Color(0.1, 0.07, 0.03))
-					ci.draw_circle(sp2, 3.5, Color(1.0, 0.82, 0.4))
-				"stash":
-					ci.draw_rect(Rect2(sp2 - Vector2(4.5, 3.5), Vector2(9, 7)), Color(0.75, 0.5, 0.22))
-					ci.draw_rect(Rect2(sp2 - Vector2(4.5, 3.5), Vector2(9, 7)), Color(0.1, 0.06, 0.02), false, 1.0)
 				"shrine":
 					var sc := Color(0.5, 0.5, 0.5) if it.used else Color(1.0, 0.55, 0.3)
 					ci.draw_circle(sp2, 4.5, Color(0.05, 0.05, 0.05))

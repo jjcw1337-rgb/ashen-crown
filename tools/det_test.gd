@@ -5,7 +5,7 @@ func _initialize():
 		World.detail = d
 		var w := World.new()
 		get_root().add_child(w)
-		w.build(0, "town", 4200)
+		w.build(0, "sandbox", 4193)
 		var sig := []
 		for it in w.interactables:
 			sig.append([it.kind, snapped(it.global_position.x, 0.01), snapped(it.global_position.z, 0.01)])

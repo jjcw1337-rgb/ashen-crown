@@ -128,19 +128,6 @@ void fragment() {
 	lc.status.name = "status"
 	lc.status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lc.status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lc.lan_row = HBoxContainer.new()
-	lc.lan_row.name = "lan_row"
-	lc.lan_row.add_theme_constant_override("separation", 8)
-	lc.lan_row.add_child(MpStyle.label("Local network", 13, MpStyle.FAINT, 600))
-	var lh := MpStyle.button("Host LAN game")
-	lh.name = "lan_host"
-	lh.pressed.connect(func(): ui.home.lan_host())
-	lc.lan_row.add_child(lh)
-	var lj := MpStyle.button("Join LAN / address")
-	lj.name = "lan_join"
-	lj.pressed.connect(func(): ui.home.lan_join())
-	lc.lan_row.add_child(lj)
-	bottom.add_child(lc.lan_row)
 	bottom.add_child(lc.status)
 	visibility_changed.connect(_on_visibility)
 	get_viewport().size_changed.connect(_fit)
@@ -239,8 +226,6 @@ func _on_visibility() -> void:
 		for k in ["frame_mid", "lobby_cls", "lobby_zoom"]:
 			if ui.title_stage.has_meta(k):
 				ui.title_stage.remove_meta(k)
-		if not game.playing and ui.home != null:
-			ui.home.select(ui.home.sel)      # (the title's own character back on the stage)
 
 ## Everything from the client's state.
 func render() -> void:
@@ -265,7 +250,6 @@ func render() -> void:
 		b.disabled = not lc.room.is_empty() and not on
 	var n := Survivors.list().size()
 	survivors_btn.text = "Survivors  ·  %d" % n
-	lc.lan_row.visible = false      # (LAN hosted a character's world: gone with Enter World)
 	for c in left.get_children():
 		left.remove_child(c)
 		c.queue_free()
@@ -440,13 +424,6 @@ func _right_browse(mode: String) -> void:
 	rows.add_theme_constant_override("separation", 8)
 	scroll.add_child(rows)
 	lc.rows = rows
-	# friends' worlds through Steam (co-op), first
-	if game.steam != null and game.steam.ok:
-		for f in game.steam.friends_worlds():
-			var fl: int = int(f.lobby)
-			rows.add_child(_lobby_row(str(f.name) + "'s world", "Co-op  ·  a friend's story game", "", "Open", true, func():
-				hide()
-				game.steam.join_world(fl)))
 	if lc.notice != "":
 		var msg: String = lc.notice
 		rows.add_child(_state_card("Your last match ended", msg, "Dismiss", func():

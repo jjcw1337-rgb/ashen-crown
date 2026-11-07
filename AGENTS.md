@@ -33,9 +33,9 @@ goes there.
 |---|---|---|
 | Heroes | `game/heroes/<hero>/` (the Archer is the example) | most heroes: `scripts/<hero>*.gd` |
 | Monsters | `game/monsters/<monster>/` (Hrimgar is the example) | stats in `data.gd` `ENEMIES`; the shared monster code in `scripts/enemy.gd` |
-| Maps and camps | `game/maps/<map>/`: `arena/` (the example), `verdant_reach/`, `camp/` | shared world code: `game/systems/world/` (`World`, props, grass, weather) |
+| Maps and camps | `game/maps/<map>/`: `arena/` (the example), `verdant_reach/` | shared world code: `game/systems/world/` (`World`, props, grass, weather) |
 | Items: rites, gems, consumables | `game/items/` | all in one file still: `run_talents.gd` |
-| Screens | `game/ui/<screen>/` | `scripts/ui.gd`, `title_*.gd`, `class_stage.gd`, `mp_lobby_view.gd`, `run_ui.gd` |
+| Screens | `game/ui/<screen>/`: `lobby/` (the home screen), `chat/`, `loot_list/` | `scripts/ui.gd` (HUD, menus, run windows), `run_ui.gd` |
 | Shared systems | `game/systems/<system>/` | most of `scripts/` |
 | Numbers and text | `data/codex/` (the Hero Codex editor writes it) | |
 | Sounds, icons | a skill's own sounds in its `sounds/` folder; shared ones in `assets/audio/sfx/`; icons in `assets/textures/` | every hero's but the Archer's sounds: `assets/audio/sfx/` |

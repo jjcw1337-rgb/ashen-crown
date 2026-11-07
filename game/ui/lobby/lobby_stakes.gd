@@ -19,7 +19,7 @@ static func prepare(game,id: String,character: String,index: int) -> Dictionary:
  var inv:Array=save.get("hero",{}).get("inventory",[])
  if index<0 or index>=inv.size() or not inv[index] is Dictionary:return {}
  var item:Dictionary=inv[index].duplicate(true)
- if not item.has("uid"):SharedStash.stamp(item)
+ if not item.has("uid"):item["uid"]="%08x%08x%08x"%[randi(),randi(),Time.get_ticks_usec()&0xffffffff]  # (a uid, so a retry never stakes a second copy)
  var entry:={"character":character,"item":item,"slot":index}
  journal[id]=entry
  # Journal first; recovery can finish removing the selected item before sending the same offer again.

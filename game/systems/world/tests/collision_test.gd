@@ -90,7 +90,7 @@ func _run() -> void:
 		var tip := sn.position + sn.basis.z * 0.7
 		if w.solid_at(tip.x, tip.z):
 			seat_ok += 1
-	# the Meshy log benches (ForestCamp.piece "log_bench") lie along their own x
+	# the Meshy log benches (MapKit.piece "log_bench") lie along their own x
 	var benches: Array = props.filter(func(n): return n.has_meta("piece") and n.get_meta("piece") == "log_bench")
 	for s in benches:
 		var sn := s as Node3D

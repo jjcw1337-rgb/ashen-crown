@@ -42,7 +42,7 @@ const BOOKS := {
 	# Frost Volley's cold mists (FrostVolleyFx): an ice arrow's strike, the freezing fog under the storm
 	"frost": ["smoke_frost.png", Vector2(7, 4), 28, 1.3, Vector2(0.5, 0.4288), 0.7826, 1],
 	"rime": ["smoke_rime.png", Vector2(6, 6), 36, 1.4, Vector2(0.5, 0.4685), 0.8333, 1],
-	# wood smoke rising from the camp's chimneys and fires (ForestCamp._smokes): a plume leaning on a light breeze
+	# wood smoke rising from chimneys and fires: a plume leaning on a light breeze
 	"chimney": ["smoke_chimney.png", Vector2(7, 6), 40, 1.000, Vector2(0.158, 0.013), 1.000, 0],
 }
 

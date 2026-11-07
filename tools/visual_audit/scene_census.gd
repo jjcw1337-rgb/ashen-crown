@@ -1,7 +1,7 @@
 extends SceneTree
 ## Scene census for the visual overhaul (headless, no GPU needed):
 ##   godot --headless --path . -s tools/visual_audit/scene_census.gd -- out_dir [zone ...]
-## Zones: town bg sandbox (default: all). For each zone it builds the
+## Zones: bg sandbox (default: all). For each zone it builds the
 ## world exactly as the game does, then walks every GeometryInstance3D, light, particle system and decal and
 ## writes <out_dir>/<zone>.json plus a printed summary: triangles (LOD0) x instances, how many LOD levels each
 ## mesh has, multimeshes whose bounds are so big they can't be culled or LOD-ed (one draw for the whole map),
@@ -11,7 +11,7 @@ extends SceneTree
 var g
 var out_dir := "build/visual_audit"
 const ZONES := {
-	"town": [0, "town"], "bg": [0, "bg"], "sandbox": [0, "sandbox"],
+	"bg": [0, "bg"], "sandbox": [0, "sandbox"],
 }
 
 func _initialize():
@@ -50,11 +50,11 @@ func _run(zones: Array) -> void:
 static var _headless := DisplayServer.get_name() == "headless"
 static var _labels := {}
 
-## Names for meshes built in code, from the game's own caches (Flora, ForestCamp, Geo, Grass).
+## Names for meshes built in code, from the game's own caches (Flora, Geo, Grass).
 static func build_labels() -> void:
 	_labels.clear()
 	# loaded by path at run time: naming the classes here would compile them before the Sfx autoload exists
-	var caches := {"Flora": ["flora", "_cache"], "ForestCamp": ["forest_camp", "_meshes"], "Geo": ["geo", "_cache"],
+	var caches := {"Flora": ["flora", "_cache"], "Geo": ["geo", "_cache"],
 		"Grass": ["grass", "_meshes"], "GrassGlb": ["grass", "_glb"]}
 	for cname in caches.keys():
 		var sc: GDScript = load("res://scripts/%s.gd" % caches[cname][0])

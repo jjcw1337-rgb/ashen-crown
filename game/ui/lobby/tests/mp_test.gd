@@ -74,7 +74,7 @@ func _host() -> void:
 	g.playing = false
 	g.travel(0, "bg", "start")
 	await secs(1.0)
-	print("[H2b] the ready check: the partner said Not yet, the party waits in town: ", g.cur_zone == "town" and g.ui.vote_panel.visible, " (", g.ui.vote_wait.text, ")")
+	print("[H2b] the ready check: the partner said Not yet, the party waits in the hall: ", g.cur_zone == "sandbox" and g.ui.vote_panel.visible, " (", g.ui.vote_wait.text, ")")
 	var tw := Time.get_ticks_msec()
 	while g.cur_zone != "bg" and Time.get_ticks_msec() - tw < 15000:
 		await wait(5)
@@ -127,10 +127,10 @@ func _host() -> void:
 	print("[H5] monsters killed by partner=", seen.size(), " items dropped peak=", max_items, " items left=", g.net.items.size())
 	print("[H8] partner's skill effects received=", g.net.fx_got - fx0, " seen on his puppet=", (g.net.fx_got - fx0) > 0 and fx_nodes > 0, " mine sent to him=", g.net.fx_sent)
 	t0 = Time.get_ticks_msec()
-	while g.cur_zone != "town" and Time.get_ticks_msec() - t0 < 20000:
+	while g.cur_zone != "sandbox" and Time.get_ticks_msec() - t0 < 20000:
 		await wait(10)
 	await idle()
-	print("[H6] party travelled to town on partner's request: ", g.cur_zone == "town")
+	print("[H6] party travelled to the hall on partner's request: ", g.cur_zone == "sandbox")
 	t0 = Time.get_ticks_msec()
 	while not g.net.players.is_empty() and Time.get_ticks_msec() - t0 < 20000:
 		await wait(10)
@@ -252,11 +252,11 @@ func _join() -> void:
 			belt1 += int(b.get("count", 1))
 	var got: int = (h.gold - gold0) + (h.inventory.filter(func(x): return x != null).size() - inv0) + (belt1 - belt0)
 	print("[C4] tried to pick up ", picked, " items, received something=", got > 0, " ground items left=", g.world.items_root.get_child_count())
-	g.travel(0, "town", "start")
+	g.travel(0, "sandbox", "start")
 	t0 = Time.get_ticks_msec()
-	while (g.cur_zone != "town" or g.net.loading or g._busy) and Time.get_ticks_msec() - t0 < 30000:
+	while (g.cur_zone != "sandbox" or g.net.loading or g._busy) and Time.get_ticks_msec() - t0 < 30000:
 		await wait(5)
-	print("[C5] I asked to go to town, party is now in: ", g.cur_zone)
+	print("[C5] I asked to go to the hall, party is now in: ", g.cur_zone)
 	await secs(2.0)
 	g.net.shutdown()
 	await secs(1.0)

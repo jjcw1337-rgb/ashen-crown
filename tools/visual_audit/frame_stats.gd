@@ -12,7 +12,7 @@ extends SceneTree
 var g
 var out_dir := "build/visual_audit/frames"
 const ZONES := {
-	"town": [0, "town"], "bg": [0, "bg"], "sandbox": [0, "sandbox"],
+	"bg": [0, "bg"], "sandbox": [0, "sandbox"],
 }
 
 func _initialize():
@@ -27,7 +27,7 @@ func _arg(args: PackedStringArray, key: String, def: String) -> String:
 func _run() -> void:
 	var args := OS.get_cmdline_user_args()
 	out_dir = args[0] if args.size() > 0 else out_dir
-	var zones: PackedStringArray = (args[1] if args.size() > 1 else "town").split(",")
+	var zones: PackedStringArray = (args[1] if args.size() > 1 else "bg").split(",")
 	var qs: PackedStringArray = _arg(args, "--quality", "2").split(",")
 	var frames := int(_arg(args, "--frames", "3"))
 	var cls := _arg(args, "--class", "knight")

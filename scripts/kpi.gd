@@ -5,7 +5,7 @@ class_name Kpi
 ##   (--class: the hero (default knight); --skill: cast only that skill (none: only the weapon); --trace: the JSON
 ##   also lists every frame's time and when each cast went off, to line stutters up with what caused them)
 ##   godot --headless --path . -- --server --kpi server <out.json>       (the dedicated server's tick)
-## Scenarios (`SCENARIOS`): camp, fight, boss, crypt, spot, server. Each loads its zone (timed: load_ms), stages
+## Scenarios (`SCENARIOS`): fight, boss, crypt, spot, server. Each loads its zone (timed: load_ms), stages
 ## the scene (the hero immortal), settles `SETTLE` s (shaders compile, AI wakes), then drives it for `secs` measuring
 ## every frame, and writes one JSON object of metrics (see `_finish`) plus a screenshot next to it; then quits.
 ## Deterministic: fixed seeds, fixed paths, fixed spawns.
@@ -13,7 +13,6 @@ class_name Kpi
 const SETTLE := 4.0
 const SCENARIOS := {
 	# zone, run, secs, what it is
-	"camp": {"zone": "town", "run": 0, "secs": 15.0, "what": "Act I camp: walking a loop past the tents, the fire and the traders"},
 	"fight": {"zone": "sandbox", "run": 0, "secs": 20.0, "what": "The Arena's hall: the knight fighting 24 monsters at once with every skill (kills replaced)"},
 	"boss": {"zone": "sandbox", "run": 0, "secs": 25.0, "what": "The Arena's hall: the King Grubb fight, the knight on him with skills"},
 	"crypt": {"zone": "bg", "run": 0, "secs": 20.0, "what": "Battlegrounds (the Verdant Reach; the id is kept for history): walking and fighting what's there"},
@@ -197,11 +196,6 @@ static func _drive(delta: float) -> void:
 	var h = g.hero
 	h.life = h.max_life
 	match sc:
-		"camp":
-			var a := float(st["t"]) * 0.5
-			var c: Vector3 = st.get("centre", h.global_position)
-			st["centre"] = c
-			h.global_position = g.world.move(h.global_position, (c + Vector3(cos(a), 0, sin(a)) * 7.0 - h.global_position).limit_length(5.0 * delta))
 		"spot":
 			h.rig.rotation.y = float(st["t"]) * 0.6      # (looking all round the place)
 		"fight", "boss", "crypt":

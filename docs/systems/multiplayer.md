@@ -20,10 +20,9 @@ flowchart LR
   rules -- "sign in, save" --> nakama
 ```
 
-Two kinds of multiplayer:
-- **Enter World and co-op:** the player's own game hosts, and Steam friends join it.
-- **Battlegrounds, Arena, Sandbox:** the lobby browser (`mp_lobby_view.gd`, `lobby_client.gd`). Our server runs
-  each match. `MpMode` (`scripts/mp_mode.gd`) lists which modes are live.
+Multiplayer is the lobby browser, the game's home screen (`game/ui/lobby/`: `mp_lobby_view.gd`, `lobby_client.gd`):
+- **Battlegrounds (solo or duo), Arena, Sandbox:** our server runs each match, on the server build of the game that
+  made its lobby. `MpMode` (`scripts/mp_mode.gd`) lists which modes are live.
 
 ## One match
 
@@ -72,8 +71,8 @@ learns who a player is only from a ticket. The server keeps a copy of each playe
 - Nakama (`scripts/nakama_client.gd`, module `deploy/nakama/modules/ashen.lua`) holds accounts, a copy of each
   character save (`scripts/cloud_saves.gd`), the admin role and telemetry. `scripts/build_env.gd` says which server
   a build talks to.
-- Steam is Valve's test app (Spacewar) during development. `SteamLink` (`scripts/steam_link.gd`) does invites and
-  joining friends' worlds.
+- Steam is Valve's test app (Spacewar) during development (its world co-op is archived with Enter World:
+  `archive/camp/`).
 
 ## Deploying and testing
 
