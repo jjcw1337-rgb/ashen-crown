@@ -10,36 +10,23 @@ extends RefCounted
 
 static var _done := {}
 
-## What can still turn up in the built zone: ambushes, the monsters' and the boss's summons, Grubb's grabbers, the
-## arena's stages; and on a co-op client (whose monsters arrive from the host) the zone's spawns too.
+## What can still turn up in the built zone: the monsters' summons and Grubb's grabbers; and on a co-op client
+## (whose monsters arrive from the host) the zone's spawns too.
 static func kinds(g) -> Array:
 	var w = g.world
 	var k := {}
 	if g.net.is_client():
 		for es in w.enemy_spawns:
 			k[str(es["kind"])] = true
-		if not w.boss_spawn.is_empty():
-			k[str(g.boss_kind())] = true
-	for a in w.ambushes:
-		for s in a.get("spawns", []):
-			k[str(s["kind"])] = true
 	var present := {}
 	for es in w.enemy_spawns:
 		present[str(es["kind"])] = true
-	if not w.boss_spawn.is_empty():
-		present[str(g.boss_kind())] = true
 	for kind in present.keys() + k.keys():
 		var d: Dictionary = Data.ENEMIES.get(kind, {})
 		if str(d.get("summon", "")) != "":
 			k[str(d["summon"])] = true
 		if d.get("hoard", false):
 			k["grabber"] = true
-	if w.has_meta("games"):
-		for st in w.get_meta("games").STAGES:       # (games.gd is loaded at run time: no static reference)
-			for s in st.get("spawns", []):
-				k[str(s[0])] = true
-			if st.has("boss"):
-				k[str(st["boss"])] = true
 	var out: Array = []
 	for kind in k:
 		if Data.ENEMIES.has(kind) and not _done.has(kind) and not (present.has(kind) and not g.net.is_client()):

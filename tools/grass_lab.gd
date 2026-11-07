@@ -113,7 +113,7 @@ func _initialize() -> void:
 		field = null
 	else:
 		stage.add_child(field)
-		field.set_wind("moor", 0.01)
+		field.set_wind("default", 0.01)
 	if field and OS.get_cmdline_user_args().has("notouch"):
 		field.touch = 0.0
 	_aim(Vector3.ZERO)

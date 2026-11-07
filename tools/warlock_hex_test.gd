@@ -55,7 +55,7 @@ func _run() -> void:
 	var h = g.hero
 	g.test_allskills = true
 	g.test_immortal = true
-	await g.travel(0, "wild", "start")
+	await g.travel(0, "sandbox", "start")
 	while g._busy:
 		await process_frame
 	h.level = 15

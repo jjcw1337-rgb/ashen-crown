@@ -2,7 +2,7 @@ extends SceneTree
 ## A player that stays and plays, for measuring what a server costs per player (Blaine, 2026-11-05: "is running
 ## each map the main cost, with extra players adding relatively little?"). Joins a co-op server (`coop`) or a
 ## Battlegrounds server (`bg`), then for `secs` walks about and fights whatever is near. The `lead` co-op bot takes the
-## party to the moor (the others say yes to the ready check). Headless:
+## party to the Verdant Reach (the others say yes to the ready check). Headless:
 ##   godot --headless --path . -s tools/load_bot.gd -- coop|bg <port> <secs> [lead] [addr <host>] [n <index>]
 ## Prints "[BOT] ..." lines.
 
@@ -67,8 +67,8 @@ func _run() -> void:
 	print("[BOT] %d joined %s: %s (zone %s)" % [idx, mode, ok, g.cur_zone])
 	if mode == "coop" and lead:
 		await create_timer(8.0).timeout
-		g.travel(0, "wild", "from_town")
-		await until(func(): return g.cur_zone == "wild" and not g._busy and not g.net.loading, 60.0)
+		g.travel(0, "bg", "start")
+		await until(func(): return g.cur_zone == "bg" and not g._busy and not g.net.loading, 60.0)
 	var end := Time.get_ticks_msec() + int(secs_left * 1000.0)
 	var hits := 0
 	while Time.get_ticks_msec() < end:

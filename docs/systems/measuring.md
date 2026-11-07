@@ -11,7 +11,7 @@ identical runs.
 | What does each skill effect cost? | `tools/fx_bench.gd -- [classes] [rounds]` | after warming |
 | Title, camp, first casts | `tools/hitch_probe.gd -- title\|camp\|skills <cls>` | |
 | Which call was slow? | run with `--fx-timing` | prints skill/effect calls over 6 ms |
-| fps, load time and memory per scenario | `-- --kpi <scenario> out.json` (`scripts/kpi.gd`) | camp, moor, fight, boss, arena, crypt, server |
+| fps, load time and memory per scenario | `-- --kpi <scenario> out.json` (`scripts/kpi.gd`) | camp, fight, boss, crypt, spot, server |
 | What does a server cost? | `tools/load_bot.gd` against a server, then `ps`/`/proc` on the host | RAM, CPU per mode, with players fighting |
 
 All frame tools need a display. Run tools that use `Sfx` through `tools/_late.gd`

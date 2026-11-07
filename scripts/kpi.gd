@@ -5,7 +5,7 @@ class_name Kpi
 ##   (--class: the hero (default knight); --skill: cast only that skill (none: only the weapon); --trace: the JSON
 ##   also lists every frame's time and when each cast went off, to line stutters up with what caused them)
 ##   godot --headless --path . -- --server --kpi server <out.json>       (the dedicated server's tick)
-## Scenarios (`SCENARIOS`): camp, moor, fight, boss, arena, crypt, server. Each loads its zone (timed: load_ms), stages
+## Scenarios (`SCENARIOS`): camp, fight, boss, crypt, spot, server. Each loads its zone (timed: load_ms), stages
 ## the scene (the hero immortal), settles `SETTLE` s (shaders compile, AI wakes), then drives it for `secs` measuring
 ## every frame, and writes one JSON object of metrics (see `_finish`) plus a screenshot next to it; then quits.
 ## Deterministic: fixed seeds, fixed paths, fixed spawns.
@@ -14,16 +14,16 @@ const SETTLE := 4.0
 const SCENARIOS := {
 	# zone, run, secs, what it is
 	"camp": {"zone": "town", "run": 0, "secs": 15.0, "what": "Act I camp: walking a loop past the tents, the fire and the traders"},
-	"moor": {"zone": "wild", "run": 0, "secs": 20.0, "what": "Act I moor: running up the road, grass, trees and the world streaming in"},
-	"fight": {"zone": "wild", "run": 0, "secs": 20.0, "what": "Act I moor: the knight fighting 24 monsters at once with every skill (kills replaced)"},
-	"boss": {"zone": "lair", "run": 0, "secs": 25.0, "what": "Grubb's fort: the King Grubb fight, the knight on him with skills"},
-	"arena": {"zone": "lair", "run": 1, "secs": 25.0, "what": "A2 Aurelia: the arena games (lions, the crowd) with the knight on the sand"},
+	"fight": {"zone": "sandbox", "run": 0, "secs": 20.0, "what": "The Arena's hall: the knight fighting 24 monsters at once with every skill (kills replaced)"},
+	"boss": {"zone": "sandbox", "run": 0, "secs": 25.0, "what": "The Arena's hall: the King Grubb fight, the knight on him with skills"},
 	"crypt": {"zone": "bg", "run": 0, "secs": 20.0, "what": "Battlegrounds (the Verdant Reach; the id is kept for history): walking and fighting what's there"},
 	"server": {"zone": "bg", "run": 0, "secs": 30.0, "what": "The dedicated Battlegrounds server (headless): its frame time with the crypt running"},
 	# a place a player reported as slow (tools/telemetry_query.sh spots): --zone Z --run R --pos x,z [--foes N]
-	"spot": {"zone": "wild", "run": 0, "secs": 15.0, "what": "Any place: the hero standing at --pos in --zone (--run), turning, --foes N monsters about"},
+	"spot": {"zone": "bg", "run": 0, "secs": 15.0, "what": "Any place: the hero standing at --pos in --zone (--run), turning, --foes N monsters about"},
 }
 const FIGHT_FOES := 24
+## who the fight is against, in turn (the old moor's foes)
+const FIGHT_KINDS := ["fallen_skirmisher", "fallen_reaver", "fallen_stalker", "zombie", "skel_archer"]
 const HITCH_MS := 100.0          # a frame this long is a visible stutter
 
 static var g
@@ -57,7 +57,7 @@ static func start(game) -> bool:
 	if si >= 0 and si + 1 < a.size():
 		secs = float(a[si + 1])
 	st = {"secs": secs, "phase": "load", "t": 0.0, "frames": [], "proc": 0.0, "phys": 0.0,
-		"dc": 0.0, "prims": 0.0, "objs": 0.0, "gpu": 0.0, "n": 0, "next_skill": 0.0, "path_i": -1, "boot_ms": Time.get_ticks_msec()}
+		"dc": 0.0, "prims": 0.0, "objs": 0.0, "gpu": 0.0, "n": 0, "next_skill": 0.0, "boot_ms": Time.get_ticks_msec()}
 	for k in 2:
 		var pr: Node = load("res://scripts/kpi_probe.gd").new()
 		pr.first = k == 0
@@ -71,7 +71,6 @@ static func start(game) -> bool:
 	g.set_quality(int(a[qi + 1]) if qi >= 0 and qi + 1 < a.size() else 2)
 	g.ui.hide_title()
 	g.playing = true
-	g.difficulty = int(spec["run"])
 	var ci := a.find("--class")
 	g.hero.set_class(a[ci + 1] if ci >= 0 and ci + 1 < a.size() else "knight")
 	var ki := a.find("--skill")
@@ -156,12 +155,11 @@ static func _stage() -> void:
 			for i in FIGHT_FOES:
 				_spawn_foe(r, i)
 		"boss":
-			for e in g.enemies_near(h.global_position, 400.0):
-				if e.boss:
-					st["boss"] = e
-					e.aggro = true
-					h.global_position = g.world.free_spot_near(e.global_position + Vector3(0, 0, 3.0), 0.5)
-					break
+			var e = g.spawn_enemy("goblin_king", g.world.free_spot_near(h.global_position + Vector3(0, 0, -8.0), 2.0), 6, false, "", 900)
+			if e:
+				st["boss"] = e
+				e.aggro = true
+				h.global_position = g.world.free_spot_near(e.global_position + Vector3(0, 0, 3.0), 0.5)
 		"spot":
 			var a := OS.get_cmdline_user_args()
 			var pi := a.find("--pos")
@@ -185,15 +183,10 @@ static func _stage() -> void:
 			r.seed = 9
 			for i in (int(a[fi + 1]) if fi >= 0 and fi + 1 < a.size() else 0):
 				_spawn_foe(r, i)
-		"arena":
-			if g.world.has_meta("games"):
-				g.world.get_meta("games").begin()
-			var c: Vector2 = Aurelia.CENTRE
-			h.global_position = g.world.free_spot_near(Vector3(c.x, 0, c.y), 0.5)
 	g.cam_target = h.global_position
 
 static func _spawn_foe(r: RandomNumberGenerator, i: int) -> void:
-	var foes: Array = Data.act_info(0, 0).get("foes", ["zombie"])
+	var foes: Array = FIGHT_KINDS
 	var a := TAU * i / FIGHT_FOES + r.randf() * 0.2
 	var p: Vector3 = g.hero.global_position + Vector3(cos(a), 0, sin(a)) * r.randf_range(5.0, 10.0)
 	var e = g.spawn_enemy(str(foes[i % foes.size()]), g.world.free_spot_near(p, 0.6), 8)
@@ -209,11 +202,9 @@ static func _drive(delta: float) -> void:
 			var c: Vector3 = st.get("centre", h.global_position)
 			st["centre"] = c
 			h.global_position = g.world.move(h.global_position, (c + Vector3(cos(a), 0, sin(a)) * 7.0 - h.global_position).limit_length(5.0 * delta))
-		"moor":
-			_run_road(delta, 7.0)
 		"spot":
 			h.rig.rotation.y = float(st["t"]) * 0.6      # (looking all round the place)
-		"fight", "boss", "arena", "crypt":
+		"fight", "boss", "crypt":
 			if sc == "crypt":
 				_run_road(delta, 3.5)
 			var foes: Array = g.enemies_near(h.global_position, 30.0).filter(func(e): return not e.dead)
@@ -244,35 +235,13 @@ static func _drive(delta: float) -> void:
 						break
 	g.cam_target = h.global_position
 
-## Along the zone's road (World.path_poly), or a wide loop where there's none (the crypt).
+## A wide loop round where the hero started (9 m across).
 static func _run_road(delta: float, speed: float) -> void:
 	var h = g.hero
-	var pp: PackedVector2Array = g.world.path_poly
-	if pp.size() < 2:
-		var a := float(st["t"]) * speed / 9.0
-		var c: Vector3 = st.get("centre", h.global_position)
-		st["centre"] = c
-		h.global_position = g.world.move(h.global_position, (c + Vector3(cos(a), 0, sin(a)) * 9.0 - h.global_position).limit_length(speed * delta))
-		return
-	var i: int = st["path_i"]
-	if i < 0:
-		var best := INF
-		for k in pp.size():
-			var d := pp[k].distance_to(Vector2(h.global_position.x, h.global_position.z))
-			if d < best:
-				best = d
-				i = k
-	var goal := pp[mini(i + 1, pp.size() - 1)]
-	var p2 := Vector2(h.global_position.x, h.global_position.z)
-	if p2.distance_to(goal) < 1.5:
-		i = mini(i + 1, pp.size() - 2)
-	st["path_i"] = i
-	var d2 := (goal - p2).limit_length(speed * delta)
-	var np := Vector3(p2.x + d2.x, 0, p2.y + d2.y)
-	np.y = g.world.height_at(np.x, np.z)
-	if d2.length() > 0.001:
-		h.rig.rotation.y = atan2(-d2.x, -d2.y)
-	h.global_position = np
+	var a := float(st["t"]) * speed / 9.0
+	var c: Vector3 = st.get("centre", h.global_position)
+	st["centre"] = c
+	h.global_position = g.world.move(h.global_position, (c + Vector3(cos(a), 0, sin(a)) * 9.0 - h.global_position).limit_length(speed * delta))
 
 # ---------------------------------------------------------------- the census (a profiling aid)
 

@@ -51,10 +51,10 @@ func _run() -> void:
 	g.ui._add_stat("str")
 	print("[6] stash/char ok, str=", h.total_str())
 	g.ui.close_all()
-	# into the moor
-	await g.load_zone(0, "wild", "from_town")
+	# into the Verdant Reach (offline: its camps' monsters)
+	await g.load_zone(0, "bg", "start")
 	await wait(5)
-	print("[7] wild loaded, enemies=", g.world.enemies_root.get_child_count())
+	print("[7] forest loaded, enemies=", g.world.enemies_root.get_child_count())
 	h.level = 12
 	h.stat_points = 0
 	h.str_ = 80
@@ -192,14 +192,12 @@ func _run() -> void:
 	await wait(40)
 	h.use_skill("cry", h.global_position)
 	await wait(40)
-	# boss
-	await g.load_zone(0, "lair", "start")
+	# boss: King Grubb in the Arena's hall
+	await g.load_zone(0, "sandbox", "start")
 	await wait(5)
-	var boss = null
-	for e in g.world.enemies_root.get_children():
-		if e.boss:
-			boss = e
-	print("[11] lair loaded, enemies=", g.world.enemies_root.get_child_count(), " boss=", boss.display_name if boss else "none")
+	var boss = g.spawn_enemy("goblin_king", g.world.free_spot_near(h.global_position + Vector3(0, 0, -8.0), 2.0), 6, false, "", 900)
+	await wait(5)
+	print("[11] hall loaded, enemies=", g.world.enemies_root.get_child_count(), " boss=", boss.display_name if boss else "none")
 	h.global_position = g.world.free_spot_near(boss.global_position + Vector3(0, 0, 2.6), 0.3)
 	# one click = one swing
 	g.playing = false
@@ -258,7 +256,7 @@ func _run() -> void:
 		await process_frame
 	print("[12] boss dead=", boss.dead if is_instance_valid(boss) else true, " frames=", frames, " boss_killed=", g.boss_killed, " minions=", g.world.enemies_root.get_child_count())
 	await wait(260)
-	print("[13] victory shown=", g.ui.victory_panel.visible)
+	print("[13] no story ending: ", g.ui.get("victory_panel") == null)
 	g.save_game()
 	print("[14] saved; load=", g.load_game())
 	h.life = 1

@@ -14,12 +14,11 @@ seconds, every frame. Run one yourself, in any build:
 | Scenario | Where | What happens | Seconds |
 |---|---|---|---|
 | `camp` | Act I camp | The hero walks a 7 m loop past the tents, the bonfire and the traders | 15 |
-| `moor` | Act I moor | The hero runs up the road at 7 m/s: grass, oaks, the world streaming in | 20 |
-| `fight` | Act I moor | The knight fights 24 monsters at once with his attack and every skill; kills are replaced | 20 |
-| `boss` | Grubb's fort | The King Grubb fight: the knight on him with skills | 25 |
-| `arena` | A2 Aurelia | The arena games running (lions, the crowd), the knight on the sand | 25 |
+| `fight` | The Arena's hall | The knight fights 24 monsters at once with his attack and every skill; kills are replaced | 20 |
+| `boss` | The Arena's hall | The King Grubb fight: the knight on him with skills | 25 |
 | `crypt` | Battlegrounds | The Verdant Reach (the id is older): walking a loop, fighting what's there | 20 |
 | `server` | Battlegrounds server | The headless dedicated server running the raid (`-- --server --kpi server out.json`) | 30 |
+| `spot` | any zone | The hero standing at `--pos x,z` in `--zone` (default `bg`), turning, `--foes N` monsters about | 15 |
 | `download` | (export) | The macOS export: the .zip players download and the .pck inside | |
 
 Compare at **High** (preset 2) on the Game Factory Mac (Apple M6) unless the change is about another preset.

@@ -208,7 +208,7 @@ func _card(c: Dictionary) -> Control:
 	l1.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(l1)
 	var ago: String = ui._ago(int(c["played"]))
-	var l2: Label = ui._label(["Act I", "Act II", "Act III"][clampi(int(c["difficulty"]), 0, 2)] + ("  ·  " + ago if ago != "" else ""), 12, ui.DIM)
+	var l2: Label = ui._label(ago, 12, ui.DIM)
 	l2.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(l2)
 	var del := Button.new()

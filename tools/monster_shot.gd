@@ -13,7 +13,7 @@ func _run() -> void:
 		await process_frame
 	await g.start_game(false, "knight")
 	g.ui.close_all()
-	await g.load_zone(0, "wild", "road")
+	await g.load_zone(0, "sandbox", "start")
 	g.ui.close_all()
 	g.test_immortal = true
 	g.zoom = 0.6

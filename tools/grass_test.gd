@@ -1,9 +1,8 @@
 extends SceneTree
-## The living grass in the game: Act I's camp, moor and fort get the 3D grass (several species, both
-## LODs, woodland undergrowth near the trees, none on the road); the touch field is on outdoors and
+## The living grass in the game: Act I's camp and the Verdant Reach get the 3D grass (several species, both
+## LODs, woodland undergrowth near the trees, none on the trails); the touch field is on outdoors and
 ## follows the camera; the hero, partners, monsters and pets touch it; an attack's impact frame throws an
-## arc; Fx rings shove it; A2 and A3 grow it too (visual overhaul, in their own colours) with the field on, and
-## nothing grows in the crypt. Prints [G] lines.
+## arc; Fx rings shove it. Prints [G] lines.
 ##   godot --headless --path . -s tools/grass_test.gd
 var g
 var fails := 0
@@ -23,8 +22,7 @@ func _run() -> void:
 		g._intro_skip = true
 		await process_frame
 	await g.start_game(false, "knight")
-	g.difficulty = 0
-	for zone in ["town", "wild", "lair"]:
+	for zone in ["town", "bg"]:
 		await g.load_zone(0, zone, "start")
 		await process_frame
 		var w = g.world
@@ -58,21 +56,9 @@ func _run() -> void:
 		check(painted == 0, "%s: no painted clumps left (%d)" % [zone, painted])
 		check(modelled == chunks, "%s: Blender clumps on the Meshy textures (%d of %d chunks)" % [zone, modelled, chunks])
 		check(g.grass_field.enabled, "%s: touch field on" % zone)
-		if zone == "wild":
-			await _moor_checks(w)
+		if zone == "bg":
+			await _forest_checks(w)
 			await _shadow_checks()
-	# A2's road and A3's moor grow the living grass too (in their own colours), with the touch field on
-	for d in [1, 2]:
-		g.difficulty = d
-		await g.load_zone(0, "wild", "start")
-		await process_frame
-		var n3d := 0
-		for n in g.get_tree().get_nodes_in_group("grass"):
-			if n.has_meta("grass3d"):
-				n3d += 1
-		check(n3d > 0, "A%d moor/road: the living grass (%d chunks)" % [d + 1, n3d])
-		check(g.grass_field.enabled, "A%d moor/road: touch field on" % (d + 1))
-	g.difficulty = 0
 	print("[G] %s" % ("all passed" if fails == 0 else "%d FAILED" % fails))
 	quit()
 
@@ -112,35 +98,36 @@ func _shadow_checks() -> void:
 	g.apply_quality(q0)
 	await process_frame
 
-func _moor_checks(w) -> void:
+func _forest_checks(w) -> void:
 	var gf: GrassField = g.grass_field
-	# woodland undergrowth near trees, verges by the road, meadow in the open
+	# woodland undergrowth near trees, verges by the trails, meadow in the open
 	var wood := 0
 	for p in w.tree_pts.slice(0, 200):
 		if float(w.grass_biome(p.x + 1.0, p.y).get("woodland", 0.0)) > 0.4:
 			wood += 1
-	check(wood > 40, "moor: woodland undergrowth around trees (%d of 200)" % wood)
+	check(wood > 40, "forest: woodland undergrowth around trees (%d of 200)" % wood)
+	var trail: PackedVector2Array = w.trails[0] if not w.trails.is_empty() else PackedVector2Array()
 	var road_bare := 0
-	for i in range(0, w.path_poly.size(), 4):
-		var rp: Vector2 = w.path_poly[i]
+	for i in range(0, trail.size(), 4):
+		var rp: Vector2 = trail[i]
 		if w.grass_ground(rp.x, rp.y) <= 0.02:
 			road_bare += 1
-	check(road_bare * 4 >= w.path_poly.size() * 0.8, "moor: no grass on the road (%d bare samples)" % road_bare)
+	check(trail.size() > 0 and road_bare * 4 >= trail.size() * 0.8, "forest: no grass on the trail (%d bare samples)" % road_bare)
 	# who touches it
 	await process_frame
 	var movers: Array = g._grass_movers()
-	check(movers.has(g.hero), "moor: the hero touches the grass")
+	check(movers.has(g.hero), "forest: the hero touches the grass")
 	var enemies := 0
 	for m in movers:
 		if m is Enemy:
 			enemies += 1
-	check(enemies > 0, "moor: monsters touch the grass (%d)" % enemies)
+	check(enemies > 0, "forest: monsters touch the grass (%d)" % enemies)
 	# the field follows the camera
 	g.hero.global_position += Vector3(20, 0, 0)
 	await create_timer(2.0).timeout
 	var rect: Vector4 = Vector4(gf._shown_origin.x, gf._shown_origin.y, GrassField.SIZE, 1.0)
 	var c := Vector2(rect.x + rect.z * 0.5, rect.y + rect.z * 0.5)
-	check(c.distance_to(Vector2(g.cam_target.x, g.cam_target.z + GrassField.AHEAD.z)) < 1.0, "moor: field centred on the camera's target")
+	check(c.distance_to(Vector2(g.cam_target.x, g.cam_target.z + GrassField.AHEAD.z)) < 1.0, "forest: field centred on the camera's target")
 	# an attack's impact frame throws an arc; an Fx ring shoves a ring
 	gf._events.clear()
 	g.hero.atk_style = "over"
@@ -150,13 +137,13 @@ func _moor_checks(w) -> void:
 	g.hero.atk_t = 0.59
 	await process_frame
 	await process_frame
-	check(gf._events.size() >= 1, "moor: a swing's impact disturbs the grass (%d events)" % gf._events.size())
+	check(gf._events.size() >= 1, "forest: a swing's impact disturbs the grass (%d events)" % gf._events.size())
 	gf._events.clear()
 	Fx.ring(w.fx_root, g.hero.global_position, 3.0, Color.WHITE)
-	check(gf._events.size() == 1, "moor: an Fx ring shoves the grass")
+	check(gf._events.size() == 1, "forest: an Fx ring shoves the grass")
 	g.hero.atk_t = -1.0
 	# the wind blends to a new profile
 	gf.set_wind("storm", 0.2)
 	await create_timer(0.6).timeout
-	check(float(gf.wind()["strength"]) > 0.8, "moor: the wind blends to a storm (%.2f)" % float(gf.wind()["strength"]))
-	gf.set_wind("moor", 0.01)
+	check(float(gf.wind()["strength"]) > 0.8, "forest: the wind blends to a storm (%.2f)" % float(gf.wind()["strength"]))
+	gf.set_wind("default", 0.01)

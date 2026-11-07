@@ -1,5 +1,5 @@
 extends SceneTree
-## Frames of each Demon skill cast into a pack on the moor, for the preview video and contact sheet. Needs a
+## Frames of each Demon skill cast into a pack in the Arena's hall, for the preview video and contact sheet. Needs a
 ## display (xvfb) and --fixed-fps 30 so the frames are 1/30 s apart whatever the render takes:
 ##   xvfb-run -a godot --rendering-driver opengl3 --path . --resolution 1280x720 --fixed-fps 30 \
 ##     -s tools/demon_skills_clip.gd -- <outdir> [fists|icharge|cslam|hurl|grip|wrath|all, or a list: hurl,wrath] [close|game]
@@ -27,7 +27,7 @@ func _run() -> void:
 	g.apply_quality(0)
 	await g.start_game(false, "demon")
 	g.ui.close_all()
-	await g.load_zone(0, "wild", "road")
+	await g.load_zone(0, "sandbox", "start")
 	g.ui.close_all()
 	var h = g.hero
 	h.level = 20          # (not set_level: its level-up light would be in the frames)

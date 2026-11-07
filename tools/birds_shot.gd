@@ -1,5 +1,5 @@
 extends SceneTree
-## Screenshots of Act I's birds (birds.gd) over the moor from the game camera, pulled back a little, and
+## Screenshots of Act I's birds (birds.gd) over the camp from the game camera, pulled back a little, and
 ## the count of flocks and birds. Needs a display. Usage: godot --path . -s tools/birds_shot.gd -- outdir
 var g
 
@@ -16,7 +16,7 @@ func _run() -> void:
 	await g.start_game(false, "knight")
 	g.difficulty = 0
 	g.test_immortal = true
-	await g.load_zone(0, "wild", "road")
+	await g.load_zone(0, "town", "start")
 	g.ui.close_all()
 	g.zoom = 1.4
 	var b = g.world.get_node("birds")

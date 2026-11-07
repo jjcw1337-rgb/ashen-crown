@@ -1,47 +1,21 @@
 class_name Data
 extends RefCounted
-## Static game data: acts, monsters, item bases, affixes, uniques, vendors.
+## Static game data: the act, monsters, item bases, affixes, uniques, vendors.
 
+## The one act: Act I, its camp (Enter World, zone "town") and its level. Game.cur_act is always 0.
 const ACTS := [
-	{"name": "The Ashen Moors", "town": "The Forsaken Wilds", "wild": "Cairnfell Moor", "lair": "Grubb's Fort",
-		"boss": "goblin_king", "lvl": 1, "theme": "moor", "foes": ["fallen_skirmisher", "fallen_reaver", "fallen_stalker", "zombie", "skel_archer"]},
-	{"name": "The Sunscar Wastes", "town": "Lut Khemar", "wild": "Dunes of Sorrow", "lair": "Tomb of Sekhmun",
-		"boss": "sekhmun", "lvl": 8, "theme": "desert", "foes": ["raider", "mummy", "scarab"]},
-	{"name": "The Drowned Wilds", "town": "Vel Dara", "wild": "Mirewood", "lair": "Temple of Vael",
-		"boss": "vael", "lvl": 15, "theme": "jungle", "foes": ["fetish", "spider", "lizardman"]},
-	{"name": "The Burning Abyss", "town": "Bastion of Dawn", "wild": "Plains of Cinder", "lair": "Throne of Cinders",
-		"boss": "malgoroth", "lvl": 22, "theme": "hell", "foes": ["imp", "hell_knight", "doom_caster"]},
+	{"name": "The Ashen Moors", "town": "The Forsaken Wilds", "lvl": 1},
 ]
 
-## A2 is its own act on Act I's camp: the Imperial Road (via.gd: the moor, a bandit ambush, the old
-## Roman road, Aurelia's outskirts) to the city of Aurelia and its arena (aurelia.gd), where the champion
-## of the games (games.gd) is the act's boss. Keys override Data.ACTS[0] for that run (act_info).
-const RUN_ACTS := {
-	1: {"name": "The Imperial Road", "wild": "The Imperial Road", "lair": "Aurelia", "boss": "champion",
-		"foes": ["zombie", "fallen_skirmisher", "fallen_reaver", "fallen_stalker", "skel_archer"]},
-}
-
-## An act's names, boss and foes for a run (difficulty): Data.ACTS with that run's overrides.
-static func act_info(act: int, run: int) -> Dictionary:
-	if act == 0 and RUN_ACTS.has(run):
-		return ACTS[act].merged(RUN_ACTS[run], true)
-	return ACTS[act]
-
-## The waypoint network, one entry per act in the order they unlock (an act is a run of the game:
-## `run` is its difficulty index, Data.RUNS). An act opens once the act before it falls (Game.max_run);
-## each of its waypoints opens once a player touches that waypoint stone (Game.waypoints_known, kept
-## per act in Game.run_progress). The camp's is open as soon as you arrive.
-## Adding an act: a RUNS entry (+ RUN_ACTS names), its zones, and an entry here ("name" overrides the
-## tab name, which is otherwise Data.RUNS[run].name).
+## The waypoint network: Act I's tab and its stones (only the camp's today). Each waypoint opens once a player
+## touches its stone (Game.waypoints_known); the camp's is open as soon as you arrive.
 ## Adding a waypoint: a point here (a new id; its zone), and in that zone's builder one line,
 ## `add_waypoint("<id>", Vector3(x, 0, z))` (World.add_waypoint: the stone, its colliders and its own
-## arrival spot), so a zone can hold several (see World / Via / ForestCamp for the existing ones). A new zone also goes in
-## WAYPOINT_ZONES and World.build. check_waypoints() reports mistakes (dev builds print them at start).
-## Optional per entry: "name" (the tab's name; else Data.RUNS[run].name), "requires" (open once that
-## run's lord falls, instead of the act before it: for side areas such as Ancient Levels).
-##   group: its tab group (WAYPOINT_GROUPS) · tab: the numeral on the act's tab (its name is Data.RUNS[run].name) · art: its banner (Meshy) · points: id (what the stone binds),
-##   zone (where it takes you), kind (camp | wild | road | city: its icon), name (optional; else the
-##   act's name for that zone) · boss: the lord whose fall opens the next act
+## arrival spot), so a zone can hold several (see ForestCamp). A new zone also goes in WAYPOINT_ZONES and
+## World.build. check_waypoints() reports mistakes (dev builds print them at start).
+##   group: its tab group (WAYPOINT_GROUPS) · tab: the numeral on the act's tab (its name is Data.RUNS[run].name) ·
+##   art: its banner (Meshy) · points: id (what the stone binds), zone (where it takes you), kind (camp | wild | road |
+##   city: its icon), name (optional; else the zone's title)
 ## The window's tab groups, left to right; a group shows only once it has an entry (group: its id).
 const WAYPOINT_GROUPS := [
 	{"id": "acts", "name": "Acts"},
@@ -67,7 +41,6 @@ const WAYPOINT_BATTLEGROUNDS := [
 ## Activity registration: add/remove entries here, not buttons in the waypoint panel.
 ## group: pve | daily; route: zone; run, zone, spawn; optional level, enabled,
 ## starts_at / ends_at (UTC Unix seconds). Scheduled entries disappear outside their window.
-## Act lairs are derived from their existing content tables by Game.
 static var WAYPOINT_ACTIVITIES: Array = []
 
 static func waypoint_available(entry: Dictionary, now: float) -> bool:
@@ -80,12 +53,8 @@ static func waypoint_battleground(id: String) -> Dictionary:
 	return {}
 
 const WAYPOINT_ACTS := [
-	{"run": 0, "group": "acts", "tab": "I", "art": "res://assets/textures/ui/wp_act1.png", "boss": "goblin_king",
-		"points": [{"id": "town", "zone": "town", "kind": "camp"}, {"id": "wild", "zone": "wild", "kind": "wild"}]},
-	{"run": 1, "group": "acts", "tab": "II", "art": "res://assets/textures/ui/wp_act2.png", "boss": "champion",
-		"points": [{"id": "town", "zone": "town", "kind": "camp"}, {"id": "wild", "zone": "wild", "kind": "road"}]},
-	{"run": 2, "group": "acts", "tab": "III", "art": "res://assets/textures/ui/wp_act3.png", "boss": "ashen_king",
-		"points": [{"id": "town", "zone": "town", "kind": "camp"}, {"id": "wild", "zone": "wild", "kind": "wild"}]},
+	{"run": 0, "group": "acts", "tab": "I", "art": "res://assets/textures/ui/wp_act1.png",
+		"points": [{"id": "town", "zone": "town", "kind": "camp"}]},
 ]
 
 static func waypoint_act(run: int) -> Dictionary:
@@ -101,7 +70,7 @@ static func waypoint_point(run: int, id: String) -> Dictionary:
 	return {}
 
 ## Zones the world can build (World.build); a waypoint must lead to one of these.
-const WAYPOINT_ZONES := ["town", "wild", "lair"]
+const WAYPOINT_ZONES := ["town"]
 
 ## Problems in WAYPOINT_ACTS, one line each (empty = all good). Checked at start in dev builds
 ## (Game) and by game/maps/camp/tests/waypoint_test.gd, so a mistake shows the moment it is made.
@@ -119,10 +88,8 @@ static func check_waypoints() -> Array:
 			errs.append(tag + ": unknown group '%s' (add it to WAYPOINT_GROUPS)" % a.get("group"))
 		if a.has("art") and not ResourceLoader.exists(a["art"]):
 			errs.append(tag + ": banner not found: " + str(a["art"]))
-		if a.has("boss") and not ENEMIES.has(a["boss"]):
-			errs.append(tag + ": unknown boss '%s'" % a["boss"])
-		if not a.has("requires") and r >= RUNS.size():
-			errs.append(tag + ": no Data.RUNS entry (or give it \"requires\")")
+		if r != 0:
+			errs.append(tag + ": Act I (run 0) is the only act")
 		var pts: Array = a.get("points", [])
 		if pts.is_empty():
 			errs.append(tag + ": no waypoints")
@@ -170,12 +137,8 @@ const WEAPON_PROFILES := {
 	"wyvern": {"motion": "back", "store": "back"},
 }
 
-const VENDORS := [
-	{"smith": "Halvar Emberhammer", "armor": "Hedda Ironhand", "alch": "Agnes Grimwood", "gamble": "Tarrow the Dice", "stash": "Stash", "elder": "Captain Roth"},
-	{"smith": "Kadir Forgebrand", "armor": "Saphra", "alch": "Iskander the Wise", "gamble": "Jamal Two-Coins", "stash": "Stash", "elder": "Vizier Hasun"},
-	{"smith": "Ombo Stonejaw", "armor": "Teyla of the Reeds", "alch": "Mother Ashka", "gamble": "Quill", "stash": "Stash", "elder": "Archivist Nel"},
-	{"smith": "Brother Halvard", "armor": "Seraph Aldwen", "alch": "Lumen the Pure", "gamble": "The Faceless", "stash": "Stash", "elder": "High Paladin Corin"},
-]
+## The camp's people by role (ForestCamp, the quest givers).
+const VENDORS := {"smith": "Halvar Emberhammer", "armor": "Hedda Ironhand", "alch": "Agnes Grimwood", "gamble": "Tarrow the Dice", "stash": "Stash", "elder": "Captain Roth"}
 
 ## look keys: skin, cloth, cloth2, armor, height, bulk, head, eyes, horns, cape, thin, tail, wings, weapon, shield
 const ENEMIES := {
@@ -204,7 +167,7 @@ const ENEMIES := {
 	"feral": {"mesh": "feral", "name": "Feral", "rig": "humanoid", "life": 15, "dmg": [2, 5], "speed": 4.2, "range": 1.4, "xp": 12,
 		"ai": "feral", "atk": "feral_swipe", "atk_time": 0.8, "armor": 1, "radius": 0.5, "aggro": 14.0, "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.66, 0.6, 0.55), "cloth": Color(0.25, 0.2, 0.15), "height": 0.72, "bulk": 0.8, "head": "human", "hair": Color(0.08, 0.07, 0.06), "eyes": Color(1.0, 0.7, 0.3)}},
-	# the Hollow Sloths (sloth.gd): three elemental giants roam the whole Act I moor, best avoided; each fights with
+	# the Hollow Sloths (game/monsters/hollow_sloth/): three elemental giants, best avoided; each fights with
 	# its element ("element") and drops its own material ("drop"). "variant" picks its model.
 	"sloth_fire": {"mesh": "sloth", "variant": "fire", "element": "fire", "drop": "cinderheart", "name": "Cinderhide, the Burning Sloth", "rig": "crawler",
 		"life": 320, "dmg": [8, 15], "speed": 2.2, "range": 2.6, "xp": 160, "ai": "sloth", "atk": "sloth_sweep", "atk_time": 1.35, "armor": 10, "radius": 1.3,
@@ -215,8 +178,8 @@ const ENEMIES := {
 	"sloth_storm": {"mesh": "sloth", "variant": "storm", "element": "lightning", "drop": "stormglass", "name": "Thundermaw, the Storm Sloth", "rig": "crawler",
 		"life": 320, "dmg": [8, 15], "speed": 2.2, "range": 2.6, "xp": 160, "ai": "sloth", "atk": "sloth_sweep", "atk_time": 1.35, "armor": 10, "radius": 1.3,
 		"aggro": 15.0, "trophy": true, "blood": Color(0.3, 0.06, 0.04), "look": {"skin": Color(0.25, 0.26, 0.33), "height": 1.7, "eyes": Color(0.75, 0.45, 1.0)}},
-	# A2: the bandits of the Imperial Road (they wait hidden and spring an ambush, via.gd) and the beasts,
-	# gladiators and champion of Aurelia's arena (games.gd). "mesh" picks the Meshy model when it's there.
+	# the bandits (game/monsters/bandit/), and the beasts, gladiators and champion of the old arena games
+	# (game/monsters/gladiator/, champion/; the lion: lion.gd). "mesh" picks the Meshy model when it's there.
 	"bandit": {"mesh": "bandit", "name": "Road Bandit", "rig": "humanoid", "life": 22, "dmg": [3, 7], "speed": 4.4, "range": 1.6, "xp": 13,
 		"ai": "melee", "atk": "side", "atk_time": 0.8, "armor": 3, "radius": 0.45, "faction": "bandit", "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.62, 0.46, 0.34), "cloth": Color(0.3, 0.24, 0.16), "cloth2": Color(0.22, 0.25, 0.14), "height": 1.0, "bulk": 0.95, "head": "human", "hair": Color(0.12, 0.09, 0.06), "weapon": "scimitar"}},
@@ -285,7 +248,7 @@ const ENEMIES := {
 	"grabber": {"name": "Gold Grabber", "rig": "humanoid", "model": "grabber", "life": 13, "dmg": [2, 4], "speed": 4.4, "range": 1.3, "xp": 6, "no_loot": true,
 		"ai": "melee", "atk": "thrust", "atk_time": 0.75, "armor": 2, "radius": 0.4, "blood": Color(0.4, 0.05, 0.02),
 		"look": {"height": 0.75, "eyes": Color(1.0, 0.6, 0.1)}},
-	# the goblins of Grubb's fort: they guard it, and fight the moor's dead on sight ("faction")
+	# King Grubb's goblins: they guard him, and fight the dead on sight ("faction")
 	"goblin_guard": {"mesh": "goblin_guard", "faction": "goblin", "name": "Goblin Guard", "rig": "humanoid", "life": 24, "dmg": [3, 7], "speed": 3.8, "range": 1.6, "xp": 12,
 		"ai": "melee", "atk": "over", "atk_time": 0.9, "armor": 4, "radius": 0.45, "blood": Color(0.35, 0.08, 0.03),
 		"look": {"height": 0.8, "eyes": Color(1.0, 0.7, 0.1), "weapon": "scimitar"}},
@@ -296,11 +259,6 @@ const ENEMIES := {
 		"ai": "boss", "atk": "smash", "atk_time": 1.3, "armor": 10, "radius": 1.35, "boss": true, "summon": "", "slam": true, "nova": "", "proj": "", "hoard": true,
 		"blood": Color(0.4, 0.05, 0.02),
 		"look": {"height": 2.0, "eyes": Color(1.0, 0.75, 0.15)}},
-
-	"ashen_king": {"mesh": "ashen_king", "name": "The Ashen King", "rig": "humanoid", "skin": "king", "life": 900, "dmg": [14, 24], "speed": 2.8, "range": 2.9, "xp": 900,
-		"ai": "boss", "atk": "over", "atk_time": 1.2, "armor": 18, "radius": 0.95, "boss": true, "summon": "skel_archer", "slam": true, "nova": "fire", "proj": "fireball",
-		"boss_drop": "cinderbrand", "blood": Color(0.25, 0.2, 0.15),
-		"look": {"height": 1.85, "eyes": Color(1.0, 0.35, 0.05)}},
 
 	"raider": {"name": "Sand Raider", "rig": "humanoid", "life": 26, "dmg": [5, 10], "speed": 4.0, "range": 1.7, "xp": 18,
 		"ai": "melee", "atk": "side", "atk_time": 0.9, "armor": 8, "radius": 0.45, "blood": Color(0.5, 0.02, 0.02),
@@ -588,13 +546,8 @@ const UNIQUES := {
 		"metal": Color(0.95, 0.8, 0.45), "trim": Color(1.0, 1.0, 0.95), "glow": Color(1.0, 0.85, 0.4), "gem": Color(1.0, 0.9, 0.5)},
 }
 
-## Each run is Act I again with stronger monsters and loot (indexed by Game.difficulty).
-## Multipliers on Act I: monster life (and armor), the final boss's life, monster damage,
-## the flat stats on items they drop (Items.empower) and experience. Tuned with
-## tools/balance_sim.gd.
-## "power": how much stronger the act's items are (Items.empower). Since the items rework (level and skills carry a
-## character, gear helps) it's modest, and so are the monsters' life and damage multipliers: the act's monsters are
-## also higher level. "loot" is how much more and better loot drops; "xp" the experience.
+## The old acts' strengths. Act I is the only act now; A2's and A3's stay for the items saved from them: an item
+## keeps its "power" (how much stronger its stats are, Items.empower) and its tooltip names the act it came from.
 const RUNS := [
 	{"name": "Act I", "life": 1.0, "boss_life": 1.0, "dmg": 1.0, "loot": 1.0, "xp": 1.0, "power": 1.0},
 	{"name": "A2", "life": 2.5, "boss_life": 3.1, "dmg": 0.9, "loot": 5.0, "xp": 5.0, "power": 1.6},
@@ -877,7 +830,6 @@ const GEAR_CAP := {"frw": 5, "ias": 25, "res": 25, "ls": 4, "block": 15, "stam":
 const BOSS_LOOT := {
 	"goblin_king": ["cinderbrand", "skullsplitter", "bloodweave"],
 	"champion": ["stormstride", "wardens_wall", "ninth_sun"],
-	"ashen_king": ["ashen_king", "dawnbreaker", "sunwarden"],
 	"bear": ["mire_heart", "bloodweave"],
 	"sloth_fire": ["emberfang", "ninth_sun"],
 	"sloth_ice": ["wardens_wall", "mire_heart"],
@@ -962,9 +914,5 @@ static func skill_def(id: String) -> Dictionary:
 static func xp_for_level(lvl: int) -> int:
 	return int(round(120.0 * pow(float(lvl), 1.75) + 60.0 * lvl))
 
-static func zone_level(act: int, kind: String) -> int:
-	var base: int = ACTS[act]["lvl"]
-	match kind:
-		"wild": return base + 2
-		"lair": return base + 5
-	return base
+static func zone_level(act: int, _kind: String) -> int:
+	return int(ACTS[act]["lvl"])

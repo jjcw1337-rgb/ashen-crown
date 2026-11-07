@@ -1,5 +1,5 @@
 extends SceneTree
-## Stages a candidate boss model (any .glb) in King Grubb's vault, lit like the game, next to the
+## Stages a candidate boss model (any .glb) in the Arena's hall, lit like the game, next to the
 ## hero, and saves screenshots: the gameplay camera, a closer three-quarter view and the face.
 ## Doesn't touch the game's data: a mock-up for picking a model before wiring it in.
 ## Usage: -- res://path/model.glb out_prefix [height_m]
@@ -16,13 +16,11 @@ func _initialize():
 		await process_frame
 	await g.start_game(false, "knight")
 	g.ui.close_all()
-	await g.load_zone(0, "lair", "boss_room")
+	await g.load_zone(0, "sandbox", "start")
 	g.test_immortal = true
-	# the real boss stays (hidden) so the room is lit and staged as in play; the candidate stands in his place
-	var boss: Enemy = null
-	for e in g.world.enemies_root.get_children():
-		if e is Enemy and e.boss:
-			boss = e
+	# King Grubb stands (hidden) a few metres off with his guards, so the hall is staged as in a fight; the candidate
+	# stands in his place
+	var boss: Enemy = g.spawn_enemy("goblin_king", g.world.free_spot_near(g.hero.global_position + Vector3(0, 0, -6.0), 2.0), 6, false, "", 900)
 	var at: Vector3 = boss.global_position
 	for e in g.world.enemies_root.get_children():
 		if e is Enemy:

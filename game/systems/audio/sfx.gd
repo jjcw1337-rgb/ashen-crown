@@ -220,8 +220,7 @@ func start_loop(nm: String, vol := 0.0, pitch := 1.0, owner: Node = null) -> Aud
 	p.play()
 	return p
 
-## The zone's music and its ambience bed (wind outdoors, drips in the crypt; `amb` picks another, like
-## Act I's forest rustle outside the camp).
+## The zone's music and its ambience bed (the wind; `amb` picks another, like Act I's forest rustle outside the camp).
 ## `amb_take` picks which take of the bed plays (the camp's nights rotate theirs, DayNight.night_take).
 ## kind "" = no music, only the ambience bed (a zone with no song of its own: better quiet than the old drone).
 func play_music(kind: String, amb_over := "", amb_take := 0) -> void:
@@ -248,7 +247,7 @@ func play_music(kind: String, amb_over := "", amb_take := 0) -> void:
 	_ambience(kind, amb_over, amb_take)
 
 func _ambience(kind: String, amb_over: String, amb_take: int) -> void:
-	var amb := amb_over if amb_over != "" and bank.has(amb_over) else ("wind" if kind != "lair" else "drip")
+	var amb := amb_over if amb_over != "" and bank.has(amb_over) else "wind"
 	var amb_st: AudioStream = bank[amb][posmod(amb_take, (bank[amb] as Array).size())] if bank.has(amb) else streams.get(amb)
 	if ambience.stream != amb_st:
 		ambience.stream = amb_st
@@ -523,7 +522,7 @@ func _gen() -> void:
 func _drone(kind: String) -> AudioStreamWAV:
 	var sec := 16.0
 	var s := _buf(sec)
-	var root := 55.0 if kind != "lair" else 46.25
+	var root := 55.0
 	var chord := [1.0, 1.5, 2.0, 2.4, 3.0] if kind == "town" else [1.0, 1.498, 2.0, 2.378, 2.997]
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 99

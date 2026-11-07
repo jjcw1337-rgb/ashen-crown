@@ -51,7 +51,7 @@ func _run() -> void:
 		await process_frame
 	await g.start_game(false, "doug")
 	g.ui.close_all()
-	await g.travel(0, "wild", "start")
+	await g.travel(0, "sandbox", "start")
 	while g._busy:
 		await process_frame
 	var h = g.hero
