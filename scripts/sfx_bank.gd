@@ -21,7 +21,6 @@ const BANK := {
 	"bonfire_open": [1, "sfx", 0.0],
 	"boom": [1, "sfx", 0.0],
 	"boss_die": [1, "sfx", 0.0],
-	"boss_sting": [2, "sfx", 0.0],
 	"bow": [1, "sfx", 0.0],
 	"burn_item": [1, "sfx", 0.0],
 	"cackle": [2, "sfx", 0.0],

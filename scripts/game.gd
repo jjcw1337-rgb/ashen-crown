@@ -3295,8 +3295,6 @@ func boss_down_remote(e: Enemy) -> void:
 func on_boss_aggro(e: Enemy) -> void:
 	net.boss_aggro(e)
 	ui.set_boss(e)
-	if not Data.ENEMIES.get(e.kind, {}).has("intro"):     # (a boss with an intro card is named by the card)
-		ui.big_message(e.display_name)
 	Sfx.play("roar")
 	add_shake(0.5)
 
@@ -3330,6 +3328,7 @@ func drop_item(it: Dictionary, at: Vector3) -> void:
 		Sfx.play("levelup", -12.0, 1.6)
 
 # ---------------------------------------------------------------- feedback
+## The camera swings in on `n` for `dur` seconds, zoomed by `z` (screenshot tools use it; no boss does any more).
 func focus_on(n: Node3D, dur: float, z := 0.55) -> void:
 	focus_node = n
 	focus_t = 0.0
