@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://bbanipo4hh1eu"
-path="res://.godot/imported/blast_arrow_0.wav-ff25134cfcf0112581904ce9d2de004f.sample"
+path="res://.godot/imported/blast_arrow_0.wav-891fa4f8fef435b35958d83460bbe3d8.sample"
 
 [deps]
 
-source_file="res://assets/audio/sfx/blast_arrow_0.wav"
-dest_files=["res://.godot/imported/blast_arrow_0.wav-ff25134cfcf0112581904ce9d2de004f.sample"]
+source_file="res://game/heroes/archer/skills/blast_arrow/sounds/blast_arrow_0.wav"
+dest_files=["res://.godot/imported/blast_arrow_0.wav-891fa4f8fef435b35958d83460bbe3d8.sample"]
 
 [params]
 

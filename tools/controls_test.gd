@@ -40,7 +40,7 @@ func key(k: Key, down: bool) -> void:
 	g._unhandled_input(e)
 
 func _run() -> void:
-	DG = load("res://scripts/dodge.gd")
+	DG = load("res://game/systems/skills/dodge.gd")
 	await wait(30)
 	while g._busy:
 		await wait(5)
@@ -168,7 +168,7 @@ func _roll_class(cls: String) -> void:
 	pup.net_pos = pup.global_position
 	pup.net_has = true
 	var pl: float = pup.life
-	load("res://scripts/skill_fx.gd").play(pup, {"s": "roll", "e": "start", "d": Vector3.LEFT})
+	load("res://game/systems/skills/skill_fx.gd").play(pup, {"s": "roll", "e": "start", "d": Vector3.LEFT})
 	var pt := 0.0
 	var pend := Time.get_ticks_msec() + 300
 	while Time.get_ticks_msec() < pend:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The Hero Codex editor (Blaine, 2026-11-06): a small web app over data/codex/, the files the game loads its
-heroes' skills, rites, gems and consumables from (scripts/codex.gd). Saving an entry writes its file and commits
+heroes' skills, rites, gems and consumables from (game/systems/data/codex.gd). Saving an entry writes its file and commits
 just that file on the checkout's current branch; Publish pushes the branch for a preview build.
 
     python3 tools/codex/server.py [--port 8765] [--repo .] [--password-file ~/.config/ashen-codex/password]

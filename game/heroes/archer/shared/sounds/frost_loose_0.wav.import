@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://cr0m20rfrwbvp"
-path="res://.godot/imported/frost_loose_0.wav-8910a256a8a5666b24780b594b8d7256.sample"
+path="res://.godot/imported/frost_loose_0.wav-370e861a23212cf21271055fcafd02d6.sample"
 
 [deps]
 
-source_file="res://assets/audio/sfx/frost_loose_0.wav"
-dest_files=["res://.godot/imported/frost_loose_0.wav-8910a256a8a5666b24780b594b8d7256.sample"]
+source_file="res://game/heroes/archer/shared/sounds/frost_loose_0.wav"
+dest_files=["res://.godot/imported/frost_loose_0.wav-370e861a23212cf21271055fcafd02d6.sample"]
 
 [params]
 

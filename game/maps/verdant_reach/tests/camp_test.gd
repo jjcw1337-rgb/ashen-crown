@@ -14,7 +14,7 @@ func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
 	CA = load("res://game/maps/verdant_reach/camps.gd")
-	RB = load("res://scripts/run_build.gd")
+	RB = load("res://game/items/run_build.gd")
 	_run()
 
 func check(ok: bool, what: String) -> void:
@@ -71,7 +71,7 @@ func _run() -> void:
 	await secs(0.6)
 	var drops: Array = g.world.items_root.get_children().slice(before)
 	check(drops.size() >= 2, "the chest dropped %d things" % drops.size())
-	var bad := drops.filter(func(x): return "item" in x and str(load("res://scripts/data.gd").BASES[x.item["base"]]["slot"]) in ["gold", "ring", "amulet", "belt"])
+	var bad := drops.filter(func(x): return "item" in x and str(load("res://game/systems/data/data.gd").BASES[x.item["base"]]["slot"]) in ["gold", "ring", "amulet", "belt"])
 	check(bad.is_empty(), "no gold, ring, amulet or belt in it")
 	check(g.ui.run_ui.visible and g.ui.run_ui.mode == "offer", "and its upgrade window opened")
 	var key: String = CA.offer_key(g, a)

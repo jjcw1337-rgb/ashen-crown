@@ -3,7 +3,7 @@ score.py, build_sfx.py); this synthesizer remains for reference and for anything
 name here overwrites that sound's files.
 
 Renders Ashen Crown's sound effects offline (numpy synthesis, see dsp.py) into assets/audio/sfx/ and
-writes scripts/sfx_bank.gd (each sound's number of takes and its bus) for Sfx to load.
+writes game/systems/audio/sfx_bank.gd (each sound's number of takes and its bus) for Sfx to load.
 
     python3 tools/audio/make_sfx.py [name ...] [--spectro outdir]
 (any python3 with numpy; Blender's bundled python works). With names, only those sounds are rendered
@@ -24,7 +24,7 @@ from dsp import *
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), "../.."))
 OUT = os.path.join(ROOT, "assets/audio/sfx")
-BANK_GD = os.path.join(ROOT, "scripts/sfx_bank.gd")
+BANK_GD = os.path.join(ROOT, "game/systems/audio/sfx_bank.gd")
 
 SOUNDS = {}   # name -> (fn, takes, bus, rms_db)
 

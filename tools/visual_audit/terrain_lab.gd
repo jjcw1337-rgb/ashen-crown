@@ -38,7 +38,7 @@ func _run() -> void:
 		zooms.append(float(args[k]))
 	if zooms.is_empty():
 		zooms = [0.62, 0.35]
-	var M: GDScript = load("res://scripts/mats.gd")
+	var M: GDScript = load("res://game/systems/bodies/mats.gd")
 	var root3 := Node3D.new()
 	get_root().add_child(root3)
 	var mi := MeshInstance3D.new()

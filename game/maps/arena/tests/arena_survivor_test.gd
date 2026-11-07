@@ -25,7 +25,7 @@ func _initialize():
 	get_root().disable_3d = true
 	get_root().add_child(g)
 	SV = load("res://scripts/survivors.gd")
-	RB = load("res://scripts/run_build.gd")
+	RB = load("res://game/items/run_build.gd")
 	_run()
 
 func check(ok: bool, label: String) -> void:

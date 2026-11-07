@@ -132,7 +132,7 @@ func _demon() -> void:
 	g.test_immortal = true
 	g.test_allskills = true
 	var DS = load("res://scripts/demon_skills.gd")
-	var PS = load("res://scripts/pvp_status.gd")
+	var PS = load("res://game/systems/combat/pvp_status.gd")
 	check(await until(func(): return _proxy() != null, 10.0), "b is a target for my skills")
 	# 1 the charge
 	var bp: Vector3 = await _stand(6.0)
@@ -172,7 +172,7 @@ func _demon() -> void:
 func _target() -> void:
 	var h = g.hero
 	g.test_immortal = false
-	var PS = load("res://scripts/pvp_status.gd")
+	var PS = load("res://game/systems/combat/pvp_status.gd")
 	PS.landed.clear()
 	h.max_life = 1.0e7
 	h.life = 1.0e7

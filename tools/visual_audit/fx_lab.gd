@@ -39,8 +39,8 @@ func _run() -> void:
 		times.append(float(args[k]))
 	if times.is_empty():
 		times = [0.6, 1.5, 3.0]
-	var M: GDScript = load("res://scripts/mats.gd")
-	var IF: GDScript = load("res://scripts/infernal_fx.gd")
+	var M: GDScript = load("res://game/systems/bodies/mats.gd")
+	var IF: GDScript = load("res://game/systems/fx/infernal_fx.gd")
 	var PF: GDScript = load("res://game/heroes/plague/plague_fx.gd")
 	var PL: GDScript = load("res://game/heroes/plague/plague.gd")
 	IF.set("force_tier", tier)
@@ -105,8 +105,8 @@ func _run() -> void:
 	root3.add_child(fx)
 	fx.global_position = Vector3.ZERO
 	if what == "death" or what == "levelup":
-		var FX: GDScript = load("res://scripts/fx.gd")
-		var HF: GDScript = load("res://scripts/holy_fx.gd")
+		var FX: GDScript = load("res://game/systems/fx/fx.gd")
+		var HF: GDScript = load("res://game/systems/fx/holy_fx.gd")
 		if what == "levelup":
 			HF.call("level_up", null, fx, Vector3(1.0, 0.0, 0.4))
 		for k in (3 if what == "death" else 0):
