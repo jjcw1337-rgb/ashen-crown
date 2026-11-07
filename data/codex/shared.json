@@ -6,7 +6,7 @@
 			"name": "Earthshatter",
 			"rarity": 1,
 			"direction": "",
-			"desc": "A heavy two-handed slam: the wedge it will crack shows as you heave, then the ground splits ahead of you for 230% weapon damage plus a part that grows with your level, throwing foes back.",
+			"desc": "Slam the ground and split a marked wedge ahead: 230% weapon damage, plus a bonus that grows with your level. Foes are thrown back.",
 			"mana": 8,
 			"cd": 0.0,
 			"use": 1.6,
@@ -26,7 +26,7 @@
 			"name": "Frost Nova",
 			"rarity": 1,
 			"direction": "",
-			"desc": "A ring of ice bursts out around you, 4 metres: cold damage, and everything it hits is chilled, slowed for 3 seconds.",
+			"desc": "Burst a ring of ice out to 4 m, dealing cold damage and chilling everything hit for 3 s.",
 			"mana": 10,
 			"cd": 0.0,
 			"use": 0.9,
@@ -44,7 +44,7 @@
 			"name": "Arc",
 			"rarity": 1,
 			"direction": "",
-			"desc": "Lightning leaps from your hand into the nearest foe ahead and on to three more nearby, striking each.",
+			"desc": "Loose lightning at the nearest foe ahead. It leaps to 3 more nearby.",
 			"mana": 6,
 			"cd": 0.0,
 			"use": 0.7,
@@ -62,7 +62,7 @@
 			"name": "War Cry",
 			"rarity": 1,
 			"direction": "",
-			"desc": "A roar that rallies your team: you and every ally within 8 metres deal +40% damage for 6 seconds, and the monsters near turn on you. In the Battlegrounds it is yours alone (no teams there yet).",
+			"desc": "Roar: you and allies within 8 m deal +40% damage for 6 s, and nearby monsters turn on you. In the Battlegrounds it buffs only you.",
 			"mana": 12,
 			"cd": 8.0,
 			"use": 0.8,
@@ -162,7 +162,7 @@
 			"fx": {
 				"regen": 1.0
 			},
-			"text": "+{regen} life regenerated per second.",
+			"text": "+{regen} life per second.",
 			"icon": "t_regen"
 		},
 		{
@@ -175,7 +175,7 @@
 			"fx": {
 				"crit": 4.0
 			},
-			"text": "+{crit}% chance to land a critical hit.",
+			"text": "+{crit}% critical chance.",
 			"icon": "t_star"
 		},
 		{
@@ -282,7 +282,7 @@
 			"run": true,
 			"direction": "",
 			"max": 2,
-			"text": "Each kill: +{dmg}% damage for {secs} seconds, up to {stacks} times.",
+			"text": "Each kill: +{dmg}% damage for {secs} s, up to {stacks} times.",
 			"icon": "t_fist",
 			"k": {
 				"dmg": 4.0,
@@ -351,7 +351,7 @@
 			"run": true,
 			"direction": "",
 			"max": 1,
-			"text": "A blow that would kill you leaves you at {life}% life instead (once every {secs} seconds).",
+			"text": "Survive a killing blow at {life}% life, once every {secs} s.",
 			"icon": "t_ward",
 			"k": {
 				"life": 35.0,
@@ -400,7 +400,7 @@
 			"run": true,
 			"direction": "",
 			"max": 1,
-			"text": "A skill with a cooldown has a {chance}% chance to be ready again at once.",
+			"text": "Skills with a cooldown have a {chance}% chance to reset at once.",
 			"icon": "t_hourglass",
 			"k": {
 				"chance": 25.0
@@ -433,7 +433,7 @@
 			"run": true,
 			"direction": "",
 			"max": 1,
-			"text": "Critical hits give +{ias}% attack speed for {secs} seconds.",
+			"text": "Critical hits give +{ias}% attack speed for {secs} s.",
 			"icon": "t_haste",
 			"k": {
 				"ias": 20.0,
@@ -505,7 +505,7 @@
 			"run": true,
 			"direction": "",
 			"max": 2,
-			"text": "A ward soaks blows worth {ward_bonus}% of your life; it refills out of combat.",
+			"text": "Gain a ward worth {ward_bonus}% of your life. It refills out of combat.",
 			"icon": "t_ward",
 			"fx": {
 				"ward_bonus": 12.0
@@ -519,7 +519,7 @@
 			"run": true,
 			"direction": "",
 			"max": 1,
-			"text": "Your burns last {burn_dur}% longer and hurt {burn_pct}% more; your chills last {chill_pct}% longer.",
+			"text": "Your burns last {burn_dur}% longer and hurt {burn_pct}% more. Your chills last {chill_pct}% longer.",
 			"icon": "t_hourglass",
 			"fx": {
 				"burn_dur": 50.0,
@@ -551,7 +551,7 @@
 			"run": true,
 			"direction": "",
 			"max": 2,
-			"text": "Each kill: +{frw}% run speed for {secs} seconds.",
+			"text": "Each kill: +{frw}% run speed for {secs} s.",
 			"icon": "t_boot",
 			"k": {
 				"frw": 12.0,

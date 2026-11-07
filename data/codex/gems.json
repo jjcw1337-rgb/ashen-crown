@@ -150,7 +150,7 @@
 			"fx": {
 
 			},
-			"text": "Once this run, a killing blow is refused: you rise at {life}% life in a burst of fire.",
+			"text": "Once per run, survive a killing blow and rise at {life}% life in a burst of fire.",
 			"proc": "undying",
 			"k": {
 				"life": 60.0,

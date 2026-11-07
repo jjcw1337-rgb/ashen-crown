@@ -1,7 +1,7 @@
 {
 	"cls": "demon",
 	"name": "Demon",
-	"fantasy": "A horned, winged brute of charcoal hide with magma burning through the cracks. Cracks the ground with his fists, charges through his foes on a trail of lava, hurls molten boulders and calls meteors down from the pit.",
+	"fantasy": "A winged, horned brute with magma in his cracks. He smashes the ground, charges through foes, hurls molten boulders and calls down meteors.",
 	"directions": [
 		{
 			"id": "Magma",
@@ -26,7 +26,7 @@
 			"name": "Molten Fists",
 			"rarity": 0,
 			"direction": "Magma",
-			"desc": "A slow, heavy two-fisted blow: your fists catch fire as you draw back, then crack the ground open ahead of you. Everything in the wedge takes 300% weapon damage plus magma and is set alight. Branded enemies take 30% more and lose the Brand. Dodge to cancel it.",
+			"desc": "A slow blow cracks the ground ahead: 300% weapon damage plus magma, setting foes alight. Branded foes take 30% more and lose the Brand. Dodge to cancel.",
 			"mana": 5,
 			"cd": 0.0,
 			"use": 2.0,
@@ -54,7 +54,7 @@
 			"name": "Infernal Charge",
 			"rarity": 0,
 			"direction": "Magma",
-			"desc": "Paw the ground, then charge head-down up to 9 metres along a burning line everyone can see. You stop on the first champion or player you hit: it takes 120% weapon damage plus magma, is staggered and Branded. Lesser monsters are bowled aside.",
+			"desc": "Charge up to 9 m along a burning line. The first champion or player stops you and takes 120% weapon damage plus magma, a stagger and a Brand. Others are bowled aside.",
 			"mana": 12,
 			"cd": 9.0,
 			"range": 9.0,
@@ -81,7 +81,7 @@
 			"name": "Fault of the Pit",
 			"rarity": 0,
 			"direction": "Cataclysm",
-			"desc": "Slam the ground and split it in a line 7 metres long across your aim. After a glowing warning it erupts: everything on it takes 133% weapon damage plus magma, is thrown up and Branded. The fault stays molten for 4 seconds: crossing it burns and slows by 35%.",
+			"desc": "Split a 7 m line across your aim. After a warning it erupts: 133% weapon damage plus magma, a knock-up and a Brand. It then burns and slows 35% for 4 s.",
 			"mana": 16,
 			"cd": 0.0,
 			"use": 2.2,
@@ -116,7 +116,7 @@
 			"name": "Brimstone Hurl",
 			"rarity": 1,
 			"direction": "Cataclysm",
-			"desc": "Tear a molten boulder out of the ground and lob it up to 14 metres; its shadow shows where it will land. A direct hit (1.3 metres) deals 77% weapon damage plus magma and Brands; the edge (2.6 metres) half. No cooldown: throw again as soon as the throw is done. It shatters into burning shards.",
+			"desc": "Lob a molten boulder up to 14 m, its shadow marking the landing. The 1.3 m core deals 77% weapon damage plus magma and Brands. The 2.6 m edge deals half.",
 			"mana": 18,
 			"cd": 0.0,
 			"use": 1.6,
@@ -162,7 +162,7 @@
 			"name": "Hellgrip",
 			"rarity": 1,
 			"direction": "The Pit",
-			"desc": "Hurl a molten chain with an iron claw 7.5 metres: the first enemy it hooks is dragged to you, hoisted and smashed into the ground for 320% weapon damage plus magma. Bosses drag you to them instead. A Branded target gives back 30% of the cooldown.",
+			"desc": "Throw a molten chain 7.5 m. The first foe hooked is dragged in and smashed for 320% weapon damage plus magma. Bosses pull you instead. Branded targets refund 30% cooldown.",
 			"mana": 20,
 			"cd": 14.0,
 			"range": 7.5,
@@ -196,7 +196,7 @@
 			"name": "Wrath of the Pit",
 			"rarity": 2,
 			"direction": "The Pit",
-			"desc": "Fold your wings round you for up to 2 seconds (press again to end it early): you take 50% less damage, can't be stunned or moved, and store the damage as heat. Then burst out: everything within 6 metres takes 100% weapon damage plus the stored heat (up to 30% of your life), is hurled back and frozen with fear. For 6 seconds you deal +40% damage and meteors rain on the enemies round you.",
+			"desc": "Fold your wings for up to 2 s: unstoppable, taking 50% less damage and storing it as heat. Burst within 6 m for 100% weapon damage plus the heat (max 30% of life), hurling foes back in fear. Then meteors rain for 6 s and you deal +40% damage.",
 			"mana": 35,
 			"cd": 60.0,
 			"role": "Defensive counter",
@@ -232,7 +232,7 @@
 			"name": "Volcano",
 			"rarity": 1,
 			"direction": "Cataclysm",
-			"desc": "Tear open a volcano at the pointer: it hurls five meteors onto the foes around it over two seconds, each 85% weapon damage and setting them alight.",
+			"desc": "Open a volcano at the pointer. It hurls 5 meteors at nearby foes over 2 s, each dealing 85% weapon damage and setting them alight.",
 			"mana": 16,
 			"cd": 0.0,
 			"use": 1.2,
@@ -260,7 +260,7 @@
 			"name": "Hellbrand Detonation",
 			"rarity": 0,
 			"direction": "Magma",
-			"desc": "Every Branded foe within 10 metres erupts: 160% weapon damage, thrown up for 0.8 seconds, and the fire bursts onto those beside it. The Brands are spent.",
+			"desc": "Every Branded foe within 10 m erupts: 160% weapon damage, a 0.8 s knock-up and fire splashing onto those beside it. The Brands are spent.",
 			"mana": 8,
 			"cd": 6.0,
 			"role": "cash in the Brands",
@@ -287,7 +287,7 @@
 			"name": "Blood Pact",
 			"rarity": 0,
 			"direction": "The Pit",
-			"desc": "Pay 15% of your life to the pit: for 8 seconds +35% damage and 6% of the damage you deal heals you.",
+			"desc": "Pay 15% of your life: for 8 s gain +35% damage, and 6% of the damage you deal heals you.",
 			"mana": 0,
 			"cd": 12.0,
 			"role": "life for power",
@@ -367,7 +367,7 @@
 			"fx": {
 				"crit": 3.0
 			},
-			"text": "+{crit}% chance to land a critical hit.",
+			"text": "+{crit}% critical chance.",
 			"icon": "t_star"
 		},
 		{
@@ -393,7 +393,7 @@
 			"fx": {
 				"fists_wide": 1.0
 			},
-			"text": "Molten Fists crack the ground a metre further and wider, and what they light burns twice as long.",
+			"text": "Molten Fists reach 1 m further and wider, and their burns last twice as long.",
 			"icon": "fists"
 		},
 		{
@@ -447,7 +447,7 @@
 			"fx": {
 				"trail_dur": 1.0
 			},
-			"text": "Fault of the Pit stays molten {trail_dur} seconds longer.",
+			"text": "Fault of the Pit stays molten {trail_dur} s longer.",
 			"icon": "cslam"
 		},
 		{
@@ -474,7 +474,7 @@
 			"fx": {
 				"buff_pow": 10.0
 			},
-			"text": "Pit-born's damage bonus (after Wrath of the Pit) is {buff_pow}% higher.",
+			"text": "Wrath of the Pit's damage bonus is {buff_pow}% higher.",
 			"icon": "wrath"
 		},
 		{
@@ -553,7 +553,7 @@
 				"wrath_dur": 1.0,
 				"cd:wrath": 8.0
 			},
-			"text": "Wrath of the Pit's meteors rain {wrath_dur} seconds longer and it recharges {cd:wrath}% faster.",
+			"text": "Wrath of the Pit's meteors rain {wrath_dur} s longer and it recharges {cd:wrath}% faster.",
 			"icon": "wrath"
 		},
 		{
@@ -566,7 +566,7 @@
 			"fx": {
 				"ls": 1.0
 			},
-			"text": "+{ls}% of the damage you deal comes back as life.",
+			"text": "+{ls}% life steal.",
 			"icon": "t_fang"
 		},
 		{

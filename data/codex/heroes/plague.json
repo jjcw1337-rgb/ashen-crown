@@ -1,7 +1,7 @@
 {
 	"cls": "plague",
 	"name": "Plague Doctor",
-	"fantasy": "A beaked physician of the cursed years, belted with vials and a smoking censer. Fights by control: vials of plague, a swarm of flies, a corpse flower that roots the careless, a fog to vanish in, a transfusion to outlast a beating, and a last experiment that turns the ground to quarantine.",
+	"fantasy": "A beaked plague doctor with vials and a censer. He fights by control: poison pools, fly swarms, rooting blooms, fog and a last experiment.",
 	"directions": [
 		{
 			"id": "Toxin",
@@ -26,7 +26,7 @@
 			"name": "Pestilence Vial",
 			"rarity": 0,
 			"direction": "Toxin",
-			"desc": "Pluck a vial of plague from your bandolier and lob it. A ring shows everyone where it will land. It bursts for a small hit and leaves a contaminated pool 2.6 metres wide for 3.5 seconds: anything standing in it is poisoned and keeps rotting for 2 seconds after it steps out. Pools of the same kind don't stack.",
+			"desc": "Lob a vial at a visible ring. It bursts lightly and pools poison within 2.6 m for 3.5 s, lingering 2 s after leaving. Pools of one kind don't stack.",
 			"mana": 7,
 			"cd": 0.0,
 			"range": 12.0,
@@ -60,7 +60,7 @@
 			"name": "Swarmcraft",
 			"rarity": 0,
 			"direction": "Vermin and Rot",
-			"desc": "Uncork your reliquary: a swarm of plague flies flies to the spot and hangs there for 6 seconds, biting whatever is inside and harrying it (attacks and casts 25% slower). Use it again to send the swarm somewhere else (twice). It never chases anyone, it's slower than a running man, and a dodge roll through it scatters it for a moment. The cooldown starts when it comes home.",
+			"desc": "Send a fly swarm to a spot for 6 s, biting all inside and slowing attacks and casts 25%. Recast to move it, twice. A dodge roll scatters it.",
 			"mana": 16,
 			"cd": 12.0,
 			"range": 13.0,
@@ -94,7 +94,7 @@
 			"name": "Corpse Bloom",
 			"rarity": 0,
 			"direction": "Vermin and Rot",
-			"desc": "Drive a seed into the ground. It grows for a second, then breathes for 6 seconds: every 2 seconds its ring of roots draws in and a spore pulse hits everything within 3.5 metres. Anyone who stood still while the ring drew in is snared by its roots for 0.6 seconds. In the Battlegrounds other players can break it with three blows.",
+			"desc": "Plant a corpse flower. For 6 s it hits everything within 3.5 m every 2 s, snaring anyone standing still for 0.6 s. Players break it in 3 hits.",
 			"mana": 14,
 			"cd": 10.0,
 			"range": 9.0,
@@ -127,7 +127,7 @@
 			"name": "Fog of the Forgotten",
 			"rarity": 1,
 			"direction": "Alchemy",
-			"desc": "Dash your censer at your feet and hop 4 metres back from the pointer. Pale fog 6 metres across hangs for 6 seconds: other players outside it can't see anyone inside, and inside it everyone within 3.5 metres is seen. You move 25% faster in it; monsters beyond 3.5 metres lose track of you in it; striking from it reveals you for a moment.",
+			"desc": "Hop 4 m back from the pointer, leaving fog within 6 m for 6 s. Players outside can't see in. Inside, sight is 3.5 m and you move 25% faster. Striking reveals you.",
 			"mana": 15,
 			"cd": 16.0,
 			"range": 4.0,
@@ -152,7 +152,7 @@
 			"name": "Transfusion",
 			"rarity": 1,
 			"direction": "Alchemy",
-			"desc": "Drive the needle of your apparatus into your arm: for 2 seconds you take 45% less damage and move at 70% speed, and slows, snares and Blight are washed out of you. What the tanks soak heals you afterwards (up to 15% of your life). Attacking ends it early.",
+			"desc": "For 2 s, take 45% less damage at 70% move speed and cleanse slows, snares and Blight. Then heal what you soaked (max 15% of your life). Attacking ends it.",
 			"mana": 10,
 			"cd": 18.0,
 			"tags": [
@@ -174,7 +174,7 @@
 			"name": "The Last Experiment",
 			"rarity": 2,
 			"direction": "Alchemy",
-			"desc": "Slam down your vat (everyone sees an 8-metre warning ring) and crank it for 2.5 seconds. Then the glass bursts, the thing inside crawls out and the ring becomes a quarantine for 7 seconds: spores, Blight and a 20% slow inside, and the creature lumbers at the nearest foe, spewing. A stun, another skill or walking away from the vat bursts it early, only 5 metres wide. In the Battlegrounds other players can break the vat while you crank it (three blows: the experiment fails) and kill the creature (four).",
+			"desc": "Crank a vat for 2.5 s inside an 8 m warning ring. It bursts into a 7 s quarantine of spores, Blight and a 20% slow, freeing a creature that hunts foes. A stun, another skill or walking away bursts it early at 5 m. Players can break the vat (3 hits) or creature (4).",
 			"mana": 40,
 			"cd": 45.0,
 			"range": 7.0,
@@ -219,7 +219,7 @@
 			"name": "Miasma",
 			"rarity": 0,
 			"direction": "Toxin",
-			"desc": "Smash a censer of plague at your feet: a cloud 4.5 metres wide hangs for 4 seconds, poisoning everything in it.",
+			"desc": "Smash a censer at your feet: a poison cloud within 4.5 m hangs for 4 s.",
 			"mana": 9,
 			"cd": 0.0,
 			"use": 0.9,
@@ -237,7 +237,7 @@
 			"name": "Contagion",
 			"rarity": 1,
 			"direction": "Toxin",
-			"desc": "Curse the foe nearest the pointer with a creeping plague for 6 seconds: it is poisoned, and every second its poison leaps to all within 4 metres. If it dies cursed, the plague bursts to everyone within 5 metres.",
+			"desc": "Curse a foe for 6 s, poisoning it. Each second its poison leaps to all within 4 m. If it dies cursed, the plague bursts to all within 5 m.",
 			"mana": 8,
 			"cd": 0.0,
 			"use": 0.8,
@@ -262,7 +262,7 @@
 			"name": "Leech Jar",
 			"rarity": 1,
 			"direction": "Alchemy",
-			"desc": "Lob a jar of blood leeches: for 5 seconds everything within 3 metres is poisoned, and every foe in it heals you 1.5% of your life a second.",
+			"desc": "Lob a leech jar that poisons everything within 3 m for 5 s. Each foe in it (up to 3) heals you 1.5% of your life a second.",
 			"mana": 10,
 			"cd": 9.0,
 			"range": 12.0,
@@ -346,7 +346,7 @@
 			"fx": {
 				"poison_dur": 0.5
 			},
-			"text": "Poison keeps working {poison_dur} seconds longer after a foe leaves a pool.",
+			"text": "Pool poison lingers {poison_dur} s longer after a foe leaves.",
 			"icon": "t_hourglass"
 		},
 		{
@@ -372,7 +372,7 @@
 			"fx": {
 				"cloud_dur": 1.5
 			},
-			"text": "Every pool lingers {cloud_dur} seconds longer.",
+			"text": "Every pool lingers {cloud_dur} s longer.",
 			"icon": "toxic"
 		},
 		{
@@ -465,7 +465,7 @@
 				"swarm_redirect": 1.0,
 				"swarm_dur": 1.0
 			},
-			"text": "The swarm can be turned {swarm_redirect} more time and stays {swarm_dur} second longer.",
+			"text": "The swarm can be moved {swarm_redirect} more time and lasts {swarm_dur} s longer.",
 			"icon": "swarm"
 		},
 		{
@@ -478,7 +478,7 @@
 			"fx": {
 				"fog_dur": 0.5
 			},
-			"text": "Fog of the Forgotten hangs {fog_dur} seconds longer.",
+			"text": "Fog of the Forgotten hangs {fog_dur} s longer.",
 			"icon": "fog"
 		},
 		{
@@ -504,7 +504,7 @@
 			"fx": {
 				"bloom_snare": 0.1
 			},
-			"text": "Corpse Bloom's roots hold {bloom_snare} seconds longer.",
+			"text": "Corpse Bloom's roots hold {bloom_snare} s longer.",
 			"icon": "bloom"
 		},
 		{
@@ -543,7 +543,7 @@
 			"fx": {
 				"exp_dur": 0.5
 			},
-			"text": "The quarantine lasts {exp_dur} seconds longer.",
+			"text": "The quarantine lasts {exp_dur} s longer.",
 			"icon": "t_hourglass"
 		},
 		{
@@ -631,7 +631,7 @@
 			"run": true,
 			"direction": "Toxin",
 			"max": 3,
-			"text": "Your poison lingers {poison_dur} seconds longer.",
+			"text": "Your poison lingers {poison_dur} s longer.",
 			"icon": "swarm",
 			"fx": {
 				"poison_dur": 0.6
@@ -678,7 +678,7 @@
 			"run": true,
 			"direction": "Toxin",
 			"max": 1,
-			"text": "A poisoned foe that dies bursts in a plague cloud: {pct}% weapon damage and poison to all within {r} m. Its dead burst too.",
+			"text": "Poisoned foes burst on death for {pct}% weapon damage, poisoning all within {r} m. Kills it causes burst too.",
 			"icon": "swarm",
 			"k": {
 				"r": 3.5,
@@ -724,7 +724,7 @@
 			"run": true,
 			"direction": "Vermin and Rot",
 			"max": 1,
-			"text": "Each poisoned foe that dies heals you {pct}% of your life and makes you +15% faster for 3 s.",
+			"text": "Poisoned foes that die heal you {pct}% of your life and make you 15% faster for 3 s.",
 			"icon": "bloom",
 			"k": {
 				"pct": 5.0,
@@ -783,7 +783,7 @@
 			"run": true,
 			"direction": "Toxin",
 			"max": 1,
-			"text": "When a cursed foe dies, Contagion's curse leaps to the nearest foe with its time renewed.",
+			"text": "When a cursed foe dies, Contagion leaps to the nearest foe at full duration.",
 			"icon": "p_spread",
 			"fx": {
 				"curse_jump": 1.0
@@ -797,7 +797,7 @@
 			"run": true,
 			"direction": "Alchemy",
 			"max": 2,
-			"text": "Leech Jar heals {leech_heal}% more and lasts {leech_t} seconds longer.",
+			"text": "Leech Jar heals {leech_heal}% more and lasts {leech_t} s longer.",
 			"icon": "p_leech",
 			"fx": {
 				"leech_heal": 50.0,
@@ -812,7 +812,7 @@
 			"run": true,
 			"direction": "Alchemy",
 			"max": 2,
-			"text": "Potions restore {pot}% more; skills recharge {cdr}% faster.",
+			"text": "Potions restore {pot}% more and skills recharge {cdr}% faster.",
 			"icon": "transfusion",
 			"fx": {
 				"pot": 35.0,

@@ -1,7 +1,7 @@
 {
 	"cls": "warlock",
 	"name": "Warlock",
-	"fantasy": "A pure evil spirit risen from the depths of an ancient jungle: a graceful figure of starry violet void, black thorned vines coiled up her limbs, a hood of dark leaves over fel green eyes, glowing orchids on her shoulders, her feet fading into roots and mist. Beautiful and wrong, in bright Warcraft colours. A run takes her down one of three roads: Corruption (stacking curses), Fear (crowd control) or Drain (life drain that overflows into shields).",
+	"fantasy": "An evil spirit of the ancient jungle, all violet void and thorned vines. Three roads: Corruption (stacking curses), Fear (crowd control) or Drain (life drain and shields).",
 	"directions": [
 		{
 			"id": "Corruption",
@@ -16,7 +16,7 @@
 		{
 			"id": "Drain",
 			"name": "Drain",
-			"desc": "Steal life to heal yourself; extra healing becomes a shield."
+			"desc": "Steal life to heal yourself. Extra healing becomes a shield."
 		}
 	],
 	"skills": [
@@ -26,7 +26,7 @@
 			"name": "Drain Life",
 			"rarity": 0,
 			"direction": "Drain",
-			"desc": "Hold to drain life from an enemy with a green beam. It also hits up to 3 enemies near it, and everything it drains heals you.",
+			"desc": "Hold to drain life from an enemy and up to 3 others near it. Everything it drains heals you.",
 			"mana": 6,
 			"cd": 0.0,
 			"range": 11.0,
@@ -52,7 +52,7 @@
 			"name": "Blight Bolt",
 			"rarity": 0,
 			"direction": "Corruption",
-			"desc": "Throw a blight skull. It bursts and leaves a poison pool for 4 seconds.",
+			"desc": "Throw a blight skull that bursts and leaves a poison pool for 4 s.",
 			"mana": 12,
 			"cd": 0.0,
 			"use": 1.0,
@@ -76,7 +76,7 @@
 			"name": "Soul Shackles",
 			"rarity": 0,
 			"direction": "Fear",
-			"desc": "Chain every enemy within 7 metres in place for 2.5 seconds, hurting them.",
+			"desc": "Chain every enemy within 7 m in place for 2.5 s, hurting them.",
 			"mana": 16,
 			"cd": 8.0,
 			"tags": [
@@ -96,7 +96,7 @@
 			"name": "Fel Covenant",
 			"rarity": 1,
 			"direction": "Drain",
-			"desc": "For 12 seconds you deal 40% more damage, and Drain Life hits more enemies and heals twice as much.",
+			"desc": "For 12 s, deal 40% more damage, and Drain Life hits more enemies and heals twice as much.",
 			"mana": 20,
 			"cd": 20.0,
 			"tags": [
@@ -116,7 +116,7 @@
 			"name": "Corruption",
 			"rarity": 0,
 			"direction": "Corruption",
-			"desc": "A cheap curse: 240% spell damage over 10 seconds.",
+			"desc": "A cheap curse: 240% spell damage over 10 s.",
 			"mana": 4,
 			"cd": 0.0,
 			"use": 0.45,
@@ -163,7 +163,7 @@
 			"name": "Unending Rot",
 			"rarity": 1,
 			"direction": "Corruption",
-			"desc": "A curse that grows stronger the longer the enemy stays cursed, up to four times as strong.",
+			"desc": "A curse that grows stronger the longer it lasts, up to 4 times as strong.",
 			"mana": 8,
 			"cd": 0.0,
 			"use": 0.5,
@@ -189,7 +189,7 @@
 			"name": "Festering Hex",
 			"rarity": 1,
 			"direction": "Corruption",
-			"desc": "A curse that bursts every 5 seconds for 120% spell damage and a short stun.",
+			"desc": "A curse that bursts every 5 s for 120% spell damage and a 0.5 s stun.",
 			"mana": 12,
 			"cd": 6.0,
 			"use": 0.5,
@@ -217,7 +217,7 @@
 			"name": "Leeching Curse",
 			"rarity": 1,
 			"direction": "Corruption",
-			"desc": "A curse for 160% spell damage over 8 seconds. Half of it heals you.",
+			"desc": "A curse for 160% spell damage over 8 s. Half of it heals you.",
 			"mana": 8,
 			"cd": 0.0,
 			"use": 0.5,
@@ -243,7 +243,7 @@
 			"name": "Reckoning",
 			"rarity": 2,
 			"direction": "Corruption",
-			"desc": "A curse for 6 seconds whose every tick hits as hard as all your other curses on the enemy put together.",
+			"desc": "A 6 s curse whose every tick hits as hard as all your other curses on the enemy combined.",
 			"mana": 16,
 			"cd": 0.0,
 			"use": 0.7,
@@ -266,7 +266,7 @@
 			"name": "Terrify",
 			"rarity": 0,
 			"direction": "Fear",
-			"desc": "Freeze an enemy in terror for 1.5 seconds. Scared enemies take 20% more from your spells.",
+			"desc": "Freeze an enemy in terror for 1.5 s. Scared enemies take 20% more from your spells.",
 			"mana": 8,
 			"cd": 9.0,
 			"use": 0.4,
@@ -290,7 +290,7 @@
 			"name": "Dread Totem",
 			"rarity": 1,
 			"direction": "Fear",
-			"desc": "Plant a totem for 8 seconds. It scares the first 3 enemies that come near it.",
+			"desc": "Plant a totem for 8 s. It scares the first 3 enemies that come near it.",
 			"mana": 14,
 			"cd": 14.0,
 			"use": 0.6,
@@ -350,7 +350,7 @@
 			"name": "Eclipse Bloom",
 			"rarity": 2,
 			"direction": "Fear",
-			"desc": "Blink up to 8 metres into a storm of void petals. Enemies caught are scared and keep getting hurt for 5 seconds.",
+			"desc": "Blink up to 8 m into a storm of void petals. Enemies caught are scared and keep taking damage for 5 s.",
 			"mana": 40,
 			"cd": 45.0,
 			"use": 1.5,
@@ -424,7 +424,7 @@
 			"name": "Soul Feast",
 			"rarity": 2,
 			"direction": "Drain",
-			"desc": "Channel for 3 seconds to drain every enemy within 7 metres. Healing past full life becomes a shield.",
+			"desc": "Channel for 3 s, draining every enemy within 7 m. Healing past full life becomes a shield.",
 			"mana": 30,
 			"cd": 30.0,
 			"use": 3.0,
@@ -562,7 +562,7 @@
 			"fx": {
 				"blight_dur": 1.0
 			},
-			"text": "Plague pools last {blight_dur} seconds longer.",
+			"text": "Plague pools last {blight_dur} s longer.",
 			"icon": "t_hourglass"
 		},
 		{
@@ -614,7 +614,7 @@
 			"fx": {
 				"crit": 3.0
 			},
-			"text": "+{crit}% chance to land a critical hit with your weapon and Soul Shackles.",
+			"text": "+{crit}% critical chance with your weapon and Soul Shackles.",
 			"icon": "t_star"
 		},
 		{
@@ -667,7 +667,7 @@
 				"dmg:shackles": 15.0,
 				"shackle_dur": 0.3
 			},
-			"text": "Soul Shackles deal {dmg:shackles}% more damage and bind {shackle_dur} seconds longer.",
+			"text": "Soul Shackles deal {dmg:shackles}% more damage and bind {shackle_dur} s longer.",
 			"icon": "shackles"
 		},
 		{
@@ -693,7 +693,7 @@
 			"fx": {
 				"shackle_range": 1.5
 			},
-			"text": "Soul Shackles reach {shackle_range} metres further.",
+			"text": "Soul Shackles reach {shackle_range} m further.",
 			"icon": "shackles"
 		},
 		{
@@ -720,7 +720,7 @@
 			"fx": {
 				"buff_dur": 6.0
 			},
-			"text": "Fel Covenant lasts {buff_dur} seconds longer.",
+			"text": "Fel Covenant lasts {buff_dur} s longer.",
 			"icon": "covenant"
 		},
 		{
@@ -840,7 +840,7 @@
 			"fx": {
 				"fear_dur": 0.2
 			},
-			"text": "Your fears and binds last {fear_dur} seconds longer.",
+			"text": "Your fears and binds last {fear_dur} s longer.",
 			"icon": "",
 			"requires": [
 				"shackles",
@@ -900,7 +900,7 @@
 			"fx": {
 				"fear_kill": 1.0
 			},
-			"text": "Killing a scared enemy gives back 15 mana and takes 2 seconds off Terrify.",
+			"text": "Killing a scared enemy gives back 15 mana and takes 2 s off Terrify.",
 			"icon": "",
 			"requires": [
 				"shackles",
@@ -920,7 +920,7 @@
 			"fx": {
 				"fear_root": 1.0
 			},
-			"text": "When your fear ends, the enemy is stuck in place for 1 second.",
+			"text": "When your fear ends, the enemy is rooted for 1 s.",
 			"icon": "",
 			"requires": [
 				"shackles",
@@ -957,7 +957,7 @@
 			"fx": {
 				"overheal_shield": 10.0
 			},
-			"text": "Healing past full life becomes a shield, up to {overheal_shield}% of your life. It melts away 5 seconds out of combat.",
+			"text": "Healing past full life becomes a shield, up to {overheal_shield}% of your life. It melts away 5 s out of combat.",
 			"icon": "",
 			"requires": [
 				"drain",
