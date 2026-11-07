@@ -46,7 +46,7 @@ func pack(at: Vector3, n: int, lvl := 20) -> Array:
 	return out
 func _run() -> void:
 	DS = load("res://scripts/demon_skills.gd")
-	BF = load("res://scripts/brand_fx.gd")
+	BF = load("res://game/systems/combat/brand_fx.gd")
 	while g.world == null or g._busy:
 		await process_frame
 	await g.start_game(false, "demon")

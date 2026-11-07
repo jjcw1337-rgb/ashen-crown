@@ -71,7 +71,7 @@ commit for the exact lines):
 - `scripts/ui.gd`: `boat_shop` / `boat_panel` (`BoatShop.build`, `tick` in `_process`, in `_walked_off`, `close_all`,
   `any_panel_open`), the sail prompt (`_build_sail_prompt`, `set_sail_prompt`, `accept_event_safe`), and the minimap's
   `chart` (a wider view, 240 m while sailing).
-- `scripts/data.gd` (in `hooks/data.gd`): `BOATS`; `ACTS[0]`'s `coast` name; `VENDORS[0]`'s `shipwright`;
+- `game/systems/data/data.gd` (in `hooks/data.gd`): `BOATS`; `ACTS[0]`'s `coast` name; `VENDORS[0]`'s `shipwright`;
   `WAYPOINT_ACTIVITIES`' `coast` entry; `zone_level`'s coast and islands (base + 3).
 - `scripts/birds.gd` (whole in `hooks/birds.gd`): gulls, gull cries and leaping fish with splashes at sea.
 - `game/systems/bodies/mats.gd` (in `hooks/terrain_shader.txt`): the terrain shader's `sea`, `col_sand`, sand, wet sand, seabed,

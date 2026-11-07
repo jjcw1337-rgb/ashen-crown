@@ -3,7 +3,7 @@ extends RefCounted
 ## A skill's projectile in flight: where it is, where it's going, how far it has left and what it has struck. Plain
 ## data, no nodes: the rules fly one to deal the hits, and the look flies its own copy from the same "loose" event
 ## with the same `step`, so what is seen and what hits agree (docs/content/skills.md). A monster's thrown or spat
-## projectile is `Projectile` (scripts/projectile.gd), not this.
+## projectile is `Projectile` (game/systems/combat/projectile.gd), not this.
 
 var pos: Vector3
 var dir: Vector3

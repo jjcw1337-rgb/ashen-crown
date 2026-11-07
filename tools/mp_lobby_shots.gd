@@ -105,7 +105,7 @@ func _run() -> void:
 		c.view.hide()
 	# the survivor roster with two survivors (a scratch folder)
 	var SV = load("res://scripts/survivors.gd")
-	var RB = load("res://scripts/run_build.gd")
+	var RB = load("res://game/items/run_build.gd")
 	SV.dir = "user://mp_lobby_shots_survivors/"
 	DirAccess.make_dir_recursive_absolute(SV.dir)
 	for fn in DirAccess.get_files_at(SV.dir):
@@ -123,7 +123,7 @@ func _run() -> void:
 		h.run.camps = 9
 		h.run.bosses = 1
 		h.run_changed()
-		SV.save(h, load("res://scripts/data.gd").CLASSES[cls]["name"])
+		SV.save(h, load("res://game/systems/data/data.gd").CLASSES[cls]["name"])
 	g.hero.new_character()
 	c.open("arena")
 	c.set_process(false)

@@ -1,5 +1,5 @@
 extends SceneTree
-## Writes the Hero Codex (data/codex/, see scripts/codex.gd) from the game's own data: every class's skills
+## Writes the Hero Codex (data/codex/, see game/systems/data/codex.gd) from the game's own data: every class's skills
 ## (Data.SKILLS), its rites (Talents.TREES, its three directions), the shared skills and generic passives
 ## (RunBuild.GENERIC) and the consumables (Data.BASES potions). A file that exists keeps what only the codex has:
 ## design entries, a hero's fantasy and directions text, gems, and extra fields on live entries.
