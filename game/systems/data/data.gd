@@ -571,7 +571,7 @@ static var SKILLS: Array = [
 	{"id": "grasp", "cls": "wraith", "name": "Haunting Grasp", "key": "F", "lvl": 9, "mana": 16, "cd": 10.0, "tags": ["cc"], "aim": "point", "range": 10.0, "desc": "Slam the ground: spectral hands burst out of the earth around the cursor, seizing every enemy within 3.5 metres for 110% weapon damage, dragging them inward and holding them fast for 2.5 seconds."},
 	{"id": "phantom", "cls": "wraith", "name": "Phantom Assault", "key": "G", "lvl": 14, "mana": 22, "cd": 0.0, "use": 1.8, "power": 0.58, "aim": "facing", "range": 8.0, "desc": "Split into three phantoms that streak through the enemies ahead in a fan, each tearing everything in its path for 120% weapon damage, then strike with your own claws."},
 	{"id": "night", "cls": "wraith", "name": "Eternal Night", "key": "V", "lvl": 20, "mana": 40, "cd": 40.0, "tags": ["ultimate"], "aim": "self", "desc": "Rise and bring down the night over 9 metres: a scream of terror (150% weapon damage, enemies hurled back and frozen with fear), then the dark feeds on everything in it while you hang untouchable above it, and it collapses into your slam for 200%. +40% damage for 12 seconds."},
-	# the Demon (DemonSkills): one job per skill. "pvp" overrides apply in the Battlegrounds against players only
+	# the Demon (game/heroes/demon/): one job per skill. "pvp" overrides apply in the Battlegrounds against players only
 	# (dmg = share of the PvE multiplier; the crowd control's seconds), on top of the server's PVP_MULT. Fault of the Pit and
 	# Brimstone Hurl are main skills the Path of Exile way (no cooldown: a "use" time and a measured "power").
 	{"id": "fists", "cls": "demon", "name": "Molten Fists", "key": "Q", "lvl": 1, "mana": 5, "cd": 0.0, "aim": "facing", "range": 3.4,

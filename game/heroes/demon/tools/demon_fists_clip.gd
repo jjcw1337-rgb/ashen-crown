@@ -1,8 +1,8 @@
 extends SceneTree
-## Frames of Molten Fists ("Hellbrand", DemonFistsFx) for previews and the gameplay video. Needs a display (xvfb)
+## Frames of Molten Fists ("Hellbrand", MoltenFistsFx) for previews and the gameplay video. Needs a display (xvfb)
 ## and --fixed-fps 30 so the frames are 1/30 s apart whatever the render takes:
 ##   xvfb-run -a godot --rendering-driver opengl3 --path . --resolution 1280x720 --fixed-fps 30 \
-##     -s tools/demon_fists_clip.gd -- <outdir> [close|front|game|fight] [tier 0-3] [seconds] [casts]
+##     -s game/heroes/demon/tools/demon_fists_clip.gd -- <outdir> [close|front|game|fight] [tier 0-3] [seconds] [casts]
 ##  close: a three-quarter view from his right into a standing pack, one cast (the default)
 ##  front: low, from in front of him (the fangs and the gauntlets face the camera)
 ##  game:  the game's own camera, one cast, no HUD
@@ -73,7 +73,7 @@ func _run() -> void:
 	# a moment to settle (and for InfernalFx.warm to compile its shaders)
 	await wait(0.6)
 	if view == "fire":
-		DemonFistsFx.hold = true
+		MoltenFistsFx.hold = true
 		for e in foes:
 			e.queue_free()
 		foes.clear()

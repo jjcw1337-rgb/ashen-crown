@@ -1,6 +1,6 @@
-class_name DemonFaultFx
+class_name FaultOfThePitFx
 extends RefCounted
-## Fault of the Pit's look (the Demon's R; the gameplay is DemonSkills). Tectonic: rock, lava and steam, not
+## Fault of the Pit's look (the Demon's R; the gameplay is FaultOfThePit). Tectonic: rock, lava and steam, not
 ## hellfire: nothing here is Molten Fists'.
 ##
 ##  The slam ("impact" {p: the blow, q: the fault's middle, ps: [a, b] its ends, x: the warning, r: how long it
@@ -16,6 +16,9 @@ extends RefCounted
 ##  and slabs sink back into the ground in a last puff of dust.
 ## State: h.fxs["fault"], kept by `update` (a partner's copy times itself out from r).
 
+## Its Meshy props: the obsidian plates heaved up, the fissure's lips.
+const PLATE := "res://game/heroes/demon/skills/fault_of_the_pit/fault_plate.glb"
+const FISSURE := "res://game/heroes/demon/skills/fault_of_the_pit/fissure.glb"
 const PLATES := [4, 6, 8, 10]
 const STEAM := [2, 3, 4, 5]
 
@@ -45,19 +48,19 @@ static func _slam(h: Hero, ev: Dictionary) -> void:
 	var b: Vector3 = ps[1]
 	var mid := (a + b) * 0.5
 	mid.y = world.height_at(mid.x, mid.z)
-	var warn: float = float(ev.get("x", DemonSkills.FAULT_WARN))
-	var life: float = float(ev.get("r", DemonSkills.FAULT_LIFE))
+	var warn: float = float(ev.get("x", Skill.num("cslam", "warn", 0.4)))
+	var life: float = float(ev.get("r", Skill.num("cslam", "life", 4.0)))
 	# the blow
 	DemonKitFx.decal(root, p, "crush", Vector2(2.2, 2.2), randf() * TAU, 3.0, 0.3)
 	DemonKitFx.smoke(root, p, "ash", 2.0, 1.1)
 	DemonKitFx.clods(root, p + Vector3(0, 0.2, 0), [10, 14, 20, 24][tr], 3.6)
-	DemonKitFx.pieces(root, world, p + Vector3(0, 0.15, 0), DemonKitFx.BOULDER_PIECES, 0.2, 3.0, 0.0, 1.4, 1.2)
+	DemonKitFx.pieces(root, world, p + Vector3(0, 0.15, 0), DemonFx.ROCK_PIECES, 0.2, 3.0, 0.0, 1.4, 1.2)
 	DemonKitFx.shock_ring(root, h.game, p, 2.2, 0.3)
 	DemonKitFx.flash_light(root, p + Vector3(0, 0.6, 0), Color(1.0, 0.55, 0.25), 2.5, 5.0, 0.3)
 	# the line splitting open: a scorched gouge torn from the middle out to both ends
 	var d := (b - a) * Vector3(1, 0, 1)
 	var yaw := atan2(-d.z, d.x)
-	var gouge := DemonKitFx.decal(root, mid, "faultline", Vector2(d.length() + 0.6, DemonSkills.FAULT_W * 1.3), yaw, warn + life + 1.0, 0.4)
+	var gouge := DemonKitFx.decal(root, mid, "faultline", Vector2(d.length() + 0.6, Skill.num("cslam", "w", 1.4) * 1.3), yaw, warn + life + 1.0, 0.4)
 	gouge.scale = Vector3(0.05, 1, 1)
 	gouge.create_tween().tween_property(gouge, "scale", Vector3.ONE, warn * 0.6).set_ease(Tween.EASE_OUT)
 	h.fxs["fault"] = {"a": a, "b": b, "gouge": gouge, "t": 0.0, "warn": warn, "life": life, "until": warn + life + 2.5,
@@ -76,7 +79,7 @@ static func _erupt(h: Hero, ev: Dictionary) -> void:
 	if st.is_empty():
 		if ps.size() < 2:
 			return
-		st = {"a": ps[0], "b": ps[1], "t": 0.0, "warn": 0.0, "life": DemonSkills.FAULT_LIFE, "until": DemonSkills.FAULT_LIFE + 2.5,
+		st = {"a": ps[0], "b": ps[1], "t": 0.0, "warn": 0.0, "life": Skill.num("cslam", "life", 4.0), "until": Skill.num("cslam", "life", 4.0) + 2.5,
 			"plates": [], "steam": []}
 		h.fxs["fault"] = st
 	st["stage"] = "molten"
@@ -94,14 +97,14 @@ static func _erupt(h: Hero, ev: Dictionary) -> void:
 	for i in segs:
 		var c := a + d * ((float(i) + 0.5) / segs)
 		c.y = world.height_at(c.x, c.z)
-		var node := DemonKitFx.model(DemonKitFx.FISSURE)
+		var node := DemonKitFx.model(FaultOfThePitFx.FISSURE)
 		if node == null:
 			continue
 		_crack_only(node, float(i) * 7.3 + a.x)
 		root.add_child(node)
 		# the tile's crack runs along its z: laid along the fault, only its top at the ground's level
 		var along := (len / segs) / 3.2 * 1.12
-		var across := DemonSkills.FAULT_W * 1.15 / 1.5
+		var across := Skill.num("cslam", "w", 1.4) * 1.15 / 1.5
 		node.basis = Basis(Vector3.UP, yaw) * Basis(Vector3.UP, PI * 0.5) * Basis.from_scale(Vector3(across, 0.85, along))
 		var rest := c - Vector3(0, 0.8, 0)
 		node.global_position = c - Vector3(0, 1.5, 0)
@@ -117,10 +120,10 @@ static func _erupt(h: Hero, ev: Dictionary) -> void:
 	for i in n:
 		var u := (float(i) + rng.randf_range(0.2, 0.8)) / float(n)
 		var lane := (1.0 if i % 2 == 0 else -1.0)
-		var pp := a + d * u + side * lane * DemonSkills.FAULT_W * rng.randf_range(0.55, 0.8)
+		var pp := a + d * u + side * lane * Skill.num("cslam", "w", 1.4) * rng.randf_range(0.55, 0.8)
 		pp.y = world.height_at(pp.x, pp.z)
 		var hgt := rng.randf_range(0.7, 1.2)
-		var node2 := DemonKitFx.model(DemonKitFx.PLATE)
+		var node2 := DemonKitFx.model(FaultOfThePitFx.PLATE)
 		if node2 == null:
 			continue
 		DemonKitFx.heat_model(node2, 1.6)
@@ -139,7 +142,7 @@ static func _erupt(h: Hero, ev: Dictionary) -> void:
 		var c2 := a + d * (0.2 + 0.3 * k)
 		c2.y = world.height_at(c2.x, c2.z)
 		DemonKitFx.smoke(root, c2, "impact", 2.6, 1.4)
-		DemonKitFx.pieces(root, world, c2 + Vector3(0, 0.3, 0), DemonKitFx.BOULDER_PIECES, 0.26, 5.0, 2.0, 2.0, 1.2)
+		DemonKitFx.pieces(root, world, c2 + Vector3(0, 0.3, 0), DemonFx.ROCK_PIECES, 0.26, 5.0, 2.0, 2.0, 1.2)
 	var steam: Array = []
 	for k in STEAM[tr]:
 		var c3: Vector3 = a + d * ((float(k) + 0.5) / float(STEAM[tr]))

@@ -61,7 +61,7 @@ static func _seg_dist(p: Vector3, a: Vector3, b: Vector3) -> float:
 	var t := clampf(ap.dot(ab) / maxf(ab.length_squared(), 0.0001), 0.0, 1.0)
 	return (ap - ab * t).length()
 
-func step(delta: float) -> void:
+func update(delta: float) -> void:
 	if not fault.is_empty():
 		_burn(delta)
 

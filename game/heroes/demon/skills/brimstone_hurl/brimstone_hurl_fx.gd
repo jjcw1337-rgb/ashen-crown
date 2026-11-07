@@ -1,6 +1,6 @@
-class_name DemonHurlFx
+class_name BrimstoneHurlFx
 extends RefCounted
-## Brimstone Hurl's look, "Shatterstone" (the Demon's F; the gameplay is DemonSkills). Earth and stone, not hellfire:
+## Brimstone Hurl's look, "Shatterstone" (the Demon's F; the gameplay is BrimstoneHurl). Earth and stone, not hellfire:
 ## nothing here is Molten Fists'.
 ##
 ##  The tear ("cast"): his hand rips into the ground: the earth there is crushed in (a Meshy-painted mark), clods and
@@ -46,7 +46,7 @@ static func _tear(h: Hero) -> void:
 	tw.tween_callback(func():
 		DemonKitFx.smoke(root, p, "ash", 1.5, 1.0)
 		DemonKitFx.clods(root, p + Vector3(0, 0.15, 0), [8, 12, 16, 20][tr], 3.0)
-		DemonKitFx.pieces(root, world, p + Vector3(0, 0.1, 0), DemonKitFx.BOULDER_PIECES, 0.22, 2.4, 0.0, 1.4, 1.2))
+		DemonKitFx.pieces(root, world, p + Vector3(0, 0.1, 0), DemonFx.ROCK_PIECES, 0.22, 2.4, 0.0, 1.4, 1.2))
 	SkillFx.snd(h, "impact_bone", -9.0, 0.5)
 	SkillFx.snd(h, "growl", -11.0, 0.75)
 
@@ -55,10 +55,10 @@ static func _throw(h: Hero, ev: Dictionary) -> void:
 	var root: Node3D = world.fx_root
 	var from: Vector3 = ev["p"]
 	var to: Vector3 = ev["q"]
-	var flight: float = float(ev.get("x", DemonSkills.HURL_FLIGHT))
-	var n := rock(root, DemonKitFx.BOULDER, SIZE, 1.4)
+	var flight: float = float(ev.get("x", Skill.num("hurl", "flight", 0.55)))
+	var n := rock(root, DemonFx.ROCK, SIZE, 1.4)
 	n.global_position = from
-	var mk := DemonKitFx.target_mark(root, world, to, DemonSkills.HURL_R, Color(0.6, 0.18, 0.06))
+	var mk := DemonKitFx.target_mark(root, world, to, Skill.num("hurl", "radius", 2.6), Color(0.6, 0.18, 0.06))
 	var bs: Array = h.fxs.get("shatter", [])
 	bs.append({"node": n, "from": from, "to": to, "t": 0.0, "dur": flight, "mark": mk[0], "mark_mat": mk[1], "trail": 0.0,
 		"spin": Vector3(randf_range(5.0, 8.0), randf_range(-3.0, 3.0), randf_range(-2.0, 2.0)), "last": from,
@@ -119,7 +119,7 @@ static func _land(h: Hero, ev: Dictionary) -> void:
 		if (b["to"] as Vector3).distance_to(at) < 0.8:
 			_drop(b)
 			bs.erase(b)
-	impact(h, at, DemonKitFx.BOULDER_PIECES, SIZE, DemonSkills.HURL_R, 1.0)
+	impact(h, at, DemonFx.ROCK_PIECES, SIZE, Skill.num("hurl", "radius", 2.6), 1.0)
 	# the four big chunks skittering out to the shards' spots
 	var world = h.game.world
 	var root: Node3D = world.fx_root
@@ -152,7 +152,7 @@ static func _shard(h: Hero, root: Node3D, world, from: Vector3, to: Vector3, i: 
 	var tw := root.create_tween()
 	tw.tween_interval(0.02)
 	tw.tween_callback(func():
-		DemonKitFx.pieces(root, world, from + dir.normalized() * 0.5 + Vector3(0, 0.3, 0), DemonKitFx.BOULDER_PIECES, 0.3, dir.length() / dur * 0.6, 2.0, 1.6, 0.35, dir.normalized()))
+		DemonKitFx.pieces(root, world, from + dir.normalized() * 0.5 + Vector3(0, 0.3, 0), DemonFx.ROCK_PIECES, 0.3, dir.length() / dur * 0.6, 2.0, 1.6, 0.35, dir.normalized()))
 	tw.tween_interval(dur)
 	tw.tween_callback(func():
 		DemonKitFx.smoke(root, to, "ash", 1.1, 0.8)

@@ -1,6 +1,6 @@
 extends SceneTree
 ## Screenshots of the Demon: close-up, Hellfire Claw, summoned demons, the Underworld, Blood Pact.
-## Needs a display: xvfb-run godot --rendering-driver opengl3 --path . -s tools/demon_shot.gd -- <out_dir>
+## Needs a display: xvfb-run godot --rendering-driver opengl3 --path . -s game/heroes/demon/tools/demon_shot.gd -- <out_dir>
 var g
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()

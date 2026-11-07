@@ -40,7 +40,7 @@ func _fling() -> void:
 	chain = {"from": from, "dir": dir, "len": 0.0, "state": "out", "t": 0.0}
 	h.fx(id, "fling", {"p": from, "d": dir, "x": val("len", 7.5) / val("speed", 24.0), "r": val("len", 7.5)})
 
-func step(delta: float) -> void:
+func update(delta: float) -> void:
 	var h := hero
 	stages()
 	if not chain.is_empty():
@@ -171,7 +171,7 @@ func made(kind: String, d: Dictionary) -> void:
 				e.stun(dur + 1.4)
 			var brand := Demon.brands(h)
 			if brand.has(e):
-				cut_cooldown(val("refund", 30.0) / 100.0)
+				give("refund", {"k": val("refund", 30.0) / 100.0})
 				brand.spend(e)
 		"grab":
 			if held != null and is_instance_valid(held) and not held.dead and not PvpStatus.is_player(held):

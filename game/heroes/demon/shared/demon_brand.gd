@@ -34,7 +34,7 @@ func spend(e) -> void:
 	if e != null and is_instance_valid(e):
 		marks.erase(e.get_instance_id())
 
-func step(_delta: float) -> void:
+func update(_delta: float) -> void:
 	for k in marks.keys():
 		if float(marks[k]) <= hero.anim_time:
 			marks.erase(k)

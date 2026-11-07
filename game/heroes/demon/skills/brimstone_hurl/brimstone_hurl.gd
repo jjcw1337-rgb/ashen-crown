@@ -60,7 +60,7 @@ func made(kind: String, d: Dictionary) -> void:
 	if kind == "boulder":
 		boulders.append({"at": d["at"], "t": float(d["x"])})
 
-func step(delta: float) -> void:
+func update(delta: float) -> void:
 	for b in boulders.duplicate():
 		b["t"] = float(b["t"]) - delta
 		if float(b["t"]) <= 0.0:

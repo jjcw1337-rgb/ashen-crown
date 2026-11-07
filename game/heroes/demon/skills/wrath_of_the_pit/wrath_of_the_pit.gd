@@ -120,7 +120,7 @@ func _pit_born() -> void:
 	wrath["rain"] = val("pit_s", 6.0) + h.talent("wrath_dur")
 	wrath["next"] = 0.35
 
-func step(delta: float) -> void:
+func update(delta: float) -> void:
 	var h := hero
 	stages()
 	for m in meteors.duplicate():

@@ -32,7 +32,7 @@ const KNOCKUP_H := 1.1
 ## the Plague Doctor's kinds: ceilings on seconds and strength (the server clamps what a client asks for)
 const MAX := {"snare": 1.0, "harried": 3.0, "reveal": 4.0, "blight": 6.0}
 const MAX_K := {"snare": 1.0, "harried": 0.35, "reveal": 1.0, "blight": 3.0}
-## Tests: every status that landed on this game's hero, [kind, seconds] (tools/demon_pvp_test.gd)
+## Tests: every status that landed on this game's hero, [kind, seconds] (game/heroes/demon/tests/demon_pvp_test.gd)
 static var landed: Array = []
 
 static func _data(data) -> Dictionary:
@@ -192,9 +192,9 @@ static func cleanse(h: Hero) -> int:
 		n += 1
 	return n
 
-## The Demon in his Crucible can't be stopped or moved.
+## Nothing stops or moves him right now (his class says: the Demon in his Crucible).
 static func unstoppable(h: Hero) -> bool:
-	return h.is_demon() and DemonSkills.in_crucible(h)
+	return ClassSkills.unstoppable(h)
 
 static func _stop(h: Hero) -> void:
 	h.moving = false

@@ -1,6 +1,6 @@
-class_name DemonFistsFx
+class_name MoltenFistsFx
 extends RefCounted
-## Molten Fists' look, "Hellbrand" (the Demon's Q; the gameplay is DemonSkills, unchanged). Built from InfernalFx.
+## Molten Fists' look, "Hellbrand" (the Demon's Q; the gameplay is MoltenFists). Built from InfernalFx.
 ##
 ##  Gather, from the "cast" event to the blow (Anim.impact_at "fists"): his fists catch fire as hellfire gauntlets
 ##  (a black flame shell round a molten core, embers streaming off, crimson motes pulled in, a light between his
@@ -37,6 +37,8 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			_gather(h, ev)
 		"impact":
 			_release(h, ev)
+		"struck":
+			_struck(h, ev)
 		_:
 			return false
 	return true
@@ -288,10 +290,10 @@ static func _release(h: Hero, ev: Dictionary) -> void:
 	var root: Node3D = world.fx_root
 	var tr := InfernalFx.tier(h.game)
 	var yaw: float = float(ev.get("y", h.rig.global_rotation.y))
-	var reach: float = float(ev.get("r", DemonSkills.FISTS_R))
+	var reach: float = float(ev.get("r", MoltenFists.reach(false)))
 	var fwd := Vector3(-sin(yaw), 0, -cos(yaw))
-	var wide := reach > DemonSkills.FISTS_R + 0.5
-	var half := deg_to_rad(DemonSkills.FISTS_HALF + (12.0 if wide else 0.0) + 6.0)
+	var wide := reach > MoltenFists.reach(false) + 0.5
+	var half := deg_to_rad(MoltenFists.half_angle() + (12.0 if wide else 0.0) + 6.0)
 	var pos := h.global_position
 	pos.y = world.height_at(pos.x, pos.z)
 	var hit: Array = ev.get("t", [])
@@ -334,7 +336,7 @@ static func _release(h: Hero, ev: Dictionary) -> void:
 	Fx._free_later(sw, 0.95)
 	# the rift
 	var rm := InfernalFx.rift_mat()
-	rm.set_shader_parameter("span", reach / DemonSkills.FISTS_R)
+	rm.set_shader_parameter("span", reach / MoltenFists.reach(false))
 	var rift := MeshInstance3D.new()
 	rift.mesh = InfernalFx.wedge_mesh(world, pos, yaw, 0.25, reach * 1.12, half, 20, 10)
 	rift.material_override = rm
@@ -410,6 +412,22 @@ static func _release(h: Hero, ev: Dictionary) -> void:
 	SkillFx.shake(h, 0.26 if not hit.is_empty() else 0.14)
 	if not hit.is_empty():
 		SkillFx.hitstop(h, 0.035)
+
+## Who the blow caught, when the match server decided it (his game showed the blow itself, "impact"): each one
+## branded by the fire, and the hit felt on his screen.
+static func _struck(h: Hero, ev: Dictionary) -> void:
+	var hit: Array = ev.get("t", [])
+	if hit.is_empty():
+		return
+	var root: Node3D = h.game.world.fx_root
+	var tr := InfernalFx.tier(h.game)
+	var pos := h.global_position
+	pos.y = h.game.world.height_at(pos.x, pos.z)
+	for e in hit:
+		if is_instance_valid(e):
+			_brand(h, root, e, pos, tr)
+	SkillFx.shake(h, 0.12)
+	SkillFx.hitstop(h, 0.035)
 
 ## The fangs: obsidian shards bursting up through the wedge, near to far, leaning away from him; they hold, their
 ## veins crack white, and they shatter into burning fragments (Low: they sink back into the ground).

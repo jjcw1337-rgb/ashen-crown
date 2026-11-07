@@ -1,6 +1,6 @@
-class_name DemonCrucibleFx
+class_name WrathOfThePitFx
 extends RefCounted
-## Wrath of the Pit's look, "Crucible" (the Demon's V; the gameplay is DemonSkills). Volcanic glass, not hellfire:
+## Wrath of the Pit's look, "Crucible" (the Demon's V; the gameplay is WrathOfThePit). Volcanic glass, not hellfire:
 ## nothing here is Molten Fists'.
 ##
 ##  The Crucible ("crucible" {x: its longest}): he drops to a knee, folds his wings round him (the rig) and his skin
@@ -15,6 +15,9 @@ extends RefCounted
 ##  then he burns white-hot through Pit-born (DemonFx's wrath state).
 ## State: h.fxs["crucible"], kept by `update` (times itself out on a partner's game).
 
+## Its Meshy props: the obsidian cage, and the same cage broken into its shards.
+const COCOON := "res://game/heroes/demon/skills/wrath_of_the_pit/cocoon.glb"
+const COCOON_PIECES := "res://game/heroes/demon/skills/wrath_of_the_pit/cocoon_pieces.glb"
 const SCALE_XZ := 0.62
 const SCALE_Y := 1.0
 
@@ -26,6 +29,8 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			_heat(h, ev)
 		"erupt":
 			_erupt(h, ev)
+		"struck":
+			_struck(h, ev)
 		"cast":
 			pass
 		_:
@@ -42,7 +47,7 @@ static func _begin(h: Hero, ev: Dictionary) -> void:
 	var cage := Node3D.new()
 	root.add_child(cage)
 	cage.global_position = at
-	var m := DemonKitFx.model(DemonKitFx.COCOON)
+	var m := DemonKitFx.model(WrathOfThePitFx.COCOON)
 	if m != null:
 		DemonKitFx.heat_model(m, 0.6, Color(1.0, 0.3, 0.05))
 		cage.add_child(m)
@@ -50,7 +55,7 @@ static func _begin(h: Hero, ev: Dictionary) -> void:
 	var tw := cage.create_tween()
 	tw.tween_property(cage, "scale", Vector3(SCALE_XZ, SCALE_Y * 1.06, SCALE_XZ), 0.28).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 	tw.tween_property(cage, "scale", Vector3(SCALE_XZ, SCALE_Y, SCALE_XZ), 0.12)
-	var mark := DemonKitFx.decal(root, at, "crush", Vector2(3.4, 3.4), randf() * TAU, float(ev.get("x", DemonSkills.CRUCIBLE_MAX)) + 3.0, 0.3)
+	var mark := DemonKitFx.decal(root, at, "crush", Vector2(3.4, 3.4), randf() * TAU, float(ev.get("x", Skill.num("wrath", "hold", 2.0))) + 3.0, 0.3)
 	DemonKitFx.smoke(root, at, "ash", 1.7, 1.1, false, Color(0.7, 0.66, 0.62, 0.8))
 	DemonKitFx.clods(root, at + Vector3(0, 0.2, 0), [8, 12, 16, 20][tr], 3.0)
 	var l := OmniLight3D.new()
@@ -61,7 +66,7 @@ static func _begin(h: Hero, ev: Dictionary) -> void:
 	root.add_child(l)
 	l.global_position = at + Vector3(0, 1.0, 0)
 	h.fxs["crucible"] = {"cage": cage, "mark": mark, "light": l, "t": 0.0, "heat": 0.0, "shown": 0.0,
-		"until": float(ev.get("x", DemonSkills.CRUCIBLE_MAX)) + 1.5, "crust": 0.0, "snd": 0.0, "stage": "hold"}
+		"until": float(ev.get("x", Skill.num("wrath", "hold", 2.0))) + 1.5, "crust": 0.0, "snd": 0.0, "stage": "hold"}
 	SkillFx.snd(h, "ice_shatter", -6.0, 0.45)
 	SkillFx.snd(h, "impact_bone", -6.0, 0.4)
 	SkillFx.snd(h, "growl", -7.0, 0.6)
@@ -87,7 +92,7 @@ static func _erupt(h: Hero, ev: Dictionary) -> void:
 	var at: Vector3 = ev.get("p", h.global_position)
 	at.y = world.height_at(at.x, at.z)
 	var heat := clampf(float(ev.get("r", 0.0)), 0.0, 1.0)
-	var r := DemonSkills.ROAR_R
+	var r := Skill.num("wrath", "radius", 6.0)
 	var st: Dictionary = h.fxs.get("crucible", {"heat": heat, "shown": heat, "crust": 0.8, "snd": 0.0})
 	st["stage"] = "burst"
 	st["t"] = 0.0
@@ -98,7 +103,7 @@ static func _erupt(h: Hero, ev: Dictionary) -> void:
 		(cage as Node).queue_free()
 	st.erase("cage")
 	# the cage bursting outward in its real shards
-	var n := DemonKitFx.pieces(root, world, at + Vector3(0, 1.0, 0), DemonKitFx.COCOON_PIECES, SCALE_XZ, 10.0 + 4.0 * heat, 3.0 + 2.0 * heat, 2.4, 0.5, Vector3.ZERO, tr >= 2)
+	var n := DemonKitFx.pieces(root, world, at + Vector3(0, 1.0, 0), WrathOfThePitFx.COCOON_PIECES, SCALE_XZ, 10.0 + 4.0 * heat, 3.0 + 2.0 * heat, 2.4, 0.5, Vector3.ZERO, tr >= 2)
 	if n == 0:
 		DemonKitFx.sparks(root, at + Vector3(0, 1.0, 0), Vector3.UP, 30, 180.0)
 	# the ring of fire and smoke blown out, the shock, the flash, the crater
@@ -118,6 +123,13 @@ static func _erupt(h: Hero, ev: Dictionary) -> void:
 	SkillFx.duck(h, -9.0, 1.2)
 	SkillFx.shake(h, 0.55 + 0.2 * heat)
 	SkillFx.hitstop(h, 0.06)
+
+## Who the eruption caught, when the match server decided it (his game showed the eruption itself).
+static func _struck(h: Hero, ev: Dictionary) -> void:
+	var root: Node3D = h.game.world.fx_root
+	for e in ev.get("t", []):
+		if is_instance_valid(e):
+			DemonKitFx.sparks(root, DemonKitFx.chest(e), Vector3.UP, 6, 60.0, Vector2(2.0, 5.0), 0.35)
 
 static func _drop_hold(st: Dictionary) -> void:
 	var cage = st.get("cage")
@@ -159,7 +171,7 @@ static func update(h: Hero, delta: float) -> void:
 	st["until"] = float(st["until"]) - delta
 	st["snd"] = maxf(0.0, float(st["snd"]) - delta)
 	var holding := str(st["stage"]) == "hold"
-	if float(st["until"]) <= 0.0 or (holding and not h.puppet and not DemonSkills.in_crucible(h) and float(st["t"]) > 0.3 and str(SkillFx.style(h)) != "crucible"):
+	if float(st["until"]) <= 0.0 or (holding and not h.puppet and float(st["t"]) > 0.3 and str(SkillFx.style(h)) != "crucible"):
 		_end(h)
 		return
 	var crust: float = float(st["crust"])

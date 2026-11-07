@@ -6,7 +6,7 @@ extends SceneTree
 ## his talents, save/load and the class swap. Prints [D] lines ("FAIL" marks a check that failed).
 var g
 var fails := 0
-var DS        # DemonSkills and BrandFx, loaded at run time (a static reference compiles them before the Sfx autoload)
+var DS        # Demon (his kit) and BrandFx, loaded at run time (a static reference compiles them before the Sfx autoload)
 var BF
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
@@ -24,10 +24,14 @@ func lives(en: Array) -> float:
 		if is_instance_valid(e):
 			t += e.life
 	return t
+## One of his skill objects (Hero.kit).
+func sk(h, id: String):
+	return DS.skill(h, id)
 ## Until his last skill is over (every stage), so the next one can start.
 func idle(h) -> void:
 	for i in 400:
-		if h.atk_t < 0.0 and not h.dm.has("next_style") and not h.dm.has("chain") and not h.dm.has("charge"):
+		var mid: bool = h.kit.values().any(func(s): return s.has_method("stage_done") and s.next != "")
+		if h.atk_t < 0.0 and not mid and sk(h, "grip").chain.is_empty() and sk(h, "icharge").run.is_empty():
 			return
 		await process_frame
 func pack(at: Vector3, n: int, lvl := 20) -> Array:
@@ -45,7 +49,7 @@ func pack(at: Vector3, n: int, lvl := 20) -> Array:
 	await process_frame
 	return out
 func _run() -> void:
-	DS = load("res://scripts/demon_skills.gd")
+	DS = load("res://game/heroes/demon/demon.gd")
 	BF = load("res://game/systems/combat/brand_fx.gd")
 	while g.world == null or g._busy:
 		await process_frame
@@ -66,9 +70,9 @@ func _run() -> void:
 	h._face(Vector3(0, 0, -1))
 	var l0 := lives(en)
 	h.mana = h.max_mana
-	DS.brand(h, en[1])
+	DS.brands(h).mark(en[1])
 	await wait(0.1)
-	check(DS.branded(h, en[1]) and BF.has(en[1]), "a Branded foe carries the mark (seen)")
+	check(DS.brands(h).has(en[1]) and BF.has(en[1]), "a Branded foe carries the mark (seen)")
 	check(h.use_skill("fists", h.skill_aim("fists", en[1].global_position)), "Molten Fists cast")
 	check(h.skill_cd("fists") == 0.0 and h.atk_dur > 1.8, "a heavy blow: no cooldown, a %.2f s use time" % h.atk_dur)
 	await wait(1.0)
@@ -76,7 +80,7 @@ func _run() -> void:
 	await wait(1.0)
 	check(lives(en) < l0 - 1.0, "Molten Fists hurt the pack (%d)" % int(l0 - lives(en)))
 	check(en.filter(func(e): return is_instance_valid(e) and e.burn_t > 0.0).size() >= 2, "and set them alight")
-	check(not DS.branded(h, en[1]), "and used the Brand up")
+	check(not DS.brands(h).has(en[1]), "and used the Brand up")
 	# ... and the dodge roll cancels the wind-up: no blow
 	en = await pack(home + Vector3(0, 0, -2.2), 3)
 	h.global_position = home
@@ -106,7 +110,7 @@ func _run() -> void:
 	var went: float = home.distance_to(h.global_position)
 	check(went > 6.0, "the charge carried him %.1f m (through the lesser foes)" % went)
 	check(lives(en) < l0 - 1.0, "and bowled the pack (%d)" % int(l0 - lives(en)))
-	check(not h.dm.has("charge") and h.atk_t < 0.0, "the skid ended it")
+	check(sk(h, "icharge").run.is_empty() and h.atk_t < 0.0, "the skid ended it")
 	# ... and a champion stops it: staggered and Branded
 	en = await pack(home + Vector3(0, 0, -5.0), 1)
 	en[0].champion = true
@@ -124,7 +128,7 @@ func _run() -> void:
 	went = home.distance_to(h.global_position)
 	check(went < 5.2 and went > 2.5, "it stopped him at the champion (%.1f m)" % went)
 	check(saw_skid, "with the skid")
-	check(is_instance_valid(en[0]) and DS.branded(h, en[0]), "and Branded it")
+	check(is_instance_valid(en[0]) and DS.brands(h).has(en[0]), "and Branded it")
 	# Fault of the Pit: a line across his aim erupts after its warning, then stays molten, burning and slowing
 	h.global_position = home
 	en = await pack(home + Vector3(0, 0, -3.0), 3)
@@ -147,22 +151,22 @@ func _run() -> void:
 	var l_warn := l0
 	for i in 200:
 		await process_frame
-		if h.dm.has("fault"):
+		if not sk(h, "cslam").fault.is_empty():
 			break
-	check(h.dm.has("fault") and not bool(h.dm["fault"]["erupted"]), "the fault opens with a warning first")
+	check(not sk(h, "cslam").fault.is_empty() and not bool(sk(h, "cslam").fault["erupted"]), "the fault opens with a warning first")
 	l_warn = lives(en)
 	check(l_warn > l0 - 1.0, "nobody hurt during the warning")
 	await wait(0.6)
 	var l_er := lives(en)
 	check(l_er < l0 - 1.0, "the eruption hurt everyone on the line (%d)" % int(l0 - l_er))
-	check(en.filter(func(e): return is_instance_valid(e) and DS.branded(h, e)).size() == 3, "and Branded them")
+	check(en.filter(func(e): return is_instance_valid(e) and DS.brands(h).has(e)).size() == 3, "and Branded them")
 	check(lives(off_en) > o0 - 1.0, "not the one behind him")
 	check(h.fxs.has("fault") and (h.fxs["fault"]["plates"] as Array).size() > 0, "obsidian plates heaved up (%d)" % (h.fxs["fault"]["plates"] as Array).size() if h.fxs.has("fault") else 0)
 	await wait(1.2)
 	check(lives(en) < l_er - 1.0, "the molten fault keeps burning them (%d)" % int(l_er - lives(en)))
 	check(en.any(func(e): return is_instance_valid(e) and e.slow_t > 0.0), "and slows them")
 	await wait(4.0)
-	check(not h.dm.has("fault"), "then cools away")
+	check(sk(h, "cslam").fault.is_empty(), "then cools away")
 	# Brimstone Hurl: a main skill the Path of Exile way (no cooldown, its data's use time is the limit); the boulder
 	# lands at the aim, the core Brands, shards fly
 	en = await pack(home + Vector3(0, 0, -7.0), 3)
@@ -177,14 +181,14 @@ func _run() -> void:
 	var thrown := false
 	for i in 150:
 		await process_frame
-		if not (h.dm.get("boulders", []) as Array).is_empty():
+		if not (sk(h, "hurl").boulders as Array).is_empty():
 			thrown = true
 			break
 	check(thrown, "a boulder is in the air")
 	check(h.fxs.has("shatter") and (h.fxs["shatter"] as Array).size() > 0, "with its landing mark on the ground")
 	await wait(1.0)
 	check(lives(en) < l0 - 1.0, "it landed on the pack (%d)" % int(l0 - lives(en)))
-	check(DS.branded(h, en[1]), "the direct hit is Branded")
+	check(DS.brands(h).has(en[1]), "the direct hit is Branded")
 	await idle(h)
 	h.mana = h.max_mana
 	check(h.use_skill("hurl", en[0].global_position), "and he throws again once the first throw is done")
@@ -195,7 +199,8 @@ func _run() -> void:
 	h._talents_changed()
 	en = await pack(home + Vector3(0, 0, -7.0), 1)
 	var twin_en: Array = []          # out of the first boulder's reach, in the second's on either side
-	for x in [-DS.TWIN_GAP - 2.0, DS.TWIN_GAP + 2.0]:
+	var twin_gap := Skill.num("hurl", "twin_gap", 2.2)
+	for x in [-twin_gap - 2.0, twin_gap + 2.0]:
 		var e = g.spawn_enemy("zombie", home + Vector3(x, 0, -7.0), 20)
 		e.aggro = false
 		e.scripted = 99.0
@@ -210,11 +215,11 @@ func _run() -> void:
 	var gap := 0.0
 	for i in 150:
 		await process_frame
-		var bs: Array = h.dm.get("boulders", [])
+		var bs: Array = sk(h, "hurl").boulders
 		if bs.size() >= 2:
 			gap = (bs[0]["at"] as Vector3).distance_to(bs[1]["at"])
 			break
-	check(absf(gap - DS.TWIN_GAP) < 0.3, "two boulders in the air, %.1f m apart" % gap)
+	check(absf(gap - twin_gap) < 0.3, "two boulders in the air, %.1f m apart" % gap)
 	await wait(1.2)
 	check(lives(twin_en) < tw0 - 1.0, "the second landed beside the first (%d)" % int(tw0 - lives(twin_en)))
 	h.talents.erase("d_legion")
@@ -245,7 +250,7 @@ func _run() -> void:
 	var max_y := 0.0
 	for i in 180:
 		await process_frame
-		if h.dm.has("chain") and str(h.dm["chain"]["state"]) == "drag":
+		if str(sk(h, "grip").chain.get("state", "")) == "drag":
 			hooked = true
 		if is_instance_valid(first):
 			min_d = minf(min_d, home.distance_to(first.global_position))
@@ -255,7 +260,7 @@ func _run() -> void:
 	check(max_y > 0.8, "hoisted it (%.2f m)" % max_y)
 	check(is_instance_valid(first) and first.life < vl - 1.0 and first.rig.position.y < 0.05, "smashed it down (%d) and back on the ground" % int(vl - first.life))
 	await idle(h)
-	check(h.atk_t < 0.0 and not h.dm.has("chain") and not h.fxs.has("chain") and not h.fxs.has("grip"), "and it's over (nothing left of it)")
+	check(h.atk_t < 0.0 and sk(h, "grip").chain.is_empty() and not h.fxs.has("chain") and not h.fxs.has("grip"), "and it's over (nothing left of it)")
 	await idle(h)
 	# a miss: no foe, the chain comes back empty
 	for e in g.enemies_near(home, 80.0):
@@ -266,7 +271,7 @@ func _run() -> void:
 	h.mana = h.max_mana
 	check(h.use_skill("grip", home + Vector3(0, 0, -6.0)), "a cast at nothing")
 	await wait(1.6)
-	check(h.atk_t < 0.0 and not h.dm.has("chain") and not h.dm.has("grip_victim"), "the empty chain came back")
+	check(h.atk_t < 0.0 and sk(h, "grip").chain.is_empty() and sk(h, "grip").victim == null, "the empty chain came back")
 	await idle(h)
 	# a boss drags him instead
 	en = await pack(home + Vector3(0, 0, -6.0), 1)
@@ -288,14 +293,15 @@ func _run() -> void:
 	for k in h.cds.keys():
 		h.cds[k] = 0.0
 	check(h.use_skill("wrath", home), "Wrath of the Pit cast")
-	check(DS.in_crucible(h), "the Crucible holds him")
+	check(sk(h, "wrath").holding(), "the Crucible holds him")
 	await wait(0.4)
 	g.test_immortal = false
 	h.life = h.max_life
 	var lb: float = h.life
 	h.take_hit(200.0, home + Vector3(0, 0, -2), "melee", "fire")
 	var took: float = lb - h.life
-	var h_heat: float = float(h.dm["wrath"]["heat"]) if h.dm.has("wrath") else 0.0
+	var w = sk(h, "wrath")
+	var h_heat: float = float(w.wrath.get("heat", 0.0))
 	h.daze_t = 1.0
 	await process_frame
 	await process_frame
@@ -307,20 +313,20 @@ func _run() -> void:
 	await wait(0.9)
 	check(lives(en) < l0 - 1.0, "the eruption hurt the pack (%d)" % int(l0 - lives(en)))
 	check(en.all(func(e): return not is_instance_valid(e) or e.stun_t > 0.0 or e.dead), "and froze them with fear")
-	check(h.dm.has("wrath") and float(h.dm["wrath"]["rain"]) > 0.0, "Pit-born: the rain has begun (%.1f s left)" % (float(h.dm["wrath"]["rain"]) if h.dm.has("wrath") else 0.0))
+	check(float(w.wrath.get("rain", -1.0)) > 0.0, "Pit-born: the rain has begun (%.1f s left)" % float(w.wrath.get("rain", -1.0)))
 	check(h.buff_t > 0.0, "and his damage is up (%.1f s)" % h.buff_t)
 	await wait(4.0)
-	var meteors: int = int(h.dm["wrath"]["n"]) if h.dm.has("wrath") else 0
+	var meteors: int = int(w.wrath.get("n", 0))
 	check(meteors >= 6, "meteors fell (%d so far)" % meteors)
 	await wait(4.0)
-	check(not h.dm.has("wrath"), "the wrath ends by itself")
+	check(w.wrath.is_empty() and not w.pit, "the wrath ends by itself")
 	# a Crucible left alone erupts by itself
 	for k in h.cds.keys():
 		h.cds[k] = 0.0
 	h.mana = h.max_mana
 	h.use_skill("wrath", home)
 	await wait(3.6)
-	check(h.dm.has("wrath") and float(h.dm["wrath"]["rain"]) > 0.0, "a Crucible left alone erupts by itself")
+	check(float(sk(h, "wrath").wrath.get("rain", -1.0)) > 0.0, "a Crucible left alone erupts by itself")
 	await wait(7.0)
 	# old saves: the four old skills' bindings carry over
 	var b := {"q": "hellclaw", "e": "summon", "r": "phase", "f": "pact", "lmb": "attack", "rmb": "block"}
@@ -344,7 +350,7 @@ func _run() -> void:
 	while g._busy:
 		await process_frame
 	h.set_class("knight")
-	check(h.cls == "knight" and h.dm.is_empty(), "switched to knight: demon state cleared, slots %s" % str(["Q", "E", "R", "F"].map(func(k): return h.bound(k))))
+	check(h.cls == "knight" and h.kit.is_empty(), "switched to knight: demon state cleared, slots %s" % str(["Q", "E", "R", "F"].map(func(k): return h.bound(k))))
 	g.load_game()
 	check(h.cls == "demon" and h.rig.has_meta("demon") and h.net_gear().get("_cls") == "demon", "after load: class demon, rig demon, net class demon")
 	print("[D] done, %d failed" % fails)

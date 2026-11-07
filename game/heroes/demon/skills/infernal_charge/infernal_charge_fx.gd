@@ -1,6 +1,6 @@
-class_name DemonChargeFx
+class_name InfernalChargeFx
 extends RefCounted
-## Infernal Charge's look, "Hellrunner" (the Demon's E; the gameplay is DemonSkills). Ash, dirt and a burning ram's
+## Infernal Charge's look, "Hellrunner" (the Demon's E; the gameplay is InfernalCharge). Ash, dirt and a burning ram's
 ## skull, not hellfire: nothing here is Molten Fists'.
 ##
 ##  Wind-up ("wind" {p, q, d, x}): he paws the ground (it's crushed in, clods fly, a puff of simulated ash), snorts
@@ -16,6 +16,8 @@ extends RefCounted
 ## State: h.fxs["hellrunner"] (the furrow, the skull, the light), kept by `update`, timing itself out on a partner's
 ## game if the end is lost.
 
+## The ram's horns his apparition wears (a Meshy model).
+const HORNS := "res://game/heroes/demon/skills/infernal_charge/horns.glb"
 const PRINT_EVERY := 1.3
 const SKULL := 1.0
 
@@ -59,7 +61,7 @@ static func _wind(h: Hero, ev: Dictionary) -> void:
 	# the burning ram's skull rising before him
 	var skull := Node3D.new()
 	root.add_child(skull)
-	var sm := DemonKitFx.model(DemonKitFx.HORNS)
+	var sm := DemonKitFx.model(InfernalChargeFx.HORNS)
 	var gm := DemonKitFx.ghost_mat(Color(1.0, 0.32, 0.06), 0.8)
 	if sm != null:
 		for mi in sm.find_children("*", "MeshInstance3D", true, false):
@@ -78,7 +80,7 @@ static func _wind(h: Hero, ev: Dictionary) -> void:
 	DemonKitFx.decal(root, hoof, "crush", Vector2(0.9, 0.9), randf() * TAU, 2.4, 0.15)
 	DemonKitFx.smoke(root, hoof, "ash", 0.9, 0.9)
 	DemonKitFx.clods(root, hoof + Vector3(0, 0.1, 0), [5, 8, 10, 12][tr], 2.4)
-	DemonKitFx.smoke(root, DemonKitFx.head(h) + h.facing() * 0.45 - Vector3(0, 0.5, 0), "ash", 0.55, 0.8, false, Color(0.7, 0.66, 0.62, 0.8))
+	DemonKitFx.smoke(root, DemonFx.head(h) + h.facing() * 0.45 - Vector3(0, 0.5, 0), "ash", 0.55, 0.8, false, Color(0.7, 0.66, 0.62, 0.8))
 	h.fxs["hellrunner"] = {"furrow": fur, "skull": skull, "skull_mat": gm, "em": em, "until": wind + 3.0, "laid": 0.0,
 		"last": h.global_position, "stage": "wind"}
 	SkillFx.snd(h, "growl", -4.0, 0.68)
@@ -213,7 +215,7 @@ static func update(h: Hero, delta: float) -> void:
 	var sk = st.get("skull")
 	if sk != null and is_instance_valid(sk):
 		var lead := 0.9 if str(st["stage"]) == "run" else 0.55
-		(sk as Node3D).global_position = DemonKitFx.head(h) + fwd * lead - Vector3(0, 0.25, 0)
+		(sk as Node3D).global_position = DemonFx.head(h) + fwd * lead - Vector3(0, 0.25, 0)
 		(sk as Node3D).look_at((sk as Node3D).global_position - fwd, Vector3.UP)
 	if str(st["stage"]) == "run":
 		var moved: float = (h.global_position - (st["last"] as Vector3)).length()

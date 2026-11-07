@@ -66,7 +66,7 @@ func made(kind: String, d: Dictionary) -> void:
 	if kind == "charge":
 		sweeps.append({"pos": d["p"], "dir": d["d"], "left": float(d["x"]), "hit": {}, "stop": false})
 
-func step(delta: float) -> void:
+func update(delta: float) -> void:
 	stages()
 	if not run.is_empty():
 		_run(delta)

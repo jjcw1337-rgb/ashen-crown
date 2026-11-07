@@ -1,13 +1,14 @@
 extends SceneTree
 ## The Demon's kit against a player in the Battlegrounds, three processes:
-##   godot --headless --path . -s tools/_late.gd -- res://tools/demon_pvp_test.gd --server --port 24681 --raid-fast server
-##   godot --headless --path . -s tools/_late.gd -- res://tools/demon_pvp_test.gd a 24681
-##   godot --headless --path . -s tools/_late.gd -- res://tools/demon_pvp_test.gd b 24681
+##   godot --headless --path . -s tools/_late.gd -- res://game/heroes/demon/tests/demon_pvp_test.gd --server --port 24681 --raid-fast server
+##   godot --headless --path . -s tools/_late.gd -- res://game/heroes/demon/tests/demon_pvp_test.gd a 24681
+##   godot --headless --path . -s tools/_late.gd -- res://game/heroes/demon/tests/demon_pvp_test.gd b 24681
 ## a is the Demon, b the victim (a tough Knight). a uses each skill on b for real (b is a stand-in target on a's
 ## screen): the charge staggers and Brands, the fault throws up, Brands and slows, the chain drags and holds, the
 ## boulder Brands and burns, the Crucible's eruption terrifies; then three staggers in a row show the diminishing
 ## returns (full, half, none). b checks what landed on him (PvpStatus.landed), that it moved him (the drag) and
-## that nothing went past the caps; the server checks it kept the DR window.
+## that nothing went past the caps; the server checks it kept the DR window. His skills run on the match server
+## (ServerRules): a's game keeps no Brand of its own, the server's copy of him deals them.
 
 var g
 var role := "a"
@@ -22,7 +23,7 @@ func _initialize():
 		if a[i].is_valid_int() and int(a[i]) > 1024:
 			port = int(a[i])
 	if role != "server":
-		Battlegrounds.id_path = "user://dpvp_%s_id.txt" % role
+		Battlegrounds.id_path = "user://dpvp_%s_%d_id.txt" % [role, port]      # (per port: other runs at once don't collide)
 		DirAccess.remove_absolute(Battlegrounds.id_path)
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
@@ -70,7 +71,7 @@ func _player() -> void:
 	while g._busy:
 		await wait(5)
 	await secs(2.0 if role == "a" else 4.0)
-	g.char_dir = "user://dpvp_%s_chars/" % role
+	g.char_dir = "user://dpvp_%s_%d_chars/" % [role, port]
 	DirAccess.make_dir_recursive_absolute(g.char_dir)
 	for fn in DirAccess.get_files_at(g.char_dir):
 		DirAccess.remove_absolute(g.char_dir + fn)
@@ -131,17 +132,17 @@ func _demon() -> void:
 	var h = g.hero
 	g.test_immortal = true
 	g.test_allskills = true
-	var DS = load("res://scripts/demon_skills.gd")
+	var DS = load("res://game/heroes/demon/demon.gd")
 	var PS = load("res://game/systems/combat/pvp_status.gd")
 	check(await until(func(): return _proxy() != null, 10.0), "b is a target for my skills")
 	# 1 the charge
 	var bp: Vector3 = await _stand(6.0)
 	check(h.use_skill("icharge", bp), "Infernal Charge at b")
 	await secs(2.0)
-	check(DS.branded(h, _proxy()), "it stopped on b and Branded him (on my side)")
+	check(DS.brands(h).marks.is_empty(), "my game keeps no Brand of its own: the server's copy of me Branded him (b sees it)")
 	await secs(9.0)       # past the DR window
 	# 2 the fault: b on its line
-	bp = await _stand(DS.FAULT_AHEAD)
+	bp = await _stand(Skill.num("cslam", "ahead", 3.0))
 	check(h.use_skill("cslam", bp), "Fault of the Pit across b")
 	await secs(2.5)
 	await secs(8.0)

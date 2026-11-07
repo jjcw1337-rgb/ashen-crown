@@ -12,8 +12,6 @@ extends Skill
 
 ## The stage queued after this one (it starts when this one's clip has ended).
 var next := ""
-## Once a frame: every hero's kit is walked by more than one class script (Archer.update walks Hero.kit for anyone).
-var _frame := -1
 
 ## The magma in his blows: a part by level on top of the weapon (the same curve as the other classes' spells), so his
 ## skills keep their weight while the weapon is still small. k is the blow's share of it.
@@ -78,6 +76,15 @@ func foes_round(at: Vector3, r: float, edge := 1.0) -> Array:
 			out.append(e)
 	return out
 
+## A meteor lands at `at` (Wrath of the Pit's rain, the Volcano's): its blow on everything within r (`mult` of the
+## weapon's, `magma_k` of his magma), and monsters set alight (`burn_k` of his magma a second, for 3 s).
+func land_meteor(at: Vector3, r: float, mult: float, magma_k: float, burn_k: float) -> void:
+	var h := hero
+	for e in foes_round(at, r):
+		hit(e, mult, 1.2, magma(h, magma_k))
+		if is_instance_valid(e) and not e.dead and not PvpStatus.is_player(e):
+			e.ignite(magma(h, burn_k) * h.dmg_mult(id), 3.0)
+
 # ---------------------------------------------------------------- stages
 ## Starts one of its clips: `secs` before the class's pace (else the stage's own length, Demon.DUR).
 func start(style: String, secs := 0.0) -> void:
@@ -118,18 +125,6 @@ func stages() -> void:
 func busy() -> bool:
 	return next != "" or (hero.atk_t >= 0.0 and hero.atk_skill == id)
 
-## Once a frame, whoever walks Hero.kit first.
-func update(delta: float) -> void:
-	var f := Engine.get_process_frames()
-	if f == _frame:
-		return
-	_frame = f
-	step(delta)
-
-## Its own frame (its stages, what it has in flight or on the ground).
-func step(_delta: float) -> void:
-	pass
-
 # ---------------------------------------------------------------- a foe his game picked
 ## Makes `kind` about foe `e`: here with the foe itself, or on the match server as its id (SkillFx.encode).
 func make_at(kind: String, e, data: Dictionary) -> void:
@@ -151,10 +146,7 @@ func foe_in(d: Dictionary):
 		e = d.get("e")
 	return e if e != null and is_instance_valid(e) and foe(e) else null
 
-## Life, a cooldown cut by a share: his own game's (the server's copy tells his game, Net.tell_self).
-func cut_cooldown(k: float) -> void:
-	var h := hero
-	if h.puppet and h.game.net.server:
-		h.game.net.tell_self(h, {"cd": id, "cd_k": k})
-	else:
-		h.cds[id] = h.cds.get(id, 0.0) * (1.0 - k)
+## What its rules give him (Skill.give): "refund", a share of its cooldown back.
+func given(kind: String, d: Dictionary) -> void:
+	if kind == "refund":
+		hero.cds[id] = hero.cds.get(id, 0.0) * (1.0 - clampf(float(d.get("k", 0.0)), 0.0, 1.0))

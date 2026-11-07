@@ -127,7 +127,7 @@ func _run() -> void:
 				pd_out.append(_rel(str(ev), origin))
 			SkillFx.clear(h)
 			WraithSkills.clear(h)
-			DemonSkills.clear(h)
+			Demon.clear(h)
 			if h.pd != null:
 				h.pd.clear()
 			h.atk_t = -1.0

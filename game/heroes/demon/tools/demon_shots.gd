@@ -1,7 +1,7 @@
 extends SceneTree
 ## The Demon's body from the game camera in the Arena's hall: standing, running, Hellfire Claw, a cast, phased into
 ## the Underworld, dead and cooling. outdir/<name>.png. Needs a display:
-##   xvfb-run -a godot --rendering-driver opengl3 --path . -s tools/demon_shots.gd -- outdir
+##   xvfb-run -a godot --rendering-driver opengl3 --path . -s game/heroes/demon/tools/demon_shots.gd -- outdir
 var g
 var out := ""
 
@@ -60,8 +60,8 @@ func _run() -> void:
 	h.use_skill("wrath", h.global_position)
 	await create_timer(2.6).timeout
 	await _snap("wrath")
-	print("[DS] wrath=%s heat=%.2f" % [str(h.dm.has("wrath")), float(((h.rig.get_meta("demon_mats") as Array)[0] as ShaderMaterial).get_shader_parameter("wrath"))])
-	DemonSkills.clear(h)
+	print("[DS] wrath=%s heat=%.2f" % [str(h.kit.has("wrath") and not h.kit["wrath"].wrath.is_empty()), float(((h.rig.get_meta("demon_mats") as Array)[0] as ShaderMaterial).get_shader_parameter("wrath"))])
+	Demon.clear(h)
 	await create_timer(1.0).timeout
 	g.test_immortal = false
 	h.take_hit(99999.0, h.global_position + Vector3(1, 0, 0))

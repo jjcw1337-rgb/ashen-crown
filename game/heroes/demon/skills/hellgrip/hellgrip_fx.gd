@@ -1,6 +1,6 @@
-class_name DemonChainFx
+class_name HellgripFx
 extends RefCounted
-## Hellgrip's look, "Chain of the Pit" (the Demon's G; the gameplay is DemonSkills). Forged iron and sparks, not
+## Hellgrip's look, "Chain of the Pit" (the Demon's G; the gameplay is Hellgrip). Forged iron and sparks, not
 ## hellfire: nothing here is Molten Fists'.
 ##
 ##  The reach ("cast"): his forearm glows forge-hot, sparks spit off it.
@@ -15,7 +15,10 @@ extends RefCounted
 ##  chunks of ground and a cloud of dust (simulated) thrown up, a shock ring, the chain gone in the dust.
 ## State: h.fxs["chain"], kept by `update`.
 
-const SEG := 1.2                 # one chain section's length (assets/models/fx/demon/chain.glb, laid along x)
+## Its Meshy props: a forged chain section, the iron claw at its head.
+const CHAIN := "res://game/heroes/demon/skills/hellgrip/chain.glb"
+const CLAW := "res://game/heroes/demon/skills/hellgrip/hellclaw.glb"
+const SEG := 1.2                 # one chain section's length (chain.glb here, laid along x)
 const SEG_SCALE := 0.78          # its size in play (thick enough to read from the game camera: a skillshot to dodge)
 const MAX_SEGS := 16
 const CLAW_SIZE := 0.7
@@ -52,8 +55,8 @@ static func _reach(h: Hero) -> void:
 	var sp := InfernalFx.particles(root, SkillFx.hand(h, true), {"amount": [5, 8, 12, 14][tr], "life": 0.35, "one_shot": false,
 		"dir": Vector3.UP, "spread": 80.0, "vel": [1.0, 3.0], "gravity": -9.0, "scale": [0.5, 1.0], "size": 0.035,
 		"colors": [[0.0, Color(1.0, 0.95, 0.8)], [0.4, Color(1.0, 0.6, 0.2)], [1.0, Color(0.8, 0.15, 0.02, 0.0)]]})
-	h.fxs["chain"] = {"state": "ready", "light": l, "spit": sp, "until": 3.0, "len": 0.0, "max": DemonSkills.CHAIN_LEN,
-		"dir": h.facing(), "speed": DemonSkills.CHAIN_SPEED, "segs": [], "grind": 0.0}
+	h.fxs["chain"] = {"state": "ready", "light": l, "spit": sp, "until": 3.0, "len": 0.0, "max": Skill.num("grip", "len", 7.5),
+		"dir": h.facing(), "speed": Skill.num("grip", "speed", 24.0), "segs": [], "grind": 0.0}
 	SkillFx.snd(h, "impact_metal", -12.0, 0.7)
 
 static func _fling(h: Hero, ev: Dictionary) -> void:
@@ -65,14 +68,14 @@ static func _fling(h: Hero, ev: Dictionary) -> void:
 	st["state"] = "out"
 	st["dir"] = ev.get("d", h.facing())
 	st["len"] = 0.0
-	st["max"] = float(ev.get("r", DemonSkills.CHAIN_LEN))
+	st["max"] = float(ev.get("r", Skill.num("grip", "len", 7.5)))
 	st["speed"] = st["max"] / maxf(float(ev.get("x", 0.3)), 0.05)
 	st["until"] = 4.0
 	# the sections, made now and shown as the chain pays out
 	var segs: Array = []
 	var n := mini(int(ceil(float(st["max"]) / (SEG * SEG_SCALE))) + 1, MAX_SEGS)
 	for i in n:
-		var s := DemonKitFx.model(DemonKitFx.CHAIN)
+		var s := DemonKitFx.model(HellgripFx.CHAIN)
 		if s == null:
 			break
 		DemonKitFx.heat_model(s, 0.0, Color(1.0, 0.25, 0.05))
@@ -83,7 +86,7 @@ static func _fling(h: Hero, ev: Dictionary) -> void:
 	st["segs"] = segs
 	var claw := Node3D.new()
 	root.add_child(claw)
-	var cm := DemonKitFx.model(DemonKitFx.CLAW)
+	var cm := DemonKitFx.model(HellgripFx.CLAW)
 	if cm != null:
 		DemonKitFx.heat_model(cm, 0.5, Color(1.0, 0.3, 0.06))
 		# modelled upright with the chain ring on top: laid along the chain, talons leading
@@ -135,11 +138,11 @@ static func _smash(h: Hero, ev: Dictionary) -> void:
 	var at: Vector3 = ev["p"]
 	at.y = world.height_at(at.x, at.z)
 	var held: bool = bool(ev.get("x", false))
-	DemonKitFx.decal(root, at, "crush", Vector2(DemonSkills.GRIP_SHOCK_R * 2.0, DemonSkills.GRIP_SHOCK_R * 2.0), randf() * TAU, 5.0, 0.5 if held else 0.2)
-	DemonKitFx.smoke(root, at, "impact", DemonSkills.GRIP_SHOCK_R * (1.6 if held else 1.0), 1.5)
-	DemonKitFx.pieces(root, world, at + Vector3(0, 0.2, 0), DemonKitFx.BOULDER_PIECES, 0.32 if held else 0.2, 5.5, 1.2, 2.2, 1.0, Vector3.ZERO, tr >= 2)
+	DemonKitFx.decal(root, at, "crush", Vector2(Skill.num("grip", "shock_r", 2.6) * 2.0, Skill.num("grip", "shock_r", 2.6) * 2.0), randf() * TAU, 5.0, 0.5 if held else 0.2)
+	DemonKitFx.smoke(root, at, "impact", Skill.num("grip", "shock_r", 2.6) * (1.6 if held else 1.0), 1.5)
+	DemonKitFx.pieces(root, world, at + Vector3(0, 0.2, 0), DemonFx.ROCK_PIECES, 0.32 if held else 0.2, 5.5, 1.2, 2.2, 1.0, Vector3.ZERO, tr >= 2)
 	DemonKitFx.clods(root, at + Vector3(0, 0.2, 0), [12, 18, 26, 32][tr], 5.0)
-	DemonKitFx.shock_ring(root, h.game, at, DemonSkills.GRIP_SHOCK_R * 1.2, 0.3)
+	DemonKitFx.shock_ring(root, h.game, at, Skill.num("grip", "shock_r", 2.6) * 1.2, 0.3)
 	DemonKitFx.flash_light(root, at + Vector3(0, 0.8, 0), Color(1.0, 0.55, 0.25), 3.5 if held else 1.5, 6.0, 0.4)
 	_end(h)
 	Sfx.play_at("slam", at, 0.0 if held else -6.0, 0.8)
@@ -234,7 +237,7 @@ static func _lay(st: Dictionary, a: Vector3, b: Vector3, t: float, taut: bool) -
 	var step := SEG * SEG_SCALE
 	var n := mini(int(ceil(len / step)), segs.size())
 	var axis := d / maxf(len, 0.001)
-	var sag := (0.04 if taut else 0.22) * len / DemonSkills.CHAIN_LEN
+	var sag := (0.04 if taut else 0.22) * len / Skill.num("grip", "len", 7.5)
 	for i in segs.size():
 		var s: Node3D = segs[i]
 		if not is_instance_valid(s):

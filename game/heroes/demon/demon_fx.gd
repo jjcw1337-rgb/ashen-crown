@@ -1,22 +1,30 @@
 class_name DemonFx
 extends RefCounted
-## Visual effects for the Demon's skills (DemonSkills). Each skill has its own look in its own script, all built
+## Visual effects for the Demon's skills (Demon, skills/). Each skill has its own look in its own script, all built
 ## from InfernalFx (his visual language) and DemonKitFx (the pieces they share); this one routes the events and keeps
 ## what two skills share: the foe held up by Hellgrip, the white heat and meteors of Wrath of the Pit, the Brand.
 ## Everything one-shot is parented to the zone's FX node; what lingers is state in h.fxs that the `update`s move every
 ## frame, on his own game and on his puppet on every partner's.
 ##
-## `play` is the skills' fx events (SkillFx: the same on the caster and on his puppet):
-##  Molten Fists: "cast", "impact" (DemonFistsFx, "Hellbrand"); "brand" {t | pid, x} (BrandFx on whoever his skills
+## `play` is the skills' fx events (SkillFx: the same on the caster and on his puppet). In a match his game shows
+## what he does at once and the match server's copy of him what its rules decide ("struck": who a blow caught):
+##  Molten Fists: "cast", "impact", "struck" (MoltenFistsFx, "Hellbrand"); "brand" {t | pid, x} (BrandFx on whoever his skills
 ##    marked), "consume" {t | pid} (the Fists used a Brand up)
-##  Infernal Charge: "wind", "run", "hit", "skid", "end" (DemonChargeFx, "Hellrunner")
-##  Fault of the Pit: "impact", "erupt" (DemonFaultFx)
-##  Brimstone Hurl: "cast", "throw", "splash" (DemonHurlFx, "Shatterstone")
-##  Hellgrip: "cast", "fling", "hook", "miss", "smash", "end" (DemonChainFx, "Chain of the Pit"); "grab" {t | pid, x}
+##  Infernal Charge: "wind", "run", "hit", "skid", "end" (InfernalChargeFx, "Hellrunner")
+##  Fault of the Pit: "impact", "erupt" (FaultOfThePitFx)
+##  Brimstone Hurl: "cast", "throw", "splash" (BrimstoneHurlFx, "Shatterstone")
+##  Hellgrip: "cast", "fling", "hook", "miss", "smash", "end" (HellgripFx, "Chain of the Pit"); "grab" {t | pid, x}
 ##    (the victim hoisted over his head, h.fxs["grip"], here)
-##  Wrath of the Pit: "crucible", "heat", "erupt" (DemonCrucibleFx); the white heat after the eruption (h.fxs["wrath"]),
-##    "meteor" {p, n, x} (h.fxs["meteors"]; one falling at a player, x >= WRATH_FALL_PVP, gets a glowing circle),
+##  Wrath of the Pit: "crucible", "heat", "erupt", "struck" (WrathOfThePitFx); the white heat after the eruption (h.fxs["wrath"]),
+##    "meteor" {p, n, x} (h.fxs["meteors"]; one falling at a player, x >= its "fall_pvp", gets a glowing circle),
 ##    "end" {x} (here)
+
+## The props his skills share (Meshy): the boulder Brimstone Hurl throws, whose pieces Fault of the Pit and Hellgrip
+## throw up too, and the meteor of Wrath of the Pit and the Volcano.
+const ROCK := "res://game/heroes/demon/shared/boulder.glb"
+const ROCK_PIECES := "res://game/heroes/demon/shared/boulder_pieces.glb"
+const METEOR := "res://game/heroes/demon/shared/meteor.glb"
+const METEOR_PIECES := "res://game/heroes/demon/shared/meteor_pieces.glb"
 
 const EMBER := Color(1.0, 0.42, 0.06)
 const HOT := Color(1.0, 0.75, 0.3)
@@ -45,33 +53,33 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			match e:
 				"brand":
 					for t in DemonKitFx.targets(h, ev):
-						BrandFx.mark(t, float(ev.get("x", DemonSkills.BRAND_DUR)))
+						BrandFx.mark(t, float(ev.get("x", Skill.num("fists", "brand_s", 4.0))))
 					return true
 				"consume":
 					for t in DemonKitFx.targets(h, ev):
 						BrandFx.consume(t)
 					return true
-			return DemonFistsFx.play(h, ev)
+			return MoltenFistsFx.play(h, ev)
 		"icharge":
-			return DemonChargeFx.play(h, ev)
+			return InfernalChargeFx.play(h, ev)
 		"cslam":
-			return DemonFaultFx.play(h, ev)
+			return FaultOfThePitFx.play(h, ev)
 		"hurl":
-			return DemonHurlFx.play(h, ev)
+			return BrimstoneHurlFx.play(h, ev)
 		"grip":
 			if e == "grab":
 				_grab(h, ev)
 				return true
 			if e == "smash":
 				_end_grip(h, true)
-			return DemonChainFx.play(h, ev)
+			return HellgripFx.play(h, ev)
 		"wrath":
 			match e:
 				"crucible", "heat":
-					return DemonCrucibleFx.play(h, ev)
+					return WrathOfThePitFx.play(h, ev)
 				"erupt":
-					DemonCrucibleFx.play(h, ev)
-					_wrath_on(h, float(ev.get("x", DemonSkills.PIT_DUR)))
+					WrathOfThePitFx.play(h, ev)
+					_wrath_on(h, float(ev.get("x", Skill.num("wrath", "pit_s", 6.0))))
 					return true
 				"meteor":
 					_meteor(h, root, ev)
@@ -82,6 +90,10 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 				"cast":
 					return true
 	return false
+
+## His head, roughly: above his shoulders and a little forward of his facing.
+static func head(h: Hero) -> Vector3:
+	return h.global_position + Vector3(0, 2.15 * DemonBody.SCALE, 0) + h.facing() * 0.32
 
 ## Hellgrip's hold: the victim hauled up over his head, squirming (a monster's rig, or a player's body).
 static func _grab(h: Hero, ev: Dictionary) -> void:
@@ -109,20 +121,20 @@ static func _wrath_on(h: Hero, rain: float) -> void:
 
 ## A meteor: the Meshy meteorite (pitted iron and basalt, molten cracks, a white-hot melted face) plunging from the
 ## sky, its seams blazing, dragging simulated fire and smoke (the comet sim along its fall); a mark closes in under
-## one falling at a player. It lands with DemonHurlFx.impact: its real pieces, the simulated impact cloud, a crater.
+## one falling at a player. It lands with BrimstoneHurlFx.impact: its real pieces, the simulated impact cloud, a crater.
 static func _meteor(h: Hero, root: Node3D, ev: Dictionary) -> void:
 	var at: Vector3 = ev["p"]
-	var fall: float = float(ev.get("x", DemonSkills.WRATH_FALL))
+	var fall: float = float(ev.get("x", Skill.num("wrath", "fall", 0.55)))
 	var k: int = int(ev.get("n", 0))
-	var n := DemonHurlFx.rock(root, DemonKitFx.METEOR, 0.95, 2.6)
+	var n := BrimstoneHurlFx.rock(root, DemonFx.METEOR, 0.95, 2.6)
 	var from := at + Vector3(cos(k * 2.4) * 3.0, 15.0, sin(k * 2.4) * 3.0 + 2.0)
 	n.global_position = from
 	var mark = null
-	if fall >= DemonSkills.WRATH_FALL_PVP - 0.01:
-		mark = DemonKitFx.target_mark(root, h.game.world, at, DemonSkills.METEOR_R, Color(0.6, 0.18, 0.06))
+	if fall >= Skill.num("wrath", "fall_pvp", 0.8) - 0.01:
+		mark = DemonKitFx.target_mark(root, h.game.world, at, Skill.num("wrath", "meteor_r", 2.3), Color(0.6, 0.18, 0.06))
 	var ms: Array = h.fxs.get("meteors", [])
 	ms.append({"node": n, "from": from, "to": at, "t": 0.0, "dur": fall, "mark": mark, "trail": 0.0, "last": from,
-		"comet": DemonHurlFx.trail(root, from, (at - from).normalized(), METEOR_TRAIL)})
+		"comet": BrimstoneHurlFx.trail(root, from, (at - from).normalized(), METEOR_TRAIL)})
 	h.fxs["meteors"] = ms
 	if h.fxs.has("wrath"):
 		h.fxs["wrath"]["until"] = maxf(float(h.fxs["wrath"]["until"]), fall + WRATH_SLACK)
@@ -203,12 +215,12 @@ static func _set_heat(h: Hero, k: float) -> void:
 static func update(h: Hero, delta: float) -> void:
 	if not h.is_demon():
 		return
-	DemonFistsFx.update(h, delta)
-	DemonChargeFx.update(h, delta)
-	DemonFaultFx.update(h, delta)
-	DemonHurlFx.update(h, delta)
-	DemonChainFx.update(h, delta)
-	DemonCrucibleFx.update(h, delta)
+	MoltenFistsFx.update(h, delta)
+	InfernalChargeFx.update(h, delta)
+	FaultOfThePitFx.update(h, delta)
+	BrimstoneHurlFx.update(h, delta)
+	HellgripFx.update(h, delta)
+	WrathOfThePitFx.update(h, delta)
 	var world = h.game.world
 	var root: Node3D = world.fx_root
 	if h.fxs.has("meteors"):
@@ -229,17 +241,17 @@ static func update(h: Hero, delta: float) -> void:
 			var sp = (n as Node).get_meta("spin") if (n as Node).has_meta("spin") else null
 			if sp != null and is_instance_valid(sp):
 				(sp as Node3D).rotation += Vector3(delta * 5.0, delta * 1.5, 0.0)
-			DemonHurlFx.fly_trail(root, b, p, vel, delta, METEOR_TRAIL)
+			BrimstoneHurlFx.fly_trail(root, b, p, vel, delta, METEOR_TRAIL)
 			var mk = b.get("mark")
 			if mk != null and is_instance_valid(mk[0]):
 				(mk[1] as ShaderMaterial).set_shader_parameter("k", u)
 			if u >= 1.0:
 				bs.erase(b)
-				DemonHurlFx.end_trail(b)
+				BrimstoneHurlFx.end_trail(b)
 				(n as Node).queue_free()
 				if mk != null and is_instance_valid(mk[0]):
 					(mk[0] as Node).queue_free()
-				DemonHurlFx.impact(h, to, DemonKitFx.METEOR_PIECES, 0.95, DemonSkills.METEOR_R, 1.15)
+				BrimstoneHurlFx.impact(h, to, DemonFx.METEOR_PIECES, 0.95, Skill.num("wrath", "meteor_r", 2.3), 1.15)
 				Sfx.play_at("boom", to, -3.0, 0.95)
 				Sfx.play_at("impact_bone", to, -8.0, 0.5)
 		if bs.is_empty():
@@ -253,15 +265,15 @@ static func update(h: Hero, delta: float) -> void:
 			_end_grip(h, false)
 		else:
 			# hauled up into the air over his head, squirming
-			g["lift"] = lerpf(float(g["lift"]), DemonSkills.GRIP_LIFT, clampf(delta * 7.0, 0.0, 1.0))
+			g["lift"] = lerpf(float(g["lift"]), Skill.num("grip", "lift", 2.1), clampf(delta * 7.0, 0.0, 1.0))
 			var rig = v.get("rig")
 			if rig != null and is_instance_valid(rig):
 				rig.position.y = float(g["lift"]) + sin(float(g["t"]) * 14.0) * 0.06
-				rig.rotation.z = sin(float(g["t"]) * 9.0) * 0.25 * clampf(float(g["lift"]) / DemonSkills.GRIP_LIFT, 0.0, 1.0)
+				rig.rotation.z = sin(float(g["t"]) * 9.0) * 0.25 * clampf(float(g["lift"]) / Skill.num("grip", "lift", 2.1), 0.0, 1.0)
 	if h.fxs.has("wrath"):
 		var n: Dictionary = h.fxs["wrath"]
 		n["until"] = float(n["until"]) - delta
-		if float(n["until"]) <= 0.0 or (not h.puppet and not h.dm.has("wrath")):
+		if float(n["until"]) <= 0.0:
 			_end_wrath(h, false)
 		else:
 			var want: float = float(n["want"])
@@ -324,17 +336,17 @@ static func fire_wave(game, root: Node3D, pos: Vector3, r: float, dur := 0.32) -
 
 ## Everything of his that lingers is gone (death, a class change, a zone change).
 static func clear(h: Hero) -> void:
-	DemonFistsFx.clear(h)
-	DemonChargeFx._end(h)
-	DemonFaultFx.clear(h)
-	DemonHurlFx.clear(h)
-	DemonChainFx.clear(h)
-	DemonCrucibleFx.clear(h)
+	MoltenFistsFx.clear(h)
+	InfernalChargeFx._end(h)
+	FaultOfThePitFx.clear(h)
+	BrimstoneHurlFx.clear(h)
+	HellgripFx.clear(h)
+	WrathOfThePitFx.clear(h)
 	_end_grip(h, false)
 	_end_wrath(h, false)
 	if h.fxs.has("meteors"):
 		for b in h.fxs["meteors"]:
-			DemonHurlFx.end_trail(b)
+			BrimstoneHurlFx.end_trail(b)
 			if is_instance_valid(b["node"]):
 				(b["node"] as Node).queue_free()
 			var mk = b.get("mark")
