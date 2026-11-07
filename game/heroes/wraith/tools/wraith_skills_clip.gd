@@ -2,7 +2,7 @@ extends SceneTree
 ## Frames of each Wraith skill cast into a pack in the Arena's hall, for the preview video and contact sheet. Needs a
 ## display (xvfb) and --fixed-fps 30 so the frames are 1/30 s apart whatever the render takes:
 ##   xvfb-run -a godot --rendering-driver opengl3 --path . --resolution 1280x720 --fixed-fps 30 \
-##     -s tools/wraith_skills_clip.gd -- <outdir> [rend|siphon|step|grasp|phantom|night|all] [close|game]
+##     -s game/heroes/wraith/tools/wraith_skills_clip.gd -- <outdir> [rend|siphon|step|grasp|phantom|night|all] [close|game]
 ## Writes <outdir>/<skill>_<view>_NNN.png.
 var g
 const SKILLS := ["rend", "siphon", "step", "grasp", "phantom", "night"]

@@ -103,7 +103,6 @@ var cc := {}                # crowd control from other players in the Battlegrou
 var hit_t := 0.0
 var cls := "knight"          # "knight", "wraith", "demon" or "warlock" (Data.CLASSES)
 var cds := {}
-var wr := {}                 # Wraith: the skills' state (WraithSkills: the tether, phantoms, the night, the claws)
 var veil_t := 0.0            # Wraith: seconds he is mist, and blows pass through him (Shadowstep, Eternal Night)
 var roll_t := -1.0          # the dodge roll on Space (Dodge): seconds into it, -1 when not rolling
 var roll_dir := Vector3.FORWARD
@@ -413,7 +412,7 @@ func cc_k() -> float:
 
 func _build_rig() -> void:
 	if is_wraith():
-		rig = Wraith.build(wraith_gear())
+		rig = WraithBody.build(wraith_gear())
 	elif is_demon():
 		rig = Demon.build(demon_gear())
 	elif is_warlock():
@@ -530,7 +529,7 @@ func warlock_gear() -> Dictionary:
 	return g
 
 func wraith_gear() -> Dictionary:
-	var g := Wraith.default_gear()
+	var g := WraithBody.default_gear()
 	var a = equipment.get("armor") if equipment is Dictionary else null
 	if a != null:
 		var p := Models.palette(a)
@@ -866,7 +865,7 @@ func refresh_gear() -> void:
 		Knight.fit_helm(hm, rig)
 		gear_nodes.append(hm)
 	if is_wraith():
-		Wraith.rebuild_body(rig, wraith_gear())
+		WraithBody.rebuild_body(rig, wraith_gear())
 	elif is_demon():
 		Demon.rebuild_body(rig, demon_gear())
 	elif is_warlock():
@@ -1420,7 +1419,7 @@ func _use_skill(id: String, aim: Vector3) -> bool:
 		RunTalents.on_cooldown(self, id)
 	atk_aim = aim
 	_face(aim - global_position)
-	# the class's skills script starts it (ClassSkills.of: KnightSkills, WraithSkills, DemonSkills, ...)
+	# the class's skills script starts it (ClassSkills.of: KnightSkills, Wraith, DemonSkills, ...)
 	ClassSkills.cast(self, id, aim)
 	SkillSpec.apply_timing(self, id)      # (a "use" in the skill's data sets its length)
 	# the cast itself, seen by everyone (SkillFx: the class draws it, or the default puff shows it)
@@ -2691,7 +2690,7 @@ func from_save(d: Dictionary) -> void:
 	Items.upgrade_all([equipment, inventory, belt, stash])
 	run = RunBuild.from_dict(d["run"]) if d.get("run") is Dictionary else null
 	binds = (d.get("binds", {}) as Dictionary).duplicate() if d.get("binds") is Dictionary else {}
-	WraithSkills.migrate_binds(binds)
+	Wraith.migrate_binds(binds)
 	DemonSkills.migrate_binds(binds)
 	Plague.migrate_binds(binds)
 	# saves from before the Path of Exile controls had Block on right mouse by default: it becomes the first skill

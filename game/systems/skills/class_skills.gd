@@ -3,7 +3,7 @@ extends RefCounted
 ## The one place Hero hands a class's skills to that class's own script. Hero.use_skill, _impact, _process,
 ## take_hit, set_class and new_character call in here; nothing in hero.gd names a class's skill ids.
 ##
-## Every class's skills script (KnightSkills, WraithSkills, DemonSkills, WarlockSkills, Archer, Plague) has
+## Every class's skills script (KnightSkills, Wraith, DemonSkills, WarlockSkills, Archer, Plague) has
 ## the same static functions:
 ##   can_cast(h, id, aim) -> bool   checks before mana and the cooldown are spent (shows its own message on false)
 ##   cast(h, id, aim)               starts the skill: usually h._start_attack(style, id[, seconds])
@@ -24,7 +24,7 @@ extends RefCounted
 static func of(cls: String):
 	match cls:
 		"knight": return KnightSkills
-		"wraith": return WraithSkills
+		"wraith": return Wraith
 		"demon": return DemonSkills
 		"warlock": return WarlockSkills
 		"archer": return Archer
@@ -36,7 +36,7 @@ static func of(cls: String):
 
 ## Every class's skills script (update/clear/died run on all of them: each looks after its own state).
 static func all() -> Array:
-	return [KnightSkills, WraithSkills, DemonSkills, WarlockSkills, Archer, Plague, Doug, DragonSkills, SharedSkills]
+	return [KnightSkills, Wraith, DemonSkills, WarlockSkills, Archer, Plague, Doug, DragonSkills, SharedSkills]
 
 ## The class a skill id belongs to ("any" for the common Attack and Block).
 static func owner(id: String) -> String:

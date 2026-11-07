@@ -717,27 +717,27 @@ func _skill_fx(c: String, h: Hero, home: Vector3) -> void:
 			Fx.pillar(root3d, p, Color(1.0, 0.8, 0.35), 0.8)
 			Sfx.play("battle_cry", -10.0)
 		"rend":
-			WraithFx.rake(root3d, h.global_position, yaw, 1.6 * k, false)
+			SpiritFx.rake(root3d, h.global_position, yaw, 1.6 * k, false)
 			Sfx.play("reap_swing", -10.0)
 		"siphon":
-			WraithFx.latch(root3d, floor_front + Vector3(0, 0.9 * k, 0))
-			WraithFx.pulse(root3d, chest, col, 0.6, 0.6 * k)
+			SoulSiphonFx.latch(root3d, floor_front + Vector3(0, 0.9 * k, 0))
+			SpiritFx.pulse(root3d, chest, col, 0.6, 0.6 * k)
 			Fx.burst(root3d, floor_front + Vector3(0, 0.9 * k, 0), col, 24, 4.0 * k, 0.07 * k, 0.5, true, 0.0, 10.0, Vector3(0, 0.1, -1))
 			Sfx.play("shade_in", -10.0)
 		"step":
-			WraithFx.mist_out(root3d, p)
-			WraithFx.mist_in(root3d, p + Vector3(0, 0, 0.1))
+			ShadowStepFx.mist_out(root3d, p)
+			ShadowStepFx.mist_in(root3d, p + Vector3(0, 0, 0.1))
 			Sfx.play("shade_out", -10.0)
 		"grasp":
-			WraithFx.grasp(root3d, floor_front, 1.0, 1.6 * k)
+			HauntingGraspFx.grasp(root3d, floor_front, 1.0, 1.6 * k)
 			Sfx.play("slam", -10.0, 0.9)
 		"phantom":
-			WraithFx.split(root3d, p)
-			WraithFx.phantom_hit(root3d, floor_front + Vector3(0, 0.9 * k, 0), Vector3(0, 0, 1))
+			PhantomAssaultFx.split(root3d, p)
+			PhantomAssaultFx.phantom_hit(root3d, floor_front + Vector3(0, 0.9 * k, 0), Vector3(0, 0, 1))
 			Sfx.play("reap_swing", -10.0, 0.9)
 		"night":
-			WraithFx.scream(root3d, p, 2.2 * k)
-			WraithFx.collapse(root3d, p, 1.4 * k)
+			EternalNightFx.scream(root3d, p, 2.2 * k)
+			EternalNightFx.collapse(root3d, p, 1.4 * k)
 			Sfx.play("host_summon", -10.0, 0.8)
 		"fists":
 			var fwd := Vector3(-sin(yaw), 0, -cos(yaw))
@@ -973,7 +973,7 @@ func _signature(c: String, h: Hero, home: Vector3, delta: float) -> void:
 				Fx.burst(root3d, at + Vector3(0, 0.3 * k, 0), Color(1.0, 0.85, 0.45), 40, 5.0 * k, 0.1 * k, 0.6, true, -5.0)
 				Sfx.play("cleave_hit", -10.0)
 			"wraith":
-				WraithFx.rake(root3d, h.global_position, h.net_yaw, 2.4 * k, false)
+				SpiritFx.rake(root3d, h.global_position, h.net_yaw, 2.4 * k, false)
 				Sfx.play("reap_swing", -12.0)
 			"demon":
 				# the fists crack the stage open ahead of him

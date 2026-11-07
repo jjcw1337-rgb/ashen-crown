@@ -887,7 +887,7 @@ func _setup_post() -> void:
 	sh.code = """
 shader_type canvas_item;
 uniform float strength = 0.6;
-uniform float night = 0.0;         // the Wraith's Eternal Night: violet dark closing in from the edges (WraithFx.set_night)
+uniform float night = 0.0;         // the Wraith's Eternal Night: violet dark closing in from the edges (EternalNightFx.set_night)
 uniform float grain = 0.0;         // film grain (Grade.LOOKS): a faint flicker of light and dark specks, new every 1/24 s
 float ghash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 void fragment(){
@@ -2166,7 +2166,7 @@ func exit_to_title(save_current := true) -> void:
 	ui.show_title()
 
 ## The tools/ harness (a SceneTree script) still gets the camp behind the title, as before 2026-11-06: ~170 test
-## scripts wait for a world at boot. `-- --real-boot` gives a tool the real start (tools/boot_flow_test.gd).
+## scripts wait for a world at boot. `-- --real-boot` gives a tool the real start (game/systems/loading/tests/boot_flow_test.gd).
 func _harness_camp() -> bool:
 	return get_tree().get_script() != null and not OS.get_cmdline_user_args().has("--real-boot")
 

@@ -22,6 +22,10 @@ extends SceneTree
 ## With "plague" instead, a plays the Plague Doctor and throws Pestilence Vial at b: the server's copy of him flies the
 ## vial and lays the pool (ServerRules), whose poison is on b's stand-in there and whose Blight reaches b (PvpStatus
 ## "blight" -> the server -> b); a checks its own game holds no vial, pool or poison.
+## With "wraith" instead, a plays the Wraith and casts his skills at b (Haunting Grasp, Soul Siphon, Phantom Assault,
+## Shadowstep): they run on the server too, which checks it made them; a checks its own game holds
+## none of their tethers, phantoms or shades; b checks it was held by the grasp (PvpStatus "stagger" through the
+## server) and slowed by the tether.
 
 var g
 var role := "a"
@@ -110,6 +114,10 @@ func _server() -> void:
 		check(await until(func(): return ServerRules.made_count >= 2, 30.0), "Doug's skills ran here: the server made his pie and his belly-flop (%d)" % ServerRules.made_count)
 		var dougs = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "doug")
 		check(not dougs.is_empty() and dougs[0].decides(), "and his hits and rites are decided here (Hero.decides)")
+	if OS.get_cmdline_user_args().has("wraith"):
+		check(await until(func(): return ServerRules.made_count >= 6, 40.0), "the Wraith's skills ran here: the server made his grasp, tether, phantoms, strikes and shade (%d made, %d refused)" % [ServerRules.made_count, ServerRules.refused_count])
+		var wr = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "wraith" and h.kit.has("phantom"))
+		check(not wr.is_empty() and wr[0].decides(), "his blows are decided here (Hero.decides)")
 	check(await until(func(): return g.bg.died_items.size() > 0, 60.0), "and killed them: their body dropped its gear")
 	await until(func(): return g.net.players.is_empty(), 90.0)
 
@@ -124,6 +132,7 @@ func _player() -> void:
 	var doug := OS.get_cmdline_user_args().has("doug")
 	var archer := OS.get_cmdline_user_args().has("archer")
 	var warlock := OS.get_cmdline_user_args().has("warlock")
+	var wraith := OS.get_cmdline_user_args().has("wraith")
 	var plague := OS.get_cmdline_user_args().has("plague")
 	# the attacker plays the class named on the command line (a hero's mode), the Knight otherwise; b is the Wraith
 	var mode := "knight"
@@ -242,7 +251,27 @@ func _player() -> void:
 			await secs(0.6)      # (the server hears where I am before I leap: it checks the landing against it)
 			check(g.hero.use_skill("bounce", foe.global_position), "Big Top Bounce onto them")
 			await secs(1.6)
-		var life_seen: Array = []
+		var life_before: float = foe.life if is_instance_valid(foe) else 0.0
+		if wraith and role == "a":
+			# his skills from beside them: each is made on the server, which deals it (leaving them some life for
+			# the blows below)
+			g.test_allskills = true
+			for id in ["grasp", "siphon", "phantom", "step"]:
+				if not is_instance_valid(foe) or foe.dead or foe.life < foe.max_life * 0.3:
+					break
+				await until(func(): return g.hero.atk_t < 0.0, 4.0)      # (the last one's clip has ended)
+				g.hero.mana = g.hero.max_mana
+				g.hero.cds.erase(id)
+				g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(1.5, 0, 0), 0.5)
+				await secs(0.6)      # (the server hears where I am first: it checks that)
+				var p = _proxy()
+				check(p != null and g.hero.use_skill(id, p.global_position), "%s at them" % id)
+				await secs(1.4)
+			var k: Dictionary = g.hero.kit
+			check(k.has("grasp") and (not k.has("siphon") or k["siphon"].tether.is_empty()) and (not k.has("phantom") or k["phantom"].phantoms.is_empty())
+				and (not k.has("step") or k["step"].shades.is_empty()), "my game keeps no tether, phantom or shade of its own: the server's copy of me deals them")
+			check(not g.hero.decides(), "and decides none of my blows")
+		var life_seen: Array = [life_before] if wraith else []
 		for i in 60:
 			if not is_instance_valid(foe) or foe.dead:
 				break
@@ -291,6 +320,10 @@ func _player() -> void:
 		if plague:
 			check(await until(func(): return PvpStatus.has(g.hero, "blight"), 60.0), "the Plague Doctor's pool Blighted me through the server (%d stacks)" % int(PvpStatus.strength(g.hero, "blight")))
 			check(await until(func(): return g.hero.life < l0, 10.0), "and its poison hurt me (%d -> %d)" % [int(l0), int(g.hero.life)])
+		if wraith:
+			# (what landed, whenever it did: I may see the other player after his first holds have worn off)
+			check(await until(func(): return PvpStatus.landed.any(func(x): return str(x[0]) == "stagger" and float(x[1]) > 2.0), 60.0), "Haunting Grasp held me through the server (%s)" % str(PvpStatus.landed))
+			check(await until(func(): return PvpStatus.landed.any(func(x): return str(x[0]) == "slow"), 20.0), "and Soul Siphon's tether slowed me")
 		check(await until(func(): return g.hero.life < l0 or g.hero.dead, 60.0), "I'm being hit by the other player")
 		check(await until(func(): return g.hero.dead, 60.0), "and I fell")
 		# fallen, I watch the one still alive (Game.spectate_*), until they leave too

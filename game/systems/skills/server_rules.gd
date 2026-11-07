@@ -9,7 +9,7 @@ extends RefCounted
 ## blowing, a mark landing) comes from the server to everyone. Single player and Enter World co-op are unchanged.
 
 ## The classes whose skills run on the server (the rest still deal their own hits until they move over).
-const CLASSES := ["archer", "warlock", "plague", "doug"]
+const CLASSES := ["archer", "warlock", "plague", "doug", "wraith"]
 
 ## Tests: what the server made from players' skills, and what it refused; what a player's game took from its skills'
 ## rules on the server (Skill.give: life back, mana).
@@ -100,6 +100,8 @@ static func update(h, delta: float) -> void:
 	if m != null and m.has_method("server_update"):
 		m.server_update(h, delta)
 	h.buff_t = maxf(0.0, h.buff_t - delta)      # (the battle buff its game sent wears off here too)
+	if h.run != null:
+		RunTalents.tick(h, delta)      # (and its rites' timed buffs: frenzy, momentum...)
 	if h.dead:
 		return
 	Hero.striker = h

@@ -6,11 +6,11 @@ extends SceneTree
 ## places relative to the caster (facing -z) and without the monsters they touched.
 ##   godot --headless --path . -s tools/_late.gd -- res://tools/skill_warm_capture.gd [class,class...]
 ## (with classes: only theirs are recorded again; the others' are kept as they are)
-## Writes res://scripts/skill_warm_data.gd (SkillWarmData.EVENTS: a script, so the exported game carries it).
+## Writes res://game/systems/loading/skill_warm_data.gd (SkillWarmData.EVENTS: a script, so the exported game carries it).
 
 var g
 var events: Array = []
-const OUT := "res://scripts/skill_warm_data.gd"
+const OUT := "res://game/systems/loading/skill_warm_data.gd"
 
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
@@ -119,7 +119,7 @@ func _run() -> void:
 				if pw is Dictionary and pw.has("s") and pw.has("e"):
 					mine.append(pw)
 			SkillFx.clear(h)
-			WraithSkills.clear(h)
+			Wraith.clear(h)
 			DemonSkills.clear(h)
 			PlagueFx.clear(h)
 			ClassSkills.clear(h)

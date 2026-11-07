@@ -120,7 +120,8 @@
 				"dmg": 0.0,
 				"stun": 0.0
 			}
-		]
+		],
+		"loose": true
 	},
 	"phantom": {
 		"buff": 0.0,

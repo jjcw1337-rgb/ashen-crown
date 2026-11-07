@@ -1,4 +1,4 @@
-# The Wraith's mocap body (assets/models/wraith_mocap.glb): the Meshy "horned, chained" wraith (concept D),
+# The Wraith's mocap body (game/heroes/wraith/body/wraith_mocap.glb): the Meshy "horned, chained" wraith (concept D),
 # auto-rigged by Meshy (24-bone humanoid, like the knight's and the ranger's), with Meshy library clips merged onto
 # its armature, decimated, legless, and its robe made into cloth:
 #  - he floats: the skeletal legs and feet are cut out of the mesh (what sat within reach of the leg bones below
@@ -10,7 +10,7 @@
 #    way they trail when he glides; the game blends idle -> float by speed, the lean, bank and bob are procedural)
 #    and "death" (the scream's first throw of the arms, then the head drops and the arms go slack as the game
 #    sinks him into the ground dissolving);
-#  - a vertex colour for the game's spectral shader (scripts/wraith_mocap.gdshader): R = how far down the robe (0 at
+#  - a vertex colour for the game's spectral shader (body/wraith_mocap.gdshader): R = how far down the robe (0 at
 #    the hips, 1 at the hem: the hem frays into mist), G = cloth (Meshy's metal map; weak here).
 #   blender -b --python prep_wraith_mocap.py -- <rigged.glb> <out.glb> <tris> <clips.glb> [<clips.glb> ...]
 import bpy, sys, math

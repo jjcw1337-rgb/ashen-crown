@@ -143,7 +143,7 @@ func _run() -> void:
 			evs.clear()
 		g.net.fx_tap = Callable()
 		h.end_channel()
-		WraithSkills.clear(h)
+		Wraith.clear(h)
 		DemonSkills.clear(h)
 		# the puppet plays it back far away, beside its own pack; the hero waits out of sight
 		var pack2: Array = _pack(there, n, 24, dist)

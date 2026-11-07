@@ -4,7 +4,7 @@ extends RefCounted
 ## here, in one of two ways:
 ##
 ##   prepare(scope, paths)   ahead of time, under a loading screen or the intro: Godot's threaded loader reads the
-##                           files on its worker pool, many at once (tools/load_bench.gd, 4.4.1: the camp's 163 files
+##                           files on its worker pool, many at once (game/systems/loading/tests/load_bench.gd, 4.4.1: the camp's 163 files
 ##                           1.2 s in parallel against 3.1 s frozen on the main thread and 11 s on one worker thread).
 ##                           `wait_ready` awaits a scope frame by frame so the screen keeps drawing; `release` lets a
 ##                           scope's files go when its zone is left.
