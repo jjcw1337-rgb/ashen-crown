@@ -935,6 +935,8 @@ func cl_server_fx(pid: int, w: Dictionary) -> void:
 		return
 	var h = game.hero if pid == multiplayer.get_unique_id() else players.get(pid, {}).get("hero")
 	if h != null and is_instance_valid(h):
+		if h != game.hero:
+			fx_got += 1      # (another player's effects, from where their skills run: tests count them)
 		SkillFx.play(h, SkillFx.decode(self, w))
 
 ## Server: the blow a player's skill landed here, for the number over the foe on their screen.
