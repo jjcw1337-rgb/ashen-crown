@@ -3,7 +3,7 @@ extends RefCounted
 ## The zones' recorded file lists (Game.load_zone hands a zone's to ResCache.prepare as its loading screen goes up:
 ## World.build had loaded each .glb on the main thread as it reached it, the Act I camp's 50 took 4.3 s). The lists (ZonePreloadData.PATHS, by "run:zone") are recorded from the built zones: run the game with
 ## `-- --kpi <scenario> out.json --preload-record` (or any zone with the flag) and `python3 tools/zone_preload_gen.py`
-## turns user://zone_preload_record.json into scripts/zone_preload_data.gd. A stale list only costs speed: a path
+## turns user://zone_preload_record.json into game/systems/loading/zone_preload_data.gd. A stale list only costs speed: a path
 ## that's gone is skipped, one that's missing is loaded on the main thread as before.
 
 const RECORD := "user://zone_preload_record.json"

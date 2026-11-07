@@ -2166,12 +2166,14 @@ func exit_to_title(save_current := true) -> void:
 	ui.show_title()
 
 ## The tools/ harness (a SceneTree script) still gets the camp behind the title, as before 2026-11-06: ~170 test
-## scripts wait for a world at boot. `-- --real-boot` gives a tool the real start (tools/boot_flow_test.gd).
+## scripts wait for a world at boot. `-- --real-boot` gives a tool the real start (game/systems/loading/tests/boot_flow_test.gd).
 func _harness_camp() -> bool:
 	return get_tree().get_script() != null and not OS.get_cmdline_user_args().has("--real-boot")
 
 ## Leave the current zone with nothing in its place (back to the title). load_zone does the same before it builds.
 func unload_world() -> void:
+	if ui.chat != null:
+		ui.chat.clear()      # (a match's chat ends with it)
 	if world == null:
 		return
 	_store_harvest()
@@ -3546,6 +3548,8 @@ var roll_sprint := false
 ## The movement keys as a flat direction on the ground (W = up the screen).
 func wasd_dir() -> Vector3:
 	var v := Vector3.ZERO
+	if ui.chat != null and ui.chat.typing:
+		return v      # (typing a chat line: the keys spell, the hero stands)
 	if Input.is_key_pressed(KEY_W): v.z -= 1
 	if Input.is_key_pressed(KEY_S): v.z += 1
 	if Input.is_key_pressed(KEY_A): v.x -= 1

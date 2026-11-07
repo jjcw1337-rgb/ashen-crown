@@ -163,6 +163,22 @@ func _player() -> void:
 			g._interact(bells[0])
 	check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 30.0), "the raid is on")
 	check(await until(func(): return g.net.puppets().size() == 1 and g.net.puppets()[0].net_has, 40.0), "the other player is here")
+	# chat (jj, 2026-11-07): a line reaches the other player with the sender's name; a team line in a solo raid
+	# stays with its sender; a flood is cut
+	var chat: ChatBox = g.ui.chat
+	if role == "a":
+		await create_timer(1.0).timeout
+		g.net.send_chat("hello from a", false)
+		g.net.send_chat("just my team", true)
+		check(await until(func(): return chat._lines.size() >= 2, 10.0), "a sees its own two lines (%d)" % chat._lines.size())
+		for i in 8:
+			g.net.send_chat("spam %d" % i, false)
+		await create_timer(1.5).timeout
+		check(chat._lines.filter(func(l): return (l[0] as RichTextLabel).text.contains("spam")).size() <= 3, "a flood is cut")
+	else:
+		check(await until(func(): return chat._lines.any(func(l): return (l[0] as RichTextLabel).text.contains("hello from a")), 15.0), "b reads a's line")
+		await create_timer(1.0).timeout
+		check(not chat._lines.any(func(l): return (l[0] as RichTextLabel).text.contains("just my team")), "a's team line doesn't reach a foe")
 	if role == "a":
 		g.test_immortal = true
 		var foe = g.net.puppets()[0]
