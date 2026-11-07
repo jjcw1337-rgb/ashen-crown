@@ -71,14 +71,14 @@ func chill(e, k: float, secs: float) -> void:
 	else:
 		e.chill(k, secs)
 
-## Frozen solid for secs (RunTalents' freeze; a player: staggered, and seen frozen).
+## Frozen solid for secs (ProcHits.freeze; a player: staggered, and seen frozen).
 func freeze(e, secs: float) -> void:
 	Hero.striker = hero
 	if PvpStatus.is_player(e):
 		PvpStatus.send(hero.game, e, "stagger", secs)
 		hero.fx("run", "freeze", {"p": e.global_position, "r": float(e.radius) + 0.4, "x": secs})
 	else:
-		RunTalents._freeze(hero, e, secs)
+		ProcHits.freeze(hero, e, secs)
 
 # ---------------------------------------------------------------- foes by id
 

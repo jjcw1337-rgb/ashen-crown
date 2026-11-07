@@ -15,7 +15,7 @@ func hit(m: Missile, e) -> void:
 	strike(m, e)
 	if not e.dead:
 		if hero.talent("glacial_freeze") > 0.0 and RunTalents.chilled(e):
-			RunTalents._freeze(hero, e, val("freeze_s", 1.2))
+			ProcHits.freeze(hero, e, val("freeze_s", 1.2))
 		e.chill(val("chill", 40.0) / 100.0, val("chill_s", 3.0))
 	hero.mark = e
 	hero.mark_t = 6.0
