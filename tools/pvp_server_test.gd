@@ -83,5 +83,26 @@ func _run() -> void:
 	g.net.active = false
 	g.net.players = {}
 	g.hero.global_position = hp
+	# a Battlegrounds duo (Blaine, 2026-11-06): a pair never hurts itself, its foes still can; a teammate spawns by
+	# his pair; with no lobby (or a solo one) everyone is a foe
+	var mi = load("res://scripts/match_instance.gd").new()
+	mi.members = {2: {"team": 0}, 3: {"team": 0}, 4: {"team": 1}}
+	var f = _hero("demon", Vector3(4, 0, 2))
+	g.net.players = {2: {"name": "A", "hero": a}, 3: {"name": "T", "hero": t}, 4: {"name": "F", "hero": f}}
+	g.match_instance = mi
+	bg.state = "raid"
+	a.dead = false
+	t.dead = false
+	a.global_position = Vector3(0, 0, 0)
+	t.global_position = Vector3(5, 0, 0)
+	check(bg.pvp_pair(2, 3).is_empty() and bg.pvp_pair(3, 2).is_empty(), "a duo's pair can't hurt each other")
+	check(not bg.pvp_pair(2, 4).is_empty() and not bg.pvp_pair(4, 3).is_empty(), "and the other pair still can, both ways")
+	check(bg.teams() == {"2": 0, "3": 0, "4": 1}, "the teams the clients are told (%s)" % str(bg.teams()))
+	a.net_has = true
+	var sp: Vector3 = bg.spawn_point(3)
+	check(sp.distance_to(a.global_position) < 5.0, "a teammate arrives next to his pair (%.1f m)" % sp.distance_to(a.global_position))
+	g.match_instance = null
+	check(not bg.pvp_pair(2, 3).is_empty(), "without a lobby everyone is a foe")
+	mi.queue_free()
 	print("[P] done, %d failed" % fails)
 	quit()

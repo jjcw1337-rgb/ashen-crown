@@ -424,7 +424,7 @@ func sv_hello(nm: String, gear: Dictionary, _lvl: int, queue_ticket := "", chara
 	if game.match_instance != null:
 		at = game.match_instance.spawn(pid)
 	elif server:
-		at = game.bg.spawn_point() if game.bg != null else at
+		at = game.bg.spawn_point(pid) if game.bg != null else at
 	rpc_id(pid, "cl_welcome", game.cur_act, game.cur_zone, at, game.tp_link, game.boss_killed, roster, game.difficulty)
 	if server:
 		print("[BG] %s joined (%d playing)" % [nm, players.size()])
@@ -957,6 +957,11 @@ func bg_refuse(pid: int, why: String) -> void:
 func cl_bg_roster(r: Array) -> void:
 	game.bg_roster = r
 
+## Every raider's team (Battlegrounds.teams): a duo's pair is no target and shows on its teammate's map.
+@rpc("authority", "call_remote", "reliable")
+func cl_bg_teams(t: Dictionary) -> void:
+	game.set_meta("bg_teams", t)
+
 ## The round: "raid" or "reset", seconds into it, the open portals, its length, when the portals open.
 @rpc("authority", "call_remote", "reliable")
 func cl_bg_raid(state: String, t: float, open: Array, length: float, portals_at: float) -> void:
@@ -1115,15 +1120,17 @@ func sv_pvp_dot(target_pid: int, dps: float, from: Vector3) -> void:
 		return
 	game.bg.pvp_burn(by, target_pid, dps, from)
 
-## War Cry (SharedSkills): the battle buff for the teammates near the one who roared. Co-op partners only: the
-## Battlegrounds has no teams yet (everyone there is an enemy), so nobody else gets it there.
+## War Cry (SharedSkills): the battle buff for the teammates near the one who roared: co-op partners, the Arena's
+## team, a Battlegrounds duo's pair (never another raider).
 func send_team_buff(secs: float, at: Vector3) -> void:
-	if active and not players.is_empty() and not game.bg_mode:
+	if active and not players.is_empty():
 		rpc("cl_team_buff", secs, at)
 
 @rpc("any_peer", "call_remote", "reliable")
 func cl_team_buff(secs: float, at: Vector3) -> void:
-	if server or game.bg_mode or game.world == null or game.hero == null or game.hero.dead or loading:
+	if server or game.world == null or game.hero == null or game.hero.dead or loading:
+		return
+	if game.bg_mode and not Battlegrounds.is_teammate(game, multiplayer.get_remote_sender_id()):
 		return
 	if game.arena_mode:
 		var teams: Dictionary = game.arena_state.get("teams", {})

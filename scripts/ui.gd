@@ -6064,10 +6064,10 @@ class Minimap extends Control:
 					var pulse := 0.75 + 0.25 * sin(Time.get_ticks_msec() * 0.006)
 					ci.draw_circle(ssp, 7.5, Color(0, 0, 0, 0.75))
 					ci.draw_circle(ssp, 5.5 * pulse, Color(0.95, 0.15, 0.1))
-		# co-op partners
+		# co-op partners (in the Battlegrounds only a duo's teammate: the other raiders are hidden)
 		if g.net and g.net.active:
 			for a in g.net.puppets():
-				if not a.visible:
+				if not a.visible or (g.bg_mode and not Battlegrounds.is_teammate(g, int(a.peer_id))):
 					continue
 				var ap := _to_screen(a.global_position, hp)
 				if _inside(ap):

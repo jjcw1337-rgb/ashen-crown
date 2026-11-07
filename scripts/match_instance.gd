@@ -75,7 +75,7 @@ func spawn(pid: int) -> Vector3:
   var team:=int(members.get(pid,{}).get("team",0))
   var peers:Array=members.keys().filter(func(peer):return int(members[peer].team)==team)
   return ArenaMap.team_spawn(team,peers.find(pid),int(config.team_size))
- if game.bg!=null:return game.bg.spawn_point()
+ if game.bg!=null:return game.bg.spawn_point(pid)
  return game.world.free_spot_near(game.world.spawns.get("start",Vector3.ZERO),2)
 
 func left(pid: int) -> void:

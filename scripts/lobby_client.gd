@@ -229,7 +229,7 @@ func _row(cells: Array, joinable: bool, join: Callable) -> Control:
 func _format(r: Dictionary) -> String:
  match str(r.mode):
   "arena":return "%dv%d%s"%[int(r.team_size),int(r.team_size)," · items" if bool(r.get("wager",false)) else ""]
-  "battlegrounds":return "Raid · %d max"%int(r.capacity)
+  "battlegrounds":return "%s · %d max"%["Duo" if int(r.get("team_size",1))==2 else "Solo",int(r.capacity)]
   "waves":return "Co-op · %d max"%int(r.capacity)
   "sandbox":return "Practice · %d max"%int(r.capacity)
  return ""
