@@ -17,8 +17,8 @@ func _run() -> void:
 	await process_frame
 	var WG = load("res://game/maps/camp/waypoint_grand.gd")
 	var MatsS = load("res://game/systems/bodies/mats.gd")
-	var PropsS = load("res://scripts/props.gd")
-	var GradeS = load("res://scripts/grade.gd")
+	var PropsS = load("res://game/systems/world/props.gd")
+	var GradeS = load("res://game/systems/world/grade.gd")
 	var InfS = load("res://game/systems/fx/infernal_fx.gd")
 	var a := OS.get_cmdline_user_args()
 	var out: String = a[0] if a.size() > 0 else "/tmp/wplab"

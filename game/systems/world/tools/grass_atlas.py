@@ -13,7 +13,7 @@ it (tools/blender/grass/build_clumps.py) and the blades stay opaque (no cut-out 
 leaves keep their outline (alpha), bottom-aligned and centred in their cell; atlas.json records how much of
 the cell each one fills so the clump builder can size its card to the plant. Colour is bled into the clear
 pixels so mipmaps don't darken the edges.
-  python3 tools/grass_atlas.py <dir with green.png dry.png heads.png leaves.png> [out_dir]
+  python3 game/systems/world/tools/grass_atlas.py <dir with green.png dry.png heads.png leaves.png> [out_dir]
 """
 import json, sys, os
 import numpy as np

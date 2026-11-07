@@ -1,8 +1,8 @@
 # Models the living grass's clumps in Blender and exports one glb per species into assets/models/grass/.
 #   blender -b --python tools/blender/grass/build_clumps.py -- assets/textures/grass/atlas.json assets/models/grass
 #
-# Each species (SPECIES, matching Grass.SPECIES in scripts/grass.gd) is a clump of modelled blades on the Meshy
-# texture atlas (tools/grass_atlas.py): every blade is a folded strip (a raised midrib between two edges, so it
+# Each species (SPECIES, matching Grass.SPECIES in game/systems/world/grass.gd) is a clump of modelled blades on the Meshy
+# texture atlas (game/systems/world/tools/grass_atlas.py): every blade is a folded strip (a raised midrib between two edges, so it
 # catches light like a real blade), curved, twisted and tapered to a point (or snapped, for dry straw), with a
 # sheath at the root and rounded normals; seed heads, flowers and broad leaves are cut-out cards from the
 # atlas, crossed or laid out in rosettes. Two variants and two levels of detail (L1: about half the blades,

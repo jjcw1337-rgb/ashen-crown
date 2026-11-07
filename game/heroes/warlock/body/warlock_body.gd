@@ -181,7 +181,7 @@ static func _extras(root: Node3D, g: Dictionary) -> void:
 	root.set_meta("warlock_anim", {"book": book, "flame": flame, "energy": mats.map(func(m): return float(m.get_shader_parameter("energy"))), "power": 0.0})
 
 static func _build_gnome(g: Dictionary) -> Node3D:
-	var root := Goblin.imported_rig(GNOME["layout"], GNOME["glb"], "gnome_warlock", GNOME["aim"])
+	var root := MeshyRig.build(GNOME["layout"], GNOME["glb"], "gnome_warlock", GNOME["aim"])
 	var J: Dictionary = root.get_meta("j")
 	var body: MeshInstance3D = root.get_node("Skeleton/Body")
 	var src_mat: Material = body.mesh.surface_get_material(0)

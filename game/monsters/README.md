@@ -5,7 +5,7 @@ One folder per monster, holding everything that is only that monster's. Its stat
 
 | In the folder | What |
 |---|---|
-| its model (`<kind>.glb`) | the Meshy model (MeshyMonster.MODELS points at it) or its own body's files |
+| its model (`<kind>.glb`) | the Meshy model (`game/systems/bodies/meshy_monster.gd` MeshyMonster.MODELS points at it, built on MeshyRig) or its own body's files |
 | `<monster>.gd` or `<monster>_brain.gd` | its brain if it has its own: its rules, no drawing (a boss's extends BossBrain; the others are static functions on the Enemy, called from Enemy._think_combat) |
 | `<monster>_fx.gd` | its look: what its fx events draw and play on every game |
 | `tests/` | its own tests, if it has any |
@@ -31,6 +31,4 @@ pose), pick one, start it (cooldown and warning) and land it; the loop, targetin
 | `bandit/`, `gladiator/`, `champion/` | | models |
 
 Still to move:
-- `goblin.gd`'s `imported_rig`, which every Meshy monster's body stands on: it goes to `game/systems/bodies/`;
-- the lion (`lion.gd`, which the Archer's wolf also stands on: it goes to `game/systems/bodies/`);
 - the dwarf, still in `assets/models/monsters/`.

@@ -1,6 +1,6 @@
 extends SceneTree
 ## Screenshots of Act I's birds (birds.gd) over the camp from the game camera, pulled back a little, and
-## the count of flocks and birds. Needs a display. Usage: godot --path . -s tools/birds_shot.gd -- outdir
+## the count of flocks and birds. Needs a display. Usage: godot --path . -s game/systems/world/tools/birds_shot.gd -- outdir
 var g
 
 func _initialize():

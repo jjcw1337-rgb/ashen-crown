@@ -2,8 +2,8 @@
 # crops to the plant, pads it to a square with its base on the bottom edge, scales to 512 px and
 # pushes the plant's colour out into the clear pixels (alpha kept as is), so the mipmaps don't mix in
 # the black behind the blades and far clumps don't go dark and blobby.
-#   python3 tools/grass_prep.py meshy.png assets/textures/grass/topN.png
-#   python3 tools/grass_prep.py --bleed assets/textures/grass/gN.png ...     # only the colour bleed, in place
+#   python3 game/systems/world/tools/grass_prep.py meshy.png assets/textures/grass/topN.png
+#   python3 game/systems/world/tools/grass_prep.py --bleed assets/textures/grass/gN.png ...     # only the colour bleed, in place
 # Needs numpy, scipy and Pillow. Turn on mipmaps in the new file's .import (mipmaps/generate=true).
 import sys
 import numpy as np

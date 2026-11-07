@@ -17,7 +17,7 @@ for n in L:
 f = lambda v: repr(round(float(v), 4) + 0.0)
 lay = ", ".join(f'"{n}": ["{P.get(n) or ""}", Vector3({f(L[n][0])}, {f(L[n][1])}, {f(L[n][2])})]' for n in order)
 line = f'\t"{kind}": {{"glb": "res://assets/models/monsters/{kind}.glb", "height": {d["height"]}, "layout": {{{lay}}}}},'
-path = os.path.join(os.path.dirname(__file__), "../../../scripts/meshy_monster.gd")
+path = os.path.join(os.path.dirname(__file__), "../../../game/systems/bodies/meshy_monster.gd")
 src_gd = open(path).read()
 m = re.search(r"# monster models begin\n(.*?)\t# monster models end", src_gd, re.S)
 assert m, "markers missing"
