@@ -5,7 +5,7 @@ extends SceneTree
 ## turn, a big beast (radius 1.2), and a pair crossing each other; there are sword swings, a slam, a dash,
 ## and the wind goes from a breeze to a storm and back to calm. Saves frames, checks the touch field
 ## (lines up with the world, comes fully back to rest) and prints [GL] lines.
-##   xvfb-run -a godot --rendering-driver opengl3 --resolution 960x540 --fixed-fps 15 --path . -s tools/grass_lab.gd -- outdir [quality] [zoomin] [frames t1,t2,..]
+##   xvfb-run -a godot --rendering-driver opengl3 --resolution 960x540 --fixed-fps 15 --path . -s game/systems/world/tools/grass_lab.gd -- outdir [quality] [zoomin] [frames t1,t2,..]
 ## Options: until T (stop at T s), only=meadow,tall (show just those species), notouch, nofield, nofog,
 ## debugtouch (pressed grass shown red). Note: Mesa's llvmpipe software renderer tints some clumps in rainbow
 ## colours in this scene (it did so before the textured grass too); judge colours on a real GPU.
@@ -100,8 +100,8 @@ func _initialize() -> void:
 		for s in a[fi + 1].split(","):
 			shots.append(float(s))
 	DirAccess.make_dir_recursive_absolute(out)
-	GF = load("res://scripts/grass_field.gd")
-	GR = load("res://scripts/grass.gd")
+	GF = load("res://game/systems/world/grass_field.gd")
+	GR = load("res://game/systems/world/grass.gd")
 	load("res://game/systems/bodies/mats.gd").ensure_globals()
 	stage = Node3D.new()
 	get_root().add_child(stage)
@@ -168,7 +168,7 @@ func _stage() -> void:
 	stage.add_child(ground)
 	for r in Ctx.ROCKS:
 		var rk := MeshInstance3D.new()
-		var props: Script = load("res://scripts/props.gd")
+		var props: Script = load("res://game/systems/world/props.gd")
 		rk.mesh = props.rock_mesh(3, r.z * 0.8)
 		rk.material_override = props.stone()
 		rk.position = Vector3(r.x, 0, r.y)

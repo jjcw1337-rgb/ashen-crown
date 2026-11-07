@@ -3,7 +3,7 @@ extends SceneTree
 ## (off the road, away from trees), lets it settle, then measures a run of frames: CPU frame time, draw
 ## calls, primitives and visible objects (Performance monitors), and saves a screenshot.
 ## Run with a display (software GL works, slowly):
-##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --path . -s tools/grass_bench.gd -- out_prefix [quality 0-3] [frames] [zoomin|zoomout] [walk]
+##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --path . -s game/systems/world/tests/grass_bench.gd -- out_prefix [quality 0-3] [frames] [zoomin|zoomout] [walk]
 ## Prints [GB] lines and writes <out_prefix>.png and <out_prefix>.txt.
 var g
 var prefix := "grass_bench"

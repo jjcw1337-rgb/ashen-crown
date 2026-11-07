@@ -1,7 +1,7 @@
 extends SceneTree
 ## Close-up of every grass species side by side (one row of clumps per species, Grass.SPECIES order, left to
 ## right), lit like the moor, to judge the Blender clumps and their Meshy textures. Saves one frame.
-##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --path . -s tools/grass_closeup.gd -- out.png [lod] [dist]
+##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 --path . -s game/systems/world/tools/grass_closeup.gd -- out.png [lod] [dist]
 var out := "grass_closeup.png"
 var frames := 0
 
@@ -10,7 +10,7 @@ func _initialize() -> void:
 	if a.size() > 0: out = a[0]
 	var lod := int(a[1]) if a.size() > 1 else 0
 	var dist := float(a[2]) if a.size() > 2 else 4.0
-	var GR: Script = load("res://scripts/grass.gd")
+	var GR: Script = load("res://game/systems/world/grass.gd")
 	load("res://game/systems/bodies/mats.gd").ensure_globals()
 	RenderingServer.global_shader_parameter_set("wind_strength", 0.25)
 	var test := a[3] if a.size() > 3 else ""
