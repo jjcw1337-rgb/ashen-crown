@@ -251,11 +251,10 @@ func _ready() -> void:
 		await load_zone(0, shot_zone, shot_spawn if shot_spawn != "" else "start")
 		return
 	# No world is built behind the title (Blaine, 2026-11-06): the camp it used to build at every start froze the
-	# screen ~1 s and was built again by start_game anyway. The title's own models load on the loader's threads while
-	# the intro plays; whatever is chosen on the title (a lobby, Sandbox, a character's world) loads its own zone.
+	# screen ~1 s and was built again by start_game anyway. The home screen's models load on the loader's threads;
+	# whatever is chosen there (a lobby, Sandbox) loads its own zone.
 	_busy = true
 	_boot_preload()
-	await _play_intro()
 	_bury_lost_raiders()
 	_stash_start()
 	await _await_preloads()
@@ -267,77 +266,9 @@ func _ready() -> void:
 	_release_preloads()
 
 # ---------------------------------------------------------------- intro
-const INTRO_PATH := "res://assets/intro.ogv"
+## (no trailer any more, Blaine 2026-11-06: tools still wait on these, always false)
 var _intro_playing := false
 var _intro_skip := false
-var _intro_t := 0.0             # seconds the intro has played
-var _intro_armed := -100.0      # when the first skip press came (a second one within INTRO_CONFIRM skips)
-const INTRO_CONFIRM := 3.0
-
-## A press meant to skip the intro: Esc, Space, Enter, a click or a gamepad's A/Start. Anything else (volume and
-## media keys, letters, modifiers) is ignored, so turning the sound up never skips it.
-static func _is_skip_press(ev: InputEvent) -> bool:
-	if ev is InputEventKey:
-		return ev.pressed and not ev.echo and ev.keycode in [KEY_ESCAPE, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]
-	if ev is InputEventMouseButton:
-		return ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT
-	if ev is InputEventJoypadButton:
-		return ev.pressed and ev.button_index in [JOY_BUTTON_A, JOY_BUTTON_START]
-	return false
-
-## The trailer plays full screen when the game opens. Skipping takes two deliberate presses (_is_skip_press):
-## the first shows "press again to skip", a second within INTRO_CONFIRM seconds skips; other keys do nothing.
-## Left out of the browser build (too big a download for a test page) and headless runs.
-func _play_intro() -> void:
-	if OS.has_feature("web") or DisplayServer.get_name() == "headless" or not ResourceLoader.exists(INTRO_PATH):
-		return
-	var layer := CanvasLayer.new()
-	layer.layer = 100
-	add_child(layer)
-	var bg := ColorRect.new()
-	bg.color = Color.BLACK
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	layer.add_child(bg)
-	var box := AspectRatioContainer.new()
-	box.ratio = 16.0 / 9.0
-	box.set_anchors_preset(Control.PRESET_FULL_RECT)
-	layer.add_child(box)
-	var vp := VideoStreamPlayer.new()
-	vp.stream = load(INTRO_PATH)
-	vp.expand = true
-	vp.volume = 1.0 if sound_on else 0.0
-	box.add_child(vp)
-	var hint := Label.new()
-	hint.text = "Esc / Space to skip"
-	hint.add_theme_font_size_override("font_size", 16)
-	hint.add_theme_color_override("font_color", Color(0.85, 0.75, 0.6, 0.0))
-	hint.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	hint.offset_left = -260
-	hint.offset_top = -50
-	hint.offset_right = -28
-	hint.offset_bottom = -20
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	layer.add_child(hint)
-	_intro_skip = false
-	_intro_armed = -100.0
-	_intro_t = 0.0
-	_intro_playing = true
-	vp.play()
-	while vp.is_playing() and not _intro_skip:
-		await get_tree().process_frame
-		_intro_t += get_process_delta_time()
-		var armed := _intro_t - _intro_armed < INTRO_CONFIRM
-		hint.text = "Press again to skip" if armed else "Esc / Space to skip"
-		hint.add_theme_color_override("font_color", Color(0.95, 0.85, 0.65, 0.9) if armed else Color(0.85, 0.75, 0.6, clampf((_intro_t - 1.5) * 0.8, 0.0, 0.45)))
-	_intro_playing = false
-	vp.stop()
-	# a short fade from black into the title screen
-	var tw := create_tween()
-	tw.tween_property(bg, "color:a", 0.0, 0.6)
-	box.queue_free()
-	hint.queue_free()
-	await tw.finished
-	layer.queue_free()
 
 # ---------------------------------------------------------------- the Underworld (Demon: Phase)
 ## While the Demon is phased, the act is seen from the Underworld: the same place and the same
@@ -1228,7 +1159,7 @@ func run_switched_banner() -> void:
 	ui.big_message(run_name())
 	ui.message(("The Ashen King's reign. " if difficulty >= 2 else "") + run_note(difficulty), Color(1.0, 0.7, 0.4))
 
-## The boot's files (ResCache, "boot" scope): the title's models, read on the loader's threads while the intro plays.
+## The boot's files (ResCache, "boot" scope): the home screen's models, read on the loader's threads at boot.
 ## Released once the title is up (the title's own nodes hold them).
 const TITLE_MODELS := ["res://assets/models/title/gate.glb", "res://assets/models/title/arcade.glb",
 	"res://assets/models/title/colossus.glb", "res://assets/models/title/crown.glb"]
@@ -3921,14 +3852,6 @@ func _unhandled_input(ev: InputEvent) -> void:
 				ui.minimap.set_big(not ui.minimap.big)
 
 func _input(ev: InputEvent) -> void:
-	if _intro_playing:
-		if _is_skip_press(ev) and _intro_t > 0.5:
-			if _intro_t - _intro_armed < INTRO_CONFIRM:
-				_intro_skip = true
-			else:
-				_intro_armed = _intro_t
-		get_viewport().set_input_as_handled()      # nothing reaches the game behind the intro
-		return
 	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_LEFT and not ev.pressed:
 		lmb_held = false
 	if ev is InputEventMouseButton and ev.button_index == MOUSE_BUTTON_RIGHT and not ev.pressed:

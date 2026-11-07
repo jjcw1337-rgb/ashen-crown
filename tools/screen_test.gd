@@ -77,36 +77,18 @@ func _run() -> void:
 	# a message shows over the title
 	ui.message("hello")
 	check(ui.msg_lbl.is_visible_in_tree() and ui.top.get_index() > ui.menus.get_index(), "title: a message is drawn over it")
-	# the home screen (TitleHome): the character sidebar, Enter World, Multiplayer (the lobby browser) and a small Quit
+	# the home screen is the multiplayer page (Blaine, 2026-11-06): no title, Enter World or characters
 	var home = ui.home
-	check(home.is_visible_in_tree() and home.sel != "", "home: the sidebar lists the characters and one is chosen")
-	check(_in_front(home.get_node("sidebar").find_child("char_" + home.sel, true, false)), "home: a character's card takes the click")
-	check(not home.get_node("sidebar").find_child("create", true, false).visible, "home: Create New Character is hidden (MpMode.CREATE_CHARACTER)")
-	var row: Control = home.get_node("play_box/buttons")
-	check(_in_front(row.get_node("play")) and _in_front(row.get_node("multiplayer")), "home: Enter World and Multiplayer take the click")
-	check(_in_front(row.get_node("quit")) and row.get_node("quit").size.x < row.get_node("multiplayer").size.x, "home: a smaller Quit (%s)" % row.get_node("quit").size)
-	check(home.find_child("bg_card", true, false) == null and home.find_child("flame_board", true, false) == null, "home: no left-side cards")
-	(row.get_node("multiplayer") as Button).pressed.emit()
-	await frames(2)
-	check(g.lobby_client.panel.visible and not home.visible, "home: Multiplayer opens the lobby browser")
-	check(g.lobby_client.lan_row.visible, "lobby browser: LAN lives here (Local network)")
-	g.lobby_client.panel.hide()
-	await frames(2)
-	# Battlegrounds is a lobby type: its way in opens the lobby browser on it (the old Battlegrounds page is unused)
+	check(g.lobby_client.panel.visible and g.lobby_client.selected_mode == "battlegrounds", "home: the lobby browser, on Battlegrounds")
+	check(not home.is_visible_in_tree() and not ui.title_panel.find_child("title_head", true, false).is_visible_in_tree(), "home: no title, Enter World or character list")
+	var quit_b: Button = g.lobby_client.panel.find_child("back", true, false)
+	check(quit_b != null and quit_b.text == "Quit" and _in_front(quit_b), "home: its top-right button is Quit")
+	check(not g.lobby_client.lan_row.visible, "home: no LAN (it hosted a character's world)")
 	ui.open_battlegrounds()
 	await frames(2)
 	check(g.lobby_client.panel.visible and g.lobby_client.selected_mode == "battlegrounds", "Battlegrounds: opens the lobby browser on Battlegrounds")
 	g.lobby_client.panel.hide()
-	await frames(2)
-	check(ui.title_panel.visible and not ui.menu_shade.visible and _in_front(home._play), "Battlegrounds: closed, back to the home screen")
-	# the co-op screen the same way
-	ui.open_join()
-	await frames(2)
-	check(ui.join_panel.is_visible_in_tree() and ui.menu_shade.visible and not _in_front(home._play), "co-op: over the dimmed title (its Play can't be clicked through it)")
-	ui.join_panel.visible = false
-	g.net.stop_listening()
 	await frames(1)
-	check(not ui.menu_shade.visible, "co-op: closed, the shade goes")
 	# play
 	await g.start_game(false)
 	await frames(10)

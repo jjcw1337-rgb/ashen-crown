@@ -4,10 +4,9 @@
 the player is playing, and no frozen loading screen. Measured budget: no first-occurrence frame over **50 ms** on the
 Mac at High (a normal frame is ~17 ms).
 
-**Nothing is built that the player isn't going to.** The title has no world behind it (Blaine, 2026-11-06: the camp
-built there at every start froze the screen ~1.3 s and was built again on Enter World): the boot loads only the
-title's models during the intro, and each choice on the title (a lobby, Sandbox, a character's world) loads its own
-zone; going back to the title unloads the world (`Game.unload_world`). Tool scripts still get the camp behind the
+**Nothing is built that the player isn't going to.** The home screen (the multiplayer page) has no world behind it:
+the boot loads only the home screen's models, and each choice there (a lobby, Sandbox) loads its own zone; going back
+home unloads the world (`Game.unload_world`). Tool scripts still get the camp behind the
 title (`Game._harness_camp`); `-- --real-boot` gives them the real start (`tools/boot_flow_test.gd`).
 
 Every zone change follows the same order, under the loading screen:
