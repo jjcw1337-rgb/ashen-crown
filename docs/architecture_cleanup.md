@@ -140,8 +140,6 @@ Touch points to coordinate:
 - Claude-2 (2026-11-07, one agent per hero, each on its own branch): the Plague Doctor, the Warlock, Doug, the Wraith
   and the Demon onto the Archer's template with their skills on the server; then the Knight and the dragons. Also
   click-to-cast for AoE skills (`game/systems/skills/aiming.gd`, JJ and Blaine).
-- Claude-1 (2026-11-07): the world system out of `scripts/` into `game/systems/world/` (`world.gd`, `props.gd`,
-  `flora.gd`, `grass*.gd`, `weather.gd`, `grade.gd`, `geo.gd`, `inter.gd`; `birds.gd` went with the camp).
 
 ## Cutting an old system
 

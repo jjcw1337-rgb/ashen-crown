@@ -1,7 +1,7 @@
 extends SceneTree
 ## Scene census for the visual overhaul (headless, no GPU needed):
 ##   godot --headless --path . -s tools/visual_audit/scene_census.gd -- out_dir [zone ...]
-## Zones: town bg sandbox (default: all). For each zone it builds the
+## Zones: bg sandbox (default: all). For each zone it builds the
 ## world exactly as the game does, then walks every GeometryInstance3D, light, particle system and decal and
 ## writes <out_dir>/<zone>.json plus a printed summary: triangles (LOD0) x instances, how many LOD levels each
 ## mesh has, multimeshes whose bounds are so big they can't be culled or LOD-ed (one draw for the whole map),
@@ -11,7 +11,7 @@ extends SceneTree
 var g
 var out_dir := "build/visual_audit"
 const ZONES := {
-	"town": [0, "town"], "bg": [0, "bg"], "sandbox": [0, "sandbox"],
+	"bg": [0, "bg"], "sandbox": [0, "sandbox"],
 }
 
 func _initialize():

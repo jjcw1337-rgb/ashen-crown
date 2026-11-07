@@ -3,7 +3,7 @@ extends SceneTree
 ## LODs, woodland undergrowth near the trees, none on the trails); the touch field is on outdoors and
 ## follows the camera; the hero, partners, monsters and pets touch it; an attack's impact frame throws an
 ## arc; Fx rings shove it. Prints [G] lines.
-##   godot --headless --path . -s tools/grass_test.gd
+##   godot --headless --path . -s game/systems/world/tests/grass_test.gd
 var g
 var fails := 0
 

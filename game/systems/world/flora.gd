@@ -533,7 +533,7 @@ const GRASS_TEX := "res://assets/textures/grass/g%d.png"
 const GRASS_CARDS := [[0.66, 0.44, Color(0.86, 0.92, 0.82)], [0.58, 0.46, Color(0.88, 0.93, 0.85)], [0.6, 0.62, Color(0.78, 0.8, 0.7)]]
 
 ## Act I grass painted for the game's camera (Meshy, seen from 45 degrees above,
-## assets/textures/grass/topN.png, prepared by tools/grass_prep.py): one card per clump, tilted back to
+## assets/textures/grass/topN.png, prepared by game/systems/world/tools/grass_prep.py): one card per clump, tilted back to
 ## face the fixed camera, so the painting is seen as drawn instead of squashed onto upright cards.
 ## Per texture: card size (m), how often it is picked. 1 lush, 2 low clover, 3 daisies and buttercups,
 ## 4 seed heads, 5 tussock, 6 heather and clover, 7 small wispy tuft, 8 dandelions, 9 speedwell.

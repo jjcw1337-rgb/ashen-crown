@@ -1,4 +1,4 @@
-"""Exercise actual HTTP admission across different development build revisions."""
+"""Exercise actual HTTP admission: builds, sessions and the lobby rules."""
 import json
 import tempfile
 import threading
@@ -31,14 +31,20 @@ class HttpAdmissionTests(unittest.TestCase):
         try:
             with urllib.request.urlopen(req) as response: return response.status, json.load(response)
         except urllib.error.HTTPError as response: return response.code, json.load(response)
-    def test_different_builds_create_join_ready_start(self):
-        status, data = self.post('create', version='new-client-a', mode='arena', character='a')
+    def test_same_build_create_join_ready_start(self):
+        status, data = self.post('create', version='client-a', mode='arena', character='a')
         self.assertEqual(status, 200); rid = data['lobby']['id']
-        self.assertEqual(self.post('join', 'account-b', version='new-client-b', id=rid, character='b')[0], 200)
+        self.assertEqual(self.post('join', 'account-b', version='client-a', id=rid, character='b')[0], 200)
         for account in ('account-a', 'account-b'):
-            self.assertEqual(self.post('ready', account, version='another-build', id=rid, ready=True)[0], 200)
-        status, data = self.post('start', version='new-client-a', id=rid)
+            self.assertEqual(self.post('ready', account, version='client-a', id=rid, ready=True)[0], 200)
+        status, data = self.post('start', version='client-a', id=rid)
         self.assertEqual(status, 200); self.assertEqual(data['lobby']['state'], 'starting')
+    def test_other_build_cannot_join(self):
+        # (2026-11-07) a game on another build froze on "Joining…" at a match server with other network calls: it
+        # is told to update instead
+        _, data = self.post('create', version='client-a', mode='arena', character='a')
+        status, data = self.post('join', 'account-b', version='client-b', id=data['lobby']['id'], character='b')
+        self.assertEqual(status, 400); self.assertIn('same build', data['error'])
     def test_missing_revision_is_allowed(self):
         self.assertEqual(self.post('create', mode='battlegrounds', character='a')[0], 200)
     def test_anonymous_and_dev_identity_still_rejected(self):

@@ -72,7 +72,7 @@ const BIOMES := {
 const VARIANTS := 2
 
 ## The Blender clumps (tools/blender/grass/build_clumps.py: modelled blades on the Meshy texture atlas,
-## tools/grass_atlas.py) are used for every species that has one; without them the code-built clumps
+## game/systems/world/tools/grass_atlas.py) are used for every species that has one; without them the code-built clumps
 ## below are the fallback. Both bend the same way: the shader reads its data per vertex either way.
 const GLB := "res://assets/models/grass/%s.glb"
 const ATLAS := "res://assets/textures/grass/atlas.png"

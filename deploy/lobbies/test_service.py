@@ -90,6 +90,14 @@ class LobbyTests(unittest.TestCase):
   self.assertEqual([x['id'] for x in self.m.call('a','list',{})['lobbies']],[])
   self.assertEqual([x['id'] for x in self.m.call('b','list',{})['lobbies']],[r['id']])
   self.assertEqual([x['id'] for x in self.m.call('c','list',{})['lobbies']],[r['id']])
+ def test_builds(self):
+  self.m.has_build=lambda rev: rev in ('abc1234','def5678')
+  with self.assertRaises(Rejected):self.m.call('a','create',{'mode':'battlegrounds','team_size':1,'character':'hero','player':'a','version':'old0000'})
+  r=self.m.call('a','create',{'mode':'battlegrounds','team_size':1,'character':'hero','player':'a','version':'abc1234'})['lobby']
+  self.assertEqual(self.m.rooms[r['id']]['version'],'abc1234')
+  with self.assertRaises(Rejected):self.m.call('b','join',{'id':r['id'],'character':'hero','version':'def5678'})
+  self.m.call('c','join',{'id':r['id'],'character':'hero','version':'abc1234'})
+  self.m.call('d','join',{'id':r['id'],'character':'hero'})      # (a local "dev" build is never gated)
  def test_full(self):
   r=self.pair()
   with self.assertRaises(Rejected):self.act('extra',r,'join')
