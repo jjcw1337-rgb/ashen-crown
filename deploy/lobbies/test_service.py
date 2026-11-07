@@ -65,6 +65,21 @@ class LobbyTests(unittest.TestCase):
   for size in (1,2,3):
    r=self.pair(size);self.act('a',r,'start');self.assertEqual(len(self.started),size)
    self.m.rooms[r['id']]['state']='finished'
+ def test_battlegrounds_duo_pairs(self):
+  r=self.create(mode='battlegrounds',size=2);self.assertEqual(r['capacity'],16)
+  for u in ('b','c','d'):self.act(u,r,'join')
+  m=self.m.rooms[r['id']]['members']
+  self.assertEqual([m[u]['team'] for u in ('a','b','c','d')],[0,0,1,1])
+  self.act('c',r,'team',team=5);self.assertEqual(m['c']['team'],5)
+  with self.assertRaises(Rejected):self.act('d',r,'team',team=0)      # (the first pair is full)
+  with self.assertRaises(Rejected):self.act('d',r,'team',team=8)      # (16 players: pairs 0..7)
+ def test_battlegrounds_solo_each_alone(self):
+  r=self.create(mode='battlegrounds',size=1)
+  for u in ('b','c'):self.act(u,r,'join')
+  m=self.m.rooms[r['id']]['members']
+  self.assertEqual(len({m[u]['team'] for u in ('a','b','c')}),3)
+  with self.assertRaises(Rejected):self.act('b',r,'team',team=0)
+  with self.assertRaises(Rejected):self.m.call('z','create',{'mode':'battlegrounds','team_size':3,'character':'hero','player':'z'})
  def test_full(self):
   r=self.pair()
   with self.assertRaises(Rejected):self.act('extra',r,'join')

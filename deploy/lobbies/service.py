@@ -83,6 +83,8 @@ class Lobbies:
             if op == 'create':
                 mode = p.get('mode'); team = p.get('team_size',1)
                 if mode not in LIVE_MODES or type(team) is not int or team not in (1,2,3): raise Rejected('Choose a supported mode and team size.')
+                if mode=='battlegrounds' and team not in (1,2): raise Rejected('Battlegrounds is solo or duo.')
+                if mode=='sandbox': team=1
                 if any(uid in r['members'] and not r['members'][uid].get('departed',False) and r['state'] in ('waiting','starting','playing') for r in self.rooms.values()): raise Rejected('Leave your current lobby first.')
                 if p.get('wager',False) and mode!='arena': raise Rejected('Optional stakes are for Arena; Battlegrounds already has its extraction rules.')
                 rid = secrets.token_hex(8)
@@ -117,7 +119,7 @@ class Lobbies:
                     if r['state']!='waiting' or uid not in r['members']: raise Rejected('This lobby is not waiting for players.')
                     if op=='team':
                         team=p.get('team')
-                        if type(team) is not int or team not in (0,1) or r['mode']!='arena': raise Rejected('Choose a team.')
+                        if type(team) is not int or team not in range(self.teams(r)) or self.teams(r)<2: raise Rejected('Choose a team.')
                         if sum(m['team']==team for u,m in r['members'].items() if u!=uid)>=r['team_size']: raise Rejected('That team is full.')
                         r['members'][uid]['team']=team
                         for m in r['members'].values(): m['ready']=False
@@ -152,6 +154,18 @@ class Lobbies:
                 else: raise Rejected('Unknown lobby action.')
                 if r['state']=='waiting': r['touched']=self.clock()
             self.persist(); return {'lobby':self.public(r,uid)}
+    def teams(self,r):
+        # Arena: two teams of team_size. Battlegrounds duo: pairs (capacity / 2 of them). Solo: everyone alone.
+        if r['mode']=='arena': return 2
+        if r['mode']=='battlegrounds' and r['team_size']==2: return r['capacity']//2
+        return 1
+    def open_team(self,r):
+        # the first team with room (a Battlegrounds solo lobby's players are each their own: team = join order)
+        n=self.teams(r)
+        if n==1 and r['mode']=='battlegrounds': return len(r['members'])
+        for t in range(n):
+            if sum(m['team']==t and not m.get('departed',False) for m in r['members'].values())<r['team_size']: return t
+        return 0
     def add(self,r,uid,p):
         if r['state']!='waiting' and not (r['state']=='playing' and r.get('joinable',False)): raise Rejected('This match has started. Join a waiting lobby or create another.')
         if uid in r['members']:
@@ -162,8 +176,7 @@ class Lobbies:
         if sum(not m.get('departed',False) for m in r['members'].values())>=r['capacity']: raise Rejected('Lobby full.')
         char=str(p.get('character',''))
         if not char or len(char)>100 or not all(c.isalnum() or c in '-_' for c in char): raise Rejected('Select a character first.')
-        team=0
-        if r['mode']=='arena': team=0 if sum(m['team']==0 for m in r['members'].values())<r['team_size'] else 1
+        team=self.open_team(r)
         r['members'][uid]={'name':str(p.get('player','Adventurer'))[:32],'character':char,'team':team,'ready':False,'seen':self.clock()}
         for m in r['members'].values(): m['ready']=False
         if r['state']=='playing':
