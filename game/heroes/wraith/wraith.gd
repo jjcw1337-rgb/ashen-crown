@@ -12,7 +12,7 @@ extends RefCounted
 ##   a run's: Death Mark, Banshee Wail, Reaping Crescent.
 ## Every skill is a whole-body clip of his (WraithBody.SHOTS: the clip and how the attack's progress maps onto its
 ## seconds, so the blow lands on Anim.impact_at's frame at any attack speed; KnightMocapRig "shots"). In a match his
-## skills run on the server (ServerRules), his weapon swing too (WraithSwipe). What is seen goes through fx events
+## skills run on the server (ServerRules). His weapon swing is everyone's (Hero). What is seen goes through fx events
 ## (Hero.fx -> WraithFx and each skill's look). His body: body/wraith_body.gd (WraithBody).
 
 ## The attack style each of his own skills starts with (one of them in progress is cut off by `clear`).
@@ -32,7 +32,6 @@ static func skill(h: Hero, id: String) -> Skill:
 
 static func _make(h: Hero, id: String) -> Skill:
 	match id:
-		"attack": return WraithSwipe.new(h, id)
 		"rend": return SpectralRend.new(h, id)
 		"siphon": return SoulSiphon.new(h, id)
 		"step": return ShadowStep.new(h, id)
@@ -55,15 +54,9 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 	if s != null:
 		s.cast(aim)
 
-## The attack's impact frame: true when it was one of his. His weapon swing is Hero's own, except in a match where
-## his skills run on the server: then the server's copy of him swings it (WraithSwipe).
+## The attack's impact frame: true when it was one of his skills (his weapon swing is Hero's own).
 static func impact(h: Hero) -> bool:
-	if not h.is_wraith():
-		return false
-	if h.atk_skill == "":
-		if h.atk_style.begins_with("swipe") and ServerRules.on(h):
-			skill(h, "attack").impact()
-			return true
+	if not h.is_wraith() or h.atk_skill == "":
 		return false
 	var s := skill(h, h.atk_skill)
 	if s == null:
