@@ -422,10 +422,8 @@ func fx(ev: String) -> bool:
 			return true
 		"intro":
 			met = true
-			g.focus_on(boss, 2.6, 0.5)
 			return true
 		"outro":
-			g.focus_on(boss, 3.0, 0.6)
 			return true
 		"shout":
 			_shout_fx(ev.substr(6))

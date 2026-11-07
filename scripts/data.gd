@@ -247,7 +247,6 @@ const ENEMIES := {
 		"look": {"skin": Color(0.27, 0.3, 0.17), "shell": Color(0.4, 0.22, 0.1), "legs": 2, "height": 0.77, "eyes": Color(1.0, 0.72, 0.2)}},
 	"trex": {"mesh": "trex", "name": "Gorehide the Tyrant", "rig": "crawler", "life": 950, "dmg": [18, 30], "speed": 4.2, "range": 4.0, "xp": 900,
 		"ai": "bear", "atk": "bear_maul", "atk_time": 1.6, "armor": 16, "radius": 2.4, "boss": true, "aggro": 22.0, "blood": Color(0.45, 0.04, 0.02),
-		"intro": {"title": "GOREHIDE", "sub": "THE TYRANT", "line": "Ate the last three tamers who tried to saddle him. Kept the saddle.", "color": Color(1.0, 0.55, 0.15)},
 		"look": {"skin": Color(0.12, 0.14, 0.1), "shell": Color(0.08, 0.09, 0.07), "legs": 2, "height": 2.66, "eyes": Color(1.0, 0.55, 0.15)}},
 	"trike": {"mesh": "trike", "name": "Mother Triceratops", "rig": "crawler", "life": 420, "dmg": [12, 20], "speed": 3.4, "range": 3.0, "xp": 300,
 		"ai": "bear", "atk": "bear_maul", "atk_time": 1.5, "armor": 14, "radius": 1.6, "aggro": 16.0, "blood": Color(0.4, 0.05, 0.03),
@@ -259,14 +258,12 @@ const ENEMIES := {
 	# their fights (abilities, arenas, the hermit's chest) are the overhaul's to build on these entries
 	"ice_troll": {"mesh": "ice_troll", "class_unique": true, "name": "Hrimgar the Frostbound", "rig": "humanoid", "life": 1400, "dmg": [24, 38], "speed": 3.2, "range": 3.0, "xp": 1400,
 		"ai": "melee", "atk": "slam", "atk_time": 1.7, "armor": 22, "radius": 1.3, "boss": true, "aggro": 18.0, "blood": Color(0.55, 0.8, 1.0),
-		"intro": {"title": "HRIMGAR", "sub": "THE FROSTBOUND", "line": "He's been standing in that cave for three hundred years. He'd like a word about the draught.", "color": Color(0.55, 0.85, 1.0)},
 		"look": {"height": 1.9, "eyes": Color(0.6, 0.95, 1.0)}},          # x a man's 1.8 m: 3.4 m
 	"spore_shroom": {"prop": "fungus", "name": "Poison Mushroom", "rig": "crawler", "life": 80, "dmg": [5, 8], "speed": 0.0, "range": 3.0, "xp": 12,
 		"ai": "melee", "atk": "slam", "atk_time": 1.0, "armor": 0, "radius": 0.7, "blood": Color(0.35, 0.6, 0.2),
 		"look": {"height": 1.2, "prop_scale": 1.3, "eyes": Color(0.5, 1.0, 0.4)}},
 	"hermit": {"mesh": "hermit", "class_unique": true, "name": "Old Mossbeard", "rig": "humanoid", "life": 900, "dmg": [14, 22], "speed": 3.0, "range": 9.0, "xp": 1100,
 		"ai": "ranged", "atk": "cast", "atk_time": 1.4, "armor": 10, "radius": 0.6, "boss": true, "aggro": 14.0, "proj": "poison", "blood": Color(0.35, 0.55, 0.2),
-		"intro": {"title": "OLD MOSSBEARD", "sub": "THE THORN HERMIT", "line": "Hasn't had visitors in years. Doesn't plan on letting this lot leave.", "color": Color(0.6, 1.0, 0.45)},
 		"look": {"height": 0.82, "eyes": Color(0.5, 1.0, 0.4)}},         # 1.5 m, hunched
 	"dwarf": {"mesh": "dwarf", "name": "Drunken Dwarf", "rig": "humanoid", "life": 340, "dmg": [16, 26], "speed": 3.9, "range": 1.8, "xp": 260,
 		"ai": "melee", "atk": "smash", "atk_time": 1.1, "armor": 18, "radius": 0.55, "blood": Color(0.5, 0.02, 0.02),

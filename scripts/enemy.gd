@@ -644,15 +644,13 @@ func special_fx(ev: String) -> void:
 			# (scaled by its body: the bear is radius 1; the tyrant's jaws reach far further)
 			Fx.telegraph(game.world.fx_root, global_position - rig.global_transform.basis.z * 1.6 * radius, 1.9 * radius, atk_dur * Anim.impact_at("bear_maul"), Color(0.6, 1.0, 0.4))
 		"bear_roar":
-			# each roarer its own voice; a boss with an "intro" introduces itself (BossCard, on every game it reaches)
+			# each roarer its own voice
 			if kind == "trex":
 				Sfx.play_at("trex_roar", global_position + Vector3(0, 4.0, 0), 2.0, randf_range(0.95, 1.02))
 			elif kind in ["trike", "trike_baby"]:
 				Sfx.play_at("trike_bellow", global_position + Vector3(0, 2.0, 0), 0.0, 1.6 if kind == "trike_baby" else randf_range(0.95, 1.05))
 			else:
 				Bear.sound("bear_roar", global_position + Vector3(0, 2.0, 0))
-			if def.has("intro") and is_instance_valid(game.hero) and game.hero.global_position.distance_to(global_position) < 34.0:
-				BossCard.play(game, self)
 			Fx.burst(game.world.fx_root, global_position + Vector3(0, 2.4, 0) - rig.global_transform.basis.z * 0.9, Color(0.75, 0.8, 0.75, 0.35), 18, 1.6, 0.35, 0.9, false, 0.4, 35.0, -rig.global_transform.basis.z)
 			if game.hero.global_position.distance_to(global_position) < 16.0:
 				game.add_shake(0.25)

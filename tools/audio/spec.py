@@ -242,8 +242,6 @@ SPEC = [
          prompt="a triceratops' deep honking bellow, a huge horned herbivore giving an angry warning call" + DRY),
     dict(name="troll_cast", src="eleven", n=3, dur=1.0, hit=0.3, label="a creature hissing and spitting",
          prompt="a jungle troll shaman's guttural hissing chant ending in a wet spit of poison" + DRY),
-    dict(name="boss_sting", src="eleven", n=3, dur=2.0, hit=0, label="a dramatic cinematic impact",
-         prompt="a punchy cinematic boss reveal stinger for an action game, a huge bass impact, a fast whoosh and a ringing metallic hit" + DRY),
     dict(name="dwarf_burp", src="eleven", n=3, dur=1.2, hit=0, label="a loud burp",
          prompt="a loud long drunken belch from a burly dwarf, comedic" + DRY),
     dict(name="lion_roar", src="eleven", n=4, dur=2.5, hit=0, label="a lion roaring",
