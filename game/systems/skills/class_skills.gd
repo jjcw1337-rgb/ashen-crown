@@ -29,14 +29,14 @@ static func of(cls: String):
 		"warlock": return WarlockSkills
 		"archer": return Archer
 		"plague": return Plague
-		"doug": return DougSkills
+		"doug": return Doug
 		"wyrm", "serpent", "wyvern": return DragonSkills
 		"any": return SharedSkills       # the shared skills (Data.SKILLS "cls": "any")
 	return null
 
 ## Every class's skills script (update/clear/died run on all of them: each looks after its own state).
 static func all() -> Array:
-	return [KnightSkills, WraithSkills, DemonSkills, WarlockSkills, Archer, Plague, DougSkills, DragonSkills, SharedSkills]
+	return [KnightSkills, WraithSkills, DemonSkills, WarlockSkills, Archer, Plague, Doug, DragonSkills, SharedSkills]
 
 ## The class a skill id belongs to ("any" for the common Attack and Block).
 static func owner(id: String) -> String:
@@ -123,6 +123,11 @@ static func reach(h: Hero) -> float:
 static func pace(h: Hero) -> float:
 	var m = of(h.cls)
 	return float(m.pace(h)) if m != null and m.has_method("pace") else 1.0
+
+## A skill of its makes the hero shrug off stuns and slows right now (Doug in his clown car): Hero.take_hit.
+static func unstoppable(h: Hero) -> bool:
+	var m = of(h.cls)
+	return m != null and m.has_method("unstoppable") and bool(m.unstoppable(h))
 
 ## Its pace while attacking, times the usual (-1: everyone's slight slowing mid-swing).
 static func attack_pace(h: Hero) -> float:

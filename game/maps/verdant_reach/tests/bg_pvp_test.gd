@@ -8,8 +8,10 @@ extends SceneTree
 ## b's gear drops, the server announces who killed whom, and a picks b's things up. Both raid as run characters
 ## (RunBuild, the multiplayer overhaul: fresh at level 0, each given its class's first skill here); b's saved
 ## character is untouched by the fall. Fallen, b spectates a (the camera on a) until a leaves, then leaves the crypt.
-## With "doug" after the port on both players' lines, a plays Doug: his first skill is the Cream Pie, and b checks it
-## was Pied by it (the crowd control crossing to another player: DougSkills._cc -> Net.send_pvp_effect).
+## With "doug" after the port on both players' lines, a plays Doug: his first skill is the Cream Pie, then he
+## bounces onto b (Big Top Bounce), and b checks it was Pied, then launched (the crowd control crossing to another
+## player: Doug.cc -> Net.send_pvp_effect). His skills run on the server (ServerRules), as the Archer's do: the server
+## checks it made the pie and the flop; a checks its own game holds no pie.
 ## With "archer" instead, a plays the Archer and drops Thunderstep's sigil on b, and b checks it was stunned for its
 ## three seconds (Thunderstep -> PvpStatus "stagger" -> the server -> b). His skills, his wolf and his rites run on
 ## the server (ServerRules): the server checks it made them; a checks its own game holds none.
@@ -104,6 +106,10 @@ func _server() -> void:
 		check(await until(func(): return ServerRules.made_count >= 2, 30.0), "the Plague Doctor's skills ran here: the server made his vials (%d)" % ServerRules.made_count)
 		var doc = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "plague")
 		check(not doc.is_empty() and doc[0].decides() and await until(func(): return _poisons_player(doc[0]), 20.0), "his pool's poison is on the other player's stand-in here (his rules: Hero.decides)")
+	if OS.get_cmdline_user_args().has("doug"):
+		check(await until(func(): return ServerRules.made_count >= 2, 30.0), "Doug's skills ran here: the server made his pie and his belly-flop (%d)" % ServerRules.made_count)
+		var dougs = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "doug")
+		check(not dougs.is_empty() and dougs[0].decides(), "and his hits and rites are decided here (Hero.decides)")
 	check(await until(func(): return g.bg.died_items.size() > 0, 60.0), "and killed them: their body dropped its gear")
 	await until(func(): return g.net.players.is_empty(), 90.0)
 
@@ -158,10 +164,7 @@ func _player() -> void:
 			g.net.send_chat("spam %d" % i, false)
 		await create_timer(1.5).timeout
 		check(chat._lines.filter(func(l): return (l[0] as RichTextLabel).text.contains("spam")).size() <= 3, "a flood is cut")
-	else:
-		check(await until(func(): return chat._lines.any(func(l): return (l[0] as RichTextLabel).text.contains("hello from a")), 15.0), "b reads a's line")
-		await create_timer(1.0).timeout
-		check(not chat._lines.any(func(l): return (l[0] as RichTextLabel).text.contains("just my team")), "a's team line doesn't reach a foe")
+	# (b reads the chat after the fight: waiting on it here would miss a short crowd control landing meanwhile)
 	if role == "a":
 		g.test_immortal = true
 		var foe = g.net.puppets()[0]
@@ -225,6 +228,20 @@ func _player() -> void:
 				"my game keeps no vial, pool or poison of its own: the server's copy of me deals them")
 			check(not (g.hero.get_meta("plague_fx", {}) as Dictionary).get("pools", []).is_empty(), "and it shows its pool")
 			await secs(2.5)
+		if doug:
+			# the pie leaves my hands on its impact frame and is in the air on the server's copy of me
+			await secs(0.6)
+			var pie = g.hero.kit.get("pie")      # (his classes aren't named here: this script compiles before the Sfx autoload)
+			check(pie != null and pie.pies.is_empty() and not g.hero.decides(), "my game keeps no pie of its own: the server's copy of me throws it")
+			await secs(1.0)
+			# Big Top Bounce onto them: the server's copy of me lands the belly-flop
+			g.test_allskills = true
+			g.hero.mana = g.hero.max_mana
+			g.hero.cds.erase("bounce")
+			g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(5.0, 0, 0), 0.5)
+			await secs(0.6)      # (the server hears where I am before I leap: it checks the landing against it)
+			check(g.hero.use_skill("bounce", foe.global_position), "Big Top Bounce onto them")
+			await secs(1.6)
 		var life_seen: Array = []
 		for i in 60:
 			if not is_instance_valid(foe) or foe.dead:
@@ -262,6 +279,8 @@ func _player() -> void:
 		var l0: float = g.hero.max_life
 		if doug:
 			check(await until(func(): return g.hero.pied_t > 0.0, 60.0), "Doug's cream pie Pied me (through the server)")
+			check(await until(func(): return SkillFx.aimed_at_me > 0, 10.0), "and its splat was aimed at me on my screen (%d effects)" % SkillFx.aimed_at_me)
+			check(await until(func(): return g.hero.daze_t > 0.0, 30.0), "his Big Top Bounce launched me through the server (%.1f s)" % g.hero.daze_t)
 		if archer:
 			check(await until(func(): return g.hero.daze_t > 2.0, 60.0), "Thunderstep stunned me through the server (%.1f s)" % g.hero.daze_t)
 			check(await until(func(): return SkillFx.aimed_at_me > 0, 10.0), "and its blast was aimed at me on my screen (%d effects)" % SkillFx.aimed_at_me)
@@ -290,6 +309,8 @@ func _player() -> void:
 		var inv: Array = (h.get("inventory", []) as Array).filter(func(x): return x != null)
 		check(int(h.get("level", 0)) == 8 and inv.size() == inv_saved, "my saved character is untouched by the fall (level 8, %d items)" % inv.size())
 		check(g.net.fx_got > 0, "I saw the other player's skill effects (%d events, through the server)" % g.net.fx_got)
+		check(chat._lines.any(func(l): return (l[0] as RichTextLabel).text.contains("hello from a")), "b read a's line")
+		check(not chat._lines.any(func(l): return (l[0] as RichTextLabel).text.contains("just my team")), "a's team line didn't reach a foe")
 	g.net.shutdown()
 	await secs(1.0)
 

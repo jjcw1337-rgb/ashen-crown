@@ -1,7 +1,7 @@
-# Builds Doug's mocap body (assets/models/doug.glb; ): the Meshy auto-rigged clown (24-bone
+# Builds Doug's mocap body (game/heroes/doug/body/doug.glb): the Meshy auto-rigged clown (24-bone
 # humanoid, like the knight's, the ranger's and the plague doctor's) with Meshy library clips merged onto its one
 # armature, decimated to a game budget and exported as one glb whose AnimationPlayer holds every clip by a clean
-# name. The drumstick is a separate prop (assets/models/doug/drumstick.glb), held in the grip.
+# name. The drumstick is a separate prop (game/heroes/doug/weapon/drumstick.glb), held in the grip.
 #   blender -b --python prep_doug_mocap.py -- <rigged.glb> <out.glb> <tris> clips_a.glb clips_b.glb clips_c.glb
 # Source tasks (Meshy): concept edit of Blaine's reference (doug_edit_1), image-to-3D 01a19a93-25ea-74fb-b108-43f4aa6e6d30,
 # rig 01a19aba-b3af-76f3-9a9c-2299e32c2822; clips 0,30,14,16,12,559 / 421,239,516,397,506,384 / 219,97,128,88,42,59,174,184

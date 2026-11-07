@@ -1,14 +1,12 @@
-class_name Doug
+class_name DougBody
 extends RefCounted
-## Doug (Blaine's tier-1 character and the pilot of the character workflow): the stubby
-## circus brawler. His body is the Meshy clown (concept from Blaine's reference, image-to-3D, Meshy auto-rig and
-## library clips merged by tools/blender/doug/prep_doug_mocap.py into assets/models/doug.glb) on the knight's mocap
-## system, like the ranger and the plague doctor; without the glb, the knight's procedural body. His skills are
-## doug_skills.gd (DougSkills), their effects doug_fx.gd (DougFx); his props are Meshy pieces in assets/models/doug/.
+## Doug's body and the drumstick in his hand (Hero builds him; nothing here is a rule). His body is the Meshy clown
+## (concept from Blaine's reference, image-to-3D, Meshy auto-rig and library clips merged by
+## game/heroes/doug/build/prep_doug_mocap.py into body/doug.glb) on the knight's mocap system, like the ranger and
+## the plague doctor; without the glb, the knight's procedural body. His drumstick is a Meshy prop (weapon/).
 
-const GLB := "res://assets/models/doug.glb"
-const PROP_DIR := "res://assets/models/doug/%s.glb"
-const ACCENT := Color(1.0, 0.82, 0.2)          # his colour: the suit's mustard yellow
+const GLB := "res://game/heroes/doug/body/doug.glb"
+const DRUMSTICK := "res://game/heroes/doug/weapon/drumstick.glb"
 const HEIGHT := 1.25
 
 ## Whole-body clips per attack style (Knight.build_mocap "acts"): style -> clip, and the attack's progress mapped to
@@ -32,22 +30,10 @@ const ACTS := {
 	"car": {"clip": "taunt", "frac": true, "keys": [[0.0, 0.0], [1.0, 1.0]]},
 }
 
-## His skills' attack styles (no weapon trail on a throw or a trick; partners see the style, not the skill)
-const SKILL_STYLES := ["pie", "peels", "slide", "doppel", "juggle", "bounce", "car"]
-
-static var _props := {}
-
 static func model_ok() -> bool:
 	return ResourceLoader.exists(GLB)
 
-static func prop(name: String) -> Node3D:
-	if not _props.has(name):
-		var path := PROP_DIR % name
-		_props[name] = load(path) if ResourceLoader.exists(path) else null
-	var ps: PackedScene = _props[name]
-	return ps.instantiate() if ps else null
-
-static func build_body() -> Node3D:
+static func build() -> Node3D:
 	if not model_ok():
 		var k := Knight.build(Knight.default_gear())
 		k.set_meta("doug", true)
@@ -65,7 +51,7 @@ static func build_body() -> Node3D:
 ## The roast drumstick he fights with (a Meshy prop; held like a club).
 static func drumstick_model() -> Node3D:
 	var root := Node3D.new()
-	var m := prop("drumstick")
+	var m := ResCache.inst(DRUMSTICK) as Node3D
 	if m != null:
 		m.rotation_degrees = Vector3(90, 0, 0)
 		root.add_child(m)

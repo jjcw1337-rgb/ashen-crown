@@ -199,8 +199,9 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
 
 ## Status
 
-- [ ] 1. Folders: the Archer (`87bae1f`) and the Plague Doctor (`8550926`) are done. Next: the Wraith, Demon, Warlock,
-  Doug, the dragons and the Knight. The Knight's body builder goes to `game/systems/bodies/`. Shared systems out of
+- [ ] 1. Folders: the Archer (`87bae1f`), the Plague Doctor (`8550926`) and Doug (on the Archer's template, every
+  skill an object in its folder) are done. Next: the Wraith, Demon, Warlock, the dragons and the Knight. The Knight's
+  body builder goes to `game/systems/bodies/`. Shared systems out of
   `scripts/` (2026-11-07): `game/systems/fx/`, `bodies/`, `audio/`, `combat/`, `skills/`, `data/` and `game/items/`.
   Left in `scripts/`: the big shared files (`game.gd`, `hero.gd`, `net.gd`, `enemy.gd`, `ui.gd`), the net stack,
   the screens, the world and loading (Claude-1's), and the heroes not moved yet. A skill's own sounds live in its
@@ -218,7 +219,8 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
 - [ ] 3. Reference recordings: every hero's skills on still dummies (`tools/hero_reference.gd`,
   `tools/references/<class>.json`). Left: the PvP pair through a real server, and a combat log.
 - [ ] 4. Damage and effect system. Done: the Archer's skills, wolf and rites run on the match server
-  (`game/systems/skills/server_rules.gd`, deployed to staging 2026-11-07). In progress: the Plague Doctor and the
+  (`game/systems/skills/server_rules.gd`, deployed to staging 2026-11-07); Doug's skills too (not deployed; his plain
+  drumstick swing is Hero's, every melee hero's, still his own game's). In progress: the Plague Doctor and the
   Warlock. Left: the other heroes; then the server refuses damage a server-run hero's game sends (its consumables and
   thorns go through the server first); then the gameplay core.
 - [ ] 5. One data source

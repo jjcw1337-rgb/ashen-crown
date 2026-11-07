@@ -538,7 +538,7 @@ func _skills(h) -> void:
 	check(ok and crowd.all(func(e): return e.life < e.max_life), "Pie Barrage: a pie for every foe round the pointer")
 	await _fresh(h, "doug", {})
 	ok = await _cast(h, "u_bonanza", h.global_position, 1.2)
-	var peels_n: int = (h.get_meta("doug")["peels"] as Array).size()
+	var peels_n: int = (load("res://game/heroes/doug/doug.gd").skill(h, "peels").peels as Array).size()
 	check(ok and peels_n >= 8, "Banana Bonanza: a ring of eight peels (%d)" % peels_n)
 	await _fresh(h, "doug", {})
 	var far = _foe(h, Vector3(11, 0, 0), "zombie", 5000.0)

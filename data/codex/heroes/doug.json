@@ -35,7 +35,16 @@
 				"projectile",
 				"attack"
 			],
-			"lvl": 1
+			"lvl": 1,
+			"k": {
+				"dmg": 120,
+				"flight": 0.45,
+				"radius": 1.4,
+				"pied_s": 2,
+				"slow": 50,
+				"stun_s": 0.4,
+				"lock_s": 6
+			}
 		},
 		{
 			"id": "peels",
@@ -51,7 +60,17 @@
 			"tags": [
 				"trap"
 			],
-			"lvl": 2
+			"lvl": 2,
+			"k": {
+				"peels": 3,
+				"spread": 25,
+				"near": 3,
+				"far": 6,
+				"life_s": 8,
+				"most": 6,
+				"radius": 0.7,
+				"slip_s": 1
+			}
 		},
 		{
 			"id": "slide",
@@ -67,7 +86,13 @@
 			"tags": [
 				"movement"
 			],
-			"lvl": 4
+			"lvl": 4,
+			"k": {
+				"dmg": 90,
+				"len": 7,
+				"radius": 1.3,
+				"knock": 3
+			}
 		},
 		{
 			"id": "doppel",
@@ -84,7 +109,16 @@
 				"buff",
 				"summon"
 			],
-			"lvl": 7
+			"lvl": 7,
+			"k": {
+				"hide_s": 1.8,
+				"double_s": 3,
+				"speed": 4.2,
+				"touch": 1.4,
+				"pop_r": 3,
+				"slow": 45,
+				"slow_s": 1.5
+			}
 		},
 		{
 			"id": "juggle",
@@ -101,7 +135,15 @@
 				"projectile",
 				"fire"
 			],
-			"lvl": 10
+			"lvl": 10,
+			"k": {
+				"dmg": 60,
+				"pins": 5,
+				"gap": 0.14,
+				"bounces": 2,
+				"reach": 3.5,
+				"bounce_r": 6
+			}
 		},
 		{
 			"id": "bounce",
@@ -118,7 +160,13 @@
 				"movement",
 				"cc"
 			],
-			"lvl": 14
+			"lvl": 14,
+			"k": {
+				"dmg": 180,
+				"radius": 3,
+				"knock": 2,
+				"stun_s": 0.8
+			}
 		},
 		{
 			"id": "car",
@@ -133,7 +181,18 @@
 			"tags": [
 				"ultimate"
 			],
-			"lvl": 20
+			"lvl": 20,
+			"k": {
+				"drive_s": 5,
+				"speed": 2.3,
+				"dmg": 140,
+				"knock": 4,
+				"ram_r": 1.6,
+				"ram_gap": 0.8,
+				"minis": 6,
+				"mini_dmg": 80,
+				"mini_r": 12
+			}
 		},
 		{
 			"id": "u_barrage",
@@ -148,7 +207,15 @@
 			"range": 12.0,
 			"role": "pie a crowd",
 			"lvl": 1,
-			"run": true
+			"run": true,
+			"k": {
+				"dmg": 80,
+				"pies": 6,
+				"radius": 5,
+				"spread_min": 1,
+				"spread_max": 3.5,
+				"gap": 0.05
+			}
 		},
 		{
 			"id": "u_bonanza",
@@ -164,7 +231,12 @@
 				"trap"
 			],
 			"lvl": 9,
-			"run": true
+			"run": true,
+			"k": {
+				"peels": 8,
+				"ring": 3.2,
+				"slipped_s": 4
+			}
 		},
 		{
 			"id": "u_cannon",
@@ -181,7 +253,13 @@
 				"movement"
 			],
 			"lvl": 9,
-			"run": true
+			"run": true,
+			"k": {
+				"dmg": 260,
+				"radius": 4.5,
+				"knock": 2.4,
+				"stun_s": 1
+			}
 		}
 	],
 	"rites": [
