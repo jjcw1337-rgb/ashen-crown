@@ -16,29 +16,19 @@ extends RefCounted
 ## A class whose skills are objects (Skill, game/systems/skills/skill.gd: one per skill id in Hero.kit) has them run
 ## here once, whatever the class: their update, rooted, died and clear go with the calls above.
 ##
-## Adding a class: write `scripts/<class>_skills.gd` with those functions (start from
-## `tools/templates/new_class_skills.gd`) and add it to `of` and `all` below. Its effects go in `<Class>Fx.play`
-## (SkillFx), its numbers and text in its codex file. See docs/content/heroes.md.
+## Adding a class: its folder and kit script (game/heroes/<hero>/, the Archer's is the example) and one line in the
+## hero registry (Heroes, game/heroes/heroes.gd). Its effects go in its look script, its numbers and text in its codex
+## file. See docs/content/heroes.md.
 
-## The skills script for a class, or null. ADD NEW CLASSES HERE (and in `all`).
+## The skills script for a class (its kit, from the hero registry), or null.
 static func of(cls: String):
-	match cls:
-		"knight": return KnightSkills
-		"wraith": return Wraith
-		"demon": return Demon
-		"warlock": return WarlockSkills
-		"archer": return Archer
-		"plague": return Plague
-		"doug": return Doug
-		"wyrm": return Wyrm
-		"serpent": return Serpent
-		"wyvern": return Wyvern
-		"any": return SharedSkills       # the shared skills (Data.SKILLS "cls": "any")
-	return null
+	if cls == "any":
+		return SharedSkills       # the shared skills (Data.SKILLS "cls": "any")
+	return Heroes.kit(cls)
 
 ## Every class's skills script (update/clear/died run on all of them: each looks after its own state).
 static func all() -> Array:
-	return [KnightSkills, Wraith, Demon, WarlockSkills, Archer, Plague, Doug, Wyrm, Serpent, Wyvern, SharedSkills]
+	return Heroes.kits() + [SharedSkills]
 
 ## The class a skill id belongs to ("any" for the common Attack and Block).
 static func owner(id: String) -> String:
