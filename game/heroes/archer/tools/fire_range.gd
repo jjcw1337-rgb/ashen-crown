@@ -244,7 +244,7 @@ func _take(out: String, mode: String, lane: String, sk: String, take: String, ca
 			h.direct_dir = Vector3.RIGHT if f < frames - int(0.6 * fps) else Vector3.ZERO
 		if f == cast_at:
 			if sk == "roll":
-				load("res://scripts/dodge.gd").start(h, Vector3.RIGHT)
+				load("res://game/systems/skills/dodge.gd").start(h, Vector3.RIGHT)
 			elif sk != "block":
 				h.use_skill(sk, h.skill_aim(sk, aim))
 		# "block": the guard held for 1.6 s from the cast, then let go

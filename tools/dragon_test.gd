@@ -78,7 +78,7 @@ func _run() -> void:
 			apart = false
 	check(apart, "no two dragons stand side by side in the ring %s" % str(ring))
 	# the bank read from its script (the Sfx autoload isn't known while a -s tool compiles)
-	var bank: Dictionary = load("res://scripts/sfx_bank.gd").BANK
+	var bank: Dictionary = load("res://game/systems/audio/sfx_bank.gd").BANK
 	for c in KINDS:
 		for s in ["_step", "_claw", "_bite", "_tail", "_roar"]:
 			check(bank.has(c + s), "sound %s%s in the bank" % [c, s])

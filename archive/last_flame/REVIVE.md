@@ -26,9 +26,9 @@ it removed every one of them (`git log -- archive/last_flame`, then `git show` t
   - the death respawn (`Vigil.respawn_at`).
 - `scripts/net.gd`: `vigil_state`/`cl_vigil`, `vigil_event`/`cl_vigil_fx`, `request_vigil`/`sv_vigil`,
   `vigil_feed`/`sv_vigil_feed`, `vigil_hi`/`sv_vigil_hi`.
-- `scripts/projectile.gd`: a projectile hits nodes in the `objective` group (the flame).
+- `game/systems/combat/projectile.gd`: a projectile hits nodes in the `objective` group (the flame).
 - `scripts/monster_warm.gd`: warm the waves' monsters (`Vigil.WAVES`).
-- `scripts/data.gd` `WAYPOINT_ACTIVITIES`: the `vigil` entry.
+- `game/systems/data/data.gd` `WAYPOINT_ACTIVITIES`: the `vigil` entry.
 - `scripts/mp_mode.gd`: `WAVES` and the solo label; `scripts/lobby_client.gd` `play_solo_waves`;
   `scripts/match_instance.gd`: the `waves` mode (`begin`, finished when the flame is `lost`); the lobby service's
   `waves` mode (`deploy/lobbies/service.py`, removed earlier).

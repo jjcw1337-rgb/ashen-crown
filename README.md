@@ -79,7 +79,7 @@ has access to the private `ashen-crown-staging` page, and install it. The app up
 | `scripts/game.gd` | Boot, zones, camera, input, saving |
 | `scripts/world.gd` | Map building: terrain, paths, props, chests |
 | `scripts/hero.gd`, `enemy.gd` | Players and monsters |
-| `scripts/run_build.gd`, `run_talents.gd`, `run_ui.gd` | A run's hero, its rites, gems and consumables, and its windows |
+| `game/items/run_build.gd`, `run_talents.gd`, `run_ui.gd` | A run's hero, its rites, gems and consumables, and its windows |
 | `scripts/<class>_skills.gd`, `*_fx.gd` | Each class's skills and their effects |
 | `scripts/net.gd`, `lobby_client.gd` | Networking and the lobby browser |
 | `data/codex/` | Skills, rites, gems and consumables as data |

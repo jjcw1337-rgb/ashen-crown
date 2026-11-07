@@ -28,7 +28,7 @@ func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
 	CA = load("res://game/maps/verdant_reach/camps.gd")
-	RB = load("res://scripts/run_build.gd")
+	RB = load("res://game/items/run_build.gd")
 	SV = load("res://scripts/survivors.gd")
 	_run()
 
@@ -53,7 +53,7 @@ func _run() -> void:
 	var h = g.hero
 	h.set_class(cls)
 	h.start_run()
-	g.char_name = load("res://scripts/data.gd").CLASSES[cls]["name"]
+	g.char_name = load("res://game/systems/data/data.gd").CLASSES[cls]["name"]
 	g.bg_mode = true
 	await g.load_zone(0, "bg", "start")
 	await secs(1.0)
@@ -135,7 +135,7 @@ func _run() -> void:
 			if theme != "" and theme != "random" and chosen["kind"] == "skill" and str(chosen.get("theme", "")) == theme and not RB.SLOTS.any(func(sl): return h.bound(sl) == chosen["id"]):
 				for sl in RB.SLOTS:
 					var cur: String = h.bound(sl)
-					if str(load("res://scripts/run_talents.gd").SKILL_THEMES.get(cur, "")) != theme:
+					if str(load("res://game/items/run_talents.gd").SKILL_THEMES.get(cur, "")) != theme:
 						h.bind(sl, chosen["id"])
 						break
 		await secs(0.2)
@@ -156,7 +156,7 @@ func _run() -> void:
 	var can_learn: int = RB.skill_pool(cls).size()
 	check(slotted == mini(5, can_learn) and (skills >= mini(6, can_learn) or theme == "random"), "five slotted, the rest in the spellbook (%d of %d learned)" % [skills, can_learn])
 	check(falls == 0, "no falls (%d)" % falls)
-	var wk := str(load("res://scripts/data.gd").BASES[h.equipment["weapon"]["base"]].get("cls", ""))
+	var wk := str(load("res://game/systems/data/data.gd").BASES[h.equipment["weapon"]["base"]].get("cls", ""))
 	check(wk == cls or not RB.has_own_weapons(cls), "still fighting with its own weapon kind (%s)" % h.equipment["weapon"]["name"])
 	# survive and save
 	var want := {"level": h.level, "skills": h.run.skills.duplicate(), "passives": h.run.passives.duplicate()}
@@ -213,7 +213,7 @@ func _loot(before: int) -> String:
 func _better(a: Dictionary, b) -> bool:
 	if b == null:
 		return true
-	var I = load("res://scripts/items.gd")
+	var I = load("res://game/items/items.gd")
 	if a.has("dmg") and b.has("dmg"):
 		var da: Array = I.damage_of(a)
 		var db: Array = I.damage_of(b)

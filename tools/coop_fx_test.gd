@@ -112,7 +112,7 @@ func _run() -> void:
 			if run_only:
 				# a run's skill (Data.RUN_SKILLS): only a run character has it; give him a run with it learned
 				if h.run == null:
-					h.run = load("res://scripts/run_build.gd").new()
+					h.run = load("res://game/items/run_build.gd").new()
 				if not h.run.skills.has(id):
 					h.run.skills.append(id)
 			var ok: bool = h.use_skill(id, h.skill_aim(id, en[1].global_position))
@@ -183,7 +183,7 @@ func _run() -> void:
 		await wait(0.6)
 		var rolled := false
 		var tumble := 0.0
-		if load("res://scripts/dodge.gd").start(h, Vector3(1, 0, 0)):
+		if load("res://game/systems/skills/dodge.gd").start(h, Vector3(1, 0, 0)):
 			var t0 := Time.get_ticks_msec()
 			while Time.get_ticks_msec() - t0 < 450:
 				await process_frame

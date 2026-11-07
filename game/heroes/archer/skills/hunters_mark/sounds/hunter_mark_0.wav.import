@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://d1cpngei4tnul"
-path="res://.godot/imported/hunter_mark_0.wav-ec588d9a0b4d7388719dd9f0c2e566e6.sample"
+path="res://.godot/imported/hunter_mark_0.wav-12d65dfbc25d4087b327c880d363840f.sample"
 
 [deps]
 
-source_file="res://assets/audio/sfx/hunter_mark_0.wav"
-dest_files=["res://.godot/imported/hunter_mark_0.wav-ec588d9a0b4d7388719dd9f0c2e566e6.sample"]
+source_file="res://game/heroes/archer/skills/hunters_mark/sounds/hunter_mark_0.wav"
+dest_files=["res://.godot/imported/hunter_mark_0.wav-12d65dfbc25d4087b327c880d363840f.sample"]
 
 [params]
 

@@ -13,8 +13,8 @@ var TL
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
-	RB = load("res://scripts/run_build.gd")
-	TL = load("res://scripts/talents.gd")
+	RB = load("res://game/items/run_build.gd")
+	TL = load("res://game/items/talents.gd")
 	_run()
 
 func check(ok: bool, what: String) -> void:
@@ -72,7 +72,7 @@ func _class_run(h, cls: String) -> void:
 	var took: Dictionary = g.run_claim("camp_a", si)
 	check(not took.is_empty() and r.skills.has(took["id"]) and h.bound("rmb") == took["id"], "%s: the chosen skill goes onto the first slot (%s)" % [cls, took.get("id", "")])
 	check(g.run_claim("camp_a", 0).is_empty(), "%s: a claimed offer can't be claimed again" % cls)
-	check(not h.skill_locked(load("res://scripts/data.gd").skill_def(took["id"])), "%s: an acquired skill is unlocked" % cls)
+	check(not h.skill_locked(load("res://game/systems/data/data.gd").skill_def(took["id"])), "%s: an acquired skill is unlocked" % cls)
 	# fill slots and overflow into the spellbook
 	var pool: Array = RB.skill_pool(cls).map(func(s): return str(s["id"])).filter(func(id): return not r.skills.has(id))
 	for id in pool.slice(0, 6):
@@ -118,26 +118,26 @@ func _class_run(h, cls: String) -> void:
 	h.belt = [null, null, null, null]
 	var taken := 0
 	for i in 30:
-		var pot: Dictionary = load("res://scripts/items.gd").potion("hp_potion")
+		var pot: Dictionary = load("res://game/items/items.gd").potion("hp_potion")
 		if h.add_to_inventory(pot):
 			taken += 1
 	check(taken == RB.BELT * RB.STACK, "%s: the belt holds %d potions (4 × 5)" % [cls, taken])
-	check(not h.add_to_inventory(load("res://scripts/items.gd").gold(50)) and h.gold == 0, "%s: gold isn't taken" % cls)
-	check(not h.add_to_inventory(load("res://scripts/items.gd").make("ring")), "%s: a ring isn't taken" % cls)
+	check(not h.add_to_inventory(load("res://game/items/items.gd").gold(50)) and h.gold == 0, "%s: gold isn't taken" % cls)
+	check(not h.add_to_inventory(load("res://game/items/items.gd").make("ring")), "%s: a ring isn't taken" % cls)
 	# gear: a found weapon of the class swaps, the old one dropped on the ground
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
-	var w: Dictionary = load("res://scripts/items.gd").generate(RB.weapon_base(cls, 13, rng), 13, 2, rng)
+	var w: Dictionary = load("res://game/items/items.gd").generate(RB.weapon_base(cls, 13, rng), 13, 2, rng)
 	w["req"] = 0
 	var old = h.equipment["weapon"]
 	var on_ground: int = g.world.items_root.get_child_count()
 	g._run_wear(w)
 	await process_frame
 	check(h.equipment["weapon"] == w and g.world.items_root.get_child_count() == on_ground + 1, "%s: a better weapon is worn and the old one left on the ground" % cls)
-	check(RB.wearable(w, cls) and not RB.wearable(load("res://scripts/items.gd").make("buckler"), cls), "%s: only its own gear is wearable" % cls)
-	check(not RB.wearable(load("res://scripts/items.gd").make("war_axe"), cls), "%s: no general weapon in place of its own kind" % cls)
+	check(RB.wearable(w, cls) and not RB.wearable(load("res://game/items/items.gd").make("buckler"), cls), "%s: only its own gear is wearable" % cls)
+	check(not RB.wearable(load("res://game/items/items.gd").make("war_axe"), cls), "%s: no general weapon in place of its own kind" % cls)
 	var gear: Dictionary = RB.random_gear(3, rng, [cls])
-	check(str(load("res://scripts/data.gd").BASES[gear["base"]]["slot"]) in RB.GEAR, "%s: run loot is gear for the run's slots (%s)" % [cls, gear["base"]])
+	check(str(load("res://game/systems/data/data.gd").BASES[gear["base"]]["slot"]) in RB.GEAR, "%s: run loot is gear for the run's slots (%s)" % [cls, gear["base"]])
 	# save and load
 	var d: Dictionary = h.to_save()
 	var skills_before: Array = r.skills.duplicate()

@@ -1,7 +1,7 @@
 # Hero Codex editor
 
 A web editor over `data/codex/`. These are the JSON files the game loads its heroes' skills, rites, gems and
-consumables from (`scripts/codex.gd`). Standard-library Python only.
+consumables from (`game/systems/data/codex.gd`). Standard-library Python only.
 
 ```
 python3 tools/codex/server.py --port 8765            # http://127.0.0.1:8765/?key=<link key>
