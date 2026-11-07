@@ -187,11 +187,8 @@ Do one old system per push.
 ### What the live game still borrows
 
 Known borrowings (2026-11-06; check again with `git grep` before each cut):
-- **Monsters:** the forest camps use Act I monsters (zombies, the three Fallen, the Feral, the bear, the goblin
-  guard).
-  - All of them are built on `Goblin.imported_rig` (`goblin.gd`, King Grubb's file). It goes to `game/systems/bodies/`.
-  - The Poison Mushroom's body is the forest's `props/fungus` (`Enemy`, its `"prop"`).
-- **The archer's wolf** runs on `lion.gd` (the arena lion's skeleton and pose).
+- **Monsters:** the Poison Mushroom's body is the forest's `props/fungus` (its card, `mossbeard/monster.gd`).
+- **The archer's wolf** runs on `lion.gd` (the arena lion's skeleton and pose); the lion's card covers `spirit_beast`.
 - **Every camp chest** is built by `World._chest` (`world.gd`).
 
 ## Status
@@ -226,7 +223,14 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
 - [x] The old crypt Battlegrounds cut (its map, floors below, antechamber gates, bells, stash daises and the stash's
   slow); its models in `archive/hollow_crypt/`. The old raid page, server screen, raids on the clock and the
   waypoint's walk down go too: the lobby browser is the only way in (2026-11-06).
-- [ ] Monsters into `game/monsters/<monster>/`: done: Hrimgar and Old Mossbeard (on a shared `BossBrain`).
+- [x] Monsters into `game/monsters/<monster>/` (2026-11-07). Every folder has a card (`monster.gd`) listed in
+  `Monsters.CARDS`: its kinds, its Meshy rigs, its personality and its own hooks (body, brain, moves, fx, fall).
+  `Enemy` names no monster. Bosses run on `BossBrain`; the Meshy body builder is `game/systems/bodies/meshy_rig.gd`.
+  A monster's own sounds are in its `sounds/`. Left: its numbers into the codex (step 5); `Enemy` itself is still in
+  `scripts/` (a shared big file).
+- [x] Maps: the map registry `game/maps/maps.gd` (2026-11-07). Each map script declares its zones, indoor, music,
+  loading art and line, `build`, `title` and `light`, and Game and World ask `Maps`. The camp rules are
+  `game/systems/world/camps.gd`.
 - [x] The Last Flame archived whole: `archive/last_flame/` with its REVIVE.md (2026-11-06).
 - [x] Sailing archived whole: the ocean, boats, coast, five islands, Osric and their models and sounds in
   `archive/sailing/` with its REVIVE.md; the waypoint's coast and islands and the camp's way to the coast go
