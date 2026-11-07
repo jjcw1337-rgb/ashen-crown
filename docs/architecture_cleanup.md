@@ -103,6 +103,8 @@ Each step is done for the Archer first, all the way through, and the other heroe
    `talents.gd` go, and then so do `code_base.json` and the three-way merge.
 6. **Real ids** (`pierce` → `fire_arrow`) everywhere at once, with aliases for saved survivors. Ids travel over the
    network, so the server deploy and the clients ship together.
+7. **Upgrade Godot** from 4.4.1 to the current release (Blaine and JJ, 2026-11-07), last, once the migration is done:
+   on a `test-` branch first, with the full test set, the server export and GodotSteam checked before switching.
 
 Cuts run alongside: the old crypt, the old Warlock (the gnome body and the four-skill kit), the story mode (Act I's
 moor and fort, Act II, Act III), the co-op server, plus archiving sailing, the Last Flame and the starting camp.
@@ -223,6 +225,7 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
   thorns go through the server first); then the gameplay core.
 - [ ] 5. One data source
 - [ ] 6. Real ids
+- [ ] 7. Upgrade Godot
 - [x] `concepts/` removed (2026-11-06)
 - [x] Docs by concept: one root `AGENTS.md`, and a doc per piece of content, system and pipeline (2026-11-06)
 - [x] The old crypt Battlegrounds cut (its map, floors below, antechamber gates, bells, stash daises and the stash's
