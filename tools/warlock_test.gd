@@ -15,7 +15,7 @@ func _run() -> void:
 	print("[W] stats str %d dex %d vit %d ene %d life %d mana %d weapon %s shield %s" % [h.str_, h.dex, h.vit, h.ene, h.max_life, h.max_mana, h.equipment["weapon"]["name"], str(h.equipment["shield"])])
 	h.mana = h.max_mana
 	print("[W] drain with nobody around: ", h.use_skill("drain", h.global_position + Vector3(3, 0, 0)), " channel ", h.drain_t)
-	await g.travel(0, "wild", "start")
+	await g.travel(0, "sandbox", "start")
 	while g._busy:
 		await process_frame
 	h.level = 12

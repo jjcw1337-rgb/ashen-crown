@@ -1,6 +1,6 @@
 extends SceneTree
-## Screenshot of the waypoint window: Act I with its wilderness waypoint bound, A2 open, A3 sealed.
-## Needs a display. Usage: godot -s game/maps/camp/tools/waypoint_shot.gd -- out.png [run to show | bg] (bg: the Battlegrounds tab)
+## Screenshot of the waypoint window: Act I's tab with the camp's waypoint, or the Battlegrounds tab.
+## Needs a display. Usage: godot -s game/maps/camp/tools/waypoint_shot.gd -- out.png [bg] (bg: the Battlegrounds tab)
 var g
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
@@ -15,24 +15,19 @@ func _run() -> void:
 	while g._busy:
 		await process_frame
 	g.ui.close_all()
-	g.max_run = 1
-	g.waypoints_known = ["town", "wild"]
-	g.run_progress["1"] = {"waypoints": ["town"], "boss": false}
+	g.waypoints_known = ["town"]
 	g.ui.open_waypoints()
 	var wp = g.ui.wp_panel
 	if args.size() > 1 and args[1] == "bg":
 		wp.sel_group = "battlegrounds"
 		wp._fill()
-	elif args.size() > 1:
-		wp.sel_run = int(args[1])
-		wp._fill()
 	for f in 20:
 		await process_frame
-	# hover the wilderness waypoint
+	# hover the camp's waypoint
 	var rows: Array = wp.route_box.get_children()
-	if rows.size() > 1 and args.size() <= 1:
-		(rows[1] as Control).mouse_entered.emit()
-		Input.warp_mouse((rows[1] as Control).get_global_rect().get_center())
+	if rows.size() > 0 and args.size() <= 1:
+		(rows[0] as Control).mouse_entered.emit()
+		Input.warp_mouse((rows[0] as Control).get_global_rect().get_center())
 	for f in 8:
 		await process_frame
 	await RenderingServer.frame_post_draw

@@ -19,9 +19,8 @@ static var _rocks := {}
 
 ## Meshy rocks (`assets/models/rocks/`, visual overhaul 2026-11-02: a photographic Meshy concept each, image-to-3D,
 ## re-baked onto clean UVs at 512 px by `tools/blender/camp/rebake_prop.py`): three granite boulders for every zone's
-## scattered rocks (`World._rock`) and the old roads' kerbstone (`World.kerb`). Each entry is
-## [mesh, material, height, fix]: `fix` seats the model (sunk a little into the ground; the kerb turned to lie along
-## local z). [] without the file, and the procedural `rock_mesh` stays.
+## scattered rocks (`World._rock`). Each entry is [mesh, material, height, fix]: `fix` seats the model (sunk a little
+## into the ground). [] without the file, and the procedural `rock_mesh` stays.
 const ROCK_DIR := "res://assets/models/rocks/%s.glb"
 const BOULDERS := ["boulder_a", "boulder_b", "boulder_c"]
 static var _meshy_rocks := {}
@@ -35,15 +34,12 @@ static func meshy_rock(kind: String) -> Array:
 		var aabb: AABB = e[2]
 		var h := aabb.size.y
 		var fix := Transform3D(Basis(), Vector3(0, -0.12 * h - aabb.position.y, 0))
-		if kind == "kerb":
-			# modelled lying along x: turned onto z (the road's way) and half sunk, as kerbs are set
-			fix = Transform3D(Basis(Vector3.UP, PI * 0.5), Vector3(0, -0.45 * h - aabb.position.y, 0))
 		out = [e[0], e[1], h, fix * (e[3] as Transform3D)]
 	_meshy_rocks[kind] = out
 	return out
 
-## A re-baked Meshy model's first mesh: [mesh, material (MESHY_PROP_SHADER on its textures: snow and A3's soot like
-## the procedural props), its bounds after the node's own transform, that transform], or [] without the file.
+## A re-baked Meshy model's first mesh: [mesh, material (MESHY_PROP_SHADER on its textures: snow like the
+## procedural props), its bounds after the node's own transform, that transform], or [] without the file.
 static func _meshy_model(path: String) -> Array:
 	if not ResourceLoader.exists(path):
 		return []
@@ -146,7 +142,6 @@ uniform bool use_normal = false;
 uniform bool use_rough = false;
 uniform vec3 tint : source_color = vec3(1.0);
 global uniform float snow_amt;
-global uniform float ash_amt;
 global uniform vec3 player_pos;
 global uniform float occlude_k;
 // the see-through near the hero, as every code-built prop has (Mats.PROP_SHADER): a tall piece between the camera
@@ -182,11 +177,6 @@ void fragment(){
 		c = mix(c, vec3(0.85, 0.88, 0.92), s);
 		r = mix(r, 0.6, s);
 	}
-	if (ash_amt > 0.0) {
-		c *= mix(vec3(1.0), vec3(0.34, 0.32, 0.31), ash_amt * 0.85);       // soot
-		float a = ash_amt * smoothstep(0.5, 0.85, wn.y + (vn(wp.xz * 4.0) - 0.5) * 0.3) * 0.7;
-		c = mix(c, vec3(0.36, 0.34, 0.32), a);                               // grey ash settled on top
-	}
 	ALBEDO = c;
 	ROUGHNESS = r;
 	SPECULAR = 0.35;
@@ -201,7 +191,7 @@ void fragment(){
 ## it looks the same and dithers away round the hero as the code-built props do (Mats.PROP_SHADER). One copy per
 ## material, shared by every instance of it, so nothing batches worse; a multimesh gets a copy of its mesh with the
 ## new materials. Skinned bodies, glowing, see-through and unshaded materials and every ShaderMaterial (the code-built
-## props, trees, rocks, clutter and Roman pieces dither already) are left alone. Visual only: no random numbers, so the
+## props, trees, rocks and clutter dither already) are left alone. Visual only: no random numbers, so the
 ## zone's layout is the same.
 static var _see_mats := {}       # one see_through() walk's copies (cleared after it)
 static var _see_meshes := {}
@@ -514,13 +504,9 @@ void fragment(){
 }
 """
 
-## Wood and hide can burn through in A3 (holes with glowing edges).
-static func _breakable(m: ShaderMaterial) -> Material:
-	m.set_shader_parameter("breakable", 1.0)
-	return m
-static func wood() -> Material: return _breakable(Mats.world(WOOD, WOOD_D, 0.9, 1.0, 0.0, MOSS, true, 0.0, Color.BLACK, 0.0, 1.0))
-static func wood_dark() -> Material: return _breakable(Mats.world(WOOD_D, WOOD_D.darkened(0.3), 0.9, 1.0, 0.0, MOSS, true, 0.0, Color.BLACK, 0.0, 1.0))
-static func hide_m() -> Material: return _breakable(Mats.world(HIDE, HIDE_D, 0.95, 0.8))
+static func wood() -> Material: return Mats.world(WOOD, WOOD_D, 0.9, 1.0, 0.0, MOSS, true, 0.0, Color.BLACK, 0.0, 1.0)
+static func wood_dark() -> Material: return Mats.world(WOOD_D, WOOD_D.darkened(0.3), 0.9, 1.0, 0.0, MOSS, true, 0.0, Color.BLACK, 0.0, 1.0)
+static func hide_m() -> Material: return Mats.world(HIDE, HIDE_D, 0.95, 0.8)
 static func stone() -> Material: return Mats.world(STONE, STONE_D, 0.92, 1.3, 0.55, MOSS)
 static func stone_clean() -> Material: return Mats.world(STONE.lightened(0.08), STONE_D, 0.9, 1.6, 0.15, MOSS)
 static func clay() -> Material: return Mats.world(CLAY, CLAY_D, 0.85, 2.0)

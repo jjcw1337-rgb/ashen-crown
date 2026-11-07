@@ -1,10 +1,9 @@
 class_name WaypointPanel
 extends PanelContainer
-## The waypoint window: a tab per act (Data.WAYPOINT_ACTS), its Meshy banner, and the act's route of
-## waypoints. Built in the action bar's iron frame and sockets. An act's tab opens once the act before
-## it falls (Game.act_unlocked); a waypoint lights once a player has touched its stone
-## (Game.waypoint_known). Click a lit waypoint to go there, in this act or another (Game.waypoint_go).
-## Everything it shows comes from Data and Game, so a new act or waypoint needs no change here.
+## The waypoint window: Act I's tab (Data.WAYPOINT_ACTS), its Meshy banner, and its route of waypoints; the PvE and
+## daily activities; the Battlegrounds' cards. Built in the action bar's iron frame and sockets. A waypoint lights
+## once a player has touched its stone (Game.waypoint_known); click a lit one to go there (Game.waypoint_go).
+## Everything it shows comes from Data and Game, so a new waypoint needs no change here.
 
 const SIGIL := "res://assets/textures/ui/wp_sigil.png"
 const TOWN_PLAQUE := "res://assets/textures/ui/wp_town.png"
@@ -28,13 +27,11 @@ var groups_box: HBoxContainer
 var sel_group := "acts"
 var _catalog_stamp := 0
 var _catalog_tick := 0.0
-var acts_override: Array = []   # screenshots only: sample future acts in place of Data.WAYPOINT_ACTS
 var banner_clip: Control
 var banner: TextureRect
 var banner_title: Label
 var banner_sub: Label
 var banner_note: Label
-var next_box: VBoxContainer
 var seal: Label
 var route_box: VBoxContainer
 var route_head: Label         # "THE ROUTE" over an act's stops, "THE DESCENT" over the raids
@@ -223,8 +220,6 @@ func setup(u: UI) -> void:
 	route_box.set_anchors_preset(Control.PRESET_FULL_RECT)
 	route_box.add_theme_constant_override("separation", 14)
 	rwrap.add_child(route_box)
-	next_box = VBoxContainer.new()
-	right.add_child(next_box)
 	var multiplayer_button := ui._iron_button("Multiplayer · Raids, Waves & Arena", 0, 44, 17)
 	multiplayer_button.pressed.connect(func(): close(); game.lobby_client.open())
 	vb.add_child(multiplayer_button)
@@ -232,7 +227,7 @@ func setup(u: UI) -> void:
 ## Show the window on the act you are in.
 func open(from: Node3D = null) -> void:
 	stone = from
-	sel_run = int(game.difficulty)
+	sel_run = 0
 	sel_group = str(_act(sel_run).get("group", "acts"))
 	_fill()
 	visible = true
@@ -250,12 +245,8 @@ func close() -> void:
 	ui.tooltip.visible = false
 	ui.tip_owner = null
 
-## The act whose lord opens act `run`: its "requires", else the act before it.
-func _opener(run: int) -> int:
-	return int(_act(run).get("requires", run - 1))
-
 func _acts() -> Array:
-	return acts_override if not acts_override.is_empty() else Data.WAYPOINT_ACTS
+	return Data.WAYPOINT_ACTS
 
 func _act(run: int) -> Dictionary:
 	for a in _acts():
@@ -283,10 +274,9 @@ func _fill() -> void:
 	for a in _acts():
 		if not used.has(a.get("group", "acts")):
 			used.append(a.get("group", "acts"))
-	if acts_override.is_empty():
-		for entry in game.waypoint_activities():
-			if not used.has(entry["group"]): used.append(entry["group"])
-	if acts_override.is_empty() and not _raids().is_empty():
+	for entry in game.waypoint_activities():
+		if not used.has(entry["group"]): used.append(entry["group"])
+	if not _raids().is_empty():
 		used.append("battlegrounds")
 	if not used.has(sel_group):
 		sel_group = str(used[0]) if not used.is_empty() else "acts"
@@ -304,30 +294,22 @@ func _fill() -> void:
 		if str(a.get("group", "acts")) == sel_group:
 			tabs_box.add_child(_tab(a))
 	var act: Dictionary = _act(sel_run)
-	var info: Dictionary = Data.act_info(0, sel_run)
+	var info: Dictionary = Data.ACTS[0]
 	var open_act: bool = game.act_unlocked(sel_run)
 	banner.texture = load(act["art"]) if act.has("art") and ResourceLoader.exists(act["art"]) else null
 	banner.modulate = Color(1, 1, 1) if open_act else Color(0.32, 0.3, 0.3)
-	banner_sub.text = _act_name(sel_run).to_upper() + ("   ·   YOU ARE HERE" if sel_run == int(game.difficulty) else "")
+	banner_sub.text = _act_name(sel_run).to_upper() + "   ·   YOU ARE HERE"
 	banner_title.text = str(info["name"])
-	banner_note.text = game.run_note(sel_run)
+	banner_note.text = "The camp's waypoint: the Battlegrounds tab leads down to the raids."
 	seal.visible = not open_act
 	seal.text = "SEALED"
 	for c in route_box.get_children():
 		route_box.remove_child(c)
 		c.queue_free()
-	if not open_act:
-		route_box.add_child(_sealed_card(_act(_opener(sel_run))))
 	if open_act:
 		var pts: Array = act["points"]
 		for i in pts.size():
 			route_box.add_child(_point_row(act, pts[i], info))
-		route_box.add_child(_lair_row(act, info))
-	for c in next_box.get_children():
-		c.queue_free()
-	var nxt: Dictionary = _act(sel_run + 1)
-	if open_act and not nxt.is_empty():
-		next_box.add_child(_next_card(act, nxt))
 	_size_route.call_deferred()
 	route_line.queue_redraw()
 
@@ -350,7 +332,6 @@ func _fill_activities() -> void:
 	for c in route_box.get_children():
 		route_box.remove_child(c)
 		c.queue_free()
-	for c in next_box.get_children(): c.queue_free()
 	for entry in game.waypoint_activities():
 		if str(entry["group"]) == sel_group:
 			route_box.add_child(_activity_card(entry))
@@ -407,8 +388,6 @@ func _fill_battlegrounds() -> void:
 	route_head.text = "THE DESCENT"
 	for c in route_box.get_children():
 		route_box.remove_child(c)
-		c.queue_free()
-	for c in next_box.get_children():
 		c.queue_free()
 	for b in _raids():
 		route_box.add_child(_bg_card(b))
@@ -561,10 +540,6 @@ func _plaque(word: String, col: Color) -> Control:
 # ---------------------------------------------------------------- is the raid server there?
 var bg_icons: Array = []       # the raid cards' sigils, turning slowly
 
-func _boss_name(act: Dictionary) -> String:
-	var b: String = act.get("boss", "")
-	return str(Data.ENEMIES[b]["name"]) if Data.ENEMIES.has(b) else "its lord"
-
 ## A tab group's heading (ACTS | ANCIENT LEVELS): picks which acts' tabs show; gold underline when chosen.
 func _group_tab(gdef: Dictionary) -> Control:
 	var gid: String = gdef["id"]
@@ -593,11 +568,11 @@ func _group_tab(gdef: Dictionary) -> Control:
 	return vb
 
 ## One act's tab: a bar socket with the act's numeral; gold when selected, a cyan glow on the act you
-## are in, dark and sealed until it is open.
+## are in.
 func _tab(a: Dictionary) -> Control:
 	var run: int = a["run"]
 	var opened: bool = game.act_unlocked(run)
-	var here := run == int(game.difficulty)
+	var here := run == 0
 	var sel := run == sel_run
 	var t := PanelContainer.new()
 	var st := ui._box(Color(0.12, 0.09, 0.05, 0.95) if sel else Color(0.05, 0.04, 0.03, 0.9),
@@ -634,12 +609,7 @@ func _tab(a: Dictionary) -> Control:
 	var sub := "you are here" if here else ("open" if opened else "sealed")
 	tv.add_child(ui._label(sub, 11, CYAN if here else (DIM if opened else Color(0.6, 0.35, 0.3))))
 	t.mouse_entered.connect(func():
-		var lines := [[_act_name(run) + "  ·  " + str(Data.act_info(0, run)["name"]), GOLD]]
-		if not opened:
-			lines.append(["Slay %s in %s to open it" % [_boss_name(_act(_opener(run))), _act_name(_opener(run))], Color(1.0, 0.55, 0.4)])
-		else:
-			lines.append([game.run_note(run), INK])
-		ui.show_tooltip(lines)
+		ui.show_tooltip([[_act_name(run) + "  ·  " + str(Data.ACTS[0]["name"]), GOLD]])
 		ui.tip_owner = t)
 	t.mouse_exited.connect(func():
 		ui.tooltip.visible = false
@@ -657,7 +627,7 @@ func _point_row(act: Dictionary, p: Dictionary, info: Dictionary) -> Control:
 	var zone: String = p["zone"]
 	var known: bool = game.waypoint_known(run, str(p["id"]))
 	var at: String = game._at_waypoint()
-	var here: bool = run == int(game.difficulty) and (str(p["id"]) == at if at != "" else zone == str(game.cur_zone))
+	var here: bool = run == 0 and (str(p["id"]) == at if at != "" else zone == str(game.cur_zone))
 	var pname: String = p.get("name", info.get(zone, zone.capitalize()))
 	var row := PanelContainer.new()
 	var idle := ui._box(Color(0.06, 0.05, 0.04, 0.85), Color(0.3, 0.24, 0.15), 1, 6, 6)
@@ -707,7 +677,7 @@ func _point_row(act: Dictionary, p: Dictionary, info: Dictionary) -> Control:
 		if here:
 			lines.append(["You are standing at this waypoint", CYAN])
 		elif known:
-			lines.append(["Click to travel there" + ("" if run == int(game.difficulty) else " (switches to " + _act_name(run) + ")"), INK])
+			lines.append(["Click to travel there", INK])
 		else:
 			lines.append(["You haven't touched this waypoint's stone yet", DIM])
 		ui.show_tooltip(lines)
@@ -744,82 +714,6 @@ func _town_plaque() -> Control:
 	t.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	plq.add_child(t)
 	return plq
-
-## The end of the route: the act's lair; its travel card lives in the PvE group.
-func _lair_row(act: Dictionary, info: Dictionary) -> Control:
-	var slain: bool = game.act_boss_slain(int(act["run"]))
-	var row := PanelContainer.new()
-	row.add_theme_stylebox_override("panel", ui._box(Color(0.08, 0.03, 0.02, 0.6), Color(0.45, 0.18, 0.12) if not slain else Color(0.3, 0.45, 0.25), 1, 6, 6))
-	row.set_meta("node", true)
-	var hb := HBoxContainer.new()
-	hb.add_theme_constant_override("separation", 10)
-	row.add_child(hb)
-	var mark := ui._label("✝" if slain else "☠", 26, Color(0.55, 0.9, 0.55) if slain else Color(0.95, 0.4, 0.3), true)
-	mark.custom_minimum_size = Vector2(44, 44)
-	mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	hb.add_child(mark)
-	var tv := VBoxContainer.new()
-	tv.add_theme_constant_override("separation", 0)
-	tv.alignment = BoxContainer.ALIGNMENT_CENTER
-	hb.add_child(tv)
-	var lair: String = "Throne of the Ashen King" if int(act["run"]) >= 2 else str(info.get("lair", "The lair"))
-	tv.add_child(ui._label(lair, 15, INK, true))
-	tv.add_child(ui._label(("Slain: " if slain else "Lord: ") + _boss_name(act) + "  ·  travel from the PvE tab", 11, DIM))
-	return row
-
-## A sealed act's route: what opens it.
-func _sealed_card(prev: Dictionary) -> Control:
-	var card := PanelContainer.new()
-	card.add_theme_stylebox_override("panel", ui._box(Color(0.08, 0.03, 0.02, 0.75), Color(0.5, 0.2, 0.14), 1, 6, 12))
-	var tv := VBoxContainer.new()
-	tv.add_theme_constant_override("separation", 4)
-	card.add_child(tv)
-	tv.add_child(ui._label("THIS ACT IS SEALED", 14, Color(1.0, 0.5, 0.35), true))
-	var l := ui._label("Slay %s in %s to open it. Its waypoints then wait to be found, one stone at a time." % [_boss_name(prev), _act_name(int(prev.get("run", 0)))], 13, INK)
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	tv.add_child(l)
-	return card
-
-## Where the road leads after this act: the next act's tab, open or sealed by this act's lord.
-func _next_card(act: Dictionary, nxt: Dictionary) -> Control:
-	var run: int = nxt["run"]
-	var opened: bool = game.act_unlocked(run)
-	var card := PanelContainer.new()
-	var idle := ui._box(Color(0.05, 0.04, 0.03, 0.85), Color(0.42, 0.33, 0.2) if opened else Color(0.3, 0.15, 0.1), 1, 6, 8)
-	var hot := ui._box(Color(0.12, 0.09, 0.05, 0.95), GOLD, 1, 6, 8)
-	card.add_theme_stylebox_override("panel", idle)
-	card.mouse_filter = Control.MOUSE_FILTER_STOP
-	card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	var hb := HBoxContainer.new()
-	hb.add_theme_constant_override("separation", 10)
-	hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	card.add_child(hb)
-	var thumb := TextureRect.new()
-	thumb.texture = load(nxt["art"]) if ResourceLoader.exists(nxt["art"]) else null
-	thumb.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	thumb.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	thumb.custom_minimum_size = Vector2(76, 48)
-	thumb.modulate = Color(1, 1, 1) if opened else Color(0.3, 0.28, 0.28)
-	thumb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hb.add_child(thumb)
-	var tv := VBoxContainer.new()
-	tv.add_theme_constant_override("separation", 0)
-	tv.alignment = BoxContainer.ALIGNMENT_CENTER
-	tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hb.add_child(tv)
-	tv.add_child(ui._label("NEXT  ·  " + _act_name(run).to_upper(), 11, CYAN if opened else Color(0.85, 0.45, 0.35), true))
-	tv.add_child(ui._label(str(Data.act_info(0, run)["name"]), 15, INK if opened else DIM, true))
-	tv.add_child(ui._label("Open: pick its tab above" if opened else "Sealed until %s falls" % _boss_name(act), 11, DIM))
-	card.mouse_entered.connect(func(): card.add_theme_stylebox_override("panel", hot))
-	card.mouse_exited.connect(func(): card.add_theme_stylebox_override("panel", idle))
-	card.gui_input.connect(func(ev):
-		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			sel_run = run
-			Sfx.play("click")
-			_fill())
-	return card
 
 func _size_route() -> void:
 	route_stack.custom_minimum_size = Vector2(0, route_box.get_combined_minimum_size().y + 4)

@@ -1,5 +1,5 @@
 extends SceneTree
-## Every kind of fire side by side on the moor at dusk, the old particle fire (Props.fire_legacy) or the new
+## Every kind of fire side by side in the Arena's hall, the old particle fire (Props.fire_legacy) or the new
 ## simulated fire (FireFx), with the hero and a monster standing in their light. Needs a display (xvfb) and
 ## --fixed-fps 30:
 ##   xvfb-run -a godot --rendering-driver opengl3 --path . --resolution 1280x720 --fixed-fps 30 \
@@ -31,7 +31,7 @@ func _run() -> void:
 	g.apply_quality(0)
 	await g.start_game(false, "knight")
 	g.ui.close_all()
-	await g.load_zone(0, "wild", "road")
+	await g.load_zone(0, "sandbox", "start")
 	g.ui.close_all()
 	g.test_immortal = true
 	g.ui.visible = false

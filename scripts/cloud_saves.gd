@@ -47,7 +47,7 @@ func ensure() -> bool:
 		print("[Cloud] account ", game.account_id)
 		if bool(a.get("admin", false)):
 			game.account_admin = true
-			game.dev_tools = game.UNLOCK_ALL_ACTS
+			game.dev_tools = true
 	return signed_in
 
 func sync() -> bool:

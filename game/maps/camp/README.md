@@ -1,13 +1,13 @@
 # The starting camp (game/maps/camp/)
 
-Act I's camp in the old forest (zone `town`), where Enter World begins: the palisade ring, the traders' courts,
+Act I's camp in the old forest (zone `town`): the palisade ring, the traders' courts,
 the smith's forge, the guards on their rounds, the ravens on the roofs, the World-Tree Island, and the grand
-waypoint (travel, and the Battlegrounds card that opens the lobby browser). It stays live as it is until an admin
-decides otherwise (docs/architecture_cleanup.md).
+waypoint (the Battlegrounds card that opens the lobby browser). Its gates are barred: the moor and the story past
+it are cut (docs/architecture_cleanup.md).
 
 | File | What |
 |---|---|
-| `forest_camp.gd` | `ForestCamp`: builds the camp (World._build_town calls it for Act I) |
+| `forest_camp.gd` | `ForestCamp`: builds the camp (World.build, zone `town`) |
 | `vendor_court.gd` | the traders' open shop frontages |
 | `smith_forge.gd` | `SmithForge`: the smith working at his anvil |
 | `camp_guard.gd` | `CampGuard`: the three guards on their rounds |

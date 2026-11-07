@@ -1,5 +1,5 @@
 extends SceneTree
-## Weapon draw / holster (WeaponCarry) in the real game: the knight in armour on the moor.
+## Weapon draw / holster (WeaponCarry) in the real game: the knight in armour in the Arena's hall.
 ##   godot --headless --path . -s tools/weapon_draw_test.gd
 ## A targeted -> draws · B retreats while still hunted -> stays drawn, then holsters once safe ·
 ## C the foe gives up -> waits out the disengage time · D two foes, one gives up -> stays drawn ·
@@ -40,11 +40,11 @@ func _run() -> void:
 	ok(h.carry.p["motion"] == "knight" and h.carry.p["store"] == "hilt", "the knight uses his own profile (cross-body draw, scabbard)")
 	# town: always away
 	ok(g.cur_zone == "town" and h.carry.state == "sheathed", "in town the sword stays sheathed (%s)" % h.carry.state)
-	g.travel(0, "wild", "waypoint")
+	g.travel(0, "sandbox", "start")
 	while g._busy:
 		await process_frame
 	await frames(10)
-	# (a pack near the waypoint may have spotted him on arrival: clear the moor, then he should calm down)
+	# (a pack near the waypoint may have spotted him on arrival: clear the hall, then he should calm down)
 	for e in g.world.enemies_root.get_children():
 		e.queue_free()
 	await frames(3)
@@ -54,7 +54,7 @@ func _run() -> void:
 	h.carry._scan = 0.0
 	h.carry._threat = false
 	await secs(0.6)
-	ok(h.carry.state == "sheathed", "on the moor, with nothing hunting him: stays sheathed (%s)" % h.carry.state)
+	ok(h.carry.state == "sheathed", "in the hall, with nothing hunting him: stays sheathed (%s)" % h.carry.state)
 	ok(not h.weapon_node.visible, "the sword model is hidden in the scabbard")
 	# A: a foe targets him -> draws
 	var p: Vector3 = h.global_position + Vector3(6, 0, 0)

@@ -625,7 +625,6 @@ global uniform float wind_strength;
 global uniform float wind_gust;
 global uniform float wind_phase;
 global uniform float snow_amt;
-global uniform float ash_amt;
 varying float hgt;
 varying vec4 vc;
 varying float gust;
@@ -696,7 +695,6 @@ void vertex(){
 	rel.xz += bend * h * k * 1.1;
 	rel.y -= h * (bl * bl) * 0.42 * k;
 	rel.y -= snow_amt * 0.16;
-	rel.y *= 1.0 - ash_amt * 0.4;
 	VERTEX = o + rel;
 	// lean the normals with the bend, and toward the sky so the field shades as one soft surface
 	NORMAL = normalize(mix(NORMAL, vec3(0.0, 1.0, 0.0), 0.7) + vec3(bend.x, 0.0, bend.y) * 0.35);
@@ -715,7 +713,7 @@ void fragment(){
 		vec4 t = texture(atlas, UV);
 		alpha = t.a;
 		bool blade = vc.a > 0.75;
-		if (!blade && vc.b < 0.25 && (snow_amt > 0.5 || ash_amt > 0.5) && hgt > 0.7) { discard; }
+		if (!blade && vc.b < 0.25 && snow_amt > 0.5 && hgt > 0.7) { discard; }
 		c = t.rgb * 0.82;
 		float patch = vn(wpos.xz * 0.09 + 3.1) * 0.7 + vn(wpos.xz * 0.7) * 0.3;
 		float d = clamp(dryx * 0.8 + smoothstep(0.62, 0.9, patch) * 0.2, 0.0, 1.0) * (1.0 - vc.r);
@@ -732,9 +730,6 @@ void fragment(){
 		c *= 1.0 - shade * 0.42;
 		c *= 1.0 + (gust - 0.5) * 0.14 * hgt;
 		c = mix(c, c * vec3(1.12, 1.1, 0.95), clamp(press, 0.0, 1.0) * 0.35 * hgt);
-		if (ash_amt > 0.0) {
-			c = mix(c, mix(vec3(0.06, 0.05, 0.04), vec3(0.3, 0.27, 0.23), hgt), ash_amt * 0.92);
-		}
 		if (snow_amt > 0.0) {
 			c = mix(c, vec3(0.42, 0.38, 0.26), snow_amt * 0.6);
 			c = mix(c, vec3(0.86, 0.9, 0.96), snow_amt * smoothstep(0.75, 1.0, hgt) * 0.75);
@@ -745,7 +740,7 @@ void fragment(){
 		BACKLIGHT = c * mix(0.2, 0.5, hgt) * (blade ? 1.0 : 0.6);
 	} else if (vc.a < 0.75) {
 		// petals and seed heads keep their own colour
-		if (vc.a < 0.25 && (snow_amt > 0.5 || ash_amt > 0.5)) { discard; }
+		if (vc.a < 0.25 && snow_amt > 0.5) { discard; }
 		c = vc.rgb * (0.85 + rnd * 0.25);
 		ROUGHNESS = 0.7;
 		SPECULAR = 0.2;
@@ -767,9 +762,6 @@ void fragment(){
 		c *= 1.0 + (gust - 0.5) * 0.14 * hgt;
 		// grass pressed flat shows its paler underside
 		c = mix(c, c * vec3(1.12, 1.1, 0.95), clamp(press, 0.0, 1.0) * 0.35 * hgt);
-		if (ash_amt > 0.0) {
-			c = mix(c, mix(vec3(0.06, 0.05, 0.04), vec3(0.3, 0.27, 0.23), hgt), ash_amt * 0.92);
-		}
 		if (snow_amt > 0.0) {
 			c = mix(c, vec3(0.42, 0.38, 0.26), snow_amt * 0.6);
 			c = mix(c, vec3(0.86, 0.9, 0.96), snow_amt * smoothstep(0.75, 1.0, hgt) * 0.75);

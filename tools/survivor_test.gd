@@ -37,7 +37,7 @@ func _run() -> void:
 		DirAccess.remove_absolute(SV.dir + fn)
 	var chars_before: Array = g.list_characters()
 	await g.start_game(false, "knight")
-	await g.load_zone(0, "wild", "start")
+	await g.load_zone(0, "sandbox", "start")
 	g.ui.hide_title()
 	var h = g.hero
 	# a plague doctor's run, a few camps in

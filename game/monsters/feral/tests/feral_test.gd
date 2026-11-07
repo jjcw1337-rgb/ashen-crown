@@ -1,6 +1,7 @@
 extends SceneTree
-## The Feral (feral.gd): packs cling to oak trunks deep in the Act I forest; come close and they come down
-## the trunk, surround you, lunge one at a time, back off and claw. Prints [F] lines.
+## The Feral (feral.gd): a pack clings to an oak trunk in the Verdant Reach (put there by the test, as the old moor
+## placed them); come close and they come down the trunk, surround you, lunge one at a time, back off and claw.
+## Prints [F] lines.
 var g
 
 func _initialize():
@@ -19,25 +20,47 @@ func _run() -> void:
 		g._intro_skip = true
 		await process_frame
 	await g.start_game(false, "knight")
-	g.difficulty = 0
-	await g.load_zone(0, "wild", "start")
+	await g.load_zone(0, Battlegrounds.ZONE, "start")
 	await wait(0.5)
+	for e in g.world.enemies_root.get_children():
+		e.free()
+	# three of them on the trunk of the tree nearest a spot 30 m in from the glade, each on its own side
+	var st: Vector3 = g.world.spawns["start"]
+	var want := st + (Vector3.ZERO - st).normalized() * 30.0
+	# (one with open ground 7 m out on its +x side, where the hero walks up: the first Feral clings on that side)
+	var tr := Vector2.INF
+	for q in g.world.tree_pts:
+		var out := Vector3(q.x + 7.0, 0, q.y)
+		if g.world.is_blocked(out.x, out.z) or not g.world.los(Vector3(q.x + 0.8, 0, q.y), out):
+			continue
+		if tr == Vector2.INF or q.distance_to(Vector2(want.x, want.z)) < tr.distance_to(Vector2(want.x, want.z)):
+			tr = q
+	var trunk := Vector3(tr.x, 0, tr.y)
+	# on the bark: just outside the trunk's footprint (the Reach's oaks are thicker than the moor's were)
+	var bark := 0.45
+	for o in g.world.obstacles:
+		if float(o[1]) > 0.0 and (o[0] as Vector2).distance_to(tr) < 0.05:
+			bark = float(o[1]) + 0.05
+	for i in 3:
+		var a := TAU * i / 3.0
+		var fe: Enemy = g.spawn_enemy("feral", trunk + Vector3(cos(a), 0, sin(a)) * bark, 3, false, "", 777)
+		if fe:
+			fe.perch_on(trunk, fe.global_position - trunk)
+	await wait(0.3)
 	var fs := _ferals()
 	var packs := {}
 	var perched := 0
-	var road := []
 	for e in fs:
 		packs[e.pack_id] = int(packs.get(e.pack_id, 0)) + 1
 		if e.perch_h > 0.0:
 			perched += 1
-		road.append(snappedf(g.world.path_dist(e.global_position.x, e.global_position.z), 1.0))
 	var anim_ok: bool = fs.size() > 0 and fs[0].rig.has_meta("feral")
 	var vars := {}
 	for e in fs:
 		vars[e.rig.get_meta("variant", 0)] = int(vars.get(e.rig.get_meta("variant", 0), 0)) + 1
 	print("[F] models in use: ", vars)
-	print("[F] ferals %d in %d packs %s, perched %d, up %.1f m, metres from the road %s, baked animations %s" % [fs.size(), packs.size(), packs.values(), perched,
-		(fs[0].global_position.y - g.world.height_at(fs[0].global_position.x, fs[0].global_position.z)) if fs.size() > 0 else 0.0, road, anim_ok])
+	print("[F] ferals %d in %d packs %s, perched %d, up %.1f m, baked animations %s" % [fs.size(), packs.size(), packs.values(), perched,
+		(fs[0].global_position.y - g.world.height_at(fs[0].global_position.x, fs[0].global_position.z)) if fs.size() > 0 else 0.0, anim_ok])
 	if fs.is_empty():
 		quit()
 		return

@@ -104,9 +104,9 @@ Each step is done for the Archer first, all the way through, and the other heroe
 6. **Real ids** (`pierce` → `fire_arrow`) everywhere at once, with aliases for saved survivors. Ids travel over the
    network, so the server deploy and the clients ship together.
 
-Cuts run alongside: the old crypt, the old Warlock (the gnome body and the four-skill kit), Act II, Act I's story
-(the moor and the fort), the co-op server, plus archiving sailing and the Last Flame. The starting camp stays for
-now. Follow "Cutting an old system".
+Cuts run alongside: the old crypt, the old Warlock (the gnome body and the four-skill kit), the story mode (Act I's
+moor and fort, Act II, Act III), the co-op server, plus archiving sailing, the Last Flame and the starting camp.
+Follow "Cutting an old system".
 
 Touch points to coordinate:
 - Claude-1's loader: its recorded file lists and the coming per-class lists, which become "load the hero's folder".
@@ -139,7 +139,7 @@ Touch points to coordinate:
   and the Demon onto the Archer's template with their skills on the server; then the Knight and the dragons. Also
   click-to-cast for AoE skills (`game/systems/skills/aiming.gd`, JJ and Blaine).
 - Claude-1: the monsters into `game/monsters/<name>/` (the Verdant Reach's first; King Grubb as a boss any camp can
-  use), then the remaining cuts (Act II, the moor and fort).
+  use), then the remaining cuts (the old Warlock, the co-op server).
 
 ## Cutting an old system
 
@@ -186,21 +186,14 @@ Do one old system per push.
 ### What the live game still borrows
 
 Known borrowings (2026-11-06; check again with `git grep` before each cut):
-- **The Verdant Reach** (`game/maps/verdant_reach/`) uses models from:
-  - Act II: `models/roman/` arch, broken, column, drum (its ruins);
-  - Grubb's fort: `models/fort/tower`;
-  - the Sloths' lairs: `models/lairs/ice_rock`, plus the frost floor texture `SlothLair._ground_tex("cold")`;
-  - the camp: `models/camp/` tent and runestone;
-  - the waypoint: `models/waypoint/` banner and crystal_rune;
-
-  These move to `game/maps/verdant_reach/props/`.
+- **The Verdant Reach** (`game/maps/verdant_reach/`) uses the camp's models: `game/maps/camp/props/camp/` tent and
+  runestone, `props/waypoint/` banner and crystal_rune.
 - **Monsters:** the forest camps use Act I monsters (zombies, the three Fallen, the Feral, the bear, the goblin
   guard).
   - All of them are built on `Goblin.imported_rig` (`goblin.gd`, King Grubb's file). It goes to `game/systems/bodies/`.
   - The Poison Mushroom's body is the forest's `props/fungus` (`Enemy`, its `"prop"`).
-- **The archer's wolf** runs on `lion.gd` (the Act II arena lion's skeleton and pose).
+- **The archer's wolf** runs on `lion.gd` (the arena lion's skeleton and pose).
 - **Every camp chest** is built by `World._chest` (`world.gd`).
-- **`World.crypt_shell`** and its pillar, bones and sconce (`ArenaProps`) are used by Act III's crypt.
 
 ## Status
 
@@ -243,3 +236,8 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
   the bosses' brains, props, tests; 2026-11-06).
 - [x] Maps: the Arena is `game/maps/arena/` (the template for every map: its map, props, modes, tests, README;
   2026-11-06).
+- [x] The story mode cut: Act I's moor, Grubb's fort and the Sloths' lairs; Act II (the Imperial Road, Aurelia, its
+  games); Act III (the Ashen King's crypt, the ash and fire look); the acts (A2/A3, the victory screen, act travel at
+  the waypoint) and their quests. The Verdant Reach's borrowed ruins, watchtower and
+  ice rock are in its `props/`; the fort, the Roman set, the lairs' models, the Ashen King, the act banners and the
+  arena crowd's sounds are in `archive/story/` (2026-11-06).

@@ -42,7 +42,7 @@ func _run() -> void:
 		await create_timer(0.4).timeout
 	await create_timer(1.5).timeout
 	snap(out, "minions")
-	await g.travel(0, "wild", "start")
+	await g.travel(0, "sandbox", "start")
 	while g._busy:
 		await process_frame
 	g.zoom = 0.8

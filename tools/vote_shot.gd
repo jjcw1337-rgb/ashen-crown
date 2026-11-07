@@ -20,9 +20,9 @@ func _run() -> void:
 		await process_frame
 	await g.start_game(false, "knight")
 	g.ui.close_all()
-	g.ui.party_vote("Jace", g.zone_title(0, "wild"), false)
+	g.ui.party_vote("Jace", g.zone_title(0, "bg"), false)
 	await _snap(out + "/vote_join.png")
-	g.ui.party_vote("Aldric", g.zone_title(0, "wild"), true)
+	g.ui.party_vote("Aldric", g.zone_title(0, "bg"), true)
 	g.ui.party_vote_wait(["Jace"])
 	await _snap(out + "/vote_wait.png")
 	quit()

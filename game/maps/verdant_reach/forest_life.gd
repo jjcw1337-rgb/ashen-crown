@@ -328,16 +328,16 @@ static func _ruins(w: World, rng: RandomNumberGenerator) -> void:
 				continue
 			var pick := rng.randi_range(0, 2)
 			if not arch and not BgForest.open_at(p, 3.5):
-				_glb(w, "res://assets/models/roman/arch.glb", p, ForestCamp.face(p, at) + PI * 0.5, 3.4, 0.0)
+				_glb(w, "res://game/maps/verdant_reach/props/arch.glb", p, ForestCamp.face(p, at) + PI * 0.5, 3.4, 0.0)
 				arch = true
 			elif pick == 0:
-				_glb(w, "res://assets/models/roman/broken.glb", p, rng.randf() * TAU, rng.randf_range(2.2, 3.2), 0.0)
+				_glb(w, "res://game/maps/verdant_reach/props/broken.glb", p, rng.randf() * TAU, rng.randf_range(2.2, 3.2), 0.0)
 			elif pick == 1:
-				var n := _glb(w, "res://assets/models/roman/drum.glb", p, rng.randf() * TAU, rng.randf_range(0.9, 1.2), -0.15)
+				var n := _glb(w, "res://game/maps/verdant_reach/props/drum.glb", p, rng.randf() * TAU, rng.randf_range(0.9, 1.2), -0.15)
 				if n != null:
 					n.rotation.x = PI * 0.5      # (a drum on its side, half in the grass)
 			else:
-				_glb(w, "res://assets/models/roman/column.glb", p, rng.randf() * TAU, rng.randf_range(2.6, 3.6), 0.0)
+				_glb(w, "res://game/maps/verdant_reach/props/column.glb", p, rng.randf() * TAU, rng.randf_range(2.6, 3.6), 0.0)
 
 static func _glb(w: World, path: String, p: Vector2, yaw: float, s: float, dy: float) -> Node3D:
 	if not ResourceLoader.exists(path):

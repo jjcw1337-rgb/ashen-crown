@@ -218,15 +218,10 @@ SPEC = [
 
     # ---------------------------------------------------------------- ambience loops
     # the campsite's song (Blaine: eerie, piano); the acts keep the wind
-    # ---------------------------------------------------------------- A2: Aurelia's arena (games.gd)
+    # ---------------------------------------------------------------- the arena horn and the portcullis
     dict(name="arena_horn", src="eleven", n=4, dur=3.0, hit=0, label="a war horn blowing",
          prompt="a Roman cornu war horn blast in a stone amphitheatre, a deep brassy fanfare call of two long notes"
                 ", isolated sound effect, no music, no voices"),
-    dict(name="crowd_roar", src="eleven", n=3, dur=10.0, hit=0, loop=True, label="a crowd cheering",
-         prompt="a huge crowd in a stone arena roaring, shouting and chanting, excited spectators baying for blood, "
-                "continuous and even, no music"),
-    dict(name="crowd_cheer", src="eleven", n=4, dur=4.0, hit=0, label="a crowd cheering",
-         prompt="a large arena crowd erupting into a huge roaring cheer and applause, then settling, no music"),
     dict(name="portcullis", src="eleven", n=4, dur=2.5, hit=0, label="a heavy gate opening",
          prompt="a heavy iron portcullis gate being hauled up by chains, rattling chains and grinding iron, ending in a clank" + DRY),
     # ---------------------------------------------------------------- the Verdant Isle (island 1, the dinosaurs)

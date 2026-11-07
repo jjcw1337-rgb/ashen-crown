@@ -1,12 +1,12 @@
 class_name ForestCamp
 extends RefCounted
-## Act I's camp, the Forsaken Wilds, as an encampment deep in an old misty forest (World._build_town hands over
-## to this when World.oak_forest and act 0; A2/A3 keep the old camp). A ring palisade of sharpened
+## Act I's camp, the Forsaken Wilds, as an encampment deep in an old misty forest (World.build's zone "town", where
+## Enter World begins). A ring palisade of sharpened
 ## logs with a gatehouse to the north, glowing rune stones in the trees outside it, the grand waypoint at the
 ## heart, tents and huge oaks hung with lanterns inside, and the shops round the ring, each with its
 ## shopkeeper at work: Meshy-made and Meshy-rigged, animated with Meshy's clip library (Inter._animate).
 ## Models: game/maps/camp/props/camp/*.glb, assets/models/npc/*.glb, prepared in Blender (tools/blender/
-## prep_prop.py, prep_npc.py, prep_tree.py). Without the files it falls back to the old camp.
+## prep_prop.py, prep_npc.py, prep_tree.py).
 
 const VendorCourt := preload("res://game/maps/camp/vendor_court.gd")
 const CENTER := Vector2(0, -2)
@@ -113,15 +113,6 @@ static func lively(clips: Dictionary, role: String, at: Vector2, yaw: float, w: 
 				"Talk_Passionately", "Listening_Gesture", "Shrug"]]}
 	return c
 
-static func ok() -> bool:
-	for f in ["palisade", "gate", "forge", "alchemy", "armory", "wagon", "tent", "runestone", "lantern"]:
-		if not ResourceLoader.exists(DIR + f + ".glb"):
-			return false
-	for f in ["maeve", "grisold", "hedda", "tarrow", "roth"]:
-		if not ResourceLoader.exists(NPC_DIR + f + ".glb"):
-			return false
-	return true
-
 static var _meshes := {}
 ## A model's meshes merged into one (for MultiMesh): the palisade logs, rune stones, trees.
 static func mesh(path: String) -> Mesh:
@@ -191,7 +182,7 @@ static func build(w: World) -> void:
 	if ISLAND:
 		w.island_c = CENTER
 		w.island_r = ISLAND_R
-	var V: Dictionary = Data.VENDORS[w.act]
+	var V: Dictionary = Data.VENDORS
 	var rng := w.rng
 	var gate_z := CENTER.y - RADIUS
 	# --- ground: a trodden clearing, paths to each shop and out of the gate
@@ -235,10 +226,9 @@ static func build(w: World) -> void:
 	for gx in [-4.1, 4.1]:
 		w.add_box(Vector3(gx, 0, gate_z), Vector2(1.15, 2.2), 0.0)
 	_lantern(w, Vector3(0, w.height_at(0, gate_z) + 4.7, gate_z + 0.4), true)
+	# barred: the moor beyond it is cut (Enter World is the camp alone; the waypoint is the way out)
 	if ISLAND:
 		CampIsland.bar_gate(w, Vector3(0, 0, gate_z), 0.0)
-	else:
-		w.exits.append({"pos": Vector3(0, 0, gate_z - 3.5), "radius": 3.5, "to": "wild", "label": w.act_name("wild")})
 	# the west gate, barred (the track beyond it led to the coast, archived: archive/sailing/)
 	var wg := ring_pt(WEST, RADIUS)
 	var wgate := model("gate")
@@ -442,8 +432,8 @@ static func build(w: World) -> void:
 			outer[i % 3].append(xf)
 		else:
 			pines[i % 3].append(xf)
-	# the forest round the camp in 32 m chunks with the moor's draw distance (World._build_wild), so only the trees
-	# near the view (and near a light, for its shadow) are drawn
+	# the forest round the camp in 32 m chunks, drawn out to 90 m, so only the trees near the view (and near a light,
+	# for its shadow) are drawn
 	for i in 3:
 		w.mm_chunked(Flora.oak_model(i + 1), outer[i], true, 32.0, 90.0)
 		w.mm_chunked(pine_meshes[i], pines[i], true, 32.0, 90.0)
@@ -474,7 +464,6 @@ static func build(w: World) -> void:
 	w._scatter_ferns(380)
 	w.spawns["start"] = Vector3(0, 0, 5)
 	w.spawns["new_player"] = NEW_PLAYER_AT
-	w.spawns["from_wild"] = Vector3(0, 0, gate_z + 4.5)
 	w.spawns["portal"] = Vector3(4, 0, 8)
 	w.spawns["alch"] = Vector3(-11.5, 0, -9)
 	w.spawns["forge"] = Vector3(13.5, 0, -10.5)

@@ -124,8 +124,8 @@ func _run() -> void:
 		w.los(Vector3(-20, 0, -20), Vector3(20, 0, 20))
 		n += 1
 	print("[C] los 57 m x200: %.2f ms" % ((Time.get_ticks_usec() - t0) / 1000.0))
-	# the wilds and the crypt: walls and edges still hold
-	await g.travel(0, "wild", "start")
+	# the Verdant Reach and the Arena's hall: edges and walls still hold
+	await g.travel(0, "bg", "start")
 	while g._busy:
 		await process_frame
 	w = g.world
@@ -133,8 +133,8 @@ func _run() -> void:
 	var p2 := edge
 	for i in 200:
 		p2 = w.move(p2, Vector3(0.06, 0, 0))
-	print("[C] wild edge: stopped inside %s (%.2f m from edge)" % [p2.x < w.bounds.end.x - 1.0, w.bounds.end.x - p2.x])
-	await g.travel(0, "lair", "start")
+	print("[C] forest edge: stopped inside %s (%.2f m from edge)" % [p2.x < w.bounds.end.x - 1.0, w.bounds.end.x - p2.x])
+	await g.travel(0, "sandbox", "start")
 	while g._busy:
 		await process_frame
 	w = g.world
@@ -147,5 +147,5 @@ func _run() -> void:
 			pos = w.move(pos, Vector3(cos(a), 0, sin(a)) * 0.06)
 		if not w._wall_at(pos.x, pos.z, r * 0.9):
 			inside += 1
-	print("[C] crypt walls: walks in 8 directions stayed on the floor %d/8" % inside)
+	print("[C] hall walls: walks in 8 directions stayed on the floor %d/8" % inside)
 	quit()

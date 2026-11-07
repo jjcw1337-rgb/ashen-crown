@@ -1,6 +1,6 @@
 extends SceneTree
-## The Forsaken Bear (bear.gd, BearBrain): two per Act I moor, 20-40 m off the road;
-## it wanders its home ground and rears up to roar now and then; it notices a hero, roars once, charges,
+## The Forsaken Bear (bear.gd, BearBrain): one stands in a Verdant Reach camp; one put in a glade of the Verdant
+## Reach (nothing else about) wanders its home ground and rears up to roar now and then; it notices a hero, roars once, charges,
 ## mauls (damage and a knockback); led more than 30 m from home it gives up and goes back. Prints [B] lines.
 var g
 var fails := 0
@@ -32,16 +32,16 @@ func _run() -> void:
 		await process_frame
 	# no shield: a knight's passive block can take a maul whole
 	await g.start_game(false, "demon")
-	g.difficulty = 0
-	await g.load_zone(0, "wild", "start")
+	check(BgForest.CAMPS.any(func(c): return (c["foes"] as Array).any(func(f): return str(f["kind"]) == "bear")), "a bear stands in one of the Verdant Reach's camps")
+	await g.load_zone(0, Battlegrounds.ZONE, "start")
 	await wait(0.5)
+	for e in g.world.enemies_root.get_children():
+		e.free()
+	var st: Vector3 = g.world.spawns["start"]
+	g.spawn_enemy("bear", g.world.free_spot_near(st + (Vector3.ZERO - st).normalized() * 30.0, 3.0), 5, false, "", 901)
+	await wait(0.3)
 	var bs := _bears()
-	var road := []
-	for e in bs:
-		road.append(snappedf(g.world.path_dist(e.global_position.x, e.global_position.z), 1.0))
-	check(bs.size() == 2, "two bears on the moor (%d)" % bs.size())
-	check(road.all(func(d: float) -> bool: return d >= 19.0 and d <= 41.0), "20-40 m off the road %s" % [road])
-	check(bs.size() < 2 or bs[0].global_position.distance_to(bs[1].global_position) > 55.0, "well apart")
+	check(bs.size() == 1, "a bear in a glade of the Verdant Reach (%d)" % bs.size())
 	check(bs.size() > 0 and bs[0].rig.has_meta("bear"), "the Meshy bear body")
 	if bs.is_empty():
 		print("[B] done, %d failed" % fails)
