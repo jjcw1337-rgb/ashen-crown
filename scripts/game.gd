@@ -868,7 +868,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		return
 	_busy = true
 	net.broadcast_goto(act, zone, spawn, at)
-	loading_lbl.text = ("Descending into %s..." if zone == Battlegrounds.ZONE else "Entering %s...") % zone_title(act, zone)
+	loading_lbl.text = Maps.arrive(zone)
 	set_loading_art(zone)
 	loading.visible = true
 	# the zone's recorded files on the loader's threads (ResCache), while the old zone goes; the build waits for them

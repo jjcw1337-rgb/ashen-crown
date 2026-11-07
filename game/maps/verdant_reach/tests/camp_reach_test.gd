@@ -49,7 +49,7 @@ func _run() -> void:
 	g.test_immortal = true
 	await g.load_zone(0, "bg", "start")
 	var w = g.world
-	var camps: Array = load("res://game/maps/verdant_reach/camps.gd").all(w)
+	var camps: Array = load("res://game/systems/world/camps.gd").all(w)
 	check(camps.size() >= 12, "%d camps" % camps.size())
 	var need := 1.4 + 0.45 + 0.35      # (Hero: an Inter's radius + his body + slack)
 	for c in camps:

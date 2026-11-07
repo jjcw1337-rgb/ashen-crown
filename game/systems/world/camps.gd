@@ -1,6 +1,6 @@
 class_name Camps
 extends RefCounted
-## Camps: the Battlegrounds' encounters (Blaine's overhaul, 2026-11-06). A camp is a place, a tier (1-3, 4 = a
+## Camps: a map's encounters (the Verdant Reach's are its CAMPS table). A camp is a place, a tier (1-3, 4 = a
 ## boss), the monsters that belong to it and a chest that stays sealed until every one of them is dead. Its monsters
 ## carry the camp's pack id (Enemy.pack_id), so completion counts who belongs to it, wherever they wander or die, and
 ## a camp never mixes with a neighbour's monsters. Clearing one unseals its chest: the first to open it rolls its gear
