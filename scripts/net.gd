@@ -372,7 +372,6 @@ func pl_gear(gear: Dictionary) -> void:
 ## Every skill effect the local hero shows (Hero.fx) goes out as one small event; each partner plays it on
 ## this player's puppet, visuals only. Enemies in it travel as net ids (SkillFx.encode/decode).
 var fx_tap: Callable      # tests: handed every event as it would go on the wire
-var pd_tap: Callable      # tools: handed every Plague Doctor event (Plague._send) as it would go on the wire
 var fx_sent := 0          # events sent to partners and played from them (mp_test counts both)
 var fx_got := 0
 
@@ -668,40 +667,6 @@ func cl_enemy_die(id: int) -> void:
 			game.quests.on_kill(e)       # a partner's quests count the party's kills (a raid's don't: no story there)
 		if e.boss:
 			game.boss_down_remote(e)
-
-## A hero's visible moment (the plague doctor's flasks, traps and dome: Plague._send), for every other player to
-## replay on their puppet of him (Plague.remote: visuals only). A partner sends it to the host, who replays it and
-## passes it on.
-func hero_fx(ev: String) -> void:
-	if not active:
-		return
-	if is_host:
-		if not players.is_empty():
-			rpc("cl_hero_fx", multiplayer.get_unique_id(), ev)
-	else:
-		rpc_id(1, "sv_hero_fx", ev)
-
-@rpc("any_peer", "call_remote", "reliable")
-func sv_hero_fx(ev: String) -> void:
-	if not is_host or ev.length() > 200:
-		return
-	var pid := multiplayer.get_remote_sender_id()
-	_play_hero_fx(pid, ev)
-	rpc("cl_hero_fx", pid, ev)
-
-@rpc("authority", "call_remote", "reliable")
-func cl_hero_fx(pid: int, ev: String) -> void:
-	if pid != multiplayer.get_unique_id():
-		_play_hero_fx(pid, ev)
-
-func _play_hero_fx(pid: int, ev: String) -> void:
-	if not players.has(pid) or not is_instance_valid(players[pid]["hero"]):
-		return
-	var h: Hero = players[pid]["hero"]
-	if h.is_plague():
-		if h.pd == null:
-			h.pd = Plague.new(h)
-		h.pd.remote(ev)
 
 func enemy_fx(e: Enemy, ev: String) -> void:
 	if is_host and not players.is_empty():
@@ -1026,8 +991,8 @@ func obj_hit_player(owner_pid: int, oid: int, attacker: int) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func cl_pvp_obj_hit(oid: int, attacker: int) -> void:
-	if not loading and game.hero != null and game.hero.pd != null:
-		game.hero.pd.obj_hit(oid, attacker)
+	if not loading and game.hero != null:
+		ClassSkills.obj_hit(game.hero, oid, attacker)      # (the Plague Doctor's game counts the blows on his things)
 
 ## PvP crowd control (PvpStatus): the local hero's skill did more than hurt another player's stand-in.
 func send_pvp_status(target_pid: int, kind: String, secs: float, data: Dictionary) -> void:

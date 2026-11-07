@@ -21,9 +21,12 @@ const LOW_RES := 0.25
 
 static var _done := {}
 
-## What the capture's 2.2 s per skill doesn't reach of the Plague Doctor's (Plague.remote events).
-const PLAGUE_TAIL := ["cloud|~0,0,-3|3.0|4.0|toxic", "cloud|~2,0,-2|2.0|2.5|cane", "trans_end|1.0", "burst|8.0|2",
-	"spew|~0,0,-3.5|~0,0,-7", "swarm_scatter", "reveal"]
+## What the capture's 2.2 s per skill doesn't reach of the Plague Doctor's: the slam's little cloud, the transfusion's
+## end, the experiment's burst and spew, the swarm scattering, his fog showing him (his fx events, as recorded).
+const PLAGUE_TAIL := [{"s": "attack", "e": "cane", "n": 3, "p": {"v3": [2.0, 0.0, -2.0]}, "d": {"v3": [0.0, 0.0, -1.0]}, "r": 2.0, "x": 2.5},
+	{"s": "transfusion", "e": "off", "x": 1.0}, {"s": "experiment", "e": "burst", "r": 8.0, "n": 2, "x": 7.0},
+	{"s": "experiment", "e": "spew", "p": {"v3": [0.0, 1.1, -3.5]}, "q": {"v3": [0.0, 0.0, -7.0]}}, {"s": "swarm", "e": "scatter"},
+	{"s": "fog", "e": "reveal"}]
 
 static func _load() -> Dictionary:
 	return SkillWarmData.EVENTS
@@ -85,11 +88,6 @@ static func run(g, classes: Array = []) -> void:
 			if w is Dictionary:
 				SkillFx.play(p, _rebuild(w, origin))
 				n += 1
-		# the Plague Doctor draws through his own Plague (a puppet's is a ghost that only shows), not SkillFx
-		if cls == "plague" and p.pd != null:
-			for ev in SkillWarmData.PLAGUE:
-				p.pd.remote(_pd_rebuild(str(ev), origin))
-				n += 1
 	var tree: SceneTree = g.get_tree()
 	for i in 3:
 		await RenderingServer.frame_post_draw
@@ -107,9 +105,9 @@ static func run(g, classes: Array = []) -> void:
 	await _settle(tree, SETTLE * 0.5)
 	# the Plague Doctor's later moments: his clouds, the transfusion's end, the experiment's burst and spew
 	var plague: Hero = pups[todo.find("plague")] if todo.has("plague") else null
-	if plague != null and plague.pd != null:
-		for ev in PLAGUE_TAIL:
-			plague.pd.remote(_pd_rebuild(ev, origin))
+	if plague != null:
+		for w in PLAGUE_TAIL:
+			SkillFx.play(plague, _rebuild(w, origin))
 			n += 1
 	await _settle(tree, SETTLE * 0.5)
 	# keep every material the effects drew with (Godot 4.3 frees a StandardMaterial3D's or ParticleProcessMaterial's
@@ -123,6 +121,7 @@ static func run(g, classes: Array = []) -> void:
 				keep(c)
 	for p in pups:
 		SkillFx.clear(p)
+		PlagueFx.clear(p)      # (his looks outlive a death's SkillFx.clear: his own clear)
 		p.queue_free()
 	vp.scaling_3d_scale = was_3d
 	if is_instance_valid(root):
@@ -192,15 +191,6 @@ static func _keep_mat(m: Material) -> void:
 	_kept.append(m)
 	if m.next_pass != null:
 		_keep_mat(m.next_pass)
-
-## A recorded Plague event back as one to play: its "~x,y,z" places put round `origin`.
-static func _pd_rebuild(ev: String, origin: Vector3) -> String:
-	var a := ev.split("|")
-	for i in a.size():
-		if a[i].begins_with("~"):
-			var v := Plague._pv(a[i].substr(1)) + origin
-			a[i] = "%.2f,%.2f,%.2f" % [v.x, v.y, v.z]
-	return "|".join(a)
 
 ## A recorded event back as one to play: its places put round `origin`, no monsters.
 static func _rebuild(w: Dictionary, origin: Vector3) -> Dictionary:

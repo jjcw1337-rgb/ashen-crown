@@ -69,13 +69,13 @@ func _run() -> void:
 					stats[key] = [[], []]
 				stats[key][0].append(ms)
 				stats[key][1].append(dt)
-			if cls == "plague" and p.pd != null:
-				for ev in Array(SkillWarmData.PLAGUE) + SkillWarm.PLAGUE_TAIL:
-					var key := "plague pd " + str(ev).split("|")[0]
+			if cls == "plague":
+				for ev in SkillWarm.PLAGUE_TAIL:
+					var key := "plague tail %s/%s" % [ev.get("s", ""), ev.get("e", "")]
 					await process_frame
 					dt = 0.0
 					var t0 := Time.get_ticks_usec()
-					p.pd.remote(SkillWarm._pd_rebuild(str(ev), origin))
+					SkillFx.play(p, SkillWarm._rebuild(ev, origin))
 					var ms := (Time.get_ticks_usec() - t0) / 1000.0
 					for i in 3:
 						await process_frame
@@ -87,8 +87,7 @@ func _run() -> void:
 			for i in 90:
 				await process_frame
 			SkillFx.clear(p)
-			if p.pd != null:
-				p.pd.clear()
+			PlagueFx.clear(p)
 			for c in g.world.fx_root.get_children():
 				c.queue_free()
 			for i in 5:

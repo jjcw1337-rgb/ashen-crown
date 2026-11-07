@@ -93,7 +93,7 @@ var block_flash := 0.0
 ## the Hollow Sloth's blows (sloth.gd): its sweep throws you back, its slam stuns
 var shove := Vector3.ZERO
 var daze_t := 0.0
-var fog_hidden := false     # a puppet hidden from this game by the Plague Doctor's Fog (Plague._update_visibility)
+var fog_hidden := false     # a puppet hidden from this game by the Plague Doctor's Fog (PlagueFogFx.update)
 var pvs := {}               # statuses another player put on him in PvP (PvpStatus: slow, snare, harried, reveal, blight)
 var pvs_shown := -1         # what PvpStatusFx shows of them on him (bits | blight << 4)
 var net_pvs_bits := 0       # a puppet: the statuses his game says he has (PvpStatusFx bits, in his state packet)
@@ -115,7 +115,6 @@ var channel_t := -1.0        # a held channel (the Warlock's Drain Life): second
 var kit: Dictionary = {}
 ## The archer (archer.gd): arrows in flight (drawn: ArcherArrowFx), the spirit beasts
 var arrows: Array = []
-var pd: Plague = null           # the plague doctor's flasks, clouds, traps, poison and infection (plague.gd)
 var beasts: Array = []
 var beast_down_t := 0.0     # after the Spirit Beast falls, seconds until it rises again beside him
 var mark = null             # the enemy the archer is shooting at: his beast goes for it first
@@ -425,8 +424,6 @@ func _build_rig() -> void:
 		rig = Doug.build_body()
 	elif is_plague():
 		rig = Plague.build_body()
-		if pd == null:
-			pd = Plague.new(self)
 	elif is_dragon():
 		rig = Dragon.build(cls)     # posed in code every frame (Anim.pose hands it to Dragon.pose)
 	else:
@@ -477,7 +474,6 @@ func set_class(c: String) -> void:
 		talents = {}
 		tfx = {}
 	ClassSkills.clear(self)
-	pd = null                 # the plague doctor's Plague object goes with his body (a new one comes with the rig)
 	SkillFx.clear(self)
 	if rig != null:
 		rig.queue_free()
@@ -948,7 +944,7 @@ func _carry_weapon(delta: float) -> void:
 			weapon_node.reparent(dest, true)
 		_set_hilt(not in_hand and store == "hilt")
 	# hidden in the scabbard; on the back it stays in view
-	weapon_node.visible = (in_hand or store != "hilt") and not (pd != null and pd.hands_busy) and _chop_axe == null and not rig.has_meta("bare_hands")   # the plague doctor puts his cane away to throw; the felling axe replaces it
+	weapon_node.visible = (in_hand or store != "hilt") and not ClassSkills.hands_busy(self) and _chop_axe == null and not rig.has_meta("bare_hands")   # the plague doctor puts his cane away to throw; the felling axe replaces it
 	# ease into the hold (identity in the hand; the back mount's own rest)
 	var k := 1.0 - exp(-delta * 16.0)
 	weapon_node.transform = weapon_node.transform.interpolate_with(Transform3D.IDENTITY, k)
@@ -1250,6 +1246,10 @@ func _swipe_lunge(a0: float, a1: float) -> void:
 	global_position = game.world.move(global_position, fwd.normalized() * d)
 
 func _swipe_impact() -> void:
+	# a class may deal its swing its own way (the plague doctor's cane: each blow leaves its mark, decided where his
+	# rules run)
+	if ClassSkills.swing(self, atk_style):
+		return
 	if not decides():
 		_send_swing(null)
 		return
@@ -1294,8 +1294,6 @@ func _swipe_blows(style: String, fwd: Vector3) -> void:
 			fx("attack", "hit", {"p": e.global_position + Vector3(0, 1.1 * e.height, 0), "c": trail_col.lerp(Color(1.0, 0.75, 0.4), 0.5)})
 			any = true
 			struck.append(e)
-	if pd != null:
-		pd.cane_blow(style, struck)      # the plague doctor's blows each leave something of his own
 	if fin:
 		fx("attack", "finisher", {"r": rng, "x": any})
 		if any and _mine():
@@ -1671,8 +1669,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	var fwd := -rig.global_transform.basis.z
 	var facing := fwd.dot(to_src.normalized()) > cos(deg_to_rad(80.0))
 	var has_shield: bool = equipment.get("shield") != null
-	if pd != null:
-		dmg = pd.absorb(dmg)     # the Plague Doctor's Transfusion soaks part of it into his tanks
+	dmg = ClassSkills.taken(self, dmg)     # (the Plague Doctor's Transfusion soaks part of it into his tanks)
 	var shield_pos := global_position + Vector3(0, 1.2, 0) + fwd * 0.5
 	if block_amt > 0.5 and facing:
 		var reduce := maxf(0.05, 0.2 - talent("block_dr") / 100.0)     # Block: 80% less damage from the front
@@ -1794,8 +1791,6 @@ func _process_body(delta: float) -> void:
 	anim_time += delta
 	if puppet:
 		_puppet_process(delta)
-		if pd != null:
-			pd.update(delta)       # a partner plague doctor's flasks and clouds (shown only)
 		return
 	Hero.striker = self
 	if run != null:
@@ -1926,8 +1921,6 @@ func _process_body(delta: float) -> void:
 			speed = 0.0
 	if not pvs.is_empty() or pvs_shown > 0 or cc.has("slow"):
 		PvpStatusFx.sync(self, PvpStatusFx.bits_of(self), PvpStatusFx.blight_of(self))
-	if pd != null:
-		speed *= pd.speed_mult()     # quicker in his own fog, slower with the needle in his arm
 
 	if roll_t >= 0.0:
 		vel = Dodge.step(self, delta)
@@ -2043,8 +2036,7 @@ func _process_body(delta: float) -> void:
 		carry.update(self, delta)
 		st.merge(carry.anim_state(), true)
 		_carry_weapon(delta)
-		if pd != null:
-			pd.idle_fidget(st, delta)   # now and then, standing about, he peers at a vial
+		ClassSkills.pose(self, st, delta)   # (a class's own idle: now and then the plague doctor peers at a vial)
 	if Enemy.server_nopose:
 		return
 	Anim.pose(rig, st)
@@ -2227,7 +2219,7 @@ func _puppet_process(delta: float) -> void:
 	# Plague Doctor's hands are on a skill
 	if trail_pts.is_empty():
 		trail_col = ClassSkills.trail_color(cls, "")
-	_update_trail(atk_t >= 0.0 and not has_bow() and not is_dragon() and not (is_doug() and str(st.get("style", "")) in Doug.SKILL_STYLES) and not (pd != null and pd.hands_busy))
+	_update_trail(atk_t >= 0.0 and not has_bow() and not is_dragon() and not (is_doug() and str(st.get("style", "")) in Doug.SKILL_STYLES) and not ClassSkills.hands_busy(self))
 
 func _apply_shield_pose() -> void:
 	if shield_node == null or not is_instance_valid(shield_node):
@@ -2701,7 +2693,7 @@ func from_save(d: Dictionary) -> void:
 	binds = (d.get("binds", {}) as Dictionary).duplicate() if d.get("binds") is Dictionary else {}
 	WraithSkills.migrate_binds(binds)
 	DemonSkills.migrate_binds(binds)
-	PlagueSkills.migrate_binds(binds)
+	Plague.migrate_binds(binds)
 	# saves from before the Path of Exile controls had Block on right mouse by default: it becomes the first skill
 	if int(d.get("binds_v", 1)) < 2 and str(binds.get("rmb", "")) == "block":
 		binds.erase("rmb")

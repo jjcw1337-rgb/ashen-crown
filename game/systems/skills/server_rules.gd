@@ -9,7 +9,7 @@ extends RefCounted
 ## blowing, a mark landing) comes from the server to everyone. Single player and Enter World co-op are unchanged.
 
 ## The classes whose skills run on the server (the rest still deal their own hits until they move over).
-const CLASSES := ["archer", "warlock"]
+const CLASSES := ["archer", "warlock", "plague"]
 
 ## Tests: what the server made from players' skills, and what it refused; what a player's game took from its skills'
 ## rules on the server (Skill.give: life back, mana).
@@ -103,8 +103,7 @@ static func update(h, delta: float) -> void:
 	if h.dead:
 		return
 	Hero.striker = h
-	for sk in h.kit.values():
-		sk.update(delta)
+	Skill.update_kit(h, delta)
 
 ## A stand-in for this player or someone on their side (a duo's pair, an arena teammate): their skills pass it by.
 ## (A player's own game makes stand-ins only for foes: Battlegrounds.sync_proxies.)

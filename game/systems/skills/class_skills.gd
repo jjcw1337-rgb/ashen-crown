@@ -3,7 +3,7 @@ extends RefCounted
 ## The one place Hero hands a class's skills to that class's own script. Hero.use_skill, _impact, _process,
 ## take_hit, set_class and new_character call in here; nothing in hero.gd names a class's skill ids.
 ##
-## Every class's skills script (KnightSkills, WraithSkills, DemonSkills, WarlockSkills, Archer, PlagueSkills) has
+## Every class's skills script (KnightSkills, WraithSkills, DemonSkills, WarlockSkills, Archer, Plague) has
 ## the same static functions:
 ##   can_cast(h, id, aim) -> bool   checks before mana and the cooldown are spent (shows its own message on false)
 ##   cast(h, id, aim)               starts the skill: usually h._start_attack(style, id[, seconds])
@@ -28,7 +28,7 @@ static func of(cls: String):
 		"demon": return DemonSkills
 		"warlock": return WarlockSkills
 		"archer": return Archer
-		"plague": return PlagueSkills
+		"plague": return Plague
 		"doug": return DougSkills
 		"wyrm", "serpent", "wyvern": return DragonSkills
 		"any": return SharedSkills       # the shared skills (Data.SKILLS "cls": "any")
@@ -36,7 +36,7 @@ static func of(cls: String):
 
 ## Every class's skills script (update/clear/died run on all of them: each looks after its own state).
 static func all() -> Array:
-	return [KnightSkills, WraithSkills, DemonSkills, WarlockSkills, Archer, PlagueSkills, DougSkills, DragonSkills, SharedSkills]
+	return [KnightSkills, WraithSkills, DemonSkills, WarlockSkills, Archer, Plague, DougSkills, DragonSkills, SharedSkills]
 
 ## The class a skill id belongs to ("any" for the common Attack and Block).
 static func owner(id: String) -> String:
@@ -67,8 +67,7 @@ static func update(h: Hero, delta: float) -> void:
 		m.update(h, delta)
 	# the skill objects (Hero.kit): on the hero's own game only, since a partner's copy of him only shows them
 	if not h.puppet:
-		for sk in h.kit.values():
-			sk.update(delta)
+		Skill.update_kit(h, delta)
 
 static func rooted(h: Hero) -> bool:
 	for m in all():
@@ -167,6 +166,45 @@ static func absorb(h: Hero, dmg: float) -> float:
 static func weapon_hand(h: Hero, J: Dictionary) -> Node3D:
 	var m = of(h.cls)
 	return m.weapon_hand(h, J) if m != null and m.has_method("weapon_hand") else null
+
+## Its weapon swing's blows, dealt its own way in place of Hero's (the plague doctor's cane: each blow leaves its
+## mark, and in a match his blows are decided on the server). True when it dealt them.
+static func swing(h: Hero, style: String) -> bool:
+	var m = of(h.cls)
+	return m != null and m.has_method("swing") and m.swing(h, style)
+
+## How much of a blow on the hero gets through (the plague doctor's Transfusion soaks part of it).
+static func taken(h: Hero, dmg: float) -> float:
+	var m = of(h.cls)
+	return float(m.taken(h, dmg)) if m != null and m.has_method("taken") else dmg
+
+## Before the body's pose each frame, on the hero himself: a pose of its own while he stands about (the plague
+## doctor peering at a vial).
+static func pose(h: Hero, st: Dictionary, delta: float) -> void:
+	var m = of(h.cls)
+	if m != null and m.has_method("pose"):
+		m.pose(h, st, delta)
+
+## Its hands are on a skill: the weapon is put away meanwhile (the plague doctor's vials, censer and reliquary).
+static func hands_busy(h: Hero) -> bool:
+	var m = of(h.cls)
+	return m != null and m.has_method("hands_busy") and m.hands_busy(h)
+
+## A monster at `at` can't see the hero (the plague doctor in his fog). Asked on the game running the monsters.
+static func hidden_from_monster(h: Hero, at: Vector3) -> bool:
+	var m = of(h.cls)
+	return m != null and m.has_method("hidden_from_monster") and m.hidden_from_monster(h, at)
+
+## PvP: where the hero's breakable thing `oid` is (PvpObjects: the plague doctor's bloom, vat and creature), or null.
+static func obj_pos(h: Hero, oid: int) -> Variant:
+	var m = of(h.cls)
+	return m.obj_pos(h, oid) if m != null and m.has_method("obj_pos") else null
+
+## PvP: another player's blow on one of the hero's things, on the hero's own game (PvpObjects).
+static func obj_hit(h: Hero, oid: int, attacker: int) -> void:
+	var m = of(h.cls)
+	if m != null and m.has_method("obj_hit"):
+		m.obj_hit(h, oid, attacker)
 
 ## The weapon trail's colour for a class (a unique weapon's glow overrides it, Hero._start_attack).
 static func trail_color(cls: String, skill: String) -> Color:

@@ -1,6 +1,6 @@
 class_name PlagueFever
 extends RefCounted
-## What Blight and Fever look like on a foe (the Plague Doctor's shared mechanic; the rules are in plague.gd).
+## What Blight and Fever look like on a foe (the Plague Doctor's shared mechanic; the rules are PlagueAffliction's, plague_affliction.gd).
 ## Blight: the Meshy blight mark (a stone medallion with a glowing fly sigil, keyed off black) wheeling over the head,
 ## one per stack. Fever: the foe sweats a yellow-green vapour (the Mantaflow vapour book, PlagueSmoke), glows from
 ## inside and the Meshy ring of fever (light, sweat and steam, painted top-down) throbs on the ground round its feet,

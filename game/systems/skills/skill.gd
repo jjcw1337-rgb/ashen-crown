@@ -80,6 +80,20 @@ func impact() -> void:
 func free_cast(_aim: Vector3) -> bool:
 	return false
 
+## Runs after the hero's other skills each frame (what ticks on what they laid: the Plague Doctor's poison).
+func late() -> bool:
+	return false
+
+## Every frame, a hero's skill objects (Hero.kit), the late ones last. Run once per hero where its rules run: its own
+## game (ClassSkills.update) or the match server's copy of it (ServerRules.update).
+static func update_kit(h, delta: float) -> void:
+	for sk in h.kit.values():
+		if not sk.late():
+			sk.update(delta)
+	for sk in h.kit.values():
+		if sk.late():
+			sk.update(delta)
+
 ## Every frame on the hero's own game.
 func update(_delta: float) -> void:
 	pass

@@ -4,12 +4,12 @@ extends SceneTree
 ## first cast (jj, 2026-11-04: "intense lag and freezing" on a first Fire Arrow and other skills: 0.1-0.5 s).
 ## Each class plays its weapon attack and every skill beside a pack of zombies; the events are stored with their
 ## places relative to the caster (facing -z) and without the monsters they touched.
-##   godot --headless --path . -s tools/_late.gd -- res://tools/skill_warm_capture.gd
+##   godot --headless --path . -s tools/_late.gd -- res://tools/skill_warm_capture.gd [class,class...]
+## (with classes: only theirs are recorded again; the others' are kept as they are)
 ## Writes res://scripts/skill_warm_data.gd (SkillWarmData.EVENTS: a script, so the exported game carries it).
 
 var g
 var events: Array = []
-var pd_events: Array = []      # the Plague Doctor's own events (Plague._send), replayed on a puppet's ghost Plague
 const OUT := "res://scripts/skill_warm_data.gd"
 
 func _initialize():
@@ -63,27 +63,23 @@ func _plain(v, origin: Vector3):
 		return v
 	return null
 
-## A Plague event with its places ("x,y,z") made relative to the caster ("~x,y,z").
-func _rel(ev: String, origin: Vector3) -> String:
-	var a := ev.split("|")
-	for i in a.size():
-		var v := a[i].split(",")
-		if v.size() == 3 and v[0].is_valid_float() and v[1].is_valid_float() and v[2].is_valid_float():
-			var r := Vector3(float(v[0]), float(v[1]), float(v[2])) - origin
-			a[i] = "~%.2f,%.2f,%.2f" % [r.x, r.y, r.z]
-	return "|".join(a)
-
 func _run() -> void:
 	while g.world == null or g._busy:
 		g._intro_skip = true
 		await process_frame
 	g.net.fx_tap = func(w: Dictionary): events.append(w)
-	g.net.pd_tap = func(ev: String): pd_events.append(ev)
 	g.test_immortal = true
 	g.test_allskills = true
 	var out := {}
-	var pd_out: Array = []
+	var only: Array = []
+	for a in OS.get_cmdline_user_args():
+		if not str(a).begins_with("res://"):
+			only.append_array(str(a).split(","))
+	if not only.is_empty():
+		out = SkillWarmData.EVENTS.duplicate(true)
 	for cls in Data.CLASSES.keys():
+		if not only.is_empty() and not only.has(cls):
+			continue
 		await g.start_game(false, cls)
 		g.ui.close_all()
 		await g.travel(0, "sandbox", "start")
@@ -105,7 +101,6 @@ func _run() -> void:
 			h.mana = h.max_mana
 			h.life = h.max_life
 			events.clear()
-			pd_events.clear()
 			var origin: Vector3 = h.global_position
 			if id == "attack":
 				h.swipe_attack(en[1].global_position, false)
@@ -123,19 +118,17 @@ func _run() -> void:
 				var pw = _plain(w, origin)
 				if pw is Dictionary and pw.has("s") and pw.has("e"):
 					mine.append(pw)
-			for ev in pd_events:
-				pd_out.append(_rel(str(ev), origin))
 			SkillFx.clear(h)
 			WraithSkills.clear(h)
 			DemonSkills.clear(h)
-			if h.pd != null:
-				h.pd.clear()
+			PlagueFx.clear(h)
+			ClassSkills.clear(h)
 			h.atk_t = -1.0
 			await wait(0.3)
 		out[cls] = mine
 		print("[W] %s: %d events from %d skills" % [cls, mine.size(), ids.size()])
 	var f := FileAccess.open(OUT, FileAccess.WRITE)
-	f.store_string("class_name SkillWarmData\nextends RefCounted\n## What every class's skills draw, recorded by tools/skill_warm_capture.gd (their fx events, places relative to the\n## caster, no monsters) for SkillWarm. Generated: run the capture again after changing a skill's effects.\n\nconst EVENTS := " + JSON.stringify(out) + "\n\n## The Plague Doctor's own events (Plague._send), places as \"~x,y,z\" relative to the caster.\nconst PLAGUE := " + JSON.stringify(pd_out) + "\n")
+	f.store_string("class_name SkillWarmData\nextends RefCounted\n## What every class's skills draw, recorded by tools/skill_warm_capture.gd (their fx events, places relative to the\n## caster, no monsters) for SkillWarm. Generated: run the capture again after changing a skill's effects.\n\nconst EVENTS := " + JSON.stringify(out) + "\n")
 	f.close()
 	print("[W] wrote ", OUT)
 	quit()

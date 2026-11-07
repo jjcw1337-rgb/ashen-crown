@@ -30,7 +30,25 @@
 			"mana": 7,
 			"cd": 0.0,
 			"range": 12.0,
-			"lvl": 1
+			"lvl": 1,
+			"k": {
+				"cast_s": 0.85,
+				"radius": 2.6,
+				"pool_s": 3.5,
+				"linger_s": 2.0,
+				"hit_flat": 12,
+				"hit_lvl": 1.65,
+				"hit_wpn": 0.24,
+				"hit_core": 0.6,
+				"burst_wpn": 0.5,
+				"poison_flat": 9,
+				"poison_lvl": 1.26,
+				"poison_wpn": 0.16,
+				"tick": 0.5,
+				"blight_s": 6,
+				"fever_s": 4,
+				"fever_more": 20
+			}
 		},
 		{
 			"id": "swarm",
@@ -46,7 +64,21 @@
 				"summon",
 				"cc"
 			],
-			"lvl": 3
+			"lvl": 3,
+			"k": {
+				"cast_s": 0.8,
+				"radius": 3,
+				"secs": 6,
+				"speed": 6,
+				"redirects": 2,
+				"scatter_s": 1.5,
+				"harried": 25,
+				"harried_s": 0.8,
+				"reveal_s": 0.8,
+				"bite_flat": 5,
+				"bite_lvl": 0.77,
+				"bite_wpn": 0.1
+			}
 		},
 		{
 			"id": "bloom",
@@ -62,7 +94,20 @@
 				"trap",
 				"cc"
 			],
-			"lvl": 5
+			"lvl": 5,
+			"k": {
+				"cast_s": 0.95,
+				"radius": 3.5,
+				"grow_s": 1,
+				"active_s": 6,
+				"every": 2,
+				"warn": 0.6,
+				"snare_s": 0.6,
+				"still": 0.3,
+				"pulse_flat": 14,
+				"pulse_lvl": 1.98,
+				"pulse_wpn": 0.26
+			}
 		},
 		{
 			"id": "fog",
@@ -78,7 +123,16 @@
 				"movement",
 				"buff"
 			],
-			"lvl": 9
+			"lvl": 9,
+			"k": {
+				"cast_s": 0.6,
+				"radius": 6,
+				"secs": 6,
+				"see": 3.5,
+				"hop": 4,
+				"speed": 25,
+				"reveal_s": 1
+			}
 		},
 		{
 			"id": "transfusion",
@@ -93,7 +147,14 @@
 				"buff",
 				"sustain"
 			],
-			"lvl": 14
+			"lvl": 14,
+			"k": {
+				"cast_s": 0.55,
+				"secs": 2,
+				"cut": 45,
+				"move": 70,
+				"cap": 15
+			}
 		},
 		{
 			"id": "experiment",
@@ -108,7 +169,33 @@
 			"tags": [
 				"ultimate"
 			],
-			"lvl": 20
+			"lvl": 20,
+			"k": {
+				"cast_s": 0.9,
+				"crank_s": 2.5,
+				"radius": 8,
+				"small_r": 5,
+				"walk": 1.5,
+				"secs": 7,
+				"slow": 20,
+				"slow_s": 0.7,
+				"every": 2,
+				"burst_flat": 20,
+				"burst_lvl": 3,
+				"burst_wpn": 0.4,
+				"rot_flat": 8,
+				"rot_lvl": 1.21,
+				"rot_wpn": 0.16,
+				"creature_speed": 2.5,
+				"spew_every": 2.4,
+				"spew_warn": 1,
+				"spew_len": 4,
+				"spew_half": 0.45,
+				"spew_flat": 16,
+				"spew_lvl": 2.2,
+				"spew_wpn": 0.3,
+				"spew_poison_s": 2
+			}
 		},
 		{
 			"id": "p_miasma",
@@ -122,7 +209,11 @@
 			"use": 0.9,
 			"role": "poison around him",
 			"lvl": 1,
-			"run": true
+			"run": true,
+			"k": {
+				"radius": 4.5,
+				"secs": 4
+			}
 		},
 		{
 			"id": "p_spread",
@@ -137,7 +228,17 @@
 			"range": 14.0,
 			"role": "spreading curse",
 			"lvl": 9,
-			"run": true
+			"run": true,
+			"k": {
+				"secs": 6,
+				"reach": 4,
+				"every": 1,
+				"spread_r": 4,
+				"spread_s": 2.5,
+				"burst_r": 5,
+				"burst_s": 4,
+				"leap_r": 7
+			}
 		},
 		{
 			"id": "p_leech",
@@ -154,7 +255,13 @@
 				"sustain"
 			],
 			"lvl": 9,
-			"run": true
+			"run": true,
+			"k": {
+				"radius": 3,
+				"secs": 5,
+				"heal": 1.5,
+				"max_foes": 3
+			}
 		}
 	],
 	"rites": [

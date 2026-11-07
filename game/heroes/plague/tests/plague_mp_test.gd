@@ -1,7 +1,7 @@
 extends SceneTree
 ## Co-op for the Plague Doctor: everything one player throws, releases, plants, drops, straps on and raises, the
-## other sees on their puppet of him (Net.hero_fx, Plague.remote), and the puppet's copy never deals anything (no
-## poison, no Blight). Both players are plague doctors here: the host casts his six skills first, then the partner
+## other sees on their puppet of him (his fx events: Hero.fx -> PlagueFx), and the puppet runs none of his rules (no
+## skill objects: no poison, no Blight). Both players are plague doctors here: the host casts his six skills first, then the partner
 ## (whose events go through the host).
 ## Run one copy with "-- host" and another with "-- join". Prints [PM] lines.
 var g
@@ -104,28 +104,29 @@ func _cast_all(h) -> void:
 		var t0 := Time.get_ticks_msec()
 		var up := false
 		while Time.get_ticks_msec() - t0 < int(float(c[2]) * 1000.0):
-			up = up or _has(h.pd, id)
+			up = up or _has(h, id)
 			await wait(2)
 		mine[id] = up
 	check(mine.values().all(func(v) -> bool: return v), "my own six went up %s" % [mine])
 
-## What one of his skills leaves in his `Plague` while it plays.
-func _has(pd, id: String) -> bool:
-	if pd == null:
+## What one of his skills shows on this game while it plays (PlagueFx's look of him).
+func _has(h, id: String) -> bool:
+	if h == null or not h.has_meta("plague_fx"):
 		return false
+	var st: Dictionary = h.get_meta("plague_fx")      # (PlagueFx.state, read without loading it: the test runs before Sfx)
 	match id:
 		"toxic":
-			return not pd.vial_flights.is_empty() or not pd.clouds.is_empty()
+			return not st.get("vials", []).is_empty() or not st.get("pools", []).is_empty()
 		"swarm":
-			return not pd.swarm.is_empty()
+			return not st.get("swarm", {}).is_empty()
 		"bloom":
-			return not pd.blooms.is_empty()
+			return not st.get("blooms", []).is_empty()
 		"fog":
-			return not pd.fogs.is_empty()
+			return not st.get("fogs", []).is_empty()
 		"transfusion":
-			return not pd.trans.is_empty()
+			return st.get("trans") != null
 		"experiment":
-			return not pd.lab.is_empty()
+			return not st.get("lab", {}).is_empty()
 	return false
 
 ## Watches the other player's puppet for the same six, shown only.
@@ -138,10 +139,11 @@ func _watch(other) -> void:
 	var t0 := Time.get_ticks_msec()
 	var limit := int((_cast_time() * 2.0 + 20.0) * 1000.0)
 	while Time.get_ticks_msec() - t0 < limit and not (saw.values().all(func(v) -> bool: return v) and burst):
-		if other != null and other.pd != null:
+		if other != null and other.has_meta("plague_fx"):
 			for id in saw.keys():
-				saw[id] = saw[id] or _has(other.pd, id)
-			burst = burst or (not other.pd.lab.is_empty() and int(other.pd.lab.get("stage", 0)) == 2)
+				saw[id] = saw[id] or _has(other, id)
+			var lab: Dictionary = (other.get_meta("plague_fx") as Dictionary).get("lab", {})
+			burst = burst or (not lab.is_empty() and int(lab.get("stage", 0)) == 2)
 		await wait(3)
 	check(saw["toxic"], "I see the other's Pestilence Vial")
 	check(saw["swarm"], "I see the other's swarm")
@@ -149,6 +151,5 @@ func _watch(other) -> void:
 	check(saw["fog"], "I see the other's fog")
 	check(saw["transfusion"], "I see the other's Transfusion apparatus")
 	check(saw["experiment"] and burst, "I see the other's Last Experiment, vat and burst")
-	var pd = other.pd if other != null else null
-	check(pd != null and pd.ghost() and pd.poison.is_empty() and pd.blight.is_empty(), "the copy on my screen only shows: it poisons and blights nothing (pd %s, ghost %s, poisoned %d, blighted %d)" % [pd != null, pd.ghost() if pd else false, pd.poison.size() if pd else -1, pd.blight.size() if pd else -1])
+	check(other != null and other.puppet and other.kit.is_empty(), "the copy on my screen only shows: none of his rules run on it, so it poisons and blights nothing (%d skill objects)" % (other.kit.size() if other != null else -1))
 	watched = true
