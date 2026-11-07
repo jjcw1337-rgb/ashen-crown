@@ -72,7 +72,8 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 				if not is_instance_valid(e):
 					continue
 				if not e.dead:
-					e.drain_flash(Warlock.FEL)
+					if e.has_method("drain_flash"):
+						e.drain_flash(Warlock.FEL)
 				siphon(root, SkillFx.chest_of(e, 1.0), hand if i == 0 else (SkillFx.chest_of(main, 1.0) if is_instance_valid(main) else hand))
 			if h.puppet:
 				Sfx.play_at("drain_tick", pos, -12.0)
@@ -184,7 +185,7 @@ static func _draw_drain(h: Hero, delta: float) -> void:
 				beams[id] = b
 			b.width = 0.26 if i == 0 else 0.15
 			b.caps = i == 0
-			if not lit.has(id):
+			if not lit.has(id) and e.has_method("set_drained"):
 				lit[id] = e
 				e.set_drained(true)
 			if i == 0:
@@ -703,7 +704,7 @@ static func chain(root: Node3D, from: Vector3, to: Vector3, dur: float) -> void:
 static func shackle(target: Node3D, dur: float) -> void:
 	if not is_instance_valid(target):
 		return
-	var h: float = float(target.get("height"))
+	var h: float = SkillFx.height_of(target)
 	var r: float = float(target.get("radius")) + 0.2
 	var n := Node3D.new()
 	target.add_child(n)

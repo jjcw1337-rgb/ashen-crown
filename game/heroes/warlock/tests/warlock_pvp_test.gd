@@ -3,9 +3,10 @@ extends SceneTree
 ##   godot --headless --path . -s game/heroes/warlock/tests/warlock_pvp_test.gd -- --server --port 24691 --raid-fast server
 ##   godot --headless --path . -s game/heroes/warlock/tests/warlock_pvp_test.gd -- a 24691
 ##   godot --headless --path . -s game/heroes/warlock/tests/warlock_pvp_test.gd -- b 24691
-## a is the Warlock, b a knight standing still. a's curses tick on b through the server (each tick a PvP hit), Terrify
-## makes b flee (PvpStatus "fear" through Battlegrounds.pvp_status, with diminishing returns), Festering Hex staggers
-## him on its burst, and Leech Bolt heals a off him.
+## a is the Warlock, b a knight standing still. Her skills run on the match server (ServerRules): a's curses tick on b
+## there (each tick a PvP hit), Terrify makes b flee (PvpStatus "fear" through Battlegrounds.pvp_status, with
+## diminishing returns), Festering Hex staggers him on its burst, and Leech Bolt heals a off him (the server gives a's
+## game the life: Skill.give). a's own game keeps no curse of its own.
 ## Prints [SERVER]/[A]/[B] lines.
 var role := "a"
 var host := "127.0.0.1"
@@ -62,6 +63,7 @@ func _server() -> void:
 	await until(func(): return g.bg != null and g.net.active and not g._busy, 40.0)
 	check(await until(func(): return g.net.players.size() == 2, 60.0), "both players are in the crypt")
 	check(await until(func(): return not g.bg.cc_dr.is_empty(), 90.0), "a status passed through the server, counted for diminishing returns")
+	check(ServerRules.made_count >= 3, "her spells were made here, by the server's copy of her (%d made, %d refused)" % [ServerRules.made_count, ServerRules.refused_count])
 	await until(func(): return g.net.players.is_empty(), 120.0)
 
 func _player() -> void:
@@ -106,7 +108,7 @@ func _warlock() -> void:
 	await secs(0.6)
 	check(_use(h, "w_corruption", foe.global_position), "Corruption cast at him")
 	await secs(0.8)
-	check(WarlockHex.curses_on(h, _proxy()) >= 1, "the curse is on his stand-in")
+	check(h.kit.get("hex") == null or h.kit["hex"].curses_on(_proxy()) == 0, "my game keeps no curse of its own: the server's copy of me cursed his stand-in")
 	check(_use(h, "w_festering", foe.global_position), "Festering Hex on him too")
 	await secs(1.0)
 	check(_use(h, "w_terrify", foe.global_position), "Terrify at him")

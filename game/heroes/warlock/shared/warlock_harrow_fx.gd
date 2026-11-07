@@ -521,13 +521,13 @@ static func _mark(h: Hero, e) -> Dictionary:
 	if m.is_empty() or not is_instance_valid(m["node"]):
 		var n := Node3D.new()
 		e.add_child(n)
-		n.position = Vector3(0, float(e.get("height")) * 0.9, 0)
+		n.position = Vector3(0, SkillFx.height_of(e) * 0.9, 0)
 		var motes := Fx.aura(n, FEL, 16, 0.6, 0.06, 1.1, 0.5, float(e.get("radius")) + 0.15)
 		motes.emitting = false
 		# the curse sigil on the ground under it (WarlockAura.sigil): in the last curse's colour, brighter with more
 		var sg := WarlockAura.sigil(FEL, float(e.get("radius")) + 0.75, float(e.get_instance_id() % 97), 0.7)
 		n.add_child(sg)
-		sg.position = Vector3(0, -float(e.get("height")) * 0.9 + 0.05, 0)
+		sg.position = Vector3(0, -SkillFx.height_of(e) * 0.9 + 0.05, 0)
 		(sg.material_override as ShaderMaterial).set_shader_parameter("alpha", 0.0)
 		sg.visible = false
 		m = {"node": n, "e": e, "rings": {}, "motes": motes, "terror": null, "terror_until": 0.0, "sigil": sg, "sig_a": 0.0, "sig_pulse": 0.0}
@@ -579,7 +579,7 @@ static func _terror_mark(h: Hero, e, dur: float) -> void:
 	if m["terror"] == null or not is_instance_valid(m["terror"]):
 		var t := Node3D.new()
 		(m["node"] as Node3D).add_child(t)
-		t.position = Vector3(0, float(e.get("height")) * 1.3 + 0.5, 0)
+		t.position = Vector3(0, SkillFx.height_of(e) * 1.3 + 0.5, 0)
 		var skull := InfernalFx.glow(t, t.global_position, 0.8, InfernalFx.glow_mat(VIOLET, 2.4, 2.2, 0.3))
 		skull.reparent(t)
 		skull.position = Vector3.ZERO

@@ -2,8 +2,8 @@ class_name WarlockSpell
 extends Skill
 ## A skill of the Warlock's (docs/content/skills.md): what all of hers share. Her spells hit with her spell power
 ## (WarlockHex.spell), more on a frightened or bound foe; the targeted ones turn to the foe nearest the pointer as the
-## cast begins and, on the cast's impact frame, `make` an "at" with where that foe stands, so her rules (here, or on the
-## match server's copy of her) strike whatever foe is there (`struck`). Life and mana her rules give her (a leech, the
+## cast begins and, on the cast's impact frame, `make` an "at" naming that foe (where it stands, and in a match its id:
+## ServerRules.foe_of), so her rules (here, or on the match server's copy of her) strike it (`struck`). Life and mana her rules give her (a leech, the
 ## feast, Dread Harvest) come back through `give` to her own game, where WarlockHex takes them.
 
 ## How near the pointer a foe counts as the one aimed at (aim help).
@@ -53,7 +53,24 @@ func pick(aim: Vector3, r: float):
 			best = e
 	return best
 
-## Rules: the foe standing at `at` (a targeted spell's "at"), or null.
+## A foe as a match's games name it (SkillFx.encode's ids: a monster's net id, minus a player's id for their
+## stand-in); 0 outside a match or co-op.
+func net_id(e) -> int:
+	var net = hero.game.net
+	if net == null or not net.active:
+		return 0
+	return -int(e.pvp_pid) if int(e.get("pvp_pid")) > 0 else int(e.net_id)
+
+## Rules: the foe an "at" names: on the match server the one its id names, if it's still a foe in reach; else the
+## foe standing at its point.
+func target_of(d: Dictionary):
+	if int(d.get("id", 0)) != 0 and hero.game.net.server:
+		var e = ServerRules.foe_of(hero.game, int(d["id"]))
+		if e != null and foe(e) and not e.get("pvp_obj") and e.global_position.distance_to(hero.global_position) <= reach() + 6.0:
+			return e
+	return foe_at(d["at"])
+
+## Rules: the foe standing at `at`, or null.
 func foe_at(at: Vector3):
 	var best = null
 	var bd := AT_R
@@ -88,12 +105,12 @@ func impact() -> void:
 	if e != null and not alive(e):
 		e = pick(hero.atk_aim, reach() + 2.0)
 	if e != null:
-		make("at", {"at": (e as Node3D).global_position})
+		make("at", {"at": (e as Node3D).global_position, "id": net_id(e)})
 
 ## A targeted spell's foe, found by its rules where its impact said.
 func made(kind: String, d: Dictionary) -> void:
 	if kind == "at":
-		var e = foe_at(d["at"])
+		var e = target_of(d)
 		if e != null:
 			struck(e)
 

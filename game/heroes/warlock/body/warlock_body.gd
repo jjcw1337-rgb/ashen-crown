@@ -94,6 +94,7 @@ static func _build_spirit(g: Dictionary) -> Node3D:
 	r.remove_meta("knight")
 	r.set_meta("warlock", true)
 	r.set_meta("spirit", true)
+	r.set_meta("bare_hands", true)      # she fights with her hands: Hero hides the weapon (its stats still count)
 	r.set("hover", Wraith.HOVER)
 	r.set("float_mode", true)
 	var gear := {"spirit": SPIRIT_VOID}

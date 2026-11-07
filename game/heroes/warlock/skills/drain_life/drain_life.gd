@@ -81,7 +81,7 @@ func cast(aim: Vector3) -> void:
 	h._face(e.global_position - h.global_position)
 	victims = [e]
 	h.fx(id, "start", {"t": victims})
-	make("latch", {"at": (e as Node3D).global_position})
+	make("latch", {"at": (e as Node3D).global_position, "id": net_id(e)})
 
 ## Every frame of the channel (ClassSkills.channel, from Hero._process): the key, the mana, the facing; the rules'
 ## beat too when they run here.
@@ -163,7 +163,7 @@ func _show_heal() -> void:
 func made(kind: String, d: Dictionary) -> void:
 	match kind:
 		"latch":
-			var e = foe_at(d["at"])
+			var e = target_of(d)
 			if e == null:
 				e = _nearest(hero.global_position, reach(), null)
 			if e == null:
