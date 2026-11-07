@@ -11,7 +11,7 @@ const RATE := 22050
 const BANK := preload("res://game/systems/audio/sfx_bank.gd").BANK
 const BANK_DIR := "res://assets/audio/sfx/"
 ## Rendered sounds that loop (a channel, the ambience beds)
-const LOOPS := ["drain_loop", "soul_feast", "eclipse_storm", "wind", "forest", "night_forest", "drip", "music_town", "music_select"]
+const LOOPS := ["drain_loop", "soul_feast", "eclipse_storm", "wind", "forest", "drip", "music_select"]
 var streams := {}
 ## name -> [streams] for the rendered sounds
 var bank := {}
@@ -221,7 +221,7 @@ func start_loop(nm: String, vol := 0.0, pitch := 1.0, owner: Node = null) -> Aud
 	return p
 
 ## The zone's music and its ambience bed (the wind; `amb` picks another, like Act I's forest rustle outside the camp).
-## `amb_take` picks which take of the bed plays (the camp's nights rotate theirs, DayNight.night_take).
+## `amb_take` picks which take of the bed plays.
 ## kind "" = no music, only the ambience bed (a zone with no song of its own: better quiet than the old drone).
 func play_music(kind: String, amb_over := "", amb_take := 0) -> void:
 	if silent_runtime:

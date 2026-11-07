@@ -1,5 +1,5 @@
 extends SceneTree
-## Render the actual post-intro home and multiplayer widgets at three logical viewport sizes.
+## Render the home screen (the multiplayer page) and its widgets at three logical viewport sizes.
 var g
 var fails:=0
 var checks:=0
@@ -18,23 +18,17 @@ func run():
  var deadline:=Time.get_ticks_msec()+120000
  while (g.world==null or g._busy or g._intro_playing) and Time.get_ticks_msec()<deadline:
   g._intro_skip=true;await process_frame
- g.char_id="uihero";g.char_name="Arena Hero";g.save_game();g.char_id="";g.ui.show_title();g.ui.home.select("uihero")
+ g.char_id="uihero";g.char_name="Arena Hero";g.save_game();g.char_id=""
  var c=g.lobby_client;c.set_process(false);c.identity="a";c.auth="Bearer dev-ui"
- check(g.ui.home.get_node("play_box/buttons").get_child_count()==3,"exactly three main home choices")
  for size in [Vector2i(1024,768),Vector2i(1280,720),Vector2i(1920,1080)]:
   root.size=Vector2i(1280,720) if size.x>1280 else size
   root.content_scale_size=size;root.content_scale_mode=Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
   c.panel.hide()
-  await shot("home-"+str(size.x))
-  check(g.ui.home._play.visible and g.ui.home._play.text=="Enter World","Enter World "+str(size.x))
-  var buttons=g.ui.home.get_node("play_box/buttons").get_children()
-  for a in buttons:
-   for b in buttons:
-    if a!=b:check(not a.get_global_rect().intersects(b.get_global_rect()),"home modes do not overlap")
-  g.ui.home._mp.pressed.emit()
+  g.ui.show_title()
   await wait_s(0.5)
-  check(c.panel.visible and not g.ui.home.visible,"Multiplayer opens from post-intro home")
-  check(not c.lan_row.visible,"no LAN on the multiplayer page (it hosted a character's world)")
+  await shot("home-"+str(size.x))
+  check(c.panel.visible and g.ui.title_panel.visible and g.ui.title_panel.find_child("title_head",true,false)==null,"the home screen is the multiplayer page, no title or Enter World "+str(size.x))
+  check(c.panel.find_child("lan_row",true,false)==null,"no LAN on the multiplayer page (it hosted a character's world)")
   c.room={};c.rooms=[{"id":"l1","name":"Aldric's Battlegrounds","mode":"battlegrounds","team_size":1,"capacity":16,"state":"waiting","owner":"o1","members":{"o1":{"name":"Aldric"}},"joined":3,"joinable":true},
    {"id":"l2","name":"Mira's Arena","mode":"arena","team_size":2,"capacity":4,"state":"waiting","owner":"o2","members":{"o2":{"name":"Mira"}},"joined":1,"joinable":true,"wager":true},
    {"id":"l3","name":"Doug's Endless Waves","mode":"waves","team_size":1,"capacity":4,"state":"playing","owner":"o3","members":{"o3":{"name":"Doug"}},"joined":4,"joinable":false}]
@@ -63,12 +57,6 @@ func run():
   check(tiles!=null and root.get_visible_rect().grow(1).encloses(tiles.get_global_rect()) and root.get_visible_rect().grow(1).encloses(c.view.find_child("ready",true,false).get_global_rect()),"the class tiles and Ready fit "+str(size.x))
   c.room={};c.panel.hide()
  c.set_process(false);c.panel.hide()
- await g.start_game(true,"knight","uihero")
- g.ui.wp_panel.open()
- await shot("waypoint")
- check(g.ui.wp_panel.visible,"in-game waypoint remains available")
- g.ui.close_all();c.character=g.char_id
- await g.exit_to_title()
  await g.start_game(true,"knight","uihero")
  g.hero.gold=8765;g.save_game()
  c.character=g.char_id;c.match_id="failed-admission-test";c.admitted=false

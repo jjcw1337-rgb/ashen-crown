@@ -50,11 +50,11 @@ func _run(zones: Array) -> void:
 static var _headless := DisplayServer.get_name() == "headless"
 static var _labels := {}
 
-## Names for meshes built in code, from the game's own caches (Flora, ForestCamp, Geo, Grass).
+## Names for meshes built in code, from the game's own caches (Flora, Geo, Grass).
 static func build_labels() -> void:
 	_labels.clear()
 	# loaded by path at run time: naming the classes here would compile them before the Sfx autoload exists
-	var caches := {"Flora": ["flora", "_cache"], "ForestCamp": ["forest_camp", "_meshes"], "Geo": ["geo", "_cache"],
+	var caches := {"Flora": ["flora", "_cache"], "Geo": ["geo", "_cache"],
 		"Grass": ["grass", "_meshes"], "GrassGlb": ["grass", "_glb"]}
 	for cname in caches.keys():
 		var sc: GDScript = load("res://scripts/%s.gd" % caches[cname][0])

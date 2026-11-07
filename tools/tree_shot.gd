@@ -31,14 +31,11 @@ func _run() -> void:
 		await process_frame
 	await g.start_game(false, "knight")
 	g.ui.close_all()
-	var zones := ["bg"] if OS.get_cmdline_user_args().has("bg") else ["bg", "town"]
+	var zones := ["bg"]
 	if OS.get_cmdline_user_args().has("zoom"):
 		g.zoom = 1.3
 	for zone in zones:
-		if zone != "town":
-			await g.travel(0, zone, "start")
-		else:
-			await g.travel(0, "town", "start")
+		await g.travel(0, zone, "start")
 		while g._busy:
 			await process_frame
 		var spots := _oak_spots()

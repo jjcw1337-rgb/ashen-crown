@@ -1,6 +1,6 @@
 class_name IconRenderer
 extends Node
-## Renders 3D item models into textures for the inventory, belt and shops.
+## Renders 3D item models into textures for the inventory and belt.
 
 var vp: SubViewport
 var cam: Camera3D

@@ -1,8 +1,7 @@
 extends SceneTree
 ## Screenshots of the dragon classes. Needs a display.
-##   godot --path . -s tools/dragon_shots.gd -- outdir wyrm|serpent|wyvern   # in the camp: idle, walk, run, the three
-##                                                                           # attack blows, block (game camera, zoomed in)
-##   godot --path . -s tools/dragon_shots.gd -- outdir picker                # the class picker centred on each dragon
+##   godot --path . -s tools/dragon_shots.gd -- outdir wyrm|serpent|wyvern   # in the Arena's hall: idle, walk, run, the
+##                                                                           # three attack blows, block (game camera, zoomed in)
 var g
 var out := ""
 
@@ -24,24 +23,6 @@ func _run() -> void:
 	while g.world == null or g._busy or g._intro_playing:
 		g._intro_skip = true
 		await process_frame
-	if what == "picker":
-		while not g.ui.title_panel.visible:
-			await process_frame
-		g.ui.open_class_picker()
-		var st = g.ui.class_stage
-		await create_timer(2.5).timeout
-		await _snap("picker_knight")
-		for c in ["wyrm", "serpent", "wyvern"]:
-			st.go_to(c)
-			await create_timer(2.2).timeout
-			await _snap("picker_" + c)
-			# its signature (the tail spin) at the impact
-			st._sig_t[c] = 0.0
-			st._hit_done[c] = false
-			await create_timer(float(ClassStage.SIGNATURE[c][1]) * 0.47).timeout
-			await _snap("picker_" + c + "_spin")
-		quit()
-		return
 	await g.start_game(false, what)
 	g.apply_quality(0)           # Low: software GL in CI is slow
 	g.ui.close_all()

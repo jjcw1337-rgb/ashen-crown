@@ -22,7 +22,7 @@ func _run() -> void:
 		g._intro_skip = true
 		await process_frame
 	await g.start_game(false, "knight")
-	for zone in ["town", "bg"]:
+	for zone in ["bg"]:
 		await g.load_zone(0, zone, "start")
 		await process_frame
 		var w = g.world

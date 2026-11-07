@@ -38,8 +38,6 @@ func _run() -> void:
 	h.refresh_gear()
 	await frames(5)
 	ok(h.carry.p["motion"] == "knight" and h.carry.p["store"] == "hilt", "the knight uses his own profile (cross-body draw, scabbard)")
-	# town: always away
-	ok(g.cur_zone == "town" and h.carry.state == "sheathed", "in town the sword stays sheathed (%s)" % h.carry.state)
 	g.travel(0, "sandbox", "start")
 	while g._busy:
 		await process_frame

@@ -127,7 +127,7 @@ func _run() -> void:
 	await g.close_sandbox()
 	while g._busy:
 		await frames(5)
-	check(g.sandbox == null and g.cur_zone == "town" and g.char_id != "", "leaving goes back to the camp (%s)" % g.cur_zone)
+	check(g.sandbox == null and g.cur_zone == Sandbox.ZONE and g.char_id != "", "leaving goes back to the character's hall, no camp (%s)" % g.cur_zone)
 	var after := {"cls": h.cls, "level": h.level, "gold": h.gold, "weapon": str(h.equipment.get("weapon", {}).get("name", ""))}
 	check(str(after) == str(before), "the character is exactly as it was: %s" % str(after))
 	check(get_root().find_children("Bot*", "Node3D", true, false).is_empty(), "no bot is left behind")

@@ -17,7 +17,7 @@ func _run() -> void:
 	await wait(30)
 	while g._busy:
 		await wait(5)
-	print("[1] title ok, town loaded, interactables=", g.world.interactables.size())
+	print("[1] title ok, the hall loaded, interactables=", g.world.interactables.size())
 	g.start_game(false)
 	await wait(10)
 	while g._busy:
@@ -25,31 +25,10 @@ func _run() -> void:
 	g.ui.close_all()
 	var h = g.hero
 	print("[2] new game: hp=", h.life, " gold=", h.gold, " weapon=", h.equipment["weapon"]["name"])
-	# shops
-	for it in g.world.interactables:
-		if it.kind == "vendor" and it.data.get("role") == "smith":
-			g._interact(it)
-	await wait(2)
-	g.ui.open_shop("smith", g.shops["smith"][0], g.shops["smith"][1])
-	h.gold = 5000
-	g.ui._buy(0)
-	g.ui._buy(0)
-	print("[3] bought, gold=", h.gold, " inv0=", h.inventory[0]["name"] if h.inventory[0] else "none")
-	h.equip_from_inventory(0)
-	print("[4] equipped weapon=", h.equipment["weapon"]["name"], " dmg=", h.dmg_min, "-", h.dmg_max)
-	var ev := InputEventMouseButton.new()
-	ev.button_index = MOUSE_BUTTON_RIGHT
-	ev.pressed = true
-	g.ui._inv_click(1, ev)
-	print("[5] sold, gold=", h.gold)
-	g.ui.open_shop("gamble", "Gamble", g.shops["gamble"][1])
-	g.ui._buy(0)
-	g.ui.open_stash()
-	g.ui.refresh()
 	g.ui.toggle(g.ui.char_panel)
 	h.stat_points = 3
 	g.ui._add_stat("str")
-	print("[6] stash/char ok, str=", h.total_str())
+	print("[6] char ok, str=", h.total_str())
 	g.ui.close_all()
 	# into the Verdant Reach (offline: its camps' monsters)
 	await g.load_zone(0, "bg", "start")
@@ -185,8 +164,6 @@ func _run() -> void:
 		await wait(45)
 	print("[F] free swing hit: ", is_instance_valid(foe2) and (foe2.life < hp_before or foe2.dead))
 	g.playing = true
-	g.cast_town_portal()
-	print("[10] portal link=", g.tp_link.get("zone"))
 	h.use_skill("charge", h.global_position + Vector3(5, 0, 0))
 	h.cds["cry"] = 0
 	await wait(40)

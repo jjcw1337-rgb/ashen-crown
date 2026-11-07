@@ -35,7 +35,6 @@ var has_char := false
 var focus := ""                           # the hovered side
 var entering := ""                        # set by enter(): the camera is moving into a choice
 var covered: Callable                     # true while something opaque is over the stage: stop drawing
-var cards := {}                           # (the old Continue/New cards, hidden; kept placed for UI's API)
 var t := 0.0
 var _lean := 0.0                          # -1 left .. 1 right, eased
 var _push := 0.0                          # 0..1 the move into a choice
@@ -692,7 +691,6 @@ func _process(delta: float) -> void:
 	moon.light_energy = 0.7 + 0.08 * sin(t * 0.3) + flick * 0.9
 	env.background_energy_multiplier = 1.0 + flick * 1.6
 	_animate_hero(delta)
-	_place_cards()
 
 ## The camera: a slow drift, leaning toward the hovered side; `_push` carries it into the chosen dais.
 ## The multiplayer lobby's closer view of the hero (meta "lobby_zoom" 0..1, eased in and out).
@@ -729,14 +727,14 @@ func _place_camera(_delta: float) -> void:
 	cam.look_at_from_position(pos, look)
 	_frame()
 
-## The picture's centre moved into the room left of the character sidebar (TitleHome.mid, at the home screen's
-## scale) by shifting the camera's frustum, not the camera: the hero stays in line with the arch behind him.
+## The picture's centre moved (the meta "frame_mid": screen pixels from the centre at 1440 wide, MpLobbyView.STAGE_MID)
+## by shifting the camera's frustum, not the camera: the hero stays in line with the arch behind him.
 func _frame() -> void:
 	if size.x < 2.0 or size.y < 2.0:
 		return
 	var k := minf(1.0, minf(size.x / 1440.0, size.y / 800.0))
 	# (the multiplayer lobby stands the hero elsewhere: MpLobbyView.STAGE_MID)
-	var m: float = float(get_meta("frame_mid")) if has_meta("frame_mid") else TitleHome.mid()
+	var m: float = float(get_meta("frame_mid")) if has_meta("frame_mid") else 0.0
 	var shift := -m * k / size.x          # a fraction of the width: the picture moves left
 	var near := 0.05
 	cam.near = near
@@ -745,17 +743,6 @@ func _frame() -> void:
 	cam.size = 2.0 * near * tan(fov * 0.5)
 	var width := cam.size * (size.x / size.y if cam.keep_aspect == Camera3D.KEEP_HEIGHT else 1.0)
 	cam.frustum_offset = Vector2(shift * width, 0.0)
-
-func _place_cards() -> void:
-	for side in cards:
-		var c: Control = cards[side]
-		if not is_instance_valid(c):
-			continue
-		var p := dais_foot(side)
-		var w := c.size.x
-		var x := clampf(p.x - w * 0.5, 16.0, size.x - w - 16.0)
-		var y := clampf(p.y + 6.0, size.y * 0.5, size.y - c.size.y - 96.0)
-		c.position = Vector2(x, y)
 
 # ---------------------------------------------------------------- meshes
 ## A wall `w` wide, `h` tall, `d` deep with a pointed (equilateral gothic) opening `span` wide whose apex is

@@ -19,26 +19,18 @@ var old_save := SAVE_PATH
 var env: Environment
 var world_env: WorldEnvironment
 var sun: DirectionalLight3D
-## Day and night in Act I's camp (DayNight): the hour moves the sun or moon (this light), the sky, the mist and the
-## lamps. lamp_mul and fire_mul scale the "flicker" lights (lanterns and candles, and fires) for the hour.
-var day_night: DayNight
-var lamp_mul := 1.0
-var fire_mul := 1.0
 var cam_pivot: Node3D
 var cam: Camera3D
 var hero: Hero
 var net: Net
-var steam: SteamLink            # co-op through Steam: friends join your world (steam_link.gd); ok is false without Steam
 var weather: Weather
 var grass_field: GrassField   # the grass's touch and wind (grass_field.gd)
 var sky_mat: ProceduralSkyMaterial
-var space_sky: ShaderMaterial      # the island camp's sky (CampIsland.space_sky)
-var zoom_max := 1.3                # the scroll wheel's furthest out (further over the World-Tree Island)
+var zoom_max := 1.3                # the scroll wheel's furthest out
 ## The orbit camera (jj, 2026-11-04: "allow the player to use mouse and rotate around it from all views"): zoomed out
-## past the game's own view (zoom > ORBIT_ZOOM, the World-Tree Island), dragging with the middle mouse button (or Alt
-## and the left) turns the camera round and tilts it, down past the island's edge to its underside; the view also
-## drifts from the hero to the island's middle the further out it is. Zoomed back in, it eases home to the game's
-## own angle. Any zone that raises zoom_max gets it.
+## past the game's own view (zoom > ORBIT_ZOOM), dragging with the middle mouse button (or Alt and the left) turns the
+## camera round and tilts it. Zoomed back in, it eases home to the game's own angle. Any zone that raises zoom_max
+## past ORBIT_ZOOM gets it (none does since the World-Tree Island was archived).
 const ORBIT_ZOOM := 1.32
 var orbit_yaw := 0.0
 var orbit_pitch := 0.0             # added to the camera's own elevation (radians, + = higher)
@@ -70,7 +62,6 @@ func _orbit_offset(off: Vector3) -> Vector3:
 	var o := Vector3(0, sin(elev) * d, cos(elev) * d)
 	return Basis(Vector3.UP, orbit_yaw) * o
 var ui: UI
-var quests: Quests          # the quest log (quests.gd), per character and run
 var vignette: ColorRect
 var loading: ColorRect
 var loading_lbl: Label
@@ -86,7 +77,7 @@ var focus_len := 0.0
 var focus_zoom := 1.0
 var shake := 0.0
 var cur_act := 0
-var cur_zone := "town"
+var cur_zone := ""
 var playing := false
 ## Battlegrounds (battlegrounds.gd): the server's raid logic (only on a `--server` run), whether this game is a
 ## player in a raid, and that player's stash as the server last reported it.
@@ -105,9 +96,7 @@ var bg_roster: Array = []       # the antechamber's matchup (Net.cl_bg_roster): 
 var bg_gained := -1             # ... items brought out of it (-1: no extraction; the news told back at the camp)
 var bg_wait_until := 0         # turned away late in a round: when (ticks msec) the next raid lets players in
 var bg_refusal := ""           # why the raid server last turned us away ("closed", "refused")
-## The camp's stash, one for every character on this PC (SharedStash; a tool script's own file under -s).
-var stash: SharedStash
-## Characters and the stash in Nakama (cloud_saves.gd), in builds with BuildEnv.cloud() on; null otherwise.
+## Characters in Nakama (cloud_saves.gd), in builds with BuildEnv.cloud() on; null otherwise.
 var cloud: CloudSaves
 var sandbox: Sandbox = null     # the admins' Battlegrounds sandbox (sandbox.gd) while one is open
 var paused := false
@@ -125,7 +114,6 @@ var rmb_held := false
 const BIND_KEYCODES := {"Q": KEY_Q, "E": KEY_E, "R": KEY_R, "F": KEY_F, "G": KEY_G, "V": KEY_V}
 var exit_grace := 0.0
 var test_block := false        # a tool holding the guard up (game/heroes/archer/tools/fire_range.gd's "block" take)
-var waypoints_known := ["town"]
 var boss_killed := false
 ## Always 0: Act I is the only act (the story's A2 and A3 are cut). Kept because saves and tools still set it.
 var difficulty := 0
@@ -137,15 +125,11 @@ var admin_name := AdminKey.holder()
 var dev_tools := OS.has_feature("editor") or admin_name != "" or (BuildEnv.env() == "local" and OS.has_feature("debug"))
 var account_id := ""            # this player's Nakama account (CloudSaves), shown in the Admin column to be made an admin
 var account_admin := false      # the account has the admin role (Nakama, tools/admin_role.sh): the admin tools on
-var played_s := 0.0          # seconds this character has been played (saved); the clock trees regrow on (Harvest)
-var harvest_saved := {}      # "<run>:<act>:<zone>" -> Harvest.to_save() (the felled trees and when they regrow)
-var tp_link := {}
 var xp_bonus_t := 0.0
-var shops := {}
 var rng := RandomNumberGenerator.new()
 var shot_path := ""
 var shot_spawn := ""
-var shot_zone := "town"
+var shot_zone := Sandbox.ZONE
 var shot_frames := 0
 var death_t := -1.0
 var spectating := 0             # Battlegrounds: the fallen hero's camera follows this player (peer id; 0 = no one)
@@ -156,9 +140,6 @@ var _busy := false
 
 func _ready() -> void:
 	rng.randomize()
-	if OS.is_debug_build():
-		for e in Data.check_waypoints():
-			push_warning("Waypoints: " + e)
 	Mats.ensure_globals()
 	var args := OS.get_cmdline_user_args()
 	for i in args.size():
@@ -188,17 +169,12 @@ func _ready() -> void:
 	_setup_camera()
 	_setup_post()
 	get_window().size_changed.connect(apply_render_scale)
-	quests = Quests.new(self)
 	ui = UI.new()
 	add_child(ui)
 	ui.setup(self)
 	net = Net.new()
 	add_child(net)
 	net.setup(self)
-	steam = SteamLink.new()
-	steam.name = "SteamLink"
-	add_child(steam)
-	steam.setup(self)
 	hero = Hero.new()
 	hero.name = "Hero"
 	add_child(hero)
@@ -211,13 +187,9 @@ func _ready() -> void:
 		lobby_client = load("res://scripts/lobby_client.gd").new()
 		add_child(lobby_client)
 		lobby_client.setup(self)
-	if not args.has("--server"):
-		stash = SharedStash.new(SharedStash.TEST_PATH if get_tree().get_script() != null else SharedStash.PATH)
 	if BuildEnv.cloud() and not args.has("--server") and shot_path == "" and not args.has("--kpi"):
 		cloud = CloudSaves.new(self)
 		add_child(cloud)
-		if stash != null:
-			stash.pushed = func(d: Dictionary): cloud.push_stash(d)
 		_cloud_start()
 	if Telemetry.wanted():
 		add_child(Telemetry.new(self))      # player telemetry and error reports (scripts/telemetry.gd)
@@ -248,13 +220,12 @@ func _ready() -> void:
 	# whatever is chosen there (a lobby, Sandbox) loads its own zone.
 	_busy = true
 	_boot_preload()
-	_bury_lost_raiders()
-	_stash_start()
 	await _await_preloads()
 	_busy = false
-	# (the tools/ test harness still finds the camp built when the title comes up: its scripts wait for a world)
-	if _harness_camp():
-		await load_zone(0, "town", "start")
+	# (the tools/ test harness still finds a world built when the title comes up, the Arena's hall: its scripts wait
+	# for one)
+	if _harness_world():
+		await load_zone(0, Sandbox.ZONE, "start")
 	ui.show_title()
 	_release_preloads()
 
@@ -383,10 +354,6 @@ func _setup_env() -> void:
 	sun.directional_shadow_max_distance = 70.0
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	add_child(sun)
-	day_night = DayNight.new()
-	day_night.name = "DayNight"
-	day_night.game = self
-	add_child(day_night)
 	apply_quality(quality)
 
 ## Snow over every outdoor area, falling snow, colder light. Nothing is snowy now: kept for a later map.
@@ -396,19 +363,16 @@ func is_snowy() -> bool:
 ## The zone's song and ambience. Act I's forest outside the camp (the Verdant Reach): soft trees in the breeze
 ## instead of the wind.
 func zone_music() -> void:
-	# on the title screen (and the class picker over it) the hero select's theme plays, not the camp's song
+	# on the multiplayer page (the title) the hero select's theme plays
 	if not playing and ui != null and ui.title_panel != null and ui.title_panel.visible:
 		Sfx.play_music("select")
 		return
 	if world == null:
 		return
-	# the camp after dark: tonight's night bed (DayNight, one of five in turn), once the bed exists
-	var night_bed := cur_zone == "town" and day_night != null and day_night.on and day_night.night > 0.5
 	# the Verdant Reach (the Battlegrounds) has no song: its forest bed alone, not the old synthesized drone, which
 	# played under the whole match as a hum and hiss (Blaine, 2026-11-06)
 	var song := "" if cur_zone == Battlegrounds.ZONE else cur_zone
-	Sfx.play_music(song, "forest" if world.oak_forest and cur_zone != "town" and not indoor() else ("night_forest" if night_bed else ""),
-			day_night.night_take() if night_bed else 0)
+	Sfx.play_music(song, "forest" if world.oak_forest and not indoor() else "")
 
 ## The Arena's hall (the Arena and the Sandbox) is indoors; every other zone is under the sky.
 func indoor() -> bool:
@@ -456,22 +420,22 @@ func _zone_env(kind: String) -> void:
 	else:
 		env.background_mode = Environment.BG_SKY
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-		env.ambient_light_energy = 0.55 if kind == "town" else 0.48
+		env.ambient_light_energy = 0.48
 		env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 		env.tonemap_exposure = 1.05
 		env.fog_light_color = Color(0.36, 0.4, 0.37)
-		env.fog_density = 0.008 if kind == "town" else 0.011
+		env.fog_density = 0.011
 		env.fog_sky_affect = 0.6
 		env.fog_height = 1.5
-		env.fog_height_density = 0.06 if kind == "town" else 0.09
+		env.fog_height_density = 0.09
 		env.adjustment_saturation = 0.86
 		env.adjustment_contrast = 1.06
-		env.volumetric_fog_density = 0.018 if kind == "town" else 0.024
+		env.volumetric_fog_density = 0.024
 		env.volumetric_fog_albedo = Color(0.72, 0.78, 0.74)
 		env.volumetric_fog_emission = Color(0.03, 0.035, 0.035)
 		sun.visible = true
 		sun.light_color = Color(0.86, 0.88, 0.9)
-		sun.light_energy = 0.85 if kind == "town" else 0.75
+		sun.light_energy = 0.75
 		hero.light.light_energy = 0.9
 		hero.light.omni_range = 10.0
 		if kind == Battlegrounds.ZONE:
@@ -499,35 +463,6 @@ func _zone_env(kind: String) -> void:
 			sun.light_energy = 1.32
 			sun.shadow_blur = 2.0
 			hero.light.light_energy = 0.7
-		elif kind == "town" and world.theme.get("forest_camp", false):
-			# Act I's camp deep in the old forest: late dusk under the canopy. Cool blue-green light
-			# and low mist between the trees, so the bonfire, the lanterns and the rune stones glow
-			sky_mat.sky_top_color = Color(0.1, 0.13, 0.17)
-			sky_mat.sky_horizon_color = Color(0.24, 0.29, 0.31)
-			sky_mat.ground_horizon_color = Color(0.2, 0.24, 0.25)
-			# Graphics plan, phase 1 (retuned on a real GPU, 2026-11-01): the first pass (ambient 0.3, moon 0.38,
-			# volumetric fog 0.03) was judged in the cloud's software OpenGL renderer and came out far too dark in
-			# Forward+, where the volumetric fog, SSAO and SSIL all take light away. A moonlit fill you can see by,
-			# thinner mist, and the fire, lanterns and forge still the brightest things (their lights, Grade)
-			env.ambient_light_energy = 0.62
-			env.tonemap_exposure = 1.5
-			env.fog_light_color = Color(0.2, 0.26, 0.29)
-			env.fog_density = 0.009
-			env.fog_height = 1.2
-			env.fog_height_density = 0.1
-			env.adjustment_saturation = 0.97
-			env.adjustment_contrast = 1.05
-			env.volumetric_fog_density = 0.014
-			env.volumetric_fog_albedo = Color(0.62, 0.7, 0.72)
-			env.volumetric_fog_emission = Color(0.016, 0.022, 0.028)
-			env.glow_intensity = 0.95
-			env.glow_bloom = 0.1
-			sun.light_color = Color(0.58, 0.7, 0.92)
-			sun.light_energy = 0.6
-			sun.shadow_blur = 2.2
-			hero.light.light_energy = 1.7
-			hero.light.omni_range = 12.0
-			grade_look = "forest_camp"
 		if snowy:
 			# overcast winter: pale sky, cold light, snow bouncing light back up
 			sky_mat.sky_top_color = Color(0.5, 0.55, 0.62)
@@ -546,24 +481,9 @@ func _zone_env(kind: String) -> void:
 			sun.light_color = Color(0.8, 0.86, 1.0)
 			sun.light_energy = 0.7
 			hero.light.light_energy = 1.1
-	# the World-Tree Island (CampIsland): real space round the camp instead of the forest's dusk sky; the light keeps
-	# the camp's own day (DayNight), its fill a colour now that the sky is black
-	var island: bool = kind == "town" and world.island_r > 0.0 and not inside
-	if island:
-		if space_sky == null:
-			space_sky = CampIsland.space_sky()
-		env.sky.sky_material = space_sky
-		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-		env.ambient_light_color = Color(0.52, 0.58, 0.68)
-		env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
-		env.fog_sky_affect = 0.0
-	else:
-		env.sky.sky_material = sky_mat
-	zoom_max = 2.2 if island else 1.3
+	env.sky.sky_material = sky_mat
 	zoom = minf(zoom, zoom_max)
 	_apply_grade()
-	# the camp runs through the day (DayNight); every other zone keeps its own hour
-	day_night.enable(kind == "town" and world.theme.get("forest_camp", false) and not inside)
 
 # ---------------------------------------------------------------- grade (graphics plan, phase 1)
 ## The zone's look from Grade.LOOKS ("" = none): the colour-grading LUT, the vignette and grain, and the hero's rim
@@ -958,33 +878,10 @@ void fragment(){
 # ---------------------------------------------------------------- zones
 func zone_title(act: int, zone: String) -> String:
 	match zone:
-		"town": return str(Data.ACTS[act]["town"])
 		Battlegrounds.ZONE: return Battlegrounds.map_title()
 		"arena": return "The Proving Arena"
 		Sandbox.ZONE: return Sandbox.TITLE
 	return ""
-
-## The zone's felled trees into the save's record (the host's forest is the one that counts in co-op).
-func _harvest_key() -> String:
-	return "%d:%d:%s" % [difficulty, cur_act, str(cur_zone)]
-
-func _store_harvest() -> void:
-	if world == null or net.is_client():
-		return
-	var h := Harvest.of(world)
-	if h == null:
-		return
-	var d := h.to_save()
-	if d.is_empty():
-		harvest_saved.erase(_harvest_key())
-	else:
-		harvest_saved[_harvest_key()] = d
-
-func _restore_harvest() -> void:
-	var h := Harvest.of(world)
-	if h == null or net.is_client():
-		return
-	h.from_save(harvest_saved.get(_harvest_key(), {}), played_s)
 
 ## The boot's files (ResCache, "boot" scope): the home screen's models, read on the loader's threads at boot.
 ## Released once the title is up (the title's own nodes hold them).
@@ -1016,7 +913,6 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if world:
-		_store_harvest()
 		# the hero's lingering skill effects (Hero.fxs) live in this zone's fx_root: drop them with it, as a puppet's
 		# are (Hero.net_zone_reset); Molten Fists' update touched its freed nodes every frame after a trip
 		if hero != null:
@@ -1029,27 +925,25 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	_zone_scope = scope
 	await ResCache.wait_ready(get_tree(), scope, 20.0)
 	Telemetry.crumb("enter", {"to": zone, "run": difficulty})
-	ui.close_all()             # (a trader, a stash or a waypoint list belongs to the zone being left)
+	ui.close_all()             # (a window open on the zone being left)
 	cur_act = act
 	cur_zone = zone
 	World.detail = quality
 	world = World.new()
 	world.name = "World"
-	world.oak_forest = true                # Act I's old forest: its grass, leaf litter and birds
+	world.oak_forest = true                # the old forest: its grass and leaf litter
 	world.living_grass = true              # the living grass everywhere outdoors
 	add_child(world)
-	# the seed: the camp's 4200, every other zone 4193 (as when the story's zones sat between them in the sum)
-	world.build(act, zone, 4200 + act * 101 + (0 if zone == "town" else -7))
+	# the seed: 4193 for every zone (as when the story's zones and the camp sat round them in the sum)
+	world.build(act, zone, 4193 + act * 101)
 	ResCache.prepare(scope, _monster_paths())     # (on the threads while the minimap is drawn)
-	_restore_harvest()
 	_reset_sky()
 	_end_underworld_now()
 	_zone_env(zone)
 	_grass_zone(zone)
 	apply_quality(quality)
 	await _capture_map(zone)
-	# a waypoint's own arrival spot ("waypoint_<id>"), else the zone's main waypoint, else the start
-	var sp: Vector3 = world.spawns.get(spawn, world.spawns.get("waypoint", world.spawns["start"]) if spawn.begins_with("waypoint") else world.spawns["start"])
+	var sp: Vector3 = world.spawns.get(spawn, world.spawns["start"])
 	if at != null:
 		sp = at
 	sp.y = world.height_at(sp.x, sp.z)
@@ -1083,24 +977,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 				se.xp = int(se.xp * float(es.get("xp_k", 1.0)))
 	if OS.get_cmdline_user_args().has("--preload-record"):
 		ZonePreload.record(world, difficulty, zone)
-	if zone == "town":
-		_stock_shops()
-		if not tp_link.is_empty():
-			_make_portal(world.spawns["portal"], "back")
 	ui.set_zone(zone_title(act, zone))
-	# Act I outdoors: birds over the forest (birds.gd). Not over the Battlegrounds: in its bright afternoon their
-	# flapping shadows pulsed over the ground and a flock bursting from the trees fluttered every half minute, with
-	# the birds themselves hard to see from the camera, so it read as a glitch (Blaine, 2026-11-06)
-	if world.oak_forest and not indoor() and not net.server:
-		if zone != Battlegrounds.ZONE:
-			var birds := Birds.new()
-			birds.game = self
-			birds.name = "birds"
-			world.add_child(birds)
-		# the camp's ravens on the roofs and the ground (camp_ravens.gd)
-		if zone == "town" and world.has_meta("roosts"):
-			CampRavens.add_to(world)
-			CampSocial.add_to(world)
 	# the class's skill effects played once, unseen, under the loading screen: no freeze on a first cast (SkillWarm)
 	await SkillWarm.run(self)
 	# the monsters that can still turn up here (MonsterWarm), the windows and the sheet's portrait, drawn once
@@ -1133,7 +1010,7 @@ func _monster_paths() -> Array:
 func _capture_map(zone: String) -> void:
 	var b: Rect2 = world.bounds.grow(6.0)
 	if DisplayServer.get_name() == "headless":
-		ui.minimap.set_map(null, b, zone != "town")
+		ui.minimap.set_map(null, b, true)
 		return
 	var ppm := clampf(1600.0 / maxf(b.size.x, b.size.y), 3.0, 9.0)
 	var vp := SubViewport.new()
@@ -1189,7 +1066,7 @@ func _capture_map(zone: String) -> void:
 	if img and not img.is_empty():
 		img.generate_mipmaps()
 		tex = ImageTexture.create_from_image(img)
-	ui.minimap.set_map(tex, b, zone != "town")
+	ui.minimap.set_map(tex, b, true)
 
 ## The living grass (Act I, outdoors): its wind for the zone, and its touch on.
 func _grass_zone(zone: String) -> void:
@@ -1199,8 +1076,6 @@ func _grass_zone(zone: String) -> void:
 	var w := "default"
 	if indoor():
 		w = "calm"
-	elif zone == "town":
-		w = "camp"
 	grass_field.set_wind(w, 0.05)
 	grass_field.center = hero.global_position if hero else Vector3.ZERO
 
@@ -1275,9 +1150,10 @@ func enemies_near(p: Vector3, r: float) -> Array:
 	return out
 
 # ---------------------------------------------------------------- start / save
-## cont: play the character `id` (the last one played when empty); otherwise a new `cls` called `nm`.
+## A hero in a world for the tools and tests (Enter World and the camp are archived, archive/camp/): the character
+## `id` when `cont` (the last one played when empty), else a new `cls` called `nm`, standing in the Arena's hall
+## (Sandbox.ZONE) with no sandbox running.
 func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
-	# chosen while the camp was still building behind the title: let it finish first
 	while _busy:
 		await get_tree().process_frame
 	Sfx.play("click")
@@ -1289,9 +1165,7 @@ func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
 	else:
 		char_id = new_char_id()
 		char_name = nm.strip_edges().substr(0, 18) if nm.strip_edges() != "" else default_name(cls)
-	if cont and load_game():
-		await load_zone(cur_act, "town", "start")
-	else:
+	if not (cont and load_game()):
 		if cont:
 			# nothing to continue: a new knight
 			char_id = new_char_id()
@@ -1300,31 +1174,23 @@ func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
 		hero.set_class(cls)
 		hero.new_character()
 		difficulty = 0
-		played_s = 0.0
-		harvest_saved = {}
-		quests.from_save({})
-		waypoints_known = ["town"]
 		boss_killed = false
-		tp_link = {}
-		await load_zone(0, "town", "new_player")
-		ui.open_dialog(Data.VENDORS["elder"], "Welcome to the Forsaken Wilds, %s. The gates are barred: the moor beyond them belongs to the dead now. Trade with our folk, then step onto the waypoint at the heart of the camp. It takes you down to the Battlegrounds, where the camps of the old forest hold skills, rites and gems for whoever can take them." % ("restless one" if hero.is_wraith() else ("pact-bound one" if hero.is_warlock() else "crusader")), [["I will", func(): pass]])
+	await load_zone(0, Sandbox.ZONE, "start")
 	ui.refresh()
 
-## Co-op from the title screen. Your last character is used if you have one.
+## Hosts the world the hero stands in for a partner on this network (the two-player tests: tools/mp_test.gd,
+## the Plague Doctor's plague_mp_test). The game itself has no way to host since Enter World was archived.
 func start_host(id := "") -> void:
 	await start_game(not list_characters().is_empty(), "knight", id)
-	var err := net.host()
-	if err != OK:
-		ui.big_message("Could not host")
+	if net.host() != OK:
 		ui.message("Another program may be using port %d" % Net.PORT, Color(1, 0.5, 0.4))
-	else:
-		ui.message("Hosting! Your partner can now pick Join Co-op Game", Color(0.5, 1.0, 0.5))
 
+## Joins a server at `ip` ("host" or "host:port") with character `id` (the last one played when empty): the Arena's
+## match server with a saved survivor (LobbyClient), or a test's host.
 func start_join(ip: String, id := "") -> void:
 	while _busy:
 		await get_tree().process_frame
 	Sfx.play("click")
-	net.stop_listening()
 	ui.hide_title()
 	playing = true
 	var chars := list_characters()
@@ -1338,7 +1204,7 @@ func start_join(ip: String, id := "") -> void:
 		char_name = default_name(hero.cls)
 		hero.new_character()
 	net_joining = true      # (until the host welcomes us: Net.cl_welcome)
-	var addr: Array = Battlegrounds.parse_address(ip)      # "host" or "host:port" (the online co-op server)
+	var addr: Array = Battlegrounds.parse_address(ip)
 	loading_lbl.text = "Joining game at %s..." % ip
 	loading.visible = true
 	if net.join(str(addr[0]), int(addr[1])) != OK:
@@ -1347,34 +1213,7 @@ func start_join(ip: String, id := "") -> void:
 	await get_tree().create_timer(8.0).timeout
 	if net.is_client() and net.players.is_empty() and loading.visible and not _busy:
 		net.shutdown()
-		on_net_failed(net.join_failure("No answer from %s. Check the host's game is running and Windows Firewall allowed it." % ip))
-
-## A friend's world through Steam (SteamLink: their invite or "Join Game"): our chosen character joins the friend
-## `owner` (a Steam ID) the way a LAN join does, over Steam's relay.
-func start_join_steam(owner: int) -> void:
-	while _busy:
-		await get_tree().process_frame
-	Sfx.play("click")
-	net.stop_listening()
-	ui.hide_title()
-	playing = true
-	var chars := list_characters()
-	var id: String = ui.home.sel if ui.home != null and ui.home.sel != "" else ""
-	char_id = id if id != "" else (str(chars[0]["id"]) if not chars.is_empty() else new_char_id())
-	if not load_game():
-		char_name = default_name(hero.cls)
-		hero.new_character()
-	net_joining = true      # (until the host welcomes us: Net.cl_welcome)
-	loading_lbl.text = "Joining your friend's world..."
-	loading.visible = true
-	var p: MultiplayerPeer = steam.client_peer(owner)
-	if p == null or net.join_with(p) != OK:
-		on_net_failed("Steam couldn't connect to your friend's world.")
-		return
-	await get_tree().create_timer(15.0).timeout
-	if net.is_client() and net.players.is_empty() and loading.visible and not _busy:
-		net.shutdown()
-		on_net_failed(net.join_failure("Your friend's world didn't answer. Ask them to invite you again."))
+		on_net_failed(net.join_failure("No answer from %s." % ip))
 
 ## Into a raid (the lobby browser hands over its match server's address): the raider is a fresh run character
 ## (RunBuild, level 0) of `cls`, or of character `id`'s class when none is given; that character's save isn't touched.
@@ -1388,7 +1227,6 @@ func _start_run_raid(addr: String, id: String, cls: String) -> void:
 	bg_refusal = ""
 	bg_wait_until = 0
 	Sfx.play("click")
-	net.stop_listening()
 	if cls == "" and id != "":
 		var d := read_save(char_dir + id + ".json", false)
 		cls = str(d.get("hero", {}).get("cls", "")) if d is Dictionary else ""
@@ -1451,9 +1289,7 @@ func set_loading_art(zone: String) -> void:
 	loading_art.texture = tex
 	loading_art.visible = tex != null
 
-## The server let us out: what we carry is ours, saved to the character as it is.
-## The crypt never let us in (sign-in failed before the character was marked in_raid): back to the Battlegrounds
-## screen, the character as it was; from the camp's waypoint, the hero simply hasn't left.
+## The raid never let us in (sign-in failed): back to the lobby browser's Battlegrounds.
 func _bg_abort(msg: String) -> void:
 	if lobby_client != null and lobby_client.match_id != "":
 		lobby_client.finished(msg)
@@ -1502,7 +1338,7 @@ func _bg_fell() -> void:
 	ui.big_message("%s has fallen" % char_name)
 	ui.message("Everything %s wore and carried lies where they fell. Their strength remains." % char_name, Color(1, 0.45, 0.35), 6.0)
 
-## What a hero keeps after dying in the crypt: levels, stats, talents, the camp's stash, and nothing else but a
+## What a hero keeps after dying in the crypt: levels, stats, talents, and nothing else but a
 ## plain weapon of their class (so they can walk back into the world). The save is written at once.
 static func strip_save(h: Dictionary) -> Dictionary:
 	var cls := str(h.get("cls", "knight"))
@@ -1557,26 +1393,7 @@ func run_save_survivor() -> Array:
 		return ["", false]
 	return Survivors.save(hero, char_name)
 
-## Characters whose game closed while they were in a raid died there: they lose what they carried.
-func _bury_lost_raiders() -> void:
-	if _testing():
-		return
-	for c in list_characters():
-		var p := char_dir + str(c["id"]) + ".json"
-		var d = JSON.parse_string(FileAccess.get_file_as_string(p))
-		if d is Dictionary and bool(d.get("in_raid", false)):
-			d["hero"] = strip_save(d.get("hero", {}))
-			d["in_raid"] = false
-			var f := FileAccess.open(p, FileAccess.WRITE)
-			if f:
-				f.store_string(JSON.stringify(d))
-				f.close()
-			if cloud != null:
-				cloud.push(str(c["id"]), d)
-			ui.message("%s fell in %s and lost everything they carried" % [str(c["name"]), Battlegrounds.map_title()], Color(1, 0.5, 0.4), 6.0)
-
-## Out of the crypt, extracted, fallen or cut off: a raid taken from the title screen ends on its Battlegrounds
-## window; one taken from the camp's waypoint (bg_from_waypoint) ends back on the dais, see _bg_home_camp.
+## Out of the raid, extracted, fallen or cut off: back to the lobby browser's Battlegrounds.
 ## A run's results are showing (RunUI.open_results) until the player returns to the lobby browser (run_return).
 var run_survived := false
 var run_results_open := false
@@ -1610,8 +1427,6 @@ func _leave_battlegrounds() -> void:
 	ui.open_battlegrounds()
 
 func on_net_failed(msg: String) -> void:
-	if steam != null:
-		steam.close_world()
 	if lobby_client != null and lobby_client.match_id != "":
 		lobby_client.finished(msg)
 		return
@@ -1623,13 +1438,12 @@ func on_net_failed(msg: String) -> void:
 		ui.message(msg + " Your solo adventure is still open.", Color(1, 0.7, 0.45), 7.0)
 		return
 	if net_joining:
-		# a co-op join that never got in: back to the co-op screen
+		# a join that never got in: back to the multiplayer page
 		net_joining = false
 		ui.big_message("Couldn't join")
 		ui.message(msg, Color(1, 0.6, 0.4))
 		loading.visible = false
 		await exit_to_title()
-		ui.open_join()
 		return
 	if bg_mode:
 		ui.big_message("The raid is closing" if bg_wait_until > Time.get_ticks_msec() else "Left the Battlegrounds")
@@ -1641,9 +1455,7 @@ func on_net_failed(msg: String) -> void:
 	ui.message(msg, Color(1, 0.6, 0.4))
 	loading.visible = false
 	if playing:
-		await load_zone(cur_act, "town", "start")
-		if hero.dead:
-			hero.respawn(hero.global_position)
+		await exit_to_title()
 
 ## Testing switches (the Escape menu's Admin column, only while dev_tools is on). They change nothing else
 ## and are never saved.
@@ -1661,119 +1473,13 @@ func _testing() -> bool:
 func save_path() -> String:
 	return TEST_SAVE_PATH if _testing() else char_dir + char_id + ".json"
 
-## Signs in to Nakama and syncs the characters (the first run uploads every local one); the title screen then
-## shows what came down from other devices.
+## Signs in to Nakama and syncs the characters (the first run uploads every local one): the survivors saved on other
+## devices come down.
 func _cloud_start() -> void:
 	await get_tree().process_frame
-	if await cloud.sync() and ui.title_idle() and not playing:
-		_bury_lost_raiders()
-		_stash_start()
-		ui.show_title()
+	await cloud.sync()
 
-# ---------------------------------------------------------------- the shared stash (SharedStash)
-## Where the stash opens: the camp's chest; never in the Battlegrounds, the sandbox or on a server.
-func stash_allowed() -> bool:
-	return stash != null and sandbox == null and not net.server and not bg_mode
-
-## The bag's item `inv_idx` into the stash's tab (or the first tab with room). Three saves: the character with the
-## item stamped (still in the bag), the stash with it, the character without it. A crash after the first leaves it
-## only in the bag; after the second, in both, stamped alike, and SharedStash.reconcile keeps the stash's copy.
-func stash_deposit(inv_idx: int, tab: int) -> bool:
-	if not stash_allowed() or inv_idx < 0 or inv_idx >= hero.inventory.size():
-		return false
-	var it = hero.inventory[inv_idx]
-	if not (it is Dictionary):
-		return false
-	stash.fresh()
-	var t := tab
-	var slot := stash.free_slot(t)
-	if slot < 0:
-		for k in SharedStash.TABS:
-			slot = stash.free_slot(k)
-			if slot >= 0:
-				t = k
-				break
-	if slot < 0:
-		ui.message("The stash is full", Color(1, 0.6, 0.4))
-		return false
-	SharedStash.stamp(it)
-	save_game()
-	stash.tabs[t][slot] = it
-	if not stash.save():
-		stash.tabs[t][slot] = null
-		ui.message("The stash couldn't be saved", Color(1, 0.5, 0.4))
-		return false
-	hero.inventory[inv_idx] = null
-	save_game()
-	return true
-
-## A stash item into the bag: the character is saved first (with the item), then the stash (without it).
-func stash_withdraw(tab: int, slot: int) -> bool:
-	if not stash_allowed():
-		return false
-	stash.fresh()
-	var it = stash.tabs[tab][slot]
-	if not (it is Dictionary):
-		return false
-	var j := hero.inventory.find(null)
-	if j < 0:
-		ui.message("Your bag is full", Color(1, 0.6, 0.4))
-		return false
-	hero.inventory[j] = it
-	save_game()
-	stash.tabs[tab][slot] = null
-	stash.save()
-	return true
-
-## The loaded hero against the stash: a copy a crash left behind is taken out, and a character's own stash from
-## before the shared one moves in (stamped and saved first, so it can't come in twice).
-func _stash_fix_hero() -> void:
-	if stash == null:
-		return
-	stash.fresh()
-	var h := {"equipment": hero.equipment, "inventory": hero.inventory, "belt": hero.belt, "stash": hero.stash}
-	var n := stash.reconcile(h)
-	var old := hero.stash.filter(func(x): return x is Dictionary)
-	if not old.is_empty():
-		for it in old:
-			if not it.has("uid"):
-				SharedStash.stamp(it)
-		save_game()
-		stash.adopt(hero.stash)
-		n += stash.reconcile(h)
-	if n > 0:
-		hero.recalc()
-		save_game()
-
-## Every character file against the stash, before any is played (start, after a cloud sync): their old stashes
-## move in, and copies a crash left behind come out.
-func _stash_start() -> void:
-	if stash == null or _testing():
-		return
-	stash.fresh()
-	for c in list_characters():
-		var p := char_dir + str(c["id"]) + ".json"
-		var d = JSON.parse_string(FileAccess.get_file_as_string(p))
-		if not (d is Dictionary) or not (d.get("hero") is Dictionary):
-			continue
-		var h: Dictionary = d["hero"]
-		var changed := false
-		var old: Array = h.get("stash", []) if h.get("stash") is Array else []
-		var stamped := false
-		for it in old:
-			if it is Dictionary and not it.has("uid"):
-				SharedStash.stamp(it)
-				stamped = true
-		if stamped:
-			_write_char(p, str(c["id"]), d)
-		if old.any(func(x): return x is Dictionary):
-			stash.adopt(old)
-		if stash.reconcile(h) > 0:
-			changed = true
-		if changed:
-			_write_char(p, str(c["id"]), d)
-
-## A stash chest opening (jj: "the lock really unlocked, opening the stash is a big deal"). The chest's parts split
+## A chest opening (jj, of the stash's chest: "the lock really unlocked, opening the stash is a big deal"). The chest's parts split
 ## off the Meshy model in Blender: "lock" (the padlock) and "lid" (with its hasp; pivot on the back hinge). Opening:
 ## the padlock rattles, springs open with a clank and sparks and drops to hang askew; then the lid heaves back
 ## past LID_OPEN and settles, a warm light floods up out of it, motes and a soft beam rise, and the camera bumps for
@@ -1930,10 +1636,9 @@ func save_game() -> void:
 		return      # (a run character is saved only as a survivor, at a successful exit: Survivors)
 	if char_id == "" and not _testing():
 		return
-	_store_harvest()
 	var raid_admitted: bool = bg_mode and (lobby_client == null or lobby_client.match_id == "" or lobby_client.admitted)
-	var d := {"hero": hero.to_save(), "in_raid": raid_admitted, "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed,
-		"difficulty": 0, "quests": quests.to_save(), "harvest": {"t": played_s, "zones": harvest_saved}, "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
+	var d := {"hero": hero.to_save(), "in_raid": raid_admitted, "act": cur_act, "boss": boss_killed,
+		"difficulty": 0, "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
 	var old_lobby_save: Dictionary = load("res://scripts/lobby_stakes.gd").read(save_path())
 	d["lobby_receipts"] = old_lobby_save.get("lobby_receipts", [])
 	d["lobby_locked"] = old_lobby_save.get("lobby_locked", [])
@@ -2007,15 +1712,8 @@ func load_game() -> bool:
 	if char_name != "":
 		net.my_name = char_name
 	cur_act = int(d.get("act", 0))
-	waypoints_known = d.get("waypoints", ["town"])
 	boss_killed = d.get("boss", false)
 	difficulty = 0           # (a save from the story's A2 or A3 plays on in Act I)
-	quests.from_save(d.get("quests", {}))
-	var hv: Dictionary = d.get("harvest", {}) if d.get("harvest") is Dictionary else {}
-	played_s = float(hv.get("t", 0.0))
-	harvest_saved = (hv.get("zones", {}) as Dictionary).duplicate(true) if hv.get("zones") is Dictionary else {}
-	if not bg_mode:
-		_stash_fix_hero()        # (last: it may save, and a save writes everything loaded above)
 	return true
 
 ## Every saved character, the last played first: [{id, name, cls, level, difficulty, act, played}].
@@ -2098,16 +1796,9 @@ func default_name(cls: String) -> String:
 	var pool: Array = names.get(cls, names["knight"])
 	return str(pool[randi() % pool.size()])
 
-## The waypoint window's Battlegrounds card (Data.WAYPOINT_BATTLEGROUNDS): the lobby browser's Battlegrounds.
-func waypoint_battleground(_id: String) -> void:
-	if lobby_client != null:
-		lobby_client.open("battlegrounds")
-
-## Back to the title screen to pick another character (the pause menu's "Save and Exit to Title").
+## Back to the multiplayer page (the pause menu's exit, a match's end): no world is left behind it.
 func exit_to_title(save_current := true) -> void:
 	var leaving_practice := sandbox != null
-	if steam != null:
-		steam.close_world()      # (friends see our world gone)
 	if lobby_client != null and lobby_client.match_id != "":
 		if bg_mode and not lobby_client.admitted:
 			bg_mode = false
@@ -2134,13 +1825,12 @@ func exit_to_title(save_current := true) -> void:
 	bg_roster = []
 	bg_gained = -1
 	net_joining = false
-	# nothing of the character that was playing carries on: its death screen still to come, its portal,
-	# its experience bonus, the admin switches
+	# nothing of the character that was playing carries on: its death screen still to come, its experience bonus,
+	# the admin switches
 	death_t = -1.0
 	ui.death_panel.visible = false
 	spectate_stop()
 	ui.set_boss(null)
-	tp_link = {}
 	xp_bonus_t = 0.0
 	test_immortal = false
 	test_onehit = false
@@ -2159,22 +1849,22 @@ func exit_to_title(save_current := true) -> void:
 	char_id = ""
 	while _busy:
 		await get_tree().process_frame       # (a zone still loading would swallow ours)
-	if _harness_camp():
-		await load_zone(0, "town", "start")  # (the test harness: see _ready)
+	if _harness_world():
+		await load_zone(0, Sandbox.ZONE, "start")  # (the test harness: see _ready)
 	else:
 		unload_world()                     # (no world behind the title: see _ready)
 	ui.show_title()
 
-## The tools/ harness (a SceneTree script) still gets the camp behind the title, as before 2026-11-06: ~170 test
-## scripts wait for a world at boot. `-- --real-boot` gives a tool the real start (tools/boot_flow_test.gd).
-func _harness_camp() -> bool:
+## The tools/ harness (a SceneTree script) still gets a world behind the title (the Arena's hall; it was the camp
+## until Enter World was archived): ~170 test scripts wait for a world at boot. `-- --real-boot` gives a tool the
+## real start (tools/boot_flow_test.gd).
+func _harness_world() -> bool:
 	return get_tree().get_script() != null and not OS.get_cmdline_user_args().has("--real-boot")
 
 ## Leave the current zone with nothing in its place (back to the title). load_zone does the same before it builds.
 func unload_world() -> void:
 	if world == null:
 		return
-	_store_harvest()
 	if hero != null:
 		SkillFx.clear(hero)
 	world.queue_free()
@@ -2183,31 +1873,6 @@ func unload_world() -> void:
 	cur_zone = ""
 	ResCache.release(_zone_scope)
 	_zone_scope = ""
-
-# ---------------------------------------------------------------- shops
-func _stock_shops() -> void:
-	var V: Dictionary = Data.VENDORS
-	var lvl := maxi(hero.level, 1) + 1
-	var r := RandomNumberGenerator.new()
-	r.randomize()
-	var smith := [Items.make("woodsman_axe")]     # a spare felling axe, always on the smith's rack
-	for i in 13:
-		var b := Items.pick_base(lvl + 2, r, "weapon" if i < 9 else "shield")
-		smith.append(Items.generate(b, lvl, 1 if r.randf() < 0.4 else 0, r))
-	var armor := []
-	for s in ["helm", "armor", "gloves", "boots", "belt", "helm", "armor", "boots", "gloves", "armor", "belt", "helm"]:
-		var b2 := Items.pick_base(lvl + 2, r, s)
-		armor.append(Items.generate(b2, lvl, 1 if r.randf() < 0.35 else 0, r))
-	var alch := [Items.potion("hp_potion"), Items.potion("mp_potion"), Items.potion("rejuv")]
-	for i in 4:
-		alch.append(Items.generate("ring" if i < 2 else "amulet", lvl, 1, r))
-	var gamble := []
-	for s in ["ring", "amulet", "weapon", "weapon", "shield", "helm", "armor", "gloves", "boots", "belt", "ring", "weapon"]:
-		var gb := Items.pick_base(lvl + 4, r, s)
-		var it := Items.make(gb, 0, lvl)
-		it["name"] = "? " + Data.BASES[gb]["name"]
-		gamble.append(it)
-	shops = {"smith": [V["smith"] + "'s Forge", smith], "armor": [V["armor"] + "'s Armory", armor], "alch": [V["alch"] + "'s Remedies", alch], "gamble": [V["gamble"] + "'s Table", gamble]}
 
 # ---------------------------------------------------------------- interaction
 func on_reach_target(t) -> void:
@@ -2253,20 +1918,6 @@ func _pickup(g: GroundItem) -> void:
 	else:
 		ui.message("Inventory is full", Color(1, 0.4, 0.3))
 
-## Co-op: the host handed us an item we picked up.
-## An item thrown on the camp's bonfire (UI._burn): the flames flare and roar up, and it's gone.
-func burned(it: Dictionary) -> void:
-	Sfx.play("burn_item", 0.0, randf_range(0.95, 1.05))
-	var fire: Inter = null
-	for t in world.interactables:
-		if is_instance_valid(t) and t.kind == "bonfire":
-			fire = t
-	if fire:
-		var at := fire.global_position + Vector3(0, 0.8, 0)
-		Fx.burst(world.fx_root, at, Color(1.0, 0.45, 0.08, 0.9), 40, 4.0, 0.22, 0.9, false, 3.0, 35.0)
-		Fx.burst(world.fx_root, at + Vector3(0, 0.6, 0), Color(1.0, 0.8, 0.35, 0.8), 24, 3.0, 0.1, 0.7, false, 2.0, 25.0)
-		Fx.flash(world.fx_root, at, Color(1.0, 0.55, 0.2), 6.0, 0.5, 8.0)
-
 ## A Hollow Sloth's material picked up: its colour bursts up and round the hero, a bright crystal ting,
 ## and its name is announced.
 func claim_material(it: Dictionary, at: Vector3) -> void:
@@ -2278,7 +1929,6 @@ func claim_material(it: Dictionary, at: Vector3) -> void:
 	Fx.flash(world.fx_root, at + Vector3(0, 1.0, 0), col, 4.0, 0.5, 6.0)
 	ui.big_message("✦ " + it["name"] + " ✦")
 	ui.message("You claim the %s" % it["name"], col)
-	quests.on_pick(str(it["base"]))
 
 func receive_item(it: Dictionary, pos: Vector3) -> void:
 	if hero.run != null:
@@ -2498,8 +2148,6 @@ func travel_now(act: int, zone: String, spawn: String, at = null, clear_tp := fa
 	if net.is_client():
 		net.request_travel(act, zone, spawn, at, clear_tp)
 		return
-	if clear_tp:
-		tp_link = {}
 	load_zone(act, zone, spawn, at)
 
 ## Shrine or chest used by someone else (or a chest opened for a partner on the host).
@@ -2513,8 +2161,6 @@ func use_inter_remote(t: Inter) -> void:
 		if l:
 			l.visible = false
 		Fx.pillar(world.fx_root, t.global_position, Color(1, 0.9, 0.6), 1.0)
-	elif t.kind == "flower":
-		_pick_flower(t)
 	elif t.kind == "chest":
 		_open_chest(t)
 	elif t.kind == "bell":
@@ -2593,72 +2239,14 @@ func guard_fell(kind: String) -> void:
 		if c is Inter and str(c.data.get("guard", "")) == kind:
 			c.data["unsealed"] = true
 
-## A camp vendor's own talk: the elder's news, a trader's greeting and Trade.
-func _vendor_talk(t: Inter) -> void:
-	var role: String = t.data.get("role", "")
-	if role == "auction":
-		ui.open_dialog(t.label, "Elixirs, friend: the finest brews in the Wilds, and the rarest. The hall holds every coin until the hammer falls.",
-			[["See the auctions", func(): AuctionUI.open(ui, ui.auction_panel)], ["Leave", func(): pass]])
-		return
-	if role == "elder":
-		var txt := "The gates stay barred: nothing good comes out of the moor now. If you want a fight, the waypoint takes you down to the Battlegrounds. Raise your shield against arrows there: a good block turns them aside."
-		ui.open_dialog(t.label, txt, [["Farewell", func(): pass]])
-	else:
-		var sh: Array = shops.get(role, ["", []])
-		var lines := {"smith": "Need a blade, or something to stop one?", "armor": "Leather, mail or plate. All of it has seen worse than you.", "alch": "Potions for the body, trinkets for the soul.", "gamble": "Fortune favours the bold. Every piece is a mystery until you pay."}
-		var btns := [["Trade", func(): ui.open_shop(role, sh[0], sh[1], t, lines.get(role, ""))]]
-		if role == "armor":
-			btns.append(["Enchant armor", func(): ui.open_enchant(t.label)])
-		btns.append(["Leave", func(): pass])
-		ui.open_dialog(t.label, lines.get(role, ""), btns)
-
 func _interact(t: Inter) -> void:
 	match t.kind:
-		"tree":
-			# a harvestable tree (Harvest): walk up, and the hero sets to it with an axe
-			hero.start_chop(t)
-		"furnace":
-			# Halvar's furnace (Furnace): temper a weapon over felled wood
-			if t is Furnace:
-				Sfx.play("bonfire_open", -10.0, 0.8)
-				ui.open_furnace(t)
 		"extract":
 			if not bool(t.data.get("open", false)):
 				ui.message("The portal is dark. It opens later in the raid.", Color(0.8, 0.8, 0.9))
 			elif bg_mode and net.is_client() and not hero.dead:
 				ui.message("Extracting...", Color(0.6, 0.85, 1.0))
 				net.request_extract()
-		"vendor":
-			ui.trade_with = t
-			Sfx.play("click")
-			var rest := func(): _vendor_talk(t)
-			# a quest to hand in or on offer comes before their trade (Quests.talk)
-			if not quests.talk(str(t.data.get("role", "")), t.label, rest):
-				rest.call()
-		"stash":
-			ui.open_stash()
-			if ui.stash_panel.visible:
-				ui.trade_with = t
-				Sfx.play("equip")
-				chest_lid(t, true)
-		"bonfire":
-			ui.open_burn()
-			ui.trade_with = t
-			Sfx.play("bonfire_open")
-		"waypoint":
-			var wp_id: String = t.data.get("wp", "town")
-			if not waypoints_known.has(wp_id):
-				waypoints_known.append(wp_id)
-				ui.message("Waypoint activated", Color(0.5, 0.7, 1.0))
-				Sfx.play("portal")
-			ui.open_waypoints(t)
-		"portal":
-			Sfx.play("portal")
-			if t.data.get("dir", "") == "town":
-				travel(cur_act, "town", "portal")
-			else:
-				var link := tp_link
-				travel(int(link.get("act", 0)), link.get("zone", "town"), "start", link.get("pos"), true)
 		"shrine":
 			if t.used:
 				return
@@ -2688,16 +2276,6 @@ func _interact(t: Inter) -> void:
 					ui.message("Experience Shrine: +50% experience for 90 seconds", Color(0.8, 0.5, 1.0))
 			if net.active:
 				net.inter_used(t)
-		"flower":
-			if t.used:
-				return
-			_pick_flower(t)
-			xp_bonus_t = maxf(xp_bonus_t, 300.0)
-			Sfx.play("levelup", -6.0, 1.15)
-			ui.message("Sunstar Bloom: +50% experience for 5 minutes", Color(1.0, 0.8, 0.35))
-			quests.progress("flower")
-			if net.active:
-				net.inter_used(t)
 		"chest":
 			if t.data.has("camp"):
 				_camp_chest(t)
@@ -2720,141 +2298,9 @@ func _interact(t: Inter) -> void:
 				else:
 					ui.message("The raid is already under way", Color(0.8, 0.8, 0.9))
 
-func travel_waypoint(dest: Dictionary) -> void:
-	Sfx.play("portal")
-	travel(cur_act, dest["zone"], "waypoint")
-
-## Available activities are rebuilt from content data, never from a second UI-only list.
-func waypoint_activities() -> Array:
-	var entries: Array = Data.WAYPOINT_ACTIVITIES.duplicate(true)
-	var result := []
-	var seen := {}
-	for entry in entries:
-		var id := str(entry.get("id", ""))
-		if id == "" or seen.has(id) or not Data.waypoint_available(entry, Time.get_unix_time_from_system()):
-			continue
-		if not waypoint_activity_valid(entry):
-			continue
-		seen[id] = true
-		result.append(entry)
-	return result
-
-func waypoint_activity_valid(entry: Dictionary) -> bool:
-	if str(entry.get("name", "")) == "": return false
-	var zone := str(entry.get("zone", ""))
-	return str(entry.get("group", "")) in ["pve", "daily"] and str(entry.get("route", "")) == "zone" and not Data.waypoint_act(int(entry.get("run", -1))).is_empty() and zone in Data.WAYPOINT_ZONES
-
-func waypoint_activity(id: String) -> Dictionary:
-	for entry in waypoint_activities():
-		if str(entry["id"]) == id:
-			return entry
-	return {}
-
-## Used both by the card and immediately before travel, so stale buttons cannot bypass locks.
-func waypoint_activity_lock(entry: Dictionary) -> String:
-	if entry.is_empty(): return "This activity is no longer available."
-	if bg_mode or _busy or not playing or hero == null or hero.dead: return "Cannot travel right now."
-	var run := int(entry["run"])
-	if not act_unlocked(run): return "Unlock this act first."
-	if entry.has("requires_waypoint") and not waypoint_known(run, str(entry["requires_waypoint"])):
-		return "Discover this act's wilderness waypoint first."
-	if hero.level < int(entry.get("level", 1)): return "Requires level %d" % int(entry["level"])
-	return ""
-
-func waypoint_activity_go(id: String) -> void:
-	var entry := waypoint_activity(id)
-	var reason := waypoint_activity_lock(entry)
-	if reason != "":
-		ui.message(reason, Color(1.0, 0.6, 0.45))
-		return
-	ui.close_all()
-	Sfx.play("portal")
-	travel(0, str(entry["zone"]), str(entry.get("spawn", "start")))
-
-# ---------------------------------------------------------------- the waypoint network (Data.WAYPOINT_ACTS)
-## Is act `run` open? Act I, the only act, always is.
-func act_unlocked(run: int) -> bool:
-	return run == 0 and not Data.waypoint_act(run).is_empty()
-
 ## True where the developer tools are (the owner's: see dev_tools).
 func dev_tools_on() -> bool:
 	return dev_tools
-
-## Has this character touched waypoint `id` of act `run`?
-func waypoint_known(run: int, id: String) -> bool:
-	return run == 0 and waypoints_known.has(id)
-
-## Take waypoint `id` of act `run`: travel to its zone, arriving by its stone. Only waypoints this character has
-## touched.
-func waypoint_go(run: int, id: String) -> void:
-	var p := Data.waypoint_point(run, id)
-	if _busy or p.is_empty() or not act_unlocked(run) or not waypoint_known(run, id):
-		return
-	var zone: String = p["zone"]
-	if zone != cur_zone or id != _at_waypoint():
-		Sfx.play("portal")
-		travel(cur_act, zone, "waypoint_" + id)
-
-## The waypoint stone the hero stands at, if any ("" if none).
-func _at_waypoint() -> String:
-	if world == null or hero == null:
-		return ""
-	for it in world.interactables:
-		if is_instance_valid(it) and it.kind == "waypoint" and it.global_position.distance_to(hero.global_position) < 4.5:
-			return str(it.data.get("wp", "town"))
-	return ""
-
-func _make_portal(p: Vector3, dir: String) -> Inter:
-	var it := Inter.new()
-	it.kind = "portal"
-	it.label = "Town Portal" if dir == "town" else "Portal to " + zone_title(int(tp_link.get("act", 0)), tp_link.get("zone", "town"))
-	it.radius = 1.4
-	it.data = {"dir": dir}
-	world.add_child(it)
-	it.global_position = Vector3(p.x, world.height_at(p.x, p.z), p.z)
-	var m := Fx.portal_model()
-	m.name = "Model"
-	it.add_child(m)
-	world.interactables.append(it)
-	return it
-
-func cast_town_portal() -> void:
-	if bg_mode:
-		ui.message("No portals out of the Battlegrounds: find an Extraction Portal", Color(1.0, 0.8, 0.4))
-		return
-	if cur_zone == "town":
-		ui.message("You are already in town", Color(0.6, 0.7, 1.0))
-		return
-	if hero.dead:
-		return
-	var fwd := -hero.rig.global_transform.basis.z
-	var p := world.free_spot_near(hero.global_position + fwd * 2.0, 1.0)
-	if net.is_client():
-		net.request_portal(p)
-		return
-	open_town_portal_at(p)
-
-func open_town_portal_at(p: Vector3) -> void:
-	for it in world.interactables:
-		if is_instance_valid(it) and it.kind == "portal" and it.has_meta("dyn") and it.data.get("dir", "") == "town" and not it.has_meta("boss"):
-			world.interactables.erase(it)
-			it.queue_free()
-			break
-	tp_link = {"act": cur_act, "zone": cur_zone, "pos": p}
-	var t := _make_portal(p, "town")
-	t.set_meta("dyn", true)
-	Sfx.play("portal")
-	Fx.burst(world.fx_root, p + Vector3(0, 1.4, 0), Color(0.4, 0.6, 1.0), 40, 3.0, 0.12, 1.0, true, 0.0)
-	net.portal_created(t)
-
-## A Sunstar Bloom picked (by anyone): it is gone, in a puff of golden motes.
-func _pick_flower(t: Inter) -> void:
-	t.used = true
-	t.label = ""
-	var m := t.get_node_or_null("Model")
-	if m:
-		m.visible = false
-	Fx.burst(world.fx_root, t.global_position + Vector3(0, 0.5, 0), Color(1.0, 0.82, 0.35), 30, 2.2, 0.07, 1.1, true, 1.5)
 
 # ---------------------------------------------------------------- kills & loot
 func gain_kill_xp(xp: int, lvl: int) -> void:
@@ -2866,7 +2312,6 @@ func gain_kill_xp(xp: int, lvl: int) -> void:
 	hero.add_xp(int(xp * lvl_ratio * bonus))
 
 func on_enemy_killed(e: Enemy) -> void:
-	quests.on_kill(e)
 	gain_kill_xp(e.xp, e.level)
 	net.share_xp(e.xp, e.level)
 	var drops := 0 if e.def.get("no_loot", false) else 1
@@ -3044,21 +2489,15 @@ func respawn() -> void:
 			hero.respawn(world.free_spot_near(ally.global_position, 2.0))
 			ui.message("You rise beside %s" % net.players.get(ally.peer_id, {"name": "your ally"})["name"], Color(0.6, 0.8, 1.0))
 			return
-		if net.is_client():
-			hero.respawn(hero.global_position)
-			net.travel_cool = 0.0
-			net.request_travel(cur_act, "town", "start", null)
-			return
-	await load_zone(cur_act, "town", "start")
-	hero.respawn(hero.global_position)
+	# (no camp to wake in since Enter World was archived: the hero rises at the zone's start)
+	var sp: Vector3 = world.spawns.get("start", hero.global_position)
+	sp.y = world.height_at(sp.x, sp.z)
+	hero.respawn(sp)
 
 func toggle_pause() -> void:
 	paused = not paused
 	get_tree().paused = paused and not net.active
 	ui.pause_panel.visible = paused
-	if ui.invite_btn != null:
-		ui.invite_btn.visible = steam != null and steam.ok and not net.is_client() and not net.server and not bg_mode \
-			and not arena_mode and (lobby_client == null or lobby_client.match_id == "")
 	Engine.time_scale = 1.0
 	lmb_held = false
 	rmb_held = false
@@ -3105,7 +2544,7 @@ func pick_inter(o: Vector3, d: Vector3) -> Inter:
 	var best: Inter = null
 	var bd := INF
 	for it in world.interactables:
-		if not is_instance_valid(it) or (it.kind == "flower" and it.used):
+		if not is_instance_valid(it):
 			continue
 		var c2: Vector3 = it.global_position + Vector3(0, float(it.get_meta("pick_y")) if it.has_meta("pick_y") else 1.0, 0)
 		var dist := (c2 - o).cross(d).length()
@@ -3166,12 +2605,6 @@ func _update_hover() -> void:
 			col = Color(0.85, 0.66, 0.38)
 		ui.target_bar.visible = true
 		ui.show_target(hovered.display_name, hovered.life / hovered.max_life, col)
-	elif hovered is Harvest.HTree:
-		var tr: Harvest.HTree = hovered
-		if tr.state == "stand":
-			ui.show_target("%s  ·  %s" % [tr.label, "Chop" if hero.chop_axe()[0] != "" else "Needs an axe"], tr.hp / tr.max_hp, Color(0.78, 0.62, 0.4))
-		else:
-			ui.show_target("%s stump" % tr.label, 0.0, Color(0.55, 0.5, 0.42))
 	elif hovered is Inter:
 		ui.show_target(hovered.label, 1.0, Color(0.85, 0.75, 0.5))
 		ui.target_bar.visible = false
@@ -3260,7 +2693,6 @@ func _begin_sandbox(cls: String, online: bool) -> void:
 	if paused: toggle_pause()
 	ui.hide_title()
 	ui.close_all()
-	net.stop_listening()
 	playing = true
 	hero.run = null
 	sandbox = Sandbox.new(self)
@@ -3325,7 +2757,7 @@ func close_sandbox() -> void:
 		return
 	if hero.dead: hero.respawn(hero.global_position)
 	death_t = -1.0
-	await load_zone(0, "town", "start")
+	await load_zone(0, Sandbox.ZONE, "start")      # (back in the hall the character was playing in, sandbox gone)
 	hero.life = hero.max_life
 	hero.mana = hero.max_mana
 	ui.refresh()
@@ -3500,8 +2932,6 @@ func _unhandled_input(ev: InputEvent) -> void:
 				ui.toggle(ui.inv_panel)
 			KEY_C:
 				ui.toggle(ui.char_panel)
-			KEY_T:
-				cast_town_portal()
 			KEY_SPACE:
 				dodge_roll()
 			KEY_1, KEY_2, KEY_3, KEY_4:
@@ -3515,8 +2945,6 @@ func _unhandled_input(ev: InputEvent) -> void:
 				ui.toggle(ui.skills_panel)
 			KEY_N:
 				ui.toggle(ui.talent_panel)
-			KEY_J:
-				ui.toggle(ui.quest_panel)
 			KEY_F3:
 				ui.show_fps = not ui.show_fps
 			KEY_F2:
@@ -3682,8 +3110,6 @@ func _process(delta: float) -> void:
 	if world == null:
 		return
 	xp_bonus_t = maxf(0.0, xp_bonus_t - delta)
-	if playing and not paused:
-		played_s += delta
 	exit_grace = maxf(0.0, exit_grace - delta)
 	_drop_stale()
 	_update_grade(real_dt)
@@ -3761,9 +3187,6 @@ func _process(delta: float) -> void:
 			else:
 				fw = smoothstep(0.0, 0.6, focus_t) * (1.0 - smoothstep(focus_len - 0.7, focus_len, focus_t))
 				goal = goal.lerp(focus_node.global_position + Vector3(0, 0.6, 0), fw)
-		# far out over the island the view turns round its middle rather than the hero
-		if world.island_r > 0.0 and zoom > 1.3:
-			goal = goal.lerp(Vector3(world.island_c.x, 0, world.island_c.y), smoothstep(1.3, zoom_max, zoom))
 		if zoom <= ORBIT_ZOOM and not _orbit_drag:
 			orbit_yaw = lerp_angle(orbit_yaw, 0.0, clampf(real_dt * 3.0, 0.0, 1.0))
 			orbit_pitch = lerpf(orbit_pitch, 0.0, clampf(real_dt * 3.0, 0.0, 1.0))
@@ -3784,7 +3207,7 @@ func _process(delta: float) -> void:
 	_update_underworld(real_dt)
 	for l in get_tree().get_nodes_in_group("flicker"):
 		var lt := l as OmniLight3D
-		var b: float = lt.get_meta("base", 1.0) * (fire_mul if lt.has_meta("fire") else lamp_mul)
+		var b: float = lt.get_meta("base", 1.0)
 		var id := float(lt.get_instance_id() % 100)
 		if lt.has_meta("fire"):
 			# a real fire's light: slow breathing, quicker licks and a ragged flutter, never in step with another
@@ -3966,16 +3389,6 @@ func _shot_setup() -> void:
 	if args.has("--zoomin"):
 		zoom = 0.6
 		ui.close_all()
-	if args.has("--enchtest"):
-		hero.equipment["helm"] = Items.generate("great_helm", 12, 1, rng)
-		hero.equipment["helm"]["ench"] = 6
-		hero.equipment["boots"] = Items.generate("greaves", 12, 0, rng)
-		hero.equipment["boots"]["ench"] = 2
-		hero.gold = 25000
-		hero.recalc()
-		hero.refresh_gear()
-		ui.open_enchant("Hedda")
-		ui._enchant("armor")
 	if args.has("--god"):
 		hero.vit = 2000000
 		hero.recalc()
@@ -3986,12 +3399,6 @@ func _shot_setup() -> void:
 			if x.boss and x.hoard != null:
 				x.aggro = true
 				x.life = x.max_life * 0.74
-	if args.has("--guard-fight") and cur_zone == "town":
-		# the camp's guards (CampGuard) against a few zombies loose in the camp
-		for i in 4:
-			var ze := spawn_enemy("zombie", Vector3(-6.0 + i * 3.5, 0, -6.0), 3)
-			if ze != null:
-				ze.aggro = true
 	if args.has("--fight"):
 		var e := enemies_near(hero.global_position, 80.0)
 		for x in e:
