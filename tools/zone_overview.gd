@@ -1,7 +1,7 @@
 extends SceneTree
 ## A high, steep view down the first stretch of Cairnfell Moor (for comparing road layouts).
 ## Usage: godot --path . -s tools/zone_overview.gd -- out.png [--road N] [--fort] [--bg]   (--fort: Grubb's fort, the lair;
-## --bg: the Battlegrounds' Hollow Crypt)
+## --bg: the Battlegrounds' Verdant Reach)
 var g
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()

@@ -271,7 +271,7 @@ static func ready_fire(f: Node3D) -> Node3D:
 ## "spirit"); "void", the same in purple (jj's stash #3). Its flipbook flames play the spirit book (already blue) with
 ## the shader's `cool` and the palette's `mul` (purple: more red, less green), and the palette, the smoke's glow and
 ## the embers' colours go to its colours; every mesh, material and colour ramp is copied first, so the shared ones
-## keep theirs. For the stash chests' fires (Battlegrounds.STASH_THEMES "pal").
+## keep theirs.
 const SPIRIT := [Color(0.2, 0.37, 0.78), Color(0.35, 0.66, 1.0), Color(0.66, 0.88, 1.0)]   # crimson, molten, whitehot
 const PALETTES := {
 	"spirit": {"pal": SPIRIT, "mul": Vector3(1.0, 1.0, 1.0), "map": [0.25, 0.55, 0.45, 0.5]},

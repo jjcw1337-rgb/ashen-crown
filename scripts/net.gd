@@ -349,7 +349,7 @@ func _hero_packet(h: Hero) -> PackedFloat32Array:
 ## << 2: rooted, harried, slowed, revealed) and his Blight stacks (<< 6), so his puppet shows them on every screen
 ## (Hero.apply_net_state). A float holds these small integers exactly.
 func _flags(h: Hero) -> float:
-	return float((1 if h.buff_t > 0.0 else 0) | (2 if h.invis_t > 0.0 else 0) | (PvpStatusFx.bits_of(h) << 2) | (PvpStatusFx.blight_of(h) << 6) | (1024 if h.stash_slowed else 0))     # (bit 10: the antechamber stash's slow)
+	return float((1 if h.buff_t > 0.0 else 0) | (2 if h.invis_t > 0.0 else 0) | (PvpStatusFx.bits_of(h) << 2) | (PvpStatusFx.blight_of(h) << 6))     # (bit 10: the antechamber stash's slow)
 
 ## A sailing player's boat rides along at the end of his state (aboard, x, z, yaw, speed); partners draw it
 ## under his puppet (BoatRide.puppet_update). Older builds read only the first 15 numbers.
@@ -1004,42 +1004,7 @@ func bg_refuse(pid: int, why: String) -> void:
 	if players.has(pid):
 		drop_peer(pid)
 
-## The antechamber's stash chest was opened (Battlegrounds.stash_opened checks it and slows the opener).
-func send_bg_stash(idx: int) -> void:
-	if active and not server:
-		rpc_id(1, "sv_bg_stash", idx)
-
-@rpc("any_peer", "call_remote", "reliable")
-func sv_bg_stash(idx: int) -> void:
-	if server and game.bg != null:
-		game.bg.stash_opened(multiplayer.get_remote_sender_id(), idx)
-
-@rpc("authority", "call_remote", "reliable")
-func cl_bg_stash_fx(idx: int) -> void:
-	Battlegrounds.stash_fx(game, idx)
-
-## The server gave us the chest: it opens, and the slow is ours.
-@rpc("authority", "call_remote", "reliable")
-func cl_bg_stash_ok(idx: int) -> void:
-	if game.world == null or idx < 0 or idx >= game.world.interactables.size():
-		return
-	game.hero.stash_slow()
-	game.ui.open_stash()
-	if game.ui.stash_panel.visible:
-		game.ui.trade_with = game.world.interactables[idx]
-		Sfx.play("equip")
-		game.chest_lid(game.world.interactables[idx], true)
-
-func send_bg_stash_closed() -> void:
-	if active and not server:
-		rpc_id(1, "sv_bg_stash_closed")
-
-@rpc("any_peer", "call_remote", "reliable")
-func sv_bg_stash_closed() -> void:
-	if server and game.bg != null:
-		game.bg.stash_closed(multiplayer.get_remote_sender_id())
-
-## The antechamber's matchup: every raider's class and level (Battlegrounds.roster), shown by BgMatchup.
+## The matchup: every raider's class and level (Battlegrounds.roster), shown by BgMatchup.
 @rpc("authority", "call_remote", "reliable")
 func cl_bg_roster(r: Array) -> void:
 	game.bg_roster = r
@@ -1050,20 +1015,8 @@ func cl_bg_raid(state: String, t: float, open: Array, length: float, portals_at:
 	var was := str(game.bg_raid.get("state", ""))
 	var wait := float(state.get_slice(":", 1)) if state.contains(":") else 0.0
 	game.bg_raid = {"state": state, "t": t, "open": open, "len": length, "portals_at": portals_at, "wait": wait}
-	# the antechamber's gates: down in the lobby and the countdown, up once the raid is on (Battlegrounds.open_gates)
-	if state == "raid" and game.world != null:
-		Battlegrounds.open_gates(game.world, was.begins_with("prep"))
-		# the gates rise: the antechamber's stash shuts (Game.stash_allowed refuses from now on), the chests go quiet
-		Battlegrounds.close_stashes(game)
-		if game.ui.stash_panel.visible:
-			game.ui.close_all()
-			game.ui.message("The gates rise: the stash is sealed until you're home", Color(1.0, 0.7, 0.4))
-		# (the Verdant Reach has no gates: its raid just begins, no banner and no portcullis; Blaine 2026-11-06)
-		if (was.begins_with("prep") or was.begins_with("lobby")) and not MpMode.FOREST:
-			game.ui.big_message("The gates are open")
-			Sfx.play("portcullis" if Sfx.bank.has("portcullis") else "portal", -2.0)
-	elif state.begins_with("prep") and not was.begins_with("prep"):
-		game.ui.big_message("The gates open in %d" % int(ceilf(wait)))
+	if state.begins_with("prep") and not was.begins_with("prep"):
+		game.ui.big_message("The raid starts in %d" % int(ceilf(wait)))
 		Sfx.play("arena_horn", -4.0)
 	if game.world != null:
 		var ps := Battlegrounds.portal_list(game.world)

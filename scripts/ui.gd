@@ -2788,13 +2788,9 @@ func _build_stash() -> void:
 	stash_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	stash_panel.visible = false
 	windows.add_child(stash_panel)
-	# in a raid's antechamber the chest is one player's at a time (Battlegrounds.stash_user): closing frees it
 	stash_panel.visibility_changed.connect(func():
-		if not stash_panel.visible:
-			if is_instance_valid(trade_with) and trade_with.kind == "stash" and not game.bg_mode:
-				game.chest_lid(trade_with, false)     # (an antechamber's stays open, burning, until the gates rise)
-			if game.bg_mode:
-				game.net.send_bg_stash_closed())
+		if not stash_panel.visible and is_instance_valid(trade_with) and trade_with.kind == "stash":
+			game.chest_lid(trade_with, false))
 	var body := Control.new()
 	body.name = "body"
 	body.custom_minimum_size = STASH_SIZE
@@ -3762,7 +3758,7 @@ func _build_admin(parent: Control) -> VBoxContainer:
 	var rrow := HBoxContainer.new()
 	rrow.add_theme_constant_override("separation", 4)
 	rrow.alignment = BoxContainer.ALIGNMENT_CENTER
-	for c in [["restart", "Restart round"], ["gates", "Start the raid" if MpMode.FOREST else "Open gates"], ["portals", "Open portals"]]:
+	for c in [["restart", "Restart round"], ["gates", "Start the raid"], ["portals", "Open portals"]]:
 		var cmd: String = c[0]
 		var rb := _iron_button(c[1], 112, 36, 14)
 		rb.pressed.connect(func():

@@ -119,7 +119,6 @@ var pvs_shown := -1         # what PvpStatusFx shows of them on him (bits | blig
 var net_pvs_bits := 0       # a puppet: the statuses his game says he has (PvpStatusFx bits, in his state packet)
 var net_pvs_blight := 0     # and his Blight stacks
 var chill_t := 0.0          # Rimeclaw's cold: slowed while it lasts
-var stash_slowed := false   # the antechamber's stash opened (jj): Battlegrounds.STASH_SLOW slower for the rest of the raid
 var cc := {}                # crowd control from other players in the Battlegrounds (PvpStatus)
 var hit_t := 0.0
 var cls := "knight"          # "knight", "wraith", "demon" or "warlock" (Data.CLASSES)
@@ -1615,64 +1614,6 @@ func _hit_enemy(e, mult: float, knock: float = 0.0, src := "", flat := 0.0) -> v
 
 const BURN_SECS := 3.0
 
-## Seen again (a Shadow Phial's invisibility ends: he struck, cast or was struck).
-## The mark of the stash's slow (jj): a slow pulse of dull red at his feet and a cracked-hourglass sign over his head, for as long as it lasts. Only he sees it (and, once raids have
-## parties, his party: `_stash_mark_seen`); the others in the crypt never learn who paid it.
-func _stash_mark_seen() -> bool:
-	return _mine()        # (no parties in the Battlegrounds yet; a party member's puppet would see it too)
-
-func _show_stash_mark() -> void:
-	var m: Node3D = get_node_or_null("stash_mark")
-	var want: bool = stash_slowed and _stash_mark_seen()
-	if want and m == null and game != null and game.world != null:
-		m = Node3D.new()
-		m.name = "stash_mark"
-		add_child(m)
-		# (the ring and the sign only: the embers and ash read as pale blobs over him in the game)
-		var ring := MeshInstance3D.new()
-		ring.name = "ring"
-		var tm := TorusMesh.new()
-		tm.inner_radius = 0.62
-		tm.outer_radius = 0.72
-		ring.mesh = tm
-		var mat := StandardMaterial3D.new()
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		mat.albedo_color = Color(1.0, 0.28, 0.08, 0.5)
-		mat.emission_enabled = true
-		mat.emission = Color(1.0, 0.3, 0.08)
-		ring.material_override = mat
-		ring.scale = Vector3(1, 0.15, 1)
-		ring.position = Vector3(0, 0.05, 0)
-		m.add_child(ring)
-		var sign := Label3D.new()
-		sign.name = "sign"
-		sign.text = "⧗ SLOWED"
-		sign.font_size = 34
-		sign.outline_size = 10
-		sign.pixel_size = 0.006
-		sign.modulate = Color(1.0, 0.55, 0.25)
-		sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		sign.no_depth_test = true
-		sign.position = Vector3(0, 2.75, 0)
-		m.add_child(sign)
-	elif not want and m != null:
-		m.queue_free()
-	if m != null and want:
-		var r: Node3D = m.get_node_or_null("ring")
-		if r != null:
-			var k := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 400.0)
-			((r as MeshInstance3D).material_override as StandardMaterial3D).albedo_color.a = 0.25 + 0.35 * k
-
-## The price of the antechamber's stash (jj): STASH_SLOW slower until this raid ends. Set by Game._interact the moment
-## the chest opens, and again by the raid server's check (Battlegrounds.stash_opened, a "stash_slow" hit).
-func stash_slow() -> void:
-	if stash_slowed:
-		return
-	stash_slowed = true
-	if _mine():
-		game.ui.message("You opened the stash: %d%% slower until this raid ends" % int(Battlegrounds.STASH_SLOW * 100.0), Color(1.0, 0.6, 0.3), 5.0)
-
 func break_invis() -> void:
 	if invis_t > 0.0:
 		invis_t = 0.0
@@ -1696,9 +1637,6 @@ func _item_effects(e, dealt: float, src: String) -> void:
 func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String = "phys") -> void:
 	stop_chop()
 	if dead:
-		return
-	if kind == "stash_slow" and not puppet:
-		stash_slow()        # (no dodge, block, mist or immortality skips it)
 		return
 	combat_t = 0.0
 	if puppet:
@@ -1865,7 +1803,6 @@ func _process_body(delta: float) -> void:
 	dash_t = maxf(0.0, dash_t - delta)
 	invis_t = maxf(0.0, invis_t - delta)
 	_show_invis(invis_t > 0.0, _mine())
-	_show_stash_mark()
 	if burn_t > 0.0 and not dead:
 		burn_t -= delta
 		_burn_tick -= delta
@@ -1992,8 +1929,6 @@ func _process_body(delta: float) -> void:
 	if chill_t > 0.0:
 		chill_t -= delta
 		speed *= 0.55
-	if stash_slowed:
-		speed *= 1.0 - Battlegrounds.STASH_SLOW
 	if not cc.is_empty() or not pvs.is_empty():
 		speed *= PvpStatus.update(self, delta)     # the Demon's and the Plague Doctor's statuses (snare = 0)
 		if PvpStatus.held(self):
@@ -2238,7 +2173,6 @@ func apply_net_state(p: PackedFloat32Array) -> void:
 	max_life = maxf(p[13], 1.0)
 	net_buff = int(p[14]) & 1 != 0
 	net_invis = int(p[14]) & 2 != 0
-	stash_slowed = int(p[14]) & 1024 != 0      # (everyone sees the mark of the antechamber stash's slow)
 	net_boat_st = Vector4(p[16], p[17], p[18], p[19]) if p.size() >= 20 and p[15] > 0.5 else null
 	var bi := int(p[20]) if p.size() >= 21 else 0
 	var bk: Array = Data.BOATS.keys()
@@ -2278,7 +2212,6 @@ func _puppet_process(delta: float) -> void:
 	BoatRide.puppet_update(self, delta)      # a partner at sea: his boat, and him at its tiller
 	aura.emitting = net_buff and not net_invis
 	_show_invis(net_invis, false)
-	_show_stash_mark()
 	if net_pvs_bits != 0 or net_pvs_blight != 0 or pvs_shown > 0:
 		PvpStatusFx.sync(self, 0 if dead else net_pvs_bits, 0 if dead else net_pvs_blight)    # PvP statuses on him
 	if dead:

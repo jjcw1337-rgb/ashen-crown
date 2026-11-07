@@ -27,6 +27,17 @@ const BOSS_XP := 0.35
 const SHARE_R := 30.0
 const FIRST_PACK := 2000      # (clear of every map's own pack numbers)
 
+## The colours of a camp chest's opening (Game.chest_lid, _burst_seals): its lid's light, the sparks at its hasp and
+## its seals' flash, sparks and trails.
+const CHEST_COLS := {"lid": Color(1.0, 0.5, 0.2), "spark": Color(0.95, 0.42, 0.08, 1.0), "flash": Color(1.0, 0.42, 0.1),
+		"jet": [Color(1.0, 0.72, 0.3, 1.0), Color(0.95, 0.38, 0.06, 0.9), Color(0.35, 0.06, 0.02, 0.0)],
+		"ring": Color(0.7, 0.2, 0.03), "burst": Color(0.9, 0.3, 0.04, 1.0), "fire": "brazier", "fire_col": Color(1.0, 0.5, 0.18), "pal": "",
+		"seal": Color(1.0, 0.62, 0.18), "seal_light": Color(1.0, 0.68, 0.25), "seal_flash": Color(1.0, 0.62, 0.2),
+		"seal_spark": Color(1.0, 0.75, 0.3, 1.0), "seal_trail": Color(0.95, 0.55, 0.12)}
+
+static func chest_col(key: String):
+	return CHEST_COLS[key]
+
 ## Add a camp to a map being built: its monsters (`foes`: [{kind, count, champ?, at: offset from `pos`}]) join
 ## w.enemy_spawns at the tier's level under the camp's own pack id, and its chest stands at `chest` (an offset).
 static func add(w: World, id: String, title: String, tier: int, pos: Vector3, r: float, foes: Array, chest := Vector3(0, 0, -2.5)) -> Dictionary:

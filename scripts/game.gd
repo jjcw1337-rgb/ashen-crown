@@ -523,7 +523,7 @@ func zone_music() -> void:
 	var night_bed := cur_zone == "town" and day_night != null and day_night.on and day_night.night > 0.5
 	# the Verdant Reach (the Battlegrounds) has no song: its forest bed alone, not the old synthesized drone, which
 	# played under the whole match as a hum and hiss (Blaine, 2026-11-06)
-	var song := "" if cur_zone == Battlegrounds.ZONE and MpMode.FOREST else ("fort" if cur_zone == "lair" and world.fort else cur_zone)
+	var song := "" if cur_zone == Battlegrounds.ZONE else ("fort" if cur_zone == "lair" and world.fort else cur_zone)
 	Sfx.play_music(song, "forest" if world.oak_forest and cur_zone != "town" and not indoor() else ("night_forest" if night_bed else ""),
 			day_night.night_take() if night_bed else 0)
 
@@ -547,10 +547,10 @@ func _sea_sounds() -> void:
 
 ## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
-	return (cur_zone == Battlegrounds.ZONE and not Battlegrounds.outdoor()) or cur_zone == Vigil.ZONE or cur_zone == "arena" or cur_zone == Sandbox.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
+	return cur_zone == Vigil.ZONE or cur_zone == "arena" or cur_zone == Sandbox.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
 
 func _zone_env(kind: String) -> void:
-	var inside := (kind == Battlegrounds.ZONE and not Battlegrounds.outdoor()) or kind == Vigil.ZONE or kind == "arena" or kind == Sandbox.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
+	var inside := kind == Vigil.ZONE or kind == "arena" or kind == Sandbox.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
 	var snowy := is_snowy() and not inside
 	var ashen := difficulty >= 2 and not inside
 	RenderingServer.global_shader_parameter_set("snow_amt", 1.0 if snowy else 0.0)
@@ -1355,7 +1355,6 @@ func run_switched_banner() -> void:
 	ui.big_message(run_name())
 	ui.message(("The Ashen King's reign. " if difficulty >= 2 else "") + run_note(difficulty), Color(1.0, 0.7, 0.4))
 
-
 ## The boot's files (ResCache, "boot" scope): the title's models, read on the loader's threads while the intro plays.
 ## Released once the title is up (the title's own nodes hold them).
 const TITLE_MODELS := ["res://assets/models/title/gate.glb", "res://assets/models/title/arcade.glb",
@@ -1880,7 +1879,6 @@ func start_battlegrounds(addr: String, id: String, cls := "") -> void:
 	bg_mode = true
 	bg_raid = {}
 	bg_roster = []
-	hero.stash_slowed = false     # (the antechamber stash's slow lasts one raid)
 	if hero.dead:
 		hero.respawn(hero.global_position)
 	var a: Array = Battlegrounds.parse_address(addr)
@@ -1928,7 +1926,6 @@ func _start_run_raid(addr: String, id: String, cls: String) -> void:
 	bg_mode = true
 	bg_raid = {}
 	bg_roster = []
-	hero.stash_slowed = false
 	var a: Array = Battlegrounds.parse_address(addr)
 	_save_setting("battlegrounds", "address", addr.strip_edges())
 	_save_setting("battlegrounds", "class", cls)
@@ -2152,7 +2149,6 @@ func _leave_battlegrounds() -> void:
 	_bg_home()
 	bg_raid = {}
 	bg_roster = []
-	hero.stash_slowed = false     # (the antechamber stash's slow lasts one raid)
 	if bg_from_waypoint and char_id != "":
 		bg_from_waypoint = false
 		await _bg_home_camp(fell)
@@ -2253,15 +2249,9 @@ func _cloud_start() -> void:
 		ui.show_title()
 
 # ---------------------------------------------------------------- the shared stash (SharedStash)
-## Where the stash opens: the camp's chest, and in the Battlegrounds the antechamber's until the gates rise (jj: a
-## last change of gear once the matchup is known); never once the raid is on, in the sandbox or on a server.
+## Where the stash opens: the camp's chest; never in the Battlegrounds, the sandbox or on a server.
 func stash_allowed() -> bool:
-	if stash == null or sandbox != null or net.server:
-		return false
-	if bg_mode:
-		var st := str(bg_raid.get("state", ""))
-		return st.begins_with("lobby") or st.begins_with("prep")
-	return true
+	return stash != null and sandbox == null and not net.server and not bg_mode
 
 ## The bag's item `inv_idx` into the stash's tab (or the first tab with room). Three saves: the character with the
 ## item stamped (still in the bag), the stash with it, the character without it. A crash after the first leaves it
@@ -2407,7 +2397,7 @@ func chest_lid(t: Inter, open: bool, mine := true) -> void:
 		# the raised lid and whoever stands at it throw real shadows over the floor; first in the shadow budget
 		glow = OmniLight3D.new()
 		glow.name = "lid_glow"
-		glow.light_color = Battlegrounds.stash_col(t, "lid")      # (red, or blue on stash #2)
+		glow.light_color = Camps.chest_col("lid")
 		glow.omni_range = 8.0
 		glow.omni_attenuation = 1.1
 		glow.light_energy = 0.0
@@ -2445,13 +2435,13 @@ func chest_lid(t: Inter, open: bool, mine := true) -> void:
 		else:
 			Sfx.play_at("chest_unlock" if Sfx.bank.has("chest_unlock") else "anvil", top + Vector3(0, -0.2, 0.4), -6.0, 1.25)
 		# the unlock: sparks at the hasp
-		Fx.burst(root, t.global_position + Vector3(0, 0.6 + lift, 0.6), Battlegrounds.stash_col(t, "spark"), 14, 2.2, 0.018, 0.45, false, -6.0, 70.0, Vector3(0, 0.4, 1))
+		Fx.burst(root, t.global_position + Vector3(0, 0.6 + lift, 0.6), Camps.chest_col("spark"), 14, 2.2, 0.018, 0.45, false, -6.0, 70.0, Vector3(0, 0.4, 1))
 		var raid: bool = bool(t.data.get("raid", false))
 		Fx.later(t, 0.26, func():
 			if not raid_snd:
 				Sfx.play_at("chest_open" if Sfx.bank.has("chest_open") else "portcullis" if Sfx.bank.has("portcullis") else "inv_click", top, -8.0, 1.4)
 			if not raid:
-				# the camp's chest: a warm breath of light (the raid's fire is Battlegrounds.stash_fx)
+				# the camp's chest: a warm breath of light
 				Fx.flash(root, top, Color(1.0, 0.72, 0.35), 3.0, 0.5, 4.0)
 				Fx.burst(root, top, Color(1.0, 0.6, 0.25, 0.8), 16, 1.2, 0.04, 1.2, true, 1.0, 25.0)
 			if mine and hero != null and hero.global_position.distance_to(t.global_position) < 6.0:
@@ -2468,9 +2458,9 @@ func _burst_seals(t: Inter) -> void:
 		return
 	var root: Node3D = world.fx_root
 	var c := t.global_position
-	var flash_c: Color = Battlegrounds.stash_col(t, "seal_flash")
-	var spark_c: Color = Battlegrounds.stash_col(t, "seal_spark")
-	var trail_c: Color = Battlegrounds.stash_col(t, "seal_trail")
+	var flash_c: Color = Camps.chest_col("seal_flash")
+	var spark_c: Color = Camps.chest_col("seal_spark")
+	var trail_c: Color = Camps.chest_col("seal_trail")
 	for i in seals.size():
 		var s: MeshInstance3D = seals[i]
 		var delay := 0.08 + i * 0.05
@@ -2789,7 +2779,6 @@ func exit_to_title(save_current := true) -> void:
 	bg_mode = false
 	bg_raid = {}
 	bg_roster = []
-	hero.stash_slowed = false     # (the antechamber stash's slow lasts one raid)
 	bg_from_waypoint = false
 	bg_gained = -1
 	net_joining = false
@@ -3253,34 +3242,6 @@ func guard_fell(kind: String) -> void:
 		if c is Inter and str(c.data.get("guard", "")) == kind:
 			c.data["unsealed"] = true
 
-## A stairway down (BgFloors._stair): a fade, and the hero at the floor below's arrival stair. The hero's position
-## is streamed like any move, so the server and the others see him go.
-func _descend(t: Inter) -> void:
-	if hero.dead or _busy:
-		return
-	var to: Vector3 = t.data.get("to", hero.global_position)
-	Sfx.play("portal")
-	var fade := ColorRect.new()
-	fade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	fade.color = Color(0, 0, 0, 0)
-	ui.top.add_child(fade)
-	var tw := create_tween()
-	tw.tween_property(fade, "color", Color(0, 0, 0, 1), 0.35)
-	await get_tree().create_timer(0.4).timeout
-	var p := world.free_spot_near(to + Vector3(randf_range(-1.5, 1.5), 0, randf_range(-1.0, 1.0)), 1.5)
-	hero.global_position = p
-	hero.target = null
-	hero.path = PackedVector3Array()
-	hero.moving = false
-	cam_target = p
-	cam_pivot.position = p
-	var f := int(t.data.get("floor", 2))
-	ui.big_message(BgFloors.NAMES.get(f, "Deeper"))
-	var tw2 := create_tween()
-	tw2.tween_property(fade, "color", Color(0, 0, 0, 0), 0.6)
-	tw2.tween_callback(fade.queue_free)
-
 ## A camp vendor's own talk: the elder's news, a trader's greeting and Trade.
 func _vendor_talk(t: Inter) -> void:
 	var role: String = t.data.get("role", "")
@@ -3596,14 +3557,6 @@ func _interact(t: Inter) -> void:
 		"boat":
 			_boat_clicked()
 		"stash":
-			if bg_mode and t.data.get("raid", false):
-				# the antechamber's chest: the raid server decides who has it (the first to ask); its answer opens it
-				# and puts the slow on this hero (Battlegrounds.stash_opened, Net.cl_bg_stash_ok)
-				if stash_allowed():
-					net.send_bg_stash(world.interactables.find(t))
-				else:
-					ui.message("The gates are up: the stash is sealed", Color(1, 0.6, 0.4))
-				return
 			ui.open_stash()
 			if ui.stash_panel.visible:
 				ui.trade_with = t
@@ -3679,8 +3632,6 @@ func _interact(t: Inter) -> void:
 			_open_chest(t)
 			if net.active:
 				net.inter_used(t)
-		"descend":
-			_descend(t)
 		"dwarves":
 			if not t.used:
 				DwarfGame.talk(self, t)
