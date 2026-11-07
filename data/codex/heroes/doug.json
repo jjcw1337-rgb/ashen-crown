@@ -1,7 +1,7 @@
 {
 	"cls": "doug",
 	"name": "Doug",
-	"fantasy": "A washed-up circus brawler with a roast drumstick and a bag of tricks. Every gag is a weapon: pies that blind, peels that trip, a double that runs the other way, and a clown car nobody wants to see coming.",
+	"fantasy": "A washed-up circus brawler with a roast drumstick and a bag of tricks: blinding pies, tripping peels, a decoy double and a clown car.",
 	"directions": [
 		{
 			"id": "Slapstick",
@@ -26,7 +26,7 @@
 			"name": "Cream Pie",
 			"rarity": 0,
 			"direction": "Slapstick",
-			"desc": "Lob a cream pie at the cursor (12 m): a splat for 120% weapon damage and the target is Pied: monsters blinded for 2 seconds, a player's screen creamed at the edges and their aim assist gone for 1.5 seconds. The same target can't be Pied again for 6 seconds.",
+			"desc": "Lob a pie up to 12 m for 120% weapon damage. Pied monsters are blinded for 2 s, players lose aim assist for 1.5 s. Once per target every 6 s.",
 			"mana": 6,
 			"cd": 0.0,
 			"use": 0.9,
@@ -52,7 +52,7 @@
 			"name": "Banana Peels",
 			"rarity": 0,
 			"direction": "Slapstick",
-			"desc": "Toss three banana peels in a fan ahead (they land 3 to 6 metres out and last 8 seconds; at most 6 down). Whoever steps on one slips: a player is knocked down for 0.7 seconds and slides on, a monster is stunned for 1 second. A dodge roll over a peel doesn't slip.",
+			"desc": "Toss 3 banana peels ahead (8 s, 6 at most). A slip stuns monsters for 1 s and knocks players down for 0.7 s. Dodge rolls don't slip.",
 			"mana": 9,
 			"cd": 7.0,
 			"use": 0.8,
@@ -78,7 +78,7 @@
 			"name": "Pratfall Slide",
 			"rarity": 0,
 			"direction": "Showmanship",
-			"desc": "Belly-slide 7 metres the way you face, honking: foes in the way take 90% weapon damage and are shoved aside. You pop up with a ta-da.",
+			"desc": "Belly-slide 7 m forward, dealing 90% weapon damage to foes in the way and shoving them aside.",
 			"mana": 10,
 			"cd": 5.0,
 			"use": 0.7,
@@ -100,7 +100,7 @@
 			"name": "Doppel-Doug",
 			"rarity": 1,
 			"direction": "Showmanship",
-			"desc": "Duck behind a puff of confetti: you turn invisible for 1.8 seconds while a balloon double of you runs off toward the cursor, waving. Struck, the double pops in a confetti burst that slows whoever is near for 1.5 seconds.",
+			"desc": "Turn invisible for 1.8 s while a balloon double runs toward the cursor. Struck, it pops, slowing everyone near it for 1.5 s.",
 			"mana": 14,
 			"cd": 14.0,
 			"use": 0.4,
@@ -126,7 +126,7 @@
 			"name": "Pin Juggle",
 			"rarity": 1,
 			"direction": "Showmanship",
-			"desc": "Throw five flaming juggling pins in quick succession at the cursor; each bounces on to two more foes. 60% weapon damage as fire each.",
+			"desc": "Throw 5 flaming pins at the cursor, each dealing 60% weapon damage as fire and bouncing to 2 more foes.",
 			"mana": 16,
 			"cd": 0.0,
 			"use": 1.4,
@@ -151,7 +151,7 @@
 			"name": "Big Top Bounce",
 			"rarity": 1,
 			"direction": "Big Top",
-			"desc": "Slam down a trampoline and bounce up to 10 metres to the cursor, landing in a belly-flop: 180% weapon damage in 3 metres and foes are launched for 0.8 seconds. A shadow and a whistle mark where you'll land.",
+			"desc": "Bounce up to 10 m to the cursor and belly-flop for 180% weapon damage within 3 m, launching foes for 0.8 s. A shadow marks the landing.",
 			"mana": 18,
 			"cd": 10.0,
 			"use": 1.3,
@@ -174,7 +174,7 @@
 			"name": "Clown Car",
 			"rarity": 2,
 			"direction": "Big Top",
-			"desc": "A tiny clown car screeches in and you drive it for 5 seconds: fast, unstoppable, ramming foes for 140% weapon damage and knocking them flying. Then it bursts in confetti and six mini clowns tumble out, sprint at the nearest foes and pie them.",
+			"desc": "Drive a clown car for 5 s: fast, unstoppable, ramming foes for 140% weapon damage and knocking them flying. Then 6 mini clowns pop out and pie the nearest foes.",
 			"mana": 40,
 			"cd": 60.0,
 			"use": 0.6,
@@ -200,7 +200,7 @@
 			"name": "Pie Barrage",
 			"rarity": 0,
 			"direction": "Slapstick",
-			"desc": "Fling six cream pies at once onto the foes around the pointer: each 80% weapon damage, and the first time a foe is Pied it is stunned and slowed.",
+			"desc": "Fling 6 pies onto foes around the pointer for 80% weapon damage each. A foe's first Pie stuns and slows it.",
 			"mana": 10,
 			"cd": 0.0,
 			"use": 1.1,
@@ -226,7 +226,7 @@
 			"name": "Banana Bonanza",
 			"rarity": 1,
 			"direction": "Showmanship",
-			"desc": "Scatter eight banana peels in a ring round you: whatever steps on one goes down. Your next blow on a slipped foe within 4 seconds hits twice as hard.",
+			"desc": "Scatter 8 banana peels around you. Foes that step on one go down, and your next hit on them within 4 s deals double damage.",
 			"mana": 8,
 			"cd": 9.0,
 			"role": "a ring of peels",
@@ -247,7 +247,7 @@
 			"name": "Human Cannonball",
 			"rarity": 1,
 			"direction": "Big Top",
-			"desc": "Fire yourself out of a cannon onto the pointer (14 metres): you land in a belly-flop that deals 260% weapon damage within 4.5 metres and knocks them down.",
+			"desc": "Fire yourself up to 14 m onto the pointer, dealing 260% weapon damage within 4.5 m and knocking foes down.",
 			"mana": 12,
 			"cd": 8.0,
 			"range": 14.0,
@@ -354,7 +354,7 @@
 			"fx": {
 				"dmg": 8.0
 			},
-			"text": "All your damage +{dmg}%.",
+			"text": "+{dmg}% damage.",
 			"icon": "pie"
 		},
 		{
@@ -537,7 +537,7 @@
 				"dmg": 6.0,
 				"cd:car": 15.0
 			},
-			"text": "All your damage +{dmg}% and Clown Car recharges {cd:car}% faster.",
+			"text": "+{dmg}% damage, and Clown Car recharges {cd:car}% faster.",
 			"icon": "car"
 		},
 		{
@@ -577,7 +577,7 @@
 			"run": true,
 			"direction": "Showmanship",
 			"max": 1,
-			"text": "A skill with a cooldown has a {chance}% chance to be ready again at once.",
+			"text": "Skills with a cooldown have a {chance}% chance to reset at once.",
 			"icon": "juggle",
 			"k": {
 				"chance": 35.0
@@ -592,7 +592,7 @@
 			"run": true,
 			"direction": "Slapstick",
 			"max": 1,
-			"text": "Critical hits give +{ias}% attack speed for {secs} seconds.",
+			"text": "Critical hits give +{ias}% attack speed for {secs} s.",
 			"icon": "pie",
 			"k": {
 				"ias": 30.0,

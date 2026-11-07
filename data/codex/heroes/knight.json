@@ -26,7 +26,7 @@
 			"name": "Holy Slam",
 			"rarity": 0,
 			"direction": "Crusader",
-			"desc": "Leap at the cursor and bring the sword down in a burst of white light: 160% weapon damage to everything around the blow, knocking them back and stunning them for 1 second.",
+			"desc": "Leap at the cursor and slam your sword down for 160% weapon damage around the blow, knocking foes back and stunning them for 1 s.",
 			"mana": 5,
 			"cd": 0.0,
 			"range": 6.0,
@@ -46,7 +46,7 @@
 			"name": "Holy Nova",
 			"rarity": 0,
 			"direction": "Crusader",
-			"desc": "A ring of holy fire bursts outward, burning enemies within 7 metres.",
+			"desc": "Burst holy fire outward, burning foes within 7 m.",
 			"mana": 14,
 			"cd": 0.0,
 			"use": 1.0,
@@ -90,7 +90,7 @@
 			"name": "Battle Cry",
 			"rarity": 1,
 			"direction": "Vanguard",
-			"desc": "Rally yourself: +40% damage and +50% defense for 12 seconds. Stuns nearby foes.",
+			"desc": "Gain +40% damage and +50% defense for 12 s. Foes within 6 m are stunned for 2 s.",
 			"mana": 20,
 			"cd": 20.0,
 			"tags": [
@@ -111,7 +111,7 @@
 			"name": "Blade Storm",
 			"rarity": 0,
 			"direction": "Crusader",
-			"desc": "Spin with the sword out: everything within 3.2 metres is struck twice for 70% weapon damage. Every blow of yours leaves a Holy Brand on its foe (up to 5).",
+			"desc": "Spin, striking everything within 3.2 m twice for 70% weapon damage.",
 			"mana": 8,
 			"cd": 0.0,
 			"use": 0.9,
@@ -132,7 +132,7 @@
 			"name": "Aegis",
 			"rarity": 0,
 			"direction": "Bulwark",
-			"desc": "Raise a holy ward worth 35% of your life for 5 seconds and call everything within 5 metres onto you. When it breaks or ends, it bursts: everything within 5 metres takes all the damage it soaked.",
+			"desc": "Raise a ward worth 35% of your life for 5 s, taunting foes within 5 m. When it breaks or ends, it deals the damage it soaked within 5 m.",
 			"mana": 10,
 			"cd": 10.0,
 			"role": "absorb, then answer",
@@ -157,7 +157,7 @@
 			"name": "Judgment",
 			"rarity": 1,
 			"direction": "Crusader",
-			"desc": "Call a pillar of holy light down on the pointer: 120% weapon damage within 3 metres, +45% for every Holy Brand on each foe (the brands are spent), and holy fire burns them.",
+			"desc": "Call holy light on the pointer: 120% weapon damage within 3 m, burning foes, +45% per Holy Brand spent. Your other hits Brand foes (up to 5).",
 			"mana": 12,
 			"cd": 0.0,
 			"use": 1.0,
@@ -188,7 +188,7 @@
 			"name": "Last Rites",
 			"rarity": 1,
 			"direction": "Vanguard",
-			"desc": "Leap at the foe nearest the pointer and bring the sword down: 150% weapon damage, +2% for every 1% of life it is missing. A kill makes Last Rites ready again.",
+			"desc": "Leap at the foe nearest the pointer for 150% weapon damage, +2% per 1% of life it is missing. A kill resets Last Rites.",
 			"mana": 10,
 			"cd": 8.0,
 			"range": 9.0,
@@ -285,7 +285,7 @@
 			"fx": {
 				"crit": 3.0
 			},
-			"text": "+{crit}% chance to land a critical hit.",
+			"text": "+{crit}% critical chance.",
 			"icon": "t_star"
 		},
 		{
@@ -312,7 +312,7 @@
 			"fx": {
 				"nova_heal": 3.0
 			},
-			"text": "Holy Nova heals you {nova_heal}% of your life for every enemy it burns (up to 5).",
+			"text": "Holy Nova heals you {nova_heal}% of your life per foe it burns (up to 5).",
 			"icon": "t_heart"
 		},
 		{
@@ -390,7 +390,7 @@
 			"fx": {
 				"regen": 1.5
 			},
-			"text": "+{regen} life regenerated per second.",
+			"text": "+{regen} life per second.",
 			"icon": "t_regen"
 		},
 		{
@@ -404,7 +404,7 @@
 				"cry_heal": 25.0,
 				"buff_dur": 4.0
 			},
-			"text": "Battle Cry heals {cry_heal}% of your life and lasts {buff_dur} seconds longer.",
+			"text": "Battle Cry heals {cry_heal}% of your life and lasts {buff_dur} s longer.",
 			"icon": "cry"
 		},
 		{
@@ -496,7 +496,7 @@
 			"fx": {
 				"charge_cdr": 1.0
 			},
-			"text": "Every enemy Charge smashes through takes {charge_cdr} second off your other cooldowns.",
+			"text": "Each foe Charge hits cuts {charge_cdr} s from your other cooldowns.",
 			"icon": "charge"
 		},
 		{
@@ -522,7 +522,7 @@
 			"run": true,
 			"direction": "Bulwark",
 			"max": 1,
-			"text": "Aegis's ward is {aegis_pct}% of your life stronger and comes back {cd:k_aegis}% sooner; its burst is twice as hard.",
+			"text": "Aegis's ward is {aegis_pct}% of your life bigger, returns {cd:k_aegis}% sooner and bursts twice as hard.",
 			"icon": "k_aegis",
 			"fx": {
 				"aegis_pct": 20.0,
@@ -552,7 +552,7 @@
 			"run": true,
 			"direction": "Vanguard",
 			"max": 1,
-			"text": "A Last Rites kill also gives you +30% damage and +20% run speed for 4 seconds.",
+			"text": "A Last Rites kill also gives +30% damage and +20% run speed for 4 s.",
 			"icon": "k_rites",
 			"fx": {
 				"rites_buff": 1.0
@@ -664,7 +664,7 @@
 			"run": true,
 			"direction": "Vanguard",
 			"max": 1,
-			"text": "Each kill: +{dmg}% damage for {secs} seconds, up to {stacks} times.",
+			"text": "Each kill: +{dmg}% damage for {secs} s, up to {stacks} times.",
 			"icon": "charge",
 			"k": {
 				"dmg": 8.0,

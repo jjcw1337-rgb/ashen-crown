@@ -1,17 +1,17 @@
 {
 	"cls": "archer",
 	"name": "Archer",
-	"fantasy": "A red-hooded ranger with a carved recurve bow and his dire wolf at his side. Shoots on the move: fire arrows that burn through a line, frost volleys that chill, and a thunderstep that leaves a storm sigil behind him.",
+	"fantasy": "A red-hooded ranger and his dire wolf. He shoots on the move with burning arrows, chilling volleys and a thunderstep that leaves a storm sigil.",
 	"directions": [
 		{
 			"id": "Flame",
 			"name": "Flame",
-			"desc": "Fire Arrow, burning wounds and the bow's weight; his wolf's fangs catch fire."
+			"desc": "Fire Arrow, burns and heavier shots. His wolf's bite catches fire."
 		},
 		{
 			"id": "Frost",
 			"name": "Frost",
-			"desc": "Frost Volley, the chill that slows them and the hide that keeps him alive; his wolf howls the cold."
+			"desc": "Frost Volley, slowing chills and tough hide. His wolf howls the cold."
 		},
 		{
 			"id": "Storm and Hunt",
@@ -26,7 +26,7 @@
 			"name": "Fire Arrow",
 			"rarity": 0,
 			"direction": "Flame",
-			"desc": "A burning arrow that tears through every enemy in a line for 130% weapon damage and sets them alight: they burn for 3 seconds.",
+			"desc": "Shoot a burning arrow through every foe in a line for 130% weapon damage. They burn for 3 s.",
 			"mana": 5,
 			"cd": 0.0,
 			"range": 16.0,
@@ -45,7 +45,7 @@
 			"name": "Frost Volley",
 			"rarity": 0,
 			"direction": "Frost",
-			"desc": "Loose a flight of frost arrows into the sky: they rain on the cursor for over a second, hitting everything within 4 metres again and again and chilling them (40% slower); the ground stays frozen for a few seconds, slowing everything that stands in it or crosses it.",
+			"desc": "Rain frost arrows on the cursor for 1.3 s, hitting everything within 4 m and slowing it 40%. The ground stays frozen, slowing all who cross it.",
 			"mana": 14,
 			"cd": 0.0,
 			"use": 1.1,
@@ -74,7 +74,7 @@
 			"name": "Thunderstep",
 			"rarity": 0,
 			"direction": "Storm and Hunt",
-			"desc": "Backflip away from the pointer, driving a thunderstone into a gold storm sigil where you stood. A moment later it detonates: everything on it is stunned for 3 seconds and hurt, and lightning leaps on into the 3 nearest others beyond it.",
+			"desc": "Backflip away from the pointer, leaving a storm sigil that soon detonates, stunning all on it for 3 s. Lightning arcs to the 3 nearest foes.",
 			"mana": 12,
 			"cd": 7.0,
 			"range": 10.0,
@@ -104,7 +104,7 @@
 			"name": "Spirit Beast",
 			"rarity": 1,
 			"direction": "Storm and Hunt",
-			"desc": "Your Spirit Beast hunts at your side from the start (and you run 10% faster with it). Command it: on an enemy it pounces and fights it, on open ground it holds there, on yourself it comes back. Each command rouses you both: +40% damage for 12 seconds.",
+			"desc": "Your wolf fights beside you (+10% run speed). Target a foe, spot or yourself to attack, hold or recall. Each command gives you both +40% damage for 12 s.",
 			"mana": 12,
 			"cd": 8.0,
 			"range": 18.0,
@@ -127,7 +127,7 @@
 			"name": "Scatter Shot",
 			"rarity": 0,
 			"direction": "",
-			"desc": "Loose five arrows in a fan: 55% weapon damage each. A foe close enough takes several.",
+			"desc": "Loose 5 arrows in a fan for 55% weapon damage each. A close foe takes several.",
 			"mana": 7,
 			"cd": 0.0,
 			"use": 0.85,
@@ -146,7 +146,7 @@
 			"name": "Glacial Shard",
 			"rarity": 0,
 			"direction": "Frost",
-			"desc": "An arrow of ice that pierces every foe in a line for 110% weapon damage and chills them (40% slower) for 3 seconds.",
+			"desc": "Shoot an ice arrow through every foe in a line for 110% weapon damage, slowing them 40% for 3 s.",
 			"mana": 6,
 			"cd": 0.0,
 			"use": 0.85,
@@ -167,7 +167,7 @@
 			"name": "Blast Arrow",
 			"rarity": 1,
 			"direction": "Flame",
-			"desc": "A fire arrow that bursts at the first foe it strikes or where its flight ends: 150% weapon damage to everything within 3.5 metres, setting them burning.",
+			"desc": "Shoot a fire arrow that bursts on the first foe hit, or at full range, for 150% weapon damage within 3.5 m. Foes burn.",
 			"mana": 9,
 			"cd": 0.0,
 			"use": 1.0,
@@ -190,7 +190,7 @@
 			"name": "Storm Shot",
 			"rarity": 1,
 			"direction": "Storm and Hunt",
-			"desc": "A charged arrow: 100% weapon damage to the first foe it strikes, then lightning leaps on to 4 more for 70%.",
+			"desc": "Shoot a charged arrow for 100% weapon damage. Lightning then leaps to 4 more foes for 70%.",
 			"mana": 8,
 			"cd": 0.0,
 			"use": 0.9,
@@ -211,7 +211,7 @@
 			"name": "Hunter's Mark",
 			"rarity": 1,
 			"direction": "Storm and Hunt",
-			"desc": "Mark the foe under the pointer for 8 seconds: it takes 35% more damage from everyone, and your wolf hunts it down.",
+			"desc": "Mark the foe under the pointer for 8 s. It takes 35% more damage from everyone, and your wolf hunts it.",
 			"mana": 6,
 			"cd": 6.0,
 			"range": 18.0,
@@ -234,7 +234,7 @@
 			"name": "Arrow Storm",
 			"rarity": 2,
 			"direction": "",
-			"desc": "Loose a storm of arrows into the sky: for 1.5 seconds they rain on the cursor, striking everything within 4.5 metres six times for 32% weapon damage.",
+			"desc": "Rain arrows on the cursor for 1.5 s, striking everything within 4.5 m 6 times for 32% weapon damage.",
 			"mana": 16,
 			"cd": 0.0,
 			"use": 1.2,
@@ -318,7 +318,7 @@
 			"fx": {
 				"wolf_burn": 15.0
 			},
-			"text": "Your wolf's bites set foes alight: {wolf_burn}% of each bite burns them every second for 3 seconds.",
+			"text": "Your wolf's bites burn foes: {wolf_burn}% of the bite per second for 3 s.",
 			"icon": "beast"
 		},
 		{
@@ -331,7 +331,7 @@
 			"fx": {
 				"crit": 3.0
 			},
-			"text": "+{crit}% chance to land a critical hit.",
+			"text": "+{crit}% critical chance.",
 			"icon": "t_star"
 		},
 		{
@@ -344,7 +344,7 @@
 			"fx": {
 				"arrow_split": 1.0
 			},
-			"text": "Every bow shot flies as three arrows (the outer two at half damage).",
+			"text": "Bow shots fly as three arrows, the outer two at half damage.",
 			"icon": "attack"
 		},
 		{
@@ -409,7 +409,7 @@
 			"fx": {
 				"wolf_howl": 1.0
 			},
-			"text": "Your wolf's pounce chills everything within 3.5 metres of where it lands.",
+			"text": "Your wolf's pounce chills everything within 3.5 m.",
 			"icon": "beast"
 		},
 		{
@@ -463,7 +463,7 @@
 				"dmg:snare": 15.0,
 				"snare_dur": 0.5
 			},
-			"text": "Thunderstep's sigil deals {dmg:snare}% more damage and stuns {snare_dur} seconds longer.",
+			"text": "Thunderstep's sigil deals {dmg:snare}% more damage and stuns {snare_dur} s longer.",
 			"icon": "snare"
 		},
 		{
@@ -515,7 +515,7 @@
 			"fx": {
 				"buff_pow": 10.0
 			},
-			"text": "The hunt your commands rouse is {buff_pow}% stronger.",
+			"text": "Spirit Beast's damage bonus is {buff_pow}% higher.",
 			"icon": "beast"
 		},
 		{
@@ -666,7 +666,7 @@
 			"run": true,
 			"direction": "Frost",
 			"max": 1,
-			"text": "A chilled foe that dies shatters: {pct}% weapon damage to everything within {r} m, chilling them.",
+			"text": "Chilled foes shatter on death for {pct}% weapon damage within {r} m, chilling those hit.",
 			"icon": "volley",
 			"k": {
 				"pct": 90.0,
@@ -682,7 +682,7 @@
 			"run": true,
 			"direction": "Frost",
 			"max": 1,
-			"text": "Every {n}th hit on a chilled foe freezes it solid for {secs} seconds.",
+			"text": "Every {n}th hit on a chilled foe freezes it solid for {secs} s.",
 			"icon": "volley",
 			"k": {
 				"n": 4.0,
@@ -826,7 +826,7 @@
 			"run": true,
 			"direction": "",
 			"max": 1,
-			"text": "Plain shots that strike a foe glance on to {bounces} more ({pct}% damage).",
+			"text": "Plain shots bounce to {bounces} more foes ({pct}% damage).",
 			"icon": "attack",
 			"k": {
 				"pct": 70.0,
@@ -873,7 +873,7 @@
 			"run": true,
 			"direction": "Frost",
 			"max": 1,
-			"text": "Glacial Shard freezes foes already chilled for a moment, and hits {dmg:a_glacial}% harder.",
+			"text": "Glacial Shard briefly freezes chilled foes and hits {dmg:a_glacial}% harder.",
 			"icon": "a_glacial",
 			"fx": {
 				"glacial_freeze": 1.0,
@@ -917,7 +917,7 @@
 			"run": true,
 			"direction": "Storm and Hunt",
 			"max": 1,
-			"text": "A marked foe that dies makes Hunter's Mark ready again and gives you +{dmg}% damage for {secs} seconds.",
+			"text": "When a marked foe dies, Hunter's Mark resets and you gain +{dmg}% damage for {secs} s.",
 			"icon": "a_mark",
 			"k": {
 				"dmg": 25.0,
