@@ -38,7 +38,7 @@ func _initialize():
 			b_first = true
 		elif a.begins_with("out="):
 			out_path = a.substr(4)
-	SB = load("res://scripts/sandbox.gd")
+	SB = load("res://game/maps/arena/sandbox.gd")
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
 	_run()

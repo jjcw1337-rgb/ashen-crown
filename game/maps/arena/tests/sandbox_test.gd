@@ -4,14 +4,14 @@ extends SceneTree
 ## raid's PvP scale, never themselves), the player's blows reach them, a fallen bot stands up again, monsters go for
 ## bots too, "free for all" makes bots fight each other, the meters count it, and leaving brings the character back
 ## exactly as it was (level, gear, gold, zone), with nothing saved from inside.
-##   godot --headless --fixed-fps 60 --path . -s tools/sandbox_test.gd
+##   godot --headless --fixed-fps 60 --path . -s game/maps/arena/tests/sandbox_test.gd
 var g
 var fails := 0
 var SB      # sandbox.gd and hero.gd at run time (a static reference compiles their Sfx before the autoload)
 var HS
 func _initialize():
 	BuildEnv.forced = {"env": "local", "cloud": "0"}
-	SB = load("res://scripts/sandbox.gd")
+	SB = load("res://game/maps/arena/sandbox.gd")
 	HS = load("res://scripts/hero.gd")
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	g.char_dir = "user://sandbox_combat_test/"

@@ -2,10 +2,10 @@ class_name ZonePreloadData
 ## Recorded by ZonePreload.record (see zone_preload.gd); regenerate with tools/zone_preload_gen.py.
 const PATHS := {
 	"0:arena": [
-		"res://assets/models/crypt/bones.glb",
-		"res://assets/models/crypt/candles.glb",
-		"res://assets/models/crypt/pillar.glb",
-		"res://assets/models/crypt/sconce.glb",
+		"res://game/maps/arena/props/bones.glb",
+		"res://game/maps/arena/props/candles.glb",
+		"res://game/maps/arena/props/pillar.glb",
+		"res://game/maps/arena/props/sconce.glb",
 	],
 	"0:bg": [
 		"res://assets/models/bg/brambles.glb",
@@ -77,7 +77,7 @@ const PATHS := {
 		"res://assets/models/camp/lantern.glb",
 		"res://assets/models/camp/tent.glb",
 		"res://assets/models/camp/wagon.glb",
-		"res://assets/models/crypt/bones.glb",
+		"res://game/maps/arena/props/bones.glb",
 		"res://assets/models/fort/gate.glb",
 		"res://assets/models/fort/hall.glb",
 		"res://assets/models/fort/hut.glb",
@@ -85,10 +85,10 @@ const PATHS := {
 		"res://assets/models/fort/tower.glb",
 	],
 	"0:sandbox": [
-		"res://assets/models/crypt/bones.glb",
-		"res://assets/models/crypt/candles.glb",
-		"res://assets/models/crypt/pillar.glb",
-		"res://assets/models/crypt/sconce.glb",
+		"res://game/maps/arena/props/bones.glb",
+		"res://game/maps/arena/props/candles.glb",
+		"res://game/maps/arena/props/pillar.glb",
+		"res://game/maps/arena/props/sconce.glb",
 	],
 	"0:town": [
 		"res://assets/models/camp/alchemy.glb",

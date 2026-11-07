@@ -1,4 +1,4 @@
-extends "res://scripts/arena_match.gd"
+extends "res://game/maps/arena/arena_match.gd"
 ## Practice uses existing authenticated PvP transport, without rounds, loot, stakes or survivor writes.
 ## Each peer is its own team. Solo bots live in Sandbox; this worker never spawns client-only bots.
 var respawns := {}

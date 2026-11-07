@@ -20,5 +20,5 @@ Features have headless tests: scripts that drive the game and print `[X] ok` or 
 | `test-*` | Windows, Mac, Linux | downloads on the run, nothing published |
 | `main` | the browser version and the downloads | the GitHub Pages site |
 
-CI runs no game tests, so you run them. `export_presets.cfg` leaves `tools/` and every hero's `tests/`, `tools/` and
-`build/` out of builds. The stripped "Linux Server" build is what match servers run ([multiplayer](../systems/multiplayer.md)).
+CI runs no game tests, so you run them. `export_presets.cfg` leaves `tools/` and every hero's and map's `tests/`,
+`tools/` and `build/` out of builds. The stripped "Linux Server" build is what match servers run ([multiplayer](../systems/multiplayer.md)).

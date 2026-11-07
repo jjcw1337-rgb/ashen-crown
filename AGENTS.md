@@ -28,7 +28,7 @@ goes there.
 |---|---|---|
 | Heroes | `game/heroes/<hero>/` (the Archer is the example) | most heroes: `scripts/<hero>*.gd` |
 | Monsters | `game/monsters/<monster>/` | `scripts/enemy.gd`, `data.gd` `ENEMIES`, each monster's script |
-| Maps and camps | `game/maps/<map>/` | `scripts/bg_forest.gd`, `camps.gd` |
+| Maps and camps | `game/maps/<map>/` (the Arena is the example) | the Verdant Reach: `scripts/bg_forest.gd`, `camps.gd` |
 | Items: rites, gems, consumables | `game/items/` | `scripts/run_talents.gd`, `run_build.gd` |
 | Screens | `game/ui/<screen>/` | `scripts/ui.gd`, `title_*.gd`, `class_stage.gd`, `mp_lobby_view.gd`, `run_ui.gd` |
 | Shared systems | `game/systems/<system>/` | most of `scripts/` |

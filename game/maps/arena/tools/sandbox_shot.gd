@@ -1,6 +1,6 @@
 extends SceneTree
 ## Screenshots of the admins' Battlegrounds sandbox: the panel, two bots fighting the player, a monster pack.
-##   godot --path . --resolution 1600x900 -s tools/sandbox_shot.gd -- outdir
+##   godot --path . --resolution 1600x900 -s game/maps/arena/tools/sandbox_shot.gd -- outdir
 var g
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
