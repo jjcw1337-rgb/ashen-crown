@@ -86,3 +86,13 @@ commit for the exact lines):
   `layout_dump`, `see_through_check`, `checklist.py`'s rows for the isles' models, the sloop, Osric and the ocean).
 - Tests: `game/maps/camp/tests/waypoint_activities_test.gd` counted the islands and checked the Verdant Isle's level gate;
   `camp_life_test.gd` checked the coast's gate was barred.
+
+## The Verdant Isle's monsters (archived with the islands, 2026-11-06)
+
+`monsters/`: the dinosaurs (`theropod.gd`: the raptor and Gorehide the Tyrant on a 25-bone skeleton; `trike.gd`: the
+mother triceratops and her baby), the Drunken Dwarf's model, their models and the Blender rig scripts, `dino_sheet.gd`,
+and `sounds/` (raptor_call, raptor_bite, trex_stomp, trike_bellow, dwarf_burp, with `CREDITS_dinosaurs.json`). To
+bring them back: their `Data.ENEMIES` entries (raptor, trex, trike, trike_baby, dwarf; see git history), the dwarf's
+`MeshyMonster.MODELS` entry, `Enemy.build_rig` / `pose_rig`'s Theropod and Trike branches, the roar, maul and
+footstep sounds in `Enemy` (the Tyrant's stomp and screen shake), the raptor's call on aggro, and `SfxBank`'s entries.
+
