@@ -120,11 +120,15 @@ func _run() -> void:
 		h.cds[k] = 0.0
 	h.mana = h.max_mana
 	check(h.use_skill("icharge", home + Vector3(0, 0, -9.0)), "a second charge at a champion")
+	# until every stage of it is over (not a set number of frames: the hit on the champion is a hitstop, which holds
+	# the game for real milliseconds, so how many frames the charge takes depends on how fast the machine runs them)
 	var saw_skid := false
-	for i in 90:
+	for i in 600:
 		await process_frame
-		if h.atk_style == "icharge_skid":
+		if h.atk_style == "icharge_skid" and h.atk_t >= 0.0:
 			saw_skid = true
+		if saw_skid and h.atk_t < 0.0 and sk(h, "icharge").next == "" and sk(h, "icharge").run.is_empty():
+			break
 	went = home.distance_to(h.global_position)
 	check(went < 5.2 and went > 2.5, "it stopped him at the champion (%.1f m)" % went)
 	check(saw_skid, "with the skid")
