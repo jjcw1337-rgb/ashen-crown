@@ -209,8 +209,11 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
   Doug, the dragons and the Knight. The Knight's body builder goes to `game/systems/bodies/`.
 - [ ] 2. The Archer, end to end. Done: the reference recording; `game/systems/skills/` (`Skill`, `Missile`,
   `GroundZone`, `DelayedArea`); all eleven of his skills in their own folders with their numbers in the codex,
-  Thunderstep's stun 3 s and on players too (Blaine, 2026-11-07); Hunter's Mark no longer named in `enemy.gd`. Next:
-  the body and bow, the shared fire, frost and arc effects, then his places in `hero.gd` and the other shared files.
+  Thunderstep's stun 3 s and on players too (Blaine, 2026-11-07); Hunter's Mark no longer named in `enemy.gd`; his
+  body and bow in `body/`, his arrow models in `weapon/`; `hero.gd`, `ui.gd` and `run_talents.gd` reach him through
+  `ClassSkills`' optional hooks (`archer.gd`: 957 lines to about 190). Left: the shared fire, frost and arc effects
+  (`arrow_fx.gd`, `frost_volley_fx.gd`, `arc_fx.gd`) split into `game/systems/fx/` and his own looks; the burn's look
+  chosen by class in `RunTalents` and `Enemy.ignite` (with the statuses work).
 - [ ] 3. Reference recordings
 - [ ] 4. Damage and effect system
 - [ ] 5. One data source
