@@ -296,7 +296,7 @@
 			"use": 0.6,
 			"range": 12.0,
 			"aoe": {
-				"r": "WarlockHex.EFFIGY_R"
+				"r": "radius"
 			},
 			"role": "Fear totem",
 			"tags": [
