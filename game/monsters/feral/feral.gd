@@ -7,7 +7,7 @@ class_name Feral
 ## timed by the enemy code: the crawl follows his movement, the attacks follow their progress.
 ##
 ## They wait in packs, clinging head-down to oak trunks deep in the forest (World._feral_packs); come close
-## and they skitter down and come at you from all sides, one lunging at a time (Enemy._feral_combat).
+## and they skitter down and come at you from all sides, one lunging at a time (FeralBrain.combat).
 
 ## five of them (feralN.glb): different rags and skin, the same rig and animations
 const GLB := "res://game/monsters/feral/feral%d.glb"

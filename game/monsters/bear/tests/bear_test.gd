@@ -1,5 +1,5 @@
 extends SceneTree
-## The Forsaken Bear (bear.gd, Enemy._bear_idle/_bear_combat): two per Act I moor, 20-40 m off the road;
+## The Forsaken Bear (bear.gd, BearBrain): two per Act I moor, 20-40 m off the road;
 ## it wanders its home ground and rears up to roar now and then; it notices a hero, roars once, charges,
 ## mauls (damage and a knockback); led more than 30 m from home it gives up and goes back. Prints [B] lines.
 var g

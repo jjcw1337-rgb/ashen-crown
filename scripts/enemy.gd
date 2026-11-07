@@ -763,7 +763,7 @@ func _process(delta: float) -> void:
 	to.y = 0
 	var dist := to.length()
 	if perch_h > 0.0:
-		_feral_perch(delta, hero, dist)
+		FeralBrain.perch(self, delta, hero, dist)
 		return
 	if dist > 50.0 and not boss and sloth == null:
 		return
@@ -805,7 +805,7 @@ func _process(delta: float) -> void:
 		if aggro:
 			vel = _think_combat(delta, hero, to, dist)
 		elif def["ai"] == "bear":
-			vel = _bear_idle(delta)
+			vel = BearBrain.idle(self, delta)
 		else:
 			vel = _wander(delta)
 	# separation
@@ -990,15 +990,15 @@ func _think_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vect
 		if v != null:
 			return v
 	if ai == "feral":
-		return _feral_combat(delta, hero, to, dist)
+		return FeralBrain.combat(self, delta, hero, to, dist)
 	if ai == "skirmisher":
-		return _skirm_combat(delta, hero, to, dist)
+		return FallenBrain.skirmisher(self, delta, hero, to, dist)
 	if ai == "reaver":
-		return _reaver_combat(delta, hero, to, dist)
+		return FallenBrain.reaver(self, delta, hero, to, dist)
 	if ai == "stalker":
-		return _stalk_combat(delta, hero, to, dist)
+		return FallenBrain.stalker(self, delta, hero, to, dist)
 	if ai == "bear":
-		return _bear_combat(delta, hero, to, dist)
+		return BearBrain.combat(self, delta, hero, to, dist)
 	var rng_atk: float = def["range"]
 	if boss:
 		if not enraged and life < max_life * 0.35 and hoard == null:
@@ -1114,7 +1114,7 @@ func _begin_special(sp: String) -> void:
 			atk_dur = def["atk_time"]
 			tele_done = false
 			_begin_attack(sp)
-			_fallen_path(sp)
+			FallenBrain.path(self, sp)
 		# the Forsaken Bear: rear up and roar; rear and slam both forepaws down
 		"bear_roar":
 			atk_style = sp
@@ -1316,226 +1316,13 @@ func perch_on(trunk: Vector3, out_dir: Vector3, h := Feral.PERCH_H) -> void:
 	atk_dur = 1.0
 	global_position = Vector3(global_position.x, game.world.height_at(global_position.x, global_position.z) + Feral.perch_pose(rig, "perch", 0.0), global_position.z)
 
-func _feral_perch(delta: float, hero: Node3D, dist: float) -> void:
-	if atk_style == "perch":
-		var near: bool = dist < 10.0 and not hero.dead and hero.get("phased") != true and game.world.los(global_position, hero.global_position)
-		if near or aggro:
-			_feral_drop()
-			for e in game.enemies_near(global_position, 32.0):
-				if e != self and e.pack_id == pack_id and e.perch_h > 0.0 and e.atk_style == "perch":
-					e.f_t = -randf_range(0.1, 0.6)      # a beat apart, not all at once
-					e._feral_drop()
-	else:
-		atk_t += delta
-		if atk_t >= atk_dur:
-			perch_h = 0.0
-			atk_t = -1.0
-			atk_dur = def["atk_time"]
-			atk_style = def["atk"]
-			rig.rotation.x = 0.0
-			# off the bark and clear of the trunk's footprint
-			global_position = game.world.free_spot_near(global_position + perch_dir * 0.9, 1.2)
-			global_position.y = game.world.height_at(global_position.x, global_position.z)
-			aggro = true
-			cooldown = 0.4
-			return
-	var a := maxf(atk_t, 0.0) / atk_dur
-	var y: float = game.world.height_at(global_position.x, global_position.z)
-	global_position.y = y + Feral.perch_pose(rig, atk_style, a)
-	_pose({"time": anim_time, "atk": a, "style": atk_style, "phase": phase})
 
-func _feral_drop() -> void:
-	atk_style = "descend"
-	atk_dur = Feral.DESCEND_T
-	atk_t = minf(f_t, 0.0)
-	f_t = 0.0
-	aggro = true
-	Sfx.play_at("growl", global_position, -10.0, randf_range(1.15, 1.35))
 
-## Fast, and coming at you from its own side. The pack circles about 4.5 m out; one at a time lunges,
-## backs off a few steps ("back"), darts in for a rake or two with its claws ("in"), then backs out to
-## the circle again ("out") for the next one's turn.
-func _feral_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vector3:
-	lunge_cd -= delta
-	# outrun for 6 s: it gives up and slinks back to its tree
-	f_chase = f_chase + delta if dist > 9.0 else 0.0
-	if f_chase > 6.0:
-		f_chase = 0.0
-		f_state = ""
-		aggro = false
-		f_calm = 8.0
-		wander_to = home
-		wander_t = 4.0
-		return Vector3.ZERO
-	match f_state:
-		"back", "out":
-			f_t -= delta
-			if f_t <= 0.0:
-				f_state = "in" if f_state == "back" else ""
-				f_n = 0
-			return -to.normalized() * speed * 0.5
-		"in":
-			if dist <= def["range"] + hero.radius * 0.5:
-				if cooldown <= 0.0:
-					if f_n >= 2 or (f_n >= 1 and randf() < 0.5):
-						f_state = "out"
-						f_t = randf_range(0.8, 1.2)
-						return Vector3.ZERO
-					f_n += 1
-					_face(to)
-					atk_dur = def["atk_time"]
-					_begin_attack("")
-				return Vector3.ZERO
-			return go_to(delta, hero.global_position, speed)
-	# circling: anyone who ends up right on top of you claws anyway
-	if dist <= def["range"] + hero.radius * 0.5 and cooldown <= 0.0:
-		f_state = "in"
-		f_n = 0
-		return Vector3.ZERO
-	if lunge_cd <= 0.0 and dist > 3.2 and dist < 7.5 and not _pack_lunging() and game.world.los(global_position, hero.global_position):
-		lunge_cd = 5.0
-		_face(to)
-		rig.rotation.y = atan2(-to.x, -to.z)
-		lunge_from = global_position
-		lunge_to = hero.global_position - to.normalized() * (radius + hero.radius + 0.3)
-		_begin_special("feral_lunge")
-		return Vector3.ZERO
-	var from_hero := (-to).normalized().rotated(Vector3.UP, slot_a)
-	return go_to(delta, hero.global_position + from_hero * 4.5, speed)
 
-func _pack_lunging() -> bool:
-	for e in game.enemies_near(global_position, 16.0):
-		if e != self and e.pack_id == pack_id and e.special == "feral_lunge" and e.atk_t >= 0.0:
-			return true
-	return false
 
 # ---------------------------------------------------------------- the three Fallen
-## Each signature attack's path, from where it starts toward its target: the Skirmisher launches at you and
-## stumbles on through; the Reaver plants his feet (no path); the Stalker shifts sideways, darts in at an
-## angle and pulls back out.
-func _fallen_path(sp: String) -> void:
-	atk_path = []
-	var hero: Node3D = game.target_for(self)
-	if hero == null:
-		return
-	var hp: Vector3 = hero.global_position
-	var p0 := global_position
-	var to := hp - p0
-	to.y = 0
-	var dir := to.normalized() if to.length() > 0.05 else -rig.global_transform.basis.z
-	var reach: float = radius + hero.radius
-	match sp:
-		"skirm_lunge":
-			var land := p0 + dir * clampf(to.length() - reach - 0.15, 0.0, 4.5)
-			atk_path = [[0.3, 0.5, p0, land], [0.5, 0.62, land, land + dir * 0.45]]
-		"stalk_hook":
-			var side := Vector3(-dir.z, 0, dir.x) * fv_side
-			var p1 := p0 + side * 1.5
-			var from_h := (p1 - hp)
-			from_h.y = 0
-			var app := from_h.normalized().rotated(Vector3.UP, fv_side * 0.7) if from_h.length() > 0.05 else -dir
-			var p2 := hp + app * (reach + 0.3)
-			var out := (p2 - hp)
-			out.y = 0
-			var p3 := p2 + (out.normalized() if out.length() > 0.05 else -dir) * 1.5
-			atk_path = [[0.0, 0.25, p0, p1], [0.25, 0.44, p1, p2], [0.55, 1.0, p2, p3]]
 
-## The Skirmisher: comes straight in, fast; from about 5 m it coils and launches the Savage Lunge, then
-## stands a moment (the opening); too close to lunge, it hops back a step first.
-func _skirm_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vector3:
-	if f_state == "recover":
-		f_t -= delta
-		if f_t > 0.0:
-			_face(to)
-			return Vector3.ZERO
-		f_state = ""
-	var reach: float = radius + hero.radius
-	if cooldown <= 0.0 and dist < 5.2 and dist > reach + 0.5 and game.world.los(global_position, hero.global_position):
-		_face(to)
-		_begin_special("skirm_lunge")
-		return Vector3.ZERO
-	if dist < reach + 0.5:
-		return -to.normalized() * speed * 0.7
-	return go_to(delta, hero.global_position, speed * 1.1)
 
-## The Reaver: walks in steadily, slow to get going and slow to turn; in reach he plants and cleaves, then
-## stands for a second with the axe low.
-func _reaver_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vector3:
-	if f_state == "rest":
-		f_t -= delta
-		if f_t > 0.0:
-			return Vector3.ZERO
-		f_state = ""
-	if dist <= 2.4 + hero.radius * 0.5 and cooldown <= 0.0:
-		_begin_special("reaver_cleave")
-		return Vector3.ZERO
-	if dist < radius + hero.radius + 0.2:
-		return Vector3.ZERO
-	rv_spd = move_toward(rv_spd, speed, delta * 1.8)
-	return go_to(delta, hero.global_position, rv_spd)
 
-## The Stalker: circles 4-6 m out on a side it picks (switching now and then), weaving as it goes, edging in
-## on an arc; when ready it shifts, darts in at an angle and hooks, then pulls out and circles again.
-func _stalk_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vector3:
-	fv_flip -= delta
-	if fv_flip <= 0.0:
-		fv_flip = randf_range(1.0, 2.0)
-		if randf() < 0.45:
-			fv_side = -fv_side
-	f_t -= delta
-	var reach: float = radius + hero.radius
-	if cooldown <= 0.0 and f_t <= 0.0 and dist < 6.0 and dist > reach + 0.3 and game.world.los(global_position, hero.global_position):
-		_begin_special("stalk_hook")
-		return Vector3.ZERO
-	var ring := 5.0 if (cooldown > 0.0 or f_t > 0.0) else 3.8
-	var from_h := global_position - hero.global_position
-	from_h.y = 0
-	var base := atan2(from_h.z, from_h.x)
-	var want := base + fv_side * 0.55
-	var tgt: Vector3 = hero.global_position + Vector3(cos(want), 0, sin(want)) * ring
-	var v := go_to(delta, tgt, speed)
-	# the weave: a smooth sideways sway over the arc (its side flips with fv_side, so it reads as intent)
-	fv_weave += delta * 2.6
-	var side := Vector3(-to.z, 0, to.x).normalized() if to.length() > 0.05 else Vector3.ZERO
-	return v + side * sin(fv_weave) * speed * 0.3 * fv_side
 # ---------------------------------------------------------------- the Forsaken Bear (bear.gd)
-## Ambling about its home ground (wider than most monsters'), stopping every so often to rear up and roar.
-func _bear_idle(delta: float) -> Vector3:
-	b_idle_t -= delta
-	if b_idle_t <= 0.0:
-		b_idle_t = randf_range(14.0, 26.0)
-		if move_amt < 0.3 and global_position.distance_to(home) < 12.0:
-			_begin_special("bear_roar")
-			return Vector3.ZERO
-	wander_t -= delta
-	if wander_t <= 0.0:
-		wander_t = randf_range(3.0, 7.0)
-		wander_to = game.world.free_spot_near(home, 9.0) if randf() < 0.7 else global_position
-	var d := wander_to - global_position
-	d.y = 0
-	if d.length() < 0.4:
-		return Vector3.ZERO
-	return d.normalized() * speed * (0.45 if d.length() > 12.0 else 0.32)
 
-## On noticing a hero it rears and roars once, then charges and mauls, and keeps at it until one of them dies;
-## it gives up only when led more than 30 m from home.
-func _bear_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vector3:
-	if not b_roared:
-		b_roared = true
-		_face(to)
-		rig.rotation.y = atan2(-to.x, -to.z)
-		_begin_special("bear_roar")
-		return Vector3.ZERO
-	if global_position.distance_to(home) > 30.0:
-		aggro = false
-		b_roared = false
-		f_calm = 6.0
-		wander_to = home
-		wander_t = 8.0
-		return Vector3.ZERO
-	if dist <= def["range"] + hero.radius * 0.5:
-		if cooldown <= 0.0:
-			_face(to)
-			_begin_special("bear_maul")
-		return Vector3.ZERO
-	return go_to(delta, hero.global_position, speed * 1.5)
