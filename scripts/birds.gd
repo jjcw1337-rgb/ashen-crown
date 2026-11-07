@@ -1,6 +1,6 @@
 class_name Birds
 extends Node3D
-## Act I's birds (the moor, the camp and the fort, outdoors): small flocks of dark birds crossing the sky
+## Act I's birds (the camp, outdoors): small flocks of dark birds crossing the sky
 ## on their own courses, flapping, gliding now and then and banking into their turns, their shadows
 ## sliding over the ground; and now and then a flock bursting up out of the trees near the hero with a
 ## flutter of wings, climbing away. Only for the look: each player's game has its own (nothing is synced).

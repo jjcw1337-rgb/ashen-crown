@@ -89,7 +89,7 @@ func _run() -> void:
 			cls_now = cls
 			await g.start_game(false, cls)
 			g.ui.close_all()
-			await g.load_zone(0, "wild", "road")
+			await g.load_zone(0, "sandbox", "start")
 			g.ui.close_all()
 			g.hero.level = 20
 			g.hero.recalc()

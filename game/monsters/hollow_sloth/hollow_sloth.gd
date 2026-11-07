@@ -1,7 +1,7 @@
 class_name Sloth
 extends RefCounted
-## The Hollow Sloths (Act I): three giant Forsaken sloths that roam the whole moor, each on its own long
-## wander, crossing the road, stopping to sniff, rising onto their hind legs to look about. One that
+## The Hollow Sloths: three giant Forsaken sloths, each on its own wander round its home, stopping to sniff,
+## rising onto their hind legs to look about. One that
 ## spots a hero rises, stares, roars and comes on all fours, slow to start and building into a
 ## lumbering run; it fights with three skills (the Rending Sweep, the Earthshaker slam, the Hollow
 ## Pounce), runs off when badly hurt and comes back for more, and gives up on a hero who gets away.
@@ -11,8 +11,8 @@ extends RefCounted
 ##   cold (Rimeclaw): the sweep chills (slows), the slam freezes you solid, the pounce bursts into ice shards;
 ##   lightning (Thundermaw): the sweep chains to the heroes nearby, the slam calls bolts down round it,
 ##   the pounce is a quicker lightning dash that shocks where it lands.
-## Each drops its own material ("drop"), and its model is hollow_sloth_<variant>.glb. Each lives in its own
-## lair (sloth_lair.gd) and wanders only there; cross the lair's edge or strike it and it targets you (the
+## Each drops its own material ("drop"), and its model is hollow_sloth_<variant>.glb. Each wanders only round its
+## home (TERRITORY); cross its edge (BOUNDARY) or strike it and it targets you (the
 ## hero who struck it last, else the closest), follows you anywhere and fights until one of you is dead,
 ## then walks home.
 ##
@@ -32,6 +32,9 @@ const MODEL_SCALE := 1.4
 const STRIDE := 2.2
 const WALK := 2.2           # roaming pace (the hero walks at 4.8)
 const RUN := 5.6            # its charge: faster than a walk, slower than a sprint
+## how far from its home it wanders, and the edge you cross to wake it (metres)
+const TERRITORY := 8.0
+const BOUNDARY := 13.0
 
 ## the timed moves: [seconds, the moment it lands (or -1)]
 const MOVES := {"sloth_rise": [1.0, -1.0], "sloth_look": [2.6, -1.0], "sloth_stare": [1.3, -1.0],
@@ -39,7 +42,7 @@ const MOVES := {"sloth_rise": [1.0, -1.0], "sloth_look": [2.6, -1.0], "sloth_sta
 	"sloth_sweep": [1.35, 0.47], "sloth_slam": [1.9, 0.6], "sloth_pounce": [1.25, 0.62]}
 
 var e: Enemy
-var state := "roam"         # roam (its lair), hunt (until death), home (walking back after its prey fell)
+var state := "roam"         # roam (its home), hunt (until death), home (walking back after its prey fell)
 var goal := Vector3.ZERO
 var goal_t := 0.0
 var queue: Array = []       # the timed moves still to play in this state
@@ -101,15 +104,15 @@ func update(delta: float, hero: Node3D, to: Vector3, dist: float, hero_gone: boo
 	if not queue.is_empty():
 		_start(queue.pop_front())
 		return Vector3.ZERO
-	# into its lair: past the boundary round its home
-	var inside: bool = not hero_gone and Vector2(hero.global_position.x - e.home.x, hero.global_position.z - e.home.z).length() < SlothLair.BOUNDARY
+	# into its home: past the boundary round its home
+	var inside: bool = not hero_gone and Vector2(hero.global_position.x - e.home.x, hero.global_position.z - e.home.z).length() < BOUNDARY
 	match state:
 		"roam", "home":
 			if e.aggro or inside:
 				_notice(e.aggro)
 				return Vector3.ZERO
 			if state == "home":
-				# back to its lair after its prey fell
+				# back to its home after its prey fell
 				var d := e.home - e.global_position
 				d.y = 0
 				if d.length() < 3.0:
@@ -126,7 +129,7 @@ func update(delta: float, hero: Node3D, to: Vector3, dist: float, hero_gone: boo
 			return _hunt(delta, hero, to, dist)
 	return Vector3.ZERO
 
-## Whom it fights: the hero who hit it in the last 8 seconds, else the closest one (in the lair or, once
+## Whom it fights: the hero who hit it in the last 8 seconds, else the closest one (in the home or, once
 ## it's hunting, anywhere). null when no hero is there to fight.
 func _target() -> Node3D:
 	if attacker != null and is_instance_valid(attacker) and not attacker.dead and attacker.get("phased") != true and e.anim_time - attacked_at < 8.0:
@@ -296,7 +299,7 @@ func _notice(angry: bool) -> void:
 	var standing := e.atk_style in ["sloth_look", "sloth_stare", "sloth_roar", "sloth_rise"]
 	queue = ([] if standing else ["sloth_rise"]) + (["sloth_roar"] if angry else ["sloth_stare", "sloth_roar"]) + ["sloth_drop"]
 
-## Its prey fell (or left): back to its lair.
+## Its prey fell (or left): back to its home.
 func _go_home() -> void:
 	state = "home"
 	e.aggro = false
@@ -308,7 +311,7 @@ func _drop_down() -> void:
 	if e.atk_style in ["sloth_look", "sloth_stare", "sloth_roar", "sloth_rise"]:
 		queue.push_front("sloth_drop")
 
-## The long wander: a far point anywhere on the moor, walked at its own pace with stops to sniff and to
+## The long wander: a far point round its home, walked at its own pace with stops to sniff and to
 ## rise and look about.
 func _roam(delta: float) -> Vector3:
 	if e.atk_style in ["sloth_look", "sloth_stare", "sloth_roar", "sloth_rise"]:
@@ -363,11 +366,11 @@ func _hunt(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vector3:
 	e.atk_style = "sloth_run" if spd > WALK * 1.6 else "sloth_walk"
 	return e.go_to(delta, hero.global_position, spd)
 
-## A point to wander to inside its territory, round its lair.
+## A point to wander to inside its territory, round its home.
 func _far_goal() -> Vector3:
 	for i in 20:
 		var a := _rng.randf() * TAU
-		var p := e.home + Vector3(cos(a), 0, sin(a)) * _rng.randf_range(2.0, SlothLair.TERRITORY)
+		var p := e.home + Vector3(cos(a), 0, sin(a)) * _rng.randf_range(2.0, TERRITORY)
 		if not e.game.world.is_blocked(p.x, p.z):
 			return p
 	return e.home

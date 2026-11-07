@@ -1,12 +1,12 @@
 class_name Hoard
 extends RefCounted
-## King Grubb the Gilded's fight (the Act I boss). One rule to learn: his gold is his life. Every
+## King Grubb the Gilded's fight (a boss any camp can have). One rule to learn: his gold is his life. Every
 ## pile that reaches him heals him; every pile you take from him hurts him.
 ##
 ## He fights with his Hoardkey (swings and a ground slam) and lobs Gilded Bombs at you: a red
 ## circle marks where one lands, then it blows. At 75%, 50% and 25% of his life one of the three
-## sacks on his back rips open. Gold sprays across his vault in glittering piles, Gold Grabbers
-## scurry out of their tunnels and everyone scrambles for it: grabbers scoop a pile and haul it
+## sacks on his back rips open. Gold sprays round him in glittering piles, Gold Grabbers
+## burrow up out of the ground and everyone scrambles for it: grabbers scoop a pile and haul it
 ## back to him over their heads, and he waddles from pile to pile scooping it up himself. Each
 ## pile that reaches him heals him. Step on a pile and the gold is yours, and losing it hurts him
 ## (he shrieks and staggers); kill a grabber hauling gold and it drops it for you. When the gold is gone the fight goes on, and after the last
@@ -43,7 +43,7 @@ var told := false
 var bombs: Array = []                # where live bombs will blow (host)
 var robbed := 0                      # piles heroes have taken (host)
 var met := false                     # the fight has begun (every peer, from the "intro" event)
-var voice: AudioStreamPlayer3D       # his muttering heard across the fort before the fight
+var voice: AudioStreamPlayer3D       # his muttering heard round his camp before the fight
 var murmur_t := 2.0
 
 func _init(b: Enemy) -> void:
@@ -68,9 +68,9 @@ func _grabber(p: Vector3, burrow: bool) -> Enemy:
 		boss._fx("hole:%.2f:%.2f" % [p.x, p.z])
 	return g
 
-# ---------------------------------------------------------------- his voice in the fort
-## Before the fight his voice carries through the fort: he mutters and chuckles over his gold, faint
-## from the gate and clearer as you close in. Every peer plays it for itself (Enemy._process).
+# ---------------------------------------------------------------- his voice
+## Before the fight his voice carries round his camp: he mutters and chuckles over his gold, faint
+## from afar and clearer as you close in. Every peer plays it for itself (Enemy._process).
 func murmur(delta: float) -> void:
 	var g = boss.game
 	if met or boss.dead or Sfx.muted or g.hero == null:
@@ -85,7 +85,7 @@ func murmur(delta: float) -> void:
 		voice.max_distance = 0.0
 		voice.position = Vector3(0, boss.height, 0)
 		boss.add_child(voice)
-	# from about 75 m (the gate) at a whisper up to clear when he is in sight
+	# from about 75 m at a whisper up to clear when he is in sight
 	var near := 1.0 - smoothstep(14.0, 75.0, d)
 	voice.volume_db = lerpf(-34.0, -4.0, near) + Sfx.volume_db
 	if voice.playing:
@@ -142,7 +142,7 @@ func _spill() -> void:
 		var id := next_id
 		next_id += 1
 		boss._fx("pile:%d:%.2f:%.2f:%d" % [id, p.x, p.z, amt])
-	var holes: Array = g.world.hoard_holes if not g.world.hoard_holes.is_empty() else [boss.home]
+	var holes: Array = [boss.home]       # (they come from round him: no vault, no tunnels)
 	for i in 2 + (2 - sacks):
 		var h: Vector3 = holes[(i + sacks) % holes.size()]
 		_grabber(g.world.free_spot_near(h, 0.8), true)

@@ -36,8 +36,6 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | coins | 2 | Kenney rpg-audio (kenney.nl) | CC0 1.0 | handleCoins.ogg |
 | covenant | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a dark ritual pact sealed, deep ominous magical boom with faint chanting whispers, close mic, dry, isolated sound effect, no music |
 | crit_sting | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a brutal critical hit in a dark fantasy game, heavy crunching impact with a bone snap, close mic, dry, isolated sound effect, no music |
-| crowd_cheer | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a large arena crowd erupting into a huge roaring cheer and applause, then settling, no music |
-| crowd_roar | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a huge crowd in a stone arena roaring, shouting and chanting, excited spectators baying for blood, continuous and even, no music |
 | curse_cast | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a dark sorcerer casting a curse: a quick hissing whisper of evil words and a sickly wet magical sizzle, close mic, dry, isolated sound effect, no music |
 | curse_leap | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a sickly wet whisper and a crawling buzzing hiss as a plague curse leaps onto someone, close mic, dry, isolated sound effect, no music |
 | death_demon | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a demon's dying roar fading into crackling embers, close mic, dry, isolated sound effect, no music |

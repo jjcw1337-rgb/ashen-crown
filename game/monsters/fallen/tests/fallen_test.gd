@@ -35,14 +35,17 @@ func _run() -> void:
 	for k in KINDS:
 		var d: Dictionary = Data.ENEMIES.get(k, {})
 		check(not d.is_empty() and MM.ok(str(d.get("mesh", ""))) and d["atk"] == ATTACK[k], "%s in the roster with its model and %s" % [k, ATTACK[k]])
-	var act_foes: Array = Data.act_info(0, 0)["foes"]
-	check(KINDS.all(func(k): return k in act_foes) and not ("fallen" in act_foes), "Act I's foes are the three Fallen: %s" % [act_foes])
+	var camp_foes := {}
+	for c in BgForest.CAMPS:
+		for f in c["foes"]:
+			camp_foes[str(f["kind"])] = true
+	check(KINDS.all(func(k): return camp_foes.has(k)) and not camp_foes.has("fallen"), "the Verdant Reach's camps hold the three Fallen: %s" % [KINDS.filter(func(k): return camp_foes.has(k))])
 	await g.start_game(false, "demon")
-	g.difficulty = 0
-	await g.load_zone(0, "wild", "start")
+	# a glade in the Verdant Reach (its camps' monsters cleared before each fight)
+	await g.load_zone(0, Battlegrounds.ZONE, "start")
 	await wait(0.3)
 	g.hero.set_level(15)
-	var at: Vector3 = g.world.spawns["road"]
+	var at: Vector3 = g.world.spawns["start"]
 	var silhouettes := {}
 	for k in KINDS:
 		await _clear()

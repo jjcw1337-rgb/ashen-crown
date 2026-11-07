@@ -1,5 +1,5 @@
 class_name Lion
-## The arena lion (A2's games): a Meshy model on a 20-bone quadruped skeleton made in Blender
+## The arena lion (a monster; the Archer's Spirit Beast stands on its skeleton): a Meshy model on a 20-bone quadruped skeleton made in Blender
 ## (sources/lion.blend: spine, neck, head, three bones a leg, a three-bone tail; skinned by distance
 ## along the surface). Unlike the Feral it has no baked animations: every frame `pose` turns the bones
 ## from the enemy's state. A trot in diagonal pairs that keeps pace with the ground covered, the head

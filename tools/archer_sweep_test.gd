@@ -19,7 +19,7 @@ func _run():
 		g._intro_skip = true
 		await process_frame
 	await g.start_game(false,"archer")
-	await g.load_zone(0,"wild","start")
+	await g.load_zone(0, "sandbox", "start")
 	var h = g.hero
 	h.set_process(false)
 	for e in g.world.enemies_root.get_children(): e.queue_free()

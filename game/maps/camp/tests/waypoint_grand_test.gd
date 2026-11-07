@@ -2,10 +2,10 @@ extends SceneTree
 ## The camp's grand waypoint (WaypointGrand) and the waypoint window's Battlegrounds tab:
 ## the dais is built at the camp only, its colliders block the braziers and statues but not the
 ## arrival spot or the walk onto the dais, a hero can path there from the camp's start, it wakes as a
-## hero comes near, the travel window still opens and travels, and the Battlegrounds card opens the
+## hero comes near, the travel window still opens and travels back to it, and the Battlegrounds card opens the
 ## lobby browser's Battlegrounds.
 ## godot --headless --path . -s game/maps/camp/tests/waypoint_grand_test.gd
-## (WaypointGrand is loaded at run time, like aurelia.gd in its tools: a static reference compiles the game's
+## (WaypointGrand is loaded at run time: a static reference compiles the game's
 ## scripts, and their Sfx, before the autoload exists.)
 var g
 var WG: GDScript
@@ -89,19 +89,10 @@ func _run() -> void:
 	wp.sel_group = "acts"
 	wp._fill()
 	await _settle()
-	ok(wp.route_box.get_child_count() >= 2, "the Acts tab still shows the route")
+	ok(wp.route_box.get_child_count() >= 1, "the Acts tab still shows the route")
 	wp.close()
-	# from the dais to the moor and back still works
-	g.waypoints_known = ["town", "wild"]
-	g.waypoint_go(0, "wild")
-	await _settle()
-	ok(g.cur_zone == "wild", "travels to the moor")
-	var moor_stone = _stone()
-	var moor_grand := false
-	if moor_stone:
-		for c in moor_stone.get_children():
-			moor_grand = moor_grand or _is_grand(c)
-	ok(moor_stone != null and not moor_grand, "the moor keeps its own stone")
+	# from across the camp, the waypoint takes you back to the dais
+	g.hero.global_position = g.world.free_spot_near(_stone().global_position + Vector3(0, 0, 14), 1.0)
 	g.waypoint_go(0, "town")
 	await _settle()
 	ok(g.cur_zone == "town" and g.hero.global_position.distance_to(_stone().global_position) < 5.0, "back at the camp, beside the dais")

@@ -16,6 +16,8 @@ const HOME := Vector3(0.0, 0.0, 4.6)     # where the chosen hero stands, before 
 ## The Meshy models (concept image, then image-to-3D; prepared by tools/blender/prep_prop.py): the gate 18 m
 ## high, the arcade 8 m, the colossus 10 m, the crown 1 m. Without them the procedural stand-ins are built.
 const MODEL_DIR := "res://assets/models/title/"
+## The fallen colossus among the monuments (_monuments, without the Meshy one): the earlier armoured knight.
+const STATUE_GLB := "res://assets/models/knight_statue.glb"
 const FACE := PI                          # bodies face -z; the camera is on +z
 const WARM := Color(1.0, 0.66, 0.36)
 ## 16:9's horizontal field of view at the 40° vertical one, kept on narrower screens
@@ -349,14 +351,14 @@ func _monuments() -> void:
 		root3d.add_child(cl)
 		return
 	var sd := Mats.world(Color(0.24, 0.23, 0.23), Color(0.13, 0.12, 0.12), 0.95, 0.5, 0.25, Color(0.14, 0.18, 0.1), false)
-	if ResourceLoader.exists(Roman.STATUE_GLB):
+	if ResourceLoader.exists(STATUE_GLB):
 		var col := Node3D.new()
 		col.name = "Colossus"
 		col.position = Vector3(-17.0, -4.5, -27.0)
 		col.rotation_degrees = Vector3(-6, 32, 14)
 		col.scale = Vector3.ONE * 8.0
 		root3d.add_child(col)
-		var body: Node3D = (load(Roman.STATUE_GLB) as PackedScene).instantiate()
+		var body: Node3D = (load(STATUE_GLB) as PackedScene).instantiate()
 		col.add_child(body)
 		for n in body.find_children("*", "MeshInstance3D", true, false):
 			(n as MeshInstance3D).material_override = sd
@@ -430,7 +432,7 @@ func _trees() -> void:
 	var path := "res://assets/models/trees/deadtree.glb"
 	if not ResourceLoader.exists(path):
 		return
-	var m: Mesh = ForestCamp.mesh(path)
+	var m: Mesh = MapKit.mesh(path)
 	for spec in [[Vector3(-12.5, 0, -6.5), 0.85, 20.0], [Vector3(13.5, 0, -4.0), 0.75, 140.0], [Vector3(-22, 0, -15), 1.1, 70.0], [Vector3(22, 0, -12), 1.0, 250.0], [Vector3(-7.5, 0, -20), 0.9, 300.0]]:
 		var mi := MeshInstance3D.new()
 		mi.mesh = m
