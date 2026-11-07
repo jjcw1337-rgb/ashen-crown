@@ -43,7 +43,7 @@ func _initialize() -> void:
 	r.passives["w_r_pact"] = 2
 	_ok(is_equal_approx(float(r.fx("warlock").get("ls", 0)), 2.0), "Thirsting Pact's fx add up (2 stacks: 2% life steal)")
 	_ok(Codex.data_only({"fx": {"dmg": 5}}) and not Codex.data_only({"fx": {"dot_flat": 1}}) and Codex.data_only({"fx": {"dot_flat": 1}}, "warlock"), "data-only check (shared and class keys)")
-	_ok(Codex.fx_keys("warlock").has("dot_flat") and (load("res://scripts/warlock_hex.gd").RITE_KEYS as Array).all(func(k): return Codex.fx_keys("warlock").has(k)), "fx_keys.json lists every WarlockHex rite key")
+	_ok(Codex.fx_keys("warlock").has("dot_flat") and (load("res://game/heroes/warlock/shared/warlock_hex.gd").RITE_KEYS as Array).all(func(k): return Codex.fx_keys("warlock").has(k)), "fx_keys.json lists every WarlockHex rite key")
 	_merge_checks()
 	for f in ["shared.json", "gems.json", "consumables.json"] + Array(Data.CLASSES.keys()).map(func(c): return "heroes/%s.json" % c):
 		var doc := Codex.file(f)

@@ -26,7 +26,7 @@ const DEEP := Warlock.DEEP
 const SHADOW := Color(0.42, 0.22, 0.7)
 const VIOLET := Color(0.72, 0.45, 1.0)
 const LIFE := Color(0.75, 1.0, 0.6)
-const TOTEM_GLB := "res://assets/models/warlock/dread_totem.glb"
+const TOTEM_GLB := "res://game/heroes/warlock/skills/dread_totem/dread_totem.glb"
 const CURSE_COLORS := {"w_corruption": Color(0.35, 1.0, 0.25), "w_unending": Color(0.85, 0.95, 0.25),
 	"w_festering": Color(0.62, 0.35, 0.95), "w_leeching": Color(0.95, 0.4, 0.45), "w_reckoning": Color(0.92, 1.0, 0.85)}
 const DIR_COLOR := {"w_corruption": FEL, "w_malediction": FEL, "w_unending": FEL, "w_festering": FEL, "w_leeching": FEL,

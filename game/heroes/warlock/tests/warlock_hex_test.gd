@@ -1,7 +1,7 @@
 extends SceneTree
 ## The Warlock's three directions (WarlockHex, WarlockHarrowFx): every new skill on monsters spawned for it, the
 ## curses' ticks and their rules, fear, the crows, the drain and the shield, and every rite key.
-##   godot --headless --path . -s tools/warlock_hex_test.gd   (run with --fixed-fps 60 for steady timings)
+##   godot --headless --path . -s game/heroes/warlock/tests/warlock_hex_test.gd   (run with --fixed-fps 60 for steady timings)
 var g
 var fails := 0
 
@@ -60,7 +60,7 @@ func _run() -> void:
 		await process_frame
 	h.level = 15
 	h.recalc()
-	var hex = load("res://scripts/warlock_hex.gd")
+	var hex = load("res://game/heroes/warlock/shared/warlock_hex.gd")
 	var ids: Array = hex.IDS
 	var known: Array = h.skill_list().map(func(s): return s["id"])
 	ok(ids.all(func(i): return known.has(i)), "all %d new skills are the Warlock's (%d in all)" % [ids.size(), known.size()])

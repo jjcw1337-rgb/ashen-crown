@@ -1,4 +1,4 @@
-# The Warlock's jungle void spirit body (assets/models/warlock_spirit.glb; Blaine 2026-11-06), prepared exactly like
+# The Warlock's jungle void spirit body (game/heroes/warlock/body/warlock_spirit.glb; Blaine 2026-11-06), prepared exactly like
 # the Wraith's (this is tools/blender/wraith/prep_wraith_mocap.py with the Warlock's clip names: "Combat Idel", and
 # "Mage Soell Cast 3" as her channel). The Wraith's notes:
 # The Wraith's mocap body (assets/models/wraith_mocap.glb): the Meshy "horned, chained" wraith (concept D),

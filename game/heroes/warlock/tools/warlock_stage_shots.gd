@@ -1,7 +1,7 @@
 extends SceneTree
 ## The Warlock on the New Character screen (ClassStage): a strip of frames of her chosen and idle, hovered
 ## (her fidget) and doing her signature, cropped to her plinth, for judging how alive she looks. Needs a display.
-##   godot --path . --resolution 1600x900 -s tools/warlock_stage_shots.gd -- <outdir> [class] [idle_frames]
+##   godot --path . --resolution 1600x900 -s game/heroes/warlock/tools/warlock_stage_shots.gd -- <outdir> [class] [idle_frames]
 ## With "seq" (and --fixed-fps 12): every frame of 4 s idle, 3 s hovered and the signature, as s0000.png... for a clip.
 var g
 

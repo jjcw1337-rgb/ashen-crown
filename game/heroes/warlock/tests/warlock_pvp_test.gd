@@ -1,8 +1,8 @@
 extends SceneTree
 ## The Warlock in the Battlegrounds (PvP; WarlockHex), three processes:
-##   godot --headless --path . -s tools/warlock_pvp_test.gd -- --server --port 24691 --raid-fast server
-##   godot --headless --path . -s tools/warlock_pvp_test.gd -- a 24691
-##   godot --headless --path . -s tools/warlock_pvp_test.gd -- b 24691
+##   godot --headless --path . -s game/heroes/warlock/tests/warlock_pvp_test.gd -- --server --port 24691 --raid-fast server
+##   godot --headless --path . -s game/heroes/warlock/tests/warlock_pvp_test.gd -- a 24691
+##   godot --headless --path . -s game/heroes/warlock/tests/warlock_pvp_test.gd -- b 24691
 ## a is the Warlock, b a knight standing still. a's curses tick on b through the server (each tick a PvP hit), Terrify
 ## makes b flee (PvpStatus "fear" through Battlegrounds.pvp_status, with diminishing returns), Festering Hex staggers
 ## him on its burst, and Leech Bolt heals a off him.

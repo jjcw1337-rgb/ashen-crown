@@ -1,7 +1,7 @@
 extends SceneTree
 ## Screenshots of the Warlock: idle, Drain Life forking through a pack, Blight Bolt's pool,
 ## Soul Shackles. Needs a display (xvfb on Linux).
-## godot --rendering-driver opengl3 --path . -s tools/warlock_shot.gd -- <out_dir>
+## godot --rendering-driver opengl3 --path . -s game/heroes/warlock/tools/warlock_shot.gd -- <out_dir>
 var g
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()

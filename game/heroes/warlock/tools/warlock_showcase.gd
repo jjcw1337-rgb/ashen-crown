@@ -2,7 +2,7 @@ extends SceneTree
 ## Frames of the Warlock (the jungle void spirit) and every skill of hers in the game, for judging the look:
 ## the body close up (idle, floating, casting), then each skill cast at a pack of zombies on the moor, a few frames
 ## each. Needs a display (on a Mac it just opens a window).
-##   godot --path . --fixed-fps 30 --resolution 1280x720 -s tools/warlock_showcase.gd -- <out_dir> [skill,skill|all] [quality 0-3] [zoom]
+##   godot --path . --fixed-fps 30 --resolution 1280x720 -s game/heroes/warlock/tools/warlock_showcase.gd -- <out_dir> [skill,skill|all] [quality 0-3] [zoom]
 var g
 var out := ""
 var shots := 0

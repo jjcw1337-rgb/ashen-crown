@@ -59,9 +59,9 @@ static func gnome() -> bool:
 
 ## The jungle void spirit (Blaine, 2026-11-06): a hooded spirit of black vines and violet void, a crown of vines
 ## and fel flowers, the robe dissolving into mist. The Meshy model rigged by Meshy, with library clips, prepared by
-## tools/blender/warlock/prep_warlock_mocap.py like the Wraith's (legless, the robe on cloth panels, float clips) and
+## build/prep_warlock_mocap.py like the Wraith's (legless, the robe on cloth panels, float clips) and
 ## run by the Wraith's float mode on the shared mocap system; the Wraith's spectral shader in fel green.
-const SPIRIT_GLB := "res://assets/models/warlock_spirit.glb"
+const SPIRIT_GLB := "res://game/heroes/warlock/body/warlock_spirit.glb"
 ## Whole-body clips per attack style: [attack progress, clip seconds] keys (the spells are "cast"; the weapon combo
 ## her claw strikes and the slam; felling a tree the slam).
 const SPIRIT_SHOTS := {
@@ -90,7 +90,7 @@ static func _build_spirit(g: Dictionary) -> Node3D:
 	var r := Knight.build_mocap(SPIRIT_GLB, {
 		"relaxed": ["idle", 0.0, "float", Wraith.FLOAT_SPEED],
 		"combat": ["combat_idle", 0.0, "float_combat", Wraith.FLOAT_SPEED],
-		"meta": "warlock_spirit", "hair_run": 1.0, "shots": SPIRIT_SHOTS, "script": "res://scripts/warlock_spirit_rig.gd"})
+		"meta": "warlock_spirit", "hair_run": 1.0, "shots": SPIRIT_SHOTS, "script": "res://game/heroes/warlock/body/warlock_spirit_rig.gd"})
 	r.remove_meta("knight")
 	r.set_meta("warlock", true)
 	r.set_meta("spirit", true)
@@ -98,7 +98,7 @@ static func _build_spirit(g: Dictionary) -> Node3D:
 	r.set("float_mode", true)
 	var gear := {"spirit": SPIRIT_VOID}
 	Wraith._spectral(r, gear)
-	var sh: Shader = load("res://scripts/warlock_spirit.gdshader")
+	var sh: Shader = load("res://game/heroes/warlock/body/warlock_spirit.gdshader")
 	for m in r.get_meta("spectral_mats", []):
 		(m as ShaderMaterial).shader = sh
 		(m as ShaderMaterial).set_shader_parameter("fray", 0.72)

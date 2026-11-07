@@ -31,7 +31,7 @@ for t in playtest coop_fx_test title_test char_test ui_click_test grass_test int
   "$G" --headless --path . -s tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
-for f in game/heroes/archer/tests/archer_test.gd game/heroes/plague/tests/plague_test.gd tools/warlock_hex_test.gd game/maps/verdant_reach/tests/camp_test.gd; do
+for f in game/heroes/archer/tests/archer_test.gd game/heroes/plague/tests/plague_test.gd game/heroes/warlock/tests/warlock_hex_test.gd game/maps/verdant_reach/tests/camp_test.gd; do
   t=$(basename "$f" .gd)
   "$G" --headless --path . --fixed-fps 60 -s "$f" > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
