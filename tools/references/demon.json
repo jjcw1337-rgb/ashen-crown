@@ -1,0 +1,456 @@
+{
+	"attack": {
+		"buff": 0.0,
+		"foes": [
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 116.7,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			}
+		]
+	},
+	"cslam": {
+		"buff": 0.0,
+		"foes": [
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 474.6,
+				"stun": 0.7
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			}
+		]
+	},
+	"d_detonate": {
+		"buff": 0.0,
+		"foes": [
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			}
+		]
+	},
+	"d_pact": {
+		"buff": 0.0,
+		"foes": [
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			}
+		]
+	},
+	"d_volcano": {
+		"buff": 0.0,
+		"foes": [
+			{
+				"burn": 3.0,
+				"chill": 0.0,
+				"dmg": 393.4,
+				"stun": 0.0
+			},
+			{
+				"burn": 3.0,
+				"chill": 0.0,
+				"dmg": 571.8,
+				"stun": 0.0
+			},
+			{
+				"burn": 3.0,
+				"chill": 0.0,
+				"dmg": 571.5,
+				"stun": 0.0
+			},
+			{
+				"burn": 3.0,
+				"chill": 0.0,
+				"dmg": 393.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 3.0,
+				"chill": 0.0,
+				"dmg": 215.4,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			}
+		],
+		"loose": true
+	},
+	"fists": {
+		"buff": 0.0,
+		"foes": [
+			{
+				"burn": 3.0,
+				"chill": 0.0,
+				"dmg": 544.8,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			}
+		]
+	},
+	"grip": {
+		"buff": 0.0,
+		"foes": [
+			{
+				"burn": 4.0,
+				"chill": 0.0,
+				"dmg": 613.0,
+				"stun": 2.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			}
+		]
+	},
+	"hurl": {
+		"buff": 0.0,
+		"foes": [
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 80.5,
+				"stun": 0.0
+			},
+			{
+				"burn": 3.0,
+				"chill": 0.0,
+				"dmg": 182.6,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 103.7,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 80.5,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			}
+		],
+		"loose": true
+	},
+	"icharge": {
+		"buff": 0.0,
+		"foes": [
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 185.4,
+				"stun": 0.5
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 185.2,
+				"stun": 0.5
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 185.1,
+				"stun": 0.5
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			}
+		]
+	},
+	"run_attack": {
+		"buff": 0.0,
+		"foes": [
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 105.6,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			}
+		]
+	},
+	"wrath": {
+		"buff": 6.0,
+		"foes": [
+			{
+				"burn": 3.0,
+				"chill": 0.0,
+				"dmg": 731.1,
+				"stun": 1.5
+			},
+			{
+				"burn": 3.0,
+				"chill": 0.0,
+				"dmg": 468.4,
+				"stun": 1.5
+			},
+			{
+				"burn": 3.0,
+				"chill": 0.0,
+				"dmg": 262.3,
+				"stun": 0.0
+			},
+			{
+				"burn": 3.0,
+				"chill": 0.0,
+				"dmg": 262.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			},
+			{
+				"burn": 0.0,
+				"chill": 0.0,
+				"dmg": 0.0,
+				"stun": 0.0
+			}
+		],
+		"loose": true
+	}
+}
