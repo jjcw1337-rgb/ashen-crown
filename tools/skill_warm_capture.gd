@@ -5,12 +5,12 @@ extends SceneTree
 ## Each class plays its weapon attack and every skill beside a pack of zombies; the events are stored with their
 ## places relative to the caster (facing -z) and without the monsters they touched.
 ##   godot --headless --path . -s tools/_late.gd -- res://tools/skill_warm_capture.gd
-## Writes res://scripts/skill_warm_data.gd (SkillWarmData.EVENTS: a script, so the exported game carries it).
+## Writes res://game/systems/loading/skill_warm_data.gd (SkillWarmData.EVENTS: a script, so the exported game carries it).
 
 var g
 var events: Array = []
 var pd_events: Array = []      # the Plague Doctor's own events (Plague._send), replayed on a puppet's ghost Plague
-const OUT := "res://scripts/skill_warm_data.gd"
+const OUT := "res://game/systems/loading/skill_warm_data.gd"
 
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
@@ -118,7 +118,7 @@ func _run() -> void:
 				h.run = null
 			await wait(2.2)
 			if id == "drain":
-				h.end_drain()
+				h.end_channel()
 			for w in events:
 				var pw = _plain(w, origin)
 				if pw is Dictionary and pw.has("s") and pw.has("e"):

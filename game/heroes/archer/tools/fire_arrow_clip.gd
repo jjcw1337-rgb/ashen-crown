@@ -43,7 +43,7 @@ func _run() -> void:
 	await g.start_game(false, "archer")
 	g.ui.close_all()
 	g.difficulty = 0
-	await g.load_zone(0, "wild", "road")
+	await g.load_zone(0, "bg", "start")
 	g.ui.close_all()
 	var h = g.hero
 	h.level = 14
@@ -71,15 +71,14 @@ func _run() -> void:
 	close.fov = 34
 	get_root().add_child(close)
 	var views: Array = ["game", "close"] if view == "both" else [view]
-	# the shot goes down the road from the "road" spawn (its direction there), clear of the trees
-	var poly: PackedVector2Array = g.world.path_poly
-	var i0 := int(poly.size() * 0.22)
-	var rd: Vector2 = (poly[mini(i0 + 2, poly.size() - 1)] - poly[maxi(i0 - 2, 0)]).normalized()
-	var fwd := Vector3(rd.x, 0, rd.y)
+	# the shot goes across the start glade, toward open ground (the moor and its road are cut)
+	var st: Vector3 = g.world.spawns["start"]
+	var fwd: Vector3 = (g.world.free_spot_near(st + Vector3(24, 0, 8), 3.0) - st) * Vector3(1, 0, 1)
+	fwd = fwd.normalized()
 	var secs: float = float(SECS.get(sk, 2.6))
 	for v in views:
 		for mode in modes:
-			var home: Vector3 = g.world.spawns["road"]
+			var home: Vector3 = g.world.spawns["start"]
 			home = Vector3(home.x, g.world.height_at(home.x, home.z), home.z)
 			h.global_position = home
 			h.direct_dir = Vector3.ZERO
