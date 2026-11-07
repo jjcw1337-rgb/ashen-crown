@@ -2,7 +2,8 @@ extends SceneTree
 ## The Battlegrounds bosses' fights (bg_boss.gd), offline on the raid map: Hrimgar, near a hero, aggroes and uses
 ## his moves (slam, lances, roar, swing; the avalanche under half life), and they hurt and freeze; Mossbeard
 ## sprouts poison mushrooms that hurt in their clouds, snares, bolts, steps out of a mushroom when hurt; when he
-## dies his mushrooms wither and the golden chest is no longer sealed.
+## dies his mushrooms wither, his camp's chest is no longer sealed, and no story ending plays (no Act I Complete screen,
+## no portal to town: the Extraction Portals are the way out).
 var g
 var fails := 0
 func _initialize():
@@ -27,6 +28,8 @@ func _run() -> void:
 		await process_frame
 	await g.start_game(false, "knight")
 	g.ui.close_all()
+	g.hero.start_run()
+	g.bg_mode = true
 	await g.load_zone(0, "bg", "start")
 	var h = g.hero
 	h.set_level(20)
@@ -81,8 +84,8 @@ func _run() -> void:
 	check(moves.size() >= 3, "he used his moves: %s" % str(moves.keys()))
 	check(most >= 3, "his poison mushrooms sprouted (%d at once)" % most)
 	check(shroom_hurt, "and their clouds hurt whoever stands in them")
-	var gold: Array = g.world.interactables.filter(func(t): return t.kind == "chest" and t.data.get("gold", false))
-	check(g.chest_sealed(gold[0]), "the golden chest sealed while he lives")
+	var gold: Array = [Camps.by_id(g.world, "grotto")["chest_node"]]
+	check(g.chest_sealed(gold[0]), "the Grotto's chest sealed while he lives")
 	var home: Vector3 = her.global_position
 	her.global_position = gold[0].global_position + Vector3(70.0, 0, 0)
 	check(g.chest_sealed(gold[0]), "still sealed with him lured 70 m off (Codex's audit)")
@@ -91,5 +94,8 @@ func _run() -> void:
 	await secs(3.5)
 	check(not g.chest_sealed(gold[0]), "he fell: the chest's seal is broken")
 	check(g.world.enemies_root.get_children().filter(func(e): return e.kind == "spore_shroom" and not e.dead).is_empty(), "and his mushrooms withered")
+	await secs(1.0)
+	check(not g.ui.victory_panel.visible, "no story ending (no Act I Complete / Begin A2 screen)")
+	check(g.world.interactables.filter(func(t): return t.kind == "portal" and t.has_meta("boss")).is_empty(), "and no portal to town: the Extraction Portals are the way out")
 	print("[B] done, %d failed" % fails)
 	quit()
