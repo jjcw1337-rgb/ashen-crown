@@ -13,6 +13,7 @@ never name a map.
 - `const ZONES`, `const INDOOR`, `const MUSIC` (`{"song", "amb", "db"}`), `const LOADING_ART`;
 - `static func build(w: World)`, `static func title(zone)`, and optionally `static func light(g, zone)`.
 
-Then add it to `Maps.all()`. Its props go in `props/`, tests in `tests/`, tools in `tools/` (exports skip both). The
+Then add it to `Maps.all()`, and run `game/maps/tests/every_map_test.gd` (through `tools/_late.gd`; it's in the
+gate). It loads every zone of every map and checks the build, title, music and loading art. Its props go in `props/`, tests in `tests/`, tools in `tools/` (exports skip both). The
 zone's preload list comes from `--preload-record` (game/systems/loading/). Camps are rows of a map's camp table
 (`verdant_reach.gd` `CAMPS`), and a boss camp names its boss's kind (game/monsters/).
