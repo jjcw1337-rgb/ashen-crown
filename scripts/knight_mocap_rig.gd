@@ -50,7 +50,7 @@ var act_cur := ""
 var hover := 0.0              # metres the body floats above the ground (the Wraith), with a slow drift
 var hover_now := 0.0
 var hover_base := 0.0
-## A body that floats instead of walking (the Wraith, Wraith.build_mocap): the clips are never retimed to a ground
+## A body that floats instead of walking (the Wraith, WraithBody.build_mocap): the clips are never retimed to a ground
 ## speed, the glide is procedural (sync_pose -> _float: the body leans into its travel and banks into turns,
 ## bobs, lifts a little at speed), the robe panels hA..hF are cloth in the wind (_sway_robe), and the death
 ## rears up, then sinks into the ground dissolving (the spectral materials' phase_amt, meta "spectral_mats").

@@ -41,7 +41,7 @@ func impact() -> void:
 ## The lunge through the wind-up, the second rake (his own game).
 func tick(_delta: float) -> void:
 	var h := hero
-	if h.puppet or not playing():
+	if not playing():
 		return
 	var a: float = h.atk_t / h.atk_dur
 	if lunge > 0.0:

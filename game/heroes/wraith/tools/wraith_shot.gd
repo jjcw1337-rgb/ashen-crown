@@ -1,6 +1,6 @@
 extends SceneTree
 ## Screenshots of the Wraith: idle, Spectral Rend, Soul Siphon, Haunting Grasp. Needs a display (xvfb).
-## godot --rendering-driver opengl3 --path . -s tools/wraith_shot.gd -- <out_dir>
+## godot --rendering-driver opengl3 --path . -s game/heroes/wraith/tools/wraith_shot.gd -- <out_dir>
 var g
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()

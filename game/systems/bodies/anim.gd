@@ -69,7 +69,7 @@ static func impact_at(style: String) -> float:
 		"skirm_lunge": return 0.5       # the Fallen Skirmisher's sickle comes down at the end of the leap
 		"reaver_cleave": return 0.52    # the Reaver's axe whips through its arc
 		"stalk_hook": return 0.45       # the Stalker's claws hook across
-		# the Wraith's clips (WraithSkills.SHOTS): the first rake, the hand thrust out, the spin's strike, the slam,
+		# the Wraith's clips (WraithBody.SHOTS): the first rake, the hand thrust out, the spin's strike, the slam,
 		# the claw after the phantoms, and Eternal Night's stages
 		"rend": return 0.42
 		"siphon": return 0.5

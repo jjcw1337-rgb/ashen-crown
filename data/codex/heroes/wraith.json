@@ -30,7 +30,15 @@
 			"mana": 5,
 			"cd": 0.0,
 			"range": 4.5,
-			"lvl": 1
+			"lvl": 1,
+			"k": {
+				"dmg": 90,
+				"spirit": 20,
+				"radius": 3.3,
+				"arc": 75,
+				"lunge": 3,
+				"heal": 2
+			}
 		},
 		{
 			"id": "siphon",
@@ -46,7 +54,19 @@
 				"cc",
 				"sustain"
 			],
-			"lvl": 3
+			"lvl": 3,
+			"k": {
+				"secs": 2.5,
+				"tick": 0.25,
+				"weapon": 180,
+				"spirit": 200,
+				"heal": 35,
+				"slow": 50,
+				"slow_s": 1.5,
+				"leash": 13,
+				"soul": 6,
+				"pick": 3
+			}
 		},
 		{
 			"id": "step",
@@ -61,7 +81,18 @@
 			"tags": [
 				"movement"
 			],
-			"lvl": 5
+			"lvl": 5,
+			"k": {
+				"dmg": 130,
+				"spirit": 70,
+				"radius": 2.9,
+				"stun_s": 0.7,
+				"veil_s": 0.6,
+				"shade": 80,
+				"shade_spirit": 40,
+				"shade_r": 2.6,
+				"shade_s": 0.45
+			}
 		},
 		{
 			"id": "grasp",
@@ -76,7 +107,13 @@
 			"tags": [
 				"cc"
 			],
-			"lvl": 9
+			"lvl": 9,
+			"k": {
+				"dmg": 110,
+				"spirit": 90,
+				"radius": 3.5,
+				"hold": 2.5
+			}
 		},
 		{
 			"id": "phantom",
@@ -90,7 +127,18 @@
 			"use": 1.8,
 			"power": 0.58,
 			"range": 8.0,
-			"lvl": 14
+			"lvl": 14,
+			"k": {
+				"dmg": 120,
+				"spirit": 50,
+				"phantoms": 3,
+				"speed": 15,
+				"spread": 22,
+				"strike": 100,
+				"strike_spirit": 30,
+				"strike_r": 3.1,
+				"strike_arc": 70
+			}
 		},
 		{
 			"id": "night",
@@ -104,7 +152,20 @@
 			"tags": [
 				"ultimate"
 			],
-			"lvl": 20
+			"lvl": 20,
+			"k": {
+				"radius": 9,
+				"scream": 150,
+				"scream_spirit": 120,
+				"fear_s": 2.5,
+				"beat": 30,
+				"beat_spirit": 25,
+				"every": 0.5,
+				"fall": 200,
+				"fall_spirit": 160,
+				"fall_r": 6.5,
+				"buff_s": 12
+			}
 		},
 		{
 			"id": "r_deathmark",
@@ -121,7 +182,14 @@
 				"cc"
 			],
 			"lvl": 9,
-			"run": true
+			"run": true,
+			"k": {
+				"secs": 3,
+				"share": 50,
+				"least": 150,
+				"reach": 3.5,
+				"drink": 15
+			}
 		},
 		{
 			"id": "r_wail",
@@ -137,7 +205,14 @@
 				"cc"
 			],
 			"lvl": 1,
-			"run": true
+			"run": true,
+			"k": {
+				"dmg": 60,
+				"radius": 6,
+				"fear_s": 1.2,
+				"slow": 50,
+				"slow_s": 2
+			}
 		},
 		{
 			"id": "r_reap",
@@ -152,7 +227,14 @@
 			"range": 5.0,
 			"role": "sweep and sustain",
 			"lvl": 1,
-			"run": true
+			"run": true,
+			"k": {
+				"dmg": 170,
+				"radius": 5,
+				"arc": 80,
+				"heal": 2,
+				"most": 6
+			}
 		}
 	],
 	"rites": [

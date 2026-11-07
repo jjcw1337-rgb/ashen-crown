@@ -9,7 +9,7 @@ extends RefCounted
 ## blowing, a mark landing) comes from the server to everyone. Single player and Enter World co-op are unchanged.
 
 ## The classes whose skills run on the server (the rest still deal their own hits until they move over).
-const CLASSES := ["archer"]
+const CLASSES := ["archer", "wraith"]
 
 ## Tests: what the server made from players' skills, and what it refused.
 static var made_count := 0

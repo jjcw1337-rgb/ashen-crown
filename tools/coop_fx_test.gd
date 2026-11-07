@@ -170,7 +170,7 @@ func _run() -> void:
 			SkillFx.clear(puppet)
 			h.global_position = far
 			h.end_drain()
-			WraithSkills.clear(h)
+			Wraith.clear(h)
 			DemonSkills.clear(h)
 		# the dodge roll (jj: "I never saw the roll in PvP"): his partner sees the puppet tumble
 		h.global_position = g.world.free_spot_near(h.global_position, 1.0)

@@ -126,7 +126,7 @@ func _run() -> void:
 			for ev in pd_events:
 				pd_out.append(_rel(str(ev), origin))
 			SkillFx.clear(h)
-			WraithSkills.clear(h)
+			Wraith.clear(h)
 			DemonSkills.clear(h)
 			if h.pd != null:
 				h.pd.clear()

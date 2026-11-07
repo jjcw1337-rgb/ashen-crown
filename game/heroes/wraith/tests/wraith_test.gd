@@ -1,7 +1,9 @@
 extends SceneTree
 ## Wraith class: new game, every skill (cast, cooldown, mana, its effect and damage, no errors), Soul Siphon's
 ## tether and slow, Shadowstep's blink and mist, Haunting Grasp's hold, Phantom Assault's phantoms, Eternal Night's
-## four stages, old saves' bindings carried over, save/load keeps the class, knight still works. Prints [W] lines.
+## four stages, old saves' bindings carried over, save/load keeps the class, knight still works. Each skill is its own
+## object in Hero.kit (skills/), its numbers its codex entry's "k". Prints [W] lines.
+##   godot --headless --path . -s tools/_late.gd -- res://game/heroes/wraith/tests/wraith_test.gd
 var g
 var fails := 0
 func _initialize():
@@ -64,7 +66,7 @@ func _run() -> void:
 	var d_rend := l0 - lives(en)
 	check(d_rend > 0.0, "two rakes dealt %d" % int(d_rend))
 	check(h.life > h.max_life * 0.5, "the souls healed him (%d of %d)" % [int(h.life), int(h.max_life)])
-	check(h.wr.get("rend2", false) == true, "the second rake landed")
+	check(h.kit.has("rend") and h.kit["rend"].second, "the second rake landed")
 	# --- Soul Siphon: a tether on one foe, ticks, heals, slows, ends
 	en = await pack(h, 1, h.global_position + Vector3(0, 0, -5.0))
 	h._face(Vector3(0, 0, -1))
@@ -73,12 +75,12 @@ func _run() -> void:
 	l0 = lives(en)
 	ok = h.use_skill("siphon", h.skill_aim("siphon", en[0].global_position))
 	await wait(0.9)
-	check(ok and h.wr.has("tether") and h.wr["tether"]["victim"] == en[0], "Soul Siphon latched its tether")
+	check(ok and h.kit["siphon"].tether.get("victim") == en[0], "Soul Siphon latched its tether")
 	check(en[0].slow_t > 0.0 and en[0].slow_amt > 0.4, "the victim is slowed")
 	check(h.cds["siphon"] > 0.0, "it is on cooldown (%.1f s)" % h.cds["siphon"])
 	await wait(2.6)
 	var d_sip := l0 - lives(en)
-	check(d_sip > 0.0 and not h.wr.has("tether"), "it drained %d over its hold and let go" % int(d_sip))
+	check(d_sip > 0.0 and h.kit["siphon"].tether.is_empty(), "it drained %d over its hold and let go" % int(d_sip))
 	check(h.life > h.max_life * 0.5, "the drain healed him")
 	check(h.use_skill("siphon", h.global_position + Vector3(0, 0, 40)) == false, "no foe in reach: it does not cast")
 	# --- Shadowstep: the blink to the cursor, the mist, the strike, the shade
@@ -128,25 +130,34 @@ func _run() -> void:
 	l0 = lives(en)
 	ok = h.use_skill("night", h.global_position)
 	await wait(0.3)
-	check(ok and h.wr.has("night") and h.atk_style == "night_rise" and h.veil_t > 0.0, "Eternal Night: he rises, untouchable")
+	check(ok and h.kit["night"].active() and h.atk_style == "night_rise" and h.veil_t > 0.0, "Eternal Night: he rises, untouchable")
 	check(float(h.rig.get("hover")) > 0.16 + 0.5, "he hangs high (hover %.2f)" % float(h.rig.get("hover")))
 	var stages := {}
 	for i in 120:
 		await wait(0.05)
-		if h.wr.has("night"):
+		if h.kit["night"].active():
 			stages[h.atk_style] = true
 		else:
 			break
 	check(stages.has("night_scream") and stages.has("night_hold") and stages.has("night_fall"), "it went through its stages %s" % [stages.keys()])
 	await wait(1.0)
-	check(not h.wr.has("night") and h.atk_t < 0.0, "and ended")
+	check(not h.kit["night"].active() and h.atk_t < 0.0, "and ended")
 	check(lives(en) < l0 * 0.7, "the night fed on the pack (%d of %d)" % [int(l0 - lives(en)), int(l0)])
 	check(h.buff_t > 5.0, "+40%% damage after (%.1f s)" % h.buff_t)
 	check(is_equal_approx(float(h.rig.get("hover")), 0.16) and h.veil_t <= 0.0, "he is down and solid again")
 	check(h.cds["night"] > 30.0, "its cooldown is long (%.0f s)" % h.cds["night"])
+	# --- every skill of his is its own object (Hero.kit), its numbers its codex entry's "k"
+	var objs := 0
+	for id in ids:
+		var s = h.kit.get(id)
+		if s != null and s.get("hero") == h and s.has_method("made") and s.has_method("server_ok"):
+			objs += 1
+	check(objs == ids.size(), "each skill he cast is a Skill object in his kit (%d of %d)" % [objs, ids.size()])
+	var k: Dictionary = Data.skill_def("grasp").get("k", {})
+	check(is_equal_approx(float(k.get("radius", 0.0)), 3.5) and is_equal_approx(h.kit["grasp"].val("hold", 0.0), 2.5), "its numbers come from the codex (Haunting Grasp: %s)" % [k])
 	# --- old saves: the old skill ids on the bar become the new ones
 	var b := {"lmb": "attack", "rmb": "block", "Q": "reap", "E": "wail", "R": "shade", "F": "host", "G": "", "V": ""}
-	(load("res://scripts/wraith_skills.gd") as GDScript).call("migrate_binds", b)    # loaded at run time: a static reference compiles it before Sfx exists
+	(load("res://game/heroes/wraith/wraith.gd") as GDScript).call("migrate_binds", b)    # loaded at run time: a static reference compiles it before Sfx exists
 	check(b["Q"] == "rend" and b["E"] == "siphon" and b["R"] == "step" and b["F"] == "grasp", "old bindings migrate %s" % [b])
 	var sv: Dictionary = h.to_save()
 	sv["binds"] = {"lmb": "attack", "rmb": "block", "Q": "reap", "E": "wail", "R": "shade", "F": "host", "G": "", "V": ""}
@@ -156,7 +167,7 @@ func _run() -> void:
 	# --- the class survives save/load, the knight still works
 	g.save_game()
 	h.set_class("knight")
-	check(not h.rig.has_meta("wraith") and h.wr.is_empty(), "switched to knight: nothing of the Wraith's lingers")
+	check(not h.rig.has_meta("wraith") and h.kit.is_empty() and h.veil_t <= 0.0, "switched to knight: nothing of the Wraith's lingers")
 	g.load_game()
 	check(h.cls == "wraith" and h.rig.has_meta("wraith"), "after load: wraith again")
 	await g.start_game(false, "knight")
