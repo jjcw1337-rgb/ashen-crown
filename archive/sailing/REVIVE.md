@@ -74,13 +74,13 @@ commit for the exact lines):
 - `scripts/data.gd` (in `hooks/data.gd`): `BOATS`; `ACTS[0]`'s `coast` name; `VENDORS[0]`'s `shipwright`;
   `WAYPOINT_ACTIVITIES`' `coast` entry; `zone_level`'s coast and islands (base + 3).
 - `scripts/birds.gd` (whole in `hooks/birds.gd`): gulls, gull cries and leaping fish with splashes at sea.
-- `scripts/mats.gd` (in `hooks/terrain_shader.txt`): the terrain shader's `sea`, `col_sand`, sand, wet sand, seabed,
+- `game/systems/bodies/mats.gd` (in `hooks/terrain_shader.txt`): the terrain shader's `sea`, `col_sand`, sand, wet sand, seabed,
   caustics and sea cliffs, and the `ocean_t` global.
 - `scripts/zone_preload_data.gd`: the `0:coast` and `0:isle_*` lists (or record them again with `ZonePreload.record`).
 - `scripts/vendor_ui.gd`: the `shipwright` title; `scripts/inter.gd`'s patrol comment named Osric.
 - `game/maps/camp/forest_camp.gd`: the west gate's exit to the coast (only when the camp isn't the island) and the
   `from_coast` spawn.
-- `scripts/sfx_bank.gd`, `assets/audio/CREDITS.md(.json)`, `tools/audio/spec.py` and `build_sfx.py` (`STEREO`, `AMB`):
+- `game/systems/audio/sfx_bank.gd`, `assets/audio/CREDITS.md(.json)`, `tools/audio/spec.py` and `build_sfx.py` (`STEREO`, `AMB`):
   the seven sea sounds.
 - Tools: `tools/visual_audit/` (`scene_census` and `frame_stats` zone `coast` and the `Isles` / `Boat` caches,
   `layout_dump`, `see_through_check`, `checklist.py`'s rows for the isles' models, the sloop, Osric and the ocean).
