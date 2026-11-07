@@ -53,7 +53,7 @@ static func received(game, pid: int, id: String, kind: String, data: Dictionary)
 		var ids = data.get("t", [])
 		if (ids is PackedInt64Array or ids is Array) and ids.size() > 0:
 			tg = foe_of(game, int(ids[0]))
-		if h.server_swing(str(data.get("style", "")), data.get("fwd", Vector3.ZERO) if data.get("fwd") is Vector3 else Vector3.ZERO, tg):
+		if h.server_swing(str(data.get("style", "")), data.get("fwd", Vector3.ZERO) if data.get("fwd") is Vector3 else Vector3.ZERO, tg, data.get("at")):
 			made_count += 1
 		else:
 			refused_count += 1

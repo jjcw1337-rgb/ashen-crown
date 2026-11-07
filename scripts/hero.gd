@@ -1167,14 +1167,19 @@ func _swipe_impact() -> void:
 ## the swing, and the server's copy of it strikes with its own positions (server_swing).
 func _send_swing(tg) -> void:
 	var ids: PackedInt64Array = SkillFx.encode(game.net, {"t": [tg] if is_instance_valid(tg) else []})["t"]
-	game.net.send_skill_make("attack", "swing", {"style": atk_style, "fwd": aim_dir(), "t": ids})
+	game.net.send_skill_make("attack", "swing", {"style": atk_style, "fwd": aim_dir(), "t": ids, "at": global_position})
 
-## Match server: a player's swing, struck by its copy here (ServerRules.received "attack" "swing"). False when it
-## doesn't add up (a style it can't swing, faster than it swings).
-func server_swing(style: String, fwd: Vector3, tg) -> bool:
+## Match server: a player's swing, struck by its copy here (ServerRules.received "attack" "swing"), from where their
+## game swung it (`at`) when that's near where the server has them (the copy lags a step behind them). False when it
+## doesn't add up (a style it can't swing, faster than it swings, too far from where the server has them).
+func server_swing(style: String, fwd: Vector3, tg, at = null) -> bool:
 	var now := Time.get_ticks_msec()
 	if style.length() > 16 or now - _last_swing_ms < 150:
 		return false
+	if at is Vector3:
+		if (at as Vector3).distance_to(global_position) > SWING_SLACK:
+			return false
+		global_position = at
 	_last_swing_ms = now
 	fwd = (fwd * Vector3(1, 0, 1)).normalized() if fwd.length() > 0.01 else facing()
 	if style.begins_with("swipe"):
@@ -1184,6 +1189,8 @@ func server_swing(style: String, fwd: Vector3, tg) -> bool:
 	return true
 
 var _last_swing_ms := 0
+## How far a swing's spot may be from where the match server has the player (its copy is a few frames behind them).
+const SWING_SLACK := 4.0
 
 func _swipe_blows(style: String, fwd: Vector3) -> void:
 	var fin := style == "swipe3"
