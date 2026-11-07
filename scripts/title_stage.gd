@@ -432,7 +432,7 @@ func _trees() -> void:
 	var path := "res://assets/models/trees/deadtree.glb"
 	if not ResourceLoader.exists(path):
 		return
-	var m: Mesh = ForestCamp.mesh(path)
+	var m: Mesh = MapKit.mesh(path)
 	for spec in [[Vector3(-12.5, 0, -6.5), 0.85, 20.0], [Vector3(13.5, 0, -4.0), 0.75, 140.0], [Vector3(-22, 0, -15), 1.1, 70.0], [Vector3(22, 0, -12), 1.0, 250.0], [Vector3(-7.5, 0, -20), 0.9, 300.0]]:
 		var mi := MeshInstance3D.new()
 		mi.mesh = m
