@@ -203,8 +203,8 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
 
 ## Status
 
-- [ ] 1. Folders: the Archer (`87bae1f`) and the Plague Doctor (`8550926`) are done. Next: the Wraith, Demon, Warlock,
-  Doug, the dragons and the Knight. The Knight's body builder goes to `game/systems/bodies/`.
+- [ ] 1. Folders: the Archer (`87bae1f`), the Plague Doctor (`8550926`) and Doug (on the Archer's template, every
+  skill an object in its folder) are done. Next: the Wraith, Demon, Warlock, the dragons and the Knight. The Knight's body builder goes to `game/systems/bodies/`.
 - [ ] 2. The Archer, end to end. Done: the reference recording; `game/systems/skills/` (`Skill`, `Missile`,
   `GroundZone`, `DelayedArea`); all eleven of his skills in their own folders with their numbers in the codex,
   Thunderstep's stun 3 s and on players too (Blaine, 2026-11-07); Hunter's Mark no longer named in `enemy.gd`; his
@@ -218,8 +218,8 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
 - [ ] 3. Reference recordings: every hero's skills on still dummies (`tools/hero_reference.gd`,
   `tools/references/<class>.json`). Left: the PvP pair through a real server, and a combat log.
 - [ ] 4. Damage and effect system. Done: the Archer's skills, wolf and rites run on the match server
-  (`game/systems/skills/server_rules.gd`, deployed to staging 2026-11-07). In progress: the Plague Doctor and the
-  Warlock. Left: the other heroes; then the server refuses damage a server-run hero's game sends (its consumables and
+  (`game/systems/skills/server_rules.gd`, deployed to staging 2026-11-07); Doug's skills too, his drumstick's blows
+  included (not deployed). In progress: the Plague Doctor and the Warlock. Left: the other heroes; then the server refuses damage a server-run hero's game sends (its consumables and
   thorns go through the server first); then the gameplay core.
 - [ ] 5. One data source
 - [ ] 6. Real ids

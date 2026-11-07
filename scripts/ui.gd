@@ -1642,7 +1642,7 @@ func _panel(title: String, left: bool, w: int, h: int) -> PanelContainer:
 
 var _pie_overlay: ColorRect
 
-## A cream pie in the face (DougSkills; Hero.take_hit "pied"): cream splattered over the screen's edges, fading.
+## A cream pie in the face (Doug's Cream Pie; Hero.take_hit "pied"): cream splattered over the screen's edges, fading.
 func pie_face(secs: float) -> void:
 	if _pie_overlay == null:
 		_pie_overlay = ColorRect.new()

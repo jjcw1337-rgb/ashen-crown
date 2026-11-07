@@ -672,7 +672,7 @@ static var SKILLS: Array = [
 		"desc": "Lash thorned vines all around you for 180% spell damage. Each enemy hit heals you."},
 	{"id": "w_soulfeast", "cls": "warlock", "name": "Soul Feast", "key": "", "lvl": 20, "mana": 30, "cd": 30.0, "use": 3.0, "aim": "self", "tags": ["ultimate", "channel", "sustain"], "role": "Ultimate",
 		"desc": "Channel for 3 seconds to drain every enemy within 7 metres. Healing past full life becomes a shield."},
-	# Doug (doug_skills.gd): the trickster; every tool readable, every tool answerable
+	# Doug (game/heroes/doug/): the trickster; every tool readable, every tool answerable
 	{"id": "pie", "cls": "doug", "name": "Cream Pie", "key": "", "lvl": 1, "mana": 6, "cd": 0.0, "use": 0.9, "hit": 0.5, "style": "pie", "speed": "attack", "dmg": 120, "type": "phys", "aim": "point", "range": 12.0, "tags": ["projectile", "attack"],
 		"desc": "Lob a cream pie at the cursor (12 m): a splat for 120% weapon damage and the target is Pied: monsters blinded for 2 seconds, a player's screen creamed at the edges and their aim assist gone for 1.5 seconds. The same target can't be Pied again for 6 seconds."},
 	{"id": "peels", "cls": "doug", "name": "Banana Peels", "key": "Q", "lvl": 2, "mana": 9, "cd": 7.0, "use": 0.8, "hit": 0.55, "style": "peels", "aim": "facing", "range": 6.0, "tags": ["trap"],
