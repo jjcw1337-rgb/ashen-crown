@@ -369,21 +369,17 @@ func zone_music() -> void:
 		return
 	if world == null:
 		return
-	# the Verdant Reach (the Battlegrounds): its fight music (music_bg, Blaine's pick 2026-11-07, take 18), kept low,
-	# and no wind under it ("not the vibe anymore"); never the old synthesized drone
-	if cur_zone == Battlegrounds.ZONE:
-		Sfx.play_music("bg" if Sfx.bank.has("music_bg") else "", "none", 0, BG_MUSIC_DB)
-		return
-	Sfx.play_music(cur_zone, "forest" if world.oak_forest and not indoor() else "")
+	# the zone's map says what plays (Maps.music); a song not in the bank plays nothing, never a synthesized drone
+	var m := Maps.music(cur_zone)
+	var song := str(m["song"])
+	Sfx.play_music(song if Sfx.bank.has("music_" + song) else "", str(m["amb"]), 0, float(m["db"]))
 
-const BG_MUSIC_DB := -13.0      # (Blaine: "make sure it's not too loud": under the fight, not over it)
-
-## The Arena's hall (the Arena and the Sandbox) is indoors; every other zone is under the sky.
+## Under a roof (the zone's map says: Maps.indoor).
 func indoor() -> bool:
-	return cur_zone == "arena" or cur_zone == Sandbox.ZONE
+	return Maps.indoor(cur_zone)
 
 func _zone_env(kind: String) -> void:
-	var inside := kind == "arena" or kind == Sandbox.ZONE
+	var inside := Maps.indoor(kind)
 	var snowy := is_snowy() and not inside
 	RenderingServer.global_shader_parameter_set("snow_amt", 1.0 if snowy else 0.0)
 	weather.set_snow(snowy, quality)
@@ -415,12 +411,6 @@ func _zone_env(kind: String) -> void:
 		sun.visible = false
 		hero.light.light_energy = 2.6
 		hero.light.omni_range = 17.0
-		if kind == Battlegrounds.ZONE:
-			# the Hollow Crypt is darker: a smaller circle round the hero, the torches and candles do the rest
-			env.ambient_light_energy = 0.55
-			env.tonemap_exposure = 1.25
-			hero.light.light_energy = 2.0
-			hero.light.omni_range = 11.0
 	else:
 		env.background_mode = Environment.BG_SKY
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
@@ -442,31 +432,6 @@ func _zone_env(kind: String) -> void:
 		sun.light_energy = 0.75
 		hero.light.light_energy = 0.9
 		hero.light.omni_range = 10.0
-		if kind == Battlegrounds.ZONE:
-			# the Verdant Reach (BgForest): a bright, lush, golden afternoon (Blaine, 2026-11-06: "brighter, more lively").
-			# A warm low-ish sun, a deep blue sky, a fill strong enough that the shade under the oaks stays green,
-			# saturated colour, a golden haze between the trees, and glow enough for the fireflies, the mushrooms'
-			# light and the shrines (ForestLife) to bloom; the camps' coloured lights still read in the shade
-			sky_mat.sky_top_color = Color(0.26, 0.5, 0.86)
-			sky_mat.sky_horizon_color = Color(0.86, 0.86, 0.72)
-			sky_mat.ground_horizon_color = Color(0.5, 0.56, 0.38)
-			env.ambient_light_energy = 0.98
-			env.tonemap_exposure = 1.14
-			env.fog_light_color = Color(0.8, 0.78, 0.58)
-			env.fog_density = 0.0032
-			env.fog_sky_affect = 0.4
-			env.fog_height_density = 0.02
-			env.adjustment_saturation = 1.16
-			env.adjustment_contrast = 1.06
-			env.volumetric_fog_density = 0.009
-			env.volumetric_fog_albedo = Color(0.98, 0.9, 0.7)
-			env.volumetric_fog_emission = Color(0.02, 0.018, 0.01)
-			env.glow_intensity = 0.85
-			env.glow_bloom = 0.08
-			sun.light_color = Color(1.0, 0.92, 0.77)
-			sun.light_energy = 1.32
-			sun.shadow_blur = 2.0
-			hero.light.light_energy = 0.7
 		if snowy:
 			# overcast winter: pale sky, cold light, snow bouncing light back up
 			sky_mat.sky_top_color = Color(0.5, 0.55, 0.62)
@@ -485,6 +450,8 @@ func _zone_env(kind: String) -> void:
 			sun.light_color = Color(0.8, 0.86, 1.0)
 			sun.light_energy = 0.7
 			hero.light.light_energy = 1.1
+	# the zone's own light over the base (its map: Maps.light)
+	Maps.light(self, kind)
 	env.sky.sky_material = sky_mat
 	zoom = minf(zoom, zoom_max)
 	_apply_grade()
@@ -881,11 +848,7 @@ void fragment(){
 
 # ---------------------------------------------------------------- zones
 func zone_title(act: int, zone: String) -> String:
-	match zone:
-		Battlegrounds.ZONE: return Battlegrounds.map_title()
-		"arena": return "The Proving Arena"
-		Sandbox.ZONE: return Sandbox.TITLE
-	return ""
+	return Maps.title(zone)
 
 ## The boot's files (ResCache, "boot" scope): the home screen's models, read on the loader's threads at boot.
 ## Released once the title is up (the title's own nodes hold them).
@@ -1278,18 +1241,12 @@ func bg_wait_text() -> String:
 	var s := maxi(0, (bg_wait_until - Time.get_ticks_msec()) / 1000)
 	return "%d:%02d" % [s / 60, s % 60]
 
-## The painting behind the loading screen's words: the Hollow Crypt's on the way down into it (Data.WAYPOINT_BATTLEGROUNDS
-## "wide"), black for every other zone, as it always was.
+## The painting behind the loading screen's words (the zone's map: Maps.loading_art), black without one.
 func set_loading_art(zone: String) -> void:
 	if loading_art == null:
 		return
-	var tex: Texture2D = null
-	if zone == Battlegrounds.ZONE:
-		for b in Data.WAYPOINT_BATTLEGROUNDS:
-			var p := str(b.get("wide", ""))
-			if p != "" and ResourceLoader.exists(p):
-				tex = load(p)
-				break
+	var p := Maps.loading_art(zone)
+	var tex: Texture2D = load(p) if p != "" else null
 	loading_art.texture = tex
 	loading_art.visible = tex != null
 

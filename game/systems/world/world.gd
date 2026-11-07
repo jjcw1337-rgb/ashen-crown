@@ -788,9 +788,7 @@ func build(act_i: int, kind_s: String, seed_v: int) -> void:
 	if custom_zones.has(kind):
 		(custom_zones[kind] as Callable).call(self)
 		return
-	match kind:
-		Battlegrounds.ZONE: Battlegrounds.build(self)
-		Sandbox.ZONE, "arena": ArenaMap.build(self)
+	Maps.build(self)      # (the map that builds this zone: game/maps/maps.gd)
 	# the Meshy pieces that keep their glb's own material dither away round the hero too, like every code-built prop
 	Props.see_through(self)
 	Props.shadow_twins(self)

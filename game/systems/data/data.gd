@@ -7,12 +7,6 @@ const ACTS := [
 	{"name": "The Ashen Moors", "lvl": 1},
 ]
 
-## The Battlegrounds' painting behind the loading screen's words on the way down (Game.set_loading_art): its "wide"
-## (16:9) Meshy painting. (It was the camp's waypoint window's card; the waypoint is archived, archive/camp/.)
-const WAYPOINT_BATTLEGROUNDS := [
-	{"id": "crypt", "name": "The Verdant Reach", "wide": "res://assets/textures/ui/wp_bg_crypt_wide.jpg"},
-]
-
 ## How each character draws and puts away its weapon (WeaponCarry; the motion itself lives in Anim).
 ## Keyed by class (or, later, an enemy kind). Any key left out takes WeaponCarry.DEFAULT; a character
 ## with no entry gets the default draw and a warning. A new character = a new entry (and, for a new
