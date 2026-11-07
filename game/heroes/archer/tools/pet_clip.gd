@@ -34,9 +34,11 @@ func _walk(dir: Vector3, speed: float, secs: float) -> void:
 		await create_timer(1.0 / 15.0).timeout
 		await _frame()
 
-## Walks along the road (World.path_poly) at speed for secs.
+## Walks a line across the start glade (the moor's road is cut) at speed for secs.
 func _road(speed: float, secs: float) -> void:
-	var pp: PackedVector2Array = g.world.path_poly
+	var st: Vector3 = g.world.spawns["start"]
+	var far: Vector3 = g.world.free_spot_near(st + Vector3(24, 0, 8), 3.0)
+	var pp := PackedVector2Array([Vector2(st.x, st.z), Vector2(far.x, far.z)])
 	var hp: Vector3 = g.hero.global_position
 	var k := 0
 	var bd := 1e9
