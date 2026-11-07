@@ -197,16 +197,16 @@ func _ready() -> void:
 		add_child(cloud)
 		_cloud_start()
 	if Telemetry.wanted():
-		add_child(Telemetry.new(self))      # player telemetry and error reports (scripts/telemetry.gd)
+		add_child(Telemetry.new(self))      # player telemetry and error reports (game/systems/telemetry/telemetry.gd)
 	if Kpi.start(self):
-		return       # the official performance KPIs (scripts/kpi.gd): a scripted scenario, measured, then quit
+		return       # the official performance KPIs (game/systems/telemetry/kpi.gd): a scripted scenario, measured, then quit
 	if args.has("--server"):
 		Enemy.server_nopose = not args.has("--pose")      # nobody sees a server's bodies (Enemy.server_nopose)
 		# the Battlegrounds' dedicated server: `godot --headless --path . -- --server [--port N]`
 		var pi := args.find("--port")
 		var port := int(args[pi + 1]) if pi >= 0 and pi + 1 < args.size() else Net.PORT
 		if args.has("--match-config"):
-			match_instance = load("res://scripts/match_instance.gd").new()
+			match_instance = load("res://game/systems/net/match_instance.gd").new()
 			add_child(match_instance)
 			await match_instance.start(self, args[args.find("--match-config") + 1], port)
 		else:

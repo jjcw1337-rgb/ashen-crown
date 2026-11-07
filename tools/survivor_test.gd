@@ -12,7 +12,7 @@ var RB
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
-	SV = load("res://scripts/survivors.gd")
+	SV = load("res://game/systems/saves/survivors.gd")
 	RB = load("res://game/items/run_build.gd")
 	_run()
 

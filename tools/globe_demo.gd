@@ -1,5 +1,5 @@
 extends SceneTree
-## Renders the life and mana globes (scripts/globe.gd) acting out their behaviours, for previews:
+## Renders the life and mana globes (game/ui/hud/globe.gd) acting out their behaviours, for previews:
 ## a hit, a heal, low and critical life, max life rising; a cast, regeneration, a big restore, low mana.
 ## Needs a display (xvfb). Usage: godot --fixed-fps 30 -s tools/globe_demo.gd -- outdir
 func _initialize():

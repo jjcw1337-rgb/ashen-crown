@@ -11,7 +11,7 @@ func _initialize():
   if n is SubViewport:n.disable_3d=true)
  role="b" if OS.get_cmdline_user_args().has("b") else "a"
  wager=OS.get_cmdline_user_args().has("wager")
- load("res://scripts/build_env.gd").forced={"env":"local","cloud":"0","lobby_url":"http://127.0.0.1:7352"}
+ load("res://game/systems/net/build_env.gd").forced={"env":"local","cloud":"0","lobby_url":"http://127.0.0.1:7352"}
  g=load("res://main.tscn").instantiate();g.char_dir="user://lobby_test_"+role+"/"
  root.disable_3d=true;root.add_child(g);run()
 func check(ok: bool,label: String):

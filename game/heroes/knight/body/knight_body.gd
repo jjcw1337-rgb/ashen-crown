@@ -69,7 +69,7 @@ static func build_meshy(armored := false) -> Node3D:
 	var BONES: Array = Knight.ARMORED_BONES if armored else MESHY_BONES
 	var root := Node3D.new()
 	root.name = "Rig"
-	root.set_script(load("res://scripts/knight_rig.gd"))
+	root.set_script(load("res://game/systems/bodies/knight_rig.gd"))
 	var J := {}
 	for n in BONES:
 		var par: String = LAYOUT[n][0]

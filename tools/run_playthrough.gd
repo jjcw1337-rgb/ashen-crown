@@ -29,7 +29,7 @@ func _initialize():
 	get_root().add_child(g)
 	CA = load("res://game/maps/verdant_reach/camps.gd")
 	RB = load("res://game/items/run_build.gd")
-	SV = load("res://scripts/survivors.gd")
+	SV = load("res://game/systems/saves/survivors.gd")
 	_run()
 
 func check(ok: bool, what: String) -> void:

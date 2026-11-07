@@ -13,7 +13,7 @@ extends RefCounted
 static func build(layout: Dictionary, glb: String, key: String, aim := {}) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Rig"
-	root.set_script(load("res://scripts/knight_rig.gd"))
+	root.set_script(load("res://game/systems/bodies/knight_rig.gd"))
 	var J := {}
 	var G := {}
 	for n in layout.keys():

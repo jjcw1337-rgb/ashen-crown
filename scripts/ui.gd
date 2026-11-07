@@ -475,7 +475,7 @@ func _build_hud() -> void:
 	bottom.offset_top = -190
 	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.add_child(bottom)
-	# life and mana globes (scripts/globe.gd): liquid that surges, ripples, swirls and pulses
+	# life and mana globes (game/ui/hud/globe.gd): liquid that surges, ripples, swirls and pulses
 	life_globe = Globe.new()
 	life_globe.kind = "life"
 	life_globe.ref_max = 120.0      # a level-1 hero's life; more makes the globe bigger

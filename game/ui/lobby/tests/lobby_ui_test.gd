@@ -4,7 +4,7 @@ var g
 var fails:=0
 var checks:=0
 func _initialize():
- load("res://scripts/build_env.gd").forced={"env":"local","cloud":"0","lobby_url":"http://127.0.0.1:7352"}
+ load("res://game/systems/net/build_env.gd").forced={"env":"local","cloud":"0","lobby_url":"http://127.0.0.1:7352"}
  g=load("res://main.tscn").instantiate();g.char_dir="user://lobby_ui_test/";root.add_child(g);run()
 func check(ok: bool,label: String):
  checks+=1;print("[LOBBY-UI] ","ok " if ok else "FAIL ",label)

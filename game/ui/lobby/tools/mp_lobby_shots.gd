@@ -12,7 +12,7 @@ func _initialize():
 	if a.size() > 0:
 		out = a[0]
 	DirAccess.make_dir_recursive_absolute(out)
-	load("res://scripts/build_env.gd").forced = {"env": "local", "cloud": "0", "lobby_url": "http://127.0.0.1:1"}
+	load("res://game/systems/net/build_env.gd").forced = {"env": "local", "cloud": "0", "lobby_url": "http://127.0.0.1:1"}
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	g.char_dir = "user://mp_lobby_shots_chars/"
 	get_root().add_child(g)
@@ -104,7 +104,7 @@ func _run() -> void:
 		c.room = {}
 		c.view.hide()
 	# the survivor roster with two survivors (a scratch folder)
-	var SV = load("res://scripts/survivors.gd")
+	var SV = load("res://game/systems/saves/survivors.gd")
 	var RB = load("res://game/items/run_build.gd")
 	SV.dir = "user://mp_lobby_shots_survivors/"
 	DirAccess.make_dir_recursive_absolute(SV.dir)

@@ -2,7 +2,7 @@ extends SceneTree
 var g
 var fails := 0
 func _initialize():
- load("res://scripts/build_env.gd").forced = {"env":"staging","cloud":"0"}
+ load("res://game/systems/net/build_env.gd").forced = {"env":"staging","cloud":"0"}
  g=load("res://main.tscn").instantiate()
  g.char_dir="user://title_layout_test/"
  root.add_child(g)

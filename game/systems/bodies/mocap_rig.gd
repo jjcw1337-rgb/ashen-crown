@@ -1,4 +1,4 @@
-extends "res://scripts/knight_rig.gd"
+extends "res://game/systems/bodies/knight_rig.gd"
 ## A hero on its motion-captured body: a Meshy model on the 24-bone humanoid skeleton with Meshy library clips (the
 ## Knight's crusader first: game/heroes/knight/body/knight_mocap.glb, prepared by his build/prep_knight_mocap.py),
 ## built by Knight.build_mocap (game/systems/bodies/knight.gd). Every hero's mocap body runs on it (some through a

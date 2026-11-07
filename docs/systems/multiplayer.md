@@ -22,7 +22,7 @@ flowchart LR
 
 Multiplayer is the lobby browser, the game's home screen (`game/ui/lobby/`: `mp_lobby_view.gd`, `lobby_client.gd`):
 - **Battlegrounds (solo or duo), Arena, Sandbox:** our server runs each match, on the server build of the game that
-  made its lobby. `MpMode` (`scripts/mp_mode.gd`) lists which modes are live.
+  made its lobby. `MpMode` (`game/systems/net/mp_mode.gd`) lists which modes are live.
 
 ## One match
 
@@ -55,7 +55,7 @@ learns who a player is only from a ticket. The server keeps a copy of each playe
 
 ## Rules
 
-1. **One network layer.** `Net` (`scripts/net.gd`) drives everything through Godot's `MultiplayerPeer`. ENet and
+1. **One network layer.** `Net` (`game/systems/net/net.gd`) drives everything through Godot's `MultiplayerPeer`. ENet and
    Steam differ only in the peer plugged in, so never write transport-specific game code.
 2. **The host or match server owns the world** (monsters, loot, the match). Players send what they do and draw what
    they're told. In a match every hero's skills and swings run on the server ([combat](combat.md)); in Enter World
@@ -68,8 +68,8 @@ learns who a player is only from a ticket. The server keeps a copy of each playe
 
 ## Nakama and Steam
 
-- Nakama (`scripts/nakama_client.gd`, module `deploy/nakama/modules/ashen.lua`) holds accounts, a copy of each
-  character save (`scripts/cloud_saves.gd`), the admin role and telemetry. `scripts/build_env.gd` says which server
+- Nakama (`game/systems/net/nakama_client.gd`, module `deploy/nakama/modules/ashen.lua`) holds accounts, a copy of each
+  character save (`game/systems/saves/cloud_saves.gd`), the admin role and telemetry. `game/systems/net/build_env.gd` says which server
   a build talks to.
 - Steam is Valve's test app (Spacewar) during development (its world co-op is archived with Enter World:
   `archive/camp/`).

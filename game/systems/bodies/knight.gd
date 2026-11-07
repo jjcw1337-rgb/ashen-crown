@@ -305,7 +305,7 @@ static func _speed_space(pts: Array) -> AnimationNodeBlendSpace1D:
 static func build(gear: Dictionary) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Rig"
-	root.set_script(load("res://scripts/knight_rig.gd"))
+	root.set_script(load("res://game/systems/bodies/knight_rig.gd"))
 	var skel := Skeleton3D.new()
 	skel.name = "Skeleton"
 	root.add_child(skel)

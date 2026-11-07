@@ -67,7 +67,7 @@ commit for the exact lines):
   `net_boat_id`, `net_boat` (read from state numbers 15-20 in `apply_net_state`, freed in `net_zone_reset`,
   `BoatRide.puppet_update` in `_puppet_process`); the pose at the tiller (`if aboard:` in `_process`); the save's
   `boats`, `sailed` and `dwarves` (a character saved since the cut has lost them).
-- `scripts/net.gd`: `_boat_packet` appended to `_hero_packet` (aboard, x, z, yaw, speed, the boat's index in `Data.BOATS`).
+- `game/systems/net/net.gd`: `_boat_packet` appended to `_hero_packet` (aboard, x, z, yaw, speed, the boat's index in `Data.BOATS`).
 - `scripts/ui.gd`: `boat_shop` / `boat_panel` (`BoatShop.build`, `tick` in `_process`, in `_walked_off`, `close_all`,
   `any_panel_open`), the sail prompt (`_build_sail_prompt`, `set_sail_prompt`, `accept_event_safe`), and the minimap's
   `chart` (a wider view, 240 m while sailing).

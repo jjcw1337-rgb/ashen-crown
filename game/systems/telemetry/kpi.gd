@@ -58,7 +58,7 @@ static func start(game) -> bool:
 	st = {"secs": secs, "phase": "load", "t": 0.0, "frames": [], "proc": 0.0, "phys": 0.0,
 		"dc": 0.0, "prims": 0.0, "objs": 0.0, "gpu": 0.0, "n": 0, "next_skill": 0.0, "boot_ms": Time.get_ticks_msec()}
 	for k in 2:
-		var pr: Node = load("res://scripts/kpi_probe.gd").new()
+		var pr: Node = load("res://game/systems/telemetry/kpi_probe.gd").new()
 		pr.first = k == 0
 		pr.process_priority = -100000 if k == 0 else 100000
 		pr.process_physics_priority = -100000 if k == 0 else 100000
@@ -113,7 +113,7 @@ static func step(delta: float) -> void:
 			_mm_no_shadow()
 			_no_cast()
 			st["t0"] = Time.get_ticks_usec()
-			st["p0"] = [load("res://scripts/kpi_probe.gd").proc_us, load("res://scripts/kpi_probe.gd").phys_us]
+			st["p0"] = [load("res://game/systems/telemetry/kpi_probe.gd").proc_us, load("res://game/systems/telemetry/kpi_probe.gd").phys_us]
 			if OS.get_cmdline_user_args().has("--census"):
 				_census()
 		return
@@ -562,8 +562,8 @@ static func _finish() -> void:
 		"cpu_process_peak_ms": snappedf(float(st["proc"]) / n, 0.01),
 		"cpu_physics_peak_ms": snappedf(float(st["phys"]) / n, 0.01),
 		"gpu_ms": snappedf(float(st["gpu"]) / n, 0.01),
-		"script_ms": snappedf(float(load("res://scripts/kpi_probe.gd").proc_us - int((st.get("p0", [0, 0]) as Array)[0])) / 1000.0 / n, 0.01),
-		"physics_ms": snappedf(float(load("res://scripts/kpi_probe.gd").phys_us - int((st.get("p0", [0, 0]) as Array)[1])) / 1000.0 / n, 0.01),
+		"script_ms": snappedf(float(load("res://game/systems/telemetry/kpi_probe.gd").proc_us - int((st.get("p0", [0, 0]) as Array)[0])) / 1000.0 / n, 0.01),
+		"physics_ms": snappedf(float(load("res://game/systems/telemetry/kpi_probe.gd").phys_us - int((st.get("p0", [0, 0]) as Array)[1])) / 1000.0 / n, 0.01),
 		"render_cpu_ms": snappedf(float(st.get("rcpu", 0.0)) / n, 0.01),
 		"draw_calls": roundi(float(st["dc"]) / n),
 		"primitives": roundi(float(st["prims"]) / n),

@@ -67,7 +67,7 @@ assets to their `assets/` paths) and put back the hooks. The commit that archive
   `_chop_swing`, `_chop_ok`, `_chop_impact`, `_chop_next`, `stop_chop`, `_show_chop_axe`, `chop_axe`, and their calls
   in `cmd_move`, `cmd_target`, the keys' walk, `_use_skill`, `take_hit`, the pose, the attack's end and `_impact_body`).
   `game/systems/skills/dodge.gd` called `stop_chop`.
-- `scripts/net.gd` (server and clients ship together): LAN discovery (`DISCO_PORT`, the broadcast in `host` and
+- `game/systems/net/net.gd` (server and clients ship together): LAN discovery (`DISCO_PORT`, the broadcast in `host` and
   `_process`, `start_listening`, `stop_listening`, `found`, `local_ips`), Steam's `host_with` / `join_with`; the portal
   link in `cl_welcome` and `cl_goto` (`tp`) and `sv_travel`'s `clear_tp`; the snapshot's flowers, portals and trees;
   `cl_enemy_die`'s quests; woodcutting (`request_chop`/`sv_chop`, `send_tree`/`cl_tree`, `cl_trees`); town portals
@@ -90,13 +90,13 @@ assets to their `assets/` paths) and put back the hooks. The commit that archive
 - `scripts/class_stage.gd`: the carousel (whole in `scripts/class_stage.gd` here), `EMBLEMS`, `PICK_SOUND`.
 - `game/ui/lobby/` (`mp_lobby_view.gd`, `lobby_client.gd`): the LAN row (`lan_row`), friends' worlds through Steam,
   the title's character back on the stage, the quest tracker's visibility.
-- `scripts/cloud_saves.gd`: the stash's sync (`STASH`, `_sync_stash`, `push_stash`); its collection is left in each
+- `game/systems/saves/cloud_saves.gd`: the stash's sync (`STASH`, `_sync_stash`, `push_stash`); its collection is left in each
   account. `game/ui/lobby/lobby_stakes.gd` stamped items with `SharedStash.stamp`.
 - `game/systems/data/data.gd`: `ACTS`' `town` name, `WAYPOINT_GROUPS`, `WAYPOINT_ACTIVITIES`, `WAYPOINT_ACTS`,
   `WAYPOINT_ZONES`, `waypoint_*`, `check_waypoints`, the Battlegrounds card's `name`/`kind`/`art`/`lines`, `VENDORS`,
   `CHOP_POWER`, `DEFAULT_CHOP`, `CHOP_PROFILES`, `chop_profile`.
 - `game/systems/bodies/models.gd`: a resource's model (`Wood.item_model`).
-- `scripts/kpi.gd`: the `camp` scenario; `game/systems/loading/zone_preload_data.gd`: `"0:town"`.
+- `game/systems/telemetry/kpi.gd`: the `camp` scenario; `game/systems/loading/zone_preload_data.gd`: `"0:town"`.
 - Sound: `game/systems/audio/sfx_bank.gd`, `sfx.gd`'s `LOOPS` (`night_forest`, `music_town`), `tools/audio/spec.py`,
   `build_sfx.py`'s `STEREO`/`AMB`, `assets/audio/CREDITS.md(.json)`.
 - Tests: `tools/nightly/gate.sh` ran `title_test`, `char_test`, `camp_life_test`, `vendor_test`, `guard_test`; the

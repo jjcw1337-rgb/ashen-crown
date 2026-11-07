@@ -1,5 +1,5 @@
 extends Node
-## Kpi's stopwatch (scripts/kpi.gd): two of these, one processed first in the frame (process_priority very low) and
+## Kpi's stopwatch (game/systems/telemetry/kpi.gd): two of these, one processed first in the frame (process_priority very low) and
 ## one last, so the time between them is every node's _process in the frame (the scripts' main-thread cost, which
 ## Godot's TIME_PROCESS can't show: it includes drawing and waiting for the GPU). Physics the same way.
 var first := true
