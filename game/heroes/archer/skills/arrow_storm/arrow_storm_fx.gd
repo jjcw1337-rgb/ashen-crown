@@ -20,7 +20,7 @@ static func _rain(h: Hero, root: Node3D, g: Vector3, r: float) -> void:
 		var d := sqrt(randf()) * r
 		var at := g + Vector3(cos(a) * d, 0.0, sin(a) * d)
 		at.y = w.height_at(at.x, at.z)
-		var n := Archer._arrow_mesh("war")
+		var n := ArrowModel.make("war")
 		root.add_child(n)
 		n.scale = Vector3.ONE * 1.5
 		Fx.aura(n, Color(0.95, 0.9, 0.75), 6, 0.05, 0.05, 0.25, 0.0, 0.03)

@@ -12,13 +12,13 @@ func _initialize() -> void:
 		var bounded := true
 		while elapsed < 4.0:
 			var dt: float = times[i % times.size()]
-			var state := Archer.relax_bow_string(off, vel, dt, Vector3.BACK)
+			var state := ArcherBody.relax_bow_string(off, vel, dt, Vector3.BACK)
 			off = state[0]; vel = state[1]
 			bounded = bounded and off.is_finite() and vel.is_finite() and off.length() < 0.7
 			elapsed += dt; i += 1
 		check(bounded, "finite and bounded at frame times " + str(times))
 		check(off == Vector3.ZERO and vel == Vector3.ZERO, "returns to rest at " + str(times))
-	var recovered := Archer.relax_bow_string(Vector3(INF,0,0), Vector3.ZERO, 0.1, Vector3.BACK)
+	var recovered := ArcherBody.relax_bow_string(Vector3(INF,0,0), Vector3.ZERO, 0.1, Vector3.BACK)
 	check(recovered[0] == Vector3.ZERO and recovered[1] == Vector3.ZERO, "recovers an invalid prior state")
 	print("[BOW SPRING] done, ", failed, " failures")
 	quit(1 if failed else 0)

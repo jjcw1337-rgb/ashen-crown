@@ -17,7 +17,7 @@ extends RefCounted
 ## cracks that cool); the flight's light casts shadows.
 ##
 ## A kind's preset:
-##   "model"    the Meshy arrow (game/heroes/archer/weapon/arrows/<model>.glb, Archer._arrow_mesh)
+##   "model"    the Meshy arrow (game/heroes/archer/weapon/arrows/<model>.glb, ArrowModel.make)
 ##   "heat"     {head, char}: the arrowhead glowing with heat and the shaft charring behind it (HEAT_SHADER overlay)
 ##   "flame"    {amount, life, size, energy, t}: sim flames wrapped round the head and blown back along the shaft
 ##   "ribbon"   {len, width, energy, smoke_len, smoke_width, smoke_col}: the flame's tail, one continuous strip rebuilt
@@ -313,7 +313,7 @@ static func flicker(t: float, seed_v: float) -> float:
 ## world from emitters that `fly` keeps on the head, so it stays behind in the air and dies off after the flight.
 static func projectile(kind: String, game) -> Node3D:
 	var p := preset(kind)
-	var root: Node3D = Archer._arrow_mesh(str(p.get("model", "war")), p.has("flame"))
+	var root: Node3D = ArrowModel.make(str(p.get("model", "war")), p.has("flame"))
 	root.set_meta("kind", kind)
 	root.set_meta("age", 0.0)
 	if not p.has("flame"):

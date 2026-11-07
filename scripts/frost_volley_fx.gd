@@ -66,7 +66,7 @@ static func _tier(h: Hero) -> int:
 # ---------------------------------------------------------------- the glacier arrow
 ## The Meshy glacier arrow with a cold rim of light over it (the model is ice already: no tint).
 static func arrow(glow := 1.0) -> Node3D:
-	var n := Archer._arrow_mesh("frost", true)
+	var n := ArrowModel.make("frost", true)
 	var rim := _mat("rim")
 	rim.set_shader_parameter("col", PALE)
 	rim.set_shader_parameter("glow", glow)
@@ -111,7 +111,7 @@ static func draw(h: Hero, a: float) -> void:
 	var w: Node3D = h.weapon_node
 	if w == null or not is_instance_valid(w) or not w.has_meta("nocked"):
 		return
-	var k := clampf((a - Archer.GRAB) / (Anim.impact_at("bow") - 0.06 - Archer.GRAB), 0.0, 1.0)
+	var k := clampf((a - ArcherBody.GRAB) / (Anim.impact_at("bow") - 0.06 - ArcherBody.GRAB), 0.0, 1.0)
 	for key in ["nocked", "hand"]:
 		var ar: Node3D = w.get_meta("nocked") if key == "nocked" else w.get_node_or_null("HandArrow")
 		if ar != null:

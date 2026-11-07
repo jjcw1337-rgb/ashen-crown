@@ -147,7 +147,7 @@ static func update(h: Hero, _delta: float) -> void:
 	var skill: String = h.atk_skill if not h.puppet else str(h.net_st.get("skill", ""))
 	if sty == "bow" and a >= 0.0 and a < Anim.impact_at("bow") and (skill == "pierce" or (h.puppet and _puppet_fire(h))):
 		# the charge grows from the nock to the full draw
-		var k := clampf((a - Archer.GRAB) / (Anim.impact_at("bow") - 0.08 - Archer.GRAB), 0.0, 1.0)
+		var k := clampf((a - ArcherBody.GRAB) / (Anim.impact_at("bow") - 0.08 - ArcherBody.GRAB), 0.0, 1.0)
 		ArrowFx.draw_charge(h, "fire", k)
 		h.fxs["draw_fire"] = true
 	elif h.fxs.has("draw_fire"):

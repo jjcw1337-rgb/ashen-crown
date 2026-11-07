@@ -451,7 +451,7 @@ func _build_rig() -> void:
 	elif is_warlock():
 		rig = Warlock.build(warlock_gear())
 	elif is_archer():
-		rig = Archer.build_body()
+		rig = ArcherBody.build()
 	elif is_doug():
 		rig = Doug.build_body()
 	elif is_plague():
@@ -895,7 +895,7 @@ func refresh_gear() -> void:
 		pass                               # a dragon's body has no armour to show (its gear hangs off a hidden joint)
 	elif is_archer():
 		if not rig.has_meta("meshy"):      # the ranger's own body has nothing to rebuild
-			Knight.rebuild_body(rig, Archer.body_gear(knight_gear()))
+			Knight.rebuild_body(rig, ArcherBody.body_gear(knight_gear()))
 	elif not rig.has_meta("meshy"):
 		Knight.rebuild_body(rig, knight_gear())
 	var am = equipment.get("amulet")
@@ -970,12 +970,12 @@ func _carry_weapon(delta: float) -> void:
 	weapon_node.transform = weapon_node.transform.interpolate_with(Transform3D.IDENTITY, k)
 
 ## The hand that holds the weapon: the right, except a bow on a body that holds it in the left (the ranger),
-## turned for the bow's kind (Archer.BOW_HOLD).
+## turned for the bow's kind (ArcherBody.BOW_HOLD).
 func _weapon_hand(J: Dictionary) -> Node3D:
 	var w = equipment.get("weapon")
 	if J.has("grip_bow") and w != null and has_bow():
 		var g: Node3D = J["grip_bow"]
-		var hold: Array = Archer.BOW_HOLD.get(Archer.bow_key(Data.BASES[w["base"]]["kind"]), Archer.BOW_HOLD["bow"])
+		var hold: Array = ArcherBody.BOW_HOLD.get(ArcherBody.bow_key(Data.BASES[w["base"]]["kind"]), ArcherBody.BOW_HOLD["bow"])
 		g.position = hold[0]
 		g.rotation_degrees = hold[1]
 		var at: Node3D = J["grip_bow_at"]
@@ -2123,7 +2123,7 @@ func _process_body(delta: float) -> void:
 		return
 	Anim.pose(rig, st)
 	if is_archer():
-		Archer.pose_bow(self, st)
+		ArcherBody.pose_bow(self, st)
 	last_pose = st
 	_hover()
 	Dodge.pose(self, delta)
@@ -2307,7 +2307,7 @@ func _puppet_process(delta: float) -> void:
 		return
 	Anim.pose(rig, st)
 	if is_archer():
-		Archer.pose_bow(self, st)
+		ArcherBody.pose_bow(self, st)
 	_hover()
 	Dodge.pose(self, delta)
 	Archer.update(self, delta)

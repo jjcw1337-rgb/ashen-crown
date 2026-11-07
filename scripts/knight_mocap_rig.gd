@@ -461,9 +461,9 @@ func _reach_hilt(st: Dictionary) -> void:
 
 # ---------------------------------------------------------------- the shot's body (the archer)
 ## Procedural layers over the shot clip for a bow skill with `shot_body` in its SHOT (the Fire Arrow and every
-## bow shot, Archer.SHOT "body"): the whole body takes part. Each is a curve over the attack's progress a
+## bow shot, ArcherBody.SHOT "body"): the whole body takes part. Each is a curve over the attack's progress a
 ## (release at Anim.impact_at("bow"), 0.72), eased, laid on the bones AFTER the clips as extra turns in each
-## bone's local frame, so the string still meets the hand (Archer.pose_bow solves the bow after this).
+## bone's local frame, so the string still meets the hand (ArcherBody.pose_bow solves the bow after this).
 ##   twist    the spine winds up toward the draw side through the full draw, then unwinds through the release
 ##   lean     the weight settles on the back foot (hips back and down a little) as he holds the draw
 ##   recoil   the bow arm kicks up and back on the release and comes down
