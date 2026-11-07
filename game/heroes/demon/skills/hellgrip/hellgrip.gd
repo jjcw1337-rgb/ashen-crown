@@ -132,7 +132,7 @@ func _hooked(e) -> void:
 		c["start"] = e.global_position
 		c["goal"] = me + dir * val("hold_in", 1.5)
 	victim = e
-	make_at("hook", e, {"x": dur, "n": self_pull})
+	make_aimed("hook", {"t": [e], "x": dur, "n": self_pull})
 	var pl := PvpStatus.is_player(e)
 	h.fx(id, "hook", {"t": [] if pl else [e], "pid": int(e.pvp_pid) if pl else 0,
 		"p": e.global_position + Vector3(0, e.height * 0.6, 0), "x": dur, "n": 1 if self_pull else 0})
@@ -142,7 +142,7 @@ func _hooked(e) -> void:
 func server_ok(kind: String, d: Dictionary) -> bool:
 	match kind:
 		"hook":
-			var e = foe_in(d)
+			var e = named_foe(d)
 			if e == null or (e as Node3D).global_position.distance_to(hero.global_position) > val("len", 7.5) + 4.0:
 				return false
 			d["x"] = clampf(float(d.get("x", 0.0)), 0.0, float(Demon.DUR["grip_haul"]) * Data.attack_pace(hero.cls))
@@ -159,7 +159,7 @@ func made(kind: String, d: Dictionary) -> void:
 		"hook":
 			# one hard status for the whole hold on a player (dragged over the haul, then held till the smash); a
 			# monster stunned through it
-			var e = foe_in(d)
+			var e = named_foe(d)
 			if e == null:
 				return
 			held = e

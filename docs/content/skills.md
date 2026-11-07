@@ -37,7 +37,7 @@ Every hero follows the Archer's layout (`game/heroes/archer/` is the example; [h
   (`server_ok`: near where it has the hero, within the skill's numbers) and makes it there (`ServerRules`). So
   `made`, `update` and the hits are the rules, and they only ever run where the hits are decided; whatever the rules
   show (a sigil blowing) the server sends to every game. A foe the player's game picked travels as an id
-  (`SkillFx.encode`, read back with `ServerRules.foe_of`). Target searches use `foe(e)`, which passes by the
+  (`Skill.make_aimed`, read back on the server with `named_foes` / `named_foe`). Target searches use `foe(e)`, which passes by the
   player's own side. What the rules give the hero (life, mana, a cooldown back) goes through `give` / `gain_life`,
   since the player's game owns them. A held channel (Drain Life, Frost Breath) sends "latch" and "end", and the
   server deals each beat. The plain weapon swing goes to the server the same way (`Hero._send_swing`).

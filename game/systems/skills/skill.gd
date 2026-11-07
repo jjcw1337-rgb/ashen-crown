@@ -63,6 +63,42 @@ func given(_kind: String, _data: Dictionary) -> void:
 func foe(e) -> bool:
 	return not e.dead and not ServerRules.friend(hero, e)
 
+# ---------------------------------------------------------------- foes the player's game picked
+## A foe as every game in a match names it (SkillFx.encode's ids: a monster's net id, minus a player's id for their
+## stand-in); 0 outside a match or co-op.
+func net_id(e) -> int:
+	var net = hero.game.net
+	if e == null or net == null or not net.active:
+		return 0
+	return -int(e.pvp_pid) if int(e.get("pvp_pid")) > 0 else int(e.net_id)
+
+## Makes what its rules act on, aimed at foes its game picked (`d["t"]`, nodes here): in a match they go to the server
+## as the ids every game shares, and `named_foes` finds the server's own monsters and stand-ins for them.
+func make_aimed(kind: String, d: Dictionary) -> void:
+	if deals():
+		made(kind, d)
+		return
+	var w := d.duplicate()
+	w["t"] = SkillFx.encode(hero.game.net, {"t": d.get("t", [])})["t"]
+	hero.game.net.send_skill_make(id, kind, w)
+
+## The foes a `make_aimed` named that are still there and still foes: nodes here, or the shared ids on the server.
+func named_foes(d: Dictionary) -> Array:
+	var out := []
+	var ids = d.get("t", [])
+	if not (ids is Array or ids is PackedInt64Array):
+		return out
+	for x in ids:
+		var e = ServerRules.foe_of(hero.game, int(x)) if (x is int) else x
+		if e != null and is_instance_valid(e) and e is Enemy and foe(e):
+			out.append(e)
+	return out
+
+## The first of them, or null.
+func named_foe(d: Dictionary):
+	var f := named_foes(d)
+	return f[0] if not f.is_empty() else null
+
 ## Checks before the mana and the cooldown are spent (shows its own message on false).
 func can_cast(_aim: Vector3) -> bool:
 	return true

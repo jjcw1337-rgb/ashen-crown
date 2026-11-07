@@ -76,28 +76,6 @@ func blow(e, phys: float, fire: float, from: Vector3, knock: float, crit: bool) 
 		h.game.net.tell_dealt(h, e.global_position, dealt, crit)
 	return dealt
 
-## Makes what its rules act on, aimed at foes (`d["t"]`, nodes here): over the wire they go as the ids every game
-## shares (SkillFx.encode), and the server finds its own stand-ins and monsters (`foes`).
-func make_at(kind: String, d: Dictionary) -> void:
-	if deals():
-		made(kind, d)
-		return
-	var w := d.duplicate()
-	w["t"] = SkillFx.encode(hero.game.net, {"t": d.get("t", [])})["t"]
-	hero.game.net.send_skill_make(id, kind, w)
-
-## The foes a made thing names that are still there and still foes: nodes, or the shared ids on the server.
-func foes(d: Dictionary) -> Array:
-	var out := []
-	var ids = d.get("t", [])
-	if not (ids is Array or ids is PackedInt64Array):
-		return out
-	for x in ids:
-		var e = ServerRules.foe_of(hero.game, int(x)) if (x is int) else x
-		if e != null and is_instance_valid(e) and e is Enemy and foe(e):
-			out.append(e)
-	return out
-
 ## Server: a point a player's game sent is within `slack` metres of where the server has him.
 func near_him(p, slack: float) -> bool:
 	return p is Vector3 and (p as Vector3).distance_to(hero.global_position) <= slack

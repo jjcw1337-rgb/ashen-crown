@@ -54,7 +54,7 @@ func impact() -> void:
 			let_go(false)
 		return
 	h.fx(id, "latch", {"t": [v], "x": hold()})
-	make_at("latch", {"t": [v]})
+	make_aimed("latch", {"t": [v]})
 
 ## Seconds it holds (Long Grip: longer).
 func hold() -> float:
@@ -64,7 +64,7 @@ func hold() -> float:
 func server_ok(kind: String, d: Dictionary) -> bool:
 	if kind != "latch":
 		return false
-	var vs := foes(d)
+	var vs := named_foes(d)
 	if vs.is_empty() or not near_him((vs[0] as Node3D).global_position, reach_m(9.0) + 4.0):
 		return false
 	d["t"] = [vs[0]]
@@ -74,7 +74,7 @@ func server_ok(kind: String, d: Dictionary) -> bool:
 func made(kind: String, d: Dictionary) -> void:
 	if kind != "latch":
 		return
-	var vs := foes(d)
+	var vs := named_foes(d)
 	if vs.is_empty():
 		return
 	var v = vs[0]

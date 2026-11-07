@@ -53,13 +53,6 @@ func pick(aim: Vector3, r: float):
 			best = e
 	return best
 
-## A foe as a match's games name it (SkillFx.encode's ids: a monster's net id, minus a player's id for their
-## stand-in); 0 outside a match or co-op.
-func net_id(e) -> int:
-	var net = hero.game.net
-	if net == null or not net.active:
-		return 0
-	return -int(e.pvp_pid) if int(e.get("pvp_pid")) > 0 else int(e.net_id)
 
 ## Rules: the foe an "at" names: on the match server the one its id names, if it's still a foe in reach; else the
 ## foe standing at its point.

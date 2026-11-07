@@ -81,13 +81,6 @@ func freeze(e, secs: float) -> void:
 		RunTalents._freeze(hero, e, secs)
 
 # ---------------------------------------------------------------- foes by id
-## A foe as a match's games name it (SkillFx.encode's ids: a monster's net id, minus a player's id for their
-## stand-in); 0 outside a match.
-func net_id(e) -> int:
-	var net = hero.game.net
-	if e == null or net == null or not net.active:
-		return 0
-	return -int(e.pvp_pid) if int(e.get("pvp_pid")) > 0 else int(e.net_id)
 
 ## Rules: the foe an id names, on the match server, if it's still one to strike within `r` of the hero; else null.
 func foe_by_id(d: Dictionary, r: float):

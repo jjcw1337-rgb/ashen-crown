@@ -125,27 +125,6 @@ func stages() -> void:
 func busy() -> bool:
 	return next != "" or (hero.atk_t >= 0.0 and hero.atk_skill == id)
 
-# ---------------------------------------------------------------- a foe his game picked
-## Makes `kind` about foe `e`: here with the foe itself, or on the match server as its id (SkillFx.encode).
-func make_at(kind: String, e, data: Dictionary) -> void:
-	if deals():
-		data["e"] = e
-		made(kind, data)
-	else:
-		data["t"] = SkillFx.encode(hero.game.net, {"t": [e]})["t"]
-		hero.game.net.send_skill_make(id, kind, data)
-
-## The foe a `make_at` named (on the server, its id resolved: ServerRules.foe_of), or null.
-func foe_in(d: Dictionary):
-	var e = null
-	if d.has("t"):
-		var ids = d["t"]
-		if (ids is PackedInt64Array or ids is Array) and ids.size() > 0:
-			e = ServerRules.foe_of(hero.game, int(ids[0]))
-	elif not hero.game.net.server:
-		e = d.get("e")
-	return e if e != null and is_instance_valid(e) and foe(e) else null
-
 ## What its rules give him (Skill.give): "refund", a share of its cooldown back.
 func given(kind: String, d: Dictionary) -> void:
 	if kind == "refund":
