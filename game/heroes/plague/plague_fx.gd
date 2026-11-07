@@ -81,7 +81,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 					Fx.burst(root, to + Vector3(0, 1.0, 0), Plague.TOXIC, 16, 2.5, 0.1, 0.5, true, -2.0)
 					for m in ev.get("t", []):
 						if is_instance_valid(m) and not m.has_node("pd_curse"):
-							var a := PlagueSmoke.vapour(m, Color(0.62, 0.85, 0.22, 0.32), 6, 0.42, 1.1, 0.5, 0.3 * float(m.radius) + 0.15, Vector3(0, float(m.height) * 1.1, 0), Plague.TOXIC * 0.1)
+							var a := PlagueSmoke.vapour(m, Color(0.62, 0.85, 0.22, 0.32), 6, 0.42, 1.1, 0.5, 0.3 * _r(m) + 0.15, Vector3(0, _hgt(m) * 1.1, 0), Plague.TOXIC * 0.1)
 							a.name = "pd_curse"
 							Fx._free_later(a, float(ev.get("x", 6.0)))
 					Sfx.play_at("curse_leap", to, -3.0)
@@ -156,7 +156,7 @@ static func _haze(e, on: bool) -> void:
 		return
 	var f: Node = e.get_node_or_null("pd_poison")
 	if on and f == null and not e.dead:
-		var a := PlagueSmoke.vapour(e, Color(Plague.TOXIC.r, Plague.TOXIC.g, Plague.TOXIC.b, 0.4), 7, 0.55, 1.1, 0.45, 0.25 * float(e.radius) + 0.12, Vector3(0, float(e.height) * 0.9, 0), Plague.TOXIC * 0.15)
+		var a := PlagueSmoke.vapour(e, Color(Plague.TOXIC.r, Plague.TOXIC.g, Plague.TOXIC.b, 0.4), 7, 0.55, 1.1, 0.45, 0.25 * _r(e) + 0.12, Vector3(0, _hgt(e) * 0.9, 0), Plague.TOXIC * 0.15)
 		a.name = "pd_poison"
 	elif not on and f != null:
 		e.remove_child(f)      # at once, so a haze put back this frame takes the name
@@ -171,7 +171,7 @@ static func _cane(h: Hero, ev: Dictionary) -> void:
 		1:
 			for e in ev.get("t", []):
 				if is_instance_valid(e) and not e.dead:
-					Fx.burst(root, e.global_position + Vector3(0, 1.1 * float(e.height), 0), Plague.TOXIC, 6, 1.6, 0.06, 0.4, true, -2.0)
+					Fx.burst(root, e.global_position + Vector3(0, 1.1 * _hgt(e), 0), Plague.TOXIC, 6, 1.6, 0.06, 0.4, true, -2.0)
 		2:
 			for k in 5:
 				var d := fwd.rotated(Vector3.UP, (k - 2) * 0.32)
@@ -194,6 +194,13 @@ static func _cane(h: Hero, ev: Dictionary) -> void:
 			if not st.has("clouds"):
 				st["clouds"] = []
 			(st["clouds"] as Array).append({"node": node, "t": dur})
+
+## A target's size (a monster's own; a player, as a target decodes to his hero or his copy, a man's).
+static func _hgt(e) -> float:
+	return float(e.get("height")) if e.get("height") != null else 1.0
+
+static func _r(e) -> float:
+	return float(e.get("radius")) if e.get("radius") != null else 0.45
 
 ## The effect budget by the graphics preset (0 Low .. 3 Ultra; the browser build is capped at Medium).
 static func quality(h: Hero) -> int:
