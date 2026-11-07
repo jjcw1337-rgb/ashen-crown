@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Turn the game's recorded zone file lists (user://zone_preload_record.json, ZonePreload.record) into
-scripts/zone_preload_data.gd.  python3 tools/zone_preload_gen.py [record.json]"""
+game/systems/loading/zone_preload_data.gd.  python3 tools/zone_preload_gen.py [record.json]"""
 import json, os, sys
 src = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser(
     "~/Library/Application Support/Godot/app_userdata/Ashen Crown/zone_preload_record.json")
