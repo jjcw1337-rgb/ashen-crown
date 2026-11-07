@@ -60,3 +60,12 @@ game/maps/**/props/*_normal.png*
 game/maps/**/props/*_normal.jpg*
 game/maps/**/props/*_emission.jpg*
 game/maps/**/props/*_Material_*
+
+# monster folders (game/monsters/<name>/): Godot's import files for their models and the textures it extracts
+game/monsters/**/*.glb.import
+game/monsters/**/*_Image_*
+game/monsters/**/*_normal.jpg*
+game/monsters/**/*_albedo.jpg*
+game/monsters/**/*_metal_rough.jpg*
+game/monsters/**/*_emission.jpg*
+game/monsters/**/*_Material_*

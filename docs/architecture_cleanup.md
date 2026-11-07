@@ -223,6 +223,7 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
 - [x] The old crypt Battlegrounds cut (its map, floors below, antechamber gates, bells, stash daises and the stash's
   slow); its models in `archive/hollow_crypt/`. The old raid page, server screen, raids on the clock and the
   waypoint's walk down go too: the lobby browser is the only way in (2026-11-06).
+- [ ] Monsters into `game/monsters/<monster>/`: done: Hrimgar and Old Mossbeard (on a shared `BossBrain`).
 - [x] Maps: the Verdant Reach is `game/maps/verdant_reach/` (its builder, camps, life, the Battlegrounds' rules,
   the bosses' brains, props, tests; 2026-11-06).
 - [x] Maps: the Arena is `game/maps/arena/` (the template for every map: its map, props, modes, tests, README;

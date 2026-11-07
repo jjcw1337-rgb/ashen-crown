@@ -11,18 +11,18 @@ Portals at its edges and two bosses in its depths. Players come in from a Battle
 | `forest_life.gd` | `ForestLife`: the forest's life: grass, flowers, mushrooms, birds, butterflies, wind |
 | `battlegrounds.gd` | `Battlegrounds`: the raid's rules on its match server: rounds, portals, extraction, deaths, PvP checks |
 | `bg_matchup.gd` | `BgMatchup`: the HUD's matchup cards (the raiders' classes) |
-| `bosses/bg_boss.gd` | `BgBoss`: the two bosses' brains: Hrimgar the Frostbound (Frostfang Hollow) and Old Mossbeard (the Mycelial Grotto) |
+| (its bosses) | Hrimgar (`game/monsters/hrimgar/`) and Old Mossbeard (`game/monsters/mossbeard/`): their camps are rows of `CAMPS` |
 | `props/` | the forest's own Meshy pieces: mushrooms, fungus (also the Poison Mushroom's body), brambles, ice crystals, the frozen pillar |
 | `tests/` | `bg_test` (server + client), `bg_admin_test`, `bg_pvp_test` (server + two players), `camp_test`, `camp_reach_test`, `bg_boss_test` |
 | `tools/` | `forest_shots` (screenshots), `bg_sound_probe` (what the raid sounds like) |
 
 **A camp** is one row of `CAMPS`: its id, name, tier (1 to 3, 4 for a boss), centre and radius, region (its
 dressing: `mush`, `elf`, `frost`, `ruins`, `barrow`, `forest`) and foes (kind, count, champion, offset). Camps.add
-spawns them and the chest. To add a camp, add a row; a boss camp names its `boss` (a kind with a brain in `bosses/`).
+spawns them and the chest. To add a camp, add a row; a boss camp names its `boss` (a kind with a brain in `game/monsters/`).
 
 Still borrowed from outside, to move with their owners:
-- the monsters themselves (`scripts/data.gd` `ENEMIES`, their bodies in `goblin.gd`, `enemy.gd`): they go to
-  `game/monsters/<name>/`, and the bosses' brains with them;
+- the other monsters (`scripts/data.gd` `ENEMIES`, their brains in `enemy.gd`, bodies in `goblin.gd`): they go to
+  `game/monsters/<name>/` like the bosses;
 - models from other places: `models/roman/` ruins, `models/fort/tower`, `models/lairs/ice_rock`, `models/camp/` tent
   and runestone, `models/waypoint/` banner and crystal rune;
 - the PvP checks in `battlegrounds.gd` (`pvp_pair`, statuses), which the Arena shares, go to `game/systems/` with the
