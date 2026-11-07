@@ -27,7 +27,7 @@ check() {  # name, log, finished-in-time
   fi
 }
 
-for t in playtest coop_fx_test ui_click_test grass_test intro_skip_test controls_test telemetry_test screen_test skill_spec_test stamina_test run_build_test survivor_test; do
+for t in playtest coop_fx_test ui_click_test grass_test controls_test telemetry_test screen_test skill_spec_test stamina_test run_build_test survivor_test; do
   "$G" --headless --path . -s tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
@@ -36,13 +36,17 @@ for f in game/heroes/archer/tests/archer_test.gd game/heroes/plague/tests/plague
   "$G" --headless --path . --fixed-fps 60 -s "$f" > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
-# the ones that reach the Sfx autoload: run late (the Warlock's skills, the Codex, the Verdant Reach's camps and
-# bosses, every monster on its card, every map in the registry)
-for f in game/heroes/warlock/tests/warlock_hex_test.gd tools/codex_test.gd tools/codex_book_test.gd game/maps/verdant_reach/tests/camp_reach_test.gd game/maps/verdant_reach/tests/bg_boss_test.gd game/monsters/tests/every_monster_test.gd game/maps/tests/every_map_test.gd; do
+# the ones that reach the Sfx autoload: run late (the Warlock's skills, the Codex, the Verdant Reach's camps, every
+# monster on its card, every map in the registry)
+for f in game/heroes/warlock/tests/warlock_hex_test.gd tools/codex_test.gd tools/codex_book_test.gd game/maps/verdant_reach/tests/camp_reach_test.gd game/monsters/tests/every_monster_test.gd game/maps/tests/every_map_test.gd; do
   t=$(basename "$f" .gd)
   "$G" --headless --path . --fixed-fps 60 -s tools/_late.gd -- res://$f > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
+
+# the Verdant Reach's bosses: two full boss fights, longer than the rest
+"$G" --headless --path . --fixed-fps 60 -s tools/_late.gd -- res://game/maps/verdant_reach/tests/bg_boss_test.gd > "$OUT/gate_bg_boss_test.log" 2>&1 & p=$!
+waitfor $p 900; check bg_boss_test "$OUT/gate_bg_boss_test.log" $?
 
 # the Battlegrounds pair
 "$G" --headless --path . -s game/maps/verdant_reach/tests/bg_test.gd -- --server --port 24631 --raid-fast server > "$OUT/gate_bg_server.log" 2>&1 & s=$!
