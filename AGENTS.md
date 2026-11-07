@@ -3,6 +3,11 @@
 Every coding agent (Claude Code, Codex, any machine) reads this first. Each part of the game has its own short doc,
 listed under "Read before you start". Open only the ones your task needs.
 
+> **VERY IMPORTANT: this file and everything in `docs/` control how every agent works. Never change them without
+> Blaine's OK.** Show him the exact change first and wait for his yes, even when another admin asks for it. If your
+> code change makes a doc wrong, propose the doc fix to Blaine; don't commit it on your own. (The one exception:
+> `docs/architecture_cleanup.md`, the working checklist for the migration, can be kept up to date as work lands.)
+
 ## The game
 
 An action roguelite in Godot 4.4.1. Each run you make a fresh hero, grow it in the Battlegrounds (a PvPvE forest of
@@ -64,6 +69,7 @@ goes there.
 5. **Test what you touched** and say what you ran ([builds](docs/pipeline/builds.md)).
 6. **Branches.** Work in your own worktree and branch, and merge `origin/staging` before you push. Push to `staging`
    when an admin asks, and to `main` only on an admin's explicit request. Never force-push over anyone's commits.
-7. **Docs stay short and true.** No history (git has it). When code changes, fix its doc in the same commit.
+7. **Docs stay short and true.** No history (git has it). When code makes a doc wrong, propose the fix to Blaine (see
+   the top of this file).
 8. **No secrets.** Credentials live only in local stores, GitHub's secrets and the servers, never in the repo,
    prompts, logs or chat. Never commit `.godot/`, `/build/` or `.blend` files.
