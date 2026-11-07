@@ -7,6 +7,10 @@ const KINDS := ["bear"]
 const FALL := "side"
 const MOVES := ["bear_roar", "bear_maul"]
 
+## It roars once on noticing you, and now and then while it wanders.
+static func on_setup(e: Enemy) -> void:
+	e.mem = {"roared": false, "idle_t": 0.0}
+
 ## The Meshy bear on its own skeleton (Bear).
 static func build_rig(_kind: String, _variant: int) -> Node3D:
 	return Bear.build() if Bear.ok() else null

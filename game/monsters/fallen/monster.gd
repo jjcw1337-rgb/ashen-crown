@@ -18,6 +18,10 @@ const RIGS := {
 
 const MOVES := ["skirm_lunge", "reaver_cleave", "stalk_hook"]
 
+## The Reaver's slow start; the Stalker's chosen side, when it flips, and its weave.
+static func on_setup(e: Enemy) -> void:
+	e.mem = {"rv_spd": 0.0, "side": 1.0, "flip": 1.5, "weave": 0.0}
+
 ## Their brains, by the def's "ai" (the plain Fallen fights the shared way).
 static func combat(e: Enemy, delta: float, hero: Node3D, to: Vector3, dist: float) -> Variant:
 	match str(e.def.get("ai", "")):

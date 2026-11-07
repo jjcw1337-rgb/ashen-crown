@@ -109,19 +109,14 @@ var f_calm := 0.0      # after giving up it won't notice you again for a while (
 var lunge_from := Vector3.ZERO
 var lunge_to := Vector3.ZERO
 var slot_a := 0.0
-# the three Fallen (fallen_skirmisher / fallen_reaver / fallen_stalker): an attack that moves the body along a
-# path (atk_path: [from fraction, to fraction, from, to]), the Reaver's warning shown once, his slow start,
-# the Stalker's chosen side and weave
+# an attack that moves the body along a path (the Fallen's: atk_path, [from fraction, to fraction, from, to]), its
+# aim, and its warning shown once
 var atk_path: Array = []
 var atk_aim := Vector3.ZERO
 var tele_done := false
-var rv_spd := 0.0
-var fv_side := 1.0
-var fv_flip := 1.5
-var fv_weave := 0.0
-# the Forsaken Bear (bear.gd): roars once on noticing you, roars now and then while it wanders
-var b_roared := false
-var b_idle_t := 0.0
+## A monster's own state, kept by its card's brain (its card's on_setup sets what it keeps: the bear's roar timers,
+## the Reaver's slow start, the Stalker's side and weave).
+var mem: Dictionary = {}
 
 func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> void:
 	game = g
