@@ -2,7 +2,7 @@ class_name DragonRunFx
 extends RefCounted
 ## The look of the dragons' run skills (DragonSkills: Data.RUN_SKILLS), built from their own kits' assets:
 ##   Frost Serpent  Glacial Tomb  the Meshy ice shell (its own block's) closing over each foe with rime crawling up
-##                                them (FrostVolleyFx.frost_body), then broken into its fractured pieces in a frost nova
+##                                them (FrostFx.frost_body), then broken into its fractured pieces in a frost nova
 ##                  Crushing Coil the tail spin's crush: the ground cracked and thrown up (ElementalFx.ground_slam)
 ##                                and cold mist rolled out over it
 ##                  Rime Lance    a line of the Meshy ice crystals bursting up one after another, then shattering
@@ -29,11 +29,11 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 				var n := _ice_shell(root, e as Node3D)
 				if n != null:
 					shells.append({"n": n, "e": e, "t": float(ev.get("x", 1.6)) + 0.6})
-				FrostVolleyFx.frost_body(game, e, float(ev.get("x", 1.6)) + 0.4)
+				FrostFx.frost_body(game, e, float(ev.get("x", 1.6)) + 0.4)
 			h.fxs["drg_tombs"] = shells
 			var p: Vector3 = ev["p"]
-			FrostVolleyFx._glints(root, p + Vector3(0, 1.2, 0), 12)
-			ElementalFx._dust(root, p + Vector3(0, 0.2, 0), FrostVolleyFx.MIST, 1.6, 0.45, {"amount": 10, "life": 1.4,
+			FrostFx.glints(root, p + Vector3(0, 1.2, 0), 12)
+			ElementalFx._dust(root, p + Vector3(0, 0.2, 0), FrostFx.MIST, 1.6, 0.45, {"amount": 10, "life": 1.4,
 				"explosive": 1.0, "shape": "ring", "r": 1.6, "r_in": 0.6, "dir": Vector3.UP, "spread": 25.0, "vel": [0.2, 0.6],
 				"radial": [0.6, 1.6], "damping": [2.0, 3.0], "scale": [0.8, 1.3], "grow": [0.6, 1.8]})
 			SkillFx.snd(h, "ice_tomb_seal", 0.0)
@@ -54,7 +54,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			var p3: Vector3 = ev["p"]
 			var r: float = float(ev.get("r", 4.2))
 			ElementalFx.ground_slam(game, root, p3, r)
-			ElementalFx._dust(root, p3 + Vector3(0, 0.25, 0), FrostVolleyFx.MIST, 1.8, 0.5, {"amount": 12, "life": 1.3,
+			ElementalFx._dust(root, p3 + Vector3(0, 0.25, 0), FrostFx.MIST, 1.8, 0.5, {"amount": 12, "life": 1.3,
 				"explosive": 1.0, "shape": "ring", "r": 1.0, "r_in": 0.5, "dir": Vector3.UP, "spread": 10.0, "vel": [0.1, 0.4],
 				"radial": [4.0, 6.5], "damping": [2.5, 3.5], "scale": [0.9, 1.4], "grow": [0.6, 1.8]})
 			for e in ev.get("t", []):
@@ -220,8 +220,8 @@ static func _ice_shell(root: Node3D, e: Node3D) -> Node3D:
 				sm.roughness = 0.08
 				sm.metallic_specular = 1.0
 				sm.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
-	var rim := FrostVolleyFx._mat("rim")
-	rim.set_shader_parameter("col", FrostVolleyFx.PALE)
+	var rim := FrostFx.mat("rim")
+	rim.set_shader_parameter("col", FrostFx.PALE)
 	rim.set_shader_parameter("glow", 2.4)
 	for mi in n.find_children("*", "MeshInstance3D", true, false):
 		(mi as MeshInstance3D).material_overlay = rim
@@ -243,7 +243,7 @@ static func _ice_shell(root: Node3D, e: Node3D) -> Node3D:
 static func _break(h: Hero, root: Node3D, n) -> void:
 	if not is_instance_valid(n):
 		return
-	FrostVolleyFx._break(root, h.game.world, n as Node3D, InfernalFx.tier(h.game), SerpentFx.SHELL_PIECES)
+	FrostFx.smash(root, h.game.world, n as Node3D, InfernalFx.tier(h.game), SerpentFx.SHELL_PIECES)
 
 ## One of the Rime Lance's crystals: up after `delay`, shattered a moment later.
 static func _spike(h: Hero, root: Node3D, at: Vector3, s: float, delay: float, tr: int) -> void:
@@ -252,14 +252,14 @@ static func _spike(h: Hero, root: Node3D, at: Vector3, s: float, delay: float, t
 	tw.tween_callback(func():
 		if not is_instance_valid(root):
 			return
-		var c := FrostVolleyFx._crystal(root, at, s, tr)
+		var c := FrostFx.crystal(root, at, s, tr)
 		if c == null:
 			return
 		var t2 := c.create_tween()
 		t2.tween_interval(0.9 + randf() * 0.3)
 		t2.tween_callback(func():
 			if is_instance_valid(c) and is_instance_valid(h):
-				FrostVolleyFx._break(root, h.game.world, c, tr)))
+				FrostFx.smash(root, h.game.world, c, tr)))
 
 # ---------------------------------------------------------------- the Storm Wyvern's Storm Arc
 ## The Storm Wyvern's lightning palette: core, glow (ArcFx).

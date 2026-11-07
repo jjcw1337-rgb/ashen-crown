@@ -55,16 +55,16 @@ static func _breath_start(h: Hero) -> void:
 	var at: Vector3 = jd[0]
 	var d: Vector3 = jd[1]
 	# the gale: billowing mist, glittering crystals, needles of frost, all shed into the world from the jaws
-	var mist := ElementalFx._dust(root, at, FrostVolleyFx.MIST, 0.9, 0.42, {"one_shot": false, "amount": [10, 16, 24, 34][tr],
+	var mist := ElementalFx._dust(root, at, FrostFx.MIST, 0.9, 0.42, {"one_shot": false, "amount": [10, 16, 24, 34][tr],
 		"life": 0.75, "explosive": 0.0, "shape": "sphere", "r": 0.12, "dir": d, "spread": 16.0, "vel": [7.0, 10.0],
 		"damping": [6.0, 9.0], "gravity": -0.6, "scale": [0.7, 1.2], "grow": [0.35, 3.2]})
 	var glit := InfernalFx.particles(root, at, {"one_shot": false, "amount": [12, 20, 30, 44][tr], "life": 0.7,
 		"explosive": 0.0, "shape": "sphere", "r": 0.1, "dir": d, "spread": 20.0, "vel": [6.0, 11.0], "damping": [4.0, 7.0],
 		"gravity": -1.5, "scale": [0.4, 1.0], "size": 0.022,
-		"colors": [[0.0, Color(1.3, 1.4, 1.5)], [0.6, FrostVolleyFx.PALE], [1.0, Color(FrostVolleyFx.DEEP, 0.0)]]})
+		"colors": [[0.0, Color(1.3, 1.4, 1.5)], [0.6, FrostFx.PALE], [1.0, Color(FrostFx.DEEP, 0.0)]]})
 	var needles := InfernalFx.particles(root, at, {"one_shot": false, "amount": [6, 10, 14, 20][tr], "life": 0.45,
 		"explosive": 0.0, "shape": "sphere", "r": 0.08, "dir": d, "spread": 10.0, "vel": [12.0, 16.0], "gravity": -4.0,
-		"scale": [0.5, 1.0], "size": 0.03, "colors": [[0.0, Color(1.2, 1.3, 1.4)], [1.0, Color(FrostVolleyFx.PALE, 0.0)]]})
+		"scale": [0.5, 1.0], "size": 0.03, "colors": [[0.0, Color(1.2, 1.3, 1.4)], [1.0, Color(FrostFx.PALE, 0.0)]]})
 	var lt := OmniLight3D.new()
 	lt.light_color = Color(0.6, 0.82, 1.0)
 	lt.light_energy = 0.0
@@ -116,7 +116,7 @@ static func update(h: Hero, delta: float) -> void:
 			var off := d.rotated(Vector3.UP, randf_range(-0.6, 0.6)) * randf_range(-1.2, 1.2) + d.cross(Vector3.UP) * randf_range(-1.8, 1.8)
 			var p: Vector3 = g2 + off
 			p.y = h.game.world.height_at(p.x, p.z)
-			var cn := FrostVolleyFx._crystal(root, p, randf_range(0.5, 0.95), tr)
+			var cn := FrostFx.crystal(root, p, randf_range(0.5, 0.95), tr)
 			if cn != null:
 				crystals.append(cn)
 		Sfx.play_at("ice_arrow_hit", g2, -4.0, 0.85)
@@ -124,13 +124,13 @@ static func update(h: Hero, delta: float) -> void:
 		Fx.later(root, 2.6, func():        # (skipped once the zone's fx_root is gone; captures no hero)
 			for cn in crystals:
 				if is_instance_valid(cn):
-					FrostVolleyFx._break(root, wld, cn, tr)
+					FrostFx.smash(root, wld, cn, tr)
 			Sfx.play_at("ice_shatter", g2, -5.0, 1.0))
 	# foes in the gale frost over
 	if on and fmod(t, 0.25) < delta:
 		for e in h.game.enemies_near(h.global_position + d * BREATH_R * 0.5, BREATH_R * 0.6):
 			if not e.dead and (e.global_position - h.global_position).normalized().dot(d) > 0.55:
-				FrostVolleyFx.frost_body(h.game, e, 2.0)
+				FrostFx.frost_body(h.game, e, 2.0)
 	if t > BREATH_T:
 		for k in ["mist", "glit", "needles"]:
 			var p = b[k]
@@ -143,11 +143,11 @@ static func update(h: Hero, delta: float) -> void:
 
 ## A patch of hoarfrost on the ground (FrostVolleyFx's ground shader): it spreads, holds, then thaws.
 static func _frost_patch(h: Hero, root: Node3D, c: Vector3, r: float) -> void:
-	var gm := FrostVolleyFx._mat("ground")
-	gm.set_shader_parameter("hoar", FrostVolleyFx.hoarfrost())
+	var gm := FrostFx.mat("ground")
+	gm.set_shader_parameter("hoar", FrostFx.hoarfrost())
 	gm.set_shader_parameter("noise_tex", InfernalFx.noise())
-	gm.set_shader_parameter("pale", FrostVolleyFx.PALE)
-	gm.set_shader_parameter("deep", FrostVolleyFx.DEEP)
+	gm.set_shader_parameter("pale", FrostFx.PALE)
+	gm.set_shader_parameter("deep", FrostFx.DEEP)
 	gm.set_shader_parameter("seed", randf() * 10.0)
 	gm.set_shader_parameter("tile", maxf(1.0, r * 0.55))
 	var mi := ElementalFx._piece(root, InfernalFx.disc_mesh(h.game.world, c, r, 32, 5, 0.06), gm, c, 6.0)
@@ -183,8 +183,8 @@ static func _shell_form(rig: Node3D) -> void:
 				sm.roughness = 0.08
 				sm.metallic_specular = 1.0
 				sm.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
-	var rim := FrostVolleyFx._mat("rim")
-	rim.set_shader_parameter("col", FrostVolleyFx.PALE)
+	var rim := FrostFx.mat("rim")
+	rim.set_shader_parameter("col", FrostFx.PALE)
 	rim.set_shader_parameter("glow", 2.2)
 	for mi in n.find_children("*", "MeshInstance3D", true, false):
 		(mi as MeshInstance3D).material_overlay = rim
@@ -205,10 +205,10 @@ static func _shell_form(rig: Node3D) -> void:
 	var root := _root(rig)
 	if root != null:
 		var g: Vector3 = host.global_position
-		ElementalFx._dust(root, g + Vector3(0, 0.15, 0), FrostVolleyFx.MIST, 1.2, 0.4, {"amount": 6, "life": 1.0,
+		ElementalFx._dust(root, g + Vector3(0, 0.15, 0), FrostFx.MIST, 1.2, 0.4, {"amount": 6, "life": 1.0,
 			"explosive": 1.0, "shape": "ring", "r": 1.2, "r_in": 0.8, "dir": Vector3.UP, "spread": 20.0, "vel": [0.2, 0.6],
 			"radial": [1.0, 2.0], "damping": [2.0, 3.0], "scale": [0.7, 1.1], "grow": [0.5, 1.6]})
-		FrostVolleyFx._glints(root, g + Vector3(0, 1.0, 0), 10)
+		FrostFx.glints(root, g + Vector3(0, 1.0, 0), 10)
 	var sfx: Node = rig.get_tree().root.get_node_or_null("Sfx") if rig.is_inside_tree() else null
 	if sfx != null:
 		sfx.call("play_at", "ice_form", host.global_position, -3.0, randf_range(0.95, 1.05))
@@ -220,7 +220,7 @@ static func _shell_break(rig: Node3D, sh: Node3D) -> void:
 		sh.queue_free()
 		return
 	sh.set_meta("s", SHELL_SIZE)
-	FrostVolleyFx._break(root, g.world, sh, InfernalFx.tier(g), SHELL_PIECES)
+	FrostFx.smash(root, g.world, sh, InfernalFx.tier(g), SHELL_PIECES)
 	var sfx: Node = rig.get_tree().root.get_node_or_null("Sfx")
 	if sfx != null:
 		sfx.call("play_at", "ice_shatter", sh.global_position, -2.0, randf_range(0.85, 0.95))
@@ -235,6 +235,6 @@ static func nostril_puff(rig: Node3D) -> void:
 		return
 	var fwd: Vector3 = -rig.global_transform.basis.z
 	var at: Vector3 = (hd as Node3D).global_position + fwd * 0.45
-	ElementalFx._dust(root, at, FrostVolleyFx.MIST, 0.35, 0.3, {"amount": 4, "life": 1.4, "explosive": 0.8,
+	ElementalFx._dust(root, at, FrostFx.MIST, 0.35, 0.3, {"amount": 4, "life": 1.4, "explosive": 0.8,
 		"shape": "sphere", "r": 0.05, "dir": (fwd + Vector3.DOWN * 0.6).normalized(), "spread": 25.0, "vel": [0.4, 0.9],
 		"damping": [1.5, 2.5], "gravity": -0.4, "scale": [0.6, 1.0], "grow": [0.5, 2.2]})

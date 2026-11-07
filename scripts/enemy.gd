@@ -299,7 +299,7 @@ func set_soul_lit(on: bool) -> void:
 	_soul_lit = on
 	_set_flash(0.0)
 
-## Frost Volley's rime (FrostVolleyFx.frost_body): a rest overlay crawling up the body from the feet, v 0..1 of the
+## Frost Volley's rime (FrostFx.frost_body): a rest overlay crawling up the body from the feet, v 0..1 of the
 ## way to the head (0 takes it off). Cosmetic, on every game.
 var _frost_mat: ShaderMaterial
 var _frosted := false
@@ -311,7 +311,7 @@ func set_frost(v: float) -> void:
 		if v <= 0.0:
 			return
 		_frost_mat = ShaderMaterial.new()
-		_frost_mat.shader = FrostVolleyFx.shader("body")
+		_frost_mat.shader = FrostFx.shader("body")
 		_frost_mat.set_shader_parameter("noise_tex", InfernalFx.noise())
 	_frost_mat.set_shader_parameter("amt", v)
 	_frost_mat.set_shader_parameter("base_y", global_position.y)

@@ -87,6 +87,7 @@ static func _default(h: Hero, ev: Dictionary) -> void:
 static func update(h: Hero, delta: float) -> void:
 	if h.game == null or h.game.world == null:
 		return
+	FrostFx.update_bodies(h.game, delta)      # every frosted foe, whoever frosted it (once a frame)
 	var t0 := FxTiming.t()
 	KnightFx.update(h, delta)
 	WraithFx.update(h, delta)
