@@ -1,9 +1,10 @@
 class_name ArcherFx
 extends RefCounted
-## Visual effects for the archer's skills (SkillFx events; the gameplay is in archer.gd). What flies or lies in
-## wait is raised here on the archer's own game and on his puppet on every partner's (Hero.arrows, volleys,
-## Thunderstep's sigils), and Archer.update moves it on both: a puppet's arrows stop and spark on a foe but hurt
-## nothing, its volley rains without hitting, its sigils wait for the "spring" event instead of detonating themselves.
+## Visual effects for the archer's skills (SkillFx events; the gameplay is in archer.gd and skills/). His arrows
+## are drawn and flown by ArcherArrowFx on every game, and hurt nothing: the hits are the skills' own (ArrowSkill).
+## Volleys and Thunderstep's sigils are still raised here on his own game and on his puppet on every partner's
+## (Hero.volleys, snares), and Archer.update moves them on both: a puppet's volley rains without hitting, its sigils
+## wait for the "spring" event instead of detonating themselves.
 ##  the attack / Fire Arrow: "loose" {p: from, d: direction, k: "war"|"fire", x: it pierces}
 ##  Frost Volley: "cast" (the glacier arrow drawn, aimed high), "impact" {p: the ground, r: radius}: the flight up and
 ##    the storm (FrostVolleyFx); the rain's strikes come from Archer._rain on both games
@@ -25,30 +26,8 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 		["snare", "cast"], ["beast", "cast"]:
 			pass
 		["attack", "loose"], ["pierce", "loose"], ["a_multishot", "loose"], ["a_explosive", "loose"], ["a_glacial", "loose"], ["a_stormshot", "loose"]:
-			var from: Vector3 = ev["p"]
-			var dir: Vector3 = ev["d"]
-			var kind := str(ev.get("k", "war"))
-			# the layered arrow of its kind (ArrowFx.PRESETS: the Phoenix for Fire Arrow), flown by Archer.update
-			var n := ArrowFx.projectile(kind, h.game)
-			root.add_child(n)
-			n.global_position = from
-			n.look_at(from + dir, Vector3.UP)
-			h.arrows.append({"node": n, "dir": dir, "left": Archer.RANGE + 5.0, "pierce": bool(ev.get("x", false)), "hit": {},
-				"mult": float(ev.get("m", 1.0)), "src": str(ev["s"]), "kind": kind, "pts": []})
-			ArrowFx.end_draw(h)
-			h.fxs.erase("draw_fire")
-			h.fxs.erase("fire_cast")
-			ArrowFx.release(h, kind, from, dir)
-			if kind == "frost":
-				Fx.aura(n, Color(0.6, 0.88, 1.0), 16, 0.25, 0.06, 0.35, 0.0, 0.06)
-				SkillFx.snd(h, "frost_loose", -4.0, 1.2)
-			elif kind == "storm":
-				Fx.aura(n, Color(0.75, 0.8, 1.0), 20, 0.6, 0.05, 0.25, 0.0, 0.08)
-				ArcFx.charge(h, from, ArcFx.STORM, 0.25)
-				SkillFx.snd(h, "storm_shot", -3.0)
-			if str(ev["s"]) == "a_multishot" and Time.get_ticks_msec() - int(h.fxs.get("scatter_snd", 0)) > 300:
-				h.fxs["scatter_snd"] = Time.get_ticks_msec()     # (one sound for the five arrows)
-				SkillFx.snd(h, "scatter_loose", -3.0)
+			# the arrow of its kind, flown on every game (ArcherArrowFx); the hits are the skill's own (ArrowSkill)
+			ArcherArrowFx.loosed(h, ev)
 		["volley", "impact"]:
 			var g: Vector3 = ev["p"]
 			var r: float = float(ev.get("r", Archer.VOLLEY_R))
@@ -76,9 +55,13 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 				Fx._free_later(ring, float(ev.get("x", Archer.MARK_SECS)))
 			SkillFx.snd(h, "hunter_mark", -2.0)
 		["a_explosive", "blast"]:
-			# Blast Arrow's burst: the fire sim's fireball is ArrowFx.finish's; here the blast's own boom and ring
+			# Blast Arrow's burst: the fire sim's fireball is ArrowFx.finish's; here the blast's own boom and ring, and
+			# the simulated fire on the nearest it set burning ("t"; the rest burn on their numbers)
 			var bp: Vector3 = ev["p"]
-			Fx.ring(root, Vector3(bp.x, h.game.world.height_at(bp.x, bp.z), bp.z), float(ev.get("r", Archer.BLAST_R)), Color(1.0, 0.5, 0.15), 0.45)
+			Fx.ring(root, Vector3(bp.x, h.game.world.height_at(bp.x, bp.z), bp.z), float(ev.get("r", 3.5)), Color(1.0, 0.5, 0.15), 0.45)
+			for e in ev.get("t", []):
+				if is_instance_valid(e):
+					ArrowFx.burn(h.game, e, "fire", float(ev.get("x", 3.0)))
 			Sfx.play_at("blast_arrow", bp, 0.0)
 			SkillFx.shake(h, 0.25)
 		["beast", "impact"]:
@@ -218,6 +201,7 @@ static func update(h: Hero, _delta: float) -> void:
 	elif h.fxs.has("draw_volley"):
 		FrostVolleyFx.end_draw(h)
 		h.fxs.erase("draw_volley")
+	ArcherArrowFx.update(h, _delta)
 	FrostVolleyFx.update(h, _delta)
 	ThunderstepFx.update(h, _delta)
 

@@ -6,7 +6,7 @@ extends SceneTree
 var fails := 0
 const KEYS := ["id", "cls", "name", "key", "lvl", "mana", "cd", "aim", "range", "desc", "channel", "hold", "style", "use", "hit",
 	"speed", "lock", "cancel", "dmg", "base", "per_lvl", "type", "knock", "area", "dot", "tags", "power", "role", "pvp",
-	"rarity", "direction"]   # (the last two: the Hero Codex, data/codex/)
+	"rarity", "direction", "k"]   # (the last three: the Hero Codex, data/codex/; "k" is the skill's own numbers, Skill.val)
 
 ## Styles more than one user plays (the weapon swings, monsters' attacks, the shared skills): a skill's "hit" must
 ## not retime them.
@@ -66,6 +66,8 @@ func _validate(s: Dictionary) -> String:
 			return "%s: \"dot\" needs a kind (burn, chill, slow) and \"secs\"" % id
 	if s.has("tags") and not s["tags"] is Array:
 		return "%s: \"tags\" is a list" % id
+	if s.has("k") and not (s["k"] is Dictionary and (s["k"] as Dictionary).values().all(func(v): return _num(v) and float(v) >= 0.0)):
+		return "%s: \"k\" is a dictionary of numbers >= 0" % id
 	if s.has("pvp") and not (s["pvp"] is Dictionary and (s["pvp"] as Dictionary).values().all(func(v): return _num(v) and float(v) >= 0.0)):
 		return "%s: \"pvp\" is a dictionary of numbers >= 0" % id
 	# the Path of Exile way: a main skill has no cooldown (its use time is its limit); a cooldown is for utility

@@ -24,7 +24,8 @@ entries: `Data` (skills, including the shared ones, and run skills), `Talents`, 
 missing or broken file falls back to the built-in data.
 
 **What the codex sets today:**
-- **Skills:** name, desc, mana, cd, use (timing), power (damage multiplier), range, role, rarity, direction.
+- **Skills:** name, desc, mana, cd, use (timing), power (damage multiplier), range, role, rarity, direction, and `k`:
+  the skill's own numbers, which its `Skill` object reads with `val(key, default)` (Fire Arrow's dmg, burn, burn_s…).
 - **Rites:** name, text, max, fx, rarity, k.
 - Live rites with no code behind them still reach the camp chests (`Codex.extra_rites`), if every effect key they
   use is one the game reads (`fx_keys.json`, or `dmg:`, `cd:`, `cost:`).

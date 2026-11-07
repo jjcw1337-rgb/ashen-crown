@@ -18,6 +18,7 @@ extends RefCounted
 
 const RANGE := 13.0
 const ARROW_SPEED := 34.0
+const FLIGHT := RANGE + 5.0     # how far an arrow flies before it falls
 const VOLLEY_R := 4.0
 ## Thunderstep: how far back he vaults, how long the flip takes, the sigil's reach, how long it charges, how far its
 ## lightning leaps on
@@ -159,6 +160,27 @@ static func body_gear(g: Dictionary) -> Dictionary:
 	g["coif"] = true
 	return g
 
+# ---------------------------------------------------------------- his kit
+## The skills that have their own object (docs/content/skills.md): one per hero, made the first time it's needed,
+## kept in Hero.kit. The rest are still the functions below, until each moves to its folder.
+static func skill(h: Hero, id: String) -> Skill:
+	if not h.kit.has(id):
+		var s := _make(h, id)
+		if s == null:
+			return null
+		h.kit[id] = s
+	return h.kit[id]
+
+static func _make(h: Hero, id: String) -> Skill:
+	match id:
+		"attack": return ArcherShot.new(h, id)
+		"pierce": return FireArrow.new(h, id)
+		"a_multishot": return ScatterShot.new(h, id)
+		"a_explosive": return BlastArrow.new(h, id)
+		"a_glacial": return GlacialShard.new(h, id)
+		"a_stormshot": return StormShot.new(h, id)
+	return null
+
 # ---------------------------------------------------------------- the bow
 ## Loose an arrow toward aim (an attack: the draw, the release on the pose's impact frame).
 static func shoot(h: Hero, aim: Vector3, keep_target: bool) -> void:
@@ -170,13 +192,13 @@ static func shoot(h: Hero, aim: Vector3, keep_target: bool) -> void:
 		# a shot at the foe he walked up to: he stands his ground
 		h.moving = false
 		h.path = PackedVector3Array()
-	h.atk_aim = _assist(h, aim)
+	h.atk_aim = assist(h, aim)
 	h.atk_target = null
 	h._face(h.atk_aim - h.global_position)
 	h._start_attack("bow")
 
 ## Aim help: an enemy near the point aimed at is the one aimed at.
-static func _assist(h: Hero, aim: Vector3) -> Vector3:
+static func assist(h: Hero, aim: Vector3) -> Vector3:
 	var best = null
 	var bd := 2.6
 	for e in h.game.enemies_near(aim, 2.6):
@@ -187,12 +209,11 @@ static func _assist(h: Hero, aim: Vector3) -> Vector3:
 	return best.global_position if best != null else aim
 
 static func cast(h: Hero, id: String, aim: Vector3) -> void:
+	var s := skill(h, id)
+	if s != null:
+		s.cast(aim)
+		return
 	match id:
-		"pierce":
-			h.atk_aim = _assist(h, aim)
-			h._face(h.atk_aim - h.global_position)
-			h._start_attack("bow", "pierce")
-			h.atk_dur *= 1.15
 		"volley":
 			var to := (aim - h.global_position) * Vector3(1, 0, 1)
 			h.atk_aim = h.global_position + to.limit_length(14.0)
@@ -203,11 +224,7 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 			h.atk_aim = aim
 			h._start_attack("cast", "beast")
 			h.atk_dur = 0.6
-		# a run's skills (Data.RUN_SKILLS): shots on his bow's draw, the mark a quick cast
-		"a_multishot", "a_explosive", "a_glacial", "a_stormshot":
-			h.atk_aim = _assist(h, aim)
-			h._face(h.atk_aim - h.global_position)
-			h._start_attack("bow", id)
+		# a run's skills (Data.RUN_SKILLS): the storm on his bow's draw, the mark a quick cast
 		"a_barrage":
 			var to2 := (aim - h.global_position) * Vector3(1, 0, 1)
 			h.atk_aim = h.global_position + to2.limit_length(14.0)
@@ -242,33 +259,19 @@ static func sound(h: Hero, skill: String, at: float) -> bool:
 static func impact(h: Hero) -> bool:
 	if not h.is_archer():
 		return false
+	if h.atk_skill == "" and h.atk_style != "bow":
+		return false
+	var s := skill(h, h.atk_skill if h.atk_skill != "" else "attack")
+	if s != null:
+		s.impact()
+		return true
 	match h.atk_skill:
-		"":
-			if h.atk_style != "bow":
-				return false
-			var n := 3 if h.talent("arrow_split") > 0.0 else 1
-			for k in n:
-				var spread := (float(k) - (n - 1) * 0.5) * 0.16
-				_loose(h, h.atk_aim, false, 1.0 if k == (n - 1) / 2 else 0.5, "attack", spread)
-			RunTalents.on_shot(h)
-		"pierce":
-			_loose(h, h.atk_aim, true, 1.3, "pierce", 0.0)
 		"volley":
 			_volley(h, h.atk_aim)
 		"snare":
 			pass        # (Thunderstep acts at the cast: the vault and the sigil)
 		"beast":
 			_command_beast(h, h.atk_aim)
-		"a_multishot":
-			var n2 := 5 + int(h.talent("multishot_more"))
-			for k in n2:
-				_loose_kind(h, h.atk_aim, false, 0.55, "a_multishot", (float(k) - (n2 - 1) * 0.5) * (0.17 if n2 <= 5 else 0.13), "war")
-		"a_explosive":
-			_loose_kind(h, h.atk_aim, false, 0.6, "a_explosive", 0.0, "fire")
-		"a_glacial":
-			_loose_kind(h, h.atk_aim, true, 1.1, "a_glacial", 0.0, "frost")
-		"a_stormshot":
-			_loose_kind(h, h.atk_aim, false, 1.0, "a_stormshot", 0.0, "storm")
 		"a_barrage":
 			var g: Vector3 = h.atk_aim
 			g.y = h.game.world.height_at(g.x, g.z)
@@ -309,25 +312,11 @@ static func _hunters_mark(h: Hero, at: Vector3) -> void:
 			b.command("attack", best)
 	h.fx("a_mark", "impact", {"p": best.global_position, "t": [best], "x": MARK_SECS})
 
-## An arrow from the bow toward at (turned by yaw radians), flying flat at chest height.
+## An arrow of one of his arrow skills, loosed from elsewhere (a rite's: Phoenix Quiver's free Fire Arrow).
 static func _loose(h: Hero, at: Vector3, pierce: bool, mult: float, src: String, yaw: float) -> void:
-	_loose_kind(h, at, pierce, mult, src, yaw, "fire" if pierce else "war")
-
-## The same with its own kind of arrow (ArrowFx.PRESETS: war, fire, frost, storm).
-static func _loose_kind(h: Hero, at: Vector3, pierce: bool, mult: float, src: String, yaw: float, kind: String) -> void:
-	var from: Vector3 = h.global_position + Vector3(0, 1.35, 0)
-	# the shot's own aim (taken from the pointer when the draw began), so walking on while he draws
-	# doesn't swing it; a different point (none today) gets its own direction
-	var dir := h.aim_dir()
-	if not at.is_equal_approx(h.atk_aim):
-		dir = h.dir_to(at)
-	dir = dir.rotated(Vector3.UP, yaw)
-	from += dir * 0.6
-	# off the bow in his hand, where the nocked arrow lay
-	var J: Dictionary = h.rig.get_meta("j")
-	if J.has("at_hand_l") and h.weapon_node != null and is_instance_valid(h.weapon_node) and h.weapon_node.get_parent() == J.get("grip_bow_at"):
-		from = (J["at_hand_l"] as Node3D).global_position + dir * 0.15
-	h.fx(src, "loose", {"p": from, "d": dir, "k": kind, "x": pierce, "m": mult})
+	var s := skill(h, src) as ArrowSkill
+	if s != null:
+		s.shoot(at, pierce, mult, yaw)
 
 ## The arrows are Meshy models (tools/blender/prep_arrow.py, head toward -Z): "war" (black-shafted, barbed: his
 ## plain shots), "fire" (red-fletched: Fire Arrow, burning in flight), "frost" (the glacier arrow: an ice
@@ -565,87 +554,10 @@ static func update(h: Hero, delta: float) -> void:
 	keep_companions(h, delta)
 	if h.has_meta("vault"):
 		_update_vault(h, delta)
-	if h.arrows.is_empty() and h.volleys.is_empty() and h.snares.is_empty():
-		return
-	var w = h.game.world
-	for a in h.arrows.duplicate():
-		var n = a["node"]
-		if not is_instance_valid(n):
-			ArrowFx.end_flight(a)
-			h.arrows.erase(a)
-			continue
-		var kind: String = str(a.get("kind", "war"))
-		var step := ARROW_SPEED * delta
-		var p: Vector3 = n.global_position
-		var np: Vector3 = w.move(p, (a["dir"] as Vector3) * step, 0.05)
-		var moved := np - p
-		moved.y = 0
-		np.y = w.height_at(np.x, np.z) + 1.3
-		n.global_position = np
-		a["left"] -= step
-		var wall: bool = moved.length() < step * 0.4
-		var stop: bool = a["left"] <= 0.0 or wall
-		ArrowFx.fly(a, n, delta, h.game)
-		# Gather the whole swept segment: a long frame may cross several enemies.
-		var candidates: Array = h.game.enemies_near((p + np) * 0.5, moved.length() * 0.5 + 1.6)
-		candidates.sort_custom(func(first, second): return (first.global_position - p).dot(moved) < (second.global_position - p).dot(moved))
-		for e in candidates:
-			if e.dead or (a["hit"] as Dictionary).has(e):
-				continue
-			var d := _seg_dist(Vector2(e.global_position.x, e.global_position.z), Vector2(p.x, p.z), Vector2(np.x, np.z))
-			if d < e.radius + 0.35:
-				a["hit"][e] = true
-				# the strike seen (the puppet's too): the entry flash, the cone out of his back, the sparks
-				ArrowFx.pierce(h, kind, e, a["dir"])
-				if kind == "frost":
-					# Glacial Shard: frost bursting over the ground round each one it passes through
-					ElementalFx.frost_nova(h, w.fx_root, Vector3(e.global_position.x, w.height_at(e.global_position.x, e.global_position.z), e.global_position.z), 1.5)
-					Sfx.play_at("ice_arrow_hit", e.global_position, -4.0, randf_range(0.95, 1.1))
-				elif kind == "storm":
-					ArcFx.charge(h, e.global_position + Vector3(0, 1.0, 0), ArcFx.STORM, 0.5)
-				if h.puppet:
-					# a partner's arrow: it strikes home for the eye only (his own game deals the hit)
-					if a["pierce"]:
-						ArrowFx.burn(h.game, e, kind, 3.0)
-					else:
-						stop = true
-						break
-					continue
-				e.seared = kind == "fire"      # the burning arrow sears the wound: fire, not a spray of blood
-				h._hit_enemy(e, a["mult"] * shatter(h, e), 0.25 if not a["pierce"] else 0.5, a["src"])
-				e.seared = false
-				if kind == "frost" and not e.dead:
-					if h.talent("glacial_freeze") > 0.0 and RunTalents.chilled(e):
-						RunTalents._freeze(h, e, 1.2)       # Shatterpoint
-					e.chill(0.4, 3.0)      # Glacial Shard
-				if kind == "storm":
-					# Storm Shot: lightning leaps on from the one it struck
-					var avg2: float = (h.dmg_min + h.dmg_max) * 0.5
-					RunTalents._chain(h, e, 4 + int(h.talent("storm_jumps")), avg2 * 0.7 * h.buff_mult() * h.dmg_mult("a_stormshot"), 7.0)
-				if str(a["src"]) == "a_explosive":
-					a["left"] = 0.0      # (it bursts on the first it strikes: below, where its flight ends)
-					stop = true
-					break
-				# Fire Arrow sets what it passes through alight (Pyre: longer and hotter)
-				if a["pierce"] and kind == "fire":
-					var avg: float = (h.dmg_min + h.dmg_max) * 0.5
-					var pyre := 1.0 + h.talent("burn_dmg") / 100.0
-					e.ignite((avg * 0.35 + h.level * 1.2 + 2.0) * pyre * h.dmg_mult("pierce"), 3.0 * pyre, kind)
-					ArrowFx.burn(h.game, e, kind, 3.0 * pyre)
-				# the one he shoots is the one his beast goes for
-				h.mark = e
-				h.mark_t = 6.0
-				if not a["pierce"]:
-					stop = true
-					break
-		if stop:
-			# the end of the flight (the range run out, or a wall): the burst where it ends
-			if str(a["src"]) == "a_explosive" and not h.puppet:
-				_blast(h, np)
-			ArrowFx.finish(h, kind, np, a["dir"], wall)
-			ArrowFx.end_flight(a)
-			n.queue_free()
-			h.arrows.erase(a)
+	# his arrow skills' arrows (ArrowSkill), on his own game only: a partner's copy of him only shows them
+	if not h.puppet:
+		for sk in h.kit.values():
+			sk.update(delta)
 	for v in h.volleys.duplicate():
 		if v.has("plain"):
 			# Arrow Storm: plain arrows, no frost
@@ -675,44 +587,17 @@ static func update(h: Hero, delta: float) -> void:
 			if float(s["t"]) <= 0.0:
 				_detonate(h, s)
 
-## Blast Arrow's burst where its flight ends: a share of the weapon's blow to all within 3.5 m, burning them.
-const BLAST_R := 3.5
-const BLAST_BURNS := 2
-static func _blast(h: Hero, at: Vector3) -> void:
-	var avg: float = (h.dmg_min + h.dmg_max) * 0.5
-	var r := BLAST_R * (1.0 + h.talent("blast_r") / 100.0)
-	h.fx("a_explosive", "blast", {"p": at, "r": r})
-	if h.talent("blast_r") > 0.0:
-		h.fx("run", "flare", {"p": at, "r": r, "n": 0})
-	var shown := 0
-	for e in h.game.enemies_near(at, r):
-		if e.dead:
-			continue
-		h._hit_enemy(e, 1.5, 0.6, "a_explosive")
-		if not e.dead:
-			e.ignite((avg * 0.25 + h.level * 0.8) * h.dmg_mult("a_explosive"), 3.0, "fire")
-			if shown < BLAST_BURNS:
-				# (the simulated body fire is costly: the nearest two show it, the rest burn on their numbers)
-				ArrowFx.burn(h.game, e, "fire", 3.0)
-				shown += 1
-
 ## Arrow Storm's strikes (every 0.25 s for 1.5 s), on his own game.
 static func _barrage_tick(h: Hero, v: Dictionary) -> void:
 	for e in h.game.enemies_near(v["pos"], float(v["r"])):
 		if not e.dead:
 			h._hit_enemy(e, BARRAGE_PCT, 0.05, "a_barrage")
 
-static func _seg_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
-	var ab := b - a
-	var t := clampf((p - a).dot(ab) / maxf(ab.length_squared(), 0.0001), 0.0, 1.0)
-	return (a + ab * t).distance_to(p)
-
 static func clear(h: Hero) -> void:
-	for a in h.arrows:
-		ArrowFx.end_flight(a)
-		if is_instance_valid(a["node"]):
-			(a["node"] as Node3D).queue_free()
-	h.arrows.clear()
+	for sk in h.kit.values():
+		sk.clear()
+	h.kit.clear()
+	ArcherArrowFx.clear(h)
 	ArrowFx.end_draw(h)
 	h.volleys.clear()
 	FrostVolleyFx.clear(h)

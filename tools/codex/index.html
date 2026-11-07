@@ -408,7 +408,9 @@ function editor(rel, list, e, type, isNew) {
     f += field("Mana", "mana", e.mana, "number") + field("Cooldown (s, 0 = none)", "cd", e.cd, "number") +
       field("Use time (s)", "use", e.use, "number") + field("Power (damage ×)", "power", e.power, "number") +
       field("Range (m)", "range", e.range, "number") + field("Role", "role", e.role || "") +
-      field("Tags (comma separated)", "tags", (e.tags || []).join(", "), "text", { wide: true }) + field("Description", "desc", e.desc || "", "area");
+      field("Tags (comma separated)", "tags", (e.tags || []).join(", "), "text", { wide: true }) + field("Description", "desc", e.desc || "", "area") +
+      (e.k && Object.keys(e.k).length ? `<label class="wide">Its numbers. <span style="color:var(--faint)">The keys are what its code reads, so only the values change here. Keep the description's numbers the same.</span>
+       <div class="fxrows" id="krows">${Object.entries(e.k).map(([k, v]) => kRow(k, v)).join("")}</div></label>` : "");
   } else if (type === "rite") {
     f += field("Max stacks", "max", e.max || 1, "number") +
       `<label class="wide">Effects per stack (key and number). <span style="color:var(--faint)">Use <code>{key}</code> in the text to show the number.</span>
@@ -474,11 +476,11 @@ function collect(e, type) {
     const fx = {};
     dlg.querySelectorAll("#fxrows .fxrow").forEach((r) => { const [a, b] = r.querySelectorAll("input"); if (a.value.trim() && b.value !== "") fx[a.value.trim()] = +b.value; });
     if (Object.keys(fx).length || e.fx) x.fx = fx; else delete x.fx;      // (a run rite works by its proc: no effects list)
-    if (e.k) {
-      x.k = structuredClone(e.k);
-      dlg.querySelectorAll("#krows .fxrow").forEach((r) => { const key = r.dataset.key, v = r.querySelectorAll("input")[1].value;
-        if (v !== "") x.k[key] = typeof e.k[key] === "number" ? +v : v; });
-    }
+  }
+  if (e.k) {      // a run rite's numbers, or a skill's (Skill.val)
+    x.k = structuredClone(e.k);
+    dlg.querySelectorAll("#krows .fxrow").forEach((r) => { const key = r.dataset.key, v = r.querySelectorAll("input")[1].value;
+      if (v !== "") x.k[key] = typeof e.k[key] === "number" ? +v : v; });
   }
   if (!x.needs) delete x.needs;
   return x;

@@ -36,10 +36,10 @@ flowchart TD
 
 | Piece | Where | The Archer today |
 |---|---|---|
-| Name, text, mana, cooldown, range, power, timing | its entry in `data/codex/heroes/<hero>.json` ([data](../systems/data.md)) | ✓ name, text, mana, cooldown, range and timing (no `power`). Its damage multipliers are still constants in `archer.gd`. |
+| Name, text, mana, cooldown, range, power, timing, and its own numbers (`k`, read with `val`) | its entry in `data/codex/heroes/<hero>.json` ([data](../systems/data.md)) | ✓ name, text, mana, cooldown, range and timing. Fire Arrow's numbers are in its `k`; the other skills' still use `val`'s defaults in their code until each gets its `k`. |
 | The class wiring (key, aim, tags) | `Data.SKILLS` | ✓ |
-| The rules: `cast`, `impact`, `update` for this skill | `skills/<skill>/<skill>.gd` | all in `archer.gd` (957 lines) |
-| The look: its fx events' handlers | `skills/<skill>/<skill>_fx.gd` | `archer_fx.gd`, `skills/thunderstep/thunderstep_fx.gd`, and the shared `scripts/arrow_fx.gd`, `frost_volley_fx.gd`, `arc_fx.gd` |
+| The rules: a `Skill` object (`game/systems/skills/skill.gd`) with `cast`, `impact`, `update` | `skills/<skill>/<skill>.gd` | his arrow skills: `skills/shot`, `fire_arrow`, `scatter_shot`, `blast_arrow`, `glacial_shard`, `storm_shot`, on `shared/arrow_skill.gd` and the shared `Missile` flight (`game/systems/skills/missile.gd`). The rest are still in `archer.gd`. |
+| The look: its fx events' handlers | `skills/<skill>/<skill>_fx.gd` | the arrows in flight: `shared/arrow_flight_fx.gd` (each game flies its own from the "loose" event, with the same `Missile` step); the rest in `archer_fx.gd`, `skills/thunderstep/thunderstep_fx.gd`, and the shared `scripts/arrow_fx.gd`, `frost_volley_fx.gd`, `arc_fx.gd` |
 | Its own models and textures | `skills/<skill>/` | `skills/frost_volley/rain/`, `skills/thunderstep/` |
 | What its skills share | `shared/` (one hero) or `game/systems/` (several heroes) | the three shared fx scripts above, still in `scripts/` |
 | Icon | `assets/textures/skills/` | ✓ |

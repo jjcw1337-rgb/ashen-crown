@@ -140,7 +140,9 @@ var drain_victims: Array = []  # Drain Life's victims this frame: the main one, 
 var covenant_t := 0.0        # Warlock: Fel Covenant (Drain Life forks further and heals double)
 var wl := {}                 # Warlock: his three directions' state (WarlockHex: curses, fears, crows, the feast, the shield)
 var bolts: Array = []        # Warlock's Blight Bolts in flight: [{node, dir, left}] (flown by WarlockFx.update, burst here)
-## The archer (archer.gd): arrows in flight, volleys raining down, snares lying in wait, the spirit beasts
+## A hero's skills that are objects (Skill, docs/content/skills.md), by skill id: made by his class's script
+var kit: Dictionary = {}
+## The archer (archer.gd): arrows in flight (drawn: ArcherArrowFx), volleys raining down, snares lying in wait, the spirit beasts
 var arrows: Array = []
 var volleys: Array = []
 var snares: Array = []

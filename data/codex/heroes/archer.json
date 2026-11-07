@@ -30,7 +30,14 @@
 			"mana": 5,
 			"cd": 0.0,
 			"range": 16.0,
-			"lvl": 1
+			"lvl": 1,
+			"k": {
+				"dmg": 130,
+				"burn": 35,
+				"burn_lvl": 1.2,
+				"burn_flat": 2,
+				"burn_s": 3
+			}
 		},
 		{
 			"id": "volley",
