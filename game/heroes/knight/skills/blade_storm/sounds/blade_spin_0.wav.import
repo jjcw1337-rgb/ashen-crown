@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://csh8x5x7cpv3f"
-path="res://.godot/imported/blade_spin_0.wav-b56cc0aae72739a37876bc97869bd862.sample"
+path="res://.godot/imported/blade_spin_0.wav-3e5dd7ecd2855fbe58ac935c922a864e.sample"
 
 [deps]
 
-source_file="res://assets/audio/sfx/blade_spin_0.wav"
-dest_files=["res://.godot/imported/blade_spin_0.wav-b56cc0aae72739a37876bc97869bd862.sample"]
+source_file="res://game/heroes/knight/skills/blade_storm/sounds/blade_spin_0.wav"
+dest_files=["res://.godot/imported/blade_spin_0.wav-3e5dd7ecd2855fbe58ac935c922a864e.sample"]
 
 [params]
 

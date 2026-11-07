@@ -125,9 +125,7 @@ var heal_pool := 0.0
 var mana_pool := 0.0
 var dead := false
 var dead_t := 0.0
-var charge_t := -1.0
-var charge_dir := Vector3.ZERO
-var charge_hit := {}
+var charge_t := -1.0         # a dash in progress (the Knight's Charge): seconds into it, -1 when none (ClassSkills.dash)
 var anim_time := 0.0
 var shield_rest := Transform3D()
 var trail: MeshInstance3D
@@ -156,10 +154,7 @@ var swipe_idle := 0.0
 var swipe_q := false
 var swipe_aim := Vector3.ZERO
 var swipe_keep := false
-const SLAM_RANGE := 6.0
-const SLAM_REACH := 1.25
-var slam_leap := 0.0       # Holy Slam: how far this leap carries him, and how far ahead the blade lands
-var slam_reach := SLAM_REACH
+var atk_leap := -1.0        # how far this attack's lunge carries him when a skill sets it (Holy Slam's leap): -1 for none
 var atk_target = null
 var stamina := 100.0
 var max_stamina := 100.0
@@ -1231,14 +1226,14 @@ func _swipe_lunge(a0: float, a1: float) -> void:
 	var L: Array = SWIPE_LUNGE[atk_style]
 	var f0 := clampf((a0 - L[0]) / (L[1] - L[0]), 0.0, 1.0)
 	var f1 := clampf((a1 - L[0]) / (L[1] - L[0]), 0.0, 1.0)
-	var slam := atk_style == "cleave" and atk_skill in ["cleave", "k_rites"]
-	var d: float = (smoothstep(0.0, 1.0, f1) - smoothstep(0.0, 1.0, f0)) * (slam_leap if slam else float(L[2]))
+	var slam := atk_leap >= 0.0
+	var d: float = (smoothstep(0.0, 1.0, f1) - smoothstep(0.0, 1.0, f0)) * (atk_leap if slam else float(L[2]))
 	if d <= 0.0:
 		return
 	# along the aim taken when the swing started, not the body's facing
 	var fwd := aim_dir()
 	if slam:
-		# Holy Slam leaps to the spot aimed at, sliding round anything solid on the way
+		# a skill's leap (Holy Slam's) to the spot aimed at, sliding round anything solid on the way
 		global_position = game.world.move(global_position, fwd * d)
 		return
 	# don't step through a foe that's already in reach
@@ -1458,6 +1453,7 @@ func _start_attack(style: String, skill := "", secs := 0.0) -> void:
 	if not pvs.is_empty():
 		atk_dur *= PvpStatus.act_mult(self)       # harried (PvP)
 	impact_done = false
+	atk_leap = -1.0
 	trail_pts.clear()
 	trail_col = ClassSkills.trail_color(cls, skill)
 	var w = equipment.get("weapon")
@@ -1577,8 +1573,7 @@ func _hit_enemy(e, mult: float, knock: float = 0.0, src := "", flat := 0.0) -> v
 		game.net.tell_dealt(self, e.global_position, dealt, r["crit"])      # (the number on the player's screen)
 	if run != null:
 		RunTalents.on_hit(self, e, dealt, r["crit"], src)
-		if cls == "knight" and src != "k_judgment" and run.skills.has("k_judgment"):
-			KnightSkills.brand(self, e)      # Holy Brands, for Judgment to spend
+		ClassSkills.struck(self, e, src)      # a class's own mark on what its blows strike (the Knight's Holy Brands)
 		if is_instance_valid(e) and e.has_meta("deathmark") and e.get_meta("deathmark").get("h") == self:
 			e.get_meta("deathmark")["stored"] = float(e.get_meta("deathmark")["stored"]) + dealt      # (Death Mark's store)
 	if ls > 0.0:
@@ -1905,7 +1900,7 @@ func _process_body(delta: float) -> void:
 	if roll_t >= 0.0:
 		vel = Dodge.step(self, delta)
 	elif charge_t >= 0.0:
-		KnightSkills.update_charge(self, delta)
+		ClassSkills.dash(self, delta)      # a dash (the Knight's Charge) moves him in place of his walking
 	else:
 		if atk_t >= 0.0:
 			_update_attack(delta)
@@ -2224,7 +2219,7 @@ func _update_attack(delta: float) -> void:
 	atk_t += delta
 	var a := atk_t / atk_dur
 	var swipe := atk_skill == "" and SWIPE_LUNGE.has(atk_style)
-	if swipe or (atk_skill in ["cleave", "k_rites"] and atk_style == "cleave"):
+	if swipe or (atk_leap >= 0.0 and SWIPE_LUNGE.has(atk_style)):
 		_swipe_lunge(a0, a)
 	if not impact_done and a >= Anim.impact_at(atk_style):
 		impact_done = true

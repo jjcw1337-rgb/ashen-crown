@@ -53,7 +53,7 @@ func _run() -> void:
 		for f in 130:   # long enough for the slam at the slower attack pace
 			await process_frame
 			if h.impact_done and landed == Vector3.ZERO:
-				landed = h.global_position - h.rig.global_transform.basis.z * h.slam_reach
+				landed = h.global_position - h.rig.global_transform.basis.z * h.kit["cleave"].reach
 		var miss := Vector2(landed.x - aim.x, landed.z - aim.z).length()
 		var want := minf(d, 6.0)
 		var flat := Vector2(landed.x - start.x, landed.z - start.z).length()

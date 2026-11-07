@@ -474,11 +474,11 @@ func _skills(h) -> void:
 	var spin := [_foe(h, Vector3(2, 0, 0), "zombie", 5000.0), _foe(h, Vector3(-2, 0, 1), "zombie", 5000.0)]
 	h.run.skills.append("k_judgment")
 	ok = await _cast(h, "k_whirl", h.global_position, 1.5)
-	check(ok and spin.all(func(e): return e.life < e.max_life and load("res://game/heroes/knight/knight_skills.gd").brands(e) >= 2), "Blade Storm: strikes all round twice, branding them")
+	check(ok and spin.all(func(e): return e.life < e.max_life and load("res://game/heroes/knight/shared/holy_brands.gd").count(e) >= 2), "Blade Storm: strikes all round twice, branding them")
 	l0 = spin[0].life
 	ok = await _cast(h, "k_judgment", spin[0].global_position, 1.5)
 	var branded_hit: float = l0 - spin[0].life
-	check(ok and load("res://game/heroes/knight/knight_skills.gd").brands(spin[0]) == 0 and branded_hit > 0.0, "Judgment: the pillar spends the brands (%.0f)" % branded_hit)
+	check(ok and load("res://game/heroes/knight/shared/holy_brands.gd").count(spin[0]) == 0 and branded_hit > 0.0, "Judgment: the pillar spends the brands (%.0f)" % branded_hit)
 	await _fresh(h, "knight", {})
 	var near2 = _foe(h, Vector3(2.5, 0, 0), "zombie", 5000.0)
 	ok = await _cast(h, "k_aegis", h.global_position, 1.0)

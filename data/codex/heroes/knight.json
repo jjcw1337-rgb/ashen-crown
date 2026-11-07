@@ -30,7 +30,15 @@
 			"mana": 5,
 			"cd": 0.0,
 			"range": 6.0,
-			"lvl": 1
+			"lvl": 1,
+			"k": {
+				"dmg": 160,
+				"radius": 2.6,
+				"stun_s": 1,
+				"knock": 0.6,
+				"reach": 1.25,
+				"cast_s": 0.95
+			}
 		},
 		{
 			"id": "nova",
@@ -43,7 +51,15 @@
 			"cd": 0.0,
 			"use": 1.0,
 			"power": 0.37,
-			"lvl": 3
+			"lvl": 3,
+			"k": {
+				"base": 18,
+				"per_lvl": 5,
+				"weapon": 40,
+				"radius": 7,
+				"knock": 1.2,
+				"heal_max": 5
+			}
 		},
 		{
 			"id": "charge",
@@ -58,7 +74,15 @@
 			"tags": [
 				"movement"
 			],
-			"lvl": 5
+			"lvl": 5,
+			"k": {
+				"dmg": 130,
+				"stun_s": 0.8,
+				"knock": 2.5,
+				"radius": 1.6,
+				"speed": 18,
+				"secs": 0.5
+			}
 		},
 		{
 			"id": "cry",
@@ -73,7 +97,13 @@
 				"warcry",
 				"buff"
 			],
-			"lvl": 9
+			"lvl": 9,
+			"k": {
+				"secs": 12,
+				"stun_s": 2,
+				"radius": 6,
+				"cast_s": 0.6
+			}
 		},
 		{
 			"id": "k_whirl",
@@ -87,7 +117,14 @@
 			"use": 0.9,
 			"role": "spin through a crowd",
 			"lvl": 1,
-			"run": true
+			"run": true,
+			"k": {
+				"dmg": 70,
+				"radius": 3.2,
+				"spins": 2,
+				"beat": 0.22,
+				"knock": 0.3
+			}
 		},
 		{
 			"id": "k_aegis",
@@ -104,7 +141,15 @@
 				"warcry"
 			],
 			"lvl": 1,
-			"run": true
+			"run": true,
+			"k": {
+				"ward": 35,
+				"secs": 5,
+				"radius": 5,
+				"taunt_s": 4,
+				"bastion_k": 2,
+				"cast_s": 0.5
+			}
 		},
 		{
 			"id": "k_judgment",
@@ -119,7 +164,20 @@
 			"range": 14.0,
 			"role": "cash in the brands",
 			"lvl": 9,
-			"run": true
+			"run": true,
+			"k": {
+				"dmg": 120,
+				"per_brand": 45,
+				"radius": 3,
+				"burn": 30,
+				"burn_s": 3,
+				"knock": 0.5,
+				"ring_r": 3.2,
+				"brand_max": 5,
+				"brand_s": 6,
+				"brand_burn": 4,
+				"brand_burn_s": 2
+			}
 		},
 		{
 			"id": "k_rites",
@@ -136,7 +194,19 @@
 				"movement"
 			],
 			"lvl": 9,
-			"run": true
+			"run": true,
+			"k": {
+				"dmg": 150,
+				"missing": 200,
+				"radius": 2.8,
+				"knock": 0.4,
+				"pick": 3.5,
+				"reach": 1.25,
+				"cast_s": 0.85,
+				"nq_dmg": 30,
+				"nq_frw": 20,
+				"nq_s": 4
+			}
 		}
 	],
 	"rites": [

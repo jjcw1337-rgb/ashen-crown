@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://4078hgqituh7"
-path="res://.godot/imported/judgment_pillar_0.wav-04eeb9d188b8fbd672cd353a0b474770.sample"
+path="res://.godot/imported/judgment_pillar_0.wav-41430ff55b27711053973f9c029c2b3f.sample"
 
 [deps]
 
-source_file="res://assets/audio/sfx/judgment_pillar_0.wav"
-dest_files=["res://.godot/imported/judgment_pillar_0.wav-04eeb9d188b8fbd672cd353a0b474770.sample"]
+source_file="res://game/heroes/knight/skills/judgment/sounds/judgment_pillar_0.wav"
+dest_files=["res://.godot/imported/judgment_pillar_0.wav-41430ff55b27711053973f9c029c2b3f.sample"]
 
 [params]
 

@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://2hgwymya1lcl"
-path="res://.godot/imported/last_rites_0.wav-563308a1708a0efe8f2c72fad6e5d84f.sample"
+path="res://.godot/imported/last_rites_0.wav-16f9838da64bdfc7a8d3a025baa679c3.sample"
 
 [deps]
 
-source_file="res://assets/audio/sfx/last_rites_0.wav"
-dest_files=["res://.godot/imported/last_rites_0.wav-563308a1708a0efe8f2c72fad6e5d84f.sample"]
+source_file="res://game/heroes/knight/skills/last_rites/sounds/last_rites_0.wav"
+dest_files=["res://.godot/imported/last_rites_0.wav-16f9838da64bdfc7a8d3a025baa679c3.sample"]
 
 [params]
 

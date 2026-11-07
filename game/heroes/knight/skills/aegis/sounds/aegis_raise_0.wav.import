@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://ckdnie2o4om0c"
-path="res://.godot/imported/aegis_raise_0.wav-5729fa89632b7c6f52cb1aa8f7cdb230.sample"
+path="res://.godot/imported/aegis_raise_0.wav-89eafdb3c51f9ed7a070234e45f34ae8.sample"
 
 [deps]
 
-source_file="res://assets/audio/sfx/aegis_raise_0.wav"
-dest_files=["res://.godot/imported/aegis_raise_0.wav-5729fa89632b7c6f52cb1aa8f7cdb230.sample"]
+source_file="res://game/heroes/knight/skills/aegis/sounds/aegis_raise_0.wav"
+dest_files=["res://.godot/imported/aegis_raise_0.wav-89eafdb3c51f9ed7a070234e45f34ae8.sample"]
 
 [params]
 

@@ -99,7 +99,7 @@ static func sound(h: Hero, skill: String, at: float) -> bool:
 # ---------------------------------------------------------------- optional hooks
 ## A class's script may also have any of these (Hero asks; without one, nothing changes). They keep a class's
 ## own ways out of hero.gd: the archer's bow shot, reach, pace and bow posing are his script's answers; the Warlock's
-## Drain Life channel, her shield and her body's glow are hers.
+## Drain Life channel, her shield and her body's glow are hers; the Knight's Charge and Holy Brands are his.
 
 ## Its own basic attack in place of the weapon swing (the archer's bow shot). True when it took it.
 static func attack(h: Hero, aim: Vector3, keep_target: bool) -> bool:
@@ -162,6 +162,22 @@ static func end_channel(h: Hero) -> void:
 static func absorb(h: Hero, dmg: float) -> float:
 	var m = of(h.cls)
 	return float(m.absorb(h, dmg)) if m != null and m.has_method("absorb") else dmg
+
+## A dash in progress (Hero.charge_t >= 0: the Knight's Charge), every frame in place of his walking: it moves him and
+## ends it (charge_t = -1).
+static func dash(h: Hero, delta: float) -> void:
+	var m = of(h.cls)
+	if m != null and m.has_method("dash"):
+		m.dash(h, delta)
+	else:
+		h.charge_t = -1.0
+
+## A blow of the hero's landed (Hero._hit_enemy, wherever his hits are decided, after its damage): the class's own
+## mark on what it strikes (the Knight's Holy Brands).
+static func struck(h: Hero, e, src: String) -> void:
+	var m = of(h.cls)
+	if m != null and m.has_method("struck"):
+		m.struck(h, e, src)
 
 ## The node the weapon hangs from, when the class holds it its own way (the ranger's bow in his left hand); else null.
 static func weapon_hand(h: Hero, J: Dictionary) -> Node3D:

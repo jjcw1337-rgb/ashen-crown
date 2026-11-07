@@ -1,123 +1,34 @@
 class_name KnightFx
 extends RefCounted
-## Visual effects for the knight's skills (SkillFx events; the gameplay is in Hero._impact / _update_charge).
-##  Holy Slam: "slam" {p: where the blade lands, x: hit anything} (the leap itself is the pose)
-##  Holy Nova: "impact"
-##  Charge: "cast" (the dash's trail follows him in `update` for 0.5 s), "hit" {p, x: the first one}, "end"
-##  Battle Cry: "impact"
-## Nova, Battle Cry and Charge are drawn in the knight's own holy language (HolyFx: the seal, holy fire, the light
-## column, the shockwave); they had been the generic Fx ring, burst and pillar in gold.
-
-const HOLY := Color(1.0, 0.85, 0.4)
+## The Knight's effects (SkillFx events): each skill's look draws its own (skills/<skill>/<skill>_fx.gd), from its
+## rules' events (skills/<skill>/<skill>.gd). They only draw. His holy language (the seal, holy fire rings, the light
+## column, the shockwave) is HolyFx's (game/systems/fx/), which other heroes borrow pieces of.
+##  Holy Slam: "slam" {p}, "struck" {ps}            HolySlamFx
+##  Holy Nova: "impact"                             HolyNovaFx
+##  Charge: "cast", "hit" {p, x}, "end"             ChargeFx (its trail follows him in `update`)
+##  Battle Cry: "impact"                            BattleCryFx
+##  Blade Storm: "impact" {n}                       BladeStormFx
+##  Aegis: "impact", "burst" {p, x}                 AegisFx
+##  Judgment: "impact" {ps}, "brand" {t}            JudgmentFx, HolyBrandsFx
+##  Last Rites: "impact" {p}, "kill" {p}            LastRitesFx
 
 static func play(h: Hero, ev: Dictionary) -> bool:
-	var root: Node3D = h.game.world.fx_root
-	var pos := h.global_position
-	match [str(ev["s"]), str(ev["e"])]:
-		["cleave", "cast"], ["nova", "cast"], ["cry", "cast"]:
-			pass    # their effects land on the impact frame
-		["cleave", "slam"]:
-			var at: Vector3 = ev["p"]
-			for p in ev.get("ps", PackedVector3Array()):
-				Fx.sparks(root, p, Color(1.0, 0.97, 0.9))
-			Fx.holy_slam(root, at, 2.6)
-			SkillFx.shake(h, 0.5 if bool(ev.get("x", false)) else 0.32)
-			SkillFx.hitstop(h, 0.09 if bool(ev.get("x", false)) else 0.04)
-		["nova", "impact"]:
-			HolyFx.nova(h, root, pos, 7.0)
-			SkillFx.shake(h, 0.35)
-		["cry", "impact"]:
-			HolyFx.battle_cry(h, root, pos, 6.0)
-			SkillFx.snd(h, "battle_cry")
-			SkillFx.duck(h, -8.0, 1.2)
-			SkillFx.shake(h, 0.3)
-		["k_whirl", "impact"]:
-			# Blade Storm: a ring of holy fire at sword height for each turn, sparks thrown off the edge
-			var n: int = int(ev.get("n", 2))
-			for i in n:
-				var t := root.create_tween()
-				t.tween_interval(0.22 * i)
-				t.tween_callback(func():
-					if is_instance_valid(h) and h.game != null and h.game.world != null:
-						var at: Vector3 = h.global_position
-						HolyFx.fire_ring(root, at + Vector3(0, 0.9, 0), 0.8, KnightSkills.WHIRL_R, 0.25, 0.28)
-						HolyFx.motes(root, at, KnightSkills.WHIRL_R * 0.8, 10, 0.8)
-						Fx.sparks(root, at + Vector3(0, 1.0, 0), Color(1.0, 0.95, 0.75))
-						Sfx.play_at("blade_spin", at, -3.0, randf_range(0.95, 1.08)))
-			SkillFx.shake(h, 0.18)
-		["k_aegis", "impact"]:
-			# Aegis: the seal under him, a shaft of light round him, a gold ring out to the taunt
-			HolyFx.battle_cry(h, root, pos, 5.0)
-			var ward := Fx.aura(h, Color(1.0, 0.9, 0.55), 22, 0.15, 0.08, 1.0, 0.2, 0.8, 50.0, Vector3(0, 1.0, 0))
-			ward.name = "aegis_ward"
-			Fx._free_later(ward, 6.0)
-			SkillFx.snd(h, "aegis_raise", -2.0)
-		["k_aegis", "burst"]:
-			# the ward bursts: a ring of holy fire and a ripple out to the burst's reach, harder the more it soaked
-			var bp: Vector3 = ev["p"]
-			var big := clampf(float(ev.get("x", 0.0)) / 120.0, 0.3, 1.0)
-			HolyFx.seal(root, bp, 2.0, 0.1, 0.7, 0.6 + big)
-			HolyFx.sunburst(root, bp + Vector3(0, 1.2, 0), 1.8 + big, 0.3, 1.6 + big, 1.0)
-			HolyFx.fire_ring(root, bp, 0.5, KnightSkills.AEGIS_R, 0.9 + big, 0.4)
-			HolyFx.shockwave(root, h.game, bp, KnightSkills.AEGIS_R + 0.8, 0.4)
-			var wf := h.get_node_or_null("aegis_ward")
-			if wf != null:
-				wf.queue_free()
-			Sfx.play_at("aegis_burst", bp, -1.0)
-			SkillFx.shake(h, 0.2 + 0.3 * big)
-		["k_rites", "impact"]:
-			# Last Rites lands: the slam of Holy Slam, a gold seal, and on a kill a column of light
-			var rp: Vector3 = ev["p"]
-			Fx.holy_slam(root, rp, 2.6)
-			HolyFx.seal(root, rp, 2.2, 0.1, 0.8, 1.0)
-			if bool(ev.get("x", false)):
-				HolyFx.level_up(h, root, rp)
-			Sfx.play_at("last_rites", rp, 0.0)
-			SkillFx.shake(h, 0.45)
-			SkillFx.hitstop(h, 0.08)
-		["k_judgment", "impact"]:
-			# Judgment: a seal drawn on the ground, then a column of light slamming down on it in a sunburst
-			for q in ev.get("ps", PackedVector3Array()):
-				HolyFx.seal(root, q, KnightSkills.JUDGE_R, 0.1, 0.8, 1.0)
-				HolyFx.level_up(h, root, q)
-				HolyFx.fire_ring(root, q, 0.4, KnightSkills.JUDGE_R, 0.9, 0.35)
-				HolyFx.shockwave(root, h.game, q, KnightSkills.JUDGE_R + 0.8, 0.35)
-				Sfx.play_at("judgment_pillar", q, -1.0)
-			SkillFx.shake(h, 0.3)
-		["charge", "cast"]:
-			h.fxs["charge"] = 0.5
-			HolyFx.charge_start(h, root)
-			SkillFx.snd(h, "charge_dash", -2.0)
-		["charge", "hit"]:
-			var p: Vector3 = ev["p"]
-			var first := bool(ev.get("x", false))
-			if first:
-				Sfx.play_at("charge_impact", p, 0.0)
-			HolyFx.charge_hit(h, root, p, first)
-		["charge", "end"]:
-			h.fxs.erase("charge")
-			HolyFx.charge_end(h, root, pos)
-			SkillFx.shake(h, 0.25)
-		_:
-			return false
-	return true
+	match str(ev["s"]):
+		"cleave": return HolySlamFx.play(h, ev)
+		"nova": return HolyNovaFx.play(h, ev)
+		"charge": return ChargeFx.play(h, ev)
+		"cry": return BattleCryFx.play(h, ev)
+		"k_whirl": return BladeStormFx.play(h, ev)
+		"k_aegis": return AegisFx.play(h, ev)
+		"k_judgment": return JudgmentFx.play(h, ev)
+		"k_rites": return LastRitesFx.play(h, ev)
+	return false
 
-## The Charge's trail of light and dust follows him (on the caster and on his puppet) for as long as the dash lasts.
+## Every frame, on the caster and on his puppet: his holy shaders warmed once per zone, the Charge's trail.
 static func update(h: Hero, delta: float) -> void:
 	if h.cls == "knight":
 		HolyFx.warm(h)
-	if not h.fxs.has("charge"):
-		if h.fxs.has("charge_trail"):
-			HolyFx.charge_clear(h)
-		return
-	var left: float = float(h.fxs["charge"]) - delta
-	if left <= 0.0:
-		h.fxs.erase("charge")
-		HolyFx.charge_clear(h)
-		return
-	h.fxs["charge"] = left
-	HolyFx.charge_follow(h)
+	ChargeFx.update(h, delta)
 
 static func clear(h: Hero) -> void:
-	h.fxs.erase("charge")
-	HolyFx.charge_clear(h)
+	ChargeFx.clear(h)
