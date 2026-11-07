@@ -38,7 +38,7 @@ shared there: nothing new goes in it.
 | Screens | `game/ui/<screen>/`: `lobby/` (the home screen), `chat/`, `loot_list/`, `hud/`, `run/`, `codex/`; `game/ui/ui.gd` builds them | `ui.gd` still lays out the HUD and menus itself |
 | Shared systems | `game/systems/<system>/`; the game itself in `game/game.gd` | |
 | Numbers and text | `data/codex/` (the Hero Codex editor writes it) | |
-| Sounds, icons | a skill's own sounds in its `sounds/` folder; shared ones in `assets/audio/sfx/`; icons in `assets/textures/` | some heroes' own sounds: `assets/audio/sfx/` |
+| Sounds, icons | a skill's own sounds in its `sounds/` folder (a hero's shared ones in its `shared/sounds/`); the rest in `assets/audio/sfx/`; icons in `assets/textures/` | |
 | Servers | `deploy/` | |
 | Pipeline, project-wide tests, CI | `tools/`, `.github/workflows/` | |
 

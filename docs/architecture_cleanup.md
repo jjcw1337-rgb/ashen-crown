@@ -196,8 +196,8 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
   sounds), every hero's shared code in `game/heroes/hero.gd`, the dragons' in `game/systems/dragons/`. `scripts/` is
   gone: the systems are in `game/systems/` (`fx/`, `bodies/`, `audio/`, `combat/`, `skills/`, `data/`, `net/`,
   `saves/`, `telemetry/`, Claude-1's `world/` and `loading/`), rites, gems and consumables in `game/items/`, the
-  screens in `game/ui/`, the game itself in `game/game.gd`, the shared monster code in `game/monsters/enemy.gd`. Some
-  heroes' own sounds are still in `assets/audio/sfx/`.
+  screens in `game/ui/`, the game itself in `game/game.gd`, the shared monster code in `game/monsters/enemy.gd`. Every
+  hero's own sounds are in its skill folders.
 - [x] 2. The Archer, end to end, and every other hero after him (2026-11-07). Done: the reference recording; `game/systems/skills/` (`Skill`, `Missile`,
   `GroundZone`, `DelayedArea`); all eleven of his skills in their own folders with their numbers in the codex,
   Thunderstep's stun 3 s and on players too (Blaine, 2026-11-07); Hunter's Mark no longer named in `enemy.gd`; his
@@ -226,8 +226,8 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
 - [x] Monsters into `game/monsters/<monster>/` (2026-11-07). Every folder has a card (`monster.gd`) listed in
   `Monsters.CARDS`: its kinds, its Meshy rigs, its personality and its own hooks (body, brain, moves, fx, fall).
   `Enemy` names no monster. Bosses run on `BossBrain`; the Meshy body builder is `game/systems/bodies/meshy_rig.gd`.
-  A monster's own sounds are in its `sounds/`. Left: its numbers into the codex (step 5); `Enemy` itself is still in
-  `scripts/` (a shared big file).
+  A monster's own sounds are in its `sounds/`. Left: its numbers into the codex (step 5). `Enemy` itself is
+  `game/monsters/enemy.gd`.
 - [x] Maps: the map registry `game/maps/maps.gd` (2026-11-07). Each map script declares its zones, indoor, music,
   loading art and line, `build`, `title` and `light`, and Game and World ask `Maps`. The camp rules are
   `game/systems/world/camps.gd`.
