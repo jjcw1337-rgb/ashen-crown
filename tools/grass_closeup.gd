@@ -11,7 +11,7 @@ func _initialize() -> void:
 	var lod := int(a[1]) if a.size() > 1 else 0
 	var dist := float(a[2]) if a.size() > 2 else 4.0
 	var GR: Script = load("res://scripts/grass.gd")
-	load("res://scripts/mats.gd").ensure_globals()
+	load("res://game/systems/bodies/mats.gd").ensure_globals()
 	RenderingServer.global_shader_parameter_set("wind_strength", 0.25)
 	var test := a[3] if a.size() > 3 else ""
 	if test == "wind":

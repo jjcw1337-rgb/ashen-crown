@@ -7,7 +7,7 @@ var g
 var DG     # dodge.gd, at run time (a static reference compiles its Sfx before the autoload)
 var fails := 0
 func _initialize():
-	DG = load("res://scripts/dodge.gd")
+	DG = load("res://game/systems/skills/dodge.gd")
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
 	_run()

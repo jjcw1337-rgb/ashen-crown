@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://bbaatycamwsyf"
-path="res://.godot/imported/scatter_loose_0.wav-1bdd5e2eb19bb0447936508071ad7cf4.sample"
+path="res://.godot/imported/scatter_loose_0.wav-ed95c830ef3e15bcbc70a1244081993b.sample"
 
 [deps]
 
-source_file="res://assets/audio/sfx/scatter_loose_0.wav"
-dest_files=["res://.godot/imported/scatter_loose_0.wav-1bdd5e2eb19bb0447936508071ad7cf4.sample"]
+source_file="res://game/heroes/archer/skills/scatter_shot/sounds/scatter_loose_0.wav"
+dest_files=["res://.godot/imported/scatter_loose_0.wav-ed95c830ef3e15bcbc70a1244081993b.sample"]
 
 [params]
 

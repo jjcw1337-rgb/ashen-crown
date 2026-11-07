@@ -37,7 +37,7 @@ func _initialize():
 	var cpos := Vector3(5.2, 1.0, 0.0) if view == "side" else Vector3(3.6, 2.0, -3.6)
 	cam.transform = Transform3D(Basis(), cpos).looking_at(Vector3(0, 0.6, 0))
 	var SB = load("res://game/heroes/archer/companion/spirit_beast.gd")
-	var LionS = load("res://scripts/lion.gd")
+	var LionS = load("res://game/systems/bodies/lion.gd")
 	var rig: Node3D = LionS.build(SB.WOLF_GLB, 1.0)
 	root3.add_child(rig)
 	var rows := [["run", [0.0, 0.17, 0.33, 0.5, 0.67, 0.83]], ["feral_lunge", [0.1, 0.25, 0.4, 0.55, 0.7, 0.9]], ["feral_swipe", [0.1, 0.22, 0.32, 0.45, 0.6, 0.85]]]

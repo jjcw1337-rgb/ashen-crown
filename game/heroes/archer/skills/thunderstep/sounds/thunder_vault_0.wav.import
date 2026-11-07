@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://brjstxk2df7pa"
-path="res://.godot/imported/thunder_vault_0.wav-36a9546385732a3ba4446e12b82af383.sample"
+path="res://.godot/imported/thunder_vault_0.wav-a4202ec1eb71b0f2d0db330e9bed83b5.sample"
 
 [deps]
 
-source_file="res://assets/audio/sfx/thunder_vault_0.wav"
-dest_files=["res://.godot/imported/thunder_vault_0.wav-36a9546385732a3ba4446e12b82af383.sample"]
+source_file="res://game/heroes/archer/skills/thunderstep/sounds/thunder_vault_0.wav"
+dest_files=["res://.godot/imported/thunder_vault_0.wav-a4202ec1eb71b0f2d0db330e9bed83b5.sample"]
 
 [params]
 
