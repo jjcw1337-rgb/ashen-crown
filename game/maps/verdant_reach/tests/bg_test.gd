@@ -88,7 +88,7 @@ func _server() -> void:
 	var camps: Array = load("res://game/maps/verdant_reach/camps.gd").all(g.world)
 	check(Battlegrounds.portal_list(g.world).size() == 4, "four candidate portals at the forest's edges")
 	check(camps.size() >= 12 and camps.all(func(c): return g.chest_sealed(c["chest_node"])), "%d camps, every chest sealed while its camp stands" % camps.size())
-	check(camps.filter(func(c): return int(c["tier"]) == 4).size() == 2, "two boss camps")
+	check(camps.filter(func(c): return int(c["tier"]) == 4).size() == 3, "three boss camps (Hrimgar, Mossbeard, King Grubb)")
 	check(g.bg.state == "lobby", "a round begins in the starting glades")
 	check(await until(func(): return not g.net.players.is_empty(), 60.0), "a player joined")
 	# the Verdant Reach: no antechamber, bell or countdown: the raid begins once someone is in

@@ -1,7 +1,7 @@
 # The Verdant Reach (game/maps/verdant_reach/)
 
 The Battlegrounds' map: a 210 m forest of monster camps, four starting glades at its corners, four Extraction
-Portals at its edges and two bosses in its depths. Players come in from a Battlegrounds lobby as run characters
+Portals at its edges and three bosses in its depths (Hrimgar, Old Mossbeard, King Grubb). Players come in from a Battlegrounds lobby as run characters
 (level 0), clear camps for skills, rites, gear and gems, and extract to keep their hero as a survivor.
 
 | File | What |

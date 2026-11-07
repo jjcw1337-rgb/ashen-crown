@@ -146,6 +146,7 @@ var boss_bar: ProgressBar
 var boss_lbl: Label
 var boss_ref = null
 var minimap: Control
+var chat: ChatBox                # in-game chat (game/ui/chat/)
 var day_clock: DayClock              # the camp's hour on the corner map's ring
 var show_fps := false
 
@@ -185,6 +186,7 @@ func setup(g: Node) -> void:
 	plates.ui = self
 	hud.add_child(plates)
 	_build_hud()
+	chat = ChatBox.attach(self)
 	_build_inventory()
 	_build_character()
 	_build_shop()
