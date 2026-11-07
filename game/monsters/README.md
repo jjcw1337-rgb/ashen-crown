@@ -1,7 +1,7 @@
 # Monsters (game/monsters/<monster>/)
 
 One folder per monster, holding everything that is only that monster's. Its stats and text stay in
-`scripts/data.gd` `ENEMIES` under its kind, until the one data source (docs/architecture_cleanup.md, step 5).
+`game/systems/data/data.gd` `ENEMIES` under its kind, until the one data source (docs/architecture_cleanup.md, step 5).
 
 | In the folder | What |
 |---|---|

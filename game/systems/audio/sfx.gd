@@ -8,7 +8,7 @@ extends Node
 ## Buses: SFX, UI, Music, Ambience into Master, which has a limiter so big fights don't clip.
 
 const RATE := 22050
-const BANK := preload("res://scripts/sfx_bank.gd").BANK
+const BANK := preload("res://game/systems/audio/sfx_bank.gd").BANK
 const BANK_DIR := "res://assets/audio/sfx/"
 ## Rendered sounds that loop (a channel, the ambience beds)
 const LOOPS := ["drain_loop", "soul_feast", "eclipse_storm", "wind", "forest", "night_forest", "drip", "music_town", "music_select"]

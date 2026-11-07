@@ -12,9 +12,9 @@ flowchart TD
   cast -. "every frame" .-> update["ClassSkills.update<br/>things in flight or on the ground"]
 ```
 
-- `scripts/class_skills.gd` routes each call to the hero's skills script, which has the same functions for every hero
+- `game/systems/skills/class_skills.gd` routes each call to the hero's skills script, which has the same functions for every hero
   (`can_cast`, `cast`, `impact`, `update`, `rooted`, `clear`, `died`, `sound`).
-- Mana, cooldown and timing come from the codex. `SkillSpec` (`scripts/skill_spec.gd`) can also take a skill's
+- Mana, cooldown and timing come from the codex. `SkillSpec` (`game/systems/skills/skill_spec.gd`) can also take a skill's
   timing, area and damage from its data.
 - Damage goes through `Hero._hit_enemy` ([combat](../systems/combat.md)). What is seen goes through
   `h.fx(skill, event, data)` ([effects](../systems/effects.md)).

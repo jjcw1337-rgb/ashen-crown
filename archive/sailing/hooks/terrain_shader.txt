@@ -1,4 +1,4 @@
-// Not a file of its own: the sea zones' part of the terrain shader in scripts/mats.gd (TERRAIN), cut out when sailing
+// Not a file of its own: the sea zones' part of the terrain shader in game/systems/bodies/mats.gd (TERRAIN), cut out when sailing
 // was archived (2026-11-06). The uniforms went after `uniform float litter`, the cliff block after `base = mix(base,
 // col_cliff ...)`, the sand and seabed block after `base *= 1.0 - wetf * 0.3;`; ROUGHNESS mixed in 0.3 by `wetb`, the
 // normal was lifted by `ledge` (wn = normalize(wn + vec3(0.0, ledge * 0.9, 0.0))), and Mats registered the global

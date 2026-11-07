@@ -1,12 +1,12 @@
 """Turns the chosen recorded/generated candidates into the game's sounds: <folder>/<name>_<take>.wav,
-scripts/sfx_bank.gd and assets/audio/CREDITS.md (the source and license of every file). A sound only one skill uses
+game/systems/audio/sfx_bank.gd and assets/audio/CREDITS.md (the source and license of every file). A sound only one skill uses
 lives in that skill's folder (game/heroes/<hero>/skills/<skill>/sounds/; one hero's shared ones in its
 shared/sounds/); the rest in assets/audio/sfx/. A new sound goes to assets/audio/sfx/ until it's moved; a rebuilt one
 stays where it is. Names are unique across every folder.
 
     python build_sfx.py picks.json            # {"impact_flesh": ["/path/cand3.mp3", ...], ...}
     python build_sfx.py --kenney              # just the spec's Kenney sounds (all matching files become takes)
-    python build_sfx.py --bank                # only rewrite scripts/sfx_bank.gd from the files on disk
+    python build_sfx.py --bank                # only rewrite game/systems/audio/sfx_bank.gd from the files on disk
 
 Each take is decoded, trimmed of leading silence, shifted so its loudest moment lands `hit` seconds in (spells
 the game starts at the cast and whose payoff belongs on the impact frame), cut where it has died away, faded,
@@ -21,7 +21,7 @@ from spec import SPEC, BY_NAME
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), "../.."))
 OUT = os.path.join(ROOT, "assets/audio/sfx")
-BANK_GD = os.path.join(ROOT, "scripts/sfx_bank.gd")
+BANK_GD = os.path.join(ROOT, "game/systems/audio/sfx_bank.gd")
 CREDITS = os.path.join(ROOT, "assets/audio/CREDITS.md")
 LIB = os.path.expanduser("~/Documents/Game Factory Audio")
 SR = 32000

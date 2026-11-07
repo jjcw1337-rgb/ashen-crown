@@ -26,8 +26,8 @@ func _run() -> void:
 	await g.start_game(false, "knight")
 	await g.load_zone(0, "wild", "start")
 	g.ui.hide_title()
-	var RB = load("res://scripts/run_build.gd")
-	var I = load("res://scripts/items.gd")
+	var RB = load("res://game/items/run_build.gd")
+	var I = load("res://game/items/items.gd")
 	for cls in ["archer", "plague"]:
 		var h = g.hero
 		h.set_class(cls)

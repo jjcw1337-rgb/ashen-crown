@@ -36,7 +36,7 @@ func run():
  check(await until(func():return g.world!=null and not g._busy and not g._intro_playing),"post-intro home ready")
  await g.start_game(false,"knight","","Lobby "+role)
  g.hero.gold=1234
- if wager:g.hero.inventory[0]=load("res://scripts/items.gd").make("short_sword")
+ if wager:g.hero.inventory[0]=load("res://game/items/items.gd").make("short_sword")
  g.save_game()
  var character:String=g.char_id
  var client=g.lobby_client
