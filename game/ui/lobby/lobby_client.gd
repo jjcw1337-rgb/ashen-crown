@@ -263,6 +263,12 @@ func play_solo() -> void:
 
 func finished(reason: String) -> void:
  if _returning:return
+ if game.run_results_open:
+  # a run's results are up (survived or fallen): the match ending behind them (the lobby service closes it once
+  # everyone is out) takes nothing away; Save Character still saves the run, and Return goes home (Game.run_return).
+  # (jj, 2026-11-07: "Couldn't save the character": this used to wipe the run here before the button was pressed)
+  game.net.shutdown();match_id="";room={}
+  return
  _returning=true
  print("[LOBBY] Match ended: ",reason)
  game.ui.big_message(reason)

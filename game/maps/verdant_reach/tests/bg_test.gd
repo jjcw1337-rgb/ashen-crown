@@ -183,6 +183,11 @@ func _client() -> void:
 	for fn in DirAccess.get_files_at(SV.dir):
 		DirAccess.remove_absolute(SV.dir + fn)
 	check(await until(func(): return g.ui.run_ui.mode == "results", 10.0), "the results window, survived")
+	# (jj, 2026-11-07: "Couldn't save the character") the match ends behind the results (the lobby service closes
+	# it, LobbyClient.finished): the run must still be there to save
+	g.lobby_client.match_id = "bg_test"
+	await g.lobby_client.finished("The raid has ended.")
+	check(g.hero.run != null and g.ui.run_ui.mode == "results", "the match ending behind the results keeps the run")
 	var save_b = g.ui.run_ui.find_child("save", true, false)
 	if save_b:
 		save_b.pressed.emit()
