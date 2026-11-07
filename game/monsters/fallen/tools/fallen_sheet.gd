@@ -1,5 +1,5 @@
 extends SceneTree
-## Contact sheet of the three Fallen (meshy_monster.gd bodies, Anim's gaits and signature attacks): for each,
+## Contact sheet of the three Fallen (their bodies from their card, Monsters.build_rig; Anim's gaits and signature attacks): for each,
 ## a row of its run and a row of its attack, from the side or three-quarter view. Needs a display.
 ##   godot --path . -s game/monsters/fallen/tools/fallen_sheet.gd -- out.png [side|34]
 const CELL := 240
@@ -38,7 +38,6 @@ func _initialize():
 	root3.add_child(cam)
 	var cpos := Vector3(5.0, 1.1, 0.0) if view == "side" else Vector3(3.5, 2.0, -3.5)
 	cam.transform = Transform3D(Basis(), cpos).looking_at(Vector3(0, 0.8, 0))
-	var MM = load("res://game/systems/bodies/meshy_monster.gd")
 	var styles := {"fallen_skirmisher": "skirm_lunge", "fallen_reaver": "reaver_cleave", "fallen_stalker": "stalk_hook"}
 	var rows := []
 	for k in KINDS:
@@ -48,7 +47,7 @@ func _initialize():
 	for r in rows.size():
 		var kind: String = rows[r][0]
 		var d: Dictionary = Data.ENEMIES[kind]
-		var rig: Node3D = MM.build(d["mesh"], d["look"])
+		var rig: Node3D = Monsters.build_rig(kind)
 		root3.add_child(rig)
 		for c in 6:
 			var st := {"time": 1.0 + c * 0.37, "phase": 0.0, "move": 0.0, "atk": -1.0, "style": ""}

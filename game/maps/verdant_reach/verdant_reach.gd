@@ -18,7 +18,7 @@ const ZONES := ["bg"]
 const INDOOR := false
 ## Its fight music (take 18 of music_bg, Blaine's pick 2026-11-07), low, with no wind under it ("not the vibe anymore").
 const MUSIC := {"song": "bg", "amb": "none", "db": -13.0}
-const LOADING_ART := "res://assets/textures/ui/wp_bg_crypt_wide.jpg"
+const LOADING_ART := "res://game/maps/verdant_reach/loading_art.jpg"
 const PROPS := "res://game/maps/verdant_reach/props/"
 const LANTERN_AT := Vector3(-0.6, 1.5, 0.0)     # where the lantern hangs on lantern_post.glb (its own frame)
 const HALF := 105.0

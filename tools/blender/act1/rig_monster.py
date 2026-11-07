@@ -9,7 +9,7 @@
 # ankles. Weights are by distance to each bone segment (left and right kept apart), the head is rigid
 # and the feet ride the shins. The model stays in its A-pose; Goblin.imported_rig's aim turns each
 # arm's rest down the limb, like the gnome Warlock. layout.json gets the joints in Godot axes for
-# MeshyMonster.MODELS (python3 tools/blender/act1/layout_to_gd.py <kind> layout.json).
+# its monster card's RIGS (python3 tools/blender/act1/layout_to_gd.py <folder> <mesh> layout.json).
 import bpy, sys, json
 import numpy as np
 from mathutils import Vector

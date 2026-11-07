@@ -31,10 +31,9 @@ func _run() -> void:
 		g._intro_skip = true
 		await process_frame
 	# the roster
-	var MM = load("res://game/systems/bodies/meshy_monster.gd")
 	for k in KINDS:
 		var d: Dictionary = Data.ENEMIES.get(k, {})
-		check(not d.is_empty() and MM.ok(str(d.get("mesh", ""))) and d["atk"] == ATTACK[k], "%s in the roster with its model and %s" % [k, ATTACK[k]])
+		check(not d.is_empty() and not Monsters.model_paths(k).is_empty() and d["atk"] == ATTACK[k], "%s in the roster with its model and %s" % [k, ATTACK[k]])
 	var camp_foes := {}
 	for c in BgForest.CAMPS:
 		for f in c["foes"]:

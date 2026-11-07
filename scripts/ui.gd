@@ -28,7 +28,6 @@ var _xp_bonus_on := false   # the XP bonus countdown is showing on xp_bar
 var stamina_bar: HudBar
 var level_medal: HudBar.Medallion
 var action_bar: Control
-var bar_style := "A"
 var skill_slots := {}        # bar slot ("lmb", "rmb", "Q".."V") -> its Control
 var skills_panel: PanelContainer
 var talent_panel: PanelContainer
@@ -435,38 +434,6 @@ func _build_tooltip() -> void:
 	top.add_child(tooltip)
 
 # ---------------------------------------------------------------- HUD
-func _orb(col: Color, col2: Color) -> ColorRect:
-	var r := ColorRect.new()
-	r.custom_minimum_size = Vector2(150, 150)
-	var m := ShaderMaterial.new()
-	m.shader = Mats.shader("orb")
-	m.set_shader_parameter("liquid", col)
-	m.set_shader_parameter("liquid2", col2)
-	m.set_shader_parameter("fill", 1.0)
-	r.material = m
-	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return r
-
-func _orb_frame(orb: ColorRect, left: bool) -> Control:
-	var holder := Control.new()
-	holder.custom_minimum_size = Vector2(176, 176)
-	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var ring := Panel.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.05, 0.045, 0.04)
-	sb.set_corner_radius_all(88)
-	sb.border_color = Color(0.5, 0.4, 0.25)
-	sb.set_border_width_all(4)
-	sb.shadow_color = Color(0, 0, 0, 0.7)
-	sb.shadow_size = 12
-	ring.add_theme_stylebox_override("panel", sb)
-	ring.set_anchors_preset(Control.PRESET_FULL_RECT)
-	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(ring)
-	holder.add_child(orb)
-	orb.position = Vector2(13, 13)
-	orb.size = Vector2(150, 150)
-	return holder
 
 func _build_hud() -> void:
 	# bottom bar
@@ -1527,12 +1494,6 @@ const INV_EQUIP := {
 static var _inv_frame_tex: Texture2D
 static var _ornate_cache := {}
 static var _frame_cache := {}
-
-## The inventory's iron-and-gold frame at scale k (for a NinePatchRect; its patch margin is INV_PATCH * k).
-func _ornate_frame(k: float) -> Texture2D:
-	if not _frame_cache.has(k):
-		_frame_cache[k] = _scaled_tex(INV_TEX["frame"], k)
-	return _frame_cache[k]
 
 ## Any panel in the game's own frame (Blaine: "no plain boxes"): the inventory's iron inside, its iron-and-gold frame
 ## round it (the corners at their own size, the edges tiled), at scale k of the painted art; `pad` past the trim.
@@ -2864,10 +2825,6 @@ func close_all() -> bool:
 			any = true
 	tooltip.visible = false
 	return any
-
-## The title with nothing open over it (the lobby browser closed).
-func title_idle() -> bool:
-	return title_panel.visible and not (game.lobby_client != null and game.lobby_client.panel.visible)
 
 func any_panel_open() -> bool:
 	return (run_ui != null and run_ui.visible) or (game.lobby_client != null and game.lobby_client.panel.visible) or inv_panel.visible or char_panel.visible or dialog_panel.visible or skills_panel.visible or talent_panel.visible
