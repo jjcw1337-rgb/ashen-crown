@@ -246,6 +246,9 @@ func _player() -> void:
 			# (Holy Slam, his first skill, leaps onto them from beside them: the server checks where it has me)
 			g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(3.0, 0, 0), 0.5)
 			await secs(0.6)
+		if doug:
+			# (the Cream Pie, his first skill, is lobbed 12 m at most: thrown from across the map it falls short)
+			await _beside(foe, 5.0)
 		var sk: String = str(g.hero.skill_list()[0]["id"]) if not g.hero.skill_list().is_empty() else ""
 		check(sk == "" or g.hero.use_skill(sk, foe.global_position), "cast %s at them" % sk)
 		if archer:
