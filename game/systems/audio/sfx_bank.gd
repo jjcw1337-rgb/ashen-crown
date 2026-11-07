@@ -101,6 +101,7 @@ const BANK := {
 	"lion_roar": [2, "sfx", 0.0],
 	"malediction": [2, "sfx", 0.2],
 	"miasma_burst": [1, "sfx", 0.0],
+	"music_bg": [1, "sfx", 0.0],
 	"music_select": [1, "sfx", 0.0],
 	"music_town": [1, "sfx", 0.0],
 	"night_forest": [5, "ambience", 0.0],

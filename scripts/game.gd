@@ -404,11 +404,15 @@ func zone_music() -> void:
 		return
 	# the camp after dark: tonight's night bed (DayNight, one of five in turn), once the bed exists
 	var night_bed := cur_zone == "town" and day_night != null and day_night.on and day_night.night > 0.5
-	# the Verdant Reach (the Battlegrounds) has no song: its forest bed alone, not the old synthesized drone, which
-	# played under the whole match as a hum and hiss (Blaine, 2026-11-06)
-	var song := "" if cur_zone == Battlegrounds.ZONE else cur_zone
-	Sfx.play_music(song, "forest" if world.oak_forest and cur_zone != "town" and not indoor() else ("night_forest" if night_bed else ""),
+	# the Verdant Reach (the Battlegrounds): its fight music (music_bg, Blaine's pick 2026-11-07, take 18), kept low,
+	# and no wind under it ("not the vibe anymore"); never the old synthesized drone
+	if cur_zone == Battlegrounds.ZONE:
+		Sfx.play_music("bg" if Sfx.bank.has("music_bg") else "", "none", 0, BG_MUSIC_DB)
+		return
+	Sfx.play_music(cur_zone, "forest" if world.oak_forest and cur_zone != "town" and not indoor() else ("night_forest" if night_bed else ""),
 			day_night.night_take() if night_bed else 0)
+
+const BG_MUSIC_DB := -13.0      # (Blaine: "make sure it's not too loud": under the fight, not over it)
 
 ## The Arena's hall (the Arena and the Sandbox) is indoors; every other zone is under the sky.
 func indoor() -> bool:

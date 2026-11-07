@@ -243,13 +243,19 @@ SPEC = [
                 "lute over a low hummed choir, sombre and tender, background music loop, no drums"),
     # the Battlegrounds' fighting music (jj, 2026-11-07: "throw me some uplifting music while i fight"): three takes
     # for jj to pick from; the forest bed plays under it
-    dict(name="music_bg", src="eleven", n=18, dur=30.0, hit=0, loop=True, label="uplifting battle music",
+    dict(name="music_bg", src="eleven", n=21, dur=30.0, hit=0, loop=True, label="uplifting battle music",
          # (takes 0-2 the first prompt, 3-5 brighter folk, 6-8 a heroic anthem with choir, 9-11 too light; Blaine: "somewhere
          # in between church choir and baby music", takes 12-14 from this)
-         # (12-14 energetic combat; Blaine: "as good as a human home base or a dwarf base", takes 15-17 from this one)
-         prompt="warm proud feel-good medieval fantasy town music: a sturdy marching snare and frame drum, warm french horns "
-                "and low brass, a confident singable fiddle and lute melody, hearty and heroic but relaxed, like a mountain "
-                "kingdom's great hall, mid tempo, no choir, seamless background music loop"),
+         # (15-17 a warm great hall; Blaine: "redo based on 12 again", takes 18-20 from 12's prompt, with a lift)
+         prompt="energetic uplifting action adventure combat music for a fantasy game: punchy drums, driving staccato "
+                "strings and cello ostinato, a confident catchy brass melody that lifts and soars, determined, upbeat and "
+                "feel-good, no choir, not childish, seamless background music loop"),
+    # the multiplayer page's music (Blaine, 2026-11-07: "a more elevator version of [the Battlegrounds' take 18] for the
+    # home screen"): the same feel, calm
+    dict(name="music_home", src="eleven", n=3, dur=30.0, hit=0, loop=True, label="calm home screen music",
+         prompt="calm relaxed easy-listening version of uplifting fantasy adventure music: soft pizzicato strings and a "
+                "gentle cello line, warm muted brass pads, light brushed percussion, a hopeful laid-back melody, smooth "
+                "and pleasant lounge feel, seamless background music loop"),
     dict(name="wind", src="eleven", n=3, dur=8.0, hit=0, loop=True, label="wind blowing",
          prompt="cold wind blowing across an empty moor at night, steady, no music"),
     # the camp's bonfire takes what you throw in (gone for good), and a pick-up click in the inventory
