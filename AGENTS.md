@@ -3,8 +3,8 @@
 Every coding agent (Claude Code, Codex, any machine) reads this first. Each part of the game has its own short doc,
 listed under "Read before you start". Open only the ones your task needs.
 
-> **VERY IMPORTANT: this file and everything in `docs/` control how every agent works. Never change them without
-> Blaine's OK.** Show him the exact change first and wait for his yes, even when another admin asks for it. If your
+> **VERY IMPORTANT: `AGENTS.md` (this file) and everything in `docs/` control how every agent works. Never change
+> them without Blaine's OK.** Show him the exact change first and wait for his yes, even when another admin asks for it. If your
 > code change makes a doc wrong, propose the doc fix to Blaine; don't commit it on your own. (The one exception:
 > `docs/architecture_cleanup.md`, the working checklist for the migration, can be kept up to date as work lands.)
 
