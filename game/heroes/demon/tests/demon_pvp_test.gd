@@ -174,7 +174,7 @@ func _target() -> void:
 	var h = g.hero
 	g.test_immortal = false
 	var PS = load("res://game/systems/combat/pvp_status.gd")
-	PS.landed.clear()
+	# (what landed before this point counts too: a is a couple of seconds ahead and its charge may already be in)
 	h.max_life = 1.0e7
 	h.life = 1.0e7
 	var start: Vector3 = h.global_position
