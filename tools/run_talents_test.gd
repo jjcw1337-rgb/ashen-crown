@@ -23,7 +23,7 @@ func _run() -> void:
 		g._intro_skip = true
 		await process_frame
 	await g.start_game(false, "archer")
-	await g.load_zone(0, "wild", "start")
+	await g.load_zone(0, "sandbox", "start")
 	var h = g.hero
 	await _data(h)
 	await _archer(h)

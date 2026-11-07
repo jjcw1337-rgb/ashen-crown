@@ -1,6 +1,6 @@
 extends SceneTree
-## Frames of the monsters' heavy blows (Enemy.special_fx: a boss's slam, nova and summoning, the bear's maul) on the
-## moor, from the game camera, for before/after comparisons of their effects. Needs a display and --fixed-fps 30:
+## Frames of the monsters' heavy blows (Enemy.special_fx: a boss's slam, nova and summoning, the bear's maul) in the
+## Arena's hall, from the game camera, for before/after comparisons of their effects. Needs a display and --fixed-fps 30:
 ##   xvfb-run -a godot --path . --rendering-driver vulkan --resolution 960x540 --fixed-fps 30 \
 ##     -s tools/visual_audit/special_shots.gd -- outdir kind:event[,kind:event...] [--every 3] [--secs 1.2] [--quality 2]
 ## Writes outdir/<kind>_<event>_<NNN>.png every --every frames from the blow.
@@ -29,7 +29,7 @@ func _run() -> void:
 	g.apply_quality(q)
 	await g.start_game(false, "knight")
 	g.ui.close_all()
-	await g.load_zone(0, "wild", "road")
+	await g.load_zone(0, "sandbox", "start")
 	g.apply_quality(q)
 	g.ui.close_all()
 	g.test_immortal = true

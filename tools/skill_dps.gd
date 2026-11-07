@@ -26,7 +26,7 @@ func _run() -> void:
 	for cls in classes:
 		await g.start_game(false, cls)
 		g.ui.close_all()
-		await g.travel(0, "wild", "start")
+		await g.travel(0, "sandbox", "start")
 		while g._busy:
 			await process_frame
 		var h = g.hero

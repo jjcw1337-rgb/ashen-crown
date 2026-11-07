@@ -21,7 +21,7 @@ func _run() -> void:
 	for f in 20:
 		await process_frame
 	print("[FZ1] fxs before=", g.hero.fxs.keys(), " ok=", g.hero.fxs.has("fists"))
-	await g.load_zone(0, "wild", "start")
+	await g.load_zone(0, "sandbox", "start")
 	while g._busy:
 		await process_frame
 	for f in 60:

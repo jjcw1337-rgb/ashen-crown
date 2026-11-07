@@ -75,18 +75,18 @@ func _run() -> void:
 		await process_frame
 	await g.start_game(false, "archer")
 	g.difficulty = 0
-	await g.load_zone(0, "wild", "start")
+	await g.load_zone(0, "bg", "start")
 	g.ui.close_all()
 	g.test_immortal = true
 	g.hero.set_level(12)
 	for e in g.world.enemies_root.get_children():
 		e.queue_free()
-	var road: Vector3 = g.world.spawns["road"]
+	var road: Vector3 = g.world.spawns["start"]
 	_place(road)
 	await create_timer(1.0).timeout
 	g.hero.beasts[0]._reset_to_side()
 	g.zoom = 0.6
-	var dir: Vector3 = g.world.spawns["road2"] - road
+	var dir: Vector3 = g.world.free_spot_near(road + Vector3(24, 0, 8), 3.0) - road
 	dir.y = 0
 	dir = dir.normalized()
 	await _idle(2.0)

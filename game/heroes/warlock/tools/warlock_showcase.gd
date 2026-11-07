@@ -1,6 +1,6 @@
 extends SceneTree
 ## Frames of the Warlock (the jungle void spirit) and every skill of hers in the game, for judging the look:
-## the body close up (idle, floating, casting), then each skill cast at a pack of zombies on the moor, a few frames
+## the body close up (idle, floating, casting), then each skill cast at a pack of zombies in the Arena's hall, a few frames
 ## each. Needs a display (on a Mac it just opens a window).
 ##   godot --path . --fixed-fps 30 --resolution 1280x720 -s game/heroes/warlock/tools/warlock_showcase.gd -- <out_dir> [skill,skill|all] [quality 0-3] [zoom]
 var g
@@ -66,7 +66,7 @@ func _run() -> void:
 	h.recalc()
 	g.test_immortal = true
 	g.test_allskills = true
-	await g.travel(0, "wild", "start")
+	await g.travel(0, "sandbox", "start")
 	while g._busy:
 		await process_frame
 	g.ui.close_all()

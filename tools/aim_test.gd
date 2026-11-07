@@ -26,7 +26,7 @@ func _run() -> void:
 	while g.world == null or g._busy:
 		await process_frame
 	await g.start_game(false, "warlock")
-	await g.travel(0, "wild", "start")
+	await g.travel(0, "sandbox", "start")
 	while g._busy:
 		await process_frame
 	var h = g.hero

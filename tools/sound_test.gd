@@ -44,7 +44,7 @@ func _run() -> void:
 	for cls in EXPECT.keys():
 		await g.start_game(false, cls)
 		g.ui.close_all()
-		await g.load_zone(0, "wild", "road")
+		await g.load_zone(0, "sandbox", "start")
 		g.ui.close_all()
 		g.test_immortal = true
 		var h = g.hero
@@ -86,16 +86,14 @@ func _run() -> void:
 	await wait(0.2)
 	var want := ["impact_flesh", "crit_sting", "kill_flesh", "impact_bone", "kill_bone", "hero_hit"]
 	print("[S] combat: %s, missing %s" % [sfx.counts.keys(), want.filter(func(n): return not sfx.counts.has(n))])
-	# the fort: King Grubb mutters to himself before the fight, louder as you close in, and stops when it starts
-	g.difficulty = 0
-	await g.load_zone(0, "lair", "start")
+	# King Grubb (a camp's boss in the Verdant Reach) mutters to himself before the fight, louder as you close in,
+	# and stops when it starts
+	await g.load_zone(0, "bg", "start")
 	await wait(1.0)
-	var boss = null
-	for e in g.world.enemies_root.get_children():
-		if e.boss and e.hoard != null:
-			boss = e
-	if boss == null:
-		print("[S] fort: no King Grubb")
+	var boss = g.spawn_enemy("goblin_king", g.world.free_spot_near(g.hero.global_position + Vector3(0, 0, -30.0), 2.0), 6, false, "", 900)
+	await wait(0.5)
+	if boss == null or boss.hoard == null:
+		print("[S] grubb: no King Grubb")
 		quit()
 		return
 	var start_d: float = g.hero.global_position.distance_to(boss.global_position)
@@ -110,14 +108,14 @@ func _run() -> void:
 	var heard: int = sfx.counts.get("grubb_mutter", 0)
 	boss.hoard.fx("intro")
 	await wait(0.1)
-	print("[S] fort: start %.0f m from Grubb, mutters %d, volume at 60 m %.1f dB / 18 m %.1f dB, stops when the fight starts %s" % [start_d, heard, vols[0], vols[1], boss.hoard.voice == null or not boss.hoard.voice.playing])
-	# Act I: the camp's song in the camp; soft trees in the breeze on the moor and at the fort, not the wind
+	print("[S] grubb: start %.0f m from Grubb, mutters %d, volume at 60 m %.1f dB / 18 m %.1f dB, stops when the fight starts %s" % [start_d, heard, vols[0], vols[1], boss.hoard.voice == null or not boss.hoard.voice.playing])
+	# Act I: the camp's song in the camp; soft trees in the breeze in the Verdant Reach, not the wind
 	var beds := {}
-	for zn in ["town", "wild", "lair"]:
+	for zn in ["town", "bg"]:
 		await g.load_zone(0, zn, "start")
 		beds[zn] = [sfx.music.stream == sfx.bank["music_town"][0], sfx.ambience.stream == sfx.bank["forest"][0], sfx.ambience.stream == sfx.bank["wind"][0] \
 				or (sfx.bank.has("night_forest") and sfx.ambience.stream == sfx.bank["night_forest"][0])]
-	print("[S] Act I beds: camp plays its song %s (wind, or the night bed after dark, %s); moor rustling trees %s; fort rustling trees %s" % [beds["town"][0], beds["town"][2], beds["wild"][1], beds["lair"][1]])
+	print("[S] Act I beds: camp plays its song %s (wind, or the night bed after dark, %s); the Verdant Reach rustling trees %s" % [beds["town"][0], beds["town"][2], beds["bg"][1]])
 	# the New Character screen: its own theme while open, each hero's own sound when chosen, the camp's song after
 	await g.load_zone(0, "town", "start")
 	g.ui.open_class_picker()

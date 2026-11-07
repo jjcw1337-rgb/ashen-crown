@@ -1,5 +1,5 @@
 extends SceneTree
-## Grass benchmark and screenshots from the game camera: stands the hero in open grass on the Act I moor
+## Grass benchmark and screenshots from the game camera: stands the hero in open grass in the Verdant Reach
 ## (off the road, away from trees), lets it settle, then measures a run of frames: CPU frame time, draw
 ## calls, primitives and visible objects (Performance monitors), and saves a screenshot.
 ## Run with a display (software GL works, slowly):
@@ -30,8 +30,7 @@ func _run() -> void:
 		await process_frame
 	g.set_quality(q)
 	await g.start_game(false, "knight")
-	g.difficulty = 0
-	await g.load_zone(0, "wild", "start")
+	await g.load_zone(0, "bg", "start")
 	g.test_immortal = true
 	var spot := _open_grass(g.world)
 	g.hero.global_position = spot

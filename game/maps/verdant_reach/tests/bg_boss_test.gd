@@ -97,7 +97,7 @@ func _run() -> void:
 	check(g.world.enemies_root.get_children().filter(func(e): return e.kind == "spore_shroom" and not e.dead and e.pack_id == pack).is_empty(), "and his mushrooms withered")
 	check(g.world.enemies_root.get_children().any(func(e): return e.kind == "spore_shroom" and not e.dead and e.pack_id != pack), "another camp's mushrooms stay (they were never his)")
 	await secs(1.0)
-	check(not g.ui.victory_panel.visible, "no story ending (no Act I Complete / Begin A2 screen)")
+	check(g.ui.get("victory_panel") == null, "no story ending (the UI has no Act I Complete screen)")
 	check(g.world.interactables.filter(func(t): return t.kind == "portal" and t.has_meta("boss")).is_empty(), "and no portal to town: the Extraction Portals are the way out")
 	print("[B] done, %d failed" % fails)
 	quit()

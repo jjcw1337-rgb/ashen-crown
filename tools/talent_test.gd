@@ -37,7 +37,7 @@ func _run() -> void:
 	_check_data()
 	await g.start_game(false, "knight")
 	g.difficulty = 0
-	await g.load_zone(0, "wild", "start")
+	await g.load_zone(0, "sandbox", "start")
 	await wait(0.3)
 	var h = g.hero
 	# points and rows

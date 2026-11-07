@@ -1,7 +1,7 @@
 extends SceneTree
 ## Which of a zone's tall meshes dither away round the hero (Props.see_through, Mats.PROP_SHADER and the other shaders
 ## with the `occlude` block) and which still can't (a material see_through leaves alone), in the running game.
-##   godot --headless --path . -s tools/visual_audit/see_through_check.gd -- town lair wild
+##   godot --headless --path . -s tools/visual_audit/see_through_check.gd -- town bg
 ## args: Act I zones to visit in turn
 var g
 

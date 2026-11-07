@@ -97,7 +97,7 @@ func _run() -> void:
 	g.toggle_pause()
 	await shot("pause", 1.0)
 	g.toggle_pause()
-	await g.travel(0, "wild", "start")
+	await g.travel(0, "sandbox", "start")
 	while g._busy:
 		await process_frame
 	await shot("hud_moor", 2.5)

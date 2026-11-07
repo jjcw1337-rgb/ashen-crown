@@ -24,7 +24,7 @@ func _run() -> void:
 	h._face(Vector3(0, 0, 1))
 	await create_timer(0.6).timeout
 	snap(out, "idle")
-	await g.travel(0, "wild", "start")
+	await g.travel(0, "sandbox", "start")
 	while g._busy:
 		await process_frame
 	g.ui.close_all()

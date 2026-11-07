@@ -34,8 +34,6 @@ const BANK := {
 	"coins": [2, "ui", 0.0],
 	"covenant": [1, "sfx", 0.4],
 	"crit_sting": [1, "sfx", 0.0],
-	"crowd_cheer": [2, "sfx", 0.0],
-	"crowd_roar": [1, "sfx", 0.0],
 	"curse_cast": [2, "sfx", 0.15],
 	"curse_leap": [1, "sfx", 0.0],
 	"death_demon": [1, "sfx", 0.0],

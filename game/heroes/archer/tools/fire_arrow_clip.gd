@@ -43,7 +43,7 @@ func _run() -> void:
 	await g.start_game(false, "archer")
 	g.ui.close_all()
 	g.difficulty = 0
-	await g.load_zone(0, "wild", "road")
+	await g.load_zone(0, "bg", "start")
 	g.ui.close_all()
 	var h = g.hero
 	h.level = 14
@@ -79,7 +79,7 @@ func _run() -> void:
 	var secs: float = float(SECS.get(sk, 2.6))
 	for v in views:
 		for mode in modes:
-			var home: Vector3 = g.world.spawns["road"]
+			var home: Vector3 = g.world.spawns["start"]
 			home = Vector3(home.x, g.world.height_at(home.x, home.z), home.z)
 			h.global_position = home
 			h.direct_dir = Vector3.ZERO

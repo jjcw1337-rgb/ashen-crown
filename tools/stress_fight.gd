@@ -1,6 +1,6 @@
 extends SceneTree
 ## A heavy fight for the frame-time audit (Blaine, 2026-11-05: "the demon and plague doctor fighting or archer ...
-## all 3 and plague doctor throwing the bombs ... lots of demon spells at once caused lag"): on the moor, a pack of
+## all 3 and plague doctor throwing the bombs ... lots of demon spells at once caused lag"): in the Arena's hall, a pack of
 ## monsters round the hero; the hero (a class) casts every skill in turn at them, and two co-op partners' puppets of
 ## other classes play their whole recorded skill sets beside him (SkillWarmData's events, as a partner's game would).
 ## Prints frame-time stats, the worst frames with what had just been cast, and the renderer's counts. With
@@ -47,7 +47,7 @@ func _run() -> void:
 	await g.start_game(false, cls)
 	while g._busy:
 		await process_frame
-	await g.load_zone(0, "wild", "waypoint")
+	await g.load_zone(0, "sandbox", "start")
 	while g._busy:
 		await process_frame
 	g.test_immortal = true
