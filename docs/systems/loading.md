@@ -7,7 +7,7 @@ Mac at High (a normal frame is ~17 ms).
 **Nothing is built that the player isn't going to.** The home screen (the multiplayer page) has no world behind it:
 the boot loads only the home screen's models, and each choice there (a lobby, Sandbox) loads its own zone; going back
 home unloads the world (`Game.unload_world`). Tool scripts still get the camp behind the
-title (`Game._harness_camp`); `-- --real-boot` gives them the real start (`tools/boot_flow_test.gd`).
+title (`Game._harness_camp`); `-- --real-boot` gives them the real start (`game/systems/loading/tests/boot_flow_test.gd`).
 
 Every zone change follows the same order, under the loading screen:
 
@@ -18,9 +18,9 @@ Every zone change follows the same order, under the loading screen:
 
 ## The rules
 
-1. **One loader: `ResCache`** (`scripts/res_cache.gd`). Nothing else calls `ResourceLoader.load_threaded_request`.
+1. **One loader: `ResCache`** (`game/systems/loading/res_cache.gd`). Nothing else calls `ResourceLoader.load_threaded_request`.
    - **Ahead of time:** `ResCache.prepare(scope, paths)` reads the files on Godot's threaded loader (many at once:
-     `tools/load_bench.gd` measured the camp's 163 files at 1.2 s, against 3.1 s frozen on the main thread and 11 s on
+     `game/systems/loading/tests/load_bench.gd` measured the camp's 163 files at 1.2 s, against 3.1 s frozen on the main thread and 11 s on
      a single worker thread), `ResCache.wait_ready(tree, scope)` awaits them a frame at a time so the screen keeps
      drawing, and `ResCache.release(scope)` lets them go when the place is left. Scopes today: `"boot"` (the title's
      models and the camp's list, during the intro) and one per zone (`Game.load_zone`: its recorded list, then its
@@ -38,10 +38,10 @@ Every zone change follows the same order, under the loading screen:
 4. **Warm what will first appear during play under the loading screen.** Godot compiles GPU pipelines the first time
    something is drawn on camera, so building it unseen is not enough: it has to be drawn. A shader is also freed with
    its last material, so keep the materials (`SkillWarm.keep`). The warm-ups:
-   - `SkillWarm` (`scripts/skill_warm.gd`): the party's classes' skill effects, replayed on hidden puppets from
+   - `SkillWarm` (`game/systems/loading/skill_warm.gd`): the party's classes' skill effects, replayed on hidden puppets from
      recorded events (`SkillWarmData`, re-recorded by `tools/skill_warm_capture.gd` after a skill's effects change),
      in fast-forward.
-   - `MonsterWarm` (`scripts/monster_warm.gd`): every monster kind that can still turn up in the zone. A new place
+   - `MonsterWarm` (`game/systems/loading/monster_warm.gd`): every monster kind that can still turn up in the zone. A new place
      that spawns monsters mid-zone needs its kinds added to `MonsterWarm.kinds`.
    - `UI.warm_windows`: the game's windows and the character sheet's portrait.
 5. **Shadows:** a `discard` in a material runs in every shadow cascade. Static props cast from depth-only twins
@@ -49,7 +49,7 @@ Every zone change follows the same order, under the loading screen:
 
 ## Measuring
 
-See [measuring.md](measuring.md): `tools/load_bench.gd` (loading strategies on the same files), `--kpi <scenario>`
+See [measuring.md](measuring.md): `game/systems/loading/tests/load_bench.gd` (loading strategies on the same files), `--kpi <scenario>`
 (`load_ms`), `tools/app_hitch_audit.gd` (first times across the game), `tools/stress_fight.gd` (a big fight),
 `tools/fx_bench.gd` (each effect), `--fx-timing`.
 

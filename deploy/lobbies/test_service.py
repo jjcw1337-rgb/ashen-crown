@@ -80,6 +80,16 @@ class LobbyTests(unittest.TestCase):
   self.assertEqual(len({m[u]['team'] for u in ('a','b','c')}),3)
   with self.assertRaises(Rejected):self.act('b',r,'team',team=0)
   with self.assertRaises(Rejected):self.m.call('z','create',{'mode':'battlegrounds','team_size':3,'character':'hero','player':'z'})
+ def test_left_match_not_listed(self):
+  r=self.create(mode='battlegrounds');self.act('b',r,'join')
+  for u in ('a','b'):self.act(u,r,'ready',ready=True)
+  self.act('a',r,'start');live=self.m.rooms[r['id']]
+  self.m.worker(r['id'],live['worker_key'],'listening',{})
+  self.m.worker(r['id'],live['worker_key'],'state',{'state':'playing','joinable':True})
+  self.m.worker(r['id'],live['worker_key'],'depart',{'user':'a'})
+  self.assertEqual([x['id'] for x in self.m.call('a','list',{})['lobbies']],[])
+  self.assertEqual([x['id'] for x in self.m.call('b','list',{})['lobbies']],[r['id']])
+  self.assertEqual([x['id'] for x in self.m.call('c','list',{})['lobbies']],[r['id']])
  def test_full(self):
   r=self.pair()
   with self.assertRaises(Rejected):self.act('extra',r,'join')

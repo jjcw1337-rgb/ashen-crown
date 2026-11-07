@@ -2,7 +2,7 @@ extends SceneTree
 ## The real start (Blaine, 2026-11-06: no camp built behind the title): boot -> title with no world, how long it
 ## took and its worst frame; then Sandbox solo from the title and back; a character's world and back; the title
 ## always comes back with no world. Run with the real renderer:
-##   godot --path . -s tools/boot_flow_test.gd -- --real-boot
+##   godot --path . -s game/systems/loading/tests/boot_flow_test.gd -- --real-boot
 var g
 var fails := 0
 var worst := 0

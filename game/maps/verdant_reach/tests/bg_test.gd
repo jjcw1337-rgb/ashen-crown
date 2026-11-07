@@ -88,7 +88,7 @@ func _server() -> void:
 	var camps: Array = load("res://game/maps/verdant_reach/camps.gd").all(g.world)
 	check(Battlegrounds.portal_list(g.world).size() == 4, "four candidate portals at the forest's edges")
 	check(camps.size() >= 12 and camps.all(func(c): return g.chest_sealed(c["chest_node"])), "%d camps, every chest sealed while its camp stands" % camps.size())
-	check(camps.filter(func(c): return int(c["tier"]) == 4).size() == 2, "two boss camps")
+	check(camps.filter(func(c): return int(c["tier"]) == 4).size() == 3, "three boss camps (Hrimgar, Mossbeard, King Grubb)")
 	check(g.bg.state == "lobby", "a round begins in the starting glades")
 	check(await until(func(): return not g.net.players.is_empty(), 60.0), "a player joined")
 	# the Verdant Reach: no antechamber, bell or countdown: the raid begins once someone is in
@@ -183,6 +183,11 @@ func _client() -> void:
 	for fn in DirAccess.get_files_at(SV.dir):
 		DirAccess.remove_absolute(SV.dir + fn)
 	check(await until(func(): return g.ui.run_ui.mode == "results", 10.0), "the results window, survived")
+	# (jj, 2026-11-07: "Couldn't save the character") the match ends behind the results (the lobby service closes
+	# it, LobbyClient.finished): the run must still be there to save
+	g.lobby_client.match_id = "bg_test"
+	await g.lobby_client.finished("The raid has ended.")
+	check(g.hero.run != null and g.ui.run_ui.mode == "results", "the match ending behind the results keeps the run")
 	var save_b = g.ui.run_ui.find_child("save", true, false)
 	if save_b:
 		save_b.pressed.emit()
