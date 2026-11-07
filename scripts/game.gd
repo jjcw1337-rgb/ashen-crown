@@ -3698,9 +3698,10 @@ func on_enemy_killed(e: Enemy) -> void:
 		ui.set_boss(null)
 		ui.big_message(e.display_name + " has fallen")
 		add_shake(0.8)
-		Fx.pillar(world.fx_root, e.global_position, Color(1.0, 0.3, 0.2), 2.0)
 		if bg_mode or run_rules():
-			return       # a Battlegrounds boss is a camp: its loot, and the Extraction Portals are the way out (no story ending)
+			return       # a Battlegrounds boss is a camp: its loot, and the Extraction Portals are the way out (no story
+			             # ending, and no pillar of light: it read as a portal that went nowhere, Blaine 2026-11-06)
+		Fx.pillar(world.fx_root, e.global_position, Color(1.0, 0.3, 0.2), 2.0)
 		var ptl := _make_portal(world.free_spot_near(e.global_position + Vector3(0, 0, 3.5), 1.0), "town")
 		ptl.label = "Portal to " + Data.act_info(cur_act, difficulty)["town"]
 		ptl.set_meta("boss", true)
@@ -3724,9 +3725,9 @@ func boss_down_remote(e: Enemy) -> void:
 	ui.set_boss(null)
 	ui.big_message(e.display_name + " has fallen")
 	add_shake(0.8)
-	Fx.pillar(world.fx_root, e.global_position, Color(1.0, 0.3, 0.2), 2.0)
 	if bg_mode:
-		return       # (a Battlegrounds boss: no story ending, as in on_kill)
+		return       # (a Battlegrounds boss: no story ending and no pillar, as in on_enemy_killed)
+	Fx.pillar(world.fx_root, e.global_position, Color(1.0, 0.3, 0.2), 2.0)
 	save_game()
 	await get_tree().create_timer(3.5).timeout
 	if not playing:
